@@ -291,14 +291,22 @@
       <div class="row pop">
         <span>Background image</span>
         {#if t.boardImage && mediaUrls[t.boardImage]}<img src={mediaUrls[t.boardImage]} alt="" onerror={imgFallback} />{/if}
-        <button class="small" onclick={() => (picking = 'bg')} use:mediaDrop={{ kind: 'image', onpick: (id) => (t.boardImage = id) }}>{t.boardImage ? 'Change…' : 'Choose…'}</button>
+        <button
+          class="small"
+          aria-label={t.boardImage ? 'Change the board background image' : 'Choose a board background image'}
+          onclick={() => (picking = 'bg')}
+          use:mediaDrop={{ kind: 'image', onpick: (id) => (t.boardImage = id) }}>{t.boardImage ? 'Change…' : 'Choose…'}</button>
         {#if t.boardImage}<button class="ghost tiny" onclick={() => (t.boardImage = undefined)} title="Remove the background image" aria-label="Remove background image">✕</button>{/if}
         {#if picking === 'bg'}<MediaPicker kind="image" onpick={(id) => ((t.boardImage = id), (picking = null))} onclose={() => (picking = null)} />{/if}
       </div>
       <div class="row pop">
         <span title="A logo or show title across the top of the board">Banner above the board</span>
         {#if t.banner && mediaUrls[t.banner]}<img src={mediaUrls[t.banner]} alt="" onerror={imgFallback} />{/if}
-        <button class="small" onclick={() => (picking = 'banner')} use:mediaDrop={{ kind: 'image', onpick: (id) => (t.banner = id) }}>{t.banner ? 'Change…' : 'Choose…'}</button>
+        <button
+          class="small"
+          aria-label={t.banner ? 'Change the banner above the board' : 'Choose a banner above the board'}
+          onclick={() => (picking = 'banner')}
+          use:mediaDrop={{ kind: 'image', onpick: (id) => (t.banner = id) }}>{t.banner ? 'Change…' : 'Choose…'}</button>
         {#if t.banner}<button class="ghost tiny" onclick={() => (t.banner = undefined)} title="Remove the banner" aria-label="Remove banner">✕</button>{/if}
         {#if picking === 'banner'}<MediaPicker kind="image" onpick={(id) => ((t.banner = id), (picking = null))} onclose={() => (picking = null)} />{/if}
       </div>
@@ -504,7 +512,8 @@
         {#if firstBoard >= 0}<option value="clue">❓ A clue</option>{/if}
       </select>
     </label>
-    <div class="preview">
+    <!-- Only a picture of the result: its tiles and players aren't the page's (screen readers skip it). -->
+    <div class="preview" aria-hidden="true" inert>
       <Stage hostOnly>
         <AudienceView game={shown} session={demo} {live} role="mirror" />
       </Stage>

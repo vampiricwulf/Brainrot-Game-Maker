@@ -6,6 +6,7 @@
   import PageHeader from './PageHeader.svelte';
   import { untrack } from 'svelte';
   import { app, toast } from '../lib/app.svelte';
+  import { announce } from '../lib/announce';
   import { clear, heldMedia, history, jumpTo, maxSteps, redo, undo, type HistoryEntry, type Mark, type Origin } from '../lib/history.svelte';
   import { formatBytes, getBlob } from '../lib/media.svelte';
   import { focusPlace, goTo, placeKey } from '../lib/nav.svelte';
@@ -124,7 +125,10 @@
   function pick(n: number): void {
     asking = null;
     const moved = n - history.index;
-    if (Math.abs(moved) <= ASK_OVER) return void jumpTo(n);
+    if (Math.abs(moved) <= ASK_OVER) {
+      if (jumpTo(n)) said(n);
+      return;
+    }
     const when = minute(n ? history.entries[n - 1].end : history.origin.ts);
     asking =
       moved < 0
@@ -145,8 +149,11 @@
     if (!asking) return;
     const { n } = asking;
     asking = null;
-    jumpTo(n);
+    if (jumpTo(n)) said(n);
   }
+
+  /** Screen readers hear where a jump went (on screen, only the "● Now" moves). */
+  const said = (n: number) => announce(n ? `Now just after “${history.entries[n - 1].label}”` : 'Back to the start of the history');
 
   /** Show where a step changed things, as the game is now. */
   function goThere(e: HistoryEntry, applied: boolean): void {

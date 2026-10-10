@@ -9,6 +9,7 @@
   import type { Game, SlideElement } from '../../lib/model';
   import { itemsNamed, layerIcon, layerLabel } from '../../lib/layerlabel';
   import { offStage } from '../../lib/layers';
+  import { announce } from '../../lib/announce';
 
   let {
     elements,
@@ -67,6 +68,7 @@
     if (j < 0 || j >= order.length) return;
     [order[i], order[j]] = [order[j], order[i]];
     apply(order, `${dir < 0 ? 'Brought' : 'Sent'} ${itemsNamed([el], game)} ${dir < 0 ? 'forward' : 'backward'}`);
+    announce(`${layerLabel(el, game)} moved to ${j + 1} of ${order.length} in Layers`);
     tick().then(() => {
       const row = listEl?.querySelector(`[data-layer="${el.id}"]`);
       const target = row?.querySelector<HTMLButtonElement>(refocus);
@@ -133,7 +135,7 @@
     const next = top[top.indexOf(el) + dir];
     if (!next) return;
     selected = [next.id];
-    (e.currentTarget as HTMLElement).parentElement?.querySelector<HTMLElement>(`[data-layer="${next.id}"] .name`)?.focus();
+    listEl?.querySelector<HTMLElement>(`[data-layer="${next.id}"] .name`)?.focus();
   }
 </script>
 

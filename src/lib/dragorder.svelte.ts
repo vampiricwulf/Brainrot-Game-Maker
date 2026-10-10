@@ -82,7 +82,13 @@ export function rowKeys(node: HTMLElement, keys: RowKeys): { update: (k: RowKeys
       // (Moving a row takes it out of the page and back, which drops the focus.)
       const had = document.activeElement instanceof HTMLElement ? document.activeElement : null;
       k.move(e.key === 'ArrowUp' ? -1 : 1);
-      void tick().then(() => had?.isConnected && had !== document.activeElement && had.focus());
+      void tick().then(() => {
+        // A ▼ (or ▲) that is off now the row is at the end can't keep it: the other one next to it takes it.
+        const to = had?.matches(':disabled')
+          ? [had.previousElementSibling, had.nextElementSibling].find((b): b is HTMLElement => b instanceof HTMLElement && b.matches('button:not(:disabled)'))
+          : had;
+        if (to?.isConnected && to !== document.activeElement) to.focus();
+      });
     } else if (k.duplicate && mod && !e.altKey && !e.shiftKey && e.key.toLowerCase() === 'd') {
       e.preventDefault();
       e.stopPropagation();

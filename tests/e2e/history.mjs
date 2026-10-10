@@ -161,6 +161,16 @@ try {
   await rows.nth(1).locator('.pick').click();
   await page.waitForTimeout(250);
   assert((await page.locator('nav button.round-tab').count()) === 2 && (await page.locator('.hist .hr.undone').count()) === 1, 'a row redoes everything up to it');
+  // A screen reader hears it, and an undo or redo made here (only ● Now moves on screen).
+  const saidHas = (re) => page.waitForFunction((src) => new RegExp(src).test(document.getElementById('live-region')?.dataset.said ?? ''), re.source);
+  await saidHas(/Back to the start of the history\. Now just after “Renamed round “Round of memes””\.$/);
+  assert(true, 'jumps from the list are said (“Back to the start of the history”, “Now just after …”)');
+  await rows.nth(1).locator('.pick').focus();
+  await key('Control+z');
+  await saidHas(/^Undid Renamed round “Round of memes”\.$/);
+  assert(true, 'and so is Ctrl+Z on the History tab');
+  await key('Control+y');
+  await saidHas(/^Redid Renamed round “Round of memes”\.$/);
   // The filter shows only the steps whose names (or places) have its words.
   const allSteps = await page.locator('.hist .hr:not(.origin)').count();
   const filter = page.getByLabel('Filter the steps');
@@ -186,6 +196,10 @@ try {
   await page.keyboard.press('ArrowUp');
   await page.keyboard.press('ArrowDown');
   assert(await rows.nth(1).locator('.pick').evaluate((el) => el === document.activeElement), '↑/↓ move between the steps');
+  await page.keyboard.press('ArrowUp');
+  const ring = await rows.nth(0).locator('.pick').evaluate((el) => el === document.activeElement && getComputedStyle(el).outlineStyle);
+  assert(ring === 'solid', `a step ↑/↓ moves to shows the focus ring (${ring})`);
+  await page.keyboard.press('ArrowDown');
   // G (Go there) shows the place, and the focus goes there too, not to the page.
   await page.keyboard.press('g');
   await page.waitForTimeout(400);

@@ -38,8 +38,13 @@
   }
 
   onMount(() => {
-    // A jump from the History list shows in the list itself.
-    const offApplied = onApplied((e, dir, via) => via !== 'list' && !quiet && show(dir < 0 ? 'undid' : 'redid', e, 4000));
+    // A jump from the History list shows in the list itself (and says so there). On the History tab an undo or redo
+    // shows only as the list's "● Now" moving: it's still said.
+    const offApplied = onApplied((e, dir, via) => {
+      if (via === 'list') return;
+      if (!quiet) show(dir < 0 ? 'undid' : 'redid', e, 4000);
+      else announce([`${dir < 0 ? 'Undid' : 'Redid'} ${e.label}`, e.where].filter(Boolean).join(' · '));
+    });
     const offNotify = onNotify((e) => !quiet && show('made', e, 6000));
     return () => {
       offApplied();

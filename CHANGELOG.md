@@ -101,6 +101,8 @@ in plain words for the people who make and host games. Anything committed but no
 - Import rounds…, Copy/Paste round and copied slide items bring the uploaded fonts their text uses, and ⬇ Export theme file on a My themes card includes the theme's uploaded fonts (or says which were left out). (009996a, a3553e1)
 - A game or theme file dropped on a slide, the board images canvas, a board tile, the RPG map or a board-game board opens, as it does elsewhere in the editor (it was refused as a picture). A .zip holding a game file, or a game pack unzipped and zipped again as a folder, opens whole; any other zip says to unzip it. A theme file ending in .json opens on 🎨 Theme. (009996a, a3553e1)
 - The exported play-only page no longer points the host to an editor it doesn't have. (009996a)
+- Editor by keyboard: moving a category, round, slice or button from its menu or ▼/▲ keeps the focus there; Tab in an open ⋯ or right-click menu closes it and gives the focus back; after New, Open… or a recent game the focus goes to the first round; Layers list ↑/↓ move the focus with the selection; the board images preview is a Tab stop (Shift+F10 opens an image's menu) instead of trapping Tab. (7077ef1, c641491)
+- Screen readers: a new game, undo, redo and History jumps are announced, and so are keyboard reorders ("moved to 2 of 4"); the board's tiles say their keys (also in the board's Tips); 🎨 Theme's picture buttons say what they choose and the look-only preview is skipped; a History step reached with ↑/↓ shows a focus ring. (7077ef1, c641491)
 
 ## 2026-10-08
 

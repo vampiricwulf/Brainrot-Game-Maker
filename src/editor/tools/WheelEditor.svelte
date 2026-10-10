@@ -14,6 +14,7 @@
   import { copySegment, moveTo } from '../../lib/listedit';
   import { showMenu } from '../../lib/menustate.svelte';
   import { flash } from '../../lib/nav.svelte';
+  import { announce } from '../../lib/announce';
   import { isTextField } from '../../lib/undokeys';
   import Stage from '../../lib/Stage.svelte';
   import WheelView from '../../play/tools/WheelView.svelte';
@@ -42,10 +43,17 @@
   const blank = $derived(wheel.segments.flatMap((s, i) => (s.label.trim() ? [] : [i + 1])));
 
   /** Move the slice at `i` to `j` (▲▼, Alt+↑/↓ or a drag: one step). */
-  function move(i: number, j: number): void {
+  function move(i: number, j: number, btn?: HTMLButtonElement): void {
     const s = wheel.segments[i];
     if (!s || j < 0 || j >= wheel.segments.length || i === j) return;
     step(`Moved slice “${name(s)}” ${j < i ? 'up' : 'down'}`, () => moveTo(wheel.segments, i, j));
+    announce(`Slice “${name(s)}” moved to ${j + 1} of ${wheel.segments.length}`);
+    // (A row moved down is taken out of the page and back, which drops the focus: it goes back to the ▲/▼ pressed, or
+    // the other one once that's off at the end.)
+    if (btn)
+      void tick().then(() =>
+        (btn.isConnected && !btn.disabled ? btn : btn.closest('[data-seg]')?.querySelector<HTMLElement>('.move:not(:disabled)'))?.focus(),
+      );
   }
 
   let segsEl = $state<HTMLElement>();
@@ -200,8 +208,8 @@
             aria-label="Spin again"
             title="Spin again: landing on this slice spins the wheel again{wheel.removeAfterLanding ? ' (it never gets used up)' : ''}">↻</button
           >
-          <button class="ghost small" onclick={() => move(i, i - 1)} disabled={i === 0} aria-label="Move up">▲</button>
-          <button class="ghost small" onclick={() => move(i, i + 1)} disabled={i === wheel.segments.length - 1} aria-label="Move down">▼</button>
+          <button class="ghost small move" onclick={(e) => move(i, i - 1, e.currentTarget)} disabled={i === 0} aria-label="Move up">▲</button>
+          <button class="ghost small move" onclick={(e) => move(i, i + 1, e.currentTarget)} disabled={i === wheel.segments.length - 1} aria-label="Move down">▼</button>
           <button class="ghost small" onclick={() => duplicate(i)} aria-label="Duplicate slice" title="Duplicate slice (Ctrl+D)">⧉</button>
           <button class="ghost small" onclick={() => remove(i)} disabled={wheel.segments.length <= 2} aria-label="Delete slice" title={wheel.segments.length <= 2 ? 'A wheel needs two slices' : 'Delete slice'}>🗑</button>
         </div>

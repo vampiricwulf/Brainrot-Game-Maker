@@ -6,6 +6,7 @@
   import { listSaves, onOpenedFile, readSave, type SaveEntry } from '../lib/desktop.svelte';
   import { onMount, tick, untrack } from 'svelte';
   import { app, toast } from '../lib/app.svelte';
+  import { announce } from '../lib/announce';
   import {
     gameProblem,
     isBoard,
@@ -259,6 +260,7 @@
       const [r] = game.rounds.splice(i, 1);
       game.rounds.splice(j, 0, r);
     });
+    announce(`Round “${roundName(game.rounds[j], j)}” moved to ${j + 1} of ${game.rounds.length}`);
     if (shown) tab = game.rounds.indexOf(shown);
   }
 
@@ -439,6 +441,7 @@
    * editor takes no edits meanwhile, which would land on the game that's on its way out and be lost.
    */
   let replacing = $state(false);
+  let openBtn = $state<HTMLButtonElement>();
 
   async function replaceGame(next: Game, origin: Omit<Origin, 'ts'>, history?: RecentGame['history'], spare?: string, read?: ReadGame): Promise<boolean> {
     replacing = true;
@@ -446,6 +449,12 @@
       return await replaceNow(next, origin, history, spare, read);
     } finally {
       replacing = false;
+      // The button that started it (New, Open…, a recent game) was out of reach meanwhile, which drops the focus: it
+      // goes to the game's first round, or the screen that adds one.
+      void tick().then(() => {
+        if (!document.activeElement || document.activeElement === document.body)
+          (document.querySelector<HTMLElement>('nav [data-place^="round:"]') ?? document.querySelector<HTMLElement>('.first-round .sample, .first-round .mode'))?.focus();
+      });
     }
   }
 
@@ -479,7 +488,8 @@
   }
 
   async function newFile(): Promise<void> {
-    if (await mayReplace('Start a new game?', 'Start new')) await replaceGame(newGame(), { kind: 'new', label: 'New game' });
+    if ((await mayReplace('Start a new game?', 'Start new')) && (await replaceGame(newGame(), { kind: 'new', label: 'New game' })))
+      announce(previous ? `Started a new game. “${previous.title}” is kept in Open… → Recent games` : 'Started a new game');
   }
 
   /** Bring back a game from Recent games, with its undo history (this game takes its place there). */
@@ -829,7 +839,7 @@
     <button class="ghost" onclick={() => undo()} disabled={!history.canUndo} title={history.undoTitle} aria-label="Undo (Ctrl+Z)"><span aria-hidden="true">↶</span><span class="word">Undo</span></button>
     <button class="ghost" onclick={() => redo()} disabled={!history.canRedo} title={history.redoTitle} aria-label="Redo (Ctrl+Y)"><span aria-hidden="true">↷</span><span class="word">Redo</span></button>
     <button onclick={newFile} disabled={!!opening}><span aria-hidden="true">📄</span> New</button>
-    <button onclick={open} disabled={!!opening}><span aria-hidden="true">📂</span> Open…</button>
+    <button onclick={open} disabled={!!opening} bind:this={openBtn}><span aria-hidden="true">📂</span> Open…</button>
     <button
       onclick={save}
       disabled={saving}
@@ -914,7 +924,15 @@
         >“{prev.title}” was replaced. It's kept in Open… → Recent games.{#if prev.dropped?.length}{' '}{prev.dropped.length === 1 ? 'Removed the oldest kept game' : 'Removed the oldest kept games'}: {prev.dropped.map((t) => `“${t}”`).join(', ')}.{/if}</span
       >
       <button class="small" onclick={() => reopen(prev)}>↶ Reopen previous game</button>
-      <button class="small ghost" onclick={() => (previous = null)} aria-label="Dismiss">✕</button>
+      <button
+        class="small ghost"
+        onclick={() => {
+          // (The focus goes on from here to Open…, where the game is kept, instead of dropping to the page.)
+          previous = null;
+          openBtn?.focus();
+        }}
+        aria-label="Dismiss">✕</button
+      >
     </div>
   {/if}
 

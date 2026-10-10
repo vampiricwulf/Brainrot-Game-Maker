@@ -144,6 +144,24 @@ try {
   assert((await labels.count()) === 5 && (await labels.nth(4).evaluate((e) => e === document.activeElement)), 'Backspace in an empty label deletes that slice');
   await labels.nth(4).press('Alt+ArrowUp');
   assert((await values(labels)).join() === 'Option 1,Option 2,Option 3,Dance,Option 4', 'Alt+↑ moves a slice');
+  // ▼ pressed with the keys: the keys stay on that row's arrows (▲ once ▼ is off at the end), and the move is said.
+  await page.locator('.seg').nth(3).getByRole('button', { name: 'Move down' }).focus();
+  await page.keyboard.press('Enter');
+  await page.waitForFunction(() => document.activeElement?.matches('.seg:last-child button[aria-label="Move up"]'));
+  assert((await values(labels)).join() === 'Option 1,Option 2,Option 3,Option 4,Dance', '▼ by the keys moves a slice, the keys going on to its ▲ (▼ is off at the end)');
+  await page.waitForFunction(() => /Slice “Dance” moved to 5 of 5/.test(document.getElementById('live-region')?.dataset.said ?? ''));
+  assert(true, 'and the move is said');
+  await page.keyboard.press('Enter');
+  await page.waitForFunction(() => document.activeElement?.matches('.seg:nth-child(4) button[aria-label="Move up"]'));
+  assert((await values(labels)).join() === 'Option 1,Option 2,Option 3,Dance,Option 4', 'Enter there moves it back up, the keys still on its ▲');
+  // Alt+↓ on that ▼ does the same: the keys go on to its ▲ rather than dropping to the page.
+  await page.locator('.seg').nth(3).getByRole('button', { name: 'Move down' }).focus();
+  await page.keyboard.press('Alt+ArrowDown');
+  await page.waitForFunction(() => document.activeElement?.matches('.seg:last-child button[aria-label="Move up"]'));
+  assert((await values(labels)).join() === 'Option 1,Option 2,Option 3,Option 4,Dance', 'Alt+↓ on ▼ moves a slice, the keys going on to its ▲ (▼ is off at the end)');
+  await page.keyboard.press('Alt+ArrowUp');
+  await page.waitForFunction(() => document.activeElement?.matches('.seg:nth-child(4) button[aria-label="Move up"]'));
+  assert((await values(labels)).join() === 'Option 1,Option 2,Option 3,Dance,Option 4', 'Alt+↑ there moves it back up');
   await dragBy(page, page.locator('.seg .drag-grip').nth(3), labels.first());
   assert((await values(labels)).join() === 'Dance,Option 1,Option 2,Option 3,Option 4', 'dragging ⋮⋮ moves a slice');
   await page.getByRole('button', { name: 'Duplicate slice' }).first().click();
