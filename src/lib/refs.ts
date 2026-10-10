@@ -25,7 +25,10 @@ export function actionProblem(game: Game, a: Action, where: { world?: World; boa
       const worlds = where.world ? [where.world] : (game.worlds ?? []);
       if (!worlds.length) return null;
       const m = worlds.flatMap((w) => w.maps).find((x) => x.id === a.to.map);
-      return m?.screens.some((s) => s.id === a.to.screen) ? null : 'That screen no longer exists';
+      if (m?.screens.some((s) => s.id === a.to.screen)) return null;
+      // Picked from another world (an item's Use can go to any): not deleted, just not where this round plays.
+      const other = where.world && game.worlds?.find((w) => w.maps.some((x) => x.id === a.to.map && x.screens.some((s) => s.id === a.to.screen)));
+      return other ? `That screen is in “${other.name}”, not this round’s world` : 'That screen no longer exists';
     }
     case 'reveal':
     case 'hide': {

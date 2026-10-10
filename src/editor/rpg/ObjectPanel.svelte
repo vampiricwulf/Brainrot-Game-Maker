@@ -4,7 +4,7 @@
   import { editedGame } from '../../lib/app.svelte';
   import { step } from '../../lib/history.svelte';
   import { textSlide, type ObjectClass, type Slide, type SlideElement, type World } from '../../lib/model';
-  import { findIn, OBJECT_CLASSES } from '../../lib/rpg';
+  import { classLabel, findIn, OBJECT_CLASSES } from '../../lib/rpg';
   import { currencyFields, itemDef, itemQty, MAX_UNSTACKED } from '../../lib/toolset';
   import ActionListEditor from './ActionListEditor.svelte';
   import ScreenPicker from './ScreenPicker.svelte';
@@ -26,23 +26,32 @@
     shop: ['shop'],
   };
 
+  /** What a class change can throw away, as the Undo notice names it. */
+  const DROPPED_NAMES: Record<string, string> = { to: 'destination', locked: 'lock', dialogue: 'dialogue slide', shop: 'shop', stats: 'stats', actions: 'buttons' };
+
   function setClass(c: string): void {
-    if (!c) {
-      el.role = undefined;
-      return;
-    }
     // Only what the new class uses carries over: a character turned into a doorway mustn't keep its 💬 Talk and 🛒 Shop
     // (hidden here, still on its card in play). Buttons stay, but for spawn points and no-go areas, which have none.
-    const keep = new Set<string>([...(c === 'spawn' || c === 'blocker' ? [] : ['actions']), ...(CLASS_KEYS[c as ObjectClass] ?? [])]);
+    const keep = new Set<string>(c ? [...(c === 'spawn' || c === 'blocker' ? [] : ['actions']), ...(CLASS_KEYS[c as ObjectClass] ?? [])] : []);
     const old = (el.role ?? {}) as Record<string, unknown>;
-    el.role = { ...Object.fromEntries(Object.entries(old).filter(([k]) => keep.has(k))), class: c as ObjectClass };
-    if (c === 'item' && !el.role.item) el.role.item = game.items?.[0]?.id;
-    if (c === 'item') el.role.qty ??= 1;
-    if (c === 'currency') {
-      el.role.field ??= currencyFields(game)[0]?.id;
-      el.role.amount ??= 10;
-    }
-    if (c === 'spawn' || c === 'blocker') el.name ||= c === 'spawn' ? 'Arrival point' : 'No-go area';
+    const apply = () => {
+      if (!c) {
+        el.role = undefined;
+        return;
+      }
+      el.role = { ...Object.fromEntries(Object.entries(old).filter(([k]) => keep.has(k))), class: c as ObjectClass };
+      if (c === 'item' && !el.role.item) el.role.item = game.items?.[0]?.id;
+      if (c === 'item') el.role.qty ??= 1;
+      if (c === 'currency') {
+        el.role.field ??= currencyFields(game)[0]?.id;
+        el.role.amount ??= 10;
+      }
+      if (c === 'spawn' || c === 'blocker') el.name ||= c === 'spawn' ? 'Arrival point' : 'No-go area';
+    };
+    // Throwing away something written (a dialogue, a shop, buttons) says so, with Undo: one arrow key on the select does it.
+    const dropped = Object.keys(old).filter((k) => DROPPED_NAMES[k] && !keep.has(k) && old[k] != null && old[k] !== false && !(Array.isArray(old[k]) && !(old[k] as unknown[]).length));
+    if (!dropped.length) return apply();
+    step(`${el.name?.trim() || 'Object'}: now ${classLabel(c as ObjectClass | '')} (removed its ${dropped.map((k) => DROPPED_NAMES[k]).join(', ')})`, apply, { notify: true });
   }
 
   const target = $derived(el.role?.to ? findIn(world, el.role.to) : null);

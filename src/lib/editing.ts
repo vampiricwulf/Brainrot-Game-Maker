@@ -150,9 +150,11 @@ export function placePicture(items: PlacedItem[], w: number, h: number, W = SLID
 /**
  * Move a new picture (not on the slide yet) to its place among `elements` (see placePicture), and the main text with
  * it when that moves too. A text box that doesn't shrink its words to fit gets a smaller size to match its new box.
+ * RPG screen objects (a Character, Doorway or item label is a text box with a role) are never the question's text:
+ * they stay where they are, and a lone one gets the picture in the middle.
  */
 export function placeNewPicture(elements: SlideElement[], pic: Box): void {
-  const { box, text } = placePicture(elements, pic.w, pic.h);
+  const { box, text } = placePicture(elements.map((e) => (e.role ? { ...e, kind: 'object' } : e)), pic.w, pic.h);
   Object.assign(pic, box);
   const t = text && elements.find((e) => e.id === text.id);
   if (t?.kind !== 'text') return;

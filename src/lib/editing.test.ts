@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { aspectCrop, freeOffset, isMediaLink, knobPlacement, officeTextPaste, placePicture, playRange, SnapshotHistory } from './editing';
+import { aspectCrop, freeOffset, isMediaLink, knobPlacement, officeTextPaste, placeNewPicture, placePicture, playRange, SnapshotHistory } from './editing';
+import { newTextEl } from './model';
 
 describe('slide undo history', () => {
   it('undoes a change made a moment ago (before its debounce committed it)', () => {
@@ -174,5 +175,13 @@ describe('placing a new picture', () => {
     expect(placePicture([], 960, 540).box).toEqual({ x: 480, y: 270, w: 960, h: 540 });
     const full = { id: 't', kind: 'text', x: 0, y: 0, w: 1920, h: 1080 };
     expect(placePicture([full, { id: 's', kind: 'shape', x: 0, y: 0, w: 10, h: 10 }], 960, 540).box).toEqual({ x: 480, y: 270, w: 960, h: 540 });
+  });
+
+  it("leaves a screen's lone RPG object where it is and centres the picture", () => {
+    const hero = { ...newTextEl('🧙', { x: 1180, y: 600, w: 260, h: 300 }), role: { class: 'npc' as const } };
+    const pic = { x: 0, y: 0, w: 960, h: 540 };
+    placeNewPicture([hero], pic);
+    expect(pic).toEqual({ x: 480, y: 270, w: 960, h: 540 });
+    expect([hero.x, hero.y, hero.w, hero.h]).toEqual([1180, 600, 260, 300]);
   });
 });

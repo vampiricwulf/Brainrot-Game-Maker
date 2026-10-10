@@ -5,6 +5,7 @@ import { movePlayer, sendTo, skipTurns, spaceById } from './boardgame';
 import { blip, playSound, startTimer, type Live } from './live';
 import { addWheel, openPlayerWheel, openWheel, quickDice, rollDice } from './overlay';
 import { parseDice } from './tools';
+import { layerLabel } from './layerlabel';
 import { actionProblem, objectsWhere } from './refs';
 import { applyScore, nameList } from './session';
 import { activeParty, moveTo, override, partyOn } from './rpg';
@@ -105,7 +106,7 @@ export function describeAction(game: Game, a: Action): string {
     case 'reveal':
     case 'hide': {
       const at = a.object ? game.worlds?.flatMap(objectsWhere).find((o) => o.el.id === a.object) : undefined;
-      return `${a.do === 'reveal' ? 'Reveal' : 'Hide'} ${at ? `${at.el.name || 'object'} (${at.screen.name})` : 'an object'}`;
+      return `${a.do === 'reveal' ? 'Reveal' : 'Hide'} ${at ? `${layerLabel(at.el, game)} (${at.screen.name})` : 'an object'}`;
     }
     case 'shop':
       return `Open ${game.shops?.find((s) => s.id === a.shop)?.name ?? 'shop'}`;

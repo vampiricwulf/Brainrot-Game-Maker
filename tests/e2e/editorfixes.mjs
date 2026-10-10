@@ -330,6 +330,12 @@ try {
   assert((await note.innerText()).includes('Deleted the dialogue slide of “Character”'), 'and so does deleting its dialogue slide');
   await note.getByRole('button', { name: '↶ Undo' }).click();
   assert((await page.getByRole('button', { name: 'Edit dialogue slide…' }).count()) === 1, 'whose Undo brings it back');
+  // Changing its class (one arrow key on the select does it) throws the dialogue away: that says so too, with Undo.
+  await page.getByLabel('Object class').selectOption('shop');
+  await note.filter({ hasText: 'Character: now Shop (removed its dialogue slide)' }).waitFor();
+  await note.getByRole('button', { name: '↶ Undo' }).click();
+  await page.getByRole('button', { name: 'Edit dialogue slide…' }).waitFor();
+  assert((await page.getByLabel('Object class').inputValue()) === 'npc', 'a class change that drops the dialogue says so, and Undo brings both back');
   await page.getByRole('button', { name: '◀ Back to the map' }).click();
 
   // ---------- ＋ Add item and ＋ Add shop put the typing in the new one's name ----------

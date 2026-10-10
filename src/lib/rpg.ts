@@ -391,6 +391,17 @@ export function step(game: Game, st: WorldState, world: World, dir: Dir8): strin
   return null;
 }
 
+/**
+ * Every world's maps as one, for picking a screen from a button that isn't in an RPG round (an item's Use, a wheel
+ * slice, a dice outcome): with more than one world each map is named after its world. Read-only: the maps and screens
+ * are the real ones (their ids are what gets picked).
+ */
+export function allWorldsAsOne(game: Game): World | undefined {
+  const ws = game.worlds ?? [];
+  if (ws.length <= 1) return ws[0];
+  return { id: 'all', name: '', maps: ws.flatMap((w) => w.maps.map((m) => ({ ...m, name: `${w.name} · ${m.name}` }))) };
+}
+
 export function findIn(world: World, ref: ScreenRef): { map: WorldMap; screen: Screen } | null {
   const map = world.maps.find((m) => m.id === ref.map);
   const screen = map?.screens.find((s) => s.id === ref.screen);

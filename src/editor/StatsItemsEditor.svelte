@@ -15,6 +15,7 @@
   import { isTextField } from '../lib/undokeys';
   import { pickFile, readTextFile, safeFilename, saveFile, savedWhere } from '../lib/fileio';
   import { newId, type ItemDef, type Shop, type StatField, type Wearable } from '../lib/model';
+  import { allWorldsAsOne } from '../lib/rpg';
   import { allActions, worldObjects } from '../lib/refs';
   import { currencyFields, newStatField, STAT_PRESETS, shopCurrency, shopCurrencyGone, SCORE_CURRENCY, statRangeProblem } from '../lib/toolset';
   import { mediaUrls } from '../lib/media.svelte';
@@ -487,6 +488,8 @@
         </tbody>
       </table>
     </details>
+  {:else if game.statFields?.length}
+    <p class="hint">Per-player starting values ("all mammals start with 4 gold") show here once the game has players: add them on the ▶ Play screen.</p>
   {/if}
 </section>
 
@@ -565,7 +568,7 @@
             <label class="field">Description (on its card)<textarea rows="2" bind:value={it.description}></textarea></label>
             <label class="field">Host notes (never shown on stream)<textarea rows="2" bind:value={it.hostNotes}></textarea></label>
             <div class="hint">"Use" in play runs:</div>
-            <ActionListEditor bind:actions={it.onUse} world={game.worlds?.[0]} />
+            <ActionListEditor bind:actions={it.onUse} world={allWorldsAsOne(game)} askLabel="Whoever uses it" />
             {#if it.wearable}
               {@const worn = it as ItemDef & { wearable: Wearable }}
               <div class="hint">Worn look (how it shows on the avatar when equipped):</div>

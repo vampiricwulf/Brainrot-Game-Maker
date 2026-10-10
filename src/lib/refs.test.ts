@@ -19,6 +19,15 @@ describe('what points nowhere', () => {
     expect(actionProblem(game, go)).toBe('That screen no longer exists');
   });
 
+  it('a screen picked from another world is named as such in a round on this one, not as deleted', () => {
+    const { game, world } = withWorld();
+    const other = { id: 'w2', name: 'Shadow Realm', maps: [] } as unknown as World;
+    game.worlds!.push(other);
+    const go = { id: 'a', do: 'move' as const, to: { map: 'm', screen: 's' } };
+    expect(actionProblem(game, go, { world })).toBeNull();
+    expect(actionProblem(game, go, { world: other })).toBe('That screen is in “W”, not this round’s world');
+  });
+
   it('Reveal / Hide a deleted object; a Shop with no shop chosen', () => {
     const { game } = withWorld();
     expect(actionProblem(game, { id: 'a', do: 'reveal', object: 'gone' })).toBe('That object no longer exists');
