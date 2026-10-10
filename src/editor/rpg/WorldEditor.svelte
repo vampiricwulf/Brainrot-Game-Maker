@@ -886,8 +886,8 @@
   }
 
   /**
-   * On the map: Delete / Backspace deletes the selected screens, Esc deselects, Alt+arrows move them, Ctrl+D
-   * duplicates, Ctrl+C / Ctrl+V copy and paste, F2 renames. In the screen editor: Esc (with nothing selected there)
+   * On the map: Delete / Backspace deletes the selected screens, Esc deselects, Alt+arrows move them, Ctrl+A
+   * selects every screen, Ctrl+D duplicates, Ctrl+C / Ctrl+V copy and paste, F2 renames. In the screen editor: Esc (with nothing selected there)
    * goes back to the map and Alt+arrows open the screen next door. Not while typing in a field, nor with a dialog or
    * a menu open.
    */
@@ -925,7 +925,11 @@
       e.preventDefault();
       removeScreens(picked);
     } else if (k === 'escape' && selIds.length) selIds = [];
-    else if (mod && k === 'd' && picked.length) {
+    else if (mod && !e.altKey && k === 'a' && map) {
+      // Every screen on the map, as Ctrl+A picks everything in the slide and board editors (not the page's text).
+      e.preventDefault();
+      selIds = map.screens.map((s) => s.id);
+    } else if (mod && k === 'd' && picked.length) {
       e.preventDefault();
       duplicateScreens(picked);
     } else if (mod && k === 'c' && sel && !copyIsTheBrowsers(document.activeElement, window.getSelection())) {
@@ -1354,7 +1358,7 @@
                   Keys: arrows move around the grid, Enter edits (or adds), Alt+arrows move the screen, Delete deletes it, Ctrl+D
                   duplicates, Ctrl+C / Ctrl+V copy and paste it, F2 renames, Esc deselects.
                 </li>
-                <li>Shift/Ctrl+click or draw a box to pick several (from an empty cell, or Alt+drag from anywhere).</li>
+                <li>Shift/Ctrl+click or draw a box to pick several (from an empty cell, or Alt+drag from anywhere), or Ctrl+A for all of them.</li>
               </ul>
             </Tips>
           {/if}

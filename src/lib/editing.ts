@@ -93,6 +93,8 @@ export function knobPlacement(el: Box & { rotation: number }, dist: number): 'ab
 export interface PlacedItem extends Box {
   id: string;
   kind: string;
+  /** Text the picture goes around but never moves (an RPG screen object). */
+  fixed?: boolean;
 }
 
 /**
@@ -117,7 +119,7 @@ export function placePicture(items: PlacedItem[], w: number, h: number, W = SLID
     const bh = Math.round(h * k);
     return { x: Math.round(r.x + (r.w - bw) / 2), y: Math.round(r.y + (r.h - bh) / 2), w: bw, h: bh };
   };
-  if (shown.length === 1) {
+  if (shown.length === 1 && !texts[0].fixed) {
     // The question alone: the picture on top, the text in the band below (at least 310 of the 1080 high).
     const t = texts[0];
     const band = { x: 120, y: 50, w: W - 240, h: Math.round(H * 0.6) - 50 };
@@ -150,9 +152,11 @@ export function placePicture(items: PlacedItem[], w: number, h: number, W = SLID
 /**
  * Move a new picture (not on the slide yet) to its place among `elements` (see placePicture), and the main text with
  * it when that moves too. A text box that doesn't shrink its words to fit gets a smaller size to match its new box.
+ * RPG screen objects (a Character, Doorway or item label is a text box with a role) are never the question's text:
+ * the picture goes beside them, and they stay where they are.
  */
 export function placeNewPicture(elements: SlideElement[], pic: Box): void {
-  const { box, text } = placePicture(elements, pic.w, pic.h);
+  const { box, text } = placePicture(elements.map((e) => (e.role ? { ...e, fixed: true } : e)), pic.w, pic.h);
   Object.assign(pic, box);
   const t = text && elements.find((e) => e.id === text.id);
   if (t?.kind !== 'text') return;

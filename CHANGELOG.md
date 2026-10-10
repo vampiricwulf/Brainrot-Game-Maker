@@ -91,6 +91,9 @@ in plain words for the people who make and host games. Anything committed but no
 - Buzzer mode: an answer shown with nobody answering and then hidden again leaves the buzzers just closed (🔔 Open the buzzers is next, phones say Get ready), not "answered" with the phones saying the clue is over. (b27183f)
 - Undo and redo of buttons pasted onto a wheel slice, a die face or an item's Use buttons, with the items they bring (or ＋ New shop… made there), stay on that wheel, die or item instead of jumping to 📊 Stats & Items. (b27183f)
 - Keyboard hosting: a button pressed with the mouse stays a mouse button until Tab reaches it, so Shift+Enter after closing a window opened with a click marks the answer wrong instead of reopening the window; after one ✍ answer is judged, Enter judges the next; a round's first button picked for the keys doesn't take Enter from an award. (396ebfc, 50e1f4b)
+- RPG screens: a new picture goes in the free space beside the screen's characters, doorways and item labels instead of moving a lone one and stretching it across the screen. Changing an object's class says what it threw away (its dialogue, shop, stats or buttons) and offers Undo. (074d854, ea63ad3)
+- RPG play: a character whose shop was deleted shows a greyed-out 🛒 Shop that says why, instead of putting a blank shop on stream. (074d854, ea63ad3)
+- An item's, wheel slice's or dice outcome's "Go to a screen" can pick screens from any world; item Use buttons say "Whoever uses it" (what they always did); Reveal and Hide buttons name objects as the Layers list does ("Ellipse", "chest.png"); 📊 Stats & Items says where per-player starting values come from; Ctrl+A on the RPG world map selects every screen. (074d854)
 
 ## 2026-10-08
 

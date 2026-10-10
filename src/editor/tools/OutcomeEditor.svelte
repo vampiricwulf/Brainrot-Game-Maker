@@ -4,6 +4,7 @@
   import { app } from '../../lib/app.svelte';
   import { imgFallback, mediaUrls } from '../../lib/media.svelte';
   import type { MediaKind, Outcome, ScoreAction } from '../../lib/model';
+  import { allWorldsAsOne } from '../../lib/rpg';
   import MediaPicker from '../slide/MediaPicker.svelte';
   import { mediaDrop } from '../../lib/mediadrop';
   import ActionListEditor from '../rpg/ActionListEditor.svelte';
@@ -134,7 +135,7 @@
         </div>
       {/if}
       <div class="muted small">Buttons when it lands (the host presses them): move, stats, items, pop-ups…</div>
-      <ActionListEditor bind:actions={outcome.actions} world={app.game.worlds?.[0]} />
+      <ActionListEditor bind:actions={outcome.actions} world={allWorldsAsOne(app.game)} />
     </div>
   {/if}
 </div>

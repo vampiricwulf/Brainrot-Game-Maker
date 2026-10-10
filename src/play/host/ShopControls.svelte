@@ -17,6 +17,13 @@
   const o = $derived(app.live.overlay?.kind === 'shop' ? app.live.overlay : undefined);
   const shop = $derived(o ? game.shops?.find((s) => s.id === o.shopId) : undefined);
   const buyer = $derived(o ? (shopBuyer(o, session, selected) ?? '') : '');
+  // A shop that's gone (deleted in the editor) would leave a blank dimmed screen on stream: close it.
+  $effect(() => {
+    if (o && !shop) {
+      app.live.overlay = null;
+      toast('That shop no longer exists, so it was closed');
+    }
+  });
 
   function purchase(item: string, opts: { price?: number; allowShort?: boolean } = {}): void {
     if (o) shopBuy(game, session, o, selected, item, opts);

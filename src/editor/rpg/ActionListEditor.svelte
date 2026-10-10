@@ -17,6 +17,7 @@
   import { mediaUrls } from '../../lib/media.svelte';
   import { itemDef, itemQty, MAX_UNSTACKED, statFields } from '../../lib/toolset';
   import { typedSteps } from '../../lib/actions';
+  import { layerLabel } from '../../lib/layerlabel';
   import MediaPicker from '../slide/MediaPicker.svelte';
   import { mediaDrop } from '../../lib/mediadrop';
   import ScreenPicker from './ScreenPicker.svelte';
@@ -29,6 +30,7 @@
     objects = [],
     board,
     addLabel = '＋ Add button',
+    askLabel = 'Host picks who',
   }: {
     actions: Action[] | undefined;
     /** For "Go to" (moves need a world). */
@@ -39,6 +41,8 @@
     board?: BoardGameRound;
     /** The add button's words, when two lists are side by side (a space's "when passed" and "when landed on"). */
     addLabel?: string;
+    /** What "ask" means here: an item's Use buttons go to whoever used it, the host isn't asked. */
+    askLabel?: string;
   } = $props();
   /** The first map with a screen: where a new "Go to a screen" button points (the main map may have none). */
   const firstMap = $derived(world?.maps.find((m) => m.screens.length));
@@ -232,7 +236,7 @@
 <!-- An action without a who is for `fallback` (the party, for a move): showing it doesn't fill that in. -->
 {#snippet who(a: { who?: string }, fallback = 'ask')}
   <select bind:value={() => a.who ?? fallback, (v) => (a.who = v)} aria-label="Who">
-    <option value="ask">Host picks who</option>
+    <option value="ask">{askLabel}</option>
     <option value="party">{board ? 'Whoever’s turn it is' : 'The party here'}</option>
     <option value="selected">Selected players</option>
     <option value="picker">The picker (★)</option>
@@ -356,7 +360,7 @@
         {:else if a.do === 'reveal' || a.do === 'hide'}
           <select bind:value={a.object} aria-label="Object">
             {#if !objects.some((o) => o.id === a.object)}<option value={a.object}>{a.object ? '⚠ Deleted object — pick another' : '— choose —'}</option>{/if}
-            {#each objects as o (o.id)}<option value={o.id}>{o.name || o.kind}</option>{/each}
+            {#each objects as o (o.id)}<option value={o.id}>{layerLabel(o, game)}</option>{/each}
           </select>
         {:else if a.do === 'shop'}
           <span class="shop"><ShopSelect bind:value={() => a.shop || undefined, (v) => (a.shop = v ?? '')} /></span>

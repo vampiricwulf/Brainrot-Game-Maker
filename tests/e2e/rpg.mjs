@@ -408,6 +408,13 @@ try {
   const startAt = await page.getByRole("button", { name: "Screen Start" }).getAttribute("data-cell");
   assert(boxed === 2 && startAt === "0,0" && (await page.locator(".side h4").first().innerText()) === '2 screens selected', `Alt+drag from a screen draws a box (${boxed} selected, Start at ${startAt})`);
   await page.keyboard.press('Escape');
+  // Ctrl+A on the map picks every screen (as in the slide and board editors), not the page's text.
+  await page.getByRole('button', { name: 'Screen Start' }).click();
+  await page.keyboard.press('Control+a');
+  const allScreens = await page.locator('.grid-map .cell.screen').count();
+  await page.locator('.side h4', { hasText: `${allScreens} screens selected` }).waitFor();
+  assert(allScreens > 1 && (await page.locator('.grid-map .cell.screen.sel').count()) === allScreens && (await page.evaluate(() => String(window.getSelection()))) === '', `Ctrl+A selects all ${allScreens} screens`);
+  await page.keyboard.press('Escape');
   // Put a secret Potion on the start screen.
   await page.getByRole('button', { name: 'Screen Start' }).click();
   await page.getByRole('button', { name: '✎ Edit screen' }).click();

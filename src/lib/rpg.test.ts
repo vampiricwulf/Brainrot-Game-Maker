@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { newGame, newShapeEl, newTextEl, type Game, type RpgRound, type Session, type World } from './model';
 import {
   addScreenBeside,
+  allWorldsAsOne,
   audienceSees,
   keepScreen,
   newVariant,
@@ -368,6 +369,21 @@ describe('RPG: screens moved in the editor while the game is on', () => {
 });
 
 describe('RPG: things pointing at deleted screens, items and shops', () => {
+  it('an item’s Go to a screen can pick any world’s screens, named after their world when there are several', () => {
+    const game = newGame();
+    const one = newWorld('World 1');
+    game.worlds = [one];
+    expect(allWorldsAsOne(game)).toBe(one);
+    const two = newWorld('Shadow Realm');
+    game.worlds.push(two);
+    const all = allWorldsAsOne(game)!;
+    expect(all.maps.map((m) => [m.id, m.name])).toEqual([
+      [one.maps[0].id, 'World 1 · Overworld'],
+      [two.maps[0].id, 'Shadow Realm · Overworld'],
+    ]);
+    expect(all.maps[1].screens).toBe(two.maps[0].screens);
+  });
+
   it('won’t step through a way out whose screen was deleted, and the checklist lists it', () => {
     const { game, session, world, round } = setup();
     const st = ensureWorld(session, game, round)!;

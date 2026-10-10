@@ -187,5 +187,9 @@ describe('button labels', () => {
     runAction({ game, session, live: newLive(), world: game.worlds![0], st, selected: [] }, reveal, `Elder: ${describeAction(game, reveal)}`);
     expect(session.actionLog?.at(-1)?.text).toBe('Elder: Reveal Hidden chest (Road)');
     expect(st.objects[chest.id].shown).toBe(true);
+    // An unnamed one is named as the Layers list names it, not just "object".
+    const ellipse = newShapeEl('ellipse');
+    road.slide.elements.push(ellipse);
+    expect(describeAction(game, { id: '4', do: 'reveal', object: ellipse.id })).toBe('Reveal Ellipse (Road)');
   });
 });
