@@ -452,6 +452,7 @@
         data-keys-home
         ondragover={(e) => e.preventDefault()}
         {ondrop}
+        oncontextmenu={(e) => e.target === canvasEl && e.preventDefault()}
         role="region"
         aria-label="Board preview. Tab and Shift+Tab pick the images on it, Shift+F10 opens the menu for the selection. Drop images here."
       >
