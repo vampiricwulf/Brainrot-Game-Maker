@@ -1140,15 +1140,35 @@ export function rebaseSession(session: Session, from: Game, to: Game): void {
 /**
  * Bring a session saved before round modes (Jeopardy Builder) up to date with its converted game (migrateGame):
  * the Final is now a round (id FINAL_V1_ROUND_ID), so a session in the Final points at that round, its state
- * and score events are tagged with it. Newer sessions are returned as they are.
+ * and score events are tagged with it. The rounds already on screen are counted as introduced (seedIntroduced).
  */
 export function migrateSession(session: Session, game: Game): Session {
   finalStepFix(session);
   const finalIndex = game.rounds.findIndex((r) => r.id === FINAL_V1_ROUND_ID);
-  if (finalIndex < 0) return session;
+  if (finalIndex < 0) return seedIntroduced(session, game);
   for (const e of session.scoreLog ?? []) if (e.clueId === 'final') e.clueId = finalTag(FINAL_V1_ROUND_ID);
   if (session.final && !session.final.roundId) session.final.roundId = FINAL_V1_ROUND_ID;
   if (session.phase === 'final') session.currentRound = finalIndex;
+  seedIntroduced(session, game);
+  return session;
+}
+
+/**
+ * Rounds clearly already on screen count as introduced: a game saved before a round reached backwards was kept (going
+ * back counted as shown then) doesn't replay its title card or intro on stream. Those with points given, played tiles,
+ * a Final's or board game's state, and the round on screen.
+ */
+function seedIntroduced(session: Session, game: Game): Session {
+  const ids = new Set([session.final?.roundId, ...Object.keys(session.finals ?? {}), ...Object.keys(session.boardgames ?? {})]);
+  const shown = new Set([
+    ...(session.scoreLog ?? []).flatMap((e) => (typeof e.round === 'number' ? [e.round] : [])),
+    ...Object.keys(session.used ?? {}).flatMap((id) => findClueRef(game, id)?.round ?? []),
+    ...game.rounds.flatMap((r, i) => (ids.has(r.id) ? [i] : [])),
+  ]);
+  if (session.phase !== 'end' && session.phase !== 'tiebreaker') shown.add(session.currentRound);
+  const had = session.introducedRounds ?? [];
+  const added = [...shown].filter((i) => i >= 0 && i < game.rounds.length && !had.includes(i));
+  if (added.length) session.introducedRounds = [...had, ...added];
   return session;
 }
 

@@ -75,6 +75,11 @@ export type Overlay =
       tagged?: Id[];
       /** More wheels spun together with this one (e.g. a Good Wheel and a Bad Wheel at once). */
       extra?: ExtraWheel[];
+      /**
+       * Score cards dealt with, by card (spin or roll, and which wheel or die; host only): skipped (true), or the score
+       * step they applied. Kept on the overlay so they stay dealt with through a reload.
+       */
+      cardsDone?: Record<string, string | true>;
     }
   | {
       kind: 'dice';
@@ -88,6 +93,11 @@ export type Overlay =
       tagged?: Id[];
       /** A board game's movement roll (its result fills Steps; a space's own "Roll d6" with the same dice doesn't). */
       mover?: boolean;
+      /**
+       * Score cards dealt with, by card (spin or roll, and which wheel or die; host only): skipped (true), or the score
+       * step they applied. Kept on the overlay so they stay dealt with through a reload.
+       */
+      cardsDone?: Record<string, string | true>;
     }
   | {
       kind: 'rolloff';

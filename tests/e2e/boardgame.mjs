@@ -294,13 +294,19 @@ try {
   await page.keyboard.press('d');
   await page.waitForFunction(() => Number(document.querySelector('.bh input[aria-label="Steps"]')?.value) > 0, null, { timeout: 8000 });
   assert(true, 'D rolls the dice and fills in the steps');
-  // A reload keeps the roll: the same count, the dice still on stream (not rolled again).
+  // A reload keeps the roll: the same count, the dice still on stream (not rolled again). Even with the scores up over
+  // them (S): the dice come back without the scores.
   const rolled = await page.getByLabel('Steps').inputValue();
+  await page.keyboard.press('s');
+  await page.locator('.stage-box .ov .sb').waitFor();
   await page.reload();
   await page.getByRole('button', { name: 'Resume game' }).click();
   await page.locator('.mode-ask .mode', { hasText: 'Single window' }).click();
   await page.waitForFunction((n) => document.querySelector('.bh input[aria-label="Steps"]')?.value === n, rolled);
-  assert((await page.locator('.stage-box .ov').count()) === 1, `a reload and Resume keep the roll: Steps still ${rolled}, the dice still on the stage`);
+  assert(
+    (await page.locator('.stage-box .ov').count()) === 1 && (await page.locator('.stage-box .ov .sb').count()) === 0,
+    `a reload (the scores up over the dice) and Resume keep the roll: Steps still ${rolled}, the dice back on the stage`,
+  );
   await page.waitForTimeout(450); // the round buttons ignore clicks right after they appear
   const diceTip = await page.getByRole('button', { name: '🎲 Dice' }).getAttribute('title');
   assert(diceTip.includes('round’s own dice'), `and the 🎲 Dice button’s tooltip says D rolls the round’s own dice (${diceTip})`);

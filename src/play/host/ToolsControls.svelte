@@ -33,18 +33,16 @@
   });
   const busy = $derived(!!o && now < overlayDoneAt(o));
   /**
-   * Score cards dealt with, by card (spin or roll, and which wheel or die): skipped (true), or the score step they
-   * applied, so an Undo of it brings the card back (the points went to the wrong player).
+   * Score cards dealt with (kept on the overlay, see cardsDone): skipped, or the score step they applied, so an Undo of it
+   * brings the card back (the points went to the wrong player).
    */
-  let done = $state<Record<string, string | true>>({});
-  const cardDone = (key: string, reason: string): boolean => {
-    const d = done[key];
-    if (d === true || (!!d && session.scoreLog.some((e) => e.batchId === d && !e.undone))) return true;
-    // After a reload (which forgets the cards dealt with): its points were already given since this spin or roll.
-    const at = o?.kind === 'wheel' ? o.spin?.startedAt : o?.kind === 'dice' ? o.startedAt : undefined;
-    return at !== undefined && session.scoreLog.some((e) => !e.undone && e.ts >= at && e.reason === reason);
+  const cardDone = (key: string): boolean => {
+    const d = o?.kind === 'wheel' || o?.kind === 'dice' ? o.cardsDone?.[key] : undefined;
+    return d === true || (!!d && session.scoreLog.some((e) => e.batchId === d && !e.undone));
   };
-  const finish = (key: string) => (applied: boolean, batch?: string) => (done[key] = applied && batch ? batch : true);
+  const finish = (key: string) => (applied: boolean, batch?: string) => {
+    if (o?.kind === 'wheel' || o?.kind === 'dice') o.cardsDone = { ...o.cardsDone, [key]: applied && batch ? batch : true };
+  };
   /** The added wheel whose edit box is open (by its key). */
   let editExtra = $state<string | null>(null);
   const editedExtra = $derived(o?.kind === 'wheel' ? o.extra?.find((w) => w.key === editExtra) : undefined);
@@ -280,7 +278,7 @@
           {#each f.face.actions ?? [] as a (a.id)}<button class="small" onclick={() => runOutcome(a, `${diceName} → ${label}`)}>{describeAction(game, a)}</button>{/each}
           {#if f.face.timerSeconds}<button class="small" onclick={() => startTimer(app.live, f.face.timerSeconds!)}>⏱ Start {f.face.timerSeconds}s</button>{/if}
         </div>
-        {#if f.face.scoreAction && !cardDone(`${actionKey}-die${f.i}`, `Dice: ${diceName} → ${label}`)}
+        {#if f.face.scoreAction && !cardDone(`${actionKey}-die${f.i}`)}
           {#key `${actionKey}-die${f.i}`}
             <ActionCard
               action={f.face.scoreAction}
@@ -302,7 +300,7 @@
             {#each r.seg.actions ?? [] as a (a.id)}<button class="small" onclick={() => runOutcome(a, `${r.w.name} → ${label}`)}>{describeAction(game, a)}</button>{/each}
             {#if r.seg.timerSeconds}<button class="small" onclick={() => startTimer(app.live, r.seg.timerSeconds!)}>⏱ Start {r.seg.timerSeconds}s</button>{/if}
           </div>
-          {#if r.seg.scoreAction && !cardDone(`${actionKey}-${r.w.key}`, `Wheel: ${r.w.name} → ${label}`)}
+          {#if r.seg.scoreAction && !cardDone(`${actionKey}-${r.w.key}`)}
             {#key `${actionKey}-${r.w.key}`}
               <ActionCard
                 action={r.seg.scoreAction}
@@ -355,7 +353,7 @@
           <button class="small" onclick={() => startTimer(app.live, outcome!.timerSeconds!)}>⏱ Start {outcome.timerSeconds}s</button>
         {/if}
       </div>
-      {#if outcome?.scoreAction && !cardDone(actionKey, `${o.kind === 'wheel' ? 'Wheel' : 'Dice'}: ${o.name} → ${outcomeName}`)}
+      {#if outcome?.scoreAction && !cardDone(actionKey)}
         {#key actionKey}
           <ActionCard
             action={outcome.scoreAction}

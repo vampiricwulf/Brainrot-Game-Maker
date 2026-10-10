@@ -367,10 +367,12 @@
   );
   /**
    * The wheel or dice on screen, kept with the game in progress: a board game's roll to move by, or a wheel's points not
-   * confirmed yet, come back after a reload (not rolled again on stream). Not one being edited.
+   * confirmed yet, come back after a reload (not rolled again on stream). Not one being edited. One under the scores
+   * (S) too: it comes back without them.
    */
   function keptOverlay(): Overlay | undefined {
-    const o = app.live.overlay;
+    const top = app.live.overlay;
+    const o = top?.kind === 'scoreboard' ? top.under : top;
     return o && (o.kind === 'wheel' || o.kind === 'dice') && !(o.kind === 'wheel' && o.editing) ? $state.snapshot(o) : undefined;
   }
   // ⚙ Settings → Autosave (desktop app): a copy of the game in the editor every few minutes, only when it changed.
