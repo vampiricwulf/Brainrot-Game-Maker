@@ -2,9 +2,11 @@
 // shows the dashed outline while a file is over it, stores the file with the game and uses it there, as one undo step.
 // A file of the wrong kind is refused with a toast (it isn't added to the game).
 import { editedGame, toast } from './app.svelte';
+import { isGameFile } from './fileio';
 import { stepAsync } from './history.svelte';
 import { addMediaFile, canPlay, mediaKind, mimeFor } from './media.svelte';
 import type { MediaKind, MediaRef } from './model';
+import { isThemeFile } from './themefile';
 
 export interface MediaDrop {
   /** What the slot takes. */
@@ -47,6 +49,11 @@ export function refusal(file: { name: string; type: string }, kinds: MediaDrop['
 export const fittingFile = (files: readonly File[], kinds: MediaDrop['kind']): File | undefined => files.find((f) => !refusal(f, kinds)) ?? files[0];
 
 export const hasFiles = (e: DragEvent): boolean => !!e.dataTransfer?.types.includes('Files');
+
+/** A game or theme file (.brainrot, an exported .html, a .zip, a .brainrot-theme…): not media, the editor opens it. */
+export const notMedia = (f: { name: string }): boolean => isGameFile(f.name) || isThemeFile(f.name);
+/** A drop that brings a game or theme file: left alone (not prevented), so it goes on to the editor, which opens it. */
+export const isGameDrop = (e: DragEvent): boolean => Array.from(e.dataTransfer?.files ?? []).some(notMedia);
 
 /** Store `file` and hand it to the slot, as one undo step. False when it can't go there (a toast says why). */
 export async function useFile(file: File, opts: MediaDrop): Promise<boolean> {

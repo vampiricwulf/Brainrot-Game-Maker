@@ -32,7 +32,7 @@
   import { copyIsTheBrowsers } from '../../lib/undokeys';
   import { dropdown } from '../../lib/menustate.svelte';
   import { addMediaFile, slideImageSize, type LinkAdded } from '../../lib/media.svelte';
-  import { warnIfUnplayable } from '../../lib/mediadrop';
+  import { isGameDrop, warnIfUnplayable } from '../../lib/mediadrop';
   import { isLinkProblem, isMediaHost, parseMediaLink, youtubeStart } from '../../lib/links';
   import { registerGameFonts, uploadedFamily } from '../../lib/fonts';
   import { clone, restyle } from '../../lib/ops';
@@ -427,6 +427,8 @@
   }
 
   function ondrop(e: DragEvent): void {
+    // (A game or theme file goes on to the editor, which opens it.)
+    if (isGameDrop(e)) return;
     e.preventDefault();
     const dt = e.dataTransfer;
     if (!dt || !canvasEl || previewing) return;

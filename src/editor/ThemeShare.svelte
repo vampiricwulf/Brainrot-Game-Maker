@@ -191,6 +191,8 @@
         if (blob) media.push({ ref: clone(ref), blob });
         else notHere.push(ref.name);
       }
+      // (A saved theme's font uploaded to another game isn't here to go in the file.)
+      for (const k of missingFonts(theme, game.media)) notHere.push(`${k === 'boardFont' ? 'category' : k === 'valueFont' ? 'value' : 'clue'} font (uploaded to another game)`);
       const { text, leftOut } = await themeFileText(name, theme, media);
       const filename = `${safeFilename(name)}${THEME_EXT}`;
       const saved = await saveFile(filename, new Blob([text], { type: 'application/json' }));
@@ -235,7 +237,8 @@
       { label: '✏ Rename…', onclick: () => rename(m) },
       { label: '⧉ Duplicate', onclick: () => duplicate(m) },
       { sep: true },
-      { label: '⬇ Export theme file', onclick: () => void exportTheme(m.name, m.theme, false) },
+      // (A saved theme has no pictures: the uploaded fonts it uses that this game has go in the file.)
+      { label: '⬇ Export theme file', onclick: () => void exportTheme(m.name, m.theme, true) },
       { label: '📋 Copy theme code', onclick: () => void copyCode(m.name, m.theme) },
       { sep: true },
       { label: '🗑 Delete…', danger: true, onclick: () => void remove(m) },
@@ -280,6 +283,9 @@
       },
       { notify: true, place: { tab: 'theme' } },
     );
+    // (A font it names that the file didn't bring: that text keeps this game's font, as with use() above.)
+    const missing = missingFonts(theme, [...g.media, ...add]).length;
+    if (missing) toast(`Used “${s.name}” (its uploaded font${missing === 1 ? ' isn’t' : 's aren’t'} in the file: ${missing === 1 ? 'that text keeps its' : 'those keep their'} font)`);
   }
 
   function saveShared(s: SharedTheme): void {

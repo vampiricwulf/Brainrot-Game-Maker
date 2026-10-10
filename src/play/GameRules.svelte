@@ -6,6 +6,7 @@
 -->
 <script lang="ts">
   import { countdownSeconds, MAX_PLAYERS, mostPlayers, type GameSettings } from '../lib/model';
+  import { app } from '../lib/app.svelte';
 
   let {
     s,
@@ -107,7 +108,8 @@
       </label>
       <label class="check"><input type="checkbox" bind:checked={s.timerAutoStart} /> Start the countdown automatically when a clue opens</label>
     </div>
-    <p class="muted small">You can also start a timer any time with <b>T</b>, and set any clue's own time in the clue editor.</p>
+    <!-- (A play-only page has no clue editor.) -->
+    <p class="muted small">You can also start a timer any time with <b>T</b>{app.playerOnly ? '' : ", and set any clue's own time in the clue editor"}.</p>
 
     <h3>Round intro</h3>
     <div class="grid">

@@ -78,6 +78,7 @@ describe('opening game files', () => {
     expect(() => parseGame('{"version": 2, "title": "Cut o')).toThrow("This file isn't a readable game (.json)");
     expect(() => parseGame('PK not json at all')).toThrow("This file isn't a readable game (.json)");
     expect(() => parseGame('{"hello": 1}')).toThrow('This file is not a Brainrot Games Maker game.');
+    expect(() => parseGame('{"format": "brainrot-theme", "version": 1, "theme": {}}')).toThrow('This is a theme file, not a game');
   });
 
   it('opens a pack that was named .json', async () => {
@@ -85,6 +86,21 @@ describe('opening game files', () => {
     zip.file('game.json', JSON.stringify({ ...jeopardyGame(), title: 'Packed' }));
     const file = new File([await zip.generateAsync({ type: 'arraybuffer' })], 'Packed.json', { type: 'application/json' });
     expect((await openGameFile(file)).title).toBe('Packed');
+  });
+
+  it('opens the game in a zip someone made of it, and says to unzip a zip of pictures', async () => {
+    const pack = new JSZip();
+    pack.file('game.json', JSON.stringify({ ...jeopardyGame(), title: 'Zipped' }));
+    const zip = new JSZip();
+    zip.file('My Game/Quiz.brainrot', await pack.generateAsync({ type: 'uint8array' }));
+    // (What a Mac adds to a zip it makes is no second game.)
+    zip.file('__MACOSX/My Game/._Quiz.brainrot', 'x');
+    const file = new File([await zip.generateAsync({ type: 'arraybuffer' })], 'Quiz.zip', { type: 'application/zip' });
+    expect((await openGameFile(file)).title).toBe('Zipped');
+    const pics = new JSZip();
+    pics.file('cat.png', 'x');
+    const memes = new File([await pics.generateAsync({ type: 'arraybuffer' })], 'memes.zip', { type: 'application/zip' });
+    await expect(openGameFile(memes)).rejects.toThrow("This .zip doesn't hold a Brainrot game");
   });
 
   it('opens a plain .json game', async () => {

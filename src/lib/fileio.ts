@@ -191,6 +191,8 @@ export function parseGame(text: string): Game {
   } catch {
     throw new Error("This file isn't a readable game (.json). It may be cut off or damaged.");
   }
+  // (Import rounds… and the like take game files only.)
+  if (data?.format === 'brainrot-theme') throw new Error('This is a theme file, not a game: use it with 📂 Import theme… on 🎨 Theme.');
   if (!data || typeof data.version !== 'number' || !Array.isArray(data.rounds) || !Array.isArray(data.players)) {
     throw new Error('This file is not a Brainrot Games Maker game.');
   }

@@ -84,7 +84,14 @@ export async function openPack(file: Blob, onProgress?: (done: number, total: nu
     throw new Error(zipStart ? CUT_OFF : 'This file is not a Brainrot Games Maker game pack (.brainrot, or .jbr from Jeopardy Builder).');
   }
   const json = zip.file('game.json');
-  if (!json) throw new Error('This pack has no game.json inside.');
+  if (!json) {
+    // A zip someone made of the game file (or of pictures): open the one game inside, else say what to do.
+    const inner = zip.file(/(^|\/)[^/]+\.(brainrot|jbr|html?|json)$/i).filter((f) => !f.dir && !/(^|\/)(__MACOSX\/|\.)/.test(f.name));
+    if (inner.length === 1) return openGameFile(new File([await inner[0].async('blob')], inner[0].name.split('/').pop()!), put);
+    throw new Error(
+      "This .zip doesn't hold a Brainrot game. If someone zipped the game, unzip it and open the .brainrot (or .html) inside. Pictures and sounds in a zip need unzipping before you add them on 🖼 Media.",
+    );
+  }
   // A damaged game.json is a damaged file: nothing in it can be trusted.
   const text = await intact(json);
   if (!text) throw new Error(CUT_OFF);
