@@ -14,7 +14,7 @@
  * goes to the host only. Their view says what's in (and once locked, what was locked in).
  */
 import { isRoomCode, ROOM_ALPHABET, type DenyReason, type PhoneView, type PhoneWager, type RoomToPhone } from '../../src/lib/buzzproto';
-import { PLAYER_COLOR_NAMES, PLAYER_PALETTE } from '../../src/lib/colors';
+import { PLAYER_COLOR_NAMES, PLAYER_PALETTE, textOn } from '../../src/lib/colors';
 
 const $ = <T extends HTMLElement = HTMLElement>(id: string) => document.getElementById(id) as T;
 const screens = ['s-code', 's-wait', 's-seats', 's-new', 's-team', 's-msg', 's-buzz'] as const;
@@ -68,6 +68,10 @@ let teamPick: SeatsMsg['seats'][number] | null = null;
 let teamAsked = false;
 let notice: Notice | null = null;
 let seatsNote = '';
+/** Empties the assertive alert once it has been said, so a screen reader browsing later doesn't find a stale "BUZZ!". */
+let alertTimer = 0;
+/** What had focus on the page when the reconnecting overlay covered it (an answer box, say): it gets it back after. */
+let awayFocus: HTMLElement | null = null;
 /** Another tab or phone took this seat back (the token is kept, so a tap takes it back here): a reconnect doesn't. */
 let seatMoved = false;
 let result: ResultMsg | null = null;
@@ -686,6 +690,9 @@ const sentences = (parts: string[]): string =>
     .map((x) => (/[.!?…]$/.test(x) ? x : `${x}.`))
     .join(' ');
 
+/** What the reconnecting overlay says ("Reconnecting…", or what to check after a while): screens say it first. */
+const awayText = (): string => $('overlay-text').textContent || 'Reconnecting…';
+
 function render(): void {
   const away = !connected && everConnected && !notice?.final && !notice?.full && !!code;
   $('overlay').hidden = !away;
@@ -693,6 +700,23 @@ function render(): void {
   const long = away && attempts > 3;
   $('overlay-text').textContent = long ? 'Still trying to reconnect… check your Wi-Fi or mobile data' : 'Reconnecting…';
   $('overlay-retry').hidden = !long;
+  // The page behind the overlay can't be reached (a screen reader or Tab would land on a buzzer that does nothing).
+  // That drops focus, so a half-typed answer gets it back (and the phone keyboard) once reconnected.
+  const main = document.querySelector('main')!;
+  if (main.inert !== away) {
+    const had = document.activeElement;
+    if (away) awayFocus = had instanceof HTMLElement && main.contains(had) ? had : null;
+    main.inert = away;
+    const back = away ? null : awayFocus;
+    if (!away) awayFocus = null;
+    // After the rest of render(), when the screen it's on may have changed: only if it still shows and nothing
+    // else took focus meanwhile.
+    if (back)
+      queueMicrotask(() => {
+        const now = document.activeElement;
+        if (back.isConnected && back.getClientRects().length && (!now || now === document.body || $('overlay').contains(now))) back.focus({ preventScroll: true });
+      });
+  }
   $('sound').hidden = !(seatId && view?.you);
   if (!code) return show('s-code');
   if (notice) {
@@ -704,7 +728,7 @@ function render(): void {
     say(`${notice.title}. ${notice.text}`);
     return show('s-msg');
   }
-  if (away) say('Reconnecting…');
+  if (away) say(awayText());
   if (seatId && view?.you) return renderBuzz(view);
   if (pendingName) return wait('Waiting for the host to let you in…', true);
   if (newForm) {
@@ -847,7 +871,7 @@ function renderBuzz(v: PhoneView): void {
   $('title').textContent = v.title || 'Brainrot Buzzer';
   const b = $('buzz');
   b.style.setProperty('--seat', you.color);
-  b.style.setProperty('--seat-ink', ink(you.color));
+  b.style.setProperty('--seat-ink', textOn(you.color));
   const clue = $('clue');
   clue.replaceChildren();
   if (v.clue && (v.phase !== 'lobby' || v.answer)) {
@@ -974,7 +998,11 @@ function renderBuzz(v: PhoneView): void {
     // Said at once, not after whatever a screen reader is still reading: a buzz is a race.
     const alert = $('alert');
     alert.textContent = '';
-    queueMicrotask(() => (alert.textContent = big));
+    clearTimeout(alertTimer);
+    queueMicrotask(() => {
+      alert.textContent = big;
+      alertTimer = window.setTimeout(() => (alert.textContent = ''), 2000);
+    });
   }
   cued = cue || cued;
   b.className = cls;
@@ -986,7 +1014,7 @@ function renderBuzz(v: PhoneView): void {
   }
   b.setAttribute('aria-label', sentences([big, spoken ?? small]));
   const hostGone = renderFoot(v, sym);
-  say(sentences([connected ? '' : 'Reconnecting…', big, spoken ?? small, hostGone ? ($('host-note').textContent ?? '') : '']));
+  say(sentences([connected ? '' : awayText(), big, spoken ?? small, hostGone ? ($('host-note').textContent ?? '') : '']));
   show('s-buzz');
   // Count the early lock down.
   clearTimeout(tick);
@@ -1034,7 +1062,7 @@ function renderColors(v: PhoneView): void {
       b.setAttribute('aria-label', `${PLAYER_COLOR_NAMES[i] ?? c}${taken ? ' (another player has it)' : ''}`);
       b.title = b.getAttribute('aria-label')!;
       if (c === mine) b.textContent = '✔';
-      b.style.color = ink(c);
+      b.style.color = textOn(c);
       return b;
     }),
   );
@@ -1079,7 +1107,7 @@ function renderWager(v: PhoneView, w: PhoneWager, sym: string): void {
   $<HTMLButtonElement>('wager-send').textContent = w.amount !== undefined && !w.host ? 'Change wager' : 'Send wager';
   const hostGone = renderFoot(v, sym);
   // (What it's for first: "Final Jeopardy! · US Presidents". The error has its own alert, so it isn't said twice.)
-  say(sentences([connected ? '' : 'Reconnecting…', $('clue').textContent ?? '', $('wager-head').textContent ?? '', $('wager-info').textContent ?? '', state, hostGone ? ($('host-note').textContent ?? '') : '']));
+  say(sentences([connected ? '' : awayText(), $('clue').textContent ?? '', $('wager-head').textContent ?? '', $('wager-info').textContent ?? '', state, hostGone ? ($('host-note').textContent ?? '') : '']));
   show('s-buzz');
 }
 
@@ -1112,7 +1140,7 @@ function renderAnswer(v: PhoneView, a: NonNullable<PhoneView['answer']>, sym: st
   $('answer-err').textContent = answerErr;
   $<HTMLButtonElement>('answer-send').textContent = a.text ? 'Change answer' : 'Send answer';
   const hostGone = renderFoot(v, sym);
-  say(sentences([connected ? '' : 'Reconnecting…', $('clue').textContent ?? '', 'Everyone answers', state, hostGone ? ($('host-note').textContent ?? '') : '']));
+  say(sentences([connected ? '' : awayText(), $('clue').textContent ?? '', 'Everyone answers', state, hostGone ? ($('host-note').textContent ?? '') : '']));
   show('s-buzz');
 }
 
@@ -1134,14 +1162,6 @@ function money(n: number, sym: string): string {
 const secs = (ms: number): string => `${(ms / 1000).toFixed(2)} s`;
 /** 1st, 2nd, 3rd, 4th… */
 const ordinal = (n: number): string => n + (n % 100 >= 11 && n % 100 <= 13 ? 'th' : (['th', 'st', 'nd', 'rd'][n % 10] ?? 'th'));
-
-/** Black or white text, whichever reads on this colour. */
-function ink(hex: string): string {
-  const n = parseInt(hex.slice(1), 16);
-  const lin = (c: number) => ((c /= 255) <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4);
-  const l = 0.2126 * lin(n >> 16) + 0.7152 * lin((n >> 8) & 255) + 0.0722 * lin(n & 255);
-  return l > 0.18 ? '#111' : '#fff';
-}
 
 // ---- wiring ----
 
@@ -1194,6 +1214,8 @@ $('overlay-retry').addEventListener('click', () => {
   attempts = 0;
   connect();
   render();
+  // The button hides under focus: keep a keyboard or screen reader on the overlay rather than lost on the page.
+  if ($('overlay-retry').hidden && !$('overlay').hidden) $('overlay-text').focus();
 });
 $('color-btn').addEventListener('click', () => {
   colorsOpen = !colorsOpen;
@@ -1288,11 +1310,13 @@ $('code-form').addEventListener('submit', (e) => {
 $('new-btn').addEventListener('click', () => {
   newForm = true;
   seatsNote = '';
+  $('new-err').textContent = '';
   render();
   $('new-in').focus();
 });
 $('new-back').addEventListener('click', () => {
   newForm = false;
+  $('new-err').textContent = '';
   render();
 });
 $('answer-in').addEventListener('input', () => {
@@ -1303,10 +1327,10 @@ $('new-form').addEventListener('submit', (e) => {
   e.preventDefault();
   const name = $<HTMLInputElement>('new-in').value.trim();
   if (!name) {
-    seatsNote = 'Type your name first.';
-    $('seats-note').textContent = seatsNote;
+    $('new-err').textContent = 'Type your name first.';
     return void $('new-in').focus();
   }
+  $('new-err').textContent = '';
   unlockAudio();
   pendingName = name;
   send({ t: 'new', name, device });

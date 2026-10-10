@@ -103,6 +103,7 @@ in plain words for the people who make and host games. Anything committed but no
 - The exported play-only page no longer points the host to an editor it doesn't have. (009996a)
 - Editor by keyboard: moving a category, round, slice or button from its menu or ▼/▲ keeps the focus there; Tab in an open ⋯ or right-click menu closes it and gives the focus back; after New, Open… or a recent game the focus goes to the first round; Layers list ↑/↓ move the focus with the selection; the board images preview is a Tab stop (Shift+F10 opens an image's menu) instead of trapping Tab. (7077ef1, c641491)
 - Screen readers: a new game, undo, redo and History jumps are announced, and so are keyboard reorders ("moved to 2 of 4"); the board's tiles say their keys (also in the board's Tips); 🎨 Theme's picture buttons say what they choose and the look-only preview is skipped; a History step reached with ↑/↓ shows a focus ring. (7077ef1, c641491)
+- Phone page: "Ask to join" with no name says "Type your name first." on the name screen; a red player's buzzer text is easy to read; the reconnecting screen's "Try again now" is a full-size button, its Wi-Fi advice is read out, and an answer or wager box being typed in gets its focus back after reconnecting; an old "BUZZ!" or "You're answering!" no longer lingers for screen readers. (ef7d938, ee2742e)
 
 ## 2026-10-08
 
