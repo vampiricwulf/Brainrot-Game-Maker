@@ -150,11 +150,13 @@
     logged(session, `${title}: ${next[i].name} ${delta > 0 ? '+' : '−'}${Math.abs(delta)}`, () => (override(st, el.id).stats = next));
   }
 
+  const shopExists = $derived(!!role?.shop && !!game.shops?.some((s) => s.id === role.shop));
+
   /** The character's shop, unless it was deleted (the editor's checklist warns; here a blank shop would go on stream). */
   function openShop(): void {
     const id = role?.shop;
     if (!id) return;
-    if (!game.shops?.some((s) => s.id === id)) return void toast('That shop no longer exists: pick another with ✎ Edit');
+    if (!shopExists) return void toast('That shop no longer exists: pick another with ✎ Edit');
     ctx.live.overlay = { kind: 'shop', nonce: newId(), shopId: id, buyer: who[0] };
   }
 
@@ -231,7 +233,7 @@
       <button class="primary" onclick={pickUp} disabled={!f} title={f ? undefined : 'Add a currency in 📊 Stats & Items first'}>✋ {pickerName} picks up {f ? formatStat(f, left) : left}</button>
     {/if}
     {#if role?.dialogue}<button onclick={talk}>💬 Talk</button>{/if}
-    {#if role?.shop}<button onclick={openShop}>🛒 Shop</button>{/if}
+    {#if role?.shop}<button onclick={openShop} disabled={!shopExists} title={shopExists ? undefined : 'That shop no longer exists: pick another with ✎ Edit'}>🛒 Shop</button>{/if}
     {#each role?.actions ?? [] as a (a.id)}
       <button onclick={() => run(a)}>{describeAction(game, a)}</button>
     {/each}
