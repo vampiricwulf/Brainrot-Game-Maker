@@ -13,6 +13,7 @@
   import { clone } from '../../lib/ops';
   import { dropMenu, showMenu } from '../../lib/menustate.svelte';
   import { isTextField } from '../../lib/undokeys';
+  import { announce } from '../../lib/announce';
   import { newId, PLAYER_WHEEL, setSlideText, slideText, textSlide, type Action, type ActionKind, type BoardGameRound, type SlideElement, type World } from '../../lib/model';
   import { mediaUrls } from '../../lib/media.svelte';
   import { itemDef, itemQty, MAX_UNSTACKED, statFields } from '../../lib/toolset';
@@ -219,11 +220,18 @@
   }
 
   /** Move the button at `i` to `j` (▲▼, Alt+↑/↓ or a drag: one step). */
-  function move(i: number, j: number): void {
+  function move(i: number, j: number, btn?: HTMLButtonElement): void {
     const list = [...(actions ?? [])];
     const a = list[i];
     if (!a || !moveTo(list, i, j)) return;
     step(`Moved button “${LABEL[a.do]}” ${j < i ? 'up' : 'down'}`, () => (actions = list));
+    announce(`Button “${LABEL[a.do]}” moved to ${j + 1} of ${list.length}`);
+    // (A row moved down is taken out of the page and back, which drops the focus: it goes back to the ▲/▼ pressed, or
+    // the other one once that's off at the end.)
+    if (btn)
+      void tick().then(() =>
+        (btn.isConnected && !btn.disabled ? btn : btn.closest('.act')?.querySelector<HTMLElement>(':scope > .head > .move:not(:disabled)'))?.focus(),
+      );
   }
 
   const rows = new DragOrder();
@@ -272,8 +280,8 @@
         >
         <b class="small">{LABEL[a.do]}</b>
         <span class="spacer"></span>
-        <button class="ghost tiny" onclick={() => move(i, i - 1)} disabled={i === 0} aria-label="Move up">▲</button>
-        <button class="ghost tiny" onclick={() => move(i, i + 1)} disabled={i === (actions?.length ?? 0) - 1} aria-label="Move down">▼</button>
+        <button class="ghost tiny move" onclick={(e) => move(i, i - 1, e.currentTarget)} disabled={i === 0} aria-label="Move up">▲</button>
+        <button class="ghost tiny move" onclick={(e) => move(i, i + 1, e.currentTarget)} disabled={i === (actions?.length ?? 0) - 1} aria-label="Move down">▼</button>
         <button class="ghost tiny" onclick={() => duplicate(a)} aria-label="Duplicate button" title="Duplicate (Ctrl+D)">⧉</button>
         <button class="ghost tiny danger" onclick={() => remove(a)} aria-label="Delete button" title="Delete button">🗑</button>
       </div>

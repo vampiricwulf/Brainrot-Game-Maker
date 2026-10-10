@@ -13,7 +13,7 @@
   import { fileKind } from '../lib/mediadrop';
   import { newLive } from '../lib/live';
   import { clone } from '../lib/ops';
-  import { align, bounds, centreOn, clampOnto, restack, type Pt } from '../lib/layers';
+  import { align, bounds, centreOn, clampOnto, elementsAt, restack, type Pt } from '../lib/layers';
   import { adoptMedia, clipboard, copyElements, copyFromMenu, elementMediaIds, pastingOurs } from '../lib/clipboard.svelte';
   import { freeOffset } from '../lib/editing';
   import { copyIsTheBrowsers } from '../lib/undokeys';
@@ -335,14 +335,33 @@
     return !!(e.target as HTMLElement)?.closest?.('input, textarea, select, [contenteditable]');
   }
 
+  function keyMenu(): void {
+    const stageEl = canvasEl?.querySelector('.stage');
+    if (!stageEl) return;
+    const r = stageEl.getBoundingClientRect();
+    const last = decor.find((d) => d.id === selected[selected.length - 1]);
+    const at = last ? { x: last.x + last.w / 2, y: last.y + last.h / 2 } : { x: SLIDE_W / 2, y: SLIDE_H / 2 };
+    const stack = last ? elementsAt(decor.filter((d) => !hidden.includes(d.id)), at) : [];
+    menu = { x: r.left + (at.x / SLIDE_W) * r.width, y: r.top + (at.y / SLIDE_H) * r.height, at, stack };
+  }
+
   function onkey(e: KeyboardEvent): void {
     if (editingImage || picking || menu || typing(e)) return;
     const k = e.key.toLowerCase();
     const mod = e.ctrlKey || e.metaKey;
-    if (k === 'tab' && !mod && !e.altKey && (document.activeElement === document.body || !!canvasEl?.contains(document.activeElement)) && decor.length) {
+    const onCanvas = !!canvasEl?.contains(document.activeElement);
+    if (k === 'tab' && !mod && !e.altKey && (onCanvas || document.activeElement === document.body) && decor.length) {
+      // Tab and Shift+Tab go through the images from the preview (a Tab stop of its own), as on a slide; past the last
+      // one (or before the first) Tab moves on through the window.
+      if (!onCanvas) canvasEl?.focus({ preventScroll: true });
       const list = decor.filter((d) => !hidden.includes(d.id)).sort((a, b) => b.zIndex - a.zIndex);
       const i = selected.length ? list.findIndex((d) => d.id === selected[selected.length - 1]) : -1;
-      if (list.length) selected = [list[(i + (e.shiftKey ? -1 : 1) + list.length) % list.length].id];
+      const j = i + (e.shiftKey ? -1 : 1);
+      if (j < 0 || j >= list.length) return;
+      selected = [list[j].id];
+    } else if (onCanvas && (k === 'contextmenu' || (k === 'f10' && e.shiftKey && !mod && !e.altKey))) {
+      // Shift+F10 or the menu key: the right-click menu for the selection (at its middle), or for the board.
+      keyMenu();
     } else if (mod && (e.code === 'BracketRight' || e.code === 'BracketLeft') && selected.length) {
       const up = e.code === 'BracketRight';
       edit(() => restack(decor, selected, e.shiftKey ? (up ? 'front' : 'back') : up ? 'forward' : 'backward'));
@@ -424,13 +443,17 @@
     </header>
 
     <div class="body">
+      <!-- A Tab stop (a click on an image puts the focus here too): Tab and Shift+Tab then go through the images. -->
+      <!-- svelte-ignore a11y_no_noninteractive_tabindex -->
       <div
         class="canvas"
         bind:this={canvasEl}
+        tabindex="0"
+        data-keys-home
         ondragover={(e) => e.preventDefault()}
         {ondrop}
         role="region"
-        aria-label="Board preview. Drop images here."
+        aria-label="Board preview. Tab and Shift+Tab pick the images on it, Shift+F10 opens the menu for the selection. Drop images here."
       >
         <Stage hostOnly>
           <AudienceView game={preview} {session} {live} role="mirror" />

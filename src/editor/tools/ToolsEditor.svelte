@@ -6,6 +6,7 @@
   import PageHeader from '../PageHeader.svelte';
   import { tick } from 'svelte';
   import { app } from '../../lib/app.svelte';
+  import { announce } from '../../lib/announce';
   import { take } from '../../lib/nav.svelte';
   import { step } from '../../lib/history.svelte';
   import { DragOrder } from '../../lib/dragorder.svelte';
@@ -73,6 +74,7 @@
     const item = list[from];
     if (!item || to < 0 || to >= list.length || to === from) return;
     step(`Moved ${kind} “${item.name}” ${to < from ? 'up' : 'down'}`, () => moveTo(list, from, to));
+    announce(`${kind[0].toUpperCase()}${kind.slice(1)} “${item.name}” moved to ${to + 1} of ${list.length}`);
     focusItem(item.id);
   }
 

@@ -40,11 +40,17 @@
     closeMenu();
     if (back?.isConnected) back.focus({ preventScroll: true });
     fn();
+    // A move to a later place (▶ Move right, ▼ Move down) takes that button out of the page and back, which drops the
+    // focus: it goes back again once drawn (unless the item put it somewhere, a window it opened).
+    void tick().then(() => {
+      if (back?.isConnected && (!document.activeElement || document.activeElement === document.body)) back.focus({ preventScroll: true });
+    });
   }
 
   function key(e: KeyboardEvent): void {
     if (!contextMenu.open) return;
-    if (e.key === 'Escape') {
+    // Tab closes the menu too (the focus goes back to where it came from), so it can't stay open behind the focus.
+    if (e.key === 'Escape' || e.key === 'Tab') {
       e.preventDefault();
       e.stopImmediatePropagation();
       const back = contextMenu.open.back;
@@ -54,9 +60,9 @@
       return;
     }
     // Every other key is the menu's too: Delete, Ctrl+Z and the like never reach what's under it (the arrows aren't a
-    // nudge for what's selected in a slide editor). Tab, Enter and Space do their usual job on the focused item.
+    // nudge for what's selected in a slide editor). Enter and Space do their usual job on the focused item.
     e.stopImmediatePropagation();
-    if (e.key === 'Tab' || e.key === 'Enter' || e.key === ' ') return;
+    if (e.key === 'Enter' || e.key === ' ') return;
     e.preventDefault();
     const buttons = [...(box?.querySelectorAll<HTMLButtonElement>('button:not(:disabled)') ?? [])];
     if (e.key === 'Home' || e.key === 'End') return void buttons[e.key === 'Home' ? 0 : buttons.length - 1]?.focus();
@@ -69,6 +75,7 @@
 <!--
   A press elsewhere closes the menu first, so a board space or slide item that keeps its presses to itself can't leave
   it open. A press on the button a menu dropped from leaves it to that button's click, which closes it (see dropMenu).
+  The focus leaving it for anything else closes it too, so it never stays open behind the keys.
 -->
 <svelte:window
   onkeydowncapture={key}
@@ -79,7 +86,8 @@
 />
 
 {#if contextMenu.open}
-  <div class="cm" role="menu" data-over-modal tabindex="-1" bind:this={box} style:left="{pos.x}px" style:top="{pos.y}px" style:max-height={pos.maxHeight === undefined ? undefined : `${pos.maxHeight}px`} oncontextmenu={(e) => e.preventDefault()}>
+  <div class="cm" role="menu" data-over-modal tabindex="-1" bind:this={box} style:left="{pos.x}px" style:top="{pos.y}px" style:max-height={pos.maxHeight === undefined ? undefined : `${pos.maxHeight}px`} oncontextmenu={(e) => e.preventDefault()}
+    onfocusout={(e) => e.relatedTarget instanceof Node && !box?.contains(e.relatedTarget) && !contextMenu.open?.from?.contains(e.relatedTarget) && closeMenu()}>
     {#each contextMenu.open.items as item, i (i)}
       {#if 'sep' in item}
         <div class="sep" role="separator"></div>

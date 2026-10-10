@@ -58,7 +58,7 @@ try {
   // ---------- Drop a picture on a Choose… button: stored and used there, as one undo step ----------
   await page.getByRole('button', { name: '🎨 Theme' }).click();
   const bgRow = page.locator('.row.pop', { hasText: 'Background image' });
-  await drop(bgRow.getByRole('button', { name: 'Choose…' }), [['wall.png', 'image/png']]);
+  await drop(bgRow.getByRole('button', { name: 'Choose a board background image' }), [['wall.png', 'image/png']]);
   assert((await bgRow.locator('img').count()) === 1 && (await mediaCount()) === 1, 'a picture dropped on Background image → Choose… is the background');
   await page.keyboard.press('Control+z');
   assert((await bgRow.locator('img').count()) === 0 && (await mediaCount()) === 0, 'one Ctrl+Z takes back the file and its use together');
@@ -73,7 +73,7 @@ try {
   // ---------- An open picker takes a dropped file, and a pasted one ----------
   await page.getByRole('button', { name: '🎨 Theme' }).click();
   const banner = page.locator('.row.pop', { hasText: 'Banner above the board' });
-  await banner.getByRole('button', { name: 'Choose…' }).click();
+  await banner.getByRole('button', { name: 'Choose a banner above the board' }).click();
   const picker = page.getByRole('dialog', { name: 'Choose image' });
   await picker.waitFor();
   await shot('em-1-picker');
@@ -82,7 +82,7 @@ try {
   await picker.waitFor({ state: 'detached' });
   await banner.locator('img').waitFor();
   assert((await banner.locator('img').count()) === 1, 'a file dropped on an open picker is picked at once');
-  await banner.getByRole('button', { name: 'Change…' }).click();
+  await banner.getByRole('button', { name: 'Change the banner above the board' }).click();
   await picker.waitFor();
   await page.evaluate(
     ([b64]) => {

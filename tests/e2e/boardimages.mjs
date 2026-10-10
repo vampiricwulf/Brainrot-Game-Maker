@@ -192,6 +192,26 @@ try {
   await page.keyboard.press('Control+z');
   assert((await order()) === 'through.png,behind.png,blocker.png', `Ctrl+Z puts it back where it was (${await order()})`);
   assert((await modal.getByRole('button', { name: /Copy selected to other rounds/ }).count()) === 1, 'and selects it again');
+  // The preview is a Tab stop: Tab goes through the images from there (top-most first) and on out past the last one.
+  const canvas = modal.locator('.canvas');
+  const picked = () => modal.locator('.layers .row.sel .txt').allInnerTexts().then((t) => t.join(','));
+  const onCanvas = () => canvas.evaluate((c) => c === document.activeElement);
+  await canvas.focus();
+  await page.keyboard.press('Escape');
+  await page.keyboard.press('Tab');
+  assert((await picked()) === 'through.png' && (await onCanvas()), 'Tab on the preview selects the top-most image');
+  await page.keyboard.press('Tab');
+  await page.keyboard.press('Tab');
+  assert((await picked()) === 'blocker.png' && (await onCanvas()), 'and Tab again the ones under it');
+  await page.keyboard.press('Tab');
+  assert(!(await onCanvas()) && (await modal.evaluate((m) => m.contains(document.activeElement))) && (await picked()) === 'blocker.png', 'past the last one, Tab moves on in the window');
+  await canvas.focus();
+  await page.keyboard.press('Shift+F10');
+  const itemMenu = page.getByRole('menu', { name: 'Slide item menu' });
+  await itemMenu.waitFor();
+  assert(true, 'Shift+F10 on the preview opens the selected image’s menu');
+  await page.keyboard.press('Escape');
+  await itemMenu.waitFor({ state: 'detached' });
   await shot('bi-2-decor-editor');
   await page.keyboard.press('Escape');
 
@@ -223,7 +243,7 @@ try {
   await page.getByRole('button', { name: '🎨 Theme' }).click();
   // (On Pastel, the light theme: its dark category names over their pictures are checked in the game below.)
   await page.locator('.preset', { hasText: 'Pastel' }).click();
-  await page.locator('.row:has-text("Banner above the board")').getByRole('button', { name: 'Choose…' }).click();
+  await page.locator('.row:has-text("Banner above the board")').getByRole('button', { name: 'Choose a banner above the board' }).click();
   await page.locator('.picker .item').first().click();
   await page.locator('.preview .banner img').waitFor();
   const boardTop = await page.locator('.preview .board-area').evaluate((e) => e.style.top);

@@ -355,6 +355,38 @@ try {
   assert(fit720.over <= 0 && fit720.right <= 720 && fit720.page <= 720 && fit720.playRight <= 720, `at 200% zoom (720px) every header button is on screen and the page doesn’t scroll sideways (${JSON.stringify(fit720)})`);
   await page.setViewportSize({ width: 1280, height: 720 });
 
+  // ---------- The keys after a move, a menu left with Tab, and New ----------
+  const saidNow = () => page.evaluate(() => document.getElementById('live-region')?.dataset.said ?? '');
+  const saidHas = (re) => page.waitForFunction((src) => new RegExp(src).test(document.getElementById('live-region')?.dataset.said ?? ''), re.source);
+  await page.locator('nav > button.round-tab').first().click();
+  assert((await page.getByRole('group', { name: /^Board: arrow keys move between tiles/ }).count()) === 1, 'the board’s tiles are a group whose name says how the keys reach them');
+  await page.locator('.cat textarea').first().fill('Animals');
+  await page.getByRole('button', { name: 'More for category 1: Animals' }).focus();
+  await page.keyboard.press('Enter');
+  await page.getByRole('menuitem', { name: /Move right/ }).focus();
+  await page.keyboard.press('Enter');
+  await page.waitForFunction(() => document.activeElement?.getAttribute('aria-label') === 'More for category 2: Animals');
+  assert(true, '⋯ → ▶ Move right: the keys stay on that category’s ⋯ (not the page)');
+  await saidHas(/“Animals” moved to column 2 of/);
+  assert(true, `and the move is said (“${await saidNow()}”)`);
+  await page.keyboard.press('Enter');
+  await page.locator('.cm').waitFor();
+  await page.keyboard.press('Shift+Tab');
+  await page.locator('.cm').waitFor({ state: 'detached' });
+  assert((await focused()) === 'More for category 2: Animals', 'Shift+Tab out of an open ⋯ menu closes it, the keys back on its ⋯');
+  const nameBox = page.locator('.cat textarea').nth(1);
+  await nameBox.focus();
+  await page.keyboard.type('!');
+  assert((await nameBox.inputValue()) === 'Animals!', 'and typing in a category name works again');
+  await page.getByRole('button', { name: /New/ }).first().click();
+  const startNew = page.getByRole('dialog', { name: /Start a new game/ }).getByRole('button', { name: 'Start new anyway' });
+  await startNew.focus();
+  await page.keyboard.press('Enter');
+  await page.waitForFunction(() => !!document.activeElement?.matches('.first-round .sample'));
+  assert(true, 'New → Start new anyway: the keys go to the new game’s first screen (not the page)');
+  await saidHas(/Started a new game/);
+  assert(true, `and it’s said (“${await saidNow()}”)`);
+
   // ---------- Windows High Contrast (forced colors): the selected and pressed states still show ----------
   const fc = await browser.newContext({ viewport: { width: 1280, height: 720 }, forcedColors: 'active' });
   const hc = await fc.newPage();

@@ -372,13 +372,13 @@ try {
     d.items.add(new File([Uint8Array.from(atob(b64), (c) => c.charCodeAt(0))], 'logo.png', { type: 'image/png' }));
     return d;
   }, png(255, 140, 0, 160, 16).toString('base64'));
-  for (const type of ['dragenter', 'dragover', 'drop']) await bannerRow.getByRole('button', { name: 'Choose…' }).dispatchEvent(type, { dataTransfer: wide });
+  for (const type of ['dragenter', 'dragover', 'drop']) await bannerRow.getByRole('button', { name: 'Choose a banner above the board' }).dispatchEvent(type, { dataTransfer: wide });
   const cardImg = soon.locator('.soon .card-img');
   await cardImg.waitFor();
   assert(true, 'a banner put on in the editor shows on the Starting soon card');
   const column = await host.locator('.controls').evaluate((e) => e.getBoundingClientRect().right);
   const thumb = await bannerRow.locator('img').boundingBox();
-  const change = await bannerRow.getByRole('button', { name: 'Change…' }).boundingBox();
+  const change = await bannerRow.getByRole('button', { name: 'Change the banner above the board' }).boundingBox();
   const remove = await bannerRow.getByRole('button', { name: 'Remove banner' }).boundingBox();
   assert(thumb.x + thumb.width <= change.x && remove.x + remove.width <= column + 0.5, `a wide banner's thumbnail shrinks: Change… and ✕ stay in the settings column (✕ ends at ${Math.round(remove.x + remove.width)}, the column at ${Math.round(column)})`);
   // Its file replaced in 🖼 Media (the same id, new bytes): the card shows the new picture.

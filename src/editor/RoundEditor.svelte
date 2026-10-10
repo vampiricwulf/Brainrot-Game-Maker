@@ -4,6 +4,7 @@
   import { dropMenu, showMenu, type MenuEntry } from '../lib/menustate.svelte';
   import { take, type Place } from '../lib/nav.svelte';
   import { app } from '../lib/app.svelte';
+  import { announce } from '../lib/announce';
   import { adoptUsedBy, clipboard, holdUsedBy } from '../lib/clipboard.svelte';
   import { copyIsTheBrowsers } from '../lib/undokeys';
   import { categoryLabel, clueValue, clueValueTyped, dailyDoublesPlaced, formatPoints, newImageEl, playableClues, roundName, slideText, slidesOfClue, type BoardRound, type Clue, type ClueType } from '../lib/model';
@@ -493,6 +494,7 @@
   function moveCat(from: number, to: number): void {
     if (to < 0 || to >= round.categories.length || to === from) return;
     step(`Moved category “${categoryLabel(round.categories[from])}” ${to < from ? 'left' : 'right'}`, () => moveCategory(round, from, to));
+    announce(`Category “${categoryLabel(round.categories[to])}” moved to column ${to + 1} of ${round.categories.length}`);
   }
 
   /** A new category at `at`, its name ready to type. */
@@ -758,7 +760,15 @@
 {/if}
 
 <div class="grid-wrap" bind:clientWidth={wrapW}>
-  <div class="grid" class:many={round.categories.length >= 8 || colMin < 120} bind:this={gridEl} style:grid-template-columns="repeat({round.categories.length}, minmax({colMin}px, 1fr))">
+  <!-- (One Tab stop for the tiles: the group's name says how the keys reach the rest.) -->
+  <div
+    class="grid"
+    role="group"
+    aria-label="Board: arrow keys move between tiles, Enter edits a clue, Delete clears it, Shift+F10 opens its menu"
+    class:many={round.categories.length >= 8 || colMin < 120}
+    bind:this={gridEl}
+    style:grid-template-columns="repeat({round.categories.length}, minmax({colMin}px, 1fr))"
+  >
     {#each round.categories as cat, ci (cat.id)}
       <div
         class="cat"
@@ -925,8 +935,9 @@
   <ClueImport {round} onclose={() => (importing = false)} />
 {/if}
 <div class="tip">
-  <Tips id="board" hint="Click a tile to write its clue. Right-click a tile, a category or a row value for more.">
+  <Tips id="board" hint="Click a tile (or press Enter) to write its clue. Right-click (or Shift+F10) a tile, a category or a row value for more.">
     <ul>
+      <li>Keys: arrows move between tiles (↑ from the top row: the category name), Enter or F2 edits, Delete clears, Ctrl+C / Ctrl+V copy and paste a clue, Shift+F10 opens a tile's menu.</li>
       <li>Drag a tile onto another to swap them (hold Ctrl to copy), and a category to move it.</li>
       <li>Drop image files onto a category for its picture, or onto a tile to put them in its question (or on its face).</li>
       <li>Paste a column of clues from a spreadsheet on a category's name to fill it.</li>

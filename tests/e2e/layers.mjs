@@ -223,6 +223,15 @@ try {
   assert((await rowIndex()) === 0 && (await focusedRow()) === topId, 'Enter on ▲ twice brings it back to the top, keeping focus on the row');
   const undoTitle = (await page.getByRole('dialog', { name: 'Edit clue' }).getByRole('button', { name: 'Undo (Ctrl+Z)' }).getAttribute('title')) ?? '';
   assert(/^Undo: Brought \S+ “.+” forward/.test(undoTitle), `the History names a ▲ in the Layers list (${undoTitle})`);
+  // ↑/↓ alone go from row to row, the focus and the selection together (past the next row too).
+  await topRow.locator('.name').focus();
+  await page.keyboard.press('ArrowDown');
+  await page.keyboard.press('ArrowDown');
+  const thirdId = await layers.nth(2).getAttribute('data-layer');
+  assert((await focusedRow()) === thirdId && (await layers.nth(2).evaluate((r) => r.classList.contains('sel'))), '↓ twice in the Layers list moves the focus and the selection two rows down');
+  await page.keyboard.press('ArrowUp');
+  await page.keyboard.press('ArrowUp');
+  assert((await focusedRow()) === topId, 'and ↑ twice back to the top row');
 
   // The inspector's Lock box is one undo step each time, like the list's 🔒.
   const lockBox = page.locator('.insp').getByLabel('Lock', { exact: true });

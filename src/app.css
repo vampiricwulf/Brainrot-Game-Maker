@@ -99,8 +99,8 @@ input[type='radio'] { accent-color: var(--accent); }
 /* One focus ring, for the keyboard (a click on a button shows none; a text field shows it, as browsers do). */
 :focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
 input:focus-visible, select:focus-visible, textarea:focus-visible { outline-offset: -1px; }
-/* A window or a region the app moves the focus to (not something to press). */
-[role='dialog']:focus-visible, [role='alertdialog']:focus-visible, [tabindex='-1']:focus-visible { outline: none; }
+/* A window or a region the app moves the focus to (not something to press: a button that has the focus shows it). */
+[role='dialog']:focus-visible, [role='alertdialog']:focus-visible, [tabindex='-1']:not(button):focus-visible { outline: none; }
 
 a { color: #8fb0ff; }
 a:hover { color: #b5cbff; }

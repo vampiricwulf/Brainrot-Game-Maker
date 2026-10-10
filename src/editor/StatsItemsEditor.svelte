@@ -6,6 +6,7 @@
   import PageHeader from './PageHeader.svelte';
   import { tick } from 'svelte';
   import { app, toast } from '../lib/app.svelte';
+  import { announce } from '../lib/announce';
   import { tell } from '../lib/ask.svelte';
   import { flash, take } from '../lib/nav.svelte';
   import { step } from '../lib/history.svelte';
@@ -128,6 +129,7 @@
     const x = list[from];
     if (!x || to < 0 || to >= list.length || to === from) return;
     step(`Moved ${kind} “${x.name}” ${to < from ? 'up' : 'down'}`, () => moveTo(list, from, to));
+    announce(`${kind[0].toUpperCase()}${kind.slice(1)} “${x.name}” moved to ${to + 1} of ${list.length}`);
   }
 
   /** A copy right after it, with fresh ids (an item's buttons and pop-ups too); players' values stay with the original. */
