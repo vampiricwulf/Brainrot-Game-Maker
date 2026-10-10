@@ -181,8 +181,8 @@
 
   // ---------- Sharing ----------
 
-  /** Write a theme file: with the pictures and uploaded fonts of this game it uses (`withFiles`). */
-  async function exportTheme(name: string, theme: Theme, withFiles: boolean): Promise<void> {
+  /** Write a theme file: with the pictures and uploaded fonts of this game it uses (`withFiles`); `mine`: one of My themes. */
+  async function exportTheme(name: string, theme: Theme, withFiles: boolean, mine = false): Promise<void> {
     try {
       const media: ThemeMediaFile[] = [];
       const notHere: string[] = [];
@@ -191,8 +191,9 @@
         if (blob) media.push({ ref: clone(ref), blob });
         else notHere.push(ref.name);
       }
-      // (A saved theme's font uploaded to another game isn't here to go in the file.)
-      for (const k of missingFonts(theme, game.media)) notHere.push(`${k === 'boardFont' ? 'category' : k === 'valueFont' ? 'value' : 'clue'} font (uploaded to another game)`);
+      // (A font it names that this game hasn't got, a saved theme's uploaded to another game, isn't here to go in the file.)
+      for (const k of missingFonts(theme, game.media))
+        notHere.push(`${k === 'boardFont' ? 'category' : k === 'valueFont' ? 'value' : 'clue'} font (${mine ? 'uploaded to another game' : 'not in this game'})`);
       const { text, leftOut } = await themeFileText(name, theme, media);
       const filename = `${safeFilename(name)}${THEME_EXT}`;
       const saved = await saveFile(filename, new Blob([text], { type: 'application/json' }));
@@ -238,7 +239,7 @@
       { label: '⧉ Duplicate', onclick: () => duplicate(m) },
       { sep: true },
       // (A saved theme has no pictures: the uploaded fonts it uses that this game has go in the file.)
-      { label: '⬇ Export theme file', onclick: () => void exportTheme(m.name, m.theme, true) },
+      { label: '⬇ Export theme file', onclick: () => void exportTheme(m.name, m.theme, true, true) },
       { label: '📋 Copy theme code', onclick: () => void copyCode(m.name, m.theme) },
       { sep: true },
       { label: '🗑 Delete…', danger: true, onclick: () => void remove(m) },
@@ -274,7 +275,10 @@
     const add = themeFiles(theme, refs);
     const next = withShared(cur, theme, [...g.media, ...add]);
     delete next.source;
-    if (sameContent(next, cur) && add.every((r) => g.media.some((m) => m.id === r.id))) return void toast(`This game already looks like “${s.name}”`);
+    // (A font it names that the file didn't bring: that text keeps this game's font, as with use() above.)
+    const missing = missingFonts(theme, [...g.media, ...add]).length;
+    const note = missing ? ` (its uploaded font${missing === 1 ? ' isn’t' : 's aren’t'} in the file: ${missing === 1 ? 'that text keeps its' : 'those keep their'} font)` : '';
+    if (sameContent(next, cur) && add.every((r) => g.media.some((m) => m.id === r.id))) return void toast(`This game already looks like “${s.name}”${note}`);
     step(
       `Theme: “${s.name}”`,
       () => {
@@ -283,9 +287,7 @@
       },
       { notify: true, place: { tab: 'theme' } },
     );
-    // (A font it names that the file didn't bring: that text keeps this game's font, as with use() above.)
-    const missing = missingFonts(theme, [...g.media, ...add]).length;
-    if (missing) toast(`Used “${s.name}” (its uploaded font${missing === 1 ? ' isn’t' : 's aren’t'} in the file: ${missing === 1 ? 'that text keeps its' : 'those keep their'} font)`);
+    if (note) toast(`Used “${s.name}”${note}`);
   }
 
   function saveShared(s: SharedTheme): void {

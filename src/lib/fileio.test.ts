@@ -101,6 +101,22 @@ describe('opening game files', () => {
     pics.file('cat.png', 'x');
     const memes = new File([await pics.generateAsync({ type: 'arraybuffer' })], 'memes.zip', { type: 'application/zip' });
     await expect(openGameFile(memes)).rejects.toThrow("This .zip doesn't hold a Brainrot game");
+    // (A damaged .brainrot isn't told to unzip.)
+    const broken = new File([await pics.generateAsync({ type: 'arraybuffer' })], 'Quiz.brainrot');
+    await expect(openGameFile(broken)).rejects.toThrow('This pack has no game.json inside.');
+  });
+
+  it('opens a pack that was unzipped and its folder zipped again, with its files', async () => {
+    const game = { ...jeopardyGame(), title: 'Rezipped', media: [{ id: 'm1', name: 'cat.png', mime: 'image/png', size: 3 }] };
+    const zip = new JSZip();
+    zip.file('My Game/game.json', JSON.stringify(game));
+    zip.file('My Game/media/m1.png', 'cat');
+    zip.file('__MACOSX/My Game/._game.json', 'x');
+    const file = new File([await zip.generateAsync({ type: 'arraybuffer' })], 'My Game.zip', { type: 'application/zip' });
+    const put: [string, Blob][] = [];
+    expect((await openGameFile(file, async (id, blob) => void put.push([id, blob]))).title).toBe('Rezipped');
+    expect(put.map(([id]) => id)).toEqual(['m1']);
+    expect(await put[0][1].text()).toBe('cat');
   });
 
   it('opens a plain .json game', async () => {

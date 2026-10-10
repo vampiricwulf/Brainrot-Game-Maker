@@ -83,14 +83,25 @@ export async function openPack(file: Blob, onProgress?: (done: number, total: nu
     if (zipStart && file.size >= MAX_PACK_READ) throw new Error(TOO_BIG_PACK);
     throw new Error(zipStart ? CUT_OFF : 'This file is not a Brainrot Games Maker game pack (.brainrot, or .jbr from Jeopardy Builder).');
   }
-  const json = zip.file('game.json');
+  let json = zip.file('game.json');
   if (!json) {
-    // A zip someone made of the game file (or of pictures): open the one game inside, else say what to do.
-    const inner = zip.file(/(^|\/)[^/]+\.(brainrot|jbr|html?|json)$/i).filter((f) => !f.dir && !/(^|\/)(__MACOSX\/|\.)/.test(f.name));
-    if (inner.length === 1) return openGameFile(new File([await inner[0].async('blob')], inner[0].name.split('/').pop()!), put);
-    throw new Error(
-      "This .zip doesn't hold a Brainrot game. If someone zipped the game, unzip it and open the .brainrot (or .html) inside. Pictures and sounds in a zip need unzipping before you add them on 🖼 Media.",
-    );
+    // (What a Mac adds to a zip it makes is no game.)
+    const real = (f: JSZip.JSZipObject) => !f.dir && !/(^|\/)(__MACOSX\/|\.)/.test(f.name);
+    // A pack unzipped and its folder zipped again ("My Game/game.json" and its media/): open it from that folder.
+    const nested = zip.file(/(^|\/)game\.json$/).filter(real);
+    if (nested.length === 1) {
+      zip = zip.folder(nested[0].name.slice(0, -'game.json'.length))!;
+      json = nested[0];
+    } else {
+      // A zip someone made of the game file: open the one game inside, else say what to do.
+      const inner = zip.file(/(^|\/)[^/]+\.(brainrot|jbr|html?|json)$/i).filter(real);
+      if (inner.length === 1) return openGameFile(new File([await inner[0].async('blob')], inner[0].name.split('/').pop()!), put);
+      // (A .brainrot with no game.json is a damaged pack: only a .zip gets told to unzip.)
+      if (!(file instanceof File && /\.zip$/i.test(file.name))) throw new Error('This pack has no game.json inside.');
+      throw new Error(
+        "This .zip doesn't hold a Brainrot game. If someone zipped the game, unzip it and open the .brainrot (or .html) inside. Pictures and sounds in a zip need unzipping before you add them on 🖼 Media.",
+      );
+    }
   }
   // A damaged game.json is a damaged file: nothing in it can be trusted.
   const text = await intact(json);
