@@ -70,6 +70,8 @@ let notice: Notice | null = null;
 let seatsNote = '';
 /** Empties the assertive alert once it has been said, so a screen reader browsing later doesn't find a stale "BUZZ!". */
 let alertTimer = 0;
+/** What had focus on the page when the reconnecting overlay covered it (an answer box, say): it gets it back after. */
+let awayFocus: HTMLElement | null = null;
 /** Another tab or phone took this seat back (the token is kept, so a tap takes it back here): a reconnect doesn't. */
 let seatMoved = false;
 let result: ResultMsg | null = null;
@@ -699,7 +701,22 @@ function render(): void {
   $('overlay-text').textContent = long ? 'Still trying to reconnect… check your Wi-Fi or mobile data' : 'Reconnecting…';
   $('overlay-retry').hidden = !long;
   // The page behind the overlay can't be reached (a screen reader or Tab would land on a buzzer that does nothing).
-  document.querySelector('main')!.inert = away;
+  // That drops focus, so a half-typed answer gets it back (and the phone keyboard) once reconnected.
+  const main = document.querySelector('main')!;
+  if (main.inert !== away) {
+    const had = document.activeElement;
+    if (away) awayFocus = had instanceof HTMLElement && main.contains(had) ? had : null;
+    main.inert = away;
+    const back = away ? null : awayFocus;
+    if (!away) awayFocus = null;
+    // After the rest of render(), when the screen it's on may have changed: only if it still shows and nothing
+    // else took focus meanwhile.
+    if (back)
+      queueMicrotask(() => {
+        const now = document.activeElement;
+        if (back.isConnected && back.getClientRects().length && (!now || now === document.body || $('overlay').contains(now))) back.focus({ preventScroll: true });
+      });
+  }
   $('sound').hidden = !(seatId && view?.you);
   if (!code) return show('s-code');
   if (notice) {
@@ -1197,6 +1214,8 @@ $('overlay-retry').addEventListener('click', () => {
   attempts = 0;
   connect();
   render();
+  // The button hides under focus: keep a keyboard or screen reader on the overlay rather than lost on the page.
+  if ($('overlay-retry').hidden && !$('overlay').hidden) $('overlay-text').focus();
 });
 $('color-btn').addEventListener('click', () => {
   colorsOpen = !colorsOpen;

@@ -217,6 +217,12 @@ try {
   assert(await ann.locator('#buzz.armed').isVisible(), 'BUZZ! once armed');
   await shot(ann, 'armed');
   await shot(bob, 'early');
+  // Every text Ann's assertive alert takes, to check "You're answering!" is said and then emptied.
+  await ann.evaluate(() => {
+    const el = document.getElementById('alert');
+    window.alertSeen = [];
+    new MutationObserver(() => window.alertSeen.push(el.textContent)).observe(el, { childList: true, characterData: true, subtree: true });
+  });
   await press(bob);
   const lockedNow = await big(bob).innerText();
   await press(ann);
@@ -234,8 +240,11 @@ try {
   await big(winner).getByText("You're answering!").waitFor();
   await small(winner).getByText(/^You were first by \d\.\d\d s$/).waitFor();
   // The assertive alert is emptied once said, so a screen reader browsing later doesn't find a stale "You're answering!".
-  await winner.waitForFunction(() => document.getElementById('alert').textContent === '');
-  assert(true, 'the "You\'re answering!" alert is cleared after it has been said');
+  await winner.waitForFunction(() => {
+    const said = window.alertSeen.lastIndexOf("You're answering!");
+    return said >= 0 && window.alertSeen.indexOf('', said) > said;
+  });
+  assert(true, 'the "You\'re answering!" alert is said, then cleared');
   await big(loser).getByText("You're 2nd").waitFor();
   assert(/^\d\.\d\d s behind Ann$/.test(await small(loser).innerText()), `"You were first by …" for Ann, "You're 2nd — ${await small(loser).innerText()}" for Dee`);
   await small(bob).getByText(`${winnerName} is answering`).waitFor();
@@ -484,6 +493,7 @@ try {
     annTap.blocked = false;
   };
   ann.on('request', checking);
+  await ann.locator('#leave').focus();
   annTap.blocked = true;
   annTap.drop();
   // While away, the page behind the overlay is inert and the screen reader hears what the overlay says.
@@ -495,6 +505,8 @@ try {
   ann.off('request', checking);
   annTap.blocked = false;
   await ann.locator('#overlay').waitFor({ state: 'hidden' });
+  await ann.waitForFunction(() => document.activeElement?.id === 'leave');
+  assert(true, 'what had focus before the overlay (Ann\'s "Change player" link) has it again once reconnected');
   assert(
     asked === `/api/rooms/${room.code}` && (await ann.locator('main').getByText('The game is over').count()) === 0 && (await big(ann).innerText()) === 'Ann',
     `a phone offline for a while checks its own room (${asked}), finds it still open, and keeps trying: never "The game is over"`,
