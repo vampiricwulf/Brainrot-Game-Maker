@@ -3,8 +3,8 @@
 // audience window shows "🔔 Ann is answering", and the phones get it through hostState().
 import { clip, WAGER_MAX, type BuzzPhase, type HostState, type WagerAsk, type AnswerAsk } from './buzzproto';
 import { categoryLabel, finalName, formatPoints, roundName, type Game, type Id, type PartnerState, type Session, type Slide, type TextEl } from './model';
-import { giverLine, partnerRoles, partnerRules, partsLine } from './partner';
-import { currentClueInfo, currentFinal, ddCap, finalWagerCap, score, shownQuestionSlide, tiedForFirst, wagerFromPhone } from './session';
+import { giverLine, partnerRoles, partnerRules, partnerVerdict, partsLine, resultLine } from './partner';
+import { clueMarks, currentClueInfo, currentFinal, ddCap, finalWagerCap, score, shownQuestionSlide, tiedForFirst, wagerFromPhone } from './session';
 
 export interface BuzzState {
   phase: BuzzPhase;
@@ -166,7 +166,8 @@ export function phoneStatus(game: Game, session: Session, pregame = false): Host
 
 /**
  * A 🤝 partner clue's line for the phones (partner-clues spec §19.4, with a room that takes no cards): who plays which
- * part, under each player's name. The picker's phone and the giver's say what's theirs. Never what's on a card.
+ * part, under each player's name, then how it went once it's judged. The picker's phone and the giver's say what's
+ * theirs. Never what's on a card.
  */
 function partnerStatus(game: Game, session: Session, s: PartnerState): HostState['status'] {
   const clue = currentClueInfo(session, game)?.clue;
@@ -186,6 +187,9 @@ function partnerStatus(game: Game, session: Session, s: PartnerState): HostState
   }
   if (!paired) return { text: line(`🤝 Partner clue: ${nameOf(picker)}`) };
   const names = { giver: nameOf(giver), guesser: nameOf(guesser), solo };
+  // Judged (both marked since the tile opened), until the answer shows: how it went, for everyone.
+  const marks = clueMarks(session, s.clue, s.at ?? 0);
+  if (!session.revealed && partnerVerdict(s, marks).judged) return { text: line(resultLine(s, marks, (id) => nameOf(id) ?? '?', game.settings.currencySymbol)) };
   const text = line(`🤝 ${partsLine(rules, names, { past: session.revealed })}`);
   if (session.revealed || solo || !here(giver)) return { text };
   return { text, seats: [giver], seatsText: line(giverLine(rules, team)) };

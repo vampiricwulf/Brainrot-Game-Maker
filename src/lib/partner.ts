@@ -3,6 +3,7 @@
 // state: unit-tested in partner.test.ts.
 import {
   cardSlides,
+  formatPoints,
   gameRules,
   MAX_CARDS,
   MAX_SHARE,
@@ -230,10 +231,13 @@ export function cardsToFinish(clue: Clue): 'none' | number | null {
 /** The players a partner clue is played among (the session's, or a test's). */
 type Seats = Pick<Session, 'players'>;
 
-/** A partner clue opening: whoever was marked to pick picked it; its parts come from the clue's rules. Sends nothing. */
-export function startPartner(session: Pick<Session, 'players' | 'currentPickerId'>, clue: Clue): PartnerState {
+/**
+ * A partner clue opening (at `now`): whoever was marked to pick picked it; its parts come from the clue's rules. Sends
+ * nothing.
+ */
+export function startPartner(session: Pick<Session, 'players' | 'currentPickerId'>, clue: Clue, now = Date.now()): PartnerState {
   const rules = partnerRules(clue);
-  const s: PartnerState = { clue: clue.id, stage: 'pick', giver: rules.giver, ...(rules.includePicker ? { includePicker: true } : {}) };
+  const s: PartnerState = { clue: clue.id, at: now, stage: 'pick', giver: rules.giver, ...(rules.includePicker ? { includePicker: true } : {}) };
   if (session.players.some((p) => p.id === session.currentPickerId)) s.pickerId = session.currentPickerId;
   pairOnly(session, s);
   return s;
@@ -373,6 +377,92 @@ export function partsLine(rules: PartnerRules, names: { giver?: string; guesser?
 /** What the giver's phone says: "🗣 You're describing!" (teams: "🗣 Your team is describing!"). */
 export function giverLine(rules: PartnerRules, team = false): string {
   return `${PARTNER_GAMES[rules.game].icon} ${team ? 'Your team is' : 'You’re'} ${DOING[rules.game].doing}!`;
+}
+
+// ---------- Judging (partner-clues spec §6.6, §9) ----------
+// ✔ Got it and ✘ Missed score the two in one step (judgePartner in session.ts). Whether it's judged isn't stored: it's
+// each of the two having a mark on the clue since the tile opened, so an Undo of the step opens it all again.
+
+/** A player's mark on a clue (clueMarks): marked right or wrong, and the points it came to. */
+type Mark = { right: boolean; delta: number };
+
+/** Who plays it now, the giver first: the two parts (Solo: the picker alone). Nobody before the pair is known. */
+export function partnerPlayers(s: Pick<PartnerState, 'pickerId' | 'partnerId' | 'giver'>): { id: Id; role: PartnerRole | 'solo' }[] {
+  if (!s.pickerId || !s.partnerId) return [];
+  const r = partnerRoles(s);
+  if (r.solo) return [{ id: s.pickerId, role: 'solo' }];
+  return [
+    { id: r.giver!, role: 'giver' },
+    { id: r.guesser!, role: 'guesser' },
+  ];
+}
+
+/**
+ * What ✔ Got it (`got`) or ✘ Missed gives each of the two on a tile worth `value`: their part's share, in whole points,
+ * with the parts as they're played now (after ⇄ Swap the partner may be the guesser). ☑ The partner never loses points
+ * keeps the partner at 0 or more. Solo: the bigger of the two "got" shares, or the guesser's "missed" share. Anyone in
+ * `marked` (already scored on this clue, by hand say) is left out.
+ */
+export function partnerShares(
+  value: number,
+  rules: PartnerRules,
+  s: Pick<PartnerState, 'pickerId' | 'partnerId' | 'giver'>,
+  got: boolean,
+  marked: Record<Id, unknown> = {},
+): { id: Id; role: PartnerRole | 'solo'; points: number }[] {
+  const parts = tilePoints({ ...rules, giver: s.giver }, value, got);
+  const solo = wholePoints((value * (got ? Math.max(rules.got.giver, rules.got.guesser) : rules.missed.guesser)) / 100) || 0;
+  return partnerPlayers(s)
+    .filter((p) => !marked[p.id])
+    .map((p) => ({ ...p, points: p.role === 'solo' ? solo : parts[p.role] }));
+}
+
+/**
+ * How the two stand on the clue, from their marks since it opened (by hand, or ✔ Got it / ✘ Missed): judged once each of
+ * them has one; got when the guesser's is ✔ (Solo: the picker's).
+ */
+export function partnerVerdict(s: Pick<PartnerState, 'pickerId' | 'partnerId' | 'giver'>, marks: Record<Id, Mark>): { judged: boolean; got: boolean } {
+  const players = partnerPlayers(s);
+  const guesser = players.find((p) => p.role !== 'giver');
+  return { judged: players.length > 0 && players.every((p) => !!marks[p.id]), got: !!guesser && !!marks[guesser.id]?.right };
+}
+
+/** "+$400", "−$200", "$0". */
+const signed = (n: number, sym: string) => `${n > 0 ? '+' : ''}${formatPoints(n, sym)}`;
+
+/** What ✔ Got it or ✘ Missed gives, by its button: "Bob +$400 · Ann +$200" (a 0 left out; none at all: "no points"). */
+export function sharesText(shares: { id: Id; points: number }[], name: (id: Id) => string, sym: string): string {
+  return (
+    shares
+      .filter((x) => x.points)
+      .map((x) => `${name(x.id)} ${signed(x.points, sym)}`)
+      .join(' · ') || 'no points'
+  );
+}
+
+/** The two's marks, the giver first: "Bob ✔ +$400 · Ann ✔ +$200", "Ann ✘ −$200 · Bob ✘ 0". */
+export function marksText(s: Pick<PartnerState, 'pickerId' | 'partnerId' | 'giver'>, marks: Record<Id, Mark>, name: (id: Id) => string, sym: string): string {
+  return partnerPlayers(s)
+    .flatMap(({ id }) => {
+      const m = marks[id];
+      return m ? [`${name(id)} ${m.right ? '✔' : '✘'} ${m.delta ? signed(m.delta, sym) : '0'}`] : [];
+    })
+    .join(' · ');
+}
+
+/** The phones' line once it's judged: "✔ Got it! Bob +$400 · Ann +$200", "✘ Missed: Ann −$200" (no points: just that). */
+export function resultLine(s: Pick<PartnerState, 'pickerId' | 'partnerId' | 'giver'>, marks: Record<Id, Mark>, name: (id: Id) => string, sym: string): string {
+  const pts = partnerPlayers(s)
+    .flatMap(({ id }) => (marks[id]?.delta ? [`${name(id)} ${signed(marks[id].delta, sym)}`] : []))
+    .join(' · ');
+  return partnerVerdict(s, marks).got ? `✔ Got it!${pts ? ` ${pts}` : ''}` : `✘ Missed${pts ? `: ${pts}` : ''}`;
+}
+
+/** The score log's words after the tile's name: "partner clue: Bob described, Ann guessed" (Solo: "Ann played it alone"). */
+export function partnerReason(rules: PartnerRules, names: { giver?: string; guesser?: string; solo?: boolean }): string {
+  if (names.solo) return `partner clue: ${names.guesser ?? '?'} played it alone`;
+  const d = DOING[rules.game];
+  return `partner clue: ${names.giver ?? '?'} ${d.did}, ${names.guesser ?? '?'} ${d.guessed}`;
 }
 
 const ITEM_WORDS: Record<CardItem['kind'], [string, string]> = {

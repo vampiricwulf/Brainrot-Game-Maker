@@ -58,7 +58,7 @@ describe('who plays a partner clue', () => {
   it('opens on PARTNER UP! with whoever was marked to pick, and the clue’s parts', () => {
     const { g, clue, session } = setup();
     openClue(session, REF, g);
-    expect(session.partner).toEqual({ clue: clue.id, stage: 'pick', giver: 'partner', pickerId: 'a' });
+    expect(session.partner).toEqual({ clue: clue.id, at: expect.any(Number), stage: 'pick', giver: 'partner', pickerId: 'a' });
     expect(session.dd).toBeNull();
   });
 

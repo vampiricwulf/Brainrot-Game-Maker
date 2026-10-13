@@ -60,7 +60,7 @@
         ['Enter in the Daily Double wager', 'Show the question (its player answers it)'],
         ['Esc on a Daily Double splash', 'Back to the board: the tile stays playable (no wager was taken)'],
         ['W on a partner clue', 'Spin for a partner (1–9: choose one yourself)'],
-        ['Enter on a partner clue', 'Show the question, then start the clock once you’ve copied the cards to their players'],
+        ['Enter on a partner clue', 'Show the question, start the clock once you’ve copied the cards to their players, then ✔ Got it (Shift+Enter: ✘ Missed)'],
         ['Esc on a partner clue before the question', 'Back to the board: the tile stays playable'],
         ['Right-click a tile', 'Open it, mark it as played without opening it, or put a used one back'],
       ],

@@ -1,8 +1,9 @@
 <!--
   🤝 A partner clue's part of the host panel (partner-clues spec §6.10): PARTNER UP! (who picked it, the partner by the
-  wheel or by hand, ⇄ Swap), then 📤 Hand out the cards (who gets each card, and 📋 copying it to them). In one window
-  this panel is on stream: it counts what's on a card and never says it, nor names a card's pictures (a file name is
-  often the answer). The cards themselves are in the editor's 🤫 Card tabs, and the two-window host column.
+  wheel or by hand, ⇄ Swap), then 📤 Hand out the cards (who gets each card, and 📋 copying it to them), and ✔ Got it /
+  ✘ Missed with what each gives. In one window this panel is on stream: it counts what's on a card and never says it, nor
+  names a card's pictures (a file name is often the answer). The cards themselves are in the editor's 🤫 Card tabs, and
+  the two-window host column.
 -->
 <script lang="ts">
   import { onMount } from 'svelte';
@@ -12,8 +13,8 @@
   import { mediaUrls } from '../../lib/media.svelte';
   import { cardSlides, PARTNER_GAMES, type Clue, type ClueCard, type Game, type Id, type PartnerState, type Session } from '../../lib/model';
   import {
-    cardCopyText, cardRecipients, cardSummary, goesToLabel, lowerWord, pairOnly, partnerCandidates, partnerRoles, partnerRules, partWordOf, partWords, recipientsText,
-    resetRecipients, setPartner, setPartnerPicker, setRecipients, swapParts,
+    cardCopyText, cardRecipients, cardSummary, goesToLabel, lowerWord, marksText, pairOnly, partnerCandidates, partnerRoles, partnerRules, partnerShares, partnerVerdict,
+    partWordOf, partWords, recipientsText, resetRecipients, setPartner, setPartnerPicker, setRecipients, sharesText, swapParts,
   } from '../../lib/partner';
   import { cardItems, cardLinks, cardWords } from '../../lib/phonecard';
   import { clueName } from '../../lib/session';
@@ -29,9 +30,12 @@
     session,
     clue,
     dual = false,
+    value,
+    marks,
     onspin,
     onshow,
     onclock,
+    onjudge,
   }: {
     game: Game;
     session: Session;
@@ -45,6 +49,12 @@
     onshow: () => void;
     /** ⏱ Start the clock: the countdown starts. */
     onclock: () => void;
+    /** What the shares are of: the Amount box (the tile's value, unless the host changed it). */
+    value: number;
+    /** Each player's mark on the clue since it opened (clueMarks): who's scored already. */
+    marks: Record<Id, { right: boolean; delta: number }>;
+    /** ✔ Got it (true) or ✘ Missed: both of the two in one step. */
+    onjudge: (got: boolean) => void;
   } = $props();
 
   // (Mounted only while there's one; a stand-in for the moment it goes, before this part does.)
@@ -120,9 +130,30 @@
       : `${roles.giver ? name(roles.giver) : 'The partner'} ${G.verb} · ${roles.guesser ? name(roles.guesser) : 'the partner'} ${G.guessVerb}`,
   );
   function swap(): void {
+    if (verdict.judged) return;
     swapParts(s);
     announce(partsSaid);
   }
+
+  // ---------- Judging ----------
+
+  const sym = $derived(game.settings.currencySymbol);
+  /** Both of the two have a mark on the clue: judged (an Undo opens it all again). */
+  const verdict = $derived(partnerVerdict(s, marks));
+  /** Enter and Shift+Enter judge (nobody picked) once the clock runs: the buttons show their keys then. */
+  const judgeKeys = $derived(s.stage === 'live' && !verdict.judged);
+  /** What ✔ Got it and ✘ Missed give now: to whoever of the two isn't scored yet. */
+  const gotShares = $derived(partnerShares(value, rules, s, true, marks));
+  const missShares = $derived(partnerShares(value, rules, s, false, marks));
+  /** " · Bob already scored": one of the two scored by hand first (the buttons leave them as they are). */
+  const already = $derived(
+    s.partnerId && !verdict.judged
+      ? [...new Set([s.pickerId, s.partnerId])]
+          .filter((id): id is Id => !!id && !!marks[id])
+          .map((id) => ` · ${name(id)} already scored`)
+          .join('')
+      : '',
+  );
 
   // ---------- The cards ----------
 
@@ -200,7 +231,9 @@
           : '';
       return { label: '🎡 Spin for a partner', key: 'W', title: why || 'W, Enter or N: the wheel spins over the other players', disabled: !!why, run: onspin };
     }
-    if (st.stage === 'distribute') return { label: '⏱ Start the clock', key: '⏎', title: 'Enter or N: the countdown starts (copy the cards to their players first)', run: onclock };
+    // (Judged meanwhile, by a click: the clue's own next, the answer.)
+    if (st.stage === 'distribute' && !verdict.judged)
+      return { label: '⏱ Start the clock', key: '⏎', title: 'Enter or N: the countdown starts (copy the cards to their players first)', run: onclock };
     return null;
   });
 </script>
@@ -224,7 +257,16 @@
 
 {#snippet parts()}
   <span class="parts" data-partner-parts>{roles.solo ? '🎯' : G.icon} {partsSaid.replace(' · ', ' · 🎯 ')}</span>
-  <button class="small ghost" onclick={swap} disabled={roles.solo} title={roles.solo ? 'Solo: one player plays both parts' : `Turn the parts round: the ${lowerWord(words.giver)} becomes the ${lowerWord(words.guesser)} (the cards that follow a part go with it, and so do the points)`}>⇄ Swap</button>
+  <button
+    class="small ghost"
+    onclick={swap}
+    disabled={roles.solo || verdict.judged}
+    title={roles.solo
+      ? 'Solo: one player plays both parts'
+      : verdict.judged
+        ? 'It’s judged: undo that first (Ctrl+Z) to change the parts'
+        : `Turn the parts round: the ${lowerWord(words.giver)} becomes the ${lowerWord(words.guesser)} (the cards that follow a part go with it, and so do the points)`}>⇄ Swap</button
+  >
 {/snippet}
 
 <div class="partner" data-partner-panel>
@@ -282,46 +324,76 @@
     {#if cards.length}<span class="muted small">📋 You’ll copy the cards to them: phones only show who plays.</span>{/if}
   {:else}
     <div class="row">
-      <b>{cards.length ? '📤 Hand out the cards' : '🤝 Partner clue'}</b>
+      <b>{cards.length && !verdict.judged ? '📤 Hand out the cards' : '🤝 Partner clue'}</b>
       {@render parts()}
-      <button class="ghost small" aria-haspopup="menu" onclick={partnerMenu} title="Choose another partner (the cards that follow a part go with it)">change partner ▾</button>
+      <button
+        class="ghost small"
+        aria-haspopup="menu"
+        onclick={partnerMenu}
+        disabled={verdict.judged}
+        title={verdict.judged ? 'It’s judged: undo that first (Ctrl+Z) to choose another partner' : 'Choose another partner (the cards that follow a part go with it)'}>change partner ▾</button
+      >
     </div>
-    {#each cards as card, i (card.id)}
-      {@const n = i + 1}
-      {@const to = recipients(card)}
-      {@const changed = !!s.deal?.[card.id]}
-      {@const pics = cardItems(game, card).some((it) => it.kind === 'picture' || it.kind === 'gif')}
-      {@const copyable = !!cardWords(card) || cardLinks(game, card).length > 0}
-      <!-- One row a card: what's on it (counted), who gets it, and the copy buttons. -->
-      <div class="row card" data-card={n}>
-        <b>Card {n}</b>
-        <span class="muted small">· {cardSummary(game, card)}</span>
-        <span aria-hidden="true">→</span>
-        {#each session.players as p (p.id)}
-          {@render chip(p.id, to.includes(p.id), `Card ${n} to ${p.name}`, () => toggle(card, p.id))}
-        {/each}
-        {#if others.length}
-          <button class="chip ghost" aria-pressed={others.every((id) => to.includes(id))} onclick={() => everyoneElse(card)} aria-label="Card {n} to everyone else">Everyone else</button>
-        {/if}
-        <button class="chip ghost" aria-pressed={!to.length} onclick={() => setRecipients(session, s, card, [])} aria-label="Card {n} to nobody">Nobody</button>
-        {#if !to.length}<span class="muted small">nobody yet</span>{/if}
-        {#if changed}
-          <span class="muted small">(changed)</span>
-          <button class="ghost small" onclick={() => resetRecipients(s, card.id)} title="Back to who it goes to by default: {goesToLabel(rules, card.to, false)}" aria-label="Card {n}: back to {goesToLabel(rules, card.to, false)}">↺</button>
-        {/if}
-        <span class="spacer"></span>
-        <button class="small" onclick={() => copyWords(card, n)} disabled={!to.length || !copyable}
-          title={!to.length ? 'Choose who gets it first' : copyable ? `Copies “For ${to.map(name).join(', ')} only…” with the card’s words and links, to paste in a DM` : 'This card has no words or links: 📋 Copy picture'}
-          >📋 Copy words</button
-        >
-        {#if pics && canCopyPicture}
-          <button class="small" onclick={() => copyPicture(card, n)} disabled={!to.length} title={to.length ? 'Copies the card’s picture, to paste in a DM' : 'Choose who gets it first'}>📋 Copy picture</button>
-        {/if}
-      </div>
-    {/each}
-    {#if cards.length}
-      <span class="muted small">📋 Copy each card to its {noun}s (paste it in a DM): phones only show who plays. The points follow the parts, not the cards.</span>
+    {#if verdict.judged}
+      <!-- Judged: the list closes to one line a card (who it went to). An Undo opens it again. -->
+      {#each cards as card, i (card.id)}
+        <div class="row small" data-card={i + 1}>Card {i + 1} → {recipientsText(session, s, rules, card)}</div>
+      {/each}
+    {:else}
+      {#each cards as card, i (card.id)}
+        {@const n = i + 1}
+        {@const to = recipients(card)}
+        {@const changed = !!s.deal?.[card.id]}
+        {@const pics = cardItems(game, card).some((it) => it.kind === 'picture' || it.kind === 'gif')}
+        {@const copyable = !!cardWords(card) || cardLinks(game, card).length > 0}
+        <!-- One row a card: what's on it (counted), who gets it, and the copy buttons. -->
+        <div class="row card" data-card={n}>
+          <b>Card {n}</b>
+          <span class="muted small">· {cardSummary(game, card)}</span>
+          <span aria-hidden="true">→</span>
+          {#each session.players as p (p.id)}
+            {@render chip(p.id, to.includes(p.id), `Card ${n} to ${p.name}`, () => toggle(card, p.id))}
+          {/each}
+          {#if others.length}
+            <button class="chip ghost" aria-pressed={others.every((id) => to.includes(id))} onclick={() => everyoneElse(card)} aria-label="Card {n} to everyone else">Everyone else</button>
+          {/if}
+          <button class="chip ghost" aria-pressed={!to.length} onclick={() => setRecipients(session, s, card, [])} aria-label="Card {n} to nobody">Nobody</button>
+          {#if !to.length}<span class="muted small">nobody yet</span>{/if}
+          {#if changed}
+            <span class="muted small">(changed)</span>
+            <button class="ghost small" onclick={() => resetRecipients(s, card.id)} title="Back to who it goes to by default: {goesToLabel(rules, card.to, false)}" aria-label="Card {n}: back to {goesToLabel(rules, card.to, false)}">↺</button>
+          {/if}
+          <span class="spacer"></span>
+          <button class="small" onclick={() => copyWords(card, n)} disabled={!to.length || !copyable}
+            title={!to.length ? 'Choose who gets it first' : copyable ? `Copies “For ${to.map(name).join(', ')} only…” with the card’s words and links, to paste in a DM` : 'This card has no words or links: 📋 Copy picture'}
+            >📋 Copy words</button
+          >
+          {#if pics && canCopyPicture}
+            <button class="small" onclick={() => copyPicture(card, n)} disabled={!to.length} title={to.length ? 'Copies the card’s picture, to paste in a DM' : 'Choose who gets it first'}>📋 Copy picture</button>
+          {/if}
+        </div>
+      {/each}
+      {#if cards.length}
+        <span class="muted small">📋 Copy each card to its {noun}s (paste it in a DM): phones only show who plays. The points follow the parts, not the cards.</span>
+      {/if}
     {/if}
+    <!-- ✔ Got it / ✘ Missed: what each gives, from the question on (a click judges while handing out the cards too; the
+         keys wait for the clock). Judged, the line reads the marks; an Undo brings the buttons back. (Clicked, they go
+         off: Play's partnerJudge gives the keys to the main button.) -->
+    <div class="row judge" data-partner-judge>
+      <button class="good" onclick={() => onjudge(true)} disabled={verdict.judged} title={verdict.judged ? 'Judged: Ctrl+Z takes it back' : judgeKeys ? 'Enter (nobody picked)' : 'Scores both now (Enter starts the clock first)'}
+        >✔ Got it{#if judgeKeys}{' '}<kbd aria-hidden="true">⏎</kbd>{/if}</button
+      >
+      {#if !verdict.judged}<span class="small shares" data-judge-got>{sharesText(gotShares, name, sym)}{already}</span>{/if}
+      <button class="bad" onclick={() => onjudge(false)} disabled={verdict.judged} title={verdict.judged ? 'Judged: Ctrl+Z takes it back' : judgeKeys ? 'Shift+Enter (nobody picked)' : 'Scores both now'}
+        >✘ Missed{#if judgeKeys}{' '}<kbd aria-hidden="true">⇧⏎</kbd>{/if}</button
+      >
+      {#if verdict.judged}
+        <span class="small" data-judged>Judged: {marksText(s, marks, name, sym)}</span>
+      {:else}
+        <span class="small shares" data-judge-missed>{sharesText(missShares, name, sym)}{already}</span>
+      {/if}
+    </div>
   {/if}
   {#if !dual}
     <span class="exposed">⚠ Viewers can see this window: what’s on a card is never shown here (check the cards in the editor’s 🤫 Card tabs).</span>
@@ -369,5 +441,12 @@
   .exposed {
     color: var(--warn);
     font-size: 12px;
+  }
+  .judge {
+    padding-top: 4px;
+    border-top: 1px solid rgba(255, 255, 255, 0.08);
+  }
+  .shares {
+    margin-right: 8px;
   }
 </style>

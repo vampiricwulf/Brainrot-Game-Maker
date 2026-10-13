@@ -16,6 +16,7 @@
   import TimerControls from './host/TimerControls.svelte';
   import DDControls from './host/DDControls.svelte';
   import PartnerControls from './host/PartnerControls.svelte';
+  import { partnerRules, partnerShares, partnerVerdict } from '../lib/partner';
   import FinalControls from './host/FinalControls.svelte';
   import EndControls from './host/EndControls.svelte';
   import ToolsControls from './host/ToolsControls.svelte';
@@ -82,6 +83,7 @@
     onpartnerspin = () => {},
     onpartnershow = () => {},
     onpartnerclock = () => {},
+    onpartnerjudge = () => {},
     onfinalstep,
     ontiebreaker,
     ontiebreakerdone,
@@ -182,6 +184,8 @@
     onpartnerspin?: () => void;
     onpartnershow?: () => void;
     onpartnerclock?: () => void;
+    /** ✔ Got it (true) or ✘ Missed (false) on a partner clue: both of the two in one step. */
+    onpartnerjudge?: (got: boolean) => void;
     onfinalstep: () => void;
     /** Play the tiebreaker clue (from the end screen's tie). */
     ontiebreaker: () => void;
@@ -238,8 +242,6 @@
   const setup = $derived(!!own?.setup);
   /** A 🤝 partner clue that's open (its own part of the panel is up). */
   const partner = $derived(session.phase === 'clue' && info?.clue.type === 'partner' ? session.partner : null);
-  /** A partner clue's own main button comes first: spin, show the question, start the clock (then the clue's own). */
-  const partnerFirst = $derived(!!partner && partner.stage !== 'live');
   const scoring = $derived(awardOpen(session));
   // (Off in a copy with no buzzer server, see buzzerOn.)
   const buzzing = $derived(buzzerOn(game.settings) && session.phase === 'clue' && !own && !everyone);
@@ -461,7 +463,26 @@
     if (!clueKey() || ddWager) return;
     queueMicrotask(() => document.querySelector<HTMLElement>('.panel [data-next]')?.focus({ preventScroll: true }));
   });
-  const marks = $derived(session.phase === 'clue' && info ? clueMarks(session, info.clue.id, markSince) : {});
+  // (A partner clue knows when it opened, a reload too.)
+  const marks = $derived(session.phase === 'clue' && info ? clueMarks(session, info.clue.id, partner?.at ?? markSince) : {});
+  /** The open partner clue is judged: each of the two has a mark on it (an Undo takes that away again). */
+  const partnerJudged = $derived(!!partner && partnerVerdict(partner, marks).judged);
+  /**
+   * A partner clue's own main button comes first: spin, show the question, start the clock (then the clue's own, as soon
+   * as it's judged: the answer next).
+   */
+  const partnerFirst = $derived(!!partner && partner.stage !== 'live' && !partnerJudged);
+  /** What a partner clue's shares are of: the Amount box (the tile's value, unless the host changed it). */
+  const partnerValue = $derived(typeof amount === 'number' && Number.isFinite(amount) ? Math.abs(amount) : (info?.value ?? 0));
+  /**
+   * A quick ✔ (`got`) or ✘ on a partner clue's player: their part's share, signed ("+$400", "−$200", "$0"); null for
+   * anyone else (and on any other clue).
+   */
+  function quickShare(id: string, got: boolean): string | null {
+    if (!partner || !info) return null;
+    const p = partnerShares(partnerValue, partnerRules(info.clue), partner, got).find((x) => x.id === id)?.points;
+    return p === undefined ? null : `${p > 0 ? '+' : ''}${formatPoints(p, sym)}`;
+  }
   /** ✔ / ✘ pressed: that button is off now, so the focus goes on to the main button (not lost to the page). */
   function judged(): void {
     void tick().then(() => {
@@ -475,7 +496,13 @@
    * only for the player who found it.
    */
   const quickFor = (id: string) =>
-    game.settings.deductOnWrong && session.phase === 'clue' && !!info && !toolOnly && (session.dd?.stage !== 'question' || session.dd.playerId === id);
+    game.settings.deductOnWrong &&
+    session.phase === 'clue' &&
+    !!info &&
+    !toolOnly &&
+    (session.dd?.stage !== 'question' || session.dd.playerId === id) &&
+    // A partner clue's question: only its two (each with their share).
+    (!partner || (partner.stage !== 'pick' && quickShare(id, true) !== null));
   /** On the board and through a clue the chips keep one width (the mark's place, and ✔ / ✘'s, kept where unused). */
   const chipSlots = $derived(session.phase === 'board' || (session.phase === 'clue' && !!info));
 
@@ -640,6 +667,8 @@
         <span class="muted">Daily Double: who found it, and their wager</span>
       {:else if partner?.stage === 'pick'}
         <span class="muted">{partner.partnerId ? 'Partner clue: show the question when you’re ready' : 'Partner clue: spin for a partner'}</span>
+      {:else if partnerJudged}
+        <span class="muted">Answer hidden · judged</span>
       {:else if partner?.stage === 'distribute'}
         <span class="muted">Answer hidden · hand out the cards</span>
       {:else}
@@ -797,20 +826,23 @@
           {#if quickFor(p.id)}
             <!-- Pressed once on this clue, the same one is off (＋ Award / − Deduct still give or take more on purpose). -->
             {@const was = marks[p.id]?.right}
+            <!-- (A partner clue: each of the two's own share, a ✘ often 0 for the partner.) -->
+            {@const gets = quickShare(p.id, true) ?? `+${formatPoints(quickValue, sym)}`}
+            {@const loses = quickShare(p.id, false) ?? `−${formatPoints(quickValue, sym)}`}
             <button
               class="small quick right"
               onclick={() => (onright(p.id), judged())}
               disabled={was === true}
-              aria-label="Right: {p.name} +{formatPoints(quickValue, sym)}"
-              title={was === true ? `${p.name} is marked right on this clue (＋ Award gives more)` : `Correct: award ${formatPoints(quickValue, sym)} to ${p.name} only`}
+              aria-label="Right: {p.name} {gets}"
+              title={was === true ? `${p.name} is marked right on this clue (＋ Award gives more)` : partner ? `Got it: ${p.name} only, ${gets} (their share)` : `Correct: award ${formatPoints(quickValue, sym)} to ${p.name} only`}
               >✔</button
             >
             <button
               class="small quick wrong"
               onclick={() => (onwrong(p.id), judged())}
               disabled={was === false}
-              aria-label="Wrong: {p.name} −{formatPoints(quickValue, sym)}"
-              title={was === false ? `${p.name} is marked wrong on this clue (− Deduct takes more)` : `Wrong: deduct ${formatPoints(quickValue, sym)} from ${p.name}`}
+              aria-label="Wrong: {p.name} {loses}"
+              title={was === false ? `${p.name} is marked wrong on this clue (− Deduct takes more)` : partner ? `Missed: ${p.name} only, ${loses} (their share)` : `Wrong: deduct ${formatPoints(quickValue, sym)} from ${p.name}`}
               >✘</button
             >
           {:else if chipSlots && game.settings.deductOnWrong}
@@ -846,7 +878,18 @@
 
       {#if partner && info}
         {#key info.clue.id}
-          <PartnerControls {game} {session} clue={info.clue} {dual} onspin={onpartnerspin} onshow={onpartnershow} onclock={onpartnerclock} />
+          <PartnerControls
+            {game}
+            {session}
+            clue={info.clue}
+            {dual}
+            value={partnerValue}
+            {marks}
+            onspin={onpartnerspin}
+            onshow={onpartnershow}
+            onclock={onpartnerclock}
+            onjudge={onpartnerjudge}
+          />
         {/key}
       {/if}
 

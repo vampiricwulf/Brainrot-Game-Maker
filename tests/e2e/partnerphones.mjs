@@ -142,6 +142,16 @@ try {
     const words = await p.locator('body').innerText();
     assert(!words.includes('quietly-qq') && !words.includes('Card-only-zz'), `${name}’s phone gets no question words and no card`);
   }
+  // ⏱ Start the clock, then ✔ Got it (Enter, each a moment after the step before): every phone says how it went.
+  await sleep(1100);
+  await host.keyboard.press('Enter');
+  await host.locator('.stage-box .timer').waitFor();
+  await sleep(1100);
+  await host.keyboard.press('Enter');
+  assert(
+    (await says(ann, '✔ Got it! Player 2 +$400 · Player 1 +$200')) && (await says(bob, '✔ Got it! Player 2 +$400 · Player 1 +$200')),
+    'judged: every phone says “✔ Got it! Player 2 +$400 · Player 1 +$200”',
+  );
   await host.keyboard.press('r');
   assert(await says(bob, '🤝 Player 2 described → Player 1 guessed'), 'the answer up: “🤝 Player 2 described → Player 1 guessed”');
   await host.keyboard.press('Escape');

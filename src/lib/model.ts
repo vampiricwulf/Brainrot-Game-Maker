@@ -766,8 +766,14 @@ export interface PartnerState {
   /** The clue it's for: a state left over from another clue is dropped. */
   clue: Id;
   /**
+   * When the tile opened: the marks on the clue since then are this play's (✔ Got it and ✘ Missed score whoever of the
+   * two has none yet). A tile put back and played again starts afresh. Left out (an older save): every mark on the clue.
+   */
+  at?: number;
+  /**
    * 'pick': PARTNER UP!, the wheel, choosing (the question isn't on screen yet). 'distribute': the question is up and the
-   * host hands out the cards. 'live': the clock started (or the clue has no cards).
+   * host hands out the cards. 'live': the clock started (or the clue has no cards). Judged is not a stage: it's both of
+   * the two having a mark on the clue (partnerVerdict), so an Undo of ✔ Got it or ✘ Missed opens the list again.
    */
   stage: 'pick' | 'distribute' | 'live';
   /** Who picked the tile (as on a Daily Double: whoever was marked to pick). */

@@ -2,7 +2,7 @@
 // Pure functions over plain objects so they're easy to test and to autosave.
 import { ensureWorld, refindPositions } from './rpg';
 import { ensureBoard, refindSpaces } from './boardgame';
-import { cardSlides, pairOnly, resetRecipients, startPartner } from './partner';
+import { cardSlides, pairOnly, partnerReason, partnerRoles, partnerRules, partnerShares, resetRecipients, startPartner } from './partner';
 import { categoryLabel, clueValue, FINAL_V1_ROUND_ID, finalName, formatPoints, getClue, isBoard, isBoardGame, isFinal, isRpg, isSlides, MAX_POINTS, newId, playableClues, questionSlides, type BoardRound, type Clue, type ClueRef, type ExtraSlide, type FinalRound, type FinalState, type Game, type Id, type PartnerState, type Player, type Round, type ScoreEvent, type Session, type Slide, type SlidesRound, type WagerSource } from './model';
 
 export function newSession(game: Game): Session {
@@ -434,6 +434,36 @@ export function clueMarks(session: Session, clueId: string, since = 0): Record<s
     marks[e.playerId] = { right, delta: (marks[e.playerId]?.delta ?? 0) + e.delta };
   }
   return marks;
+}
+
+/**
+ * ✔ Got it (`got`) or ✘ Missed on the open 🤝 partner clue (partner-clues spec §6.6, §9): each of the two with no mark on
+ * it yet (since the tile opened: scored by hand first, they're left as they are) gets their part's share of `value` (the
+ * tile's, or the Amount box's), all in one undo step (`batchId`). A 0, or a deduction that ⚖ Negative scores off leaves
+ * out, is logged as a 0 all the same, so both always get a mark. After ✔ Got it the guesser picks next (while "Player who
+ * gets points picks next" is on), kept on the first event so an Undo gives the board back. Returns the events: none when
+ * both were already scored, or before the question shows.
+ */
+export function judgePartner(session: Session, game: Game, got: boolean, value: number, batchId = newId()): ScoreEvent[] {
+  const s = session.partner;
+  const ref = session.currentClue;
+  const clue = ref ? getClue(game, ref)?.clue : undefined;
+  if (session.phase !== 'clue' || !s || !ref || !clue || clue.id !== s.clue || s.stage === 'pick') return [];
+  const rules = partnerRules(clue);
+  const roles = partnerRoles(s);
+  const name = (id: Id | undefined) => (id ? playerName(session, id) : undefined);
+  const reason = `${clueReason(game, ref)} (${partnerReason(rules, { giver: name(roles.giver), guesser: name(roles.guesser), solo: roles.solo })})`;
+  const events: ScoreEvent[] = [];
+  for (const { id, points } of partnerShares(value, rules, s, got, clueMarks(session, s.clue, s.at ?? 0))) {
+    const scored = points ? applyScore(session, game, [id], points, reason, s.clue, false, batchId) : [];
+    events.push(...(scored.length ? scored : logZero(session, [id], reason, s.clue, got, batchId)));
+  }
+  const guesser = roles.guesser;
+  if (got && events.length && guesser && game.settings.pickerFollowsAward !== false && session.currentPickerId !== guesser && session.players.some((p) => p.id === guesser)) {
+    events[0].picker = { was: session.currentPickerId, now: guesser };
+    session.currentPickerId = guesser;
+  }
+  return events;
 }
 
 /**
@@ -1198,6 +1228,7 @@ function repairPartnerState(session: Session): void {
   const stages: unknown[] = ['pick', 'distribute', 'live'];
   if (typeof p !== 'object' || typeof p.clue !== 'string' || !stages.includes(p.stage)) return void (session.partner = null);
   if (p.giver !== 'partner' && p.giver !== 'picker') p.giver = 'partner';
+  if (p.at !== undefined && !Number.isFinite(p.at)) delete p.at;
   for (const k of ['pickerId', 'partnerId'] as const) if (p[k] !== undefined && typeof p[k] !== 'string') delete p[k];
   if (p.deal !== undefined) {
     const ok = typeof p.deal === 'object' && !!p.deal && Object.values(p.deal).every((to) => Array.isArray(to) && to.every((t) => typeof t?.seat === 'string'));
