@@ -14,8 +14,8 @@
  * goes to the host only. Their view says what's in (and once locked, what was locked in).
  *
  * On a computer (a mouse and a keyboard, `fine`): Space or Enter buzzes from anywhere on the buzz screen but a box to type
- * in, the number keys pick a seat, Esc goes back, and the page shows those keys (and says when another window has them).
- * A phone works as it always has.
+ * in or another button Tab took the keys to, the number keys pick a seat, Esc goes back, and the page shows those keys
+ * (and says when another window has them). A phone works as it always has.
  */
 import { isRoomCode, ROOM_ALPHABET, type DenyReason, type PhoneView, type PhoneWager, type RoomToPhone } from '../../src/lib/buzzproto';
 import { PLAYER_COLOR_NAMES, PLAYER_PALETTE, textOn } from '../../src/lib/colors';
@@ -750,8 +750,9 @@ function render(): void {
     btn.textContent = notice.button?.label ?? '';
     say(`${notice.title}. ${notice.text}`);
     show('s-msg');
-    // Desktop: the keys go to its button (Pick a seat, Join another game) as it comes up, so Enter takes it.
-    if (fresh && notice.button && fine.matches) btn.focus({ preventScroll: true });
+    // Desktop: the keys go to the notice as it comes up (its title, read first), not to its button: Space, pressed a
+    // moment ago to buzz, would take it before it's read ("Join another game" leaves the result). Enter takes it.
+    if (fresh && fine.matches) $('msg-title').focus({ preventScroll: true });
     return;
   }
   if (away) say(awayText());
@@ -930,11 +931,19 @@ function renderBuzz(v: PhoneView): void {
   const ansUp = !!ans?.open;
   $('answer-form').hidden = !ansUp;
   b.hidden = boxUp || ansUp;
-  // (Space types in a box: the buzzer's key hint goes with the buzzer.)
-  $('keys').hidden = b.hidden;
+  // Desktop: the key that buzzes, under the buzzer (to a screen reader too: its shortcut and description). Not with a
+  // box up (Space types there), nor once the game is over (it buzzes nothing).
+  const keys = fine.matches && !b.hidden && !(v.phase === 'lobby' && v.final);
+  $('keys').hidden = !keys;
+  for (const [attr, value] of [
+    ['aria-keyshortcuts', 'Space'],
+    ['aria-describedby', 'keys'],
+  ] as const)
+    if (keys) b.setAttribute(attr, value);
+    else b.removeAttribute(attr);
   const at = document.activeElement;
   // Desktop: keys the player left on a button under the buzzer (🎨, a colour, Not you?) or on the sound go into a box as
-  // it opens too: typing a wager or an answer is what's wanted then, and Enter would press that button instead.
+  // it opens too: typing a wager or an answer is what's wanted then, and Space or Enter there would press that button.
   const parked = fine.matches && at instanceof HTMLButtonElement && !!at.closest('.foot, header');
   if (ansUp !== wasAnsUp) {
     const lost = !at || at === document.body || $('answer-form').contains(at) || at === b || (ansUp && parked);
@@ -1237,13 +1246,13 @@ const typing = (t: EventTarget | null): boolean =>
 
 /**
  * Space and Enter buzz from anywhere on the buzz screen (the buzzer up, nothing over it), unless the keys are in a box
- * to type in. Enter still presses another button that Tab took the keys to (🎨, a colour, Not you?); Space is always
- * the buzzer's.
+ * to type in or on another button that Tab took them to (🎨, a colour, Not you?, the sound): that one takes both, as
+ * any button does. (A click on one of those leaves the keys where they were, so they stay the buzzer's.)
  */
 function buzzKey(e: KeyboardEvent): boolean {
   if ((e.key !== ' ' && e.key !== 'Enter') || $('s-buzz').hidden || $('buzz').hidden || !$('overlay').hidden || typing(e.target)) return false;
   const t = e.target;
-  return !(e.key === 'Enter' && t instanceof HTMLButtonElement && t !== $('buzz') && t.getClientRects().length > 0);
+  return !(t instanceof HTMLButtonElement && t !== $('buzz') && t.getClientRects().length > 0);
 }
 
 /** Moves the keys to the next (dir 1) or the previous (-1) of these buttons that can be pressed; from none of them, to the first (or the last). */
@@ -1255,13 +1264,16 @@ function stepFocus(e: KeyboardEvent, buttons: Iterable<HTMLButtonElement>, dir: 
   on[at < 0 ? (dir > 0 ? 0 : on.length - 1) : Math.max(0, Math.min(on.length - 1, at + dir))].focus();
 }
 
-/** Esc: shuts the colour picker, or goes back from a name form or a request to join. */
+/**
+ * Esc: shuts the colour picker, or goes back from a name form or a request to join. (Shut from a colour, the keys go on
+ * to the buzzer, not back to 🎨: Space there would open it again, not buzz.)
+ */
 function escape(e: KeyboardEvent): void {
   if (colorsOpen && !$('s-buzz').hidden) {
     const inside = $('colors').contains(document.activeElement);
     colorsOpen = false;
     if (view?.you) renderColors(view);
-    if (inside) $('color-btn').focus();
+    if (inside) $('buzz').focus();
   } else if (!$('s-new').hidden) $('new-back').click();
   else if (!$('s-team').hidden) $('team-back').click();
   else if (!$('s-wait').hidden && !$('wait-cancel').hidden) $('wait-cancel').click();
@@ -1273,6 +1285,13 @@ document.addEventListener('keydown', (e) => {
   if (e.isComposing || e.ctrlKey || e.metaKey || e.altKey) return;
   if (e.key === 'Escape') {
     if (!e.repeat) escape(e);
+    return;
+  }
+  // A notice: Enter takes its button (Pick a seat, Join another game) from anywhere on it; Space doesn't. (A button Tab
+  // took the keys to takes Enter itself.)
+  if (e.key === 'Enter' && !$('s-msg').hidden && !$('msg-btn').hidden && $('overlay').hidden && !(e.target instanceof HTMLButtonElement)) {
+    e.preventDefault();
+    if (!e.repeat) $('msg-btn').click();
     return;
   }
   if (buzzKey(e)) {
@@ -1318,16 +1337,13 @@ addEventListener('focus', () => drawKeys(false));
 addEventListener('blur', () => drawKeys(true));
 drawKeys();
 
-/** Desktop: the buzzer and the answer box say their keys to a screen reader too (the hints on screen are desktop only). */
+/**
+ * Desktop: the answer box says its keys to a screen reader too (the hints on screen are desktop only). The buzzer's
+ * are drawn with it (renderBuzz).
+ */
 function drawDesk(): void {
-  const on = fine.matches;
-  for (const [id, attr, value] of [
-    ['buzz', 'aria-keyshortcuts', 'Space'],
-    ['buzz', 'aria-describedby', 'keys'],
-    ['answer-in', 'aria-describedby', 'answer-keys'],
-  ] as const)
-    if (on) $(id).setAttribute(attr, value);
-    else $(id).removeAttribute(attr);
+  if (fine.matches) $('answer-in').setAttribute('aria-describedby', 'answer-keys');
+  else $('answer-in').removeAttribute('aria-describedby');
 }
 drawDesk();
 // A tablet that gets a mouse, a laptop folded into a tablet: the words and hints follow.
@@ -1380,10 +1396,12 @@ $('colors').addEventListener('click', (e) => {
   const b = (e.target as HTMLElement).closest<HTMLButtonElement>('button.swatch');
   if (!b || b.disabled || !b.dataset.color) return;
   if (b.getAttribute('aria-pressed') !== 'true') send({ t: 'color', color: b.dataset.color });
-  // Shut, keys back on the button that opened it; the buzzer turns the new colour when the host has it. (Picked with
-  // the mouse, the keys stay where they were: Space buzzes.)
+  // Shut; the buzzer turns the new colour when the host has it. Picked with the keys on a computer, they go on to the
+  // buzzer (Space buzzes, rather than open the picker again from 🎨); on a phone, back to the button that opened it.
+  // (Picked with the mouse, the keys stay where they were: Space buzzes.)
   colorsOpen = false;
-  if (e.detail === 0 || pointerKind === 'touch') $('color-btn').focus();
+  if (e.detail === 0 && fine.matches) $('buzz').focus();
+  else if (e.detail === 0 || pointerKind === 'touch') $('color-btn').focus();
   if (view?.you) renderColors(view);
 });
 $('wait-cancel').addEventListener('click', (e) => {
