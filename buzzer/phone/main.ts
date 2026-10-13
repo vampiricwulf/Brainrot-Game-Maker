@@ -12,6 +12,10 @@
  *
  * Wagers: while the host takes them (a Daily Double, a Final), the player's own box replaces the buzzer; what they send
  * goes to the host only. Their view says what's in (and once locked, what was locked in).
+ *
+ * On a computer (a mouse and a keyboard, `fine`): Space or Enter buzzes from anywhere on the buzz screen but a box to type
+ * in, the number keys pick a seat, Esc goes back, and the page shows those keys (and says when another window has them).
+ * A phone works as it always has.
  */
 import { isRoomCode, ROOM_ALPHABET, type DenyReason, type PhoneView, type PhoneWager, type RoomToPhone } from '../../src/lib/buzzproto';
 import { PLAYER_COLOR_NAMES, PLAYER_PALETTE, textOn } from '../../src/lib/colors';
@@ -39,6 +43,11 @@ const PROBE_MS = 2500;
 const BUZZ_ANSWER_MS = 3000;
 /** Buzzes sent this close together at most. */
 const BUZZ_GAP_MS = 150;
+
+/** A mouse (or trackpad) and a screen to hover: a desktop or laptop. The keys get hints there, and "tap" says "click". */
+const fine = matchMedia('(hover: hover) and (pointer: fine)');
+/** "Tap" on a touch screen, "Click" with a mouse. */
+const tap = (s: string): string => (fine.matches ? s.replace(/\bTap\b/g, 'Click').replace(/\btap\b/g, 'click') : s);
 
 let code = '';
 let ws: WebSocket | null = null;
@@ -110,6 +119,10 @@ let seatsKey = '';
 /** The colour picker is open; the colours it was last drawn with (redrawn only when they change, so focus stays). */
 let colorsOpen = false;
 let colorsKey = '';
+/** What the last press on the page was made with (a PointerEvent's pointerType: 'mouse', 'touch', 'pen'). */
+let pointerKind = '';
+/** A press on the buzzer that began with a pointerdown (it buzzed then): the click that ends it doesn't, however long it was held. */
+let pointerPress = false;
 
 // ---- saved seat (per room code) and this browser's id ----
 
@@ -335,17 +348,19 @@ function onMessage(m: RoomToPhone): void {
       // removed the player.
       if (!rejoining && seatId) {
         const wasTeams = !!view?.teams;
-        seatsNote = !m.seats.some((x) => x.id === seatId)
-          ? wasTeams
-            ? 'Your team left the game. Pick another one.'
-            : 'The host took you out of the game.'
-          : !!m.teams !== wasTeams
-            ? m.teams
-              ? 'The host switched to teams. Pick your team.'
-              : 'The host turned teams off. Tap your name.'
-            : m.teams
-            ? 'Your place on the team moved to another tab or phone. Tap your team to take it back here.'
-            : 'Your seat moved to another tab or phone. Tap your name to take it back here.';
+        seatsNote = tap(
+          !m.seats.some((x) => x.id === seatId)
+            ? wasTeams
+              ? 'Your team left the game. Pick another one.'
+              : 'The host took you out of the game.'
+            : !!m.teams !== wasTeams
+              ? m.teams
+                ? 'The host switched to teams. Pick your team.'
+                : 'The host turned teams off. Tap your name.'
+              : m.teams
+              ? 'Your place on the team moved to another tab or phone. Tap your team to take it back here.'
+              : 'Your seat moved to another tab or phone. Tap your name to take it back here.',
+        );
         const kept = m.seats.some((x) => x.id === seatId) && !!m.teams === wasTeams;
         if (!kept) saveSeat(null);
         seatMoved = kept;
@@ -430,7 +445,7 @@ function onMessage(m: RoomToPhone): void {
       saveSeat(null);
       // Freed: the host gave the seat to the player's other phone (no block: this one can still take it back).
       const [title, text] = m.freed
-        ? ['The host freed your seat', team ? 'So you can join from another phone. If that’s this one, pick your team again.' : 'So you can take it on another phone. If that’s this one, tap your name again.']
+        ? ['The host freed your seat', team ? 'So you can join from another phone. If that’s this one, pick your team again.' : tap('So you can take it on another phone. If that’s this one, tap your name again.')]
         : [team ? 'The host took you off the team' : 'The host took your seat back', team ? 'You can pick a team again.' : 'You can pick a seat again.'];
       notice = { title, text, button: { label: team ? 'Pick a team' : 'Pick a seat', run: () => ((notice = null), render()) } };
       break;
@@ -489,7 +504,7 @@ function denied(reason: DenyReason): void {
     $('team-err').textContent = reason === 'name-taken' ? 'Someone in the game already has that name: add a letter, or pick another.' : 'Type your name first.';
     return;
   }
-  seatsNote =
+  seatsNote = tap(
     {
       taken: wasRejoin ? 'Your seat was given to someone else. Tap your name again.' : 'Someone already has that seat. If it’s you on a new phone, ask the host to free it.',
       'unknown-seat': "That player isn't in the game any more.",
@@ -500,7 +515,8 @@ function denied(reason: DenyReason): void {
       blocked: seats?.teams ? 'The host took you off that team. Pick another one, or ask the host.' : 'The host took you off that seat. Pick another one, or ask the host.',
       'name-taken': 'A player already has that name. If it’s you, tap it; if not, pick another name.',
       'need-name': seats?.teams ? 'Pick your team, then type your name.' : 'Type a name with letters in it.',
-    }[reason] ?? "That didn't work. Try again.";
+    }[reason] ?? "That didn't work. Try again.",
+  );
 }
 
 /** "Not you?": let go of this seat and pick again (it asks first: the link is right under the buzz button). */
@@ -652,7 +668,13 @@ function drawSound(): void {
   const word = document.createElement('small');
   word.textContent = soundOn ? 'Sound on' : 'Muted';
   b.replaceChildren(soundOn ? '🔔 ' : '🔕 ', word);
-  b.title = soundOn ? 'Sound is on: tap to mute this phone' : 'Sound is off: tap to hear the buzzer sounds on this phone';
+  b.title = fine.matches
+    ? soundOn
+      ? 'Sound is on: click to mute the buzzer sounds'
+      : 'Sound is off: click to hear the buzzer sounds'
+    : soundOn
+      ? 'Sound is on: tap to mute this phone'
+      : 'Sound is off: tap to hear the buzzer sounds on this phone';
   // Its name is the words on it ("Sound on" / "Muted"), so "tap Muted" works by voice too.
   b.removeAttribute('aria-label');
   b.removeAttribute('aria-pressed');
@@ -698,7 +720,7 @@ function render(): void {
   $('overlay').hidden = !away;
   // Long gone: say what to check, and offer a try now (it keeps trying on its own too).
   const long = away && attempts > 3;
-  $('overlay-text').textContent = long ? 'Still trying to reconnect… check your Wi-Fi or mobile data' : 'Reconnecting…';
+  $('overlay-text').textContent = long ? `Still trying to reconnect… check your ${fine.matches ? 'internet connection' : 'Wi-Fi or mobile data'}` : 'Reconnecting…';
   $('overlay-retry').hidden = !long;
   // The page behind the overlay can't be reached (a screen reader or Tab would land on a buzzer that does nothing).
   // That drops focus, so a half-typed answer gets it back (and the phone keyboard) once reconnected.
@@ -720,13 +742,17 @@ function render(): void {
   $('sound').hidden = !(seatId && view?.you);
   if (!code) return show('s-code');
   if (notice) {
+    const fresh = $('s-msg').hidden;
     $('msg-title').textContent = notice.title;
     $('msg-text').textContent = notice.text;
     const btn = $('msg-btn');
     btn.hidden = !notice.button;
     btn.textContent = notice.button?.label ?? '';
     say(`${notice.title}. ${notice.text}`);
-    return show('s-msg');
+    show('s-msg');
+    // Desktop: the keys go to its button (Pick a seat, Join another game) as it comes up, so Enter takes it.
+    if (fresh && notice.button && fine.matches) btn.focus({ preventScroll: true });
+    return;
   }
   if (away) say(awayText());
   if (seatId && view?.you) return renderBuzz(view);
@@ -768,7 +794,7 @@ function renderTeam(t: SeatsMsg['seats'][number]): void {
 function renderSeats(s: SeatsMsg): void {
   if (s.title) $('title').textContent = s.title;
   const teams = !!s.teams;
-  $('seats-title').textContent = teams ? 'Pick your team' : 'Tap your name';
+  $('seats-title').textContent = teams ? 'Pick your team' : tap('Tap your name');
   const list = $('seat-list');
   // The seat this phone still holds a claim to (another tab or phone took it back): tapping it takes it back here.
   const saved = loadSeat();
@@ -779,7 +805,7 @@ function renderSeats(s: SeatsMsg): void {
   seatsKey = key;
   const had = document.activeElement instanceof HTMLElement && list.contains(document.activeElement) ? document.activeElement.dataset.seat : undefined;
   list.replaceChildren(
-    ...s.seats.map((x) => {
+    ...s.seats.map((x, i) => {
       const mine = saved?.seatId === x.id;
       const b = document.createElement('button');
       b.className = 'seat';
@@ -806,7 +832,7 @@ function renderSeats(s: SeatsMsg): void {
         who.className = 'who';
         const hint = document.createElement('span');
         hint.className = 'members hint';
-        hint.textContent = 'Yours, on another tab or phone · tap to take it back here';
+        hint.textContent = tap('Yours, on another tab or phone · tap to take it back here');
         who.append(name, hint);
         b.append(dot, who);
         b.setAttribute('aria-label', `${x.name}: ${hint.textContent}`);
@@ -826,6 +852,16 @@ function renderSeats(s: SeatsMsg): void {
         tag.className = 'tag';
         tag.textContent = '🔒';
         b.append(tag);
+      }
+      // Desktop: the number key that takes it (1–9), on its right. (Not part of its name: a screen reader hears the
+      // shortcut as such.)
+      if (i < 9) {
+        const k = document.createElement('kbd');
+        k.className = 'key desk';
+        k.setAttribute('aria-hidden', 'true');
+        k.textContent = String(i + 1);
+        b.append(k);
+        if (fine.matches) b.setAttribute('aria-keyshortcuts', String(i + 1));
       }
       b.addEventListener('click', () => {
         seatsNote = '';
@@ -862,7 +898,7 @@ function renderSeatsRest(s: SeatsMsg): void {
   $('host-away').hidden = s.hostHere;
   $('seats-status').textContent = s.locked ? '🔒 The host has locked the seats.' : (s.note ?? '');
   $('seats-note').textContent = seatsNote;
-  say([teams ? 'Pick your team.' : 'Tap your name.', seatsNote, s.locked ? 'The host has locked the seats.' : s.note ?? '', s.hostHere ? '' : "The host isn't connected right now."].filter(Boolean).join(' '));
+  say([teams ? 'Pick your team.' : tap('Tap your name.'), seatsNote, s.locked ? 'The host has locked the seats.' : s.note ?? '', s.hostHere ? '' : "The host isn't connected right now."].filter(Boolean).join(' '));
   show('s-seats');
 }
 
@@ -894,14 +930,20 @@ function renderBuzz(v: PhoneView): void {
   const ansUp = !!ans?.open;
   $('answer-form').hidden = !ansUp;
   b.hidden = boxUp || ansUp;
+  // (Space types in a box: the buzzer's key hint goes with the buzzer.)
+  $('keys').hidden = b.hidden;
+  const at = document.activeElement;
+  // Desktop: keys the player left on a button under the buzzer (🎨, a colour, Not you?) or on the sound go into a box as
+  // it opens too: typing a wager or an answer is what's wanted then, and Enter would press that button instead.
+  const parked = fine.matches && at instanceof HTMLButtonElement && !!at.closest('.foot, header');
   if (ansUp !== wasAnsUp) {
-    const lost = !document.activeElement || document.activeElement === document.body || !!$('answer-form').contains(document.activeElement) || document.activeElement === b;
+    const lost = !at || at === document.body || $('answer-form').contains(at) || at === b || (ansUp && parked);
     wasAnsUp = ansUp;
     if (lost) queueMicrotask(() => (ansUp ? $('answer-in') : b).focus());
   }
   // The keys (and a screen reader) follow: into the box as it opens, back to the buzzer as it goes.
   if (boxUp !== wasBoxUp) {
-    const lost = !document.activeElement || document.activeElement === document.body || !!$('wager-form').contains(document.activeElement) || document.activeElement === b;
+    const lost = !at || at === document.body || $('wager-form').contains(at) || at === b || (boxUp && parked);
     wasBoxUp = boxUp;
     if (lost) queueMicrotask(() => (boxUp ? $('wager-in') : b).focus());
   }
@@ -1116,7 +1158,7 @@ function answerState(a: NonNullable<PhoneView['answer']>, team: boolean): string
   // Seated after the answers began: one is in, but this phone isn't shown it (as for wagers).
   if (!a.text) return a.hidden ? `${team ? 'Your team’s' : 'Your'} answer is in with the host (not shown on a phone that joined after the answers began). Sending one replaces it.` : '';
   const typed = $<HTMLTextAreaElement>('answer-in').value.replace(/\s+/g, ' ').trim();
-  if (typed && typed !== a.text) return `Not sent yet: tap Change answer to send it. What the host has: “${a.text}”`;
+  if (typed && typed !== a.text) return `${tap('Not sent yet: tap Change answer to send it.')} What the host has: “${a.text}”`;
   return `${team && a.by ? `✔ ${a.byYou ? 'You' : a.by} sent it for your team` : '✔ Sent'}: “${a.text}”. You can change it until the host shows the answer.`;
 }
 
@@ -1167,31 +1209,141 @@ const ordinal = (n: number): string => n + (n % 100 >= 11 && n % 100 <= 13 ? 'th
 
 $('buzz').addEventListener('pointerdown', (e) => {
   e.preventDefault();
+  pointerPress = true;
   unlockAudio();
   buzz(e.timeStamp);
 });
-// A screen reader (or a switch) presses with a click and no pointerdown: that buzzes too, once.
+// (A press that turns into a scroll, or is taken by the system: no click comes.)
+$('buzz').addEventListener('pointercancel', () => (pointerPress = false));
+// A screen reader (or a switch) presses with a click and no pointerdown: that buzzes too, once. The click that ends a
+// press which buzzed on pointerdown doesn't, however long the button was held (a long one would buzz again, and before
+// the buzzers open that starts the early lock-out over).
 $('buzz').addEventListener('click', (e) => {
+  if (pointerPress) return void (pointerPress = false);
   if (performance.now() - lastPress < 600) return;
   buzz(e.timeStamp);
 });
 $('buzz').addEventListener('contextmenu', (e) => e.preventDefault());
+// A mouse press on 🎨, a colour, Not you? or the sound leaves the keys where they were, not on that button: Space and
+// Enter stay the buzzer's, and a wager or answer box that opens still takes them. (A touch screen's taps as before.)
+for (const el of [$('s-buzz'), document.querySelector('header')!])
+  el.addEventListener('mousedown', (e) => {
+    if (pointerKind !== 'touch' && (e.target as Element).closest('button:not(#buzz)')) e.preventDefault();
+  });
+
+/** Keys there are for typing (a name, a wager, an answer): never the buzzer's, nor a shortcut's. */
+const typing = (t: EventTarget | null): boolean =>
+  t instanceof HTMLInputElement || t instanceof HTMLTextAreaElement || t instanceof HTMLSelectElement || (t instanceof HTMLElement && t.isContentEditable);
+
+/**
+ * Space and Enter buzz from anywhere on the buzz screen (the buzzer up, nothing over it), unless the keys are in a box
+ * to type in. Enter still presses another button that Tab took the keys to (🎨, a colour, Not you?); Space is always
+ * the buzzer's.
+ */
+function buzzKey(e: KeyboardEvent): boolean {
+  if ((e.key !== ' ' && e.key !== 'Enter') || $('s-buzz').hidden || $('buzz').hidden || !$('overlay').hidden || typing(e.target)) return false;
+  const t = e.target;
+  return !(e.key === 'Enter' && t instanceof HTMLButtonElement && t !== $('buzz') && t.getClientRects().length > 0);
+}
+
+/** Moves the keys to the next (dir 1) or the previous (-1) of these buttons that can be pressed; from none of them, to the first (or the last). */
+function stepFocus(e: KeyboardEvent, buttons: Iterable<HTMLButtonElement>, dir: 1 | -1): void {
+  const on = [...buttons].filter((b) => !b.disabled && b.getClientRects().length > 0);
+  if (!on.length) return;
+  e.preventDefault();
+  const at = on.indexOf(document.activeElement as HTMLButtonElement);
+  on[at < 0 ? (dir > 0 ? 0 : on.length - 1) : Math.max(0, Math.min(on.length - 1, at + dir))].focus();
+}
+
+/** Esc: shuts the colour picker, or goes back from a name form or a request to join. */
+function escape(e: KeyboardEvent): void {
+  if (colorsOpen && !$('s-buzz').hidden) {
+    const inside = $('colors').contains(document.activeElement);
+    colorsOpen = false;
+    if (view?.you) renderColors(view);
+    if (inside) $('color-btn').focus();
+  } else if (!$('s-new').hidden) $('new-back').click();
+  else if (!$('s-team').hidden) $('team-back').click();
+  else if (!$('s-wait').hidden && !$('wait-cancel').hidden) $('wait-cancel').click();
+  else return;
+  e.preventDefault();
+}
+
 document.addEventListener('keydown', (e) => {
-  if (
-    (e.key === ' ' || e.key === 'Enter') &&
-    !e.repeat &&
-    !$('s-buzz').hidden &&
-    !(e.target instanceof HTMLButtonElement && e.target !== $('buzz')) &&
-    !(e.target instanceof HTMLInputElement) &&
-    !(e.target instanceof HTMLTextAreaElement)
-  ) {
-    e.preventDefault();
-    buzz(e.timeStamp);
+  if (e.isComposing || e.ctrlKey || e.metaKey || e.altKey) return;
+  if (e.key === 'Escape') {
+    if (!e.repeat) escape(e);
+    return;
   }
+  if (buzzKey(e)) {
+    // Repeats too: a held key never scrolls the page, nor presses the button again.
+    e.preventDefault();
+    if (e.repeat) return;
+    // (A key press lets the page play sound, as a tap does: a keyboard player hears BUZZ! too.)
+    unlockAudio();
+    if (!wakeWanted) void wake();
+    buzz(e.timeStamp);
+    return;
+  }
+  if (typing(e.target)) return;
+  if (!$('s-seats').hidden) {
+    // The seat list: 1–9 takes that seat (or team), as a click on it would; ↑ and ↓ move the keys along the list.
+    if (/^[1-9]$/.test(e.key)) {
+      const seat = $('seat-list').querySelectorAll<HTMLButtonElement>('button.seat')[Number(e.key) - 1];
+      if (!seat || seat.disabled) return;
+      e.preventDefault();
+      if (!e.repeat) seat.click();
+    } else if (e.key === 'ArrowDown' || e.key === 'ArrowUp') stepFocus(e, $('s-seats').querySelectorAll<HTMLButtonElement>('button.seat'), e.key === 'ArrowDown' ? 1 : -1);
+    return;
+  }
+  // The colour picker: the arrow keys go from colour to colour.
+  if (colorsOpen && $('colors').contains(document.activeElement) && /^Arrow(Left|Right|Up|Down)$/.test(e.key))
+    stepFocus(e, $('colors').querySelectorAll<HTMLButtonElement>('button.swatch'), e.key === 'ArrowRight' || e.key === 'ArrowDown' ? 1 : -1);
 });
+// (Space presses a focused button as it comes back up: the buzz was on the way down.)
+document.addEventListener('keyup', (e) => {
+  if (e.key === ' ' && buzzKey(e)) e.preventDefault();
+});
+
+/** Desktop: the key that buzzes, or (another window has the keyboard: the stream, say) that a click here gets it back. */
+function drawKeys(away = !document.hasFocus()): void {
+  const k = $('keys');
+  k.classList.toggle('away', away);
+  if (away) return void (k.textContent = 'Space goes to another window: click here first');
+  const cap = document.createElement('kbd');
+  cap.textContent = 'Space';
+  k.replaceChildren('Press ', cap, ' to buzz');
+}
+addEventListener('focus', () => drawKeys(false));
+addEventListener('blur', () => drawKeys(true));
+drawKeys();
+
+/** Desktop: the buzzer and the answer box say their keys to a screen reader too (the hints on screen are desktop only). */
+function drawDesk(): void {
+  const on = fine.matches;
+  for (const [id, attr, value] of [
+    ['buzz', 'aria-keyshortcuts', 'Space'],
+    ['buzz', 'aria-describedby', 'keys'],
+    ['answer-in', 'aria-describedby', 'answer-keys'],
+  ] as const)
+    if (on) $(id).setAttribute(attr, value);
+    else $(id).removeAttribute(attr);
+}
+drawDesk();
+// A tablet that gets a mouse, a laptop folded into a tablet: the words and hints follow.
+fine.addEventListener?.('change', () => {
+  drawDesk();
+  drawSound();
+  seatsKey = '';
+  render();
+});
+
 document.addEventListener(
   'pointerdown',
-  () => {
+  (e) => {
+    pointerKind = e.pointerType;
+    // (Before the buzzer's own: a press that began on it and ended off it, with no click, is over.)
+    pointerPress = false;
     unlockAudio();
     if (!wakeWanted) void wake();
   },
@@ -1228,16 +1380,20 @@ $('colors').addEventListener('click', (e) => {
   const b = (e.target as HTMLElement).closest<HTMLButtonElement>('button.swatch');
   if (!b || b.disabled || !b.dataset.color) return;
   if (b.getAttribute('aria-pressed') !== 'true') send({ t: 'color', color: b.dataset.color });
-  // Shut, keys back on the button that opened it; the buzzer turns the new colour when the host has it.
+  // Shut, keys back on the button that opened it; the buzzer turns the new colour when the host has it. (Picked with
+  // the mouse, the keys stay where they were: Space buzzes.)
   colorsOpen = false;
-  $('color-btn').focus();
+  if (e.detail === 0 || pointerKind === 'touch') $('color-btn').focus();
   if (view?.you) renderColors(view);
 });
-$('wait-cancel').addEventListener('click', () => {
-  // Not waiting for the host any more: back to the list.
+$('wait-cancel').addEventListener('click', (e) => {
+  // Not waiting for the host any more: back to the list (the keys onto ＋ I'm new, when they pressed it). Not the name
+  // form, even before the room has said it's waiting (which shuts that).
   send({ t: 'leave' });
   pendingName = null;
+  newForm = false;
   render();
+  if (e.detail === 0) $('new-btn').focus();
 });
 // The on-screen keyboard opening (or the phone turning) with the wager box in use: keep the box in sight.
 window.visualViewport?.addEventListener('resize', () => {
@@ -1300,6 +1456,8 @@ drawSound();
 
 $('code-form').addEventListener('submit', (e) => {
   e.preventDefault();
+  // (Joined with the keys alone: the page may play sound from now on.)
+  unlockAudio();
   const c = $<HTMLInputElement>('code-in').value.trim().toUpperCase();
   if (isRoomCode(c)) void start(c);
   else
@@ -1314,10 +1472,12 @@ $('new-btn').addEventListener('click', () => {
   render();
   $('new-in').focus();
 });
-$('new-back').addEventListener('click', () => {
+$('new-back').addEventListener('click', (e) => {
   newForm = false;
   $('new-err').textContent = '';
   render();
+  // (Back with the keys, or Esc: they go back onto ＋ I'm new.)
+  if (e.detail === 0) $('new-btn').focus();
 });
 $('answer-in').addEventListener('input', () => {
   const a = view?.answer;
@@ -1350,10 +1510,13 @@ $('team-form').addEventListener('submit', (e) => {
   send({ t: 'join', seatId: teamPick.id, name, device });
   render();
 });
-$('team-back').addEventListener('click', () => {
+$('team-back').addEventListener('click', (e) => {
+  const was = teamPick?.id;
   teamPick = null;
   teamAsked = false;
   render();
+  // (Back with the keys, or Esc: they go back onto that team.)
+  if (e.detail === 0 && was) $('seat-list').querySelector<HTMLElement>(`[data-seat="${CSS.escape(was)}"]`)?.focus();
 });
 $('msg-btn').addEventListener('click', () => notice?.button?.run());
 

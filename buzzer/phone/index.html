@@ -93,11 +93,14 @@
           <label for="answer-in" id="answer-label">Your answer (only the host sees it)</label>
           <textarea id="answer-in" rows="2" maxlength="200" autocomplete="off" enterkeyhint="send" dir="auto"></textarea>
           <button type="submit" class="primary" id="answer-send">Send answer</button>
+          <!-- Desktop only (the hints with the "desk" class): the keys. -->
+          <p id="answer-keys" class="note desk">Enter sends · Shift+Enter for a new line</p>
           <p id="answer-state" class="note"></p>
           <p id="answer-err" class="err" role="alert"></p>
         </form>
         <button id="buzz" type="button"><span id="buzz-big"></span><span id="buzz-small"></span></button>
         <div class="side foot">
+          <p id="keys" class="note desk"></p>
           <p id="me" dir="auto"></p>
           <button id="color-btn" type="button" class="link" aria-expanded="false" aria-controls="colors" hidden>🎨 Change your colour</button>
           <div id="colors" role="group" aria-label="Pick your colour" hidden></div>

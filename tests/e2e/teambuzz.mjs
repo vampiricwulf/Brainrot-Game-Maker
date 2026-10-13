@@ -153,10 +153,13 @@ try {
   await zed.getByRole('button', { name: 'Player 1' }).getByText('Ann, Al').waitFor();
   await card.getByText('1 more phone is on the join screen, not on a team yet.').waitFor();
   assert(true, 'the host sees a phone still on the join screen (not on a team yet)');
-  await zed.getByRole('button', { name: 'Player 2' }).click();
+  // (Zed is on a computer: a team's number key opens it, and Esc goes back with the keys on that team.)
+  await zed.keyboard.press('2');
   await zed.locator('#team-on').getByText('On it: Bea').waitFor();
-  await zed.getByRole('button', { name: 'Back' }).click();
-  assert(true, 'the name form says who is on the team already ("On it: Bea")');
+  await zed.keyboard.press('Escape');
+  await zed.getByRole('heading', { name: 'Pick your team' }).waitFor();
+  await zed.waitForFunction(() => document.activeElement?.getAttribute('aria-label') === 'Player 2: Bea');
+  assert(true, 'the name form says who is on the team already ("On it: Bea"); on a computer, 2 opens it and Esc goes back');
   await zed.getByRole('button', { name: 'Player 2' }).click();
   await zed.getByRole('textbox', { name: 'Your name (everyone sees it)' }).fill('ann');
   await zed.getByRole('button', { name: 'Join the team' }).click();
