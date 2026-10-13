@@ -11,6 +11,11 @@ the day it's pushed (Pacific time; start the heading on the day's first push) an
 in plain words for the people who make and host games. Anything committed but not pushed yet goes under
 **Unreleased** at the top, and moves under its day when it's pushed.
 
+## 2026-10-12
+
+### Added
+- A draft spec for 🤝 Partner clues and 🤫 private cards (`docs/PARTNER-CLUES-SPEC.md`): a tile played by its picker and a partner picked by a wheel, with a card only one of them sees on their phone, and the other games the same cards make possible. Nothing in it is built yet; it ends with the questions to settle first.
+
 ## 2026-10-09
 
 ### Added
