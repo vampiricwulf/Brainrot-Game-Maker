@@ -405,8 +405,12 @@ try {
     const b = await fresh.newPage();
     b.on('pageerror', (e) => errors.push(`[fresh] ${e.message}`));
     await b.goto(pathToFileURL(file).href);
-    await openGameFile(b, await json.path());
+    // (Kept apart from the window that downloaded it: closing that window deletes its downloads, maybe before this one
+    // has read the file.)
+    const jsonPath = resolve('test-results/editormedia-sounds.json');
+    await json.saveAs(jsonPath);
     await first.close();
+    await openGameFile(b, jsonPath);
     await b.locator('.problems').getByText('1 sound file missing: see 🔊 Sounds').click();
     const row = b.locator('.sound', { hasText: 'Round intro' });
     await row.getByText('⚠ intro-music.wav is missing: plays the built-in sound').waitFor();
