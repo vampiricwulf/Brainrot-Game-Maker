@@ -100,3 +100,25 @@ describe('Find', () => {
     expect(s.startsWith('…') && s.endsWith('…')).toBe(true);
   });
 });
+
+describe('Find: 🤫 cards', () => {
+  it('finds a partner clue’s cards, says which, and goes to its tab (only while the tile is a partner clue)', () => {
+    const game = newGame();
+    addSampleGame(game);
+    const round = game.rounds.find((r) => r.mode === 'board')!;
+    if (round.mode !== 'board') throw new Error('no board');
+    const cat = round.categories[0];
+    const clue = cat.clues[0];
+    clue.type = 'partner';
+    clue.cards = [
+      { id: 'c1', ...textSlide('nothing here'), to: 'giver' },
+      { id: 'c2', ...textSlide('Zorblax the ogre'), to: 'guesser' },
+    ];
+    const hits = findAll(game, 'zorblax');
+    expect(hits).toHaveLength(1);
+    expect(hits[0]).toMatchObject({ icon: '🤫', where: `Jeopardy! › ${cat.title} › $200 › Card 2`, focus: '[data-field="card"]' });
+    expect(hits[0].place).toEqual({ tab: 'round', round: round.id, part: { kind: 'clue', category: cat.id, clue: clue.id, side: 'card', slide: 'c2' } });
+    clue.type = 'standard';
+    expect(findAll(game, 'zorblax')).toHaveLength(0);
+  });
+});

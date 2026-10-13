@@ -111,8 +111,9 @@ Category { id, title: RichText, headerSlide?: Slide, clues: Clue[] /* length = r
 Clue {
   id,
   value: number | null,             // override of round.values[row]; null = inherit
-  type: 'standard' | 'dailyDouble' | 'wheel' | 'dice',
+  type: 'standard' | 'dailyDouble' | 'wheel' | 'dice' | 'partner',
   wheelPresetId?, dicePresetId?,    // for wheel/dice clue types
+  partner?: PartnerRules, cards?: ClueCard[],  // 🤝 partner clues and their 🤫 cards (PARTNER-CLUES-SPEC.md §18)
   questionSlide: Slide,             // the "clue" shown to players
   answerSlide: Slide,               // the "response" (hidden from audience until revealed)
   hostNotes?: string,               // shown only in host view

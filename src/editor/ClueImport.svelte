@@ -15,8 +15,8 @@
   import { applyPlan, cluesFromTable, parseTable, planImport, previewText } from '../lib/clueimport';
   import { pickFile, readTextFile } from '../lib/fileio';
   import { step } from '../lib/history.svelte';
-  import { categoryLabel, formatPoints, roundName, slidesOfClue, type BoardRound } from '../lib/model';
-  import { followClueText } from '../lib/cluetext';
+  import { categoryLabel, formatPoints, roundName, type BoardRound } from '../lib/model';
+  import { followClueText, textSlidesOf } from '../lib/cluetext';
   import { app } from '../lib/app.svelte';
 
   let { round, onclose }: { round: BoardRound; onclose: () => void } = $props();
@@ -53,7 +53,7 @@
     step(`Imported ${p.placed} clue${p.placed === 1 ? '' : 's'} into ${name}${left}`, () => {
         applyPlan(round, p);
         // The imported clues take the theme's clue text, as clues added on the board do (one with a look of its own keeps it).
-        followClueText(app.game, round.categories.flatMap((c) => c.clues.flatMap(slidesOfClue)));
+        followClueText(app.game, round.categories.flatMap((c) => c.clues.flatMap(textSlidesOf)));
       }, { notify: true, place: { tab: 'round', round: round.id } });
     drafts.delete(round.id);
     onclose();

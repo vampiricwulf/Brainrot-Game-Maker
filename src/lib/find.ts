@@ -2,7 +2,7 @@
 // on them, board-game spaces and zones, items, stats, shops, wheels, dice, media files — with the place to go
 // to (nav.svelte.ts's goTo, as the History tab's Go there).
 import { categoryLabel, formatPoints, questionSlides, roundName, type Game, type Slide } from './model';
-import type { Place } from './historylabel';
+import type { ClueSide, Place } from './historylabel';
 
 export interface Hit {
   icon: string;
@@ -56,9 +56,11 @@ export function findAll(game: Game, query: string, limit = 200): Hit[] {
           // An empty tile has nothing to show (its editor has no text boxes).
           if (clue.empty) return;
           const where = `${rn} › ${cn} › ${formatPoints(clue.value ?? r.values[row] ?? 0, sym)}`;
-          const at = (side?: 'q' | 'a', slide?: string): Place => ({ tab: 'round', round: r.id, part: { kind: 'clue', category: cat.id, clue: clue.id, side, ...(slide ? { slide } : {}) } });
+          const at = (side?: ClueSide, slide?: string): Place => ({ tab: 'round', round: r.id, part: { kind: 'clue', category: cat.id, clue: clue.id, side, ...(slide ? { slide } : {}) } });
           look('❓', slideWords(clue.questionSlide), `${where} › Question${clue.extraSlides?.length ? ' 1' : ''}`, at('q'), '[data-field="q"]');
           clue.extraSlides?.forEach((sl, j) => look('❓', slideWords(sl), `${where} › Question ${j + 2}`, at('q', sl.id), '[data-field="q"]'));
+          // A partner clue's 🤫 cards (in the order the clue editor's tabs have them, before the answer).
+          if (clue.type === 'partner') clue.cards?.forEach((card, j) => look('🤫', slideWords(card), `${where} › Card ${j + 1}`, at('card', card.id), '[data-field="card"]'));
           look('💬', slideWords(clue.answerSlide), `${where} › Answer`, at('a'), '[data-field="a"]');
           look('📝', [clue.hostNotes, clue.tileFace?.text], `${where} › Notes / tile`, at(), field([[clue.hostNotes, '[data-field="notes"]'], [clue.tileFace?.text, '[data-field="tile-face"]']]));
         });

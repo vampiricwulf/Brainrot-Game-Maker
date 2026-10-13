@@ -2,6 +2,7 @@
 import { isBoard, roundName, type BoardRound, type Game } from './model';
 import type { Place } from './historylabel';
 import { toolChosen } from './tools';
+import { cardsToFinish } from './partner';
 import { slideHasContent } from './usage';
 import type { Problem } from './validate';
 
@@ -17,7 +18,10 @@ export interface ChecklistLine {
   place?: Place;
 }
 
-/** A tile that still needs something: a question and an answer, or for a wheel or dice tile, its wheel or dice. */
+/**
+ * A tile that still needs something: a question and an answer, or for a wheel or dice tile, its wheel or dice. A partner
+ * clue needs its 🤫 cards filled in too.
+ */
 function unfinished(game: Game, round: BoardRound, firstOnly = false) {
   const out: { category: string; clue: string }[] = [];
   // Column by column, like the clue editor's Next.
@@ -25,7 +29,7 @@ function unfinished(game: Game, round: BoardRound, firstOnly = false) {
     for (const c of cat.clues) {
       if (c.empty) continue;
       const tool = c.type === 'wheel' || c.type === 'dice';
-      const done = tool ? toolChosen(game, c) : slideHasContent(c.questionSlide) && slideHasContent(c.answerSlide);
+      const done = tool ? toolChosen(game, c) : slideHasContent(c.questionSlide) && slideHasContent(c.answerSlide) && cardsToFinish(c) === null;
       if (!done) out.push({ category: cat.id, clue: c.id });
       if (firstOnly && out.length) return out;
     }
@@ -76,7 +80,9 @@ export function checklistLines(game: Game, problems: Problem[]): ChecklistLine[]
       line.place = boardPlace(game, round) ?? line.place;
       if (line.details.length > 1) {
         // (Daily Doubles not placed yet aren't to fix: Start game places them. A new board says only its clues to finish.)
-        const others = line.details.length - line.details.filter((d) => /clues? with no (question|answer)|wheel\/dice tile|Daily Doubles? not placed yet/.test(d)).length;
+        const others =
+          line.details.length -
+          line.details.filter((d) => /clues? with no (question|answer)|wheel\/dice tile|Daily Doubles? not placed yet|: card \d+ is empty:|partner clue with no card:/.test(d)).length;
         line.text = !todo.length
           ? `${name}: ${plural(others, 'thing')} to fix`
           : `${name}: ${plural(todo.length, 'clue')} to finish${others ? `, ${others} more to fix` : ''}`;

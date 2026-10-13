@@ -1,13 +1,16 @@
 // Walk every slide in a game (for media usage counts, validation and bulk edits).
 import { uploadedFamily } from './fonts';
-import { boardRounds, categoryLabel, isBoard, isBoardGame, isFinal, questionSlides, roundName, type Action, type EmbedEl, type Game, type Outcome, type Slide } from './model';
+import { boardRounds, cardSlides, categoryLabel, isBoard, isBoardGame, isFinal, questionSlides, roundName, type Action, type EmbedEl, type Game, type Outcome, type Slide } from './model';
 
 export interface SlideRef {
   slide: Slide;
   where: string;
 }
 
-/** `empty`: empty tiles' slides too (kept for when the tile is used again: their files are still in use). */
+/**
+ * `empty`: empty tiles' slides too, and the 🤫 cards a tile keeps while it isn't a partner clue (kept for when the tile
+ * is used again: their files are still in use).
+ */
 export function allSlides(game: Game, { empty = false } = {}): SlideRef[] {
   const out: SlideRef[] = [];
   game.rounds.forEach((r, ri) => {
@@ -19,6 +22,8 @@ export function allSlides(game: Game, { empty = false } = {}): SlideRef[] {
           out.push({ slide: cl.questionSlide, where: `${where} (question)` });
           cl.extraSlides?.forEach((slide, j) => out.push({ slide, where: `${where} (question slide ${j + 2})` }));
           out.push({ slide: cl.answerSlide, where: `${where} (answer)` });
+          // (Without them, 🖼 Media's Remove unused would delete the cards' pictures.)
+          if (cl.type === 'partner' || empty) cardSlides(cl).forEach((slide, j) => out.push({ slide, where: `${where} (card ${j + 1})` }));
         });
     else if (isFinal(r)) {
       out.push({ slide: r.questionSlide, where: `${roundName(r, ri)} (question)` });
@@ -66,19 +71,21 @@ function actionSlides(actions: Action[] | undefined): Slide[] {
   return out;
 }
 
+/** The files a slide shows: its background picture, its pictures (and their edited copies), videos and sounds. */
+export function slideMediaIds(slide: Slide): string[] {
+  const ids = [slide.background.image];
+  for (const el of slide.elements) {
+    if (el.kind === 'image') ids.push(el.media, el.editedMedia);
+    else if (el.kind === 'video' || el.kind === 'audio') ids.push(el.media);
+  }
+  return ids.filter((id): id is string => !!id);
+}
+
 /** How many times each media id is used anywhere in the game. */
 export function mediaUsage(game: Game): Map<string, number> {
   const n = new Map<string, number>();
   const bump = (id?: string) => id && n.set(id, (n.get(id) ?? 0) + 1);
-  for (const { slide } of allSlides(game, { empty: true })) {
-    bump(slide.background.image);
-    for (const el of slide.elements) {
-      if (el.kind === 'image') {
-        bump(el.media);
-        bump(el.editedMedia);
-      } else if (el.kind === 'video' || el.kind === 'audio') bump(el.media);
-    }
-  }
+  for (const { slide } of allSlides(game, { empty: true })) for (const id of slideMediaIds(slide)) bump(id);
   for (const r of boardRounds(game)) for (const c of r.categories) for (const cl of c.clues) bump(cl.tileFace?.image);
   const fonts = game.media.filter((m) => m.kind === 'font');
   if (fonts.length) {

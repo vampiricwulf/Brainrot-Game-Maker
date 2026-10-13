@@ -3,10 +3,10 @@
 // takes it in an effect, and the thing itself flashes (it carries a data-place attribute, see placeKey()).
 import { tick } from 'svelte';
 import { app } from './app.svelte';
-import type { Place, RoundPart, Side } from './historylabel';
+import type { ClueSide, Place, RoundPart, Side } from './historylabel';
 import type { Game, Slide } from './model';
 
-export type { Place, RoundPart, Side };
+export type { ClueSide, Place, RoundPart, Side };
 
 export interface NavRequest {
   place: Place;
@@ -197,6 +197,12 @@ export function resolve(game: Game, place: Place): Place | null {
           if (part.kind === 'category') return place;
           const clue = has(cat.clues, part.clue);
           if (!clue) return at({ kind: 'category', category: cat.id });
+          // (A 🤫 card deleted since: the clue, at its question.)
+          if (part.side === 'card') {
+            const card = has(clue.cards, part.slide);
+            if (!card) return at({ kind: 'clue', category: cat.id, clue: clue.id, side: 'q' });
+            return !part.element || inSlide(card, part.element) ? place : at({ kind: 'clue', category: cat.id, clue: clue.id, side: 'card', slide: card.id });
+          }
           // (An extra question slide taken out since: the clue, at its question.)
           const extra = part.slide ? has(clue.extraSlides, part.slide) : undefined;
           if (part.slide && !extra) return at({ kind: 'clue', category: cat.id, clue: clue.id, side: 'q' });

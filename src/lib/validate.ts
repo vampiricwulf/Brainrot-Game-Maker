@@ -2,10 +2,31 @@
 import { canPlay, mediaUrls } from './media.svelte';
 import { linkLifetime } from './links';
 import { normalizeColor } from './colors';
-import { dailyDoublesPlaced, isBoardGame, isFinal, isRpg, isSlides, playableClues, questionSlides, roundName, type Action, type BoardRound, type Game } from './model';
+import {
+  boardRounds,
+  cardSlides,
+  categoryLabel,
+  clueValue,
+  dailyDoublesPlaced,
+  formatPoints,
+  isBoardGame,
+  isFinal,
+  isRpg,
+  isSlides,
+  MAX_CARDS,
+  PARTNER_GAMES,
+  playableClues,
+  questionSlides,
+  roundName,
+  type Action,
+  type BoardRound,
+  type ClueCard,
+  type Game,
+} from './model';
+import { lowerWord, partnerRules, partWords } from './partner';
 import { rpgProblems } from './rpg';
 import { boardGameProblems } from './boardgame';
-import { mediaUsage, onlineCount, slideHasContent } from './usage';
+import { mediaUsage, onlineCount, slideHasContent, slideMediaIds } from './usage';
 import { toolChosen } from './tools';
 import type { Place } from './historylabel';
 import { categoryTooLong } from './boardfit';
@@ -132,6 +153,7 @@ export function validate(game: Game): Problem[] {
         tab: i,
         level: 'info',
       });
+    out.push(...partnerProblems(game, round, i));
   });
   // The tiebreaker once ticked on: a tie at the end offers it as the main button, so an empty one puts a blank slide on stream.
   const tb = game.tiebreaker;
@@ -146,6 +168,21 @@ export function validate(game: Game): Problem[] {
 
   const known = new Set(game.media.map((m) => m.id));
   const usage = mediaUsage(game);
+  // Files only 🤫 cards use: an older copy's 🗑 Delete unused doesn't see cards, so it would delete them.
+  const onCards = new Map<string, number>();
+  for (const r of boardRounds(game))
+    for (const c of r.categories)
+      for (const cl of c.clues) for (const card of cardSlides(cl)) for (const id of slideMediaIds(card)) onCards.set(id, (onCards.get(id) ?? 0) + 1);
+  const cardOnly = [...onCards].filter(([id, n]) => known.has(id) && usage.get(id) === n).length;
+  if (cardOnly)
+    out.push({
+      text: `${plural(cardOnly, 'file')} ${cardOnly === 1 ? 'is' : 'are'} used only on 🤫 cards. Older copies of the app don't know about cards: in one of them, 🖼 Media › 🗑 Delete unused would delete ${cardOnly === 1 ? 'it' : 'them'}. Open the game in an up-to-date copy before deleting unused files`,
+      tab: 'media',
+      level: 'info',
+    });
+  const partners = boardRounds(game).some((r) => playableClues(r).some((c) => c.type === 'partner'));
+  if (partners && !game.settings.buzzer)
+    out.push({ text: 'Partner clues: without phone buzzers you copy the cards to the players yourself', tab: 'play', level: 'info' });
   // Deleted from 🖼 Media but still on slides: they show nothing (and aren't saved with the game).
   const deleted = [...usage.keys()].filter((id) => !known.has(id) && !Object.values(game.audio ?? {}).includes(id));
   if (deleted.length)
@@ -196,6 +233,45 @@ export function validate(game: Game): Problem[] {
       tab: 'media',
       level: 'warn',
       player: `${plural(temporary, 'online link')} ${temporary === 1 ? 'stops' : 'stop'} working soon (temporary upload sites)`,
+    });
+  return out;
+}
+
+/**
+ * A board's 🤝 partner clues (partner-clues spec §5.6): a ready-made game with no card (the giver has nothing to go on),
+ * an empty card, more cards than a clue holds, and a card's online link that has stopped working or soon will. Each goes
+ * to its card.
+ */
+export function partnerProblems(game: Game, round: BoardRound, tab: number): Problem[] {
+  const out: Problem[] = [];
+  const sym = game.settings.currencySymbol;
+  for (const c of round.categories)
+    c.clues.forEach((cl, row) => {
+      if (cl.empty || cl.type !== 'partner') return;
+      const tile = `${categoryLabel(c)} ${formatPoints(clueValue(round, row, cl), sym)}`;
+      const at = (card?: ClueCard): Problem['place'] => ({
+        tab: 'round',
+        round: round.id,
+        part: { kind: 'clue', category: c.id, clue: cl.id, ...(card ? { side: 'card' as const, slide: card.id } : {}) },
+      });
+      const warn = (text: string, card?: ClueCard) => out.push({ text, tab, level: 'warn', place: at(card) });
+      const rules = partnerRules(cl);
+      const cards = cardSlides(cl);
+      // (A Custom game's cards are up to the host.)
+      if (!cards.length && rules.game !== 'custom') {
+        const g = PARTNER_GAMES[rules.game];
+        warn(`${tile} is a ${g.label} partner clue with no card: the ${lowerWord(partWords(rules).giver)} has nothing to ${g.task}`);
+      }
+      if (cards.length > MAX_CARDS) warn(`${tile} has ${cards.length} cards: a clue holds ${MAX_CARDS} (＋ Card adds no more)`, cards[MAX_CARDS]);
+      cards.forEach((card, n) => {
+        if (!slideHasContent(card)) warn(`${tile}: card ${n + 1} is empty: there's nothing on it to send`, card);
+        const life = slideMediaIds(card).flatMap((id) => {
+          const m = game.media.find((x) => x.id === id);
+          return m?.url ? [linkLifetime(m)] : [];
+        });
+        if (life.includes('expired')) warn(`${tile}: card ${n + 1} has an online link that has expired: add that file again`, card);
+        else if (life.includes('temporary')) warn(`${tile}: card ${n + 1} has an online link that stops working soon: save a copy or add the file`, card);
+      });
     });
   return out;
 }

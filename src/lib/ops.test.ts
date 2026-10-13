@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { jeopardyGame } from './testgame';
-import { newImageEl, newRound, setSlideText, slideText, textSlide, type FinalRound, type TextEl, type BoardRound, type Game } from './model';
+import { gameRules, newImageEl, newRound, setSlideText, slideText, textSlide, type Clue, type FinalRound, type TextEl, type BoardRound, type Game } from './model';
 import { followClueText } from './cluetext';
 
 const board = (g: Game, i: number = 0) => g.rounds[i] as BoardRound;
@@ -8,6 +8,7 @@ import {
   addCategory,
   categoryHasContent,
   clearClue,
+  clone,
   clueHasContent,
   copyClue,
   deleteRow,
@@ -15,6 +16,7 @@ import {
   moveRow,
   neighbourClue,
   ownTextTargets,
+  reidRound,
   restyle,
   rowStep,
   setClueType,
@@ -283,5 +285,66 @@ describe('new rows and categories', () => {
     round.categories[2].clues[1] = copyClue(round.categories[0].clues[0]);
     followDailyDoubles(round);
     expect(round.dailyDoubleCount).toBe(2);
+  });
+});
+
+describe('🤝 partner clues on the board', () => {
+  const partnerTile = () => {
+    const round = newRound('R', 2, [200, 400]);
+    const clue = round.categories[0].clues[0];
+    setClueType(round, clue, 'partner');
+    return { round, clue };
+  };
+
+  it('a tile made a partner clue starts as Describe it with one empty card and a 45 s countdown', () => {
+    const { round, clue } = partnerTile();
+    expect(clue.partner).toEqual(gameRules('describe'));
+    expect(clue.cards!.map((c) => c.to)).toEqual(['giver']);
+    expect(clue.timerSeconds).toBe(45);
+    // Never a Daily Double.
+    expect(round.dailyDoubleCount).toBeUndefined();
+  });
+
+  it('changing the type away keeps the rules and cards, so changing back restores them', () => {
+    const { round, clue } = partnerTile();
+    clue.partner!.giver = 'picker';
+    setSlideText(clue.cards![0], 'Shrek');
+    clue.timerSeconds = null;
+    setClueType(round, clue, 'standard');
+    expect([clue.partner?.giver, slideText(clue.cards![0])]).toEqual(['picker', 'Shrek']);
+    setClueType(round, clue, 'partner');
+    expect([clue.partner?.giver, slideText(clue.cards![0]), clue.timerSeconds]).toEqual(['picker', 'Shrek', null]);
+  });
+
+  it('a tile whose only content is a card has content (Clear, drags and imports see it)', () => {
+    const { clue } = partnerTile();
+    expect(clueHasContent(clue)).toBe(false);
+    setSlideText(clue.cards![0], 'Shrek');
+    expect(clueHasContent(clue)).toBe(true);
+  });
+
+  it('clearing empties the cards but keeps them, who they go to and the rules', () => {
+    const { clue } = partnerTile();
+    clue.cards![0].to = 'both';
+    setSlideText(clue.cards![0], 'Shrek');
+    clue.cards![0].elements.push(newImageEl('pic'));
+    const id = clue.cards![0].id;
+    clearClue(clue);
+    expect(clue.cards).toHaveLength(1);
+    expect([clue.cards![0].id, clue.cards![0].to, slideText(clue.cards![0]), clue.cards![0].elements.length]).toEqual([id, 'both', '', 1]);
+    expect(clue.type).toBe('partner');
+    expect(clue.partner).toEqual(gameRules('describe'));
+  });
+
+  it('a copied clue, or a copied round, gets fresh ids for its cards and their items', () => {
+    const { round, clue } = partnerTile();
+    clue.cards![0].elements.push(newImageEl('pic'));
+    const ids = (c: Clue) => c.cards!.flatMap((card) => [card.id, ...card.elements.map((e) => e.id)]);
+    const copy = copyClue(clue);
+    expect(copy.cards![0].elements[1]).toMatchObject({ kind: 'image', media: 'pic' });
+    expect(ids(copy).some((id) => ids(clue).includes(id))).toBe(false);
+    const again = reidRound(clone(round));
+    expect(ids(again.categories[0].clues[0]).some((id) => ids(clue).includes(id))).toBe(false);
+    expect(again.categories[0].clues[0].cards![0].to).toBe('giver');
   });
 });

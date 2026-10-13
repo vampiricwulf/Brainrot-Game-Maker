@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { diff } from './historyops';
-import { describe as describeStep, placeAt, placeWhere, short } from './historylabel';
-import { newImageEl, newTextEl, type BoardGameRound, type BoardRound, type FinalRound, type Game, type ImageEl, type TextEl } from './model';
+import { describe as describeStep, itemPlace, placeAt, placeWhere, short } from './historylabel';
+import { gameRules, newImageEl, newTextEl, type BoardGameRound, type BoardRound, type FinalRound, type Game, type ImageEl, type TextEl } from './model';
 import { jeopardyGame } from './testgame';
 import { addSampleGame } from './samples';
 import { newRpgRound, newScreen, newVariant } from './rpg';
@@ -420,5 +420,66 @@ describe('placeAt', () => {
     }
     expect(placeWhere({ tab: 'theme' })).toBe('Theme');
     expect(placeWhere({ tab: 'round', round: g.rounds[0].id })).toBeNull();
+  });
+});
+
+describe('🤝 partner clues in the history', () => {
+  /** The sample game with its first tile a partner clue (Describe it, one card). */
+  function partnerStep(edit: (g: Game) => void) {
+    return step((g) => {
+      const clue = board(g).categories[0].clues[0];
+      clue.type = 'partner';
+      clue.partner = gameRules('describe');
+      clue.cards = [{ id: 'card-1', background: {}, elements: [newTextEl('')], to: 'giver' }];
+      edit(g);
+    });
+  }
+  const withCard = (edit: (g: Game) => void) => {
+    const before = sample();
+    const clue = board(before).categories[0].clues[0];
+    clue.type = 'partner';
+    clue.partner = gameRules('describe');
+    clue.cards = [
+      { id: 'card-1', background: {}, elements: [newTextEl('')], to: 'giver' },
+      { id: 'card-2', background: {}, elements: [newTextEl('')], to: 'guesser' },
+    ];
+    const after = structuredClone(before);
+    edit(after);
+    return { ...describeStep(diff(before, after), before, after), before, after };
+  };
+  const cardOf = (g: Game, n: number) => board(g).categories[0].clues[0].cards![n];
+
+  it('names a tile made a partner clue', () => {
+    const cat = board(sample()).categories[0].title;
+    expect(partnerStep(() => {}).label).toBe(`Made ${cat} $200 a partner clue`);
+  });
+
+  it('calls a card’s words its card’s, with where they are and its tab to go to', () => {
+    const r = withCard((g) => ((cardOf(g, 1).elements[0] as TextEl).text = 'Shrek'));
+    const cat = board(r.after).categories[0];
+    expect(r).toMatchObject({ label: 'Edited card 2 “Shrek”', where: `Jeopardy! › ${cat.title} › $200 › Card 2` });
+    expect(r.place).toEqual({
+      tab: 'round',
+      round: r.after.rounds[0].id,
+      part: { kind: 'clue', category: cat.id, clue: cat.clues[0].id, side: 'card', slide: 'card-2', element: cardOf(r.after, 1).elements[0].id },
+    });
+    // A card's background is a slide's.
+    expect(withCard((g) => (cardOf(g, 0).background.color = '#ff0000')).label).toBe('Slide background color #ff0000');
+    // Where a card's item is (a restyle starts there).
+    const g = r.after;
+    expect(itemPlace(g, cardOf(g, 0).elements[0].id)).toMatchObject({ part: { side: 'card', slide: 'card-1' } });
+  });
+
+  it('names the points typed in a partner clue’s boxes, and its part words', () => {
+    const cat = board(sample()).categories[0].title;
+    // (Typing a share makes the Points Custom too: still one change, to the points.)
+    const pts = withCard((g) => {
+      const p = board(g).categories[0].clues[0].partner!;
+      p.missed.guesser = -75;
+      p.points = 'custom';
+    });
+    expect(pts.label).toBe(`Changed the points of ${cat} $200`);
+    expect(withCard((g) => (board(g).categories[0].clues[0].partner!.words = { giver: 'Spy' })).label).toBe(`Changed the part words of ${cat} $200`);
+    expect(withCard((g) => (board(g).categories[0].clues[0].partner!.giver = 'picker')).label).toBe(`Changed the partner rules of ${cat} $200`);
   });
 });

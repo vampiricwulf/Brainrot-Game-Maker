@@ -10,6 +10,7 @@ import {
   FINAL_V1_ROUND_ID,
   formatPoints,
   gameProblem,
+  gameRules,
   isBoard,
   isFinal,
   MAX_PLAYERS,
@@ -21,6 +22,7 @@ import {
   textSlide,
   typedPoints,
   wholePoints,
+  type BoardRound,
   type Game,
 } from './model';
 import { validate } from './validate';
@@ -348,5 +350,75 @@ describe('points with the game’s symbol', () => {
     expect(compactPoints(1_250, '$', 1000)).toBe('$1.2K');
     expect(compactPoints(1_999, '$', 1000, 0)).toBe('$1K');
     expect(compactPoints(999, '$', 1000, 0)).toBe('$999');
+  });
+});
+
+describe('🤝 partner clues in saved games', () => {
+  const plain = (g: unknown) => JSON.parse(JSON.stringify(g));
+  const firstClue = (g: Game) => {
+    const r = g.rounds[0];
+    if (!isBoard(r)) throw new Error('not a board');
+    return r.categories[0].clues[0];
+  };
+
+  it('leaves a whole partner clue exactly as it is (older games have none, and get none)', () => {
+    const g = jeopardyGame();
+    const clue = firstClue(g);
+    Object.assign(clue, { type: 'partner', partner: { ...gameRules('help'), includePicker: true, words: { giver: 'Spy' } }, cards: [{ id: 'c1', ...textSlide('Shrek'), to: 'others' }] });
+    const once = migrateGame(plain(g));
+    expect(JSON.stringify(migrateGame(plain(once)))).toBe(JSON.stringify(once));
+    expect(firstClue(once).partner).toEqual(clue.partner);
+    const old = migrateGame(plain(jeopardyGame()));
+    expect(firstClue(old).partner).toBeUndefined();
+    expect(firstClue(old).cards).toBeUndefined();
+  });
+
+  it('gives a partner clue saved without rules Describe it’s; drops rules that aren’t rules', () => {
+    const g = plain(jeopardyGame());
+    g.rounds[0].categories[0].clues[0].type = 'partner';
+    g.rounds[0].categories[0].clues[1].partner = 'oops';
+    const m = migrateGame(g);
+    expect(firstClue(m).partner).toEqual(gameRules('describe'));
+    expect((m.rounds[0] as BoardRound).categories[0].clues[1].partner).toBeUndefined();
+  });
+
+  it('repairs damaged rules: unknown game and giver, shares out of range or missing, odd switches and words', () => {
+    const g = plain(jeopardyGame());
+    g.rounds[0].categories[0].clues[0] = {
+      ...g.rounds[0].categories[0].clues[0],
+      type: 'partner',
+      partner: { game: 'charades', giver: 'nobody', got: { giver: 5000, guesser: 'lots' }, missed: null, partnerSafe: 'yes', points: 'some', words: { giver: '', guesser: 'x'.repeat(40) } },
+    };
+    const p = firstClue(migrateGame(g)).partner!;
+    expect(p.game).toBe('custom');
+    expect(p.giver).toBe('partner');
+    // (A missing share is the game's: Custom's are Describe it's.)
+    expect(p.got).toEqual({ giver: 1000, guesser: 50 });
+    expect(p.missed).toEqual({ giver: 0, guesser: -50 });
+    // A missing partnerSafe means on.
+    expect(p.partnerSafe).toBeUndefined();
+    expect(p.points).toBeUndefined();
+    expect(p.words).toEqual({ guesser: 'x'.repeat(24) });
+  });
+
+  it('repairs cards like slides; one going to someone unknown goes to nobody; more than six are kept', () => {
+    const g = plain(jeopardyGame());
+    const cards = [
+      { to: 'giver', background: {}, elements: [{ kind: 'text', text: null }] },
+      { id: 'c2', to: 'the audience', elements: 'x' },
+      null,
+      ...Array.from({ length: 6 }, (_, i) => ({ id: `k${i}`, to: 'both', ...textSlide('') })),
+    ];
+    Object.assign(g.rounds[0].categories[0].clues[0], { type: 'partner', cards });
+    g.rounds[0].categories[0].clues[1].cards = [];
+    const m = migrateGame(g);
+    const out = firstClue(m).cards!;
+    expect(out).toHaveLength(8);
+    expect(out.every((c) => typeof c.id === 'string' && c.id)).toBe(true);
+    expect((out[0].elements[0] as { text: string }).text).toBe('');
+    expect([out[0].to, out[1].to, out[2].to]).toEqual(['giver', 'nobody', 'both']);
+    expect([out[1].elements, out[1].background]).toEqual([[], {}]);
+    expect((m.rounds[0] as BoardRound).categories[0].clues[1].cards).toBeUndefined();
+    expect(validate(m).some((p) => p.text.includes('has 8 cards'))).toBe(true);
   });
 });

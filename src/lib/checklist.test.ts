@@ -7,6 +7,8 @@ import { newRpgRound, newScreen } from './rpg';
 import { raceRound } from './samples';
 import { STD_DICE, tileDice, toolChosen } from './tools';
 import { FACTORY_FONT, followClueText, setClueText, setTheme } from './cluetext';
+import { setClueType } from './ops';
+import { addCard } from './partner';
 
 const fill = (r: BoardRound) => r.categories.forEach((c) => c.clues.forEach((cl) => (setSlideText(cl.questionSlide, 'Q?'), setSlideText(cl.answerSlide, 'A'))));
 
@@ -150,5 +152,28 @@ describe('the clue text default', () => {
     setTheme(game, { ...game.theme, clueFont: undefined, clueColor: undefined });
     expect(main().font).toBe(FACTORY_FONT);
     expect(game.theme.clueColor).toBeUndefined();
+  });
+});
+
+describe('🤝 partner clues in the checklist', () => {
+  it('counts a partner clue whose card is empty as a clue to finish, and goes to it', () => {
+    const game = jeopardyGame();
+    game.settings.buzzer = true;
+    const board = game.rounds[0] as BoardRound;
+    board.dailyDoubleCount = 0;
+    fill(board);
+    const clue = board.categories[1].clues[2];
+    setClueType(board, clue, 'partner');
+    addCard(clue);
+    const line = () => checklistLines(game, validate(game)).find((l) => l.tab === 0)!;
+    expect(line().text).toBe('Jeopardy!: 1 clue to finish');
+    expect(line().details).toHaveLength(2);
+    expect(line().place).toEqual({ tab: 'round', round: board.id, part: { kind: 'clue', category: board.categories[1].id, clue: clue.id, onBoard: true } });
+    for (const card of clue.cards!) setSlideText(card, 'Shrek');
+    expect(line()).toBeUndefined();
+    // A ready-made game with no card at all.
+    delete clue.cards;
+    expect(line().text).toMatch(/is a Describe it partner clue with no card/);
+    expect(line().place).toMatchObject({ part: { clue: clue.id } });
   });
 });
