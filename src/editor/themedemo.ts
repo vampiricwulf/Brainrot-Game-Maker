@@ -19,6 +19,7 @@ export function themeDemo(game: Game, at: number, clue = false): Session {
     const cat = r.categories.findIndex((c) => c.clues.some((cl) => !cl.empty));
     if (cat >= 0) openClue(s, { round: at, cat, row: r.categories[cat].clues.findIndex((cl) => !cl.empty) });
     s.dd = null;
+    s.partner = null;
   }
   // A Final shows its question (the clue text).
   if (isFinal(r)) s.finalStep = 'question';

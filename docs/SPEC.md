@@ -354,6 +354,9 @@ The mode isn't saved with the game: it's dual while the audience window is open.
    lead-in, then more): `N` / **Next slide ▶** goes through them before the answer, and viewers see small dots for
    where they are.
    - *Daily Double*: DD splash, then a wager input for the chosen player (not limited by default; the host can turn on the max(score, highest round value) limit), then the question.
+   - *Partner clue* (🤝, PARTNER-CLUES-SPEC.md §6): a PARTNER UP! splash with the picker, a wheel of the other players
+     (`W`) or the host's choice (`1–9`) for their partner, then the question with who describes and who guesses, the
+     📤 list of who gets each 🤫 card (copied to them with 📋), and ⏱ Start the clock. Nobody buzzes.
    - *Wheel clue*: the wheel appears and the host spins, then the outcome is revealed. The question slide is optional,
      so a tile can be purely "spin the punishment wheel" with no question at all.
    - *Dice clue*: the dice roll animation, then the outcome. The question slide is optional too.

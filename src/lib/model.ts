@@ -306,6 +306,8 @@ export interface GameAudio {
   roundIntro?: Id;
   tileOpen?: Id;
   dailyDouble?: Id;
+  /** With a 🤝 partner clue's PARTNER UP! splash (left out: the tile-open sound plays). */
+  partner?: Id;
   /** Buzzer mode: the first player in. */
   buzz?: Id;
   right?: Id;
@@ -751,6 +753,40 @@ export interface ClueRef {
   row: number;
 }
 
+/** Who a 🤫 card goes to: a seat (a player, or a whole team: everyone on it). */
+export interface CardTo {
+  seat: Id;
+}
+
+/**
+ * A 🤝 partner clue being played (partner-clues spec §18.2). It holds who plays which part, the stage, and who the host
+ * chose to give each card to: player ids and card ids only, never what's on a card (the parts are on stream anyway).
+ */
+export interface PartnerState {
+  /** The clue it's for: a state left over from another clue is dropped. */
+  clue: Id;
+  /**
+   * 'pick': PARTNER UP!, the wheel, choosing (the question isn't on screen yet). 'distribute': the question is up and the
+   * host hands out the cards. 'live': the clock started (or the clue has no cards).
+   */
+  stage: 'pick' | 'distribute' | 'live';
+  /** Who picked the tile (as on a Daily Double: whoever was marked to pick). */
+  pickerId?: Id;
+  /** Who the wheel or the host chose (the picker themselves: Solo). */
+  partnerId?: Id;
+  /** How the partner was chosen: the wheel, the host (a chip or 1–9), or the only one there was. */
+  how?: 'wheel' | 'host' | 'only';
+  /** This play's copy of the clue's rule: the picker is on the partner wheel too (the host can tick it). */
+  includePicker?: boolean;
+  /** Who plays the giver's part this time: starts from the clue's, and ⇄ Swap changes it. */
+  giver: 'partner' | 'picker';
+  /**
+   * The players the host chose for a card, by card id. A card not listed follows its Goes to, worked out from the parts
+   * at the moment (cardRecipients), so ⇄ Swap and a new partner move it.
+   */
+  deal?: Record<Id, CardTo[]>;
+}
+
 export interface Session {
   gameId: Id;
   players: Player[];
@@ -776,6 +812,8 @@ export interface Session {
    * host hasn't typed over it), `draftBy` who on the team did.
    */
   dd?: { stage: 'splash' | 'question'; playerId?: Id; wager?: number; shown?: boolean; draft?: number; draftFrom?: WagerSource; draftBy?: string } | null;
+  /** The 🤝 partner clue in progress for the open clue. Saved, so a reload picks it up (like dd). */
+  partner?: PartnerState | null;
   finalStep?: FinalStep;
   /** The Final round being played (or last played). */
   final?: FinalState;

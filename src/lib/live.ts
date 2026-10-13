@@ -80,6 +80,13 @@ export type Overlay =
        * step they applied. Kept on the overlay so they stay dealt with through a reload.
        */
       cardsDone?: Record<string, string | true>;
+      /** This wheel picks the open 🤝 partner clue's partner (its clue id): its landing makes them the partner. */
+      partnerFor?: Id;
+      /**
+       * The roll its latest spin logged (RollEvent id): 📜 Log hides that roll's result until the wheel lands, so a log
+       * open on stream doesn't give the spin away. Kept through a reload with the rest of the wheel.
+       */
+      rollId?: Id;
     }
   | {
       kind: 'dice';
@@ -150,6 +157,8 @@ export interface ExtraWheel {
   /** Set once the host edits this run of the wheel (like the main wheel's). */
   pool?: PoolSlice[];
   base?: WheelSegment[];
+  /** The roll its latest spin logged (as the main wheel's). */
+  rollId?: Id;
 }
 
 export interface Live {

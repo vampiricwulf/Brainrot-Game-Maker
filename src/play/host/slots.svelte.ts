@@ -32,8 +32,8 @@ export type HostAsk = {
 };
 
 /** Who offers the main button: the first one with something to offer wins, in this order. */
-export type NextFrom = 'tool' | 'dd' | 'final' | 'end' | 'turn' | 'board';
-const ORDER: NextFrom[] = ['tool', 'dd', 'final', 'end', 'turn', 'board'];
+export type NextFrom = 'tool' | 'dd' | 'partner' | 'final' | 'end' | 'turn' | 'board';
+const ORDER: NextFrom[] = ['tool', 'dd', 'partner', 'final', 'end', 'turn', 'board'];
 
 type Slots = {
   offers: Partial<Record<NextFrom, () => NextAction | null>>;

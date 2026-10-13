@@ -326,7 +326,8 @@
       <div class="muted small">Editing <b>{editedExtra.name}</b>:</div>
       {#key editedExtra.key}<WheelEdit o={editedExtra} {game} {session} disabled={busy} />{/key}
     {/if}
-    {#if picked && !busy}
+    <!-- (Not the partner wheel's: who it landed on is the partner clue's partner, not the board's picker.) -->
+    {#if picked && !busy && !(o.kind === 'wheel' && o.partnerFor)}
       <div class="row">
         {#if session.currentPickerId === picked.id}
           <span class="muted small">★ {picked.name} picks the next clue.</span>

@@ -11,8 +11,9 @@
     finalAdvance, finalBack, finalJudge, finalShow, finalTag, finalUnjudged, findClueRef, goToRound, introNext, nameList, newSession, openClue, playerName,
     randomizeDailyDoubles, redo, removePlayer, restorePlayer, answerShowing, rosterChange, score, skipIntro, startIntro, toggleUsed, undo,
     blankSlide, toolOnlyClue, stepSlide, finalWagerProblems, finalWagersOk, finalStepFix, startTiebreaker, stepOf, logZero, tiedForFirst, tiedLeaders, winnerKnown,
-    finalSetWager, finalTakeNewcomers, forViewers, wagerFromPhone, coWinnersHold,
+    finalSetWager, finalTakeNewcomers, forViewers, wagerFromPhone, coWinnersHold, ownPlayers,
   } from '../lib/session';
+  import { cardSlides, partnerCandidates, setPartner, setPartnerPicker } from '../lib/partner';
   import { addTime, newLive, overlayDoneAt, startTimer, tileToolUp, timerRemaining, timerResumed, toggleTimer, toolOverlay, type Live, type StageAction, type TimerState } from '../lib/live';
   import {
     buzzArm, buzzClueOpened, buzzDone, buzzIdle, buzzMissed, buzzReset, buzzTake, hostState, newBuzz, phoneStatus, SEAT_NAME_MAX, SETTING_UP, teamsOn, wagerAsk, whoBuzzed,
@@ -29,7 +30,7 @@
   import PhoneRoom from './PhoneRoom.svelte';
   import type { SetBuzzSetting } from './BuzzerOptions.svelte';
   import PhoneChip from './host/PhoneChip.svelte';
-  import { openDice, openPlayerWheel, openWheel, quickDice, rollDice, spinWheel, startRollOff, toggleScoreboard, wheelSpentUp } from '../lib/overlay';
+  import { openDice, openPartnerWheel, openPlayerWheel, openWheel, quickDice, rollDice, spinningRolls, spinWheel, startRollOff, toggleScoreboard, wheelSpentUp } from '../lib/overlay';
   import type { DicePreset } from '../lib/model';
   import { tileDice } from '../lib/tools';
   import { dailyDoublesShort, validate } from '../lib/validate';
@@ -346,7 +347,7 @@
   let popsPhase = untrack(() => session.phase);
   $effect(() => {
     const c = session.currentClue;
-    const at = `${session.phase} ${session.currentRound} ${c ? `${c.round}.${c.cat}.${c.row}` : ''} ${session.dd?.stage ?? ''} ${session.finalStep ?? ''}`;
+    const at = `${session.phase} ${session.currentRound} ${c ? `${c.round}.${c.cat}.${c.row}` : ''} ${session.dd?.stage ?? ''} ${session.partner?.stage ?? ''} ${session.finalStep ?? ''}`;
     untrack(() => {
       const fromClue = popsPhase === 'clue' && session.phase === 'board';
       if (at !== popsAt && !fromClue && app.live.pops.length) app.live.pops = [];
@@ -361,11 +362,12 @@
     void finalUnjudged(session).length;
     finishArmed = false;
   });
-  // H hid the controls, but a list (?, L, 👥 Players, ⚖ Rules, 🔊 Sound) or a wager to type (a Daily Double's, the
-  // Final's) needs them: they come back for it, and hide again once it's done (unless the host pressed H meanwhile).
+  // H hid the controls, but a list (?, L, 👥 Players, ⚖ Rules, 🔊 Sound), a wager to type (a Daily Double's, the
+  // Final's) or a partner to choose needs them: they come back for it, and hide again once it's done (unless the host
+  // pressed H meanwhile).
   const needControls = $derived(
     (!dual && (showKeys || showPlayers || showRules || showLog || showSound)) ||
-      (session.phase === 'clue' && session.dd?.stage === 'splash') ||
+      !!ownPlayers(session)?.setup ||
       (session.phase === 'final' && session.finalStep === 'wagers' && session.intro?.stage !== 'title'),
   );
   let hideAgain = false;
@@ -730,7 +732,7 @@
 
   function reasonNow(): string {
     if (session.phase === 'clue' && session.currentClue)
-      return clueReason(game, session.currentClue) + (session.dd?.stage === 'question' ? ' (Daily Double)' : '');
+      return clueReason(game, session.currentClue) + (session.dd?.stage === 'question' ? ' (Daily Double)' : session.partner && session.partner.stage !== 'pick' ? ' (partner clue)' : '');
     if (session.phase === 'final') {
       const f = currentFinal(session, game);
       return f ? finalName(f) : 'Final';
@@ -743,10 +745,10 @@
     if (!ids.length) return hint(`Select a ${pregameTeams ? 'team' : 'player'} first (press 1–${Math.min(9, session.players.length) || 9} or click a name)`);
     // The tiebreaker settles the tie, with or without points (its Amount starts at 0).
     if (!amt && session.phase === 'tiebreaker') return tiebreakWin(sign, ids);
-    // A Daily Double wagered at 0, or a clue worth 0 (not a wheel or dice tile with nothing to judge), is still right or
-    // wrong: a 0 result is logged.
-    const zero =
-      amt === 0 && session.phase === 'clue' && (session.dd?.stage === 'question' || (!session.dd && info?.value === 0 && !toolOnlyClue(info.clue)));
+    // A Daily Double wagered at 0, a partner clue's 0, or a clue worth 0 (not a wheel or dice tile with nothing to judge),
+    // is still right or wrong: a 0 result is logged.
+    const own = ownPlayers(session);
+    const zero = amt === 0 && session.phase === 'clue' && (own ? !own.setup : info?.value === 0 && !toolOnlyClue(info.clue));
     if (!amt && !zero) return hint('Enter an amount first');
     const batch = newId();
     const events = zero
@@ -838,8 +840,11 @@
       info.clue.type === 'standard' &&
       ((!!remote.code && roomHasAnswers()) || session.remote?.answers?.id === info.clue.id),
   );
-  /** Buzzer mode, while a clue is open (a Daily Double has its one player; a ✍ clue has everyone answer): players buzz in. */
-  const buzzing = $derived(buzzerOn(game.settings) && session.phase === 'clue' && !session.dd && !everyone);
+  /**
+   * Buzzer mode, while a clue is open (a Daily Double has its one player, a partner clue its two; a ✍ clue has everyone
+   * answer): players buzz in.
+   */
+  const buzzing = $derived(buzzerOn(game.settings) && session.phase === 'clue' && !ownPlayers(session) && !everyone);
   /** A wheel or dice tile's own tool is still up: its question isn't on screen yet, so nobody buzzes and phones get no text. */
   const toolFirst = $derived(!!info && tileToolUp(app.live, info.clue) && !session.revealed);
   /** The buzzers' state (see buzz.ts). */
@@ -934,7 +939,7 @@
   // Outside buzzer mode viewers see who's answering too: the one player selected during a clue. In buzzer mode a player
   // picked (or let go) by hand, a number key or a click in the host panel, answers (or the buzzers open again for the rest).
   $effect(() => {
-    const one = session.phase === 'clue' && !session.dd && selected.length === 1 ? selected[0] : null;
+    const one = session.phase === 'clue' && !ownPlayers(session) && selected.length === 1 ? selected[0] : null;
     const none = !selected.length;
     // (A player picked while a wheel or dice tile's tool is up answers once it closes.)
     const on = buzzing && !toolFirst;
@@ -1405,9 +1410,10 @@
     app.live.overlay = null;
     delete app.live.toolTile;
     // The round intro's music (a whole theme song, maybe) stops once a tile opens, so it doesn't play under the clues.
-    playCue(app.live, game, session.dd ? 'dailyDouble' : 'tileOpen', !!introNonce);
+    playCue(app.live, game, session.dd ? 'dailyDouble' : session.partner ? 'partner' : 'tileOpen', !!introNonce);
     introNonce = undefined;
-    if (session.dd) return;
+    // (Their own splash first: no tool, no countdown.)
+    if (session.dd || session.partner) return;
     if (c?.clue.type === 'wheel') {
       const w = game.wheels.find((x) => x.id === c.clue.wheelId);
       if (c.clue.wheelId === PLAYER_WHEEL) openPlayerWheel(app.live, session);
@@ -1432,6 +1438,22 @@
   // dice opened later isn't taken for it. (The scores over it don't count: it's still up under them.)
   $effect(() => {
     if (app.live.toolTile && !(info && tileToolUp(app.live, info.clue))) untrack(() => delete app.live.toolTile);
+  });
+
+  /**
+   * The rolls of the wheels still spinning on stage: 📜 Log shows them as "… spinning" until they land, so a log open on
+   * stream (one window) never gives a spin away before the wheel does. Worked out again when a spin starts and lands.
+   */
+  let spinningIds = $state<string[]>([]);
+  $effect(() => {
+    const o = toolOverlay(app.live);
+    const ids = spinningRolls(o, Date.now());
+    untrack(() => {
+      if (ids.length !== spinningIds.length || ids.some((id, i) => id !== spinningIds[i])) spinningIds = ids;
+    });
+    if (!ids.length || !o) return;
+    const t = setTimeout(() => (spinningIds = spinningRolls(toolOverlay(app.live), Date.now())), Math.max(0, overlayDoneAt(o) - Date.now()) + 50);
+    return () => clearTimeout(t);
   });
 
   /** Roll-offs whose result was already applied (closing one early applies it; the timer then mustn't again). */
@@ -1575,6 +1597,12 @@
     if (o?.kind === 'scoreboard' && o.under) return void (app.live.overlay = o.under);
     // The result was decided up front, so closing early (skipping the animation) still sets the picker.
     if (o?.kind === 'rolloff') rollOffResult(session, o);
+    // (The partner wheel's too: its landing is the partner. The keys go to the main button, ▶ Show question, not to the
+    // nearest button the wheel's controls leave, like ↩ Cancel.)
+    if (o?.kind === 'wheel') {
+      partnerLanded(o);
+      if (o.partnerFor && partner?.stage === 'pick') void tick().then(() => document.querySelector<HTMLElement>('.play .panel [data-next]')?.focus({ preventScroll: true }));
+    }
     app.live.overlay = null;
     // Only the tile's own wheel or dice: closing the scores, or a roll or a wheel opened mid-clue (the same kind too),
     // leaves the clue and its countdown as they are.
@@ -1608,6 +1636,141 @@
     autoTimer();
   }
 
+  // ---------- 🤝 Partner clues (docs/PARTNER-CLUES-SPEC.md §6, §7) ----------
+
+  /** The partner clue that's open (its state, for the clue on screen). */
+  const partner = $derived(session.phase === 'clue' && info && session.partner?.clue === info.clue.id ? session.partner : null);
+  /** A key (Enter, N) right after a step doesn't do the next one: a held or double Enter can't run through them. */
+  const KEY_GUARD_MS = 1000;
+  /** When the partner clue's question went up, and when its clock started (here only, not saved: a reload acts at once). */
+  let partnerShownAt = 0;
+  let partnerClockAt = 0;
+
+  /** A wheel, dice or a roll-off still going on stage (no word said, unlike toolBusy). */
+  function toolGoing(): boolean {
+    const o = toolOverlay(app.live);
+    return !!o && (o.kind === 'dice' || o.kind === 'wheel' || o.kind === 'rolloff') && Date.now() < overlayDoneAt(o);
+  }
+
+  /**
+   * 🎡 Spin for a partner (W): the partner wheel, over the other players (the picker is off it unless they can be on it),
+   * spun at once; W again while it's up spins it again. Its landing makes the partner (partnerLanded).
+   */
+  function partnerSpin(): void {
+    const s = partner;
+    if (!s || s.stage !== 'pick') return;
+    if (!s.pickerId) return hint(`${pregameTeams ? 'Which team' : 'Who'} picked it? Press their number first (1–${Math.min(9, session.players.length) || 9})`);
+    if (!partnerCandidates(session, s).length) return hint(`Nobody to partner with: tick “${playerName(session, s.pickerId)} can be on the wheel” to play it Solo, or press Esc`);
+    if (toolBusy()) return;
+    // (The scores over it: the wheel comes back first.)
+    if (app.live.overlay?.kind === 'scoreboard') app.live.overlay = app.live.overlay.under ?? null;
+    const o = app.live.overlay;
+    if (o?.kind !== 'wheel' || o.partnerFor !== s.clue) openPartnerWheel(app.live, session, s, playerName(session, s.pickerId));
+    spinWheel(app.live, session, game);
+  }
+
+  /** Partner wheel spins whose landing was applied (closing the wheel early applies it: its timer then mustn't again). */
+  const partnerApplied = new Set<string>();
+  // Back after a reload with the partner wheel kept and a partner already chosen: that choice stands.
+  untrack(() => {
+    const o = toolOverlay(app.live);
+    if (o?.kind === 'wheel' && o.partnerFor && o.spin && session.partner?.partnerId) partnerApplied.add(`${o.nonce}:${o.spin.startedAt}`);
+  });
+  /**
+   * The partner wheel landed (or was closed early): who it landed on is the partner, once per spin, and only while the
+   * partner is still being chosen. Not before: the panel, the phones and the stream name nobody until the wheel does.
+   */
+  function partnerLanded(o: { nonce: string; partnerFor?: string; spin: { startedAt: number } | null; result: number | null; segments: { id: string }[] }): void {
+    if (!o.partnerFor || !o.spin || o.result === null) return;
+    const key = `${o.nonce}:${o.spin.startedAt}`;
+    if (partnerApplied.has(key)) return;
+    partnerApplied.add(key);
+    const s = session.partner;
+    const id = o.segments[o.result]?.id;
+    if (!s || s.clue !== o.partnerFor || s.stage !== 'pick' || !id || !setPartner(session, s, id, 'wheel')) return;
+    announce(id === s.pickerId ? `${playerName(session, id)} plays it alone` : `${playerName(session, id)} is ${playerName(session, s.pickerId ?? '')}’s partner`);
+  }
+  // Each spin of the partner wheel, wherever it was started (W, Spin!, a click on the stage): its landing, when it lands.
+  $effect(() => {
+    const o = toolOverlay(app.live);
+    if (o?.kind !== 'wheel' || !o.partnerFor || !o.spin || o.result === null) return;
+    const landing = { nonce: o.nonce, partnerFor: o.partnerFor, spin: { startedAt: o.spin.startedAt }, result: o.result, segments: $state.snapshot(o.segments) };
+    const wait = overlayDoneAt(o) - Date.now();
+    if (wait <= 0) return void untrack(() => partnerLanded(landing));
+    const t = setTimeout(() => partnerLanded(landing), wait);
+    return () => clearTimeout(t);
+  });
+
+  /** 1–9 on PARTNER UP!: who picked it (nobody marked yet), else the partner, overruling the wheel. */
+  function partnerNumber(n: number): void {
+    const s = partner;
+    const p = session.players[n - 1];
+    if (!s || !p) return;
+    if (!s.pickerId) {
+      setPartnerPicker(session, s, p.id);
+      return announce(`${p.name} picked it`);
+    }
+    if (toolGoing()) return hint('Still spinning: wait for it to land');
+    if (!setPartner(session, s, p.id, 'host')) return hint(`${p.name} picked it: tick “${p.name} can be on the wheel” to make it Solo`);
+    announce(p.id === s.pickerId ? `${p.name} plays it alone` : `${p.name} is ${playerName(session, s.pickerId)}’s partner`);
+  }
+
+  /**
+   * ▶ Show question: the question on stream, and the 📤 list of who gets each card (nothing goes anywhere by itself). A
+   * clue with no cards has nothing to hand out: its countdown starts now, as on a Daily Double.
+   */
+  function partnerShow(): void {
+    const s = partner;
+    if (!s || s.stage !== 'pick' || !info) return;
+    if (!s.partnerId) return hint('Choose a partner first: spin the wheel (W) or press their number');
+    if (toolBusy()) return;
+    // The partner wheel goes (its landing is in).
+    const o = toolOverlay(app.live);
+    if (o?.kind === 'wheel' && o.partnerFor) app.live.overlay = null;
+    const hasCards = cardSlides(info.clue).length > 0;
+    s.stage = hasCards ? 'distribute' : 'live';
+    partnerShownAt = Date.now();
+    selected = [];
+    amount = info.value;
+    if (!hasCards) {
+      autoTimer();
+      partnerClockAt = partnerShownAt;
+    }
+  }
+
+  /** ⏱ Start the clock: the cards are handed out (copied to their players), the countdown starts. */
+  function partnerClock(): void {
+    const s = partner;
+    if (!s || s.stage !== 'distribute') return;
+    s.stage = 'live';
+    partnerClockAt = Date.now();
+    if (!app.live.timer || app.live.timer.expired) startTimer(app.live, timerSeconds || clueTimer() || game.settings.defaultTimerSeconds || 30);
+    else if (app.live.timer.startedAt === null) toggleTimer(app.live);
+  }
+
+  /**
+   * Enter or N on a partner clue before its clock starts: the main button (spin, show the question, start the clock).
+   * Never on a key repeat, and not within a second of the question going up, so a held or double Enter can't start the
+   * clock before the host has looked at who gets which card.
+   */
+  function partnerMain(e: KeyboardEvent): void {
+    const s = partner;
+    if (!s || e.repeat) return;
+    if (s.stage === 'distribute' && !toolOverlay(app.live)) {
+      if (Date.now() - partnerShownAt < KEY_GUARD_MS) return hint('The question just went up: press Enter again to start the clock');
+      return partnerClock();
+    }
+    if (hostNext && !hostNext.disabled) hostNext.run();
+    else if (hostNext?.title) hint(hostNext.title);
+  }
+
+  /** Enter or Shift+Enter awarding by keys right after a partner clue's clock started waits a moment (a double Enter). */
+  function partnerTooSoon(): boolean {
+    if (!partner || partner.stage !== 'live' || Date.now() - partnerClockAt >= KEY_GUARD_MS) return false;
+    hint('The clock just started: press Enter again to give the points');
+    return true;
+  }
+
   /**
    * Back to the board. The tile is marked used, unless the host cancelled (`keep`) or the Daily Double
    * question never showed.
@@ -1615,7 +1778,7 @@
   function back(keep = false): void {
     const clueId = info?.clue.id;
     // The host panel's status row then offers "↶ Reopen <tile>" (no toast: it would cover the round buttons).
-    backToBoard(session, game, { markUsed: !keep && session.dd?.stage !== 'splash' });
+    backToBoard(session, game, { markUsed: !keep && !ownPlayers(session)?.setup });
     selected = [];
     amount = null;
     app.live.timer = null;
@@ -1626,7 +1789,7 @@
 
   /** Back to the board without using up the tile (a misclick), unless points were already given for it. */
   function cancelClue(): void {
-    if (session.dd?.stage !== 'splash' && info && clueScored(session, info.clue.id))
+    if (!ownPlayers(session)?.setup && info && clueScored(session, info.clue.id))
       return toast('Points were given for this clue: undo them first (Ctrl+Z), or use ▦ Done ▶ board', 4000);
     back(true);
   }
@@ -2918,6 +3081,9 @@
         if (!id || !reveal.order.includes(id)) return;
         reveal.current = id;
         announce(`Spotlight: ${playerName(session, id)}`);
+      } else if (partner?.stage === 'pick') {
+        // A partner clue's PARTNER UP!: who picked it (nobody marked yet), else the partner (overruling the wheel).
+        if (n) partnerNumber(n);
       } else if (buzzing && !n) {
         // 0: reset the buzzers (nobody locked out, open for everyone). 1–9 pick a player by hand, over any phone's buzz.
         openBuzzers(true);
@@ -2941,6 +3107,13 @@
         // Board games with nobody selected: move (see boardEnter).
         if (session.phase === 'boardgame' && session.intro) break;
         if (session.phase === 'boardgame' && (!selected.length || !amount) && !e.shiftKey && boardEnter()) break;
+        // A partner clue before its clock starts, nobody picked: its main button (Shift+Enter judges nothing yet).
+        if (partner && partner.stage !== 'live' && (!selected.length || partner.stage === 'pick')) {
+          if (!e.shiftKey) partnerMain(e);
+          else if (partner.stage === 'distribute' && !e.repeat) hint('Start the clock first (Enter)');
+          break;
+        }
+        if (partner && (e.repeat || partnerTooSoon())) break;
         // Only where the award row is up (not on the Daily Double splash, the final reveals or the end screen).
         if (awardOpen(session)) award(e.shiftKey ? -1 : 1);
         break;
@@ -2973,6 +3146,11 @@
         if (!toolBusy()) rollDice(app.live, session, lastDice);
         break;
       case 'w': {
+        // A partner clue's PARTNER UP!: the partner wheel (W again: spin it again).
+        if (partner?.stage === 'pick') {
+          partnerSpin();
+          break;
+        }
         const o = app.live.overlay;
         if (toolBusy()) break;
         if (o?.kind === 'wheel') {
@@ -3018,6 +3196,8 @@
           // 🔔 Open the buzzers, 👁 Reveal answer, ▦ Done ▶ board…). With the controls hidden the panel is gone and its
           // last button out of date: as a click on the stage, the next slide, then the answer (never hidden again).
           if (e.shiftKey) slideStep(-1);
+          // (A partner clue before its clock: its own main button, as Enter, with the same guard.)
+          else if (partner && partner.stage !== 'live') partnerMain(e);
           else if (!hideControls && hostNext && !hostNext.disabled) hostNext.run();
           else if (!slideStep(1) && !answerShowing(session)) revealToggle();
         } else if (session.phase === 'tiebreaker') {
@@ -3095,6 +3275,10 @@
         break;
       }
       case 'u':
+        if (partner) {
+          hint('Nobody buzzes on a partner clue');
+          break;
+        }
         // Buzzer mode: open the buzzers (after reading the clue, when the 📱 Phone buzzers card says the host opens them).
         if (!buzzing) return;
         openBuzzers();
@@ -3139,7 +3323,8 @@
     // round's first button (an Adventure's party chip). Unless it's the next row of the list the keys were in (✔ on one
     // ✍ answer, then the next one's ✔): Enter presses that one too.
     const nextRow = !!el && !!tabbedList?.isConnected && tabbedList.contains(el);
-    const guess = (rescuing() || placing) && awardOpen(session) && !nextRow;
+    // (A partner clue's PARTNER UP! too: Enter is its main button there.)
+    const guess = (rescuing() || placing) && (awardOpen(session) || session.partner?.stage === 'pick') && !nextRow;
     if (tabbing && el) pointed.delete(el);
     tabbedTo = el && (tabbing || (viaKeys && !guess && !pointed.has(el) && !el.matches('[data-next]'))) ? el : null;
     // (Noted while the button is still in the page: a removed one's closest() finds nothing.)
@@ -3544,6 +3729,9 @@
         onintronext={intro}
         onskipintro={() => skipIntro(session)}
         onddshow={ddShow}
+        onpartnerspin={partnerSpin}
+        onpartnershow={partnerShow}
+        onpartnerclock={partnerClock}
         onfinalstep={finalStep}
         ontiebreaker={tiebreaker}
         ontiebreakerdone={tiebreakerDone}
@@ -3622,7 +3810,7 @@
   {/if}
   {#if showLog && (dual || panelBox)}
     <!-- Single window: in the host panel (it grows for it), never over the stage viewers see. -->
-    <ScoreLog {game} {session} {sym} bind:tab={logTab} area={panelBox} onreopen={toggleTile} onback={undoBackTo} onredoto={redoUpTo} onclose={() => (showLog = false)} />
+    <ScoreLog {game} {session} {sym} bind:tab={logTab} area={panelBox} spinning={spinningIds} onreopen={toggleTile} onback={undoBackTo} onredoto={redoUpTo} onclose={() => (showLog = false)} />
   {/if}
   {#if showPlayers}
     <!-- Every click, change or dropped row (a player dragged to a new place) in here ends a step (see commitRoster). -->

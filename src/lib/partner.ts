@@ -1,5 +1,6 @@
 // 🤝 Partner clues (docs/PARTNER-CLUES-SPEC.md): a clue's rules worked out from its game, what each part gets on a
-// tile, and its 🤫 cards as the editor makes them. No Svelte state: unit-tested in partner.test.ts.
+// tile, its 🤫 cards as the editor makes them, and who plays which part and gets which card while it's played. No Svelte
+// state: unit-tested in partner.test.ts.
 import {
   cardSlides,
   gameRules,
@@ -11,14 +12,21 @@ import {
   PARTNER_GAMES,
   wholePoints,
   type CardGoesTo,
+  type CardTo,
   type Clue,
   type ClueCard,
+  type Game,
+  type Id,
   type PartnerGame,
   type PartnerPoints,
   type PartnerRole,
   type PartnerRules,
+  type PartnerState,
+  type Player,
+  type Session,
   type Slide,
 } from './model';
+import { cardItems, cardLinks, cardWords, type CardItem } from './phonecard';
 import { slideHasContent } from './usage';
 
 export { cardSlides, PARTNER_GAMES };
@@ -213,4 +221,191 @@ export function cardsToFinish(clue: Clue): 'none' | number | null {
   if (!cards.length) return partnerRules(clue).game === 'custom' ? null : 'none';
   const empty = cards.findIndex((c) => !slideHasContent(c));
   return empty < 0 ? null : empty + 1;
+}
+
+// ---------- Playing it (partner-clues spec §6, §7) ----------
+// The state of a partner clue being played (PartnerState) holds who plays which part and who the host gives each card
+// to. Nothing here sends a card anywhere: in this version the host copies them to the players (📋).
+
+/** The players a partner clue is played among (the session's, or a test's). */
+type Seats = Pick<Session, 'players'>;
+
+/** A partner clue opening: whoever was marked to pick picked it; its parts come from the clue's rules. Sends nothing. */
+export function startPartner(session: Pick<Session, 'players' | 'currentPickerId'>, clue: Clue): PartnerState {
+  const rules = partnerRules(clue);
+  const s: PartnerState = { clue: clue.id, stage: 'pick', giver: rules.giver, ...(rules.includePicker ? { includePicker: true } : {}) };
+  if (session.players.some((p) => p.id === session.currentPickerId)) s.pickerId = session.currentPickerId;
+  pairOnly(session, s);
+  return s;
+}
+
+/** Who can be the partner: every player but the picker (the picker too while they can be on the wheel). */
+export function partnerCandidates(session: Seats, s: PartnerState): Player[] {
+  return session.players.filter((p) => p.id !== s.pickerId || !!s.includePicker);
+}
+
+/** With the picker known and only one player who could be their partner, that's the partner at once (no wheel). */
+export function pairOnly(session: Seats, s: PartnerState): void {
+  if (s.stage !== 'pick' || !s.pickerId || s.partnerId) return;
+  const can = partnerCandidates(session, s);
+  if (can.length !== 1) return;
+  s.partnerId = can[0].id;
+  s.how = 'only';
+}
+
+/**
+ * The partner, chosen by the wheel's landing or the host (a chip, 1–9). The picker only from the wheel (the host put
+ * them on it) or while they can be on it: that's Solo. Returns whether it took.
+ */
+export function setPartner(session: Seats, s: PartnerState, id: Id, how: 'wheel' | 'host'): boolean {
+  if (!session.players.some((p) => p.id === id)) return false;
+  if (id === s.pickerId && how === 'host' && !s.includePicker) return false;
+  s.partnerId = id;
+  s.how = how;
+  return true;
+}
+
+/** The host changed who picked it: a new picker who was the partner leaves no partner (and an only one may take it). */
+export function setPartnerPicker(session: Seats, s: PartnerState, id: Id): void {
+  if (!session.players.some((p) => p.id === id) || s.pickerId === id) return;
+  s.pickerId = id;
+  if (s.partnerId === id) {
+    delete s.partnerId;
+    delete s.how;
+  }
+  pairOnly(session, s);
+}
+
+/** Who plays which part now: the giver and the guesser (Solo: the picker, alone, guesses). */
+export function partnerRoles(s: Pick<PartnerState, 'pickerId' | 'partnerId' | 'giver'>): { giver?: Id; guesser?: Id; solo: boolean } {
+  if (s.partnerId && s.partnerId === s.pickerId) return { guesser: s.pickerId, solo: true };
+  return s.giver === 'partner' ? { giver: s.partnerId, guesser: s.pickerId, solo: false } : { giver: s.pickerId, guesser: s.partnerId, solo: false };
+}
+
+/** ⇄ Swap: the parts turn round. The cards that follow a part ("the describer") go with it; the points follow too. */
+export function swapParts(s: PartnerState): void {
+  s.giver = s.giver === 'partner' ? 'picker' : 'partner';
+}
+
+/**
+ * Who a card set to `to` goes to by default, from the parts now: "everyone else" is every player but the two. Solo:
+ * only a card for the guesser goes to the picker; any other starts with nobody (it usually holds what they guess).
+ */
+export function defaultRecipients(session: Seats, s: PartnerState, to: CardGoesTo): CardTo[] {
+  const { giver, guesser, solo } = partnerRoles(s);
+  let ids: (Id | undefined)[];
+  if (solo) ids = to === 'guesser' ? [guesser] : [];
+  else if (to === 'giver') ids = [giver];
+  else if (to === 'guesser') ids = [guesser];
+  else if (to === 'both') ids = [giver, guesser];
+  else if (to === 'others') ids = session.players.map((p) => p.id).filter((id) => id !== s.pickerId && id !== s.partnerId);
+  else ids = [];
+  return session.players.filter((p) => ids.includes(p.id)).map((p) => ({ seat: p.id }));
+}
+
+/** Who a card goes to now: whoever the host chose for it, else its Goes to worked out from the parts now. */
+export function cardRecipients(session: Seats, s: PartnerState, card: Pick<ClueCard, 'id' | 'to'>): CardTo[] {
+  const dealt = s.deal?.[card.id];
+  if (!dealt) return defaultRecipients(session, s, card.to);
+  return session.players.filter((p) => dealt.some((t) => t.seat === p.id)).map((p) => ({ seat: p.id }));
+}
+
+/**
+ * The host chose who a card goes to (`seats`, in any order). The same players as its default isn't a change: the row
+ * follows the parts again (⇄ Swap or a new partner moves it).
+ */
+export function setRecipients(session: Seats, s: PartnerState, card: Pick<ClueCard, 'id' | 'to'>, seats: Id[]): void {
+  const ids = session.players.map((p) => p.id).filter((id) => seats.includes(id));
+  const def = defaultRecipients(session, s, card.to).map((t) => t.seat);
+  if (ids.length === def.length && ids.every((id) => def.includes(id))) return resetRecipients(s, card.id);
+  (s.deal ??= {})[card.id] = ids.map((seat) => ({ seat }));
+}
+
+/** A player's part word now, for their chip or a card's line ("describer"; Solo: ''), '' for anyone else. */
+export function partWordOf(rules: PartnerRules, s: PartnerState, id: Id): string {
+  const r = partnerRoles(s);
+  if (r.solo) return '';
+  const words = partWords(rules);
+  return id === r.giver ? lowerWord(words.giver) : id === r.guesser ? lowerWord(words.guesser) : '';
+}
+
+/**
+ * Who a card goes to now, in words: "Bob (describer)", "Cat, Dan", "nobody yet"; before the partner is known, its Goes
+ * to ("the describer"). Names and parts only: never what's on the card.
+ */
+export function recipientsText(session: Seats, s: PartnerState, rules: PartnerRules, card: Pick<ClueCard, 'id' | 'to'>): string {
+  if (!s.partnerId) return goesToLabel(rules, card.to, false);
+  const to = cardRecipients(session, s, card);
+  if (!to.length) return 'nobody yet';
+  const name = (id: Id) => session.players.find((p) => p.id === id)?.name ?? '?';
+  return to.map(({ seat }) => (partWordOf(rules, s, seat) ? `${name(seat)} (${partWordOf(rules, s, seat)})` : name(seat))).join(', ');
+}
+
+/** ↺: the card goes back to its default (its Goes to). */
+export function resetRecipients(s: PartnerState, cardId: Id): void {
+  if (!s.deal?.[cardId]) return;
+  delete s.deal[cardId];
+  if (!Object.keys(s.deal).length) delete s.deal;
+}
+
+/** What each part does, in the game's words: "describing" (the phones' "You're describing!") and "described". */
+const DOING: Record<PartnerGame, { doing: string; did: string; guessed: string }> = {
+  describe: { doing: 'describing', did: 'described', guessed: 'guessed' },
+  draw: { doing: 'drawing', did: 'drew', guessed: 'guessed' },
+  act: { doing: 'acting it out', did: 'acted it out', guessed: 'guessed' },
+  help: { doing: 'helping', did: 'helped', guessed: 'answered' },
+  split: { doing: 'sharing half A', did: 'had half A', guessed: 'had half B' },
+  custom: { doing: 'giving the clues', did: 'gave the clues', guessed: 'answered' },
+};
+
+/**
+ * Who plays which part, as one line: "Bob describes → Ann guesses" (`icons`: "🗣 Bob describes → 🎯 Ann guesses";
+ * `past`: "Bob described → Ann guessed"). Solo: "Ann · Solo!".
+ */
+export function partsLine(rules: PartnerRules, names: { giver?: string; guesser?: string; solo?: boolean }, { icons = false, past = false } = {}): string {
+  if (names.solo) return `${names.guesser ?? '?'} · Solo!`;
+  const g = PARTNER_GAMES[rules.game];
+  const [giverIcon, guesserIcon] = icons ? [`${g.icon} `, '🎯 '] : ['', ''];
+  const [does, guesses] = past ? [DOING[rules.game].did, DOING[rules.game].guessed] : [g.verb, g.guessVerb];
+  return `${giverIcon}${names.giver ?? '?'} ${does} → ${guesserIcon}${names.guesser ?? '?'} ${guesses}`;
+}
+
+/** What the giver's phone says: "🗣 You're describing!" (teams: "🗣 Your team is describing!"). */
+export function giverLine(rules: PartnerRules, team = false): string {
+  return `${PARTNER_GAMES[rules.game].icon} ${team ? 'Your team is' : 'You’re'} ${DOING[rules.game].doing}!`;
+}
+
+const ITEM_WORDS: Record<CardItem['kind'], [string, string]> = {
+  picture: ['picture', 'pictures'],
+  gif: ['GIF', 'GIFs'],
+  video: ['video', 'videos'],
+  sound: ['sound', 'sounds'],
+  embed: ['online video', 'online videos'],
+};
+
+/**
+ * What's on a card, counted, never said: "1 line of words, 1 picture" (or "nothing on it"). The partner panel shows it,
+ * and in one window that panel is on stream: never the words, never an item's name (a file name is often the answer).
+ */
+export function cardSummary(game: Pick<Game, 'media'>, slide: Slide): string {
+  const lines = cardWords(slide).split('\n').filter((l) => l.trim()).length;
+  const items = cardItems(game, slide);
+  const out = lines ? [`${lines} line${lines === 1 ? '' : 's'} of words`] : [];
+  for (const kind of Object.keys(ITEM_WORDS) as CardItem['kind'][]) {
+    const n = items.filter((i) => i.kind === kind).length;
+    if (n) out.push(`${n} ${ITEM_WORDS[kind][n === 1 ? 0 : 1]}`);
+  }
+  return out.join(', ') || 'nothing on it';
+}
+
+/** Names as one says who something is for: "Bob", "Bob and Cat", "Ann, Bob and Cat". */
+const forNames = (names: string[]) => (names.length > 1 ? `${names.slice(0, -1).join(', ')} and ${names[names.length - 1]}` : (names[0] ?? ''));
+
+/**
+ * 📋 Copy words: "🤫 For Bob only (Movies $400, card 1): Shrek", with the card's links after its words, to paste to them
+ * in a DM. Never shown on screen.
+ */
+export function cardCopyText(game: Pick<Game, 'media'>, card: Slide, n: number, where: string, names: string[]): string {
+  const body = [cardWords(card), ...cardLinks(game, card)].filter(Boolean).join('\n');
+  return `🤫 For ${forNames(names) || 'you'} only (${where}, card ${n}): ${body}`;
 }

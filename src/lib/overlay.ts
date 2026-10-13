@@ -1,6 +1,6 @@
 // Host actions that open / drive the tool overlays (wheel, dice, roll-off, scoreboard).
-import { categoryLabel, isBoard, newId, PLAYER_WHEEL, type DicePreset, type Game, type Session, type WheelPreset, type WheelSegment } from './model';
-import type { ExtraWheel, Live } from './live';
+import { categoryLabel, isBoard, newId, PLAYER_WHEEL, type DicePreset, type Game, type Id, type PartnerState, type Session, type WheelPreset, type WheelSegment } from './model';
+import type { ExtraWheel, Live, Overlay } from './live';
 import {
   activeSegments, describeRoll, isRespin, logRoll, newSegment, onSlices, planRollOff, rollPreset, sliceLabel, spinTarget, weightedIndex, wheelUsedUp,
   type PoolSlice,
@@ -42,6 +42,34 @@ export function openPlayerWheel(live: Live, session: Session): void {
     spin: null,
     result: null,
   };
+}
+
+/**
+ * The 🤝 partner wheel: the 🎯 Pick a player wheel for the open partner clue, named "Partner for Ann". The picker's
+ * slice is switched off (✎ Edit wheel lists it, to put them on for a spin) unless they can be on it, and left off the
+ * wheel drawn from the first frame. `name`: the picker's name.
+ */
+export function openPartnerWheel(live: Live, session: Session, s: PartnerState, name: string): void {
+  const pool: PoolSlice[] = playerSegments(session).map((p) => (p.id === s.pickerId && !s.includePicker ? { ...p, off: true } : p));
+  live.overlay = {
+    kind: 'wheel',
+    nonce: newId(),
+    name: `Partner for ${name}`,
+    players: true,
+    pool,
+    segments: onSlices(pool),
+    rotation: 0,
+    spin: null,
+    result: null,
+    partnerFor: s.clue,
+  };
+}
+
+/** The rolls of the wheels on screen still spinning at `now` (the main wheel's and each extra one's): 📜 Log hides them. */
+export function spinningRolls(o: Overlay | null | undefined, now: number): Id[] {
+  const w = o?.kind === 'scoreboard' ? o.under : o;
+  if (w?.kind !== 'wheel') return [];
+  return [w, ...(w.extra ?? [])].flatMap((x) => (x.rollId && x.spin && x.spin.startedAt + x.spin.duration > now ? [x.rollId] : []));
 }
 
 /** A throwaway wheel from a plain list of options (with optional weights). */
@@ -193,6 +221,7 @@ function spinExtra(w: ExtraWheel, session: Session, game: Game, startedAt: numbe
   if (wheelSpentUp(w, session, game)) {
     w.spin = null;
     w.result = null;
+    delete w.rollId;
     return;
   }
   const preset = w.wheelId ? game.wheels.find((x) => x.id === w.wheelId) : undefined;
@@ -208,6 +237,7 @@ function spinExtra(w: ExtraWheel, session: Session, game: Game, startedAt: numbe
   const seg = w.segments[index];
   const logged = logRoll(session, 'wheel', w.name, sliceLabel(seg, index), w.players ? [seg.id] : undefined);
   if (w.players) logged.picked = true;
+  w.rollId = logged.id;
   if (preset?.removeAfterLanding && !isRespin(seg)) {
     session.removedSegments ??= {};
     session.removedSegments[preset.id] ??= [];
@@ -235,6 +265,7 @@ export function spinWheel(live: Live, session: Session, game: Game): void {
   o.tagged = o.players ? [seg.id] : undefined;
   const logged = logRoll(session, 'wheel', o.name, sliceLabel(seg, index), o.players ? [seg.id] : undefined);
   if (o.players) logged.picked = true;
+  o.rollId = logged.id;
   if (preset?.removeAfterLanding && !isRespin(seg)) {
     session.removedSegments ??= {};
     session.removedSegments[preset.id] ??= [];

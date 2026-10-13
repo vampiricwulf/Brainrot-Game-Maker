@@ -21,6 +21,7 @@
     onredoto,
     onclose,
     area = null,
+    spinning = [],
   }: {
     game: Game;
     session: Session;
@@ -35,6 +36,8 @@
     onclose: () => void;
     /** Single window: the host panel's box. The log shows in there, never over the stage viewers see. */
     area?: { top: number; left: number; width: number; height: number } | null;
+    /** Rolls whose wheel is still spinning: their result waits for the landing (this log can be on stream). */
+    spinning?: string[];
   } = $props();
   const byId = $derived(Object.fromEntries([...(session.removedPlayers ?? []), ...session.players].map((p) => [p.id, p])));
   const removed = $derived(new Set((session.removedPlayers ?? []).map((p) => p.id)));
@@ -52,6 +55,13 @@
     return out.reverse();
   });
   const rolls = $derived([...(session.rollLog ?? [])].reverse());
+  /** A roll whose wheel is still spinning: "… spinning" in place of its result, until it lands. */
+  const stillSpinning = (id: string) => spinning.includes(id);
+  /** A History row's words (a roll still spinning: its name, without the result). */
+  function rowText(row: TimelineRow): string {
+    if (row.kind !== 'roll' || !stillSpinning(row.id)) return row.text;
+    return `${session.rollLog?.find((r) => r.id === row.id)?.name ?? 'Spin'}: … spinning`;
+  }
   let expanded = $state<Record<string, boolean>>({});
   const icon = { wheel: '🎡', dice: '🎲', rolloff: '🏁' } as const;
   const time = (ts: number) => new Date(ts).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
@@ -115,7 +125,8 @@
     return () => {
       panel?.removeAttribute('inert');
       const lost = !document.activeElement || document.activeElement === document.body || !!box?.contains(document.activeElement);
-      if (from?.isConnected && lost) setTimeout(() => from.focus());
+      // (Unless something took the keys meanwhile: a key pressed at once after, like Esc closing a wheel.)
+      if (from?.isConnected && lost) setTimeout(() => (!document.activeElement || document.activeElement === document.body) && from.focus());
     };
   });
 </script>
@@ -169,7 +180,7 @@
               {:else if row.kind === 'roll'}{icon[row.source]}
               {:else}•{/if}
             </span>
-            <span class="text">{row.text}</span>
+            <span class="text">{rowText(row)}</span>
             {#if reopen || undone(row) || back}
               <span class="acts">
                 {#if reopen}
@@ -208,8 +219,8 @@
       {#each rolls as r (r.id)}
         <div class="roll">
           <div><span>{icon[r.source]}</span> <b>{r.name}</b> <span class="muted small">{time(r.ts)}</span></div>
-          <div>{r.result}</div>
-          {#if r.playerIds?.length}
+          <div>{stillSpinning(r.id) ? '… spinning' : r.result}</div>
+          {#if r.playerIds?.length && !stillSpinning(r.id)}
             <div class="small">For: {nameList(r.playerIds.map((id) => byId[id]?.name ?? '?'))}</div>
           {/if}
         </div>

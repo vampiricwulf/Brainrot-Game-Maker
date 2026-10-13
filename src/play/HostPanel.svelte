@@ -10,11 +10,12 @@
   import { hostSlots, type HostAsk, type NextAction } from './host/slots.svelte';
   import { phoneAwaySince } from './host/phoneaway.svelte';
   import { categoryLabel, finalName, formatPoints, isBoard, typedPoints, wholePoints, type Game, type Session } from '../lib/model';
-  import { answerShowing, awardOpen, clueMarks, clueName, clueScored, currentClueInfo, currentFinal, findClueRef, nameList, roundComplete, score, setScore, slidePosition, tiedForFirst, toolOnlyClue, usedTiles } from '../lib/session';
+  import { answerShowing, awardOpen, clueMarks, clueName, clueScored, currentClueInfo, currentFinal, findClueRef, nameList, ownPlayers, roundComplete, score, setScore, slidePosition, tiedForFirst, toolOnlyClue, usedTiles } from '../lib/session';
   import MediaControls from './MediaControls.svelte';
   import SoundWarnings from './host/SoundWarnings.svelte';
   import TimerControls from './host/TimerControls.svelte';
   import DDControls from './host/DDControls.svelte';
+  import PartnerControls from './host/PartnerControls.svelte';
   import FinalControls from './host/FinalControls.svelte';
   import EndControls from './host/EndControls.svelte';
   import ToolsControls from './host/ToolsControls.svelte';
@@ -78,6 +79,9 @@
     onintronext,
     onskipintro,
     onddshow,
+    onpartnerspin = () => {},
+    onpartnershow = () => {},
+    onpartnerclock = () => {},
     onfinalstep,
     ontiebreaker,
     ontiebreakerdone,
@@ -174,6 +178,10 @@
     onintronext: () => void;
     onskipintro: () => void;
     onddshow: (playerId: string, wager: number) => void;
+    /** A 🤝 partner clue: 🎡 Spin for a partner, ▶ Show question, ⏱ Start the clock. */
+    onpartnerspin?: () => void;
+    onpartnershow?: () => void;
+    onpartnerclock?: () => void;
     onfinalstep: () => void;
     /** Play the tiebreaker clue (from the end screen's tie). */
     ontiebreaker: () => void;
@@ -224,9 +232,17 @@
   const finalRound = $derived(currentFinal(session, game));
   const done = $derived(session.phase === 'board' && !session.intro && roundComplete(session, game));
   const ddWager = $derived(session.phase === 'clue' && session.dd?.stage === 'splash');
+  /** The open clue is played by its own players (a Daily Double, a partner clue): nobody buzzes. */
+  const own = $derived(ownPlayers(session));
+  /** Before such a clue's question shows: a Daily Double's wager, a partner clue's PARTNER UP!. */
+  const setup = $derived(!!own?.setup);
+  /** A 🤝 partner clue that's open (its own part of the panel is up). */
+  const partner = $derived(session.phase === 'clue' && info?.clue.type === 'partner' ? session.partner : null);
+  /** A partner clue's own main button comes first: spin, show the question, start the clock (then the clue's own). */
+  const partnerFirst = $derived(!!partner && partner.stage !== 'live');
   const scoring = $derived(awardOpen(session));
   // (Off in a copy with no buzzer server, see buzzerOn.)
-  const buzzing = $derived(buzzerOn(game.settings) && session.phase === 'clue' && !session.dd && !everyone);
+  const buzzing = $derived(buzzerOn(game.settings) && session.phase === 'clue' && !own && !everyone);
   /**
    * Single window, buzzer mode: the buzzers' row keeps its room (empty) where there are no buzzers, on the board and on a
    * Daily Double's question, so the stage viewers see keeps one size.
@@ -279,7 +295,7 @@
   /** A wheel or dice tile's tool, in words. */
   const toolName = $derived(info?.clue.type === 'dice' ? 'dice' : 'wheel');
   /** A clue (or the tiebreaker) with several question slides: which one is on screen ("Slide 2 of 3"); null for one slide. */
-  const slidePos = $derived(ddWager ? null : slidePosition(session, game));
+  const slidePos = $derived(setup ? null : slidePosition(session, game));
   /** The tiebreaker clue's winner, picked (while they're still tied for first: an older roll-off's doesn't count). */
   const tbWinner = $derived(
     session.phase === 'tiebreaker' && session.tiebreakClue && tiedForFirst(session).some((p) => p.id === session.rollOffWinner)
@@ -298,12 +314,12 @@
     reveal: teams ? 'Team reveals' : 'Player reveals',
   });
   /** Points were given for the open clue, so "Cancel (keep tile)" would let it be scored twice. */
-  const cancelBlocked = $derived(!ddWager && !!info && clueScored(session, info.clue.id));
+  const cancelBlocked = $derived(!setup && !!info && clueScored(session, info.clue.id));
   const quickValue = $derived(session.dd?.stage === 'question' ? (session.dd.wager ?? 0) : (info?.value ?? 0));
   /** 0 is an amount too: a Daily Double wagered at 0 or a clue worth 0 (a 0 result), the tiebreaker's winner (no points). */
   const zeroOk = $derived(
     amount === 0 &&
-      ((session.phase === 'clue' && (session.dd?.stage === 'question' || (!session.dd && info?.value === 0 && !toolOnly))) || session.phase === 'tiebreaker'),
+      ((session.phase === 'clue' && (own ? !own.setup : info?.value === 0 && !toolOnly)) || session.phase === 'tiebreaker'),
   );
   const canAward = $derived(!!selected.length && (!!amount || zeroOk));
   /** Why ＋ Award and − Deduct are off (their tooltip). */
@@ -439,7 +455,9 @@
   });
   // A clue just opened, or a Daily Double's question showed: the focus goes to the main button (not lost on the tile
   // that went away; and not left in the wager box, where the Enter that showed it would go on to reveal the answer).
+  // A partner clue's each step too (its question showing, the clock starting).
   $effect(() => {
+    void session.partner?.stage;
     if (!clueKey() || ddWager) return;
     queueMicrotask(() => document.querySelector<HTMLElement>('.panel [data-next]')?.focus({ preventScroll: true }));
   });
@@ -478,14 +496,14 @@
   const answerUp = $derived(session.phase === 'clue' && session.revealed);
   /** Someone is answering (picked, or the buzz): ＋ Award is the main button then, and the NEXT cell goes quiet. */
   // (Not while a Daily Double has question slides still to show: its player hasn't heard it all, Next slide ▶ is next.)
-  const answering = $derived(session.phase === 'clue' && !ddWager && !!selected.length && canAward && !(session.dd && moreSlides));
+  const answering = $derived(session.phase === 'clue' && !setup && !!selected.length && canAward && !(own && moreSlides));
   /**
    * This moment's own main button, by priority: a buzzer tie's 🎲 Roll for it, 🔔 Open the buzzers, then 👁 Reveal
    * answer, then ▦ Done ▶ board. (A part's offer comes first: a tool on screen, the Daily Double's wager, the Final…)
    */
   const flow = $derived.by((): NextAction | null => {
     if (session.intro) return { label: introLabel, key: 'N', title: 'N (or click the screen)', run: onintronext };
-    if (session.phase === 'clue' && info && !ddWager) {
+    if (session.phase === 'clue' && info && !setup && !partnerFirst) {
       if (tieNames && onrolltie) return { label: '🎲 Roll for it', title: 'The tied players roll: the order they roll in is the order they answer in', run: onrolltie };
       // A clue's question slides come first (the host opens the buzzers whenever they like: 🔔 next to it, or U).
       if (moreSlides && slidePos)
@@ -606,6 +624,12 @@
           {dd.shown ? 'Hide wager' : 'Show wager'}
         </button>
       {/if}
+      {#if partner}
+        {@const named = (id: string | undefined) => session.players.find((p) => p.id === id)?.name}
+        <span class="ddtag partnertag" data-partner-tag
+          >🤝 {named(partner.pickerId) ?? '?'}{partner.partnerId ? (partner.partnerId === partner.pickerId ? ' · Solo' : ` + ${named(partner.partnerId) ?? '?'}`) : ''}</span
+        >
+      {/if}
       {#if slidePos && !session.revealed}<span class="slidepos" data-slidepos>Slide {slidePos.at} of {slidePos.of}</span>{/if}
       <span class="muted">·</span>
       {#if toolOnly}
@@ -614,6 +638,10 @@
         <span class="revealed">Answer is showing</span>
       {:else if ddWager}
         <span class="muted">Daily Double: who found it, and their wager</span>
+      {:else if partner?.stage === 'pick'}
+        <span class="muted">{partner.partnerId ? 'Partner clue: show the question when you’re ready' : 'Partner clue: spin for a partner'}</span>
+      {:else if partner?.stage === 'distribute'}
+        <span class="muted">Answer hidden · hand out the cards</span>
       {:else}
         <span class="muted">Answer hidden</span>
       {/if}
@@ -674,7 +702,7 @@
         disabled={cancelBlocked}
         title={cancelBlocked
           ? 'Points were given for this clue: undo them first, or use Done ▶ board'
-          : ddWager
+          : setup
             ? 'Esc: the question never showed, so the tile stays on the board'
             : 'Shift+Esc: back to the board without using up this tile'}
       >↩ Cancel (keep tile)</button>
@@ -816,6 +844,12 @@
         {/key}
       {/if}
 
+      {#if partner && info}
+        {#key info.clue.id}
+          <PartnerControls {game} {session} clue={info.clue} {dual} onspin={onpartnerspin} onshow={onpartnershow} onclock={onpartnerclock} />
+        {/key}
+      {/if}
+
       {#if everyone && info}
         <div class="mode-host"><AnswersHost {game} {session} {dual} clueId={info.clue.id} phones={answerPhones} open={!session.revealed && !session.remote?.answers?.locked} onjudge={onanswerjudge} /></div>
       {/if}
@@ -859,7 +893,7 @@
         {#if session.intro}
           <button class="ghost" onclick={onskipintro}>Skip intro</button>
         {/if}
-        {#if session.phase === 'clue' && !ddWager}
+        {#if session.phase === 'clue' && !setup}
           {#if slidePos && !session.revealed}
             <!-- A clue's question slides: back one (quiet), and on when something else is the main button. -->
             <button class="ghost" onclick={() => onslide(-1)} disabled={slidePos.at <= 1} title="Shift+N: the slide before">◀ Slide</button>
@@ -895,7 +929,7 @@
           <button class="ghost" aria-expanded="false" onclick={() => (adjust = true)} title="Give or take points (or press a player's number)">± Adjust score</button>
         {/if}
       {/snippet}
-      {#if !showAward && (session.intro || (session.phase === 'clue' && !ddWager) || session.phase === 'tiebreaker' || session.phase === 'slides' || scoring)}
+      {#if !showAward && (session.intro || (session.phase === 'clue' && !setup) || session.phase === 'tiebreaker' || session.phase === 'slides' || scoring)}
         <div class="row flow">{@render others()}</div>
       {/if}
       <!-- Single window, buzzer mode: the buzzers' row (on clues, below) kept on the board too, empty, so the stage viewers
@@ -942,8 +976,9 @@
               <button class="ghost small" onclick={() => onopenbuzzers?.(true)} title="0: nobody is locked out any more, and the buzzers open for everyone">↺ Reset buzzers</button>
             {/if}
           </div>
-        {:else if roomForBuzzers && session.phase === 'clue' && session.dd?.stage === 'question'}
-          <!-- A Daily Double's question has no buzzers (its player answers): their row is kept, empty, as on the board. -->
+        {:else if roomForBuzzers && session.phase === 'clue' && own && !own.setup}
+          <!-- A Daily Double's or a partner clue's question has no buzzers (its players answer): their row is kept, empty,
+               as on the board. -->
           <div class="row buzzrow" aria-hidden="true"></div>
         {/if}
         <div class="row award">
@@ -1366,6 +1401,13 @@
     padding: 1px 8px;
     font-weight: 700;
     font-size: 12px;
+  }
+  .partnertag {
+    background: #1f8a57;
+    max-width: 260px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
   .done,
   .revealed {
