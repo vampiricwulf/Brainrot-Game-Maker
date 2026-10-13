@@ -180,7 +180,8 @@ answer to the next one who buzzed, and **↺ Reset buzzers** (`0`) lets everyone
 tie: **🎲 Roll for it** sets who answers first, or pick one yourself (`1`–`9` or a click always picks by hand). Viewers
 see "🔔 Ann is answering" whenever one player is picked during a clue. Phones also say who got a clue right and what's
 on (a Daily Double's player sees "you're up"), beep and flash when BUZZ! lights up (🔔 mutes), and **Not you?** lets a
-player change seats. The room stays open through the pre-game screen, a reload of it and **◀ Back to editor**; it closes
+player change seats. A player on a computer opens the same link: `Space` (or `Enter`) buzzes, `1`–`9` pick their seat or
+team, `Esc` goes back, and the page says when another window (the stream, say) has the keyboard. The room stays open through the pre-game screen, a reload of it and **◀ Back to editor**; it closes
 with Exit, at the end of the game or with **✕ Close the room**. The join code shows small in a corner of the stream
 during the game (at the end of the score bar on the board) and on the cover card; the On stream options can hide it.
 **🔒 Lock seats** keeps new phones out, and a player whose seat you take back (✕) can't take it again for 2 minutes.

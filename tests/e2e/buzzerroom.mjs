@@ -382,6 +382,275 @@ try {
   pages.splice(pages.findIndex(([, p]) => p === mo), 1);
   setState({ seats: hs.seats.filter((x) => x.id !== 'm') });
 
+  // ---------- On a desktop browser: a mouse and a keyboard, no touch ----------
+  // Kim plays on a laptop, watching the stream in another window. She joins with the keys alone, Space buzzes (once per
+  // press, held or not), and the keys stay the buzzer's whatever she clicks. The phones' page is as it was.
+  setState({ seats: [...hs.seats, { id: 'k', name: 'Kim', color: '#8e4ec6' }], colorPick: true });
+  const kimCtx = await browser.newContext({ viewport: { width: 1280, height: 720 } });
+  // Counted on the page as they happen (however slow the machine): the buzzes it sends, the AudioContexts it makes, and
+  // whether the page took each key (a key it didn't take scrolls the page, or presses a button).
+  await kimCtx.addInitScript(() => {
+    window.sentBuzzes = 0;
+    window.audioMade = 0;
+    window.keysSeen = [];
+    const send = WebSocket.prototype.send;
+    WebSocket.prototype.send = function (d) {
+      if (typeof d === 'string' && JSON.parse(d).t === 'buzz') window.sentBuzzes++;
+      return send.call(this, d);
+    };
+    const Ctx = window.AudioContext;
+    if (Ctx)
+      window.AudioContext = class extends Ctx {
+        constructor(...a) {
+          super(...a);
+          window.audioMade++;
+        }
+      };
+    addEventListener('keydown', (e) => window.keysSeen.push({ key: e.key, repeat: e.repeat, taken: e.defaultPrevented }));
+  });
+  const kim = await kimCtx.newPage();
+  kim.on('pageerror', (e) => errors.push(`[kim] ${e.message}`));
+  // "Not you? Change player" asks first: Kim says no.
+  kim.on('dialog', (d) => d.dismiss());
+  pages.push(['kim', kim]);
+  const kimBuzzes = () => kim.evaluate(() => window.sentBuzzes);
+  /** Kim's page sent exactly n buzzes in all, and no more come after. */
+  const buzzedTimes = async (n, what) => {
+    await kim.waitForFunction((n) => window.sentBuzzes >= n, n);
+    await sleep(300);
+    const got = await kimBuzzes();
+    assert(got === n, `${what} (${got - (n - 1)} buzz${got - (n - 1) === 1 ? '' : 'es'})`);
+  };
+  const arm = async (armId, clue = `Q${armId}`) => {
+    setState({ phase: 'armed', armId, clue: { text: clue }, answering: null, lockedOut: [] });
+    await big(kim).getByText('BUZZ!').waitFor();
+  };
+  await kim.goto(base);
+  await kim.keyboard.type(room.code.toLowerCase());
+  await kim.keyboard.press('Enter');
+  await kim.getByRole('heading', { name: 'Click your name' }).waitFor();
+  const kimSeat = kim.locator('#seat-list .seat[data-seat="k"]');
+  assert(
+    (await kimSeat.locator('kbd').innerText()) === '5' && (await kimSeat.getAttribute('aria-keyshortcuts')) === '5' && (await kim.getByRole('button', { name: 'Kim', exact: true }).count()) === 1,
+    'desktop: "Click your name", each seat with its number key (5 for Kim; the key isn’t part of its name)',
+  );
+  assert((await bob.getByRole('heading', { name: 'Tap your name' }).isVisible()) && (await bob.locator('#seat-list kbd').first().isHidden()), 'a phone still says "Tap your name", with no number keys');
+  await kim.keyboard.press('1'); // Ann's seat: taken, so nothing
+  await kim.keyboard.press('5');
+  await big(kim).getByText('Kim').waitFor();
+  assert((await kim.evaluate(() => window.audioMade)) >= 1, 'Kim joins with the keys alone (the code, Enter, 5): her page may play sound from then on');
+  const keysHint = kim.locator('#keys');
+  assert(
+    (await keysHint.innerText()) === 'Press Space to buzz' && (await kim.locator('#buzz').getAttribute('aria-keyshortcuts')) === 'Space' && (await kim.locator('#buzz').getAttribute('aria-describedby')) === 'keys',
+    'the buzzer says "Press Space to buzz" (to a screen reader too: its shortcut and description)',
+  );
+  assert((await ann.locator('#keys').isHidden()) && (await ann.locator('#buzz').getAttribute('aria-keyshortcuts')) === null, 'a phone shows no key hint');
+  assert((await kim.locator('#buzz').evaluate((b) => getComputedStyle(b).cursor)) === 'default', 'nothing to buzz yet: the buzzer has no hand cursor');
+
+  // Clicks on 🎨 (Esc shuts it), a colour, the sound (off and on) and "Not you?" (cancelled): Space still buzzes.
+  const colours = kim.getByRole('group', { name: 'Pick your colour' });
+  await kim.getByRole('button', { name: '🎨 Change your colour' }).click();
+  await colours.waitFor();
+  await kim.keyboard.press('Escape');
+  await colours.waitFor({ state: 'hidden' });
+  await kim.getByRole('button', { name: '🎨 Change your colour' }).click();
+  await colours.locator('.swatch:not([disabled]):not([aria-pressed="true"])').first().click();
+  await colours.waitFor({ state: 'hidden' });
+  await host.wait((m) => m.t === 'color' && m.seatId === 'k', 'Kim’s colour');
+  await kim.locator('#sound').click();
+  await kim.locator('#sound').getByText('Muted').waitFor();
+  await kim.locator('#sound').click();
+  await kim.locator('#sound').getByText('Sound on').waitFor();
+  await kim.getByRole('button', { name: 'Not you? Change player' }).click();
+  await arm(101, 'This planet is red '.repeat(8));
+  assert((await kim.locator('#buzz').evaluate((b) => getComputedStyle(b).cursor)) === 'pointer', 'BUZZ!: the hand cursor');
+  let n = await kimBuzzes();
+  await kim.keyboard.press('Space');
+  await host.wait((m) => m.t === 'buzz' && m.armId === 101 && m.seatId === 'k', 'Kim’s Space buzz');
+  await buzzedTimes(++n, 'after clicks on 🎨, Esc, a colour, the sound and "Not you?", Space buzzes: the keys stayed the buzzer’s');
+  assert((await colours.isHidden()) && (await kim.locator('#sound').innerText()).includes('Sound on'), 'and Space pressed none of those');
+  await kim.keyboard.press('Enter');
+  await buzzedTimes(++n, 'and so does Enter (no confirm from "Not you?", the last thing clicked)');
+  // A button the keys were moved to with Tab takes Enter and Space, as any button does (the sound, off and on: no
+  // buzz). With the keys off it again, Space buzzes.
+  await kim.locator('#sound').focus();
+  await kim.keyboard.press('Enter');
+  await kim.locator('#sound').getByText('Muted').waitFor();
+  await kim.keyboard.press('Space');
+  await kim.locator('#sound').getByText('Sound on').waitFor();
+  await sleep(300);
+  assert((await kimBuzzes()) === n, 'Enter and Space press a button Tab moved the keys to (the sound, off and on: no buzz)');
+  await kim.evaluate(() => document.activeElement?.blur());
+  await kim.keyboard.press('Space');
+  await buzzedTimes(++n, 'with the keys off it, Space buzzes again');
+  assert((await kim.locator('#sound').innerText()).includes('Sound on'), 'and doesn’t press the sound');
+
+  // Desktop layout: a laptop's short window puts the clue beside the button, so nothing scrolls; a big one has them
+  // one above the other, in the middle.
+  const fit = () =>
+    kim.evaluate(() => {
+      const r = (id) => document.getElementById(id).getBoundingClientRect();
+      const inside = (b) => b.left >= 0 && b.top >= 0 && b.right <= innerWidth + 0.5 && b.bottom <= innerHeight + 0.5;
+      const b = r('buzz');
+      return { scroll: document.documentElement.scrollHeight - innerHeight, size: Math.round(b.width), mid: Math.round(b.left + b.width / 2 - innerWidth / 2), shown: ['buzz', 'me', 'keys', 'leave'].every((id) => inside(r(id))) };
+    });
+  const laptop = await fit();
+  assert(laptop.scroll <= 0 && laptop.shown && laptop.size >= 450, `1280×720 with a long clue: no scrolling, the button (${laptop.size}px), the hint, the name and score all on screen`);
+  await kim.setViewportSize({ width: 1920, height: 1080 });
+  const big1080 = await fit();
+  assert(big1080.scroll <= 0 && big1080.shown && big1080.size >= 500 && Math.abs(big1080.mid) <= 2, `1920×1080: the button (${big1080.size}px) in the middle, everything on screen`);
+  await kim.setViewportSize({ width: 1280, height: 720 });
+
+  // Space held down (the keys repeat): one buzz, and the page never scrolls.
+  await arm(102);
+  await kim.evaluate(() => {
+    document.activeElement?.blur();
+    window.keysSeen = [];
+  });
+  for (let i = 0; i < 12; i++) {
+    await kim.keyboard.down('Space');
+    await sleep(40);
+  }
+  await kim.keyboard.up('Space');
+  await buzzedTimes(++n, 'Space held down buzzes once');
+  const held = await kim.evaluate(() => window.keysSeen.filter((k) => k.key === ' '));
+  assert(held.length === 12 && held.filter((k) => k.repeat).length === 11 && held.every((k) => k.taken), 'and every repeat is the page’s (no scrolling)');
+  // Enter held on the focused buzzer (where the keys go back after a wager): one buzz too.
+  await arm(103);
+  await kim.locator('#buzz').focus();
+  for (let i = 0; i < 30; i++) {
+    await kim.keyboard.down('Enter');
+    await sleep(50);
+  }
+  await kim.keyboard.up('Enter');
+  await buzzedTimes(++n, 'Enter held on the focused buzzer buzzes once');
+  // A mouse press held down: one buzz, not a second as it comes up.
+  await arm(104);
+  const box = await kim.locator('#buzz').boundingBox();
+  await kim.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+  await kim.mouse.down();
+  await sleep(750);
+  await kim.mouse.up();
+  await buzzedTimes(++n, 'a mouse press held 750 ms buzzes once (not again as it comes up)');
+
+  // Keys only, before the buzzers open ("Get ready…"): Space on 🎨 (Tab took the keys there) opens the picker, the arrows
+  // and Space pick a colour, and the keys go on to the buzzer. No early buzz on the way: Space buzzes once BUZZ! is lit.
+  setState({ phase: 'closed', armId: 105, clue: { text: 'Q105' }, answering: null, lockedOut: [] });
+  await big(kim).getByText('Get ready…').waitFor();
+  const colourMsgs = host.got.length;
+  await kim.locator('#color-btn').focus();
+  await kim.keyboard.press('Space');
+  await colours.waitFor();
+  await kim.keyboard.press('Tab');
+  await kim.waitForFunction(() => document.activeElement?.classList.contains('swatch'));
+  for (let i = 0; i < 12 && (await kim.evaluate(() => document.activeElement?.getAttribute('aria-pressed') === 'true')); i++) await kim.keyboard.press('ArrowRight');
+  const picked = await kim.evaluate(() => document.activeElement?.dataset.color);
+  await kim.keyboard.press('Space');
+  await host.wait((m) => host.got.indexOf(m) >= colourMsgs && m.t === 'color' && m.seatId === 'k' && m.color === picked?.toLowerCase(), 'Kim’s colour picked with the keys');
+  await colours.waitFor({ state: 'hidden' });
+  await kim.waitForFunction(() => document.activeElement?.id === 'buzz');
+  await sleep(300);
+  assert(
+    (await kimBuzzes()) === n && (await big(kim).innerText()) === 'Get ready…',
+    'keys only, before the buzzers open: Space on 🎨 opens the picker, Space on a colour picks it, and the keys go on to the buzzer (no early buzz)',
+  );
+  // Esc from a colour shuts the picker, the keys on the buzzer too.
+  await kim.locator('#color-btn').focus();
+  await kim.keyboard.press('Enter');
+  await colours.waitFor();
+  await kim.keyboard.press('Tab');
+  await kim.waitForFunction(() => document.activeElement?.classList.contains('swatch'));
+  await kim.keyboard.press('Escape');
+  await colours.waitFor({ state: 'hidden' });
+  await kim.waitForFunction(() => document.activeElement?.id === 'buzz');
+  assert((await kimBuzzes()) === n, 'Esc from a colour shuts the picker, the keys on the buzzer (no buzz)');
+  await arm(105);
+  await kim.keyboard.press('Space');
+  await buzzedTimes(++n, 'BUZZ!: Space there buzzes');
+  assert((await big(kim).innerText()) !== 'Too early', 'not too early: no press counted before the buzzers opened');
+
+  // A wager after a click on 🎨 (open and shut): the box takes the keys as it opens; Enter sends.
+  setState({ phase: 'lobby', clue: null, answering: null });
+  await big(kim).getByText('Kim').waitFor();
+  await kim.evaluate(() => document.activeElement?.blur());
+  await kim.getByRole('button', { name: '🎨 Change your colour' }).click();
+  await kim.getByRole('button', { name: '🎨 Change your colour' }).click();
+  await colours.waitFor({ state: 'hidden' });
+  setState({ status: { text: 'Final Jeopardy! · Rivers' }, wager: { id: 'kw', kind: 'final', open: true, seats: [{ id: 'k', max: 1000 }] } });
+  await kim.waitForFunction(() => document.activeElement?.id === 'wager-in');
+  assert(await keysHint.isHidden(), 'the wager box takes the keys as it opens, even after a click on 🎨 (and the Space hint goes)');
+  await kim.keyboard.type('500');
+  await kim.keyboard.press('Enter');
+  const wager = await host.wait((m) => m.t === 'wager' && m.id === 'kw' && m.seatId === 'k', 'Kim’s wager');
+  assert(wager.amount === 500, 'typed and sent with Enter: the host has Kim’s 500');
+  setState({ wager: { ...hs.wager, open: false, seats: [{ id: 'k', max: 1000, amount: 500 }] } });
+  await kim.waitForFunction(() => document.activeElement?.id === 'buzz');
+  assert(await keysHint.isVisible(), 'locked: the keys go back to the buzzer, and the hint comes back');
+  // A ✍ clue: the answer box takes the keys, even from 🎨 where Tab had left them; a space typed in it is a space (no
+  // buzz); Enter sends.
+  await kim.locator('#color-btn').focus();
+  setState({ status: null, wager: null, clue: { text: 'The longest river in Africa' }, answers: { id: 'ka', open: true, seats: [{ id: 'k' }] } });
+  await kim.waitForFunction(() => document.activeElement?.id === 'answer-in');
+  assert((await kim.locator('#answer-keys').innerText()) === 'Enter sends · Shift+Enter for a new line', 'the answer box takes the keys as it opens (from 🎨 too, where Tab had left them), and says Enter sends');
+  n = await kimBuzzes();
+  await kim.keyboard.type('Blue Nile');
+  await kim.keyboard.press('Enter');
+  const answer = await host.wait((m) => m.t === 'answer' && m.id === 'ka' && m.seatId === 'k', 'Kim’s answer');
+  assert(answer.text === 'Blue Nile' && (await kimBuzzes()) === n, 'typed and sent with Enter ("Blue Nile": its space typed, no buzz)');
+  setState({ answers: null, clue: null });
+  await big(kim).getByText('Kim').waitFor();
+
+  // Another window has the keyboard (the stream): the page says Space goes there, and to click here first.
+  await kim.evaluate(() => dispatchEvent(new Event('blur')));
+  await keysHint.getByText('Space goes to another window: click here first').waitFor();
+  await kim.evaluate(() => dispatchEvent(new Event('focus')));
+  await keysHint.getByText('Press Space to buzz').waitFor();
+  assert(true, 'another window has the keyboard: the hint says so, and goes back once this one has it');
+  // Back after a reload with the keys alone: the first key press lets the page play sound.
+  await kim.reload();
+  await big(kim).getByText('Kim').waitFor();
+  assert((await kim.evaluate(() => window.audioMade)) === 0, 'reloaded: no sound allowed yet');
+  await kim.keyboard.press('Space');
+  await kim.waitForFunction(() => window.audioMade === 1);
+  assert(true, 'a key press lets the page play sound (a keyboard-only player hears BUZZ! too)');
+
+  // The host frees Kim's seat: the notice takes the keys (Space, pressed to buzz, doesn't shut it), and Enter takes its
+  // button. Then Esc goes back from the name form and from waiting to be let in, and the arrow keys walk the list.
+  host.send({ t: 'kick', seatId: 'k', block: false });
+  await kim.locator('main').getByText('The host freed your seat').waitFor();
+  assert((await kim.locator('#msg-text').innerText()).includes('click your name again'), 'the notice says "click", not "tap"');
+  await kim.waitForFunction(() => document.activeElement?.id === 'msg-title');
+  await kim.keyboard.press('Space');
+  await sleep(300);
+  assert(await kim.locator('#s-msg').isVisible(), 'the notice takes the keys as it comes up: Space doesn’t shut it before it’s read');
+  await kim.keyboard.press('Enter');
+  await kim.getByRole('heading', { name: 'Click your name' }).waitFor();
+  await kim.getByRole('button', { name: "＋ I'm new" }).click();
+  await kim.getByLabel('Your name', { exact: true }).waitFor();
+  await kim.keyboard.press('Escape');
+  await kim.getByRole('heading', { name: 'Click your name' }).waitFor();
+  await kim.waitForFunction(() => document.activeElement?.id === 'new-btn');
+  assert(true, 'Esc on "What’s your name?" goes back, the keys on ＋ I’m new');
+  await kim.keyboard.press('Enter');
+  await kim.keyboard.type('Kay');
+  await kim.keyboard.press('Enter');
+  await kim.locator('main').getByText('Waiting for the host to let you in…').waitFor();
+  // (At once: before the room has even said it's waiting, Esc goes back to the list, not to the name form.)
+  await kim.keyboard.press('Escape');
+  await kim.getByRole('heading', { name: 'Click your name' }).waitFor();
+  await kim.waitForFunction(() => document.activeElement?.id === 'new-btn');
+  const kayAsks = () => host.got.findLast((m) => m.t === 'phones').phones.some((p) => p.pendingName === 'Kay');
+  for (let i = 0; i < 40 && kayAsks(); i++) await sleep(250);
+  await sleep(500);
+  assert(!kayAsks(), 'Esc while waiting to be let in takes the request back (the host stops seeing it)');
+  assert(true, 'and the keys are on ＋ I’m new');
+  await kim.keyboard.press('ArrowUp');
+  await kim.waitForFunction(() => document.activeElement?.dataset.seat === 'k');
+  assert(true, '↑ from ＋ I’m new goes up the list (to Kim, the last free seat)');
+  await kimCtx.close();
+  pages.splice(pages.findIndex(([, p]) => p === kim), 1);
+  setState({ phase: 'lobby', clue: null, answering: null, lockedOut: [], colorPick: undefined, seats: hs.seats.filter((x) => x.id !== 'k') });
+
   // 🔒 Lock seats: nobody new gets a seat.
   setState({ locked: true });
   await bob.locator('#seats-status').getByText('The host has locked the seats').waitFor();
@@ -597,6 +866,17 @@ try {
   assert((await hal.locator('#live').innerText()) === "Get ready… Don't buzz yet.", 'no "Get ready…." doubled stop');
   setState({ phase: 'lobby', clue: null });
 
+  // Jo plays on a laptop (she joins now: after the flood below, a new phone from this address is turned away).
+  setState({ seats: [...hs.seats, { id: 'j', name: 'Jo', color: '#00a2c7' }] });
+  const joCtx = await browser.newContext({ viewport: { width: 1280, height: 720 } });
+  const jo = await joCtx.newPage();
+  jo.on('pageerror', (e) => errors.push(`[jo] ${e.message}`));
+  pages.push(['jo', jo]);
+  await jo.goto(`${base}/${room.code}`);
+  await jo.getByRole('button', { name: 'Jo', exact: true }).click();
+  await big(jo).getByText('Jo').waitFor();
+  assert(await jo.locator('#keys').getByText('Press Space to buzz').isVisible(), 'Jo, on a laptop, sees "Press Space to buzz"');
+
   // A socket that floods the room is closed (4008), and its address can't come straight back (only a phone taking back
   // a seat it holds may: others on that Wi-Fi).
   const flood = new WebSocket(`ws://127.0.0.1:${port}/ws/${room.code}`);
@@ -619,25 +899,43 @@ try {
   assert(true, 'the room carries on for everyone else');
 
   // Game over: each phone says where it came.
-  setState({ over: true, currency: '$', scores: { a: 700, b: 400, c: 0, d: 100 }, status: { text: 'Game over: thanks for playing!' } });
+  setState({ over: true, currency: '$', scores: { a: 700, b: 400, c: 0, d: 100, j: 50 }, status: { text: 'Game over: thanks for playing!' } });
   await big(ann).getByText('You came 1st').waitFor();
   assert((await small(ann).innerText()) === 'with $700 🎉', `game over: "You came 1st / with $700 🎉" (${await small(ann).innerText()})`);
   await big(dee).getByText('You came 3rd').waitFor();
   assert(true, 'and the others their own place ("You came 3rd")');
   // A tie for first the tiebreaker settled: its winner came 1st, the one it beat 2nd (not "You tied for 1st" on both).
-  setState({ scores: { a: 700, b: 400, c: 0, d: 700 }, winner: 'd' });
+  setState({ scores: { a: 700, b: 400, c: 0, d: 700, j: 50 }, winner: 'd' });
   await big(dee).getByText('You came 1st').waitFor();
   await big(ann).getByText('You came 2nd').waitFor();
   assert(true, 'a tie for first settled by a tiebreaker: "You came 1st" for its winner, "You came 2nd" for the other');
-  setState({ scores: { a: 700, b: 400, c: 0, d: 100 }, winner: undefined });
+  setState({ scores: { a: 700, b: 400, c: 0, d: 100, j: 50 }, winner: undefined });
   await big(ann).getByText('You came 1st').waitFor();
   await big(dee).getByText('You came 3rd').waitFor();
+  await big(jo).getByText('You came 4th').waitFor();
+  assert(
+    (await jo.locator('#keys').isHidden()) && (await jo.locator('#buzz').getAttribute('aria-keyshortcuts')) === null && (await jo.locator('#buzz').getAttribute('aria-describedby')) === null,
+    'on a laptop, once the game is over: no "Press Space to buzz" under the place (nor for a screen reader)',
+  );
 
   // The host closes the room.
   host.send({ t: 'close' });
   await ann.locator('main').getByText('You came 1st with $700 🎉').waitFor();
   await dee.locator('main').getByText('You came 3rd with $100').waitFor();
   assert(true, 'closed at the end, the place stays up ("You came 1st with $700 🎉")');
+  // On the laptop, the notice takes the keys: Space (pressed to buzz a moment ago) leaves the place up; Enter takes
+  // "Join another game".
+  await jo.locator('main').getByText('You came 4th with $50').waitFor();
+  await jo.waitForFunction(() => document.activeElement?.id === 'msg-title');
+  await jo.keyboard.press('Space');
+  await sleep(300);
+  assert(
+    (await jo.locator('#msg-title').isVisible()) && new URL(jo.url()).pathname === `/${room.code}`,
+    'on a laptop, Space leaves "You came 4th with $50" up (not "Join another game")',
+  );
+  await jo.keyboard.press('Enter');
+  await jo.getByLabel('Room code').waitFor();
+  assert(new URL(jo.url()).pathname === '/', 'and Enter takes "Join another game"');
   assert((await fetch(`${base}/api/rooms/${room.code}`)).status === 404, 'closing ends the room for everyone');
 
   // New rooms are limited: 6 a minute from one address (here a made-up one: wrangler dev takes CF-Connecting-IP as

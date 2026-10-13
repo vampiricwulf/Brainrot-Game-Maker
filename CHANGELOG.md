@@ -11,6 +11,18 @@ the day it's pushed (Pacific time; start the heading on the day's first push) an
 in plain words for the people who make and host games. Anything committed but not pushed yet goes under
 **Unreleased** at the top, and moves under its day when it's pushed.
 
+## 2026-10-13
+
+### Added
+- The phone buzzer page works on a computer too: open the same link in a browser. Space (or Enter) buzzes from anywhere on the buzzer screen except while typing a wager or answer, 1–9 pick your seat or team, the arrow keys move along the list, and Esc goes back or closes the colour picker. The page shows these keys and says when another window (the stream, say) has the keyboard. (9b9afa9, 46f7cef)
+
+### Changed
+- On a computer the buzzer page has its own layout: a laptop-sized window puts the clue beside the button so nothing scrolls (at 200% zoom too), a big window keeps everything centred, buttons show hover and keyboard-focus highlights, and it says "Click" instead of "Tap". On a phone held sideways the ✍ answer box sits beside the clue like the wager box, so nothing scrolls. (9b9afa9, 46f7cef)
+- The partner clues spec is now draft 3, with the owner's answers: the host hands out every card in a 📤 Distribute step after the question shows (nothing goes to a phone by itself), the partner describes, points are set per clue, the guesser picks next, and the first phone release carries pictures, videos and YouTube. (6ea31b1)
+
+### Fixed
+- Buzzer page: holding the buzzer down with the mouse, or holding Enter on it, no longer buzzes a second time (before the buzzers opened, that restarted the too-early wait). A player using only the keyboard hears the buzzer sounds. Cancelling a request to join right away goes back to the list of names, not the name form. (9b9afa9, 46f7cef)
+
 ## 2026-10-12
 
 ### Added
