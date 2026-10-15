@@ -5,8 +5,8 @@ import { PLAYER_WHEEL, type BoardRound, type Game } from './model';
 
 const board = (g: Game, i: number = 0) => g.rounds[i] as BoardRound;
 import {
-  addWheel, editWheel, openCategories, openCategoryWheel, openPlayerWheel, openQuickWheel, removeWheel, openWheel, resetWheelEdits, spinSegments, spinWheel,
-  startRollOff, toggleScoreboard, wheelPool, wheelSpentUp,
+  addWheel, editWheel, openCategories, openCategoryWheel, openPartnerWheel, openPlayerWheel, openQuickWheel, removeWheel, openWheel, resetWheelEdits, spinningRolls,
+  spinSegments, spinWheel, startRollOff, toggleScoreboard, wheelEdited, wheelPool, wheelSpentUp,
 } from './overlay';
 import { newWheel, parseQuickWheel } from './tools';
 import { newSession } from './session';
@@ -291,5 +291,105 @@ describe('Reset on a wheel that is not saved', () => {
     expect(o.segments.map((s) => s.label)).toEqual(['A', 'C']);
     resetWheelEdits(o, session, game);
     expect(o.segments.map((s) => [s.label, s.weight])).toEqual([['A', 1], ['B', 1], ['C', 1]]);
+  });
+});
+
+describe('🤝 the partner wheel, and the rolls 📜 Log hides while they spin', () => {
+  /** Ann picked a partner clue: the wheel for her partner, Ann's slice switched off. */
+  function partnerWheel() {
+    const x = withPlayers();
+    openPartnerWheel(x.live, x.session, { clue: 'q1', stage: 'pick', giver: 'partner', pickerId: 'a' }, 'Ann');
+    const o = x.live.overlay!;
+    if (o.kind !== 'wheel') throw new Error('no wheel');
+    return { ...x, o };
+  }
+
+  it('keeps the picker off when players change while it is up (✎ Edit wheel can put them on)', () => {
+    const { game, session, live, o } = partnerWheel();
+    session.players.push({ id: 'd', name: 'Dan', color: '#ffff00', startScore: 0 });
+    session.players = session.players.filter((p) => p.id !== 'c');
+    expect(spinSegments(o, session, game).map((x) => x.id)).toEqual(['b', 'd']);
+    const pool = wheelPool(o, session, game);
+    expect(pool.map((x) => [x.id, !!x.off])).toEqual([['a', true], ['b', false], ['d', false]]);
+    for (let i = 0; i < 200; i++) {
+      spinWheel(live, session, game);
+      expect(['b', 'd']).toContain(o.segments[o.result!].id);
+    }
+    pool[0].off = false;
+    editWheel(o, pool, session, game);
+    expect(o.segments.map((x) => x.id)).toEqual(['a', 'b', 'd']);
+  });
+
+  it('↺ Undo edits puts it back as it opened: the picker off again (and that isn’t an edit)', () => {
+    const { game, session, o } = partnerWheel();
+    session.partner = { clue: 'q1', stage: 'pick', giver: 'partner', pickerId: 'a' };
+    expect(wheelEdited(o, session)).toBe(false);
+    const pool = wheelPool(o, session, game);
+    pool[0].off = false;
+    pool[1].weight = 3;
+    editWheel(o, pool, session, game);
+    expect(o.segments.map((x) => x.id)).toEqual(['a', 'b', 'c']);
+    expect(wheelEdited(o, session)).toBe(true);
+    resetWheelEdits(o, session, game);
+    expect(o.segments.map((x) => [x.id, x.weight])).toEqual([['b', 1], ['c', 1]]);
+    expect(wheelPool(o, session, game).map((x) => [x.id, !!x.off])).toEqual([['a', true], ['b', false], ['c', false]]);
+    expect(spinSegments(o, session, game).map((x) => x.id)).toEqual(['b', 'c']);
+    expect(wheelEdited(o, session)).toBe(false);
+    // The picker can be on it: back with them on.
+    session.partner.includePicker = true;
+    resetWheelEdits(o, session, game);
+    expect(o.segments.map((x) => x.id)).toEqual(['a', 'b', 'c']);
+    // Its clue closed: a plain player wheel again.
+    session.partner = null;
+    resetWheelEdits(o, session, game);
+    expect([o.pool, o.segments.map((x) => x.id)]).toEqual([undefined, ['a', 'b', 'c']]);
+  });
+
+  it('each wheel spun with it notes the roll its own spin logged', () => {
+    const { game, session, live, o } = partnerWheel();
+    addWheel(live, session, game, PLAYER_WHEEL);
+    addWheel(live, session, game, PLAYER_WHEEL);
+    spinWheel(live, session, game);
+    const log = session.rollLog!;
+    expect(log).toHaveLength(3);
+    const rolls = [o, ...o.extra!].map((w) => w.rollId);
+    expect(rolls).toEqual(log.map((r) => r.id));
+    // Each roll says what its own wheel landed on.
+    [o, ...o.extra!].forEach((w, i) => expect(log[i].playerIds).toEqual([w.segments[w.result!].id]));
+  });
+
+  it('a spent-up extra wheel stays put and forgets its last roll; the others keep theirs', () => {
+    const { game, session, live, o } = partnerWheel();
+    const once = newWheel('Once', ['A']);
+    once.removeAfterLanding = true;
+    game.wheels = [once];
+    addWheel(live, session, game, once.id);
+    spinWheel(live, session, game);
+    const first = o.extra![0].rollId;
+    expect(first).toBe(session.rollLog!.at(-1)!.id);
+    spinWheel(live, session, game);
+    expect([o.extra![0].spin, o.extra![0].rollId]).toEqual([null, undefined]);
+    expect(o.rollId).toBe(session.rollLog!.at(-1)!.id);
+    expect(spinningRolls(o, Date.now())).toEqual([o.rollId]);
+  });
+
+  it('lists each roll until its own wheel lands (the extra wheels land one after another), also after a reload', () => {
+    const { game, session, live, o } = partnerWheel();
+    addWheel(live, session, game, PLAYER_WHEEL);
+    spinWheel(live, session, game);
+    const mainEnd = o.spin!.startedAt + o.spin!.duration;
+    const extra = o.extra![0];
+    const extraEnd = extra.spin!.startedAt + extra.spin!.duration;
+    expect(extraEnd).toBeGreaterThan(mainEnd);
+    expect(spinningRolls(o, mainEnd - 1)).toEqual([o.rollId, extra.rollId]);
+    expect(spinningRolls(o, mainEnd)).toEqual([extra.rollId]);
+    expect(spinningRolls(o, extraEnd)).toEqual([]);
+    // The game in progress keeps the wheel (a JSON copy): its rolls are still hidden until they land.
+    const kept = JSON.parse(JSON.stringify(o));
+    expect(spinningRolls(kept, mainEnd)).toEqual([extra.rollId]);
+    // Not spun yet: nothing to hide.
+    openPartnerWheel(live, session, { clue: 'q1', stage: 'pick', giver: 'partner', pickerId: 'a' }, 'Ann');
+    expect(spinningRolls(live.overlay, Date.now())).toEqual([]);
+    expect(spinningRolls(null, Date.now())).toEqual([]);
   });
 });

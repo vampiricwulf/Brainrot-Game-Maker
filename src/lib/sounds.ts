@@ -12,6 +12,7 @@ export const CUES: [CueKey, string, string][] = [
   ['roundIntro', 'Round intro', 'With the round title card'],
   ['tileOpen', 'Tile opens', 'When a clue opens'],
   ['dailyDouble', 'Daily Double', 'With the Daily Double splash'],
+  ['partner', 'Partner clue', 'With a partner clue’s PARTNER UP! splash (none chosen: the tile-open sound)'],
   ['buzz', 'Buzz in', 'Buzzer mode: the first player in'],
   ['right', 'Right', 'Points given'],
   ['wrong', 'Wrong', 'Points taken'],

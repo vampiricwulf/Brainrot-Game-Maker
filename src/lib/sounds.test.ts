@@ -61,8 +61,10 @@ describe('cueMedia', () => {
 describe('built-in sounds', () => {
   const builtins = CUES.map(([k]) => k).filter(hasBuiltin);
 
-  it('every cue but the think music has one', () => {
-    expect(builtins.length).toBe(CUES.length - 1);
+  it('every cue but the think music and the partner clue’s has one (without a file, a partner clue plays the tile-open sound)', () => {
+    expect(builtins.length).toBe(CUES.length - 2);
+    expect(hasBuiltin('partner')).toBe(false);
+    expect(cueMedia({ audio: {} }, 'partner')).toBeUndefined();
   });
 
   it.each(builtins)('%s is short, audible, unclipped and starts and ends silent', (key) => {

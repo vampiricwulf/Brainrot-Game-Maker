@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { jeopardyGame } from './testgame';
-import { finalName, newImageEl, newTextEl, textSlide, type BoardRound, type FinalRound } from './model';
-import { applyScore, ddShowQuestion, finalChoose, finalNext, finalSetWager, goToRound, newSession, openClue, places } from './session';
+import { finalName, newImageEl, newTextEl, setSlideText, textSlide, PARTNER_GAMES, type BoardRound, type FinalRound, type PartnerGame } from './model';
+import { applyScore, ddShowQuestion, finalChoose, finalNext, finalSetWager, goToRound, judgePartner, newSession, openClue, places, removePlayer, undo } from './session';
+import { addCard, setPartner, setPartnerGame, swapParts } from './partner';
 import {
   buzzArm, buzzClueOpened, buzzDone, buzzIdle, buzzMissed, buzzOrder, buzzReset, buzzTake, hostState, newBuzz, phoneStatus, questionText, setupState, teamsOn, wagerAsk,
   whoBuzzed,
@@ -453,5 +454,128 @@ describe('wagerAsk (the wagers phones may send)', () => {
     expect(phoneStatus(game, session)?.text).toBe(`${finalName(f)} · US Presidents`);
     f.category = '';
     expect(phoneStatus(game, session)?.text).toBe(finalName(f));
+  });
+});
+
+describe('phoneStatus: a 🤝 partner clue (partner-clues spec §19.4, a room that takes no cards)', () => {
+  /** Ann (a), Bob (b) and Cat (c); Movies $400 a partner clue with two cards, only words nobody else has on them. */
+  function setup(game: PartnerGame = 'describe', teams = false) {
+    const g = jeopardyGame();
+    g.players = ['Ann', 'Bob', 'Cat'].map((name, i) => ({ id: name[0].toLowerCase(), name, color: ['#e6194b', '#3cb44b', '#4363d8'][i] }));
+    if (teams) g.settings.buzzTeams = true;
+    const r = g.rounds[0] as BoardRound;
+    r.categories[0].title = 'Movies';
+    const clue = r.categories[0].clues[1];
+    clue.type = 'partner';
+    setPartnerGame(clue, game);
+    setSlideText(clue.questionSlide, 'Describe this movie');
+    setSlideText(clue.answerSlide, 'Shrek');
+    if (!clue.cards?.length) addCard(clue);
+    setSlideText(clue.cards![0], 'CARD-WORDS-xyzzy');
+    addCard(clue)!.elements.push({ ...newImageEl('m1'), name: 'secret-pic.png' });
+    g.media.push({ id: 'm1', name: 'secret-pic.png', mime: 'image/png', size: 1, kind: 'image' });
+    const session = newSession(g);
+    session.currentPickerId = 'a';
+    openClue(session, { round: 0, cat: 0, row: 1 }, g);
+    return { g, session, s: session.partner! };
+  }
+  /** Nothing of a card in the phones' line or the rest of what the room is told. */
+  const noCard = (g: ReturnType<typeof setup>['g'], session: ReturnType<typeof setup>['session']) => {
+    const said = JSON.stringify([phoneStatus(g, session), hostState(g, session, buzzIdle(newBuzz(3)), 0, { status: phoneStatus(g, session) })]);
+    expect(said).not.toMatch(/xyzzy|secret-pic|Shrek|cards/);
+  };
+
+  it('each moment: who needs a partner, the pair, who plays which part, how it went, then who played which', () => {
+    const { g, session, s } = setup();
+    const moments = [
+      ['tile open', '🤝 Partner clue: Ann needs a partner…', ['a'], '🤝 Your partner clue! Spinning for your partner…'],
+      ['paired', '🤝 Partner clue: Ann + Bob', ['a', 'b'], '🤝 You two play this one!'],
+      ['question up', '🤝 Bob describes → Ann guesses', ['b'], '🗣 You’re describing!'],
+      ['clock started', '🤝 Bob describes → Ann guesses', ['b'], '🗣 You’re describing!'],
+      ['judged', '✔ Got it! Bob +$400 · Ann +$200'],
+      ['revealed', '🤝 Bob described → Ann guessed'],
+    ] as const;
+    const steps: Record<string, () => void> = {
+      paired: () => setPartner(session, s, 'b', 'wheel'),
+      'question up': () => (s.stage = 'distribute'),
+      'clock started': () => (s.stage = 'live'),
+      judged: () => void judgePartner(session, g, true, 400),
+      revealed: () => (session.revealed = true),
+    };
+    for (const [when, text, seats, seatsText] of moments) {
+      steps[when]?.();
+      expect(phoneStatus(g, session), when).toEqual(seats ? { text, seats, seatsText } : { text });
+      noCard(g, session);
+    }
+  });
+
+  it('✘ Missed says who lost points, and nothing about who lost none', () => {
+    const { g, session, s } = setup();
+    setPartner(session, s, 'b', 'wheel');
+    s.stage = 'live';
+    judgePartner(session, g, false, 400);
+    expect(phoneStatus(g, session)).toEqual({ text: '✘ Missed: Ann −$200' });
+    // An Undo takes the result away: the parts again.
+    undo(session);
+    expect(phoneStatus(g, session)?.text).toBe('🤝 Bob describes → Ann guesses');
+    swapParts(s);
+    judgePartner(session, g, false, 400);
+    expect(phoneStatus(g, session)).toEqual({ text: '✘ Missed' });
+  });
+
+  it('in each game’s own words', () => {
+    const lines: Record<PartnerGame, [string, string, string]> = {
+      describe: ['Bob describes → Ann guesses', '🗣 You’re describing!', 'Bob described → Ann guessed'],
+      draw: ['Bob draws → Ann guesses', '✏ You’re drawing!', 'Bob drew → Ann guessed'],
+      act: ['Bob acts it out → Ann guesses', '🎭 You’re acting it out!', 'Bob acted it out → Ann guessed'],
+      help: ['Bob helps → Ann answers', '🙋 You’re helping!', 'Bob helped → Ann answered'],
+      split: ['Bob has half A → Ann has half B', '🧩 You’re sharing half A!', 'Bob had half A → Ann had half B'],
+      custom: ['Bob gives the clues → Ann answers', '⚙ You’re giving the clues!', 'Bob gave the clues → Ann answered'],
+    };
+    expect(Object.keys(lines).sort()).toEqual(Object.keys(PARTNER_GAMES).sort());
+    for (const game of Object.keys(lines) as PartnerGame[]) {
+      const { g, session, s } = setup(game);
+      setPartner(session, s, 'b', 'wheel');
+      s.stage = 'distribute';
+      expect(phoneStatus(g, session), game).toEqual({ text: `🤝 ${lines[game][0]}`, seats: ['b'], seatsText: lines[game][1] });
+      session.revealed = true;
+      expect(phoneStatus(g, session), game).toEqual({ text: `🤝 ${lines[game][2]}` });
+      noCard(g, session);
+    }
+  });
+
+  it('teams: each line is the team’s', () => {
+    const { g, session, s } = setup('describe', true);
+    expect(phoneStatus(g, session)?.seatsText).toBe('🤝 Your team’s partner clue! Spinning for your partner…');
+    setPartner(session, s, 'b', 'wheel');
+    expect(phoneStatus(g, session)?.seatsText).toBe('🤝 Your team plays this one!');
+    s.stage = 'distribute';
+    expect(phoneStatus(g, session)).toEqual({ text: '🤝 Bob describes → Ann guesses', seats: ['b'], seatsText: '🗣 Your team is describing!' });
+    noCard(g, session);
+  });
+
+  it('Solo, no picker yet, and a picker who left', () => {
+    const { g, session, s } = setup();
+    s.includePicker = true;
+    setPartner(session, s, 'a', 'wheel');
+    expect(phoneStatus(g, session)).toEqual({ text: '🤝 Partner clue: Ann plays it alone', seats: ['a'], seatsText: '🤝 You play this one alone!' });
+    s.stage = 'live';
+    // (Solo: nobody describes, so no phone has a line of its own.)
+    expect(phoneStatus(g, session)).toEqual({ text: '🤝 Ann · Solo!' });
+    const other = setup();
+    delete other.s.pickerId;
+    expect(phoneStatus(other.g, other.session)).toEqual({ text: '🤝 Partner clue!' });
+    other.s.pickerId = 'b';
+    removePlayer(other.session, 'b');
+    expect(phoneStatus(other.g, other.session)).toEqual({ text: '🤝 Partner clue!' });
+  });
+
+  it('long names are cut to fit (120 characters, an emoji being one)', () => {
+    const { g, session, s } = setup();
+    session.players[1].name = 'B'.repeat(200);
+    setPartner(session, s, 'b', 'wheel');
+    const st = phoneStatus(g, session)!;
+    expect([...st.text]).toHaveLength(120);
+    expect(st.text).toMatch(/^🤝 Partner clue: Ann \+ B+…$/);
   });
 });

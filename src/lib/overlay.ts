@@ -1,6 +1,6 @@
 // Host actions that open / drive the tool overlays (wheel, dice, roll-off, scoreboard).
-import { categoryLabel, isBoard, newId, PLAYER_WHEEL, type DicePreset, type Game, type Session, type WheelPreset, type WheelSegment } from './model';
-import type { ExtraWheel, Live } from './live';
+import { categoryLabel, isBoard, newId, PLAYER_WHEEL, type DicePreset, type Game, type Id, type PartnerState, type Session, type WheelPreset, type WheelSegment } from './model';
+import type { ExtraWheel, Live, Overlay } from './live';
 import {
   activeSegments, describeRoll, isRespin, logRoll, newSegment, onSlices, planRollOff, rollPreset, sliceLabel, spinTarget, weightedIndex, wheelUsedUp,
   type PoolSlice,
@@ -42,6 +42,56 @@ export function openPlayerWheel(live: Live, session: Session): void {
     spin: null,
     result: null,
   };
+}
+
+/**
+ * The 🤝 partner wheel: the 🎯 Pick a player wheel for the open partner clue, named "Partner for Ann". The picker's
+ * slice is switched off (✎ Edit wheel lists it, to put them on for a spin) unless they can be on it, and left off the
+ * wheel drawn from the first frame. `name`: the picker's name.
+ */
+export function openPartnerWheel(live: Live, session: Session, s: PartnerState, name: string): void {
+  const pool = partnerPool(session, s);
+  live.overlay = {
+    kind: 'wheel',
+    nonce: newId(),
+    name: `Partner for ${name}`,
+    players: true,
+    pool,
+    segments: onSlices(pool),
+    rotation: 0,
+    spin: null,
+    result: null,
+    partnerFor: s.clue,
+  };
+}
+
+/** The partner wheel's slices as it opens: every player, the picker switched off unless they can be on it. */
+function partnerPool(session: Session, s: PartnerState): PoolSlice[] {
+  return playerSegments(session).map((p) => (p.id === s.pickerId && !s.includePicker ? { ...p, off: true } : p));
+}
+
+/** The open partner clue whose partner this wheel picks (null: not a partner wheel, or its clue is closed). */
+function partnerOf(o: WheelLike, session: Session): PartnerState | null {
+  return 'partnerFor' in o && o.partnerFor && session.partner?.clue === o.partnerFor ? session.partner : null;
+}
+
+/**
+ * The host changed this run of the wheel (✎ Edit wheel says "(edited)"). A partner wheel's picker switched off isn't a
+ * change: it opens that way.
+ */
+export function wheelEdited(o: WheelLike, session: Session): boolean {
+  if (!o.pool) return false;
+  const s = partnerOf(o, session);
+  if (!s) return true;
+  const opened = partnerPool(session, s);
+  return o.pool.length !== opened.length || o.pool.some((x, i) => x.id !== opened[i].id || x.weight !== 1 || !!x.off !== !!opened[i].off);
+}
+
+/** The rolls of the wheels on screen still spinning at `now` (the main wheel's and each extra one's): 📜 Log hides them. */
+export function spinningRolls(o: Overlay | null | undefined, now: number): Id[] {
+  const w = o?.kind === 'scoreboard' ? o.under : o;
+  if (w?.kind !== 'wheel') return [];
+  return [w, ...(w.extra ?? [])].flatMap((x) => (x.rollId && x.spin && x.spin.startedAt + x.spin.duration > now ? [x.rollId] : []));
 }
 
 /** A throwaway wheel from a plain list of options (with optional weights). */
@@ -116,11 +166,16 @@ export function editWheel(o: WheelLike, pool: PoolSlice[], session: Session, gam
   if ('kind' in o) o.tagged = undefined;
 }
 
-/** Back to the wheel as it was opened (players and saved wheels follow their current state). */
+/**
+ * Back to the wheel as it was opened (players and saved wheels follow their current state). A partner wheel's picker is
+ * off it again, unless they can be on it.
+ */
 export function resetWheelEdits(o: WheelLike, session: Session, game: Game): void {
-  o.pool = undefined;
+  const s = partnerOf(o, session);
+  o.pool = s ? partnerPool(session, s) : undefined;
   const preset = o.wheelId ? game.wheels.find((w) => w.id === o.wheelId) : undefined;
-  if (o.players) o.segments = playerSegments(session);
+  if (o.pool) o.segments = onSlices(o.pool);
+  else if (o.players) o.segments = playerSegments(session);
   else if (preset) o.segments = copy(activeSegments(session, preset));
   else if (o.base) o.segments = copy(o.base);
   o.spin = null;
@@ -193,6 +248,7 @@ function spinExtra(w: ExtraWheel, session: Session, game: Game, startedAt: numbe
   if (wheelSpentUp(w, session, game)) {
     w.spin = null;
     w.result = null;
+    delete w.rollId;
     return;
   }
   const preset = w.wheelId ? game.wheels.find((x) => x.id === w.wheelId) : undefined;
@@ -208,6 +264,7 @@ function spinExtra(w: ExtraWheel, session: Session, game: Game, startedAt: numbe
   const seg = w.segments[index];
   const logged = logRoll(session, 'wheel', w.name, sliceLabel(seg, index), w.players ? [seg.id] : undefined);
   if (w.players) logged.picked = true;
+  w.rollId = logged.id;
   if (preset?.removeAfterLanding && !isRespin(seg)) {
     session.removedSegments ??= {};
     session.removedSegments[preset.id] ??= [];
@@ -235,6 +292,7 @@ export function spinWheel(live: Live, session: Session, game: Game): void {
   o.tagged = o.players ? [seg.id] : undefined;
   const logged = logRoll(session, 'wheel', o.name, sliceLabel(seg, index), o.players ? [seg.id] : undefined);
   if (o.players) logged.picked = true;
+  o.rollId = logged.id;
   if (preset?.removeAfterLanding && !isRespin(seg)) {
     session.removedSegments ??= {};
     session.removedSegments[preset.id] ??= [];

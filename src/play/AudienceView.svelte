@@ -6,8 +6,9 @@
 <script lang="ts">
   import { fade, fly, scale } from '../lib/motion.svelte';
   import { textOn } from '../lib/colors';
-  import { categoryLabel, finalName, formatPoints, isBoard, isFinal, questionSlides, newTextEl, roundName, type ClueRef, type Slide, type Game, type Session } from '../lib/model';
-  import { clueSlideIndex, coWinnersHold, currentClueInfo, currentFinal, nameList, shownQuestionSlide, places, score, slidesRound, standings, tiedLeaders } from '../lib/session';
+  import { categoryLabel, finalName, formatPoints, isBoard, isFinal, PARTNER_GAMES, questionSlides, newTextEl, roundName, type ClueRef, type Player, type Slide, type Game, type Session } from '../lib/model';
+  import { blankSlide, clueSlideIndex, coWinnersHold, currentClueInfo, currentFinal, nameList, ownPlayers, shownQuestionSlide, places, score, slidesRound, standings, tiedLeaders } from '../lib/session';
+  import { partnerRoles, partnerRules } from '../lib/partner';
   import { onMount, untrack } from 'svelte';
   import { joinSpot, type Ink, type Rect } from '../lib/joinspot';
   import { holdWhile, provideCover } from '../lib/hold';
@@ -133,6 +134,20 @@
   });
   const byId = $derived(Object.fromEntries(session.players.map((p) => [p.id, p])));
   const ddPlayer = $derived(session.dd?.playerId ? byId[session.dd.playerId] : undefined);
+  /** The open clue is played by its own players (a Daily Double, a partner clue): nobody buzzes. */
+  const own = $derived(ownPlayers(session));
+  // A 🤝 partner clue: who picked it, their partner once the wheel (or the host) chose them, and who plays which part.
+  // (Only names and parts: what's on its cards never comes here.)
+  const pt = $derived(session.phase === 'clue' && info ? session.partner : null);
+  const ptGame = $derived(pt && info ? PARTNER_GAMES[partnerRules(info.clue).game] : undefined);
+  const ptPicker = $derived(pt?.pickerId ? byId[pt.pickerId] : undefined);
+  const ptPartner = $derived(pt?.partnerId ? byId[pt.partnerId] : undefined);
+  const ptRoles = $derived(pt ? partnerRoles(pt) : null);
+  const ptSolo = $derived(!!ptRoles?.solo && !!ptPicker);
+  const ptGiver = $derived(ptRoles?.giver ? byId[ptRoles.giver] : undefined);
+  const ptGuesser = $derived(ptRoles?.guesser ? byId[ptRoles.guesser] : undefined);
+  /** The parts badge over the question: "🗣 Bob describes → 🎯 Ann guesses" (Solo: "🤝 Ann · Solo!"). */
+  const ptBadge = $derived(!!pt && pt.stage !== 'pick' && (ptSolo || (!!ptGiver && !!ptGuesser)));
   const spotlight = $derived(session.final?.current ? byId[session.final.current] : undefined);
   const themeCss = $derived(themeStyle(game.theme, game.theme?.boardImage ? mediaUrls[game.theme.boardImage] : undefined));
   const bar = $derived(game.theme?.scoreBar ?? 'bottom');
@@ -155,7 +170,9 @@
   /** How wide the slide dots are (32px each, an 18px gap, 20px padding a side). */
   const pipsW = (of: number) => (of > PIPS_MAX ? 180 : 50 * of + 22);
   /** The clue's caption is up (bottom left): pops along the foot go above it. */
-  const captionUp = $derived(!!stream?.clueCaption && session.phase === 'clue' && session.dd?.stage !== 'splash');
+  const captionUp = $derived(!!stream?.clueCaption && session.phase === 'clue' && !own?.setup);
+  /** The clue's caption: "Movies · $400" ("Movies · Daily Double", a partner clue's "Movies · $400 · 🤝"). */
+  const captionText = $derived(info ? `${categoryLabel(info.category)} · ${session.dd ? 'Daily Double' : formatPoints(info.value, sym)}${pt ? ' · 🤝' : ''}` : '');
   const decorBehind = $derived((round?.decor ?? []).filter((d) => d.behind));
   const decorAbove = $derived((round?.decor ?? []).filter((d) => !d.behind));
   /** The round's title card, for an RPG, board-game or Final round (a board round has its own, before the tiles fill in). */
@@ -165,20 +182,20 @@
     return isFinal(r) ? finalName(r) : roundName(r, session.currentRound);
   });
   // (Not once the answer is on screen: the host picking who gets the points isn't someone answering.)
-  const answering = $derived(session.phase === 'clue' && !session.dd && !session.revealed && live.buzz?.answering ? byId[live.buzz.answering] : undefined);
+  const answering = $derived(session.phase === 'clue' && !own && !session.revealed && live.buzz?.answering ? byId[live.buzz.answering] : undefined);
   /**
    * While the countdown, "Ann is answering" or the Daily Double badge is up over a question, the slide moves down into
    * the room under them (a top band), so they never cover its first line.
    */
   const band = $derived.by(() => {
     const onSlide =
-      (session.phase === 'clue' && session.dd?.stage !== 'splash') ||
+      (session.phase === 'clue' && !own?.setup) ||
       (session.phase === 'final' && (session.finalStep === 'question' || session.finalStep === 'answer')) ||
       session.phase === 'tiebreaker' ||
       session.phase === 'slides';
     if (!onSlide) return 0;
     if (live.timer) return TIMER_BAND;
-    return answering || buzzNow || (session.phase === 'clue' && session.dd?.stage === 'question' && ddPlayer) || (live.answers && session.phase === 'clue' && !session.revealed) ? PILL_BAND : 0;
+    return answering || buzzNow || (session.phase === 'clue' && session.dd?.stage === 'question' && ddPlayer) || ptBadge || (live.answers && session.phase === 'clue' && !session.revealed) ? PILL_BAND : 0;
   });
   /**
    * A countdown on the board sits at the right end of the score bar (the plates and the join code make room), so it
@@ -244,13 +261,13 @@
     if (!live.room || stream?.hideJoinCode || live.pregame) return null;
     if (introName || (session.phase === 'board' && session.intro?.stage === 'title')) return 'corner';
     if (session.phase === 'board') return layout.score ? 'bar' : null;
-    if (session.phase === 'clue') return session.dd ? null : 'corner';
+    if (session.phase === 'clue') return own ? null : 'corner';
     if (session.phase === 'tiebreaker' || session.phase === 'slides') return 'corner';
     return null;
   });
   /** The host just opened the buzzers ("When I press U"): a cue on the clue's slide while they're open. */
   const buzzNow = $derived(
-    !!live.room && game.settings.buzzArm === 'host' && session.phase === 'clue' && !session.dd && !session.revealed && live.buzz?.phase === 'armed' && !live.overlay,
+    !!live.room && game.settings.buzzArm === 'host' && session.phase === 'clue' && !own && !session.revealed && live.buzz?.phase === 'armed' && !live.overlay,
   );
   /** Where each text box's words are on the slide shown (a text box's empty frame isn't something the join code would cover). */
   let ink = $state<Ink>({});
@@ -303,7 +320,7 @@
     if (band) taken.push({ x: 0, y: 0, w: 1920, h: band });
     if (tb) taken.push({ x: 0, y: 24, w: 1920, h: 70 });
     if (session.phase === 'clue' && info && stream?.clueCaption) {
-      const text = `${categoryLabel(info.category)} · ${session.dd ? 'Daily Double' : formatPoints(info.value, sym)}`;
+      const text = captionText;
       taken.push({ x: 24, y: 1080 - 24 - 72, w: Math.min(1500, 44 + text.length * 26), h: 72 });
     }
     const of = session.phase === 'clue' && info ? questionSlides(info.clue).length : tb ? questionSlides(tb).length : sr ? questionSlides(sr).length : 1;
@@ -328,6 +345,24 @@
 {#snippet slidePips(at: number, of: number)}
   <div class="pips" role="img" aria-label="Slide {at + 1} of {of}" data-slide-pips>
     {#if of > PIPS_MAX}<b>{at + 1} / {of}</b>{:else}{#each { length: of } as _, i (i)}<span class:on={i <= at}></span>{/each}{/if}
+  </div>
+{/snippet}
+
+<!-- A partner clue's two: who picked it and their partner ("?" until chosen; `waiting`: it pulses meanwhile), together. -->
+{#snippet plate(p: Player | undefined, waiting: boolean)}
+  {#if p}
+    <div class="pu-plate" style:background={p.color} style:color={textOn(p.color)} in:scale={{ start: 0.4, duration: 350 }}>{p.name}</div>
+  {:else}
+    <div class="pu-plate unknown" class:waiting>?</div>
+  {/if}
+{/snippet}
+{#snippet pairPlates(waiting: boolean)}
+  <div class="pu-pair" class:paired={!!ptPartner}>
+    {#if ptSolo}
+      {@render plate(ptPicker, false)}<span class="pu-and">· Solo!</span>
+    {:else}
+      {@render plate(ptPicker, false)}<span class="pu-and">🤝</span>{@render plate(ptPartner, waiting && !!ptPicker)}
+    {/if}
   </div>
 {/snippet}
 
@@ -426,6 +461,15 @@
         {/if}
       </div>
     </div>
+  {:else if pt?.stage === 'pick'}
+    <!-- 🤝 PARTNER UP!: who picked it, and a "?" until the wheel (or the host) chooses their partner; then the two
+         plates come together. -->
+    <div class="full partner-up" data-partner-up>
+      <div class="pu-in" in:scale={{ start: 0.05, duration: 700 }}>
+        <div class="pu-text">PARTNER<br />UP!</div>
+        {@render pairPlates(true)}
+      </div>
+    </div>
   {:else}
     <!-- A wheel or dice tile's question waits for its tool to close (it would show through), then comes in with its countdown.
          (The scores up over the tool: it's still to close. Not for dice or a wheel opened later over the question.) -->
@@ -442,7 +486,17 @@
         data-slide={session.revealed ? 'answer' : at + 1}
         in:scale={{ start: quiet ? 0.98 : 0.15, duration: quiet ? 200 : 450 }}
       >
-        {#if !waiting}<div class="slide-area" style:scale={bandScale} use:inkOf><SlideView slide={session.revealed ? info.clue.answerSlide : shownQuestionSlide(session, info.clue)} {role} /></div>{/if}
+        {#if waiting}
+          <!-- (Nothing until the tool closes.) -->
+        {:else if pt && ptGame && !session.revealed && blankSlide(shownQuestionSlide(session, info.clue))}
+          <!-- A partner clue with nothing on its question slide: a card of its own, the game's name, the two and the
+               category. -->
+          <div class="partner-card" data-partner-card>
+            <div class="pu-text small">{ptGame.label === 'Custom' ? 'Partner clue' : ptGame.label}!</div>
+            {@render pairPlates(false)}
+            <div class="pc-cat">{categoryLabel(info.category)}</div>
+          </div>
+        {:else}<div class="slide-area" style:scale={bandScale} use:inkOf><SlideView slide={session.revealed ? info.clue.answerSlide : shownQuestionSlide(session, info.clue)} {role} /></div>{/if}
       </div>
     {/key}
     <!-- A clue with several question slides: where it is (● ● ○), so viewers know there's more to come. -->
@@ -453,11 +507,22 @@
            code in the corner, short of that, about 420px wide.) -->
       {@const pipsMax = of > 1 && !session.revealed ? 960 - pipsW(of) / 2 - 24 - 44 - 16 : 1500}
       {@const captionMax = `${Math.min(pipsMax, codeShown && live.room && spot?.corner === 'br' ? 1920 - 24 - 44 - 16 - (spot.small ? 300 : 440) - 24 : 1500)}px`}
-      <div class="caption" style:max-width={captionMax}>{categoryLabel(info.category)} · {session.dd ? 'Daily Double' : formatPoints(info.value, sym)}</div>
+      <div class="caption" style:max-width={captionMax}>{captionText}</div>
     {/if}
     {#if session.dd?.stage === 'question' && ddPlayer}
       <div class="dd-badge" style:border-color={ddPlayer.color}>
         <span style:color={ddPlayer.color}>{ddPlayer.name}</span> · Daily Double{#if session.dd.shown}{` · ${formatPoints(session.dd.wager ?? 0, sym)}`}{/if}
+      </div>
+    {/if}
+    {#if ptBadge && ptGame}
+      <!-- Who plays which part, in their colours and in words (colour is never the only sign). -->
+      <div class="dd-badge partner-badge" data-partner-badge>
+        {#if ptSolo && ptPicker}
+          🤝 <span style:color={ptPicker.color}>{ptPicker.name}</span> · Solo!
+        {:else if ptGiver && ptGuesser}
+          {ptGame.icon} <span style:color={ptGiver.color}>{ptGiver.name}</span> {ptGame.verb} → 🎯 <span style:color={ptGuesser.color}>{ptGuesser.name}</span>
+          {ptGame.guessVerb}
+        {/if}
       </div>
     {/if}
   {/if}
@@ -1141,6 +1206,103 @@
     padding: 8px 40px;
     border-radius: 20px;
     border: 6px solid #fff;
+  }
+  /* 🤝 PARTNER UP! (in the Daily Double splash's place), and a blank question's own card. */
+  .partner-up {
+    display: grid;
+    place-items: center;
+    background: radial-gradient(circle, #3dffb0 0%, #00a86b 35%, var(--tile) 72%);
+  }
+  .pu-in {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 50px;
+  }
+  .pu-text {
+    font-family: var(--value-font);
+    font-size: 210px;
+    line-height: 0.95;
+    font-weight: 900;
+    color: var(--dd-text, var(--value));
+    text-align: center;
+    text-shadow: 12px 12px 0 #000;
+    -webkit-text-stroke: 5px #000;
+    paint-order: stroke fill;
+  }
+  .pu-text.small {
+    font-size: 150px;
+  }
+  .pu-pair {
+    display: flex;
+    align-items: center;
+    gap: 90px;
+    max-width: 1800px;
+    transition: gap 0.5s ease;
+  }
+  .pu-pair.paired {
+    gap: 28px;
+  }
+  .pu-and {
+    font-family: var(--board-font);
+    font-size: 80px;
+    font-weight: 800;
+    color: #fff;
+    text-shadow: 5px 5px 0 #000;
+    white-space: nowrap;
+  }
+  .pu-plate {
+    max-width: 800px;
+    box-sizing: border-box;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-family: var(--board-font);
+    font-size: 70px;
+    font-weight: 800;
+    padding: 8px 40px;
+    border-radius: 20px;
+    border: 6px solid #fff;
+  }
+  .pu-plate.unknown {
+    min-width: 200px;
+    text-align: center;
+    color: #fff;
+    background: rgba(0, 0, 0, 0.45);
+    border-style: dashed;
+  }
+  .pu-plate.waiting {
+    animation: pu-pulse 1.1s ease-in-out infinite;
+  }
+  @keyframes pu-pulse {
+    50% {
+      scale: 1.12;
+      opacity: 0.6;
+    }
+  }
+  .partner-card {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 50px;
+  }
+  .pc-cat {
+    font-family: var(--board-font);
+    font-size: 60px;
+    font-weight: 800;
+    color: #fff;
+    text-transform: uppercase;
+    text-shadow: 4px 4px 0 #000;
+  }
+  .partner-badge {
+    border-color: rgba(255, 255, 255, 0.85);
+    max-width: 1500px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
   .dd-badge {
     position: absolute;

@@ -3,6 +3,7 @@
 import { newBoardGameRound, newBoardSpace, setNameShown, SPACE_COLORS } from './boardgame';
 import { PLAYER_PALETTE } from './colors';
 import { describeAction } from './actions';
+import { cardSlides, setPartnerGame } from './partner';
 import {
   newFinalRound,
   newId,
@@ -308,8 +309,9 @@ function introRound(welcome = 'Welcome to the show!'): Round {
 // ---------- The sample game ----------
 
 /**
- * Add the sample game to `game`: an introduction (in a game of its own), a board, an adventure, a board game and a
- * Final, three players (when there are none) and the Gold and Potion they use. Returns the index of its first round.
+ * Add the sample game to `game`: an introduction (in a game of its own), a board (with a Daily Double and a 🤝 partner
+ * clue), an adventure, a board game and a Final, three players (when there are none) and the Gold and Potion they use.
+ * Returns the index of its first round.
  */
 export function addSampleGame(game: Game): number {
   const at = game.rounds.length;
@@ -320,6 +322,12 @@ export function addSampleGame(game: Game): number {
     ['Brainrot', [['A toilet with a head, singing', 'Skibidi Toilet'], ['Extra points of charm', 'Rizz'], ['Weird things happen “only in” this US state, says the meme', 'Ohio']]],
   ]);
   board.categories[3].clues[2].type = 'dailyDouble';
+  // A 🤝 partner clue: Describe it, its card the answer (the describer's to describe).
+  const pc = board.categories[2].clues[1];
+  pc.type = 'partner';
+  setPartnerGame(pc, 'describe');
+  setSlideText(pc.questionSlide, 'Describe this app to your partner without saying its name!');
+  setSlideText(cardSlides(pc)[0], 'TikTok');
   const final = newFinalRound('Final Jeopardy!');
   final.category = 'Streaming';
   setSlideText(final.questionSlide, 'Twitch’s category for streams where nobody plays a game: they just talk to chat');

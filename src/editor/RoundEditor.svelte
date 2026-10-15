@@ -7,11 +7,12 @@
   import { announce } from '../lib/announce';
   import { adoptUsedBy, clipboard, holdUsedBy } from '../lib/clipboard.svelte';
   import { copyIsTheBrowsers } from '../lib/undokeys';
-  import { categoryLabel, clueValue, clueValueTyped, dailyDoublesPlaced, formatPoints, newImageEl, playableClues, roundName, slideText, slidesOfClue, type BoardRound, type Clue, type ClueType } from '../lib/model';
+  import { categoryLabel, clueValue, clueValueTyped, dailyDoublesPlaced, formatPoints, newImageEl, playableClues, roundName, slideText, type BoardRound, type Clue, type ClueType } from '../lib/model';
   import { placeNewPicture } from '../lib/editing';
   import { nameStep, step, stepAsync } from '../lib/history.svelte';
   import { slideHasContent } from '../lib/usage';
   import { toolChosen } from '../lib/tools';
+  import { cardsToFinish } from '../lib/partner';
   import {
     addCategory,
     categoryHasContent,
@@ -33,7 +34,7 @@
     type TilePos,
   } from '../lib/ops';
   import { randomizeDailyDoubles } from '../lib/session';
-  import { followClueText } from '../lib/cluetext';
+  import { followClueText, textSlidesOf } from '../lib/cluetext';
   import { toast } from '../lib/app.svelte';
   import { addMediaFile, imgFallback, mediaUrls, slideImageSize } from '../lib/media.svelte';
   import { isGameDrop } from '../lib/mediadrop';
@@ -217,7 +218,7 @@
   // ---------- Tiles ----------
 
   /** A tile's type, as its name says it to a screen reader (its badge on the board). */
-  const TILE_KIND: Record<ClueType, string> = { standard: '', dailyDouble: ', Daily Double', wheel: ', wheel tile', dice: ', dice tile' };
+  const TILE_KIND: Record<ClueType, string> = { standard: '', dailyDouble: ', Daily Double', wheel: ', wheel tile', dice: ', dice tile', partner: ', partner clue' };
 
   /** "Memes $400" */
   function tileName(p: TilePos): string {
@@ -452,6 +453,15 @@
             : step(`Made ${tileName(p)} a Daily Double`, () => setClueType(round, clue, 'dailyDouble'), { place: tilePlace(p.cat, clue.id) }),
       },
       {
+        label: clue.type === 'partner' ? '🤝 Not a partner clue' : '🤝 Make it a partner clue',
+        disabled: clue.empty,
+        // (Its rules and cards stay on it, for when it's made one again.)
+        onclick: () =>
+          clue.type === 'partner'
+            ? step(`Made ${tileName(p)} not a partner clue`, () => setClueType(round, clue, 'standard'), { place: tilePlace(p.cat, clue.id) })
+            : step(`Made ${tileName(p)} a partner clue`, () => (setClueType(round, clue, 'partner'), followTheme()), { place: tilePlace(p.cat, clue.id) }),
+      },
+      {
         label: clue.empty ? '↩ Use this tile again' : '⬚ Leave this tile empty',
         onclick: () =>
           step(
@@ -587,7 +597,7 @@
   // ---------- Rows ----------
 
   /** New clues (a category, a row) take the theme's clue text. */
-  const followTheme = () => followClueText(app.game, round.categories.flatMap((c) => c.clues.flatMap(slidesOfClue)));
+  const followTheme = () => followClueText(app.game, round.categories.flatMap((c) => c.clues.flatMap(textSlidesOf)));
 
   // Rows of clues go in, out and around anywhere; the row values stay by position (the top row is still the cheapest).
   function addRow(at: number): void {
@@ -867,16 +877,18 @@
         {@const tool = clue.type === 'wheel' || clue.type === 'dice'}
         {@const noTool = tool && !clue.empty && !toolChosen(app.game, clue)}
         {@const everyone = !!clue.everyone && clue.type === 'standard' && !clue.empty}
+        <!-- A partner clue's 🤫 cards still to fill in (none on a ready-made game's, or an empty one). -->
+        {@const cardTodo = clue.empty ? null : cardsToFinish(clue)}
         {@const faceText = clue.empty ? '' : (clue.tileFace?.text ?? '')}
         <!-- (What its badges say, for a screen reader.) -->
         {@const kind = clue.empty
           ? ''
-          : `${clue.value !== null ? ' (custom)' : ''}${TILE_KIND[clue.type]}${everyone ? ', everyone answers' : ''}${clue.extraSlides?.length ? `, ${clue.extraSlides.length + 1} question slides` : ''}${faceText ? `, tile shows “${faceText}”` : ''}`}
+          : `${clue.value !== null ? ' (custom)' : ''}${TILE_KIND[clue.type] ?? ''}${everyone ? ', everyone answers' : ''}${clue.extraSlides?.length ? `, ${clue.extraSlides.length + 1} question slides` : ''}${faceText ? `, tile shows “${faceText}”` : ''}`}
         {@const what = clue.empty
           ? 'empty space'
           : tool
             ? `${q || kinds.join(', ') || 'no question'}${noTool ? `, no ${clue.type} chosen` : ''}`
-            : `${q || kinds.join(', ') || 'no question yet'}${a ? '' : ', no answer'}`}
+            : `${q || kinds.join(', ') || 'no question yet'}${a ? '' : ', no answer'}${cardTodo === 'none' ? ', no card' : cardTodo ? `, card ${cardTodo} empty` : ''}`}
         <button
           class="tile"
           aria-label="{categoryLabel(cat) || `Category ${ci + 1}`}, {value}{kind}: {what}"
@@ -910,6 +922,7 @@
             {#if clue.type === 'dailyDouble' && !clue.empty}<span class="dd" title="Daily Double">⭐ DD</span>{/if}
             {#if clue.type === 'wheel' && !clue.empty}<span class="dd" title="Wheel tile">🎡</span>{/if}
             {#if clue.type === 'dice' && !clue.empty}<span class="dd" title="Dice tile">🎲</span>{/if}
+            {#if clue.type === 'partner' && !clue.empty}<span class="dd" title="Partner clue: played by the picker and a partner, nobody buzzes">🤝</span>{/if}
             {#if everyone}<span class="dd" title="Everyone answers, in secret on their phones">✍</span>{/if}
             {#if clue.extraSlides?.length && !clue.empty}
               {@const n = clue.extraSlides.length + 1}
@@ -923,6 +936,7 @@
               <span class="kinds">{kinds.map((k) => ({ image: '🖼', video: '🎬', audio: '🔊', shape: '◼', embed: '🌐', text: '' })[k]).join(' ')}</span>
             {/if}
             {#if !a && !tool}<span class="missing small">No answer</span>{/if}
+            {#if cardTodo}<span class="missing small">{cardTodo === 'none' ? 'No card' : `Card ${cardTodo} empty`}</span>{/if}
             {#if noTool}<span class="missing small">No {clue.type} chosen</span>{/if}
           {/if}
         </button>

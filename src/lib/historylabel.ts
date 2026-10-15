@@ -11,6 +11,8 @@ import { PRESETS, type ThemePreset } from './theme';
 import { cueName, hasBuiltin, type CueKey } from './sounds';
 
 export type Side = 'q' | 'a';
+/** A board clue's tabs: a question slide, the answer, or one of a partner clue's 🤫 cards (its id in `slide`). */
+export type ClueSide = Side | 'card';
 
 /** A place in the editor: the tab, and what's open or selected in it. */
 export type Place =
@@ -40,8 +42,8 @@ const PLAY_PARTS: Record<PlayPart, [string, string]> = {
 export type RoundPart =
   | { kind: 'category'; category: string }
   /** `onBoard`: the tile on the board (moved, cleared, pasted), without opening the clue. */
-  /** `slide`: one of the clue's extra question slides (its id; none: the first question slide). */
-  | { kind: 'clue'; category: string; clue: string; side?: Side; slide?: string; element?: string; onBoard?: boolean }
+  /** `slide`: one of the clue's extra question slides (its id; none: the first question slide), or with side 'card' its card. */
+  | { kind: 'clue'; category: string; clue: string; side?: ClueSide; slide?: string; element?: string; onBoard?: boolean }
   | { kind: 'decor'; element?: string }
   /** `slide`: a question slide after the first (its id). */
   | { kind: 'final'; side?: Side; slide?: string; element?: string }
@@ -62,8 +64,8 @@ export interface At {
   noun: string;
   name: string;
   depth: number;
-  /** A clue's, a Final's or the tiebreaker's main text box. */
-  main?: 'question' | 'answer';
+  /** A clue's, a Final's or the tiebreaker's main text box, or a 🤫 card's ('card 2'). */
+  main?: 'question' | 'answer' | `card ${number}`;
 }
 
 export interface Described {
@@ -105,13 +107,13 @@ export function placeAt(game: Game, path: readonly Seg[]): At {
   };
 
   /** Into a slide's elements (i: the segment after the slide), then an object's dialogue and buttons. */
-  function slide(s: Slide | undefined, i: number, placeFor: (element: string) => Place, main?: Side): void {
+  function slide(s: Slide | undefined, i: number, placeFor: (element: string) => Place, main?: Side | NonNullable<At['main']>): void {
     if (!s || path[i] !== 'elements') return;
     const el = byId<SlideElement>(s.elements, path[i + 1]);
     if (!el) return;
     reached(i + 2, elementNoun(el), layerLabel(el, game) ?? '', LAYER_ICON[el.kind]);
     go(placeFor(el.id));
-    if (main && el === s.elements.find((x) => x.kind === 'text')) at.main = main === 'q' ? 'question' : 'answer';
+    if (main && el === s.elements.find((x) => x.kind === 'text')) at.main = main === 'q' ? 'question' : main === 'a' ? 'answer' : main;
     if (path[i + 2] !== 'role' || !el.role) return;
     owned = true;
     if (path[i + 3] === 'dialogue') {
@@ -174,6 +176,19 @@ export function placeAt(game: Game, path: readonly Seg[]): At {
           const at8 = { kind: 'clue', category: cat.id, clue: clue.id, side: 'q', slide: sl.id } as const;
           part(at8);
           slide(sl, 8, (element) => ({ tab: 'round', round: id, part: { ...at8, element } }), 'q');
+          return;
+        }
+        if (path[6] === 'cards') {
+          // One of a partner clue's 🤫 cards ("Card 2").
+          at.crumbs.push('Cards');
+          const n = clue.cards?.findIndex((s) => s.id === path[7]) ?? -1;
+          if (n < 0) return;
+          const card = clue.cards![n];
+          at.crumbs[at.crumbs.length - 1] = `Card ${n + 1}`;
+          reached(8, 'card', `card ${n + 1}`, '🤫', false);
+          const at8 = { kind: 'clue', category: cat.id, clue: clue.id, side: 'card', slide: card.id } as const;
+          part(at8);
+          slide(card, 8, (element) => ({ tab: 'round', round: id, part: { ...at8, element } }), `card ${n + 1}`);
           return;
         }
         const side = path[6] === 'questionSlide' ? 'q' : path[6] === 'answerSlide' ? 'a' : null;
@@ -408,7 +423,7 @@ export function placeWhere(place: Place): string | null {
   }
 }
 
-/** Where an item on a clue's, a Final's or the tiebreaker's slide is (a restyle starts there but changes other slides). */
+/** Where an item on a clue's (or its cards'), a Final's or the tiebreaker's slide is (a restyle starts there but changes other slides). */
 export function itemPlace(game: Game, id: string): Place | null {
   const on = (s: Slide) => s.elements.some((e) => e.id === id);
   const sides = ['questionSlide', 'answerSlide'] as const;
@@ -420,6 +435,8 @@ export function itemPlace(game: Game, id: string): Place | null {
           if (side) return placeAt(game, ['rounds', r.id, 'categories', c.id, 'clues', cl.id, side, 'elements', id]).place;
           const extra = cl.extraSlides?.find(on);
           if (extra) return placeAt(game, ['rounds', r.id, 'categories', c.id, 'clues', cl.id, 'extraSlides', extra.id, 'elements', id]).place;
+          const card = cl.cards?.find(on);
+          if (card) return placeAt(game, ['rounds', r.id, 'categories', c.id, 'clues', cl.id, 'cards', card.id, 'elements', id]).place;
         }
     if (r.mode === 'final') {
       const side = sides.find((k) => on(r[k]));
@@ -501,6 +518,7 @@ const TILE_TYPES: Record<string, (tile: string) => string> = {
   wheel: (tile) => `Made ${tile} a wheel tile`,
   dice: (tile) => `Made ${tile} a dice tile`,
   standard: (tile) => `Made ${tile} a standard tile`,
+  partner: (tile) => `Made ${tile} a partner clue`,
 };
 
 /** A theme setting's new value, as the label says it (" chroma green", " off"), or '' when it says nothing readable. */
@@ -688,8 +706,8 @@ const themeField = (k: Seg | undefined) => (k === undefined ? 'theme' : (THEME_F
 
 /** Keys that hold a slide. */
 const SLIDE_KEYS = new Set<Seg>(['questionSlide', 'answerSlide', 'slide', 'dialogue']);
-/** Does the path up to `p[i]` lead to a slide (a key that holds one, or one of a clue's extra slides)? */
-const isSlide = (p: readonly Seg[], i: number) => SLIDE_KEYS.has(p[i]) || p[i - 1] === 'extraSlides';
+/** Does the path up to `p[i]` lead to a slide (a key that holds one, or one of a clue's extra slides or cards)? */
+const isSlide = (p: readonly Seg[], i: number) => SLIDE_KEYS.has(p[i]) || p[i - 1] === 'extraSlides' || p[i - 1] === 'cards';
 /**
  * Is the op about a slide's own background (not a text box's background box)? 'whole' when it's set all at once
  * (↺ BG resets it), else which of its settings.
@@ -730,6 +748,24 @@ function textBoxChange(op: Op & { t: 'set' }, at: At): string | null {
   }
   const part = sub.length > 1 && typeof sub[1] === 'string' ? ` ${EFFECT_PARTS[sub[1]] ?? fieldName(sub[1])}` : '';
   return `Changed ${name}${part} of ${what(at)}`;
+}
+
+/**
+ * A change to a partner clue's rules only: its points (the four boxes typed in, which make its Points Custom too) or its
+ * part words. The editor names its other choices itself.
+ */
+function partnerChange(ops: readonly Op[], at: At): string | null {
+  if (at.noun !== 'clue') return null;
+  const clue = opPath(ops[0]).slice(0, at.depth).join('/');
+  const fields = ops.map((o) => {
+    const p = opPath(o);
+    return p[at.depth] === 'partner' && p.slice(0, at.depth).join('/') === clue ? (p[at.depth + 1] ?? '') : null;
+  });
+  if (fields.some((f) => f === null)) return null;
+  const tile = `${at.crumbs[at.crumbs.length - 2] ?? ''} ${at.name}`.trim();
+  if (fields.every((f) => f === 'got' || f === 'missed' || f === 'points' || f === 'partnerSafe')) return `Changed the points of ${tile}`;
+  if (fields.every((f) => f === 'words')) return `Changed the part words of ${tile}`;
+  return `Changed the partner rules of ${tile}`;
 }
 
 function labelOf(ops: readonly Op[], op: Op, at: At, moved: string[], alike: number, before: Game, after: Game): string {
@@ -788,6 +824,8 @@ function labelOf(ops: readonly Op[], op: Op, at: At, moved: string[], alike: num
   if (bg === 'image') return v ? 'Slide background picture' : 'Removed the slide background picture';
   if (bg) return 'Changed the slide background';
   if (!op.p.length && k === 'tiebreaker') return v === undefined ? 'Tiebreaker off' : 'Tiebreaker on';
+  const rules = partnerChange(ops, at);
+  if (rules) return rules;
 
   if (at.noun === 'screen' && only('col', 'row')) {
     const ids = [...things].map((t) => t.split('/').pop()!);

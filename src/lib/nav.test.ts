@@ -85,6 +85,22 @@ describe('places', () => {
     expect(resolve(g, { tab: 'tools', wheel: 'gone' })).toEqual({ tab: 'tools' });
     expect(resolve(g, { tab: 'sounds' })).toEqual({ tab: 'sounds' });
   });
+
+  it('goes to a partner clue’s 🤫 card, or the clue’s question once the card is gone', () => {
+    const g = sample();
+    const r = board(g);
+    const cat = r.categories[0];
+    const clue = cat.clues[0];
+    clue.type = 'partner';
+    clue.cards = [{ id: 'c1', background: {}, elements: [newTextEl('Shrek')], to: 'giver' }];
+    const el = clue.cards[0].elements[0].id;
+    const onCard: Place = { tab: 'round', round: r.id, part: { kind: 'clue', category: cat.id, clue: clue.id, side: 'card', slide: 'c1', element: el } };
+    expect(resolve(g, onCard)).toBe(onCard);
+    clue.cards[0].elements = [];
+    expect(resolve(g, onCard)).toEqual({ tab: 'round', round: r.id, part: { kind: 'clue', category: cat.id, clue: clue.id, side: 'card', slide: 'c1' } });
+    delete clue.cards;
+    expect(resolve(g, onCard)).toEqual({ tab: 'round', round: r.id, part: { kind: 'clue', category: cat.id, clue: clue.id, side: 'q' } });
+  });
 });
 
 describe('requests', () => {

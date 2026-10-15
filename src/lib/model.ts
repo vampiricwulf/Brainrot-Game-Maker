@@ -306,6 +306,8 @@ export interface GameAudio {
   roundIntro?: Id;
   tileOpen?: Id;
   dailyDouble?: Id;
+  /** With a 🤝 partner clue's PARTNER UP! splash (left out: the tile-open sound plays). */
+  partner?: Id;
   /** Buzzer mode: the first player in. */
   buzz?: Id;
   right?: Id;
@@ -339,7 +341,103 @@ export interface ExtraSlide extends Slide {
   id: Id;
 }
 
-export type ClueType = 'standard' | 'dailyDouble' | 'wheel' | 'dice';
+export type ClueType = 'standard' | 'dailyDouble' | 'wheel' | 'dice' | 'partner';
+
+// ---------- Partner clues (docs/PARTNER-CLUES-SPEC.md) ----------
+// A 🤝 partner clue is played by the player who picked it and a partner (picked by a wheel): nobody buzzes. One of them
+// knows and gives clues (the giver: the Describer, Drawer, Helper…), the other says the answer (the guesser). The host
+// makes 🤫 cards for it: slides only the players the host hands them to see, never on stream.
+
+/** The ready-made partner games (partner-clues spec §2.2): each sets the part words, the points and the starting cards. */
+export type PartnerGame = 'describe' | 'draw' | 'act' | 'help' | 'split' | 'custom';
+
+/** The two parts of a partner clue: the one who knows and gives clues, and the one who says the answer. */
+export type PartnerRole = 'giver' | 'guesser';
+
+/** Which Points choice made a partner clue's numbers: the game's own, no penalty, the guesser loses it all, or typed. */
+export type PartnerPoints = 'game' | 'none' | 'all' | 'custom';
+
+/** A partner clue's rules. Kept when the type changes (like wheelId), so changing back restores them. */
+export interface PartnerRules {
+  game: PartnerGame;
+  /** Who plays the giver's part: the partner (default) or the picker. ⇄ Swap changes it while playing. */
+  giver: 'partner' | 'picker';
+  /** The picker is on the partner wheel too (default: switched off on it). */
+  includePicker?: boolean;
+  /** % of the tile's value each part gets: when it's got, and when it's missed (negative: loses that much). */
+  got: Record<PartnerRole, number>;
+  missed: Record<PartnerRole, number>;
+  /** A miss never costs the partner, whichever part they play: their points are at least 0 (left out: on). */
+  partnerSafe?: boolean;
+  /** Which Points choice made the numbers (left out: worked out from them, see pointsChoice). */
+  points?: PartnerPoints;
+  /** Part words when not the game's ("Describer" / "Guesser"): at most PART_WORD_MAX characters each. */
+  words?: Partial<Record<PartnerRole, string>>;
+  /** Later: the guesser types their guess on their phone (else out loud). */
+  typeGuess?: boolean;
+  /** Later: a miss opens the buzzers for everyone else, the two locked out. */
+  steal?: boolean;
+}
+
+/** Who a 🤫 card starts with when the host hands the cards out: a part, both, every player but the two, or nobody. */
+export type CardGoesTo = PartnerRole | 'both' | 'others' | 'nobody';
+
+/** A 🤫 card: a slide the host made for a partner clue. Only the players the host hands it to see it. */
+export interface ClueCard extends ExtraSlide {
+  /** Who it starts with when the host hands the cards out ('others': every player but the two). The host can change it then. */
+  to: CardGoesTo;
+  /** Later: the line above it on a phone ({giver}, {guesser} filled in). */
+  hint?: string;
+}
+
+/** Most cards a partner clue has (＋ Card adds no more; a hand-edited game with more keeps them, with a warning). */
+export const MAX_CARDS = 6;
+/** A part's share of the tile's value is from −MAX_SHARE% to MAX_SHARE%. */
+export const MAX_SHARE = 1000;
+/** Longest part word ("Describer"). */
+export const PART_WORD_MAX = 24;
+
+export interface PartnerGameInfo {
+  label: string;
+  icon: string;
+  /** The parts' words ("Describer", "Guesser"). */
+  giver: string;
+  guesser: string;
+  /** What each part does, as "Bob describes → Ann guesses" says it. */
+  verb: string;
+  guessVerb: string;
+  /** What the giver does with a card ("the describer has nothing to describe"). */
+  task: string;
+  /** The game's points: when it's got, and when it's missed. */
+  got: Record<PartnerRole, number>;
+  missed: Record<PartnerRole, number>;
+  /** The cards a clue starts with (empty: the host fills them in), by who they go to. */
+  cards: CardGoesTo[];
+}
+
+/**
+ * The ready-made games (partner-clues spec §2.2). In every one the partner gives and the picker guesses, and a miss never
+ * costs the partner.
+ */
+export const PARTNER_GAMES: Record<PartnerGame, PartnerGameInfo> = {
+  describe: { label: 'Describe it', icon: '🗣', giver: 'Describer', guesser: 'Guesser', verb: 'describes', guessVerb: 'guesses', task: 'describe', got: { giver: 100, guesser: 50 }, missed: { giver: 0, guesser: -50 }, cards: ['giver'] },
+  draw: { label: 'Draw it', icon: '✏', giver: 'Drawer', guesser: 'Guesser', verb: 'draws', guessVerb: 'guesses', task: 'draw', got: { giver: 100, guesser: 50 }, missed: { giver: 0, guesser: -50 }, cards: ['giver'] },
+  act: { label: 'Act it out', icon: '🎭', giver: 'Actor', guesser: 'Guesser', verb: 'acts it out', guessVerb: 'guesses', task: 'act out', got: { giver: 100, guesser: 50 }, missed: { giver: 0, guesser: -50 }, cards: ['giver'] },
+  help: { label: 'Help a friend', icon: '🙋', giver: 'Helper', guesser: 'Answerer', verb: 'helps', guessVerb: 'answers', task: 'give as a hint', got: { giver: 50, guesser: 100 }, missed: { giver: 0, guesser: -50 }, cards: ['giver'] },
+  split: { label: 'Split clue', icon: '🧩', giver: 'Half A', guesser: 'Half B', verb: 'has half A', guessVerb: 'has half B', task: 'share', got: { giver: 100, guesser: 100 }, missed: { giver: 0, guesser: -50 }, cards: ['giver', 'guesser'] },
+  custom: { label: 'Custom', icon: '⚙', giver: 'Giver', guesser: 'Guesser', verb: 'gives the clues', guessVerb: 'answers', task: 'give', got: { giver: 100, guesser: 50 }, missed: { giver: 0, guesser: -50 }, cards: [] },
+};
+
+/** A game's own rules, as a fresh copy: the partner gives, its points, and the partner never loses points. */
+export function gameRules(game: PartnerGame): PartnerRules {
+  const g = PARTNER_GAMES[game];
+  return { game, giver: 'partner', got: { ...g.got }, missed: { ...g.missed }, partnerSafe: true, points: game === 'custom' ? 'custom' : 'game' };
+}
+
+/** A clue's 🤫 cards, in order (Card 1, Card 2…): kept on a clue whose type changed away, for when it changes back. */
+export function cardSlides(clue: Pick<Clue, 'cards'>): ClueCard[] {
+  return clue.cards ?? [];
+}
 
 /** The tiebreaker clue: like a board clue's slides (more question slides after the first, then the answer). */
 export interface Tiebreaker {
@@ -376,6 +474,10 @@ export interface Clue {
    * the host sees them, and judges each.
    */
   everyone?: boolean;
+  /** A partner clue's rules (kept when the type changes away, like wheelId). */
+  partner?: PartnerRules;
+  /** A partner clue's 🤫 cards, in order (Card 1, Card 2…): at most MAX_CARDS. Never the answer slide itself. */
+  cards?: ClueCard[];
 }
 
 // ---------- Wheels & dice (spec §4, §5.6) ----------
@@ -651,6 +753,46 @@ export interface ClueRef {
   row: number;
 }
 
+/** Who a 🤫 card goes to: a seat (a player, or a whole team: everyone on it). */
+export interface CardTo {
+  seat: Id;
+}
+
+/**
+ * A 🤝 partner clue being played (partner-clues spec §18.2). It holds who plays which part, the stage, and who the host
+ * chose to give each card to: player ids and card ids only, never what's on a card (the parts are on stream anyway).
+ */
+export interface PartnerState {
+  /** The clue it's for: a state left over from another clue is dropped. */
+  clue: Id;
+  /**
+   * When the tile opened: the marks on the clue since then are this play's (✔ Got it and ✘ Missed score whoever of the
+   * two has none yet). A tile put back and played again starts afresh. Left out (an older save): every mark on the clue.
+   */
+  at?: number;
+  /**
+   * 'pick': PARTNER UP!, the wheel, choosing (the question isn't on screen yet). 'distribute': the question is up and the
+   * host hands out the cards. 'live': the clock started (or the clue has no cards). Judged is not a stage: it's both of
+   * the two having a mark on the clue (partnerVerdict), so an Undo of ✔ Got it or ✘ Missed opens the list again.
+   */
+  stage: 'pick' | 'distribute' | 'live';
+  /** Who picked the tile (as on a Daily Double: whoever was marked to pick). */
+  pickerId?: Id;
+  /** Who the wheel or the host chose (the picker themselves: Solo). */
+  partnerId?: Id;
+  /** How the partner was chosen: the wheel, the host (a chip or 1–9), or the only one there was. */
+  how?: 'wheel' | 'host' | 'only';
+  /** This play's copy of the clue's rule: the picker is on the partner wheel too (the host can tick it). */
+  includePicker?: boolean;
+  /** Who plays the giver's part this time: starts from the clue's, and ⇄ Swap changes it. */
+  giver: 'partner' | 'picker';
+  /**
+   * The players the host chose for a card, by card id. A card not listed follows its Goes to, worked out from the parts
+   * at the moment (cardRecipients), so ⇄ Swap and a new partner move it.
+   */
+  deal?: Record<Id, CardTo[]>;
+}
+
 export interface Session {
   gameId: Id;
   players: Player[];
@@ -676,6 +818,8 @@ export interface Session {
    * host hasn't typed over it), `draftBy` who on the team did.
    */
   dd?: { stage: 'splash' | 'question'; playerId?: Id; wager?: number; shown?: boolean; draft?: number; draftFrom?: WagerSource; draftBy?: string } | null;
+  /** The 🤝 partner clue in progress for the open clue. Saved, so a reload picks it up (like dd). */
+  partner?: PartnerState | null;
   finalStep?: FinalStep;
   /** The Final round being played (or last played). */
   final?: FinalState;
@@ -1403,6 +1547,58 @@ function repairExtraSlides(o: { extraSlides?: ExtraSlide[] }): void {
   }
 }
 
+const CARD_TO = new Set<unknown>(['giver', 'guesser', 'both', 'others', 'nobody'] satisfies CardGoesTo[]);
+const POINTS = new Set<unknown>(['game', 'none', 'all', 'custom'] satisfies PartnerPoints[]);
+
+/**
+ * A partner clue's rules and cards (partner-clues spec §18.5). A card that goes to someone the app doesn't know goes to
+ * nobody, so a damaged file never hands a card to someone the host didn't choose; more than MAX_CARDS are kept
+ * (validate warns). Rules that aren't an object are dropped; a partner clue with none plays Describe it.
+ */
+function repairPartner(cl: Clue): void {
+  if (cl.cards !== undefined) {
+    const cards = objects<ClueCard>(cl.cards);
+    if (!cards.length) delete cl.cards;
+    else if (cards !== cl.cards) cl.cards = cards;
+    for (const card of cards) {
+      fixId(card);
+      repairSlide(card);
+      if (!CARD_TO.has(card.to)) card.to = 'nobody';
+      if (card.hint !== undefined && typeof card.hint !== 'string') delete card.hint;
+    }
+  }
+  if (cl.partner !== undefined && !isObj(cl.partner)) delete cl.partner;
+  const p = cl.partner;
+  if (!p) {
+    if (cl.type === 'partner') cl.partner = gameRules('describe');
+    return;
+  }
+  if (!Object.hasOwn(PARTNER_GAMES, p.game)) p.game = 'custom';
+  if (p.giver !== 'partner' && p.giver !== 'picker') p.giver = 'partner';
+  // Each share a number within ±MAX_SHARE% (one missing: the game's).
+  const preset = PARTNER_GAMES[p.game];
+  for (const k of ['got', 'missed'] as const) {
+    const share = isObj(p[k]) ? p[k] : (p[k] = { ...preset[k] });
+    for (const role of ['giver', 'guesser'] as const) {
+      const n = share[role];
+      const fixed = typeof n === 'number' && Number.isFinite(n) ? Math.min(MAX_SHARE, Math.max(-MAX_SHARE, n)) : preset[k][role];
+      if (fixed !== n) share[role] = fixed;
+    }
+  }
+  for (const k of ['includePicker', 'partnerSafe', 'typeGuess', 'steal'] as const) if (p[k] !== undefined && typeof p[k] !== 'boolean') delete p[k];
+  if (p.points !== undefined && !POINTS.has(p.points)) delete p.points;
+  if (p.words !== undefined) {
+    if (!isObj(p.words)) delete p.words;
+    else
+      for (const role of ['giver', 'guesser'] as const) {
+        const w = p.words[role];
+        if (w === undefined) continue;
+        if (typeof w !== 'string' || !w.trim()) delete p.words[role];
+        else if (w.length > PART_WORD_MAX) p.words[role] = w.slice(0, PART_WORD_MAX);
+      }
+  }
+}
+
 function repairSlide(s: unknown): Slide {
   if (!isObj(s)) return textSlide();
   const slide = s as unknown as Slide;
@@ -1476,6 +1672,7 @@ function repairGame(g: Game): void {
           cl.questionSlide = repairSlide(cl.questionSlide);
           cl.answerSlide = repairSlide(cl.answerSlide);
           repairExtraSlides(cl);
+          repairPartner(cl);
         }
       }
       // No row values: the usual 200, 400… for as many rows as the board has.

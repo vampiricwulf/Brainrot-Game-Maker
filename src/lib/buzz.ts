@@ -2,8 +2,9 @@
 // decides all of it (keys, the host panel, a phone's buzz that the buzzer room let through); it lives in Live, so the
 // audience window shows "🔔 Ann is answering", and the phones get it through hostState().
 import { clip, WAGER_MAX, type BuzzPhase, type HostState, type WagerAsk, type AnswerAsk } from './buzzproto';
-import { categoryLabel, finalName, formatPoints, roundName, type Game, type Id, type Session, type Slide, type TextEl } from './model';
-import { currentClueInfo, currentFinal, ddCap, finalWagerCap, score, shownQuestionSlide, tiedForFirst, wagerFromPhone } from './session';
+import { categoryLabel, finalName, formatPoints, roundName, type Game, type Id, type PartnerState, type Session, type Slide, type TextEl } from './model';
+import { giverLine, partnerRoles, partnerRules, partnerVerdict, partsLine, resultLine } from './partner';
+import { clueMarks, currentClueInfo, currentFinal, ddCap, finalWagerCap, score, shownQuestionSlide, tiedForFirst, wagerFromPhone } from './session';
 
 export interface BuzzState {
   phase: BuzzPhase;
@@ -122,7 +123,8 @@ export const SETTING_UP = 'The host is setting up — hang on';
 
 /**
  * A short line for the phones about what's on screen when nobody buzzes: the round starting, who picks, a Daily Double
- * (its player sees "you're up"), a Final, an RPG or board game round, the end. Null during an ordinary clue.
+ * (its player sees "you're up"), a partner clue (who plays which part), a Final, an RPG or board game round, the end.
+ * Null during an ordinary clue.
  */
 export function phoneStatus(game: Game, session: Session, pregame = false): HostState['status'] {
   if (pregame) return { text: 'The game starts soon' };
@@ -133,6 +135,7 @@ export function phoneStatus(game: Game, session: Session, pregame = false): Host
     const who = nameOf(id);
     return who && id ? { text: `Daily Double: ${who}`, seats: [id], seatsText: 'Daily Double — you’re up!' } : { text: 'Daily Double!' };
   }
+  if (session.phase === 'clue' && session.partner) return partnerStatus(game, session, session.partner);
   if (session.intro?.stage === 'title' && round) return { text: `${roundName(round, session.currentRound)} is starting` };
   switch (session.phase) {
     case 'board': {
@@ -159,6 +162,37 @@ export function phoneStatus(game: Game, session: Session, pregame = false): Host
       return { text: 'Game over: thanks for playing!' };
   }
   return null;
+}
+
+/**
+ * A 🤝 partner clue's line for the phones (partner-clues spec §19.4, with a room that takes no cards): who plays which
+ * part, under each player's name, then how it went once it's judged. The picker's phone and the giver's say what's
+ * theirs. Never what's on a card.
+ */
+function partnerStatus(game: Game, session: Session, s: PartnerState): HostState['status'] {
+  const clue = currentClueInfo(session, game)?.clue;
+  const rules = partnerRules(clue ?? {});
+  const team = teamsOn(game.settings);
+  const nameOf = (id?: Id) => (id ? session.players.find((p) => p.id === id)?.name : undefined);
+  const here = (id?: Id): id is Id => !!nameOf(id);
+  const line = (t: string) => clip(t, 120);
+  const picker = here(s.pickerId) ? s.pickerId : undefined;
+  if (!picker) return { text: '🤝 Partner clue!' };
+  const { giver, guesser, solo } = partnerRoles(s);
+  const paired = here(s.partnerId);
+  if (s.stage === 'pick') {
+    if (!paired) return { text: line(`🤝 Partner clue: ${nameOf(picker)} needs a partner…`), seats: [picker], seatsText: line(`🤝 ${team ? 'Your team’s' : 'Your'} partner clue! Spinning for your partner…`) };
+    if (solo) return { text: line(`🤝 Partner clue: ${nameOf(picker)} plays it alone`), seats: [picker], seatsText: line(`🤝 ${team ? 'Your team plays' : 'You play'} this one alone!`) };
+    return { text: line(`🤝 Partner clue: ${nameOf(picker)} + ${nameOf(s.partnerId)}`), seats: [picker, s.partnerId!], seatsText: line(`🤝 ${team ? 'Your team plays' : 'You two play'} this one!`) };
+  }
+  if (!paired) return { text: line(`🤝 Partner clue: ${nameOf(picker)}`) };
+  const names = { giver: nameOf(giver), guesser: nameOf(guesser), solo };
+  // Judged (both marked since the tile opened), until the answer shows: how it went, for everyone.
+  const marks = clueMarks(session, s.clue, s.at ?? 0);
+  if (!session.revealed && partnerVerdict(s, marks).judged) return { text: line(resultLine(s, marks, (id) => nameOf(id) ?? '?', game.settings.currencySymbol)) };
+  const text = line(`🤝 ${partsLine(rules, names, { past: session.revealed })}`);
+  if (session.revealed || solo || !here(giver)) return { text };
+  return { text, seats: [giver], seatsText: line(giverLine(rules, team)) };
 }
 
 /**

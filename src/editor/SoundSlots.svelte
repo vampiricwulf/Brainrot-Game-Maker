@@ -123,9 +123,9 @@
       {:else if v && missing}
         <!-- Its file isn't here, or (an online link) the site says its link has expired, as 🖼 Media shows it. -->
         {#if ref?.url && linkLifetime(ref) === 'expired'}
-          <span class="missing small" title={ref.url}>⚠ {ref.name}’s link expired: {builtin ? 'plays the built-in sound' : 'plays nothing'} (add the file again)</span>
+          <span class="missing small" title={ref.url}>⚠ {ref.name}’s link expired: {builtin ? 'plays the built-in sound' : key === 'partner' ? 'the tile-open sound plays' : 'plays nothing'} (add the file again)</span>
         {:else}
-          <span class="missing small" title={nameOf(v)}>⚠ {nameOf(v) ?? 'Its file'} is missing: {builtin ? 'plays the built-in sound' : 'plays nothing'}</span>
+          <span class="missing small" title={nameOf(v)}>⚠ {nameOf(v) ?? 'Its file'} is missing: {builtin ? 'plays the built-in sound' : key === 'partner' ? 'the tile-open sound plays' : 'plays nothing'}</span>
         {/if}
         <!-- (Not for a file deleted from the game: there's nothing left to put it back in.) -->
         {#if ref}

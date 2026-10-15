@@ -140,7 +140,8 @@ export function groupByCategory(clues: ImportedClue[]): { name: string; clues: I
 function write(round: BoardRound, row: number, clue: Clue, c: ImportedClue): void {
   clearClue(clue);
   clue.empty = undefined;
-  // A wheel or dice tile would spin or roll in play and never show the question: it becomes a question tile.
+  // A wheel or dice tile would spin or roll in play and never show the question: it becomes a question tile. (A Daily
+  // Double or a partner clue stays one, with its cards.)
   if (clue.type === 'wheel' || clue.type === 'dice') {
     clue.type = 'standard';
     delete clue.wheelId;
@@ -235,11 +236,13 @@ export function planImport(source: BoardRound, clues: ImportedClue[], mode: 'fil
         clearClue(clue);
         clue.value = null;
         clue.empty = undefined;
-        // A plain clue again: not the wheel, dice, ✍ or countdown of the clue that was there.
+        // A plain clue again: not the wheel, dice, ✍, partner rules and cards or countdown of the clue that was there.
         clue.type = 'standard';
         delete clue.wheelId;
         delete clue.diceId;
         delete clue.everyone;
+        delete clue.partner;
+        delete clue.cards;
         delete clue.timerSeconds;
       }
       for (const [row, c] of rowsFor(g.clues, round.values, () => true)) put(row, cat.clues[row], c);

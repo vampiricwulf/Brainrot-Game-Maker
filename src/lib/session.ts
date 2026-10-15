@@ -2,7 +2,8 @@
 // Pure functions over plain objects so they're easy to test and to autosave.
 import { ensureWorld, refindPositions } from './rpg';
 import { ensureBoard, refindSpaces } from './boardgame';
-import { categoryLabel, clueValue, FINAL_V1_ROUND_ID, finalName, formatPoints, getClue, isBoard, isBoardGame, isFinal, isRpg, isSlides, MAX_POINTS, newId, playableClues, questionSlides, type BoardRound, type Clue, type ClueRef, type ExtraSlide, type FinalRound, type FinalState, type Game, type Player, type Round, type ScoreEvent, type Session, type Slide, type SlidesRound, type WagerSource } from './model';
+import { cardSlides, pairOnly, partnerReason, partnerRoles, partnerRules, partnerShares, resetRecipients, startPartner } from './partner';
+import { categoryLabel, clueValue, FINAL_V1_ROUND_ID, finalName, formatPoints, getClue, isBoard, isBoardGame, isFinal, isRpg, isSlides, MAX_POINTS, newId, playableClues, questionSlides, type BoardRound, type Clue, type ClueRef, type ExtraSlide, type FinalRound, type FinalState, type Game, type Id, type PartnerState, type Player, type Round, type ScoreEvent, type Session, type Slide, type SlidesRound, type WagerSource } from './model';
 
 export function newSession(game: Game): Session {
   return {
@@ -215,6 +216,18 @@ export function removePlayer(session: Session, playerId: string): void {
   session.removedPlayers = [...(session.removedPlayers ?? []), inFinal ? { ...p, inFinal, ...(f?.roundId ? { finalRound: f.roundId } : {}) } : p];
   if (session.currentPickerId === playerId) session.currentPickerId = undefined;
   if (session.dd?.playerId === playerId) session.dd.playerId = undefined;
+  const pt = session.partner;
+  if (pt) {
+    // The picker or the partner gone: back to choosing (the stage shows PARTNER UP! again). Their cards go to nobody.
+    if (pt.pickerId === playerId || pt.partnerId === playerId) {
+      if (pt.pickerId === playerId) delete pt.pickerId;
+      delete pt.partnerId;
+      delete pt.how;
+      pt.stage = 'pick';
+      pairOnly(session, pt);
+    }
+    for (const [card, to] of Object.entries(pt.deal ?? {})) pt.deal![card] = to.filter((t) => t.seat !== playerId);
+  }
   if (f) {
     // Their wager and result stay (nothing reads them while they're out), so a restore brings them back.
     f.players = f.players.filter((x) => x !== playerId);
@@ -275,6 +288,21 @@ export function openClue(session: Session, ref: ClueRef, game?: Game): void {
   session.phase = 'clue';
   const clue = game && getClue(game, ref)?.clue;
   session.dd = clue?.type === 'dailyDouble' ? { stage: 'splash', playerId: session.currentPickerId } : null;
+  session.partner = clue?.type === 'partner' ? startPartner(session, clue) : null;
+}
+
+/**
+ * The open clue is played by its own players, so nobody buzzes: a Daily Double (its player) or a 🤝 partner clue (the
+ * picker and the partner, as far as they're chosen). `setup`: before its question shows (the Daily Double's splash, the
+ * partner clue's PARTNER UP!). Null for any other clue, and off a clue.
+ */
+export function ownPlayers(session: Pick<Session, 'phase' | 'dd' | 'partner'>): { kind: 'dd' | 'partner'; ids: Id[]; setup: boolean } | null {
+  if (session.phase !== 'clue') return null;
+  const dd = session.dd;
+  if (dd) return { kind: 'dd', ids: dd.playerId ? [dd.playerId] : [], setup: dd.stage === 'splash' };
+  const p = session.partner;
+  if (p) return { kind: 'partner', ids: [...new Set([p.pickerId, p.partnerId].filter((id): id is Id => !!id))], setup: p.stage === 'pick' };
+  return null;
 }
 
 // ---------- A clue's question slides ----------
@@ -316,7 +344,7 @@ export function slidePosition(session: Session, game: Game): { at: number; of: n
 export function stepSlide(session: Session, game: Game, d: 1 | -1): boolean {
   if (session.phase === 'slides') {
     // (A slides round: no answer, nothing in the way.)
-  } else if (session.phase === 'tiebreaker' ? session.tiebreakerRevealed : session.phase === 'final' ? session.finalStep !== 'question' : session.phase !== 'clue' || session.revealed || session.dd?.stage === 'splash') return false;
+  } else if (session.phase === 'tiebreaker' ? session.tiebreakerRevealed : session.phase === 'final' ? session.finalStep !== 'question' : session.phase !== 'clue' || session.revealed || ownPlayers(session)?.setup) return false;
   const clue = slidesOnShow(session, game);
   if (!clue) return false;
   const to = clueSlideIndex(session, clue) + d;
@@ -327,7 +355,7 @@ export function stepSlide(session: Session, game: Game, d: 1 | -1): boolean {
 }
 
 export function reveal(session: Session): void {
-  if (session.phase === 'clue' && session.dd?.stage !== 'splash') session.revealed = true;
+  if (session.phase === 'clue' && !ownPlayers(session)?.setup) session.revealed = true;
   if (session.phase === 'tiebreaker') session.tiebreakerRevealed = true;
   if (session.phase === 'final' && session.finalStep === 'question') session.finalStep = 'answer';
 }
@@ -354,11 +382,11 @@ export function toggleReveal(session: Session): void {
 }
 
 /**
- * The host panel's award row is up: not on a Daily Double splash, in a Final (its wagers and reveals score it) or on the
- * end screen.
+ * The host panel's award row is up: not on a Daily Double splash or a partner clue's PARTNER UP!, in a Final (its wagers
+ * and reveals score it) or on the end screen.
  */
 export function awardOpen(session: Session): boolean {
-  if (session.phase === 'clue') return session.dd?.stage !== 'splash';
+  if (session.phase === 'clue') return !ownPlayers(session)?.setup;
   return session.phase === 'board' || session.phase === 'rpg' || session.phase === 'boardgame' || session.phase === 'tiebreaker';
 }
 
@@ -409,6 +437,36 @@ export function clueMarks(session: Session, clueId: string, since = 0): Record<s
 }
 
 /**
+ * ✔ Got it (`got`) or ✘ Missed on the open 🤝 partner clue (partner-clues spec §6.6, §9): each of the two with no mark on
+ * it yet (since the tile opened: scored by hand first, they're left as they are) gets their part's share of `value` (the
+ * tile's, or the Amount box's), all in one undo step (`batchId`). A 0, or a deduction that ⚖ Negative scores off leaves
+ * out, is logged as a 0 all the same, so both always get a mark. After ✔ Got it the guesser picks next (while "Player who
+ * gets points picks next" is on), kept on the first event so an Undo gives the board back. Returns the events: none when
+ * both were already scored, or before the question shows.
+ */
+export function judgePartner(session: Session, game: Game, got: boolean, value: number, batchId = newId()): ScoreEvent[] {
+  const s = session.partner;
+  const ref = session.currentClue;
+  const clue = ref ? getClue(game, ref)?.clue : undefined;
+  if (session.phase !== 'clue' || !s || !ref || !clue || clue.id !== s.clue || s.stage === 'pick') return [];
+  const rules = partnerRules(clue);
+  const roles = partnerRoles(s);
+  const name = (id: Id | undefined) => (id ? playerName(session, id) : undefined);
+  const reason = `${clueReason(game, ref)} (${partnerReason(rules, { giver: name(roles.giver), guesser: name(roles.guesser), solo: roles.solo })})`;
+  const events: ScoreEvent[] = [];
+  for (const { id, points } of partnerShares(value, rules, s, got, clueMarks(session, s.clue, s.at ?? 0))) {
+    const scored = points ? applyScore(session, game, [id], points, reason, s.clue, false, batchId) : [];
+    events.push(...(scored.length ? scored : logZero(session, [id], reason, s.clue, got, batchId)));
+  }
+  const guesser = roles.guesser;
+  if (got && events.length && guesser && game.settings.pickerFollowsAward !== false && session.currentPickerId !== guesser && session.players.some((p) => p.id === guesser)) {
+    events[0].picker = { was: session.currentPickerId, now: guesser };
+    session.currentPickerId = guesser;
+  }
+  return events;
+}
+
+/**
  * Close the current clue and mark it used, unless `markUsed` is false (cancelled, or the question never showed).
  * Returns the id of the clue that was marked used.
  */
@@ -423,6 +481,7 @@ export function backToBoard(session: Session, game: Game, { markUsed = true }: {
   delete session.slide;
   session.revealed = false;
   session.dd = null;
+  session.partner = null;
   session.phase = 'board';
   return closed;
 }
@@ -503,6 +562,7 @@ export function goToRound(session: Session, game: Game, index: number): void {
   delete session.slide;
   session.revealed = false;
   session.dd = null;
+  session.partner = null;
   if (session.phase === 'final') stashFinal(session);
   if (index >= game.rounds.length) {
     session.intro = null;
@@ -568,6 +628,7 @@ export function backToLastRound(session: Session, game: Game, index = game.round
   delete session.slide;
   session.revealed = false;
   session.dd = null;
+  session.partner = null;
   if (isFinal(round)) {
     startFinal(session, game, round);
     if (session.final && Object.keys(session.final.results).length) session.finalStep = 'reveal';
@@ -1100,8 +1161,14 @@ export function rebaseSession(session: Session, from: Game, to: Game): void {
     session.currentClue = null;
     session.revealed = false;
     session.dd = null;
+    session.partner = null;
     if (session.phase === 'clue') session.phase = 'board';
   }
+  // A partner clue that isn't one any more is played as a plain clue; a card deleted goes from who it was given to.
+  const nowClue = ref ? getClue(to, ref)?.clue : undefined;
+  const pt = session.partner;
+  if (pt && (nowClue?.type !== 'partner' || nowClue.id !== pt.clue)) session.partner = null;
+  else if (pt && nowClue) for (const id of Object.keys(pt.deal ?? {})) if (!cardSlides(nowClue).some((c) => c.id === id)) resetRecipients(pt, id);
   // Rounds are matched by id, so deleting or reordering rounds in the editor keeps the host on the same one.
   const roundAt = (i: number) => {
     const j = to.rounds.findIndex((r) => r.id === from.rounds[i]?.id);
@@ -1144,6 +1211,7 @@ export function rebaseSession(session: Session, from: Game, to: Game): void {
  */
 export function migrateSession(session: Session, game: Game): Session {
   finalStepFix(session);
+  repairPartnerState(session);
   const finalIndex = game.rounds.findIndex((r) => r.id === FINAL_V1_ROUND_ID);
   if (finalIndex < 0) return seedIntroduced(session, game);
   for (const e of session.scoreLog ?? []) if (e.clueId === 'final') e.clueId = finalTag(FINAL_V1_ROUND_ID);
@@ -1151,6 +1219,21 @@ export function migrateSession(session: Session, game: Game): Session {
   if (session.phase === 'final') session.currentRound = finalIndex;
   seedIntroduced(session, game);
   return session;
+}
+
+/** A saved partner clue in progress that isn't one this app can read is dropped (the tile plays on as a plain clue). */
+function repairPartnerState(session: Session): void {
+  const p = session.partner as Partial<PartnerState> | null | undefined;
+  if (p === undefined || p === null) return;
+  const stages: unknown[] = ['pick', 'distribute', 'live'];
+  if (typeof p !== 'object' || typeof p.clue !== 'string' || !stages.includes(p.stage)) return void (session.partner = null);
+  if (p.giver !== 'partner' && p.giver !== 'picker') p.giver = 'partner';
+  if (p.at !== undefined && !Number.isFinite(p.at)) delete p.at;
+  for (const k of ['pickerId', 'partnerId'] as const) if (p[k] !== undefined && typeof p[k] !== 'string') delete p[k];
+  if (p.deal !== undefined) {
+    const ok = typeof p.deal === 'object' && !!p.deal && Object.values(p.deal).every((to) => Array.isArray(to) && to.every((t) => typeof t?.seat === 'string'));
+    if (!ok) delete p.deal;
+  }
 }
 
 /**

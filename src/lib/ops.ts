@@ -1,10 +1,18 @@
 // Structural edits to a Game that must keep rounds/categories/clues consistent.
-import { boardRounds, dailyDoublesPlaced, isBoard, isBoardGame, isFinal, isSlides, newCategory, newClue, newId, newTextEl, questionSlides, textSlide, type Category, type Clue, type ExtraSlide, type Game, type BoardRound, type ClueType, type Round, type Slide, type SlidesRound, type TextEl } from './model';
+import { boardRounds, cardSlides, dailyDoublesPlaced, gameRules, isBoard, isBoardGame, isFinal, isSlides, newCategory, newClue, newId, newTextEl, questionSlides, textSlide, type Category, type Clue, type ClueCard, type ExtraSlide, type Game, type BoardRound, type ClueType, type Round, type Slide, type SlidesRound, type TextEl } from './model';
+import { startingCards } from './partner';
 import { slideHasContent } from './usage';
 
-/** Something was written or added to this clue (a new clue has none of it). */
+/** Something was written or added to this clue (a new clue has none of it): its 🤫 cards' too. */
 export function clueHasContent(clue: Clue): boolean {
-  return questionSlides(clue).some(slideHasContent) || slideHasContent(clue.answerSlide) || !!clue.hostNotes?.trim() || !!clue.tileFace?.text || !!clue.tileFace?.image;
+  return (
+    questionSlides(clue).some(slideHasContent) ||
+    slideHasContent(clue.answerSlide) ||
+    cardSlides(clue).some(slideHasContent) ||
+    !!clue.hostNotes?.trim() ||
+    !!clue.tileFace?.text ||
+    !!clue.tileFace?.image
+  );
 }
 
 /** A category with clues, an image or its own name (not the "Category 3" it started with). */
@@ -53,16 +61,27 @@ export function swapClues(round: BoardRound, a: TilePos, b: TilePos): void {
   cb[b.row] = x;
 }
 
-/** A copy of a clue with fresh ids (its own, and its slides' items). */
+/** A copy of a clue with fresh ids (its own, its extra slides' and cards', and their items'). */
 export function copyClue(clue: Clue): Clue {
   const copy = clone(clue);
   copy.id = newId();
   for (const e of [...copy.questionSlide.elements, ...copy.answerSlide.elements]) e.id = newId();
-  for (const sl of copy.extraSlides ?? []) {
+  for (const sl of [...(copy.extraSlides ?? []), ...cardSlides(copy)]) {
     sl.id = newId();
     for (const e of sl.elements) e.id = newId();
   }
   return copy;
+}
+
+/**
+ * ⧉ Same as the answer: the answer slide's items (and its background) copied onto the card, once, with fresh ids. From
+ * then on the card is its own: changing the answer doesn't change it.
+ */
+export function cardFromAnswer(clue: Clue, card: ClueCard): void {
+  const copy = clone(clue.answerSlide);
+  for (const e of copy.elements) e.id = newId();
+  card.background = copy.background;
+  card.elements = copy.elements;
 }
 
 // ---------- A clue's question slides ----------
@@ -138,10 +157,14 @@ function clearSlide(slide: Slide): void {
   slide.background = {};
 }
 
-/** Take out what was written or added to a clue (its slides, host notes, tile face). Its type and value stay. */
+/**
+ * Take out what was written or added to a clue (its slides, host notes, tile face). Its type and value stay, and so do its
+ * 🤫 cards, emptied, with who they go to and the partner rules.
+ */
 export function clearClue(clue: Clue): void {
   clearSlide(clue.questionSlide);
   clearSlide(clue.answerSlide);
+  for (const card of cardSlides(clue)) clearSlide(card);
   delete clue.extraSlides;
   delete clue.hostNotes;
   delete clue.tileFace;
@@ -160,11 +183,22 @@ export function insertRow(round: BoardRound, at: number): boolean {
 }
 
 /**
- * Make a tile a Daily Double (or a standard, wheel or dice tile). The board's ⭐ Daily Doubles box goes up with the
- * ones placed by hand, so it never says fewer than the board has.
+ * Make a tile a Daily Double (or a standard, wheel, dice or partner tile). The board's ⭐ Daily Doubles box goes up with
+ * the ones placed by hand, so it never says fewer than the board has. A partner clue starts as Describe it (a 45 s
+ * countdown when it has none) with its starting card; one made a partner clue before gets its rules and cards back.
  */
 export function setClueType(round: BoardRound, clue: Clue, type: ClueType): void {
   clue.type = type;
+  if (type === 'partner') {
+    if (!clue.partner) {
+      clue.partner = gameRules('describe');
+      clue.timerSeconds ??= 45;
+    }
+    if (!clue.cards?.length) {
+      const cards = startingCards(clue.partner.game);
+      if (cards.length) clue.cards = cards;
+    }
+  }
   followDailyDoubles(round);
 }
 
@@ -346,7 +380,7 @@ export function reidRound<R extends Round>(round: R): R {
         cl.id = newId();
         reSlide(cl.questionSlide);
         reSlide(cl.answerSlide);
-        for (const sl of cl.extraSlides ?? []) {
+        for (const sl of [...(cl.extraSlides ?? []), ...cardSlides(cl)]) {
           sl.id = newId();
           reSlide(sl);
         }

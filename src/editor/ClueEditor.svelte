@@ -3,10 +3,31 @@
   import { modal } from '../lib/modal';
   import { onMount, tick, untrack } from 'svelte';
   import { app, toast } from '../lib/app.svelte';
-  import { take, type Place, type RoundPart, type Side } from '../lib/nav.svelte';
+  import { take, type ClueSide, type Place, type RoundPart } from '../lib/nav.svelte';
   import { imgFallback, mediaUrls } from '../lib/media.svelte';
-  import { addClueSlide, deleteClueSlide, duplicateClueSlide, followDailyDoubles, moveClueSlide, neighbourClue, setClueType, stepClue, textStyleTargets } from '../lib/ops';
-  import { categoryLabel, clueCountdown, clueValueTyped, formatPoints, PLAYER_WHEEL, questionSlides, type ClueType, setSlideText, slideText, type BoardRound, type ExtraSlide, type Slide, type TextEl } from '../lib/model';
+  import { addClueSlide, cardFromAnswer, deleteClueSlide, duplicateClueSlide, followDailyDoubles, moveClueSlide, neighbourClue, setClueType, stepClue, textStyleTargets } from '../lib/ops';
+  import {
+    cardSlides,
+    categoryLabel,
+    clueCountdown,
+    clueValueTyped,
+    formatPoints,
+    MAX_CARDS,
+    PLAYER_WHEEL,
+    questionSlides,
+    type ClueType,
+    setSlideText,
+    slideText,
+    type BoardRound,
+    type CardGoesTo,
+    type ClueCard,
+    type ExtraSlide,
+    type Slide,
+    type TextEl,
+  } from '../lib/model';
+  import { addCard, deleteCard, GOES_TO, goesToLabel, partnerRules, sameAsAnswer } from '../lib/partner';
+  import { slideHasContent } from '../lib/usage';
+  import PartnerSettings from './PartnerSettings.svelte';
   import { followClueText } from '../lib/cluetext';
   import SlideEditor from './slide/SlideEditor.svelte';
   import MediaPicker from './slide/MediaPicker.svelte';
@@ -29,14 +50,19 @@
   const clue = $derived(cat?.clues[pos.row]);
   const sym = $derived(app.game.settings.currencySymbol);
 
-  const TYPE_WORDS: Record<ClueType, string> = { standard: 'a standard tile', dailyDouble: 'a Daily Double', wheel: 'a wheel tile', dice: 'a dice tile' };
+  const TYPE_WORDS: Record<ClueType, string> = { standard: 'a standard tile', dailyDouble: 'a Daily Double', wheel: 'a wheel tile', dice: 'a dice tile', partner: 'a partner clue' };
   /** The tile as the board shows it ("Memes $400"), for the history. */
   const tileName = () => `${categoryLabel(cat)} ${formatPoints(clue.value ?? round.values[pos.row] ?? 0, sym)}`;
   /** The tile's type (one step, with the ⭐ Daily Doubles count it raises). */
   function setType(type: ClueType): void {
-    record(`Made ${tileName()} ${TYPE_WORDS[type]}`, () => setClueType(round, clue, type));
+    record(`Made ${tileName()} ${TYPE_WORDS[type]}`, () => {
+      setClueType(round, clue, type);
+      // (A partner clue's starting cards take the theme's clue text, as new clues do.)
+      if (type === 'partner') followClueText(app.game, cardSlides(clue));
+    });
   }
-  let side = $state<'q' | 'a'>('q');
+  /** The tab open: a question slide, the answer, or one of a partner clue's 🤫 cards. */
+  let side = $state<ClueSide>('q');
 
   // ---------- Question slides ----------
   // A clue can have several question slides (a lead-in, then more information…), shown in order before the answer.
@@ -46,6 +72,72 @@
   const qslides = $derived(clue ? questionSlides(clue) : []);
   const at = $derived(Math.min(qi, Math.max(0, qslides.length - 1)));
   const qslide = $derived(qslides[at]);
+
+  // ---------- 🤫 Cards ----------
+  // A partner clue's cards: slides only the players the host hands them to see. Their tabs come after the question
+  // slides (Question 1…n · 🤫 Card 1…k · Answer), in the order things happen. A tile whose type changed away keeps its
+  // cards, without their tabs, for when it changes back.
+  /** The card open (0: Card 1), kept while another tab is open. */
+  let ci = $state(0);
+  const cards = $derived(clue?.type === 'partner' && !clue.empty ? cardSlides(clue) : []);
+  const cardAt = $derived(Math.min(ci, Math.max(0, cards.length - 1)));
+  const card = $derived<ClueCard | undefined>(cards[cardAt]);
+  /** The tab shown: a card's when there's one to show (its type changed, it was deleted: the question). */
+  const shown = $derived<ClueSide>(side === 'card' && !card ? 'q' : side);
+  /** Short card tab names (🤫 1, 🤫 2…) when there are many tabs. */
+  const shortCards = $derived(qslides.length + cards.length > 6);
+  /** The clue at one of its cards. */
+  const cardPart = (c: ClueCard): RoundPart => ({ kind: 'clue', category: cat.id, clue: clue.id, side: 'card', slide: c.id });
+  /** Where the tab open is (where a change made from it shows when undone). */
+  const openPart = (): RoundPart => (shown === 'card' && card ? cardPart(card) : shown === 'a' ? slidePart(undefined, 'a') : slidePart(qslide));
+  /**
+   * A change to the cards as one named step; the card it returns opens (-1: none left, the question opens). Undone, the
+   * tab open before shows again; redone, the card it opened.
+   */
+  function cardStep(label: string, fn: () => number, notify = false): void {
+    const undoPlace: Place = { tab: 'round', round: round.id, part: openPart() };
+    const place = { tab: 'round' as const, round: round.id, part: openPart() };
+    const to = record(
+      label,
+      () => {
+        const i = fn();
+        const c = cardSlides(clue)[i];
+        // (Filled in once it's made: the history reads the place after.)
+        place.part = c ? cardPart(c) : slidePart(questionSlides(clue)[0]);
+        return i;
+      },
+      { place, undoPlace, notify },
+    );
+    if (to < 0) side = 'q';
+    else ((side = 'card'), (ci = to));
+  }
+  /** ＋ Card: a new card at the end, its words box ready to type in. */
+  function newCardTab(): void {
+    cardStep(`Added card ${cards.length + 1} to ${tileName()}`, () => {
+      const c = addCard(clue);
+      if (c) followClueText(app.game, [c]);
+      return cardSlides(clue).length - 1;
+    });
+    focusQuestion();
+  }
+  const deleteCardTab = () => cardStep(`Deleted card ${cardAt + 1} of ${tileName()}`, () => deleteCard(clue, cardAt), true);
+  /** Who the open card starts with when the cards are handed out. */
+  function setGoesTo(to: CardGoesTo): void {
+    const c = card;
+    if (!c) return;
+    record(`Card ${cardAt + 1} of ${tileName()} goes to ${goesToLabel(partnerRules(clue), to, false)}`, () => (c.to = to), {
+      place: { tab: 'round', round: round.id, part: cardPart(c) },
+    });
+  }
+  /** ⧉ Same as the answer: a copy of the answer slide on the open (empty) card, once. */
+  function copyAnswer(): void {
+    const c = card;
+    if (!c) return;
+    record(`Copied the answer onto card ${cardAt + 1} of ${tileName()}`, () => cardFromAnswer(clue, c), {
+      place: { tab: 'round', round: round.id, part: cardPart(c) },
+    });
+  }
+
   /**
    * What tells the open slide apart, so the slide editor starts afresh on another one (moving, deleting or undoing can
    * put another slide in the same place, and the first one has no id).
@@ -53,13 +145,14 @@
   const slideNo = new WeakMap<object, number>();
   let slideCount = 0;
   const slideKey = $derived.by(() => {
-    if (side === 'a' || !qslide) return 'a';
-    if (!slideNo.has(qslide)) slideNo.set(qslide, ++slideCount);
-    return `q${slideNo.get(qslide)}`;
+    const s = shown === 'card' ? card : shown === 'q' ? qslide : undefined;
+    if (!s) return 'a';
+    if (!slideNo.has(s)) slideNo.set(s, ++slideCount);
+    return `${shown === 'card' ? 'c' : 'q'}${slideNo.get(s)}`;
   });
 
   /** The clue at its question slide `s` (the first one has no id) or at its answer: where a slide change shows. */
-  function slidePart(s: Slide | undefined, sd: Side = 'q'): RoundPart {
+  function slidePart(s: Slide | undefined, sd: 'q' | 'a' = 'q'): RoundPart {
     return { kind: 'clue', category: cat.id, clue: clue.id, side: sd, slide: sd === 'q' ? (s as Partial<ExtraSlide> | undefined)?.id : undefined };
   }
   /**
@@ -67,7 +160,7 @@
    * again (an undo brings the slides back with their ids); redone, the one it opened.
    */
   function slides(label: string, fn: () => number, notify = false): void {
-    const undoPlace: Place = { tab: 'round', round: round.id, part: side === 'a' ? slidePart(undefined, 'a') : slidePart(qslide) };
+    const undoPlace: Place = { tab: 'round', round: round.id, part: openPart() };
     const place = { tab: 'round' as const, round: round.id, part: slidePart(qslide) };
     const to = record(
       label,
@@ -82,9 +175,9 @@
     side = 'q';
     qi = to;
   }
-  /** A new question slide after the one open (on the Answer tab: after the last one), its text box ready to type in. */
+  /** A new question slide after the one open (on the Answer or a card's tab: after the last one), its text box ready to type in. */
   function addSlide(): void {
-    const after = side === 'a' ? qslides.length - 1 : at;
+    const after = shown === 'q' ? at : qslides.length - 1;
     slides(`Added question slide ${after + 2} to ${tileName()}`, () => addClueSlide(clue, after));
     focusQuestion();
   }
@@ -104,35 +197,37 @@
   /**
    * On a tab: ←/→ (Home/End) open the slide beside it (the first, the last), the answer last. On a question slide's
    * tab, Ctrl+D duplicates it (even the only one), and when there are several: Alt+←/→ move it (like Alt+↑/↓ on a
-   * list's rows), Delete deletes it.
+   * list's rows), Delete deletes it. (Not on a card's tab, as not on the answer's.)
    */
   function tabKey(e: KeyboardEvent): void {
     const n = qslides.length;
-    // The tabs in order: 0…n-1 the question slides, n the answer.
-    const now = side === 'a' ? n : at;
+    const k = cards.length;
+    // The tabs in order: 0…n-1 the question slides, n…n+k-1 the cards, n+k the answer.
+    const now = shown === 'a' ? n + k : shown === 'card' ? n + cardAt : at;
     const mod = e.ctrlKey || e.metaKey;
     const open = (i: number) => {
       e.preventDefault();
-      if (i >= n) side = 'a';
+      if (i >= n + k) side = 'a';
+      else if (i >= n) ((side = 'card'), (ci = i - n));
       else ((side = 'q'), (qi = i));
       focusTab();
     };
     if (!mod && !e.altKey && !e.shiftKey) {
       if (e.key === 'ArrowLeft') return open(Math.max(0, now - 1));
-      if (e.key === 'ArrowRight') return open(Math.min(n, now + 1));
+      if (e.key === 'ArrowRight') return open(Math.min(n + k, now + 1));
       if (e.key === 'Home') return open(0);
-      if (e.key === 'End') return open(n);
+      if (e.key === 'End') return open(n + k);
     }
     if (mod && !e.altKey && !e.shiftKey && e.key.toLowerCase() === 'd') {
       // (Never the browser's Bookmark this page, on the Answer tab either.)
       e.preventDefault();
-      if (side === 'q') {
+      if (shown === 'q') {
         slides(`Duplicated question slide ${at + 1} of ${tileName()}`, () => duplicateClueSlide(clue, at));
         focusTab();
       }
       return;
     }
-    if (side === 'a' || n < 2) return;
+    if (shown !== 'q' || n < 2) return;
     if (e.altKey && !mod && !e.shiftKey && (e.key === 'ArrowLeft' || e.key === 'ArrowRight')) {
       // (Not the next clue, as Alt+arrows are elsewhere in the clue.)
       e.preventDefault();
@@ -148,6 +243,7 @@
   let facePicker = $state(false);
   let questionField = $state<HTMLTextAreaElement>();
   let answerField = $state<HTMLTextAreaElement>();
+  let cardField = $state<HTMLTextAreaElement>();
   let emptyBox = $state<HTMLInputElement>();
 
   /** The wheel or dice open over the clue (one made from the list, or ✎ Edit). */
@@ -183,6 +279,7 @@
     if (id === qiClue) return;
     qiClue = id;
     qi = 0;
+    ci = 0;
   });
 
   // An undo or redo on this clue shows the side it changed.
@@ -192,14 +289,15 @@
     const part = place?.tab === 'round' ? place.part : undefined;
     if (part?.kind !== 'clue' || !part.side || part.clue !== untrack(() => clue?.id)) return;
     side = part.side;
-    // (On one of its extra question slides: that one.)
+    // (On one of its extra question slides, or one of its cards: that one.)
     if (part.side === 'q') qi = part.slide ? (untrack(() => clue?.extraSlides)?.findIndex((s) => s.id === part.slide) ?? -1) + 1 : 0;
+    if (part.side === 'card') ci = Math.max(0, untrack(() => clue?.cards)?.findIndex((s) => s.id === part.slide) ?? 0);
   });
 
   // Keyboard-first entry: the Question field has focus when the clue opens and after Prev/Next (on an
   // empty tile, the Empty tile box that brings it back).
-  // (Opened at its answer, by Find or an undo: the Answer field.)
-  const focusQuestion = () => tick().then(() => ((side === 'a' ? answerField : questionField) ?? emptyBox)?.focus());
+  // (Opened at its answer or a card, by Find or an undo: the Answer or the card's field.)
+  const focusQuestion = () => tick().then(() => ((shown === 'a' ? answerField : shown === 'card' ? cardField : questionField) ?? emptyBox)?.focus());
   onMount(() => void focusQuestion());
 
   // Prev / Next walk clues column by column (down a category, then on to the next one), past empty tiles.
@@ -214,6 +312,7 @@
     pos = to;
     side = 'q';
     qi = 0;
+    ci = 0;
     focusQuestion();
   }
   /** Ctrl+Enter / Ctrl+Shift+Enter: the next or previous clue; at the end of the board, a note says so. */
@@ -249,7 +348,7 @@
   function onkey(e: KeyboardEvent): void {
     // Esc closes from anywhere but the slide editor's own fields (the quick fields, and the Type, Value, Countdown and
     // Tile shows row, save as you type).
-    const quick = !!(e.target as HTMLElement)?.closest?.('.quick, .opts');
+    const quick = !!(e.target as HTMLElement)?.closest?.('.quick, .opts, .partner-opts, .cardbar');
     // (A wheel or dice open over the clue has the keys, and so does the tile image picker: a picture picked after
     // moving on would go on the next clue.)
     if (tool || facePicker) return;
@@ -297,6 +396,7 @@
             <option value="dailyDouble">⭐ Daily Double</option>
             <option value="wheel">🎡 Wheel</option>
             <option value="dice">🎲 Dice</option>
+            <option value="partner">🤝 Partner clue</option>
           </select>
         </label>
         {#if clue.type === 'wheel'}
@@ -410,6 +510,9 @@
         </div>
       </div>
 
+      {#if !clue.empty && clue.type === 'partner'}
+        <PartnerSettings {clue} value={clue.value ?? round.values[pos.row] ?? 0} tile={tileName} />
+      {/if}
       {#if !clue.empty && (clue.type === 'wheel' || clue.type === 'dice')}
         <p class="hint">
           When this tile is picked, the {clue.type} appears full-screen for the host to {clue.type === 'wheel' ? 'spin' : 'roll'}. The question slide
@@ -420,7 +523,7 @@
         <p class="muted empty-note">⬚ This tile is left empty on the board. Untick <b>Empty tile</b> to use it.</p>
       {:else}
         <!-- Quick text: the main text of each slide, so plain clues never need the canvas. Tab moves along. -->
-        <div class="quick">
+        <div class="quick" class:four={!!card}>
           <!-- (A clue with several question slides: the one open below.) -->
           <label class="field">
             {qslides.length > 1 ? `Question (slide ${at + 1} of ${qslides.length})` : 'Question'}
@@ -446,6 +549,21 @@
               oninput={(e) => setSlideText(clue.answerSlide, e.currentTarget.value) && followClueText(app.game, [clue.answerSlide])}
             ></textarea>
           </label>
+          {#if card}
+            <!-- (The card open, else the last one opened: Card 1 at first.) -->
+            <label class="field">
+              🤫 Card {cardAt + 1} words (only who you send it to sees them)
+              <textarea
+                bind:this={cardField}
+                dir="auto"
+                data-field="card"
+                rows="2"
+                placeholder="Type what they’ll see…"
+                value={slideText(card)}
+                oninput={(e) => setSlideText(card, e.currentTarget.value) && followClueText(app.game, [card])}
+              ></textarea>
+            </label>
+          {/if}
           <label class="field">
             Host notes (never shown on stream)
             <textarea rows="2" data-field="notes" value={clue.hostNotes ?? ''} oninput={(e) => (clue.hostNotes = e.currentTarget.value)}></textarea>
@@ -456,7 +574,7 @@
           <!-- (One Tab stop, the open slide's: ←/→ go along, see tabKey.) -->
           <div class="tablist" role="tablist" aria-label="Slides" tabindex="-1" bind:this={tablist} onkeydown={tabKey}>
             {#each qslides as _, i (i)}
-              {@const on = side === 'q' && at === i}
+              {@const on = shown === 'q' && at === i}
               <button
                 role="tab"
                 class:on
@@ -471,21 +589,45 @@
                 >{qslides.length > SHORT_TABS ? `Q${i + 1}` : qslides.length > 1 ? `Question ${i + 1}` : 'Question slide'}</button
               >
             {/each}
+            {#each cards as c, i (c.id)}
+              {@const on = shown === 'card' && cardAt === i}
+              <button
+                role="tab"
+                class="card-tab"
+                class:on
+                aria-selected={on}
+                tabindex={on ? 0 : -1}
+                data-card={i + 1}
+                aria-label={shortCards ? `Card ${i + 1}` : undefined}
+                onclick={() => ((side = 'card'), (ci = i))}
+                title="🤫 Card {i + 1}: only the players you hand it to see it, never on stream. It starts with {goesToLabel(partnerRules(clue), c.to, false)}"
+                >{shortCards ? `🤫 ${i + 1}` : `🤫 Card ${i + 1}`}</button
+              >
+            {/each}
             <button
               role="tab"
-              class:on={side === 'a'}
-              aria-selected={side === 'a'}
-              tabindex={side === 'a' ? 0 : -1}
+              class:on={shown === 'a'}
+              aria-selected={shown === 'a'}
+              tabindex={shown === 'a' ? 0 : -1}
               onclick={() => (side = 'a')}
-              title={qslides.length > 1 ? 'The answer slide: hidden until revealed' : undefined}>{qslides.length > 1 ? 'Answer' : 'Answer slide (hidden until revealed)'}</button
+              title={qslides.length > 1 || cards.length ? 'The answer slide: hidden until revealed' : undefined}
+              >{qslides.length > 1 || cards.length ? 'Answer' : 'Answer slide (hidden until revealed)'}</button
             >
           </div>
           <button
             class="ghost add"
             onclick={addSlide}
-            title={side === 'a' ? 'Add a question slide before the answer' : 'Add a question slide after this one: lead in, then show more before the answer'}>＋ Add slide</button
+            title={shown === 'q' ? 'Add a question slide after this one: lead in, then show more before the answer' : 'Add a question slide before the answer'}>＋ Add slide</button
           >
-          {#if qslides.length > 1 && side === 'q'}
+          {#if clue.type === 'partner'}
+            <button
+              class="ghost add"
+              onclick={newCardTab}
+              disabled={cards.length >= MAX_CARDS}
+              title={cards.length >= MAX_CARDS ? `A clue holds ${MAX_CARDS} cards` : 'Add a 🤫 card: a slide only the players you hand it to see (never on stream)'}>＋ Card</button
+            >
+          {/if}
+          {#if qslides.length > 1 && shown === 'q'}
             <span class="spacer"></span>
             <div class="slidetools" role="group" aria-label="Question slide {at + 1} of {qslides.length}">
               <span class="muted small">Slide {at + 1} of {qslides.length}</span>
@@ -496,14 +638,40 @@
             </div>
           {/if}
         </div>
+        {#if shown === 'card' && card}
+          {@const rules = partnerRules(clue)}
+          <!-- Who the card starts with (the cards can go to anyone when they're handed out), and ⧉ Same as the answer. -->
+          <div class="cardbar row" role="group" aria-label="Card {cardAt + 1}">
+            <label class="check" title="Who this card starts with when you hand the cards out: you can give it to anyone then">
+              Goes to
+              <select value={card.to} onchange={(e) => setGoesTo(e.currentTarget.value as CardGoesTo)}>
+                {#each GOES_TO as to (to)}<option value={to}>{goesToLabel(rules, to)}</option>{/each}
+              </select>
+            </label>
+            {#if !slideHasContent(card)}
+              <button
+                class="small"
+                onclick={copyAnswer}
+                disabled={!slideHasContent(clue.answerSlide)}
+                title={slideHasContent(clue.answerSlide)
+                  ? 'Put a copy of the answer slide on this card, once: changing the answer afterwards doesn’t change the card'
+                  : 'The answer slide is empty'}>⧉ Same as the answer</button
+              >
+            {:else if sameAsAnswer(clue, card)}
+              <span class="hint">This card shows the answer: whoever you send it to sees it</span>
+            {/if}
+            <span class="spacer"></span>
+            <button class="ghost small danger" onclick={deleteCardTab} title="Delete this card (Ctrl+Z brings it back)">🗑 Delete card</button>
+          </div>
+        {/if}
         {#key `${clue.id}-${slideKey}`}
           <SlideEditor
-            slide={side === 'q' ? qslide : clue.answerSlide}
+            slide={shown === 'card' && card ? card : shown === 'q' ? qslide : clue.answerSlide}
             styletargets={(el: TextEl, scope: string) => textStyleTargets(app.game, round, el, scope, cat)}
             stylecategory
-            quickfield={side}
-            placeholder={side === 'a' ? 'Click to type the answer' : at ? 'Click to type what this slide adds' : 'Click to type the question'}
-            badge={side === 'a' ? 'ANSWER' : undefined}
+            quickfield={shown}
+            placeholder={shown === 'card' ? 'Click to type what they’ll see' : shown === 'a' ? 'Click to type the answer' : at ? 'Click to type what this slide adds' : 'Click to type the question'}
+            badge={shown === 'card' ? `🤫 CARD ${cardAt + 1} · ONLY WHO YOU SEND IT TO SEES IT` : shown === 'a' ? 'ANSWER' : undefined}
             fill
           />
         {/key}
@@ -580,6 +748,14 @@
     display: grid;
     grid-template-columns: 1.3fr 1fr 1fr;
     gap: 12px;
+    /* (The boxes line up at the bottom whatever their labels wrap to: a card's is long.) */
+    align-items: end;
+  }
+  .quick.four {
+    grid-template-columns: 1.2fr 1fr 1fr 1fr;
+  }
+  .cardbar {
+    padding: 4px 0;
   }
   .quick textarea {
     resize: none;
@@ -628,7 +804,8 @@
     color: #fff;
   }
   @media (max-width: 900px) {
-    .quick {
+    .quick,
+    .quick.four {
       grid-template-columns: 1fr;
     }
     .keys {

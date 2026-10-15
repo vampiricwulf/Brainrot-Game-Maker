@@ -101,6 +101,7 @@ const scene = (): string => {
     s.currentRound,
     c ? `${c.round}.${c.cat}.${c.row}` : '',
     s.dd?.stage,
+    s.partner?.stage,
     s.intro?.stage,
     s.finalStep,
     s.final?.current,

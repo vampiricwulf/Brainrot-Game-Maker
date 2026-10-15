@@ -81,7 +81,7 @@
      * The host's quick box (its data-field) that holds this slide's main text: Ctrl+V of a picture or copied items there
      * puts them here (in the other side's box, it says to open that slide).
      */
-    quickfield?: 'q' | 'a';
+    quickfield?: 'q' | 'a' | 'card';
     /** Shown in the slide's main text box while it's empty. */
     placeholder?: string;
     /** A ribbon in the canvas corner, e.g. "ANSWER". */
@@ -635,10 +635,11 @@
    * The host's quick Question / Answer / Text boxes (outside the editor), which hold its slides' main text: 'this' for
    * the one of the slide shown here, 'other' for the one of the slide that isn't (a clue's Answer while its Question is open).
    */
-  function quickBox(e: Event): 'this' | 'other' | null {
-    const box = (e.target as HTMLElement)?.closest?.<HTMLElement>('[data-field="q"], [data-field="a"]');
+  function quickBox(e: Event): { box: 'this' | 'other'; field: string } | null {
+    const box = (e.target as HTMLElement)?.closest?.<HTMLElement>('[data-field="q"], [data-field="a"], [data-field="card"]');
     if (!quickfield || !box || root?.contains(box)) return null;
-    return box.dataset.field === quickfield ? 'this' : 'other';
+    const field = box.dataset.field ?? '';
+    return { box: field === quickfield ? 'this' : 'other', field };
   }
   /** Focus is on a button or link, where Enter and Space belong to that control. */
   function onControl(e: Event): boolean {
@@ -882,13 +883,14 @@
       // words (even with a picture of them alongside, as LibreOffice and Keynote put there); a picture alone, or copied
       // items with no words ("1 slide item"), go on the slide. In the other side's box they'd land on a slide that isn't
       // shown, so it says where to paste them. Other fields keep their paste.
-      const box = quickBox(e);
-      if (!box) return;
+      const quick = quickBox(e);
+      if (!quick) return;
       const picture = pictures && !text.trim();
       const items = pastingOurs(data ?? null) && /^\d+ slide items?$/.test(clipboard.text);
-      if (box === 'other' && (picture || items)) {
+      if (quick.box === 'other' && (picture || items)) {
         e.preventDefault();
-        return void toast(`Open the ${quickfield === 'q' ? 'Answer' : 'Question'} slide to paste ${picture ? 'a picture' : 'the items'} on it`);
+        const slide = quick.field === 'card' ? 'card’s tab' : quick.field === 'a' ? 'Answer slide' : 'Question slide';
+        return void toast(`Open the ${slide} to paste ${picture ? 'a picture' : 'the items'} on it`);
       }
       if (picture) {
         e.preventDefault();

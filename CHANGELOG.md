@@ -11,6 +11,16 @@ the day it's pushed (Pacific time; start the heading on the day's first push) an
 in plain words for the people who make and host games. Anything committed but not pushed yet goes under
 **Unreleased** at the top, and moves under its day when it's pushed.
 
+## 2026-10-15
+
+### Added
+- 🤝 Partner clue, a new tile type (Type › 🤝 Partner clue, or right-click a tile). A wheel picks a partner for the player who picked it: the picker is left off unless you tick them on, 1–9 chooses anyone, and landing on the picker plays it Solo. Nobody buzzes. The partner describes and the picker guesses (⇄ Swap turns it round). After ▶ Show question, the 📤 Distribute list sets who gets each 🤫 card (anyone, several or nobody); for now you hand cards to players with 📋 Copy words or 📋 Copy picture, then ⏱ Start the clock. ✔ Got it (Enter) and ✘ Missed (Shift+Enter) score both players in one step: by default the describer gets the tile's value and the guesser half, and a miss costs the guesser half and never the partner. The guesser picks next, and one Ctrl+Z takes it all back. (810a3da, 9151c9f, 99061fc, 86537d8, 60d0f21)
+- 🤫 Card tabs on a partner clue, in the clue editor: slides only the players you hand them to will see, never on stream, with ＋ Card (up to 6), Goes to, ⧉ Same as the answer and 🗑 Delete card. Each partner clue has its own game (Describe it, Draw it, Act it out, Help a friend, Split clue or Custom) and points, shown in money on the tile's value. Find, Delete unused, Clear and copy/paste handle cards; the checklist warns about empty cards, and says which partner clues still cost points on a miss when ⚖ Deduct on wrong is off. The sample game has one (Internet $400). (810a3da, 60d0f21)
+- A 'Partner clue' sound in 🔊 Sounds, played with the PARTNER UP! splash (the tile-open sound when none is chosen). (9151c9f, 60d0f21)
+
+### Changed
+- 📜 Log › Rolls shows a wheel that's still spinning as "… spinning" until it lands, so a log open on stream doesn't give the result away. Keys pressed in the audience window keep their held-down flag, so holding Enter there can't run through several steps. (9151c9f, 60d0f21)
+
 ## 2026-10-13
 
 ### Added

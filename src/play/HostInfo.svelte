@@ -1,7 +1,9 @@
 <!-- Host-only view of what's going on, including the answer before it's revealed (dual-window mode). -->
 <script lang="ts">
   import { categoryLabel, finalName, formatPoints, questionSlides, slideText, type Game, type Session } from '../lib/model';
-  import { clueSlideIndex, coWinnersHold, currentClueInfo, currentFinal, nameList, places, playerName, slidesRound, tiedLeaders, toolOnlyClue } from '../lib/session';
+  import { clueSlideIndex, coWinnersHold, currentClueInfo, currentFinal, nameList, ownPlayers, places, playerName, slidesRound, tiedLeaders, toolOnlyClue } from '../lib/session';
+  import { cardSlides, partnerRules, recipientsText, sameAsAnswer } from '../lib/partner';
+  import { cardItems, cardWords, type CardItem } from '../lib/phonecard';
   import { findIn, focusRef } from '../lib/rpg';
   import { currentPlayer, spaceById } from '../lib/boardgame';
   import { rpgNow } from './rpg/hostops';
@@ -21,6 +23,11 @@
   const board = $derived(boardNow(game, session));
   const landed = $derived(board.round && board.bs?.last?.landed ? spaceById(board.round, board.bs.last.landed) : undefined);
   /** A question pop-up on screen (an RPG object's or a wheel slice's): its answer, for the host's eyes only. */
+  // A 🤝 partner clue: who plays it, and its 🤫 cards as text (this window isn't on stream: the host checks what each
+  // player gets). Never a slide or a player: a card's video here could be taken for the stage's (mediactl's one map).
+  const pt = $derived(session.phase === 'clue' && info ? session.partner : null);
+  const ptName = (id?: string) => (id ? (session.players.find((p) => p.id === id)?.name ?? '?') : '');
+  const ITEM: Record<CardItem['kind'], [string, string]> = { picture: ['🖼', 'picture'], gif: ['🖼', 'GIF'], video: ['🎞', 'video'], sound: ['🔊', 'sound'], embed: ['🌐', 'online video'] };
   const ask = $derived.by(() => {
     const o = app.live.overlay;
     return o?.kind === 'popup' && o.answer ? { q: o.slide, a: o.answer, revealed: !!o.revealed, value: o.value } : null;
@@ -65,6 +72,11 @@
           : ' · waiting for the wager'}
       </div>
     {/if}
+    {#if pt}
+      <div class="dd partner" data-partner-info>
+        🤝 Partner clue{pt.pickerId ? ` · ${ptName(pt.pickerId)}` : ''}{pt.partnerId ? (pt.partnerId === pt.pickerId ? ' · Solo' : ` + ${ptName(pt.partnerId)}`) : pt.pickerId ? ' · choosing a partner' : ''}
+      </div>
+    {/if}
     <!-- A clue with several question slides: the one on screen, and the next one coming. -->
     {@const slides = questionSlides(info.clue)}
     {@const at = clueSlideIndex(session, info.clue)}
@@ -73,7 +85,7 @@
       Question{slides.length > 1 ? ` · slide ${at + 1} of ${slides.length}` : ''}
       {session.revealed || toolOnlyClue(info.clue)
         ? ''
-        : session.dd && session.dd.stage !== 'question'
+        : ownPlayers(session)?.setup
           ? '(not shown yet)'
           : tileToolUp(app.live, info.clue)
             ? `(after the ${info.clue.type === 'dice' ? 'dice' : 'wheel'})`
@@ -89,6 +101,20 @@
     {#if info.clue.hostNotes}
       <div class="label">Notes</div>
       <div class="notes">{info.clue.hostNotes}</div>
+    {/if}
+    {#if pt && cardSlides(info.clue).length}
+      {@const rules = partnerRules(info.clue)}
+      <div class="group" data-partner-cards-info>
+        <div class="label">🤫 Cards (you copy them to their players)</div>
+        {#each cardSlides(info.clue) as card, i (card.id)}
+          <div class="q"><b>Card {i + 1}</b> → {recipientsText(session, pt, rules, card)}</div>
+          {#if sameAsAnswer(info.clue, card)}<div class="muted small">This card shows the answer</div>{/if}
+          <div class="notes">{cardWords(card) || '(no words)'}</div>
+          {#each cardItems(game, card) as it (it.el)}
+            <div class="small">{ITEM[it.kind][0]} {it.name} · {ITEM[it.kind][1]}</div>
+          {/each}
+        {/each}
+      </div>
     {/if}
   {:else if session.phase === 'final' && finalRound}
     <div class="meta"><span class="cat">{finalName(finalRound)}{finalRound.category ? ` · ${finalRound.category}` : ''}</span></div>
@@ -227,6 +253,12 @@
     border-radius: 6px;
     padding: 4px 8px;
     font-weight: 600;
+  }
+  .dd.partner {
+    background: #1f8a57;
+  }
+  .small {
+    font-size: 12px;
   }
   .label {
     margin-top: 8px;

@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { applyPlan, cluesFromTable, parseTable, parseValue, pasteColumn, planImport, tableSeparator } from './clueimport';
 import { newRound, setSlideText, slideText } from './model';
+import { setClueType } from './ops';
 
 const q = (r: ReturnType<typeof newRound>, c: number, row: number) => slideText(r.categories[c].clues[row].questionSlide);
 const a = (r: ReturnType<typeof newRound>, c: number, row: number) => slideText(r.categories[c].clues[row].answerSlide);
@@ -163,5 +164,28 @@ describe('clue import: sheets as they copy', () => {
     expect([q(plan.round, 0, 2), q(plan.round, 1, 1)]).toEqual(['Q3', 'Q5']);
     // With a header too; rows before any name still take the fallback.
     expect(cluesFromTable(parseTable('Category,Question,Answer\n,Q0,A0\nGeo,Q1,A1\n,Q2,A2'), 'Old').map((c) => c.category)).toEqual(['Old', 'Geo', 'Geo']);
+  });
+});
+
+describe('clue import: 🤝 partner clues', () => {
+  it('filling keeps a partner tile one, with its cards; one whose only content is a card is left alone', () => {
+    const round = newRound('R', 2, [200, 400]);
+    round.categories[0].title = 'Geo';
+    setClueType(round, round.categories[0].clues[0], 'partner');
+    setClueType(round, round.categories[0].clues[1], 'partner');
+    setSlideText(round.categories[0].clues[1].cards![0], 'Mine');
+    const plan = planImport(round, cluesFromTable(parseTable('Geo,200,G1,g1\nGeo,400,G2,g2')), 'fill');
+    const [first, second] = plan.round.categories[0].clues;
+    expect([first.type, slideText(first.questionSlide), first.cards?.length]).toEqual(['partner', 'G1', 1]);
+    expect([slideText(second.questionSlide), slideText(second.cards![0])]).toEqual(['', 'Mine']);
+    expect(plan.left).toBe(1);
+  });
+
+  it('replacing the board makes a partner tile a plain clue, without its rules and cards', () => {
+    const r = newRound('R', 1, [200]);
+    setClueType(r, r.categories[0].clues[0], 'partner');
+    applyPlan(r, planImport(r, cluesFromTable(parseTable('History\t200\tFirst president\tWashington')), 'replace'));
+    const cl = r.categories[0].clues[0];
+    expect([cl.type, cl.partner, cl.cards]).toEqual(['standard', undefined, undefined]);
   });
 });

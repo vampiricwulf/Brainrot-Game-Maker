@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { jeopardyGame } from './testgame';
-import { questionSlides, setSlideText, textSlide, type BoardRound } from './model';
-import { addClueSlide } from './ops';
+import { newImageEl, questionSlides, setSlideText, textSlide, type BoardRound, type Game } from './model';
+import { addClueSlide, setClueType } from './ops';
+import { setPartnerPoints } from './partner';
 import { validate } from './validate';
 
 describe('the checklist', () => {
@@ -109,5 +110,89 @@ describe('buttons on items, wheels and dice', () => {
     wheel.segments[1].actions = [];
     dice.totalOutcomes = [];
     expect(validate(game).some((p) => p.text.includes('points nowhere'))).toBe(false);
+  });
+});
+
+describe('🤝 partner clues', () => {
+  /** A board with every tile written, and its first tile a Describe it partner clue. */
+  function partnerGame() {
+    const game = jeopardyGame();
+    game.title = 'Night';
+    const round = game.rounds[0] as BoardRound;
+    for (const c of round.categories) for (const cl of c.clues) (setSlideText(cl.questionSlide, 'Q?'), setSlideText(cl.answerSlide, 'A'));
+    round.categories[0].title = 'Movies';
+    const clue = round.categories[0].clues[1];
+    setClueType(round, clue, 'partner');
+    return { game, round, clue };
+  }
+  const mine = (game: Game) => validate(game).filter((p) => /card|partner/i.test(p.text) && !p.text.includes('Older copies'));
+
+  it('warns of an empty card and of a ready-made game with no card, going to the card', () => {
+    const { game, round, clue } = partnerGame();
+    const card = clue.cards![0];
+    expect(mine(game)).toEqual([
+      {
+        text: "Movies $400: card 1 is empty: there's nothing on it to send",
+        tab: 0,
+        level: 'warn',
+        place: { tab: 'round', round: round.id, part: { kind: 'clue', category: round.categories[0].id, clue: clue.id, side: 'card', slide: card.id } },
+      },
+      { text: 'Partner clues: without phone buzzers you copy the cards to the players yourself', tab: 'play', level: 'info' },
+    ]);
+    setSlideText(card, 'Shrek');
+    game.settings.buzzer = true;
+    expect(mine(game)).toEqual([]);
+    delete clue.cards;
+    expect(mine(game).map((p) => p.text)).toEqual(['Movies $400 is a Describe it partner clue with no card: the describer has nothing to describe']);
+    // A Custom game's cards are up to the host; a tile that isn't a partner clue (any more) has none to check.
+    clue.partner!.game = 'custom';
+    expect(mine(game)).toEqual([]);
+    clue.partner!.game = 'describe';
+    clue.type = 'standard';
+    expect(mine(game)).toEqual([]);
+  });
+
+  it('warns of a card’s online link that has expired or soon will', () => {
+    const { game, clue } = partnerGame();
+    game.settings.buzzer = true;
+    const pic = newImageEl('link1');
+    clue.cards![0].elements.push(pic);
+    game.media.push({ id: 'link1', name: 'shrek.png', mime: 'image/png', size: 0, kind: 'image', url: 'https://cdn.example.com/shrek.png', expiresAt: Date.now() - 1000 });
+    expect(mine(game).map((p) => p.text)).toEqual(['Movies $400: card 1 has an online link that has expired: add that file again']);
+    game.media[0].expiresAt = Date.now() + 60_000;
+    expect(mine(game).map((p) => p.text)).toEqual(['Movies $400: card 1 has an online link that stops working soon: save a copy or add the file']);
+  });
+
+  it('says where a miss still costs points with ⚖ Deduct on wrong off (a partner clue’s points are its own)', () => {
+    const { game, round, clue } = partnerGame();
+    game.settings.buzzer = true;
+    setSlideText(clue.cards![0], 'Shrek');
+    const deduct = () => validate(game).filter((p) => p.text.startsWith('Deduct on wrong is off'));
+    expect(deduct()).toEqual([]);
+    game.settings.deductOnWrong = false;
+    expect(deduct()).toEqual([{ text: 'Deduct on wrong is off, but 1 partner clue takes points on a miss: its own Points say so', tab: 'play', level: 'info' }]);
+    const other = round.categories[1].clues[2];
+    setClueType(round, other, 'partner');
+    expect(deduct().map((p) => p.text)).toEqual(['Deduct on wrong is off, but 2 partner clues take points on a miss: their own Points say so']);
+    // Points “No penalty”: a miss costs nobody, so there's nothing to say about that clue.
+    setPartnerPoints(other, 'none');
+    expect(deduct().map((p) => p.text)).toEqual(['Deduct on wrong is off, but 1 partner clue takes points on a miss: its own Points say so']);
+    setPartnerPoints(clue, 'none');
+    expect(deduct()).toEqual([]);
+  });
+
+  it('says when files are used only on cards (an older copy’s Delete unused would delete them)', () => {
+    const { game, clue } = partnerGame();
+    game.settings.buzzer = true;
+    setSlideText(clue.cards![0], 'Shrek');
+    clue.cards![0].elements.push(newImageEl('pic'));
+    game.media.push({ id: 'pic', name: 'shrek.png', mime: 'image/png', size: 10, kind: 'image' });
+    const older = () => validate(game).filter((p) => p.text.includes('Older copies'));
+    expect(older()).toHaveLength(1);
+    expect(older()[0]).toMatchObject({ tab: 'media', level: 'info' });
+    expect(older()[0].text).toMatch(/^1 file is used only on 🤫 cards/);
+    // Used on the answer too: an older copy keeps it.
+    clue.answerSlide.elements.push(newImageEl('pic'));
+    expect(older()).toHaveLength(0);
   });
 });
