@@ -225,8 +225,9 @@
    */
   function forwardKey(e: KeyboardEvent): void {
     if (NO_GESTURE.includes(e.key) && e.key !== 'Escape') return;
-    const { key, code, shiftKey, ctrlKey, altKey, metaKey } = e;
-    send({ type: 'key', key: { key, code, shiftKey, ctrlKey, altKey, metaKey } });
+    // (A held key's repeats say so: a held Enter mustn't run through a partner clue's steps from here either.)
+    const { key, code, shiftKey, ctrlKey, altKey, metaKey, repeat } = e;
+    send({ type: 'key', key: { key, code, shiftKey, ctrlKey, altKey, metaKey, repeat } });
     if (!ctrlKey && !metaKey && !/^F\d+$/.test(key)) e.preventDefault();
   }
 

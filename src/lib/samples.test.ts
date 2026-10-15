@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { addSampleGame, TEMPLATES } from './samples';
-import { isBoardGame, isRpg, newGame } from './model';
+import { isBoard, isBoardGame, isRpg, newGame } from './model';
+import { slideHasContent } from './usage';
 import { validate } from './validate';
 import { goToRound, newSession } from './session';
 import { movePlayer, nameShown, spaceKindOf, startSpace, walk } from './boardgame';
@@ -21,6 +22,19 @@ describe('the sample game', () => {
     const session = newSession(game);
     for (let i = 0; i < game.rounds.length; i++) goToRound(session, game, i);
     expect(session.boardgames && Object.keys(session.boardgames)).toHaveLength(1);
+  });
+
+  it('has one 🤝 partner clue, with its card filled in', () => {
+    const game = newGame();
+    addSampleGame(game);
+    const board = game.rounds.find(isBoard)!;
+    const partners = board.categories.flatMap((c) => c.clues).filter((c) => c.type === 'partner');
+    expect(partners).toHaveLength(1);
+    expect(partners[0].partner?.game).toBe('describe');
+    expect(partners[0].cards).toHaveLength(1);
+    expect(slideHasContent(partners[0].cards![0])).toBe(true);
+    // Nothing to fix: only the note that without phone buzzers the host copies the cards to the players.
+    expect(validate(game).filter((p) => p.level === 'info').map((p) => p.text)).toEqual(['Partner clues: without phone buzzers you copy the cards to the players yourself']);
   });
 
   it('keeps the players and title already there', () => {

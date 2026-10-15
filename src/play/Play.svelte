@@ -53,7 +53,7 @@
   import HostInfo from './HostInfo.svelte';
   import AudioHelp from './AudioHelp.svelte';
   import SoundWarnings from './host/SoundWarnings.svelte';
-  import { playCue } from './cues';
+  import { cueHere, playCue } from './cues';
   import { BUILTIN } from '../lib/sounds';
   import { watchSinks } from '../lib/audioout.svelte';
   import { finalNextStep, logged, redoAction, redoFrom, revealStep, setPicker, startStep, undoAction, type Undone } from '../lib/toolset';
@@ -1412,7 +1412,9 @@
     app.live.overlay = null;
     delete app.live.toolTile;
     // The round intro's music (a whole theme song, maybe) stops once a tile opens, so it doesn't play under the clues.
-    playCue(app.live, game, session.dd ? 'dailyDouble' : session.partner ? 'partner' : 'tileOpen', !!introNonce);
+    // (A partner clue's own sound has no built-in one: without a file chosen, or with its file missing, the tile opens
+    // as any does.)
+    playCue(app.live, game, session.dd ? 'dailyDouble' : session.partner && cueHere(game, 'partner') ? 'partner' : 'tileOpen', !!introNonce);
     introNonce = undefined;
     // (Their own splash first: no tool, no countdown.)
     if (session.dd || session.partner) return;
@@ -1671,22 +1673,18 @@
     spinWheel(app.live, session, game);
   }
 
-  /** Partner wheel spins whose landing was applied (closing the wheel early applies it: its timer then mustn't again). */
-  const partnerApplied = new Set<string>();
-  // Back after a reload with the partner wheel kept and a partner already chosen: that choice stands.
-  untrack(() => {
-    const o = toolOverlay(app.live);
-    if (o?.kind === 'wheel' && o.partnerFor && o.spin && session.partner?.partnerId) partnerApplied.add(`${o.nonce}:${o.spin.startedAt}`);
-  });
   /**
    * The partner wheel landed (or was closed early): who it landed on is the partner, once per spin, and only while the
    * partner is still being chosen. Not before: the panel, the phones and the stream name nobody until the wheel does.
+   * The wheel notes the spin it applied (partnerLanded, kept through a reload), so a partner the host chose after the
+   * landing stays, and a spin still going when the page reloaded applies when it lands.
    */
   function partnerLanded(o: { nonce: string; partnerFor?: string; spin: { startedAt: number } | null; result: number | null; segments: { id: string }[] }): void {
     if (!o.partnerFor || !o.spin || o.result === null) return;
-    const key = `${o.nonce}:${o.spin.startedAt}`;
-    if (partnerApplied.has(key)) return;
-    partnerApplied.add(key);
+    const live = toolOverlay(app.live);
+    // (Closed or replaced meanwhile: closing it applied its landing already.)
+    if (live?.kind !== 'wheel' || live.nonce !== o.nonce || live.partnerLanded === o.spin.startedAt) return;
+    live.partnerLanded = o.spin.startedAt;
     const s = session.partner;
     const id = o.segments[o.result]?.id;
     if (!s || s.clue !== o.partnerFor || s.stage !== 'pick' || !id || !setPartner(session, s, id, 'wheel')) return;
@@ -1740,10 +1738,11 @@
     }
   }
 
-  /** ⏱ Start the clock: the cards are handed out (copied to their players), the countdown starts. */
+  /** ⏱ Start the clock: the cards are handed out (copied to their players), the countdown starts. Not over the answer. */
   function partnerClock(): void {
     const s = partner;
     if (!s || s.stage !== 'distribute') return;
+    if (session.revealed) return hint('The answer is showing: Esc goes back to the board');
     s.stage = 'live';
     partnerClockAt = Date.now();
     if (!app.live.timer || app.live.timer.expired) startTimer(app.live, timerSeconds || clueTimer() || game.settings.defaultTimerSeconds || 30);
@@ -1753,8 +1752,11 @@
   /** The open partner clue's marks since it opened, and whether both of the two have one (it's judged). */
   const partnerMarks = $derived(partner ? clueMarks(session, partner.clue, partner.at ?? 0) : {});
   const partnerJudged = $derived(!!partner && partnerVerdict(partner, partnerMarks).judged);
-  /** The partner clue's own main button is up: spin, show the question, start the clock (not once it's judged). */
-  const partnerFirst = $derived(!!partner && partner.stage !== 'live' && !partnerJudged);
+  /**
+   * The partner clue's own main button is up: spin, show the question, start the clock (not once it's judged, nor once
+   * the answer shows: the clue's own then, ▦ Done).
+   */
+  const partnerFirst = $derived(!!partner && partner.stage !== 'live' && !partnerJudged && !session.revealed);
 
   /**
    * Enter or N on a partner clue before its clock starts: the main button (spin, show the question, start the clock).
@@ -1779,7 +1781,8 @@
   function partnerTooSoon(e: KeyboardEvent): boolean {
     if (!partner || partner.stage !== 'live' || Date.now() - partnerClockAt >= KEY_GUARD_MS) return false;
     const again = selected.length ? 'press Enter again to give the points' : e.shiftKey ? 'press Shift+Enter again for ✘ Missed' : 'press Enter again to give ✔ Got it';
-    hint(`The clock just started: ${again}`);
+    // (A clue with no cards and ⚖ the countdown not starting by itself: only the question went up.)
+    hint(`${app.live.timer?.startedAt ? 'The clock just started' : 'The question just went up'}: ${again}`);
     return true;
   }
 
@@ -1851,7 +1854,7 @@
       return true;
     }
     if (s.stage === 'distribute') {
-      if (e.shiftKey) hint('Start the clock first (Enter), or click ✘ Missed');
+      if (e.shiftKey) hint(session.revealed ? 'The answer is showing: click ✔ Got it or ✘ Missed, or Esc goes back to the board' : 'Start the clock first (Enter), or click ✘ Missed');
       else partnerMain(e);
       return true;
     }
@@ -1867,13 +1870,20 @@
   }
 
   /**
+   * The open clue's question hasn't shown yet (a Daily Double's splash, a partner clue's PARTNER UP!), so closing it
+   * leaves the tile on the board. Not a partner clue already scored: taking out one of its two sends it back to
+   * PARTNER UP!, but it was played.
+   */
+  const notPlayedYet = (): boolean => !!ownPlayers(session)?.setup && !Object.keys(partnerMarks).length;
+
+  /**
    * Back to the board. The tile is marked used, unless the host cancelled (`keep`) or the Daily Double
    * question never showed.
    */
   function back(keep = false): void {
     const clueId = info?.clue.id;
     // The host panel's status row then offers "↶ Reopen <tile>" (no toast: it would cover the round buttons).
-    backToBoard(session, game, { markUsed: !keep && !ownPlayers(session)?.setup });
+    backToBoard(session, game, { markUsed: !keep && !notPlayedYet() });
     dropPartnerWheel();
     selected = [];
     amount = null;
@@ -1885,7 +1895,7 @@
 
   /** Back to the board without using up the tile (a misclick), unless points were already given for it. */
   function cancelClue(): void {
-    if (!ownPlayers(session)?.setup && info && clueScored(session, info.clue.id))
+    if (!notPlayedYet() && info && clueScored(session, info.clue.id))
       return toast('Points were given for this clue: undo them first (Ctrl+Z), or use ▦ Done ▶ board', 4000);
     back(true);
   }

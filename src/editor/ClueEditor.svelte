@@ -748,6 +748,8 @@
     display: grid;
     grid-template-columns: 1.3fr 1fr 1fr;
     gap: 12px;
+    /* (The boxes line up at the bottom whatever their labels wrap to: a card's is long.) */
+    align-items: end;
   }
   .quick.four {
     grid-template-columns: 1.2fr 1fr 1fr 1fr;

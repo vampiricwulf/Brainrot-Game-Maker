@@ -50,7 +50,7 @@ export function openPlayerWheel(live: Live, session: Session): void {
  * wheel drawn from the first frame. `name`: the picker's name.
  */
 export function openPartnerWheel(live: Live, session: Session, s: PartnerState, name: string): void {
-  const pool: PoolSlice[] = playerSegments(session).map((p) => (p.id === s.pickerId && !s.includePicker ? { ...p, off: true } : p));
+  const pool = partnerPool(session, s);
   live.overlay = {
     kind: 'wheel',
     nonce: newId(),
@@ -63,6 +63,28 @@ export function openPartnerWheel(live: Live, session: Session, s: PartnerState, 
     result: null,
     partnerFor: s.clue,
   };
+}
+
+/** The partner wheel's slices as it opens: every player, the picker switched off unless they can be on it. */
+function partnerPool(session: Session, s: PartnerState): PoolSlice[] {
+  return playerSegments(session).map((p) => (p.id === s.pickerId && !s.includePicker ? { ...p, off: true } : p));
+}
+
+/** The open partner clue whose partner this wheel picks (null: not a partner wheel, or its clue is closed). */
+function partnerOf(o: WheelLike, session: Session): PartnerState | null {
+  return 'partnerFor' in o && o.partnerFor && session.partner?.clue === o.partnerFor ? session.partner : null;
+}
+
+/**
+ * The host changed this run of the wheel (✎ Edit wheel says "(edited)"). A partner wheel's picker switched off isn't a
+ * change: it opens that way.
+ */
+export function wheelEdited(o: WheelLike, session: Session): boolean {
+  if (!o.pool) return false;
+  const s = partnerOf(o, session);
+  if (!s) return true;
+  const opened = partnerPool(session, s);
+  return o.pool.length !== opened.length || o.pool.some((x, i) => x.id !== opened[i].id || x.weight !== 1 || !!x.off !== !!opened[i].off);
 }
 
 /** The rolls of the wheels on screen still spinning at `now` (the main wheel's and each extra one's): 📜 Log hides them. */
@@ -144,11 +166,16 @@ export function editWheel(o: WheelLike, pool: PoolSlice[], session: Session, gam
   if ('kind' in o) o.tagged = undefined;
 }
 
-/** Back to the wheel as it was opened (players and saved wheels follow their current state). */
+/**
+ * Back to the wheel as it was opened (players and saved wheels follow their current state). A partner wheel's picker is
+ * off it again, unless they can be on it.
+ */
 export function resetWheelEdits(o: WheelLike, session: Session, game: Game): void {
-  o.pool = undefined;
+  const s = partnerOf(o, session);
+  o.pool = s ? partnerPool(session, s) : undefined;
   const preset = o.wheelId ? game.wheels.find((w) => w.id === o.wheelId) : undefined;
-  if (o.players) o.segments = playerSegments(session);
+  if (o.pool) o.segments = onSlices(o.pool);
+  else if (o.players) o.segments = playerSegments(session);
   else if (preset) o.segments = copy(activeSegments(session, preset));
   else if (o.base) o.segments = copy(o.base);
   o.spin = null;

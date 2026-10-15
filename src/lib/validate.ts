@@ -23,7 +23,7 @@ import {
   type ClueCard,
   type Game,
 } from './model';
-import { lowerWord, partnerRules, partWords } from './partner';
+import { lowerWord, missCosts, partnerRules, partWords } from './partner';
 import { rpgProblems } from './rpg';
 import { boardGameProblems } from './boardgame';
 import { mediaUsage, onlineCount, slideHasContent, slideMediaIds } from './usage';
@@ -180,9 +180,17 @@ export function validate(game: Game): Problem[] {
       tab: 'media',
       level: 'info',
     });
-  const partners = boardRounds(game).some((r) => playableClues(r).some((c) => c.type === 'partner'));
-  if (partners && !game.settings.buzzer)
+  const partners = boardRounds(game).flatMap((r) => playableClues(r).filter((c) => c.type === 'partner'));
+  if (partners.length && !game.settings.buzzer)
     out.push({ text: 'Partner clues: without phone buzzers you copy the cards to the players yourself', tab: 'play', level: 'info' });
+  // A partner clue's points are its own: a host who turned deductions off sees where a miss still costs.
+  const costly = partners.filter((c) => missCosts(partnerRules(c))).length;
+  if (costly && !game.settings.deductOnWrong)
+    out.push({
+      text: `Deduct on wrong is off, but ${plural(costly, 'partner clue')} take${costly === 1 ? 's' : ''} points on a miss: ${costly === 1 ? 'its' : 'their'} own Points say so`,
+      tab: 'play',
+      level: 'info',
+    });
   // Deleted from 🖼 Media but still on slides: they show nothing (and aren't saved with the game).
   const deleted = [...usage.keys()].filter((id) => !known.has(id) && !Object.values(game.audio ?? {}).includes(id));
   if (deleted.length)

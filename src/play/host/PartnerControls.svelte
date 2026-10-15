@@ -1,6 +1,6 @@
 <!--
   🤝 A partner clue's part of the host panel (partner-clues spec §6.10): PARTNER UP! (who picked it, the partner by the
-  wheel or by hand, ⇄ Swap), then 📤 Hand out the cards (who gets each card, and 📋 copying it to them), and ✔ Got it /
+  wheel or by hand, ⇄ Swap), then 📤 Distribute (who gets each card, and 📋 copying it to them), and ✔ Got it /
   ✘ Missed with what each gives. In one window this panel is on stream: it counts what's on a card and never says it, nor
   names a card's pictures (a file name is often the answer). The cards themselves are in the editor's 🤫 Card tabs, and
   the two-window host column.
@@ -14,7 +14,7 @@
   import { cardSlides, PARTNER_GAMES, type Clue, type ClueCard, type Game, type Id, type PartnerState, type Session } from '../../lib/model';
   import {
     cardCopyText, cardRecipients, cardSummary, goesToLabel, lowerWord, marksText, pairOnly, partnerCandidates, partnerRoles, partnerRules, partnerShares, partnerVerdict,
-    partWordOf, partWords, recipientsText, resetRecipients, setPartner, setPartnerPicker, setRecipients, sharesText, swapParts,
+    partWho, partWordOf, partWords, recipientsText, resetRecipients, setPartner, setPartnerPicker, setRecipients, sharesText, swapParts,
   } from '../../lib/partner';
   import { cardItems, cardLinks, cardWords } from '../../lib/phonecard';
   import { clueName } from '../../lib/session';
@@ -123,12 +123,16 @@
   }
   /** The game's icon and verbs ("🗣", "describes", "guesses"). */
   const G = $derived(PARTNER_GAMES[rules.game]);
-  /** Who plays which part, in words: "Bob describes · Ann guesses" (before the pair is known, "The partner describes…"). */
-  const partsSaid = $derived(
-    roles.solo
-      ? `${name(roles.guesser)} plays it alone (Solo)`
-      : `${roles.giver ? name(roles.giver) : 'The partner'} ${G.verb} · ${roles.guesser ? name(roles.guesser) : 'the partner'} ${G.guessVerb}`,
-  );
+  /**
+   * Who plays which part, in words: "Bob describes · Ann guesses". Before the pair is known, who plays it then: "The
+   * partner describes · Ann guesses", "The partner describes · the picker guesses" (⇄ Swap: "the picker describes…").
+   */
+  const partsSaid = $derived.by(() => {
+    if (roles.solo) return `${name(roles.guesser)} plays it alone (Solo)`;
+    const who = (role: 'giver' | 'guesser') => partWho({ ...rules, giver: s.giver }, role);
+    const giver = roles.giver ? name(roles.giver) : who('giver') === 'the partner' ? 'The partner' : 'The picker';
+    return `${giver} ${G.verb} · ${roles.guesser ? name(roles.guesser) : who('guesser')} ${G.guessVerb}`;
+  });
   function swap(): void {
     if (verdict.judged) return;
     swapParts(s);
@@ -231,8 +235,9 @@
           : '';
       return { label: '🎡 Spin for a partner', key: 'W', title: why || 'W, Enter or N: the wheel spins over the other players', disabled: !!why, run: onspin };
     }
-    // (Judged meanwhile, by a click: the clue's own next, the answer.)
-    if (st.stage === 'distribute' && !verdict.judged)
+    // (Judged meanwhile, by a click: the clue's own next, the answer. The answer shown meanwhile (R): no countdown over
+    // it, the clue's own next, ▦ Done.)
+    if (st.stage === 'distribute' && !verdict.judged && !session.revealed)
       return { label: '⏱ Start the clock', key: '⏎', title: 'Enter or N: the countdown starts (copy the cards to their players first)', run: onclock };
     return null;
   });
@@ -288,7 +293,7 @@
       </div>
     {:else}
       <div class="row">
-        <span class="muted">{partner ? `🤝 ${picker.name} + ${partner.id === picker.id ? 'Solo' : partner.name}${s.how ? HOW[s.how] : ''}` : 'Partner: spin the wheel, or choose →'}</span>
+        <span class="muted">{partner ? `🤝 ${picker.name}${partner.id === picker.id ? ' · Solo' : ` + ${partner.name}`}${s.how ? HOW[s.how] : ''}` : 'Partner: spin the wheel, or choose →'}</span>
         {#each session.players as p, i (p.id)}
           {@const off = p.id === picker.id && !s.includePicker}
           {@render chip(
@@ -324,7 +329,14 @@
     {#if cards.length}<span class="muted small">📋 You’ll copy the cards to them: phones only show who plays.</span>{/if}
   {:else}
     <div class="row">
-      <b>{cards.length && !verdict.judged ? '📤 Hand out the cards' : '🤝 Partner clue'}</b>
+      {#if cards.length && !verdict.judged}
+        <!-- (How to hand them out is its tooltip: in one window, a row less keeps the judge row in view with six cards.) -->
+        <b title="📋 Copy each card to its {noun}s (paste it in a DM): phones only show who plays. The points follow the parts, not the cards."
+          >📤 Distribute</b
+        >
+      {:else}
+        <b>🤝 Partner clue</b>
+      {/if}
       {@render parts()}
       <button
         class="ghost small"
@@ -339,43 +351,43 @@
       {#each cards as card, i (card.id)}
         <div class="row small" data-card={i + 1}>Card {i + 1} → {recipientsText(session, s, rules, card)}</div>
       {/each}
-    {:else}
-      {#each cards as card, i (card.id)}
-        {@const n = i + 1}
-        {@const to = recipients(card)}
-        {@const changed = !!s.deal?.[card.id]}
-        {@const pics = cardItems(game, card).some((it) => it.kind === 'picture' || it.kind === 'gif')}
-        {@const copyable = !!cardWords(card) || cardLinks(game, card).length > 0}
-        <!-- One row a card: what's on it (counted), who gets it, and the copy buttons. -->
-        <div class="row card" data-card={n}>
-          <b>Card {n}</b>
-          <span class="muted small">· {cardSummary(game, card)}</span>
-          <span aria-hidden="true">→</span>
-          {#each session.players as p (p.id)}
-            {@render chip(p.id, to.includes(p.id), `Card ${n} to ${p.name}`, () => toggle(card, p.id))}
-          {/each}
-          {#if others.length}
-            <button class="chip ghost" aria-pressed={others.every((id) => to.includes(id))} onclick={() => everyoneElse(card)} aria-label="Card {n} to everyone else">Everyone else</button>
-          {/if}
-          <button class="chip ghost" aria-pressed={!to.length} onclick={() => setRecipients(session, s, card, [])} aria-label="Card {n} to nobody">Nobody</button>
-          {#if !to.length}<span class="muted small">nobody yet</span>{/if}
-          {#if changed}
-            <span class="muted small">(changed)</span>
-            <button class="ghost small" onclick={() => resetRecipients(s, card.id)} title="Back to who it goes to by default: {goesToLabel(rules, card.to, false)}" aria-label="Card {n}: back to {goesToLabel(rules, card.to, false)}">↺</button>
-          {/if}
-          <span class="spacer"></span>
-          <button class="small" onclick={() => copyWords(card, n)} disabled={!to.length || !copyable}
-            title={!to.length ? 'Choose who gets it first' : copyable ? `Copies “For ${to.map(name).join(', ')} only…” with the card’s words and links, to paste in a DM` : 'This card has no words or links: 📋 Copy picture'}
-            >📋 Copy words</button
-          >
-          {#if pics && canCopyPicture}
-            <button class="small" onclick={() => copyPicture(card, n)} disabled={!to.length} title={to.length ? 'Copies the card’s picture, to paste in a DM' : 'Choose who gets it first'}>📋 Copy picture</button>
-          {/if}
-        </div>
-      {/each}
-      {#if cards.length}
-        <span class="muted small">📋 Copy each card to its {noun}s (paste it in a DM): phones only show who plays. The points follow the parts, not the cards.</span>
-      {/if}
+    {:else if cards.length}
+      <!-- (Three rows show; more scroll, so the judge row stays in view with up to six cards.) -->
+      <div class="cardlist">
+        {#each cards as card, i (card.id)}
+          {@const n = i + 1}
+          {@const to = recipients(card)}
+          {@const changed = !!s.deal?.[card.id]}
+          {@const pics = cardItems(game, card).some((it) => it.kind === 'picture' || it.kind === 'gif')}
+          {@const copyable = !!cardWords(card) || cardLinks(game, card).length > 0}
+          <!-- One row a card: what's on it (counted), who gets it, and the copy buttons. -->
+          <div class="row card" data-card={n}>
+            <b>Card {n}</b>
+            <span class="muted small">· {cardSummary(game, card)}</span>
+            <span aria-hidden="true">→</span>
+            {#each session.players as p (p.id)}
+              {@render chip(p.id, to.includes(p.id), `Card ${n} to ${p.name}`, () => toggle(card, p.id))}
+            {/each}
+            {#if others.length}
+              <button class="chip ghost" aria-pressed={others.every((id) => to.includes(id))} onclick={() => everyoneElse(card)} aria-label="Card {n} to everyone else">Everyone else</button>
+            {/if}
+            <button class="chip ghost" aria-pressed={!to.length} onclick={() => setRecipients(session, s, card, [])} aria-label="Card {n} to nobody">Nobody</button>
+            {#if !to.length}<span class="muted small">nobody yet</span>{/if}
+            {#if changed}
+              <span class="muted small">(changed)</span>
+              <button class="ghost small" onclick={() => resetRecipients(s, card.id)} title="Back to who it goes to by default: {goesToLabel(rules, card.to, false)}" aria-label="Card {n}: back to {goesToLabel(rules, card.to, false)}">↺</button>
+            {/if}
+            <span class="spacer"></span>
+            <button class="small" onclick={() => copyWords(card, n)} disabled={!to.length || !copyable}
+              title={!to.length ? 'Choose who gets it first' : copyable ? `Copies “For ${to.map(name).join(', ')} only…” with the card’s words and links, to paste in a DM` : 'This card has no words or links: 📋 Copy picture'}
+              >📋 Copy words</button
+            >
+            {#if pics && canCopyPicture}
+              <button class="small" onclick={() => copyPicture(card, n)} disabled={!to.length} title={to.length ? 'Copies the card’s picture, to paste in a DM' : 'Choose who gets it first'}>📋 Copy picture</button>
+            {/if}
+          </div>
+        {/each}
+      </div>
     {/if}
     <!-- ✔ Got it / ✘ Missed: what each gives, from the question on (a click judges while handing out the cards too; the
          keys wait for the clock). Judged, the line reads the marks; an Undo brings the buttons back. (Clicked, they go
@@ -409,6 +421,14 @@
     border: 1px solid #2bb673;
     border-radius: 8px;
     background: rgba(43, 182, 115, 0.1);
+  }
+  .cardlist {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    /* (Three rows, and a sliver of the next to show there are more.) */
+    max-height: 100px;
+    overflow-y: auto;
   }
   .card {
     padding-top: 4px;

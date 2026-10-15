@@ -50,7 +50,7 @@ try {
   assert((await page.getByLabel(/Buzzer mode/).count()) === 0 && (await page.getByLabel(/Buzz-in keys/).count()) === 0, 'the editor has no buzzer options (they are on the pre-game screen)');
   const rows = page.locator('.sound');
   assert((await rows.count()) === 21, '🔊 Sounds lists every sound cue (the RPG’s six and the partner clue’s too)');
-  assert((await rows.filter({ hasText: 'Built-in' }).count()) === 20, 'all but the think music play a built-in sound to begin with');
+  assert((await rows.filter({ hasText: 'Built-in' }).count()) === 19, 'all but the think music and the partner clue’s play a built-in sound to begin with (a partner clue plays the tile-open sound)');
   const tileRow = rows.filter({ hasText: 'Tile opens' });
   await tileRow.getByRole('checkbox').uncheck();
   assert((await tileRow.innerText()).includes('Off'), 'a cue can be switched off');

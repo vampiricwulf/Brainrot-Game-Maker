@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { jeopardyGame } from './testgame';
 import { newImageEl, questionSlides, setSlideText, textSlide, type BoardRound, type Game } from './model';
 import { addClueSlide, setClueType } from './ops';
+import { setPartnerPoints } from './partner';
 import { validate } from './validate';
 
 describe('the checklist', () => {
@@ -160,6 +161,24 @@ describe('🤝 partner clues', () => {
     expect(mine(game).map((p) => p.text)).toEqual(['Movies $400: card 1 has an online link that has expired: add that file again']);
     game.media[0].expiresAt = Date.now() + 60_000;
     expect(mine(game).map((p) => p.text)).toEqual(['Movies $400: card 1 has an online link that stops working soon: save a copy or add the file']);
+  });
+
+  it('says where a miss still costs points with ⚖ Deduct on wrong off (a partner clue’s points are its own)', () => {
+    const { game, round, clue } = partnerGame();
+    game.settings.buzzer = true;
+    setSlideText(clue.cards![0], 'Shrek');
+    const deduct = () => validate(game).filter((p) => p.text.startsWith('Deduct on wrong is off'));
+    expect(deduct()).toEqual([]);
+    game.settings.deductOnWrong = false;
+    expect(deduct()).toEqual([{ text: 'Deduct on wrong is off, but 1 partner clue takes points on a miss: its own Points say so', tab: 'play', level: 'info' }]);
+    const other = round.categories[1].clues[2];
+    setClueType(round, other, 'partner');
+    expect(deduct().map((p) => p.text)).toEqual(['Deduct on wrong is off, but 2 partner clues take points on a miss: their own Points say so']);
+    // Points “No penalty”: a miss costs nobody, so there's nothing to say about that clue.
+    setPartnerPoints(other, 'none');
+    expect(deduct().map((p) => p.text)).toEqual(['Deduct on wrong is off, but 1 partner clue takes points on a miss: its own Points say so']);
+    setPartnerPoints(clue, 'none');
+    expect(deduct()).toEqual([]);
   });
 
   it('says when files are used only on cards (an older copy’s Delete unused would delete them)', () => {

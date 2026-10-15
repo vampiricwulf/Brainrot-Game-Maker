@@ -41,8 +41,11 @@ export type AudienceEvent =
   // A game sound played or was blocked (test: the nonce of a Test sound), or the chosen output is missing there.
   | SoundReport;
 
-/** A key pressed in the audience window, for the host's shortcuts (the host clicked it to allow sound, and kept typing). */
-export type AudienceKey = Pick<KeyboardEvent, 'key' | 'code' | 'shiftKey' | 'ctrlKey' | 'altKey' | 'metaKey'>;
+/**
+ * A key pressed in the audience window, for the host's shortcuts (the host clicked it to allow sound, and kept typing).
+ * With `repeat`: a key held down there repeats as it does here, and the steps that ignore a repeat ignore it too.
+ */
+export type AudienceKey = Pick<KeyboardEvent, 'key' | 'code' | 'shiftKey' | 'ctrlKey' | 'altKey' | 'metaKey' | 'repeat'>;
 
 /**
  * hello `scores`: from the scores-only window (one a reloaded host page doesn't know yet says so until it's found), with

@@ -6,7 +6,7 @@ import { PLAYER_WHEEL, type BoardRound, type Game } from './model';
 const board = (g: Game, i: number = 0) => g.rounds[i] as BoardRound;
 import {
   addWheel, editWheel, openCategories, openCategoryWheel, openPartnerWheel, openPlayerWheel, openQuickWheel, removeWheel, openWheel, resetWheelEdits, spinningRolls,
-  spinSegments, spinWheel, startRollOff, toggleScoreboard, wheelPool, wheelSpentUp,
+  spinSegments, spinWheel, startRollOff, toggleScoreboard, wheelEdited, wheelPool, wheelSpentUp,
 } from './overlay';
 import { newWheel, parseQuickWheel } from './tools';
 import { newSession } from './session';
@@ -318,6 +318,31 @@ describe('🤝 the partner wheel, and the rolls 📜 Log hides while they spin',
     pool[0].off = false;
     editWheel(o, pool, session, game);
     expect(o.segments.map((x) => x.id)).toEqual(['a', 'b', 'd']);
+  });
+
+  it('↺ Undo edits puts it back as it opened: the picker off again (and that isn’t an edit)', () => {
+    const { game, session, o } = partnerWheel();
+    session.partner = { clue: 'q1', stage: 'pick', giver: 'partner', pickerId: 'a' };
+    expect(wheelEdited(o, session)).toBe(false);
+    const pool = wheelPool(o, session, game);
+    pool[0].off = false;
+    pool[1].weight = 3;
+    editWheel(o, pool, session, game);
+    expect(o.segments.map((x) => x.id)).toEqual(['a', 'b', 'c']);
+    expect(wheelEdited(o, session)).toBe(true);
+    resetWheelEdits(o, session, game);
+    expect(o.segments.map((x) => [x.id, x.weight])).toEqual([['b', 1], ['c', 1]]);
+    expect(wheelPool(o, session, game).map((x) => [x.id, !!x.off])).toEqual([['a', true], ['b', false], ['c', false]]);
+    expect(spinSegments(o, session, game).map((x) => x.id)).toEqual(['b', 'c']);
+    expect(wheelEdited(o, session)).toBe(false);
+    // The picker can be on it: back with them on.
+    session.partner.includePicker = true;
+    resetWheelEdits(o, session, game);
+    expect(o.segments.map((x) => x.id)).toEqual(['a', 'b', 'c']);
+    // Its clue closed: a plain player wheel again.
+    session.partner = null;
+    resetWheelEdits(o, session, game);
+    expect([o.pool, o.segments.map((x) => x.id)]).toEqual([undefined, ['a', 'b', 'c']]);
   });
 
   it('each wheel spun with it notes the roll its own spin logged', () => {

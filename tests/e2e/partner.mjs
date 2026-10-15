@@ -206,7 +206,8 @@ try {
   const redo = () => page.keyboard.press('Control+y');
   const card = dialog.locator('[data-field="card"]');
   const settings = dialog.getByRole('group', { name: 'Partner clue' });
-  const summary = () => settings.locator('p.hint').first().innerText();
+  // (The points in money: on the rules' own line, which stays when they're folded.)
+  const summary = () => settings.locator('summary .money').innerText();
 
   assert((await dialog.getByRole('option', { name: '🤝 Partner clue' }).count()) === 1, 'the Type box offers 🤝 Partner clue');
   await dialog.locator('select').first().selectOption('partner');
@@ -282,6 +283,14 @@ try {
   assert(JSON.stringify(await tabNames()) === JSON.stringify(['Question slide', '🤫 Card 1', '🤫 Card 2', 'Answer']), 'a game chosen keeps the cards the clue has');
   await settings.getByRole('combobox', { name: /^Game/ }).selectOption('describe');
   await page.screenshot({ path: 'test-results/partner-editor.png' });
+  // Folded (as they start on a short screen, so the slide fits), the rules are one line, with the points in money.
+  await settings.locator(':scope > summary').click();
+  const line = (await settings.locator(':scope > summary').innerText()).replace(/\s+/g, ' ').trim();
+  assert(
+    !(await settings.getByRole('combobox', { name: /^Game/ }).isVisible()) && line === '🗣 Describe it · The partner describes · On this $400 tile: got → describer +$400, guesser +$200 · missed → guesser −$200',
+    `the rules fold to one line that says the game, who describes and the points in money (${line})`,
+  );
+  await settings.locator(':scope > summary').click();
 
   // ---------- The board, Find and the history ----------
   await page.keyboard.press('Escape');
@@ -687,7 +696,7 @@ try {
     const shown = Date.now();
     await stateIs((st) => st.status?.text === '🤝 Green Team describes → Red Team guesses');
     assert((await state()).status.seatsText === '🗣 Your team is describing!', 'the question up: Green Team’s phones say the team is describing');
-    assert((await rp.innerText()).includes('Copy each card to its teams'), 'the panel copies the cards to teams');
+    assert((await rp.getByText('📤 Distribute', { exact: true }).getAttribute('title')).includes('Copy each card to its teams'), 'the panel copies the cards to teams (its 📤 Distribute heading says so)');
     await p.waitForTimeout(Math.max(0, shown + 1100 - Date.now()));
     await p.keyboard.press('Enter');
     await rs('.timer').waitFor();

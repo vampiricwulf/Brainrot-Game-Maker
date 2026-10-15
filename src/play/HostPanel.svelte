@@ -315,8 +315,11 @@
     answer: 'Answer on screen',
     reveal: teams ? 'Team reveals' : 'Player reveals',
   });
-  /** Points were given for the open clue, so "Cancel (keep tile)" would let it be scored twice. */
-  const cancelBlocked = $derived(!setup && !!info && clueScored(session, info.clue.id));
+  /**
+   * Points were given for the open clue, so "Cancel (keep tile)" would let it be scored twice. (Before its question
+   * shows they're an earlier play's, unless it's a partner clue sent back to PARTNER UP! after it was scored.)
+   */
+  const cancelBlocked = $derived.by(() => (!setup || (!!partner && Object.keys(marks).length > 0)) && !!info && clueScored(session, info.clue.id));
   const quickValue = $derived(session.dd?.stage === 'question' ? (session.dd.wager ?? 0) : (info?.value ?? 0));
   /** 0 is an amount too: a Daily Double wagered at 0 or a clue worth 0 (a 0 result), the tiebreaker's winner (no points). */
   const zeroOk = $derived(
@@ -457,9 +460,11 @@
   });
   // A clue just opened, or a Daily Double's question showed: the focus goes to the main button (not lost on the tile
   // that went away; and not left in the wager box, where the Enter that showed it would go on to reveal the answer).
-  // A partner clue's each step too (its question showing, the clock starting).
+  // A partner clue's each step too (who picked it chosen: 🎡 Spin for a partner is on now; its question showing, the
+  // clock starting).
   $effect(() => {
     void session.partner?.stage;
+    void session.partner?.pickerId;
     if (!clueKey() || ddWager) return;
     queueMicrotask(() => document.querySelector<HTMLElement>('.panel [data-next]')?.focus({ preventScroll: true }));
   });
@@ -469,9 +474,9 @@
   const partnerJudged = $derived(!!partner && partnerVerdict(partner, marks).judged);
   /**
    * A partner clue's own main button comes first: spin, show the question, start the clock (then the clue's own, as soon
-   * as it's judged: the answer next).
+   * as it's judged: the answer next; or once the answer shows: ▦ Done).
    */
-  const partnerFirst = $derived(!!partner && partner.stage !== 'live' && !partnerJudged);
+  const partnerFirst = $derived(!!partner && partner.stage !== 'live' && !partnerJudged && !session.revealed);
   /** What a partner clue's shares are of: the Amount box (the tile's value, unless the host changed it). */
   const partnerValue = $derived(typeof amount === 'number' && Number.isFinite(amount) ? Math.abs(amount) : (info?.value ?? 0));
   /**

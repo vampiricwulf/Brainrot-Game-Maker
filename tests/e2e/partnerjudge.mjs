@@ -3,7 +3,7 @@
 // the board with the parts, one Ctrl+Z taking it all back (scores, the board, the countdown, the 📤 list) and Ctrl+Y
 // bringing it again, a player scored by hand first left as they are, ✘ Missed with negative scores off still marking
 // both, the quick ✔/✘ chips worth each one's share, ↩ Cancel with the partner wheel up, and a reload mid-spin, while
-// handing out the cards, while playing and once judged, then two windows.
+// handing out the cards, while playing and once judged, then two windows (Enter held down in the audience window too).
 import { chromium } from 'playwright-core';
 import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
@@ -179,7 +179,7 @@ try {
   await picks(1);
   await play(0, 2, 3, { clock: false });
   await page.keyboard.press('Enter');
-  assert(await toast('The clock just started'), 'no cards: Enter right after Show question gives nothing');
+  assert(await toast('The question just went up: press Enter again to give ✔ Got it'), 'no cards: Enter right after Show question gives nothing (no countdown started by itself: it says the question went up)');
   await page.keyboard.press('Shift+Enter');
   sc = await scores();
   assert(sc.Cat === '$0' && sc.Ann === '−$400', 'nor does Shift+Enter');
@@ -320,6 +320,29 @@ try {
   await aud.locator('.pops .pop').first().waitFor();
   assert((await aud.locator('.pops .pop').count()) === 2 && (await aud.locator('.timer').count()) === 0, 'the audience window gets both pops, and the countdown stops');
   assert(!(await aud.locator('body').innerText()).includes('Judged'), 'the panel’s judge row stays in the host window');
+  await page.keyboard.press('Escape');
+  await aud.locator('.board').waitFor();
+
+  // Enter held down in the audience window (the host clicked it to allow sound, and kept typing there): its first press
+  // shows the question, and its repeats, even seconds later, neither start the clock nor score.
+  await picks(1);
+  const held = JSON.stringify(await scores());
+  await tile(2, 3).click();
+  await aud.locator('[data-partner-up]').waitFor();
+  await page.keyboard.press('2');
+  await aud.locator('[data-partner-up]', { hasText: 'Bob' }).waitFor();
+  await aud.keyboard.down('Enter');
+  await aud.locator('[data-partner-badge]').waitFor();
+  for (let i = 0; i < 30; i++) {
+    await aud.keyboard.down('Enter');
+    await aud.waitForTimeout(80);
+  }
+  await aud.keyboard.up('Enter');
+  await wait(300);
+  assert(
+    (await mainLabel(page)) === '⏱ Start the clock' && (await aud.locator('.timer').count()) === 0 && JSON.stringify(await scores()) === held && (await panel.locator('[data-judged]').count()) === 0,
+    'Enter held down in the audience window shows the question once: its repeats don’t start the clock or score',
+  );
   await page.keyboard.press('Escape');
   await aud.locator('.board').waitFor();
 

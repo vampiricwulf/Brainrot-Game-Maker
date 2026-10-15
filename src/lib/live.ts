@@ -83,6 +83,11 @@ export type Overlay =
       /** This wheel picks the open 🤝 partner clue's partner (its clue id): its landing makes them the partner. */
       partnerFor?: Id;
       /**
+       * The spin (its spin.startedAt) whose landing the partner clue has had: it isn't applied again, a reload too (a
+       * partner the host chose after it stays). A spin since then applies when it lands.
+       */
+      partnerLanded?: number;
+      /**
        * The roll its latest spin logged (RollEvent id): 📜 Log hides that roll's result until the wheel lands, so a log
        * open on stream doesn't give the spin away. Kept through a reload with the rest of the wheel.
        */

@@ -44,8 +44,9 @@ try {
   await page.getByRole('button', { name: '◀ Back to editor' }).click();
   let t = await tabs();
   assert(t.length === 5 && t[0].includes('Introduction') && t[1].includes('Jeopardy!') && t[4].includes('Final'), `the sample game has an introduction, a board, an adventure, a board game and a Final (${t.join(' | ')})`);
-  await page.locator('.problems.ok').waitFor({ timeout: 3000 });
-  assert(true, 'and nothing on the checklist');
+  // (Nothing to fix. One note: its 🤝 partner clue's card is copied to the player, as there are no phone buzzers.)
+  await page.locator('.problems:not(.warn) .problem.info', { hasText: 'Partner clues: without phone buzzers' }).waitFor({ timeout: 3000 });
+  assert((await page.locator('.problems .problem').count()) === 1, 'and nothing to fix on the checklist (one note, for its partner clue)');
   await page.keyboard.press('Control+z');
   assert((await page.locator('nav > button.round-tab').count()) === 0, 'Ctrl+Z takes the whole sample back');
   await page.keyboard.press('Control+y');

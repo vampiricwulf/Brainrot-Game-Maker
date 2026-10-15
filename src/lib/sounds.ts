@@ -12,7 +12,7 @@ export const CUES: [CueKey, string, string][] = [
   ['roundIntro', 'Round intro', 'With the round title card'],
   ['tileOpen', 'Tile opens', 'When a clue opens'],
   ['dailyDouble', 'Daily Double', 'With the Daily Double splash'],
-  ['partner', 'Partner clue', 'With a partner clue’s PARTNER UP! splash'],
+  ['partner', 'Partner clue', 'With a partner clue’s PARTNER UP! splash (none chosen: the tile-open sound)'],
   ['buzz', 'Buzz in', 'Buzzer mode: the first player in'],
   ['right', 'Right', 'Points given'],
   ['wrong', 'Wrong', 'Points taken'],
@@ -121,11 +121,6 @@ const VOICES: Partial<Record<CueKey, Voice[]>> = {
   dailyDouble: [
     { at: 0, len: 0.55, freq: 300, to: 1200, vol: 0.35 },
     ...chord([C6, E6, G6], 0.5, 0.9, { decay: 3, vol: 0.55 }),
-  ],
-  // Two rising notes answered by a third: a call for a partner.
-  partner: [
-    ...notes([G5, C6], 0.12, 0.3, { decay: 6, vol: 0.6 }),
-    ...chord([E6, G6], 0.3, 0.7, { decay: 4, vol: 0.5 }),
   ],
   buzz: [{ at: 0, len: 0.32, freq: 330, wave: 'buzz', vol: 0.45, decay: 1.5 }],
   right: notes([C6, E6, G6], 0.08, 0.4, { decay: 5 }),

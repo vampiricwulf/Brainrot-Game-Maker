@@ -8,7 +8,7 @@
   import { textOn } from '../../lib/colors';
   import { overlayDoneAt, startTimer } from '../../lib/live';
   import type { Game, Outcome, Session } from '../../lib/model';
-  import { addWheel, removeWheel, rollDice, spinSegments, spinWheel, wheelSpentUp } from '../../lib/overlay';
+  import { addWheel, removeWheel, rollDice, spinSegments, spinWheel, wheelEdited, wheelSpentUp } from '../../lib/overlay';
   import { faceText, isRespin, outcomeText, rollOutcome, rollResult, sliceLabel } from '../../lib/tools';
   import ActionCard from './ActionCard.svelte';
   import WheelEdit from './WheelEdit.svelte';
@@ -177,7 +177,7 @@
         <!-- (Spin! is the main button until it lands, then Close is.) -->
         {#if landed && !again}<button onclick={() => spinWheel(app.live, session, game)} disabled={spent} title={spent ? 'Every slice has landed: Restore them to spin again' : 'W'}>Spin again</button>{/if}
         <button class="small" class:on={o.editing} aria-pressed={!!o.editing} onclick={() => ((o.editing = !o.editing), o.editing && (editExtra = null))} title="Turn slices off or change their chances for this spin">
-          ✎ Edit wheel{o.pool ? ' (edited)' : ''}
+          ✎ Edit wheel{wheelEdited(o, session) ? ' (edited)' : ''}
         </button>
         {#each o.extra ?? [] as w (w.key)}
           <span class="xw" class:on={editExtra === w.key}>
