@@ -485,6 +485,8 @@ try {
       await p4.locator('.panel').getByRole('button', { name: '👥 Players' }).click();
       const roster = p4.getByRole('dialog', { name: 'Players' });
       await roster.waitFor();
+      // (It moves into the panel once the panel is measured, a frame later: a slow machine is still before that.)
+      await p4.locator('.in-panel [aria-modal="true"]').first().waitFor();
       await roster.getByLabel('Color for Cyrus').fill(crowdColors[1]);
       const clash = p4.locator('.toast', { hasText: 'Another player already has that color' });
       await clash.waitFor();
