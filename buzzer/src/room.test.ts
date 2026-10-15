@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import type { HostState, RoomToHost, RoomToPhone } from '../../src/lib/buzzproto';
-import { clip, cleanName } from '../../src/lib/buzzproto';
+import type { HostCard, HostState, RoomToHost, RoomToPhone } from '../../src/lib/buzzproto';
+import { CARDS_BYTES, CARDS_MAX, clip, cleanName, FILE_MAX_BYTES, ROOM_FILES_BYTES, ROOM_FILES_MAX } from '../../src/lib/buzzproto';
+import { FILE_IDLE_MS } from './limits';
 import {
   cleanState,
   FLOOD_BLOCK_MS,
@@ -24,6 +25,9 @@ import {
   WAGER_RATE,
   COLOR_RATE,
   ANSWER_RATE,
+  CARD_SEEN_RATE,
+  CARD_SEEN_WINDOW_MS,
+  cardLink,
   COLOR_WINDOW_MS,
   WAGER_WINDOW_MS,
   Room,
@@ -64,6 +68,9 @@ function setup(saved?: RoomSaved, phonesSaved: PhoneSaved[] = []) {
   const inbox = new Map<string, RoomToPhone[]>();
   const phoneSaves = new Map<string, PhoneSaved>();
   const dropped: string[] = [];
+  /** Card files whose bytes the room had deleted, and the clean-up times it asked to be woken for. */
+  const filesDropped: string[] = [];
+  const wakes: number[] = [];
   let saves = 0;
   const room = new Room(
     'BCDF',
@@ -80,6 +87,8 @@ function setup(saved?: RoomSaved, phonesSaved: PhoneSaved[] = []) {
         return timerId;
       },
       cancel: (id) => (timers = timers.filter((x) => x.id !== id)),
+      dropFiles: (files) => filesDropped.push(...files.map((f) => f.id)),
+      cleanupAt: (at) => wakes.push(at),
     },
     saved,
     phonesSaved,
@@ -98,7 +107,7 @@ function setup(saved?: RoomSaved, phonesSaved: PhoneSaved[] = []) {
   });
   const hostLast = <T extends RoomToHost['t']>(type: T) => host.filter((m) => m.t === type).at(-1) as Extract<RoomToHost, { t: T }> | undefined;
   const hostAll = <T extends RoomToHost['t']>(type: T) => host.filter((m) => m.t === type) as Extract<RoomToHost, { t: T }>[];
-  return { t, tick, timers: () => timers.length, room, host, hostLast, hostAll, send, phone, phoneOf, phoneSaves, dropped, saves: () => saves };
+  return { t, tick, timers: () => timers.length, room, host, hostLast, hostAll, send, phone, phoneOf, phoneSaves, dropped, filesDropped, wakes, saves: () => saves };
 }
 
 /** Host connected and sent a state; phones a, b, c seated on seats a, b, c. */
@@ -119,7 +128,11 @@ describe('host', () => {
   it('is welcomed and keeps the latest state', () => {
     const g = setup();
     g.room.hostOpen();
-    expect(g.host[0]).toEqual({ t: 'welcome', code: 'BCDF', protocol: 1, serverNow: 10_000, features: ['teams', 'wagers', 'free', 'color', 'answers'] });
+    expect(g.host[0]).toEqual({ t: 'welcome', code: 'BCDF', protocol: 1, serverNow: 10_000, features: ['teams', 'wagers', 'free', 'color', 'answers', 'cards'] });
+    // 'files' only while the server takes card files (index.ts knows its setting and today's budget).
+    const f = setup();
+    f.room.hostOpen(true);
+    expect(f.host[0]).toMatchObject({ t: 'welcome', features: ['teams', 'wagers', 'free', 'color', 'answers', 'cards', 'files'] });
     g.send({ t: 'state', state: state({ title: 'New' }) });
     expect(g.room.saved.state?.title).toBe('New');
     g.send({ t: 'ping', at: 5 });
@@ -1437,7 +1450,7 @@ describe('teams', () => {
 
   it('the room says it knows teams, and the host state keeps teams on', () => {
     const g = teams();
-    expect(g.host[0]).toMatchObject({ t: 'welcome', features: ['teams', 'wagers', 'free', 'color', 'answers'] });
+    expect(g.host[0]).toMatchObject({ t: 'welcome', features: ['teams', 'wagers', 'free', 'color', 'answers', 'cards'] });
     expect(g.room.saved.state?.teams).toBe(true);
     expect(cleanState({ ...state(), teams: 'yes' })?.teams).toBeUndefined();
   });
@@ -2190,5 +2203,459 @@ describe('wagers', () => {
     expect(w).toEqual({ id: 'final:r9', kind: 'final', open: false, limit: true, seats: [{ id: 'a', max: 1e9, got: 2 }, { id: 'b', max: 0, amount: 7, fromHost: true }] });
     expect(cleanState({ ...state(), wager: { id: 'x', kind: 'other', open: true, seats: [] } })?.wager).toBeUndefined();
     expect(cleanState({ ...state(), wager: { id: 'x'.repeat(101), kind: 'dd', open: true, seats: [] } })?.wager).toBeUndefined();
+  });
+});
+
+describe('private cards', () => {
+  const said = (msgs: unknown[]) => JSON.stringify(msgs);
+  /** Bob's card (a partner clue's describer), as the host sends it. */
+  const card = (x: Partial<HostCard> = {}): HostCard => ({ id: 'pc:c1:1:1', to: [{ seat: 'b' }], open: true, role: 'Describer', hint: 'Describe it to Ann', text: 'SHREK', ...x });
+  /** A game a second on (the phones took their seats before anything is sent), its cards sent with `send`. */
+  function sent(over: Partial<HostState> = {}) {
+    const g = game(over);
+    g.t.now += 1000;
+    const send = (cards: HostCard[] | null, x: Partial<HostState> = {}) => g.send({ t: 'state', state: state({ ...over, cards, ...x }) });
+    return { ...g, sendCards: send };
+  }
+  /** Teams: Ann and Al on Red (a), Bea on Blue (b), joined a second before anything is sent. */
+  function teams() {
+    const g = setup();
+    g.room.hostOpen();
+    const st = (x: Partial<HostState> = {}) => state({ teams: true, seats: [{ id: 'a', name: 'Red', color: '#ff0000' }, { id: 'b', name: 'Blue', color: '#0000ff' }], ...x });
+    g.send({ t: 'state', state: st() });
+    const join = (conn: string, seatId: string, name: string) => {
+      const p = g.phone(conn);
+      p.send({ t: 'join', seatId, name, device: `dev-${conn}` });
+      return p;
+    };
+    const ann = join('ann', 'a', 'Ann');
+    const al = join('al', 'a', 'Al');
+    const bea = join('bea', 'b', 'Bea');
+    g.t.now += 1000;
+    const memberOf = (conn: string) => g.hostLast('phones')!.phones.find((p) => p.conn === conn)?.member;
+    const sendCards = (cards: HostCard[] | null) => g.send({ t: 'state', state: st({ cards }) });
+    return { ...g, st, join, ann, al, bea, memberOf, sendCards };
+  }
+
+  it('only the phones a card was sent to get it; the seat list and unseated phones never do', () => {
+    const g = sent();
+    const watcher = g.phone('watcher');
+    g.sendCards([card()]);
+    expect(g.pb.last('view')!.view.cards).toEqual({ list: [{ id: 'pc:c1:1:1', open: true, role: 'Describer', hint: 'Describe it to Ann', text: 'SHREK' }] });
+    // (Never who else it went to.)
+    expect(g.pb.last('view')!.view.cards!.list[0]).not.toHaveProperty('to');
+    expect(g.pa.last('view')!.view.cards).toBeUndefined();
+    expect(g.pc.last('view')!.view.cards).toBeUndefined();
+    for (const p of [g.pa, g.pc, watcher]) expect(said(p.msgs())).not.toContain('SHREK');
+    expect(watcher.last('seats')).toBeDefined();
+    // The answer's on screen: the card stays, marked so.
+    g.sendCards([card({ open: false })]);
+    expect(g.pb.last('view')!.view.cards!.list[0]).toMatchObject({ open: false, text: 'SHREK' });
+  });
+
+  it('a phone that takes a just-freed seat after the card was sent never sees it', () => {
+    const g = sent();
+    g.sendCards([card()]);
+    // The host frees Bob's seat (his player is back on another phone, or someone else took it).
+    g.send({ t: 'kick', seatId: 'b', block: false });
+    g.t.now += 1000;
+    const other = g.phone('other');
+    other.send({ t: 'join', seatId: 'b' });
+    expect(other.last('view')!.view.cards).toEqual({ list: [], late: 1 });
+    expect(said(other.msgs())).not.toContain('SHREK');
+    // "Not you? Change player": a seat left and taken again is new too, even on the same phone.
+    const token = other.last('joined')!.token;
+    other.send({ t: 'leave' });
+    other.send({ t: 'join', seatId: 'b' });
+    expect(other.last('joined')!.token).not.toBe(token);
+    expect(other.last('view')!.view.cards).toEqual({ list: [], late: 1 });
+    // Late at the same moment counts as late (a seat taken as the card goes out).
+    const h = sent();
+    h.send({ t: 'kick', seatId: 'b', block: false });
+    const quick = h.phone('quick');
+    quick.send({ t: 'join', seatId: 'b' });
+    h.sendCards([card()]);
+    expect(quick.last('view')!.view.cards).toEqual({ list: [], late: 1 });
+    // A seat taken before the card went out does get it.
+    h.t.now += 1000;
+    h.sendCards([card(), card({ id: 'pc:c1:1:2' })]);
+    expect(quick.last('view')!.view.cards).toEqual({ list: [expect.objectContaining({ id: 'pc:c1:1:2' })], late: 1 });
+  });
+
+  it('a phone back with its own token gets the card again; Send again (a new id) reaches a late phone', () => {
+    const g = sent();
+    g.sendCards([card()]);
+    const token = g.pb.last('joined')!.token;
+    g.room.phoneClose('pb');
+    g.t.now += 5000;
+    const back = g.phone('pb-again');
+    back.send({ t: 'join', seatId: 'b', token });
+    expect(back.last('view')!.view.cards!.list.map((c) => c.text)).toEqual(['SHREK']);
+    // A late phone: the host sends it again under a new id.
+    g.send({ t: 'kick', seatId: 'b', block: false });
+    g.t.now += 1000;
+    const late = g.phone('late');
+    late.send({ t: 'join', seatId: 'b' });
+    expect(late.last('view')!.view.cards).toEqual({ list: [], late: 1 });
+    g.t.now += 1000;
+    g.sendCards([card({ id: 'pc:c1:1:2' })]);
+    expect(late.last('view')!.view.cards).toEqual({ list: [expect.objectContaining({ id: 'pc:c1:1:2', text: 'SHREK' })] });
+  });
+
+  it('teams: by member, by team (everyone on it sees it) and by team except some', () => {
+    const g = teams();
+    const al = g.memberOf('al')!;
+    g.sendCards([card({ id: 'one', to: [{ seat: 'a', member: al }], text: 'ONLY AL' }), card({ id: 'rest', to: [{ seat: 'a', except: [al] }], text: 'NOT AL' }), card({ id: 'blue', to: [{ seat: 'b' }], text: 'BLUE' })]);
+    expect(g.al.last('view')!.view.cards).toEqual({ list: [expect.objectContaining({ id: 'one', text: 'ONLY AL' })] });
+    expect(g.al.last('view')!.view.cards!.list[0].team).toBeUndefined();
+    expect(g.ann.last('view')!.view.cards).toEqual({ list: [expect.objectContaining({ id: 'rest', text: 'NOT AL', team: true })] });
+    expect(g.bea.last('view')!.view.cards).toEqual({ list: [expect.objectContaining({ id: 'blue', team: true })] });
+    expect(said(g.ann.msgs())).not.toContain('ONLY AL');
+    expect(said(g.al.msgs())).not.toContain('NOT AL');
+    expect(said(g.bea.msgs())).not.toMatch(/ONLY AL|NOT AL/);
+    // A card to one person never reaches a solo seat's phone (there are no members).
+    const s = sent();
+    s.sendCards([card({ to: [{ seat: 'b', member: 'mX' }] })]);
+    expect(s.pb.last('view')!.view.cards).toBeUndefined();
+  });
+
+  it('a phone that joins the card’s team mid-clue never sees it', () => {
+    const g = teams();
+    g.sendCards([card({ to: [{ seat: 'b' }], text: 'BLUE SECRET' })]);
+    expect(g.bea.last('view')!.view.cards!.list).toHaveLength(1);
+    g.t.now += 1000;
+    const spy = g.join('spy', 'b', 'Zed');
+    expect(spy.last('view')!.view.cards).toEqual({ list: [], late: 1 });
+    expect(said(spy.msgs())).not.toContain('BLUE SECRET');
+    // Coming back with its token doesn't make it earlier.
+    const token = spy.last('joined')!.token;
+    g.room.phoneClose('spy');
+    const again = g.phone('spy-again');
+    again.send({ t: 'join', seatId: 'b', token });
+    expect(again.last('view')!.view.cards).toEqual({ list: [], late: 1 });
+    expect(said(again.msgs())).not.toContain('BLUE SECRET');
+  });
+
+  it('a member the host moves onto the card’s team after it was sent never sees it, and one moved before does', () => {
+    const g = teams();
+    // Al moves to Blue before the card goes out: he's on Blue in time.
+    g.send({ t: 'move', member: g.memberOf('al')!, seatId: 'b' });
+    g.t.now += 1000;
+    g.sendCards([card({ to: [{ seat: 'b' }], text: 'BLUE SECRET' })]);
+    expect(g.al.last('view')!.view.cards!.list.map((c) => c.text)).toEqual(['BLUE SECRET']);
+    // Ann moves to Blue after it: late, though she has been in the room all along.
+    g.t.now += 1000;
+    const ann = g.memberOf('ann')!;
+    g.send({ t: 'move', member: ann, seatId: 'b' });
+    expect(g.room.saved.members![ann].teamAt).toBe(g.t.now);
+    expect(g.ann.last('view')!.view.cards).toEqual({ list: [], late: 1 });
+    expect(said(g.ann.msgs())).not.toContain('BLUE SECRET');
+    // Back with their tokens (a reload), each keeps their time on the team: Al still gets it, Ann still doesn't.
+    for (const conn of ['al', 'ann']) {
+      const token = g.phoneOf(conn).last('joined')!.token;
+      g.room.phoneClose(conn);
+      const p = g.phone(`${conn}-again`);
+      p.send({ t: 'join', seatId: 'a', token });
+      expect(p.last('view')!.view.cards).toEqual(conn === 'al' ? { list: [expect.objectContaining({ text: 'BLUE SECRET' })] } : { list: [], late: 1 });
+    }
+    // A member saved before teamAt existed counts from when they joined.
+    const old = structuredClone(g.room.saved);
+    delete old.members![ann].teamAt;
+    old.members![ann].at = 0;
+    const h = setup(old, [...g.phoneSaves.values()]);
+    h.room.hostOpen();
+    h.send({ t: 'state', state: g.st({ cards: [card({ id: 'later', to: [{ seat: 'b' }] })] }) });
+    expect(h.phoneOf('ann-again').last('view')!.view.cards).toMatchObject({ list: [{ id: 'later' }] });
+  });
+
+  it('Send again to one team doesn’t reach a phone late for the other team’s card', () => {
+    const g = teams();
+    const red = card({ id: 'red:1', to: [{ seat: 'a' }], text: 'RED WORD' });
+    const blue = card({ id: 'blue:1', to: [{ seat: 'b' }], text: 'BLUE WORD' });
+    g.sendCards([red, blue]);
+    const blueAt = g.room.saved.cards!.at['blue:1'];
+    g.t.now += 1000;
+    const newcomer = g.join('new', 'b', 'Newt');
+    g.t.now += 1000;
+    // The host sends Red's card again (a new id) for Red's replacement phone; Blue's keeps its id.
+    g.sendCards([{ ...red, id: 'red:2' }, blue]);
+    expect(g.room.saved.cards!.at).toEqual({ 'red:2': g.t.now, 'blue:1': blueAt });
+    expect(newcomer.last('view')!.view.cards).toEqual({ list: [], late: 1 });
+    expect(said(newcomer.msgs())).not.toContain('BLUE WORD');
+    expect(g.ann.last('view')!.view.cards!.list.map((c) => c.id)).toEqual(['red:2']);
+  });
+
+  it('cardSeen: only from a phone the card was sent to that isn’t late; the host hears it once, and again when it comes back', () => {
+    const g = sent();
+    g.sendCards([card()]);
+    g.pa.send({ t: 'cardSeen', id: 'pc:c1:1:1' });
+    g.pb.send({ t: 'cardSeen', id: 'nope' });
+    expect(g.hostAll('cardSeen')).toEqual([]);
+    g.pb.send({ t: 'cardSeen', id: 'pc:c1:1:1' });
+    g.pb.send({ t: 'cardSeen', id: 'pc:c1:1:1' });
+    expect(g.hostAll('cardSeen')).toEqual([{ t: 'cardSeen', id: 'pc:c1:1:1', seatId: 'b' }]);
+    // A late phone's is ignored.
+    g.send({ t: 'kick', seatId: 'b', block: false });
+    g.t.now += 1000;
+    const late = g.phone('late');
+    late.send({ t: 'join', seatId: 'b' });
+    late.send({ t: 'cardSeen', id: 'pc:c1:1:1' });
+    expect(g.hostAll('cardSeen')).toHaveLength(1);
+    // The host back after a reload hears who saw the cards still out.
+    g.room.hostClose();
+    g.room.hostOpen();
+    expect(g.hostAll('cardSeen')).toHaveLength(2);
+    expect(g.hostLast('cardSeen')).toEqual({ t: 'cardSeen', id: 'pc:c1:1:1', seatId: 'b' });
+    // Teams: who on the team saw it.
+    const t = teams();
+    t.sendCards([card({ to: [{ seat: 'a' }] })]);
+    t.al.send({ t: 'cardSeen', id: 'pc:c1:1:1' });
+    expect(t.hostLast('cardSeen')).toEqual({ t: 'cardSeen', id: 'pc:c1:1:1', seatId: 'a', member: t.memberOf('al'), by: 'Al' });
+  });
+
+  it('cardSeen is rate-limited like answers', () => {
+    const g = sent();
+    g.sendCards([card()]);
+    for (let i = 0; i < CARD_SEEN_RATE; i++) g.pb.send({ t: 'cardSeen', id: `made-up-${i}` });
+    g.pb.send({ t: 'cardSeen', id: 'pc:c1:1:1' });
+    expect(g.hostAll('cardSeen')).toEqual([]);
+    g.t.now += CARD_SEEN_WINDOW_MS;
+    g.pb.send({ t: 'cardSeen', id: 'pc:c1:1:1' });
+    expect(g.hostAll('cardSeen')).toHaveLength(1);
+  });
+
+  it('a state without the card leaves nothing of it in the saved room', () => {
+    const g = sent();
+    g.sendCards([card()]);
+    g.pb.send({ t: 'cardSeen', id: 'pc:c1:1:1' });
+    expect(g.room.saved.cards).toEqual({ at: { 'pc:c1:1:1': g.t.now }, seen: { 'pc:c1:1:1': [{ seatId: 'b' }] } });
+    // The tile closed: the host's next state has no cards.
+    g.send({ t: 'state', state: state() });
+    expect(g.room.saved.state!.cards).toBeUndefined();
+    expect(g.room.saved.cards).toBeUndefined();
+    expect(JSON.stringify(g.room.saved)).not.toMatch(/SHREK|pc:c1/);
+    expect(g.pb.last('view')!.view.cards).toBeUndefined();
+    // Sent again later under the same id (an undo): it's new to the room, so a phone seated since gets it.
+    g.t.now += 1000;
+    g.sendCards([card()]);
+    expect(g.room.saved.cards!.at['pc:c1:1:1']).toBe(g.t.now);
+  });
+
+  it('greys the phones: status.off, and a small line for everyone (sub) and for its seats (seatsSub)', () => {
+    const g = sent();
+    g.send({ t: 'state', state: state({ status: { text: '🤝 Bob describes → Ann guesses', sub: 'Nobody buzzes on this one', seats: ['a'], seatsText: '🎯 You’re guessing!', seatsSub: 'Bob is describing', off: true } }) });
+    expect(g.pa.last('view')!.view).toMatchObject({ status: '🎯 You’re guessing!', statusSub: 'Bob is describing', statusOff: true });
+    expect(g.pb.last('view')!.view).toMatchObject({ status: '🤝 Bob describes → Ann guesses', statusSub: 'Nobody buzzes on this one', statusOff: true });
+    // The seat list's note is only the line for everyone.
+    expect(g.phone('watcher').last('seats')!.note).toBe('🤝 Bob describes → Ann guesses');
+    g.send({ t: 'state', state: state({ status: { text: 'Daily Double' } }) });
+    expect(g.pa.last('view')!.view.statusOff).toBeUndefined();
+    expect(g.pa.last('view')!.view.statusSub).toBeUndefined();
+    const s = cleanState({ ...state(), status: { text: 'x', sub: 'y'.repeat(300), seatsSub: 'no seats', off: 'yes' } })!.status;
+    expect(s).toEqual({ text: 'x', sub: 'y'.repeat(119) + '…' });
+  });
+
+  it('cleanState: the cards whitelist', () => {
+    const clean = (cards: unknown, files = {}) => cleanState({ ...state(), cards }, files)?.cards;
+    expect(clean('nope')).toBeUndefined();
+    expect(clean([])).toBeUndefined();
+    // Ids: a string up to 100, once each; to: seats in the game (a card to nobody is dropped).
+    expect(clean([card({ id: '' }), card({ id: 'x'.repeat(101) }), card({ to: [{ seat: 'zz' }] }), card({ to: [] }), card(), card({ text: 'dup' })])).toEqual([card()]);
+    // At most CARDS_MAX.
+    expect(clean(Array.from({ length: 12 }, (_, i) => card({ id: `c${i}` })))).toHaveLength(CARDS_MAX);
+    // Lines cut; empty ones left out; open unless false; tap only when false.
+    const long = clean([{ id: 'c', to: [{ seat: 'a' }], open: 'x', role: 'R'.repeat(30), hint: 'H'.repeat(300), title: 'T'.repeat(100), text: ' ' + 'W'.repeat(1200), tap: 'no' }])![0];
+    expect([long.role!.length, long.hint!.length, long.title!.length, long.text!.length]).toEqual([24, 200, 80, 1000]);
+    expect(long.open).toBe(true);
+    expect(long).not.toHaveProperty('tap');
+    expect(clean([card({ role: '  ', tap: false, open: false })])![0]).toStrictEqual({ id: 'pc:c1:1:1', to: [{ seat: 'b' }], open: false, hint: 'Describe it to Ann', text: 'SHREK', tap: false });
+    // Members: a bad id never widens a card to the whole team; a bad `except` never sends it to someone left out.
+    const to = clean([card({ to: [{ seat: 'a', member: 'm1' }, { seat: 'a', member: 'm'.repeat(65) }, { seat: 'b', except: ['m2', 7] } as never, { seat: 'c', except: ['m3', 'm3'] }] })])![0].to;
+    expect(to).toEqual([{ seat: 'a', member: 'm1' }, { seat: 'c', except: ['m3'] }]);
+  });
+
+  it('cleanState: links https only (no user name or password, 2048 at most), embeds from the list, at most 6 media', () => {
+    const media = (m: unknown[]) => cleanState({ ...state(), cards: [card({ media: m as never })] })?.cards?.[0].media;
+    const ok = 'https://i.example.com/shrek.gif';
+    expect(media([
+      { kind: 'image', url: ok, name: ' shrek.gif ' },
+      { kind: 'image', url: 'http://i.example.com/a.png' },
+      { kind: 'image', url: 'javascript:alert(1)' },
+      { kind: 'image', url: 'data:image/png;base64,AAAA' },
+      { kind: 'video', url: 'https://user:pw@example.com/a.mp4' },
+      { kind: 'audio', url: `https://example.com/${'a'.repeat(2048)}.mp3` },
+    ])).toEqual([{ kind: 'image', url: ok, name: 'shrek.gif' }]);
+    expect(media([
+      { kind: 'embed', site: 'youtube', url: 'https://youtu.be/dQw4w9WgXcQ', start: 30, end: -1 },
+      { kind: 'embed', site: 'evilsite', url: 'https://evil.example.com' },
+      { kind: 'embed', site: 'drive', url: 'ftp://drive.google.com/x' },
+      { kind: 'svg', url: ok },
+      { kind: 'video', url: 'https://example.com/a.mp4', start: 2, end: 9, extra: 'dropped' },
+    ])).toEqual([
+      { kind: 'embed', site: 'youtube', url: 'https://youtu.be/dQw4w9WgXcQ', start: 30 },
+      { kind: 'video', url: 'https://example.com/a.mp4', start: 2, end: 9 },
+    ]);
+    expect(media(Array.from({ length: 9 }, () => ({ kind: 'image', url: ok })))).toHaveLength(6);
+    // Still uploading, or not coming.
+    expect(media([{ kind: 'image', pending: true }, { kind: 'video', missing: true }, { kind: 'audio', pending: 'yes' }])).toEqual([{ kind: 'image', pending: true }, { kind: 'video', missing: true }]);
+    expect(cardLink(' https://example.com/a b.png ')).toBe('https://example.com/a%20b.png');
+    expect(cardLink('HTTPS://EXAMPLE.COM/x')).toBe('https://example.com/x');
+  });
+
+  it('cleanState: at most 12 KB of cards: media go first (marked missing), from the last card back, then cards', () => {
+    const big = (i: number) => card({ id: `c${i}`, text: 'w'.repeat(900), media: Array.from({ length: 6 }, (_, j) => ({ kind: 'image' as const, url: `https://example.com/${i}-${j}-${'p'.repeat(400)}.png` })) });
+    const cards = cleanState({ ...state(), cards: Array.from({ length: 8 }, (_, i) => big(i)) })!.cards!;
+    expect(new TextEncoder().encode(JSON.stringify(cards)).length).toBeLessThanOrEqual(CARDS_BYTES);
+    // The first cards keep their pictures; later ones have theirs marked missing; the text stays.
+    expect(cards[0].media!.every((m) => 'url' in m)).toBe(true);
+    expect(cards.at(-1)!.media!.every((m) => 'missing' in m)).toBe(true);
+    expect(cards.every((c) => c.text?.length === 900)).toBe(true);
+    // Text alone over 12 KB: cards go from the end.
+    const wordy = cleanState({ ...state(), cards: Array.from({ length: 8 }, (_, i) => card({ id: `w${i}`, text: 'é'.repeat(1000) })) })!.cards!;
+    expect(wordy.length).toBeLessThan(8);
+    expect(wordy[0].id).toBe('w0');
+    expect(new TextEncoder().encode(JSON.stringify(wordy)).length).toBeLessThanOrEqual(CARDS_BYTES);
+  });
+});
+
+describe('card files', () => {
+  const F1 = 'a'.repeat(64);
+  const F2 = 'b'.repeat(64);
+  const pic = (file: string): HostCard['media'] => [{ kind: 'image', file, mime: 'image/png' }];
+  const card = (x: Partial<HostCard> = {}): HostCard => ({ id: 'pc:c1:1:1', to: [{ seat: 'b' }], open: true, text: 'SHREK', ...x });
+  function sent() {
+    const g = game();
+    g.t.now += 1000;
+    const sendCards = (cards: HostCard[] | null) => g.send({ t: 'state', state: state({ cards }) });
+    const tokenOf = (p: { last: (t: 'joined') => { token: string } | undefined }) => p.last('joined')!.token;
+    return { ...g, sendCards, tokenOf };
+  }
+
+  it('the room’s caps: 32 files and 16 MB; the same file again is already here', () => {
+    const g = sent();
+    expect(g.room.fileRoom(F1, FILE_MAX_BYTES)).toBe('ok');
+    g.room.fileAdded(F1, 'image/png', FILE_MAX_BYTES, 4);
+    expect(g.room.fileRoom(F1, FILE_MAX_BYTES)).toBe('have');
+    for (let i = 1; i < ROOM_FILES_BYTES / FILE_MAX_BYTES; i++) g.room.fileAdded(String(i).repeat(64).slice(0, 64), 'video/mp4', FILE_MAX_BYTES, 4);
+    expect(g.room.fileRoom(F2, 1)).toBe('full');
+    const h = sent();
+    for (let i = 0; i < ROOM_FILES_MAX; i++) h.room.fileAdded(i.toString(16).padStart(64, '0'), 'image/png', 1000, 1);
+    expect(h.room.fileRoom(F2, 1)).toBe('full');
+    expect(h.hostLast('files')!.ids).toHaveLength(ROOM_FILES_MAX);
+  });
+
+  it('a phone gets a file only for a current card sent to it that it isn’t late for', () => {
+    const g = sent();
+    g.room.fileAdded(F1, 'image/png', 1000, 1);
+    // Got ready, not sent: nobody gets it.
+    expect(g.room.fileFor(g.tokenOf(g.pb), F1)).toBeNull();
+    g.sendCards([card({ media: pic(F1) })]);
+    expect(g.room.fileFor(g.tokenOf(g.pb), F1)).toMatchObject({ mime: 'image/png', bytes: 1000, parts: 1 });
+    expect(g.pb.last('view')!.view.cards!.list[0].media).toEqual([{ kind: 'image', file: F1, mime: 'image/png' }]);
+    // Not another player's phone, a made-up token, the host's file id it has no card for, or nothing.
+    expect(g.room.fileFor(g.tokenOf(g.pa), F1)).toBeNull();
+    expect(g.room.fileFor('made-up', F1)).toBeNull();
+    expect(g.room.fileFor('', F1)).toBeNull();
+    expect(g.room.fileFor(g.tokenOf(g.pb), F2)).toBeNull();
+    // A phone late for the card (the seat freed and taken again): not even with the seat's new token.
+    const old = g.tokenOf(g.pb);
+    g.send({ t: 'kick', seatId: 'b', block: false });
+    expect(g.room.fileFor(old, F1)).toBeNull();
+    g.t.now += 1000;
+    const late = g.phone('late');
+    late.send({ t: 'join', seatId: 'b' });
+    expect(g.room.fileFor(g.tokenOf(late), F1)).toBeNull();
+    // Sent again for it (a new id): now it may.
+    g.t.now += 1000;
+    g.sendCards([card({ id: 'pc:c1:1:2', media: pic(F1) })]);
+    expect(g.room.fileFor(g.tokenOf(late), F1)).not.toBeNull();
+    // The card taken back: nobody.
+    g.sendCards(null);
+    expect(g.room.fileFor(g.tokenOf(late), F1)).toBeNull();
+  });
+
+  it('teams: a member’s token, only while they’re on the card’s team since before it went out', () => {
+    const g = setup();
+    g.room.hostOpen();
+    const st = (x: Partial<HostState> = {}) => state({ teams: true, seats: [{ id: 'a', name: 'Red', color: '#ff0000' }, { id: 'b', name: 'Blue', color: '#0000ff' }], ...x });
+    g.send({ t: 'state', state: st() });
+    const ann = g.phone('ann');
+    ann.send({ t: 'join', seatId: 'a', name: 'Ann' });
+    const bea = g.phone('bea');
+    bea.send({ t: 'join', seatId: 'b', name: 'Bea' });
+    g.t.now += 1000;
+    g.room.fileAdded(F1, 'video/mp4', 2000, 1);
+    g.send({ t: 'state', state: st({ cards: [card({ to: [{ seat: 'b' }], media: [{ kind: 'video', file: F1, mime: 'video/mp4' }] })] }) });
+    const tok = (p: typeof ann) => p.last('joined')!.token;
+    expect(g.room.fileFor(tok(bea), F1)).not.toBeNull();
+    expect(g.room.fileFor(tok(ann), F1)).toBeNull();
+    // Ann moved onto Blue after the card went out: still not.
+    g.t.now += 1000;
+    g.send({ t: 'move', member: g.hostLast('phones')!.phones.find((p) => p.conn === 'ann')!.member!, seatId: 'b' });
+    expect(g.room.fileFor(tok(ann), F1)).toBeNull();
+  });
+
+  it('a card naming a file the room doesn’t hold has it on its way; a held one keeps its stored type', () => {
+    const g = sent();
+    g.sendCards([card({ media: pic(F1) })]);
+    expect(g.pb.last('view')!.view.cards!.list[0].media).toEqual([{ kind: 'image', pending: true }]);
+    g.room.fileAdded(F1, 'image/gif', 1000, 1);
+    // (The host says the type and kind; the room's own wins.)
+    g.sendCards([card({ media: [{ kind: 'video', file: F1, mime: 'text/html', name: 'shrek.gif' }] })]);
+    expect(g.pb.last('view')!.view.cards!.list[0].media).toEqual([{ kind: 'image', file: F1, mime: 'image/gif', name: 'shrek.gif' }]);
+    expect(cleanState({ ...state(), cards: [card({ media: [{ kind: 'image', file: 'not-a-hash', mime: 'image/png' }] })] })!.cards![0]).not.toHaveProperty('media');
+  });
+
+  it('files no card uses are deleted 10 minutes after, by the alarm and on each new state; forget', () => {
+    const g = sent();
+    // Got ready and never sent: 10 minutes from its upload.
+    g.room.fileAdded(F1, 'image/png', 1000, 1);
+    const up = g.t.now;
+    expect(g.wakes).toEqual([up + FILE_IDLE_MS]);
+    expect(g.hostLast('files')).toEqual({ t: 'files', ids: [F1] });
+    g.t.now += FILE_IDLE_MS - 1;
+    g.room.sweepFiles();
+    expect(g.filesDropped).toEqual([]);
+    g.t.now += 1;
+    g.room.sweepFiles();
+    expect(g.filesDropped).toEqual([F1]);
+    expect(g.room.saved.files).toBeUndefined();
+    expect(g.hostLast('files')).toEqual({ t: 'files', ids: [] });
+    // Used by a card: kept as long as it is, then 10 minutes from the state that dropped it.
+    g.room.fileAdded(F2, 'image/png', 1000, 1);
+    g.sendCards([card({ media: pic(F2) })]);
+    expect(g.room.saved.files![F2].unusedSince).toBeUndefined();
+    g.t.now += 2 * FILE_IDLE_MS;
+    g.room.sweepFiles();
+    expect(g.room.saved.files![F2]).toBeDefined();
+    g.sendCards(null);
+    const closed = g.t.now;
+    expect(g.room.saved.files![F2].unusedSince).toBe(closed);
+    expect(g.wakes.at(-1)).toBe(closed + FILE_IDLE_MS);
+    g.t.now += FILE_IDLE_MS;
+    // (A new state cleans up too, alarm or not.)
+    g.send({ t: 'state', state: state({ title: 'Next' }) });
+    expect(g.filesDropped).toEqual([F1, F2]);
+    // Getting a file ready again restarts its clean-up time.
+    g.room.fileAdded(F1, 'image/png', 1000, 1);
+    g.t.now += FILE_IDLE_MS - 1000;
+    expect(g.room.fileRoom(F1, 1000)).toBe('have');
+    g.t.now += 2000;
+    g.room.sweepFiles();
+    expect(g.room.saved.files![F1]).toBeDefined();
+    // forget: the host is done with them; one a current card uses stays.
+    g.room.fileAdded(F2, 'image/png', 1000, 1);
+    g.sendCards([card({ media: pic(F2) })]);
+    g.send({ t: 'forget', files: [F1, F2, 'junk'] });
+    expect(Object.keys(g.room.saved.files!)).toEqual([F2]);
+    expect(g.hostLast('files')).toEqual({ t: 'files', ids: [F2] });
+  });
+
+  it('the host hears which files the room holds when it comes back', () => {
+    const g = sent();
+    g.room.fileAdded(F1, 'image/png', 1000, 1);
+    g.room.hostClose();
+    g.room.hostOpen();
+    expect(g.hostLast('files')).toEqual({ t: 'files', ids: [F1] });
   });
 });

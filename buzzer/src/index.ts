@@ -9,10 +9,45 @@
  * (NETWORK_ROOMS per IPv6 /48) and DAILY_ROOMS a day in all (RoomCounter, one Durable Object for the whole server).
  * Looking rooms up and connecting are limited per address too (LOOKUP_LIMIT, SOCKET_LIMIT), so a script can't try every
  * code to find live rooms.
+ *
+ * Card files ('files'): the host uploads a card's picture, video or sound (POST /api/rooms/:code/files, its host token
+ * in the Authorization header) and a phone the card was sent to fetches it (GET …/files/:id, its seat token in the
+ * header, never in the address). The room checks who may have what (room.ts fileFor); the Durable Object keeps the bytes
+ * in 1 MB pieces under their own keys (file:<id>:<n>), never in 'room', which is written on every change. Uploads are
+ * limited per address (FILE_LIMIT) and by a daily byte budget for the whole server (FILES_MB_PER_DAY, counted by
+ * RoomCounter). The room's one alarm both ends it and deletes files no card has used for a while (nextAlarm).
  */
 import { DurableObject } from 'cloudflare:workers';
-import { BUZZ_PROTOCOL, ROOM_ALPHABET, ROOM_CODE_LENGTH, isRoomCode, type NewRoom, type RoomToHost, type RoomToPhone } from '../../src/lib/buzzproto';
-import { addressKey, BUSY_TODAY, countRoom, TOO_MANY_LOOKUPS, TOO_MANY_ROOMS, TOO_MANY_TODAY, type DayCount } from './limits';
+import {
+  BUZZ_PROTOCOL,
+  FILE_MAX_BYTES,
+  ROOM_ALPHABET,
+  ROOM_CODE_LENGTH,
+  fileType,
+  isFileId,
+  isRoomCode,
+  type NewRoom,
+  type RoomToHost,
+  type RoomToPhone,
+} from '../../src/lib/buzzproto';
+import {
+  addressKey,
+  BUSY_TODAY,
+  bytesLeft,
+  countBytes,
+  countRoom,
+  filesBudget,
+  FILES_BUSY_TODAY,
+  FILES_OFF,
+  nextAlarm,
+  TOO_MANY_FILES,
+  TOO_MANY_FILES_TODAY,
+  TOO_MANY_LOOKUPS,
+  TOO_MANY_ROOMS,
+  TOO_MANY_TODAY,
+  type DayBytes,
+  type DayCount,
+} from './limits';
 import { Room, emptyRoom, type PhoneSaved, type RoomSaved } from './room';
 
 export interface Env {
@@ -24,6 +59,10 @@ export interface Env {
   LOOKUP_LIMIT: RateLimit;
   /** Connections (/ws/:code, phones and hosts) per address per minute. */
   SOCKET_LIMIT: RateLimit;
+  /** Card file uploads and downloads per address per minute (counted apart). */
+  FILE_LIMIT: RateLimit;
+  /** Card files the whole server takes a UTC day, in MB (wrangler.jsonc vars; 0 turns them off; see filesBudget). */
+  FILES_MB_PER_DAY?: string | number;
   ASSETS: Fetcher;
 }
 
@@ -31,11 +70,14 @@ export interface Env {
 const IDLE_MS = 6 * 60 * 60 * 1000;
 /** …or this long after it was made, if the host never came. */
 const UNUSED_MS = 30 * 60 * 1000;
+/** A card file's bytes are stored in pieces this big (a Durable Object value is at most 2 MB, its key included). */
+const FILE_PART_BYTES = 1024 * 1024;
 
 const CORS = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
-  'Access-Control-Allow-Headers': 'Content-Type',
+  // (Authorization: card files carry their token in a header, never in the address.)
+  'Access-Control-Allow-Headers': 'Content-Type, Authorization',
   'Access-Control-Max-Age': '86400',
 };
 
@@ -52,6 +94,65 @@ function randomCode(): string {
   const b = crypto.getRandomValues(new Uint8Array(ROOM_CODE_LENGTH));
   // 256 % 20 leaves a tiny bias toward the first letters; it doesn't matter for a room code.
   return [...b].map((x) => ROOM_ALPHABET[x % ROOM_ALPHABET.length]).join('');
+}
+
+/** The token in an `Authorization: Bearer <token>` header, or ''. */
+const bearer = (request: Request): string => request.headers.get('Authorization')?.match(/^Bearer\s+(\S+)$/i)?.[1] ?? '';
+
+/** A request's body, or null when it is longer than max bytes (reading stops there). */
+async function readBody(request: Request, max: number): Promise<Uint8Array | null> {
+  if (Number(request.headers.get('Content-Length') ?? 0) > max) return null;
+  const reader = request.body?.getReader();
+  if (!reader) return new Uint8Array(0);
+  const parts: Uint8Array[] = [];
+  let n = 0;
+  for (;;) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    n += value.byteLength;
+    if (n > max) {
+      void reader.cancel();
+      return null;
+    }
+    parts.push(value);
+  }
+  const out = new Uint8Array(n);
+  let at = 0;
+  for (const part of parts) {
+    out.set(part, at);
+    at += part.byteLength;
+  }
+  return out;
+}
+
+/**
+ * The card file routes: POST /api/rooms/:code/files (the host uploads one) and GET /api/rooms/:code/files/:id (a phone
+ * fetches one). See buzzproto.ts filesUrl for the answers.
+ */
+async function roomFiles(request: Request, env: Env, ip: string, code: string, id: string | undefined): Promise<Response> {
+  const upload = request.method === 'POST' && id === undefined;
+  const download = request.method === 'GET' && id !== undefined;
+  if (!upload && !download) return json({ error: 'not found' }, 404);
+  const who = addressKey(ip);
+  if (!(await env.FILE_LIMIT.limit({ key: upload ? `up:${who}` : `get:${ip}` })).success) return json({ error: TOO_MANY_FILES }, 429);
+  const token = bearer(request);
+  if (download) {
+    const file = token && isRoomCode(code) && isFileId(id) ? await env.BUZZ_ROOM.getByName(code).download(token, id) : null;
+    if (!file) return json({ error: 'not found' }, 404);
+    return new Response(file.body, {
+      headers: { 'Content-Type': file.mime, 'Cache-Control': 'no-store', 'X-Content-Type-Options': 'nosniff', ...CORS },
+    });
+  }
+  if (!filesBudget(env.FILES_MB_PER_DAY)) return json({ error: FILES_OFF }, 503);
+  // (A room that doesn't exist answers the same as a wrong token: uploads can't be used to look rooms up.)
+  if (!token || !isRoomCode(code)) return json({ error: 'wrong host token' }, 401);
+  const mime = fileType(request.headers.get('Content-Type'));
+  if (!mime) return json({ error: 'Pictures (PNG, JPEG, WebP, GIF), videos (MP4, WebM) and sounds (MP3, OGG, WAV, M4A) only' }, 415);
+  const body = await readBody(request, FILE_MAX_BYTES);
+  if (!body) return json({ error: `Too big for phones (${FILE_MAX_BYTES / 1024 / 1024} MB at most)` }, 413);
+  if (!body.byteLength) return json({ error: 'empty file' }, 400);
+  const r = await env.BUZZ_ROOM.getByName(code).upload(token, mime, body, who);
+  return json(r.id ? { id: r.id } : { error: r.error }, r.status);
 }
 
 /** Compares without stopping at the first difference. */
@@ -94,6 +195,10 @@ export default {
       return json({ code, open }, open ? 200 : 404);
     }
 
+    // Card files: before the /api/ 404 below.
+    const files = path.match(/^\/api\/rooms\/([A-Za-z]+)\/files(?:\/([^/]+))?$/);
+    if (files) return roomFiles(request, env, ip, files[1].toUpperCase(), files[2]);
+
     const ws = path.match(/^\/ws\/([A-Za-z]+)$/);
     if (ws) {
       const code = ws[1].toUpperCase();
@@ -134,6 +239,8 @@ export class BuzzRoom extends DurableObject<Env> {
    * doesn't read the socket's attachment: a flood costs the room as little as possible.
    */
   private ids = new WeakMap<WebSocket, { role: 'host' } | { role: 'phone'; conn: string } | null>();
+  /** When the alarm is set for (null: none; undefined: not read from storage yet). */
+  private alarmAt: number | null | undefined = undefined;
 
   constructor(ctx: DurableObjectState, env: Env) {
     super(ctx, env);
@@ -198,6 +305,12 @@ export class BuzzRoom extends DurableObject<Env> {
         },
         schedule: (ms, fn) => setTimeout(fn, ms),
         cancel: (id) => clearTimeout(id as ReturnType<typeof setTimeout>),
+        dropFiles: (files) => {
+          const keys = files.flatMap((f) => Array.from({ length: f.parts }, (_, i) => `file:${f.id}:${i}`));
+          // (Not after wipe(): deleteAll took them.) At most 128 keys a call.
+          for (let i = 0; this.meta && i < keys.length; i += 128) void this.ctx.storage.delete(keys.slice(i, i + 128));
+        },
+        cleanupAt: (at) => void this.wakeBy(at),
       },
       saved,
       phones,
@@ -211,9 +324,86 @@ export class BuzzRoom extends DurableObject<Env> {
     this.meta = { code, hostToken, createdAt: Date.now(), lastHostAt: 0 };
     this.savedHostAt = 0;
     await this.ctx.storage.put('meta', this.meta);
-    await this.ctx.storage.setAlarm(Date.now() + UNUSED_MS);
+    this.alarmAt = Date.now() + UNUSED_MS;
+    await this.ctx.storage.setAlarm(this.alarmAt);
     this.room = this.makeRoom(code);
     return true;
+  }
+
+  /** Makes sure the alarm goes off by `at` (it may be set later: for the room's end). */
+  private async wakeBy(at: number): Promise<void> {
+    if (!this.meta) return;
+    if (this.alarmAt === undefined) this.alarmAt = await this.ctx.storage.getAlarm();
+    if (!this.meta || (this.alarmAt !== null && this.alarmAt <= at)) return;
+    this.alarmAt = at;
+    await this.ctx.storage.setAlarm(at);
+  }
+
+  /** When the room ends: 6 hours after the host's last message, or 30 minutes after it was made if the host never came. */
+  private end(meta: Meta): number {
+    return meta.lastHostAt ? meta.lastHostAt + IDLE_MS : meta.createdAt + UNUSED_MS;
+  }
+
+  /** The server takes card files now: the setting isn't 0 and today's budget isn't used up. */
+  private async takingFiles(): Promise<boolean> {
+    if (!filesBudget(this.env.FILES_MB_PER_DAY)) return false;
+    try {
+      return await this.env.ROOM_COUNTER.getByName('rooms').takingFiles();
+    } catch {
+      return false;
+    }
+  }
+
+  /**
+   * A card file from the host (the Worker checked its type and that it's at most FILE_MAX_BYTES). The same bytes again
+   * store nothing new. Otherwise the room's caps, then today's budget, then it's stored in FILE_PART_BYTES pieces.
+   */
+  async upload(token: string, mime: string, body: Uint8Array, who: string): Promise<{ status: number; id?: string; error?: string }> {
+    const wrong = { status: 401, error: 'wrong host token' };
+    if (!this.meta || !this.room || !sameToken(token, this.meta.hostToken)) return wrong;
+    this.touchHost();
+    const id = [...new Uint8Array(await crypto.subtle.digest('SHA-256', body))].map((b) => b.toString(16).padStart(2, '0')).join('');
+    const full = { status: 409, error: 'This room holds all the card files it can: send fewer pictures and videos at once' };
+    let room = this.room.fileRoom(id, body.byteLength);
+    if (room === 'have') return { status: 200, id };
+    if (room === 'full') return full;
+    const took = await this.env.ROOM_COUNTER.getByName('rooms').takeBytes(who, body.byteLength);
+    if (took === 'off') return { status: 503, error: FILES_OFF };
+    if (took !== 'ok') return { status: 429, error: took === 'address' ? TOO_MANY_FILES_TODAY : FILES_BUSY_TODAY };
+    // (The room may have ended or filled up meanwhile.)
+    if (!this.meta || !this.room) return wrong;
+    room = this.room.fileRoom(id, body.byteLength);
+    if (room === 'have') return { status: 200, id };
+    if (room === 'full') return full;
+    const parts = Math.ceil(body.byteLength / FILE_PART_BYTES);
+    const pieces: Record<string, Uint8Array> = {};
+    for (let i = 0; i < parts; i++) pieces[`file:${id}:${i}`] = body.slice(i * FILE_PART_BYTES, (i + 1) * FILE_PART_BYTES);
+    await this.ctx.storage.put(pieces);
+    if (!this.meta || !this.room) {
+      await this.ctx.storage.delete(Object.keys(pieces));
+      return wrong;
+    }
+    this.room.fileAdded(id, mime, body.byteLength, parts);
+    return { status: 200, id };
+  }
+
+  /** Card file `id` for the phone holding `token`, when the room lets it have it (room.ts fileFor); else null. */
+  async download(token: string, id: string): Promise<{ mime: string; body: Uint8Array } | null> {
+    const file = this.room?.fileFor(token, id);
+    if (!file) return null;
+    const keys = Array.from({ length: file.parts }, (_, i) => `file:${id}:${i}`);
+    const got = await this.ctx.storage.get<Uint8Array | ArrayBuffer>(keys);
+    const body = new Uint8Array(file.bytes);
+    let at = 0;
+    for (const k of keys) {
+      const v = got.get(k);
+      if (!v) return null;
+      const part = v instanceof Uint8Array ? v : new Uint8Array(v);
+      if (at + part.byteLength > body.byteLength) return null;
+      body.set(part, at);
+      at += part.byteLength;
+    }
+    return at === body.byteLength ? { mime: file.mime, body } : null;
   }
 
   async isOpen(): Promise<boolean> {
@@ -226,6 +416,9 @@ export class BuzzRoom extends DurableObject<Env> {
     // (and would try again forever); 4000–4999 tells the host the room is gone for good.
     if (!this.meta || !this.room) return refuse(4004, 'no such room');
     if (hostToken !== null && !sameToken(hostToken, this.meta.hostToken)) return refuse(4003, 'wrong host token');
+    // The host's welcome says whether the server takes card files now (asked before its socket is taken).
+    const files = hostToken !== null && (await this.takingFiles());
+    if (!this.meta || !this.room) return refuse(4004, 'no such room');
     const pair = new WebSocketPair();
     const [client, server] = [pair[0], pair[1]];
     if (hostToken !== null) {
@@ -240,7 +433,7 @@ export class BuzzRoom extends DurableObject<Env> {
       this.ctx.acceptWebSocket(server, ['host']);
       server.serializeAttachment({ role: 'host' } satisfies Attachment);
       this.touchHost();
-      this.room.hostOpen();
+      this.room.hostOpen(files);
     } else {
       // Cloudflare sets it (the Worker passes the request on as it came): kicks and floods keep an address out a while
       // (after a flood, a phone from it may only take back a seat it holds: see the room).
@@ -304,9 +497,12 @@ export class BuzzRoom extends DurableObject<Env> {
     else if (!this.ctx.getWebSockets('host').some((s) => s !== ws && s.readyState === OPEN)) this.room.hostClose();
   }
 
+  /** One alarm, two jobs: card files no card has used for a while are deleted, then the room ends if it's time. */
   async alarm(): Promise<void> {
+    this.alarmAt = null;
     if (!this.meta) return;
-    const end = this.meta.lastHostAt ? this.meta.lastHostAt + IDLE_MS : this.meta.createdAt + UNUSED_MS;
+    this.room?.sweepFiles();
+    const end = this.end(this.meta);
     if (Date.now() >= end) {
       for (const s of this.ctx.getWebSockets()) {
         const a = s.deserializeAttachment() as Attachment | null;
@@ -314,7 +510,8 @@ export class BuzzRoom extends DurableObject<Env> {
       }
       await this.wipe();
     } else {
-      await this.ctx.storage.setAlarm(end);
+      this.alarmAt = nextAlarm(end, this.room?.saved.files, Date.now());
+      await this.ctx.storage.setAlarm(this.alarmAt);
     }
   }
 
@@ -338,6 +535,8 @@ export class BuzzRoom extends DurableObject<Env> {
     }
     this.meta = null;
     this.room = null;
+    this.alarmAt = null;
+    // (Card files too: they are keys in the same storage.)
     await this.ctx.storage.deleteAlarm();
     await this.ctx.storage.deleteAll();
   }
@@ -351,6 +550,22 @@ export class RoomCounter extends DurableObject<Env> {
     if (typeof next === 'string') return next;
     await this.ctx.storage.put('today', next);
     return 'ok';
+  }
+
+  /**
+   * n more bytes of card files from address key `who`: 'off' (FILES_MB_PER_DAY is 0), 'busy' when today's budget would
+   * be used up, 'address' when this address's share (or its /48's) would.
+   */
+  async takeBytes(who: string, n: number): Promise<'ok' | 'off' | 'busy' | 'address'> {
+    const next = countBytes(await this.ctx.storage.get<DayBytes>('bytes'), Date.now(), who, n, filesBudget(this.env.FILES_MB_PER_DAY));
+    if (typeof next === 'string') return next;
+    await this.ctx.storage.put('bytes', next);
+    return 'ok';
+  }
+
+  /** Some of today's budget for card files is left. */
+  async takingFiles(): Promise<boolean> {
+    return bytesLeft(await this.ctx.storage.get<DayBytes>('bytes'), Date.now(), filesBudget(this.env.FILES_MB_PER_DAY)) > 0;
   }
 }
 

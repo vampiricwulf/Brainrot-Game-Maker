@@ -29,9 +29,17 @@
   // namespace_id is any number of our own, unique within the account.
   // Room lookups (GET /api/rooms/:code) and connections (/ws/) per address, so nobody can try every code to find live
   // rooms: 60 and 120 a minute (a phone looks up once and reconnects with a growing wait; the host connects once).
+  // Card file uploads and downloads per address: 120 a minute each (a clue's cards hold a few files at most).
   "ratelimits": [
     { "name": "NEW_ROOM_LIMIT", "namespace_id": "1001", "simple": { "limit": 6, "period": 60 } },
     { "name": "LOOKUP_LIMIT", "namespace_id": "1002", "simple": { "limit": 60, "period": 60 } },
-    { "name": "SOCKET_LIMIT", "namespace_id": "1003", "simple": { "limit": 120, "period": 60 } }
-  ]
+    { "name": "SOCKET_LIMIT", "namespace_id": "1003", "simple": { "limit": 120, "period": 60 } },
+    { "name": "FILE_LIMIT", "namespace_id": "1004", "simple": { "limit": 120, "period": 60 } }
+  ],
+  "vars": {
+    // Card files (pictures, GIFs, videos and sounds on private cards) the whole server takes a UTC day, in MB: further
+    // uploads are refused until the next day, and the host copies the card instead. 0 turns card files off. Each room
+    // holds 16 MB of them at most, deleted 10 minutes after no card uses them. See README.md, "Card files".
+    "FILES_MB_PER_DAY": "300"
+  }
 }
