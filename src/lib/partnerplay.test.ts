@@ -2,7 +2,7 @@
 // 🤫 card goes to, the session's guards (ownPlayers), the partner wheel and the phones' line.
 import { describe, expect, it } from 'vitest';
 import { jeopardyGame } from './testgame';
-import { newImageEl, newTextEl, setSlideText, type BoardRound, type ClueCard, type Game, type PartnerState } from './model';
+import { gameRules, newImageEl, newTextEl, PARTNER_GAMES, setSlideText, type BoardRound, type CardGoesTo, type ClueCard, type Game, type PartnerGame, type PartnerState } from './model';
 import {
   addCard,
   cardCopyText,
@@ -125,6 +125,23 @@ describe('who plays a partner clue', () => {
     expect(partnerRoles(s)).toEqual({ giver: 'a', guesser: 'b', solo: false });
   });
 
+  it('in every game the partner gives and the picker guesses, ⇄ Swap turns it round, and the picker alone is Solo', () => {
+    for (const game of Object.keys(PARTNER_GAMES) as PartnerGame[]) {
+      const { g, clue, session } = setup();
+      clue.partner = gameRules(game);
+      openClue(session, REF, g);
+      const s = session.partner!;
+      expect(s.giver, game).toBe('partner');
+      setPartner(session, s, 'c', 'wheel');
+      expect(partnerRoles(s), game).toEqual({ giver: 'c', guesser: 'a', solo: false });
+      swapParts(s);
+      expect(partnerRoles(s), game).toEqual({ giver: 'a', guesser: 'c', solo: false });
+      s.includePicker = true;
+      setPartner(session, s, 'a', 'host');
+      expect(partnerRoles(s), game).toEqual({ guesser: 'a', solo: true });
+    }
+  });
+
   it('“Who describes: the picker” starts the other way round', () => {
     const { g, clue, session } = setup();
     clue.partner!.giver = 'picker';
@@ -164,6 +181,21 @@ describe('who gets each card', () => {
     resetRecipients(s, two.id);
     expect(seats(cardRecipients(session, s, two))).toEqual(['a']);
     expect(s.deal).toBeUndefined();
+  });
+
+  it('after ⇄ Swap each Goes to follows the parts, and a card the host gave out stays with who they chose', () => {
+    const { session, s, card } = paired();
+    swapParts(s);
+    const after: Record<CardGoesTo, string[]> = { giver: ['a'], guesser: ['b'], both: ['a', 'b'], others: ['c', 'd'], nobody: [] };
+    for (const [to, want] of Object.entries(after)) expect(seats(defaultRecipients(session, s, to as CardGoesTo)), to).toEqual(want);
+    setRecipients(session, s, card, ['d']);
+    swapParts(s);
+    expect(seats(cardRecipients(session, s, card))).toEqual(['d']);
+    // A new partner: the cards that follow a part go to them; everyone else is everyone but the new two.
+    setPartner(session, s, 'c', 'host');
+    expect(seats(defaultRecipients(session, s, 'giver'))).toEqual(['c']);
+    expect(seats(defaultRecipients(session, s, 'others'))).toEqual(['b', 'd']);
+    expect(seats(cardRecipients(session, s, card))).toEqual(['d']);
   });
 
   it('choosing the same players as the default isn’t a change', () => {
@@ -325,6 +357,21 @@ describe('the session while a partner clue is open (ownPlayers)', () => {
     expect(session.partner).toBeNull();
   });
 
+  it('a card deleted in the editor takes only its own change with it', () => {
+    const { g, session, clue, card } = setup();
+    const two = addCard(clue)!;
+    openClue(session, REF, g);
+    const s = session.partner!;
+    setPartner(session, s, 'b', 'wheel');
+    setRecipients(session, s, card, ['c']);
+    setRecipients(session, s, two, ['d']);
+    const edited = clone(g);
+    const cl = (edited.rounds[0] as BoardRound).categories[0].clues[1];
+    cl.cards = cl.cards!.filter((c) => c.id !== card.id);
+    rebaseSession(session, g, edited);
+    expect(session.partner?.deal).toEqual({ [two.id]: [{ seat: 'd' }] });
+  });
+
   it('a card deleted in the editor goes from who it was given to', () => {
     const { g, session, card } = setup();
     openClue(session, REF, g);
@@ -335,6 +382,23 @@ describe('the session while a partner clue is open (ownPlayers)', () => {
     delete (edited.rounds[0] as BoardRound).categories[0].clues[1].cards;
     rebaseSession(session, g, edited);
     expect(session.partner?.deal).toBeUndefined();
+  });
+
+  it('Esc before the question puts the tile back; once the question was up, the tile is used (as on a Daily Double)', () => {
+    const { g, session, clue } = setup();
+    // (Play's Esc: back to the board, the tile used unless its question never showed.)
+    const esc = () => backToBoard(session, g, { markUsed: !ownPlayers(session)?.setup });
+    openClue(session, REF, g);
+    setPartner(session, session.partner!, 'b', 'wheel');
+    expect(esc()).toBeNull();
+    expect([session.used[clue.id], session.partner, session.phase]).toEqual([undefined, null, 'board']);
+    openClue(session, REF, g);
+    expect(session.partner).toMatchObject({ stage: 'pick', pickerId: 'a' });
+    expect(session.partner!.partnerId).toBeUndefined();
+    setPartner(session, session.partner!, 'b', 'wheel');
+    session.partner!.stage = 'distribute';
+    expect(esc()).toBe(clue.id);
+    expect(session.used[clue.id]).toBe(true);
   });
 
   it('a saved partner state that can’t be read is dropped', () => {
