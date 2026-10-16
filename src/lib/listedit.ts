@@ -14,11 +14,11 @@ export function moveTo<T>(list: T[], from: number, to: number): boolean {
 
 const reSlide = (s: Slide) => s.elements.forEach((e) => (e.id = newId()));
 
-/** Copies of buttons with fresh ids, their pop-up and question slides too (so editing one leaves the other). */
+/** Copies of buttons with fresh ids, their pop-up, card and question slides too (so editing one leaves the other). */
 export function copyActions(list: readonly Action[]): Action[] {
   return clone(list).map((a) => {
     a.id = newId();
-    if (a.do === 'popup') reSlide(a.slide);
+    if (a.do === 'popup' || a.do === 'card') reSlide(a.slide);
     else if (a.do === 'question') {
       reSlide(a.question);
       reSlide(a.answer);

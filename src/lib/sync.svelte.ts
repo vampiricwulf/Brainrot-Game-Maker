@@ -67,6 +67,11 @@ export type ChannelMsg = { from: 'host'; msg: HostMsg; page?: string } | { from:
 export const AUDIENCE_HASH = '#audience';
 /** The scores-only window: the score plates and the countdown, for a lower-third capture in OBS. */
 export const SCORES_HASH = '#audience-scores';
+/**
+ * 🪟 The card window: one player's 🤫 cards, for that player alone (cardwindow.svelte.ts). It isn't a viewers' window:
+ * nothing here posts to it, and it hears nothing on the channel.
+ */
+export const CARDS_HASH = '#cards';
 export const CHANNEL_NAME = 'brainrot-games-sync';
 /** The scores window's address carries its host page's key (?scores=…), and its hellos say it. */
 export const SCORES_PARAM = 'scores';
@@ -140,6 +145,8 @@ function makeChannel(): BroadcastChannel | null {
 let channel: BroadcastChannel | null = null;
 
 function post(msg: HostMsg): void {
+  // (Never a 🪟 card window's message, should one come this way: those go to that window alone, cardwindow.svelte.ts.)
+  if (String(msg.type).startsWith('private-')) return;
   // The scores window only shows the game's state (no sound, no media controls).
   if (scoresWin && !scoresWin.closed && SCORES_MSGS.has(msg.type)) {
     try {
@@ -283,7 +290,7 @@ export function onAudienceKey(fn: (key: AudienceKey) => void): () => void {
   };
 }
 
-if (typeof window !== 'undefined' && location.hash !== AUDIENCE_HASH && location.hash !== SCORES_HASH) {
+if (typeof window !== 'undefined' && location.hash !== AUDIENCE_HASH && location.hash !== SCORES_HASH && location.hash !== CARDS_HASH) {
   window.addEventListener('message', (e: MessageEvent<AudienceMsg>) => {
     if (scoresWin && e.source === scoresWin) return fromScores(e.data);
     // The scores window an earlier load of this page opened (it knows this tab's key): it's this page's again (Exit

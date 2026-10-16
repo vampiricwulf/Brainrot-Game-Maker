@@ -1054,6 +1054,13 @@ export interface Shop {
 /** Who an action applies to when it runs: the moving party, the selected players, the picker, or the host picks. */
 export type Who = 'party' | 'selected' | 'picker' | 'ask' | 'all';
 
+/**
+ * Who an action's 🤫 card is offered to (partner-clues spec §12.2): whoever set it off (the players its object's card is
+ * for, an item's user, the player a spin was for, whoever landed on a space), the party (on a board: whoever's turn it
+ * is), a player the host picks then, or everyone else. The host can change it before 📤 Send.
+ */
+export type CardWho = 'trigger' | 'party' | 'ask' | 'others';
+
 /** Something the host can run (from an object, an item's "Use", a wheel slice…). Always shown to the host first. */
 export type Action = { id: Id } & (
   | { do: 'move'; to: ScreenRef; who?: Who }
@@ -1078,6 +1085,12 @@ export type Action = { id: Id } & (
   | { do: 'skip'; turns?: number; who?: Who }
   /** Board games: the player goes again (Next turn comes back to them). */
   | { do: 'again'; who?: Who }
+  /**
+   * 🤫 A private card (partner-clues spec §12.2): running it only offers the card in the host panel, and it goes to
+   * phones when the host presses 📤 Send there. `slide`: what's on it (a copy goes). `until`: it lasts until the host
+   * takes it back, else until the round ends.
+   */
+  | { do: 'card'; slide: Slide; to?: CardWho; until?: 'host' }
 );
 export type ActionKind = Action['do'];
 

@@ -58,11 +58,11 @@ export function allSlides(game: Game, { empty = false } = {}): SlideRef[] {
   return out;
 }
 
-/** Slides inside a list of actions (pop-ups and questions). */
+/** Slides inside a list of actions (pop-ups, 🤫 cards and questions). */
 function actionSlides(actions: Action[] | undefined): Slide[] {
   const out: Slide[] = [];
   for (const a of actions ?? []) {
-    if (a.do === 'popup') out.push(a.slide);
+    if (a.do === 'popup' || a.do === 'card') out.push(a.slide);
     if (a.do === 'question') out.push(a.question, a.answer);
   }
   return out;

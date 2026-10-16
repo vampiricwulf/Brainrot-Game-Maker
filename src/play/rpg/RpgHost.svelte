@@ -9,6 +9,7 @@
   import { step } from '../../lib/history.svelte';
   import { textOn } from '../../lib/colors';
   import type { RunContext } from '../../lib/actions';
+  import { offerIn } from '../host/cardoffers.svelte';
   import { newId, newImageEl, type Dir8, type Game, type Party, type Screen, type ScreenRef, type Session, type Slide } from '../../lib/model';
   import {
     activeParty, addScreenBeside, classLabel, occupiedScreens, DIR_ARROW, DIR_NAME, DIR_VEC, DIRS, exitOf, findIn, focusRef, keepScreen, moveTo, nameParty, carryObjects, copyLook, screenElements, screenAt,
@@ -81,7 +82,7 @@
   const st = $derived(now.st);
   const here = $derived(st && world ? findIn(world, focusRef(st) ?? { map: '', screen: '' }) : null);
   const party = $derived(st ? activeParty(st) : undefined);
-  const ctx = $derived<RunContext>({ game, session, live: app.live, world, st, selected });
+  const ctx = $derived<RunContext>({ game, session, live: app.live, world, st, selected, offerCard: offerIn(session) });
   const obj = $derived(object ? objectAt(game, session, object) : null);
   const objects = $derived(here && st ? screenElements(st, here.screen, false).filter((e) => e.role || e.name) : []);
   const last = $derived(lastAction(session, session.currentRound));

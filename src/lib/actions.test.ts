@@ -1,8 +1,12 @@
 import { describe, expect, it } from 'vitest';
-import { describeAction, runAction, targets, typedSteps, type RunContext } from './actions';
+import { cardTargets, describeAction, runAction, targets, typedSteps, type CardOffer, type RunContext } from './actions';
 import { ensureBoard, movePlayer, newBoardGameRound, nextTurn } from './boardgame';
 import { newLive } from './live';
-import { newGame, newShapeEl, type Action } from './model';
+import { newGame, newImageEl, newShapeEl, textSlide, type Action, type CardWho } from './model';
+import { copyActions } from './listedit';
+import { cardsOut } from './sentcards';
+import { mediaUsage } from './usage';
+import { logged } from './toolset';
 import { addScreenBeside, ensureWorld, moveTo, newRpgRound, newWorld } from './rpg';
 import { newSession } from './session';
 import { newStatField, statValue } from './toolset';
@@ -191,5 +195,95 @@ describe('button labels', () => {
     const ellipse = newShapeEl('ellipse');
     road.slide.elements.push(ellipse);
     expect(describeAction(game, { id: '4', do: 'reveal', object: ellipse.id })).toBe('Reveal Ellipse (Road)');
+  });
+});
+
+describe('🤫 a card button (partner-clues spec §12.2)', () => {
+  function party() {
+    const game = newGame();
+    game.players = ['Ann', 'Bob', 'Cy'].map((name, i) => ({ id: 'abc'[i], name, color: '#e6194b' }));
+    const session = newSession(game);
+    const offers: CardOffer[] = [];
+    const ctx: RunContext = { game, session, live: newLive(), selected: [], offerCard: (o) => offers.push(o) };
+    const card: Extract<Action, { do: 'card' }> = { id: 'c1', do: 'card', slide: textSlide('You’re the spy'), to: 'trigger' };
+    return { game, session, ctx, offers, card };
+  }
+
+  it('only offers its card when it runs: nothing is sent, the room gets nothing, until the host presses 📤 Send', () => {
+    const { game, session, ctx, offers, card } = party();
+    const said = runAction({ ...ctx, chosen: ['b'] }, card, `Goblin: ${describeAction(game, card)}`);
+    expect(offers).toHaveLength(1);
+    expect(offers[0]).toMatchObject({ from: 'Goblin: 🤫 Card for whoever set it off', to: ['b'], until: 'round' });
+    // Nothing went out: no card in the session (what the buzzer room and the cards-out list are built from).
+    expect(session.cards).toBeUndefined();
+    expect(cardsOut(game, session)).toEqual([]);
+    // What the host is told names who, never what's on it (the panel may be on stream).
+    expect(said).toBe('Goblin: 🤫 Card for whoever set it off (Bob): check who gets it, then 📤 Send');
+    expect(said).not.toContain('spy');
+  });
+
+  it('offers a copy: editing the button afterwards leaves the card offered as it was', () => {
+    const { ctx, offers, card } = party();
+    runAction({ ...ctx, chosen: ['a'] }, card);
+    const t = card.slide.elements[0];
+    if (t.kind === 'text') t.text = 'Changed';
+    const o = offers[0].slide.elements[0];
+    expect(o.kind === 'text' && o.text).toBe('You’re the spy');
+    // Lasting until taken back, when the button says so.
+    runAction({ ...ctx, chosen: ['a'] }, { ...card, until: 'host' });
+    expect(offers[1].until).toBe('host');
+  });
+
+  it('starts with whoever set it off, the party, nobody (the host picks) or everyone else', () => {
+    const { ctx } = party();
+    const pick = (to: CardWho) => cardTargets({ ...ctx, chosen: ['b'] }, to);
+    expect(pick('trigger')).toEqual(['b']);
+    expect(pick('ask')).toEqual([]);
+    expect(pick('others')).toEqual(['a', 'c']);
+    // Outside an RPG or a board, "the party" is the selected players, else everyone.
+    expect(pick('party')).toEqual(['a', 'b', 'c']);
+    expect(cardTargets({ ...ctx, selected: ['c'] }, 'party')).toEqual(['c']);
+    // Unset: whoever set it off (with nobody chosen, the selected players).
+    expect(cardTargets({ ...ctx, selected: ['c'] }, undefined)).toEqual(['c']);
+  });
+
+  it('on a board, the party is whoever landed (else whoever’s turn it is), and everyone else is the rest', () => {
+    const game = newGame();
+    game.players = ['Ann', 'Bob', 'Cy'].map((name, i) => ({ id: 'abc'[i], name, color: '#e6194b' }));
+    const round = newBoardGameRound();
+    game.rounds = [round];
+    const session = newSession(game);
+    const bs = ensureBoard(session, game, round);
+    const ctx: RunContext = { game, session, live: newLive(), board: round, bs, selected: [] };
+    expect(cardTargets({ ...ctx, chosen: ['c'] }, 'party')).toEqual(['c']);
+    expect(cardTargets(ctx, 'party')).toEqual(['a']);
+    expect(cardTargets({ ...ctx, chosen: ['c'] }, 'others')).toEqual(['a', 'b']);
+  });
+
+  it('does nothing where no offer can be made, and needs no players picked first', () => {
+    const { session, ctx, card } = party();
+    const { offerCard: _, ...bare } = ctx;
+    expect(runAction(bare, card)).toBe('Cards can’t be sent from here');
+    expect(session.cards).toBeUndefined();
+  });
+
+  it('is never in the undo step it runs in, and its label never says what’s on the card', () => {
+    const { game, session, ctx, offers, card } = party();
+    logged(session, 'Goblin', () => runAction({ ...ctx, chosen: ['a'] }, card));
+    expect(offers).toHaveLength(1);
+    expect(session.actionLog ?? []).toHaveLength(0);
+    for (const to of ['trigger', 'party', 'ask', 'others'] as const) expect(describeAction(game, { ...card, to })).not.toContain('spy');
+    expect(describeAction(game, { ...card, to: 'others' })).toBe('🤫 Card for everyone else');
+  });
+
+  it('is copied with its own card, and its pictures count as used (Remove unused keeps them)', () => {
+    const { game, card } = party();
+    const pic = newImageEl('m1');
+    card.slide.elements.push(pic);
+    game.items = [{ id: 'scroll', name: 'Scroll', stackable: false, onUse: [card] }];
+    expect(mediaUsage(game).get('m1')).toBe(1);
+    const [copy] = copyActions([card]);
+    expect(copy.do === 'card' && copy.slide.elements.map((e) => e.id)).not.toContain(pic.id);
+    expect(copy.do === 'card' && copy.slide.elements).toHaveLength(2);
   });
 });

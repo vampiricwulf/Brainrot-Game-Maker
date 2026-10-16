@@ -197,8 +197,13 @@ link). It lasts until the round ends or until you take it back; **🤫 2 cards o
 the app gives each ("Card 2 → Ann", never what's on it) with ↻ Send again and ✖ Take back. Any tile can have 🤫 cards
 (＋ Card in the clue editor): a standard or Daily Double tile's are offered in its panel to the player who picked it (a
 private question, a tip before the wager), go only when you send them, and go away when the tile closes; the tile plays
-as it always does. A player on a computer opens the same link: `Space` (or `Enter`) buzzes, `1`–`9` pick their seat or
-team, `Esc` goes back, and the page says when another window (the stream, say) has the keyboard. The room stays open
+as it always does. An RPG object, an item, a wheel slice, a die face or a board space can have a **🤫 Send a card**
+button (who gets it: whoever set it off, the party, a player you pick then, or everyone else): pressing it in play
+only offers the card in the panel, and it goes when you press 📤 Send there (Skip sends nothing). For a player with no
+phone, **🪟 Card window** (in 🤫 Send a card…) opens a window with only that player's cards, pictures and videos included,
+to share with them alone (a Discord DM call) or show them on a second screen. With no phones getting cards, 🤫 Send a
+card… and an action's offer put a card there with **🪟 Show**. Viewers never get it: share only the game window.
+A player on a computer opens the same link: `Space` (or `Enter`) buzzes, `1`–`9` pick their seat or team, `Esc` goes back, and the page says when another window (the stream, say) has the keyboard. The room stays open
 through the pre-game screen, a reload of it and **◀ Back to editor**; it closes
 with Exit, at the end of the game or with **✕ Close the room**. The join code shows small in a corner of the stream
 during the game (at the end of the score bar on the board) and on the cover card; the On stream options can hide it.

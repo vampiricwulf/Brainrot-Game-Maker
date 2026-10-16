@@ -11,6 +11,7 @@
   import { nameList } from '../../lib/session';
   import { logged } from '../../lib/toolset';
   import { decidingAction, playerName, runSpace, sendNow } from './bgops';
+  import { offerIn } from '../host/cardoffers.svelte';
 
   let {
     game,
@@ -41,7 +42,7 @@
 
   function run(a: Action): void {
     if (needsPlayers(a) && !who.length) return void toast('Pick who it’s for first');
-    toast(runAction({ game, session, live: app.live, board: round, bs, selected, chosen: who }, a, `${space.name}: ${describeAction(game, a)}`), 3000);
+    toast(runAction({ game, session, live: app.live, board: round, bs, selected, chosen: who, offerCard: offerIn(session) }, a, `${space.name}: ${describeAction(game, a)}`), 3000);
   }
 
   function reveal(): void {

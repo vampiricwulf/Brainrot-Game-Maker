@@ -9,6 +9,7 @@ import { openWheel, quickDice, rollDice, spinWheel, wheelSpentUp } from '../../l
 import { parseDice } from '../../lib/tools';
 import { overlayDoneAt, toolOverlay, type Live } from '../../lib/live';
 import { announce } from '../../lib/announce';
+import { offerIn } from '../host/cardoffers.svelte';
 
 /** The board-game round being played and its state (undefined outside one). */
 export function boardNow(game: Game, session: Session) {
@@ -97,7 +98,7 @@ export function runSpace(game: Game, session: Session, live: Live, space: BoardS
   const decides = list.find(decidingAction);
   const run = decides ? [decides] : list;
   let said: string[] = [];
-  const ctx = { game, session, live, board: round, bs, selected: who, chosen: who };
+  const ctx = { game, session, live, board: round, bs, selected: who, chosen: who, offerCard: offerIn(session) };
   logged(session, `${space.name}: ${run.map((a) => describeAction(game, a)).join(', ')}`, () => {
     said = run.map((a) => runAction(ctx, a, `${space.name}: ${describeAction(game, a)}`));
   });

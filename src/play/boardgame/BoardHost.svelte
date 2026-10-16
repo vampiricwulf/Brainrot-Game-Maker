@@ -18,6 +18,7 @@
   import { boardNow, busyZones, moveNow, moverDiceName, playerName, reorderTurns, rollMover, sendNow, setTurn, turnNow, turnOrder } from './bgops';
   import SpaceCard from './SpaceCard.svelte';
   import { offerNext } from '../host/slots.svelte';
+  import { offerIn } from '../host/cardoffers.svelte';
   import { boardEdit, setEditing } from './boardedit.svelte';
   import BoardEditPanel from './BoardEditPanel.svelte';
 
@@ -62,7 +63,7 @@
   /** One-space boards: where the player whose turn it is can go (not straight back along a two-way link). */
   const turnSpace = $derived(turnId ? bs?.positions[turnId]?.space : undefined);
   const stepWays = $derived(round && bs && turnSpace ? waysOn(round, turnSpace, turnId ? bs.prev?.[turnId] : undefined) : []);
-  const ctx = $derived<RunContext>({ game, session, live: app.live, board: round, bs, selected });
+  const ctx = $derived<RunContext>({ game, session, live: app.live, board: round, bs, selected, offerCard: offerIn(session) });
   const recent = $derived(lastAction(session, session.currentRound));
   /** Zones with players in them, or on screen: their notes (how to escape…) are worth having at hand. */
   const zones = $derived(round && bs ? busyZones(round, bs) : []);

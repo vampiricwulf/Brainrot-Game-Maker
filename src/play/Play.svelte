@@ -20,6 +20,9 @@
   import { phoneCard } from '../lib/phonecard';
   import { phoneCan, syncUploads } from '../lib/cardfiles.svelte';
   import { cardsOut, sentCardId, sentSlide, takeBackCard } from '../lib/sentcards';
+  import { windowCards } from '../lib/cardwindow';
+  import { cardWindow, closeCardWindow, feedCardWindow } from '../lib/cardwindow.svelte';
+  import { dropOffersBut } from './host/cardoffers.svelte';
   import { addTime, newLive, overlayDoneAt, startTimer, tileToolUp, timerRemaining, timerResumed, toggleTimer, toolOverlay, type Live, type StageAction, type TimerState } from '../lib/live';
   import {
     buzzArm, buzzClueOpened, buzzDone, buzzIdle, buzzMissed, buzzReset, buzzTake, hostState, newBuzz, partnerAnswerAsk, partnerAnswerId, hostCards, phoneStatus, SEAT_NAME_MAX, sendOf, SETTING_UP, teamsOn, wagerAsk,
@@ -651,8 +654,11 @@
         closeRoom();
         void clearRoom();
       }
-      // The scores window belongs to this game (the audience window stays up between games: App shows its card).
+      // The scores window belongs to this game (the audience window stays up between games: App shows its card), and so
+      // do the card window and the cards actions offered.
       closeScoresWindow();
+      closeCardWindow();
+      dropOffersBut(null);
       for (const t of pending) clearTimeout(t);
       pending.clear();
     };
@@ -1354,6 +1360,14 @@
   // Who saw which card is forgotten with the cards (the tile closed, or they were all taken back).
   $effect(() => {
     if (session.remote?.cardsSeen && !session.partner?.sent?.length && !session.cards?.length) untrack(() => session.remote && delete session.remote.cardsSeen);
+  });
+  // 🪟 The card window shows its player's cards as they are now (to it alone: never through the viewers' windows).
+  $effect(() => {
+    const seat = cardWindow.open ? cardWindow.seat : null;
+    if (!seat) return;
+    const name = playerName(session, seat);
+    const cards = windowCards(game, session, seat);
+    untrack(() => feedCardWindow(name, $state.snapshot(cards) as typeof cards));
   });
   // The pre-game screen's room is saved on its own (nothing else is before Start game): a reload gets back into it.
   $effect(() => {

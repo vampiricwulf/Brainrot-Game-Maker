@@ -17,6 +17,7 @@
   import DDControls from './host/DDControls.svelte';
   import PartnerControls from './host/PartnerControls.svelte';
   import TileCards from './host/TileCards.svelte';
+  import CardOffers from './host/CardOffers.svelte';
   import { cardSlides, partnerRules, partnerShares, partnerVerdict, sentTo, toName } from '../lib/partner';
   import FinalControls from './host/FinalControls.svelte';
   import EndControls from './host/EndControls.svelte';
@@ -898,6 +899,9 @@
       {#if app.live.overlay}
         <div class="mode-host tools"><ToolsControls {game} {session} {selected} onclose={oncloseoverlay} /></div>
       {/if}
+
+      <!-- 🤫 Cards an action's button offered: each goes only when you press its 📤 Send. -->
+      <CardOffers {game} {session} {dual} />
 
       {#if ddWager}
         {#key info?.clue.id}
