@@ -286,6 +286,28 @@ try {
     await picker.selectOption({ label: 'Default (system)' });
     await dialog(page).getByText("couldn't use").waitFor({ state: 'detached' });
     assert(true, 'choosing the default device clears the warning');
+
+    // ▶ Test this round with the audience window left up (on Starting soon): the test plays here, never on stream, and
+    // so does Test sound.
+    await dialog(page).getByRole('button', { name: 'Close' }).click();
+    await page.getByRole('button', { name: '🚪 Exit' }).click();
+    await page.waitForTimeout(450); // (a click right away is ignored: a double-click guard)
+    await page.getByRole('button', { name: 'Keep & leave', exact: true }).click();
+    await aud.locator('.soon-text').waitFor();
+    await page.locator('nav > button.round-tab').first().click();
+    await page.getByRole('button', { name: '▶ Test this round', exact: true }).click();
+    await page.getByRole('button', { name: 'Skip intro' }).click();
+    await page.locator('.board .tile').first().waitFor();
+    await page.locator('.panel').getByRole('button', { name: '🔊 Sound' }).click();
+    await dialog(page).waitFor();
+    assert((await dialog(page).getByText('plays in this window').count()) === 1, 'a test round with the audience window up: it says the sound plays in this window');
+    const audPlays = await aud.evaluate(() => window.__plays);
+    const loud = await page.evaluate(() => window.__loud);
+    await testSound(page, 'Sound played in this window');
+    assert(
+      (await page.evaluate(() => window.__loud)) > loud && (await aud.evaluate(() => window.__plays)) === audPlays,
+      'and Test sound plays in this window: the audience window (on stream) stays silent',
+    );
     await context.close();
   }
 

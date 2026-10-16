@@ -314,6 +314,17 @@ try {
   const resumeCard = page.locator('.resume-card');
   await resumeCard.waitFor();
   assert((await page.getByRole('alertdialog').count()) === 0 && (await resumeCard.innerText()).includes('Meme Night'), '▶ Play asks nothing: the pre-game screen offers the kept game');
+  // "Resume with my edits" follows the editor's game, a moment after a change (App works it out, not each key here): a
+  // player renamed here changes it, and named back, doesn't.
+  const withEdits = resumeCard.getByRole('button', { name: 'Resume with my edits' });
+  assert((await withEdits.count()) === 0, 'nothing edited since: no “Resume with my edits”');
+  const firstName = page.getByLabel('Player 1 name');
+  const was = await firstName.inputValue();
+  await firstName.fill(`${was}x`);
+  await withEdits.waitFor();
+  await firstName.fill(was);
+  await withEdits.waitFor({ state: 'detached' });
+  assert(true, 'a player renamed on the pre-game screen offers “Resume with my edits”, and named back, no longer');
   // Back to single window for the rest.
   await page.locator('.mode', { hasText: 'Single window' }).click();
   await resumeCard.getByRole('button', { name: '▶ Resume it' }).click();

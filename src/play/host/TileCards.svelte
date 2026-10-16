@@ -127,14 +127,15 @@
     {@const copying = !cardsOn || off || to.some((t) => !phones.has(t.seat))}
     {@const copyable = !!cardWords(card) || cardLinks(game, card).length > 0}
     {@const left = cardsOn ? leftLine(phoneCard(game, card, filesOn ? can : { files: null }).left) : ''}
-    {@const state = out ? sentLine(game, session, out, filesOn, off) : null}
+    {@const state = out ? sentLine(game, session, out, filesOn, off, cardsOn) : null}
     <div class="row card" data-tile-card={n} role="group" aria-label="Card {n}: {state ? `${out?.label}, ${state.text}` : cardsOn ? 'not sent' : sentToText(session, to, teams)}">
       <b>Card {n}</b>
       <span class="muted small">· {cardSummary(game, card)}</span>
       <span aria-hidden="true">→</span>
       {#if out && state}
         <span>{sentToText(session, out.to, teams)}</span>
-        <span class="small" class:warn={state.warn} data-card-state>· {cardsOn ? state.text : 'in the 🪟 card window'} · listed as {out.label}</span>
+        <!-- (Without phones, an orange row is a card changed in the editor since: it's out of the window, and says what to do.) -->
+        <span class="small" class:warn={state.warn} data-card-state>· {cardsOn || state.warn ? state.text : 'in the 🪟 card window'} · listed as {out.label}</span>
       {:else}
         {#each session.players as p (p.id)}
           {@render chip(card, n, p.id, to.some((t) => t.seat === p.id))}

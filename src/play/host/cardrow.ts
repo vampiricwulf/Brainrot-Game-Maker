@@ -42,11 +42,18 @@ export function seenSeats(session: Pick<Session, 'players' | 'remote'>, c: Pick<
  * again"), a card made in the editor (a tile's or a 🤫 Card) changed there since, or one the phones never get.
  * `filesOn`: the room takes files. `off`: the buzzer room isn't told it (buzz.ts cardsLeftOff: a 🎭 deal handed out
  * before it took cards took them past what it holds); its row offers no ↻ Send again, as under a new id it would be
- * left off all the same.
+ * left off all the same. `phones`: phones get cards (a room that takes them). Without them the cards out offer no
+ * ↻ Send again, so an edited card's row says to take it back and show it again.
  */
-export function sentLine(game: Game, session: Session, c: SentCard, filesOn: boolean, off = false): { text: string; warn: boolean } {
+export function sentLine(game: Game, session: Session, c: SentCard, filesOn: boolean, off = false, phones = true): { text: string; warn: boolean } {
   if (off) return { text: `not on the phones: more than ${CARDS_MAX} cards are out (copy it: 📋, or ✖ Take it back)`, warn: true };
-  if (sentState(game, c) === 'edited') return { text: 'changed in the editor: off the phones until ↻ Send again', warn: true };
+  if (sentState(game, c) === 'edited')
+    return {
+      text: phones
+        ? 'changed in the editor: off the phones until ↻ Send again'
+        : 'changed in the editor: out of the 🪟 card window until you ✖ Take it back and show it again (or copy it: 📋)',
+      warn: true,
+    };
   const name = (id: Id) => session.players.find((p) => p.id === id)?.name ?? '?';
   const seats = [...new Set(c.to.map((t) => t.seat))];
   const seen = seenSeats(session, c);

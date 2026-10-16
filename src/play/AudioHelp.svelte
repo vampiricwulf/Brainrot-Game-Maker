@@ -20,6 +20,7 @@
     onclose,
     area = null,
   }: {
+    /** The game's sound plays in the audience window (open, and not a ▶ Test round): Test sound plays it there. */
     dual: boolean;
     /** Viewers watch the audience window: it's open, or (pre-game) it opens on Start (📺 Separate audience window picked). */
     audienceMode: boolean;
@@ -158,7 +159,7 @@
       The game's sound plays in <b>{where}</b>{dual ? ' (this window stays silent)' : ''}. Press Test sound: you should hear a chime.
     </p>
     <div class="row">
-      <button class="primary" onclick={testSound}>▶ Test sound</button>
+      <button class="primary" onclick={() => testSound(dual)}>▶ Test sound</button>
       <!-- Always there, so screen readers announce each new result. -->
       <span class="result" class:ok={test?.state === 'ok'} class:bad={!!test && test.state !== 'ok' && test.state !== 'waiting'} role="status">
         {testText}
