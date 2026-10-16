@@ -449,8 +449,9 @@ The mode isn't saved with the game: it's dual while the audience window is open.
   with the audience window open), and a part's card can show a slice of a saved wheel (each their own, or one shared
   by everyone but the odd one out). Nothing goes until 📤 Send, which sends each player's card on its own; ↻ Send again
   and ✖ Take back work on the whole deal. Only the two-window host column says who got which: one window lists everyone
-  dealt in alike, a part or not, and counts the phones that came late. **🎭 Who was who** puts the names and parts on
-  stream when the host presses it, as an undoable step; a click on it takes it off.
+  dealt in alike, a part or not (with the phones getting the cards, only those with no phone here, 📵, to copy theirs),
+  and counts the phones that came late. **🎭 Who was who** puts the names and parts on stream when the host presses it,
+  as an undoable step; a click on it, Esc, opening a tile or another round takes it off.
 
 ### 6.7 Media playback controls
 - Play/pause, seek bar, current time/duration, volume, mute, restart, loop toggle, and full-screen element.

@@ -4,11 +4,12 @@
 // see), six players: Ann, Bob, Cat and Dan dealt in with their phones, Eve dealt in with no phone yet, and Fay not dealt
 // in (her phone is in the room), plus a phone that never takes a seat. 🎭 Deal: nothing reaches the room, also through
 // a host reload; dealing again (another spy) changes nothing on the host page. 📤 Send: each dealt-in phone gets its
-// own card only (the spy's words, or the location the others share); Fay and the unseated phone get nothing; Eve's phone,
-// joining after the send, gets nothing but a note that she missed one, and the panel counts her phone (never names it:
-// in a deal that leaves some without a part, a late phone's name would say who got one);
-// ↻ Send again reaches her. 🎭 Who was who goes on the stage only when pressed: Ctrl+Z, Ctrl+Y, and a host reload keep it
-// as it was. "Deal a new one?" asks while cards are out. The next round takes the cards back. The host page never says
+// own card only (the spy's words, or the location the others share); Fay and the unseated phone get nothing; the panel
+// names Eve as having no phone here, with 📋 Copy for her card; Eve's phone, joining after the send, gets nothing but a
+// note that she missed one, and the panel counts her phone (never names it: in a deal that leaves some without a part, a
+// late phone's name would say who got one); ↻ Send again reaches her. 🎭 Who was who goes on the stage only when
+// pressed: Ctrl+Z, Ctrl+Y, and a host reload keep it as it was. "Deal a new one?" asks while cards are out. The next
+// round takes the cards back, and Who was who off the screen. The host page never says
 // who got which part, nor shows a card's words or the location, until Who was who. The audience window, opened at the
 // end with Who was who up, shows it, and puts who got which in the host's column; closing it takes that away again.
 // Needs `npm ci` in buzzer/.
@@ -120,6 +121,7 @@ try {
 
   // ---------- The host ----------
   const ctx = await browser.newContext({ viewport: { width: 1400, height: 900 } });
+  await ctx.grantPermissions(['clipboard-read', 'clipboard-write']);
   await ctx.addInitScript((server) => {
     try {
       const p = JSON.parse(localStorage.getItem('jb.prefs') || '{}');
@@ -323,6 +325,20 @@ try {
   assert(!(await cardsOn(phones.Fay)) && !hadWords('Fay', place) && !hadWords('Fay', SPY_WORDS) && !(await phones.Fay.locator('#cards-late').isVisible()), 'Fay’s phone (not dealt in): no card, nothing of one, no note');
   assert((await watcher.getByRole('heading', { name: 'Tap your name' }).isVisible()) && !hadWords('watcher', place) && !hadWords('watcher', SPY_WORDS), 'the phone with no seat: nothing of any card');
   assert(await until(async () => /✓ seen by 4 of 5/.test(await flat(dialog.locator('[data-deal-status]')))), 'the panel counts who saw theirs: ✓ seen by 4 of 5');
+  // (Eve, dealt in with no phone here yet, would never get hers: the panel names her, by phone only, to copy it to her.)
+  const noPhoneLine = '📵 Eve has no phone here: copy theirs (📋)';
+  assert((await flat(dialog.locator('[data-deal-status]'))).includes(noPhoneLine), `the panel says “${noPhoneLine}”`);
+  const handRows = await dialog.locator('.hands .row').evaluateAll((els) => els.map((e) => e.innerText.replace(/\s+/g, ' ').trim()));
+  assert(JSON.stringify(handRows) === JSON.stringify(['Eve · 📵 no phone here 📋 Copy 🪟']), `and lists Eve alone, with 📋 Copy and 🪟 (${handRows.join(' | ')})`);
+  await dialog.getByRole('button', { name: 'Copy Eve’s card' }).click();
+  const evesPart = hands.find((h) => h.name === 'Eve').part;
+  assert(
+    await until(async () => {
+      const got = await host.evaluate(() => navigator.clipboard.readText());
+      return got.startsWith('🤫 For Eve only') && got.includes(evesPart === 'Spy' ? SPY_WORDS : place);
+    }, 5000),
+    '📋 Copy copies her card, for her alone',
+  );
   await secret('sent');
 
   // ---------- Eve's phone joins after the send: no card, only a note; the panel counts her phone ----------
@@ -333,6 +349,7 @@ try {
   assert(!(await cardsOn(eve)) && !hadWords('Eve', place) && !hadWords('Eve', SPY_WORDS), 'Eve’s phone, seated after the send: no card and nothing of it, only a note that it missed one');
   const lateStatus = '1 phone hasn’t got theirs: ↻ Send again';
   assert(await until(async () => (await flat(dialog.locator('[data-deal-status]'))).includes(lateStatus)), `the panel says “${lateStatus}” (one window: counted, never named)`);
+  assert(!(await flat(dialog.locator('[data-deal-status]'))).includes('📵') && !(await dialog.locator('.hands').count()), 'her phone is here: the 📵 line and her row go');
   await secret('a late phone');
 
   // ---------- ↻ Send again: every card under a new id; Eve's phone gets hers ----------
@@ -400,9 +417,12 @@ try {
   if (!(await dialog.count())) await openDeal();
   await dialog.getByRole('button', { name: 'Back to “Odd one out”' }).click();
 
-  // ---------- The next round takes the cards back; the deal stays for Who was who ----------
+  // ---------- The next round takes the cards back, and Who was who off the screen; the deal stays for Who was who ----------
+  await dialog.locator('[data-deal-reveal]').click();
+  await reveal.waitFor();
   await host.keyboard.press('Escape');
   await dialog.waitFor({ state: 'detached' });
+  assert((await reveal.count()) === 1, 'Who was who is up, the deal’s window closed');
   await sleep(500);
   await tools.getByRole('button', { name: 'Next round ▶' }).click();
   await confirmStrip(host).getByRole('button', { name: 'Yes' }).waitFor();
@@ -410,6 +430,8 @@ try {
   await confirmStrip(host).getByRole('button', { name: 'Yes' }).click();
   assert(await until(() => !cards().length), 'the next round: the cards (until the round ends) go from the room');
   assert(await until(async () => !(await cardsOn(phones[spy])) && !(await cardsOn(eve))), 'and from the phones');
+  assert(await until(async () => !(await reveal.count())), 'and Who was who goes off the screen (it would cover the next round)');
+  await host.evaluate(() => (window.__seen.length = 0));
   await openDeal();
   assert((await flat(dialog.locator('[data-deal-status]'))).includes('Its cards are back (or over)'), 'the deal’s window says its cards are over');
   await secret('the next round');

@@ -698,9 +698,17 @@
       {:else if ddWager}
         <span class="muted">Daily Double: who found it, and their wager</span>
       {:else if partner?.stage === 'pick'}
-        <span class="muted">{partner.partnerId ? 'Partner clue: show the question when you’re ready' : 'Partner clue: spin for a partner'}</span>
-      {:else if steal && !steal.by}
+        <span class="muted"
+          >{partner.partnerId
+            ? 'Partner clue: show the question when you’re ready'
+            : !partner.pickerId
+              ? `Partner clue: ${teams ? 'which team' : 'who'} picked it? (1–${Math.min(9, session.players.length) || 9})`
+              : 'Partner clue: spin for a partner'}</span
+        >
+      {:else if steal && !steal.by && session.players.some((p) => !steal.out.includes(p.id) && marks[p.id]?.right !== false)}
         <span class="muted">Answer hidden · 🔔 a steal: the others can answer</span>
+      {:else if steal && !steal.by}
+        <span class="muted">Answer hidden · nobody stole it: reveal the answer</span>
       {:else if partnerJudged}
         <span class="muted">Answer hidden · judged</span>
       {:else if partner?.stage === 'distribute'}

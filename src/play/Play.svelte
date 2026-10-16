@@ -1540,6 +1540,8 @@
   if (untrack(() => !!onnextgame) && !app.playerOnly) setContext(NEXT_GAME, nextGame);
 
   function pick(ref: ClueRef): void {
+    // (🎭 Who was who is drawn over everything: it would hide the question while the buzzers open. Ctrl+Z puts it back.)
+    if (session.deal?.shown && whoWasWhoStep(session, false)) announce('Who was who is off the screen');
     openClue(session, ref, game);
     selected = [];
     const c = currentClueInfo(session, game);
@@ -2104,9 +2106,11 @@
     if (selected.length) return partnerTooSoon(e);
     if (partnerJudged) {
       const steal = partnerSteal(session);
-      if (steal && !steal.by && !session.revealed)
-        hint(`🔔 A steal: ${phonesOn ? 'whoever buzzes in first answers, or press' : 'press'} the number of who steals it, then Enter (right) or Shift+Enter (wrong)`);
-      else hint(`${judgedText()} (Ctrl+Z takes it back)`);
+      if (steal && !steal.by && !session.revealed) {
+        // (Everyone who could steal it missed: nothing more to judge.)
+        const left = session.players.some((p) => !steal.out.includes(p.id) && partnerMarks[p.id]?.right !== false);
+        hint(left ? `🔔 A steal: ${phonesOn ? 'whoever buzzes in first answers, or press' : 'press'} the number of who steals it, then Enter (right) or Shift+Enter (wrong)` : 'Everyone missed the steal: R reveals the answer');
+      } else hint(`${judgedText()} (Ctrl+Z takes it back)`);
       return true;
     }
     if (s.stage === 'distribute') {
@@ -2217,6 +2221,8 @@
   }
 
   function nextRound(delta: number): void {
+    // (🎭 Who was who would stay over the next round's screen.)
+    if (session.deal?.shown && whoWasWhoStep(session, false)) announce('Who was who is off the screen');
     goToRound(session, game, session.currentRound + delta);
     app.live.timer = null;
     selected = [];
@@ -3591,7 +3597,9 @@
       case 'escape':
         if (showLog) showLog = false;
         else if (app.live.overlay) closeOverlay();
-        else if (rpgObject) rpgObject = null;
+        else if (session.deal?.shown) {
+          if (whoWasWhoStep(session, false)) announce('Who was who is off the screen');
+        } else if (rpgObject) rpgObject = null;
         else if (rpgSelObjects.length) rpgSelObjects = [];
         else if (bgSpace) bgSpace = null;
         // Shift+Esc cancels: back to the board without using up the tile.

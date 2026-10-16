@@ -87,6 +87,8 @@
   const words = $derived(partWords(rules));
   const roles = $derived(partnerRoles(s));
   const cards = $derived(cardSlides(clue));
+  /** With no cards, ▶ Show question starts the countdown: when it starts by itself (⚖ Game rules) and the clue has one. */
+  const autoClock = $derived(game.settings.timerAutoStart && (clue.timerSeconds ?? game.settings.defaultTimerSeconds ?? 0) > 0);
   const byId = $derived(Object.fromEntries(session.players.map((p) => [p.id, p])));
   const picker = $derived(s.pickerId ? byId[s.pickerId] : undefined);
   const partner = $derived(s.partnerId ? byId[s.partnerId] : undefined);
@@ -210,6 +212,8 @@
    */
   const steal = $derived(partnerSteal(session));
   const stealers = $derived(steal ? session.players.filter((p) => !steal.out.includes(p.id)) : []);
+  /** Who can still steal it: the others, but not one who missed the steal (none left: only 👁 Reveal answer goes on). */
+  const stealLeft = $derived(stealers.filter((p) => marks[p.id]?.right !== false));
   /** " · Bob already scored": one of the two scored by hand first (the buttons leave them as they are). */
   const already = $derived(
     s.partnerId && !verdict.judged
@@ -605,7 +609,7 @@
       {#if cards.length}
         🤫 {cards.length} card{cards.length === 1 ? '' : 's'}: {#each cards as card, i (card.id)}{i ? ' · ' : ''}Card {i + 1} → {recipientsText(session, s, rules, card)}{/each}
       {:else}
-        <span class="muted">🤫 No cards on this clue: the question starts the clock.</span>
+        <span class="muted">🤫 No cards on this clue: {autoClock ? 'the question starts the clock' : 'start the clock yourself (T) once the question is up'}.</span>
       {/if}
     </div>
     {#if cards.length}
@@ -773,6 +777,8 @@
           <b>🔔 {name(steal.by)} stole it</b>
         {:else if session.revealed}
           <span class="muted">🔔 Nobody stole it</span>
+        {:else if !stealLeft.length}
+          <span class="muted">🔔 Nobody stole it: everyone missed (👁 Reveal answer)</span>
         {:else}
           <b>🔔 Steal!</b>
           <span>{buzzerOn(game.settings) ? 'The others can buzz in, or choose who:' : 'Who steals it?'}</span>

@@ -7,8 +7,9 @@
   🤫 Send a card…).
   ↻ Send again, ✖ Take back, and 🎭 Who was who (on stream, a step: Ctrl+Z takes it off) follow.
   In one window viewers see this: it never says who got which part (only how many of each, and everyone dealt in alike,
-  a part or not), never shows what's on a card, and offers the host's picks only with the audience window open. Who got
-  which is in the host column there.
+  a part or not; with the phones getting the cards, those dealt in with no phone here, by phone only), never shows
+  what's on a card, and offers the host's picks only with the audience window open. Who got which is in the host column
+  there.
 -->
 <script lang="ts">
   import { app, hint, toast } from '../../lib/app.svelte';
@@ -225,6 +226,8 @@
     const late = [...new Set(remote.cardsLate.filter((l) => out.some((c) => sentCardId(c) === l.id)).map((l) => (l.by ? `${l.by}’s phone (${nameOf(l.seatId)})` : `${nameOf(l.seatId)}’s new phone`)))];
     if (late.length && dual) parts.push(`${nameList(late)} ${late.length > 1 ? 'haven’t' : 'hasn’t'} got theirs: ↻ Send again`);
     else if (late.length) parts.push(`${late.length} phone${late.length === 1 ? '' : 's'} ${late.length === 1 ? 'hasn’t' : 'haven’t'} got theirs: ↻ Send again`);
+    // (Never taken off the count above: it counts the parts, so the difference would say whether they got one.)
+    if (noPhone.length) parts.push(`📵 ${nameList(noPhone.map(who))} ${noPhone.length > 1 ? 'have' : 'has'} no phone here: copy theirs (📋)`);
     return parts.join(' · ');
   });
   /** What of the cards won't reach the phones, counted for the whole deal. */
@@ -234,6 +237,12 @@
 
   /** Everyone dealt in, a part or not: the list to copy from names them all (only those with a part would say who). */
   const dealtList = $derived(d ? dealtIn(d) : []);
+  const phones = $derived(new Set(app.live.phones ?? []));
+  /**
+   * Dealt in with no phone here while the phones get the cards: the host copies theirs (📋), a part or not (picked out by
+   * phone only, never by part: who has a phone is on their plate already).
+   */
+  const noPhone = $derived(cardsOn ? dealtList.filter((t) => !t.member && !phones.has(t.seat)) : []);
   /** 📋 Their card (or "no part for you this time"), in words for a DM. */
   function copyHand(to: CardTo): void {
     if (!d) return;
@@ -391,15 +400,17 @@
         <button class="ghost small" onclick={() => (fresh = true)}>🎭 Deal a new one</button>
         <button class="ghost small" onclick={putAway}>✖ Put it away</button>
       </div>
-      {#if out.length && (!cardsOn || dual)}
+      {#if out.length && (!cardsOn || dual || noPhone.length)}
         <!-- Each player dealt in, to copy their card (a DM) or show it in the 🪟 card window: by name only, the same
-             buttons for everyone, those with no part included (listing only the others would say who got one). -->
+             buttons for everyone, those with no part included (listing only the others would say who got one). In one
+             window with the phones getting the cards, only those with no phone here: picked out by phone, never by part. -->
         <div class="hands">
-          {#each dealtList as to (toKey(to))}
+          {#each cardsOn && !dual ? noPhone : dealtList as to (toKey(to))}
+            {@const nophone = cardsOn && !to.member && !phones.has(to.seat)}
             <div class="row small">
-              <span class="grow">{who(to)}{#if cardsOn && seenBy(to.seat, to.member?.id)} · ✓ seen{/if}</span>
+              <span class="grow">{who(to)}{#if nophone}&nbsp;· 📵 no phone here{:else if cardsOn && seenBy(to.seat, to.member?.id)}&nbsp;· ✓ seen{/if}</span>
               <button class="ghost tiny" onclick={() => copyHand(to)} aria-label="Copy {who(to)}’s card" title="Copies “For … only” with their card, to paste in a DM (nothing of it shows here)">📋 Copy</button>
-              {#if !cardsOn && !to.member}<button class="ghost tiny" onclick={() => openWin(to.seat)} aria-label="Show {who(to)}’s card in the card window" title="Opens a window with only their cards, to share with them alone">🪟</button>{/if}
+              {#if (!cardsOn || nophone) && !to.member}<button class="ghost tiny" onclick={() => openWin(to.seat)} aria-label="Show {who(to)}’s card in the card window" title="Opens a window with only their cards, to share with them alone">🪟</button>{/if}
             </div>
           {/each}
         </div>
