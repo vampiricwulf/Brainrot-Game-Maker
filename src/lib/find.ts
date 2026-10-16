@@ -1,7 +1,7 @@
 // Find (Ctrl+F in the editor): every place in the game whose words match — clues, Final rounds, RPG screens and what's
-// on them, board-game spaces and zones, items, stats, shops, wheels, dice, deals, media files — with the place to go
-// to (nav.svelte.ts's goTo, as the History tab's Go there).
-import { categoryLabel, formatPoints, questionSlides, roundName, type Action, type Game, type Slide } from './model';
+// on them, board-game spaces and zones, items, stats, shops, wheels, dice, deals, 🤫 cards, media files — with the place
+// to go to (nav.svelte.ts's goTo, as the History tab's Go there).
+import { categoryLabel, formatPoints, questionSlides, roundName, savedCardName, type Action, type Game, type Slide } from './model';
 import type { ClueSide, Place } from './historylabel';
 
 export interface Hit {
@@ -134,6 +134,10 @@ export function findAll(game: Game, query: string, limit = 200): Hit[] {
     );
   for (const d of game.deals ?? [])
     look('🎭', [d.name, ...d.parts.flatMap((p) => [p.name, ...slideWords(p.card)])], 'Wheels, Dice & Deals › Deal', { tab: 'tools', deal: d.id });
+  // 🤫 Cards: found by its name, the name box gets the focus; else its words box.
+  (game.cards ?? []).forEach((c, i) =>
+    look('🤫', [c.name, ...slideWords(c)], `Cards › ${savedCardName(c, i)}`, { tab: 'cards', card: c.id }, field([[c.name, 'main [data-field="card-name"]']]) ?? 'main [data-field="card"]'),
+  );
   for (const m of game.media) look('🖼', [m.name], 'Media', { tab: 'media', media: m.id });
   const tb = game.tiebreaker;
   if (tb) {

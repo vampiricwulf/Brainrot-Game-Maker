@@ -3,7 +3,7 @@
 // historylabel.test.ts.
 import { opPath, type Json, type Op, type Seg } from './historyops';
 import { LAYER_ICON, layerLabel, short } from './layerlabel';
-import { categoryLabel, clueValue, formatPoints, roundName, type Action, type DealPart, type Game, type MediaKind, type Round, type Slide, type SlideElement } from './model';
+import { categoryLabel, clueValue, formatPoints, roundName, savedCardName, type Action, type DealPart, type Game, type MediaKind, type Round, type Slide, type SlideElement } from './model';
 import { describeAction } from './actions';
 import { ROUND_MODES } from './modes';
 import { OBJECT_CLASSES } from './rpg';
@@ -20,6 +20,8 @@ export type Place =
   | { tab: 'sounds' }
   | { tab: 'theme' }
   | { tab: 'tools'; wheel?: string; dice?: string; deal?: string }
+  /** The editor's 🤫 Cards: `card`, the one open (its id). */
+  | { tab: 'cards'; card?: string; element?: string }
   | { tab: 'stats'; stat?: string; item?: string; shop?: string }
   | { tab: 'media'; media?: string }
   /** `slide`: a question slide after the first (its id). */
@@ -64,8 +66,8 @@ export interface At {
   noun: string;
   name: string;
   depth: number;
-  /** A clue's, a Final's or the tiebreaker's main text box, or a 🤫 card's ('card 2'). */
-  main?: 'question' | 'answer' | `card ${number}`;
+  /** A clue's, a Final's or the tiebreaker's main text box, or a 🤫 card's ('card 2'; one of the editor's 🤫 Cards: 'card'). */
+  main?: 'question' | 'answer' | 'card' | `card ${number}`;
 }
 
 export interface Described {
@@ -355,6 +357,19 @@ export function placeAt(game: Game, path: readonly Seg[]): At {
       slide(part.card, 5, () => ({ tab: 'tools', deal: deal.id }));
       break;
     }
+    case 'cards': {
+      // One of the editor's 🤫 Cards: its name typed is "Renamed card “Tip B”", its words "Edited card “Bring a spoon”".
+      at.crumbs.push('Cards');
+      at.icon = '🤫';
+      go({ tab: 'cards' });
+      const i = game.cards?.findIndex((c) => c.id === path[1]) ?? -1;
+      if (i < 0) break;
+      const c = game.cards![i];
+      reached(2, 'card', savedCardName(c, i));
+      go({ tab: 'cards', card: c.id });
+      slide(c, 2, (element) => ({ tab: 'cards', card: c.id, element }), 'card');
+      break;
+    }
     case 'statFields':
     case 'items':
     case 'shops': {
@@ -428,6 +443,8 @@ export function placeWhere(place: Place): string | null {
       return 'Theme';
     case 'tools':
       return 'Wheels, Dice & Deals';
+    case 'cards':
+      return 'Cards';
     case 'stats':
       return 'Stats & Items';
     case 'media':

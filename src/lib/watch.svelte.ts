@@ -25,6 +25,7 @@ export const GAME_CHUNKS: ChunkSpec = {
   media: 'whole',
   wheels: 'whole',
   dice: 'whole',
+  cards: 'whole',
   items: 'whole',
   shops: 'whole',
   statFields: 'whole',

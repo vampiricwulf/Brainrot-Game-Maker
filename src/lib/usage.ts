@@ -1,6 +1,6 @@
 // Walk every slide in a game (for media usage counts, validation and bulk edits).
 import { uploadedFamily } from './fonts';
-import { boardRounds, cardSlides, categoryLabel, isBoard, isBoardGame, isFinal, questionSlides, roundName, type Action, type EmbedEl, type Game, type Outcome, type Slide } from './model';
+import { boardRounds, cardSlides, categoryLabel, isBoard, isBoardGame, isFinal, questionSlides, roundName, savedCardName, type Action, type EmbedEl, type Game, type Outcome, type Slide } from './model';
 
 export interface SlideRef {
   slide: Slide;
@@ -52,6 +52,8 @@ export function allSlides(game: Game, { empty = false } = {}): SlideRef[] {
   for (const it of game.items ?? []) for (const s of actionSlides(it.onUse)) out.push({ slide: s, where: `Item: ${it.name}` });
   // 🎭 Deals: each part's card. (Without them, 🖼 Media's Remove unused would delete the cards' pictures.)
   for (const d of game.deals ?? []) d.parts.forEach((p, i) => out.push({ slide: p.card, where: `Deal: ${d.name} (${p.name.trim() || `part ${i + 1}`})` }));
+  // 🤫 Cards. (Without them, 🖼 Media's Delete unused would delete the cards' pictures.)
+  (game.cards ?? []).forEach((c, i) => out.push({ slide: c, where: `Card: ${savedCardName(c, i)}` }));
   if (game.tiebreaker) {
     const qs = questionSlides(game.tiebreaker);
     qs.forEach((slide, i) => out.push({ slide, where: qs.length > 1 ? `Tiebreaker (question ${i + 1})` : 'Tiebreaker (question)' }));

@@ -582,6 +582,31 @@ export interface DealPreset {
   perTeam?: boolean;
 }
 
+// ---------- 🤫 Cards made before the show (the editor's 🤫 Cards tab) ----------
+
+/** Longest name of a card made ahead (characters). */
+export const CARD_NAME_MAX = 60;
+
+/**
+ * 🤫 A card made before the show (the editor's 🤫 Cards tab): a slide only the players the host sends it to see, sent
+ * from 🤫 Send a card… in play (by its id: changed in the editor since, it's off the phones until ↻ Send again). Its name
+ * is the host's, to pick it by: phones never get it, but in one window viewers can read it in that dialog (never what's
+ * on it). Never a sent card's label ("Card 3", made by the app).
+ */
+export interface SavedCard extends ExtraSlide {
+  name: string;
+  /** It starts as lasting until the host takes it back (left out: until the round ends). The host can change it then. */
+  until?: 'host';
+}
+
+/** A new card: an empty words box, ready to type in. */
+export function newSavedCard(name: string): SavedCard {
+  return { id: newId(), name, ...textSlide('') };
+}
+
+/** Its name as the list, 🤫 Send a card… and the checklist say it ("Untitled card 2" for one left blank). */
+export const savedCardName = (c: Pick<SavedCard, 'name'>, i: number): string => c.name.trim() || `Untitled card ${i + 1}`;
+
 export interface Die {
   id: Id;
   sides: number;
@@ -717,6 +742,8 @@ export interface Game {
   dice: DicePreset[];
   /** 🎭 Deals: secret parts for everyone, dealt during play (partner-clues spec §11, §12.2). */
   deals?: DealPreset[];
+  /** 🤫 Cards made before the show, in the order 🤫 Send a card… lists them (the editor's 🤫 Cards tab). */
+  cards?: SavedCard[];
   theme: Theme;
   /** Host-defined player stats (HP, Gold, Vibes…), used by RPG rounds and shown on the stats strip. */
   statFields?: StatField[];
@@ -877,9 +904,12 @@ export interface SentCard {
   label: string;
   /** Who it went to: players (whole teams), or one person on a team. */
   to: CardTo[];
-  /** A tile's 🤫 card made in the editor (by its clue and card ids), or a card made in 🤫 Send a card… (its own slide). */
-  content: { clue: Id; card: Id } | { slide: Slide };
-  /** What was on it when it went (cardHash): a tile's card edited since is off the phones until ↻ Send again. */
+  /**
+   * A tile's 🤫 card made in the editor (by its clue and card ids), a card from the editor's 🤫 Cards (by its id), or a
+   * card made in 🤫 Send a card… (its own slide).
+   */
+  content: { clue: Id; card: Id } | { saved: Id } | { slide: Slide };
+  /** What was on it when it went (cardHash): a card made in the editor and changed since is off the phones until ↻ Send again. */
   hash: string;
   /**
    * How long it lasts: until the round ends (`round`: that round's id), until its tile closes (`tile`: the clue's id), or
@@ -1968,6 +1998,7 @@ function repairGame(g: Game): void {
   for (const w of g.wheels) if (!Array.isArray(w.segments)) w.segments = [];
   for (const d of g.dice) if (!Array.isArray(d.dice)) d.dice = [];
   repairDeals(g);
+  repairSavedCards(g);
   linkMoverDice(g);
 }
 
@@ -1996,6 +2027,24 @@ function repairDeals(g: Game): void {
     }
     if (d.wheel !== undefined && typeof d.wheel !== 'string') delete d.wheel;
     if (d.perTeam !== undefined && typeof d.perTeam !== 'boolean') delete d.perTeam;
+  }
+}
+
+/**
+ * 🤫 Cards: each with an id, a name and what a slide needs; anything else in the list goes. An `until` the app doesn't
+ * know goes too (the shorter: until the round ends), so a damaged file never keeps a card on phones longer than meant.
+ */
+function repairSavedCards(g: Game): void {
+  if (g.cards === undefined) return;
+  const cards = objects<SavedCard>(g.cards);
+  if (!cards.length) return void delete g.cards;
+  if (cards !== g.cards) g.cards = cards;
+  for (const c of cards) {
+    fixId(c);
+    repairSlide(c);
+    if (typeof c.name !== 'string') c.name = '';
+    else if (c.name.length > CARD_NAME_MAX) c.name = c.name.slice(0, CARD_NAME_MAX);
+    if (c.until !== undefined && c.until !== 'host') delete c.until;
   }
 }
 

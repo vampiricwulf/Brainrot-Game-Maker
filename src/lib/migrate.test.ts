@@ -19,11 +19,15 @@ import {
   migrateGame,
   mostPlayers,
   newGame,
+  newSavedCard,
+  savedCardName,
+  slideText,
   textSlide,
   typedPoints,
   wholePoints,
   type BoardRound,
   type Game,
+  type SavedCard,
 } from './model';
 import { validate } from './validate';
 import { applyScore, finalJudge, finalTag, migrateSession, newSession, score } from './session';
@@ -420,5 +424,69 @@ describe('🤝 partner clues in saved games', () => {
     expect([out[1].elements, out[1].background]).toEqual([[], {}]);
     expect((m.rounds[0] as BoardRound).categories[0].clues[1].cards).toBeUndefined();
     expect(validate(m).some((p) => p.text.includes('has 8 cards'))).toBe(true);
+  });
+});
+
+describe('🤫 Cards in saved games', () => {
+  const plain = (g: unknown) => JSON.parse(JSON.stringify(g));
+  const withCards = (cards: unknown) => migrateGame(plain({ ...jeopardyGame(), cards }));
+
+  it('a new one has an id, its name and one empty words box; one left blank is named by its place', () => {
+    const c = newSavedCard('Tip A');
+    expect(c.id).toBeTruthy();
+    expect(c.name).toBe('Tip A');
+    expect(c.elements).toHaveLength(1);
+    expect(c.elements[0].kind).toBe('text');
+    expect(slideText(c)).toBe('');
+    expect(c.until).toBeUndefined();
+    expect(newSavedCard('X').id).not.toBe(c.id);
+    expect(savedCardName({ name: '  ' }, 1)).toBe('Untitled card 2');
+    expect(savedCardName({ name: ' Tip A ' }, 1)).toBe('Tip A');
+  });
+
+  it('leaves a whole list exactly as it is (and a game without any gets none)', () => {
+    const g = plain(jeopardyGame());
+    g.cards = [
+      { id: 'sc1', name: 'Wild card', until: 'host', ...textSlide('Wild') },
+      { id: 'sc2', name: '', ...textSlide('') },
+    ];
+    const before = plain(g.cards);
+    const m = migrateGame(g);
+    expect(m.cards).toBe(g.cards);
+    expect(m.cards).toEqual(before);
+    const once = migrateGame(plain(m));
+    expect(JSON.stringify(migrateGame(plain(once)))).toBe(JSON.stringify(once));
+    expect('cards' in migrateGame(plain(jeopardyGame()))).toBe(false);
+  });
+
+  it('drops a list that isn’t one, and anything in it that isn’t a card; an emptied list goes', () => {
+    expect('cards' in withCards('lots')).toBe(false);
+    expect('cards' in withCards([])).toBe(false);
+    expect('cards' in withCards([null, 3, 'x'])).toBe(false);
+    const m = withCards([null, { id: 'sc1', name: 'Tip A', ...textSlide('Hi') }, 'x']);
+    expect(m.cards!.map((c) => c.id)).toEqual(['sc1']);
+  });
+
+  it('repairs each card: an id, a name of at most 60 characters, what a slide needs, and an until it knows', () => {
+    const m = withCards([
+      { name: 'No id', ...textSlide('a') },
+      { id: 'sc2', name: 42, elements: 'x' },
+      { id: 'sc3', name: 'N'.repeat(80), background: null, elements: [{ kind: 'text', text: null }] },
+      { id: 'sc4', name: 'Round', until: 'round', ...textSlide('b') },
+      { id: 'sc5', name: 'Five', until: 5, ...textSlide('c') },
+      { id: 'sc6', name: 'Host', until: 'host', ...textSlide('d') },
+    ]);
+    const cards = m.cards as SavedCard[];
+    expect(cards).toHaveLength(6);
+    expect(typeof cards[0].id === 'string' && cards[0].id).toBeTruthy();
+    expect(cards[1].name).toBe('');
+    expect([cards[1].elements, cards[1].background]).toEqual([[], {}]);
+    expect(cards[2].name).toBe('N'.repeat(60));
+    expect(cards[2].background).toEqual({});
+    expect((cards[2].elements[0] as { text: string }).text).toBe('');
+    expect(cards[2].elements[0].id).toBeTruthy();
+    expect(['until' in cards[3], 'until' in cards[4], cards[5].until]).toEqual([false, false, 'host']);
+    expect(gameProblem(m)).toBeNull();
+    expect(() => validate(m)).not.toThrow();
   });
 });

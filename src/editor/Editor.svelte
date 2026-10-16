@@ -100,8 +100,8 @@
     onopened?: () => void;
   } = $props();
 
-  // 'sounds' | 'tiebreaker' | 'media' | 'tools' | 'theme' | 'history' | round index
-  let tab = $state<'sounds' | 'tiebreaker' | 'media' | 'tools' | 'theme' | 'stats' | 'history' | number>(
+  // 'sounds' | 'tiebreaker' | 'media' | 'tools' | 'cards' | 'theme' | 'stats' | 'history' | round index
+  let tab = $state<'sounds' | 'tiebreaker' | 'media' | 'tools' | 'cards' | 'theme' | 'stats' | 'history' | number>(
     untrack(() => Math.max(0, app.game.rounds.findIndex((r) => r.id === startRound))),
   );
   const game = $derived(app.game);
@@ -1062,6 +1062,8 @@
           <MediaLibrary />
         {:else if tab === 'tools'}
           <ToolsEditor />
+        {:else if tab === 'cards'}
+          <!-- (🤫 Cards: its page, CardsEditor, isn't in yet.) -->
         {:else if tab === 'theme'}
           <ThemeEditor round={lastRound} bind:incoming={incomingTheme} />
         {:else if tab === 'history'}

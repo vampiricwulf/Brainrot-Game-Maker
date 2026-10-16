@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { diff } from './historyops';
 import { describe as describeStep, itemPlace, placeAt, placeWhere, short } from './historylabel';
-import { gameRules, newImageEl, newTextEl, type BoardGameRound, type BoardRound, type FinalRound, type Game, type ImageEl, type TextEl } from './model';
+import { gameRules, newImageEl, newSavedCard, newTextEl, type BoardGameRound, type BoardRound, type FinalRound, type Game, type ImageEl, type TextEl } from './model';
 import { jeopardyGame } from './testgame';
 import { addSampleGame } from './samples';
 import { newRpgRound, newScreen, newVariant } from './rpg';
@@ -436,7 +436,7 @@ describe('placeAt', () => {
 
   it('names a tab an editor shows its step on as placeAt does (none for a round)', () => {
     const g = sample();
-    for (const path of [['title'], ['audio'], ['theme'], ['wheels'], ['statFields'], ['media'], ['tiebreaker'], ['players'], ['settings', 'stream']]) {
+    for (const path of [['title'], ['audio'], ['theme'], ['wheels'], ['cards'], ['statFields'], ['media'], ['tiebreaker'], ['players'], ['settings', 'stream']]) {
       const at = placeAt(g, path);
       expect(placeWhere(at.place!)).toBe(at.crumbs.join(' › '));
     }
@@ -503,5 +503,48 @@ describe('🤝 partner clues in the history', () => {
     expect(pts.label).toBe(`Changed the points of ${cat} $200`);
     expect(withCard((g) => (board(g).categories[0].clues[0].partner!.words = { giver: 'Spy' })).label).toBe(`Changed the part words of ${cat} $200`);
     expect(withCard((g) => (board(g).categories[0].clues[0].partner!.giver = 'picker')).label).toBe(`Changed the partner rules of ${cat} $200`);
+  });
+});
+
+describe('the editor’s 🤫 Cards in the history', () => {
+  /** A step on the sample game with two 🤫 Cards (the first “Tip A”, the second left blank). */
+  const withCards = (edit: (g: Game) => void) => {
+    const before = sample();
+    before.cards = [
+      { id: 'sc1', name: 'Tip A', background: {}, elements: [newTextEl('')] },
+      { id: 'sc2', name: '', background: {}, elements: [newTextEl('')] },
+    ];
+    const after = structuredClone(before);
+    edit(after);
+    return { ...describeStep(diff(before, after), before, after), before, after };
+  };
+
+  it('names a card renamed and its words typed, on its tab', () => {
+    const named = withCards((g) => (g.cards![0].name = 'Tip B'));
+    // (Where it happened doesn't say the name again.)
+    expect(named).toMatchObject({ label: 'Renamed card “Tip B”', icon: '🤫', where: 'Cards', place: { tab: 'cards', card: 'sc1' } });
+    const words = withCards((g) => ((g.cards![0].elements[0] as TextEl).text = 'Bring a spoon'));
+    // (Its icon is the text box's, as a question's is.)
+    expect(words).toMatchObject({ label: 'Edited card “Bring a spoon”', icon: '🅣', where: 'Cards › Tip A' });
+    expect(words.place).toEqual({ tab: 'cards', card: 'sc1', element: words.after.cards![0].elements[0].id });
+    // One left blank is named by its place in the list.
+    expect(withCards((g) => ((g.cards![1].elements[0] as TextEl).text = 'Hi')).where).toBe('Cards › Untitled card 2');
+  });
+
+  it('names a picture added to one and its background, going to the card', () => {
+    const pic = withCards((g) => g.cards![0].elements.push(newImageEl('m1')));
+    expect(pic).toMatchObject({ label: 'Added image “a.png”', where: 'Cards › Tip A' });
+    expect(pic.place).toEqual({ tab: 'cards', card: 'sc1', element: pic.after.cards![0].elements[1].id });
+    expect(pic.undoPlace).toEqual({ tab: 'cards', card: 'sc1' });
+    expect(withCards((g) => (g.cards![0].background.color = '#ff0000'))).toMatchObject({ label: 'Slide background color #ff0000', where: 'Cards › Tip A' });
+  });
+
+  it('names a card added (the game’s first too) or deleted, by its name or its place', () => {
+    const first = step((g) => (g.cards = [{ ...newSavedCard('Private card 1'), id: 'sc9' }]));
+    expect(first).toMatchObject({ label: 'Added card “Private card 1”', icon: '🤫', place: { tab: 'cards', card: 'sc9' }, undoPlace: { tab: 'cards' } });
+    const gone = withCards((g) => g.cards!.splice(1, 1));
+    expect(gone).toMatchObject({ label: 'Deleted card “Untitled card 2”', place: { tab: 'cards' }, undoPlace: { tab: 'cards', card: 'sc2' } });
+    expect(withCards((g) => g.cards!.reverse()).label).toBe('Moved card “Tip A”');
+    expect(placeWhere({ tab: 'cards', card: 'sc1' })).toBe('Cards');
   });
 });

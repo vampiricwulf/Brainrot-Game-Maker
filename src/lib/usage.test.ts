@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { uploadedFamily } from './fonts';
 import { defaultEdits } from './imageedit';
-import { isBoard, newImageEl, type MediaRef } from './model';
+import { isBoard, newImageEl, textSlide, type MediaRef } from './model';
 import { jeopardyGame } from './testgame';
 import { allSlides, mediaUsage } from './usage';
 
@@ -46,5 +46,23 @@ describe('🤫 cards', () => {
     expect(mediaUsage(game).get('pic')).toBe(1);
     expect(allSlides(game).some((s) => s.where.includes('(card 1)'))).toBe(true);
     expect(allSlides(game, { empty: true }).some((s) => s.where.includes('(card 1)'))).toBe(true);
+  });
+});
+
+describe('the editor’s 🤫 Cards', () => {
+  it('are walked as slides of their own, by name, so 🗑 Delete unused keeps their files', () => {
+    const game = jeopardyGame();
+    game.cards = [
+      { id: 'sc1', name: 'Tip A', background: { image: 'bg' }, elements: [...textSlide('Hi').elements, newImageEl('pic')] },
+      { id: 'sc2', name: ' ', ...textSlide('') },
+    ];
+    const where = allSlides(game).map((s) => s.where);
+    expect(where).toContain('Card: Tip A');
+    // One left blank is named by its place in the list.
+    expect(where).toContain('Card: Untitled card 2');
+    expect(allSlides(game).find((s) => s.where === 'Card: Tip A')?.slide).toBe(game.cards[0]);
+    expect([mediaUsage(game).get('pic'), mediaUsage(game).get('bg')]).toEqual([1, 1]);
+    delete game.cards;
+    expect(mediaUsage(game).get('pic')).toBeUndefined();
   });
 });

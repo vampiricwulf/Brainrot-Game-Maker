@@ -68,6 +68,10 @@ describe('game watcher', () => {
       (g) => delete g.tiebreaker,
       (g) => g.players.push({ id: 'p1', name: 'Alex', color: '#fff' }),
       (g) => (g.statFields = [{ id: 'hp', name: 'HP', type: 'number', audience: 'hud' }]),
+      (g) => (g.cards = [{ id: 'sc1', name: 'Tip A', background: {}, elements: [newTextEl('')] }]),
+      (g) => ((g.cards![0].elements[0] as TextEl).text = 'Bring a spoon'),
+      (g) => (g.cards![0].name = 'Tip B'),
+      (g) => delete g.cards,
     ];
     for (const edit of edits) {
       edit(g);

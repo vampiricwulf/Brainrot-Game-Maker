@@ -21,6 +21,7 @@ import {
   type Game,
   type Id,
   type MediaRef,
+  type SavedCard,
   type SentCard,
   type Session,
   type Slide,
@@ -46,9 +47,22 @@ export function tileCard(game: Pick<Game, 'rounds'>, clue: Id, card: Id): { clue
   return cl && i >= 0 ? { clue: cl, card: cards[i], n: i + 1 } : undefined;
 }
 
-/** What a card shows: a tile's card as the editor has it now, or the one made in 🤫 Send a card…. */
-export function sentSlide(game: Pick<Game, 'rounds'>, c: Pick<SentCard, 'content'>): Slide | undefined {
-  return 'slide' in c.content ? c.content.slide : tileCard(game, c.content.clue, c.content.card)?.card;
+/**
+ * What reading a sent card needs of the game: its boards (tile cards) and its 🤫 Cards. Always pass the game itself: an
+ * object with only `rounds` reads every 🤫 Card as deleted.
+ */
+export type CardGame = Pick<Game, 'rounds' | 'cards'>;
+
+/** A card from the editor's 🤫 Cards, by id. */
+export const savedCard = (game: Pick<Game, 'cards'>, id: Id): SavedCard | undefined => game.cards?.find((c) => c.id === id);
+
+/**
+ * What a card shows: a tile's card or one of the editor's 🤫 Cards as the editor has it now, or the one made in 🤫 Send
+ * a card….
+ */
+export function sentSlide(game: CardGame, c: Pick<SentCard, 'content'>): Slide | undefined {
+  const k = c.content;
+  return 'slide' in k ? k.slide : 'saved' in k ? savedCard(game, k.saved) : tileCard(game, k.clue, k.card)?.card;
 }
 
 /**
@@ -168,11 +182,12 @@ export interface CardToSend {
  * closes, no round for one that lasts the round), or when `full`: the buzzer room has all the cards it takes (buzz.ts
  * roomCardsFull, which the callers ask: the room is never told a card by leaving an older one off).
  */
-export function sendCard(game: Pick<Game, 'rounds'>, session: Session, card: CardToSend, now = Date.now(), full = false): SentCard | null {
+export function sendCard(game: CardGame, session: Session, card: CardToSend, now = Date.now(), full = false): SentCard | null {
   if (full) return null;
   const to = cleanTo(session, card.to);
   // (A plain copy: the slide may be the dialog's live state.)
-  const content: SentCard['content'] = 'slide' in card.content ? { slide: JSON.parse(JSON.stringify(card.content.slide)) } : { clue: card.content.clue, card: card.content.card };
+  const k = card.content;
+  const content: SentCard['content'] = 'slide' in k ? { slide: JSON.parse(JSON.stringify(k.slide)) } : 'saved' in k ? { saved: k.saved } : { clue: k.clue, card: k.card };
   const slide = sentSlide(game, { content });
   if (!to.length || !slide) return null;
   const round = card.until === 'round' ? roundNow(game, session) : undefined;

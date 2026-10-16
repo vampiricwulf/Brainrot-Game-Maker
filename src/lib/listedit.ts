@@ -1,7 +1,8 @@
 // Reordering and copying rows of the editor's lists: stats, items, shops and what they sell, wheel slices, buttons
-// (action lists), dice faces, a board game's zones. Pure: the editors wrap each change in a history step.
+// (action lists), dice faces, a board game's zones, 🤫 cards made ahead. Pure: the editors wrap each change in a history
+// step.
 import { clampToBoard, nextSpaceName } from './boardgame';
-import { newId, type Action, type BoardGameRound, type BoardSpace, type BoardZone, type ItemDef, type Shop, type Slide, type StatField, type WheelSegment } from './model';
+import { newId, type Action, type BoardGameRound, type BoardSpace, type BoardZone, type ItemDef, type SavedCard, type Shop, type Slide, type StatField, type WheelSegment } from './model';
 import { clone } from './ops';
 
 /** Move the entry at `from` to `to` (the others close up). False when that's no move. */
@@ -59,6 +60,15 @@ export function copyStat(f: StatField, taken: readonly string[]): StatField {
 export function copyZone(z: BoardZone, taken: readonly string[]): BoardZone {
   const copy = { ...clone(z), id: newId(), name: copyName(z.name, taken) };
   reSlide(copy.slide);
+  return copy;
+}
+
+/** A copy of a 🤫 card made ahead, right after it: its own id and items' ids, named "… (copy)". */
+export function copySavedCard(c: SavedCard, taken: readonly string[]): SavedCard {
+  const copy = clone(c);
+  copy.id = newId();
+  copy.name = copyName(c.name.trim() || 'Private card', taken);
+  reSlide(copy);
   return copy;
 }
 

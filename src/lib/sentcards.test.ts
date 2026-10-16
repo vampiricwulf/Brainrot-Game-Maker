@@ -6,7 +6,7 @@ import { describe, expect, it } from 'vitest';
 import { jeopardyGame } from './testgame';
 import { newImageEl, newRound, setSlideText, type BoardRound, type Game, type SentCard, type Session } from './model';
 import { backToBoard, forViewers, goToRound, migrateSession, newSession, openClue, rebaseSession, removePlayer } from './session';
-import { addCard, sendCards, setPartner, setPartnerGame } from './partner';
+import { addCard, cardHash, sendCards, setPartner, setPartnerGame } from './partner';
 import { hostCards, hostState, buzzIdle, newBuzz, phoneStatus, roomCardCount, roomCardsFull, sessionCards } from './buzz';
 import {
   cardsOut,
@@ -211,6 +211,26 @@ describe('a tile’s own cards (🤫 Just you, 💡 Insider tip)', () => {
       look();
     }
     expect(hostCards(g, session, { files: {} })!.map((c) => c.text)).toEqual(['PARTNER-card']);
+  });
+});
+
+describe('one of the editor’s 🤫 Cards', () => {
+  it('goes by reference (its id, never a copy), read from the game as it is now: changed since, it’s edited; deleted, gone', () => {
+    const { g, session } = setup();
+    g.cards = [{ id: 'sc1', name: 'Wild card', background: {}, elements: [] }];
+    setSlideText(g.cards[0], 'WILD-plugh');
+    const c = sendCard(g, session, { to: [{ seat: 'b' }], content: { saved: 'sc1' }, until: 'host' }, 1000)!;
+    expect(c).toMatchObject({ label: 'Card 1', content: { saved: 'sc1' }, hash: cardHash(g.cards[0]) });
+    expect(sentState(g, c)).toBe('sent');
+    // (Its name and how long it lasts aren't what's on it.)
+    g.cards[0].name = 'Joker';
+    g.cards[0].until = 'host';
+    expect(sentState(g, c)).toBe('sent');
+    setSlideText(g.cards[0], 'WILD-changed');
+    expect(sentState(g, c)).toBe('edited');
+    delete g.cards;
+    expect(sentState(g, c)).toBe('gone');
+    expect(sendCard(g, session, { to: [{ seat: 'b' }], content: { saved: 'sc1' }, until: 'host' })).toBeNull();
   });
 });
 

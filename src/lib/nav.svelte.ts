@@ -79,7 +79,7 @@ export function itemsFor(id: string, list: readonly { id: string }[]): string[] 
 /** The slide item a place picks, if any. */
 export function placeElement(p: Place): string | undefined {
   if (p.tab === 'round') return p.part && 'element' in p.part ? p.part.element : undefined;
-  return p.tab === 'tiebreaker' || p.tab === 'world' ? p.element : undefined;
+  return p.tab === 'tiebreaker' || p.tab === 'world' || p.tab === 'cards' ? p.element : undefined;
 }
 
 /** The data-place key of what flashes there ('category:<id>', 'screen:<id>'…), or null for nothing in particular. */
@@ -91,6 +91,8 @@ export function placeKey(p: Place): string | null {
       return 'title';
     case 'tools':
       return p.wheel ? `wheel:${p.wheel}` : p.dice ? `dice:${p.dice}` : p.deal ? `deal:${p.deal}` : null;
+    case 'cards':
+      return p.card ? `card:${p.card}` : null;
     case 'stats':
       return p.stat ? `stat:${p.stat}` : p.item ? `item:${p.item}` : p.shop ? `shop:${p.shop}` : null;
     case 'media':
@@ -173,6 +175,12 @@ export function resolve(game: Game, place: Place): Place | null {
     }
     case 'media':
       return !place.media || has(game.media, place.media) ? place : { tab: 'media' };
+    case 'cards': {
+      if (!place.card) return place;
+      const c = has(game.cards, place.card);
+      if (!c) return { tab: 'cards' };
+      return !place.element || inSlide(c, place.element) ? place : { tab: 'cards', card: c.id };
+    }
     case 'tiebreaker': {
       const tb = game.tiebreaker;
       if (!place.side) return place;

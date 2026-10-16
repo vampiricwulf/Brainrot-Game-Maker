@@ -42,12 +42,12 @@ export interface RecentGame {
 }
 
 /**
- * Something in the game worth keeping: a round, a player, a file, a wheel, the Stats & Items catalog, a title, a theme,
- * a rule or a sound changed from a new game's… A game just as New makes it is a scratch game: New and Open… replace it
- * without asking, and it isn't kept in Recent games.
+ * Something in the game worth keeping: a round, a player, a file, a wheel, the Stats & Items catalog, a 🎭 deal, a 🤫
+ * card, a title, a theme, a rule or a sound changed from a new game's… A game just as New makes it is a scratch game:
+ * New and Open… replace it without asking, and it isn't kept in Recent games.
  */
 export function hasWork(game: Game): boolean {
-  const kit = game.statFields?.length || game.items?.length || game.shops?.length || game.worlds?.length;
+  const kit = game.statFields?.length || game.items?.length || game.shops?.length || game.worlds?.length || game.deals?.length || game.cards?.length;
   if (game.rounds.length || game.players.length || game.media.length || game.wheels.length || game.dice.length || kit || game.tiebreaker) return true;
   const fresh = newGame();
   const title = game.title.trim();

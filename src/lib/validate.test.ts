@@ -1,12 +1,12 @@
 import { describe, expect, it, vi } from 'vitest';
 import { jeopardyGame } from './testgame';
-import { newImageEl, newTextEl, newVideoEl, questionSlides, setSlideText, textSlide, type Action, type BoardRound, type Game, type Slide } from './model';
+import { newImageEl, newTextEl, newVideoEl, questionSlides, setSlideText, textSlide, type Action, type BoardRound, type Game, type SavedCard, type Slide } from './model';
 import { newWheel } from './tools';
 import { newBoardGameRound } from './boardgame';
 import { newRpgRound, newVariant } from './rpg';
 import { addClueSlide, setClueType } from './ops';
 import { setPartnerPoints } from './partner';
-import { validate } from './validate';
+import { nameGivesAway, savedCardProblems, validate } from './validate';
 
 describe('the checklist', () => {
   it('counts in words: "1 clue", "30 clues", "2 categories"', () => {
@@ -280,5 +280,81 @@ describe('🤝 partner clues', () => {
     // Used on the answer too: an older copy keeps it.
     clue.answerSlide.elements.push(newImageEl('pic'));
     expect(older()).toHaveLength(0);
+  });
+});
+
+describe('🤫 Cards (the editor’s tab)', () => {
+  const card = (id: string, name: string, ...els: Slide['elements']): SavedCard => ({ id, name, background: {}, elements: els });
+  const mine = (game: Game, filesOff = false) => validate(game, { filesOff }).filter((p) => p.tab === 'cards');
+
+  it('warns of an empty card, going to it', () => {
+    const game = jeopardyGame();
+    game.cards = [card('sc1', 'Tip A', newTextEl(' ')), card('sc2', '', newTextEl('Bring a spoon'))];
+    expect(mine(game)).toEqual([{ text: "🤫 Card “Tip A” is empty: there's nothing on it to send", tab: 'cards', level: 'warn', place: { tab: 'cards', card: 'sc1' } }]);
+    // One left blank is named by its place in the list.
+    game.cards[1].elements = [];
+    expect(mine(game).map((p) => p.text)).toContain("🤫 Card “Untitled card 2” is empty: there's nothing on it to send");
+    delete game.cards;
+    expect(mine(game)).toEqual([]);
+  });
+
+  it('warns of what of one won’t reach a phone: a file too big, a file from this computer with a server that takes none', () => {
+    vi.stubGlobal('document', { createElement: () => ({ canPlayType: () => 'maybe' }) });
+    const game = jeopardyGame();
+    game.media.push(
+      { id: 'big', name: 'clip.mp4', mime: 'video/mp4', size: 40 * 1024 * 1024, kind: 'video' },
+      { id: 'pic', name: 'ogre.png', mime: 'image/png', size: 1000, kind: 'image' },
+    );
+    game.cards = [card('sc1', 'Tip A', newTextEl('A secret'), { ...newVideoEl('big'), y: 10 })];
+    expect(mine(game)).toEqual([
+      { text: '🤫 Card “Tip A” has a video too big for phones (40.0 MB; phones get files up to 4.0 MB)', tab: 'cards', level: 'warn', place: { tab: 'cards', card: 'sc1' } },
+    ]);
+    game.cards[0].elements = [newTextEl('A secret'), { ...newImageEl('pic'), y: 10 }];
+    expect(mine(game)).toEqual([]);
+    expect(mine(game, true).map((p) => p.text)).toEqual([
+      "🤫 Card “Tip A” has a picture that's a file on this computer, and this buzzer server isn't taking files: phones get the words and links only (📋 Copy picture)",
+    ]);
+    // (The same lines on their own, for the checklist.)
+    expect(savedCardProblems(game, true)).toEqual(mine(game, true));
+    vi.unstubAllGlobals();
+  });
+
+  it('notes a name that repeats what’s on the card: its words, its phone title or a file’s name (at least 3 letters)', () => {
+    const game = jeopardyGame();
+    game.media.push({ id: 'pic', name: 'spoon.png', mime: 'image/png', size: 10, kind: 'image' });
+    expect(nameGivesAway(game, card('a', 'Spoon run', newTextEl('Spoon')))).toBe(true);
+    // Its title on a phone: the largest short line, with other words under it.
+    const title = { ...newTextEl('Spoon'), size: 160 };
+    const rest = { ...newTextEl('Take it to the kitchen and hide it'), y: 400, size: 60 };
+    expect(nameGivesAway(game, card('b', 'Spoon hunt', title, rest))).toBe(true);
+    expect(nameGivesAway(game, card('c', 'spoon', newTextEl('Hide it'), { ...newImageEl('pic'), y: 300 }))).toBe(true);
+    expect(nameGivesAway(game, card('d', 'Mission 1', newTextEl('Your mission: find the key')))).toBe(false);
+    expect(nameGivesAway(game, card('e', 'Go 2', newTextEl('Go')))).toBe(false);
+    expect(nameGivesAway(game, card('f', '  ', newTextEl('Spoon')))).toBe(false);
+    game.cards = [card('sc1', 'Spoon run', newTextEl('Spoon'))];
+    expect(mine(game)).toEqual([
+      {
+        text: '🤫 Card “Spoon run”: its name repeats what’s on it, and in one window viewers read a card’s name in 🤫 Send a card…',
+        tab: 'cards',
+        level: 'info',
+        place: { tab: 'cards', card: 'sc1' },
+      },
+    ]);
+  });
+
+  it('notes two cards with one name once, going to the second', () => {
+    const game = jeopardyGame();
+    game.cards = [card('sc1', 'Tip A', newTextEl('One')), card('sc2', 'tip a ', newTextEl('Two')), card('sc3', 'Tip A', newTextEl('Three'))];
+    expect(mine(game)).toEqual([{ text: 'Two 🤫 cards are called “tip a”: in 🤫 Send a card… you can’t tell them apart', tab: 'cards', level: 'info', place: { tab: 'cards', card: 'sc2' } }]);
+  });
+
+  it('counts a file used only on one of them as used only on cards (an older copy’s Delete unused would delete it)', () => {
+    const game = jeopardyGame();
+    game.media.push({ id: 'pic', name: 'spoon.png', mime: 'image/png', size: 10, kind: 'image' });
+    game.cards = [card('sc1', 'Tip A', newTextEl('Hide it'), newImageEl('pic'))];
+    const older = () => validate(game).filter((p) => p.text.includes('Older copies'));
+    expect(older().map((p) => p.text)).toEqual([expect.stringMatching(/^1 file is used only on 🤫 cards/)]);
+    (game.rounds[0] as BoardRound).categories[0].clues[0].answerSlide.elements.push(newImageEl('pic'));
+    expect(older()).toEqual([]);
   });
 });
