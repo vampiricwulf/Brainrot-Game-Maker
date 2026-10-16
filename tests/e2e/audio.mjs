@@ -148,6 +148,9 @@ try {
     // "click once" note only shows while the mouse is over it (so it stays off the stream).
     await aud.mouse.move(200, 200);
     const clickOnce = page.getByText('Click the audience window once so it can play sound');
+    // (The host hears it from the audience window: a busy machine takes a moment.)
+    await clickOnce.waitFor();
+    await aud.locator('.activate').waitFor();
     assert((await clickOnce.count()) === 1 && (await aud.locator('.activate').count()) === 1, 'before any click or sound, both windows ask for a click');
     await page.locator('.panel').getByRole('button', { name: '🔊 Sound' }).click();
     assert((await dialog(page).getByText('plays in the audience window').count()) === 1, 'dual mode: it says the sound plays in the audience window');
