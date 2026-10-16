@@ -182,6 +182,8 @@ export class RoomLink {
   phones: PhoneInfo[] = [];
   /** What the room said it can do beyond protocol 1 (its welcome's features; none from an older room). */
   features: string[] = [];
+  /** A welcome came since this link was made: `features` is what the room said (until then, nothing is known). */
+  welcomed = false;
   /** The 🤫 card files the room holds ('files'), as it last said; null until it has said, again after each welcome. */
   files: string[] | null = null;
   error = '';
@@ -398,6 +400,7 @@ export class RoomLink {
         }
         this.code = m.code;
         this.features = m.features ?? [];
+        this.welcomed = true;
         // (The room says which files it holds right after; until then, nothing is known.)
         this.files = null;
         this.attempts = 0;

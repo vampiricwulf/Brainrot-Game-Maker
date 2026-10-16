@@ -241,8 +241,12 @@ host dropping mid-race, 24 idle sockets, kicks, locked seats, dead sockets and p
 sideways, a long name on small screens, a flooding socket, and the limit on new rooms; `tests/e2e/buzzerlive.mjs`: the
 built app hosting two phones, through a reload and ◀ Back to editor on the pre-game screen, a host reload mid-clue,
 and a dropped host connection; `tests/e2e/phonecards.mjs`: the phone's private cards, from the greyed button through
-Tap to see, card files, a video, a YouTube player and the content policy to a phone that joined too late). `npm run
-check` here type-checks the Worker and the phone page.
+Tap to see, card files, a video, a YouTube player and the content policy to a phone that joined too late;
+`tests/e2e/partnersend.mjs`: the built app sending a partner clue's cards, with nothing in the room or its saved state
+before a send, a picture shrunk before it goes up, host reloads mid-upload, a phone on a freed seat, ↻ Send again,
+📤 Send changes, ✖ Take back, ⇡ Get it ready, no phone fetching another card's file, and the room's 16 MB turning a
+GIF down; `tests/e2e/partnerteams.mjs`: the same on team phones, with someone joining or moved onto the team after
+the send). `npm run check` here type-checks the Worker and the phone page.
 
 ## Deploying
 

@@ -1323,6 +1323,9 @@
   let sentPhase = '';
   $effect(() => {
     if (!phonesOn || remote.status === 'off' || remote.status === 'error') return;
+    // Not before the room has said what it can do (a reload connects afresh): a state worked out before would leave out
+    // the 🤫 cards it takes, and the room would take them off the phones and count their late rule again from then.
+    if (!remote.welcomed) return;
     const st = roomState();
     // The buzzers opening goes at once (players are racing).
     const now = st.phase !== sentPhase && st.phase === 'armed';

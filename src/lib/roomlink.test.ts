@@ -186,10 +186,26 @@ describe('RoomLink', () => {
     sockets[0].open();
     t.advance(STATE_MS);
     expect(sockets[0].sent).toEqual([]);
+    expect(link.welcomed).toBe(false);
     sockets[0].say(welcome);
     expect(link.status).toBe('online');
+    expect(link.welcomed).toBe(true);
     expect(sockets[0].sent).toEqual([{ t: 'state', state: state() }]);
     expect(changes).toContain('online');
+  });
+
+  it('is welcomed once the room said what it can do: an older room that names nothing too, and still after a reconnect', async () => {
+    sockets = [];
+    const t = fakeDeps();
+    const link = new RoomLink('https://buzz.test', {}, t.deps);
+    await link.create();
+    sockets[0].open();
+    expect(link.welcomed).toBe(false);
+    sockets[0].say({ t: 'welcome', code: 'BCDF', protocol: BUZZ_PROTOCOL, serverNow: 1 });
+    expect([link.welcomed, link.features]).toEqual([true, []]);
+    sockets[0].drop();
+    expect(link.status).toBe('reconnecting');
+    expect(link.welcomed).toBe(true);
   });
 
   it('debounces state sends, sends arming at once, and skips unchanged states', async () => {
