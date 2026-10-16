@@ -218,9 +218,13 @@ export class RoomLink {
   private pingTimer: unknown = null;
   private retryTimer: unknown = null;
   private heard = 0;
+  /** When the last ping went (0: none yet). */
+  private pingAt = 0;
   private stopped = true;
   /** end(): close the room as soon as it says welcome. */
   private ending = false;
+  /** end(): how many tries to get in before giving up. */
+  private endTries = 3;
 
   constructor(
     readonly base: string,
@@ -274,15 +278,28 @@ export class RoomLink {
     this.flush();
   }
 
+  /**
+   * True when it went out, which isn't to say it got there: a line that died a moment ago without a word (dropped
+   * Wi-Fi) takes it all the same, until the pings find that out (heardAgo).
+   */
   send(msg: HostMsg): boolean {
     if (this.status !== 'online' || !this.ws || this.ws.readyState !== OPEN) return false;
     this.ws.send(JSON.stringify(msg));
     return true;
   }
 
-  /** Close a room this link isn't in (one left open by an earlier page): connect, close it, stop. */
-  end(room: NewRoom): void {
+  /** How long since the room last said anything (ms): a pong comes every PING_MS while the line is alive. */
+  heardAgo(): number {
+    return this.deps.now() - this.heard;
+  }
+
+  /**
+   * Close a room this link isn't in (one left open by an earlier page, or one closed while it was out of reach): connect,
+   * close it, stop. Gives up after `tries` tries to get in.
+   */
+  end(room: NewRoom, tries = 3): void {
     this.ending = true;
+    this.endTries = tries;
     this.connect(room);
   }
 
@@ -371,10 +388,21 @@ export class RoomLink {
     ws.onerror = () => {};
   }
 
+  /**
+   * Try again now, not after the wait (the page is in sight again, or the network is back): a hidden page's timers are
+   * held back, so its next try could be a minute away.
+   */
+  retryNow(): void {
+    if (this.status !== 'reconnecting' || this.retryTimer === null) return;
+    this.deps.clearTimeout(this.retryTimer);
+    this.retryTimer = null;
+    this.open('reconnecting');
+  }
+
   private retry(): void {
     if (this.stopped || !this.room) return;
-    // Only ending an old room: not worth more than a few tries (it ends by itself after hours anyway).
-    if (this.ending && this.attempts >= 3) return this.stop();
+    // Only ending a room: not worth more than a few tries (it ends by itself after hours anyway).
+    if (this.ending && this.attempts >= this.endTries) return this.stop();
     const wait = retryDelay(this.attempts++);
     this.set('reconnecting');
     this.retryTimer = this.deps.setTimeout(() => {
@@ -388,7 +416,10 @@ export class RoomLink {
       this.pingTimer = null;
       const ws = this.ws;
       if (!ws) return;
-      if (this.deps.now() - this.heard > SILENT_MS) {
+      const now = this.deps.now();
+      // Dead only when a ping went unanswered and nothing has come for SILENT_MS. A late timer alone is no sign of
+      // that: a hidden page's timers run about once a minute, while the pong comes as a message, which isn't held back.
+      if (this.pingAt > this.heard && now - this.heard > SILENT_MS) {
         // A socket that went quiet without closing (a laptop asleep, a dropped Wi-Fi): start again.
         ws.onclose?.({ code: 1006 });
         try {
@@ -398,7 +429,8 @@ export class RoomLink {
         }
         return;
       }
-      this.send({ t: 'ping', at: this.deps.now() });
+      this.pingAt = now;
+      this.send({ t: 'ping', at: now });
       this.ping();
     }, PING_MS);
   }

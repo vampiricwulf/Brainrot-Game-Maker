@@ -1187,7 +1187,7 @@
     const room = await startRoom();
     if (!room) return toast(remote.error || "Couldn't start the buzzer room", 5000);
     // Left the game while the room was being made.
-    if (app.session !== s) return closeRoom();
+    if (app.session !== s) return void closeRoom();
     s.remote = { ...room, armId: buzz.armId };
   }
 
@@ -1472,10 +1472,10 @@
 
   /** ✕ Close the room (the 📱 card): the phones are told the game is over; Start the room makes a new one. */
   function closePhoneRoom(): void {
-    closeRoom();
+    const told = closeRoom();
     session.remote = null;
     void clearRoom();
-    toast('Buzzer room closed: the phones were told');
+    toast(told ? 'Buzzer room closed: the phones were told' : 'Buzzer room closed: it’s out of reach right now; the phones are told if it answers within a minute');
   }
 
   /** 🔒 Lock seats: no new phone takes a seat or asks to join; players already in come back. */
@@ -1493,8 +1493,20 @@
         ? 'No buzzer room is running: phones can’t buzz (📱 chip › Start the room). 1–9 still pick.'
         : remote.status === 'online'
           ? ''
-          : '⚠ Phones not connected: the buzzer room can’t be reached right now, so phones can’t buzz. 1–9 still pick.',
+          : remote.status === 'error'
+            ? `⚠ Phones not connected: ${remote.error || 'the buzzer room was lost'} (📱 chip). 1–9 still pick.`
+            : '⚠ Phones not connected: the buzzer room can’t be reached right now, so phones can’t buzz. 1–9 still pick.',
   );
+  // The room turned this game away for good mid-game (it ended, or another window took it): the host is told why, once
+  // (the panel line and the 📱 chip keep saying it).
+  let lostSaid = '';
+  $effect(() => {
+    const lost = phonesOn && !app.pregame && remote.status === 'error' && remote.closedCode && session.remote?.code === remote.code ? `${remote.code}:${remote.closedCode}` : '';
+    untrack(() => {
+      if (lost && lost !== lostSaid) toast(`📱 ${remote.error}`, 6000);
+      lostSaid = lost;
+    });
+  });
 
   // Someone asks to join from their phone: the host hears it (a toast, and a soft chime when the stream is the other
   // window), not only a number on the 📱 chip.

@@ -350,6 +350,57 @@ describe('RoomLink', () => {
     expect(sockets.length).toBe(2);
   });
 
+  it('a hidden page’s late timers aren’t taken as a quiet room: only a ping left unanswered is', async () => {
+    sockets = [];
+    const t = fakeDeps();
+    // Hidden, the browser holds the pings back to about one a minute; the room answers each one at once.
+    const deps: LinkDeps = { ...t.deps, setTimeout: (fn, ms) => t.deps.setTimeout(fn, ms === PING_MS ? 60_000 : ms) };
+    const link = new RoomLink('https://buzz.test', {}, deps);
+    await link.create();
+    const ws = sockets[0];
+    const send = ws.send.bind(ws);
+    let answer = true;
+    ws.send = (d: string) => {
+      send(d);
+      const m = JSON.parse(d);
+      if (answer && m.t === 'ping') ws.say({ t: 'pong', at: m.at, serverNow: 1 });
+    };
+    ws.open();
+    ws.say(welcome);
+    t.advance(10 * 60_000);
+    expect(link.status).toBe('online');
+    expect(sockets.length).toBe(1);
+    expect(ws.sent.filter((m) => (m as { t: string }).t === 'ping').length).toBe(10);
+    // A socket that died meanwhile is still found out: its next ping goes unanswered.
+    answer = false;
+    t.advance(60_000);
+    expect(link.status).toBe('online');
+    t.advance(60_000);
+    expect(link.status).toBe('reconnecting');
+    expect(ws.closed).toBe(true);
+  });
+
+  it('retryNow() tries again at once while reconnecting (the page in sight again), and does nothing otherwise', async () => {
+    sockets = [];
+    const t = fakeDeps();
+    const link = new RoomLink('https://buzz.test', {}, t.deps);
+    await link.create();
+    sockets[0].open();
+    sockets[0].say(welcome);
+    link.retryNow();
+    expect(sockets.length).toBe(1);
+    sockets[0].drop();
+    expect(link.status).toBe('reconnecting');
+    link.retryNow();
+    expect(sockets.length).toBe(2);
+    // (The wait it cut short doesn't open another one later.)
+    t.advance(retryDelay(0));
+    expect(sockets.length).toBe(2);
+    sockets[1].open();
+    sockets[1].say(welcome);
+    expect(link.status).toBe('online');
+  });
+
   it('a room that turns the host away (4xxx) is an error, not a retry', async () => {
     sockets = [];
     const t = fakeDeps();
@@ -401,6 +452,24 @@ describe('RoomLink', () => {
     sockets[1].say({ ...welcome, code: 'GHJK' });
     expect(sockets[1].sent).toEqual([{ t: 'close' }]);
     expect(old.status).toBe('off');
+  });
+
+  it('end() gives up after 3 tries, or as many as it’s given (8: about a minute)', async () => {
+    sockets = [];
+    const t = fakeDeps();
+    const tries = (n?: number) => {
+      const from = sockets.length;
+      const old = new RoomLink('https://buzz.test', {}, t.deps);
+      old.end({ code: 'GHJK', hostToken: 'old' }, n);
+      for (let i = 0; i < 20 && old.status !== 'off'; i++) {
+        sockets.at(-1)!.drop();
+        t.advance(15_000);
+      }
+      return sockets.length - from;
+    };
+    expect(tries()).toBe(4);
+    expect(tries(8)).toBe(9);
+    expect(Array.from({ length: 8 }, (_, i) => retryDelay(i)).reduce((a, b) => a + b)).toBe(60_500);
   });
 
   it('close() tells the room and stops; nothing reconnects after', async () => {

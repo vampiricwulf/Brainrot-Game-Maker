@@ -22,7 +22,14 @@ interface Upload {
   state: 'waiting' | 'uploading' | 'done' | 'failed';
   why?: LeftOut;
   error?: string;
+  /** Tries that didn't reach the buzzer server (a network blip), each tried again a little later: RETRIES at most. */
+  tries?: number;
+  /** Waiting until then (Date.now()) after such a try: its timer lifts it. */
+  after?: number;
 }
+
+/** A file that didn't reach the buzzer server goes again this many times (5 s, 10 s, then 15 s later), then no more. */
+const RETRIES = 3;
 
 export const uploads = $state<{ jobs: Record<Id, Upload> }>({ jobs: {} });
 
@@ -135,7 +142,7 @@ export function retryFiles(game: Game, session: Session, cards: Slide[]): void {
 /** The next file waiting, up it goes; then the one after. */
 async function next(game: Game, session: Session): Promise<void> {
   if (busy) return;
-  const entry = Object.entries(uploads.jobs).find(([, j]) => j.state === 'waiting' && j.code === session.remote?.code);
+  const entry = Object.entries(uploads.jobs).find(([, j]) => j.state === 'waiting' && j.code === session.remote?.code && !(j.after && j.after > Date.now()));
   if (!entry) return;
   const [id, job] = entry;
   busy = true;
@@ -150,6 +157,19 @@ async function next(game: Game, session: Session): Promise<void> {
       room.files = { code: room.code, ids: { ...ids, [id]: r.id } };
       // Its card was taken back (or the tile closed) while it went up: the room lets go of it now, not 10 minutes on.
       if (!wantedNow.has(id)) forgetCardFiles([r.id]);
+    } else if (r.retry && !wantedNow.has(id)) {
+      // Its card was taken back (or the tile closed) while it went: no use trying again.
+      delete uploads.jobs[id];
+    } else if (r.retry && (job.tries ?? 0) < RETRIES) {
+      // (Not one the server turned down: off, too busy today, too big… That goes the same way again.)
+      const tries = (job.tries ?? 0) + 1;
+      const wait = 5000 * tries;
+      Object.assign(job, { state: 'waiting', tries, after: Date.now() + wait });
+      // (Its wait is over when this timer says so, not by the clock: a timer can run a moment early by Date.now().)
+      setTimeout(() => {
+        delete job.after;
+        void next(game, session);
+      }, wait);
     } else Object.assign(job, { state: 'failed', why: r.why, error: r.error });
   } finally {
     busy = false;
@@ -158,7 +178,7 @@ async function next(game: Game, session: Session): Promise<void> {
 }
 
 /** One file of the game into the room: a picture shrunk first, anything else as it is (if phones take its type and size). */
-async function putFile(game: Game, id: Id): Promise<{ id: string } | { why: LeftOut; error: string }> {
+async function putFile(game: Game, id: Id): Promise<{ id: string } | { why: LeftOut; error: string; retry?: boolean }> {
   const ref = game.media.find((m) => m.id === id);
   const blob = await storedBlob(id);
   if (!ref || !blob) return { why: 'lost', error: 'That file isn’t in this game any more' };
@@ -174,7 +194,7 @@ async function putFile(game: Game, id: Id): Promise<{ id: string } | { why: Left
   if (body.size > FILE_MAX_BYTES) return { why: 'big', error: 'Too big for phones' };
   const r = await uploadCardFile(body, type);
   if ('id' in r) return r;
-  return { why: r.refused === 'big' ? 'big' : r.refused === 'kind' ? 'kind' : r.refused === 'full' ? 'full' : 'failed', error: r.error };
+  return { why: r.refused === 'big' ? 'big' : r.refused === 'kind' ? 'kind' : r.refused === 'full' ? 'full' : 'failed', error: r.error, retry: r.refused === 'error' };
 }
 
 /**

@@ -11,11 +11,14 @@
   import { WHEEL_TEMPLATES } from '../../lib/wheeltemplates';
   import { parseDice, parseQuickWheel, QUICK_DICE } from '../../lib/tools';
   import { audience } from '../../lib/sync.svelte';
-  import { listedCards } from '../../lib/sentcards';
+  import { cardsLeftOff } from '../../lib/buzz';
+  import { buzzerOn, remote, roomHasCards, roomHasFiles } from '../../lib/remote.svelte';
+  import { listedCards, sentCardId } from '../../lib/sentcards';
   import { cardWindow, closeCardWindow, openCardWindow } from '../../lib/cardwindow.svelte';
   import CardSend from './CardSend.svelte';
   import CardsOut from './CardsOut.svelte';
   import DealDialog from './DealDialog.svelte';
+  import { sentLine } from './cardrow';
 
   let {
     game,
@@ -45,7 +48,18 @@
    * The 🤫 cards out now (sent with Send a card… or from a tile's panel): the tools row says how many, never what. A 🎭
    * deal's are under 🎭 Deal….
    */
-  const out = $derived(listedCards(game, session).length);
+  const listed = $derived(listedCards(game, session));
+  const out = $derived(listed.length);
+  /**
+   * A card out isn't all on the phones (a picture that didn't go up, a phone late for it…): its row in the list is
+   * orange and says what, and so is this button, as nothing else in sight would say so once the send dialog is closed.
+   */
+  const outWarn = $derived.by(() => {
+    if (!out) return false;
+    const cardsOn = buzzerOn(game.settings) && !!remote.code && remote.status !== 'off' && remote.status !== 'error' && roomHasCards();
+    const off = new Set(cardsOn ? cardsLeftOff(game, session) : []);
+    return listed.some((c) => sentLine(game, session, c, cardsOn && roomHasFiles(), off.has(sentCardId(c))).warn);
+  });
   let custom = $state('');
   let quickList = $state('');
   // Players left out of the roll-off; everyone else rolls (so players added or removed mid-game just work).
@@ -290,7 +304,15 @@
   </div>
   {#if out || menu === 'out'}
     <div class="pop">
-      <button class="cardsout" onclick={(e) => toggle('out', e)} aria-haspopup="dialog" aria-expanded={menu === 'out'} data-cards-out-count={out} title="The cards out now: send one again, take it back">🤫 {out} <span class="word">card{out === 1 ? '' : 's'} out</span></button>
+      <button
+        class="cardsout"
+        class:warn={outWarn}
+        onclick={(e) => toggle('out', e)}
+        aria-haspopup="dialog"
+        aria-expanded={menu === 'out'}
+        data-cards-out-count={out}
+        title={outWarn ? '⚠ A card out isn’t all on the phones: open the list to see which, and what to do' : 'The cards out now: send one again, take it back'}>🤫 {out} <span class="word">card{out === 1 ? '' : 's'} out</span></button
+      >
       {#if menu === 'out'}
         <div class="menu wide" role="dialog" aria-label="Cards out" use:anchored={at}>
           <CardsOut {game} {session} {dual} ontakeback={oncardtakeback} />
@@ -449,6 +471,10 @@
   }
   .on {
     outline: 1px solid var(--accent);
+  }
+  .cardsout.warn {
+    border-color: var(--warn);
+    color: var(--warn);
   }
   .backdrop {
     position: fixed;

@@ -59,5 +59,6 @@ export function sentLine(game: Game, session: Session, c: SentCard, filesOn: boo
     const whose = late.map((l) => (l.by ? `${l.by}’s phone (${name(l.seat)})` : `${name(l.seat)}’s new phone`));
     out.push(`${nameList(whose)} ${late.length > 1 ? 'haven’t' : 'hasn’t'} got it: ↻ Send again`);
   }
-  return { text: out.join(' · '), warn: late.length > 0 };
+  // (A file of it that won't reach the phones turns the row orange too: the line under it says what.)
+  return { text: out.join(' · '), warn: late.length > 0 || !!f?.failed };
 }

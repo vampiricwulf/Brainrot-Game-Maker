@@ -46,6 +46,11 @@ in plain words for the people who make and host games. Anything committed but no
 - Single window: during a 🤝 partner clue the stage viewers see keeps one size from PARTNER UP! to the answer (it shrank at each step); the host panel's rows scroll instead, with ✔ Got it / ✘ Missed, the players' chips and a wheel's or dice's bar kept in sight. (257e637, 6523f28)
 - 📋 Ready-made wheel… and 📋 Ready-made deal… show each name in full, with its description as the tooltip, and the editor's 🎡 Wheels, Dice & Deals tab is no longer cut to "Wheels, Dice & De…". (257e637)
 - The 🎲 Dice pop-up's Roll button is as tall as the box beside it, the ▶ Play screen's 📺 On stream options use the same text size as ⚖ Game rules, and "colour" reads "color" everywhere, as in the rest of the app. (257e637, 6523f28)
+- The buzzer room no longer drops for about a minute every few minutes while the host's window is hidden (another tab in front, minimized, or covered by Discord or OBS); coming back to it, or the network coming back, reconnects at once. (25d5a9f)
+- When the buzzer room ends mid-game (or another window takes it), the host panel and the 📱 chip say so in plain words, a toast tells you once, and the phones list no longer offers the dead room's code or 📋 Copy link. (25d5a9f)
+- Closing the buzzer room (✕ Close the room, Exit › Discard & leave, leaving the results) makes sure the room got it, and while the room is out of reach for a moment it closes once it answers, so phones are told the game is over instead of saying "Hang on" for hours; ✕ Close the room says the phones are told if it answers within a minute. (25d5a9f, 0b75a1c)
+- A 🤫 card's picture that didn't reach the buzzer server shows in the cards out (its row orange, with ↻ Send again or 📋 Copy picture), and the 🤫 N cards out button turns orange when a card isn't fully on the phones; an upload cut off by a network blip is tried again by itself, and never gets stuck on "uploading…". (25d5a9f, 0b75a1c)
+- README says correctly when the buzzer room stays open (Keep & leave, ▶ Next game…) and when it closes. (25d5a9f)
 
 ## 2026-10-15
 
