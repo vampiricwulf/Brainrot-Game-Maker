@@ -148,9 +148,13 @@ try {
     await page.waitForTimeout(Math.max(0, startedAt + 4100 - Date.now()));
     const [aud] = await Promise.all([page.waitForEvent('popup'), page.getByRole('button', { name: '📺 Audience', exact: true }).click()]);
     watch(aud, 'audience');
+    // Nothing clicked in the audience window yet. Playwright runs its scripts in a page as a click (an aud.evaluate, and
+    // every look a locator takes too), and a window clicked before its app starts counts itself clicked
+    // (navigator.userActivation): so nothing looks into it until its page has loaded (its app has started by then). (On a
+    // busy machine the first look for its board landed before its app started, and the window never asked for a click.)
+    await aud.waitForLoadState('domcontentloaded');
     await aud.locator('.board').waitFor();
-    // Nothing clicked in the audience window yet (and no aud.evaluate, which Playwright runs as a click). Its
-    // "click once" note only shows while the mouse is over it (so it stays off the stream).
+    // Its "click once" note only shows while the mouse is over it (so it stays off the stream).
     await aud.mouse.move(200, 200);
     const clickOnce = page.getByText('Click the audience window once so it can play sound');
     // (The host hears it from the audience window: a busy machine takes a moment.)
