@@ -153,6 +153,19 @@ describe('🔀 Randomize (randomizePartnerTiles)', () => {
     }
   });
 
+  it('in a round of Help a friend or Split clue, a 45 s countdown the host gave a tile stays with it (placing it gave none)', () => {
+    for (const game of ['help', 'split'] as const) {
+      const { r } = board();
+      r.partnerGame = game;
+      const cl = r.categories[0].clues[0];
+      cl.timerSeconds = 45;
+      placePartner(r, cl);
+      expect(cl.partner?.game).toBe(game);
+      randomizePartnerTiles(r, 0);
+      expect([cl.type, cl.cards, cl.partner, cl.timerSeconds]).toEqual(['standard', undefined, undefined, 45]);
+    }
+  });
+
   it('Start game’s card is a copy of the answer whatever the round says (cardFrom): an empty one couldn’t be filled in', () => {
     const { r } = board();
     r.partnerCardFrom = 'empty';

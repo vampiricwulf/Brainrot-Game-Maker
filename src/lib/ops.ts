@@ -257,19 +257,20 @@ function canon(x: unknown): unknown {
 /**
  * A partner tile 🔀 Randomize moves off goes back to a standard tile without what placing it gave it (placePartner gives
  * it again if it's picked again): its card when that's only a copy of its answer or empty, then its rules when they're
- * the game's own, and with them its 45 s countdown. Else the tile would keep a countdown no other standard tile has, a
- * card offered in play, and a copy of an answer the host may change before it's picked again. A card the host wrote,
- * and rules they changed, stay for when it's a partner clue again.
+ * the game's own, and with them its 45 s countdown when placing it could have given it one (its game or the round's has
+ * a countdown). Else the tile would keep a countdown no other standard tile has, a card offered in play, and a copy of
+ * an answer the host may change before it's picked again. A card the host wrote, rules they changed, and a 45 s the host
+ * gave a tile in a round of Help a friend or Split clue, stay for when it's a partner clue again.
  */
-function unplacePartner(clue: Clue): void {
+function unplacePartner(round: BoardRound, clue: Clue): void {
   clue.type = 'standard';
   if (!cardSlides(clue).every((c) => !slideHasContent(c) || sameAsAnswer(clue, c))) return;
   delete clue.cards;
   const p = clue.partner;
   if (!p || JSON.stringify(canon(p)) !== JSON.stringify(canon(gameRules(p.game)))) return;
   delete clue.partner;
-  // (Not only for a game with a countdown: one moved to Help a friend or Split clue keeps the 45 s it was placed with.)
-  if (clue.timerSeconds === 45) delete clue.timerSeconds;
+  // (Or the round's: a tile placed as Describe it, then moved to Help a friend or Split clue, has the 45 s it got then.)
+  if (clue.timerSeconds === 45 && (TIMED_GAMES.has(p.game) || TIMED_GAMES.has(round.partnerGame ?? 'describe'))) delete clue.timerSeconds;
 }
 
 /**
@@ -291,7 +292,7 @@ export function randomizePartnerTiles(
   round.categories.forEach((c, ci) =>
     c.clues.forEach((cl) => {
       if (cl.type !== 'partner') return;
-      if (!keepExisting) unplacePartner(cl);
+      if (!keepExisting) unplacePartner(round, cl);
       else if (!cl.empty) {
         have++;
         perCat[ci]++;
