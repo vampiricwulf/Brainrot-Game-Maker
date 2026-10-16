@@ -310,8 +310,8 @@ A row shown only for a partner clue, in `.opts`, where the wheel and dice picker
 Game [🗣 Describe it ▾]     Who describes: (•) the partner ( ) the picker     ☐ The picker can be on the wheel
 Points [Describe it's ▾]            Describer (the partner)    Guesser (the picker)
    If it's got:                      [100]%                     [50]%
-   If it's missed:                   [0]%                       [−50]%
-   ☑ The partner never loses points
+   If it's missed:                   [0]% (greyed)              [−50]%
+   ☑ The partner never loses points, whichever part they play
 On this $400 tile: got → describer +$400, guesser +$200 · missed → guesser −$200
 ```
 
@@ -328,7 +328,13 @@ On this $400 tile: got → describer +$400, guesser +$200 · missed → guesser 
 - **☑ The partner never loses points:** on by default. With it on, a miss gives the partner at most 0, whichever part
   they play. With the game's own points it only matters when the partner is the guesser ("Who describes: the picker",
   or ⇄ Swap while playing); with Custom points it also stops a negative giver's share from costing the partner (§9.3).
-  Unticking it is the only way to make a miss cost the partner.
+  Unticking it is the only way to make a miss cost the partner. While it's ticked, the table shows it: the partner's
+  "If it's missed" box (in the column that says "(the partner)") is greyed and shows what they get (a share below 0
+  shows 0), with "The partner never loses points (ticked): untick it to let a miss cost them" as its tooltip; the share
+  typed in it stays, and comes back when it's unticked. When that box is the guesser's ("Who describes: the picker")
+  and its share is below 0, the tooltip adds ". Solo (the picker alone), a miss still costs the picker 50%" (the share
+  as typed), because Solo takes the guesser's missed share and has no partner to keep at 0 (§7.6). Its own tooltip
+  mentions "Who describes" and ⇄ Swap.
 - **The summary line** works the points out for this tile, so the host sees them in money.
 - **Part words** (under ⚙ More): two short boxes, left blank for the game's words.
 - **⏱ Countdown** stays where it is. Choosing Describe it, Draw it or Act it out fills in 45 s if it's empty.

@@ -20,6 +20,7 @@ in plain words for the people who make and host games. Anything committed but no
 
 ### Changed
 - The editor's 🎡 Wheels & Dice tab is now 🎡 Wheels, Dice & Deals, and 🔍 Find finds deals. (2fd29e9)
+- Partner clue settings: while "The partner never loses points, whichever part they play" is ticked, the partner's "If it's missed" box is greyed and shows what they really get (0, not a loss), so the checkbox no longer looks like a second way to set the partner's miss share; untick it and the share you typed is back to edit. Its tooltip says it also covers "Who describes: the picker" and ⇄ Swap during play, and, when the picker describes, what a Solo miss still costs. (87e42d9, f7007f5)
 
 ### Fixed
 - The Windows desktop app builds again: the update that brought 🤫 Send a card… (b7cebf9) had no desktop app, because two of its file names differed only in capital letters, which Windows treats as the same file. A test now catches such names.
