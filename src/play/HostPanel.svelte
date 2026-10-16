@@ -10,7 +10,7 @@
   import { hostSlots, type HostAsk, type NextAction } from './host/slots.svelte';
   import { phoneAwaySince } from './host/phoneaway.svelte';
   import { categoryLabel, finalName, formatPoints, isBoard, typedPoints, wholePoints, type Game, type Session } from '../lib/model';
-  import { answerShowing, awardOpen, clueMarks, clueName, clueScored, currentClueInfo, currentFinal, findClueRef, nameList, ownPlayers, partnerSteal, roundComplete, score, setScore, slidePosition, tiedForFirst, toolOnlyClue, usedTiles } from '../lib/session';
+  import { answerShowing, awardOpen, clueMarks, clueName, clueScored, currentClueInfo, currentFinal, findClueRef, nameList, ownPlayers, partnerSteal, roundComplete, score, setScore, slidePosition, stealersLeft, tiedForFirst, toolOnlyClue, usedTiles } from '../lib/session';
   import MediaControls from './MediaControls.svelte';
   import SoundWarnings from './host/SoundWarnings.svelte';
   import TimerControls from './host/TimerControls.svelte';
@@ -18,7 +18,7 @@
   import PartnerControls from './host/PartnerControls.svelte';
   import TileCards from './host/TileCards.svelte';
   import CardOffers from './host/CardOffers.svelte';
-  import { cardSlides, partnerRules, partnerShares, partnerVerdict, sentTo, toName } from '../lib/partner';
+  import { cardSlides, partnerPickStep, partnerRules, partnerShares, partnerVerdict, sentTo, toName } from '../lib/partner';
   import FinalControls from './host/FinalControls.svelte';
   import EndControls from './host/EndControls.svelte';
   import ToolsControls from './host/ToolsControls.svelte';
@@ -31,7 +31,7 @@
   import type { LogTab } from './ScoreLog.svelte';
   import { app, hint, toast } from '../lib/app.svelte';
   import { dropMenu } from '../lib/menustate.svelte';
-  import { buzzerOn } from '../lib/remote.svelte';
+  import { buzzerOn, remote, roomHasCards, roomMembers } from '../lib/remote.svelte';
   import { teamsOn } from '../lib/buzz';
   import { scoresWindow } from '../lib/sync.svelte';
   import { onMount, tick, untrack, type Snippet } from 'svelte';
@@ -265,6 +265,22 @@
   const roomForBuzzers = $derived(!dual && buzzerOn(game.settings));
   /** Phone buzzer teams: each player is a team (the 👥 button says so, as the list it opens does). */
   const teams = $derived(buzzerOn(game.settings) && teamsOn(game.settings));
+  /**
+   * Teams, a partner clue: the people on its picker's team whose phones get the cards (more than one: that team playing
+   * it spins for who describes first, as the main button says). A room that takes cards, as PartnerControls has it.
+   */
+  const describers = $derived(
+    partner?.pickerId && teams && !!remote.code && remote.status !== 'off' && remote.status !== 'error' && roomHasCards() ? roomMembers(partner.pickerId).length : 0,
+  );
+  /** PARTNER UP!'s status line: what it waits on, in the main button's order (partnerPickStep), so the two agree. */
+  const pickLine = $derived.by(() => {
+    if (partner?.stage !== 'pick') return '';
+    const step = partnerPickStep(session, partner, describers);
+    if (step === 'describer') return 'Partner clue: spin for the describer';
+    if (step === 'show') return 'Partner clue: show the question when you’re ready';
+    if (step === 'picker') return `Partner clue: ${teams ? 'which team' : 'who'} picked it? (1–${Math.min(9, session.players.length) || 9})`;
+    return step === 'nobody' ? 'Partner clue: nobody to partner with (Solo, or Esc)' : 'Partner clue: spin for a partner';
+  });
   const buzz = $derived(app.live.buzz);
   const lockedNames = $derived(
     (buzz?.lockedOut ?? [])
@@ -698,14 +714,8 @@
       {:else if ddWager}
         <span class="muted">Daily Double: who found it, and their wager</span>
       {:else if partner?.stage === 'pick'}
-        <span class="muted"
-          >{partner.partnerId
-            ? 'Partner clue: show the question when you’re ready'
-            : !partner.pickerId
-              ? `Partner clue: ${teams ? 'which team' : 'who'} picked it? (1–${Math.min(9, session.players.length) || 9})`
-              : 'Partner clue: spin for a partner'}</span
-        >
-      {:else if steal && !steal.by && session.players.some((p) => !steal.out.includes(p.id) && marks[p.id]?.right !== false)}
+        <span class="muted">{pickLine}</span>
+      {:else if steal && !steal.by && stealersLeft(session.players, steal, marks).length}
         <span class="muted">Answer hidden · 🔔 a steal: the others can answer</span>
       {:else if steal && !steal.by}
         <span class="muted">Answer hidden · nobody stole it: reveal the answer</span>

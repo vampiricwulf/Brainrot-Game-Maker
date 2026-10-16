@@ -334,6 +334,15 @@ export function partnerSteal(session: Pick<Session, 'phase' | 'partner'> & Parti
   return { out, ...(by ? { by } : {}) };
 }
 
+/**
+ * Who can still steal the open partner clue (`steal`, from partnerSteal): everyone but the two locked out, and not one
+ * whose last mark on it (`marks`, as clueMarks gives them since the tile opened) is a miss. None left: nobody stole it,
+ * and only the answer goes on. The panel's steal row, its status line and Enter's hint all go by it.
+ */
+export function stealersLeft(players: { id: Id }[], steal: { out: Id[] }, marks: Record<Id, { right: boolean }>): Id[] {
+  return players.filter((p) => !steal.out.includes(p.id) && marks[p.id]?.right !== false).map((p) => p.id);
+}
+
 // ---------- A clue's question slides ----------
 // A clue can have several question slides (a lead-in, then more…): the host steps through them, then reveals the answer.
 // The audience window shows the one the session is on. Buzzers aren't touched: the host opens them when they like.

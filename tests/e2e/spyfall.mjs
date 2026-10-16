@@ -9,7 +9,7 @@
 // note that she missed one, and the panel counts her phone (never names it: in a deal that leaves some without a part, a
 // late phone's name would say who got one); ↻ Send again reaches her. 🎭 Who was who goes on the stage only when
 // pressed: Ctrl+Z, Ctrl+Y, and a host reload keep it as it was. "Deal a new one?" asks while cards are out. The next
-// round takes the cards back, and Who was who off the screen. The host page never says
+// round takes the cards back, and Who was who off the screen (Esc too). The host page never says
 // who got which part, nor shows a card's words or the location, until Who was who. The audience window, opened at the
 // end with Who was who up, shows it, and puts who got which in the host's column; closing it takes that away again.
 // Needs `npm ci` in buzzer/.
@@ -440,6 +440,12 @@ try {
   assert((await flat(reveal)).includes(`${spy} Spy`), 'Who was who still shows who was who');
   await host.keyboard.press('Escape');
   await dialog.waitFor({ state: 'detached' });
+  // (Esc on the board takes it off too, as a step: Ctrl+Z puts it back.)
+  await host.keyboard.press('Escape');
+  assert(await until(async () => !(await reveal.count())), 'Esc on the board takes Who was who off the screen');
+  await host.keyboard.press('Control+z');
+  await reveal.waitFor();
+  assert((await flat(reveal)).includes(`${spy} Spy`), 'Ctrl+Z puts it back');
 
   // ---------- Two windows: the audience window, opened with Who was who up, shows it; the host's column says who got which ----------
   console.log('Two windows:');

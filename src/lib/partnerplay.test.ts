@@ -12,10 +12,13 @@ import {
   giverLine,
   pairOnly,
   partnerCandidates,
+  partnerPickStep,
   partnerRoles,
   partsLine,
   recipientsText,
   resetRecipients,
+  sameTeam,
+  setDescriber,
   setPartner,
   setPartnerGame,
   setPartnerPicker,
@@ -103,6 +106,29 @@ describe('who plays a partner clue', () => {
     openClue(session, REF, g);
     expect(session.partner!.partnerId).toBeUndefined();
     expect(partnerCandidates(session, session.partner!)).toEqual([]);
+  });
+
+  it('what PARTNER UP! waits on, in the order its main button and status line both say it', () => {
+    const { g, session } = setup();
+    session.currentPickerId = undefined;
+    openClue(session, REF, g);
+    const s = session.partner!;
+    expect(partnerPickStep(session, s, 0)).toBe('picker');
+    setPartnerPicker(session, s, 'a');
+    expect(partnerPickStep(session, s, 0)).toBe('spin');
+    setPartner(session, s, 'b', 'wheel');
+    expect(partnerPickStep(session, s, 0)).toBe('show');
+    // Teams, the picker's own team playing it: a spin for who on it describes first, with more than one phone on it.
+    sameTeam(s, true);
+    expect(partnerPickStep(session, s, 2)).toBe('describer');
+    expect(partnerPickStep(session, s, 1)).toBe('show');
+    setDescriber(s, { id: 'm1', name: 'Mo' });
+    expect(partnerPickStep(session, s, 2)).toBe('show');
+    // Nobody else to play it with: no spin (Solo, or Esc).
+    session.players = session.players.slice(0, 1);
+    session.currentPickerId = 'a';
+    openClue(session, REF, g);
+    expect(partnerPickStep(session, session.partner!, 0)).toBe('nobody');
   });
 
   it('a new picker who was the partner leaves no partner', () => {

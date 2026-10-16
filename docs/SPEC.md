@@ -451,7 +451,8 @@ The mode isn't saved with the game: it's dual while the audience window is open.
   and ✖ Take back work on the whole deal. Only the two-window host column says who got which: one window lists everyone
   dealt in alike, a part or not (with the phones getting the cards, only those with no phone here, 📵, to copy theirs),
   and counts the phones that came late. **🎭 Who was who** puts the names and parts on stream when the host presses it,
-  as an undoable step; a click on it, Esc, opening a tile or another round takes it off.
+  as an undoable step; a click on it, Esc, opening a tile or the tiebreaker, going to another round, or the Final going
+  on takes it off.
 
 ### 6.7 Media playback controls
 - Play/pause, seek bar, current time/duration, volume, mute, restart, loop toggle, and full-screen element.

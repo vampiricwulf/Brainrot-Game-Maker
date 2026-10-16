@@ -15,12 +15,12 @@
   import { overlayDoneAt, toolOverlay } from '../../lib/live';
   import { cardSlides, formatPoints, PARTNER_GAMES, type CardTo, type Clue, type ClueCard, type Game, type Id, type PartnerState, type Session } from '../../lib/model';
   import {
-    cardCopyText, cardId, cardRecipients, cardSends, cardSummary, countItems, describer, goesToLabel, lowerWord, markReady, marksText, pairOnly, partnerCandidates, partnerRoles,
-    partnerRules, partnerShares, partnerVerdict, partWho, partWordOf, partWords, recipientsText, resetRecipients, sameTeam, sendAgain, sendCards, sendChanges, sendState, sentSeats,
+    cardCopyText, cardId, cardRecipients, cardSends, cardSummary, countItems, describer, goesToLabel, lowerWord, markReady, marksText, pairOnly, partnerCandidates, partnerPickStep,
+    partnerRoles, partnerRules, partnerShares, partnerVerdict, partWho, partWordOf, partWords, recipientsText, resetRecipients, sameTeam, sendAgain, sendCards, sendChanges, sendState, sentSeats,
     sentTo, setDescriber, setPartner, setPartnerPicker, setRecipients, sharesText, swapParts, toKey, toName,
   } from '../../lib/partner';
   import { cardItems, cardLinks, cardWords, phoneCard } from '../../lib/phonecard';
-  import { clueName, nameList, partnerSteal } from '../../lib/session';
+  import { clueName, nameList, partnerSteal, stealersLeft } from '../../lib/session';
   import { buzzerOn, remote, roomHasCards, roomHasFiles, roomMembers } from '../../lib/remote.svelte';
   import { cardFileCounts, filesCounted, phoneCan, retryFiles, unputGone } from '../../lib/cardfiles.svelte';
   import { ask } from '../../lib/ask.svelte';
@@ -213,7 +213,7 @@
   const steal = $derived(partnerSteal(session));
   const stealers = $derived(steal ? session.players.filter((p) => !steal.out.includes(p.id)) : []);
   /** Who can still steal it: the others, but not one who missed the steal (none left: only 👁 Reveal answer goes on). */
-  const stealLeft = $derived(stealers.filter((p) => marks[p.id]?.right !== false));
+  const stealLeft = $derived(steal ? stealersLeft(session.players, steal, marks) : []);
   /** " · Bob already scored": one of the two scored by hand first (the buttons leave them as they are). */
   const already = $derived(
     s.partnerId && !verdict.judged
@@ -448,16 +448,19 @@
     const st = session.partner;
     if (!st) return null;
     if (st.stage === 'pick') {
-      // (Teams, the picker's own team playing it: who on it describes comes first, when there's anyone to describe to.)
-      if (sameTeamOn && !member && people.length > 1)
+      // (Teams, the picker's own team playing it: who on it describes comes first, when there's anyone to describe to.
+      // The status line goes by the same step.)
+      const step = partnerPickStep(session, st, people.length);
+      if (step === 'describer')
         return { label: '🎡 Spin for the describer', key: 'W', title: `W, Enter or N: the wheel spins over the people on ${name(st.pickerId)} with a phone here`, disabled: spinning, run: onmemberspin };
-      if (st.partnerId) return { label: '▶ Show question', key: '⏎', title: 'Enter or N: the question goes on screen (nothing is sent to anyone)', run: onshow };
+      if (step === 'show') return { label: '▶ Show question', key: '⏎', title: 'Enter or N: the question goes on screen (nothing is sent to anyone)', run: onshow };
       const who = st.pickerId ? (session.players.find((p) => p.id === st.pickerId)?.name ?? '') : '';
-      const why = !st.pickerId
-        ? `${noun === 'team' ? 'Which team' : 'Who'} picked it? Press their number first (1–${Math.min(9, session.players.length) || 9})`
-        : !partnerCandidates(session, st).length
-          ? `Nobody to partner with: tick “${who} can be on the wheel” to play it Solo, or press Esc`
-          : '';
+      const why =
+        step === 'picker'
+          ? `${noun === 'team' ? 'Which team' : 'Who'} picked it? Press their number first (1–${Math.min(9, session.players.length) || 9})`
+          : step === 'nobody'
+            ? `Nobody to partner with: tick “${who} can be on the wheel” to play it Solo, or press Esc`
+            : '';
       return { label: '🎡 Spin for a partner', key: 'W', title: why || 'W, Enter or N: the wheel spins over the other players', disabled: !!why, run: onspin };
     }
     // (Judged meanwhile, by a click: the clue's own next, the answer. The answer shown meanwhile (R): no countdown over

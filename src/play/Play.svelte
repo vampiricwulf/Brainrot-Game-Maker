@@ -11,7 +11,7 @@
     finalAdvance, finalBack, finalJudge, finalShow, finalTag, finalUnjudged, findClueRef, goToRound, introNext, nameList, newSession, openClue, playerName,
     randomizeDailyDoubles, redo, removePlayer, restorePlayer, answerShowing, rosterChange, score, skipIntro, startIntro, toggleUsed, undo,
     blankSlide, toolOnlyClue, stepSlide, finalWagerProblems, finalWagersOk, finalStepFix, startTiebreaker, stepOf, logZero, tiedForFirst, tiedLeaders, winnerKnown,
-    finalSetWager, finalTakeNewcomers, forViewers, wagerFromPhone, coWinnersHold, ownPlayers, clueMarks, judgePartner, partnerSteal,
+    finalSetWager, finalTakeNewcomers, forViewers, wagerFromPhone, coWinnersHold, ownPlayers, clueMarks, judgePartner, partnerSteal, stealersLeft,
   } from '../lib/session';
   import {
     cardId, cardRecipients, cardSends, cardSlides, lowerWord, marksText, sentSeats, partnerCandidates, partnerRoles, partnerRules, partnerShares, partnerVerdict, partWords, recipientsText, sendCards,
@@ -1539,9 +1539,16 @@
   }
   if (untrack(() => !!onnextgame) && !app.playerOnly) setContext(NEXT_GAME, nextGame);
 
-  function pick(ref: ClueRef): void {
-    // (🎭 Who was who is drawn over everything: it would hide the question while the buzzers open. Ctrl+Z puts it back.)
+  /**
+   * 🎭 Who was who off the screen, as a step (Ctrl+Z puts it back): it's drawn over everything, in any phase, so a tile,
+   * the tiebreaker, another round or the Final going on would play under it (the buzzers open on a question nobody sees).
+   */
+  function whoWasWhoOff(): void {
     if (session.deal?.shown && whoWasWhoStep(session, false)) announce('Who was who is off the screen');
+  }
+
+  function pick(ref: ClueRef): void {
+    whoWasWhoOff();
     openClue(session, ref, game);
     selected = [];
     const c = currentClueInfo(session, game);
@@ -1701,7 +1708,7 @@
         break;
       case 'whowaswho':
         // (🎭 Who was who over the stage: a click takes it off, as 🙈 Hide does in 🎭 Deal…. Ctrl+Z puts it back.)
-        if (whoWasWhoStep(session, false)) announce('Who was who is off the screen');
+        whoWasWhoOff();
         break;
     }
   }
@@ -2108,8 +2115,7 @@
       const steal = partnerSteal(session);
       if (steal && !steal.by && !session.revealed) {
         // (Everyone who could steal it missed: nothing more to judge.)
-        const left = session.players.some((p) => !steal.out.includes(p.id) && partnerMarks[p.id]?.right !== false);
-        hint(left ? `🔔 A steal: ${phonesOn ? 'whoever buzzes in first answers, or press' : 'press'} the number of who steals it, then Enter (right) or Shift+Enter (wrong)` : 'Everyone missed the steal: R reveals the answer');
+        hint(stealersLeft(session.players, steal, partnerMarks).length ? `🔔 A steal: ${phonesOn ? 'whoever buzzes in first answers, or press' : 'press'} the number of who steals it, then Enter (right) or Shift+Enter (wrong)` : 'Everyone missed the steal: R reveals the answer');
       } else hint(`${judgedText()} (Ctrl+Z takes it back)`);
       return true;
     }
@@ -2221,8 +2227,7 @@
   }
 
   function nextRound(delta: number): void {
-    // (🎭 Who was who would stay over the next round's screen.)
-    if (session.deal?.shown && whoWasWhoStep(session, false)) announce('Who was who is off the screen');
+    whoWasWhoOff();
     goToRound(session, game, session.currentRound + delta);
     app.live.timer = null;
     selected = [];
@@ -2273,6 +2278,7 @@
 
   /** Final round started by mistake (or a tile was skipped): back to the round before it, wagers kept. */
   function backFromFinal(): void {
+    whoWasWhoOff();
     goToRound(session, game, Math.max(0, session.currentRound - 1));
     app.live.timer = null;
     app.live.sound = null;
@@ -2281,6 +2287,7 @@
 
   /** From the end screen: back to the final reveals to fix a judgment, or to the board if there was no Final. */
   function backFromEnd(): void {
+    whoWasWhoOff();
     app.live.sound = null;
     app.live.overlay = null;
     backToLastRound(session, game);
@@ -2291,6 +2298,7 @@
    * host can still type some).
    */
   function tiebreaker(): void {
+    whoWasWhoOff();
     startTiebreaker(session);
     selected = [];
     amount = 0;
@@ -2349,6 +2357,8 @@
   });
 
   function finalStep(): void {
+    // (The Final went on, to its question, its answer, the reveals or past it: not under Who was who.)
+    whoWasWhoOff();
     app.live.timer = null;
     if (session.phase === 'final' && session.finalStep === 'question') {
       startTimer(app.live, currentFinal(session, game)?.timerSeconds || game.settings.finalTimerSeconds || 30);
@@ -3597,9 +3607,8 @@
       case 'escape':
         if (showLog) showLog = false;
         else if (app.live.overlay) closeOverlay();
-        else if (session.deal?.shown) {
-          if (whoWasWhoStep(session, false)) announce('Who was who is off the screen');
-        } else if (rpgObject) rpgObject = null;
+        else if (session.deal?.shown) whoWasWhoOff();
+        else if (rpgObject) rpgObject = null;
         else if (rpgSelObjects.length) rpgSelObjects = [];
         else if (bgSpace) bgSpace = null;
         // Shift+Esc cancels: back to the board without using up the tile.
