@@ -10,7 +10,7 @@
  *   motion, video doesn't start by itself and a GIF shows still with "▶ Play".
  * - Cards live in memory only. A card that goes is taken down: its players stopped, its frames removed.
  * - A card is drawn again only when its words changed (the lines over its cover change in place), so a playing video
- *   or an open player isn't reset. An open card sent again under a new id (↻ Send again) stays open.
+ *   or an open player isn't reset. An open card sent again under a new id (↻ Send again) stays open, as it was.
  */
 import { cardLink, filesUrl, isFileId, type CardMedia, type PhoneCard } from '../../src/lib/buzzproto';
 import { imageFallback } from '../../src/lib/links';
@@ -58,6 +58,8 @@ interface Slot {
 }
 
 interface Drawn {
+  /** The id it's drawn under now (↻ Send again moves an open card to its new id). */
+  id: string;
   /** What its cover and words were built from (cardBuild), and all it shows (cardSame). */
   key: string;
   same: string;
@@ -126,12 +128,13 @@ function words(e: HTMLElement): HTMLElement {
 export function drawCards(box: HTMLElement, list: readonly PhoneCard[]): string[] {
   const ids = new Set(list.map((c) => c.id));
   // An open card that goes as the same card comes under a new id (↻ Send again, for a phone that joined late) stays
-  // open here, without buzzing again; the room hears it was seen. (Whether the keys were in it: they stay.)
-  const wentOpen = new Map<string, boolean>();
+  // here as it is, open, its players carrying on and the keys still in it, without buzzing again; the room hears it
+  // was seen. Kept aside until then (and taken down after, if it doesn't come back).
+  const going = new Map<string, Drawn>();
   for (const [id, d] of drawn)
     if (!ids.has(id)) {
-      if (opened.has(id)) wentOpen.set(d.same, d.el.contains(document.activeElement));
-      dropCard(id, d);
+      if (opened.has(id) && !going.has(d.same)) going.set(d.same, d);
+      else dropCard(id, d);
     }
   const fresh: string[] = [];
   const order: HTMLElement[] = [];
@@ -139,7 +142,7 @@ export function drawCards(box: HTMLElement, list: readonly PhoneCard[]): string[
     let d = drawn.get(c.id);
     const key = cardBuild(c);
     const same = cardSame(c);
-    let had = !!d && d.el.contains(document.activeElement);
+    const had = !!d && d.el.contains(document.activeElement);
     // (Its words changed under the same id: drawn again, staying open if it was, the keys still in it.)
     if (d && d.key !== key) {
       takeDown(d);
@@ -147,16 +150,23 @@ export function drawCards(box: HTMLElement, list: readonly PhoneCard[]): string[
       d = undefined;
     }
     if (!d) {
-      // A file that didn't load for an earlier card is tried again for this one (↻ Send again: a new id, the same file).
-      for (const m of c.media ?? []) if ('file' in m && files.get(m.file)?.state === 'failed') files.delete(m.file);
-      d = build(c, key, same);
-      drawn.set(c.id, d);
-      const back = wentOpen.get(same);
-      if (back !== undefined) {
-        wentOpen.delete(same);
+      const back = going.get(same);
+      if (back) {
+        // The same open card under its new id: only its id changes.
+        going.delete(same);
+        drawn.delete(back.id);
+        opened.delete(back.id);
+        back.id = back.el.dataset.card = c.id;
+        drawn.set(c.id, back);
         opened.add(c.id);
-        had ||= back;
-      } else if (!known.has(c.id)) fresh.push(c.id);
+        d = back;
+      } else {
+        // A file that didn't load for an earlier card is tried again for this one (↻ Send again: a new id, the same file).
+        for (const m of c.media ?? []) if ('file' in m && files.get(m.file)?.state === 'failed') files.delete(m.file);
+        d = build(c, key, same);
+        drawn.set(c.id, d);
+        if (!known.has(c.id)) fresh.push(c.id);
+      }
       known.add(c.id);
     }
     // (Its lines over the cover may have changed in place.)
@@ -165,6 +175,7 @@ export function drawCards(box: HTMLElement, list: readonly PhoneCard[]): string[
     if (had && !d.el.contains(document.activeElement)) (opened.has(c.id) || !d.cover ? d.focusIn : d.cover).focus({ preventScroll: true });
     order.push(d.el);
   }
+  for (const d of going.values()) dropCard(d.id, d);
   // Into place without moving the cards already there (a moved frame would load again).
   order.forEach((e, i) => {
     if (box.children[i] !== e) box.insertBefore(e, box.children[i] ?? null);
@@ -227,7 +238,7 @@ function build(c: PhoneCard, key: string, same: string): Drawn {
   const items = el('div', 'card-items');
   body.append(items);
   let cover: HTMLButtonElement | null = null;
-  const d: Drawn = { key, same, el: art, head, role: null, hint: null, cover, body, items, shownLine, slots: [], focusIn };
+  const d: Drawn = { id: c.id, key, same, el: art, head, role: null, hint: null, cover, body, items, shownLine, slots: [], focusIn };
   if (c.tap !== false) {
     cover = d.cover = tapButton('card-cover', 'Tap to see');
     // A tap landing just as it comes was meant for what was there a moment ago (BUZZ!, a box's Send answer): for a
@@ -242,8 +253,8 @@ function build(c: PhoneCard, key: string, same: string): Drawn {
     const follow = (e: MouseEvent, had: boolean) => had || (e as PointerEvent).pointerType !== 'mouse';
     cover.addEventListener('click', (e) => {
       const had = document.activeElement === cover;
-      opened.add(c.id);
-      open(c.id, d, true);
+      opened.add(d.id);
+      open(d.id, d, true);
       if (follow(e, had)) d.focusIn.focus({ preventScroll: true });
       // The browser can hold what's under the card still as it opens (scroll anchoring, on a page scrolled to its end),
       // throwing its words off the top of the screen: back into view.
@@ -253,8 +264,8 @@ function build(c: PhoneCard, key: string, same: string): Drawn {
     });
     hide.addEventListener('click', (e) => {
       const had = d.body.contains(document.activeElement);
-      opened.delete(c.id);
-      open(c.id, d, false);
+      opened.delete(d.id);
+      open(d.id, d, false);
       if (follow(e, had)) cover!.focus();
     });
     art.append(cover);

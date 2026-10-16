@@ -6,12 +6,14 @@
 // tapped (no-cookie, sandboxed, with the referrer YouTube needs), "Picture coming…" filling in, and plain lines for what
 // won't come. The room hears it was seen. Hide covers it again; the card going takes it all down. Also: the content
 // policy, a phone seated too late, the guesser's box, a GIF held still for reduced motion, and on a computer a Space
-// press that began before a card came doesn't open it. An open card sent again (a new id) stays open, and its lines
-// change in place; a card that comes while the buzzers are open goes under BUZZ! (Tab going in the order they're
-// drawn), and one left open closes as the next clue starts; a tap landing just as a cover comes doesn't open it;
-// opened at the end of a page that scrolls, its words stay in sight; on its side, the cards keep room for Tap to see
-// under a long clue, the guesser's box stays below the header and in place, and an open card scrolls in its own place
-// beside it. Needs `npm ci` in buzzer/.
+// press that began before a card came doesn't open it. An open card sent again (a new id) stays open as it was (its
+// player still framed), and its lines change in place; a card that comes while the buzzers are open goes under BUZZ!
+// (on a touch screen straight under it; Tab going in the order they're drawn), and one left open closes as the next
+// clue starts; a tap landing just as a cover comes doesn't open it; opened at the end of a page that scrolls, its words
+// stay in sight; on its side, the cards keep room for Tap to see under a long clue with BUZZ! where it was, the
+// guesser's box stays below the header and in place, an open card scrolls in its own place beside it, and a late
+// phone's note keeps no room; in a laptop's taller window a box beside a card stays put as it opens. Needs `npm ci` in
+// buzzer/.
 import { chromium } from 'playwright-core';
 import { spawn } from 'node:child_process';
 import { createServer } from 'node:net';
@@ -349,6 +351,11 @@ try {
   // ---------- ↻ Send again (the same card, a new id), and who else can see it changing: an open card stays as it is ----------
   await bob.getByRole('button', { name: 'Tap to see' }).tap();
   await until(() => h.got.some((m) => m.t === 'cardSeen' && m.id === 'pc:c1:1:4'), 'cardSeen for the card');
+  // (Its YouTube player framed, its video's sound on.)
+  await bob.getByRole('button', { name: /YouTube video/ }).tap();
+  await bob.locator('.card iframe').waitFor();
+  await bob.getByRole('button', { name: '🔊 Tap for sound' }).tap();
+  const [player, clip2] = [await bob.locator('.card iframe').elementHandle(), await bob.locator('.card video').elementHandle()];
   await bob.evaluate(() => {
     window.buzzes = [];
     navigator.vibrate = (p) => (window.buzzes.push(p), true);
@@ -359,13 +366,23 @@ try {
     (await bob.getByText('Green ogre-zz, lives in a swamp').isVisible()) && !(await bob.getByRole('button', { name: 'Tap to see' }).isVisible()) && !(await bob.evaluate(() => window.buzzes.length)),
     '↻ Send again: a phone that had the card open keeps it open, doesn’t buzz again, and the room hears it was seen',
   );
-  await bob.getByRole('button', { name: /YouTube video/ }).tap();
-  const player = await bob.locator('.card iframe').elementHandle();
+  assert(
+    (await player.evaluate((f) => f.isConnected)) && (await clip2.evaluate((v) => v.isConnected && !v.muted && !!v.src)),
+    'as it was: its YouTube player still framed, its video still there with its sound on',
+  );
   hostState({ cards: [{ ...card, id: 'pc:c1:1:5', shared: true, hint: 'Describe it to Ann and Cat: don’t say what’s on it!' }] });
   await until(() => bob.locator('.card-head').textContent().then((t) => t.includes('and the others the host chose')), 'the card says others can see it');
   assert(
     (await player.evaluate((f) => f.isConnected)) && (await bob.locator('.card-hint').textContent()) === 'Describe it to Ann and Cat: don’t say what’s on it!' && (await bob.getByText('Green ogre-zz').isVisible()),
     'who else can see it, or its hint, changing: those lines change in place (an open player carries on)',
+  );
+  // 🙈 Hide, under its new id: it stays covered as it's drawn again.
+  await bob.getByRole('button', { name: '🙈 Hide' }).tap();
+  hostState({ cards: [{ ...card, id: 'pc:c1:1:5', shared: true }] });
+  await until(() => bob.locator('.card-hint').textContent().then((t) => t === card.hint), 'its hint back');
+  assert(
+    (await bob.getByRole('button', { name: 'Tap to see' }).isVisible()) && !(await bob.getByText('Green ogre-zz').isVisible()),
+    'hidden after it came again, it stays covered as the page is drawn again',
   );
 
   // ---------- A card that comes while the buzzers are open goes under BUZZ!, not over it ----------
@@ -392,6 +409,19 @@ try {
     await ann.evaluate(([x, y]) => !!document.elementFromPoint(x, y)?.closest('#buzz'), [was.x + was.width / 2, was.y + was.height / 2]),
     'and where the middle of the button was is still BUZZ!',
   );
+  // (Its lower edge: the card, whose cover ignores a tap just as it comes, not Not you? or the name under BUZZ!.)
+  const low = await ann.evaluate(
+    ([x, y]) =>
+      [12, 30, 50].map((dy) => {
+        const e = document.elementFromPoint(x, y - dy);
+        return e?.closest('#buzz') ? 'BUZZ!' : e?.closest('.card') ? 'card' : (e?.id ?? '');
+      }),
+    [was.x + was.width / 2, was.y + was.height],
+  );
+  assert(
+    low.every((e) => e === 'BUZZ!' || e === 'card'),
+    `on a touch screen the card goes straight under BUZZ!, the name under it: where its lower edge was is BUZZ! or the card (${low})`,
+  );
   // On a laptop: the key hint stays under the button, the card under that, and Tab goes in that order.
   await cat.locator('.card').waitFor();
   const [catKeys, catCards] = [await cat.locator('#keys').boundingBox(), await cat.locator('#cards').boundingBox()];
@@ -417,6 +447,13 @@ try {
     return { h: cards.clientHeight, label: (c.top + c.bottom) / 2 < r.bottom - 10 };
   });
   assert(tall.h >= 132 && tall.label, `on its side under a long clue, the card keeps room for its Tap to see (${JSON.stringify(tall)})`);
+  // (BUZZ! where it is with no card: the middle of the screen under the header, not of the rows beside it, which run on.)
+  await ann.evaluate(() => scrollTo(0, 0));
+  const off = await ann.evaluate(() => {
+    const [b, h] = [document.getElementById('buzz').getBoundingClientRect(), document.querySelector('header').getBoundingClientRect()];
+    return Math.round((b.top + b.bottom) / 2 - (h.bottom + innerHeight) / 2);
+  });
+  assert(Math.abs(off) <= 2, `and BUZZ! stays where it was, in the middle of the screen under the header (${off}px off)`);
   await ann.setViewportSize({ width: 390, height: 760 });
   // Opened in the buzzer's place, it closes again as the next clue's buzzers open (the clue in sight, the keys on BUZZ!).
   hostState({ phase: 'lobby', clue: null });
@@ -505,6 +542,25 @@ try {
   hostState({ clue: null, answers: null, status: parts, cards: [{ ...card, id: 'pc:c1:1:5' }] });
   await ann.locator('.card').waitFor({ state: 'detached' });
 
+  // ---------- A laptop's taller window: a box barely moves as a card comes beside it, and stays put as it opens ----------
+  hostState({ clue: { text: 'Describe this movie' }, answers: { id: 'c3', open: true, seats: [{ id: 'c' }] } });
+  await cat.getByLabel(/Your answer/).waitFor();
+  const boxTop = () => cat.locator('#answer-form').boundingBox().then((r) => Math.round(r.y));
+  const tops = [await boxTop()];
+  hostState({ cards: [...hs.cards, { ...guess, id: 'pc:c3:1:1', to: [{ seat: 'c' }], title: 'Laptop-hint-qz' }] });
+  await cat.locator('.card').waitFor();
+  tops.push(await boxTop());
+  await cat.getByRole('button', { name: 'Click to see' }).click();
+  await cat.getByText('Laptop-hint-qz').waitFor();
+  await until(() => cat.locator('.card img').evaluate((i) => i.complete && i.naturalWidth > 0), 'her card’s picture');
+  tops.push(await boxTop());
+  assert(
+    Math.abs(tops[0] - tops[1]) < 60 && tops[1] === tops[2],
+    `a laptop’s taller window: the box beside a card barely moves as it comes, and stays put as it opens (${tops.join(' → ')})`,
+  );
+  hostState({ clue: null, answers: null, cards: [{ ...card, id: 'pc:c1:1:5' }] });
+  await cat.locator('.card').waitFor({ state: 'detached' });
+
   // ---------- Opened at the end of a page that scrolls, a card's words stay in sight ----------
   // A small phone, a long hint pushing Tap to see down, the page scrolled to its end: as the card opens, the browser
   // holds what's under it still (scroll anchoring), which would throw its words off the top of the screen.
@@ -544,6 +600,14 @@ try {
   await dee.getByRole('button', { name: 'Bob', exact: true }).click();
   await dee.locator('#cards-late').getByText('A card went to your seat before this phone joined. Ask the host to send it again.').waitFor();
   assert(!(await dee.locator('.card').count()) && (await dee.locator('#buzz').isVisible()), 'a phone that took the seat after the card went out is told it missed one, and gets nothing of it');
+  // On its side: the note takes only its own room (none kept for a card), and BUZZ! stays in the middle.
+  await dee.setViewportSize({ width: 740, height: 340 });
+  await until(() => dee.evaluate(() => getComputedStyle(document.getElementById('s-buzz')).display === 'grid'), 'side by side');
+  const note = await dee.evaluate(() => {
+    const [b, h] = [document.getElementById('buzz').getBoundingClientRect(), document.querySelector('header').getBoundingClientRect()];
+    return { h: Math.round(document.getElementById('cards').getBoundingClientRect().height), off: Math.round((b.top + b.bottom) / 2 - (h.bottom + innerHeight) / 2) };
+  });
+  assert(note.h < 100 && Math.abs(note.off) <= 2, `on its side, the note beside BUZZ! keeps no room for a card, and BUZZ! stays in the middle (${JSON.stringify(note)})`);
 
   assert(!errors.length, 'no page errors' + (errors.length ? ': ' + errors.join(' | ') : ''));
   console.log('Phone cards E2E passed.');
