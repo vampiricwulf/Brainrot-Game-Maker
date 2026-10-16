@@ -98,19 +98,15 @@
 </aside>
 
 <style>
+  /* Beside the slide editor, as tall as it (scrolling if it must). */
   .phone-preview {
-    position: absolute;
-    right: 0;
-    top: calc(100% + 4px);
-    z-index: 30;
-    width: 300px;
-    max-height: min(70vh, 640px);
+    flex: 0 0 300px;
+    align-self: stretch;
     overflow-y: auto;
     padding: 10px;
     border: 1px solid var(--border);
     border-radius: 12px;
     background: var(--panel);
-    box-shadow: 0 8px 28px rgba(0, 0, 0, 0.45);
     display: flex;
     flex-direction: column;
     gap: 8px;

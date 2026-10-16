@@ -290,7 +290,28 @@ try {
     !(await settings.getByRole('combobox', { name: /^Game/ }).isVisible()) && line === '🗣 Describe it · The partner describes · On this $400 tile: got → describer +$400, guesser +$200 · missed → guesser −$200',
     `the rules fold to one line that says the game, who describes and the points in money (${line})`,
   );
+  // Left folded, they start folded next time. Opened again, they stay open through each change, and a share typed key by
+  // key gets every key.
+  await page.keyboard.press('Escape');
+  await dialog.waitFor({ state: 'detached' });
+  await page.locator('[data-tile="0,1"]').click();
+  await dialog.waitFor();
+  const gameBox = settings.getByRole('combobox', { name: /^Game/ });
+  assert(!(await gameBox.isVisible()), 'left folded, the rules start folded next time');
   await settings.locator(':scope > summary').click();
+  await gameBox.waitFor();
+  await points.selectOption('none');
+  assert(await gameBox.isVisible(), 'a Points choice leaves them open');
+  const guesserGot = settings.getByLabel(/^Guesser’s share if it’s got/);
+  await guesserGot.click();
+  await page.keyboard.press('Control+a');
+  await page.keyboard.type('75');
+  assert(
+    (await gameBox.isVisible()) && (await guesserGot.inputValue()) === '75' && (await summary()).startsWith('On this $400 tile: got → describer +$400, guesser +$300'),
+    `typing 75 in a share leaves them open and takes both keys (${await guesserGot.inputValue()}: ${await summary()})`,
+  );
+  await points.selectOption('game');
+  assert((await summary()) === 'On this $400 tile: got → describer +$400, guesser +$200 · missed → guesser −$200', `Describe it’s points again (${await summary()})`);
 
   // ---------- The board, Find and the history ----------
   await page.keyboard.press('Escape');

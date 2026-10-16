@@ -315,15 +315,15 @@ Points [Describe it's ▾]            Describer (the partner)    Guesser (the pi
 On this $400 tile: got → describer +$400, guesser +$200 · missed → guesser −$200
 ```
 
-- **Game** fills in everything else (§2.2), and adds the game's starting cards when the clue has none. Choosing one is
-  one history step ("Made Movies $400 a Describe it partner clue").
+- **Game** fills in everything else (§2.2), and adds the game's starting cards when the clue has none, or only the last
+  game's empty ones (they're replaced). Choosing one is one history step ("Made Movies $400 a Describe it partner clue").
 - **Who describes:** the partner (default) or the picker. The labels use the game's words ("Who helps"), and the
   columns below follow.
 - **☐ The picker can be on the wheel:** off by default (the request). When it's on, the wheel can land on the picker,
   which makes it Solo (§7.6).
 - **Points:** "Describe it's" (the game's own, §2.2) · "No penalty" (a miss costs nobody) · "The guesser loses it all"
-  (a miss costs the guesser 100%) · Custom. Typing in a box makes it Custom. None of the ready-made choices costs the
-  partner.
+  (a miss costs the guesser 100%; in the clue's part words, "The answerer loses it all") · Custom. Typing in a box
+  makes it Custom. None of the ready-made choices costs the partner.
 - **The four boxes:** −1000% to 1000%, in steps of 5. Their labels follow the part words and say who plays each part.
 - **☑ The partner never loses points:** on by default. With it on, a miss gives the partner at most 0, whichever part
   they play. With the game's own points it only matters when the partner is the guesser ("Who describes: the picker",
@@ -359,8 +359,8 @@ things happen.
 - **⧉ Same as the answer** sits at the top of an empty card. It copies the answer slide's items onto the card once,
   with fresh element ids, as `copyClue` does (ops.ts:56-66). From then on the card is its own: changing the answer
   doesn't change it. It is the only way the answer's content gets onto a card, and only the host's press does it. While
-  the card's words are the same as the answer's, the tab says "This card shows the answer: whoever you send it to sees
-  it".
+  the card's words are the same as the answer's (an answer with no words: its pictures, videos and sounds, and the card
+  has no words of its own), the tab says "This card shows the answer: whoever you send it to sees it".
 - **🗑 Delete card** (on the tab's menu) is one history step. The cards are numbered in order, so deleting Card 1 makes
   Card 2 the new Card 1; their ids don't change.
 - **📱 On their phone** (P2) is a toggle beside the canvas. It shows the card exactly as a phone will get it (§12.3):
@@ -406,7 +406,7 @@ The cards must be found everywhere a clue's slides are walked. Otherwise their p
 | src/lib/ops.ts:5-7 (`clueHasContent`) | Adds `cardSlides(clue).some(slideHasContent)`. Without it a tile whose only content is a card counts as empty: ⌫ Clear clue is disabled (RoundEditor.svelte:469), dragging over it gives no warning (251, 288), clue import's 'fill' writes over it (clueimport.ts:266), and removing rows doesn't count it (RoundEditor.svelte:673). |
 | src/lib/find.ts:55-63 | 🔍 Find searches the cards: "Movies $400 › Card 1". |
 | src/lib/ops.ts:56-66 (`copyClue`), 141-148 (`clearClue`) | Fresh ids for each card and its items. Clear empties every card and keeps the cards, their Goes to and the settings. |
-| src/lib/ops.ts:166-169 (`setClueType`) | To partner: `partner ??=` Describe it's rules and `cards ??=` its starting card. Away: keep everything. |
+| src/lib/ops.ts:166-169 (`setClueType`) | To partner: `partner ??=` Describe it's rules and `cards ??=` its starting card. Away: keep everything, unless its cards are all empty (it was only tried): then they go, and with them rules that are the game's own and their 45 s countdown. |
 | src/lib/cluetext.ts:15 and the "Use this style elsewhere" callers | The cards follow the round's text style, through a new `cardSlides(clue)`. `slidesOfClue` (model.ts:1099-1101) and `questionSlides` stay as they are, so nothing that draws for viewers can get a card by accident. |
 | src/lib/clueimport.ts:141-155, 238-245 | 'fill' keeps the type and the cards, as it does for a Daily Double. 'replace' drops `partner` and `cards`. |
 | src/lib/sounds.ts:14, 37, 120 | A new cue: `['partner', 'Partner clue', 'With the PARTNER UP! splash']`. When it's unset, the tile-open sound plays, never the Daily Double clip. |
@@ -427,6 +427,9 @@ In validate.ts (its checks at 118-134, each a warning or an info) and checklist.
 - **Warning:** "Movies $400: card 1 has a picture that's a file on this computer, and this buzzer server isn't taking
   files." Shown only while the server in use doesn't list `files`.
 - **Warning:** a card's online link that has expired or will expire (`linkLifetime`, links.ts:484).
+- The last three, for the other cards that go to phones the same way too: a 🎭 deal's parts' ("Deal “Mafia”: Boss’s
+  card has a video too big for phones…") and the cards of 🤫 Send a card buttons on items, wheel slices, dice, RPG
+  objects and board spaces, each going to its owner.
 - **Info**, only with Buzzer mode off: "Partner clues: without phone buzzers you copy the cards to the players
   yourself."
 - **Info**, only with ⚖ Deduct on wrong off: "Deduct on wrong is off, but 3 partner clues take points on a miss: their

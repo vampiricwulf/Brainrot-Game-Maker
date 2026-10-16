@@ -118,6 +118,15 @@ try {
   await host.getByRole('menuitem', { name: /Secret roles/ }).click();
   assert(await until(async () => (await deals.getByRole('button').allInnerTexts()).map((t) => t.trim()).join('|') === 'Odd one out|Secret roles'), 'a ready-made deal goes in: Secret roles');
   assert((await editor.getByLabel('Part 3’s name').inputValue()) === 'Villager' && (await editor.getByLabel('Part 1’s name').inputValue()) === 'Wolf', 'with a wolf, a seer and villagers');
+  // A part's choices are steps named after the part, not "Changed count of deal".
+  const undoTitle = () => host.locator('.editor > header').getByRole('button', { name: 'Undo (Ctrl+Z)' }).getAttribute('title');
+  await editor.getByLabel('How many get Wolf').selectOption('2');
+  assert(await until(async () => (await undoTitle()).startsWith('Undo: How many get Wolf in “Secret roles”: ×2')), `how many get a part is a step named after it (${await undoTitle()})`);
+  await editor.getByLabel('Wolf’s card draws from the wheel').selectOption('shared');
+  assert(await until(async () => (await undoTitle()).startsWith('Undo: Wolf’s card in “Secret roles”: + the slice they all share')), `and so is its card's wheel (${await undoTitle()})`);
+  await host.keyboard.press('Control+z');
+  await host.keyboard.press('Control+z');
+  assert(await until(async () => (await editor.getByLabel('How many get Wolf').inputValue()) === '1'), 'Ctrl+Z takes them back');
   await host.keyboard.press('Control+z');
   assert(await until(async () => (await deals.getByRole('button').count()) === 1), 'Ctrl+Z takes it out again');
 

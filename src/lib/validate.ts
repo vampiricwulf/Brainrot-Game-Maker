@@ -23,19 +23,20 @@ import {
   type BoardRound,
   type ClueCard,
   type Game,
+  type Slide,
 } from './model';
 import { lowerWord, missCosts, partnerRules, partnerSpot, partWords, stealOn } from './partner';
 import { cardWords, phoneCard } from './phonecard';
 import { CARD_TEXT_MAX, FILE_MAX_BYTES } from './buzzproto';
-import { rpgProblems } from './rpg';
+import { rpgProblems, worldById } from './rpg';
 import { boardGameProblems } from './boardgame';
 import { mediaUsage, onlineCount, slideHasContent, slideMediaIds } from './usage';
 import { toolChosen } from './tools';
 import type { Place } from './historylabel';
 import { categoryTooLong } from './boardfit';
 import { statsProblems } from './toolset';
-import { actionProblem } from './refs';
-import { dealSetupProblems } from './deals';
+import { actionProblem, objectsWhere } from './refs';
+import { dealSetupProblems, partName } from './deals';
 
 export interface Problem {
   text: string;
@@ -125,10 +126,20 @@ export function validate(game: Game, room: { filesOff?: boolean } = {}): Problem
     }
     if (isRpg(round)) {
       out.push(...rpgProblems(game, round, name, i));
+      // (Its objects' 🤫 Send a card buttons.)
+      const world = worldById(game, round.world);
+      if (world)
+        for (const { el, map, screen, look } of objectsWhere(world)) {
+          const what = el.name?.trim() ? `“${el.name.trim()}”` : 'an object';
+          const place: Place = { tab: 'world', world: world.id, map: map.id, screen: screen.id, look, inSlide: true, element: el.id };
+          out.push(...cardLines(game, cardsIn(el.role?.actions), `${name}: a 🤫 card on ${what} on “${screen.name}”`, i, place, !!room.filesOff));
+        }
       return;
     }
     if (isBoardGame(round)) {
       out.push(...boardGameProblems(game, round, name, i));
+      for (const s of round.spaces)
+        out.push(...cardLines(game, cardsIn(s.onLand, s.onPass), `${name}: a 🤫 card on “${s.name}”`, i, { tab: 'round', round: round.id, part: { kind: 'space', space: s.id } }, !!room.filesOff));
       return;
     }
     if (isSlides(round)) {
@@ -215,7 +226,7 @@ export function validate(game: Game, room: { filesOff?: boolean } = {}): Problem
       out.push({ text: 'The tiebreaker has no answer', tab: 'tiebreaker', level: 'warn', place: { tab: 'tiebreaker', side: 'a' } });
   }
 
-  out.push(...statsProblems(game), ...toolButtonProblems(game));
+  out.push(...statsProblems(game), ...toolButtonProblems(game, !!room.filesOff));
 
   const known = new Set(game.media.map((m) => m.id));
   const usage = mediaUsage(game);
@@ -329,37 +340,58 @@ export function partnerProblems(game: Game, round: BoardRound, tab: number, file
       // (A Custom game's cards are up to the host.)
       if (cl.type === 'partner' && !cards.length && rules.game !== 'custom') {
         const g = PARTNER_GAMES[rules.game];
-        warn(`${tile} is a ${g.label} partner clue with no card: the ${lowerWord(partWords(rules).giver)} has nothing to ${g.task}`);
+        warn(`${tile} is ${/^[aeiou]/i.test(g.label) ? 'an' : 'a'} ${g.label} partner clue with no card: the ${lowerWord(partWords(rules).giver)} has nothing to ${g.task}`);
       }
       if (cards.length > MAX_CARDS) warn(`${tile} has ${cards.length} cards: a clue holds ${MAX_CARDS} (＋ Card adds no more)`, cards[MAX_CARDS]);
       cards.forEach((card, n) => {
         if (!slideHasContent(card)) warn(`${tile}: card ${n + 1} is empty: there's nothing on it to send`, card);
-        const life = slideMediaIds(card).flatMap((id) => {
-          const m = game.media.find((x) => x.id === id);
-          return m?.url ? [linkLifetime(m)] : [];
-        });
-        if (life.includes('expired')) warn(`${tile}: card ${n + 1} has an online link that has expired: add that file again`, card);
-        else if (life.includes('temporary')) warn(`${tile}: card ${n + 1} has an online link that stops working soon: save a copy or add the file`, card);
-        // What won't reach a phone (spec §5.6, §13.5): a file too big, or of a kind phones can't play; words past 1000.
-        const KIND = { picture: 'picture', gif: 'GIF', video: 'video', sound: 'sound', embed: 'online video' } as const;
-        for (const it of phoneCard(game, card, { files: filesOff ? null : {} }).items) {
-          const size = game.media.find((m) => m.id === it.media)?.size ?? 0;
-          if (it.why === 'big') warn(`${tile}: card ${n + 1} has a ${KIND[it.kind]} too big for phones (${formatBytes(size)}; phones get files up to ${formatBytes(FILE_MAX_BYTES)})`, card);
-          else if (it.why === 'kind' && it.file) warn(`${tile}: card ${n + 1} has a ${KIND[it.kind]} phones can't play: add it as MP4, WebM, MP3, OGG, WAV or M4A, or from a link`, card);
-          else if (it.why === 'nofiles')
-            warn(`${tile}: card ${n + 1} has a ${KIND[it.kind]} that's a file on this computer, and this buzzer server isn't taking files: phones get the words and links only (📋 Copy picture)`, card);
-        }
-        if ([...cardWords(card)].length > CARD_TEXT_MAX) warn(`${tile}: card ${n + 1} has more than ${CARD_TEXT_MAX} characters of words: phones get the first ${CARD_TEXT_MAX}`, card);
+        for (const t of cardFileProblems(game, card, filesOff)) warn(`${tile}: card ${n + 1} has ${t}`, card);
       });
     });
   return out;
 }
 
+/** What phoneCard's kinds of thing are called in the checklist. */
+const KIND = { picture: 'picture', gif: 'GIF', video: 'video', sound: 'sound', embed: 'online video' } as const;
+
+/**
+ * What of a 🤫 card won't reach a phone or will stop working, as "… has <this>": an online link that has expired or soon
+ * will, and (spec §5.6, §13.5) a file too big or of a kind phones can't play, a file from this computer when the buzzer
+ * server in use takes none (`filesOff`), words past CARD_TEXT_MAX.
+ */
+function cardFileProblems(game: Game, card: Slide, filesOff: boolean): string[] {
+  const out: string[] = [];
+  const life = slideMediaIds(card).flatMap((id) => {
+    const m = game.media.find((x) => x.id === id);
+    return m?.url ? [linkLifetime(m)] : [];
+  });
+  if (life.includes('expired')) out.push('an online link that has expired: add that file again');
+  else if (life.includes('temporary')) out.push('an online link that stops working soon: save a copy or add the file');
+  for (const it of phoneCard(game, card, { files: filesOff ? null : {} }).items) {
+    const size = game.media.find((m) => m.id === it.media)?.size ?? 0;
+    if (it.why === 'big') out.push(`a ${KIND[it.kind]} too big for phones (${formatBytes(size)}; phones get files up to ${formatBytes(FILE_MAX_BYTES)})`);
+    else if (it.why === 'kind' && it.file) out.push(`a ${KIND[it.kind]} phones can't play: add it as MP4, WebM, MP3, OGG, WAV or M4A, or from a link`);
+    else if (it.why === 'nofiles') out.push(`a ${KIND[it.kind]} that's a file on this computer, and this buzzer server isn't taking files: phones get the words and links only (📋 Copy picture)`);
+  }
+  if ([...cardWords(card)].length > CARD_TEXT_MAX) out.push(`more than ${CARD_TEXT_MAX} characters of words: phones get the first ${CARD_TEXT_MAX}`);
+  return out;
+}
+
+/** The cards of the 🤫 Send a card buttons in some lists of buttons. */
+const cardsIn = (...lists: (Action[] | undefined)[]): Slide[] => lists.flatMap((l) => l ?? []).flatMap((a) => (a.do === 'card' ? [a.slide] : []));
+
+/** The cardFileProblems of some cards, each said once: "<says> has <this>", going to `place`. */
+function cardLines(game: Game, cards: Slide[], says: string, tab: Problem['tab'], place: Place, filesOff: boolean): Problem[] {
+  return [...new Set(cards.flatMap((c) => cardFileProblems(game, c, filesOff)))].map((t) => ({ text: `${says} has ${t}`, tab, level: 'warn', place }));
+}
+
 /**
  * Items' Use buttons, wheel slices' and dice's buttons that point at something deleted (a shop, a stat, an item, a
- * wheel) or at nothing: in play they only say why they can't. (RPG objects' and board spaces' are their rounds'.)
+ * wheel) or at nothing: in play they only say why they can't. Also their 🤫 cards, and 🎭 deals' parts' cards, that
+ * won't reach a phone as they are (cardFileProblems; `filesOff`: the buzzer server in use takes no files). (RPG
+ * objects' and board spaces' are their rounds'.)
  */
-export function toolButtonProblems(game: Game): Problem[] {
+export function toolButtonProblems(game: Game, filesOff = false): Problem[] {
   const out: Problem[] = [];
   const why = (list: (Action[] | undefined)[]): string | null => {
     for (const a of list.flatMap((l) => l ?? [])) {
@@ -370,18 +402,28 @@ export function toolButtonProblems(game: Game): Problem[] {
   };
   for (const it of game.items ?? []) {
     const p = why([it.onUse]);
-    if (p) out.push({ text: `Item “${it.name}”: a Use button points nowhere (${p})`, tab: 'stats', level: 'warn', place: { tab: 'stats', item: it.id } });
+    const place: Place = { tab: 'stats', item: it.id };
+    if (p) out.push({ text: `Item “${it.name}”: a Use button points nowhere (${p})`, tab: 'stats', level: 'warn', place });
+    out.push(...cardLines(game, cardsIn(it.onUse), `Item “${it.name}”: a Use button’s 🤫 card`, 'stats', place, filesOff));
   }
   for (const w of game.wheels) {
     const p = why(w.segments.map((s) => s.actions));
-    if (p) out.push({ text: `Wheel “${w.name}”: a slice's button points nowhere (${p})`, tab: 'tools', level: 'warn', place: { tab: 'tools', wheel: w.id } });
+    const place: Place = { tab: 'tools', wheel: w.id };
+    if (p) out.push({ text: `Wheel “${w.name}”: a slice's button points nowhere (${p})`, tab: 'tools', level: 'warn', place });
+    out.push(...cardLines(game, cardsIn(...w.segments.map((s) => s.actions)), `Wheel “${w.name}”: a slice’s 🤫 card`, 'tools', place, filesOff));
   }
   for (const d of game.dice) {
-    const p = why([...d.dice.flatMap((x) => (x.customFaces ?? []).map((f) => f.actions)), ...(d.totalOutcomes ?? []).map((t) => t.outcome.actions)]);
-    if (p) out.push({ text: `Dice “${d.name}”: a button points nowhere (${p})`, tab: 'tools', level: 'warn', place: { tab: 'tools', dice: d.id } });
+    const lists = [...d.dice.flatMap((x) => (x.customFaces ?? []).map((f) => f.actions)), ...(d.totalOutcomes ?? []).map((t) => t.outcome.actions)];
+    const p = why(lists);
+    const place: Place = { tab: 'tools', dice: d.id };
+    if (p) out.push({ text: `Dice “${d.name}”: a button points nowhere (${p})`, tab: 'tools', level: 'warn', place });
+    out.push(...cardLines(game, cardsIn(...lists), `Dice “${d.name}”: a 🤫 card`, 'tools', place, filesOff));
   }
-  // 🎭 Deals that can't be dealt as they are.
-  for (const dl of game.deals ?? [])
-    for (const p of dealSetupProblems(game, dl)) out.push({ text: `Deal “${dl.name}”: ${p}`, tab: 'tools', level: 'warn', place: { tab: 'tools', deal: dl.id } });
+  // 🎭 Deals that can't be dealt as they are, and parts' cards that won't reach a phone as they are.
+  for (const dl of game.deals ?? []) {
+    const place: Place = { tab: 'tools', deal: dl.id };
+    for (const p of dealSetupProblems(game, dl)) out.push({ text: `Deal “${dl.name}”: ${p}`, tab: 'tools', level: 'warn', place });
+    dl.parts.forEach((part, i) => out.push(...cardLines(game, [part.card], `Deal “${dl.name}”: ${partName(part, i)}’s card`, 'tools', place, filesOff)));
+  }
   return out;
 }

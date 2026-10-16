@@ -21,6 +21,7 @@ import {
   typedShare,
 } from './partner';
 import { cardFromAnswer } from './ops';
+import { slideHasContent } from './usage';
 
 const GAMES = Object.keys(PARTNER_GAMES) as PartnerGame[];
 
@@ -151,6 +152,27 @@ describe('changing a partner clue’s rules', () => {
     expect(bare.cards).toBeUndefined();
   });
 
+  it('the last game’s starting cards, still empty, give way to the new game’s: Split clue gets a card for each half', () => {
+    const clue = partnerClue('describe');
+    setPartnerGame(clue, 'split');
+    expect(clue.cards!.map((c) => c.to)).toEqual(['giver', 'guesser']);
+    setPartnerGame(clue, 'help');
+    expect(clue.cards!.map((c) => c.to)).toEqual(['giver']);
+    // A card sent elsewhere stays, and so does one with something on it.
+    clue.cards![0].to = 'both';
+    setPartnerGame(clue, 'split');
+    expect(clue.cards!.map((c) => c.to)).toEqual(['both']);
+    clue.cards![0].to = 'giver';
+    setSlideText(clue.cards![0], 'Half of it');
+    setPartnerGame(clue, 'describe');
+    setPartnerGame(clue, 'split');
+    expect(clue.cards!.map((c) => [c.to, slideHasContent(c)])).toEqual([['giver', true]]);
+    // Custom keeps the empty ones.
+    const custom = partnerClue('split');
+    setPartnerGame(custom, 'custom');
+    expect(custom.cards).toHaveLength(2);
+  });
+
   it('a Points choice sets the numbers, and typing one makes it Custom', () => {
     const clue = partnerClue();
     expect(pointsChoice(clue.partner!)).toBe('game');
@@ -168,6 +190,9 @@ describe('changing a partner clue’s rules', () => {
     expect(pointsChoice({ ...bare, missed: { giver: 0, guesser: -30 } })).toBe('custom');
     expect(pointsChoices('custom').map((c) => c.value)).toEqual(['none', 'all', 'custom']);
     expect(pointsChoices('describe')[0].label).toBe('Describe it’s');
+    // In the clue's own part words.
+    expect(pointsChoices('describe').find((c) => c.value === 'all')?.label).toBe('The guesser loses it all');
+    expect(pointsChoices('help', partWords(gameRules('help')).guesser).find((c) => c.value === 'all')?.label).toBe('The answerer loses it all');
   });
 
   it('reads a typed share within ±1000%', () => {
@@ -245,6 +270,20 @@ describe('🤫 cards', () => {
     expect(sameAsAnswer(clue, card)).toBe(false);
     // No words on either: not "the same".
     expect(sameAsAnswer({ answerSlide: { background: {}, elements: [] } }, { background: {}, elements: [] })).toBe(false);
+  });
+
+  it('an answer that is only a picture: a card with that picture and no words of its own shows the answer', () => {
+    const clue = partnerClue();
+    clue.answerSlide.elements = [newImageEl('pic')];
+    const card = clue.cards![0];
+    expect(sameAsAnswer(clue, card)).toBe(false);
+    cardFromAnswer(clue, card);
+    expect(sameAsAnswer(clue, card)).toBe(true);
+    // Words of its own, or another picture: the host's card.
+    setSlideText(card, 'A hint');
+    expect(sameAsAnswer(clue, card)).toBe(false);
+    card.elements = [newImageEl('other')];
+    expect(sameAsAnswer(clue, card)).toBe(false);
   });
 });
 

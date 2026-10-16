@@ -3,7 +3,7 @@
 // historylabel.test.ts.
 import { opPath, type Json, type Op, type Seg } from './historyops';
 import { LAYER_ICON, layerLabel, short } from './layerlabel';
-import { categoryLabel, clueValue, formatPoints, roundName, type Action, type Game, type MediaKind, type Round, type Slide, type SlideElement } from './model';
+import { categoryLabel, clueValue, formatPoints, roundName, type Action, type DealPart, type Game, type MediaKind, type Round, type Slide, type SlideElement } from './model';
 import { describeAction } from './actions';
 import { ROUND_MODES } from './modes';
 import { OBJECT_CLASSES } from './rpg';
@@ -345,6 +345,9 @@ export function placeAt(game: Game, path: readonly Seg[]): At {
       if (!deal) break;
       reached(2, 'deal', deal.name);
       go({ tab: 'tools', deal: deal.id });
+      // (A part renamed is the part's change, not the deal's.)
+      const part = path[2] === 'parts' ? byId<DealPart>(deal.parts, path[3]) : undefined;
+      if (part) reached(4, 'part', part.name, undefined, false);
       break;
     }
     case 'statFields':

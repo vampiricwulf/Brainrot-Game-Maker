@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { findAll, snippet } from './find';
 import { newGame, textSlide } from './model';
 import { addSampleGame } from './samples';
+import { newWheel } from './tools';
 
 describe('Find', () => {
   const game = newGame();
@@ -76,6 +77,23 @@ describe('Find', () => {
     cave.hostNotes = 'Bring a torch';
     expect(findAll(g, 'torch')[0].where).toBe(`${w.name} › ${m.name} › Screen “Cave”`);
     expect(findAll(g, 'torch')[0].place).toEqual({ tab: 'world', world: w.id, map: m.id, screen: cave.id });
+  });
+
+  it('finds what 🤫 card and other buttons say on objects, items, wheel slices and die faces', () => {
+    const g = newGame();
+    addSampleGame(g);
+    const card = (id: string, words: string) => ({ id, do: 'card' as const, slide: textSlide(words) });
+    const cave = g.worlds![0].maps[0].screens.find((s) => s.name === 'Cave')!;
+    const cat = cave.slide.elements.find((e) => e.name === 'Riddle cat')!;
+    cat.role!.actions = [card('b1', 'Bananaword chest secret')];
+    g.items![0].onUse = [card('b2', 'Mangoword')];
+    g.wheels.push({ ...newWheel('Prizes'), id: 'w9' });
+    g.wheels.at(-1)!.segments[0].actions = [{ id: 'b3', do: 'note', text: 'Kiwiword' }];
+    g.dice.push({ id: 'd9', name: 'Fate', showTotal: true, dice: [{ id: 'x', sides: 2, count: 1, customFaces: [{ label: 'Heads', actions: [card('b4', 'Limeword')] }, { label: 'Tails' }] }] });
+    expect(findAll(g, 'bananaword').find((h) => h.icon === '🧩')?.place).toMatchObject({ tab: 'world', element: cat.id });
+    expect(findAll(g, 'mangoword')[0].place).toEqual({ tab: 'stats', item: g.items![0].id });
+    expect(findAll(g, 'kiwiword')[0].place).toEqual({ tab: 'tools', wheel: 'w9' });
+    expect(findAll(g, 'limeword')[0].place).toEqual({ tab: 'tools', dice: 'd9' });
   });
 
   it('puts the focus in the field that has the words for a tiebreaker and a board game’s How to win', () => {

@@ -1,7 +1,7 @@
 // Find (Ctrl+F in the editor): every place in the game whose words match — clues, Final rounds, RPG screens and what's
 // on them, board-game spaces and zones, items, stats, shops, wheels, dice, deals, media files — with the place to go
 // to (nav.svelte.ts's goTo, as the History tab's Go there).
-import { categoryLabel, formatPoints, questionSlides, roundName, type Game, type Slide } from './model';
+import { categoryLabel, formatPoints, questionSlides, roundName, type Action, type Game, type Slide } from './model';
 import type { ClueSide, Place } from './historylabel';
 
 export interface Hit {
@@ -18,6 +18,11 @@ export interface Hit {
 /** Every bit of text on a slide (text boxes, item and object names). */
 function slideWords(s: Slide | undefined): string[] {
   return (s?.elements ?? []).flatMap((e) => [e.kind === 'text' ? e.text : '', e.name ?? '']).filter(Boolean);
+}
+
+/** What buttons say: a slide shown, a 🤫 card, a question asked, a host note. */
+function buttonWords(acts: Action[] | undefined): string[] {
+  return (acts ?? []).flatMap((a) => (a.do === 'popup' || a.do === 'card' ? slideWords(a.slide) : a.do === 'question' ? [...slideWords(a.question), ...slideWords(a.answer)] : a.do === 'note' ? [a.text] : []));
 }
 
 /** The text around the first match, at most `max` characters. */
@@ -81,11 +86,8 @@ export function findAll(game: Game, query: string, limit = 200): Hit[] {
         // (Found by something else than its name: where says which space it is.)
         const where = match(s.name) ? `${rn} › Space` : `${rn} › Space “${s.name}”`;
         look('⬤', [s.name, s.hostNotes], where, place, field([[s.name, 'main input[aria-label="Space name"]'], [s.hostNotes, 'main [data-field="space-notes"]']]));
-        // What its buttons say: a slide shown, a 🤫 card, a question asked, a host note.
-        for (const a of [...(s.onPass ?? []), ...(s.onLand ?? [])]) {
-          const words = a.do === 'popup' || a.do === 'card' ? slideWords(a.slide) : a.do === 'question' ? [...slideWords(a.question), ...slideWords(a.answer)] : a.do === 'note' ? [a.text] : [];
-          look('🔘', words, `${rn} › Space “${s.name}” › Buttons`, place);
-        }
+        // What its buttons say.
+        for (const a of [...(s.onPass ?? []), ...(s.onLand ?? [])]) look('🔘', buttonWords([a]), `${rn} › Space “${s.name}” › Buttons`, place);
       }
       for (const z of r.zones)
         look('🌀', [z.name, z.hostNotes, ...slideWords(z.slide)], match(z.name) ? `${rn} › Zone` : `${rn} › Zone “${z.name}”`, { tab: 'round', round: r.id, part: { kind: 'zone', zone: z.id } });
@@ -104,9 +106,12 @@ export function findAll(game: Game, query: string, limit = 200): Hit[] {
         // the thing that has the words selected (as History's Go there).
         for (const v of [{ id: undefined as string | undefined, name: '', slide: s.slide }, ...(s.variants ?? [])]) {
           const els = v.slide.elements;
-          const said = els.flatMap((e) => (e.role?.dialogue ? slideWords(e.role.dialogue) : []));
-          // (The same one the text shown comes from: a text or a name first, then what's said.)
-          const el = els.find((e) => match(e.kind === 'text' ? e.text : undefined) || match(e.name)) ?? els.find((e) => !!e.role?.dialogue && slideWords(e.role.dialogue).some(match));
+          const said = els.flatMap((e) => [...(e.role?.dialogue ? slideWords(e.role.dialogue) : []), ...buttonWords(e.role?.actions)]);
+          // (The same one the text shown comes from: a text or a name first, then what's said, then its buttons.)
+          const el =
+            els.find((e) => match(e.kind === 'text' ? e.text : undefined) || match(e.name)) ??
+            els.find((e) => !!e.role?.dialogue && slideWords(e.role.dialogue).some(match)) ??
+            els.find((e) => buttonWords(e.role?.actions).some(match));
           look('🧩', [...slideWords(v.slide), ...said], `${where} › ${s.name}${v.name ? ` (${v.name})` : ''}`, {
             ...place,
             inSlide: true,
@@ -116,12 +121,17 @@ export function findAll(game: Game, query: string, limit = 200): Hit[] {
         }
       }
 
-  for (const it of game.items ?? []) look('🎒', [it.name, it.description, it.hostNotes], 'Stats & Items › Item', { tab: 'stats', item: it.id });
+  for (const it of game.items ?? []) look('🎒', [it.name, it.description, it.hostNotes, ...buttonWords(it.onUse)], 'Stats & Items › Item', { tab: 'stats', item: it.id });
   for (const f of game.statFields ?? []) look('📊', [f.name], 'Stats & Items › Stat', { tab: 'stats', stat: f.id });
   for (const sh of game.shops ?? []) look('🛒', [sh.name], 'Stats & Items › Shop', { tab: 'stats', shop: sh.id });
-  for (const w of game.wheels) look('🎡', [w.name, ...w.segments.flatMap((s) => [s.label, s.details])], 'Wheels, Dice & Deals › Wheel', { tab: 'tools', wheel: w.id });
+  for (const w of game.wheels) look('🎡', [w.name, ...w.segments.flatMap((s) => [s.label, s.details, ...buttonWords(s.actions)])], 'Wheels, Dice & Deals › Wheel', { tab: 'tools', wheel: w.id });
   for (const d of game.dice)
-    look('🎲', [d.name, ...d.dice.flatMap((x) => (x.customFaces ?? []).flatMap((f) => [f.label, f.details])), ...(d.totalOutcomes ?? []).map((t) => t.outcome.label)], 'Wheels, Dice & Deals › Dice', { tab: 'tools', dice: d.id });
+    look(
+      '🎲',
+      [d.name, ...d.dice.flatMap((x) => (x.customFaces ?? []).flatMap((f) => [f.label, f.details, ...buttonWords(f.actions)])), ...(d.totalOutcomes ?? []).flatMap((t) => [t.outcome.label, ...buttonWords(t.outcome.actions)])],
+      'Wheels, Dice & Deals › Dice',
+      { tab: 'tools', dice: d.id },
+    );
   for (const d of game.deals ?? [])
     look('🎭', [d.name, ...d.parts.flatMap((p) => [p.name, ...slideWords(p.card)])], 'Wheels, Dice & Deals › Deal', { tab: 'tools', deal: d.id });
   for (const m of game.media) look('🖼', [m.name], 'Media', { tab: 'media', media: m.id });

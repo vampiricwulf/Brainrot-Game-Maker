@@ -43,6 +43,24 @@
     step(`Moved part “${partName(p, i)}” ${j < i ? 'up' : 'down'}`, () => moveTo(deal.parts, i, j));
     announce(`Part “${partName(p, i)}” moved to ${j + 1} of ${deal.parts.length}`);
   }
+  // Each choice is one named step ("How many get Wolf in “Secret roles”: ×2"), as adding and moving a part are.
+  function setCount(p: DealPart, i: number, to: string): void {
+    const n = to === 'rest' ? 'rest' : Number(to);
+    step(`How many get ${partName(p, i)} in “${deal.name}”: ${countText(n)}`, () => (p.count = n));
+  }
+  const DRAWS: Record<string, string> = { '': 'no wheel', shared: '+ the slice they all share', own: '+ a slice each' };
+  function setDraw(p: DealPart, i: number, to: string): void {
+    step(`${partName(p, i)}’s card in “${deal.name}”: ${DRAWS[to] ?? DRAWS['']}`, () => {
+      if (to === 'own' || to === 'shared') p.draw = to;
+      else delete p.draw;
+    });
+  }
+  function setWheel(id: string): void {
+    step(`“${deal.name}” draws from ${game.wheels.find((w) => w.id === id)?.name ?? 'no wheel'}`, () => (deal.wheel = id || undefined));
+  }
+  function setPerTeam(on: boolean): void {
+    step(on ? `“${deal.name}” is dealt within each team` : `“${deal.name}” is dealt to everyone together`, () => (on ? (deal.perTeam = true) : delete deal.perTeam));
+  }
 </script>
 
 <div class="de" data-deal-editor>
@@ -58,7 +76,7 @@
       <div class="part" role="listitem" data-part={part.id}>
         <div class="row">
           <input class="pname" value={part.name} maxlength={DEAL_PART_MAX} placeholder="Part {i + 1}" aria-label="Part {i + 1}’s name" title="On their phone: “You’re the {partName(part, i)}”, and on screen in Who was who" oninput={(e) => (part.name = e.currentTarget.value)} />
-          <select aria-label="How many get {partName(part, i)}" value={String(part.count)} onchange={(e) => (part.count = e.currentTarget.value === 'rest' ? 'rest' : Number(e.currentTarget.value))}>
+          <select aria-label="How many get {partName(part, i)}" value={String(part.count)} onchange={(e) => setCount(part, i, e.currentTarget.value)}>
             {#each COUNTS as n (n)}<option value={String(n)}>{countText(n)}</option>{/each}
             <option value="rest">{countText('rest')}</option>
           </select>
@@ -69,11 +87,7 @@
         <div class="row">
           <input class="grow" value={slideText(part.card)} placeholder="What its card says (only its players see it)" aria-label="{partName(part, i)}’s card words" oninput={(e) => setSlideText(part.card, e.currentTarget.value)} />
           <button class="small" onclick={() => (editing = part)} title="Pictures, videos, sounds, links: on their phones under the words">Edit card…</button>
-          <select aria-label="{partName(part, i)}’s card draws from the wheel" value={part.draw ?? ''} onchange={(e) => {
-            const v = e.currentTarget.value;
-            if (v === 'own' || v === 'shared') part.draw = v;
-            else delete part.draw;
-          }}>
+          <select aria-label="{partName(part, i)}’s card draws from the wheel" value={part.draw ?? ''} onchange={(e) => setDraw(part, i, e.currentTarget.value)}>
             <option value="">no wheel</option>
             <option value="shared">+ the slice they all share</option>
             <option value="own">+ a slice each</option>
@@ -87,14 +101,14 @@
 
   {#if draws}
     <label class="field">🎡 Wheel its cards draw from
-      <select value={deal.wheel ?? ''} onchange={(e) => (deal.wheel = e.currentTarget.value || undefined)}>
+      <select value={deal.wheel ?? ''} onchange={(e) => setWheel(e.currentTarget.value)}>
         <option value="">Choose a saved wheel…</option>
         {#each game.wheels as w (w.id)}<option value={w.id}>{w.name}</option>{/each}
       </select>
     </label>
     <p class="muted small">“The slice they all share” is drawn once for the deal (🕵 the location everyone but the spy knows); “a slice each” gives each player their own (🧠 a prompt each), none twice while there are enough.</p>
   {/if}
-  <label class="check"><input type="checkbox" checked={!!deal.perTeam} onchange={(e) => (e.currentTarget.checked ? (deal.perTeam = true) : delete deal.perTeam)} /> Teams: deal within each team, to the people on it (a captain for each team)</label>
+  <label class="check"><input type="checkbox" checked={!!deal.perTeam} onchange={(e) => setPerTeam(e.currentTarget.checked)} /> Teams: deal within each team, to the people on it (a captain for each team)</label>
 
   {#each problems as p (p)}<p class="warn small" role="status">⚠ This deal: {p}</p>{/each}
 </div>
