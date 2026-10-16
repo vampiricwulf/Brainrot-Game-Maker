@@ -2,8 +2,8 @@
 // Pure functions over plain objects so they're easy to test and to autosave.
 import { ensureWorld, refindPositions } from './rpg';
 import { ensureBoard, refindSpaces } from './boardgame';
-import { cardSlides, pairOnly, partnerReason, partnerRoles, partnerRules, partnerShares, resetRecipients, startPartner } from './partner';
-import { categoryLabel, clueValue, FINAL_V1_ROUND_ID, finalName, formatPoints, getClue, isBoard, isBoardGame, isFinal, isRpg, isSlides, MAX_POINTS, newId, playableClues, questionSlides, type BoardRound, type Clue, type ClueRef, type ExtraSlide, type FinalRound, type FinalState, type Game, type Id, type PartnerState, type Player, type Round, type ScoreEvent, type Session, type Slide, type SlidesRound, type WagerSource } from './model';
+import { cardSlides, describer, dropFromSends, pairOnly, partnerReason, partnerRoles, partnerRules, partnerShares, resetRecipients, startPartner, takeBack } from './partner';
+import { categoryLabel, clueValue, FINAL_V1_ROUND_ID, finalName, formatPoints, getClue, isBoard, isBoardGame, isFinal, isRpg, isSlides, MAX_POINTS, newId, playableClues, questionSlides, type BoardRound, type Clue, type ClueRef, type ExtraSlide, type FinalRound, type FinalState, type Game, type Id, type PartnerState, type Player, type Round, type ScoreEvent, type Session, type Slide, type SlidesRound, type TeamMember, type WagerSource } from './model';
 
 export function newSession(game: Game): Session {
   return {
@@ -223,10 +223,13 @@ export function removePlayer(session: Session, playerId: string): void {
       if (pt.pickerId === playerId) delete pt.pickerId;
       delete pt.partnerId;
       delete pt.how;
+      delete pt.member;
       pt.stage = 'pick';
       pairOnly(session, pt);
     }
     for (const [card, to] of Object.entries(pt.deal ?? {})) pt.deal![card] = to.filter((t) => t.seat !== playerId);
+    // A card sent to them is taken back from them (one sent to others too stays with the others).
+    dropFromSends(pt, playerId);
   }
   if (f) {
     // Their wager and result stay (nothing reads them while they're out), so a restore brings them back.
@@ -452,7 +455,10 @@ export function judgePartner(session: Session, game: Game, got: boolean, value: 
   const rules = partnerRules(clue);
   const roles = partnerRoles(s);
   const name = (id: Id | undefined) => (id ? playerName(session, id) : undefined);
-  const reason = `${clueReason(game, ref)} (${partnerReason(rules, { giver: name(roles.giver), guesser: name(roles.guesser), solo: roles.solo })})`;
+  // (Teams: one person on the picker's team described to the rest of it: scored as Solo, one award to the team.)
+  const m = describer(s);
+  const names = m ? { giver: m.name, guesser: name(s.pickerId) } : { giver: name(roles.giver), guesser: name(roles.guesser), solo: roles.solo };
+  const reason = `${clueReason(game, ref)} (${partnerReason(rules, names)})`;
   const events: ScoreEvent[] = [];
   for (const { id, points } of partnerShares(value, rules, s, got, clueMarks(session, s.clue, s.at ?? 0))) {
     const scored = points ? applyScore(session, game, [id], points, reason, s.clue, false, batchId) : [];
@@ -1164,11 +1170,20 @@ export function rebaseSession(session: Session, from: Game, to: Game): void {
     session.partner = null;
     if (session.phase === 'clue') session.phase = 'board';
   }
-  // A partner clue that isn't one any more is played as a plain clue; a card deleted goes from who it was given to.
+  // A partner clue that isn't one any more is played as a plain clue; a card deleted goes from who it was given to, and
+  // from the phones it was sent to. (A card edited since it was sent is taken off them by its hash: partnerCards.)
   const nowClue = ref ? getClue(to, ref)?.clue : undefined;
   const pt = session.partner;
   if (pt && (nowClue?.type !== 'partner' || nowClue.id !== pt.clue)) session.partner = null;
-  else if (pt && nowClue) for (const id of Object.keys(pt.deal ?? {})) if (!cardSlides(nowClue).some((c) => c.id === id)) resetRecipients(pt, id);
+  else if (pt && nowClue) {
+    const gone = (id: string) => !cardSlides(nowClue).some((c) => c.id === id);
+    for (const id of Object.keys(pt.deal ?? {})) if (gone(id)) resetRecipients(pt, id);
+    for (const id of new Set((pt.sent ?? []).map((x) => x.card))) if (gone(id)) takeBack(pt, id);
+    if (pt.ready?.some(gone)) {
+      pt.ready = pt.ready.filter((id) => !gone(id));
+      if (!pt.ready.length) delete pt.ready;
+    }
+  }
   // Rounds are matched by id, so deleting or reordering rounds in the editor keeps the host on the same one.
   const roundAt = (i: number) => {
     const j = to.rounds.findIndex((r) => r.id === from.rounds[i]?.id);
@@ -1230,9 +1245,35 @@ function repairPartnerState(session: Session): void {
   if (p.giver !== 'partner' && p.giver !== 'picker') p.giver = 'partner';
   if (p.at !== undefined && !Number.isFinite(p.at)) delete p.at;
   for (const k of ['pickerId', 'partnerId'] as const) if (p[k] !== undefined && typeof p[k] !== 'string') delete p[k];
+  const isMember = (m: unknown) => typeof m === 'object' && !!m && typeof (m as TeamMember).id === 'string' && typeof (m as TeamMember).name === 'string';
+  const PARTS: unknown[] = ['giver', 'guesser', 'other', 'solo'];
+  // (A recipient that doesn't check is never read as a wider one: one person on a team never becomes the whole team.)
+  const seats = (to: unknown) =>
+    Array.isArray(to) &&
+    to.every(
+      (t) =>
+        typeof t?.seat === 'string' &&
+        (t.member === undefined || isMember(t.member)) &&
+        (t.except === undefined || (Array.isArray(t.except) && t.except.every((x: unknown) => typeof x === 'string'))) &&
+        (t.part === undefined || PARTS.includes(t.part)),
+    );
+  if (p.member !== undefined && !isMember(p.member)) delete p.member;
   if (p.deal !== undefined) {
-    const ok = typeof p.deal === 'object' && !!p.deal && Object.values(p.deal).every((to) => Array.isArray(to) && to.every((t) => typeof t?.seat === 'string'));
+    const ok = typeof p.deal === 'object' && !!p.deal && Object.values(p.deal).every(seats);
     if (!ok) delete p.deal;
+  }
+  // Sends that aren't well-formed are dropped (never widened): a damaged save sends nothing it didn't send.
+  if (p.sent !== undefined) {
+    const sent = Array.isArray(p.sent)
+      ? p.sent.filter((x) => typeof x === 'object' && !!x && typeof x.card === 'string' && seats(x.to) && x.to.length > 0 && Number.isFinite(x.at) && typeof x.hash === 'string')
+      : [];
+    if (sent.length) p.sent = sent;
+    else delete p.sent;
+  }
+  if (p.ready !== undefined) {
+    const ready = Array.isArray(p.ready) ? p.ready.filter((id) => typeof id === 'string') : [];
+    if (ready.length) p.ready = ready;
+    else delete p.ready;
   }
 }
 

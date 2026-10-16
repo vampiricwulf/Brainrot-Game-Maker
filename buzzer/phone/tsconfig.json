@@ -10,5 +10,6 @@
     "skipLibCheck": true,
     "isolatedModules": true
   },
-  "include": ["*.ts", "../../src/lib/buzzproto.ts"]
+  "include": ["*.ts", "../../src/lib/buzzproto.ts"],
+  "exclude": ["*.test.ts"]
 }

@@ -59,10 +59,39 @@
  * second, or over PHONE_BYTES in one second, is closed (4008) before its messages are read, and for FLOOD_BLOCK_MS a
  * phone from its address may only come back to a seat it holds (a join with its token, not the flooder's): phones on one
  * Wi-Fi share an address, and a seated player reconnecting there isn't the flood. Anything else from it is closed.
+ *
+ * Cards (HostState.cards): private cards the host sent by hand. Each phone's view gets only the cards sent to its seat
+ * (teams: to its member, or its team but not to it in `except`), and only those it isn't late for: the room notes when
+ * it first saw each card id, and a phone gets it only if it has held its place since before then (its seat's token
+ * handed out: seatedAt; teams: its member joined the team or was moved onto it: Member.teamAt). A freed seat taken
+ * again is new, so is a member moved to another team; a phone back with its own token keeps its time. Late ones are only
+ * counted, and the host hears which phones here are late for which card (cardsLate), so it can offer ↻ Send again. A
+ * card sent to more than one seat says on the phone that others have it too (shared), never who. The seat list never
+ * carries a card. An id gone from the state is forgotten at once (the tile closed).
+ *
+ * Card files ('files'): the bytes are stored by the Durable Object under their own keys (index.ts); the room keeps an
+ * index (RoomSaved.files), checks the caps, and gives a file only to a phone holding a token for a current card it may
+ * see (fileFor). A file no current card uses is deleted FILE_IDLE_MS after (one got ready and never sent, after its
+ * upload), by the alarm and on each new state.
  */
 import {
   BUZZ_PROTOCOL,
+  cardLink,
+  CARD_HINT_MAX,
+  CARD_ID_MAX,
+  CARD_MEDIA_MAX,
+  CARD_MEMBER_MAX,
+  CARD_ROLE_MAX,
+  CARD_TEXT_MAX,
+  CARD_TITLE_MAX,
+  CARD_TO_MAX,
+  CARDS_BYTES,
+  CARDS_MAX,
+  EMBED_SITES,
+  isFileId,
   MEMBER_NAME_MAX,
+  ROOM_FILES_BYTES,
+  ROOM_FILES_MAX,
   WAGER_MAX,
   ANSWER_MAX,
   phoneView,
@@ -71,10 +100,16 @@ import {
   clip,
   cleanName,
   type BuzzPhase,
+  type CardMedia,
+  type CardTo,
   type DenyReason,
+  type HostCard,
   type HostState,
   type MemberRef,
+  type PhoneCard,
   type PhoneInfo,
+  type PhoneView,
+  type CardLate,
   type QueuedBuzz,
   type RoomToHost,
   type RoomToPhone,
@@ -84,6 +119,7 @@ import {
   type WagerRefusal,
   type WagerSeat,
 } from '../../src/lib/buzzproto';
+import { FILE_IDLE_MS } from './limits';
 
 /** Phones connected at most, not counting idle ones without a seat (see Full rooms above). */
 export const MAX_PHONES = 24;
@@ -128,6 +164,9 @@ export const COLOR_WINDOW_MS = 10_000;
 /** Answers a phone may send per ANSWER_WINDOW_MS (fixing a typo a few times is fine; a script isn't). */
 export const ANSWER_RATE = 10;
 export const ANSWER_WINDOW_MS = 10_000;
+/** cardSeen reports a phone may send per CARD_SEEN_WINDOW_MS (like answers). */
+export const CARD_SEEN_RATE = 10;
+export const CARD_SEEN_WINDOW_MS = 10_000;
 /** After the first buzz of an arm, the room waits at least this long for buzzes still on their way before deciding… */
 export const GRACE_MS = 250;
 /** …and at most this long, however slow the network of a phone that could still beat it (see graceEnd). */
@@ -216,6 +255,31 @@ export interface RoomSaved {
    * that phone is away (asleep, its tab closed).
    */
   seen?: Record<string, { device?: string; ip?: string }>;
+  /**
+   * The cards in the host's state (HostState.cards): when the room first saw each id (the late rule counts from then)
+   * and who has seen it (cardSeen). Ids gone from the state are forgotten at once.
+   */
+  cards?: { at: Record<string, number>; seen: Record<string, CardSeen[]> };
+  /** Card files ('files'), by id: an index only (the bytes are under their own keys, file:<id>:<n>; see index.ts). */
+  files?: Record<string, RoomFile>;
+}
+
+/** A card file the room holds. unusedSince: no current card uses it (since its upload, for one no card used yet). */
+export interface RoomFile {
+  mime: string;
+  bytes: number;
+  /** How many 1 MB pieces its bytes are stored in. */
+  parts: number;
+  /** When it was uploaded. */
+  at: number;
+  unusedSince?: number;
+}
+
+/** A phone of seatId (teams: member, called by) showed a card. */
+export interface CardSeen {
+  seatId: string;
+  member?: string;
+  by?: string;
 }
 
 /** Someone on a team (teams). */
@@ -226,6 +290,11 @@ export interface Member {
   conn?: string;
   /** When they joined (the member gone longest makes room when there are MAX_MEMBERS). */
   at: number;
+  /**
+   * When they joined the team they're on now: set when they join, reset when the host moves them, kept when their phone
+   * comes back with their token (cards' late rule). A member saved before it existed uses `at`.
+   */
+  teamAt?: number;
 }
 
 /** What each phone socket keeps (stored on the socket, so it survives hibernation). */
@@ -258,6 +327,10 @@ export interface RoomDeps {
   /** Run fn in ms (the grace window); returns a handle for cancel. */
   schedule(ms: number, fn: () => void): unknown;
   cancel(handle: unknown): void;
+  /** Delete these card files' bytes (all their pieces). */
+  dropFiles(files: { id: string; parts: number }[]): void;
+  /** A card file's clean-up is due at `at`: the room must be woken by then (index.ts moves its alarm earlier if need be). */
+  cleanupAt(at: number): void;
 }
 
 interface Phone extends PhoneSaved {
@@ -282,6 +355,8 @@ interface Phone extends PhoneSaved {
   colorRate?: Window;
   /** Answers sent lately (ANSWER_RATE). */
   answerRate?: Window;
+  /** cardSeen reports sent lately (CARD_SEEN_RATE). */
+  seenRate?: Window;
 }
 
 interface Window {
@@ -325,6 +400,8 @@ export class Room {
   private hostHere: boolean;
   private hostRate: Window = { start: 0, count: 0 };
   private lastPhones = '';
+  /** The cardsLate list the host last heard ('' for none). */
+  private lastLate = '';
   /** The grace window's timer. */
   private grace: unknown = null;
   /** The last queue / results sent this arm, so unchanged ones aren't sent again. */
@@ -367,11 +444,15 @@ export class Room {
 
   // ---- host ----
 
-  hostOpen(): void {
+  /** files: the server takes card files now (listed in the welcome as 'files'; index.ts knows its setting and budget). */
+  hostOpen(files = false): void {
     this.hostHere = true;
     this.lastPhones = '';
     this.lastQueue = '';
-    this.deps.toHost({ t: 'welcome', code: this.code, protocol: BUZZ_PROTOCOL, serverNow: this.deps.now(), features: [...ROOM_FEATURES] });
+    this.lastLate = '';
+    const features = ROOM_FEATURES.filter((f) => f !== 'files' || files);
+    this.deps.toHost({ t: 'welcome', code: this.code, protocol: BUZZ_PROTOCOL, serverNow: this.deps.now(), features });
+    this.tellFiles();
     this.settle();
     this.sync();
     this.announce();
@@ -392,6 +473,17 @@ export class Room {
     if (typed && st?.answers?.id === typed.id)
       for (const [seatId, a] of Object.entries(typed.seats))
         if (a.n > (st.answers.seats.find((x) => x.id === seatId)?.got ?? 0)) this.tellAnswer(typed.id, seatId, a);
+    // And who has seen the current cards (still sent to them).
+    for (const c of st?.cards ?? []) for (const who of this.s.cards?.seen[c.id] ?? []) if (this.sentTo(c, who.seatId, who.member)) this.tellSeen(c.id, who);
+  }
+
+  private tellSeen(id: string, who: CardSeen): void {
+    if (this.hostHere) this.deps.toHost({ t: 'cardSeen', id, ...who });
+  }
+
+  /** The host hears which card files the room holds (so it uploads again one its cards need that was cleaned up). */
+  private tellFiles(): void {
+    if (this.hostHere) this.deps.toHost({ t: 'files', ids: Object.keys(this.s.files ?? {}) });
   }
 
   private tellAnswer(id: string, seatId: string, a: SentAnswer): void {
@@ -416,11 +508,14 @@ export class Room {
     if (!m) return;
     switch (m.t) {
       case 'state': {
-        const next = cleanState(m.state);
+        const next = cleanState(m.state, this.s.files);
         if (!next) return this.deps.toHost({ t: 'error', message: 'bad state' });
         this.setState(next);
         break;
       }
+      case 'forget':
+        if (Array.isArray(m.files)) this.forget(m.files.slice(0, 4 * ROOM_FILES_MAX).filter(isFileId));
+        break;
       case 'accept':
         if (typeof m.conn === 'string' && typeof m.seatId === 'string') this.accept(m.conn, m.seatId);
         break;
@@ -506,6 +601,18 @@ export class Room {
       /* kept */
     } else if (this.s.answers?.id !== ans.id) this.s.answers = { id: ans.id, seats: {}, at: now };
     else for (const id of Object.keys(this.s.answers.seats)) if (!ans.seats.some((x) => x.id === id)) delete this.s.answers.seats[id];
+    // Cards: a new id is a new card, first seen now (the late rule); one gone from the state is forgotten at once, so a
+    // closed tile leaves nothing of its cards in the room. Their files follow (unused ones are cleaned up later).
+    const cardIds = new Set((next.cards ?? []).map((c) => c.id));
+    const kept = this.s.cards ?? { at: {}, seen: {} };
+    for (const id of Object.keys(kept.at)) if (!cardIds.has(id)) {
+      delete kept.at[id];
+      delete kept.seen[id];
+    }
+    for (const id of cardIds) kept.at[id] ??= now;
+    if (cardIds.size) this.s.cards = kept;
+    else delete this.s.cards;
+    this.useFiles(now);
     // Turning off new players turns away those waiting.
     if (prev?.allowNew && !next.allowNew) {
       for (const p of this.phones.values()) if (p.pendingName !== undefined) {
@@ -516,6 +623,174 @@ export class Room {
     }
     this.save();
     this.announce();
+  }
+
+  // ---- card files ----
+
+  /** The card files the current cards use. */
+  private usedFiles(): Set<string> {
+    const used = new Set<string>();
+    for (const c of this.s.state?.cards ?? []) for (const m of c.media ?? []) if ('file' in m) used.add(m.file);
+    return used;
+  }
+
+  /** Notes which card files the current cards use (a file no card uses starts its clean-up time) and drops stale ones. */
+  private useFiles(now: number): void {
+    const files = this.s.files;
+    if (!files) return;
+    const used = this.usedFiles();
+    let idle = false;
+    for (const [id, f] of Object.entries(files)) {
+      if (used.has(id)) delete f.unusedSince;
+      else if (f.unusedSince === undefined) {
+        f.unusedSince = now;
+        idle = true;
+      }
+    }
+    if (idle) this.deps.cleanupAt(now + FILE_IDLE_MS);
+    this.dropStale(now);
+  }
+
+  /** Deletes the card files no card has used for FILE_IDLE_MS; how many it deleted. */
+  private dropStale(now: number): number {
+    return this.dropFiles(Object.keys(this.s.files ?? {}).filter((id) => now - (this.s.files![id].unusedSince ?? now) >= FILE_IDLE_MS));
+  }
+
+  /** Forgets card files and has their bytes deleted (the host hears what is left); how many there were. */
+  private dropFiles(ids: string[]): number {
+    const gone: { id: string; parts: number }[] = [];
+    for (const id of ids) {
+      const f = this.s.files?.[id];
+      if (!f) continue;
+      delete this.s.files![id];
+      gone.push({ id, parts: f.parts });
+    }
+    if (!gone.length) return 0;
+    if (!Object.keys(this.s.files ?? {}).length) delete this.s.files;
+    this.deps.dropFiles(gone);
+    this.tellFiles();
+    return gone.length;
+  }
+
+  /** The host is done with these card files: deleted now, except one a current card still uses. */
+  private forget(ids: string[]): void {
+    const used = this.usedFiles();
+    if (this.dropFiles(ids.filter((id) => !used.has(id)))) this.save();
+  }
+
+  /** The alarm: deletes the card files no card has used for FILE_IDLE_MS (index.ts then sets the next alarm). */
+  sweepFiles(): void {
+    if (this.dropStale(this.deps.now())) this.save();
+  }
+
+  /**
+   * Whether card file `id` (`bytes` long) can be stored: 'have' (it's here already: its clean-up time starts again if no
+   * card uses it, as the host is getting it ready again), 'ok', or 'full' (ROOM_FILES_MAX files or ROOM_FILES_BYTES).
+   * `pending`: files still on their way into storage, counted as here already.
+   */
+  fileRoom(id: string, bytes: number, pending: { files: number; bytes: number } = { files: 0, bytes: 0 }): 'have' | 'ok' | 'full' {
+    const files = this.s.files ?? {};
+    const had = files[id];
+    if (had) {
+      if (had.unusedSince !== undefined) {
+        had.unusedSince = this.deps.now();
+        this.deps.saveRoom(this.s);
+      }
+      return 'have';
+    }
+    const all = Object.values(files);
+    if (all.length + pending.files >= ROOM_FILES_MAX || all.reduce((n, f) => n + f.bytes, 0) + pending.bytes + bytes > ROOM_FILES_BYTES) return 'full';
+    return 'ok';
+  }
+
+  /**
+   * Card file `id` is stored (its bytes in `parts` pieces). No card uses it until the host sends a state that names it,
+   * so it waits, given to nobody, and is cleaned up FILE_IDLE_MS after this if none does.
+   */
+  fileAdded(id: string, mime: string, bytes: number, parts: number): void {
+    if (this.s.files?.[id]) return;
+    const now = this.deps.now();
+    (this.s.files ??= {})[id] = { mime, bytes, parts, at: now, unusedSince: now };
+    this.deps.cleanupAt(now + FILE_IDLE_MS);
+    this.tellFiles();
+    this.save();
+  }
+
+  /**
+   * Card file `id` for whoever holds `token` (a seat's, or a team member's): only while it holds its place, a current
+   * card sent to it uses the file, and it isn't late for that card. Else null (the Worker answers 404).
+   */
+  fileFor(token: string, id: string): RoomFile | null {
+    const f = this.s.files?.[id];
+    const cards = this.s.state?.cards;
+    if (!f || !cards?.length || !token) return null;
+    let who: { seatId: string; member?: string; since?: number } | undefined;
+    const member = Object.entries(this.s.members ?? {}).find(([, m]) => m.token === token);
+    if (member) who = { seatId: member[1].seatId, member: member[0], since: member[1].teamAt ?? member[1].at };
+    else if (!this.s.state?.teams) {
+      const seatId = Object.keys(this.s.tokens).find((k) => this.s.tokens[k] === token);
+      if (seatId) who = { seatId, since: this.s.seatedAt?.[seatId] };
+    }
+    if (!who) return null;
+    const { seatId, member: mid, since } = who;
+    const ok = cards.some((c) => !!c.media?.some((m) => 'file' in m && m.file === id) && !!this.sentTo(c, seatId, mid) && !this.lateFor(c, since));
+    return ok ? f : null;
+  }
+
+  // ---- cards ----
+
+  /** The `to` entry that sends card c to seat seatId (teams: to its member `member`), if one does. */
+  private sentTo(c: HostCard, seatId: string, member?: string): CardTo | undefined {
+    return c.to.find((t) => t.seat === seatId && (t.member !== undefined ? t.member === member : !(member && t.except?.includes(member))));
+  }
+
+  /** Since when phone p has held its place: its seat's token handed out, or (teams) its member being on this team. */
+  private since(p: Phone): number | undefined {
+    const m = p.member ? this.s.members?.[p.member] : undefined;
+    if (m) return m.teamAt ?? m.at;
+    return p.seatId && !this.s.state?.teams ? this.s.seatedAt?.[p.seatId] : undefined;
+  }
+
+  /** A phone holding its place since `since` is late for card c: it got there when or after the room first saw it (or it can't tell). */
+  private lateFor(c: HostCard, since: number | undefined): boolean {
+    const at = this.s.cards?.at[c.id];
+    return since === undefined || at === undefined || since >= at;
+  }
+
+  /**
+   * The cards phone p gets (sent to it, and not late for them), and how many sent to it it is late for; `lateIds`: the
+   * ids of those (the host hears them: cardsLate).
+   */
+  private cardsFor(p: Phone): { view: PhoneView['cards'] | undefined; lateIds: string[] } {
+    const cards = this.s.state?.cards;
+    if (!cards?.length || !p.seatId) return { view: undefined, lateIds: [] };
+    const since = this.since(p);
+    const list: PhoneCard[] = [];
+    const lateIds: string[] = [];
+    for (const c of cards) {
+      const to = this.sentTo(c, p.seatId, p.member);
+      if (!to) continue;
+      if (this.lateFor(c, since)) lateIds.push(c.id);
+      else list.push(phoneCard(c, !!this.s.state?.teams && to.member === undefined));
+    }
+    const late = lateIds.length;
+    return { view: list.length || late ? { list, ...(late ? { late } : {}) } : undefined, lateIds };
+  }
+
+  /** A phone showed card `id`: kept and told to the host once per seat (teams: per member), only for a current card sent to it that it isn't late for. */
+  private cardSeen(p: Phone, id: string): void {
+    // (Counted first: a phone sending made-up ids uses up its own reports.)
+    if (!this.allow((p.seenRate ??= { start: 0, count: 0 }), CARD_SEEN_RATE, CARD_SEEN_WINDOW_MS)) return;
+    const c = this.s.state?.cards?.find((x) => x.id === id);
+    if (!c || !p.seatId || !this.sentTo(c, p.seatId, p.member) || this.lateFor(c, this.since(p))) return;
+    const kept = (this.s.cards ??= { at: {}, seen: {} });
+    const list = (kept.seen[id] ??= []);
+    if (list.some((x) => x.seatId === p.seatId && x.member === p.member)) return;
+    const m = p.member ? this.s.members?.[p.member] : undefined;
+    const who: CardSeen = { seatId: p.seatId, ...(m && p.member ? { member: p.member, by: m.name } : {}) };
+    list.push(who);
+    this.tellSeen(id, who);
+    this.save();
   }
 
   private newRace(armId: number, now: number): void {
@@ -624,6 +899,8 @@ export class Room {
     // Moved during a clue off a team in it: no second go for the new team on this clue.
     if (this.inClue(m.seatId, member) && !this.s.clueOut?.includes(member)) (this.s.clueOut ??= []).push(member);
     m.seatId = seatId;
+    // New on this team: cards it was sent before now aren't theirs (the late rule).
+    m.teamAt = this.deps.now();
     for (const p of this.phones.values()) {
       if (p.member !== member) continue;
       p.seatId = seatId;
@@ -821,7 +1098,7 @@ export class Room {
       delete p.flooded;
       this.deps.savePhone(strip(p));
     }
-    if (m.t === 'join' || m.t === 'new' || m.t === 'buzz' || m.t === 'leave' || m.t === 'wager' || m.t === 'answer') p.active = this.deps.now();
+    if (m.t === 'join' || m.t === 'new' || m.t === 'buzz' || m.t === 'leave' || m.t === 'wager' || m.t === 'answer' || m.t === 'cardSeen') p.active = this.deps.now();
     if ((m.t === 'join' || m.t === 'new') && typeof m.device === 'string' && m.device && m.device.length <= 64 && p.device !== m.device) {
       p.device = m.device;
       this.deps.savePhone(strip(p));
@@ -866,6 +1143,9 @@ export class Room {
         break;
       case 'answer':
         if (typeof m.id === 'string') this.answer(p, m.id, m.text);
+        break;
+      case 'cardSeen':
+        if (typeof m.id === 'string') this.cardSeen(p, m.id);
         break;
       case 'ping':
         if (typeof m.at === 'number') {
@@ -1015,7 +1295,8 @@ export class Room {
     // Its id is never a credential (the host and teammates hear it); the token is.
     let id = `m${this.deps.token().slice(0, 15)}`;
     while (members[id]) id = `m${this.deps.token().slice(0, 15)}`;
-    const m: Member = { seatId, name, token: this.deps.token(), at: this.deps.now() };
+    const now = this.deps.now();
+    const m: Member = { seatId, name, token: this.deps.token(), at: now, teamAt: now };
     members[id] = m;
     // This phone left a team in the clue going on (see noteLeft): on another team, out of the rest of it too.
     const left = this.s.clueLeft?.[p.device || p.conn];
@@ -1370,6 +1651,8 @@ export class Room {
       ...(teams ? { teams: true } : {}),
     } satisfies RoomToPhone);
     const by = teams ? this.answeringBy() : null;
+    /** The phones here now that a current card was sent to but that are late for it (a new phone for the seat…). */
+    const cardsLate: CardLate[] = [];
     for (const p of this.phones.values()) {
       if (p.seatId && st) {
         const m = p.member ? this.s.members?.[p.member] : undefined;
@@ -1396,7 +1679,10 @@ export class Room {
         const ownAnswer = m ? typed?.member === p.member : typed?.at !== undefined && typed.at >= (since ?? 0);
         const ansHidden = ansLate && !!typed && !ownAnswer;
         if (ansHidden) typed = undefined;
-        const view = { ...phoneView(st, p.seatId, me, by, sent, late, typed, ansHidden), hostHere: this.hostHere, ...(canQueue ? { canQueue: true } : {}) };
+        // Only the cards sent to this phone that it isn't late for (see Cards above). The host hears which it's late for.
+        const { view: cards, lateIds } = this.cardsFor(p);
+        for (const id of lateIds) if (!cardsLate.some((x) => x.id === id && x.seatId === p.seatId && x.member === p.member)) cardsLate.push({ id, seatId: p.seatId, ...(me ? { member: me.id, by: me.name } : {}) });
+        const view = { ...phoneView(st, p.seatId, me, by, sent, late, typed, ansHidden, cards), hostHere: this.hostHere, ...(canQueue ? { canQueue: true } : {}) };
         if (out && view.you) view.you = { ...view.you, lockedOut: true, out: true };
         const key = JSON.stringify(view);
         if (key !== p.lastView) {
@@ -1431,6 +1717,12 @@ export class Room {
     if (key !== this.lastPhones) {
       this.lastPhones = key;
       this.deps.toHost({ t: 'phones', phones: list });
+    }
+    // (Only with cards out, or to clear a list the host had: an older host never hears it.)
+    const lateKey = JSON.stringify(cardsLate);
+    if (lateKey !== this.lastLate && (cardsLate.length || this.lastLate)) {
+      this.lastLate = cardsLate.length ? lateKey : '';
+      this.deps.toHost({ t: 'cardsLate', late: cardsLate });
     }
   }
 
@@ -1489,8 +1781,11 @@ function parse(raw: unknown, max: number): (Obj & { t: string }) | null {
 const PHASES: BuzzPhase[] = ['lobby', 'closed', 'armed', 'answering'];
 const COLOR = /^#[0-9a-fA-F]{6}$/;
 
-/** The host's state checked and trimmed to what the room passes on; null when its shape is wrong. */
-export function cleanState(x: unknown): HostState | null {
+/**
+ * The host's state checked and trimmed to what the room passes on; null when its shape is wrong. files: the card files
+ * the room holds (a card's file item must be one of them).
+ */
+export function cleanState(x: unknown, files: Record<string, RoomFile> = {}): HostState | null {
   if (!isObj(x)) return null;
   if (typeof x.title !== 'string' || !Array.isArray(x.seats) || typeof x.allowNew !== 'boolean') return null;
   if (typeof x.phase !== 'string' || !PHASES.includes(x.phase as BuzzPhase)) return null;
@@ -1521,7 +1816,10 @@ export function cleanState(x: unknown): HostState | null {
     if (Array.isArray(x.status.seats) && typeof x.status.seatsText === 'string' && x.status.seatsText.trim()) {
       st.seats = x.status.seats.filter((id): id is string => typeof id === 'string' && ids.has(id));
       st.seatsText = clip(x.status.seatsText.trim(), STATUS_MAX);
+      if (typeof x.status.seatsSub === 'string' && x.status.seatsSub.trim()) st.seatsSub = clip(x.status.seatsSub.trim(), STATUS_MAX);
     }
+    if (x.status.off === true) st.off = true;
+    if (typeof x.status.sub === 'string' && x.status.sub.trim()) st.sub = clip(x.status.sub.trim(), STATUS_MAX);
     extra.status = st;
   }
   if (typeof x.currency === 'string' && x.currency) extra.currency = clip(x.currency, 8);
@@ -1537,6 +1835,10 @@ export function cleanState(x: unknown): HostState | null {
       aseats.push({ id: a.id, ...(got ? { got } : {}) });
     }
     extra.answers = { id: x.answers.id, open: x.answers.open === true, seats: aseats };
+  }
+  if (Array.isArray(x.cards)) {
+    const cards = cleanCards(x.cards, ids, files);
+    if (cards.length) extra.cards = cards;
   }
   if (x.over === true) extra.over = true;
   if (extra.over && typeof x.winner === 'string' && ids.has(x.winner)) extra.winner = x.winner;
@@ -1565,5 +1867,122 @@ export function cleanState(x: unknown): HostState | null {
     earlyLockMs: Number.isFinite(x.earlyLockMs) ? Math.max(0, Math.min(10_000, Math.round(x.earlyLockMs))) : 0,
     scores,
     ...extra,
+  };
+}
+
+/**
+ * The host's cards checked and trimmed (HostState.cards): at most CARDS_MAX, with unique ids, sent to seats in the game
+ * (a card to nobody is dropped), lines cut, links https only, embeds from EMBED_SITES, files this room holds. Together
+ * at most CARDS_BYTES as JSON: over that, media go first (each becomes "the host will show you this", from the last card
+ * back), then cards from the end.
+ */
+function cleanCards(raw: unknown[], seats: Set<string>, files: Record<string, RoomFile>): HostCard[] {
+  const cards: HostCard[] = [];
+  for (const c of raw) {
+    if (cards.length >= CARDS_MAX) break;
+    if (!isObj(c) || typeof c.id !== 'string' || !c.id || c.id.length > CARD_ID_MAX || cards.some((o) => o.id === c.id) || !Array.isArray(c.to)) continue;
+    const to: CardTo[] = [];
+    for (const t of c.to.slice(0, CARD_TO_MAX)) {
+      if (!isObj(t) || typeof t.seat !== 'string' || !seats.has(t.seat)) continue;
+      const id = (v: unknown): v is string => typeof v === 'string' && !!v && v.length <= CARD_MEMBER_MAX;
+      if (t.member !== undefined) {
+        // One person on the team: never widened to the whole team.
+        if (id(t.member)) to.push({ seat: t.seat, member: t.member });
+        continue;
+      }
+      if (t.except !== undefined) {
+        // Everyone but some: never sent to anyone left out because their id didn't check.
+        if (Array.isArray(t.except) && t.except.length <= CARD_TO_MAX && t.except.every(id)) to.push({ seat: t.seat, ...(t.except.length ? { except: [...new Set(t.except)] } : {}) });
+        continue;
+      }
+      to.push({ seat: t.seat });
+    }
+    if (!to.length) continue;
+    const line = (v: unknown, max: number) => (typeof v === 'string' && v.trim() ? clip(v.trim(), max) : undefined);
+    const role = line(c.role, CARD_ROLE_MAX);
+    const hint = line(c.hint, CARD_HINT_MAX);
+    const title = line(c.title, CARD_TITLE_MAX);
+    const text = line(c.text, CARD_TEXT_MAX);
+    const media = Array.isArray(c.media) ? c.media.slice(0, CARD_MEDIA_MAX).flatMap((m) => cleanMedia(m, files) ?? []) : [];
+    cards.push({
+      id: c.id,
+      to,
+      open: c.open !== false,
+      ...(role ? { role } : {}),
+      ...(hint ? { hint } : {}),
+      ...(title ? { title } : {}),
+      ...(text ? { text } : {}),
+      ...(media.length ? { media } : {}),
+      ...(c.tap === false ? { tap: false } : {}),
+      ...(c.shared === true ? { shared: true } : {}),
+    });
+  }
+  let size = bytes(JSON.stringify(cards));
+  for (let i = cards.length - 1; i >= 0 && size > CARDS_BYTES; i--) {
+    const media = cards[i].media ?? [];
+    for (let j = media.length - 1; j >= 0 && size > CARDS_BYTES; j--) {
+      const was = media[j];
+      const now: CardMedia = { kind: was.kind === 'embed' ? 'video' : was.kind, missing: true };
+      size -= bytes(JSON.stringify(was)) - bytes(JSON.stringify(now));
+      media[j] = now;
+    }
+  }
+  while (cards.length && bytes(JSON.stringify(cards)) > CARDS_BYTES) cards.pop();
+  return cards;
+}
+
+const MEDIA_KINDS = ['image', 'video', 'audio'] as const;
+
+/**
+ * One picture, video, sound or embed on a card, checked; null when it's no such thing. A file the room doesn't hold
+ * (cleaned up, or not uploaded yet) is on its way: the host uploads again what the room's `files` list lacks.
+ */
+function cleanMedia(m: unknown, files: Record<string, RoomFile>): CardMedia | null {
+  if (!isObj(m)) return null;
+  const secs = (v: unknown) => (typeof v === 'number' && Number.isFinite(v) && v >= 0 ? Math.min(v, 86_400) : undefined);
+  const start = secs(m.start);
+  const end = secs(m.end);
+  const times = { ...(start !== undefined ? { start } : {}), ...(end !== undefined ? { end } : {}) };
+  const name = typeof m.name === 'string' && cleanName(m.name, 100) ? { name: cleanName(m.name, 100) } : {};
+  if (m.kind === 'embed') {
+    const url = cardLink(m.url);
+    const site = EMBED_SITES.find((x) => x === m.site);
+    return url && site ? { kind: 'embed', site, url, ...times } : null;
+  }
+  const kind = MEDIA_KINDS.find((k) => k === m.kind);
+  if (!kind) return null;
+  if (m.missing === true) return { kind, missing: true };
+  if (m.pending === true) return { kind, pending: true };
+  if (m.file !== undefined) {
+    if (!isFileId(m.file)) return null;
+    const f = files[m.file];
+    if (!f) return { kind, pending: true };
+    // Its kind and type are the stored file's own.
+    return { kind: MEDIA_KINDS.find((k) => f.mime.startsWith(`${k}/`)) ?? kind, file: m.file, mime: f.mime, ...times, ...name };
+  }
+  const url = cardLink(m.url);
+  return url ? { kind, url, ...times, ...name } : null;
+}
+
+/** (A link a card may carry: shared with the app and the phone page.) */
+export { cardLink };
+
+/**
+ * A card as the phone it was sent to sees it: never who else it went to, only whether it went to others too (shared).
+ * team: everyone on the phone's team sees it.
+ */
+function phoneCard(c: HostCard, team: boolean): PhoneCard {
+  return {
+    id: c.id,
+    open: c.open,
+    ...(c.role ? { role: c.role } : {}),
+    ...(c.hint ? { hint: c.hint } : {}),
+    ...(c.title ? { title: c.title } : {}),
+    ...(c.text ? { text: c.text } : {}),
+    ...(c.media?.length ? { media: c.media } : {}),
+    ...(c.tap === false ? { tap: false } : {}),
+    ...(team ? { team: true } : {}),
+    // (Never who else: only that it isn't this phone's alone.)
+    ...(c.shared || c.to.length > 1 ? { shared: true } : {}),
   };
 }

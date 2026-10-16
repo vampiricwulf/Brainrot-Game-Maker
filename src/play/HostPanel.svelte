@@ -16,7 +16,7 @@
   import TimerControls from './host/TimerControls.svelte';
   import DDControls from './host/DDControls.svelte';
   import PartnerControls from './host/PartnerControls.svelte';
-  import { partnerRules, partnerShares, partnerVerdict } from '../lib/partner';
+  import { cardSlides, partnerRules, partnerShares, partnerVerdict, sentTo, toName } from '../lib/partner';
   import FinalControls from './host/FinalControls.svelte';
   import EndControls from './host/EndControls.svelte';
   import ToolsControls from './host/ToolsControls.svelte';
@@ -83,6 +83,8 @@
     onpartnerspin = () => {},
     onpartnershow = () => {},
     onpartnerclock = () => {},
+    onpartnertakeback = () => {},
+    onpartnermemberspin = () => {},
     onpartnerjudge = () => {},
     onfinalstep,
     ontiebreaker,
@@ -184,6 +186,10 @@
     onpartnerspin?: () => void;
     onpartnershow?: () => void;
     onpartnerclock?: () => void;
+    /** ✖ Take back a 🤫 card from every phone it was sent to. */
+    onpartnertakeback?: (card: string) => void;
+    /** 🎡 Spin for the describer: the member wheel (teams, the picker's own team playing it). */
+    onpartnermemberspin?: () => void;
     /** ✔ Got it (true) or ✘ Missed (false) on a partner clue: both of the two in one step. */
     onpartnerjudge?: (got: boolean) => void;
     onfinalstep: () => void;
@@ -472,6 +478,14 @@
   const marks = $derived(session.phase === 'clue' && info ? clueMarks(session, info.clue.id, partner?.at ?? markSince) : {});
   /** The open partner clue is judged: each of the two has a mark on it (an Undo takes that away again). */
   const partnerJudged = $derived(!!partner && partnerVerdict(partner, marks).judged);
+  /** What went to phones, for the status row: "🤫 card 1 sent to Bob", "🤫 2 cards sent" (who, never what). */
+  const sentNote = $derived.by(() => {
+    if (!partner?.sent?.length || !info) return '';
+    const out = cardSlides(info.clue).flatMap((c, i) => (partner.sent!.some((x) => x.card === c.id) ? [{ c, n: i + 1 }] : []));
+    if (out.length !== 1) return out.length ? `🤫 ${out.length} cards sent` : '';
+    const who = sentTo(session, partner, out[0].c.id).map((t) => toName(session, t));
+    return `🤫 card ${out[0].n} sent to ${who.join(', ')}`;
+  });
   /**
    * A partner clue's own main button comes first: spin, show the question, start the clock (then the clue's own, as soon
    * as it's judged: the answer next; or once the answer shows: ▦ Done).
@@ -659,7 +673,13 @@
       {#if partner}
         {@const named = (id: string | undefined) => session.players.find((p) => p.id === id)?.name}
         <span class="ddtag partnertag" data-partner-tag
-          >🤝 {named(partner.pickerId) ?? '?'}{partner.partnerId ? (partner.partnerId === partner.pickerId ? ' · Solo' : ` + ${named(partner.partnerId) ?? '?'}`) : ''}</span
+          >🤝 {named(partner.pickerId) ?? '?'}{partner.partnerId
+            ? partner.partnerId === partner.pickerId
+              ? partner.member
+                ? ` · ${partner.member.name}`
+                : ' · Solo'
+              : ` + ${named(partner.partnerId) ?? '?'}`
+            : ''}</span
         >
       {/if}
       {#if slidePos && !session.revealed}<span class="slidepos" data-slidepos>Slide {slidePos.at} of {slidePos.of}</span>{/if}
@@ -675,9 +695,9 @@
       {:else if partnerJudged}
         <span class="muted">Answer hidden · judged</span>
       {:else if partner?.stage === 'distribute'}
-        <span class="muted">Answer hidden · hand out the cards</span>
+        <span class="muted">Answer hidden · hand out the cards{sentNote ? ` · ${sentNote}` : ''}</span>
       {:else}
-        <span class="muted">Answer hidden</span>
+        <span class="muted">Answer hidden{sentNote ? ` · ${sentNote}` : ''}</span>
       {/if}
       {#if info.clue.hostNotes && !dual}<span class="notes" title="Host notes (viewers can see them in this window): {info.clue.hostNotes}">📝 {info.clue.hostNotes}</span>{/if}
     {:else if session.phase === 'final'}
@@ -893,6 +913,8 @@
             onspin={onpartnerspin}
             onshow={onpartnershow}
             onclock={onpartnerclock}
+            ontakeback={onpartnertakeback}
+            onmemberspin={onpartnermemberspin}
             onjudge={onpartnerjudge}
           />
         {/key}

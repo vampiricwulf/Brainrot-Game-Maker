@@ -228,3 +228,133 @@ export function png(r, g, b, w = 40, h = 24) {
   const raw = Buffer.concat(Array.from({ length: h }, () => row));
   return Buffer.concat([Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]), chunk('IHDR', ihdr), chunk('IDAT', deflateSync(raw)), chunk('IEND', Buffer.alloc(0))]);
 }
+
+// ---------- The buzzer room, game packs, and what a page showed ----------
+
+/**
+ * The buzzer room (buzzer/ under `wrangler dev`, local), its storage in a new folder (`persist`): its address once it
+ * answers, and stop() (which also deletes that folder). Needs `npm ci` in buzzer/.
+ */
+export async function startBuzzer(prefix) {
+  const { spawn } = await import('node:child_process');
+  const { createServer } = await import('node:net');
+  const { existsSync, mkdtempSync, rmSync } = await import('node:fs');
+  const { tmpdir } = await import('node:os');
+  const { join, resolve } = await import('node:path');
+  const dir = resolve('buzzer');
+  if (!existsSync(join(dir, 'node_modules/.bin/wrangler'))) throw new Error('Run `npm ci` in buzzer/ first');
+  const freePort = () =>
+    new Promise((ok) => {
+      const s = createServer().listen(0, '127.0.0.1', () => {
+        const { port } = s.address();
+        s.close(() => ok(port));
+      });
+    });
+  const port = await freePort();
+  const inspector = await freePort();
+  const persist = mkdtempSync(join(tmpdir(), prefix));
+  const base = `http://127.0.0.1:${port}`;
+  let log = '';
+  const wrangler = spawn(
+    join(dir, 'node_modules/.bin/wrangler'),
+    ['dev', '--ip', '127.0.0.1', '--port', String(port), '--inspector-port', String(inspector), '--persist-to', persist, '--log-level', 'warn'],
+    { cwd: dir, detached: true, env: { ...process.env, WRANGLER_SEND_METRICS: 'false', NO_PROXY: '127.0.0.1,localhost', no_proxy: '127.0.0.1,localhost' } },
+  );
+  wrangler.stdout.on('data', (d) => (log += d));
+  wrangler.stderr.on('data', (d) => (log += d));
+  const stop = () => {
+    try {
+      process.kill(-wrangler.pid, 'SIGTERM');
+    } catch {
+      // already gone
+    }
+    rmSync(persist, { recursive: true, force: true });
+  };
+  process.on('exit', stop);
+  for (const sig of ['SIGINT', 'SIGTERM']) process.on(sig, () => process.exit(1));
+  for (let i = 0; ; i++) {
+    if (wrangler.exitCode !== null) throw new Error('wrangler dev exited:\n' + log);
+    try {
+      if ((await fetch(`${base}/api/health`)).ok) break;
+    } catch {
+      // not up yet
+    }
+    if (i > 120) throw new Error('wrangler dev never came up:\n' + log);
+    await new Promise((r) => setTimeout(r, 500));
+  }
+  return { base, persist, stop };
+}
+
+/**
+ * Whether any file the buzzer room stored (its Durable Objects' SQLite files under `persist`) holds `text`: as the
+ * room saves strings (one byte a character for plain ASCII, two otherwise), so look for both.
+ */
+export async function roomStored(persist, text) {
+  const { readdirSync, readFileSync } = await import('node:fs');
+  const { join } = await import('node:path');
+  const wants = [Buffer.from(text, 'latin1'), Buffer.from(text, 'utf16le')];
+  const walk = (d) => readdirSync(d, { withFileTypes: true }).flatMap((e) => (e.isDirectory() ? walk(join(d, e.name)) : [join(d, e.name)]));
+  for (const f of walk(persist)) {
+    let b;
+    try {
+      b = readFileSync(f);
+    } catch {
+      continue;
+    }
+    if (wants.some((w) => b.includes(w))) return true;
+  }
+  return false;
+}
+
+/** A game pack (.brainrot: a zip of game.json and media/<id>.<ext>) with these files, by media id: what Open… takes. */
+export async function packGame(game, files) {
+  const JSZip = (await import('jszip')).default;
+  const zip = new JSZip();
+  zip.file('game.json', JSON.stringify(game));
+  for (const ref of game.media) if (files[ref.id]) zip.file(`media/${ref.id}.${ref.name.split('.').pop()}`, files[ref.id]);
+  return zip.generateAsync({ type: 'nodebuffer', compression: 'STORE' });
+}
+
+/**
+ * An init script: everything the page puts on screen or says from now on (text added, and the labels, titles and alt
+ * texts set, the screen-reader announcements included: the live region's host keeps its words in data-said) goes in
+ * window.__seen, so a toast or an announcement that came and went is still there to check.
+ */
+export function recordSeen() {
+  const seen = (window.__seen = []);
+  const ATTRS = ['aria-label', 'title', 'alt', 'aria-description', 'placeholder', 'data-said'];
+  // (A style sheet's or a script's text is never shown: a font's base64 would hold any short word.)
+  const unseen = (n) => !!n?.closest?.('style, script, noscript, template');
+  const take = (n) => {
+    if (n.nodeType === Node.TEXT_NODE) {
+      if (!unseen(n.parentElement)) seen.push(n.data);
+    } else if (n.nodeType === Node.ELEMENT_NODE && !unseen(n)) {
+      const walk = document.createTreeWalker(n, NodeFilter.SHOW_TEXT);
+      for (let t = walk.nextNode(); t; t = walk.nextNode()) if (!unseen(t.parentElement)) seen.push(t.data);
+      for (const el of [n, ...n.querySelectorAll('*')]) for (const a of ATTRS) if (el.hasAttribute(a)) seen.push(el.getAttribute(a));
+    }
+  };
+  new MutationObserver((list) => {
+    for (const m of list) {
+      if (m.type === 'childList') m.addedNodes.forEach(take);
+      else if (m.type === 'characterData') !unseen(m.target.parentElement) && seen.push(m.target.data);
+      else if (m.target.hasAttribute(m.attributeName)) seen.push(m.target.getAttribute(m.attributeName));
+    }
+  }).observe(document, { subtree: true, childList: true, characterData: true, attributes: true, attributeFilter: ATTRS });
+}
+
+/** Which of `words` a page (with recordSeen) shows or said, now or since it loaded (case aside). */
+export async function shownOf(page, words) {
+  const text = await page.evaluate(() =>
+    [
+      document.body.innerText,
+      ...[...document.querySelectorAll('[aria-label], [title], [alt], [data-said], [aria-description], [placeholder]')].flatMap((e) =>
+        ['aria-label', 'title', 'alt', 'data-said', 'aria-description', 'placeholder'].map((a) => e.getAttribute(a) ?? ''),
+      ),
+      ...(window.__seen ?? []),
+    ]
+      .join('\n')
+      .toLowerCase(),
+  );
+  return words.filter((w) => text.includes(w.toLowerCase()));
+}

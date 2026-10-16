@@ -1,5 +1,6 @@
 // Host actions that open / drive the tool overlays (wheel, dice, roll-off, scoreboard).
-import { categoryLabel, isBoard, newId, PLAYER_WHEEL, type DicePreset, type Game, type Id, type PartnerState, type Session, type WheelPreset, type WheelSegment } from './model';
+import { categoryLabel, isBoard, newId, PLAYER_WHEEL, type DicePreset, type Game, type Id, type PartnerState, type Session, type TeamMember, type WheelPreset, type WheelSegment } from './model';
+import { mixHex } from './colors';
 import type { ExtraWheel, Live, Overlay } from './live';
 import {
   activeSegments, describeRoll, isRespin, logRoll, newSegment, onSlices, planRollOff, rollPreset, sliceLabel, spinTarget, weightedIndex, wheelUsedUp,
@@ -65,6 +66,28 @@ export function openPartnerWheel(live: Live, session: Session, s: PartnerState, 
   };
 }
 
+/**
+ * The member wheel (partner-clues spec §10.2): the picker's own team plays the partner clue, and one person on it
+ * describes to the rest. Its slices are the people on that team with a phone here (`people`: the buzzer room's member
+ * ids and the names they joined with), in shades of the team's colour; `members`, so its landing never goes into a
+ * picker or a roll's players. `name`: "Describer for Red Team".
+ */
+export function openMemberWheel(live: Live, s: PartnerState, name: string, color: string, people: TeamMember[]): void {
+  const n = people.length;
+  live.overlay = {
+    kind: 'wheel',
+    nonce: newId(),
+    name,
+    members: true,
+    // (From the team's colour lighter and darker in turn, so neighbours differ.)
+    segments: people.map((m, i) => ({ id: m.id, label: m.name, color: i % 2 ? mixHex(color, '#000000', 0.15 + (0.35 * i) / n) : mixHex(color, '#ffffff', (0.45 * i) / n), weight: 1 })),
+    rotation: 0,
+    spin: null,
+    result: null,
+    partnerFor: s.clue,
+  };
+}
+
 /** The partner wheel's slices as it opens: every player, the picker switched off unless they can be on it. */
 function partnerPool(session: Session, s: PartnerState): PoolSlice[] {
   return playerSegments(session).map((p) => (p.id === s.pickerId && !s.includePicker ? { ...p, off: true } : p));
@@ -72,7 +95,7 @@ function partnerPool(session: Session, s: PartnerState): PoolSlice[] {
 
 /** The open partner clue whose partner this wheel picks (null: not a partner wheel, or its clue is closed). */
 function partnerOf(o: WheelLike, session: Session): PartnerState | null {
-  return 'partnerFor' in o && o.partnerFor && session.partner?.clue === o.partnerFor ? session.partner : null;
+  return 'partnerFor' in o && o.partnerFor && !o.members && session.partner?.clue === o.partnerFor ? session.partner : null;
 }
 
 /**

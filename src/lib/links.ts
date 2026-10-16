@@ -121,6 +121,20 @@ export function youtubeWatchUrl(id: string, start?: number): string {
   return `https://www.youtube.com/watch?v=${id}${start ? `&t=${Math.floor(start)}s` : ''}`;
 }
 
+/**
+ * YouTube's privacy-enhanced player (www.youtube-nocookie.com: no cookies until it plays), for a frame outside the app:
+ * the buzzer phone page, whose content policy lets in only this YouTube host. Plays inline on a phone, from `start` to
+ * `end` (seconds; an end that isn't after the start is none).
+ */
+export function youtubePlayerUrl(id: string, opts: { start?: number; end?: number; autoplay?: boolean } = {}): string {
+  const p = new URLSearchParams({ playsinline: '1', rel: '0' });
+  if (opts.autoplay) p.set('autoplay', '1');
+  const start = opts.start && opts.start > 0 ? Math.floor(opts.start) : 0;
+  if (start) p.set('start', String(start));
+  if (opts.end && Math.floor(opts.end) > start) p.set('end', String(Math.floor(opts.end)));
+  return `https://www.youtube-nocookie.com/embed/${id}?${p}`;
+}
+
 export function youtubeThumb(id: string): string {
   return `https://i.ytimg.com/vi/${id}/hqdefault.jpg`;
 }

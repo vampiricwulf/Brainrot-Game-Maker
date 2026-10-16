@@ -373,7 +373,7 @@ export interface PartnerRules {
   points?: PartnerPoints;
   /** Part words when not the game's ("Describer" / "Guesser"): at most PART_WORD_MAX characters each. */
   words?: Partial<Record<PartnerRole, string>>;
-  /** Later: the guesser types their guess on their phone (else out loud). */
+  /** The guesser types their guess on their phone (✍, from the question on), else says it out loud. Needs phone buzzers. */
   typeGuess?: boolean;
   /** Later: a miss opens the buzzers for everyone else, the two locked out. */
   steal?: boolean;
@@ -386,7 +386,7 @@ export type CardGoesTo = PartnerRole | 'both' | 'others' | 'nobody';
 export interface ClueCard extends ExtraSlide {
   /** Who it starts with when the host hands the cards out ('others': every player but the two). The host can change it then. */
   to: CardGoesTo;
-  /** Later: the line above it on a phone ({giver}, {guesser} filled in). */
+  /** The line above it on a phone ({giver} and {guesser}: their names); left out, one from its game ("Describe it to Ann…"). */
   hint?: string;
 }
 
@@ -753,9 +753,40 @@ export interface ClueRef {
   row: number;
 }
 
-/** Who a 🤫 card goes to: a seat (a player, or a whole team: everyone on it). */
+/**
+ * Who a 🤫 card goes to: a seat (a player, or a whole team: everyone on it), one person on a team (`member`), or a team
+ * but some people on it (`except`: the rest of the team while one of them describes to it, partner-clues spec §10.2).
+ */
 export interface CardTo {
   seat: Id;
+  /** Teams: only this person on the team (the buzzer room's member id, and the name they joined with). */
+  member?: TeamMember;
+  /** Teams: everyone on the team but these people (member ids). */
+  except?: string[];
+  /**
+   * Sends only: the part they played when it went (Solo's one player: 'solo'). A send to more than one part goes to the
+   * phones as one card per part, each with its own lines, and which of them a phone has stays as it was sent.
+   */
+  part?: 'giver' | 'guesser' | 'other' | 'solo';
+}
+
+/** Someone on a team, as the buzzer room knows them (its member id, not a credential) and the name they joined with. */
+export interface TeamMember {
+  id: string;
+  name: string;
+}
+
+/**
+ * One send of a 🤫 card (partner-clues spec §14.4, §18.2): who it went to, and when. Each send is one card on the wire
+ * (cardId: `pc:<clue>:<card>:<at>`): a phone that took the seat (or joined the team) after the room first saw it doesn't
+ * get it. `hash`: the card's content when it was sent (cardHash); a card edited since is taken off the phones until the
+ * host sends it again.
+ */
+export interface CardSend {
+  card: Id;
+  to: CardTo[];
+  at: number;
+  hash: string;
 }
 
 /**
@@ -787,10 +818,23 @@ export interface PartnerState {
   /** Who plays the giver's part this time: starts from the clue's, and ⇄ Swap changes it. */
   giver: 'partner' | 'picker';
   /**
+   * Teams, when the picker's own team plays it (partnerId is the picker: Solo): the one person on it who describes to
+   * the rest (partner-clues spec §10.2), from the member wheel or the host. Scored as Solo: one award to the team.
+   */
+  member?: TeamMember;
+  /**
    * The players the host chose for a card, by card id. A card not listed follows its Goes to, worked out from the parts
    * at the moment (cardRecipients), so ⇄ Swap and a new partner move it.
    */
   deal?: Record<Id, CardTo[]>;
+  /**
+   * What the host sent to phones: only the host's presses add to it (📤 Send, Send and start, ↻ Send again, Send
+   * changes: sendCards and the like in partner.ts); ✖ Take back removes a card's sends. Never the clue's cards by
+   * themselves: opening the tile, the wheel and Show question send nothing.
+   */
+  sent?: CardSend[];
+  /** The cards whose files the host pressed ⇡ Get it ready for (uploaded early, given to no phone): only that press adds to it. */
+  ready?: Id[];
 }
 
 export interface Session {
@@ -876,6 +920,13 @@ export interface Session {
     buzz?: BuzzState & { clue: string; floor: number };
     wagerGot?: { id: string; seats: Record<Id, number>; amounts?: Record<Id, number> };
     answers?: { id: string; seats: Record<Id, { text: string; n: number; by?: string }>; locked?: boolean };
+    /**
+     * 🤫 Card files put in room `code` for phones: a picture's (or its edited copy's), video's or sound's media id → the
+     * room's id for it. So a reload doesn't upload them again (the room's 'files' list says which it still holds).
+     */
+    files?: { code: string; ids: Record<Id, string> };
+    /** 🤫 Card sends (their ids on the wire) → the seats whose phone showed them (teams: `seat/member`). Host only. */
+    cardsSeen?: Record<string, string[]>;
   } | null;
 }
 

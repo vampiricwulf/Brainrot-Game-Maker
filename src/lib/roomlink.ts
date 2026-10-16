@@ -1,13 +1,17 @@
 // The host's line to its buzzer room (see buzzproto.ts): make a room, keep a WebSocket to it open (reconnecting with the
 // same code and host token after a drop), send the host's state, and pass on what the room says. No Svelte here, so it
 // can be tested with a fake WebSocket; remote.svelte.ts makes it reactive for the app.
-import { ANSWER_MAX, BUZZ_PROTOCOL, isRoomCode, socketUrl, type HostMsg, type HostState, type NewRoom, type PhoneInfo, type QueuedBuzz, type RoomToHost } from './buzzproto';
+import {
+  ANSWER_MAX, BUZZ_PROTOCOL, CARD_ID_MAX, CARD_MEMBER_MAX, isFileId, isRoomCode, ROOM_FILES_MAX, socketUrl, type CardLate, type HostMsg, type HostState, type NewRoom, type PhoneInfo, type QueuedBuzz,
+  type RoomToHost,
+} from './buzzproto';
 
 export type RoomStatus = 'off' | 'connecting' | 'online' | 'reconnecting' | 'error';
 export type RoomBuzz = Extract<RoomToHost, { t: 'buzz' }>;
 export type RoomQueue = Extract<RoomToHost, { t: 'queue' }>;
 export type RoomWager = Extract<RoomToHost, { t: 'wager' }>;
 export type RoomAnswer = Extract<RoomToHost, { t: 'answer' }>;
+export type RoomCardSeen = Extract<RoomToHost, { t: 'cardSeen' }>;
 
 /** What the link needs from a WebSocket (the browser's, or a test's fake). */
 export interface SocketLike {
@@ -42,6 +46,8 @@ export interface LinkEvents {
   onColor?: (c: { seatId: string; color: string }) => void;
   /** A player sent their answer from their phone (a ✍ clue). */
   onAnswer?: (a: RoomAnswer) => void;
+  /** A phone showed a 🤫 card the host sent it. */
+  onCardSeen?: (c: RoomCardSeen) => void;
 }
 
 const OPEN = 1;
@@ -130,6 +136,29 @@ export function parseRoomMsg(data: unknown): RoomToHost | null {
       return isStr(m.id, 100) && m.id && isStr(m.seatId) && isStr(m.text, ANSWER_MAX * 4) && m.text && Number.isSafeInteger(m.n) && (m.n as number) >= 1
         ? { t: 'answer', id: m.id, seatId: m.seatId, text: m.text, n: m.n as number, ...(isStr(m.by, 100) && m.by ? { by: m.by } : {}) }
         : null;
+    case 'cardSeen':
+      return isStr(m.id, CARD_ID_MAX) && m.id && isStr(m.seatId)
+        ? {
+            t: 'cardSeen',
+            id: m.id,
+            seatId: m.seatId,
+            ...(isStr(m.member, CARD_MEMBER_MAX) && m.member ? { member: m.member } : {}),
+            ...(isStr(m.by, 100) && m.by ? { by: m.by } : {}),
+          }
+        : null;
+    case 'files':
+      return Array.isArray(m.ids) && m.ids.length <= ROOM_FILES_MAX * 4 && m.ids.every(isFileId) ? { t: 'files', ids: m.ids as string[] } : null;
+    case 'cardsLate': {
+      if (!Array.isArray(m.late) || m.late.length > 1000) return null;
+      const late: CardLate[] = [];
+      for (const x of m.late as unknown[]) {
+        if (typeof x !== 'object' || !x) return null;
+        const l = x as Record<string, unknown>;
+        if (!isStr(l.id, CARD_ID_MAX) || !l.id || !isStr(l.seatId)) return null;
+        late.push({ id: l.id, seatId: l.seatId, ...(isStr(l.member, CARD_MEMBER_MAX) && l.member ? { member: l.member } : {}), ...(isStr(l.by, 100) && l.by ? { by: l.by } : {}) });
+      }
+      return { t: 'cardsLate', late };
+    }
     default:
       return null;
   }
@@ -167,6 +196,12 @@ export class RoomLink {
   phones: PhoneInfo[] = [];
   /** What the room said it can do beyond protocol 1 (its welcome's features; none from an older room). */
   features: string[] = [];
+  /** A welcome came since this link was made: `features` is what the room said (until then, nothing is known). */
+  welcomed = false;
+  /** The 🤫 card files the room holds ('files'), as it last said; null until it has said, again after each welcome. */
+  files: string[] | null = null;
+  /** The phones here that a 🤫 card was sent to but that are late for it ('cardsLate'), as the room last said. */
+  cardsLate: CardLate[] = [];
   error = '';
   /** The close code the room turned this host away with (4000–4999), or 0. */
   closedCode = 0;
@@ -272,6 +307,8 @@ export class RoomLink {
     this.room = null;
     this.code = null;
     this.phones = [];
+    this.files = null;
+    this.cardsLate = [];
     this.sent = '';
     this.attempts = 0;
     this.set('off');
@@ -380,6 +417,10 @@ export class RoomLink {
         }
         this.code = m.code;
         this.features = m.features ?? [];
+        this.welcomed = true;
+        // (The room says which files it holds right after; until then, nothing is known. Late phones it says again.)
+        this.files = null;
+        this.cardsLate = [];
         this.attempts = 0;
         this.error = '';
         this.set('online');
@@ -411,6 +452,17 @@ export class RoomLink {
         return;
       case 'answer':
         this.ev.onAnswer?.(m);
+        return;
+      case 'cardSeen':
+        this.ev.onCardSeen?.(m);
+        return;
+      case 'files':
+        this.files = m.ids;
+        this.ev.onChange?.();
+        return;
+      case 'cardsLate':
+        this.cardsLate = m.late;
+        this.ev.onChange?.();
         return;
       case 'pong':
         return;

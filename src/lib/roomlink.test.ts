@@ -136,6 +136,29 @@ describe('parseRoomMsg', () => {
     });
   });
 
+  it('takes the cards fields (added later): a card a phone showed, and the card files the room holds', () => {
+    const id = 'c'.repeat(64);
+    expect(parseRoomMsg('{"t":"cardSeen","id":"pc:x:y:1","seatId":"a"}')).toEqual({ t: 'cardSeen', id: 'pc:x:y:1', seatId: 'a' });
+    expect(parseRoomMsg('{"t":"cardSeen","id":"pc:x:y:1","seatId":"a","member":"m1","by":"Zoe","evil":1}')).toEqual({ t: 'cardSeen', id: 'pc:x:y:1', seatId: 'a', member: 'm1', by: 'Zoe' });
+    expect(parseRoomMsg(JSON.stringify({ t: 'files', ids: [id] }))).toEqual({ t: 'files', ids: [id] });
+    expect(parseRoomMsg('{"t":"files","ids":[]}')).toEqual({ t: 'files', ids: [] });
+    for (const bad of ['{"t":"cardSeen","id":"","seatId":"a"}', `{"t":"cardSeen","id":"${'x'.repeat(101)}","seatId":"a"}`, '{"t":"cardSeen","id":"c"}', '{"t":"files","ids":["nope"]}', '{"t":"files"}'])
+      expect(parseRoomMsg(bad), bad).toBeNull();
+  });
+
+  it('takes the phones late for a card (added later), and an empty list once none are', () => {
+    expect(parseRoomMsg('{"t":"cardsLate","late":[{"id":"pc:x:y:1","seatId":"a","evil":1},{"id":"pc:x:y:2","seatId":"b","member":"m1","by":"Zoe"}]}')).toEqual({
+      t: 'cardsLate',
+      late: [
+        { id: 'pc:x:y:1', seatId: 'a' },
+        { id: 'pc:x:y:2', seatId: 'b', member: 'm1', by: 'Zoe' },
+      ],
+    });
+    expect(parseRoomMsg('{"t":"cardsLate","late":[]}')).toEqual({ t: 'cardsLate', late: [] });
+    for (const bad of ['{"t":"cardsLate"}', '{"t":"cardsLate","late":[{"id":"","seatId":"a"}]}', '{"t":"cardsLate","late":[{"id":"c"}]}', '{"t":"cardsLate","late":[7]}'])
+      expect(parseRoomMsg(bad), bad).toBeNull();
+  });
+
   it('drops anything else, and strips unknown fields', () => {
     for (const bad of [
       'not json',
@@ -176,10 +199,26 @@ describe('RoomLink', () => {
     sockets[0].open();
     t.advance(STATE_MS);
     expect(sockets[0].sent).toEqual([]);
+    expect(link.welcomed).toBe(false);
     sockets[0].say(welcome);
     expect(link.status).toBe('online');
+    expect(link.welcomed).toBe(true);
     expect(sockets[0].sent).toEqual([{ t: 'state', state: state() }]);
     expect(changes).toContain('online');
+  });
+
+  it('is welcomed once the room said what it can do: an older room that names nothing too, and still after a reconnect', async () => {
+    sockets = [];
+    const t = fakeDeps();
+    const link = new RoomLink('https://buzz.test', {}, t.deps);
+    await link.create();
+    sockets[0].open();
+    expect(link.welcomed).toBe(false);
+    sockets[0].say({ t: 'welcome', code: 'BCDF', protocol: BUZZ_PROTOCOL, serverNow: 1 });
+    expect([link.welcomed, link.features]).toEqual([true, []]);
+    sockets[0].drop();
+    expect(link.status).toBe('reconnecting');
+    expect(link.welcomed).toBe(true);
   });
 
   it('debounces state sends, sends arming at once, and skips unchanged states', async () => {
@@ -220,6 +259,25 @@ describe('RoomLink', () => {
     expect(link.phones).toEqual([{ conn: 'c', seatId: 'a', connected: true }]);
     expect(link.send({ t: 'kick', seatId: 'a' })).toBe(true);
     expect(sockets[0].sent.at(-1)).toEqual({ t: 'kick', seatId: 'a' });
+  });
+
+  it('passes a card a phone showed on, and keeps the room’s files list (unknown again after each welcome)', async () => {
+    sockets = [];
+    const t = fakeDeps();
+    const seen: unknown[] = [];
+    const link = new RoomLink('https://buzz.test', { onCardSeen: (c) => seen.push(c) }, t.deps);
+    await link.create();
+    sockets[0].open();
+    sockets[0].say({ ...welcome, features: ['cards', 'files'] });
+    expect(link.files).toBeNull();
+    sockets[0].say({ t: 'files', ids: ['d'.repeat(64)] });
+    expect(link.files).toEqual(['d'.repeat(64)]);
+    sockets[0].say({ t: 'cardSeen', id: 'pc:x:y:1', seatId: 'a' });
+    expect(seen).toEqual([{ t: 'cardSeen', id: 'pc:x:y:1', seatId: 'a' }]);
+    sockets[0].say({ ...welcome, features: ['cards', 'files'] });
+    expect(link.files).toBeNull();
+    expect(link.send({ t: 'forget', files: ['d'.repeat(64)] })).toBe(true);
+    expect(sockets[0].sent.at(-1)).toEqual({ t: 'forget', files: ['d'.repeat(64)] });
   });
 
   it('reconnects with the same code and token after a drop, backing off, and sends the state again', async () => {

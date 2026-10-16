@@ -337,7 +337,7 @@
           </button>
         {/if}
       </div>
-    {:else if (o.kind === 'wheel' || o.kind === 'dice') && resultText && !busy && !(o.kind === 'wheel' && o.players)}
+    {:else if (o.kind === 'wheel' || o.kind === 'dice') && resultText && !busy && !(o.kind === 'wheel' && (o.players || o.members))}
       <div class="row">
         <span class="muted small">This was for (optional, goes in the roll log):</span>
         {#each session.players as p (p.id)}

@@ -1,8 +1,10 @@
 // Remote buzzers, end to end: the buzzer room (buzzer/) under `wrangler dev` (local, no Cloudflare account), a fake
 // host on a plain WebSocket, and four phones in Chromium on the real phone page, their sockets passed through Playwright
-// (to slow one down, or to make two buzzes tie). Then the limit on new rooms. Needs `npm ci` in buzzer/ first.
+// (to slow one down, or to make two buzzes tie). Then private cards and their files through the real Worker and storage,
+// and the limit on new rooms. Needs `npm ci` in buzzer/ first.
 import { chromium } from 'playwright-core';
 import { spawn } from 'node:child_process';
+import { createHash, randomBytes } from 'node:crypto';
 import { createServer } from 'node:net';
 import { existsSync, mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -937,6 +939,105 @@ try {
   await jo.getByLabel('Room code').waitFor();
   assert(new URL(jo.url()).pathname === '/', 'and Enter takes "Join another game"');
   assert((await fetch(`${base}/api/rooms/${room.code}`)).status === 404, 'closing ends the room for everyone');
+
+  // Private cards and their files (docs/PARTNER-CLUES-SPEC.md §13.5, §19.3): a new room, the host and two phones on
+  // plain sockets.
+  {
+    const made = await (await fetch(`${base}/api/rooms`, { method: 'POST', headers: { 'CF-Connecting-IP': '198.51.100.20' } })).json();
+    const h = await connectHost(made.code, made.hostToken);
+    const welcome = await h.wait((m) => m.t === 'welcome', 'welcome');
+    assert(welcome.features.includes('cards') && welcome.features.includes('files'), `the room takes cards and files (${welcome.features.join(', ')})`);
+    const pre = await fetch(`${base}/api/rooms/${made.code}/files`, {
+      method: 'OPTIONS',
+      headers: { Origin: 'null', 'Access-Control-Request-Method': 'POST', 'Access-Control-Request-Headers': 'authorization,content-type' },
+    });
+    assert(/authorization/i.test(pre.headers.get('access-control-allow-headers') ?? ''), 'CORS lets the app send its token in a header');
+    let cs = { title: 'Cards', seats: [{ id: 'a', name: 'Ann', color: '#e5484d' }, { id: 'b', name: 'Bob', color: '#30a46c' }], allowNew: false, phase: 'lobby', armId: 0, clue: null, answering: null, lockedOut: [], earlyLockMs: 0, scores: {} };
+    const hostState = (patch) => h.send({ t: 'state', state: (cs = { ...cs, ...patch }) });
+    hostState({});
+    /** Waits (up to 3 s) until pred() holds. */
+    const until = async (pred, what) => {
+      for (let i = 0; !pred(); i++) {
+        if (i > 150) throw new Error('never: ' + what);
+        await sleep(20);
+      }
+    };
+    /** A phone on a plain socket, seated on seatId: its token and everything it heard. */
+    const phoneOn = async (seatId) => {
+      const ws = new WebSocket(`ws://127.0.0.1:${port}/ws/${made.code}`);
+      const heard = [];
+      ws.addEventListener('message', (e) => heard.push(JSON.parse(e.data)));
+      await new Promise((ok) => ws.addEventListener('open', ok, { once: true }));
+      await until(() => heard.some((m) => m.t === 'seats'), 'a phone sees the seats');
+      ws.send(JSON.stringify({ t: 'join', seatId }));
+      await until(() => heard.some((m) => m.t === 'joined'), `a phone takes seat ${seatId}`);
+      const view = () => heard.filter((m) => m.t === 'view').at(-1)?.view;
+      return { ws, heard, token: heard.find((m) => m.t === 'joined').token, view };
+    };
+    const ann = await phoneOn('a');
+    const bob = await phoneOn('b');
+    await sleep(50);
+    const filesUrl = (code, id) => `${base}/api/rooms/${code}/files${id ? `/${id}` : ''}`;
+    const up = (body, type, token = made.hostToken, code = made.code) =>
+      fetch(filesUrl(code), { method: 'POST', headers: { Origin: 'null', 'Content-Type': type, ...(token ? { Authorization: `Bearer ${token}` } : {}) }, body });
+    const get = (id, token) => fetch(filesUrl(made.code, id), token ? { headers: { Authorization: `Bearer ${token}` } } : {});
+    const bytes = randomBytes(2.5 * 1024 * 1024);
+    const hash = createHash('sha256').update(bytes).digest('hex');
+    const refusals = [
+      (await up(bytes, 'image/png', '')).status,
+      (await up(bytes, 'image/png', 'wrong')).status,
+      (await up(bytes, 'image/png', made.hostToken, 'ZZZZ')).status,
+      (await up(bytes, 'text/html')).status,
+      (await up(bytes, 'image/svg+xml')).status,
+      (await up(randomBytes(4 * 1024 * 1024 + 1), 'video/mp4')).status,
+    ];
+    assert(refusals.join() === '401,401,401,415,415,413', `uploads need the host token, a picture, video or sound type, and 4 MB at most (${refusals.join()})`);
+    // (The token is checked before the body is read: a wrong one over 4 MB is turned away for its token.)
+    assert((await up(randomBytes(4 * 1024 * 1024 + 1), 'video/mp4', 'wrong')).status === 401, 'a wrong token is turned away before its body is read');
+    const first = await up(bytes, 'image/png');
+    const firstId = first.status === 200 ? (await first.json()).id : `HTTP ${first.status}: ${await first.text()}`;
+    assert(firstId === hash, 'the host uploads a 2.5 MB picture: its id is its SHA-256');
+    const again = await up(bytes, 'image/png');
+    assert(again.status === 200 && (await again.json()).id === hash, 'the same file again is already there');
+    await h.wait((m) => m.t === 'files' && m.ids.includes(hash), 'the files list');
+    assert(true, 'the host hears which files the room holds');
+    // The same new file twice at once (a second host window): stored once, both told its id.
+    const twin = randomBytes(300 * 1024);
+    const twinHash = createHash('sha256').update(twin).digest('hex');
+    const both = await Promise.all([up(twin, 'image/png'), up(twin, 'image/png')]);
+    const bothIds = await Promise.all(both.map(async (r) => (r.status === 200 ? (await r.json()).id : r.status)));
+    assert(bothIds.every((x) => x === twinHash), `the same file uploaded twice at once: both get its id (${bothIds.join(', ')})`);
+    const listed = await h.wait((m) => m.t === 'files' && m.ids.includes(twinHash), 'the files list with the twin');
+    assert(listed.ids.filter((x) => x === twinHash).length === 1, 'and the room holds it once');
+    // Got ready, not sent: nobody gets it.
+    assert((await get(hash, bob.token)).status === 404, 'a file got ready but not sent is served to nobody');
+    hostState({ cards: [{ id: 'pc:c1:1:1', to: [{ seat: 'b' }], open: true, role: 'Describer', text: 'SHREK', media: [{ kind: 'image', file: hash, mime: 'image/png' }] }] });
+    await until(() => bob.view()?.cards, 'Bob gets his card');
+    assert(bob.view().cards.list[0].text === 'SHREK' && bob.view().cards.list[0].media[0].file === hash, "Bob's phone gets his card, its picture as a file");
+    const got = await get(hash, bob.token);
+    const body = Buffer.from(await got.arrayBuffer());
+    assert(got.status === 200 && body.equals(bytes), 'and fetches the file with its own token, all 2.5 MB of it back as it was (3 pieces)');
+    assert(
+      got.headers.get('content-type') === 'image/png' && got.headers.get('cache-control') === 'no-store' && got.headers.get('x-content-type-options') === 'nosniff',
+      'served with its type, no-store and nosniff',
+    );
+    const others = [(await get(hash, ann.token)).status, (await get(hash)).status, (await get(hash, made.hostToken)).status, (await fetch(`${filesUrl(made.code, hash)}?token=${bob.token}`)).status];
+    assert(others.join() === '404,404,404,404', `Ann's phone, no token, the host's token and a token in the address get 404 (${others.join()})`);
+    assert(!JSON.stringify(ann.heard).includes('SHREK'), "Ann's phone never hears Bob's card");
+    // A phone that takes Bob's seat after the card went out is late: no card, no file.
+    h.send({ t: 'kick', seatId: 'b', block: false });
+    await sleep(100);
+    const late = await phoneOn('b');
+    await until(() => late.view()?.cards, 'the late phone hears it missed one');
+    assert(late.view().cards.late === 1 && !late.view().cards.list.length && !JSON.stringify(late.heard).includes('SHREK'), 'a phone seated after the card went out only hears it missed one');
+    assert((await get(hash, late.token)).status === 404, 'and cannot fetch its file');
+    // The tile closes: the card goes, and nobody gets the file.
+    hostState({ cards: null });
+    await until(() => !late.view()?.cards, 'the card goes');
+    assert((await get(hash, bob.token)).status === 404 && (await get(hash, late.token)).status === 404, 'once the card is gone, nobody gets the file');
+    for (const p of [ann, bob, late]) p.ws.close();
+    h.send({ t: 'close' });
+  }
 
   // New rooms are limited: 6 a minute from one address (here a made-up one: wrangler dev takes CF-Connecting-IP as
   // sent; Cloudflare sets it itself), so the 7th quick one is turned away. Not right before a new minute starts.

@@ -13,29 +13,36 @@
     blankSlide, toolOnlyClue, stepSlide, finalWagerProblems, finalWagersOk, finalStepFix, startTiebreaker, stepOf, logZero, tiedForFirst, tiedLeaders, winnerKnown,
     finalSetWager, finalTakeNewcomers, forViewers, wagerFromPhone, coWinnersHold, ownPlayers, clueMarks, judgePartner,
   } from '../lib/session';
-  import { cardSlides, marksText, partnerCandidates, partnerRoles, partnerRules, partnerShares, partnerVerdict, setPartner, setPartnerPicker } from '../lib/partner';
+  import {
+    cardId, cardRecipients, cardSends, cardSlides, lowerWord, marksText, sentSeats, partnerCandidates, partnerRoles, partnerRules, partnerShares, partnerVerdict, partWords, recipientsText, sendCards,
+    setDescriber, setPartner, setPartnerPicker, takeBack,
+  } from '../lib/partner';
+  import { phoneCard } from '../lib/phonecard';
+  import { phoneCan, syncUploads } from '../lib/cardfiles.svelte';
   import { addTime, newLive, overlayDoneAt, startTimer, tileToolUp, timerRemaining, timerResumed, toggleTimer, toolOverlay, type Live, type StageAction, type TimerState } from '../lib/live';
   import {
-    buzzArm, buzzClueOpened, buzzDone, buzzIdle, buzzMissed, buzzReset, buzzTake, hostState, newBuzz, phoneStatus, SEAT_NAME_MAX, SETTING_UP, teamsOn, wagerAsk, whoBuzzed,
+    buzzArm, buzzClueOpened, buzzDone, buzzIdle, buzzMissed, buzzReset, buzzTake, hostState, newBuzz, partnerAnswerAsk, partnerAnswerId, partnerCards, phoneStatus, SEAT_NAME_MAX, sendOf, SETTING_UP, teamsOn, wagerAsk,
+    whoBuzzed,
     type BuzzState,
   } from '../lib/buzz';
   import { clip, type HostState, type WagerAsk, type AnswerAsk } from '../lib/buzzproto';
   import {
-    acceptPhone, buzzerBase, buzzerOn, closeRoom, endRoom, inRoom, kept, kickMember, kickSeat, moveMember, onRoomAnswer, onRoomBuzz, onRoomColor, onRoomQueue, onRoomWager, rejectPhone, rejoinRoom, remote,
-    resendHostState, roomHasAnswers, roomHasWagers, roomLink, sendHostState, startRoom,
+    acceptPhone, buzzerBase, buzzerOn, closeRoom, endRoom, forgetCardFiles, inRoom, kept, kickMember, kickSeat, moveMember, onRoomAnswer, onRoomBuzz, onRoomCardSeen, onRoomColor, onRoomQueue,
+    onRoomWager, rejectPhone, rejoinRoom, remote, resendHostState, roomHasAnswers, roomHasCards, roomHasFiles, roomHasWagers, roomLink, roomMembers, sendHostState, startRoom,
   } from '../lib/remote.svelte';
   import { clearRoom, saveRoom, type SavedRoom } from '../lib/persist';
   import { chime } from '../lib/chime';
-  import type { RoomBuzz, RoomAnswer, RoomQueue, RoomWager } from '../lib/roomlink';
+  import type { RoomBuzz, RoomAnswer, RoomCardSeen, RoomQueue, RoomWager } from '../lib/roomlink';
   import PhoneRoom from './PhoneRoom.svelte';
   import type { SetBuzzSetting } from './BuzzerOptions.svelte';
   import PhoneChip from './host/PhoneChip.svelte';
-  import { openDice, openPartnerWheel, openPlayerWheel, openWheel, quickDice, rollDice, spinningRolls, spinWheel, startRollOff, toggleScoreboard, wheelSpentUp } from '../lib/overlay';
+  import { openDice, openMemberWheel, openPartnerWheel, openPlayerWheel, openWheel, quickDice, rollDice, spinningRolls, spinWheel, startRollOff, toggleScoreboard, wheelSpentUp } from '../lib/overlay';
   import type { DicePreset } from '../lib/model';
   import { tileDice } from '../lib/tools';
   import { dailyDoublesShort, validate } from '../lib/validate';
   import { isColorTaken, nearKey, nextFreeColor, PLAYER_PALETTE } from '../lib/colors';
   import { announce } from '../lib/announce';
+  import { ask } from '../lib/ask.svelte';
   import { STAGE_KEYS } from '../lib/theme';
   import ToolLauncher from './host/ToolLauncher.svelte';
   import KeysHelp from './KeysHelp.svelte';
@@ -605,6 +612,7 @@
     const offWager = onRoomWager(roomWager);
     const offAnswer = onRoomAnswer(roomAnswer);
     const offColor = onRoomColor(roomColor);
+    const offSeen = onRoomCardSeen(roomCardSeen);
     if (session.remote && phonesOn) rejoinRoom(session.remote);
     else if (session.remote) {
       // Buzzer mode was turned off (in the editor) while the room was left open: it's closed now.
@@ -633,6 +641,7 @@
       offWager();
       offAnswer();
       offColor();
+      offSeen();
       // Leaving the game (Discard & leave, the results): the phones are told it's over. Not ◀ Back to editor, Keep &
       // leave or ▶ Next game…: the room stays open in the editor (see keepRoomInEditor).
       // (A room kept in the editor that this game didn't take, as when viewing a finished game's results, stays open.)
@@ -1126,13 +1135,31 @@
     s.remote = { ...room, armId: buzz.armId };
   }
 
-  /** What the buzzer room gets now: the game's state for the phones, their status line, 🔒, and the wagers they may send. */
+  /**
+   * What the buzzer room gets now: the game's state for the phones, their status line, 🔒, the wagers and answers they
+   * may send, and the 🤫 cards the host sent (only to a room that takes them: an older one gets no card content).
+   */
   function roomState(): HostState {
-    return hostState(game, session, buzz, earlyMs, { status: phoneStatus(game, session, app.pregame), locked: !!session.remote?.locked, wager: phoneWagerAsk(), answers: phoneAnswerAsk() });
+    const cards = roomHasCards();
+    return hostState(game, session, buzz, earlyMs, {
+      status: phoneStatus(game, session, app.pregame, { cards }),
+      locked: !!session.remote?.locked,
+      wager: phoneWagerAsk(),
+      answers: phoneAnswerAsk(),
+      cards: cards ? partnerCards(game, session, phoneCan(session)) : null,
+    });
   }
 
-  /** A ✍ clue's answers phones may send now (until its answer is on screen), with the ones already taken. */
+  /**
+   * A ✍ clue's answers phones may send now (until its answer is on screen), with the ones already taken. A partner clue
+   * whose guesser types their guess: the guesser's, from the question on.
+   */
   function phoneAnswerAsk(): AnswerAsk | null {
+    if (partner && info && phonesOn && roomHasAnswers()) {
+      // (This play's guesses: a tile played again starts with none.)
+      const mine = session.remote?.answers?.id === partnerAnswerId(partner) ? session.remote.answers : undefined;
+      return partnerAnswerAsk(game, session, mine?.seats);
+    }
     if (!everyone || !info) return null;
     const mine = session.remote?.answers?.id === info.clue.id ? session.remote.answers : undefined;
     const got = mine?.seats ?? {};
@@ -1148,6 +1175,24 @@
     if (!r || !ask || !seat || a.n <= (seat.got ?? 0)) return;
     const was = r.answers?.id === ask.id ? r.answers : undefined;
     r.answers = { id: ask.id, seats: { ...was?.seats, [a.seatId]: { text: a.text, n: a.n, ...(a.by && game.settings.buzzTeams ? { by: a.by } : {}) } }, ...(was?.locked ? { locked: true } : {}) };
+  }
+
+  /**
+   * A phone showed a 🤫 card the host sent it ("✓ seen" on its row). Only for a send that's still out: the room passes
+   * them on again when the host comes back.
+   */
+  function roomCardSeen(c: RoomCardSeen): void {
+    const r = session.remote;
+    const s = session.partner;
+    if (!phonesOn || !r || !s?.sent?.length) return;
+    const live = new Set(s.sent.map((x) => cardId(s.clue, x)));
+    // (One card per part of a send counts as the send; the team's line with the describer's card isn't the card.)
+    const id = sendOf(c.id);
+    if (!live.has(id) || c.id.endsWith('~t')) return;
+    const who = c.member ? `${c.seatId}/${c.member}` : c.seatId;
+    const was = Object.fromEntries(Object.entries(r.cardsSeen ?? {}).filter(([k, v]) => live.has(k) && Array.isArray(v)));
+    if (was[id]?.includes(who)) return;
+    r.cardsSeen = { ...was, [id]: [...(was[id] ?? []), who] };
   }
 
   /** The wagers phones may send now (none before the game starts), with the ones already taken from them. */
@@ -1260,7 +1305,13 @@
     // 🔒 Locked seats take no tap on a name, a freed one's too: the lock has to come off for them to get back in.
     if (free && session.remote?.locked)
       toast(`${playerName(session, seatId)}'s seat is free, but 🔒 seats are locked: untick Lock seats so they can tap their name on their new phone (lock them again once they're in)`, 6000);
-    else if (free) toast(`${playerName(session, seatId)}'s seat is free: they can tap their name on their new phone`, 4000);
+    else if (free) {
+      // A 🤫 card out to that seat: the new phone is late for it (the room never gives it to a new phone by itself).
+      const s = partner;
+      const out = s && info && phoneCards ? cardSlides(info.clue).flatMap((c, i) => (sentSeats(session, s, c.id).includes(seatId) ? [String(i + 1)] : [])) : [];
+      if (out.length) toast(`${playerName(session, seatId)}'s seat is free: once they're on the new phone, ↻ Send again card${out.length > 1 ? 's' : ''} ${nameList(out)}`, 6000);
+      else toast(`${playerName(session, seatId)}'s seat is free: they can tap their name on their new phone`, 4000);
+    }
     else if (game.settings.buzzTeams) toast(`Everyone's phone is off ${playerName(session, seatId)} (they can't join it again for 2 minutes)`, 4000);
     else toast(`${playerName(session, seatId)}'s phone let go of the seat (that phone can't take it again for 2 minutes)`, 4000);
   }
@@ -1281,11 +1332,23 @@
   let sentPhase = '';
   $effect(() => {
     if (!phonesOn || remote.status === 'off' || remote.status === 'error') return;
+    // Not before the room has said what it can do (a reload connects afresh): a state worked out before would leave out
+    // the 🤫 cards it takes, and the room would take them off the phones and count their late rule again from then.
+    if (!remote.welcomed) return;
     const st = roomState();
     // The buzzers opening goes at once (players are racing).
     const now = st.phase !== sentPhase && st.phase === 'armed';
     sentPhase = st.phase;
     untrack(() => !keepRoomOpen && sendHostState(st, now));
+  });
+  // 🤫 Card files go up for the cards the host sent or got ready (⇡), and only those (a reload finishes what a press
+  // started; nothing goes up by itself). A card taken back, or the tile closing, drops what was still waiting.
+  $effect(() => {
+    if (phonesOn) syncUploads(game, session, partner ? info?.clue : undefined);
+  });
+  // Who saw which card is forgotten with the cards (the tile closed, or they were all taken back).
+  $effect(() => {
+    if (session.remote?.cardsSeen && !session.partner?.sent?.length) untrack(() => session.remote && delete session.remote.cardsSeen);
   });
   // The pre-game screen's room is saved on its own (nothing else is before Start game): a reload gets back into it.
   $effect(() => {
@@ -1646,9 +1709,21 @@
   const partner = $derived(session.phase === 'clue' && info && session.partner?.clue === info.clue.id ? session.partner : null);
   /** A key (Enter, N) right after a step doesn't do the next one: a held or double Enter can't run through them. */
   const KEY_GUARD_MS = 1000;
-  /** When the partner clue's question went up, and when its clock started (here only, not saved: a reload acts at once). */
+  /**
+   * When the partner clue's question went up, when its clock started, and whether the cards went out with it (here only,
+   * not saved: a reload acts at once).
+   */
   let partnerShownAt = 0;
   let partnerClockAt = 0;
+  let partnerSentWithClock = false;
+  /**
+   * The open partner clue's cards go to phones (a room that takes them), not only by 📋 copying. Not while the room has
+   * turned this window away (it ended, or another window took it): a send then would reach no phone.
+   */
+  const phoneCards = $derived(phonesOn && !!remote.code && remote.status !== 'off' && remote.status !== 'error' && roomHasCards());
+  /** The open partner clue's cards that 📤 Send and start would send: not sent yet, with someone to go to. */
+  const unsentCards = (): ReturnType<typeof cardSlides> =>
+    partner && info && phoneCards ? cardSlides(info.clue).filter((c) => !cardSends(partner, c.id).length && cardRecipients(session, partner, c).length > 0) : [];
 
   /** A wheel, dice or a roll-off still going on stage (no word said, unlike toolBusy). */
   function toolGoing(): boolean {
@@ -1669,7 +1744,37 @@
     // (The scores over it: the wheel comes back first.)
     if (app.live.overlay?.kind === 'scoreboard') app.live.overlay = app.live.overlay.under ?? null;
     const o = app.live.overlay;
-    if (o?.kind !== 'wheel' || o.partnerFor !== s.clue) openPartnerWheel(app.live, session, s, playerName(session, s.pickerId));
+    if (o?.kind !== 'wheel' || o.partnerFor !== s.clue || o.members) openPartnerWheel(app.live, session, s, playerName(session, s.pickerId));
+    spinWheel(app.live, session, game);
+  }
+
+  /**
+   * Teams, the picker's own team playing it with a room that takes cards: who on it describes to the rest is still to
+   * choose, and there's someone to describe to (spec §10.2). W and the main button spin the member wheel then.
+   */
+  function describerWanted(): boolean {
+    const s = partner;
+    return !!s && s.stage === 'pick' && teamsOn(game.settings) && phoneCards && !!s.pickerId && s.partnerId === s.pickerId && !s.member && roomMembers(s.pickerId).length > 1;
+  }
+
+  /**
+   * 🎡 Spin for the describer (W): the member wheel over the people on the picker's team with a phone here, spun at
+   * once. Its landing is who describes (partnerLanded); never a picker, never a roll's players.
+   */
+  function memberSpin(): void {
+    const s = partner;
+    if (!s || s.stage !== 'pick' || !s.pickerId || s.partnerId !== s.pickerId) return;
+    const people = roomMembers(s.pickerId);
+    if (people.length < 2) return hint(`${playerName(session, s.pickerId)} has ${people.length ? 'one phone' : 'no phone'} here: nobody to play it with`);
+    if (toolBusy()) return;
+    if (app.live.overlay?.kind === 'scoreboard') app.live.overlay = app.live.overlay.under ?? null;
+    const o = app.live.overlay;
+    // (A new wheel when someone joined or left the team since it opened, unless the host edited this one.)
+    const same = o?.kind === 'wheel' && o.partnerFor === s.clue && !!o.members && (!!o.pool || o.segments.map((x) => x.id).join() === people.map((m) => m.id).join());
+    if (!same) {
+      const team = session.players.find((p) => p.id === s.pickerId);
+      openMemberWheel(app.live, s, `${partWords(partnerRules(info!.clue)).giver} for ${team?.name ?? '?'}`, team?.color ?? '#888888', people);
+    }
     spinWheel(app.live, session, game);
   }
 
@@ -1679,13 +1784,20 @@
    * The wheel notes the spin it applied (partnerLanded, kept through a reload), so a partner the host chose after the
    * landing stays, and a spin still going when the page reloaded applies when it lands.
    */
-  function partnerLanded(o: { nonce: string; partnerFor?: string; spin: { startedAt: number } | null; result: number | null; segments: { id: string }[] }): void {
+  function partnerLanded(o: { nonce: string; partnerFor?: string; members?: true; spin: { startedAt: number } | null; result: number | null; segments: { id: string; label: string }[] }): void {
     if (!o.partnerFor || !o.spin || o.result === null) return;
     const live = toolOverlay(app.live);
     // (Closed or replaced meanwhile: closing it applied its landing already.)
     if (live?.kind !== 'wheel' || live.nonce !== o.nonce || live.partnerLanded === o.spin.startedAt) return;
     live.partnerLanded = o.spin.startedAt;
     const s = session.partner;
+    // The member wheel: who on the picker's team describes (the picker's team still plays it).
+    if (o.members) {
+      const seg = o.segments[o.result];
+      if (!s || s.clue !== o.partnerFor || s.stage !== 'pick' || !seg || !s.pickerId || s.partnerId !== s.pickerId) return;
+      setDescriber(s, { id: seg.id, name: seg.label });
+      return announce(`${seg.label} is the ${info ? lowerWord(partWords(partnerRules(info.clue)).giver) : 'describer'} for ${playerName(session, s.pickerId)}`);
+    }
     const id = o.segments[o.result]?.id;
     if (!s || s.clue !== o.partnerFor || s.stage !== 'pick' || !id || !setPartner(session, s, id, 'wheel')) return;
     announce(id === s.pickerId ? `${playerName(session, id)} plays it alone` : `${playerName(session, id)} is ${playerName(session, s.pickerId ?? '')}’s partner`);
@@ -1694,7 +1806,7 @@
   $effect(() => {
     const o = toolOverlay(app.live);
     if (o?.kind !== 'wheel' || !o.partnerFor || !o.spin || o.result === null) return;
-    const landing = { nonce: o.nonce, partnerFor: o.partnerFor, spin: { startedAt: o.spin.startedAt }, result: o.result, segments: $state.snapshot(o.segments) };
+    const landing = { nonce: o.nonce, partnerFor: o.partnerFor, members: o.members, spin: { startedAt: o.spin.startedAt }, result: o.result, segments: $state.snapshot(o.segments) };
     const wait = overlayDoneAt(o) - Date.now();
     if (wait <= 0) return void untrack(() => partnerLanded(landing));
     const t = setTimeout(() => partnerLanded(landing), wait);
@@ -1735,18 +1847,45 @@
     if (!hasCards) {
       autoTimer();
       partnerClockAt = partnerShownAt;
+      partnerSentWithClock = false;
     }
   }
 
-  /** ⏱ Start the clock: the cards are handed out (copied to their players), the countdown starts. Not over the answer. */
+  /**
+   * 📤 Send and start (or ⏱ Start the clock): every card not sent yet goes to its phones, when the room takes cards
+   * (copied by hand otherwise), and the countdown starts. Not over the answer.
+   */
   function partnerClock(): void {
     const s = partner;
-    if (!s || s.stage !== 'distribute') return;
+    if (!s || s.stage !== 'distribute' || !info) return;
     if (session.revealed) return hint('The answer is showing: Esc goes back to the board');
+    const went = phoneCards ? sendCards(session, s, unsentCards()) : [];
+    if (went.length) announce(went.map((c) => `Card ${cardSlides(info.clue).indexOf(c) + 1} sent to ${recipientsText(session, s, partnerRules(info.clue), c)}`).join('. '));
     s.stage = 'live';
     partnerClockAt = Date.now();
+    partnerSentWithClock = went.length > 0;
     if (!app.live.timer || app.live.timer.expired) startTimer(app.live, timerSeconds || clueTimer() || game.settings.defaultTimerSeconds || 30);
     else if (app.live.timer.startedAt === null) toggleTimer(app.live);
+    // The main button takes the keys again (Next slide, or the answer).
+    void tick().then(() => document.querySelector<HTMLElement>('.play .panel [data-next]')?.focus({ preventScroll: true }));
+  }
+
+  /**
+   * ✖ Take back: the card goes from every phone it was sent to (the room's next state hasn't it), and the room deletes
+   * its files now unless another card still out uses them.
+   */
+  function partnerTakeBack(card: string): void {
+    const s = partner;
+    const c = info && s ? cardSlides(info.clue).find((x) => x.id === card) : undefined;
+    if (!s || !c || !info) return;
+    const n = cardSlides(info.clue).indexOf(c) + 1;
+    const files = phoneCard(game, c, phoneCan(session)).items.flatMap((i) => ('file' in i.goes ? [i.goes.file] : []));
+    takeBack(s, card);
+    if (phonesOn && remote.status === 'online') {
+      sendHostState(roomState(), true);
+      forgetCardFiles(files);
+    }
+    announce(`Card ${n} taken back`);
   }
 
   /** The open partner clue's marks since it opened, and whether both of the two have one (it's judged). */
@@ -1767,7 +1906,7 @@
     const s = partner;
     if (!s || e.repeat) return;
     if (s.stage === 'distribute' && !partnerJudged && !toolOverlay(app.live)) {
-      if (Date.now() - partnerShownAt < KEY_GUARD_MS) return hint('The question just went up: press Enter again to start the clock');
+      if (Date.now() - partnerShownAt < KEY_GUARD_MS) return hint(`The question just went up: press Enter again to ${unsentCards().length ? 'send the cards' : 'start the clock'}`);
       return partnerClock();
     }
     if (hostNext && !hostNext.disabled) hostNext.run();
@@ -1782,7 +1921,7 @@
     if (!partner || partner.stage !== 'live' || Date.now() - partnerClockAt >= KEY_GUARD_MS) return false;
     const again = selected.length ? 'press Enter again to give the points' : e.shiftKey ? 'press Shift+Enter again for ✘ Missed' : 'press Enter again to give ✔ Got it';
     // (A clue with no cards and ⚖ the countdown not starting by itself: only the question went up.)
-    hint(`${app.live.timer?.startedAt ? 'The clock just started' : 'The question just went up'}: ${again}`);
+    hint(`${partnerSentWithClock ? 'The cards just went out' : app.live.timer?.startedAt ? 'The clock just started' : 'The question just went up'}: ${again}`);
     return true;
   }
 
@@ -1854,7 +1993,8 @@
       return true;
     }
     if (s.stage === 'distribute') {
-      if (e.shiftKey) hint(session.revealed ? 'The answer is showing: click ✔ Got it or ✘ Missed, or Esc goes back to the board' : 'Start the clock first (Enter), or click ✘ Missed');
+      if (e.shiftKey)
+        hint(session.revealed ? 'The answer is showing: click ✔ Got it or ✘ Missed, or Esc goes back to the board' : unsentCards().length ? 'Send the cards first (Enter), or click ✘ Missed' : 'Start the clock first (Enter), or click ✘ Missed');
       else partnerMain(e);
       return true;
     }
@@ -1897,6 +2037,25 @@
   function cancelClue(): void {
     if (!notPlayedYet() && info && clueScored(session, info.clue.id))
       return toast('Points were given for this clue: undo them first (Ctrl+Z), or use ▦ Done ▶ board', 4000);
+    // A 🤫 card sent to a phone can't be unsent: putting the tile back is the host's call. Said per player, as it is:
+    // who saw it (their phone showed it), who got it and hasn't opened it; a player with no phone here got nothing.
+    const s = partner;
+    const out = s && info && phoneCards ? cardSlides(info.clue).flatMap((c, i) => (cardSends(s, c.id).length ? [{ c, n: i + 1 }] : [])) : [];
+    if (s && info && out.length) {
+      const seenIds = new Set(out.flatMap(({ c }) => cardSends(s, c.id).flatMap((x) => (session.remote?.cardsSeen?.[cardId(s.clue, x)] ?? []).map((w) => w.split('/')[0]))));
+      const phones = new Set(app.live.phones ?? []);
+      const sentIds = [...new Set(out.flatMap(({ c }) => sentSeats(session, s, c.id)))];
+      const saw = sentIds.filter((id) => seenIds.has(id));
+      const got = sentIds.filter((id) => !seenIds.has(id) && phones.has(id));
+      const names = (ids: string[]) => nameList(ids.map((id) => playerName(session, id)));
+      const which = out.length === 1 ? `card ${out[0].n}` : `cards ${nameList(out.map((x) => String(x.n)))}`;
+      const said = [saw.length ? `${names(saw)} already saw ${which}` : '', got.length ? `${names(got)} got ${which} but ${got.length > 1 ? 'haven’t' : 'hasn’t'} opened it` : ''].filter(Boolean);
+      if (said.length) {
+        const clue = info.clue.id;
+        void ask(`${said.join('; ')}. Put the tile back anyway?`, { ok: '↩ Put it back', cancel: 'Keep playing' }).then((yes) => yes && info?.clue.id === clue && back(true));
+        return;
+      }
+    }
     back(true);
   }
 
@@ -2612,7 +2771,9 @@
   const checks = $derived.by(() => {
     // (A board short of Daily Doubles gets a button to place them.)
     // (Daily Doubles not placed yet are only a note in the editor, as Start places them: here they're listed with it.)
-    return validate(game)
+    // (A room open now that puts cards on phones but takes no files: a card's file from this computer won't reach one.)
+    const filesOff = !!remote.code && remote.status === 'online' && roomHasCards() && !roomHasFiles();
+    return validate(game, { filesOff })
       .map((p) => {
         const r = typeof p.tab === 'number' ? game.rounds[p.tab] : undefined;
         const dd = isBoard(r) && !!dailyDoublesShort(r) && p.text.includes('Daily Double') && p.text.includes(' not placed yet');
@@ -3262,9 +3423,12 @@
         if (!toolBusy()) rollDice(app.live, session, lastDice);
         break;
       case 'w': {
-        // A partner clue's PARTNER UP!: the partner wheel (W again: spin it again).
+        // A partner clue's PARTNER UP!: the partner wheel (W again: spin it again); teams, the picker's own team playing
+        // it: the member wheel, for who describes.
         if (partner?.stage === 'pick') {
-          partnerSpin();
+          const up = toolOverlay(app.live);
+          if (describerWanted() || (up?.kind === 'wheel' && up.members)) memberSpin();
+          else partnerSpin();
           break;
         }
         const o = app.live.overlay;
@@ -3848,6 +4012,8 @@
         onpartnerspin={partnerSpin}
         onpartnershow={partnerShow}
         onpartnerclock={partnerClock}
+        onpartnertakeback={partnerTakeBack}
+        onpartnermemberspin={memberSpin}
         onpartnerjudge={partnerJudge}
         onfinalstep={finalStep}
         ontiebreaker={tiebreaker}

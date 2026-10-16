@@ -28,6 +28,7 @@
   import { addCard, deleteCard, GOES_TO, goesToLabel, partnerRules, sameAsAnswer } from '../lib/partner';
   import { slideHasContent } from '../lib/usage';
   import PartnerSettings from './PartnerSettings.svelte';
+  import PhoneCardPreview from './PhoneCardPreview.svelte';
   import { followClueText } from '../lib/cluetext';
   import SlideEditor from './slide/SlideEditor.svelte';
   import MediaPicker from './slide/MediaPicker.svelte';
@@ -79,6 +80,8 @@
   // cards, without their tabs, for when it changes back.
   /** The card open (0: Card 1), kept while another tab is open. */
   let ci = $state(0);
+  /** 📱 On their phone: the open card as a phone gets it, beside the slide (kept on while moving between cards). */
+  let phoneView = $state(false);
   const cards = $derived(clue?.type === 'partner' && !clue.empty ? cardSlides(clue) : []);
   const cardAt = $derived(Math.min(ci, Math.max(0, cards.length - 1)));
   const card = $derived<ClueCard | undefined>(cards[cardAt]);
@@ -661,7 +664,15 @@
               <span class="hint">This card shows the answer: whoever you send it to sees it</span>
             {/if}
             <span class="spacer"></span>
+            <button
+              class="small"
+              class:on={phoneView}
+              aria-pressed={phoneView}
+              onclick={() => (phoneView = !phoneView)}
+              title="The card exactly as a player’s phone gets it: its words, then its pictures and videos one under another, and what won’t reach a phone">📱 On their phone</button
+            >
             <button class="ghost small danger" onclick={deleteCardTab} title="Delete this card (Ctrl+Z brings it back)">🗑 Delete card</button>
+            {#if phoneView}<PhoneCardPreview game={app.game} {clue} {card} />{/if}
           </div>
         {/if}
         {#key `${clue.id}-${slideKey}`}
@@ -756,6 +767,12 @@
   }
   .cardbar {
     padding: 4px 0;
+    position: relative;
+  }
+  .cardbar button.on {
+    background: var(--accent-fill);
+    border-color: var(--accent-fill);
+    color: #fff;
   }
   .quick textarea {
     resize: none;

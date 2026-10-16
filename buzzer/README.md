@@ -6,12 +6,15 @@ room, plus the phone page it serves. It is not part of the app's single-file bui
 
 - `src/room.ts`: the room's rules (who reacted first, the queue of buzzes, ties, seats and tokens, early buzz
   lock-outs, rate limits, checking messages). Plain TypeScript, unit-tested by the root `npm test` (`src/room.test.ts`).
-- `src/limits.ts`: the limits on new rooms (unit-tested in `src/limits.test.ts`).
-- `src/index.ts`: the Worker (`POST /api/rooms`, `GET /api/rooms/:code`, `GET /api/health`, `GET /ws/:code`), the
-  `BuzzRoom` Durable Object that holds the sockets (WebSocket Hibernation API) and the room's storage, and
-  `RoomCounter`, one Durable Object counting the rooms made today.
+- `src/limits.ts`: the limits on new rooms and card files, and when a room's alarm goes off (unit-tested in
+  `src/limits.test.ts`).
+- `src/index.ts`: the Worker (`POST /api/rooms`, `GET /api/rooms/:code`, `GET /api/health`, `GET /ws/:code`, and card
+  files: `POST /api/rooms/:code/files`, `GET /api/rooms/:code/files/:id`), the `BuzzRoom` Durable Object that holds the
+  sockets (WebSocket Hibernation API) and the room's storage, and `RoomCounter`, one Durable Object counting the rooms
+  made and the card file bytes taken today.
 - `phone/`: the phone page (vanilla TS). `build.mjs` bundles it into `dist/index.html`, which wrangler serves for every
-  other path, so `https://…/BCDF` opens room BCDF.
+  other path, so `https://…/BCDF` opens room BCDF. `phone/cardpanel.ts` draws the private cards, from what
+  `phone/cards.ts` says about them (unit-tested in `phone/cards.test.ts`).
 - The messages are in `../src/lib/buzzproto.ts`, shared with the app.
 
 ## Who decides what
@@ -28,7 +31,8 @@ room, plus the phone page it serves. It is not part of the app's single-file bui
 - **Phones only see their own view**: phase, clue text, who is answering, their own name, colour and score, and (added
   later, all optional) who got the clue right (`done`), a status line from the host (`status`, with other words for
   some seats: the Daily Double's player), the points symbol and whether the host is connected. Never answers, notes,
-  media or anyone's token.
+  media or anyone's token, except the private cards the host sent to that phone (`cards`): their words, links and
+  files, which can be anything the host put on them, the answer included.
 - **Seats**: tapping a free name gives the phone a token (kept in its localStorage), so a reload or a dropped
   connection gets the same seat back. Only the host frees a held seat (kick, or removing the player), or the phone
   itself ("Not you? Change player"). A buzz before the buzzers open locks that seat out for the host's `earlyLockMs`.
@@ -60,6 +64,39 @@ room, plus the phone page it serves. It is not part of the app's single-file bui
   is back, unless the host's `got` says it took it. The amount goes to the host and to that seat's own phones (their
   view's `wager`) only: never to another phone or in the seat list. Other phones only hear who is wagering (a Daily
   Double) or that they sit it out (a Final). A new round id forgets what was sent.
+- **Private cards** (`cards` in the host's state, at most 8): a card is shown only on the phones the host sends it to,
+  and only when the host sends it (a partner clue's 📤 Send): nothing goes out by itself. Each has an `id`, who it's
+  `to` (a seat, which on a team is everyone on it; one `member` of a team; or a team `except` some members), `open`
+  (false: the answer is on screen), its `role`, `hint`, `title` and `text` lines, up to 6 `media` (an https link to a
+  picture, GIF, video or sound; a YouTube, Drive or Streamable link played in that site's player; a card file; or one
+  still `pending` or `missing`) and `tap` (false: no "Tap to see"). The room checks it all (https only, at most 2048
+  characters, no user name or password; recipients must be seats in the game; 12 KB of cards at most, media dropped
+  first) and gives each phone's view (`cards.list`) only the cards sent to it, never who else they went to. **The late
+  rule**: the room notes when it first saw each card id, and a phone gets the card only if it has held its place since
+  before then: its seat's token handed out, or (teams) its member joined that team or was moved onto it
+  (`Member.teamAt`). A freed seat taken again counts as new, so does "Not you? Change player"; a phone back with its own
+  token keeps its time. A late phone only hears how many it missed (`cards.late`), and the host sends the card again
+  under a new id for it. The seat list never carries a card. A phone reports a card it showed (`cardSeen`), taken only
+  for a card sent to it that it isn't late for, at most 10 in 10 seconds; the host hears it (again when it comes back).
+  The host also hears which phones here now are late for a card sent to their seat (`cardsLate`, whenever that
+  changes), so it can suggest ↻ Send again. A card sent to more than one seat (or marked `shared` by the host, which
+  sends one card per part, each with its own lines) says on the phone that others have it too, never who. A card id
+  gone from the host's state is forgotten at once, so a closed tile leaves nothing of its cards in the room.
+  With `status.off` the phones in the lobby grey their buzz button (disabled, to a screen reader too), with the status
+  line as its big line and `status.sub` (and `seatsSub` for the status line's seats) as the small one.
+- **On the phone**, a card takes the buzz button's place while nobody buzzes (above a wager or answer box when one is
+  up), newest first, its part and hint over a "Tap to see" cover (🙈 Hide puts it back). The phone says a card came
+  ("A card only you can see") and gives it a short buzz, and tells the room it was seen when it's opened. Card files
+  are fetched with the phone's token in a header and shown from `blob:` addresses, let go when the card goes; "🖼
+  Picture coming…" fills in as a file arrives. Videos play muted and inline ("🔊 Tap for sound"), sounds wait for a
+  tap, and a YouTube (no-cookie), Drive or Streamable player is framed only when tapped, sandboxed, with the referrer
+  YouTube needs (only the site's origin goes, never the page's address with its room code). Cards are kept in memory
+  only. The page has a content policy (a `<meta>` in `phone/index.html`, as the page is a static file the Worker
+  doesn't serve) that lets pictures and media load only from https, `blob:` and the page itself, and frames only from
+  those three players; it sets no `default-src` or `script-src`, as the page's script and style are inline.
+- **Card files** (`'files'`): the host's own pictures, GIFs, videos and sounds for its cards, uploaded only when it
+  sends the card or presses ⇡ Get it ready (see "Card files" below for the limits). A phone fetches one only for a card
+  sent to it that it isn't late for, with its seat's token in the `Authorization` header; anyone else gets 404.
 - **Full rooms**: at most 24 phones hold a place (`MAX_PHONES`), but phones without a seat that have done nothing for
   10 s (viewers, extra tabs) don't: when the room is full the longest idle one is turned away (`denied: full`, closed
   with 4001; the phone page tries again after a few seconds, then less often) to let a newcomer in. With nobody idle,
@@ -100,6 +137,12 @@ offers only the kick), `seats[].away`, `kicked.freed`, and `HostState.over` with
 seat came when the game is over) and `HostState.winner` (with `over`: a tiebreaker put that seat 1st on its own, and
 the seats it tied with share 2nd); and `you.out` (teams: this member sits the rest of the clue out, see Teams). The old
 phone → room `sync` (an echo of a pong) is ignored now: a phone page from before it is just untimed (see Fair timing).
+Private cards: `'cards'` and `'files'` in `welcome.features` (`'files'` only while the server takes files),
+`HostState.cards` and `status.off/sub/seatsSub`, `PhoneView.cards/statusSub/statusOff`, the `pending` and `missing`
+media items, a card's `shared`, `cardSeen` both ways (phone → room `{id}`, room → host `{id, seatId, member, by}`),
+the room → host `cardsLate` (`{late: [{id, seatId, member, by}]}`), the host's `forget` (delete these files now), the
+room → host `files` (the files it holds, on welcome and whenever that changes), and the two file routes. An app that doesn't see `'cards'` sends no card and has the host copy them; one that doesn't see
+`'files'` sends a card's own files by hand.
 
 ## Fair timing
 
@@ -159,6 +202,38 @@ attempts a minute: see `room.ts`). Looking a room up (`GET /api/rooms/:code`) an
 address too (`LOOKUP_LIMIT` 60 a minute, `SOCKET_LIMIT` 120 a minute; 429 "Too many tries — wait a minute"), so a script
 can't try every code to find live games.
 
+## Card files
+
+A card's pictures, GIFs, videos and sounds from the host's computer go to the room as files (`POST
+/api/rooms/:code/files` with `Authorization: Bearer <hostToken>` and the file's type), only when the host sends the card
+or presses ⇡ Get it ready. The app shrinks pictures first (1600 px at most). Its answer is `{id}` (the file's SHA-256;
+the same bytes again store nothing new) or an error: 401 (wrong host token, or no such room), 409 (the room holds all it
+can), 413 (too big), 415 (a type it doesn't take), 429 (too many, or today's budget is used up) or 503 (files are off).
+The host token is checked before the body is read, so a wrong one costs the room nothing. Uploads going on at the same
+time count against the room's caps together, the same file twice at once is stored (and counted) once, and bytes
+counted against today's budget for a file that then isn't stored (the room ended meanwhile) are given back.
+
+- **Types**: PNG, JPEG, WebP, GIF; MP4, WebM; MP3, OGG, WAV, M4A. No SVG, no HTML. Served back with their own type,
+  `Cache-Control: no-store` and `X-Content-Type-Options: nosniff`.
+- **At most 4 MB a file, and 16 MB and 32 files a room.**
+- **Kept** in the room's own Durable Object storage, in 1 MB pieces under their own keys (`file:<id>:<n>`), never in
+  the room's state. A file no current card uses is deleted 10 minutes after (one got ready and never sent: 10 minutes
+  after its upload), by the room's alarm (the same one that ends the room) and on the host's next state; the host can
+  also `forget` them. Everything goes when the room ends.
+- **120 uploads and 120 downloads a minute per address** (`FILE_LIMIT` in `wrangler.jsonc`).
+- **A daily budget for the whole server: 300 MB of uploads a UTC day** by default (`FILES_MB_PER_DAY`), of which one
+  address may use a quarter and one IPv6 /48 half. Over it, uploads are refused with "The buzzer server isn't taking
+  files right now — try again tomorrow" (or "Too many files from here today"), the welcome stops listing `'files'`, and
+  the app falls back to its 📋 copy buttons. **To change it**, set `FILES_MB_PER_DAY` under `vars` in `wrangler.jsonc`
+  (a number of MB; `0` turns card files off) and deploy again; for `wrangler dev` only, put `FILES_MB_PER_DAY=…` in a
+  `.dev.vars` file here. A missing or unreadable value means 300. The default is kept small on purpose: the Free plan's
+  CPU time and rows written per upload haven't been measured on a real account yet.
+- **Before the public server takes files**, measure on a Free account: deploy, run `npx wrangler tail` while a host
+  uploads a 4 MB file and a phone fetches it, and note each request's CPU time (the Free plan allows 10 ms a request);
+  then read the rows written for the upload in the dashboard (Workers & Pages › the Worker › Durable Objects; the Free
+  plan allows 100,000 a day). Write the numbers here, set `FILES_MB_PER_DAY` from them (and lower `FILE_MAX_BYTES` in
+  `src/lib/buzzproto.ts` if a 4 MB upload doesn't fit the CPU limit), and replace the sentence above.
+
 ## Local development
 
 ```sh
@@ -176,8 +251,13 @@ Tests: the room's unit tests run with the root `npm test`; `npm run test:buzzer`
 host dropping mid-race, 24 idle sockets, kicks, locked seats, dead sockets and presses sent again, a phone held
 sideways, a long name on small screens, a flooding socket, and the limit on new rooms; `tests/e2e/buzzerlive.mjs`: the
 built app hosting two phones, through a reload and ◀ Back to editor on the pre-game screen, a host reload mid-clue,
-and a dropped host connection). `npm run check` here
-type-checks the Worker and the phone page.
+and a dropped host connection; `tests/e2e/phonecards.mjs`: the phone's private cards, from the greyed button through
+Tap to see, card files, a video, a YouTube player and the content policy to a phone that joined too late;
+`tests/e2e/partnersend.mjs`: the built app sending a partner clue's cards, with nothing in the room or its saved state
+before a send, a picture shrunk before it goes up, host reloads mid-upload, a phone on a freed seat, ↻ Send again,
+📤 Send changes, ✖ Take back, ⇡ Get it ready, no phone fetching another card's file, and the room's 16 MB turning a
+GIF down; `tests/e2e/partnerteams.mjs`: the same on team phones, with someone joining or moved onto the team after
+the send). `npm run check` here type-checks the Worker and the phone page.
 
 ## Deploying
 
@@ -196,5 +276,10 @@ It is built for the **Workers Free plan**: SQLite-backed Durable Objects (the `n
 available on Free, and a game night is a handful of small messages per second at most. The Free plan has daily limits
 (requests, Durable Object time and storage; see Cloudflare's current pricing page) and no card on file, so if a limit
 is ever reached the room stops working until the daily reset; it never bills. Sockets use the Hibernation API, so a
-room with nothing happening can sleep without dropping anyone (phones ping every 10 s, which wakes it briefly); each
-room's storage is a few KB and is wiped when it ends.
+room with nothing happening can sleep without dropping anyone (phones ping every 10 s, which wakes it briefly). Each
+room keeps up to 32 KB of state, which can include the private cards the host sent (words and links) until the tile
+closes, and up to 16 MB of card files until 10 minutes after no card uses them; it is all wiped when the room ends.
+Durable Object storage (5 GB on Free) is shared by every room on the account: 100 open rooms at their file cap is 1.6
+GB. Card file uploads stop for the day at the daily budget (see Card files above, which says how to change it).
+Whoever runs the server (for the public one, its Cloudflare account) could read what is stored while it is there, and
+Cloudflare may keep earlier copies of Durable Object storage for a while (point-in-time recovery).

@@ -50,7 +50,7 @@ comes in as a copy and this game's stays.
 
 | Mode | What it is |
 |---|---|
-| 🟦 **Jeopardy board** | 1–10 categories × 1–10 clues. Supports custom values, Daily Doubles, 🤝 partner clues (two players, no buzzers, private 🤫 cards you copy to them) and images on categories and tiles. |
+| 🟦 **Jeopardy board** | 1–10 categories × 1–10 clues. Supports custom values, Daily Doubles, 🤝 partner clues (two players, no buzzers, private 🤫 cards you send to their phones or copy to them) and images on categories and tiles. |
 | 🏆 **Final Jeopardy** | Private wagers, think music, then a one-by-one reveal and a winner screen. |
 | 🗺 **RPG** | Players explore a map of screens. It has stats, items, shops, characters and doorways. |
 | ♟ **Board game** | A path of spaces with forks and zones. Players move by dice, a wheel, or one space per turn. |
@@ -179,9 +179,17 @@ fastest first: a wrong answer locks that player out and opens the buzzers for th
 answer to the next one who buzzed, and **↺ Reset buzzers** (`0`) lets everyone buzz again. Buzzes within 0.01 s are a
 tie: **🎲 Roll for it** sets who answers first, or pick one yourself (`1`–`9` or a click always picks by hand). Viewers
 see "🔔 Ann is answering" whenever one player is picked during a clue. Phones also say who got a clue right and what's
-on (a Daily Double's player sees "you're up"; on a 🤝 partner clue every phone says who describes and who guesses, and
-the describer's says "🗣 You're describing!"), beep and flash when BUZZ! lights up (🔔 mutes), and **Not you?** lets a
-player change seats. A player on a computer opens the same link: `Space` (or `Enter`) buzzes, `1`–`9` pick their seat or
+on (a Daily Double's player sees "you're up"; on a 🤝 partner clue every phone's button greys and says who describes
+and who guesses), beep and flash when BUZZ! lights up (🔔 mutes), and **Not you?** lets a
+player change seats. 🤫 Cards go to a player's phone through the buzzer server, only when you send them (📤 in the
+partner clue's panel): their words, links, pictures and videos, your own files included (pictures are shrunk first).
+The phone shows a card in place of the buzz button, behind **Tap to see** (🙈 Hide covers it again), and the panel says
+✓ seen once it's opened. YouTube, Drive and Streamable videos play in their own player when tapped. The buzzer server
+keeps a card until the tile closes, and the card's pictures and videos up to 10 minutes longer. A phone that takes
+the seat or joins the team after a card went out doesn't get it: the panel says so, and ↻ Send again gives it to it.
+With teams, **☐ Partner from the same team** (or the wheel landing on the picker's own team) spins a wheel of that
+team's people: the card goes to the one who describes, the rest of the team is told who's describing, and the team
+scores once. On an older buzzer server, or for a player without a phone, you copy the card to them (📋). A player on a computer opens the same link: `Space` (or `Enter`) buzzes, `1`–`9` pick their seat or
 team, `Esc` goes back, and the page says when another window (the stream, say) has the keyboard. The room stays open
 through the pre-game screen, a reload of it and **◀ Back to editor**; it closes
 with Exit, at the end of the game or with **✕ Close the room**. The join code shows small in a corner of the stream
@@ -393,6 +401,11 @@ To build the address into your own releases too (so nobody has to paste it), add
 - **The deploy asks about Durable Objects or a plan**: the free plan is enough; this server uses the kind of Durable
   Objects the free plan includes.
 - If the free plan's daily limits are ever reached, new buzzes stop until the next day's reset. It never charges you.
+- **Card files** (the pictures and videos hosts send to phones on 🤫 cards) count against a daily budget for the whole
+  server, 300 MB by default; past it, hosts copy those to their players (📋) until the next day. Change it with
+  `FILES_MB_PER_DAY` in `buzzer/wrangler.jsonc` (`0` turns card files off), then deploy again: see
+  [buzzer/README.md](buzzer/README.md#card-files). Each room keeps its cards only until the tile closes, and their files
+  up to 10 minutes longer.
 
 More about how the server works (fair timing, limits, local testing) is in [`buzzer/README.md`](buzzer/README.md).
 

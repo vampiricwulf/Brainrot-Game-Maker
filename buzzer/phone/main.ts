@@ -13,12 +13,17 @@
  * Wagers: while the host takes them (a Daily Double, a Final), the player's own box replaces the buzzer; what they send
  * goes to the host only. Their view says what's in (and once locked, what was locked in).
  *
+ * Private cards (cardpanel.ts): a card the host sent to this phone takes the buzzer's place while nobody buzzes (a
+ * partner clue greys every phone's button, status.off), behind "Tap to see". The page tells the room once it was seen.
+ *
  * On a computer (a mouse and a keyboard, `fine`): Space or Enter buzzes from anywhere on the buzz screen but a box to type
  * in or another button Tab took the keys to, the number keys pick a seat, Esc goes back, and the page shows those keys
  * (and says when another window has them). A phone works as it always has.
  */
 import { isRoomCode, ROOM_ALPHABET, type DenyReason, type PhoneView, type PhoneWager, type RoomToPhone } from '../../src/lib/buzzproto';
 import { PLAYER_COLOR_NAMES, PLAYER_PALETTE, textOn } from '../../src/lib/colors';
+import { cardFocus, clearCards, drawCards, initCards, retapCards, retryCardFiles } from './cardpanel';
+import { cardsLine, lateLine } from './cards';
 
 const $ = <T extends HTMLElement = HTMLElement>(id: string) => document.getElementById(id) as T;
 const screens = ['s-code', 's-wait', 's-seats', 's-new', 's-team', 's-msg', 's-buzz'] as const;
@@ -123,6 +128,12 @@ let colorsKey = '';
 let pointerKind = '';
 /** A press on the buzzer that began with a pointerdown (it buzzed then): the click that ends it doesn't, however long it was held. */
 let pointerPress = false;
+/** Cards were up in the buzzer's place when last drawn (the keys move with them). */
+let wasCardsUp = false;
+/** What a screen reader hears about cards this phone missed (with the screen's other words: a box's too). */
+let cardsSaid = '';
+/** Where the Space key last went down: a card's button takes only a Space press that began on it. */
+let spaceFrom: EventTarget | null = null;
 
 // ---- saved seat (per room code) and this browser's id ----
 
@@ -233,6 +244,8 @@ function connect(): void {
     if (ws !== s) return;
     connected = everConnected = true;
     lastPong = Date.now();
+    // (A card file that wouldn't come while the connection was down is tried again.)
+    retryCardFiles();
     const saved = seatMoved ? null : loadSeat();
     rejoining = !!saved;
     if (saved) send({ t: 'join', seatId: saved.seatId, token: saved.token, device });
@@ -740,6 +753,8 @@ function render(): void {
       });
   }
   $('sound').hidden = !(seatId && view?.you);
+  // Cards go with the seat (and the game): only the buzz screen has them.
+  if (notice || !(seatId && view?.you)) dropCards();
   if (!code) return show('s-code');
   if (notice) {
     const fresh = $('s-msg').hidden;
@@ -903,6 +918,16 @@ function renderSeatsRest(s: SeatsMsg): void {
   show('s-seats');
 }
 
+/** Takes every card off this phone (its players stopped, its files let go). */
+function dropCards(): void {
+  wasCardsUp = false;
+  cardsSaid = '';
+  if ($('cards').hidden && !$('card-list').childElementCount) return;
+  clearCards($('card-list'));
+  $('cards').hidden = true;
+  $('s-buzz').classList.remove('cards-up', 'cards-aside');
+}
+
 function renderBuzz(v: PhoneView): void {
   const you = v.you!;
   $('title').textContent = v.title || 'Brainrot Buzzer';
@@ -930,10 +955,31 @@ function renderBuzz(v: PhoneView): void {
   const ans = !boxUp && v.answer?.mine ? v.answer : null;
   const ansUp = !!ans?.open;
   $('answer-form').hidden = !ansUp;
-  b.hidden = boxUp || ansUp;
+  // Teams: you is your team; member is the name this phone joined it as.
+  const team = !!v.teams;
+  // Private cards: in the buzzer's place while nobody buzzes, the status line above them; above a box when one is up.
+  const cards = v.cards?.list ?? [];
+  const late = v.cards?.late ?? 0;
+  const cardsUp = !!cards.length && v.phase === 'lobby' && !boxUp && !ansUp;
+  b.hidden = boxUp || ansUp || cardsUp;
+  const fresh = drawCards($('card-list'), cards);
+  // A card new to this page: a short buzz, and said once ("A card only you can see"; Tap to see is where the keys go).
+  if (fresh.length) {
+    vibrate([70, 50, 70]);
+    news(cardsLine(fresh.length, team, cards.some((c) => c.shared && fresh.includes(c.id))));
+  }
+  $('cards').hidden = !cards.length && !late;
+  $('cards-late').hidden = !late;
+  $('cards-late').textContent = lateLine(late, team);
+  $('card-status').hidden = !cardsUp || !v.status;
+  $('card-status-big').textContent = cardsUp ? (v.status ?? '') : '';
+  $('card-status-small').textContent = cardsUp ? (v.statusSub ?? '') : '';
+  $('s-buzz').classList.toggle('cards-up', cardsUp);
+  $('s-buzz').classList.toggle('cards-aside', !!(cards.length || late) && !cardsUp);
+  cardsSaid = lateLine(late, team);
   // Desktop: the key that buzzes, under the buzzer (to a screen reader too: its shortcut and description). Not with a
-  // box up (Space types there), nor once the game is over (it buzzes nothing).
-  const keys = fine.matches && !b.hidden && !(v.phase === 'lobby' && v.final);
+  // box up (Space types there), nor while nobody buzzes (a partner clue) or once the game is over (it buzzes nothing).
+  const keys = fine.matches && !b.hidden && !(v.phase === 'lobby' && (v.final || v.statusOff));
   $('keys').hidden = !keys;
   for (const [attr, value] of [
     ['aria-keyshortcuts', 'Space'],
@@ -956,6 +1002,17 @@ function renderBuzz(v: PhoneView): void {
     wasBoxUp = boxUp;
     if (lost) queueMicrotask(() => (boxUp ? $('wager-in') : b).focus());
   }
+  // A card coming in the buzzer's place takes the keys (and a screen reader) to its Tap to see, unless they're busy
+  // elsewhere (reading another card, say); they go back to the buzzer as the cards go. (A Space press that began
+  // before the move doesn't open it: see the keyup listener.)
+  const newest = cardsUp ? (fresh[0] ?? (wasCardsUp ? null : cards[cards.length - 1].id)) : null;
+  if (cardsUp !== wasCardsUp || newest) {
+    const lost = !at || at === document.body || at === b || (cardsUp && parked) || (!cardsUp && $('cards').contains(at));
+    wasCardsUp = cardsUp;
+    // (Not to the buzzer while a box takes its place: the box has the keys.)
+    const to = newest ? cardFocus(newest) : !cardsUp && !b.hidden ? b : null;
+    if (lost && to) queueMicrotask(() => to.focus());
+  }
   if (boxUp) return renderWager(v, wager!, sym);
   if (ansUp) return renderAnswer(v, ans!, sym);
   if (!ans) ((answerFor = ''), (answerErr = ''));
@@ -968,11 +1025,15 @@ function renderBuzz(v: PhoneView): void {
   let small = '';
   /** What a screen reader hears instead of `small` (the early lock's countdown is said once, not every second). */
   let spoken: string | null = null;
-  // Teams: you is your team; member is the name this phone joined it as.
-  const team = !!v.teams;
+  /** Nobody buzzes now (a partner clue): the button is greyed and does nothing, to a screen reader too. */
+  let greyed = false;
   /** Teams: a teammate's buzz holds your team's place (not yours). */
   const mate = team && !!mine?.by && !mine.byYou ? mine.by : null;
-  if (ans && !ans.open) {
+  if (ans && !ans.open && v.statusOff && v.status) {
+    // A partner clue's guess, locked (judged, or the answer is up): how it went, over what this seat sent.
+    greyed = v.phase === 'lobby';
+    [cls, big, small] = ['off', v.status, ans.text ? `${team ? 'Your team’s guess' : 'Your guess'}: “${ans.text}”` : (v.statusSub ?? '')];
+  } else if (ans && !ans.open) {
     // A ✍ clue whose answer is on screen: what this seat sent stays in sight (or that one is in, as for wagers).
     [cls, big, small] = [
       'off',
@@ -996,6 +1057,10 @@ function renderBuzz(v: PhoneView): void {
   } else if (v.phase === 'lobby' && v.final) {
     ({ big, small } = placeLine(v));
     cls = 'off';
+  } else if (v.phase === 'lobby' && v.statusOff && v.status) {
+    // Nobody buzzes (a partner clue): greyed, with who plays which part as the big line and what's going on under it.
+    [cls, big, small] = ['off', v.status, v.statusSub ?? ''];
+    greyed = true;
   } else if (v.phase === 'lobby') {
     big = you.name;
     small = v.status || 'Wait for the next clue';
@@ -1064,8 +1129,12 @@ function renderBuzz(v: PhoneView): void {
     $(id).classList.toggle('name', names.some((n) => text.includes(n)));
   }
   b.setAttribute('aria-label', sentences([big, spoken ?? small]));
+  if (greyed) b.setAttribute('aria-disabled', 'true');
+  else b.removeAttribute('aria-disabled');
   const hostGone = renderFoot(v, sym);
-  say(sentences([connected ? '' : awayText(), big, spoken ?? small, hostGone ? ($('host-note').textContent ?? '') : '']));
+  // (Cards up: the status line over them is what's said, not the hidden buzzer's.)
+  const [sayBig, saySmall] = cardsUp ? [v.status ?? '', v.statusSub ?? ''] : [big, spoken ?? small];
+  say(sentences([connected ? '' : awayText(), sayBig, saySmall, cardsSaid, hostGone ? ($('host-note').textContent ?? '') : '']));
   show('s-buzz');
   // Count the early lock down.
   clearTimeout(tick);
@@ -1158,7 +1227,7 @@ function renderWager(v: PhoneView, w: PhoneWager, sym: string): void {
   $<HTMLButtonElement>('wager-send').textContent = w.amount !== undefined && !w.host ? 'Change wager' : 'Send wager';
   const hostGone = renderFoot(v, sym);
   // (What it's for first: "Final Jeopardy! · US Presidents". The error has its own alert, so it isn't said twice.)
-  say(sentences([connected ? '' : awayText(), $('clue').textContent ?? '', $('wager-head').textContent ?? '', $('wager-info').textContent ?? '', state, hostGone ? ($('host-note').textContent ?? '') : '']));
+  say(sentences([connected ? '' : awayText(), $('clue').textContent ?? '', $('wager-head').textContent ?? '', $('wager-info').textContent ?? '', state, cardsSaid, hostGone ? ($('host-note').textContent ?? '') : '']));
   show('s-buzz');
 }
 
@@ -1168,12 +1237,20 @@ function answerState(a: NonNullable<PhoneView['answer']>, team: boolean): string
   if (!a.text) return a.hidden ? `${team ? 'Your team’s' : 'Your'} answer is in with the host (not shown on a phone that joined after the answers began). Sending one replaces it.` : '';
   const typed = $<HTMLTextAreaElement>('answer-in').value.replace(/\s+/g, ' ').trim();
   if (typed && typed !== a.text) return `${tap('Not sent yet: tap Change answer to send it.')} What the host has: “${a.text}”`;
-  return `${team && a.by ? `✔ ${a.byYou ? 'You' : a.by} sent it for your team` : '✔ Sent'}: “${a.text}”. You can change it until the host shows the answer.`;
+  // (A partner clue's guess, nobody buzzing, is locked once the host judges it too.)
+  const until = view?.statusOff ? 'judges it or shows the answer' : 'shows the answer';
+  return `${team && a.by ? `✔ ${a.byYou ? 'You' : a.by} sent it for your team` : '✔ Sent'}: “${a.text}”. You can change it until the host ${until}.`;
 }
 
 /** A ✍ clue: this seat's answer box (what's in, who sent it, why the last one wasn't taken). */
 function renderAnswer(v: PhoneView, a: NonNullable<PhoneView['answer']>, sym: string): void {
   const team = !!v.teams;
+  // A partner clue's guesser types their guess: their lines over the box ("🎯 You're guessing!", who's describing).
+  const guess = !!v.statusOff;
+  $('answer-head').hidden = !guess || !v.status;
+  $('answer-head').textContent = guess ? (v.status ?? '') : '';
+  $('answer-sub').hidden = !guess || !v.statusSub;
+  $('answer-sub').textContent = guess ? (v.statusSub ?? '') : '';
   $('answer-label').textContent = team ? 'Your team’s answer (only the host and your team see it)' : 'Your answer (only the host sees it)';
   const inp = $<HTMLTextAreaElement>('answer-in');
   // Filled with what's in when the box comes up, and again when what's in changes (a teammate), unless the box holds
@@ -1191,7 +1268,8 @@ function renderAnswer(v: PhoneView, a: NonNullable<PhoneView['answer']>, sym: st
   $('answer-err').textContent = answerErr;
   $<HTMLButtonElement>('answer-send').textContent = a.text ? 'Change answer' : 'Send answer';
   const hostGone = renderFoot(v, sym);
-  say(sentences([connected ? '' : awayText(), $('clue').textContent ?? '', 'Everyone answers', state, hostGone ? ($('host-note').textContent ?? '') : '']));
+  const what = guess ? [v.status ?? '', v.statusSub ?? '', $('clue').textContent ?? ''] : [$('clue').textContent ?? '', 'Everyone answers'];
+  say(sentences([connected ? '' : awayText(), ...what, state, cardsSaid, hostGone ? ($('host-note').textContent ?? '') : '']));
   show('s-buzz');
 }
 
@@ -1213,6 +1291,37 @@ function money(n: number, sym: string): string {
 const secs = (ms: number): string => `${(ms / 1000).toFixed(2)} s`;
 /** 1st, 2nd, 3rd, 4th… */
 const ordinal = (n: number): string => n + (n % 100 >= 11 && n % 100 <= 13 ? 'th' : (['th', 'st', 'nd', 'rd'][n % 10] ?? 'th'));
+
+// ---- private cards ----
+
+let newsTimer = 0;
+/** Says a short line to a screen reader once (a card arriving, its picture arriving), leaving the screen's own words (#live) alone. */
+function news(text: string): void {
+  const n = $('news');
+  n.textContent = '';
+  clearTimeout(newsTimer);
+  queueMicrotask(() => {
+    n.textContent = text;
+    newsTimer = window.setTimeout(() => (n.textContent = ''), 3000);
+  });
+}
+
+initCards({
+  code: () => code,
+  // The token of the seat (or team place) this phone holds now: the room gives a card's files to no one else.
+  token: () => {
+    const s = loadSeat();
+    return s && seatId && s.seatId === seatId ? s.token : null;
+  },
+  seen: (id) => {
+    if (!connected || ws?.readyState !== WebSocket.OPEN) return false;
+    send({ t: 'cardSeen', id });
+    return true;
+  },
+  tap,
+  news,
+  redraw: render,
+});
 
 // ---- wiring ----
 
@@ -1251,6 +1360,8 @@ const typing = (t: EventTarget | null): boolean =>
  */
 function buzzKey(e: KeyboardEvent): boolean {
   if ((e.key !== ' ' && e.key !== 'Enter') || $('s-buzz').hidden || $('buzz').hidden || !$('overlay').hidden || typing(e.target)) return false;
+  // The keys on a card (its words, a video, a player): they're the card's, never a buzz.
+  if (e.target instanceof Node && $('cards').contains(e.target)) return false;
   const t = e.target;
   return !(t instanceof HTMLButtonElement && t !== $('buzz') && t.getClientRects().length > 0);
 }
@@ -1282,6 +1393,7 @@ function escape(e: KeyboardEvent): void {
 }
 
 document.addEventListener('keydown', (e) => {
+  if (e.key === ' ' && !e.repeat) spaceFrom = e.target;
   if (e.isComposing || e.ctrlKey || e.metaKey || e.altKey) return;
   if (e.key === 'Escape') {
     if (!e.repeat) escape(e);
@@ -1319,9 +1431,14 @@ document.addEventListener('keydown', (e) => {
   if (colorsOpen && $('colors').contains(document.activeElement) && /^Arrow(Left|Right|Up|Down)$/.test(e.key))
     stepFocus(e, $('colors').querySelectorAll<HTMLButtonElement>('button.swatch'), e.key === 'ArrowRight' || e.key === 'ArrowDown' ? 1 : -1);
 });
-// (Space presses a focused button as it comes back up: the buzz was on the way down.)
+// (Space presses a focused button as it comes back up: the buzz was on the way down. A card's Tap to see, Hide or play
+// button the keys moved to while Space was down, a card arriving, isn't pressed by it.)
 document.addEventListener('keyup', (e) => {
-  if (e.key === ' ' && buzzKey(e)) e.preventDefault();
+  if (e.key !== ' ') return;
+  const from = spaceFrom;
+  spaceFrom = null;
+  if (buzzKey(e)) e.preventDefault();
+  else if (e.target instanceof HTMLButtonElement && $('cards').contains(e.target) && from !== e.target) e.preventDefault();
 });
 
 /** Desktop: the key that buzzes, or (another window has the keyboard: the stream, say) that a click here gets it back. */
@@ -1350,6 +1467,7 @@ drawDesk();
 fine.addEventListener?.('change', () => {
   drawDesk();
   drawSound();
+  retapCards($('card-list'));
   seatsKey = '';
   render();
 });

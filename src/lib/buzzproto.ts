@@ -9,7 +9,9 @@
  *   phone measures its reaction time; the room checks it against that phone's round trip and collects buzzes for a
  *   short grace window before deciding). It moves to 'answering' on its own (so a second buzz can never also win),
  *   tells the host, and the host follows.
- * - Phones only ever see phoneView(): never answers, notes, media or other players' tokens.
+ * - Phones only ever see phoneView(): never answers, notes, media or other players' tokens, except the private cards the
+ *   host sent to that phone (HostState.cards). A card holds whatever the host put on it, the answer included if the host
+ *   put it there.
  *
  * This file is shared by the app and the Worker (buzzer/ imports it), so it has no app imports.
  */
@@ -22,10 +24,72 @@ export const BUZZ_PROTOCOL = 1;
  * their phone (HostState.wager), and only the host hears the amount. 'free': the host can free a seat without blocking
  * anyone (kick with block: false), for a player who came back on another phone. 'color': a seated phone asks for another
  * colour (PhoneMsg 'color'), passed on to the host, which takes it when it's free (HostState.colorPick). 'answers':
- * everyone types an answer to the clue on their phone, and only the host sees it (HostState.answers).
+ * everyone types an answer to the clue on their phone, and only the host sees it (HostState.answers). 'cards': private
+ * cards the host sent (HostState.cards), the greyed lobby (status.off), the late rule with Member.teamAt, cardSeen,
+ * cardsLate and a card's `shared`.
+ * 'files': card files over HTTP (POST and GET /api/rooms/:code/files); listed only while the server takes files.
  */
-export const ROOM_FEATURES = ['teams', 'wagers', 'free', 'color', 'answers'] as const;
+export const ROOM_FEATURES = ['teams', 'wagers', 'free', 'color', 'answers', 'cards', 'files'] as const;
 export type RoomFeature = (typeof ROOM_FEATURES)[number];
+
+/** Cards in the host's state at most, and how big they may be together (JSON bytes; over it, media go first, then cards). */
+export const CARDS_MAX = 8;
+export const CARDS_BYTES = 12 * 1024;
+/** A card's id, and a team member id in its `to` (characters). */
+export const CARD_ID_MAX = 100;
+export const CARD_MEMBER_MAX = 64;
+/** Recipients (`to` entries) per card. */
+export const CARD_TO_MAX = 64;
+/** A card's lines (characters). */
+export const CARD_ROLE_MAX = 24;
+export const CARD_HINT_MAX = 200;
+export const CARD_TITLE_MAX = 80;
+export const CARD_TEXT_MAX = 1000;
+/** Pictures, videos, sounds and embeds per card. */
+export const CARD_MEDIA_MAX = 6;
+/** A link on a card (https only, no user name or password). */
+export const CARD_LINK_MAX = 2048;
+
+/**
+ * A link a card may carry, tidied: https only, at most CARD_LINK_MAX characters, with no user name or password; null
+ * if not. The app checks it before sending, the room again (cleanState), and the phone once more before loading it.
+ */
+export function cardLink(s: unknown): string | null {
+  if (typeof s !== 'string' || !s || s.length > CARD_LINK_MAX) return null;
+  try {
+    const u = new URL(s.trim());
+    return u.protocol === 'https:' && !u.username && !u.password && u.href.length <= CARD_LINK_MAX ? u.href : null;
+  } catch {
+    return null;
+  }
+}
+/**
+ * Up to three short words show huge on a card, so a secret word can be read at arm's length: its title, or its words
+ * when it has no title. The phone's card panel and the editor's 📱 preview both use it, so they agree.
+ */
+export function bigWords(s: string | undefined): boolean {
+  const t = (s ?? '').trim();
+  return !!t && t.length <= 30 && !/\n/.test(t) && t.split(/\s+/).length <= 3;
+}
+/** Sites whose player a card may embed (the phone builds the frame from the link, see links.ts playerFor). */
+export const EMBED_SITES = ['youtube', 'drive', 'streamable'] as const;
+
+/** Card files ('files'): at most this big each, and per room in all (bytes and files). */
+export const FILE_MAX_BYTES = 4 * 1024 * 1024;
+export const ROOM_FILES_BYTES = 16 * 1024 * 1024;
+export const ROOM_FILES_MAX = 32;
+/** The types a card file may have. No SVG, no HTML. */
+export const FILE_TYPES = ['image/png', 'image/jpeg', 'image/webp', 'image/gif', 'video/mp4', 'video/webm', 'audio/mpeg', 'audio/ogg', 'audio/wav', 'audio/mp4'] as const;
+/** A card file's id: the SHA-256 of its bytes, as 64 lowercase hex digits. */
+export const isFileId = (s: unknown): s is string => typeof s === 'string' && /^[0-9a-f]{64}$/.test(s);
+
+/** A file's type as the room takes it (other names browsers use for the same types too), or null when it isn't taken. */
+export function fileType(raw: string | null | undefined): (typeof FILE_TYPES)[number] | null {
+  const t = (raw ?? '').split(';')[0].trim().toLowerCase();
+  const alias: Record<string, (typeof FILE_TYPES)[number]> = { 'image/jpg': 'image/jpeg', 'audio/mp3': 'audio/mpeg', 'audio/x-wav': 'audio/wav', 'audio/wave': 'audio/wav', 'audio/vnd.wave': 'audio/wav', 'audio/x-m4a': 'audio/mp4', 'audio/m4a': 'audio/mp4' };
+  if (alias[t]) return alias[t];
+  return (FILE_TYPES as readonly string[]).includes(t) ? (t as (typeof FILE_TYPES)[number]) : null;
+}
 
 /** The biggest wager a phone may send (and a seat's max the room passes on). */
 export const WAGER_MAX = 1_000_000_000;
@@ -87,7 +151,16 @@ export interface HostState {
    * A short line for the phones when there's no buzzing (a Daily Double, a Final, an RPG round, the host setting up…).
    * The seats in `seats` see `seatsText` instead (the Daily Double's player: "Daily Double — you're up!").
    */
-  status?: { text: string; seats?: string[]; seatsText?: string } | null;
+  status?: {
+    text: string;
+    seats?: string[];
+    seatsText?: string;
+    /** Added with 'cards': nobody buzzes now. Phones in the lobby grey the button and show text (or seatsText) as its big line. */
+    off?: boolean;
+    /** Added with 'cards': the small line under it, for everyone (sub) and for `seats` (seatsSub). */
+    sub?: string;
+    seatsSub?: string;
+  } | null;
   /** The points symbol ("$"), for the scores phones show. */
   currency?: string;
   /** 🔒 Seats locked: nobody new takes a seat or asks to join; only phones with a seat's token come back. */
@@ -118,6 +191,74 @@ export interface HostState {
    * host only: phoneView() gives each phone its own seat's.
    */
   answers?: AnswerAsk | null;
+  /**
+   * Added later ('cards'): the private cards the host sent, which only the phones they were sent to see (phoneView's
+   * `cards`). Only ever what the host sent by hand; a card holds whatever the host put on it.
+   */
+  cards?: HostCard[] | null;
+}
+
+/** A card for some phones only (a partner clue's, one the host sent…). */
+export interface HostCard {
+  /**
+   * A new id is a new card: phones seated, joined to the team or moved onto it after the room first saw the id don't
+   * get it (the late rule), so the host sends it again under a new id for them.
+   */
+  id: string;
+  /** Who gets it: whole seats (every phone on a team), one person on a team (member), or a team except some people. */
+  to: CardTo[];
+  /** false: the answer is on screen ("The answer's on screen"); the card stays. */
+  open: boolean;
+  /** "Describer" */
+  role?: string;
+  /** "Describe it to Ann: don't say what's on it!" */
+  hint?: string;
+  title?: string;
+  text?: string;
+  media?: CardMedia[];
+  /** Behind "Tap to see" (default true). */
+  tap?: boolean;
+  /**
+   * The same card went to others than `to` too (the app sends one card per part, each with its own lines): its phones
+   * say it isn't theirs alone. The room sets it too when `to` names more than one.
+   */
+  shared?: boolean;
+}
+
+export interface CardTo {
+  seat: string;
+  /** Teams: only this member of the team (their id; not a credential). */
+  member?: string;
+  /** Teams: everyone on the team but these members. */
+  except?: string[];
+}
+
+/**
+ * A picture, video, sound or embed on a card. An https link (a GIF is an image) or a site's player; with 'files', a
+ * file the host uploaded to the room (`file`: its id), one still on its way (`pending`), or one that won't come
+ * (`missing`: "the host will show you this").
+ */
+export type CardMedia =
+  | { kind: 'image' | 'video' | 'audio'; url: string; start?: number; end?: number; name?: string }
+  | { kind: 'embed'; site: (typeof EMBED_SITES)[number]; url: string; start?: number; end?: number }
+  | { kind: 'image' | 'video' | 'audio'; file: string; mime: string; start?: number; end?: number; name?: string }
+  | { kind: 'image' | 'video' | 'audio'; pending: true }
+  | { kind: 'image' | 'video' | 'audio'; missing: true };
+
+/** A card as the phone it was sent to sees it. */
+export interface PhoneCard {
+  id: string;
+  open: boolean;
+  role?: string;
+  hint?: string;
+  title?: string;
+  text?: string;
+  media?: CardMedia[];
+  tap?: boolean;
+  /** Everyone on this phone's team sees it. */
+  team?: boolean;
+  /** It went to others too (never who: a phone isn't told who else got a card). */
+  shared?: boolean;
 }
 
 /** HostState.answers: whose answers are taken, for which clue. */
@@ -232,6 +373,14 @@ export interface PhoneView {
   canQueue?: boolean;
   /** Everyone answers this clue on their phone (HostState.answers), as this phone should see it. */
   answer?: PhoneAnswer;
+  /** Added later ('cards'): the status line's small line, and whether the buzz button is greyed (status.off). */
+  statusSub?: string;
+  statusOff?: true;
+  /**
+   * Added later ('cards', the room adds it): this phone's cards only, newest last as the host lists them. late: how many
+   * sent to its seat it isn't shown (it took the seat, joined the team or was moved onto it after they were sent).
+   */
+  cards?: { list: PhoneCard[]; late?: number };
 }
 
 /**
@@ -274,7 +423,8 @@ export interface MemberRef {
  * `me`: this phone's team member (teams). `by`: the member whose buzz has the answering team answering (teams; null
  * when the host picked the team itself). `late`: this phone took its seat (or joined its team) after the wager round
  * began, so it isn't told the wager the host has (the room passes only what it sent itself as `sent`). `answerHidden`:
- * the same for answers: the seat has one this phone isn't shown (the room leaves it out of `answer`).
+ * the same for answers: the seat has one this phone isn't shown (the room leaves it out of `answer`). `cards`: the cards
+ * this phone gets and how many it is late for (the room picks them: only those sent to it, see room.ts cardsFor).
  */
 export function phoneView(
   s: HostState,
@@ -285,9 +435,13 @@ export function phoneView(
   late = false,
   answer?: SentAnswer | null,
   answerHidden = false,
+  cards?: PhoneView['cards'] | null,
 ): PhoneView {
   const seat = seatId ? s.seats.find((x) => x.id === seatId) : undefined;
   const a = s.phase === 'answering' && s.answering ? s.seats.find((x) => x.id === s.answering) : undefined;
+  // The status line's seats see their own pair of lines (the big one and the small one under it).
+  const own = !!seatId && !!s.status?.seatsText && !!s.status.seats?.includes(seatId);
+  const sub = own ? s.status?.seatsSub : s.status?.sub;
   return {
     title: s.title,
     phase: s.phase,
@@ -298,13 +452,16 @@ export function phoneView(
       ? { id: seat.id, name: seat.name, color: seat.color, score: s.scores[seat.id] ?? 0, lockedOut: s.lockedOut.includes(seat.id), ...(s.teams && me ? { member: me.name } : {}) }
       : null,
     ...doneView(s, seatId),
-    ...(s.status?.text ? { status: seatId && s.status.seatsText && s.status.seats?.includes(seatId) ? s.status.seatsText : s.status.text } : {}),
+    ...(s.status?.text ? { status: own ? s.status.seatsText! : s.status.text } : {}),
+    ...(s.status?.text && sub ? { statusSub: sub } : {}),
+    ...(s.status?.text && s.status.off ? { statusOff: true as const } : {}),
     ...(s.currency ? { currency: s.currency } : {}),
     ...(s.teams ? { teams: true } : {}),
     ...wagerView(s, seatId, me, sent, late),
     ...finalView(s, seat?.id),
     ...(s.colorPick && seat && !s.teams ? { colorPick: { taken: s.seats.filter((x) => x.id !== seat.id).map((x) => x.color.toLowerCase()) } } : {}),
     ...answerView(s, seat?.id, me, answer, answerHidden),
+    ...(seat && cards && (cards.list.length || cards.late) ? { cards } : {}),
   };
 }
 
@@ -458,7 +615,9 @@ export type HostMsg =
   /** Added later. Teams: put a team member (and their phone) on another team. */
   | { t: 'move'; member: string; seatId: string }
   | { t: 'close' }
-  | { t: 'ping'; at: number };
+  | { t: 'ping'; at: number }
+  /** Added later ('files'): the room deletes these card files now (those no current card uses). */
+  | { t: 'forget'; files: string[] };
 
 /** One place in the room's queue of buzzes (see the 'queue' message). */
 export interface QueuedBuzz {
@@ -502,7 +661,31 @@ export type RoomToHost =
   /** Added later ('color'): a seated phone asks for this colour (#rrggbb) for its player. */
   | { t: 'color'; seatId: string; color: string }
   /** Added later ('answers'): a phone sent seatId's answer for the answer round `id` (n counts up per seat). */
-  | { t: 'answer'; id: string; seatId: string; text: string; n: number; by?: string };
+  | { t: 'answer'; id: string; seatId: string; text: string; n: number; by?: string }
+  /**
+   * Added later ('cards'): card `id` was seen on a phone of seatId (teams: member, called by). Sent again for the
+   * current cards when the host comes back.
+   */
+  | { t: 'cardSeen'; id: string; seatId: string; member?: string; by?: string }
+  /**
+   * Added later ('files'): the card files the room holds now (their ids), on welcome and whenever that changes. A file
+   * no card used for a while is deleted, so the host uploads again any its cards need that isn't listed.
+   */
+  | { t: 'files'; ids: string[] }
+  /**
+   * Added later ('cards'): the phones here now that a current card was sent to but that are late for it (one that took
+   * the seat, joined the team or was moved onto it after the card went out), whenever that changes; empty once none
+   * are. The host suggests ↻ Send again.
+   */
+  | { t: 'cardsLate'; late: CardLate[] };
+
+/** A phone of seatId (teams: member, called by) that card `id` was sent to, but that is late for it. */
+export interface CardLate {
+  id: string;
+  seatId: string;
+  member?: string;
+  by?: string;
+}
 
 /** A phone → room. */
 export type PhoneMsg =
@@ -526,7 +709,9 @@ export type PhoneMsg =
   /** Added later ('color'): this phone's player wants this colour (#rrggbb); the host takes it if it's free. */
   | { t: 'color'; color: string }
   /** Added later ('answers'): this phone's seat's answer for the answer round `id`. */
-  | { t: 'answer'; id: string; text: string };
+  | { t: 'answer'; id: string; text: string }
+  /** Added later ('cards'): this phone showed card `id` (its player tapped to see it). */
+  | { t: 'cardSeen'; id: string };
 
 /** Why the room didn't take a phone's wager: not taking one now, over the max (with the limit on), not a whole number, too many sends. */
 export type WagerRefusal = 'closed' | 'over' | 'bad' | 'slow';
@@ -608,6 +793,16 @@ export interface NewRoom {
   code: string;
   hostToken: string;
 }
+
+/**
+ * Card files ('files'). The host uploads one with POST {base}/api/rooms/{code}/files, `Authorization: Bearer
+ * <hostToken>`, the file's type (FILE_TYPES) as Content-Type and its bytes (at most FILE_MAX_BYTES): 200 {id} (its
+ * SHA-256; the same bytes again store nothing new), or {error} with 401, 409 (the room's files are full), 413 (too big),
+ * 415 (a type it doesn't take), 429 (too many, or today's budget is used up) or 503 (the server takes no files). A phone
+ * fetches one with GET …/files/{id} and `Authorization: Bearer <its seat or member token>` (never in the address): only
+ * for a card sent to it that it isn't late for, else 404.
+ */
+export const filesUrl = (base: string, code: string, id?: string): string => `${base.replace(/\/+$/, '')}/api/rooms/${code}/files${id ? `/${id}` : ''}`;
 
 /** The link players open (it fills the code in). */
 export const joinUrl = (base: string, code: string): string => `${base.replace(/\/+$/, '')}/${code}`;

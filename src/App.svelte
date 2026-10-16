@@ -23,7 +23,7 @@
     type SavedPlay,
     type SavedRoom,
   } from './lib/persist';
-  import { buzzerBase, buzzerOn, endRoom, kept, leaveRoom, rejoinRoom, remote, sendHostState } from './lib/remote.svelte';
+  import { buzzerBase, buzzerOn, endRoom, kept, leaveRoom, rejoinRoom, remote, roomHasCards, roomHasFiles, sendHostState } from './lib/remote.svelte';
   import { setupState } from './lib/buzz';
   import { joinUrl } from './lib/buzzproto';
   import { MAX_PACK_READ, openPack } from './lib/pack';
@@ -387,7 +387,8 @@
   // depends on the ones loaded, too.)
   let checklist = $state.raw<ChecklistLine[]>([]);
   /** The checklist's lines (one a round) for this game: the watcher's plain copy, or the game itself as it arrives. */
-  const check = (game: Game) => (checklist = checklistLines(game, validate(game)));
+  // (A room kept open that puts cards on phones but takes no files: a card's file from this computer won't reach one.)
+  const check = (game: Game) => (checklist = checklistLines(game, validate(game, { filesOff: !!remote.code && remote.status === 'online' && roomHasCards() && !roomHasFiles() })));
   const checkSoon = debounce(() => watch && check(watch.value()), 300);
   $effect(() => {
     void Object.keys(mediaUrls).length;

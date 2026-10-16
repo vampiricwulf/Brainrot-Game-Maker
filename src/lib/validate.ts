@@ -1,5 +1,5 @@
 // Pre-game checklist for the editor (spec §5.2 validation panel).
-import { canPlay, mediaUrls } from './media.svelte';
+import { canPlay, formatBytes, mediaUrls } from './media.svelte';
 import { linkLifetime } from './links';
 import { normalizeColor } from './colors';
 import {
@@ -24,6 +24,8 @@ import {
   type Game,
 } from './model';
 import { lowerWord, missCosts, partnerRules, partWords } from './partner';
+import { cardWords, phoneCard } from './phonecard';
+import { CARD_TEXT_MAX, FILE_MAX_BYTES } from './buzzproto';
 import { rpgProblems } from './rpg';
 import { boardGameProblems } from './boardgame';
 import { mediaUsage, onlineCount, slideHasContent, slideMediaIds } from './usage';
@@ -70,7 +72,11 @@ export function dailyDoublesOver(round: BoardRound): { want: number; placed: num
   return placed > want ? { want, placed } : null;
 }
 
-export function validate(game: Game): Problem[] {
+/**
+ * `room.filesOff`: the buzzer room open now puts cards on phones but takes no files (its server is off them, or out for
+ * today): a card's file from this computer won't reach a phone.
+ */
+export function validate(game: Game, room: { filesOff?: boolean } = {}): Problem[] {
   const out: Problem[] = [];
   // Its title shows on stream (the title card, the audience window): a game never named says "Untitled Game" there.
   if (!game.title.trim() || game.title.trim() === 'Untitled Game')
@@ -153,7 +159,7 @@ export function validate(game: Game): Problem[] {
         tab: i,
         level: 'info',
       });
-    out.push(...partnerProblems(game, round, i));
+    out.push(...partnerProblems(game, round, i, !!room.filesOff));
   });
   // The tiebreaker once ticked on: a tie at the end offers it as the main button, so an empty one puts a blank slide on stream.
   const tb = game.tiebreaker;
@@ -247,10 +253,10 @@ export function validate(game: Game): Problem[] {
 
 /**
  * A board's 🤝 partner clues (partner-clues spec §5.6): a ready-made game with no card (the giver has nothing to go on),
- * an empty card, more cards than a clue holds, and a card's online link that has stopped working or soon will. Each goes
- * to its card.
+ * an empty card, more cards than a clue holds, a card's online link that has stopped working or soon will, and what of a
+ * card won't reach a phone (`filesOff`: the buzzer server in use takes no files). Each goes to its card.
  */
-export function partnerProblems(game: Game, round: BoardRound, tab: number): Problem[] {
+export function partnerProblems(game: Game, round: BoardRound, tab: number, filesOff = false): Problem[] {
   const out: Problem[] = [];
   const sym = game.settings.currencySymbol;
   for (const c of round.categories)
@@ -279,6 +285,16 @@ export function partnerProblems(game: Game, round: BoardRound, tab: number): Pro
         });
         if (life.includes('expired')) warn(`${tile}: card ${n + 1} has an online link that has expired: add that file again`, card);
         else if (life.includes('temporary')) warn(`${tile}: card ${n + 1} has an online link that stops working soon: save a copy or add the file`, card);
+        // What won't reach a phone (spec §5.6, §13.5): a file too big, or of a kind phones can't play; words past 1000.
+        const KIND = { picture: 'picture', gif: 'GIF', video: 'video', sound: 'sound', embed: 'online video' } as const;
+        for (const it of phoneCard(game, card, { files: filesOff ? null : {} }).items) {
+          const size = game.media.find((m) => m.id === it.media)?.size ?? 0;
+          if (it.why === 'big') warn(`${tile}: card ${n + 1} has a ${KIND[it.kind]} too big for phones (${formatBytes(size)}; phones get files up to ${formatBytes(FILE_MAX_BYTES)})`, card);
+          else if (it.why === 'kind' && it.file) warn(`${tile}: card ${n + 1} has a ${KIND[it.kind]} phones can't play: add it as MP4, WebM, MP3, OGG, WAV or M4A, or from a link`, card);
+          else if (it.why === 'nofiles')
+            warn(`${tile}: card ${n + 1} has a ${KIND[it.kind]} that's a file on this computer, and this buzzer server isn't taking files: phones get the words and links only (📋 Copy picture)`, card);
+        }
+        if ([...cardWords(card)].length > CARD_TEXT_MAX) warn(`${tile}: card ${n + 1} has more than ${CARD_TEXT_MAX} characters of words: phones get the first ${CARD_TEXT_MAX}`, card);
       });
     });
   return out;

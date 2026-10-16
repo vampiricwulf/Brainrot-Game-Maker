@@ -2,6 +2,13 @@
 <html lang="en">
   <head>
     <meta charset="utf-8" />
+    <!--
+      What a private card may load (partner-clues spec §14.6): pictures, videos and sounds from https links and from the
+      card files this page fetches (blob:), and only the YouTube (no-cookie), Google Drive and Streamable players in a
+      frame (cards.ts FRAME_ORIGINS). data: is for the icon below. No default-src or script-src: the page's own script
+      and style are inline (build.mjs). It's served as a static file, not by the Worker, so the policy is set here.
+    -->
+    <meta http-equiv="Content-Security-Policy" content="img-src https: blob: data: 'self'; media-src https: blob: 'self'; frame-src https://www.youtube-nocookie.com https://drive.google.com https://streamable.com" />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
     <meta name="theme-color" content="#12131a" />
     <meta name="color-scheme" content="dark" />
@@ -76,7 +83,17 @@
         <h1 class="sr">Your buzzer</h1>
         <div class="side">
           <p id="clue"></p>
+          <!-- The status line, when cards take the buzzer's place: over them on a phone, beside them on its side. -->
+          <p id="card-status" hidden><span id="card-status-big" dir="auto"></span><span id="card-status-small" dir="auto"></span></p>
           <p id="host-note" class="warn-note" hidden>The host's connection dropped. Hang on, they'll be back…</p>
+        </div>
+        <!--
+          Private cards the host sent to this phone, newest first: in the buzzer's place, or above a wager or answer
+          box. Cards sent before this phone joined are only counted (cards-late).
+        -->
+        <div id="cards" hidden>
+          <div id="card-list"></div>
+          <p id="cards-late" class="note" hidden></p>
         </div>
         <!-- Wagers: this player's own box (the amount goes to the host only). -->
         <form id="wager-form" novalidate hidden>
@@ -90,6 +107,9 @@
         </form>
         <!-- A ✍ clue: everyone types an answer (only the host sees it). -->
         <form id="answer-form" novalidate hidden>
+          <!-- A partner clue's guesser: whose turn it is ("🎯 You're guessing!"), and who's describing. -->
+          <h2 id="answer-head" dir="auto" hidden></h2>
+          <p id="answer-sub" class="note" dir="auto" hidden></p>
           <label for="answer-in" id="answer-label">Your answer (only the host sees it)</label>
           <textarea id="answer-in" rows="2" maxlength="200" autocomplete="off" enterkeyhint="send" dir="auto"></textarea>
           <button type="submit" class="primary" id="answer-send">Send answer</button>
@@ -111,6 +131,8 @@
     <div id="overlay" hidden><p id="overlay-text" tabindex="-1">Reconnecting…</p><button id="overlay-retry" type="button" class="primary" hidden>Try again now</button></div>
     <div id="flash" aria-hidden="true"></div>
     <p id="live" class="sr" role="status" aria-live="polite"></p>
+    <!-- Said once and emptied (a card arriving, its picture arriving while it's open): the screen's words above stay. -->
+    <p id="news" class="sr" aria-live="polite"></p>
     <p id="alert" class="sr" aria-live="assertive"></p>
     <script>/*SCRIPT*/</script>
   </body>
