@@ -7,8 +7,8 @@ import { describe, expect, it } from 'vitest';
 import { jeopardyGame } from './testgame';
 import { migrateGame, newImageEl, setSlideText, textSlide, type CardTo, type DealPreset, type Game, type Session } from './model';
 import { forViewers, migrateSession, newSession, removePlayer } from './session';
-import { cardsFullText, cardsLeftOff, hostCards, roomCardsFull, sessionCards } from './buzz';
-import { CARDS_MAX } from './buzzproto';
+import { cardsFullText, cardsLeftOff, dealFullText, hostCards, roomCardsFull, sessionCards } from './buzz';
+import { CARDS_MAX, type CardLate, type PhoneInfo } from './buzzproto';
 import { listedCards, quickSlide, sendCard, sentCardId } from './sentcards';
 import { phoneCard } from './phonecard';
 import { undoAction, redoAction, whoWasWhoStep } from './toolset';
@@ -25,12 +25,15 @@ import {
   dealFromTemplate,
   dealHands,
   dealOut,
+  dealPhones,
+  dealPhonesLate,
   dealProblem,
   dealReveal,
   dealtIn,
   dealSetupProblems,
   dealTrial,
   DEAL_TEMPLATES,
+  dropGonePhones,
   handSlide,
   repairDeal,
   sendDeal,
@@ -366,6 +369,27 @@ describe('📤 sending a deal: only when the host confirms, one card per player,
     expect(cardsFullText(g, session)).toBe(`${CARDS_MAX} cards are out on the phones, 6 of them the 🎭 deal’s: ✖ Take them back in 🎭 Deal…`);
   });
 
+  it('a deal that wouldn’t fit: its refusal counts the cards out, what the deal adds, and how many to take back, sent or not', () => {
+    const { g, session, d } = dealt();
+    const quick = () => {
+      for (let i = 0; i < 5; i++) sendCard(g, session, { to: [{ seat: 'a' }], content: { slide: quickSlide(`c${i}`) }, until: 'host' });
+    };
+    quick();
+    expect(roomCardsFull(g, session, dealTrial(g, d, 'host'))).toBe(true);
+    const text = `5 cards are out on the phones, and this deal adds 6: they take ${CARDS_MAX} at once, so ✖ Take 3 back first`;
+    expect(dealFullText(g, session, dealTrial(g, d, 'host'))).toBe(text);
+    // Sent, taken back, then the quick cards: the same (its cards out are none of the five).
+    session.cards = [];
+    sendDeal(g, session, 'host', 1000);
+    takeBackDeal(g, session);
+    quick();
+    expect(d.stage).toBe('sent');
+    expect(roomCardsFull(g, session, dealTrial(g, d, 'host'))).toBe(true);
+    expect(dealFullText(g, session, dealTrial(g, d, 'host'))).toBe(text);
+    session.cards = session.cards!.slice(3);
+    expect(roomCardsFull(g, session, dealTrial(g, d, 'host'))).toBe(false);
+  });
+
   it('a deal handed out to more players than the phones take (before the room took cards): which never reach them, and the refusal counts what they hold', () => {
     const g = jeopardyGame();
     g.players = Array.from({ length: CARDS_MAX + 2 }, (_, i) => ({ id: `p${i}`, name: `P${i}`, color: '#e6194b' }));
@@ -427,6 +451,96 @@ describe('📤 sending a deal: only when the host confirms, one card per player,
     removePlayer(session, h[0].to.seat);
     expect(session.deal!.hands).toHaveLength(5);
     expect(dealOut(g, session)).toHaveLength(5);
+  });
+});
+
+describe('one window: the phones that came after the cards went are counted blind to parts', () => {
+  const phone = (seatId: string, connected = true, member?: string): PhoneInfo => ({ conn: `${seatId}${member ?? ''}`, seatId, connected, ...(member ? { member } : {}) });
+  /** The room's late list: the phones here sent one of the deal's cards before they came. */
+  const lateFor = (g: Game, session: Session, here: PhoneInfo[]): CardLate[] =>
+    dealOut(g, session).flatMap((c) => here.filter((p) => p.connected && c.to.some((t) => t.seat === p.seatId && (!t.member || t.member.id === p.member))).map((p) => ({ id: sentCardId(c), seatId: p.seatId!, ...(p.member ? { member: p.member } : {}) })));
+  /** Team captain, no teams, three players (Ann, Bob, Cat): one of them captain, the others no part (no card). */
+  const captainDeal = (captain: string) => {
+    const { g, session, pool, tpl } = setup(3);
+    const deal = tpl('captain');
+    const r = dealtOf(dealHands(g, deal, pool, { picks: { [deal.parts[0].id]: [{ seat: captain }] } }));
+    const d = startDeal(session, deal, r.hands, r.dealtIn, 500);
+    sendDeal(g, session, 'host', 1000);
+    return { g, session, d };
+  };
+
+  it('Team captain with no teams: Cat’s phone, coming after the send, counts the same whether she’s captain or not', () => {
+    const counts = ['a', 'c'].map((captain) => {
+      const { g, session, d } = captainDeal(captain);
+      // Ann's and Bob's phones are in the room; Cat has none yet.
+      d.phonesAt = dealPhones(d, [phone('a'), phone('b')]);
+      expect(dealPhonesLate(d, [phone('a'), phone('b')])).toBe(0);
+      // (Only a part has a card to be late for: the room's list would say whether Cat is captain. It isn't counted.)
+      expect(lateFor(g, session, [phone('c')]).length).toBe(captain === 'c' ? 1 : 0);
+      return dealPhonesLate(d, [phone('a'), phone('b'), phone('c')]);
+    });
+    expect(counts).toEqual([1, 1]);
+  });
+
+  it('a phone away when they went, back with its token, isn’t counted; Bob’s leaving the room and coming back is, captain or not; ↻ Send again clears it', () => {
+    const counts = ['a', 'b'].map((captain) => {
+      const { g, session, d } = captainDeal(captain);
+      d.phonesAt = dealPhones(d, [phone('a'), phone('b'), phone('c', false)]);
+      expect(d.phonesAt).toEqual(['a', 'b', 'c']);
+      const all = [phone('a'), phone('b'), phone('c')];
+      expect(dealPhonesLate(d, all)).toBe(0);
+      // Bob's phone away keeps his place.
+      expect(dropGonePhones(d, [phone('a'), phone('b', false), phone('c')])).toBe(false);
+      // His seat freed (Change player on his phone, or the host freed it): the room lists it no more, so it goes.
+      expect(dropGonePhones(d, [phone('a'), phone('c')])).toBe(true);
+      expect(d.phonesAt).toEqual(['a', 'c']);
+      expect(dealPhonesLate(d, [phone('a'), phone('c')])).toBe(0);
+      // Back on it: new to the room. (Its late list would say whether Bob is captain.)
+      expect(lateFor(g, session, [phone('b')]).length).toBe(captain === 'b' ? 1 : 0);
+      expect(dropGonePhones(d, all)).toBe(false);
+      const n = dealPhonesLate(d, all);
+      sendDealAgain(g, session, 2000);
+      d.phonesAt = dealPhones(d, all);
+      expect(dealPhonesLate(d, all)).toBe(0);
+      return n;
+    });
+    expect(counts).toEqual([1, 1]);
+  });
+
+  it('teams: a new person on a team dealt in counts, a part or not, and so does one moved off it and back; dealt to each team’s people, one not dealt in doesn’t', () => {
+    const { g, session, pool, tpl } = setup(2);
+    const deal = tpl('captain');
+    const r = dealtOf(dealHands(g, deal, pool, { picks: { [deal.parts[0].id]: [{ seat: 'a' }] } }));
+    const d = startDeal(session, deal, r.hands, r.dealtIn, 500);
+    sendDeal(g, session, 'host', 1000);
+    d.phonesAt = dealPhones(d, [phone('a', true, 'm1'), phone('b', true, 'm2')]);
+    expect(d.phonesAt).toEqual(['a/m1', 'b/m2']);
+    for (const seat of ['a', 'b']) expect(dealPhonesLate(d, [phone('a', true, 'm1'), phone('b', true, 'm2'), phone(seat, true, 'm3')])).toBe(1);
+    // Mia moved to Bob's team: counted there; and back on Ann's, as she's new to it again.
+    const moved = [phone('b', true, 'm1'), phone('b', true, 'm2')];
+    expect(dropGonePhones(d, moved)).toBe(true);
+    expect(d.phonesAt).toEqual(['b/m2']);
+    expect(dealPhonesLate(d, moved)).toBe(1);
+    expect(dealPhonesLate(d, [phone('a', true, 'm1'), phone('b', true, 'm2')])).toBe(1);
+    // Each team's people dealt in: Mia and Max. Someone joining a team since isn't dealt in, and gets nothing.
+    const per = setup(2);
+    const people = [{ seat: 'a', member: { id: 'm1', name: 'Mia' } }, { seat: 'b', member: { id: 'm2', name: 'Max' } }];
+    const pr = dealtOf(dealHands(per.g, deal, people, { perTeam: true }));
+    const pd = startDeal(per.session, deal, pr.hands, pr.dealtIn, 500);
+    sendDeal(per.g, per.session, 'host', 1000);
+    pd.phonesAt = dealPhones(pd, [phone('a', true, 'm1'), phone('b', false, 'm2')]);
+    expect(pd.phonesAt).toEqual(['a/m1', 'b/m2']);
+    expect(dealPhonesLate(pd, [phone('a', true, 'm1'), phone('b', true, 'm2'), phone('a', true, 'm3')])).toBe(0);
+  });
+
+  it('a deal sent before the phones were kept: none counted (the phone says to ask the host), whoever has a part', () => {
+    const { g, session, d } = dealt();
+    sendDeal(g, session, 'host', 1000);
+    expect(d.phonesAt).toBeUndefined();
+    expect(dropGonePhones(d, [phone('a')])).toBe(false);
+    expect(dealPhonesLate(d, [phone('a'), phone('b')])).toBe(0);
+    expect(lateFor(g, session, [phone('b')]).length).toBe(1);
+    expect(dealPhonesLate(d, [phone('a'), phone('b')])).toBe(0);
   });
 });
 
@@ -525,6 +639,14 @@ describe('a reload, and a damaged save', () => {
     short.deal.in = short.deal.in.slice(1);
     repairDeal(short);
     expect(short.deal.in).toBeUndefined();
+    // The phones in the room when the cards went: kept only as a list of places (else as in a save from before).
+    const phones = JSON.parse(JSON.stringify(session));
+    phones.deal.phonesAt = ['a', 'b/m1'];
+    repairDeal(phones);
+    expect(phones.deal.phonesAt).toEqual(['a', 'b/m1']);
+    phones.deal.phonesAt = ['a', 3];
+    repairDeal(phones);
+    expect(phones.deal.phonesAt).toBeUndefined();
   });
 
   it('the editor’s checks: a part that draws with no wheel, two parts for the rest; media on a part’s card is in use', () => {

@@ -261,6 +261,29 @@ describe('RoomLink', () => {
     expect(sockets[0].sent.at(-1)).toEqual({ t: 'kick', seatId: 'a' });
   });
 
+  it('says when its phones are the room’s list: once one came since the welcome, again after a reconnect’s, not after a 4xxx', async () => {
+    sockets = [];
+    const t = fakeDeps();
+    const link = new RoomLink('https://buzz.test', {}, t.deps);
+    await link.create();
+    sockets[0].open();
+    sockets[0].say(welcome);
+    expect(link.listed).toBe(false);
+    const list = { t: 'phones', phones: [{ conn: 'c', seatId: 'a', connected: true }] };
+    sockets[0].say(list);
+    expect(link.listed).toBe(true);
+    // A reconnect: the list from before stays, but it's the room's again only once it says it.
+    sockets[0].drop();
+    t.advance(retryDelay(0));
+    sockets[1].open();
+    sockets[1].say(welcome);
+    expect([link.listed, link.phones.length]).toEqual([false, 1]);
+    sockets[1].say(list);
+    expect(link.listed).toBe(true);
+    sockets[1].drop(4004, 'no such room');
+    expect([link.listed, link.phones]).toEqual([false, []]);
+  });
+
   it('passes a card a phone showed on, and keeps the room’s files list (unknown again after each welcome)', async () => {
     sockets = [];
     const t = fakeDeps();

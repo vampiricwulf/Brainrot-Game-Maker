@@ -20,7 +20,7 @@
   import { phoneCard } from '../lib/phonecard';
   import { phoneCan, syncUploads } from '../lib/cardfiles.svelte';
   import { cardsOut, listedCards, sentCardId, sentSlide, takeBackCard } from '../lib/sentcards';
-  import { dealOut, dealtIn } from '../lib/deals';
+  import { dealOut, dealtIn, dropGonePhones } from '../lib/deals';
   import { windowCards } from '../lib/cardwindow';
   import { cardWindow, closeCardWindow, feedCardWindow } from '../lib/cardwindow.svelte';
   import { dropOffersBut } from './host/offered.svelte';
@@ -368,6 +368,15 @@
       if (on.length === was.length && on.every((x, i) => x === was[i])) return;
       if (on.length) app.live.phones = on;
       else delete app.live.phones;
+    });
+  });
+  // 🎭 A place the room no longer lists (a seat freed or kicked, Change player on its phone, someone off their team) goes
+  // from the deal's phones when its cards went: a phone there next is new, counted as one that came after, a part or
+  // not. Only from a list the room sent since its welcome (until then it's the one before a reconnect, or none).
+  $effect(() => {
+    const phones = phonesOn && remote.status === 'online' && remote.listed ? remote.phones : null;
+    untrack(() => {
+      if (phones && session.deal) dropGonePhones(session.deal, phones);
     });
   });
   $effect(() => {

@@ -33,6 +33,8 @@ in plain words for the people who make and host games. Anything committed but no
 - 🎭 A deal handed out to more than 8 players before the buzzer room took cards says how many cards reach the phones and lists everyone to copy their card to (with the audience window open, who's missing); cards it pushes off the phones say so in the cards-out list; the 'room is full' message counts right. (301fbb5, efcd0c4)
 - The buzzer room makes space for a new picture or video by deleting files from cards that ended over a minute ago, instead of saying it's full (and only once the new file is stored); when it really is full, the panel says so and suggests taking a card back. (301fbb5, efcd0c4)
 - Single window: the stage keeps one size from the board to a clue again on laptop-sized windows (down to 960px wide). Up to about 1240px wide, 🤫 Send a card…, 🎭 Deal…, 🔇 Stop sounds and the cards out show as just 🤫, 🎭, 🔇 and 🤫 2, with their full names in their tooltips and read out, so the tools row stays on one line. (2343263, 4962686)
+- In one window, the 🎭 deal panel's late-phone count no longer gives away who got a part: it counts every phone that came to a seat dealt in after the cards went, part or not, including one that left its seat and came back ("1 phone came after the cards went: ↻ Send again"), and a phone that was only asleep isn't counted. (76d731a, de1462e)
+- When a 🎭 deal won't fit on the phones, the deal panel says how many cards are out, how many the deal adds and how many to take back (it always said "8 cards are out: take one back"), and after ✖ Take back its status no longer points to a greyed-out 📤 Send. (76d731a)
 
 ## 2026-10-15
 

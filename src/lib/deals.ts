@@ -25,6 +25,7 @@ import {
   type Slide,
   type WheelSegment,
 } from './model';
+import type { PhoneInfo } from './buzzproto';
 import { cardHash, toKey } from './partner';
 import { cardLinks, cardWords } from './phonecard';
 import { cardsOut, cleanTo, fileItem, roundNow, sendCardAgain, takeBackCard } from './sentcards';
@@ -399,6 +400,48 @@ export function sendDealAgain(game: Pick<Game, 'rounds'>, session: Session, now 
   return dealOut(game, session).filter((c) => sendCardAgain(game, session, c.id, now)).length;
 }
 
+/** A phone's place as the buzzer room says it: its seat, or `seat/member` for a person on a team. */
+const placeOf = (seat: Id, member?: string): string => (member ? `${seat}/${member}` : seat);
+
+/**
+ * The buzzer room's phones on a place dealt in (a whole seat, or that person on a team), as placeOf says it: those here
+ * now with `here`, else away ones too (a phone back with its token isn't late: the room keeps its time).
+ * DealState.phonesAt is this as the cards go.
+ */
+export function dealPhones(d: Pick<DealState, 'hands' | 'in'>, phones: PhoneInfo[], here = false): string[] {
+  const dealt = dealtIn(d);
+  const on = phones.filter((p) => p.seatId && (p.connected || !here) && dealt.some((t) => t.seat === p.seatId && (!t.member || t.member.id === p.member)));
+  return [...new Set(on.map((p) => placeOf(p.seatId!, p.member)))];
+}
+
+/**
+ * One window's count of the phones that came after the deal's cards went (↻ Send again reaches them), blind to parts.
+ * Only those with a part have a card to be late for, so the room's late phones, counted or named, would say who got
+ * one as each phone came. So it counts every phone here now on a place dealt in that isn't in phonesAt, a part or not:
+ * one that wasn't in the room when they went, or one on a place that left it since (dropGonePhones: a new phone for
+ * its seat). A deal sent before phonesAt was kept counts none (the phone itself says to ask the host).
+ */
+export function dealPhonesLate(d: Pick<DealState, 'hands' | 'in' | 'phonesAt'>, phones: PhoneInfo[]): number {
+  const was = d.phonesAt;
+  return was ? dealPhones(d, phones, true).filter((k) => !was.includes(k)).length : 0;
+}
+
+/**
+ * The places in phonesAt the buzzer room no longer lists at all, not even away, go from it: the seat was freed (the
+ * host freed or kicked it, or its phone pressed Change player) or the person left their team or was moved off it. A
+ * phone there next is new to the room, late for the cards, so dealPhonesLate counts it, a part or not. True when any
+ * went. Only with the room's own list (one it sent since its welcome).
+ */
+export function dropGonePhones(d: Pick<DealState, 'phonesAt'>, phones: PhoneInfo[]): boolean {
+  const was = d.phonesAt;
+  if (!was) return false;
+  const listed = new Set(phones.flatMap((p) => (p.seatId ? [placeOf(p.seatId, p.member)] : [])));
+  const kept = was.filter((k) => listed.has(k));
+  if (kept.length === was.length) return false;
+  d.phonesAt = kept;
+  return true;
+}
+
 /** ✖ Take back: the deal's cards go from every phone (the deal stays, for Who was who). Returns the cards taken back. */
 export function takeBackDeal(game: Pick<Game, 'rounds'>, session: Session): SentCard[] {
   const out = dealOut(game, session);
@@ -514,6 +557,7 @@ export function repairDeal(session: Session): void {
       if (d.in !== undefined && !(keys && deal.hands.every((h) => keys.has(toKey(h.to))))) delete deal.in;
       if (!Array.isArray(d.parts) || !d.parts.every((x) => typeof x === 'string')) deal.parts = [...new Set(hands.map((h) => h.part))].sort();
       if (deal.shown !== undefined && deal.shown !== true) delete deal.shown;
+      if (d.phonesAt !== undefined && !(Array.isArray(d.phonesAt) && d.phonesAt.every((x) => typeof x === 'string'))) delete deal.phonesAt;
     }
   }
   const id = session.deal?.id;
