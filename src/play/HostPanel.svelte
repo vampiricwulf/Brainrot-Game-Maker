@@ -1494,6 +1494,12 @@
     .panel:not(.side) > .fixed > .divider {
       margin: 0;
     }
+    /* (And the tools row's, never its menus': on the board the tools and the round's ◀ / picker / ▶ stay on one line,
+       as in a clue, so the stage keeps one size.) */
+    .panel:not(.side) > .toolsrow :global(:is(.tl > button, .tl > .pop > button, .rn > button)) {
+      padding-left: 9px;
+      padding-right: 9px;
+    }
   }
   /* The player cards (RPG and board games) take the column's width and height: the round's box scrolls instead. */
   .side .mode-host :global(.cards) {

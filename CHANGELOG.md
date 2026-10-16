@@ -32,6 +32,7 @@ in plain words for the people who make and host games. Anything committed but no
 - 🤫 Send a card… › 'The slide on screen' no longer sends what viewers can't see yet (a hint that comes in later, a see-through box). In one window, adding an SVG already in the game to a quick card no longer shows a toast with its file name. (301fbb5)
 - 🎭 A deal handed out to more than 8 players before the buzzer room took cards says how many cards reach the phones and lists everyone to copy their card to (with the audience window open, who's missing); cards it pushes off the phones say so in the cards-out list; the 'room is full' message counts right. (301fbb5, efcd0c4)
 - The buzzer room makes space for a new picture or video by deleting files from cards that ended over a minute ago, instead of saying it's full (and only once the new file is stored); when it really is full, the panel says so and suggests taking a card back. (301fbb5, efcd0c4)
+- Single window: the stage keeps one size from the board to a clue again on laptop-sized windows (down to 960px wide). Up to about 1240px wide, 🤫 Send a card…, 🎭 Deal…, 🔇 Stop sounds and the cards out show as just 🤫, 🎭, 🔇 and 🤫 2, with their full names in their tooltips and read out, so the tools row stays on one line. (2343263, 4962686)
 
 ## 2026-10-15
 

@@ -262,7 +262,7 @@
     {/if}
   </div>
   <div class="pop">
-    <button onclick={(e) => toggle('card', e)} aria-haspopup="dialog" aria-expanded={menu === 'card'} title="A private card on some players’ phones, any time, or a 🪟 card window for one with no phone: only they see it, never on stream">🤫 Send a card…</button>
+    <button onclick={(e) => toggle('card', e)} aria-haspopup="dialog" aria-expanded={menu === 'card'} title="A private card on some players’ phones, any time, or a 🪟 card window for one with no phone: only they see it, never on stream">🤫 <span class="word">Send a card…</span></button>
     {#if menu === 'card'}
       <div class="menu wide" role="dialog" aria-label="Send a card" use:anchored={at}>
         <CardSend {game} {session} {dual} />
@@ -280,7 +280,7 @@
         ? '🎭 Who was who is on screen: click it on the stage, or 🙈 Hide it here'
         : session.deal
           ? `🎭 ${session.deal.name}: send it, take it back, or show Who was who`
-          : 'Secret parts for everyone (a spy, a wolf, a captain…), each on their own phone: nothing goes until you send it'}>🎭 Deal…</button
+          : 'Secret parts for everyone (a spy, a wolf, a captain…), each on their own phone: nothing goes until you send it'}>🎭 <span class="word">Deal…</span></button
     >
     {#if menu === 'deal'}
       <div class="menu wide" role="dialog" aria-label="Deal" use:anchored={at}>
@@ -290,7 +290,7 @@
   </div>
   {#if out || menu === 'out'}
     <div class="pop">
-      <button onclick={(e) => toggle('out', e)} aria-haspopup="dialog" aria-expanded={menu === 'out'} data-cards-out-count={out} title="The cards out now: send one again, take it back">🤫 {out} card{out === 1 ? '' : 's'} out</button>
+      <button class="cardsout" onclick={(e) => toggle('out', e)} aria-haspopup="dialog" aria-expanded={menu === 'out'} data-cards-out-count={out} title="The cards out now: send one again, take it back">🤫 {out} <span class="word">card{out === 1 ? '' : 's'} out</span></button>
       {#if menu === 'out'}
         <div class="menu wide" role="dialog" aria-label="Cards out" use:anchored={at}>
           <CardsOut {game} {session} {dual} ontakeback={oncardtakeback} />
@@ -311,7 +311,7 @@
   {/if}
   <button onclick={() => ((menu = null), toggleScoreboard(app.live))} title="S">📊 Scores</button>
   {#if onstopsounds}
-    <button onclick={() => ((menu = null), onstopsounds())} title="Stop the game's sounds on stream, like the round intro's music (Shift+M)">🔇 Stop sounds</button>
+    <button class="stop" onclick={() => ((menu = null), onstopsounds())} title="Stop the game's sounds on stream, like the round intro's music (Shift+M)">🔇 <span class="word">Stop sounds</span></button>
   {/if}
   {#if winName}
     <span class="warn small winwarn" role="status" data-card-window-warn>⚠ The 🪟 card window shows {winName}’s cards: share only the game window with viewers.</span>
@@ -325,6 +325,31 @@
     display: flex;
     flex-wrap: wrap;
     gap: 6px;
+  }
+  /* Up to 1240px wide: 🤫 and 🎭 alone (their tooltips say what they do, and they're still read out by name), so on the
+     board the tools and the round's ◀ / picker / ▶ stay on one line, and the single-window stage keeps one size from
+     the board to a clue. */
+  @media (max-width: 1240px) {
+    .tl .word {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      overflow: hidden;
+      clip-path: inset(50%);
+      white-space: nowrap;
+    }
+  }
+  /* (And up to 1280px wide 🔇 Stop sounds as 🔇 and the cards out as 🤫 2: they come and go beside 🤫 Send a card… and
+     🎭 Deal… in full.) */
+  @media (max-width: 1280px) {
+    .tl :is(.stop, .cardsout) .word {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      overflow: hidden;
+      clip-path: inset(50%);
+      white-space: nowrap;
+    }
   }
   .pop {
     position: relative;

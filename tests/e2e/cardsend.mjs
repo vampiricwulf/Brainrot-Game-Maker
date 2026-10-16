@@ -290,6 +290,15 @@ try {
   assert(states.slice(n).every((s) => JSON.stringify((s.cards ?? []).map((c) => c.id)) === JSON.stringify([c1b.id, c2.id])), 'every state since the reload holds both cards under the same ids (no phone is told anything new)');
   assert((await bob.getByText(SPY).isVisible()) && (await cardsOn(ann)) === 1, 'the phones keep their cards through the host’s reload');
   assert((await tools.locator('[data-cards-out-count]').innerText()).trim() === '🤫 2 cards out', 'one window: the tools row only counts the cards out');
+  // (On a window up to 1280px wide it shows as 🤫 2, named in full, so the board's tools row keeps one line.)
+  await host.setViewportSize({ width: 1024, height: 768 });
+  const outWidth = async () => Math.round((await tools.locator('[data-cards-out-count]').boundingBox()).width);
+  assert(await until(async () => (await outWidth()) < 60), `1024px wide: the cards out show as 🤫 2 (${await outWidth()}px wide)`);
+  assert(
+    (await tools.getByRole('button', { name: '🤫 2 cards out', exact: true }).count()) === 1 && (await tools.boundingBox()).height < 40,
+    '1024px wide: still named in full, and the board’s tools row keeps one line',
+  );
+  await host.setViewportSize({ width: 1400, height: 900 });
   await tools.locator('[data-cards-out-count]').click();
   await list.waitFor();
   assert((await list.locator('.exposed').count()) === 1, 'one window: the list warns that viewers see it');

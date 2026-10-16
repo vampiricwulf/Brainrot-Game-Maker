@@ -800,13 +800,17 @@ try {
   }
 
   // ---------- 7. 🔇 Stop sounds stops a round intro that goes on (an RPG or slides round has no tile to stop it) ----------
+  // (Up to 1280px wide it shows as 🔇, beside 🤫 Send a card… in full, so the board's tools row keeps one line.)
   {
-    const context = await browser.newContext({ viewport: { width: 1400, height: 900 } });
+    const context = await browser.newContext({ viewport: { width: 1260, height: 720 } });
     const page = watch(await context.newPage(), 'stop sounds');
     await toPregame(page, fileUrl, { introSound: true, introSeconds: 30 });
     await page.getByRole('button', { name: 'Start game ▶' }).click();
     await page.waitForFunction(introPlaying, true);
     const stop = page.getByRole('button', { name: '🔇 Stop sounds' });
+    await stop.waitFor();
+    const widths = await Promise.all([stop, page.getByRole('button', { name: '🤫 Send a card…', exact: true })].map(async (b) => Math.round((await b.boundingBox()).width)));
+    assert(widths[0] < 60 && widths[1] > 100, `1260px wide: 🔇 Stop sounds shows as 🔇 (still named in full), 🤫 Send a card… in full (${widths.join(' / ')}px wide)`);
     await stop.click();
     await page.waitForFunction(introPlaying, false);
     await stop.waitFor({ state: 'detached' });

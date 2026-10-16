@@ -6,9 +6,10 @@
 // the main button until its last slide (viewers see where it is: ● ● ○), a board game's own roll doesn't take the main
 // button from the round, a confirmation leaves one main button (its own), ✔ / ✘ hand the focus to the main button, and
 // on a narrow window the fixed bar stays on one line (🚪 Exit at the right). With six players in a single window (at
-// 1366×768, 1200×720 and 1024×768) the stage keeps one size from the board to a clue and with a player picked (on a
-// $1,000 clue too: a long name is cut short on ＋ Award and − Deduct, never the amount), 🔊 Sound opens in the host
-// panel, and every Final wager box is in sight.
+// 1366×768, 1200×720, 1024×768 and 960×900, and a long Final name) the stage keeps one size from the board to a clue and
+// with a player picked (on a $1,000 clue too: a long name is cut short on ＋ Award and − Deduct, never the amount), up to
+// 1240px wide 🤫 Send a card… and 🎭 Deal… show as 🤫 and 🎭 (named in full), 🔊 Sound opens in the host panel, and
+// every Final wager box is in sight.
 import { chromium } from 'playwright-core';
 import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
@@ -428,19 +429,26 @@ try {
 
   // A crowded single window (six players, longer names): the stage keeps one size from the board to a clue and with a
   // player picked (a $200 clue, then a $1,000 one), 🔊 Sound opens in the host panel (not over the stage), and every
-  // Final wager box is in sight.
+  // Final wager box is in sight. (A long Final name, so the board's tools row holds a wide ▶ beside 🤫 Send a card… and
+  // 🎭 Deal…: it still fits on one line, as in a clue.)
   console.log('A crowded single window:');
   const crowdFile = resolve('test-results/hostlayout-crowd.json');
   const crowd = ['Annabelle', 'Bobby Tables', 'Cyrus', 'Deedee', 'Eleanor', 'Frankie'];
   const crowdColors = ['#e6194b', '#3cb44b', '#4363d8', '#f58231', '#911eb4', '#42d4f4'];
   writeFileSync(
     crowdFile,
-    JSON.stringify({ ...game, id: 'g_layout_crowd', players: crowd.map((name, i) => ({ id: `p${i + 1}`, name, color: crowdColors[i], startScore: 500 })), rounds: [board, game.rounds[3]] }),
+    JSON.stringify({
+      ...game,
+      id: 'g_layout_crowd',
+      players: crowd.map((name, i) => ({ id: `p${i + 1}`, name, color: crowdColors[i], startScore: 500 })),
+      rounds: [board, { ...game.rounds[3], name: 'Final Jeopardy: Internet Legends' }],
+    }),
   );
   for (const [w, h] of [
     [1366, 768],
     [1200, 720],
     [1024, 768],
+    [960, 900],
   ]) {
     const ctx = await browser.newContext({ viewport: { width: w, height: h } });
     const p4 = await ctx.newPage();
@@ -455,6 +463,10 @@ try {
     const stageH = async () => Math.round((await p4.locator('.stage-box').boundingBox()).height);
     const onBoard = await stageH();
     assert((await p4.locator('.panel .p button.quick:visible').count()) === 0, `${w}×${h}: on the board the chips keep ✔ / ✘'s place, unseen`);
+    if (w <= 1240) {
+      const widths = await Promise.all(['🤫 Send a card…', '🎭 Deal…'].map(async (name) => Math.round((await p4.locator('.panel').getByRole('button', { name, exact: true }).boundingBox()).width)));
+      assert(widths.every((x) => x < 60), `${w}×${h}: 🤫 Send a card… and 🎭 Deal… show as 🤫 and 🎭, still named in full (${widths.join(' / ')}px wide)`);
+    }
     for (const value of ['$200', '$1,000']) {
       await p4.locator('.stage-box .board .tile:not([disabled])', { hasText: value }).first().click();
       await p4.waitForFunction(() => document.querySelector('.panel .status')?.textContent?.includes('Answer hidden'));
