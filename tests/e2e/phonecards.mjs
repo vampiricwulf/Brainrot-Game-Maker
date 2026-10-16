@@ -6,7 +6,10 @@
 // tapped (no-cookie, sandboxed, with the referrer YouTube needs), "Picture coming…" filling in, and plain lines for what
 // won't come. The room hears it was seen. Hide covers it again; the card going takes it all down. Also: the content
 // policy, a phone seated too late, the guesser's box, a GIF held still for reduced motion, and on a computer a Space
-// press that began before a card came doesn't open it. Needs `npm ci` in buzzer/.
+// press that began before a card came doesn't open it. An open card sent again (a new id) stays open, and its lines
+// change in place; a card that comes while the buzzers are open goes under BUZZ!, and one left open closes as the next
+// clue starts; opened at the end of a page that scrolls, its words stay in sight; on its side, an open card scrolls in
+// its own place beside the guesser's box. Needs `npm ci` in buzzer/.
 import { chromium } from 'playwright-core';
 import { spawn } from 'node:child_process';
 import { createServer } from 'node:net';
@@ -340,6 +343,79 @@ try {
   assert(await bob.evaluate(() => document.documentElement.scrollWidth <= innerWidth), 'a phone on its side: nothing wider than the screen');
   await shot(bob, 'landscape');
   await bob.setViewportSize({ width: 390, height: 760 });
+
+  // ---------- ↻ Send again (the same card, a new id), and who else can see it changing: an open card stays as it is ----------
+  await bob.getByRole('button', { name: 'Tap to see' }).tap();
+  await until(() => h.got.some((m) => m.t === 'cardSeen' && m.id === 'pc:c1:1:4'), 'cardSeen for the card');
+  await bob.evaluate(() => {
+    window.buzzes = [];
+    navigator.vibrate = (p) => (window.buzzes.push(p), true);
+  });
+  hostState({ cards: [{ ...card, id: 'pc:c1:1:5' }] });
+  await until(() => h.got.some((m) => m.t === 'cardSeen' && m.id === 'pc:c1:1:5'), 'cardSeen for the card sent again');
+  assert(
+    (await bob.getByText('Green ogre-zz, lives in a swamp').isVisible()) && !(await bob.getByRole('button', { name: 'Tap to see' }).isVisible()) && !(await bob.evaluate(() => window.buzzes.length)),
+    '↻ Send again: a phone that had the card open keeps it open, doesn’t buzz again, and the room hears it was seen',
+  );
+  await bob.getByRole('button', { name: /YouTube video/ }).tap();
+  const player = await bob.locator('.card iframe').elementHandle();
+  hostState({ cards: [{ ...card, id: 'pc:c1:1:5', shared: true, hint: 'Describe it to Ann and Cat: don’t say what’s on it!' }] });
+  await until(() => bob.locator('.card-head').textContent().then((t) => t.includes('and the others the host chose')), 'the card says others can see it');
+  assert(
+    (await player.evaluate((f) => f.isConnected)) && (await bob.locator('.card-hint').textContent()) === 'Describe it to Ann and Cat: don’t say what’s on it!' && (await bob.getByText('Green ogre-zz').isVisible()),
+    'who else can see it, or its hint, changing: those lines change in place (an open player carries on)',
+  );
+
+  // ---------- A card that comes while the buzzers are open goes under BUZZ!, not over it ----------
+  hostState({ phase: 'armed', armId: 1, clue: { text: 'This planet is known as the Red Planet' }, status: undefined });
+  await ann.locator('#buzz.armed').waitFor();
+  const was = await ann.locator('#buzz').boundingBox();
+  const spy = { id: 'pc:x:1:1', to: [{ seat: 'a' }], open: true, title: 'Spy-qz', text: 'Blend in', media: [{ kind: 'image', url: 'https://img.test/spy.png' }] };
+  hostState({ cards: [...hs.cards, spy] });
+  await ann.locator('.card').waitFor();
+  const [now, under] = [await ann.locator('#buzz').boundingBox(), await ann.locator('.card').boundingBox()];
+  const before = h.got.length;
+  // (Where the finger was going as the card came.)
+  await ann.touchscreen.tap(was.x + was.width / 2, was.y + 40);
+  await until(() => h.got.slice(before).some((m) => m.t === 'buzz' && m.seatId === 'a'), 'Ann’s buzz');
+  assert(
+    under.y >= now.y + now.height && now.y <= was.y + 40 && !(await ann.getByText('Spy-qz').isVisible()) && !h.got.some((m) => m.t === 'cardSeen' && m.id === spy.id),
+    'a card that comes with the buzzers open goes under BUZZ!: a tap where it was still buzzes, and the card stays covered',
+  );
+  // Opened in the buzzer's place, it closes again as the next clue's buzzers open (the clue in sight, the keys on BUZZ!).
+  hostState({ phase: 'lobby', clue: null });
+  await ann.locator('#s-buzz.cards-up').waitFor();
+  await ann.getByRole('button', { name: 'Tap to see' }).tap();
+  await ann.getByText('Spy-qz').waitFor();
+  hostState({ phase: 'armed', armId: 2, clue: { text: 'This planet is the largest in the solar system' } });
+  await ann.locator('#buzz.armed').waitFor();
+  await until(() => ann.evaluate(() => document.activeElement?.id === 'buzz'), 'the keys go to BUZZ!');
+  assert(
+    !(await ann.getByText('Spy-qz').isVisible()) && (await ann.getByRole('button', { name: 'Tap to see' }).isVisible()) && (await ann.locator('#clue').boundingBox()).y >= 0,
+    'a card left open closes as the buzzers open for the next clue, the clue still on screen',
+  );
+
+  // ---------- The guesser on a small phone, scrolled down to her box: her card opens with its words in sight ----------
+  await ann.setViewportSize({ width: 360, height: 640 });
+  const guess = { id: 'pc:c2:1:1', to: [{ seat: 'a' }], open: true, role: 'Guesser', hint: 'Bob describes it: type your guess', title: 'Hint-qz', text: 'It’s a cartoon from 2001', media: [{ kind: 'image', url: 'https://img.test/hint.png' }] };
+  hostState({ phase: 'lobby', clue: { text: 'Describe this movie' }, answers: { id: 'c2', open: true, seats: [{ id: 'a' }] }, status: { ...parts, seatsSub: 'Bob is describing: type your guess' }, cards: [{ ...card, id: 'pc:c1:1:5' }, guess] });
+  await ann.getByLabel(/Your answer/).waitFor();
+  await ann.locator('.card').waitFor();
+  await ann.evaluate(() => scrollTo(0, document.documentElement.scrollHeight));
+  assert(await ann.evaluate(() => scrollY > 0), '(her page scrolls: it’s at its end)');
+  await ann.getByRole('button', { name: 'Tap to see' }).tap();
+  await until(() => ann.locator('.card-title').boundingBox().then((r) => !!r && r.y >= 0 && r.y < 640), 'the card’s words in sight');
+  assert(true, 'opened at the end of a page that scrolls, the card’s words stay in sight');
+  await until(() => ann.locator('.card img').evaluate((i) => i.complete && i.naturalWidth > 0), 'her card’s picture');
+  // On its side: the open card scrolls in its own place beside the box; the page doesn't, so Send answer stays on screen.
+  await ann.setViewportSize({ width: 844, height: 390 });
+  await until(() => ann.locator('#answer-send').boundingBox().then((r) => r.x > 400), 'side by side');
+  const side = await ann.evaluate(() => ({ page: document.documentElement.scrollHeight <= innerHeight, cards: document.getElementById('cards').scrollHeight > document.getElementById('cards').clientHeight }));
+  const send = await ann.locator('#answer-send').boundingBox();
+  assert(side.page && side.cards && send.y + send.height <= 390, `a phone on its side: the open card scrolls beside the box, and Send answer stays on screen${side.page && side.cards ? '' : JSON.stringify(side)}`);
+  await ann.setViewportSize({ width: 390, height: 760 });
+  hostState({ clue: null, answers: null, status: parts, cards: [{ ...card, id: 'pc:c1:1:5' }] });
+  await ann.locator('.card').waitFor({ state: 'detached' });
 
   // ---------- A phone seated after the card went out ----------
   h.send({ t: 'kick', seatId: 'b', block: false });

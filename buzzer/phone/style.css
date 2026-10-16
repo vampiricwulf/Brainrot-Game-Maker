@@ -391,6 +391,8 @@ input:focus, textarea:focus { outline: none; border-color: var(--accent); }
   font-weight: 800;
   cursor: pointer;
 }
+/* A cover that's just come: a tap meant for what was there a moment ago lands on the card around it (cardpanel.ts). */
+.card-cover.just-in { pointer-events: none; }
 .card-body { display: flex; flex-direction: column; gap: 10px; }
 .card-body:focus, .card-body > p:focus { outline: none; }
 .card-title { font-size: clamp(28px, 9vw, 52px); font-size: clamp(28px, 10cqi, 52px); font-weight: 900; line-height: 1.05; }
@@ -446,6 +448,9 @@ input:focus, textarea:focus { outline: none; border-color: var(--accent); }
   color: var(--muted);
 }
 #cards-late { color: #ffd27a; }
+/* A buzzer that's up stays where the finger is: cards that come beside it go under it (one above the other). */
+#s-buzz.cards-under #cards { order: 1; }
+#s-buzz.cards-under .side.foot { order: 2; }
 /* In the buzzer's place: the page scrolls past a tall card rather than cut its top off. */
 #s-buzz.cards-up { justify-content: safe center; }
 @media (min-aspect-ratio: 4/3) and (max-height: 600px), (min-aspect-ratio: 4/3) and (max-height: 900px) and (hover: hover) and (pointer: fine) {
@@ -454,7 +459,9 @@ input:focus, textarea:focus { outline: none; border-color: var(--accent); }
   .card-item img, .card-item video, .card-item canvas { max-height: 70dvh; }
   /* With a box (or the buzzer) on the right, the cards go under the clue. */
   #s-buzz.cards-aside { grid-template-rows: auto minmax(0, 1fr) auto; grid-template-areas: 'clue buzz' 'cards buzz' 'foot buzz'; }
-  #s-buzz.cards-aside #cards { grid-area: cards; max-width: none; overflow-y: auto; align-self: start; }
+  /* As tall as the screen: an open card scrolls in the room left, not the page (that would push the box or clue off). */
+  #s-buzz.cards-aside { min-height: 0; }
+  #s-buzz.cards-aside #cards { grid-area: cards; max-width: none; max-height: 100%; overflow-y: auto; align-self: start; }
 }
 
 /* ---- Desktop and laptop: a mouse and a keyboard ---- */

@@ -78,6 +78,14 @@ export const cardHead = (c: Pick<PhoneCard, 'team' | 'shared'>): string =>
 /** Its part, as a line: "You’re the Describer". */
 export const roleLine = (role: string): string => `You’re the ${role}`;
 
+/**
+ * What a card's cover and words are built from: under the same id, it's drawn again only when this changes (the lines
+ * over the cover, who can see it, its part and its hint, change in place, so an open player isn't reset).
+ */
+export const cardBuild = (c: PhoneCard): string => JSON.stringify([c.title, c.text, c.tap]);
+/** All a card shows, its pictures and players too: the same card back under a new id (↻ Send again) stays open. */
+export const cardSame = (c: PhoneCard): string => JSON.stringify([c.role, c.hint, c.title, c.text, c.team, c.shared, c.tap, c.media ?? []]);
+
 /** Said once as cards arrive: "A card only you can see" ("A card the host sent to you and others" when one is shared). */
 export function cardsLine(n: number, team: boolean, shared = false): string {
   if (!n) return '';
