@@ -282,6 +282,9 @@ input:focus, textarea:focus { outline: none; border-color: var(--accent); }
   border-style: dashed;
 }
 #buzz.off { background: var(--panel-2); color: var(--muted); }
+/* Nobody buzzes now (a partner clue): greyed and flat, the big line in the text colour so it reads. */
+#buzz.off[aria-disabled='true'] { border-style: dashed; border-color: var(--border); cursor: default; }
+#buzz.off[aria-disabled='true'] #buzz-big { color: var(--text); }
 #buzz.locked { background: #3a2226; color: #ffb3b3; border-color: var(--bad); }
 
 @keyframes pulse {
@@ -333,6 +336,7 @@ input:focus, textarea:focus { outline: none; border-color: var(--accent); }
 #answer-state { color: #6fdc8c; font-weight: 600; }
 #answer-state.plain-note { color: var(--muted); font-weight: 400; }
 #wager-head { font-size: 22px; margin: 0; text-align: center; }
+#answer-head { font-size: 22px; margin: 0; text-align: center; overflow-wrap: anywhere; }
 #wager-in { text-align: center; font-size: 34px; font-weight: 800; }
 #wager-state { color: #6fdc8c; font-weight: 600; }
 #wager-state.plain-note { color: var(--muted); font-weight: 400; }
@@ -342,6 +346,115 @@ input:focus, textarea:focus { outline: none; border-color: var(--accent); }
   #wager-head { font-size: 19px; }
   #wager-in { font-size: 26px; padding: 8px; }
   #wager-form .primary { min-height: 46px; }
+}
+
+/* ---- Private cards: only the phones the host sent them to ---- */
+
+#cards { width: 100%; max-width: 520px; display: flex; flex-direction: column; gap: 12px; }
+#card-status { margin: 0; display: flex; flex-direction: column; align-items: center; gap: 4px; text-align: center; }
+#card-status-big { font-size: clamp(20px, 6.5vmin, 30px); font-weight: 800; line-height: 1.15; overflow-wrap: anywhere; }
+#card-status-small { color: var(--muted); font-size: 16px; overflow-wrap: anywhere; }
+#card-status-small:empty { display: none; }
+#card-list { display: flex; flex-direction: column; gap: 12px; }
+.card {
+  --secret: #a98bff;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 14px;
+  border: 2px solid var(--secret);
+  border-radius: 16px;
+  background: color-mix(in srgb, var(--secret) 10%, var(--panel));
+  animation: card-in 220ms ease-out;
+  /* Its big words are sized by the card itself (a laptop's card isn't as wide as its window). */
+  container-type: inline-size;
+}
+@keyframes card-in {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: none; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .card { animation: none; }
+}
+.card p, .card h2 { margin: 0; text-align: center; overflow-wrap: anywhere; }
+.card-head { font-size: 13px; font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase; color: var(--secret); }
+.card-role { font-size: 21px; font-weight: 800; }
+.card-hint { font-size: 17px; line-height: 1.3; }
+.card-shown { font-weight: 700; color: #ffd27a; }
+/* The cover: a webcam or a neighbour sees nothing until the player taps. */
+.card-cover {
+  min-height: 132px;
+  border: 2px dashed var(--secret);
+  border-radius: 14px;
+  background: repeating-linear-gradient(135deg, var(--panel-2) 0 14px, var(--panel) 14px 28px);
+  font-size: 26px;
+  font-weight: 800;
+  cursor: pointer;
+}
+.card-body { display: flex; flex-direction: column; gap: 10px; }
+.card-body:focus, .card-body > p:focus { outline: none; }
+.card-title { font-size: clamp(28px, 9vw, 52px); font-size: clamp(28px, 10cqi, 52px); font-weight: 900; line-height: 1.05; }
+.card-words { font-size: 22px; line-height: 1.35; white-space: pre-line; }
+/* Up to three short words: huge, to read at arm's length. */
+.card .huge { font-size: clamp(36px, 14vw, 96px); font-size: clamp(36px, 15cqi, 96px); font-weight: 900; line-height: 1; overflow-wrap: break-word; }
+.card-items { display: flex; flex-direction: column; gap: 10px; }
+.card-items:empty { display: none; }
+.card-item { display: flex; flex-direction: column; align-items: center; gap: 6px; }
+/* Each item full width (a tall one letterboxed, so the words above stay in sight). */
+.card-item img, .card-item video, .card-item canvas {
+  display: block;
+  width: 100%;
+  height: auto;
+  max-height: 60dvh;
+  object-fit: contain;
+  border-radius: 10px;
+  background: #000;
+}
+.card-item audio { width: 100%; }
+.card-item iframe { display: block; width: 100%; aspect-ratio: 16 / 9; border: 0; border-radius: 10px; background: #000; }
+.card-play {
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  border: 0;
+  border-radius: 10px;
+  background: #000;
+  color: #fff;
+  cursor: pointer;
+}
+.card-play-big { font-size: 22px; font-weight: 800; }
+.card-play-small { font-size: 15px; color: #c8cad6; }
+.card-sound, .card-hide {
+  min-height: 44px;
+  padding: 0 16px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--panel-2);
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.card-hide { align-self: center; }
+.card-wait, .card-gone {
+  padding: 18px 12px;
+  border: 1px dashed var(--border);
+  border-radius: 10px;
+  color: var(--muted);
+}
+#cards-late { color: #ffd27a; }
+/* In the buzzer's place: the page scrolls past a tall card rather than cut its top off. */
+#s-buzz.cards-up { justify-content: safe center; }
+@media (min-aspect-ratio: 4/3) and (max-height: 600px), (min-aspect-ratio: 4/3) and (max-height: 900px) and (hover: hover) and (pointer: fine) {
+  /* Side by side: the cards take the right side, top to bottom, and scroll there; the name and score stay on the left. */
+  #s-buzz.cards-up #cards { grid-area: buzz; grid-row: 1 / span 2; align-self: center; width: min(520px, 56vw); max-height: calc(100dvh - 84px); overflow-y: auto; }
+  .card-item img, .card-item video, .card-item canvas { max-height: 70dvh; }
+  /* With a box (or the buzzer) on the right, the cards go under the clue. */
+  #s-buzz.cards-aside { grid-template-rows: auto minmax(0, 1fr) auto; grid-template-areas: 'clue buzz' 'cards buzz' 'foot buzz'; }
+  #s-buzz.cards-aside #cards { grid-area: cards; max-width: none; overflow-y: auto; align-self: start; }
 }
 
 /* ---- Desktop and laptop: a mouse and a keyboard ---- */
@@ -381,6 +494,9 @@ input:focus, textarea:focus { outline: none; border-color: var(--accent); }
   /* Too early: a press starts the wait over. */
   #buzz.locked { cursor: not-allowed; }
 
+  .card-cover:hover { border-style: solid; }
+  .card-sound:hover, .card-hide:hover { border-color: var(--muted); }
+  .card-play:hover { filter: brightness(1.2); }
   /* Where the keys are, in the accent colour (a white ring would vanish on the lit buzzer's border, or a picked colour's). */
   button:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
   #buzz:focus-visible { outline-offset: 8px; }

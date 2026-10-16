@@ -3,7 +3,7 @@
 // host column, the partner panel's counts, 📋 Copy words and Copy picture); phoneCard builds the stack a phone gets from
 // it, so the editor's 📱 preview, the host column and what goes to the buzzer room are the same card. Model types,
 // links.ts and buzzproto.ts only, so the phone page can share it.
-import { CARD_LINK_MAX, CARD_MEDIA_MAX, CARD_TEXT_MAX, CARD_TITLE_MAX, clip, FILE_MAX_BYTES, fileType, type CardMedia } from './buzzproto';
+import { cardLink, CARD_MEDIA_MAX, CARD_TEXT_MAX, CARD_TITLE_MAX, clip, FILE_MAX_BYTES, fileType, type CardMedia } from './buzzproto';
 import { embedName, isLinkProblem, linkLifetime, nameFromUrl, parseMediaLink, playerFor, youtubeId } from './links';
 import type { EmbedEl, Game, Id, MediaRef, Playback, Slide, SlideElement, TextEl } from './model';
 
@@ -110,15 +110,7 @@ export interface PhoneCan {
 }
 
 /** A link a phone may load: https, CARD_LINK_MAX characters at most, no user name or password (the room checks it again). */
-export function phoneLink(s: string | undefined): string | null {
-  if (!s || s.length > CARD_LINK_MAX) return null;
-  try {
-    const u = new URL(s.trim());
-    return u.protocol === 'https:' && !u.username && !u.password && u.href.length <= CARD_LINK_MAX ? u.href : null;
-  } catch {
-    return null;
-  }
-}
+export const phoneLink = (s: string | undefined): string | null => cardLink(s);
 
 /** Words cut to `max` characters, with "…" when cut. */
 export const clipWords = (s: string, max = CARD_TEXT_MAX): string => clip(s, max);

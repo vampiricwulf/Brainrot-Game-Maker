@@ -74,9 +74,9 @@
  */
 import {
   BUZZ_PROTOCOL,
+  cardLink,
   CARD_HINT_MAX,
   CARD_ID_MAX,
-  CARD_LINK_MAX,
   CARD_MEDIA_MAX,
   CARD_MEMBER_MAX,
   CARD_ROLE_MAX,
@@ -1943,16 +1943,8 @@ function cleanMedia(m: unknown, files: Record<string, RoomFile>): CardMedia | nu
   return url ? { kind, url, ...times, ...name } : null;
 }
 
-/** A link a card may carry: https only, at most CARD_LINK_MAX characters, with no user name or password; null if not. */
-export function cardLink(s: unknown): string | null {
-  if (typeof s !== 'string' || !s || s.length > CARD_LINK_MAX) return null;
-  try {
-    const u = new URL(s.trim());
-    return u.protocol === 'https:' && !u.username && !u.password && u.href.length <= CARD_LINK_MAX ? u.href : null;
-  } catch {
-    return null;
-  }
-}
+/** (A link a card may carry: shared with the app and the phone page.) */
+export { cardLink };
 
 /** A card as the phone it was sent to sees it: never who else it went to. team: everyone on the phone's team sees it. */
 function phoneCard(c: HostCard, team: boolean): PhoneCard {

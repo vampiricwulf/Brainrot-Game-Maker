@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   cleanLink, cssUrl, driveUrls, embedName, embedOpenUrl, imageFallback, isLinkProblem, isMediaHost, isWebUrl, linkLifetime,
-  linkMessages, nameFromUrl, parseDrive, parseMediaLink, playerFor, youtubeId,
+  linkMessages, nameFromUrl, parseDrive, parseMediaLink, playerFor, youtubeId, youtubePlayerUrl,
   type LinkKind, type LinkProblem, type LinkProblemCode, type MediaLink,
 } from './links';
 
@@ -265,6 +265,15 @@ describe('site players and link helpers', () => {
     expect(embedName('drive', 'x')).toBe('Google Drive player');
     expect(embedName('remoteVideo', 'https://files.catbox.moe/a.mp4')).toBe('files.catbox.moe');
     expect(embedOpenUrl('youtube', 'https://youtu.be/dQw4w9WgXcQ', 30)).toBe('https://www.youtube.com/watch?v=dQw4w9WgXcQ&t=30s');
+  });
+
+  it('builds YouTube’s no-cookie player for the phones', () => {
+    expect(youtubePlayerUrl('dQw4w9WgXcQ')).toBe('https://www.youtube-nocookie.com/embed/dQw4w9WgXcQ?playsinline=1&rel=0');
+    expect(youtubePlayerUrl('dQw4w9WgXcQ', { autoplay: true, start: 30.7, end: 45 })).toBe(
+      'https://www.youtube-nocookie.com/embed/dQw4w9WgXcQ?playsinline=1&rel=0&autoplay=1&start=30&end=45',
+    );
+    // An end that isn't after the start is none.
+    expect(youtubePlayerUrl('dQw4w9WgXcQ', { start: 30, end: 30 })).toBe('https://www.youtube-nocookie.com/embed/dQw4w9WgXcQ?playsinline=1&rel=0&start=30');
   });
 
   it('falls a Drive picture back to its thumbnail', () => {

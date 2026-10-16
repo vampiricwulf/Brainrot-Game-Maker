@@ -1,10 +1,11 @@
-// 🤝 A partner clue with phone buzzers, end to end (docs/PARTNER-CLUES-SPEC.md §8.2, §13.5, §14.9, §19.4): the built app
-// hosts a game against the real buzzer room (buzzer/ under `wrangler dev`, local), which takes cards and card files.
-// Nobody buzzes: each phone says who plays which part (the picker's, then the guesser's, say what's theirs). Nothing of
-// the card reaches the room or a phone until the host sends it: from the tile opening through Show question the host's
-// state holds no card and nothing is uploaded; ⇡ Get it ready uploads the card's picture with no phone getting it; then
-// 📤 Send and start gives exactly that card to exactly the describer's phone, its picture as the room's file, and the
-// tile closing takes it away. Needs `npm ci` in buzzer/.
+// 🤝 A partner clue with phone buzzers, end to end (docs/PARTNER-CLUES-SPEC.md §8.2, §12.3, §13.5, §14.9, §19.4): the
+// built app hosts a game against the real buzzer room (buzzer/ under `wrangler dev`, local), which takes cards and card
+// files. Nobody buzzes: every phone's button greys, with who plays which part as its big line (the picker's, then the
+// guesser's, say what's theirs). Nothing of the card reaches the room or a phone until the host sends it: from the tile
+// opening through Show question the host's state holds no card and nothing is uploaded; ⇡ Get it ready uploads the
+// card's picture with no phone getting it; then 📤 Send and start gives exactly that card to exactly the describer's
+// phone, its picture as the room's file. There it waits behind Tap to see; tapped, it shows its words and its picture,
+// and the host's panel says ✓ seen. The tile closing takes it away. Needs `npm ci` in buzzer/.
 import { chromium } from 'playwright-core';
 import { spawn } from 'node:child_process';
 import { createServer } from 'node:net';
@@ -62,10 +63,14 @@ const watch = (p, name) => {
   p.on('dialog', (d) => d.accept());
   return p;
 };
-const big = (p) => p.locator('#buzz-big');
-const small = (p) => p.locator('#buzz-small');
-/** The phone's small line comes to say `text`. */
-const says = (p, text) => p.waitForFunction((t) => document.getElementById('buzz-small')?.textContent === t, text, { timeout: 8000 }).then(() => true, () => false);
+/**
+ * The phone's status line comes to say `text`: on its button (the big line while nobody buzzes, the small one under the
+ * player's name otherwise), or over the card that took the button's place.
+ */
+const says = (p, text) =>
+  p
+    .waitForFunction((t) => ['buzz-big', 'buzz-small', 'card-status-big'].some((id) => document.getElementById(id)?.textContent === t && !!document.getElementById(id)?.getClientRects().length), text, { timeout: 8000 })
+    .then(() => true, () => false);
 /** Waits (up to 8 s) until pred() holds. */
 const until = async (pred) => {
   for (let i = 0; i < 160; i++) {
@@ -169,11 +174,15 @@ try {
   };
 
   // ---------- PARTNER UP! ----------
-  // (The room takes cards, so its phones get the spec's lines for it: the status line the phone shows is the big one.)
+  // (The room takes cards, so its phones get the spec's lines for it, greyed: the status line is the button's big line.)
   await host.locator('.stage-box .tile[aria-label^="Category 1 for $400"]').click();
   await host.locator('.stage-box [data-partner-up]').waitFor();
   assert(await says(ann, '🤝 Your partner clue!'), 'the picker’s phone: “🤝 Your partner clue!”');
   assert(await says(bob, '🤝 Partner clue'), 'the others: “🤝 Partner clue”');
+  assert(
+    (await bob.locator('#buzz-big').innerText()) === '🤝 Partner clue' && (await bob.locator('#buzz-small').innerText()) === 'Player 1 needs a partner…' && (await bob.locator('#buzz').getAttribute('aria-disabled')) === 'true',
+    'every phone’s button greyed and disabled, the small line under it',
+  );
   const last = () => states.at(-1);
   assert(last()?.status?.off === true && last().status.sub === 'Player 1 needs a partner…' && last().status.seatsSub === 'Spinning for your partner…', 'every phone greyed (off), with the small lines under them');
   assert((await host.locator('.stage-box .join-badge').count()) === 0, 'no join code over PARTNER UP! (nobody buzzes)');
@@ -202,8 +211,9 @@ try {
   assert((await host.locator('.panel [data-next]').innerText()).includes('📤 Send and start'), 'the main button: 📤 Send and start');
   await sleep(300);
   nothingSent('the question up');
-  // A tap does nothing: nobody buzzes on a partner clue.
-  await bob.locator('#buzz').tap();
+  // A tap does nothing: nobody buzzes on a partner clue. (The greyed button is disabled to a screen reader too, so
+  // Playwright taps it only when made to.)
+  await bob.locator('#buzz').tap({ force: true });
   await sleep(600);
   assert((await host.locator('.panel .status').innerText()).includes('hand out the cards') && (await host.locator('.stage-box .bell').count()) === 0, 'a tap on a phone does nothing (nobody is answering)');
   // The guesser types their guess (from the question on): their phone only.
@@ -242,6 +252,21 @@ try {
   assert(!JSON.stringify(heard.ann).includes('Card-only-zz'), 'the guesser’s phone never gets it');
   assert((await panel.locator('[data-card="1"] [data-card-state]').innerText()).includes('sent'), 'its row says it’s sent');
   await host.screenshot({ path: 'test-results/partner-phones-sent.png' });
+  // On the describer's phone: in the button's place, behind Tap to see.
+  const cover = bob.getByRole('button', { name: 'Tap to see' });
+  await cover.waitFor();
+  assert((await bob.locator('#buzz').isHidden()) && !(await bob.getByText('Card-only-zz words').isVisible()), 'the describer’s phone shows the card in the button’s place, covered');
+  await cover.tap();
+  await bob.getByText('Card-only-zz words').waitFor();
+  const pic = bob.locator('.card img');
+  await bob.waitForFunction(() => {
+    const img = document.querySelector('.card img');
+    return !!img && img.src.startsWith('blob:') && img.complete && img.naturalWidth === 640;
+  });
+  assert((await pic.getAttribute('alt')) === 'Picture' && !(await bob.locator('body').innerText()).includes(PIC), 'tapped: its words and its picture, fetched from the room (never its file name)');
+  await bob.screenshot({ path: 'test-results/partner-phones-card.png' });
+  assert(await until(async () => (await panel.locator('[data-card="1"] [data-card-state]').innerText()).includes('✓ seen')), 'the host’s row says ✓ seen');
+  assert(!(await ann.locator('.card').count()) && (await ann.getByLabel(/Your answer/).isVisible()), 'the guesser’s phone has no card, only its box for the guess');
   await sleep(1100);
   await host.keyboard.press('Enter');
   assert(
@@ -255,6 +280,7 @@ try {
   await host.keyboard.press('Escape');
   assert(await says(ann, 'Your pick! Tell the host which clue'), 'back on the board, the phones are as before');
   assert(await until(() => !('cards' in (last() ?? {}))), 'and the room’s state has no card any more');
+  assert(await until(async () => !(await bob.locator('.card').count()) && (await bob.locator('#buzz').isVisible())), 'and the describer’s phone drops it, its button back');
 
   assert(errors.length === 0, `no page errors (${errors.join(' | ')})`);
   console.log('Partner clue phones E2E passed.');

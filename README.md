@@ -179,11 +179,13 @@ fastest first: a wrong answer locks that player out and opens the buzzers for th
 answer to the next one who buzzed, and **↺ Reset buzzers** (`0`) lets everyone buzz again. Buzzes within 0.01 s are a
 tie: **🎲 Roll for it** sets who answers first, or pick one yourself (`1`–`9` or a click always picks by hand). Viewers
 see "🔔 Ann is answering" whenever one player is picked during a clue. Phones also say who got a clue right and what's
-on (a Daily Double's player sees "you're up"; on a 🤝 partner clue every phone says who describes and who guesses, and
-the describer's says "🗣 You're describing!"), beep and flash when BUZZ! lights up (🔔 mutes), and **Not you?** lets a
+on (a Daily Double's player sees "you're up"; on a 🤝 partner clue every phone's button greys and says who describes
+and who guesses), beep and flash when BUZZ! lights up (🔔 mutes), and **Not you?** lets a
 player change seats. 🤫 Cards go to a player's phone through the buzzer server, only when you send them (📤 in the
 partner clue's panel): their words, links, pictures and videos, your own files included (pictures are shrunk first).
-It keeps a card until the tile closes, and the card's pictures and videos up to 10 minutes longer. A phone that takes
+The phone shows a card in place of the buzz button, behind **Tap to see** (🙈 Hide covers it again), and the panel says
+✓ seen once it's opened. YouTube, Drive and Streamable videos play in their own player when tapped. The buzzer server
+keeps a card until the tile closes, and the card's pictures and videos up to 10 minutes longer. A phone that takes
 the seat or joins the team after a card went out doesn't get it (↻ Send again does). On an older buzzer server, or for
 a player without a phone, you copy the card to them (📋). A player on a computer opens the same link: `Space` (or `Enter`) buzzes, `1`–`9` pick their seat or
 team, `Esc` goes back, and the page says when another window (the stream, say) has the keyboard. The room stays open

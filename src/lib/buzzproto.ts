@@ -48,6 +48,20 @@ export const CARD_TEXT_MAX = 1000;
 export const CARD_MEDIA_MAX = 6;
 /** A link on a card (https only, no user name or password). */
 export const CARD_LINK_MAX = 2048;
+
+/**
+ * A link a card may carry, tidied: https only, at most CARD_LINK_MAX characters, with no user name or password; null
+ * if not. The app checks it before sending, the room again (cleanState), and the phone once more before loading it.
+ */
+export function cardLink(s: unknown): string | null {
+  if (typeof s !== 'string' || !s || s.length > CARD_LINK_MAX) return null;
+  try {
+    const u = new URL(s.trim());
+    return u.protocol === 'https:' && !u.username && !u.password && u.href.length <= CARD_LINK_MAX ? u.href : null;
+  } catch {
+    return null;
+  }
+}
 /** Sites whose player a card may embed (the phone builds the frame from the link, see links.ts playerFor). */
 export const EMBED_SITES = ['youtube', 'drive', 'streamable'] as const;
 

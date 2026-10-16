@@ -13,7 +13,8 @@ room, plus the phone page it serves. It is not part of the app's single-file bui
   sockets (WebSocket Hibernation API) and the room's storage, and `RoomCounter`, one Durable Object counting the rooms
   made and the card file bytes taken today.
 - `phone/`: the phone page (vanilla TS). `build.mjs` bundles it into `dist/index.html`, which wrangler serves for every
-  other path, so `https://…/BCDF` opens room BCDF.
+  other path, so `https://…/BCDF` opens room BCDF. `phone/cardpanel.ts` draws the private cards, from what
+  `phone/cards.ts` says about them (unit-tested in `phone/cards.test.ts`).
 - The messages are in `../src/lib/buzzproto.ts`, shared with the app.
 
 ## Who decides what
@@ -78,8 +79,18 @@ room, plus the phone page it serves. It is not part of the app's single-file bui
   under a new id for it. The seat list never carries a card. A phone reports a card it showed (`cardSeen`), taken only
   for a card sent to it that it isn't late for, at most 10 in 10 seconds; the host hears it (again when it comes back).
   A card id gone from the host's state is forgotten at once, so a closed tile leaves nothing of its cards in the room.
-  With `status.off` the phones in the lobby grey their buzz button, with `status.sub` (and `seatsSub` for the status
-  line's seats) as the small line under it.
+  With `status.off` the phones in the lobby grey their buzz button (disabled, to a screen reader too), with the status
+  line as its big line and `status.sub` (and `seatsSub` for the status line's seats) as the small one.
+- **On the phone**, a card takes the buzz button's place while nobody buzzes (above a wager or answer box when one is
+  up), newest first, its part and hint over a "Tap to see" cover (🙈 Hide puts it back). The phone says a card came
+  ("A card only you can see") and gives it a short buzz, and tells the room it was seen when it's opened. Card files
+  are fetched with the phone's token in a header and shown from `blob:` addresses, let go when the card goes; "🖼
+  Picture coming…" fills in as a file arrives. Videos play muted and inline ("🔊 Tap for sound"), sounds wait for a
+  tap, and a YouTube (no-cookie), Drive or Streamable player is framed only when tapped, sandboxed, with the referrer
+  YouTube needs (only the site's origin goes, never the page's address with its room code). Cards are kept in memory
+  only. The page has a content policy (a `<meta>` in `phone/index.html`, as the page is a static file the Worker
+  doesn't serve) that lets pictures and media load only from https, `blob:` and the page itself, and frames only from
+  those three players; it sets no `default-src` or `script-src`, as the page's script and style are inline.
 - **Card files** (`'files'`): the host's own pictures, GIFs, videos and sounds for its cards, uploaded only when it
   sends the card or presses ⇡ Get it ready (see "Card files" below for the limits). A phone fetches one only for a card
   sent to it that it isn't late for, with its seat's token in the `Authorization` header; anyone else gets 404.
@@ -229,8 +240,9 @@ Tests: the room's unit tests run with the root `npm test`; `npm run test:buzzer`
 host dropping mid-race, 24 idle sockets, kicks, locked seats, dead sockets and presses sent again, a phone held
 sideways, a long name on small screens, a flooding socket, and the limit on new rooms; `tests/e2e/buzzerlive.mjs`: the
 built app hosting two phones, through a reload and ◀ Back to editor on the pre-game screen, a host reload mid-clue,
-and a dropped host connection). `npm run check` here
-type-checks the Worker and the phone page.
+and a dropped host connection; `tests/e2e/phonecards.mjs`: the phone's private cards, from the greyed button through
+Tap to see, card files, a video, a YouTube player and the content policy to a phone that joined too late). `npm run
+check` here type-checks the Worker and the phone page.
 
 ## Deploying
 
