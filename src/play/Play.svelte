@@ -1390,15 +1390,26 @@
   /**
    * Back to the editor with the buzzer room left open (◀ Back to editor, Exit › Keep & leave, ▶ Next game…): its phones
    * are told the host is setting up, and it's saved (a reload keeps it); ▶ Play (or Resume) goes back into it. The
-   * players go with it, at their start scores (a game played since starts them at 0).
+   * players go with it, at their start scores (a game played since starts them at 0). `resumable`: the game is kept to
+   * resume (Exit › Keep & leave), so the 🤫 cards out stay out until Resume: a room state without them would make the
+   * room forget their ids, and a phone seated while the host is in the editor would get them on Resume as if new.
    */
-  function keepRoomInEditor(): boolean {
+  function keepRoomInEditor(resumable = false): boolean {
     const r = session.remote;
     if (app.test || !phonesOn || !r || !inRoom(r.code)) return false;
     const players = $state.snapshot(session.players).map((p) => (app.pregame ? p : { ...p, startScore: 0 }));
-    const saved: SavedRoom = { gameId: game.id, remote: $state.snapshot(r), players, screen: 'editor', savedAt: Date.now(), settings: $state.snapshot(game.settings) };
+    const cards = resumable && roomHasCards() ? ($state.snapshot(hostCards(game, session, phoneCan(session))) ?? undefined) : undefined;
+    const saved: SavedRoom = {
+      gameId: game.id,
+      remote: $state.snapshot(r),
+      players,
+      screen: 'editor',
+      savedAt: Date.now(),
+      settings: $state.snapshot(game.settings),
+      ...(cards ? { cards } : {}),
+    };
     // (Not the last game's places: after ▶ Next game… the phones wait for the next one.)
-    const { over: _over, ...st } = hostState(game, session, buzzIdle(buzz), earlyMs, { status: { text: SETTING_UP }, locked: !!r.locked });
+    const { over: _over, ...st } = hostState(game, session, buzzIdle(buzz), earlyMs, { status: { text: SETTING_UP }, locked: !!r.locked, cards });
     sendHostState(st, true);
     keepRoomOpen = true;
     kept.room = saved;
@@ -1467,7 +1478,7 @@
    */
   function exitGame(keep: boolean): void {
     // (Only this game's own room: one kept in the editor that it didn't take, as with results viewed, stays open.)
-    if (!app.test && session.remote && !(keep && session.phase !== 'end' && keepRoomInEditor())) {
+    if (!app.test && session.remote && !(keep && session.phase !== 'end' && keepRoomInEditor(true))) {
       closeRoom();
       session.remote = null;
       void clearRoom();

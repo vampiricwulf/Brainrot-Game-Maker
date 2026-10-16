@@ -206,6 +206,8 @@ describe('the card window’s messages reach it alone', () => {
     // The card window page: no BroadcastChannel, no game, no session; messages only from the page that opened it.
     expect(page).not.toMatch(/BroadcastChannel|CHANNEL_NAME|HostMsg|Session|Game\b/);
     expect(page).toContain('e.source !== host');
+    // (A message from no window, its page gone, is taken only as the host's goodbye: that only lets go of the cards.)
+    expect(page).toContain("e.source === null && m?.type === 'private-bye'");
     // The host side posts to that window alone: never through post() or the channel.
     expect(host).not.toMatch(/\bpost\(|BroadcastChannel|channel/);
     expect(host).toContain('cardWin.postMessage');

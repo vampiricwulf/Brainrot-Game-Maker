@@ -16,6 +16,7 @@
     retryWrites,
     saveEditor,
     savePlay,
+    saveRoom,
     testStorage,
     unstored,
     usePlayerStorage,
@@ -217,12 +218,21 @@
     keepRoom(r);
   }
 
-  /** The room stays open while the host is in the editor: phones are told the host is setting up. */
+  /**
+   * The room stays open while the host is in the editor: phones are told the host is setting up. The 🤫 cards out of a
+   * game kept to resume go with it (the same ids: the room keeps when it first saw them, for its late rule).
+   */
   function keepRoom(r: SavedRoom): void {
     kept.room = r;
     rejoinRoom(r.remote);
+    sendSetup(r);
+  }
+
+  /** The kept room's setting-up state, with the cards out of the game it was left with (if any). */
+  function sendSetup(r: SavedRoom): void {
     const early = Math.round((app.game.settings.earlyBuzzLock ?? 1) * 1000);
-    sendHostState(setupState(app.game, r.players, r.remote.armId ?? 0, early, !!r.remote.locked));
+    const cards = Array.isArray(r.cards) && r.cards.length ? r.cards : undefined;
+    sendHostState({ ...setupState(app.game, r.players, r.remote.armId ?? 0, early, !!r.remote.locked), ...(cards ? { cards } : {}) });
   }
 
   // Buzzer mode turned off in the editor (an undo, say) while its room waits: the room closes, as on the Play screen
@@ -747,6 +757,13 @@
     const room = saved?.session.remote;
     app.resumable = null;
     if (room && kept.room?.remote.code !== room.code) endRoom(room);
+    // (Its 🤫 cards still out on the phones go, as the room stays.)
+    else if (kept.room?.cards) {
+      const { cards: _cards, ...rest } = kept.room;
+      kept.room = rest;
+      void saveRoom(rest);
+      sendSetup(rest);
+    }
     await clearPlay();
     // (A write of it that failed is dropped with it.)
     app.playUnstored = false;

@@ -36,8 +36,10 @@
       return;
     }
     const onmsg = (e: MessageEvent<CardWinMsg>) => {
-      if (e.source !== host) return;
       const m = e.data;
+      // The host page's goodbye, sent as it unloads (a reload, or closed), reaches this window once that page has gone:
+      // it then comes from no window at all (source null). Taken from there too: it only lets go of the cards.
+      if (e.source !== host && !(e.source === null && m?.type === 'private-bye')) return;
       switch (m?.type) {
         case 'private-cards':
           name = m.name;

@@ -188,6 +188,7 @@ The phone shows a card in place of the buzz button, behind **Tap to see** (🙈 
 keeps a card until the tile closes (or the round ends, or you take it back, for one sent with 🤫 Send a card…), and
 the card's pictures and videos up to 10 minutes longer. A phone that takes
 the seat or joins the team after a card went out doesn't get it: the panel says so, and ↻ Send again gives it to it.
+After **Exit › Keep & leave** the cards out stay on the phones until you resume the game (or discard it).
 With teams, **☐ Partner from the same team** (or the wheel landing on the picker's own team) spins a wheel of that
 team's people: the card goes to the one who describes, the rest of the team is told who's describing, and the team
 scores once. On an older buzzer server, or for a player without a phone, you copy the card to them (📋).
