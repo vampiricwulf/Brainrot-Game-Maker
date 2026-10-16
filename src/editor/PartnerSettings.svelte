@@ -1,10 +1,10 @@
 <!--
   A 🤝 partner clue's rules in the clue editor (docs/PARTNER-CLUES-SPEC.md §5.2): its game, who gives the clues, whether
   the picker can be on the partner wheel, whether a miss lets the others steal it, its points (the game's, two other
-  ready-made choices, or typed), ☑ The partner never loses points, and what that comes to on this tile. Each choice is
-  one named step; the boxes typed in are named from what changed ("Changed the points of Memes $400"). Folded, one line
-  says the game, who gives the clues and the points in money: on a short screen it starts folded, so the slide below (a
-  🤫 card being made) fits.
+  ready-made choices, or typed), ☑ The partner never loses points (ticked, it holds the partner's missed box, greyed, at
+  what they get), and what that comes to on this tile. Each choice is one named step; the boxes typed in are named from
+  what changed ("Changed the points of Memes $400"). Folded, one line says the game, who gives the clues and the points
+  in money: on a short screen it starts folded, so the slide below (a 🤫 card being made) fits.
 -->
 <script module lang="ts">
   /** Whether the rules were last left open or folded: the next partner clue's start the same (while the app is open). */
@@ -19,6 +19,7 @@
   import { cardSlides, formatPoints, MAX_SHARE, PART_WORD_MAX, PARTNER_GAMES, type Clue, type PartnerGame, type PartnerPoints, type PartnerRole } from '../lib/model';
   import {
     lowerWord,
+    partnerPart,
     partnerRules,
     partWho,
     partWords,
@@ -58,6 +59,12 @@
   const words = $derived(partWords(rules));
   const choice = $derived(pointsChoice(rules));
   const safe = $derived(rules.partnerSafe !== false);
+  /**
+   * The partner's "If it's missed" box (in the column that says "(the partner)") while ☑ The partner never loses points
+   * is ticked: it shows what they get (a share below 0 is 0) and only unticking lets it change. The share typed in it
+   * stays, for when it's unticked.
+   */
+  const safeBox = (when: 'got' | 'missed', r: PartnerRole) => safe && when === 'missed' && r === partnerPart(rules);
   /** The rules to change: the clue's own (one saved without any gets Describe it's first). */
   const own = () => (clue.partner ??= partnerRules(clue));
   const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
@@ -171,6 +178,7 @@
             <tr>
               <th scope="row">If it’s {word}:</th>
               {#each ROLES as r (r)}
+                {@const held = safeBox(when, r)}
                 <td>
                   <!-- % of the tile's value (negative: that much is lost). Typing makes the Points Custom. -->
                   <input
@@ -178,7 +186,9 @@
                     min={-MAX_SHARE}
                     max={MAX_SHARE}
                     step="5"
-                    value={rules[when][r]}
+                    value={held ? Math.max(rules[when][r], 0) : rules[when][r]}
+                    disabled={held}
+                    title={held ? 'The partner never loses points (ticked): untick it to let a miss cost them' : undefined}
                     aria-label="{words[r]}’s share if it’s {word} (% of the tile’s value)"
                     oninput={(e) => {
                       const n = typedShare(e.currentTarget.value);
@@ -193,8 +203,11 @@
         </tbody>
       </table>
       <div class="col">
-        <label class="check" title="A miss never costs the partner, whichever part they play: their points are at least 0. Untick it to let the points above cost them">
-          <input type="checkbox" checked={safe} onchange={(e) => setSafe(e.currentTarget.checked)} /> The partner never loses points
+        <label
+          class="check"
+          title="A miss never costs the partner, whichever part they play: as “Who {game.verb}” says, and after ⇄ Swap while playing. Their points are at least 0. Untick it to let the share in their column cost them"
+        >
+          <input type="checkbox" checked={safe} onchange={(e) => setSafe(e.currentTarget.checked)} /> The partner never loses points, whichever part they play
         </label>
         <details class="more">
           <summary>⚙ More</summary>
@@ -276,6 +289,10 @@
   }
   .shares input {
     width: 72px;
+  }
+  /* The partner's missed box while ☑ The partner never loses points holds it. */
+  .shares input:disabled {
+    opacity: 0.45;
   }
   .col {
     display: flex;

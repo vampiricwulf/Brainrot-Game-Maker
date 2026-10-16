@@ -266,6 +266,16 @@ try {
 
   // ---------- Points ----------
   const points = settings.getByRole('combobox', { name: /^Points/ });
+  // ☑ The partner never loses points shows in the table: it holds the partner's "If it's missed" box, greyed, at what
+  // they get (a share below 0 is 0), whichever column is theirs. Unticked, the box is theirs to type in again.
+  const safe = settings.getByRole('checkbox', { name: 'The partner never loses points, whichever part they play' });
+  const held = settings.locator('.shares input:disabled');
+  const heldIs = async (part, value) =>
+    (await held.count()) === 1 &&
+    (await held.getAttribute('aria-label')).startsWith(`${part}’s share if it’s missed`) &&
+    (await held.inputValue()) === value &&
+    (await held.getAttribute('title')) === 'The partner never loses points (ticked): untick it to let a miss cost them';
+  assert(await heldIs('Describer', '0'), 'ticked, ☑ The partner never loses points holds the partner’s (the describer’s) missed box at 0, greyed');
   await points.selectOption('none');
   assert((await summary()).endsWith('missed → nobody loses points'), `Points “No penalty”: a miss costs nobody (${await summary()})`);
   await settings.getByLabel(/^Guesser’s share if it’s missed/).fill('-75');
@@ -274,9 +284,21 @@ try {
   await points.selectOption('game');
   await settings.getByRole('radio', { name: 'the picker' }).check();
   assert((await summary()) === 'On this $400 tile: got → describer +$400, guesser +$200 · missed → nobody loses points', `the picker describing: the partner guesses, and never loses points (${await summary()})`);
-  await settings.getByRole('checkbox', { name: 'The partner never loses points' }).uncheck();
+  const guesserMissed = settings.getByLabel(/^Guesser’s share if it’s missed/);
+  await settings.locator('.shares input:disabled[aria-label^="Guesser’s share if it’s missed"]').waitFor();
+  assert(await heldIs('Guesser', '0'), 'and the table says so: the partner’s (now the guesser’s) −50% box shows 0, greyed');
+  await safe.uncheck();
+  await held.waitFor({ state: 'detached' });
   assert((await summary()).endsWith('missed → guesser −$200'), 'unticked, a miss costs the partner too');
-  await settings.getByRole('checkbox', { name: 'The partner never loses points' }).check();
+  assert((await guesserMissed.isEnabled()) && (await guesserMissed.inputValue()) === '-50', `and their box shows its −50% again, to type in (${await guesserMissed.inputValue()})`);
+  await away();
+  await undo();
+  await settings.locator('.shares input:disabled[aria-label^="Guesser’s share if it’s missed"]').waitFor();
+  assert((await safe.isChecked()) && (await heldIs('Guesser', '0')), 'Ctrl+Z ticks it again, and the box is held at 0 again');
+  await redo();
+  await held.waitFor({ state: 'detached' });
+  assert(!(await safe.isChecked()) && (await guesserMissed.inputValue()) === '-50', 'Ctrl+Y unticks it, with the −50% back');
+  await safe.check();
   await settings.getByRole('radio', { name: 'the partner' }).check();
   await settings.getByRole('combobox', { name: /^Game/ }).selectOption('help');
   assert((await summary()) === 'On this $400 tile: got → helper +$200, answerer +$400 · missed → answerer −$200', `🙋 Help a friend: its own words and points (${await summary()})`);
