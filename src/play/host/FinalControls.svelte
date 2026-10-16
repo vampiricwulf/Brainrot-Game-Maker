@@ -141,14 +141,15 @@
   /** A wager as the history names it ("none" when there isn't one). */
   const shownWager = (v: number | undefined) => (typeof v === 'number' ? formatPoints(v, sym) : 'none');
   /**
-   * "Ann’s wager: $300", or "Ann’s wager: $500 → $300" when it changes one already in (a phone's too). In one window a
-   * phone's amount stays out of it (viewers see ↶ Undo's toast and the 📜 Log): "Ann’s wager (from their phone) → $300".
+   * "Ann’s wager: $300", or "Ann’s wager: $500 → $300" when it changes one already in. A phone's amount stays out of it
+   * (in one window viewers see ↶ Undo's toast and the 📜 Log, and a step keeps its name if the audience window closes):
+   * "Ann’s wager (from their phone) → $300".
    */
   function wagerText(id: string, was: number | undefined, now: number | undefined, wasPhone: boolean): string {
     const name = `${byId[id]?.name ?? '?'}’s wager`;
     if (was === undefined) return `${name}: ${shownWager(now)}`;
-    if (wasPhone && !dual) return `${name} (from their phone) → ${shownWager(now)}`;
-    return `${name}${wasPhone ? ' (from their phone)' : ''}: ${shownWager(was)} → ${shownWager(now)}`;
+    if (wasPhone) return `${name} (from their phone) → ${shownWager(now)}`;
+    return `${name}: ${shownWager(was)} → ${shownWager(now)}`;
   }
 
   /**
@@ -175,7 +176,7 @@
   }
 
   // A wager sent from their phone while the host's focus is in that box is a step of its own ("Ann’s wager (from their
-  // phone): $500"): the host's change starts again from it.
+  // phone)"): the host's change starts again from it.
   $effect(() => {
     const fs = f;
     if (!fs) return;

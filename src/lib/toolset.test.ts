@@ -591,8 +591,8 @@ describe('the host’s own choices', () => {
     applyScore(session, game, ['a', 'b'], 300, 'x');
     goToRound(session, game, 1);
     const f = session.final!;
-    logged(session, 'Ann’s wager (from Al’s phone): $200', () => finalSetWager(session, 'a', 200, 'phone', 'Al'));
-    logged(session, 'Ann’s wager (from their phone): $200 → $100', () => finalSetWager(session, 'a', 100));
+    logged(session, 'Ann’s wager (from Al’s phone)', () => finalSetWager(session, 'a', 200, 'phone', 'Al'));
+    logged(session, 'Ann’s wager (from their phone) → $100', () => finalSetWager(session, 'a', 100));
     expect([f.wagers.a, wagerFromPhone(f, 'a'), wagerSentBy(f, 'a')]).toEqual([100, false, '']);
     undoAction(session);
     expect([f.wagers.a, wagerFromPhone(f, 'a'), wagerSentBy(f, 'a')]).toEqual([200, true, 'Al']);

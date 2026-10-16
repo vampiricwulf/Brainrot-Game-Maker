@@ -255,11 +255,15 @@ try {
   await shot('pw-3-final-host', host);
   await shot('pw-4-final-audience', aud);
 
-  // A change of mind before the host locks: the host's box follows, as a named step.
+  // A change of mind before the host locks: the host's box follows, as a named step. Its name leaves the amounts out (a
+  // step keeps its name: with the audience window closed, viewers would see ↶ Undo's toast and the 📜 Log).
   await sendWager(ann, 1300);
   await row('Player 1').getByText('📱 $1,300 from phone ✔').waitFor();
   const undo = await host.getByRole('button', { name: '↶ Undo' }).getAttribute('title');
-  assert(undo.startsWith('Undo: Player 1’s wager (from their phone): $1,234 → $1,300'), `a late change before the lock: the host's box follows, one step (${undo})`);
+  assert(
+    undo.startsWith('Undo: Player 1’s wager (from their phone) (Ctrl+Z') && !undo.includes('$'),
+    `a late change before the lock: the host's box follows, one step, named without the amounts even with the audience window open (${undo})`,
+  );
   // ↶ Undo puts the one before back: the phone says the host has that one (not the $1,300 it sent last); ↷ Redo, its own.
   await host.getByRole('button', { name: '↶ Undo' }).click();
   await row('Player 1').getByText('📱 $1,234 from phone ✔').waitFor();
@@ -380,6 +384,22 @@ try {
   assert((await al.locator('#wager-in').inputValue()) === '450', 'a teammate changes it: still one wager for the team, and every member sees the new one');
   await shot('pw-7-team-phone', al);
   await shot('pw-8-team-host', host2);
+  // The host types over the hidden wager: the step's name leaves out the amount it replaced. ↶ Undo puts the phone's back,
+  // hidden again.
+  const box1 = team1.locator('input[data-wager]');
+  await box1.fill('500');
+  await al.locator('#wager-state').getByText('The host has your wager as $500').waitFor();
+  await box1.blur();
+  await host2.waitForFunction(() => document.querySelector('button[title^="Undo:"]')?.getAttribute('title')?.includes('→'));
+  const undo3 = await host2.getByRole('button', { name: '↶ Undo' }).getAttribute('title');
+  assert(
+    undo3.startsWith('Undo: Player 1’s wager (from their phone) → $500 (Ctrl+Z') && !undo3.includes('$300') && !undo3.includes('$450'),
+    `the host types over it: ↶ Undo names the step without the phone’s amount (${undo3})`,
+  );
+  await host2.getByRole('button', { name: '↶ Undo' }).click();
+  await team1.getByText('📱 from phone ✔ · sent by Amy').waitFor();
+  await al.locator('#wager-state').getByText('✔ Amy sent $450 for your team').waitFor();
+  assert((await box1.inputValue()) === '' && (await panelHides([300, 450])), '↶ Undo puts the phone’s wager back, hidden again');
 
   // Cy (Player 2) changes name and joins Player 1 to read their wager: his phone is told one is in, not how much.
   await cy.locator('#leave').click();
@@ -402,6 +422,15 @@ try {
   await revIn.waitFor();
   assert((await revIn.inputValue()) === '' && (await revIn.getAttribute('placeholder')) === 'hidden' && (await panelHides([450])), 'the reveals in one window: the row’s box keeps the phone’s amount hidden');
   await shot('pw-11-reveal-one-window', host2);
+  // A change refused (not a whole number) or nothing typed: the box goes back as it was, hidden (not to the phone's amount).
+  for (const [typed, what] of [
+    ['1.5', 'refused'],
+    ['', 'left empty'],
+  ]) {
+    await revIn.fill(typed);
+    await revIn.press('Enter');
+    assert((await revIn.inputValue()) === '' && (await panelHides([450])), `a change in the reveals ${what}: the box goes back to hidden, not to the phone’s $450`);
+  }
   await rev1.getByRole('button', { name: 'Show wager: Player 1' }).click();
   await rev1.getByText('wager $450').waitFor();
   assert(true, 'Show wager: the row has the amount (“wager $450”) once the stage shows it');
