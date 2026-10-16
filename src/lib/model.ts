@@ -379,10 +379,17 @@ export interface PartnerRules {
   steal?: boolean;
 }
 
-/** Who a 🤫 card starts with when the host hands the cards out: a part, both, every player but the two, or nobody. */
-export type CardGoesTo = PartnerRole | 'both' | 'others' | 'nobody';
+/**
+ * Who a 🤫 card starts with when the host hands the cards out: a part, both, every player but the two, or nobody. On any
+ * other tile (partner-clues spec §11, §12.2): 'picker' (whoever picked it; a Daily Double's player), 'others' (everyone
+ * but them) or 'nobody'.
+ */
+export type CardGoesTo = PartnerRole | 'both' | 'others' | 'nobody' | 'picker';
 
-/** A 🤫 card: a slide the host made for a partner clue. Only the players the host hands it to see it. */
+/**
+ * A 🤫 card: a slide the host made for a tile (a partner clue's, or any tile's: 🤫 Just you, 💡 Insider tip). Only the
+ * players the host sends it to see it.
+ */
 export interface ClueCard extends ExtraSlide {
   /** Who it starts with when the host hands the cards out ('others': every player but the two). The host can change it then. */
   to: CardGoesTo;
@@ -790,6 +797,35 @@ export interface CardSend {
 }
 
 /**
+ * A 🤫 card the host sent with 🤫 Send a card… (the tools row) or from a tile's panel (partner-clues spec §12.2, §18.2).
+ * Only the host's press makes one: its id on the wire is `sc:<id>:<at>`, so ↻ Send again (a new `at`) reaches a phone
+ * that was late for it.
+ */
+export interface SentCard {
+  id: Id;
+  /** When it was sent (↻ Send again: then). */
+  at: number;
+  /**
+   * "Card 2": made by the app, numbered in the order sent, never typed. The list of cards out shows it, and in one window
+   * that list is on stream: never what's on the card.
+   */
+  label: string;
+  /** Who it went to: players (whole teams), or one person on a team. */
+  to: CardTo[];
+  /** A tile's 🤫 card made in the editor (by its clue and card ids), or a card made in 🤫 Send a card… (its own slide). */
+  content: { clue: Id; card: Id } | { slide: Slide };
+  /** What was on it when it went (cardHash): a tile's card edited since is off the phones until ↻ Send again. */
+  hash: string;
+  /**
+   * How long it lasts: until the round ends (`round`: that round's id), until its tile closes (`tile`: the clue's id), or
+   * until the host takes it back.
+   */
+  until: 'round' | 'tile' | 'host';
+  round?: Id;
+  tile?: Id;
+}
+
+/**
  * A 🤝 partner clue being played (partner-clues spec §18.2). It holds who plays which part, the stage, and who the host
  * chose to give each card to: player ids and card ids only, never what's on a card (the parts are on stream anyway).
  */
@@ -864,6 +900,13 @@ export interface Session {
   dd?: { stage: 'splash' | 'question'; playerId?: Id; wager?: number; shown?: boolean; draft?: number; draftFrom?: WagerSource; draftBy?: string } | null;
   /** The 🤝 partner clue in progress for the open clue. Saved, so a reload picks it up (like dd). */
   partner?: PartnerState | null;
+  /**
+   * 🤫 Cards the host sent with 🤫 Send a card… or from a tile's panel, still out (partner-clues spec §12, §18.2). Never
+   * sent to the audience or scores window (forViewers): a card made here holds the words the host typed.
+   */
+  cards?: SentCard[];
+  /** The number in the last card's label ("Card 3") while any is out: the next is one more. Gone with the last card. */
+  lastCard?: number;
   finalStep?: FinalStep;
   /** The Final round being played (or last played). */
   final?: FinalState;
@@ -1011,6 +1054,13 @@ export interface Shop {
 /** Who an action applies to when it runs: the moving party, the selected players, the picker, or the host picks. */
 export type Who = 'party' | 'selected' | 'picker' | 'ask' | 'all';
 
+/**
+ * Who an action's 🤫 card is offered to (partner-clues spec §12.2): whoever set it off (the players its object's card is
+ * for, an item's user, the player a spin was for, whoever landed on a space), the party (on a board: whoever's turn it
+ * is), a player the host picks then, or everyone else. The host can change it before 📤 Send.
+ */
+export type CardWho = 'trigger' | 'party' | 'ask' | 'others';
+
 /** Something the host can run (from an object, an item's "Use", a wheel slice…). Always shown to the host first. */
 export type Action = { id: Id } & (
   | { do: 'move'; to: ScreenRef; who?: Who }
@@ -1035,6 +1085,12 @@ export type Action = { id: Id } & (
   | { do: 'skip'; turns?: number; who?: Who }
   /** Board games: the player goes again (Next turn comes back to them). */
   | { do: 'again'; who?: Who }
+  /**
+   * 🤫 A private card (partner-clues spec §12.2): running it only offers the card in the host panel, and it goes to
+   * phones when the host presses 📤 Send there. `slide`: what's on it (a copy goes). `until`: it lasts until the host
+   * takes it back, else until the round ends.
+   */
+  | { do: 'card'; slide: Slide; to?: CardWho; until?: 'host' }
 );
 export type ActionKind = Action['do'];
 
@@ -1598,7 +1654,7 @@ function repairExtraSlides(o: { extraSlides?: ExtraSlide[] }): void {
   }
 }
 
-const CARD_TO = new Set<unknown>(['giver', 'guesser', 'both', 'others', 'nobody'] satisfies CardGoesTo[]);
+const CARD_TO = new Set<unknown>(['giver', 'guesser', 'both', 'others', 'nobody', 'picker'] satisfies CardGoesTo[]);
 const POINTS = new Set<unknown>(['game', 'none', 'all', 'custom'] satisfies PartnerPoints[]);
 
 /**

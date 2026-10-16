@@ -920,6 +920,9 @@ describe('final wagers', () => {
     const dd = forViewers({ dd: { stage: 'question' as const, playerId: a, wager: 900, draft: 900, draftFrom: 'phone' as const, draftBy: 'Al' } }).dd;
     expect(dd).toEqual({ stage: 'question', playerId: a });
     expect(forViewers({ dd: { stage: 'question' as const, playerId: a, wager: 900, shown: true } }).dd).toEqual({ stage: 'question', playerId: a, wager: 900, shown: true });
+    // 🤫 Cards the host sent (a quick card holds the words typed): never to viewers.
+    const card = { id: 'k', at: 1, label: 'Card 1', to: [{ seat: a }], content: { slide: { background: {}, elements: [] } }, hash: 'h', until: 'host' as const };
+    expect(forViewers({ cards: [card] })).toEqual({});
   });
 
   it('keeps a wager editable until it is shown or judged', () => {

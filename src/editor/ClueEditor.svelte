@@ -25,7 +25,7 @@
     type Slide,
     type TextEl,
   } from '../lib/model';
-  import { addCard, deleteCard, GOES_TO, goesToLabel, partnerRules, sameAsAnswer } from '../lib/partner';
+  import { addCard, deleteCard, GOES_TO, goesToLabel, partnerRules, sameAsAnswer, TILE_GOES_TO, tileGoesToLabel } from '../lib/partner';
   import { slideHasContent } from '../lib/usage';
   import PartnerSettings from './PartnerSettings.svelte';
   import PhoneCardPreview from './PhoneCardPreview.svelte';
@@ -75,16 +75,23 @@
   const qslide = $derived(qslides[at]);
 
   // ---------- 🤫 Cards ----------
-  // A partner clue's cards: slides only the players the host hands them to see. Their tabs come after the question
-  // slides (Question 1…n · 🤫 Card 1…k · Answer), in the order things happen. A tile whose type changed away keeps its
-  // cards, without their tabs, for when it changes back.
+  // A tile's cards: slides only the players the host sends them to see (a partner clue hands them out in its Distribute
+  // step; any other tile offers them in its panel: 🤫 Just you, 💡 Insider tip). Their tabs come after the question
+  // slides (Question 1…n · 🤫 Card 1…k · Answer), in the order things happen.
   /** The card open (0: Card 1), kept while another tab is open. */
   let ci = $state(0);
   /** 📱 On their phone: the open card as a phone gets it, beside the slide (kept on while moving between cards). */
   let phoneView = $state(false);
-  const cards = $derived(clue?.type === 'partner' && !clue.empty ? cardSlides(clue) : []);
+  const cards = $derived(clue && !clue.empty ? cardSlides(clue) : []);
+  /** Who a card starts with, in words: a partner clue's parts ("the describer"), or on any other tile "the picker"… */
+  const goesTo = (to: CardGoesTo, long = true): string => (clue.type === 'partner' ? goesToLabel(partnerRules(clue), to, long) : tileGoesToLabel(clue.type, to, long));
   const cardAt = $derived(Math.min(ci, Math.max(0, cards.length - 1)));
   const card = $derived<ClueCard | undefined>(cards[cardAt]);
+  /**
+   * The Goes to choices for the open card's tile. (A partner clue's card kept on another tile goes to nobody there, and
+   * says so; one made on another tile that goes to the picker keeps that on a partner clue.)
+   */
+  const goesList = $derived(clue?.type === 'partner' ? (card?.to === 'picker' ? [...GOES_TO, 'picker' as const] : GOES_TO) : TILE_GOES_TO);
   /** The tab shown: a card's when there's one to show (its type changed, it was deleted: the question). */
   const shown = $derived<ClueSide>(side === 'card' && !card ? 'q' : side);
   /** Short card tab names (🤫 1, 🤫 2…) when there are many tabs. */
@@ -128,7 +135,7 @@
   function setGoesTo(to: CardGoesTo): void {
     const c = card;
     if (!c) return;
-    record(`Card ${cardAt + 1} of ${tileName()} goes to ${goesToLabel(partnerRules(clue), to, false)}`, () => (c.to = to), {
+    record(`Card ${cardAt + 1} of ${tileName()} goes to ${goesTo(to, false)}`, () => (c.to = to), {
       place: { tab: 'round', round: round.id, part: cardPart(c) },
     });
   }
@@ -603,7 +610,7 @@
                 data-card={i + 1}
                 aria-label={shortCards ? `Card ${i + 1}` : undefined}
                 onclick={() => ((side = 'card'), (ci = i))}
-                title="🤫 Card {i + 1}: only the players you hand it to see it, never on stream. It starts with {goesToLabel(partnerRules(clue), c.to, false)}"
+                title="🤫 Card {i + 1}: only the players you hand it to see it, never on stream. It starts with {goesTo(c.to, false)}"
                 >{shortCards ? `🤫 ${i + 1}` : `🤫 Card ${i + 1}`}</button
               >
             {/each}
@@ -622,14 +629,16 @@
             onclick={addSlide}
             title={shown === 'q' ? 'Add a question slide after this one: lead in, then show more before the answer' : 'Add a question slide before the answer'}>＋ Add slide</button
           >
-          {#if clue.type === 'partner'}
-            <button
-              class="ghost add"
-              onclick={newCardTab}
-              disabled={cards.length >= MAX_CARDS}
-              title={cards.length >= MAX_CARDS ? `A clue holds ${MAX_CARDS} cards` : 'Add a 🤫 card: a slide only the players you hand it to see (never on stream)'}>＋ Card</button
-            >
-          {/if}
+          <button
+            class="ghost add"
+            onclick={newCardTab}
+            disabled={cards.length >= MAX_CARDS}
+            title={cards.length >= MAX_CARDS
+              ? `A clue holds ${MAX_CARDS} cards`
+              : clue.type === 'partner'
+                ? 'Add a 🤫 card: a slide only the players you hand it to see (never on stream)'
+                : 'Add a 🤫 card: a slide only the players you send it to see (never on stream), offered in the host panel when this tile is played (a private question, a tip before a Daily Double’s wager…)'}>＋ Card</button
+          >
           {#if qslides.length > 1 && shown === 'q'}
             <span class="spacer"></span>
             <div class="slidetools" role="group" aria-label="Question slide {at + 1} of {qslides.length}">
@@ -642,13 +651,12 @@
           {/if}
         </div>
         {#if shown === 'card' && card}
-          {@const rules = partnerRules(clue)}
           <!-- Who the card starts with (the cards can go to anyone when they're handed out), and ⧉ Same as the answer. -->
           <div class="cardbar row" role="group" aria-label="Card {cardAt + 1}">
             <label class="check" title="Who this card starts with when you hand the cards out: you can give it to anyone then">
               Goes to
-              <select value={card.to} onchange={(e) => setGoesTo(e.currentTarget.value as CardGoesTo)}>
-                {#each GOES_TO as to (to)}<option value={to}>{goesToLabel(rules, to)}</option>{/each}
+              <select value={goesList.includes(card.to) ? card.to : 'nobody'} onchange={(e) => setGoesTo(e.currentTarget.value as CardGoesTo)}>
+                {#each goesList as to (to)}<option value={to}>{goesTo(to)}</option>{/each}
               </select>
             </label>
             {#if !slideHasContent(card)}

@@ -186,7 +186,7 @@ describe('who gets each card', () => {
   it('after ⇄ Swap each Goes to follows the parts, and a card the host gave out stays with who they chose', () => {
     const { session, s, card } = paired();
     swapParts(s);
-    const after: Record<CardGoesTo, string[]> = { giver: ['a'], guesser: ['b'], both: ['a', 'b'], others: ['c', 'd'], nobody: [] };
+    const after: Record<CardGoesTo, string[]> = { giver: ['a'], guesser: ['b'], both: ['a', 'b'], others: ['c', 'd'], nobody: [], picker: ['a'] };
     for (const [to, want] of Object.entries(after)) expect(seats(defaultRecipients(session, s, to as CardGoesTo)), to).toEqual(want);
     setRecipients(session, s, card, ['d']);
     swapParts(s);

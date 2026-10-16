@@ -113,7 +113,7 @@ Clue {
   value: number | null,             // override of round.values[row]; null = inherit
   type: 'standard' | 'dailyDouble' | 'wheel' | 'dice' | 'partner',
   wheelPresetId?, dicePresetId?,    // for wheel/dice clue types
-  partner?: PartnerRules, cards?: ClueCard[],  // 🤝 partner clues and their 🤫 cards (PARTNER-CLUES-SPEC.md §18)
+  partner?: PartnerRules, cards?: ClueCard[],  // a tile's 🤫 cards: a partner clue hands them out (PARTNER-CLUES-SPEC.md §18); any other tile offers them in its panel (§12.2)
   questionSlide: Slide,             // the "clue" shown to players
   answerSlide: Slide,               // the "response" (hidden from audience until revealed)
   hostNotes?: string,               // shown only in host view
@@ -358,6 +358,9 @@ The mode isn't saved with the game: it's dual while the audience window is open.
      (`W`) or the host's choice (`1–9`) for their partner, then the question with who describes and who guesses, the
      📤 list of who gets each 🤫 card (copied to them with 📋), ⏱ Start the clock, and ✔ Got it / ✘ Missed, which
      scores both in one step with the clue's points (the guesser picks next). Nobody buzzes.
+   - *Any tile with 🤫 cards* (PARTNER-CLUES-SPEC.md §12.2): its panel lists them for the picker (a Daily Double's
+     player) with 📤 Send (or 📋 to copy them, or 🪟 to show one in the card window); they go when the tile closes, and
+     the stream says "Ann has a private question" on a standard tile.
    - *Wheel clue*: the wheel appears and the host spins, then the outcome is revealed. The question slide is optional,
      so a tile can be purely "spin the punishment wheel" with no question at all.
    - *Dice clue*: the dice roll animation, then the outcome. The question slide is optional too.
@@ -426,6 +429,10 @@ The mode isn't saved with the game: it's dual while the audience window is open.
   ("Wheel: Punishment Wheel → Bankrupt"), so they can be undone like any other score change.
 - **Timer**: start, pause, reset, and set a custom duration.
 - **Scoreboard overlay**: toggle a large standings view on the audience window.
+- **🤫 Send a card…** (PARTNER-CLUES-SPEC.md §12): a private card for chosen players' phones, in any round (a tile's
+  card made in the editor, a quick one, or the slide on screen), lasting until the round ends or until taken back;
+  `🤫 N cards out` lists them by number ("Card 2 → Ann"), never what's on them, with ↻ Send again and ✖ Take back. At
+  most 8 are out at once. A 🪟 card window shows one player's cards, for a player with no phone.
 
 ### 6.7 Media playback controls
 - Play/pause, seek bar, current time/duration, volume, mute, restart, loop toggle, and full-screen element.

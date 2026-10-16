@@ -59,8 +59,8 @@ export function findAll(game: Game, query: string, limit = 200): Hit[] {
           const at = (side?: ClueSide, slide?: string): Place => ({ tab: 'round', round: r.id, part: { kind: 'clue', category: cat.id, clue: clue.id, side, ...(slide ? { slide } : {}) } });
           look('❓', slideWords(clue.questionSlide), `${where} › Question${clue.extraSlides?.length ? ' 1' : ''}`, at('q'), '[data-field="q"]');
           clue.extraSlides?.forEach((sl, j) => look('❓', slideWords(sl), `${where} › Question ${j + 2}`, at('q', sl.id), '[data-field="q"]'));
-          // A partner clue's 🤫 cards (in the order the clue editor's tabs have them, before the answer).
-          if (clue.type === 'partner') clue.cards?.forEach((card, j) => look('🤫', slideWords(card), `${where} › Card ${j + 1}`, at('card', card.id), '[data-field="card"]'));
+          // The tile's 🤫 cards (in the order the clue editor's tabs have them, before the answer).
+          clue.cards?.forEach((card, j) => look('🤫', slideWords(card), `${where} › Card ${j + 1}`, at('card', card.id), '[data-field="card"]'));
           look('💬', slideWords(clue.answerSlide), `${where} › Answer`, at('a'), '[data-field="a"]');
           look('📝', [clue.hostNotes, clue.tileFace?.text], `${where} › Notes / tile`, at(), field([[clue.hostNotes, '[data-field="notes"]'], [clue.tileFace?.text, '[data-field="tile-face"]']]));
         });
@@ -81,9 +81,9 @@ export function findAll(game: Game, query: string, limit = 200): Hit[] {
         // (Found by something else than its name: where says which space it is.)
         const where = match(s.name) ? `${rn} › Space` : `${rn} › Space “${s.name}”`;
         look('⬤', [s.name, s.hostNotes], where, place, field([[s.name, 'main input[aria-label="Space name"]'], [s.hostNotes, 'main [data-field="space-notes"]']]));
-        // What its buttons say: a slide shown, a question asked, a host note.
+        // What its buttons say: a slide shown, a 🤫 card, a question asked, a host note.
         for (const a of [...(s.onPass ?? []), ...(s.onLand ?? [])]) {
-          const words = a.do === 'popup' ? slideWords(a.slide) : a.do === 'question' ? [...slideWords(a.question), ...slideWords(a.answer)] : a.do === 'note' ? [a.text] : [];
+          const words = a.do === 'popup' || a.do === 'card' ? slideWords(a.slide) : a.do === 'question' ? [...slideWords(a.question), ...slideWords(a.answer)] : a.do === 'note' ? [a.text] : [];
           look('🔘', words, `${rn} › Space “${s.name}” › Buttons`, place);
         }
       }

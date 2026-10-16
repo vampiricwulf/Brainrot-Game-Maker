@@ -1,4 +1,7 @@
-<!-- Dice / wheel / roll-off / scoreboard buttons, usable any time (spec §6.6), and 🔇 Stop sounds while a round intro may play. -->
+<!--
+  Dice / wheel / roll-off / scoreboard buttons, usable any time (spec §6.6), 🤫 Send a card…, the cards out and the
+  🪟 card window (partner-clues spec §12.2, §13.6), and 🔇 Stop sounds while a round intro may play.
+-->
 <script lang="ts">
   import { tick, untrack } from 'svelte';
   import { anchored } from '../../lib/anchored';
@@ -8,20 +11,34 @@
   import { WHEEL_TEMPLATES } from '../../lib/wheeltemplates';
   import { parseDice, parseQuickWheel, QUICK_DICE } from '../../lib/tools';
   import { audience } from '../../lib/sync.svelte';
+  import { cardsOut } from '../../lib/sentcards';
+  import { cardWindow, closeCardWindow, openCardWindow } from '../../lib/cardwindow.svelte';
+  import CardSend from './CardSend.svelte';
+  import CardsOut from './CardsOut.svelte';
 
   let {
     game,
     session,
+    dual = false,
     onrolloff,
     onstopsounds,
+    oncardtakeback,
   }: {
     game: Game;
     session: Session;
+    /** An audience window is open: viewers don't see this window. */
+    dual?: boolean;
     onrolloff: (ids: string[], sides: number) => void;
     /** 🔇 Stop sounds: shown while the round intro's music may still be playing (it goes on until a tile opens). */
     onstopsounds?: () => void;
+    /** ✖ Take back a card sent with 🤫 Send a card… or from a tile's panel. */
+    oncardtakeback: (id: string) => void;
   } = $props();
-  let menu = $state<'dice' | 'wheel' | 'rolloff' | null>(null);
+  let menu = $state<'dice' | 'wheel' | 'rolloff' | 'card' | 'out' | 'win' | null>(null);
+  /** Whose cards the 🪟 card window shows (names only). */
+  const winName = $derived(cardWindow.open ? session.players.find((p) => p.id === cardWindow.seat)?.name : undefined);
+  /** The 🤫 cards out now (sent with Send a card… or from a tile's panel): the tools row says how many, never what. */
+  const out = $derived(cardsOut(game, session).length);
   let custom = $state('');
   let quickList = $state('');
   // Players left out of the roll-off; everyone else rolls (so players added or removed mid-game just work).
@@ -38,7 +55,7 @@
   let opener: HTMLElement | null = null;
 
   /** Open (or close) a menu from its button. */
-  function toggle(m: 'dice' | 'wheel' | 'rolloff', e: MouseEvent): void {
+  function toggle(m: 'dice' | 'wheel' | 'rolloff' | 'card' | 'out' | 'win', e: MouseEvent): void {
     menu = menu === m ? null : m;
     opener = e.currentTarget as HTMLElement;
   }
@@ -76,6 +93,15 @@
     wheel(() => openQuickWheel(app.live, options), edit);
   }
 
+  /**
+   * 🪟 The card window for a player (from this click: a popup needs one). From 🤫 Send a card… the dialog stays open, so
+   * the card can go to the window next; from the 🪟 button's own menu, it closes.
+   */
+  function cardWindowFor(id: string): void {
+    if (!openCardWindow(id)) return void toast('The browser blocked the popup. Allow popups for this file and try again.', 5000);
+    if (menu === 'win') done();
+  }
+
   function rollCustom(): void {
     const d = parseDice(custom);
     if (d) dice(d.sides, d.count, custom.trim());
@@ -93,6 +119,21 @@
     }
   }}
 />
+
+<!-- 🪟 The card window: open it for a player (or switch it to another), or close it. -->
+{#snippet winPick()}
+  <div class="muted small">
+    <b>🪟 Card window</b>: a window with only one player’s 🤫 cards (pictures and videos too), for a player with no phone. Share just it with them (a Discord DM call), turn the laptop round, or put it on a second screen. Never share it with viewers.
+  </div>
+  <div class="row wins">
+    {#each session.players as p (p.id)}
+      <button class="small" aria-pressed={cardWindow.seat === p.id} aria-label="Card window for {p.name}" onclick={() => cardWindowFor(p.id)}>🪟 <span style:color={p.color}>●</span> {p.name}{cardWindow.seat === p.id ? ' ✓' : ''}</button>
+    {/each}
+    {#if cardWindow.open}
+      <button class="small ghost" onclick={() => (closeCardWindow(), done())}>✖ Close the card window</button>
+    {/if}
+  </div>
+{/snippet}
 
 <div class="tl" class:open={!!menu}>
   <div class="pop">
@@ -213,9 +254,42 @@
       </div>
     {/if}
   </div>
+  <div class="pop">
+    <button onclick={(e) => toggle('card', e)} aria-haspopup="dialog" aria-expanded={menu === 'card'} title="A private card on some players’ phones, any time, or a 🪟 card window for one with no phone: only they see it, never on stream">🤫 Send a card…</button>
+    {#if menu === 'card'}
+      <div class="menu wide" role="dialog" aria-label="Send a card" use:anchored={at}>
+        <CardSend {game} {session} {dual} />
+        <div class="winpick">{@render winPick()}</div>
+      </div>
+    {/if}
+  </div>
+  {#if out || menu === 'out'}
+    <div class="pop">
+      <button onclick={(e) => toggle('out', e)} aria-haspopup="dialog" aria-expanded={menu === 'out'} data-cards-out-count={out} title="The cards out now: send one again, take it back">🤫 {out} card{out === 1 ? '' : 's'} out</button>
+      {#if menu === 'out'}
+        <div class="menu wide" role="dialog" aria-label="Cards out" use:anchored={at}>
+          <CardsOut {game} {session} {dual} ontakeback={oncardtakeback} />
+        </div>
+      {/if}
+    </div>
+  {/if}
+  <!-- (Its own button only while it's open, saying whose cards it shows: it's opened from 🤫 Send a card….) -->
+  {#if winName || menu === 'win'}
+    <div class="pop">
+      <button onclick={(e) => toggle('win', e)} aria-haspopup="dialog" aria-expanded={menu === 'win'} class="on" title="The card window: show another player’s cards, or close it">🪟 {winName ? `Cards: ${winName}` : 'Card window'}</button>
+      {#if menu === 'win'}
+        <div class="menu" role="dialog" aria-label="Card window" use:anchored={at}>
+          {@render winPick()}
+        </div>
+      {/if}
+    </div>
+  {/if}
   <button onclick={() => ((menu = null), toggleScoreboard(app.live))} title="S">📊 Scores</button>
   {#if onstopsounds}
     <button onclick={() => ((menu = null), onstopsounds())} title="Stop the game's sounds on stream, like the round intro's music (Shift+M)">🔇 Stop sounds</button>
+  {/if}
+  {#if winName}
+    <span class="warn small winwarn" role="status" data-card-window-warn>⚠ The 🪟 card window shows {winName}’s cards: share only the game window with viewers.</span>
   {/if}
 </div>
 
@@ -250,6 +324,10 @@
     box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
     overflow: auto;
   }
+  .menu.wide {
+    width: 380px;
+    max-width: calc(100vw - 24px);
+  }
   /* A short menu scrolls (its parts keep their size). */
   .menu > * {
     flex-shrink: 0;
@@ -278,6 +356,23 @@
   input:not([type]) {
     flex: 1;
     min-width: 0;
+  }
+  .winpick {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    padding-top: 8px;
+    border-top: 1px solid var(--border);
+  }
+  .wins {
+    flex-wrap: wrap;
+  }
+  .winwarn {
+    flex-basis: 100%;
+    color: var(--warn);
+  }
+  .on {
+    outline: 1px solid var(--accent);
   }
   .backdrop {
     position: fixed;

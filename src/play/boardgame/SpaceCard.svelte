@@ -11,6 +11,7 @@
   import { nameList } from '../../lib/session';
   import { logged } from '../../lib/toolset';
   import { decidingAction, playerName, runSpace, sendNow } from './bgops';
+  import { offerIn } from '../host/cardoffers.svelte';
 
   let {
     game,
@@ -39,9 +40,9 @@
   const hidden = $derived(!!space.secret && !bs.revealed?.includes(space.id));
   const isStart = $derived((round.start ?? round.spaces[0]?.id) === space.id);
 
-  function run(a: Action): void {
+  function run(a: Action, on: 'land' | 'pass'): void {
     if (needsPlayers(a) && !who.length) return void toast('Pick who it’s for first');
-    toast(runAction({ game, session, live: app.live, board: round, bs, selected, chosen: who }, a, `${space.name}: ${describeAction(game, a)}`), 3000);
+    toast(runAction({ game, session, live: app.live, board: round, bs, selected, chosen: who, offerCard: offerIn(session) }, a, `${space.name}: ${describeAction(game, a, on)}`), 3000);
   }
 
   function reveal(): void {
@@ -69,7 +70,7 @@
   {#if space.onLand?.length}
     <div class="row">
       <span class="muted small">Landing on it{who.length ? ` (${whoNames})` : ''}:</span>
-      {#each space.onLand as a (a.id)}<button class="small" onclick={() => run(a)}>{describeAction(game, a)}</button>{/each}
+      {#each space.onLand as a (a.id)}<button class="small" onclick={() => run(a, 'land')}>{describeAction(game, a, 'land')}</button>{/each}
       {#if space.onLand.length > 1}
         <button class="small" onclick={() => toast(runSpace(game, session, app.live, space, who), 3000)} title={space.onLand.some(decidingAction) ? 'Its roll (or spin, or question) first: then press the outcome it comes to' : 'Every landing action, in order'}
           >▶ {space.onLand.some(decidingAction) ? 'Start' : 'Run all'}</button
@@ -80,7 +81,7 @@
   {#if space.onPass?.length}
     <div class="row">
       <span class="muted small">Passing it:</span>
-      {#each space.onPass as a (a.id)}<button class="small" onclick={() => run(a)}>{describeAction(game, a)}</button>{/each}
+      {#each space.onPass as a (a.id)}<button class="small" onclick={() => run(a, 'pass')}>{describeAction(game, a, 'pass')}</button>{/each}
     </div>
   {/if}
   {#if !space.onLand?.length && !space.onPass?.length}<span class="muted small">No buttons on this space.</span>{/if}

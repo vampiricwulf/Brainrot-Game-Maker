@@ -3,7 +3,8 @@ import './fonts.css';
 import './app.css';
 import App from './App.svelte';
 import AudienceApp from './audience/AudienceApp.svelte';
-import { AUDIENCE_HASH, SCORES_HASH } from './lib/sync.svelte';
+import CardWindow from './audience/CardWindow.svelte';
+import { AUDIENCE_HASH, CARDS_HASH, SCORES_HASH } from './lib/sync.svelte';
 import { embeddedPack, unreadablePack } from './lib/export';
 import { liveRegion } from './lib/announce';
 
@@ -14,4 +15,7 @@ target.replaceChildren();
 liveRegion();
 export default location.hash === AUDIENCE_HASH || location.hash === SCORES_HASH
   ? mount(AudienceApp, { target, props: { scores: location.hash === SCORES_HASH } })
-  : mount(App, { target, props: { embedded: embeddedPack(), packError: unreadablePack() } });
+  : // 🪟 One player's 🤫 cards, from the host page that opened it (cardwindow.svelte.ts).
+    location.hash === CARDS_HASH
+    ? mount(CardWindow, { target })
+    : mount(App, { target, props: { embedded: embeddedPack(), packError: unreadablePack() } });

@@ -2,7 +2,8 @@
 <script lang="ts">
   import { categoryLabel, finalName, formatPoints, questionSlides, slideText, type Game, type Session } from '../lib/model';
   import { clueSlideIndex, coWinnersHold, currentClueInfo, currentFinal, nameList, ownPlayers, places, playerName, slidesRound, tiedLeaders, toolOnlyClue } from '../lib/session';
-  import { cardId, cardSends, cardSlides, partnerRules, recipientsText, sameAsAnswer, sendState, sentTo, toName } from '../lib/partner';
+  import { cardId, cardSends, cardSlides, partnerRules, recipientsText, sameAsAnswer, sendState, sentTo, tileGoesToLabel, toName } from '../lib/partner';
+  import { cardsOut, sentCardId, sentState, sentToText } from '../lib/sentcards';
   import { cardWords, phoneCard, type CardItem, type PhoneItem } from '../lib/phonecard';
   import { buzzerOn, remote, roomHasCards } from '../lib/remote.svelte';
   import { phoneCan, uploads } from '../lib/cardfiles.svelte';
@@ -57,6 +58,20 @@
     const seen = session.remote?.cardsSeen ?? {};
     const any = cardSends(pt, card.id).some((x) => (seen[cardId(pt.clue, x)] ?? []).length);
     return ` · sent to ${sentTo(session, pt, card.id).map((t) => toName(session, t)).join(', ')}${st === 'changed' ? ' (changed since)' : ''}${any ? ' · ✓ seen' : ''}`;
+  }
+  /**
+   * Any other tile's card (🤫 Just you, 💡 Insider tip): who it went to from the tile's panel (or 🤫 Send a card…), else
+   * who it starts with there.
+   */
+  function tileOut(card: ReturnType<typeof cardSlides>[number]): string {
+    const clue = info?.clue;
+    if (!clue) return '';
+    const c = [...cardsOut(game, session)].reverse().find((x) => 'clue' in x.content && x.content.clue === clue.id && x.content.card === card.id);
+    if (!c) return `${tileGoesToLabel(clue.type, card.to, false)} (when you send it)`;
+    // (No phone gets cards: it went to the 🪟 card window.)
+    if (!phones) return `${sentToText(session, c.to)} · shown in the 🪟 card window as ${c.label}`;
+    if (sentState(game, c) === 'edited') return `${sentToText(session, c.to)} · changed in the editor since it was sent (off the phones)`;
+    return `${sentToText(session, c.to)} · sent as ${c.label}${(session.remote?.cardsSeen?.[sentCardId(c)] ?? []).length ? ' · ✓ seen' : ''}`;
   }
   const ask = $derived.by(() => {
     const o = app.live.overlay;
@@ -140,12 +155,12 @@
       <div class="label">Notes</div>
       <div class="notes">{info.clue.hostNotes}</div>
     {/if}
-    {#if pt && cardSlides(info.clue).length}
+    {#if cardSlides(info.clue).length}
       {@const rules = partnerRules(info.clue)}
       <div class="group" data-partner-cards-info>
         <div class="label">🤫 Cards {phones ? '(only the phones you send them to get them)' : '(you copy them to their players)'}</div>
         {#each cardSlides(info.clue) as card, i (card.id)}
-          <div class="q"><b>Card {i + 1}</b> → {recipientsText(session, pt, rules, card)}{cardOut(card)}</div>
+          <div class="q"><b>Card {i + 1}</b> → {pt ? `${recipientsText(session, pt, rules, card)}${cardOut(card)}` : tileOut(card)}</div>
           {#if sameAsAnswer(info.clue, card)}<div class="muted small">This card shows the answer</div>{/if}
           <div class="notes">{cardWords(card) || '(no words)'}</div>
           <!-- Its items as a phone gets them (phoneCard), each with whether it reaches one; pictures as a small still. -->

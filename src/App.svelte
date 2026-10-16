@@ -16,6 +16,7 @@
     retryWrites,
     saveEditor,
     savePlay,
+    saveRoom,
     testStorage,
     unstored,
     usePlayerStorage,
@@ -43,6 +44,7 @@
   import { forgetGameParts } from './lib/toolset';
   import { newLive, type Overlay } from './lib/live';
   import { clone } from './lib/ops';
+  import { slideMediaIds } from './lib/usage';
   import { sameGame } from './lib/samegame';
   import { sameContent } from './lib/roundcopy';
   import Editor from './editor/Editor.svelte';
@@ -217,12 +219,21 @@
     keepRoom(r);
   }
 
-  /** The room stays open while the host is in the editor: phones are told the host is setting up. */
+  /**
+   * The room stays open while the host is in the editor: phones are told the host is setting up. The 🤫 cards out of a
+   * game kept to resume go with it (the same ids: the room keeps when it first saw them, for its late rule).
+   */
   function keepRoom(r: SavedRoom): void {
     kept.room = r;
     rejoinRoom(r.remote);
+    sendSetup(r);
+  }
+
+  /** The kept room's setting-up state, with the cards out of the game it was left with (if any). */
+  function sendSetup(r: SavedRoom): void {
     const early = Math.round((app.game.settings.earlyBuzzLock ?? 1) * 1000);
-    sendHostState(setupState(app.game, r.players, r.remote.armId ?? 0, early, !!r.remote.locked));
+    const cards = Array.isArray(r.cards) && r.cards.length ? r.cards : undefined;
+    sendHostState({ ...setupState(app.game, r.players, r.remote.armId ?? 0, early, !!r.remote.locked), ...(cards ? { cards } : {}) });
   }
 
   // Buzzer mode turned off in the editor (an undo, say) while its room waits: the room closes, as on the Play screen
@@ -691,6 +702,9 @@
     let game = saved.game;
     if (withEdits) {
       game = clone(app.game);
+      // The files of 🤫 cards made in play (a quick card's picture: only the played copy has them) go with the cards out.
+      const keep = new Set((saved.session.cards ?? []).flatMap((c) => ('slide' in c.content ? slideMediaIds(c.content.slide) : [])));
+      for (const m of saved.game.media) if (keep.has(m.id) && !game.media.some((x) => x.id === m.id)) game.media.push(clone(m));
       rebaseSession(saved.session, saved.game, game);
       forgetGameParts(saved.session);
     }
@@ -747,6 +761,13 @@
     const room = saved?.session.remote;
     app.resumable = null;
     if (room && kept.room?.remote.code !== room.code) endRoom(room);
+    // (Its 🤫 cards still out on the phones go, as the room stays.)
+    else if (kept.room?.cards) {
+      const { cards: _cards, ...rest } = kept.room;
+      kept.room = rest;
+      void saveRoom(rest);
+      sendSetup(rest);
+    }
     await clearPlay();
     // (A write of it that failed is dropped with it.)
     app.playUnstored = false;

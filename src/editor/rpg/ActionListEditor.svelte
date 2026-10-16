@@ -14,7 +14,7 @@
   import { dropMenu, showMenu } from '../../lib/menustate.svelte';
   import { isTextField } from '../../lib/undokeys';
   import { announce } from '../../lib/announce';
-  import { newId, PLAYER_WHEEL, setSlideText, slideText, textSlide, type Action, type ActionKind, type BoardGameRound, type SlideElement, type World } from '../../lib/model';
+  import { newId, PLAYER_WHEEL, setSlideText, slideText, textSlide, type Action, type ActionKind, type BoardGameRound, type CardWho, type SlideElement, type World } from '../../lib/model';
   import { mediaUrls } from '../../lib/media.svelte';
   import { itemDef, itemQty, MAX_UNSTACKED, statFields } from '../../lib/toolset';
   import { typedSteps } from '../../lib/actions';
@@ -32,6 +32,7 @@
     board,
     addLabel = '＋ Add button',
     askLabel = 'Host picks who',
+    passing = false,
   }: {
     actions: Action[] | undefined;
     /** For "Go to" (moves need a world). */
@@ -44,6 +45,8 @@
     addLabel?: string;
     /** What "ask" means here: an item's Use buttons go to whoever used it, the host isn't asked. */
     askLabel?: string;
+    /** Board games: a space's "when passed" buttons (whoever passes it, not whoever landed there). */
+    passing?: boolean;
   } = $props();
   /** The first map with a screen: where a new "Go to a screen" button points (the main map may have none). */
   const firstMap = $derived(world?.maps.find((m) => m.screens.length));
@@ -51,6 +54,16 @@
   const game = $derived(editedGame());
   const numbers = $derived(statFields(game).filter((f) => f.type === 'number'));
   let editing = $state<{ action: Action; which: 'slide' | 'question' | 'answer' } | null>(null);
+  /**
+   * Who a 🤫 card goes to, in this list's words (an item's is whoever uses it, a space's whoever landed there or passes
+   * it): the same words its button says in play (actions.ts describeAction).
+   */
+  const cardWho = $derived<[CardWho, string][]>([
+    ['trigger', board ? (passing ? 'Whoever passes it' : 'Whoever landed there') : askLabel === 'Host picks who' ? 'Whoever set it off' : askLabel],
+    ['party', board ? 'Whoever’s turn it is' : 'The party here'],
+    ['ask', 'A player you pick then'],
+    ['others', 'Everyone else'],
+  ]);
   let pickingSound = $state<string | null>(null);
 
   const KINDS: [ActionKind, string][] = [
@@ -60,6 +73,7 @@
     ['wheel', '🎡 Spin a wheel'],
     ['dice', '🎲 Roll dice'],
     ['popup', '🪧 Show a slide'],
+    ['card', '🤫 Send a card'],
     ['question', '❓ Ask a question'],
     ['sound', '🔊 Play a sound'],
     ['move', '🚪 Go to a screen'],
@@ -93,6 +107,8 @@
         return { id, do: 'dice', dice: 'd20' };
       case 'popup':
         return { id, do: 'popup', slide: textSlide('') };
+      case 'card':
+        return { id, do: 'card', slide: textSlide(''), to: 'trigger' };
       case 'question':
         return { id, do: 'question', question: textSlide(''), answer: textSlide(''), value: 100 };
       case 'sound':
@@ -347,6 +363,17 @@
         {:else if a.do === 'popup'}
           <input value={slideText(a.slide)} oninput={(e) => setSlideText(a.slide, e.currentTarget.value)} placeholder="Text on the slide" aria-label="Slide text" />
           <button class="small" onclick={() => (editing = { action: a, which: 'slide' })}>Edit slide…</button>
+        {:else if a.do === 'card'}
+          <!-- (Only offered when it runs: the host checks who gets it and presses 📤 Send. The editor isn't on stream.) -->
+          <input value={slideText(a.slide)} oninput={(e) => setSlideText(a.slide, e.currentTarget.value)} placeholder="What’s on the card (only who gets it sees it)" aria-label="Card words" />
+          <button class="small" onclick={() => (editing = { action: a, which: 'slide' })} title="Pictures, videos, sounds, links: on their phones under the words">Edit card…</button>
+          <select bind:value={() => a.to ?? 'trigger', (v) => (a.to = v)} aria-label="Who gets it" title="Who it starts with: you can change it before 📤 Send">
+            {#each cardWho as [v, label] (v)}<option value={v}>{label}</option>{/each}
+          </select>
+          <select bind:value={() => a.until ?? 'round', (v) => (a.until = v === 'host' ? 'host' : undefined)} aria-label="How long it lasts">
+            <option value="round">until the round ends</option>
+            <option value="host">until you take it back</option>
+          </select>
         {:else if a.do === 'question'}
           <input value={slideText(a.question)} oninput={(e) => setSlideText(a.question, e.currentTarget.value)} placeholder="Question" aria-label="Question" />
           <input value={slideText(a.answer)} oninput={(e) => setSlideText(a.answer, e.currentTarget.value)} placeholder="Answer" aria-label="Answer" />
@@ -461,8 +488,8 @@
 
 {#if editing}
   {@const e = editing}
-  {#if e.action.do === 'popup'}
-    <SlideModal slide={e.action.slide} title="Pop-up slide" onclose={() => (editing = null)} />
+  {#if e.action.do === 'popup' || e.action.do === 'card'}
+    <SlideModal slide={e.action.slide} title={e.action.do === 'card' ? '🤫 Card (on the phones of whoever gets it)' : 'Pop-up slide'} onclose={() => (editing = null)} />
   {:else if e.action.do === 'question'}
     <!-- A fresh editor for the answer, with the answer slide's own undo history. -->
     {#key e.which}

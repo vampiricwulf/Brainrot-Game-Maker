@@ -128,8 +128,8 @@ export function placeAt(game: Game, path: readonly Seg[]): At {
     const a = byId<Action>(list, path[i]);
     if (!a) return;
     reached(i + 1, 'button', describeAction(game, a), undefined, false);
-    if (a.do === 'popup' && path[i + 1] === 'slide') {
-      at.crumbs.push('pop-up');
+    if ((a.do === 'popup' || a.do === 'card') && path[i + 1] === 'slide') {
+      at.crumbs.push(a.do === 'card' ? 'card' : 'pop-up');
       slide(a.slide, i + 2, placeFor);
     } else if (a.do === 'question' && (path[i + 1] === 'question' || path[i + 1] === 'answer')) {
       at.crumbs.push('question');

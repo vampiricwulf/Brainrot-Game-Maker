@@ -22,6 +22,7 @@
   import { currentClueInfo, toolOnlyClue } from '../../lib/session';
   import { boardNow, moverResult } from '../boardgame/bgops';
   import { offerNext } from './slots.svelte';
+  import { offerIn } from './cardoffers.svelte';
   import { announce } from '../../lib/announce';
 
   let { game, session, selected = [], onclose }: { game: Game; session: Session; selected?: string[]; onclose: () => void } = $props();
@@ -106,7 +107,7 @@
   function runOutcome(a: Action, from: string): void {
     if (needsPlayers(a) && !chosen.length && !selected.length) return void toast('Tag who it was for first');
     const { world, st } = rpgNow(game, session);
-    toast(runAction({ game, session, live: app.live, world, st, selected, chosen }, a, `${from}: ${describeAction(game, a)}`), 3000);
+    toast(runAction({ game, session, live: app.live, world, st, selected, chosen, offerCard: offerIn(session) }, a, `${from}: ${describeAction(game, a)}`), 3000);
     // The button can go with what it did (a question pop-up replaces the wheel): the keys go to the main button, not to
     // the Amount box, where R, Esc and N mean nothing.
     void tick().then(() => {

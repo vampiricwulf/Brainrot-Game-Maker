@@ -20,7 +20,8 @@
   import { showMenu } from '../../lib/menustate.svelte';
   import { app, toast } from '../../lib/app.svelte';
   import { textOn } from '../../lib/colors';
-  import { describeAction, runAction } from '../../lib/actions';
+  import { describeAction, runAction, type CardOffer } from '../../lib/actions';
+  import { offerIn } from '../host/cardoffers.svelte';
   import { formatPoints, newId, type BoardGameRound, type BoardGameState, type Game, type Player, type Session, type World, type WorldState } from '../../lib/model';
   import { applyScore, score } from '../../lib/session';
   import { blip } from '../../lib/live';
@@ -129,15 +130,30 @@
     using = null;
     if (!e || !def?.onUse?.length) return;
     const actions = def.onUse;
+    // (A 🤫 card it offers counts as using it: the host sends it from the offer.)
+    let offered = false;
+    const offer = offerIn(session);
     // "The party" is the party the player using it is in (where they are), not the one viewers follow.
-    const ctx = { game, session, live: app.live, world, st, board, bs, selected, chosen: [p.id], at: st?.positions[p.id]?.screen };
+    const ctx = {
+      game,
+      session,
+      live: app.live,
+      world,
+      st,
+      board,
+      bs,
+      selected,
+      chosen: [p.id],
+      at: st?.positions[p.id]?.screen,
+      offerCard: (o: CardOffer) => ((offered = true), offer(o)),
+    };
     let said: string[] = [];
     let did = false;
     // One undoable step: what it does, and using it up (only when it did something: "Pick who it's for first" keeps it).
     logged(session, `${name} uses ${def.name}`, () => {
       const before = JSON.stringify([session, app.live]);
-      said = actions.map((a) => runAction(ctx, a, `${name} uses ${def.name}: ${describeAction(game, a)}`));
-      did = JSON.stringify([session, app.live]) !== before;
+      said = actions.map((a) => runAction(ctx, a, `${name} uses ${def.name}: ${describeAction(game, a, 'use')}`));
+      did = offered || JSON.stringify([session, app.live]) !== before;
       if (did && !def.wearable) change(entryId, `used ${def.name}`, (list, i) => (list[i].qty > 1 ? list[i].qty-- : list.splice(i, 1)));
     });
     // Nothing changed (HP already full, nobody picked…): say so, as it isn't used up. (Notes only remind the host.)
@@ -387,7 +403,7 @@
       </div>
       {#if using === e.id && def?.onUse?.length}
         <InlineAsk
-          text="{name} uses {def.name}: {def.onUse.map((a) => describeAction(game, a)).join(', ')}. {def.wearable ? 'Use it?' : 'Use it up?'}"
+          text="{name} uses {def.name}: {def.onUse.map((a) => describeAction(game, a, 'use')).join(', ')}. {def.wearable ? 'Use it?' : 'Use it up?'}"
           ok="Use"
           onok={() => use(e.id)}
           oncancel={() => (using = null)}

@@ -3,6 +3,7 @@
 import { ensureWorld, refindPositions } from './rpg';
 import { ensureBoard, refindSpaces } from './boardgame';
 import { cardSlides, describer, dropFromSends, pairOnly, partnerReason, partnerRoles, partnerRules, partnerShares, resetRecipients, startPartner, takeBack } from './partner';
+import { dropOverCards, dropSeatFromCards, repairSentCards } from './sentcards';
 import { categoryLabel, clueValue, FINAL_V1_ROUND_ID, finalName, formatPoints, getClue, isBoard, isBoardGame, isFinal, isRpg, isSlides, MAX_POINTS, newId, playableClues, questionSlides, type BoardRound, type Clue, type ClueRef, type ExtraSlide, type FinalRound, type FinalState, type Game, type Id, type PartnerState, type Player, type Round, type ScoreEvent, type Session, type Slide, type SlidesRound, type TeamMember, type WagerSource } from './model';
 
 export function newSession(game: Game): Session {
@@ -231,6 +232,8 @@ export function removePlayer(session: Session, playerId: string): void {
     // A card sent to them is taken back from them (one sent to others too stays with the others).
     dropFromSends(pt, playerId);
   }
+  // The same for the cards sent with 🤫 Send a card… or from a tile's panel.
+  dropSeatFromCards(session, playerId);
   if (f) {
     // Their wager and result stay (nothing reads them while they're out), so a restore brings them back.
     f.players = f.players.filter((x) => x !== playerId);
@@ -489,6 +492,8 @@ export function backToBoard(session: Session, game: Game, { markUsed = true }: {
   session.dd = null;
   session.partner = null;
   session.phase = 'board';
+  // (A card sent from the tile's panel lasts until it closes.)
+  dropOverCards(game, session);
   return closed;
 }
 
@@ -564,6 +569,12 @@ function stashFinal(session: Session): void {
  * A Final round picks up where it was left (wagers kept).
  */
 export function goToRound(session: Session, game: Game, index: number): void {
+  enterRound(session, game, index);
+  // (A card sent for the round lasts until it ends; one from a tile's panel until the tile closes.)
+  dropOverCards(game, session);
+}
+
+function enterRound(session: Session, game: Game, index: number): void {
   session.currentClue = null;
   delete session.slide;
   session.revealed = false;
@@ -649,6 +660,7 @@ export function backToLastRound(session: Session, game: Game, index = game.round
     const last = questionSlides(round).length - 1;
     if (last > 0) session.slide = last;
   } else session.phase = 'board';
+  dropOverCards(game, session);
 }
 
 /** The slides round on screen. */
@@ -892,13 +904,16 @@ export function wagerSentBy(f: FinalState | null | undefined, playerId: string):
  * read 0 (so a ✔ for "wager in" still shows), and where they came from goes; a Daily Double's wager goes until it's
  * shown, and the one in the host's box before the question with it. (The host's undo log is left out by the caller.)
  */
-export function forViewers<S extends Pick<Session, 'final' | 'finals' | 'dd'>>(s: S): S {
+export function forViewers<S extends Pick<Session, 'final' | 'finals' | 'dd' | 'cards' | 'lastCard'>>(s: S): S {
   const hide = (f: FinalState): FinalState => {
     const { wagerFrom: _f, wagerBy: _b, ...rest } = f;
     const wagers = Object.fromEntries(Object.entries(f.wagers).map(([id, v]) => [id, f.shown[id] || f.results[id] ? v : 0]));
     return { ...rest, wagers };
   };
   const out = { ...s };
+  // 🤫 Cards the host sent: one made in Send a card… holds the words the host typed (partner-clues spec §14.1).
+  delete out.cards;
+  delete out.lastCard;
   if (s.final) out.final = hide(s.final);
   if (s.finals) out.finals = Object.fromEntries(Object.entries(s.finals).map(([id, x]) => [id, { ...x, state: hide(x.state) }]));
   if (s.dd) {
@@ -1154,6 +1169,13 @@ export function usedTiles(session: Session, game: Game, round = session.currentR
  * parties stay on their screens wherever they were moved; board-game players on a deleted space go back to Start.
  */
 export function rebaseSession(session: Session, from: Game, to: Game): void {
+  rebase(session, from, to);
+  // The cards sent with 🤫 Send a card… or from a tile's panel: a tile's card deleted in the editor is taken back (one
+  // edited is off the phones until ↻ Send again: sessionCards), and so is one whose round or tile is gone.
+  dropOverCards(to, session);
+}
+
+function rebase(session: Session, from: Game, to: Game): void {
   // The question slide on screen, by its id or its items' ids (the first slide has no id, and loses it on becoming the
   // first): slides added, taken out or moved before it keep it on screen.
   const was = slidesOnShow(session, from);
@@ -1227,6 +1249,8 @@ export function rebaseSession(session: Session, from: Game, to: Game): void {
 export function migrateSession(session: Session, game: Game): Session {
   finalStepFix(session);
   repairPartnerState(session);
+  repairSentCards(session);
+  dropOverCards(game, session);
   const finalIndex = game.rounds.findIndex((r) => r.id === FINAL_V1_ROUND_ID);
   if (finalIndex < 0) return seedIntroduced(session, game);
   for (const e of session.scoreLog ?? []) if (e.clueId === 'final') e.clueId = finalTag(FINAL_V1_ROUND_ID);

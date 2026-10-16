@@ -1,6 +1,7 @@
 // Autosave to IndexedDB (spec §5.8, §6.5): the editor draft with its undo history, and the in-progress play session.
 import { del, delMany, get, getMany, keys, set, setMany } from 'idb-keyval';
 import type { SavedHistory, StoredStep } from './history.svelte';
+import type { HostCard } from './buzzproto';
 import type { Overlay } from './live';
 import type { Game, GameSettings, Session } from './model';
 
@@ -344,6 +345,12 @@ export interface SavedRoom {
    * is the one to keep.)
    */
   settings?: GameSettings;
+  /**
+   * The 🤫 cards out when the host left a game kept to resume (Exit › Keep & leave), as the room got them: the room's
+   * setting-up state carries them until Resume, a reload in the editor included, so the room keeps their ids and when
+   * it first saw them (a phone seated meanwhile is late for them, partner-clues spec §14.4).
+   */
+  cards?: HostCard[];
 }
 /** Back onto the pre-game screen after a reload: its settings, with Buzzer mode on (the room says so). */
 export function applyRoomSettings(s: GameSettings, r: SavedRoom): void {

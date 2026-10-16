@@ -18,6 +18,7 @@
   import { boardNow, busyZones, moveNow, moverDiceName, playerName, reorderTurns, rollMover, sendNow, setTurn, turnNow, turnOrder } from './bgops';
   import SpaceCard from './SpaceCard.svelte';
   import { offerNext } from '../host/slots.svelte';
+  import { offerIn } from '../host/cardoffers.svelte';
   import { boardEdit, setEditing } from './boardedit.svelte';
   import BoardEditPanel from './BoardEditPanel.svelte';
 
@@ -62,7 +63,7 @@
   /** One-space boards: where the player whose turn it is can go (not straight back along a two-way link). */
   const turnSpace = $derived(turnId ? bs?.positions[turnId]?.space : undefined);
   const stepWays = $derived(round && bs && turnSpace ? waysOn(round, turnSpace, turnId ? bs.prev?.[turnId] : undefined) : []);
-  const ctx = $derived<RunContext>({ game, session, live: app.live, board: round, bs, selected });
+  const ctx = $derived<RunContext>({ game, session, live: app.live, board: round, bs, selected, offerCard: offerIn(session) });
   const recent = $derived(lastAction(session, session.currentRound));
   /** Zones with players in them, or on screen: their notes (how to escape…) are worth having at hand. */
   const zones = $derived(round && bs ? busyZones(round, bs) : []);
@@ -124,9 +125,9 @@
     steps = null;
   }
 
-  function run(a: Action, who: string): void {
+  function run(a: Action, who: string, on: 'land' | 'pass'): void {
     if (needsPlayers(a) && !who) return void hint('Pick who it’s for first');
-    toast(runAction({ ...ctx, chosen: [who] }, a, describeAction(game, a)), 3000);
+    toast(runAction({ ...ctx, chosen: [who] }, a, describeAction(game, a, on)), 3000);
   }
 
   function send(to: string): void {
@@ -381,15 +382,15 @@
       <div class="row acts">
         {#each passed as s (s.id)}
           <span class="muted small">Passed {s.name}:</span>
-          {#each s.onPass ?? [] as a (a.id)}<button class="small" onclick={() => run(a, last.playerId)}>{describeAction(game, a)}</button>{/each}
+          {#each s.onPass ?? [] as a (a.id)}<button class="small" onclick={() => run(a, last.playerId, 'pass')}>{describeAction(game, a, 'pass')}</button>{/each}
         {/each}
         {#if landed}
           <!-- Landing on a space counts as passing it too (landing on Start still pays). -->
           <span class="muted small"
             >Landed on <b>{landed.name}</b>{landed.onPass?.length ? ' (counts as passing)' : ''}{landed.onLand?.length || landed.onPass?.length ? ':' : '.'}</span
           >
-          {#each landed.onPass ?? [] as a (a.id)}<button class="small" onclick={() => run(a, last.playerId)}>{describeAction(game, a)}</button>{/each}
-          {#each landed.onLand ?? [] as a (a.id)}<button class="small" onclick={() => run(a, last.playerId)}>{describeAction(game, a)}</button>{/each}
+          {#each landed.onPass ?? [] as a (a.id)}<button class="small" onclick={() => run(a, last.playerId, 'pass')}>{describeAction(game, a, 'pass')}</button>{/each}
+          {#each landed.onLand ?? [] as a (a.id)}<button class="small" onclick={() => run(a, last.playerId, 'land')}>{describeAction(game, a, 'land')}</button>{/each}
           {#if landed.secret && !bs.revealed?.includes(landed.id)}<button class="small ghost" onclick={() => reveal(landed)}>👁 Reveal space</button>{/if}
           {#if landed.hostNotes && !dual}<span class="notes">📝 {landed.hostNotes}</span>{/if}
         {/if}

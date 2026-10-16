@@ -150,6 +150,8 @@
   const ptGuesser = $derived(ptRoles?.guesser ? byId[ptRoles.guesser] : undefined);
   /** The parts badge over the question: "🗣 Bob describes → 🎯 Ann guesses" (Solo: "🤝 Ann · Solo!"). */
   const ptBadge = $derived(!!pt && pt.stage !== 'pick' && (ptSolo || (!!ptGiver && !!ptGuesser)));
+  /** 🤫 Just you: who the open tile's own card went to ("Ann has a private question"): names only, never what's on it. */
+  const privateFor = $derived(session.phase === 'clue' && info && !session.revealed ? (live.tileCardFor ?? []).flatMap((id) => (byId[id] ? [byId[id]] : [])) : []);
   const spotlight = $derived(session.final?.current ? byId[session.final.current] : undefined);
   const themeCss = $derived(themeStyle(game.theme, game.theme?.boardImage ? mediaUrls[game.theme.boardImage] : undefined));
   const bar = $derived(game.theme?.scoreBar ?? 'bottom');
@@ -197,7 +199,7 @@
       session.phase === 'slides';
     if (!onSlide) return 0;
     if (live.timer) return TIMER_BAND;
-    return answering || buzzNow || (session.phase === 'clue' && session.dd?.stage === 'question' && ddPlayer) || ptBadge || (live.answers && session.phase === 'clue' && !session.revealed) ? PILL_BAND : 0;
+    return answering || buzzNow || (session.phase === 'clue' && session.dd?.stage === 'question' && ddPlayer) || ptBadge || privateFor.length || (live.answers && session.phase === 'clue' && !session.revealed) ? PILL_BAND : 0;
   });
   /**
    * A countdown on the board sits at the right end of the score bar (the plates and the join code make room), so it
@@ -530,6 +532,13 @@
           {ptGame.icon} <span style:color={ptGiver.color}>{ptGiver.name}</span> {ptGame.verb} → 🎯 <span style:color={ptGuesser.color}>{ptGuesser.name}</span>
           {ptGame.guessVerb}
         {/if}
+      </div>
+    {/if}
+    {#if privateFor.length && !waiting}
+      <!-- 🤫 Just you: who has a private question (in their colours and by name; never what's on the card). -->
+      <div class="dd-badge private-badge" data-private-badge>
+        🤫 {#each privateFor as p, i (p.id)}{i ? (i === privateFor.length - 1 ? ' and ' : ', ') : ''}<span style:color={p.color}>{p.name}</span>{/each}
+        {privateFor.length > 1 ? 'have' : 'has'} a private question
       </div>
     {/if}
   {/if}
@@ -1303,6 +1312,15 @@
     color: #fff;
     text-transform: uppercase;
     text-shadow: 4px 4px 0 #000;
+  }
+  /* (Smaller than the Daily Double's: it stays clear of "Ann is answering" in the middle of the top band.) */
+  .private-badge {
+    border-color: #8a6bd1;
+    font-size: 32px;
+    max-width: 600px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
   .partner-badge {
     border-color: rgba(255, 255, 255, 0.85);
