@@ -9,12 +9,14 @@
 // 1366×768, 1200×720, 1024×768 and 960×900, and a long Final name) the stage keeps one size from the board to a clue and
 // with a player picked (on a $1,000 clue too: a long name is cut short on ＋ Award and − Deduct, never the amount), up to
 // 1240px wide 🤫 Send a card… and 🎭 Deal… show as 🤫 and 🎭 (named in full), 🔊 Sound opens in the host panel, and
-// every Final wager box is in sight.
+// every Final wager box is in sight. A three-round game keeps the stage one size from the board to a clue with 🔇 Stop
+// sounds (the round intro's music), a card out, both or neither on the board's tools row, in both its board rounds (the
+// second's ▶ is a long Final name, cut short and named in full), from 960 to 1366px wide; at 1920 they keep their words.
 import { chromium } from 'playwright-core';
 import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { confirmStrip, mainButton, mainLabel, openGameFile } from './helpers.mjs';
+import { confirmStrip, mainButton, mainLabel, openGameFile, packGame } from './helpers.mjs';
 
 const file = resolve(process.env.APP_FILE || 'dist/index.html');
 if (!existsSync(file)) throw new Error('Run `npm run build` first');
@@ -525,6 +527,129 @@ try {
       );
       assert(hidden.length === 0, `${w}×${h}: every wager box and “Ignore the limits” are in sight on the Final's wager screen${hidden.length ? ` (not: ${hidden.join(', ')})` : ''}`);
       assert((await p4.locator('.fj input[data-wager]').first().getAttribute('title')).startsWith('No limit now'), 'with the limits ignored, a wager box says so in its tooltip');
+    }
+    await ctx.close();
+  }
+
+  // 🔇 Stop sounds (the round intro's music goes on over the board until a tile opens) and the cards out come and go on
+  // the board's tools row: with either, both or neither there, a three-round game (Go to round, a long Final name in its
+  // list and on the second round's ▶) keeps the stage one size from the board to a clue, all still named in full.
+  console.log('🔇 Stop sounds and cards out on the board:');
+  // (A second of tone: the intro's own file, so 🔇 Stop sounds shows.)
+  const intro = Buffer.alloc(44 + 8000, 128);
+  intro.write('RIFF', 0); intro.writeUInt32LE(36 + 8000, 4); intro.write('WAVE', 8); intro.write('fmt ', 12);
+  intro.writeUInt32LE(16, 16); intro.writeUInt16LE(1, 20); intro.writeUInt16LE(1, 22); intro.writeUInt32LE(8000, 24);
+  intro.writeUInt32LE(8000, 28); intro.writeUInt16LE(1, 32); intro.writeUInt16LE(8, 34); intro.write('data', 36); intro.writeUInt32LE(8000, 40);
+  for (let i = 0; i < 8000; i++) intro[44 + i] = 128 + Math.round(40 * Math.sin((i / 8000) * 2 * Math.PI * 440));
+  const board2 = { id: 'r_board2', name: 'Double Jeopardy!', mode: 'board', values: [400, 800, 1200, 1600, 2000], dailyDoubleCount: 0, categories: cats.map((c, ci) => ({ id: `cat2${ci}`, title: c, clues: [0, 1, 2, 3, 4].map((ri) => clue(`${c} again ${ri}`, `Answer 2.${ci}.${ri}`)) })) };
+  const introFile = resolve('test-results/hostlayout-intro.brainrot');
+  writeFileSync(
+    introFile,
+    await packGame(
+      {
+        ...game,
+        id: 'g_layout_intro',
+        settings: { ...game.settings, roundIntro: { titleCard: true, tileFill: false, categoryReveal: 'off' } },
+        players: crowd.map((name, i) => ({ id: `p${i + 1}`, name, color: crowdColors[i], startScore: 500 })),
+        rounds: [board, board2, { ...game.rounds[3], name: 'Final Jeopardy: Internet Legends' }],
+        media: [{ id: 'm_intro', name: 'intro.wav', mime: 'audio/wav', size: intro.length, kind: 'audio' }],
+        audio: { roundIntro: 'm_intro' },
+      },
+      { m_intro: intro },
+    ),
+  );
+  for (const [w, h] of [
+    [1920, 1080],
+    [1366, 768],
+    [1340, 768],
+    [1320, 768],
+    [1290, 768],
+    [1260, 768],
+    [1024, 768],
+    [960, 900],
+  ]) {
+    const ctx = await browser.newContext({ viewport: { width: w, height: h } });
+    const p5 = await ctx.newPage();
+    p5.on('pageerror', (e) => errors.push(e.message));
+    await p5.goto(pathToFileURL(file).href);
+    await openGameFile(p5, introFile);
+    await p5.getByText(/^Opened “/).waitFor();
+    await p5.getByRole('button', { name: '▶ Play' }).click();
+    await p5.getByRole('button', { name: 'Start game ▶' }).click();
+    await p5.getByRole('button', { name: 'Skip intro' }).click();
+    await p5.locator('.stage-box .board .tile:not([disabled])').first().waitFor();
+    const tools = p5.locator('.panel .toolsrow');
+    const stop = tools.getByRole('button', { name: '🔇 Stop sounds', exact: true });
+    const cardsOut = tools.locator('[data-cards-out-count]');
+    const stageH = async () => Math.round((await p5.locator('.stage-box').boundingBox()).height);
+    // Jeopardy!, then Double Jeopardy!, whose ▶ is the Final's long name (cut short on the button, in full in its
+    // tooltip and read out in full).
+    for (const [round, next] of [
+      ['Jeopardy!', 'Next round ▶'],
+      ['Double Jeopardy!', 'Final Jeopardy: Internet Legends ▶'],
+    ]) {
+      const at = `${w}×${h}, ${round}`;
+      await stop.waitFor();
+      const onBoard = { '🔇': await stageH() };
+      // A card out: no phones here, so to Annabelle's 🪟 card window (from 🤫 Send a card…), then that window closed.
+      await tools.getByRole('button', { name: '🤫 Send a card…', exact: true }).click();
+      const send = p5.getByRole('dialog', { name: 'Send a card' });
+      await Promise.all([p5.waitForEvent('popup'), send.getByRole('button', { name: 'Card window for Annabelle' }).click()]);
+      await send.getByRole('button', { name: 'Annabelle', exact: true }).click();
+      await send.getByRole('textbox', { name: 'The card’s words' }).fill('A secret');
+      await send.getByRole('button', { name: '🪟 Show Annabelle' }).click();
+      await tools.locator('[data-cards-out-count="1"]').waitFor();
+      await p5.keyboard.press('Escape');
+      await send.waitFor({ state: 'detached' });
+      await tools.getByRole('button', { name: '🪟 Cards: Annabelle' }).click();
+      await p5.getByRole('dialog', { name: 'Card window' }).getByRole('button', { name: '✖ Close the card window' }).click();
+      await tools.locator('[data-card-window-warn]').waitFor({ state: 'detached' });
+      onBoard['🔇 and 🤫 1'] = await stageH();
+      const named = await Promise.all(['🔇 Stop sounds', '🤫 1 card out', '◀ Prev round', '📊 Scores', next].map((name) => tools.getByRole('button', { name, exact: true }).count()));
+      assert(named.every((c) => c === 1), `${at}: with both there, 🔇 Stop sounds, the cards out, ◀ Prev round, 📊 Scores and ${next} are still named in full`);
+      if (round === 'Double Jeopardy!') {
+        const tip = await tools.getByRole('button', { name: next, exact: true }).getAttribute('title');
+        assert(tip.startsWith('Final Jeopardy: Internet Legends · '), `${at}: ${next}'s tooltip names the Final in full (${tip})`);
+      }
+      if (w > 1520) {
+        // A wide window has room for their words, both there or not.
+        const widths = await Promise.all(['🔇 Stop sounds', '🤫 1 card out', '◀ Prev round'].map(async (name) => Math.round((await tools.getByRole('button', { name, exact: true }).boundingBox()).width)));
+        assert(widths.every((x) => x > 80), `${at}: with both there, 🔇 Stop sounds, the cards out and ◀ Prev round keep their words (${widths.join(' / ')}px wide)`);
+      }
+      await stop.click();
+      await stop.waitFor({ state: 'detached' });
+      onBoard['🤫 1'] = await stageH();
+      // The card taken back: neither on the row.
+      await cardsOut.click();
+      await p5.getByRole('dialog', { name: 'Cards out' }).getByRole('button', { name: /^Take .+ back$/ }).click();
+      await tools.locator('[data-cards-out-count="0"]').waitFor();
+      await p5.keyboard.press('Escape');
+      await cardsOut.waitFor({ state: 'detached' });
+      onBoard['neither'] = await stageH();
+      await p5.locator('.stage-box .board .tile:not([disabled])').first().click();
+      await p5.waitForFunction(() => document.querySelector('.panel .status')?.textContent?.includes('Answer hidden'));
+      const inClue = await stageH();
+      assert(
+        Object.values(onBoard).every((x) => x === inClue),
+        `${at}: the stage keeps one size from the board, with ${Object.keys(onBoard).join(' / ')} on its tools row, to a clue (${Object.values(onBoard).join(' / ')} / ${inClue})`,
+      );
+      if (round === 'Jeopardy!') {
+        // Back to the board, then Go to round → Double Jeopardy!: its intro's music again, so 🔇 Stop sounds is back.
+        await p5.keyboard.press('Escape');
+        const picker = p5.getByRole('combobox', { name: 'Go to round' });
+        await picker.waitFor();
+        await picker.selectOption({ label: '🟦 Double Jeopardy!' });
+        const ask = confirmStrip(p5);
+        await ask.waitFor();
+        // (Its Yes ignores a click in its first moment: the second half of a double-click.)
+        for (let i = 0; await ask.count(); i++) {
+          if (i === 10) throw new Error('Assertion failed: Yes on “… go to Double Jeopardy!?” goes there');
+          await ask.getByRole('button', { name: 'Yes', exact: true }).click();
+          await ask.waitFor({ state: 'detached', timeout: 1000 }).catch(() => {});
+        }
+        await p5.getByRole('button', { name: 'Skip intro' }).click();
+        await p5.locator('.stage-box .board .tile:not([disabled])').first().waitFor();
+      }
     }
     await ctx.close();
   }
