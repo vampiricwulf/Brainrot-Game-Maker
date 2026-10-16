@@ -43,7 +43,7 @@
     if (it.why === 'expired') return '📋 copy it: its link has expired';
     if (it.why === 'kind') return '📋 copy it: phones can’t show it';
     if (it.why === 'nofiles') return '📋 copy it: this buzzer server isn’t taking files right now';
-    if (it.why === 'failed') return `📋 copy it: ${uploads.jobs[it.media ?? '']?.error || 'it didn’t go up'}`;
+    if (it.why === 'failed' || it.why === 'full') return `📋 copy it: ${uploads.jobs[it.media ?? '']?.error || 'it didn’t go up'}`;
     if (it.why === 'lost') return '📋 it isn’t in the game any more';
     if (it.why === 'many') return '📋 copy it: a card shows 6 at most';
     if (it.file) return 'file' in it.goes ? '✔ goes to phones (up)' : uploads.jobs[it.media ?? '']?.state === 'uploading' ? '✔ goes to phones (uploading…)' : '✔ goes to phones (from this computer)';

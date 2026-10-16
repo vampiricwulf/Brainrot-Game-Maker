@@ -73,10 +73,11 @@ export function cardLinks(game: Pick<Game, 'media'>, slide: Slide): string[] {
 /**
  * Why an item won't reach a phone: a file over FILE_MAX_BYTES ('big'), an online link that stopped working
  * ('expired'), a kind of file or link phones don't take ('kind'), a file from this computer while the buzzer server
- * takes none ('nofiles'), an upload the server turned down or that broke off ('failed'), a file no longer in the game's
- * media ('lost'), or more than CARD_MEDIA_MAX on one card ('many').
+ * takes none ('nofiles'), an upload the server turned down or that broke off ('failed'), or turned down as the buzzer
+ * room holds all the files it can ('full'), a file no longer in the game's media ('lost'), or more than CARD_MEDIA_MAX
+ * on one card ('many').
  */
-export type LeftOut = 'big' | 'expired' | 'kind' | 'nofiles' | 'failed' | 'lost' | 'many';
+export type LeftOut = 'big' | 'expired' | 'kind' | 'nofiles' | 'failed' | 'full' | 'lost' | 'many';
 
 /** One item as a phone gets it: by its link, as a file from this computer (`file`: its media id is `media`), or not at all. */
 export interface PhoneItem extends CardItem {

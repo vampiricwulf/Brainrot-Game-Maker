@@ -16,6 +16,7 @@ const WHY: Record<LeftOut, string> = {
   kind: 'phones can’t show it',
   nofiles: 'this buzzer server isn’t taking files right now',
   failed: 'didn’t reach the buzzer server',
+  full: 'the buzzer room holds all the files it can: ✖ take a card back, then ↻ Send again',
   lost: 'isn’t in the game any more',
   many: 'one card shows 6 at most',
 };

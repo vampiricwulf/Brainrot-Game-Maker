@@ -304,18 +304,20 @@ export async function identicalMedia(game: Game, blob: Blob, kind: MediaKind): P
  * Store a user file with the game and return its ref. SVGs are sanitized first. `extra` (where a
  * downloaded file came from) is set before the ref joins the game, so it's part of the reactive copy.
  * A file with exactly the same bytes as one already in the game isn't stored again: that one is used (and a toast says
- * so), so the same picture on 25 clues takes its space once.
+ * so, unless `quiet`: where viewers may see the window, a file name is often an answer), so the same picture on 25
+ * clues takes its space once.
  */
 export async function addMediaFile(
   game: Game,
   file: File | Blob,
   name = (file as File).name ?? 'file',
   extra: Pick<MediaRef, 'source' | 'expiresAt'> = {},
+  { quiet = false }: { quiet?: boolean } = {},
 ): Promise<MediaRef> {
   const { mime, kind, blob } = await checkedFile(file, name);
   const twin = await identicalMedia(game, blob, kind);
   if (twin) {
-    toast(`“${twin.name}” is already in 🖼 Media: using that one`);
+    if (!quiet) toast(`“${twin.name}” is already in 🖼 Media: using that one`);
     return twin;
   }
   // Same name as a file already in the game (e.g. every pasted screenshot is "image.png"): randomize it.

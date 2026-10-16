@@ -119,7 +119,7 @@ import {
   type WagerRefusal,
   type WagerSeat,
 } from '../../src/lib/buzzproto';
-import { FILE_IDLE_MS } from './limits';
+import { FILE_IDLE_MS, FILE_MAKE_ROOM_MS } from './limits';
 
 /** Phones connected at most, not counting idle ones without a seat (see Full rooms above). */
 export const MAX_PHONES = 24;
@@ -686,7 +686,9 @@ export class Room {
   /**
    * Whether card file `id` (`bytes` long) can be stored: 'have' (it's here already: its clean-up time starts again if no
    * card uses it, as the host is getting it ready again), 'ok', or 'full' (ROOM_FILES_MAX files or ROOM_FILES_BYTES).
-   * `pending`: files still on their way into storage, counted as here already.
+   * `pending`: files still on their way into storage, counted as here already. Out of space, the files no current card
+   * has used for FILE_MAKE_ROOM_MS are deleted to make room, oldest first, if that makes it fit (cards that ended fill
+   * a room long before the clean-up time).
    */
   fileRoom(id: string, bytes: number, pending: { files: number; bytes: number } = { files: 0, bytes: 0 }): 'have' | 'ok' | 'full' {
     const files = this.s.files ?? {};
@@ -698,8 +700,23 @@ export class Room {
       }
       return 'have';
     }
-    const all = Object.values(files);
-    if (all.length + pending.files >= ROOM_FILES_MAX || all.reduce((n, f) => n + f.bytes, 0) + pending.bytes + bytes > ROOM_FILES_BYTES) return 'full';
+    const all = Object.entries(files);
+    let count = all.length + pending.files;
+    let size = all.reduce((n, [, f]) => n + f.bytes, 0) + pending.bytes + bytes;
+    const fits = () => count < ROOM_FILES_MAX && size <= ROOM_FILES_BYTES;
+    if (fits()) return 'ok';
+    const now = this.deps.now();
+    const used = this.usedFiles();
+    const idle = all.filter(([k, f]) => f.unusedSince !== undefined && now - f.unusedSince >= FILE_MAKE_ROOM_MS && !used.has(k)).sort((a, b) => a[1].unusedSince! - b[1].unusedSince!);
+    const drop: string[] = [];
+    for (const [k, f] of idle) {
+      if (fits()) break;
+      drop.push(k);
+      count--;
+      size -= f.bytes;
+    }
+    if (!fits()) return 'full';
+    if (this.dropFiles(drop)) this.save();
     return 'ok';
   }
 

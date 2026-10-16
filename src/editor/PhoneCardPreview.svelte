@@ -48,6 +48,8 @@
         return `${what}: this buzzer server isn’t taking files: phones get the words and links only. You can copy the ${KIND[it.kind]} to them (📋).`;
       case 'failed':
         return `${what} didn’t go up to the buzzer server.`;
+      case 'full':
+        return `${what}: the buzzer room held all the files it can. Take a card back, then send this one again.`;
       case 'lost':
         return `${what} isn’t in this game’s 🖼 Media any more.`;
       case 'many':

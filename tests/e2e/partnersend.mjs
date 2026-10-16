@@ -574,7 +574,8 @@ try {
   assert(turned.error === 'This room holds all the card files it can: send fewer pictures and videos at once', `in plain words (“${turned.error}”)`);
   assert(uploads.length - upBefore === 6, 'six uploads (the picture and five GIFs; never the one over 4 MB)');
   await panel.locator('[data-card-left="1"]').waitFor();
-  assert((await panel.locator('[data-card-left="1"]').innerText()) === '🖼 1 GIF won’t reach the phones (didn’t reach the buzzer server)', 'the panel counts it: “🖼 1 GIF won’t reach the phones (didn’t reach the buzzer server)”');
+  const fullLine = '🖼 1 GIF won’t reach the phones (the buzzer room holds all the files it can: ✖ take a card back, then ↻ Send again)';
+  assert((await panel.locator('[data-card-left="1"]').innerText()) === fullLine, `the panel counts it, and says why: “${fullLine}”`);
   const info = host.locator('.info [data-partner-cards-info]');
   assert((await info.innerText()).includes(`📋 copy it: ${turned.error}`) && (await info.innerText()).includes('📋 copy it: too big for phones'), 'the two-window host column names them, with why');
   await row(1).getByRole('button', { name: '📋 Copy picture' }).click();
