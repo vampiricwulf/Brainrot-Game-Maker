@@ -2925,8 +2925,15 @@
   /** ✎ Rename on the pre-game screen: the game's title (on stream), kept in the editor too (undoable there). */
   let renaming = $state(false);
   const untitled = $derived(!game.title.trim() || game.title.trim() === 'Untitled Game');
-  function rename(to: string): void {
+  /** The title takes the focus when it shows, but not from a field clicked to end the rename: the typing goes there. */
+  let titleRefocus = true;
+  const titleFocus = (node: HTMLElement) => {
+    if (titleRefocus) takeFocus(node);
+    titleRefocus = true;
+  };
+  function rename(to: string, refocus = true): void {
     renaming = false;
+    titleRefocus = refocus;
     const title = to.trim();
     if (!title || title === game.title) return;
     game.title = title;
@@ -3895,10 +3902,10 @@
                 renaming = false;
               }
             }}
-            onblur={(e) => renaming && rename(e.currentTarget.value)}
+            onblur={(e) => renaming && rename(e.currentTarget.value, !e.relatedTarget)}
           />
         {:else}
-          <h1 tabindex="-1" use:takeFocus>{game.title}</h1>
+          <h1 tabindex="-1" use:titleFocus>{game.title}</h1>
           <button class="ghost small" onclick={() => (renaming = true)} title="The game's name shows on stream (the title card, the audience window)">✎ Rename</button>
           {#if untitled}<span class="warn small" data-warn="untitled">Name your game: its title shows on stream.</span>{/if}
         {/if}

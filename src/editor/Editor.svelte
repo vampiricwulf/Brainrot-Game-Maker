@@ -311,13 +311,16 @@
     }
   }
 
-  /** The round tab being renamed in place. */
+  /**
+   * The round tab being renamed in place. The tab takes the focus back (Enter, Esc, a click on nothing), but not from a
+   * field or another tab clicked: the next key goes there, not to the tab, where Backspace would delete the round.
+   */
   let renamingRound = $state<string | null>(null);
-  function renameRound(round: Round, name: string): void {
+  function renameRound(round: Round, name: string, refocus = true): void {
     renamingRound = null;
     const n = name.trim();
     if (n && n !== roundName(round, game.rounds.indexOf(round))) step(null, () => (round.name = n));
-    focusRoundTab(round.id);
+    if (refocus) focusRoundTab(round.id);
   }
   const focusAll = (el: HTMLInputElement) => {
     el.focus();
@@ -963,7 +966,7 @@
               if (e.key === 'Enter') renameRound(round, e.currentTarget.value);
               else if (e.key === 'Escape') renameRound(round, round.name);
             }}
-            onblur={(e) => renamingRound === round.id && renameRound(round, e.currentTarget.value)}
+            onblur={(e) => renamingRound === round.id && renameRound(round, e.currentTarget.value, !e.relatedTarget)}
           />
         {:else}
           <button
@@ -975,7 +978,11 @@
             class:lifted={roundDrag === round.id}
             data-place="round:{round.id}"
             draggable="true"
-            onclick={() => (tab = i)}
+            onclick={(e) => {
+              tab = i;
+              // (Safari and Firefox on a Mac don't focus a clicked button: it takes the keys, not a tab renamed.)
+              e.currentTarget.focus();
+            }}
             ondblclick={() => (renamingRound = round.id)}
             onkeydown={(e) => roundTabKey(e, i)}
             oncontextmenu={(e) =>

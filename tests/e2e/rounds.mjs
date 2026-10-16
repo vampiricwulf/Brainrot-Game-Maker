@@ -4,7 +4,7 @@ import { chromium } from 'playwright-core';
 import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { playWithPlayers } from './helpers.mjs';
+import { macClicks, playWithPlayers } from './helpers.mjs';
 
 const file = resolve(process.env.APP_FILE || 'dist/index.html');
 if (!existsSync(file)) throw new Error('Run `npm run build` first');
@@ -78,6 +78,27 @@ try {
   const tabMenu = (await page.getByRole('menu').getByRole('menuitem').allInnerTexts()).map((t) => t.split('\n')[0]);
   assert(['▲ Move up', '▼ Move down'].every((x) => tabMenu.some((t) => t.startsWith(x))), `a round tab’s menu says ▲ Move up / ▼ Move down (${tabMenu.join(', ')})`);
   await page.keyboard.press('Escape');
+  // Renamed on its tab, then its Round name box clicked: Backspace types there, and deletes no round.
+  await roundTab('Midgame Wager').dblclick();
+  await page.locator('nav input.tab-name').fill('Midgame Wagers');
+  await page.locator('.grid input[data-round-name]').click();
+  await page.keyboard.press('End');
+  await page.keyboard.press('Backspace');
+  await page.waitForFunction(() => document.activeElement?.matches('.grid input[data-round-name]') && document.activeElement.value === 'Midgame Wager');
+  assert((await roundNames()).join('|') === 'Jeopardy!|Midgame Wager|Double Jeopardy!|Final Jeopardy!', 'renamed on its tab, then its Round name box clicked: Backspace types there, and deletes no round');
+  // Renamed, then a click on nothing: the keys go back to the tab renamed (not the first round's).
+  await roundTab('Midgame Wager').dblclick();
+  await page.locator('nav .navlabel', { hasText: 'Rounds' }).click();
+  await page.waitForFunction(() => document.activeElement?.matches('nav > button.round-tab') && document.activeElement.textContent.trim().endsWith('Midgame Wager'));
+  assert(true, 'renamed, then a click on nothing: its tab has the keys again');
+  // Renamed, then another tab clicked where a button clicked doesn't take the focus (Safari, a Mac): that tab has the keys.
+  const chromiumClicks = await macClicks(page);
+  await roundTab('Midgame Wager').dblclick();
+  await page.locator('nav input.tab-name').fill('Midgame Wager');
+  await page.locator('nav > button.round-tab').first().click();
+  await page.waitForFunction(() => document.activeElement === document.querySelector('nav > button.round-tab') && document.activeElement.getAttribute('aria-current') === 'page');
+  assert(true, 'renamed, then another tab clicked, with a Mac’s clicks: that round shows, and its tab has the keys (not the one renamed)');
+  await chromiumClicks();
 
   // Play: board → Final in the middle → board → Final → end.
   await playWithPlayers(page, 2);

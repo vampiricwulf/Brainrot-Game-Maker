@@ -105,6 +105,22 @@ export async function dragBy(page, from, to) {
   await page.waitForTimeout(250);
 }
 
+/**
+ * Clicks as Safari, the Mac desktop app and Firefox on a Mac make them: a button clicked doesn't take the focus, and the
+ * field that had it lets go (its blur has no relatedTarget). Returns what puts Chromium's own clicks back.
+ */
+export async function macClicks(page) {
+  await page.evaluate(() => {
+    window.macClick = (e) => {
+      if (!e.target.closest?.('button')) return;
+      e.preventDefault();
+      document.activeElement?.blur();
+    };
+    window.addEventListener('mousedown', window.macClick, true);
+  });
+  return () => page.evaluate(() => window.removeEventListener('mousedown', window.macClick, true));
+}
+
 /** On the pre-game screen (▶ Play): add `n` players with ＋ Add player. */
 export async function addPlayers(page, n) {
   const add = page.getByRole('button', { name: '＋ Add player' });

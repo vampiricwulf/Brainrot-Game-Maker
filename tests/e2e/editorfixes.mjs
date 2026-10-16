@@ -337,6 +337,18 @@ try {
   await page.getByRole('button', { name: 'Edit dialogue slide…' }).waitFor();
   assert((await page.getByLabel('Object class').inputValue()) === 'npc', 'a class change that drops the dialogue says so, and Undo brings both back');
   await page.getByRole('button', { name: '◀ Back to the map' }).click();
+  // A map renamed on its tab, then the round's name box clicked: the typing goes there, not to the tab.
+  const mapTab = page.getByRole('tablist', { name: 'Maps' }).getByRole('tab');
+  await mapTab.first().dblclick();
+  await page.getByLabel('Map name').fill('Overland');
+  const roundNameBox = page.locator('main [data-round-name]');
+  await roundNameBox.click();
+  await page.keyboard.press('End');
+  await page.keyboard.type('!');
+  await page.waitForFunction(() => document.activeElement?.matches('main [data-round-name]') && document.activeElement.value.endsWith('!'));
+  await page.keyboard.press('Backspace');
+  await page.waitForFunction(() => !document.querySelector('main [data-round-name]')?.value.endsWith('!'));
+  assert((await mapTab.first().innerText()).includes('Overland'), 'a map renamed on its tab, then the round’s name box clicked: the typing and Backspace go there');
 
   // ---------- ＋ Add item and ＋ Add shop put the typing in the new one's name ----------
   await page.getByRole('button', { name: '📊 Stats & Items' }).click();

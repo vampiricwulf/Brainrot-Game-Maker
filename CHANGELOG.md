@@ -66,6 +66,7 @@ in plain words for the people who make and host games. Anything committed but no
 - With no phone buzzers taking cards, a private card changed in the editor while it was out says to ✖ Take it back and show it again in the 🪟 card window, and a late phone is no longer listed once the buzzer room has gone; the rows used to point at a ↻ Send again that isn't there. (54be8d2, 8934398)
 - ▶ Test sound in ▶ Test this round plays the chime in this window, as the sound help says, even with the audience window left open on Starting soon, so stream viewers don't hear it, and the result says where it played. (54be8d2)
 - Typing player names on the ▶ Play screen no longer lags in a big game while a game is kept to resume; Resume with my edits appears a moment after a change. (54be8d2, 8934398)
+- After renaming something in place (a 🤫 card, wheel, dice or deal, a round or map tab, a slide's layer, a file on 🖼 Media, the game's name on the ▶ Play screen), clicking another field or row puts you there, in Safari and on a Mac too; the focus used to jump back to what you renamed, so the next Backspace or Delete deleted it. (7cc1f4d, 7629b89)
 
 ## 2026-10-15
 
