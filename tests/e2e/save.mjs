@@ -6,7 +6,7 @@ import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import JSZip from 'jszip';
 import { readFileSync } from 'node:fs';
-import { addClassicRounds, answerReplace, exportHtml, openGameFile, playWithPlayers, png } from './helpers.mjs';
+import { addClassicRounds, answerReplace, editorReady, exportHtml, openGameFile, playWithPlayers, png } from './helpers.mjs';
 
 const file = resolve(process.env.APP_FILE || 'dist/index.html');
 if (!existsSync(file)) throw new Error('Run `npm run build` first');
@@ -69,6 +69,7 @@ try {
   await a.getByRole('dialog', { name: 'Open a game' }).getByRole('button', { name: /^Untitled Game/ }).click();
   await a.getByRole('button', { name: 'Media (2)' }).waitFor();
   assert(true, 'Open… → Recent games reopens the game the other tab replaced');
+  await editorReady(a);
   await a.locator('input.title').fill('Two tabs');
   await a.waitForTimeout(1000);
   await a.reload();
