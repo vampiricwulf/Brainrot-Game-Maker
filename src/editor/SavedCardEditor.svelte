@@ -19,10 +19,19 @@
   const repeats = $derived(nameGivesAway(app.game, card));
 
   let root = $state<HTMLElement>();
-  /** 📱 On their phone: turned on, it's brought into view (under the slide editor on a narrow page, it can be below the fold). */
+  /**
+   * 📱 On their phone: turned on under the slide editor (a narrow page) with its top below the fold (or a line short of
+   * it), the page scrolls to put this card's bar at the top, the button still on screen. Beside the slide editor
+   * nothing moves.
+   */
   function togglePhone(): void {
     phoneView = !phoneView;
-    if (phoneView) void tick().then(() => root?.querySelector('.phone-preview')?.scrollIntoView({ block: 'nearest' }));
+    if (!phoneView) return;
+    void tick().then(() => {
+      const top = root?.querySelector('.phone-preview')?.getBoundingClientRect().top;
+      const main = root?.closest('main')?.getBoundingClientRect();
+      if (top !== undefined && main && top > main.bottom - 40) root?.querySelector('.cardbar')?.scrollIntoView({ block: 'start' });
+    });
   }
 
   function setUntil(on: boolean): void {

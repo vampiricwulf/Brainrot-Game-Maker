@@ -203,7 +203,8 @@ a right steal gets the tile's value, a wrong one loses it, as on any clue, and C
 round: one of your 🤫 Cards or a tile's card made in the editor, or a quick one (words typed or pasted, with a picture,
 video or sound, or a link). It lasts until the round ends or until you take it back; **🤫 2 cards out** next to it lists
 them by the name the app gives each ("Card 2 → Ann", never what's on it) with ↻ Send again and ✖ Take back. A card made
-in the editor that you change after it went (▶ Resume with my edits) comes off the phones until you ↻ Send it again.
+in the editor that you change after it went (▶ Resume with my edits) comes off the phones until you ↻ Send it again,
+keeping its place among the cards the phones hold meanwhile.
 Any tile can have 🤫 cards (＋ Card in the clue editor): a standard or Daily Double tile's are offered in its panel to
 the player who picked it (a private question, a tip before the wager), go only when you send them, and go away when the
 tile closes; the tile plays as it always does. An RPG object, an item, a wheel slice, a die face or a board space can

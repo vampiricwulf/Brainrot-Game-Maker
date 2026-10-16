@@ -2031,16 +2031,20 @@ function repairDeals(g: Game): void {
 }
 
 /**
- * 🤫 Cards: each with an id, a name and what a slide needs; anything else in the list goes. An `until` the app doesn't
- * know goes too (the shorter: until the round ends), so a damaged file never keeps a card on phones longer than meant.
+ * 🤫 Cards: each with an id of its own, a name and what a slide needs; anything else in the list goes. An `until` the
+ * app doesn't know goes too (the shorter: until the round ends), so a damaged file never keeps a card on phones longer
+ * than meant. (A card is sent by its id: a second card with the same one would send the first's.)
  */
 function repairSavedCards(g: Game): void {
   if (g.cards === undefined) return;
   const cards = objects<SavedCard>(g.cards);
   if (!cards.length) return void delete g.cards;
   if (cards !== g.cards) g.cards = cards;
+  const seen = new Set<Id>();
   for (const c of cards) {
     fixId(c);
+    if (seen.has(c.id)) c.id = newId();
+    seen.add(c.id);
     repairSlide(c);
     if (typeof c.name !== 'string') c.name = '';
     else if (c.name.length > CARD_NAME_MAX) c.name = c.name.slice(0, CARD_NAME_MAX);

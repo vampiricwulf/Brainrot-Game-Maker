@@ -6,7 +6,7 @@
   a 🤫 Card starts as its own). 📤 Send puts it on their phones, through the same buzzer room path as a partner clue's
   cards; without one, 📋 copies it to them, or 🪟 shows it in the card window. Nothing goes but by that press, never
   more cards than the room takes (✖ Take one back first), and never a card made in the editor again to exactly the
-  players it's out to (↻ Send again in the cards out is for that).
+  players it's out to, for as long (↻ Send again in the cards out is for that).
   In one window viewers see this: the 🤫 Cards are listed by name and counted, never said; a tile's are listed by tile
   and counted, and only for tiles played or open (the others would say where a Daily Double is); what's typed for a
   quick card is hidden unless the host asks (👁 Show); the 🖼 Media list (file names) and what's on the card picked
@@ -265,15 +265,17 @@
   const roundOn = $derived(session.phase !== 'end' && session.phase !== 'tiebreaker');
   let lasts = $state<'round' | 'host'>(untrack(() => preset?.until ?? 'round'));
   const until = $derived<SentCard['until']>(roundOn ? lasts : 'host');
-  // Picking a card from 🤫 Cards sets how long it lasts to the card's own (the radios can still change it). Never an
-  // action's card: its own comes from the action.
+  /** How long it lasts as the host picked it (the radios), else as the dialog opened: a 🤫 Card's own is only for it. */
+  let ownLasts: 'round' | 'host' = untrack(() => lasts);
+  // Picking a card from 🤫 Cards sets how long it lasts to the card's own (the radios can still change it), and moving on
+  // to a tile's card or another kind puts back the host's own. Never an action's card: its own comes from the action.
   let lastsFor = '';
   $effect(() => {
-    const k = !preset && kind === 'saved' ? chosen?.key : undefined;
-    if (!k || k === lastsFor) return;
+    const k = !preset && kind === 'saved' && chosen?.saved ? chosen.key : '';
+    if (k === lastsFor) return;
     lastsFor = k;
-    const c = chosen!.saved ? savedCard(game, chosen!.saved) : undefined;
-    if (c) untrack(() => (lasts = c.until ?? 'round'));
+    const c = k ? savedCard(game, chosen!.saved!) : undefined;
+    untrack(() => (lasts = c ? (c.until ?? 'round') : ownLasts));
   });
   /** What was sent last (names only), for the line under the button. */
   let said = $state('');
@@ -290,7 +292,13 @@
   const sendTo = $derived(cardsOn ? to : windowTo);
   /** The buzzer room has all the cards it takes: ✖ Take one back first. */
   const full = $derived(roomCardsFull(game, session));
-  /** The card picked, made in the editor, already out to exactly these players: a second 📤 Send would put it on their phones twice. */
+  /** How long a card lasts, the shortest first (a tile closes before its round ends). */
+  const LASTS_RANK: Record<SentCard['until'], number> = { tile: 0, round: 1, host: 2 };
+  /**
+   * The card picked, made in the editor, already out to exactly these players for as long or longer: a second 📤 Send
+   * would put it on their phones twice. (One out for less long, a tile's card sent from its panel until the tile closes,
+   * can go again to last longer: ↻ Send again keeps how long it lasts.)
+   */
   const already = $derived.by(() => {
     const ch = chosen;
     if (preset || kind !== 'saved' || !ch || !sendTo.length) return undefined;
@@ -298,11 +306,21 @@
     return listedCards(game, session).find(
       (c) =>
         ('saved' in c.content ? c.content.saved === ch.saved : 'clue' in c.content && c.content.clue === ch.clue && c.content.card === ch.card) &&
-        c.to.map(toKey).sort().join() === want,
+        c.to.map(toKey).sort().join() === want &&
+        LASTS_RANK[c.until] >= LASTS_RANK[until],
     );
   });
-  /** (Its label and where to go: nothing of the card, so this shows in one window too.) */
-  const alreadyText = $derived(already ? `${already.label} is out to them already: ↻ Send it again in the cards out, or ✖ Take it back first` : '');
+  /**
+   * (Its label and where to go: nothing of the card, so this shows in one window too. The cards out offer ↻ Send again
+   * only when phones get cards: for the 🪟 card window, ✖ Take back and show it again.)
+   */
+  const alreadyText = $derived(
+    !already
+      ? ''
+      : cardsOn
+        ? `${already.label} is out to them already: ↻ Send it again in the cards out, or ✖ Take it back first`
+        : `${already.label} is out to them already: ✖ Take it back in the cards out first to show it again`,
+  );
   const canSend = $derived(sendTo.length > 0 && hasSomething && !full && !already);
   /** Why 📤 Send (or 🪟 Show) can't go, or ''. */
   const cant = $derived(
@@ -487,8 +505,8 @@
   {#if roundOn}
     <div class="row wrap" role="radiogroup" aria-label="How long it lasts">
       <span class="muted small">Lasts</span>
-      <label class="check small"><input type="radio" name="card-lasts-{uid}" value="round" bind:group={lasts} /> until the round ends</label>
-      <label class="check small"><input type="radio" name="card-lasts-{uid}" value="host" bind:group={lasts} /> until I take it back</label>
+      <label class="check small"><input type="radio" name="card-lasts-{uid}" value="round" bind:group={lasts} onchange={() => (ownLasts = 'round')} /> until the round ends</label>
+      <label class="check small"><input type="radio" name="card-lasts-{uid}" value="host" bind:group={lasts} onchange={() => (ownLasts = 'host')} /> until I take it back</label>
     </div>
   {/if}
 

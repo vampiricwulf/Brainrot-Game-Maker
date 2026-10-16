@@ -8,6 +8,7 @@ import { applyOps, diff, mediaIdsIn, mergeOps, opsSize, PathGone, type Op } from
 import { loadGameMedia, pruneMedia, registerLinks, restoreStash } from './media.svelte';
 import { describe, placeWhere, type Place } from './historylabel';
 import { newId, type Game } from './model';
+import { placeElement, placeKey } from './nav.svelte';
 import { prefs } from './prefs.svelte';
 import { isTextField } from './undokeys';
 import type { GameWatch } from './watch.svelte';
@@ -289,9 +290,11 @@ function finish(explicit: { label: string | null; opts: StepOptions } | null): v
   // (A file replaced by one with the same name and size changes only its bytes.)
   const file: Place = { tab: 'media', media: blobs[0]?.id };
   const d = ops.length ? describe(ops, before, after, label) : { label: label ?? 'Replaced a file', icon: '🖼', where: 'Media', place: file, undoPlace: file };
-  // An editor's own place on another tab than the changes (Clue text restyles every clue from the Theme page): where
-  // it is says that tab too, as Undo and Redo show it.
-  const where = opts.place && opts.place.tab !== d.place?.tab ? (placeWhere(opts.place) ?? d.where) : d.where;
+  // An editor's own place on another tab than the changes (Clue text restyles every clue from the Theme page), or on
+  // another row of the same list (a 🤫 card moved: the slot that changed first holds the card it swapped with): where it
+  // is says that tab too, as Undo and Redo show it (the label names the row).
+  const own = opts.place && (opts.place.tab !== d.place?.tab || otherRow(opts.place, d.place));
+  const where = own ? (placeWhere(opts.place!) ?? d.where) : d.where;
   const entry: HistoryEntry = {
     id: newId(),
     ts: wasPending ? since : Date.now(),
@@ -313,6 +316,13 @@ function finish(explicit: { label: string | null; opts: StepOptions } | null): v
   if (blobs.length) entry.blobs = blobs;
   if (!merge(entry, before, after)) add(entry);
   if (opts.notify) for (const fn of notifyFns) fn(entry);
+}
+
+/** Two rows of one list (two cards, two wheels), neither a slide item. */
+function otherRow(a: Place, b: Place | null): boolean {
+  if (!b || placeElement(a) || placeElement(b)) return false;
+  const [ka, kb] = [placeKey(a), placeKey(b)];
+  return !!ka && !!kb && ka !== kb;
 }
 
 /** Join the step to the one before it when it goes on changing the same values (typing on in one field). */

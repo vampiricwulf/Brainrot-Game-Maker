@@ -333,6 +333,34 @@ try {
   const soloBadge = solo.locator('.stage-box [data-private-badge]');
   assert(await until(async () => (await soloBadge.count()) === 1 && (await soloBadge.innerText()).includes('Cat') && (await soloBadge.innerText()).includes('has a private question')), 'the stream says Cat has a private question');
   assert(!(await shownOf(solo, SECRETS)).length, 'one window: the host page holds none of the card’s words');
+  // 🤫 Send a card… with that card, to Cat, to last the round: it can go (the one out lasts only until the tile closes),
+  // once. With no phones there's no ↻ Send again in the cards out, so the dialog never sends the host there.
+  await tools2.getByRole('button', { name: '🤫 Send a card…' }).click();
+  const tileSend = solo.getByRole('dialog', { name: 'Send a card' });
+  await tileSend.waitFor();
+  await tileSend.getByRole('radio', { name: 'One made in the editor' }).check();
+  await tileSend.getByRole('combobox', { name: 'The card to send' }).selectOption('q_tip/t1');
+  await tileSend.getByRole('button', { name: 'Cat', exact: true }).click();
+  await tileSend.getByRole('radio', { name: 'until the round ends' }).check();
+  const showCat = tileSend.getByRole('button', { name: '🪟 Show Cat' });
+  assert(await until(() => showCat.isEnabled()), 'out to Cat until the tile closes: 🪟 Show Cat can still make it last the round');
+  await showCat.click();
+  const said = await tileSend.locator('[data-card-said]').innerText();
+  const label = said.match(/Card \d+/)?.[0];
+  assert(!!label && said.includes('sent to Cat'), `it goes (${said})`);
+  assert(await until(() => showCat.isDisabled()), 'and then 🪟 Show Cat is off: it’s out to her for as long');
+  const already = await tileSend.locator('[data-card-already]').innerText();
+  assert(already.includes(`${label} is out to them already`) && already.includes('✖ Take it back') && !already.includes('↻'), `it says to ✖ take it back first, never ↻ Send again, which isn’t there (${already})`);
+  await solo.keyboard.press('Escape');
+  await tileSend.waitFor({ state: 'detached' });
+  await tools2.locator('[data-cards-out-count]').click();
+  const soloOut = solo.locator('[data-cards-out]');
+  await soloOut.waitFor();
+  assert(!(await soloOut.getByRole('button', { name: /^Send .* again$/ }).count()), 'the cards out offer no ↻ Send again');
+  await soloOut.getByRole('button', { name: `Take ${label} back` }).click();
+  await soloOut.locator(`[data-card-out="${label}"]`).waitFor({ state: 'detached' });
+  await solo.keyboard.press('Escape');
+  await soloOut.waitFor({ state: 'detached' });
   await solo.keyboard.press('r');
   await solo.keyboard.press('Escape');
   await win2.getByText('Nothing private right now').waitFor();

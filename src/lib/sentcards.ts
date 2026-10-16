@@ -303,12 +303,14 @@ export function repairSentCards(session: Session): void {
     Array.isArray(to) &&
     to.length > 0 &&
     to.every((t) => typeof t?.seat === 'string' && (t.member === undefined || isMember(t.member)) && (t.except === undefined || (Array.isArray(t.except) && t.except.every((x: unknown) => typeof x === 'string'))));
-  const okContent = (x: unknown) =>
-    typeof x === 'object' &&
-    !!x &&
-    ((typeof (x as { clue?: unknown }).clue === 'string' && typeof (x as { card?: unknown }).card === 'string') ||
-      typeof (x as { saved?: unknown }).saved === 'string' ||
-      (typeof (x as { slide?: unknown }).slide === 'object' && !!(x as { slide: Slide }).slide && Array.isArray((x as { slide: Slide }).slide.elements)));
+  // (Each shape tested in the order sentSlide reads them: `{ saved, slide: 5 }` is a damaged slide, not a 🤫 Card.)
+  const okContent = (x: unknown) => {
+    if (typeof x !== 'object' || !x) return false;
+    const k = x as { slide?: unknown; saved?: unknown; clue?: unknown; card?: unknown };
+    if ('slide' in k) return typeof k.slide === 'object' && !!k.slide && Array.isArray((k.slide as Slide).elements);
+    if ('saved' in k) return typeof k.saved === 'string';
+    return typeof k.clue === 'string' && typeof k.card === 'string';
+  };
   const until = ['round', 'tile', 'host'];
   const kept = (Array.isArray(c) ? c : []).filter(
     (x): x is SentCard =>

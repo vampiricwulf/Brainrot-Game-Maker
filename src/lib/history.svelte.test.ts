@@ -353,6 +353,17 @@ describe('undo history: named steps', () => {
     expect(history.entries[2].undoPlace).toEqual({ tab: 'round', round: id });
   });
 
+  it('says where a move is by the row an editor gives it: the slots that changed can name the row it swapped with', () => {
+    step('Added cards', () => (g.cards = ['Wild card', 'Tip A', 'Third'].map((name, i) => ({ id: `sc${i}`, name, background: {}, elements: [] }))));
+    const cards = g.cards!;
+    step('Moved card “Third” up', () => cards.splice(1, 0, cards.splice(2, 1)[0]), { place: { tab: 'cards', card: 'sc2' } });
+    const e = history.entries[history.entries.length - 1];
+    expect(e).toMatchObject({ label: 'Moved card “Third” up', where: 'Cards', place: { tab: 'cards', card: 'sc2' }, undoPlace: { tab: 'cards', card: 'sc2' } });
+    // (A round's rows: its changes still say where.)
+    step('Renamed a category', () => (board(g).categories[0].title = 'Memes'), { place: { tab: 'round', round: g.rounds[0].id, part: { kind: 'category', category: 'zz' } } });
+    expect(history.entries[history.entries.length - 1].where).toBe('Jeopardy! › Memes');
+  });
+
   it('names the next step with nameStep()', async () => {
     g.theme.preset = 'neon';
     nameStep('Theme preset: Neon', { notify: true });

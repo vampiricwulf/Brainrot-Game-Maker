@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { clearOffset, copyActions, copyItem, copyName, copySavedCard, copySegment, copyShop, copySpaces, copyStat, copyZone, faceLines, moveTo } from './listedit';
 import { newBoardGameRound } from './boardgame';
-import { newImageEl, slideText, textSlide, type Action, type ItemDef, type SavedCard, type WheelSegment } from './model';
+import { CARD_NAME_MAX, newImageEl, slideText, textSlide, type Action, type ItemDef, type SavedCard, type WheelSegment } from './model';
 
 describe('list editing', () => {
   it('moves an entry to its new place, the others closing up', () => {
@@ -88,6 +88,20 @@ describe('list editing', () => {
     expect(copySavedCard(c, ['Tip A', 'Tip A (copy)']).name).toBe('Tip A (copy 2)');
     // One left blank is a copy of a "Private card".
     expect(copySavedCard({ ...c, name: '  ' }, []).name).toBe('Private card (copy)');
+    // A name as long as a card's can be keeps its "(copy N)" within that: the copies stay apart once reloaded.
+    const long = 'L'.repeat(CARD_NAME_MAX - 2) + 'xy';
+    const cut = 'L'.repeat(CARD_NAME_MAX - 10);
+    const one = copySavedCard({ ...c, name: long }, [long]).name;
+    expect(one).toBe(`${cut} (copy)`);
+    const two = copySavedCard({ ...c, name: long }, [long, one]).name;
+    expect(two).toBe(`${cut} (copy 2)`);
+    // (A copy's copy too.)
+    expect(copySavedCard({ ...c, name: two }, [long, one, two]).name).toBe(`${cut} (copy 3)`);
+    const many = [long, one, ...Array.from({ length: 98 }, (_, i) => `${cut} (copy ${i + 2})`)];
+    for (const n of [...many, copySavedCard({ ...c, name: long }, many).name]) expect(n.length).toBeLessThanOrEqual(CARD_NAME_MAX);
+    expect(new Set([...many, copySavedCard({ ...c, name: long }, many).name]).size).toBe(many.length + 1);
+    // (A name short enough keeps all of it.)
+    expect(copySavedCard({ ...c, name: 'S'.repeat(CARD_NAME_MAX - 10) }, []).name).toBe(`${'S'.repeat(CARD_NAME_MAX - 10)} (copy)`);
   });
 
   it('reads a pasted list of faces one a line, without blank lines, at most 100', () => {

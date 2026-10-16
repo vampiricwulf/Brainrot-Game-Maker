@@ -163,6 +163,8 @@ try {
   assert((await row('Private card 3').getAttribute('aria-current')) === 'true', '＋ Add card: Private card 3, at the end, open');
   await host.waitForFunction(() => document.activeElement?.matches('main [data-field="card"]'));
   assert(true, 'with its words box in focus');
+  await host.waitForFunction(() => /Card “Private card 3” added/.test(document.getElementById('live-region')?.dataset.said ?? ''));
+  assert(true, 'and a screen reader hears which card it made (the words box is named the same on every card)');
   await undoSays('Undo: Added card “Private card 3”');
   assert((await cardsTab.innerText()).trim() === '🤫 Cards (3)', 'the sidebar says 🤫 Cards (3)');
 
@@ -199,7 +201,8 @@ try {
   await host.getByRole('menuitem', { name: /Duplicate/ }).click();
   await listIs('Wild card, Tip A, Tip A (copy), Private card 3');
   assert(true, 'right-click › ⧉ Duplicate: Tip A (copy), right after it');
-  await row('Tip A (copy)').focus();
+  await host.waitForFunction(() => document.activeElement?.textContent?.trim() === 'Tip A (copy)' && document.activeElement.getAttribute('aria-current') === 'true');
+  assert(true, 'the copy is open, and its row has the focus (the next key acts on it)');
   await host.keyboard.press('Alt+ArrowDown');
   await listIs('Wild card, Tip A, Private card 3, Tip A (copy)');
   await host.waitForFunction(() => /Card “Tip A \(copy\)” moved to 4 of 4/.test(document.getElementById('live-region')?.dataset.said ?? ''));
@@ -227,14 +230,32 @@ try {
     await listIs(want);
   }
   assert(true, 'Ctrl+Z takes back the rename, the move and the copy, one at a time');
+  const openCard = () => host.locator('[data-saved-card][aria-current="true"]').innerText().then((t) => t.trim());
+  assert(await until(async () => (await openCard()) === 'Tip A'), `the copy taken back: Tip A, the card copied, is open (${await openCard()})`);
+  // A move up: the slot that changed first holds the card it swapped with, but Undo shows the card moved.
+  await row('Private card 3').focus();
+  await host.keyboard.press('Alt+ArrowUp');
+  await listIs('Wild card, Private card 3, Tip A');
+  await row('Wild card').click();
+  await host.keyboard.press('Control+z');
+  await listIs('Wild card, Tip A, Private card 3');
+  assert(await until(async () => (await openCard()) === 'Private card 3'), `Ctrl+Z on a move opens the card moved (${await openCard()})`);
+  assert(
+    await until(async () => (await words(notice).catch(() => '')).startsWith('↶ Undid Moved card “Private card 3” up · Cards ↷')),
+    `and the note names it, nothing else (${await words(notice).catch(() => '')})`,
+  );
 
   // ---------- 📱 On their phone ----------
   await row('Tip A').click();
   await host.waitForFunction(() => document.querySelector('main [data-field="card-name"]')?.value === 'Tip A');
   assert((await row('Tip A').getAttribute('aria-current')) === 'true', 'clicking Tip A opens it');
-  await host.getByRole('button', { name: '📱 On their phone' }).click();
+  const phoneBtn = host.getByRole('button', { name: '📱 On their phone' });
+  const xBefore = (await phoneBtn.boundingBox()).x;
+  await phoneBtn.click();
   const phone = host.getByRole('complementary', { name: 'Card on their phone' });
   await phone.locator('img').waitFor();
+  const after = await phoneBtn.boundingBox();
+  assert(after.x === xBefore && after.y >= 0 && after.y + after.height <= 900, `📱 stays where it was across the page, on screen (x ${xBefore} → ${after.x}, y ${after.y})`);
   assert((await phone.innerText()).includes(TIP), '📱 On their phone: its words and its picture, as a phone gets them');
 
   // ---------- 🔍 Find ----------
@@ -332,6 +353,19 @@ try {
   assert(await until(() => dialog.getByRole('radio', { name: 'until the round ends' }).isChecked()), 'Tip A: until the round ends');
   await pick.selectOption('saved:sc_wild');
   assert(await until(() => dialog.getByRole('radio', { name: 'until I take it back' }).isChecked()), 'back to Wild card: until I take it back');
+  // (A 🤫 Card's own is only for it: another kind of card is back to how the dialog opened, or to what the host picked.)
+  const lastsIs = (name) => until(() => dialog.getByRole('radio', { name }).isChecked());
+  await dialog.getByRole('radio', { name: 'A quick card' }).check();
+  assert(await lastsIs('until the round ends'), 'A quick card: until the round ends, as the dialog opened');
+  await dialog.getByRole('radio', { name: 'until I take it back' }).check();
+  await editorRadio.check();
+  await pick.selectOption('saved:sc_tip');
+  assert(await lastsIs('until the round ends'), 'Tip A again: its own, until the round ends');
+  await dialog.getByRole('radio', { name: 'A quick card' }).check();
+  assert(await lastsIs('until I take it back'), 'A quick card: until I take it back, as the host picked it for one');
+  await editorRadio.check();
+  await pick.selectOption('saved:sc_wild');
+  assert(await lastsIs('until I take it back'), 'Wild card again: until I take it back');
 
   // ---------- 📤 Send to Bob ----------
   await dialog.getByRole('button', { name: 'Bob', exact: true }).click();

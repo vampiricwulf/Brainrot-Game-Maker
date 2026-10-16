@@ -279,10 +279,18 @@ describe('one of the editor’s 🤫 Cards', () => {
     expect(sessionCards(g, reloaded, { files: {} })!.map((x) => [x.id, x.text])).toEqual([[sentCardId(c), 'WILD-plugh']]);
     const bad = JSON.parse(JSON.stringify(session)) as Session;
     const good = bad.cards![0];
-    bad.cards = [good, { ...good, id: 'x1', content: { saved: 5 } }, { ...good, id: 'x2', content: { saved: 'x' } }] as unknown as SentCard[];
+    bad.cards = [
+      good,
+      { ...good, id: 'x1', content: { saved: 5 } },
+      { ...good, id: 'x2', content: { saved: 'x' } },
+      // (Read as a slide first, as sentSlide reads it: a slide that isn't one, whatever else is there.)
+      { ...good, id: 'x3', content: { saved: 'sc1', slide: 5 } },
+      { ...good, id: 'x4', content: { clue: 'c', card: 'k', slide: 5 } },
+    ] as unknown as SentCard[];
     repairSentCards(bad);
     // (A card id the game doesn't have is still well-formed: dropOverCards takes it back with the game at hand.)
     expect(bad.cards!.map((x) => x.id)).toEqual([good.id, 'x2']);
+    expect(sessionCards(g, bad, { files: {} })!.map((x) => x.text)).toEqual(['WILD-plugh']);
   });
 });
 

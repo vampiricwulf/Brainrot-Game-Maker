@@ -9,7 +9,7 @@
   import SavedCardEditor from './SavedCardEditor.svelte';
   import { app } from '../lib/app.svelte';
   import { announce } from '../lib/announce';
-  import { take } from '../lib/nav.svelte';
+  import { flash, take } from '../lib/nav.svelte';
   import { step } from '../lib/history.svelte';
   import { DragOrder } from '../lib/dragorder.svelte';
   import { copySavedCard, moveTo } from '../lib/listedit';
@@ -38,24 +38,37 @@
     void tick().then(() => document.querySelector<HTMLElement>(`[data-saved-card="${id}"]`)?.focus());
   }
 
-  /** A new card, open, its words box ready to type in. */
+  /**
+   * A new card, open, its words box ready to type in (said aloud: that box is named the same on every card). Undo goes
+   * back to the card that was open.
+   */
   function add(): void {
     const c = newSavedCard(freeName('Private card', list));
-    step(`Added card “${c.name}”`, () => {
-      if (!game.cards) game.cards = [];
-      game.cards.push(c);
-    });
+    step(
+      `Added card “${c.name}”`,
+      () => {
+        if (!game.cards) game.cards = [];
+        game.cards.push(c);
+      },
+      { undoPlace: card ? { tab: 'cards', card: card.id } : { tab: 'cards' } },
+    );
     sel = c.id;
+    announce(`Card “${c.name}” added`);
     void tick().then(() => document.querySelector<HTMLElement>('main [data-field="card"]')?.focus());
   }
 
-  /** A copy right after it, with its own items. */
-  function dup(c: SavedCard): void {
+  /**
+   * A copy right after it, with its own items, open. From the list (Ctrl+D, the right-click menu) the focus goes to the
+   * copy's row too, so the next key acts on the copy. Undo goes back to the card copied.
+   */
+  function dup(c: SavedCard, fromList = false): void {
     const cards = game.cards;
     if (!cards) return;
     const copy = copySavedCard(c, cards.map((x) => x.name));
-    step(`Duplicated card “${named(c)}”`, () => cards.splice(cards.indexOf(c) + 1, 0, copy));
+    step(`Duplicated card “${named(c)}”`, () => cards.splice(cards.indexOf(c) + 1, 0, copy), { undoPlace: { tab: 'cards', card: c.id } });
     sel = copy.id;
+    if (fromList) focusItem(copy.id);
+    flash(`card:${copy.id}`);
   }
 
   // Deleting is done at once: the note at the bottom offers Undo.
@@ -77,7 +90,8 @@
     const c = cards?.[from];
     if (!cards || !c || to < 0 || to >= cards.length || to === from) return;
     const n = named(c);
-    step(`Moved card “${n}” ${to < from ? 'up' : 'down'}`, () => moveTo(cards, from, to));
+    // (Its place given: the slots that changed can't say which card moved, the one next to it changed too.)
+    step(`Moved card “${n}” ${to < from ? 'up' : 'down'}`, () => moveTo(cards, from, to), { place: { tab: 'cards', card: c.id } });
     announce(`Card “${n}” moved to ${to + 1} of ${cards.length}`);
     focusItem(c.id);
   }
@@ -99,7 +113,7 @@
     showMenu(e, [
       { heading: savedCardName(c, i) },
       { label: '✎ Rename', onclick: () => (renaming = c.id), keys: 'F2' },
-      { label: '⧉ Duplicate', onclick: () => dup(c), keys: 'Ctrl+D' },
+      { label: '⧉ Duplicate', onclick: () => dup(c, true), keys: 'Ctrl+D' },
       { label: '▲ Move up', onclick: () => move(i, i - 1), disabled: i === 0, keys: 'Alt+↑' },
       { label: '▼ Move down', onclick: () => move(i, i + 1), disabled: i === list.length - 1, keys: 'Alt+↓' },
       { sep: true },
@@ -113,7 +127,7 @@
     const mod = e.ctrlKey || e.metaKey;
     if ((e.key === 'Delete' || e.key === 'Backspace') && !mod && !e.altKey) remove(c);
     else if (e.key === 'F2') renaming = c.id;
-    else if (mod && !e.altKey && e.key.toLowerCase() === 'd') dup(c);
+    else if (mod && !e.altKey && e.key.toLowerCase() === 'd') dup(c, true);
     else if (e.altKey && !mod && (e.key === 'ArrowUp' || e.key === 'ArrowDown')) move(i, i + (e.key === 'ArrowUp' ? -1 : 1));
     else return;
     e.preventDefault();
@@ -122,8 +136,9 @@
   const rows = new DragOrder();
 </script>
 
-<!-- (Wider while 📱 On their phone is on: it takes a column of its own beside the slide editor when there's room.) -->
-<div class="page" class:wide={phoneView && !!card}>
+<!-- (Wider than other pages, on or off: 📱 On their phone takes a column of its own beside the slide editor when there's
+     room, and turning it on never moves what's on the page.) -->
+<div class="page wide">
 <PageHeader
   title="Cards"
   sub="Private cards made before the show, in the order 🤫 Send a card… lists them during play. Only the players you send one to see it, on their phones (or 📋 copied, or in the 🪟 card window), never the stream. A tile can have cards of its own too (＋ Card in its clue editor)."
@@ -177,7 +192,12 @@
                 ondblclick={() => (renaming = c.id)}
                 oncontextmenu={(e) => menu(e, c, i)}
                 onkeydown={(e) => itemKey(e, c, i)}
-                ondragstart={(e) => rows.start(e, c.id)}
+                ondragstart={(e) => {
+                  // (In a narrow window the names are a row: the drop line stands beside one, not under it.)
+                  const group = e.currentTarget.closest('.group');
+                  rows.across = !!group && getComputedStyle(group).flexDirection === 'row';
+                  rows.start(e, c.id);
+                }}
                 ondragend={() => rows.end()}
               >
                 {savedCardName(c, i)}
@@ -272,9 +292,36 @@
   .empty .ic {
     font-size: 32px;
   }
-  @media (max-width: 760px) {
+  /* A narrow window (half a screen, a small laptop): the names go in a row over the card, so the slide editor has the
+     width (beside a column of names its canvas would be a few fingers wide). */
+  @media (max-width: 1200px) {
     .layout {
       grid-template-columns: 1fr;
+    }
+    .group {
+      flex-direction: row;
+      flex-wrap: wrap;
+    }
+    .group > div {
+      max-width: 240px;
+    }
+    .group > .drag-row.drop-before::before,
+    .group > .drag-row.drop-after::after {
+      top: 0;
+      bottom: 0;
+      width: 2px;
+      height: auto;
+    }
+    .group > .drag-row.drop-before::before {
+      left: -3px;
+      right: auto;
+    }
+    .group > .drag-row.drop-after::after {
+      left: auto;
+      right: -3px;
+    }
+    .list > button {
+      align-self: flex-start;
     }
   }
 </style>

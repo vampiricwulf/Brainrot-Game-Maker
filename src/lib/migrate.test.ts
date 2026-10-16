@@ -489,4 +489,17 @@ describe('🤫 Cards in saved games', () => {
     expect(gameProblem(m)).toBeNull();
     expect(() => validate(m)).not.toThrow();
   });
+
+  it('gives a card whose id another has already a new one (the first keeps it): each is sent by its own', () => {
+    const m = withCards([
+      { id: 'sc_wild', name: 'Wild card', ...textSlide('Wild') },
+      { id: 'sc_wild', name: 'Tip A', ...textSlide('Tip') },
+      { id: 'sc_wild', name: 'Tip B', ...textSlide('Tip B') },
+    ]);
+    const ids = m.cards!.map((c) => c.id);
+    expect(ids[0]).toBe('sc_wild');
+    expect(new Set(ids).size).toBe(3);
+    expect(m.cards!.map((c) => [c.name, slideText(c)])).toEqual([['Wild card', 'Wild'], ['Tip A', 'Tip'], ['Tip B', 'Tip B']]);
+    expect(JSON.stringify(migrateGame(plain(m)))).toBe(JSON.stringify(m));
+  });
 });

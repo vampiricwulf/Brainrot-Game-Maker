@@ -1,15 +1,15 @@
 import { describe, expect, it } from 'vitest';
 import { jeopardyGame } from './testgame';
 import { finalName, newImageEl, newTextEl, setSlideText, textSlide, PARTNER_GAMES, type BoardRound, type FinalRound, type PartnerGame, type SavedCard } from './model';
-import { applyScore, ddShowQuestion, finalChoose, finalNext, finalSetWager, goToRound, judgePartner, newSession, openClue, places, removePlayer, undo } from './session';
+import { applyScore, ddShowQuestion, finalChoose, finalNext, finalSetWager, goToRound, judgePartner, newSession, openClue, places, rebaseSession, removePlayer, undo } from './session';
 import { addCard, setPartner, setPartnerGame, swapParts } from './partner';
 import {
-  buzzArm, buzzClueOpened, buzzDone, buzzIdle, buzzMissed, buzzOrder, buzzReset, buzzTake, hostCards, hostState, newBuzz, phoneStatus, questionText, roomCardCount, roomCardsFull,
-  seenAtOnce, sessionCards, setupState, teamsOn, wagerAsk, whoBuzzed,
+  buzzArm, buzzClueOpened, buzzDone, buzzIdle, buzzMissed, buzzOrder, buzzReset, buzzTake, cardsLeftOff, hostCards, hostState, newBuzz, phoneStatus, questionText, roomCardCount,
+  roomCardsFull, seenAtOnce, sessionCards, setupState, teamsOn, wagerAsk, whoBuzzed,
 } from './buzz';
 import { CARDS_MAX, phoneView } from './buzzproto';
 import { phoneCard } from './phonecard';
-import { sendCard, sentCardId } from './sentcards';
+import { sendCard, sendCardAgain, sentCardId } from './sentcards';
 
 const P = ['a', 'b', 'c'];
 
@@ -653,5 +653,42 @@ describe('one of the editor’s 🤫 Cards on the phones (sessionCards)', () => 
     expect(roomCardsFull(g, session)).toBe(true);
     expect(sendCard(g, session, { to: [{ seat: 'a' }], content: { saved: 'sc1' }, until: 'host' }, 2000, roomCardsFull(g, session))).toBeNull();
     expect(session.cards).toHaveLength(CARDS_MAX);
+  });
+
+  /** Bob has the room's CARDS_MAX: Wild over and over, then the Tip; then ▶ Resume with my edits changes the Tip. */
+  function fullThenEdited() {
+    const { g, session } = setup();
+    const toBob = (saved: string, at: number) => sendCard(g, session, { to: [{ seat: 'b' }], content: { saved }, until: 'host' }, at, roomCardsFull(g, session));
+    for (let i = 0; i < CARDS_MAX - 1; i++) expect(toBob('sc1', 1000 + i)).not.toBeNull();
+    const tip = toBob('sc2', 2000)!;
+    const first = session.cards![0];
+    const edited: typeof g = JSON.parse(JSON.stringify(g));
+    setSlideText(edited.cards![1], 'TIP-changed');
+    rebaseSession(session, g, edited);
+    return { g, edited, session, tip, first };
+  }
+
+  it('one changed in the editor since it went keeps its place: no new card takes it, and ↻ Send again leaves no older one off', () => {
+    const { edited, session, tip } = fullThenEdited();
+    // (Off Bob's phone until ↻ Send again, but still out.)
+    expect(sessionCards(edited, session, { files: {} })!.map((x) => x.id)).not.toContain(sentCardId(tip));
+    expect(roomCardCount(edited, session)).toBe(CARDS_MAX);
+    expect(roomCardsFull(edited, session)).toBe(true);
+    expect(sendCard(edited, session, { to: [{ seat: 'b' }], content: { saved: 'sc1' }, until: 'host' }, 3000, roomCardsFull(edited, session))).toBeNull();
+    // ↻ Send again adds nothing: never refused, and every card out is on the phones.
+    expect(roomCardsFull(edited, session, (t) => void sendCardAgain(edited, t, tip.id, 4000))).toBe(false);
+    expect(sendCardAgain(edited, session, tip.id, 4000)).toBe(true);
+    expect(roomCardCount(edited, session)).toBe(CARDS_MAX);
+    expect(cardsLeftOff(edited, session)).toEqual([]);
+    expect(hostCards(edited, session, { files: {} })).toHaveLength(CARDS_MAX);
+  });
+
+  it('a ▶ Resume that undoes the change puts it back with no older card left off', () => {
+    const { g, edited, session, first } = fullThenEdited();
+    expect(roomCardsFull(edited, session)).toBe(true);
+    rebaseSession(session, edited, g);
+    expect(roomCardCount(g, session)).toBe(CARDS_MAX);
+    expect(cardsLeftOff(g, session)).toEqual([]);
+    expect(hostCards(g, session, { files: {} })!.map((x) => x.id)).toContain(sentCardId(first));
   });
 });

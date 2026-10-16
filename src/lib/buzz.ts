@@ -7,7 +7,7 @@ import {
   cardHash, cardId, cardLines, cardSlides, describer, giverLine, partnerRoles, partnerRules, partnerVerdict, partOfTo, partsLine, partWords, resultLine, type CardPart,
 } from './partner';
 import { cardWords, clipWords, phoneCard, type PhoneCan } from './phonecard';
-import { cardsOut, sentCardId, sentSlide } from './sentcards';
+import { cardsOut, sentCardId, sentSlide, sentState } from './sentcards';
 import { clueMarks, currentClueInfo, currentFinal, ddCap, finalWagerCap, nameList, partnerSteal, score, shownQuestionSlide, tiedForFirst, wagerFromPhone } from './session';
 
 export interface BuzzState {
@@ -401,9 +401,15 @@ export function cardsLeftOff(game: Game, session: Session): string[] {
   return all.slice(0, Math.max(0, all.length - CARDS_MAX)).map((c) => c.id);
 }
 
-/** How many 🤫 cards the buzzer room is told now: the open partner clue's (one per part of a send) and the cards out. */
+/**
+ * How many 🤫 cards the buzzer room is told now: the open partner clue's (one per part of a send) and the cards out. A
+ * card made in the editor and changed there since it went (sessionCards leaves it off the phones until ↻ Send again)
+ * keeps its place: ↻, or a ▶ Resume that undoes the change, puts it back on the phones without a press of 📤 Send, so
+ * the room must have room for it then.
+ */
 export function roomCardCount(game: Game, session: Session): number {
-  return (partnerCards(game, session, { files: {} })?.length ?? 0) + (sessionCards(game, session, { files: {} })?.length ?? 0);
+  const edited = cardsOut(game, session).filter((c) => sentState(game, c) === 'edited' && c.to.some((t) => session.players.some((p) => p.id === t.seat))).length;
+  return (partnerCards(game, session, { files: {} })?.length ?? 0) + (sessionCards(game, session, { files: {} })?.length ?? 0) + edited;
 }
 
 /** How many cards the room would be told after `go`, made on a copy of the session. */
