@@ -101,6 +101,24 @@ describe('places', () => {
     delete clue.cards;
     expect(resolve(g, onCard)).toEqual({ tab: 'round', round: r.id, part: { kind: 'clue', category: cat.id, clue: clue.id, side: 'q' } });
   });
+
+  it('goes to one of the editor’s 🤫 Cards, or the 🤫 Cards tab once it’s gone', () => {
+    expect(placeKey({ tab: 'cards' })).toBeNull();
+    expect(placeKey({ tab: 'cards', card: 'c' })).toBe('card:c');
+    // An item on it: its row in the Layers list.
+    expect(placeKey({ tab: 'cards', card: 'c', element: 'e' })).toBe('el:e');
+    expect(placeElement({ tab: 'cards', card: 'c', element: 'e' })).toBe('e');
+    const g = sample();
+    g.cards = [{ id: 'sc1', name: 'Tip A', background: {}, elements: [newTextEl('Bring a spoon')] }];
+    const el = g.cards[0].elements[0].id;
+    const onCard: Place = { tab: 'cards', card: 'sc1', element: el };
+    expect(resolve(g, onCard)).toBe(onCard);
+    expect(resolve(g, { tab: 'cards' })).toEqual({ tab: 'cards' });
+    g.cards[0].elements = [];
+    expect(resolve(g, onCard)).toEqual({ tab: 'cards', card: 'sc1' });
+    delete g.cards;
+    expect(resolve(g, onCard)).toEqual({ tab: 'cards' });
+  });
 });
 
 describe('requests', () => {

@@ -1,7 +1,8 @@
 // Reordering and copying rows of the editor's lists: stats, items, shops and what they sell, wheel slices, buttons
-// (action lists), dice faces, a board game's zones. Pure: the editors wrap each change in a history step.
+// (action lists), dice faces, a board game's zones, 🤫 cards made ahead. Pure: the editors wrap each change in a history
+// step.
 import { clampToBoard, nextSpaceName } from './boardgame';
-import { newId, type Action, type BoardGameRound, type BoardSpace, type BoardZone, type ItemDef, type Shop, type Slide, type StatField, type WheelSegment } from './model';
+import { CARD_NAME_MAX, newId, type Action, type BoardGameRound, type BoardSpace, type BoardZone, type ItemDef, type SavedCard, type Shop, type Slide, type StatField, type WheelSegment } from './model';
 import { clone } from './ops';
 
 /** Move the entry at `from` to `to` (the others close up). False when that's no move. */
@@ -59,6 +60,29 @@ export function copyStat(f: StatField, taken: readonly string[]): StatField {
 export function copyZone(z: BoardZone, taken: readonly string[]): BoardZone {
   const copy = { ...clone(z), id: newId(), name: copyName(z.name, taken) };
   reSlide(copy.slide);
+  return copy;
+}
+
+/**
+ * A copy of a 🤫 card made ahead, right after it: its own id and items' ids, named "… (copy)". A long name is cut to
+ * leave room for "(copy N)", the same for every copy (a reload would cut the "(copy N)" instead, and every copy would
+ * have the original's name).
+ */
+export function copySavedCard(c: SavedCard, taken: readonly string[]): SavedCard {
+  const copy = clone(c);
+  copy.id = newId();
+  let base = (c.name.trim() || 'Private card')
+    .replace(/ \(copy(?: \d+)?\)$/, '')
+    .slice(0, CARD_NAME_MAX - ' (copy 99)'.length)
+    .trimEnd();
+  let name = copyName(base, taken);
+  // (A hundredth copy and on: cut more.)
+  while (name.length > CARD_NAME_MAX && base) {
+    base = base.slice(0, base.length - (name.length - CARD_NAME_MAX)).trimEnd();
+    name = copyName(base, taken);
+  }
+  copy.name = name;
+  reSlide(copy);
   return copy;
 }
 

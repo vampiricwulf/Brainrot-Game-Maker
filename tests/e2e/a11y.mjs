@@ -187,6 +187,19 @@ try {
   assert((await page.locator('[role="list"]:not(:has([role="listitem"]))').count()) === 0, 'Stats & Items has no empty lists (nothing added yet)');
   await page.keyboard.press('Control+z');
   await page.waitForFunction((n) => document.querySelectorAll('nav > button.round-tab').length === n, roundTabs);
+  // 🤫 Cards: no empty list either (no card made yet), and one tab marked as the one on screen; nor with a card in it.
+  await page.locator('nav > button', { hasText: '🤫 Cards' }).click();
+  await page.locator('main .empty', { hasText: 'No cards yet.' }).waitFor();
+  assert((await page.locator('[role="list"]:not(:has([role="listitem"]))').count()) === 0, '🤫 Cards has no empty list (no card made yet)');
+  assert((await page.locator('nav [aria-current="page"]').count()) === 1, 'and the sidebar marks only 🤫 Cards as on screen');
+  await page.getByRole('button', { name: '＋ Add card' }).click();
+  await page.locator('[data-saved-card]').waitFor();
+  assert(
+    (await page.locator('[role="list"]:not(:has([role="listitem"]))').count()) === 0 && (await page.locator('nav [aria-current="page"]').count()) === 1,
+    'nor with a card in it',
+  );
+  await page.keyboard.press('Control+z');
+  await page.locator('[data-saved-card]').waitFor({ state: 'detached' });
 
   // ---------- In-app questions ----------
   // A game in progress, then ▶ Play again: the app asks in its own window, with the focus on the safe answer.

@@ -1210,8 +1210,9 @@ export function usedTiles(session: Session, game: Game, round = session.currentR
  */
 export function rebaseSession(session: Session, from: Game, to: Game): void {
   rebase(session, from, to);
-  // The cards sent with 🤫 Send a card… or from a tile's panel: a tile's card deleted in the editor is taken back (one
-  // edited is off the phones until ↻ Send again: sessionCards), and so is one whose round or tile is gone.
+  // The cards sent with 🤫 Send a card… or from a tile's panel: a card made in the editor (a tile's or a 🤫 Card)
+  // deleted there is taken back (one edited is off the phones until ↻ Send again: sessionCards), and so is one whose
+  // round or tile is gone.
   dropOverCards(to, session);
 }
 

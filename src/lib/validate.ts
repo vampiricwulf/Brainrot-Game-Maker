@@ -19,14 +19,16 @@ import {
   playableClues,
   questionSlides,
   roundName,
+  savedCardName,
   type Action,
   type BoardRound,
   type ClueCard,
   type Game,
+  type SavedCard,
   type Slide,
 } from './model';
 import { lowerWord, partnerRules, partnerSpot, partWords, stealOn } from './partner';
-import { cardWords, phoneCard } from './phonecard';
+import { cardItems, cardWords, phoneCard } from './phonecard';
 import { CARD_TEXT_MAX, FILE_MAX_BYTES } from './buzzproto';
 import { rpgProblems, worldById } from './rpg';
 import { boardGameProblems } from './boardgame';
@@ -40,8 +42,11 @@ import { dealSetupProblems, partName } from './deals';
 
 export interface Problem {
   text: string;
-  /** Where to fix it: an editor tab ('tiebreaker' | 'media' | 'sounds' | 'tools' | 'stats' | round index), or 'play' (the pre-game screen). */
-  tab: 'play' | 'tiebreaker' | 'media' | 'sounds' | 'tools' | 'stats' | number;
+  /**
+   * Where to fix it: an editor tab ('tiebreaker' | 'media' | 'sounds' | 'tools' | 'cards' | 'stats' | round index), or
+   * 'play' (the pre-game screen).
+   */
+  tab: 'play' | 'tiebreaker' | 'media' | 'sounds' | 'tools' | 'cards' | 'stats' | number;
   level: 'warn' | 'info';
   /** Where in the round it is (the screen, the space…), for the checklist to go to. */
   place?: Place;
@@ -232,7 +237,7 @@ export function validate(game: Game, room: { filesOff?: boolean } = {}): Problem
       out.push({ text: 'The tiebreaker has no answer', tab: 'tiebreaker', level: 'warn', place: { tab: 'tiebreaker', side: 'a' } });
   }
 
-  out.push(...statsProblems(game), ...toolButtonProblems(game, !!room.filesOff));
+  out.push(...statsProblems(game), ...toolButtonProblems(game, !!room.filesOff), ...savedCardProblems(game, !!room.filesOff));
 
   const known = new Set(game.media.map((m) => m.id));
   const usage = mediaUsage(game);
@@ -241,6 +246,7 @@ export function validate(game: Game, room: { filesOff?: boolean } = {}): Problem
   for (const r of boardRounds(game))
     for (const c of r.categories)
       for (const cl of c.clues) for (const card of cardSlides(cl)) for (const id of slideMediaIds(card)) onCards.set(id, (onCards.get(id) ?? 0) + 1);
+  for (const c of game.cards ?? []) for (const id of slideMediaIds(c)) onCards.set(id, (onCards.get(id) ?? 0) + 1);
   const cardOnly = [...onCards].filter(([id, n]) => known.has(id) && usage.get(id) === n).length;
   if (cardOnly)
     out.push({
@@ -423,5 +429,46 @@ export function toolButtonProblems(game: Game, filesOff = false): Problem[] {
     for (const p of dealSetupProblems(game, dl)) out.push({ text: `Deal “${dl.name}”: ${p}`, tab: 'tools', level: 'warn', place });
     dl.parts.forEach((part, i) => out.push(...cardLines(game, [part.card], `Deal “${dl.name}”: ${partName(part, i)}’s card`, 'tools', place, filesOff)));
   }
+  return out;
+}
+
+/** Words to compare, as a name says them: lower case, anything but letters and digits a single space. */
+const norm = (s: string) => s.toLowerCase().replace(/[^\p{L}\p{N}]+/gu, ' ').trim();
+
+/**
+ * A 🤫 card's name repeats what's on it (its words, its phone title, or a file's name, at least 3 letters): in one
+ * window viewers read a card's name in 🤫 Send a card…. ("Mission 1" on "Your mission: …" doesn't.)
+ */
+export function nameGivesAway(game: Game, c: SavedCard): boolean {
+  const name = norm(c.name);
+  if (!name) return false;
+  const bits = [cardWords(c), phoneCard(game, c, { files: {} }).title ?? '', ...cardItems(game, c).map((it) => it.name.replace(/\.[a-z0-9]{1,5}$/i, ''))];
+  return bits.map(norm).some((b) => b.length >= 3 && name.includes(b));
+}
+
+/**
+ * 🤫 Cards (the editor's tab): an empty one, what of one won't reach a phone (`filesOff`: the buzzer server in use takes
+ * no files), a name that repeats what's on it, two with one name. Each goes to its card.
+ */
+export function savedCardProblems(game: Game, filesOff = false): Problem[] {
+  const out: Problem[] = [];
+  const seen = new Set<string>();
+  const told = new Set<string>();
+  (game.cards ?? []).forEach((c, i) => {
+    const name = savedCardName(c, i);
+    const says = `🤫 Card “${name}”`;
+    const place: Place = { tab: 'cards', card: c.id };
+    if (!slideHasContent(c)) out.push({ text: `${says} is empty: there's nothing on it to send`, tab: 'cards', level: 'warn', place });
+    out.push(...cardLines(game, [c], says, 'cards', place, filesOff));
+    if (nameGivesAway(game, c))
+      out.push({ text: `${says}: its name repeats what’s on it, and in one window viewers read a card’s name in 🤫 Send a card…`, tab: 'cards', level: 'info', place });
+    // (Said once for each name, going to the second card with it.)
+    const key = name.toLowerCase();
+    if (seen.has(key) && !told.has(key)) {
+      told.add(key);
+      out.push({ text: `Two 🤫 cards are called “${name}”: in 🤫 Send a card… you can’t tell them apart`, tab: 'cards', level: 'info', place });
+    }
+    seen.add(key);
+  });
   return out;
 }

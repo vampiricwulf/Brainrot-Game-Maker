@@ -153,3 +153,20 @@ describe('Find: 🎭 deals', () => {
     }
   });
 });
+
+describe('Find: the editor’s 🤫 Cards', () => {
+  it('finds a card by its name or its words, says which, and puts the focus in the box that has them', () => {
+    const game = newGame();
+    game.cards = [
+      { id: 'sc1', name: 'Tip A', ...textSlide('Bring a spoon') },
+      { id: 'sc2', name: '', ...textSlide('Hide the zorblax') },
+    ];
+    const byName = findAll(game, 'tip a');
+    expect(byName).toHaveLength(1);
+    expect(byName[0]).toMatchObject({ icon: '🤫', where: 'Cards › Tip A', place: { tab: 'cards', card: 'sc1' }, focus: 'main [data-field="card-name"]' });
+    const byWords = findAll(game, 'spoon');
+    expect(byWords[0]).toMatchObject({ where: 'Cards › Tip A', place: { tab: 'cards', card: 'sc1' }, focus: 'main [data-field="card"]' });
+    // One left blank is named by its place in the list, as the list names it.
+    expect(findAll(game, 'zorblax')[0]).toMatchObject({ where: 'Cards › Untitled card 2', place: { tab: 'cards', card: 'sc2' }, focus: 'main [data-field="card"]' });
+  });
+});

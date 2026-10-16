@@ -39,9 +39,10 @@ export function seenSeats(session: Pick<Session, 'players' | 'remote'>, c: Pick<
 /**
  * A card sent with 🤫 Send a card… or from a tile's panel, as its row says it: "sent", "✓ seen" (by whom, when not by
  * everyone it went to), "uploading 1 of 2…", a phone that came late for it ("Ann's new phone hasn't got it: ↻ Send
- * again"), a tile's card changed in the editor since, or one the phones never get. `filesOn`: the room takes files.
- * `off`: the buzzer room isn't told it (buzz.ts cardsLeftOff: a 🎭 deal handed out before it took cards took them past
- * what it holds); its row offers no ↻ Send again, as under a new id it would be left off all the same.
+ * again"), a card made in the editor (a tile's or a 🤫 Card) changed there since, or one the phones never get.
+ * `filesOn`: the room takes files. `off`: the buzzer room isn't told it (buzz.ts cardsLeftOff: a 🎭 deal handed out
+ * before it took cards took them past what it holds); its row offers no ↻ Send again, as under a new id it would be
+ * left off all the same.
  */
 export function sentLine(game: Game, session: Session, c: SentCard, filesOn: boolean, off = false): { text: string; warn: boolean } {
   if (off) return { text: `not on the phones: more than ${CARDS_MAX} cards are out (copy it: 📋, or ✖ Take it back)`, warn: true };

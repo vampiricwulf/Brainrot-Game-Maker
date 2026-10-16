@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import { clearOffset, copyActions, copyItem, copyName, copySegment, copyShop, copySpaces, copyStat, copyZone, faceLines, moveTo } from './listedit';
+import { clearOffset, copyActions, copyItem, copyName, copySavedCard, copySegment, copyShop, copySpaces, copyStat, copyZone, faceLines, moveTo } from './listedit';
 import { newBoardGameRound } from './boardgame';
-import { textSlide, type Action, type ItemDef, type WheelSegment } from './model';
+import { CARD_NAME_MAX, newImageEl, slideText, textSlide, type Action, type ItemDef, type SavedCard, type WheelSegment } from './model';
 
 describe('list editing', () => {
   it('moves an entry to its new place, the others closing up', () => {
@@ -74,6 +74,34 @@ describe('list editing', () => {
     expect(c.slide.elements[0].id).not.toBe(z.slide.elements[0].id);
     c.slide.elements.length = 0;
     expect(z.slide.elements).toHaveLength(1);
+  });
+
+  it('copies a 🤫 card made ahead: its own id and items’ ids, the same words, named “… (copy)”', () => {
+    const c: SavedCard = { id: 'sc1', name: 'Tip A', until: 'host', background: { color: '#112233' }, elements: [...textSlide('Bring a spoon').elements, newImageEl('pic')] };
+    const copy = copySavedCard(c, ['Tip A']);
+    expect(copy).toMatchObject({ name: 'Tip A (copy)', until: 'host', background: { color: '#112233' } });
+    expect(copy.id).not.toBe('sc1');
+    expect(slideText(copy)).toBe('Bring a spoon');
+    expect(copy.elements.map((e) => e.id).some((id) => c.elements.some((e) => e.id === id))).toBe(false);
+    copy.elements.length = 0;
+    expect(c.elements).toHaveLength(2);
+    expect(copySavedCard(c, ['Tip A', 'Tip A (copy)']).name).toBe('Tip A (copy 2)');
+    // One left blank is a copy of a "Private card".
+    expect(copySavedCard({ ...c, name: '  ' }, []).name).toBe('Private card (copy)');
+    // A name as long as a card's can be keeps its "(copy N)" within that: the copies stay apart once reloaded.
+    const long = 'L'.repeat(CARD_NAME_MAX - 2) + 'xy';
+    const cut = 'L'.repeat(CARD_NAME_MAX - 10);
+    const one = copySavedCard({ ...c, name: long }, [long]).name;
+    expect(one).toBe(`${cut} (copy)`);
+    const two = copySavedCard({ ...c, name: long }, [long, one]).name;
+    expect(two).toBe(`${cut} (copy 2)`);
+    // (A copy's copy too.)
+    expect(copySavedCard({ ...c, name: two }, [long, one, two]).name).toBe(`${cut} (copy 3)`);
+    const many = [long, one, ...Array.from({ length: 98 }, (_, i) => `${cut} (copy ${i + 2})`)];
+    for (const n of [...many, copySavedCard({ ...c, name: long }, many).name]) expect(n.length).toBeLessThanOrEqual(CARD_NAME_MAX);
+    expect(new Set([...many, copySavedCard({ ...c, name: long }, many).name]).size).toBe(many.length + 1);
+    // (A name short enough keeps all of it.)
+    expect(copySavedCard({ ...c, name: 'S'.repeat(CARD_NAME_MAX - 10) }, []).name).toBe(`${'S'.repeat(CARD_NAME_MAX - 10)} (copy)`);
   });
 
   it('reads a pasted list of faces one a line, without blank lines, at most 100', () => {

@@ -105,6 +105,10 @@ Other editor tabs:
   board before you use or keep it.
 - 🎡 **Wheels, Dice & Deals**: weighted wheels, custom dice and 🎭 deals (a secret part for everyone). Each wheel or
   dice outcome can carry a score effect or action buttons.
+- 🤫 **Cards**: private cards made before the show (words, pictures, GIFs, videos, sounds or a link on each), each with
+  a name you pick it by. During the show **🤫 Send a card…** sends one to the players you choose: only they see it, on
+  their phones. In one window viewers can read a card's name in that dialog (never what's on it), so keep the secret
+  on the card.
 - 📊 **Stats & Items**: HP bars, currencies, items, wearable gear and shops.
 
 **Copy and paste** slide items or whole slides between clues, rounds and even games; their pictures and sounds come
@@ -200,18 +204,21 @@ With **A miss on a partner clue lets the others steal it** (⚖ Game rules, or e
 opens the buzzers for everyone else, the two who missed it locked out (without phones you pick who steals, `1`–`9`):
 a right steal gets the tile's value, a wrong one loses it, as on any clue, and Ctrl+Z on the miss closes the steal.
 **🤫 Send a card…** in the tools row sends a card to any players, teams or people on a team, at any time and in any
-round: a tile's card made in the editor, or a quick one (words typed or pasted, with a picture, video or sound, or a
-link). It lasts until the round ends or until you take it back; **🤫 2 cards out** next to it lists them by the name
-the app gives each ("Card 2 → Ann", never what's on it) with ↻ Send again and ✖ Take back; it turns orange when one
-isn't all on the phones (a picture that didn't go up, a phone that came late), and that card's row says what. Any tile
-can have 🤫 cards (＋ Card in the clue editor): a standard or Daily Double tile's are offered in its panel to the player
-who picked it (a private question, a tip before the wager), go only when you send them, and go away when the tile
-closes; the tile plays as it always does. An RPG object, an item, a wheel slice, a die face or a board space can have a **🤫 Send a card**
-button (who gets it: whoever set it off, the party, a player you pick then, or everyone else): pressing it in play
-only offers the card in the panel, and it goes when you press 📤 Send there (Skip sends nothing). For a player with no
-phone, **🪟 Card window** (in 🤫 Send a card…) opens a window with only that player's cards, pictures and videos included,
-to share with them alone (a Discord DM call) or show them on a second screen. With no phones getting cards, 🤫 Send a
-card… and an action's offer put a card there with **🪟 Show**. Viewers never get it: share only the game window.
+round: one of your 🤫 Cards or a tile's card made in the editor, or a quick one (words typed or pasted, with a picture,
+video or sound, or a link). It lasts until the round ends or until you take it back; **🤫 2 cards out** next to it lists
+them by the name the app gives each ("Card 2 → Ann", never what's on it) with ↻ Send again and ✖ Take back; it turns
+orange when one isn't all on the phones (a picture that didn't go up, a phone that came late), and that card's row says
+what. A card made in the editor that you change after it went (▶ Resume with my edits) comes off the phones until you
+↻ Send it again, keeping its place among the cards the phones hold meanwhile.
+Any tile can have 🤫 cards (＋ Card in the clue editor): a standard or Daily Double tile's are offered in its panel to
+the player who picked it (a private question, a tip before the wager), go only when you send them, and go away when the
+tile closes; the tile plays as it always does. An RPG object, an item, a wheel slice, a die face or a board space can
+have a **🤫 Send a card** button (who gets it: whoever set it off, the party, a player you pick then, or everyone else):
+pressing it in play only offers the card in the panel, and it goes when you press 📤 Send there (Skip sends nothing).
+For a player with no phone, **🪟 Card window** (in 🤫 Send a card…) opens a window with only that player's cards,
+pictures and videos included, to share with them alone (a Discord DM call) or show them on a second screen. With no
+phones getting cards, 🤫 Send a card… and an action's offer put a card there with **🪟 Show**. Viewers never get it:
+share only the game window.
 **🎭 Deal…** next to it hands everyone a secret part, each on their own phone: 🕵 Odd one out (one spy, everyone else
 gets the same location from a wheel), 🐺 Secret roles (a wolf, a seer, villagers), 🧢 Team captain (one on each team)
 or 🧠 Everyone's own prompt (a slice of a wheel each), or a deal of your own made in the editor's 🎡 Wheels, Dice & Deals tab (parts with a

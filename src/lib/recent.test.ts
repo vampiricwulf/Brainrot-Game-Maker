@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { hasWork, MAX_RECENT, MAX_RECENT_BYTES, planRecent, signature, type RecentEntry } from './recent';
-import { newGame, newRound } from './model';
+import { newGame, newRound, newSavedCard } from './model';
 
 let n = 0;
 function entry(gameId: string, sig: string, sizes: Record<string, number> = {}): RecentEntry {
@@ -78,5 +78,14 @@ describe('Recent games', () => {
     const round = newGame();
     round.rounds.push(newRound('R', 1));
     expect(hasWork(round)).toBe(true);
+    // A game with only 🎭 deals, or only 🤫 Cards, in it isn't a scratch game either.
+    const dealt = newGame();
+    dealt.deals = [{ id: 'd1', name: 'Spies', parts: [] }];
+    expect(hasWork(dealt)).toBe(true);
+    const carded = newGame();
+    carded.cards = [newSavedCard('Private card 1')];
+    expect(hasWork(carded)).toBe(true);
+    carded.cards = [];
+    expect(hasWork(carded)).toBe(false);
   });
 });

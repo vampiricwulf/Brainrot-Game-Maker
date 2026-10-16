@@ -1151,6 +1151,7 @@ ready.
 | A card on any clue | "🤫 Card for the picker" on a standard or Daily Double tile, sent from the panel | P3 |
 | An action | `do: 'card'` on RPG objects and items, wheel slices and board-game spaces (GAMES-MAKER-SPEC §7.10). The action offers the card; the host confirms the send. | P3 |
 | 🎭 Deals | Saved sets of secret roles for everyone (§11), dealt when the host presses 🎭 Deal | P4 |
+| 🤫 Cards (the editor's tab) | Cards made before the show, each with a name only the host uses. Sent from 🤫 Send a card… › One made in the editor, by reference (changed in the editor since: off the phones until ↻ Send again) | P5 |
 
 P3 also adds a list of the cards out now to the host panel. The host panel is on stream in one window, so its labels
 never carry a card's words: each card is numbered in the order it was sent ("Card 2 → Ann · ✓ seen [↻ Send again]
@@ -1435,6 +1436,8 @@ In one window the stage and the host panel are on stream (DDControls.svelte:196-
   his phone", "uploading 1 of 2…"), because a picture's file name is often the answer. Item names are only in the
   two-window host column (§6.10) and the editor;
 - the host checks the cards in the editor's 🤫 Card tabs before the show, and the panel says so;
+- a 🤫 Card's name (the host's own, to pick it by) is listed in 🤫 Send a card…; what's on it never is. The editor tells
+  the host so, and the checklist notes a name that repeats what's on the card;
 - the partner panel shows "⚠ Viewers can see this window: what's on a card is never shown here";
 - the partner is shown only when the wheel lands (§7.3), in the panel and in 📜 Log › Rolls.
 
@@ -1751,6 +1754,23 @@ export interface Clue {
   cards?: ClueCard[];
 }
 
+/**
+ * P5: a 🤫 card made before the show (the editor's 🤫 Cards tab), sent from 🤫 Send a card… by its id. Its name is the
+ * host's, to pick it by: phones never get it, but in one window viewers can read it in that dialog (never what's on it).
+ */
+export interface SavedCard extends ExtraSlide {
+  /** At most 60 characters (CARD_NAME_MAX). Never a sent card's label ("Card 3", made by the app). */
+  name: string;
+  /** It starts as lasting until the host takes it back (left out: until the round ends). */
+  until?: 'host';
+}
+
+export interface Game {
+  // …
+  /** P5: 🤫 Cards made before the show, in the order 🤫 Send a card… lists them. */
+  cards?: SavedCard[];
+}
+
 export interface GameAudio {
   // …
   /** The PARTNER UP! sound (left out: the tile-open sound). */
@@ -1824,7 +1844,8 @@ export interface SentCard {
   /** Made by the app, never typed: "Card 2", numbered in the order sent. Shown in the cards-out list, which is on stream in one window. */
   label: string;
   to: (CardTo & { except?: string[] })[];
-  content: { clue: Id; card: Id } | { slide: Slide } | { text: string } | { media: Id } | { link: string };
+  /** P5: `{ saved }` is one of the editor's 🤫 Cards, by its id (changed in the editor since: off the phones until ↻ Send again). */
+  content: { clue: Id; card: Id } | { saved: Id } | { slide: Slide } | { text: string } | { media: Id } | { link: string };
   role?: string;
   hint?: string;
   until: 'round' | 'host';
@@ -2149,7 +2170,7 @@ both ways, `forget`, and the two file routes. A new "Private cards" section sits
 ## 21. Milestones
 
 Each milestone ships on its own and keeps every existing test passing. Each adds its CHANGELOG.md lines under
-**Unreleased**, then under the Pacific-time day it's pushed, as CLAUDE.md asks. The milestones are numbered P1–P4 so
+**Unreleased**, then under the Pacific-time day it's pushed, as CLAUDE.md asks. The milestones are numbered P1–P5 so
 they don't clash with SPEC.md's M1–M8. Draft 2 had five (P1a, P1b, P2, P3, P4); the owner's answers fold its P1b and
 P2 into one phone release, P2.
 
@@ -2159,6 +2180,7 @@ P2 into one phone release, P2.
 | P2 | **🤫 Cards on phones, with every kind of media** (buzzer server update: `cards` and `files`; the public server gets it on the push) | `HostState.cards`, the room's whitelist, per-seat and per-person views, the late rule with `seatedAt` and `Member.teamAt`, and `cardSeen`; the phone's card panel with words, pictures, GIFs, video, sound and YouTube, Drive and Streamable embeds, Tap to see and Hide; greyed phones with the roles line (`status.off`); 📤 Send, Send and start, ✓ seen, ↻ Send again, 📤 Send changes and ✖ Take back, each for one card (one id per send); the files: shrinking pictures, uploading on a send or ⇡ Get it ready (never by itself), the upload and download routes before the `/api/` 404, storage keys, caps, the `FILE_LIMIT` binding, the daily byte budget in `RoomCounter`, the alarm shared with the room's end, and clean-up; **measuring CPU time and rows written on a Free account before it ships, then setting the default budget and confirming the caps**; the phone lines per part and the card hints; the 📱 preview and `phoneCard()`, which the host column then uses; picture thumbnails in the host column; the member wheel, and one person describing to their team; the guesser typing their guess (✍ answers for one seat, asked from Show question on, never in 'pick'); the content policy; the comment and README changes of §14.9, Costs included. |
 | P3 | **🤫 Cards anywhere** | 🤫 Send a card… in the tools row; the list of cards out, with app-made labels; `forViewers` dropping `cards`; a card on standard and Daily Double tiles; the action `do: 'card'` for RPG objects, items, wheel slices and board spaces, sent when the host confirms; 🪟 Card window on its own channel. |
 | P4 | **More games** | 🎭 Deals (secret roles for everyone, random and secret parts, cards drawn from a wheel), whose list in one window doesn't say who got which; a "Who was who" reveal on stream; steal on a miss; an optional per-round count and 🔀 Randomize for partner tiles; a Partner Double, if wanted. |
+| P5 | **🤫 Cards made ahead** (app only; nothing new reaches the server) | The editor's 🤫 Cards tab (`Game.cards`: named cards with a words box, the slide editor, 📱 On their phone and "Stays until you take it back"), with 🔍 Find, the checklist, 🖼 Media and Undo knowing them; 🤫 Send a card… › One made in the editor listing them first, by name and counted, never what's on them, sent by reference (`{ saved: id }`), so one changed in the editor comes off the phones until ↻ Send again and one deleted is taken back; a card made in the editor can't go twice to the same players; with the audience window open, what's on the card picked and which 🤫 Card each card out is. |
 
 Example CHANGELOG lines:
 
