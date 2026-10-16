@@ -233,7 +233,8 @@ export function imageFallback(src: string): string | null {
 // ---------- Every other host ----------
 
 const KIND_NAME: Record<LinkKind | 'font', string> = { image: 'picture', video: 'video', audio: 'sound', font: 'font' };
-const article = (w: string) => (/^[aeiou]/.test(w) ? 'an' : 'a');
+/** "a" or "an", for the word after it ("an Act it out partner clue"). */
+export const article = (w: string): string => (/^[aeiou]/i.test(w) ? 'an' : 'a');
 
 /** The messages people see about links (plain English, one place). */
 export const linkMessages = {

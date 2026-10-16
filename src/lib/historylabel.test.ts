@@ -6,6 +6,7 @@ import { jeopardyGame } from './testgame';
 import { addSampleGame } from './samples';
 import { newRpgRound, newScreen, newVariant } from './rpg';
 import { newWheel } from './tools';
+import { DEAL_TEMPLATES, dealFromTemplate } from './deals';
 import { newBoardGameRound } from './boardgame';
 import { newStatField } from './toolset';
 
@@ -219,6 +220,21 @@ describe('step labels', () => {
     const slice = step((g) => g.wheels[0].segments.push({ ...g.wheels[0].segments[0], id: 's-new', label: 'Sing a song' }));
     expect(slice).toMatchObject({ label: 'Added slice “Sing a song”', where: 'Wheels, Dice & Deals › Punishments', icon: '🎡' });
     expect(step((g) => (g.wheels[0].segments[0].label = 'Dance')).label).toBe('Renamed slice “Dance”');
+    // A 🎭 deal's part renamed is the part's change, not the deal's.
+    const dealt = sample();
+    dealt.deals = [dealFromTemplate(DEAL_TEMPLATES[0], 'Secret roles')];
+    const renamed = structuredClone(dealt);
+    renamed.deals![0].parts[0].name = 'Doctor';
+    expect(describeStep(diff(dealt, renamed), dealt, renamed)).toMatchObject({ label: 'Renamed part “Doctor”', place: { tab: 'tools', deal: dealt.deals[0].id } });
+    // What's done in a part's Edit card… is its card's (a picture added or deleted is not the part added or deleted).
+    const pictured = structuredClone(dealt);
+    pictured.deals![0].parts[0].card.elements.push(newImageEl('m1'));
+    const where = `Wheels, Dice & Deals › Secret roles › ${dealt.deals[0].parts[0].name}’s card`;
+    expect(describeStep(diff(dealt, pictured), dealt, pictured)).toMatchObject({ label: 'Added image “a.png”', where, place: { tab: 'tools', deal: dealt.deals[0].id } });
+    expect(describeStep(diff(pictured, dealt), pictured, dealt)).toMatchObject({ label: 'Deleted image “a.png”', where });
+    const colored = structuredClone(dealt);
+    colored.deals![0].parts[0].card.background.color = '#ff0000';
+    expect(describeStep(diff(dealt, colored), dealt, colored)).toMatchObject({ label: 'Slide background color #ff0000', where });
     // A slice's (an object's, an item's, a space's) buttons are called buttons, as the editor calls them.
     expect(step((g) => (g.wheels[0].segments[0].actions = [{ id: 'b1', do: 'note', text: 'Hi' }])).label).toBe('Added button “📝 Hi”');
     // (Named as the editor shows it.)

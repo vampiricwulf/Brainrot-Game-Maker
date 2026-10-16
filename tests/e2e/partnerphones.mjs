@@ -138,6 +138,9 @@ try {
   const previewText = await preview.innerText();
   await host.screenshot({ path: 'test-results/partner-phone-preview.png' });
   assert(previewText.includes('Card-only-zz words') && (await preview.locator('img').count()) === 1, 'the card tab’s 📱 preview shows the card as a phone gets it: its words, then its picture');
+  // Beside the slide editor, never over its toolbar or its Layers' buttons.
+  const [pBox, seBox] = [await preview.boundingBox(), await dialog.locator('.se').boundingBox()];
+  assert(pBox.x >= seBox.x + seBox.width - 1, `the preview sits beside the slide editor, not over it (preview at x ${Math.round(pBox.x)}, the editor ends at ${Math.round(seBox.x + seBox.width)})`);
   await host.getByRole('button', { name: 'Done' }).click();
   await playWithPlayers(host, 3);
   const card = host.getByRole('region', { name: 'Phone buzzers' });

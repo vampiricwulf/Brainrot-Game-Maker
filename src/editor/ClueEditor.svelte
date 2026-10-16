@@ -680,20 +680,23 @@
               title="The card exactly as a player’s phone gets it: its words, then its pictures and videos one under another, and what won’t reach a phone">📱 On their phone</button
             >
             <button class="ghost small danger" onclick={deleteCardTab} title="Delete this card (Ctrl+Z brings it back)">🗑 Delete card</button>
-            {#if phoneView}<PhoneCardPreview game={app.game} {clue} {card} />{/if}
           </div>
         {/if}
-        {#key `${clue.id}-${slideKey}`}
-          <SlideEditor
-            slide={shown === 'card' && card ? card : shown === 'q' ? qslide : clue.answerSlide}
-            styletargets={(el: TextEl, scope: string) => textStyleTargets(app.game, round, el, scope, cat)}
-            stylecategory
-            quickfield={shown}
-            placeholder={shown === 'card' ? 'Click to type what they’ll see' : shown === 'a' ? 'Click to type the answer' : at ? 'Click to type what this slide adds' : 'Click to type the question'}
-            badge={shown === 'card' ? `🤫 CARD ${cardAt + 1} · ONLY WHO YOU SEND IT TO SEES IT` : shown === 'a' ? 'ANSWER' : undefined}
-            fill
-          />
-        {/key}
+        <!-- (📱 On their phone sits beside the slide editor, never over its toolbar or inspector.) -->
+        <div class="card-edit">
+          {#key `${clue.id}-${slideKey}`}
+            <SlideEditor
+              slide={shown === 'card' && card ? card : shown === 'q' ? qslide : clue.answerSlide}
+              styletargets={(el: TextEl, scope: string) => textStyleTargets(app.game, round, el, scope, cat)}
+              stylecategory
+              quickfield={shown}
+              placeholder={shown === 'card' ? 'Click to type what they’ll see' : shown === 'a' ? 'Click to type the answer' : at ? 'Click to type what this slide adds' : 'Click to type the question'}
+              badge={shown === 'card' ? `🤫 CARD ${cardAt + 1} · ONLY WHO YOU SEND IT TO SEES IT` : shown === 'a' ? 'ANSWER' : undefined}
+              fill
+            />
+          {/key}
+          {#if shown === 'card' && card && phoneView}<PhoneCardPreview game={app.game} {clue} {card} />{/if}
+        </div>
       {/if}
     </div>
   </div>
@@ -775,7 +778,17 @@
   }
   .cardbar {
     padding: 4px 0;
-    position: relative;
+  }
+  /* The slide editor takes the height the fields above leave (and the width 📱 On their phone leaves). */
+  .clue > .card-edit {
+    display: flex;
+    gap: 8px;
+    flex: 1 1 0;
+    min-height: 300px;
+    min-width: 0;
+  }
+  .card-edit > :global(.se) {
+    min-width: 0;
   }
   .cardbar button.on {
     background: var(--accent-fill);
@@ -832,6 +845,10 @@
     .quick,
     .quick.four {
       grid-template-columns: 1fr;
+    }
+    .clue > .card-edit {
+      flex-direction: column;
+      flex: none;
     }
     .keys {
       display: none;

@@ -3,7 +3,7 @@
 // spread over the categories; each keeps its own rules and cards, or gets the round's game and a copy of its answer.
 import { describe, expect, it } from 'vitest';
 import { jeopardyGame } from './testgame';
-import { cardSlides, migrateGame, partnerTilesPlaced, setSlideText, slideText, type BoardRound, type Game } from './model';
+import { cardSlides, migrateGame, newImageEl, partnerTilesPlaced, setSlideText, slideText, type BoardRound, type Game } from './model';
 import { partnerSpot } from './partner';
 import { placePartner, randomizePartnerTiles } from './ops';
 import { randomizeDailyDoubles } from './session';
@@ -101,6 +101,16 @@ describe('🔀 Randomize (randomizePartnerTiles)', () => {
       // (And none of the checks' "card 1 is empty" about a tile that isn't a partner clue.)
       expect(standard.some((cl) => cl.cards || cl.partner || cl.timerSeconds !== undefined)).toBe(false);
     }
+  });
+
+  it('answers that are only pictures: a card that copied one goes too, with its countdown', () => {
+    const { r } = board();
+    r.categories.forEach((c, ci) => c.clues.forEach((cl, row) => (cl.answerSlide.elements = [newImageEl(`pic-${ci}.${row}`)])));
+    const before = new Map(r.categories.flatMap((c) => c.clues.map((cl) => [cl.id, JSON.stringify(cl)] as const)));
+    randomizePartnerTiles(r, 3, seeded(1));
+    randomizePartnerTiles(r, 3, seeded(2));
+    const standard = r.categories.flatMap((c) => c.clues.filter((cl) => cl.type === 'standard'));
+    for (const cl of standard) expect(JSON.stringify(cl)).toBe(before.get(cl.id));
   });
 
   it('a card the host wrote and rules they changed stay with a tile it moves off; a copy of an old answer never does', () => {

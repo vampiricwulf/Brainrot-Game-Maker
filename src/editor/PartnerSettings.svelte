@@ -15,6 +15,7 @@
   import { app } from '../lib/app.svelte';
   import { followClueText } from '../lib/cluetext';
   import { step as record } from '../lib/history.svelte';
+  import { article } from '../lib/links';
   import { cardSlides, formatPoints, MAX_SHARE, PART_WORD_MAX, PARTNER_GAMES, type Clue, type PartnerGame, type PartnerPoints, type PartnerRole } from '../lib/model';
   import {
     lowerWord,
@@ -62,9 +63,11 @@
   const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
   /** Open at first on a screen tall enough for the rules and the slide together (or as last left). */
   const openAtFirst = wasOpen ?? (typeof window === 'undefined' || window.innerHeight >= 900);
+  /** Opened or folded only by its summary line (a constant put back on the <details> would fold it after each change). */
+  let open = $state(openAtFirst);
 
   function chooseGame(g: PartnerGame): void {
-    record(`Made ${tile()} a ${PARTNER_GAMES[g].label} partner clue`, () => {
+    record(`Made ${tile()} ${article(PARTNER_GAMES[g].label)} ${PARTNER_GAMES[g].label} partner clue`, () => {
       setPartnerGame(clue, g);
       // (Its starting cards take the theme's clue text, as new clues do.)
       followClueText(app.game, cardSlides(clue));
@@ -95,7 +98,7 @@
     });
   }
   function choosePoints(c: PartnerPoints): void {
-    const label = pointsChoices(rules.game).find((x) => x.value === c)?.label ?? c;
+    const label = pointsChoices(rules.game, words.guesser).find((x) => x.value === c)?.label ?? c;
     record(`Points of ${tile()}: ${label}`, () => setPartnerPoints(clue, c));
   }
   function setSafe(on: boolean): void {
@@ -116,7 +119,7 @@
   );
 </script>
 
-<details class="partner-opts" aria-label="Partner clue" open={openAtFirst} ontoggle={(e) => (wasOpen = e.currentTarget.open)}>
+<details class="partner-opts" aria-label="Partner clue" bind:open ontoggle={(e) => (wasOpen = e.currentTarget.open)}>
   <summary title="Show or hide the partner clue's rules">
     {game.icon} {game.label} · {cap(partWho(rules, 'giver'))} {game.verb} · <span class="money">{summary}</span>
   </summary>
@@ -153,7 +156,7 @@
       <label class="field">
         Points
         <select value={choice} onchange={(e) => choosePoints(e.currentTarget.value as PartnerPoints)}>
-          {#each pointsChoices(rules.game) as c (c.value)}<option value={c.value}>{c.label}</option>{/each}
+          {#each pointsChoices(rules.game, words.guesser) as c (c.value)}<option value={c.value}>{c.label}</option>{/each}
         </select>
       </label>
       <table class="shares">

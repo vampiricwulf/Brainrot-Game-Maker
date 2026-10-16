@@ -23,6 +23,8 @@ in plain words for the people who make and host games. Anything committed but no
 
 ### Fixed
 - The Windows desktop app builds again: the update that brought 🤫 Send a card… (b7cebf9) had no desktop app, because two of its file names differed only in capital letters, which Windows treats as the same file. A test now catches such names.
+- Partner clues in the editor: the rules no longer fold shut after each change on laptop-sized screens (typing a share lost keys); setting a tile to 🤝 Partner clue and back no longer leaves an empty card, a 45-second countdown and a checklist warning; 🧩 Split clue on a new partner clue gives both halves a card; a card copying a picture-only answer is known as the answer (🔀 Randomize removes it again); 📱 On their phone sits beside the slide editor instead of covering its toolbar and layer buttons; wording ('an Act it out partner clue', 'The answerer loses it all'). (c11e516, 5bf6cf3)
+- The checklist warns when a 🎭 deal part's card or a 🤫 Send a card button (item, wheel slice, die, RPG object, board space) has a file phones can't get; 🔍 Find finds words on those buttons; Undo and History name deal part changes properly ("Renamed part “Doctor”", "Added image" in "Secret roles › Spy’s card"). (c11e516, 5bf6cf3)
 
 ## 2026-10-15
 

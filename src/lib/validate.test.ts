@@ -1,6 +1,9 @@
 import { describe, expect, it, vi } from 'vitest';
 import { jeopardyGame } from './testgame';
-import { newImageEl, newVideoEl, questionSlides, setSlideText, textSlide, type BoardRound, type Game } from './model';
+import { newImageEl, newTextEl, newVideoEl, questionSlides, setSlideText, textSlide, type Action, type BoardRound, type Game, type Slide } from './model';
+import { newWheel } from './tools';
+import { newBoardGameRound } from './boardgame';
+import { newRpgRound, newVariant } from './rpg';
 import { addClueSlide, setClueType } from './ops';
 import { setPartnerPoints } from './partner';
 import { validate } from './validate';
@@ -144,6 +147,9 @@ describe('🤝 partner clues', () => {
     expect(mine(game)).toEqual([]);
     delete clue.cards;
     expect(mine(game).map((p) => p.text)).toEqual(['Movies $400 is a Describe it partner clue with no card: the describer has nothing to describe']);
+    clue.partner!.game = 'act';
+    expect(mine(game).map((p) => p.text)).toEqual(['Movies $400 is an Act it out partner clue with no card: the actor has nothing to act out']);
+    clue.partner!.game = 'describe';
     // A Custom game's cards are up to the host; a tile that isn't a partner clue (any more) has none to check.
     clue.partner!.game = 'custom';
     expect(mine(game)).toEqual([]);
@@ -201,6 +207,46 @@ describe('🤝 partner clues', () => {
     ]);
     // (Never the file's name: the checklist can be on stream.)
     expect(warned(true).join()).not.toContain('ogre');
+  });
+
+  it('warns of the same on a 🎭 deal’s parts’ cards and on 🤫 Send a card buttons, going to each', () => {
+    vi.stubGlobal('document', { createElement: () => ({ canPlayType: () => 'maybe' }) });
+    const game = jeopardyGame();
+    game.media.push({ id: 'big', name: 'huge-clip.mp4', mime: 'video/mp4', size: 40 * 1024 * 1024, kind: 'video' });
+    const card = (): Slide => ({ background: {}, elements: [newTextEl('A secret'), { ...newVideoEl('big'), y: 10 }] });
+    const send = (id: string): Action => ({ id, do: 'card', slide: card() });
+    game.deals = [{ id: 'd1', name: 'Mafia', parts: [{ id: 'p1', name: 'Boss', count: 1, card: card() }, { id: 'p2', name: 'Town', count: 'rest', card: textSlide('Fine') }] }];
+    game.items = [{ id: 'i1', name: 'Map', stackable: false, onUse: [send('b1')] }];
+    game.wheels = [{ ...newWheel('Prizes'), id: 'w1' }];
+    // (Two slices with the same trouble: said once.)
+    game.wheels[0].segments[0].actions = [send('b2')];
+    game.wheels[0].segments[1].actions = [send('b3')];
+    const board = newBoardGameRound('Race');
+    board.spaces[1].onLand = [send('b4')];
+    game.rounds.push(board);
+    const rpg = newRpgRound(game, 'Quest');
+    const chest = { ...newImageEl('m0'), name: 'Chest' };
+    chest.role = { class: 'interactable', actions: [send('b5')] };
+    const world = game.worlds![0];
+    world.maps[0].screens[0].slide.elements.push(chest);
+    // (A screen's looks have copies of its objects: said once, going to the screen's own.)
+    const start = world.maps[0].screens[0];
+    start.variants = [newVariant(undefined, start, 'Night'), newVariant(undefined, start, 'Open')];
+    game.rounds.push(rpg);
+    const too = 'has a video too big for phones (40.0 MB; phones get files up to 4.0 MB)';
+    expect(validate(game).filter((p) => p.text.includes('too big'))).toEqual([
+      { text: `Race: a 🤫 card on “${board.spaces[1].name}” ${too}`, tab: 2, level: 'warn', place: { tab: 'round', round: board.id, part: { kind: 'space', space: board.spaces[1].id } } },
+      {
+        text: `Quest: a 🤫 card on “Chest” on “Start” ${too}`,
+        tab: 3,
+        level: 'warn',
+        place: { tab: 'world', world: world.id, map: world.maps[0].id, screen: world.maps[0].screens[0].id, look: undefined, inSlide: true, element: chest.id },
+      },
+      { text: `Item “Map”: a Use button’s 🤫 card ${too}`, tab: 'stats', level: 'warn', place: { tab: 'stats', item: 'i1' } },
+      { text: `Wheel “Prizes”: a slice’s 🤫 card ${too}`, tab: 'tools', level: 'warn', place: { tab: 'tools', wheel: 'w1' } },
+      { text: `Deal “Mafia”: Boss’s card ${too}`, tab: 'tools', level: 'warn', place: { tab: 'tools', deal: 'd1' } },
+    ]);
+    vi.unstubAllGlobals();
   });
 
   it('says where a miss still costs points with ⚖ Deduct on wrong off (a partner clue’s points are its own)', () => {

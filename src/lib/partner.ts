@@ -79,10 +79,13 @@ export function pointsChoice(rules: PartnerRules): PartnerPoints {
   return ready.find((c) => sameShares(choiceShares(rules, c), rules)) ?? 'custom';
 }
 
-/** The Points choices for the clue's game, with their names ("Describe it's", "No penalty"…). */
-export function pointsChoices(game: PartnerGame): { value: PartnerPoints; label: string }[] {
+/**
+ * The Points choices for the clue's game, with their names ("Describe it's", "No penalty"…), in its part words
+ * (`guesser`: "The answerer loses it all").
+ */
+export function pointsChoices(game: PartnerGame, guesser = 'guesser'): { value: PartnerPoints; label: string }[] {
   const own = game === 'custom' ? [] : [{ value: 'game' as const, label: `${PARTNER_GAMES[game].label}’s` }];
-  return [...own, { value: 'none', label: 'No penalty' }, { value: 'all', label: 'The guesser loses it all' }, { value: 'custom', label: 'Custom' }];
+  return [...own, { value: 'none', label: 'No penalty' }, { value: 'all', label: `The ${lowerWord(guesser)} loses it all` }, { value: 'custom', label: 'Custom' }];
 }
 
 /** A share typed in a box: a whole number within ±MAX_SHARE% (null: not a number). */
@@ -117,8 +120,9 @@ export const stealOn = (rules: Pick<PartnerRules, 'steal'>, settings: Pick<GameS
 
 /**
  * Choose a game: it fills in the rules (the partner gives, the game's points and words, the partner never loses
- * points), adds its starting cards when the clue has none, and for Describe it, Draw it and Act it out a 45 s countdown
- * when the clue has none. Custom keeps the rules as they are (and the words they had), to change by hand.
+ * points), adds its starting cards when the clue has none, or only the last game's empty ones, and for Describe it, Draw
+ * it and Act it out a 45 s countdown when the clue has none. Custom keeps the rules as they are (and the words they had),
+ * to change by hand.
  */
 export function setPartnerGame(clue: Clue, game: PartnerGame): void {
   // (A plain copy: the rules may be the editor's live state.)
@@ -129,7 +133,12 @@ export function setPartnerGame(clue: Clue, game: PartnerGame): void {
     const kept = (['includePicker', 'typeGuess', 'steal'] as const).flatMap((k) => (was[k] === undefined ? [] : [[k, was[k]]]));
     clue.partner = { ...gameRules(game), ...Object.fromEntries(kept) };
   }
-  if (!clue.cards?.length) {
+  // The old game's starting cards, still empty and going where they started: the new game's replace them (Split clue
+  // gets its Half B card). A card with anything on it, or one sent elsewhere, stays.
+  const have = cardSlides(clue);
+  const start = PARTNER_GAMES[was.game].cards;
+  const untouched = have.length === start.length && have.every((c, i) => !slideHasContent(c) && c.to === start[i]);
+  if (!have.length || (game !== 'custom' && untouched)) {
     const cards = startingCards(game);
     if (cards.length) clue.cards = cards;
     else delete clue.cards;
@@ -235,10 +244,23 @@ function words(slide: Slide): string {
     .toLowerCase();
 }
 
-/** The card's words are the answer's: "This card shows the answer: whoever you send it to sees it". */
+/** A slide's pictures, videos, sounds and links (what a phone gets besides the words), as one line to compare. */
+function filesOf(slide: Slide): string {
+  return slide.elements
+    .flatMap((e) => (e.kind === 'image' ? [e.editedMedia ?? e.media] : e.kind === 'video' || e.kind === 'audio' ? [e.media] : e.kind === 'embed' ? [e.url] : []))
+    .sort()
+    .join('\n');
+}
+
+/**
+ * The card's words are the answer's (an answer with no words: its pictures, videos, sounds and links, with no words of
+ * the card's own): "This card shows the answer: whoever you send it to sees it".
+ */
 export function sameAsAnswer(clue: Pick<Clue, 'answerSlide'>, card: Slide): boolean {
   const a = words(clue.answerSlide);
-  return !!a && words(card) === a;
+  if (a) return words(card) === a;
+  const f = filesOf(clue.answerSlide);
+  return !!f && !words(card) && filesOf(card) === f;
 }
 
 /**
