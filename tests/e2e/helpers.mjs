@@ -66,6 +66,16 @@ export async function answerReplace(page, answer = 'Discard') {
   const dialog = page.getByRole('dialog', { name: /^(Start a new game|Open|Reopen)/ });
   await dialog.waitFor();
   await dialog.getByRole('button', answer === 'Discard' ? { name: / anyway$/ } : { name: answer, exact: true }).click();
+  // (The game is being replaced as the click returns: what's typed next waits until the editor takes edits again.)
+  if (answer !== 'Cancel') await editorReady(page);
+}
+
+/**
+ * The editor takes edits: not while a game is being put in place of another (until the new one's undo history has
+ * started). A fill meanwhile is lost, since the editor is inert then; a click waits by itself.
+ */
+export async function editorReady(page) {
+  await page.waitForFunction(() => !document.querySelector('.editor > header')?.inert && !document.querySelector('.editor > .body')?.inert);
 }
 
 /** Open… a game file (`files` as for setFiles), through Browse… when Open… lists recent games first. */
