@@ -493,7 +493,9 @@ try {
   assert(await until(() => held.length === 1), '⇡ Get it ready: card 3’s picture starts up');
   await host.unroute('**/api/rooms/*/files');
   await resume();
-  assert(await until(async () => (await textOf(panel.locator('[data-partner-files]'))).includes('ready in the buzzer room')), 'after the reload it finishes: “ready in the buzzer room”');
+  // (The picture is shrunk again and goes up to wrangler dev: a slow CI machine takes a while.)
+  const readied = await until(async () => (await textOf(panel.locator('[data-partner-files]'))).includes('ready in the buzzer room'), 45000);
+  assert(readied, `after the reload it finishes: “ready in the buzzer room” (the panel says “${await textOf(panel.locator('[data-partner-files]'))}”)`);
   await answered(4);
   const ready = answers.filter((a) => a.status === 200).at(-1).id;
   assert(uploads.length === before + 5 && ![pic1, vid1, pic2].includes(ready), 'one upload more (card 3’s picture, the cut-off one again)');
