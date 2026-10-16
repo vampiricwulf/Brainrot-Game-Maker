@@ -9,8 +9,8 @@
 // round ends goes with the round. "The slide on screen" is what viewers see as it comes up (never a hint that comes in
 // later, nor a see-through box). In one window, an SVG already in the game put on a quick card is used with no toast
 // naming it. The audience window, and the host page in one window, never hold a card's words, its file name or its link.
-// A card's picture whose upload is cut off goes again by itself; one the server turns down is said in the list of cards
-// out, and ↻ Send again puts it up.
+// A card's picture whose upload is cut off goes again by itself, unless its card was taken back meanwhile; one the server
+// turns down is said in the list of cards out (and the tools row's cards out turns orange), and ↻ Send again puts it up.
 import { chromium } from 'playwright-core';
 import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
@@ -392,13 +392,20 @@ try {
   await offStream(host, 'the host page in one window', 'the end');
 
   // ---------- A card's picture that doesn't go up: tried again after a blip, else the list of cards out says so ----------
-  // (The first upload is cut off as a dropped connection would; then, while `refuse` is set, the server turns them down.)
+  // (The first upload is cut off as a dropped connection would; while `hold` is set, one waits for it, then is cut off;
+  // while `refuse` is set, the server turns them down.)
   let blip = true;
   let refuse = false;
-  const filesRoute = (r) => {
+  /** @type {Promise<void> | null} */
+  let hold = null;
+  const filesRoute = async (r) => {
     if (r.request().method() !== 'POST') return r.continue();
     if (blip) {
       blip = false;
+      return r.abort('internetdisconnected');
+    }
+    if (hold) {
+      await hold;
       return r.abort('internetdisconnected');
     }
     if (refuse) return r.fulfill({ status: 503, contentType: 'application/json', body: JSON.stringify({ error: 'Card files are off on this buzzer server right now' }) });
@@ -422,17 +429,34 @@ try {
   let n0 = uploads;
   await sendPicture('blip.png', png(200, 40, 40, 120, 90), 'Card 1');
   assert(await until(() => cards()[0]?.media?.[0]?.file && uploads === n0 + 2, 30_000), `an upload cut off goes again by itself, and the card then names the room’s file (${uploads - n0} tries)`);
+  const outWarn = () => outButton.evaluate((e) => e.classList.contains('warn'));
+  assert(!(await outWarn()), 'its picture went up: the tools row’s 🤫 1 card out isn’t marked');
   refuse = true;
   n0 = uploads;
   await sendPicture('refused.png', png(40, 40, 200, 120, 90), 'Card 2');
-  await tools.locator('[data-cards-out-count]').click();
+  // (The send dialog is closed: nothing else in sight says so.)
+  await tools.locator('[data-cards-out-count="2"].warn').waitFor();
+  assert((await outButton.getAttribute('title')).startsWith('⚠ A card out isn’t all on the phones'), 'one the server turns down: the tools row’s 🤫 2 cards out turns orange, and says to open the list');
+  // A card taken back while its picture goes up, and that upload cut off: it isn't tried again (the room would only
+  // be told to let go of it).
+  let release = () => {};
+  hold = new Promise((ok) => (release = ok));
+  await sendPicture('taken.png', png(40, 200, 40, 120, 90), 'Card 3');
+  assert(await until(() => uploads === n0 + 2), 'Card 3’s picture starts going up');
+  await outButton.click();
   await list.waitFor();
+  await list.getByRole('button', { name: 'Take Card 3 back' }).click();
+  assert(await until(() => cards().length === 2), 'Card 3 is taken back while its picture goes up');
+  hold = null;
+  release();
+  // (Past the 5 s a cut-off upload waits before it goes again: there's no state to wait for, as nothing should go.)
+  await sleep(6000);
+  assert(uploads === n0 + 2, `neither goes again by itself: the one the server turned down (it would only say no again), nor the one whose card was taken back (${uploads - n0} uploads)`);
   const left2 = list.locator('[data-card-left="Card 2"]');
   await left2.waitFor();
   const copyPicture = (await list.getByRole('button', { name: 'Copy Card 2’s picture' }).count()) === 1;
   const leftLine = `🖼 1 picture won’t reach the phones (didn’t reach the buzzer server): ↻ Send again tries again${copyPicture ? ', or 📋 Copy picture' : ''}`;
   assert((await left2.innerText()) === leftLine, `one the server turns down: its row in the list says so, counted, and what to do (“${await left2.innerText()}”)`);
-  assert(uploads === n0 + 1, 'and it isn’t sent again by itself (the server would only say no again)');
   assert(
     (await list.locator('[data-card-out="Card 2"] [data-card-state]').evaluate((e) => e.classList.contains('warn'))) && !(await list.locator('[data-card-left="Card 1"]').count()),
     'the row is marked (not just “sent”), and Card 1, whose picture went up, says nothing more',
@@ -441,6 +465,7 @@ try {
   await list.getByRole('button', { name: 'Send Card 2 again' }).click();
   await left2.waitFor({ state: 'detached' });
   assert(await until(() => cards()[1]?.media?.[0]?.file), '↻ Send again puts it up once the server takes it, and the line goes');
+  assert(uploads === n0 + 3 && !(await outWarn()), `once, and the tools row’s 🤫 2 cards out is no longer marked (${uploads - n0} uploads)`);
   await host.keyboard.press('Escape');
   await host.unroute('**/api/rooms/*/files', filesRoute);
   await offStream(host, 'the host page in one window', 'a card’s picture that didn’t go up');

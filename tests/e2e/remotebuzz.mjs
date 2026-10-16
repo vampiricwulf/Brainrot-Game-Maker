@@ -447,7 +447,13 @@ try {
   // ---------- The room ends mid-game (4004): the panel says so, with no code or link of the dead room ----------
   await page.locator('.stage-box .board .tile:not(.used)').first().click();
   await stateIs((s) => s.phase === 'closed' && !!s.clue);
+  // (Every toast is said to screen readers too, even the same words again: the live region's host keeps the last words
+  // said, in data-said. Counted here, as a toast said again while it shows looks the same.)
   await page.evaluate(() => {
+    window.__lostSaid = 0;
+    new MutationObserver((ms) => {
+      for (const m of ms) if (m.target.dataset?.said?.includes('📱 This buzzer room has ended')) window.__lostSaid++;
+    }).observe(document.body, { attributes: true, attributeFilter: ['data-said'], subtree: true });
     window.__room.gone = 4004;
     window.__drop();
   });
@@ -455,7 +461,17 @@ try {
   await down.getByText('This buzzer room has ended').waitFor();
   assert(!(await down.innerText()).includes('right now'), `the panel says the room has ended, not that it can’t be reached “right now” (${await down.innerText()})`);
   await page.locator('.toast', { hasText: '📱 This buzzer room has ended' }).waitFor();
-  assert(true, 'and the host is told so once (a toast)');
+  await page.waitForFunction(() => window.__lostSaid === 1);
+  // The game goes on meanwhile: back to the board, another tile, the answer.
+  await page.keyboard.press('Escape');
+  await page.locator('.stage-box .board').waitFor();
+  await page.locator('.stage-box .board .tile:not(.used)').first().click();
+  await page.locator('.stage-box .board').waitFor({ state: 'detached' });
+  await page.keyboard.press('r');
+  await page.waitForFunction(() => document.querySelector('.panel .status')?.textContent?.includes('Answer is showing'));
+  // (Nothing to wait for, as nothing should be said: past the time the live region takes to say a toast.)
+  await page.waitForTimeout(1000);
+  assert((await page.evaluate(() => window.__lostSaid)) === 1, 'and the host is told so once (a toast), not again as the game goes on');
   assert(
     (await chip.innerText()) === '📱 ⚠ Room lost' && (await chip.getAttribute('title')).startsWith('This buzzer room has ended'),
     `the 📱 chip says Room lost, and why (${await chip.getAttribute('title')})`,

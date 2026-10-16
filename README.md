@@ -198,10 +198,11 @@ a right steal gets the tile's value, a wrong one loses it, as on any clue, and C
 **🤫 Send a card…** in the tools row sends a card to any players, teams or people on a team, at any time and in any
 round: a tile's card made in the editor, or a quick one (words typed or pasted, with a picture, video or sound, or a
 link). It lasts until the round ends or until you take it back; **🤫 2 cards out** next to it lists them by the name
-the app gives each ("Card 2 → Ann", never what's on it) with ↻ Send again and ✖ Take back. Any tile can have 🤫 cards
-(＋ Card in the clue editor): a standard or Daily Double tile's are offered in its panel to the player who picked it (a
-private question, a tip before the wager), go only when you send them, and go away when the tile closes; the tile plays
-as it always does. An RPG object, an item, a wheel slice, a die face or a board space can have a **🤫 Send a card**
+the app gives each ("Card 2 → Ann", never what's on it) with ↻ Send again and ✖ Take back; it turns orange when one
+isn't all on the phones (a picture that didn't go up, a phone that came late), and that card's row says what. Any tile
+can have 🤫 cards (＋ Card in the clue editor): a standard or Daily Double tile's are offered in its panel to the player
+who picked it (a private question, a tip before the wager), go only when you send them, and go away when the tile
+closes; the tile plays as it always does. An RPG object, an item, a wheel slice, a die face or a board space can have a **🤫 Send a card**
 button (who gets it: whoever set it off, the party, a player you pick then, or everyone else): pressing it in play
 only offers the card in the panel, and it goes when you press 📤 Send there (Skip sends nothing). For a player with no
 phone, **🪟 Card window** (in 🤫 Send a card…) opens a window with only that player's cards, pictures and videos included,

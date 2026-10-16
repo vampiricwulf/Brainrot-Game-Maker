@@ -1474,7 +1474,7 @@
     const told = closeRoom();
     session.remote = null;
     void clearRoom();
-    toast(told ? 'Buzzer room closed: the phones were told' : 'Buzzer room closed: it’s out of reach right now, so the phones are told as soon as it answers');
+    toast(told ? 'Buzzer room closed: the phones were told' : 'Buzzer room closed: it’s out of reach right now; the phones are told if it answers within a minute');
   }
 
   /** 🔒 Lock seats: no new phone takes a seat or asks to join; players already in come back. */

@@ -278,10 +278,19 @@ export class RoomLink {
     this.flush();
   }
 
+  /**
+   * True when it went out, which isn't to say it got there: a line that died a moment ago without a word (dropped
+   * Wi-Fi) takes it all the same, until the pings find that out (heardAgo).
+   */
   send(msg: HostMsg): boolean {
     if (this.status !== 'online' || !this.ws || this.ws.readyState !== OPEN) return false;
     this.ws.send(JSON.stringify(msg));
     return true;
+  }
+
+  /** How long since the room last said anything (ms): a pong comes every PING_MS while the line is alive. */
+  heardAgo(): number {
+    return this.deps.now() - this.heard;
   }
 
   /**

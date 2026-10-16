@@ -31,6 +31,11 @@ class FakeSocket implements SocketLike {
     this.readyState = 3;
     this.onclose?.({ code: 1006 });
   }
+  // A room that's gone (closed already) turns the host away.
+  refuse() {
+    this.readyState = 3;
+    this.onclose?.({ code: 4004 });
+  }
 }
 let sockets: FakeSocket[] = [];
 
@@ -78,8 +83,33 @@ describe('closeRoom', () => {
     expect(closeRoom()).toBe(true);
     expect(sockets[0].sent.at(-1)).toEqual({ t: 'close' });
     expect(remote.status).toBe('off');
+    // A link of its own makes sure it got there: the room, closed now, turns it away, and that's the end of it.
+    expect(sockets.length).toBe(2);
+    sockets[1].refuse();
     t.advance(120_000);
-    expect(sockets.length).toBe(1);
+    expect(sockets.length).toBe(2);
+    expect(sockets[1].sent).toEqual([]);
+  });
+
+  it('a close that went into a line that died without a word still closes the room once it answers', () => {
+    sockets = [];
+    const t = fakeDeps();
+    setRemoteDeps(t.deps);
+    rejoinRoom(room);
+    sockets[0].welcome();
+    // The Wi-Fi dropped a moment ago: the socket still takes what's sent (it goes nowhere), and no pong comes back.
+    t.advance(25_000);
+    expect(remote.status).toBe('online');
+    expect(closeRoom()).toBe(false);
+    expect(sockets[0].sent.at(-1)).toEqual({ t: 'close' });
+    sockets[1].drop();
+    t.advance(retryDelay(0));
+    expect(sockets.length).toBe(3);
+    sockets[2].welcome();
+    expect(sockets[2].sent).toEqual([{ t: 'close' }]);
+    expect(sockets[2].closed).toBe(true);
+    t.advance(120_000);
+    expect(sockets.length).toBe(3);
   });
 
   it('out of reach for a moment: says so, and closes the room once it gets back in', () => {

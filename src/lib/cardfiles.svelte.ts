@@ -24,7 +24,7 @@ interface Upload {
   error?: string;
   /** Tries that didn't reach the buzzer server (a network blip), each tried again a little later: RETRIES at most. */
   tries?: number;
-  /** Waiting until then (Date.now()) after such a try. */
+  /** Waiting until then (Date.now()) after such a try: its timer lifts it. */
   after?: number;
 }
 
@@ -157,12 +157,19 @@ async function next(game: Game, session: Session): Promise<void> {
       room.files = { code: room.code, ids: { ...ids, [id]: r.id } };
       // Its card was taken back (or the tile closed) while it went up: the room lets go of it now, not 10 minutes on.
       if (!wantedNow.has(id)) forgetCardFiles([r.id]);
+    } else if (r.retry && !wantedNow.has(id)) {
+      // Its card was taken back (or the tile closed) while it went: no use trying again.
+      delete uploads.jobs[id];
     } else if (r.retry && (job.tries ?? 0) < RETRIES) {
       // (Not one the server turned down: off, too busy today, too big… That goes the same way again.)
       const tries = (job.tries ?? 0) + 1;
       const wait = 5000 * tries;
       Object.assign(job, { state: 'waiting', tries, after: Date.now() + wait });
-      setTimeout(() => void next(game, session), wait);
+      // (Its wait is over when this timer says so, not by the clock: a timer can run a moment early by Date.now().)
+      setTimeout(() => {
+        delete job.after;
+        void next(game, session);
+      }, wait);
     } else Object.assign(job, { state: 'failed', why: r.why, error: r.error });
   } finally {
     busy = false;

@@ -6,7 +6,7 @@ import type { SavedRoom } from './persist';
 import { embeddedBuzzerServer } from './export';
 import { prefs } from './prefs.svelte';
 import { app } from './app.svelte';
-import { RoomLink, type LinkDeps, type RoomBuzz, type RoomCardSeen, type RoomQueue, type RoomStatus, type RoomWager, type RoomAnswer } from './roomlink';
+import { PING_MS, RoomLink, type LinkDeps, type RoomBuzz, type RoomCardSeen, type RoomQueue, type RoomStatus, type RoomWager, type RoomAnswer } from './roomlink';
 
 /** The buzzer server this copy was built with (CI passes it), or ''. */
 export const DEFAULT_BUZZER_URL: string = (import.meta.env.VITE_BUZZER_URL ?? '').trim();
@@ -258,8 +258,10 @@ export async function uploadCardFile(blob: Blob, type: string): Promise<{ id: st
 export const forgetCardFiles = (ids: string[]): boolean => ids.length > 0 && remote.features.includes('files') && !!link?.send({ t: 'forget', files: ids });
 
 /**
- * Close the room: the phones are told the game is over. False when they couldn't be told now (the room out of reach
- * for a moment): a link of its own keeps trying for about a minute, and closes the room once it gets back in.
+ * Close the room: the phones are told the game is over. A close that went out may still not get there (a line that
+ * died a moment ago takes it all the same), so a link of its own goes in after it: a room that got it turns that one
+ * away at once; one that didn't is closed once it answers (it keeps trying for about a minute). False when the phones
+ * likely weren't told yet: the close couldn't go, or the room hasn't answered lately.
  */
 export function closeRoom(): boolean {
   const l = link;
@@ -267,10 +269,11 @@ export function closeRoom(): boolean {
   // (Taken before stop(), which forgets it. None after the room turned this window away: it's gone already, or another
   // window's now.)
   const room = l?.room ?? null;
-  const told = !!l && l.send({ t: 'close' });
+  // (A room that's there answers every ping, PING_MS apart: 5 s more for the pong.)
+  const told = !!l && l.send({ t: 'close' }) && l.heardAgo() < PING_MS + 5000;
   l?.stop();
   // (8 tries: 0.5 s, 1 s, 2 s… 15 s, about a minute in all.)
-  if (l && room && !told) new RoomLink(l.base, {}, deps).end(room, 8);
+  if (l && room) new RoomLink(l.base, {}, deps).end(room, 8);
   Object.assign(remote, { status: 'off', code: null, phones: [], listed: false, features: [], welcomed: false, files: null, cardsLate: [], error: '', closedCode: 0, attempts: 0, answered: [], fullAt: 0 });
   return told || !room;
 }
