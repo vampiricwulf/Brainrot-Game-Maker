@@ -346,10 +346,10 @@ export function partnerCards(game: Game, session: Session, room: PhoneCan): Host
 
 /**
  * The 🤫 cards the host sent with 🤫 Send a card… or from a tile's panel (Session.cards, partner-clues spec §12) as the
- * buzzer room gets them: those still out, to exactly their recipients still in the game. A tile's card edited in the
- * editor since it went is left out (its hash), so a phone never shows what the host didn't send. One on a tile says
- * "The answer's on screen" once the answer shows. `room`: the files the room holds (null: it takes none). Null when
- * none are out.
+ * buzzer room gets them: those still out, to exactly their recipients still in the game. A card made in the editor (a
+ * tile's or a 🤫 Card) edited since it went is left out (its hash), so a phone never shows what the host didn't send.
+ * One on a tile says "The answer's on screen" once the answer shows. `room`: the files the room holds (null: it takes
+ * none). Null when none are out.
  */
 export function sessionCards(game: Game, session: Session, room: PhoneCan): HostCard[] | null {
   const out: HostCard[] = [];

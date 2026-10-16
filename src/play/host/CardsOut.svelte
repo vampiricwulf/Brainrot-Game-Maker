@@ -2,13 +2,13 @@
   🤫 The cards out now (partner-clues spec §12.2): those sent with 🤫 Send a card… or from a tile's panel, each by the
   label the app gave it ("Card 2 → Ann · ✓ seen"), never what's on it, with ↻ Send again, ✖ Take back and the 📋 copy
   buttons. In one window this list is on stream: the tools row shows only how many are out, and the list opens only
-  when the host asks for it.
+  when the host asks for it. With the audience window open, a card from the editor's 🤫 Cards also says which it is.
 -->
 <script lang="ts">
   import { announce } from '../../lib/announce';
   import { cardsLeftOff, teamsOn } from '../../lib/buzz';
   import { retryFiles } from '../../lib/cardfiles.svelte';
-  import type { Game, Id, SentCard, Session } from '../../lib/model';
+  import { savedCardName, type Game, type Id, type SentCard, type Session } from '../../lib/model';
   import { copyWordsText } from '../../lib/partner';
   import { cardLinks, cardWords } from '../../lib/phonecard';
   import { buzzerOn, remote, roomHasCards, roomHasFiles } from '../../lib/remote.svelte';
@@ -54,6 +54,12 @@
       <b>{c.label}</b>
       <span aria-hidden="true">→</span>
       <span>{sentToText(session, c.to, teams)}</span>
+      {#if dual && 'saved' in c.content}
+        <!-- (Two windows only: in one, a 🤫 Card's name next to who got it would be on stream.) -->
+        {@const id = c.content.saved}
+        {@const i = game.cards?.findIndex((x) => x.id === id) ?? -1}
+        {#if i >= 0}<span class="muted small" data-card-from>· 🤫 {savedCardName(game.cards![i], i)}</span>{/if}
+      {/if}
       <span class="small" class:warn={state.warn} data-card-state>· {state.text}</span>
       <span class="muted small">· {LASTS[c.until]}</span>
     </div>

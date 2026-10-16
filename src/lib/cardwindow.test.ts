@@ -5,7 +5,7 @@ import { jeopardyGame } from './testgame';
 import { newImageEl, setSlideText, type BoardRound, type Game, type Session } from './model';
 import { newSession, openClue } from './session';
 import { addCard, sendCards, setPartner, setPartnerGame } from './partner';
-import { quickSlide, sendCard, takeBackCard } from './sentcards';
+import { quickSlide, sendCard, sendCardAgain, sentCardId, takeBackCard } from './sentcards';
 import { CARD_WIN_TYPES, windowCards, windowFiles } from './cardwindow';
 
 /** Ann (a), Bob (b) and Cat (c); Movies $400 has Card 1 ("TIP-xyzzy" and a picture from a file). */
@@ -56,6 +56,22 @@ describe('what the card window shows', () => {
     setSlideText(card, 'TIP-xyzzy');
     takeBackCard(session, tip.id);
     expect(windowCards(g, session, 'a')).toEqual([]);
+  });
+
+  it('one of the editor’s 🤫 Cards sent to their whole seat shows as it went, never its name; edited since, it’s left out until ↻ Send again', () => {
+    const { g, session } = setup();
+    g.cards = [{ id: 'sc1', name: 'NAME-wildcard', background: {}, elements: [] }];
+    setSlideText(g.cards[0], 'WILD-plugh');
+    g.cards[0].elements.push({ ...newImageEl('m1'), y: 600 });
+    const c = sendCard(g, session, { to: [{ seat: 'b' }], content: { saved: 'sc1' }, until: 'host' }, 1000)!;
+    const bob = windowCards(g, session, 'b');
+    expect(bob).toEqual([{ id: sentCardId(c), text: 'WILD-plugh', media: [{ kind: 'image', file: 'm1' }], open: true }]);
+    expect(JSON.stringify(bob)).not.toMatch(/NAME-|secret-pic/);
+    expect(windowCards(g, session, 'a')).toEqual([]);
+    setSlideText(g.cards[0], 'WILD-edited');
+    expect(windowCards(g, session, 'b')).toEqual([]);
+    sendCardAgain(g, session, c.id, 2000);
+    expect(windowCards(g, session, 'b').map((x) => x.text)).toEqual(['WILD-edited']);
   });
 
   it('the open partner clue’s sends to the player, with their lines', () => {

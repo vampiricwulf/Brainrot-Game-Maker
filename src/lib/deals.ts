@@ -28,7 +28,7 @@ import {
 import type { PhoneInfo } from './buzzproto';
 import { cardHash, toKey } from './partner';
 import { cardLinks, cardWords } from './phonecard';
-import { cardsOut, cleanTo, fileItem, roundNow, sendCardAgain, takeBackCard } from './sentcards';
+import { cardsOut, cleanTo, fileItem, roundNow, sendCardAgain, takeBackCard, type CardGame } from './sentcards';
 import { isRespin, random, weightedIndex } from './tools';
 
 // ---------- Ready-made deals ----------
@@ -330,7 +330,7 @@ export const dealLabel = (d: Pick<DealState, 'name'>): string => `🎭 ${d.name.
  * whole team, or one person on it), with their part as the card's top line (under Tap to see on a phone). Null when it
  * can't go: nobody left in the game, or no round on for cards that last the round.
  */
-export function dealCards(game: Pick<Game, 'rounds'>, session: Session, d: DealState, until: 'round' | 'host', now = Date.now()): SentCard[] | null {
+export function dealCards(game: CardGame, session: Session, d: DealState, until: 'round' | 'host', now = Date.now()): SentCard[] | null {
   const round = until === 'round' ? roundNow(game, session) : undefined;
   if (until === 'round' && !round) return null;
   const cards = d.hands.flatMap((h): SentCard[] => {
@@ -358,7 +358,7 @@ export function dealCards(game: Pick<Game, 'rounds'>, session: Session, d: DealS
  * The deal's cards that are out now (on the phones, in the card window), in the players' order. Only the host column
  * (two windows) says which is whose: one window's panel only counts them.
  */
-export function dealOut(game: Pick<Game, 'rounds'>, session: Pick<Session, 'cards' | 'currentRound' | 'phase' | 'currentClue' | 'deal'>): SentCard[] {
+export function dealOut(game: CardGame, session: Pick<Session, 'cards' | 'currentRound' | 'phase' | 'currentClue' | 'deal'>): SentCard[] {
   const id = session.deal?.id;
   return id ? cardsOut(game, session).filter((c) => c.deal === id) : [];
 }
@@ -374,7 +374,7 @@ function takeBackDealCards(session: Session): SentCard[] {
  * 📤 Send (the host confirmed the deal): each player's card goes now, lasting `until`. `full`: the buzzer room has no
  * room for them all (roomCardsFull with dealTrial): nothing goes, never some of them. Returns the cards sent.
  */
-export function sendDeal(game: Pick<Game, 'rounds'>, session: Session, until: 'round' | 'host', now = Date.now(), full = false): SentCard[] {
+export function sendDeal(game: CardGame, session: Session, until: 'round' | 'host', now = Date.now(), full = false): SentCard[] {
   const d = session.deal;
   if (!d || full) return [];
   const cards = dealCards(game, session, d, until, now);
@@ -388,7 +388,7 @@ export function sendDeal(game: Pick<Game, 'rounds'>, session: Session, until: 'r
 }
 
 /** The send, on a copy of the session (roomCardsFull's `go`): would the room take them all? */
-export function dealTrial(game: Pick<Game, 'rounds'>, d: DealState, until: 'round' | 'host'): (trial: Session) => void {
+export function dealTrial(game: CardGame, d: DealState, until: 'round' | 'host'): (trial: Session) => void {
   return (t) => {
     const cards = dealCards(game, t, d, until) ?? [];
     t.cards = [...(t.cards ?? []).filter((c) => !c.deal), ...cards];
@@ -396,7 +396,7 @@ export function dealTrial(game: Pick<Game, 'rounds'>, d: DealState, until: 'roun
 }
 
 /** ↻ Send again: each of the deal's cards out goes again under a new id (a phone that came late gets it). How many went. */
-export function sendDealAgain(game: Pick<Game, 'rounds'>, session: Session, now = Date.now()): number {
+export function sendDealAgain(game: CardGame, session: Session, now = Date.now()): number {
   return dealOut(game, session).filter((c) => sendCardAgain(game, session, c.id, now)).length;
 }
 
@@ -443,7 +443,7 @@ export function dropGonePhones(d: Pick<DealState, 'phonesAt'>, phones: PhoneInfo
 }
 
 /** ✖ Take back: the deal's cards go from every phone (the deal stays, for Who was who). Returns the cards taken back. */
-export function takeBackDeal(game: Pick<Game, 'rounds'>, session: Session): SentCard[] {
+export function takeBackDeal(game: CardGame, session: Session): SentCard[] {
   const out = dealOut(game, session);
   for (const c of out) takeBackCard(session, c.id);
   return out;

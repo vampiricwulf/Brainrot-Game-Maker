@@ -4,13 +4,14 @@
 // phones; a player taken out, a reload and Resume with my edits keep it right; and viewers never get Session.cards.
 import { describe, expect, it } from 'vitest';
 import { jeopardyGame } from './testgame';
-import { newImageEl, newRound, setSlideText, type BoardRound, type Game, type SentCard, type Session } from './model';
+import { newImageEl, newRound, setSlideText, type BoardRound, type Game, type SavedCard, type SentCard, type Session } from './model';
 import { backToBoard, forViewers, goToRound, migrateSession, newSession, openClue, rebaseSession, removePlayer } from './session';
 import { addCard, cardHash, sendCards, setPartner, setPartnerGame } from './partner';
 import { hostCards, hostState, buzzIdle, newBuzz, phoneStatus, roomCardCount, roomCardsFull, sessionCards } from './buzz';
 import {
   cardsOut,
   cleanTo,
+  dropOverCards,
   linkItem,
   nextLabel,
   quickSlide,
@@ -41,6 +42,13 @@ function setup() {
   const session = newSession(g);
   session.currentPickerId = 'a';
   return { g, session, clue, card };
+}
+
+/** One of the editor's 🤫 Cards, with these words. */
+function saved(id: string, name: string, words: string): SavedCard {
+  const c: SavedCard = { id, name, background: {}, elements: [] };
+  setSlideText(c, words);
+  return c;
 }
 
 const REF = { round: 0, cat: 0, row: 1 };
@@ -217,8 +225,7 @@ describe('a tile’s own cards (🤫 Just you, 💡 Insider tip)', () => {
 describe('one of the editor’s 🤫 Cards', () => {
   it('goes by reference (its id, never a copy), read from the game as it is now: changed since, it’s edited; deleted, gone', () => {
     const { g, session } = setup();
-    g.cards = [{ id: 'sc1', name: 'Wild card', background: {}, elements: [] }];
-    setSlideText(g.cards[0], 'WILD-plugh');
+    g.cards = [saved('sc1', 'Wild card', 'WILD-plugh')];
     const c = sendCard(g, session, { to: [{ seat: 'b' }], content: { saved: 'sc1' }, until: 'host' }, 1000)!;
     expect(c).toMatchObject({ label: 'Card 1', content: { saved: 'sc1' }, hash: cardHash(g.cards[0]) });
     expect(sentState(g, c)).toBe('sent');
@@ -231,6 +238,51 @@ describe('one of the editor’s 🤫 Cards', () => {
     delete g.cards;
     expect(sentState(g, c)).toBe('gone');
     expect(sendCard(g, session, { to: [{ seat: 'b' }], content: { saved: 'sc1' }, until: 'host' })).toBeNull();
+  });
+
+  it('↻ Send again sends what’s on it now; one deleted in the editor (▶ Resume with my edits) is taken back', () => {
+    const { g, session, clue, card } = setup();
+    g.cards = [saved('sc1', 'Wild card', 'WILD-plugh'), saved('sc2', 'Tip A', 'TIP-qwop')];
+    const wild = sendCard(g, session, { to: [{ seat: 'b' }], content: { saved: 'sc1' }, until: 'host' }, 1000)!;
+    const tip = sendCard(g, session, { to: [{ seat: 'a' }], content: { saved: 'sc2' }, until: 'round' }, 2000)!;
+    const tile = sendCard(g, session, { to: [{ seat: 'c' }], content: { clue: clue.id, card: card.id }, until: 'host' }, 3000)!;
+    setSlideText(g.cards[0], 'WILD-changed');
+    expect(sentState(g, wild)).toBe('edited');
+    expect(sessionCards(g, session, { files: {} })!.map((c) => c.text)).toEqual(['TIP-qwop', 'TIP-xyzzy']);
+    expect(sendCardAgain(g, session, wild.id, 4000)).toBe(true);
+    const again = session.cards!.find((c) => c.id === wild.id)!;
+    expect(again).toMatchObject({ at: 4000, hash: cardHash(g.cards[0]), content: { saved: 'sc1' } });
+    expect(sentState(g, again)).toBe('sent');
+    expect(sessionCards(g, session, { files: {} })!.map((c) => c.text)).toEqual(['WILD-changed', 'TIP-qwop', 'TIP-xyzzy']);
+    // Tip A deleted in the editor: it isn't out, and Resume with my edits takes it back.
+    const edited: Game = JSON.parse(JSON.stringify(g));
+    edited.cards!.splice(1, 1);
+    expect(cardsOut(edited, session).map((c) => c.id)).toEqual([wild.id, tile.id]);
+    rebaseSession(session, g, edited);
+    expect(session.cards!.map((c) => c.id)).toEqual([wild.id, tile.id]);
+    expect(session.cards!.some((c) => c.id === tip.id)).toBe(false);
+    // The last one too: the tile's card is left.
+    delete edited.cards;
+    dropOverCards(edited, session);
+    expect(session.cards!.map((c) => c.id)).toEqual([tile.id]);
+    // (An object with only the boards still reads a tile's card; it reads every 🤫 Card as deleted, so pass the game.)
+    expect(cardsOut({ rounds: g.rounds }, session).map((c) => c.id)).toEqual([tile.id]);
+  });
+
+  it('a reload keeps it by its id; a card id that isn’t one is dropped', () => {
+    const { g, session } = setup();
+    g.cards = [saved('sc1', 'Wild card', 'WILD-plugh')];
+    const c = sendCard(g, session, { to: [{ seat: 'b' }], content: { saved: 'sc1' }, until: 'host' }, 1000)!;
+    const reloaded: Session = JSON.parse(JSON.stringify(session));
+    migrateSession(reloaded, g);
+    expect(reloaded.cards).toEqual(session.cards);
+    expect(sessionCards(g, reloaded, { files: {} })!.map((x) => [x.id, x.text])).toEqual([[sentCardId(c), 'WILD-plugh']]);
+    const bad = JSON.parse(JSON.stringify(session)) as Session;
+    const good = bad.cards![0];
+    bad.cards = [good, { ...good, id: 'x1', content: { saved: 5 } }, { ...good, id: 'x2', content: { saved: 'x' } }] as unknown as SentCard[];
+    repairSentCards(bad);
+    // (A card id the game doesn't have is still well-formed: dropOverCards takes it back with the game at hand.)
+    expect(bad.cards!.map((x) => x.id)).toEqual([good.id, 'x2']);
   });
 });
 

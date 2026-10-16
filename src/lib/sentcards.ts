@@ -1,9 +1,9 @@
-// 🤫 Cards anywhere (partner-clues spec §12): cards the host sends with 🤫 Send a card… (the tools row, in any round)
-// or from an open tile's panel (a standard or Daily Double tile's own 🤫 cards: 🤫 Just you, 💡 Insider tip). They live
-// in Session.cards, and only the host's presses add to it (sendCard, sendCardAgain); ✖ Take back, a round ending, a
-// tile closing, a player taken out or a card deleted in the editor take them away. What the buzzer room gets is built
-// from Session.cards alone (buzz.ts sessionCards), as a partner clue's is from its sends. No Svelte state: tested in
-// sentcards.test.ts.
+// 🤫 Cards anywhere (partner-clues spec §12): cards the host sends with 🤫 Send a card… (the tools row, in any round:
+// one of the editor's 🤫 Cards, a tile's card or a quick one) or from an open tile's panel (a standard or Daily Double
+// tile's own 🤫 cards: 🤫 Just you, 💡 Insider tip). They live in Session.cards, and only the host's presses add to it
+// (sendCard, sendCardAgain); ✖ Take back, a round ending, a tile closing, a player taken out or a card deleted in the
+// editor take them away. What the buzzer room gets is built from Session.cards alone (buzz.ts sessionCards), as a
+// partner clue's is from its sends. No Svelte state: tested in sentcards.test.ts.
 import { isLinkProblem, parseMediaLink, youtubeStart } from './links';
 import {
   boardRounds,
@@ -66,10 +66,10 @@ export function sentSlide(game: CardGame, c: Pick<SentCard, 'content'>): Slide |
 }
 
 /**
- * How a card stands: 'sent' (as it went), 'edited' (a tile's card changed in the editor since: off the phones until
- * ↻ Send again) or 'gone' (that card or its tile was deleted).
+ * How a card stands: 'sent' (as it went), 'edited' (a card made in the editor, a tile's or a 🤫 Card, changed since: off
+ * the phones until ↻ Send again) or 'gone' (that card or its tile was deleted).
  */
-export function sentState(game: Pick<Game, 'rounds'>, c: Pick<SentCard, 'content' | 'hash'>): 'sent' | 'edited' | 'gone' {
+export function sentState(game: CardGame, c: Pick<SentCard, 'content' | 'hash'>): 'sent' | 'edited' | 'gone' {
   const slide = sentSlide(game, c);
   return !slide ? 'gone' : cardHash(slide) === c.hash ? 'sent' : 'edited';
 }
@@ -126,7 +126,7 @@ function tileNow(game: Pick<Game, 'rounds'>, session: Pick<Session, 'currentClue
 }
 
 /** Whether a card is still out: its round is on, its tile is open, or it lasts until taken back; and it still exists. */
-function stillOut(game: Pick<Game, 'rounds'>, session: Pick<Session, 'currentRound' | 'phase' | 'currentClue'>, c: SentCard): boolean {
+function stillOut(game: CardGame, session: Pick<Session, 'currentRound' | 'phase' | 'currentClue'>, c: SentCard): boolean {
   if (!sentSlide(game, c)) return false;
   if (c.until === 'round') return !!c.round && c.round === roundNow(game, session);
   if (c.until === 'tile') return !!c.tile && c.tile === tileNow(game, session);
@@ -134,7 +134,7 @@ function stillOut(game: Pick<Game, 'rounds'>, session: Pick<Session, 'currentRou
 }
 
 /** The cards out now, in the order sent (what the buzzer room gets, a 🎭 deal's cards included). */
-export function cardsOut(game: Pick<Game, 'rounds'>, session: Pick<Session, 'cards' | 'currentRound' | 'phase' | 'currentClue'>): SentCard[] {
+export function cardsOut(game: CardGame, session: Pick<Session, 'cards' | 'currentRound' | 'phase' | 'currentClue'>): SentCard[] {
   return (session.cards ?? []).filter((c) => stillOut(game, session, c));
 }
 
@@ -142,15 +142,16 @@ export function cardsOut(game: Pick<Game, 'rounds'>, session: Pick<Session, 'car
  * The list of cards out: those sent with 🤫 Send a card… or from a tile's panel. A 🎭 deal's cards are listed by the
  * deal (its row only counts them: one per player would say who got which by what's on each).
  */
-export function listedCards(game: Pick<Game, 'rounds'>, session: Pick<Session, 'cards' | 'currentRound' | 'phase' | 'currentClue'>): SentCard[] {
+export function listedCards(game: CardGame, session: Pick<Session, 'cards' | 'currentRound' | 'phase' | 'currentClue'>): SentCard[] {
   return cardsOut(game, session).filter((c) => !c.deal);
 }
 
 /**
- * The cards that are over go: their round ended, their tile closed, or their tile's card was deleted. Called where the
- * open clue or the round changes (backToBoard, goToRound, backToLastRound, rebaseSession) and on loading a save.
+ * The cards that are over go: their round ended, their tile closed, or the card made in the editor (a tile's or a
+ * 🤫 Card) was deleted. Called where the open clue or the round changes (backToBoard, goToRound, backToLastRound,
+ * rebaseSession) and on loading a save.
  */
-export function dropOverCards(game: Pick<Game, 'rounds'>, session: Session): void {
+export function dropOverCards(game: CardGame, session: Session): void {
   if (!session.cards) return;
   const kept = session.cards.filter((c) => stillOut(game, session, c));
   if (kept.length !== session.cards.length) session.cards = kept;
@@ -170,7 +171,10 @@ export function dropSeatFromCards(session: Session, seat: Id): void {
 export interface CardToSend {
   /** Who gets it (players' seats, or one person on a team). */
   to: CardTo[];
-  /** A tile's card (by its clue and card ids), or a card made here (its slide: a copy is kept). */
+  /**
+   * A tile's card (by its clue and card ids), a card from 🤫 Cards (by its id), or a card made here (its slide: a copy
+   * is kept).
+   */
   content: SentCard['content'];
   /** How long it lasts: until this round ends, until the open tile closes, or until taken back. */
   until: SentCard['until'];
@@ -214,7 +218,7 @@ export function sendCard(game: CardGame, session: Session, card: CardToSend, now
  * ↻ Send again: the card goes again under a new id, to the players it's out to now (a phone that came late for it gets
  * it), with what's on it now. Returns whether it went.
  */
-export function sendCardAgain(game: Pick<Game, 'rounds'>, session: Session, id: Id, now = Date.now()): boolean {
+export function sendCardAgain(game: CardGame, session: Session, id: Id, now = Date.now()): boolean {
   const c = session.cards?.find((x) => x.id === id);
   const slide = c && sentSlide(game, c);
   const to = c ? cleanTo(session, c.to) : [];
@@ -303,6 +307,7 @@ export function repairSentCards(session: Session): void {
     typeof x === 'object' &&
     !!x &&
     ((typeof (x as { clue?: unknown }).clue === 'string' && typeof (x as { card?: unknown }).card === 'string') ||
+      typeof (x as { saved?: unknown }).saved === 'string' ||
       (typeof (x as { slide?: unknown }).slide === 'object' && !!(x as { slide: Slide }).slide && Array.isArray((x as { slide: Slide }).slide.elements)));
   const until = ['round', 'tile', 'host'];
   const kept = (Array.isArray(c) ? c : []).filter(

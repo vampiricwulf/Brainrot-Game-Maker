@@ -1,13 +1,16 @@
 <!--
   🤫 Send a card… (partner-clues spec §12.2), from the tools row in any round: who gets it (players or teams, people on
-  a team, everyone, or ⇄ everyone else), what (a tile's 🤫 card made in the editor, or a quick one: words typed or
-  pasted, with a picture, video or sound from this computer, the game's 🖼 Media or pasted, or a link; or the slide on
-  screen, as viewers see it), and how long it lasts (until the round ends, or until taken back). 📤 Send puts it on their
-  phones, through the same buzzer room path as a partner clue's cards; without one, 📋 copies it to them, or 🪟 shows it
-  in the card window. Nothing goes but by that press, and never more cards than the room takes (✖ Take one back first).
-  In one window viewers see this: the saved cards are listed by tile and counted, never said, and only for tiles played
-  or open (the others would say where a Daily Double is); what's typed for a quick card is hidden unless the host asks
-  (👁 Show); the 🖼 Media list (file names) is only offered with the audience window open.
+  a team, everyone, or ⇄ everyone else), what (one of the editor's 🤫 Cards, a tile's 🤫 card made in the editor, or a
+  quick one: words typed or pasted, with a picture, video or sound from this computer, the game's 🖼 Media or pasted, or
+  a link; or the slide on screen, as viewers see it), and how long it lasts (until the round ends, or until taken back:
+  a 🤫 Card starts as its own). 📤 Send puts it on their phones, through the same buzzer room path as a partner clue's
+  cards; without one, 📋 copies it to them, or 🪟 shows it in the card window. Nothing goes but by that press, never
+  more cards than the room takes (✖ Take one back first), and never a card made in the editor again to exactly the
+  players it's out to (↻ Send again in the cards out is for that).
+  In one window viewers see this: the 🤫 Cards are listed by name and counted, never said; a tile's are listed by tile
+  and counted, and only for tiles played or open (the others would say where a Daily Double is); what's typed for a
+  quick card is hidden unless the host asks (👁 Show); the 🖼 Media list (file names) and what's on the card picked
+  from the editor are only shown with the audience window open.
   With `preset`, the card an action offered (an RPG object's, an item's, a wheel slice's or a board space's 🤫 button):
   who it starts with and how long it lasts come from the action, the card is fixed (counted, never shown), and it goes
   only when the host presses 📤 Send here.
@@ -16,21 +19,21 @@
   import { untrack } from 'svelte';
   import { app, toast } from '../../lib/app.svelte';
   import { announce } from '../../lib/announce';
-  import { CARD_MEDIA_MAX } from '../../lib/buzzproto';
+  import { CARD_MEDIA_MAX, clip } from '../../lib/buzzproto';
   import { cardsFullText, roomCardsFull, seenAtOnce, teamsOn } from '../../lib/buzz';
   import { phoneCan } from '../../lib/cardfiles.svelte';
   import { textOn } from '../../lib/colors';
   import { tileToolUp } from '../../lib/live';
   import { ACCEPT, addMediaFile, identicalMedia, mediaKind } from '../../lib/media.svelte';
   import {
-    boardRounds, cardSlides, categoryLabel, clueValue, formatPoints, getClue, isRpg, roundName,
+    boardRounds, cardSlides, categoryLabel, clueValue, formatPoints, getClue, isRpg, roundName, savedCardName,
     type CardTo, type Game, type Id, type MediaRef, type SentCard, type Session, type Slide, type SlideElement, type TeamMember,
   } from '../../lib/model';
   import { cardSummary, copyWordsText, toKey } from '../../lib/partner';
   import { cardItems, cardLinks, cardWords, phoneCard, type CardItem } from '../../lib/phonecard';
   import { buzzerOn, remote, roomHasCards, roomHasFiles, roomMembers } from '../../lib/remote.svelte';
   import { findIn, focusRef, screenElements, screenSlide, worldById } from '../../lib/rpg';
-  import { fileItem, linkItem, memberTo, quickSlide, sendCard, sentToText, tileCard } from '../../lib/sentcards';
+  import { cleanTo, fileItem, linkItem, listedCards, memberTo, quickSlide, savedCard, sendCard, sentToText, tileCard } from '../../lib/sentcards';
   import { currentClueInfo, currentFinal, shownQuestionSlide, slidesRound } from '../../lib/session';
   import { hideFromViewers } from '../../lib/sync.svelte';
   import { cardWindow, openCardWindow } from '../../lib/cardwindow.svelte';
@@ -91,6 +94,21 @@
 
   // ---------- What ----------
 
+  /** A card made in the editor, as the list offers it: one of the editor's 🤫 Cards (`saved`), or a tile's (`clue`, `card`). */
+  type FromEditor = { key: string; label: string; saved?: Id; clue?: Id; card?: Id };
+  /**
+   * The editor's 🤫 Cards, in its order: by name and counted ("Tip A · 1 line of words, 1 picture"), never what's on
+   * them. In one window too (a card made ahead isn't tied to a place on the board). " · out" on one out now (with the
+   * audience window open: to whom).
+   */
+  const mine = $derived.by((): FromEditor[] => {
+    const out = listedCards(game, session);
+    return (game.cards ?? []).map((c, i) => {
+      const sent = out.filter((x) => 'saved' in x.content && x.content.saved === c.id);
+      const mark = !sent.length ? '' : dual ? ` · out to ${sent.map((x) => sentToText(session, x.to, teams)).join(', ')}` : ' · out';
+      return { key: `saved:${c.id}`, saved: c.id, label: `${savedCardName(c, i)} · ${cardSummary(game, c)}${mark}` };
+    });
+  });
   /** The tile open now (its clue id): its cards are listed in one window too. */
   const openId = $derived(session.phase === 'clue' && session.currentClue ? getClue(game, session.currentClue)?.clue.id : undefined);
   /**
@@ -98,10 +116,10 @@
    * window only those of tiles played or open: the list would tell viewers where an unplayed Daily Double or partner clue
    * is (the board never marks them).
    */
-  const saved = $derived.by(() => {
+  const tiles = $derived.by((): FromEditor[] => {
     const sym = game.settings.currencySymbol;
     const rounds = boardRounds(game);
-    const out: { key: string; clue: Id; card: Id; label: string }[] = [];
+    const out: FromEditor[] = [];
     for (const r of rounds) {
       const prefix = rounds.length > 1 ? `${roundName(r, game.rounds.indexOf(r))} · ` : '';
       for (const c of r.categories)
@@ -114,6 +132,8 @@
     }
     return out;
   });
+  /** Every card made in the editor that can go now: the 🤫 Cards first, then the tiles'. */
+  const fromEditor = $derived([...mine, ...tiles]);
 
   /**
    * Only what viewers see of a slide as it comes up: never a secret item, a hotspot, a see-through item, nor one that
@@ -154,14 +174,15 @@
 
   let kind = $state<'saved' | 'quick' | 'stage'>('quick');
   let pick = $state('');
-  // (In one window a card made in the editor keeps its words off stream: it's the first choice there.)
+  // (A card from 🤫 Cards was made to be sent: it's the first choice. In one window so is any card made in the editor, as
+  // it keeps its words off stream.)
   let chose = false;
   $effect(() => {
-    if (chose || !saved.length) return;
+    if (chose || !fromEditor.length) return;
     chose = true;
-    if (!dual) kind = 'saved';
+    if (!dual || mine.length) kind = 'saved';
   });
-  const chosen = $derived(saved.find((x) => x.key === pick) ?? saved[0]);
+  const chosen = $derived(fromEditor.find((x) => x.key === pick) ?? fromEditor[0]);
   let words = $state('');
   let items = $state<SlideElement[]>([]);
   let link = $state('');
@@ -172,9 +193,19 @@
   /** The game's pictures, videos and sounds (by name: offered only with the audience window open). */
   const mediaFiles = $derived(game.media.filter((m) => m.kind === 'image' || m.kind === 'video' || m.kind === 'audio'));
   const FILE_ICON: Partial<Record<MediaRef['kind'], string>> = { image: '🖼', video: '🎞', audio: '🔊' };
-  /** The card as it would go: an action's, a tile's (as the editor has it), the slide on screen, or the quick one. */
+  /** The card as it would go: an action's, a 🤫 Card or a tile's (as the editor has it), the slide on screen, or the quick one. */
   const slide = $derived(
-    preset ? preset.slide : kind === 'saved' ? (chosen ? tileCard(game, chosen.clue, chosen.card)?.card : undefined) : kind === 'stage' ? onStage : quickSlide(words, items),
+    preset
+      ? preset.slide
+      : kind === 'saved'
+        ? !chosen
+          ? undefined
+          : chosen.saved
+            ? savedCard(game, chosen.saved)
+            : tileCard(game, chosen.clue!, chosen.card!)?.card
+        : kind === 'stage'
+          ? onStage
+          : quickSlide(words, items),
   );
   const hasSomething = $derived(!!slide && slide.elements.some((e) => e.kind !== 'text' || !!e.text.trim()));
   /** The quick card's items, in order, by kind (never named: in one window viewers see this). */
@@ -234,6 +265,16 @@
   const roundOn = $derived(session.phase !== 'end' && session.phase !== 'tiebreaker');
   let lasts = $state<'round' | 'host'>(untrack(() => preset?.until ?? 'round'));
   const until = $derived<SentCard['until']>(roundOn ? lasts : 'host');
+  // Picking a card from 🤫 Cards sets how long it lasts to the card's own (the radios can still change it). Never an
+  // action's card: its own comes from the action.
+  let lastsFor = '';
+  $effect(() => {
+    const k = !preset && kind === 'saved' ? chosen?.key : undefined;
+    if (!k || k === lastsFor) return;
+    lastsFor = k;
+    const c = chosen!.saved ? savedCard(game, chosen!.saved) : undefined;
+    if (c) untrack(() => (lasts = c.until ?? 'round'));
+  });
   /** What was sent last (names only), for the line under the button. */
   let said = $state('');
   const noPhone = $derived(cardsOn ? [...new Set(to.map((t) => t.seat))].filter((id) => !phones.has(id)) : []);
@@ -249,14 +290,29 @@
   const sendTo = $derived(cardsOn ? to : windowTo);
   /** The buzzer room has all the cards it takes: ✖ Take one back first. */
   const full = $derived(roomCardsFull(game, session));
-  const canSend = $derived(sendTo.length > 0 && hasSomething && !full);
+  /** The card picked, made in the editor, already out to exactly these players: a second 📤 Send would put it on their phones twice. */
+  const already = $derived.by(() => {
+    const ch = chosen;
+    if (preset || kind !== 'saved' || !ch || !sendTo.length) return undefined;
+    const want = cleanTo(session, sendTo).map(toKey).sort().join();
+    return listedCards(game, session).find(
+      (c) =>
+        ('saved' in c.content ? c.content.saved === ch.saved : 'clue' in c.content && c.content.clue === ch.clue && c.content.card === ch.card) &&
+        c.to.map(toKey).sort().join() === want,
+    );
+  });
+  /** (Its label and where to go: nothing of the card, so this shows in one window too.) */
+  const alreadyText = $derived(already ? `${already.label} is out to them already: ↻ Send it again in the cards out, or ✖ Take it back first` : '');
+  const canSend = $derived(sendTo.length > 0 && hasSomething && !full && !already);
   /** Why 📤 Send (or 🪟 Show) can't go, or ''. */
-  const cant = $derived(full ? cardsFullText(game, session) : !to.length ? 'Choose who gets it first' : !hasSomething ? (kind === 'stage' ? 'Nothing on screen to send now' : 'Put something on the card first') : '');
+  const cant = $derived(
+    full ? cardsFullText(game, session) : !to.length ? 'Choose who gets it first' : !hasSomething ? (kind === 'stage' ? 'Nothing on screen to send now' : 'Put something on the card first') : alreadyText,
+  );
 
   function send(): void {
     if (full) return toast(cardsFullText(game, session), 4000);
     if (!canSend || !slide) return;
-    const content: SentCard['content'] = !preset && kind === 'saved' && chosen ? { clue: chosen.clue, card: chosen.card } : { slide };
+    const content: SentCard['content'] = !preset && kind === 'saved' && chosen ? (chosen.saved ? { saved: chosen.saved } : { clue: chosen.clue!, card: chosen.card! }) : { slide };
     const c = sendCard(game, session, { to: sendTo, content, until }, Date.now(), roomCardsFull(game, session));
     if (!c) return toast('That card can’t be sent now');
     said = `${c.label} sent to ${sentToText(session, c.to, teams)}`;
@@ -328,7 +384,9 @@
     <div class="small" data-offer-card>{cardSummary(game, preset.slide) || 'Nothing on it'} <span class="muted">(what’s on it is in the editor, never shown here)</span></div>
   {:else}
     <div class="row wrap" role="radiogroup" aria-label="Which card">
-      <label class="check small"><input type="radio" name="card-kind-{uid}" value="saved" bind:group={kind} disabled={!saved.length} /> One made in the editor</label>
+      <label class="check small" title="A card from the editor’s 🤫 Cards tab, or a tile’s 🤫 card"
+        ><input type="radio" name="card-kind-{uid}" value="saved" bind:group={kind} disabled={!fromEditor.length} /> One made in the editor</label
+      >
       <label class="check small"><input type="radio" name="card-kind-{uid}" value="quick" bind:group={kind} /> A quick card</label>
       <label class="check small" title={onStageSomething ? 'What viewers see on screen now, as a card (nothing hidden from them goes)' : 'Nothing is on screen to send now'}
         ><input type="radio" name="card-kind-{uid}" value="stage" bind:group={kind} disabled={!onStageSomething} /> The slide on screen</label
@@ -338,12 +396,34 @@
       <div class="muted small" data-saved-note>Cards on tiles not played yet are listed with the audience window open (viewers see this one).</div>
     {/if}
     {#if kind === 'saved'}
-      {#if saved.length}
+      {#if fromEditor.length}
         <select class="small" aria-label="The card to send" value={chosen?.key ?? ''} onchange={(e) => (pick = e.currentTarget.value)}>
-          {#each saved as s (s.key)}<option value={s.key}>{s.label}</option>{/each}
+          {#if mine.length && tiles.length}
+            <optgroup label="🤫 Cards">{#each mine as s (s.key)}<option value={s.key}>{s.label}</option>{/each}</optgroup>
+            <optgroup label="On tiles">{#each tiles as s (s.key)}<option value={s.key}>{s.label}</option>{/each}</optgroup>
+          {:else}
+            {#each fromEditor as s (s.key)}<option value={s.key}>{s.label}</option>{/each}
+          {/if}
         </select>
+        {#if dual && slide}
+          <!-- (Two windows only: this window isn't on stream. The host's "did I pick the right one".) -->
+          {@const text = cardWords(slide)}
+          {@const its = cardItems(game, slide)}
+          <div class="preview small" data-card-preview>
+            <div class="muted">What’s on it</div>
+            {#if text}<div class="words" dir="auto">{clip(text, 300)}</div>{/if}
+            {#each its as it (it.el)}<div>{ICON[it.kind]} · {it.name}</div>{/each}
+            {#if !text && !its.length}<div class="muted">Nothing on it</div>{/if}
+          </div>
+        {/if}
       {:else}
-        <div class="muted small">{dual ? 'No tile has a 🤫 card yet: make one in the editor (a tile’s ＋ Card).' : 'No tile played yet has a 🤫 card.'}</div>
+        <div class="muted small">
+          {!dual
+            ? 'No 🤫 Cards in this game, and no tile played yet has a card.'
+            : app.playerOnly
+              ? 'No 🤫 Cards in this game, and no tile has a card.'
+              : 'No card made in the editor yet: make one in the editor’s 🤫 Cards tab (or a tile’s ＋ Card).'}
+        </div>
       {/if}
     {:else if kind === 'stage'}
       <div class="small" data-stage-card>
@@ -433,6 +513,7 @@
       {/if}
     {/if}
   </div>
+  {#if alreadyText}<div class="small muted" data-card-already>{alreadyText}</div>{/if}
   {#if !cardsOn}
     <div class="muted small">
       {room ? 'This buzzer server doesn’t put cards on phones: copy it to them (📋)' : 'No phone buzzers in this game: copy it to them (📋)'}{#if cardWindow.open}, or show it in the 🪟 card window.{:else if firstSeat}, or
@@ -444,7 +525,7 @@
     <span class="exposed"
       >{preset
         ? '⚠ Viewers can see this window: it says who gets the card, never what’s on it.'
-        : '⚠ Viewers can see this window: what you type is hidden (👁 Show shows it to them too), and a card made in the editor is never shown.'}</span
+        : '⚠ Viewers can see this window: what you type is hidden (👁 Show shows it to them too); of a card made in the editor they see its name or its tile, never what’s on it.'}</span
     >
   {/if}
 </div>
@@ -507,6 +588,14 @@
   }
   select {
     max-width: 100%;
+  }
+  .preview {
+    max-height: 8lh;
+    overflow-y: auto;
+    white-space: pre-line;
+    padding: 4px 8px;
+    border-radius: 6px;
+    background: var(--panel-2);
   }
   .small {
     font-size: 12px;
