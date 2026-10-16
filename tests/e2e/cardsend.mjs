@@ -15,7 +15,7 @@ import { chromium } from 'playwright-core';
 import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { confirmStrip, openGameFile, packGame, png, recordSeen, roomStored, shownOf, startBuzzer } from './helpers.mjs';
+import { confirmStrip, openGameFile, packGame, png, recordSeen, roomStored, shownOf, startBuzzer, stored } from './helpers.mjs';
 
 const file = resolve(process.env.APP_FILE || 'dist/index.html');
 if (!existsSync(file)) throw new Error('Run `npm run build` first');
@@ -285,6 +285,11 @@ try {
     await host.locator('.mode-ask .mode', { hasText: 'Single window' }).click();
     await host.locator('.play .panel').waitFor();
   };
+  // (Once autosave holds them: its write waits a moment for more clicks, and the copy written as the page goes away
+  // isn't always kept by a browser under test. A reload before that comes back to the game before Card 2 went, and the
+  // room would take it off Ann's and Cat's phones.)
+  const keptIds = async () => JSON.stringify(((await stored(host))?.session?.cards ?? []).map((c) => `sc:${c.id}:${c.at}`)) === JSON.stringify([c1b.id, c2.id]);
+  assert(await until(keptIds), 'autosave holds both cards under their ids');
   await aud.close();
   let n = states.length;
   await resume();

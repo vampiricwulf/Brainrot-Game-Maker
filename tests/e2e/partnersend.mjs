@@ -15,7 +15,7 @@ import { chromium } from 'playwright-core';
 import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { mainButton, mainLabel, openGameFile, packGame, png, recordSeen, roomStored, shownOf, startBuzzer } from './helpers.mjs';
+import { mainButton, mainLabel, openGameFile, packGame, png, recordSeen, roomStored, shownOf, startBuzzer, stored } from './helpers.mjs';
 
 const file = resolve(process.env.APP_FILE || 'dist/index.html');
 if (!existsSync(file)) throw new Error('Run `npm run build` first');
@@ -339,11 +339,16 @@ try {
   await sleep(300);
   await nothingSent('the question up, a card given to someone else');
   await offStream(aud, 'the audience window', 'handing out the cards');
+  // (Once autosave holds it: its write waits a moment for more clicks, and the copy written as the page goes away isn't
+  // always kept by a browser under test.)
+  const catSeat = last().seats.find((x) => x.name === 'Cat').id;
+  assert(await until(async () => JSON.stringify((await stored(host))?.session?.partner?.deal?.c2) === JSON.stringify([{ seat: catSeat }])), 'autosave holds card 2 given to Cat');
 
   // ---------- A host reload in the Distribute step, nothing sent or got ready: no upload, the list as it was ----------
-  /** The host reloads and resumes in one window. */
-  const resume = async () => {
+  /** The host reloads and resumes in one window (`reloaded` runs once the page is back, before Resume game). */
+  const resume = async (reloaded = () => {}) => {
     await host.reload();
+    reloaded();
     await host.getByRole('button', { name: 'Resume game' }).click();
     await host.locator('.mode-ask .mode', { hasText: 'Single window' }).click();
     await host.locator('.play .panel').waitFor();
@@ -359,9 +364,10 @@ try {
   await aud.locator('[data-partner-badge]').waitFor();
 
   // ---------- 📤 Send and start, with the uploads held up (a slow network), then a host reload ----------
-  /** Uploads that reach the network wait here: none goes through. */
+  /** Uploads that reach the network wait here while `holding`: none goes through. */
   const held = [];
-  await host.route('**/api/rooms/*/files', (r) => (r.request().method() === 'POST' ? void held.push(r) : r.continue()));
+  let holding = true;
+  await host.route('**/api/rooms/*/files', (r) => (holding && r.request().method() === 'POST' ? void held.push(r) : r.continue()));
   await mainButton(host).click();
   await host.locator('.stage-box .timer').waitFor();
   assert(await until(() => sendOf('c1').length === 1 && sendOf('c2').length === 1), 'sent: the room’s state holds card 1 and card 2');
@@ -413,11 +419,14 @@ try {
   assert(await until(async () => (await textOf(row(2).locator('[data-card-state]'))).includes(lateRow)), `and the host’s row says so: “${lateRow}”`);
 
   // ---------- The host reloads mid-upload (the held upload is cut off with the page) ----------
+  // (Left held as the page goes, so the reload cuts it off: taking the route off sends a held request on, and it could
+  // reach the room, and its answer the page, before the reload does. The uploads after the reload go through, counted
+  // from the page that's back: the one going away may start the next upload as the held one is cut off, cut off too.)
   await aud.close();
-  await host.unroute('**/api/rooms/*/files');
-  const before = uploads.length;
+  holding = false;
+  let before = 0;
   const sentAt = states.length;
-  await resume();
+  await resume(() => (before = uploads.length));
   assert(await until(() => sendOf('c1')[0]?.media?.[0]?.file && sendOf('c1')[0].media[1]?.file && sendOf('c2')[0]?.media?.[0]?.file), 'after the reload the uploads finish: card 1’s picture and video, card 2’s picture');
   assert(
     states.slice(sentAt).every((x) => x.cards?.length === 2) && sendOf('c1')[0].id === s1.id && sendOf('c2')[0].id === s2.id,
@@ -488,7 +497,7 @@ try {
   const files3 = panel.locator('[data-partner-files]');
   assert((await files3.innerText()).includes('1 picture goes up when you send'), 'the panel counts card 3’s picture (never names it)');
   held.length = 0;
-  await host.route('**/api/rooms/*/files', (r) => (r.request().method() === 'POST' ? void held.push(r) : r.continue()));
+  holding = true;
   await files3.getByRole('button', { name: '⇡ Get it ready now' }).click();
   assert(await until(() => held.length === 1), '⇡ Get it ready: card 3’s picture starts up');
   // (The game in progress is saved a moment after a change: a reload before that wouldn't know card 3 was got ready.
@@ -510,7 +519,7 @@ try {
         }),
     );
   assert(await until(readySaved), '⇡ Get it ready is kept with the game in progress');
-  await host.unroute('**/api/rooms/*/files');
+  holding = false;
   await resume();
   // (The picture is shrunk again and goes up to wrangler dev: a slow CI machine takes a while.)
   const readied = await until(async () => (await textOf(panel.locator('[data-partner-files]'))).includes('ready in the buzzer room'), 45000);
