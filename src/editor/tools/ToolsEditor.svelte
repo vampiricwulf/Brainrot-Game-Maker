@@ -234,7 +234,11 @@
             data-tool={item.id}
             draggable="true"
             title="Drag to reorder · double-click or F2 to rename · right-click for more"
-            onclick={() => (sel = item.id)}
+            onclick={(e) => {
+              sel = item.id;
+              // (Safari and Firefox on a Mac don't focus a clicked button: it takes the keys, not a row renamed.)
+              e.currentTarget.focus();
+            }}
             ondblclick={() => (renaming = item.id)}
             oncontextmenu={(e) => menu(e, kind, item, i)}
             onkeydown={(e) => itemKey(e, kind, item, i)}

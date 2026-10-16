@@ -4,7 +4,7 @@ import { chromium } from 'playwright-core';
 import { existsSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { addClassicRounds, dragBy } from './helpers.mjs';
+import { addClassicRounds, dragBy, macClicks } from './helpers.mjs';
 
 const file = resolve(process.env.APP_FILE || 'dist/index.html');
 if (!existsSync(file)) throw new Error('Run `npm run build` first');
@@ -203,6 +203,14 @@ try {
   await page.keyboard.press('Backspace');
   await page.waitForFunction(() => !document.activeElement?.value?.endsWith('!'));
   assert((await texts(wheelList)).join() === 'Dares,Wheel 1', 'renamed, then a slice clicked: the typing and Backspace go there, and no wheel is deleted');
+  // Renamed, then the other wheel clicked where a button clicked doesn't take the focus (Safari, a Mac): that one has the keys.
+  const chromiumClicks = await macClicks(page);
+  await wheelList.first().dblclick();
+  await page.getByRole('list', { name: 'Wheels' }).getByLabel('Wheel name', { exact: true }).fill('Dares');
+  await page.getByRole('list', { name: 'Wheels' }).getByRole('button', { name: 'Wheel 1', exact: true }).click();
+  await page.waitForFunction(() => document.activeElement?.textContent?.trim() === 'Wheel 1' && document.activeElement.getAttribute('aria-current') === 'true');
+  assert(true, 'renamed, then the other wheel clicked, with a Mac’s clicks: that wheel shows, and its row has the keys (not the one renamed)');
+  await chromiumClicks();
   await wheelList.first().focus();
   await page.keyboard.press('Control+d');
   assert((await texts(wheelList)).join() === 'Dares,Dares (copy),Wheel 1', 'Ctrl+D duplicates, right after it');

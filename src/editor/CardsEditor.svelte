@@ -191,7 +191,11 @@
                 data-saved-card={c.id}
                 draggable="true"
                 title="Drag to reorder · double-click or F2 to rename · right-click for more"
-                onclick={() => (sel = c.id)}
+                onclick={(e) => {
+                  sel = c.id;
+                  // (Safari and Firefox on a Mac don't focus a clicked button: it takes the keys, not a card renamed.)
+                  e.currentTarget.focus();
+                }}
                 ondblclick={() => (renaming = c.id)}
                 oncontextmenu={(e) => menu(e, c, i)}
                 onkeydown={(e) => itemKey(e, c, i)}

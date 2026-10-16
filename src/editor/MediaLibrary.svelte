@@ -154,8 +154,8 @@
   // ---------- Renaming a file in place (double-click or F2 on its name) ----------
   let renaming = $state<string | null>(null);
   /**
-   * (Its name takes the focus back, Enter, Esc or a click on nothing, but not from a field or button clicked: the next
-   * key goes there.)
+   * Its name takes the focus back (Enter, Esc, a click on nothing), but not from a field or button clicked: the next key
+   * goes there.
    */
   function rename(m: MediaRef, name: string, refocus = true): void {
     renaming = null;

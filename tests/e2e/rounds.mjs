@@ -4,7 +4,7 @@ import { chromium } from 'playwright-core';
 import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { playWithPlayers } from './helpers.mjs';
+import { macClicks, playWithPlayers } from './helpers.mjs';
 
 const file = resolve(process.env.APP_FILE || 'dist/index.html');
 if (!existsSync(file)) throw new Error('Run `npm run build` first');
@@ -91,6 +91,14 @@ try {
   await page.locator('nav .navlabel', { hasText: 'Rounds' }).click();
   await page.waitForFunction(() => document.activeElement?.matches('nav > button.round-tab') && document.activeElement.textContent.trim().endsWith('Midgame Wager'));
   assert(true, 'renamed, then a click on nothing: its tab has the keys again');
+  // Renamed, then another tab clicked where a button clicked doesn't take the focus (Safari, a Mac): that tab has the keys.
+  const chromiumClicks = await macClicks(page);
+  await roundTab('Midgame Wager').dblclick();
+  await page.locator('nav input.tab-name').fill('Midgame Wager');
+  await page.locator('nav > button.round-tab').first().click();
+  await page.waitForFunction(() => document.activeElement === document.querySelector('nav > button.round-tab') && document.activeElement.getAttribute('aria-current') === 'page');
+  assert(true, 'renamed, then another tab clicked, with a Mac’s clicks: that round shows, and its tab has the keys (not the one renamed)');
+  await chromiumClicks();
 
   // Play: board → Final in the middle → board → Final → end.
   await playWithPlayers(page, 2);

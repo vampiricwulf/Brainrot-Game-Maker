@@ -105,8 +105,8 @@
   // ---------- Renaming in place (double-click or F2): Enter saves, Esc cancels, empty goes back to the automatic label ----------
   let renaming = $state<string | null>(null);
   /**
-   * (Its row takes the focus back, Enter, Esc or a click on nothing, but not from a field or another row clicked: the
-   * next key goes there, not to the row, where Backspace would delete the item.)
+   * Its row takes the focus back (Enter, Esc, a click on nothing), but not from a field or another row clicked: the next
+   * key goes there, not to the row, where Backspace would delete the item.
    */
   function rename(el: SlideElement, name: string | null, refocus = true): void {
     renaming = null;
@@ -193,7 +193,11 @@
       {:else}
         <button
           class="name"
-          onclick={(e) => pick(e, el)}
+          onclick={(e) => {
+            pick(e, el);
+            // (Safari and Firefox on a Mac don't focus a clicked button: it takes the keys, not a row renamed.)
+            e.currentTarget.focus();
+          }}
           ondblclick={() => (renaming = el.id)}
           onkeydown={(e) => rowKey(e, el)}
           aria-pressed={isSel}

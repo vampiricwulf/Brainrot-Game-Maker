@@ -16,7 +16,7 @@ import { chromium } from 'playwright-core';
 import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { editorReady, openGameFile, packGame, png, recordSeen, shownOf, startBuzzer, stored } from './helpers.mjs';
+import { editorReady, macClicks, openGameFile, packGame, png, recordSeen, shownOf, startBuzzer, stored } from './helpers.mjs';
 
 const file = resolve(process.env.APP_FILE || 'dist/index.html');
 if (!existsSync(file)) throw new Error('Run `npm run build` first');
@@ -296,6 +296,14 @@ try {
   await row('Tip A').click();
   await host.waitForFunction(() => document.activeElement?.textContent?.trim() === 'Tip A' && document.activeElement.getAttribute('aria-current') === 'true');
   assert(true, 'renamed, then another card clicked: that card is open, and its row has the keys (not the card renamed)');
+  // The same where a button clicked doesn't take the focus (Safari, a Mac): the row clicked takes it.
+  const chromiumClicks = await macClicks(host);
+  await row('Private card 3').dblclick();
+  await list.getByLabel('Card name', { exact: true }).fill('Private card 3');
+  await row('Wild card').click();
+  await host.waitForFunction(() => document.activeElement?.textContent?.trim() === 'Wild card' && document.activeElement.getAttribute('aria-current') === 'true');
+  assert(true, 'renamed, then another card clicked, with a Mac’s clicks: that card is open, and its row has the keys');
+  await chromiumClicks();
 
   // ---------- Private card 3 goes (the play list has two cards) ----------
   await listIs('Wild card, Tip A, Private card 3');

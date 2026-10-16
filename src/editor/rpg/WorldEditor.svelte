@@ -1041,7 +1041,11 @@
             data-map-tab={m.id}
             draggable="true"
             title={i === 0 ? 'The main map · double-click to rename, drag to reorder, right-click for more' : 'Double-click to rename, drag to reorder, right-click for more'}
-            onclick={() => showMap(m)}
+            onclick={(e) => {
+              showMap(m);
+              // (Safari and Firefox on a Mac don't focus a clicked button: it takes the keys, not a tab renamed.)
+              e.currentTarget.focus();
+            }}
             ondblclick={() => (renaming = m.id)}
             onkeydown={(e) => mapTabKey(e, m, i)}
             oncontextmenu={(e) => mapMenu(e, m, i)}

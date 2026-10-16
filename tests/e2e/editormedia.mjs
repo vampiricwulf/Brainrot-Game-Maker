@@ -5,7 +5,7 @@ import { chromium } from 'playwright-core';
 import { existsSync, mkdirSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { addClassicRounds, answerReplace, openGameFile } from './helpers.mjs';
+import { addClassicRounds, answerReplace, macClicks, openGameFile } from './helpers.mjs';
 
 const file = resolve(process.env.APP_FILE || 'dist/index.html');
 if (!existsSync(file)) throw new Error('Run `npm run build` first');
@@ -316,6 +316,15 @@ try {
   await page.waitForFunction(() => document.activeElement?.matches('.insp textarea') && document.activeElement.value === 'Secon');
   await page.keyboard.type('d');
   assert((await layers.count()) === 2 && (await layers.filter({ hasText: 'Subtitle' }).count()) === 1, 'renamed, then its text box clicked: Backspace types there, and deletes no item');
+  // Renamed, then the other item clicked where a button clicked doesn't take the focus (Safari, a Mac): that one has the keys.
+  const chromiumClicks = await macClicks(page);
+  const other = (await layers.allInnerTexts()).findIndex((t) => !t.includes('Subtitle'));
+  await layers.filter({ hasText: 'Subtitle' }).locator('.name').dblclick();
+  await layerName.fill('Subtitle');
+  await layers.nth(other).locator('.name').click();
+  await page.waitForFunction((i) => document.activeElement === document.querySelectorAll('.layers-box .row')[i]?.querySelector('button.name[aria-pressed="true"]'), other);
+  assert(true, 'renamed, then the other item clicked, with a Mac’s clicks: that one is picked, and its row has the keys (not the one renamed)');
+  await chromiumClicks();
 
   // ---------- A picture copied on a slide pastes onto the board images ----------
   await page.getByRole('button', { name: '🖼 Image' }).click();

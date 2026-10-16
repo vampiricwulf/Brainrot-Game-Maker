@@ -978,7 +978,11 @@
             class:lifted={roundDrag === round.id}
             data-place="round:{round.id}"
             draggable="true"
-            onclick={() => (tab = i)}
+            onclick={(e) => {
+              tab = i;
+              // (Safari and Firefox on a Mac don't focus a clicked button: it takes the keys, not a tab renamed.)
+              e.currentTarget.focus();
+            }}
             ondblclick={() => (renamingRound = round.id)}
             onkeydown={(e) => roundTabKey(e, i)}
             oncontextmenu={(e) =>
