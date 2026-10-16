@@ -491,6 +491,25 @@ try {
   await host.route('**/api/rooms/*/files', (r) => (r.request().method() === 'POST' ? void held.push(r) : r.continue()));
   await files3.getByRole('button', { name: '⇡ Get it ready now' }).click();
   assert(await until(() => held.length === 1), '⇡ Get it ready: card 3’s picture starts up');
+  // (The game in progress is saved a moment after a change: a reload before that wouldn't know card 3 was got ready.
+  // Waited for while the upload is still held, so the reload still cuts it off.)
+  const readySaved = () =>
+    host.evaluate(
+      () =>
+        new Promise((ok) => {
+          const q = indexedDB.open('keyval-store');
+          q.onerror = () => ok(false);
+          q.onsuccess = () => {
+            const g = q.result.transaction('keyval').objectStore('keyval').get('playSession');
+            g.onerror = () => ok(false);
+            g.onsuccess = () => {
+              q.result.close();
+              ok(!!g.result?.session?.partner?.ready?.length);
+            };
+          };
+        }),
+    );
+  assert(await until(readySaved), '⇡ Get it ready is kept with the game in progress');
   await host.unroute('**/api/rooms/*/files');
   await resume();
   // (The picture is shrunk again and goes up to wrangler dev: a slow CI machine takes a while.)
@@ -498,7 +517,7 @@ try {
   assert(readied, `after the reload it finishes: “ready in the buzzer room” (the panel says “${await textOf(panel.locator('[data-partner-files]'))}”)`);
   await answered(4);
   const ready = answers.filter((a) => a.status === 200).at(-1).id;
-  assert(uploads.length === before + 5 && ![pic1, vid1, pic2].includes(ready), 'one upload more (card 3’s picture, the cut-off one again)');
+  assert(uploads.length === before + 5 && ![pic1, vid1, pic2].includes(ready), `one upload more (card 3’s picture, the cut-off one again) (${uploads.length - before} uploads)`);
   await sleep(500);
   assert(!sendOf('c3').length && !JSON.stringify(states).includes(WORDS3), 'got ready: card 3 is in no state');
   for (const [p, name] of [[ann, 'Ann'], [bob, 'Bob'], [cat2, 'Cat'], [dan, 'Dan']]) assert((await fetchAs(p, ready)) === 404, `${name} can’t fetch a file that was only got ready`);
