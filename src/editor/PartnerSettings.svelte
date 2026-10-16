@@ -65,6 +65,13 @@
    * stays, for when it's unticked.
    */
   const safeBox = (when: 'got' | 'missed', r: PartnerRole) => safe && when === 'missed' && r === partnerPart(rules);
+  /**
+   * That box's tooltip. When it's the guesser's, it also says what Solo takes: the picker alone gets the guesser's
+   * missed share as typed, since there's no partner to keep at 0.
+   */
+  const heldTitle = $derived(
+    `The partner never loses points (ticked): untick it to let a miss cost them${partnerPart(rules) === 'guesser' && rules.missed.guesser < 0 ? `. Solo (the picker alone), a miss still costs the picker ${-rules.missed.guesser}%` : ''}`,
+  );
   /** The rules to change: the clue's own (one saved without any gets Describe it's first). */
   const own = () => (clue.partner ??= partnerRules(clue));
   const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
@@ -188,7 +195,7 @@
                     step="5"
                     value={held ? Math.max(rules[when][r], 0) : rules[when][r]}
                     disabled={held}
-                    title={held ? 'The partner never loses points (ticked): untick it to let a miss cost them' : undefined}
+                    title={held ? heldTitle : undefined}
                     aria-label="{words[r]}’s share if it’s {word} (% of the tile’s value)"
                     oninput={(e) => {
                       const n = typedShare(e.currentTarget.value);
