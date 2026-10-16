@@ -93,10 +93,13 @@
     wheel(() => openQuickWheel(app.live, options), edit);
   }
 
-  /** 🪟 The card window for a player (from this click: a popup needs one). */
+  /**
+   * 🪟 The card window for a player (from this click: a popup needs one). From 🤫 Send a card… the dialog stays open, so
+   * the card can go to the window next; from the 🪟 button's own menu, it closes.
+   */
   function cardWindowFor(id: string): void {
     if (!openCardWindow(id)) return void toast('The browser blocked the popup. Allow popups for this file and try again.', 5000);
-    done();
+    if (menu === 'win') done();
   }
 
   function rollCustom(): void {

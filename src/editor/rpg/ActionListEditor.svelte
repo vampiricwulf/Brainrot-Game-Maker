@@ -32,6 +32,7 @@
     board,
     addLabel = '＋ Add button',
     askLabel = 'Host picks who',
+    passing = false,
   }: {
     actions: Action[] | undefined;
     /** For "Go to" (moves need a world). */
@@ -44,6 +45,8 @@
     addLabel?: string;
     /** What "ask" means here: an item's Use buttons go to whoever used it, the host isn't asked. */
     askLabel?: string;
+    /** Board games: a space's "when passed" buttons (whoever passes it, not whoever landed there). */
+    passing?: boolean;
   } = $props();
   /** The first map with a screen: where a new "Go to a screen" button points (the main map may have none). */
   const firstMap = $derived(world?.maps.find((m) => m.screens.length));
@@ -51,9 +54,12 @@
   const game = $derived(editedGame());
   const numbers = $derived(statFields(game).filter((f) => f.type === 'number'));
   let editing = $state<{ action: Action; which: 'slide' | 'question' | 'answer' } | null>(null);
-  /** Who a 🤫 card goes to, in this list's words (an item's is whoever uses it, a space's whoever landed there). */
+  /**
+   * Who a 🤫 card goes to, in this list's words (an item's is whoever uses it, a space's whoever landed there or passes
+   * it): the same words its button says in play (actions.ts describeAction).
+   */
   const cardWho = $derived<[CardWho, string][]>([
-    ['trigger', board ? 'Whoever landed there' : askLabel === 'Host picks who' ? 'Who it’s for when it runs' : askLabel],
+    ['trigger', board ? (passing ? 'Whoever passes it' : 'Whoever landed there') : askLabel === 'Host picks who' ? 'Whoever set it off' : askLabel],
     ['party', board ? 'Whoever’s turn it is' : 'The party here'],
     ['ask', 'A player you pick then'],
     ['others', 'Everyone else'],

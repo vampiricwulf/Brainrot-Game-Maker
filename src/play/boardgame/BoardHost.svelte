@@ -125,9 +125,9 @@
     steps = null;
   }
 
-  function run(a: Action, who: string): void {
+  function run(a: Action, who: string, on: 'land' | 'pass'): void {
     if (needsPlayers(a) && !who) return void hint('Pick who it’s for first');
-    toast(runAction({ ...ctx, chosen: [who] }, a, describeAction(game, a)), 3000);
+    toast(runAction({ ...ctx, chosen: [who] }, a, describeAction(game, a, on)), 3000);
   }
 
   function send(to: string): void {
@@ -382,15 +382,15 @@
       <div class="row acts">
         {#each passed as s (s.id)}
           <span class="muted small">Passed {s.name}:</span>
-          {#each s.onPass ?? [] as a (a.id)}<button class="small" onclick={() => run(a, last.playerId)}>{describeAction(game, a)}</button>{/each}
+          {#each s.onPass ?? [] as a (a.id)}<button class="small" onclick={() => run(a, last.playerId, 'pass')}>{describeAction(game, a, 'pass')}</button>{/each}
         {/each}
         {#if landed}
           <!-- Landing on a space counts as passing it too (landing on Start still pays). -->
           <span class="muted small"
             >Landed on <b>{landed.name}</b>{landed.onPass?.length ? ' (counts as passing)' : ''}{landed.onLand?.length || landed.onPass?.length ? ':' : '.'}</span
           >
-          {#each landed.onPass ?? [] as a (a.id)}<button class="small" onclick={() => run(a, last.playerId)}>{describeAction(game, a)}</button>{/each}
-          {#each landed.onLand ?? [] as a (a.id)}<button class="small" onclick={() => run(a, last.playerId)}>{describeAction(game, a)}</button>{/each}
+          {#each landed.onPass ?? [] as a (a.id)}<button class="small" onclick={() => run(a, last.playerId, 'pass')}>{describeAction(game, a, 'pass')}</button>{/each}
+          {#each landed.onLand ?? [] as a (a.id)}<button class="small" onclick={() => run(a, last.playerId, 'land')}>{describeAction(game, a, 'land')}</button>{/each}
           {#if landed.secret && !bs.revealed?.includes(landed.id)}<button class="small ghost" onclick={() => reveal(landed)}>👁 Reveal space</button>{/if}
           {#if landed.hostNotes && !dual}<span class="notes">📝 {landed.hostNotes}</span>{/if}
         {/if}

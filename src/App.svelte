@@ -44,6 +44,7 @@
   import { forgetGameParts } from './lib/toolset';
   import { newLive, type Overlay } from './lib/live';
   import { clone } from './lib/ops';
+  import { slideMediaIds } from './lib/usage';
   import { sameGame } from './lib/samegame';
   import { sameContent } from './lib/roundcopy';
   import Editor from './editor/Editor.svelte';
@@ -701,6 +702,9 @@
     let game = saved.game;
     if (withEdits) {
       game = clone(app.game);
+      // The files of 🤫 cards made in play (a quick card's picture: only the played copy has them) go with the cards out.
+      const keep = new Set((saved.session.cards ?? []).flatMap((c) => ('slide' in c.content ? slideMediaIds(c.content.slide) : [])));
+      for (const m of saved.game.media) if (keep.has(m.id) && !game.media.some((x) => x.id === m.id)) game.media.push(clone(m));
       rebaseSession(saved.session, saved.game, game);
       forgetGameParts(saved.session);
     }

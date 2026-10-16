@@ -80,7 +80,8 @@ export function targets(ctx: RunContext, who: Who | undefined): string[] {
 /**
  * Who a 🤫 card action's card starts with (the host can change it before it goes): whoever set it off (the players the
  * button is for: picked on its card, the item's user, who the spin was for, who landed), the party, nobody yet (the
- * host picks), or everyone but whoever set it off.
+ * host picks), or everyone but whoever set it off. With nobody known to have set it off (a spin or a roll nobody was
+ * tagged for), "everyone else" starts with nobody too: everyone would include the very player it's not for.
  */
 export function cardTargets(ctx: RunContext, who: CardWho | undefined): string[] {
   const trigger = targets(ctx, 'ask');
@@ -92,12 +93,29 @@ export function cardTargets(ctx: RunContext, who: CardWho | undefined): string[]
     case 'ask':
       return [];
     case 'others':
-      return ctx.session.players.map((p) => p.id).filter((id) => !trigger.includes(id));
+      return trigger.length ? ctx.session.players.map((p) => p.id).filter((id) => !trigger.includes(id)) : [];
   }
 }
 
-/** What a card action's button says: who it's for, never what's on the card (the panel may be on stream). */
-const CARD_FOR: Record<CardWho, string> = { trigger: 'whoever set it off', party: 'the party', ask: 'a player you pick', others: 'everyone else' };
+/** Where an action's button is: a board space's landing or passing list, or an item's Use (the words for who it's for). */
+export type ActionOn = 'land' | 'pass' | 'use';
+
+/**
+ * What a card action's button says: who it's for, never what's on the card (the panel may be on stream). The same words
+ * as the editor's "Who gets it" (ActionListEditor).
+ */
+function cardFor(who: CardWho, on?: ActionOn): string {
+  switch (who) {
+    case 'trigger':
+      return on === 'land' ? 'whoever landed there' : on === 'pass' ? 'whoever passes it' : on === 'use' ? 'whoever uses it' : 'whoever set it off';
+    case 'party':
+      return on === 'land' || on === 'pass' ? 'whoever’s turn it is' : 'the party';
+    case 'ask':
+      return 'a player you pick';
+    case 'others':
+      return 'everyone else';
+  }
+}
 
 const names = (ctx: RunContext, ids: string[]) => nameList(ids.map((id) => ctx.session.players.find((p) => p.id === id)?.name ?? '?'));
 
@@ -116,8 +134,8 @@ export function needsPlayers(a: Action): boolean {
   return a.do === 'stat' || a.do === 'item' || a.do === 'score' || ((a.do === 'move' || a.do === 'goto') && a.who !== 'party');
 }
 
-/** A one-line description for buttons and the log ("HP −1", "Give 2 Potion"). */
-export function describeAction(game: Game, a: Action): string {
+/** A one-line description for buttons and the log ("HP −1", "Give 2 Potion"). `on`: where its button is (cardFor). */
+export function describeAction(game: Game, a: Action, on?: ActionOn): string {
   switch (a.do) {
     case 'stat': {
       const f = statFields(game).find((x) => x.id === a.field);
@@ -169,7 +187,7 @@ export function describeAction(game: Game, a: Action): string {
     case 'again':
       return 'Roll again';
     case 'card':
-      return `🤫 Card for ${CARD_FOR[a.to ?? 'trigger']}`;
+      return `🤫 Card for ${cardFor(a.to ?? 'trigger', on)}`;
   }
 }
 
@@ -308,7 +326,8 @@ export function runAction(ctx: RunContext, a: Action, label?: string): string {
       if (!ctx.offerCard) return 'Cards can’t be sent from here';
       const to = cardTargets(ctx, a.to);
       ctx.offerCard({ from: text, slide: JSON.parse(JSON.stringify(a.slide)), to, until: a.until === 'host' ? 'host' : 'round' });
-      return `${text}${to.length ? ` (${names(ctx, to)})` : ''}: check who gets it, then 📤 Send`;
+      // (Short: the offer in the panel says the rest, and a long toast would sit over it.)
+      return text;
     }
   }
 }

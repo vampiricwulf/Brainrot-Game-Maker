@@ -197,6 +197,8 @@ try {
   dialog = host.getByRole('dialog', { name: 'Send a card' });
   await dialog.waitFor();
   assert((await dialog.getByRole('radio', { name: 'A quick card' }).isChecked()) && !(await dialog.locator('.exposed').count()), 'two windows: a quick card is the first choice, and no warning about viewers');
+  assert((await dialog.getByRole('combobox', { name: 'A file from the game’s 🖼 Media' }).count()) === 1, 'two windows: a file from the game’s 🖼 Media can go on it (by name: viewers don’t see this window)');
+  assert(!(await dialog.getByRole('button', { name: '👁 Show' }).count()), 'and what’s typed isn’t hidden (no 👁 Show)');
   await dialog.getByRole('textbox', { name: 'The card’s words' }).fill(SPY);
   assert(!JSON.stringify(states).includes('"cards"') && !JSON.stringify(heard).includes('qkzvx'), 'typing the card sends nothing');
   await dialog.getByRole('button', { name: 'Bob', exact: true }).click();
@@ -306,7 +308,7 @@ try {
   assert(JSON.stringify(cards()[1].to) === JSON.stringify([{ seat: seat.Ann }]) && last().phase === plainPhase, 'to Ann only, and the buzzers are as they were');
   await ann.getByRole('button', { name: 'Tap to see' }).waitFor();
   assert(await ann.locator('#buzz').isVisible(), 'Ann’s phone keeps its buzz button beside the card');
-  assert(await until(async () => (await words(tileRow)).includes('(Card 3) sent')), 'its row says it went, as Card 3');
+  assert(await until(async () => /· (sent|✓ seen) · listed as Card 3/.test(await words(tileRow))), `its row says it went, listed as Card 3 (${await words(tileRow)})`);
   // Shift+Esc puts the tile back: the card was seen, so it asks.
   await host.keyboard.press('Shift+Escape');
   const askBox = host.getByRole('alertdialog');

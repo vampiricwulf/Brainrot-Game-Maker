@@ -25,8 +25,8 @@
   import { dropOffersBut } from './host/cardoffers.svelte';
   import { addTime, newLive, overlayDoneAt, startTimer, tileToolUp, timerRemaining, timerResumed, toggleTimer, toolOverlay, type Live, type StageAction, type TimerState } from '../lib/live';
   import {
-    buzzArm, buzzClueOpened, buzzDone, buzzIdle, buzzMissed, buzzReset, buzzTake, hostState, newBuzz, partnerAnswerAsk, partnerAnswerId, hostCards, phoneStatus, SEAT_NAME_MAX, sendOf, SETTING_UP, teamsOn, wagerAsk,
-    whoBuzzed,
+    buzzArm, buzzClueOpened, buzzDone, buzzIdle, buzzMissed, buzzReset, buzzTake, CARDS_FULL, hostState, newBuzz, partnerAnswerAsk, partnerAnswerId, hostCards, phoneStatus, roomCardsFull, SEAT_NAME_MAX, sendOf, SETTING_UP,
+    teamsOn, wagerAsk, whoBuzzed,
     type BuzzState,
   } from '../lib/buzz';
   import { clip, type HostState, type WagerAsk, type AnswerAsk } from '../lib/buzzproto';
@@ -93,6 +93,7 @@
     audienceTitle,
     closeAudienceWindow,
     closeScoresWindow,
+    hideFromViewers,
     openScoresWindow,
     scoresWindow,
     mediaCommand,
@@ -102,6 +103,7 @@
     pushLive,
     pushSession,
   } from '../lib/sync.svelte';
+  import { mediaUsage, slideMediaIds } from '../lib/usage';
   import { localMedia, openMediaPopup, POPUP_FAILED, remoteMedia } from '../lib/mediactl.svelte';
   import { registerGameFonts } from '../lib/fonts';
   import { inTauri, toggleFullscreen } from '../lib/platform';
@@ -265,6 +267,12 @@
   // change made ▶ Play and each rule ticked lag in big games. What changed goes together a moment later, the game
   // first, so a viewer never gets a session or overlay that refers to a part of the game it hasn't got yet.
   const viewers = $derived((audience.open || scoresWindow.open) && !app.test);
+  // The files only a quick 🤫 card shows (added in play: the game uses them nowhere else) stay out of the viewers' copy
+  // of the game after a reload or Resume too, as when they were added (CardSend).
+  untrack(() => {
+    const used = mediaUsage(game);
+    hideFromViewers((session.cards ?? []).flatMap((c) => ('slide' in c.content ? slideMediaIds(c.content.slide) : [])).filter((id) => !used.has(id)));
+  });
   let sentGame: Game | null = null;
   let outSession: Parameters<typeof pushSession>[0] | null = null;
   let outLive: Parameters<typeof pushLive>[0] | null = null;
@@ -335,6 +343,19 @@
       const was = app.live.answers?.in ?? [];
       if (app.live.answers && was.length === inNow.length && was.every((x, i) => x === inNow[i])) return;
       app.live.answers = { in: inNow };
+    });
+  });
+  // 🤫 Just you: a standard tile's own card went to someone (sent from its panel, until the tile closes): the stream says
+  // who has a private question, never what's on it. (Not a Daily Double's or a partner clue's: their badges say who plays.)
+  $effect(() => {
+    const plain = session.phase === 'clue' && !!info && !session.dd && !session.partner && !session.revealed;
+    const seats = plain ? [...new Set(cardsOut(game, session).filter((c) => c.until === 'tile').flatMap((c) => c.to.map((t) => t.seat)))] : [];
+    const ids = session.players.map((p) => p.id).filter((id) => seats.includes(id));
+    untrack(() => {
+      const was = app.live.tileCardFor ?? [];
+      if (ids.length === was.length && ids.every((x, i) => x === was[i])) return;
+      if (ids.length) app.live.tileCardFor = ids;
+      else delete app.live.tileCardFor;
     });
   });
   // Who has a phone buzzer connected right now: their plates (and the "Starting soon" lineup) show 📱.
@@ -1889,7 +1910,10 @@
     const s = partner;
     if (!s || s.stage !== 'distribute' || !info) return;
     if (session.revealed) return hint('The answer is showing: Esc goes back to the board');
-    const went = phoneCards ? sendCards(session, s, unsentCards()) : [];
+    // (Never more cards than the buzzer room takes: a send over that waits for a ✖ Take back.)
+    const unsent = unsentCards();
+    if (unsent.length && roomCardsFull(game, session, (t) => sendCards(t, t.partner!, unsent))) return hint(CARDS_FULL);
+    const went = phoneCards ? sendCards(session, s, unsent) : [];
     if (went.length) announce(went.map((c) => `Card ${cardSlides(info.clue).indexOf(c) + 1} sent to ${recipientsText(session, s, partnerRules(info.clue), c)}`).join('. '));
     s.stage = 'live';
     partnerClockAt = Date.now();

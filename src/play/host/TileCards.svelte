@@ -2,14 +2,16 @@
   🤫 An open tile's own cards, on any tile but a partner clue (which hands its cards out in its Distribute list):
   partner-clues spec §11, §12.2, 🤫 Just you and 💡 Insider tip. Each card made in the editor's 🤫 Card tabs, with who
   it goes to (its Goes to: whoever picked it, a Daily Double's player, everyone else; the chips change it), 📤 Send to
-  their phones, then ↻ Send again and ✖ Take back, or 📋 copying it to them. Nothing goes until the host presses, and
-  the tile plays as it always does. A card sent here lasts until the tile closes. In one window this panel is on stream:
-  it counts what's on a card and never says it, nor names its pictures.
+  their phones, then ↻ Send again and ✖ Take back, or 📋 copying it to them, or 🪟 showing it in the card window open for
+  one of them. Nothing goes until the host presses, and the tile plays as it always does. A card sent here lasts until
+  the tile closes. In one window this panel is on stream: it counts what's on a card and never says it, nor names its
+  pictures.
 -->
 <script lang="ts">
   import { app, toast } from '../../lib/app.svelte';
   import { announce } from '../../lib/announce';
-  import { teamsOn } from '../../lib/buzz';
+  import { CARDS_FULL, roomCardsFull, teamsOn } from '../../lib/buzz';
+  import { cardWindow } from '../../lib/cardwindow.svelte';
   import { phoneCan, retryFiles } from '../../lib/cardfiles.svelte';
   import { textOn } from '../../lib/colors';
   import { cardSlides, type CardTo, type Clue, type ClueCard, type Game, type Id, type SentCard, type Session } from '../../lib/model';
@@ -66,12 +68,21 @@
   const sentOf = (card: ClueCard): SentCard | undefined =>
     [...cardsOut(game, session)].reverse().find((c) => 'clue' in c.content && c.content.clue === clue.id && c.content.card === card.id);
 
-  /** 📤 Send: this card to its players' phones now, until the tile closes. */
-  function send(card: ClueCard, n: number): void {
-    const c = sendCard(game, session, { to: recipients(card), content: { clue: clue.id, card: card.id }, until: 'tile' });
+  /** The buzzer room has all the cards it takes: ✖ Take one back first. */
+  const full = $derived(roomCardsFull(game, session));
+  /**
+   * 📤 Send: this card to its players' phones now, until the tile closes. `to`: 🪟 Show, to the card window's player
+   * alone (no phones get cards).
+   */
+  function send(card: ClueCard, n: number, to = recipients(card)): void {
+    if (roomCardsFull(game, session)) return toast(CARDS_FULL, 4000);
+    const c = sendCard(game, session, { to, content: { clue: clue.id, card: card.id }, until: 'tile' }, Date.now(), roomCardsFull(game, session));
     if (!c) return toast(`Choose who gets card ${n} first`);
-    announce(`Card ${n} sent to ${sentToText(session, c.to, teams)}`);
+    announce(`Card ${n} ${cardsOn ? 'sent to' : 'shown in the 🪟 card window to'} ${sentToText(session, c.to, teams)}`);
   }
+  /** The card window is open for one of a card's players (a whole seat): 🪟 Show puts it there. */
+  const windowSeat = (to: CardTo[]): Id | null => (cardWindow.open && cardWindow.seat && to.some((t) => t.seat === cardWindow.seat) ? cardWindow.seat : null);
+  const nameOf = (id: Id) => session.players.find((p) => p.id === id)?.name ?? '?';
   /** ↻ Send again: under a new id, so a phone that came late (a new phone for the seat) gets it too. */
   function again(c: SentCard, card: ClueCard, n: number): void {
     retryFiles(game, session, [card]);
@@ -94,7 +105,7 @@
     style:color={on ? textOn(p?.color ?? '#888') : undefined}
     aria-pressed={on}
     aria-label="Card {n} to {p?.name}{nophone ? ' (no phone here)' : ''}"
-    title={nophone ? `${p?.name} has no phone here: copy the card to ${teams ? 'the team' : 'them'} (📋)` : teams ? `Every phone on ${p?.name} gets it` : undefined}
+    title={nophone ? `${p?.name} has no phone here: copy the card to ${teams ? 'the team' : 'them'} (📋), or show it in the 🪟 card window` : teams ? `Every phone on ${p?.name} gets it` : undefined}
     onclick={() => toggle(card, id)}
   >
     {p?.name}{#if on}&nbsp;✓{/if}{#if nophone}<span class="part" aria-hidden="true">📵</span>{/if}
@@ -120,7 +131,7 @@
       <span aria-hidden="true">→</span>
       {#if out && state}
         <span>{sentToText(session, out.to, teams)}</span>
-        <span class="small" class:warn={state.warn} data-card-state>({out.label}) {state.text}</span>
+        <span class="small" class:warn={state.warn} data-card-state>· {cardsOn ? state.text : 'in the 🪟 card window'} · listed as {out.label}</span>
       {:else}
         {#each session.players as p (p.id)}
           {@render chip(card, n, p.id, to.some((t) => t.seat === p.id))}
@@ -133,8 +144,13 @@
           <button class="small" onclick={() => again(out, card, n)} aria-label="Send card {n} again" title="Sends it again under a new id: a phone that came late (a player on a new phone) gets it too, with what’s on the card now">↻ Send again</button>
           <button class="ghost small" onclick={() => ontakeback(out.id)} aria-label="Take card {n} back" title="Takes it off every phone it went to">✖ Take back</button>
         {:else}
-          <button class="small" onclick={() => send(card, n)} disabled={!to.length} aria-label="Send card {n}" title={to.length ? `Sends it to ${sentToText(session, to, teams)} now, until the tile closes` : 'Choose who gets it first'}>📤 Send</button>
+          <button class="small" onclick={() => send(card, n)} disabled={!to.length || full} aria-label="Send card {n}" title={full ? CARDS_FULL : to.length ? `Sends it to ${sentToText(session, to, teams)} now, until the tile closes` : 'Choose who gets it first'}>📤 Send</button>
         {/if}
+      {:else if out}
+        <button class="ghost small" onclick={() => ontakeback(out.id)} aria-label="Take card {n} back" title="Takes it out of the 🪟 card window">✖ Take back</button>
+      {:else if windowSeat(to)}
+        {@const seat = windowSeat(to)!}
+        <button class="small" onclick={() => send(card, n, [{ seat }])} disabled={full} aria-label="Show card {n} to {nameOf(seat)}" title={full ? CARDS_FULL : `Shows it in the 🪟 card window, to ${nameOf(seat)} alone, until the tile closes`}>🪟 Show {nameOf(seat)}</button>
       {/if}
       {#if copying}
         <button

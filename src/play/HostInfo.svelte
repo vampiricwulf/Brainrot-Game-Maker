@@ -67,7 +67,9 @@
     const clue = info?.clue;
     if (!clue) return '';
     const c = [...cardsOut(game, session)].reverse().find((x) => 'clue' in x.content && x.content.clue === clue.id && x.content.card === card.id);
-    if (!c || !phones) return `${tileGoesToLabel(clue.type, card.to, false)} (when you send it)`;
+    if (!c) return `${tileGoesToLabel(clue.type, card.to, false)} (when you send it)`;
+    // (No phone gets cards: it went to the 🪟 card window.)
+    if (!phones) return `${sentToText(session, c.to)} · shown in the 🪟 card window as ${c.label}`;
     if (sentState(game, c) === 'edited') return `${sentToText(session, c.to)} · changed in the editor since it was sent (off the phones)`;
     return `${sentToText(session, c.to)} · sent as ${c.label}${(session.remote?.cardsSeen?.[sentCardId(c)] ?? []).length ? ' · ✓ seen' : ''}`;
   }

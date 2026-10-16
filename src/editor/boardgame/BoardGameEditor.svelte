@@ -1018,7 +1018,7 @@
             {#if sel.next.length > 1}<span class="muted small">A fork: the host picks the way in play.</span>{/if}
           </div>
           <h5>When passed <span class="muted small">(landing on it counts too · e.g. Start: +2 gold)</span></h5>
-          <ActionListEditor bind:actions={sel.onPass} board={round} addLabel="＋ Add button (when passed)" />
+          <ActionListEditor bind:actions={sel.onPass} board={round} passing addLabel="＋ Add button (when passed)" />
           <h5>When landed on</h5>
           <ActionListEditor bind:actions={sel.onLand} board={round} addLabel="＋ Add button (when landed on)" />
           <label class="check small"><input type="checkbox" bind:checked={sel.secret} /> Secret (viewers see “?” until you reveal it)</label>

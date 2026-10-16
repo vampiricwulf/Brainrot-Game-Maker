@@ -922,6 +922,7 @@
             onshow={onpartnershow}
             onclock={onpartnerclock}
             ontakeback={onpartnertakeback}
+            oncardtakeback={oncardtakeback}
             onmemberspin={onpartnermemberspin}
             onjudge={onpartnerjudge}
           />

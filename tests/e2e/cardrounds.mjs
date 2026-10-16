@@ -29,17 +29,19 @@ function assert(cond, msg) {
 
 // ---------- The game ----------
 
-// Words made in the editor carry "vqzjx" and file names "mwkpf". Words typed into a quick card in play carry "zqxwv":
-// they are only ever in the game in progress, which the viewers' windows never get.
-const NOTE = 'Note-vqzjx words'; // Songs $400's card (to nobody), sent from the tools row
+// Words made in the editor carry "vqzjx" and file names "mwkpf". Words typed into a quick card in play carry "zqxwv"
+// (and "xqvzk", in one window): they are only ever in the game in progress, which the viewers' windows never get.
+const NOTE = 'Note-vqzjx words'; // Songs $400's card (to nobody): never listed in one window, as the tile isn't played
+const TYPED = 'Typed-xqvzk note'; // typed into a quick card in one window, hidden as it's typed
 const JUST = 'Just-vqzjx words'; // Movies $200's card (🤫 Just you), with a picture
 const INSIDER = 'Insider-vqzjx tip'; // the Daily Double's (💡 Insider tip)
 const MISSION = 'Mission-vqzjx words'; // the RPG object's card action, with a picture
 const WHISPER = 'Whisper-vqzjx words'; // the wheel slice's
 const SECRET = 'Secret-vqzjx mission'; // the board space's
 const QUICK = 'Quick-zqxwv rpg'; // typed in the RPG round
+const QUICK_FILE = 'zqxwv-quick.png'; // a picture put on that quick card: its name must never reach the viewers' windows
 const FOR_DAN = 'Dan-zqxwv only'; // typed in the board-game round
-const SECRETS = ['vqzjx', 'mwkpf', 'zqxwv'];
+const SECRETS = ['vqzjx', 'mwkpf', 'zqxwv', 'xqvzk'];
 const LATE = 'A card went to your seat before this phone joined. Ask the host to send it again.';
 
 let ids = 0;
@@ -150,6 +152,8 @@ try {
   await ctx.addInitScript(() => {
     window.__msgs = [];
     window.__leaks = [];
+    // The files in each copy of the game this window was sent (by name).
+    window.__games = [];
     const check = (where, data) => {
       try {
         const s = JSON.stringify(data) ?? '';
@@ -161,6 +165,7 @@ try {
     window.addEventListener('message', (e) => {
       if (e.source === window) return;
       window.__msgs.push(typeof e.data === 'object' && e.data ? String(e.data.type ?? '?') : `(${typeof e.data})`);
+      if (e.data?.type === 'game') window.__games.push((e.data.game?.media ?? []).map((m) => m.name));
       check('window', e.data);
     });
     try {
@@ -274,28 +279,31 @@ try {
   // =====================================================================================================================
   console.log('A Jeopardy round, in one window:');
 
-  // ---------- 🤫 Send a card… to Bob: a card made in the editor ----------
+  // ---------- 🤫 Send a card… to Bob, in one window: a quick card, typed out of sight ----------
   await openSend();
-  assert(await sendMenu.getByRole('radio', { name: 'One made in the editor' }).isChecked(), 'one window: a card made in the editor is the first choice (it stays off stream)');
-  assert((await sendMenu.locator('.exposed').innerText()).includes('Viewers can see this window'), 'and the menu says viewers see it');
   const pick = sendMenu.getByRole('combobox', { name: 'The card to send' });
-  const options = await pick.locator('option').allInnerTexts();
   assert(
-    JSON.stringify(options) === JSON.stringify(['Movies $200 · Card 1 · 1 line of words, 1 picture', 'Movies $400 · Card 1 · 1 line of words', 'Songs $400 · Card 1 · 1 line of words']),
-    `the cards made in the editor, by tile and counted, never said (${options.join(' | ')})`,
+    (await sendMenu.getByRole('radio', { name: 'One made in the editor' }).isDisabled()) && (await sendMenu.getByRole('radio', { name: 'A quick card' }).isChecked()) && !(await pick.count()),
+    'one window, no tile played yet: no card made in the editor to choose (listing them would tell viewers where the Daily Double is)',
   );
-  await pick.selectOption({ label: 'Songs $400 · Card 1 · 1 line of words' });
+  assert((await sendMenu.locator('[data-saved-note]').innerText()).includes('not played yet are listed with the audience window open'), 'and it says why');
+  assert((await sendMenu.locator('.exposed').innerText()).includes('Viewers can see this window'), 'and the menu says viewers see it');
+  assert(await sendMenu.getByRole('radio', { name: 'The slide on screen' }).isDisabled(), 'on the board, nothing is on screen to send');
+  const typedBox = sendMenu.getByRole('textbox', { name: 'The card’s words' });
+  await typedBox.fill(TYPED);
+  assert((await typedBox.evaluate((el) => getComputedStyle(el).webkitTextSecurity)) === 'disc', 'what’s typed is hidden as it’s typed (viewers see this window)');
+  assert(!(await sendMenu.getByRole('combobox', { name: 'A file from the game’s 🖼 Media' }).count()), 'and the game’s files (by name) aren’t offered in one window');
   await sendMenu.getByRole('button', { name: 'Bob', exact: true }).click();
   await sleep(500);
-  assert(!JSON.stringify(states).includes('"cards"') && !Object.values(heard).join('').includes('vqzjx'), 'choosing the card and who gets it sends nothing');
+  assert(!JSON.stringify(states).includes('"cards"') && !Object.values(heard).join('').includes('Typed-'), 'typing the card and choosing who gets it sends nothing');
   await sendMenu.getByRole('button', { name: '📤 Send' }).click();
   await sendMenu.locator('[data-card-said]').getByText('Card 1 sent to Bob').waitFor();
   assert(await until(() => cards().length === 1), 'sent: the room’s state holds one card');
   const note1 = cards()[0];
-  assert(/^sc:/.test(note1.id) && JSON.stringify(note1.to) === to('Bob') && note1.text === NOTE, 'to Bob’s seat only, with its words, under its own id');
-  await tapOpen(bob, NOTE);
+  assert(/^sc:/.test(note1.id) && JSON.stringify(note1.to) === to('Bob') && note1.text === TYPED, 'to Bob’s seat only, with its words, under its own id');
+  await tapOpen(bob, TYPED);
   assert(true, 'Bob’s phone gets it');
-  for (const [p, label] of [[ann, 'ann'], [cat, 'cat']]) assert(!(await cardsOn(p)) && !heardOf(label, 'vqzjx'), `${label === 'ann' ? 'Ann' : 'Cat'}’s phone: no card, and nothing of it`);
+  for (const [p, label] of [[ann, 'ann'], [cat, 'cat']]) assert(!(await cardsOn(p)) && !heardOf(label, 'Typed-'), `${label === 'ann' ? 'Ann' : 'Cat'}’s phone: no card, and nothing of it`);
   await offStream(host, 'the host page in one window', 'a card sent from the tools row');
   await closeMenu(sendMenu);
 
@@ -307,7 +315,7 @@ try {
   await host.getByRole('button', { name: 'Close the phones list' }).click();
   bob = await join('bob2', 'Bob');
   await bob.locator('#cards-late').getByText(LATE).waitFor();
-  assert(!(await cardsOn(bob)) && !heardOf('bob2', 'vqzjx') && viewOf('bob2').cards?.late === 1, 'a new phone that took Bob’s seat after the send gets nothing of the card, only a note that it missed one');
+  assert(!(await cardsOn(bob)) && !heardOf('bob2', 'Typed-') && viewOf('bob2').cards?.late === 1, 'a new phone that took Bob’s seat after the send gets nothing of the card, only a note that it missed one');
 
   // ---------- The list of cards out, in one window: labels only ----------
   assert((await outButton.innerText()).trim() === '🤫 1 card out', 'the tools row only counts the cards out');
@@ -318,7 +326,7 @@ try {
   await offStream(host, 'the host page in one window', 'the list of cards out open');
   await outList.getByRole('button', { name: 'Send Card 1 again' }).click();
   assert(await until(() => cards().length === 1 && cards()[0].id !== note1.id), '↻ Send again: the card goes under a new id');
-  await tapOpen(bob, NOTE);
+  await tapOpen(bob, TYPED);
   assert(true, 'and reaches the new phone');
   assert(await until(async () => !(await rowText('Card 1')).includes('hasn’t got it')), 'the row’s warning goes');
   await outList.getByRole('button', { name: 'Take Card 1 back' }).click();
@@ -347,9 +355,27 @@ try {
   assert(await until(() => ann.locator('.card img').evaluate((i) => i.complete && i.naturalWidth > 0).catch(() => false)), 'Ann’s phone gets it, picture and all');
   assert(!(await cardsOn(bob)) && !(await cardsOn(cat)) && !heardOf('bob2', 'Just-') && !heardOf('cat', 'Just-'), 'nobody else gets it');
   await offStream(host, 'the host page in one window', 'a standard tile’s card sent');
+  const privateBadge = host.locator('.stage-box [data-private-badge]');
+  assert(await until(async () => (await privateBadge.count()) === 1 && (await words(privateBadge)) === '🤫 Ann has a private question'), 'the stream says Ann has a private question (never what it is)');
   assert((await mainLabel(host)) === '👁 Reveal answer', 'the tile plays as usual: 👁 Reveal answer');
+
+  // ---------- The slide on screen, as a card (what viewers see: nothing hidden from them goes) ----------
+  await openSend();
+  await sendMenu.getByRole('radio', { name: 'The slide on screen' }).check();
+  await sendMenu.getByRole('button', { name: 'Bob', exact: true }).click();
+  await sendMenu.getByRole('button', { name: '📤 Send' }).click();
+  await sendMenu.locator('[data-card-said]').getByText('Card 2 sent to Bob').waitFor();
+  assert(await until(() => cards().length === 2 && cards()[1].text === 'A plain question' && JSON.stringify(cards()[1].to) === to('Bob')), 'the slide on screen goes as a card, to Bob only');
+  await closeMenu(sendMenu);
+  await outButton.click();
+  await outList.waitFor();
+  await outList.getByRole('button', { name: 'Take Card 2 back' }).click();
+  assert(await until(() => cards().length === 1 && cards()[0].text === JUST), '✖ Take back: the tile’s card stays');
+  await closeMenu(outList);
+
   await mainButton(host).click();
   assert(await until(() => cards().length === 1 && cards()[0].open === false), 'Reveal: the card stays, marked “the answer’s on screen”');
+  assert(await until(async () => !(await privateBadge.count())), 'and the stream stops saying who has a private question');
   await ann.locator('.card .card-shown').getByText('The answer’s on screen').waitFor();
   assert(true, 'Ann’s phone says “The answer’s on screen” on it');
   const doneLabel = await mainLabel(host);
@@ -368,6 +394,7 @@ try {
   assert(await until(() => cards().length === 1 && cards()[0].text === INSIDER && JSON.stringify(cards()[0].to) === to('Ann')), 'sent before the wager, to Ann only');
   await tapOpen(ann, INSIDER);
   assert(!heardOf('bob2', 'Insider-') && !heardOf('cat', 'Insider-'), 'only Ann gets it');
+  assert(!(await host.locator('.stage-box [data-private-badge]').count()), 'a Daily Double’s badge already says who plays: no “private question” line');
   await host.locator('.panel .dd input[type=number]').fill('100');
   await mainButton(host).click();
   assert(await until(async () => last()?.wager?.open === false && (await mainLabel(host)) === '👁 Reveal answer' && cards().length === 1 && cards()[0].open), 'the question shows (wager $100, locked): the card stays');
@@ -380,14 +407,19 @@ try {
 
   // ---------- A card until the round ends, to Cat: it goes with the round ----------
   await openSend();
-  await pick.selectOption({ label: 'Songs $400 · Card 1 · 1 line of words' });
+  const options = await pick.locator('option').allInnerTexts();
+  assert(
+    JSON.stringify(options) === JSON.stringify(['Movies $200 · Card 1 · 1 line of words, 1 picture', 'Movies $400 · Card 1 · 1 line of words']),
+    `one window: the cards of the tiles played (the Daily Double’s now it’s played), by tile and counted, never said, and none of a tile not played (${options.join(' | ')})`,
+  );
+  await pick.selectOption({ label: 'Movies $200 · Card 1 · 1 line of words, 1 picture' });
   await sendMenu.getByRole('button', { name: 'Cat', exact: true }).click();
   assert(await sendMenu.getByRole('radio', { name: 'until the round ends' }).isChecked(), 'it lasts until the round ends by default');
   await sendMenu.getByRole('button', { name: '📤 Send' }).click();
   await sendMenu.locator('[data-card-said]').getByText('Card 1 sent to Cat').waitFor();
   assert(await until(() => cards().length === 1 && JSON.stringify(cards()[0].to) === to('Cat')), 'to Cat’s seat only');
   await closeMenu(sendMenu);
-  await tapOpen(cat, NOTE);
+  await tapOpen(cat, JUST);
   await nextRound();
   await host.locator('.rh').waitFor();
   assert(await until(() => !cards().length), 'the next round: the card goes');
@@ -412,12 +444,20 @@ try {
   await openSend();
   assert((await sendMenu.getByRole('radio', { name: 'A quick card' }).isChecked()) && !(await sendMenu.locator('.exposed').count()), 'two windows: a quick card is the first choice, with no warning about viewers');
   await sendMenu.getByRole('textbox', { name: 'The card’s words' }).fill(QUICK);
+  // A picture from this computer: it goes into the game's 🖼 Media, but never to the viewers' windows (nor its name).
+  await sendMenu.locator('input[type=file]').setInputFiles({ name: QUICK_FILE, mimeType: 'image/png', buffer: png(90, 30, 160, 200, 120) });
+  await sendMenu.locator('[aria-label="On the card"]').getByText('🖼 picture').waitFor();
   await sendMenu.getByRole('button', { name: 'Cat', exact: true }).click();
   await sleep(500);
-  assert(!cards().length && !JSON.stringify(states).includes('zqxwv'), 'typing the card and choosing Cat sends nothing');
+  assert(!cards().length && !JSON.stringify(states).includes('Quick-') && !JSON.stringify(states).includes(QUICK_FILE), 'typing the card, adding its picture and choosing Cat sends nothing');
+  const upQ = uploads;
   await sendMenu.getByRole('button', { name: '📤 Send' }).click();
   await sendMenu.locator('[data-card-said]').getByText('Card 1 sent to Cat').waitFor();
   assert(await until(() => cards().length === 1 && cards()[0].text === QUICK && JSON.stringify(cards()[0].to) === to('Cat')), 'sent: to Cat’s seat only, with its words');
+  assert(await until(() => !!cards()[0]?.media?.[0]?.file && uploads === upQ + 1), 'its picture goes up with it');
+  await sleep(500);
+  const audGames = await aud.evaluate(() => window.__games);
+  assert(audGames.length > 0 && audGames.every((names) => !names.some((n) => n.includes('zqxwv'))), `the audience window’s copy of the game never lists the quick card’s picture (${audGames.at(-1)?.join(', ')})`);
   let quick1 = cards()[0];
   await tapOpen(cat, QUICK);
   assert(!(await cardsOn(ann)) && !(await cardsOn(bob)) && !heardOf('ann', 'zqxwv') && !heardOf('bob2', 'zqxwv'), 'Ann’s and Bob’s phones get nothing of it');
@@ -486,6 +526,14 @@ try {
   assert(!(await offer.count()) && cards().length === 2 && !JSON.stringify(states).includes('Whisper-'), 'Skip: the offer goes, and nothing is sent');
   await slice.click();
   await offer.waitFor();
+  // (The offer and the tools row's dialog are two copies of the same form, on screen at once: each keeps its own choice.)
+  await openSend();
+  await sendMenu.getByRole('radio', { name: 'until I take it back' }).check();
+  assert(
+    (await offer.getByRole('radio', { name: 'until the round ends' }).isChecked()) && (await sendMenu.getByRole('radio', { name: 'until I take it back' }).isChecked()),
+    'the offer and 🤫 Send a card… each keep their own “Lasts” choice',
+  );
+  await closeMenu(sendMenu);
   await chip(offer, 'Dan').click();
   assert((await offer.innerText()).includes('Dan has no phone here'), 'Dan added: the offer says he has no phone here');
   await sleep(600);
@@ -593,7 +641,7 @@ try {
   await spaceCard.waitFor();
   assert((await spaceCard.innerText()).includes('Landing on it (Ann)'), 'the space’s card is for the selected player, Ann');
   const n1 = states.length;
-  await spaceCard.getByRole('button', { name: '🤫 Card for whoever set it off' }).click();
+  await spaceCard.getByRole('button', { name: '🤫 Card for whoever landed there' }).click();
   await offer.waitFor();
   assert((await chip(offer, 'Ann').getAttribute('aria-pressed')) === 'true' && (await chip(offer, 'Dan').getAttribute('aria-pressed')) === 'false', 'the offer starts with whoever landed (Ann)');
   assert((await offer.locator('.exposed').innerText()).includes('never what’s on it'), 'one window: the offer says viewers see who gets the card, never what’s on it');
@@ -607,7 +655,7 @@ try {
   assert(!heardOf('bob2', 'Secret-') && !heardOf('cat', 'Secret-') && !heardOf('dan', 'Secret-'), 'nobody else gets it');
   assert(!(await win2.getByText(SECRET).count()), 'nor Dan’s card window');
   // Pressed again and left waiting: an offer is on this computer only, and never sent by itself.
-  await spaceCard.getByRole('button', { name: '🤫 Card for whoever set it off' }).click();
+  await spaceCard.getByRole('button', { name: '🤫 Card for whoever landed there' }).click();
   await offer.waitFor();
   await host.keyboard.press('Escape');
   await offStream(host, 'the host page in one window', 'a board space’s card sent');

@@ -373,6 +373,30 @@ export function hostCards(game: Game, session: Session, room: PhoneCan): HostCar
   return all.length ? fitCards(all.slice(-CARDS_MAX)) : null;
 }
 
+/** How many 🤫 cards the buzzer room is told now: the open partner clue's (one per part of a send) and the cards out. */
+export function roomCardCount(game: Game, session: Session): number {
+  return (partnerCards(game, session, { files: {} })?.length ?? 0) + (sessionCards(game, session, { files: {} })?.length ?? 0);
+}
+
+/**
+ * The room is told CARDS_MAX cards at most, so a send that would take it past that is refused, never made by leaving
+ * an older card off the phones: that card would come back under its old id once another went, and the room, which
+ * forgot it meanwhile, would give it to a phone that came after it was sent (the late rule, partner-clues spec §14.4).
+ * `go`: the send, made on a copy of the session (a partner clue's send can be one card per part); without it, one card.
+ * A send that adds nothing (↻ Send again) is never refused.
+ */
+export function roomCardsFull(game: Game, session: Session, go?: (trial: Session) => void): boolean {
+  const now = roomCardCount(game, session);
+  if (!go) return now + 1 > CARDS_MAX;
+  const trial: Session = { ...session, partner: session.partner ? JSON.parse(JSON.stringify(session.partner)) : session.partner, cards: session.cards ? [...session.cards] : session.cards };
+  go(trial);
+  const after = roomCardCount(game, trial);
+  return after > CARDS_MAX && after > now;
+}
+
+/** Why a send is refused when the room has all the cards it takes (the button's title, and the toast). */
+export const CARDS_FULL = `${CARDS_MAX} cards are out on the phones: ✖ Take one back first`;
+
 /** The last bit of a card's id on the wire for each part, when a send goes as one card per part (partnerCards). */
 const PART_ID: Record<CardPart, string> = { giver: 'g', guesser: 'q', other: 'o', solo: 'p' };
 

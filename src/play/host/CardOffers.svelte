@@ -21,10 +21,16 @@
     untrack(() => dropOffersBut(r));
   });
   const list = $derived(cardOffers.list.filter((o) => o.round === session.currentRound));
+
+  /** A new offer comes into view, its 📤 Send (or 🪟 Show) with the keys: the button pressed may be far from it. */
+  function arrive(el: HTMLElement): void {
+    el.scrollIntoView({ block: 'nearest' });
+    el.querySelector<HTMLElement>('button.primary:not(:disabled)')?.focus({ preventScroll: true });
+  }
 </script>
 
 {#each list as o (o.key)}
-  <div class="offer" role="group" aria-label="Card offered: {o.from}" data-card-offer>
+  <div class="offer" role="group" aria-label="Card offered: {o.from}" data-card-offer {@attach arrive}>
     <div class="row">
       <b class="small">{o.from}</b>
       <span class="muted small">(only if you send it)</span>

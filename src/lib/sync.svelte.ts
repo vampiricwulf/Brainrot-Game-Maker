@@ -171,11 +171,21 @@ function post(msg: HostMsg): void {
   }
 }
 
+/**
+ * Files only a 🤫 card shows (a picture, video or sound added to a quick card in play): the viewers' windows never get
+ * them, nor their names, as they never get Session.cards (partner-clues spec §14.1). By media id.
+ */
+const privateMedia = new Set<string>();
+/** Keep these files (media ids) out of the audience and scores windows' copy of the game. */
+export function hideFromViewers(ids: string[]): void {
+  ids.forEach((id) => privateMedia.add(id));
+}
+
 function sendMedia(game: Game): void {
   const items: { id: string; blob: Blob }[] = [];
   for (const ref of game.media) {
     // Live links have no file: the audience window plays them from the link too (registerLinks).
-    if (ref.url) continue;
+    if (ref.url || privateMedia.has(ref.id)) continue;
     const blob = getBlob(ref.id);
     if (!blob || sentMedia.get(ref.id) === blob) continue;
     items.push({ id: ref.id, blob });
@@ -485,9 +495,11 @@ export function mediaCommand(cmd: MediaCmd): void {
 }
 
 export function pushGame(game: Game): void {
-  last.game = game;
-  sendMedia(game);
-  post({ type: 'game', game });
+  // (Without a 🤫 card's own files: hideFromViewers.)
+  const viewed = privateMedia.size && game.media.some((m) => privateMedia.has(m.id)) ? { ...game, media: game.media.filter((m) => !privateMedia.has(m.id)) } : game;
+  last.game = viewed;
+  sendMedia(viewed);
+  post({ type: 'game', game: viewed });
 }
 
 export function pushSession(session: Session): void {

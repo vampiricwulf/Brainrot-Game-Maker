@@ -4,12 +4,13 @@
 // object's 🤫 button and a wheel slice's only offer their card in the host panel: nothing reaches the room until the
 // host presses 📤 Send there, and Skip sends nothing. The 🪟 card window shows only its player's cards (a picture from
 // this computer included), "Nothing private right now" between them, and the audience window never gets one of its
-// messages, nor a card's words. With no phone buzzers, 🪟 Show puts an offered card in the card window.
+// messages, nor a card's words. With no phone buzzers, 🪟 Show puts an offered card in the card window, and so it does a
+// standard tile's card (the stream then says "Cat has a private question") and a partner clue's, until the tile closes.
 import { chromium } from 'playwright-core';
 import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { openGameFile, packGame, png, recordSeen, shownOf, startBuzzer } from './helpers.mjs';
+import { confirmStrip, mainButton, openGameFile, packGame, png, recordSeen, shownOf, startBuzzer } from './helpers.mjs';
 
 const file = resolve(process.env.APP_FILE || 'dist/index.html');
 if (!existsSync(file)) throw new Error('Run `npm run build` first');
@@ -24,6 +25,8 @@ function assert(cond, msg) {
 const MISSION = 'Mission-wqzpk words';
 const WHISPER = 'Whisper-wqzpk words';
 const SCROLL = 'Scroll-wqzpk words';
+const TIP = 'Tip-wqzpk words'; // a standard tile's card (no phones: shown in the card window)
+const DESCRIBE = 'Describe-wqzpk words'; // a partner clue's card (the same)
 const SECRETS = ['wqzpk', 'jhxvb'];
 
 let ids = 0;
@@ -255,7 +258,25 @@ try {
   assert(!(await tools.locator('[data-card-window-warn]').count()) && !(await tools.getByRole('button', { name: /🪟/ }).count()), 'and the ⚠ line and its button go');
 
   // ---------- No phone buzzers: 🪟 Show puts an offered card in the card window ----------
-  const offline = { ...game, id: 'g_card_action_offline', settings: { ...game.settings, buzzer: false } };
+  const plain = (id, q, a, extra = {}) => ({ id, value: null, type: 'standard', questionSlide: slide(text(q)), answerSlide: slide(text(a)), ...extra });
+  const board = {
+    id: 'r_board', name: 'Round 2', mode: 'board', values: [200, 400], dailyDoubleCount: 0,
+    categories: [
+      {
+        id: 'cat0', title: 'Movies',
+        clues: [
+          plain('q_tip', 'A plain question', 'Plain answer', { cards: [{ id: 't1', to: 'picker', ...slide(text(TIP)) }] }),
+          plain('q_partner', 'Describe it', 'Shrek', {
+            type: 'partner', timerSeconds: 60,
+            partner: { game: 'describe', giver: 'partner', got: { giver: 100, guesser: 50 }, missed: { giver: 0, guesser: -50 }, partnerSafe: true, points: 'game' },
+            cards: [{ id: 'p1', to: 'giver', ...slide(text(DESCRIBE)) }],
+          }),
+        ],
+      },
+      { id: 'cat1', title: 'Songs', clues: [plain('q_s1', 'A song', 'Song'), plain('q_s2', 'Another song', 'Song')] },
+    ],
+  };
+  const offline = { ...game, id: 'g_card_action_offline', settings: { ...game.settings, buzzer: false }, rounds: [...game.rounds, board] };
   const offlinePath = resolve('test-results/card-action-offline.brainrot');
   writeFileSync(offlinePath, await packGame(offline, files));
   const ctx2 = await browser.newContext({ viewport: { width: 1400, height: 950 } });
@@ -270,9 +291,14 @@ try {
   await solo.locator('.rh').waitFor();
   const tools2 = solo.locator('.panel .toolsrow');
   await tools2.getByRole('button', { name: '🤫 Send a card…' }).click();
-  const [win2] = await Promise.all([solo.waitForEvent('popup'), solo.getByRole('dialog', { name: 'Send a card' }).getByRole('button', { name: 'Card window for Cat' }).click()]);
+  const soloSend = solo.getByRole('dialog', { name: 'Send a card' });
+  const [win2] = await Promise.all([solo.waitForEvent('popup'), soloSend.getByRole('button', { name: 'Card window for Cat' }).click()]);
   watch(win2, 'card window, no phones');
   await win2.getByText('Nothing private right now').waitFor();
+  // (🤫 Send a card… stays open, so a card can go to the window next: Esc closes it.)
+  assert(await soloSend.isVisible(), 'opening the card window from 🤫 Send a card… leaves the dialog open');
+  await solo.keyboard.press('Escape');
+  await soloSend.waitFor({ state: 'detached' });
   await solo.locator('.rpg .hit[data-object="el_spy"]').click();
   const spyCard = solo.getByRole('dialog', { name: 'Object: Spy master' });
   await spyCard.locator('.who').getByRole('button', { name: 'Cat', exact: true }).click();
@@ -284,6 +310,52 @@ try {
   await win2.getByText(MISSION).waitFor();
   assert(await until(() => win2.locator('img').evaluate((i) => i.complete && i.naturalWidth > 0).catch(() => false)), 'with the card window open for Cat, 🪟 Show puts the card there, its picture included');
   assert((await tools2.locator('[data-cards-out-count]').innerText()).trim() === '🤫 1 card out' && sockets === 0, 'it is in the cards out (to take back), and nothing went anywhere else');
+
+  // ---------- No phone buzzers, a board round: 🪟 Show a standard tile's card, then a partner clue's ----------
+  await solo.keyboard.press('Escape');
+  await sleep(600);
+  await tools2.getByRole('button', { name: 'Next round ▶' }).click();
+  await confirmStrip(solo).getByRole('button', { name: 'Yes' }).waitFor();
+  await sleep(600);
+  await confirmStrip(solo).getByRole('button', { name: 'Yes' }).click();
+  await solo.locator('.stage-box .tile').first().waitFor();
+  await win2.getByText('Nothing private right now').waitFor();
+  assert(true, 'the next round: the offered card (until the round ends) goes from the card window');
+  await solo.keyboard.press('p');
+  await solo.keyboard.press('3');
+  await solo.locator('.stage-box .tile[aria-label^="Movies for $200"]').click();
+  const soloTile = solo.locator('.panel [data-tile-cards] [data-tile-card="1"]');
+  await soloTile.waitFor();
+  assert(!(await soloTile.getByRole('button', { name: 'Send card 1' }).count()), 'no phones: a tile’s card has no 📤 Send');
+  await soloTile.getByRole('button', { name: 'Show card 1 to Cat' }).click();
+  await win2.getByText(TIP).waitFor();
+  assert((await soloTile.innerText()).includes('in the 🪟 card window'), 'with the card window open for Cat (who picked it), 🪟 Show puts the tile’s card there, and its row says so');
+  const soloBadge = solo.locator('.stage-box [data-private-badge]');
+  assert(await until(async () => (await soloBadge.count()) === 1 && (await soloBadge.innerText()).includes('Cat') && (await soloBadge.innerText()).includes('has a private question')), 'the stream says Cat has a private question');
+  assert(!(await shownOf(solo, SECRETS)).length, 'one window: the host page holds none of the card’s words');
+  await solo.keyboard.press('r');
+  await solo.keyboard.press('Escape');
+  await win2.getByText('Nothing private right now').waitFor();
+  assert(true, 'the tile closed: its card goes from the card window');
+
+  await solo.keyboard.press('p');
+  await solo.keyboard.press('1');
+  await solo.locator('.stage-box .tile[aria-label^="Movies for $400"]').click();
+  const soloPartner = solo.locator('.panel [data-partner-panel]');
+  await soloPartner.getByText('Ann picked it.').waitFor();
+  await solo.keyboard.press('3');
+  await mainButton(solo).click();
+  const pRow = soloPartner.locator('[data-card="1"]');
+  await pRow.waitFor();
+  assert((await pRow.getByRole('button', { name: 'Card 1 to Cat', exact: true }).getAttribute('aria-pressed')) === 'true', 'the partner clue’s card goes to Cat, the describer');
+  await pRow.getByRole('button', { name: 'Show card 1 to Cat' }).click();
+  await win2.getByText(DESCRIBE).waitFor();
+  assert((await pRow.innerText()).includes('in the 🪟 card window'), 'from the Distribute row, 🪟 Show puts it in Cat’s card window, and the row says so');
+  assert(!(await shownOf(solo, SECRETS)).length && sockets === 0, 'the host page holds none of its words, and nothing went anywhere else');
+  await solo.keyboard.press('r');
+  await solo.keyboard.press('Escape');
+  await win2.getByText('Nothing private right now').waitFor();
+  assert(true, 'the tile closed: the partner clue’s card goes from the card window');
 
   assert(!errors.length, `no page errors (${errors.join('; ')})`);
   console.log('Card action tests passed');

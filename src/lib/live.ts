@@ -197,6 +197,11 @@ export interface Live {
   /** A ✍ clue: everyone answers on their phone; `in`: the players whose answer is in (never the words). */
   answers?: { in: string[] };
   /**
+   * 🤫 Just you: the players the open tile's own card went to (players' ids, never what's on it), so the stream can say
+   * "Ann has a private question" (partner-clues spec §11).
+   */
+  tileCardFor?: string[];
+  /**
    * Buzzer mode during a clue: open or not, who is answering, who already missed it. Outside buzzer mode `answering` is
    * the one player selected during a clue. Viewers see "🔔 Ann is answering".
    */

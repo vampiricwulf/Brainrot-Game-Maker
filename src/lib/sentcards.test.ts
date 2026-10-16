@@ -7,7 +7,7 @@ import { jeopardyGame } from './testgame';
 import { newImageEl, newRound, setSlideText, type BoardRound, type Game, type SentCard, type Session } from './model';
 import { backToBoard, forViewers, goToRound, migrateSession, newSession, openClue, rebaseSession, removePlayer } from './session';
 import { addCard, sendCards, setPartner, setPartnerGame } from './partner';
-import { hostCards, hostState, buzzIdle, newBuzz, phoneStatus, sessionCards } from './buzz';
+import { hostCards, hostState, buzzIdle, newBuzz, phoneStatus, roomCardCount, roomCardsFull, sessionCards } from './buzz';
 import {
   cardsOut,
   cleanTo,
@@ -165,7 +165,7 @@ describe('a tile’s own cards (🤫 Just you, 💡 Insider tip)', () => {
     expect(sessionCards(g, session, { files: {} })![0].text).toBe('TIP-changed');
   });
 
-  it('a partner clue’s sends and these go to the room together, at most 8', () => {
+  it('a partner clue’s sends and these go to the room together, at most 8: a 9th send is refused, and no card ever leaves the room’s list and comes back', () => {
     const { g, session } = setup();
     const r = g.rounds[0] as BoardRound;
     const pc = r.categories[1].clues[0];
@@ -174,14 +174,43 @@ describe('a tile’s own cards (🤫 Just you, 💡 Insider tip)', () => {
     setSlideText(pc.cards![0], 'PARTNER-card');
     openClue(session, { round: 0, cat: 1, row: 0 }, g);
     setPartner(session, session.partner!, 'b', 'wheel');
+    // Every id the room was told, and those it was told and then not: one of those told again would be a card the room
+    // forgot meanwhile, which it would give to a phone that came after it was sent.
+    const told = new Set<string>();
+    const gone = new Set<string>();
+    const look = () => {
+      const now = (hostCards(g, session, { files: {} }) ?? []).map((c) => c.id);
+      for (const id of now) expect(gone.has(id), `${id} came back`).toBe(false);
+      for (const id of told) if (!now.includes(id)) gone.add(id);
+      for (const id of now) told.add(id);
+      return now;
+    };
+    for (let i = 0; i < 9; i++) {
+      sendCard(g, session, { to: [{ seat: 'c' }], content: { slide: quickSlide(`Q${i}`) }, until: 'round' }, 1000 + i, roomCardsFull(g, session));
+      look();
+    }
+    // Eight went; the 9th was refused, never sent by leaving Q0 off.
+    expect(session.cards).toHaveLength(8);
+    expect(roomCardCount(g, session)).toBe(8);
+    expect(hostCards(g, session, { files: {} })!.map((c) => c.text)).toEqual(['Q0', 'Q1', 'Q2', 'Q3', 'Q4', 'Q5', 'Q6', 'Q7']);
+    // The partner clue's card can't go either (the room is full): refused, not sent over another.
+    expect(roomCardsFull(g, session, (t) => sendCards(t, t.partner!, pc.cards!, 500))).toBe(true);
+    // One taken back: there's room for it.
+    takeBackCard(session, session.cards![7].id);
+    look();
+    expect(roomCardsFull(g, session, (t) => sendCards(t, t.partner!, pc.cards!, 500))).toBe(false);
     sendCards(session, session.partner!, pc.cards!, 500);
-    for (let i = 0; i < 9; i++) sendCard(g, session, { to: [{ seat: 'c' }], content: { slide: quickSlide(`Q${i}`) }, until: 'round' }, 1000 + i);
-    const all = hostCards(g, session, { files: {} })!;
-    expect(all).toHaveLength(8);
-    // (The newest: the partner clue's, sent first, is the one left out.)
-    expect(all.map((c) => c.text)).toEqual(['Q1', 'Q2', 'Q3', 'Q4', 'Q5', 'Q6', 'Q7', 'Q8']);
-    for (let i = 1; i < 9; i++) takeBackCard(session, session.cards![session.cards!.length - 1].id);
-    expect(hostCards(g, session, { files: {} })!.map((c) => c.text)).toEqual(['PARTNER-card', 'Q0']);
+    expect(look()).toHaveLength(8);
+    expect(hostCards(g, session, { files: {} })!.map((c) => c.text)).toEqual(['PARTNER-card', 'Q0', 'Q1', 'Q2', 'Q3', 'Q4', 'Q5', 'Q6']);
+    expect(sendCard(g, session, { to: [{ seat: 'c' }], content: { slide: quickSlide('Q9') }, until: 'round' }, 2000, roomCardsFull(g, session))).toBeNull();
+    // ↻ Send again adds nothing: never refused.
+    expect(roomCardsFull(g, session, (t) => sendCardAgain(g, t, t.cards![0].id, 3000))).toBe(false);
+    // Taken back one by one: none of those left comes back.
+    while (session.cards?.length) {
+      takeBackCard(session, session.cards[session.cards.length - 1].id);
+      look();
+    }
+    expect(hostCards(g, session, { files: {} })!.map((c) => c.text)).toEqual(['PARTNER-card']);
   });
 });
 

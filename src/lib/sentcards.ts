@@ -157,9 +157,11 @@ export interface CardToSend {
 /**
  * 📤 Send (🤫 Send a card…, or a tile's panel): the card goes to `to` now, as a new card with the next label. Null when
  * there's nobody to send it to, or nothing to send (a tile's card deleted, no tile open for a card that lasts until it
- * closes, no round for one that lasts the round).
+ * closes, no round for one that lasts the round), or when `full`: the buzzer room has all the cards it takes (buzz.ts
+ * roomCardsFull, which the callers ask: the room is never told a card by leaving an older one off).
  */
-export function sendCard(game: Pick<Game, 'rounds'>, session: Session, card: CardToSend, now = Date.now()): SentCard | null {
+export function sendCard(game: Pick<Game, 'rounds'>, session: Session, card: CardToSend, now = Date.now(), full = false): SentCard | null {
+  if (full) return null;
   const to = cleanTo(session, card.to);
   // (A plain copy: the slide may be the dialog's live state.)
   const content: SentCard['content'] = 'slide' in card.content ? { slide: JSON.parse(JSON.stringify(card.content.slide)) } : { clue: card.content.clue, card: card.content.card };

@@ -217,8 +217,9 @@ describe('🤫 a card button (partner-clues spec §12.2)', () => {
     // Nothing went out: no card in the session (what the buzzer room and the cards-out list are built from).
     expect(session.cards).toBeUndefined();
     expect(cardsOut(game, session)).toEqual([]);
-    // What the host is told names who, never what's on it (the panel may be on stream).
-    expect(said).toBe('Goblin: 🤫 Card for whoever set it off (Bob): check who gets it, then 📤 Send');
+    // What the host is told is short (the offer in the panel says who, and a long toast would sit over it), and never
+    // what's on the card (the panel may be on stream).
+    expect(said).toBe('Goblin: 🤫 Card for whoever set it off');
     expect(said).not.toContain('spy');
   });
 
@@ -245,6 +246,25 @@ describe('🤫 a card button (partner-clues spec §12.2)', () => {
     expect(cardTargets({ ...ctx, selected: ['c'] }, 'party')).toEqual(['c']);
     // Unset: whoever set it off (with nobody chosen, the selected players).
     expect(cardTargets({ ...ctx, selected: ['c'] }, undefined)).toEqual(['c']);
+  });
+
+  it('with nobody known to have set it off (a spin or roll nobody was tagged for), everyone else starts with nobody: the host picks', () => {
+    const { game, session, ctx, offers, card } = party();
+    expect(cardTargets({ ...ctx, selected: [] }, 'others')).toEqual([]);
+    runAction(ctx, { ...card, to: 'others' });
+    expect(offers[0].to).toEqual([]);
+    expect(session.cards).toBeUndefined();
+    expect(cardsOut(game, session)).toEqual([]);
+  });
+
+  it('says who it’s for in the editor’s words: on a board space, whoever landed there (or passes it) and whoever’s turn it is; an item’s, whoever uses it', () => {
+    const { game, card } = party();
+    expect(describeAction(game, card)).toBe('🤫 Card for whoever set it off');
+    expect(describeAction(game, card, 'land')).toBe('🤫 Card for whoever landed there');
+    expect(describeAction(game, card, 'pass')).toBe('🤫 Card for whoever passes it');
+    expect(describeAction(game, card, 'use')).toBe('🤫 Card for whoever uses it');
+    expect(describeAction(game, { ...card, to: 'party' })).toBe('🤫 Card for the party');
+    expect(describeAction(game, { ...card, to: 'party' }, 'land')).toBe('🤫 Card for whoever’s turn it is');
   });
 
   it('on a board, the party is whoever landed (else whoever’s turn it is), and everyone else is the rest', () => {

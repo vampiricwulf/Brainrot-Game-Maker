@@ -1,10 +1,13 @@
 <!--
   🤫 Send a card… (partner-clues spec §12.2), from the tools row in any round: who gets it (players or teams, people on
   a team, everyone, or ⇄ everyone else), what (a tile's 🤫 card made in the editor, or a quick one: words typed or
-  pasted, with a picture, video or sound from this computer or pasted, or a link), and how long it lasts (until the
-  round ends, or until taken back). 📤 Send puts it on their phones, through the same buzzer room path as a partner
-  clue's cards; without one, 📋 copies it to them. Nothing goes but by that press. In one window viewers see this: the
-  saved cards are listed by tile and counted, never said, and what's typed for a quick card shows, which it says.
+  pasted, with a picture, video or sound from this computer, the game's 🖼 Media or pasted, or a link; or the slide on
+  screen, as viewers see it), and how long it lasts (until the round ends, or until taken back). 📤 Send puts it on their
+  phones, through the same buzzer room path as a partner clue's cards; without one, 📋 copies it to them, or 🪟 shows it
+  in the card window. Nothing goes but by that press, and never more cards than the room takes (✖ Take one back first).
+  In one window viewers see this: the saved cards are listed by tile and counted, never said, and only for tiles played
+  or open (the others would say where a Daily Double is); what's typed for a quick card is hidden unless the host asks
+  (👁 Show); the 🖼 Media list (file names) is only offered with the audience window open.
   With `preset`, the card an action offered (an RPG object's, an item's, a wheel slice's or a board space's 🤫 button):
   who it starts with and how long it lasts come from the action, the card is fixed (counted, never shown), and it goes
   only when the host presses 📤 Send here.
@@ -14,16 +17,23 @@
   import { app, toast } from '../../lib/app.svelte';
   import { announce } from '../../lib/announce';
   import { CARD_MEDIA_MAX } from '../../lib/buzzproto';
-  import { teamsOn } from '../../lib/buzz';
+  import { CARDS_FULL, roomCardsFull, teamsOn } from '../../lib/buzz';
   import { phoneCan } from '../../lib/cardfiles.svelte';
   import { textOn } from '../../lib/colors';
+  import { tileToolUp } from '../../lib/live';
   import { ACCEPT, addMediaFile, identicalMedia, mediaKind } from '../../lib/media.svelte';
-  import { boardRounds, cardSlides, categoryLabel, clueValue, formatPoints, roundName, type CardTo, type Game, type Id, type SentCard, type Session, type Slide, type SlideElement, type TeamMember } from '../../lib/model';
+  import {
+    boardRounds, cardSlides, categoryLabel, clueValue, formatPoints, getClue, isRpg, roundName,
+    type CardTo, type Game, type Id, type MediaRef, type SentCard, type Session, type Slide, type SlideElement, type TeamMember,
+  } from '../../lib/model';
   import { cardSummary, copyWordsText, toKey } from '../../lib/partner';
   import { cardItems, cardLinks, cardWords, phoneCard, type CardItem } from '../../lib/phonecard';
   import { buzzerOn, remote, roomHasCards, roomHasFiles, roomMembers } from '../../lib/remote.svelte';
+  import { findIn, focusRef, screenElements, screenSlide, worldById } from '../../lib/rpg';
   import { fileItem, linkItem, memberTo, quickSlide, sendCard, sentToText, tileCard } from '../../lib/sentcards';
-  import { cardWindow } from '../../lib/cardwindow.svelte';
+  import { currentClueInfo, currentFinal, shownQuestionSlide, slidesRound } from '../../lib/session';
+  import { hideFromViewers } from '../../lib/sync.svelte';
+  import { cardWindow, openCardWindow } from '../../lib/cardwindow.svelte';
   import { copyText } from '../standings';
   import { canCopyPicture, copyCardPicture, hasPicture } from './cardcopy';
   import { leftLine } from './cardrow';
@@ -44,6 +54,8 @@
     onsent?: (c: SentCard) => void;
   } = $props();
 
+  /** This copy's own radio groups (an offer and the tools row's dialog can be on screen at once). */
+  const uid = $props.id();
   const teams = $derived(buzzerOn(game.settings) && teamsOn(game.settings));
   const room = $derived(buzzerOn(game.settings) && !!remote.code && remote.status !== 'off' && remote.status !== 'error');
   /** Its phones get the cards the host sends (else the host copies them: 📋). */
@@ -79,7 +91,13 @@
 
   // ---------- What ----------
 
-  /** Every tile's 🤫 card in the game, by tile ("Movies $400 · Card 1 · 1 line of words"): never what's on it. */
+  /** The tile open now (its clue id): its cards are listed in one window too. */
+  const openId = $derived(session.phase === 'clue' && session.currentClue ? getClue(game, session.currentClue)?.clue.id : undefined);
+  /**
+   * Every tile's 🤫 card in the game, by tile ("Movies $400 · Card 1 · 1 line of words"): never what's on it. In one
+   * window only those of tiles played or open: the list would tell viewers where an unplayed Daily Double or partner clue
+   * is (the board never marks them).
+   */
   const saved = $derived.by(() => {
     const sym = game.settings.currencySymbol;
     const rounds = boardRounds(game);
@@ -88,7 +106,7 @@
       const prefix = rounds.length > 1 ? `${roundName(r, game.rounds.indexOf(r))} · ` : '';
       for (const c of r.categories)
         c.clues.forEach((cl, row) => {
-          if (cl.empty) return;
+          if (cl.empty || (!dual && !session.used[cl.id] && cl.id !== openId)) return;
           cardSlides(cl).forEach((card, i) =>
             out.push({ key: `${cl.id}/${card.id}`, clue: cl.id, card: card.id, label: `${prefix}${categoryLabel(c)} ${formatPoints(clueValue(r, row, cl), sym)} · Card ${i + 1} · ${cardSummary(game, card)}` }),
           );
@@ -96,7 +114,42 @@
     }
     return out;
   });
-  let kind = $state<'saved' | 'quick'>('quick');
+
+  /** Only what viewers see of a slide: never a secret item nor a hotspot. */
+  const viewed = (s: Slide): Slide => ({ ...s, elements: s.elements.filter((e) => !e.secret && !(e.kind === 'shape' && e.hotspot)) });
+  /**
+   * What's on stage now, as viewers see it: the open tile's question slide (its answer once shown), a slides round's
+   * slide, the Final's, the tiebreaker's, or the RPG screen in view. Nothing over a splash, a title card or the board.
+   */
+  const onStage = $derived.by((): Slide | undefined => {
+    if (session.intro?.stage === 'title') return undefined;
+    if (session.phase === 'clue') {
+      const info = currentClueInfo(session, game);
+      if (!info || session.dd?.stage === 'splash' || session.partner?.stage === 'pick' || (tileToolUp(app.live, info.clue) && !session.revealed)) return undefined;
+      return viewed(session.revealed ? info.clue.answerSlide : shownQuestionSlide(session, info.clue));
+    }
+    if (session.phase === 'slides') {
+      const sr = slidesRound(session, game);
+      return sr ? viewed(shownQuestionSlide(session, sr)) : undefined;
+    }
+    if (session.phase === 'final') {
+      const f = currentFinal(session, game);
+      return !f ? undefined : session.finalStep === 'question' ? viewed(shownQuestionSlide(session, f)) : session.finalStep === 'answer' ? viewed(f.answerSlide) : undefined;
+    }
+    if (session.phase === 'tiebreaker' && game.tiebreaker) return viewed(session.tiebreakerRevealed ? game.tiebreaker.answerSlide : shownQuestionSlide(session, game.tiebreaker));
+    if (session.phase === 'rpg') {
+      const r = game.rounds[session.currentRound];
+      const world = isRpg(r) ? worldById(game, r.world) : undefined;
+      const st = world ? session.worlds?.[world.id] : undefined;
+      const ref = st && !st.split ? focusRef(st) : null;
+      const found = world && ref ? findIn(world, ref) : null;
+      return found ? { ...screenSlide(st, found.screen), elements: screenElements(st, found.screen, true) } : undefined;
+    }
+    return undefined;
+  });
+  const onStageSomething = $derived(!!onStage && onStage.elements.some((e) => e.kind !== 'text' || !!e.text.trim()));
+
+  let kind = $state<'saved' | 'quick' | 'stage'>('quick');
   let pick = $state('');
   // (In one window a card made in the editor keeps its words off stream: it's the first choice there.)
   let chose = false;
@@ -110,26 +163,50 @@
   let items = $state<SlideElement[]>([]);
   let link = $state('');
   let fileInput = $state<HTMLInputElement>();
-  /** The card as it would go: an action's, a tile's (as the editor has it), or the quick one. */
-  const slide = $derived(preset ? preset.slide : kind === 'saved' ? (chosen ? tileCard(game, chosen.clue, chosen.card)?.card : undefined) : quickSlide(words, items));
+  /** In one window what's typed is hidden (viewers see this window), unless the host asks to see it (👁 Show). */
+  let reveal = $state(false);
+  const masked = $derived(!dual && !reveal);
+  /** The game's pictures, videos and sounds (by name: offered only with the audience window open). */
+  const mediaFiles = $derived(game.media.filter((m) => m.kind === 'image' || m.kind === 'video' || m.kind === 'audio'));
+  const FILE_ICON: Partial<Record<MediaRef['kind'], string>> = { image: '🖼', video: '🎞', audio: '🔊' };
+  /** The card as it would go: an action's, a tile's (as the editor has it), the slide on screen, or the quick one. */
+  const slide = $derived(
+    preset ? preset.slide : kind === 'saved' ? (chosen ? tileCard(game, chosen.clue, chosen.card)?.card : undefined) : kind === 'stage' ? onStage : quickSlide(words, items),
+  );
   const hasSomething = $derived(!!slide && slide.elements.some((e) => e.kind !== 'text' || !!e.text.trim()));
   /** The quick card's items, in order, by kind (never named: in one window viewers see this). */
   const itemKinds = $derived(cardItems(game, quickSlide('', items)));
   const ICON: Record<CardItem['kind'], string> = { picture: '🖼 picture', gif: '🖼 GIF', video: '🎞 video', sound: '🔊 sound', embed: '▶ online video' };
 
-  /** A picture, GIF, video or sound from this computer (or pasted): into the game's 🖼 Media, onto the card. */
+  /**
+   * A picture, GIF, video or sound from this computer (or pasted): into the game's 🖼 Media, onto the card. A new file
+   * is kept out of the viewers' windows (they never get a card's own files), and marked so before it joins the game.
+   */
   async function addFile(file: File): Promise<void> {
     if (items.length >= CARD_MEDIA_MAX) return toast(`A card shows ${CARD_MEDIA_MAX} pictures, videos and sounds at most`);
     const k = mediaKind(file.name, file.type);
     if (k !== 'image' && k !== 'video' && k !== 'audio') return toast('Add a picture, GIF, video or sound');
     try {
       // (The same file already in the game: that one, without a toast naming it, as this window may be on stream.)
-      const ref = (await identicalMedia(game, file, k)) ?? (await addMediaFile(game, file));
-      const el = fileItem(ref);
-      if (el) items = [...items, el];
+      let ref = await identicalMedia(game, file, k);
+      if (!ref) {
+        // (Stored on a copy of the list, then hidden from viewers, then into the game: never sent to them meanwhile.)
+        ref = await addMediaFile({ ...game, media: [...game.media] }, file);
+        if (!game.media.some((m) => m.id === ref!.id)) {
+          hideFromViewers([ref.id]);
+          game.media.push(ref);
+        }
+      }
+      addRef(ref);
     } catch (e) {
       toast(dual && e instanceof Error ? e.message : 'That file can’t go on a card: use a picture, GIF, video or sound', 4000);
     }
+  }
+  /** A file in the game onto the card. */
+  function addRef(ref: Pick<MediaRef, 'id' | 'kind'>): void {
+    if (items.length >= CARD_MEDIA_MAX) return toast(`A card shows ${CARD_MEDIA_MAX} pictures, videos and sounds at most`);
+    const el = fileItem(ref);
+    if (el) items = [...items, el];
   }
   function addLink(): void {
     if (!link.trim()) return;
@@ -166,12 +243,17 @@
   const windowName = $derived(windowTo.length ? sentToText(session, windowTo, teams) : '');
   /** Who 📤 Send sends it to: their phones, else the card window's player. */
   const sendTo = $derived(cardsOn ? to : windowTo);
-  const canSend = $derived(sendTo.length > 0 && hasSomething);
+  /** The buzzer room has all the cards it takes: ✖ Take one back first. */
+  const full = $derived(roomCardsFull(game, session));
+  const canSend = $derived(sendTo.length > 0 && hasSomething && !full);
+  /** Why 📤 Send (or 🪟 Show) can't go, or ''. */
+  const cant = $derived(full ? CARDS_FULL : !to.length ? 'Choose who gets it first' : !hasSomething ? (kind === 'stage' ? 'Nothing on screen to send now' : 'Put something on the card first') : '');
 
   function send(): void {
+    if (full) return toast(CARDS_FULL, 4000);
     if (!canSend || !slide) return;
     const content: SentCard['content'] = !preset && kind === 'saved' && chosen ? { clue: chosen.clue, card: chosen.card } : { slide };
-    const c = sendCard(game, session, { to: sendTo, content, until });
+    const c = sendCard(game, session, { to: sendTo, content, until }, Date.now(), roomCardsFull(game, session));
     if (!c) return toast('That card can’t be sent now');
     said = `${c.label} sent to ${sentToText(session, c.to, teams)}`;
     announce(said);
@@ -186,6 +268,13 @@
     if (!slide) return;
     void copyText(copyWordsText(game, slide, 'from the host', names), `The card’s words copied: paste them to ${names.join(', ') || 'them'}`);
   }
+  /** 🪟 The card window for a player (from this click: a popup needs one). */
+  function openWin(seat: Id): void {
+    if (!openCardWindow(seat)) toast('The browser blocked the popup. Allow popups for this file and try again.', 5000);
+  }
+  const nameOf = (id: Id) => session.players.find((p) => p.id === id)?.name ?? '?';
+  /** The first player chosen as a whole seat (the card window shows a seat's cards). */
+  const firstSeat = $derived(to.find((t) => !t.member && !t.except?.length)?.seat);
 </script>
 
 {#snippet seatChip(id: Id)}
@@ -235,19 +324,42 @@
     <div class="small" data-offer-card>{cardSummary(game, preset.slide) || 'Nothing on it'} <span class="muted">(what’s on it is in the editor, never shown here)</span></div>
   {:else}
     <div class="row wrap" role="radiogroup" aria-label="Which card">
-      <label class="check small"><input type="radio" name="card-kind" value="saved" bind:group={kind} disabled={!saved.length} /> One made in the editor</label>
-      <label class="check small"><input type="radio" name="card-kind" value="quick" bind:group={kind} /> A quick card</label>
+      <label class="check small"><input type="radio" name="card-kind-{uid}" value="saved" bind:group={kind} disabled={!saved.length} /> One made in the editor</label>
+      <label class="check small"><input type="radio" name="card-kind-{uid}" value="quick" bind:group={kind} /> A quick card</label>
+      <label class="check small" title={onStageSomething ? 'What viewers see on screen now, as a card (nothing hidden from them goes)' : 'Nothing is on screen to send now'}
+        ><input type="radio" name="card-kind-{uid}" value="stage" bind:group={kind} disabled={!onStageSomething} /> The slide on screen</label
+      >
     </div>
+    {#if !dual}
+      <div class="muted small" data-saved-note>Cards on tiles not played yet are listed with the audience window open (viewers see this one).</div>
+    {/if}
     {#if kind === 'saved'}
       {#if saved.length}
         <select class="small" aria-label="The card to send" value={chosen?.key ?? ''} onchange={(e) => (pick = e.currentTarget.value)}>
           {#each saved as s (s.key)}<option value={s.key}>{s.label}</option>{/each}
         </select>
       {:else}
-        <div class="muted small">No tile has a 🤫 card yet: make one in the editor (a tile’s ＋ Card).</div>
+        <div class="muted small">{dual ? 'No tile has a 🤫 card yet: make one in the editor (a tile’s ＋ Card).' : 'No tile played yet has a 🤫 card.'}</div>
       {/if}
+    {:else if kind === 'stage'}
+      <div class="small" data-stage-card>
+        {#if onStage && onStageSomething}{cardSummary(game, onStage) || 'The slide'} <span class="muted">(what viewers see now; it stays as it is if the screen moves on)</span>{:else}<span class="muted">Nothing is on screen to send now.</span>{/if}
+      </div>
     {:else}
-      <textarea rows="3" dir="auto" bind:value={words} onpaste={paste} placeholder="What they’ll see… (paste a picture here too)" aria-label="The card’s words"></textarea>
+      <div class="row">
+        <textarea
+          rows="3"
+          dir="auto"
+          bind:value={words}
+          onpaste={paste}
+          placeholder="What they’ll see… (paste a picture here too)"
+          aria-label="The card’s words"
+          style:-webkit-text-security={masked ? 'disc' : undefined}
+        ></textarea>
+        {#if !dual}
+          <button class="ghost tiny" aria-pressed={reveal} onclick={() => (reveal = !reveal)} title={reveal ? 'Hide what you type again' : 'Shows what you type here (viewers see it too)'}>👁 Show</button>
+        {/if}
+      </div>
       <div class="row wrap">
         <button class="small" onclick={() => fileInput?.click()} title="A picture, GIF, video or sound from this computer (it goes into the game’s 🖼 Media)">🖼 Add a file…</button>
         <input bind:this={fileInput} type="file" accept={ACCEPT.any} hidden onchange={(e) => {
@@ -255,7 +367,27 @@
           e.currentTarget.value = '';
           if (f) void addFile(f);
         }} />
-        <input class="link" placeholder="or a link (YouTube, a picture…)" bind:value={link} aria-label="A link to put on the card" onkeydown={(e) => e.key === 'Enter' && (e.preventDefault(), addLink())} />
+        {#if dual && mediaFiles.length}
+          <!-- (Names files: only with the audience window open, so never on stream.) -->
+          <select class="small media" aria-label="A file from the game’s 🖼 Media" value="" onchange={(e) => {
+            const ref = mediaFiles.find((m) => m.id === e.currentTarget.value);
+            e.currentTarget.value = '';
+            if (ref) addRef(ref);
+          }}>
+            <option value="">🖼 From Media…</option>
+            {#each mediaFiles as m (m.id)}<option value={m.id}>{FILE_ICON[m.kind]} {m.name}</option>{/each}
+          </select>
+        {/if}
+      </div>
+      <div class="row wrap">
+        <input
+          class="link"
+          placeholder="or a link (YouTube, a picture…)"
+          bind:value={link}
+          aria-label="A link to put on the card"
+          style:-webkit-text-security={masked ? 'disc' : undefined}
+          onkeydown={(e) => e.key === 'Enter' && (e.preventDefault(), addLink())}
+        />
         <button class="small" onclick={addLink} disabled={!link.trim()}>＋ Link</button>
       </div>
       {#if itemKinds.length}
@@ -271,20 +403,24 @@
   {#if roundOn}
     <div class="row wrap" role="radiogroup" aria-label="How long it lasts">
       <span class="muted small">Lasts</span>
-      <label class="check small"><input type="radio" name="card-lasts" value="round" bind:group={lasts} /> until the round ends</label>
-      <label class="check small"><input type="radio" name="card-lasts" value="host" bind:group={lasts} /> until I take it back</label>
+      <label class="check small"><input type="radio" name="card-lasts-{uid}" value="round" bind:group={lasts} /> until the round ends</label>
+      <label class="check small"><input type="radio" name="card-lasts-{uid}" value="host" bind:group={lasts} /> until I take it back</label>
     </div>
   {/if}
 
   {#if left}<div class="small warn">{left}</div>{/if}
   {#if noPhone.length}
-    <div class="small warn">📵 {noPhone.map((id) => session.players.find((p) => p.id === id)?.name ?? '?').join(', ')} {noPhone.length > 1 ? 'have' : 'has'} no phone here: copy it to them (📋), or show it in the 🪟 card window</div>
+    <div class="small warn">
+      📵 {noPhone.map(nameOf).join(', ')} {noPhone.length > 1 ? 'have' : 'has'} no phone here: copy it to them (📋), or
+      {#if cardWindow.open && noPhone.includes(cardWindow.seat ?? '')}it shows in the 🪟 card window once sent{:else}<button class="ghost tiny" onclick={() => openWin(noPhone[0])} title="Opens a window with only {nameOf(noPhone[0])}’s cards, to share with them alone">show it in the 🪟 card window</button>{/if}
+    </div>
   {/if}
+  {#if full}<div class="small warn" data-cards-full>{CARDS_FULL}</div>{/if}
   <div class="row wrap">
     {#if cardsOn}
-      <button class="primary small" onclick={send} disabled={!canSend} title={!to.length ? 'Choose who gets it first' : !hasSomething ? 'Put something on the card first' : `Sends it to ${names.join(', ')} now`}>📤 Send</button>
+      <button class="primary small" onclick={send} disabled={!canSend} title={cant || `Sends it to ${names.join(', ')} now`}>📤 Send</button>
     {:else if windowName}
-      <button class="primary small" onclick={send} disabled={!canSend} title={hasSomething ? `Shows it in the 🪟 card window, to ${windowName} alone, until you take it back or it’s over` : 'Put something on the card first'}>🪟 Show {windowName}</button>
+      <button class="primary small" onclick={send} disabled={!canSend} title={(cant && cant !== 'Choose who gets it first' ? cant : '') || `Shows it in the 🪟 card window, to ${windowName} alone, until you take it back or it’s over`}>🪟 Show {windowName}</button>
     {/if}
     {#if !cardsOn || noPhone.length}
       <button class="small" onclick={copyWords} disabled={!to.length || !slide || (!cardWords(slide) && !cardLinks(game, slide).length)} title="Copies “For … only” with the card’s words and links, to paste in a DM">📋 Copy words</button>
@@ -294,11 +430,18 @@
     {/if}
   </div>
   {#if !cardsOn}
-    <div class="muted small">{room ? 'This buzzer server doesn’t put cards on phones: copy it to them (📋)' : 'No phone buzzers in this game: copy it to them (📋)'}{cardWindow.open ? ', or show it in the 🪟 card window.' : ', or open a 🪟 card window for one of them.'}</div>
+    <div class="muted small">
+      {room ? 'This buzzer server doesn’t put cards on phones: copy it to them (📋)' : 'No phone buzzers in this game: copy it to them (📋)'}{#if cardWindow.open}, or show it in the 🪟 card window.{:else if firstSeat}, or
+        <button class="ghost tiny" onclick={() => openWin(firstSeat)} title="Opens a window with only {nameOf(firstSeat)}’s cards, to share with them alone">open a 🪟 card window for {nameOf(firstSeat)}</button>{:else}, or open a 🪟 card window for one of them.{/if}
+    </div>
   {/if}
   {#if said}<div class="small" role="status" data-card-said>✓ {said}</div>{/if}
   {#if !dual}
-    <span class="exposed">{preset ? '⚠ Viewers can see this window: it says who gets the card, never what’s on it.' : '⚠ Viewers can see this window: they’d see a quick card’s words and link as you type them. A card made in the editor stays off stream.'}</span>
+    <span class="exposed"
+      >{preset
+        ? '⚠ Viewers can see this window: it says who gets the card, never what’s on it.'
+        : '⚠ Viewers can see this window: what you type is hidden (👁 Show shows it to them too), and a card made in the editor is never shown.'}</span
+    >
   {/if}
 </div>
 
@@ -349,8 +492,14 @@
     min-width: 0;
   }
   textarea {
+    flex: 1;
+    min-width: 0;
     width: 100%;
     box-sizing: border-box;
+  }
+  .media {
+    flex: 1;
+    min-width: 0;
   }
   select {
     max-width: 100%;
