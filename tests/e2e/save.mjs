@@ -20,6 +20,7 @@ function assert(cond, msg) {
   if (!cond) throw new Error('Assertion failed: ' + msg);
   console.log('  ✓ ' + msg);
 }
+/** `editing`: true, the copy that edits; false, one paused; 'playing', one paused while the other plays a game. */
 async function open(name, editing = true, ctx = context) {
   const page = await ctx.newPage();
   page.on('pageerror', (e) => errors.push(`[${name}] ${e.message}`));
@@ -28,7 +29,7 @@ async function open(name, editing = true, ctx = context) {
     d.accept();
   });
   await page.goto(url);
-  await page.getByRole('button', { name: editing ? 'Open…' : 'Edit here instead' }).waitFor();
+  await page.getByRole('button', { name: editing === 'playing' ? 'Stop that game and edit here…' : editing ? 'Open…' : 'Edit here instead' }).waitFor();
   await page.waitForTimeout(800); // startup, including its storage cleanup
   return page;
 }
@@ -318,8 +319,24 @@ try {
   await p1.locator('.panel .p').first().locator('.score').click();
   await p1.locator('.panel .score-edit').fill('300');
   await p1.keyboard.press('Enter');
-  const p2 = await open('taking over', false, played);
-  await p2.getByRole('button', { name: 'Edit here instead' }).click();
+  // The tab opened alongside says a game is being played there, and taking over is asked first.
+  const p2 = await open('taking over', 'playing', played);
+  const takeOver = p2.getByRole('button', { name: 'Stop that game and edit here…' });
+  assert(
+    (await p2.getByRole('heading', { name: 'A game is being played in the other tab' }).count()) === 1 &&
+      (await p2.getByText('Close this tab to leave that one as it is.').count()) === 1 &&
+      (await p2.getByText('Editing here stops the game being played there (it’s kept: Resume game carries on here).').count()) === 1 &&
+      !(await p2.getByRole('button', { name: 'Edit here instead' }).count()),
+    'a tab opened while another plays a game says so, and what taking over does: close it to leave that one as it is',
+  );
+  const asked = p2.getByRole('alertdialog', { name: 'Stop the game in the other tab?' });
+  await takeOver.click();
+  await asked.getByRole('button', { name: 'Leave it as it is' }).click();
+  await asked.waitFor({ state: 'detached' });
+  await p2.waitForTimeout(500);
+  assert((await takeOver.count()) === 1 && (await p1.locator('.panel').count()) > 0, 'Stop that game and edit here asks first: Leave it as it is leaves the game playing');
+  await takeOver.click();
+  await asked.getByRole('button', { name: 'Edit here', exact: true }).click();
   await p2.getByRole('button', { name: 'Open…' }).waitFor();
   await p1.getByRole('heading', { name: 'This game is open in another tab' }).waitFor();
   assert((await p1.locator('.panel').count()) === 0, 'a tab playing the game pauses when another tab takes over (it stops playing it)');

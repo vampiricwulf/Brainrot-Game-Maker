@@ -21,6 +21,7 @@ in plain words for the people who make and host games. Anything committed but no
 ### Changed
 - The editor's 🎡 Wheels & Dice tab is now 🎡 Wheels, Dice & Deals, and 🔍 Find finds deals. (2fd29e9)
 - Partner clue settings: while "The partner never loses points, whichever part they play" is ticked, the partner's "If it's missed" box is greyed and shows what they really get (0, not a loss), so the checkbox no longer looks like a second way to set the partner's miss share; untick it and the share you typed is back to edit. Its tooltip says it also covers "Who describes: the picker" and ⇄ Swap during play, and, when the picker describes, what a Solo miss still costs. (87e42d9, f7007f5)
+- Opening the builder in a second tab while a game is being played (or its audience window is open) now says so and suggests closing it; taking over asks first, because it stops that game (kept for Resume game) and closes its audience window, so a stream showing it would go dark. (acb2400, 9e5efbf)
 
 ### Fixed
 - The Windows desktop app builds again: the update that brought 🤫 Send a card… (b7cebf9) had no desktop app, because two of its file names differed only in capital letters, which Windows treats as the same file. A test now catches such names.
@@ -51,6 +52,7 @@ in plain words for the people who make and host games. Anything committed but no
 - Closing the buzzer room (✕ Close the room, Exit › Discard & leave, leaving the results) makes sure the room got it, and while the room is out of reach for a moment it closes once it answers, so phones are told the game is over instead of saying "Hang on" for hours; ✕ Close the room says the phones are told if it answers within a minute. (25d5a9f, 0b75a1c)
 - A 🤫 card's picture that didn't reach the buzzer server shows in the cards out (its row orange, with ↻ Send again or 📋 Copy picture), and the 🤫 N cards out button turns orange when a card isn't fully on the phones; an upload cut off by a network blip is tried again by itself, and never gets stuck on "uploading…". (25d5a9f, 0b75a1c)
 - README says correctly when the buzzer room stays open (Keep & leave, ▶ Next game…) and when it closes. (25d5a9f)
+- In a big game, moving spaces in ✎ Edit board or things in ✎ Edit screen during play with the audience window open no longer freezes the host screen and the stream: the audience window gets only what changed. Typing players' names on the ▶ Play screen no longer lags, and ▶ Play opens noticeably faster. (acb2400, 9e5efbf)
 
 ## 2026-10-15
 

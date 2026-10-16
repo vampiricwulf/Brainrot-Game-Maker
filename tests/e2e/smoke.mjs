@@ -1455,7 +1455,9 @@ assert((await page.locator('.cat textarea').first().inputValue()) !== 'Memes', '
 await page.getByRole('button', { name: '▶ Play' }).click();
 await page.getByRole('button', { name: 'Start game ▶' }).waitFor();
 assert(await page.getByRole('button', { name: 'Start game ▶' }).isDisabled(), 'Start is disabled with no players');
-assert(await page.locator('.checks summary').getByText(/things to check/).isVisible(), 'pre-game lists what is unfinished');
+// (Worked out once the screen is up.)
+await page.locator('.checks summary').getByText(/things to check/).waitFor();
+assert(true, 'pre-game lists what is unfinished');
 await page.locator('.checks summary').click();
 assert((await page.locator('.checks li', { hasText: '1 Daily Double not placed yet' }).count()) === 1, 'pre-game flags the missing Daily Double');
 await page.locator('.checks li', { hasText: 'Daily Double not placed yet' }).getByRole('button', { name: '🎲 Place now' }).click();

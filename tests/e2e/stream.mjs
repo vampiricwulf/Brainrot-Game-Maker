@@ -188,6 +188,20 @@ async function crowd() {
   await sc.reload();
   await sc.locator('.clock .timer.done').waitFor();
   assert((await sc.locator('.timesup').count()) === 0, "so does a reloaded scores window");
+
+  // The builder opened again mid-game in another tab (a bookmark, the file double-clicked): it says a game is being
+  // played in this one, and that taking over closes its audience window. Closing it leaves the stream as it was.
+  const other = await ctx.newPage();
+  other.on('pageerror', (e) => errors.push(`[crowd, second tab] ${e.message}`));
+  await other.goto(pathToFileURL(file).href);
+  await other.getByRole('heading', { name: 'A game is being played in the other tab' }).waitFor();
+  assert(
+    (await other.getByText(/stops the game being played there .* and closes the audience window there, so a stream showing it goes dark/).count()) === 1 &&
+      (await other.getByRole('button', { name: 'Stop that game and edit here…' }).count()) === 1,
+    'a second tab opened mid-game says taking over stops the game and closes its audience window',
+  );
+  await other.close();
+  assert(!aud.isClosed() && (await host.locator('.panel .p').count()) === 12, 'closing that tab leaves the game and its audience window as they were');
   await ctx.close();
 }
 
