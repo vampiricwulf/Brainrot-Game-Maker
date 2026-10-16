@@ -173,6 +173,18 @@ describe('a tile’s own cards (🤫 Just you, 💡 Insider tip)', () => {
     expect(sessionCards(g, session, { files: {} })![0].text).toBe('TIP-changed');
   });
 
+  it('a card renamed in the editor stays on the phones, and its name never reaches the room or its label', () => {
+    const { g, session, clue, card } = setup();
+    card.name = 'Clue tip';
+    openClue(session, REF, g);
+    const c = sendCard(g, session, { to: [{ seat: 'a' }], content: { clue: clue.id, card: card.id }, until: 'tile' })!;
+    expect(c.label).toBe('Card 1');
+    card.name = 'Leader hint';
+    expect(sentState(g, c)).toBe('sent');
+    expect(sessionCards(g, session, { files: {} })![0].text).toBe('TIP-xyzzy');
+    expect(told(g, session)).not.toMatch(/Clue tip|Leader hint/);
+  });
+
   it('a partner clue’s sends and these go to the room together, at most 8: a 9th send is refused, and no card ever leaves the room’s list and comes back', () => {
     const { g, session } = setup();
     const r = g.rounds[0] as BoardRound;

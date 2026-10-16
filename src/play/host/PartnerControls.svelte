@@ -5,15 +5,15 @@
   one of them when no phone gets cards), and ✔ Got it / ✘ Missed with what each gives (then, with steal on a miss, who
   steals it: the others buzz in, or the host picks one). Nothing goes to a phone or the buzzer server but by those
   presses, and never more cards than the room takes (✖ Take one back first). In one window this panel is on stream: it
-  counts what's on a card and never says it, nor names a card's pictures (a file name is often the answer), uploads
-  included. The cards themselves are in the editor's 🤫 Card tabs, and the two-window host column.
+  names a card (its name is the host's, "Card 2" when it has none) and counts what's on it, never says it, nor names a
+  card's pictures (a file name is often the answer), uploads included. The cards themselves are in the editor's 🤫 Card tabs, and the two-window host column.
 -->
 <script lang="ts">
   import { onMount } from 'svelte';
   import { app, toast } from '../../lib/app.svelte';
   import { textOn } from '../../lib/colors';
   import { overlayDoneAt, toolOverlay } from '../../lib/live';
-  import { cardSlides, formatPoints, PARTNER_GAMES, type CardTo, type Clue, type ClueCard, type Game, type Id, type PartnerState, type Session } from '../../lib/model';
+  import { cardSlides, clueCardName, clueCardWords, formatPoints, PARTNER_GAMES, type CardTo, type Clue, type ClueCard, type Game, type Id, type PartnerState, type Session } from '../../lib/model';
   import {
     cardCopyText, cardId, cardRecipients, cardSends, cardSummary, countItems, describer, goesToLabel, lowerWord, markReady, marksText, pairOnly, partnerCandidates, partnerPickStep,
     partnerRoles, partnerRules, partnerShares, partnerVerdict, partWho, partWordOf, partWords, recipientsText, resetRecipients, sameTeam, sendAgain, sendCards, sendChanges, sendState, sentSeats,
@@ -127,13 +127,13 @@
     announce(id === s.pickerId ? `${name(id)} plays it alone` : `${name(id)} is ${name(s.pickerId)}’s partner`);
     const moved = was.filter(({ card }) => old && sentSeats(session, s, card.id).includes(old) && sendState(session, s, card) === 'changed');
     if (!moved.length || !old) return;
-    const which = moved.map(({ n }) => `card ${n}`).join(' and ');
+    const which = moved.map(({ card, n }) => clueCardWords(card, n - 1)).join(' and ');
     void ask(`${name(old)} already has ${which}: take it back and send it to ${name(id)}?`, { ok: '📤 Send changes', cancel: `Leave it with ${name(old)}` }).then((yes) => {
       if (!yes || session.partner !== s) return;
       // (Never more cards than the buzzer room takes.)
       if (roomCardsFull(game, session, (t) => moved.forEach(({ card }) => sendChanges(t, t.partner!, card)))) return toast(cardsFullText(game, session), 4000);
       for (const { card } of moved) sendChanges(session, s, card);
-      announce(`${moved.map(({ n }) => `Card ${n}`).join(' and ')} sent to ${name(id)}`);
+      announce(`${moved.map(({ card, n }) => clueCardWords(card, n - 1, true)).join(' and ')} sent to ${name(id)}`);
     });
   }
   function pickerMenu(e: MouseEvent): void {
@@ -189,7 +189,7 @@
       const who = nameList(sentNow.map(name));
       const part = `the ${lowerWord(words[card.to as 'giver' | 'guesser'])}’s`;
       const did = seen.length && seen.length === sentNow.length ? 'already saw' : seen.length ? `already ${sentNow.length > 1 ? 'have' : 'has'} (${nameList(seen.map(name))} saw it)` : sentNow.length > 1 ? 'already have' : 'already has';
-      const yes = await ask(`${who} ${did} card ${n} (${part}). Swap anyway? They keep it; 📤 Send changes gives it to whoever plays that part now.`, { ok: '⇄ Swap', cancel: 'Don’t swap' });
+      const yes = await ask(`${who} ${did} ${clueCardWords(card, n - 1)} (${part}). Swap anyway? They keep it; 📤 Send changes gives it to whoever plays that part now.`, { ok: '⇄ Swap', cancel: 'Don’t swap' });
       if (!yes || session.partner !== s || verdict.judged) return;
     }
     swapParts(s);
@@ -309,8 +309,8 @@
   }
   /** Who a card shown in the card window went to (names only). */
   const sentToTextOf = (to: CardTo[]) => to.map((t) => name(t.seat)).join(', ');
-  /** "Card 1 sent to Bob" (names only, never what's on it). */
-  const sentText = (card: ClueCard, n: number) => `Card ${n} sent to ${recipientsText(session, s, rules, card)}`;
+  /** "Card 1 sent to Bob", or "Card “Clue tip” sent to Bob" (names only, never what's on it). */
+  const sentText = (card: ClueCard, n: number) => `${clueCardWords(card, n - 1, true)} sent to ${recipientsText(session, s, rules, card)}`;
 
   /** Sending this card now would take the buzzer room past the cards it takes (a send can be one card per part). */
   const sendFull = (card: ClueCard): boolean => roomCardsFull(game, session, (t) => sendCards(t, t.partner!, [card]));
@@ -318,7 +318,7 @@
   function sendOne(card: ClueCard, n: number): void {
     if (!cardsOn) return;
     if (sendFull(card)) return toast(cardsFullText(game, session), 4000);
-    if (!sendCards(session, s, [card]).length) return toast(`Choose who gets card ${n} first`);
+    if (!sendCards(session, s, [card]).length) return toast(`Choose who gets ${clueCardWords(card, n - 1)} first`);
     announce(sentText(card, n));
   }
   /**
@@ -331,13 +331,13 @@
   function showInWindow(card: ClueCard, n: number, seat: Id): void {
     if (roomCardsFull(game, session)) return toast(cardsFullText(game, session), 4000);
     const c = sendCard(game, session, { to: [{ seat }], content: { clue: clue.id, card: card.id }, until: 'tile' }, Date.now(), roomCardsFull(game, session));
-    if (!c) return toast(`Card ${n} can’t be shown now`);
-    announce(`Card ${n} shown in the 🪟 card window to ${name(seat)}`);
+    if (!c) return toast(`${clueCardWords(card, n - 1, true)} can’t be shown now`);
+    announce(`${clueCardWords(card, n - 1, true)} shown in the 🪟 card window to ${name(seat)}`);
   }
   /** ↻ Send again: under a new id, so a phone that came late (a new phone for the seat) gets it too. */
   function again(card: ClueCard, n: number): void {
     retryFiles(game, session, [card]);
-    if (sendAgain(session, s, card)) announce(`Card ${n} sent again to ${sentTo(session, s, card.id).map((t) => toName(session, t)).join(', ')}`);
+    if (sendAgain(session, s, card)) announce(`${clueCardWords(card, n - 1, true)} sent again to ${sentTo(session, s, card.id).map((t) => toName(session, t)).join(', ')}`);
   }
   /** 📤 Send changes would take the buzzer room past the cards it takes. */
   const changesFull = (card: ClueCard): boolean => roomCardsFull(game, session, (t) => sendChanges(t, t.partner!, card));
@@ -345,7 +345,7 @@
   function changes(card: ClueCard, n: number): void {
     if (changesFull(card)) return toast(cardsFullText(game, session), 4000);
     sendChanges(session, s, card);
-    announce(cardSends(s, card.id).length ? sentText(card, n) : `Card ${n} taken back`);
+    announce(cardSends(s, card.id).length ? sentText(card, n) : `${clueCardWords(card, n - 1, true)} taken back`);
   }
   /** The cards not sent yet: their files are what ⇡ Get it ready puts in the room. */
   const unsent = $derived(cards.filter((c) => !cardSends(s, c.id).length));
@@ -435,12 +435,12 @@
   /** 📋 Copy words: the card's words and links, named for who they're for. Nothing of it shows on screen. */
   function copyWords(card: ClueCard, n: number): void {
     const to = recipients(card).map((t) => toName(session, t));
-    void copyText(cardCopyText(game, card, n, where, to), `Card ${n}’s words copied: paste them to ${to.join(', ') || 'them'}`);
+    void copyText(cardCopyText(game, card, n, where, to), `${clueCardWords(card, n - 1, true)}’s words copied: paste them to ${to.join(', ') || 'them'}`);
   }
 
   /** 📋 Copy picture: the card's first picture (or GIF, as a still), to paste into a DM. */
   function copyPicture(card: ClueCard, n: number): Promise<void> {
-    return copyCardPicture(game, card, `Card ${n}`, recipients(card).map((t) => toName(session, t)).join(', ') || 'them');
+    return copyCardPicture(game, card, clueCardWords(card, n - 1, true), recipients(card).map((t) => toName(session, t)).join(', ') || 'them');
   }
 
   // The main button, in the panel's main cell: spin, then show the question, then start the clock (then the clue's own).
@@ -610,7 +610,7 @@
     <div class="row">{@render parts()}</div>
     <div class="row small" data-partner-cards>
       {#if cards.length}
-        🤫 {cards.length} card{cards.length === 1 ? '' : 's'}: {#each cards as card, i (card.id)}{i ? ' · ' : ''}Card {i + 1} → {recipientsText(session, s, rules, card)}{/each}
+        🤫 {cards.length} card{cards.length === 1 ? '' : 's'}: {#each cards as card, i (card.id)}{i ? ' · ' : ''}{clueCardName(card, i)} → {recipientsText(session, s, rules, card)}{/each}
       {:else}
         <span class="muted">🤫 No cards on this clue: {autoClock ? 'the question starts the clock' : 'start the clock yourself (T) once the question is up'}.</span>
       {/if}
@@ -645,8 +645,8 @@
       {#each cards as card, i (card.id)}
         {@const out = cardSends(s, card.id).length > 0}
         <div class="row small" data-card={i + 1}>
-          Card {i + 1} → {out ? sentTo(session, s, card.id).map((t) => toName(session, t)).join(', ') : recipientsText(session, s, rules, card)}{#if out && seenBy(card).length}{' '}✓ seen{/if}
-          {#if out}<button class="ghost small" onclick={() => ontakeback(card.id)} aria-label="Take card {i + 1} back" title="Takes it off the phones it went to">✖ Take back</button>{/if}
+          {clueCardName(card, i)} → {out ? sentTo(session, s, card.id).map((t) => toName(session, t)).join(', ') : recipientsText(session, s, rules, card)}{#if out && seenBy(card).length}{' '}✓ seen{/if}
+          {#if out}<button class="ghost small" onclick={() => ontakeback(card.id)} aria-label="Take {clueCardWords(card, i)} back" title="Takes it off the phones it went to">✖ Take back</button>{/if}
         </div>
       {/each}
     {:else if cards.length}
@@ -654,6 +654,9 @@
       <div class="cardlist">
         {#each cards as card, i (card.id)}
           {@const n = i + 1}
+          {@const w = clueCardWords(card, i)}
+          {@const W = clueCardWords(card, i, true)}
+          {@const nm = clueCardName(card, i)}
           {@const to = recipients(card)}
           {@const changed = !!s.deal?.[card.id]}
           {@const pics = cardItems(game, card).some((it) => it.kind === 'picture' || it.kind === 'gif')}
@@ -667,12 +670,12 @@
           {@const seenNow = st === 'unsent' ? [] : seenBy(card)}
           <!-- One row a card: what's on it (counted), who gets it, how it stands on their phones, and its buttons. Its
                state is in its name, and each chip's, for a screen reader. -->
-          <div class="row card" data-card={n} role="group" aria-label={`Card ${n}: ${state ? state.text : cardsOn ? 'not sent' : recipientsText(session, s, rules, card)}`}>
-            <b>Card {n}</b>
+          <div class="row card" data-card={n} role="group" aria-label={`${W}: ${state ? state.text : cardsOn ? 'not sent' : recipientsText(session, s, rules, card)}`}>
+            <b class="cname" title={nm}>{nm}</b>
             <span class="muted small">· {cardSummary(game, card)}</span>
             <span aria-hidden="true">→</span>
             {#if memberTo && member}
-              {@render personChip(member.name, has(to, memberTo), `Card ${n} to ${member.name}${seenNow.includes(memberTo.seat) && sentTo(session, s, card.id).some((t) => t.member?.id === member.id) ? ', seen' : sentTo(session, s, card.id).some((t) => t.member?.id === member.id) ? ', sent' : ''}`, () => toggle(card, memberTo), false, lowerWord(words.giver), `Only ${member.name}’s phone gets it`)}
+              {@render personChip(member.name, has(to, memberTo), `${W} to ${member.name}${seenNow.includes(memberTo.seat) && sentTo(session, s, card.id).some((t) => t.member?.id === member.id) ? ', seen' : sentTo(session, s, card.id).some((t) => t.member?.id === member.id) ? ', sent' : ''}`, () => toggle(card, memberTo), false, lowerWord(words.giver), `Only ${member.name}’s phone gets it`)}
             {/if}
             {#each session.players as p (p.id)}
               {@const nophone = cardsOn && !hasPhone(p.id)}
@@ -681,7 +684,7 @@
               {@render chip(
                 p.id,
                 has(to, t),
-                `Card ${n} to ${t.except ? `the rest of ${p.name}` : p.name}${nophone ? ' (no phone here)' : ''}${how}`,
+                `${W} to ${t.except ? `the rest of ${p.name}` : p.name}${nophone ? ' (no phone here)' : ''}${how}`,
                 () => toggle(card, t),
                 false,
                 nophone
@@ -696,37 +699,37 @@
               )}
             {/each}
             {#if others.length}
-              <button class="chip ghost" aria-pressed={others.every((id) => has(to, seatTo(id)))} onclick={() => everyoneElse(card)} aria-label="Card {n} to everyone else">Everyone else</button>
+              <button class="chip ghost" aria-pressed={others.every((id) => has(to, seatTo(id)))} onclick={() => everyoneElse(card)} aria-label="{W} to everyone else">Everyone else</button>
             {/if}
-            <button class="chip ghost" aria-pressed={!to.length} onclick={() => setRecipients(session, s, card, [])} aria-label="Card {n} to nobody">Nobody</button>
+            <button class="chip ghost" aria-pressed={!to.length} onclick={() => setRecipients(session, s, card, [])} aria-label="{W} to nobody">Nobody</button>
             {#if !to.length}<span class="muted small">nobody yet</span>{/if}
             {#if changed}
               <span class="muted small">(changed)</span>
-              <button class="ghost small" onclick={() => resetRecipients(s, card.id)} title="Back to who it goes to by default: {goesToLabel(rules, card.to, false)}" aria-label="Card {n}: back to {goesToLabel(rules, card.to, false)}">↺</button>
+              <button class="ghost small" onclick={() => resetRecipients(s, card.id)} title="Back to who it goes to by default: {goesToLabel(rules, card.to, false)}" aria-label="{W}: back to {goesToLabel(rules, card.to, false)}">↺</button>
             {/if}
             {#if state}<span class="small" class:warn={state.warn} data-card-state>{state.text}</span>{/if}
             <span class="spacer"></span>
             {#if cardsOn}
               {#if st === 'unsent'}
                 {@const full = to.length > 0 && sendFull(card)}
-                <button class="small" onclick={() => sendOne(card, n)} disabled={!to.length || full} aria-label="Send card {n}" title={full ? cardsFullText(game, session) : to.length ? `Sends it to ${to.map((t) => toName(session, t)).join(', ')} now (the countdown doesn’t start)` : 'Choose who gets it first'}>📤 Send</button>
+                <button class="small" onclick={() => sendOne(card, n)} disabled={!to.length || full} aria-label="Send {w}" title={full ? cardsFullText(game, session) : to.length ? `Sends it to ${to.map((t) => toName(session, t)).join(', ')} now (the countdown doesn’t start)` : 'Choose who gets it first'}>📤 Send</button>
               {:else}
                 {#if st === 'changed'}
                   {@const full = changesFull(card)}
-                  <button class="small" onclick={() => changes(card, n)} disabled={full} aria-label="Send card {n}’s changes" title={full ? cardsFullText(game, session) : 'Sends it to whoever you added, and takes it back from whoever you took off'}>📤 Send changes</button>
+                  <button class="small" onclick={() => changes(card, n)} disabled={full} aria-label="Send {w}’s changes" title={full ? cardsFullText(game, session) : 'Sends it to whoever you added, and takes it back from whoever you took off'}>📤 Send changes</button>
                 {:else}
-                  <button class="small" onclick={() => again(card, n)} aria-label="Send card {n} again" title="Sends it again under a new id: a phone that came late (a player on a new phone) gets it too, with what’s on the card now">↻ Send again</button>
+                  <button class="small" onclick={() => again(card, n)} aria-label="Send {w} again" title="Sends it again under a new id: a phone that came late (a player on a new phone) gets it too, with what’s on the card now">↻ Send again</button>
                 {/if}
-                <button class="ghost small" onclick={() => ontakeback(card.id)} aria-label="Take card {n} back" title="Takes it off every phone it went to">✖ Take back</button>
+                <button class="ghost small" onclick={() => ontakeback(card.id)} aria-label="Take {w} back" title="Takes it off every phone it went to">✖ Take back</button>
               {/if}
             {:else if inWindow(card)}
               {@const shown = inWindow(card)!}
               <span class="small" data-card-state>· in the 🪟 card window ({sentToTextOf(shown.to)})</span>
-              <button class="ghost small" onclick={() => oncardtakeback(shown.id)} aria-label="Take card {n} back" title="Takes it out of the 🪟 card window">✖ Take back</button>
+              <button class="ghost small" onclick={() => oncardtakeback(shown.id)} aria-label="Take {w} back" title="Takes it out of the 🪟 card window">✖ Take back</button>
             {:else if windowSeat(to)}
               {@const seat = windowSeat(to)!}
               {@const full = roomCardsFull(game, session)}
-              <button class="small" onclick={() => showInWindow(card, n, seat)} disabled={full} aria-label="Show card {n} to {name(seat)}" title={full ? cardsFullText(game, session) : `Shows it in the 🪟 card window, to ${name(seat)} alone, until the tile closes`}>🪟 Show {name(seat)}</button>
+              <button class="small" onclick={() => showInWindow(card, n, seat)} disabled={full} aria-label="Show {w} to {name(seat)}" title={full ? cardsFullText(game, session) : `Shows it in the 🪟 card window, to ${name(seat)} alone, until the tile closes`}>🪟 Show {name(seat)}</button>
             {/if}
             {#if copying}
               <button class="small" onclick={() => copyWords(card, n)} disabled={!to.length || !copyable}
@@ -804,7 +807,7 @@
     {/if}
   {/if}
   {#if !dual}
-    <span class="exposed">⚠ Viewers can see this window: what’s on a card is never shown here (check the cards in the editor’s 🤫 Card tabs).</span>
+    <span class="exposed">⚠ Viewers can see this window: they can read a card’s name here, never what’s on it (check the cards in the editor’s 🤫 Card tabs).</span>
   {/if}
 </div>
 
@@ -829,6 +832,13 @@
   .card {
     padding-top: 4px;
     border-top: 1px solid rgba(255, 255, 255, 0.08);
+  }
+  /* (A long name is cut: the tooltip has it whole.) */
+  .cname {
+    max-width: 22ch;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
   .chip {
     border-width: 2px;

@@ -9,6 +9,8 @@
   import {
     cardSlides,
     categoryLabel,
+    clueCardName,
+    clueCardWords,
     clueCountdown,
     clueValueTyped,
     formatPoints,
@@ -25,8 +27,9 @@
     type Slide,
     type TextEl,
   } from '../lib/model';
-  import { addCard, deleteCard, GOES_TO, goesToLabel, partnerRules, sameAsAnswer, TILE_GOES_TO, tileGoesToLabel } from '../lib/partner';
-  import { slideHasContent } from '../lib/usage';
+  import { addCard, deleteCard, GOES_TO, goesToLabel, partnerRules, TILE_GOES_TO, tileGoesToLabel } from '../lib/partner';
+  import { clip } from '../lib/buzzproto';
+  import CardBar from './CardBar.svelte';
   import PartnerSettings from './PartnerSettings.svelte';
   import PhoneCardPreview from './PhoneCardPreview.svelte';
   import { followClueText } from '../lib/cluetext';
@@ -77,7 +80,7 @@
   // ---------- 🤫 Cards ----------
   // A tile's cards: slides only the players the host sends them to see (a partner clue hands them out in its Distribute
   // step; any other tile offers them in its panel: 🤫 Just you, 💡 Insider tip). Their tabs come after the question
-  // slides (Question 1…n · 🤫 Card 1…k · Answer), in the order things happen.
+  // slides (Question 1…n · 🤫 Card 1…k, or their names · Answer), in the order things happen.
   /** The card open (0: Card 1), kept while another tab is open. */
   let ci = $state(0);
   /** 📱 On their phone: the open card as a phone gets it, beside the slide (kept on while moving between cards). */
@@ -96,6 +99,9 @@
   const shown = $derived<ClueSide>(side === 'card' && !card ? 'q' : side);
   /** Short card tab names (🤫 1, 🤫 2…) when there are many tabs. */
   const shortCards = $derived(qslides.length + cards.length > 6);
+  /** The open card's bar (its Card name box: F2 or a double-click on its tab). */
+  let bar = $state<ReturnType<typeof CardBar>>();
+  const focusName = () => tick().then(() => bar?.focusName());
   /** The clue at one of its cards. */
   const cardPart = (c: ClueCard): RoundPart => ({ kind: 'clue', category: cat.id, clue: clue.id, side: 'card', slide: c.id });
   /** Where the tab open is (where a change made from it shows when undone). */
@@ -130,12 +136,12 @@
     });
     focusQuestion();
   }
-  const deleteCardTab = () => cardStep(`Deleted card ${cardAt + 1} of ${tileName()}`, () => deleteCard(clue, cardAt), true);
+  const deleteCardTab = () => cardStep(`Deleted ${clueCardWords(card!, cardAt)} of ${tileName()}`, () => deleteCard(clue, cardAt), true);
   /** Who the open card starts with when the cards are handed out. */
   function setGoesTo(to: CardGoesTo): void {
     const c = card;
     if (!c) return;
-    record(`Card ${cardAt + 1} of ${tileName()} goes to ${goesTo(to, false)}`, () => (c.to = to), {
+    record(`${clueCardWords(c, cardAt, true)} of ${tileName()} goes to ${goesTo(to, false)}`, () => (c.to = to), {
       place: { tab: 'round', round: round.id, part: cardPart(c) },
     });
   }
@@ -143,7 +149,7 @@
   function copyAnswer(): void {
     const c = card;
     if (!c) return;
-    record(`Copied the answer onto card ${cardAt + 1} of ${tileName()}`, () => cardFromAnswer(clue, c), {
+    record(`Copied the answer onto ${clueCardWords(c, cardAt)} of ${tileName()}`, () => cardFromAnswer(clue, c), {
       place: { tab: 'round', round: round.id, part: cardPart(c) },
     });
   }
@@ -207,7 +213,8 @@
   /**
    * On a tab: ←/→ (Home/End) open the slide beside it (the first, the last), the answer last. On a question slide's
    * tab, Ctrl+D duplicates it (even the only one), and when there are several: Alt+←/→ move it (like Alt+↑/↓ on a
-   * list's rows), Delete deletes it. (Not on a card's tab, as not on the answer's.)
+   * list's rows), Delete deletes it. (Not on a card's tab, as not on the answer's.) On a card's tab, F2 goes to its
+   * Card name.
    */
   function tabKey(e: KeyboardEvent): void {
     const n = qslides.length;
@@ -227,6 +234,10 @@
       if (e.key === 'ArrowRight') return open(Math.min(n + k, now + 1));
       if (e.key === 'Home') return open(0);
       if (e.key === 'End') return open(n + k);
+      if (e.key === 'F2' && shown === 'card') {
+        e.preventDefault();
+        return void focusName();
+      }
     }
     if (mod && !e.altKey && !e.shiftKey && e.key.toLowerCase() === 'd') {
       // (Never the browser's Bookmark this page, on the Answer tab either.)
@@ -560,9 +571,10 @@
             ></textarea>
           </label>
           {#if card}
-            <!-- (The card open, else the last one opened: Card 1 at first.) -->
+            <!-- (The card open, else the last one opened: Card 1 at first. A long name is cut: the modal's height is
+                 fixed.) -->
             <label class="field">
-              🤫 Card {cardAt + 1} words (only who you send it to sees them)
+              🤫 {clip(clueCardName(card, cardAt), 24)} words (only who you send it to sees them)
               <textarea
                 bind:this={cardField}
                 dir="auto"
@@ -608,10 +620,11 @@
                 aria-selected={on}
                 tabindex={on ? 0 : -1}
                 data-card={i + 1}
-                aria-label={shortCards ? `Card ${i + 1}` : undefined}
+                aria-label={shortCards ? (c.name?.trim() ? `Card ${i + 1}: ${c.name.trim()}` : `Card ${i + 1}`) : undefined}
                 onclick={() => ((side = 'card'), (ci = i))}
-                title="🤫 Card {i + 1}: only the players you hand it to see it, never on stream. It starts with {goesTo(c.to, false)}"
-                >{shortCards ? `🤫 ${i + 1}` : `🤫 Card ${i + 1}`}</button
+                ondblclick={() => ((side = 'card'), (ci = i), focusName())}
+                title="🤫 {clueCardName(c, i)}: only the players you hand it to see it, never on stream. It starts with {goesTo(c.to, false)}. F2: rename it"
+                >{shortCards ? `🤫 ${i + 1}` : `🤫 ${clueCardName(c, i)}`}</button
               >
             {/each}
             <button
@@ -651,36 +664,19 @@
           {/if}
         </div>
         {#if shown === 'card' && card}
-          <!-- Who the card starts with (the cards can go to anyone when they're handed out), and ⧉ Same as the answer. -->
-          <div class="cardbar row" role="group" aria-label="Card {cardAt + 1}">
-            <label class="check" title="Who this card starts with when you hand the cards out: you can give it to anyone then">
-              Goes to
-              <select value={goesList.includes(card.to) ? card.to : 'nobody'} onchange={(e) => setGoesTo(e.currentTarget.value as CardGoesTo)}>
-                {#each goesList as to (to)}<option value={to}>{goesTo(to)}</option>{/each}
-              </select>
-            </label>
-            {#if !slideHasContent(card)}
-              <button
-                class="small"
-                onclick={copyAnswer}
-                disabled={!slideHasContent(clue.answerSlide)}
-                title={slideHasContent(clue.answerSlide)
-                  ? 'Put a copy of the answer slide on this card, once: changing the answer afterwards doesn’t change the card'
-                  : 'The answer slide is empty'}>⧉ Same as the answer</button
-              >
-            {:else if sameAsAnswer(clue, card)}
-              <span class="hint">This card shows the answer: whoever you send it to sees it</span>
-            {/if}
-            <span class="spacer"></span>
-            <button
-              class="small"
-              class:on={phoneView}
-              aria-pressed={phoneView}
-              onclick={() => (phoneView = !phoneView)}
-              title="The card exactly as a player’s phone gets it: its words, then its pictures and videos one under another, and what won’t reach a phone">📱 On their phone</button
-            >
-            <button class="ghost small danger" onclick={deleteCardTab} title="Delete this card (Ctrl+Z brings it back)">🗑 Delete card</button>
-          </div>
+          <CardBar
+            bind:this={bar}
+            {card}
+            index={cardAt}
+            {goesList}
+            {goesTo}
+            goesTitle="Who this card starts with when you hand the cards out: you can give it to anyone then"
+            answer={clue.answerSlide}
+            bind:phoneView
+            ongoes={setGoesTo}
+            oncopy={copyAnswer}
+            ondelete={deleteCardTab}
+          />
         {/if}
         <!-- (📱 On their phone sits beside the slide editor, never over its toolbar or inspector.) -->
         <div class="card-edit">
@@ -691,7 +687,7 @@
               stylecategory
               quickfield={shown}
               placeholder={shown === 'card' ? 'Click to type what they’ll see' : shown === 'a' ? 'Click to type the answer' : at ? 'Click to type what this slide adds' : 'Click to type the question'}
-              badge={shown === 'card' ? `🤫 CARD ${cardAt + 1} · ONLY WHO YOU SEND IT TO SEES IT` : shown === 'a' ? 'ANSWER' : undefined}
+              badge={shown === 'card' && card ? `🤫 ${clip(clueCardName(card, cardAt), 24).toUpperCase()} · ONLY WHO YOU SEND IT TO SEES IT` : shown === 'a' ? 'ANSWER' : undefined}
               fill
             />
           {/key}
@@ -776,9 +772,6 @@
   .quick.four {
     grid-template-columns: 1.2fr 1fr 1fr 1fr;
   }
-  .cardbar {
-    padding: 4px 0;
-  }
   /* The slide editor takes the height the fields above leave (and the width 📱 On their phone leaves). */
   .clue > .card-edit {
     display: flex;
@@ -789,11 +782,6 @@
   }
   .card-edit > :global(.se) {
     min-width: 0;
-  }
-  .cardbar button.on {
-    background: var(--accent-fill);
-    border-color: var(--accent-fill);
-    color: #fff;
   }
   .quick textarea {
     resize: none;
@@ -818,6 +806,13 @@
   }
   .tablist button {
     flex: none;
+  }
+  /* A long card name is cut on its tab (the tab's tooltip and the card's bar have it whole). */
+  .card-tab {
+    max-width: 18ch;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
   .tabs button {
     border-radius: 6px 6px 0 0;

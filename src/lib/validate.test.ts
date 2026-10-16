@@ -5,6 +5,7 @@ import { newWheel } from './tools';
 import { newBoardGameRound } from './boardgame';
 import { newRpgRound, newVariant } from './rpg';
 import { addClueSlide, setClueType } from './ops';
+import { addCard } from './partner';
 import { nameGivesAway, savedCardProblems, validate } from './validate';
 
 describe('the checklist', () => {
@@ -155,6 +156,40 @@ describe('🤝 partner clues', () => {
     clue.partner!.game = 'describe';
     clue.type = 'standard';
     expect(mine(game)).toEqual([]);
+  });
+
+  it('says a named card by its name; notes a name that repeats what’s on it or the answer, and two cards called alike', () => {
+    const { game, round, clue } = partnerGame();
+    game.settings.buzzer = true;
+    setSlideText(clue.answerSlide, 'Shrek');
+    const card = clue.cards![0];
+    const at = (id: string) => ({ tab: 'round', round: round.id, part: { kind: 'clue', category: round.categories[0].id, clue: clue.id, side: 'card', slide: id } });
+    card.name = 'Tip';
+    expect(mine(game).map((p) => p.text)).toEqual(["Movies $400: card “Tip” is empty: there's nothing on it to send"]);
+    setSlideText(card, 'Ogre');
+    expect(mine(game)).toEqual([]);
+    // The answer is what viewers mustn't read in the panel while the tile is open.
+    card.name = 'Shrek tip';
+    expect(nameGivesAway(game, card)).toBe(false);
+    expect(nameGivesAway(game, card, [clue.answerSlide])).toBe(true);
+    expect(mine(game)).toEqual([
+      {
+        text: 'Movies $400: the name of card “Shrek tip” repeats what’s on it or the answer, and in one window viewers can read a card’s name in the host panel',
+        tab: 0,
+        level: 'info',
+        place: at(card.id),
+      },
+    ]);
+    // (Its own words too.)
+    card.name = 'Ogre hint';
+    expect(mine(game).map((p) => p.text)).toEqual(['Movies $400: the name of card “Ogre hint” repeats what’s on it or the answer, and in one window viewers can read a card’s name in the host panel']);
+    card.name = 'Clue tip';
+    expect(mine(game)).toEqual([]);
+    // Card 1 called "Card 2" beside an unnamed card 2: said once, going to the second.
+    card.name = 'card 2';
+    const second = addCard(clue)!;
+    setSlideText(second, 'More');
+    expect(mine(game)).toEqual([{ text: 'Movies $400 has two cards called “Card 2”: in the host panel you can’t tell them apart', tab: 0, level: 'info', place: at(second.id) }]);
   });
 
   it('warns of a card’s online link that has expired or soon will', () => {

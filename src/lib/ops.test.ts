@@ -346,6 +346,20 @@ describe('🤝 partner clues on the board', () => {
     expect(clueHasContent(clue)).toBe(false);
     setSlideText(clue.cards![0], 'Shrek');
     expect(clueHasContent(clue)).toBe(true);
+    // A card's name only: the host's work too.
+    const named = partnerTile().clue;
+    named.cards![0].name = 'Clue tip';
+    expect(clueHasContent(named)).toBe(true);
+  });
+
+  it('a partner clue whose empty card the host named keeps it, and its rules, when its type changes away', () => {
+    const { round, clue } = partnerTile();
+    clue.cards![0].name = 'Clue tip';
+    setClueType(round, clue, 'standard');
+    expect(clue.cards!.map((c) => c.name)).toEqual(['Clue tip']);
+    expect(clue.partner).toEqual(gameRules('describe'));
+    setClueType(round, clue, 'partner');
+    expect(clue.cards!.map((c) => c.name)).toEqual(['Clue tip']);
   });
 
   it('clearing empties the cards but keeps them, who they go to and the rules', () => {
@@ -353,10 +367,11 @@ describe('🤝 partner clues on the board', () => {
     clue.cards![0].to = 'both';
     setSlideText(clue.cards![0], 'Shrek');
     clue.cards![0].elements.push(newImageEl('pic'));
+    clue.cards![0].name = 'Clue tip';
     const id = clue.cards![0].id;
     clearClue(clue);
     expect(clue.cards).toHaveLength(1);
-    expect([clue.cards![0].id, clue.cards![0].to, slideText(clue.cards![0]), clue.cards![0].elements.length]).toEqual([id, 'both', '', 1]);
+    expect([clue.cards![0].id, clue.cards![0].to, slideText(clue.cards![0]), clue.cards![0].elements.length, clue.cards![0].name]).toEqual([id, 'both', '', 1, 'Clue tip']);
     expect(clue.type).toBe('partner');
     expect(clue.partner).toEqual(gameRules('describe'));
   });
@@ -365,8 +380,10 @@ describe('🤝 partner clues on the board', () => {
     const { round, clue } = partnerTile();
     clue.cards![0].elements.push(newImageEl('pic'));
     const ids = (c: Clue) => c.cards!.flatMap((card) => [card.id, ...card.elements.map((e) => e.id)]);
+    clue.cards![0].name = 'Clue tip';
     const copy = copyClue(clue);
     expect(copy.cards![0].elements[1]).toMatchObject({ kind: 'image', media: 'pic' });
+    expect(copy.cards![0].name).toBe('Clue tip');
     expect(ids(copy).some((id) => ids(clue).includes(id))).toBe(false);
     const again = reidRound(clone(round));
     expect(ids(again.categories[0].clues[0]).some((id) => ids(clue).includes(id))).toBe(false);

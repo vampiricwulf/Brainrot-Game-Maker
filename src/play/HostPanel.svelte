@@ -9,7 +9,7 @@
   import { textOn } from '../lib/colors';
   import { hostSlots, type HostAsk, type NextAction } from './host/slots.svelte';
   import { phoneAwaySince } from './host/phoneaway.svelte';
-  import { categoryLabel, finalName, formatPoints, isBoard, typedPoints, wholePoints, type Game, type Session } from '../lib/model';
+  import { categoryLabel, clueCardWords, finalName, formatPoints, isBoard, typedPoints, wholePoints, type Game, type Session } from '../lib/model';
   import { answerShowing, awardOpen, clueMarks, clueName, clueScored, currentClueInfo, currentFinal, findClueRef, nameList, ownPlayers, partnerSteal, roundComplete, score, setScore, slidePosition, stealersLeft, tiedForFirst, toolOnlyClue, usedTiles } from '../lib/session';
   import MediaControls from './MediaControls.svelte';
   import SoundWarnings from './host/SoundWarnings.svelte';
@@ -501,13 +501,16 @@
   const marks = $derived(session.phase === 'clue' && info ? clueMarks(session, info.clue.id, partner?.at ?? markSince) : {});
   /** The open partner clue is judged: each of the two has a mark on it (an Undo takes that away again). */
   const partnerJudged = $derived(!!partner && partnerVerdict(partner, marks).judged);
-  /** What went to phones, for the status row: "🤫 card 1 sent to Bob", "🤫 2 cards sent" (who, never what). */
+  /**
+   * What went to phones, for the status row: "🤫 card 1 sent to Bob" (card “Clue tip” for a named one), "🤫 2 cards
+   * sent" (who, never what).
+   */
   const sentNote = $derived.by(() => {
     if (!partner?.sent?.length || !info) return '';
     const out = cardSlides(info.clue).flatMap((c, i) => (partner.sent!.some((x) => x.card === c.id) ? [{ c, n: i + 1 }] : []));
     if (out.length !== 1) return out.length ? `🤫 ${out.length} cards sent` : '';
     const who = sentTo(session, partner, out[0].c.id).map((t) => toName(session, t));
-    return `🤫 card ${out[0].n} sent to ${who.join(', ')}`;
+    return `🤫 ${clueCardWords(out[0].c, out[0].n - 1)} sent to ${who.join(', ')}`;
   });
   /**
    * A partner clue's own main button comes first: spin, show the question, start the clock (then the clue's own, as soon

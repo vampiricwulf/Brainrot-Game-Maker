@@ -1,7 +1,7 @@
-// Find (Ctrl+F in the editor): every place in the game whose words match — clues, Final rounds, RPG screens and what's
-// on them, board-game spaces and zones, items, stats, shops, wheels, dice, deals, 🤫 cards, media files — with the place
-// to go to (nav.svelte.ts's goTo, as the History tab's Go there).
-import { categoryLabel, formatPoints, questionSlides, roundName, savedCardName, type Action, type Game, type Slide } from './model';
+// Find (Ctrl+F in the editor): every place in the game whose words match — clues (and a tile's 🤫 cards, by their words
+// or names), Final rounds, RPG screens and what's on them, board-game spaces and zones, items, stats, shops, wheels,
+// dice, deals, 🤫 cards, media files — with the place to go to (nav.svelte.ts's goTo, as the History tab's Go there).
+import { categoryLabel, clueCardName, formatPoints, questionSlides, roundName, savedCardName, type Action, type Game, type Slide } from './model';
 import type { ClueSide, Place } from './historylabel';
 
 export interface Hit {
@@ -64,8 +64,11 @@ export function findAll(game: Game, query: string, limit = 200): Hit[] {
           const at = (side?: ClueSide, slide?: string): Place => ({ tab: 'round', round: r.id, part: { kind: 'clue', category: cat.id, clue: clue.id, side, ...(slide ? { slide } : {}) } });
           look('❓', slideWords(clue.questionSlide), `${where} › Question${clue.extraSlides?.length ? ' 1' : ''}`, at('q'), '[data-field="q"]');
           clue.extraSlides?.forEach((sl, j) => look('❓', slideWords(sl), `${where} › Question ${j + 2}`, at('q', sl.id), '[data-field="q"]'));
-          // The tile's 🤫 cards (in the order the clue editor's tabs have them, before the answer).
-          clue.cards?.forEach((card, j) => look('🤫', slideWords(card), `${where} › Card ${j + 1}`, at('card', card.id), '[data-field="card"]'));
+          // The tile's 🤫 cards (in the order the clue editor's tabs have them, before the answer), by their words or
+          // names.
+          clue.cards?.forEach((card, j) =>
+            look('🤫', [card.name, ...slideWords(card)], `${where} › ${clueCardName(card, j)}`, at('card', card.id), field([[card.name, '[data-field="card-name"]']]) ?? '[data-field="card"]'),
+          );
           look('💬', slideWords(clue.answerSlide), `${where} › Answer`, at('a'), '[data-field="a"]');
           look('📝', [clue.hostNotes, clue.tileFace?.text], `${where} › Notes / tile`, at(), field([[clue.hostNotes, '[data-field="notes"]'], [clue.tileFace?.text, '[data-field="tile-face"]']]));
         });

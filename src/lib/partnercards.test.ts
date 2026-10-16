@@ -102,6 +102,19 @@ describe('nothing goes to the room until the host sends it', () => {
     expect(cardSends(s, one.id)).toHaveLength(1);
   });
 
+  it('a card’s name (the host’s) never goes to the room; renamed once sent, it stays on the phones', () => {
+    const { g, session, s, one } = setup();
+    one.name = 'NAME-clue-tip';
+    setPartner(session, s, 'b', 'wheel');
+    s.stage = 'distribute';
+    sendCards(session, s, [one], 1000);
+    expect(partnerCards(g, session, { files: {} })!.map((c) => c.text)).toEqual(['CARD-ONE-xyzzy']);
+    one.name = 'NAME-other';
+    expect(partnerCards(g, session, { files: {} })!.map((c) => c.text)).toEqual(['CARD-ONE-xyzzy']);
+    expect(JSON.stringify(partnerCards(g, session, { files: {} }))).not.toMatch(/NAME-|"name"/);
+    expect(told(g, session)).not.toMatch(/NAME-/);
+  });
+
   it('📤 Send and start sends what’s left, not what’s out; a card for nobody stays', () => {
     const { g, session, s, clue, one, two } = setup();
     setPartner(session, s, 'b', 'wheel');

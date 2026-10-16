@@ -492,6 +492,22 @@ describe('🤝 partner clues in the history', () => {
     expect(itemPlace(g, cardOf(g, 0).elements[0].id)).toMatchObject({ part: { side: 'card', slide: 'card-1' } });
   });
 
+  it('a card named: its name typed is a rename, and where its words are says its name (they’re still card 2’s)', () => {
+    const cat = board(sample()).categories[0];
+    // (Where it is doesn't say again what the label names: the tile.)
+    const renamed = withCard((g) => (cardOf(g, 1).name = 'Clue tip'));
+    expect(renamed).toMatchObject({ label: 'Renamed card “Clue tip”', where: `Jeopardy! › ${cat.title} › $200` });
+    expect(renamed.place).toMatchObject({ part: { side: 'card', slide: 'card-2' } });
+    const named = renamed.after;
+    const typed = structuredClone(named);
+    (cardOf(typed, 1).elements[0] as TextEl).text = 'Shrek';
+    expect(describeStep(diff(named, typed), named, typed)).toMatchObject({ label: 'Edited card 2 “Shrek”', where: `Jeopardy! › ${cat.title} › $200 › Clue tip` });
+    // Its name cleared: "Card 2" again.
+    const unnamed = structuredClone(typed);
+    delete cardOf(unnamed, 1).name;
+    expect(describeStep(diff(typed, unnamed), typed, unnamed)).toMatchObject({ label: 'Renamed card', where: `Jeopardy! › ${cat.title} › $200 › Card 2` });
+  });
+
   it('names the points typed in a partner clue’s boxes, and its part words', () => {
     const cat = board(sample()).categories[0].title;
     // (Typing a share makes the Points Custom too: still one change, to the points.)

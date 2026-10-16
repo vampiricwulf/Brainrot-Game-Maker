@@ -1,6 +1,6 @@
 // Walk every slide in a game (for media usage counts, validation and bulk edits).
 import { uploadedFamily } from './fonts';
-import { boardRounds, cardSlides, categoryLabel, isBoard, isBoardGame, isFinal, questionSlides, roundName, savedCardName, type Action, type EmbedEl, type Game, type Outcome, type Slide } from './model';
+import { boardRounds, cardSlides, categoryLabel, clueCardWords, isBoard, isBoardGame, isFinal, questionSlides, roundName, savedCardName, type Action, type EmbedEl, type Game, type Outcome, type Slide } from './model';
 
 export interface SlideRef {
   slide: Slide;
@@ -20,7 +20,7 @@ export function allSlides(game: Game, { empty = false } = {}): SlideRef[] {
           cl.extraSlides?.forEach((slide, j) => out.push({ slide, where: `${where} (question slide ${j + 2})` }));
           out.push({ slide: cl.answerSlide, where: `${where} (answer)` });
           // A tile's 🤫 cards. (Without them, 🖼 Media's Remove unused would delete the cards' pictures.)
-          cardSlides(cl).forEach((slide, j) => out.push({ slide, where: `${where} (card ${j + 1})` }));
+          cardSlides(cl).forEach((slide, j) => out.push({ slide, where: `${where} (${clueCardWords(slide, j)})` }));
         });
     else if (isFinal(r)) {
       out.push({ slide: r.questionSlide, where: `${roundName(r, ri)} (question)` });

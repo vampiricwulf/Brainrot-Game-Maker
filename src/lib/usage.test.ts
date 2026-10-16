@@ -46,6 +46,9 @@ describe('🤫 cards', () => {
     expect(mediaUsage(game).get('pic')).toBe(1);
     expect(allSlides(game).some((s) => s.where.includes('(card 1)'))).toBe(true);
     expect(allSlides(game, { empty: true }).some((s) => s.where.includes('(card 1)'))).toBe(true);
+    // A named one says its name (🖼 Media's "where used").
+    clue.cards[0].name = 'Clue tip';
+    expect(allSlides(game).map((s) => s.where)).toContain('Jeopardy! · Category 1 #2 (card “Clue tip”)');
   });
 });
 

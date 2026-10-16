@@ -3,7 +3,7 @@
 // historylabel.test.ts.
 import { opPath, type Json, type Op, type Seg } from './historyops';
 import { LAYER_ICON, layerLabel, short } from './layerlabel';
-import { categoryLabel, clueValue, formatPoints, roundName, savedCardName, type Action, type DealPart, type Game, type MediaKind, type Round, type Slide, type SlideElement } from './model';
+import { categoryLabel, clueCardName, clueValue, formatPoints, roundName, savedCardName, type Action, type DealPart, type Game, type MediaKind, type Round, type Slide, type SlideElement } from './model';
 import { describeAction } from './actions';
 import { ROUND_MODES } from './modes';
 import { OBJECT_CLASSES } from './rpg';
@@ -11,7 +11,7 @@ import { PRESETS, type ThemePreset } from './theme';
 import { cueName, hasBuiltin, type CueKey } from './sounds';
 
 export type Side = 'q' | 'a';
-/** A board clue's tabs: a question slide, the answer, or one of a partner clue's 🤫 cards (its id in `slide`). */
+/** A board clue's tabs: a question slide, the answer, or one of its 🤫 cards (its id in `slide`). */
 export type ClueSide = Side | 'card';
 
 /** A place in the editor: the tab, and what's open or selected in it. */
@@ -181,13 +181,13 @@ export function placeAt(game: Game, path: readonly Seg[]): At {
           return;
         }
         if (path[6] === 'cards') {
-          // One of a partner clue's 🤫 cards ("Card 2").
+          // One of a tile's 🤫 cards ("Card 2", or its name). Its words are still "Edited card 2 “…”", by its place.
           at.crumbs.push('Cards');
           const n = clue.cards?.findIndex((s) => s.id === path[7]) ?? -1;
           if (n < 0) return;
           const card = clue.cards![n];
-          at.crumbs[at.crumbs.length - 1] = `Card ${n + 1}`;
-          reached(8, 'card', `card ${n + 1}`, '🤫', false);
+          at.crumbs[at.crumbs.length - 1] = clueCardName(card, n);
+          reached(8, 'card', card.name?.trim() || `card ${n + 1}`, '🤫', false);
           const at8 = { kind: 'clue', category: cat.id, clue: clue.id, side: 'card', slide: card.id } as const;
           part(at8);
           slide(card, 8, (element) => ({ tab: 'round', round: id, part: { ...at8, element } }), `card ${n + 1}`);

@@ -1,6 +1,6 @@
 <!-- Host-only view of what's going on, including the answer before it's revealed (dual-window mode). -->
 <script lang="ts">
-  import { categoryLabel, finalName, formatPoints, questionSlides, slideText, type Game, type Session } from '../lib/model';
+  import { categoryLabel, clueCardName, finalName, formatPoints, questionSlides, slideText, type Game, type Session } from '../lib/model';
   import { clueSlideIndex, coWinnersHold, currentClueInfo, currentFinal, nameList, ownPlayers, places, playerName, slidesRound, tiedLeaders, toolOnlyClue } from '../lib/session';
   import { cardId, cardSends, cardSlides, partnerRules, recipientsText, sameAsAnswer, sendState, sentTo, tileGoesToLabel, toName } from '../lib/partner';
   import { cardsOut, sentCardId, sentState, sentToText } from '../lib/sentcards';
@@ -185,7 +185,7 @@
       <div class="group" data-partner-cards-info>
         <div class="label">🤫 Cards {phones ? '(only the phones you send them to get them)' : '(you copy them to their players)'}</div>
         {#each cardSlides(info.clue) as card, i (card.id)}
-          <div class="q"><b>Card {i + 1}</b> → {pt ? `${recipientsText(session, pt, rules, card)}${cardOut(card)}` : tileOut(card)}</div>
+          <div class="q"><b>{clueCardName(card, i)}</b> → {pt ? `${recipientsText(session, pt, rules, card)}${cardOut(card)}` : tileOut(card)}</div>
           {#if sameAsAnswer(info.clue, card)}<div class="muted small">This card shows the answer</div>{/if}
           <div class="notes">{cardWords(card) || '(no words)'}</div>
           <!-- Its items as a phone gets them (phoneCard), each with whether it reaches one; pictures as a small still. -->

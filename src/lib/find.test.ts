@@ -140,6 +140,21 @@ describe('Find: 🤫 cards', () => {
     clue.type = 'standard';
     expect(findAll(game, 'zorblax')).toHaveLength(1);
   });
+
+  it('finds a tile’s card by its name, says it by its name, and puts the focus in the box that has the words', () => {
+    const game = newGame();
+    addSampleGame(game);
+    const round = game.rounds.find((r) => r.mode === 'board')!;
+    if (round.mode !== 'board') throw new Error('no board');
+    const cat = round.categories[0];
+    const clue = cat.clues[0];
+    clue.cards = [{ id: 'c1', name: 'Clue tip', ...textSlide('Zorblax the ogre'), to: 'picker' }];
+    const place = { tab: 'round', round: round.id, part: { kind: 'clue', category: cat.id, clue: clue.id, side: 'card', slide: 'c1' } };
+    const byName = findAll(game, 'clue tip');
+    expect(byName).toHaveLength(1);
+    expect(byName[0]).toMatchObject({ icon: '🤫', where: `Jeopardy! › ${cat.title} › $200 › Clue tip`, place, focus: '[data-field="card-name"]' });
+    expect(findAll(game, 'zorblax')[0]).toMatchObject({ where: `Jeopardy! › ${cat.title} › $200 › Clue tip`, place, focus: '[data-field="card"]' });
+  });
 });
 
 describe('Find: 🎭 deals', () => {

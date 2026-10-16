@@ -404,9 +404,16 @@ export interface ClueCard extends ExtraSlide {
   to: CardGoesTo;
   /** The line above it on a phone ({giver} and {guesser}: their names); left out, one from its game ("Describe it to Ann…"). */
   hint?: string;
+  /**
+   * The host's name for it, to tell a tile's cards apart (clueCardName): its tab, the host panel, 🤫 Send a card…, the
+   * checklist, 🔍 Find and Undo show it. Left out: "Card 2", its place. Phones never get it, nor 📋 Copy words; in one
+   * window viewers can read it in the host panel (never what's on it). Never a sent card's label, nor part of cardHash
+   * (renaming one that's out keeps it on the phones). At most CARD_NAME_MAX characters, never blank.
+   */
+  name?: string;
 }
 
-/** Most cards a partner clue has (＋ Card adds no more; a hand-edited game with more keeps them, with a warning). */
+/** Most cards a clue has (＋ Card adds no more; a hand-edited game with more keeps them, with a warning). */
 export const MAX_CARDS = 6;
 /** A part's share of the tile's value is from −MAX_SHARE% to MAX_SHARE%. */
 export const MAX_SHARE = 1000;
@@ -450,7 +457,10 @@ export function gameRules(game: PartnerGame): PartnerRules {
   return { game, giver: 'partner', got: { ...g.got }, missed: { ...g.missed }, partnerSafe: true, points: game === 'custom' ? 'custom' : 'game' };
 }
 
-/** A clue's 🤫 cards, in order (Card 1, Card 2…): kept on a clue whose type changed away, for when it changes back. */
+/**
+ * A clue's 🤫 cards, in order (Card 1, Card 2…, or their names): kept on a clue whose type changed away, for when it
+ * changes back.
+ */
 export function cardSlides(clue: Pick<Clue, 'cards'>): ClueCard[] {
   return clue.cards ?? [];
 }
@@ -492,7 +502,7 @@ export interface Clue {
   everyone?: boolean;
   /** A partner clue's rules (kept when the type changes away, like wheelId). */
   partner?: PartnerRules;
-  /** A partner clue's 🤫 cards, in order (Card 1, Card 2…): at most MAX_CARDS. Never the answer slide itself. */
+  /** A tile's 🤫 cards, in order (Card 1, Card 2…, or their names): at most MAX_CARDS. Never the answer slide itself. */
   cards?: ClueCard[];
 }
 
@@ -584,7 +594,7 @@ export interface DealPreset {
 
 // ---------- 🤫 Cards made before the show (the editor's 🤫 Cards tab) ----------
 
-/** Longest name of a card made ahead (characters). */
+/** Longest name of a 🤫 card: one made ahead, or a tile's (characters). */
 export const CARD_NAME_MAX = 60;
 
 /**
@@ -606,6 +616,18 @@ export function newSavedCard(name: string): SavedCard {
 
 /** Its name as the list, 🤫 Send a card… and the checklist say it ("Untitled card 2" for one left blank). */
 export const savedCardName = (c: Pick<SavedCard, 'name'>, i: number): string => c.name.trim() || `Untitled card ${i + 1}`;
+
+/** A tile's 🤫 card as tabs, rows and lists name it: the host's name for it, or "Card 2" (its place). */
+export const clueCardName = (c: Pick<ClueCard, 'name'>, i: number): string => c.name?.trim() || `Card ${i + 1}`;
+
+/**
+ * The same in a sentence: card “Clue tip”, or card 2 when it has no name (`cap`: "Card …", to start one). Never the
+ * bare name: "Bob" mustn't read as a player, nor a name as a sent card's "Card 3".
+ */
+export function clueCardWords(c: Pick<ClueCard, 'name'>, i: number, cap = false): string {
+  const n = c.name?.trim();
+  return `${cap ? 'C' : 'c'}ard ${n ? `“${n}”` : i + 1}`;
+}
 
 export interface Die {
   id: Id;
@@ -1814,22 +1836,37 @@ const CARD_TO = new Set<unknown>(['giver', 'guesser', 'both', 'others', 'nobody'
 const POINTS = new Set<unknown>(['game', 'none', 'all', 'custom'] satisfies PartnerPoints[]);
 
 /**
- * A partner clue's rules and cards (partner-clues spec §18.5). A card that goes to someone the app doesn't know goes to
- * nobody, so a damaged file never hands a card to someone the host didn't choose; more than MAX_CARDS are kept
- * (validate warns). Rules that aren't an object are dropped; a partner clue with none plays Describe it.
+ * A tile's 🤫 cards: each with its own id and what a slide needs. One that goes to someone the app doesn't know there
+ * goes to nobody (a damaged file never hands a card to someone the host didn't choose). A hint that isn't text goes; a
+ * name that isn't text or is blank goes, and a long one is cut to CARD_NAME_MAX. A second card with the same id gets a
+ * new one (a card is sent by its id). More than MAX_CARDS are kept (validate warns).
  */
-function repairPartner(cl: Clue): void {
-  if (cl.cards !== undefined) {
-    const cards = objects<ClueCard>(cl.cards);
-    if (!cards.length) delete cl.cards;
-    else if (cards !== cl.cards) cl.cards = cards;
-    for (const card of cards) {
-      fixId(card);
-      repairSlide(card);
-      if (!CARD_TO.has(card.to)) card.to = 'nobody';
-      if (card.hint !== undefined && typeof card.hint !== 'string') delete card.hint;
+function repairCards(h: { cards?: ClueCard[] }, goes: ReadonlySet<unknown>): void {
+  if (h.cards === undefined) return;
+  const cards = objects<ClueCard>(h.cards);
+  if (!cards.length) return void delete h.cards;
+  if (cards !== h.cards) h.cards = cards;
+  const seen = new Set<Id>();
+  for (const card of cards) {
+    fixId(card);
+    if (seen.has(card.id)) card.id = newId();
+    seen.add(card.id);
+    repairSlide(card);
+    if (!goes.has(card.to)) card.to = 'nobody';
+    if (card.hint !== undefined && typeof card.hint !== 'string') delete card.hint;
+    if (card.name !== undefined) {
+      if (typeof card.name !== 'string' || !card.name.trim()) delete card.name;
+      else if (card.name.length > CARD_NAME_MAX) card.name = card.name.slice(0, CARD_NAME_MAX);
     }
   }
+}
+
+/**
+ * A partner clue's rules (partner-clues spec §18.5), and its cards (repairCards). Rules that aren't an object are
+ * dropped; a partner clue with none plays Describe it.
+ */
+function repairPartner(cl: Clue): void {
+  repairCards(cl, CARD_TO);
   if (cl.partner !== undefined && !isObj(cl.partner)) delete cl.partner;
   const p = cl.partner;
   if (!p) {

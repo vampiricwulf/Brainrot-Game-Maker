@@ -2,6 +2,7 @@
 // tile, its 🤫 cards as the editor makes them, and who plays which part and gets which card while it's played. No Svelte
 // state: unit-tested in partner.test.ts.
 import {
+  CARD_NAME_MAX,
   cardSlides,
   formatPoints,
   gameRules,
@@ -134,10 +135,10 @@ export function setPartnerGame(clue: Clue, game: PartnerGame): void {
     clue.partner = { ...gameRules(game), ...Object.fromEntries(kept) };
   }
   // The old game's starting cards, still empty and going where they started: the new game's replace them (Split clue
-  // gets its Half B card). A card with anything on it, or one sent elsewhere, stays.
+  // gets its Half B card). A card with anything on it, a name, or one sent elsewhere, stays.
   const have = cardSlides(clue);
   const start = PARTNER_GAMES[was.game].cards;
-  const untouched = have.length === start.length && have.every((c, i) => !slideHasContent(c) && c.to === start[i]);
+  const untouched = have.length === start.length && have.every((c, i) => !cardKept(c) && c.to === start[i]);
   if (!have.length || (game !== 'custom' && untouched)) {
     const cards = startingCards(game);
     if (cards.length) clue.cards = cards;
@@ -178,6 +179,16 @@ export function setPartWord(clue: Clue, role: PartnerRole, word: string): void {
 /** A new, empty card (its words box ready to type in) that goes to `to`. */
 export function newCard(to: CardGoesTo): ClueCard {
   return { id: newId(), background: {}, elements: [newTextEl('')], to };
+}
+
+/** A card the host made something of: words or files on it, or a name. Changing its tile's game or type keeps it. */
+export const cardKept = (c: ClueCard): boolean => slideHasContent(c) || !!c.name?.trim();
+
+/** The Card name box typed in: kept as typed (up to CARD_NAME_MAX); blank, the key goes ("Card 2" again). */
+export function setCardName(card: ClueCard, name: string): void {
+  const n = name.slice(0, CARD_NAME_MAX);
+  if (n.trim()) card.name = n;
+  else delete card.name;
 }
 
 /** The cards a game starts a clue with: empty, for the host to fill in. */
@@ -656,7 +667,7 @@ const forNames = (names: string[]) => (names.length > 1 ? `${names.slice(0, -1).
 
 /**
  * 📋 Copy words: "🤫 For Bob only (Movies $400, card 1): Shrek", with the card's links after its words, to paste to them
- * in a DM. Never shown on screen.
+ * in a DM (by its place, never its name: this goes to the player). Never shown on screen.
  */
 export function cardCopyText(game: Pick<Game, 'media'>, card: Slide, n: number, where: string, names: string[]): string {
   return copyWordsText(game, card, `${where}, card ${n}`, names);
@@ -690,7 +701,8 @@ function stable(v: unknown): string {
 
 /**
  * A short hash of what a phone gets from a card (partner-clues spec §15.4): its words, its items (which file or link,
- * where it starts and ends) in their order, and its line. Where things sit or how they look doesn't count.
+ * where it starts and ends) in their order, and its line. Where things sit or how they look doesn't count. (Not its
+ * name: renaming a card that's out leaves it on the phones.)
  */
 export function cardHash(card: Pick<ClueCard, 'elements' | 'hint'>): string {
   const parts = [...card.elements]

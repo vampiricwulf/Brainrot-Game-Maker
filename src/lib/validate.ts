@@ -6,6 +6,8 @@ import {
   boardRounds,
   cardSlides,
   categoryLabel,
+  clueCardName,
+  clueCardWords,
   clueValue,
   dailyDoublesPlaced,
   formatPoints,
@@ -24,7 +26,6 @@ import {
   type BoardRound,
   type ClueCard,
   type Game,
-  type SavedCard,
   type Slide,
 } from './model';
 import { lowerWord, partnerRules, partnerSpot, partWords, stealOn } from './partner';
@@ -322,8 +323,8 @@ export function validate(game: Game, room: { filesOff?: boolean } = {}): Problem
 /**
  * A board's 🤫 cards (partner-clues spec §5.6): a ready-made 🤝 partner game with no card (the giver has nothing to go
  * on); on any tile, an empty card, more cards than a clue holds, a card's online link that has stopped working or soon
- * will, and what of a card won't reach a phone (`filesOff`: the buzzer server in use takes no files). Each goes to its
- * card.
+ * will, what of a card won't reach a phone (`filesOff`: the buzzer server in use takes no files), and its name
+ * (cardNameProblems). Each goes to its card.
  */
 export function partnerProblems(game: Game, round: BoardRound, tab: number, filesOff = false): Problem[] {
   const out: Problem[] = [];
@@ -348,10 +349,32 @@ export function partnerProblems(game: Game, round: BoardRound, tab: number, file
       }
       if (cards.length > MAX_CARDS) warn(`${tile} has ${cards.length} cards: a clue holds ${MAX_CARDS} (＋ Card adds no more)`, cards[MAX_CARDS]);
       cards.forEach((card, n) => {
-        if (!slideHasContent(card)) warn(`${tile}: card ${n + 1} is empty: there's nothing on it to send`, card);
-        for (const t of cardFileProblems(game, card, filesOff)) warn(`${tile}: card ${n + 1} has ${t}`, card);
+        if (!slideHasContent(card)) warn(`${tile}: ${clueCardWords(card, n)} is empty: there's nothing on it to send`, card);
+        for (const t of cardFileProblems(game, card, filesOff)) warn(`${tile}: ${clueCardWords(card, n)} has ${t}`, card);
       });
+      out.push(...cardNameProblems(game, cards, cl.answerSlide, tile, tab, (card) => at(card)!));
     });
+  return out;
+}
+
+/**
+ * A tile's card names (`where`: "Movies $200"): one that repeats what's on its card or the answer, and two cards that
+ * read alike (one with no name is "Card 2"; said once, going to the second). Info only.
+ */
+function cardNameProblems(game: Game, cards: ClueCard[], answer: Slide, where: string, tab: number, at: (c: ClueCard) => Place): Problem[] {
+  const out: Problem[] = [];
+  const seen = new Set<string>();
+  const told = new Set<string>();
+  cards.forEach((c, i) => {
+    if (nameGivesAway(game, c, [answer]))
+      out.push({ text: `${where}: the name of ${clueCardWords(c, i)} repeats what’s on it or the answer, and in one window viewers can read a card’s name in the host panel`, tab, level: 'info', place: at(c) });
+    const key = clueCardName(c, i).toLowerCase();
+    if (seen.has(key) && !told.has(key)) {
+      told.add(key);
+      out.push({ text: `${where} has two cards called “${clueCardName(c, i)}”: in the host panel you can’t tell them apart`, tab, level: 'info', place: at(c) });
+    }
+    seen.add(key);
+  });
   return out;
 }
 
@@ -436,13 +459,19 @@ export function toolButtonProblems(game: Game, filesOff = false): Problem[] {
 const norm = (s: string) => s.toLowerCase().replace(/[^\p{L}\p{N}]+/gu, ' ').trim();
 
 /**
- * A 🤫 card's name repeats what's on it (its words, its phone title, or a file's name, at least 3 letters): in one
- * window viewers read a card's name in 🤫 Send a card…. ("Mission 1" on "Your mission: …" doesn't.)
+ * A 🤫 card's name repeats what's on it (its words, its phone title, or a file's name, at least 3 letters) or what's in
+ * `also` (a tile's answer): in one window viewers read a card's name in the host panel and 🤫 Send a card…. ("Mission 1"
+ * on "Your mission: …" doesn't.)
  */
-export function nameGivesAway(game: Game, c: SavedCard): boolean {
-  const name = norm(c.name);
+export function nameGivesAway(game: Game, c: Slide & { name?: string }, also: Slide[] = []): boolean {
+  const name = norm(c.name ?? '');
   if (!name) return false;
-  const bits = [cardWords(c), phoneCard(game, c, { files: {} }).title ?? '', ...cardItems(game, c).map((it) => it.name.replace(/\.[a-z0-9]{1,5}$/i, ''))];
+  const bits = [
+    cardWords(c),
+    phoneCard(game, c, { files: {} }).title ?? '',
+    ...cardItems(game, c).map((it) => it.name.replace(/\.[a-z0-9]{1,5}$/i, '')),
+    ...also.flatMap((s) => [cardWords(s), phoneCard(game, s, { files: {} }).title ?? '']),
+  ];
   return bits.map(norm).some((b) => b.length >= 3 && name.includes(b));
 }
 

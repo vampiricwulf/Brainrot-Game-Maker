@@ -52,6 +52,7 @@
         ['Ctrl+Shift+Enter', 'Previous clue'],
         ['Alt+arrows', 'The clue above, below or beside (as on the board)'],
         ['On a slide’s tab', '← / →: the slide beside it (Home / End: the first / last); on a question slide: Alt+← / →: move it; Ctrl+D: duplicate; Delete: delete it'],
+        ['On a 🤫 card’s tab', 'F2 or double-click: its Card name'],
         ['Esc', 'Done (not while typing on the slide)'],
       ],
     ],

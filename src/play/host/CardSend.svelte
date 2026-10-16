@@ -8,9 +8,9 @@
   more cards than the room takes (✖ Take one back first), and never a card made in the editor again to exactly the
   players it's out to, for as long (↻ Send again in the cards out is for that).
   In one window viewers see this: the 🤫 Cards are listed by name and counted, never said; a tile's are listed by tile
-  and counted, and only for tiles played or open (the others would say where a Daily Double is); what's typed for a
-  quick card is hidden unless the host asks (👁 Show); the 🖼 Media list (file names) and what's on the card picked
-  from the editor are only shown with the audience window open.
+  and name ("Card 2" when it has none) and counted, and only for tiles played or open (the others would say where a
+  Daily Double is); what's typed for a quick card is hidden unless the host asks (👁 Show); the 🖼 Media list (file
+  names) and what's on the card picked from the editor are only shown with the audience window open.
   With `preset`, the card an action offered (an RPG object's, an item's, a wheel slice's or a board space's 🤫 button):
   who it starts with and how long it lasts come from the action, the card is fixed (counted, never shown), and it goes
   only when the host presses 📤 Send here.
@@ -26,7 +26,7 @@
   import { tileToolUp } from '../../lib/live';
   import { ACCEPT, addMediaFile, identicalMedia, mediaKind } from '../../lib/media.svelte';
   import {
-    boardRounds, cardSlides, categoryLabel, clueValue, formatPoints, getClue, isRpg, roundName, savedCardName,
+    boardRounds, cardSlides, categoryLabel, clueCardName, clueValue, formatPoints, getClue, isRpg, roundName, savedCardName,
     type CardTo, type Game, type Id, type MediaRef, type SentCard, type Session, type Slide, type SlideElement, type TeamMember,
   } from '../../lib/model';
   import { cardSummary, copyWordsText, toKey } from '../../lib/partner';
@@ -112,9 +112,9 @@
   /** The tile open now (its clue id): its cards are listed in one window too. */
   const openId = $derived(session.phase === 'clue' && session.currentClue ? getClue(game, session.currentClue)?.clue.id : undefined);
   /**
-   * Every tile's 🤫 card in the game, by tile ("Movies $400 · Card 1 · 1 line of words"): never what's on it. In one
-   * window only those of tiles played or open: the list would tell viewers where an unplayed Daily Double or partner clue
-   * is (the board never marks them).
+   * Every tile's 🤫 card in the game, by tile and name ("Movies $400 · Clue tip · 1 line of words"; Card 1 unnamed):
+   * never what's on it. In one window only those of tiles played or open: the list would tell viewers where an unplayed
+   * Daily Double or partner clue is (the board never marks them).
    */
   const tiles = $derived.by((): FromEditor[] => {
     const sym = game.settings.currencySymbol;
@@ -126,7 +126,7 @@
         c.clues.forEach((cl, row) => {
           if (cl.empty || (!dual && !session.used[cl.id] && cl.id !== openId)) return;
           cardSlides(cl).forEach((card, i) =>
-            out.push({ key: `${cl.id}/${card.id}`, clue: cl.id, card: card.id, label: `${prefix}${categoryLabel(c)} ${formatPoints(clueValue(r, row, cl), sym)} · Card ${i + 1} · ${cardSummary(game, card)}` }),
+            out.push({ key: `${cl.id}/${card.id}`, clue: cl.id, card: card.id, label: `${prefix}${categoryLabel(c)} ${formatPoints(clueValue(r, row, cl), sym)} · ${clueCardName(card, i)} · ${cardSummary(game, card)}` }),
           );
         });
     }
