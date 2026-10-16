@@ -384,6 +384,31 @@ describe('📤 sending a deal: only when the host confirms, one card per player,
     expect(cardsLeftOff(g, session)).toEqual([]);
   });
 
+  it('such a deal leaves off the cards that went before it too; then the phones hold only the deal’s, and the refusal says so', () => {
+    for (const n of [CARDS_MAX, CARDS_MAX + 2]) {
+      const g = jeopardyGame();
+      g.players = Array.from({ length: n }, (_, i) => ({ id: `p${i}`, name: `P${i}`, color: '#e6194b' }));
+      const session = newSession(g);
+      // Quick cards first (to the 🪟 card window, say): the room counts them, so they're let through.
+      const quick = (n === CARDS_MAX ? [0, 1] : [0]).map((i) => sendCard(g, session, { to: [{ seat: 'p0' }], content: { slide: quickSlide(`q${i}`) }, until: 'host' }, 100 + i, roomCardsFull(g, session))!);
+      expect(quick.every(Boolean)).toBe(true);
+      const deal = dealFromTemplate(DEAL_TEMPLATES.find((t) => t.key === 'roles')!);
+      const r = dealtOf(dealHands(g, deal, session.players.map((p) => ({ seat: p.id })), { rand: seeded(3) }));
+      startDeal(session, deal, r.hands, r.dealtIn, 500);
+      const sent = sendDeal(g, session, 'host', 1000);
+      expect(sent).toHaveLength(n);
+      // The room is told the deal's newest CARDS_MAX: the quick cards (and the deal's first, past CARDS_MAX) never reach a phone.
+      const off = [...quick, ...sent.slice(0, n - CARDS_MAX)].map(sentCardId);
+      expect(hostCards(g, session, { files: {} })!.map((c) => c.id)).toEqual(sent.slice(n - CARDS_MAX).map(sentCardId));
+      expect(cardsLeftOff(g, session)).toEqual(off);
+      // Taking back another card frees nothing on the phones: only the deal's, said as all of them.
+      expect(cardsFullText(g, session)).toBe(`${CARDS_MAX} cards are out on the phones, all of them the 🎭 deal’s: ✖ Take them back in 🎭 Deal…`);
+      takeBackDeal(g, session);
+      expect(cardsLeftOff(g, session)).toEqual([]);
+      expect(hostCards(g, session, { files: {} })!.map((c) => c.id)).toEqual(quick.map(sentCardId));
+    }
+  });
+
   it('cards that last the round need a round; the card window and the 📋 copy say the part', () => {
     const { g, session, h } = dealt();
     session.phase = 'end';

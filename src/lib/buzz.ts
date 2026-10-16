@@ -391,9 +391,10 @@ export function hostCards(game: Game, session: Session, room: PhoneCan): HostCar
 }
 
 /**
- * The cards out that the buzzer room isn't told, as hostCards keeps only the newest CARDS_MAX: only ever cards handed
- * out before the room took cards (a 🎭 deal to more players than that), as every send since is refused past it. Their
- * ids on the wire.
+ * The cards out that the buzzer room isn't told, as hostCards keeps only the newest CARDS_MAX: only ever when a 🎭 deal
+ * handed out before the room took cards took them past that (every send since is refused past it). Then any card out
+ * before the newest CARDS_MAX is left off: the deal's own first ones, or cards that went before it (to the 🪟 card
+ * window, say). Their ids on the wire.
  */
 export function cardsLeftOff(game: Game, session: Session): string[] {
   const all = [...(partnerCards(game, session, { files: {} }) ?? []), ...(sessionCards(game, session, { files: {} }) ?? [])];
@@ -428,10 +429,11 @@ export function roomCardsFull(game: Game, session: Session, go?: (trial: Session
 export function cardsFullText(game: Game, session: Session): string {
   const dealAll = cardsOut(game, session).filter((c) => c.deal).length;
   if (!dealAll) return `${CARDS_MAX} cards are out on the phones: ✖ Take one back first`;
-  const others = roomCardCount(game, session) > dealAll;
-  // (A deal handed out before the room took cards can have more than the phones hold: they hold CARDS_MAX of them.)
-  const deal = Math.min(dealAll, CARDS_MAX);
-  return `${CARDS_MAX} cards are out on the phones, ${deal === CARDS_MAX && !others ? 'all' : deal} of them the 🎭 deal’s: ✖ Take ${dealAll === 1 ? 'it' : 'them'} back in 🎭 Deal…${others ? ', or take back another one' : ''}`;
+  // (A deal handed out before the room took cards can have more than the phones hold: then they hold only the deal's,
+  // and taking another card back frees nothing.)
+  const all = dealAll >= CARDS_MAX;
+  const others = !all && roomCardCount(game, session) > dealAll;
+  return `${CARDS_MAX} cards are out on the phones, ${all ? 'all' : dealAll} of them the 🎭 deal’s: ✖ Take ${dealAll === 1 ? 'it' : 'them'} back in 🎭 Deal…${others ? ', or take back another one' : ''}`;
 }
 
 /** The last bit of a card's id on the wire for each part, when a send goes as one card per part (partnerCards). */
