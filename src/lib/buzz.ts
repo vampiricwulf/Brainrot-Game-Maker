@@ -1,7 +1,7 @@
 // Buzzer mode's state during a clue: whether the buzzers are open, who is answering, who already missed it. The host
 // decides all of it (keys, the host panel, a phone's buzz that the buzzer room let through); it lives in Live, so the
 // audience window shows "🔔 Ann is answering", and the phones get it through hostState().
-import { CARD_HINT_MAX, CARD_ROLE_MAX, CARDS_BYTES, CARDS_MAX, clip, WAGER_MAX, type BuzzPhase, type HostCard, type HostState, type WagerAsk, type AnswerAsk } from './buzzproto';
+import { CARD_HINT_MAX, CARD_ROLE_MAX, CARD_TEXT_MAX, CARDS_BYTES, CARDS_MAX, clip, WAGER_MAX, type BuzzPhase, type HostCard, type HostState, type WagerAsk, type AnswerAsk } from './buzzproto';
 import { categoryLabel, finalName, formatPoints, PARTNER_GAMES, roundName, type CardSend, type CardTo, type Game, type Id, type PartnerState, type Session, type Slide, type TextEl } from './model';
 import {
   cardHash, cardId, cardLines, cardSlides, describer, giverLine, partnerRoles, partnerRules, partnerVerdict, partOfTo, partsLine, partWords, resultLine, type CardPart,
@@ -358,14 +358,21 @@ export function sessionCards(game: Game, session: Session, room: PhoneCan): Host
       id: sentCardId(c),
       to: to.map((t) => ({ seat: t.seat, ...(t.member ? { member: t.member.id } : t.except?.length ? { except: [...t.except] } : {}) })),
       open: c.until !== 'tile' || !session.revealed,
-      // (A 🎭 deal's part: "You're the Spy".)
-      ...(c.role ? { role: clip(c.role, CARD_ROLE_MAX) } : {}),
-      ...(pc.title ? { title: pc.title } : {}),
-      ...(pc.text ? { text: pc.text } : {}),
+      ...(c.role ? dealLines(c.role, pc) : { ...(pc.title ? { title: pc.title } : {}), ...(pc.text ? { text: pc.text } : {}) }),
       ...(pc.media.length ? { media: pc.media } : {}),
     });
   }
   return out.length ? out : null;
+}
+
+/**
+ * A 🎭 deal's card in words: its part is its secret ("You're the Spy"), so it goes under Tap to see as the card's
+ * title, the card's own title and words after it. Never the role line, which a phone shows over the cover, where a
+ * neighbour could read it.
+ */
+function dealLines(role: string, pc: { title?: string; text?: string }): Pick<HostCard, 'title' | 'text'> {
+  const text = clip([pc.title, pc.text].filter(Boolean).join('\n'), CARD_TEXT_MAX);
+  return { title: `You’re the ${clip(role, CARD_ROLE_MAX)}`, ...(text ? { text } : {}) };
 }
 
 /**

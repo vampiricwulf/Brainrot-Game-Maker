@@ -547,7 +547,7 @@ export interface WheelPreset {
 
 // ---------- 🎭 Deals (partner-clues spec §11, §12.2) ----------
 
-/** A part's name at most (characters): it's the phone's role line, "You're the Spy". */
+/** A part's name at most (characters): it's the top line of the card on a phone, "You're the Spy". */
 export const DEAL_PART_MAX = 24;
 /** Parts in one deal at most. */
 export const DEAL_PARTS_MAX = 8;
@@ -555,7 +555,7 @@ export const DEAL_PARTS_MAX = 8;
 /** One part in a 🎭 deal: what it's called, how many get it, and its 🤫 card. */
 export interface DealPart {
   id: Id;
-  /** "Spy", "Villager": the phone's role line ("You're the Spy") and the reveal on stream. At most DEAL_PART_MAX. */
+  /** "Spy", "Villager": the card's top line ("You're the Spy") and the reveal on stream. At most DEAL_PART_MAX. */
   name: string;
   /** How many get it: a number, or 'rest' (everyone not given another part). */
   count: number | 'rest';
@@ -890,14 +890,14 @@ export interface SentCard {
   tile?: Id;
   /** A 🎭 deal's card for one player (the deal's id): the deal's own row lists it, never the list of cards out. */
   deal?: Id;
-  /** The phone's role line ("You're the Spy"): a deal's part. */
+  /** A deal's part ("You're the Spy"): the card's top line, under Tap to see on a phone (buzz.ts sessionCards). */
   role?: string;
 }
 
 /** One player's part in a 🎭 deal (a seat, or one person on a team). */
 export interface DealHand {
   to: CardTo;
-  /** The part's name: the phone's role line and the reveal. */
+  /** The part's name: the card's top line on a phone, and the reveal. */
   part: string;
   /** The wheel's slice it drew (its label: the reveal says it too), if its part draws one. */
   slice?: string;

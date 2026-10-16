@@ -10,7 +10,7 @@ import { chromium } from 'playwright-core';
 import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { openGameFile, startBuzzer } from './helpers.mjs';
+import { openGameFile, startBuzzer, stored } from './helpers.mjs';
 
 const file = resolve(process.env.APP_FILE || 'dist/index.html');
 if (!existsSync(file)) throw new Error('Run `npm run build` first');
@@ -218,6 +218,8 @@ try {
   assert(await until(() => last()?.phase === 'answering' && last().answering === 'p4'), 'the host picks Dan to steal it: Dan answers');
 
   // ---------- A host reload mid-steal: the steal, and who's answering it, come back ----------
+  // (Once autosave holds it: its write waits a moment for more clicks.)
+  assert(await until(async () => (await stored(host))?.session?.remote?.buzz?.answering === 'p4'), 'autosave holds Dan answering');
   const before = states.length;
   await host.reload();
   await host.getByRole('button', { name: 'Resume game' }).click();

@@ -319,8 +319,8 @@ export const dealLabel = (d: Pick<DealState, 'name'>): string => `🎭 ${d.name.
 
 /**
  * Each player's card as it goes: one card each (its own id, so the late rule counts each), to that player alone (a
- * whole team, or one person on it), with their part as the phone's role line. Null when it can't go: nobody left in
- * the game, or no round on for cards that last the round.
+ * whole team, or one person on it), with their part as the card's top line (under Tap to see on a phone). Null when it
+ * can't go: nobody left in the game, or no round on for cards that last the round.
  */
 export function dealCards(game: Pick<Game, 'rounds'>, session: Session, d: DealState, until: 'round' | 'host', now = Date.now()): SentCard[] | null {
   const round = until === 'round' ? roundNow(game, session) : undefined;

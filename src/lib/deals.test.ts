@@ -258,7 +258,7 @@ describe('📤 sending a deal: only when the host confirms, one card per player,
     for (let seed = 1; seed <= 20; seed++) expect(dealCounts(dealt(seed).d)).toBe('Spy ×1, Villager ×5');
   });
 
-  it('sent: one card per player, to them alone, with their part as the role line and never “shared”', () => {
+  it('sent: one card per player, to them alone, with their part under Tap to see and never “shared”', () => {
     const { g, session, d, h } = dealt();
     const cards = sendDeal(g, session, 'round', 1000);
     expect(cards).toHaveLength(6);
@@ -268,13 +268,16 @@ describe('📤 sending a deal: only when the host confirms, one card per player,
     expect(new Set(room.map((c) => c.id)).size).toBe(6);
     for (const [i, c] of room.entries()) {
       expect(c.to).toEqual([{ seat: h[i].to.seat }]);
-      expect(c.role).toBe(h[i].part);
+      // (The part is the secret: the card's title, behind Tap to see, never the role line a phone shows over the cover.)
+      expect(c.title).toBe(`You’re the ${h[i].part}`);
+      expect(c.role).toBeUndefined();
       expect(c.shared).toBeUndefined();
     }
-    const spy = room.find((c) => c.role === 'Spy')!;
+    const spy = room.find((c) => c.title === 'You’re the Spy')!;
     const where = h.find((x) => x.part === 'Villager')!.slice!;
     expect(JSON.stringify(spy)).not.toContain(where);
-    expect(room.filter((c) => c.role === 'Villager').every((c) => c.text === where)).toBe(true);
+    expect(spy.text).toMatch(/^You’re the spy!/);
+    expect(room.filter((c) => c.title === 'You’re the Villager').every((c) => c.text === `The location:\n${where}`)).toBe(true);
     // The list of cards out leaves them to the deal's own row.
     expect(listedCards(g, session)).toEqual([]);
     expect(dealOut(g, session)).toHaveLength(6);

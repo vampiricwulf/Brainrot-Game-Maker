@@ -11,7 +11,7 @@ import { chromium } from 'playwright-core';
 import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { openGameFile, packGame, recordSeen, shownOf, startBuzzer } from './helpers.mjs';
+import { openGameFile, packGame, recordSeen, shownOf, startBuzzer, stored } from './helpers.mjs';
 
 const file = resolve(process.env.APP_FILE || 'dist/index.html');
 if (!existsSync(file)) throw new Error('Run `npm run build` first');
@@ -191,8 +191,8 @@ try {
   const sent = cards();
   assert(new Set(sent.map((c) => c.id)).size === 4 && sent.every((c) => c.to.length === 1 && !c.shared), 'each its own id, to one player, never marked shared');
   const bobs = sent.find((c) => c.to[0].seat === seat.Bob);
-  assert(bobs.role === 'Spy' && bobs.text === SPY && !JSON.stringify(bobs).includes('wqzj'), 'Bob’s: the spy’s card, with no location');
-  assert(sent.filter((c) => c !== bobs).every((c) => c.role === 'Villager' && c.title === 'The location:' && c.text === place), `the others’: the location they share (${place})`);
+  assert(bobs.title === 'You’re the Spy' && bobs.text === SPY && !bobs.role && !JSON.stringify(bobs).includes('wqzj'), 'Bob’s: the spy’s card, its part under Tap to see, with no location');
+  assert(sent.filter((c) => c !== bobs).every((c) => c.title === 'You’re the Villager' && c.text === `The location:\n${place}`), `the others’: the location they share (${place})`);
   await phones.Bob.getByRole('button', { name: 'Tap to see' }).tap();
   await phones.Bob.getByText(SPY).waitFor();
   await phones.Bob.getByText('You’re the Spy').waitFor();
@@ -221,6 +221,12 @@ try {
   assert(await until(async () => !(await reveal.count())), 'Ctrl+Z takes it off the stream');
 
   // ---------- A host reload, in one window: the deal and its cards come back as they were ----------
+  // (Once autosave holds them: its write waits a moment for more clicks.)
+  const keptIds = async () => {
+    const s = (await stored(host))?.session;
+    return !s?.deal?.shown && JSON.stringify((s?.cards ?? []).map((c) => `sc:${c.id}:${c.at}`)) === JSON.stringify(again);
+  };
+  assert(await until(keptIds), 'autosave holds the cards under their new ids');
   await aud.close();
   const n = states.length;
   await host.reload();
