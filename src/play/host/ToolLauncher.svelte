@@ -309,7 +309,7 @@
       {/if}
     </div>
   {/if}
-  <button onclick={() => ((menu = null), toggleScoreboard(app.live))} title="S">📊 Scores</button>
+  <button onclick={() => ((menu = null), toggleScoreboard(app.live))} title="Scores (S)">📊 <span class="name">Scores</span></button>
   {#if onstopsounds}
     <button class="stop" onclick={() => ((menu = null), onstopsounds())} title="Stop the game's sounds on stream, like the round intro's music (Shift+M)">🔇 <span class="word">Stop sounds</span></button>
   {/if}
@@ -343,6 +343,26 @@
      🎭 Deal… in full.) */
   @media (max-width: 1280px) {
     .tl :is(.stop, .cardsout) .word {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      overflow: hidden;
+      clip-path: inset(50%);
+      white-space: nowrap;
+    }
+  }
+  /* (Both at once, the round intro's music still on and cards out: 🔇 and 🤫 2 at any width.) */
+  .tl:has(.stop):has(.cardsout) :is(.stop, .cardsout) .word {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+  /* (And up to 1000px wide 📊 Scores as 📊: room for 🔇 and 🤫 2 beside a Go to round with a long round name in it.) */
+  @media (max-width: 1000px) {
+    .tl .name {
       position: absolute;
       width: 1px;
       height: 1px;

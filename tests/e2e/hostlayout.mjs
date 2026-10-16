@@ -9,12 +9,13 @@
 // 1366×768, 1200×720, 1024×768 and 960×900, and a long Final name) the stage keeps one size from the board to a clue and
 // with a player picked (on a $1,000 clue too: a long name is cut short on ＋ Award and − Deduct, never the amount), up to
 // 1240px wide 🤫 Send a card… and 🎭 Deal… show as 🤫 and 🎭 (named in full), 🔊 Sound opens in the host panel, and
-// every Final wager box is in sight.
+// every Final wager box is in sight. A three-round game keeps the stage one size from the board to a clue with 🔇 Stop
+// sounds (the round intro's music), a card out, or both on the board's tools row (from 960 to 1366px wide).
 import { chromium } from 'playwright-core';
 import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { confirmStrip, mainButton, mainLabel, openGameFile } from './helpers.mjs';
+import { confirmStrip, mainButton, mainLabel, openGameFile, packGame } from './helpers.mjs';
 
 const file = resolve(process.env.APP_FILE || 'dist/index.html');
 if (!existsSync(file)) throw new Error('Run `npm run build` first');
@@ -526,6 +527,84 @@ try {
       assert(hidden.length === 0, `${w}×${h}: every wager box and “Ignore the limits” are in sight on the Final's wager screen${hidden.length ? ` (not: ${hidden.join(', ')})` : ''}`);
       assert((await p4.locator('.fj input[data-wager]').first().getAttribute('title')).startsWith('No limit now'), 'with the limits ignored, a wager box says so in its tooltip');
     }
+    await ctx.close();
+  }
+
+  // 🔇 Stop sounds (the round intro's music goes on over the board until a tile opens) and the cards out come and go on
+  // the board's tools row: with either or both there, a three-round game (Go to round, a long Final name in its list)
+  // keeps the stage one size from the board to a clue, all still named in full.
+  console.log('🔇 Stop sounds and cards out on the board:');
+  // (A second of tone: the intro's own file, so 🔇 Stop sounds shows.)
+  const intro = Buffer.alloc(44 + 8000, 128);
+  intro.write('RIFF', 0); intro.writeUInt32LE(36 + 8000, 4); intro.write('WAVE', 8); intro.write('fmt ', 12);
+  intro.writeUInt32LE(16, 16); intro.writeUInt16LE(1, 20); intro.writeUInt16LE(1, 22); intro.writeUInt32LE(8000, 24);
+  intro.writeUInt32LE(8000, 28); intro.writeUInt16LE(1, 32); intro.writeUInt16LE(8, 34); intro.write('data', 36); intro.writeUInt32LE(8000, 40);
+  for (let i = 0; i < 8000; i++) intro[44 + i] = 128 + Math.round(40 * Math.sin((i / 8000) * 2 * Math.PI * 440));
+  const board2 = { id: 'r_board2', name: 'Double Jeopardy!', mode: 'board', values: [400, 800, 1200, 1600, 2000], dailyDoubleCount: 0, categories: cats.map((c, ci) => ({ id: `cat2${ci}`, title: c, clues: [0, 1, 2, 3, 4].map((ri) => clue(`${c} again ${ri}`, `Answer 2.${ci}.${ri}`)) })) };
+  const introFile = resolve('test-results/hostlayout-intro.brainrot');
+  writeFileSync(
+    introFile,
+    await packGame(
+      {
+        ...game,
+        id: 'g_layout_intro',
+        settings: { ...game.settings, roundIntro: { titleCard: true, tileFill: false, categoryReveal: 'off' } },
+        players: crowd.map((name, i) => ({ id: `p${i + 1}`, name, color: crowdColors[i], startScore: 500 })),
+        rounds: [board, board2, { ...game.rounds[3], name: 'Final Jeopardy: Internet Legends' }],
+        media: [{ id: 'm_intro', name: 'intro.wav', mime: 'audio/wav', size: intro.length, kind: 'audio' }],
+        audio: { roundIntro: 'm_intro' },
+      },
+      { m_intro: intro },
+    ),
+  );
+  for (const [w, h] of [
+    [1366, 768],
+    [1290, 768],
+    [1260, 768],
+    [1024, 768],
+    [960, 900],
+  ]) {
+    const ctx = await browser.newContext({ viewport: { width: w, height: h } });
+    const p5 = await ctx.newPage();
+    p5.on('pageerror', (e) => errors.push(e.message));
+    await p5.goto(pathToFileURL(file).href);
+    await openGameFile(p5, introFile);
+    await p5.getByText(/^Opened “/).waitFor();
+    await p5.getByRole('button', { name: '▶ Play' }).click();
+    await p5.getByRole('button', { name: 'Start game ▶' }).click();
+    await p5.getByRole('button', { name: 'Skip intro' }).click();
+    await p5.locator('.stage-box .board .tile:not([disabled])').first().waitFor();
+    const tools = p5.locator('.panel .toolsrow');
+    const stop = tools.getByRole('button', { name: '🔇 Stop sounds', exact: true });
+    await stop.waitFor();
+    const stageH = async () => Math.round((await p5.locator('.stage-box').boundingBox()).height);
+    const onBoard = { '🔇': await stageH() };
+    // A card out: no phones here, so to Annabelle's 🪟 card window (from 🤫 Send a card…), then that window closed.
+    await tools.getByRole('button', { name: '🤫 Send a card…', exact: true }).click();
+    const send = p5.getByRole('dialog', { name: 'Send a card' });
+    await Promise.all([p5.waitForEvent('popup'), send.getByRole('button', { name: 'Card window for Annabelle' }).click()]);
+    await send.getByRole('button', { name: 'Annabelle', exact: true }).click();
+    await send.getByRole('textbox', { name: 'The card’s words' }).fill('A secret');
+    await send.getByRole('button', { name: '🪟 Show Annabelle' }).click();
+    await tools.locator('[data-cards-out-count="1"]').waitFor();
+    await p5.keyboard.press('Escape');
+    await send.waitFor({ state: 'detached' });
+    await tools.getByRole('button', { name: '🪟 Cards: Annabelle' }).click();
+    await p5.getByRole('dialog', { name: 'Card window' }).getByRole('button', { name: '✖ Close the card window' }).click();
+    await tools.locator('[data-card-window-warn]').waitFor({ state: 'detached' });
+    onBoard['🔇 and 🤫 1'] = await stageH();
+    const named = await Promise.all(['🔇 Stop sounds', '🤫 1 card out', '◀ Prev round', '📊 Scores'].map((name) => tools.getByRole('button', { name, exact: true }).count()));
+    assert(named.every((c) => c === 1), `${w}×${h}: with both there, 🔇 Stop sounds, the cards out, ◀ Prev round and 📊 Scores are still named in full`);
+    await stop.click();
+    await stop.waitFor({ state: 'detached' });
+    onBoard['🤫 1'] = await stageH();
+    await p5.locator('.stage-box .board .tile:not([disabled])').first().click();
+    await p5.waitForFunction(() => document.querySelector('.panel .status')?.textContent?.includes('Answer hidden'));
+    const inClue = await stageH();
+    assert(
+      Object.values(onBoard).every((x) => x === inClue),
+      `${w}×${h}: the stage keeps one size from the board, with ${Object.keys(onBoard).join(' / ')} on its tools row, to a clue (${Object.values(onBoard).join(' / ')} / ${inClue})`,
+    );
     await ctx.close();
   }
   assert(errors.length === 0, 'no page errors' + (errors.length ? ': ' + errors.join(' | ') : ''));

@@ -121,7 +121,7 @@
     <!-- ▶ Test this round: one round, nothing kept (🚪 Exit goes back to the editor). -->
     <span class="test" title="Only this round plays, and nothing is kept: 🚪 Exit goes back to the editor">🧪 Testing this round</span>
   {:else}
-    <button class="ghost" onclick={prev} disabled={session.currentRound === 0}>◀ Prev round</button>
+    <button class="ghost" onclick={prev} disabled={session.currentRound === 0} title="Prev round">◀ <span class="word">Prev round</span></button>
   {/if}
   {#if ongoto && game.rounds.length > 2}
     <!-- Rounds can be played out of order: jump to any of them. -->
