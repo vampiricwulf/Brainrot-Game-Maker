@@ -34,7 +34,9 @@
   const isLast = $derived(session.currentRound >= game.rounds.length - 1);
   const nextRound = $derived(game.rounds[session.currentRound + 1]);
   const target = $derived(isLast || !nextRound ? 'the end screen' : roundName(nextRound, session.currentRound + 1));
-  const nextLabel = $derived(isLast || !nextRound ? 'End game ▶' : isFinal(nextRound) ? `${roundName(nextRound)} ▶` : 'Next round ▶');
+  /** Where Next round ▶ goes: the next round, a final round by its name, or the end screen. */
+  const nextName = $derived(isLast || !nextRound ? 'End game' : isFinal(nextRound) ? roundName(nextRound) : 'Next round');
+  const nextLabel = $derived(`${nextName} ▶`);
 
   // Clicks right after this row appears (e.g. the second half of a double-click on "Done ▶ board") are ignored.
   const GUARD_MS = 400;
@@ -139,9 +141,10 @@
       {/each}
     </select>
   {/if}
-  <!-- Played out, it's the main button instead (one of them, not two). -->
+  <!-- Played out, it's the main button instead (one of them, not two). (A final round's long name is cut short, never
+       its ▶: in full in its tooltip.) -->
   {#if !done}
-    <button class="ghost" onclick={next} title={board ? `${left} clue${left === 1 ? '' : 's'} not played yet` : 'Asks first'}>{nextLabel}</button>
+    <button class="ghost next" onclick={next} title={`${nextName} · ${board ? `${left} clue${left === 1 ? '' : 's'} not played yet` : 'asks first'}`}><span class="nm">{nextName}</span> ▶</button>
   {/if}
 </div>
 
@@ -162,5 +165,21 @@
   .pick {
     max-width: 180px;
     font-size: 12px;
+  }
+  /* A final round's long name on ▶ is cut short (…), as in Go to round, so on the board the tools and the round's ◀ /
+     picker / ▶ stay on one line, as in a clue, and the stage keeps one size. Up to 1300px wide, to the width of the
+     usual "Final Jeopardy!": room for 🔇 Stop sounds and the cards out beside them. */
+  .next .nm {
+    display: inline-block;
+    max-width: 11.5em;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    vertical-align: bottom;
+  }
+  @media (max-width: 1300px) {
+    .next .nm {
+      max-width: 7.5em;
+    }
   }
 </style>

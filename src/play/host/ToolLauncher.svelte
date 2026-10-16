@@ -351,14 +351,16 @@
       white-space: nowrap;
     }
   }
-  /* (Both at once, the round intro's music still on and cards out: 🔇 and 🤫 2 at any width.) */
-  .tl:has(.stop):has(.cardsout) :is(.stop, .cardsout) .word {
-    position: absolute;
-    width: 1px;
-    height: 1px;
-    overflow: hidden;
-    clip-path: inset(50%);
-    white-space: nowrap;
+  /* (Both at once, the round intro's music still on and cards out: 🔇 and 🤫 2 up to 1520px wide.) */
+  @media (max-width: 1520px) {
+    .tl:has(.stop):has(.cardsout) :is(.stop, .cardsout) .word {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      overflow: hidden;
+      clip-path: inset(50%);
+      white-space: nowrap;
+    }
   }
   /* (And up to 1000px wide 📊 Scores as 📊: room for 🔇 and 🤫 2 beside a Go to round with a long round name in it.) */
   @media (max-width: 1000px) {

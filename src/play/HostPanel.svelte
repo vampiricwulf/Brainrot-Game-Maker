@@ -1368,14 +1368,16 @@
   }
   /* Under the stage, with 🔇 Stop sounds or cards out in the tools row (they come and go on the board), ◀ Prev round as
      ◀ (still read out by name, its tooltip says it): the board's tools and the round's ◀ / picker / ▶ stay on one line,
-     as in a clue, so the stage keeps one size. */
-  .panel:not(.side) > .toolsrow:has(:global(.tl :is(.stop, .cardsout))) :global(.rn .word) {
-    position: absolute;
-    width: 1px;
-    height: 1px;
-    overflow: hidden;
-    clip-path: inset(50%);
-    white-space: nowrap;
+     as in a clue, so the stage keeps one size. (Up to 1520px wide: on a wider window it fits in full.) */
+  @media (max-width: 1520px) {
+    .panel:not(.side) > .toolsrow:has(:global(.tl :is(.stop, .cardsout))) :global(.rn .word) {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      overflow: hidden;
+      clip-path: inset(50%);
+      white-space: nowrap;
+    }
   }
   /* In the column: the action part takes the height left and scrolls; the tools and the fixed bar stay at its foot. */
   /* The Final in a single window: the panel keeps one height through its steps (the title card to the reveals), so the
