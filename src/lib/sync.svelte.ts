@@ -210,13 +210,18 @@ function resendAll(): void {
   if (last.session) post({ type: 'session', session: last.session });
 }
 
+/** The answer to the Test sound pressed last, when this is it. */
+function testAnswer(ev: Extract<SoundReport, { kind: 'sound' }>): void {
+  const t = sound.test;
+  if (ev.test && t?.nonce === ev.test) t.state = ev.ok ? 'ok' : (ev.reason ?? 'error');
+}
+
 function onSound(ev: SoundReport): void {
   if (ev.kind === 'audio-out') {
     sound.outputMissing = ev.missing;
     return;
   }
-  const t = sound.test;
-  if (ev.test && t?.nonce === ev.test) t.state = ev.ok ? 'ok' : (ev.reason ?? 'error');
+  testAnswer(ev);
   // Anything that played means sound is allowed there now.
   if (ev.ok) sound.cueBlocked = false;
   else if (!ev.test && ev.reason === 'blocked') sound.cueBlocked = true;
@@ -321,8 +326,13 @@ if (typeof window !== 'undefined' && location.hash !== AUDIENCE_HASH && location
     fromAudience(e.data.msg);
   });
   window.addEventListener('beforeunload', () => post({ type: 'bye' }));
-  // Sounds this window plays itself (single-window mode; in dual mode its copy is silent).
-  onSoundReport((r) => !audience.open && onSound(r));
+  // Sounds this window plays itself (single-window mode; in dual mode its copy is silent). A ▶ Test round plays here with
+  // the audience window open: then only its Test sound's answer counts (a sound here says nothing of whether the
+  // audience window may play sound).
+  onSoundReport((r) => {
+    if (!audience.open) onSound(r);
+    else if (r.kind === 'sound') testAnswer(r);
+  });
   // Media this window's copy took off while the audience window was closed went there too: reopened, the window
   // doesn't put it back where it was if the same one shows again by then (a clue opened again starts afresh).
   onLocalMediaChange((id, st) => !st && !audience.open && delete remoteMedia[id]);
@@ -562,11 +572,14 @@ export function pushLive(live: Live): void {
 }
 
 let testTimer: ReturnType<typeof setTimeout> | undefined;
-/** Play the test chime in the window that plays the game's sound; the result lands in `sound.test`. */
-export function testSound(): void {
+/**
+ * Play the test chime in the window that plays the game's sound (`inAudience`: the audience window; a ▶ Test round
+ * plays here even with it open); the result lands in `sound.test`.
+ */
+export function testSound(inAudience = audience.open): void {
   const nonce = newId();
   clearTimeout(testTimer);
-  if (audience.open) {
+  if (inAudience) {
     sound.test = { nonce, where: 'audience', state: 'waiting' };
     post({ type: 'test-sound', nonce });
     testTimer = setTimeout(() => {

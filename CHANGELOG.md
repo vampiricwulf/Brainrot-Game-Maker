@@ -63,6 +63,9 @@ in plain words for the people who make and host games. Anything committed but no
 - README: the theme save button has its real name (💾 Save as new theme…), the host panel's tools include 🤫 Send a card… and 🎭 Deal…, and ⌨ sits beside 🚪 Exit. (0a1ace2)
 - A game with only 🎭 deals (or 🤫 Cards) in it no longer counts as empty: New and Open… ask before replacing it, and it's kept in Recent games. (417cacd)
 - A tile's 🤫 card changed in the editor while it's out (▶ Resume with my edits) keeps its place among the 8 cards the phones hold: ↻ Send again, or a Resume that undoes the change, no longer drops an older card off a player's phone. (c5c61dc)
+- With no phone buzzers taking cards, a private card changed in the editor while it was out says to ✖ Take it back and show it again in the 🪟 card window, and a late phone is no longer listed once the buzzer room has gone; the rows used to point at a ↻ Send again that isn't there. (54be8d2, 8934398)
+- ▶ Test sound in ▶ Test this round plays the chime in this window, as the sound help says, even with the audience window left open on Starting soon, so stream viewers don't hear it, and the result says where it played. (54be8d2)
+- Typing player names on the ▶ Play screen no longer lags in a big game while a game is kept to resume; Resume with my edits appears a moment after a change. (54be8d2, 8934398)
 
 ## 2026-10-15
 

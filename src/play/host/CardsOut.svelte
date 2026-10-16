@@ -59,7 +59,7 @@
   {#each list as c (c.id)}
     {@const slide = sentSlide(game, c)}
     {@const off = leftOff.has(sentCardId(c))}
-    {@const state = sentLine(game, session, c, filesOn, off)}
+    {@const state = sentLine(game, session, c, filesOn, off, cardsOn)}
     {@const left = cardsOn && slide && !off ? leftOf(slide) : ''}
     <div class="row" data-card-out={c.label} role="group" aria-label="{c.label} to {sentToText(session, c.to, teams)}: {state.text}">
       <b>{c.label}</b>

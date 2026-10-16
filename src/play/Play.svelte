@@ -111,7 +111,6 @@
   import { inTauri, toggleFullscreen } from '../lib/platform';
   import { onMount, setContext, tick, untrack } from 'svelte';
   import { NEXT_GAME } from './host/nextgame';
-  import { sameGame } from '../lib/samegame';
   import { MediaQuery } from 'svelte/reactivity';
   import { watchPhonesAway } from './host/phoneaway.svelte';
 
@@ -122,6 +121,7 @@
     onnextgame,
     gameRev = 0,
     gameCopy,
+    editsDiffer = false,
   }: {
     /** Leave the game: `keep`, it stays saved and resumable (Exit asks); else it's discarded. */
     onexit: (keep: boolean) => void;
@@ -141,6 +141,11 @@
     gameRev?: number;
     /** That watcher's plain copy of the game (null until it has started). Never read inside an effect. */
     gameCopy?: () => Game | null;
+    /**
+     * App's answer, a moment after changes stop: the editor's game differs from the game kept to resume, so "Resume with
+     * my edits" is offered. (Worked out here, it read the whole game on every key of a player's name.)
+     */
+    editsDiffer?: boolean;
   } = $props();
 
   // Play is only mounted when these exist.
@@ -2930,9 +2935,6 @@
 
   /** ⚙ Set up phone buzzers… (the 📱 card, when this app has no buzzer server): ⚙ Settings, at the phone buzzers. */
   let showSettings = $state(false);
-
-  /** "Resume with my edits" only when the editor's game was changed since the kept game was played. */
-  const editsDiffer = $derived(!!app.resumable && !sameGame($state.snapshot(app.game), app.resumable.game));
 
   /** The pre-game's ▶ Resume: the game kept to resume plays on, in the display picked here (and its room, if open). */
   async function resumeKept(withEdits: boolean): Promise<void> {

@@ -58,7 +58,7 @@
     if (!out) return false;
     const cardsOn = buzzerOn(game.settings) && !!remote.code && remote.status !== 'off' && remote.status !== 'error' && roomHasCards();
     const off = new Set(cardsOn ? cardsLeftOff(game, session) : []);
-    return listed.some((c) => sentLine(game, session, c, cardsOn && roomHasFiles(), off.has(sentCardId(c))).warn);
+    return listed.some((c) => sentLine(game, session, c, cardsOn && roomHasFiles(), off.has(sentCardId(c)), cardsOn).warn);
   });
   let custom = $state('');
   let quickList = $state('');

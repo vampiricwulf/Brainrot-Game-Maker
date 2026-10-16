@@ -989,7 +989,7 @@
   </div>
 {:else}
   {#key playKey}
-    <Play onexit={exitPlay} oncancel={leavePlay} onresume={(withEdits, room) => void resume(withEdits, room)} onnextgame={nextGame} gameRev={playRev} gameCopy={playCopy} />
+    <Play onexit={exitPlay} oncancel={leavePlay} onresume={(withEdits, room) => void resume(withEdits, room)} onnextgame={nextGame} gameRev={playRev} gameCopy={playCopy} {editsDiffer} />
   {/key}
 {/if}
 
