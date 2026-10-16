@@ -208,7 +208,7 @@ describe('🤫 cards', () => {
     expect(clue.cards).toBeUndefined();
   });
 
-  it('says what a partner clue’s cards still need', () => {
+  it('says what a tile’s cards still need', () => {
     const clue = partnerClue();
     expect(cardsToFinish(clue)).toBe(1);
     setSlideText(clue.cards![0], 'Shrek');
@@ -217,10 +217,12 @@ describe('🤫 cards', () => {
     expect(cardsToFinish(clue)).toBe(2);
     delete clue.cards;
     expect(cardsToFinish(clue)).toBe('none');
-    // A Custom game's cards are up to the host; another type's cards don't count.
+    // A Custom game's cards are up to the host. Any other tile's cards are its own extra (cards anywhere, P3): none is
+    // fine, an empty one is still to fill in.
     clue.partner!.game = 'custom';
     expect(cardsToFinish(clue)).toBeNull();
-    expect(cardsToFinish({ ...partnerClue(), type: 'standard' })).toBeNull();
+    expect(cardsToFinish({ ...partnerClue(), type: 'standard' })).toBe(1);
+    expect(cardsToFinish({ ...partnerClue(), type: 'dailyDouble', cards: undefined })).toBeNull();
   });
 
   it('⧉ Same as the answer copies it once, with fresh ids: changing the answer afterwards leaves the card', () => {
@@ -248,10 +250,14 @@ describe('🤫 cards', () => {
 
 describe('what viewers see', () => {
   // The stream draws a clue's question and answer slides only: a 🤫 card must never reach it by accident.
-  const viewers = import.meta.glob<string>(['/src/play/AudienceView.svelte', '/src/play/tools/ToolOverlay.svelte'], { query: '?raw', import: 'default', eager: true });
+  const viewers = import.meta.glob<string>(['/src/play/AudienceView.svelte', '/src/play/tools/ToolOverlay.svelte', '/src/play/ScoresView.svelte'], {
+    query: '?raw',
+    import: 'default',
+    eager: true,
+  });
 
-  it('the audience window and the tool overlay never touch cards (a clue’s `.cards`, cardSlides or ClueCard)', () => {
-    expect(Object.keys(viewers)).toHaveLength(2);
-    for (const [path, src] of Object.entries(viewers)) expect(/\.cards\b|cardSlides|ClueCard/.test(src), path).toBe(false);
+  it('the audience and scores windows and the tool overlay never touch cards (`.cards`, cardSlides, ClueCard or SentCard)', () => {
+    expect(Object.keys(viewers)).toHaveLength(3);
+    for (const [path, src] of Object.entries(viewers)) expect(/\.cards\b|cardSlides|ClueCard|SentCard|sentcards/.test(src), path).toBe(false);
   });
 });

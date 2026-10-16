@@ -278,7 +278,8 @@ available on Free, and a game night is a handful of small messages per second at
 is ever reached the room stops working until the daily reset; it never bills. Sockets use the Hibernation API, so a
 room with nothing happening can sleep without dropping anyone (phones ping every 10 s, which wakes it briefly). Each
 room keeps up to 32 KB of state, which can include the private cards the host sent (words and links) until the tile
-closes, and up to 16 MB of card files until 10 minutes after no card uses them; it is all wiped when the room ends.
+closes (or the round ends, or the host takes it back, for a card sent with 🤫 Send a card…), and up to 16 MB of card
+files until 10 minutes after no card uses them; it is all wiped when the room ends.
 Durable Object storage (5 GB on Free) is shared by every room on the account: 100 open rooms at their file cap is 1.6
 GB. Card file uploads stop for the day at the daily budget (see Card files above, which says how to change it).
 Whoever runs the server (for the public one, its Cloudflare account) could read what is stored while it is there, and

@@ -102,7 +102,7 @@ describe('Find', () => {
 });
 
 describe('Find: 🤫 cards', () => {
-  it('finds a partner clue’s cards, says which, and goes to its tab (only while the tile is a partner clue)', () => {
+  it('finds a tile’s cards, says which, and goes to its tab (a partner clue’s, and any other tile’s)', () => {
     const game = newGame();
     addSampleGame(game);
     const round = game.rounds.find((r) => r.mode === 'board')!;
@@ -118,7 +118,8 @@ describe('Find: 🤫 cards', () => {
     expect(hits).toHaveLength(1);
     expect(hits[0]).toMatchObject({ icon: '🤫', where: `Jeopardy! › ${cat.title} › $200 › Card 2`, focus: '[data-field="card"]' });
     expect(hits[0].place).toEqual({ tab: 'round', round: round.id, part: { kind: 'clue', category: cat.id, clue: clue.id, side: 'card', slide: 'c2' } });
+    // (Since cards anywhere, P3: a standard tile's cards play too, so they're found.)
     clue.type = 'standard';
-    expect(findAll(game, 'zorblax')).toHaveLength(0);
+    expect(findAll(game, 'zorblax')).toHaveLength(1);
   });
 });

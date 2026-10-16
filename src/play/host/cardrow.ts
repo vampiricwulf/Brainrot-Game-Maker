@@ -1,0 +1,58 @@
+// How a 🤫 card stands on the phones, for the host panel's rows (a partner clue's Distribute list, a tile's cards, the
+// list of cards out): what of it won't reach a phone, and, for a card sent with 🤫 Send a card… or from a tile's panel,
+// sent, ✓ seen, uploading, and a phone late for it. In one window the panel is on stream: these lines count a card's
+// pictures and videos and name players, never what's on a card or an item's name.
+import { cardFileCounts } from '../../lib/cardfiles.svelte';
+import { nameList } from '../../lib/session';
+import type { Game, Id, SentCard, Session } from '../../lib/model';
+import { countItems } from '../../lib/partner';
+import type { CardItem, LeftOut } from '../../lib/phonecard';
+import { remote } from '../../lib/remote.svelte';
+import { sentCardId, sentSlide, sentState } from '../../lib/sentcards';
+
+const WHY: Record<LeftOut, string> = {
+  big: 'too big for phones',
+  expired: 'its link has expired',
+  kind: 'phones can’t show it',
+  nofiles: 'this buzzer server isn’t taking files right now',
+  failed: 'didn’t reach the buzzer server',
+  lost: 'isn’t in the game any more',
+  many: 'one card shows 6 at most',
+};
+
+/** What of a card won't reach the phones, counted ("🖼 1 picture won't reach the phones (too big for phones)"), or ''. */
+export function leftLine(left: { kind: CardItem['kind']; why: LeftOut }[]): string {
+  if (!left.length) return '';
+  const why = [...new Set(left.map((l) => WHY[l.why]))].join('; ');
+  return `🖼 ${countItems(left.map((l) => l.kind))} won’t reach the phones (${why})`;
+}
+
+/** The players whose phone showed a card (its send now), by seat. */
+export function seenSeats(session: Pick<Session, 'players' | 'remote'>, c: Pick<SentCard, 'id' | 'at'>): Id[] {
+  const seen = session.remote?.cardsSeen?.[sentCardId(c)];
+  const seats = new Set((Array.isArray(seen) ? seen : []).map((w) => w.split('/')[0]));
+  return session.players.map((p) => p.id).filter((id) => seats.has(id));
+}
+
+/**
+ * A card sent with 🤫 Send a card… or from a tile's panel, as its row says it: "sent", "✓ seen" (by whom, when not by
+ * everyone it went to), "uploading 1 of 2…", a phone that came late for it ("Ann's new phone hasn't got it: ↻ Send
+ * again"), or a tile's card changed in the editor since. `filesOn`: the room takes files.
+ */
+export function sentLine(game: Game, session: Session, c: SentCard, filesOn: boolean): { text: string; warn: boolean } {
+  if (sentState(game, c) === 'edited') return { text: 'changed in the editor: off the phones until ↻ Send again', warn: true };
+  const name = (id: Id) => session.players.find((p) => p.id === id)?.name ?? '?';
+  const seats = [...new Set(c.to.map((t) => t.seat))];
+  const seen = seenSeats(session, c);
+  const late: { seat: Id; by?: string }[] = [];
+  for (const l of remote.cardsLate) if (l.id === sentCardId(c) && !late.some((x) => x.seat === l.seatId && x.by === l.by)) late.push({ seat: l.seatId, by: l.by });
+  const out = [seen.length ? `✓ seen${seen.length < seats.length ? ` by ${nameList(seen.map(name))}` : ''}` : 'sent'];
+  const slide = sentSlide(game, c);
+  const f = slide && filesOn ? cardFileCounts(game, session, slide) : null;
+  if (f?.going) out.push(`uploading ${Math.min(f.files, f.up + 1)} of ${f.files - f.failed}…`);
+  if (late.length) {
+    const whose = late.map((l) => (l.by ? `${l.by}’s phone (${name(l.seat)})` : `${name(l.seat)}’s new phone`));
+    out.push(`${nameList(whose)} ${late.length > 1 ? 'haven’t' : 'hasn’t'} got it: ↻ Send again`);
+  }
+  return { text: out.join(' · '), warn: late.length > 0 };
+}

@@ -168,11 +168,15 @@ export function startingCards(game: PartnerGame): ClueCard[] {
   return PARTNER_GAMES[game].cards.map(newCard);
 }
 
-/** ＋ Card: one more card at the end (it goes to the giver, as a game's first card does). Returns it, or null at MAX_CARDS. */
+/**
+ * ＋ Card: one more card at the end (it goes to the giver, as a game's first card does; on any other tile, to whoever
+ * picked it). Returns it, or null at MAX_CARDS.
+ */
 export function addCard(clue: Clue): ClueCard | null {
   if (cardSlides(clue).length >= MAX_CARDS) return null;
-  const card = newCard('giver');
-  (clue.cards ??= []).push(card);
+  const card = newCard(clue.type === 'partner' ? 'giver' : 'picker');
+  // (A new list, not a push: on a tile with no cards yet `??=` would hand back the plain list, not the editor's live one.)
+  clue.cards = [...cardSlides(clue), card];
   return card;
 }
 
@@ -192,11 +196,26 @@ export function deleteCard(clue: Clue, at: number): number {
 export function goesToLabel(rules: PartnerRules, to: CardGoesTo, long = true): string {
   const words = partWords(rules);
   if (to === 'giver' || to === 'guesser') return `the ${lowerWord(words[to])}${long ? ` (${partWho(rules, to)})` : ''}`;
-  return { both: 'both of them', others: 'everyone else', nobody: long ? 'nobody (I’ll choose when playing)' : 'nobody' }[to];
+  return { both: 'both of them', others: 'everyone else', nobody: long ? 'nobody (I’ll choose when playing)' : 'nobody', picker: 'the picker' }[to];
 }
 
 /** Every Goes to choice, in the order the editor lists them. */
 export const GOES_TO: CardGoesTo[] = ['giver', 'guesser', 'both', 'others', 'nobody'];
+
+/** A card on any other tile (🤫 Just you, 💡 Insider tip: partner-clues spec §11): who it can start with. */
+export const TILE_GOES_TO: CardGoesTo[] = ['picker', 'others', 'nobody'];
+
+/**
+ * Who a card on any other tile starts with, in words: "the player who picks it" (a Daily Double: "the Daily Double's
+ * player"), "everyone else", "nobody (I'll choose when playing)". A part (a partner clue's card kept on a tile whose type
+ * changed) starts with nobody there. `long` false: just who.
+ */
+export function tileGoesToLabel(type: Clue['type'], to: CardGoesTo, long = true): string {
+  const who = type === 'dailyDouble' ? 'the Daily Double’s player' : long ? 'the player who picks it' : 'the picker';
+  if (to === 'picker') return who;
+  if (to === 'others') return long ? `everyone but ${who}` : 'everyone else';
+  return long ? 'nobody (I’ll choose when playing)' : 'nobody';
+}
 
 /** The words on a slide (every text box), as one line to compare: its case and spacing don't count. */
 function words(slide: Slide): string {
@@ -215,13 +234,13 @@ export function sameAsAnswer(clue: Pick<Clue, 'answerSlide'>, card: Slide): bool
 }
 
 /**
- * What a partner clue's cards still need, for the board and the checklist: 'none' (a ready-made game with no card: the
+ * What a tile's cards still need, for the board and the checklist: 'none' (a ready-made partner game with no card: the
  * giver has nothing to go on), the number of the first empty card, or null when they're done.
  */
 export function cardsToFinish(clue: Clue): 'none' | number | null {
-  if (clue.type !== 'partner') return null;
   const cards = cardSlides(clue);
-  if (!cards.length) return partnerRules(clue).game === 'custom' ? null : 'none';
+  // (Any other tile's cards are its own extra: an empty one is still to fill in, and none is fine.)
+  if (!cards.length) return clue.type !== 'partner' || partnerRules(clue).game === 'custom' ? null : 'none';
   const empty = cards.findIndex((c) => !slideHasContent(c));
   return empty < 0 ? null : empty + 1;
 }
@@ -348,6 +367,7 @@ export function defaultRecipients(session: Seats, s: PartnerState, to: CardGoesT
   else if (to === 'guesser') ids = [guesser];
   else if (to === 'both') ids = [giver, guesser];
   else if (to === 'others') ids = session.players.map((p) => p.id).filter((id) => id !== s.pickerId && id !== s.partnerId);
+  else if (to === 'picker') ids = [s.pickerId];
   else ids = [];
   return session.players.filter((p) => ids.includes(p.id)).map((p) => ({ seat: p.id }));
 }
@@ -588,8 +608,13 @@ const forNames = (names: string[]) => (names.length > 1 ? `${names.slice(0, -1).
  * in a DM. Never shown on screen.
  */
 export function cardCopyText(game: Pick<Game, 'media'>, card: Slide, n: number, where: string, names: string[]): string {
+  return copyWordsText(game, card, `${where}, card ${n}`, names);
+}
+
+/** 📋 Copy words for any card: "🤫 For Bob only (Card 3): …" (`what` in the brackets), with its links after its words. */
+export function copyWordsText(game: Pick<Game, 'media'>, card: Slide, what: string, names: string[]): string {
   const body = [cardWords(card), ...cardLinks(game, card)].filter(Boolean).join('\n');
-  return `🤫 For ${forNames(names) || 'you'} only (${where}, card ${n}): ${body}`;
+  return `🤫 For ${forNames(names) || 'you'} only (${what}): ${body}`;
 }
 
 // ---------- Sending the cards to phones (partner-clues spec §6.5, §14.4) ----------

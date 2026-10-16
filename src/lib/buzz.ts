@@ -7,6 +7,7 @@ import {
   cardHash, cardId, cardLines, cardSlides, describer, giverLine, partnerRoles, partnerRules, partnerVerdict, partOfTo, partsLine, partWords, resultLine, type CardPart,
 } from './partner';
 import { cardWords, clipWords, phoneCard, type PhoneCan } from './phonecard';
+import { cardsOut, sentCardId, sentSlide } from './sentcards';
 import { clueMarks, currentClueInfo, currentFinal, ddCap, finalWagerCap, score, shownQuestionSlide, tiedForFirst, wagerFromPhone } from './session';
 
 export interface BuzzState {
@@ -335,6 +336,43 @@ export function partnerCards(game: Game, session: Session, room: PhoneCan): Host
   return out.length ? fitCards(out.slice(-CARDS_MAX)) : null;
 }
 
+/**
+ * The 🤫 cards the host sent with 🤫 Send a card… or from a tile's panel (Session.cards, partner-clues spec §12) as the
+ * buzzer room gets them: those still out, to exactly their recipients still in the game. A tile's card edited in the
+ * editor since it went is left out (its hash), so a phone never shows what the host didn't send. One on a tile says
+ * "The answer's on screen" once the answer shows. `room`: the files the room holds (null: it takes none). Null when
+ * none are out.
+ */
+export function sessionCards(game: Game, session: Session, room: PhoneCan): HostCard[] | null {
+  const out: HostCard[] = [];
+  for (const c of cardsOut(game, session)) {
+    const slide = sentSlide(game, c);
+    if (!slide || cardHash(slide) !== c.hash) continue;
+    const to = c.to.filter((t) => session.players.some((p) => p.id === t.seat));
+    if (!to.length) continue;
+    const pc = phoneCard(game, slide, room);
+    out.push({
+      id: sentCardId(c),
+      to: to.map((t) => ({ seat: t.seat, ...(t.member ? { member: t.member.id } : t.except?.length ? { except: [...t.except] } : {}) })),
+      open: c.until !== 'tile' || !session.revealed,
+      ...(pc.title ? { title: pc.title } : {}),
+      ...(pc.text ? { text: pc.text } : {}),
+      ...(pc.media.length ? { media: pc.media } : {}),
+    });
+  }
+  return out.length ? out : null;
+}
+
+/**
+ * Every 🤫 card the buzzer room gets now: the open partner clue's sends (partnerCards) and the cards sent with
+ * 🤫 Send a card… or from a tile's panel (sessionCards), at most CARDS_MAX (the newest) in CARDS_BYTES. Null when none
+ * are out.
+ */
+export function hostCards(game: Game, session: Session, room: PhoneCan): HostCard[] | null {
+  const all = [...(partnerCards(game, session, room) ?? []), ...(sessionCards(game, session, room) ?? [])];
+  return all.length ? fitCards(all.slice(-CARDS_MAX)) : null;
+}
+
 /** The last bit of a card's id on the wire for each part, when a send goes as one card per part (partnerCards). */
 const PART_ID: Record<CardPart, string> = { giver: 'g', guesser: 'q', other: 'o', solo: 'p' };
 
@@ -429,8 +467,8 @@ export const SEAT_NAME_MAX = 40;
 /**
  * What the buzzer room gets: the players, scores and the buzzers' state, and while a clue is open its question's words
  * and caption (the question slide on screen). Built here only, from a whitelist: never answers, host notes, media or
- * the game's other content, except the cards the host sent (partnerCards, built only from session.partner.sent). A
- * card holds whatever the host put on it. `extra`: the phones' status line (phoneStatus), 🔒 locked seats, the wagers
+ * the game's other content, except the cards the host sent (hostCards: built only from session.partner.sent and
+ * session.cards, which only the host's presses add to). A card holds whatever the host put on it. `extra`: the phones' status line (phoneStatus), 🔒 locked seats, the wagers
  * and answers phones may send, and those cards (only for a room that takes them).
  */
 export function hostState(

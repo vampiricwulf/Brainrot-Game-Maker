@@ -18,8 +18,12 @@
   const server = $derived(!buzzerBase() ? 'none' : remote.code && remote.status === 'online' ? (roomHasCards() ? (roomHasFiles() ? 'files' : 'nofiles') : 'older') : 'unknown');
   const pc = $derived(phoneCard(game, card, { files: server === 'nofiles' || server === 'older' ? null : {} }));
   const rules = $derived(partnerRules(clue));
-  /** Its lines as its part's phone shows them (anyone but the two: the line for them), "the picker" and "the partner" for the names. */
-  const lines = $derived.by(() => {
+  /**
+   * Its lines as its part's phone shows them (anyone but the two: the line for them), "the picker" and "the partner" for
+   * the names. A card on any other tile has none.
+   */
+  const lines = $derived.by((): { role?: string; hint?: string } => {
+    if (clue.type !== 'partner') return {};
     const s = { pickerId: 'picker', partnerId: 'partner', giver: rules.giver };
     const to = card.to === 'giver' || card.to === 'guesser' ? [(card.to === 'giver') === (rules.giver === 'partner') ? 'partner' : 'picker'] : card.to === 'others' ? ['someone else'] : [];
     return cardLines(rules, s, card, to, (id) => `the ${id}`);

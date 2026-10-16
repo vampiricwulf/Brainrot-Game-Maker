@@ -16,6 +16,7 @@
   import TimerControls from './host/TimerControls.svelte';
   import DDControls from './host/DDControls.svelte';
   import PartnerControls from './host/PartnerControls.svelte';
+  import TileCards from './host/TileCards.svelte';
   import { cardSlides, partnerRules, partnerShares, partnerVerdict, sentTo, toName } from '../lib/partner';
   import FinalControls from './host/FinalControls.svelte';
   import EndControls from './host/EndControls.svelte';
@@ -86,6 +87,7 @@
     onpartnertakeback = () => {},
     onpartnermemberspin = () => {},
     onpartnerjudge = () => {},
+    oncardtakeback = () => {},
     onfinalstep,
     ontiebreaker,
     ontiebreakerdone,
@@ -192,6 +194,8 @@
     onpartnermemberspin?: () => void;
     /** ✔ Got it (true) or ✘ Missed (false) on a partner clue: both of the two in one step. */
     onpartnerjudge?: (got: boolean) => void;
+    /** ✖ Take back a card sent with 🤫 Send a card… or from a tile's panel. */
+    oncardtakeback?: (id: string) => void;
     onfinalstep: () => void;
     /** Play the tiebreaker clue (from the end screen's tie). */
     ontiebreaker: () => void;
@@ -917,6 +921,13 @@
             onmemberspin={onpartnermemberspin}
             onjudge={onpartnerjudge}
           />
+        {/key}
+      {/if}
+
+      <!-- A tile's own 🤫 cards (any tile but a partner clue, whose Distribute list has them): sent only by a press. -->
+      {#if session.phase === 'clue' && info && !partner && cardSlides(info.clue).length}
+        {#key info.clue.id}
+          <TileCards {game} {session} clue={info.clue} {dual} ontakeback={oncardtakeback} />
         {/key}
       {/if}
 

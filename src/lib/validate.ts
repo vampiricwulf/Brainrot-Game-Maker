@@ -252,16 +252,18 @@ export function validate(game: Game, room: { filesOff?: boolean } = {}): Problem
 }
 
 /**
- * A board's 🤝 partner clues (partner-clues spec §5.6): a ready-made game with no card (the giver has nothing to go on),
- * an empty card, more cards than a clue holds, a card's online link that has stopped working or soon will, and what of a
- * card won't reach a phone (`filesOff`: the buzzer server in use takes no files). Each goes to its card.
+ * A board's 🤫 cards (partner-clues spec §5.6): a ready-made 🤝 partner game with no card (the giver has nothing to go
+ * on); on any tile, an empty card, more cards than a clue holds, a card's online link that has stopped working or soon
+ * will, and what of a card won't reach a phone (`filesOff`: the buzzer server in use takes no files). Each goes to its
+ * card.
  */
 export function partnerProblems(game: Game, round: BoardRound, tab: number, filesOff = false): Problem[] {
   const out: Problem[] = [];
   const sym = game.settings.currencySymbol;
   for (const c of round.categories)
     c.clues.forEach((cl, row) => {
-      if (cl.empty || cl.type !== 'partner') return;
+      // (Any tile's cards: a partner clue's, or a standard or Daily Double tile's own.)
+      if (cl.empty || (cl.type !== 'partner' && !cardSlides(cl).length)) return;
       const tile = `${categoryLabel(c)} ${formatPoints(clueValue(round, row, cl), sym)}`;
       const at = (card?: ClueCard): Problem['place'] => ({
         tab: 'round',
@@ -272,7 +274,7 @@ export function partnerProblems(game: Game, round: BoardRound, tab: number, file
       const rules = partnerRules(cl);
       const cards = cardSlides(cl);
       // (A Custom game's cards are up to the host.)
-      if (!cards.length && rules.game !== 'custom') {
+      if (cl.type === 'partner' && !cards.length && rules.game !== 'custom') {
         const g = PARTNER_GAMES[rules.game];
         warn(`${tile} is a ${g.label} partner clue with no card: the ${lowerWord(partWords(rules).giver)} has nothing to ${g.task}`);
       }

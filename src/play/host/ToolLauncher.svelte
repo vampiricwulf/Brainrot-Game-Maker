@@ -1,4 +1,7 @@
-<!-- Dice / wheel / roll-off / scoreboard buttons, usable any time (spec §6.6), and 🔇 Stop sounds while a round intro may play. -->
+<!--
+  Dice / wheel / roll-off / scoreboard buttons, usable any time (spec §6.6), 🤫 Send a card… and the cards out (partner-
+  clues spec §12.2), and 🔇 Stop sounds while a round intro may play.
+-->
 <script lang="ts">
   import { tick, untrack } from 'svelte';
   import { anchored } from '../../lib/anchored';
@@ -8,20 +11,31 @@
   import { WHEEL_TEMPLATES } from '../../lib/wheeltemplates';
   import { parseDice, parseQuickWheel, QUICK_DICE } from '../../lib/tools';
   import { audience } from '../../lib/sync.svelte';
+  import { cardsOut } from '../../lib/sentcards';
+  import CardSend from './CardSend.svelte';
+  import CardsOut from './CardsOut.svelte';
 
   let {
     game,
     session,
+    dual = false,
     onrolloff,
     onstopsounds,
+    oncardtakeback,
   }: {
     game: Game;
     session: Session;
+    /** An audience window is open: viewers don't see this window. */
+    dual?: boolean;
     onrolloff: (ids: string[], sides: number) => void;
     /** 🔇 Stop sounds: shown while the round intro's music may still be playing (it goes on until a tile opens). */
     onstopsounds?: () => void;
+    /** ✖ Take back a card sent with 🤫 Send a card… or from a tile's panel. */
+    oncardtakeback: (id: string) => void;
   } = $props();
-  let menu = $state<'dice' | 'wheel' | 'rolloff' | null>(null);
+  let menu = $state<'dice' | 'wheel' | 'rolloff' | 'card' | 'out' | null>(null);
+  /** The 🤫 cards out now (sent with Send a card… or from a tile's panel): the tools row says how many, never what. */
+  const out = $derived(cardsOut(game, session).length);
   let custom = $state('');
   let quickList = $state('');
   // Players left out of the roll-off; everyone else rolls (so players added or removed mid-game just work).
@@ -38,7 +52,7 @@
   let opener: HTMLElement | null = null;
 
   /** Open (or close) a menu from its button. */
-  function toggle(m: 'dice' | 'wheel' | 'rolloff', e: MouseEvent): void {
+  function toggle(m: 'dice' | 'wheel' | 'rolloff' | 'card' | 'out', e: MouseEvent): void {
     menu = menu === m ? null : m;
     opener = e.currentTarget as HTMLElement;
   }
@@ -213,6 +227,24 @@
       </div>
     {/if}
   </div>
+  <div class="pop">
+    <button onclick={(e) => toggle('card', e)} aria-haspopup="dialog" aria-expanded={menu === 'card'} title="A private card on some players’ phones, any time: only they see it, never on stream">🤫 Send a card…</button>
+    {#if menu === 'card'}
+      <div class="menu wide" role="dialog" aria-label="Send a card" use:anchored={at}>
+        <CardSend {game} {session} {dual} />
+      </div>
+    {/if}
+  </div>
+  {#if out || menu === 'out'}
+    <div class="pop">
+      <button onclick={(e) => toggle('out', e)} aria-haspopup="dialog" aria-expanded={menu === 'out'} data-cards-out-count={out} title="The cards out now: send one again, take it back">🤫 {out} card{out === 1 ? '' : 's'} out</button>
+      {#if menu === 'out'}
+        <div class="menu wide" role="dialog" aria-label="Cards out" use:anchored={at}>
+          <CardsOut {game} {session} {dual} ontakeback={oncardtakeback} />
+        </div>
+      {/if}
+    </div>
+  {/if}
   <button onclick={() => ((menu = null), toggleScoreboard(app.live))} title="S">📊 Scores</button>
   {#if onstopsounds}
     <button onclick={() => ((menu = null), onstopsounds())} title="Stop the game's sounds on stream, like the round intro's music (Shift+M)">🔇 Stop sounds</button>
@@ -249,6 +281,10 @@
     border-radius: 8px;
     box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
     overflow: auto;
+  }
+  .menu.wide {
+    width: 380px;
+    max-width: calc(100vw - 24px);
   }
   /* A short menu scrolls (its parts keep their size). */
   .menu > * {

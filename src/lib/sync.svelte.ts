@@ -484,8 +484,10 @@ export function pushGame(game: Game): void {
 }
 
 export function pushSession(session: Session): void {
-  last.session = session;
-  post({ type: 'session', session });
+  // (Never the 🤫 cards the host sent, whoever calls this: forViewers drops them too. Partner-clues spec §14.1.)
+  const { cards: _cards, lastCard: _last, ...viewed } = session;
+  last.session = viewed;
+  post({ type: 'session', session: viewed });
 }
 
 export function pushLive(live: Live): void {

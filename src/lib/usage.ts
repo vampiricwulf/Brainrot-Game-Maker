@@ -7,10 +7,7 @@ export interface SlideRef {
   where: string;
 }
 
-/**
- * `empty`: empty tiles' slides too, and the 🤫 cards a tile keeps while it isn't a partner clue (kept for when the tile
- * is used again: their files are still in use).
- */
+/** `empty`: empty tiles' slides too (kept for when the tile is used again: their files are still in use). */
 export function allSlides(game: Game, { empty = false } = {}): SlideRef[] {
   const out: SlideRef[] = [];
   game.rounds.forEach((r, ri) => {
@@ -22,8 +19,8 @@ export function allSlides(game: Game, { empty = false } = {}): SlideRef[] {
           out.push({ slide: cl.questionSlide, where: `${where} (question)` });
           cl.extraSlides?.forEach((slide, j) => out.push({ slide, where: `${where} (question slide ${j + 2})` }));
           out.push({ slide: cl.answerSlide, where: `${where} (answer)` });
-          // (Without them, 🖼 Media's Remove unused would delete the cards' pictures.)
-          if (cl.type === 'partner' || empty) cardSlides(cl).forEach((slide, j) => out.push({ slide, where: `${where} (card ${j + 1})` }));
+          // A tile's 🤫 cards. (Without them, 🖼 Media's Remove unused would delete the cards' pictures.)
+          cardSlides(cl).forEach((slide, j) => out.push({ slide, where: `${where} (card ${j + 1})` }));
         });
     else if (isFinal(r)) {
       out.push({ slide: r.questionSlide, where: `${roundName(r, ri)} (question)` });

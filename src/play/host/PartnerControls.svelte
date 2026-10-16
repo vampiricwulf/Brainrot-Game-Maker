@@ -11,14 +11,13 @@
   import { app, toast } from '../../lib/app.svelte';
   import { textOn } from '../../lib/colors';
   import { overlayDoneAt, toolOverlay } from '../../lib/live';
-  import { mediaUrls } from '../../lib/media.svelte';
   import { cardSlides, PARTNER_GAMES, type CardTo, type Clue, type ClueCard, type Game, type Id, type PartnerState, type Session } from '../../lib/model';
   import {
     cardCopyText, cardId, cardRecipients, cardSends, cardSummary, countItems, describer, goesToLabel, lowerWord, markReady, marksText, pairOnly, partnerCandidates, partnerRoles,
     partnerRules, partnerShares, partnerVerdict, partWho, partWordOf, partWords, recipientsText, resetRecipients, sameTeam, sendAgain, sendCards, sendChanges, sendState, sentSeats,
     sentTo, setDescriber, setPartner, setPartnerPicker, setRecipients, sharesText, swapParts, toKey, toName,
   } from '../../lib/partner';
-  import { cardItems, cardLinks, cardWords, phoneCard, type LeftOut } from '../../lib/phonecard';
+  import { cardItems, cardLinks, cardWords, phoneCard } from '../../lib/phonecard';
   import { clueName, nameList } from '../../lib/session';
   import { buzzerOn, remote, roomHasCards, roomHasFiles, roomMembers } from '../../lib/remote.svelte';
   import { cardFileCounts, filesCounted, phoneCan, retryFiles, unputGone } from '../../lib/cardfiles.svelte';
@@ -27,6 +26,8 @@
   import { dropMenu } from '../../lib/menustate.svelte';
   import { announce } from '../../lib/announce';
   import { copyText } from '../standings';
+  import { canCopyPicture, copyCardPicture } from './cardcopy';
+  import { leftLine } from './cardrow';
   import { offerNext } from './slots.svelte';
 
   let {
@@ -371,21 +372,7 @@
     return { text: out.join(' · '), ...(late.length ? { warn: true } : {}) };
   }
   /** What of a card won't reach the phones, counted ("🖼 1 picture won't reach the phones (too big for phones)"). */
-  function leftLine(card: ClueCard): string {
-    const left = lefts(card);
-    if (!left.length) return '';
-    const WHY: Record<LeftOut, string> = {
-      big: 'too big for phones',
-      expired: 'its link has expired',
-      kind: 'phones can’t show it',
-      nofiles: 'this buzzer server isn’t taking files right now',
-      failed: 'didn’t reach the buzzer server',
-      lost: 'isn’t in the game any more',
-      many: 'one card shows 6 at most',
-    };
-    const why = [...new Set(left.map((l) => WHY[l.why]))].join('; ');
-    return `🖼 ${countItems(left.map((l) => l.kind))} won’t reach the phones (${why})`;
-  }
+  const leftOf = (card: ClueCard): string => leftLine(lefts(card));
 
   /**
    * The guess the guesser typed on their phone (PartnerRules.typeGuess): the guesser's now (after ⇄ Swap, not the old
@@ -399,49 +386,15 @@
     return g && typeof g.text === 'string' ? { seat, text: g.text, by: g.by } : null;
   });
 
-  /** The browser can put a picture on the clipboard (to paste into a DM). */
-  const canCopyPicture = typeof ClipboardItem !== 'undefined' && typeof navigator !== 'undefined' && !!navigator.clipboard?.write;
-
   /** 📋 Copy words: the card's words and links, named for who they're for. Nothing of it shows on screen. */
   function copyWords(card: ClueCard, n: number): void {
     const to = recipients(card).map((t) => toName(session, t));
     void copyText(cardCopyText(game, card, n, where, to), `Card ${n}’s words copied: paste them to ${to.join(', ') || 'them'}`);
   }
 
-  /** A picture as PNG (what pastes into a DM); a picture from a site that doesn't allow it can't be read back. */
-  function pngOf(src: string): Promise<Blob> {
-    return new Promise((ok, fail) => {
-      const img = new Image();
-      if (!/^(blob|data):/.test(src)) img.crossOrigin = 'anonymous';
-      img.onload = () => {
-        const c = document.createElement('canvas');
-        c.width = img.naturalWidth;
-        c.height = img.naturalHeight;
-        try {
-          c.getContext('2d')?.drawImage(img, 0, 0);
-          c.toBlob((b) => (b ? ok(b) : fail(new Error('no picture'))), 'image/png');
-        } catch (e) {
-          fail(e);
-        }
-      };
-      img.onerror = () => fail(new Error('not loaded'));
-      img.src = src;
-    });
-  }
-
   /** 📋 Copy picture: the card's first picture (or GIF, as a still), to paste into a DM. */
-  async function copyPicture(card: ClueCard, n: number): Promise<void> {
-    const to = recipients(card).map((t) => toName(session, t)).join(', ') || 'them';
-    const item = cardItems(game, card).find((i) => i.kind === 'picture' || i.kind === 'gif');
-    const src = item && ((item.media && mediaUrls[item.media]) || item.url);
-    if (!src) return toast(`Card ${n}’s picture isn’t loaded here: open the game’s 🖼 Media to find it`, 4000);
-    try {
-      const png = await pngOf(src);
-      await navigator.clipboard.write([new ClipboardItem({ 'image/png': png })]);
-      toast(`Card ${n}’s picture copied: paste it to ${to}`);
-    } catch {
-      toast(`Couldn’t copy card ${n}’s picture (its site doesn’t allow it): 📋 Copy words adds its link`, 5000);
-    }
+  function copyPicture(card: ClueCard, n: number): Promise<void> {
+    return copyCardPicture(game, card, `Card ${n}`, recipients(card).map((t) => toName(session, t)).join(', ') || 'them');
   }
 
   // The main button, in the panel's main cell: spin, then show the question, then start the clock (then the clue's own).
@@ -654,7 +607,7 @@
           {@const copyable = !!cardWords(card) || cardLinks(game, card).length > 0}
           {@const st = cardsOn ? sendState(session, s, card) : 'unsent'}
           {@const state = cardsOn ? rowState(card) : null}
-          {@const left = cardsOn ? leftLine(card) : ''}
+          {@const left = cardsOn ? leftOf(card) : ''}
           <!-- (📋 when a player it goes to has no phone here, or the room can't put cards on phones.) -->
           {@const copying = !cardsOn || to.some((t) => !hasPhone(t.seat))}
           {@const sentNow = st === 'unsent' ? [] : sentSeats(session, s, card.id)}

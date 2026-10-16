@@ -19,9 +19,10 @@
   } from '../lib/partner';
   import { phoneCard } from '../lib/phonecard';
   import { phoneCan, syncUploads } from '../lib/cardfiles.svelte';
+  import { cardsOut, sentCardId, sentSlide, takeBackCard } from '../lib/sentcards';
   import { addTime, newLive, overlayDoneAt, startTimer, tileToolUp, timerRemaining, timerResumed, toggleTimer, toolOverlay, type Live, type StageAction, type TimerState } from '../lib/live';
   import {
-    buzzArm, buzzClueOpened, buzzDone, buzzIdle, buzzMissed, buzzReset, buzzTake, hostState, newBuzz, partnerAnswerAsk, partnerAnswerId, partnerCards, phoneStatus, SEAT_NAME_MAX, sendOf, SETTING_UP, teamsOn, wagerAsk,
+    buzzArm, buzzClueOpened, buzzDone, buzzIdle, buzzMissed, buzzReset, buzzTake, hostState, newBuzz, partnerAnswerAsk, partnerAnswerId, hostCards, phoneStatus, SEAT_NAME_MAX, sendOf, SETTING_UP, teamsOn, wagerAsk,
     whoBuzzed,
     type BuzzState,
   } from '../lib/buzz';
@@ -1137,7 +1138,8 @@
 
   /**
    * What the buzzer room gets now: the game's state for the phones, their status line, 🔒, the wagers and answers they
-   * may send, and the 🤫 cards the host sent (only to a room that takes them: an older one gets no card content).
+   * may send, and the 🤫 cards the host sent (a partner clue's, and those sent with 🤫 Send a card… or from a tile's
+   * panel), only to a room that takes them: an older one gets no card content.
    */
   function roomState(): HostState {
     const cards = roomHasCards();
@@ -1146,7 +1148,7 @@
       locked: !!session.remote?.locked,
       wager: phoneWagerAsk(),
       answers: phoneAnswerAsk(),
-      cards: cards ? partnerCards(game, session, phoneCan(session)) : null,
+      cards: cards ? hostCards(game, session, phoneCan(session)) : null,
     });
   }
 
@@ -1184,8 +1186,9 @@
   function roomCardSeen(c: RoomCardSeen): void {
     const r = session.remote;
     const s = session.partner;
-    if (!phonesOn || !r || !s?.sent?.length) return;
-    const live = new Set(s.sent.map((x) => cardId(s.clue, x)));
+    // (The partner clue's sends, and the cards out with 🤫 Send a card… or from a tile's panel.)
+    const live = new Set([...(s?.sent ?? []).map((x) => cardId(s!.clue, x)), ...cardsOut(game, session).map(sentCardId)]);
+    if (!phonesOn || !r || !live.size) return;
     // (One card per part of a send counts as the send; the team's line with the describer's card isn't the card.)
     const id = sendOf(c.id);
     if (!live.has(id) || c.id.endsWith('~t')) return;
@@ -1308,8 +1311,10 @@
     else if (free) {
       // A 🤫 card out to that seat: the new phone is late for it (the room never gives it to a new phone by itself).
       const s = partner;
-      const out = s && info && phoneCards ? cardSlides(info.clue).flatMap((c, i) => (sentSeats(session, s, c.id).includes(seatId) ? [String(i + 1)] : [])) : [];
-      if (out.length) toast(`${playerName(session, seatId)}'s seat is free: once they're on the new phone, ↻ Send again card${out.length > 1 ? 's' : ''} ${nameList(out)}`, 6000);
+      const out = s && info && phoneCards ? cardSlides(info.clue).flatMap((c, i) => (sentSeats(session, s, c.id).includes(seatId) ? [`card ${i + 1}`] : [])) : [];
+      // (And the cards out with 🤫 Send a card… or from a tile's panel, by their labels: "Card 3".)
+      if (phoneCards) out.push(...cardsOut(game, session).flatMap((c) => (c.to.some((t) => t.seat === seatId) ? [c.label] : [])));
+      if (out.length) toast(`${playerName(session, seatId)}'s seat is free: once they're on the new phone, ↻ Send again ${nameList(out)}`, 6000);
       else toast(`${playerName(session, seatId)}'s seat is free: they can tap their name on their new phone`, 4000);
     }
     else if (game.settings.buzzTeams) toast(`Everyone's phone is off ${playerName(session, seatId)} (they can't join it again for 2 minutes)`, 4000);
@@ -1348,7 +1353,7 @@
   });
   // Who saw which card is forgotten with the cards (the tile closed, or they were all taken back).
   $effect(() => {
-    if (session.remote?.cardsSeen && !session.partner?.sent?.length) untrack(() => session.remote && delete session.remote.cardsSeen);
+    if (session.remote?.cardsSeen && !session.partner?.sent?.length && !session.cards?.length) untrack(() => session.remote && delete session.remote.cardsSeen);
   });
   // The pre-game screen's room is saved on its own (nothing else is before Start game): a reload gets back into it.
   $effect(() => {
@@ -1888,6 +1893,23 @@
     announce(`Card ${n} taken back`);
   }
 
+  /**
+   * ✖ Take back a card sent with 🤫 Send a card… or from a tile's panel: it goes from every phone it was sent to (the
+   * room's next state hasn't it), and the room deletes its files now unless another card still out uses them.
+   */
+  function cardTakeBack(id: string): void {
+    const c = session.cards?.find((x) => x.id === id);
+    if (!c) return;
+    const slide = sentSlide(game, c);
+    const files = slide ? phoneCard(game, slide, phoneCan(session)).items.flatMap((i) => ('file' in i.goes ? [i.goes.file] : [])) : [];
+    takeBackCard(session, id);
+    if (phonesOn && remote.status === 'online') {
+      sendHostState(roomState(), true);
+      forgetCardFiles(files);
+    }
+    announce(`${c.label} taken back`);
+  }
+
   /** The open partner clue's marks since it opened, and whether both of the two have one (it's judged). */
   const partnerMarks = $derived(partner ? clueMarks(session, partner.clue, partner.at ?? 0) : {});
   const partnerJudged = $derived(!!partner && partnerVerdict(partner, partnerMarks).judged);
@@ -2055,6 +2077,14 @@
         void ask(`${said.join('; ')}. Put the tile back anyway?`, { ok: '↩ Put it back', cancel: 'Keep playing' }).then((yes) => yes && info?.clue.id === clue && back(true));
         return;
       }
+    }
+    // The same for a card sent from the tile's own panel (it goes when the tile closes, but it was seen).
+    const mine = info && phoneCards ? cardsOut(game, session).filter((c) => c.until === 'tile') : [];
+    if (info && mine.length) {
+      const clue = info.clue.id;
+      const to = nameList([...new Set(mine.flatMap((c) => c.to.map((t) => playerName(session, t.seat))))]);
+      void ask(`${nameList(mine.map((c) => c.label))} went to ${to}. Put the tile back anyway?`, { ok: '↩ Put it back', cancel: 'Keep playing' }).then((yes) => yes && info?.clue.id === clue && back(true));
+      return;
     }
     back(true);
   }
@@ -4013,6 +4043,7 @@
         onpartnershow={partnerShow}
         onpartnerclock={partnerClock}
         onpartnertakeback={partnerTakeBack}
+        oncardtakeback={cardTakeBack}
         onpartnermemberspin={memberSpin}
         onpartnerjudge={partnerJudge}
         onfinalstep={finalStep}
@@ -4083,7 +4114,7 @@
           {/if}
         {/snippet}
         {#snippet tools()}
-          <ToolLauncher {game} {session} onrolloff={rolloff} onstopsounds={introNonce && app.live.sound ? stopSounds : undefined} />
+          <ToolLauncher {game} {session} {dual} onrolloff={rolloff} onstopsounds={introNonce && app.live.sound ? stopSounds : undefined} oncardtakeback={cardTakeBack} />
         {/snippet}
       </HostPanel>
     {/if}

@@ -41,11 +41,10 @@ describe('🤫 cards', () => {
     clue.cards = [{ id: 'c1', background: { image: 'bg' }, elements: [newImageEl('pic')], to: 'giver' }];
     expect([mediaUsage(game).get('pic'), mediaUsage(game).get('bg')]).toEqual([1, 1]);
     expect(allSlides(game).map((s) => s.where)).toContain('Jeopardy! · Category 1 #2 (card 1)');
-    // A tile whose type changed away keeps its cards for when it changes back: their files are still in use, but its
-    // cards don't play.
+    // Any tile's cards play (cards anywhere, P3), so a standard tile's are walked too.
     clue.type = 'standard';
     expect(mediaUsage(game).get('pic')).toBe(1);
-    expect(allSlides(game).some((s) => s.where.includes('(card'))).toBe(false);
+    expect(allSlides(game).some((s) => s.where.includes('(card 1)'))).toBe(true);
     expect(allSlides(game, { empty: true }).some((s) => s.where.includes('(card 1)'))).toBe(true);
   });
 });
