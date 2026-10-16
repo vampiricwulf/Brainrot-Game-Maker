@@ -268,7 +268,8 @@ function unplacePartner(clue: Clue): void {
   const p = clue.partner;
   if (!p || JSON.stringify(canon(p)) !== JSON.stringify(canon(gameRules(p.game)))) return;
   delete clue.partner;
-  if (clue.timerSeconds === 45 && TIMED_GAMES.has(p.game)) delete clue.timerSeconds;
+  // (Not only for a game with a countdown: one moved to Help a friend or Split clue keeps the 45 s it was placed with.)
+  if (clue.timerSeconds === 45) delete clue.timerSeconds;
 }
 
 /**

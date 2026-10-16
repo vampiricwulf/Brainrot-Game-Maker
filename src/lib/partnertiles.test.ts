@@ -4,7 +4,7 @@
 import { describe, expect, it } from 'vitest';
 import { jeopardyGame } from './testgame';
 import { cardSlides, migrateGame, newImageEl, partnerTilesPlaced, setSlideText, slideText, type BoardRound, type Game } from './model';
-import { partnerSpot } from './partner';
+import { partnerSpot, setPartnerGame } from './partner';
 import { placePartner, randomizePartnerTiles } from './ops';
 import { randomizeDailyDoubles } from './session';
 import { partnerTilesOver, partnerTilesShort, validate } from './validate';
@@ -139,6 +139,18 @@ describe('🔀 Randomize (randomizePartnerTiles)', () => {
     placePartner(r, timed);
     randomizePartnerTiles(r, 0, seeded(6));
     expect([timed.type, timed.timerSeconds, timed.partner, timed.cards]).toEqual(['standard', 20, undefined, undefined]);
+  });
+
+  it('one moved to Help a friend or Split clue (no countdown of their own) goes back without the 45 s it was placed with', () => {
+    for (const game of ['help', 'split'] as const) {
+      const { r } = board();
+      const cl = r.categories[0].clues[0];
+      placePartner(r, cl);
+      setPartnerGame(cl, game);
+      expect(cl.timerSeconds).toBe(45);
+      randomizePartnerTiles(r, 0);
+      expect([cl.type, cl.cards, cl.partner, cl.timerSeconds]).toEqual(['standard', undefined, undefined, undefined]);
+    }
   });
 
   it('Start game’s card is a copy of the answer whatever the round says (cardFrom): an empty one couldn’t be filled in', () => {
