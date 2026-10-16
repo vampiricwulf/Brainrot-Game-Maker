@@ -25,7 +25,7 @@ import {
   type Game,
   type Slide,
 } from './model';
-import { lowerWord, missCosts, partnerRules, partnerSpot, partWords, stealOn } from './partner';
+import { lowerWord, partnerRules, partnerSpot, partWords, stealOn } from './partner';
 import { cardWords, phoneCard } from './phonecard';
 import { CARD_TEXT_MAX, FILE_MAX_BYTES } from './buzzproto';
 import { rpgProblems, worldById } from './rpg';
@@ -256,14 +256,6 @@ export function validate(game: Game, room: { filesOff?: boolean } = {}): Problem
   if (steals && !game.settings.buzzer)
     out.push({
       text: `${plural(steals, 'partner clue')} let${steals === 1 ? 's' : ''} the others steal on a miss: without phone buzzers you pick who steals (their number, then Enter)`,
-      tab: 'play',
-      level: 'info',
-    });
-  // A partner clue's points are its own: a host who turned deductions off sees where a miss still costs.
-  const costly = partners.filter((c) => missCosts(partnerRules(c))).length;
-  if (costly && !game.settings.deductOnWrong)
-    out.push({
-      text: `Deduct on wrong is off, but ${plural(costly, 'partner clue')} take${costly === 1 ? 's' : ''} points on a miss: ${costly === 1 ? 'its' : 'their'} own Points say so`,
       tab: 'play',
       level: 'info',
     });

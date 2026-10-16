@@ -15,11 +15,14 @@
   // windowTitle: the audience window's title, which Discord lists it by.
   let {
     dual,
+    audienceMode,
     windowTitle,
     onclose,
     area = null,
   }: {
     dual: boolean;
+    /** Viewers watch the audience window: it's open, or it opens on Start (📺 Separate audience window picked). */
+    audienceMode: boolean;
     windowTitle: string;
     onclose: () => void;
     /** Single window, mid-game: the host panel's box, where the help stays (the stage viewers see stays clear). */
@@ -243,6 +246,7 @@
 
     <details open>
       <summary>Discord on Windows</summary>
+      <!-- (Single window: viewers see this window, so it's the one to share; there's no audience window to open.) -->
       <ol>
         {#if exe}
           <li>Use the Discord desktop app, not Discord in a web browser.</li>
@@ -250,14 +254,17 @@
             Start Brainrot Games Maker normally: not with "Run as administrator", and with nothing ticked under its Properties › Compatibility.
             Open it only once. (Running Discord as administrator doesn't help.)
           </li>
-          <li>Open the audience window and press <b>Test sound</b>.</li>
-          <li>In your voice channel: <b>Share Your Screen › Applications › "{windowTitle}"</b>. Turn <b>Sound</b> on, then Go Live.</li>
+          <li>{#if audienceMode}Open the audience window and press <b>Test sound</b>.{:else}Press <b>Test sound</b> (the sound plays in this window).{/if}</li>
+          <li>
+            In your voice channel: <b>Share Your Screen › Applications › {audienceMode ? `"${windowTitle}"` : 'the Brainrot Games Maker window'}</b>. Turn
+            <b>Sound</b> on, then Go Live.
+          </li>
         {:else}
           <li>Use the Discord desktop app. Discord in a web browser can't send a window's sound (in Firefox, none at all).</li>
-          <li>Open the audience window, click once inside it, then press <b>Test sound</b>.</li>
+          <li>{audienceMode ? 'Open the audience window, click once inside it' : 'Click once anywhere in this window'}, then press <b>Test sound</b>.</li>
           <li>
-            In your voice channel: <b>Share Your Screen › Applications</b> › the browser window showing the audience view. Turn <b>Sound</b>
-            on, then Go Live. Discord sends the sound of every tab in that browser: close or mute the others.
+            In your voice channel: <b>Share Your Screen › Applications</b> › {audienceMode ? 'the browser window showing the audience view' : 'this browser window'}.
+            Turn <b>Sound</b> on, then Go Live. Discord sends the sound of every tab in that browser: close or mute the others.
           </li>
         {/if}
         <li>Press Test sound again and ask a viewer if they heard it. Viewers can mute a stream by accident: hover it and check its volume.</li>
@@ -293,7 +300,7 @@
       <summary>OBS</summary>
       <ul>
         <li>
-          Window Capture of the audience window: tick <b>Capture Audio (BETA)</b>, or add an <b>Application Audio Capture</b> for {appName}.
+          Window Capture of {audienceMode ? 'the audience window' : 'this window'}: tick <b>Capture Audio (BETA)</b>, or add an <b>Application Audio Capture</b> for {appName}.
         </li>
         <li>
           Still silent: send the game's sound to a separate device such as VB-CABLE
@@ -314,7 +321,7 @@
             <b>System Settings › Privacy & Security › Screen & System Audio Recording</b> (older macOS: Screen Recording): turn Discord on,
             then quit and reopen Discord.
           </li>
-          <li>Share the browser window showing the audience view with Sound on, and press Test sound.</li>
+          <li>Share {audienceMode ? 'the browser window showing the audience view' : 'this browser window'} with Sound on, and press Test sound.</li>
           <li>Still silent: share your entire screen with sound, or use a virtual audio device such as BlackHole.</li>
         </ol>
       </details>
@@ -323,7 +330,7 @@
         <summary>Linux</summary>
         <ol>
           <li>The official Discord app sends sound only on Wayland (Discord 0.0.76 or newer), from apps playing through PulseAudio or PipeWire.</li>
-          <li>Share the browser window showing the audience view with Sound on, and press Test sound.</li>
+          <li>Share {audienceMode ? 'the browser window showing the audience view' : 'this browser window'} with Sound on, and press Test sound.</li>
           <li>On X11, or if it's still silent, use Vesktop and share the same window with "Stream audio" on.</li>
         </ol>
       </details>

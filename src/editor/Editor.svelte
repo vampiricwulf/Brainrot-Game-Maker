@@ -794,7 +794,12 @@
       },
       { label: '{ } Export JSON', hint: 'Text only, no media. Handy for hand-editing.', onclick: exportJson },
       { sep: true },
-      { label: '⚙ Settings', hint: 'Autosaves, how Save names files, how much undo to remember, motion on stream', onclick: () => (settings = true) },
+      // (Autosaves and Save's file names are desktop app settings: a browser has neither.)
+      {
+        label: '⚙ Settings',
+        hint: `${inTauri() ? 'Autosaves, how Save names files, how much undo to remember' : 'How much undo to remember'}, motion on stream, update checks, the phone buzzer server`,
+        onclick: () => (settings = true),
+      },
       { label: '⌨ Keyboard shortcuts', hint: "The editor's keys and mouse moves", keys: '?', onclick: () => (shortcuts = true) },
       { label: 'ℹ About', hint: 'Version, links, and where your data is saved', onclick: () => (about = true) },
     ]);

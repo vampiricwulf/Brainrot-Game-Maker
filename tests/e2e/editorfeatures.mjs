@@ -305,10 +305,20 @@ try {
 
   // ---------- Shortcuts filter ----------
   await page.getByRole('button', { name: /^More:/ }).click();
+  // (On the way: in a browser, ⚙ Settings has no autosaves, and its hint says so; it names the buzzer server.)
+  const settingsHint = await page.getByRole('menuitem', { name: '⚙ Settings', exact: true }).getAttribute('title');
+  assert(!settingsHint.includes('Autosaves') && settingsHint.includes('the phone buzzer server'), `⋯ › ⚙ Settings says what’s in it in a browser (${settingsHint})`);
   await page.getByRole('menuitem', { name: /Keyboard shortcuts/ }).click();
   await page.getByLabel('Filter shortcuts').fill('ctrl+f');
   const rows = await page.locator('[role="dialog"] tr').allInnerTexts();
   assert(rows.length >= 1 && rows.every((r) => /ctrl\+f/i.test(r)), `the shortcuts filter keeps the matching keys (${rows.length})`);
+  // Every Ctrl+A is listed, the RPG map's too; and the list keys name deals beside wheels and dice.
+  const sheet = page.getByRole('dialog', { name: 'Editor keyboard shortcuts' });
+  await page.getByLabel('Filter shortcuts').fill('ctrl+a');
+  await sheet.locator('section', { hasText: 'Map (RPG)' }).getByText('Select every screen on the map').waitFor();
+  await page.getByLabel('Filter shortcuts').fill('deal in focus');
+  await sheet.locator('tr', { hasText: 'deal in focus' }).first().waitFor();
+  assert((await sheet.locator('tr').count()) === 2, 'F2 and Delete say they rename and delete a deal in focus too');
   await page.getByLabel('Filter shortcuts').press('Escape');
   assert((await page.getByRole('dialog', { name: 'Editor keyboard shortcuts' }).count()) === 1, 'Esc in the filter clears it first');
   await page.keyboard.press('Escape');

@@ -19,7 +19,7 @@
   </button>
   <button class="mode" class:on={dual === true} aria-pressed={dual === null ? undefined : dual} onclick={onaudience}>
     <b>📺 Separate audience window</b>
-    <span class="muted">Capture the audience window in OBS. This window shows answers and controls, for your eyes only.</span>
+    <span class="muted">Share it in Discord or capture it in OBS. This window shows answers and controls, for your eyes only.</span>
   </button>
 </div>
 

@@ -251,7 +251,7 @@
 
 <div class="layout">
   <!-- Not a second nav and main: the editor's own are around it. -->
-  <section class="list" aria-label="Wheels and dice">
+  <section class="list" aria-label="Wheels, dice and deals">
     <div class="head muted">🎡 Wheels</div>
     <!-- Always there in play: listed so it's found. -->
     <button
@@ -316,7 +316,7 @@
       </p>
     {:else}
       <p class="muted">
-        Pick a wheel or dice on the left, add one, or start from a <b>📋 Ready-made wheel</b>. Standard dice (d4–d100, 2d6, any "NdS") and the built-in
+        Pick a wheel, dice or deal on the left, add one, or start from a <b>📋 Ready-made wheel…</b> or <b>📋 Ready-made deal…</b>. Standard dice (d4–d100, 2d6, any "NdS") and the built-in
         <b>🎯 Pick a player</b> and <b>🗂 Pick a category</b> wheels are always there during play, without setting anything up.
       </p>
     {/if}
