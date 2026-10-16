@@ -45,14 +45,14 @@
       />
       Let new players join from their phone (you add them)
     </label>
-    <label class="check" title={settings.buzzTeams ? 'A team’s colour is yours to pick (👥 Teams)' : 'From the colours no other player has'}>
+    <label class="check" title={settings.buzzTeams ? 'A team’s color is yours to pick (👥 Teams)' : 'From the colors no other player has'}>
       <input
         type="checkbox"
         checked={!settings.phoneColorsOff && !settings.buzzTeams}
         disabled={!!settings.buzzTeams}
-        onchange={(e) => onset('phoneColorsOff', e.currentTarget.checked ? undefined : true, 'Players pick their colour on their phone')}
+        onchange={(e) => onset('phoneColorsOff', e.currentTarget.checked ? undefined : true, 'Players pick their color on their phone')}
       />
-      Players can pick their colour on their phone
+      Players can pick their color on their phone
     </label>
     <label>
       <span>A phone that buzzes too early waits (seconds)</span>

@@ -5,7 +5,7 @@
 // Replace redoing edits, the History's names for these, pastes from Word and from another tab, nudging off the slide,
 // Tab saying which item it picked, Shift+F10's menu, the several-items panel's Back and Lock, Move to the slide's… beside X and Y, a
 // turn that settles on level, and the History's names for line-ups, restacks, duplicates and pastes. Also: the text Color
-// box on Pastel (and ↺ Theme colour), Ctrl+I in the Text field (and Ctrl+Z after it), Ctrl+Z on an image editor slider, a
+// box on Pastel (and ↺ Theme color), Ctrl+I in the Text field (and Ctrl+Z after it), Ctrl+Z on an image editor slider, a
 // new crop starting Free, a caption's font drawn once it loads, and Ctrl+V of items or a picture in the clue's Question
 // box (words with a picture stay words; the Answer box doesn't put a picture on the open Question slide). Ctrl+C with
 // words selected with the mouse copies them, not the selected item; items pasted into another game bring their file in
@@ -127,12 +127,12 @@ try {
   assert(pastelText !== '#ffffff' && (await drawnColor()) === rgb(pastelText), `the Color box shows the dark colour the text is drawn in (${pastelText})`);
   await textColor.fill('#ffffff');
   assert((await drawnColor()) === 'rgb(254, 254, 254)', `white picked in it makes the words white (${await drawnColor()})`);
-  // ↺ Theme colour beside it goes back to the theme's dark text (only Undo could, once a colour was picked).
-  const themeColour = insp.getByRole('button', { name: '↺ Theme colour' });
+  // ↺ Theme color beside it goes back to the theme's dark text (only Undo could, once a colour was picked).
+  const themeColour = insp.getByRole('button', { name: '↺ Theme color' });
   await themeColour.click();
   assert(
     (await drawnColor()) === rgb(pastelText) && (await textColor.inputValue()) === pastelText && (await themeColour.count()) === 0,
-    `↺ Theme colour draws the words in the theme's text colour again (${await drawnColor()})`,
+    `↺ Theme color draws the words in the theme's text colour again (${await drawnColor()})`,
   );
   // Ctrl+I in the Text field (where typing on the slide puts the cursor) makes it italic, as on the canvas.
   const textField = insp.locator('textarea');

@@ -152,7 +152,7 @@
         </div>
         <div class="row">
           <input placeholder="e.g. 3d37" bind:value={custom} onkeydown={(e) => e.key === 'Enter' && rollCustom()} />
-          <button class="small" onclick={rollCustom}>Roll</button>
+          <button onclick={rollCustom}>Roll</button>
         </div>
         {#if game.dice.length}
           <div class="muted small">Saved dice</div>

@@ -7,7 +7,8 @@
 // button from the round, a confirmation leaves one main button (its own), ✔ / ✘ hand the focus to the main button, and
 // on a narrow window the fixed bar stays on one line (🚪 Exit at the right). With six players in a single window (at
 // 1366×768, 1200×720, 1024×768 and 960×900, and a long Final name) the stage keeps one size from the board to a clue and
-// with a player picked (on a $1,000 clue too: a long name is cut short on ＋ Award and − Deduct, never the amount), up to
+// with a player picked (on a $1,000 clue too: a long name is cut short on ＋ Award and − Deduct, never the amount), and
+// through a 🤝 partner clue from PARTNER UP! (the wheel, 📤 Distribute) to ✔ Got it, its ✔ / ✘ in sight, up to
 // 1240px wide 🤫 Send a card… and 🎭 Deal… show as 🤫 and 🎭 (named in full), 🔊 Sound opens in the host panel, and
 // every Final wager box is in sight. A three-round game keeps the stage one size from the board to a clue with 🔇 Stop
 // sounds (the round intro's music), a card out, both or neither on the board's tools row, in both its board rounds (the
@@ -430,20 +431,28 @@ try {
   await oneLine('in a clue');
 
   // A crowded single window (six players, longer names): the stage keeps one size from the board to a clue and with a
-  // player picked (a $200 clue, then a $1,000 one), 🔊 Sound opens in the host panel (not over the stage), and every
-  // Final wager box is in sight. (A long Final name, so the board's tools row holds a wide ▶ beside 🤫 Send a card… and
-  // 🎭 Deal…: it still fits on one line, as in a clue.)
+  // player picked (a $200 clue, then a $1,000 one), and through a 🤝 partner clue from PARTNER UP! (the wheel, the
+  // question and its 📤 Distribute list) to ✔ Got it, with ✔ Got it / ✘ Missed and the main button in sight; 🔊 Sound
+  // opens in the host panel (not over the stage), and every Final wager box is in sight. (A long Final name, so the
+  // board's tools row holds a wide ▶ beside 🤫 Send a card… and 🎭 Deal…: it still fits on one line, as in a clue.)
   console.log('A crowded single window:');
   const crowdFile = resolve('test-results/hostlayout-crowd.json');
   const crowd = ['Annabelle', 'Bobby Tables', 'Cyrus', 'Deedee', 'Eleanor', 'Frankie'];
   const crowdColors = ['#e6194b', '#3cb44b', '#4363d8', '#f58231', '#911eb4', '#42d4f4'];
+  // (Its Memes $400 is a partner clue, with a card for each part.)
+  const partnerRules = { game: 'describe', giver: 'partner', got: { giver: 100, guesser: 50 }, missed: { giver: 0, guesser: -50 }, partnerSafe: true, points: 'game' };
+  const partnerCards = ['giver', 'guesser'].map((to, k) => ({ id: `pc${k}`, to, ...slide(`pcs${k}`, `Card ${k + 1}`) }));
+  const crowdBoard = {
+    ...board,
+    categories: board.categories.map((c, ci) => (ci ? c : { ...c, clues: c.clues.map((q, ri) => (ri === 1 ? { ...q, id: 'c_partner', type: 'partner', partner: partnerRules, timerSeconds: 45, cards: partnerCards } : q)) })),
+  };
   writeFileSync(
     crowdFile,
     JSON.stringify({
       ...game,
       id: 'g_layout_crowd',
       players: crowd.map((name, i) => ({ id: `p${i + 1}`, name, color: crowdColors[i], startScore: 500 })),
-      rounds: [board, { ...game.rounds[3], name: 'Final Jeopardy: Internet Legends' }],
+      rounds: [crowdBoard, { ...game.rounds[3], name: 'Final Jeopardy: Internet Legends' }],
     }),
   );
   for (const [w, h] of [
@@ -485,6 +494,43 @@ try {
       await p4.keyboard.press('Escape');
       await p4.locator('.stage-box .board').waitFor();
     }
+    // The partner clue: one stage size from PARTNER UP! to ✔ Got it (its rows scroll in the panel instead).
+    const partner = p4.locator('.panel [data-partner-panel]');
+    await p4.locator('.stage-box .tile[data-clue="c_partner"]').click();
+    await p4.locator('.stage-box [data-partner-up]').waitFor();
+    const partnerSizes = [await stageH()];
+    await p4.keyboard.press('1');
+    await partner.getByText('Annabelle picked it.').waitFor();
+    await p4.keyboard.press('w');
+    await p4.locator('.stage-box .wheel').waitFor();
+    partnerSizes.push(await stageH());
+    await partner.locator('button.chip[aria-pressed="true"]').waitFor({ timeout: 10000 });
+    partnerSizes.push(await stageH());
+    await p4.keyboard.press('Escape');
+    await p4.locator('.stage-box .wheel').waitFor({ state: 'detached' });
+    partnerSizes.push(await stageH());
+    await p4.keyboard.press('Enter');
+    await p4.locator('.stage-box [data-partner-badge]').waitFor();
+    await partner.locator('[data-card="2"]').waitFor();
+    partnerSizes.push(await stageH());
+    // (In sight: what's at the middle of each is that button, not clipped by the panel's scrolling part.)
+    const outOfSight = await p4.evaluate(() =>
+      [...document.querySelectorAll('.panel [data-partner-judge] button, .panel [data-next]')]
+        .filter((el) => {
+          const r = el.getBoundingClientRect();
+          return !el.contains(document.elementFromPoint(r.x + r.width / 2, r.y + r.height / 2));
+        })
+        .map((el) => el.textContent.trim()),
+    );
+    assert(outOfSight.length === 0, `${w}×${h}, a partner clue's 📤 Distribute: ✔ Got it, ✘ Missed and the main button are in sight${outOfSight.length ? ` (not: ${outOfSight.join(', ')})` : ''}`);
+    await partner.getByRole('button', { name: /✔ Got it/ }).click();
+    await partner.locator('[data-judged]').waitFor();
+    partnerSizes.push(await stageH());
+    assert(partnerSizes.every((x) => x === partnerSizes[0]), `${w}×${h}, a partner clue: the stage keeps one size from PARTNER UP! (the wheel spinning, landed and closed, the question) to ✔ Got it (${partnerSizes.join(' / ')})`);
+    await p4.keyboard.press('r');
+    await p4.locator('.stage-box [data-slide="answer"]').waitFor();
+    await p4.keyboard.press('Escape');
+    await p4.locator('.stage-box .board').waitFor();
     if (w === 1366) {
       await p4.locator('.panel').getByRole('button', { name: '🔊 Sound' }).click();
       const help = p4.getByRole('dialog', { name: 'Streaming the sound' });

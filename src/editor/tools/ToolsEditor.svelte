@@ -167,7 +167,7 @@
     focusItem(d.id);
   }
   function dealTemplateMenu(e: MouseEvent): void {
-    dropMenu(e, [{ heading: 'Ready-made deals (change anything after)' }, ...DEAL_TEMPLATES.map((t) => ({ label: `${t.icon} ${t.name} · ${t.hint}`, onclick: () => addDealTemplate(t) }))]);
+    dropMenu(e, [{ heading: 'Ready-made deals (change anything after)' }, ...DEAL_TEMPLATES.map((t) => ({ label: `${t.icon} ${t.name}`, hint: t.hint, onclick: () => addDealTemplate(t) }))]);
   }
 
   /** A built-in wheel picked in the list (shown so they're found; nothing to set up). */
@@ -186,7 +186,7 @@
   function templateMenu(e: MouseEvent): void {
     dropMenu(e, [
       { heading: 'Ready-made wheels (change anything after)' },
-      ...WHEEL_TEMPLATES.map((t) => ({ label: `${t.icon} ${t.name} · ${t.hint}`, onclick: () => addTemplate(t) })),
+      ...WHEEL_TEMPLATES.map((t) => ({ label: `${t.icon} ${t.name}`, hint: t.hint, onclick: () => addTemplate(t) })),
     ]);
   }
 </script>

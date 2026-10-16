@@ -1,6 +1,6 @@
-// The ▶ Play screen before the game (players, ⚖ Game rules, the sticky Start bar, Ctrl+Z / Ctrl+Y there, History's
-// Go there), the rules mid-game, a rematch keeping the players' pictures, and phone buzzers in a copy without a buzzer
-// server (an old game with Buzzer mode on, an exported player-only file).
+// The ▶ Play screen before the game (players, ⚖ Game rules, 📺 On stream's options at the rules' size, the sticky Start
+// bar, Ctrl+Z / Ctrl+Y there, History's Go there), the rules mid-game, a rematch keeping the players' pictures, and
+// phone buzzers in a copy without a buzzer server (an old game with Buzzer mode on, an exported player-only file).
 import { chromium } from 'playwright-core';
 import { existsSync, mkdirSync } from 'node:fs';
 import { resolve } from 'node:path';
@@ -97,6 +97,10 @@ try {
   const backBox = await back.boundingBox();
   assert(Math.abs(backBox.y + backBox.height / 2 - (startBox.y + startBox.height / 2)) < 4 && startBox.x + startBox.width > 1280 - 40, 'Start game ▶ stays at the right end of the bar, level with ◀ Back');
   assert(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), 'no sideways scrolling');
+  // 📺 On stream's options read at the size of the rules' beside them, not as fine print.
+  const textSize = (box) => box.evaluate((el) => getComputedStyle(el.closest('label')).fontSize);
+  const sizes = await Promise.all([rules.getByLabel('Allow negative scores'), page.getByLabel(/Show the category and value on clue screens/), page.getByLabel(/Reduce motion on stream/)].map(textSize));
+  assert(sizes.every((x) => x === sizes[0]), `📺 On stream's options are the size of the rules' (${sizes.join(' / ')})`);
 
   // ---------- Rules: whole-second countdown ----------
   const countdown = rules.getByLabel(/Default clue countdown/);

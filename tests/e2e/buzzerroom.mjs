@@ -452,12 +452,12 @@ try {
   assert((await kim.locator('#buzz').evaluate((b) => getComputedStyle(b).cursor)) === 'default', 'nothing to buzz yet: the buzzer has no hand cursor');
 
   // Clicks on 🎨 (Esc shuts it), a colour, the sound (off and on) and "Not you?" (cancelled): Space still buzzes.
-  const colours = kim.getByRole('group', { name: 'Pick your colour' });
-  await kim.getByRole('button', { name: '🎨 Change your colour' }).click();
+  const colours = kim.getByRole('group', { name: 'Pick your color' });
+  await kim.getByRole('button', { name: '🎨 Change your color' }).click();
   await colours.waitFor();
   await kim.keyboard.press('Escape');
   await colours.waitFor({ state: 'hidden' });
-  await kim.getByRole('button', { name: '🎨 Change your colour' }).click();
+  await kim.getByRole('button', { name: '🎨 Change your color' }).click();
   await colours.locator('.swatch:not([disabled]):not([aria-pressed="true"])').first().click();
   await colours.waitFor({ state: 'hidden' });
   await host.wait((m) => m.t === 'color' && m.seatId === 'k', 'Kim’s colour');
@@ -577,8 +577,8 @@ try {
   setState({ phase: 'lobby', clue: null, answering: null });
   await big(kim).getByText('Kim').waitFor();
   await kim.evaluate(() => document.activeElement?.blur());
-  await kim.getByRole('button', { name: '🎨 Change your colour' }).click();
-  await kim.getByRole('button', { name: '🎨 Change your colour' }).click();
+  await kim.getByRole('button', { name: '🎨 Change your color' }).click();
+  await kim.getByRole('button', { name: '🎨 Change your color' }).click();
   await colours.waitFor({ state: 'hidden' });
   setState({ status: { text: 'Final Jeopardy! · Rivers' }, wager: { id: 'kw', kind: 'final', open: true, seats: [{ id: 'k', max: 1000 }] } });
   await kim.waitForFunction(() => document.activeElement?.id === 'wager-in');

@@ -4001,7 +4001,7 @@
               />
             </label>
             <span class="hint">The theme's banner picture shows on both cards, when there is one.</span>
-            <label class="check small">
+            <label class="check">
               <input
                 type="checkbox"
                 checked={!!stream.clueCaption}
@@ -4010,7 +4010,7 @@
               Show the category and value on clue screens (“MEMES · $400”)
             </label>
             {#if game.rounds.some(isRpg)}
-              <label class="check small">
+              <label class="check">
                 <input
                   type="checkbox"
                   checked={!!stream.placeCaption}
@@ -4020,7 +4020,7 @@
               </label>
             {/if}
             {#if phonesOn}
-              <label class="check small">
+              <label class="check">
                 <input
                   type="checkbox"
                   checked={!stream.hideJoinCode}
@@ -4029,7 +4029,7 @@
                 Show the phone buzzers' join code in a corner during the game (and on the cover card), while the room is open
               </label>
             {/if}
-            <label class="check small" title="The same as ⚙ Settings › Reduce motion on stream (kept on this computer)">
+            <label class="check" title="The same as ⚙ Settings › Reduce motion on stream (kept on this computer)">
               <input type="checkbox" bind:checked={prefs.reduceMotion} onchange={savePrefs} />
               Reduce motion on stream (no pop-ins, fly-ins or confetti)
             </label>

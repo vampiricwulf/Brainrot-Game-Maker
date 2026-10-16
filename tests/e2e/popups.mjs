@@ -1,8 +1,9 @@
 // Pop-ups are always whole in the window and on top of everything (see src/lib/anchored.ts): the host panel's 📱 phones
 // list (a single window, under the stage and beside it, and with an audience window; at 1280×600 and 1920×1080, after
-// the window shrinks and with the panel scrolled), its 🎲 Dice menu and its Go to round list; the editor's ⋯ More menu;
-// a slide editor's Background ▾, ◼ Shape ▾, 🌐 Link and 🖼 Image pop-ups by the window's right edge; and the pre-game
-// screen's player picture picker. In a single window the phones list stays off the stage viewers see.
+// the window shrinks and with the panel scrolled), its 🎲 Dice menu (its Roll as tall as its field) and its Go to round
+// list; the editor's ⋯ More menu; a slide editor's Background ▾, ◼ Shape ▾, 🌐 Link and 🖼 Image pop-ups by the window's
+// right edge; and the pre-game screen's player picture picker. In a single window the phones list stays off the stage
+// viewers see.
 import { chromium } from 'playwright-core';
 import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
@@ -195,6 +196,9 @@ try {
         const stage = await page.locator('.stage-box').boundingBox();
         assert(dice.y >= stage.y + stage.height - 1, 'and it stays off the stage');
       }
+      // (Its Roll is as tall as the "e.g. 3d37" box beside it.)
+      const [field, roll] = await Promise.all([page.getByPlaceholder('e.g. 3d37'), page.getByRole('dialog', { name: 'Dice' }).getByRole('button', { name: 'Roll', exact: true })].map(async (l) => Math.round((await l.boundingBox()).height)));
+      assert(field === roll, `its Roll button is as tall as the field beside it (${roll} / ${field}px)`);
       await page.keyboard.press('Escape');
 
       // Go to round: a list the browser draws; its box is in the window and not covered.

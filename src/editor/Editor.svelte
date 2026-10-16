@@ -1022,7 +1022,15 @@
       <div class="navlabel muted">Game</div>
       <button class:active={tab === 'sounds'} aria-current={tab === 'sounds' ? 'page' : undefined} onclick={() => (tab = 'sounds')} title="The sounds played on stream (players and rules are set on the ▶ Play screen)">🔊 Sounds</button>
       <button class:active={tab === 'theme'} aria-current={tab === 'theme' ? 'page' : undefined} onclick={() => (tab = 'theme')}>🎨 Theme</button>
-      <button class:active={tab === 'tools'} aria-current={tab === 'tools' ? 'page' : undefined} onclick={() => (tab = 'tools')}>🎡 Wheels, Dice & Deals</button>
+      <button
+        class="wrap"
+        class:active={tab === 'tools'}
+        aria-current={tab === 'tools' ? 'page' : undefined}
+        onclick={() => (tab = 'tools')}
+        title="Wheels, custom dice and 🎭 deals (a secret part for each player)"
+      >
+        🎡 Wheels, Dice & Deals
+      </button>
       <!-- (Only RPG and board game rounds use stats and items: shown once there's one, or anything in it.) -->
       {#if showStats}
         <button class:active={tab === 'stats'} aria-current={tab === 'stats' ? 'page' : undefined} onclick={() => (tab = 'stats')} title="Player stats, items and shops (RPG and board game rounds)">📊 Stats & Items</button>
@@ -1282,6 +1290,10 @@
     text-align: left;
     overflow: hidden;
     text-overflow: ellipsis;
+  }
+  /* (A long name goes on two lines where it doesn't fit, rather than lose its last word to "…".) */
+  nav > button.wrap {
+    white-space: normal;
   }
   nav > button.active {
     background: var(--accent-fill);

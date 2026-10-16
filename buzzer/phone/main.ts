@@ -1158,7 +1158,7 @@ function renderFoot(v: PhoneView, sym: string): boolean {
   return hostGone;
 }
 
-/** 🎨 Change your colour (when the host allows it): the palette, with other players' colours greyed out. */
+/** 🎨 Change your color (when the host allows it): the palette, with other players' colours greyed out. */
 function renderColors(v: PhoneView): void {
   // (Not while the host is away: it would be dropped. Nor once the game is over.)
   const pick = v.hostHere !== false && !(v.phase === 'lobby' && v.final) ? v.colorPick : undefined;
