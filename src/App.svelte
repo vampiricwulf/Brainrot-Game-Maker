@@ -702,8 +702,12 @@
     let game = saved.game;
     if (withEdits) {
       game = clone(app.game);
-      // The files of 🤫 cards made in play (a quick card's picture: only the played copy has them) go with the cards out.
-      const keep = new Set((saved.session.cards ?? []).flatMap((c) => ('slide' in c.content ? slideMediaIds(c.content.slide) : [])));
+      // The files of 🤫 cards made in play (a quick card's picture: only the played copy has them) go with the cards out,
+      // and so do a 🎭 deal's (its cards were made from the game as it was then).
+      const keep = new Set([
+        ...(saved.session.cards ?? []).flatMap((c) => ('slide' in c.content ? slideMediaIds(c.content.slide) : [])),
+        ...(saved.session.deal?.hands ?? []).flatMap((h) => slideMediaIds(h.slide)),
+      ]);
       for (const m of saved.game.media) if (keep.has(m.id) && !game.media.some((x) => x.id === m.id)) game.media.push(clone(m));
       rebaseSession(saved.session, saved.game, game);
       forgetGameParts(saved.session);

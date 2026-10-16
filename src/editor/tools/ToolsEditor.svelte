@@ -1,6 +1,7 @@
 <!--
-  Editor tab: saved wheels and dice (spec §5.6). Their order is the order everywhere they're picked (Move by, wheel
-  and dice tiles, the host's menus): drag them in the list, or right-click for more.
+  Editor tab: saved wheels and dice (spec §5.6), and 🎭 deals (partner-clues spec §11). Their order is the order
+  everywhere they're picked (Move by, wheel and dice tiles, the host's menus): drag them in the list, or right-click for
+  more.
 -->
 <script lang="ts">
   import PageHeader from '../PageHeader.svelte';
@@ -15,10 +16,12 @@
   import { dropMenu, showMenu } from '../../lib/menustate.svelte';
   import { uniqueName } from '../../lib/roundcopy';
   import { WHEEL_TEMPLATES, wheelFromTemplate, type WheelTemplate } from '../../lib/wheeltemplates';
-  import { newId, type DicePreset, type WheelPreset } from '../../lib/model';
+  import { newId, type DealPreset, type DicePreset, type WheelPreset } from '../../lib/model';
+  import { DEAL_TEMPLATES, dealFromTemplate, newDeal, type DealTemplate } from '../../lib/deals';
   import { newDice, newWheel } from '../../lib/tools';
   import WheelEditor from './WheelEditor.svelte';
   import DiceEditor from './DiceEditor.svelte';
+  import DealEditor from './DealEditor.svelte';
 
   const game = $derived(app.game);
   let sel = $state<string | null>(null);
@@ -26,14 +29,15 @@
   const handled = { seq: 0 };
   $effect(() => {
     const place = take(handled);
-    if (place?.tab === 'tools' && (place.wheel || place.dice)) sel = place.wheel ?? place.dice ?? null;
+    if (place?.tab === 'tools' && (place.wheel || place.dice || place.deal)) sel = place.wheel ?? place.dice ?? place.deal ?? null;
   });
   const wheel = $derived(game.wheels.find((w) => w.id === sel));
   const dice = $derived(game.dice.find((d) => d.id === sel));
+  const deal = $derived(game.deals?.find((d) => d.id === sel));
 
-  type Tool = WheelPreset | DicePreset;
-  type Kind = 'wheel' | 'dice';
-  const listOf = (kind: Kind): Tool[] => (kind === 'wheel' ? game.wheels : game.dice);
+  type Tool = WheelPreset | DicePreset | DealPreset;
+  type Kind = 'wheel' | 'dice' | 'deal';
+  const listOf = (kind: Kind): Tool[] => (kind === 'wheel' ? game.wheels : kind === 'dice' ? game.dice : (game.deals ?? []));
 
   /** Put the focus back on a wheel's or dice's button in the list (after it moved, or was renamed). */
   function focusItem(id: string): void {
@@ -47,6 +51,11 @@
     copy.id = newId();
     copy.name = copyName(item.name, list.map((x) => x.name));
     if ('segments' in copy) copy.segments = copy.segments.map(copySegment);
+    else if ('parts' in copy)
+      for (const p of copy.parts) {
+        p.id = newId();
+        for (const e of p.card.elements) e.id = newId();
+      }
     else
       for (const d of copy.dice) {
         d.id = newId();
@@ -62,7 +71,11 @@
       `Deleted ${kind} “${item.name}”`,
       () => {
         if (kind === 'wheel') game.wheels = game.wheels.filter((w) => w.id !== item.id);
-        else game.dice = game.dice.filter((d) => d.id !== item.id);
+        else if (kind === 'dice') game.dice = game.dice.filter((d) => d.id !== item.id);
+        else if (game.deals) {
+          game.deals = game.deals.filter((d) => d.id !== item.id);
+          if (!game.deals.length) delete game.deals;
+        }
       },
       { notify: true },
     );
@@ -116,13 +129,45 @@
     e.preventDefault();
   }
 
-  const drags: Record<Kind, DragOrder> = { wheel: new DragOrder(), dice: new DragOrder() };
+  const drags: Record<Kind, DragOrder> = { wheel: new DragOrder(), dice: new DragOrder(), deal: new DragOrder() };
+
+  /** A deal into the game (its list made on the first one). */
+  function pushDeal(d: DealPreset): void {
+    if (!game.deals) game.deals = [];
+    game.deals.push(d);
+  }
 
   function add(kind: Kind): void {
+    if (kind === 'deal') {
+      const d = newDeal(freeName('Deal', game.deals ?? []));
+      step(`Added deal “${d.name}”`, () => pushDeal(d));
+      sel = d.id;
+      return;
+    }
     const item = kind === 'wheel' ? newWheel(freeName('Wheel', game.wheels)) : newDice(freeName('Dice', game.dice));
     if (kind === 'wheel') game.wheels.push(item as WheelPreset);
     else game.dice.push(item as DicePreset);
     sel = item.id;
+  }
+
+  /**
+   * A ready-made deal, added to the game. One that draws from a wheel gets the game's wheel of that name, or the
+   * ready-made wheel added with it (Locations for 🕵 Odd one out, Secret prompts for 🧠 Everyone's own prompt).
+   */
+  function addDealTemplate(t: DealTemplate): void {
+    const wt = WHEEL_TEMPLATES.find((x) => x.key === t.wheel);
+    const have = wt ? game.wheels.find((w) => w.name.trim().toLowerCase() === wt.name.toLowerCase()) : undefined;
+    const wheelNew = wt && !have ? wheelFromTemplate(wt, game.settings.currencySymbol, uniqueName(game.wheels.map((x) => x.name), wt.name, false)) : undefined;
+    const d = dealFromTemplate(t, uniqueName((game.deals ?? []).map((x) => x.name), t.name, false), have?.id ?? wheelNew?.id);
+    step(`Added deal “${d.name}”${wheelNew ? ` and wheel “${wheelNew.name}”` : ''}`, () => {
+      if (wheelNew) game.wheels.push(wheelNew);
+      pushDeal(d);
+    });
+    sel = d.id;
+    focusItem(d.id);
+  }
+  function dealTemplateMenu(e: MouseEvent): void {
+    dropMenu(e, [{ heading: 'Ready-made deals (change anything after)' }, ...DEAL_TEMPLATES.map((t) => ({ label: `${t.icon} ${t.name} · ${t.hint}`, onclick: () => addDealTemplate(t) }))]);
   }
 
   /** A built-in wheel picked in the list (shown so they're found; nothing to set up). */
@@ -148,7 +193,7 @@
 
 {#snippet group(kind: Kind, list: Tool[])}
   {@const rows = drags[kind]}
-  <div class="group" role="list" aria-label={kind === 'wheel' ? 'Wheels' : 'Dice'}>
+  <div class="group" role="list" aria-label={kind === 'wheel' ? 'Wheels' : kind === 'dice' ? 'Dice' : 'Deals'}>
     {#each list as item, i (item.id)}
       {@const line = rows.lineAt(item.id)}
       <div
@@ -167,7 +212,7 @@
           <input
             class="rename"
             value={item.name}
-            aria-label="{kind === 'wheel' ? 'Wheel' : 'Dice'} name"
+            aria-label="{kind === 'wheel' ? 'Wheel' : kind === 'dice' ? 'Dice' : 'Deal'} name"
             use:focusAll
             onkeydown={(e) => {
               if (e.key === 'Enter') rename(kind, item, e.currentTarget.value);
@@ -202,7 +247,7 @@
 {/snippet}
 
 <div class="page">
-<PageHeader title="Wheels & Dice" sub="Saved with the game: the host spins or rolls any of them during play, and a tile can be a wheel or dice tile." />
+<PageHeader title="Wheels & Dice" sub="Saved with the game: the host spins or rolls any of them during play, and a tile can be a wheel or dice tile. 🎭 Deals hand everyone a secret part." />
 
 <div class="layout">
   <!-- Not a second nav and main: the editor's own are around it. -->
@@ -227,6 +272,10 @@
     <div class="head muted">🎲 Dice</div>
     {@render group('dice', game.dice)}
     <button class="ghost" onclick={() => add('dice')}>＋ Add dice</button>
+    <div class="head muted">🎭 Deals</div>
+    {@render group('deal', game.deals ?? [])}
+    <button class="ghost" onclick={() => add('deal')}>＋ Add deal</button>
+    <button class="ghost" onclick={dealTemplateMenu} aria-haspopup="menu" title="Odd one out, Secret roles, Team captain, Everyone’s own prompt">📋 Ready-made deal…</button>
   </section>
 
   <section aria-label="Wheel or dice">
@@ -244,6 +293,13 @@
         <button class="ghost danger" onclick={() => remove('dice', dice)} title="Delete these dice (Undo brings them back)">🗑 Delete dice</button>
       </div>
       {#key dice.id}<DiceEditor preset={dice} />{/key}
+    {:else if deal}
+      <div class="row top">
+        <span class="spacer"></span>
+        <button class="ghost" onclick={() => dup('deal', deal)} title="A copy of this deal, right after it (Ctrl+D)">⧉ Duplicate</button>
+        <button class="ghost danger" onclick={() => remove('deal', deal)} title="Delete this deal (Undo brings it back)">🗑 Delete deal</button>
+      </div>
+      {#key deal.id}<DealEditor {deal} />{/key}
     {:else if builtin === 'categories'}
       <h3>🗂 Pick a category</h3>
       <p>

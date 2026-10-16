@@ -90,7 +90,7 @@ export function placeKey(p: Place): string | null {
     case 'title':
       return 'title';
     case 'tools':
-      return p.wheel ? `wheel:${p.wheel}` : p.dice ? `dice:${p.dice}` : null;
+      return p.wheel ? `wheel:${p.wheel}` : p.dice ? `dice:${p.dice}` : p.deal ? `deal:${p.deal}` : null;
     case 'stats':
       return p.stat ? `stat:${p.stat}` : p.item ? `item:${p.item}` : p.shop ? `shop:${p.shop}` : null;
     case 'media':
@@ -166,7 +166,7 @@ const inSlide = (s: Slide | undefined, id: string | undefined) => !!has(s?.eleme
 export function resolve(game: Game, place: Place): Place | null {
   switch (place.tab) {
     case 'tools':
-      return (place.wheel ? has(game.wheels, place.wheel) : !place.dice || has(game.dice, place.dice)) ? place : { tab: 'tools' };
+      return (place.wheel ? has(game.wheels, place.wheel) : place.dice ? has(game.dice, place.dice) : !place.deal || has(game.deals, place.deal)) ? place : { tab: 'tools' };
     case 'stats': {
       const there = place.stat ? has(game.statFields, place.stat) : place.item ? has(game.items, place.item) : !place.shop || has(game.shops, place.shop);
       return there ? place : { tab: 'stats' };

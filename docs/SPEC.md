@@ -76,6 +76,7 @@ Game {
   final?: FinalRound,               // optional
   wheels: WheelPreset[],
   dicePresets: DicePreset[],
+  deals?: DealPreset[],             // 🎭 secret parts for everyone (PARTNER-CLUES-SPEC.md §11)
   media: MediaRef[],                // index of files in media/ (MediaRef { id, name, mime, size, kind,
                                     //   url? — plays live from this link, no file; source? — the link it was added from;
                                     //   expiresAt? — when that link stops working })
@@ -433,6 +434,12 @@ The mode isn't saved with the game: it's dual while the audience window is open.
   card made in the editor, a quick one, or the slide on screen), lasting until the round ends or until taken back;
   `🤫 N cards out` lists them by number ("Card 2 → Ann"), never what's on them, with ↻ Send again and ✖ Take back. At
   most 8 are out at once. A 🪟 card window shows one player's cards, for a player with no phone.
+- **🎭 Deal…** (PARTNER-CLUES-SPEC.md §11): secret parts for everyone (a spy, a wolf, a captain, a prompt each), from a
+  deal saved with the game (the 🎡 tab) or a ready-made one. Each player gets one part at random (or the host's pick,
+  with the audience window open), and a part's card can show a slice of a saved wheel (each their own, or one shared
+  by everyone but the odd one out). Nothing goes until 📤 Send, which sends each player's card on its own; ↻ Send again
+  and ✖ Take back work on the whole deal. Only the two-window host column says who got which. **🎭 Who was who** puts
+  the names and parts on stream when the host presses it, as an undoable step.
 
 ### 6.7 Media playback controls
 - Play/pause, seek bar, current time/duration, volume, mute, restart, loop toggle, and full-screen element.

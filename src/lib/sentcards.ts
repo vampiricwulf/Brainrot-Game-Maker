@@ -100,7 +100,7 @@ export function cleanTo(session: Pick<Session, 'players'>, to: CardTo[]): CardTo
 }
 
 /** The round being played now (by id): none on the end screen or the tiebreaker, which are past the rounds. */
-function roundNow(game: Pick<Game, 'rounds'>, session: Pick<Session, 'currentRound' | 'phase'>): Id | undefined {
+export function roundNow(game: Pick<Game, 'rounds'>, session: Pick<Session, 'currentRound' | 'phase'>): Id | undefined {
   return session.phase === 'end' || session.phase === 'tiebreaker' ? undefined : game.rounds[session.currentRound]?.id;
 }
 
@@ -119,9 +119,17 @@ function stillOut(game: Pick<Game, 'rounds'>, session: Pick<Session, 'currentRou
   return true;
 }
 
-/** The cards out now, in the order sent (the list of cards out, and what the buzzer room gets). */
+/** The cards out now, in the order sent (what the buzzer room gets, a 🎭 deal's cards included). */
 export function cardsOut(game: Pick<Game, 'rounds'>, session: Pick<Session, 'cards' | 'currentRound' | 'phase' | 'currentClue'>): SentCard[] {
   return (session.cards ?? []).filter((c) => stillOut(game, session, c));
+}
+
+/**
+ * The list of cards out: those sent with 🤫 Send a card… or from a tile's panel. A 🎭 deal's cards are listed by the
+ * deal (its row only counts them: one per player would say who got which by what's on each).
+ */
+export function listedCards(game: Pick<Game, 'rounds'>, session: Pick<Session, 'cards' | 'currentRound' | 'phase' | 'currentClue'>): SentCard[] {
+  return cardsOut(game, session).filter((c) => !c.deal);
 }
 
 /**
@@ -289,7 +297,9 @@ export function repairSentCards(session: Session): void {
       typeof x.id === 'string' &&
       Number.isFinite(x.at) &&
       typeof x.label === 'string' &&
-      /^Card \d+$/.test(x.label) &&
+      // (A 🎭 deal's cards are labelled by the deal.)
+      (x.deal === undefined ? /^Card \d+$/.test(x.label) : typeof x.deal === 'string') &&
+      (x.role === undefined || typeof x.role === 'string') &&
       typeof x.hash === 'string' &&
       until.includes(x.until) &&
       (x.until !== 'round' || typeof x.round === 'string') &&

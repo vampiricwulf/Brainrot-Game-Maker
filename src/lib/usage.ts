@@ -50,6 +50,8 @@ export function allSlides(game: Game, { empty = false } = {}): SlideRef[] {
   });
   for (const { name, outcome: o } of allOutcomes(game)) for (const s of actionSlides(o.actions)) out.push({ slide: s, where: `${name}: ${o.label}` });
   for (const it of game.items ?? []) for (const s of actionSlides(it.onUse)) out.push({ slide: s, where: `Item: ${it.name}` });
+  // 🎭 Deals: each part's card. (Without them, 🖼 Media's Remove unused would delete the cards' pictures.)
+  for (const d of game.deals ?? []) d.parts.forEach((p, i) => out.push({ slide: p.card, where: `Deal: ${d.name} (${p.name.trim() || `part ${i + 1}`})` }));
   if (game.tiebreaker) {
     const qs = questionSlides(game.tiebreaker);
     qs.forEach((slide, i) => out.push({ slide, where: qs.length > 1 ? `Tiebreaker (question ${i + 1})` : 'Tiebreaker (question)' }));

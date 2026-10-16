@@ -86,7 +86,7 @@
   import { shopBuy } from './host/shopops';
   import { SLIDE_H, SLIDE_W } from '../lib/model';
   import { clone } from '../lib/ops';
-  import type { ActionEvent, Dir8, Game, GameSettings, Player, ScoreEvent } from '../lib/model';
+  import type { ActionEvent, Dir8, Game, GameSettings, Player, ScoreEvent, SentCard } from '../lib/model';
   import type { Pop } from '../lib/live';
   import {
     audience,
@@ -1957,6 +1957,21 @@
       forgetCardFiles(files);
     }
     announce(`${c.label} taken back`);
+  }
+
+  /**
+   * A 🎭 deal's cards were taken back (✖ Take back, a new deal, or the deal put away): they go from the phones now (the
+   * room's next state hasn't them), and the room deletes their files unless another card still out uses them.
+   */
+  function dealGone(gone: SentCard[]): void {
+    const files = gone.flatMap((c) => {
+      const slide = sentSlide(game, c);
+      return slide ? phoneCard(game, slide, phoneCan(session)).items.flatMap((i) => ('file' in i.goes ? [i.goes.file] : [])) : [];
+    });
+    if (phonesOn && remote.status === 'online') {
+      sendHostState(roomState(), true);
+      forgetCardFiles([...new Set(files)]);
+    }
   }
 
   /** The open partner clue's marks since it opened, and whether both of the two have one (it's judged). */
@@ -4163,7 +4178,7 @@
           {/if}
         {/snippet}
         {#snippet tools()}
-          <ToolLauncher {game} {session} {dual} onrolloff={rolloff} onstopsounds={introNonce && app.live.sound ? stopSounds : undefined} oncardtakeback={cardTakeBack} />
+          <ToolLauncher {game} {session} {dual} onrolloff={rolloff} onstopsounds={introNonce && app.live.sound ? stopSounds : undefined} oncardtakeback={cardTakeBack} ondealgone={dealGone} />
         {/snippet}
       </HostPanel>
     {/if}

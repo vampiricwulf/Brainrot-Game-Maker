@@ -14,6 +14,8 @@
   import { boardNow, busyZones } from './boardgame/bgops';
   import { app } from '../lib/app.svelte';
   import { tileToolUp } from '../lib/live';
+  import { dealOut } from '../lib/deals';
+  import { toKey } from '../lib/partner';
 
   let { game, session }: { game: Game; session: Session } = $props();
   const info = $derived(currentClueInfo(session, game));
@@ -73,6 +75,21 @@
     if (sentState(game, c) === 'edited') return `${sentToText(session, c.to)} · changed in the editor since it was sent (off the phones)`;
     return `${sentToText(session, c.to)} · sent as ${c.label}${(session.remote?.cardsSeen?.[sentCardId(c)] ?? []).length ? ' · ✓ seen' : ''}`;
   }
+  /**
+   * 🎭 The deal on the table: who got which part (and the slice they drew). Only here, in the host's own column with the
+   * audience window open: the panel, which is on stream in one window, only counts the parts.
+   */
+  const deal = $derived(session.deal ?? null);
+  const dealCards = $derived(deal ? dealOut(game, session) : []);
+  function dealWhere(): string {
+    if (!deal) return '';
+    if (deal.stage === 'dealt') return 'dealt, not sent yet';
+    if (!dealCards.length) return 'its cards are back';
+    return phones ? 'on their phones' : 'dealt: you copy each card';
+  }
+  /** That player's phone showed their card. */
+  const handSeen = (to: { seat: string; member?: { id: string } }) =>
+    dealCards.some((c) => c.to.some((t) => t.seat === to.seat && t.member?.id === to.member?.id) && (session.remote?.cardsSeen?.[sentCardId(c)] ?? []).includes(to.member ? `${to.seat}/${to.member.id}` : to.seat));
   const ask = $derived.by(() => {
     const o = app.live.overlay;
     return o?.kind === 'popup' && o.answer ? { q: o.slide, a: o.answer, revealed: !!o.revealed, value: o.value } : null;
@@ -104,6 +121,14 @@
     <div class="q">{slideText(ask.q) || '—'}</div>
     <div class="label">Answer {ask.revealed ? '(on screen)' : '(hidden from viewers)'}</div>
     <div class="a">{slideText(ask.a) || '—'}</div>
+  {/if}
+  {#if deal}
+    <div class="group" data-deal-info>
+      <div class="label">🎭 {deal.name} · {dealWhere()}{deal.shown ? ' · Who was who on screen' : ''}</div>
+      {#each deal.hands as h (toKey(h.to))}
+        <div class="small"><b>{h.to.member ? `${h.to.member.name} (${ptName(h.to.seat)})` : ptName(h.to.seat)}</b> → {h.part}{h.slice ? ` · ${h.slice}` : ''}{phones && handSeen(h.to) ? ' · ✓ seen' : ''}</div>
+      {/each}
+    </div>
   {/if}
   {#if session.phase === 'clue' && info}
     <div class="meta">

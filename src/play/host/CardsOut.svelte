@@ -12,14 +12,15 @@
   import { copyWordsText } from '../../lib/partner';
   import { cardLinks, cardWords } from '../../lib/phonecard';
   import { buzzerOn, remote, roomHasCards, roomHasFiles } from '../../lib/remote.svelte';
-  import { cardsOut, sendCardAgain, sentSlide, sentToText } from '../../lib/sentcards';
+  import { listedCards, sendCardAgain, sentSlide, sentToText } from '../../lib/sentcards';
   import { copyText } from '../standings';
   import { canCopyPicture, copyCardPicture, hasPicture } from './cardcopy';
   import { sentLine } from './cardrow';
 
   let { game, session, dual = false, ontakeback }: { game: Game; session: Session; dual?: boolean; ontakeback: (id: Id) => void } = $props();
 
-  const list = $derived(cardsOut(game, session));
+  // (A 🎭 deal's cards are listed under 🎭 Deal…, counted, never one by one.)
+  const list = $derived(listedCards(game, session));
   const teams = $derived(buzzerOn(game.settings) && teamsOn(game.settings));
   const room = $derived(buzzerOn(game.settings) && !!remote.code && remote.status !== 'off' && remote.status !== 'error');
   const cardsOn = $derived(room && roomHasCards());

@@ -19,7 +19,7 @@ export type Place =
   | { tab: 'title' }
   | { tab: 'sounds' }
   | { tab: 'theme' }
-  | { tab: 'tools'; wheel?: string; dice?: string }
+  | { tab: 'tools'; wheel?: string; dice?: string; deal?: string }
   | { tab: 'stats'; stat?: string; item?: string; shop?: string }
   | { tab: 'media'; media?: string }
   /** `slide`: a question slide after the first (its id). */
@@ -335,6 +335,16 @@ export function placeAt(game: Game, path: readonly Seg[]): At {
       if (!slice) break;
       reached(4, 'slice', slice.label, undefined, false);
       if (path[4] === 'actions') actions(slice.actions, 5, () => ({ tab: 'tools', wheel: tool.id }));
+      break;
+    }
+    case 'deals': {
+      at.crumbs.push('Wheels & Dice');
+      at.icon = '🎭';
+      go({ tab: 'tools' });
+      const deal = byId<NonNullable<Game['deals']>[number]>(game.deals, path[1]);
+      if (!deal) break;
+      reached(2, 'deal', deal.name);
+      go({ tab: 'tools', deal: deal.id });
       break;
     }
     case 'statFields':

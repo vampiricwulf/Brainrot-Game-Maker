@@ -536,6 +536,43 @@ export interface WheelPreset {
   removeAfterLanding: boolean;
 }
 
+// ---------- 🎭 Deals (partner-clues spec §11, §12.2) ----------
+
+/** A part's name at most (characters): it's the phone's role line, "You're the Spy". */
+export const DEAL_PART_MAX = 24;
+/** Parts in one deal at most. */
+export const DEAL_PARTS_MAX = 8;
+
+/** One part in a 🎭 deal: what it's called, how many get it, and its 🤫 card. */
+export interface DealPart {
+  id: Id;
+  /** "Spy", "Villager": the phone's role line ("You're the Spy") and the reveal on stream. At most DEAL_PART_MAX. */
+  name: string;
+  /** How many get it: a number, or 'rest' (everyone not given another part). */
+  count: number | 'rest';
+  /** What its card shows (only the players who get this part see it). */
+  card: Slide;
+  /**
+   * Its card shows a slice of the deal's wheel too: 'own' (each player with this part their own slice), 'shared' (the
+   * one slice drawn for the whole deal, the same for every part that shares it: the place everyone but the spy knows).
+   */
+  draw?: 'own' | 'shared';
+}
+
+/**
+ * 🎭 A deal saved with the game: parts with a card each, dealt at random (or as the host picks) to the players when the
+ * host presses 🎭 Deal, and sent to their phones only when the host confirms it.
+ */
+export interface DealPreset {
+  id: Id;
+  name: string;
+  parts: DealPart[];
+  /** The saved wheel (game.wheels) its cards draw slices from. */
+  wheel?: Id;
+  /** Teams: dealt within each team, to the people on it (a captain for each team), instead of to the teams. */
+  perTeam?: boolean;
+}
+
 export interface Die {
   id: Id;
   sides: number;
@@ -657,6 +694,8 @@ export interface Game {
   soundVolume?: Partial<Record<keyof GameAudio, number>>;
   wheels: WheelPreset[];
   dice: DicePreset[];
+  /** 🎭 Deals: secret parts for everyone, dealt during play (partner-clues spec §11, §12.2). */
+  deals?: DealPreset[];
   theme: Theme;
   /** Host-defined player stats (HP, Gold, Vibes…), used by RPG rounds and shown on the stats strip. */
   statFields?: StatField[];
@@ -823,6 +862,44 @@ export interface SentCard {
   until: 'round' | 'tile' | 'host';
   round?: Id;
   tile?: Id;
+  /** A 🎭 deal's card for one player (the deal's id): the deal's own row lists it, never the list of cards out. */
+  deal?: Id;
+  /** The phone's role line ("You're the Spy"): a deal's part. */
+  role?: string;
+}
+
+/** One player's part in a 🎭 deal (a seat, or one person on a team). */
+export interface DealHand {
+  to: CardTo;
+  /** The part's name: the phone's role line and the reveal. */
+  part: string;
+  /** The wheel's slice it drew (its label: the reveal says it too), if its part draws one. */
+  slice?: string;
+  /** Its card as it goes: the part's card with the slice on it. */
+  slide: Slide;
+  /** The phone says the part ("You're the Spy"): not when everyone dealt in got the same one. */
+  role?: boolean;
+}
+
+/**
+ * 🎭 The deal being played (one at a time, partner-clues spec §11): who got which part. Never sent to viewers (only
+ * names and parts once the host shows Who was who), and in one window never shown: the panel only counts the parts.
+ */
+export interface DealState {
+  id: Id;
+  /** The deal's name ("Odd one out"). */
+  name: string;
+  /** When it was dealt. */
+  at: number;
+  /** Its parts' names in the deal's order: the counts follow it ("Spy ×1, Villager ×4"), never the players' order. */
+  parts: string[];
+  hands: DealHand[];
+  /** 'dealt': shuffled, nothing sent (the host checks it, then 📤 Send); 'sent': its cards went (SentCards with `deal`). */
+  stage: 'dealt' | 'sent';
+  /** How long its cards last once sent. */
+  until?: 'round' | 'host';
+  /** Who was who is on stream (a step: Ctrl+Z takes it off again). Only the host's press sets it. */
+  shown?: boolean;
 }
 
 /**
@@ -907,6 +984,8 @@ export interface Session {
   cards?: SentCard[];
   /** The number in the last card's label ("Card 3") while any is out: the next is one more. Gone with the last card. */
   lastCard?: number;
+  /** 🎭 The deal being played: who got which part (never sent to viewers but Who was who, once the host shows it). */
+  deal?: DealState | null;
   finalStep?: FinalStep;
   /** The Final round being played (or last played). */
   final?: FinalState;
@@ -1828,7 +1907,36 @@ function repairGame(g: Game): void {
   }
   for (const w of g.wheels) if (!Array.isArray(w.segments)) w.segments = [];
   for (const d of g.dice) if (!Array.isArray(d.dice)) d.dice = [];
+  repairDeals(g);
   linkMoverDice(g);
+}
+
+/**
+ * 🎭 Deals: each with an id, a name and parts (each with an id, a name, a count and a card). A count that isn't a whole
+ * number becomes one, and a draw that isn't known goes, so a damaged file never deals a card it didn't mean to.
+ */
+function repairDeals(g: Game): void {
+  if (g.deals === undefined) return;
+  const deals = objects<DealPreset>(g.deals);
+  if (!deals.length) return void delete g.deals;
+  if (deals !== g.deals) g.deals = deals;
+  for (const d of deals) {
+    fixId(d);
+    if (typeof d.name !== 'string') d.name = 'Deal';
+    const parts = objects<DealPart>(d.parts);
+    if (parts !== d.parts) d.parts = parts;
+    for (const p of parts) {
+      fixId(p);
+      if (typeof p.name !== 'string') p.name = 'Part';
+      else if (p.name.length > DEAL_PART_MAX) p.name = p.name.slice(0, DEAL_PART_MAX);
+      if (p.count !== 'rest' && !(Number.isSafeInteger(p.count) && p.count >= 0 && p.count <= MAX_PLAYERS))
+        p.count = typeof p.count === 'number' && Number.isFinite(p.count) ? Math.max(0, Math.min(MAX_PLAYERS, Math.round(p.count))) : 1;
+      p.card = repairSlide(p.card);
+      if (p.draw !== undefined && p.draw !== 'own' && p.draw !== 'shared') delete p.draw;
+    }
+    if (d.wheel !== undefined && typeof d.wheel !== 'string') delete d.wheel;
+    if (d.perTeam !== undefined && typeof d.perTeam !== 'boolean') delete d.perTeam;
+  }
 }
 
 /**

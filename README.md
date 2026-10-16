@@ -204,6 +204,13 @@ only offers the card in the panel, and it goes when you press 📤 Send there (S
 phone, **🪟 Card window** (in 🤫 Send a card…) opens a window with only that player's cards, pictures and videos included,
 to share with them alone (a Discord DM call) or show them on a second screen. With no phones getting cards, 🤫 Send a
 card… and an action's offer put a card there with **🪟 Show**. Viewers never get it: share only the game window.
+**🎭 Deal…** next to it hands everyone a secret part, each on their own phone: 🕵 Odd one out (one spy, everyone else
+gets the same location from a wheel), 🐺 Secret roles (a wolf, a seer, villagers), 🧢 Team captain (one on each team)
+or 🧠 Everyone's own prompt (a slice of a wheel each), or a deal of your own made in the editor's 🎡 tab (parts with a
+card each and how many get it). 🎭 Deal shuffles the parts (with the audience window open you can choose who gets one,
+and the column beside the stage shows who got which); nothing goes until you press 📤 Send, which sends each player's
+card on its own. In one window the panel only counts the parts ("Spy ×1, Villager ×4"). ↻ Send again and ✖ Take back
+work on the whole deal, and **🎭 Who was who** puts everyone's part on screen when you choose (Ctrl+Z takes it off).
 A player on a computer opens the same link: `Space` (or `Enter`) buzzes, `1`–`9` pick their seat or team, `Esc` goes back, and the page says when another window (the stream, say) has the keyboard. The room stays open
 through the pre-game screen, a reload of it and **◀ Back to editor**; it closes
 with Exit, at the end of the game or with **✕ Close the room**. The join code shows small in a corner of the stream

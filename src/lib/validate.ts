@@ -34,6 +34,7 @@ import type { Place } from './historylabel';
 import { categoryTooLong } from './boardfit';
 import { statsProblems } from './toolset';
 import { actionProblem } from './refs';
+import { dealSetupProblems } from './deals';
 
 export interface Problem {
   text: string;
@@ -327,5 +328,8 @@ export function toolButtonProblems(game: Game): Problem[] {
     const p = why([...d.dice.flatMap((x) => (x.customFaces ?? []).map((f) => f.actions)), ...(d.totalOutcomes ?? []).map((t) => t.outcome.actions)]);
     if (p) out.push({ text: `Dice “${d.name}”: a button points nowhere (${p})`, tab: 'tools', level: 'warn', place: { tab: 'tools', dice: d.id } });
   }
+  // 🎭 Deals that can't be dealt as they are.
+  for (const dl of game.deals ?? [])
+    for (const p of dealSetupProblems(game, dl)) out.push({ text: `Deal “${dl.name}”: ${p}`, tab: 'tools', level: 'warn', place: { tab: 'tools', deal: dl.id } });
   return out;
 }

@@ -1,7 +1,7 @@
 // Buzzer mode's state during a clue: whether the buzzers are open, who is answering, who already missed it. The host
 // decides all of it (keys, the host panel, a phone's buzz that the buzzer room let through); it lives in Live, so the
 // audience window shows "🔔 Ann is answering", and the phones get it through hostState().
-import { CARD_HINT_MAX, CARDS_BYTES, CARDS_MAX, clip, WAGER_MAX, type BuzzPhase, type HostCard, type HostState, type WagerAsk, type AnswerAsk } from './buzzproto';
+import { CARD_HINT_MAX, CARD_ROLE_MAX, CARDS_BYTES, CARDS_MAX, clip, WAGER_MAX, type BuzzPhase, type HostCard, type HostState, type WagerAsk, type AnswerAsk } from './buzzproto';
 import { categoryLabel, finalName, formatPoints, PARTNER_GAMES, roundName, type CardSend, type CardTo, type Game, type Id, type PartnerState, type Session, type Slide, type TextEl } from './model';
 import {
   cardHash, cardId, cardLines, cardSlides, describer, giverLine, partnerRoles, partnerRules, partnerVerdict, partOfTo, partsLine, partWords, resultLine, type CardPart,
@@ -355,6 +355,8 @@ export function sessionCards(game: Game, session: Session, room: PhoneCan): Host
       id: sentCardId(c),
       to: to.map((t) => ({ seat: t.seat, ...(t.member ? { member: t.member.id } : t.except?.length ? { except: [...t.except] } : {}) })),
       open: c.until !== 'tile' || !session.revealed,
+      // (A 🎭 deal's part: "You're the Spy".)
+      ...(c.role ? { role: clip(c.role, CARD_ROLE_MAX) } : {}),
       ...(pc.title ? { title: pc.title } : {}),
       ...(pc.text ? { text: pc.text } : {}),
       ...(pc.media.length ? { media: pc.media } : {}),

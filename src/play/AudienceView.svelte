@@ -24,6 +24,8 @@
   import TimerDisplay from './TimerDisplay.svelte';
   import Confetti from './Confetti.svelte';
   import ToolOverlay from './tools/ToolOverlay.svelte';
+  import DealReveal from './tools/DealReveal.svelte';
+  import { dealReveal } from '../lib/deals';
   import RpgStage from './rpg/RpgStage.svelte';
   import BoardGameStage from './boardgame/BoardGameStage.svelte';
   import DecorLayer from './DecorLayer.svelte';
@@ -91,6 +93,7 @@
     selectedObjects?: string[];
   } = $props();
   const act = (a: StageAction) => onact?.(a);
+  const whoWasWho = $derived(dealReveal(session));
 
   const info = $derived(currentClueInfo(session, game));
   const finalRound = $derived(currentFinal(session, game));
@@ -676,6 +679,11 @@
       {#each session.players as p (p.id)}<span class="dot" class:in={live.answers.in.includes(p.id)} style:--c={p.color} title={p.name}></span>{/each}
     </span>
   </div>
+{/if}
+
+<!-- 🎭 Who was who: only once the host shows it (names and parts; nothing of the deal reaches this before that). -->
+{#if whoWasWho}
+  <DealReveal name={whoWasWho.name} lines={whoWasWho.lines} />
 {/if}
 
 {#if live.overlay}

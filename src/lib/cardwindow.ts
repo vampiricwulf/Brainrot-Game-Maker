@@ -103,7 +103,7 @@ export function windowCards(game: Game, session: Session, seat: Id): WindowCard[
   for (const c of cardsOut(game, session)) {
     const slide = sentSlide(game, c);
     if (!slide || sentState(game, c) !== 'sent' || !wholeSeat(c.to, seat).length) continue;
-    out.push({ id: sentCardId(c), ...windowContent(game, slide), open: c.until !== 'tile' || !session.revealed });
+    out.push({ id: sentCardId(c), ...(c.role ? { role: c.role } : {}), ...windowContent(game, slide), open: c.until !== 'tile' || !session.revealed });
   }
   return out.reverse();
 }

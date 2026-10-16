@@ -4,6 +4,7 @@ import { ensureWorld, refindPositions } from './rpg';
 import { ensureBoard, refindSpaces } from './boardgame';
 import { cardSlides, describer, dropFromSends, pairOnly, partnerReason, partnerRoles, partnerRules, partnerShares, resetRecipients, startPartner, takeBack } from './partner';
 import { dropOverCards, dropSeatFromCards, repairSentCards } from './sentcards';
+import { dealForViewers, dropSeatFromDeal, repairDeal } from './deals';
 import { categoryLabel, clueValue, FINAL_V1_ROUND_ID, finalName, formatPoints, getClue, isBoard, isBoardGame, isFinal, isRpg, isSlides, MAX_POINTS, newId, playableClues, questionSlides, type BoardRound, type Clue, type ClueRef, type ExtraSlide, type FinalRound, type FinalState, type Game, type Id, type PartnerState, type Player, type Round, type ScoreEvent, type Session, type Slide, type SlidesRound, type TeamMember, type WagerSource } from './model';
 
 export function newSession(game: Game): Session {
@@ -232,8 +233,9 @@ export function removePlayer(session: Session, playerId: string): void {
     // A card sent to them is taken back from them (one sent to others too stays with the others).
     dropFromSends(pt, playerId);
   }
-  // The same for the cards sent with 🤫 Send a card… or from a tile's panel.
+  // The same for the cards sent with 🤫 Send a card… or from a tile's panel, and a 🎭 deal's.
   dropSeatFromCards(session, playerId);
+  dropSeatFromDeal(session, playerId);
   if (f) {
     // Their wager and result stay (nothing reads them while they're out), so a restore brings them back.
     f.players = f.players.filter((x) => x !== playerId);
@@ -904,7 +906,7 @@ export function wagerSentBy(f: FinalState | null | undefined, playerId: string):
  * read 0 (so a ✔ for "wager in" still shows), and where they came from goes; a Daily Double's wager goes until it's
  * shown, and the one in the host's box before the question with it. (The host's undo log is left out by the caller.)
  */
-export function forViewers<S extends Pick<Session, 'final' | 'finals' | 'dd' | 'cards' | 'lastCard'>>(s: S): S {
+export function forViewers<S extends Pick<Session, 'final' | 'finals' | 'dd' | 'cards' | 'lastCard' | 'deal'>>(s: S): S {
   const hide = (f: FinalState): FinalState => {
     const { wagerFrom: _f, wagerBy: _b, ...rest } = f;
     const wagers = Object.fromEntries(Object.entries(f.wagers).map(([id, v]) => [id, f.shown[id] || f.results[id] ? v : 0]));
@@ -914,6 +916,10 @@ export function forViewers<S extends Pick<Session, 'final' | 'finals' | 'dd' | '
   // 🤫 Cards the host sent: one made in Send a card… holds the words the host typed (partner-clues spec §14.1).
   delete out.cards;
   delete out.lastCard;
+  // 🎭 Who got which part: nothing until the host shows Who was who, then only names and parts.
+  const deal = dealForViewers(s.deal);
+  if (deal) out.deal = deal;
+  else delete out.deal;
   if (s.final) out.final = hide(s.final);
   if (s.finals) out.finals = Object.fromEntries(Object.entries(s.finals).map(([id, x]) => [id, { ...x, state: hide(x.state) }]));
   if (s.dd) {
@@ -1250,6 +1256,7 @@ export function migrateSession(session: Session, game: Game): Session {
   finalStepFix(session);
   repairPartnerState(session);
   repairSentCards(session);
+  repairDeal(session);
   dropOverCards(game, session);
   const finalIndex = game.rounds.findIndex((r) => r.id === FINAL_V1_ROUND_ID);
   if (finalIndex < 0) return seedIntroduced(session, game);

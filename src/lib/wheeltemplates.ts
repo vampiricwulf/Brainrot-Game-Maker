@@ -163,6 +163,34 @@ export const WHEEL_TEMPLATES: WheelTemplate[] = [
     hint: 'A countdown when it lands',
     slices: () => [10, 15, 20, 30, 45, 60].map((s) => ({ label: `${s} seconds`, timerSeconds: s })),
   },
+  {
+    key: 'locations',
+    icon: '🗺',
+    name: 'Locations',
+    hint: 'Places, for 🕵 Odd one out',
+    slices: () =>
+      ['Beach', 'Airplane', 'Hospital', 'School', 'Casino', 'Movie theater', 'Space station', 'Submarine', 'Restaurant', 'Pirate ship', 'Zoo', 'Bank', 'Circus', 'Supermarket', 'Hotel', 'Train']
+        .map((label) => ({ label })),
+  },
+  {
+    key: 'prompts',
+    icon: '🧠',
+    name: 'Secret prompts',
+    hint: 'Something to do without being caught, for 🧠 Everyone’s own prompt',
+    slices: () =>
+      [
+        'Only ask questions',
+        'Compliment someone every turn',
+        'Say “banana” three times',
+        'Agree with everything',
+        'Talk like a pirate',
+        'Mention your favorite food',
+        'Never say “yes”',
+        'Hum a tune now and then',
+        'Use a fancy word',
+        'Laugh at everything',
+      ].map((label) => ({ label })),
+  },
 ];
 
 /** The template's slices, ready for a wheel: ids, colors and weights filled in. */
