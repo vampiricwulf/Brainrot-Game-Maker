@@ -181,6 +181,18 @@ export function arriving(origin: Omit<Origin, 'ts'>, saved?: { saved: SavedHisto
   next = { origin, saved, store };
 }
 
+/** Waiting for the next history to start (historyStarted). */
+const onStart: (() => void)[] = [];
+
+/**
+ * Resolves when the next history starts. A game that arrives is watched a moment after it's on screen, and an edit made
+ * before then would count as part of the game as it arrived: not a change to ask about before it's replaced, and not a
+ * step Ctrl+Z takes back.
+ */
+export function historyStarted(): Promise<void> {
+  return new Promise((done) => onStart.push(done));
+}
+
 /** Start the history over a game that arrived (the draft at the start, New, Open…), watched by `w`. */
 export function startHistory(g: Game, w: GameWatch): void {
   stopWatching();
@@ -209,6 +221,7 @@ export function startHistory(g: Game, w: GameWatch): void {
   generation++;
   named = null;
   stopWatching = w.subscribe(changed);
+  for (const done of onStart.splice(0)) done();
 }
 
 function restart(origin: Omit<Origin, 'ts'>): void {

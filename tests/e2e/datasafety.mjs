@@ -219,7 +219,8 @@ try {
   // (The pack's own first category: the board shows it once the game has opened. The game open before has the same
   // title, so that alone doesn't tell.)
   const packCat = JSON.parse(await (await import('jszip')).default.loadAsync(readFileSync(packPath)).then((z) => z.file('game.json').async('text'))).rounds[0].categories[0].title;
-  const showsPack = () => page.waitForFunction((v) => document.querySelector('.cat textarea')?.value === v, packCat);
+  // (And takes edits again: they'd be lost while it's still opening.)
+  const showsPack = () => page.waitForFunction((v) => document.querySelector('.cat textarea')?.value === v && !document.querySelector('.editor > .body')?.inert, packCat);
   const zipped = await page.evaluateHandle((b64) => {
     const dt = new DataTransfer();
     dt.items.add(new File([Uint8Array.from(atob(b64), (c) => c.charCodeAt(0))], 'Safe Game.zip', { type: 'application/zip' }));

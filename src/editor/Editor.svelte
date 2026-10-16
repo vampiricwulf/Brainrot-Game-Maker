@@ -65,7 +65,7 @@
   import { validate } from '../lib/validate';
   import { boardPlace, type ChecklistLine } from '../lib/checklist';
   import { followClueText } from '../lib/cluetext';
-  import { arriving, commit, heldMedia, history, mark, onApplied, onApplying, redo, savedSinceChange, savePoint, step, undo, wholeHistory, type Origin } from '../lib/history.svelte';
+  import { arriving, commit, heldMedia, history, historyStarted, mark, onApplied, onApplying, redo, savedSinceChange, savePoint, step, undo, wholeHistory, type Origin } from '../lib/history.svelte';
   import { whileWriting } from '../lib/desktop.svelte';
   import { isCancel } from '../lib/fileio';
   import { goTo, take, type Place } from '../lib/nav.svelte';
@@ -478,12 +478,17 @@
     // Files the incoming history can bring back (a reopened game's: its Recent games entry, which held them, is forgotten
     // once it's open) and the ones this history holds (its steps leave a little later, see history.svelte.ts).
     const held = new Set([...heldMedia(history?.steps ?? []), ...heldMedia()]);
+    const started = historyStarted();
     arriving(origin, history, !!history);
     app.game = next;
     // A new game has no rounds: tab 0 is the screen that adds the first one.
     tab = 0;
     previous = kept ? { key: kept.key, title: old.title.trim() || 'Untitled Game', dropped: kept.dropped } : null;
     await pruneMedia([app.game, app.playGame, app.resumable?.game], held);
+    // The editor takes no edits until the game's history has started, a moment after it's on screen (App.svelte's
+    // startWatch): one made before would count as part of the game as it arrived, so Open… or New wouldn't ask about it
+    // and Ctrl+Z couldn't take it back. (Not for long, whatever happens.)
+    await Promise.race([started, new Promise((go) => setTimeout(go, 5000))]);
     return true;
   }
 

@@ -8,6 +8,7 @@ import {
   commit,
   heldMedia,
   history,
+  historyStarted,
   joinTyping,
   jumpTo,
   listen,
@@ -718,6 +719,20 @@ describe('undo history: saved with the draft', () => {
     undo();
     undo();
     expect(again.title).toBe('Brainrot Night');
+    w2.destroy();
+  });
+
+  it('says when the next history has started, so the editor can take edits again', async () => {
+    let started = false;
+    const waiting = historyStarted().then(() => (started = true));
+    const again = live(JSON.parse(JSON.stringify($state.snapshot(g))));
+    const w2 = watchGame(again);
+    arriving({ kind: 'opened', label: 'Opened “Brainrot Night”' });
+    await Promise.resolve();
+    expect(started).toBe(false);
+    startHistory(again, w2);
+    await waiting;
+    expect(started).toBe(true);
     w2.destroy();
   });
 });
