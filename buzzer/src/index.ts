@@ -249,8 +249,11 @@ export class BuzzRoom extends DurableObject<Env> {
   private ids = new WeakMap<WebSocket, { role: 'host' } | { role: 'phone'; conn: string } | null>();
   /** When the alarm is set for (null: none; undefined: not read from storage yet). */
   private alarmAt: number | null | undefined = undefined;
-  /** Card files on their way into storage now, by id: their size (kept for them under the room's caps) and their answer. */
-  private uploading = new Map<string, { bytes: number; done: Promise<Upload> }>();
+  /**
+   * Card files on their way into storage now, by id: their size (kept for them under the room's caps), the idle files
+   * deleted to make room for them once they're sure to be stored (room.ts fileRoom), and their answer.
+   */
+  private uploading = new Map<string, { bytes: number; drop: string[]; done: Promise<Upload> }>();
 
   constructor(ctx: DurableObjectState, env: Env) {
     super(ctx, env);
@@ -367,7 +370,8 @@ export class BuzzRoom extends DurableObject<Env> {
   /**
    * A card file from the host (the Worker checked its type and that it's at most FILE_MAX_BYTES). The same bytes again
    * store nothing new. Otherwise the room's caps (counting the files still on their way, so uploads at the same time
-   * can't pass them together), then today's budget, then it's stored in FILE_PART_BYTES pieces.
+   * can't pass them together), then today's budget, then it's stored in FILE_PART_BYTES pieces: only then are the idle
+   * files that make room for it deleted.
    */
   async upload(token: string, mime: string, body: Uint8Array, who: string): Promise<Upload> {
     const wrong = { status: 401, error: 'wrong host token' };
@@ -378,13 +382,14 @@ export class BuzzRoom extends DurableObject<Env> {
     const going = this.uploading.get(id);
     if (going) return going.done;
     if (!this.meta || !this.room) return wrong;
-    const pending = { files: this.uploading.size, bytes: [...this.uploading.values()].reduce((n, u) => n + u.bytes, 0) };
+    const ahead = [...this.uploading.values()];
+    const pending = { files: ahead.length, bytes: ahead.reduce((n, u) => n + u.bytes, 0), drop: ahead.flatMap((u) => u.drop) };
     const room = this.room.fileRoom(id, body.byteLength, pending);
     if (room === 'have') return { status: 200, id };
     if (room === 'full') return { status: 409, error: 'This room holds all the card files it can: send fewer pictures and videos at once' };
     // (Its room is kept for it from here: nothing between this and the store can fill the room or store it first.)
-    const done = this.store(id, mime, body, who);
-    this.uploading.set(id, { bytes: body.byteLength, done });
+    const done = this.store(id, mime, body, who, room.drop);
+    this.uploading.set(id, { bytes: body.byteLength, drop: room.drop, done });
     try {
       return await done;
     } finally {
@@ -392,8 +397,11 @@ export class BuzzRoom extends DurableObject<Env> {
     }
   }
 
-  /** upload()'s second half: today's budget, then the pieces. A file counted and then not stored is given back. */
-  private async store(id: string, mime: string, body: Uint8Array, who: string): Promise<Upload> {
+  /**
+   * upload()'s second half: today's budget, then the idle files `drop` go to make room, then the pieces. A file counted
+   * and then not stored is given back.
+   */
+  private async store(id: string, mime: string, body: Uint8Array, who: string, drop: string[]): Promise<Upload> {
     const wrong = { status: 401, error: 'wrong host token' };
     const counter = this.env.ROOM_COUNTER.getByName('rooms');
     const n = body.byteLength;
@@ -406,6 +414,8 @@ export class BuzzRoom extends DurableObject<Env> {
       await refund();
       return wrong;
     }
+    // (Only now, with today's budget taken: a file refused for it leaves every other where it was.)
+    this.room.dropIdle(drop);
     const parts = Math.ceil(n / FILE_PART_BYTES);
     const pieces: Record<string, Uint8Array> = {};
     for (let i = 0; i < parts; i++) pieces[`file:${id}:${i}`] = body.slice(i * FILE_PART_BYTES, (i + 1) * FILE_PART_BYTES);

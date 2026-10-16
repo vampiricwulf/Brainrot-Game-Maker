@@ -6,8 +6,9 @@
 // again renews only that card's id; a host reload keeps the cards out under the same ids; ✖ Take back takes one off.
 // A standard tile's own card (🤫 Just you) and a Daily Double's (💡 Insider tip) are offered in the tile's panel to the
 // picker, sent only by a press, and go when the tile closes; the tile plays as it always does. A card sent until the
-// round ends goes with the round. The audience window, and the host page in one window, never hold a card's words, its
-// file name or its link.
+// round ends goes with the round. "The slide on screen" is what viewers see as it comes up (never a hint that comes in
+// later, nor a see-through box). In one window, an SVG already in the game put on a quick card is used with no toast
+// naming it. The audience window, and the host page in one window, never hold a card's words, its file name or its link.
 import { chromium } from 'playwright-core';
 import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
@@ -58,8 +59,20 @@ const watch = (p, name) => {
 try {
   browser = await chromium.launch({ executablePath });
 
-  const files = { tip: png(200, 60, 20, 300, 200) };
-  const media = [{ id: 'tip', name: 'zfnqj-tip.png', mime: 'image/png', size: files.tip.length, kind: 'image' }];
+  // An SVG as a drawing program saves it (an XML declaration first), and as the game stores it (cleaned: without one).
+  const FLAG_RAW = '<?xml version="1.0" encoding="UTF-8"?>\n<svg xmlns="http://www.w3.org/2000/svg" width="64" height="48"><rect width="64" height="48" fill="green"/></svg>\n';
+  const scratch = await browser.newPage();
+  const flag = await scratch.evaluate((svg) => new XMLSerializer().serializeToString(new DOMParser().parseFromString(svg, 'image/svg+xml')), FLAG_RAW);
+  await scratch.close();
+  const files = { tip: png(200, 60, 20, 300, 200), flag: Buffer.from(flag) };
+  const media = [
+    { id: 'tip', name: 'zfnqj-tip.png', mime: 'image/png', size: files.tip.length, kind: 'image' },
+    { id: 'flag', name: 'zfnqj-flag.svg', mime: 'image/svg+xml', size: files.flag.length, kind: 'image' },
+  ];
+  // Songs $200's question has a hint that comes in 20 s later and a see-through box; Songs $400's answer the SVG.
+  const later = { ...text('Later-hint words', 400), entrance: { type: 'fade', delay: 20, duration: 1 } };
+  const clear = { ...text('See-through words', 600), opacity: 0 };
+  const songExtra = [{ questionSlide: slide(text('A song clue'), later, clear) }, { answerSlide: slide(text('A song'), image('flag', 400)) }];
   const plain = (id, q, a, extra = {}) => ({ id, value: null, type: 'standard', questionSlide: slide(text(q)), answerSlide: slide(text(a)), ...extra });
   const values = [200, 400];
   const game = {
@@ -82,7 +95,7 @@ try {
               plain('q_dd', 'A Daily Double question', 'DD answer', { type: 'dailyDouble', cards: [{ id: 'd1', to: 'picker', ...slide(text(INSIDER)) }] }),
             ],
           },
-          { id: 'cat1', title: 'Songs', clues: values.map((_, r) => plain(`q_song${r}`, 'A song clue', 'A song')) },
+          { id: 'cat1', title: 'Songs', clues: values.map((_, r) => plain(`q_song${r}`, 'A song clue', 'A song', songExtra[r])) },
         ],
       },
       { id: 'r2', name: 'Round 2', mode: 'board', values, dailyDoubleCount: 0, categories: [{ id: 'cat2', title: 'Books', clues: values.map((_, r) => plain(`q_book${r}`, 'A book clue', 'A book')) }] },
@@ -287,6 +300,19 @@ try {
   assert(await until(async () => !(await cardsOn(ann)) && !(await cardsOn(cat))), 'Ann’s and Cat’s phones drop it');
   await host.keyboard.press('Escape');
 
+  // ---------- One window: an SVG already in the game, on a quick card ----------
+  await tools.getByRole('button', { name: '🤫 Send a card…' }).click();
+  dialog = host.getByRole('dialog', { name: 'Send a card' });
+  await dialog.waitFor();
+  await dialog.getByRole('radio', { name: 'A quick card' }).check();
+  // (Its bytes differ from the game's copy until it's cleaned: the game's own is used then, as it is for any file.)
+  await dialog.locator('input[type=file]').setInputFiles({ name: 'flag.svg', mimeType: 'image/svg+xml', buffer: Buffer.from(FLAG_RAW) });
+  await dialog.locator('[aria-label="On the card"]').getByText('🖼 picture').waitFor();
+  assert(!(await host.locator('.toast', { hasText: 'already in 🖼 Media' }).count()), 'one window: an SVG already in the game goes on a quick card with no toast naming it');
+  await offStream(host, 'the host page in one window', 'an SVG already in the game put on a quick card');
+  await host.keyboard.press('Escape');
+  await dialog.waitFor({ state: 'detached' });
+
   // ---------- 🤫 Just you: a standard tile's own card, offered to the picker, sent by a press ----------
   await host.keyboard.press('p');
   await host.keyboard.press('1');
@@ -294,6 +320,15 @@ try {
   assert(await until(() => !!last()?.clue), 'a plain tile opens');
   const plainPhase = last().phase;
   assert(!(await host.locator('.panel [data-tile-cards]').count()), 'a tile with no card has no cards part');
+  // "The slide on screen": what viewers see as it comes up, never its hint (in 20 s) nor its see-through box.
+  await tools.getByRole('button', { name: '🤫 Send a card…' }).click();
+  dialog = host.getByRole('dialog', { name: 'Send a card' });
+  await dialog.waitFor();
+  await dialog.getByRole('radio', { name: 'The slide on screen' }).check();
+  const onScreen = await words(dialog.locator('[data-stage-card]'));
+  assert(onScreen.startsWith('1 line of words'), `the slide on screen as a card: the question only (${onScreen})`);
+  await host.keyboard.press('Escape');
+  await dialog.waitFor({ state: 'detached' });
   await host.keyboard.press('Escape');
   await host.locator('.stage-box .tile[aria-label^="Movies for $200"]').click();
   const tilePart = host.locator('.panel [data-tile-cards]');

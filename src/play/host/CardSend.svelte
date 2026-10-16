@@ -17,7 +17,7 @@
   import { app, toast } from '../../lib/app.svelte';
   import { announce } from '../../lib/announce';
   import { CARD_MEDIA_MAX } from '../../lib/buzzproto';
-  import { cardsFullText, roomCardsFull, teamsOn } from '../../lib/buzz';
+  import { cardsFullText, roomCardsFull, seenAtOnce, teamsOn } from '../../lib/buzz';
   import { phoneCan } from '../../lib/cardfiles.svelte';
   import { textOn } from '../../lib/colors';
   import { tileToolUp } from '../../lib/live';
@@ -115,8 +115,11 @@
     return out;
   });
 
-  /** Only what viewers see of a slide: never a secret item nor a hotspot. */
-  const viewed = (s: Slide): Slide => ({ ...s, elements: s.elements.filter((e) => !e.secret && !(e.kind === 'shape' && e.hotspot)) });
+  /**
+   * Only what viewers see of a slide as it comes up: never a secret item, a hotspot, a see-through item, nor one that
+   * comes in seconds later (a hint: even once it's in, as nothing says when the slide came up).
+   */
+  const viewed = (s: Slide): Slide => ({ ...s, elements: s.elements.filter((e) => seenAtOnce(e) && !(e.kind === 'shape' && e.hotspot)) });
   /**
    * What's on stage now, as viewers see it: the open tile's question slide (its answer once shown), a slides round's
    * slide, the Final's, the tiebreaker's, or the RPG screen in view. Nothing over a splash, a title card or the board.
@@ -187,11 +190,12 @@
     const k = mediaKind(file.name, file.type);
     if (k !== 'image' && k !== 'video' && k !== 'audio') return toast('Add a picture, GIF, video or sound');
     try {
-      // (The same file already in the game: that one, without a toast naming it, as this window may be on stream.)
+      // (The same file already in the game: that one, without a toast naming it, as this window may be on stream. An SVG
+      // is matched once it's cleaned, as the game stores it.)
       let ref = await identicalMedia(game, file, k);
       if (!ref) {
         // (Stored on a copy of the list, then hidden from viewers, then into the game: never sent to them meanwhile.)
-        ref = await addMediaFile({ ...game, media: [...game.media] }, file);
+        ref = await addMediaFile({ ...game, media: [...game.media] }, file, file.name, {}, { quiet: true });
         if (!game.media.some((m) => m.id === ref!.id)) {
           hideFromViewers([ref.id]);
           game.media.push(ref);

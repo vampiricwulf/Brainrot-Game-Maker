@@ -89,6 +89,11 @@ export const ADDRESS_FILE_SHARE = 1 / 4;
 export const NETWORK_FILE_SHARE = 1 / 2;
 /** A card file no current card uses is deleted this long after (one got ready and never sent: after its upload). */
 export const FILE_IDLE_MS = 10 * 60_000;
+/**
+ * A room out of space for a new card file deletes the files no current card has used for this long first (they'd go
+ * at FILE_IDLE_MS anyway). Not one used or stored just now: the host's next state may be about to name it.
+ */
+export const FILE_MAKE_ROOM_MS = 60_000;
 
 export const TOO_MANY_FILES = 'Too many files — wait a minute';
 export const FILES_OFF = "This buzzer server doesn't take files";

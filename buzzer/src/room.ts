@@ -119,7 +119,7 @@ import {
   type WagerRefusal,
   type WagerSeat,
 } from '../../src/lib/buzzproto';
-import { FILE_IDLE_MS } from './limits';
+import { FILE_IDLE_MS, FILE_MAKE_ROOM_MS } from './limits';
 
 /** Phones connected at most, not counting idle ones without a seat (see Full rooms above). */
 export const MAX_PHONES = 24;
@@ -685,10 +685,14 @@ export class Room {
 
   /**
    * Whether card file `id` (`bytes` long) can be stored: 'have' (it's here already: its clean-up time starts again if no
-   * card uses it, as the host is getting it ready again), 'ok', or 'full' (ROOM_FILES_MAX files or ROOM_FILES_BYTES).
-   * `pending`: files still on their way into storage, counted as here already.
+   * card uses it, as the host is getting it ready again), { ok, drop } (it fits once the files in `drop` are deleted), or
+   * 'full' (ROOM_FILES_MAX files or ROOM_FILES_BYTES). Out of space, the files no current card has used for
+   * FILE_MAKE_ROOM_MS make room, oldest first, if that makes it fit (cards that ended fill a room long before the
+   * clean-up time). Nothing is deleted here: the caller does that with dropIdle once the file is sure to be stored, so
+   * one refused after this (today's budget) costs the room nothing. `pending`: files still on their way into storage,
+   * counted as here already, and the files to be deleted for them (`drop`), counted as here still and never chosen again.
    */
-  fileRoom(id: string, bytes: number, pending: { files: number; bytes: number } = { files: 0, bytes: 0 }): 'have' | 'ok' | 'full' {
+  fileRoom(id: string, bytes: number, pending: { files: number; bytes: number; drop?: string[] } = { files: 0, bytes: 0 }): 'have' | 'full' | { ok: true; drop: string[] } {
     const files = this.s.files ?? {};
     const had = files[id];
     if (had) {
@@ -698,9 +702,38 @@ export class Room {
       }
       return 'have';
     }
-    const all = Object.values(files);
-    if (all.length + pending.files >= ROOM_FILES_MAX || all.reduce((n, f) => n + f.bytes, 0) + pending.bytes + bytes > ROOM_FILES_BYTES) return 'full';
-    return 'ok';
+    const all = Object.entries(files);
+    let count = all.length + pending.files;
+    let size = all.reduce((n, [, f]) => n + f.bytes, 0) + pending.bytes + bytes;
+    const fits = () => count < ROOM_FILES_MAX && size <= ROOM_FILES_BYTES;
+    const drop: string[] = [];
+    if (fits()) return { ok: true, drop };
+    for (const [k, f] of this.idleFiles().filter(([k]) => !pending.drop?.includes(k))) {
+      if (fits()) break;
+      drop.push(k);
+      count--;
+      size -= f.bytes;
+    }
+    return fits() ? { ok: true, drop } : 'full';
+  }
+
+  /** The card files that can make room for a new one, oldest first: no current card uses them, nor has for FILE_MAKE_ROOM_MS. */
+  private idleFiles(): [string, RoomFile][] {
+    const now = this.deps.now();
+    const used = this.usedFiles();
+    return Object.entries(this.s.files ?? {})
+      .filter(([k, f]) => f.unusedSince !== undefined && now - f.unusedSince >= FILE_MAKE_ROOM_MS && !used.has(k))
+      .sort((a, b) => a[1].unusedSince! - b[1].unusedSince!);
+  }
+
+  /**
+   * Deletes the files fileRoom chose to make room (its `drop`), now that the new one is being stored: those still idle.
+   * One a card uses again meanwhile, or the host got ready again, stays (the room holds a file more than it should,
+   * until the clean-up, rather than lose one the host is about to name).
+   */
+  dropIdle(ids: string[]): void {
+    const idle = new Set(this.idleFiles().map(([k]) => k));
+    if (this.dropFiles(ids.filter((k) => idle.has(k)))) this.save();
   }
 
   /**

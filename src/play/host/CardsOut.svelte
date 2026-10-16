@@ -6,13 +6,13 @@
 -->
 <script lang="ts">
   import { announce } from '../../lib/announce';
-  import { teamsOn } from '../../lib/buzz';
+  import { cardsLeftOff, teamsOn } from '../../lib/buzz';
   import { retryFiles } from '../../lib/cardfiles.svelte';
   import type { Game, Id, SentCard, Session } from '../../lib/model';
   import { copyWordsText } from '../../lib/partner';
   import { cardLinks, cardWords } from '../../lib/phonecard';
   import { buzzerOn, remote, roomHasCards, roomHasFiles } from '../../lib/remote.svelte';
-  import { listedCards, sendCardAgain, sentSlide, sentToText } from '../../lib/sentcards';
+  import { listedCards, sendCardAgain, sentCardId, sentSlide, sentToText } from '../../lib/sentcards';
   import { copyText } from '../standings';
   import { canCopyPicture, copyCardPicture, hasPicture } from './cardcopy';
   import { sentLine } from './cardrow';
@@ -25,6 +25,11 @@
   const room = $derived(buzzerOn(game.settings) && !!remote.code && remote.status !== 'off' && remote.status !== 'error');
   const cardsOn = $derived(room && roomHasCards());
   const filesOn = $derived(cardsOn && roomHasFiles());
+  /**
+   * The cards out that never reach a phone (their ids on the wire): more than the room takes, as a 🎭 deal handed out
+   * before it took cards took them past that.
+   */
+  const leftOff = $derived(new Set(cardsOn ? cardsLeftOff(game, session) : []));
   const LASTS: Record<SentCard['until'], string> = { round: 'until the round ends', tile: 'until the tile closes', host: 'until you take it back' };
 
   function again(c: SentCard): void {
@@ -43,7 +48,8 @@
 <div class="out" data-cards-out>
   {#each list as c (c.id)}
     {@const slide = sentSlide(game, c)}
-    {@const state = sentLine(game, session, c, filesOn)}
+    {@const off = leftOff.has(sentCardId(c))}
+    {@const state = sentLine(game, session, c, filesOn, off)}
     <div class="row" data-card-out={c.label} role="group" aria-label="{c.label} to {sentToText(session, c.to, teams)}: {state.text}">
       <b>{c.label}</b>
       <span aria-hidden="true">→</span>
@@ -52,7 +58,7 @@
       <span class="muted small">· {LASTS[c.until]}</span>
     </div>
     <div class="row btns">
-      {#if cardsOn}
+      {#if cardsOn && !off}
         <button class="small" onclick={() => again(c)} aria-label="Send {c.label} again" title="Sends it again under a new id: a phone that came late (a player on a new phone) gets it too">↻ Send again</button>
       {/if}
       <button class="ghost small" onclick={() => ontakeback(c.id)} aria-label="Take {c.label} back" title="Takes it off every phone it went to">✖ Take back</button>

@@ -4,7 +4,7 @@ import { finalName, newImageEl, newTextEl, setSlideText, textSlide, PARTNER_GAME
 import { applyScore, ddShowQuestion, finalChoose, finalNext, finalSetWager, goToRound, judgePartner, newSession, openClue, places, removePlayer, undo } from './session';
 import { addCard, setPartner, setPartnerGame, swapParts } from './partner';
 import {
-  buzzArm, buzzClueOpened, buzzDone, buzzIdle, buzzMissed, buzzOrder, buzzReset, buzzTake, hostState, newBuzz, phoneStatus, questionText, setupState, teamsOn, wagerAsk,
+  buzzArm, buzzClueOpened, buzzDone, buzzIdle, buzzMissed, buzzOrder, buzzReset, buzzTake, hostState, newBuzz, phoneStatus, questionText, seenAtOnce, setupState, teamsOn, wagerAsk,
   whoBuzzed,
 } from './buzz';
 import { phoneView } from './buzzproto';
@@ -270,6 +270,19 @@ describe('hostState (what the buzzer room is told)', () => {
     s.elements.push(newTextEl('first', { x: 0, y: 10, w: 100, h: 50 }));
     expect(questionText(s)).toBe('first\nsecond');
     expect(questionText(undefined)).toBe('');
+  });
+
+  it('what viewers see as a slide comes up: no secret, see-through or later item (a hint), for the phones too', () => {
+    const s = textSlide('question');
+    const hint = newTextEl('hint', { x: 0, y: 200, w: 100, h: 50 });
+    hint.entrance = { type: 'fade', delay: 20, duration: 1 };
+    const clear = { ...newTextEl('see-through', { x: 0, y: 300, w: 100, h: 50 }), opacity: 0 };
+    const secret = { ...newTextEl('secret', { x: 0, y: 400, w: 100, h: 50 }), secret: true };
+    const soon = newTextEl('soon', { x: 0, y: 500, w: 100, h: 50 });
+    soon.entrance = { type: 'pop', delay: 1, duration: 1 };
+    s.elements.push(hint, clear, secret, soon);
+    expect(s.elements.filter(seenAtOnce).map((e) => (e.kind === 'text' ? e.text : ''))).toEqual(['question', 'soon']);
+    expect(questionText(s)).toBe('question\nsoon');
   });
 });
 

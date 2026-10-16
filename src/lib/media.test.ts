@@ -30,6 +30,11 @@ describe('adding files', () => {
     const c = await addMediaFile(game, new File(['other byte'], 'meme.png', { type: 'image/png' }));
     expect(c.id).not.toBe(a.id);
     expect(game.media).toHaveLength(2);
+    // Quiet (a quick 🤫 card's file, in a window viewers may see): the same file, and no toast naming it.
+    app.toast = '';
+    const d = await addMediaFile(game, new File(['same bytes'], 'again.png', { type: 'image/png' }), 'again.png', {}, { quiet: true });
+    expect(d).toBe(a);
+    expect(app.toast).toBe('');
   });
 
   it('keeps a file in memory when storage fails, and says the write failed', async () => {

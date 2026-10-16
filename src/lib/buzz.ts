@@ -2,7 +2,7 @@
 // decides all of it (keys, the host panel, a phone's buzz that the buzzer room let through); it lives in Live, so the
 // audience window shows "🔔 Ann is answering", and the phones get it through hostState().
 import { CARD_HINT_MAX, CARD_ROLE_MAX, CARD_TEXT_MAX, CARDS_BYTES, CARDS_MAX, clip, WAGER_MAX, type BuzzPhase, type HostCard, type HostState, type WagerAsk, type AnswerAsk } from './buzzproto';
-import { categoryLabel, finalName, formatPoints, PARTNER_GAMES, roundName, type CardSend, type CardTo, type Game, type Id, type PartnerState, type Session, type Slide, type TextEl } from './model';
+import { categoryLabel, finalName, formatPoints, PARTNER_GAMES, roundName, type CardSend, type CardTo, type Game, type Id, type PartnerState, type Session, type Slide, type SlideElement, type TextEl } from './model';
 import {
   cardHash, cardId, cardLines, cardSlides, describer, giverLine, partnerRoles, partnerRules, partnerVerdict, partOfTo, partsLine, partWords, resultLine, type CardPart,
 } from './partner';
@@ -110,11 +110,16 @@ export function buzzDone(b: BuzzState): BuzzState {
   return { phase: 'closed', armId: b.armId, answering: null, lockedOut: [...b.lockedOut], done: true, doneBy: b.answering };
 }
 
+/**
+ * Viewers see this item as soon as its slide is up: not a secret one, nor one they can't see yet (see-through, or
+ * coming in seconds later, like a hint). The phones never get the others before viewers do.
+ */
+export const seenAtOnce = (e: SlideElement): boolean => !e.secret && e.opacity > 0 && (e.entrance?.delay ?? 0) <= 2;
+
 /** The question slide's words, for the phones: text boxes only, top to bottom, none hidden from viewers. */
 export function questionText(s: Slide | undefined): string {
   if (!s) return '';
-  // (Not text viewers can't see yet either: see-through, or coming in seconds later, like a hint.)
-  const texts = s.elements.filter((e): e is TextEl => e.kind === 'text' && !e.secret && e.opacity > 0 && (e.entrance?.delay ?? 0) <= 2 && !!e.text.trim());
+  const texts = s.elements.filter((e): e is TextEl => e.kind === 'text' && seenAtOnce(e) && !!e.text.trim());
   texts.sort((a, b) => a.y - b.y || a.x - b.x);
   return texts
     .map((t) => t.text.trim())
@@ -385,6 +390,17 @@ export function hostCards(game: Game, session: Session, room: PhoneCan): HostCar
   return all.length ? fitCards(all.slice(-CARDS_MAX)) : null;
 }
 
+/**
+ * The cards out that the buzzer room isn't told, as hostCards keeps only the newest CARDS_MAX: only ever when a 🎭 deal
+ * handed out before the room took cards took them past that (every send since is refused past it). Then any card out
+ * before the newest CARDS_MAX is left off: the deal's own first ones, or cards that went before it (to the 🪟 card
+ * window, say). Their ids on the wire.
+ */
+export function cardsLeftOff(game: Game, session: Session): string[] {
+  const all = [...(partnerCards(game, session, { files: {} }) ?? []), ...(sessionCards(game, session, { files: {} }) ?? [])];
+  return all.slice(0, Math.max(0, all.length - CARDS_MAX)).map((c) => c.id);
+}
+
 /** How many 🤫 cards the buzzer room is told now: the open partner clue's (one per part of a send) and the cards out. */
 export function roomCardCount(game: Game, session: Session): number {
   return (partnerCards(game, session, { files: {} })?.length ?? 0) + (sessionCards(game, session, { files: {} })?.length ?? 0);
@@ -411,10 +427,13 @@ export function roomCardsFull(game: Game, session: Session, go?: (trial: Session
  * count too, though the list of cards out leaves them to 🎭 Deal…: then it says where they are, and how many.
  */
 export function cardsFullText(game: Game, session: Session): string {
-  const deal = cardsOut(game, session).filter((c) => c.deal).length;
-  if (!deal) return `${CARDS_MAX} cards are out on the phones: ✖ Take one back first`;
-  const others = roomCardCount(game, session) > deal;
-  return `${CARDS_MAX} cards are out on the phones, ${deal} of them the 🎭 deal’s: ✖ Take ${deal === 1 ? 'it' : 'them'} back in 🎭 Deal…${others ? ', or take back another one' : ''}`;
+  const dealAll = cardsOut(game, session).filter((c) => c.deal).length;
+  if (!dealAll) return `${CARDS_MAX} cards are out on the phones: ✖ Take one back first`;
+  // (A deal handed out before the room took cards can have more than the phones hold: then they hold only the deal's,
+  // and taking another card back frees nothing.)
+  const all = dealAll >= CARDS_MAX;
+  const others = !all && roomCardCount(game, session) > dealAll;
+  return `${CARDS_MAX} cards are out on the phones, ${all ? 'all' : dealAll} of them the 🎭 deal’s: ✖ Take ${dealAll === 1 ? 'it' : 'them'} back in 🎭 Deal…${others ? ', or take back another one' : ''}`;
 }
 
 /** The last bit of a card's id on the wire for each part, when a send goes as one card per part (partnerCards). */

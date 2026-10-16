@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { HostCard, HostState, RoomToHost, RoomToPhone } from '../../src/lib/buzzproto';
 import { CARDS_BYTES, CARDS_MAX, clip, cleanName, FILE_MAX_BYTES, ROOM_FILES_BYTES, ROOM_FILES_MAX } from '../../src/lib/buzzproto';
-import { FILE_IDLE_MS } from './limits';
+import { FILE_IDLE_MS, FILE_MAKE_ROOM_MS } from './limits';
 import {
   cleanState,
   FLOOD_BLOCK_MS,
@@ -2554,7 +2554,7 @@ describe('card files', () => {
 
   it('the room’s caps: 32 files and 16 MB; the same file again is already here', () => {
     const g = sent();
-    expect(g.room.fileRoom(F1, FILE_MAX_BYTES)).toBe('ok');
+    expect(g.room.fileRoom(F1, FILE_MAX_BYTES)).toEqual({ ok: true, drop: [] });
     g.room.fileAdded(F1, 'image/png', FILE_MAX_BYTES, 4);
     expect(g.room.fileRoom(F1, FILE_MAX_BYTES)).toBe('have');
     for (let i = 1; i < ROOM_FILES_BYTES / FILE_MAX_BYTES; i++) g.room.fileAdded(String(i).repeat(64).slice(0, 64), 'video/mp4', FILE_MAX_BYTES, 4);
@@ -2564,10 +2564,49 @@ describe('card files', () => {
     expect(h.room.fileRoom(F2, 1)).toBe('full');
     // Files still on their way count as here: uploads at the same time can't pass the caps together.
     const k = sent();
-    expect(k.room.fileRoom(F1, FILE_MAX_BYTES, { files: ROOM_FILES_BYTES / FILE_MAX_BYTES - 1, bytes: ROOM_FILES_BYTES - FILE_MAX_BYTES })).toBe('ok');
+    expect(k.room.fileRoom(F1, FILE_MAX_BYTES, { files: ROOM_FILES_BYTES / FILE_MAX_BYTES - 1, bytes: ROOM_FILES_BYTES - FILE_MAX_BYTES })).toEqual({ ok: true, drop: [] });
     expect(k.room.fileRoom(F1, FILE_MAX_BYTES, { files: ROOM_FILES_BYTES / FILE_MAX_BYTES, bytes: ROOM_FILES_BYTES })).toBe('full');
     expect(k.room.fileRoom(F1, 1, { files: ROOM_FILES_MAX, bytes: ROOM_FILES_MAX })).toBe('full');
     expect(h.hostLast('files')!.ids).toHaveLength(ROOM_FILES_MAX);
+  });
+
+  it('out of space: files no card has used for a minute make room, oldest first, once the new one is stored; never one a card uses or just stored', () => {
+    const g = sent();
+    const id = (i: number) => i.toString(16).padStart(64, '0');
+    const quarter = ROOM_FILES_BYTES / 4;
+    for (let i = 0; i < 4; i++) {
+      g.room.fileAdded(id(i), 'video/mp4', quarter, 4);
+      g.t.now += 1000;
+    }
+    // The newest is on a card; the others' cards ended (or they were got ready and never sent).
+    g.sendCards([card({ media: pic(id(3)) })]);
+    // Stored just now: the host's next state may be about to name them.
+    expect(g.room.fileRoom(F1, 1000)).toBe('full');
+    expect(g.filesDropped).toEqual([]);
+    g.t.now += FILE_MAKE_ROOM_MS;
+    // Room for one: the oldest is to go, but nothing is deleted yet (a file refused after this, for today's budget, leaves
+    // every other where it was).
+    expect(g.room.fileRoom(F1, 1000)).toEqual({ ok: true, drop: [id(0)] });
+    expect(g.filesDropped).toEqual([]);
+    expect(Object.keys(g.room.saved.files!)).toEqual([0, 1, 2, 3].map(id));
+    // Another upload at the same time never counts on the same file (it's counted as here still): the next one is to go.
+    expect(g.room.fileRoom(F2, 1000, { files: 1, bytes: 1000, drop: [id(0)] })).toEqual({ ok: true, drop: [id(1)] });
+    // Stored: the oldest goes, and the host hears what's left.
+    g.room.dropIdle([id(0)]);
+    expect(g.filesDropped).toEqual([id(0)]);
+    expect(g.hostLast('files')!.ids).toEqual([id(1), id(2), id(3)]);
+    // Room for two: the next two are to go, never the one a card uses.
+    expect(g.room.fileRoom(F2, quarter * 3)).toEqual({ ok: true, drop: [id(1), id(2)] });
+    // One got ready again meanwhile stays (the host may be about to name it); the other goes.
+    expect(g.room.fileRoom(id(2), quarter)).toBe('have');
+    g.room.dropIdle([id(1), id(2)]);
+    expect(g.filesDropped).toEqual([id(0), id(1)]);
+    expect(Object.keys(g.room.saved.files!)).toEqual([id(2), id(3)]);
+    // More than fits even then: 'full', and nothing is to go for it.
+    g.room.fileAdded(F2, 'video/mp4', quarter, 4);
+    g.t.now += FILE_MAKE_ROOM_MS;
+    expect(g.room.fileRoom(F1, quarter * 3 + 1)).toBe('full');
+    expect(Object.keys(g.room.saved.files!)).toEqual([id(2), id(3), F2]);
   });
 
   it('a phone gets a file only for a current card sent to it that it isn’t late for', () => {

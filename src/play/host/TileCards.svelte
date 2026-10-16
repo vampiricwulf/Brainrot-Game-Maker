@@ -10,7 +10,7 @@
 <script lang="ts">
   import { app, toast } from '../../lib/app.svelte';
   import { announce } from '../../lib/announce';
-  import { cardsFullText, roomCardsFull, teamsOn } from '../../lib/buzz';
+  import { cardsFullText, cardsLeftOff, roomCardsFull, teamsOn } from '../../lib/buzz';
   import { cardWindow } from '../../lib/cardwindow.svelte';
   import { phoneCan, retryFiles } from '../../lib/cardfiles.svelte';
   import { textOn } from '../../lib/colors';
@@ -18,7 +18,7 @@
   import { cardCopyText, cardSummary, tileGoesToLabel } from '../../lib/partner';
   import { cardLinks, cardWords, phoneCard } from '../../lib/phonecard';
   import { buzzerOn, remote, roomHasCards, roomHasFiles } from '../../lib/remote.svelte';
-  import { cardsOut, sendCard, sendCardAgain, sentToText, tileRecipients } from '../../lib/sentcards';
+  import { cardsOut, sendCard, sendCardAgain, sentCardId, sentToText, tileRecipients } from '../../lib/sentcards';
   import { clueName } from '../../lib/session';
   import { copyText } from '../standings';
   import { canCopyPicture, copyCardPicture, hasPicture } from './cardcopy';
@@ -70,6 +70,8 @@
 
   /** The buzzer room has all the cards it takes: ✖ Take one back first. */
   const full = $derived(roomCardsFull(game, session));
+  /** The cards out that never reach a phone (their ids on the wire): more than the room takes (see CardsOut). */
+  const leftOff = $derived(new Set(cardsOn ? cardsLeftOff(game, session) : []));
   /**
    * 📤 Send: this card to its players' phones now, until the tile closes. `to`: 🪟 Show, to the card window's player
    * alone (no phones get cards).
@@ -121,10 +123,11 @@
     {@const n = i + 1}
     {@const out = sentOf(card)}
     {@const to = out ? out.to : recipients(card)}
-    {@const copying = !cardsOn || to.some((t) => !phones.has(t.seat))}
+    {@const off = !!out && leftOff.has(sentCardId(out))}
+    {@const copying = !cardsOn || off || to.some((t) => !phones.has(t.seat))}
     {@const copyable = !!cardWords(card) || cardLinks(game, card).length > 0}
     {@const left = cardsOn ? leftLine(phoneCard(game, card, filesOn ? can : { files: null }).left) : ''}
-    {@const state = out ? sentLine(game, session, out, filesOn) : null}
+    {@const state = out ? sentLine(game, session, out, filesOn, off) : null}
     <div class="row card" data-tile-card={n} role="group" aria-label="Card {n}: {state ? `${out?.label}, ${state.text}` : cardsOn ? 'not sent' : sentToText(session, to, teams)}">
       <b>Card {n}</b>
       <span class="muted small">· {cardSummary(game, card)}</span>
@@ -141,7 +144,7 @@
       <span class="spacer"></span>
       {#if cardsOn}
         {#if out}
-          <button class="small" onclick={() => again(out, card, n)} aria-label="Send card {n} again" title="Sends it again under a new id: a phone that came late (a player on a new phone) gets it too, with what’s on the card now">↻ Send again</button>
+          {#if !off}<button class="small" onclick={() => again(out, card, n)} aria-label="Send card {n} again" title="Sends it again under a new id: a phone that came late (a player on a new phone) gets it too, with what’s on the card now">↻ Send again</button>{/if}
           <button class="ghost small" onclick={() => ontakeback(out.id)} aria-label="Take card {n} back" title="Takes it off every phone it went to">✖ Take back</button>
         {:else}
           <button class="small" onclick={() => send(card, n)} disabled={!to.length || full} aria-label="Send card {n}" title={full ? cardsFullText(game, session) : to.length ? `Sends it to ${sentToText(session, to, teams)} now, until the tile closes` : 'Choose who gets it first'}>📤 Send</button>

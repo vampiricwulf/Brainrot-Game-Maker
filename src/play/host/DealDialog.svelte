@@ -15,7 +15,7 @@
   import { app, hint, toast } from '../../lib/app.svelte';
   import { announce } from '../../lib/announce';
   import { ask } from '../../lib/ask.svelte';
-  import { cardsFullText, roomCardsFull, teamsOn } from '../../lib/buzz';
+  import { cardsFullText, cardsLeftOff, roomCardsFull, teamsOn } from '../../lib/buzz';
   import { CARDS_MAX } from '../../lib/buzzproto';
   import { filesCounted, phoneCan, retryFiles } from '../../lib/cardfiles.svelte';
   import { cardWindow, openCardWindow } from '../../lib/cardwindow.svelte';
@@ -176,6 +176,16 @@
   /** More players than the phones take cards at once (the room's CARDS_MAX). */
   const tooMany = $derived(!!d && cardsOn && d.hands.length > CARDS_MAX);
   const full = $derived(!!d && cardsOn && !out.length && !tooMany && roomCardsFull(game, session, dealTrial(game, d, until)));
+  /**
+   * The deal's cards out that never reach a phone (their ids on the wire): handed out before the room took cards, more
+   * than it takes at once (it's told the newest CARDS_MAX).
+   */
+  const leftOff = $derived.by(() => {
+    if (!cardsOn || !out.length) return new Set<string>();
+    const off = new Set(cardsLeftOff(game, session));
+    return new Set(out.map(sentCardId).filter((id) => off.has(id)));
+  });
+  const over = $derived(leftOff.size > 0);
 
   /** 📤 Send (or ✔ Hand them out, with no phones getting cards): every player's card goes now. */
   function send(): void {
@@ -217,7 +227,9 @@
    */
   const status = $derived.by(() => {
     if (!d || d.stage !== 'sent') return '';
-    if (!out.length) return 'Its cards are back (or over): 📤 Send puts them out again';
+    if (!out.length) return tooMany ? `Its cards are back: the phones take ${CARDS_MAX} at once, so 🎭 Deal a new one with fewer in` : 'Its cards are back (or over): 📤 Send puts them out again';
+    if (over)
+      return `Only ${out.length - leftOff.size} of the ${out.length} cards are on the phones (they take ${CARDS_MAX} at once): copy ${dual ? 'the others theirs (📋, marked below)' : 'everyone theirs (📋)'}, or ✖ Take back and deal fewer in`;
     if (!cardsOn) return `Dealt: copy each card to its player (📋)${cardWindow.open ? ', or show them in the 🪟 card window' : ''}`;
     const seen = out.filter((c) => seenSeats(session, c).length).length;
     const parts = [seen ? `✓ seen by ${seen} of ${out.length}` : `Sent to ${out.length}`];
@@ -234,6 +246,8 @@
   const left = $derived(cardsOn && d ? leftLine(d.hands.flatMap((h) => phoneCard(game, h.slide, filesOn ? phoneCan(session) : { files: null }).left)) : '');
   const seenBy = (seat: Id, member?: string) =>
     out.some((c) => c.to.some((t) => t.seat === seat && t.member?.id === member) && (session.remote?.cardsSeen?.[sentCardId(c)] ?? []).some((w) => w === (member ? `${seat}/${member}` : seat)));
+  /** Their card is one the phones never get (said only with the audience window open: only those with a part have one). */
+  const leftOffFor = (to: CardTo) => out.some((c) => c.to.some((t) => toKey(t) === toKey(to)) && leftOff.has(sentCardId(c)));
 
   /** Everyone dealt in, a part or not: the list to copy from names them all (only those with a part would say who). */
   const dealtList = $derived(d ? dealtIn(d) : []);
@@ -387,10 +401,10 @@
       {#if left && out.length}<div class="small warn">{left}</div>{/if}
       <div class="row wrap">
         {#if out.length}
-          {#if cardsOn}<button class="small" onclick={again} title="Every card of the deal goes again under a new id: a phone that came late (a player on a new phone) gets theirs">↻ Send again</button>{/if}
+          {#if cardsOn && !over}<button class="small" onclick={again} title="Every card of the deal goes again under a new id: a phone that came late (a player on a new phone) gets theirs">↻ Send again</button>{/if}
           <button class="ghost small" onclick={takeBack} title="Takes every card of the deal off the phones (the deal stays, for Who was who)">✖ Take back</button>
         {:else}
-          <button class="small" onclick={send} disabled={tooMany || full} title={full ? cardsFullText(game, session) : 'The same cards go out again'}>📤 Send</button>
+          <button class="small" onclick={send} disabled={tooMany || full} title={tooMany ? `The phones take ${CARDS_MAX} cards at once: this deal has ${d.hands.length}` : full ? cardsFullText(game, session) : 'The same cards go out again'}>📤 Send</button>
         {/if}
         {#if d.shown}
           <button class="small" onclick={() => reveal(false)} data-deal-hide>🙈 Hide Who was who</button>
@@ -400,15 +414,16 @@
         <button class="ghost small" onclick={() => (fresh = true)}>🎭 Deal a new one</button>
         <button class="ghost small" onclick={putAway}>✖ Put it away</button>
       </div>
-      {#if out.length && (!cardsOn || dual || noPhone.length)}
+      {#if out.length && (!cardsOn || dual || over || noPhone.length)}
         <!-- Each player dealt in, to copy their card (a DM) or show it in the 🪟 card window: by name only, the same
              buttons for everyone, those with no part included (listing only the others would say who got one). In one
-             window with the phones getting the cards, only those with no phone here: picked out by phone, never by part. -->
+             window with the phones getting the cards, only those with no phone here (picked out by phone, never by
+             part), or everyone when some cards never reach the phones; it says nothing of anyone's (seen or not). -->
         <div class="hands">
-          {#each cardsOn && !dual ? noPhone : dealtList as to (toKey(to))}
+          {#each cardsOn && !dual && !over ? noPhone : dealtList as to (toKey(to))}
             {@const nophone = cardsOn && !to.member && !phones.has(to.seat)}
             <div class="row small">
-              <span class="grow">{who(to)}{#if nophone}&nbsp;· 📵 no phone here{:else if cardsOn && seenBy(to.seat, to.member?.id)}&nbsp;· ✓ seen{/if}</span>
+              <span class="grow">{who(to)}{#if nophone}{' '}· 📵 no phone here{:else if cardsOn && dual && seenBy(to.seat, to.member?.id)}{' '}· ✓ seen{/if}{#if dual && leftOffFor(to)}{' '}· not on their phone{/if}</span>
               <button class="ghost tiny" onclick={() => copyHand(to)} aria-label="Copy {who(to)}’s card" title="Copies “For … only” with their card, to paste in a DM (nothing of it shows here)">📋 Copy</button>
               {#if (!cardsOn || nophone) && !to.member}<button class="ghost tiny" onclick={() => openWin(to.seat)} aria-label="Show {who(to)}’s card in the card window" title="Opens a window with only their cards, to share with them alone">🪟</button>{/if}
             </div>

@@ -174,7 +174,7 @@ async function putFile(game: Game, id: Id): Promise<{ id: string } | { why: Left
   if (body.size > FILE_MAX_BYTES) return { why: 'big', error: 'Too big for phones' };
   const r = await uploadCardFile(body, type);
   if ('id' in r) return r;
-  return { why: r.refused === 'big' ? 'big' : r.refused === 'kind' ? 'kind' : 'failed', error: r.error };
+  return { why: r.refused === 'big' ? 'big' : r.refused === 'kind' ? 'kind' : r.refused === 'full' ? 'full' : 'failed', error: r.error };
 }
 
 /**
