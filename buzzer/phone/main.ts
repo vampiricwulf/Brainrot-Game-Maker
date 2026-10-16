@@ -22,7 +22,7 @@
  */
 import { isRoomCode, ROOM_ALPHABET, type DenyReason, type PhoneView, type PhoneWager, type RoomToPhone } from '../../src/lib/buzzproto';
 import { PLAYER_COLOR_NAMES, PLAYER_PALETTE, textOn } from '../../src/lib/colors';
-import { cardFocus, clearCards, drawCards, initCards, retapCards, retryCardFiles } from './cardpanel';
+import { cardFocus, clearCards, coverCards, drawCards, initCards, retapCards, retryCardFiles } from './cardpanel';
 import { cardsLine, lateLine } from './cards';
 
 const $ = <T extends HTMLElement = HTMLElement>(id: string) => document.getElementById(id) as T;
@@ -925,7 +925,7 @@ function dropCards(): void {
   if ($('cards').hidden && !$('card-list').childElementCount) return;
   clearCards($('card-list'));
   $('cards').hidden = true;
-  $('s-buzz').classList.remove('cards-up', 'cards-aside');
+  $('s-buzz').classList.remove('cards-up', 'cards-aside', 'cards-under');
 }
 
 function renderBuzz(v: PhoneView): void {
@@ -976,6 +976,8 @@ function renderBuzz(v: PhoneView): void {
   $('card-status-small').textContent = cardsUp ? (v.statusSub ?? '') : '';
   $('s-buzz').classList.toggle('cards-up', cardsUp);
   $('s-buzz').classList.toggle('cards-aside', !!(cards.length || late) && !cardsUp);
+  // A buzzer that's up stays where the finger is: cards beside it go under it, not over (a box keeps its cards over it).
+  $('s-buzz').classList.toggle('cards-under', !!cards.length && !b.hidden);
   cardsSaid = lateLine(late, team);
   // Desktop: the key that buzzes, under the buzzer (to a screen reader too: its shortcut and description). Not with a
   // box up (Space types there), nor while nobody buzzes (a partner clue) or once the game is over (it buzzes nothing).
@@ -1007,6 +1009,9 @@ function renderBuzz(v: PhoneView): void {
   // before the move doesn't open it: see the keyup listener.)
   const newest = cardsUp ? (fresh[0] ?? (wasCardsUp ? null : cards[cards.length - 1].id)) : null;
   if (cardsUp !== wasCardsUp || newest) {
+    // Cards making way for the buzzer close (a neighbour or a webcam would see an open one beside it, and it would push
+    // the clue off the screen). One opened while the buzzer is up stays open.
+    if (wasCardsUp && !cardsUp && !b.hidden) coverCards();
     const lost = !at || at === document.body || at === b || (cardsUp && parked) || (!cardsUp && $('cards').contains(at));
     wasCardsUp = cardsUp;
     // (Not to the buzzer while a box takes its place: the box has the keys.)

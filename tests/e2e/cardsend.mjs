@@ -256,10 +256,10 @@ try {
   assert(await until(() => cards().length === 2 && cards()[0].id !== c1.id), '↻ Send again: Card 1 goes under a new id');
   const c1b = cards()[0];
   assert(cards()[1].id === c2.id, 'and Card 2 keeps its own');
-  // (A new id is a new card on the phone: covered again until tapped.)
-  await bobCover.waitFor();
-  await bobCover.tap();
-  await bob.getByText(SPY).waitFor();
+  // (Bob had it open: under its new id it stays open on his phone, with no tap, and the room hears he saw it.)
+  await bob.locator(`.card[data-card="${c1b.id}"]`).waitFor();
+  assert((await bob.getByText(SPY).isVisible()) && !(await bobCover.isVisible()), 'Bob had it open: it stays open on his phone under its new id');
+  assert(await until(async () => (await rowText('Card 1')).includes('Card 1 → Bob · ✓ seen')), `and Card 1 → Bob · ✓ seen again (${await rowText('Card 1')})`);
   await host.keyboard.press('Escape');
   await offStream(aud, 'the audience window', 'the list of cards out');
 

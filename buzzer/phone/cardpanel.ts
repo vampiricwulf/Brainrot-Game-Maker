@@ -9,11 +9,12 @@
  * - Video plays muted and inline once the card is open ("🔊 Tap for sound"); sound waits for a tap. With reduced
  *   motion, video doesn't start by itself and a GIF shows still with "▶ Play".
  * - Cards live in memory only. A card that goes is taken down: its players stopped, its frames removed.
- * - A card is drawn again only when what it shows changed, so a playing video or an open player isn't reset.
+ * - A card is drawn again only when its words changed (the lines over its cover change in place), so a playing video
+ *   or an open player isn't reset. An open card sent again under a new id (↻ Send again) stays open.
  */
 import { cardLink, filesUrl, isFileId, type CardMedia, type PhoneCard } from '../../src/lib/buzzproto';
 import { imageFallback } from '../../src/lib/links';
-import { arrivedLine, bigWords, brokenLine, cardHead, comingLine, filesIn, isGif, mediaName, missingLine, playerSrc, retryAfter, roleLine } from './cards';
+import { arrivedLine, bigWords, brokenLine, cardBuild, cardHead, cardSame, comingLine, filesIn, isGif, mediaName, missingLine, playerSrc, retryAfter, roleLine } from './cards';
 
 /** What the panel needs from the page. */
 export interface PanelHost {
@@ -57,8 +58,14 @@ interface Slot {
 }
 
 interface Drawn {
+  /** What its cover and words were built from (cardBuild), and all it shows (cardSame). */
   key: string;
+  same: string;
   el: HTMLElement;
+  /** The lines over the cover: who can see it, its part, its hint (none: not there). */
+  head: HTMLElement;
+  role: HTMLElement | null;
+  hint: HTMLElement | null;
   cover: HTMLButtonElement | null;
   body: HTMLElement;
   items: HTMLElement;
@@ -118,13 +125,22 @@ function words(e: HTMLElement): HTMLElement {
  */
 export function drawCards(box: HTMLElement, list: readonly PhoneCard[]): string[] {
   const ids = new Set(list.map((c) => c.id));
-  for (const [id, d] of drawn) if (!ids.has(id)) dropCard(id, d);
+  // An open card that goes as the same card comes under a new id (↻ Send again, for a phone that joined late) stays
+  // open here, without buzzing again; the room hears it was seen. (Whether the keys were in it: they stay.)
+  const wentOpen = new Map<string, boolean>();
+  for (const [id, d] of drawn)
+    if (!ids.has(id)) {
+      if (opened.has(id)) wentOpen.set(d.same, d.el.contains(document.activeElement));
+      dropCard(id, d);
+    }
   const fresh: string[] = [];
   const order: HTMLElement[] = [];
   for (const c of [...list].reverse()) {
     let d = drawn.get(c.id);
-    const key = JSON.stringify([c.role, c.hint, c.title, c.text, c.team, c.shared, c.tap]);
-    // (What it says changed under the same id: drawn again, staying open if it was.)
+    const key = cardBuild(c);
+    const same = cardSame(c);
+    let had = !!d && d.el.contains(document.activeElement);
+    // (Its words changed under the same id: drawn again, staying open if it was, the keys still in it.)
     if (d && d.key !== key) {
       takeDown(d);
       d.el.remove();
@@ -133,12 +149,20 @@ export function drawCards(box: HTMLElement, list: readonly PhoneCard[]): string[
     if (!d) {
       // A file that didn't load for an earlier card is tried again for this one (↻ Send again: a new id, the same file).
       for (const m of c.media ?? []) if ('file' in m && files.get(m.file)?.state === 'failed') files.delete(m.file);
-      d = build(c, key);
+      d = build(c, key, same);
       drawn.set(c.id, d);
-      if (!known.has(c.id)) fresh.push(c.id);
+      const back = wentOpen.get(same);
+      if (back !== undefined) {
+        wentOpen.delete(same);
+        opened.add(c.id);
+        had ||= back;
+      } else if (!known.has(c.id)) fresh.push(c.id);
       known.add(c.id);
     }
+    // (Its lines over the cover may have changed in place.)
+    d.same = same;
     update(c, d);
+    if (had && !d.el.contains(document.activeElement)) (opened.has(c.id) || !d.cover ? d.focusIn : d.cover).focus({ preventScroll: true });
     order.push(d.el);
   }
   // Into place without moving the cards already there (a moved frame would load again).
@@ -162,6 +186,11 @@ export function cardFocus(id: string): HTMLElement | null {
   return d ? (d.cover && !d.cover.hidden ? d.cover : d.focusIn) : null;
 }
 
+/** Every open card behind its cover again (its players stopped): the cards make way for the buzzer. */
+export function coverCards(): void {
+  for (const [id, d] of drawn) if (d.cover && opened.delete(id)) open(id, d, false);
+}
+
 function dropCard(id: string, d: Drawn): void {
   takeDown(d);
   d.el.remove();
@@ -174,15 +203,14 @@ function takeDown(d: Drawn): void {
   d.slots = [];
 }
 
-function build(c: PhoneCard, key: string): Drawn {
+function build(c: PhoneCard, key: string, same: string): Drawn {
   const art = el('article', 'card');
   art.dataset.card = c.id;
-  const head = el('h2', 'card-head', cardHead(c));
+  // (The lines over its cover get their words in update.)
+  const head = el('h2', 'card-head');
   head.id = `card-${++uid}`;
   art.setAttribute('aria-labelledby', head.id);
   art.append(head);
-  if (c.role) art.append(words(el('p', 'card-role', roleLine(c.role))));
-  if (c.hint) art.append(words(el('p', 'card-hint', c.hint)));
   const shownLine = el('p', 'card-shown', 'The answer’s on screen');
   art.append(shownLine);
   const body = el('div', 'card-body');
@@ -199,9 +227,13 @@ function build(c: PhoneCard, key: string): Drawn {
   const items = el('div', 'card-items');
   body.append(items);
   let cover: HTMLButtonElement | null = null;
-  const d: Drawn = { key, el: art, cover, body, items, shownLine, slots: [], focusIn };
+  const d: Drawn = { key, same, el: art, head, role: null, hint: null, cover, body, items, shownLine, slots: [], focusIn };
   if (c.tap !== false) {
     cover = d.cover = tapButton('card-cover', 'Tap to see');
+    // A tap landing just as it comes was meant for what was there a moment ago (BUZZ!, a box's Send answer): for a
+    // moment it goes to the card around it, not the cover. (A Space press from before it came: the page's keyup listener.)
+    cover.classList.add('just-in');
+    setTimeout(() => cover!.classList.remove('just-in'), 800);
     const hide = el('button', 'card-hide', '🙈 Hide');
     hide.type = 'button';
     body.append(hide);
@@ -213,6 +245,11 @@ function build(c: PhoneCard, key: string): Drawn {
       opened.add(c.id);
       open(c.id, d, true);
       if (follow(e, had)) d.focusIn.focus({ preventScroll: true });
+      // The browser can hold what's under the card still as it opens (scroll anchoring, on a page scrolled to its end),
+      // throwing its words off the top of the screen: back into view.
+      requestAnimationFrame(() => {
+        if (d.body.getBoundingClientRect().top < 0) d.body.scrollIntoView({ block: 'start' });
+      });
     });
     hide.addEventListener('click', (e) => {
       const had = d.body.contains(document.activeElement);
@@ -236,7 +273,22 @@ function open(id: string, d: Drawn, on: boolean): void {
   if (on && !told.has(id) && host!.seen(id)) told.add(id);
 }
 
+/** One of the lines over the cover, after `after`: made, changed or taken out (no words) in place. */
+function overLine(e: HTMLElement | null, cls: string, text: string, after: HTMLElement): HTMLElement | null {
+  if (!text) {
+    e?.remove();
+    return null;
+  }
+  if (!e) after.after((e = words(el('p', cls))));
+  if (e.textContent !== text) e.textContent = text;
+  return e;
+}
+
 function update(c: PhoneCard, d: Drawn): void {
+  const head = cardHead(c);
+  if (d.head.textContent !== head) d.head.textContent = head;
+  d.role = overLine(d.role, 'card-role', c.role ? roleLine(c.role) : '', d.head);
+  d.hint = overLine(d.hint, 'card-hint', c.hint ?? '', d.role ?? d.head);
   d.shownLine.hidden = c.open;
   const isOpen = c.tap === false || opened.has(c.id);
   const media = c.media ?? [];

@@ -5,7 +5,9 @@ import {
   arrivedLine,
   bigWords,
   brokenLine,
+  cardBuild,
   cardHead,
+  cardSame,
   cardsLine,
   comingLine,
   filesIn,
@@ -83,6 +85,20 @@ describe('a card’s lines', () => {
     expect(cardHead({ shared: true })).toBe('🤫 Only you and the others the host chose can see this');
     expect(cardHead({ team: true, shared: true })).toBe('🤫 Only your team and the others the host chose can see this');
     expect(roleLine('Describer')).toBe('You’re the Describer');
+  });
+
+  it('draws a card again only when its words or cover change, and knows it back under a new id', () => {
+    const c: PhoneCard = { id: 'pc:c1:1:1', open: true, role: 'Describer', hint: 'Describe it to Ann', title: 'SHREK', text: 'An ogre', shared: true, media: [{ kind: 'image', url: 'https://a.test/x.png' }] };
+    // Who can see it, its part, its hint, its pictures, the answer going up: changed in place (a player isn't reset).
+    for (const d of [{ shared: false }, { team: true }, { role: 'Guesser' }, { hint: 'Describe it to Annie' }, { media: [] }, { open: false }])
+      expect(cardBuild({ ...c, ...d })).toBe(cardBuild(c));
+    for (const d of [{ title: 'FIONA' }, { text: 'A princess' }, { tap: false }]) expect(cardBuild({ ...c, ...d })).not.toBe(cardBuild(c));
+    // ↻ Send again: a new id, the same card (the answer going up doesn't change it either).
+    expect(cardSame({ ...c, id: 'pc:c1:1:2' })).toBe(cardSame(c));
+    expect(cardSame({ ...c, open: false })).toBe(cardSame(c));
+    // Anything it shows that's different (a picture swapped too): a card of its own.
+    for (const d of [{ shared: false }, { role: 'Guesser' }, { hint: 'Describe it to Annie' }, { title: 'FIONA' }, { media: [{ kind: 'image', url: 'https://a.test/y.png' }] }] as Partial<PhoneCard>[])
+      expect(cardSame({ ...c, ...d })).not.toBe(cardSame(c));
   });
 
   it('shows up to three short words huge', () => {
