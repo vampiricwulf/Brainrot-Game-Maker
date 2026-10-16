@@ -82,10 +82,16 @@ try {
     await page.locator('.data-notice', { hasText: '99.2.0 is out' }).waitFor();
     assert(true, 'a start finds a newer version though it checked a minute ago');
     answer = 'offline';
+    // (What GitHub said is kept as it's heard: wait for it, then the same storage check as above before the reload.)
+    await page.waitForFunction(() => localStorage.getItem('jb.update')?.includes('99.2.0'));
+    await page.waitForTimeout(1000);
+    await page.evaluate(() => localStorage.setItem('test.marker', '4'));
     await page.reload();
     await page.getByRole('button', { name: 'Open…' }).waitFor();
-    await page.locator('.data-notice', { hasText: '99.2.0 is out' }).waitFor();
-    assert(true, 'offline, a start goes by what GitHub said last');
+    if (await page.evaluate(() => localStorage.getItem('test.marker') === '4')) {
+      await page.locator('.data-notice', { hasText: '99.2.0 is out' }).waitFor();
+      assert(true, 'offline, a start goes by what GitHub said last');
+    } else console.log('  - (the browser lost its storage on that reload: the offline check is skipped this time)');
   } else console.log('  - (the browser lost its storage on that reload: the stale-answer check is skipped this time)');
 
   // ℹ About checks on demand: a still newer one shows again; this one is the newest; offline says so.
