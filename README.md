@@ -99,10 +99,12 @@ movement dice are kept by the dice themselves, so renaming them in 🎡 Wheels, 
 Other editor tabs:
 
 - 🔊 **Sounds**: the sounds played on stream (right, wrong, dice, wheel, buzz…): preview, replace or switch each off.
-- 🎨 **Theme**: presets, colors, fonts and background images. **💾 Save as my theme…** keeps a look on this computer
-  for any game; **⬇ Export theme** (a `.brainrot-theme` file) or **📋 Copy theme code** shares it, and **📂 Import
-  theme…** / **⌨ Paste theme code…** show someone else's on your board before you use or keep it.
-- 🎡 **Wheels, Dice & Deals**: weighted wheels and custom dice. Each outcome can carry a score effect or action buttons.
+- 🎨 **Theme**: presets, colors, fonts and background images. **💾 Save as new theme…** keeps a look in My themes (in
+  this browser, or on this computer in the desktop app) for any game; **⬇ Export theme** (a `.brainrot-theme` file)
+  or **📋 Copy theme code** shares it, and **📂 Import theme…** / **⌨ Paste theme code…** show someone else's on your
+  board before you use or keep it.
+- 🎡 **Wheels, Dice & Deals**: weighted wheels, custom dice and 🎭 deals (a secret part for everyone). Each wheel or
+  dice outcome can carry a score effect or action buttons.
 - 📊 **Stats & Items**: HP bars, currencies, items, wearable gear and shops.
 
 **Copy and paste** slide items or whole slides between clues, rounds and even games; their pictures and sounds come
@@ -140,9 +142,10 @@ selected.
 The host panel keeps one layout in every round: the status line (with the 📱 phones and ⏱ timer chips and **↩ Cancel
 (keep tile)** on the right), the players' score chips, the row of what this moment needs, and at its right the one
 main button with its key (**👁 Reveal answer** `R`, **▦ Done ▶ board** `Esc`, **Show question ▶**, **Spin!** `W`,
-**Next turn ▶** `N`, the Final's next step `N`…). Under it come the tools (🎲 Dice, 🎡 Wheel, 🏁 Who goes first, 📊
-Scores) with the round navigation (◀ Prev round, the round list, Next round ▶) at the right, then a fixed bar that
-never moves: **↶ Undo ↷ Redo 🔊 Sound ⌨ · 📜 Log 👥 Players ⚖ Rules · ⏸ Cover 🙈 Hide · 📺 Audience ▭ · 🚪 Exit**.
+**Next turn ▶** `N`, the Final's next step `N`…). Under it come the tools (🎲 Dice, 🎡 Wheel, 🏁 Who goes first, 🤫
+Send a card…, 🎭 Deal…, 📊 Scores) with the round navigation (◀ Prev round, the round list, Next round ▶) at the right,
+then a fixed bar that never moves: **↶ Undo ↷ Redo 🔊 Sound · 📜 Log 👥 Players ⚖ Rules · ⏸ Cover 🙈 Hide · 📺
+Audience ▭ · ⌨ 🚪 Exit**.
 Anything that asks first (Exit, closing the audience window, leaving a round, 🔁 Rematch) asks in one strip right
 above that bar: Cancel on the left, the answer on the right. Leaving a round always asks, unless a board is played out
 (then **Next round ▶** is the main button). In RPG and board-game rounds on a wide window the panel is a column beside
@@ -175,9 +178,10 @@ whole team. On a Daily Double or a Final, players type their wager on their phon
 wager box (marked 📱, and you can still change it), they can change it until you show the question, and only you see
 how much. The buzzers open when the clue does, or when you press `U` after reading it. The fastest reaction wins, timed
 on each player's own phone, so a slow connection doesn't cost anyone the buzz. Every buzz is listed in the host panel,
-fastest first: a wrong answer locks that player out and opens the buzzers for the rest, **→ Next in line** gives the
-answer to the next one who buzzed, and **↺ Reset buzzers** (`0`) lets everyone buzz again. Buzzes within 0.01 s are a
-tie: **🎲 Roll for it** sets who answers first, or pick one yourself (`1`–`9` or a click always picks by hand). Viewers
+fastest first: a wrong answer locks that player out and the next one who buzzed answers at once (**⏭ Skip**
+passes them on with no points taken); once nobody who buzzed is left, the buzzers open for the rest, and
+**↺ Reset buzzers** (`0`) lets everyone buzz again. Buzzes within 0.01 s are a tie: **🎲 Roll for it** sets
+who answers first, or pick one yourself (`1`–`9` or a click always picks by hand). Viewers
 see "🔔 Ann is answering" whenever one player is picked during a clue. Phones also say who got a clue right and what's
 on (a Daily Double's player sees "you're up"; on a 🤝 partner clue every phone's button greys and says who describes
 and who guesses), beep and flash when BUZZ! lights up (🔔 mutes), and **Not you?** lets a
@@ -314,7 +318,7 @@ The main ones (press `?` during the game for all of them):
 | `T` / `Shift+T` | Start/pause the timer / 10 more seconds |
 | `D` / `W` / `O` / `S` | Roll the last dice again (a board game's own dice) / wheel / roll-off (on a tie for first: the tied players) / scoreboard |
 | `K` or `B` | "Be right back" cover (every round): the countdown and the clue's video wait under it |
-| `0` | Select everyone or no one (in buzzer mode: reset the buzzers) |
+| `0` | Select everyone or no one (in buzzer mode, during a clue: reset the buzzers) |
 | `U` | Buzzer mode: open the buzzers (when they open on your key) |
 | `A` / `Shift+A` | Open (or focus) the audience window / the scores-only window |
 | `L` | Log: the history (go back to any point), scores and rolls |

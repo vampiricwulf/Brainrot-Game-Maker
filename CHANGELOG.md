@@ -53,6 +53,12 @@ in plain words for the people who make and host games. Anything committed but no
 - A 🤫 card's picture that didn't reach the buzzer server shows in the cards out (its row orange, with ↻ Send again or 📋 Copy picture), and the 🤫 N cards out button turns orange when a card isn't fully on the phones; an upload cut off by a network blip is tried again by itself, and never gets stuck on "uploading…". (25d5a9f, 0b75a1c)
 - README says correctly when the buzzer room stays open (Keep & leave, ▶ Next game…) and when it closes. (25d5a9f)
 - In a big game, moving spaces in ✎ Edit board or things in ✎ Edit screen during play with the audience window open no longer freezes the host screen and the stream: the audience window gets only what changed. Typing players' names on the ▶ Play screen no longer lags, and ▶ Play opens noticeably faster. (acb2400, 9e5efbf)
+- The ? list and README say what a wrong answer in Buzzer mode does (the next player who buzzed answers at once; the buzzers open for the rest only once nobody who buzzed is left), and that on a partner clue with no picker marked yet you press the picker's number first. (0a1ace2)
+- The editor checklist no longer says "Deduct on wrong is off" after you untick ⚖ Game rules › Show quick ✔/✘ buttons: that only hides the one-click buttons, and a miss still costs points. (0a1ace2)
+- The tools row's tooltips (🤫 Send a card…, 🎭 Deal…, the cards out, 🔇 Stop sounds) start with the button's name, so they still say what each is when only its emoji shows. (0a1ace2)
+- Editor ⌨ Shortcuts lists Ctrl+A on the RPG map and says the list keys (F2, Delete, Ctrl+D, Alt+↑/↓, right-click) work on deals too; the ⋯ › ⚙ Settings hint lists what the dialog holds; screen readers name a deal's editor "Wheel, dice or deal". (0a1ace2, 3df90c1)
+- 🔊 Streaming the sound: with a single window (or in ▶ Test this round, or after the audience window was closed mid-game), the Discord, OBS, Mac and Linux steps say to share this window, not an audience window that isn't open. (0a1ace2, 3df90c1)
+- README: the theme save button has its real name (💾 Save as new theme…), the host panel's tools include 🤫 Send a card… and 🎭 Deal…, and ⌨ sits beside 🚪 Exit. (0a1ace2)
 
 ## 2026-10-15
 

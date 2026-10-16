@@ -104,6 +104,11 @@ try {
     await mac.locator('summary').click();
     assert(await mac.evaluate((d) => d.open), 'a platform section expands on click');
     assert((await dialog(page).getByText('Discord audio fix').count()) === 0, 'no desktop-app setting in the browser');
+    // Single window: viewers see this window, so the steps share and capture it (there's no audience window to open).
+    assert(
+      (await dialog(page).getByText('Click once anywhere in this window').count()) === 1 && (await dialog(page).getByText(/audience (window|view)/).count()) === 0,
+      'single window: the Discord, OBS, Mac and Linux steps share this window, never an audience window',
+    );
 
     await testSound(page, 'Sound played in this window');
     assert((await page.evaluate(() => window.__plays)) === 1, 'single window: the chime plays in the host window');
@@ -154,6 +159,7 @@ try {
     assert((await clickOnce.count()) === 1 && (await aud.locator('.activate').count()) === 1, 'before any click or sound, both windows ask for a click');
     await page.locator('.panel').getByRole('button', { name: '🔊 Sound' }).click();
     assert((await dialog(page).getByText('plays in the audience window').count()) === 1, 'dual mode: it says the sound plays in the audience window');
+    assert((await dialog(page).getByText('Open the audience window, click once inside it').count()) === 1, 'and the Discord steps share the audience window');
     const hostPlays = await page.evaluate(() => window.__plays);
     await testSound(page, 'Sound played in the audience window');
     // This browser lets the new window play sound without a click: a sound that played there proves it.
@@ -293,6 +299,39 @@ try {
     );
     await testSound(page, 'Sound played in this window');
     assert(true, 'Test sound still works there');
+    await context.close();
+  }
+
+  // ---------- 3b. 📺 Separate audience window picked, none open: before Start, and in ▶ Test this round ----------
+  {
+    const context = await browser.newContext({ viewport: { width: 1400, height: 900 } });
+    // A popup blocker: picking 📺 can't open the window yet (Start tries again).
+    await context.addInitScript(() => (window.open = () => null));
+    const page = watch(await context.newPage(), 'audience picked');
+    await toPregame(page, fileUrl);
+    await page.locator('.mode', { hasText: 'Separate audience window' }).click();
+    await page.getByRole('button', { name: '📺 Open audience window & start' }).waitFor();
+    await page.getByRole('button', { name: '🔊 Sound for Discord / OBS…' }).click();
+    await dialog(page).waitFor();
+    assert(
+      (await dialog(page).getByText('plays in this window').count()) === 1 && (await dialog(page).getByText('Open the audience window, click once inside it').count()) === 1,
+      'pre-game with 📺 picked and no window yet: the sound plays here for now, and the Discord steps share the audience window Start opens',
+    );
+    await page.keyboard.press('Escape');
+    await dialog(page).waitFor({ state: 'detached' });
+
+    // A test round never opens the audience window (📺 still picked): viewers see this window, so the steps share it.
+    await page.getByRole('button', { name: '◀ Back to editor', exact: true }).click();
+    await page.locator('nav > button.round-tab').first().click();
+    await page.getByRole('button', { name: '▶ Test this round', exact: true }).click();
+    await page.getByRole('button', { name: 'Skip intro' }).click();
+    await page.locator('.board .tile').first().waitFor();
+    await page.locator('.panel').getByRole('button', { name: '🔊 Sound' }).click();
+    await dialog(page).waitFor();
+    assert(
+      (await dialog(page).getByText('Click once anywhere in this window').count()) === 1 && (await dialog(page).getByText(/audience (window|view)/).count()) === 0,
+      '▶ Test this round with 📺 picked: the Discord, OBS, Mac and Linux steps share this window, never an audience window',
+    );
     await context.close();
   }
 
@@ -811,6 +850,12 @@ try {
     await stop.waitFor();
     const widths = await Promise.all([stop, page.getByRole('button', { name: '🤫 Send a card…', exact: true })].map(async (b) => Math.round((await b.boundingBox()).width)));
     assert(widths[0] < 60 && widths[1] > 100, `1260px wide: 🔇 Stop sounds shows as 🔇 (still named in full), 🤫 Send a card… in full (${widths.join(' / ')}px wide)`);
+    // (Shown as 🔇 or 🎭 alone, a tools button's tooltip still starts with its name.)
+    const tips = await Promise.all(['🔇 Stop sounds', '🤫 Send a card…', '🎭 Deal…'].map((name) => page.locator('.panel').getByRole('button', { name, exact: true }).getAttribute('title')));
+    assert(
+      tips.every((t, i) => t.startsWith(['🔇 Stop sounds (Shift+M): ', '🤫 Send a card…: ', '🎭 Deal…: '][i])),
+      `the tools row’s tooltips name each button first (${tips.join(' | ')})`,
+    );
     await stop.click();
     await page.waitForFunction(introPlaying, false);
     await stop.waitFor({ state: 'detached' });

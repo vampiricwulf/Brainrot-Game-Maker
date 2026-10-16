@@ -436,7 +436,7 @@ try {
   await sendPicture('refused.png', png(40, 40, 200, 120, 90), 'Card 2');
   // (The send dialog is closed: nothing else in sight says so.)
   await tools.locator('[data-cards-out-count="2"].warn').waitFor();
-  assert((await outButton.getAttribute('title')).startsWith('⚠ A card out isn’t all on the phones'), 'one the server turns down: the tools row’s 🤫 2 cards out turns orange, and says to open the list');
+  assert((await outButton.getAttribute('title')).startsWith('🤫 2 cards out: ⚠ one isn’t all on the phones'), 'one the server turns down: the tools row’s 🤫 2 cards out turns orange, and says to open the list');
   // A card taken back while its picture goes up, and that upload cut off: it isn't tried again (the room would only
   // be told to let go of it).
   let release = () => {};

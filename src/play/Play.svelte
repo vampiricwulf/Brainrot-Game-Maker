@@ -4478,8 +4478,8 @@
     </div>
     <ul>
       <li class:done={dual || !wantAudience}>
-        {#if dual}📺 Audience window open: capture it in OBS (Window capture).
-        {:else if wantAudience}📺 The audience window opens when you press Start: capture it in OBS.
+        {#if dual}📺 Audience window open: share it in Discord or capture it in OBS (Window capture).
+        {:else if wantAudience}📺 The audience window opens when you press Start: share it in Discord or capture it in OBS.
         {:else}🖥 Single window: viewers see this window. Press H in the game to hide the controls.{/if}
       </li>
       {#if phonesOn}
@@ -4503,8 +4503,10 @@
   <SettingsDialog at="buzzer" onclose={() => (showSettings = false)} />
 {/if}
 {#if showSound && (dual || app.pregame || panelBox)}
-  <!-- Single window, mid-game: in the host panel (it grows for it), never over the stage viewers see. -->
-  <AudioHelp {dual} area={panelBox} windowTitle={audienceTitle(game)} onclose={() => (showSound = false)} />
+  <!-- Single window, mid-game: in the host panel (it grows for it), never over the stage viewers see. Its steps share the
+       audience window when it's open, or before Start with 📺 picked (Start opens it); a test round, or a game whose
+       audience window was closed, plays in this window. -->
+  <AudioHelp {dual} audienceMode={dual || (app.pregame && wantAudience)} area={panelBox} windowTitle={audienceTitle(game)} onclose={() => (showSound = false)} />
 {/if}
 
 <style>

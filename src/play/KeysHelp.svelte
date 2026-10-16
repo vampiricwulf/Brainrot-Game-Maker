@@ -59,7 +59,7 @@
         ['Shift+Esc', 'Cancel the clue: back to the board, the tile stays playable (not once points were given)'],
         ['Enter in the Daily Double wager', 'Show the question (its player answers it)'],
         ['Esc on a Daily Double splash', 'Back to the board: the tile stays playable (no wager was taken)'],
-        ['W on a partner clue', 'Spin for a partner (1–9: choose one yourself)'],
+        ['W on a partner clue', 'Spin for a partner (1–9: choose one yourself). With nobody marked as its picker yet, the status line asks who picked it: their number first'],
         ['Enter on a partner clue', 'Show the question, send the cards to their phones and start the clock (📤 Send and start; copy them to anyone without a phone), then ✔ Got it (Shift+Enter: ✘ Missed)'],
         ['Esc on a partner clue before the question', 'Back to the board: the tile stays playable'],
         ['1–9, then Enter, in a partner clue’s steal', 'After ✘ Missed with steals on: who steals it, then right (Shift+Enter: wrong), as on any clue'],
@@ -79,7 +79,7 @@
         ['1 – 9', 'During a clue: player N answers, picked by hand (over a phone’s buzz). With someone answering it picks N as well (to judge both); press the one answering’s number to let them go'],
         ['0', 'During a clue: reset the buzzers (↺): nobody is locked out any more, and they open for everyone'],
         ['U', 'Open the buzzers (when they open on your key, after reading the clue; after a right answer, for the rest)'],
-        ['Shift+Enter on the one answering', 'Wrong: they’re locked out of this clue and the buzzers open for the others'],
+        ['Shift+Enter on the one answering', 'Wrong: they’re locked out of this clue and the next one who buzzed answers at once (⏭ Skip: the same, with no points taken); once nobody who buzzed is left, the buzzers open for the rest'],
       ],
     },
     {

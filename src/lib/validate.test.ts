@@ -5,7 +5,6 @@ import { newWheel } from './tools';
 import { newBoardGameRound } from './boardgame';
 import { newRpgRound, newVariant } from './rpg';
 import { addClueSlide, setClueType } from './ops';
-import { setPartnerPoints } from './partner';
 import { validate } from './validate';
 
 describe('the checklist', () => {
@@ -249,22 +248,13 @@ describe('🤝 partner clues', () => {
     vi.unstubAllGlobals();
   });
 
-  it('says where a miss still costs points with ⚖ Deduct on wrong off (a partner clue’s points are its own)', () => {
-    const { game, round, clue } = partnerGame();
+  it('says nothing new with ⚖ Show quick ✔/✘ buttons off: it only hides the buttons, and a miss still costs points', () => {
+    const { game, clue } = partnerGame();
     game.settings.buzzer = true;
     setSlideText(clue.cards![0], 'Shrek');
-    const deduct = () => validate(game).filter((p) => p.text.startsWith('Deduct on wrong is off'));
-    expect(deduct()).toEqual([]);
+    const before = validate(game);
     game.settings.deductOnWrong = false;
-    expect(deduct()).toEqual([{ text: 'Deduct on wrong is off, but 1 partner clue takes points on a miss: its own Points say so', tab: 'play', level: 'info' }]);
-    const other = round.categories[1].clues[2];
-    setClueType(round, other, 'partner');
-    expect(deduct().map((p) => p.text)).toEqual(['Deduct on wrong is off, but 2 partner clues take points on a miss: their own Points say so']);
-    // Points “No penalty”: a miss costs nobody, so there's nothing to say about that clue.
-    setPartnerPoints(other, 'none');
-    expect(deduct().map((p) => p.text)).toEqual(['Deduct on wrong is off, but 1 partner clue takes points on a miss: its own Points say so']);
-    setPartnerPoints(clue, 'none');
-    expect(deduct()).toEqual([]);
+    expect(validate(game)).toEqual(before);
   });
 
   it('says when files are used only on cards (an older copy’s Delete unused would delete them)', () => {

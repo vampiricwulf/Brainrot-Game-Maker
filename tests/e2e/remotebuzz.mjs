@@ -287,6 +287,13 @@ try {
   await page.getByText('Missed: Player 2').waitFor();
   heights.missed = await panelH();
   assert((await queue.locator('li.out', { hasText: 'Player 2' }).count()) === 1, 'the queue stays, Player 2 struck out');
+  // The ? list says so too (not that the buzzers open for the others).
+  await page.keyboard.press('?');
+  const wrongKey = page.getByRole('dialog', { name: 'Keyboard shortcuts' }).locator('tr', { hasText: 'Shift+Enter on the one answering' });
+  await wrongKey.waitFor();
+  assert((await wrongKey.innerText()).includes('the next one who buzzed answers at once'), 'the ? list says a wrong answer goes to the next one who buzzed');
+  await page.keyboard.press('Escape');
+  await wrongKey.waitFor({ state: 'detached' });
   // A buzz from a phone meanwhile doesn't take the turn.
   await say({ t: 'buzz', armId: armed.armId, seatId: seats[0].id, rank: 3, afterMs: 200 });
   await page.waitForTimeout(150);

@@ -212,6 +212,9 @@ try {
   assert(!(await tile(0, 3).getAttribute('class')).includes('used'), 'Esc on PARTNER UP!: back to the board, the tile still playable');
   await page.keyboard.press('?');
   assert((await page.getByText('W on a partner clue').count()) === 1, 'the ? list has the partner clue’s keys');
+  // (As at the start: with nobody marked as its picker yet, the first number says who picked it, not the partner.)
+  const partnerKey = page.getByRole('dialog', { name: 'Keyboard shortcuts' }).locator('tr', { hasText: 'W on a partner clue' });
+  assert((await partnerKey.innerText()).includes('who picked it: their number first'), 'and says that with nobody marked as its picker, their number comes first');
   await page.keyboard.press('Escape');
 
   // ---------- Two windows: the audience window never gets a card; the host column lists them ----------
