@@ -2,34 +2,35 @@
   📱 On their phone (partner-clues spec §5.3, §12.3): a 🤫 card exactly as a phone gets it, drawn from the same
   phoneCard() that builds what's sent: its lines, its words, then its pictures, GIFs, videos, sounds and embeds one under
   another. Each item that won't reach a phone gets a line saying why, written for the buzzer server this copy uses. The
-  editor isn't on stream, so items are named here.
+  editor isn't on stream, so items are named here. A card from the editor's 🤫 Cards (no `clue`) has no role or hint
+  line, and is only theirs, as a phone gets it.
 -->
 <script lang="ts">
   import { bigWords, FILE_MAX_BYTES } from '../lib/buzzproto';
   import { formatBytes, mediaUrls } from '../lib/media.svelte';
-  import type { Clue, ClueCard, Game } from '../lib/model';
+  import type { Clue, ClueCard, Game, Slide } from '../lib/model';
   import { cardLines, partnerRules } from '../lib/partner';
   import { phoneCard, type LeftOut, type PhoneItem } from '../lib/phonecard';
   import { buzzerBase, remote, roomHasCards, roomHasFiles } from '../lib/remote.svelte';
 
-  let { game, clue, card }: { game: Game; clue: Clue; card: ClueCard } = $props();
+  let { game, clue, card }: { game: Game; clue?: Clue; card: Slide & Partial<Pick<ClueCard, 'to' | 'hint'>> } = $props();
 
   /** The buzzer server this copy uses: none, an open room's (it says what it takes), or one not asked yet. */
   const server = $derived(!buzzerBase() ? 'none' : remote.code && remote.status === 'online' ? (roomHasCards() ? (roomHasFiles() ? 'files' : 'nofiles') : 'older') : 'unknown');
   const pc = $derived(phoneCard(game, card, { files: server === 'nofiles' || server === 'older' ? null : {} }));
-  const rules = $derived(partnerRules(clue));
   /**
    * Its lines as its part's phone shows them (anyone but the two: the line for them), "the picker" and "the partner" for
-   * the names. A card on any other tile has none.
+   * the names. A card on any other tile has none, nor does one from 🤫 Cards.
    */
   const lines = $derived.by((): { role?: string; hint?: string } => {
-    if (clue.type !== 'partner') return {};
+    if (!clue || clue.type !== 'partner') return {};
+    const rules = partnerRules(clue);
     const s = { pickerId: 'picker', partnerId: 'partner', giver: rules.giver };
     const to = card.to === 'giver' || card.to === 'guesser' ? [(card.to === 'giver') === (rules.giver === 'partner') ? 'partner' : 'picker'] : card.to === 'others' ? ['someone else'] : [];
     return cardLines(rules, s, card, to, (id) => `the ${id}`);
   });
   /** A card set to both or everyone else goes to more than one phone: theirs says it isn't theirs alone (as a phone does). */
-  const shared = $derived(card.to === 'both' || card.to === 'others');
+  const shared = $derived(!!clue && (card.to === 'both' || card.to === 'others'));
   const ICON: Record<PhoneItem['kind'], string> = { picture: '🖼', gif: '🖼', video: '🎞', sound: '🔊', embed: '▶' };
   const KIND: Record<PhoneItem['kind'], string> = { picture: 'picture', gif: 'GIF', video: 'video', sound: 'sound', embed: 'online video' };
 

@@ -53,6 +53,7 @@
   import RoundActions from './RoundActions.svelte';
   import MediaLibrary from './MediaLibrary.svelte';
   import ToolsEditor from './tools/ToolsEditor.svelte';
+  import CardsEditor from './CardsEditor.svelte';
   import ThemeEditor from './ThemeEditor.svelte';
   import { isThemeFile, parseThemeFile, ThemeError, type SharedTheme } from '../lib/themefile';
   import UpdateControls from './UpdateControls.svelte';
@@ -366,8 +367,9 @@
     tab = line.round ? at : line.tab;
     const round = line.round ? game.rounds[at] : undefined;
     const place = (round && isBoard(round) && boardPlace(game, round)) || line.place;
-    // A stat, an item or a shop in 📊 Stats & Items, a wheel or dice in 🎡 Wheels, Dice & Deals: it flashes there.
-    if (place?.tab === 'stats' || place?.tab === 'tools') return void goTo(place);
+    // A stat, an item or a shop in 📊 Stats & Items, a wheel or dice in 🎡 Wheels, Dice & Deals, a card in 🤫 Cards: it
+    // flashes there.
+    if (place?.tab === 'stats' || place?.tab === 'tools' || place?.tab === 'cards') return void goTo(place);
     if (!place || (place.tab === 'round' && !place.part) || (place.tab !== 'round' && place.tab !== 'world' && place.tab !== 'tiebreaker')) return;
     goTo(place);
     const part = place.tab === 'round' ? place.part : undefined;
@@ -1023,6 +1025,13 @@
       <button class:active={tab === 'sounds'} aria-current={tab === 'sounds' ? 'page' : undefined} onclick={() => (tab = 'sounds')} title="The sounds played on stream (players and rules are set on the ▶ Play screen)">🔊 Sounds</button>
       <button class:active={tab === 'theme'} aria-current={tab === 'theme' ? 'page' : undefined} onclick={() => (tab = 'theme')}>🎨 Theme</button>
       <button class:active={tab === 'tools'} aria-current={tab === 'tools' ? 'page' : undefined} onclick={() => (tab = 'tools')}>🎡 Wheels, Dice & Deals</button>
+      <button
+        class:active={tab === 'cards'}
+        aria-current={tab === 'cards' ? 'page' : undefined}
+        onclick={() => (tab = 'cards')}
+        title="Private cards made before the show: during play, 🤫 Send a card… sends one to the players you choose, on their phones only, never on stream"
+        >🤫 Cards{game.cards?.length ? ` (${game.cards.length})` : ''}</button
+      >
       <!-- (Only RPG and board game rounds use stats and items: shown once there's one, or anything in it.) -->
       {#if showStats}
         <button class:active={tab === 'stats'} aria-current={tab === 'stats' ? 'page' : undefined} onclick={() => (tab = 'stats')} title="Player stats, items and shops (RPG and board game rounds)">📊 Stats & Items</button>
@@ -1063,7 +1072,7 @@
         {:else if tab === 'tools'}
           <ToolsEditor />
         {:else if tab === 'cards'}
-          <!-- (🤫 Cards: its page, CardsEditor, isn't in yet.) -->
+          <CardsEditor />
         {:else if tab === 'theme'}
           <ThemeEditor round={lastRound} bind:incoming={incomingTheme} />
         {:else if tab === 'history'}

@@ -156,13 +156,13 @@
     [
       'Lists',
       [
-        ['Alt+↑ / ↓ or drag ⋮⋮', 'Move the row up / down: stats, items, shops and what they sell, buttons, wheels, dice, slices, players, zones'],
-        ['Ctrl+D', 'Duplicate the row: a stat, item, shop, button, wheel, dice, slice or zone'],
-        ['Right-click a row', 'Stats, items, shops, wheels and dice, slices, buttons, zones: duplicate, move up or down, delete…'],
+        ['Alt+↑ / ↓ or drag ⋮⋮', 'Move the row up / down: stats, items, shops and what they sell, buttons, wheels, dice, deals, 🤫 cards, slices, players, zones'],
+        ['Ctrl+D', 'Duplicate the row: a stat, item, shop, button, wheel, dice, deal, 🤫 card, slice or zone'],
+        ['Right-click a row', 'Stats, items, shops, wheels, dice and deals, 🤫 cards, slices, buttons, zones: duplicate, move up or down, delete…'],
         ['Right-click what a shop sells, or a player', 'Move it up or down, remove it from the shop / rename or delete the player (▶ Play, before the game)'],
         ['Drag an item’s 📦 icon onto a shop', 'Sell it there (a picture file dropped on the icon is its icon instead)'],
-        ['F2 or double-click', 'Wheels, Dice & Deals: rename the wheel or dice in focus'],
-        ['Delete', 'Wheels, Dice & Deals: delete the wheel or dice in focus'],
+        ['F2 or double-click', 'Wheels, Dice & Deals and 🤫 Cards: rename the one in focus'],
+        ['Delete', 'Wheels, Dice & Deals and 🤫 Cards: delete the one in focus'],
         ['Enter / Backspace', 'Wheel slices: add the next slice / delete an empty one'],
         ['↑ / ↓, G', '🕘 History: move through the steps, show where one changed things'],
         ['Click / Ctrl+click / Shift+click', '🖼 Media: select files (Delete removes them, Esc deselects)'],
