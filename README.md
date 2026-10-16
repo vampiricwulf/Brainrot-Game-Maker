@@ -178,10 +178,10 @@ whole team. On a Daily Double or a Final, players type their wager on their phon
 wager box (marked 📱, and you can still change it), they can change it until you show the question, and only you see
 how much. The buzzers open when the clue does, or when you press `U` after reading it. The fastest reaction wins, timed
 on each player's own phone, so a slow connection doesn't cost anyone the buzz. Every buzz is listed in the host panel,
-fastest first: a wrong answer locks that player out and the next one who buzzed answers at once (**⏭ Skip** passes
-them on with no points taken); once nobody who buzzed is left, the buzzers open for the rest, and **↺ Reset buzzers**
-(`0`) lets everyone buzz again. Buzzes within 0.01 s are a
-tie: **🎲 Roll for it** sets who answers first, or pick one yourself (`1`–`9` or a click always picks by hand). Viewers
+fastest first: a wrong answer locks that player out and the next one who buzzed answers at once (**⏭ Skip**
+passes them on with no points taken); once nobody who buzzed is left, the buzzers open for the rest, and
+**↺ Reset buzzers** (`0`) lets everyone buzz again. Buzzes within 0.01 s are a tie: **🎲 Roll for it** sets
+who answers first, or pick one yourself (`1`–`9` or a click always picks by hand). Viewers
 see "🔔 Ann is answering" whenever one player is picked during a clue. Phones also say who got a clue right and what's
 on (a Daily Double's player sees "you're up"; on a 🤝 partner clue every phone's button greys and says who describes
 and who guesses), beep and flash when BUZZ! lights up (🔔 mutes), and **Not you?** lets a

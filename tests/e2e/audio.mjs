@@ -302,6 +302,39 @@ try {
     await context.close();
   }
 
+  // ---------- 3b. 📺 Separate audience window picked, none open: before Start, and in ▶ Test this round ----------
+  {
+    const context = await browser.newContext({ viewport: { width: 1400, height: 900 } });
+    // A popup blocker: picking 📺 can't open the window yet (Start tries again).
+    await context.addInitScript(() => (window.open = () => null));
+    const page = watch(await context.newPage(), 'audience picked');
+    await toPregame(page, fileUrl);
+    await page.locator('.mode', { hasText: 'Separate audience window' }).click();
+    await page.getByRole('button', { name: '📺 Open audience window & start' }).waitFor();
+    await page.getByRole('button', { name: '🔊 Sound for Discord / OBS…' }).click();
+    await dialog(page).waitFor();
+    assert(
+      (await dialog(page).getByText('plays in this window').count()) === 1 && (await dialog(page).getByText('Open the audience window, click once inside it').count()) === 1,
+      'pre-game with 📺 picked and no window yet: the sound plays here for now, and the Discord steps share the audience window Start opens',
+    );
+    await page.keyboard.press('Escape');
+    await dialog(page).waitFor({ state: 'detached' });
+
+    // A test round never opens the audience window (📺 still picked): viewers see this window, so the steps share it.
+    await page.getByRole('button', { name: '◀ Back to editor', exact: true }).click();
+    await page.locator('nav > button.round-tab').first().click();
+    await page.getByRole('button', { name: '▶ Test this round', exact: true }).click();
+    await page.getByRole('button', { name: 'Skip intro' }).click();
+    await page.locator('.board .tile').first().waitFor();
+    await page.locator('.panel').getByRole('button', { name: '🔊 Sound' }).click();
+    await dialog(page).waitFor();
+    assert(
+      (await dialog(page).getByText('Click once anywhere in this window').count()) === 1 && (await dialog(page).getByText(/audience (window|view)/).count()) === 0,
+      '▶ Test this round with 📺 picked: the Discord, OBS, Mac and Linux steps share this window, never an audience window',
+    );
+    await context.close();
+  }
+
   // ---------- 4. The desktop app, with a stand-in for its native side ----------
   const ARGS = '--disable-features=msWebOOUI,msPdfOOUI,msSmartScreenProtection,AudioServiceOutOfProcess --autoplay-policy=no-user-gesture-required';
   /**

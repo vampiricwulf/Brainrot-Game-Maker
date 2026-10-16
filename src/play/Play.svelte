@@ -4451,8 +4451,10 @@
   <SettingsDialog at="buzzer" onclose={() => (showSettings = false)} />
 {/if}
 {#if showSound && (dual || app.pregame || panelBox)}
-  <!-- Single window, mid-game: in the host panel (it grows for it), never over the stage viewers see. -->
-  <AudioHelp {dual} audienceMode={wantAudience} area={panelBox} windowTitle={audienceTitle(game)} onclose={() => (showSound = false)} />
+  <!-- Single window, mid-game: in the host panel (it grows for it), never over the stage viewers see. Its steps share the
+       audience window when it's open, or before Start with 📺 picked (Start opens it); a test round, or a game whose
+       audience window was closed, plays in this window. -->
+  <AudioHelp {dual} audienceMode={dual || (app.pregame && wantAudience)} area={panelBox} windowTitle={audienceTitle(game)} onclose={() => (showSound = false)} />
 {/if}
 
 <style>

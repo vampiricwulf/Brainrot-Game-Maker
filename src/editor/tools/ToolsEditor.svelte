@@ -278,7 +278,7 @@
     <button class="ghost" onclick={dealTemplateMenu} aria-haspopup="menu" title="Odd one out, Secret roles, Team captain, Everyone’s own prompt">📋 Ready-made deal…</button>
   </section>
 
-  <section aria-label="Wheel or dice">
+  <section aria-label="Wheel, dice or deal">
     {#if wheel}
       <div class="row top">
         <span class="spacer"></span>

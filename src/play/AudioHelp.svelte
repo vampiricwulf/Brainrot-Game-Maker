@@ -21,7 +21,7 @@
     area = null,
   }: {
     dual: boolean;
-    /** Viewers watch the audience window: it's open, or it opens on Start (📺 Separate audience window picked). */
+    /** Viewers watch the audience window: it's open, or (pre-game) it opens on Start (📺 Separate audience window picked). */
     audienceMode: boolean;
     windowTitle: string;
     onclose: () => void;
