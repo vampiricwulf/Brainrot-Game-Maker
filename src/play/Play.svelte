@@ -1302,7 +1302,11 @@
     if (was === w.amount && wagerFromPhone(f, w.seatId) && (f.wagerBy?.[w.seatId] ?? '') === by) return;
     const sym = game.settings.currencySymbol;
     const from = by ? `from ${by}’s phone` : 'from their phone';
-    const text = `${name}’s wager (${from}): ${typeof was === 'number' ? `${formatPoints(was, sym)} → ` : ''}${formatPoints(w.amount, sym)}`;
+    // (In one window viewers see ↶ Undo's toast and the 📜 Log too: the amount stays out of the step's name, as it stays
+    // out of the wager box.)
+    const text = dual
+      ? `${name}’s wager (${from}): ${typeof was === 'number' ? `${formatPoints(was, sym)} → ` : ''}${formatPoints(w.amount, sym)}`
+      : `${name}’s wager (${from})`;
     logged(session, text, () => finalSetWager(session, w.seatId, w.amount, 'phone', by || undefined));
   }
 

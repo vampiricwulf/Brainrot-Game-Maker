@@ -164,6 +164,15 @@ try {
   await page.waitForTimeout(500);
   await tile(3).click();
   await page.locator('.dd input[type=number]').waitFor();
+  // Whoever picks now is picked already: number keys type the wager, so the chips show no keys.
+  const ddKeys = page.locator('.panel .dd .chip .key');
+  assert(
+    (await page.locator('.panel .dd .chip[aria-pressed="true"]').count()) === 1 &&
+      (await ddKeys.count()) === 3 &&
+      (await ddKeys.evaluateAll((ks) => ks.every((k) => getComputedStyle(k).visibility === 'hidden'))) &&
+      (await page.locator('.panel .dd').innerText()).includes('Who found it? Click another to change.'),
+    'a Daily Double with a player picked already: the chips show no number keys (those type the wager now), “Click another to change.”',
+  );
   // A wager below 0 (the box's min doesn't stop a typed minus) says so, not "over the max" with the limit ignored.
   await page.locator('.dd input[type=number]').fill('-500');
   await page.keyboard.press('Enter');
