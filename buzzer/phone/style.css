@@ -250,7 +250,7 @@ input:focus, textarea:focus { outline: none; border-color: var(--accent); }
   #s-buzz .side { grid-area: clue; align-self: center; }
   #s-buzz .side.foot { grid-area: foot; }
   #clue { max-height: 55dvh; font-size: clamp(15px, 5.2vh, 20px); }
-  #buzz { grid-area: buzz; width: max(150px, min(calc(100dvh - 100px), 50vw, 520px)); align-self: center; }
+  #buzz { grid-area: buzz; --bw: max(150px, min(calc(100dvh - 100px), 50vw, 520px)); width: var(--bw); align-self: center; }
 }
 #buzz.pressed { transform: scale(0.95); }
 
@@ -452,11 +452,17 @@ input:focus, textarea:focus { outline: none; border-color: var(--accent); }
 }
 #cards-late { color: #ffd27a; }
 /*
- * A buzzer that's up stays where the finger is: cards that come beside it go under it, below the name (one above the
- * other; the key hint stays under the button). Tab goes in the order they're drawn, where the browser can.
+ * A buzzer that's up stays where the finger is: cards that come beside it go under it (one above the other). On a touch
+ * screen straight under it, the name under them (a tap meant for where the button was lands on a cover just come,
+ * which ignores it, not on Not you? or 🎨); with a keyboard below the name, so the key hint stays under the button. Tab
+ * goes in the order they're drawn, where the browser can.
  */
 #s-buzz.cards-under { reading-flow: flex-visual; }
 #s-buzz.cards-under #cards { order: 1; }
+#s-buzz.cards-under .side.foot { order: 2; }
+@media (hover: hover) and (pointer: fine) {
+  #s-buzz.cards-under .side.foot { order: 0; }
+}
 /* In the buzzer's place: the page scrolls past a tall card rather than cut its top off. */
 #s-buzz.cards-up { justify-content: safe center; }
 @media (min-aspect-ratio: 4/3) and (max-height: 600px), (min-aspect-ratio: 4/3) and (max-height: 900px) and (hover: hover) and (pointer: fine) {
@@ -475,7 +481,21 @@ input:focus, textarea:focus { outline: none; border-color: var(--accent); }
    */
   #s-buzz.cards-aside { min-height: 0; }
   #s-buzz.cards-aside #clue { max-height: 30dvh; }
-  #s-buzz.cards-aside #cards { grid-area: cards; max-width: none; min-height: min(150px, 40dvh); max-height: 100%; overflow-y: auto; align-self: start; }
+  #s-buzz.cards-aside #cards { grid-area: cards; max-width: none; max-height: 100%; overflow-y: auto; align-self: start; }
+  /* (Room for a card, covered or open; not for the cards-late note alone.) */
+  #s-buzz.cards-aside #cards:has(.card) { min-height: min(150px, 40dvh); }
+  /*
+   * A lit BUZZ! stays where it was as cards come: in the middle of the screen under the header (32px: half its height;
+   * less a notch or home bar), not of the rows beside it, which may run past the bottom (the page then scrolls under it).
+   */
+  #s-buzz.cards-aside #buzz { align-self: start; position: sticky; top: calc(50dvh - var(--bw) / 2 + 32px + (env(safe-area-inset-top) - env(safe-area-inset-bottom)) / 2); }
+}
+/*
+ * A taller computer window: the cards' row takes the room left, so a box beside it stays in the middle as a card comes,
+ * and put as it opens (an open card scrolls in that row). Phones on their side keep the rows above.
+ */
+@media (min-aspect-ratio: 4/3) and (min-height: 601px) and (max-height: 900px) and (hover: hover) and (pointer: fine) {
+  #s-buzz.cards-aside { grid-template-rows: auto minmax(min(150px, 40dvh), 1fr) auto; }
 }
 
 /* ---- Desktop and laptop: a mouse and a keyboard ---- */

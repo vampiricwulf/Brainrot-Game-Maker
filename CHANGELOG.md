@@ -35,6 +35,8 @@ in plain words for the people who make and host games. Anything committed but no
 - Single window: the stage keeps one size from the board to a clue again on laptop-sized windows (down to 960px wide). Up to about 1240px wide, 🤫 Send a card…, 🎭 Deal…, 🔇 Stop sounds and the cards out show as just 🤫, 🎭, 🔇 and 🤫 2, with their full names in their tooltips and read out, so the tools row stays on one line. (2343263, 4962686)
 - In one window, the 🎭 deal panel's late-phone count no longer gives away who got a part: it counts every phone that came to a seat dealt in after the cards went, part or not, including one that left its seat and came back ("1 phone came after the cards went: ↻ Send again"), and a phone that was only asleep isn't counted. (76d731a, de1462e)
 - When a 🎭 deal won't fit on the phones, the deal panel says how many cards are out, how many the deal adds and how many to take back (it always said "8 cards are out: take one back"), and after ✖ Take back its status no longer points to a greyed-out 📤 Send. (76d731a)
+- Phones: BUZZ! stays put when a card arrives. Held upright, a tap on the lower part of where BUZZ! was lands on the new card, not on "Not you? Change player" or 🎨; on its side, BUZZ! no longer slides down next to a long clue, and a late phone's note no longer takes a card's worth of room; on a computer, a wager or answer box next to a card no longer jumps as the card comes or opens. (7dd4127)
+- ↻ Send again leaves a player's open card as it was: its YouTube clip keeps playing, a video keeps its sound, it isn't read out again, and a picture that didn't load is tried again. (7dd4127, e98fe02)
 
 ## 2026-10-15
 
