@@ -270,6 +270,8 @@ try {
   // ---------- The display picked is remembered: the audience window opens with Start ----------
   const [aud1] = await Promise.all([page.waitForEvent('popup'), page.locator('.mode', { hasText: 'Separate audience window' }).click()]);
   assert((await page.evaluate(() => JSON.parse(localStorage.getItem('jb.prefs')).display)) === 'audience', 'picking the audience window is remembered on this computer');
+  // (Its page loaded first: a look into it before its app starts counts as a click there, as audio.mjs explains.)
+  await aud1.waitForLoadState('domcontentloaded');
   await aud1.getByText('🔊 Click to enable sound').waitFor();
   const lineup = await aud1.locator('.lineup .lineup-name').allInnerTexts();
   assert(lineup.length > 0 && JSON.stringify(lineup) === JSON.stringify(await names()), `the Starting soon card on stream lists who's playing (${lineup.join(', ')})`);
