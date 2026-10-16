@@ -138,11 +138,13 @@ export function drawCards(box: HTMLElement, list: readonly PhoneCard[]): string[
     }
   const fresh: string[] = [];
   const order: HTMLElement[] = [];
+  /** The card the keys were in. */
+  let keys: Drawn | null = null;
   for (const c of [...list].reverse()) {
     let d = drawn.get(c.id);
     const key = cardBuild(c);
     const same = cardSame(c);
-    const had = !!d && d.el.contains(document.activeElement);
+    let had = !!d && d.el.contains(document.activeElement);
     // (Its words changed under the same id: drawn again, staying open if it was, the keys still in it.)
     if (d && d.key !== key) {
       takeDown(d);
@@ -150,6 +152,9 @@ export function drawCards(box: HTMLElement, list: readonly PhoneCard[]): string[
       d = undefined;
     }
     if (!d) {
+      // A file that didn't load for an earlier card is tried again for this one (↻ Send again: a new id, the same file).
+      // In a card kept open, only that item is drawn again: its other players carry on.
+      for (const m of c.media ?? []) if ('file' in m && files.get(m.file)?.state === 'failed') files.delete(m.file);
       const back = going.get(same);
       if (back) {
         // The same open card under its new id: only its id changes.
@@ -159,10 +164,9 @@ export function drawCards(box: HTMLElement, list: readonly PhoneCard[]): string[
         back.id = back.el.dataset.card = c.id;
         drawn.set(c.id, back);
         opened.add(c.id);
+        had = back.el.contains(document.activeElement);
         d = back;
       } else {
-        // A file that didn't load for an earlier card is tried again for this one (↻ Send again: a new id, the same file).
-        for (const m of c.media ?? []) if ('file' in m && files.get(m.file)?.state === 'failed') files.delete(m.file);
         d = build(c, key, same);
         drawn.set(c.id, d);
         if (!known.has(c.id)) fresh.push(c.id);
@@ -172,14 +176,21 @@ export function drawCards(box: HTMLElement, list: readonly PhoneCard[]): string[
     // (Its lines over the cover may have changed in place.)
     d.same = same;
     update(c, d);
-    if (had && !d.el.contains(document.activeElement)) (opened.has(c.id) || !d.cover ? d.focusIn : d.cover).focus({ preventScroll: true });
+    if (had) keys = d;
     order.push(d.el);
   }
   for (const d of going.values()) dropCard(d.id, d);
-  // Into place without moving the cards already there (a moved frame would load again).
+  // Into place without moving the cards already there (a moved frame would load again). One that must move (↻ Send
+  // again makes an older card the newest) keeps its players and the keys where the browser can (moveBefore).
+  const mover = box as HTMLElement & { moveBefore?(node: Node, child: Node | null): void };
   order.forEach((e, i) => {
-    if (box.children[i] !== e) box.insertBefore(e, box.children[i] ?? null);
+    const at = box.children[i] ?? null;
+    if (at === e) return;
+    if (e.parentNode === box && mover.moveBefore) mover.moveBefore(e, at);
+    else box.insertBefore(e, at);
   });
+  // The keys back in the card they were in, if drawing it again or moving it lost them.
+  if (keys && !keys.el.contains(document.activeElement)) (opened.has(keys.id) || !keys.cover ? keys.focusIn : keys.cover).focus({ preventScroll: true });
   keepFiles(filesIn(list));
   return fresh;
 }

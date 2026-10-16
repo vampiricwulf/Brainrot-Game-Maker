@@ -7,13 +7,13 @@
 // won't come. The room hears it was seen. Hide covers it again; the card going takes it all down. Also: the content
 // policy, a phone seated too late, the guesser's box, a GIF held still for reduced motion, and on a computer a Space
 // press that began before a card came doesn't open it. An open card sent again (a new id) stays open as it was (its
-// player still framed), and its lines change in place; a card that comes while the buzzers are open goes under BUZZ!
-// (on a touch screen straight under it; Tab going in the order they're drawn), and one left open closes as the next
-// clue starts; a tap landing just as a cover comes doesn't open it; opened at the end of a page that scrolls, its words
-// stay in sight; on its side, the cards keep room for Tap to see under a long clue with BUZZ! where it was, the
-// guesser's box stays below the header and in place, an open card scrolls in its own place beside it, and a late
-// phone's note keeps no room; in a laptop's taller window a box beside a card stays put as it opens. Needs `npm ci` in
-// buzzer/.
+// player still framed, even as it moves to the top; a picture that didn't load tried again), and its lines change in
+// place; a card that comes while the buzzers are open goes under BUZZ! (on a touch screen straight under it; Tab going
+// in the order they're drawn), and one left open closes as the next clue starts; a tap landing just as a cover comes
+// doesn't open it; opened at the end of a page that scrolls, its words stay in sight; on its side, the cards keep room
+// for Tap to see under a long clue with BUZZ! where it was, the guesser's box stays below the header and in place, an
+// open card scrolls in its own place beside it, and a late phone's note keeps no room; in a laptop's taller window a
+// box beside a card stays put as it opens. Needs `npm ci` in buzzer/.
 import { chromium } from 'playwright-core';
 import { spawn } from 'node:child_process';
 import { createServer } from 'node:net';
@@ -384,6 +384,55 @@ try {
     (await bob.getByRole('button', { name: 'Tap to see' }).isVisible()) && !(await bob.getByText('Green ogre-zz').isVisible()),
     'hidden after it came again, it stays covered as the page is drawn again',
   );
+  // ↻ Send again for an open card whose picture didn't load (the room refused it): the picture is tried again, and the
+  // card (made the newest, so it moves to the top) keeps its framed player and the keys.
+  const shy = await upload(png(90, 30, 200, 240, 160), 'image/png');
+  const refuse = (r) => r.fulfill({ status: 403, body: '' });
+  await bob.route(`**/api/rooms/*/files/${shy}`, refuse);
+  const shared = { ...card, id: 'pc:c1:1:5', shared: true };
+  const retry = { id: 'pc:c4:1:1', to: [{ seat: 'b' }], open: true, title: 'Retry-qz', media: [{ kind: 'image', file: shy, mime: 'image/png', name: 'Shy' }, { kind: 'embed', site: 'youtube', url: 'https://youtu.be/dQw4w9WgXcQ' }] };
+  const other = { id: 'pc:c4:2:1', to: [{ seat: 'b' }], open: true, title: 'Other-qz' };
+  hostState({ cards: [shared, retry, other] });
+  const retried = bob.locator(`.card[data-card="${retry.id}"]`);
+  await retried.getByText('🖼 This picture didn’t load. Ask the host to show you.').waitFor({ state: 'attached' });
+  await retried.getByRole('button', { name: 'Tap to see' }).tap();
+  await retried.getByText('Retry-qz').waitFor();
+  let ytLoads = 0;
+  bob.on('request', (r) => r.url().startsWith('https://www.youtube-nocookie.com/embed/') && ytLoads++);
+  await retried.getByRole('button', { name: /YouTube video/ }).tap();
+  await until(() => ytLoads === 1 && bob.frames().some((f) => f.url().startsWith('https://www.youtube-nocookie.com/')), 'its player loads');
+  const framed = await retried.locator('iframe').elementHandle();
+  const keysIn = (id) => bob.evaluate((id) => !!document.activeElement?.closest(`.card[data-card="${id}"]`), id);
+  const keysBefore = await keysIn(retry.id);
+  await bob.unroute(`**/api/rooms/*/files/${shy}`, refuse);
+  await bob.evaluate(() => {
+    window.buzzes = [];
+    window.said = [];
+    const n = document.getElementById('news');
+    new MutationObserver(() => n.textContent && window.said.push(n.textContent)).observe(n, { childList: true, characterData: true, subtree: true });
+  });
+  hostState({ cards: [shared, other, { ...retry, id: 'pc:c4:1:2' }] });
+  const again = bob.locator('.card[data-card="pc:c4:1:2"]');
+  await until(
+    () => bob.evaluate(() => [...document.querySelectorAll('.card[data-card="pc:c4:1:2"] img[alt="Shy"]')].some((i) => i.complete && i.naturalWidth === 240)),
+    'the picture tried again',
+  );
+  await until(() => bob.evaluate(() => window.said.includes('Your picture is here')), 'its arrival said');
+  const kept = {
+    top: await bob.evaluate(() => document.querySelector('#card-list > .card')?.dataset.card),
+    open: (await again.getByText('Retry-qz').isVisible()) && !(await again.getByRole('button', { name: 'Tap to see' }).isVisible()),
+    player: await framed.evaluate((f) => f.isConnected && !!f.closest('.card[data-card="pc:c4:1:2"]')),
+    loads: ytLoads,
+    keys: keysBefore && (await keysIn('pc:c4:1:2')),
+    buzzes: await bob.evaluate(() => window.buzzes.length),
+    said: await bob.evaluate(() => window.said.filter((s) => s === 'Your picture is here').length),
+  };
+  assert(
+    kept.top === 'pc:c4:1:2' && kept.open && kept.player && kept.loads === 1 && kept.keys && !kept.buzzes && kept.said === 1,
+    `↻ Send again: a picture that didn’t load is tried again in the open card (and said once as it comes), which moves to the top keeping its player (not loaded again) and the keys (${JSON.stringify(kept)})`,
+  );
+  hostState({ cards: [shared] });
+  await again.waitFor({ state: 'detached' });
 
   // ---------- A card that comes while the buzzers are open goes under BUZZ!, not over it ----------
   hostState({ phase: 'armed', armId: 1, clue: { text: 'This planet is known as the Red Planet' }, status: undefined });
