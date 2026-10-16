@@ -2,8 +2,9 @@
 // Buzzer mode and its options on the pre-game card, starting the room (a refusal in the server's words, then the code,
 // link, QR), the phones list, a new player joining from their phone, opening the buzzers with U, a phone's buzz picking
 // the player (and the audience plate), the queue of buzzes, a wrong answer locking them out, → Next in line, ↺ Reset
-// buzzers, a tie and 🎲 Roll for it, a kick, a reconnect, the audience window closed by accident (the host is told),
-// Exit › Keep & leave keeping the room for Resume, another game keeping the room and its players, and ✕ Close the room.
+// buzzers, a tie and 🎲 Roll for it, a kick, a reconnect, the room ending mid-game (the panel says so, Start a new
+// room), the audience window closed by accident (the host is told), Exit › Keep & leave keeping the room for Resume,
+// another game keeping the room and its players, and ✕ Close the room.
 import { chromium } from 'playwright-core';
 import { existsSync, mkdirSync, readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
@@ -443,6 +444,37 @@ try {
   await stateIs((s) => s.phase === 'lobby' && !s.clue);
   await shot('rb-4-host');
 
+  // ---------- The room ends mid-game (4004): the panel says so, with no code or link of the dead room ----------
+  await page.locator('.stage-box .board .tile:not(.used)').first().click();
+  await stateIs((s) => s.phase === 'closed' && !!s.clue);
+  await page.evaluate(() => {
+    window.__room.gone = 4004;
+    window.__drop();
+  });
+  const down = page.locator('.panel .phones-down');
+  await down.getByText('This buzzer room has ended').waitFor();
+  assert(!(await down.innerText()).includes('right now'), `the panel says the room has ended, not that it can’t be reached “right now” (${await down.innerText()})`);
+  await page.locator('.toast', { hasText: '📱 This buzzer room has ended' }).waitFor();
+  assert(true, 'and the host is told so once (a toast)');
+  assert(
+    (await chip.innerText()) === '📱 ⚠ Room lost' && (await chip.getAttribute('title')).startsWith('This buzzer room has ended'),
+    `the 📱 chip says Room lost, and why (${await chip.getAttribute('title')})`,
+  );
+  await chip.click();
+  await pop.getByRole('button', { name: 'Start a new room' }).waitFor();
+  assert(
+    (await pop.getByRole('button', { name: '📋 Copy link' }).count()) === 0 && (await pop.locator('.code').count()) === 0,
+    'its list offers Start a new room, and no 📋 Copy link or code of the dead room',
+  );
+  await page.evaluate(() => (window.__room.gone = 0));
+  await pop.getByRole('button', { name: 'Start a new room' }).click();
+  await page.waitForFunction(() => /^📱 \d/.test(document.querySelector('.panel .chip')?.textContent ?? ''));
+  assert((await page.evaluate(() => window.__room.posts)) === 3 && (await pop.getByRole('button', { name: '📋 Copy link' }).count()) === 1, 'Start a new room makes one, and 📋 Copy link is back');
+  await page.keyboard.press('Escape');
+  await pop.waitFor({ state: 'detached' });
+  await page.keyboard.press('Escape');
+  await stateIs((s) => s.phase === 'lobby' && !s.clue);
+
   // ---------- The audience window closed by accident: the host panel says so, and Reopen brings it back ----------
   const lost = page.locator('.panel [data-audience-lost]');
   assert((await lost.count()) === 0, 'no "Audience window closed" strip while it is open');
@@ -508,7 +540,7 @@ try {
   await page.locator('.mode-ask .mode', { hasText: 'Single window' }).click();
   await page.locator('.panel .chip').waitFor();
   await page.waitForTimeout(300);
-  assert((await page.evaluate(() => window.__room.posts)) === 2 && (await closes()) === 0, 'Resume goes back into the same room BCDF (no new room)');
+  assert((await page.evaluate(() => window.__room.posts)) === 3 && (await closes()) === 0, 'Resume goes back into the same room BCDF (no new room)');
   assert((await page.locator('.panel .chip').innerText()).startsWith('📱'), 'the 📱 chip is back in the host panel');
 
   // ---------- Another game: the room and its players carry over ----------
@@ -528,7 +560,7 @@ try {
   assert((await page.locator('.pregame input.name').count()) === 5, 'the 5 players come along');
   assert(await card.getByLabel(/Buzzer mode/).isChecked(), 'Buzzer mode stays on');
   await stateIs((s) => s.seats.length === 5);
-  assert((await page.evaluate(() => window.__room.posts)) === 2 && (await closes()) === 0, 'same room, same seats: nobody joins again');
+  assert((await page.evaluate(() => window.__room.posts)) === 3 && (await closes()) === 0, 'same room, same seats: nobody joins again');
 
   // ---------- ▶ Next game… from the results: the phones wait for the next game (not the last one's places) ----------
   await page.getByRole('button', { name: 'Start game ▶' }).click();

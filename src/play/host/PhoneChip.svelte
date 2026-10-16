@@ -88,11 +88,13 @@
     aria-controls="phone-pop"
     bind:this={chip}
     onclick={toggle}
-    title={trouble
-      ? 'The buzzer room isn’t reachable right now: phones can’t buzz'
-      : remote.status === 'off'
-        ? 'No buzzer room: click to start one'
-        : 'Phone buzzers: who has joined'}
+    title={remote.status === 'error'
+      ? remote.error || 'The buzzer room was lost: start a new one'
+      : trouble
+        ? 'The buzzer room isn’t reachable right now: phones can’t buzz'
+        : remote.status === 'off'
+          ? 'No buzzer room: click to start one'
+          : 'Phone buzzers: who has joined'}
   >{label}</button>
   {#if open}
     <div
@@ -108,8 +110,11 @@
         <button class="small" onclick={onstart}>▶ Start the room</button>
       {:else}
         <div class="row">
-          <b class="code">{remote.code}</b>
-          <button class="small" onclick={() => copyText(roomLink(), 'Join link copied')}>📋 Copy link</button>
+          <!-- (Not the code or link of a room that turned this window away: it has ended, or is another window's.) -->
+          {#if remote.status !== 'error'}
+            <b class="code">{remote.code}</b>
+            <button class="small" onclick={() => copyText(roomLink(), 'Join link copied')}>📋 Copy link</button>
+          {/if}
           <span class="spacer"></span>
           <button class="ghost small" onclick={close} aria-label="Close the phones list">✕</button>
         </div>

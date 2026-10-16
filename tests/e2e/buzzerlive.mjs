@@ -341,9 +341,16 @@ try {
   const p2Tap = taps.get(p2);
   p2Tap.blocked = true;
   p2Tap.drop();
+  // The host's line is down too as ✕ Close the room is pressed: the room closes once it's back (not hours later).
+  hostTap.blocked = true;
+  hostTap.drop();
+  await p1.locator('#host-note').waitFor();
   await host.locator('.room-bar').getByRole('button', { name: '✕ Close the room' }).click();
-  await p1.locator('main').getByText('The game is over').waitFor();
-  assert((await fetch(`${base}/api/rooms/${code}`)).status === 404, '✕ Close the room closes it: phones say the game is over');
+  await host.locator('.room-bar').waitFor({ state: 'detached' });
+  assert((await fetch(`${base}/api/rooms/${code}`)).status !== 404, 'pressed while the host’s line is down: the room can’t be told yet');
+  hostTap.blocked = false;
+  await p1.locator('main').getByText('The game is over').waitFor({ timeout: 30_000 });
+  assert((await fetch(`${base}/api/rooms/${code}`)).status === 404, '✕ Close the room closes it once the host’s line is back: phones say the game is over');
   // Woken up, it finds the room gone at once: "The game is over", not "Reconnecting…" over and over.
   const p2Routes = p2Tap.routes.length;
   p2Tap.blocked = false;

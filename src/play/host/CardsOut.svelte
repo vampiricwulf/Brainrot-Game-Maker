@@ -7,15 +7,15 @@
 <script lang="ts">
   import { announce } from '../../lib/announce';
   import { cardsLeftOff, teamsOn } from '../../lib/buzz';
-  import { retryFiles } from '../../lib/cardfiles.svelte';
-  import type { Game, Id, SentCard, Session } from '../../lib/model';
+  import { phoneCan, retryFiles } from '../../lib/cardfiles.svelte';
+  import type { Game, Id, SentCard, Session, Slide } from '../../lib/model';
   import { copyWordsText } from '../../lib/partner';
-  import { cardLinks, cardWords } from '../../lib/phonecard';
+  import { cardLinks, cardWords, phoneCard } from '../../lib/phonecard';
   import { buzzerOn, remote, roomHasCards, roomHasFiles } from '../../lib/remote.svelte';
   import { listedCards, sendCardAgain, sentCardId, sentSlide, sentToText } from '../../lib/sentcards';
   import { copyText } from '../standings';
   import { canCopyPicture, copyCardPicture, hasPicture } from './cardcopy';
-  import { sentLine } from './cardrow';
+  import { leftLine, sentLine } from './cardrow';
 
   let { game, session, dual = false, ontakeback }: { game: Game; session: Session; dual?: boolean; ontakeback: (id: Id) => void } = $props();
 
@@ -37,6 +37,16 @@
     if (slide) retryFiles(game, session, [slide]);
     if (sendCardAgain(game, session, c.id)) announce(`${c.label} sent again to ${sentToText(session, c.to, teams)}`);
   }
+  /**
+   * What of a card won't reach the phones, counted (never named, as in a tile's panel), and for a file that didn't go
+   * up, what to do: the row would otherwise say "sent" and "✓ seen" while the phone waits for it.
+   */
+  function leftOf(slide: Slide): string {
+    const left = phoneCard(game, slide, filesOn ? phoneCan(session) : { files: null }).left;
+    const line = leftLine(left);
+    if (!line || !left.some((l) => l.why === 'failed')) return line;
+    return `${line}: ↻ Send again tries again${hasPicture(game, slide) && canCopyPicture ? ', or 📋 Copy picture' : ''}`;
+  }
   function copyWords(c: SentCard): void {
     const slide = sentSlide(game, c);
     if (!slide) return;
@@ -50,6 +60,7 @@
     {@const slide = sentSlide(game, c)}
     {@const off = leftOff.has(sentCardId(c))}
     {@const state = sentLine(game, session, c, filesOn, off)}
+    {@const left = cardsOn && slide && !off ? leftOf(slide) : ''}
     <div class="row" data-card-out={c.label} role="group" aria-label="{c.label} to {sentToText(session, c.to, teams)}: {state.text}">
       <b>{c.label}</b>
       <span aria-hidden="true">→</span>
@@ -57,6 +68,7 @@
       <span class="small" class:warn={state.warn} data-card-state>· {state.text}</span>
       <span class="muted small">· {LASTS[c.until]}</span>
     </div>
+    {#if left}<div class="small warn" data-card-left={c.label}>{left}</div>{/if}
     <div class="row btns">
       {#if cardsOn && !off}
         <button class="small" onclick={() => again(c)} aria-label="Send {c.label} again" title="Sends it again under a new id: a phone that came late (a player on a new phone) gets it too">↻ Send again</button>

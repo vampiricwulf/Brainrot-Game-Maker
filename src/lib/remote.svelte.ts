@@ -257,11 +257,22 @@ export async function uploadCardFile(blob: Blob, type: string): Promise<{ id: st
 /** ✖ Take back: the room deletes these card files now (only those no card still out uses). */
 export const forgetCardFiles = (ids: string[]): boolean => ids.length > 0 && remote.features.includes('files') && !!link?.send({ t: 'forget', files: ids });
 
-/** Close the room: the phones are told the game is over. */
-export function closeRoom(): void {
-  link?.close();
+/**
+ * Close the room: the phones are told the game is over. False when they couldn't be told now (the room out of reach
+ * for a moment): a link of its own keeps trying for about a minute, and closes the room once it gets back in.
+ */
+export function closeRoom(): boolean {
+  const l = link;
   link = null;
+  // (Taken before stop(), which forgets it. None after the room turned this window away: it's gone already, or another
+  // window's now.)
+  const room = l?.room ?? null;
+  const told = !!l && l.send({ t: 'close' });
+  l?.stop();
+  // (8 tries: 0.5 s, 1 s, 2 s… 15 s, about a minute in all.)
+  if (l && room && !told) new RoomLink(l.base, {}, deps).end(room, 8);
   Object.assign(remote, { status: 'off', code: null, phones: [], listed: false, features: [], welcomed: false, files: null, cardsLate: [], error: '', closedCode: 0, attempts: 0, answered: [], fullAt: 0 });
+  return told || !room;
 }
 
 /**
@@ -276,8 +287,15 @@ export function leaveRoom(): void {
 
 /** Close a room this window isn't in (one an earlier page left open), without touching the one it is in. */
 export function endRoom(room: NewRoom & { base: string }): void {
-  if (link?.room?.code === room.code) return closeRoom();
+  if (link?.room?.code === room.code) return void closeRoom();
   new RoomLink(room.base, {}, deps).end(room);
+}
+
+// A hidden page's timers are held back (to about one a minute): a connection that dropped meanwhile tries again as soon
+// as the host looks, or the network comes back, not on its next late try.
+if (typeof document !== 'undefined') {
+  document.addEventListener('visibilitychange', () => document.visibilityState === 'visible' && link?.retryNow());
+  window.addEventListener('online', () => link?.retryNow());
 }
 
 /** The room this window is in, if it's that one and still there. */
