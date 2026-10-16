@@ -35,7 +35,7 @@
     acceptPhone, buzzerBase, buzzerOn, closeRoom, endRoom, forgetCardFiles, inRoom, kept, kickMember, kickSeat, moveMember, onRoomAnswer, onRoomBuzz, onRoomCardSeen, onRoomColor, onRoomQueue,
     onRoomWager, rejectPhone, rejoinRoom, remote, resendHostState, roomHasAnswers, roomHasCards, roomHasFiles, roomHasWagers, roomLink, roomMembers, sendHostState, startRoom,
   } from '../lib/remote.svelte';
-  import { clearRoom, saveRoom, type SavedRoom } from '../lib/persist';
+  import { clearRoom, debounce, saveRoom, type SavedRoom } from '../lib/persist';
   import { chime } from '../lib/chime';
   import type { RoomBuzz, RoomAnswer, RoomCardSeen, RoomQueue, RoomWager } from '../lib/roomlink';
   import PhoneRoom from './PhoneRoom.svelte';
@@ -105,6 +105,7 @@
     pushSession,
   } from '../lib/sync.svelte';
   import { mediaUsage, slideMediaIds } from '../lib/usage';
+  import { mediaUrls } from '../lib/media.svelte';
   import { localMedia, openMediaPopup, POPUP_FAILED, remoteMedia } from '../lib/mediactl.svelte';
   import { registerGameFonts } from '../lib/fonts';
   import { inTauri, toggleFullscreen } from '../lib/platform';
@@ -272,8 +273,11 @@
   // The files only a quick 🤫 card shows (added in play: the game uses them nowhere else) stay out of the viewers' copy
   // of the game after a reload or Resume too, as when they were added (CardSend).
   untrack(() => {
+    // (No card with a file of its own, as in a new game: nothing to look up. Looking through a big game took a while.)
+    const ids = (session.cards ?? []).flatMap((c) => ('slide' in c.content ? slideMediaIds(c.content.slide) : []));
+    if (!ids.length) return;
     const used = mediaUsage(game);
-    hideFromViewers((session.cards ?? []).flatMap((c) => ('slide' in c.content ? slideMediaIds(c.content.slide) : [])).filter((id) => !used.has(id)));
+    hideFromViewers(ids.filter((id) => !used.has(id)));
   });
   let sentGame: Game | null = null;
   let outSession: Parameters<typeof pushSession>[0] | null = null;
@@ -2928,22 +2932,45 @@
     onresume?.(withEdits, room);
   }
 
-  /** Things worth fixing before going live (warnings only: Start still works). */
-  const checks = $derived.by(() => {
+  // (A room open now that puts cards on phones but takes no files: a card's file from this computer won't reach one.)
+  const filesOff = $derived(!!remote.code && remote.status === 'online' && roomHasCards() && !roomHasFiles());
+  /**
+   * Things worth fixing before going live (warnings only: Start still works). Worked out from the watcher's plain copy
+   * once the screen is up, then a moment after changes stop (as the editor's checklist): reading the whole game through
+   * its proxies on every key of a player's name made typing lag in big games, and held up ▶ Play itself.
+   */
+  let checks = $state.raw<ReturnType<typeof gameChecks>>([]);
+  const recheck = debounce(() => {
+    if (!left && app.pregame) checks = gameChecks(gameCopy?.() ?? $state.snapshot(game));
+  }, 300);
+  /** At once (the screen just up, 🎲 Place now). Never from inside an effect (the watcher's copy). */
+  function recheckNow(): void {
+    recheck();
+    recheck.flush();
+  }
+  $effect(() => {
+    void gameRev;
+    void filesOff;
+    // (Whether files are missing depends on the ones loaded, too.)
+    void Object.keys(mediaUrls).length;
+    if (app.pregame) untrack(recheck);
+  });
+  onMount(() => {
+    requestAnimationFrame(() => setTimeout(recheckNow));
+  });
+  function gameChecks(g: Game) {
     // (A board short of Daily Doubles gets a button to place them.)
     // (Daily Doubles not placed yet are only a note in the editor, as Start places them: here they're listed with it.)
-    // (A room open now that puts cards on phones but takes no files: a card's file from this computer won't reach one.)
-    const filesOff = !!remote.code && remote.status === 'online' && roomHasCards() && !roomHasFiles();
-    return validate(game, { filesOff })
+    return validate(g, { filesOff })
       .map((p) => {
-        const r = typeof p.tab === 'number' ? game.rounds[p.tab] : undefined;
+        const r = typeof p.tab === 'number' ? g.rounds[p.tab] : undefined;
         const dd = isBoard(r) && !!dailyDoublesShort(r) && p.text.includes('Daily Double') && p.text.includes(' not placed yet');
         const pt = isBoard(r) && partnerShort(r) && p.text.includes('partner clue') && p.text.includes(' not placed yet');
         // (A player-only file can't add or swap files: its own words for those.)
         return { text: app.playerOnly && p.player ? p.player : p.text, level: p.level, ddRound: dd ? (p.tab as number) : undefined, ptRound: pt ? (p.tab as number) : undefined };
       })
       .filter((p) => p.level === 'warn' || p.ddRound !== undefined || p.ptRound !== undefined);
-  });
+  }
 
   /**
    * Scatter the missing Daily Doubles now (in this game and in the editor's copy, so they're kept).
@@ -4050,11 +4077,23 @@
                   {c.text}
                   {#if c.ddRound !== undefined}
                     {@const ri = c.ddRound}
-                    <button class="small" onclick={() => placeDailyDoubles(ri)}>🎲 Place now</button>
+                    <button
+                      class="small"
+                      onclick={() => {
+                        placeDailyDoubles(ri);
+                        recheckNow();
+                      }}>🎲 Place now</button
+                    >
                   {/if}
                   {#if c.ptRound !== undefined}
                     {@const ri = c.ptRound}
-                    <button class="small" onclick={() => placePartnerTiles(ri)}>🎲 Place now</button>
+                    <button
+                      class="small"
+                      onclick={() => {
+                        placePartnerTiles(ri);
+                        recheckNow();
+                      }}>🎲 Place now</button
+                    >
                   {/if}
                 </li>
               {/each}

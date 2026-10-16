@@ -31,7 +31,7 @@
   import { packInfo, unpackEmbedded } from './lib/export';
   import PlayerHome from './PlayerHome.svelte';
   import { holdOpenLock, keepInMemory, loadGameMedia, mediaUrls, pruneMedia, storePlayFiles } from './lib/media.svelte';
-  import { claimEditor, watchEditor } from './lib/editorlock';
+  import { claimEditor, markBusy, watchEditor, type Busy } from './lib/editorlock';
   import { hasWork } from './lib/recent';
   import { validate } from './lib/validate';
   import { checklistLines, type ChecklistLine } from './lib/checklist';
@@ -89,10 +89,24 @@
   let paused = $state(false);
   /** While paused: the tab that was editing has closed, so nothing stops this one editing. */
   let otherClosed = $state(false);
+  /** While paused: what the tab that edits is doing that taking over would stop. */
+  let otherBusy = $state<Busy>({ playing: false, audience: false });
   $effect(() => {
     if (!paused) return;
-    return watchEditor((taken) => (otherClosed = !taken));
+    return watchEditor((taken, busy) => {
+      otherClosed = !taken;
+      otherBusy = busy;
+    });
   });
+  /** Taking over from the other tab stops this there (said, and asked, first), or ''. */
+  const takeOverStops = $derived(
+    [
+      otherBusy.playing && 'stops the game being played there (it’s kept: Resume game carries on here)',
+      otherBusy.audience && 'closes the audience window there, so a stream showing it goes dark',
+    ]
+      .filter(Boolean)
+      .join(' and '),
+  );
   /** This copy is the one that edits and autosaves the game. */
   let editing = false;
   /**
@@ -281,6 +295,7 @@
    */
   async function stopEditing(): Promise<void> {
     if (!editing && !playsHere) return;
+    markBusy({ playing: false, audience: false });
     if (watch) commit();
     const { playGame, session } = app;
     const playing = app.screen === 'play' && !app.pregame && !app.test && playGame && session && playWatch && playWatched === playGame;
@@ -300,6 +315,13 @@
     app.resumable = null;
   }
 
+  // A game being played here (not the pre-game screen, nor a ▶ Test), and the audience window: a tab opened alongside
+  // says so before taking over, which stops them.
+  $effect(() => {
+    const here = editing || playsHere;
+    markBusy({ playing: app.screen === 'play' && !app.pregame && !app.test && here, audience: audience.open && here });
+  });
+
   /** "Edit here instead": the tab editing now writes its last changes and lets go, then this one starts afresh. */
   function editHere(): void {
     try {
@@ -308,6 +330,16 @@
       /* it asks again after the reload */
     }
     location.reload();
+  }
+  /** "Edit here instead" when that stops a game being played in the other tab, or closes its audience window: asked. */
+  async function takeOverBusy(): Promise<void> {
+    const ok = await ask(`${playerOnly ? 'Playing' : 'Editing'} here ${takeOverStops}.`, {
+      title: otherBusy.playing ? 'Stop the game in the other tab?' : 'Close the audience window in the other tab?',
+      ok: playerOnly ? 'Play here' : 'Edit here',
+      cancel: 'Leave it as it is',
+      danger: true,
+    });
+    if (ok) editHere();
   }
 
   // A write that fails after the start (the disk or the browser's storage is full) switches the header to "use Save",
@@ -558,7 +590,8 @@
     if (open && open.gameId !== app.game.id && !(await keepRoomFor(open))) await closeKeptRoom(true);
     mark('played', 'Played');
     saveEditorSoon.flush();
-    app.playGame = clone(app.game);
+    // (From the editor watcher's plain copy: copying the game through its proxies took most of ▶ Play in a big game.)
+    app.playGame = clone(watch && watching === app.game ? watch.value() : app.game);
     app.session = newSession(app.playGame);
     // The same room again (phones stay joined).
     const room = kept.room;
@@ -908,6 +941,12 @@
         <h1>The other tab was closed</h1>
         <p class="muted">Its changes are saved. Nothing else is editing this game now.</p>
         <button class="primary" onclick={editHere}>Edit here</button>
+      {:else if takeOverStops}
+        <!-- (Taking over would stop a game being played there, or close the audience window a stream may be showing.) -->
+        <h1>{otherBusy.playing ? 'A game is being played in the other tab' : 'The other tab has its audience window open'}</h1>
+        <p>Close this tab to leave that one as it is.</p>
+        <p class="warn small">{playerOnly ? 'Playing' : 'Editing'} here {takeOverStops}.</p>
+        <button class="danger" onclick={takeOverBusy}>{otherBusy.playing ? 'Stop that game' : 'Close that window'} and {playerOnly ? 'play' : 'edit'} here…</button>
       {:else if playerOnly}
         <!-- (The same file opened twice: one tab plays and saves its game at a time.) -->
         <h1>This game is open in another tab</h1>

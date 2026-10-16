@@ -18,6 +18,8 @@ import type { AudioOutput } from './audio';
 
 export type HostMsg =
   | { type: 'game'; game: Game }
+  /** What changed in the game since the last 'game' or 'game-patch' sent (gamePatch). */
+  | { type: 'game-patch'; ops: GamePatch }
   | { type: 'session'; session: Session }
   | { type: 'live'; live: Live }
   | { type: 'media'; items: { id: string; blob: Blob }[] }
@@ -410,7 +412,7 @@ export async function openAudienceWindow(title: string): Promise<boolean> {
 
 // ---------- The scores-only window ----------
 
-const SCORES_MSGS = new Set<HostMsg['type']>(['game', 'session', 'live', 'media', 'bye']);
+const SCORES_MSGS = new Set<HostMsg['type']>(['game', 'game-patch', 'session', 'live', 'media', 'bye']);
 let scoresWin: Window | null = null;
 let scoresPoll: ReturnType<typeof setInterval> | undefined;
 /** open: the scores-only window exists. */
@@ -494,12 +496,57 @@ export function mediaCommand(cmd: MediaCmd): void {
   post({ type: 'media-cmd', cmd });
 }
 
+/** A change to the game for the viewers' windows: the value to set at each path (keys, and indexes into lists). */
+export type GamePatch = [path: (string | number)[], value: unknown][];
+
+/**
+ * What changed from `a` to `b`, two plain copies of the game from its watcher (watch.svelte.ts keeps the parts that
+ * didn't change the same objects, so only the changed paths are walked), as the value to set at each path. Null when
+ * the whole game is simpler to send: a lot changed, or its own keys did.
+ */
+export function gamePatch(a: Game, b: Game): GamePatch | null {
+  const ops: GamePatch = [];
+  let budget = 20_000;
+  const walk = (x: unknown, y: unknown, path: (string | number)[]): boolean => {
+    if (Object.is(x, y)) return true;
+    if (--budget < 0) return false;
+    if (x && y && typeof x === 'object' && typeof y === 'object' && Array.isArray(x) === Array.isArray(y)) {
+      const xo = x as Record<string, unknown>;
+      const yo = y as Record<string, unknown>;
+      const keys = Object.keys(yo);
+      // (The same keys, or the same length: each one compared. Otherwise the whole value goes.)
+      if (keys.length === Object.keys(xo).length && keys.every((k) => Object.hasOwn(xo, k)))
+        return keys.every((k) => walk(xo[k], yo[k], [...path, Array.isArray(y) ? Number(k) : k]));
+    }
+    if (!path.length) return false;
+    ops.push([path, y]);
+    return ops.length <= 64;
+  };
+  return walk(a, b, []) ? ops : null;
+}
+
+/** Set what a gamePatch says in `game` (the copy it was worked out from), in place. */
+export function applyGamePatch(game: Game, ops: GamePatch): void {
+  for (const [path, value] of ops) {
+    let at = game as unknown as Record<string | number, unknown> | undefined;
+    for (const k of path.slice(0, -1)) at = at?.[k] as Record<string | number, unknown> | undefined;
+    if (at) at[path[path.length - 1]] = value;
+  }
+}
+
 export function pushGame(game: Game): void {
   // (Without a 🤫 card's own files: hideFromViewers.)
   const viewed = privateMedia.size && game.media.some((m) => privateMedia.has(m.id)) ? { ...game, media: game.media.filter((m) => !privateMedia.has(m.id)) } : game;
+  const before = last.game;
   last.game = viewed;
   sendMedia(viewed);
-  post({ type: 'game', game: viewed });
+  // Only what changed, when that's a little: a drag in ✎ Edit board or ✎ Edit screen changes the game on every move,
+  // and the whole of a big game each time kept the viewers' windows (which share this page's main thread) busy for most
+  // of the drag. (Worked out from the viewers' copies, so a 🤫 card's file never goes in one. A window that opens or
+  // says hello again gets the whole game: resendAll.)
+  const ops = before && gamePatch(before, viewed);
+  if (!ops) post({ type: 'game', game: viewed });
+  else if (ops.length) post({ type: 'game-patch', ops });
 }
 
 export function pushSession(session: Session): void {

@@ -1,7 +1,9 @@
 // One editor at a time: every copy of the app opened from disk shares one autosave, so two tabs editing would
 // overwrite each other's draft (and clean up each other's undo steps). The copy that edits holds a Web Lock; another
 // copy waits with editing paused until it's asked to take over ("Edit here instead"), and then the first one lets go.
-// An exported player-only file does the same for its saved game in progress (the file opened twice).
+// An exported player-only file does the same for its saved game in progress (the file opened twice). The copy that edits
+// also says when it's playing a game or showing its audience window (shared locks): taking over stops those, so a paused
+// copy warns first.
 const LOCK = 'brainrot-games-editor';
 /** How long a copy asking to take over waits for the editing one to let go before taking the lock anyway. */
 const WAIT_MS = 4000;
@@ -73,17 +75,48 @@ export async function claimEditor(take: boolean, onLost: () => Promise<void> | v
 }
 
 /**
- * While this copy is paused: hears whether any copy edits (false once the one editing has closed, so this one can offer to
- * edit here), checking every second. Returns a function that stops listening.
+ * What the copy that edits is doing that taking over would stop: playing a game (not the pre-game screen, nor a ▶ Test),
+ * and showing its audience window (which a stream may be capturing).
  */
-export function watchEditor(onChange: (taken: boolean) => void): () => void {
+export type Busy = { playing: boolean; audience: boolean };
+const BUSY = ['playing', 'audience'] as const;
+/** Each is a lock this copy holds (shared) meanwhile, named after the editor's. */
+const busyLock = (k: keyof Busy) => `${lockName}:${k}`;
+/** What lets go of each one held. */
+const letBusyGo: Record<keyof Busy, (() => void) | null> = { playing: null, audience: null };
+
+/** Say what this copy is doing that taking over would stop: a paused copy warns before it takes over (watchEditor). */
+export function markBusy(busy: Busy): void {
+  if (!navigator.locks) return;
+  for (const k of BUSY) {
+    if (busy[k] === !!letBusyGo[k]) continue;
+    letBusyGo[k]?.();
+    letBusyGo[k] = null;
+    if (!busy[k]) continue;
+    // (Made here, so it can be let go of before the lock is granted.)
+    const held = new Promise<void>((r) => (letBusyGo[k] = r));
+    void navigator.locks.request(busyLock(k), { mode: 'shared' }, () => held).catch(() => {});
+  }
+}
+
+/**
+ * While this copy is paused: hears whether any copy edits (false once the one editing has closed, so this one can offer to
+ * edit here), and what it's doing that taking over would stop (markBusy), checking every second. Returns a function that
+ * stops listening.
+ */
+export function watchEditor(onChange: (taken: boolean, busy: Busy) => void): () => void {
   if (!navigator.locks) return () => {};
-  let last: boolean | null = null;
+  let last = '';
   const check = async () => {
     const state = await navigator.locks.query().catch(() => null);
     if (!state) return;
     const taken = [...(state.held ?? []), ...(state.pending ?? [])].some((l) => l.name === lockName);
-    if (taken !== last) onChange((last = taken));
+    const held = new Set((state.held ?? []).map((l) => l.name));
+    const busy = { playing: held.has(busyLock('playing')), audience: held.has(busyLock('audience')) };
+    const now = JSON.stringify([taken, busy]);
+    if (now === last) return;
+    last = now;
+    onChange(taken, busy);
   };
   void check();
   const id = setInterval(check, POLL_MS);

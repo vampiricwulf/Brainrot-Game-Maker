@@ -8,7 +8,7 @@
   import type { Game, Session } from '../lib/model';
   import { newLive, type Live } from '../lib/live';
   import { newSession } from '../lib/session';
-  import { CHANNEL_NAME, SCORES_PARAM, audienceTitle, syncTarget, type AudienceMsg, type ChannelMsg, type HostMsg } from '../lib/sync.svelte';
+  import { CHANNEL_NAME, SCORES_PARAM, applyGamePatch, audienceTitle, syncTarget, type AudienceMsg, type ChannelMsg, type HostMsg } from '../lib/sync.svelte';
   import { inTauri, toggleFullscreen } from '../lib/platform';
   import { applyLocal, localMedia, onLocalMediaChange } from '../lib/mediactl.svelte';
   import { onSoundReport, playChime, setAudioOut, watchSinks } from '../lib/audioout.svelte';
@@ -87,6 +87,19 @@
           registerLinks(m.game);
           registerGameFonts(m.game);
           document.title = scores ? audienceTitle(m.game).replace(/Audience$/, 'Scores') : audienceTitle(m.game);
+          status = 'connected';
+          clearInterval(rejoin);
+          break;
+        case 'game-patch':
+          // (Set in place, so only what shows the parts that changed is drawn again. A window with no game yet gets the
+          // whole game after its hello.)
+          if (!game) break;
+          applyGamePatch(game, m.ops);
+          if (m.ops.some(([path]) => path[0] === 'media' || path[0] === 'title')) {
+            registerLinks(game);
+            registerGameFonts(game);
+            document.title = scores ? audienceTitle(game).replace(/Audience$/, 'Scores') : audienceTitle(game);
+          }
           status = 'connected';
           clearInterval(rejoin);
           break;

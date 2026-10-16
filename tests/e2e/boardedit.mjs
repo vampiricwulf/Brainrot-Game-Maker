@@ -302,6 +302,11 @@ try {
   // ---------- A wide window with an audience window: the side column ----------
   console.log('Beside the stage, with an audience window:');
   const ctx2 = await browser.newContext({ viewport: { width: 1600, height: 900 } });
+  // The messages each window gets from another, by type.
+  await ctx2.addInitScript(() => {
+    window.__types = [];
+    window.addEventListener('message', (e) => e.source !== window && window.__types.push(String(e.data?.type)));
+  });
   const host = await ctx2.newPage();
   host.on('pageerror', (e) => errors.push(`[side] ${e.message}`));
   const aud = await start(host, true);
@@ -326,6 +331,19 @@ try {
   await aud.waitForFunction((n) => document.querySelectorAll('[data-space]').length === n + 1, audN);
   assert(true, 'the audience window follows');
   assert(!(await aud.locator('[data-board-edit], [data-picked-space]').count()), 'the audience window shows none of the editing marks');
+  // A space dragged: the audience window follows it, each move sent as what changed, never the whole game again.
+  const s7 = await host.locator('.stage-box .space', { hasText: 'Space 7' }).getAttribute('data-space');
+  const sentBefore = await aud.evaluate(() => window.__types.length);
+  const from = { x: b.x + (1000 * b.width) / 1920, y: b.y + (560 * b.height) / 1080 };
+  await host.mouse.move(from.x, from.y);
+  await host.mouse.down();
+  for (let i = 1; i <= 6; i++) await host.mouse.move(from.x - (((250 * b.width) / 1920) * i) / 6, from.y);
+  await host.mouse.up();
+  const hostLeft = await host.locator(`.stage-box [data-space="${s7}"]`).evaluate((e) => e.style.left);
+  assert(Math.abs(parseFloat(hostLeft) - 750) < 20 && (await last(host)).includes('Moved space “Space 7”'), `a space dragged with an audience window moves (${hostLeft})`);
+  await aud.waitForFunction(([id, l]) => document.querySelector(`[data-space="${CSS.escape(id)}"]`)?.style.left === l, [s7, hostLeft]);
+  const sent = (await aud.evaluate(() => window.__types)).slice(sentBefore);
+  assert(sent.includes('game-patch') && !sent.includes('game'), `the audience window follows the drag, sent only what changed (${[...new Set(sent)].join(', ')})`);
   // Names: hidden in the audience window; the host, editing, sees them dimmed.
   assert((await aud.locator('.space .label').count()) === 0, 'the audience window shows no space names by default');
   assert((await host.locator('.stage-box .space .label[data-name-hidden]').count()) === audN + 1, 'the host, editing, sees them all dimmed');
