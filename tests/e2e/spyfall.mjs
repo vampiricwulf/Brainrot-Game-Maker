@@ -8,7 +8,9 @@
 // names Eve as having no phone here, with 📋 Copy for her card; Eve's phone, joining after the send, gets nothing but a
 // note that she missed one, and the panel counts her phone as one that came after the cards went (never names it, and
 // counts it part or not: in a deal that leaves some without a part, a late phone's name, or a count of only those with
-// a card to be late for, would say who got one); ↻ Send again reaches her. 🎭 Who was who goes on the stage only when
+// a card to be late for, would say who got one). Bob's phone giving up his seat (Not you? Change player) and taking it
+// again is new to the room too: the panel names him as having no phone here in between, then counts his phone with
+// hers, as it would whatever his part. ↻ Send again reaches them both. 🎭 Who was who goes on the stage only when
 // pressed: Ctrl+Z, Ctrl+Y, and a host reload keep it as it was. "Deal a new one?" asks while cards are out. The next
 // round takes the cards back, and Who was who off the screen (Esc too). The host page never says
 // who got which part, nor shows a card's words or the location, until Who was who. The audience window, opened at the
@@ -111,9 +113,14 @@ const buzzer = await startBuzzer('buzzer-spyfall-');
 const { base } = buzzer;
 let browser;
 const errors = [];
+/** Pages whose next dialog is expected (a phone's "Give up this player?"): accepted, not an error. */
+const asking = new Set();
 const watch = (p, name) => {
   p.on('pageerror', (e) => errors.push(`[${name}] ${e.message}`));
-  p.on('dialog', (d) => (errors.push(`[${name}] dialog: ${d.message()}`), d.accept()));
+  p.on('dialog', (d) => {
+    if (!asking.delete(p)) errors.push(`[${name}] dialog: ${d.message()}`);
+    void d.accept();
+  });
   return p;
 };
 
@@ -353,7 +360,22 @@ try {
   assert(!(await flat(dialog.locator('[data-deal-status]'))).includes('📵') && !(await dialog.locator('.hands').count()), 'her phone is here: the 📵 line and her row go');
   await secret('a late phone');
 
-  // ---------- ↻ Send again: every card under a new id; Eve's phone gets hers ----------
+  // ---------- Bob's phone gives up his seat and takes it again: new to the room, so counted with Eve's ----------
+  const bob = phones.Bob;
+  asking.add(bob);
+  await bob.getByRole('button', { name: 'Not you? Change player' }).click();
+  await bob.getByRole('heading', { name: 'Tap your name' }).waitFor();
+  assert(await until(async () => (await flat(dialog.locator('[data-deal-status]'))).includes('📵 Bob has no phone here')), 'Bob’s phone lets go of his seat: the panel names him as having no phone here');
+  assert((await flat(dialog.locator('[data-deal-status]'))).includes(lateStatus), 'Eve’s phone is still the one counted');
+  await bob.getByRole('button', { name: 'Bob', exact: true }).click();
+  await bob.locator('#me').getByText('Bob').waitFor();
+  await bob.locator('#cards-late').getByText(lateLine).waitFor();
+  const lateTwo = '2 phones came after the cards went: ↻ Send again';
+  assert(await until(async () => (await flat(dialog.locator('[data-deal-status]'))).includes(lateTwo)), `back on his seat, his phone is new to the room: “${lateTwo}”`);
+  assert(!(await flat(dialog.locator('[data-deal-status]'))).includes('📵'), 'and the 📵 line goes');
+  await secret('a phone back on its seat');
+
+  // ---------- ↻ Send again: every card under a new id; Eve's and Bob's phones get theirs ----------
   await dialog.getByRole('button', { name: '↻ Send again' }).click();
   assert(await until(() => cards().length === 5 && cards().every((c) => !sent.some((x) => x.id === c.id))), '↻ Send again: all five under new ids');
   const again = cards().map((c) => c.id);
@@ -361,6 +383,10 @@ try {
   await eve.getByRole('button', { name: 'Tap to see' }).tap();
   await eve.locator('.card-words', { hasText: eves.part === 'Spy' ? SPY_WORDS : place }).waitFor();
   assert(!(await eve.locator('#cards-late').isVisible()) && (eves.part === 'Spy' ? !hadWords('Eve', place) : !hadWords('Eve', SPY_WORDS)), `Eve’s phone gets hers (the ${eves.part}’s), and only hers`);
+  const bobs = hands.find((h) => h.name === 'Bob');
+  await bob.getByRole('button', { name: 'Tap to see' }).tap();
+  await bob.locator('.card-words', { hasText: bobs.part === 'Spy' ? SPY_WORDS : place }).waitFor();
+  assert(!(await bob.locator('#cards-late').isVisible()) && (await cardsOn(bob)) === 1, `and Bob’s his (the ${bobs.part}’s)`);
   assert(await until(async () => !(await flat(dialog.locator('[data-deal-status]'))).includes('came after')), 'the late note goes from the panel');
   assert(!(await cardsOn(phones.Fay)) && !hadWords('Fay', place) && !hadWords('Fay', SPY_WORDS), 'Fay still has nothing');
   await secret('sent again');

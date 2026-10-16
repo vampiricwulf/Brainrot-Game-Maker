@@ -227,9 +227,9 @@
 
   /**
    * How the deal's cards stand on the phones, all together (never one player's card: that would say who had which). In
-   * one window the phones that came after the cards went are only counted, a part or not (dealPhonesLate): only those
-   * with a part have a card to be late for, so their names, or a count of the room's late phones, would say who got one
-   * (a deal with no part for "the rest") as each phone came.
+   * one window the phones that came after the cards went are only counted, a part or not, from the room's list of phones
+   * (dealPhonesLate): only those with a part have a card to be late for, so their names, or any count of the room's late
+   * phones, would say who got one (a deal with no part for "the rest") as each phone came.
    */
   const status = $derived.by(() => {
     if (!d || d.stage !== 'sent') return '';
@@ -246,12 +246,12 @@
     const parts = [seen ? `✓ seen by ${seen} of ${out.length}` : `Sent to ${out.length}`];
     const f = filesOn ? filesCounted(game, session, out.flatMap((c) => sentSlide(game, c) ?? [])) : null;
     if (f?.going) parts.push(`uploading ${Math.min(f.files, f.up + 1)} of ${f.files - f.failed}…`);
-    const lateHere = remote.cardsLate.filter((l) => out.some((c) => sentCardId(c) === l.id));
     if (dual) {
+      const lateHere = remote.cardsLate.filter((l) => out.some((c) => sentCardId(c) === l.id));
       const late = [...new Set(lateHere.map((l) => (l.by ? `${l.by}’s phone (${nameOf(l.seatId)})` : `${nameOf(l.seatId)}’s new phone`)))];
       if (late.length) parts.push(`${nameList(late)} ${late.length > 1 ? 'haven’t' : 'hasn’t'} got theirs: ↻ Send again`);
     } else {
-      const n = dealPhonesLate(d, remote.phones, lateHere);
+      const n = dealPhonesLate(d, remote.phones);
       if (n) parts.push(`${n} phone${n === 1 ? '' : 's'} came after the cards went: ↻ Send again`);
     }
     // (Never taken off the count above: it counts the parts, so the difference would say whether they got one.)

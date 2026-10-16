@@ -29,6 +29,11 @@ export const remote = $state<{
   /** The server the room is on (its join link). */
   base: string;
   phones: PhoneInfo[];
+  /**
+   * The room sent its list of phones since it last welcomed this window: `phones` is the room's now. Until then it's the
+   * list from before a reconnect, or none after a reload.
+   */
+  listed: boolean;
   /** What the room can do beyond the first protocol ('teams'); empty from an older buzzer server. */
   features: string[];
   /**
@@ -49,7 +54,7 @@ export const remote = $state<{
   answered: string[];
   /** When the room last turned a phone away because it was full (0: not lately). */
   fullAt: number;
-}>({ status: 'off', code: null, base: '', phones: [], features: [], welcomed: false, files: null, cardsLate: [], error: '', closedCode: 0, attempts: 0, answered: [], fullAt: 0 });
+}>({ status: 'off', code: null, base: '', phones: [], listed: false, features: [], welcomed: false, files: null, cardsLate: [], error: '', closedCode: 0, attempts: 0, answered: [], fullAt: 0 });
 
 /** How long "Room full" shows after the room last turned a phone away. */
 export const FULL_SHOWN_MS = 2 * 60_000;
@@ -80,6 +85,7 @@ function sync(): void {
   remote.code = link.code;
   if (remote.phones !== link.phones) remote.answered = remote.answered.filter((c) => link!.phones.some((p) => p.conn === c && !p.seatId));
   remote.phones = link.phones;
+  remote.listed = link.listed;
   if (remote.features.join() !== link.features.join()) remote.features = link.features;
   remote.welcomed = link.welcomed;
   if (remote.files?.join() !== link.files?.join()) remote.files = link.files;
@@ -255,7 +261,7 @@ export const forgetCardFiles = (ids: string[]): boolean => ids.length > 0 && rem
 export function closeRoom(): void {
   link?.close();
   link = null;
-  Object.assign(remote, { status: 'off', code: null, phones: [], features: [], welcomed: false, files: null, cardsLate: [], error: '', closedCode: 0, attempts: 0, answered: [], fullAt: 0 });
+  Object.assign(remote, { status: 'off', code: null, phones: [], listed: false, features: [], welcomed: false, files: null, cardsLate: [], error: '', closedCode: 0, attempts: 0, answered: [], fullAt: 0 });
 }
 
 /**
@@ -265,7 +271,7 @@ export function closeRoom(): void {
 export function leaveRoom(): void {
   link?.stop();
   link = null;
-  Object.assign(remote, { status: 'off', code: null, phones: [], features: [], welcomed: false, files: null, cardsLate: [], error: '', closedCode: 0, attempts: 0, answered: [], fullAt: 0 });
+  Object.assign(remote, { status: 'off', code: null, phones: [], listed: false, features: [], welcomed: false, files: null, cardsLate: [], error: '', closedCode: 0, attempts: 0, answered: [], fullAt: 0 });
 }
 
 /** Close a room this window isn't in (one an earlier page left open), without touching the one it is in. */
