@@ -91,9 +91,32 @@ try {
   hostR.on('dialog', (d) => d.accept());
   let rPopups = 0;
   hostR.on('popup', () => rPopups++);
+  // (Its hello heard while the page is still claiming the editor: the lock is granted only once one has come.)
+  await hostR.addInitScript(() => {
+    const request = LockManager.prototype.request;
+    LockManager.prototype.request = function (name, ...rest) {
+      if (name !== 'brainrot-games-editor') return request.call(this, name, ...rest);
+      const heard = new Promise((r) => {
+        const c = new BroadcastChannel('brainrot-games-sync');
+        c.onmessage = (e) => e.data?.from === 'audience' && e.data.msg?.type === 'hello' && (c.close(), setTimeout(r, 100));
+      });
+      return heard.then(() => request.call(this, name, ...rest));
+    };
+  });
   await hostR.goto(base);
   await hostR.locator('.status-bar [data-audience-open]').waitFor({ timeout: 8000 });
   assert(true, 'a new host page finds the audience window left open');
+  // A tab opened alongside says taking over closes that window: found before this page held the lock, it counts.
+  const other = await context.newPage();
+  other.on('pageerror', (e) => errors.push('[second tab] ' + e.message));
+  await other.goto(base);
+  await other.getByRole('heading', { name: 'The other tab has its audience window open' }).waitFor({ timeout: 8000 });
+  assert(
+    (await other.getByText('Editing here closes the audience window there, so a stream showing it goes dark.').count()) === 1 &&
+      (await other.getByRole('button', { name: 'Close that window and edit here…' }).count()) === 1,
+    'a tab opened alongside says taking over closes the audience window the page found as it reloaded',
+  );
+  await other.close();
   await hostR.getByRole('button', { name: 'Resume game' }).click();
   await hostR.locator('.mode-ask .mode', { hasText: 'Separate audience window' }).click();
   await aud.locator('.board .header .title', { hasText: 'Channel Test' }).waitFor({ timeout: 8000 });

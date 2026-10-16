@@ -114,6 +114,12 @@
    * which would autosave its game over the builder's draft.
    */
   let playsHere = false;
+  /**
+   * This copy holds the lock (`editing || playsHere`) and isn't letting go of it, for the effect that says what it's doing
+   * (markBusy): that runs again as it gets the lock, even with the audience window already open. (Not `editing` made
+   * $state: the effect that starts the watcher reads it.)
+   */
+  let ownsLock = $state(false);
   /** Set just before reloading to take over editing from another tab. */
   const TAKE_KEY = 'brainrot.takeEditor';
   /** "Edit here instead" was pressed just before this reload (read once). */
@@ -158,6 +164,7 @@
           return;
         }
         playsHere = true;
+        ownsLock = true;
         app.storageOk = await testStorage();
         const play = await loadPlay();
         if (play) app.resumable = resumed(play);
@@ -175,6 +182,7 @@
       return;
     }
     editing = true;
+    ownsLock = true;
     // Is a newer version out? Asked first, so nothing slow (or failing) while the game loads holds it up. (The builder
     // only: an exported game file isn't updated.)
     void checkForUpdate();
@@ -295,6 +303,8 @@
    */
   async function stopEditing(): Promise<void> {
     if (!editing && !playsHere) return;
+    // (Let go of at once, and not taken again while the last changes are written.)
+    ownsLock = false;
     markBusy({ playing: false, audience: false });
     if (watch) commit();
     const { playGame, session } = app;
@@ -318,7 +328,7 @@
   // A game being played here (not the pre-game screen, nor a ▶ Test), and the audience window: a tab opened alongside
   // says so before taking over, which stops them.
   $effect(() => {
-    const here = editing || playsHere;
+    const here = ownsLock;
     markBusy({ playing: app.screen === 'play' && !app.pregame && !app.test && here, audience: audience.open && here });
   });
 

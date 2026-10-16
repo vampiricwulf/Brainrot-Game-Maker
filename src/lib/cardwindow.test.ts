@@ -1,5 +1,6 @@
 // 🪟 The card window (partner-clues spec §13.6, §14.1, §22): it shows one player's live cards and nothing else, and its
-// messages go to it alone: never to the audience window, the BroadcastChannel or the scores window.
+// messages go to it alone: never to the audience window, the BroadcastChannel or the scores window. And what those get
+// of the game (pushGame): the whole of it once, then only what changed, never with a 🤫 card's own file.
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 import { jeopardyGame } from './testgame';
 import { newImageEl, setSlideText, type BoardRound, type Game, type Session } from './model';
@@ -211,5 +212,70 @@ describe('the card window’s messages reach it alone', () => {
     // The host side posts to that window alone: never through post() or the channel.
     expect(host).not.toMatch(/\bpost\(|BroadcastChannel|channel/);
     expect(host).toContain('cardWin.postMessage');
+  });
+});
+
+// ---------- The game to the viewers' windows ----------
+
+describe('the game reaches the viewers’ windows whole once, then as what changed', () => {
+  const opened: Record<string, FakeWin> = {};
+  beforeAll(() => {
+    vi.stubGlobal('location', { href: 'https://host.test/index.html', hash: '', protocol: 'https:', origin: 'https://host.test', search: '' });
+    vi.stubGlobal('BroadcastChannel', FakeChannel);
+    vi.stubGlobal('window', { addEventListener: () => {}, open: (_url: string, name: string) => (opened[name] = new FakeWin()) });
+  });
+  afterAll(() => vi.unstubAllGlobals());
+
+  it('a change goes as a patch with no 🤫 card’s file in it, and the same game again sends nothing', async () => {
+    // (A sync module of its own: no game sent yet. The one before it doesn't hear the channel any more.)
+    vi.resetModules();
+    FakeChannel.all = [];
+    const sync = await import('./sync.svelte');
+    const { registerBlob } = await import('./media.svelte');
+    // The audience window (heard on the channel too) and the scores window, all open.
+    expect(await sync.openAudienceWindow('Game')).toBe(true);
+    new FakeChannel(sync.CHANNEL_NAME).postMessage({ from: 'audience', msg: { type: 'hello' } });
+    expect(sync.openScoresWindow()).toBe(true);
+    const start = FakeChannel.posted.length;
+    /** What the audience window, the scores window and the channel each got. */
+    const got = () => [
+      opened['jb-audience'].msgs,
+      opened['jb-audience-scores'].msgs,
+      (FakeChannel.posted.slice(start) as { from: string; msg: { type: string } }[]).filter((p) => p.from === 'host').map((p) => p.msg),
+    ];
+    /** How many messages each has got so far. */
+    const counts = () => got().map((msgs) => msgs.length);
+    /** What each got since `before` (counts()). */
+    const since = (before: number[]) => got().map((msgs, i) => msgs.slice(before[i]));
+    /** As text, with blobs as their size. */
+    const text = (v: unknown) => JSON.stringify(v, (_k, x) => (x instanceof Blob ? `blob:${x.size}` : x));
+
+    const { g } = setup();
+    registerBlob('m1', new Blob(['png-bytes'], { type: 'image/png' }));
+    // The first time: the whole game, with its file.
+    let before = counts();
+    sync.pushGame(g);
+    expect(since(before).map((msgs) => msgs.map((m) => m.type))).toEqual([['media', 'game'], ['media', 'game'], ['media', 'game']]);
+
+    // A picture added to a quick 🤫 card in play, and the title changed: only the title goes, to each.
+    sync.hideFromViewers(['mX']);
+    registerBlob('mX', new Blob(['quick-card-bytes'], { type: 'image/png' }));
+    const g2: Game = { ...g, title: 'Live edit', media: [...g.media, { id: 'mX', name: 'quick-card-pic.png', mime: 'image/png', size: 16, kind: 'image' }] };
+    before = counts();
+    sync.pushGame(g2);
+    const patch = since(before);
+    expect(patch).toEqual([0, 1, 2].map(() => [{ type: 'game-patch', ops: [[['title'], 'Live edit']] }]));
+    expect(text(patch)).not.toMatch(/mX|quick-card/);
+
+    // The same game again: nothing.
+    before = counts();
+    sync.pushGame(g2);
+    expect(since(before)).toEqual([[], [], []]);
+    // The audience window says hello again (it reloaded): the whole game, as the viewers have it.
+    before = counts();
+    new FakeChannel(sync.CHANNEL_NAME).postMessage({ from: 'audience', msg: { type: 'hello' } });
+    expect(since(before)[0].filter((m) => m.type === 'game')).toEqual([{ type: 'game', game: { ...g2, media: g.media } }]);
+    // (Nothing of that file went to any of them, then or since.)
+    expect(text(got())).not.toMatch(/mX|quick-card/);
   });
 });
