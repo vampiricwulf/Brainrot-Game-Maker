@@ -1277,7 +1277,7 @@
   /**
    * A player sent their wager from their phone (the room checked it). It goes in their box, marked 📱 (the host can
    * still type over it): a Daily Double's before its question shows; a Final's on its wager screen, as a step ("Ann’s
-   * wager (from their phone): $500"). One already taken (a room passing it on again after a reconnect) is skipped.
+   * wager (from their phone)"). One already taken (a room passing it on again after a reconnect) is skipped.
    */
   function roomWager(w: RoomWager): void {
     const r = session.remote;
@@ -1300,10 +1300,11 @@
     if (ask.kind !== 'final' || !f) return;
     const was = f.wagers[w.seatId];
     if (was === w.amount && wagerFromPhone(f, w.seatId) && (f.wagerBy?.[w.seatId] ?? '') === by) return;
-    const sym = game.settings.currencySymbol;
     const from = by ? `from ${by}’s phone` : 'from their phone';
-    const text = `${name}’s wager (${from}): ${typeof was === 'number' ? `${formatPoints(was, sym)} → ` : ''}${formatPoints(w.amount, sym)}`;
-    logged(session, text, () => finalSetWager(session, w.seatId, w.amount, 'phone', by || undefined));
+    // (The amount stays out of the step's name, as it stays out of the wager box in one window, where viewers see ↶ Undo's
+    // toast and the 📜 Log too. A step keeps its name, so it stays out with the audience window open as well: closed, or
+    // after a reload in one window, the steps taken before would show it.)
+    logged(session, `${name}’s wager (${from})`, () => finalSetWager(session, w.seatId, w.amount, 'phone', by || undefined));
   }
 
   /**

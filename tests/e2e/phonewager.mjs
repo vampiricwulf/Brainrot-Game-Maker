@@ -3,7 +3,9 @@
 // player's phone sends the wager (refused over the max once the host turns the limit on), the host's box fills in
 // marked 📱, the others see who is wagering, and it locks when the question shows. A Final: two phones wager, change
 // their minds, one reloads, the host changes one, and Show question locks them; the audience window never has an
-// amount on it. Then a team: anyone on it sends the team's wager, and the host sees who. Needs `npm ci` in buzzer/.
+// amount on it. Then a team: anyone on it sends the team's wager, and the host sees who; that host keeps one window
+// (viewers see it), so the amounts phones send stay hidden in its panel until the reveals show them. Needs `npm ci` in
+// buzzer/.
 import { chromium } from 'playwright-core';
 import { spawn } from 'node:child_process';
 import { createServer } from 'node:net';
@@ -159,10 +161,13 @@ try {
   assert((await dd.innerText()).includes('Who found it? Pick a player.'), 'the host is asked “Who found it? Pick a player.”');
   assert(await dd.getByRole('button', { name: 'True Daily Double' }).isDisabled(), 'True Daily Double is off (with no amount) until a player is picked');
   assert((await dd.locator('[data-dd-phones]').innerText()).includes('Once you pick them'), 'the phones’ line is there from the start (the box doesn’t grow as a wager comes in)');
+  const key1 = dd.locator('.chip .key', { hasText: '1' });
+  assert(await key1.isVisible(), 'nobody picked yet: the chips show their number keys (1–9 pick who found it)');
   const ddBox = async () => Math.round((await dd.boundingBox()).height);
   const ddH = await ddBox();
   await dd.locator('.chip', { hasText: 'Player 1' }).click();
   await form(ann).waitFor();
+  assert(await key1.isHidden(), 'picked: the number keys go from the chips (they type the wager now)');
   assert((await ann.locator('#wager-head').innerText()) === 'Your wager', 'the player who found it gets a wager box on their phone (“Your wager”, under “Daily Double — you’re up!”)');
   assert((await ann.locator('#wager-info').innerText()).includes('Max $1,000 (the host may allow more)'), `with their score and the max, not held to it while the host ignores the limit (${await ann.locator('#wager-info').innerText()})`);
   await big(bo).getByText('Player 1 is wagering…').waitFor();
@@ -250,11 +255,15 @@ try {
   await shot('pw-3-final-host', host);
   await shot('pw-4-final-audience', aud);
 
-  // A change of mind before the host locks: the host's box follows, as a named step.
+  // A change of mind before the host locks: the host's box follows, as a named step. Its name leaves the amounts out (a
+  // step keeps its name: with the audience window closed, viewers would see ↶ Undo's toast and the 📜 Log).
   await sendWager(ann, 1300);
   await row('Player 1').getByText('📱 $1,300 from phone ✔').waitFor();
   const undo = await host.getByRole('button', { name: '↶ Undo' }).getAttribute('title');
-  assert(undo.startsWith('Undo: Player 1’s wager (from their phone): $1,234 → $1,300'), `a late change before the lock: the host's box follows, one step (${undo})`);
+  assert(
+    undo.startsWith('Undo: Player 1’s wager (from their phone) (Ctrl+Z') && !undo.includes('$'),
+    `a late change before the lock: the host's box follows, one step, named without the amounts even with the audience window open (${undo})`,
+  );
   // ↶ Undo puts the one before back: the phone says the host has that one (not the $1,300 it sent last); ↷ Redo, its own.
   await host.getByRole('button', { name: '↶ Undo' }).click();
   await row('Player 1').getByText('📱 $1,234 from phone ✔').waitFor();
@@ -300,8 +309,11 @@ try {
   await big(ann).getByText('Wager locked').waitFor();
   assert((await small(ann).innerText()) === 'Your wager: $1,300' && (await form(ann).isHidden()), 'back at the wagers after a trip to the round before, the phones stay locked (the question was seen)');
 
-  // ---------- Teams: one wager per team, anyone on it sends it ----------
+  // ---------- Teams: one wager per team, anyone on it sends it (one window: viewers see the host's panel) ----------
   const host2 = await newHost();
+  await host2.locator('.tile').nth(3).click();
+  await host2.getByRole('combobox', { name: /^Type/ }).selectOption('dailyDouble');
+  await host2.getByRole('button', { name: 'Done' }).click();
   await playWithPlayers(host2, 2);
   const code2 = await startRoom(host2, true);
   const member = async (name, team) => {
@@ -318,6 +330,30 @@ try {
   const cy = await member('Cy', 'Player 2');
   await host2.getByRole('button', { name: 'Start game ▶' }).click();
   await host2.getByRole('button', { name: 'Skip intro' }).click();
+  /** The host panel's text has none of these amounts (as "$300"). */
+  const panelHides = async (amounts) => {
+    const t = await host2.locator('.panel').innerText();
+    return amounts.every((n) => !t.includes(`$${n.toLocaleString('en-US')}`));
+  };
+  // A Daily Double in one window: the box doesn't show the amount the phone sent (typed over, it's the host's).
+  await host2.locator('.stage-box .board .tile').nth(3).click();
+  const dd2 = host2.locator('.panel .dd', { hasText: 'Who found it?' });
+  await dd2.locator('.chip', { hasText: 'Player 1' }).click();
+  await form(al).waitFor();
+  await sendWager(al, 345);
+  await dd2.getByText('📱 from phone · sent by Al').waitFor();
+  const ddIn = dd2.locator('input[type=number]');
+  assert(
+    (await ddIn.inputValue()) === '' && (await ddIn.getAttribute('placeholder')) === 'hidden' && (await panelHides([345])),
+    'one window: a Daily Double wager sent from a phone stays hidden in the host’s box (“hidden”), viewers see the panel',
+  );
+  assert((await dd2.innerText()).includes('its amount stays hidden (viewers see this window)'), 'and the phones’ line says so (not “only you see it”)');
+  await shot('pw-10-dd-one-window', host2);
+  await ddIn.fill('400');
+  await dd2.getByText('📱 from phone').waitFor({ state: 'detached' });
+  assert((await ddIn.inputValue()) === '400', 'the host types over it: it’s the host’s, shown as typed');
+  await ddIn.press('Escape');
+  await form(al).waitFor({ state: 'hidden' });
   await host2.waitForTimeout(450);
   await host2.locator('.rn > button').last().click();
   await host2.waitForTimeout(450);
@@ -329,17 +365,41 @@ try {
   await form(al).waitFor();
   assert((await al.locator('#wager-head').innerText()) === 'Your team’s wager', 'teams: every member’s phone gets the team’s wager box');
   await sendWager(al, 300);
-  await rows2.locator('.wrow', { hasText: 'Player 1' }).getByText('📱 $300 from phone ✔ · sent by Al').waitFor();
+  const team1 = rows2.locator('.wrow', { hasText: 'Player 1' });
+  await team1.getByText('📱 from phone ✔ · sent by Al').waitFor();
+  assert(
+    (await team1.locator('input[data-wager]').inputValue()) === '' && (await team1.locator('input[data-wager]').getAttribute('placeholder')) === 'hidden' && (await panelHides([300])),
+    'one window: the Final wager a phone sent stays hidden in the host’s panel (“📱 from phone ✔ · sent by Al”, the box “hidden”)',
+  );
+  const undo2 = await host2.getByRole('button', { name: '↶ Undo' }).getAttribute('title');
+  assert(undo2.startsWith('Undo: Player 1’s wager (from Al’s phone)') && !undo2.includes('$'), `and ↶ Undo names the step without the amount (${undo2})`);
   await amy.locator('#wager-state').getByText('✔ Al sent $300 for your team').waitFor();
   assert((await amy.locator('#wager-in').inputValue()) === '300', 'his teammate’s box fills in with it (it had the focus as it opened, but she typed nothing)');
   assert((await amy.locator('#wager-label').innerText()) === 'Wager (only the host and your team see it)', 'teams: the box says the team sees the wager too');
   assert(await noneOf(cy, [300]), 'Al sends the team’s wager: the host sees “sent by Al”, his teammate sees it, the other team doesn’t');
   await sendWager(amy, 450);
-  await rows2.locator('.wrow', { hasText: 'Player 1' }).getByText('📱 $450 from phone ✔ · sent by Amy').waitFor();
+  await team1.getByText('📱 from phone ✔ · sent by Amy').waitFor();
+  assert(await panelHides([300, 450]), 'a teammate changes it: still hidden in the host’s panel');
   await al.locator('#wager-state').getByText('✔ Amy sent $450 for your team').waitFor();
   assert((await al.locator('#wager-in').inputValue()) === '450', 'a teammate changes it: still one wager for the team, and every member sees the new one');
   await shot('pw-7-team-phone', al);
   await shot('pw-8-team-host', host2);
+  // The host types over the hidden wager: the step's name leaves out the amount it replaced. ↶ Undo puts the phone's back,
+  // hidden again.
+  const box1 = team1.locator('input[data-wager]');
+  await box1.fill('500');
+  await al.locator('#wager-state').getByText('The host has your wager as $500').waitFor();
+  await box1.blur();
+  await host2.waitForFunction(() => document.querySelector('button[title^="Undo:"]')?.getAttribute('title')?.includes('→'));
+  const undo3 = await host2.getByRole('button', { name: '↶ Undo' }).getAttribute('title');
+  assert(
+    undo3.startsWith('Undo: Player 1’s wager (from their phone) → $500 (Ctrl+Z') && !undo3.includes('$300') && !undo3.includes('$450'),
+    `the host types over it: ↶ Undo names the step without the phone’s amount (${undo3})`,
+  );
+  await host2.getByRole('button', { name: '↶ Undo' }).click();
+  await team1.getByText('📱 from phone ✔ · sent by Amy').waitFor();
+  await al.locator('#wager-state').getByText('✔ Amy sent $450 for your team').waitFor();
+  assert((await box1.inputValue()) === '' && (await panelHides([300, 450])), '↶ Undo puts the phone’s wager back, hidden again');
 
   // Cy (Player 2) changes name and joins Player 1 to read their wager: his phone is told one is in, not how much.
   await cy.locator('#leave').click();
@@ -351,6 +411,29 @@ try {
   await cy.locator('#wager-state').getByText('wager is in with the host (not shown').waitFor();
   assert((await noneOf(cy, [450])) && (await cy.locator('#wager-in').inputValue()) === '', 'someone who joins a team after the wagers began is told one is in, never the amount');
   await shot('pw-9-late-joiner-phone', cy);
+
+  // The reveals, still one window: Player 1's row keeps the phone's amount hidden until the host shows it.
+  await rows2.locator('.wrow', { hasText: 'Player 2' }).locator('input[data-wager]').fill('0');
+  for (const step of ['Show question ▶', 'Reveal answer ▶', 'Start team reveals ▶']) {
+    await mainButton(host2).filter({ hasText: step }).click();
+  }
+  const rev1 = host2.locator('.fj .pl', { hasText: 'Player 1' });
+  const revIn = rev1.locator('input[data-reveal-wager]');
+  await revIn.waitFor();
+  assert((await revIn.inputValue()) === '' && (await revIn.getAttribute('placeholder')) === 'hidden' && (await panelHides([450])), 'the reveals in one window: the row’s box keeps the phone’s amount hidden');
+  await shot('pw-11-reveal-one-window', host2);
+  // A change refused (not a whole number) or nothing typed: the box goes back as it was, hidden (not to the phone's amount).
+  for (const [typed, what] of [
+    ['1.5', 'refused'],
+    ['', 'left empty'],
+  ]) {
+    await revIn.fill(typed);
+    await revIn.press('Enter');
+    assert((await revIn.inputValue()) === '' && (await panelHides([450])), `a change in the reveals ${what}: the box goes back to hidden, not to the phone’s $450`);
+  }
+  await rev1.getByRole('button', { name: 'Show wager: Player 1' }).click();
+  await rev1.getByText('wager $450').waitFor();
+  assert(true, 'Show wager: the row has the amount (“wager $450”) once the stage shows it');
 
   assert(errors.length === 0, `no page errors (${errors.join(' | ')})`);
   console.log('Phone wagers E2E passed.');

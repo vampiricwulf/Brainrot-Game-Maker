@@ -76,6 +76,8 @@
     });
   });
   const fromPhone = $derived(session.dd?.draftFrom === 'phone' && wager === session.dd?.draft);
+  /** One window: viewers see this panel, so the amount a phone sent stays hidden in the box (typing over it shows). */
+  const hideAmount = $derived(!dual && fromPhone);
   const hasPhone = $derived(!!playerId && phones.includes(playerId));
   let wagerBox = $state<HTMLInputElement>();
   /** Phone buzzer teams: each row is a team, and what it says here too ("Pick a team."). */
@@ -123,7 +125,7 @@
 
 <div class="dd">
   <b>Daily Double!</b>
-  <span class="muted">Who found it?{#if !playerId}{' '}<span class="warn">Pick a {noun}.</span>{/if}</span>
+  <span class="muted">Who found it?{#if !playerId}{' '}<span class="warn">Pick a {noun}.</span>{:else}{' '}Click another to change.{/if}</span>
   <div class="row">
     {#each session.players as p, i (p.id)}
       <button
@@ -135,7 +137,7 @@
         onclick={() => pick(p.id)}
         title={i < 9 ? (playerId ? 'Click to change who found it (number keys pick only while nobody is picked)' : `Key ${i + 1}`) : undefined}
       >
-        {#if i < 9}<span class="key">{i + 1}</span>{/if}{p.name} <span class="score small">{formatPoints(score(session, p.id), sym)}</span>
+        {#if i < 9}<span class="key" class:gone={!!playerId}>{i + 1}</span>{/if}{p.name} <span class="score small">{formatPoints(score(session, p.id), sym)}</span>
       </button>
     {/each}
   </div>
@@ -146,7 +148,8 @@
       <input
         type="number"
         min="0"
-        bind:value={() => wager, (v) => (wager = wholePoints(v))}
+        bind:value={() => (hideAmount ? null : wager), (v) => (wager = wholePoints(v))}
+        placeholder={hideAmount ? 'hidden' : undefined}
         bind:this={wagerBox}
         oninput={(e) => typed(e.currentTarget.value === '' ? null : wholePoints(+e.currentTarget.value))}
         autofocus
@@ -179,10 +182,12 @@
         <span class="phone" title="Sent from their phone. You can still type over it." data-dd-phone
           >📱 from phone{session.dd?.draftBy ? ` · sent by ${session.dd.draftBy}` : ''}</span
         >
-        <span class="muted">· you can still type over it (only you see it).</span>
+        <span class="muted">{dual ? '· you can still type over it (only you see it).' : '· its amount stays hidden (viewers see this window) · you can type over it.'}</span>
       {:else if hasPhone}
         <span class="muted"
-          >{#if wager === null}<span data-dd-phone>📱 waiting…</span>{' '}{/if}Their phone can send the wager: it fills in here (only you see it).</span
+          >{#if wager === null}<span data-dd-phone>📱 waiting…</span>{' '}{/if}Their phone can send the wager: {dual
+            ? 'it fills in here (only you see it).'
+            : 'it comes in hidden (viewers see this window).'}</span
         >
       {:else if playerId}
         <span class="muted">📱 No phone for this {noun}: type their wager.</span>
@@ -203,6 +208,10 @@
     font-size: 12px;
     opacity: 0.7;
     margin-right: 4px;
+  }
+  /* Someone is picked: number keys type the wager now, not pick, so the key goes (its room kept: the chips don't move). */
+  .key.gone {
+    visibility: hidden;
   }
   .dd {
     display: flex;

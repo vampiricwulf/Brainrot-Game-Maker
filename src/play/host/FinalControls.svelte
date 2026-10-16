@@ -140,11 +140,16 @@
 
   /** A wager as the history names it ("none" when there isn't one). */
   const shownWager = (v: number | undefined) => (typeof v === 'number' ? formatPoints(v, sym) : 'none');
-  /** "Ann’s wager: $300", or "Ann’s wager: $500 → $300" when it changes one already in (a phone's too). */
+  /**
+   * "Ann’s wager: $300", or "Ann’s wager: $500 → $300" when it changes one already in. A phone's amount stays out of it
+   * (in one window viewers see ↶ Undo's toast and the 📜 Log, and a step keeps its name if the audience window closes):
+   * "Ann’s wager (from their phone) → $300".
+   */
   function wagerText(id: string, was: number | undefined, now: number | undefined, wasPhone: boolean): string {
     const name = `${byId[id]?.name ?? '?'}’s wager`;
     if (was === undefined) return `${name}: ${shownWager(now)}`;
-    return `${name}${wasPhone ? ' (from their phone)' : ''}: ${shownWager(was)} → ${shownWager(now)}`;
+    if (wasPhone) return `${name} (from their phone) → ${shownWager(now)}`;
+    return `${name}: ${shownWager(was)} → ${shownWager(now)}`;
   }
 
   /**
@@ -171,7 +176,7 @@
   }
 
   // A wager sent from their phone while the host's focus is in that box is a step of its own ("Ann’s wager (from their
-  // phone): $500"): the host's change starts again from it.
+  // phone)"): the host's change starts again from it.
   $effect(() => {
     const fs = f;
     if (!fs) return;
@@ -251,8 +256,9 @@
     const typed = Number(value);
     const v = Math.min(MAX_POINTS, typed);
     const was = fs?.wagers[id];
+    // (In one window a phone's amount stays hidden: the box goes back to empty.)
     const back = (): void => {
-      box.value = typeof was === 'number' ? String(was) : '';
+      box.value = typeof was === 'number' && (dual || !(fs && wagerFromPhone(fs, id))) ? String(was) : '';
     };
     if (!fs || value.trim() === '' || !Number.isFinite(v)) return back();
     if (typed > MAX_POINTS) toast(`At most ${formatPoints(MAX_POINTS, sym)}`, 3000);
@@ -363,6 +369,9 @@
           {@const cap = finalWagerCap(session, p.id)}
           {@const w = f.wagers[p.id]}
           {@const phone = plays && wagerFromPhone(f, p.id)}
+          {@const hide = !dual && phone}
+          <!-- One window: viewers see this panel, so a phone's amount stays hidden here (as ✍ answers and 🤫 card words
+               do) until it's shown in the reveals. Typing a wager over it makes it the host's. -->
           <div class="wrow chip" class:out={!plays} style:border-color={p.color} role="listitem" data-player={p.id}>
             <label class="check" title={plays ? 'Untick: sits out this Final' : 'Tick: plays this Final'}>
               <input type="checkbox" checked={plays} onchange={() => toggleIn(p.id)} data-plays={p.id} />
@@ -374,8 +383,8 @@
                 type="number"
                 min="0"
                 step="1"
-                value={w ?? ''}
-                placeholder="wager"
+                value={hide ? '' : (w ?? '')}
+                placeholder={hide ? 'hidden' : 'wager'}
                 aria-label="{p.name}’s wager"
                 title={override ? `No limit now (their score: ${formatPoints(score(session, p.id), sym)})` : cap ? `Max ${formatPoints(cap, sym)}` : `Can only wager ${formatPoints(0, sym)}`}
                 class:bad={typeof w === 'number' && ((!override && w > cap) || !Number.isInteger(w))}
@@ -413,8 +422,12 @@
               />
               {#if phone}
                 {@const by = wagerSentBy(f, p.id)}
-                <span class="phone small" title="Sent from their phone (only you see the amount). You can still change it." data-phone-wager={p.id}
-                  >📱 {formatPoints(w ?? 0, sym)} from phone ✔{by ? ` · sent by ${by}` : ''}</span
+                <span
+                  class="phone small"
+                  title={dual
+                    ? 'Sent from their phone (only you see the amount). You can still change it.'
+                    : 'Sent from their phone. The amount stays hidden here (viewers see this window) until you show it in the reveals. Typing a wager replaces it.'}
+                  data-phone-wager={p.id}>📱 {dual ? `${formatPoints(w ?? 0, sym)} ` : ''}from phone ✔{by ? ` · sent by ${by}` : ''}</span
                 >
               {:else if phones.includes(p.id) && !f.phonesLocked}
                 <!-- (One the host typed, or the 0 filled in for nothing to wager: their phone can still send another.) -->
@@ -510,6 +523,8 @@
               <!-- Until it's shown (or they're judged) the wager can still be changed here; with none in (it's never taken as
                    0) it's asked for here before they can be judged. -->
               {@const cap = finalWagerCap(session, id)}
+              <!-- (One window: a phone's amount stays hidden until it's shown, as on the wager screen.) -->
+              {@const hideW = !dual && wagerFromPhone(f, id)}
               <span class="muted small pscore">{formatPoints(score(session, id), sym)}</span>
               <label class="check small" class:no-wager={!hasWager(f, id)}>
                 {hasWager(f, id) ? 'wager' : 'no wager:'}
@@ -518,8 +533,8 @@
                   min="0"
                   step="1"
                   max={override ? undefined : cap}
-                  value={f.wagers[id] ?? ''}
-                  placeholder="wager"
+                  value={hideW ? '' : (f.wagers[id] ?? '')}
+                  placeholder={hideW ? 'hidden' : 'wager'}
                   aria-label="{p?.name}’s wager"
                   data-reveal-wager={id}
                   onkeydown={(e) => e.key === 'Enter' && setWager(id, e.currentTarget)}

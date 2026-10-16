@@ -41,6 +41,8 @@ in plain words for the people who make and host games. Anything committed but no
 - In a single window, the host's tools row stays on one line when 🔇 Stop sounds (the round intro's music) or cards out are showing, so the stage keeps one size from the board to a clue. On windows up to 1520px wide ◀ Prev round shows as ◀, and with both showing 🔇 and 🤫 show without their words; up to 1000px 📊 Scores shows as 📊; Next round ▶ shortens a long Final name (…) but always shows ▶. Each keeps its full name and tooltip. (5de7054, 1dc21f6)
 - 🔀 Randomize no longer leaves a 45 s countdown on a tile it moves off after you switched that tile's partner game to Help a friend or Split clue, and it still keeps a 45 s countdown you set yourself in such a round. (7368e45, 06a80f2)
 - An edit made the moment a game opened (or a new one started) could count as part of the game itself: opening another game didn't ask about it, and Ctrl+Z couldn't take it back. The editor now takes edits only once the game is ready for them, a moment after it shows.
+- With phone buzzers in one window, a Final or Daily Double wager sent from a phone no longer shows in the host panel viewers watch: the box says "hidden" and the row "📱 from phone ✔" until you show the wager at the reveals, ↶ Undo and the 📜 Log never name a phone's amount (even one sent while the audience window was open), and the panel no longer says "only you see it" there. (3f5af38, 5cf0327)
+- On a Daily Double, once a player is picked, the player chips drop their 1/2/3 key labels (number keys then type the wager), and the line says "Who found it? Click another to change." (3f5af38)
 
 ## 2026-10-15
 
