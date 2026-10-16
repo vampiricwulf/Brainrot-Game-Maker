@@ -358,3 +358,31 @@ export async function shownOf(page, words) {
   );
   return words.filter((w) => text.includes(w.toLowerCase()));
 }
+
+/**
+ * What autosave last stored under `key` (IndexedDB, idb-keyval's store): 'playSession' is the game in progress
+ * ({ game, session, savedAt }), what a reload resumes; 'editorDraft' the editor's game. Null when there is none. A test
+ * that reloads waits for the stored session to hold its last host action first: the write waits a moment for more
+ * clicks, and the copy written as the page goes away isn't always kept by a browser under test.
+ */
+export function stored(page, key = 'playSession') {
+  return page.evaluate(
+    (key) =>
+      new Promise((ok) => {
+        const r = indexedDB.open('keyval-store');
+        r.onerror = () => ok(null);
+        r.onsuccess = () => {
+          const db = r.result;
+          try {
+            const g = db.transaction('keyval').objectStore('keyval').get(key);
+            g.onsuccess = () => (ok(g.result ?? null), db.close());
+            g.onerror = () => (ok(null), db.close());
+          } catch {
+            db.close();
+            ok(null);
+          }
+        };
+      }),
+    key,
+  );
+}

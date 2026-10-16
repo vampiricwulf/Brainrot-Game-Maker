@@ -293,6 +293,14 @@ What reaches Bob's phone, by milestone and server (§13):
   would fall back to "Changed the type of" without any warning.
 - The ✍ Everyone answers checkbox stays for standard tiles only (ClueEditor.svelte:344-350).
 - On the board during play a partner tile looks like any tile: it is a surprise, like a Daily Double.
+- **From P4:** the board's 🤝 Partner clues box, next to ⭐ Daily Doubles (`BoardRound.partnerCount`), with 🔀 Randomize
+  places that many at random, spread over the categories, only on tiles with a written question and answer (never a
+  Daily Double); Start game places the ones still missing, and the pre-game checks offer 🎲 Place now. A tile that was a
+  partner clue keeps its own rules and cards; any other plays the round's game (`partnerGame`, Describe it when left
+  out) with a first 🤫 card that copies its answer (`partnerCardFrom`: 'answer', the default, or 'empty'; 'empty' is
+  for 🔀 Randomize only, where the host fills the card in: Start game always copies the answer). 🔀 Randomize pressed
+  again turns the ones it moves off back into plain standard tiles: a card that only copied the answer (or is empty)
+  goes, and with it rules that are the game's own and their 45 s countdown; a card or rules the host changed stay.
 
 ### 5.2 Partner settings
 
@@ -325,7 +333,7 @@ On this $400 tile: got → describer +$400, guesser +$200 · missed → guesser 
 - **Part words** (under ⚙ More): two short boxes, left blank for the game's words.
 - **⏱ Countdown** stays where it is. Choosing Describe it, Draw it or Act it out fills in 45 s if it's empty.
 - **From P2:** ☐ The guesser types their guess on their phone (off: out loud).
-- **From P4:** ☐ A miss opens the buzzers for everyone else.
+- **From P4:** After a miss: [as ⚖ Game rules say ▾ · the others can steal it · no steal] (§8.3).
 
 The hint paragraph, next to the wheel and dice hint (413-418):
 
@@ -939,6 +947,18 @@ isn't late for it (§10.1).
 A tile option "A miss opens the buzzers for everyone else" opens the buzzers after ✘ Missed with the two players
 locked out (`buzzArm` with them in `lockedOut`). A steal is judged with the normal award row at the full value.
 
+As built: ⚖ Game rules' "A miss on a partner clue lets the others steal it" (`GameSettings.partnerSteal`, left out:
+off) and each clue's "After a miss" (`PartnerRules.steal`: left out, as the game says; true or false) decide it. ✘ Missed
+marks its events `steal` while anyone else is in the game, and the steal is open while that miss stands
+(`partnerSteal()`): an Undo of the miss closes it, a Redo opens it again. While it's open the clue isn't the two's own
+(`ownPlayers()` is null), so it plays as any clue: the buzzers open at once for everyone else (the phones light up, the
+two locked out), or the host picks who steals (1–9, or the steal row's chips in the partner panel). Enter and
+Shift+Enter judge the one answering at the Amount (the tile's value): each steal is its own undo step, a wrong one locks
+that player out too and opens the buzzers for the rest, and a right one gives them the board. The stream's badge reads
+"🔔 Steal! Bob and Ann missed it" until someone steals it or the answer shows; the others' phones light up as on any
+clue, and the two's phones say "You already answered this one". In the host panel the steal row takes the place of
+✔ Got it / ✘ Missed, starting with what they gave ("Judged: Ann ✘ −$200 · Bob ✘ 0").
+
 ## 9. Scoring
 
 ### 9.1 The rule
@@ -1126,7 +1146,10 @@ ready.
 P3 also adds a list of the cards out now to the host panel. The host panel is on stream in one window, so its labels
 never carry a card's words: each card is numbered in the order it was sent ("Card 2 → Ann · ✓ seen [↻ Send again]
 [✖ Take back]"), and the label is made by the app, never typed (§18.2). In P4 a deal's list in one window doesn't say
-who got which card, since that is the secret.
+who got which card, since that is the secret: it lists everyone dealt in alike, with a part or not (a deal with no
+part for "the rest", like 🧢 Team captain outside teams, leaves some with none), and counts the phones that came late
+rather than naming them. For the same reason a deal's part ("You're the Spy") is not the role line
+over a phone's Tap to see cover (§12.3), where a neighbour could read it: it goes under the cover, as the card's title.
 
 ### 12.3 How a phone shows a card
 

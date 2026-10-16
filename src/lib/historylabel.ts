@@ -19,7 +19,7 @@ export type Place =
   | { tab: 'title' }
   | { tab: 'sounds' }
   | { tab: 'theme' }
-  | { tab: 'tools'; wheel?: string; dice?: string }
+  | { tab: 'tools'; wheel?: string; dice?: string; deal?: string }
   | { tab: 'stats'; stat?: string; item?: string; shop?: string }
   | { tab: 'media'; media?: string }
   /** `slide`: a question slide after the first (its id). */
@@ -324,7 +324,7 @@ export function placeAt(game: Game, path: readonly Seg[]): At {
       break;
     case 'wheels':
     case 'dice': {
-      at.crumbs.push('Wheels & Dice');
+      at.crumbs.push('Wheels, Dice & Deals');
       at.icon = path[0] === 'wheels' ? '🎡' : '🎲';
       go({ tab: 'tools' });
       const tool = byId<{ id: string; name: string; segments?: Game['wheels'][number]['segments'] }>(game[path[0]], path[1]);
@@ -335,6 +335,16 @@ export function placeAt(game: Game, path: readonly Seg[]): At {
       if (!slice) break;
       reached(4, 'slice', slice.label, undefined, false);
       if (path[4] === 'actions') actions(slice.actions, 5, () => ({ tab: 'tools', wheel: tool.id }));
+      break;
+    }
+    case 'deals': {
+      at.crumbs.push('Wheels, Dice & Deals');
+      at.icon = '🎭';
+      go({ tab: 'tools' });
+      const deal = byId<NonNullable<Game['deals']>[number]>(game.deals, path[1]);
+      if (!deal) break;
+      reached(2, 'deal', deal.name);
+      go({ tab: 'tools', deal: deal.id });
       break;
     }
     case 'statFields':
@@ -409,7 +419,7 @@ export function placeWhere(place: Place): string | null {
     case 'theme':
       return 'Theme';
     case 'tools':
-      return 'Wheels & Dice';
+      return 'Wheels, Dice & Deals';
     case 'stats':
       return 'Stats & Items';
     case 'media':
@@ -467,6 +477,7 @@ const RULES: Record<string, string> = {
   currencySymbol: 'Points symbol',
   rollOffDie: 'Roll-off die',
   pickerFollowsAward: 'Scorer picks next',
+  partnerSteal: 'Steals on partner clues',
   maxPlayers: 'Most players',
   timerAutoStart: 'Countdown starts itself',
   titleCard: 'Round title card',
@@ -502,6 +513,9 @@ const FIELDS: Record<string, string> = {
   exits: 'ways out',
   winPublic: 'how to win on the board',
   dailyDoubleCount: 'Daily Doubles wanted',
+  partnerCount: 'partner clues wanted',
+  partnerGame: 'partner clues’ game',
+  partnerCardFrom: 'partner clues’ card',
 };
 /** Switches: what turning each on or off says (`who`: “Doorway”, or "the space" for one with no name). */
 const TOGGLES: Record<string, (on: boolean, who: string) => string> = {
@@ -630,7 +644,7 @@ export function describe(all: readonly Op[], before: Game, after: Game, explicit
   const shown = all.filter((o) => opPath(o)[0] !== 'media');
   let ops = shown.length ? shown : all;
   // The same for wheels, dice, items, shops and stats added with what uses them (a screen pasted from another game, a
-  // new item put on a screen): the step shows there, not on 🎡 Wheels & Dice or 📊 Stats & Items. What uses them can be
+  // new item put on a screen): the step shows there, not on 🎡 Wheels, Dice & Deals or 📊 Stats & Items. What uses them can be
   // a kit's own buttons too (a wheel slice's, a die face's, an item's Use).
   const uses = (o: Op) => {
     const p = opPath(o);
@@ -862,6 +876,8 @@ function labelOf(ops: readonly Op[], op: Op, at: At, moved: string[], alike: num
     return TOGGLES[k](!!v, who);
   }
   if (k === 'dailyDoubleCount' && typeof v === 'number') return `Set ${what(at)} to ${v} Daily Double${v === 1 ? '' : 's'}`;
+  if (k === 'partnerCount' && at.noun === 'round')
+    return typeof v === 'number' ? `Set ${what(at)} to ${v} partner clue${v === 1 ? '' : 's'}` : `Set ${what(at)} to no partner clues placed at random`;
   if (at.noun === 'row values') return 'Changed the row values';
   const own = op.p.length === at.depth;
   // A tile is named as the board shows it ("Memes $400"); a value changed, by the one it had.

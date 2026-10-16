@@ -5,13 +5,13 @@
   import { prefs, savePrefs } from '../lib/prefs.svelte';
   import { commit, history, redo as redoStep, step, undo as undoStep } from '../lib/history.svelte';
   import { createFieldTracker, undoKeyOf } from '../lib/undokeys';
-  import { blankName, finalName, formatPoints, getClue, isBoard, isBoardGame, isFinal, isRpg, isSlides, MAX_PLAYERS, newId, PLAYER_WHEEL, questionSlides, wholePoints, type ClueRef } from '../lib/model';
+  import { blankName, finalName, formatPoints, getClue, isBoard, isBoardGame, isFinal, isRpg, isSlides, MAX_PLAYERS, newId, PLAYER_WHEEL, questionSlides, wholePoints, type BoardRound, type ClueRef } from '../lib/model';
   import {
     applyScore, awardOpen, backToBoard, backToLastRound, currentFinal, clueName, clueReason, clueScored, currentClueInfo, ddShowQuestion, describeStep,
     finalAdvance, finalBack, finalJudge, finalShow, finalTag, finalUnjudged, findClueRef, goToRound, introNext, nameList, newSession, openClue, playerName,
     randomizeDailyDoubles, redo, removePlayer, restorePlayer, answerShowing, rosterChange, score, skipIntro, startIntro, toggleUsed, undo,
     blankSlide, toolOnlyClue, stepSlide, finalWagerProblems, finalWagersOk, finalStepFix, startTiebreaker, stepOf, logZero, tiedForFirst, tiedLeaders, winnerKnown,
-    finalSetWager, finalTakeNewcomers, forViewers, wagerFromPhone, coWinnersHold, ownPlayers, clueMarks, judgePartner,
+    finalSetWager, finalTakeNewcomers, forViewers, wagerFromPhone, coWinnersHold, ownPlayers, clueMarks, judgePartner, partnerSteal,
   } from '../lib/session';
   import {
     cardId, cardRecipients, cardSends, cardSlides, lowerWord, marksText, sentSeats, partnerCandidates, partnerRoles, partnerRules, partnerShares, partnerVerdict, partWords, recipientsText, sendCards,
@@ -19,13 +19,14 @@
   } from '../lib/partner';
   import { phoneCard } from '../lib/phonecard';
   import { phoneCan, syncUploads } from '../lib/cardfiles.svelte';
-  import { cardsOut, sentCardId, sentSlide, takeBackCard } from '../lib/sentcards';
+  import { cardsOut, listedCards, sentCardId, sentSlide, takeBackCard } from '../lib/sentcards';
+  import { dealOut, dealtIn } from '../lib/deals';
   import { windowCards } from '../lib/cardwindow';
   import { cardWindow, closeCardWindow, feedCardWindow } from '../lib/cardwindow.svelte';
   import { dropOffersBut } from './host/offered.svelte';
   import { addTime, newLive, overlayDoneAt, startTimer, tileToolUp, timerRemaining, timerResumed, toggleTimer, toolOverlay, type Live, type StageAction, type TimerState } from '../lib/live';
   import {
-    buzzArm, buzzClueOpened, buzzDone, buzzIdle, buzzMissed, buzzReset, buzzTake, CARDS_FULL, hostState, newBuzz, partnerAnswerAsk, partnerAnswerId, hostCards, phoneStatus, roomCardsFull, SEAT_NAME_MAX, sendOf, SETTING_UP,
+    buzzArm, buzzClueOpened, buzzDone, buzzIdle, buzzMissed, buzzReset, buzzTake, cardsFullText, hostState, newBuzz, partnerAnswerAsk, partnerAnswerId, hostCards, phoneStatus, roomCardsFull, SEAT_NAME_MAX, sendOf, SETTING_UP,
     teamsOn, wagerAsk, whoBuzzed,
     type BuzzState,
   } from '../lib/buzz';
@@ -43,7 +44,7 @@
   import { openDice, openMemberWheel, openPartnerWheel, openPlayerWheel, openWheel, quickDice, rollDice, spinningRolls, spinWheel, startRollOff, toggleScoreboard, wheelSpentUp } from '../lib/overlay';
   import type { DicePreset } from '../lib/model';
   import { tileDice } from '../lib/tools';
-  import { dailyDoublesShort, validate } from '../lib/validate';
+  import { dailyDoublesShort, partnerTilesShort, validate } from '../lib/validate';
   import { isColorTaken, nearKey, nextFreeColor, PLAYER_PALETTE } from '../lib/colors';
   import { announce } from '../lib/announce';
   import { ask } from '../lib/ask.svelte';
@@ -67,7 +68,7 @@
   import { cueHere, playCue } from './cues';
   import { BUILTIN } from '../lib/sounds';
   import { watchSinks } from '../lib/audioout.svelte';
-  import { finalNextStep, logged, redoAction, redoFrom, revealStep, setPicker, startStep, undoAction, type Undone } from '../lib/toolset';
+  import { finalNextStep, logged, redoAction, redoFrom, revealStep, setPicker, startStep, undoAction, whoWasWhoStep, type Undone } from '../lib/toolset';
   import { groupPops, stopsTimer } from './flow';
   import { nextUndo, stillUndone, type TimelineRow } from '../lib/timeline';
   import {
@@ -85,8 +86,8 @@
   import Avatar from '../lib/rpg/Avatar.svelte';
   import { shopBuy } from './host/shopops';
   import { SLIDE_H, SLIDE_W } from '../lib/model';
-  import { clone } from '../lib/ops';
-  import type { ActionEvent, Dir8, Game, GameSettings, Player, ScoreEvent } from '../lib/model';
+  import { clone, randomizePartnerTiles } from '../lib/ops';
+  import type { ActionEvent, Dir8, Game, GameSettings, Player, ScoreEvent, SentCard } from '../lib/model';
   import type { Pop } from '../lib/live';
   import {
     audience,
@@ -152,7 +153,8 @@
   // Phone buzzers: resuming mid-clue, whoever was answering still is (see the buzzers below).
   const buzzUp = untrack(() => (session.remote?.buzz && session.remote.buzz.clue === clueKey(session.currentClue) ? session.remote.buzz : null));
   // A partner clue: nobody picked (Enter judges it, or presses its main button), and the Amount is the tile's value.
-  const partnerUp = untrack(() => session.phase === 'clue' && !!session.partner);
+  // (Its steal is answered as any clue: whoever was answering it still is.)
+  const partnerUp = untrack(() => session.phase === 'clue' && !!session.partner && !partnerSteal(session));
   let selected = $state<string[]>(ddUp?.playerId ? [ddUp.playerId] : !partnerUp && buzzUp?.phase === 'answering' && buzzUp.answering ? [buzzUp.answering] : []);
   let amount = $state<number | null>(ddUp ? (ddUp.wager ?? null) : untrack(() => currentClueInfo(session, game)?.value ?? null));
   let showLog = $state(false);
@@ -771,7 +773,10 @@
 
   function reasonNow(): string {
     if (session.phase === 'clue' && session.currentClue)
-      return clueReason(game, session.currentClue) + (session.dd?.stage === 'question' ? ' (Daily Double)' : session.partner && session.partner.stage !== 'pick' ? ' (partner clue)' : '');
+      return (
+        clueReason(game, session.currentClue) +
+        (session.dd?.stage === 'question' ? ' (Daily Double)' : partnerSteal(session) ? ' (a steal)' : session.partner && session.partner.stage !== 'pick' ? ' (partner clue)' : '')
+      );
     if (session.phase === 'final') {
       const f = currentFinal(session, game);
       return f ? finalName(f) : 'Final';
@@ -888,6 +893,8 @@
   const toolFirst = $derived(!!info && tileToolUp(app.live, info.clue) && !session.revealed);
   /** The buzzers' state (see buzz.ts). */
   const buzz = $derived(app.live.buzz ?? newBuzz(session.remote?.armId ?? 0));
+  /** A partner clue's steal: the buzzers open for everyone but `out` (the two who missed it), nobody answering. */
+  const stealArm = (b: BuzzState, out: string[]): BuzzState => buzzArm({ ...b, answering: null, lockedOut: out }, playerIds());
   const playerIds = () => session.players.map((p) => p.id);
 
   /** Awards that changed the buzzers (by their step): an Undo puts them back as they were, a Redo as they were after. */
@@ -901,6 +908,14 @@
     roomQueue = null;
     setBuzz(to);
     selected = to.phase === 'answering' && to.answering ? [to.answering] : [];
+  }
+
+  /**
+   * A partner clue's ✘ Missed that let the others steal it, undone or redone: the steal closes or opens again, with nobody
+   * picked (whoever was answering the steal isn't, once it's closed; opened again, the buzzers open afresh).
+   */
+  function stealFollow(events: { steal?: true }[]): void {
+    if (events.some((e) => e.steal)) selected = [];
   }
 
   /** Right answers that stopped a running countdown (by their step): an Undo puts it back with the time it had left. */
@@ -957,7 +972,9 @@
         clueArmFloor = floor;
         return setBuzz(b);
       }
-      const next = key ? buzzClueOpened(buzz, game.settings.buzzArm !== 'host') : buzzIdle(buzz);
+      // A partner clue's miss let the others steal it: the buzzers open for them at once, the two locked out.
+      const steal = key ? partnerSteal(session) : null;
+      const next = steal ? stealArm(buzz, steal.out) : key ? buzzClueOpened(buzz, game.settings.buzzArm !== 'host') : buzzIdle(buzz);
       clueArmFloor = next.phase === 'armed' ? next.armId - 1 : next.armId;
       setBuzz(next);
     });
@@ -1021,9 +1038,11 @@
     if (toolFirst) return hint(`Close the ${info?.clue.type === 'dice' ? 'dice' : 'wheel'} first: the question isn’t on screen yet`);
     if (session.revealed) return hint('The answer is showing: the buzzers stay closed');
     if (all || buzz.phase === 'answering') {
-      if (selected.length || buzz.lockedOut.length) toast('Buzzers open for everyone');
+      // (A partner clue's steal: open for everyone but the ones who missed it, the two who played it.)
+      const steal = partnerSteal(session);
+      if (selected.length || buzz.lockedOut.length) toast(steal ? `Buzzers open for everyone but ${nameList(steal.out.map((id) => playerName(session, id)))}` : 'Buzzers open for everyone');
       selected = [];
-      setBuzz(buzzReset(buzz));
+      setBuzz(steal ? stealArm(buzz, steal.out) : buzzReset(buzz));
       roomQueue = null;
       return;
     }
@@ -1340,7 +1359,10 @@
       const s = partner;
       const out = s && info && phoneCards ? cardSlides(info.clue).flatMap((c, i) => (sentSeats(session, s, c.id).includes(seatId) ? [`card ${i + 1}`] : [])) : [];
       // (And the cards out with 🤫 Send a card… or from a tile's panel, by their labels: "Card 3".)
-      if (phoneCards) out.push(...cardsOut(game, session).flatMap((c) => (c.to.some((t) => t.seat === seatId) ? [c.label] : [])));
+      if (phoneCards) out.push(...listedCards(game, session).flatMap((c) => (c.to.some((t) => t.seat === seatId) ? [c.label] : [])));
+      // (A 🎭 deal's: for everyone dealt in, a part or not, the same words. Only those with a part have a card, so
+      // naming it only for them would say who got one.)
+      if (phoneCards && dealOut(game, session).length && dealtIn(session.deal!).some((t) => t.seat === seatId)) out.push('🎭 the deal (in 🎭 Deal…)');
       if (out.length) toast(`${playerName(session, seatId)}'s seat is free: once they're on the new phone, ↻ Send again ${nameList(out)}`, 6000);
       else toast(`${playerName(session, seatId)}'s seat is free: they can tap their name on their new phone`, 4000);
     }
@@ -1675,6 +1697,10 @@
       case 'overlay':
         overlayPrimary();
         break;
+      case 'whowaswho':
+        // (🎭 Who was who over the stage: a click takes it off, as 🙈 Hide does in 🎭 Deal…. Ctrl+Z puts it back.)
+        if (whoWasWhoStep(session, false)) announce('Who was who is off the screen');
+        break;
     }
   }
 
@@ -1912,7 +1938,7 @@
     if (session.revealed) return hint('The answer is showing: Esc goes back to the board');
     // (Never more cards than the buzzer room takes: a send over that waits for a ✖ Take back.)
     const unsent = unsentCards();
-    if (unsent.length && roomCardsFull(game, session, (t) => sendCards(t, t.partner!, unsent))) return hint(CARDS_FULL);
+    if (unsent.length && roomCardsFull(game, session, (t) => sendCards(t, t.partner!, unsent))) return hint(cardsFullText(game, session));
     const went = phoneCards ? sendCards(session, s, unsent) : [];
     if (went.length) announce(went.map((c) => `Card ${cardSlides(info.clue).indexOf(c) + 1} sent to ${recipientsText(session, s, partnerRules(info.clue), c)}`).join('. '));
     s.stage = 'live';
@@ -1957,6 +1983,21 @@
       forgetCardFiles(files);
     }
     announce(`${c.label} taken back`);
+  }
+
+  /**
+   * A 🎭 deal's cards were taken back (✖ Take back, a new deal, or the deal put away): they go from the phones now (the
+   * room's next state hasn't them), and the room deletes their files unless another card still out uses them.
+   */
+  function dealGone(gone: SentCard[]): void {
+    const files = gone.flatMap((c) => {
+      const slide = sentSlide(game, c);
+      return slide ? phoneCard(game, slide, phoneCan(session)).items.flatMap((i) => ('file' in i.goes ? [i.goes.file] : [])) : [];
+    });
+    if (phonesOn && remote.status === 'online') {
+      sendHostState(roomState(), true);
+      forgetCardFiles([...new Set(files)]);
+    }
   }
 
   /** The open partner clue's marks since it opened, and whether both of the two have one (it's judged). */
@@ -2022,7 +2063,9 @@
     // (A 0 is a mark in the log, not a pop on stream.)
     for (const p of groupPops(events.filter((e) => e.delta), session.players, sym, game.theme?.value || '#ffcc00')) pop(p);
     const each = events.map((e) => `${playerName(session, e.playerId)} ${e.delta > 0 ? '+' : ''}${formatPoints(e.delta, sym)}, now ${formatPoints(score(session, e.playerId), sym)}`);
-    announce(`${got ? 'Got it' : 'Missed'}: ${each.join('; ')}`);
+    // Steal on a miss: the others can answer it now (the buzzers open for them: the buzz effect, as for any clue).
+    const steal = events.some((e) => e.steal);
+    announce(`${got ? 'Got it' : 'Missed'}: ${each.join('; ')}${steal ? `. A steal: ${phonesOn ? 'the others can buzz in' : 'who steals it?'}` : ''}`);
     selected = [];
     // The buttons that had the keys may be off now (✔ Got it, ⇄ Swap): they go on to the main button, the answer, not
     // to the nearest button left (▦ Done ▶ board, where a later Enter would close the clue).
@@ -2060,7 +2103,10 @@
     if (e.repeat) return true;
     if (selected.length) return partnerTooSoon(e);
     if (partnerJudged) {
-      hint(`${judgedText()} (Ctrl+Z takes it back)`);
+      const steal = partnerSteal(session);
+      if (steal && !steal.by && !session.revealed)
+        hint(`🔔 A steal: ${phonesOn ? 'whoever buzzes in first answers, or press' : 'press'} the number of who steals it, then Enter (right) or Shift+Enter (wrong)`);
+      else hint(`${judgedText()} (Ctrl+Z takes it back)`);
       return true;
     }
     if (s.stage === 'distribute') {
@@ -2420,6 +2466,7 @@
     const events = undo(session);
     if (!events.length) return null;
     undone.push({ log: 'score', id: stepOf(events[0]) });
+    stealFollow(events);
     buzzFollow(events, true);
     timerFollow(events, true);
     return describeStep(session, events, sym);
@@ -2444,6 +2491,7 @@
       if (a) return after(`${a.text}${inRound(a)}`);
     }
     const events = redo(session);
+    stealFollow(events);
     buzzFollow(events, false);
     timerFollow(events, false);
     return after(events.length ? describeStep(session, events, sym) : null);
@@ -2743,12 +2791,21 @@
     session.players.forEach((p, i) => blankName(p.name) && (p.name = `${pregameTeams ? 'Team' : 'Player'} ${i + 1}`));
     // A start score is whole points, within what reads on screen (even one still being typed as the game starts).
     session.players.forEach((p) => (p.startScore = wholePoints(p.startScore) ?? 0));
+    // A board short of the 🤝 partner clues its box asks for: the rest go on tiles with a written question and answer
+    // now, before the Daily Doubles (which never land on one), each board a step as 🎲 Place now is.
+    const pts = game.rounds.flatMap((r, ri) => (isBoard(r) && partnerShort(r) ? [{ n: placePartnerTiles(ri, false), name: r.name }] : []));
+    const ptN = pts.reduce((a, p) => a + p.n, 0);
     // A board short of Daily Doubles (a new one's ⭐ Daily Doubles 1, none placed) would play without them: the rest go
     // in at random now, each board a step as 🎲 Place now is.
     const placed = game.rounds.flatMap((r, ri) => (isBoard(r) && dailyDoublesShort(r) ? [{ n: placeDailyDoubles(ri, false), name: r.name }] : []));
     const n = placed.reduce((a, p) => a + p.n, 0);
-    const where = nameList(placed.filter((p) => p.n).map((p) => p.name));
-    if (n) toast(`⭐ Placed ${n} Daily Double${n === 1 ? '' : 's'} at random in ${where} (${n === 1 ? 'it wasn’t' : 'they weren’t'} on the board yet)`, 5000);
+    const where = (list: { n: number; name: string }[]) => nameList(list.filter((p) => p.n).map((p) => p.name));
+    // (One toast for both: a second would cover the first.)
+    const said = [
+      ptN ? `🤝 Placed ${ptN} partner clue${ptN === 1 ? '' : 's'} at random in ${where(pts)}` : '',
+      n ? `⭐ Placed ${n} Daily Double${n === 1 ? '' : 's'} at random in ${where(placed)} (${n === 1 ? 'it wasn’t' : 'they weren’t'} on the board yet)` : '',
+    ].filter(Boolean);
+    if (said.length) toast(said.join(' · '), 5000);
     // (The players are kept with the game as they're changed here: see keepRoster.)
     // A picture chosen for a player here was stored in the editor's game: the game being played gets it too.
     for (const p of session.players) {
@@ -2856,10 +2913,11 @@
       .map((p) => {
         const r = typeof p.tab === 'number' ? game.rounds[p.tab] : undefined;
         const dd = isBoard(r) && !!dailyDoublesShort(r) && p.text.includes('Daily Double') && p.text.includes(' not placed yet');
+        const pt = isBoard(r) && partnerShort(r) && p.text.includes('partner clue') && p.text.includes(' not placed yet');
         // (A player-only file can't add or swap files: its own words for those.)
-        return { text: app.playerOnly && p.player ? p.player : p.text, level: p.level, ddRound: dd ? (p.tab as number) : undefined };
+        return { text: app.playerOnly && p.player ? p.player : p.text, level: p.level, ddRound: dd ? (p.tab as number) : undefined, ptRound: pt ? (p.tab as number) : undefined };
       })
-      .filter((p) => p.level === 'warn' || p.ddRound !== undefined);
+      .filter((p) => p.level === 'warn' || p.ddRound !== undefined || p.ptRound !== undefined);
   });
 
   /**
@@ -2890,6 +2948,60 @@
     if (tell) toast(`Placed ${n} Daily Double${n === 1 ? '' : 's'} in ${r.name}`);
     return n;
   }
+
+  /** A board's 🤝 Partner clues box asks for more than it has, with tiles to put them on. */
+  const partnerShort = (r: BoardRound): boolean => {
+    const s = partnerTilesShort(r);
+    return !!s && s.placed < s.want;
+  };
+
+  /**
+   * Scatter the missing 🤝 partner clues now (in this game and in the editor's copy, so they're kept), on tiles with a
+   * written question and answer. The ones already on the board stay where they are.
+   */
+  function placePartnerTiles(ri: number, tell = true): number {
+    const r = game.rounds[ri];
+    if (!isBoard(r)) return 0;
+    const before = new Set(r.categories.flatMap((c) => c.clues.filter((cl) => cl.type === 'partner').map((cl) => cl.id)));
+    // (Each with a copy of its answer as its card, whatever the round says: an empty card can't be filled in now. The
+    // editor's 🔀 Randomize is where the host fills one in.)
+    const n = randomizePartnerTiles(r, r.partnerCount ?? 0, Math.random, { keepExisting: true, cardFrom: 'answer' });
+    if (!n) {
+      if (tell) toast(`No room for another partner clue in ${r.name}: they go on tiles with a written question and answer`);
+      return 0;
+    }
+    // (What each became: its rules, its cards, its countdown, as plain copies for the editor's game.)
+    const added = new Map(
+      r.categories.flatMap((c) => c.clues.filter((cl) => cl.type === 'partner' && !before.has(cl.id)).map((cl) => [cl.id, $state.snapshot(cl)] as const)),
+    );
+    const edited = app.game.rounds.find((x) => x.id === r.id);
+    step(
+      `Placed ${n} partner clue${n === 1 ? '' : 's'} in ${r.name}`,
+      () => {
+        for (const c of isBoard(edited) ? edited.categories : [])
+          for (const cl of c.clues) {
+            const now = added.get(cl.id);
+            if (!now || cl.type !== 'standard') continue;
+            cl.type = 'partner';
+            if (now.partner) cl.partner = clone(now.partner);
+            if (now.cards) cl.cards = clone(now.cards);
+            else delete cl.cards;
+            if (now.timerSeconds != null && cl.timerSeconds == null) cl.timerSeconds = now.timerSeconds;
+          }
+      },
+      { during: 'play' },
+    );
+    if (tell) toast(`Placed ${n} partner clue${n === 1 ? '' : 's'} in ${r.name}`);
+    return n;
+  }
+
+  /** Partner clues the boards want (their 🤝 Partner clues box) but haven't got: Start game places them at random. */
+  const unplacedPartners = $derived(
+    game.rounds.reduce((n, r) => {
+      const short = isBoard(r) ? partnerTilesShort(r) : null;
+      return n + (short ? Math.max(0, short.want - short.placed) : 0);
+    }, 0),
+  );
 
   /** Daily Doubles the boards want (their ⭐ Daily Doubles box) but haven't got: Start game places them at random. */
   const unplacedDDs = $derived(
@@ -2940,7 +3052,7 @@
   /** The settings ⚖ Game rules sets. */
   const RULES = [
     'allowNegativeScores', 'deductOnWrong', 'pickerFollowsAward', 'currencySymbol', 'maxPlayers', 'defaultTimerSeconds', 'timerAutoStart',
-    'roundIntro',
+    'roundIntro', 'partnerSteal',
   ] as const satisfies readonly (keyof GameSettings)[];
   // ⚖ Game rules changes the game being played (before it, or mid-game from the host panel); the editor's copy of
   // the game keeps each change (undoable there).
@@ -3634,7 +3746,7 @@
         break;
       }
       case 'u':
-        if (partner) {
+        if (partner && !partnerSteal(session)) {
           hint('Nobody buzzes on a partner clue');
           break;
         }
@@ -3914,6 +4026,10 @@
                     {@const ri = c.ddRound}
                     <button class="small" onclick={() => placeDailyDoubles(ri)}>🎲 Place now</button>
                   {/if}
+                  {#if c.ptRound !== undefined}
+                    {@const ri = c.ptRound}
+                    <button class="small" onclick={() => placePartnerTiles(ri)}>🎲 Place now</button>
+                  {/if}
                 </li>
               {/each}
             </ul>
@@ -3965,6 +4081,11 @@
           <!-- Said here, not only in the folded checks: Start places them, so the round never plays without one. -->
           <span class="muted small" title="Place them yourself in the editor, or with 🎲 Place now in the checks above">
             ⭐ {unplacedDDs} Daily Double{unplacedDDs === 1 ? '' : 's'} not placed yet: Start puts {unplacedDDs === 1 ? 'it' : 'them'} on the board at random
+          </span>
+        {/if}
+        {#if unplacedPartners}
+          <span class="muted small" title="Place them yourself in the editor (🔀 Randomize by the board), or with 🎲 Place now in the checks above">
+            🤝 {unplacedPartners} partner clue{unplacedPartners === 1 ? '' : 's'} not placed yet: Start puts {unplacedPartners === 1 ? 'it' : 'them'} on the board at random
           </span>
         {/if}
       </span>
@@ -4163,7 +4284,7 @@
           {/if}
         {/snippet}
         {#snippet tools()}
-          <ToolLauncher {game} {session} {dual} onrolloff={rolloff} onstopsounds={introNonce && app.live.sound ? stopSounds : undefined} oncardtakeback={cardTakeBack} />
+          <ToolLauncher {game} {session} {dual} onrolloff={rolloff} onstopsounds={introNonce && app.live.sound ? stopSounds : undefined} oncardtakeback={cardTakeBack} ondealgone={dealGone} />
         {/snippet}
       </HostPanel>
     {/if}

@@ -43,7 +43,7 @@
   import { goToRound, migrateSession, newSession, randomizeDailyDoubles, rebaseSession, startIntro } from './lib/session';
   import { forgetGameParts } from './lib/toolset';
   import { newLive, type Overlay } from './lib/live';
-  import { clone } from './lib/ops';
+  import { clone, randomizePartnerTiles } from './lib/ops';
   import { slideMediaIds } from './lib/usage';
   import { sameGame } from './lib/samegame';
   import { sameContent } from './lib/roundcopy';
@@ -611,8 +611,12 @@
     // (No tiebreaker after it, and no phones: the room, if one is open, waits for ▶ Play.)
     delete game.tiebreaker;
     game.settings.buzzer = undefined;
-    // Daily Doubles the board wants but hasn't got go in at random, in this copy only.
-    if (isBoard(r)) randomizeDailyDoubles(r, r.dailyDoubleCount ?? 1, Math.random, { keepExisting: true });
+    // Partner clues and Daily Doubles the board wants but hasn't got go in at random, in this copy only.
+    if (isBoard(r)) {
+      // (A partner clue's card: a copy of its answer, as Start game does. An empty one couldn't be filled in now.)
+      if (r.partnerCount) randomizePartnerTiles(r, r.partnerCount, Math.random, { keepExisting: true, cardFrom: 'answer' });
+      randomizeDailyDoubles(r, r.dailyDoubleCount ?? 1, Math.random, { keepExisting: true });
+    }
     const s = newSession(game);
     if (!s.players.length)
       for (const name of ['Alex', 'Sam', 'Jordan'].slice(0, Math.max(1, game.settings.maxPlayers)))
@@ -702,8 +706,12 @@
     let game = saved.game;
     if (withEdits) {
       game = clone(app.game);
-      // The files of 🤫 cards made in play (a quick card's picture: only the played copy has them) go with the cards out.
-      const keep = new Set((saved.session.cards ?? []).flatMap((c) => ('slide' in c.content ? slideMediaIds(c.content.slide) : [])));
+      // The files of 🤫 cards made in play (a quick card's picture: only the played copy has them) go with the cards out,
+      // and so do a 🎭 deal's (its cards were made from the game as it was then).
+      const keep = new Set([
+        ...(saved.session.cards ?? []).flatMap((c) => ('slide' in c.content ? slideMediaIds(c.content.slide) : [])),
+        ...(saved.session.deal?.hands ?? []).flatMap((h) => slideMediaIds(h.slide)),
+      ]);
       for (const m of saved.game.media) if (keep.has(m.id) && !game.media.some((x) => x.id === m.id)) game.media.push(clone(m));
       rebaseSession(saved.session, saved.game, game);
       forgetGameParts(saved.session);

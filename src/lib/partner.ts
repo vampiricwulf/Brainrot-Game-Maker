@@ -11,6 +11,7 @@ import {
   newTextEl,
   PART_WORD_MAX,
   PARTNER_GAMES,
+  questionSlides,
   wholePoints,
   type CardGoesTo,
   type CardSend,
@@ -18,6 +19,7 @@ import {
   type Clue,
   type ClueCard,
   type Game,
+  type GameSettings,
   type Id,
   type PartnerGame,
   type PartnerPoints,
@@ -104,6 +106,12 @@ export function tilePoints(rules: PartnerRules, value: number, got: boolean): Re
 
 /** A miss can cost someone points (the clue's own points, after ☑ The partner never loses points). */
 export const missCosts = (rules: PartnerRules): boolean => Object.values(tilePoints(rules, 100, false)).some((n) => n < 0);
+
+/**
+ * Steal on a miss is on for the clue (partner-clues spec §8.3): its own say, else ⚖ Game rules' "A miss on a partner
+ * clue lets the others steal it".
+ */
+export const stealOn = (rules: Pick<PartnerRules, 'steal'>, settings: Pick<GameSettings, 'partnerSteal'>): boolean => rules.steal ?? !!settings.partnerSteal;
 
 // ---------- Changing the rules ----------
 
@@ -231,6 +239,14 @@ function words(slide: Slide): string {
 export function sameAsAnswer(clue: Pick<Clue, 'answerSlide'>, card: Slide): boolean {
   const a = words(clue.answerSlide);
   return !!a && words(card) === a;
+}
+
+/**
+ * A tile a 🤝 partner clue can be placed on at random (🔀 Randomize, Start game): a standard tile that plays, with a
+ * written question and answer. Never a Daily Double, a wheel or dice tile, or a ✍ Everyone answers clue.
+ */
+export function partnerSpot(clue: Clue): boolean {
+  return !clue.empty && clue.type === 'standard' && !clue.everyone && questionSlides(clue).some(slideHasContent) && slideHasContent(clue.answerSlide);
 }
 
 /**

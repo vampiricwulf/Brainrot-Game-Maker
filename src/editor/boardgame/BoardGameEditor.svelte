@@ -763,7 +763,7 @@
           oninput={(e) => setMoverDice(e.currentTarget.value)}
           placeholder="d6, 2d6"
           list="bg-dice"
-          title="Standard dice (d6, 2d6…), or the name of dice saved in 🎡 Wheels & Dice"
+          title="Standard dice (d6, 2d6…), or the name of dice saved in 🎡 Wheels, Dice & Deals"
         />
       </label>
       <datalist id="bg-dice">{#each game.dice as d (d.id)}<option value={d.name}></option>{/each}</datalist>

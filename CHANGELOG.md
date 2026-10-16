@@ -13,6 +13,14 @@ in plain words for the people who make and host games. Anything committed but no
 
 ## 2026-10-16
 
+### Added
+- 🎭 Deal… in the host panel's tools row, next to 🤫 Send a card…, gives everyone a secret part on their own phone. Ready-made: 🕵 Odd one out (one spy; everyone else gets the same location drawn from a wheel), 🐺 Secret roles (a wolf, a seer and villagers), 🧢 Team captain (one on each team) and 🧠 Everyone's own prompt (each player draws their own slice of a wheel); or make your own in the editor's 🎡 Wheels, Dice & Deals tab (＋ Add deal or 📋 Ready-made deal…: parts with a card each, how many get each, and a wheel to draw from). Parts are dealt at random (with the audience window open you can choose who gets one, and the column beside the stage shows who got which; in one window the panel only counts parts). Nothing goes until you press 📤 Send, each player's card on its own; ↻ Send again and ✖ Take back work on the whole deal, without phones you copy (📋) or use the 🪟 card window, and a deal comes back after a reload. 🎭 Who was who puts everyone's name and part on stream when you press it, and Ctrl+Z takes it off. Two new ready-made wheels: 🗺 Locations and 🧠 Secret prompts. (0e73e7c, 2bab8fe, 2fd29e9)
+- Steal on a miss for 🤝 partner clues: ⚖ Game rules' "A miss on a partner clue lets the others steal it", or a clue's own "After a miss". After ✘ Missed, the buzzers open for everyone else with the two who missed locked out, or you pick who steals, for the tile's value; Ctrl+Z takes it back. (c702d66, 2bab8fe, 2fd29e9)
+- A 🤝 Partner clues box next to ⭐ Daily Doubles on each board: 🔀 Randomize places that many at random on tiles with a written question and answer, never on a Daily Double (pressed again, it leaves the old ones plain tiles). Start game places any still missing, each with a copy of its answer as its card, and the pre-game checks offer 🎲 Place now. (c702d66, 2fd29e9)
+
+### Changed
+- The editor's 🎡 Wheels & Dice tab is now 🎡 Wheels, Dice & Deals, and 🔍 Find finds deals. (2fd29e9)
+
 ### Fixed
 - The Windows desktop app builds again: the update that brought 🤫 Send a card… (b7cebf9) had no desktop app, because two of its file names differed only in capital letters, which Windows treats as the same file. A test now catches such names.
 

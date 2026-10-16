@@ -1,20 +1,21 @@
 <!--
-  Dice / wheel / roll-off / scoreboard buttons, usable any time (spec §6.6), 🤫 Send a card…, the cards out and the
-  🪟 card window (partner-clues spec §12.2, §13.6), and 🔇 Stop sounds while a round intro may play.
+  Dice / wheel / roll-off / scoreboard buttons, usable any time (spec §6.6), 🤫 Send a card…, 🎭 Deal…, the cards out
+  and the 🪟 card window (partner-clues spec §11, §12.2, §13.6), and 🔇 Stop sounds while a round intro may play.
 -->
 <script lang="ts">
   import { tick, untrack } from 'svelte';
   import { anchored } from '../../lib/anchored';
   import { app, toast } from '../../lib/app.svelte';
-  import type { Game, Session } from '../../lib/model';
+  import type { Game, SentCard, Session } from '../../lib/model';
   import { openCategories, openCategoryWheel, openPlayerWheel, openQuickWheel, openTemplateWheel, openWheel, quickDice, rollDice, toggleScoreboard } from '../../lib/overlay';
   import { WHEEL_TEMPLATES } from '../../lib/wheeltemplates';
   import { parseDice, parseQuickWheel, QUICK_DICE } from '../../lib/tools';
   import { audience } from '../../lib/sync.svelte';
-  import { cardsOut } from '../../lib/sentcards';
+  import { listedCards } from '../../lib/sentcards';
   import { cardWindow, closeCardWindow, openCardWindow } from '../../lib/cardwindow.svelte';
   import CardSend from './CardSend.svelte';
   import CardsOut from './CardsOut.svelte';
+  import DealDialog from './DealDialog.svelte';
 
   let {
     game,
@@ -23,6 +24,7 @@
     onrolloff,
     onstopsounds,
     oncardtakeback,
+    ondealgone,
   }: {
     game: Game;
     session: Session;
@@ -33,12 +35,17 @@
     onstopsounds?: () => void;
     /** ✖ Take back a card sent with 🤫 Send a card… or from a tile's panel. */
     oncardtakeback: (id: string) => void;
+    /** A 🎭 deal's cards were taken back (✖ Take back, or a new deal). */
+    ondealgone: (cards: SentCard[]) => void;
   } = $props();
-  let menu = $state<'dice' | 'wheel' | 'rolloff' | 'card' | 'out' | 'win' | null>(null);
+  let menu = $state<'dice' | 'wheel' | 'rolloff' | 'card' | 'deal' | 'out' | 'win' | null>(null);
   /** Whose cards the 🪟 card window shows (names only). */
   const winName = $derived(cardWindow.open ? session.players.find((p) => p.id === cardWindow.seat)?.name : undefined);
-  /** The 🤫 cards out now (sent with Send a card… or from a tile's panel): the tools row says how many, never what. */
-  const out = $derived(cardsOut(game, session).length);
+  /**
+   * The 🤫 cards out now (sent with Send a card… or from a tile's panel): the tools row says how many, never what. A 🎭
+   * deal's are under 🎭 Deal….
+   */
+  const out = $derived(listedCards(game, session).length);
   let custom = $state('');
   let quickList = $state('');
   // Players left out of the roll-off; everyone else rolls (so players added or removed mid-game just work).
@@ -55,7 +62,7 @@
   let opener: HTMLElement | null = null;
 
   /** Open (or close) a menu from its button. */
-  function toggle(m: 'dice' | 'wheel' | 'rolloff' | 'card' | 'out' | 'win', e: MouseEvent): void {
+  function toggle(m: 'dice' | 'wheel' | 'rolloff' | 'card' | 'deal' | 'out' | 'win', e: MouseEvent): void {
     menu = menu === m ? null : m;
     opener = e.currentTarget as HTMLElement;
   }
@@ -260,6 +267,24 @@
       <div class="menu wide" role="dialog" aria-label="Send a card" use:anchored={at}>
         <CardSend {game} {session} {dual} />
         <div class="winpick">{@render winPick()}</div>
+      </div>
+    {/if}
+  </div>
+  <div class="pop">
+    <button
+      onclick={(e) => toggle('deal', e)}
+      aria-haspopup="dialog"
+      aria-expanded={menu === 'deal'}
+      class:on={!!session.deal}
+      title={session.deal?.shown
+        ? '🎭 Who was who is on screen: click it on the stage, or 🙈 Hide it here'
+        : session.deal
+          ? `🎭 ${session.deal.name}: send it, take it back, or show Who was who`
+          : 'Secret parts for everyone (a spy, a wolf, a captain…), each on their own phone: nothing goes until you send it'}>🎭 Deal…</button
+    >
+    {#if menu === 'deal'}
+      <div class="menu wide" role="dialog" aria-label="Deal" use:anchored={at}>
+        <DealDialog {game} {session} {dual} ongone={ondealgone} />
       </div>
     {/if}
   </div>

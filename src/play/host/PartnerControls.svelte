@@ -2,29 +2,29 @@
   🤝 A partner clue's part of the host panel (partner-clues spec §6.10): PARTNER UP! (who picked it, the partner by the
   wheel or by hand, ⇄ Swap), then 📤 Distribute (who gets each card: 📤 Send to their phones, ✓ seen, ↻ Send again,
   📤 Send changes, ✖ Take back, ⇡ Get it ready, or 📋 copying it to them, or 🪟 showing it in the card window open for
-  one of them when no phone gets cards), and ✔ Got it / ✘ Missed with what each gives. Nothing goes to a phone or the
-  buzzer server but by those presses, and never more cards than the room takes (✖ Take one back first). In one window
-  this panel is on stream: it counts what's on a card and never says it, nor names a card's pictures (a file name is
-  often the answer), uploads included. The cards themselves are in the editor's 🤫 Card tabs, and the two-window host
-  column.
+  one of them when no phone gets cards), and ✔ Got it / ✘ Missed with what each gives (then, with steal on a miss, who
+  steals it: the others buzz in, or the host picks one). Nothing goes to a phone or the buzzer server but by those
+  presses, and never more cards than the room takes (✖ Take one back first). In one window this panel is on stream: it
+  counts what's on a card and never says it, nor names a card's pictures (a file name is often the answer), uploads
+  included. The cards themselves are in the editor's 🤫 Card tabs, and the two-window host column.
 -->
 <script lang="ts">
   import { onMount } from 'svelte';
   import { app, toast } from '../../lib/app.svelte';
   import { textOn } from '../../lib/colors';
   import { overlayDoneAt, toolOverlay } from '../../lib/live';
-  import { cardSlides, PARTNER_GAMES, type CardTo, type Clue, type ClueCard, type Game, type Id, type PartnerState, type Session } from '../../lib/model';
+  import { cardSlides, formatPoints, PARTNER_GAMES, type CardTo, type Clue, type ClueCard, type Game, type Id, type PartnerState, type Session } from '../../lib/model';
   import {
     cardCopyText, cardId, cardRecipients, cardSends, cardSummary, countItems, describer, goesToLabel, lowerWord, markReady, marksText, pairOnly, partnerCandidates, partnerRoles,
     partnerRules, partnerShares, partnerVerdict, partWho, partWordOf, partWords, recipientsText, resetRecipients, sameTeam, sendAgain, sendCards, sendChanges, sendState, sentSeats,
     sentTo, setDescriber, setPartner, setPartnerPicker, setRecipients, sharesText, swapParts, toKey, toName,
   } from '../../lib/partner';
   import { cardItems, cardLinks, cardWords, phoneCard } from '../../lib/phonecard';
-  import { clueName, nameList } from '../../lib/session';
+  import { clueName, nameList, partnerSteal } from '../../lib/session';
   import { buzzerOn, remote, roomHasCards, roomHasFiles, roomMembers } from '../../lib/remote.svelte';
   import { cardFileCounts, filesCounted, phoneCan, retryFiles, unputGone } from '../../lib/cardfiles.svelte';
   import { ask } from '../../lib/ask.svelte';
-  import { CARDS_FULL, partnerAnswerId, roomCardsFull, sendOf, teamsOn } from '../../lib/buzz';
+  import { cardsFullText, partnerAnswerId, roomCardsFull, sendOf, teamsOn } from '../../lib/buzz';
   import { cardWindow } from '../../lib/cardwindow.svelte';
   import { cardsOut, sendCard } from '../../lib/sentcards';
   import { dropMenu } from '../../lib/menustate.svelte';
@@ -48,6 +48,8 @@
     ontakeback,
     oncardtakeback = () => {},
     onmemberspin,
+    selected = [],
+    onpick = () => {},
   }: {
     game: Game;
     session: Session;
@@ -73,6 +75,10 @@
     oncardtakeback?: (id: Id) => void;
     /** 🎡 Spin for the describer (teams, the picker's own team playing it): the member wheel, spun. */
     onmemberspin: () => void;
+    /** The players picked by hand (1–9, a click): in a steal, who's answering it. */
+    selected?: Id[];
+    /** A steal's chip: that player answers it (picked, as with their number). */
+    onpick?: (id: Id) => void;
   } = $props();
 
   // (Mounted only while there's one; a stand-in for the moment it goes, before this part does.)
@@ -123,7 +129,7 @@
     void ask(`${name(old)} already has ${which}: take it back and send it to ${name(id)}?`, { ok: '📤 Send changes', cancel: `Leave it with ${name(old)}` }).then((yes) => {
       if (!yes || session.partner !== s) return;
       // (Never more cards than the buzzer room takes.)
-      if (roomCardsFull(game, session, (t) => moved.forEach(({ card }) => sendChanges(t, t.partner!, card)))) return toast(CARDS_FULL, 4000);
+      if (roomCardsFull(game, session, (t) => moved.forEach(({ card }) => sendChanges(t, t.partner!, card)))) return toast(cardsFullText(game, session), 4000);
       for (const { card } of moved) sendChanges(session, s, card);
       announce(`${moved.map(({ n }) => `Card ${n}`).join(' and ')} sent to ${name(id)}`);
     });
@@ -198,6 +204,12 @@
   /** What ✔ Got it and ✘ Missed give now: to whoever of the two isn't scored yet. */
   const gotShares = $derived(partnerShares(value, rules, s, true, marks));
   const missShares = $derived(partnerShares(value, rules, s, false, marks));
+  /**
+   * Steal on a miss (partner-clues spec §8.3): ✘ Missed let the others answer it, the two locked out. Who can still steal
+   * it (not one of the two, nor one who missed the steal), and who did.
+   */
+  const steal = $derived(partnerSteal(session));
+  const stealers = $derived(steal ? session.players.filter((p) => !steal.out.includes(p.id)) : []);
   /** " · Bob already scored": one of the two scored by hand first (the buttons leave them as they are). */
   const already = $derived(
     s.partnerId && !verdict.judged
@@ -301,7 +313,7 @@
   /** 📤 Send: this card to its players' phones now (the countdown doesn't start). */
   function sendOne(card: ClueCard, n: number): void {
     if (!cardsOn) return;
-    if (sendFull(card)) return toast(CARDS_FULL, 4000);
+    if (sendFull(card)) return toast(cardsFullText(game, session), 4000);
     if (!sendCards(session, s, [card]).length) return toast(`Choose who gets card ${n} first`);
     announce(sentText(card, n));
   }
@@ -313,7 +325,7 @@
   const windowSeat = (to: CardTo[]): Id | null => (!cardsOn && cardWindow.open && cardWindow.seat && to.some((t) => t.seat === cardWindow.seat) ? cardWindow.seat : null);
   /** 🪟 Show: the card in the card window, for its player alone, until the tile closes (the same path as a tile's card). */
   function showInWindow(card: ClueCard, n: number, seat: Id): void {
-    if (roomCardsFull(game, session)) return toast(CARDS_FULL, 4000);
+    if (roomCardsFull(game, session)) return toast(cardsFullText(game, session), 4000);
     const c = sendCard(game, session, { to: [{ seat }], content: { clue: clue.id, card: card.id }, until: 'tile' }, Date.now(), roomCardsFull(game, session));
     if (!c) return toast(`Card ${n} can’t be shown now`);
     announce(`Card ${n} shown in the 🪟 card window to ${name(seat)}`);
@@ -327,7 +339,7 @@
   const changesFull = (card: ClueCard): boolean => roomCardsFull(game, session, (t) => sendChanges(t, t.partner!, card));
   /** 📤 Send changes: to whoever was added, and taken back from whoever was taken off. */
   function changes(card: ClueCard, n: number): void {
-    if (changesFull(card)) return toast(CARDS_FULL, 4000);
+    if (changesFull(card)) return toast(cardsFullText(game, session), 4000);
     sendChanges(session, s, card);
     announce(cardSends(s, card.id).length ? sentText(card, n) : `Card ${n} taken back`);
   }
@@ -451,7 +463,7 @@
       if (unsentNow.length) {
         // (Never more cards than the buzzer room takes: ✖ Take one back first.)
         const full = roomCardsFull(game, session, (t) => sendCards(t, t.partner!, unsentNow));
-        return { label: '📤 Send and start', key: '⏎', title: full ? CARDS_FULL : 'Enter or N: the cards not sent yet go to their phones, and the countdown starts', disabled: full, run: onclock };
+        return { label: '📤 Send and start', key: '⏎', title: full ? cardsFullText(game, session) : 'Enter or N: the cards not sent yet go to their phones, and the countdown starts', disabled: full, run: onclock };
       }
       return { label: '⏱ Start the clock', key: '⏎', title: cardsOn ? 'Enter or N: the countdown starts' : 'Enter or N: the countdown starts (copy the cards to their players first)', run: onclock };
     }
@@ -690,11 +702,11 @@
             {#if cardsOn}
               {#if st === 'unsent'}
                 {@const full = to.length > 0 && sendFull(card)}
-                <button class="small" onclick={() => sendOne(card, n)} disabled={!to.length || full} aria-label="Send card {n}" title={full ? CARDS_FULL : to.length ? `Sends it to ${to.map((t) => toName(session, t)).join(', ')} now (the countdown doesn’t start)` : 'Choose who gets it first'}>📤 Send</button>
+                <button class="small" onclick={() => sendOne(card, n)} disabled={!to.length || full} aria-label="Send card {n}" title={full ? cardsFullText(game, session) : to.length ? `Sends it to ${to.map((t) => toName(session, t)).join(', ')} now (the countdown doesn’t start)` : 'Choose who gets it first'}>📤 Send</button>
               {:else}
                 {#if st === 'changed'}
                   {@const full = changesFull(card)}
-                  <button class="small" onclick={() => changes(card, n)} disabled={full} aria-label="Send card {n}’s changes" title={full ? CARDS_FULL : 'Sends it to whoever you added, and takes it back from whoever you took off'}>📤 Send changes</button>
+                  <button class="small" onclick={() => changes(card, n)} disabled={full} aria-label="Send card {n}’s changes" title={full ? cardsFullText(game, session) : 'Sends it to whoever you added, and takes it back from whoever you took off'}>📤 Send changes</button>
                 {:else}
                   <button class="small" onclick={() => again(card, n)} aria-label="Send card {n} again" title="Sends it again under a new id: a phone that came late (a player on a new phone) gets it too, with what’s on the card now">↻ Send again</button>
                 {/if}
@@ -707,7 +719,7 @@
             {:else if windowSeat(to)}
               {@const seat = windowSeat(to)!}
               {@const full = roomCardsFull(game, session)}
-              <button class="small" onclick={() => showInWindow(card, n, seat)} disabled={full} aria-label="Show card {n} to {name(seat)}" title={full ? CARDS_FULL : `Shows it in the 🪟 card window, to ${name(seat)} alone, until the tile closes`}>🪟 Show {name(seat)}</button>
+              <button class="small" onclick={() => showInWindow(card, n, seat)} disabled={full} aria-label="Show card {n} to {name(seat)}" title={full ? cardsFullText(game, session) : `Shows it in the 🪟 card window, to ${name(seat)} alone, until the tile closes`}>🪟 Show {name(seat)}</button>
             {/if}
             {#if copying}
               <button class="small" onclick={() => copyWords(card, n)} disabled={!to.length || !copyable}
@@ -735,21 +747,52 @@
     {/if}
     <!-- ✔ Got it / ✘ Missed: what each gives, from the question on (a click judges while handing out the cards too; the
          keys wait for the clock). Judged, the line reads the marks; an Undo brings the buttons back. (Clicked, they go
-         off: Play's partnerJudge gives the keys to the main button.) -->
-    <div class="row judge" data-partner-judge>
-      <button class="good" onclick={() => onjudge(true)} disabled={verdict.judged} title={verdict.judged ? 'Judged: Ctrl+Z takes it back' : judgeKeys ? 'Enter (nobody picked)' : 'Scores both now (Enter starts the clock first)'}
-        >✔ Got it{#if judgeKeys}{' '}<kbd aria-hidden="true">⏎</kbd>{/if}</button
-      >
-      {#if !verdict.judged}<span class="small shares" data-judge-got>{sharesText(gotShares, name, sym)}{already}</span>{/if}
-      <button class="bad" onclick={() => onjudge(false)} disabled={verdict.judged} title={verdict.judged ? 'Judged: Ctrl+Z takes it back' : judgeKeys ? 'Shift+Enter (nobody picked)' : 'Scores both now'}
-        >✘ Missed{#if judgeKeys}{' '}<kbd aria-hidden="true">⇧⏎</kbd>{/if}</button
-      >
-      {#if verdict.judged}
-        <span class="small" data-judged>Judged: {marksText(s, marks, name, sym)}</span>
-      {:else}
-        <span class="small shares" data-judge-missed>{sharesText(missShares, name, sym)}{already}</span>
-      {/if}
-    </div>
+         off: Play's partnerJudge gives the keys to the main button.) A steal's row takes its place, its marks first:
+         the players list above keeps its room, the stealers' quick buttons in view. -->
+    {#if !steal}
+      <div class="row judge" data-partner-judge>
+        <button class="good" onclick={() => onjudge(true)} disabled={verdict.judged} title={verdict.judged ? 'Judged: Ctrl+Z takes it back' : judgeKeys ? 'Enter (nobody picked)' : 'Scores both now (Enter starts the clock first)'}
+          >✔ Got it{#if judgeKeys}{' '}<kbd aria-hidden="true">⏎</kbd>{/if}</button
+        >
+        {#if !verdict.judged}<span class="small shares" data-judge-got>{sharesText(gotShares, name, sym)}{already}</span>{/if}
+        <button class="bad" onclick={() => onjudge(false)} disabled={verdict.judged} title={verdict.judged ? 'Judged: Ctrl+Z takes it back' : judgeKeys ? 'Shift+Enter (nobody picked)' : 'Scores both now'}
+          >✘ Missed{#if judgeKeys}{' '}<kbd aria-hidden="true">⇧⏎</kbd>{/if}</button
+        >
+        {#if verdict.judged}
+          <span class="small" data-judged>Judged: {marksText(s, marks, name, sym)}</span>
+        {:else}
+          <span class="small shares" data-judge-missed>{sharesText(missShares, name, sym)}{already}</span>
+        {/if}
+      </div>
+    {:else}
+      <!-- Steal on a miss: the others answer it as any clue (the buzzers open for them; the host can pick who). Each
+           steal is its own step, as any award; an Undo of ✘ Missed closes the steal. -->
+      <div class="row small steal" data-partner-steal>
+        <span data-judged>Judged: {marksText(s, marks, name, sym)} ·</span>
+        {#if steal.by}
+          <b>🔔 {name(steal.by)} stole it</b>
+        {:else if session.revealed}
+          <span class="muted">🔔 Nobody stole it</span>
+        {:else}
+          <b>🔔 Steal!</b>
+          <span>{buzzerOn(game.settings) ? 'The others can buzz in, or choose who:' : 'Who steals it?'}</span>
+          {#each stealers as p (p.id)}
+            {@const missed = !!marks[p.id] && !marks[p.id].right}
+            {@const i = session.players.indexOf(p)}
+            {@render chip(
+              p.id,
+              selected.includes(p.id),
+              `${p.name} steals it`,
+              () => onpick(p.id),
+              missed,
+              missed ? `${p.name} missed the steal` : i < 9 ? `Key ${i + 1}: ${p.name} answers it` : `${p.name} answers it`,
+              i + 1,
+            )}
+          {/each}
+          <span class="muted">Enter: right +{formatPoints(value, sym)} · Shift+Enter: wrong −{formatPoints(value, sym)}</span>
+        {/if}
+      </div>
+    {/if}
   {/if}
   {#if !dual}
     <span class="exposed">⚠ Viewers can see this window: what’s on a card is never shown here (check the cards in the editor’s 🤫 Card tabs).</span>
@@ -809,6 +852,9 @@
   .judge {
     padding-top: 4px;
     border-top: 1px solid rgba(255, 255, 255, 0.08);
+  }
+  .steal {
+    padding-top: 4px;
   }
   .shares {
     margin-right: 8px;

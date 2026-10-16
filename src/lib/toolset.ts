@@ -407,6 +407,8 @@ function capture(session: Session, game?: Game): Record<string, string> {
     out[`final:${f.roundId}`] = JSON.stringify({ players: f.players, order: f.order, wagers: f.wagers, chosen: f.chosen ?? {}, wagerFrom: f.wagerFrom ?? {}, wagerBy: f.wagerBy ?? {} });
   // The Final being played: its step (each step on from the wagers is an undoable step, so Undo goes back one).
   if (session.phase === 'final' && session.final?.roundId) out[`step:${session.final.roundId}`] = JSON.stringify(session.finalStep ?? null);
+  // 🎭 The deal on the table: whether Who was who is on stream (only that: dealing and sending aren't steps).
+  if (session.deal) out[`deal:${session.deal.id}`] = JSON.stringify(!!session.deal.shown);
   for (const w of game?.worlds ?? [])
     for (const m of w.maps) {
       out[`map:${w.id}/${m.id}`] = JSON.stringify({ cols: m.cols, rows: m.rows });
@@ -439,6 +441,7 @@ function restore(session: Session, json: string, game?: Game): void {
     else if (k.startsWith('used:')) putTile(session, k.slice(5), !!v);
     else if (k.startsWith('final:')) putFinal(session, k.slice(6), v as Pick<FinalState, 'players' | 'order' | 'wagers' | 'wagerFrom' | 'wagerBy'> | null);
     else if (k.startsWith('step:')) putStep(session, k.slice(5), v as Session['finalStep'] | null);
+    else if (k.startsWith('deal:')) putDeal(session, k.slice(5), v === true);
     else if (k.startsWith('map:') || k.startsWith('screen:')) putBack(game, k, v as WorldMap | Screen | null);
     else if (k.startsWith('board:')) putBoard(game, k.slice(6), v as { spaces: BoardSpace[]; start: string | null } | null);
   }
@@ -481,6 +484,14 @@ function putStep(session: Session, roundId: string, step: Session['finalStep'] |
   if (!step) return;
   if (session.phase === 'final' && session.final?.roundId === roundId) session.finalStep = step;
   else if (session.finals?.[roundId]) session.finals[roundId].step = step;
+}
+
+/** Who was who on stream again, or off it: only for the deal it was shown for (a new deal since starts hidden). */
+function putDeal(session: Session, id: string, shown: boolean): void {
+  const d = session.deal;
+  if (d?.id !== id) return;
+  if (shown && d.stage === 'sent') d.shown = true;
+  else delete d.shown;
 }
 
 /** Put a map's size or a screen back into the game being played (a screen that wasn't there is taken out). */
@@ -633,6 +644,20 @@ export function finalNextStep(session: Session, game: Game): void {
 export function revealStep(session: Session): void {
   if (session.phase !== 'final') return toggleReveal(session);
   logged(session, answerShowing(session) ? 'Final answer hidden' : 'Final answer shown', () => toggleReveal(session));
+}
+
+/**
+ * 🎭 Who was who: the deal's players and their parts on stream, or off it again, as a step (Ctrl+Z takes it back). Only
+ * the host's press shows it, and only for a deal that was sent.
+ */
+export function whoWasWhoStep(session: Session, show: boolean): boolean {
+  const d = session.deal;
+  if (!d || d.stage !== 'sent' || !!d.shown === show) return false;
+  logged(session, show ? `Who was who shown (${d.name})` : `Who was who hidden (${d.name})`, () => {
+    if (show) d.shown = true;
+    else delete d.shown;
+  });
+  return true;
 }
 
 /** Make a player the one who picks the next clue (undefined: nobody), as a step. `how` goes after it: " (roll-off)". */

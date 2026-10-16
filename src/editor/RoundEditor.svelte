@@ -7,12 +7,29 @@
   import { announce } from '../lib/announce';
   import { adoptUsedBy, clipboard, holdUsedBy } from '../lib/clipboard.svelte';
   import { copyIsTheBrowsers } from '../lib/undokeys';
-  import { categoryLabel, clueValue, clueValueTyped, dailyDoublesPlaced, formatPoints, newImageEl, playableClues, roundName, slideText, type BoardRound, type Clue, type ClueType } from '../lib/model';
+  import {
+    categoryLabel,
+    clueValue,
+    clueValueTyped,
+    dailyDoublesPlaced,
+    formatPoints,
+    newImageEl,
+    PARTNER_COUNT_MAX,
+    PARTNER_GAMES,
+    partnerTilesPlaced,
+    playableClues,
+    roundName,
+    slideText,
+    type BoardRound,
+    type Clue,
+    type ClueType,
+    type PartnerGame,
+  } from '../lib/model';
   import { placeNewPicture } from '../lib/editing';
   import { nameStep, step, stepAsync } from '../lib/history.svelte';
   import { slideHasContent } from '../lib/usage';
   import { toolChosen } from '../lib/tools';
-  import { cardsToFinish } from '../lib/partner';
+  import { cardsToFinish, partnerSpot } from '../lib/partner';
   import {
     addCategory,
     categoryHasContent,
@@ -25,6 +42,7 @@
     insertRow,
     moveCategory,
     moveRow,
+    randomizePartnerTiles,
     removeCategory,
     scaleValues,
     setClueType,
@@ -76,6 +94,41 @@
   const name = $derived(roundName(round, app.game.rounds.indexOf(round)));
   /** At most one Daily Double a playable tile (and 10). */
   const ddMax = $derived(Math.min(10, playableClues(round).length));
+  /** At most one 🤝 partner clue a playable tile. */
+  const ptMax = $derived(Math.min(PARTNER_COUNT_MAX, playableClues(round).length));
+  const ptPlaced = $derived(partnerTilesPlaced(round));
+  /** The tiles one could go on now (a written question and answer, a standard tile), and the ones placed. */
+  const ptRoom = $derived(ptPlaced + round.categories.reduce((n, c) => n + c.clues.filter(partnerSpot).length, 0));
+  const ptWanted = $derived(Math.min(round.partnerCount ?? 0, ptRoom));
+  const PT_GAMES = Object.keys(PARTNER_GAMES) as PartnerGame[];
+
+  /** 🔀 Randomize partner clues: the ones on the board move, the box's number go on tiles with a written question and answer. */
+  function randomizePartners(): void {
+    const want = Math.min(ptMax, round.partnerCount ?? 0);
+    const n = step('Placed partner clues at random', () => {
+      const placed = randomizePartnerTiles(round, want);
+      // (Their starting cards take the theme's clue text, as new clues do.)
+      followTheme();
+      return placed;
+    });
+    toast(
+      n < want
+        ? `Placed ${n} of ${want} partner clue${want === 1 ? '' : 's'}: only ${n} tile${n === 1 ? ' has' : 's have'} a written question and answer`
+        : `Placed ${n} partner clue${n === 1 ? '' : 's'} at random`,
+    );
+  }
+  function setPartnerGame(g: PartnerGame): void {
+    step(`Partner clues placed at random in ${name} play ${PARTNER_GAMES[g].label}`, () => {
+      if (g === 'describe') delete round.partnerGame;
+      else round.partnerGame = g;
+    });
+  }
+  function setPartnerCardFrom(v: 'answer' | 'empty'): void {
+    step(v === 'answer' ? `Partner clues placed at random in ${name} get the tile’s answer on their card` : `Partner clues placed at random in ${name} get an empty card`, () => {
+      if (v === 'answer') delete round.partnerCardFrom;
+      else round.partnerCardFrom = v;
+    });
+  }
 
   const hasFiles = (e: DragEvent) => !!e.dataTransfer?.types.includes('Files');
 
@@ -753,6 +806,55 @@
     }}
     title="Scatter Daily Doubles at random. To set one by hand, right-click a tile → ⭐ Make it a Daily Double (or pick ⭐ Daily Double as its Type).">🔀 Randomize</button>
   <span class="hint">{ddPlaced} placed{ddPlaced < ddWanted ? ` (Start places ${ddWanted - ddPlaced} at random)` : ''}</span>
+    </div>
+  </div>
+  <div class="group" role="group" aria-labelledby="pt-{round.id}" data-partner-count>
+    <span class="lbl" id="pt-{round.id}">🤝 Partner clues</span>
+    <div class="inputs">
+  <!-- 0 (left out): none placed at random; any made by hand play all the same. -->
+  <input
+    type="number"
+    min="0"
+    max={ptMax}
+    value={round.partnerCount ?? 0}
+    oninput={(e) => {
+      // Emptied to type a new number: it keeps the one it had until there is one.
+      if (e.currentTarget.value.trim() === '') return;
+      const n = Math.max(0, Math.min(ptMax, Math.floor(+e.currentTarget.value) || 0));
+      if (n) round.partnerCount = n;
+      else delete round.partnerCount;
+    }}
+    onchange={(e) => (e.currentTarget.value = String(round.partnerCount ?? 0))}
+    aria-label="How many partner clues"
+    title="How many 🤝 partner clues to place at random (0: none; any you make by hand play anyway)"
+    class="ddn"
+  />
+  <!-- (Named apart from the Daily Doubles' 🔀 Randomize beside it.) -->
+  <button
+    onclick={randomizePartners}
+    disabled={!round.partnerCount}
+    aria-label="Randomize partner clues"
+    title={round.partnerCount
+      ? 'Scatter partner clues at random over tiles with a written question and answer (never on a Daily Double). The ones on the board move. To make one by hand, right-click a tile → 🤝 Make it a partner clue.'
+      : 'Say how many first'}>🔀 Randomize</button
+  >
+  {#if round.partnerCount}
+    <select value={round.partnerGame ?? 'describe'} onchange={(e) => setPartnerGame(e.currentTarget.value as PartnerGame)} aria-label="The game partner clues placed at random play" title="The game a partner clue placed at random plays (a tile that was a partner clue before keeps its own)">
+      {#each PT_GAMES as g (g)}<option value={g}>Plays: {PARTNER_GAMES[g].icon} {PARTNER_GAMES[g].label}</option>{/each}
+    </select>
+    <select
+      value={round.partnerCardFrom ?? 'answer'}
+      onchange={(e) => setPartnerCardFrom(e.currentTarget.value as 'answer' | 'empty')}
+      aria-label="The card a partner clue placed at random gets"
+      title="The 🤫 card a partner clue placed by 🔀 Randomize starts with (a tile with a card of its own keeps it): a copy of the tile's answer, for the describer, or an empty card to fill in. The ones Start game places get a copy of the answer."
+    >
+      <option value="answer">🤫 Card: ⧉ the tile’s answer</option>
+      <option value="empty">🤫 Card: empty, to fill in</option>
+    </select>
+  {/if}
+  {#if round.partnerCount || ptPlaced}
+    <span class="hint">{ptPlaced} placed{ptPlaced < ptWanted ? ` (Start places ${ptWanted - ptPlaced} at random${round.partnerCardFrom === 'empty' ? ', each with a copy of its answer as its card' : ''})` : ''}</span>
+  {/if}
     </div>
   </div>
 </div>

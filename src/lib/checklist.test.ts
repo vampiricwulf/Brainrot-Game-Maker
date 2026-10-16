@@ -107,7 +107,7 @@ describe('dice tiles', () => {
     expect(toolChosen(game, clue)).toBe(false);
     clue.wheelId = PLAYER_WHEEL;
     expect(toolChosen(game, clue)).toBe(true);
-    // A wheel deleted from Wheels & Dice: none chosen.
+    // A wheel deleted from Wheels, Dice & Deals: none chosen.
     clue.wheelId = 'gone';
     expect(toolChosen(game, clue)).toBe(false);
     // (The checklist's line counts it by the same rule.)

@@ -295,6 +295,11 @@ export interface GameSettings {
   buzzTeams?: boolean;
   /** Phone buzzers: seconds a phone that buzzes before the buzzers open has to wait once they do (default 1; 0: none). */
   earlyBuzzLock?: number;
+  /**
+   * 🤝 Partner clues: a miss lets everyone else steal it (each clue can say otherwise: PartnerRules.steal). Left out: no
+   * steals.
+   */
+  partnerSteal?: boolean;
 }
 
 /**
@@ -375,7 +380,11 @@ export interface PartnerRules {
   words?: Partial<Record<PartnerRole, string>>;
   /** The guesser types their guess on their phone (✍, from the question on), else says it out loud. Needs phone buzzers. */
   typeGuess?: boolean;
-  /** Later: a miss opens the buzzers for everyone else, the two locked out. */
+  /**
+   * Steal on a miss (partner-clues spec §8.3): ✘ Missed lets everyone else answer, the two locked out (the buzzers open
+   * for the rest, or the host picks who steals), for the tile's value. Left out: as ⚖ Game rules says
+   * (GameSettings.partnerSteal); false: never on this clue.
+   */
   steal?: boolean;
 }
 
@@ -536,6 +545,43 @@ export interface WheelPreset {
   removeAfterLanding: boolean;
 }
 
+// ---------- 🎭 Deals (partner-clues spec §11, §12.2) ----------
+
+/** A part's name at most (characters): it's the top line of the card on a phone, "You're the Spy". */
+export const DEAL_PART_MAX = 24;
+/** Parts in one deal at most. */
+export const DEAL_PARTS_MAX = 8;
+
+/** One part in a 🎭 deal: what it's called, how many get it, and its 🤫 card. */
+export interface DealPart {
+  id: Id;
+  /** "Spy", "Villager": the card's top line ("You're the Spy") and the reveal on stream. At most DEAL_PART_MAX. */
+  name: string;
+  /** How many get it: a number, or 'rest' (everyone not given another part). */
+  count: number | 'rest';
+  /** What its card shows (only the players who get this part see it). */
+  card: Slide;
+  /**
+   * Its card shows a slice of the deal's wheel too: 'own' (each player with this part their own slice), 'shared' (the
+   * one slice drawn for the whole deal, the same for every part that shares it: the place everyone but the spy knows).
+   */
+  draw?: 'own' | 'shared';
+}
+
+/**
+ * 🎭 A deal saved with the game: parts with a card each, dealt at random (or as the host picks) to the players when the
+ * host presses 🎭 Deal, and sent to their phones only when the host confirms it.
+ */
+export interface DealPreset {
+  id: Id;
+  name: string;
+  parts: DealPart[];
+  /** The saved wheel (game.wheels) its cards draw slices from. */
+  wheel?: Id;
+  /** Teams: dealt within each team, to the people on it (a captain for each team), instead of to the teams. */
+  perTeam?: boolean;
+}
+
 export interface Die {
   id: Id;
   sides: number;
@@ -577,6 +623,18 @@ export interface BoardRound {
   /** Default value for each row (length = rows per category). */
   values: number[];
   dailyDoubleCount?: number;
+  /**
+   * 🤝 Partner clues wanted on this board (left out: none placed at random; any made by hand play): 🔀 Randomize, and
+   * Start game for the ones missing, put them on tiles with a written question and answer, never on a Daily Double.
+   */
+  partnerCount?: number;
+  /** The game a partner clue placed at random plays when its tile has no rules of its own (left out: Describe it). */
+  partnerGame?: PartnerGame;
+  /**
+   * Where a partner clue placed at random gets its first 🤫 card when its tile has none of its own: a copy of the tile's
+   * answer ('answer', the default: the giver gets what to describe) or an empty card to fill in ('empty').
+   */
+  partnerCardFrom?: 'answer' | 'empty';
   /** Free-placed images on this round's board screen (1920×1080 stage coordinates). */
   decor?: BoardDecor[];
 }
@@ -657,6 +715,8 @@ export interface Game {
   soundVolume?: Partial<Record<keyof GameAudio, number>>;
   wheels: WheelPreset[];
   dice: DicePreset[];
+  /** 🎭 Deals: secret parts for everyone, dealt during play (partner-clues spec §11, §12.2). */
+  deals?: DealPreset[];
   theme: Theme;
   /** Host-defined player stats (HP, Gold, Vibes…), used by RPG rounds and shown on the stats strip. */
   statFields?: StatField[];
@@ -740,6 +800,11 @@ export interface ScoreEvent {
   round?: number;
   /** The award made its player the picker (it was `was`): undoing it gives the picker back. */
   picker?: { was?: Id; now: Id };
+  /**
+   * A 🤝 partner clue's ✘ Missed that let the others steal it (partnerSteal in session.ts): the steal is open while this
+   * miss stands, so an Undo of it closes the steal and a Redo opens it again.
+   */
+  steal?: true;
 }
 
 export interface RollEvent {
@@ -823,6 +888,49 @@ export interface SentCard {
   until: 'round' | 'tile' | 'host';
   round?: Id;
   tile?: Id;
+  /** A 🎭 deal's card for one player (the deal's id): the deal's own row lists it, never the list of cards out. */
+  deal?: Id;
+  /** A deal's part ("You're the Spy"): the card's top line, under Tap to see on a phone (buzz.ts sessionCards). */
+  role?: string;
+}
+
+/** One player's part in a 🎭 deal (a seat, or one person on a team). */
+export interface DealHand {
+  to: CardTo;
+  /** The part's name: the card's top line on a phone, and the reveal. */
+  part: string;
+  /** The wheel's slice it drew (its label: the reveal says it too), if its part draws one. */
+  slice?: string;
+  /** Its card as it goes: the part's card with the slice on it. */
+  slide: Slide;
+  /** The phone says the part ("You're the Spy"): not when everyone dealt in got the same one. */
+  role?: boolean;
+}
+
+/**
+ * 🎭 The deal being played (one at a time, partner-clues spec §11): who got which part. Never sent to viewers (only
+ * names and parts once the host shows Who was who), and in one window never shown: the panel only counts the parts.
+ */
+export interface DealState {
+  id: Id;
+  /** The deal's name ("Odd one out"). */
+  name: string;
+  /** When it was dealt. */
+  at: number;
+  /** Its parts' names in the deal's order: the counts follow it ("Spy ×1, Villager ×4"), never the players' order. */
+  parts: string[];
+  hands: DealHand[];
+  /**
+   * Everyone dealt in, a part or not, in the players' order (a deal with no part for "the rest" leaves some without
+   * one: one window's list names them all, so it never says who got one). Left out in saves from before it was kept.
+   */
+  in?: CardTo[];
+  /** 'dealt': shuffled, nothing sent (the host checks it, then 📤 Send); 'sent': its cards went (SentCards with `deal`). */
+  stage: 'dealt' | 'sent';
+  /** How long its cards last once sent. */
+  until?: 'round' | 'host';
+  /** Who was who is on stream (a step: Ctrl+Z takes it off again). Only the host's press sets it. */
+  shown?: boolean;
 }
 
 /**
@@ -907,6 +1015,8 @@ export interface Session {
   cards?: SentCard[];
   /** The number in the last card's label ("Card 3") while any is out: the next is one more. Gone with the last card. */
   lastCard?: number;
+  /** 🎭 The deal being played: who got which part (never sent to viewers but Who was who, once the host shows it). */
+  deal?: DealState | null;
   finalStep?: FinalStep;
   /** The Final round being played (or last played). */
   final?: FinalState;
@@ -1448,6 +1558,14 @@ export function dailyDoublesPlaced(round: BoardRound): number {
   return round.categories.reduce((n, c) => n + c.clues.filter((cl) => cl.type === 'dailyDouble' && !cl.empty).length, 0);
 }
 
+/** How many 🤝 partner clues a board has placed (on tiles that play). */
+export function partnerTilesPlaced(round: BoardRound): number {
+  return round.categories.reduce((n, c) => n + c.clues.filter((cl) => cl.type === 'partner' && !cl.empty).length, 0);
+}
+
+/** Most 🤝 partner clues a board can ask for (a board has at most 10 × 10 tiles). */
+export const PARTNER_COUNT_MAX = 100;
+
 /** Every board round of the game. */
 export function boardRounds(game: Game): BoardRound[] {
   return game.rounds.filter(isBoard);
@@ -1706,6 +1824,17 @@ function repairPartner(cl: Clue): void {
   }
 }
 
+/** A board's 🤝 partner clues wanted, and the game and card they're placed with: anything the app can't use goes. */
+function repairPartnerTiles(r: BoardRound): void {
+  const n = r.partnerCount;
+  if (n !== undefined) {
+    if (typeof n !== 'number' || !Number.isFinite(n) || n < 1) delete r.partnerCount;
+    else if (n !== Math.min(PARTNER_COUNT_MAX, Math.floor(n))) r.partnerCount = Math.min(PARTNER_COUNT_MAX, Math.floor(n));
+  }
+  if (r.partnerGame !== undefined && !Object.hasOwn(PARTNER_GAMES, r.partnerGame)) delete r.partnerGame;
+  if (r.partnerCardFrom !== undefined && r.partnerCardFrom !== 'answer' && r.partnerCardFrom !== 'empty') delete r.partnerCardFrom;
+}
+
 function repairSlide(s: unknown): Slide {
   if (!isObj(s)) return textSlide();
   const slide = s as unknown as Slide;
@@ -1750,6 +1879,7 @@ function repairGame(g: Game): void {
     const fixed = countdownSeconds(String(secs ?? ''));
     if (fixed !== secs) g.settings.defaultTimerSeconds = fixed;
   }
+  if (g.settings.partnerSteal !== undefined && typeof g.settings.partnerSteal !== 'boolean') delete g.settings.partnerSteal;
   const players = objects<PlayerTemplate>(g.players);
   if (players !== g.players) g.players = players;
   players.forEach((p, i) => {
@@ -1795,6 +1925,7 @@ function repairGame(g: Game): void {
         r.values.push(b + (b > a ? b - a : 200));
       }
       for (const c of cats) while (c.clues.length < rows) c.clues.push({ ...newClue(), empty: true });
+      repairPartnerTiles(r);
     } else if (isFinal(r)) {
       r.questionSlide = repairSlide(r.questionSlide);
       r.answerSlide = repairSlide(r.answerSlide);
@@ -1828,7 +1959,36 @@ function repairGame(g: Game): void {
   }
   for (const w of g.wheels) if (!Array.isArray(w.segments)) w.segments = [];
   for (const d of g.dice) if (!Array.isArray(d.dice)) d.dice = [];
+  repairDeals(g);
   linkMoverDice(g);
+}
+
+/**
+ * 🎭 Deals: each with an id, a name and parts (each with an id, a name, a count and a card). A count that isn't a whole
+ * number becomes one, and a draw that isn't known goes, so a damaged file never deals a card it didn't mean to.
+ */
+function repairDeals(g: Game): void {
+  if (g.deals === undefined) return;
+  const deals = objects<DealPreset>(g.deals);
+  if (!deals.length) return void delete g.deals;
+  if (deals !== g.deals) g.deals = deals;
+  for (const d of deals) {
+    fixId(d);
+    if (typeof d.name !== 'string') d.name = 'Deal';
+    const parts = objects<DealPart>(d.parts);
+    if (parts !== d.parts) d.parts = parts;
+    for (const p of parts) {
+      fixId(p);
+      if (typeof p.name !== 'string') p.name = 'Part';
+      else if (p.name.length > DEAL_PART_MAX) p.name = p.name.slice(0, DEAL_PART_MAX);
+      if (p.count !== 'rest' && !(Number.isSafeInteger(p.count) && p.count >= 0 && p.count <= MAX_PLAYERS))
+        p.count = typeof p.count === 'number' && Number.isFinite(p.count) ? Math.max(0, Math.min(MAX_PLAYERS, Math.round(p.count))) : 1;
+      p.card = repairSlide(p.card);
+      if (p.draw !== undefined && p.draw !== 'own' && p.draw !== 'shared') delete p.draw;
+    }
+    if (d.wheel !== undefined && typeof d.wheel !== 'string') delete d.wheel;
+    if (d.perTeam !== undefined && typeof d.perTeam !== 'boolean') delete d.perTeam;
+  }
 }
 
 /**

@@ -1,14 +1,14 @@
 // Buzzer mode's state during a clue: whether the buzzers are open, who is answering, who already missed it. The host
 // decides all of it (keys, the host panel, a phone's buzz that the buzzer room let through); it lives in Live, so the
 // audience window shows "🔔 Ann is answering", and the phones get it through hostState().
-import { CARD_HINT_MAX, CARDS_BYTES, CARDS_MAX, clip, WAGER_MAX, type BuzzPhase, type HostCard, type HostState, type WagerAsk, type AnswerAsk } from './buzzproto';
+import { CARD_HINT_MAX, CARD_ROLE_MAX, CARD_TEXT_MAX, CARDS_BYTES, CARDS_MAX, clip, WAGER_MAX, type BuzzPhase, type HostCard, type HostState, type WagerAsk, type AnswerAsk } from './buzzproto';
 import { categoryLabel, finalName, formatPoints, PARTNER_GAMES, roundName, type CardSend, type CardTo, type Game, type Id, type PartnerState, type Session, type Slide, type TextEl } from './model';
 import {
   cardHash, cardId, cardLines, cardSlides, describer, giverLine, partnerRoles, partnerRules, partnerVerdict, partOfTo, partsLine, partWords, resultLine, type CardPart,
 } from './partner';
 import { cardWords, clipWords, phoneCard, type PhoneCan } from './phonecard';
 import { cardsOut, sentCardId, sentSlide } from './sentcards';
-import { clueMarks, currentClueInfo, currentFinal, ddCap, finalWagerCap, score, shownQuestionSlide, tiedForFirst, wagerFromPhone } from './session';
+import { clueMarks, currentClueInfo, currentFinal, ddCap, finalWagerCap, nameList, partnerSteal, score, shownQuestionSlide, tiedForFirst, wagerFromPhone } from './session';
 
 export interface BuzzState {
   phase: BuzzPhase;
@@ -145,6 +145,9 @@ export function phoneStatus(game: Game, session: Session, pregame = false, room:
     const who = nameOf(id);
     return who && id ? { text: `Daily Double: ${who}`, seats: [id], seatsText: 'Daily Double — you’re up!' } : { text: 'Daily Double!' };
   }
+  // A partner clue's miss let the others steal it: they buzz in as on any clue (nothing greyed), the two locked out.
+  const steal = session.phase === 'clue' && session.partner && !session.revealed ? partnerSteal(session) : null;
+  if (steal && !steal.by) return { text: clip(`🔔 Steal! ${nameList(steal.out.flatMap((id) => nameOf(id) ?? []))} missed it`, 120) };
   if (session.phase === 'clue' && session.partner) return room.cards ? partnerStatusOff(game, session, session.partner) : partnerStatus(game, session, session.partner);
   if (session.intro?.stage === 'title' && round) return { text: `${roundName(round, session.currentRound)} is starting` };
   switch (session.phase) {
@@ -355,12 +358,21 @@ export function sessionCards(game: Game, session: Session, room: PhoneCan): Host
       id: sentCardId(c),
       to: to.map((t) => ({ seat: t.seat, ...(t.member ? { member: t.member.id } : t.except?.length ? { except: [...t.except] } : {}) })),
       open: c.until !== 'tile' || !session.revealed,
-      ...(pc.title ? { title: pc.title } : {}),
-      ...(pc.text ? { text: pc.text } : {}),
+      ...(c.role ? dealLines(c.role, pc) : { ...(pc.title ? { title: pc.title } : {}), ...(pc.text ? { text: pc.text } : {}) }),
       ...(pc.media.length ? { media: pc.media } : {}),
     });
   }
   return out.length ? out : null;
+}
+
+/**
+ * A 🎭 deal's card in words: its part is its secret ("You're the Spy"), so it goes under Tap to see as the card's
+ * title, the card's own title and words after it. Never the role line, which a phone shows over the cover, where a
+ * neighbour could read it.
+ */
+function dealLines(role: string, pc: { title?: string; text?: string }): Pick<HostCard, 'title' | 'text'> {
+  const text = clip([pc.title, pc.text].filter(Boolean).join('\n'), CARD_TEXT_MAX);
+  return { title: `You’re the ${clip(role, CARD_ROLE_MAX)}`, ...(text ? { text } : {}) };
 }
 
 /**
@@ -394,8 +406,16 @@ export function roomCardsFull(game: Game, session: Session, go?: (trial: Session
   return after > CARDS_MAX && after > now;
 }
 
-/** Why a send is refused when the room has all the cards it takes (the button's title, and the toast). */
-export const CARDS_FULL = `${CARDS_MAX} cards are out on the phones: ✖ Take one back first`;
+/**
+ * Why a send is refused when the room has all the cards it takes (the button's title, and the toast). A 🎭 deal's cards
+ * count too, though the list of cards out leaves them to 🎭 Deal…: then it says where they are, and how many.
+ */
+export function cardsFullText(game: Game, session: Session): string {
+  const deal = cardsOut(game, session).filter((c) => c.deal).length;
+  if (!deal) return `${CARDS_MAX} cards are out on the phones: ✖ Take one back first`;
+  const others = roomCardCount(game, session) > deal;
+  return `${CARDS_MAX} cards are out on the phones, ${deal} of them the 🎭 deal’s: ✖ Take ${deal === 1 ? 'it' : 'them'} back in 🎭 Deal…${others ? ', or take back another one' : ''}`;
+}
 
 /** The last bit of a card's id on the wire for each part, when a send goes as one card per part (partnerCards). */
 const PART_ID: Record<CardPart, string> = { giver: 'g', guesser: 'q', other: 'o', solo: 'p' };

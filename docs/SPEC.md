@@ -76,6 +76,7 @@ Game {
   final?: FinalRound,               // optional
   wheels: WheelPreset[],
   dicePresets: DicePreset[],
+  deals?: DealPreset[],             // 🎭 secret parts for everyone (PARTNER-CLUES-SPEC.md §11)
   media: MediaRef[],                // index of files in media/ (MediaRef { id, name, mime, size, kind,
                                     //   url? — plays live from this link, no file; source? — the link it was added from;
                                     //   expiresAt? — when that link stops working })
@@ -100,6 +101,8 @@ PlayerTemplate { id, name, color /* hex, unique */ }   // no avatars: name + col
 Round {
   id, name,
   dailyDoubleCount?: number,        // used by the "Randomize Daily Doubles" button                         // "Jeopardy!", "Double Jeopardy", "Brainrot Round"
+  partnerCount?: number,            // 🤝 partner clues placed at random (🔀 Randomize, Start game); left out: none
+  partnerGame?: PartnerGame, partnerCardFrom?: 'answer' | 'empty',  // what one placed at random plays, and its first card
   categories: Category[],           // columns: 1..10
   rowCount: number,                 // questions per category: 1..10
   values: number[],                 // default value per row, e.g. [200,400,600,800,1000]
@@ -207,6 +210,11 @@ RollEvent  { id, ts, source: 'wheel' | 'dice', presetName?, result: string /* la
 - **Daily Doubles**: toggle any tile as a DD by hand, or press **Randomize Daily Doubles** to place `dailyDoubleCount`
   of them at random. Placement is weighted toward the lower (higher-value) rows like on TV, and it never picks empty or wheel/dice tiles.
   Pressing it again re-rolls the placement. The DD positions are visible only in the editor and the host view.
+- **🤝 Partner clues** (PARTNER-CLUES-SPEC.md §21, P4): make any tile one by hand, or set how many next to ⭐ Daily
+  Doubles and press **🔀 Randomize** to place `partnerCount` of them at random, spread over the categories, only on
+  tiles with a written question and answer and never on a Daily Double. A tile that was a partner clue keeps its own
+  rules and cards; any other plays the round's game (`partnerGame`, Describe it by default) with a first 🤫 card that
+  copies the tile's answer (or an empty one, `partnerCardFrom`). Start game places the ones still missing.
 - **Tile face**: by default a tile shows its value. Optionally, show custom text or an image instead ("???", an emoji,
   a meme face). The value still drives the prefilled score.
 - Validation panel: empty clues, missing answers, broken media, and duplicate player colors.
@@ -357,7 +365,10 @@ The mode isn't saved with the game: it's dual while the audience window is open.
    - *Partner clue* (🤝, PARTNER-CLUES-SPEC.md §6): a PARTNER UP! splash with the picker, a wheel of the other players
      (`W`) or the host's choice (`1–9`) for their partner, then the question with who describes and who guesses, the
      📤 list of who gets each 🤫 card (copied to them with 📋), ⏱ Start the clock, and ✔ Got it / ✘ Missed, which
-     scores both in one step with the clue's points (the guesser picks next). Nobody buzzes.
+     scores both in one step with the clue's points (the guesser picks next). Nobody buzzes. With **steal on a miss**
+     (⚖ Game rules' `partnerSteal`, or the clue's own `PartnerRules.steal`), ✘ Missed lets everyone else answer it as
+     any clue for the tile's value: the buzzers open for them with the two locked out, or the host picks who steals
+     (`1–9`), then Enter / Shift+Enter. Each steal is its own undo step, and undoing the miss closes the steal.
    - *Any tile with 🤫 cards* (PARTNER-CLUES-SPEC.md §12.2): its panel lists them for the picker (a Daily Double's
      player) with 📤 Send (or 📋 to copy them, or 🪟 to show one in the card window); they go when the tile closes, and
      the stream says "Ann has a private question" on a standard tile.
@@ -433,6 +444,13 @@ The mode isn't saved with the game: it's dual while the audience window is open.
   card made in the editor, a quick one, or the slide on screen), lasting until the round ends or until taken back;
   `🤫 N cards out` lists them by number ("Card 2 → Ann"), never what's on them, with ↻ Send again and ✖ Take back. At
   most 8 are out at once. A 🪟 card window shows one player's cards, for a player with no phone.
+- **🎭 Deal…** (PARTNER-CLUES-SPEC.md §11): secret parts for everyone (a spy, a wolf, a captain, a prompt each), from a
+  deal saved with the game (the 🎡 Wheels, Dice & Deals tab) or a ready-made one. Each player gets one part at random (or the host's pick,
+  with the audience window open), and a part's card can show a slice of a saved wheel (each their own, or one shared
+  by everyone but the odd one out). Nothing goes until 📤 Send, which sends each player's card on its own; ↻ Send again
+  and ✖ Take back work on the whole deal. Only the two-window host column says who got which: one window lists everyone
+  dealt in alike, a part or not, and counts the phones that came late. **🎭 Who was who** puts the names and parts on
+  stream when the host presses it, as an undoable step; a click on it takes it off.
 
 ### 6.7 Media playback controls
 - Play/pause, seek bar, current time/duration, volume, mute, restart, loop toggle, and full-screen element.

@@ -123,3 +123,15 @@ describe('Find: 🤫 cards', () => {
     expect(findAll(game, 'zorblax')).toHaveLength(1);
   });
 });
+
+describe('Find: 🎭 deals', () => {
+  it('finds a deal by its name, a part’s name or its card’s words, and goes to it in 🎡 Wheels, Dice & Deals', () => {
+    const game = newGame();
+    game.deals = [{ id: 'd1', name: 'Mystery night', parts: [{ id: 'p1', name: 'Spy', count: 1, card: textSlide('Blend in, quietly') }, { id: 'p2', name: 'Guest', count: 'rest', card: textSlide('') }] }];
+    for (const q of ['mystery', 'spy', 'quietly']) {
+      const hits = findAll(game, q);
+      expect(hits).toHaveLength(1);
+      expect(hits[0]).toMatchObject({ icon: '🎭', where: 'Wheels, Dice & Deals › Deal', place: { tab: 'tools', deal: 'd1' } });
+    }
+  });
+});

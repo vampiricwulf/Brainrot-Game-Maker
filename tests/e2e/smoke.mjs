@@ -722,7 +722,7 @@ assert(previewTile === 'rgb(22, 0, 46)', `theme preview uses the neon tile color
 await shot('2a-theme');
 
 // A weighted "Punishment Wheel" (Bankrupt is ~certain) with a score effect, used by the 5th tile.
-await page.getByRole('button', { name: '🎡 Wheels & Dice' }).click();
+await page.getByRole('button', { name: '🎡 Wheels, Dice & Deals' }).click();
 await page.getByRole('button', { name: '＋ Add wheel' }).click();
 await page.getByLabel('Wheel name').fill('Punishment Wheel');
 await page.getByLabel('Spin (s)').fill('1');

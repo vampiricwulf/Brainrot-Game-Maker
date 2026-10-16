@@ -5,7 +5,7 @@ import type { BuzzState } from './buzz';
 import type { CueKey } from './sounds';
 
 /** What a host click on the stage asks for (the host's view decides what it means right now). */
-export type StageAction = 'intro' | 'reveal' | 'back' | 'final-next' | 'overlay';
+export type StageAction = 'intro' | 'reveal' | 'back' | 'final-next' | 'overlay' | 'whowaswho';
 
 /** A short "+400 Alex" badge that floats up on the audience view after a score change. */
 export interface Pop {

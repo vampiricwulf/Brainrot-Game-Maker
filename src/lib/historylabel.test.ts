@@ -217,7 +217,7 @@ describe('step labels', () => {
     expect(file).toMatchObject({ label: 'Added file “clip.mp4”', icon: '🎬', place: { tab: 'media', media: 'm2' } });
     expect(step((g) => g.media.pop()).label).toBe('Removed file “a.png”');
     const slice = step((g) => g.wheels[0].segments.push({ ...g.wheels[0].segments[0], id: 's-new', label: 'Sing a song' }));
-    expect(slice).toMatchObject({ label: 'Added slice “Sing a song”', where: 'Wheels & Dice › Punishments', icon: '🎡' });
+    expect(slice).toMatchObject({ label: 'Added slice “Sing a song”', where: 'Wheels, Dice & Deals › Punishments', icon: '🎡' });
     expect(step((g) => (g.wheels[0].segments[0].label = 'Dance')).label).toBe('Renamed slice “Dance”');
     // A slice's (an object's, an item's, a space's) buttons are called buttons, as the editor calls them.
     expect(step((g) => (g.wheels[0].segments[0].actions = [{ id: 'b1', do: 'note', text: 'Hi' }])).label).toBe('Added button “📝 Hi”');
@@ -393,6 +393,12 @@ describe('step labels', () => {
     expect(describeStep(diff(before, forked), before, forked).label).toBe('Connected Space 3 → Space 7');
     expect(describeStep(diff(forked, before), forked, before).label).toBe('Disconnected Space 3 → Space 7');
     expect(step((g) => (board(g).dailyDoubleCount = 2)).label).toBe('Set round “Jeopardy!” to 2 Daily Doubles');
+    expect(step((g) => (board(g).partnerCount = 3)).label).toBe('Set round “Jeopardy!” to 3 partner clues');
+    const counted = structuredClone(sample());
+    board(counted).partnerCount = 3;
+    const uncounted = structuredClone(counted);
+    delete board(uncounted).partnerCount;
+    expect(describeStep(diff(counted, uncounted), counted, uncounted).label).toBe('Set round “Jeopardy!” to no partner clues placed at random');
     expect(step((g) => (screens(g)[1].exits = { n: { kind: 'blocked' } })).label).toBe('Changed ways out of screen “Town”');
   });
 

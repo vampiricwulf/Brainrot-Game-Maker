@@ -10,7 +10,7 @@
   import { hostSlots, type HostAsk, type NextAction } from './host/slots.svelte';
   import { phoneAwaySince } from './host/phoneaway.svelte';
   import { categoryLabel, finalName, formatPoints, isBoard, typedPoints, wholePoints, type Game, type Session } from '../lib/model';
-  import { answerShowing, awardOpen, clueMarks, clueName, clueScored, currentClueInfo, currentFinal, findClueRef, nameList, ownPlayers, roundComplete, score, setScore, slidePosition, tiedForFirst, toolOnlyClue, usedTiles } from '../lib/session';
+  import { answerShowing, awardOpen, clueMarks, clueName, clueScored, currentClueInfo, currentFinal, findClueRef, nameList, ownPlayers, partnerSteal, roundComplete, score, setScore, slidePosition, tiedForFirst, toolOnlyClue, usedTiles } from '../lib/session';
   import MediaControls from './MediaControls.svelte';
   import SoundWarnings from './host/SoundWarnings.svelte';
   import TimerControls from './host/TimerControls.svelte';
@@ -253,6 +253,8 @@
   const setup = $derived(!!own?.setup);
   /** A 🤝 partner clue that's open (its own part of the panel is up). */
   const partner = $derived(session.phase === 'clue' && info?.clue.type === 'partner' ? session.partner : null);
+  /** Its miss let the others steal it: they answer it as any clue (the two locked out). */
+  const steal = $derived(partner ? partnerSteal(session) : null);
   const scoring = $derived(awardOpen(session));
   // (Off in a copy with no buzzer server, see buzzerOn.)
   const buzzing = $derived(buzzerOn(game.settings) && session.phase === 'clue' && !own && !everyone);
@@ -525,8 +527,8 @@
     !!info &&
     !toolOnly &&
     (session.dd?.stage !== 'question' || session.dd.playerId === id) &&
-    // A partner clue's question: only its two (each with their share).
-    (!partner || (partner.stage !== 'pick' && quickShare(id, true) !== null));
+    // A partner clue's question: only its two (each with their share); in a steal, everyone else (the tile's value).
+    (!partner || (partner.stage !== 'pick' && (steal ? !steal.out.includes(id) : quickShare(id, true) !== null)));
   /** On the board and through a clue the chips keep one width (the mark's place, and ✔ / ✘'s, kept where unused). */
   const chipSlots = $derived(session.phase === 'board' || (session.phase === 'clue' && !!info));
 
@@ -697,6 +699,8 @@
         <span class="muted">Daily Double: who found it, and their wager</span>
       {:else if partner?.stage === 'pick'}
         <span class="muted">{partner.partnerId ? 'Partner clue: show the question when you’re ready' : 'Partner clue: spin for a partner'}</span>
+      {:else if steal && !steal.by}
+        <span class="muted">Answer hidden · 🔔 a steal: the others can answer</span>
       {:else if partnerJudged}
         <span class="muted">Answer hidden · judged</span>
       {:else if partner?.stage === 'distribute'}
@@ -864,7 +868,11 @@
               onclick={() => (onright(p.id), judged())}
               disabled={was === true}
               aria-label="Right: {p.name} {gets}"
-              title={was === true ? `${p.name} is marked right on this clue (＋ Award gives more)` : partner ? `Got it: ${p.name} only, ${gets} (their share)` : `Correct: award ${formatPoints(quickValue, sym)} to ${p.name} only`}
+              title={was === true
+                ? `${p.name} is marked right on this clue (＋ Award gives more)`
+                : partner && !steal
+                  ? `Got it: ${p.name} only, ${gets} (their share)`
+                  : `${steal ? 'Stole it' : 'Correct'}: award ${formatPoints(quickValue, sym)} to ${p.name} only`}
               >✔</button
             >
             <button
@@ -872,7 +880,11 @@
               onclick={() => (onwrong(p.id), judged())}
               disabled={was === false}
               aria-label="Wrong: {p.name} {loses}"
-              title={was === false ? `${p.name} is marked wrong on this clue (− Deduct takes more)` : partner ? `Missed: ${p.name} only, ${loses} (their share)` : `Wrong: deduct ${formatPoints(quickValue, sym)} from ${p.name}`}
+              title={was === false
+                ? `${p.name} is marked wrong on this clue (− Deduct takes more)`
+                : partner && !steal
+                  ? `Missed: ${p.name} only, ${loses} (their share)`
+                  : `Wrong: deduct ${formatPoints(quickValue, sym)} from ${p.name}`}
               >✘</button
             >
           {:else if chipSlots && game.settings.deductOnWrong}
@@ -925,6 +937,8 @@
             oncardtakeback={oncardtakeback}
             onmemberspin={onpartnermemberspin}
             onjudge={onpartnerjudge}
+            {selected}
+            onpick={(id) => (selected = [id])}
           />
         {/key}
       {/if}

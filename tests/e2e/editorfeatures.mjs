@@ -1,5 +1,5 @@
 // Editor features: the sample game and round templates, Import clues (and a column pasted on a category), Find
-// (Ctrl+F), Copy / Paste round, Most players, my theme (and its contrast warning), what the Wheels & Dice number boxes
+// (Ctrl+F), Copy / Paste round, Most players, my theme (and its contrast warning), what the Wheels, Dice & Deals number boxes
 // keep, the Media and shortcuts filters, and the board-game spaces that move players back, skip a turn or roll again
 // (played, with undo).
 import { chromium } from 'playwright-core';
@@ -279,8 +279,8 @@ try {
   assert((await page.getByText(/The values are hard to read on the tiles/).count()) === 0, '…and the warning goes once they’re apart');
   assert((await page.getByLabel('Tile glow color').count()) === 1, 'the tile glow colour box has a name');
 
-  // ---------- Wheels & Dice: what the number boxes keep ----------
-  await page.getByRole('button', { name: '🎡 Wheels & Dice' }).click();
+  // ---------- Wheels, Dice & Deals: what the number boxes keep ----------
+  await page.getByRole('button', { name: '🎡 Wheels, Dice & Deals' }).click();
   await page.getByRole('button', { name: '＋ Add wheel' }).click();
   const spin = page.getByLabel('Spin (s)');
   for (const [typed, kept] of [['999', '30'], ['0.2', '1'], ['7', '7']]) {

@@ -17,7 +17,7 @@
   import { app, toast } from '../../lib/app.svelte';
   import { announce } from '../../lib/announce';
   import { CARD_MEDIA_MAX } from '../../lib/buzzproto';
-  import { CARDS_FULL, roomCardsFull, teamsOn } from '../../lib/buzz';
+  import { cardsFullText, roomCardsFull, teamsOn } from '../../lib/buzz';
   import { phoneCan } from '../../lib/cardfiles.svelte';
   import { textOn } from '../../lib/colors';
   import { tileToolUp } from '../../lib/live';
@@ -247,10 +247,10 @@
   const full = $derived(roomCardsFull(game, session));
   const canSend = $derived(sendTo.length > 0 && hasSomething && !full);
   /** Why 📤 Send (or 🪟 Show) can't go, or ''. */
-  const cant = $derived(full ? CARDS_FULL : !to.length ? 'Choose who gets it first' : !hasSomething ? (kind === 'stage' ? 'Nothing on screen to send now' : 'Put something on the card first') : '');
+  const cant = $derived(full ? cardsFullText(game, session) : !to.length ? 'Choose who gets it first' : !hasSomething ? (kind === 'stage' ? 'Nothing on screen to send now' : 'Put something on the card first') : '');
 
   function send(): void {
-    if (full) return toast(CARDS_FULL, 4000);
+    if (full) return toast(cardsFullText(game, session), 4000);
     if (!canSend || !slide) return;
     const content: SentCard['content'] = !preset && kind === 'saved' && chosen ? { clue: chosen.clue, card: chosen.card } : { slide };
     const c = sendCard(game, session, { to: sendTo, content, until }, Date.now(), roomCardsFull(game, session));
@@ -415,7 +415,7 @@
       {#if cardWindow.open && noPhone.includes(cardWindow.seat ?? '')}it shows in the 🪟 card window once sent{:else}<button class="ghost tiny" onclick={() => openWin(noPhone[0])} title="Opens a window with only {nameOf(noPhone[0])}’s cards, to share with them alone">show it in the 🪟 card window</button>{/if}
     </div>
   {/if}
-  {#if full}<div class="small warn" data-cards-full>{CARDS_FULL}</div>{/if}
+  {#if full}<div class="small warn" data-cards-full>{cardsFullText(game, session)}</div>{/if}
   <div class="row wrap">
     {#if cardsOn}
       <button class="primary small" onclick={send} disabled={!canSend} title={cant || `Sends it to ${names.join(', ')} now`}>📤 Send</button>
