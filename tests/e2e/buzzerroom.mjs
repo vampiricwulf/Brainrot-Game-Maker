@@ -192,10 +192,12 @@ try {
   assert(true, 'a phone waiting to be let in can cancel (the host stops seeing the request)');
   await dee.getByRole('button', { name: "＋ I'm new" }).click();
   await dee.getByLabel('Your name', { exact: true }).fill('Dee');
+  // (Only what the host hears from now on: the first request's line names a connection that may be gone.)
+  const reask = host.got.length;
   await dee.getByRole('button', { name: 'Ask to join' }).click();
   await dee.locator('main').getByText('Waiting for the host to let you in…').waitFor();
   await shot(bob, 'lobby');
-  const pend = await host.wait((m) => m.t === 'phones' && m.phones.some((p) => p.pendingName === 'Dee'), 'Dee waiting');
+  const pend = await host.wait((m) => host.got.indexOf(m) >= reask && m.t === 'phones' && m.phones.some((p) => p.pendingName === 'Dee'), 'Dee waiting');
   const deeConn = pend.phones.find((p) => p.pendingName === 'Dee').conn;
   assert(!!deeConn, 'the host sees Dee waiting');
   setState({ seats: [...seats, { id: 'd', name: 'Dee', color: '#3d68ea' }] });
