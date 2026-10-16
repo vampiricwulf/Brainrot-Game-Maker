@@ -6,10 +6,10 @@
 // the main button until its last slide (viewers see where it is: ● ● ○), a board game's own roll doesn't take the main
 // button from the round, a confirmation leaves one main button (its own), ✔ / ✘ hand the focus to the main button, and
 // on a narrow window the fixed bar stays on one line (🚪 Exit at the right). With six players in a single window (at
-// 1366×768, 1200×720 and 1024×768, and a long Final name) the stage keeps one size from the board to a clue and with a
-// player picked (on a $1,000 clue too: a long name is cut short on ＋ Award and − Deduct, never the amount), up to 1240px
-// wide 🤫 Send a card… and 🎭 Deal… show as 🤫 and 🎭 (named in full), 🔊 Sound opens in the host panel, and every Final
-// wager box is in sight.
+// 1366×768, 1200×720, 1024×768 and 960×900, and a long Final name) the stage keeps one size from the board to a clue and
+// with a player picked (on a $1,000 clue too: a long name is cut short on ＋ Award and − Deduct, never the amount), up to
+// 1240px wide 🤫 Send a card… and 🎭 Deal… show as 🤫 and 🎭 (named in full), 🔊 Sound opens in the host panel, and
+// every Final wager box is in sight.
 import { chromium } from 'playwright-core';
 import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
@@ -448,6 +448,7 @@ try {
     [1366, 768],
     [1200, 720],
     [1024, 768],
+    [960, 900],
   ]) {
     const ctx = await browser.newContext({ viewport: { width: w, height: h } });
     const p4 = await ctx.newPage();
