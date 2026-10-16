@@ -1,6 +1,6 @@
 // Pre-game checklist for the editor (spec §5.2 validation panel).
 import { canPlay, formatBytes, mediaUrls } from './media.svelte';
-import { linkLifetime } from './links';
+import { article, linkLifetime } from './links';
 import { normalizeColor } from './colors';
 import {
   boardRounds,
@@ -126,13 +126,19 @@ export function validate(game: Game, room: { filesOff?: boolean } = {}): Problem
     }
     if (isRpg(round)) {
       out.push(...rpgProblems(game, round, name, i));
-      // (Its objects' 🤫 Send a card buttons.)
+      // (Its objects' 🤫 Send a card buttons. A screen's looks have copies of its objects, with the same names: each line
+      // is said once, going to the first, the screen's own.)
       const world = worldById(game, round.world);
+      const said = new Set<string>();
       if (world)
         for (const { el, map, screen, look } of objectsWhere(world)) {
           const what = el.name?.trim() ? `“${el.name.trim()}”` : 'an object';
           const place: Place = { tab: 'world', world: world.id, map: map.id, screen: screen.id, look, inSlide: true, element: el.id };
-          out.push(...cardLines(game, cardsIn(el.role?.actions), `${name}: a 🤫 card on ${what} on “${screen.name}”`, i, place, !!room.filesOff));
+          for (const p of cardLines(game, cardsIn(el.role?.actions), `${name}: a 🤫 card on ${what} on “${screen.name}”`, i, place, !!room.filesOff)) {
+            if (said.has(p.text)) continue;
+            said.add(p.text);
+            out.push(p);
+          }
         }
       return;
     }
@@ -340,7 +346,7 @@ export function partnerProblems(game: Game, round: BoardRound, tab: number, file
       // (A Custom game's cards are up to the host.)
       if (cl.type === 'partner' && !cards.length && rules.game !== 'custom') {
         const g = PARTNER_GAMES[rules.game];
-        warn(`${tile} is ${/^[aeiou]/i.test(g.label) ? 'an' : 'a'} ${g.label} partner clue with no card: the ${lowerWord(partWords(rules).giver)} has nothing to ${g.task}`);
+        warn(`${tile} is ${article(g.label)} ${g.label} partner clue with no card: the ${lowerWord(partWords(rules).giver)} has nothing to ${g.task}`);
       }
       if (cards.length > MAX_CARDS) warn(`${tile} has ${cards.length} cards: a clue holds ${MAX_CARDS} (＋ Card adds no more)`, cards[MAX_CARDS]);
       cards.forEach((card, n) => {

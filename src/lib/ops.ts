@@ -186,8 +186,8 @@ export function insertRow(round: BoardRound, at: number): boolean {
  * Make a tile a Daily Double (or a standard, wheel, dice or partner tile). The board's ⭐ Daily Doubles box goes up with
  * the ones placed by hand, so it never says fewer than the board has. A partner clue starts as Describe it (a 45 s
  * countdown when it has none) with its starting card; one made a partner clue before gets its rules and cards back. One
- * only tried (its cards all empty) loses them when it stops being one, and with them rules that are the game's own and
- * their 45 s countdown: a card or rules the host wrote stay.
+ * only tried (its cards all empty) loses them when it stops being one, and with them rules that are a game's own and the
+ * 45 s countdown it started with (whichever game it was moved to after): a card or rules the host wrote stay.
  */
 export function setClueType(round: BoardRound, clue: Clue, type: ClueType): void {
   const was = clue.type;
@@ -207,7 +207,8 @@ export function setClueType(round: BoardRound, clue: Clue, type: ClueType): void
     const p = clue.partner;
     if (p && JSON.stringify(canon(p)) === JSON.stringify(canon(gameRules(p.game)))) {
       delete clue.partner;
-      if (clue.timerSeconds === 45 && TIMED_GAMES.has(p.game)) delete clue.timerSeconds;
+      // (Not only for a game with a countdown: one moved to Help a friend or Split clue keeps Describe it's.)
+      if (clue.timerSeconds === 45) delete clue.timerSeconds;
     }
   }
   followDailyDoubles(round);

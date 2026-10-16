@@ -3,7 +3,7 @@ import { jeopardyGame } from './testgame';
 import { newImageEl, newTextEl, newVideoEl, questionSlides, setSlideText, textSlide, type Action, type BoardRound, type Game, type Slide } from './model';
 import { newWheel } from './tools';
 import { newBoardGameRound } from './boardgame';
-import { newRpgRound } from './rpg';
+import { newRpgRound, newVariant } from './rpg';
 import { addClueSlide, setClueType } from './ops';
 import { setPartnerPoints } from './partner';
 import { validate } from './validate';
@@ -229,6 +229,9 @@ describe('🤝 partner clues', () => {
     chest.role = { class: 'interactable', actions: [send('b5')] };
     const world = game.worlds![0];
     world.maps[0].screens[0].slide.elements.push(chest);
+    // (A screen's looks have copies of its objects: said once, going to the screen's own.)
+    const start = world.maps[0].screens[0];
+    start.variants = [newVariant(undefined, start, 'Night'), newVariant(undefined, start, 'Open')];
     game.rounds.push(rpg);
     const too = 'has a video too big for phones (40.0 MB; phones get files up to 4.0 MB)';
     expect(validate(game).filter((p) => p.text.includes('too big'))).toEqual([

@@ -345,9 +345,14 @@ export function placeAt(game: Game, path: readonly Seg[]): At {
       if (!deal) break;
       reached(2, 'deal', deal.name);
       go({ tab: 'tools', deal: deal.id });
-      // (A part renamed is the part's change, not the deal's.)
+      // (A part renamed is the part's change, not the deal's; what's on its card (Edit card…) is the card's.)
       const part = path[2] === 'parts' ? byId<DealPart>(deal.parts, path[3]) : undefined;
-      if (part) reached(4, 'part', part.name, undefined, false);
+      if (!part) break;
+      reached(4, 'part', part.name, undefined, false);
+      if (path[4] !== 'card') break;
+      // (As its Edit card… dialog calls it: "Spy’s card".)
+      at.crumbs.push(part.name.trim() ? `${part.name.trim()}’s card` : 'card');
+      slide(part.card, 5, () => ({ tab: 'tools', deal: deal.id }));
       break;
     }
     case 'statFields':
@@ -721,8 +726,8 @@ const THEME_FIELDS: Record<string, string> = {
 };
 const themeField = (k: Seg | undefined) => (k === undefined ? 'theme' : (THEME_FIELDS[k] ?? fieldName(k)));
 
-/** Keys that hold a slide. */
-const SLIDE_KEYS = new Set<Seg>(['questionSlide', 'answerSlide', 'slide', 'dialogue']);
+/** Keys that hold a slide (`card`: a 🎭 deal part's). */
+const SLIDE_KEYS = new Set<Seg>(['questionSlide', 'answerSlide', 'slide', 'dialogue', 'card']);
 /** Does the path up to `p[i]` lead to a slide (a key that holds one, or one of a clue's extra slides or cards)? */
 const isSlide = (p: readonly Seg[], i: number) => SLIDE_KEYS.has(p[i]) || p[i - 1] === 'extraSlides' || p[i - 1] === 'cards';
 /**

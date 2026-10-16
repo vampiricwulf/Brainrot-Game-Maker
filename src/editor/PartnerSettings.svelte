@@ -15,6 +15,7 @@
   import { app } from '../lib/app.svelte';
   import { followClueText } from '../lib/cluetext';
   import { step as record } from '../lib/history.svelte';
+  import { article } from '../lib/links';
   import { cardSlides, formatPoints, MAX_SHARE, PART_WORD_MAX, PARTNER_GAMES, type Clue, type PartnerGame, type PartnerPoints, type PartnerRole } from '../lib/model';
   import {
     lowerWord,
@@ -66,7 +67,7 @@
   let open = $state(openAtFirst);
 
   function chooseGame(g: PartnerGame): void {
-    record(`Made ${tile()} ${/^[aeiou]/i.test(PARTNER_GAMES[g].label) ? 'an' : 'a'} ${PARTNER_GAMES[g].label} partner clue`, () => {
+    record(`Made ${tile()} ${article(PARTNER_GAMES[g].label)} ${PARTNER_GAMES[g].label} partner clue`, () => {
       setPartnerGame(clue, g);
       // (Its starting cards take the theme's clue text, as new clues do.)
       followClueText(app.game, cardSlides(clue));

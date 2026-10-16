@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { jeopardyGame } from './testgame';
 import { gameRules, newImageEl, newRound, setSlideText, slideText, textSlide, type Clue, type FinalRound, type TextEl, type BoardRound, type Game } from './model';
 import { followClueText } from './cluetext';
+import { setPartnerGame } from './partner';
 
 const board = (g: Game, i: number = 0) => g.rounds[i] as BoardRound;
 import {
@@ -328,6 +329,16 @@ describe('🤝 partner clues on the board', () => {
     // Made one again, it gets its rules back and a new starting card.
     setClueType(round, clue, 'partner');
     expect([clue.cards?.length, clue.partner?.giver]).toEqual([1, 'picker']);
+  });
+
+  it('one only tried with another game (no countdown of its own) loses the 45 s it got as Describe it too', () => {
+    for (const game of ['help', 'split'] as const) {
+      const { round, clue } = partnerTile();
+      setPartnerGame(clue, game);
+      expect(clue.timerSeconds).toBe(45);
+      setClueType(round, clue, 'standard');
+      expect([clue.cards, clue.partner, clue.timerSeconds]).toEqual([undefined, undefined, undefined]);
+    }
   });
 
   it('a tile whose only content is a card has content (Clear, drags and imports see it)', () => {
