@@ -209,7 +209,7 @@ try {
   await page.getByRole('button', { name: '✎ Edit wheel' }).click();
   await pop.getByRole('button', { name: 'Done' }).click();
   await page.getByLabel('Type').selectOption('dice');
-  // ＋ Add dice… undone, and redone, stays on the clue it was made from (not the Wheels & Dice tab).
+  // ＋ Add dice… undone, and redone, stays on the clue it was made from (not the Wheels, Dice & Deals tab).
   const clueBox = page.getByRole('dialog', { name: 'Edit clue' });
   const whichDice = page.getByLabel('Which dice');
   const diceShows = (t) => whichDice.locator('option:checked', { hasText: t }).waitFor({ state: 'attached', timeout: 3000 }).then(() => true, () => false);
@@ -258,8 +258,8 @@ try {
   );
   const ddTile = page.locator('.tile', { has: page.locator('.dd', { hasText: 'DD' }) }).first();
   assert((await tileLabel(ddTile)).includes(', Daily Double: '), `a Daily Double's name says so (${await tileLabel(ddTile)})`);
-  await page.getByRole('button', { name: '🎡 Wheels & Dice' }).click();
-  assert(await page.getByRole('button', { name: 'Spicy Wheel' }).isVisible(), 'and the wheel made there is in Wheels & Dice');
+  await page.getByRole('button', { name: '🎡 Wheels, Dice & Deals' }).click();
+  assert(await page.getByRole('button', { name: 'Spicy Wheel' }).isVisible(), 'and the wheel made there is in Wheels, Dice & Deals');
   // A slice's weight: named after its slice, and never 0 or less (the slice would drop off the wheel).
   await page.getByRole('button', { name: 'Spicy Wheel' }).click();
   const weight = page.getByLabel('Option 1 weight');

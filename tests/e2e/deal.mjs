@@ -107,7 +107,7 @@ try {
   await host.getByText(/^Opened “/).waitFor();
 
   // ---------- In the editor: the saved deal, and a ready-made one ----------
-  await host.getByRole('button', { name: /Wheels & Dice/ }).click();
+  await host.getByRole('button', { name: /Wheels, Dice & Deals/ }).click();
   const deals = host.getByRole('list', { name: 'Deals' });
   await deals.getByRole('button', { name: 'Odd one out' }).click();
   const editor = host.locator('[data-deal-editor]');

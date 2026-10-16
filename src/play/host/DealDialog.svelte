@@ -1,24 +1,26 @@
 <!--
   🎭 Deal… (partner-clues spec §11, §12.2), from the tools row in any round: secret parts for everyone. The host chooses
-  a deal saved with the game (made in the editor's 🎡 tab) or a ready-made one, changes its numbers for this deal if
-  they like, and presses 🎭 Deal: each player dealt in gets one part, at random (with the audience window open, the host
-  can choose who gets a part), and a part's card can show a slice of a saved wheel. Nothing goes anywhere until 📤 Send:
-  then each player's card goes to their phone as a card of its own (through the same path as 🤫 Send a card…).
+  a deal saved with the game (made in the editor's 🎡 Wheels, Dice & Deals tab) or a ready-made one, changes its numbers
+  for this deal if they like, and presses 🎭 Deal: each player dealt in gets one part, at random (with the audience
+  window open, the host can choose who gets a part), and a part's card can show a slice of a saved wheel. Nothing goes
+  anywhere until 📤 Send: then each player's card goes to their phone as a card of its own (through the same path as
+  🤫 Send a card…).
   ↻ Send again, ✖ Take back, and 🎭 Who was who (on stream, a step: Ctrl+Z takes it off) follow.
-  In one window viewers see this: it never says who got which part (only how many of each), never shows what's on a
-  card, and offers the host's picks only with the audience window open. Who got which is in the host column there.
+  In one window viewers see this: it never says who got which part (only how many of each, and everyone dealt in alike,
+  a part or not), never shows what's on a card, and offers the host's picks only with the audience window open. Who got
+  which is in the host column there.
 -->
 <script lang="ts">
   import { app, hint, toast } from '../../lib/app.svelte';
   import { announce } from '../../lib/announce';
   import { ask } from '../../lib/ask.svelte';
-  import { CARDS_FULL, roomCardsFull, teamsOn } from '../../lib/buzz';
+  import { cardsFullText, roomCardsFull, teamsOn } from '../../lib/buzz';
   import { CARDS_MAX } from '../../lib/buzzproto';
   import { filesCounted, phoneCan, retryFiles } from '../../lib/cardfiles.svelte';
   import { cardWindow, openCardWindow } from '../../lib/cardwindow.svelte';
   import { textOn } from '../../lib/colors';
   import {
-    clearDeal, countText, dealCopyText, dealCounts, dealFromTemplate, dealHands, dealOut, dealProblem, dealTrial, DEAL_TEMPLATES, newDealPart, partName,
+    clearDeal, countText, dealCopyText, dealCounts, dealFromTemplate, dealHands, dealOut, dealProblem, dealtIn, dealTrial, DEAL_TEMPLATES, newDealPart, partName,
     sendDeal, sendDealAgain, startDeal, takeBackDeal,
   } from '../../lib/deals';
   import { DEAL_PART_MAX, DEAL_PARTS_MAX, MAX_PLAYERS, setSlideText, slideText, type CardTo, type DealPart, type Game, type Id, type SentCard, type Session } from '../../lib/model';
@@ -156,10 +158,10 @@
       if (!yes) return;
     }
     const gone = (session.cards ?? []).filter((c) => c.deal);
-    dealDraft.dealt = startDeal(session, work, r.hands).id;
+    dealDraft.dealt = startDeal(session, work, r.hands, r.dealtIn).id;
     if (gone.length) ongone(gone);
     fresh = false;
-    announce(`Dealt to ${r.hands.length}: ${dealCounts(session.deal!)}. Nothing sent yet.`);
+    announce(`Dealt to ${r.dealtIn.length}: ${dealCounts(session.deal!)}. Nothing sent yet.`);
   }
 
   // ---------- The deal on the table ----------
@@ -174,11 +176,11 @@
   const tooMany = $derived(!!d && cardsOn && d.hands.length > CARDS_MAX);
   const full = $derived(!!d && cardsOn && !out.length && !tooMany && roomCardsFull(game, session, dealTrial(game, d, until)));
 
-  /** 📤 Send (or ✔ Deal it, with no phones getting cards): every player's card goes now. */
+  /** 📤 Send (or ✔ Hand them out, with no phones getting cards): every player's card goes now. */
   function send(): void {
     if (!d) return;
     if (tooMany) return hint(`The phones take ${CARDS_MAX} cards at once: deal fewer in`);
-    if (full) return toast(CARDS_FULL, 4000);
+    if (full) return toast(cardsFullText(game, session), 4000);
     const cards = sendDeal(game, session, until, Date.now(), cardsOn && roomCardsFull(game, session, dealTrial(game, d, until)));
     if (!cards.length) return toast('The deal can’t be sent now');
     announce(cardsOn ? `${d.name}: ${cards.length} cards sent, one to each player` : `${d.name} dealt: copy each card to its player (📋)`);
@@ -207,17 +209,22 @@
     if (whoWasWhoStep(session, show)) announce(show ? 'Who was who is on screen' : 'Who was who is off the screen');
   }
 
-  /** How the deal's cards stand on the phones, all together (never one player's card: that would say who had which). */
+  /**
+   * How the deal's cards stand on the phones, all together (never one player's card: that would say who had which). In
+   * one window the phones that came late are only counted: only those with a part have a card to be late for, so their
+   * names would say who got one (a deal with no part for "the rest").
+   */
   const status = $derived.by(() => {
     if (!d || d.stage !== 'sent') return '';
     if (!out.length) return 'Its cards are back (or over): 📤 Send puts them out again';
     if (!cardsOn) return `Dealt: copy each card to its player (📋)${cardWindow.open ? ', or show them in the 🪟 card window' : ''}`;
     const seen = out.filter((c) => seenSeats(session, c).length).length;
-    const parts = [seen ? `✓ seen by ${seen} of ${out.length}` : `sent to ${out.length}`];
+    const parts = [seen ? `✓ seen by ${seen} of ${out.length}` : `Sent to ${out.length}`];
     const f = filesOn ? filesCounted(game, session, out.flatMap((c) => sentSlide(game, c) ?? [])) : null;
     if (f?.going) parts.push(`uploading ${Math.min(f.files, f.up + 1)} of ${f.files - f.failed}…`);
     const late = [...new Set(remote.cardsLate.filter((l) => out.some((c) => sentCardId(c) === l.id)).map((l) => (l.by ? `${l.by}’s phone (${nameOf(l.seatId)})` : `${nameOf(l.seatId)}’s new phone`)))];
-    if (late.length) parts.push(`${nameList(late)} ${late.length > 1 ? 'haven’t' : 'hasn’t'} got theirs: ↻ Send again`);
+    if (late.length && dual) parts.push(`${nameList(late)} ${late.length > 1 ? 'haven’t' : 'hasn’t'} got theirs: ↻ Send again`);
+    else if (late.length) parts.push(`${late.length} phone${late.length === 1 ? '' : 's'} ${late.length === 1 ? 'hasn’t' : 'haven’t'} got theirs: ↻ Send again`);
     return parts.join(' · ');
   });
   /** What of the cards won't reach the phones, counted for the whole deal. */
@@ -225,10 +232,12 @@
   const seenBy = (seat: Id, member?: string) =>
     out.some((c) => c.to.some((t) => t.seat === seat && t.member?.id === member) && (session.remote?.cardsSeen?.[sentCardId(c)] ?? []).some((w) => w === (member ? `${seat}/${member}` : seat)));
 
-  function copyHand(i: number): void {
-    const h = d?.hands[i];
-    if (!d || !h) return;
-    void copyText(dealCopyText(game, session, d, h), `${who(h.to)}’s card copied: paste it to them alone`);
+  /** Everyone dealt in, a part or not: the list to copy from names them all (only those with a part would say who). */
+  const dealtList = $derived(d ? dealtIn(d) : []);
+  /** 📋 Their card (or "no part for you this time"), in words for a DM. */
+  function copyHand(to: CardTo): void {
+    if (!d) return;
+    void copyText(dealCopyText(game, session, d, to), `${who(to)}’s card copied: paste it to them alone`);
   }
   function openWin(seat: Id): void {
     if (!openCardWindow(seat)) toast('The browser blocked the popup. Allow popups for this file and try again.', 5000);
@@ -237,6 +246,9 @@
 </script>
 
 <div class="deal" data-deal>
+  {#if !dual}
+    <span class="exposed">⚠ Viewers can see this window: it never says who got which part, nor what’s on a card.</span>
+  {/if}
   {#if setup}
     <div class="head">🎭 Deal secret parts</div>
     <select class="small" aria-label="The deal" value={dealDraft.from} onchange={(e) => choose(e.currentTarget.value)}>
@@ -249,6 +261,7 @@
         {#each DEAL_TEMPLATES as t (t.key)}<option value="tpl:{t.key}">{t.icon} {t.name} · {t.hint}</option>{/each}
       </optgroup>
     </select>
+    <div class="muted small">Make your own in the editor’s 🎡 Wheels, Dice & Deals tab.</div>
     {#if work}
       <div class="head">Parts</div>
       {#each work.parts as part, i (part.id)}
@@ -311,6 +324,7 @@
       {#if work.perTeam && !perTeam}
         <div class="muted small">{teams ? 'Dealt to each team’s people once their phones are in the buzzer room: until then, to the teams.' : 'Not a teams game: dealt to the players.'}</div>
       {/if}
+      {#if perTeam}<div class="muted small">Dealt within each team: each number is for each team.</div>{/if}
       <div class="head">Dealt in</div>
       <div class="row wrap">
         {#each everyone as t (toKey(t))}
@@ -324,15 +338,18 @@
       {#if !dual}
         <div class="muted small">Choosing who gets a part is offered with the audience window open (viewers see this one).</div>
       {/if}
-      {#if problem}<div class="small warn" data-deal-problem>{problem}</div>{/if}
-      <div class="row wrap">
-        <button class="primary small" onclick={deal} disabled={!!problem} title={problem || 'Deals the parts: nothing goes to anyone until you send them'}>🎭 Deal</button>
-        {#if d}<button class="ghost small" onclick={() => (fresh = false)}>Back to “{d.name}”</button>{/if}
+      <!-- (Held at the menu's foot while the parts scroll: the way on is always in view.) -->
+      <div class="actions">
+        {#if problem}<div class="small warn" data-deal-problem>{problem}</div>{/if}
+        <div class="row wrap">
+          <button class="primary small" onclick={deal} disabled={!!problem} title={problem || 'Deals the parts: nothing goes to anyone until you send them'}>🎭 Deal</button>
+          {#if d}<button class="ghost small" onclick={() => (fresh = false)}>Back to “{d.name}”</button>{/if}
+        </div>
       </div>
     {/if}
   {:else if d}
     <div class="head">🎭 {d.name}</div>
-    <div class="small" data-deal-counts>Dealt to {d.hands.length}: {dealCounts(d)}</div>
+    <div class="small" data-deal-counts>Dealt to {dealtList.length}: {dealCounts(d)}</div>
     <div class="muted small">{dual ? 'Who got which part is in the column beside the stage (viewers don’t see it).' : 'Who got which part is never shown here: viewers see this window.'}</div>
     {#if d.stage === 'dealt'}
       <div class="small">Not sent yet: nobody has their card.</div>
@@ -345,14 +362,16 @@
       {/if}
       {#if left}<div class="small warn">{left}</div>{/if}
       {#if tooMany}<div class="small warn">The phones take {CARDS_MAX} cards at once: this deal has {d.hands.length}. Deal fewer in.</div>{/if}
-      {#if full}<div class="small warn" data-cards-full>{CARDS_FULL}</div>{/if}
-      <div class="row wrap">
-        <button class="primary small" onclick={send} disabled={tooMany || full} title={cardsOn ? 'Each player’s card goes to their phone now, a card of its own' : 'Deals them: then copy each card to its player (📋), or show it in the 🪟 card window'} data-deal-send>{cardsOn ? '📤 Send' : '✔ Deal it'}</button>
-        {#if dealDraft.dealt === d.id}
-          <button class="small" onclick={deal} disabled={!!problem || !work} title="Deals it again, the same way (nothing was sent)">↻ Deal again</button>
-        {/if}
-        <button class="ghost small" onclick={() => (fresh = true)}>✎ Change it</button>
-        <button class="ghost small" onclick={putAway}>✖ Put it away</button>
+      {#if full}<div class="small warn" data-cards-full>{cardsFullText(game, session)}</div>{/if}
+      <div class="actions">
+        <div class="row wrap">
+          <button class="primary small" onclick={send} disabled={tooMany || full} title={cardsOn ? 'Each player’s card goes to their phone now, a card of its own' : 'Hands them out: then copy each card to its player (📋), or show it in the 🪟 card window'} data-deal-send>{cardsOn ? '📤 Send' : '✔ Hand them out'}</button>
+          {#if dealDraft.dealt === d.id}
+            <button class="small" onclick={deal} disabled={!!problem || !work} title="Deals it again, the same way (nothing was sent)">↻ Deal again</button>
+          {/if}
+          <button class="ghost small" onclick={() => (fresh = true)}>✎ Change it</button>
+          <button class="ghost small" onclick={putAway}>✖ Put it away</button>
+        </div>
       </div>
     {:else}
       {#if status}<div class="small" role="status" data-deal-status>{status}</div>{/if}
@@ -362,7 +381,7 @@
           {#if cardsOn}<button class="small" onclick={again} title="Every card of the deal goes again under a new id: a phone that came late (a player on a new phone) gets theirs">↻ Send again</button>{/if}
           <button class="ghost small" onclick={takeBack} title="Takes every card of the deal off the phones (the deal stays, for Who was who)">✖ Take back</button>
         {:else}
-          <button class="small" onclick={send} disabled={tooMany || full} title={full ? CARDS_FULL : 'The same cards go out again'}>📤 Send</button>
+          <button class="small" onclick={send} disabled={tooMany || full} title={full ? cardsFullText(game, session) : 'The same cards go out again'}>📤 Send</button>
         {/if}
         {#if d.shown}
           <button class="small" onclick={() => reveal(false)} data-deal-hide>🙈 Hide Who was who</button>
@@ -373,21 +392,19 @@
         <button class="ghost small" onclick={putAway}>✖ Put it away</button>
       </div>
       {#if out.length && (!cardsOn || dual)}
-        <!-- Each player's card to copy (a DM) or show in the 🪟 card window: by name only, the same buttons for everyone. -->
+        <!-- Each player dealt in, to copy their card (a DM) or show it in the 🪟 card window: by name only, the same
+             buttons for everyone, those with no part included (listing only the others would say who got one). -->
         <div class="hands">
-          {#each d.hands as h, i (toKey(h.to))}
+          {#each dealtList as to (toKey(to))}
             <div class="row small">
-              <span class="grow">{who(h.to)}{#if cardsOn && seenBy(h.to.seat, h.to.member?.id)} · ✓ seen{/if}</span>
-              <button class="ghost tiny" onclick={() => copyHand(i)} aria-label="Copy {who(h.to)}’s card" title="Copies “For … only” with their card, to paste in a DM (nothing of it shows here)">📋 Copy</button>
-              {#if !cardsOn && !h.to.member}<button class="ghost tiny" onclick={() => openWin(h.to.seat)} aria-label="Show {who(h.to)}’s card in the card window" title="Opens a window with only their cards, to share with them alone">🪟</button>{/if}
+              <span class="grow">{who(to)}{#if cardsOn && seenBy(to.seat, to.member?.id)} · ✓ seen{/if}</span>
+              <button class="ghost tiny" onclick={() => copyHand(to)} aria-label="Copy {who(to)}’s card" title="Copies “For … only” with their card, to paste in a DM (nothing of it shows here)">📋 Copy</button>
+              {#if !cardsOn && !to.member}<button class="ghost tiny" onclick={() => openWin(to.seat)} aria-label="Show {who(to)}’s card in the card window" title="Opens a window with only their cards, to share with them alone">🪟</button>{/if}
             </div>
           {/each}
         </div>
       {/if}
     {/if}
-  {/if}
-  {#if !dual}
-    <span class="exposed">⚠ Viewers can see this window: it never says who got which part, nor what’s on a card.</span>
   {/if}
 </div>
 
@@ -447,5 +464,18 @@
   .exposed {
     color: var(--warn);
     font-size: 12px;
+  }
+  /* The menu's foot (ToolLauncher's .menu: 10px of padding, and it scrolls), over the parts scrolling under it. */
+  .actions {
+    position: sticky;
+    bottom: -10px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    margin: 0 -10px -10px;
+    padding: 6px 10px 10px;
+    background: var(--panel);
+    border-top: 1px solid var(--border);
+    z-index: 1;
   }
 </style>

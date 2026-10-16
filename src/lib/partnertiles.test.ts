@@ -88,6 +88,59 @@ describe('🔀 Randomize (randomizePartnerTiles)', () => {
     for (const n of hits.values()) expect(n).toBeGreaterThan(60);
   });
 
+  it('pressed again, the tiles it moves off are standard tiles as before: no countdown, card or rules of their own', () => {
+    for (const cardFrom of ['answer', 'empty'] as const) {
+      const { r } = board();
+      if (cardFrom === 'empty') r.partnerCardFrom = 'empty';
+      const before = new Map(r.categories.flatMap((c) => c.clues.map((cl) => [cl.id, JSON.stringify(cl)] as const)));
+      randomizePartnerTiles(r, 6, seeded(1));
+      randomizePartnerTiles(r, 6, seeded(2));
+      const standard = r.categories.flatMap((c) => c.clues.filter((cl) => cl.type === 'standard'));
+      expect(standard).toHaveLength(24);
+      for (const cl of standard) expect(JSON.stringify(cl)).toBe(before.get(cl.id));
+      // (And none of the checks' "card 1 is empty" about a tile that isn't a partner clue.)
+      expect(standard.some((cl) => cl.cards || cl.partner || cl.timerSeconds !== undefined)).toBe(false);
+    }
+  });
+
+  it('a card the host wrote and rules they changed stay with a tile it moves off; a copy of an old answer never does', () => {
+    const { r } = board();
+    randomizePartnerTiles(r, 3, seeded(4));
+    const [mine, rules, plain] = partners(r);
+    setSlideText(cardSlides(mine)[0], 'My own words');
+    rules.partner!.got.giver = 80;
+    randomizePartnerTiles(r, 0, seeded(5));
+    expect(partners(r)).toHaveLength(0);
+    expect(cardSlides(mine).map(slideText)).toEqual(['My own words']);
+    expect(mine.partner?.game).toBe('describe');
+    expect(rules.partner?.got.giver).toBe(80);
+    expect(rules.timerSeconds).toBe(45);
+    // (Its card was only a copy of its answer: it goes, and the rules it was given with it.)
+    expect(cardSlides(rules)).toEqual([]);
+    expect([plain.cards, plain.partner, plain.timerSeconds]).toEqual([undefined, undefined, undefined]);
+    // The host changes that tile's answer: placed again, its card is the new answer, never the old one.
+    setSlideText(plain.answerSlide, 'NEW answer');
+    placePartner(r, plain);
+    expect(cardSlides(plain).map(slideText)).toEqual(['NEW answer']);
+    expect(plain.timerSeconds).toBe(45);
+    // A countdown the tile had of its own stays.
+    const timed = r.categories[5].clues[4];
+    timed.timerSeconds = 20;
+    placePartner(r, timed);
+    randomizePartnerTiles(r, 0, seeded(6));
+    expect([timed.type, timed.timerSeconds, timed.partner, timed.cards]).toEqual(['standard', 20, undefined, undefined]);
+  });
+
+  it('Start game’s card is a copy of the answer whatever the round says (cardFrom): an empty one couldn’t be filled in', () => {
+    const { r } = board();
+    r.partnerCardFrom = 'empty';
+    randomizePartnerTiles(r, 2, seeded(3), { keepExisting: true, cardFrom: 'answer' });
+    expect(partners(r).every((cl) => cardSlides(cl).map(slideText)[0] === slideText(cl.answerSlide))).toBe(true);
+    // (🔀 Randomize in the editor follows the round: an empty card, for the host to fill in.)
+    randomizePartnerTiles(r, 2, seeded(3));
+    expect(partners(r).every((cl) => cardSlides(cl).map(slideText)[0] === '')).toBe(true);
+  });
+
   it('keepExisting (Start game) keeps the ones on the board and only adds the missing ones', () => {
     const { r } = board();
     const mine = r.categories[2].clues[4];

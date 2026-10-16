@@ -305,7 +305,7 @@ try {
   assert(!dialogs.length, 'no browser dialogs');
 
   // A wheel tile pasted into another game brings its wheel along (not "⚠ Deleted wheel").
-  await page.getByRole('button', { name: /Wheels & Dice/ }).click();
+  await page.getByRole('button', { name: /Wheels, Dice & Deals/ }).click();
   await page.getByRole('button', { name: '＋ Add wheel' }).click();
   await tabs.nth(0).click();
   await tile(2, 2).click();
@@ -321,7 +321,7 @@ try {
   await tile(0, 0).click();
   const wheelShown = await page.locator('select').nth(1).evaluate((s) => s.options[s.selectedIndex].text);
   await key('Escape');
-  await page.getByRole('button', { name: /Wheels & Dice/ }).click();
+  await page.getByRole('button', { name: /Wheels, Dice & Deals/ }).click();
   assert(wheelShown === 'Wheel 1' && (await page.locator('[data-tool]').allInnerTexts()).join() === 'Wheel 1', 'a wheel tile pasted in another game brings its wheel');
 
   // Right after a round is added (its name selected, ready to type), Ctrl+C on a tile copies the tile, not the name.

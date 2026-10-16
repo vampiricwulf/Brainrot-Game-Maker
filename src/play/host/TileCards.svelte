@@ -10,7 +10,7 @@
 <script lang="ts">
   import { app, toast } from '../../lib/app.svelte';
   import { announce } from '../../lib/announce';
-  import { CARDS_FULL, roomCardsFull, teamsOn } from '../../lib/buzz';
+  import { cardsFullText, roomCardsFull, teamsOn } from '../../lib/buzz';
   import { cardWindow } from '../../lib/cardwindow.svelte';
   import { phoneCan, retryFiles } from '../../lib/cardfiles.svelte';
   import { textOn } from '../../lib/colors';
@@ -75,7 +75,7 @@
    * alone (no phones get cards).
    */
   function send(card: ClueCard, n: number, to = recipients(card)): void {
-    if (roomCardsFull(game, session)) return toast(CARDS_FULL, 4000);
+    if (roomCardsFull(game, session)) return toast(cardsFullText(game, session), 4000);
     const c = sendCard(game, session, { to, content: { clue: clue.id, card: card.id }, until: 'tile' }, Date.now(), roomCardsFull(game, session));
     if (!c) return toast(`Choose who gets card ${n} first`);
     announce(`Card ${n} ${cardsOn ? 'sent to' : 'shown in the 🪟 card window to'} ${sentToText(session, c.to, teams)}`);
@@ -144,13 +144,13 @@
           <button class="small" onclick={() => again(out, card, n)} aria-label="Send card {n} again" title="Sends it again under a new id: a phone that came late (a player on a new phone) gets it too, with what’s on the card now">↻ Send again</button>
           <button class="ghost small" onclick={() => ontakeback(out.id)} aria-label="Take card {n} back" title="Takes it off every phone it went to">✖ Take back</button>
         {:else}
-          <button class="small" onclick={() => send(card, n)} disabled={!to.length || full} aria-label="Send card {n}" title={full ? CARDS_FULL : to.length ? `Sends it to ${sentToText(session, to, teams)} now, until the tile closes` : 'Choose who gets it first'}>📤 Send</button>
+          <button class="small" onclick={() => send(card, n)} disabled={!to.length || full} aria-label="Send card {n}" title={full ? cardsFullText(game, session) : to.length ? `Sends it to ${sentToText(session, to, teams)} now, until the tile closes` : 'Choose who gets it first'}>📤 Send</button>
         {/if}
       {:else if out}
         <button class="ghost small" onclick={() => ontakeback(out.id)} aria-label="Take card {n} back" title="Takes it out of the 🪟 card window">✖ Take back</button>
       {:else if windowSeat(to)}
         {@const seat = windowSeat(to)!}
-        <button class="small" onclick={() => send(card, n, [{ seat }])} disabled={full} aria-label="Show card {n} to {nameOf(seat)}" title={full ? CARDS_FULL : `Shows it in the 🪟 card window, to ${nameOf(seat)} alone, until the tile closes`}>🪟 Show {nameOf(seat)}</button>
+        <button class="small" onclick={() => send(card, n, [{ seat }])} disabled={full} aria-label="Show card {n} to {nameOf(seat)}" title={full ? cardsFullText(game, session) : `Shows it in the 🪟 card window, to ${nameOf(seat)} alone, until the tile closes`}>🪟 Show {nameOf(seat)}</button>
       {/if}
       {#if copying}
         <button

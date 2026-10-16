@@ -445,11 +445,12 @@ The mode isn't saved with the game: it's dual while the audience window is open.
   `🤫 N cards out` lists them by number ("Card 2 → Ann"), never what's on them, with ↻ Send again and ✖ Take back. At
   most 8 are out at once. A 🪟 card window shows one player's cards, for a player with no phone.
 - **🎭 Deal…** (PARTNER-CLUES-SPEC.md §11): secret parts for everyone (a spy, a wolf, a captain, a prompt each), from a
-  deal saved with the game (the 🎡 tab) or a ready-made one. Each player gets one part at random (or the host's pick,
+  deal saved with the game (the 🎡 Wheels, Dice & Deals tab) or a ready-made one. Each player gets one part at random (or the host's pick,
   with the audience window open), and a part's card can show a slice of a saved wheel (each their own, or one shared
   by everyone but the odd one out). Nothing goes until 📤 Send, which sends each player's card on its own; ↻ Send again
-  and ✖ Take back work on the whole deal. Only the two-window host column says who got which. **🎭 Who was who** puts
-  the names and parts on stream when the host presses it, as an undoable step.
+  and ✖ Take back work on the whole deal. Only the two-window host column says who got which: one window lists everyone
+  dealt in alike, a part or not, and counts the phones that came late. **🎭 Who was who** puts the names and parts on
+  stream when the host presses it, as an undoable step; a click on it takes it off.
 
 ### 6.7 Media playback controls
 - Play/pause, seek bar, current time/duration, volume, mute, restart, loop toggle, and full-screen element.

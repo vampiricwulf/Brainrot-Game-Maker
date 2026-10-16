@@ -840,20 +840,20 @@
   >
   {#if round.partnerCount}
     <select value={round.partnerGame ?? 'describe'} onchange={(e) => setPartnerGame(e.currentTarget.value as PartnerGame)} aria-label="The game partner clues placed at random play" title="The game a partner clue placed at random plays (a tile that was a partner clue before keeps its own)">
-      {#each PT_GAMES as g (g)}<option value={g}>{PARTNER_GAMES[g].icon} {PARTNER_GAMES[g].label}</option>{/each}
+      {#each PT_GAMES as g (g)}<option value={g}>Plays: {PARTNER_GAMES[g].icon} {PARTNER_GAMES[g].label}</option>{/each}
     </select>
     <select
       value={round.partnerCardFrom ?? 'answer'}
       onchange={(e) => setPartnerCardFrom(e.currentTarget.value as 'answer' | 'empty')}
       aria-label="The card a partner clue placed at random gets"
-      title="The 🤫 card a partner clue placed at random starts with (a tile with a card of its own keeps it): a copy of the tile's answer, for the describer, or an empty card to fill in"
+      title="The 🤫 card a partner clue placed by 🔀 Randomize starts with (a tile with a card of its own keeps it): a copy of the tile's answer, for the describer, or an empty card to fill in. The ones Start game places get a copy of the answer."
     >
       <option value="answer">🤫 Card: ⧉ the tile’s answer</option>
       <option value="empty">🤫 Card: empty, to fill in</option>
     </select>
   {/if}
   {#if round.partnerCount || ptPlaced}
-    <span class="hint">{ptPlaced} placed{ptPlaced < ptWanted ? ` (Start places ${ptWanted - ptPlaced} at random)` : ''}</span>
+    <span class="hint">{ptPlaced} placed{ptPlaced < ptWanted ? ` (Start places ${ptWanted - ptPlaced} at random${round.partnerCardFrom === 'empty' ? ', each with a copy of its answer as its card' : ''})` : ''}</span>
   {/if}
     </div>
   </div>

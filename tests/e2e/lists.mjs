@@ -132,7 +132,7 @@ try {
   assert((await values(page.getByLabel('Shop name')))[0].endsWith('(copy)'), 'shops reorder with Alt+↑');
 
   // ---------- Wheels ----------
-  await page.getByRole('button', { name: '🎡 Wheels & Dice' }).click();
+  await page.getByRole('button', { name: '🎡 Wheels, Dice & Deals' }).click();
   await page.getByRole('button', { name: '＋ Add wheel' }).click();
   const labels = page.locator('.seg input.label');
   await labels.nth(3).focus();

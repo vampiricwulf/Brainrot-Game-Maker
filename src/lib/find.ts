@@ -1,5 +1,5 @@
 // Find (Ctrl+F in the editor): every place in the game whose words match — clues, Final rounds, RPG screens and what's
-// on them, board-game spaces and zones, items, stats, shops, wheels, dice, media files — with the place to go
+// on them, board-game spaces and zones, items, stats, shops, wheels, dice, deals, media files — with the place to go
 // to (nav.svelte.ts's goTo, as the History tab's Go there).
 import { categoryLabel, formatPoints, questionSlides, roundName, type Game, type Slide } from './model';
 import type { ClueSide, Place } from './historylabel';
@@ -119,9 +119,11 @@ export function findAll(game: Game, query: string, limit = 200): Hit[] {
   for (const it of game.items ?? []) look('🎒', [it.name, it.description, it.hostNotes], 'Stats & Items › Item', { tab: 'stats', item: it.id });
   for (const f of game.statFields ?? []) look('📊', [f.name], 'Stats & Items › Stat', { tab: 'stats', stat: f.id });
   for (const sh of game.shops ?? []) look('🛒', [sh.name], 'Stats & Items › Shop', { tab: 'stats', shop: sh.id });
-  for (const w of game.wheels) look('🎡', [w.name, ...w.segments.flatMap((s) => [s.label, s.details])], 'Wheels & Dice › Wheel', { tab: 'tools', wheel: w.id });
+  for (const w of game.wheels) look('🎡', [w.name, ...w.segments.flatMap((s) => [s.label, s.details])], 'Wheels, Dice & Deals › Wheel', { tab: 'tools', wheel: w.id });
   for (const d of game.dice)
-    look('🎲', [d.name, ...d.dice.flatMap((x) => (x.customFaces ?? []).flatMap((f) => [f.label, f.details])), ...(d.totalOutcomes ?? []).map((t) => t.outcome.label)], 'Wheels & Dice › Dice', { tab: 'tools', dice: d.id });
+    look('🎲', [d.name, ...d.dice.flatMap((x) => (x.customFaces ?? []).flatMap((f) => [f.label, f.details])), ...(d.totalOutcomes ?? []).map((t) => t.outcome.label)], 'Wheels, Dice & Deals › Dice', { tab: 'tools', dice: d.id });
+  for (const d of game.deals ?? [])
+    look('🎭', [d.name, ...d.parts.flatMap((p) => [p.name, ...slideWords(p.card)])], 'Wheels, Dice & Deals › Deal', { tab: 'tools', deal: d.id });
   for (const m of game.media) look('🖼', [m.name], 'Media', { tab: 'media', media: m.id });
   const tb = game.tiebreaker;
   if (tb) {

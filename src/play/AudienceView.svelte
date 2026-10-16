@@ -688,9 +688,10 @@
   </div>
 {/if}
 
-<!-- 🎭 Who was who: only once the host shows it (names and parts; nothing of the deal reaches this before that). -->
+<!-- 🎭 Who was who: only once the host shows it (names and parts; nothing of the deal reaches this before that). On the
+     host's stage a click takes it off. -->
 {#if whoWasWho}
-  <DealReveal name={whoWasWho.name} lines={whoWasWho.lines} />
+  <DealReveal name={whoWasWho.name} lines={whoWasWho.lines} onclick={onact ? () => act('whowaswho') : undefined} />
 {/if}
 
 {#if live.overlay}

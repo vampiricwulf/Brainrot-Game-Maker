@@ -920,6 +920,11 @@ export interface DealState {
   /** Its parts' names in the deal's order: the counts follow it ("Spy ×1, Villager ×4"), never the players' order. */
   parts: string[];
   hands: DealHand[];
+  /**
+   * Everyone dealt in, a part or not, in the players' order (a deal with no part for "the rest" leaves some without
+   * one: one window's list names them all, so it never says who got one). Left out in saves from before it was kept.
+   */
+  in?: CardTo[];
   /** 'dealt': shuffled, nothing sent (the host checks it, then 📤 Send); 'sent': its cards went (SentCards with `deal`). */
   stage: 'dealt' | 'sent';
   /** How long its cards last once sent. */

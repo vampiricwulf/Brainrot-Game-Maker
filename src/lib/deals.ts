@@ -103,7 +103,8 @@ export function newDealPart(n: number): DealPart {
 
 /** A new deal: two parts, one of each and the rest. */
 export function newDeal(name = 'New deal'): DealPreset {
-  return { id: newId(), name, parts: [{ ...newDealPart(1), name: 'Odd one' }, { ...newDealPart(2), name: 'Everyone else', count: 'rest' }] };
+  // (Names that read after "You're the": the phone's title.)
+  return { id: newId(), name, parts: [{ ...newDealPart(1), name: 'Outsider' }, { ...newDealPart(2), name: 'Insider', count: 'rest' }] };
 }
 
 /** A part's name as the phone and the reveal say it ("Part 2" for one left blank). */
@@ -222,18 +223,22 @@ export function handSlide(game: Pick<Game, 'media'>, card: Slide, slice?: Pick<W
   return out;
 }
 
+/** A recipient as a deal keeps it (a seat, or a person on a team: their id and name only). */
+const plainTo = (t: CardTo): CardTo => (t.member ? { seat: t.seat, member: { id: t.member.id, name: t.member.name } } : { seat: t.seat });
+
 /**
  * 🎭 Deal: who gets which part. The host's picks first, then each part with a number gets that many at random from
  * those left, and the part for "the rest" everyone still left (without one, they get nothing). Nobody ever gets two
  * parts. A part that draws gets a slice of the deal's wheel: 'shared' the one slice drawn for the whole deal, 'own' one
- * each (none twice while there are enough). Hands in the order of `pool` (the players' order), each with its card.
+ * each (none twice while there are enough). Hands in the order of `pool` (the players' order), each with its card;
+ * `dealtIn` is everyone dealt in, with a part or not (one window lists them all, never only those who got one).
  */
 export function dealHands(
   game: Pick<Game, 'wheels' | 'media'>,
   deal: Pick<DealPreset, 'parts' | 'wheel'>,
   pool: CardTo[],
   opts: DealOptions = {},
-): { hands: DealHand[] } | { problem: string } {
+): { hands: DealHand[]; dealtIn: CardTo[] } | { problem: string } {
   const problem = dealProblem(game, deal, pool, opts);
   if (problem) return { problem };
   const rand = opts.rand ?? random;
@@ -282,18 +287,17 @@ export function dealHands(
       bag = bag.filter((s) => s !== slice);
     }
     const name = partName(part, deal.parts.indexOf(part));
-    const to: CardTo = t.member ? { seat: t.seat, member: { id: t.member.id, name: t.member.name } } : { seat: t.seat };
-    return { to, part: name, ...(slice ? { slice: label(slice) } : {}), slide: handSlide(game, part.card, slice ? { ...slice, label: label(slice) } : undefined), ...(role ? { role: true } : {}) };
+    return { to: plainTo(t), part: name, ...(slice ? { slice: label(slice) } : {}), slide: handSlide(game, part.card, slice ? { ...slice, label: label(slice) } : undefined), ...(role ? { role: true } : {}) };
   });
-  return { hands };
+  return { hands, dealtIn: all.map(plainTo) };
 }
 
 /**
- * The deal on the table: who got which, not sent yet (the host checks it, then 📤 Send). A deal whose cards are out is
- * replaced: its cards are taken back with it (one deal at a time).
+ * The deal on the table: who got which, not sent yet (the host checks it, then 📤 Send), and everyone dealt in. A deal
+ * whose cards are out is replaced: its cards are taken back with it (one deal at a time).
  */
-export function startDeal(session: Session, deal: Pick<DealPreset, 'name' | 'parts'>, hands: DealHand[], now = Date.now()): DealState {
-  const d: DealState = { id: newId(), name: deal.name.trim() || 'Deal', at: now, parts: deal.parts.map(partName), hands, stage: 'dealt' };
+export function startDeal(session: Session, deal: Pick<DealPreset, 'name' | 'parts'>, hands: DealHand[], dealtIn: CardTo[], now = Date.now()): DealState {
+  const d: DealState = { id: newId(), name: deal.name.trim() || 'Deal', at: now, parts: deal.parts.map(partName), hands, in: dealtIn.map(plainTo), stage: 'dealt' };
   takeBackDealCards(session);
   session.deal = d;
   return d;
@@ -304,6 +308,9 @@ export function clearDeal(session: Session): void {
   takeBackDealCards(session);
   session.deal = null;
 }
+
+/** Everyone dealt in, a part or not, in the players' order (a deal saved before they were kept: those with a part). */
+export const dealtIn = (d: Pick<DealState, 'hands' | 'in'>): CardTo[] => d.in ?? d.hands.map((h) => h.to);
 
 /** "Spy ×1, Villager ×4": the parts dealt, counted in the deal's order (never the players' order: that would say who). */
 export function dealCounts(d: Pick<DealState, 'parts' | 'hands'>): string {
@@ -404,13 +411,18 @@ export function dropSeatFromDeal(session: Session, seat: Id): void {
   const d = session.deal;
   if (!d) return;
   d.hands = d.hands.filter((h) => h.to.seat !== seat);
+  if (d.in) d.in = d.in.filter((t) => t.seat !== seat);
   if (!d.hands.length) session.deal = null;
 }
 
-/** 📋 A player's card in words, for a DM: "🤫 For Ann only (🎭 Odd one out): You're the Spy …" (never on screen). */
-export function dealCopyText(game: Pick<Game, 'media'>, session: Pick<Session, 'players'>, d: Pick<DealState, 'name'>, h: DealHand): string {
-  const who = h.to.member?.name ?? session.players.find((p) => p.id === h.to.seat)?.name ?? 'you';
-  const body = [h.role ? `You’re the ${h.part}` : '', cardWords(h.slide), ...cardLinks(game, h.slide)].filter(Boolean).join('\n');
+/**
+ * 📋 A player's card in words, for a DM: "🤫 For Ann only (🎭 Odd one out): You're the Spy …" (never on screen). One
+ * dealt in with no part gets a note that says so, through the same button: every row of the list looks the same.
+ */
+export function dealCopyText(game: Pick<Game, 'media'>, session: Pick<Session, 'players'>, d: Pick<DealState, 'name' | 'hands'>, to: CardTo): string {
+  const who = to.member?.name ?? session.players.find((p) => p.id === to.seat)?.name ?? 'you';
+  const h = d.hands.find((x) => toKey(x.to) === toKey(to));
+  const body = h ? [h.role ? `You’re the ${h.part}` : '', cardWords(h.slide), ...cardLinks(game, h.slide)].filter(Boolean).join('\n') : 'no part for you this time';
   return `🤫 For ${who} only (${dealLabel(d)}): ${body}`;
 }
 
@@ -433,10 +445,13 @@ export interface RevealLine {
 export function dealReveal(session: Pick<Session, 'deal' | 'players'>): { name: string; lines: RevealLine[] } | null {
   const d = session.deal;
   if (!d?.shown || d.stage !== 'sent') return null;
+  // (Everyone the same part, each with a slice, as 🧠 Everyone's own prompt: the slice is what tells them apart, so it
+  // takes the part's place, not "Player" on every line with the prompt cut short after it.)
+  const same = new Set(d.hands.map((h) => h.part)).size === 1 && d.hands.every((h) => h.slice);
   const lines = d.hands.flatMap((h): RevealLine[] => {
     const p = session.players.find((x) => x.id === h.to.seat);
     if (!p) return [];
-    return [{ name: h.to.member?.name ?? p.name, ...(h.to.member ? { team: p.name } : {}), color: p.color, part: h.part, ...(h.slice ? { slice: h.slice } : {}) }];
+    return [{ name: h.to.member?.name ?? p.name, ...(h.to.member ? { team: p.name } : {}), color: p.color, part: same ? h.slice! : h.part, ...(h.slice && !same ? { slice: h.slice } : {}) }];
   });
   return { name: d.name, lines };
 }
@@ -494,6 +509,9 @@ export function repairDeal(session: Session): void {
     else {
       const deal = session.deal!;
       if (hands.length !== (d.hands as unknown[]).length) deal.hands = hands;
+      // (Everyone dealt in: kept only whole, with everyone who has a part. Without it the list is those with a part.)
+      const keys = Array.isArray(d.in) && d.in.every(okTo) ? new Set((d.in as CardTo[]).map(toKey)) : null;
+      if (d.in !== undefined && !(keys && deal.hands.every((h) => keys.has(toKey(h.to))))) delete deal.in;
       if (!Array.isArray(d.parts) || !d.parts.every((x) => typeof x === 'string')) deal.parts = [...new Set(hands.map((h) => h.part))].sort();
       if (deal.shown !== undefined && deal.shown !== true) delete deal.shown;
     }

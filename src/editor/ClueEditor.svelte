@@ -275,7 +275,7 @@
         else game.dice.push(item);
         c[key] = item.id;
       },
-      // (Undone or redone, it shows on the clue it was made from, not on the Wheels & Dice tab.)
+      // (Undone or redone, it shows on the clue it was made from, not on the Wheels, Dice & Deals tab.)
       { place: { tab: 'round', round: round.id, part: { kind: 'clue', category: cat.id, clue: c.id } } },
     );
     tool = { kind, id: item.id };

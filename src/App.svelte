@@ -613,7 +613,8 @@
     game.settings.buzzer = undefined;
     // Partner clues and Daily Doubles the board wants but hasn't got go in at random, in this copy only.
     if (isBoard(r)) {
-      if (r.partnerCount) randomizePartnerTiles(r, r.partnerCount, Math.random, { keepExisting: true });
+      // (A partner clue's card: a copy of its answer, as Start game does. An empty one couldn't be filled in now.)
+      if (r.partnerCount) randomizePartnerTiles(r, r.partnerCount, Math.random, { keepExisting: true, cardFrom: 'answer' });
       randomizeDailyDoubles(r, r.dailyDoubleCount ?? 1, Math.random, { keepExisting: true });
     }
     const s = newSession(game);

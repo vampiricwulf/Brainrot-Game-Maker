@@ -297,7 +297,10 @@ What reaches Bob's phone, by milestone and server (§13):
   places that many at random, spread over the categories, only on tiles with a written question and answer (never a
   Daily Double); Start game places the ones still missing, and the pre-game checks offer 🎲 Place now. A tile that was a
   partner clue keeps its own rules and cards; any other plays the round's game (`partnerGame`, Describe it when left
-  out) with a first 🤫 card that copies its answer (`partnerCardFrom`: 'answer', the default, or 'empty').
+  out) with a first 🤫 card that copies its answer (`partnerCardFrom`: 'answer', the default, or 'empty'; 'empty' is
+  for 🔀 Randomize only, where the host fills the card in: Start game always copies the answer). 🔀 Randomize pressed
+  again turns the ones it moves off back into plain standard tiles: a card that only copied the answer (or is empty)
+  goes, and with it rules that are the game's own and their 45 s countdown; a card or rules the host changed stay.
 
 ### 5.2 Partner settings
 
@@ -952,7 +955,9 @@ marks its events `steal` while anyone else is in the game, and the steal is open
 two locked out), or the host picks who steals (1–9, or the steal row's chips in the partner panel). Enter and
 Shift+Enter judge the one answering at the Amount (the tile's value): each steal is its own undo step, a wrong one locks
 that player out too and opens the buzzers for the rest, and a right one gives them the board. The stream's badge reads
-"🔔 Steal! Bob and Ann missed it" until someone steals it or the answer shows; the phones' status line says the same.
+"🔔 Steal! Bob and Ann missed it" until someone steals it or the answer shows; the others' phones light up as on any
+clue, and the two's phones say "You already answered this one". In the host panel the steal row takes the place of
+✔ Got it / ✘ Missed, starting with what they gave ("Judged: Ann ✘ −$200 · Bob ✘ 0").
 
 ## 9. Scoring
 
@@ -1141,7 +1146,9 @@ ready.
 P3 also adds a list of the cards out now to the host panel. The host panel is on stream in one window, so its labels
 never carry a card's words: each card is numbered in the order it was sent ("Card 2 → Ann · ✓ seen [↻ Send again]
 [✖ Take back]"), and the label is made by the app, never typed (§18.2). In P4 a deal's list in one window doesn't say
-who got which card, since that is the secret. For the same reason a deal's part ("You're the Spy") is not the role line
+who got which card, since that is the secret: it lists everyone dealt in alike, with a part or not (a deal with no
+part for "the rest", like 🧢 Team captain outside teams, leaves some with none), and counts the phones that came late
+rather than naming them. For the same reason a deal's part ("You're the Spy") is not the role line
 over a phone's Tap to see cover (§12.3), where a neighbour could read it: it goes under the cover, as the card's title.
 
 ### 12.3 How a phone shows a card

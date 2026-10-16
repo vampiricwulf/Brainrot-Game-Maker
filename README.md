@@ -94,7 +94,7 @@ the way.
 (`Shift` adds it to the selection), `Enter` opens its settings and `Tab` goes on to them. `Alt`+arrows move the selected
 spaces (`Shift`+`Alt` further), `F2` renames, `Ctrl+D` duplicates, `Ctrl+C` / `Ctrl+V` copy and paste spaces with their
 buttons (onto any board, in any game), `Delete` deletes. `Ctrl`+click adds a space, `Alt`+drag links two. The
-movement dice are kept by the dice themselves, so renaming them in 🎡 Wheels & Dice keeps them.
+movement dice are kept by the dice themselves, so renaming them in 🎡 Wheels, Dice & Deals keeps them.
 
 Other editor tabs:
 
@@ -102,7 +102,7 @@ Other editor tabs:
 - 🎨 **Theme**: presets, colors, fonts and background images. **💾 Save as my theme…** keeps a look on this computer
   for any game; **⬇ Export theme** (a `.brainrot-theme` file) or **📋 Copy theme code** shares it, and **📂 Import
   theme…** / **⌨ Paste theme code…** show someone else's on your board before you use or keep it.
-- 🎡 **Wheels & Dice**: weighted wheels and custom dice. Each outcome can carry a score effect or action buttons.
+- 🎡 **Wheels, Dice & Deals**: weighted wheels and custom dice. Each outcome can carry a score effect or action buttons.
 - 📊 **Stats & Items**: HP bars, currencies, items, wearable gear and shops.
 
 **Copy and paste** slide items or whole slides between clues, rounds and even games; their pictures and sounds come
@@ -209,12 +209,13 @@ to share with them alone (a Discord DM call) or show them on a second screen. Wi
 card… and an action's offer put a card there with **🪟 Show**. Viewers never get it: share only the game window.
 **🎭 Deal…** next to it hands everyone a secret part, each on their own phone: 🕵 Odd one out (one spy, everyone else
 gets the same location from a wheel), 🐺 Secret roles (a wolf, a seer, villagers), 🧢 Team captain (one on each team)
-or 🧠 Everyone's own prompt (a slice of a wheel each), or a deal of your own made in the editor's 🎡 tab (parts with a
+or 🧠 Everyone's own prompt (a slice of a wheel each), or a deal of your own made in the editor's 🎡 Wheels, Dice & Deals tab (parts with a
 card each and how many get it). 🎭 Deal shuffles the parts (with the audience window open you can choose who gets one,
 and the column beside the stage shows who got which); nothing goes until you press 📤 Send, which sends each player's
 card on its own, their part ("You're the Spy") on it behind Tap to see. In one window the panel only counts the parts
-("Spy ×1, Villager ×4"). ↻ Send again and ✖ Take back work on the whole deal, and **🎭 Who was who** puts everyone's
-part on screen when you choose (Ctrl+Z takes it off).
+("Spy ×1, Villager ×4") and lists everyone dealt in alike, a part or not. ↻ Send again and ✖ Take back work on the
+whole deal, and **🎭 Who was who** puts everyone's part on screen when you choose (a click on it, or Ctrl+Z, takes it
+off).
 A player on a computer opens the same link: `Space` (or `Enter`) buzzes, `1`–`9` pick their seat or team, `Esc` goes back, and the page says when another window (the stream, say) has the keyboard. The room stays open
 through the pre-game screen, a reload of it and **◀ Back to editor**; it closes
 with Exit, at the end of the game or with **✕ Close the room**. The join code shows small in a corner of the stream

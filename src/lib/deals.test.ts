@@ -7,7 +7,7 @@ import { describe, expect, it } from 'vitest';
 import { jeopardyGame } from './testgame';
 import { migrateGame, newImageEl, setSlideText, textSlide, type CardTo, type DealPreset, type Game, type Session } from './model';
 import { forViewers, migrateSession, newSession, removePlayer } from './session';
-import { hostCards, roomCardsFull, sessionCards } from './buzz';
+import { cardsFullText, hostCards, roomCardsFull, sessionCards } from './buzz';
 import { CARDS_MAX } from './buzzproto';
 import { listedCards, quickSlide, sendCard, sentCardId } from './sentcards';
 import { phoneCard } from './phonecard';
@@ -27,6 +27,7 @@ import {
   dealOut,
   dealProblem,
   dealReveal,
+  dealtIn,
   dealSetupProblems,
   dealTrial,
   DEAL_TEMPLATES,
@@ -65,10 +66,11 @@ function setup(n = 6) {
   return { g, session, pool, places, prompts, tpl };
 }
 
-const hands = (r: ReturnType<typeof dealHands>) => {
+const dealtOf = (r: ReturnType<typeof dealHands>) => {
   if ('problem' in r) throw new Error(r.problem);
-  return r.hands;
+  return r;
 };
+const hands = (r: ReturnType<typeof dealHands>) => dealtOf(r).hands;
 
 describe('🎭 dealing: random, in the deal’s numbers, never two parts for one player', () => {
   it('Secret roles: one wolf, one seer, the rest villagers, every player exactly once', () => {
@@ -124,11 +126,40 @@ describe('🎭 dealing: random, in the deal’s numbers, never two parts for one
     const h = hands(dealHands(g, tpl('roles'), [{ seat: 'f' }, { seat: 'a' }, { seat: 'c' }, { seat: 'a' }], { rand: seeded(1) }));
     expect(h.map((x) => x.to.seat)).toEqual(['f', 'a', 'c']);
     const captain: DealPreset = { ...tpl('captain'), perTeam: false };
-    const one = hands(dealHands(g, captain, [{ seat: 'a' }, { seat: 'b' }, { seat: 'c' }], { rand: seeded(2) }));
+    const r = dealtOf(dealHands(g, captain, [{ seat: 'a' }, { seat: 'b' }, { seat: 'c' }, { seat: 'b' }], { rand: seeded(2) }));
+    const one = r.hands;
     expect(one).toHaveLength(1);
     expect(one[0].part).toBe('Captain');
     // (Only one got a part: it shows on their phone.)
     expect(one[0].role).toBe(true);
+    // Everyone dealt in is kept, a part or not (one window lists them all: only the captain would say who).
+    expect(r.dealtIn).toEqual([{ seat: 'a' }, { seat: 'b' }, { seat: 'c' }]);
+  });
+
+  it('one window: who got a part reads the same whoever got it, the list, the counts and the 📋 copies alike', () => {
+    const { g, session, tpl } = setup(5);
+    const captain: DealPreset = { ...tpl('captain'), perTeam: false };
+    const pool = session.players.map((p) => ({ seat: p.id }));
+    const look = (seed: number) => {
+      const r = dealtOf(dealHands(g, captain, pool, { rand: seeded(seed) }));
+      const d = startDeal(session, captain, r.hands, r.dealtIn, 100);
+      const copies = dealtIn(d).map((t) => dealCopyText(g, session, d, t));
+      return { who: d.hands[0].to.seat, list: dealtIn(d).map((t) => t.seat), counts: dealCounts(d), copies };
+    };
+    const a = look(1);
+    let b = a;
+    for (let seed = 2; seed < 40 && b.who === a.who; seed++) b = look(seed);
+    expect(b.who).not.toBe(a.who);
+    expect(b.list).toEqual(a.list);
+    expect(b.list).toEqual(['a', 'b', 'c', 'd', 'e']);
+    expect(b.counts).toBe(a.counts);
+    // Each row copies something: the captain their brief, everyone else a note that they have no part.
+    expect(b.copies.filter((c) => c.endsWith('no part for you this time'))).toHaveLength(4);
+    expect(b.copies.find((c) => c.includes('You’re the Captain'))).toMatch(/^🤫 For \w+ only \(🎭 Team captain\): You’re the Captain/);
+    // A player taken out (not the captain) goes from the list too.
+    const gone = ['a', 'b', 'c', 'd', 'e'].find((x) => x !== session.deal!.hands[0].to.seat)!;
+    removePlayer(session, gone);
+    expect(dealtIn(session.deal!).map((t) => t.seat)).toEqual(['a', 'b', 'c', 'd', 'e'].filter((x) => x !== gone));
   });
 
   it('says why it can’t deal: too few players, two parts for the rest, nobody, no wheel to draw from', () => {
@@ -240,8 +271,9 @@ describe('🎡 cards drawn from a saved wheel', () => {
 function dealt(seed = 5) {
   const s = setup();
   const deal = s.tpl('spy', s.places.id);
-  const h = hands(dealHands(s.g, deal, s.pool, { rand: seeded(seed) }));
-  const d = startDeal(s.session, deal, h, 500);
+  const r = dealtOf(dealHands(s.g, deal, s.pool, { rand: seeded(seed) }));
+  const h = r.hands;
+  const d = startDeal(s.session, deal, h, r.dealtIn, 500);
   return { ...s, deal, d, h };
 }
 
@@ -304,7 +336,8 @@ describe('📤 sending a deal: only when the host confirms, one card per player,
     // Sent again from the hands, then a new deal: the old deal's cards go.
     sendDeal(g, session, 'host', 2000);
     const next = tpl('roles');
-    startDeal(session, next, hands(dealHands(g, next, pool, { rand: seeded(1) })), 3000);
+    const r = dealtOf(dealHands(g, next, pool, { rand: seeded(1) }));
+    startDeal(session, next, r.hands, r.dealtIn, 3000);
     expect(session.cards!.map((c) => c.id)).toEqual([other.id]);
     expect(session.deal?.stage).toBe('dealt');
     clearDeal(session);
@@ -322,6 +355,17 @@ describe('📤 sending a deal: only when the host confirms, one card per player,
     expect(roomCardsFull(g, session, dealTrial(g, d, 'host'))).toBe(false);
   });
 
+  it('the room full with a deal’s cards out: the refusal says where they are, as the list of cards out leaves them off', () => {
+    const { g, session } = dealt();
+    expect(cardsFullText(g, session)).toBe(`${CARDS_MAX} cards are out on the phones: ✖ Take one back first`);
+    sendDeal(g, session, 'host', 1000);
+    for (let i = 0; i < CARDS_MAX - 6; i++) sendCard(g, session, { to: [{ seat: 'a' }], content: { slide: quickSlide(`c${i}`) }, until: 'host' });
+    expect(roomCardsFull(g, session)).toBe(true);
+    expect(cardsFullText(g, session)).toBe(`${CARDS_MAX} cards are out on the phones, 6 of them the 🎭 deal’s: ✖ Take them back in 🎭 Deal…, or take back another one`);
+    session.cards = session.cards!.filter((c) => c.deal);
+    expect(cardsFullText(g, session)).toBe(`${CARDS_MAX} cards are out on the phones, 6 of them the 🎭 deal’s: ✖ Take them back in 🎭 Deal…`);
+  });
+
   it('cards that last the round need a round; the card window and the 📋 copy say the part', () => {
     const { g, session, h } = dealt();
     session.phase = 'end';
@@ -330,7 +374,7 @@ describe('📤 sending a deal: only when the host confirms, one card per player,
     sendDeal(g, session, 'host', 1000);
     const spy = h.find((x) => x.part === 'Spy')!;
     expect(windowCards(g, session, spy.to.seat)[0]).toMatchObject({ role: 'Spy' });
-    const text = dealCopyText(g, session, session.deal!, spy);
+    const text = dealCopyText(g, session, session.deal!, spy.to);
     expect(text).toMatch(/^🤫 For \w+ only \(🎭 Odd one out\): You’re the Spy\nYou’re the spy!/);
   });
 
@@ -369,10 +413,23 @@ describe('🎭 Who was who', () => {
     const { g, session, tpl } = setup(2);
     const deal = tpl('captain');
     const pool = [{ seat: 'a', member: { id: 'm1', name: 'Mia' } }];
-    startDeal(session, deal, hands(dealHands(g, deal, pool, { perTeam: true })));
+    const r = dealtOf(dealHands(g, deal, pool, { perTeam: true }));
+    startDeal(session, deal, r.hands, r.dealtIn);
     sendDeal(g, session, 'host');
     whoWasWhoStep(session, true);
     expect(dealReveal(session)!.lines).toEqual([{ name: 'Mia', team: 'Ann', color: '#e6194b', part: 'Captain' }]);
+  });
+
+  it('everyone the same part, each with a slice (Everyone’s own prompt): the slice takes the part’s place', () => {
+    const { g, session, pool, prompts, tpl } = setup(3);
+    const deal = tpl('prompt', prompts.id);
+    const r = dealtOf(dealHands(g, deal, pool, { rand: seeded(3) }));
+    startDeal(session, deal, r.hands, r.dealtIn);
+    sendDeal(g, session, 'host');
+    whoWasWhoStep(session, true);
+    const lines = dealReveal(session)!.lines;
+    expect(lines.map((l) => l.part)).toEqual(r.hands.map((h) => h.slice));
+    expect(lines.every((l) => l.slice === undefined)).toBe(true);
   });
 
   it('viewers get nothing of the deal until it’s shown, then only names, parts and slices: never a card', () => {
@@ -387,6 +444,7 @@ describe('🎭 Who was who', () => {
     expect(json).not.toMatch(/You’re the spy|The location|secret-media|card-file/);
     expect(dealReveal(v)).toEqual(dealReveal(session));
     expect(v.cards).toBeUndefined();
+    expect(v.deal!.in).toBeUndefined();
   });
 });
 
@@ -413,6 +471,17 @@ describe('a reload, and a damaged save', () => {
     some.deal.hands[0].to = 7;
     repairDeal(some);
     expect(some.deal.hands).toHaveLength(5);
+    // Everyone dealt in is kept only whole (else the list is those with a part, as in a save from before it was kept).
+    expect(some.deal.in).toHaveLength(6);
+    const odd = JSON.parse(JSON.stringify(session));
+    odd.deal.in[2] = { seat: 4 };
+    repairDeal(odd);
+    expect(odd.deal.in).toBeUndefined();
+    expect(dealtIn(odd.deal)).toEqual(odd.deal.hands.map((h: { to: CardTo }) => h.to));
+    const short = JSON.parse(JSON.stringify(session));
+    short.deal.in = short.deal.in.slice(1);
+    repairDeal(short);
+    expect(short.deal.in).toBeUndefined();
   });
 
   it('the editor’s checks: a part that draws with no wheel, two parts for the rest; media on a part’s card is in use', () => {

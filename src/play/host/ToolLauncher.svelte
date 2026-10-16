@@ -276,7 +276,11 @@
       aria-haspopup="dialog"
       aria-expanded={menu === 'deal'}
       class:on={!!session.deal}
-      title={session.deal ? `🎭 ${session.deal.name}: send it, take it back, or show Who was who` : 'Secret parts for everyone (a spy, a wolf, a captain…), each on their own phone: nothing goes until you send it'}>🎭 Deal…</button
+      title={session.deal?.shown
+        ? '🎭 Who was who is on screen: click it on the stage, or 🙈 Hide it here'
+        : session.deal
+          ? `🎭 ${session.deal.name}: send it, take it back, or show Who was who`
+          : 'Secret parts for everyone (a spy, a wolf, a captain…), each on their own phone: nothing goes until you send it'}>🎭 Deal…</button
     >
     {#if menu === 'deal'}
       <div class="menu wide" role="dialog" aria-label="Deal" use:anchored={at}>

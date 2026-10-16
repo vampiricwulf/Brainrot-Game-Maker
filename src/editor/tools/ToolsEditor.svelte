@@ -247,7 +247,7 @@
 {/snippet}
 
 <div class="page">
-<PageHeader title="Wheels & Dice" sub="Saved with the game: the host spins or rolls any of them during play, and a tile can be a wheel or dice tile. 🎭 Deals hand everyone a secret part." />
+<PageHeader title="Wheels, Dice & Deals" sub="Saved with the game: the host spins or rolls any of them during play, and a tile can be a wheel or dice tile. 🎭 Deals hand everyone a secret part." />
 
 <div class="layout">
   <!-- Not a second nav and main: the editor's own are around it. -->

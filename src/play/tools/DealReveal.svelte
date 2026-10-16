@@ -1,19 +1,29 @@
 <!--
   🎭 Who was who (partner-clues spec §11), over the stage: each player of the deal and the part they had (and the slice
-  they drew), once the host shows it. Only names and parts come here (dealReveal): never what was on a card.
+  they drew), once the host shows it. Only names and parts come here (dealReveal): never what was on a card. On the
+  host's stage a click takes it off (the same step as 🙈 Hide Who was who).
 -->
 <script lang="ts">
   import { fade, fly } from '../../lib/motion.svelte';
   import { textOn } from '../../lib/colors';
   import type { RevealLine } from '../../lib/deals';
 
-  let { name, lines }: { name: string; lines: RevealLine[] } = $props();
+  let { name, lines, onclick }: { name: string; lines: RevealLine[]; /** The host's stage: a click takes it off. */ onclick?: () => void } = $props();
   /** Two columns past 8 lines; everything shrinks so the last one stays on screen. */
   const cols = $derived(lines.length > 8 ? 2 : 1);
   const rows = $derived(Math.ceil(lines.length / cols));
 </script>
 
-<div class="reveal" data-who-was-who style:--k={Math.min(1, 7 / Math.max(1, rows))} transition:fade={{ duration: 250 }}>
+<div
+  class="reveal"
+  data-who-was-who
+  style:--k={Math.min(1, 7 / Math.max(1, rows))}
+  style:cursor={onclick ? 'pointer' : undefined}
+  title={onclick ? 'Click to take Who was who off the screen' : undefined}
+  onclick={() => onclick?.()}
+  role="presentation"
+  transition:fade={{ duration: 250 }}
+>
   <h1>Who was who</h1>
   <div class="sub" dir="auto">🎭 {name}</div>
   <div class="grid" style:--cols={cols}>
@@ -56,7 +66,8 @@
     display: grid;
     grid-template-columns: repeat(var(--cols), minmax(0, 1fr));
     gap: calc(14px * var(--k)) 40px;
-    width: min(1700px, calc(var(--cols) * 820px));
+    /* (One column: 1320px, room for a prompt drawn from a wheel; two: 1640px.) */
+    width: min(1700px, calc(var(--cols) * 820px + (2 - var(--cols)) * 500px));
   }
   .line {
     display: flex;

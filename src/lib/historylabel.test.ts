@@ -217,7 +217,7 @@ describe('step labels', () => {
     expect(file).toMatchObject({ label: 'Added file “clip.mp4”', icon: '🎬', place: { tab: 'media', media: 'm2' } });
     expect(step((g) => g.media.pop()).label).toBe('Removed file “a.png”');
     const slice = step((g) => g.wheels[0].segments.push({ ...g.wheels[0].segments[0], id: 's-new', label: 'Sing a song' }));
-    expect(slice).toMatchObject({ label: 'Added slice “Sing a song”', where: 'Wheels & Dice › Punishments', icon: '🎡' });
+    expect(slice).toMatchObject({ label: 'Added slice “Sing a song”', where: 'Wheels, Dice & Deals › Punishments', icon: '🎡' });
     expect(step((g) => (g.wheels[0].segments[0].label = 'Dance')).label).toBe('Renamed slice “Dance”');
     // A slice's (an object's, an item's, a space's) buttons are called buttons, as the editor calls them.
     expect(step((g) => (g.wheels[0].segments[0].actions = [{ id: 'b1', do: 'note', text: 'Hi' }])).label).toBe('Added button “📝 Hi”');

@@ -19,13 +19,14 @@
   } from '../lib/partner';
   import { phoneCard } from '../lib/phonecard';
   import { phoneCan, syncUploads } from '../lib/cardfiles.svelte';
-  import { cardsOut, sentCardId, sentSlide, takeBackCard } from '../lib/sentcards';
+  import { cardsOut, listedCards, sentCardId, sentSlide, takeBackCard } from '../lib/sentcards';
+  import { dealOut, dealtIn } from '../lib/deals';
   import { windowCards } from '../lib/cardwindow';
   import { cardWindow, closeCardWindow, feedCardWindow } from '../lib/cardwindow.svelte';
   import { dropOffersBut } from './host/cardoffers.svelte';
   import { addTime, newLive, overlayDoneAt, startTimer, tileToolUp, timerRemaining, timerResumed, toggleTimer, toolOverlay, type Live, type StageAction, type TimerState } from '../lib/live';
   import {
-    buzzArm, buzzClueOpened, buzzDone, buzzIdle, buzzMissed, buzzReset, buzzTake, CARDS_FULL, hostState, newBuzz, partnerAnswerAsk, partnerAnswerId, hostCards, phoneStatus, roomCardsFull, SEAT_NAME_MAX, sendOf, SETTING_UP,
+    buzzArm, buzzClueOpened, buzzDone, buzzIdle, buzzMissed, buzzReset, buzzTake, cardsFullText, hostState, newBuzz, partnerAnswerAsk, partnerAnswerId, hostCards, phoneStatus, roomCardsFull, SEAT_NAME_MAX, sendOf, SETTING_UP,
     teamsOn, wagerAsk, whoBuzzed,
     type BuzzState,
   } from '../lib/buzz';
@@ -67,7 +68,7 @@
   import { cueHere, playCue } from './cues';
   import { BUILTIN } from '../lib/sounds';
   import { watchSinks } from '../lib/audioout.svelte';
-  import { finalNextStep, logged, redoAction, redoFrom, revealStep, setPicker, startStep, undoAction, type Undone } from '../lib/toolset';
+  import { finalNextStep, logged, redoAction, redoFrom, revealStep, setPicker, startStep, undoAction, whoWasWhoStep, type Undone } from '../lib/toolset';
   import { groupPops, stopsTimer } from './flow';
   import { nextUndo, stillUndone, type TimelineRow } from '../lib/timeline';
   import {
@@ -1358,7 +1359,10 @@
       const s = partner;
       const out = s && info && phoneCards ? cardSlides(info.clue).flatMap((c, i) => (sentSeats(session, s, c.id).includes(seatId) ? [`card ${i + 1}`] : [])) : [];
       // (And the cards out with 🤫 Send a card… or from a tile's panel, by their labels: "Card 3".)
-      if (phoneCards) out.push(...cardsOut(game, session).flatMap((c) => (c.to.some((t) => t.seat === seatId) ? [c.label] : [])));
+      if (phoneCards) out.push(...listedCards(game, session).flatMap((c) => (c.to.some((t) => t.seat === seatId) ? [c.label] : [])));
+      // (A 🎭 deal's: for everyone dealt in, a part or not, the same words. Only those with a part have a card, so
+      // naming it only for them would say who got one.)
+      if (phoneCards && dealOut(game, session).length && dealtIn(session.deal!).some((t) => t.seat === seatId)) out.push('🎭 the deal (in 🎭 Deal…)');
       if (out.length) toast(`${playerName(session, seatId)}'s seat is free: once they're on the new phone, ↻ Send again ${nameList(out)}`, 6000);
       else toast(`${playerName(session, seatId)}'s seat is free: they can tap their name on their new phone`, 4000);
     }
@@ -1693,6 +1697,10 @@
       case 'overlay':
         overlayPrimary();
         break;
+      case 'whowaswho':
+        // (🎭 Who was who over the stage: a click takes it off, as 🙈 Hide does in 🎭 Deal…. Ctrl+Z puts it back.)
+        if (whoWasWhoStep(session, false)) announce('Who was who is off the screen');
+        break;
     }
   }
 
@@ -1930,7 +1938,7 @@
     if (session.revealed) return hint('The answer is showing: Esc goes back to the board');
     // (Never more cards than the buzzer room takes: a send over that waits for a ✖ Take back.)
     const unsent = unsentCards();
-    if (unsent.length && roomCardsFull(game, session, (t) => sendCards(t, t.partner!, unsent))) return hint(CARDS_FULL);
+    if (unsent.length && roomCardsFull(game, session, (t) => sendCards(t, t.partner!, unsent))) return hint(cardsFullText(game, session));
     const went = phoneCards ? sendCards(session, s, unsent) : [];
     if (went.length) announce(went.map((c) => `Card ${cardSlides(info.clue).indexOf(c) + 1} sent to ${recipientsText(session, s, partnerRules(info.clue), c)}`).join('. '));
     s.stage = 'live';
@@ -2955,7 +2963,9 @@
     const r = game.rounds[ri];
     if (!isBoard(r)) return 0;
     const before = new Set(r.categories.flatMap((c) => c.clues.filter((cl) => cl.type === 'partner').map((cl) => cl.id)));
-    const n = randomizePartnerTiles(r, r.partnerCount ?? 0, Math.random, { keepExisting: true });
+    // (Each with a copy of its answer as its card, whatever the round says: an empty card can't be filled in now. The
+    // editor's 🔀 Randomize is where the host fills one in.)
+    const n = randomizePartnerTiles(r, r.partnerCount ?? 0, Math.random, { keepExisting: true, cardFrom: 'answer' });
     if (!n) {
       if (tell) toast(`No room for another partner clue in ${r.name}: they go on tiles with a written question and answer`);
       return 0;

@@ -242,7 +242,8 @@ try {
   const reveal = aud.locator('[data-who-was-who]');
   await reveal.waitFor();
   const shown = await flat(reveal);
-  assert(['Ann', 'Bob', 'Cat', 'Dan'].every((n) => shown.includes(`${n} Player · ${drew[n]}`)), `on stream: each name with the slice they drew (${shown})`);
+  // (Everyone the same part: the slice takes its place, never "Player" on every line.)
+  assert(['Ann', 'Bob', 'Cat', 'Dan'].every((n) => shown.includes(`${n} ${drew[n]}`)) && !/\bPlayer\b/.test(shown), `on stream: each name with the slice they drew, not the part they all had (${shown})`);
   await offStream(['dtl1', 'dtl2', 'zfnqj', CARD_WORDS, THIS_DEAL], 'Who was who');
   await host.keyboard.press('Escape');
   await dialog.waitFor({ state: 'detached' });

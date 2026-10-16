@@ -406,8 +406,16 @@ export function roomCardsFull(game: Game, session: Session, go?: (trial: Session
   return after > CARDS_MAX && after > now;
 }
 
-/** Why a send is refused when the room has all the cards it takes (the button's title, and the toast). */
-export const CARDS_FULL = `${CARDS_MAX} cards are out on the phones: ✖ Take one back first`;
+/**
+ * Why a send is refused when the room has all the cards it takes (the button's title, and the toast). A 🎭 deal's cards
+ * count too, though the list of cards out leaves them to 🎭 Deal…: then it says where they are, and how many.
+ */
+export function cardsFullText(game: Game, session: Session): string {
+  const deal = cardsOut(game, session).filter((c) => c.deal).length;
+  if (!deal) return `${CARDS_MAX} cards are out on the phones: ✖ Take one back first`;
+  const others = roomCardCount(game, session) > deal;
+  return `${CARDS_MAX} cards are out on the phones, ${deal} of them the 🎭 deal’s: ✖ Take ${deal === 1 ? 'it' : 'them'} back in 🎭 Deal…${others ? ', or take back another one' : ''}`;
+}
 
 /** The last bit of a card's id on the wire for each part, when a send goes as one card per part (partnerCards). */
 const PART_ID: Record<CardPart, string> = { giver: 'g', guesser: 'q', other: 'o', solo: 'p' };
