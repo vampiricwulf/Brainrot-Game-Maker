@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { itemsFor, nav, placeElement, placeKey, resolve, take, type Place } from './nav.svelte';
-import { newTextEl, type BoardRound, type Game } from './model';
+import { newTextEl, type BoardRound, type FinalRound, type Game } from './model';
 import { jeopardyGame } from './testgame';
 import { newRpgRound, newScreen, newVariant } from './rpg';
 import { newWheel } from './tools';
@@ -100,6 +100,19 @@ describe('places', () => {
     expect(resolve(g, onCard)).toEqual({ tab: 'round', round: r.id, part: { kind: 'clue', category: cat.id, clue: clue.id, side: 'card', slide: 'c1' } });
     delete clue.cards;
     expect(resolve(g, onCard)).toEqual({ tab: 'round', round: r.id, part: { kind: 'clue', category: cat.id, clue: clue.id, side: 'q' } });
+  });
+
+  it('goes to a Final’s 🤫 card, the card once its item is gone, or the Final’s question once the card is', () => {
+    const g = sample();
+    const f = g.rounds[1] as FinalRound;
+    f.cards = [{ id: 'fc1', name: 'Leader hint', background: {}, elements: [newTextEl('Go big')], to: 'playing' }];
+    const el = f.cards[0].elements[0].id;
+    const onCard: Place = { tab: 'round', round: f.id, part: { kind: 'final', side: 'card', slide: 'fc1', element: el } };
+    expect(resolve(g, onCard)).toBe(onCard);
+    f.cards[0].elements = [];
+    expect(resolve(g, onCard)).toEqual({ tab: 'round', round: f.id, part: { kind: 'final', side: 'card', slide: 'fc1' } });
+    delete f.cards;
+    expect(resolve(g, onCard)).toEqual({ tab: 'round', round: f.id, part: { kind: 'final', side: 'q' } });
   });
 
   it('goes to one of the editor’s 🤫 Cards, or the 🤫 Cards tab once it’s gone', () => {

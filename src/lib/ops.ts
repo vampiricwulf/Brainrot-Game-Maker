@@ -74,11 +74,11 @@ export function copyClue(clue: Clue): Clue {
 }
 
 /**
- * ⧉ Same as the answer: the answer slide's items (and its background) copied onto the card, once, with fresh ids. From
- * then on the card is its own: changing the answer doesn't change it.
+ * ⧉ Same as the answer: the answer slide's items (and its background) copied onto the card (a tile's or a Final's),
+ * once, with fresh ids. From then on the card is its own: changing the answer doesn't change it.
  */
-export function cardFromAnswer(clue: Clue, card: ClueCard): void {
-  const copy = clone(clue.answerSlide);
+export function cardFromAnswer(holder: Pick<Clue, 'answerSlide'>, card: ClueCard): void {
+  const copy = clone(holder.answerSlide);
   for (const e of copy.elements) e.id = newId();
   card.background = copy.background;
   card.elements = copy.elements;
@@ -501,7 +501,8 @@ export function reidRound<R extends Round>(round: R): R {
     for (const d of round.decor ?? []) d.id = newId();
   } else if (isFinal(round)) {
     reSlide(round.questionSlide);
-    for (const sl of round.extraSlides ?? []) {
+    // (Its 🤫 cards too: two Finals with one card's id would mix up Find, undo places and a card sent by reference.)
+    for (const sl of [...(round.extraSlides ?? []), ...cardSlides(round)]) {
       sl.id = newId();
       reSlide(sl);
     }

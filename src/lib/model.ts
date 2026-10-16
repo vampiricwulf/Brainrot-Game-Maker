@@ -391,13 +391,14 @@ export interface PartnerRules {
 /**
  * Who a 🤫 card starts with when the host hands the cards out: a part, both, every player but the two, or nobody. On any
  * other tile (partner-clues spec §11, §12.2): 'picker' (whoever picked it; a Daily Double's player), 'others' (everyone
- * but them) or 'nobody'.
+ * but them) or 'nobody'. On a Final (FinalRound.cards): 'playing' (everyone playing it: its wager screen's ticks) or
+ * 'nobody'.
  */
-export type CardGoesTo = PartnerRole | 'both' | 'others' | 'nobody' | 'picker';
+export type CardGoesTo = PartnerRole | 'both' | 'others' | 'nobody' | 'picker' | 'playing';
 
 /**
- * A 🤫 card: a slide the host made for a tile (a partner clue's, or any tile's: 🤫 Just you, 💡 Insider tip). Only the
- * players the host sends it to see it.
+ * A 🤫 card: a slide the host made for a tile (a partner clue's, or any tile's: 🤫 Just you, 💡 Insider tip) or a Final.
+ * Only the players the host sends it to see it.
  */
 export interface ClueCard extends ExtraSlide {
   /** Who it starts with when the host hands the cards out ('others': every player but the two). The host can change it then. */
@@ -405,15 +406,15 @@ export interface ClueCard extends ExtraSlide {
   /** The line above it on a phone ({giver} and {guesser}: their names); left out, one from its game ("Describe it to Ann…"). */
   hint?: string;
   /**
-   * The host's name for it, to tell a tile's cards apart (clueCardName): its tab, the host panel, 🤫 Send a card…, the
-   * checklist, 🔍 Find and Undo show it. Left out: "Card 2", its place. Phones never get it, nor 📋 Copy words; in one
-   * window viewers can read it in the host panel (never what's on it). Never a sent card's label, nor part of cardHash
-   * (renaming one that's out keeps it on the phones). At most CARD_NAME_MAX characters, never blank.
+   * The host's name for it, to tell a tile's or a Final's cards apart (clueCardName): its tab, the host panel, 🤫 Send a
+   * card…, the checklist, 🔍 Find and Undo show it. Left out: "Card 2", its place. Phones never get it, nor 📋 Copy words;
+   * in one window viewers can read it in the host panel (never what's on it). Never a sent card's label, nor part of
+   * cardHash (renaming one that's out keeps it on the phones). At most CARD_NAME_MAX characters, never blank.
    */
   name?: string;
 }
 
-/** Most cards a clue has (＋ Card adds no more; a hand-edited game with more keeps them, with a warning). */
+/** Most cards a clue or a Final has (＋ Card adds no more; a hand-edited game with more keeps them, with a warning). */
 export const MAX_CARDS = 6;
 /** A part's share of the tile's value is from −MAX_SHARE% to MAX_SHARE%. */
 export const MAX_SHARE = 1000;
@@ -458,8 +459,8 @@ export function gameRules(game: PartnerGame): PartnerRules {
 }
 
 /**
- * A clue's 🤫 cards, in order (Card 1, Card 2…, or their names): kept on a clue whose type changed away, for when it
- * changes back.
+ * A clue's or a Final's 🤫 cards, in order (Card 1, Card 2…, or their names): kept on a clue whose type changed away, for
+ * when it changes back.
  */
 export function cardSlides(clue: Pick<Clue, 'cards'>): ClueCard[] {
   return clue.cards ?? [];
@@ -594,7 +595,7 @@ export interface DealPreset {
 
 // ---------- 🤫 Cards made before the show (the editor's 🤫 Cards tab) ----------
 
-/** Longest name of a 🤫 card: one made ahead, or a tile's (characters). */
+/** Longest name of a 🤫 card: one made ahead, a tile's or a Final's (characters). */
 export const CARD_NAME_MAX = 60;
 
 /**
@@ -617,7 +618,7 @@ export function newSavedCard(name: string): SavedCard {
 /** Its name as the list, 🤫 Send a card… and the checklist say it ("Untitled card 2" for one left blank). */
 export const savedCardName = (c: Pick<SavedCard, 'name'>, i: number): string => c.name.trim() || `Untitled card ${i + 1}`;
 
-/** A tile's 🤫 card as tabs, rows and lists name it: the host's name for it, or "Card 2" (its place). */
+/** A tile's or a Final's 🤫 card as tabs, rows and lists name it: the host's name for it, or "Card 2" (its place). */
 export const clueCardName = (c: Pick<ClueCard, 'name'>, i: number): string => c.name?.trim() || `Card ${i + 1}`;
 
 /**
@@ -708,6 +709,12 @@ export interface FinalRound {
   /** More question slides, shown in order before the answer (left out: just the one). */
   extraSlides?: ExtraSlide[];
   answerSlide: Slide;
+  /**
+   * Its 🤫 cards (＋ Card in its editor), in order (Card 1, Card 2…, or their names; at most MAX_CARDS): slides only the
+   * players the host sends them to see, offered in the host panel from the wagers to the last reveal, lasting until the
+   * Final ends. Each starts with everyone playing it ('playing') or nobody.
+   */
+  cards?: ClueCard[];
   timerSeconds: number;
   /**
    * Players with a score of 0 or less can play it too (a wager of 0 is filled in for them; the host can type more, as
@@ -927,8 +934,8 @@ export interface SentCard {
   /** Who it went to: players (whole teams), or one person on a team. */
   to: CardTo[];
   /**
-   * A tile's 🤫 card made in the editor (by its clue and card ids), a card from the editor's 🤫 Cards (by its id), or a
-   * card made in 🤫 Send a card… (its own slide).
+   * A 🤫 card made in the editor on a tile or a Final (by the clue's or the Final round's id, and the card's), a card
+   * from the editor's 🤫 Cards (by its id), or a card made in 🤫 Send a card… (its own slide).
    */
   content: { clue: Id; card: Id } | { saved: Id } | { slide: Slide };
   /** What was on it when it went (cardHash): a card made in the editor and changed since is off the phones until ↻ Send again. */
@@ -1832,14 +1839,16 @@ function repairExtraSlides(o: { extraSlides?: ExtraSlide[] }): void {
   }
 }
 
+// (No 'playing' on a tile: it's a Final's.)
 const CARD_TO = new Set<unknown>(['giver', 'guesser', 'both', 'others', 'nobody', 'picker'] satisfies CardGoesTo[]);
+const FINAL_CARD_TO = new Set<unknown>(['playing', 'nobody'] satisfies CardGoesTo[]);
 const POINTS = new Set<unknown>(['game', 'none', 'all', 'custom'] satisfies PartnerPoints[]);
 
 /**
- * A tile's 🤫 cards: each with its own id and what a slide needs. One that goes to someone the app doesn't know there
- * goes to nobody (a damaged file never hands a card to someone the host didn't choose). A hint that isn't text goes; a
- * name that isn't text or is blank goes, and a long one is cut to CARD_NAME_MAX. A second card with the same id gets a
- * new one (a card is sent by its id). More than MAX_CARDS are kept (validate warns).
+ * A tile's or a Final's 🤫 cards: each with its own id and what a slide needs. One that goes to someone the app doesn't
+ * know there goes to nobody (a damaged file never hands a card to someone the host didn't choose). A hint that isn't
+ * text goes; a name that isn't text or is blank goes, and a long one is cut to CARD_NAME_MAX. A second card with the
+ * same id gets a new one (a card is sent by its id). More than MAX_CARDS are kept (validate warns).
  */
 function repairCards(h: { cards?: ClueCard[] }, goes: ReadonlySet<unknown>): void {
   if (h.cards === undefined) return;
@@ -2005,6 +2014,7 @@ function repairGame(g: Game): void {
       r.questionSlide = repairSlide(r.questionSlide);
       r.answerSlide = repairSlide(r.answerSlide);
       repairExtraSlides(r);
+      repairCards(r, FINAL_CARD_TO);
       if (typeof r.category !== 'string') r.category = r.category == null ? '' : String(r.category);
       if (typeof r.timerSeconds !== 'number' || !(r.timerSeconds >= 1)) r.timerSeconds = 30;
     } else if (isSlides(r)) {

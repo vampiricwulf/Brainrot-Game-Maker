@@ -195,7 +195,7 @@
     onpartnermemberspin?: () => void;
     /** ✔ Got it (true) or ✘ Missed (false) on a partner clue: both of the two in one step. */
     onpartnerjudge?: (got: boolean) => void;
-    /** ✖ Take back a card sent with 🤫 Send a card… or from a tile's panel. */
+    /** ✖ Take back a card sent with 🤫 Send a card… or from a tile's or the Final's panel. */
     oncardtakeback?: (id: string) => void;
     onfinalstep: () => void;
     /** Play the tiebreaker clue (from the end screen's tie). */
@@ -978,7 +978,22 @@
       <!-- (Not while its title card is up: the category isn't on screen yet.) -->
       {#if session.phase === 'final' && session.intro?.stage !== 'title'}
         <div class="mode-host">
-          <FinalControls {game} {session} {dual} armed={finishArmed} bind:override={wagerLimitsOff} phones={wagerPhones} phoneNote={wagerNote} onstep={onfinalstep} {onreveal} {onjudge} {onrevealnext} onback={onbackfromfinal} {onslide} />
+          <FinalControls
+            {game}
+            {session}
+            {dual}
+            armed={finishArmed}
+            bind:override={wagerLimitsOff}
+            phones={wagerPhones}
+            phoneNote={wagerNote}
+            onstep={onfinalstep}
+            {onreveal}
+            {onjudge}
+            {onrevealnext}
+            onback={onbackfromfinal}
+            {onslide}
+            {oncardtakeback}
+          />
         </div>
       {/if}
 

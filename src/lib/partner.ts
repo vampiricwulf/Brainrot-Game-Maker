@@ -197,23 +197,26 @@ export function startingCards(game: PartnerGame): ClueCard[] {
 }
 
 /**
- * ＋ Card: one more card at the end (it goes to the giver, as a game's first card does; on any other tile, to whoever
- * picked it). Returns it, or null at MAX_CARDS.
+ * ＋ Card: one more card at the end (on a partner clue it goes to the giver, as a game's first card does; on any other
+ * tile, to whoever picked it; a Final passes 'playing'). Returns it, or null at MAX_CARDS.
  */
-export function addCard(clue: Clue): ClueCard | null {
-  if (cardSlides(clue).length >= MAX_CARDS) return null;
-  const card = newCard(clue.type === 'partner' ? 'giver' : 'picker');
+export function addCard(holder: Pick<Clue, 'cards'> & Partial<Pick<Clue, 'type'>>, to: CardGoesTo = holder.type === 'partner' ? 'giver' : 'picker'): ClueCard | null {
+  if (cardSlides(holder).length >= MAX_CARDS) return null;
+  const card = newCard(to);
   // (A new list, not a push: on a tile with no cards yet `??=` would hand back the plain list, not the editor's live one.)
-  clue.cards = [...cardSlides(clue), card];
+  holder.cards = [...cardSlides(holder), card];
   return card;
 }
 
-/** 🗑 Delete card: the cards after it move up a number (their ids don't change). Returns the card to show then (-1: none left). */
-export function deleteCard(clue: Clue, at: number): number {
-  const cards = cardSlides(clue);
+/**
+ * 🗑 Delete card (a tile's or a Final's): the cards after it move up a number (their ids don't change). Returns the card
+ * to show then (-1: none left).
+ */
+export function deleteCard(holder: Pick<Clue, 'cards'>, at: number): number {
+  const cards = cardSlides(holder);
   if (!cards[at]) return Math.min(at, cards.length - 1);
   cards.splice(at, 1);
-  if (!cards.length) delete clue.cards;
+  if (!cards.length) delete holder.cards;
   return Math.min(at, cards.length - 1);
 }
 
@@ -224,7 +227,8 @@ export function deleteCard(clue: Clue, at: number): number {
 export function goesToLabel(rules: PartnerRules, to: CardGoesTo, long = true): string {
   const words = partWords(rules);
   if (to === 'giver' || to === 'guesser') return `the ${lowerWord(words[to])}${long ? ` (${partWho(rules, to)})` : ''}`;
-  return { both: 'both of them', others: 'everyone else', nobody: long ? 'nobody (I’ll choose when playing)' : 'nobody', picker: 'the picker' }[to];
+  // ('playing' is a Final's: never on a clue.)
+  return { both: 'both of them', others: 'everyone else', nobody: long ? 'nobody (I’ll choose when playing)' : 'nobody', picker: 'the picker', playing: 'everyone playing' }[to];
 }
 
 /** Every Goes to choice, in the order the editor lists them. */
@@ -232,6 +236,18 @@ export const GOES_TO: CardGoesTo[] = ['giver', 'guesser', 'both', 'others', 'nob
 
 /** A card on any other tile (🤫 Just you, 💡 Insider tip: partner-clues spec §11): who it can start with. */
 export const TILE_GOES_TO: CardGoesTo[] = ['picker', 'others', 'nobody'];
+
+/** A Final's card (FinalRound.cards): who it can start with. */
+export const FINAL_GOES_TO: CardGoesTo[] = ['playing', 'nobody'];
+
+/**
+ * Who a Final's card starts with, in words: "everyone playing it (ticked on the wager screen)", "nobody (I’ll choose when
+ * playing)"; `long` false: just who ("everyone playing", "nobody").
+ */
+export function finalGoesToLabel(to: CardGoesTo, long = true): string {
+  if (to === 'playing') return long ? 'everyone playing it (ticked on the wager screen)' : 'everyone playing';
+  return long ? 'nobody (I’ll choose when playing)' : 'nobody';
+}
 
 /**
  * Who a card on any other tile starts with, in words: "the player who picks it" (a Daily Double: "the Daily Double's

@@ -522,6 +522,41 @@ describe('🤝 partner clues in the history', () => {
   });
 });
 
+describe('a Final’s 🤫 cards in the history', () => {
+  /** A step on the sample game whose Final has two cards (the first “Leader hint”, the second unnamed). */
+  const withFinalCards = (edit: (g: Game) => void) => {
+    const before = sample();
+    final(before).cards = [
+      { id: 'fc-1', name: 'Leader hint', background: {}, elements: [newTextEl('')], to: 'playing' },
+      { id: 'fc-2', background: {}, elements: [newTextEl('')], to: 'nobody' },
+    ];
+    const after = structuredClone(before);
+    edit(after);
+    return { ...describeStep(diff(before, after), before, after), before, after };
+  };
+  const cardOf = (g: Game, n: number) => final(g).cards![n];
+
+  it('calls a card’s words its card’s (by its place), where they are by its name, and its tab to go to', () => {
+    const r = withFinalCards((g) => ((cardOf(g, 0).elements[0] as TextEl).text = 'Hi'));
+    expect(r).toMatchObject({ label: 'Edited card 1 “Hi”', where: 'Final Jeopardy! › Leader hint' });
+    expect(r.place).toEqual({ tab: 'round', round: final(r.after).id, part: { kind: 'final', side: 'card', slide: 'fc-1', element: cardOf(r.after, 0).elements[0].id } });
+    expect(withFinalCards((g) => ((cardOf(g, 1).elements[0] as TextEl).text = 'Psst')).where).toBe('Final Jeopardy! › Card 2');
+    // A card's background is a slide's.
+    expect(withFinalCards((g) => (cardOf(g, 1).background.color = '#ff0000')).label).toBe('Slide background color #ff0000');
+  });
+
+  it('a name typed is a rename, going to its card', () => {
+    const r = withFinalCards((g) => (cardOf(g, 1).name = 'Side bet'));
+    expect(r.label).toBe('Renamed card “Side bet”');
+    expect(r.place).toMatchObject({ part: { kind: 'final', side: 'card', slide: 'fc-2' } });
+  });
+
+  it('finds where a card’s item is (a restyle starts there)', () => {
+    const { after } = withFinalCards((g) => (cardOf(g, 1).name = 'Side bet'));
+    expect(itemPlace(after, cardOf(after, 1).elements[0].id)).toEqual({ tab: 'round', round: final(after).id, part: { kind: 'final', side: 'card', slide: 'fc-2', element: cardOf(after, 1).elements[0].id } });
+  });
+});
+
 describe('the editor’s 🤫 Cards in the history', () => {
   /** A step on the sample game with two 🤫 Cards (the first “Tip A”, the second left blank). */
   const withCards = (edit: (g: Game) => void) => {

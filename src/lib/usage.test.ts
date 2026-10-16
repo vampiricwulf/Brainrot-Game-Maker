@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { uploadedFamily } from './fonts';
 import { defaultEdits } from './imageedit';
-import { isBoard, newImageEl, textSlide, type MediaRef } from './model';
+import { isBoard, isFinal, newImageEl, textSlide, type MediaRef } from './model';
 import { jeopardyGame } from './testgame';
 import { allSlides, mediaUsage } from './usage';
 
@@ -49,6 +49,25 @@ describe('🤫 cards', () => {
     // A named one says its name (🖼 Media's "where used").
     clue.cards[0].name = 'Clue tip';
     expect(allSlides(game).map((s) => s.where)).toContain('Jeopardy! · Category 1 #2 (card “Clue tip”)');
+  });
+
+  it('a Final’s are walked too, after its answer, by their place or name', () => {
+    const game = jeopardyGame();
+    const final = game.rounds[1];
+    if (!isFinal(final)) throw new Error('not a Final');
+    final.cards = [
+      { id: 'f1', background: { image: 'bg' }, elements: [newImageEl('pic')], to: 'playing' },
+      { id: 'f2', name: 'Leader hint', ...textSlide('Go big'), to: 'nobody' },
+    ];
+    expect([mediaUsage(game).get('pic'), mediaUsage(game).get('bg')]).toEqual([1, 1]);
+    const where = allSlides(game).map((s) => s.where);
+    expect(where.slice(where.indexOf('Final Jeopardy! (answer)'), where.indexOf('Final Jeopardy! (answer)') + 3)).toEqual([
+      'Final Jeopardy! (answer)',
+      'Final Jeopardy! (card 1)',
+      'Final Jeopardy! (card “Leader hint”)',
+    ]);
+    delete final.cards;
+    expect(mediaUsage(game).get('pic')).toBeUndefined();
   });
 });
 

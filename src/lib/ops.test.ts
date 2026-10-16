@@ -1,12 +1,13 @@
 import { describe, expect, it } from 'vitest';
 import { jeopardyGame } from './testgame';
-import { gameRules, newImageEl, newRound, setSlideText, slideText, textSlide, type Clue, type FinalRound, type TextEl, type BoardRound, type Game } from './model';
-import { followClueText } from './cluetext';
-import { setPartnerGame } from './partner';
+import { gameRules, newFinalRound, newImageEl, newRound, setSlideText, slideText, textSlide, type Clue, type FinalRound, type TextEl, type BoardRound, type Game } from './model';
+import { clueSlides, followClueText } from './cluetext';
+import { addCard, setPartnerGame } from './partner';
 
 const board = (g: Game, i: number = 0) => g.rounds[i] as BoardRound;
 import {
   addCategory,
+  cardFromAnswer,
   categoryHasContent,
   clearClue,
   clone,
@@ -388,5 +389,41 @@ describe('🤝 partner clues on the board', () => {
     const again = reidRound(clone(round));
     expect(ids(again.categories[0].clues[0]).some((id) => ids(clue).includes(id))).toBe(false);
     expect(again.categories[0].clues[0].cards![0].to).toBe('giver');
+  });
+});
+
+describe('a Final’s 🤫 cards', () => {
+  it('a copied Final (Duplicate round, Paste, Import) gets fresh ids for its cards and their items, names kept', () => {
+    const final = newFinalRound();
+    const card = addCard(final, 'playing')!;
+    card.name = 'Leader hint';
+    card.elements.push(newImageEl('pic'));
+    const ids = (r: FinalRound) => (r.cards ?? []).flatMap((c) => [c.id, ...c.elements.map((e) => e.id)]);
+    const copy = reidRound(clone(final));
+    expect(ids(copy)).toHaveLength(3);
+    expect(ids(copy).some((id) => ids(final).includes(id))).toBe(false);
+    expect(copy.cards![0]).toMatchObject({ name: 'Leader hint', to: 'playing' });
+    expect(copy.cards![0].elements[1]).toMatchObject({ kind: 'image', media: 'pic' });
+  });
+
+  it('⧉ Same as the answer copies the Final’s answer onto its card, once', () => {
+    const final = newFinalRound();
+    setSlideText(final.answerSlide, 'Shrek');
+    const card = addCard(final, 'playing')!;
+    cardFromAnswer(final, card);
+    expect(slideText(card)).toBe('Shrek');
+    expect(card.elements[0].id).not.toBe(final.answerSlide.elements[0].id);
+    setSlideText(final.answerSlide, 'Donkey');
+    expect(slideText(card)).toBe('Shrek');
+  });
+
+  it('take the game’s clue text, as a tile’s do', () => {
+    const g = jeopardyGame();
+    const final = g.rounds[1] as FinalRound;
+    const card = addCard(final, 'playing')!;
+    expect(clueSlides(g)).toContain(card);
+    g.theme.clueFont = 'Comic Neue';
+    followClueText(g);
+    expect(mainText(card).font).toBe('Comic Neue');
   });
 });

@@ -1,19 +1,19 @@
 <!--
-  🤫 The cards out now (partner-clues spec §12.2): those sent with 🤫 Send a card… or from a tile's panel, each by the
-  label the app gave it ("Card 2 → Ann · ✓ seen"), never what's on it, with ↻ Send again, ✖ Take back and the 📋 copy
-  buttons. In one window this list is on stream: the tools row shows only how many are out, and the list opens only
-  when the host asks for it. With the audience window open, a card from the editor's 🤫 Cards or a tile's also says
-  which it is.
+  🤫 The cards out now (partner-clues spec §12.2): those sent with 🤫 Send a card… or from a tile's or a Final's panel,
+  each by the label the app gave it ("Card 2 → Ann · ✓ seen"), never what's on it, with ↻ Send again, ✖ Take back and
+  the 📋 copy buttons. In one window this list is on stream: the tools row shows only how many are out, and the list
+  opens only when the host asks for it. With the audience window open, a card from the editor's 🤫 Cards, a tile's or
+  a Final's also says which it is.
 -->
 <script lang="ts">
   import { announce } from '../../lib/announce';
   import { cardsLeftOff, teamsOn } from '../../lib/buzz';
   import { phoneCan, retryFiles } from '../../lib/cardfiles.svelte';
-  import { clueCardName, savedCardName, type Clue, type Game, type Id, type SentCard, type Session, type Slide } from '../../lib/model';
+  import { clueCardName, finalName, isFinal, savedCardName, type Game, type Id, type SentCard, type Session, type Slide } from '../../lib/model';
   import { copyWordsText } from '../../lib/partner';
   import { cardLinks, cardWords, phoneCard } from '../../lib/phonecard';
   import { buzzerOn, remote, roomHasCards, roomHasFiles } from '../../lib/remote.svelte';
-  import { listedCards, sendCardAgain, sentCardId, sentSlide, sentToText, tileCard } from '../../lib/sentcards';
+  import { listedCards, sendCardAgain, sentCardId, sentSlide, sentToText, tileCard, type CardHolder } from '../../lib/sentcards';
   import { clueName, findClueRef } from '../../lib/session';
   import { copyText } from '../standings';
   import { canCopyPicture, copyCardPicture, hasPicture } from './cardcopy';
@@ -33,9 +33,12 @@
    */
   const leftOff = $derived(new Set(cardsOn ? cardsLeftOff(game, session) : []));
   const LASTS: Record<SentCard['until'], string> = { round: 'until the round ends', tile: 'until the tile closes', host: 'until you take it back' };
-  /** Where a tile's card is: its tile as the board says it ("Movies $200"). */
-  const tileWhere = (cl: Clue): string => {
-    const ref = findClueRef(game, cl.id);
+  /** How long a card lasts, in words: one that lasts a Final's round lasts "until the Final ends" (it names no card). */
+  const lastsOf = (c: SentCard): string => (c.until === 'round' && isFinal(game.rounds.find((r) => r.id === c.round)) ? 'until the Final ends' : LASTS[c.until]);
+  /** Where a tile's or a Final's card is: its tile as the board says it ("Movies $200"), or the Final's name. */
+  const holderWhere = (h: CardHolder): string => {
+    if ('mode' in h) return finalName(h);
+    const ref = findClueRef(game, h.id);
     return ref ? clueName(game, ref) : '';
   };
 
@@ -80,10 +83,10 @@
       {:else if dual && 'clue' in c.content}
         <!-- (Two windows only: in one, a card's name next to who got it would be on stream.) -->
         {@const t = tileCard(game, c.content.clue, c.content.card)}
-        {#if t}<span class="muted small" data-card-from>· {tileWhere(t.clue)} · {clueCardName(t.card, t.n - 1)}</span>{/if}
+        {#if t}<span class="muted small" data-card-from>· {holderWhere(t.holder)} · {clueCardName(t.card, t.n - 1)}</span>{/if}
       {/if}
       <span class="small" class:warn={state.warn} data-card-state>· {state.text}</span>
-      <span class="muted small">· {LASTS[c.until]}</span>
+      <span class="muted small">· {lastsOf(c)}</span>
     </div>
     {#if left}<div class="small warn" data-card-left={c.label}>{left}</div>{/if}
     <div class="row btns">

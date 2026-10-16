@@ -2004,8 +2004,8 @@
   }
 
   /**
-   * ✖ Take back a card sent with 🤫 Send a card… or from a tile's panel: it goes from every phone it was sent to (the
-   * room's next state hasn't it), and the room deletes its files now unless another card still out uses them.
+   * ✖ Take back a card sent with 🤫 Send a card… or from a tile's or the Final's panel: it goes from every phone it was
+   * sent to (the room's next state hasn't it), and the room deletes its files now unless another card still out uses them.
    */
   function cardTakeBack(id: string): void {
     const c = session.cards?.find((x) => x.id === id);

@@ -1,6 +1,7 @@
 <!--
   Final round host flow (spec §6.4): one wager screen while the category is up (who plays, and each one's wager), then
-  the question, the answer and a one-by-one reveal.
+  the question, the answer and a one-by-one reveal; and its own 🤫 cards (TileCards), from the wagers to the last
+  reveal.
 -->
 <script lang="ts">
   import { onDestroy, tick, untrack } from 'svelte';
@@ -10,13 +11,14 @@
   import { buzzerOn } from '../../lib/remote.svelte';
   import { textOn } from '../../lib/colors';
   import { DragOrder } from '../../lib/dragorder.svelte';
-  import { finalName, formatPoints, MAX_POINTS, roundName, type Game, type Session, type WagerSource } from '../../lib/model';
+  import { cardSlides, finalName, formatPoints, MAX_POINTS, roundName, type Game, type Id, type Session, type WagerSource } from '../../lib/model';
   import {
     currentFinal, finalChoose, finalSetWager, finalShow, finalUnjudged, finalWagerCap, finalWagerEditable, finalWagerProblems, finalWagerRefused, finalWagersOk,
     hasWager, nameList, score, slidePosition, wagerFromPhone, wagerSentBy,
   } from '../../lib/session';
   import { finalNextStep, logged, startStep } from '../../lib/toolset';
   import { hostAsk, offerNext } from './slots.svelte';
+  import TileCards from './TileCards.svelte';
 
   let {
     game,
@@ -32,6 +34,7 @@
     onjudge,
     onback,
     onslide,
+    oncardtakeback = () => {},
   }: {
     game: Game;
     session: Session;
@@ -55,6 +58,8 @@
     onback: () => void;
     /** Its question slides (several): the next one (1) or the one before (-1). */
     onslide?: (d: 1 | -1) => void;
+    /** ✖ Take back on one of the Final's 🤫 cards. */
+    oncardtakeback?: (id: Id) => void;
   } = $props();
   /** A question with several slides, while it's up: which one is on screen ("Slide 2 of 3"). */
   const slidePos = $derived(slidePosition(session, game));
@@ -67,10 +72,9 @@
   const problems = $derived(finalWagerProblems(session, override));
   const wagersOk = $derived(finalWagersOk(session, override));
   const names = (ids: string[]) => nameList(ids.map((id) => byId[id]?.name ?? '?'));
-  const title = $derived.by(() => {
-    const r = currentFinal(session, game);
-    return r ? finalName(r) : 'the Final';
-  });
+  /** The Final being played. */
+  const round = $derived(currentFinal(session, game));
+  const title = $derived(round ? finalName(round) : 'the Final');
 
   let wagersEl = $state<HTMLElement>();
   const wagerBox = (id: string) => wagersEl?.querySelector<HTMLInputElement>(`input[data-wager="${id}"]`);
@@ -554,6 +558,10 @@
           </div>
         {/each}
       </div>
+    {/if}
+    <!-- The Final's own 🤫 cards: under the wager or reveal rows (every wager box comes first), above the step's buttons. -->
+    {#if round && cardSlides(round).length}
+      {#key round.id}<TileCards {game} {session} final={round} {dual} ontakeback={oncardtakeback} />{/key}
     {/if}
     <div class="row">
       {#if session.finalStep === 'wagers'}

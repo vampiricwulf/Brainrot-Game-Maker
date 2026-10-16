@@ -25,6 +25,7 @@ import {
   type Action,
   type BoardRound,
   type ClueCard,
+  type FinalRound,
   type Game,
   type Slide,
 } from './model';
@@ -128,6 +129,7 @@ export function validate(game: Game, room: { filesOff?: boolean } = {}): Problem
           tab: i,
           level: 'info',
         });
+      out.push(...finalCardProblems(game, round, name, i, !!room.filesOff));
       return;
     }
     if (isRpg(round)) {
@@ -247,6 +249,9 @@ export function validate(game: Game, room: { filesOff?: boolean } = {}): Problem
   for (const r of boardRounds(game))
     for (const c of r.categories)
       for (const cl of c.clues) for (const card of cardSlides(cl)) for (const id of slideMediaIds(card)) onCards.set(id, (onCards.get(id) ?? 0) + 1);
+  // (A Final's too.)
+  for (const r of game.rounds)
+    if (isFinal(r)) for (const card of cardSlides(r)) for (const id of slideMediaIds(card)) onCards.set(id, (onCards.get(id) ?? 0) + 1);
   for (const c of game.cards ?? []) for (const id of slideMediaIds(c)) onCards.set(id, (onCards.get(id) ?? 0) + 1);
   const cardOnly = [...onCards].filter(([id, n]) => known.has(id) && usage.get(id) === n).length;
   if (cardOnly)
@@ -358,8 +363,27 @@ export function partnerProblems(game: Game, round: BoardRound, tab: number, file
 }
 
 /**
- * A tile's card names (`where`: "Movies $200"): one that repeats what's on its card or the answer, and two cards that
- * read alike (one with no name is "Card 2"; said once, going to the second). Info only.
+ * A Final's 🤫 cards (`name`: the round's, "Final Jeopardy!"): more than MAX_CARDS, an empty one, what of one won't reach
+ * a phone (`filesOff`: the buzzer server in use takes no files), and their names (cardNameProblems). Each goes to its
+ * card.
+ */
+export function finalCardProblems(game: Game, round: FinalRound, name: string, tab: number, filesOff = false): Problem[] {
+  const out: Problem[] = [];
+  const cards = cardSlides(round);
+  const at = (card: ClueCard): Place => ({ tab: 'round', round: round.id, part: { kind: 'final', side: 'card', slide: card.id } });
+  const warn = (text: string, card: ClueCard) => out.push({ text, tab, level: 'warn', place: at(card) });
+  if (cards.length > MAX_CARDS) warn(`${name} has ${cards.length} cards: a Final holds ${MAX_CARDS} (＋ Card adds no more)`, cards[MAX_CARDS]);
+  cards.forEach((card, n) => {
+    if (!slideHasContent(card)) warn(`${name}: ${clueCardWords(card, n)} is empty: there's nothing on it to send`, card);
+    for (const t of cardFileProblems(game, card, filesOff)) warn(`${name}: ${clueCardWords(card, n)} has ${t}`, card);
+  });
+  out.push(...cardNameProblems(game, cards, round.answerSlide, name, tab, at));
+  return out;
+}
+
+/**
+ * A tile's or a Final's card names (`where`: "Movies $200", "Final Jeopardy!"): one that repeats what's on its card or
+ * the answer, and two cards that read alike (one with no name is "Card 2"; said once, going to the second). Info only.
  */
 function cardNameProblems(game: Game, cards: ClueCard[], answer: Slide, where: string, tab: number, at: (c: ClueCard) => Place): Problem[] {
   const out: Problem[] = [];
@@ -460,8 +484,8 @@ const norm = (s: string) => s.toLowerCase().replace(/[^\p{L}\p{N}]+/gu, ' ').tri
 
 /**
  * A 🤫 card's name repeats what's on it (its words, its phone title, or a file's name, at least 3 letters) or what's in
- * `also` (a tile's answer): in one window viewers read a card's name in the host panel and 🤫 Send a card…. ("Mission 1"
- * on "Your mission: …" doesn't.)
+ * `also` (a tile's or a Final's answer): in one window viewers read a card's name in the host panel and 🤫 Send a
+ * card…. ("Mission 1" on "Your mission: …" doesn't.)
  */
 export function nameGivesAway(game: Game, c: Slide & { name?: string }, also: Slide[] = []): boolean {
   const name = norm(c.name ?? '');

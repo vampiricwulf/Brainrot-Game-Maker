@@ -1,16 +1,17 @@
 <!--
   🤫 Send a card… (partner-clues spec §12.2), from the tools row in any round: who gets it (players or teams, people on
-  a team, everyone, or ⇄ everyone else), what (one of the editor's 🤫 Cards, a tile's 🤫 card made in the editor, or a
-  quick one: words typed or pasted, with a picture, video or sound from this computer, the game's 🖼 Media or pasted, or
-  a link; or the slide on screen, as viewers see it), and how long it lasts (until the round ends, or until taken back:
-  a 🤫 Card starts as its own). 📤 Send puts it on their phones, through the same buzzer room path as a partner clue's
-  cards; without one, 📋 copies it to them, or 🪟 shows it in the card window. Nothing goes but by that press, never
-  more cards than the room takes (✖ Take one back first), and never a card made in the editor again to exactly the
-  players it's out to, for as long (↻ Send again in the cards out is for that).
+  a team, everyone, or ⇄ everyone else), what (one of the editor's 🤫 Cards, a tile's or a Final's 🤫 card made in the
+  editor, or a quick one: words typed or pasted, with a picture, video or sound from this computer, the game's 🖼 Media
+  or pasted, or a link; or the slide on screen, as viewers see it), and how long it lasts (until the round ends, or
+  until taken back: a 🤫 Card starts as its own). 📤 Send puts it on their phones, through the same buzzer room path as
+  a partner clue's cards; without one, 📋 copies it to them, or 🪟 shows it in the card window. Nothing goes but by
+  that press, never more cards than the room takes (✖ Take one back first), and never a card made in the editor again
+  to exactly the players it's out to, for as long (↻ Send again in the cards out is for that).
   In one window viewers see this: the 🤫 Cards are listed by name and counted, never said; a tile's are listed by tile
   and name ("Card 2" when it has none) and counted, and only for tiles played or open (the others would say where a
-  Daily Double is); what's typed for a quick card is hidden unless the host asks (👁 Show); the 🖼 Media list (file
-  names) and what's on the card picked from the editor are only shown with the audience window open.
+  Daily Double is), and a Final's by the Final's name and theirs only once it's reached; what's typed for a quick card
+  is hidden unless the host asks (👁 Show); the 🖼 Media list (file names) and what's on the card picked from the editor
+  are only shown with the audience window open.
   With `preset`, the card an action offered (an RPG object's, an item's, a wheel slice's or a board space's 🤫 button):
   who it starts with and how long it lasts come from the action, the card is fixed (counted, never shown), and it goes
   only when the host presses 📤 Send here.
@@ -26,7 +27,7 @@
   import { tileToolUp } from '../../lib/live';
   import { ACCEPT, addMediaFile, identicalMedia, mediaKind } from '../../lib/media.svelte';
   import {
-    boardRounds, cardSlides, categoryLabel, clueCardName, clueValue, formatPoints, getClue, isRpg, roundName, savedCardName,
+    boardRounds, cardSlides, categoryLabel, clueCardName, clueValue, finalName, formatPoints, getClue, isFinal, isRpg, roundName, savedCardName,
     type CardTo, type Game, type Id, type MediaRef, type SentCard, type Session, type Slide, type SlideElement, type TeamMember,
   } from '../../lib/model';
   import { cardSummary, copyWordsText, toKey } from '../../lib/partner';
@@ -94,7 +95,10 @@
 
   // ---------- What ----------
 
-  /** A card made in the editor, as the list offers it: one of the editor's 🤫 Cards (`saved`), or a tile's (`clue`, `card`). */
+  /**
+   * A card made in the editor, as the list offers it: one of the editor's 🤫 Cards (`saved`), or a tile's or a Final's
+   * (`clue`: the clue's or the Final round's id, `card`).
+   */
   type FromEditor = { key: string; label: string; saved?: Id; clue?: Id; card?: Id };
   /**
    * The editor's 🤫 Cards, in its order: by name and counted ("Tip A · 1 line of words, 1 picture"), never what's on
@@ -132,8 +136,21 @@
     }
     return out;
   });
-  /** Every card made in the editor that can go now: the 🤫 Cards first, then the tiles'. */
-  const fromEditor = $derived([...mine, ...tiles]);
+  /**
+   * Each Final's 🤫 cards ("Final Jeopardy! · Leader hint · 1 line of words"), never what's on them. In one window only a
+   * Final being played or reached before: one not reached yet would put its cards' names on stream early.
+   */
+  const finals = $derived.by((): FromEditor[] =>
+    game.rounds.flatMap((r) =>
+      !isFinal(r) || (!dual && session.final?.roundId !== r.id && !session.finals?.[r.id])
+        ? []
+        : cardSlides(r).map((card, i) => ({ key: `${r.id}/${card.id}`, clue: r.id, card: card.id, label: `${finalName(r)} · ${clueCardName(card, i)} · ${cardSummary(game, card)}` })),
+    ),
+  );
+  /** Every card made in the editor that can go now: the 🤫 Cards first, then the tiles', then the Finals'. */
+  const fromEditor = $derived([...mine, ...tiles, ...finals]);
+  /** The kinds with any card, as the list's headings (only shown with two or more). */
+  const groups = $derived(([['🤫 Cards', mine], ['On tiles', tiles], ['In Finals', finals]] as const).filter(([, l]) => l.length));
 
   /**
    * Only what viewers see of a slide as it comes up: never a secret item, a hotspot, a see-through item, nor one that
@@ -193,7 +210,10 @@
   /** The game's pictures, videos and sounds (by name: offered only with the audience window open). */
   const mediaFiles = $derived(game.media.filter((m) => m.kind === 'image' || m.kind === 'video' || m.kind === 'audio'));
   const FILE_ICON: Partial<Record<MediaRef['kind'], string>> = { image: '🖼', video: '🎞', audio: '🔊' };
-  /** The card as it would go: an action's, a 🤫 Card or a tile's (as the editor has it), the slide on screen, or the quick one. */
+  /**
+   * The card as it would go: an action's, a 🤫 Card, a tile's or a Final's (as the editor has it), the slide on screen, or
+   * the quick one.
+   */
   const slide = $derived(
     preset
       ? preset.slide
@@ -402,7 +422,7 @@
     <div class="small" data-offer-card>{cardSummary(game, preset.slide) || 'Nothing on it'} <span class="muted">(what’s on it is in the editor, never shown here)</span></div>
   {:else}
     <div class="row wrap" role="radiogroup" aria-label="Which card">
-      <label class="check small" title="A card from the editor’s 🤫 Cards tab, or a tile’s 🤫 card"
+      <label class="check small" title="A card from the editor’s 🤫 Cards tab, or a tile’s or a Final’s 🤫 card"
         ><input type="radio" name="card-kind-{uid}" value="saved" bind:group={kind} disabled={!fromEditor.length} /> One made in the editor</label
       >
       <label class="check small"><input type="radio" name="card-kind-{uid}" value="quick" bind:group={kind} /> A quick card</label>
@@ -411,14 +431,17 @@
       >
     </div>
     {#if !dual}
-      <div class="muted small" data-saved-note>Cards on tiles not played yet are listed with the audience window open (viewers see this one).</div>
+      <div class="muted small" data-saved-note>
+        Cards on tiles not played yet are listed with the audience window open (viewers see this one), as are a Final’s before it comes up.
+      </div>
     {/if}
     {#if kind === 'saved'}
       {#if fromEditor.length}
         <select class="small" aria-label="The card to send" value={chosen?.key ?? ''} onchange={(e) => (pick = e.currentTarget.value)}>
-          {#if mine.length && tiles.length}
-            <optgroup label="🤫 Cards">{#each mine as s (s.key)}<option value={s.key}>{s.label}</option>{/each}</optgroup>
-            <optgroup label="On tiles">{#each tiles as s (s.key)}<option value={s.key}>{s.label}</option>{/each}</optgroup>
+          {#if groups.length > 1}
+            {#each groups as [label, list] (label)}
+              <optgroup {label}>{#each list as s (s.key)}<option value={s.key}>{s.label}</option>{/each}</optgroup>
+            {/each}
           {:else}
             {#each fromEditor as s (s.key)}<option value={s.key}>{s.label}</option>{/each}
           {/if}
@@ -437,10 +460,10 @@
       {:else}
         <div class="muted small">
           {!dual
-            ? 'No 🤫 Cards in this game, and no tile played yet has a card.'
+            ? 'No 🤫 Cards in this game, and no tile played yet (or Final reached) has a card.'
             : app.playerOnly
-              ? 'No 🤫 Cards in this game, and no tile has a card.'
-              : 'No card made in the editor yet: make one in the editor’s 🤫 Cards tab (or a tile’s ＋ Card).'}
+              ? 'No 🤫 Cards in this game, and no tile or Final has a card.'
+              : 'No card made in the editor yet: make one in the editor’s 🤫 Cards tab (or a tile’s or a Final’s ＋ Card).'}
         </div>
       {/if}
     {:else if kind === 'stage'}

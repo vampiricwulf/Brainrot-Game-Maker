@@ -1,8 +1,8 @@
 <!-- Host-only view of what's going on, including the answer before it's revealed (dual-window mode). -->
 <script lang="ts">
-  import { categoryLabel, clueCardName, finalName, formatPoints, questionSlides, slideText, type Game, type Session } from '../lib/model';
+  import { categoryLabel, clueCardName, finalName, formatPoints, questionSlides, slideText, type ClueCard, type Game, type Id, type Session } from '../lib/model';
   import { clueSlideIndex, coWinnersHold, currentClueInfo, currentFinal, nameList, ownPlayers, places, playerName, slidesRound, tiedLeaders, toolOnlyClue } from '../lib/session';
-  import { cardId, cardSends, cardSlides, partnerRules, recipientsText, sameAsAnswer, sendState, sentTo, tileGoesToLabel, toName } from '../lib/partner';
+  import { cardId, cardSends, cardSlides, finalGoesToLabel, partnerRules, recipientsText, sameAsAnswer, sendState, sentTo, tileGoesToLabel, toName } from '../lib/partner';
   import { cardsOut, sentCardId, sentState, sentToText } from '../lib/sentcards';
   import { cardWords, phoneCard, type CardItem, type PhoneItem } from '../lib/phonecard';
   import { buzzerOn, remote, roomHasCards } from '../lib/remote.svelte';
@@ -52,7 +52,7 @@
   /** A still of a picture or GIF, for the host's eyes (never a player: a card's video here could be taken for the stage's). */
   const thumb = (it: PhoneItem): string | undefined => (it.kind === 'picture' || it.kind === 'gif' ? (it.media && mediaUrls[it.media]) || it.url : undefined);
   /** How a card stands on the phones: "sent · ✓ seen". */
-  function cardOut(card: ReturnType<typeof cardSlides>[number]): string {
+  function cardOut(card: ClueCard): string {
     if (!pt || !phones) return '';
     const st = sendState(session, pt, card);
     if (st === 'unsent') return '';
@@ -62,14 +62,12 @@
     return ` · sent to ${sentTo(session, pt, card.id).map((t) => toName(session, t)).join(', ')}${st === 'changed' ? ' (changed since)' : ''}${any ? ' · ✓ seen' : ''}`;
   }
   /**
-   * Any other tile's card (🤫 Just you, 💡 Insider tip): who it went to from the tile's panel (or 🤫 Send a card…), else
-   * who it starts with there.
+   * Any other tile's card (🤫 Just you, 💡 Insider tip) or a Final's (`holder`: the clue's or the Final round's id): who
+   * it went to from the panel (or 🤫 Send a card…), else who it starts with there (`starts`).
    */
-  function tileOut(card: ReturnType<typeof cardSlides>[number]): string {
-    const clue = info?.clue;
-    if (!clue) return '';
-    const c = [...cardsOut(game, session)].reverse().find((x) => 'clue' in x.content && x.content.clue === clue.id && x.content.card === card.id);
-    if (!c) return `${tileGoesToLabel(clue.type, card.to, false)} (when you send it)`;
+  function heldOut(holder: Id, card: ClueCard, starts: string): string {
+    const c = [...cardsOut(game, session)].reverse().find((x) => 'clue' in x.content && x.content.clue === holder && x.content.card === card.id);
+    if (!c) return `${starts} (when you send it)`;
     // (No phone gets cards: it went to the 🪟 card window.)
     if (!phones) return `${sentToText(session, c.to)} · shown in the 🪟 card window as ${c.label}`;
     if (sentState(game, c) === 'edited') return `${sentToText(session, c.to)} · changed in the editor since it was sent (off the phones)`;
@@ -101,6 +99,23 @@
     <div class="label">{label}</div>
     <div class="notes">{text}</div>
   {/if}
+{/snippet}
+
+<!-- A tile's or a Final's 🤫 cards: who each goes to (`out`), its words and its items as a phone gets them. -->
+{#snippet cardsInfo(cards: ClueCard[], out: (c: ClueCard) => string, isAnswer: (c: ClueCard) => boolean)}
+  {#each cards as card, i (card.id)}
+    <div class="q"><b>{clueCardName(card, i)}</b> → {out(card)}</div>
+    {#if isAnswer(card)}<div class="muted small">This card shows the answer</div>{/if}
+    <div class="notes">{cardWords(card) || '(no words)'}</div>
+    <!-- Its items as a phone gets them (phoneCard), each with whether it reaches one; pictures as a small still. -->
+    {#each phoneCard(game, card, phoneCan(session)).items as it (it.el)}
+      {@const src = thumb(it)}
+      <div class="small item">
+        {#if src}<img class="thumb" {src} alt="" referrerpolicy="no-referrer" />{/if}
+        <span>{ITEM[it.kind][0]} {it.name} · {ITEM[it.kind][1]} · <span class:muted={!it.why}>{reach(it)}</span></span>
+      </div>
+    {/each}
+  {/each}
 {/snippet}
 
 {#snippet standingsList()}
@@ -181,22 +196,15 @@
       <div class="notes">{info.clue.hostNotes}</div>
     {/if}
     {#if cardSlides(info.clue).length}
-      {@const rules = partnerRules(info.clue)}
+      {@const clue = info.clue}
+      {@const rules = partnerRules(clue)}
       <div class="group" data-partner-cards-info>
         <div class="label">🤫 Cards {phones ? '(only the phones you send them to get them)' : '(you copy them to their players)'}</div>
-        {#each cardSlides(info.clue) as card, i (card.id)}
-          <div class="q"><b>{clueCardName(card, i)}</b> → {pt ? `${recipientsText(session, pt, rules, card)}${cardOut(card)}` : tileOut(card)}</div>
-          {#if sameAsAnswer(info.clue, card)}<div class="muted small">This card shows the answer</div>{/if}
-          <div class="notes">{cardWords(card) || '(no words)'}</div>
-          <!-- Its items as a phone gets them (phoneCard), each with whether it reaches one; pictures as a small still. -->
-          {#each phoneCard(game, card, phoneCan(session)).items as it (it.el)}
-            {@const src = thumb(it)}
-            <div class="small item">
-              {#if src}<img class="thumb" {src} alt="" referrerpolicy="no-referrer" />{/if}
-              <span>{ITEM[it.kind][0]} {it.name} · {ITEM[it.kind][1]} · <span class:muted={!it.why}>{reach(it)}</span></span>
-            </div>
-          {/each}
-        {/each}
+        {@render cardsInfo(
+          cardSlides(clue),
+          (c) => (pt ? `${recipientsText(session, pt, rules, c)}${cardOut(c)}` : heldOut(clue.id, c, tileGoesToLabel(clue.type, c.to, false))),
+          (c) => sameAsAnswer(clue, c),
+        )}
       </div>
     {/if}
   {:else if session.phase === 'final' && finalRound}
@@ -219,6 +227,17 @@
     {#if finalRound.hostNotes}
       <div class="label">Notes</div>
       <div class="notes">{finalRound.hostNotes}</div>
+    {/if}
+    {#if cardSlides(finalRound).length}
+      {@const fr = finalRound}
+      <div class="group" data-final-cards-info>
+        <div class="label">🤫 This Final’s cards {phones ? '(only the phones you send them to get them)' : '(you copy them to their players)'}</div>
+        {@render cardsInfo(
+          cardSlides(fr),
+          (c) => heldOut(fr.id, c, finalGoesToLabel(c.to, false)),
+          (c) => sameAsAnswer(fr, c),
+        )}
+      </div>
     {/if}
     {#if session.final}
       <!-- While wagers are taken, in the players' own order (as the wager boxes); then in the reveal order. -->

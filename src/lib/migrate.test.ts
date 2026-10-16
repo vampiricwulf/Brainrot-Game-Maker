@@ -478,6 +478,66 @@ describe('🤝 partner clues in saved games', () => {
   });
 });
 
+describe('a Final’s 🤫 cards in saved games', () => {
+  const plain = (g: unknown) => JSON.parse(JSON.stringify(g));
+  const finalOf = (g: Game) => {
+    const r = g.rounds[1];
+    if (!isFinal(r)) throw new Error('not a Final');
+    return r;
+  };
+
+  it('a game with none gains none', () => {
+    expect('cards' in finalOf(migrateGame(plain(jeopardyGame())))).toBe(false);
+  });
+
+  it('drops cards that aren’t a list, or an empty one; repairs each like a slide, with its own id', () => {
+    const g = plain(jeopardyGame());
+    g.rounds[1].cards = 'oops';
+    expect('cards' in finalOf(migrateGame(plain(g)))).toBe(false);
+    g.rounds[1].cards = [];
+    expect('cards' in finalOf(migrateGame(plain(g)))).toBe(false);
+    g.rounds[1].cards = [
+      { to: 'playing', background: {}, elements: [{ kind: 'text', text: null }] },
+      null,
+      5,
+      { id: 'f1', to: 'playing', elements: 'x' },
+      { id: 'f1', to: 'nobody', ...textSlide('b') },
+    ];
+    const out = finalOf(migrateGame(g)).cards!;
+    expect(out).toHaveLength(3);
+    expect(out.every((c) => typeof c.id === 'string' && c.id)).toBe(true);
+    expect(new Set(out.map((c) => c.id)).size).toBe(3);
+    expect(out[1].id).toBe('f1');
+    expect((out[0].elements[0] as { text: string }).text).toBe('');
+    expect([out[1].elements, out[1].background]).toEqual([[], {}]);
+  });
+
+  it('keeps “everyone playing” and nobody; a tile’s choices, or anything else, go to nobody', () => {
+    const g = plain(jeopardyGame());
+    g.rounds[1].cards = ['playing', 'nobody', 'picker', 'giver', 5].map((to, i) => ({ id: `f${i}`, to, ...textSlide('x') }));
+    expect(finalOf(migrateGame(g)).cards!.map((c) => c.to)).toEqual(['playing', 'nobody', 'nobody', 'nobody', 'nobody']);
+  });
+
+  it('keeps a name; one that isn’t text or is blank goes, a long one is cut to 60', () => {
+    const g = plain(jeopardyGame());
+    g.rounds[1].cards = ['Leader hint', 5, '  ', 'N'.repeat(61)].map((name, i) => ({ id: `f${i}`, name, to: 'playing', ...textSlide('x') }));
+    const out = finalOf(migrateGame(g)).cards!;
+    expect(out.map((c) => c.name)).toEqual(['Leader hint', undefined, undefined, 'N'.repeat(60)]);
+    expect(['name' in out[1], 'name' in out[2]]).toEqual([false, false]);
+  });
+
+  it('leaves a whole list exactly as it is', () => {
+    const g = plain(jeopardyGame());
+    const whole = [{ id: 'f1', name: 'Leader hint', to: 'playing', ...textSlide('Hint') }, { id: 'f2', to: 'nobody', ...textSlide('Side') }];
+    const before = plain(whole);
+    g.rounds[1].cards = whole;
+    const m = migrateGame(g);
+    expect(finalOf(m).cards).toBe(whole);
+    expect(finalOf(m).cards).toEqual(before);
+    expect(JSON.stringify(migrateGame(plain(m)))).toBe(JSON.stringify(m));
+  });
+});
+
 describe('🤫 Cards in saved games', () => {
   const plain = (g: unknown) => JSON.parse(JSON.stringify(g));
   const withCards = (cards: unknown) => migrateGame(plain({ ...jeopardyGame(), cards }));

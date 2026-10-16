@@ -1,7 +1,7 @@
 <!--
-  A 🤫 card's bar (a tile's, in the clue editor): its Card name (the host's own: phones never get it), who it starts
-  with, ⧉ Same as the answer on an empty one, 📱 On their phone and 🗑 Delete card. Typing the name is one undo step (the
-  watcher names it "Renamed card “…”").
+  A 🤫 card's bar (a tile's, in the clue editor; a Final's, in its editor): its Card name (the host's own: phones never
+  get it), who it starts with, ⧉ Same as the answer on an empty one, 📱 On their phone and 🗑 Delete card. Typing the
+  name is one undo step (the watcher names it "Renamed card “…”").
 -->
 <script lang="ts">
   import { app } from '../lib/app.svelte';
@@ -27,9 +27,9 @@
     index: number;
     goesList: CardGoesTo[];
     goesTo: (to: CardGoesTo, long?: boolean) => string;
-    /** Goes to's tooltip. */
+    /** Goes to's tooltip (a tile's or a Final's words). */
     goesTitle: string;
-    /** Its tile's answer slide (⧉, and what the name mustn't repeat). */
+    /** Its tile's or Final's answer slide (⧉, and what the name mustn't repeat). */
     answer: Slide;
     phoneView: boolean;
     ongoes: (to: CardGoesTo) => void;

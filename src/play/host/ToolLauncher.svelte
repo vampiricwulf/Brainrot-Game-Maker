@@ -276,7 +276,7 @@
     {/if}
   </div>
   <div class="pop">
-    <button onclick={(e) => toggle('card', e)} aria-haspopup="dialog" aria-expanded={menu === 'card'} title="🤫 Send a card…: a private card on some players’ phones, any time (one of your 🤫 Cards, a tile’s, or a quick one), or a 🪟 card window for one with no phone: only they see it, never on stream">🤫 <span class="word">Send a card…</span></button>
+    <button onclick={(e) => toggle('card', e)} aria-haspopup="dialog" aria-expanded={menu === 'card'} title="🤫 Send a card…: a private card on some players’ phones, any time (one of your 🤫 Cards, a tile’s or a Final’s, or a quick one), or a 🪟 card window for one with no phone: only they see it, never on stream">🤫 <span class="word">Send a card…</span></button>
     {#if menu === 'card'}
       <div class="menu wide" role="dialog" aria-label="Send a card" use:anchored={at}>
         <CardSend {game} {session} {dual} />

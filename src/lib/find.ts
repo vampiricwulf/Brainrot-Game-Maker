@@ -1,6 +1,7 @@
-// Find (Ctrl+F in the editor): every place in the game whose words match — clues (and a tile's 🤫 cards, by their words
-// or names), Final rounds, RPG screens and what's on them, board-game spaces and zones, items, stats, shops, wheels,
-// dice, deals, 🤫 cards, media files — with the place to go to (nav.svelte.ts's goTo, as the History tab's Go there).
+// Find (Ctrl+F in the editor): every place in the game whose words match — clues, Final rounds (and a tile's or a
+// Final's 🤫 cards, by their words or names), RPG screens and what's on them, board-game spaces and zones, items, stats,
+// shops, wheels, dice, deals, 🤫 cards, media files — with the place to go to (nav.svelte.ts's goTo, as the History
+// tab's Go there).
 import { categoryLabel, clueCardName, formatPoints, questionSlides, roundName, savedCardName, type Action, type Game, type Slide } from './model';
 import type { ClueSide, Place } from './historylabel';
 
@@ -77,6 +78,16 @@ export function findAll(game: Game, query: string, limit = 200): Hit[] {
       look('🏆', [r.category], `${rn} › Category`, { tab: 'round', round: r.id, part: { kind: 'final', side: 'q' } }, 'main [data-field="final-category"]');
       look('❓', slideWords(r.questionSlide), `${rn} › Question${r.extraSlides?.length ? ' 1' : ''}`, { tab: 'round', round: r.id, part: { kind: 'final', side: 'q' } }, 'main [data-field="q"]');
       r.extraSlides?.forEach((sl, j) => look('❓', slideWords(sl), `${rn} › Question ${j + 2}`, { tab: 'round', round: r.id, part: { kind: 'final', side: 'q', slide: sl.id } }, 'main [data-field="q"]'));
+      // Its 🤫 cards (after the question slides, as its editor's tabs have them), by their words or names.
+      r.cards?.forEach((card, j) =>
+        look(
+          '🤫',
+          [card.name, ...slideWords(card)],
+          `${rn} › ${clueCardName(card, j)}`,
+          { tab: 'round', round: r.id, part: { kind: 'final', side: 'card', slide: card.id } },
+          field([[card.name, 'main [data-field="card-name"]']]) ?? 'main [data-field="card"]',
+        ),
+      );
       look('💬', slideWords(r.answerSlide), `${rn} › Answer`, { tab: 'round', round: r.id, part: { kind: 'final', side: 'a' } }, 'main [data-field="a"]');
     } else if (r.mode === 'slides') {
       const n = questionSlides(r).length;

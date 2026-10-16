@@ -4,14 +4,15 @@
 // phones; a player taken out, a reload and Resume with my edits keep it right; and viewers never get Session.cards.
 import { describe, expect, it } from 'vitest';
 import { jeopardyGame } from './testgame';
-import { newImageEl, newRound, setSlideText, type BoardRound, type Game, type SavedCard, type SentCard, type Session } from './model';
-import { backToBoard, forViewers, goToRound, migrateSession, newSession, openClue, rebaseSession, removePlayer } from './session';
-import { addCard, cardHash, sendCards, setPartner, setPartnerGame } from './partner';
+import { newImageEl, newRound, setSlideText, type BoardRound, type FinalRound, type Game, type SavedCard, type SentCard, type Session } from './model';
+import { backToBoard, backToLastRound, finalChoose, finalNext, forViewers, goToRound, migrateSession, newSession, openClue, rebaseSession, removePlayer } from './session';
+import { addCard, cardHash, sendCards, setCardName, setPartner, setPartnerGame } from './partner';
 import { hostCards, hostState, buzzIdle, newBuzz, phoneStatus, roomCardCount, roomCardsFull, sessionCards } from './buzz';
 import {
   cardsOut,
   cleanTo,
   dropOverCards,
+  finalRecipients,
   linkItem,
   nextLabel,
   quickSlide,
@@ -22,6 +23,7 @@ import {
   sentState,
   sentToText,
   takeBackCard,
+  tileCard,
   tileRecipients,
 } from './sentcards';
 
@@ -365,6 +367,105 @@ describe('how long a card lasts', () => {
     const junk = { cards: 'junk' } as unknown as Session;
     repairSentCards(junk);
     expect(junk.cards).toBeUndefined();
+  });
+});
+
+describe('a Final’s own cards', () => {
+  /** setup()'s game at its Final (the third round, wagers up), with Card 1 "Leader hint" ("HINT-zork") and Card 2. */
+  function atFinal() {
+    const { g, session } = setup();
+    const final = g.rounds[2] as FinalRound;
+    setSlideText(final.questionSlide, 'The final question');
+    setSlideText(final.answerSlide, 'The final answer');
+    const hint = addCard(final, 'playing')!;
+    setSlideText(hint, 'HINT-zork');
+    setCardName(hint, 'Leader hint');
+    const side = addCard(final, 'nobody')!;
+    setSlideText(side, 'SIDE-frotz');
+    goToRound(session, g, 2);
+    return { g, session, final, hint, side };
+  }
+
+  it('found by the Final round’s id and their own, numbered there', () => {
+    const { g, final, hint, side } = atFinal();
+    expect(tileCard(g, final.id, hint.id)).toEqual({ holder: final, card: hint, n: 1 });
+    expect(tileCard(g, final.id, side.id)?.n).toBe(2);
+    expect(tileCard(g, final.id, 'nope')).toBeUndefined();
+    // (A tile's still are.)
+    const clue = (g.rounds[0] as BoardRound).categories[0].clues[1];
+    expect(tileCard(g, clue.id, clue.cards![0].id)?.holder).toBe(clue);
+  });
+
+  it('start with everyone playing it, in the players’ order, following the ticks; or nobody', () => {
+    const { session, hint, side } = atFinal();
+    expect(session.phase).toBe('final');
+    expect(finalRecipients(session, hint)).toEqual([{ seat: 'a' }, { seat: 'b' }, { seat: 'c' }]);
+    finalChoose(session, 'b', false);
+    expect(finalRecipients(session, hint)).toEqual([{ seat: 'a' }, { seat: 'c' }]);
+    finalChoose(session, 'b', true);
+    expect(finalRecipients(session, hint)).toEqual([{ seat: 'a' }, { seat: 'b' }, { seat: 'c' }]);
+    expect(finalRecipients(session, side)).toEqual([]);
+    expect(finalRecipients({ players: session.players }, hint)).toEqual([]);
+  });
+
+  it('a card from the Final’s panel lasts the Final, through every step, and goes when it ends (an Undo back into it doesn’t bring it back)', () => {
+    const { g, session, final, hint } = atFinal();
+    // (Not "until the tile closes": no tile is open in a Final.)
+    expect(sendCard(g, session, { to: [{ seat: 'a' }], content: { clue: final.id, card: hint.id }, until: 'tile' })).toBeNull();
+    const c = sendCard(g, session, { to: finalRecipients(session, hint), content: { clue: final.id, card: hint.id }, until: 'round' }, 1000)!;
+    expect(c).toMatchObject({ label: 'Card 1', until: 'round', round: final.id, hash: cardHash(hint), content: { clue: final.id, card: hint.id } });
+    expect(sessionCards(g, session, { files: {} })).toEqual([{ id: sentCardId(c), to: [{ seat: 'a' }, { seat: 'b' }, { seat: 'c' }], open: true, text: 'HINT-zork' }]);
+    // A card to three players is one card for the room.
+    expect(roomCardCount(g, session)).toBe(1);
+    for (const step of ['question', 'answer', 'reveal'] as const) {
+      finalNext(session, g);
+      expect(session.finalStep).toBe(step);
+      expect(cardsOut(g, session).map((x) => x.id)).toEqual([c.id]);
+      // (Never "the answer's on screen": it isn't the tile's answer.)
+      expect(sessionCards(g, session, { files: {} })![0].open).toBe(true);
+    }
+    finalNext(session, g);
+    expect(session.phase).toBe('end');
+    expect(session.cards).toBeUndefined();
+    backToLastRound(session, g, 2);
+    expect(session.phase).toBe('final');
+    expect(session.cards).toBeUndefined();
+    expect(told(g, session)).not.toMatch(/zork/);
+  });
+
+  it('◀ Previous round from the wagers takes it back too, and coming back to the Final doesn’t bring it back', () => {
+    const { g, session, final, hint } = atFinal();
+    sendCard(g, session, { to: [{ seat: 'b' }], content: { clue: final.id, card: hint.id }, until: 'round' });
+    goToRound(session, g, 1);
+    expect(session.cards).toBeUndefined();
+    goToRound(session, g, 2);
+    expect(session.cards).toBeUndefined();
+  });
+
+  it('renamed in the editor it stays on the phones; its words edited, it’s off them; the Final deleted, it’s gone', () => {
+    const { g, session, final, hint } = atFinal();
+    const c = sendCard(g, session, { to: [{ seat: 'a' }], content: { clue: final.id, card: hint.id }, until: 'round' })!;
+    setCardName(hint, 'Side bet');
+    expect(sentState(g, c)).toBe('sent');
+    expect(told(g, session)).not.toMatch(/Leader hint|Side bet/);
+    setSlideText(hint, 'HINT-changed');
+    expect(sentState(g, c)).toBe('edited');
+    expect(sessionCards(g, session, { files: {} })).toBeNull();
+    const edited: Game = JSON.parse(JSON.stringify(g));
+    edited.rounds.splice(2, 1);
+    expect(sentState(edited, c)).toBe('gone');
+    rebaseSession(session, g, edited);
+    expect(session.cards).toBeUndefined();
+  });
+
+  it('a reload keeps it, by the Final’s id', () => {
+    const { g, session, final, hint } = atFinal();
+    const c = sendCard(g, session, { to: [{ seat: 'a' }, { seat: 'c' }], content: { clue: final.id, card: hint.id }, until: 'round' }, 1000)!;
+    const saved: Session = JSON.parse(JSON.stringify(session));
+    repairSentCards(saved);
+    migrateSession(saved, g);
+    expect(saved.cards).toEqual([c]);
+    expect(sessionCards(g, saved, { files: {} })!.map((x) => x.id)).toEqual([sentCardId(c)]);
   });
 });
 

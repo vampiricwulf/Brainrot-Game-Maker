@@ -3,9 +3,9 @@
 // of the game (pushGame): the whole of it once, then only what changed, never with a 🤫 card's own file.
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 import { jeopardyGame } from './testgame';
-import { newImageEl, setSlideText, type BoardRound, type Game, type Session } from './model';
-import { newSession, openClue } from './session';
-import { addCard, sendCards, setPartner, setPartnerGame } from './partner';
+import { newImageEl, setSlideText, type BoardRound, type FinalRound, type Game, type Session } from './model';
+import { finalNext, goToRound, newSession, openClue } from './session';
+import { addCard, sendCards, setCardName, setPartner, setPartnerGame } from './partner';
 import { quickSlide, sendCard, sendCardAgain, sentCardId, takeBackCard } from './sentcards';
 import { CARD_WIN_TYPES, windowCards, windowFiles } from './cardwindow';
 
@@ -73,6 +73,23 @@ describe('what the card window shows', () => {
     expect(windowCards(g, session, 'b')).toEqual([]);
     sendCardAgain(g, session, c.id, 2000);
     expect(windowCards(g, session, 'b').map((x) => x.text)).toEqual(['WILD-edited']);
+  });
+
+  it('a Final’s card sent to their whole seat shows while the Final is on, never its name, its answer up too', () => {
+    const { g, session } = setup();
+    const final = g.rounds[1] as FinalRound;
+    const hint = addCard(final, 'playing')!;
+    setSlideText(hint, 'HINT-zork');
+    setCardName(hint, 'NAME-leader');
+    goToRound(session, g, 1);
+    const c = sendCard(g, session, { to: [{ seat: 'c' }], content: { clue: final.id, card: hint.id }, until: 'round' }, 1000)!;
+    finalNext(session, g);
+    finalNext(session, g);
+    expect(session.finalStep).toBe('answer');
+    const cat = windowCards(g, session, 'c');
+    expect(cat).toEqual([{ id: sentCardId(c), text: 'HINT-zork', media: [], open: true }]);
+    expect(JSON.stringify(cat)).not.toContain('NAME-');
+    expect(windowCards(g, session, 'a')).toEqual([]);
   });
 
   it('the open partner clue’s sends to the player, with their lines', () => {
