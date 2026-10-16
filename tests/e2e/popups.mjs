@@ -1,8 +1,9 @@
 // Pop-ups are always whole in the window and on top of everything (see src/lib/anchored.ts): the host panel's 📱 phones
 // list (a single window, under the stage and beside it, and with an audience window; at 1280×600 and 1920×1080, after
-// the window shrinks and with the panel scrolled), its 🎲 Dice menu and its Go to round list; the editor's ⋯ More menu;
-// a slide editor's Background ▾, ◼ Shape ▾, 🌐 Link and 🖼 Image pop-ups by the window's right edge; and the pre-game
-// screen's player picture picker. In a single window the phones list stays off the stage viewers see.
+// the window shrinks and with the panel scrolled), its 🎲 Dice menu (its Roll as tall as its field, under the stage and
+// beside it) and its Go to round list; the editor's ⋯ More menu; a slide editor's Background ▾, ◼ Shape ▾, 🌐 Link and
+// 🖼 Image pop-ups by the window's right edge; and the pre-game screen's player picture picker. In a single window the
+// phones list stays off the stage viewers see.
 import { chromium } from 'playwright-core';
 import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
@@ -157,6 +158,13 @@ const closePhones = async (page) => {
   await phones(page).waitFor({ state: 'detached' });
 };
 
+/** The open 🎲 Dice menu's Roll is as tall as the "e.g. 3d37" box beside it. */
+async function rollAsTall(page, what) {
+  const menu = page.getByRole('dialog', { name: 'Dice' });
+  const [field, roll] = await Promise.all([menu.getByPlaceholder('e.g. 3d37'), menu.getByRole('button', { name: 'Roll', exact: true })].map(async (l) => Math.round((await l.boundingBox()).height)));
+  assert(field === roll, `${what}: the 🎲 Dice menu's Roll button is as tall as the field beside it (${roll} / ${field}px)`);
+}
+
 async function nextRound(page) {
   await page.waitForTimeout(450);
   await page.locator('.rn button', { hasText: '▶' }).click();
@@ -195,6 +203,7 @@ try {
         const stage = await page.locator('.stage-box').boundingBox();
         assert(dice.y >= stage.y + stage.height - 1, 'and it stays off the stage');
       }
+      await rollAsTall(page, how);
       await page.keyboard.press('Escape');
 
       // Go to round: a list the browser draws; its box is in the window and not covered.
@@ -205,6 +214,12 @@ try {
       await page.locator('.panel .status', { hasText: 'Adventure' }).waitFor();
       await checkPhones(page, `RPG round, ${how}`, dual);
       await closePhones(page);
+      // (Beside the stage the column's buttons are smaller: Roll still matches its field.)
+      await page.locator('.panel .tl').getByRole('button', { name: '🎲 Dice', exact: true }).click();
+      await page.getByRole('dialog', { name: 'Dice' }).waitFor();
+      await rollAsTall(page, `RPG round, ${how}${(await page.locator('.panel.side').count()) ? ', the panel beside the stage' : ''}`);
+      await page.keyboard.press('Escape');
+      await page.getByRole('dialog', { name: 'Dice' }).waitFor({ state: 'detached' });
       await page.close();
     }
   }

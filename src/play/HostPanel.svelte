@@ -640,7 +640,7 @@
   });
 </script>
 
-<div class="panel" class:dual class:side class:final={session.phase === 'final' && !side}>
+<div class="panel" class:dual class:side class:final={session.phase === 'final' && !side} class:partnerclue={!!partner && !side}>
   <!-- What's going on, read out to screen readers as it changes (buttons and hints left out). Its chips on the right. -->
   <div class="status row" use:announceChanges>
     {#if session.phase === 'board'}
@@ -1381,9 +1381,18 @@
   }
   /* In the column: the action part takes the height left and scrolls; the tools and the fixed bar stay at its foot. */
   /* The Final in a single window: the panel keeps one height through its steps (the title card to the reveals), so the
-     stage viewers see doesn't change size; its rows scroll in there instead. */
-  .panel.final:not(.dual) {
+     stage viewers see doesn't change size; its rows scroll in there instead. A 🤝 partner clue's too, from PARTNER UP!
+     (the wheel, the question and 📤 Distribute, a steal) to the answer: the stage changes size only as the tile opens and
+     closes. Its box scrolls, with ✔ Got it / ✘ Missed (or the steal's row) kept in sight at its foot. */
+  .panel:is(.final, .partnerclue):not(.dual) {
     height: clamp(280px, 44vh, 440px);
+  }
+  .panel.partnerclue:not(.dual) :global(:is([data-partner-judge], [data-partner-steal])) {
+    position: sticky;
+    bottom: 0;
+    z-index: 1;
+    /* (The box's own green on the panel: what scrolls under it doesn't show through.) */
+    background: linear-gradient(rgba(43, 182, 115, 0.1), rgba(43, 182, 115, 0.1)), var(--panel);
   }
   /* Under the stage, when the panel runs out of height (a tall wheel editor, a long Final), the action part scrolls in
      its place: it never spills up over the stage, out of the scrollbar's reach (the row sits at its foot). */
@@ -1395,7 +1404,7 @@
     max-height: 100%;
     overflow: auto;
   }
-  .panel.final:not(.dual) > .toolsrow {
+  .panel:is(.final, .partnerclue):not(.dual) > .toolsrow {
     margin-top: auto;
   }
   .side > .act {
@@ -1521,9 +1530,11 @@
   .side .mode-host :global(.cards > *) {
     flex-grow: 1;
   }
-  /* Above a round's own box (RPG, board game, Final), the tools keep their height (a shop's "Short by…" answers) and
-     that box scrolls instead. A tall wheel editor still scrolls in here. */
-  .tools:has(~ .mode-host) {
+  /* Above a round's own box (RPG, board game, Final) or a 🤝 partner clue's, the tools keep their height (a shop's
+     "Short by…" answers, the wheel's ✎ Edit wheel) and that box scrolls instead. A tall wheel editor still scrolls in
+     here. */
+  .tools:has(~ .mode-host),
+  .tools:has(~ :global([data-partner-panel])) {
     flex-shrink: 0;
     max-height: 45vh;
   }
@@ -1620,6 +1631,16 @@
     /* (Room for a selected chip's ring.) */
     padding: 2px;
     margin: -2px;
+  }
+  /* A 🤝 partner clue's panel keeps one height (see .partnerclue), so there it's the action part that gives up height
+     first (it scrolls, ✔ Got it / ✘ Missed or the steal's row kept at its foot), down to room for that row and the main
+     button: the chips stay whole, quick buttons and all, while there's room. Then they scroll, as above. */
+  .panel.partnerclue:not(.dual) > .players {
+    flex-shrink: 1;
+  }
+  .panel.partnerclue:not(.dual) > .act {
+    flex-shrink: 1000;
+    min-height: 80px;
   }
   .p {
     display: flex;

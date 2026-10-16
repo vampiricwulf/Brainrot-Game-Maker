@@ -146,8 +146,8 @@ try {
   assert(true, '▶ Play goes back into the same room: same code, both phones still joined');
 
   // ---------- A phone picks its own colour (another player's is greyed out) ----------
-  await p1.getByRole('button', { name: '🎨 Change your colour' }).click();
-  const colours = p1.getByRole('group', { name: 'Pick your colour' });
+  await p1.getByRole('button', { name: '🎨 Change your color' }).click();
+  const colours = p1.getByRole('group', { name: 'Pick your color' });
   assert(
     (await colours.getByRole('button', { name: 'sky blue (another player has it)' }).isDisabled()) &&
       (await colours.locator('[aria-pressed="true"]').count()) === 1,

@@ -149,7 +149,7 @@
         <div class="color">
           <label class="field">Color<input type="color" value={themedText ? themeText : el.color} oninput={(e) => setTextColor(el as TextEl, e.currentTarget.value)} /></label>
           {#if ownOnTile}
-            <button class="small" onclick={() => ((el as TextEl).color = '#ffffff')} title="Back to the theme's text colour (it follows the theme when that changes)">↺ Theme colour</button>
+            <button class="small" onclick={() => ((el as TextEl).color = '#ffffff')} title="Back to the theme's text color (it follows the theme when that changes)">↺ Theme color</button>
           {/if}
         </div>
       </div>

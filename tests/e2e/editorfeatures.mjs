@@ -1,7 +1,7 @@
 // Editor features: the sample game and round templates, Import clues (and a column pasted on a category), Find
-// (Ctrl+F), Copy / Paste round, Most players, my theme (and its contrast warning), what the Wheels, Dice & Deals number boxes
-// keep, the Media and shortcuts filters, and the board-game spaces that move players back, skip a turn or roll again
-// (played, with undo).
+// (Ctrl+F), Copy / Paste round, Most players, my theme (and its contrast warning), the Wheels, Dice & Deals tab's whole
+// name, its ready-made menus' whole names (described in their tooltips) and what its number boxes keep, the Media and
+// shortcuts filters, and the board-game spaces that move players back, skip a turn or roll again (played, with undo).
 import { chromium } from 'playwright-core';
 import { copyFileSync, existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -279,8 +279,19 @@ try {
   assert((await page.getByText(/The values are hard to read on the tiles/).count()) === 0, '…and the warning goes once they’re apart');
   assert((await page.getByLabel('Tile glow color').count()) === 1, 'the tile glow colour box has a name');
 
-  // ---------- Wheels, Dice & Deals: what the number boxes keep ----------
-  await page.getByRole('button', { name: '🎡 Wheels, Dice & Deals' }).click();
+  // ---------- Wheels, Dice & Deals: its tab's whole name, the ready-made menus, what the number boxes keep ----------
+  const toolsTab = page.getByRole('button', { name: '🎡 Wheels, Dice & Deals' });
+  assert(await toolsTab.evaluate((b) => b.scrollWidth <= b.clientWidth && !!b.title), 'the 🎡 Wheels, Dice & Deals tab shows its whole name (on two lines where it must), with a tooltip');
+  await toolsTab.click();
+  for (const menu of ['📋 Ready-made wheel…', '📋 Ready-made deal…']) {
+    await page.getByRole('button', { name: menu }).click();
+    const items = page.locator('.cm [role="menuitem"]');
+    await items.first().waitFor();
+    const cut = await items.evaluateAll((els) => els.filter((b) => b.querySelector('.label').scrollWidth > b.querySelector('.label').clientWidth || !b.title).map((b) => b.textContent.trim()));
+    assert(cut.length === 0, `${menu}: each one's whole name shows, what it is in its tooltip${cut.length ? ` (not: ${cut.join(', ')})` : ''}`);
+    await page.keyboard.press('Escape');
+    await page.locator('.cm').waitFor({ state: 'detached' });
+  }
   await page.getByRole('button', { name: '＋ Add wheel' }).click();
   const spin = page.getByLabel('Spin (s)');
   for (const [typed, kept] of [['999', '30'], ['0.2', '1'], ['7', '7']]) {

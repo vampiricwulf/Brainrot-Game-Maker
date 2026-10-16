@@ -43,6 +43,9 @@ in plain words for the people who make and host games. Anything committed but no
 - An edit made the moment a game opened (or a new one started) could count as part of the game itself: opening another game didn't ask about it, and Ctrl+Z couldn't take it back. The editor now takes edits only once the game is ready for them, a moment after it shows.
 - With phone buzzers in one window, a Final or Daily Double wager sent from a phone no longer shows in the host panel viewers watch: the box says "hidden" and the row "📱 from phone ✔" until you show the wager at the reveals, ↶ Undo and the 📜 Log never name a phone's amount (even one sent while the audience window was open), and the panel no longer says "only you see it" there. (3f5af38, 5cf0327)
 - On a Daily Double, once a player is picked, the player chips drop their 1/2/3 key labels (number keys then type the wager), and the line says "Who found it? Click another to change." (3f5af38)
+- Single window: during a 🤝 partner clue the stage viewers see keeps one size from PARTNER UP! to the answer (it shrank at each step); the host panel's rows scroll instead, with ✔ Got it / ✘ Missed, the players' chips and a wheel's or dice's bar kept in sight. (257e637, 6523f28)
+- 📋 Ready-made wheel… and 📋 Ready-made deal… show each name in full, with its description as the tooltip, and the editor's 🎡 Wheels, Dice & Deals tab is no longer cut to "Wheels, Dice & De…". (257e637)
+- The 🎲 Dice pop-up's Roll button is as tall as the box beside it, the ▶ Play screen's 📺 On stream options use the same text size as ⚖ Game rules, and "colour" reads "color" everywhere, as in the rest of the app. (257e637, 6523f28)
 
 ## 2026-10-15
 
