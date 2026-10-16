@@ -4,7 +4,8 @@ import { describe, expect, it } from 'vitest';
 import { jeopardyGame } from '../../lib/testgame';
 import { setSlideText, type SavedCard } from '../../lib/model';
 import { newSession } from '../../lib/session';
-import { sendCard } from '../../lib/sentcards';
+import { remote } from '../../lib/remote.svelte';
+import { sendCard, sentCardId } from '../../lib/sentcards';
 import { sentLine } from './cardrow';
 
 /** Ann (a) and Bob (b); the editor's 🤫 Cards have the Wild card, out to Bob. */
@@ -29,5 +30,16 @@ describe('an edited card’s row', () => {
     expect(none.warn).toBe(true);
     expect(none.text).toContain('✖ Take it back and show it again');
     expect(none.text).not.toContain('↻');
+  });
+
+  it('a phone late for it is named only while phones get cards (a room that turned this window away keeps its list)', () => {
+    const { g, session, c } = setup();
+    remote.cardsLate = [{ id: sentCardId(c), seatId: 'b' }];
+    try {
+      expect(sentLine(g, session, c, false)).toEqual({ text: 'sent · Bob’s new phone hasn’t got it: ↻ Send again', warn: true });
+      expect(sentLine(g, session, c, false, false, false)).toEqual({ text: 'sent', warn: false });
+    } finally {
+      remote.cardsLate = [];
+    }
   });
 });

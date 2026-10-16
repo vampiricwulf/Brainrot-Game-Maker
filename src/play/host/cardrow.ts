@@ -43,7 +43,8 @@ export function seenSeats(session: Pick<Session, 'players' | 'remote'>, c: Pick<
  * `filesOn`: the room takes files. `off`: the buzzer room isn't told it (buzz.ts cardsLeftOff: a 🎭 deal handed out
  * before it took cards took them past what it holds); its row offers no ↻ Send again, as under a new id it would be
  * left off all the same. `phones`: phones get cards (a room that takes them). Without them the cards out offer no
- * ↻ Send again, so an edited card's row says to take it back and show it again.
+ * ↻ Send again, so an edited card's row says to take it back and show it again, and no phone is named late for it
+ * (remote.cardsLate keeps what a room that turned this window away last said).
  */
 export function sentLine(game: Game, session: Session, c: SentCard, filesOn: boolean, off = false, phones = true): { text: string; warn: boolean } {
   if (off) return { text: `not on the phones: more than ${CARDS_MAX} cards are out (copy it: 📋, or ✖ Take it back)`, warn: true };
@@ -58,7 +59,7 @@ export function sentLine(game: Game, session: Session, c: SentCard, filesOn: boo
   const seats = [...new Set(c.to.map((t) => t.seat))];
   const seen = seenSeats(session, c);
   const late: { seat: Id; by?: string }[] = [];
-  for (const l of remote.cardsLate) if (l.id === sentCardId(c) && !late.some((x) => x.seat === l.seatId && x.by === l.by)) late.push({ seat: l.seatId, by: l.by });
+  if (phones) for (const l of remote.cardsLate) if (l.id === sentCardId(c) && !late.some((x) => x.seat === l.seatId && x.by === l.by)) late.push({ seat: l.seatId, by: l.by });
   const out = [seen.length ? `✓ seen${seen.length < seats.length ? ` by ${nameList(seen.map(name))}` : ''}` : 'sent'];
   const slide = sentSlide(game, c);
   const f = slide && filesOn ? cardFileCounts(game, session, slide) : null;

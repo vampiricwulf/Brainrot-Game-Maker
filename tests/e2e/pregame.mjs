@@ -317,6 +317,8 @@ try {
   // "Resume with my edits" follows the editor's game, a moment after a change (App works it out, not each key here): a
   // player renamed here changes it, and named back, doesn't.
   const withEdits = resumeCard.getByRole('button', { name: 'Resume with my edits' });
+  // (Past App's wait after Keep & leave kept the game, so this is its answer, not the false it starts with.)
+  await page.waitForTimeout(400);
   assert((await withEdits.count()) === 0, 'nothing edited since: no “Resume with my edits”');
   const firstName = page.getByLabel('Player 1 name');
   const was = await firstName.inputValue();

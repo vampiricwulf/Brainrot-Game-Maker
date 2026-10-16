@@ -11,7 +11,9 @@
 // the chosen player's phone only, by a press, with neither its name nor a file name ever reaching the room. The same
 // card can't go to the same players twice (↻ Send again is for that); a host reload keeps it out under its id. Two
 // windows: the dialog shows what's on the card picked, and the cards out say which 🤫 Card each one is, never on the
-// audience window. A card changed in the editor (▶ Resume with my edits) comes off the phones until ↻ Send again.
+// audience window. A card changed in the editor (▶ Resume with my edits) comes off the phones until ↻ Send again. With
+// no phones (the room closed), one shown in the 🪟 card window comes out of it, and its row says to ✖ Take it back and
+// show it again: there's no ↻ Send again.
 import { chromium } from 'playwright-core';
 import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
@@ -501,6 +503,70 @@ try {
   assert(await until(() => !cards().length), '✖ Take back: no card out');
   assert(await until(async () => !(await cardsOn(bob))), 'Bob’s phone drops it');
   await offStream(host, 'the host page in one window', 'the end');
+  await host.keyboard.press('Escape');
+  await outList.waitFor({ state: 'detached' });
+
+  // =====================================================================================================================
+  // E. Changed in the editor, with no phones (the 🪟 card window)
+  // =====================================================================================================================
+  console.log('Changed in the editor, no phones:');
+  // Keep & leave, then ✕ Close the room in the bar over the editor: Resume game plays on with no phones getting cards.
+  await host.getByRole('button', { name: 'Exit' }).click();
+  await host.waitForTimeout(450);
+  await host.getByRole('button', { name: 'Keep & leave', exact: true }).click();
+  await editorReady(host);
+  const roomBar = host.locator('.status-bar .room-bar');
+  await roomBar.getByRole('button', { name: '✕ Close the room' }).click();
+  await roomBar.waitFor({ state: 'detached' });
+  await host.evaluate(() => (window.__seen.length = 0));
+  await host.locator('.status-bar .kept').getByRole('button', { name: 'Resume game' }).click();
+  await host.locator('.mode-ask .mode', { hasText: 'Single window' }).click();
+  await host.locator('.play .panel').waitFor();
+  dialog = await openSend();
+  assert((await dialog.getByRole('button', { name: '📤 Send' }).count()) === 0, 'the room closed: no 📤 Send (no phones get cards)');
+  const [win] = await Promise.all([host.waitForEvent('popup'), dialog.getByRole('button', { name: 'Card window for Bob' }).click()]);
+  watch(win, 'card window');
+  await win.getByText('For Bob only').waitFor();
+  await dialog.getByRole('radio', { name: 'One made in the editor' }).check();
+  await dialog.getByRole('combobox', { name: 'The card to send' }).selectOption('saved:sc_wild');
+  const bobChip = dialog.getByRole('button', { name: 'Bob', exact: true });
+  if ((await bobChip.getAttribute('aria-pressed')) !== 'true') await bobChip.click();
+  const show = dialog.getByRole('button', { name: '🪟 Show Bob' });
+  assert(await until(() => show.isEnabled()), 'the card window open for Bob: Wild card can be shown there (🪟 Show Bob)');
+  await show.click();
+  await tools.locator('[data-cards-out-count="1"]').waitFor();
+  await win.getByText(WILD2).waitFor();
+  assert(true, '🪟 Show Bob: the card window shows Wild card, with its words now');
+  await offStream(host, 'the host page in one window', 'a 🤫 Card shown in the card window');
+  await host.keyboard.press('Escape');
+  await dialog.waitFor({ state: 'detached' });
+
+  // Changed again in the editor, ▶ Resume with my edits: it's out of the card window, and there's no ↻ Send again to
+  // point at, so its row says to take it back and show it again.
+  const WILD3 = 'Wild3-qkzvx words';
+  await host.getByRole('button', { name: 'Exit' }).click();
+  await host.waitForTimeout(450);
+  await host.getByRole('button', { name: 'Keep & leave', exact: true }).click();
+  await editorReady(host);
+  await cardsTab.click();
+  await row('Wild card').click();
+  await host.waitForFunction(() => document.querySelector('main [data-field="card-name"]')?.value === 'Wild card');
+  await wordsBox.fill(WILD3);
+  await resumeEdits.waitFor();
+  await undoSays('Undo: Edited card “Wild3-qkzvx words”');
+  await host.evaluate(() => (window.__seen.length = 0));
+  await resumeEdits.click();
+  await host.locator('.mode-ask .mode', { hasText: 'Single window' }).click();
+  await host.locator('.play .panel').waitFor();
+  await outButton.click();
+  await outList.waitFor();
+  const noPhones = await words(outList.locator('[data-card-out] [data-card-state]'));
+  assert(noPhones.includes('changed in the editor') && noPhones.includes('✖ Take it back and show it again') && !noPhones.includes('↻'), `no phones: the cards out say it changed in the editor, and to ✖ Take it back and show it again (${noPhones})`);
+  assert((await outList.getByRole('button', { name: /^Send .+ again$/ }).count()) === 0, 'and offer no ↻ Send again');
+  await outList.getByRole('button', { name: /^Take .+ back$/ }).click();
+  await tools.locator('[data-cards-out-count="0"]').waitFor();
+  assert(true, '✖ Take back: no card out');
+  await offStream(host, 'the host page in one window', 'no phones, the end');
 
   assert(!errors.length, `no page errors (${errors.join('; ')})`);
   console.log('Saved card tests passed');
