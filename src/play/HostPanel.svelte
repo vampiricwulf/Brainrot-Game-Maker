@@ -1530,9 +1530,11 @@
   .side .mode-host :global(.cards > *) {
     flex-grow: 1;
   }
-  /* Above a round's own box (RPG, board game, Final), the tools keep their height (a shop's "Short by…" answers) and
-     that box scrolls instead. A tall wheel editor still scrolls in here. */
-  .tools:has(~ .mode-host) {
+  /* Above a round's own box (RPG, board game, Final) or a 🤝 partner clue's, the tools keep their height (a shop's
+     "Short by…" answers, the wheel's ✎ Edit wheel) and that box scrolls instead. A tall wheel editor still scrolls in
+     here. */
+  .tools:has(~ .mode-host),
+  .tools:has(~ :global([data-partner-panel])) {
     flex-shrink: 0;
     max-height: 45vh;
   }
@@ -1629,6 +1631,16 @@
     /* (Room for a selected chip's ring.) */
     padding: 2px;
     margin: -2px;
+  }
+  /* A 🤝 partner clue's panel keeps one height (see .partnerclue), so there it's the action part that gives up height
+     first (it scrolls, ✔ Got it / ✘ Missed or the steal's row kept at its foot), down to room for that row and the main
+     button: the chips stay whole, quick buttons and all, while there's room. Then they scroll, as above. */
+  .panel.partnerclue:not(.dual) > .players {
+    flex-shrink: 1;
+  }
+  .panel.partnerclue:not(.dual) > .act {
+    flex-shrink: 1000;
+    min-height: 80px;
   }
   .p {
     display: flex;

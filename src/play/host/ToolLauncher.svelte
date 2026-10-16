@@ -150,7 +150,7 @@
         <div class="grid">
           {#each QUICK_DICE as q}<button class="small" onclick={() => dice(q.sides, q.count, q.label)}>{q.label}</button>{/each}
         </div>
-        <div class="row">
+        <div class="row custom">
           <input placeholder="e.g. 3d37" bind:value={custom} onkeydown={(e) => e.key === 'Enter' && rollCustom()} />
           <button onclick={rollCustom}>Roll</button>
         </div>
@@ -428,6 +428,10 @@
   input:not([type]) {
     flex: 1;
     min-width: 0;
+  }
+  /* Roll as tall as its field, whatever its text size (beside the stage the column's buttons are smaller). */
+  .custom > button {
+    align-self: stretch;
   }
   .winpick {
     display: flex;
