@@ -1302,10 +1302,12 @@
   nav > * {
     flex-shrink: 0;
   }
+  /* (A little less padding than other buttons: with three boards and 🤫 Cards the sidebar still fits at 720 px.) */
   nav > button {
     text-align: left;
     overflow: hidden;
     text-overflow: ellipsis;
+    padding-block: 5px;
   }
   /* (A long name goes on two lines where it doesn't fit, rather than lose its last word to "…".) */
   nav > button.wrap {
