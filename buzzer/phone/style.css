@@ -341,8 +341,11 @@ input:focus, textarea:focus { outline: none; border-color: var(--accent); }
 #wager-state { color: #6fdc8c; font-weight: 600; }
 #wager-state.plain-note { color: var(--muted); font-weight: 400; }
 @media (min-aspect-ratio: 4/3) and (max-height: 600px), (min-aspect-ratio: 4/3) and (max-height: 900px) and (hover: hover) and (pointer: fine) {
-  /* The box takes the right side, top to bottom (its notes need the room); the name and score stay on the left. */
-  #wager-form, #answer-form { grid-area: buzz; grid-row: 1 / span 2; align-self: center; width: min(420px, 56vw); gap: 6px; }
+  /*
+   * The box takes the right side, top to bottom (its notes need the room); the name and score stay on the left. One
+   * taller than its rows runs on down the page, never up over the header.
+   */
+  #wager-form, #answer-form { grid-area: buzz; grid-row: 1 / span 2; align-self: safe center; width: min(420px, 56vw); gap: 6px; }
   #wager-head { font-size: 19px; }
   #wager-in { font-size: 26px; padding: 8px; }
   #wager-form .primary { min-height: 46px; }
@@ -448,20 +451,31 @@ input:focus, textarea:focus { outline: none; border-color: var(--accent); }
   color: var(--muted);
 }
 #cards-late { color: #ffd27a; }
-/* A buzzer that's up stays where the finger is: cards that come beside it go under it (one above the other). */
+/*
+ * A buzzer that's up stays where the finger is: cards that come beside it go under it, below the name (one above the
+ * other; the key hint stays under the button). Tab goes in the order they're drawn, where the browser can.
+ */
+#s-buzz.cards-under { reading-flow: flex-visual; }
 #s-buzz.cards-under #cards { order: 1; }
-#s-buzz.cards-under .side.foot { order: 2; }
 /* In the buzzer's place: the page scrolls past a tall card rather than cut its top off. */
 #s-buzz.cards-up { justify-content: safe center; }
 @media (min-aspect-ratio: 4/3) and (max-height: 600px), (min-aspect-ratio: 4/3) and (max-height: 900px) and (hover: hover) and (pointer: fine) {
   /* Side by side: the cards take the right side, top to bottom, and scroll there; the name and score stay on the left. */
   #s-buzz.cards-up #cards { grid-area: buzz; grid-row: 1 / span 2; align-self: center; width: min(520px, 56vw); max-height: calc(100dvh - 84px); overflow-y: auto; }
   .card-item img, .card-item video, .card-item canvas { max-height: 70dvh; }
-  /* With a box (or the buzzer) on the right, the cards go under the clue. */
-  #s-buzz.cards-aside { grid-template-rows: auto minmax(0, 1fr) auto; grid-template-areas: 'clue buzz' 'cards buzz' 'foot buzz'; }
-  /* As tall as the screen: an open card scrolls in the room left, not the page (that would push the box or clue off). */
+  /* With a box (or the buzzer) on the right, the cards go under the clue, the name and score at the bottom. */
+  #s-buzz.cards-aside { grid-template-rows: auto auto 1fr; grid-template-areas: 'clue buzz' 'cards buzz' 'foot buzz'; }
+  #s-buzz.cards-aside .side { align-self: start; }
+  #s-buzz.cards-aside .side.foot { align-self: end; }
+  /*
+   * As tall as the screen: an open card scrolls in the room left, not the page (that would push the box or clue off).
+   * Never too short to show a covered card's Tap to see, though (a long clue gets less room, and past that the page
+   * scrolls a little); and the clue and cards together are as tall as a box beside them, so the box stays put as a
+   * card opens, and a covered one shows down to its Tap to see.
+   */
   #s-buzz.cards-aside { min-height: 0; }
-  #s-buzz.cards-aside #cards { grid-area: cards; max-width: none; max-height: 100%; overflow-y: auto; align-self: start; }
+  #s-buzz.cards-aside #clue { max-height: 30dvh; }
+  #s-buzz.cards-aside #cards { grid-area: cards; max-width: none; min-height: min(150px, 40dvh); max-height: 100%; overflow-y: auto; align-self: start; }
 }
 
 /* ---- Desktop and laptop: a mouse and a keyboard ---- */
