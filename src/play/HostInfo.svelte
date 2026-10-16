@@ -2,7 +2,7 @@
 <script lang="ts">
   import { categoryLabel, finalName, formatPoints, questionSlides, slideText, type Game, type Session } from '../lib/model';
   import { clueSlideIndex, coWinnersHold, currentClueInfo, currentFinal, nameList, ownPlayers, places, playerName, slidesRound, tiedLeaders, toolOnlyClue } from '../lib/session';
-  import { cardId, cardSends, cardSlides, partnerRules, recipientsText, sameAsAnswer, sendState, sentSeats } from '../lib/partner';
+  import { cardId, cardSends, cardSlides, partnerRules, recipientsText, sameAsAnswer, sendState, sentTo, toName } from '../lib/partner';
   import { cardWords, phoneCard, type CardItem, type PhoneItem } from '../lib/phonecard';
   import { buzzerOn, remote, roomHasCards } from '../lib/remote.svelte';
   import { phoneCan, uploads } from '../lib/cardfiles.svelte';
@@ -32,7 +32,7 @@
   const ptName = (id?: string) => (id ? (session.players.find((p) => p.id === id)?.name ?? '?') : '');
   const ITEM: Record<CardItem['kind'], [string, string]> = { picture: ['🖼', 'picture'], gif: ['🖼', 'GIF'], video: ['🎞', 'video'], sound: ['🔊', 'sound'], embed: ['🌐', 'online video'] };
   /** The cards go to phones (a buzzer room that takes them), not only by 📋 copying. */
-  const phones = $derived(buzzerOn(game.settings) && !!remote.code && roomHasCards());
+  const phones = $derived(buzzerOn(game.settings) && !!remote.code && remote.status !== 'off' && remote.status !== 'error' && roomHasCards());
   /** How an item reaches a phone, in a few words ("✔ goes to phones", "📋 copy it: too big for phones"). */
   function reach(it: PhoneItem): string {
     if (!phones) return '📋 you copy it';
@@ -56,7 +56,7 @@
     if (st === 'edited') return ' · changed in the editor since it was sent (off the phones)';
     const seen = session.remote?.cardsSeen ?? {};
     const any = cardSends(pt, card.id).some((x) => (seen[cardId(pt.clue, x)] ?? []).length);
-    return ` · sent to ${sentSeats(session, pt, card.id).map(ptName).join(', ')}${st === 'changed' ? ' (changed since)' : ''}${any ? ' · ✓ seen' : ''}`;
+    return ` · sent to ${sentTo(session, pt, card.id).map((t) => toName(session, t)).join(', ')}${st === 'changed' ? ' (changed since)' : ''}${any ? ' · ✓ seen' : ''}`;
   }
   const ask = $derived.by(() => {
     const o = app.live.overlay;
@@ -104,7 +104,15 @@
     {/if}
     {#if pt}
       <div class="dd partner" data-partner-info>
-        🤝 Partner clue{pt.pickerId ? ` · ${ptName(pt.pickerId)}` : ''}{pt.partnerId ? (pt.partnerId === pt.pickerId ? ' · Solo' : ` + ${ptName(pt.partnerId)}`) : pt.pickerId ? ' · choosing a partner' : ''}
+        🤝 Partner clue{pt.pickerId ? ` · ${ptName(pt.pickerId)}` : ''}{pt.partnerId
+          ? pt.partnerId === pt.pickerId
+            ? pt.member
+              ? ` · ${pt.member.name} describes to the rest of the team`
+              : ' · Solo'
+            : ` + ${ptName(pt.partnerId)}`
+          : pt.pickerId
+            ? ' · choosing a partner'
+            : ''}
       </div>
     {/if}
     <!-- A clue with several question slides: the one on screen, and the next one coming. -->

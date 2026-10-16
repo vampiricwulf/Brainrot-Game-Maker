@@ -1,9 +1,11 @@
 // Buzzer mode's state during a clue: whether the buzzers are open, who is answering, who already missed it. The host
 // decides all of it (keys, the host panel, a phone's buzz that the buzzer room let through); it lives in Live, so the
 // audience window shows "🔔 Ann is answering", and the phones get it through hostState().
-import { CARDS_BYTES, CARDS_MAX, clip, WAGER_MAX, type BuzzPhase, type HostCard, type HostState, type WagerAsk, type AnswerAsk } from './buzzproto';
-import { categoryLabel, finalName, formatPoints, PARTNER_GAMES, roundName, type Game, type Id, type PartnerState, type Session, type Slide, type TextEl } from './model';
-import { cardHash, cardId, cardLines, cardSlides, giverLine, partnerRoles, partnerRules, partnerVerdict, partsLine, resultLine } from './partner';
+import { CARD_HINT_MAX, CARDS_BYTES, CARDS_MAX, clip, WAGER_MAX, type BuzzPhase, type HostCard, type HostState, type WagerAsk, type AnswerAsk } from './buzzproto';
+import { categoryLabel, finalName, formatPoints, PARTNER_GAMES, roundName, type CardSend, type CardTo, type Game, type Id, type PartnerState, type Session, type Slide, type TextEl } from './model';
+import {
+  cardHash, cardId, cardLines, cardSlides, describer, giverLine, partnerRoles, partnerRules, partnerVerdict, partOfTo, partsLine, partWords, resultLine, type CardPart,
+} from './partner';
 import { cardWords, clipWords, phoneCard, type PhoneCan } from './phonecard';
 import { clueMarks, currentClueInfo, currentFinal, ddCap, finalWagerCap, score, shownQuestionSlide, tiedForFirst, wagerFromPhone } from './session';
 
@@ -235,9 +237,23 @@ function partnerStatusOff(game: Game, session: Session, s: PartnerState): HostSt
   if (!picker) return off('🤝 Partner clue!', 'Nobody buzzes on this one');
   const { giver, guesser, solo } = partnerRoles(s);
   const paired = here(s.partnerId);
+  // Teams: one person on the picker's team describes to the rest (spec §10.2). The team's line goes to every phone on
+  // it, the describer's too, so it says who describes; their part is on their cards.
+  const m = team ? describer(s) : undefined;
+  if (m) {
+    const names = { giver: m.name, guesser: nameOf(picker) };
+    const marks = clueMarks(session, s.clue, s.at ?? 0);
+    if (s.stage !== 'pick' && !session.revealed && partnerVerdict(s, marks).judged) return off(resultLine(s, marks, (id) => nameOf(id) ?? '?', game.settings.currencySymbol));
+    const text = `🤝 ${partsLine(rules, names, { past: session.revealed })}`;
+    if (session.revealed) return off(text);
+    const then = s.stage === 'pick' ? 'wait for the question' : rules.typeGuess ? 'type your guess' : 'say it out loud';
+    return off(text, 'Nobody buzzes on this one', { ids: [picker], text: '🤝 Your team plays this one!', sub: `${m.name} ${DOING_NOW[rules.game]}: ${then}` });
+  }
   if (s.stage === 'pick') {
     if (!paired) return off('🤝 Partner clue', `${nameOf(picker)} needs a partner…`, { ids: [picker], text: `🤝 ${team ? 'Your team’s' : 'Your'} partner clue!`, sub: 'Spinning for your partner…' });
-    if (solo) return off('🤝 Partner clue', `${nameOf(picker)} plays it alone`, { ids: [picker], text: `🤝 ${team ? 'Your team plays' : 'You play'} this one alone!`, sub: 'Wait for the question' });
+    // (Teams: the picker's own team plays it, one of them describing once the host has chosen who: §10.2.)
+    if (solo && team) return off('🤝 Partner clue', `${nameOf(picker)} plays it`, { ids: [picker], text: '🤝 Your team plays this one!', sub: 'Wait for the question' });
+    if (solo) return off('🤝 Partner clue', `${nameOf(picker)} plays it alone`, { ids: [picker], text: '🤝 You play this one alone!', sub: 'Wait for the question' });
     return off(`🤝 ${nameOf(picker)} + ${nameOf(s.partnerId)}`, 'Partner clue: nobody buzzes', { ids: [picker, s.partnerId!], text: `🤝 ${team ? 'Your team plays' : 'You two play'} this one!`, sub: 'Wait for the question' });
   }
   if (!paired) return off(`🤝 Partner clue: ${nameOf(picker)}`, 'Nobody buzzes on this one');
@@ -257,10 +273,13 @@ function partnerStatusOff(game: Game, session: Session, s: PartnerState): HostSt
 
 /**
  * The open 🤝 partner clue's cards as the buzzer room gets them (partner-clues spec §14.9, §19.1): built only from what
- * the host sent (session.partner.sent), one card per send, to exactly its recipients still in the game. Never the clue's
- * cards by themselves. A send whose card was edited since (its hash) is left out, so a phone never shows what the host
- * didn't send. Open (not "The answer's on screen") until the answer shows. `room`: the files the room holds (null: it
- * takes none). Null when nothing is out.
+ * the host sent (session.partner.sent), to exactly its recipients still in the game. Never the clue's cards by
+ * themselves. A send whose card was edited since (its hash) is left out, so a phone never shows what the host didn't
+ * send. One card per send, or, for a send to more than one part (the describer and someone else, say), one per part
+ * with its own lines (its id `<send>~g`, `~q`, `~o` or `~p`: sendOf), each marked shared; which a phone has stays as it
+ * was sent (CardTo.part). While one person on the picker's team describes to the rest, the rest of the team gets a
+ * line with the describer's card and nothing of it (`<send>~t`). Open (not "The answer's on screen") until the answer
+ * shows. `room`: the files the room holds (null: it takes none). Null when nothing is out.
  */
 export function partnerCards(game: Game, session: Session, room: PhoneCan): HostCard[] | null {
   const s = session.partner;
@@ -268,26 +287,59 @@ export function partnerCards(game: Game, session: Session, room: PhoneCan): Host
   if (!s?.sent?.length || !clue || clue.id !== s.clue) return null;
   const rules = partnerRules(clue);
   const nameOf = (id: Id) => session.players.find((p) => p.id === id)?.name ?? '?';
+  const wire = (t: CardTo): HostCard['to'][number] => ({ seat: t.seat, ...(t.member ? { member: t.member.id } : t.except?.length ? { except: [...t.except] } : {}) });
   const out: HostCard[] = [];
+  /** The describer's card went out, and the rest of their team has had no card of this clue: their line goes with it. */
+  let roleFor: { send: CardSend; to: CardTo } | null = null;
+  let restHas = false;
   for (const send of s.sent) {
     const card = cardSlides(clue).find((c) => c.id === send.card);
     if (!card || cardHash(card) !== send.hash) continue;
-    const to = send.to.filter((t) => session.players.some((p) => p.id === t.seat)).map((t) => ({ seat: t.seat }));
+    const to = send.to.filter((t) => session.players.some((p) => p.id === t.seat));
     if (!to.length) continue;
     const pc = phoneCard(game, card, room);
-    const lines = cardLines(rules, s, card, to.map((t) => t.seat), nameOf);
+    const id = cardId(clue.id, send);
+    const groups: { part: CardPart; to: CardTo[] }[] = [];
+    for (const t of to) {
+      const part = t.part ?? partOfTo(s, t);
+      const g = groups.find((x) => x.part === part);
+      if (g) g.to.push(t);
+      else groups.push({ part, to: [t] });
+    }
+    for (const g of groups)
+      out.push({
+        id: groups.length > 1 ? `${id}~${PART_ID[g.part]}` : id,
+        to: g.to.map(wire),
+        open: !session.revealed,
+        ...cardLines(rules, s, card, g.to, nameOf),
+        ...(groups.length > 1 ? { shared: true } : {}),
+        ...(pc.title ? { title: pc.title } : {}),
+        ...(pc.text ? { text: pc.text } : {}),
+        ...(pc.media.length ? { media: pc.media } : {}),
+      });
+    const one = to.find((t) => t.member && t.seat === s.pickerId);
+    if (one && !roleFor) roleFor = { send, to: one };
+    if (to.some((t) => !t.member && t.seat === s.pickerId)) restHas = true;
+  }
+  if (roleFor && !restHas && roleFor.to.member) {
+    const m = roleFor.to.member;
     out.push({
-      id: cardId(clue.id, send),
-      to,
+      id: `${cardId(clue.id, roleFor.send)}~t`,
+      to: [{ seat: roleFor.to.seat, except: [m.id] }],
       open: !session.revealed,
-      ...lines,
-      ...(pc.title ? { title: pc.title } : {}),
-      ...(pc.text ? { text: pc.text } : {}),
-      ...(pc.media.length ? { media: pc.media } : {}),
+      role: partWords(rules).guesser,
+      hint: clip(`🎯 Your team is guessing! ${m.name} ${DOING_NOW[rules.game]}`, CARD_HINT_MAX),
+      tap: false,
     });
   }
   return out.length ? fitCards(out.slice(-CARDS_MAX)) : null;
 }
+
+/** The last bit of a card's id on the wire for each part, when a send goes as one card per part (partnerCards). */
+const PART_ID: Record<CardPart, string> = { giver: 'g', guesser: 'q', other: 'o', solo: 'p' };
+
+/** The send a card on the wire is (cardId): one per part (`~g`…) and the team's line (`~t`) are parts of their send's. */
+export const sendOf = (wireId: string): string => wireId.replace(/~[gqopt]$/, '');
 
 const jsonBytes = (x: unknown) => new TextEncoder().encode(JSON.stringify(x)).length;
 
@@ -308,6 +360,12 @@ export function fitCards(cards: HostCard[]): HostCard[] {
 }
 
 /**
+ * A partner clue's typed guesses are one round per play of the tile (when it opened), not per clue: a tile put back or
+ * reopened and played again starts with no guess (partner-clues spec §15.1). Undo and a reload keep it.
+ */
+export const partnerAnswerId = (s: Pick<PartnerState, 'clue' | 'at'>): string => `${s.clue}@${s.at ?? 0}`;
+
+/**
  * The guesser's ✍ box on a partner clue whose guesser types their guess (PartnerRules.typeGuess): their seat only, from
  * the question on (never during PARTNER UP!, so the question's words reach phones no earlier than the stream shows
  * them), until the answer shows or it's judged. `got`: the guesses the host took (Session.remote.answers).
@@ -319,7 +377,7 @@ export function partnerAnswerAsk(game: Game, session: Session, got: Record<Id, {
   const { guesser } = partnerRoles(s);
   if (!guesser || !session.players.some((p) => p.id === guesser)) return null;
   const judged = partnerVerdict(s, clueMarks(session, s.clue, s.at ?? 0)).judged;
-  return { id: clue.id, open: !session.revealed && !judged, seats: [{ id: guesser, ...(got[guesser] ? { got: got[guesser].n } : {}) }] };
+  return { id: partnerAnswerId(s), open: !session.revealed && !judged, seats: [{ id: guesser, ...(got[guesser] ? { got: got[guesser].n } : {}) }] };
 }
 
 /**

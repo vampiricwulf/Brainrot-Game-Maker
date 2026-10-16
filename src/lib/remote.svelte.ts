@@ -1,6 +1,7 @@
 // Phone buzzers, the host's side: one buzzer room at a time (see roomlink.ts for the connection, buzzproto.ts for what is
 // said). Reactive, for the pre-game card and the host panel.
-import { filesUrl, joinUrl, type HostState, type NewRoom, type PhoneInfo } from './buzzproto';
+import { filesUrl, joinUrl, type CardLate, type HostState, type NewRoom, type PhoneInfo } from './buzzproto';
+import type { TeamMember } from './model';
 import type { SavedRoom } from './persist';
 import { embeddedBuzzerServer } from './export';
 import { prefs } from './prefs.svelte';
@@ -37,6 +38,8 @@ export const remote = $state<{
   welcomed: boolean;
   /** The 🤫 card files the room holds now (their ids), as it last said; null until it has. */
   files: string[] | null;
+  /** The phones here now that a 🤫 card was sent to but that are late for it (the panel suggests ↻ Send again). */
+  cardsLate: CardLate[];
   error: string;
   /** The close code the room turned this window away with (4004: it ended; 4000: another window took it), or 0. */
   closedCode: number;
@@ -46,7 +49,7 @@ export const remote = $state<{
   answered: string[];
   /** When the room last turned a phone away because it was full (0: not lately). */
   fullAt: number;
-}>({ status: 'off', code: null, base: '', phones: [], features: [], welcomed: false, files: null, error: '', closedCode: 0, attempts: 0, answered: [], fullAt: 0 });
+}>({ status: 'off', code: null, base: '', phones: [], features: [], welcomed: false, files: null, cardsLate: [], error: '', closedCode: 0, attempts: 0, answered: [], fullAt: 0 });
 
 /** How long "Room full" shows after the room last turned a phone away. */
 export const FULL_SHOWN_MS = 2 * 60_000;
@@ -80,6 +83,7 @@ function sync(): void {
   if (remote.features.join() !== link.features.join()) remote.features = link.features;
   remote.welcomed = link.welcomed;
   if (remote.files?.join() !== link.files?.join()) remote.files = link.files;
+  if (JSON.stringify(remote.cardsLate) !== JSON.stringify(link.cardsLate)) remote.cardsLate = link.cardsLate;
   remote.error = link.error;
   remote.closedCode = link.closedCode;
   remote.attempts = link.attempts;
@@ -202,6 +206,13 @@ export const roomHasTeams = (): boolean => remote.features.includes('teams');
 export const roomHasWagers = (): boolean => remote.features.includes('wagers');
 /** The room this window is in takes answers from phones (✍ clues; an older buzzer server doesn't). */
 export const roomHasAnswers = (): boolean => remote.features.includes('answers');
+/** Teams: the people on team `seatId` with a phone in the room now (each once), for the member wheel. */
+export function roomMembers(seatId: string): TeamMember[] {
+  const out: TeamMember[] = [];
+  for (const p of remote.phones) if (p.seatId === seatId && p.connected && p.member && !out.some((m) => m.id === p.member)) out.push({ id: p.member, name: p.name?.trim() || 'Someone' });
+  return out;
+}
+
 /** The room this window is in puts 🤫 cards on phones (an older buzzer server doesn't: the host copies them). */
 export const roomHasCards = (): boolean => remote.features.includes('cards');
 /** The room this window is in takes card files from this computer now (its server can be off them, or out for today). */
@@ -244,7 +255,7 @@ export const forgetCardFiles = (ids: string[]): boolean => ids.length > 0 && rem
 export function closeRoom(): void {
   link?.close();
   link = null;
-  Object.assign(remote, { status: 'off', code: null, phones: [], features: [], welcomed: false, files: null, error: '', closedCode: 0, attempts: 0, answered: [], fullAt: 0 });
+  Object.assign(remote, { status: 'off', code: null, phones: [], features: [], welcomed: false, files: null, cardsLate: [], error: '', closedCode: 0, attempts: 0, answered: [], fullAt: 0 });
 }
 
 /**
@@ -254,7 +265,7 @@ export function closeRoom(): void {
 export function leaveRoom(): void {
   link?.stop();
   link = null;
-  Object.assign(remote, { status: 'off', code: null, phones: [], features: [], welcomed: false, files: null, error: '', closedCode: 0, attempts: 0, answered: [], fullAt: 0 });
+  Object.assign(remote, { status: 'off', code: null, phones: [], features: [], welcomed: false, files: null, cardsLate: [], error: '', closedCode: 0, attempts: 0, answered: [], fullAt: 0 });
 }
 
 /** Close a room this window isn't in (one an earlier page left open), without touching the one it is in. */

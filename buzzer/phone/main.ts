@@ -966,7 +966,7 @@ function renderBuzz(v: PhoneView): void {
   // A card new to this page: a short buzz, and said once ("A card only you can see"; Tap to see is where the keys go).
   if (fresh.length) {
     vibrate([70, 50, 70]);
-    news(cardsLine(fresh.length, team));
+    news(cardsLine(fresh.length, team, cards.some((c) => c.shared && fresh.includes(c.id))));
   }
   $('cards').hidden = !cards.length && !late;
   $('cards-late').hidden = !late;

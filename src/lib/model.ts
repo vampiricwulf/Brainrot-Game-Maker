@@ -753,9 +753,27 @@ export interface ClueRef {
   row: number;
 }
 
-/** Who a 🤫 card goes to: a seat (a player, or a whole team: everyone on it). */
+/**
+ * Who a 🤫 card goes to: a seat (a player, or a whole team: everyone on it), one person on a team (`member`), or a team
+ * but some people on it (`except`: the rest of the team while one of them describes to it, partner-clues spec §10.2).
+ */
 export interface CardTo {
   seat: Id;
+  /** Teams: only this person on the team (the buzzer room's member id, and the name they joined with). */
+  member?: TeamMember;
+  /** Teams: everyone on the team but these people (member ids). */
+  except?: string[];
+  /**
+   * Sends only: the part they played when it went (Solo's one player: 'solo'). A send to more than one part goes to the
+   * phones as one card per part, each with its own lines, and which of them a phone has stays as it was sent.
+   */
+  part?: 'giver' | 'guesser' | 'other' | 'solo';
+}
+
+/** Someone on a team, as the buzzer room knows them (its member id, not a credential) and the name they joined with. */
+export interface TeamMember {
+  id: string;
+  name: string;
 }
 
 /**
@@ -799,6 +817,11 @@ export interface PartnerState {
   includePicker?: boolean;
   /** Who plays the giver's part this time: starts from the clue's, and ⇄ Swap changes it. */
   giver: 'partner' | 'picker';
+  /**
+   * Teams, when the picker's own team plays it (partnerId is the picker: Solo): the one person on it who describes to
+   * the rest (partner-clues spec §10.2), from the member wheel or the host. Scored as Solo: one award to the team.
+   */
+  member?: TeamMember;
   /**
    * The players the host chose for a card, by card id. A card not listed follows its Goes to, worked out from the parts
    * at the moment (cardRecipients), so ⇄ Swap and a new partner move it.

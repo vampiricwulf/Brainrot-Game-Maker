@@ -83,6 +83,12 @@ export type Overlay =
       /** This wheel picks the open 🤝 partner clue's partner (its clue id): its landing makes them the partner. */
       partnerFor?: Id;
       /**
+       * The member wheel (with partnerFor): its slices are people on the picker's team (the buzzer room's member ids),
+       * not players, so its landing is who on the team describes (PartnerState.member): never a picker, never a roll's
+       * players.
+       */
+      members?: true;
+      /**
        * The spin (its spin.startedAt) whose landing the partner clue has had: it isn't applied again, a reload too (a
        * partner the host chose after it stays). A spin since then applies when it lands.
        */

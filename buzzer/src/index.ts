@@ -45,6 +45,7 @@ import {
   TOO_MANY_LOOKUPS,
   TOO_MANY_ROOMS,
   TOO_MANY_TODAY,
+  uncountBytes,
   type DayBytes,
   type DayCount,
 } from './limits';
@@ -70,6 +71,8 @@ export interface Env {
 const IDLE_MS = 6 * 60 * 60 * 1000;
 /** …or this long after it was made, if the host never came. */
 const UNUSED_MS = 30 * 60 * 1000;
+/** What an upload comes to: 200 with the file's id, or the HTTP status and why. */
+type Upload = { status: number; id?: string; error?: string };
 /** A card file's bytes are stored in pieces this big (a Durable Object value is at most 2 MB, its key included). */
 const FILE_PART_BYTES = 1024 * 1024;
 
@@ -148,10 +151,15 @@ async function roomFiles(request: Request, env: Env, ip: string, code: string, i
   if (!token || !isRoomCode(code)) return json({ error: 'wrong host token' }, 401);
   const mime = fileType(request.headers.get('Content-Type'));
   if (!mime) return json({ error: 'Pictures (PNG, JPEG, WebP, GIF), videos (MP4, WebM) and sounds (MP3, OGG, WAV, M4A) only' }, 415);
+  // The token is checked before the body is read: the room code is on stream, and a wrong token mustn't cost the room a
+  // 4 MB read and RPC. (upload() checks it again, for a room that ended meanwhile. The body is left unread, as for a
+  // missing token above.)
+  const stub = env.BUZZ_ROOM.getByName(code);
+  if (!(await stub.isHost(token))) return json({ error: 'wrong host token' }, 401);
   const body = await readBody(request, FILE_MAX_BYTES);
   if (!body) return json({ error: `Too big for phones (${FILE_MAX_BYTES / 1024 / 1024} MB at most)` }, 413);
   if (!body.byteLength) return json({ error: 'empty file' }, 400);
-  const r = await env.BUZZ_ROOM.getByName(code).upload(token, mime, body, who);
+  const r = await stub.upload(token, mime, body, who);
   return json(r.id ? { id: r.id } : { error: r.error }, r.status);
 }
 
@@ -241,6 +249,8 @@ export class BuzzRoom extends DurableObject<Env> {
   private ids = new WeakMap<WebSocket, { role: 'host' } | { role: 'phone'; conn: string } | null>();
   /** When the alarm is set for (null: none; undefined: not read from storage yet). */
   private alarmAt: number | null | undefined = undefined;
+  /** Card files on their way into storage now, by id: their size (kept for them under the room's caps) and their answer. */
+  private uploading = new Map<string, { bytes: number; done: Promise<Upload> }>();
 
   constructor(ctx: DurableObjectState, env: Env) {
     super(ctx, env);
@@ -356,34 +366,61 @@ export class BuzzRoom extends DurableObject<Env> {
 
   /**
    * A card file from the host (the Worker checked its type and that it's at most FILE_MAX_BYTES). The same bytes again
-   * store nothing new. Otherwise the room's caps, then today's budget, then it's stored in FILE_PART_BYTES pieces.
+   * store nothing new. Otherwise the room's caps (counting the files still on their way, so uploads at the same time
+   * can't pass them together), then today's budget, then it's stored in FILE_PART_BYTES pieces.
    */
-  async upload(token: string, mime: string, body: Uint8Array, who: string): Promise<{ status: number; id?: string; error?: string }> {
+  async upload(token: string, mime: string, body: Uint8Array, who: string): Promise<Upload> {
     const wrong = { status: 401, error: 'wrong host token' };
     if (!this.meta || !this.room || !sameToken(token, this.meta.hostToken)) return wrong;
     this.touchHost();
     const id = [...new Uint8Array(await crypto.subtle.digest('SHA-256', body))].map((b) => b.toString(16).padStart(2, '0')).join('');
-    const full = { status: 409, error: 'This room holds all the card files it can: send fewer pictures and videos at once' };
-    let room = this.room.fileRoom(id, body.byteLength);
+    // The same file already on its way (a second host window, a reload mid-upload): its answer, counted once.
+    const going = this.uploading.get(id);
+    if (going) return going.done;
+    if (!this.meta || !this.room) return wrong;
+    const pending = { files: this.uploading.size, bytes: [...this.uploading.values()].reduce((n, u) => n + u.bytes, 0) };
+    const room = this.room.fileRoom(id, body.byteLength, pending);
     if (room === 'have') return { status: 200, id };
-    if (room === 'full') return full;
-    const took = await this.env.ROOM_COUNTER.getByName('rooms').takeBytes(who, body.byteLength);
+    if (room === 'full') return { status: 409, error: 'This room holds all the card files it can: send fewer pictures and videos at once' };
+    // (Its room is kept for it from here: nothing between this and the store can fill the room or store it first.)
+    const done = this.store(id, mime, body, who);
+    this.uploading.set(id, { bytes: body.byteLength, done });
+    try {
+      return await done;
+    } finally {
+      this.uploading.delete(id);
+    }
+  }
+
+  /** upload()'s second half: today's budget, then the pieces. A file counted and then not stored is given back. */
+  private async store(id: string, mime: string, body: Uint8Array, who: string): Promise<Upload> {
+    const wrong = { status: 401, error: 'wrong host token' };
+    const counter = this.env.ROOM_COUNTER.getByName('rooms');
+    const n = body.byteLength;
+    const took = await counter.takeBytes(who, n);
     if (took === 'off') return { status: 503, error: FILES_OFF };
     if (took !== 'ok') return { status: 429, error: took === 'address' ? TOO_MANY_FILES_TODAY : FILES_BUSY_TODAY };
-    // (The room may have ended or filled up meanwhile.)
-    if (!this.meta || !this.room) return wrong;
-    room = this.room.fileRoom(id, body.byteLength);
-    if (room === 'have') return { status: 200, id };
-    if (room === 'full') return full;
-    const parts = Math.ceil(body.byteLength / FILE_PART_BYTES);
-    const pieces: Record<string, Uint8Array> = {};
-    for (let i = 0; i < parts; i++) pieces[`file:${id}:${i}`] = body.slice(i * FILE_PART_BYTES, (i + 1) * FILE_PART_BYTES);
-    await this.ctx.storage.put(pieces);
+    const refund = () => counter.refundBytes(who, n).catch(() => {});
+    // (The room may have ended meanwhile.)
     if (!this.meta || !this.room) {
-      await this.ctx.storage.delete(Object.keys(pieces));
+      await refund();
       return wrong;
     }
-    this.room.fileAdded(id, mime, body.byteLength, parts);
+    const parts = Math.ceil(n / FILE_PART_BYTES);
+    const pieces: Record<string, Uint8Array> = {};
+    for (let i = 0; i < parts; i++) pieces[`file:${id}:${i}`] = body.slice(i * FILE_PART_BYTES, (i + 1) * FILE_PART_BYTES);
+    try {
+      await this.ctx.storage.put(pieces);
+    } catch (e) {
+      await refund();
+      throw e;
+    }
+    if (!this.meta || !this.room) {
+      await this.ctx.storage.delete(Object.keys(pieces));
+      await refund();
+      return wrong;
+    }
+    this.room.fileAdded(id, mime, n, parts);
     return { status: 200, id };
   }
 
@@ -408,6 +445,11 @@ export class BuzzRoom extends DurableObject<Env> {
 
   async isOpen(): Promise<boolean> {
     return !!this.meta;
+  }
+
+  /** `token` is this room's host token (the Worker asks before it reads an upload's body). */
+  async isHost(token: string): Promise<boolean> {
+    return !!this.meta && !!token && sameToken(token, this.meta.hostToken);
   }
 
   async fetch(request: Request): Promise<Response> {
@@ -561,6 +603,12 @@ export class RoomCounter extends DurableObject<Env> {
     if (typeof next === 'string') return next;
     await this.ctx.storage.put('bytes', next);
     return 'ok';
+  }
+
+  /** n bytes counted by takeBytes for `who` weren't stored after all (the room ended, or storing failed): given back. */
+  async refundBytes(who: string, n: number): Promise<void> {
+    const next = uncountBytes(await this.ctx.storage.get<DayBytes>('bytes'), Date.now(), who, n);
+    if (next) await this.ctx.storage.put('bytes', next);
   }
 
   /** Some of today's budget for card files is left. */

@@ -65,7 +65,9 @@
  * it first saw each card id, and a phone gets it only if it has held its place since before then (its seat's token
  * handed out: seatedAt; teams: its member joined the team or was moved onto it: Member.teamAt). A freed seat taken
  * again is new, so is a member moved to another team; a phone back with its own token keeps its time. Late ones are only
- * counted. The seat list never carries a card. An id gone from the state is forgotten at once (the tile closed).
+ * counted, and the host hears which phones here are late for which card (cardsLate), so it can offer ↻ Send again. A
+ * card sent to more than one seat says on the phone that others have it too (shared), never who. The seat list never
+ * carries a card. An id gone from the state is forgotten at once (the tile closed).
  *
  * Card files ('files'): the bytes are stored by the Durable Object under their own keys (index.ts); the room keeps an
  * index (RoomSaved.files), checks the caps, and gives a file only to a phone holding a token for a current card it may
@@ -107,6 +109,7 @@ import {
   type PhoneCard,
   type PhoneInfo,
   type PhoneView,
+  type CardLate,
   type QueuedBuzz,
   type RoomToHost,
   type RoomToPhone,
@@ -397,6 +400,8 @@ export class Room {
   private hostHere: boolean;
   private hostRate: Window = { start: 0, count: 0 };
   private lastPhones = '';
+  /** The cardsLate list the host last heard ('' for none). */
+  private lastLate = '';
   /** The grace window's timer. */
   private grace: unknown = null;
   /** The last queue / results sent this arm, so unchanged ones aren't sent again. */
@@ -444,6 +449,7 @@ export class Room {
     this.hostHere = true;
     this.lastPhones = '';
     this.lastQueue = '';
+    this.lastLate = '';
     const features = ROOM_FEATURES.filter((f) => f !== 'files' || files);
     this.deps.toHost({ t: 'welcome', code: this.code, protocol: BUZZ_PROTOCOL, serverNow: this.deps.now(), features });
     this.tellFiles();
@@ -680,8 +686,9 @@ export class Room {
   /**
    * Whether card file `id` (`bytes` long) can be stored: 'have' (it's here already: its clean-up time starts again if no
    * card uses it, as the host is getting it ready again), 'ok', or 'full' (ROOM_FILES_MAX files or ROOM_FILES_BYTES).
+   * `pending`: files still on their way into storage, counted as here already.
    */
-  fileRoom(id: string, bytes: number): 'have' | 'ok' | 'full' {
+  fileRoom(id: string, bytes: number, pending: { files: number; bytes: number } = { files: 0, bytes: 0 }): 'have' | 'ok' | 'full' {
     const files = this.s.files ?? {};
     const had = files[id];
     if (had) {
@@ -692,7 +699,7 @@ export class Room {
       return 'have';
     }
     const all = Object.values(files);
-    if (all.length >= ROOM_FILES_MAX || all.reduce((n, f) => n + f.bytes, 0) + bytes > ROOM_FILES_BYTES) return 'full';
+    if (all.length + pending.files >= ROOM_FILES_MAX || all.reduce((n, f) => n + f.bytes, 0) + pending.bytes + bytes > ROOM_FILES_BYTES) return 'full';
     return 'ok';
   }
 
@@ -750,20 +757,24 @@ export class Room {
     return since === undefined || at === undefined || since >= at;
   }
 
-  /** The cards phone p gets (sent to it, and not late for them), and how many sent to it it is late for. */
-  private cardsFor(p: Phone): PhoneView['cards'] | undefined {
+  /**
+   * The cards phone p gets (sent to it, and not late for them), and how many sent to it it is late for; `lateIds`: the
+   * ids of those (the host hears them: cardsLate).
+   */
+  private cardsFor(p: Phone): { view: PhoneView['cards'] | undefined; lateIds: string[] } {
     const cards = this.s.state?.cards;
-    if (!cards?.length || !p.seatId) return undefined;
+    if (!cards?.length || !p.seatId) return { view: undefined, lateIds: [] };
     const since = this.since(p);
     const list: PhoneCard[] = [];
-    let late = 0;
+    const lateIds: string[] = [];
     for (const c of cards) {
       const to = this.sentTo(c, p.seatId, p.member);
       if (!to) continue;
-      if (this.lateFor(c, since)) late++;
+      if (this.lateFor(c, since)) lateIds.push(c.id);
       else list.push(phoneCard(c, !!this.s.state?.teams && to.member === undefined));
     }
-    return list.length || late ? { list, ...(late ? { late } : {}) } : undefined;
+    const late = lateIds.length;
+    return { view: list.length || late ? { list, ...(late ? { late } : {}) } : undefined, lateIds };
   }
 
   /** A phone showed card `id`: kept and told to the host once per seat (teams: per member), only for a current card sent to it that it isn't late for. */
@@ -1640,6 +1651,8 @@ export class Room {
       ...(teams ? { teams: true } : {}),
     } satisfies RoomToPhone);
     const by = teams ? this.answeringBy() : null;
+    /** The phones here now that a current card was sent to but that are late for it (a new phone for the seat…). */
+    const cardsLate: CardLate[] = [];
     for (const p of this.phones.values()) {
       if (p.seatId && st) {
         const m = p.member ? this.s.members?.[p.member] : undefined;
@@ -1666,8 +1679,9 @@ export class Room {
         const ownAnswer = m ? typed?.member === p.member : typed?.at !== undefined && typed.at >= (since ?? 0);
         const ansHidden = ansLate && !!typed && !ownAnswer;
         if (ansHidden) typed = undefined;
-        // Only the cards sent to this phone that it isn't late for (see Cards above).
-        const cards = this.cardsFor(p);
+        // Only the cards sent to this phone that it isn't late for (see Cards above). The host hears which it's late for.
+        const { view: cards, lateIds } = this.cardsFor(p);
+        for (const id of lateIds) if (!cardsLate.some((x) => x.id === id && x.seatId === p.seatId && x.member === p.member)) cardsLate.push({ id, seatId: p.seatId, ...(me ? { member: me.id, by: me.name } : {}) });
         const view = { ...phoneView(st, p.seatId, me, by, sent, late, typed, ansHidden, cards), hostHere: this.hostHere, ...(canQueue ? { canQueue: true } : {}) };
         if (out && view.you) view.you = { ...view.you, lockedOut: true, out: true };
         const key = JSON.stringify(view);
@@ -1703,6 +1717,12 @@ export class Room {
     if (key !== this.lastPhones) {
       this.lastPhones = key;
       this.deps.toHost({ t: 'phones', phones: list });
+    }
+    // (Only with cards out, or to clear a list the host had: an older host never hears it.)
+    const lateKey = JSON.stringify(cardsLate);
+    if (lateKey !== this.lastLate && (cardsLate.length || this.lastLate)) {
+      this.lastLate = cardsLate.length ? lateKey : '';
+      this.deps.toHost({ t: 'cardsLate', late: cardsLate });
     }
   }
 
@@ -1894,6 +1914,7 @@ function cleanCards(raw: unknown[], seats: Set<string>, files: Record<string, Ro
       ...(text ? { text } : {}),
       ...(media.length ? { media } : {}),
       ...(c.tap === false ? { tap: false } : {}),
+      ...(c.shared === true ? { shared: true } : {}),
     });
   }
   let size = bytes(JSON.stringify(cards));
@@ -1946,7 +1967,10 @@ function cleanMedia(m: unknown, files: Record<string, RoomFile>): CardMedia | nu
 /** (A link a card may carry: shared with the app and the phone page.) */
 export { cardLink };
 
-/** A card as the phone it was sent to sees it: never who else it went to. team: everyone on the phone's team sees it. */
+/**
+ * A card as the phone it was sent to sees it: never who else it went to, only whether it went to others too (shared).
+ * team: everyone on the phone's team sees it.
+ */
 function phoneCard(c: HostCard, team: boolean): PhoneCard {
   return {
     id: c.id,
@@ -1958,5 +1982,7 @@ function phoneCard(c: HostCard, team: boolean): PhoneCard {
     ...(c.media?.length ? { media: c.media } : {}),
     ...(c.tap === false ? { tap: false } : {}),
     ...(team ? { team: true } : {}),
+    // (Never who else: only that it isn't this phone's alone.)
+    ...(c.shared || c.to.length > 1 ? { shared: true } : {}),
   };
 }

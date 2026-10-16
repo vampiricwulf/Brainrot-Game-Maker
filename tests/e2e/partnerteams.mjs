@@ -3,8 +3,10 @@
 // local), people on the real phone page joining teams. A card sent to a team goes to every phone on it, and to no
 // other: the guessing team's phones and the others' grey out with who plays which part. Someone the host moved onto the
 // team before the send gets it; someone who joins the team mid-clue, or whom the host moves onto it afterwards, gets
-// nothing of it (nor its picture) and is told they missed one, until ↻ Send again. The team's ✓ seen. All through, the
-// host page holds no card's words and no file name: not in its text, labels, titles or announcements.
+// nothing of it (nor its picture) and is told they missed one, until ↻ Send again. The team's ✓ seen. Then one person
+// describes to their own team (§10.2): ☑ Partner from the same team, the member wheel over the team's people, the card
+// to the describer only and a line for the rest of the team, one award to the team. All through, the host page holds no
+// card's words and no file name: not in its text, labels, titles or announcements.
 import { chromium } from 'playwright-core';
 import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
@@ -23,6 +25,7 @@ function assert(cond, msg) {
 // Every card's words carry "qkzvt", its picture's file name "zfnqt": neither may ever be on the host page (on stream).
 const WORDS1 = 'Kelp-qkzvt words';
 const WORDS2 = 'Reef-qkzvt words';
+const WORDS3 = 'Coral-qkzvt words';
 const SECRETS = ['qkzvt', 'zfnqt'];
 
 let ids = 0;
@@ -78,7 +81,14 @@ try {
               plain('q_plain', 'A plain clue', 'Plain'),
             ],
           },
-          { id: 'cat1', title: 'Songs', clues: values.map((_, r) => plain(`q_song${r}`, 'A plain clue', 'Plain')) },
+          {
+            id: 'cat1', title: 'Songs',
+            clues: [
+              // One person on the picker's team describes to the rest of it.
+              { ...plain('q_same', 'Describe this fish', 'Clownfish'), type: 'partner', partner: { ...rules }, timerSeconds: 60, cards: [{ id: 'd1', to: 'giver', ...slide(text(WORDS3)) }] },
+              plain('q_song1', 'A plain clue', 'Plain'),
+            ],
+          },
         ],
       },
     ],
@@ -257,6 +267,68 @@ try {
   assert(await until(() => !last()?.cards), 'back on the board: no card in the room’s state');
   for (const [p, name] of [[gus, 'Gus'], [bo, 'Bo'], [gwen, 'Gwen'], [bea, 'Bea']]) assert(await until(async () => !(await p.locator('.card').count())), `${name}’s phone drops it`);
   await offStream('the whole clue');
+
+  // ---------- One person describes to their own team (§10.2): a team with one phone has nobody to describe to ----------
+  await host.keyboard.press('p');
+  await host.keyboard.press('1');
+  await host.locator('.stage-box .tile[aria-label^="Songs for $200"]').click();
+  await panel.getByText('Red picked it.').waitFor();
+  await panel.getByLabel('Partner from the same team').check();
+  await panel.locator('[data-partner-nobody]').waitFor();
+  assert((await textOf(panel.locator('[data-partner-nobody]'))).startsWith('Red has one phone here: nobody to describe to'), 'Red picked it, its own team: “Red has one phone here: nobody to describe to”');
+  assert((await mainLabel(host)) === '▶ Show question', 'and no member wheel (it plays Solo)');
+  await host.keyboard.press('Escape');
+  await host.locator('.stage-box .tile[aria-label^="Songs for $200"]').waitFor();
+
+  // ---------- Green picks it and plays it: the member wheel over Green's four people ----------
+  await host.keyboard.press('p');
+  await host.keyboard.press('2');
+  await host.locator('.stage-box .tile[aria-label^="Songs for $200"]').click();
+  await panel.getByText('Green picked it.').waitFor();
+  await panel.getByLabel('Partner from the same team').check();
+  assert((await mainLabel(host)) === '🎡 Spin for the describer', 'Green plays it, its own team: the main button is 🎡 Spin for the describer');
+  await mainButton(host).click();
+  const wheelName = host.locator('.stage-box').getByText('Describer for Green');
+  await wheelName.first().waitFor();
+  assert(true, 'the member wheel is up: “Describer for Green”');
+  const picked = panel.locator('[data-partner-same] button[aria-pressed="true"]');
+  assert(await until(async () => (await picked.count()) === 1, 20000), 'it lands: one of Green’s people is the describer');
+  const describerName = (await picked.innerText()).replace(/\s*✓.*$/s, '').trim();
+  assert(['Gus', 'Bo', 'Gwen', 'Bea'].includes(describerName), `the describer is someone on Green (${describerName})`);
+  assert(!(last()?.seats ?? []).some((x) => x.name === describerName) && !JSON.stringify(last()?.status ?? {}).includes('Solo'), 'never a player, nor Solo on the phones');
+  assert((await says(gus, '🤝 Your team plays this one!')) && (await says(al, `🤝 ${describerName} describes → Green guesses`)), `Green’s phones: “🤝 Your team plays this one!”; Red’s: “🤝 ${describerName} describes → Green guesses”`);
+  // (The wheel's Close first, then ▶ Show question.)
+  await host.keyboard.press('Escape');
+  await wheelName.first().waitFor({ state: 'detached' });
+  assert((await mainLabel(host)) === '▶ Show question', 'the wheel closed: ▶ Show question');
+  await mainButton(host).click();
+  await host.locator('.stage-box [data-partner-badge]').waitFor();
+  assert((await host.locator('.stage-box [data-partner-badge]').innerText()).includes(`${describerName} describes → 🎯 Green guesses`), 'the badge: who describes, the team guesses');
+  assert((await panel.getByRole('button', { name: `Card 1 to ${describerName}`, exact: true }).getAttribute('aria-pressed')) === 'true', 'card 1 goes to the describer (their own chip)');
+  await mainButton(host).click();
+  await host.locator('.stage-box .timer').waitFor();
+  assert(await until(() => sendOf('d1').length === 2), 'sent: the describer’s card, and a line for the rest of the team');
+  const [mine, rest] = [sendOf('d1').find((c) => !c.id.endsWith('~t')), sendOf('d1').find((c) => c.id.endsWith('~t'))];
+  const memberId = mine?.to?.[0]?.member;
+  assert(!!memberId && JSON.stringify(mine.to) === JSON.stringify([{ seat: seat.Green, member: memberId }]) && mine.text === WORDS3, 'the card to that one person on Green, by member');
+  assert(JSON.stringify(rest.to) === JSON.stringify([{ seat: seat.Green, except: [memberId] }]) && !JSON.stringify(rest).includes('qkzvt') && rest.hint === `🎯 Your team is guessing! ${describerName} is describing`, 'the rest of Green: a line, nothing of the card');
+  const greens = { Gus: gus, Bo: bo, Gwen: gwen, Bea: bea };
+  const zoe = greens[describerName];
+  await zoe.getByRole('button', { name: 'Tap to see' }).waitFor();
+  assert((await zoe.locator('.card-role').last().textContent()) === 'You’re the Describer', `${describerName}: the card, “You’re the Describer”`);
+  for (const [name, p] of Object.entries(greens)) {
+    if (name === describerName) continue;
+    await p.getByText(`🎯 Your team is guessing! ${describerName} is describing`).waitFor();
+    assert(!heard[name].join('').includes('Coral-qkzvt'), `${name} (Green): the line, never the card`);
+  }
+  assert(!heard.Al.join('').includes('Coral-qkzvt') && !(await al.locator('.card').count()), 'Red: nothing');
+  await panel.getByRole('button', { name: /✔ Got it/ }).click();
+  await panel.locator('[data-judged]').waitFor();
+  assert(await says(al, '✔ Got it! Green +$200'), 'judged: one award to the team, “✔ Got it! Green +$200”');
+  await host.keyboard.press('r');
+  await host.keyboard.press('Escape');
+  assert(await until(() => !last()?.cards), 'back on the board: no card in the room’s state');
+  await offStream('one person describing to their team');
 
   assert(errors.length === 0, `no page errors (${errors.join(' | ')})`);
   console.log('Partner cards on team phones E2E passed.');

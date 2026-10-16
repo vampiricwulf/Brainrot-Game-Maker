@@ -5,10 +5,10 @@
 import { FILE_MAX_BYTES, fileType } from './buzzproto';
 import { canvasToBlob, loadImage } from './imageedit';
 import { storedBlob } from './media.svelte';
-import type { Clue, ClueCard, Game, Id, Session } from './model';
-import { filesWanted } from './partner';
+import type { Clue, ClueCard, Game, Id, PartnerState, Session } from './model';
+import { cardHash, cardSends, cardSlides, filesWanted } from './partner';
 import { phoneCard, shrinks, type LeftOut } from './phonecard';
-import { remote, roomHasFiles, uploadCardFile } from './remote.svelte';
+import { forgetCardFiles, remote, roomHasFiles, uploadCardFile } from './remote.svelte';
 
 /** A picture's longest side on a phone, and how it's packed (WebP, else JPEG). */
 export const SHRINK_PX = 1600;
@@ -52,16 +52,33 @@ export function failedFiles(session: Pick<Session, 'remote'>): Record<Id, LeftOu
 /** What the phones can get now (phoneCard's `can`): the room's files, and those turned down. */
 export const phoneCan = (session: Pick<Session, 'remote'>) => ({ files: heldFiles(session), failed: failedFiles(session) });
 
+/** The files of the open partner clue's cards that are out (sent, not edited since) or got ready (⇡), by media id. */
+let wantedNow = new Set<Id>();
+
+/** The files of the cards that are out or got ready now: any other upload isn't wanted (taken back, the tile closed). */
+function cardsWanting(game: Game, clue: Clue, s: PartnerState): Id[] {
+  return cardSlides(clue)
+    .filter((c) => {
+      const sends = cardSends(s, c.id);
+      return (sends.length > 0 && sends.every((x) => x.hash === cardHash(c))) || !!s.ready?.includes(c.id);
+    })
+    .flatMap((c) => phoneCard(game, c, { files: {} }).items.flatMap((i) => (i.file && i.media ? [i.media] : [])));
+}
+
 /**
  * Starts the uploads the open partner clue's cards want now (filesWanted: what was sent or got ready, and isn't in the
- * room). Play calls it whenever those change; nothing else starts one.
+ * room), and drops the waiting ones no card wants any more (✖ Take back, the tile closed: `clue` undefined). Play calls
+ * it whenever those change; nothing else starts one.
  */
 export function syncUploads(game: Game, session: Session, clue: Clue | undefined): void {
   const s = session.partner;
   const code = session.remote?.code;
+  const live = !!s && !!clue && clue.id === s.clue;
+  wantedNow = new Set(live ? cardsWanting(game, clue!, s!) : []);
+  for (const [id, j] of Object.entries(uploads.jobs)) if (j.state === 'waiting' && !wantedNow.has(id)) delete uploads.jobs[id];
   const held = heldFiles(session);
-  if (!s || !clue || clue.id !== s.clue || !code || !held || remote.status !== 'online') return;
-  const wanted = filesWanted(game, clue, s, held, putFiles(session), failedFiles(session));
+  if (!live || !code || !held || remote.status !== 'online') return;
+  const wanted = filesWanted(game, clue!, s!, held, putFiles(session), failedFiles(session));
   let added = false;
   for (const id of wanted) {
     const j = uploads.jobs[id];
@@ -70,6 +87,25 @@ export function syncUploads(game: Game, session: Session, clue: Clue | undefined
     added = true;
   }
   if (added) void next(game, session);
+}
+
+/**
+ * ⇡ Get it ready again: the cards' files the room no longer holds (cleaned up after 10 unused minutes, or let go when
+ * their card was taken back) aren't taken as put there any more, so they go up again.
+ */
+export function unputGone(game: Game, session: Session, cards: ClueCard[]): void {
+  const r = session.remote;
+  if (!r?.files || r.files.code !== r.code) return;
+  const held = heldFiles(session) ?? {};
+  const ids = { ...r.files.ids };
+  let gone = false;
+  for (const card of cards)
+    for (const it of phoneCard(game, card, { files: {} }).items)
+      if (it.media && it.media in ids && !(it.media in held)) {
+        delete ids[it.media];
+        gone = true;
+      }
+  if (gone) r.files = { ...r.files, ids };
 }
 
 /** ↻ Send again or ⇡ again: the cards' files that were turned down are tried again. */
@@ -95,6 +131,8 @@ async function next(game: Game, session: Session): Promise<void> {
       job.state = 'done';
       const ids = room.files?.code === room.code ? room.files.ids : {};
       room.files = { code: room.code, ids: { ...ids, [id]: r.id } };
+      // Its card was taken back (or the tile closed) while it went up: the room lets go of it now, not 10 minutes on.
+      if (!wantedNow.has(id)) forgetCardFiles([r.id]);
     } else Object.assign(job, { state: 'failed', why: r.why, error: r.error });
   } finally {
     busy = false;
@@ -160,7 +198,11 @@ async function shrink(blob: Blob): Promise<{ blob: Blob; type: string }> {
 export function cardFileCounts(game: Game, session: Session, card: ClueCard): { files: number; up: number; going: number; failed: number } {
   const code = session.remote?.code;
   const items = phoneCard(game, card, phoneCan(session)).items.filter((i) => i.file);
-  const going = items.filter((i) => !i.why && 'pending' in i.goes && i.media && uploads.jobs[i.media]?.code === code && uploads.jobs[i.media].state !== 'failed').length;
+  // (Only what's moving: a file up once that the room let go of since is pending again, not on its way.)
+  const going = items.filter((i) => {
+    const j = i.media ? uploads.jobs[i.media] : undefined;
+    return !i.why && 'pending' in i.goes && !!j && j.code === code && (j.state === 'waiting' || j.state === 'uploading');
+  }).length;
   return { files: items.length, up: items.filter((i) => 'file' in i.goes).length, going, failed: items.filter((i) => i.why).length };
 }
 

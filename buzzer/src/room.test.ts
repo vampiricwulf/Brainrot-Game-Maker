@@ -2253,6 +2253,16 @@ describe('private cards', () => {
     expect(g.pb.last('view')!.view.cards!.list[0]).toMatchObject({ open: false, text: 'SHREK' });
   });
 
+  it('a card that went to others too says so (never who): sent to two seats, or marked shared by the host', () => {
+    const g = sent();
+    g.sendCards([card({ to: [{ seat: 'b' }, { seat: 'c' }] })]);
+    for (const p of [g.pb, g.pc]) expect(p.last('view')!.view.cards!.list[0]).toEqual(expect.objectContaining({ shared: true, text: 'SHREK' }));
+    expect(g.pb.last('view')!.view.cards!.list[0]).not.toHaveProperty('to');
+    g.sendCards([card({ id: 'pc:c1:1:2~g', shared: true }), card({ id: 'pc:c1:2:1', to: [{ seat: 'c' }] })]);
+    expect(g.pb.last('view')!.view.cards!.list[0].shared).toBe(true);
+    expect(g.pc.last('view')!.view.cards!.list[0].shared).toBeUndefined();
+  });
+
   it('a phone that takes a just-freed seat after the card was sent never sees it', () => {
     const g = sent();
     g.sendCards([card()]);
@@ -2297,9 +2307,20 @@ describe('private cards', () => {
     const late = g.phone('late');
     late.send({ t: 'join', seatId: 'b' });
     expect(late.last('view')!.view.cards).toEqual({ list: [], late: 1 });
+    // The host hears that the seat's phone now is late for it (the panel suggests ↻ Send again)…
+    expect(g.hostLast('cardsLate')).toEqual({ t: 'cardsLate', late: [{ id: 'pc:c1:1:1', seatId: 'b' }] });
     g.t.now += 1000;
     g.sendCards([card({ id: 'pc:c1:1:2' })]);
     expect(late.last('view')!.view.cards).toEqual({ list: [expect.objectContaining({ id: 'pc:c1:1:2', text: 'SHREK' })] });
+    // …and that none is, once it was sent again.
+    expect(g.hostLast('cardsLate')).toEqual({ t: 'cardsLate', late: [] });
+    // A host coming back hears it again.
+    g.send({ t: 'kick', seatId: 'b', block: false });
+    g.t.now += 1000;
+    g.phone('later').send({ t: 'join', seatId: 'b' });
+    g.room.hostClose();
+    g.room.hostOpen(true);
+    expect(g.hostLast('cardsLate')).toEqual({ t: 'cardsLate', late: [{ id: 'pc:c1:1:2', seatId: 'b' }] });
   });
 
   it('teams: by member, by team (everyone on it sees it) and by team except some', () => {
@@ -2541,6 +2562,11 @@ describe('card files', () => {
     const h = sent();
     for (let i = 0; i < ROOM_FILES_MAX; i++) h.room.fileAdded(i.toString(16).padStart(64, '0'), 'image/png', 1000, 1);
     expect(h.room.fileRoom(F2, 1)).toBe('full');
+    // Files still on their way count as here: uploads at the same time can't pass the caps together.
+    const k = sent();
+    expect(k.room.fileRoom(F1, FILE_MAX_BYTES, { files: ROOM_FILES_BYTES / FILE_MAX_BYTES - 1, bytes: ROOM_FILES_BYTES - FILE_MAX_BYTES })).toBe('ok');
+    expect(k.room.fileRoom(F1, FILE_MAX_BYTES, { files: ROOM_FILES_BYTES / FILE_MAX_BYTES, bytes: ROOM_FILES_BYTES })).toBe('full');
+    expect(k.room.fileRoom(F1, 1, { files: ROOM_FILES_MAX, bytes: ROOM_FILES_MAX })).toBe('full');
     expect(h.hostLast('files')!.ids).toHaveLength(ROOM_FILES_MAX);
   });
 

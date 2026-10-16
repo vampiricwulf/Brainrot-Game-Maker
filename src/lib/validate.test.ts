@@ -187,6 +187,22 @@ describe('🤝 partner clues', () => {
     vi.unstubAllGlobals();
   });
 
+  it('with a buzzer server that takes no files: a card’s file from this computer won’t reach a phone (only then)', () => {
+    const { game, clue } = partnerGame();
+    game.settings.buzzer = true;
+    const card = clue.cards![0];
+    setSlideText(card, 'Shrek');
+    card.elements.push({ ...newImageEl('pic'), y: 30 });
+    game.media.push({ id: 'pic', name: 'ogre.png', mime: 'image/png', size: 1000, kind: 'image' });
+    const warned = (filesOff: boolean) => validate(game, { filesOff }).filter((p) => p.text.startsWith('Movies $400: card 1')).map((p) => p.text);
+    expect(warned(false)).toEqual([]);
+    expect(warned(true)).toEqual([
+      "Movies $400: card 1 has a picture that's a file on this computer, and this buzzer server isn't taking files: phones get the words and links only (📋 Copy picture)",
+    ]);
+    // (Never the file's name: the checklist can be on stream.)
+    expect(warned(true).join()).not.toContain('ogre');
+  });
+
   it('says where a miss still costs points with ⚖ Deduct on wrong off (a partner clue’s points are its own)', () => {
     const { game, round, clue } = partnerGame();
     game.settings.buzzer = true;

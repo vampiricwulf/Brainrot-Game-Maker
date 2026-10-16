@@ -146,6 +146,19 @@ describe('parseRoomMsg', () => {
       expect(parseRoomMsg(bad), bad).toBeNull();
   });
 
+  it('takes the phones late for a card (added later), and an empty list once none are', () => {
+    expect(parseRoomMsg('{"t":"cardsLate","late":[{"id":"pc:x:y:1","seatId":"a","evil":1},{"id":"pc:x:y:2","seatId":"b","member":"m1","by":"Zoe"}]}')).toEqual({
+      t: 'cardsLate',
+      late: [
+        { id: 'pc:x:y:1', seatId: 'a' },
+        { id: 'pc:x:y:2', seatId: 'b', member: 'm1', by: 'Zoe' },
+      ],
+    });
+    expect(parseRoomMsg('{"t":"cardsLate","late":[]}')).toEqual({ t: 'cardsLate', late: [] });
+    for (const bad of ['{"t":"cardsLate"}', '{"t":"cardsLate","late":[{"id":"","seatId":"a"}]}', '{"t":"cardsLate","late":[{"id":"c"}]}', '{"t":"cardsLate","late":[7]}'])
+      expect(parseRoomMsg(bad), bad).toBeNull();
+  });
+
   it('drops anything else, and strips unknown fields', () => {
     for (const bad of [
       'not json',

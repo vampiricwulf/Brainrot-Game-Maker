@@ -25,7 +25,8 @@ export const BUZZ_PROTOCOL = 1;
  * anyone (kick with block: false), for a player who came back on another phone. 'color': a seated phone asks for another
  * colour (PhoneMsg 'color'), passed on to the host, which takes it when it's free (HostState.colorPick). 'answers':
  * everyone types an answer to the clue on their phone, and only the host sees it (HostState.answers). 'cards': private
- * cards the host sent (HostState.cards), the greyed lobby (status.off), the late rule with Member.teamAt, cardSeen.
+ * cards the host sent (HostState.cards), the greyed lobby (status.off), the late rule with Member.teamAt, cardSeen,
+ * cardsLate and a card's `shared`.
  * 'files': card files over HTTP (POST and GET /api/rooms/:code/files); listed only while the server takes files.
  */
 export const ROOM_FEATURES = ['teams', 'wagers', 'free', 'color', 'answers', 'cards', 'files'] as const;
@@ -61,6 +62,14 @@ export function cardLink(s: unknown): string | null {
   } catch {
     return null;
   }
+}
+/**
+ * Up to three short words show huge on a card, so a secret word can be read at arm's length: its title, or its words
+ * when it has no title. The phone's card panel and the editor's 📱 preview both use it, so they agree.
+ */
+export function bigWords(s: string | undefined): boolean {
+  const t = (s ?? '').trim();
+  return !!t && t.length <= 30 && !/\n/.test(t) && t.split(/\s+/).length <= 3;
 }
 /** Sites whose player a card may embed (the phone builds the frame from the link, see links.ts playerFor). */
 export const EMBED_SITES = ['youtube', 'drive', 'streamable'] as const;
@@ -209,6 +218,11 @@ export interface HostCard {
   media?: CardMedia[];
   /** Behind "Tap to see" (default true). */
   tap?: boolean;
+  /**
+   * The same card went to others than `to` too (the app sends one card per part, each with its own lines): its phones
+   * say it isn't theirs alone. The room sets it too when `to` names more than one.
+   */
+  shared?: boolean;
 }
 
 export interface CardTo {
@@ -243,6 +257,8 @@ export interface PhoneCard {
   tap?: boolean;
   /** Everyone on this phone's team sees it. */
   team?: boolean;
+  /** It went to others too (never who: a phone isn't told who else got a card). */
+  shared?: boolean;
 }
 
 /** HostState.answers: whose answers are taken, for which clue. */
@@ -655,7 +671,21 @@ export type RoomToHost =
    * Added later ('files'): the card files the room holds now (their ids), on welcome and whenever that changes. A file
    * no card used for a while is deleted, so the host uploads again any its cards need that isn't listed.
    */
-  | { t: 'files'; ids: string[] };
+  | { t: 'files'; ids: string[] }
+  /**
+   * Added later ('cards'): the phones here now that a current card was sent to but that are late for it (one that took
+   * the seat, joined the team or was moved onto it after the card went out), whenever that changes; empty once none
+   * are. The host suggests ↻ Send again.
+   */
+  | { t: 'cardsLate'; late: CardLate[] };
+
+/** A phone of seatId (teams: member, called by) that card `id` was sent to, but that is late for it. */
+export interface CardLate {
+  id: string;
+  seatId: string;
+  member?: string;
+  by?: string;
+}
 
 /** A phone → room. */
 export type PhoneMsg =

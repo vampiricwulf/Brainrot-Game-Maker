@@ -186,8 +186,10 @@ partner clue's panel): their words, links, pictures and videos, your own files i
 The phone shows a card in place of the buzz button, behind **Tap to see** (🙈 Hide covers it again), and the panel says
 ✓ seen once it's opened. YouTube, Drive and Streamable videos play in their own player when tapped. The buzzer server
 keeps a card until the tile closes, and the card's pictures and videos up to 10 minutes longer. A phone that takes
-the seat or joins the team after a card went out doesn't get it (↻ Send again does). On an older buzzer server, or for
-a player without a phone, you copy the card to them (📋). A player on a computer opens the same link: `Space` (or `Enter`) buzzes, `1`–`9` pick their seat or
+the seat or joins the team after a card went out doesn't get it: the panel says so, and ↻ Send again gives it to it.
+With teams, **☐ Partner from the same team** (or the wheel landing on the picker's own team) spins a wheel of that
+team's people: the card goes to the one who describes, the rest of the team is told who's describing, and the team
+scores once. On an older buzzer server, or for a player without a phone, you copy the card to them (📋). A player on a computer opens the same link: `Space` (or `Enter`) buzzes, `1`–`9` pick their seat or
 team, `Esc` goes back, and the page says when another window (the stream, say) has the keyboard. The room stays open
 through the pre-game screen, a reload of it and **◀ Back to editor**; it closes
 with Exit, at the end of the game or with **✕ Close the room**. The join code shows small in a corner of the stream

@@ -992,6 +992,8 @@ try {
       (await up(randomBytes(4 * 1024 * 1024 + 1), 'video/mp4')).status,
     ];
     assert(refusals.join() === '401,401,401,415,415,413', `uploads need the host token, a picture, video or sound type, and 4 MB at most (${refusals.join()})`);
+    // (The token is checked before the body is read: a wrong one over 4 MB is turned away for its token.)
+    assert((await up(randomBytes(4 * 1024 * 1024 + 1), 'video/mp4', 'wrong')).status === 401, 'a wrong token is turned away before its body is read');
     const first = await up(bytes, 'image/png');
     const firstId = first.status === 200 ? (await first.json()).id : `HTTP ${first.status}: ${await first.text()}`;
     assert(firstId === hash, 'the host uploads a 2.5 MB picture: its id is its SHA-256');
@@ -999,6 +1001,14 @@ try {
     assert(again.status === 200 && (await again.json()).id === hash, 'the same file again is already there');
     await h.wait((m) => m.t === 'files' && m.ids.includes(hash), 'the files list');
     assert(true, 'the host hears which files the room holds');
+    // The same new file twice at once (a second host window): stored once, both told its id.
+    const twin = randomBytes(300 * 1024);
+    const twinHash = createHash('sha256').update(twin).digest('hex');
+    const both = await Promise.all([up(twin, 'image/png'), up(twin, 'image/png')]);
+    const bothIds = await Promise.all(both.map(async (r) => (r.status === 200 ? (await r.json()).id : r.status)));
+    assert(bothIds.every((x) => x === twinHash), `the same file uploaded twice at once: both get its id (${bothIds.join(', ')})`);
+    const listed = await h.wait((m) => m.t === 'files' && m.ids.includes(twinHash), 'the files list with the twin');
+    assert(listed.ids.filter((x) => x === twinHash).length === 1, 'and the room holds it once');
     // Got ready, not sent: nobody gets it.
     assert((await get(hash, bob.token)).status === 404, 'a file got ready but not sent is served to nobody');
     hostState({ cards: [{ id: 'pc:c1:1:1', to: [{ seat: 'b' }], open: true, role: 'Describer', text: 'SHREK', media: [{ kind: 'image', file: hash, mime: 'image/png' }] }] });

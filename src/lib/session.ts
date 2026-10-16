@@ -2,8 +2,8 @@
 // Pure functions over plain objects so they're easy to test and to autosave.
 import { ensureWorld, refindPositions } from './rpg';
 import { ensureBoard, refindSpaces } from './boardgame';
-import { cardSlides, dropFromSends, pairOnly, partnerReason, partnerRoles, partnerRules, partnerShares, resetRecipients, startPartner, takeBack } from './partner';
-import { categoryLabel, clueValue, FINAL_V1_ROUND_ID, finalName, formatPoints, getClue, isBoard, isBoardGame, isFinal, isRpg, isSlides, MAX_POINTS, newId, playableClues, questionSlides, type BoardRound, type Clue, type ClueRef, type ExtraSlide, type FinalRound, type FinalState, type Game, type Id, type PartnerState, type Player, type Round, type ScoreEvent, type Session, type Slide, type SlidesRound, type WagerSource } from './model';
+import { cardSlides, describer, dropFromSends, pairOnly, partnerReason, partnerRoles, partnerRules, partnerShares, resetRecipients, startPartner, takeBack } from './partner';
+import { categoryLabel, clueValue, FINAL_V1_ROUND_ID, finalName, formatPoints, getClue, isBoard, isBoardGame, isFinal, isRpg, isSlides, MAX_POINTS, newId, playableClues, questionSlides, type BoardRound, type Clue, type ClueRef, type ExtraSlide, type FinalRound, type FinalState, type Game, type Id, type PartnerState, type Player, type Round, type ScoreEvent, type Session, type Slide, type SlidesRound, type TeamMember, type WagerSource } from './model';
 
 export function newSession(game: Game): Session {
   return {
@@ -223,6 +223,7 @@ export function removePlayer(session: Session, playerId: string): void {
       if (pt.pickerId === playerId) delete pt.pickerId;
       delete pt.partnerId;
       delete pt.how;
+      delete pt.member;
       pt.stage = 'pick';
       pairOnly(session, pt);
     }
@@ -454,7 +455,10 @@ export function judgePartner(session: Session, game: Game, got: boolean, value: 
   const rules = partnerRules(clue);
   const roles = partnerRoles(s);
   const name = (id: Id | undefined) => (id ? playerName(session, id) : undefined);
-  const reason = `${clueReason(game, ref)} (${partnerReason(rules, { giver: name(roles.giver), guesser: name(roles.guesser), solo: roles.solo })})`;
+  // (Teams: one person on the picker's team described to the rest of it: scored as Solo, one award to the team.)
+  const m = describer(s);
+  const names = m ? { giver: m.name, guesser: name(s.pickerId) } : { giver: name(roles.giver), guesser: name(roles.guesser), solo: roles.solo };
+  const reason = `${clueReason(game, ref)} (${partnerReason(rules, names)})`;
   const events: ScoreEvent[] = [];
   for (const { id, points } of partnerShares(value, rules, s, got, clueMarks(session, s.clue, s.at ?? 0))) {
     const scored = points ? applyScore(session, game, [id], points, reason, s.clue, false, batchId) : [];
@@ -1241,7 +1245,19 @@ function repairPartnerState(session: Session): void {
   if (p.giver !== 'partner' && p.giver !== 'picker') p.giver = 'partner';
   if (p.at !== undefined && !Number.isFinite(p.at)) delete p.at;
   for (const k of ['pickerId', 'partnerId'] as const) if (p[k] !== undefined && typeof p[k] !== 'string') delete p[k];
-  const seats = (to: unknown) => Array.isArray(to) && to.every((t) => typeof t?.seat === 'string');
+  const isMember = (m: unknown) => typeof m === 'object' && !!m && typeof (m as TeamMember).id === 'string' && typeof (m as TeamMember).name === 'string';
+  const PARTS: unknown[] = ['giver', 'guesser', 'other', 'solo'];
+  // (A recipient that doesn't check is never read as a wider one: one person on a team never becomes the whole team.)
+  const seats = (to: unknown) =>
+    Array.isArray(to) &&
+    to.every(
+      (t) =>
+        typeof t?.seat === 'string' &&
+        (t.member === undefined || isMember(t.member)) &&
+        (t.except === undefined || (Array.isArray(t.except) && t.except.every((x: unknown) => typeof x === 'string'))) &&
+        (t.part === undefined || PARTS.includes(t.part)),
+    );
+  if (p.member !== undefined && !isMember(p.member)) delete p.member;
   if (p.deal !== undefined) {
     const ok = typeof p.deal === 'object' && !!p.deal && Object.values(p.deal).every(seats);
     if (!ok) delete p.deal;

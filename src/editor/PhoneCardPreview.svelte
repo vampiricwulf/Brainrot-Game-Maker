@@ -5,7 +5,7 @@
   editor isn't on stream, so items are named here.
 -->
 <script lang="ts">
-  import { FILE_MAX_BYTES } from '../lib/buzzproto';
+  import { bigWords, FILE_MAX_BYTES } from '../lib/buzzproto';
   import { formatBytes, mediaUrls } from '../lib/media.svelte';
   import type { Clue, ClueCard, Game } from '../lib/model';
   import { cardLines, partnerRules } from '../lib/partner';
@@ -18,12 +18,14 @@
   const server = $derived(!buzzerBase() ? 'none' : remote.code && remote.status === 'online' ? (roomHasCards() ? (roomHasFiles() ? 'files' : 'nofiles') : 'older') : 'unknown');
   const pc = $derived(phoneCard(game, card, { files: server === 'nofiles' || server === 'older' ? null : {} }));
   const rules = $derived(partnerRules(clue));
-  /** Its lines as its part's phone shows them, with "the picker" and "the partner" for the names. */
+  /** Its lines as its part's phone shows them (anyone but the two: the line for them), "the picker" and "the partner" for the names. */
   const lines = $derived.by(() => {
     const s = { pickerId: 'picker', partnerId: 'partner', giver: rules.giver };
-    const to = card.to === 'giver' || card.to === 'guesser' ? [(card.to === 'giver') === (rules.giver === 'partner') ? 'partner' : 'picker'] : [];
+    const to = card.to === 'giver' || card.to === 'guesser' ? [(card.to === 'giver') === (rules.giver === 'partner') ? 'partner' : 'picker'] : card.to === 'others' ? ['someone else'] : [];
     return cardLines(rules, s, card, to, (id) => `the ${id}`);
   });
+  /** A card set to both or everyone else goes to more than one phone: theirs says it isn't theirs alone (as a phone does). */
+  const shared = $derived(card.to === 'both' || card.to === 'others');
   const ICON: Record<PhoneItem['kind'], string> = { picture: '🖼', gif: '🖼', video: '🎞', sound: '🔊', embed: '▶' };
   const KIND: Record<PhoneItem['kind'], string> = { picture: 'picture', gif: 'GIF', video: 'video', sound: 'sound', embed: 'online video' };
 
@@ -54,11 +56,12 @@
 
 <aside class="phone-preview" aria-label="Card on their phone">
   <div class="screen">
-    <div class="tag">🤫 ONLY YOU CAN SEE THIS</div>
+    <div class="tag">🤫 Only you{shared ? ' and the others the host chose' : ''} can see this</div>
     {#if lines.role}<div class="role">You’re the {lines.role}</div>{/if}
     {#if lines.hint}<div class="hint-line">{lines.hint}</div>{/if}
-    {#if pc.title}<div class="title" dir="auto">{pc.title}</div>{/if}
-    {#if pc.text}<div class="words" dir="auto" class:huge={pc.text.split(/\s+/).length <= 3 && !pc.text.includes('\n')}>{pc.text}</div>{/if}
+    <!-- (Huge as on the phone: a title of up to three short words, else words like that when there's no title.) -->
+    {#if pc.title}<div class="title" dir="auto" class:huge={bigWords(pc.title)}>{pc.title}</div>{/if}
+    {#if pc.text}<div class="words" dir="auto" class:huge={!pc.title && bigWords(pc.text)}>{pc.text}</div>{/if}
     {#each pc.items as it (it.el)}
       {#if it.why === 'many'}
         <!-- (Not on the phone at all.) -->
@@ -86,7 +89,7 @@
     {#each pc.items as it (it.el)}
       {#if it.why}<li class="warn">{why(it, it.why)}</li>{/if}
     {/each}
-    {#if card.elements.length > 1}<li>Phones show the words and pictures one under another: where things sit on the slide isn’t kept.</li>{/if}
+    {#if (pc.title ? 1 : 0) + (pc.text ? 1 : 0) + pc.items.filter((i) => i.why !== 'many').length > 1}<li>Phones show the words and pictures one under another: where things sit on the slide isn’t kept.</li>{/if}
   </ul>
 </aside>
 
@@ -120,31 +123,42 @@
   }
   .tag {
     font-size: 12px;
+    font-weight: 800;
     letter-spacing: 0.08em;
+    text-transform: uppercase;
+    text-align: center;
     color: #9fd8b5;
   }
+  /* (The phone's sizes, scaled to this narrower screen: its role, hint, title and words keep their order.) */
   .role {
-    font-weight: 700;
+    font-weight: 800;
+    font-size: 15px;
+    text-align: center;
   }
   .hint-line {
     font-size: 13px;
     color: #c9c9d1;
+    text-align: center;
   }
   .title {
-    font-size: 28px;
-    font-weight: 800;
+    font-size: 24px;
+    font-weight: 900;
+    line-height: 1.05;
     text-align: center;
     overflow-wrap: anywhere;
   }
   .words {
-    white-space: pre-wrap;
+    white-space: pre-line;
     overflow-wrap: anywhere;
     font-size: 16px;
-  }
-  .words.huge {
-    font-size: 32px;
-    font-weight: 800;
+    line-height: 1.35;
     text-align: center;
+  }
+  .title.huge,
+  .words.huge {
+    font-size: 36px;
+    font-weight: 900;
+    line-height: 1;
   }
   img {
     width: 100%;

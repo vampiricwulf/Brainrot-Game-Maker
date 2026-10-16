@@ -11,7 +11,7 @@
  * - Cards live in memory only. A card that goes is taken down: its players stopped, its frames removed.
  * - A card is drawn again only when what it shows changed, so a playing video or an open player isn't reset.
  */
-import { filesUrl, type CardMedia, type PhoneCard } from '../../src/lib/buzzproto';
+import { cardLink, filesUrl, isFileId, type CardMedia, type PhoneCard } from '../../src/lib/buzzproto';
 import { imageFallback } from '../../src/lib/links';
 import { arrivedLine, bigWords, brokenLine, cardHead, comingLine, filesIn, isGif, mediaName, missingLine, playerSrc, retryAfter, roleLine } from './cards';
 
@@ -123,7 +123,7 @@ export function drawCards(box: HTMLElement, list: readonly PhoneCard[]): string[
   const order: HTMLElement[] = [];
   for (const c of [...list].reverse()) {
     let d = drawn.get(c.id);
-    const key = JSON.stringify([c.role, c.hint, c.title, c.text, c.team, c.tap]);
+    const key = JSON.stringify([c.role, c.hint, c.title, c.text, c.team, c.shared, c.tap]);
     // (What it says changed under the same id: drawn again, staying open if it was.)
     if (d && d.key !== key) {
       takeDown(d);
@@ -131,6 +131,8 @@ export function drawCards(box: HTMLElement, list: readonly PhoneCard[]): string[
       d = undefined;
     }
     if (!d) {
+      // A file that didn't load for an earlier card is tried again for this one (↻ Send again: a new id, the same file).
+      for (const m of c.media ?? []) if ('file' in m && files.get(m.file)?.state === 'failed') files.delete(m.file);
       d = build(c, key);
       drawn.set(c.id, d);
       if (!known.has(c.id)) fresh.push(c.id);
@@ -264,7 +266,7 @@ function update(c: PhoneCard, d: Drawn): void {
 
 /** What an item is drawn from: its own fields, and for a file, how its download stands. */
 function slotKey(m: CardMedia): string {
-  if (!('file' in m)) return JSON.stringify(m);
+  if (!('file' in m) || !isFileId(m.file)) return JSON.stringify(m);
   const f = fetchFile(m.file);
   return JSON.stringify([m, f.state, f.url ?? '']);
 }
@@ -280,14 +282,19 @@ function slotFor(m: CardMedia, key: string): Slot {
   else if ('pending' in m) s = line('wait', m.kind, comingLine(m.kind));
   else if (m.kind === 'embed') s = embedSlot(m);
   else if ('file' in m) {
-    const f = files.get(m.file);
-    s =
-      f?.state === 'ok' && f.url
+    // (The room checked these; the phone checks them again before loading anything: a file's id goes in an address.)
+    const f = isFileId(m.file) ? files.get(m.file) : undefined;
+    s = !isFileId(m.file)
+      ? line('gone', m.kind, brokenLine(m.kind))
+      : f?.state === 'ok' && f.url
         ? mediaSlot(m, f.url, false)
         : f?.state === 'failed'
           ? line('gone', m.kind, brokenLine(m.kind))
           : line('wait', m.kind, comingLine(m.kind));
-  } else s = mediaSlot(m, m.url, true);
+  } else {
+    const url = cardLink(m.url);
+    s = url ? mediaSlot(m, url, true) : line('gone', m.kind, brokenLine(m.kind));
+  }
   s.key = key;
   return s;
 }

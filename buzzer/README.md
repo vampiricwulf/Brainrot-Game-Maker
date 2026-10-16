@@ -78,7 +78,10 @@ room, plus the phone page it serves. It is not part of the app's single-file bui
   token keeps its time. A late phone only hears how many it missed (`cards.late`), and the host sends the card again
   under a new id for it. The seat list never carries a card. A phone reports a card it showed (`cardSeen`), taken only
   for a card sent to it that it isn't late for, at most 10 in 10 seconds; the host hears it (again when it comes back).
-  A card id gone from the host's state is forgotten at once, so a closed tile leaves nothing of its cards in the room.
+  The host also hears which phones here now are late for a card sent to their seat (`cardsLate`, whenever that
+  changes), so it can suggest ↻ Send again. A card sent to more than one seat (or marked `shared` by the host, which
+  sends one card per part, each with its own lines) says on the phone that others have it too, never who. A card id
+  gone from the host's state is forgotten at once, so a closed tile leaves nothing of its cards in the room.
   With `status.off` the phones in the lobby grey their buzz button (disabled, to a screen reader too), with the status
   line as its big line and `status.sub` (and `seatsSub` for the status line's seats) as the small one.
 - **On the phone**, a card takes the buzz button's place while nobody buzzes (above a wager or answer box when one is
@@ -136,9 +139,9 @@ the seats it tied with share 2nd); and `you.out` (teams: this member sits the re
 phone → room `sync` (an echo of a pong) is ignored now: a phone page from before it is just untimed (see Fair timing).
 Private cards: `'cards'` and `'files'` in `welcome.features` (`'files'` only while the server takes files),
 `HostState.cards` and `status.off/sub/seatsSub`, `PhoneView.cards/statusSub/statusOff`, the `pending` and `missing`
-media items, `cardSeen` both ways (phone → room `{id}`, room → host `{id, seatId, member, by}`), the host's `forget`
-(delete these files now), the room → host `files` (the files it holds, on welcome and whenever that changes), and the
-two file routes. An app that doesn't see `'cards'` sends no card and has the host copy them; one that doesn't see
+media items, a card's `shared`, `cardSeen` both ways (phone → room `{id}`, room → host `{id, seatId, member, by}`),
+the room → host `cardsLate` (`{late: [{id, seatId, member, by}]}`), the host's `forget` (delete these files now), the
+room → host `files` (the files it holds, on welcome and whenever that changes), and the two file routes. An app that doesn't see `'cards'` sends no card and has the host copy them; one that doesn't see
 `'files'` sends a card's own files by hand.
 
 ## Fair timing
@@ -206,6 +209,9 @@ A card's pictures, GIFs, videos and sounds from the host's computer go to the ro
 or presses ⇡ Get it ready. The app shrinks pictures first (1600 px at most). Its answer is `{id}` (the file's SHA-256;
 the same bytes again store nothing new) or an error: 401 (wrong host token, or no such room), 409 (the room holds all it
 can), 413 (too big), 415 (a type it doesn't take), 429 (too many, or today's budget is used up) or 503 (files are off).
+The host token is checked before the body is read, so a wrong one costs the room nothing. Uploads going on at the same
+time count against the room's caps together, the same file twice at once is stored (and counted) once, and bytes
+counted against today's budget for a file that then isn't stored (the room ended meanwhile) are given back.
 
 - **Types**: PNG, JPEG, WebP, GIF; MP4, WebM; MP3, OGG, WAV, M4A. No SVG, no HTML. Served back with their own type,
   `Cache-Control: no-store` and `X-Content-Type-Options: nosniff`.
@@ -222,6 +228,11 @@ can), 413 (too big), 415 (a type it doesn't take), 429 (too many, or today's bud
   (a number of MB; `0` turns card files off) and deploy again; for `wrangler dev` only, put `FILES_MB_PER_DAY=…` in a
   `.dev.vars` file here. A missing or unreadable value means 300. The default is kept small on purpose: the Free plan's
   CPU time and rows written per upload haven't been measured on a real account yet.
+- **Before the public server takes files**, measure on a Free account: deploy, run `npx wrangler tail` while a host
+  uploads a 4 MB file and a phone fetches it, and note each request's CPU time (the Free plan allows 10 ms a request);
+  then read the rows written for the upload in the dashboard (Workers & Pages › the Worker › Durable Objects; the Free
+  plan allows 100,000 a day). Write the numbers here, set `FILES_MB_PER_DAY` from them (and lower `FILE_MAX_BYTES` in
+  `src/lib/buzzproto.ts` if a 4 MB upload doesn't fit the CPU limit), and replace the sentence above.
 
 ## Local development
 

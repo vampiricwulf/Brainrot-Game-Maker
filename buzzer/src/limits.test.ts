@@ -13,6 +13,7 @@ import {
   NETWORK_ROOMS,
   networkKey,
   nextAlarm,
+  uncountBytes,
   utcDay,
   type DayBytes,
   type DayCount,
@@ -142,6 +143,19 @@ describe('card files a day', () => {
     // The next UTC day starts from 0.
     expect(countBytes({ ...nearly, bytes: cap }, day2, 'a', 4 * MB, cap)).toEqual({ day: '2026-10-02', bytes: 4 * MB, by: { a: 4 * MB } });
     expect(bytesLeft({ ...nearly, bytes: cap }, day2, cap)).toBe(cap);
+  });
+
+  it('gives back bytes counted for a file that wasn’t stored, never below 0, and only on the same UTC day', () => {
+    const who = addressKey('2001:db8:1:100::1');
+    const counted = countBytes(null, day1, who, 4 * MB, cap) as DayBytes;
+    const back = uncountBytes(counted, day1, who, 4 * MB)!;
+    expect(back).toEqual({ day: '2026-10-01', bytes: 0, by: { [who]: 0, '20010db80001/48': 0 } });
+    // The address can upload its whole share again.
+    expect(countBytes(back, day1, who, cap * ADDRESS_FILE_SHARE, cap)).not.toBeTypeOf('string');
+    expect(uncountBytes({ day: '2026-10-01', bytes: MB, by: { a: MB } }, day1, 'a', 4 * MB)).toEqual({ day: '2026-10-01', bytes: 0, by: { a: 0 } });
+    // Another day, or nothing counted: nothing to give back.
+    expect(uncountBytes(counted, day2, who, 4 * MB)).toBeNull();
+    expect(uncountBytes(null, day1, who, 4 * MB)).toBeNull();
   });
 
   it('0 turns files off', () => {

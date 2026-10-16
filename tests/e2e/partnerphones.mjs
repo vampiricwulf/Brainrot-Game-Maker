@@ -187,7 +187,7 @@ try {
   assert(last()?.status?.off === true && last().status.sub === 'Player 1 needs a partner…' && last().status.seatsSub === 'Spinning for your partner…', 'every phone greyed (off), with the small lines under them');
   assert((await host.locator('.stage-box .join-badge').count()) === 0, 'no join code over PARTNER UP! (nobody buzzes)');
   const panel = host.locator('[data-partner-panel]');
-  assert((await panel.locator('[data-partner-files]').innerText()).includes('1 picture goes up when you send the card'), 'the panel counts the card’s picture that goes up when it’s sent (never names it)');
+  assert((await panel.locator('[data-partner-files]').innerText()).includes('1 picture goes up when you send its card'), 'the panel counts the card’s picture that goes up when its card is sent (never names it)');
   await host.screenshot({ path: 'test-results/partner-phones-up.png' });
   nothingSent('the tile open');
   await host.keyboard.press('2');

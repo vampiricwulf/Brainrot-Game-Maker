@@ -132,6 +132,17 @@ export function countBytes(
   return { day, bytes: used + n, by: { ...today?.by, [who]: mine + n, ...(net ? { [net]: ours + n } : {}) } };
 }
 
+/**
+ * n bytes countBytes counted for `who` today that weren't stored after all, taken off again (never below 0): the count
+ * to save, or null when there's nothing to take off (another UTC day began since).
+ */
+export function uncountBytes(saved: DayBytes | null | undefined, now: number, who: string, n: number): DayBytes | null {
+  if (!saved || saved.day !== utcDay(now) || !(n > 0)) return null;
+  const by = { ...saved.by };
+  for (const k of [who, networkKey(who)]) if (k && by[k] !== undefined) by[k] = Math.max(0, by[k] - n);
+  return { day: saved.day, bytes: Math.max(0, saved.bytes - n), ...(saved.by ? { by } : {}) };
+}
+
 /** What is left of today's budget (bytes). */
 export function bytesLeft(saved: DayBytes | null | undefined, now: number, cap: number): number {
   return Math.max(0, cap - (saved?.day === utcDay(now) ? saved.bytes : 0));

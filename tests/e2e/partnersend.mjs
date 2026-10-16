@@ -290,7 +290,8 @@ try {
 
   const panel = host.locator('.panel [data-partner-panel]');
   const row = (n) => panel.locator(`[data-card="${n}"]`).first();
-  const chip = (name) => panel.getByRole('button', { name, exact: true });
+  // (A chip's name says whether its card went to that player, and was seen: "Card 1 to Bob, seen".)
+  const chip = (name) => panel.getByRole('button', { name: new RegExp(`^${name}(, sent|, seen)?$`) });
 
   // ---------- Two windows: the audience window, watched all through ----------
   let [aud] = await Promise.all([host.waitForEvent('popup'), host.keyboard.press('a')]);
@@ -408,6 +409,8 @@ try {
   const lateLine = 'A card went to your seat before this phone joined. Ask the host to send it again.';
   await cat2.locator('#cards-late').getByText(lateLine).waitFor();
   assert(!(await cat2.locator('.card').count()) && !heard.cat2.join('').includes('qkzvx') && viewOf('cat2').cards?.late === 1, 'a phone that took Cat’s seat after the send gets nothing of the card, only a note that it missed one');
+  const lateRow = 'Cat’s new phone hasn’t got it: ↻ Send again';
+  assert(await until(async () => (await textOf(row(2).locator('[data-card-state]'))).includes(lateRow)), `and the host’s row says so: “${lateRow}”`);
 
   // ---------- The host reloads mid-upload (the held upload is cut off with the page) ----------
   await aud.close();
@@ -431,6 +434,7 @@ try {
   assert(await until(() => viewOf('bob').cards?.list?.[0]?.media?.[0]?.mime === 'image/webp'), 'the room tells the phone the picture is the WebP that went up');
   assert(!(await cat2.locator('.card').count()) && viewOf('cat2').cards?.late === 1 && (await cat2.locator('#cards-late').isVisible()), 'the phone that came late is still late after the host’s reload: no card');
   assert((await fetchAs(cat2, pic2)) === 404, 'and the room won’t give it the card’s picture');
+  assert(await until(async () => (await textOf(row(2).locator('[data-card-state]'))).includes(lateRow)), 'the host’s row says so again after the reload');
 
   // Bob's card stayed open; it fills in: the picture shrunk to 1600 px, the video playing muted, the YouTube player on a tap.
   assert((await bob.getByText(WORDS1).isVisible()) && !(await cover.isVisible()), 'Bob’s card stayed open through the host’s reload');
@@ -456,6 +460,7 @@ try {
   assert(again.length === 1 && again[0].id !== s2.id && JSON.stringify(again[0].to) === JSON.stringify([{ seat: seat.Cat }]) && sendOf('c1')[0].id === s1.id, '↻ Send again: card 2 under a new id, to Cat’s seat (card 1 keeps its id)');
   assert(await until(async () => (await cat2.locator('.card img').count()) === 1), 'the new phone gets it, picture and all');
   assert((await fetchAs(cat2, pic2)) === 200 && !(await cat2.locator('#cards-late').isVisible()), 'it can fetch the picture now, and the note is gone');
+  assert(await until(async () => !(await textOf(row(2).locator('[data-card-state]'))).includes('hasn’t got it')), 'and so is the row’s warning');
 
   // ---------- No phone can fetch a file of a card it wasn't sent ----------
   assert((await fetchAs(bob, pic2)) === 404 && (await fetchAs(cat2, pic1)) === 404 && (await fetchAs(cat2, vid1)) === 404 && (await fetchAs(bob, pic1)) === 200 && (await fetchAs(bob, vid1)) === 200, 'Bob can’t fetch card 2’s picture, nor Cat card 1’s files; each can fetch their own');

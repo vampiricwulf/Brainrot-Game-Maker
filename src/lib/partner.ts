@@ -27,6 +27,7 @@ import {
   type Player,
   type Session,
   type Slide,
+  type TeamMember,
 } from './model';
 import { cardItems, cardLinks, cardWords, filesToSend, phoneCard, type CardItem, type LeftOut } from './phonecard';
 import { slideHasContent } from './usage';
@@ -268,18 +269,51 @@ export function setPartner(session: Seats, s: PartnerState, id: Id, how: 'wheel'
   if (id === s.pickerId && how === 'host' && !s.includePicker) return false;
   s.partnerId = id;
   s.how = how;
+  // (Teams: who on the picker's team describes is chosen again for a new pairing: the member wheel.)
+  delete s.member;
   return true;
+}
+
+/**
+ * Teams: the picker's own team plays it, one of them describing to the rest (partner-clues spec §10.2): "☐ Partner from
+ * the same team". The partner is the picker (Solo, scored as one award to the team); who describes is chosen next.
+ */
+export function sameTeam(s: PartnerState, on: boolean): void {
+  if (!s.pickerId) return;
+  if (on) {
+    s.partnerId = s.pickerId;
+    s.how = 'host';
+  } else if (s.partnerId === s.pickerId) {
+    delete s.partnerId;
+    delete s.how;
+  }
+  delete s.member;
+}
+
+/** Teams: who on the picker's team describes to the rest (the member wheel's landing, or the host's choice). */
+export function setDescriber(s: PartnerState, m: TeamMember | null): void {
+  if (m && s.pickerId && s.partnerId === s.pickerId) s.member = { id: m.id, name: m.name };
+  else delete s.member;
 }
 
 /** The host changed who picked it: a new picker who was the partner leaves no partner (and an only one may take it). */
 export function setPartnerPicker(session: Seats, s: PartnerState, id: Id): void {
   if (!session.players.some((p) => p.id === id) || s.pickerId === id) return;
   s.pickerId = id;
+  delete s.member;
   if (s.partnerId === id) {
     delete s.partnerId;
     delete s.how;
   }
   pairOnly(session, s);
+}
+
+/**
+ * Teams: the one person on the picker's own team who describes to the rest of it (partner-clues spec §10.2), while
+ * that team plays it (Solo, scored as one award to the team); else undefined.
+ */
+export function describer(s: Pick<PartnerState, 'pickerId' | 'partnerId' | 'member'>): TeamMember | undefined {
+  return s.pickerId && s.partnerId === s.pickerId ? s.member : undefined;
 }
 
 /** Who plays which part now: the giver and the guesser (Solo: the picker, alone, guesses). */
@@ -299,6 +333,15 @@ export function swapParts(s: PartnerState): void {
  */
 export function defaultRecipients(session: Seats, s: PartnerState, to: CardGoesTo): CardTo[] {
   const { giver, guesser, solo } = partnerRoles(s);
+  const m = describer(s);
+  if (m && s.pickerId && session.players.some((p) => p.id === s.pickerId)) {
+    // One person on the picker's team describes to the rest of it: "the describer" is that person, "the guesser" the
+    // rest of the team, "everyone else" the other teams.
+    const one: CardTo = { seat: s.pickerId, member: { ...m } };
+    const rest: CardTo = { seat: s.pickerId, except: [m.id] };
+    if (to === 'others') return session.players.filter((p) => p.id !== s.pickerId).map((p) => ({ seat: p.id }));
+    return to === 'giver' ? [one] : to === 'guesser' ? [rest] : to === 'both' ? [one, rest] : [];
+  }
   let ids: (Id | undefined)[];
   if (solo) ids = to === 'guesser' ? [guesser] : [];
   else if (to === 'giver') ids = [giver];
@@ -313,26 +356,65 @@ export function defaultRecipients(session: Seats, s: PartnerState, to: CardGoesT
 export function cardRecipients(session: Seats, s: PartnerState, card: Pick<ClueCard, 'id' | 'to'>): CardTo[] {
   const dealt = s.deal?.[card.id];
   if (!dealt) return defaultRecipients(session, s, card.to);
-  return session.players.filter((p) => dealt.some((t) => t.seat === p.id)).map((p) => ({ seat: p.id }));
+  return recipientsNow(session, s, dealt);
+}
+
+/** A recipient as one string, to tell two apart (never read back): the seat, one person on it, or all of it but some. */
+export const toKey = (t: CardTo): string => JSON.stringify([t.seat, t.member?.id ?? '', [...(t.except ?? [])].sort()]);
+
+/**
+ * Recipients as the parts stand now: players still in the game, in their order, each once. On the picker's team while
+ * one of them describes, the describer (one before the rest) and the rest of the team; anywhere else, whole seats.
+ */
+function recipientsNow(session: Seats, s: PartnerState, to: CardTo[]): CardTo[] {
+  const m = describer(s);
+  const out: CardTo[] = [];
+  for (const p of session.players) {
+    const mine = to.filter((t) => t.seat === p.id);
+    if (m && p.id === s.pickerId) {
+      if (mine.some((t) => t.member?.id === m.id)) out.push({ seat: p.id, member: { ...m } });
+      if (mine.some((t) => !t.member)) out.push({ seat: p.id, except: [m.id] });
+    } else if (mine.some((t) => !t.member)) out.push({ seat: p.id });
+  }
+  return out;
+}
+
+const sameTo = (a: CardTo[], b: CardTo[]) => a.length === b.length && a.every((t) => b.some((x) => toKey(x) === toKey(t)));
+
+/**
+ * The host chose who a card goes to (`to`: players' ids, or recipients, in any order). The same as its default isn't a
+ * change: the row follows the parts again (⇄ Swap or a new partner moves it).
+ */
+export function setRecipients(session: Seats, s: PartnerState, card: Pick<ClueCard, 'id' | 'to'>, to: (Id | CardTo)[]): void {
+  const now = recipientsNow(session, s, to.map((t) => (typeof t === 'string' ? { seat: t } : t)));
+  if (sameTo(now, defaultRecipients(session, s, card.to))) return resetRecipients(s, card.id);
+  (s.deal ??= {})[card.id] = now;
 }
 
 /**
- * The host chose who a card goes to (`seats`, in any order). The same players as its default isn't a change: the row
- * follows the parts again (⇄ Swap or a new partner moves it).
+ * The part a recipient plays now: the giver's or the guesser's, 'other' (neither of the two), or 'solo' (Solo's one
+ * player, who has no part line). While one person on the picker's team describes, that person is the giver and the
+ * rest of the team the guesser.
  */
-export function setRecipients(session: Seats, s: PartnerState, card: Pick<ClueCard, 'id' | 'to'>, seats: Id[]): void {
-  const ids = session.players.map((p) => p.id).filter((id) => seats.includes(id));
-  const def = defaultRecipients(session, s, card.to).map((t) => t.seat);
-  if (ids.length === def.length && ids.every((id) => def.includes(id))) return resetRecipients(s, card.id);
-  (s.deal ??= {})[card.id] = ids.map((seat) => ({ seat }));
+export type CardPart = PartnerRole | 'other' | 'solo';
+export function partOfTo(s: Pick<PartnerState, 'pickerId' | 'partnerId' | 'giver' | 'member'>, t: CardTo): CardPart {
+  const r = partnerRoles(s);
+  const m = describer(s);
+  if (m && t.seat === s.pickerId) return t.member ? (t.member.id === m.id ? 'giver' : 'other') : 'guesser';
+  if (r.solo) return t.seat === r.guesser ? 'solo' : 'other';
+  return t.seat === r.giver ? 'giver' : t.seat === r.guesser ? 'guesser' : 'other';
 }
 
 /** A player's part word now, for their chip or a card's line ("describer"; Solo: ''), '' for anyone else. */
-export function partWordOf(rules: PartnerRules, s: PartnerState, id: Id): string {
-  const r = partnerRoles(s);
-  if (r.solo) return '';
-  const words = partWords(rules);
-  return id === r.giver ? lowerWord(words.giver) : id === r.guesser ? lowerWord(words.guesser) : '';
+export function partWordOf(rules: PartnerRules, s: PartnerState, who: Id | CardTo): string {
+  const part = partOfTo(s, typeof who === 'string' ? { seat: who } : who);
+  return part === 'giver' || part === 'guesser' ? lowerWord(partWords(rules)[part]) : '';
+}
+
+/** A recipient's name: a player (a team), one person on a team, or "the rest of Red Team". */
+export function toName(session: Seats, t: CardTo): string {
+  const name = session.players.find((p) => p.id === t.seat)?.name ?? '?';
+  return t.member ? t.member.name : t.except?.length ? `the rest of ${name}` : name;
 }
 
 /**
@@ -343,8 +425,7 @@ export function recipientsText(session: Seats, s: PartnerState, rules: PartnerRu
   if (!s.partnerId) return goesToLabel(rules, card.to, false);
   const to = cardRecipients(session, s, card);
   if (!to.length) return 'nobody yet';
-  const name = (id: Id) => session.players.find((p) => p.id === id)?.name ?? '?';
-  return to.map(({ seat }) => (partWordOf(rules, s, seat) ? `${name(seat)} (${partWordOf(rules, s, seat)})` : name(seat))).join(', ');
+  return to.map((t) => (partWordOf(rules, s, t) ? `${toName(session, t)} (${partWordOf(rules, s, t)})` : toName(session, t))).join(', ');
 }
 
 /** ↺: the card goes back to its default (its Goes to). */
@@ -561,6 +642,21 @@ export function sentSeats(session: Seats, s: Pick<PartnerState, 'sent'>, card: I
   return session.players.map((p) => p.id).filter((id) => seats.has(id));
 }
 
+/** Everyone a card was sent to (and not taken back), as they were sent to (one person on a team, say), each once. */
+export function sentTo(session: Seats, s: Pick<PartnerState, 'sent'>, card: Id): CardTo[] {
+  const all = cardSends(s, card).flatMap((x) => x.to);
+  const out: CardTo[] = [];
+  for (const p of session.players) for (const t of all) if (t.seat === p.id && !out.some((x) => toKey(x) === toKey(t))) out.push(t);
+  return out;
+}
+
+/**
+ * A new send's recipients, each with the part they play as it goes (`part`): a send to more than one part goes to the
+ * phones as one card per part, and which card each phone has stays as it was sent (partnerCards).
+ */
+const sendTo = (s: PartnerState, to: CardTo[]): CardTo[] =>
+  to.map((t) => ({ seat: t.seat, ...(t.member ? { member: { ...t.member } } : {}), ...(t.except?.length ? { except: [...t.except] } : {}), part: partOfTo(s, t) }));
+
 /** The new send's time: `now`, after any earlier send of the card (each send of it has its own id). */
 function sendAt(s: Pick<PartnerState, 'sent'>, card: Id, now: number): number {
   return Math.max(now, ...cardSends(s, card).map((x) => x.at + 1));
@@ -577,7 +673,7 @@ export function sendCards(session: Seats, s: PartnerState, cards: ClueCard[], no
     const to = cardRecipients(session, s, card);
     if (!to.length) continue;
     // (A new list, not a push: `s` may be the app's live state, which sees an assignment.)
-    s.sent = [...(s.sent ?? []), { card: card.id, to, at: sendAt(s, card.id, now), hash: cardHash(card) }];
+    s.sent = [...(s.sent ?? []), { card: card.id, to: sendTo(s, to), at: sendAt(s, card.id, now), hash: cardHash(card) }];
     out.push(card);
   }
   return out;
@@ -595,11 +691,11 @@ export function takeBack(s: PartnerState, card: Id): void {
  * it), with what's on it now. Returns whether it went.
  */
 export function sendAgain(session: Seats, s: PartnerState, card: ClueCard, now = Date.now()): boolean {
-  const seats = sentSeats(session, s, card.id);
-  if (!seats.length) return false;
+  const to = sentTo(session, s, card.id);
+  if (!to.length) return false;
   const at = sendAt(s, card.id, now);
   takeBack(s, card.id);
-  s.sent = [...(s.sent ?? []), { card: card.id, to: seats.map((seat) => ({ seat })), at, hash: cardHash(card) }];
+  s.sent = [...(s.sent ?? []), { card: card.id, to: sendTo(s, to), at, hash: cardHash(card) }];
   return true;
 }
 
@@ -608,15 +704,16 @@ export function sendAgain(session: Seats, s: PartnerState, card: ClueCard, now =
  * (dropped from its earlier sends, which keep their ids: a recipient is only ever dropped from an old id, never added).
  */
 export function sendChanges(session: Seats, s: PartnerState, card: ClueCard, now = Date.now()): void {
-  const want = cardRecipients(session, s, card).map((t) => t.seat);
-  const had = sentSeats(session, s, card.id);
+  const want = cardRecipients(session, s, card);
+  const wanted = (t: CardTo) => want.some((x) => toKey(x) === toKey(t));
+  const had = sentTo(session, s, card.id);
   const at = sendAt(s, card.id, now);
   if (s.sent) {
-    s.sent = s.sent.flatMap((x) => (x.card !== card.id ? [x] : x.to.some((t) => want.includes(t.seat)) ? [{ ...x, to: x.to.filter((t) => want.includes(t.seat)) }] : []));
+    s.sent = s.sent.flatMap((x) => (x.card !== card.id ? [x] : x.to.some(wanted) ? [{ ...x, to: x.to.filter(wanted) }] : []));
     if (!s.sent.length) delete s.sent;
   }
-  const added = want.filter((id) => !had.includes(id));
-  if (added.length) s.sent = [...(s.sent ?? []), { card: card.id, to: added.map((seat) => ({ seat })), at, hash: cardHash(card) }];
+  const added = want.filter((t) => !had.some((x) => toKey(x) === toKey(t)));
+  if (added.length) s.sent = [...(s.sent ?? []), { card: card.id, to: sendTo(s, added), at, hash: cardHash(card) }];
 }
 
 /**
@@ -627,9 +724,7 @@ export function sendState(session: Seats, s: PartnerState, card: ClueCard): 'uns
   const sends = cardSends(s, card.id);
   if (!sends.length) return 'unsent';
   if (sends.some((x) => x.hash !== cardHash(card))) return 'edited';
-  const had = sentSeats(session, s, card.id);
-  const want = cardRecipients(session, s, card).map((t) => t.seat);
-  return had.length === want.length && had.every((id) => want.includes(id)) ? 'sent' : 'changed';
+  return sameTo(sentTo(session, s, card.id), cardRecipients(session, s, card)) ? 'sent' : 'changed';
 }
 
 /** ⇡ Get it ready: the card's files go up now, for no phone yet (only this press adds to `ready`). */
@@ -645,6 +740,9 @@ export function dropFromSends(s: PartnerState, seat: Id): void {
   if (!s.sent.length) delete s.sent;
 }
 
+/** The line on a card sent to anyone but the two (everyone else describing too, a hint for the audience…). */
+const OTHER_HINT = 'A card from the host: don’t show it to {guesser}';
+
 /** The game's line for a card on its part's phone, {giver} and {guesser} its players' names. */
 const HINTS: Record<PartnerGame, Partial<Record<PartnerRole, string>>> = {
   describe: { giver: 'Describe it to {guesser}: don’t say what’s on it!' },
@@ -656,23 +754,31 @@ const HINTS: Record<PartnerGame, Partial<Record<PartnerRole, string>>> = {
 };
 
 /**
- * The lines above a card on a phone: its part ("Describer") when everyone it goes to plays that part, and its line
- * (the card's own, else the game's for that part), {giver} and {guesser} filled in with names. Never what's on it.
+ * The lines above a card on a phone: its part ("Describer") when everyone it goes to plays that part, and its line,
+ * {giver} and {guesser} filled in with names: the card's own (for the part it's set to go to, or for everyone when
+ * it's set to both or the others), else the game's for that part, or "A card from the host: don't show it to Ann" for
+ * anyone but the two. Never what's on it. (partnerCards sends one card per part, so each gets its own.)
  */
 export function cardLines(
   rules: PartnerRules,
-  s: Pick<PartnerState, 'pickerId' | 'partnerId' | 'giver'>,
-  card: Pick<ClueCard, 'hint'>,
-  to: Id[],
+  s: Pick<PartnerState, 'pickerId' | 'partnerId' | 'giver' | 'member'>,
+  card: Pick<ClueCard, 'hint'> & Partial<Pick<ClueCard, 'to'>>,
+  to: (Id | CardTo)[],
   name: (id: Id) => string,
 ): { role?: string; hint?: string } {
   const r = partnerRoles(s);
-  const parts = new Set(to.map((id) => (r.solo ? '' : id === r.giver ? 'giver' : id === r.guesser ? 'guesser' : '')));
-  const part = parts.size === 1 ? ([...parts][0] as PartnerRole | '') : '';
-  const fill = (t: string) => t.replace(/\{(giver|guesser)\}/g, (_, k: PartnerRole) => (r[k] ? name(r[k]!) : 'your partner'));
+  const m = describer(s);
+  const parts = new Set(to.map((t) => partOfTo(s, typeof t === 'string' ? { seat: t } : t)));
+  const part = parts.size === 1 ? [...parts][0] : '';
+  const role = part === 'giver' || part === 'guesser' ? part : '';
+  // (One describing to their own team: the giver is that person, and the guesser is "your team" to them.)
+  const who = (k: PartnerRole) =>
+    m && s.pickerId ? (k === 'giver' ? m.name : part === 'giver' ? 'your team' : name(s.pickerId)) : r[k] ? name(r[k]!) : 'your partner';
+  const fill = (t: string) => t.replace(/\{(giver|guesser)\}/g, (_, k: PartnerRole) => who(k));
   const own = card.hint?.trim();
-  const hint = own ? fill(own) : part && !r.solo ? fill(HINTS[rules.game][part] ?? '') : '';
-  return { ...(part ? { role: partWords(rules)[part] } : {}), ...(hint ? { hint } : {}) };
+  const ownFits = !!own && (card.to !== 'giver' && card.to !== 'guesser' ? true : part === card.to || part === 'solo' || !part);
+  const hint = ownFits ? fill(own!) : role ? fill(HINTS[rules.game][role] ?? '') : part === 'other' ? fill(OTHER_HINT) : '';
+  return { ...(role ? { role: partWords(rules)[role] } : {}), ...(hint ? { hint } : {}) };
 }
 
 /**

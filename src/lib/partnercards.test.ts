@@ -2,7 +2,7 @@
 // the host sends it (one id per send), exactly to who it was sent to; Send again, Send changes and Take back touch only
 // that card; an edited card comes off the phones; a reload uploads files only for cards sent or got ready; and the
 // phones' status lines with a room that takes cards.
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { jeopardyGame } from './testgame';
 import { newImageEl, newTextEl, newVideoEl, setSlideText, type BoardRound, type Game, type PartnerGame, type Session } from './model';
 import { backToBoard, judgePartner, migrateSession, newSession, openClue, rebaseSession, removePlayer } from './session';
@@ -11,21 +11,26 @@ import {
   cardHash,
   cardId,
   cardLines,
+  cardRecipients,
   cardSends,
   filesWanted,
   markReady,
   partnerRules,
+  partnerShares,
+  recipientsText,
+  sameTeam,
   sendAgain,
   sendCards,
   sendChanges,
   sendState,
+  setDescriber,
   setPartner,
   setPartnerGame,
   setRecipients,
   swapParts,
   takeBack,
 } from './partner';
-import { buzzIdle, cardText, fitCards, hostState, newBuzz, partnerAnswerAsk, partnerCards, phoneStatus } from './buzz';
+import { buzzIdle, cardText, fitCards, hostState, newBuzz, partnerAnswerAsk, partnerAnswerId, partnerCards, phoneStatus, sendOf } from './buzz';
 import { CARDS_BYTES, type HostCard } from './buzzproto';
 
 const HASH = 'a'.repeat(64);
@@ -222,6 +227,118 @@ describe('one send at a time (spec §14.4)', () => {
   });
 });
 
+describe('one card per part (spec §12.3: each phone gets its own lines)', () => {
+  it('a card to its part and someone else: one card each, with their own lines, both marked shared', () => {
+    const { g, session, s, clue, one } = setup();
+    setPartner(session, s, 'b', 'wheel');
+    setRecipients(session, s, one, ['b', 'c']);
+    sendCards(session, s, [one], 1000);
+    const id = cardId(clue.id, { card: one.id, at: 1000 });
+    expect(partnerCards(g, session, { files: {} })).toEqual([
+      { id: `${id}~g`, to: [{ seat: 'b' }], open: true, role: 'Describer', hint: 'Describe it to Ann: don’t say what’s on it!', shared: true, text: 'CARD-ONE-xyzzy' },
+      { id: `${id}~o`, to: [{ seat: 'c' }], open: true, hint: 'A card from the host: don’t show it to Ann', shared: true, text: 'CARD-ONE-xyzzy' },
+    ]);
+    // Each is the send, for ✓ seen.
+    expect(partnerCards(g, session, { files: {} })!.map((c) => sendOf(c.id))).toEqual([id, id]);
+    // A card to one part only is one card, its own id, not shared (the room marks one to several seats shared).
+    const { g: g2, session: s2, s: p2, one: one2 } = setup();
+    setPartner(s2, p2, 'b', 'wheel');
+    sendCards(s2, p2, [one2], 1000);
+    expect(partnerCards(g2, s2, { files: {} })![0]).not.toHaveProperty('shared');
+  });
+
+  it('which card a phone has stays as it was sent: ⇄ Swap changes its lines, never its id', () => {
+    const { g, session, s, one } = setup();
+    setPartner(session, s, 'b', 'wheel');
+    setRecipients(session, s, one, ['b', 'c']);
+    sendCards(session, s, [one], 1000);
+    const ids = () => partnerCards(g, session, { files: {} })!.map((c) => c.id);
+    const before = ids();
+    swapParts(s);
+    expect(ids()).toEqual(before);
+    expect(partnerCards(g, session, { files: {} })![0]).toMatchObject({ to: [{ seat: 'b' }], role: 'Guesser' });
+  });
+
+  it('the card’s own line is for the part it’s set to go to; anyone else gets the line for them', () => {
+    const { session, s, clue, one } = setup();
+    setPartner(session, s, 'b', 'wheel');
+    const rules = partnerRules(clue);
+    const name = (id: string) => session.players.find((p) => p.id === id)!.name;
+    const own = { ...one, hint: 'Draw it, {giver}!' };
+    expect(cardLines(rules, s, own, ['b'], name)).toEqual({ role: 'Describer', hint: 'Draw it, Bob!' });
+    expect(cardLines(rules, s, own, ['c'], name)).toEqual({ hint: 'A card from the host: don’t show it to Ann' });
+    expect(cardLines(rules, s, { ...own, to: 'others' }, ['c'], name)).toEqual({ hint: 'Draw it, Bob!' });
+  });
+});
+
+describe('one person describes to their own team (spec §10.2)', () => {
+  /** Red (a) picked it and plays it: Zoe on Red describes. */
+  function red() {
+    const t = setup('describe', { teams: true });
+    sameTeam(t.s, true);
+    setDescriber(t.s, { id: 'mZoe', name: 'Zoe' });
+    return t;
+  }
+
+  it('the picker’s own team, with a describer: the describer’s card to them only, the guesser’s to the rest of the team', () => {
+    const { session, s, clue, one, two } = red();
+    expect([s.partnerId, s.member]).toEqual(['a', { id: 'mZoe', name: 'Zoe' }]);
+    expect(cardRecipients(session, s, one)).toEqual([{ seat: 'a', member: { id: 'mZoe', name: 'Zoe' } }]);
+    two.to = 'guesser';
+    expect(cardRecipients(session, s, two)).toEqual([{ seat: 'a', except: ['mZoe'] }]);
+    const rules = partnerRules(clue);
+    expect(recipientsText(session, s, rules, one)).toBe('Zoe (describer)');
+    expect(recipientsText(session, s, rules, two)).toBe('the rest of Ann (guesser)');
+    two.to = 'others';
+    expect(cardRecipients(session, s, two)).toEqual([{ seat: 'b' }, { seat: 'c' }]);
+    // Scored as Solo: one award to the team, the bigger "got" share.
+    expect(partnerShares(400, rules, s, true)).toEqual([{ id: 'a', role: 'solo', points: 400 }]);
+  });
+
+  it('sends: Zoe’s card to Zoe only, and the rest of the team a line with it, nothing of the card', () => {
+    const { g, session, s, clue, one } = red();
+    s.stage = 'distribute';
+    sendCards(session, s, [one], 1000);
+    const id = cardId(clue.id, { card: one.id, at: 1000 });
+    expect(partnerCards(g, session, { files: {} })).toEqual([
+      { id, to: [{ seat: 'a', member: 'mZoe' }], open: true, role: 'Describer', hint: 'Describe it to your team: don’t say what’s on it!', text: 'CARD-ONE-xyzzy' },
+      { id: `${id}~t`, to: [{ seat: 'a', except: ['mZoe'] }], open: true, role: 'Guesser', hint: '🎯 Your team is guessing! Zoe is describing', tap: false },
+    ]);
+    expect(sendState(session, s, one)).toBe('sent');
+    // A new describer later: the card stays with Zoe until 📤 Send changes.
+    setDescriber(s, { id: 'mMax', name: 'Max' });
+    expect(sendState(session, s, one)).toBe('changed');
+    expect(partnerCards(g, session, { files: {} })![0].to).toEqual([{ seat: 'a', member: 'mZoe' }]);
+    sendChanges(session, s, one, 2000);
+    expect(partnerCards(g, session, { files: {} })!.map((c) => c.to)).toEqual([[{ seat: 'a', member: 'mMax' }], [{ seat: 'a', except: ['mMax'] }]]);
+  });
+
+  it('the phones’ lines say who describes; the team’s line goes to Zoe too, so it never says she guesses', () => {
+    const { g, session, s } = red();
+    expect(phoneStatus(g, session, false, { cards: true })).toEqual({
+      text: '🤝 Zoe describes → Ann guesses',
+      off: true,
+      sub: 'Nobody buzzes on this one',
+      seats: ['a'],
+      seatsText: '🤝 Your team plays this one!',
+      seatsSub: 'Zoe is describing: wait for the question',
+    });
+  });
+
+  it('a damaged save never widens one person to their whole team', () => {
+    const { g, session, s, one } = red();
+    s.stage = 'distribute';
+    sendCards(session, s, [one], 1000);
+    const bad: Session = JSON.parse(JSON.stringify(session));
+    bad.partner!.sent![0].to = [{ seat: 'a', member: 'mZoe' as never }];
+    migrateSession(bad, g);
+    expect(bad.partner!.sent).toBeUndefined();
+    const ok: Session = JSON.parse(JSON.stringify(session));
+    migrateSession(ok, g);
+    expect(partnerCards(g, ok, { files: {} })).toEqual(partnerCards(g, session, { files: {} }));
+  });
+});
+
 describe('cardHash', () => {
   it('counts what a phone gets: words, items and their order, the line; not where they sit or how they look', () => {
     const { one } = setup();
@@ -373,7 +490,7 @@ describe('the guesser types their guess (spec §5.4)', () => {
     expect(st.answers).toBeUndefined();
     expect(st.clue).toBeNull();
     s.stage = 'distribute';
-    expect(partnerAnswerAsk(g, session)).toEqual({ id: clue.id, open: true, seats: [{ id: 'a' }] });
+    expect(partnerAnswerAsk(g, session)).toEqual({ id: `${clue.id}@${s.at}`, open: true, seats: [{ id: 'a' }] });
     expect(partnerAnswerAsk(g, session, { a: { n: 2 } })!.seats).toEqual([{ id: 'a', got: 2 }]);
     swapParts(s);
     expect(partnerAnswerAsk(g, session)!.seats).toEqual([{ id: 'b' }]);
@@ -381,6 +498,19 @@ describe('the guesser types their guess (spec §5.4)', () => {
     s.stage = 'live';
     judgePartner(session, g, true, 400);
     expect(partnerAnswerAsk(g, session)!.open).toBe(false);
+  });
+
+  it('one round of guesses per play of the tile: put back and played again, it starts with none', () => {
+    const { g, session, s } = setup('describe', { typeGuess: true });
+    const first = partnerAnswerId(s);
+    vi.useFakeTimers({ now: (s.at ?? 0) + 5000 });
+    backToBoard(session, g, { markUsed: false });
+    session.currentPickerId = 'a';
+    openClue(session, { round: 0, cat: 0, row: 1 }, g);
+    vi.useRealTimers();
+    expect(partnerAnswerId(session.partner!)).not.toBe(first);
+    // (Undo and a reload keep the play's time, so a guess survives those.)
+    expect(partnerAnswerId(JSON.parse(JSON.stringify(session.partner)))).toBe(partnerAnswerId(session.partner!));
   });
 
   it('off unless the clue says so', () => {

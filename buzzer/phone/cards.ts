@@ -2,8 +2,11 @@
  * A private card on the phone (partner-clues spec §12.3, §14.6, §16): its lines, and what each picture, video, sound or
  * embed on it becomes. No page here (cardpanel.ts draws it), so it's unit-tested (cards.test.ts).
  */
-import { cardLink, type CardMedia, type PhoneCard } from '../../src/lib/buzzproto';
+import { bigWords, cardLink, isFileId, type CardMedia, type PhoneCard } from '../../src/lib/buzzproto';
 import { playerFor, youtubeId, youtubePlayerUrl, youtubeStart } from '../../src/lib/links';
+
+/** (Shared with the editor's 📱 preview, so it makes the same words huge.) */
+export { bigWords };
 
 /**
  * The sites a card's embed may frame. The page's content policy (index.html, frame-src) lets in exactly these, so a
@@ -66,21 +69,20 @@ export const brokenLine = (kind: CardMedia['kind']): string => `${icon(kind)} Th
 /** Said (to a screen reader) when a file that was coming arrives in a card that's open. */
 export const arrivedLine = (kind: CardMedia['kind']): string => `Your ${mediaWord(kind)} is here`;
 
-/** The card's top line: who can see it (a card sent to a team shows on every phone on it). */
-export const cardHead = (c: Pick<PhoneCard, 'team'>): string => (c.team ? '🤫 Only your team can see this' : '🤫 Only you can see this');
+/**
+ * The card's top line: who can see it (a card sent to a team shows on every phone on it; a shared one went to others
+ * too, never named).
+ */
+export const cardHead = (c: Pick<PhoneCard, 'team' | 'shared'>): string =>
+  `🤫 Only ${c.team ? 'your team' : 'you'}${c.shared ? ' and the others the host chose' : ''} can see this`;
 /** Its part, as a line: "You’re the Describer". */
 export const roleLine = (role: string): string => `You’re the ${role}`;
 
-/** Up to three short words show huge, so a secret word can be read at arm's length. */
-export function bigWords(s: string): boolean {
-  const t = s.trim();
-  return !!t && t.length <= 30 && !/\n/.test(t) && t.split(/\s+/).length <= 3;
-}
-
-/** Said once as cards arrive: "A card only you can see". */
-export function cardsLine(n: number, team: boolean): string {
+/** Said once as cards arrive: "A card only you can see" ("A card the host sent to you and others" when one is shared). */
+export function cardsLine(n: number, team: boolean, shared = false): string {
   if (!n) return '';
   const who = team ? 'your team' : 'you';
+  if (shared) return n === 1 ? `A card the host sent to ${who} and others` : `${n} cards the host sent to ${who} and others`;
   return n === 1 ? `A card only ${who} can see` : `${n} cards only ${who} can see`;
 }
 
@@ -93,8 +95,12 @@ export function lateLine(n: number, team: boolean): string {
     : `${n} cards went to ${where} before this phone joined. Ask the host to send them again.`;
 }
 
-/** The card files these cards use (each once): what the phone keeps fetched, and lets go of the rest. */
-export const filesIn = (cards: readonly PhoneCard[]): Set<string> => new Set(cards.flatMap((c) => (c.media ?? []).flatMap((m) => ('file' in m ? [m.file] : []))));
+/**
+ * The card files these cards use (each once): what the phone keeps fetched, and lets go of the rest. Only real file
+ * ids: one goes into a request's address, with this phone's token beside it.
+ */
+export const filesIn = (cards: readonly PhoneCard[]): Set<string> =>
+  new Set(cards.flatMap((c) => (c.media ?? []).flatMap((m) => ('file' in m && isFileId(m.file) ? [m.file] : []))));
 
 /** A download worth trying again (and how many tries in all): a moment's 404 (the room catching up), too many, a server error, no network. */
 export function retryAfter(status: number | null, tries: number): number | null {

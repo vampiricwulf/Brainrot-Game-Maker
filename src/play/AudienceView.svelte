@@ -144,6 +144,8 @@
   const ptPartner = $derived(pt?.partnerId ? byId[pt.partnerId] : undefined);
   const ptRoles = $derived(pt ? partnerRoles(pt) : null);
   const ptSolo = $derived(!!ptRoles?.solo && !!ptPicker);
+  /** Teams: one person on the picker's team describes to the rest of it (its name, from the member wheel). */
+  const ptMember = $derived(ptSolo && game.settings.buzzTeams ? pt?.member : undefined);
   const ptGiver = $derived(ptRoles?.giver ? byId[ptRoles.giver] : undefined);
   const ptGuesser = $derived(ptRoles?.guesser ? byId[ptRoles.guesser] : undefined);
   /** The parts badge over the question: "🗣 Bob describes → 🎯 Ann guesses" (Solo: "🤝 Ann · Solo!"). */
@@ -358,7 +360,9 @@
 {/snippet}
 {#snippet pairPlates(waiting: boolean)}
   <div class="pu-pair" class:paired={!!ptPartner}>
-    {#if ptSolo}
+    {#if ptSolo && ptMember}
+      {@render plate(ptPicker, false)}<span class="pu-and">· {ptMember.name} {ptGame?.verb ?? 'describes'}!</span>
+    {:else if ptSolo}
       {@render plate(ptPicker, false)}<span class="pu-and">· Solo!</span>
     {:else}
       {@render plate(ptPicker, false)}<span class="pu-and">🤝</span>{@render plate(ptPartner, waiting && !!ptPicker)}
@@ -517,7 +521,10 @@
     {#if ptBadge && ptGame}
       <!-- Who plays which part, in their colours and in words (colour is never the only sign). -->
       <div class="dd-badge partner-badge" data-partner-badge>
-        {#if ptSolo && ptPicker}
+        {#if ptSolo && ptPicker && ptMember}
+          {ptGame.icon} <span style:color={ptPicker.color}>{ptMember.name}</span> {ptGame.verb} → 🎯 <span style:color={ptPicker.color}>{ptPicker.name}</span>
+          {ptGame.guessVerb}
+        {:else if ptSolo && ptPicker}
           🤝 <span style:color={ptPicker.color}>{ptPicker.name}</span> · Solo!
         {:else if ptGiver && ptGuesser}
           {ptGame.icon} <span style:color={ptGiver.color}>{ptGiver.name}</span> {ptGame.verb} → 🎯 <span style:color={ptGuesser.color}>{ptGuesser.name}</span>

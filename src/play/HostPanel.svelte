@@ -16,7 +16,7 @@
   import TimerControls from './host/TimerControls.svelte';
   import DDControls from './host/DDControls.svelte';
   import PartnerControls from './host/PartnerControls.svelte';
-  import { cardSlides, partnerRules, partnerShares, partnerVerdict, sentSeats } from '../lib/partner';
+  import { cardSlides, partnerRules, partnerShares, partnerVerdict, sentTo, toName } from '../lib/partner';
   import FinalControls from './host/FinalControls.svelte';
   import EndControls from './host/EndControls.svelte';
   import ToolsControls from './host/ToolsControls.svelte';
@@ -84,6 +84,7 @@
     onpartnershow = () => {},
     onpartnerclock = () => {},
     onpartnertakeback = () => {},
+    onpartnermemberspin = () => {},
     onpartnerjudge = () => {},
     onfinalstep,
     ontiebreaker,
@@ -187,6 +188,8 @@
     onpartnerclock?: () => void;
     /** ✖ Take back a 🤫 card from every phone it was sent to. */
     onpartnertakeback?: (card: string) => void;
+    /** 🎡 Spin for the describer: the member wheel (teams, the picker's own team playing it). */
+    onpartnermemberspin?: () => void;
     /** ✔ Got it (true) or ✘ Missed (false) on a partner clue: both of the two in one step. */
     onpartnerjudge?: (got: boolean) => void;
     onfinalstep: () => void;
@@ -480,7 +483,7 @@
     if (!partner?.sent?.length || !info) return '';
     const out = cardSlides(info.clue).flatMap((c, i) => (partner.sent!.some((x) => x.card === c.id) ? [{ c, n: i + 1 }] : []));
     if (out.length !== 1) return out.length ? `🤫 ${out.length} cards sent` : '';
-    const who = sentSeats(session, partner, out[0].c.id).map((id) => session.players.find((p) => p.id === id)?.name ?? '?');
+    const who = sentTo(session, partner, out[0].c.id).map((t) => toName(session, t));
     return `🤫 card ${out[0].n} sent to ${who.join(', ')}`;
   });
   /**
@@ -670,7 +673,13 @@
       {#if partner}
         {@const named = (id: string | undefined) => session.players.find((p) => p.id === id)?.name}
         <span class="ddtag partnertag" data-partner-tag
-          >🤝 {named(partner.pickerId) ?? '?'}{partner.partnerId ? (partner.partnerId === partner.pickerId ? ' · Solo' : ` + ${named(partner.partnerId) ?? '?'}`) : ''}</span
+          >🤝 {named(partner.pickerId) ?? '?'}{partner.partnerId
+            ? partner.partnerId === partner.pickerId
+              ? partner.member
+                ? ` · ${partner.member.name}`
+                : ' · Solo'
+              : ` + ${named(partner.partnerId) ?? '?'}`
+            : ''}</span
         >
       {/if}
       {#if slidePos && !session.revealed}<span class="slidepos" data-slidepos>Slide {slidePos.at} of {slidePos.of}</span>{/if}
@@ -905,6 +914,7 @@
             onshow={onpartnershow}
             onclock={onpartnerclock}
             ontakeback={onpartnertakeback}
+            onmemberspin={onpartnermemberspin}
             onjudge={onpartnerjudge}
           />
         {/key}

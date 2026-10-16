@@ -79,6 +79,9 @@ describe('a card’s lines', () => {
   it('says who can see it, and its part', () => {
     expect(cardHead({})).toBe('🤫 Only you can see this');
     expect(cardHead({ team: true })).toBe('🤫 Only your team can see this');
+    // Sent to others too: never who, only that it isn't theirs alone.
+    expect(cardHead({ shared: true })).toBe('🤫 Only you and the others the host chose can see this');
+    expect(cardHead({ team: true, shared: true })).toBe('🤫 Only your team and the others the host chose can see this');
     expect(roleLine('Describer')).toBe('You’re the Describer');
   });
 
@@ -116,6 +119,8 @@ describe('a card’s lines', () => {
     expect(cardsLine(0, false)).toBe('');
     expect(cardsLine(1, false)).toBe('A card only you can see');
     expect(cardsLine(2, true)).toBe('2 cards only your team can see');
+    expect(cardsLine(1, false, true)).toBe('A card the host sent to you and others');
+    expect(cardsLine(2, true, true)).toBe('2 cards the host sent to your team and others');
     expect(lateLine(0, false)).toBe('');
     expect(lateLine(1, false)).toBe('A card went to your seat before this phone joined. Ask the host to send it again.');
     expect(lateLine(2, true)).toBe('2 cards went to your team before this phone joined. Ask the host to send them again.');
@@ -131,6 +136,8 @@ describe('card files on the phone', () => {
         card('1', [{ kind: 'image', file: FILE, mime: 'image/png' }, { kind: 'image', pending: true }, { kind: 'video', url: 'https://a.test/v.mp4' }]),
         card('2', [{ kind: 'image', file: FILE, mime: 'image/png' }, { kind: 'audio', file: other, mime: 'audio/mpeg' }]),
         { id: '3', open: true },
+        // (Not a file id: never fetched.)
+        card('4', [{ kind: 'image', file: '../../x', mime: 'image/png' }]),
       ]),
     ]).toEqual([FILE, other]);
     expect(filesIn([]).size).toBe(0);
