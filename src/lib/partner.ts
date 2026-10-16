@@ -13,6 +13,7 @@ import {
   PARTNER_GAMES,
   wholePoints,
   type CardGoesTo,
+  type CardSend,
   type CardTo,
   type Clue,
   type ClueCard,
@@ -27,7 +28,7 @@ import {
   type Session,
   type Slide,
 } from './model';
-import { cardItems, cardLinks, cardWords, type CardItem } from './phonecard';
+import { cardItems, cardLinks, cardWords, filesToSend, phoneCard, type CardItem, type LeftOut } from './phonecard';
 import { slideHasContent } from './usage';
 
 export { cardSlides, PARTNER_GAMES };
@@ -225,8 +226,9 @@ export function cardsToFinish(clue: Clue): 'none' | number | null {
 }
 
 // ---------- Playing it (partner-clues spec §6, §7) ----------
-// The state of a partner clue being played (PartnerState) holds who plays which part and who the host gives each card
-// to. Nothing here sends a card anywhere: in this version the host copies them to the players (📋).
+// The state of a partner clue being played (PartnerState) holds who plays which part, who the host gives each card to,
+// and what the host sent to phones. Only the host's presses send (sendCards and the others below); opening the tile,
+// the wheel and Show question send nothing.
 
 /** The players a partner clue is played among (the session's, or a test's). */
 type Seats = Pick<Session, 'players'>;
@@ -473,6 +475,15 @@ const ITEM_WORDS: Record<CardItem['kind'], [string, string]> = {
   embed: ['online video', 'online videos'],
 };
 
+/** Items counted by kind, never named: "1 picture", "2 pictures and 1 video", "1 picture, 1 GIF and 1 sound". */
+export function countItems(kinds: CardItem['kind'][]): string {
+  const out = (Object.keys(ITEM_WORDS) as CardItem['kind'][]).flatMap((kind) => {
+    const n = kinds.filter((k) => k === kind).length;
+    return n ? [`${n} ${ITEM_WORDS[kind][n === 1 ? 0 : 1]}`] : [];
+  });
+  return out.length > 1 ? `${out.slice(0, -1).join(', ')} and ${out[out.length - 1]}` : (out[0] ?? '');
+}
+
 /**
  * What's on a card, counted, never said: "1 line of words, 1 picture" (or "nothing on it"). The partner panel shows it,
  * and in one window that panel is on stream: never the words, never an item's name (a file name is often the answer).
@@ -498,4 +509,192 @@ const forNames = (names: string[]) => (names.length > 1 ? `${names.slice(0, -1).
 export function cardCopyText(game: Pick<Game, 'media'>, card: Slide, n: number, where: string, names: string[]): string {
   const body = [cardWords(card), ...cardLinks(game, card)].filter(Boolean).join('\n');
   return `🤫 For ${forNames(names) || 'you'} only (${where}, card ${n}): ${body}`;
+}
+
+// ---------- Sending the cards to phones (partner-clues spec §6.5, §14.4) ----------
+// Each send is one card on the wire, with its own id (cardId), so the room's late rule counts from it: a phone that
+// took the seat or joined the team after it went out doesn't get it. Only these functions change `sent`, and only the
+// host's presses call them.
+
+/** A send's id on the wire: `pc:<clue>:<card>:<when>`. */
+export const cardId = (clue: Id, send: Pick<CardSend, 'card' | 'at'>): string => `pc:${clue}:${send.card}:${send.at}`;
+
+/** Object keys in order, so the same content always reads the same. */
+function stable(v: unknown): string {
+  if (Array.isArray(v)) return `[${v.map(stable).join(',')}]`;
+  if (v && typeof v === 'object')
+    return `{${Object.keys(v)
+      .sort()
+      .filter((k) => (v as Record<string, unknown>)[k] !== undefined)
+      .map((k) => `${JSON.stringify(k)}:${stable((v as Record<string, unknown>)[k])}`)
+      .join(',')}}`;
+  return JSON.stringify(v) ?? 'null';
+}
+
+/**
+ * A short hash of what a phone gets from a card (partner-clues spec §15.4): its words, its items (which file or link,
+ * where it starts and ends) in their order, and its line. Where things sit or how they look doesn't count.
+ */
+export function cardHash(card: Pick<ClueCard, 'elements' | 'hint'>): string {
+  const parts = [...card.elements]
+    .sort((a, b) => a.y - b.y || a.x - b.x)
+    .flatMap((e) => {
+      if (e.kind === 'text') return e.text.trim() ? [['t', e.text.trim()]] : [];
+      if (e.kind === 'image') return [['i', e.editedMedia ?? e.media, e.name ?? '']];
+      if (e.kind === 'video' || e.kind === 'audio') return [[e.kind, e.media, e.startAt, e.endAt, e.name ?? '']];
+      if (e.kind === 'embed') return [['e', e.embedKind, e.url, e.startAt, e.endAt, e.name ?? '']];
+      return [];
+    });
+  const text = stable([parts, card.hint ?? '']);
+  // FNV-1a, 32 bits.
+  let h = 0x811c9dc5;
+  for (let i = 0; i < text.length; i++) h = Math.imul(h ^ text.charCodeAt(i), 0x01000193) >>> 0;
+  return h.toString(36);
+}
+
+/** A card's sends now. */
+export const cardSends = (s: Pick<PartnerState, 'sent'>, card: Id): CardSend[] => (s.sent ?? []).filter((x) => x.card === card);
+
+/** Every seat a card was sent to (and not taken back), in the order of the players. */
+export function sentSeats(session: Seats, s: Pick<PartnerState, 'sent'>, card: Id): Id[] {
+  const seats = new Set(cardSends(s, card).flatMap((x) => x.to.map((t) => t.seat)));
+  return session.players.map((p) => p.id).filter((id) => seats.has(id));
+}
+
+/** The new send's time: `now`, after any earlier send of the card (each send of it has its own id). */
+function sendAt(s: Pick<PartnerState, 'sent'>, card: Id, now: number): number {
+  return Math.max(now, ...cardSends(s, card).map((x) => x.at + 1));
+}
+
+/**
+ * 📤 Send, 📤 Send and start: each card not sent yet goes to its recipients now (cardRecipients), as one send. A card
+ * with nobody to go to stays where it is. Returns the cards sent.
+ */
+export function sendCards(session: Seats, s: PartnerState, cards: ClueCard[], now = Date.now()): ClueCard[] {
+  const out: ClueCard[] = [];
+  for (const card of cards) {
+    if (cardSends(s, card.id).length) continue;
+    const to = cardRecipients(session, s, card);
+    if (!to.length) continue;
+    // (A new list, not a push: `s` may be the app's live state, which sees an assignment.)
+    s.sent = [...(s.sent ?? []), { card: card.id, to, at: sendAt(s, card.id, now), hash: cardHash(card) }];
+    out.push(card);
+  }
+  return out;
+}
+
+/** ✖ Take back: the card goes from every phone it was sent to (all its sends). */
+export function takeBack(s: PartnerState, card: Id): void {
+  if (!s.sent) return;
+  s.sent = s.sent.filter((x) => x.card !== card);
+  if (!s.sent.length) delete s.sent;
+}
+
+/**
+ * ↻ Send again: the card goes again, under a new id, to everyone it's out to now (a phone late for the old one gets
+ * it), with what's on it now. Returns whether it went.
+ */
+export function sendAgain(session: Seats, s: PartnerState, card: ClueCard, now = Date.now()): boolean {
+  const seats = sentSeats(session, s, card.id);
+  if (!seats.length) return false;
+  const at = sendAt(s, card.id, now);
+  takeBack(s, card.id);
+  s.sent = [...(s.sent ?? []), { card: card.id, to: seats.map((seat) => ({ seat })), at, hash: cardHash(card) }];
+  return true;
+}
+
+/**
+ * 📤 Send changes: the card goes to whoever was added (under a new id) and is taken back from whoever was taken off
+ * (dropped from its earlier sends, which keep their ids: a recipient is only ever dropped from an old id, never added).
+ */
+export function sendChanges(session: Seats, s: PartnerState, card: ClueCard, now = Date.now()): void {
+  const want = cardRecipients(session, s, card).map((t) => t.seat);
+  const had = sentSeats(session, s, card.id);
+  const at = sendAt(s, card.id, now);
+  if (s.sent) {
+    s.sent = s.sent.flatMap((x) => (x.card !== card.id ? [x] : x.to.some((t) => want.includes(t.seat)) ? [{ ...x, to: x.to.filter((t) => want.includes(t.seat)) }] : []));
+    if (!s.sent.length) delete s.sent;
+  }
+  const added = want.filter((id) => !had.includes(id));
+  if (added.length) s.sent = [...(s.sent ?? []), { card: card.id, to: added.map((seat) => ({ seat })), at, hash: cardHash(card) }];
+}
+
+/**
+ * How a card's row stands: not sent; sent; sent but its chips now say other players ('changed': 📤 Send changes); or
+ * edited in the editor since (Resume with my edits: it's off the phones until ↻ Send again).
+ */
+export function sendState(session: Seats, s: PartnerState, card: ClueCard): 'unsent' | 'sent' | 'changed' | 'edited' {
+  const sends = cardSends(s, card.id);
+  if (!sends.length) return 'unsent';
+  if (sends.some((x) => x.hash !== cardHash(card))) return 'edited';
+  const had = sentSeats(session, s, card.id);
+  const want = cardRecipients(session, s, card).map((t) => t.seat);
+  return had.length === want.length && had.every((id) => want.includes(id)) ? 'sent' : 'changed';
+}
+
+/** ⇡ Get it ready: the card's files go up now, for no phone yet (only this press adds to `ready`). */
+export function markReady(s: PartnerState, cards: Id[]): void {
+  const ready = new Set([...(s.ready ?? []), ...cards]);
+  if (ready.size) s.ready = [...ready];
+}
+
+/** A player taken out: they're dropped from every send (one sent only to them is taken back). */
+export function dropFromSends(s: PartnerState, seat: Id): void {
+  if (!s.sent) return;
+  s.sent = s.sent.flatMap((x) => (x.to.some((t) => t.seat === seat) ? (x.to.length > 1 ? [{ ...x, to: x.to.filter((t) => t.seat !== seat) }] : []) : [x]));
+  if (!s.sent.length) delete s.sent;
+}
+
+/** The game's line for a card on its part's phone, {giver} and {guesser} its players' names. */
+const HINTS: Record<PartnerGame, Partial<Record<PartnerRole, string>>> = {
+  describe: { giver: 'Describe it to {guesser}: don’t say what’s on it!' },
+  draw: { giver: 'Draw it for {guesser}: no words or letters!' },
+  act: { giver: 'Act it out for {guesser}: no talking!' },
+  help: { giver: 'Help {guesser} with this: don’t just read it out!' },
+  split: { giver: 'Your half: share it with {guesser} and work it out together!', guesser: 'Your half: share it with {giver} and work it out together!' },
+  custom: {},
+};
+
+/**
+ * The lines above a card on a phone: its part ("Describer") when everyone it goes to plays that part, and its line
+ * (the card's own, else the game's for that part), {giver} and {guesser} filled in with names. Never what's on it.
+ */
+export function cardLines(
+  rules: PartnerRules,
+  s: Pick<PartnerState, 'pickerId' | 'partnerId' | 'giver'>,
+  card: Pick<ClueCard, 'hint'>,
+  to: Id[],
+  name: (id: Id) => string,
+): { role?: string; hint?: string } {
+  const r = partnerRoles(s);
+  const parts = new Set(to.map((id) => (r.solo ? '' : id === r.giver ? 'giver' : id === r.guesser ? 'guesser' : '')));
+  const part = parts.size === 1 ? ([...parts][0] as PartnerRole | '') : '';
+  const fill = (t: string) => t.replace(/\{(giver|guesser)\}/g, (_, k: PartnerRole) => (r[k] ? name(r[k]!) : 'your partner'));
+  const own = card.hint?.trim();
+  const hint = own ? fill(own) : part && !r.solo ? fill(HINTS[rules.game][part] ?? '') : '';
+  return { ...(part ? { role: partWords(rules)[part] } : {}), ...(hint ? { hint } : {}) };
+}
+
+/**
+ * The card files to put in the buzzer room now, by media id (partner-clues spec §13.5, §15.2): those of the cards the
+ * host sent (and didn't edit since) that the room doesn't hold (`held`: its ids for what it holds now), and those of the
+ * cards got ready (⇡) that were never put in this room (`put`: every file put there, Session.remote.files). Never a
+ * card's that wasn't sent or got ready, so a reload only finishes what a press started. `failed`: not tried again.
+ */
+export function filesWanted(
+  game: Pick<Game, 'media'>,
+  clue: Pick<Clue, 'cards'>,
+  s: Pick<PartnerState, 'sent' | 'ready'>,
+  held: Record<Id, string>,
+  put: Record<Id, string>,
+  failed: Record<Id, LeftOut> = {},
+): Id[] {
+  const out = new Set<Id>();
+  for (const card of cardSlides(clue)) {
+    const sends = cardSends(s, card.id);
+    const sent = sends.length > 0 && sends.every((x) => x.hash === cardHash(card));
+    if (sent) for (const id of filesToSend(phoneCard(game, card, { files: held, failed }))) out.add(id);
+    else if (s.ready?.includes(card.id)) for (const id of filesToSend(phoneCard(game, card, { files: put, failed }))) out.add(id);
+  }
+  return [...out];
 }

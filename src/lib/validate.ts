@@ -1,5 +1,5 @@
 // Pre-game checklist for the editor (spec §5.2 validation panel).
-import { canPlay, mediaUrls } from './media.svelte';
+import { canPlay, formatBytes, mediaUrls } from './media.svelte';
 import { linkLifetime } from './links';
 import { normalizeColor } from './colors';
 import {
@@ -24,6 +24,8 @@ import {
   type Game,
 } from './model';
 import { lowerWord, missCosts, partnerRules, partWords } from './partner';
+import { cardWords, phoneCard } from './phonecard';
+import { CARD_TEXT_MAX, FILE_MAX_BYTES } from './buzzproto';
 import { rpgProblems } from './rpg';
 import { boardGameProblems } from './boardgame';
 import { mediaUsage, onlineCount, slideHasContent, slideMediaIds } from './usage';
@@ -279,6 +281,14 @@ export function partnerProblems(game: Game, round: BoardRound, tab: number): Pro
         });
         if (life.includes('expired')) warn(`${tile}: card ${n + 1} has an online link that has expired: add that file again`, card);
         else if (life.includes('temporary')) warn(`${tile}: card ${n + 1} has an online link that stops working soon: save a copy or add the file`, card);
+        // What won't reach a phone (spec §5.6, §13.5): a file too big, or of a kind phones can't play; words past 1000.
+        const KIND = { picture: 'picture', gif: 'GIF', video: 'video', sound: 'sound', embed: 'online video' } as const;
+        for (const it of phoneCard(game, card, { files: {} }).items) {
+          const size = game.media.find((m) => m.id === it.media)?.size ?? 0;
+          if (it.why === 'big') warn(`${tile}: card ${n + 1} has a ${KIND[it.kind]} too big for phones (${formatBytes(size)}; phones get files up to ${formatBytes(FILE_MAX_BYTES)})`, card);
+          else if (it.why === 'kind' && it.file) warn(`${tile}: card ${n + 1} has a ${KIND[it.kind]} phones can't play: add it as MP4, WebM, MP3, OGG, WAV or M4A, or from a link`, card);
+        }
+        if ([...cardWords(card)].length > CARD_TEXT_MAX) warn(`${tile}: card ${n + 1} has more than ${CARD_TEXT_MAX} characters of words: phones get the first ${CARD_TEXT_MAX}`, card);
       });
     });
   return out;

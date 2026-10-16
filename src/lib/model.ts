@@ -373,7 +373,7 @@ export interface PartnerRules {
   points?: PartnerPoints;
   /** Part words when not the game's ("Describer" / "Guesser"): at most PART_WORD_MAX characters each. */
   words?: Partial<Record<PartnerRole, string>>;
-  /** Later: the guesser types their guess on their phone (else out loud). */
+  /** The guesser types their guess on their phone (✍, from the question on), else says it out loud. Needs phone buzzers. */
   typeGuess?: boolean;
   /** Later: a miss opens the buzzers for everyone else, the two locked out. */
   steal?: boolean;
@@ -386,7 +386,7 @@ export type CardGoesTo = PartnerRole | 'both' | 'others' | 'nobody';
 export interface ClueCard extends ExtraSlide {
   /** Who it starts with when the host hands the cards out ('others': every player but the two). The host can change it then. */
   to: CardGoesTo;
-  /** Later: the line above it on a phone ({giver}, {guesser} filled in). */
+  /** The line above it on a phone ({giver} and {guesser}: their names); left out, one from its game ("Describe it to Ann…"). */
   hint?: string;
 }
 
@@ -759,6 +759,19 @@ export interface CardTo {
 }
 
 /**
+ * One send of a 🤫 card (partner-clues spec §14.4, §18.2): who it went to, and when. Each send is one card on the wire
+ * (cardId: `pc:<clue>:<card>:<at>`): a phone that took the seat (or joined the team) after the room first saw it doesn't
+ * get it. `hash`: the card's content when it was sent (cardHash); a card edited since is taken off the phones until the
+ * host sends it again.
+ */
+export interface CardSend {
+  card: Id;
+  to: CardTo[];
+  at: number;
+  hash: string;
+}
+
+/**
  * A 🤝 partner clue being played (partner-clues spec §18.2). It holds who plays which part, the stage, and who the host
  * chose to give each card to: player ids and card ids only, never what's on a card (the parts are on stream anyway).
  */
@@ -791,6 +804,14 @@ export interface PartnerState {
    * at the moment (cardRecipients), so ⇄ Swap and a new partner move it.
    */
   deal?: Record<Id, CardTo[]>;
+  /**
+   * What the host sent to phones: only the host's presses add to it (📤 Send, Send and start, ↻ Send again, Send
+   * changes: sendCards and the like in partner.ts); ✖ Take back removes a card's sends. Never the clue's cards by
+   * themselves: opening the tile, the wheel and Show question send nothing.
+   */
+  sent?: CardSend[];
+  /** The cards whose files the host pressed ⇡ Get it ready for (uploaded early, given to no phone): only that press adds to it. */
+  ready?: Id[];
 }
 
 export interface Session {
@@ -876,6 +897,13 @@ export interface Session {
     buzz?: BuzzState & { clue: string; floor: number };
     wagerGot?: { id: string; seats: Record<Id, number>; amounts?: Record<Id, number> };
     answers?: { id: string; seats: Record<Id, { text: string; n: number; by?: string }>; locked?: boolean };
+    /**
+     * 🤫 Card files put in room `code` for phones: a picture's (or its edited copy's), video's or sound's media id → the
+     * room's id for it. So a reload doesn't upload them again (the room's 'files' list says which it still holds).
+     */
+    files?: { code: string; ids: Record<Id, string> };
+    /** 🤫 Card sends (their ids on the wire) → the seats whose phone showed them (teams: `seat/member`). Host only. */
+    cardsSeen?: Record<string, string[]>;
   } | null;
 }
 

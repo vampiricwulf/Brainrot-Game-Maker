@@ -2,8 +2,11 @@
 <script lang="ts">
   import { categoryLabel, finalName, formatPoints, questionSlides, slideText, type Game, type Session } from '../lib/model';
   import { clueSlideIndex, coWinnersHold, currentClueInfo, currentFinal, nameList, ownPlayers, places, playerName, slidesRound, tiedLeaders, toolOnlyClue } from '../lib/session';
-  import { cardSlides, partnerRules, recipientsText, sameAsAnswer } from '../lib/partner';
-  import { cardItems, cardWords, type CardItem } from '../lib/phonecard';
+  import { cardId, cardSends, cardSlides, partnerRules, recipientsText, sameAsAnswer, sendState, sentSeats } from '../lib/partner';
+  import { cardWords, phoneCard, type CardItem, type PhoneItem } from '../lib/phonecard';
+  import { buzzerOn, remote, roomHasCards } from '../lib/remote.svelte';
+  import { phoneCan, uploads } from '../lib/cardfiles.svelte';
+  import { mediaUrls } from '../lib/media.svelte';
   import { findIn, focusRef } from '../lib/rpg';
   import { currentPlayer, spaceById } from '../lib/boardgame';
   import { rpgNow } from './rpg/hostops';
@@ -28,6 +31,33 @@
   const pt = $derived(session.phase === 'clue' && info ? session.partner : null);
   const ptName = (id?: string) => (id ? (session.players.find((p) => p.id === id)?.name ?? '?') : '');
   const ITEM: Record<CardItem['kind'], [string, string]> = { picture: ['🖼', 'picture'], gif: ['🖼', 'GIF'], video: ['🎞', 'video'], sound: ['🔊', 'sound'], embed: ['🌐', 'online video'] };
+  /** The cards go to phones (a buzzer room that takes them), not only by 📋 copying. */
+  const phones = $derived(buzzerOn(game.settings) && !!remote.code && roomHasCards());
+  /** How an item reaches a phone, in a few words ("✔ goes to phones", "📋 copy it: too big for phones"). */
+  function reach(it: PhoneItem): string {
+    if (!phones) return '📋 you copy it';
+    if (it.why === 'big') return '📋 copy it: too big for phones';
+    if (it.why === 'expired') return '📋 copy it: its link has expired';
+    if (it.why === 'kind') return '📋 copy it: phones can’t show it';
+    if (it.why === 'nofiles') return '📋 copy it: this buzzer server isn’t taking files right now';
+    if (it.why === 'failed') return `📋 copy it: ${uploads.jobs[it.media ?? '']?.error || 'it didn’t go up'}`;
+    if (it.why === 'lost') return '📋 it isn’t in the game any more';
+    if (it.why === 'many') return '📋 copy it: a card shows 6 at most';
+    if (it.file) return 'file' in it.goes ? '✔ goes to phones (up)' : uploads.jobs[it.media ?? '']?.state === 'uploading' ? '✔ goes to phones (uploading…)' : '✔ goes to phones (from this computer)';
+    return '✔ goes to phones (its link)';
+  }
+  /** A still of a picture or GIF, for the host's eyes (never a player: a card's video here could be taken for the stage's). */
+  const thumb = (it: PhoneItem): string | undefined => (it.kind === 'picture' || it.kind === 'gif' ? (it.media && mediaUrls[it.media]) || it.url : undefined);
+  /** How a card stands on the phones: "sent · ✓ seen". */
+  function cardOut(card: ReturnType<typeof cardSlides>[number]): string {
+    if (!pt || !phones) return '';
+    const st = sendState(session, pt, card);
+    if (st === 'unsent') return '';
+    if (st === 'edited') return ' · changed in the editor since it was sent (off the phones)';
+    const seen = session.remote?.cardsSeen ?? {};
+    const any = cardSends(pt, card.id).some((x) => (seen[cardId(pt.clue, x)] ?? []).length);
+    return ` · sent to ${sentSeats(session, pt, card.id).map(ptName).join(', ')}${st === 'changed' ? ' (changed since)' : ''}${any ? ' · ✓ seen' : ''}`;
+  }
   const ask = $derived.by(() => {
     const o = app.live.overlay;
     return o?.kind === 'popup' && o.answer ? { q: o.slide, a: o.answer, revealed: !!o.revealed, value: o.value } : null;
@@ -105,13 +135,18 @@
     {#if pt && cardSlides(info.clue).length}
       {@const rules = partnerRules(info.clue)}
       <div class="group" data-partner-cards-info>
-        <div class="label">🤫 Cards (you copy them to their players)</div>
+        <div class="label">🤫 Cards {phones ? '(only the phones you send them to get them)' : '(you copy them to their players)'}</div>
         {#each cardSlides(info.clue) as card, i (card.id)}
-          <div class="q"><b>Card {i + 1}</b> → {recipientsText(session, pt, rules, card)}</div>
+          <div class="q"><b>Card {i + 1}</b> → {recipientsText(session, pt, rules, card)}{cardOut(card)}</div>
           {#if sameAsAnswer(info.clue, card)}<div class="muted small">This card shows the answer</div>{/if}
           <div class="notes">{cardWords(card) || '(no words)'}</div>
-          {#each cardItems(game, card) as it (it.el)}
-            <div class="small">{ITEM[it.kind][0]} {it.name} · {ITEM[it.kind][1]}</div>
+          <!-- Its items as a phone gets them (phoneCard), each with whether it reaches one; pictures as a small still. -->
+          {#each phoneCard(game, card, phoneCan(session)).items as it (it.el)}
+            {@const src = thumb(it)}
+            <div class="small item">
+              {#if src}<img class="thumb" {src} alt="" referrerpolicy="no-referrer" />{/if}
+              <span>{ITEM[it.kind][0]} {it.name} · {ITEM[it.kind][1]} · <span class:muted={!it.why}>{reach(it)}</span></span>
+            </div>
           {/each}
         {/each}
       </div>
@@ -288,6 +323,18 @@
   }
   li {
     margin: 2px 0;
+  }
+  .item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .thumb {
+    width: 48px;
+    height: 32px;
+    object-fit: cover;
+    border-radius: 3px;
+    flex-shrink: 0;
   }
   .dot {
     display: inline-block;

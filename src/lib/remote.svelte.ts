@@ -1,11 +1,11 @@
 // Phone buzzers, the host's side: one buzzer room at a time (see roomlink.ts for the connection, buzzproto.ts for what is
 // said). Reactive, for the pre-game card and the host panel.
-import { joinUrl, type HostState, type NewRoom, type PhoneInfo } from './buzzproto';
+import { filesUrl, joinUrl, type HostState, type NewRoom, type PhoneInfo } from './buzzproto';
 import type { SavedRoom } from './persist';
 import { embeddedBuzzerServer } from './export';
 import { prefs } from './prefs.svelte';
 import { app } from './app.svelte';
-import { RoomLink, type LinkDeps, type RoomBuzz, type RoomQueue, type RoomStatus, type RoomWager, type RoomAnswer } from './roomlink';
+import { RoomLink, type LinkDeps, type RoomBuzz, type RoomCardSeen, type RoomQueue, type RoomStatus, type RoomWager, type RoomAnswer } from './roomlink';
 
 /** The buzzer server this copy was built with (CI passes it), or ''. */
 export const DEFAULT_BUZZER_URL: string = (import.meta.env.VITE_BUZZER_URL ?? '').trim();
@@ -30,6 +30,8 @@ export const remote = $state<{
   phones: PhoneInfo[];
   /** What the room can do beyond the first protocol ('teams'); empty from an older buzzer server. */
   features: string[];
+  /** The 🤫 card files the room holds now (their ids), as it last said; null until it has. */
+  files: string[] | null;
   error: string;
   /** The close code the room turned this window away with (4004: it ended; 4000: another window took it), or 0. */
   closedCode: number;
@@ -39,7 +41,7 @@ export const remote = $state<{
   answered: string[];
   /** When the room last turned a phone away because it was full (0: not lately). */
   fullAt: number;
-}>({ status: 'off', code: null, base: '', phones: [], features: [], error: '', closedCode: 0, attempts: 0, answered: [], fullAt: 0 });
+}>({ status: 'off', code: null, base: '', phones: [], features: [], files: null, error: '', closedCode: 0, attempts: 0, answered: [], fullAt: 0 });
 
 /** How long "Room full" shows after the room last turned a phone away. */
 export const FULL_SHOWN_MS = 2 * 60_000;
@@ -71,6 +73,7 @@ function sync(): void {
   if (remote.phones !== link.phones) remote.answered = remote.answered.filter((c) => link!.phones.some((p) => p.conn === c && !p.seatId));
   remote.phones = link.phones;
   if (remote.features.join() !== link.features.join()) remote.features = link.features;
+  if (remote.files?.join() !== link.files?.join()) remote.files = link.files;
   remote.error = link.error;
   remote.closedCode = link.closedCode;
   remote.attempts = link.attempts;
@@ -88,6 +91,7 @@ function newLink(base: string): RoomLink {
       onWager: (w) => wagerWatchers.forEach((fn) => fn(w)),
       onAnswer: (a) => answerWatchers.forEach((fn) => fn(a)),
       onColor: (c) => colorWatchers.forEach((fn) => fn(c)),
+      onCardSeen: (c) => seenWatchers.forEach((fn) => fn(c)),
     },
     deps,
   );
@@ -113,6 +117,13 @@ const answerWatchers = new Set<(a: RoomAnswer) => void>();
 export function onRoomAnswer(fn: (a: RoomAnswer) => void): () => void {
   answerWatchers.add(fn);
   return () => answerWatchers.delete(fn);
+}
+
+const seenWatchers = new Set<(c: RoomCardSeen) => void>();
+/** A phone showed a 🤫 card the host sent it. Returns the unsubscribe. */
+export function onRoomCardSeen(fn: (c: RoomCardSeen) => void): () => void {
+  seenWatchers.add(fn);
+  return () => seenWatchers.delete(fn);
 }
 
 const colorWatchers = new Set<(c: { seatId: string; color: string }) => void>();
@@ -185,12 +196,49 @@ export const roomHasTeams = (): boolean => remote.features.includes('teams');
 export const roomHasWagers = (): boolean => remote.features.includes('wagers');
 /** The room this window is in takes answers from phones (✍ clues; an older buzzer server doesn't). */
 export const roomHasAnswers = (): boolean => remote.features.includes('answers');
+/** The room this window is in puts 🤫 cards on phones (an older buzzer server doesn't: the host copies them). */
+export const roomHasCards = (): boolean => remote.features.includes('cards');
+/** The room this window is in takes card files from this computer now (its server can be off them, or out for today). */
+export const roomHasFiles = (): boolean => roomHasCards() && remote.features.includes('files');
+
+/** Why the room turned a card file down (its HTTP answer): plain words for each, and whether trying again may help. */
+export type UploadRefusal = 'full' | 'big' | 'kind' | 'busy' | 'off' | 'room' | 'error';
+
+/**
+ * Upload one 🤫 card file to the room this window is in (POST …/files, the host token in a header, never in the
+ * address): its id there, or why not. Only a send or ⇡ Get it ready gets here (cardfiles.svelte.ts).
+ */
+export async function uploadCardFile(blob: Blob, type: string): Promise<{ id: string } | { refused: UploadRefusal; error: string }> {
+  const room = link?.room;
+  if (!room || !remote.base) return { refused: 'room', error: 'The buzzer room isn’t open' };
+  try {
+    const res = await fetch(filesUrl(remote.base, room.code), { method: 'POST', headers: { Authorization: `Bearer ${room.hostToken}`, 'Content-Type': type }, body: blob });
+    const body: unknown = await res.json().catch(() => null);
+    const said = typeof body === 'object' && body && 'error' in body && typeof body.error === 'string' ? body.error.slice(0, 200) : '';
+    const id = typeof body === 'object' && body && 'id' in body && typeof body.id === 'string' ? body.id : '';
+    if (res.ok && /^[0-9a-f]{64}$/.test(id)) {
+      // (The room holds it now: its 'files' list says so in a moment; until then, so does this.)
+      if (link?.room === room && link.files && !link.files.includes(id)) {
+        link.files = [...link.files, id];
+        sync();
+      }
+      return { id };
+    }
+    const refused: UploadRefusal = res.status === 409 ? 'full' : res.status === 413 ? 'big' : res.status === 415 ? 'kind' : res.status === 429 ? 'busy' : res.status === 503 ? 'off' : res.status === 401 ? 'room' : 'error';
+    return { refused, error: said || `The buzzer server said no (${res.status})` };
+  } catch {
+    return { refused: 'error', error: 'Couldn’t reach the buzzer server' };
+  }
+}
+
+/** ✖ Take back: the room deletes these card files now (only those no card still out uses). */
+export const forgetCardFiles = (ids: string[]): boolean => ids.length > 0 && remote.features.includes('files') && !!link?.send({ t: 'forget', files: ids });
 
 /** Close the room: the phones are told the game is over. */
 export function closeRoom(): void {
   link?.close();
   link = null;
-  Object.assign(remote, { status: 'off', code: null, phones: [], features: [], error: '', closedCode: 0, attempts: 0, answered: [], fullAt: 0 });
+  Object.assign(remote, { status: 'off', code: null, phones: [], features: [], files: null, error: '', closedCode: 0, attempts: 0, answered: [], fullAt: 0 });
 }
 
 /**
@@ -200,7 +248,7 @@ export function closeRoom(): void {
 export function leaveRoom(): void {
   link?.stop();
   link = null;
-  Object.assign(remote, { status: 'off', code: null, phones: [], features: [], error: '', closedCode: 0, attempts: 0, answered: [], fullAt: 0 });
+  Object.assign(remote, { status: 'off', code: null, phones: [], features: [], files: null, error: '', closedCode: 0, attempts: 0, answered: [], fullAt: 0 });
 }
 
 /** Close a room this window isn't in (one an earlier page left open), without touching the one it is in. */

@@ -1,6 +1,6 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { jeopardyGame } from './testgame';
-import { newImageEl, questionSlides, setSlideText, textSlide, type BoardRound, type Game } from './model';
+import { newImageEl, newVideoEl, questionSlides, setSlideText, textSlide, type BoardRound, type Game } from './model';
 import { addClueSlide, setClueType } from './ops';
 import { setPartnerPoints } from './partner';
 import { validate } from './validate';
@@ -161,6 +161,30 @@ describe('🤝 partner clues', () => {
     expect(mine(game).map((p) => p.text)).toEqual(['Movies $400: card 1 has an online link that has expired: add that file again']);
     game.media[0].expiresAt = Date.now() + 60_000;
     expect(mine(game).map((p) => p.text)).toEqual(['Movies $400: card 1 has an online link that stops working soon: save a copy or add the file']);
+  });
+
+  it('warns of what won’t reach a phone: a file too big or of a kind phones can’t play, words past 1000', () => {
+    // (Whether this browser plays the videos is another check's: here it does.)
+    vi.stubGlobal('document', { createElement: () => ({ canPlayType: () => 'maybe' }) });
+    const { game, clue } = partnerGame();
+    game.settings.buzzer = true;
+    const card = clue.cards![0];
+    setSlideText(card, 'Shrek');
+    card.elements.push({ ...newVideoEl('big'), y: 10 }, { ...newVideoEl('mov'), y: 20 }, { ...newImageEl('huge'), y: 30 });
+    game.media.push(
+      { id: 'big', name: 'clip.mp4', mime: 'video/mp4', size: 40 * 1024 * 1024, kind: 'video' },
+      { id: 'mov', name: 'clip.mov', mime: 'video/quicktime', size: 1000, kind: 'video' },
+      // (A picture is shrunk before it goes: any size will do.)
+      { id: 'huge', name: 'huge.png', mime: 'image/png', size: 40 * 1024 * 1024, kind: 'image' },
+    );
+    expect(mine(game).map((p) => p.text)).toEqual([
+      'Movies $400: card 1 has a video too big for phones (40.0 MB; phones get files up to 4.0 MB)',
+      "Movies $400: card 1 has a video phones can't play: add it as MP4, WebM, MP3, OGG, WAV or M4A, or from a link",
+    ]);
+    card.elements = card.elements.filter((e) => e.kind !== 'video');
+    setSlideText(card, 'x'.repeat(1001));
+    expect(mine(game).map((p) => p.text)).toEqual(['Movies $400: card 1 has more than 1000 characters of words: phones get the first 1000']);
+    vi.unstubAllGlobals();
   });
 
   it('says where a miss still costs points with ⚖ Deduct on wrong off (a partner clue’s points are its own)', () => {

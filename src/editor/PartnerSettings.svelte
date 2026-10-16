@@ -77,6 +77,12 @@
       else delete own().includePicker;
     });
   }
+  function setTypeGuess(on: boolean): void {
+    record(on ? `${tile()}: the ${lowerWord(words.guesser)} types their guess` : `${tile()}: the ${lowerWord(words.guesser)} says their guess out loud`, () => {
+      if (on) own().typeGuess = true;
+      else delete own().typeGuess;
+    });
+  }
   function choosePoints(c: PartnerPoints): void {
     const label = pointsChoices(rules.game).find((x) => x.value === c)?.label ?? c;
     record(`Points of ${tile()}: ${label}`, () => setPartnerPoints(clue, c));
@@ -119,6 +125,9 @@
       </div>
       <label class="check" title="When it's on, the partner wheel can land on the player who picked the tile: then they play it alone">
         <input type="checkbox" checked={!!rules.includePicker} onchange={(e) => setIncludePicker(e.currentTarget.checked)} /> The picker can be on the wheel
+      </label>
+      <label class="check" title="With phone buzzers, the {lowerWord(words.guesser)} types their guess in a ✍ box on their phone once the question shows (only you see it). Off: they say it out loud.">
+        <input type="checkbox" checked={!!rules.typeGuess} onchange={(e) => setTypeGuess(e.currentTarget.checked)} /> The {lowerWord(words.guesser)} types their guess on their phone
       </label>
     </div>
     <div class="line">
@@ -185,8 +194,10 @@
     </div>
     <p class="hint">
       When this tile is picked, a wheel picks a partner for the player who picked it (you can choose someone else). Nobody buzzes. {cap(partWho(rules, 'giver'))}
-      {game.verb} and {partWho(rules, 'guesser')} {game.guessVerb}. After the question shows, you hand out the 🤫 cards: they never go on stream, and
-      nothing goes until you hand it out. You copy each card to the players it's for (📋).
+      {game.verb} and {partWho(rules, 'guesser')} {game.guessVerb}. After the question shows, you hand out the 🤫 cards: each goes only to the phones you
+      send it to, never on stream, and nothing goes until you send it. A card you send is stored on the buzzer server until the tile closes or you take it
+      back. Its pictures and videos stay up to 10 minutes longer, and ⇡ Get it ready puts them there before you send, where no phone can get them. Without a
+      phone, you copy it to them (📋).
     </p>
   </div>
 </details>
