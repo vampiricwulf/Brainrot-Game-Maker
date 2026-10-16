@@ -153,7 +153,11 @@
 
   // ---------- Renaming a file in place (double-click or F2 on its name) ----------
   let renaming = $state<string | null>(null);
-  function rename(m: MediaRef, name: string): void {
+  /**
+   * (Its name takes the focus back, Enter, Esc or a click on nothing, but not from a field or button clicked: the next
+   * key goes there.)
+   */
+  function rename(m: MediaRef, name: string, refocus = true): void {
     renaming = null;
     const want = name.trim();
     if (want && want !== m.name) {
@@ -165,7 +169,7 @@
         if (m.file === to) delete m.file;
       });
     }
-    void tick().then(() => document.querySelector<HTMLElement>(`[data-media-name="${m.id}"]`)?.focus());
+    if (refocus) void tick().then(() => document.querySelector<HTMLElement>(`[data-media-name="${m.id}"]`)?.focus());
   }
   const focusAll = (el: HTMLInputElement) => {
     el.focus();
@@ -401,7 +405,7 @@
               if (e.key === 'Enter') rename(m, e.currentTarget.value);
               else if (e.key === 'Escape') (e.stopPropagation(), rename(m, m.name));
             }}
-            onblur={(e) => renaming === m.id && rename(m, e.currentTarget.value)}
+            onblur={(e) => renaming === m.id && rename(m, e.currentTarget.value, !e.relatedTarget)}
           />
         {:else}
           <div class="name-row">

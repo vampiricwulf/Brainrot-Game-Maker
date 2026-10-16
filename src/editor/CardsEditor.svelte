@@ -96,13 +96,16 @@
     focusItem(c.id);
   }
 
-  /** The card being renamed in place. */
+  /**
+   * The card being renamed in place. Its row takes the focus back (Enter, Esc, a click on nothing), but not from a field
+   * or another card clicked: the next key goes there, not to the row, where Backspace would delete the card.
+   */
   let renaming = $state<string | null>(null);
-  function rename(c: SavedCard, name: string): void {
+  function rename(c: SavedCard, name: string, refocus = true): void {
     renaming = null;
     const to = name.trim();
     if (to && to !== c.name) step(`Renamed card “${named(c)}” to “${to}”`, () => (c.name = to));
-    focusItem(c.id);
+    if (refocus) focusItem(c.id);
   }
   const focusAll = (el: HTMLInputElement) => {
     el.focus();
@@ -178,7 +181,7 @@
                     rename(c, c.name);
                   }
                 }}
-                onblur={(e) => renaming === c.id && rename(c, e.currentTarget.value)}
+                onblur={(e) => renaming === c.id && rename(c, e.currentTarget.value, !e.relatedTarget)}
               />
             {:else}
               <button

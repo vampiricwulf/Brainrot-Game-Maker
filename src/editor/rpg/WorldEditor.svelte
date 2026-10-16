@@ -178,12 +178,15 @@
   /** The map view (tabs, grid and the selected screen's panel): its keys work while the focus is in it. */
   let mapView = $state<HTMLDivElement>();
 
-  /** The map tab being renamed in place. */
+  /**
+   * The map tab being renamed in place. The tab takes the focus back (Enter, Esc, a click on nothing), but not from a
+   * field or another tab clicked: the next key goes there, not to the tab, where Backspace would delete the map.
+   */
   let renaming = $state<string | null>(null);
-  function rename(m: WorldMap, name: string): void {
+  function rename(m: WorldMap, name: string, refocus = true): void {
     renaming = null;
     if (name.trim() && name !== m.name) m.name = name.trim();
-    void tick().then(() => document.querySelector<HTMLElement>(`[data-map-tab="${m.id}"]`)?.focus());
+    if (refocus) void tick().then(() => document.querySelector<HTMLElement>(`[data-map-tab="${m.id}"]`)?.focus());
   }
   const focusAll = (el: HTMLInputElement) => {
     el.focus();
@@ -1024,7 +1027,7 @@
               if (e.key === 'Enter') rename(m, e.currentTarget.value);
               else if (e.key === 'Escape') rename(m, m.name);
             }}
-            onblur={(e) => renaming === m.id && rename(m, e.currentTarget.value)}
+            onblur={(e) => renaming === m.id && rename(m, e.currentTarget.value, !e.relatedTarget)}
           />
         {:else}
           <button

@@ -193,6 +193,16 @@ try {
   await page.getByLabel('Wheel name', { exact: true }).first().fill('Dares');
   await page.keyboard.press('Enter');
   assert((await texts(wheelList)).join() === 'Dares,Wheel 1', 'renamed in place');
+  // Renamed, then a slice's label clicked: the typing goes there (Backspace there is the label's, not the wheel's Delete).
+  await wheelList.first().dblclick();
+  await page.getByRole('list', { name: 'Wheels' }).getByLabel('Wheel name', { exact: true }).fill('Dares');
+  await labels.first().click();
+  await page.keyboard.press('End');
+  await page.keyboard.type('!');
+  await page.waitForFunction(() => document.activeElement?.matches('.seg input.label') && document.activeElement.value.endsWith('!'));
+  await page.keyboard.press('Backspace');
+  await page.waitForFunction(() => !document.activeElement?.value?.endsWith('!'));
+  assert((await texts(wheelList)).join() === 'Dares,Wheel 1', 'renamed, then a slice clicked: the typing and Backspace go there, and no wheel is deleted');
   await wheelList.first().focus();
   await page.keyboard.press('Control+d');
   assert((await texts(wheelList)).join() === 'Dares,Dares (copy),Wheel 1', 'Ctrl+D duplicates, right after it');

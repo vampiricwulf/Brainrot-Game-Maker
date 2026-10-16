@@ -257,6 +257,15 @@ try {
   await page.getByLabel('Game title').fill('Meme Night');
   await page.keyboard.press('Enter');
   assert((await page.locator('.pregame h1').innerText()) === 'Meme Night' && (await page.locator('[data-warn="untitled"]').count()) === 0, '✎ Rename names the game right there');
+  // Renamed, then a player's name box clicked: the typing goes there (the title doesn't take the keys back).
+  await page.getByRole('button', { name: '✎ Rename' }).click();
+  await page.getByLabel('Game title').fill('Meme Night 2');
+  await bo.click();
+  await page.keyboard.press('End');
+  await page.keyboard.type('b');
+  await page.waitForFunction(() => document.activeElement?.getAttribute('aria-label') === 'Player 1 name' && document.activeElement.value === 'Bob');
+  await page.keyboard.press('Backspace');
+  assert((await page.locator('.pregame h1').innerText()) === 'Meme Night 2' && (await bo.inputValue()) === 'Bo', 'renamed, then a player’s name box clicked: the typing goes there');
   await page.screenshot({ path: 'test-results/pregame-golive.png' });
 
   // ---------- Going live? A short checklist, hidden with ✕ (and shown again from 🖥 Display) ----------

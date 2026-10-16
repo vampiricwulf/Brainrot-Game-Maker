@@ -117,6 +117,16 @@ try {
   await nameBox.fill('nope');
   await nameBox.press('Escape');
   assert((await names())[2] === 'pasted.png', 'Esc cancels a rename');
+  // Renamed, then the filter box clicked: the typing goes there, not back to the file's name.
+  await cards.nth(2).locator('button.nm').dblclick();
+  await nameBox.fill('pasted.png');
+  const filterBox = page.getByLabel('Filter files');
+  await filterBox.click();
+  await page.keyboard.type('logo');
+  await page.waitForFunction(() => document.activeElement?.matches('input.filter') && document.activeElement.value === 'logo');
+  assert(true, 'renamed, then the filter box clicked: the typing goes there');
+  await filterBox.fill('');
+  await page.waitForFunction(() => document.querySelectorAll('.card').length === 3);
   // A card's buttons sit on one line, and its "used 1×" says where.
   const [replaceBox, deleteBox] = [await cards.nth(0).getByRole('button', { name: 'Replace…' }).boundingBox(), await cards.nth(0).getByRole('button', { name: /^Delete / }).boundingBox()];
   assert(Math.abs(replaceBox.y - deleteBox.y) < 2, "a card's Replace… and 🗑 Delete sit side by side");
@@ -297,6 +307,15 @@ try {
   await second.locator('.name').dblclick();
   await layerName.press('Enter');
   assert((await second.count()) === 1 && (await lastStep()) === stepBefore, 'opening the rename and pressing Enter changes nothing: no step, and it keeps its automatic label');
+  // Renamed, then its text box clicked: Backspace types there, and deletes no item.
+  await second.locator('.name').dblclick();
+  await layerName.fill('Subtitle');
+  await page.locator('.insp textarea').click();
+  await page.keyboard.press('End');
+  await page.keyboard.press('Backspace');
+  await page.waitForFunction(() => document.activeElement?.matches('.insp textarea') && document.activeElement.value === 'Secon');
+  await page.keyboard.type('d');
+  assert((await layers.count()) === 2 && (await layers.filter({ hasText: 'Subtitle' }).count()) === 1, 'renamed, then its text box clicked: Backspace types there, and deletes no item');
 
   // ---------- A picture copied on a slide pastes onto the board images ----------
   await page.getByRole('button', { name: '🖼 Image' }).click();

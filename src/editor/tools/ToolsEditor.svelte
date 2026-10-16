@@ -91,13 +91,16 @@
     focusItem(item.id);
   }
 
-  /** The wheel or dice being renamed in place. */
+  /**
+   * The wheel or dice being renamed in place. Its row takes the focus back (Enter, Esc, a click on nothing), but not from
+   * a field or another row clicked: the next key goes there, not to the row, where Backspace would delete it.
+   */
   let renaming = $state<string | null>(null);
-  function rename(kind: Kind, item: Tool, name: string): void {
+  function rename(kind: Kind, item: Tool, name: string, refocus = true): void {
     renaming = null;
     const to = name.trim();
     if (to && to !== item.name) step(`Renamed ${kind} “${item.name}” to “${to}”`, () => (item.name = to));
-    focusItem(item.id);
+    if (refocus) focusItem(item.id);
   }
   const focusAll = (el: HTMLInputElement) => {
     el.focus();
@@ -221,7 +224,7 @@
                 rename(kind, item, item.name);
               }
             }}
-            onblur={(e) => renaming === item.id && rename(kind, item, e.currentTarget.value)}
+            onblur={(e) => renaming === item.id && rename(kind, item, e.currentTarget.value, !e.relatedTarget)}
           />
         {:else}
           <button

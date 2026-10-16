@@ -78,6 +78,19 @@ try {
   const tabMenu = (await page.getByRole('menu').getByRole('menuitem').allInnerTexts()).map((t) => t.split('\n')[0]);
   assert(['▲ Move up', '▼ Move down'].every((x) => tabMenu.some((t) => t.startsWith(x))), `a round tab’s menu says ▲ Move up / ▼ Move down (${tabMenu.join(', ')})`);
   await page.keyboard.press('Escape');
+  // Renamed on its tab, then its Round name box clicked: Backspace types there, and deletes no round.
+  await roundTab('Midgame Wager').dblclick();
+  await page.locator('nav input.tab-name').fill('Midgame Wagers');
+  await page.locator('.grid input[data-round-name]').click();
+  await page.keyboard.press('End');
+  await page.keyboard.press('Backspace');
+  await page.waitForFunction(() => document.activeElement?.matches('.grid input[data-round-name]') && document.activeElement.value === 'Midgame Wager');
+  assert((await roundNames()).join('|') === 'Jeopardy!|Midgame Wager|Double Jeopardy!|Final Jeopardy!', 'renamed on its tab, then its Round name box clicked: Backspace types there, and deletes no round');
+  // Renamed, then a click on nothing: the keys go back to the tab renamed (not the first round's).
+  await roundTab('Midgame Wager').dblclick();
+  await page.locator('nav .navlabel', { hasText: 'Rounds' }).click();
+  await page.waitForFunction(() => document.activeElement?.matches('nav > button.round-tab') && document.activeElement.textContent.trim().endsWith('Midgame Wager'));
+  assert(true, 'renamed, then a click on nothing: its tab has the keys again');
 
   // Play: board → Final in the middle → board → Final → end.
   await playWithPlayers(page, 2);

@@ -104,13 +104,17 @@
 
   // ---------- Renaming in place (double-click or F2): Enter saves, Esc cancels, empty goes back to the automatic label ----------
   let renaming = $state<string | null>(null);
-  function rename(el: SlideElement, name: string | null): void {
+  /**
+   * (Its row takes the focus back, Enter, Esc or a click on nothing, but not from a field or another row clicked: the
+   * next key goes there, not to the row, where Backspace would delete the item.)
+   */
+  function rename(el: SlideElement, name: string | null, refocus = true): void {
     renaming = null;
     const want = name?.trim() || undefined;
     // The box opens on the label shown: left as it was, an unnamed item keeps following its text or file (no step).
     const unchanged = want === el.name || (el.name === undefined && want === layerLabel(el, game));
     if (name !== null && !unchanged) edit(() => (el.name = want));
-    tick().then(() => listEl?.querySelector<HTMLElement>(`[data-layer="${el.id}"] .name`)?.focus());
+    if (refocus) tick().then(() => listEl?.querySelector<HTMLElement>(`[data-layer="${el.id}"] .name`)?.focus());
   }
   const focusAll = (input: HTMLInputElement) => {
     input.focus();
@@ -183,7 +187,7 @@
               if (e.key === 'Enter') rename(el, e.currentTarget.value);
               else if (e.key === 'Escape') rename(el, null);
             }}
-            onblur={(e) => renaming === el.id && rename(el, e.currentTarget.value)}
+            onblur={(e) => renaming === el.id && rename(el, e.currentTarget.value, !e.relatedTarget)}
           />
         </span>
       {:else}

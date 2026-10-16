@@ -281,8 +281,24 @@ try {
   await host.locator('nav .problem', { hasText: '1 file is used only on 🤫 cards' }).waitFor();
   assert(true, 'the checklist notes a file used only on 🤫 cards');
 
-  // ---------- Private card 3 goes (the play list has two cards) ----------
+  // ---------- Renamed in the list, then something else clicked: the keys stay there ----------
   await cardsTab.click();
+  await row('Private card 3').dblclick();
+  await list.getByLabel('Card name', { exact: true }).fill('Mission 2');
+  await nameBox.click();
+  await host.keyboard.press('End');
+  await host.keyboard.press('Backspace');
+  assert(await until(async () => (await nameBox.inputValue()) === 'Mission '), `renamed in the list, then its Card name box clicked: Backspace types there (${await nameBox.inputValue()})`);
+  await listIs('Wild card, Tip A, Mission');
+  assert(true, 'and deletes no card');
+  await row('Mission').dblclick();
+  await list.getByLabel('Card name', { exact: true }).fill('Private card 3');
+  await row('Tip A').click();
+  await host.waitForFunction(() => document.activeElement?.textContent?.trim() === 'Tip A' && document.activeElement.getAttribute('aria-current') === 'true');
+  assert(true, 'renamed, then another card clicked: that card is open, and its row has the keys (not the card renamed)');
+
+  // ---------- Private card 3 goes (the play list has two cards) ----------
+  await listIs('Wild card, Tip A, Private card 3');
   await row('Private card 3').focus();
   await host.keyboard.press('Delete');
   await listIs('Wild card, Tip A');
