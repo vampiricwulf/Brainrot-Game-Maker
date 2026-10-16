@@ -82,7 +82,9 @@ export function checklistLines(game: Game, problems: Problem[]): ChecklistLine[]
         // (Daily Doubles not placed yet aren't to fix: Start game places them. A new board says only its clues to finish.)
         const others =
           line.details.length -
-          line.details.filter((d) => /clues? with no (question|answer)|wheel\/dice tile|Daily Doubles? not placed yet|: card \d+ is empty:|partner clue with no card:/.test(d)).length;
+          line.details.filter((d) =>
+            /clues? with no (question|answer)|wheel\/dice tile|Daily Doubles? not placed yet|partner clues? not placed yet|a written question and answer for one|: card \d+ is empty:|partner clue with no card:/.test(d),
+          ).length;
         line.text = !todo.length
           ? `${name}: ${plural(others, 'thing')} to fix`
           : `${name}: ${plural(todo.length, 'clue')} to finish${others ? `, ${others} more to fix` : ''}`;

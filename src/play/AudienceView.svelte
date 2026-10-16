@@ -7,7 +7,7 @@
   import { fade, fly, scale } from '../lib/motion.svelte';
   import { textOn } from '../lib/colors';
   import { categoryLabel, finalName, formatPoints, isBoard, isFinal, PARTNER_GAMES, questionSlides, newTextEl, roundName, type ClueRef, type Player, type Slide, type Game, type Session } from '../lib/model';
-  import { blankSlide, clueSlideIndex, coWinnersHold, currentClueInfo, currentFinal, nameList, ownPlayers, shownQuestionSlide, places, score, slidesRound, standings, tiedLeaders } from '../lib/session';
+  import { blankSlide, clueSlideIndex, coWinnersHold, currentClueInfo, currentFinal, nameList, ownPlayers, partnerSteal, shownQuestionSlide, places, score, slidesRound, standings, tiedLeaders } from '../lib/session';
   import { partnerRoles, partnerRules } from '../lib/partner';
   import { onMount, untrack } from 'svelte';
   import { joinSpot, type Ink, type Rect } from '../lib/joinspot';
@@ -153,6 +153,11 @@
   const ptGuesser = $derived(ptRoles?.guesser ? byId[ptRoles.guesser] : undefined);
   /** The parts badge over the question: "🗣 Bob describes → 🎯 Ann guesses" (Solo: "🤝 Ann · Solo!"). */
   const ptBadge = $derived(!!pt && pt.stage !== 'pick' && (ptSolo || (!!ptGiver && !!ptGuesser)));
+  /** Its miss let the others steal it, and nobody has yet: "🔔 Steal! Ann and Bob missed it" in the badge's place. */
+  const ptStealOut = $derived.by(() => {
+    const st = pt && !session.revealed ? partnerSteal(session) : null;
+    return st && !st.by ? st.out.flatMap((id) => (byId[id] ? [byId[id]] : [])) : null;
+  });
   /** 🤫 Just you: who the open tile's own card went to ("Ann has a private question"): names only, never what's on it. */
   const privateFor = $derived(session.phase === 'clue' && info && !session.revealed ? (live.tileCardFor ?? []).flatMap((id) => (byId[id] ? [byId[id]] : [])) : []);
   const spotlight = $derived(session.final?.current ? byId[session.final.current] : undefined);
@@ -526,7 +531,9 @@
     {#if ptBadge && ptGame}
       <!-- Who plays which part, in their colours and in words (colour is never the only sign). -->
       <div class="dd-badge partner-badge" data-partner-badge>
-        {#if ptSolo && ptPicker && ptMember}
+        {#if ptStealOut}
+          🔔 Steal! {#each ptStealOut as p, i (p.id)}{i ? ' and ' : ''}<span style:color={p.color}>{p.name}</span>{/each} missed it
+        {:else if ptSolo && ptPicker && ptMember}
           {ptGame.icon} <span style:color={ptPicker.color}>{ptMember.name}</span> {ptGame.verb} → 🎯 <span style:color={ptPicker.color}>{ptPicker.name}</span>
           {ptGame.guessVerb}
         {:else if ptSolo && ptPicker}

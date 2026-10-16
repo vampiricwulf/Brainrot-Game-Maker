@@ -1,9 +1,10 @@
 <!--
   A 🤝 partner clue's rules in the clue editor (docs/PARTNER-CLUES-SPEC.md §5.2): its game, who gives the clues, whether
-  the picker can be on the partner wheel, its points (the game's, two other ready-made choices, or typed), ☑ The partner
-  never loses points, and what that comes to on this tile. Each choice is one named step; the boxes typed in are named
-  from what changed ("Changed the points of Memes $400"). Folded, one line says the game, who gives the clues and the
-  points in money: on a short screen it starts folded, so the slide below (a 🤫 card being made) fits.
+  the picker can be on the partner wheel, whether a miss lets the others steal it, its points (the game's, two other
+  ready-made choices, or typed), ☑ The partner never loses points, and what that comes to on this tile. Each choice is
+  one named step; the boxes typed in are named from what changed ("Changed the points of Memes $400"). Folded, one line
+  says the game, who gives the clues and the points in money: on a short screen it starts folded, so the slide below (a
+  🤫 card being made) fits.
 -->
 <script module lang="ts">
   /** Whether the rules were last left open or folded: the next partner clue's start the same (while the app is open). */
@@ -26,6 +27,7 @@
     setPartnerPoints,
     setPartnerShare,
     setPartWord,
+    stealOn,
     tilePoints,
     typedShare,
   } from '../lib/partner';
@@ -83,6 +85,15 @@
       else delete own().typeGuess;
     });
   }
+  /** After a miss: as ⚖ Game rules say (left out), the others can steal it, or no steal. */
+  const gameSteal = $derived(!!app.game.settings.partnerSteal);
+  function setSteal(to: string): void {
+    const label = to === 'on' ? 'the others can steal it after a miss' : to === 'off' ? 'no steal after a miss' : 'a miss lets the others steal it as ⚖ Game rules say';
+    record(`${tile()}: ${label}`, () => {
+      if (to === 'game') delete own().steal;
+      else own().steal = to === 'on';
+    });
+  }
   function choosePoints(c: PartnerPoints): void {
     const label = pointsChoices(rules.game).find((x) => x.value === c)?.label ?? c;
     record(`Points of ${tile()}: ${label}`, () => setPartnerPoints(clue, c));
@@ -101,7 +112,7 @@
       .join(', ');
   }
   const summary = $derived(
-    `On this ${formatPoints(value, sym)} tile: got → ${says(tilePoints(rules, value, true)) || 'nobody gets points'} · missed → ${says(tilePoints(rules, value, false)) || 'nobody loses points'}`,
+    `On this ${formatPoints(value, sym)} tile: got → ${says(tilePoints(rules, value, true)) || 'nobody gets points'} · missed → ${says(tilePoints(rules, value, false)) || 'nobody loses points'}${stealOn(rules, app.game.settings) ? `, then a steal: ${formatPoints(value, sym)}` : ''}`,
   );
 </script>
 
@@ -128,6 +139,14 @@
       </label>
       <label class="check" title="With phone buzzers, the {lowerWord(words.guesser)} types their guess in a ✍ box on their phone once the question shows (only you see it). Off: they say it out loud.">
         <input type="checkbox" checked={!!rules.typeGuess} onchange={(e) => setTypeGuess(e.currentTarget.checked)} /> The {lowerWord(words.guesser)} types their guess on their phone
+      </label>
+      <label class="field" title="After ✘ Missed, everyone else can answer it for the tile's value, as on any clue: the buzzers open for them (the two who missed it locked out), or you pick who steals. A wrong steal costs the tile's value, as any wrong answer.">
+        After a miss
+        <select value={rules.steal === undefined ? 'game' : rules.steal ? 'on' : 'off'} onchange={(e) => setSteal(e.currentTarget.value)}>
+          <option value="game">As ⚖ Game rules say ({gameSteal ? 'the others can steal it' : 'no steal'})</option>
+          <option value="on">The others can steal it</option>
+          <option value="off">No steal</option>
+        </select>
       </label>
     </div>
     <div class="line">
@@ -194,7 +213,7 @@
     </div>
     <p class="hint">
       When this tile is picked, a wheel picks a partner for the player who picked it (you can choose someone else). Nobody buzzes. {cap(partWho(rules, 'giver'))}
-      {game.verb} and {partWho(rules, 'guesser')} {game.guessVerb}. After the question shows, you hand out the 🤫 cards: each goes only to the phones you
+      {game.verb} and {partWho(rules, 'guesser')} {game.guessVerb}.{stealOn(rules, app.game.settings) ? ' A miss lets the others steal it, for the tile’s value.' : ''} After the question shows, you hand out the 🤫 cards: each goes only to the phones you
       send it to, never on stream, and nothing goes until you send it. A card you send is stored on the buzzer server until the tile closes or you take it
       back. Its pictures and videos stay up to 10 minutes longer, and ⇡ Get it ready puts them there before you send, where no phone can get them. Without a
       phone, you copy it to them (📋).

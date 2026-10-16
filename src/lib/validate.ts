@@ -15,6 +15,7 @@ import {
   isSlides,
   MAX_CARDS,
   PARTNER_GAMES,
+  partnerTilesPlaced,
   playableClues,
   questionSlides,
   roundName,
@@ -23,7 +24,7 @@ import {
   type ClueCard,
   type Game,
 } from './model';
-import { lowerWord, missCosts, partnerRules, partWords } from './partner';
+import { lowerWord, missCosts, partnerRules, partnerSpot, partWords, stealOn } from './partner';
 import { cardWords, phoneCard } from './phonecard';
 import { CARD_TEXT_MAX, FILE_MAX_BYTES } from './buzzproto';
 import { rpgProblems } from './rpg';
@@ -71,6 +72,26 @@ export function dailyDoublesOver(round: BoardRound): { want: number; placed: num
   const want = round.dailyDoubleCount ?? 1;
   const placed = dailyDoublesPlaced(round);
   return placed > want ? { want, placed } : null;
+}
+
+/**
+ * A board with fewer 🤝 partner clues on it than its 🤝 Partner clues box asks for (🔀 Randomize, or Start game, places
+ * the rest): how many it wants (no more than there are tiles to put them on: a written question and answer), has, and
+ * can have at most. Null with no count, or when it has them all.
+ */
+export function partnerTilesShort(round: BoardRound): { want: number; placed: number; most: number } | null {
+  if (!round.partnerCount) return null;
+  const placed = partnerTilesPlaced(round);
+  const most = placed + round.categories.reduce((n, c) => n + c.clues.filter(partnerSpot).length, 0);
+  const want = Math.min(round.partnerCount, most);
+  return placed < want || most < round.partnerCount ? { want, placed, most } : null;
+}
+
+/** A board with more partner clues than its 🤝 Partner clues box says (made by hand, or the box lowered): both. */
+export function partnerTilesOver(round: BoardRound): { want: number; placed: number } | null {
+  if (!round.partnerCount) return null;
+  const placed = partnerTilesPlaced(round);
+  return placed > round.partnerCount ? { want: round.partnerCount, placed } : null;
 }
 
 /**
@@ -160,6 +181,29 @@ export function validate(game: Game, room: { filesOff?: boolean } = {}): Problem
         tab: i,
         level: 'info',
       });
+    const pts = partnerTilesShort(round);
+    // Not a problem either: Start game puts the rest on the board at random, where there are written clues for them.
+    if (pts && pts.placed < pts.want) {
+      const n = pts.want - pts.placed;
+      out.push({
+        text: `${r.name}: ${n} partner clue${n === 1 ? '' : 's'} not placed yet (Start game puts ${n === 1 ? 'it' : 'them'} on the board at random)`,
+        tab: i,
+        level: 'info',
+      });
+    }
+    if (pts && pts.most < (round.partnerCount ?? 0))
+      out.push({
+        text: `${r.name}: 🤝 Partner clues says ${round.partnerCount}, but only ${pts.most} tile${pts.most === 1 ? ' has' : 's have'} a written question and answer for one (partner clues never go on a Daily Double)`,
+        tab: i,
+        level: 'info',
+      });
+    const ptOver = partnerTilesOver(round);
+    if (ptOver)
+      out.push({
+        text: `${r.name}: ${ptOver.placed} partner clues placed, but 🤝 Partner clues says ${ptOver.want} (all ${ptOver.placed} play)`,
+        tab: i,
+        level: 'info',
+      });
     out.push(...partnerProblems(game, round, i, !!room.filesOff));
   });
   // The tiebreaker once ticked on: a tie at the end offers it as the main button, so an empty one puts a blank slide on stream.
@@ -190,6 +234,14 @@ export function validate(game: Game, room: { filesOff?: boolean } = {}): Problem
   const partners = boardRounds(game).flatMap((r) => playableClues(r).filter((c) => c.type === 'partner'));
   if (partners.length && !game.settings.buzzer)
     out.push({ text: 'Partner clues: without phone buzzers you copy the cards to the players yourself', tab: 'play', level: 'info' });
+  // Steal on a miss with nobody buzzing: the host picks who steals.
+  const steals = partners.filter((c) => stealOn(partnerRules(c), game.settings)).length;
+  if (steals && !game.settings.buzzer)
+    out.push({
+      text: `${plural(steals, 'partner clue')} let${steals === 1 ? 's' : ''} the others steal on a miss: without phone buzzers you pick who steals (their number, then Enter)`,
+      tab: 'play',
+      level: 'info',
+    });
   // A partner clue's points are its own: a host who turned deductions off sees where a miss still costs.
   const costly = partners.filter((c) => missCosts(partnerRules(c))).length;
   if (costly && !game.settings.deductOnWrong)

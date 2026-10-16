@@ -50,7 +50,7 @@ comes in as a copy and this game's stays.
 
 | Mode | What it is |
 |---|---|
-| 🟦 **Jeopardy board** | 1–10 categories × 1–10 clues. Supports custom values, Daily Doubles, 🤝 partner clues (two players, no buzzers, private 🤫 cards you send to their phones or copy to them), 🤫 cards on any tile, and images on categories and tiles. |
+| 🟦 **Jeopardy board** | 1–10 categories × 1–10 clues. Supports custom values, Daily Doubles, 🤝 partner clues (placed by hand or 🔀 at random; two players, no buzzers, a steal on a miss if you like, private 🤫 cards you send to their phones or copy to them), 🤫 cards on any tile, and images on categories and tiles. |
 | 🏆 **Final Jeopardy** | Private wagers, think music, then a one-by-one reveal and a winner screen. |
 | 🗺 **RPG** | Players explore a map of screens. It has stats, items, shops, characters and doorways. |
 | ♟ **Board game** | A path of spaces with forks and zones. Players move by dice, a wheel, or one space per turn. |
@@ -192,6 +192,9 @@ After **Exit › Keep & leave** the cards out stay on the phones until you resum
 With teams, **☐ Partner from the same team** (or the wheel landing on the picker's own team) spins a wheel of that
 team's people: the card goes to the one who describes, the rest of the team is told who's describing, and the team
 scores once. On an older buzzer server, or for a player without a phone, you copy the card to them (📋).
+With **A miss on a partner clue lets the others steal it** (⚖ Game rules, or each clue's own **After a miss**), ✘ Missed
+opens the buzzers for everyone else, the two who missed it locked out (without phones you pick who steals, `1`–`9`):
+a right steal gets the tile's value, a wrong one loses it, as on any clue, and Ctrl+Z on the miss closes the steal.
 **🤫 Send a card…** in the tools row sends a card to any players, teams or people on a team, at any time and in any
 round: a tile's card made in the editor, or a quick one (words typed or pasted, with a picture, video or sound, or a
 link). It lasts until the round ends or until you take it back; **🤫 2 cards out** next to it lists them by the name

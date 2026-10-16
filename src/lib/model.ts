@@ -295,6 +295,11 @@ export interface GameSettings {
   buzzTeams?: boolean;
   /** Phone buzzers: seconds a phone that buzzes before the buzzers open has to wait once they do (default 1; 0: none). */
   earlyBuzzLock?: number;
+  /**
+   * 🤝 Partner clues: a miss lets everyone else steal it (each clue can say otherwise: PartnerRules.steal). Left out: no
+   * steals.
+   */
+  partnerSteal?: boolean;
 }
 
 /**
@@ -375,7 +380,11 @@ export interface PartnerRules {
   words?: Partial<Record<PartnerRole, string>>;
   /** The guesser types their guess on their phone (✍, from the question on), else says it out loud. Needs phone buzzers. */
   typeGuess?: boolean;
-  /** Later: a miss opens the buzzers for everyone else, the two locked out. */
+  /**
+   * Steal on a miss (partner-clues spec §8.3): ✘ Missed lets everyone else answer, the two locked out (the buzzers open
+   * for the rest, or the host picks who steals), for the tile's value. Left out: as ⚖ Game rules says
+   * (GameSettings.partnerSteal); false: never on this clue.
+   */
   steal?: boolean;
 }
 
@@ -614,6 +623,18 @@ export interface BoardRound {
   /** Default value for each row (length = rows per category). */
   values: number[];
   dailyDoubleCount?: number;
+  /**
+   * 🤝 Partner clues wanted on this board (left out: none placed at random; any made by hand play): 🔀 Randomize, and
+   * Start game for the ones missing, put them on tiles with a written question and answer, never on a Daily Double.
+   */
+  partnerCount?: number;
+  /** The game a partner clue placed at random plays when its tile has no rules of its own (left out: Describe it). */
+  partnerGame?: PartnerGame;
+  /**
+   * Where a partner clue placed at random gets its first 🤫 card when its tile has none of its own: a copy of the tile's
+   * answer ('answer', the default: the giver gets what to describe) or an empty card to fill in ('empty').
+   */
+  partnerCardFrom?: 'answer' | 'empty';
   /** Free-placed images on this round's board screen (1920×1080 stage coordinates). */
   decor?: BoardDecor[];
 }
@@ -779,6 +800,11 @@ export interface ScoreEvent {
   round?: number;
   /** The award made its player the picker (it was `was`): undoing it gives the picker back. */
   picker?: { was?: Id; now: Id };
+  /**
+   * A 🤝 partner clue's ✘ Missed that let the others steal it (partnerSteal in session.ts): the steal is open while this
+   * miss stands, so an Undo of it closes the steal and a Redo opens it again.
+   */
+  steal?: true;
 }
 
 export interface RollEvent {
@@ -1527,6 +1553,14 @@ export function dailyDoublesPlaced(round: BoardRound): number {
   return round.categories.reduce((n, c) => n + c.clues.filter((cl) => cl.type === 'dailyDouble' && !cl.empty).length, 0);
 }
 
+/** How many 🤝 partner clues a board has placed (on tiles that play). */
+export function partnerTilesPlaced(round: BoardRound): number {
+  return round.categories.reduce((n, c) => n + c.clues.filter((cl) => cl.type === 'partner' && !cl.empty).length, 0);
+}
+
+/** Most 🤝 partner clues a board can ask for (a board has at most 10 × 10 tiles). */
+export const PARTNER_COUNT_MAX = 100;
+
 /** Every board round of the game. */
 export function boardRounds(game: Game): BoardRound[] {
   return game.rounds.filter(isBoard);
@@ -1785,6 +1819,17 @@ function repairPartner(cl: Clue): void {
   }
 }
 
+/** A board's 🤝 partner clues wanted, and the game and card they're placed with: anything the app can't use goes. */
+function repairPartnerTiles(r: BoardRound): void {
+  const n = r.partnerCount;
+  if (n !== undefined) {
+    if (typeof n !== 'number' || !Number.isFinite(n) || n < 1) delete r.partnerCount;
+    else if (n !== Math.min(PARTNER_COUNT_MAX, Math.floor(n))) r.partnerCount = Math.min(PARTNER_COUNT_MAX, Math.floor(n));
+  }
+  if (r.partnerGame !== undefined && !Object.hasOwn(PARTNER_GAMES, r.partnerGame)) delete r.partnerGame;
+  if (r.partnerCardFrom !== undefined && r.partnerCardFrom !== 'answer' && r.partnerCardFrom !== 'empty') delete r.partnerCardFrom;
+}
+
 function repairSlide(s: unknown): Slide {
   if (!isObj(s)) return textSlide();
   const slide = s as unknown as Slide;
@@ -1829,6 +1874,7 @@ function repairGame(g: Game): void {
     const fixed = countdownSeconds(String(secs ?? ''));
     if (fixed !== secs) g.settings.defaultTimerSeconds = fixed;
   }
+  if (g.settings.partnerSteal !== undefined && typeof g.settings.partnerSteal !== 'boolean') delete g.settings.partnerSteal;
   const players = objects<PlayerTemplate>(g.players);
   if (players !== g.players) g.players = players;
   players.forEach((p, i) => {
@@ -1874,6 +1920,7 @@ function repairGame(g: Game): void {
         r.values.push(b + (b > a ? b - a : 200));
       }
       for (const c of cats) while (c.clues.length < rows) c.clues.push({ ...newClue(), empty: true });
+      repairPartnerTiles(r);
     } else if (isFinal(r)) {
       r.questionSlide = repairSlide(r.questionSlide);
       r.answerSlide = repairSlide(r.answerSlide);

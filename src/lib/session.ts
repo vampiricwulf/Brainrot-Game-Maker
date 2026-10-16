@@ -2,7 +2,7 @@
 // Pure functions over plain objects so they're easy to test and to autosave.
 import { ensureWorld, refindPositions } from './rpg';
 import { ensureBoard, refindSpaces } from './boardgame';
-import { cardSlides, describer, dropFromSends, pairOnly, partnerReason, partnerRoles, partnerRules, partnerShares, resetRecipients, startPartner, takeBack } from './partner';
+import { cardSlides, describer, dropFromSends, pairOnly, partnerPlayers, partnerReason, partnerRoles, partnerRules, partnerShares, resetRecipients, startPartner, stealOn, takeBack } from './partner';
 import { dropOverCards, dropSeatFromCards, repairSentCards } from './sentcards';
 import { dealForViewers, dropSeatFromDeal, repairDeal } from './deals';
 import { categoryLabel, clueValue, FINAL_V1_ROUND_ID, finalName, formatPoints, getClue, isBoard, isBoardGame, isFinal, isRpg, isSlides, MAX_POINTS, newId, playableClues, questionSlides, type BoardRound, type Clue, type ClueRef, type ExtraSlide, type FinalRound, type FinalState, type Game, type Id, type PartnerState, type Player, type Round, type ScoreEvent, type Session, type Slide, type SlidesRound, type TeamMember, type WagerSource } from './model';
@@ -302,15 +302,36 @@ export function openClue(session: Session, ref: ClueRef, game?: Game): void {
 /**
  * The open clue is played by its own players, so nobody buzzes: a Daily Double (its player) or a 🤝 partner clue (the
  * picker and the partner, as far as they're chosen). `setup`: before its question shows (the Daily Double's splash, the
- * partner clue's PARTNER UP!). Null for any other clue, and off a clue.
+ * partner clue's PARTNER UP!). Null for any other clue, off a clue, and on a partner clue whose miss let the others
+ * steal it (partnerSteal): it's everyone else's to answer then, as on any clue.
  */
-export function ownPlayers(session: Pick<Session, 'phase' | 'dd' | 'partner'>): { kind: 'dd' | 'partner'; ids: Id[]; setup: boolean } | null {
+export function ownPlayers(session: Pick<Session, 'phase' | 'dd' | 'partner'> & Partial<Pick<Session, 'scoreLog'>>): { kind: 'dd' | 'partner'; ids: Id[]; setup: boolean } | null {
   if (session.phase !== 'clue') return null;
   const dd = session.dd;
   if (dd) return { kind: 'dd', ids: dd.playerId ? [dd.playerId] : [], setup: dd.stage === 'splash' };
   const p = session.partner;
-  if (p) return { kind: 'partner', ids: [...new Set([p.pickerId, p.partnerId].filter((id): id is Id => !!id))], setup: p.stage === 'pick' };
+  if (p && !partnerSteal(session)) return { kind: 'partner', ids: [...new Set([p.pickerId, p.partnerId].filter((id): id is Id => !!id))], setup: p.stage === 'pick' };
   return null;
+}
+
+/**
+ * The open 🤝 partner clue's steal (partner-clues spec §8.3): its ✘ Missed let everyone else answer it (the buzzers open
+ * for them, or the host picks who steals), the two locked out. Open while that miss stands (ScoreEvent.steal: an Undo of
+ * it closes the steal, a Redo opens it again) until the clue closes. `out`: the two (Solo: the picker); `by`: who stole
+ * it (marked right on the clue since it opened, and not one of the two). Null with no steal.
+ */
+export function partnerSteal(session: Pick<Session, 'phase' | 'partner'> & Partial<Pick<Session, 'scoreLog'>>): { out: Id[]; by?: Id } | null {
+  const p = session.phase === 'clue' ? session.partner : null;
+  if (!p || p.stage === 'pick' || !session.scoreLog) return null;
+  const since = p.at ?? 0;
+  const mine = session.scoreLog.filter((e) => !e.undone && e.clueId === p.clue && e.ts >= since);
+  if (!mine.some((e) => e.steal)) return null;
+  const out = partnerPlayers(p).map((x) => x.id);
+  // (Each player's last mark: a ✔ given and then taken back by a ✘ isn't a steal.)
+  const last = new Map<Id, boolean>();
+  for (const e of mine) last.set(e.playerId, e.right ?? e.delta > 0);
+  const by = [...last].find(([id, right]) => right && !out.includes(id))?.[0];
+  return { out, ...(by ? { by } : {}) };
 }
 
 // ---------- A clue's question slides ----------
@@ -449,8 +470,9 @@ export function clueMarks(session: Session, clueId: string, since = 0): Record<s
  * it yet (since the tile opened: scored by hand first, they're left as they are) gets their part's share of `value` (the
  * tile's, or the Amount box's), all in one undo step (`batchId`). A 0, or a deduction that ⚖ Negative scores off leaves
  * out, is logged as a 0 all the same, so both always get a mark. After ✔ Got it the guesser picks next (while "Player who
- * gets points picks next" is on), kept on the first event so an Undo gives the board back. Returns the events: none when
- * both were already scored, or before the question shows.
+ * gets points picks next" is on), kept on the first event so an Undo gives the board back. With Steal on a miss on (the
+ * clue's, or ⚖ Game rules'), ✘ Missed lets everyone else steal it: its events say so (partnerSteal). Returns the events:
+ * none when both were already scored, or before the question shows.
  */
 export function judgePartner(session: Session, game: Game, got: boolean, value: number, batchId = newId()): ScoreEvent[] {
   const s = session.partner;
@@ -474,6 +496,9 @@ export function judgePartner(session: Session, game: Game, got: boolean, value: 
     events[0].picker = { was: session.currentPickerId, now: guesser };
     session.currentPickerId = guesser;
   }
+  // Steal on a miss: the miss lets everyone else answer it, while it stands (partnerSteal). Not with nobody else here.
+  const two = partnerPlayers(s).map((x) => x.id);
+  if (!got && events.length && stealOn(rules, game.settings) && session.players.some((p) => !two.includes(p.id))) for (const e of events) e.steal = true;
   return events;
 }
 
@@ -1258,6 +1283,8 @@ export function migrateSession(session: Session, game: Game): Session {
   repairSentCards(session);
   repairDeal(session);
   dropOverCards(game, session);
+  // (A steal is opened only by a miss marked so: anything else there isn't one.)
+  for (const e of session.scoreLog ?? []) if (e.steal !== undefined && e.steal !== true) delete e.steal;
   const finalIndex = game.rounds.findIndex((r) => r.id === FINAL_V1_ROUND_ID);
   if (finalIndex < 0) return seedIntroduced(session, game);
   for (const e of session.scoreLog ?? []) if (e.clueId === 'final') e.clueId = finalTag(FINAL_V1_ROUND_ID);

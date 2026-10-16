@@ -393,6 +393,12 @@ describe('step labels', () => {
     expect(describeStep(diff(before, forked), before, forked).label).toBe('Connected Space 3 → Space 7');
     expect(describeStep(diff(forked, before), forked, before).label).toBe('Disconnected Space 3 → Space 7');
     expect(step((g) => (board(g).dailyDoubleCount = 2)).label).toBe('Set round “Jeopardy!” to 2 Daily Doubles');
+    expect(step((g) => (board(g).partnerCount = 3)).label).toBe('Set round “Jeopardy!” to 3 partner clues');
+    const counted = structuredClone(sample());
+    board(counted).partnerCount = 3;
+    const uncounted = structuredClone(counted);
+    delete board(uncounted).partnerCount;
+    expect(describeStep(diff(counted, uncounted), counted, uncounted).label).toBe('Set round “Jeopardy!” to no partner clues placed at random');
     expect(step((g) => (screens(g)[1].exits = { n: { kind: 'blocked' } })).label).toBe('Changed ways out of screen “Town”');
   });
 

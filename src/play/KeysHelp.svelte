@@ -62,6 +62,7 @@
         ['W on a partner clue', 'Spin for a partner (1–9: choose one yourself)'],
         ['Enter on a partner clue', 'Show the question, send the cards to their phones and start the clock (📤 Send and start; copy them to anyone without a phone), then ✔ Got it (Shift+Enter: ✘ Missed)'],
         ['Esc on a partner clue before the question', 'Back to the board: the tile stays playable'],
+        ['1–9, then Enter, in a partner clue’s steal', 'After ✘ Missed with steals on: who steals it, then right (Shift+Enter: wrong), as on any clue'],
         ['Right-click a tile', 'Open it, mark it as played without opening it, or put a used one back'],
       ],
     },

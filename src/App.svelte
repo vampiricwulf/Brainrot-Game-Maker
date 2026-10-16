@@ -43,7 +43,7 @@
   import { goToRound, migrateSession, newSession, randomizeDailyDoubles, rebaseSession, startIntro } from './lib/session';
   import { forgetGameParts } from './lib/toolset';
   import { newLive, type Overlay } from './lib/live';
-  import { clone } from './lib/ops';
+  import { clone, randomizePartnerTiles } from './lib/ops';
   import { slideMediaIds } from './lib/usage';
   import { sameGame } from './lib/samegame';
   import { sameContent } from './lib/roundcopy';
@@ -611,8 +611,11 @@
     // (No tiebreaker after it, and no phones: the room, if one is open, waits for ▶ Play.)
     delete game.tiebreaker;
     game.settings.buzzer = undefined;
-    // Daily Doubles the board wants but hasn't got go in at random, in this copy only.
-    if (isBoard(r)) randomizeDailyDoubles(r, r.dailyDoubleCount ?? 1, Math.random, { keepExisting: true });
+    // Partner clues and Daily Doubles the board wants but hasn't got go in at random, in this copy only.
+    if (isBoard(r)) {
+      if (r.partnerCount) randomizePartnerTiles(r, r.partnerCount, Math.random, { keepExisting: true });
+      randomizeDailyDoubles(r, r.dailyDoubleCount ?? 1, Math.random, { keepExisting: true });
+    }
     const s = newSession(game);
     if (!s.players.length)
       for (const name of ['Alex', 'Sam', 'Jordan'].slice(0, Math.max(1, game.settings.maxPlayers)))

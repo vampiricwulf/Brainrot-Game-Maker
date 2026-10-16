@@ -2,25 +2,25 @@
   🤝 A partner clue's part of the host panel (partner-clues spec §6.10): PARTNER UP! (who picked it, the partner by the
   wheel or by hand, ⇄ Swap), then 📤 Distribute (who gets each card: 📤 Send to their phones, ✓ seen, ↻ Send again,
   📤 Send changes, ✖ Take back, ⇡ Get it ready, or 📋 copying it to them, or 🪟 showing it in the card window open for
-  one of them when no phone gets cards), and ✔ Got it / ✘ Missed with what each gives. Nothing goes to a phone or the
-  buzzer server but by those presses, and never more cards than the room takes (✖ Take one back first). In one window
-  this panel is on stream: it counts what's on a card and never says it, nor names a card's pictures (a file name is
-  often the answer), uploads included. The cards themselves are in the editor's 🤫 Card tabs, and the two-window host
-  column.
+  one of them when no phone gets cards), and ✔ Got it / ✘ Missed with what each gives (then, with steal on a miss, who
+  steals it: the others buzz in, or the host picks one). Nothing goes to a phone or the buzzer server but by those
+  presses, and never more cards than the room takes (✖ Take one back first). In one window this panel is on stream: it
+  counts what's on a card and never says it, nor names a card's pictures (a file name is often the answer), uploads
+  included. The cards themselves are in the editor's 🤫 Card tabs, and the two-window host column.
 -->
 <script lang="ts">
   import { onMount } from 'svelte';
   import { app, toast } from '../../lib/app.svelte';
   import { textOn } from '../../lib/colors';
   import { overlayDoneAt, toolOverlay } from '../../lib/live';
-  import { cardSlides, PARTNER_GAMES, type CardTo, type Clue, type ClueCard, type Game, type Id, type PartnerState, type Session } from '../../lib/model';
+  import { cardSlides, formatPoints, PARTNER_GAMES, type CardTo, type Clue, type ClueCard, type Game, type Id, type PartnerState, type Session } from '../../lib/model';
   import {
     cardCopyText, cardId, cardRecipients, cardSends, cardSummary, countItems, describer, goesToLabel, lowerWord, markReady, marksText, pairOnly, partnerCandidates, partnerRoles,
     partnerRules, partnerShares, partnerVerdict, partWho, partWordOf, partWords, recipientsText, resetRecipients, sameTeam, sendAgain, sendCards, sendChanges, sendState, sentSeats,
     sentTo, setDescriber, setPartner, setPartnerPicker, setRecipients, sharesText, swapParts, toKey, toName,
   } from '../../lib/partner';
   import { cardItems, cardLinks, cardWords, phoneCard } from '../../lib/phonecard';
-  import { clueName, nameList } from '../../lib/session';
+  import { clueName, nameList, partnerSteal } from '../../lib/session';
   import { buzzerOn, remote, roomHasCards, roomHasFiles, roomMembers } from '../../lib/remote.svelte';
   import { cardFileCounts, filesCounted, phoneCan, retryFiles, unputGone } from '../../lib/cardfiles.svelte';
   import { ask } from '../../lib/ask.svelte';
@@ -48,6 +48,8 @@
     ontakeback,
     oncardtakeback = () => {},
     onmemberspin,
+    selected = [],
+    onpick = () => {},
   }: {
     game: Game;
     session: Session;
@@ -73,6 +75,10 @@
     oncardtakeback?: (id: Id) => void;
     /** 🎡 Spin for the describer (teams, the picker's own team playing it): the member wheel, spun. */
     onmemberspin: () => void;
+    /** The players picked by hand (1–9, a click): in a steal, who's answering it. */
+    selected?: Id[];
+    /** A steal's chip: that player answers it (picked, as with their number). */
+    onpick?: (id: Id) => void;
   } = $props();
 
   // (Mounted only while there's one; a stand-in for the moment it goes, before this part does.)
@@ -198,6 +204,12 @@
   /** What ✔ Got it and ✘ Missed give now: to whoever of the two isn't scored yet. */
   const gotShares = $derived(partnerShares(value, rules, s, true, marks));
   const missShares = $derived(partnerShares(value, rules, s, false, marks));
+  /**
+   * Steal on a miss (partner-clues spec §8.3): ✘ Missed let the others answer it, the two locked out. Who can still steal
+   * it (not one of the two, nor one who missed the steal), and who did.
+   */
+  const steal = $derived(partnerSteal(session));
+  const stealers = $derived(steal ? session.players.filter((p) => !steal.out.includes(p.id)) : []);
   /** " · Bob already scored": one of the two scored by hand first (the buttons leave them as they are). */
   const already = $derived(
     s.partnerId && !verdict.judged
@@ -750,6 +762,34 @@
         <span class="small shares" data-judge-missed>{sharesText(missShares, name, sym)}{already}</span>
       {/if}
     </div>
+    {#if steal}
+      <!-- Steal on a miss: the others answer it as any clue (the buzzers open for them; the host can pick who). Each
+           steal is its own step, as any award; an Undo of ✘ Missed closes the steal. -->
+      <div class="row small steal" data-partner-steal>
+        {#if steal.by}
+          <b>🔔 {name(steal.by)} stole it</b>
+        {:else if session.revealed}
+          <span class="muted">🔔 Nobody stole it</span>
+        {:else}
+          <b>🔔 Steal!</b>
+          <span>{buzzerOn(game.settings) ? 'The others can buzz in, or choose who:' : 'Who steals it?'}</span>
+          {#each stealers as p (p.id)}
+            {@const missed = !!marks[p.id] && !marks[p.id].right}
+            {@const i = session.players.indexOf(p)}
+            {@render chip(
+              p.id,
+              selected.includes(p.id),
+              `${p.name} steals it`,
+              () => onpick(p.id),
+              missed,
+              missed ? `${p.name} missed the steal` : i < 9 ? `Key ${i + 1}: ${p.name} answers it` : `${p.name} answers it`,
+              i + 1,
+            )}
+          {/each}
+          <span class="muted">Enter: right +{formatPoints(value, sym)} · Shift+Enter: wrong −{formatPoints(value, sym)}</span>
+        {/if}
+      </div>
+    {/if}
   {/if}
   {#if !dual}
     <span class="exposed">⚠ Viewers can see this window: what’s on a card is never shown here (check the cards in the editor’s 🤫 Card tabs).</span>
@@ -809,6 +849,9 @@
   .judge {
     padding-top: 4px;
     border-top: 1px solid rgba(255, 255, 255, 0.08);
+  }
+  .steal {
+    padding-top: 4px;
   }
   .shares {
     margin-right: 8px;

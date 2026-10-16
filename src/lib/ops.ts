@@ -1,6 +1,6 @@
 // Structural edits to a Game that must keep rounds/categories/clues consistent.
 import { boardRounds, cardSlides, dailyDoublesPlaced, gameRules, isBoard, isBoardGame, isFinal, isSlides, newCategory, newClue, newId, newTextEl, questionSlides, textSlide, type Category, type Clue, type ClueCard, type ExtraSlide, type Game, type BoardRound, type ClueType, type Round, type Slide, type SlidesRound, type TextEl } from './model';
-import { startingCards } from './partner';
+import { newCard, partnerSpot, startingCards } from './partner';
 import { slideHasContent } from './usage';
 
 /** Something was written or added to this clue (a new clue has none of it): its 🤫 cards' too. */
@@ -200,6 +200,65 @@ export function setClueType(round: BoardRound, clue: Clue, type: ClueType): void
     }
   }
   followDailyDoubles(round);
+}
+
+/**
+ * Make a tile a 🤝 partner clue as 🔀 Randomize (or Start game) places one: with its own rules and cards when it has them
+ * (it was one before), else the round's (BoardRound.partnerGame, Describe it when left out, with a 45 s countdown for
+ * Describe it, Draw it and Act it out when it has none), and a first card that's a copy of the tile's answer (as
+ * ⧉ Same as the answer makes it) or, with the round's partnerCardFrom 'empty', an empty one to fill in.
+ */
+export function placePartner(round: BoardRound, clue: Clue): void {
+  clue.type = 'partner';
+  if (!clue.partner) {
+    clue.partner = gameRules(round.partnerGame ?? 'describe');
+    const g = clue.partner.game;
+    if (g === 'describe' || g === 'draw' || g === 'act') clue.timerSeconds ??= 45;
+  }
+  if (cardSlides(clue).some(slideHasContent)) return;
+  const cards = startingCards(clue.partner.game);
+  if ((round.partnerCardFrom ?? 'answer') === 'answer') {
+    // (Custom has no starting card: the copy goes to its giver.)
+    const first = cards[0] ?? newCard('giver');
+    cardFromAnswer(clue, first);
+    cards[0] = first;
+  }
+  if (cards.length) clue.cards = cards;
+  else delete clue.cards;
+}
+
+/**
+ * Scatter `count` 🤝 partner clues over a board (🔀 Randomize; Start game with `keepExisting`, for the ones missing):
+ * only on tiles with a written question and answer (partnerSpot: never a Daily Double), spread over the categories (one
+ * with the fewest first). Each gets its own rules and cards, or the round's (placePartner). Without `keepExisting` the
+ * ones on the board go back to standard tiles first, keeping their rules and cards for when they're picked again.
+ * Returns how many were placed.
+ */
+export function randomizePartnerTiles(round: BoardRound, count: number, rand = Math.random, { keepExisting = false }: { keepExisting?: boolean } = {}): number {
+  let have = 0;
+  const perCat = round.categories.map(() => 0);
+  round.categories.forEach((c, ci) =>
+    c.clues.forEach((cl) => {
+      if (cl.type !== 'partner') return;
+      if (!keepExisting) cl.type = 'standard';
+      else if (!cl.empty) {
+        have++;
+        perCat[ci]++;
+      }
+    }),
+  );
+  const spots = round.categories.flatMap((c, ci) => c.clues.flatMap((cl, row) => (partnerSpot(cl) ? [{ cat: ci, row }] : [])));
+  let placed = 0;
+  while (have + placed < count && spots.length) {
+    const fewest = Math.min(...spots.map((x) => perCat[x.cat]));
+    const pool = spots.filter((x) => perCat[x.cat] === fewest);
+    const pick = pool[Math.min(pool.length - 1, Math.floor(rand() * pool.length))];
+    spots.splice(spots.indexOf(pick), 1);
+    placePartner(round, round.categories[pick.cat].clues[pick.row]);
+    perCat[pick.cat]++;
+    placed++;
+  }
+  return placed;
 }
 
 /** More Daily Doubles on the board than ⭐ Daily Doubles says (one copied, pasted, used again): the box follows. */

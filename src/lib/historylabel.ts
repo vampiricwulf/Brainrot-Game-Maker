@@ -477,6 +477,7 @@ const RULES: Record<string, string> = {
   currencySymbol: 'Points symbol',
   rollOffDie: 'Roll-off die',
   pickerFollowsAward: 'Scorer picks next',
+  partnerSteal: 'Steals on partner clues',
   maxPlayers: 'Most players',
   timerAutoStart: 'Countdown starts itself',
   titleCard: 'Round title card',
@@ -512,6 +513,9 @@ const FIELDS: Record<string, string> = {
   exits: 'ways out',
   winPublic: 'how to win on the board',
   dailyDoubleCount: 'Daily Doubles wanted',
+  partnerCount: 'partner clues wanted',
+  partnerGame: 'partner clues’ game',
+  partnerCardFrom: 'partner clues’ card',
 };
 /** Switches: what turning each on or off says (`who`: “Doorway”, or "the space" for one with no name). */
 const TOGGLES: Record<string, (on: boolean, who: string) => string> = {
@@ -872,6 +876,8 @@ function labelOf(ops: readonly Op[], op: Op, at: At, moved: string[], alike: num
     return TOGGLES[k](!!v, who);
   }
   if (k === 'dailyDoubleCount' && typeof v === 'number') return `Set ${what(at)} to ${v} Daily Double${v === 1 ? '' : 's'}`;
+  if (k === 'partnerCount' && at.noun === 'round')
+    return typeof v === 'number' ? `Set ${what(at)} to ${v} partner clue${v === 1 ? '' : 's'}` : `Set ${what(at)} to no partner clues placed at random`;
   if (at.noun === 'row values') return 'Changed the row values';
   const own = op.p.length === at.depth;
   // A tile is named as the board shows it ("Memes $400"); a value changed, by the one it had.

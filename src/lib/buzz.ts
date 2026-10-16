@@ -8,7 +8,7 @@ import {
 } from './partner';
 import { cardWords, clipWords, phoneCard, type PhoneCan } from './phonecard';
 import { cardsOut, sentCardId, sentSlide } from './sentcards';
-import { clueMarks, currentClueInfo, currentFinal, ddCap, finalWagerCap, score, shownQuestionSlide, tiedForFirst, wagerFromPhone } from './session';
+import { clueMarks, currentClueInfo, currentFinal, ddCap, finalWagerCap, nameList, partnerSteal, score, shownQuestionSlide, tiedForFirst, wagerFromPhone } from './session';
 
 export interface BuzzState {
   phase: BuzzPhase;
@@ -145,6 +145,9 @@ export function phoneStatus(game: Game, session: Session, pregame = false, room:
     const who = nameOf(id);
     return who && id ? { text: `Daily Double: ${who}`, seats: [id], seatsText: 'Daily Double — you’re up!' } : { text: 'Daily Double!' };
   }
+  // A partner clue's miss let the others steal it: they buzz in as on any clue (nothing greyed), the two locked out.
+  const steal = session.phase === 'clue' && session.partner && !session.revealed ? partnerSteal(session) : null;
+  if (steal && !steal.by) return { text: clip(`🔔 Steal! ${nameList(steal.out.flatMap((id) => nameOf(id) ?? []))} missed it`, 120) };
   if (session.phase === 'clue' && session.partner) return room.cards ? partnerStatusOff(game, session, session.partner) : partnerStatus(game, session, session.partner);
   if (session.intro?.stage === 'title' && round) return { text: `${roundName(round, session.currentRound)} is starting` };
   switch (session.phase) {
