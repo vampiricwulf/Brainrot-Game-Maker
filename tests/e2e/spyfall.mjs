@@ -6,8 +6,9 @@
 // a host reload; dealing again (another spy) changes nothing on the host page. 📤 Send: each dealt-in phone gets its
 // own card only (the spy's words, or the location the others share); Fay and the unseated phone get nothing; the panel
 // names Eve as having no phone here, with 📋 Copy for her card; Eve's phone, joining after the send, gets nothing but a
-// note that she missed one, and the panel counts her phone (never names it: in a deal that leaves some without a part, a
-// late phone's name would say who got one); ↻ Send again reaches her. 🎭 Who was who goes on the stage only when
+// note that she missed one, and the panel counts her phone as one that came after the cards went (never names it, and
+// counts it part or not: in a deal that leaves some without a part, a late phone's name, or a count of only those with
+// a card to be late for, would say who got one); ↻ Send again reaches her. 🎭 Who was who goes on the stage only when
 // pressed: Ctrl+Z, Ctrl+Y, and a host reload keep it as it was. "Deal a new one?" asks while cards are out. The next
 // round takes the cards back, and Who was who off the screen (Esc too). The host page never says
 // who got which part, nor shows a card's words or the location, until Who was who. The audience window, opened at the
@@ -347,7 +348,7 @@ try {
   const lateLine = 'A card went to your seat before this phone joined. Ask the host to send it again.';
   await eve.locator('#cards-late').getByText(lateLine).waitFor();
   assert(!(await cardsOn(eve)) && !hadWords('Eve', place) && !hadWords('Eve', SPY_WORDS), 'Eve’s phone, seated after the send: no card and nothing of it, only a note that it missed one');
-  const lateStatus = '1 phone hasn’t got theirs: ↻ Send again';
+  const lateStatus = '1 phone came after the cards went: ↻ Send again';
   assert(await until(async () => (await flat(dialog.locator('[data-deal-status]'))).includes(lateStatus)), `the panel says “${lateStatus}” (one window: counted, never named)`);
   assert(!(await flat(dialog.locator('[data-deal-status]'))).includes('📵') && !(await dialog.locator('.hands').count()), 'her phone is here: the 📵 line and her row go');
   await secret('a late phone');
@@ -360,7 +361,7 @@ try {
   await eve.getByRole('button', { name: 'Tap to see' }).tap();
   await eve.locator('.card-words', { hasText: eves.part === 'Spy' ? SPY_WORDS : place }).waitFor();
   assert(!(await eve.locator('#cards-late').isVisible()) && (eves.part === 'Spy' ? !hadWords('Eve', place) : !hadWords('Eve', SPY_WORDS)), `Eve’s phone gets hers (the ${eves.part}’s), and only hers`);
-  assert(await until(async () => !(await flat(dialog.locator('[data-deal-status]'))).includes('hasn’t got')), 'the late note goes from the panel');
+  assert(await until(async () => !(await flat(dialog.locator('[data-deal-status]'))).includes('came after')), 'the late note goes from the panel');
   assert(!(await cardsOn(phones.Fay)) && !hadWords('Fay', place) && !hadWords('Fay', SPY_WORDS), 'Fay still has nothing');
   await secret('sent again');
 

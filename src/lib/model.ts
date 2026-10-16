@@ -929,6 +929,12 @@ export interface DealState {
   stage: 'dealt' | 'sent';
   /** How long its cards last once sent. */
   until?: 'round' | 'host';
+  /**
+   * The buzzer room's phones on a place dealt in when its cards last went (📤 Send, ↻ Send again), away ones too: a
+   * seat's (its id), or a person's on a team (`seat/member`). One window counts the phones that came since, a part or
+   * not (dealPhonesLate). Left out in saves from before it was kept.
+   */
+  phonesAt?: string[];
   /** Who was who is on stream (a step: Ctrl+Z takes it off again). Only the host's press sets it. */
   shown?: boolean;
 }

@@ -406,6 +406,13 @@ export function roomCardCount(game: Game, session: Session): number {
   return (partnerCards(game, session, { files: {} })?.length ?? 0) + (sessionCards(game, session, { files: {} })?.length ?? 0);
 }
 
+/** How many cards the room would be told after `go`, made on a copy of the session. */
+function countAfter(game: Game, session: Session, go: (trial: Session) => void): number {
+  const trial: Session = { ...session, partner: session.partner ? JSON.parse(JSON.stringify(session.partner)) : session.partner, cards: session.cards ? [...session.cards] : session.cards };
+  go(trial);
+  return roomCardCount(game, trial);
+}
+
 /**
  * The room is told CARDS_MAX cards at most, so a send that would take it past that is refused, never made by leaving
  * an older card off the phones: that card would come back under its old id once another went, and the room, which
@@ -416,10 +423,18 @@ export function roomCardCount(game: Game, session: Session): number {
 export function roomCardsFull(game: Game, session: Session, go?: (trial: Session) => void): boolean {
   const now = roomCardCount(game, session);
   if (!go) return now + 1 > CARDS_MAX;
-  const trial: Session = { ...session, partner: session.partner ? JSON.parse(JSON.stringify(session.partner)) : session.partner, cards: session.cards ? [...session.cards] : session.cards };
-  go(trial);
-  const after = roomCardCount(game, trial);
+  const after = countAfter(game, session, go);
   return after > CARDS_MAX && after > now;
+}
+
+/**
+ * Why a 🎭 deal's 📤 Send is refused (roomCardsFull with dealTrial: its cards aren't out): how many cards are out, how
+ * many the deal adds, and how many to take back (cardsFullText is for one card).
+ */
+export function dealFullText(game: Game, session: Session, go: (trial: Session) => void): string {
+  const now = roomCardCount(game, session);
+  const add = countAfter(game, session, go) - now;
+  return `${now} card${now === 1 ? ' is' : 's are'} out on the phones, and this deal adds ${add}: they take ${CARDS_MAX} at once, so ✖ Take ${now + add - CARDS_MAX} back first`;
 }
 
 /**
