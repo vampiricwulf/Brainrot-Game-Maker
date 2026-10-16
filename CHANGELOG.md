@@ -11,6 +11,11 @@ the day it's pushed (Pacific time; start the heading on the day's first push) an
 in plain words for the people who make and host games. Anything committed but not pushed yet goes under
 **Unreleased** at the top, and moves under its day when it's pushed.
 
+## 2026-10-16
+
+### Fixed
+- The Windows desktop app builds again: the update that brought 🤫 Send a card… (b7cebf9) had no desktop app, because two of its file names differed only in capital letters, which Windows treats as the same file. A test now catches such names.
+
 ## 2026-10-15
 
 ### Added

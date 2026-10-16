@@ -11,7 +11,7 @@
   import { nameList } from '../../lib/session';
   import { logged } from '../../lib/toolset';
   import { decidingAction, playerName, runSpace, sendNow } from './bgops';
-  import { offerIn } from '../host/cardoffers.svelte';
+  import { offerIn } from '../host/offered.svelte';
 
   let {
     game,

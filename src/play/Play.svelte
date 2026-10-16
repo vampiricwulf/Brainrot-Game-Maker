@@ -22,7 +22,7 @@
   import { cardsOut, sentCardId, sentSlide, takeBackCard } from '../lib/sentcards';
   import { windowCards } from '../lib/cardwindow';
   import { cardWindow, closeCardWindow, feedCardWindow } from '../lib/cardwindow.svelte';
-  import { dropOffersBut } from './host/cardoffers.svelte';
+  import { dropOffersBut } from './host/offered.svelte';
   import { addTime, newLive, overlayDoneAt, startTimer, tileToolUp, timerRemaining, timerResumed, toggleTimer, toolOverlay, type Live, type StageAction, type TimerState } from '../lib/live';
   import {
     buzzArm, buzzClueOpened, buzzDone, buzzIdle, buzzMissed, buzzReset, buzzTake, CARDS_FULL, hostState, newBuzz, partnerAnswerAsk, partnerAnswerId, hostCards, phoneStatus, roomCardsFull, SEAT_NAME_MAX, sendOf, SETTING_UP,

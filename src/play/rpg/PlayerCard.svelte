@@ -21,7 +21,7 @@
   import { app, toast } from '../../lib/app.svelte';
   import { textOn } from '../../lib/colors';
   import { describeAction, runAction, type CardOffer } from '../../lib/actions';
-  import { offerIn } from '../host/cardoffers.svelte';
+  import { offerIn } from '../host/offered.svelte';
   import { formatPoints, newId, type BoardGameRound, type BoardGameState, type Game, type Player, type Session, type World, type WorldState } from '../../lib/model';
   import { applyScore, score } from '../../lib/session';
   import { blip } from '../../lib/live';

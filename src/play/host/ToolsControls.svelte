@@ -22,7 +22,7 @@
   import { currentClueInfo, toolOnlyClue } from '../../lib/session';
   import { boardNow, moverResult } from '../boardgame/bgops';
   import { offerNext } from './slots.svelte';
-  import { offerIn } from './cardoffers.svelte';
+  import { offerIn } from './offered.svelte';
   import { announce } from '../../lib/announce';
 
   let { game, session, selected = [], onclose }: { game: Game; session: Session; selected?: string[]; onclose: () => void } = $props();

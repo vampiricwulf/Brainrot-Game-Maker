@@ -9,7 +9,7 @@ import { openWheel, quickDice, rollDice, spinWheel, wheelSpentUp } from '../../l
 import { parseDice } from '../../lib/tools';
 import { overlayDoneAt, toolOverlay, type Live } from '../../lib/live';
 import { announce } from '../../lib/announce';
-import { offerIn } from '../host/cardoffers.svelte';
+import { offerIn } from '../host/offered.svelte';
 
 /** The board-game round being played and its state (undefined outside one). */
 export function boardNow(game: Game, session: Session) {

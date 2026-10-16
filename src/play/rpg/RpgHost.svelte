@@ -9,7 +9,7 @@
   import { step } from '../../lib/history.svelte';
   import { textOn } from '../../lib/colors';
   import type { RunContext } from '../../lib/actions';
-  import { offerIn } from '../host/cardoffers.svelte';
+  import { offerIn } from '../host/offered.svelte';
   import { newId, newImageEl, type Dir8, type Game, type Party, type Screen, type ScreenRef, type Session, type Slide } from '../../lib/model';
   import {
     activeParty, addScreenBeside, classLabel, occupiedScreens, DIR_ARROW, DIR_NAME, DIR_VEC, DIRS, exitOf, findIn, focusRef, keepScreen, moveTo, nameParty, carryObjects, copyLook, screenElements, screenAt,

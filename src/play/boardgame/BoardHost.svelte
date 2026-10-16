@@ -18,7 +18,7 @@
   import { boardNow, busyZones, moveNow, moverDiceName, playerName, reorderTurns, rollMover, sendNow, setTurn, turnNow, turnOrder } from './bgops';
   import SpaceCard from './SpaceCard.svelte';
   import { offerNext } from '../host/slots.svelte';
-  import { offerIn } from '../host/cardoffers.svelte';
+  import { offerIn } from '../host/offered.svelte';
   import { boardEdit, setEditing } from './boardedit.svelte';
   import BoardEditPanel from './BoardEditPanel.svelte';
 

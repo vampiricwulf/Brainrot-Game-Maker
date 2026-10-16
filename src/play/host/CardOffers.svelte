@@ -11,7 +11,7 @@
   import type { Game, Session } from '../../lib/model';
   import { sentToText } from '../../lib/sentcards';
   import CardSend from './CardSend.svelte';
-  import { cardOffers, dropOffer, dropOffersBut } from './cardoffers.svelte';
+  import { cardOffers, dropOffer, dropOffersBut } from './offered.svelte';
 
   let { game, session, dual = false }: { game: Game; session: Session; dual?: boolean } = $props();
 
