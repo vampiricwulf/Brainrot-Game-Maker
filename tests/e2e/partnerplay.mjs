@@ -95,8 +95,10 @@ try {
   assert((await stage('[data-partner-up]').innerText()).replace(/\s+/g, ' ').includes('PARTNER UP!'), 'the tile opens on PARTNER UP! on stream');
   assert((await panel.innerText()).includes('Who picked it?'), 'nobody was marked to pick: the panel asks who picked it');
   assert((await mainButtonState()).disabled, 'and 🎡 Spin for a partner waits for that');
+  assert((await page.locator('.panel .status').innerText()).includes('Partner clue: who picked it? (1–4)'), 'the status row asks who picked it too (not to spin yet)');
   await page.keyboard.press('1');
   await panel.getByText('Ann picked it.').waitFor();
+  assert((await page.locator('.panel .status').innerText()).includes('Partner clue: spin for a partner'), 'Ann picked it: the status row says to spin for a partner');
   assert((await stage('[data-partner-up]').innerText()).includes('Ann') && (await stage('.pu-plate.waiting').count()) === 1, '1: Ann picked it; the stage shows her plate and a pulsing “?”');
   assert((await page.locator('.panel [data-partner-tag]').innerText()).trim() === '🤝 Ann', 'the status row’s tag says whose partner clue it is');
   assert((await page.locator('.panel .players').count()) === 0, 'no award row before the question');
@@ -191,9 +193,12 @@ try {
   await tile(0, 2).click();
   await panel.getByText('Ann picked it.').waitFor();
   assert((await panel.innerText()).includes('No cards on this clue'), 'a clue with no cards says so');
+  // (The countdown doesn't start by itself in this game: the question doesn't start it either.)
+  assert((await panel.innerText()).includes('No cards on this clue: start the clock yourself (T) once the question is up.'), 'and, the countdown not starting by itself, to start the clock with T');
   await page.keyboard.press('4');
   await page.keyboard.press('Enter');
   await stage('[data-partner-card]').waitFor();
+  assert(!(await stage('.timer').count()), 'the question is up, and no countdown runs');
   const card = (await stage('[data-partner-card]').innerText()).replace(/\s+/g, ' ');
   assert(card.includes('Describe it!') && card.includes('Ann') && card.includes('Dan') && card.includes('MOVIES'), `a blank question shows a card of its own: the game, the two, the category (${card})`);
   assert((await mainLabel(page)) === '👁 Reveal answer', 'with no cards to hand out, the question is all: the answer is next');

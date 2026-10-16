@@ -373,6 +373,19 @@ export function describer(s: Pick<PartnerState, 'pickerId' | 'partnerId' | 'memb
   return s.pickerId && s.partnerId === s.pickerId ? s.member : undefined;
 }
 
+/**
+ * What PARTNER UP! waits on before its question, in the order the panel's main button goes: a spin for who on the picker's
+ * own team describes (teams, that team playing it, with `describers` people on it whose phones get the cards: more than
+ * one), the question (the two are chosen), who picked it (nobody marked yet), nobody to partner with, or the spin for a
+ * partner. The main button and the status line both go by it, so they never say two different things.
+ */
+export function partnerPickStep(session: Seats, s: PartnerState, describers: number): 'describer' | 'show' | 'picker' | 'nobody' | 'spin' {
+  if (s.pickerId && s.partnerId === s.pickerId && !s.member && describers > 1) return 'describer';
+  if (s.partnerId) return 'show';
+  if (!s.pickerId) return 'picker';
+  return partnerCandidates(session, s).length ? 'spin' : 'nobody';
+}
+
 /** Who plays which part now: the giver and the guesser (Solo: the picker, alone, guesses). */
 export function partnerRoles(s: Pick<PartnerState, 'pickerId' | 'partnerId' | 'giver'>): { giver?: Id; guesser?: Id; solo: boolean } {
   if (s.partnerId && s.partnerId === s.pickerId) return { guesser: s.pickerId, solo: true };

@@ -5,7 +5,7 @@ import { describe, expect, it } from 'vitest';
 import { jeopardyGame } from './testgame';
 import { migrateGame, setSlideText, type BoardRound, type Game } from './model';
 import { setPartner, setPartnerGame, stealOn } from './partner';
-import { applyScore, awardOpen, backToBoard, clueMarks, judgePartner, logZero, migrateSession, newSession, openClue, ownPlayers, partnerSteal, redo, removePlayer, toggleUsed, undo } from './session';
+import { applyScore, awardOpen, backToBoard, clueMarks, judgePartner, logZero, migrateSession, newSession, openClue, ownPlayers, partnerSteal, redo, removePlayer, stealersLeft, toggleUsed, undo } from './session';
 import { phoneStatus } from './buzz';
 
 const REF = { round: 0, cat: 0, row: 1 };
@@ -112,6 +112,21 @@ describe('while the steal is open', () => {
     redo(session);
     redo(session);
     expect(partnerSteal(session)).toEqual({ out: ['b', 'a'], by: 'd' });
+  });
+
+  it('who can still steal it: the others, until each has missed (an Undo of a miss gives them back)', () => {
+    const { g, session, s } = setup({ steal: true });
+    judgePartner(session, g, false, 400);
+    const left = () => stealersLeft(session.players, partnerSteal(session)!, clueMarks(session, s.clue, s.at));
+    expect(left()).toEqual(['c', 'd']);
+    stealAward(g, session, 'c', false);
+    expect(left()).toEqual(['d']);
+    stealAward(g, session, 'd', false);
+    // (Nobody stole it: only the answer goes on.)
+    expect(left()).toEqual([]);
+    expect(partnerSteal(session)).toEqual({ out: ['b', 'a'] });
+    undo(session);
+    expect(left()).toEqual(['d']);
   });
 
   it('one of the two taken out sends it back to choosing: no steal then', () => {

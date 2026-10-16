@@ -1151,7 +1151,8 @@ never carry a card's words: each card is numbered in the order it was sent ("Car
 [✖ Take back]"), and the label is made by the app, never typed (§18.2). In P4 a deal's list in one window doesn't say
 who got which card, since that is the secret: it lists everyone dealt in alike, with a part or not (a deal with no
 part for "the rest", like 🧢 Team captain outside teams, leaves some with none), and counts the phones that came late
-rather than naming them. For the same reason a deal's part ("You're the Spy") is not the role line
+rather than naming them. With the phones getting the cards it lists only those dealt in with no phone here (📵), to
+copy theirs (📋): picked out by phone, never by part. For the same reason a deal's part ("You're the Spy") is not the role line
 over a phone's Tap to see cover (§12.3), where a neighbour could read it: it goes under the cover, as the card's title.
 
 ### 12.3 How a phone shows a card

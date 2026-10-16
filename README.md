@@ -213,9 +213,10 @@ or 🧠 Everyone's own prompt (a slice of a wheel each), or a deal of your own m
 card each and how many get it). 🎭 Deal shuffles the parts (with the audience window open you can choose who gets one,
 and the column beside the stage shows who got which); nothing goes until you press 📤 Send, which sends each player's
 card on its own, their part ("You're the Spy") on it behind Tap to see. In one window the panel only counts the parts
-("Spy ×1, Villager ×4") and lists everyone dealt in alike, a part or not. ↻ Send again and ✖ Take back work on the
-whole deal, and **🎭 Who was who** puts everyone's part on screen when you choose (a click on it, or Ctrl+Z, takes it
-off).
+("Spy ×1, Villager ×4") and lists everyone dealt in alike, a part or not (with the phones getting the cards, those with
+no phone here, 📵, to copy theirs). ↻ Send again and ✖ Take back work on the whole deal, and **🎭 Who was who** puts
+everyone's part on screen when you choose (a click on it, Esc or Ctrl+Z takes it off, and so does opening a tile or
+the tiebreaker, going to another round, or the Final going on).
 A player on a computer opens the same link: `Space` (or `Enter`) buzzes, `1`–`9` pick their seat or team, `Esc` goes back, and the page says when another window (the stream, say) has the keyboard. The room stays open
 through the pre-game screen, a reload of it and **◀ Back to editor**; it closes
 with Exit, at the end of the game or with **✕ Close the room**. The join code shows small in a corner of the stream

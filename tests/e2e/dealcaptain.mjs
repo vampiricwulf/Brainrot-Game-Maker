@@ -5,7 +5,8 @@
 // dealt in, each with the same 📋 Copy and 🪟 buttons, and counts "Dealt to 5: Captain ×1"; the captain's 📋 copies their
 // brief, everyone else's "no part for you this time". Dealt again until someone else is captain, the deal's window, the
 // tools row, the stage, and everything the page showed or said on the way read the same, word for word. 🎭 Who was who
-// goes on the stage; a click on it takes it off (Ctrl+Z puts it back), and the board under it takes clicks again.
+// goes on the stage; a click on it takes it off (Ctrl+Z puts it back), and so does Esc; a tile opened with the keyboard
+// under it takes it off (it would cover the question); and the board under it takes clicks again.
 import { chromium } from 'playwright-core';
 import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
@@ -186,6 +187,19 @@ try {
   await sleep(500);
   await reveal.click();
   assert(await until(async () => !(await reveal.count())), 'clicked again: off');
+  await host.keyboard.press('Control+z');
+  await reveal.waitFor();
+  await host.keyboard.press('Escape');
+  assert(await until(async () => !(await reveal.count())), 'Esc takes it off too');
+  await host.keyboard.press('Control+z');
+  await reveal.waitFor();
+  // (Enter on a tile reached with the keyboard opens it under Who was who: it goes, the question would be under it.)
+  await host.locator('.stage-box .tile[data-clue="b"]').focus();
+  await host.keyboard.press('Enter');
+  assert(await until(async () => (await host.locator('.panel .status').innerText()).includes('Answer hidden')), 'Enter on a tile under it opens the tile');
+  assert(await until(async () => !(await reveal.count())), 'and takes Who was who off the screen');
+  await host.keyboard.press('Escape');
+  await tile.waitFor();
   assert(await clickable(tile), 'the board takes clicks again');
   await tile.click();
   assert(await until(async () => !(await host.locator('.stage-box .tile').count())), 'a tile opens');

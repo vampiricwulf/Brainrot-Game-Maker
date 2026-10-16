@@ -15,12 +15,12 @@
   import { overlayDoneAt, toolOverlay } from '../../lib/live';
   import { cardSlides, formatPoints, PARTNER_GAMES, type CardTo, type Clue, type ClueCard, type Game, type Id, type PartnerState, type Session } from '../../lib/model';
   import {
-    cardCopyText, cardId, cardRecipients, cardSends, cardSummary, countItems, describer, goesToLabel, lowerWord, markReady, marksText, pairOnly, partnerCandidates, partnerRoles,
-    partnerRules, partnerShares, partnerVerdict, partWho, partWordOf, partWords, recipientsText, resetRecipients, sameTeam, sendAgain, sendCards, sendChanges, sendState, sentSeats,
+    cardCopyText, cardId, cardRecipients, cardSends, cardSummary, countItems, describer, goesToLabel, lowerWord, markReady, marksText, pairOnly, partnerCandidates, partnerPickStep,
+    partnerRoles, partnerRules, partnerShares, partnerVerdict, partWho, partWordOf, partWords, recipientsText, resetRecipients, sameTeam, sendAgain, sendCards, sendChanges, sendState, sentSeats,
     sentTo, setDescriber, setPartner, setPartnerPicker, setRecipients, sharesText, swapParts, toKey, toName,
   } from '../../lib/partner';
   import { cardItems, cardLinks, cardWords, phoneCard } from '../../lib/phonecard';
-  import { clueName, nameList, partnerSteal } from '../../lib/session';
+  import { clueName, nameList, partnerSteal, stealersLeft } from '../../lib/session';
   import { buzzerOn, remote, roomHasCards, roomHasFiles, roomMembers } from '../../lib/remote.svelte';
   import { cardFileCounts, filesCounted, phoneCan, retryFiles, unputGone } from '../../lib/cardfiles.svelte';
   import { ask } from '../../lib/ask.svelte';
@@ -87,6 +87,8 @@
   const words = $derived(partWords(rules));
   const roles = $derived(partnerRoles(s));
   const cards = $derived(cardSlides(clue));
+  /** With no cards, ▶ Show question starts the countdown: when it starts by itself (⚖ Game rules) and the clue has one. */
+  const autoClock = $derived(game.settings.timerAutoStart && (clue.timerSeconds ?? game.settings.defaultTimerSeconds ?? 0) > 0);
   const byId = $derived(Object.fromEntries(session.players.map((p) => [p.id, p])));
   const picker = $derived(s.pickerId ? byId[s.pickerId] : undefined);
   const partner = $derived(s.partnerId ? byId[s.partnerId] : undefined);
@@ -210,6 +212,8 @@
    */
   const steal = $derived(partnerSteal(session));
   const stealers = $derived(steal ? session.players.filter((p) => !steal.out.includes(p.id)) : []);
+  /** Who can still steal it: the others, but not one who missed the steal (none left: only 👁 Reveal answer goes on). */
+  const stealLeft = $derived(steal ? stealersLeft(session.players, steal, marks) : []);
   /** " · Bob already scored": one of the two scored by hand first (the buttons leave them as they are). */
   const already = $derived(
     s.partnerId && !verdict.judged
@@ -444,16 +448,19 @@
     const st = session.partner;
     if (!st) return null;
     if (st.stage === 'pick') {
-      // (Teams, the picker's own team playing it: who on it describes comes first, when there's anyone to describe to.)
-      if (sameTeamOn && !member && people.length > 1)
+      // (Teams, the picker's own team playing it: who on it describes comes first, when there's anyone to describe to.
+      // The status line goes by the same step.)
+      const step = partnerPickStep(session, st, people.length);
+      if (step === 'describer')
         return { label: '🎡 Spin for the describer', key: 'W', title: `W, Enter or N: the wheel spins over the people on ${name(st.pickerId)} with a phone here`, disabled: spinning, run: onmemberspin };
-      if (st.partnerId) return { label: '▶ Show question', key: '⏎', title: 'Enter or N: the question goes on screen (nothing is sent to anyone)', run: onshow };
+      if (step === 'show') return { label: '▶ Show question', key: '⏎', title: 'Enter or N: the question goes on screen (nothing is sent to anyone)', run: onshow };
       const who = st.pickerId ? (session.players.find((p) => p.id === st.pickerId)?.name ?? '') : '';
-      const why = !st.pickerId
-        ? `${noun === 'team' ? 'Which team' : 'Who'} picked it? Press their number first (1–${Math.min(9, session.players.length) || 9})`
-        : !partnerCandidates(session, st).length
-          ? `Nobody to partner with: tick “${who} can be on the wheel” to play it Solo, or press Esc`
-          : '';
+      const why =
+        step === 'picker'
+          ? `${noun === 'team' ? 'Which team' : 'Who'} picked it? Press their number first (1–${Math.min(9, session.players.length) || 9})`
+          : step === 'nobody'
+            ? `Nobody to partner with: tick “${who} can be on the wheel” to play it Solo, or press Esc`
+            : '';
       return { label: '🎡 Spin for a partner', key: 'W', title: why || 'W, Enter or N: the wheel spins over the other players', disabled: !!why, run: onspin };
     }
     // (Judged meanwhile, by a click: the clue's own next, the answer. The answer shown meanwhile (R): no countdown over
@@ -605,7 +612,7 @@
       {#if cards.length}
         🤫 {cards.length} card{cards.length === 1 ? '' : 's'}: {#each cards as card, i (card.id)}{i ? ' · ' : ''}Card {i + 1} → {recipientsText(session, s, rules, card)}{/each}
       {:else}
-        <span class="muted">🤫 No cards on this clue: the question starts the clock.</span>
+        <span class="muted">🤫 No cards on this clue: {autoClock ? 'the question starts the clock' : 'start the clock yourself (T) once the question is up'}.</span>
       {/if}
     </div>
     {#if cards.length}
@@ -773,6 +780,8 @@
           <b>🔔 {name(steal.by)} stole it</b>
         {:else if session.revealed}
           <span class="muted">🔔 Nobody stole it</span>
+        {:else if !stealLeft.length}
+          <span class="muted">🔔 Nobody stole it: everyone missed (👁 Reveal answer)</span>
         {:else}
           <b>🔔 Steal!</b>
           <span>{buzzerOn(game.settings) ? 'The others can buzz in, or choose who:' : 'Who steals it?'}</span>

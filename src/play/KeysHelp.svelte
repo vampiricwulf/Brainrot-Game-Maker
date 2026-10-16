@@ -19,7 +19,7 @@
         ['0', 'Select everyone, or no one (buzzer mode, during a clue: reset the buzzers)'],
         ['Enter / Shift+Enter', 'Award / deduct the amount to the selected players'],
         ['P then 1 – 9', 'Make player N the current picker'],
-        ['Esc', 'Close the log, a tool or a card; on a clue: back to the board (the tile is used up); else clear the selection'],
+        ['Esc', 'Close the log, a tool, Who was who or a card; on a clue: back to the board (the tile is used up); else clear the selection'],
         ['K or B', 'Cover: viewers see only a “Be right back” card, and the countdown and the clue’s video wait (again: uncover)'],
         ['T', 'Start / pause the countdown (the seconds typed in the ⏱ box, if any)'],
         ['Shift+T', '10 more seconds on the countdown (none up: start one, as T)'],

@@ -5,7 +5,8 @@
 // phones: ✘ Missed opens the buzzers for the two others only (the stream says "Steal!"), Cat buzzes in and steals it,
 // Ctrl+Z takes the steal back (Cat answering again), Ctrl+Z again takes the miss back and closes the steal (the phones
 // greyed again), Ctrl+Y opens it again, Dan (chosen by the host) answers it through a host reload, misses, and the
-// buzzers open for Cat alone; showing the answer ends it. Needs `npm ci` in buzzer/.
+// buzzers open for Cat alone; Cat misses too, and the panel, the status line and Enter say nobody is left to steal it
+// (👁 Reveal answer); showing the answer ends it. Needs `npm ci` in buzzer/.
 import { chromium } from 'playwright-core';
 import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
@@ -236,6 +237,20 @@ try {
   assert(await until(() => last()?.phase === 'armed' && lockedOut() === 'p1,p2,p4'), 'the buzzers open for the rest: Cat alone');
   assert(await until(async () => (await big('Cat')) === 'BUZZ!' && (await small('Dan')).includes('already answered')), 'Cat’s phone lights up again, Dan’s says he answered');
   assert(await stealRow.getByRole('button', { name: 'Dan steals it' }).isDisabled(), 'Dan’s steal chip is off now');
+
+  // ---------- Cat misses it too: nobody is left to steal it, and the panel says so ----------
+  await stealRow.getByRole('button', { name: 'Cat steals it' }).click();
+  assert(await until(() => last()?.phase === 'answering' && last().answering === 'p3'), 'the host picks Cat: Cat answers');
+  await host.locator('.panel [data-next]').focus();
+  await host.keyboard.press('Shift+Enter');
+  assert(await until(async () => (await scoreOf('Cat')) === '−$400'), 'Shift+Enter: Cat misses the steal too, −$400');
+  assert(
+    await until(async () => (await stealRow.innerText()).includes('🔔 Nobody stole it: everyone missed (👁 Reveal answer)') && !(await stealRow.innerText()).includes('🔔 Steal!')),
+    'the panel: “Nobody stole it: everyone missed”, no 🔔 Steal! left',
+  );
+  assert((await host.locator('.panel .status').innerText()).includes('Answer hidden · nobody stole it: reveal the answer'), 'the status line says nobody stole it, not that the others can answer');
+  await host.keyboard.press('Enter');
+  assert(await toast('Everyone missed the steal: R reveals the answer'), 'Enter says everyone missed: R reveals the answer');
   await host.keyboard.press('r');
   assert(await until(async () => (await stealRow.innerText()).includes('🔔 Nobody stole it')), 'the answer up: “🔔 Nobody stole it”');
   assert(await until(() => last()?.phase === 'closed'), 'and the buzzers close');

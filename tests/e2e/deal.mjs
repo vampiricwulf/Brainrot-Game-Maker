@@ -3,6 +3,7 @@
 // from the editor's 🎡 tab. In play, 🎭 Deal… deals the game's saved Odd one out (the host picks Bob as the spy, with
 // the audience window open): nothing reaches the room until 📤 Send, then each phone gets its own card (the spy's
 // words, or the location everyone else shares) under its own id, and the column beside the stage says who got which.
+// Dan's phone goes: the deal's list marks him 📵, with 🪟 for the card window (the others, with phones, have none).
 // ↻ Send again renews every card's id; 🎭 Who was who goes on stream only when pressed, and Ctrl+Z takes it off; a host
 // reload keeps the deal and its cards; in one window the panel only counts the parts; ✖ Take back takes them all off.
 // Neither the audience window before Who was who, nor the host page in one window, ever holds a card's words or the
@@ -211,6 +212,14 @@ try {
   assert(!heard.Ann.join('').includes('qkzvx') && !heard.Cat.join('').includes('qkzvx') && !heard.Bob.join('').includes('wqzj'), 'no phone gets anyone else’s card');
   assert(await until(async () => /✓ seen by 2 of 4/.test(await flat(dialog.locator('[data-deal-status]')))), 'the panel counts who saw theirs');
   await offStream(aud, 'the audience window', 'sent');
+
+  // ---------- Dan's phone goes: two windows mark him 📵, with 🪟 for the card window ----------
+  await phones.Dan.context().close();
+  const danLine = '📵 Dan has no phone here: copy theirs (📋)';
+  assert(await until(async () => (await flat(dialog.locator('[data-deal-status]'))).includes(danLine)), `Dan’s phone gone: the panel says “${danLine}”`);
+  const rows = await dialog.locator('.hands .row').evaluateAll((els) => els.map((e) => e.innerText.replace(/\s+/g, ' ').trim()));
+  assert(rows.length === 4 && rows.includes('Dan · 📵 no phone here 📋 Copy 🪟'), `two windows: everyone dealt in is listed, Dan with 📵 and 🪟 (${rows.join(' | ')})`);
+  assert(rows.filter((r) => !r.startsWith('Dan ')).every((r) => r.includes('📋 Copy') && !r.includes('🪟') && !r.includes('📵')), 'the others, with their phones: 📋 Copy, no 🪟 and no 📵');
 
   // ---------- ↻ Send again: every card under a new id ----------
   await dialog.getByRole('button', { name: '↻ Send again' }).click();
