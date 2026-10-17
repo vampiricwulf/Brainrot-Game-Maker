@@ -101,6 +101,19 @@ describe('board game: moving', () => {
     expect(walk(round, ids[0], 0).path).toEqual([]);
   });
 
+  it('a move back says so: landing on Start that way doesn’t count as passing it', () => {
+    const { game, round, ids } = setup();
+    const session = newSession(game);
+    const bs = ensureBoard(session, game, round);
+    movePlayer(round, bs, 'a', 2);
+    expect(bs.last).toEqual({ playerId: 'a', passed: [ids[1]], landed: ids[2], turn: 0 });
+    // Space 3 says "Back 2": exactly onto Start.
+    movePlayer(round, bs, 'a', -2);
+    expect(bs.last).toEqual({ playerId: 'a', passed: [], landed: ids[0], turn: 0, back: true });
+    movePlayer(round, bs, 'a', 1);
+    expect(bs.last?.back).toBeUndefined();
+  });
+
   it('sends players to an off-board zone and back', () => {
     const { game, round, ids } = setup();
     const session = newSession(game);

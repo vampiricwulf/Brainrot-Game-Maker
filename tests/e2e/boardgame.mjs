@@ -397,6 +397,16 @@ try {
   assert((await page.locator('.acts').innerText()).includes('Landed on Start (counts as passing)'), 'landing on Start offers its passing button too (“counts as passing”)');
   await page.keyboard.press('Control+z');
   await page.waitForTimeout(300);
+  // Sent back onto Start, though, passes nothing (as being sent back past it doesn't).
+  await page.getByLabel('Send to').selectOption({ label: 'Space 2' });
+  await page.getByLabel('Steps').fill('1');
+  await page.locator('.bh .move').getByRole('button', { name: '◀ Back 1', exact: true }).click();
+  await page.locator('.acts', { hasText: 'Landed on Start' }).waitFor();
+  const backOnto = await page.locator('.acts').innerText();
+  assert(!backOnto.includes('counts as passing') && !(await page.locator('.acts').getByRole('button', { name: '+$100' }).count()), `moved back onto Start: no passing button (${backOnto})`);
+  await page.keyboard.press('Control+z');
+  await page.keyboard.press('Control+z');
+  await page.waitForTimeout(300);
 
   // The Shadow Realm.
   await page.getByLabel('Send to').selectOption({ label: '🌀 Shadow Realm' });

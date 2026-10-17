@@ -385,11 +385,13 @@
           {#each s.onPass ?? [] as a (a.id)}<button class="small" onclick={() => run(a, last.playerId, 'pass')}>{describeAction(game, a, 'pass')}</button>{/each}
         {/each}
         {#if landed}
-          <!-- Landing on a space counts as passing it too (landing on Start still pays). -->
+          <!-- Landing on a space counts as passing it too (landing on Start still pays), unless sent back onto it (passed
+               on the way there, it's still owed). -->
+          {@const passOn = last.back && !last.passed.includes(landed.id) ? [] : (landed.onPass ?? [])}
           <span class="muted small"
-            >Landed on <b>{landed.name}</b>{landed.onPass?.length ? ' (counts as passing)' : ''}{landed.onLand?.length || landed.onPass?.length ? ':' : '.'}</span
+            >Landed on <b>{landed.name}</b>{passOn.length ? ' (counts as passing)' : ''}{landed.onLand?.length || passOn.length ? ':' : '.'}</span
           >
-          {#each landed.onPass ?? [] as a (a.id)}<button class="small" onclick={() => run(a, last.playerId, 'pass')}>{describeAction(game, a, 'pass')}</button>{/each}
+          {#each passOn as a (a.id)}<button class="small" onclick={() => run(a, last.playerId, 'pass')}>{describeAction(game, a, 'pass')}</button>{/each}
           {#each landed.onLand ?? [] as a (a.id)}<button class="small" onclick={() => run(a, last.playerId, 'land')}>{describeAction(game, a, 'land')}</button>{/each}
           {#if landed.secret && !bs.revealed?.includes(landed.id)}<button class="small ghost" onclick={() => reveal(landed)}>👁 Reveal space</button>{/if}
           {#if landed.hostNotes && !dual}<span class="notes">📝 {landed.hostNotes}</span>{/if}

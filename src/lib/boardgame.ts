@@ -372,9 +372,9 @@ export function movePlayer(round: BoardGameRound, bs: BoardGameState, playerId: 
   }
   // A fork's space counts as passed, since the walk goes on from it. A space passed twice (round a small loop) gets
   // its buttons once.
-  // Going back passes nothing (no Start bonus for being sent back past it).
+  // Going back passes nothing (no Start bonus for being sent back past it, or onto it).
   const passed = steps > 0 ? [...new Set([...prevPassed, ...(w.fork ? w.path : w.path.slice(0, -1))])] : prevPassed;
-  bs.last = { playerId, passed, landed: w.fork ? undefined : w.path.at(-1), turn: bs.turns ?? 0 };
+  bs.last = { playerId, passed, landed: w.fork ? undefined : w.path.at(-1), turn: bs.turns ?? 0, ...(steps < 0 ? { back: true } : {}) };
   const name = (id?: Id) => spaceById(round, id)?.name ?? '?';
   if (w.fork) return `At ${name(w.fork.at)}: which way? (${Math.abs(w.fork.stepsLeft)} to go)`;
   if (!w.path.length) return 'Nowhere to go from here';
