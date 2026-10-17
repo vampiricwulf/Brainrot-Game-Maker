@@ -476,6 +476,13 @@ export function moverDiceGone(game: Pick<Game, 'dice'>, round: BoardGameRound): 
   return m.kind === 'dice' && !!m.diceId && !game.dice.some((d) => d.id === m.diceId);
 }
 
+/** None of the movement wheel's slices names a number ("One", "Lose a turn"): a spin can't fill in the steps. */
+export function moverWheelNoNumbers(game: Pick<Game, 'wheels'>, round: BoardGameRound): boolean {
+  const m = round.mover;
+  const w = m.kind === 'wheel' ? game.wheels.find((x) => x.id === m.wheel) : undefined;
+  return !!w?.segments.length && w.segments.every((s) => stepsIn(s.label) === null);
+}
+
 /** Move by dice typed in that are neither saved dice nor dice the app reads ("2d6"): the move rolls a d6. */
 export function moverDiceUnknown(round: BoardGameRound): boolean {
   const m = round.mover;
@@ -493,6 +500,8 @@ export function boardGameProblems(game: Game, round: BoardGameRound, name: strin
     out.push({ text: `${name}: the path ends at ${nameList(ends.map((s) => s.name), 3)} (players stop there)`, tab, level: 'info', place: at(ends[0]) });
   if (round.mover.kind === 'wheel' && !game.wheels.some((w) => w.id === (round.mover as { wheel: Id }).wheel))
     out.push({ text: `${name}: the movement wheel no longer exists`, tab, level: 'warn', place: at() });
+  if (moverWheelNoNumbers(game, round))
+    out.push({ text: `${name}: the movement wheel’s slices have no numbers, so a spin won’t fill in the steps (name them “3”, “Move 3”, “Back 2”)`, tab, level: 'warn', place: at() });
   if (moverDiceGone(game, round)) out.push({ text: `${name}: the movement dice no longer exist (pick others in Move by)`, tab, level: 'warn', place: at() });
   if (moverDiceUnknown(round))
     out.push({ text: `${name}: Move by “${round.mover.kind === 'dice' ? round.mover.dice : ''}” isn’t dice the app knows: it rolls a d6 (try “2d6”, or pick saved dice)`, tab, level: 'warn', place: at() });

@@ -15,7 +15,7 @@
   import { clearOffset, copyActions, copySpaces, copyZone, moveTo } from '../../lib/listedit';
   import { showMenu } from '../../lib/menustate.svelte';
   import { copyIsTheBrowsers, isTextField } from '../../lib/undokeys';
-  import { addFork, allNamesLabel, applySpaceKind, clampToBoard, closeUpOver, spaceKindOf, linkName, SPACE_KINDS, type SpaceKind, moverDiceGone, moverDiceUnknown, nameShown, nameShownLabel, setAllNamesShown, setNameShown, moverPreset, nextSpaceName, spaceById, spaceToward } from '../../lib/boardgame';
+  import { addFork, allNamesLabel, applySpaceKind, clampToBoard, closeUpOver, spaceKindOf, linkName, SPACE_KINDS, type SpaceKind, moverDiceGone, moverDiceUnknown, moverWheelNoNumbers, nameShown, nameShownLabel, setAllNamesShown, setNameShown, moverPreset, nextSpaceName, spaceById, spaceToward } from '../../lib/boardgame';
   import { addLiveSpace, connectSpaces, linkAfter, disconnectSpaces, reverseLink, toggleBothWays } from '../../lib/boardedit';
   import BoardSpaces from '../../lib/boardgame/BoardSpaces.svelte';
   import { mediaUrls } from '../../lib/media.svelte';
@@ -749,6 +749,9 @@
     </label>
     {#if moverWheel && game.wheels.some((w) => w.id === moverWheel)}
       <button class="small ghost" onclick={() => (tool = { kind: 'wheel', id: moverWheel })} title="Change this wheel's slices">✎ Edit wheel</button>
+      {#if moverWheelNoNumbers(game, round)}
+        <span class="warn small" role="status">⚠ Its slices have no numbers: a spin won’t fill in the steps (name them “3”, “Move 3”, “Back 2”)</span>
+      {/if}
     {/if}
     {#if round.mover.kind === 'dice'}
       <label class="field">

@@ -14,6 +14,7 @@ in plain words for the people who make and host games. Anything committed but no
 ## Unreleased
 
 ### Added
+- A board game that moves by a wheel whose slices name no number (“One”, “Lose a turn”) says why a spin fills in nothing: Move by in the editor and the checklist warn about it (name the slices “3”, “Move 3”, “Back 2”), and in play the host is told to type the steps once it lands.
 - The editor's checklist notes a board-game space so near the top of the board that the turn banner, the win notes or a zone's label can cover it on stream (near the bottom, when the scores are at the top), and says to move it down (or up) a little.
 
 ### Fixed

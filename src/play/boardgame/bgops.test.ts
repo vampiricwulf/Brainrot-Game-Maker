@@ -8,7 +8,7 @@ import { newWheel } from '../../lib/tools';
 import { forgetGameParts, redoAction, undoAction } from '../../lib/toolset';
 import { runAction } from '../../lib/actions';
 import type { Action } from '../../lib/model';
-import { moveCounts, moveNow, moverResult, reorderTurns, rollMover, runSpace, sendNow, setTurn, turnNow } from './bgops';
+import { moveCounts, moveNow, moverResult, moverSliceNoNumber, reorderTurns, rollMover, runSpace, sendNow, setTurn, turnNow } from './bgops';
 import { openPlayerWheel, quickDice, rollDice, toggleScoreboard } from '../../lib/overlay';
 
 // (What screen readers are told.)
@@ -33,6 +33,25 @@ describe('board game: the round’s mover', () => {
     const o = live.overlay;
     if (o?.kind === 'wheel' && o.spin) o.spin.startedAt -= o.spin.duration;
     expect(rollMover(game, session, live)).toMatch(/already moved this turn/);
+  });
+
+  it('a movement wheel whose slices name no number fills in nothing, and says which slice it landed on', () => {
+    const game = newGame();
+    game.players = [{ id: 'a', name: 'Ann', color: '#e6194b' }];
+    const wheel = newWheel('Move', ['Three']);
+    game.wheels.push(wheel);
+    const round = newBoardGameRound('Board');
+    round.mover = { kind: 'wheel', wheel: wheel.id };
+    game.rounds.push(round);
+    const session = newSession(game);
+    goToRound(session, game, 0);
+    const live = newLive();
+    rollMover(game, session, live);
+    expect(moverResult(game, round, live.overlay)).toBeNull();
+    expect(moverSliceNoNumber(game, round, live.overlay)).toBe('Three');
+    // One slice with a number: the others are words on purpose (“Lose a turn”), nothing to say.
+    wheel.segments[0].label = 'Move 3';
+    expect(moverSliceNoNumber(game, round, live.overlay)).toBeNull();
   });
 
   it('spins the movement wheel with one press of D', () => {

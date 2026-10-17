@@ -1,9 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import { linkMoverDice, migrateGame, newGame, type BoardGameRound, type BoardGameState, type Game } from './model';
 import { goToRound, newSession, rebaseSession } from './session';
+import { newWheel } from './tools';
 import {
   waysOn, ensureBoard, movePlayer, moveInOrder, newBoardGameRound, newBoardSpace, nextSpaceName, nextTurn, skipTurns, sendTo, shownSpace, HOP_MS, walk, waysNow, currentPlayer,
-  boardGameProblems, closeUpOver, moverPreset, nameShown, setNameShown, nameShownLabel, setAllNamesShown, allNamesLabel, rimSpots, spaceNumber, spaceToward, clampSteps, MAX_STEPS, placeTokens, tokenRadius,
+  boardGameProblems, closeUpOver, moverPreset, moverWheelNoNumbers, nameShown, setNameShown, nameShownLabel, setAllNamesShown, allNamesLabel, rimSpots, spaceNumber, spaceToward, clampSteps, MAX_STEPS, placeTokens, tokenRadius,
 } from './boardgame';
 
 /** A loop of 12 plus a fork: space 3 can also go to a shortcut that rejoins at space 6. */
@@ -180,6 +181,22 @@ describe('board game: moving', () => {
     round.mover = { kind: 'dice', dice: 'old' };
     linkMoverDice(game);
     expect(round.mover).toEqual({ kind: 'dice', dice: 'Old', diceId: 'old' });
+  });
+
+  it('flags a movement wheel whose slices name no number (a spin can’t fill in the steps)', () => {
+    const { game, round } = setup();
+    const wheel = newWheel('Move', ['One', 'Two', 'Lose a turn']);
+    game.wheels.push(wheel);
+    round.mover = { kind: 'wheel', wheel: wheel.id };
+    expect(moverWheelNoNumbers(game, round)).toBe(true);
+    expect(boardGameProblems(game, round, 'Board', 1)).toEqual([
+      { text: 'Board: the movement wheel’s slices have no numbers, so a spin won’t fill in the steps (name them “3”, “Move 3”, “Back 2”)', tab: 1, level: 'warn', place: { tab: 'round', round: round.id } },
+    ]);
+    // One with a number will do (the rest can be words on purpose), as will ＋ Add wheel…'s “Option 1”…
+    wheel.segments[1].label = 'Back 2';
+    expect(moverWheelNoNumbers(game, round)).toBe(false);
+    expect(moverWheelNoNumbers(game, { ...round, mover: { kind: 'dice', dice: 'd6' } })).toBe(false);
+    expect(boardGameProblems(game, round, 'Board', 1)).toEqual([]);
   });
 
   it('flags Send to buttons whose space or zone was deleted', () => {

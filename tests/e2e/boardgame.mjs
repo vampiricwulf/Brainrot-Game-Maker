@@ -517,7 +517,13 @@ try {
     settings: { allowNegativeScores: true, deductOnWrong: true, defaultTimerSeconds: null, finalTimerSeconds: 30, currencySymbol: '$', rollOffDie: 20, pickerFollowsAward: true, timerAutoStart: true, roundIntro: { titleCard: false, tileFill: false, categoryReveal: 'click' }, maxPlayers: 8 },
     players: [{ id: 'p1', name: 'Ann', color: '#e6194b' }, { id: 'p2', name: 'Bob', color: '#3cb44b' }],
     rounds: [board], media: [], audio: {}, dice: [], theme: {},
-    wheels: [{ id: 'w_move', name: 'Move wheel', segments: ['1', '2', '3'].map((label, i) => ({ id: `s${i}`, label, color: ['#f00', '#0f0', '#00f'][i], weight: 1 })), spinDurationMs: 800, removeAfterLanding: false }],
+    wheels: ['Move wheel', 'Word wheel'].map((name, w) => ({
+      id: ['w_move', 'w_words'][w],
+      name,
+      segments: [['1', '2', '3'], ['One', 'Two', 'Three']][w].map((label, i) => ({ id: `s${w}${i}`, label, color: ['#f00', '#0f0', '#00f'][i], weight: 1 })),
+      spinDurationMs: 800,
+      removeAfterLanding: false,
+    })),
   };
   mkdirSync(resolve('test-results'), { recursive: true });
   const boardFile = resolve('test-results/boardgame-check.json');
@@ -528,6 +534,18 @@ try {
   await page.getByText(/^Opened “/).waitFor();
   // Finish is low down (y 910), but the board is scaled into the room above the stats strip in play: no warning.
   assert(!(await page.locator('nav .problem', { hasText: 'stats strip' }).count()), 'the checklist no longer warns about spaces under the stats strip');
+  // A movement wheel whose slices name no number: Move by says a spin won't fill in the steps, and so does the checklist.
+  await page.locator('nav > button.round-tab', { hasText: 'Board game' }).click();
+  await page.getByLabel('Move by').selectOption({ label: '🎡 Word wheel' });
+  const noNumbers = page.locator('.bge .warn', { hasText: 'Its slices have no numbers' });
+  // (The checklist is worked out a moment after the change.)
+  const noNumbersLine = page.locator('nav .problem', { hasText: 'slices have no numbers' });
+  await noNumbers.waitFor();
+  await noNumbersLine.waitFor();
+  assert((await noNumbersLine.count()) === 1, 'Move by a wheel of words (“One”, “Two”): it and the checklist say a spin won’t fill in the steps');
+  await page.getByLabel('Move by').selectOption({ label: '🎡 Move wheel' });
+  await noNumbersLine.waitFor({ state: 'detached' });
+  assert(!(await noNumbers.count()), 'a wheel of numbers: no warning');
   await page.getByRole('button', { name: '▶ Play' }).click();
   // (The game left behind earlier is asked about first.)
   const fresh = page.getByRole('alertdialog').getByRole('button', { name: 'Start a new game' });
@@ -643,7 +661,8 @@ try {
     id: 'g_board_long',
     title: 'Board long names',
     players: crowd.players.map((p, i) => ({ ...p, name: longNames[i] })),
-    rounds: [crowd.rounds[0], { ...crowd.rounds[0], id: 'r_bg2', name: 'Board two' }],
+    // (The second board moves by a wheel of words.)
+    rounds: [crowd.rounds[0], { ...crowd.rounds[0], id: 'r_bg2', name: 'Board two', mover: { kind: 'wheel', wheel: 'w_words' } }],
   };
   const longFile = resolve('test-results/boardgame-long.json');
   writeFileSync(longFile, JSON.stringify(long));
@@ -701,6 +720,11 @@ try {
     .waitForFunction(() => document.querySelector('.bh input[aria-label="Steps"]')?.value === '', null, { timeout: 3000 })
     .then(() => true, () => false);
   assert(emptied && (await mainLabel(one)) === '🎡 Spin', `the next board starts with an empty Steps box and 🎡 Spin (${await stepsBox.inputValue()}, ${await mainLabel(one)})`);
+  // Its wheel's slices are words: once it lands, the host is told to type the steps (it used to say nothing).
+  await mainButton(one).click();
+  const typeSteps = one.locator('.toast', { hasText: 'No number on “' });
+  await typeSteps.waitFor({ timeout: 8000 });
+  assert(/No number on “(One|Two|Three)”: type the steps/.test(await typeSteps.innerText()) && (await stepsBox.inputValue()) === '', `a wheel of words: “${await typeSteps.innerText()}”, the Steps box left empty`);
   await ctx3.close();
 
   assert(!errors.length, 'no page errors' + (errors.length ? `: ${errors.join('; ')}` : ''));

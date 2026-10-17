@@ -1,12 +1,12 @@
 // The board-game host's moves, shared by the host panel, the stage and the keyboard shortcuts. Every change is one
 // undoable step.
 import { describeAction, runAction } from '../../lib/actions';
-import { clampSteps, currentPlayer, moveInOrder, movePlayer, moverPreset, nextTurn, sendTo, spaceById, stepsIn } from '../../lib/boardgame';
+import { clampSteps, currentPlayer, moveInOrder, movePlayer, moverPreset, moverWheelNoNumbers, nextTurn, sendTo, spaceById, stepsIn } from '../../lib/boardgame';
 import { isBoardGame, type Action, type BoardGameRound, type BoardGameState, type BoardSpace, type BoardZone, type Game, type Session } from '../../lib/model';
 import { nameList } from '../../lib/session';
 import { logged } from '../../lib/toolset';
 import { openWheel, quickDice, rollDice, spinWheel, wheelSpentUp } from '../../lib/overlay';
-import { parseDice } from '../../lib/tools';
+import { parseDice, sliceLabel } from '../../lib/tools';
 import { overlayDoneAt, toolOverlay, type Live } from '../../lib/live';
 import { announce } from '../../lib/announce';
 import { offerIn } from '../host/offered.svelte';
@@ -153,6 +153,16 @@ export function moverResult(game: Game, round: BoardGameRound, o: Live['overlay'
   if (o?.kind === 'dice' && o.roll && o.mover && m.kind === 'dice') return o.roll.dice.reduce((t, d) => t + (stepsIn(d.face?.label ?? '') ?? d.value), 0);
   if (o?.kind === 'wheel' && o.spin && o.result !== null && m.kind === 'wheel' && o.wheelId === m.wheel) return stepsIn(o.segments[o.result]?.label ?? '');
   return null;
+}
+
+/**
+ * The round's movement wheel landed, but none of its slices names a number ("One", "Lose a turn"): the slice it landed
+ * on, as the host's panel names it, for telling the host to type the steps. Else null.
+ */
+export function moverSliceNoNumber(game: Game, round: BoardGameRound, o: Live['overlay']): string | null {
+  const m = round.mover;
+  if (o?.kind !== 'wheel' || !o.spin || o.result === null || m.kind !== 'wheel' || o.wheelId !== m.wheel || !moverWheelNoNumbers(game, round)) return null;
+  return sliceLabel(o.segments[o.result], o.result);
 }
 
 /** Roll the round's dice, or spin its wheel, for a move. Returns why it couldn't, or null. */

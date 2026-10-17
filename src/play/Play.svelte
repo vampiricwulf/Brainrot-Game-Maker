@@ -78,7 +78,7 @@
   import { showMenu, type MenuEntry } from '../lib/menustate.svelte';
   import { currentPlayer, ensureBoard, waysNow, waysOn } from '../lib/boardgame';
   import { ensureWorld, override, refindPositions } from '../lib/rpg';
-  import { boardNow, moveCounts, moveNow, moverResult, rollMover, runSpace, sendNow, setTurn, turnNow } from './boardgame/bgops';
+  import { boardNow, moveCounts, moveNow, moverResult, moverSliceNoNumber, rollMover, runSpace, sendNow, setTurn, turnNow } from './boardgame/bgops';
   import { boardEdit, editDelete, editDisconnect, editIdle, setEditing } from './boardgame/boardedit.svelte';
   import { playerMenu } from './playermenu';
   import { playerCards } from './rpg/PlayerCard.svelte';
@@ -224,10 +224,13 @@
     const o = toolOverlay(app.live);
     const key = o?.kind === 'dice' ? o.roll : o?.kind === 'wheel' ? o.spin : null;
     const r = round ? moverResult(game, round, o) : null;
-    if (r === null || key === bgFilledFrom) return;
+    // (A movement wheel whose slices name no number fills in nothing: the host is told why, once a spin.)
+    const words = round && r === null ? moverSliceNoNumber(game, round, o) : null;
+    if ((r === null && words === null) || key === bgFilledFrom) return;
     const fill = () => {
       bgFilledFrom = key;
-      bgSteps = r;
+      if (r !== null) bgSteps = r;
+      else hint(`No number on “${words}”: type the steps (slices named “3” or “Back 2” fill them in)`);
     };
     const wait = o && (o.kind === 'dice' || o.kind === 'wheel') ? overlayDoneAt(o) - Date.now() : 0;
     if (wait <= 0) return void fill();
