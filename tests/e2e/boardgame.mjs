@@ -140,8 +140,13 @@ try {
   await space('Space 4').click();
   assert((await page.locator('.side').innerText()).includes('A fork'), 'so Space 4 is a fork now');
   assert((await hiddenHeads()) === 0, 'the fork’s arrowheads show too');
+  // Deleting the fork: the space before it leads both ways (the loop isn't cut there).
+  await page.locator('.side').getByRole('button', { name: '🗑 Delete space' }).click();
+  await space('Space 3').click();
+  const forkGone = await page.locator('.side [data-leads]').innerText();
+  assert(forkGone.includes('→ Space 5') && forkGone.includes('→ Space 13'), `deleting a fork: the space before it leads both ways (${forkGone.replace(/\s+/g, ' ')})`);
   // (The game below has none of them.)
-  for (let i = 0; i < 3; i++) await page.locator('.editor > header').getByRole('button', { name: 'Undo (Ctrl+Z)' }).click();
+  for (let i = 0; i < 4; i++) await page.locator('.editor > header').getByRole('button', { name: 'Undo (Ctrl+Z)' }).click();
   assert((await spaces.count()) === 12 && (await page.locator('.canvas .space .mark').count()) === 0, 'Undo takes the fork and the kinds back');
   // Start gives points when passed.
   await space('Start').click();

@@ -86,6 +86,16 @@ describe('editing a board during play: the operations', () => {
     expect(round.spaces).toHaveLength(11);
   });
 
+  it('deleting a fork: the space before it leads both ways (the loop isn’t cut)', () => {
+    const { session, round, bs, id } = setup();
+    // ⑂ Space 4 leads to Space 5 and to Space 13, which rejoins at Space 6.
+    const fork = addLiveSpace(round, { x: 900, y: 500 });
+    fork.next = [id('Space 6')];
+    round.spaces[3].next.push(fork.id);
+    expect(deleteLiveSpace(session, round, bs, id('Space 4'))!.bridged).toBe(true);
+    expect(names(round, round.spaces[2].next)).toEqual(['Space 5', 'Space 13']);
+  });
+
   it('deleting a space moves a removed player’s kept place too, but names only those still playing', () => {
     const { session, round, bs, id } = setup();
     bs.positions.a = { space: id('Space 5') };

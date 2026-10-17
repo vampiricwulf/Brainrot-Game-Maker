@@ -3,7 +3,7 @@ import { linkMoverDice, migrateGame, newGame, type BoardGameRound, type BoardGam
 import { goToRound, newSession, rebaseSession } from './session';
 import {
   waysOn, ensureBoard, movePlayer, moveInOrder, newBoardGameRound, newBoardSpace, nextSpaceName, nextTurn, skipTurns, sendTo, shownSpace, HOP_MS, walk, waysNow, currentPlayer,
-  boardGameProblems, moverPreset, nameShown, setNameShown, nameShownLabel, setAllNamesShown, allNamesLabel, rimSpots, spaceNumber, spaceToward, clampSteps, MAX_STEPS, placeTokens, tokenRadius,
+  boardGameProblems, closeUpOver, moverPreset, nameShown, setNameShown, nameShownLabel, setAllNamesShown, allNamesLabel, rimSpots, spaceNumber, spaceToward, clampSteps, MAX_STEPS, placeTokens, tokenRadius,
 } from './boardgame';
 
 /** A loop of 12 plus a fork: space 3 can also go to a shortcut that rejoins at space 6. */
@@ -239,6 +239,20 @@ describe('board game: two-way links and one space at a time', () => {
     expect(movePlayer(round, bs, 'a', 1, A.id)).toBe('Landed on A');
     // At A the only link is back to B, so it may turn around.
     expect(waysOn(round, A.id, bs.prev?.a)).toEqual([B.id]);
+  });
+
+  it('a deleted space’s ways on go to the spaces before it, not back to themselves', () => {
+    const { round, A, B, C, D } = line();
+    // C leads back to B and on to D: B now leads back to A and on to D.
+    expect(closeUpOver(round, C)).toBe(true);
+    expect(B.next).toEqual([A.id, D.id]);
+    // A dead end: the space before it is one now.
+    expect(closeUpOver(round, D)).toBe(false);
+    expect(B.next).toEqual([A.id]);
+    // A fork (Space 3 leads to Space 4 and the Shortcut): Space 2 leads both ways now, so the loop isn't cut.
+    const { round: loop, ids } = setup();
+    closeUpOver(loop, loop.spaces[2]);
+    expect(loop.spaces[1].next).toEqual([ids[3], loop.spaces[12].id]);
   });
 
   it('knows which spaces the host can click to move on: a one-space board’s ways, or a fork’s', () => {

@@ -11,6 +11,11 @@ the day it's pushed (Pacific time; start the heading on the day's first push) an
 in plain words for the people who make and host games. Anything committed but not pushed yet goes under
 **Unreleased** at the top, and moves under its day when it's pushed.
 
+## Unreleased
+
+### Fixed
+- Deleting a fork space, in the editor or with ✎ Edit board in play, no longer cuts the path there (players coming from Start used to stop at the space before it for good): the space before it now leads everywhere the fork did, as deleting any other space joins the path up over it.
+
 ## 2026-10-16
 
 ### Added

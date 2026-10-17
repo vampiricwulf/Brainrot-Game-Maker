@@ -109,6 +109,24 @@ export function previousOf(round: BoardGameRound, id: Id): BoardSpace[] {
   return round.spaces.filter((s) => s.next.includes(id));
 }
 
+/**
+ * A space about to be deleted: the spaces that led to it lead everywhere it led instead, not back to themselves (a
+ * space in the middle of a both-ways path, A ⇄ B ⇄ C, leaves A ⇄ C; a deleted fork moves back one space). True when
+ * any of them leads somewhere new.
+ */
+export function closeUpOver(round: BoardGameRound, s: BoardSpace): boolean {
+  let bridged = false;
+  for (const p of previousOf(round, s.id)) {
+    p.next = p.next.filter((n) => n !== s.id);
+    for (const n of s.next)
+      if (n !== p.id && n !== s.id && !p.next.includes(n)) {
+        p.next = [...p.next, n];
+        bridged = true;
+      }
+  }
+  return bridged;
+}
+
 /** The state for a round, created on first use: everyone on the start space, turns in player order. */
 export function ensureBoard(session: Session, game: Game, round: BoardGameRound): BoardGameState {
   session.boardgames ??= {};

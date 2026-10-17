@@ -15,7 +15,7 @@
   import { clearOffset, copyActions, copySpaces, copyZone, moveTo } from '../../lib/listedit';
   import { showMenu } from '../../lib/menustate.svelte';
   import { copyIsTheBrowsers, isTextField } from '../../lib/undokeys';
-  import { addFork, allNamesLabel, applySpaceKind, clampToBoard, spaceKindOf, linkName, SPACE_KINDS, type SpaceKind, moverDiceGone, moverDiceUnknown, nameShown, nameShownLabel, setAllNamesShown, setNameShown, moverPreset, nextSpaceName, previousOf, spaceById, spaceToward } from '../../lib/boardgame';
+  import { addFork, allNamesLabel, applySpaceKind, clampToBoard, closeUpOver, spaceKindOf, linkName, SPACE_KINDS, type SpaceKind, moverDiceGone, moverDiceUnknown, nameShown, nameShownLabel, setAllNamesShown, setNameShown, moverPreset, nextSpaceName, spaceById, spaceToward } from '../../lib/boardgame';
   import { addLiveSpace, connectSpaces, linkAfter, disconnectSpaces, reverseLink, toggleBothWays } from '../../lib/boardedit';
   import BoardSpaces from '../../lib/boardgame/BoardSpaces.svelte';
   import { mediaUrls } from '../../lib/media.svelte';
@@ -605,13 +605,8 @@
     // Done at once: the note at the bottom offers Undo.
     step(list.length === 1 ? `Deleted space “${what}”` : `Deleted ${what}`, () => {
       for (const s of list) {
-        // Spaces that led here now lead where it led (when it had one way on, not counting the way back: a space in the
-        // middle of a both-ways path, A ⇄ B ⇄ C, leaves A ⇄ C).
-        for (const p of previousOf(round, s.id)) {
-          p.next = p.next.filter((n) => n !== s.id);
-          const on = s.next.filter((n) => n !== p.id);
-          if (on.length === 1 && !p.next.includes(on[0])) p.next.push(on[0]);
-        }
+        // Spaces that led here now lead everywhere it led (a deleted fork moves back one space).
+        closeUpOver(round, s);
         round.spaces = round.spaces.filter((x) => x.id !== s.id);
         if (round.start === s.id) round.start = undefined;
         unlinkGotos({ space: s.id });

@@ -1,7 +1,7 @@
 // Editing a board game's board while it's being played (the host's ✎ Edit board): add, move, delete, connect and
 // disconnect spaces on the game being played. Pure functions over a round and its state; the host's UI wraps each in
 // logged(…, game), so it's one named undo step. 💾 Keep in game copies the board into the game in the editor.
-import { clampToBoard, newBoardSpace, nextSpaceName, previousOf, rehome, SPACE_COLORS, spaceById } from './boardgame';
+import { clampToBoard, closeUpOver, newBoardSpace, nextSpaceName, previousOf, rehome, SPACE_COLORS, spaceById } from './boardgame';
 import type { BoardGameRound, BoardGameState, BoardSpace, Game, Id, Session } from './model';
 import { nameList } from './session';
 
@@ -98,14 +98,14 @@ export function refuge(round: BoardGameRound, id: Id): BoardSpace | undefined {
 export type Deleted = {
   /** The players moved off it, and where to. */
   moved: { playerId: Id; to: Id }[];
-  /** Spaces that led to it lead where it led now (one way on), or not at all. */
+  /** Spaces that led to it lead everywhere it led now (not back to themselves), or not at all. */
   bridged: boolean;
   /** For the log: Deleted space “Nap time” (Ann moved to Space 7). */
   text: string;
 };
 
 /**
- * Delete a space during play: the path closes up over it when it had one way on (as in the editor), the players on it
+ * Delete a space during play: the path closes up over it (as in the editor: see closeUpOver), the players on it
  * go to the space before it (see refuge), the round's state forgets it (a fork, the last move's buttons…), Start moves
  * to the first space if it was Start, and buttons that sent players there point nowhere. Null when it isn't there.
  */
@@ -121,16 +121,7 @@ export function deleteLiveSpace(session: Session, round: BoardGameRound, bs: Boa
         if (bs.prev) delete bs.prev[pid];
         moved.push({ playerId: pid, to: to.id });
       }
-  let bridged = false;
-  for (const p of previousOf(round, id)) {
-    p.next = p.next.filter((n) => n !== id);
-    // One way on, not counting the way back (A ⇄ B ⇄ C, B deleted: A ⇄ C).
-    const on = s.next.filter((n) => n !== p.id);
-    if (on.length === 1 && !p.next.includes(on[0])) {
-      p.next = [...p.next, on[0]];
-      bridged = true;
-    }
-  }
+  const bridged = closeUpOver(round, s);
   round.spaces = round.spaces.filter((x) => x.id !== id);
   if (round.start === id) round.start = undefined;
   for (const x of round.spaces)
