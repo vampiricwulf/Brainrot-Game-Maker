@@ -696,7 +696,10 @@ try {
   assert(await until(async () => (await rowText('Card 1')).includes('Dan’s new phone hasn’t got it')), `and says Dan’s phone came late (${await rowText('Card 1')})`);
   await offStream(host, 'the host page in one window', 'the list of cards out, after the reload');
   await outList.getByRole('button', { name: 'Send Card 1 again' }).click();
-  assert(await until(() => cards().length === 2 && cards()[0].id !== forDan.id && cards()[1].id === secret.id), '↻ Send again: Dan’s card under a new id, Ann’s keeps hers');
+  assert(
+    await until(() => cards().length === 2 && cards()[0].id === secret.id && cards()[1].text === FOR_DAN && cards()[1].id !== forDan.id),
+    '↻ Send again: Dan’s card under a new id (the newest now), Ann’s keeps hers',
+  );
   await tapOpen(dan, FOR_DAN);
   assert(!(await dan.locator('#cards-late').isVisible()), 'Dan’s phone gets it now, and the note goes');
   assert(await win2.getByText(FOR_DAN).isVisible(), 'the card window still shows it');

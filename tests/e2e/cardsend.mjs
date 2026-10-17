@@ -286,9 +286,9 @@ try {
     `Card 2 → Ann, Cat · Movies $200 · Card 1 · sent · until you take it back (${await rowText('Card 2')})`,
   );
   await list.getByRole('button', { name: 'Send Card 1 again' }).click();
-  assert(await until(() => cards().length === 2 && cards()[0].id !== c1.id), '↻ Send again: Card 1 goes under a new id');
-  const c1b = cards()[0];
-  assert(cards()[1].id === c2.id, 'and Card 2 keeps its own');
+  assert(await until(() => cards().length === 2 && !cards().some((c) => c.id === c1.id)), '↻ Send again: Card 1 goes under a new id');
+  const c1b = cards().find((c) => c.text === SPY);
+  assert(cards()[0].id === c2.id && cards()[1] === c1b, 'Card 2 keeps its own, and Card 1, sent last, is the newest (the phones show it first)');
   // (Bob had it open: under its new id it stays open on his phone, with no tap, and the room hears he saw it.)
   await bob.locator(`.card[data-card="${c1b.id}"]`).waitFor();
   assert((await bob.getByText(SPY).isVisible()) && !(await bobCover.isVisible()), 'Bob had it open: it stays open on his phone under its new id');
@@ -312,7 +312,7 @@ try {
   let n = states.length;
   await resume();
   assert(await until(() => states.length > n && cards().length === 2), 'reloaded: the host is back in the room, with both cards');
-  assert(states.slice(n).every((s) => JSON.stringify((s.cards ?? []).map((c) => c.id)) === JSON.stringify([c1b.id, c2.id])), 'every state since the reload holds both cards under the same ids (no phone is told anything new)');
+  assert(states.slice(n).every((s) => JSON.stringify((s.cards ?? []).map((c) => c.id)) === JSON.stringify([c2.id, c1b.id])), 'every state since the reload holds both cards under the same ids (no phone is told anything new)');
   assert((await bob.getByText(SPY).isVisible()) && (await cardsOn(ann)) === 1, 'the phones keep their cards through the host’s reload');
   assert((await tools.locator('[data-cards-out-count]').innerText()).trim() === '🤫 2 cards out', 'one window: the tools row only counts the cards out');
   // (On a window up to 1280px wide it shows as 🤫 2, named in full, so the board's tools row keeps one line.)
