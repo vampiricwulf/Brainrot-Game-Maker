@@ -290,7 +290,8 @@ strip, so no space is ever under it; the turn banner does go over the board's to
 notes a space up there):
 
 - Roll (or spin the movement wheel) and move, picking the way at each fork. A wheel's slice or a die's own face moves
-  as far as the number it names ("3", "Move 3"; "Back 2" moves back). Moving back goes back the way the player came.
+  as far as the number it names ("3", "Move 3"; "Back 2", "Go back 2" or "◀ 2" move back). Moving back goes back the
+  way the player came.
 - Send players to any space.
 - Each space's actions, for the player they're for (the one who landed there, or the ones picked on its card).
 - **✎ Edit board** (`E`) while you play: add, move, connect, rename and delete spaces (players on a deleted space go to

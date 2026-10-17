@@ -304,7 +304,7 @@ describe('board game: what fills the Steps box', () => {
   it('saved dice with faces move by what a face says (“Back 2”), else by the number it came up on', () => {
     const game = newGame();
     game.players = [{ id: 'a', name: 'Ann', color: '#e6194b' }];
-    const faces = ['1', '2', '3', 'Back 1', 'Back 2', ''].map((label) => ({ label }));
+    const faces = ['1', '2', '3', 'Move back 1', 'Back 2', ''].map((label) => ({ label }));
     game.dice.push({ id: 'mv', name: 'Move die', showTotal: true, dice: [{ id: 'd', sides: 6, count: 2, customFaces: faces }] });
     const round = newBoardGameRound('Board');
     round.mover = { kind: 'dice', dice: 'Move die', diceId: 'mv' };
@@ -320,5 +320,8 @@ describe('board game: what fills the Steps box', () => {
     expect(moverResult(game, round, o)).toBe(-4);
     o.roll.dice[1] = { sides: 6, value: 6, face: faces[5] };
     expect(moverResult(game, round, o)).toBe(4);
+    // “Move back 1” goes back too: -1 and 3.
+    o.roll.dice = [4, 3].map((value) => ({ sides: 6, value, face: faces[value - 1] }));
+    expect(moverResult(game, round, o)).toBe(2);
   });
 });

@@ -4,7 +4,7 @@ import { goToRound, newSession, rebaseSession } from './session';
 import { newWheel } from './tools';
 import {
   waysOn, ensureBoard, movePlayer, moveInOrder, newBoardGameRound, newBoardSpace, nextSpaceName, nextTurn, skipTurns, sendTo, shownSpace, HOP_MS, walk, waysNow, currentPlayer,
-  boardGameProblems, closeUpOver, moverPreset, moverWheelNoNumbers, nameShown, setNameShown, nameShownLabel, setAllNamesShown, allNamesLabel, rimSpots, spaceNumber, spaceToward, clampSteps, MAX_STEPS, placeTokens, tokenRadius,
+  boardGameProblems, closeUpOver, moverPreset, moverWheelNoNumbers, nameShown, setNameShown, nameShownLabel, setAllNamesShown, allNamesLabel, rimSpots, spaceNumber, spaceToward, clampSteps, stepsIn, MAX_STEPS, placeTokens, tokenRadius,
 } from './boardgame';
 
 /** A loop of 12 plus a fork: space 3 can also go to a shortcut that rejoins at space 6. */
@@ -491,6 +491,16 @@ describe('board game: a typo in the steps', () => {
     expect(movePlayer(round, bs, 'a', 2)).toBe('Landed on Space 9');
     expect(bs.hop?.path).toHaveLength(3);
     expect(movePlayer(round, bs, 'a', 0.2)).toBe('No steps to move');
+  });
+});
+
+describe('board game: the steps a wheel slice or a die face says', () => {
+  it('reads the number, going back when the label says back, points left or has a minus', () => {
+    const says = (labels: string[]) => labels.map((l) => stepsIn(l));
+    expect(says(['3', 'Move 3', '+2', 'Forward 4', '→ 2'])).toEqual([3, 3, 2, 4, 2]);
+    expect(says(['Back 2', 'Move back 2', 'Go back 2', '2 back', 'Backtrack 3', '← 2', '◀ 2', '◀️ 2', '⬅ 2', '↩ 3', '-2', '−2'])).toEqual([-2, -2, -2, -2, -3, -2, -2, -2, -2, -3, -2, -2]);
+    // "back" inside a word isn't back; no number is null.
+    expect(says(['Payback 3', 'Feedback 1', 'Back to Start', 'Lose a turn', ''])).toEqual([3, 1, null, null, null]);
   });
 });
 

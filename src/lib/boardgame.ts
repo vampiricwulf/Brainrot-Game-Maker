@@ -335,10 +335,15 @@ export const MAX_STEPS = 99;
 /** A longer move than this many spaces jumps straight to where it ends on screen, rather than stepping for a minute. */
 export const MAX_HOPS = 20;
 
-/** The steps a wheel slice or a die's face says ("3", "Move 3"; "Back 2" or "← 2" go back), or null: no number. */
+/**
+ * The steps a wheel slice or a die's face says ("3", "Move 3"), or null: no number. It goes back when it says back
+ * anywhere ("Back 2", "Go back 2", "Backtrack 2"), has a left arrow ("← 2", "◀ 2") or a minus ("-2").
+ */
 export function stepsIn(label: string): number | null {
-  const n = parseInt(label.match(/-?\d+/)?.[0] ?? '', 10);
-  return Number.isFinite(n) ? (/^\W*(back|←)/i.test(label.trim()) ? -Math.abs(n) : n) : null;
+  const m = label.match(/([-−]?)(\d+)/);
+  if (!m) return null;
+  const n = parseInt(m[2], 10);
+  return (m[1] || /\bback|[←◀◁⬅⇦⇐↩⏪]/i.test(label)) ? -n : n;
 }
 
 /** A count of steps as a move takes it: a whole number, at most MAX_STEPS either way (0 for nonsense). */
