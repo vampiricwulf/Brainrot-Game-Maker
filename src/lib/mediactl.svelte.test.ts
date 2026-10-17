@@ -1,6 +1,10 @@
-// The host's controls for a slide's media: which copy they reach when the audience window opens or closes mid-clue.
+// The host's controls for a slide's media: which copy they reach when the audience window opens or closes mid-clue. And
+// where a clue's media was, when its slide comes back: not for the editor's preview, nor one that hadn't started yet.
 import { afterEach, describe, expect, it } from 'vitest';
-import { applyLocal, localMedia, registerMedia, setMediaRole, unregisterMedia, type MediaHandle, type MediaState } from './mediactl.svelte';
+import {
+  applyLocal, localMedia, mediaScope, previewMediaScope, registerMedia, setMediaRole, unregisterMedia, updateMedia, type MediaHandle,
+  type MediaState,
+} from './mediactl.svelte';
 
 /** A stand-in element: its handle records what it was told. */
 function fake(): MediaHandle & { muted: boolean; calls: string[] } {
@@ -33,7 +37,16 @@ const state = (s: Partial<MediaState> = {}): MediaState => ({
 
 afterEach(() => {
   for (const id of Object.keys(localMedia)) unregisterMedia(id);
+  mediaScope('');
 });
+
+/** A clue's sound coming up (its length known once it loads): what its handle was told. */
+function comesUp(id: string, s: Partial<MediaState> = {}): string[] {
+  const h = fake();
+  registerMedia(id, 'single', h, state(s));
+  updateMedia(id, { duration: 8 });
+  return h.calls;
+}
 
 describe('a media element changing role', () => {
   it('goes silent and ignores unmuting once the audience window opens (its copy has the sound)', () => {
@@ -64,5 +77,24 @@ describe('a media element changing role', () => {
     registerMedia('a', 'single', h, state());
     setMediaRole('a', 'single');
     expect(h.calls).toEqual([]);
+  });
+});
+
+describe('the editor’s ▶ Preview after a game left mid-clue', () => {
+  it('plays from the start and keeps nothing, and the game’s clip is still where it was for Resume', () => {
+    mediaScope('clue:0.0.0');
+    comesUp('a');
+    updateMedia('a', { time: 2.5, paused: true });
+    unregisterMedia('a');
+    // ▶ Preview of that clue, or any other slide: from the start.
+    const end = previewMediaScope();
+    expect(comesUp('a')).toEqual([]);
+    updateMedia('a', { time: 5 });
+    // ■ Stop preview: its own media goes after the scope is back.
+    end();
+    unregisterMedia('a');
+    // Resume: the game's clip paused where the host left it, not where the preview was.
+    mediaScope('clue:0.0.0');
+    expect(comesUp('a').filter((c) => !c.endsWith('mute'))).toEqual(['seek 2.5', 'pause']);
   });
 });

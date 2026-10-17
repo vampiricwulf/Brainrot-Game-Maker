@@ -53,6 +53,8 @@ interface Entry {
   role: MediaRole;
   handle: MediaHandle;
   start: number;
+  /** What was on screen when it came up: where it was is kept only for that. */
+  scope: string;
 }
 
 const entries = new Map<string, Entry>();
@@ -90,8 +92,22 @@ export function mediaScope(s: string): void {
   restoring.clear();
 }
 
+/**
+ * The editor's ▶ Preview: its media plays from the start and keeps nothing, and a game left mid-clue still has where
+ * its media was, for Resume. Call what it returns when the preview stops.
+ */
+export function previewMediaScope(): () => void {
+  const was = scope;
+  const saved = new Map(kept);
+  mediaScope('');
+  return () => {
+    mediaScope(was);
+    saved.forEach((k, key) => kept.set(key, k));
+  };
+}
+
 export function registerMedia(id: string, role: MediaRole, handle: MediaHandle, state: MediaState, start = 0): void {
-  entries.set(id, { role, handle, start });
+  entries.set(id, { role, handle, start, scope });
   const k = kept.get(`${role}:${id}`);
   kept.delete(`${role}:${id}`);
   // Muted as it was (the host's copy always stays muted); its place once it knows its length (see updateMedia).
@@ -147,7 +163,9 @@ export function updateMedia(id: string, patch: Partial<MediaState>): void {
 export function unregisterMedia(id: string): void {
   const e = entries.get(id);
   const st = localMedia[id];
-  if (e && st && scope && st.kind !== 'external') kept.set(`${e.role}:${id}`, { time: st.time, muted: st.muted, paused: st.paused });
+  // Only in the scope it came up in: not the editor's preview's media (it came up in none).
+  if (e && st && scope && e.scope === scope && st.kind !== 'external')
+    kept.set(`${e.role}:${id}`, { time: st.time, muted: st.muted, paused: st.paused });
   restoring.delete(id);
   entries.delete(id);
   delete localMedia[id];

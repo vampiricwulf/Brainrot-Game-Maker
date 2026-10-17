@@ -2,9 +2,10 @@
 // revealing the answer — in one window, and from the host's copy in dual-window mode (the audience plays it). A sound
 // the host paused stays paused where it was when the audience window is reloaded, or closed and opened again. The
 // audience window closed or opened mid-clue: the host's controls reach the copy with the sound, and only one has sound.
-// A game left mid-clue: the editor's ▶ Preview and ↻ Replay of that clue play its sound from the start. A video (and a
-// YouTube video) that comes in after the slide starts playing as it shows. Space and M go to a sound before a looping,
-// muted video (a GIF), and ▶ plays a sound stopped at its Stop at again from its start.
+// A game left mid-clue: the editor's ▶ Preview and ↻ Replay of that clue play its sound from the start, and Resume game
+// still has it where the game left it. A video (and a YouTube video) that comes in after the slide starts playing as it
+// shows. Space and M go to a sound before a looping, muted video (a GIF), and ▶ plays a sound stopped at its Stop at
+// again from its start.
 import { chromium } from 'playwright-core';
 import { existsSync } from 'node:fs';
 import { resolve } from 'node:path';
@@ -363,11 +364,14 @@ try {
   await aud3.waitForFunction((s) => document.querySelector(s)?.muted === false, song);
   assert(await page.locator(hostSong).evaluate((a) => a.muted), "the audience window opened mid-clue: muted and unmuted, the sound comes back in the audience window only (the host's copy stays silent)");
 
-  // Left mid-clue in one window (Keep & leave): the editor's ▶ Preview of that clue plays its sound from the start, and
-  // so does ↻ Replay, rather than going on from where it was.
+  // Left mid-clue in one window (Keep & leave), the sound paused: the editor's ▶ Preview of that clue plays it from the
+  // start, and so does ↻ Replay, rather than going on from where it was. Resume game still has it paused where it was.
   await aud3.close();
   await page.locator('[data-audience-lost]').waitFor();
   await page.waitForFunction((s) => (document.querySelector(s)?.currentTime ?? 0) > 4, hostSong);
+  await page.locator('.mc').getByRole('button', { name: 'Pause' }).click();
+  await waitPaused(page, hostSong, true);
+  const left = await page.locator(hostSong).evaluate((a) => a.currentTime);
   await page.getByRole('button', { name: '🚪 Exit' }).click();
   await page.waitForTimeout(450); // (a click right away is ignored: a double-click guard)
   await page.getByRole('button', { name: 'Keep & leave', exact: true }).click();
@@ -384,6 +388,18 @@ try {
   from = await started();
   assert(from < 2, `↻ Replay plays it again from the start (${from.toFixed(1)} s)`);
   await page.keyboard.press('Escape');
+  await page.locator('.canvas.previewing').waitFor({ state: 'detached' });
+  await page.getByRole('button', { name: 'Done' }).click();
+  await page.getByRole('button', { name: 'Resume game' }).click();
+  await page.getByRole('button', { name: /Single window/ }).click();
+  await page.waitForFunction(([s, t]) => {
+    const a = document.querySelector(s);
+    return !!a && a.paused && a.readyState >= 1 && Math.abs(a.currentTime - t) < 0.3;
+  }, [hostSong, left]);
+  // (Past the moment its autoplay could start it again.)
+  await page.waitForTimeout(1700);
+  now = await page.locator(hostSong).evaluate((a) => ({ paused: a.paused, t: a.currentTime }));
+  assert(now.paused && Math.abs(now.t - left) < 0.3, `and after the previews, Resume game has it paused where the game left it (${left.toFixed(1)} s → ${now.t.toFixed(1)} s, paused)`);
 
   assert(!errors.length, 'no page errors' + (errors.length ? ': ' + errors.join(' | ') : ''));
   console.log('\nStage media E2E passed.');

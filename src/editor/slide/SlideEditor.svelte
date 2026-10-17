@@ -32,7 +32,7 @@
   import { copyIsTheBrowsers } from '../../lib/undokeys';
   import { dropdown } from '../../lib/menustate.svelte';
   import { addMediaFile, slideImageSize, type LinkAdded } from '../../lib/media.svelte';
-  import { mediaScope } from '../../lib/mediactl.svelte';
+  import { previewMediaScope } from '../../lib/mediactl.svelte';
   import { isGameDrop, warnIfUnplayable } from '../../lib/mediadrop';
   import { isLinkProblem, isMediaHost, parseMediaLink, youtubeStart } from '../../lib/links';
   import { registerGameFonts, uploadedFamily } from '../../lib/fonts';
@@ -653,11 +653,16 @@
     return !!(e.target as HTMLElement)?.closest?.('button, a[href], summary');
   }
 
+  /** Ends the preview's media scope: a game left mid-clue gets back where its media was. */
+  let endPreview: (() => void) | null = null;
+  onDestroy(() => endPreview?.());
   function togglePreview(): void {
     previewing = !previewing;
+    endPreview?.();
+    endPreview = null;
     if (previewing) {
       // Its media from the start: not where a game left mid-clue had it (nor, for ↻ Replay, where the preview was).
-      mediaScope('');
+      endPreview = previewMediaScope();
       selected = [];
       shapeMenu = false;
       drawing = false;
