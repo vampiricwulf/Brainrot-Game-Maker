@@ -19,6 +19,7 @@ in plain words for the people who make and host games. Anything committed but no
 - 🎭 Deal… warns before 📤 Send when the deal's cards would fill the phones (they hold 8 cards at once, all phones together, so a deal to 8 players fills them): until you take its cards back, or the round ends, no other 🤫 card could reach a phone, a partner clue's included.
 
 ### Fixed
+- A buzzer room kept for the next game (▶ Next game…, Exit › Keep & leave) keeps its teams: playing another game in it, or reloading the page with another game in the editor, no longer turns Teams off and sends every phone back to “Tap your name”. ▶ Play's question and the bar over the editor count the room's teams, and the button reads Keep room & teams.
 - A board game's backdrop or off-board zone, or an RPG screen, with its background reset (↺ Reset background): the slide editor shows the color viewers will see (the board's green, the zone's purple, the screen's green) instead of the theme's tile color, and white words stay white there as on stream. The button no longer says it goes back to the theme's background.
 - Space and M (and ← →) go to a slide's sound or video before a looping, muted video such as a GIF: on a clue with a GIF they used to pause the GIF or unmute it, and the sound never started.
 - ▶ (or Space, or a click) on a video or sound stopped at its Stop at plays it again from its start: each press used to play a moment of the part after the cut, and never replay it.

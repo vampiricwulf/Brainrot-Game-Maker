@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { clearPlay, debounce, loadPlay, playUnsure, rescuePlay, retryWrites, savePlay, unstored, watchWrites, write } from './persist';
+import { clearPlay, debounce, loadPlay, playUnsure, rescuePlay, retryWrites, roomTeams, savePlay, unstored, watchWrites, write, type SavedRoom } from './persist';
 import type { Overlay } from './live';
 import { newGame, type Session } from './model';
 
@@ -131,6 +131,28 @@ describe('debounce', () => {
     expect(ran).toEqual([2, 3]);
     expect(soon.pending()).toBe(false);
     vi.useRealTimers();
+  });
+});
+
+describe('a buzzer room kept for the next game', () => {
+  const room = (teams: boolean, players = 2): SavedRoom => ({
+    gameId: 'last',
+    remote: { code: 'BCDF', base: 'https://buzz.example' } as SavedRoom['remote'],
+    players: [{ id: 'a', name: 'Sharks', color: '#e6194b', startScore: 0 }, { id: 'b', name: 'Jets', color: '#56b4e9', startScore: 0 }].slice(0, players),
+    screen: 'editor',
+    savedAt: 1,
+    settings: { ...newGame().settings, buzzer: true, ...(teams ? { buzzTeams: true } : {}) },
+  });
+  it('keeps the team mode its phones joined with, whichever game is open', () => {
+    const next = newGame().settings;
+    expect(roomTeams(room(true), next)).toBe(true);
+    expect(roomTeams(room(false), { ...next, buzzTeams: true })).toBeUndefined();
+  });
+  it('with nobody in it (or from an older save), goes by the game', () => {
+    const teams = { ...newGame().settings, buzzTeams: true };
+    expect(roomTeams(room(false, 0), teams)).toBe(true);
+    expect(roomTeams(room(true, 0), newGame().settings)).toBeUndefined();
+    expect(roomTeams({ ...room(true), settings: undefined }, teams)).toBe(true);
   });
 });
 

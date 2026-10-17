@@ -12,6 +12,7 @@
     loadPlay,
     playUnsure,
     applyRoomSettings,
+    roomTeams,
     loadRoom,
     retryWrites,
     saveEditor,
@@ -255,7 +256,9 @@
   function sendSetup(r: SavedRoom): void {
     const early = Math.round((app.game.settings.earlyBuzzLock ?? 1) * 1000);
     const cards = Array.isArray(r.cards) && r.cards.length ? r.cards : undefined;
-    sendHostState({ ...setupState(app.game, r.players, r.remote.armId ?? 0, early, !!r.remote.locked), ...(cards ? { cards } : {}) });
+    // (Its phones' team mode, whichever game is in the editor: ▶ Play keeps it too.)
+    const game = { ...app.game, settings: { ...app.game.settings, buzzTeams: roomTeams(r, app.game.settings) } };
+    sendHostState({ ...setupState(game, r.players, r.remote.armId ?? 0, early, !!r.remote.locked), ...(cards ? { cards } : {}) });
   }
 
   // Buzzer mode turned off in the editor (an undo, say) while its room waits: the room closes, as on the Play screen
@@ -612,9 +615,11 @@
       app.session.remote = room.remote;
       app.playGame.settings.buzzer = true;
       // The players the phones joined as (the Play screen sets the players; a quick reload can leave the editor's copy
-      // of them behind). Another game's room brings its players along, seats and all, at 0.
+      // of them behind). Another game's room brings its players along, seats and all, at 0. Either way the phones keep
+      // the team mode they joined with.
       const same = room.gameId === app.game.id;
       if (Array.isArray(room.players) && room.players.length) app.session.players = room.players.map((p) => (same ? p : { ...p, startScore: 0 }));
+      app.playGame.settings.buzzTeams = roomTeams(room, app.playGame.settings);
     }
     app.live = newLive();
     app.pregame = true;
@@ -631,10 +636,11 @@
     if (!buzzerBase()) return false;
     const code = room.remote.code;
     const n = Array.isArray(room.players) ? room.players.length : 0;
-    const players = n ? ` and its ${n} player${n === 1 ? '' : 's'}` : '';
+    const teams = !!roomTeams(room, app.game.settings);
+    const players = n ? ` and its ${n} ${teams ? 'team' : 'player'}${n === 1 ? '' : 's'}` : '';
     const close = await ask(
       `The phones stay joined for “${app.game.title.trim() || 'this game'}” and Buzzer mode stays on, so nobody has to join again. Closing it tells the phones the game is over (Start the room makes a new code).`,
-      { title: `Keep buzzer room ${code}${players}?`, cancel: n ? 'Keep room & players' : 'Keep the room', ok: 'Close it, start fresh', danger: true },
+      { title: `Keep buzzer room ${code}${players}?`, cancel: n ? (teams ? 'Keep room & teams' : 'Keep room & players') : 'Keep the room', ok: 'Close it, start fresh', danger: true },
     );
     return !close && kept.room === room;
   }
@@ -1024,7 +1030,7 @@
         {@const via = playerOnly && app.resumable ? (app.resumable.session.phase === 'end' ? 'New game, then ▶ Play,' : 'Resume game') : '▶ Play'}
         <span class="item room-bar" role="status">
           <span class="what" title="Phones in the room are told you're setting up">
-            📱 Buzzer room <b>{room.remote.code}</b> is still open{n ? ` (${n} player${n === 1 ? '' : 's'})` : ''}.
+            📱 Buzzer room <b>{room.remote.code}</b> is still open{n ? ` (${n} ${roomTeams(room, app.game.settings) ? 'team' : 'player'}${n === 1 ? '' : 's'})` : ''}.
             <span class="muted small">{other ? '▶ Play asks to keep it for this game.' : `${via} goes back into it.`}</span>
           </span>
           <button class="small ghost" onclick={() => closeKeptRoom()}>✕ Close the room</button>

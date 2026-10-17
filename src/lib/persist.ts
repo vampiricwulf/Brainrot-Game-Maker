@@ -357,6 +357,14 @@ export function applyRoomSettings(s: GameSettings, r: SavedRoom): void {
   if (r.settings && typeof r.settings === 'object') Object.assign(s, r.settings);
   s.buzzer = true;
 }
+/**
+ * Teams on for a kept room: one with players keeps the team mode its phones joined with, whichever game is open
+ * (switching it would send every phone back to pick again, unasked: the Teams box asks first). Else the game's own.
+ */
+export function roomTeams(r: SavedRoom, s: GameSettings): true | undefined {
+  const held = Array.isArray(r.players) && r.players.length && r.settings && typeof r.settings === 'object';
+  return (held ? r.settings : s)?.buzzTeams ? true : undefined;
+}
 const roomKey = () => `${playKey}:room`;
 export const loadRoom = () => safe(() => get<SavedRoom>(roomKey()));
 export const saveRoom = (r: SavedRoom) => write('room', () => set(roomKey(), r));

@@ -11,7 +11,7 @@ import { existsSync, mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { addClassicRounds, addPlayers } from './helpers.mjs';
+import { addClassicRounds, addPlayers, answerReplace, stored } from './helpers.mjs';
 
 const file = resolve(process.env.APP_FILE || 'dist/index.html');
 if (!existsSync(file)) throw new Error('Run `npm run build` first');
@@ -26,6 +26,10 @@ const freePort = () =>
     });
   });
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+const until = async (pred, ms = 15000) => {
+  for (const end = Date.now() + ms; Date.now() < end; await sleep(100)) if (await pred()) return true;
+  return false;
+};
 
 const port = await freePort();
 const inspector = await freePort();
@@ -339,6 +343,41 @@ try {
   await teamsDialog.getByRole('button', { name: 'Remove Team 3' }).click();
   await teamsDialog.getByRole('button', { name: 'Remove', exact: true }).click();
   await teamsDialog.getByRole('button', { name: 'Done' }).click();
+
+  // ---------- Kept for another game: the room keeps its teams, so nobody picks again ----------
+  await host.getByRole('button', { name: 'Exit' }).click();
+  await host.waitForTimeout(450);
+  await host.getByRole('button', { name: 'Keep & leave', exact: true }).click();
+  const roomBar = host.locator('.status-bar .room-bar');
+  await roomBar.getByText('▶ Play goes back into it').waitFor();
+  const barText = (await roomBar.innerText()).replace(/\s+/g, ' ');
+  assert(barText.includes(`Buzzer room ${code} is still open (2 teams)`), `Keep & leave: the bar over the editor counts the room's teams (${barText})`);
+  await host.getByRole('button', { name: 'New', exact: true }).click();
+  await answerReplace(host, 'Discard');
+  await roomBar.getByText('▶ Play asks to keep it for this game').waitFor();
+  // A reload with that game (no Teams ticked) in the editor: the phones stay on their teams.
+  const keptFor = async () => {
+    const [room, draft] = [await stored(host, 'playSession:room'), await stored(host, 'editorDraft')];
+    return room?.screen === 'editor' && !!draft?.id && draft.id !== room.gameId && !draft.settings?.buzzTeams;
+  };
+  assert(await until(keptFor), 'the kept room and the new game in the editor are stored');
+  await host.reload();
+  await roomBar.getByText('▶ Play asks to keep it for this game').waitFor();
+  // (Its setting-up state starts the scores at 0: Bea's team had −$200.)
+  await bea.locator('#me').getByText('Bea · Player 2 · $0', { exact: true }).waitFor();
+  assert(!(await ann.getByRole('heading', { name: 'Tap your name' }).isVisible()), 'a reload with another game in the editor: the phones stay on their teams (not sent back to "Tap your name")');
+  await addClassicRounds(host);
+  await host.getByRole('button', { name: '▶ Play' }).click();
+  const keepAsk = host.getByRole('alertdialog', { name: `Keep buzzer room ${code} and its 2 teams?` });
+  await keepAsk.waitFor();
+  assert((await host.evaluate(() => document.activeElement?.textContent.trim())) === 'Keep room & teams', `▶ Play asks: keep buzzer room ${code} and its 2 teams? (Keep room & teams focused)`);
+  await host.keyboard.press('Enter');
+  await card.getByText('4 people on 2 of 2 teams').waitFor();
+  assert((await teamsBox.isChecked()) && (await roster.getByRole('heading', { level: 2 }).innerText()) === '👥 Teams', 'kept for a game without Teams ticked: Teams stays on, with the same teams');
+  for (const [p, name, team] of [[ann, 'Ann', 'Player 1'], [bea, 'Bea', 'Player 2'], [mal, 'Mal', 'Player 1']]) await p.locator('#me').getByText(`${name} · ${team} · $0`, { exact: true }).waitFor();
+  assert(!(await ann.locator('#seats-note').isVisible()), 'and nobody’s phone is sent back to pick again');
+  await host.getByRole('button', { name: 'Start game ▶' }).click();
+  await host.getByRole('button', { name: 'Skip intro' }).click();
 
   // ---------- Exit › Discard & leave ends the room (Keep & leave would keep it for Resume) ----------
   await host.getByRole('button', { name: 'Exit' }).click();
