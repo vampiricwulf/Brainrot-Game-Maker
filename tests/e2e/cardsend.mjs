@@ -514,6 +514,7 @@ try {
     `sent: the line under it says Cat has no phone here (${await saidLine.innerText()})`,
   );
   assert(await until(async () => !(await noPhoneLine.count())), 'the words gone from the dialog, its own 📵 line goes (nothing there to copy)');
+  assert(!(await dialog.getByRole('button', { name: '📋 Copy words', exact: true }).count()), 'and so does its greyed 📋 Copy words, beside 📤 Send');
   await dialog.getByRole('button', { name: `Copy ${lastLabel}’s words for Cat` }).click();
   const forCat = `🤫 For Cat only (${lastLabel}): ${LAST}`;
   assert(await until(async () => (await host.evaluate(() => navigator.clipboard.readText())) === forCat, 5000), `its 📋 Copy words copies what went, for Cat (“${forCat}”)`);

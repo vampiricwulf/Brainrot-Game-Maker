@@ -281,6 +281,7 @@ try {
   const offlinePath = resolve('test-results/card-action-offline.brainrot');
   writeFileSync(offlinePath, await packGame(offline, files));
   const ctx2 = await browser.newContext({ viewport: { width: 1400, height: 950 } });
+  await ctx2.grantPermissions(['clipboard-read', 'clipboard-write']);
   const solo = watch(await ctx2.newPage(), 'host, no phones');
   let sockets = 0;
   solo.on('websocket', () => sockets++);
@@ -336,6 +337,20 @@ try {
   }
   await win2.getByText('Extra card 9').waitFor();
   assert(!(await fillSend.locator('[data-cards-full]').count()) && (await tools2.locator('[data-cards-out-count]').innerText()).trim() === '🤫 9 cards out', 'all nine are in the card window, and nothing says the phones are full');
+  // A quick card for Ann and Cat: 🪟 Show shows it to Cat alone, and the line under it copies it to Ann (its words are
+  // gone from the form once it went).
+  await fillSend.getByRole('button', { name: 'Ann', exact: true }).click();
+  const FOR_BOTH = 'Extra card for two';
+  await fillSend.getByRole('textbox', { name: 'The card’s words' }).fill(FOR_BOTH);
+  await fillSend.getByRole('button', { name: '🪟 Show Cat' }).click();
+  const fillSaid = fillSend.locator('[data-card-said]');
+  await fillSaid.getByText('Card 10 sent to Cat').waitFor();
+  await win2.getByText(FOR_BOTH).waitFor();
+  assert((await fillSaid.innerText()) === '✓ Card 10 sent to Cat · copy it to Ann (📋)', `shown to Cat: the line under it says to copy it to Ann (${await fillSaid.innerText()})`);
+  assert(!(await fillSend.getByRole('button', { name: '📋 Copy words', exact: true }).count()), 'and the form’s 📋 Copy words, with nothing on the card now, is gone');
+  await fillSend.getByRole('button', { name: 'Copy Card 10’s words for Ann' }).click();
+  const forAnn = `🤫 For Ann only (Card 10): ${FOR_BOTH}`;
+  assert(await until(async () => (await solo.evaluate(() => navigator.clipboard.readText())) === forAnn, 5000), `its 📋 Copy words copies what went, for Ann (“${forAnn}”)`);
   await solo.keyboard.press('Escape');
   await fillSend.waitFor({ state: 'detached' });
   await solo.keyboard.press('p');

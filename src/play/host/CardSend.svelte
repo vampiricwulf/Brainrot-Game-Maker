@@ -301,8 +301,9 @@
   /** What was sent last (names only), for the line under the button. */
   let said = $state('');
   /**
-   * The card sent last, and who of those it went to has no phone here (nor its 🪟 card window open): the line under the
-   * button offers its 📋 copy for them, as a quick card's words are gone from the dialog once it's sent.
+   * The card sent last, and who of those chosen it didn't reach (no phone here, nor a 🪟 card window open; with no phones
+   * getting cards, all but the card window's player): the line under the button offers its 📋 copy for them, as a quick
+   * card's words are gone from the dialog once it's sent.
    */
   let sentCopy = $state<{ card: SentCard; names: string[] } | null>(null);
   const sentCopySlide = $derived(sentCopy ? sentSlide(game, sentCopy.card) : undefined);
@@ -360,8 +361,10 @@
     const content: SentCard['content'] = !preset && kind === 'saved' && chosen ? (chosen.saved ? { saved: chosen.saved } : { clue: chosen.clue!, card: chosen.card! }) : { slide };
     const c = sendCard(game, session, { to: sendTo, content, until }, Date.now(), cardsOn && roomCardsFull(game, session));
     if (!c) return toast('That card can’t be sent now');
-    const missed = noPhone.filter((id) => !windowTo.some((t) => t.seat === id)).map(nameOf);
-    said = `${c.label} sent to ${sentToText(session, c.to, teams)}${missed.length ? ` · 📵 ${missed.join(', ')} ${missed.length > 1 ? 'have' : 'has'} no phone here: copy it to them (📋)` : ''}`;
+    // (Those it didn't reach, to copy it to: with phones, one with no phone here; without, all but the card window's.)
+    const missed = (cardsOn ? noPhone : [...new Set(to.map((t) => t.seat))]).filter((id) => !windowTo.some((t) => t.seat === id)).map(nameOf);
+    const copy = !missed.length ? '' : cardsOn ? ` · 📵 ${missed.join(', ')} ${missed.length > 1 ? 'have' : 'has'} no phone here: copy it to them (📋)` : ` · copy it to ${missed.join(', ')} (📋)`;
+    said = `${c.label} sent to ${sentToText(session, c.to, teams)}${copy}`;
     sentCopy = missed.length ? { card: c, names: missed } : null;
     announce(said);
     onsent?.(c);
@@ -562,7 +565,8 @@
     {:else if windowName}
       <button class="primary small" onclick={send} disabled={!canSend} title={(cant && cant !== 'Choose who gets it first' ? cant : '') || `Shows it in the 🪟 card window, to ${windowName} alone, until you take it back or it’s over`}>🪟 Show {windowName}</button>
     {/if}
-    {#if !cardsOn || noPhone.length}
+    <!-- (Not a greyed one for a quick card that went, its words gone: the line under it copies that one.) -->
+    {#if (!cardsOn || noPhone.length) && (hasSomething || !sentCopy)}
       <button class="small" onclick={copyWords} disabled={!to.length || !slide || (!cardWords(slide) && !cardLinks(game, slide).length)} title="Copies “For … only” with the card’s words and links, to paste in a DM">📋 Copy words</button>
       {#if slide && hasPicture(game, slide) && canCopyPicture}
         <button class="small" onclick={() => copyCardPicture(game, slide, 'The card', names.join(', ') || 'them')} disabled={!to.length}>📋 Copy picture</button>
