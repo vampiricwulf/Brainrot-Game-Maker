@@ -4,14 +4,12 @@ import { filesUrl, joinUrl, type CardLate, type HostState, type NewRoom, type Ph
 import type { TeamMember } from './model';
 import type { SavedRoom } from './persist';
 import { embeddedBuzzerServer } from './export';
-import { prefs } from './prefs.svelte';
+import { prefs, serverAddress } from './prefs.svelte';
 import { app } from './app.svelte';
 import { PING_MS, RoomLink, type LinkDeps, type RoomBuzz, type RoomCardSeen, type RoomQueue, type RoomStatus, type RoomWager, type RoomAnswer } from './roomlink';
 
 /** The buzzer server this copy was built with (CI passes it), or ''. */
 export const DEFAULT_BUZZER_URL: string = (import.meta.env.VITE_BUZZER_URL ?? '').trim();
-
-const clean = (url: string) => url.trim().replace(/\/+$/, '');
 
 /**
  * Where rooms are made: ⚙ Settings › Buzzer server, else (an exported game) the one it was exported with, else the
@@ -20,7 +18,8 @@ const clean = (url: string) => url.trim().replace(/\/+$/, '');
  */
 export function buzzerBase(): string {
   const embedded = embeddedBuzzerServer();
-  return clean((app.playerOnly ? embedded || prefs.buzzerServer : prefs.buzzerServer || embedded) || DEFAULT_BUZZER_URL);
+  // (An address saved before ⚙ Settings added a missing https:// gets it here.)
+  return serverAddress((app.playerOnly ? embedded || prefs.buzzerServer : prefs.buzzerServer || embedded) || DEFAULT_BUZZER_URL);
 }
 
 export const remote = $state<{
@@ -311,7 +310,7 @@ export function roomLink(code = remote.code): string {
 
 /** ⚙ Settings › Test: is a buzzer server answering there? */
 export async function testServer(base: string): Promise<string> {
-  const url = clean(base);
+  const url = serverAddress(base);
   if (!/^https?:\/\//.test(url)) return 'Type the server’s address, starting with https://';
   try {
     const res = await fetch(`${url}/api/health`);

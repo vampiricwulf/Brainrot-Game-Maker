@@ -45,6 +45,12 @@ function load(): Prefs {
 
 export const prefs = $state<Prefs>(load());
 
+/** A buzzer server's address: one typed without its https:// (as Cloudflare's dashboard shows it) gets it. */
+export function serverAddress(url: string): string {
+  const u = url.trim().replace(/\/+$/, '');
+  return u && !/^[a-z][a-z\d+.-]*:\/\//i.test(u) ? `https://${u}` : u;
+}
+
 /** The numbers last kept: a box emptied (to type another) keeps its number instead of saving 0 or 1. */
 const numberOr = (v: unknown, was: number) => (v === null || v === undefined || v === '' || !Number.isFinite(Number(v)) ? was : Number(v));
 let kept = {
@@ -58,7 +64,7 @@ export function savePrefs(): void {
   prefs.autosaveMinutes = Math.max(0, Math.min(240, Math.round(numberOr(prefs.autosaveMinutes, kept.autosaveMinutes))));
   prefs.autosaveKeep = Math.max(1, Math.min(50, Math.round(numberOr(prefs.autosaveKeep, kept.autosaveKeep))));
   if (prefs.display !== 'audience') prefs.display = 'single';
-  prefs.buzzerServer = String(prefs.buzzerServer ?? '').trim();
+  prefs.buzzerServer = serverAddress(String(prefs.buzzerServer ?? ''));
   prefs.undoSteps = Math.max(UNDO_STEPS.min, Math.min(UNDO_STEPS.max, Math.round(numberOr(prefs.undoSteps, kept.undoSteps) || DEFAULT_PREFS.undoSteps)));
   kept = { autosaveMinutes: prefs.autosaveMinutes, autosaveKeep: prefs.autosaveKeep, undoSteps: prefs.undoSteps };
   try {

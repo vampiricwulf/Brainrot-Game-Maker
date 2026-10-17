@@ -106,6 +106,11 @@ try {
   const settings = page.getByRole('dialog', { name: 'Settings' });
   await settings.waitFor();
   assert((await settings.getByLabel('Buzzer server').inputValue()) === 'https://buzz.test', 'Settings shows the buzzer server');
+  // An address typed without its https:// (as Cloudflare's dashboard shows it) is kept with it.
+  await settings.getByLabel('Buzzer server').fill('buzz.test');
+  await settings.getByLabel('Buzzer server').press('Tab');
+  await page.waitForFunction(() => document.querySelector('input[aria-label="Buzzer server"]').value === 'https://buzz.test');
+  assert((await page.evaluate(() => JSON.parse(localStorage.getItem('jb.prefs')).buzzerServer)) === 'https://buzz.test', 'an address typed without https:// is saved with it, and the box shows it');
   await settings.getByRole('button', { name: 'Test' }).click();
   await settings.getByText('✔ The buzzer server is answering').waitFor();
   assert((await page.evaluate(() => window.__room.health)) === 1, 'Test asks the server’s /api/health');

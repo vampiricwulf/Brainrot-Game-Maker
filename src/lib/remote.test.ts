@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it } from 'vitest';
 import { BUZZ_PROTOCOL } from './buzzproto';
-import { closeRoom, rejoinRoom, remote, setRemoteDeps } from './remote.svelte';
+import { buzzerBase, closeRoom, rejoinRoom, remote, setRemoteDeps } from './remote.svelte';
+import { prefs } from './prefs.svelte';
 import { retryDelay, type LinkDeps, type SocketLike } from './roomlink';
 
 class FakeSocket implements SocketLike {
@@ -137,5 +138,14 @@ describe('closeRoom', () => {
     t.advance(120_000);
     expect(sockets.length).toBe(4);
     expect(remote.status).toBe('off');
+  });
+});
+
+describe('buzzerBase', () => {
+  it('an address saved without https:// (before Settings added it) is used with it', () => {
+    const was = prefs.buzzerServer;
+    prefs.buzzerServer = 'buzz.example.workers.dev';
+    expect(buzzerBase()).toBe('https://buzz.example.workers.dev');
+    prefs.buzzerServer = was;
   });
 });

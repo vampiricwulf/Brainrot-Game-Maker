@@ -20,6 +20,7 @@ in plain words for the people who make and host games. Anything committed but no
 - 🎭 Deal… warns before 📤 Send when the deal's cards would fill the phones (they hold 8 cards at once, all phones together, so a deal to 8 players fills them): until you take its cards back, or the round ends, no other 🤫 card could reach a phone, a partner clue's included.
 
 ### Fixed
+- ⚙ Settings › Buzzer server: an address typed without its https:// (as Cloudflare's dashboard shows it, like buzz.example.workers.dev) is kept with it, and one saved that way before works too. Starting a room with it used to fail with only "Couldn’t reach the buzzer server".
 - With phone buzzer Teams on, the pre-game screen says teams throughout: “Add teams to start” by Start game (and in its tip and the Ctrl+Enter note), ⚖ Game rules (“8 teams at most”, Most teams, Team who gets points picks next, the number keys pick teams), Raise Most teams, and 🔒 Lock seats (people already on a team can come back).
 - With phone buzzer Teams on, the built-in 🎯 wheel is “Pick a team”: viewers no longer see “Pick a player” over a wheel of teams. It's called that wherever it spins (🎡 Wheel, a wheel tile, a button, Spin another wheel too), and in the roll log.
 - Teams: nobody can join a team under a team's name (“Sharks” on the Jets, whose buzz read as “Sharks (Jets) buzzed”): the phone says a team or someone in the game already has that name.

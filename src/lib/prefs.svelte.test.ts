@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { prefs, savePrefs } from './prefs.svelte';
+import { prefs, savePrefs, serverAddress } from './prefs.svelte';
 
 describe('settings', () => {
   it('a number box emptied (to type another) keeps its number instead of saving 0 or 1', () => {
@@ -15,5 +15,14 @@ describe('settings', () => {
     prefs.autosaveKeep = 99;
     savePrefs();
     expect([prefs.autosaveMinutes, prefs.autosaveKeep]).toEqual([0, 50]);
+  });
+
+  it('a buzzer server typed without https:// (as Cloudflare shows it) is saved with it', () => {
+    prefs.buzzerServer = ' buzz.example.workers.dev/ ';
+    savePrefs();
+    expect(prefs.buzzerServer).toBe('https://buzz.example.workers.dev');
+    expect(serverAddress('http://localhost:8787')).toBe('http://localhost:8787');
+    expect(serverAddress('HTTPS://Buzz.example.workers.dev//')).toBe('HTTPS://Buzz.example.workers.dev');
+    expect(serverAddress('  ')).toBe('');
   });
 });

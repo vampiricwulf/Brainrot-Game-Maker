@@ -426,8 +426,8 @@ https://brainrot-buzzer.your-name.workers.dev
 
 **4. Point the app at it.** In the app, open **⋯ → ⚙ Settings**, paste that address into **Buzzer server**, and press
 **Test**: it should say **✔ The buzzer server is answering**. That's it: on the ▶ Play screen, the **📱 Phone
-buzzers** card can now open a room. (The address is kept on this computer. A game exported as a web page keeps the
-server it was exported with.)
+buzzers** card can now open a room. (The address is kept on this computer; one typed without its `https://`, as
+Cloudflare's dashboard shows it, gets it. A game exported as a web page keeps the server it was exported with.)
 
 **Updating it.** When a new version of the app comes out, get the new files and run `npx wrangler deploy` in `buzzer`
 again (step 1's `npm ci` too if it's a fresh download), ideally not in the middle of a game: phones reconnect by
