@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { colorDistance, contrast, CVD_SAFE_UPTO, luminance, nearKey, obsKeyed, parseHex, PLAYER_PALETTE, textOn, toHex, type Vision } from './colors';
+import { colorDistance, contrast, CVD_SAFE_UPTO, luminance, obsKeyed, parseHex, PLAYER_PALETTE, textOn, toHex, type Vision } from './colors';
 
 describe('contrast', () => {
   it('follows WCAG: black on white is 21, a color on itself is 1', () => {
@@ -73,18 +73,10 @@ describe('player colors for colour-blind viewers', () => {
 });
 
 describe('player colors near the chroma key', () => {
-  it('flags greens for a green key and pinks and purples for a magenta key', () => {
-    for (const c of ['#3cb44b', '#bfef45', '#2e7d32', '#00ff00']) expect(nearKey(c, '#00ff00')).toBe(true);
-    for (const c of ['#f032e6', '#cc79a7', '#ff00ff']) expect(nearKey(c, '#ff00ff')).toBe(true);
-  });
-
-  it('leaves the rest, and greys and whites, alone', () => {
-    for (const c of ['#e6194b', '#56b4e9', '#1f3a93', '#f0e442', '#f2f2f2', '#808080', '#000000']) {
-      expect(nearKey(c, '#00ff00')).toBe(false);
-      expect(nearKey(c, '#ff00ff')).toBe(false);
-    }
-    expect(nearKey('#3cb44b', '#ff00ff')).toBe(false);
-    expect(nearKey('not a color', '#00ff00')).toBe(false);
+  it('OBS takes out the palette’s yellow, green and lime with a green key, and its red, pink, purple and magenta with a magenta one', () => {
+    const keyed = (key: string) => PLAYER_PALETTE.filter((c) => obsKeyed(c, key));
+    expect(keyed('#00ff00')).toEqual(['#f0e442', '#009e73', '#bfef45']);
+    expect(keyed('#ff00ff')).toEqual(['#e6194b', '#cc79a7', '#911eb4', '#f032e6']);
   });
 });
 

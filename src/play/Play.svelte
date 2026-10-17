@@ -45,7 +45,7 @@
   import type { DicePreset } from '../lib/model';
   import { tileDice } from '../lib/tools';
   import { dailyDoublesShort, partnerTilesShort, validate } from '../lib/validate';
-  import { isColorTaken, nearKey, nextFreeColor, PLAYER_PALETTE } from '../lib/colors';
+  import { isColorTaken, nextFreeColor, obsKeyed, PLAYER_PALETTE } from '../lib/colors';
   import { announce } from '../lib/announce';
   import { ask } from '../lib/ask.svelte';
   import { keyedThemeColors, otherStageKey, STAGE_KEYS } from '../lib/theme';
@@ -890,7 +890,7 @@
   /** Players whose color a chroma-key stage background would take out on stream (the pre-game screen warns). */
   const keyedOut = $derived.by(() => {
     const key = game.theme?.stageBg ? STAGE_KEYS[game.theme.stageBg] : undefined;
-    return key ? session.players.filter((p) => nearKey(p.color, key)) : [];
+    return key ? session.players.filter((p) => obsKeyed(p.color, key)) : [];
   });
   /** Does the game have a Jeopardy board? (Without one, the theme's board-only looks never show.) */
   const hasBoard = $derived(game.rounds.some(isBoard));

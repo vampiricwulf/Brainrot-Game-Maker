@@ -236,6 +236,8 @@ describe('colors OBS would key out', () => {
     expect(otherStageKey(dark, ['#00c000', '#4363d8'])).toBe('magenta');
     // A magenta player would be keyed out there.
     expect(otherStageKey(dark, ['#4363d8', '#f032e6'])).toBeUndefined();
+    // So would the palette's red, by OBS's sums (though it isn't pink).
+    expect(otherStageKey(dark, ['#e6194b'])).toBeUndefined();
     expect(otherStageKey({ ...dark, stageBg: 'magenta' }, ['#00c000'])).toBeUndefined();
     // Classic's blue tiles go on magenta.
     expect(otherStageKey({ ...presetTheme('classic'), stageBg: 'green' })).toBeUndefined();

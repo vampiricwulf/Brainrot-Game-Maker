@@ -1,5 +1,5 @@
 // Board/stage themes (spec §5.7): presets plus per-game overrides, applied as CSS variables.
-import { contrast, mixHex, nearKey, obsKeyed, textOn, toHex } from './colors';
+import { contrast, mixHex, obsKeyed, textOn, toHex } from './colors';
 import { cssUrl } from './links';
 import type { Id } from './model';
 
@@ -234,7 +234,7 @@ export function keyedThemeColors(t: Theme, key: Theme['stageBg'] = t.stageBg, bo
 export function otherStageKey(t: Theme, players: string[] = [], board = true): Theme['stageBg'] {
   if (!t.stageBg) return undefined;
   const other = t.stageBg === 'green' ? 'magenta' : 'green';
-  return keyedThemeColors(t, other, board).length || players.some((c) => nearKey(c, STAGE_KEYS[other])) ? undefined : other;
+  return keyedThemeColors(t, other, board).length || players.some((c) => obsKeyed(c, STAGE_KEYS[other])) ? undefined : other;
 }
 
 /**

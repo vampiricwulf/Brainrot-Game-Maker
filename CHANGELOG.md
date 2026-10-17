@@ -11,6 +11,11 @@ the day it's pushed (Pacific time; start the heading on the day's first push) an
 in plain words for the people who make and host games. Anything committed but not pushed yet goes under
 **Unreleased** at the top, and moves under its day when it's pushed.
 
+## Unreleased
+
+### Fixed
+- With a chroma-key Stage background, the pre-game note about a player's color close to the key now works it out as OBS does, as the theme's note does: it warns about the palette's red (the first player's color) on a magenta key and its yellow on a green one, which OBS makes see-through, and no longer suggests the other key when it would take a player's red or yellow out.
+
 ## 2026-10-17
 
 ### Added

@@ -103,11 +103,17 @@ try {
   const themeKeyNote = page.locator('[data-warn="chroma-theme"]');
   await themeKeyNote.waitFor();
   assert((await themeKeyNote.innerText()).includes('see-through on stream (values)'), 'and so does the pre-game screen');
+  // Player 3's palette yellow: partly see-through on a green key, by OBS's own sums.
+  const playerKeyNote = page.locator('[data-warn="chroma"]');
+  await playerKeyNote.waitFor();
+  const yellowNote = await playerKeyNote.innerText();
+  assert(yellowNote.startsWith('⚠ Player 3’s color is close to the chroma key'), `a yellow player gets a note on a green key (${yellowNote})`);
+  await page.getByLabel('Color for Player 3').fill('#4f7cff');
+  await playerKeyNote.waitFor({ state: 'detached' });
   // A green player: neither note offers the magenta key, where Classic's blue tiles would go see-through.
   const p1Color = page.getByLabel('Color for Player 1');
   const p1Was = await p1Color.inputValue();
   await p1Color.fill('#00c000');
-  const playerKeyNote = page.locator('[data-warn="chroma"]');
   await playerKeyNote.waitFor();
   const playerNote = await playerKeyNote.innerText();
   assert(playerNote.includes('OBS would key it out on stream. Pick another color.') && !(await themeKeyNote.innerText()).includes('magenta'), `a green player gets a note, and neither note offers the magenta key the tiles would go on (${playerNote})`);

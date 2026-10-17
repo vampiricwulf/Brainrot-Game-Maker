@@ -153,19 +153,6 @@ export function colorDistance(a: string, b: string, vision: Vision = 'normal'): 
   return Math.hypot(p[0] - q[0], p[1] - q[1], p[2] - q[2]);
 }
 
-/**
- * A player color a chroma key would take out: close in hue to the key color and colorful enough (OBS keys by hue and
- * saturation more than brightness, so a dark green goes too).
- */
-export function nearKey(color: string, key: string): boolean {
-  const c = labOf(color);
-  const k = labOf(key);
-  if (!parseHex(color) || Math.hypot(c[1], c[2]) < 25) return false;
-  const hue = (l: number[]) => (Math.atan2(l[2], l[1]) * 180) / Math.PI;
-  const d = Math.abs(hue(c) - hue(k));
-  return Math.min(d, 360 - d) < 30;
-}
-
 /** A 0–255 color as OBS's Chroma Key filter sees it: its Cb and Cr (BT.709, as in OBS's chroma_key_filter_v2.effect). */
 const obsCbCr = ([r, g, b]: [number, number, number]) => [(-0.100644 * r - 0.338572 * g + 0.439216 * b) / 255, (0.439216 * r - 0.398942 * g - 0.040274 * b) / 255];
 
