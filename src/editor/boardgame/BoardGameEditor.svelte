@@ -1054,7 +1054,7 @@
       </aside>
     </div>
   {:else if view === 'backdrop'}
-    <div class="se-wrap"><SlideEditor slide={round.slide} placeholder="Click to type" fill /></div>
+    <div class="se-wrap"><SlideEditor slide={round.slide} placeholder="Click to type" fill fallbackBg="#1d5e3a" /></div>
   {:else}
     <div class="zones">
       <div class="row">
@@ -1103,7 +1103,7 @@
 </div>
 {#if tool}<ToolPopup kind={tool.kind} id={tool.id} onclose={() => (tool = null)} />{/if}
 {#if zone}
-  <SlideModal slide={zone.slide} title={zone.name} onclose={() => (zoneSlide = null)} />
+  <SlideModal slide={zone.slide} title={zone.name} onclose={() => (zoneSlide = null)} fallbackBg="#2a0845" />
 {/if}
 
 <style>

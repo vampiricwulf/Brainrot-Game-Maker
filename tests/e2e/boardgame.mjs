@@ -1,5 +1,6 @@
 // Board game rounds: build a board (a loop with a fork, a Start bonus, an off-board zone), then play it: roll, move,
-// pick the way at the fork, pass Start, take turns, send someone to the Shadow Realm, undo; a reload keeps a roll.
+// pick the way at the fork, pass Start, take turns, send someone to the Shadow Realm, undo; a reload keeps a roll. The
+// editor shows a backdrop or zone with its background reset in the color viewers see.
 import { chromium } from 'playwright-core';
 import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
@@ -254,11 +255,31 @@ try {
   await diceBox.fill('d6');
   assert(!(await page.getByRole('button', { name: '✎ Edit dice' }).count()), 'typing standard dice rolls those instead');
 
+  // ↺ Reset background on the board's backdrop (and a zone's screen): the editor shows the color viewers will see, not
+  // the theme's tile color.
+  const resetBg = async (at) => {
+    await at.getByRole('button', { name: /Background ▾/ }).click();
+    await at.getByRole('button', { name: '↺ Reset background' }).click();
+    const bgs = await at.locator('.canvas .slide').evaluate((e) => [e, e.closest('.se').querySelector('.swatch')].map((x) => getComputedStyle(x).backgroundColor));
+    await at.getByRole('button', { name: /Background ▾/ }).click();
+    const title = await at.getByRole('button', { name: '↺ Reset background' }).getAttribute('title');
+    await at.getByLabel('Slide background color').press('Escape');
+    return { bgs, title };
+  };
+  await page.getByRole('button', { name: '🖼 Board backdrop' }).click();
+  let reset = await resetBg(page.locator('.se-wrap'));
+  assert(reset.bgs.every((c) => c === 'rgb(29, 94, 58)') && reset.title === 'Back to the default background', `the board's backdrop with its background reset shows green in the editor, as on stage (${reset.bgs.join(', ')}; "${reset.title}")`);
+
   // A zone.
   await page.getByRole('button', { name: /Off-board zones/ }).click();
   await page.getByRole('button', { name: '＋ Add zone' }).click();
   assert((await page.getByLabel('Zone name').inputValue()) === 'Shadow Realm', 'the first zone is the Shadow Realm');
   assert(await page.getByLabel('Zone name').evaluate((e) => e === document.activeElement && e.selectionStart === 0 && e.selectionEnd === e.value.length), '＋ Add zone puts the typing in its name');
+  await page.getByRole('button', { name: 'Edit its screen…' }).click();
+  const zoneEditor = page.getByRole('dialog', { name: 'Shadow Realm' });
+  reset = await resetBg(zoneEditor);
+  assert(reset.bgs.every((c) => c === 'rgb(42, 8, 69)'), `so does a zone's screen, in its own purple (${reset.bgs.join(', ')})`);
+  await zoneEditor.getByRole('button', { name: 'Done' }).click();
 
   // Play with two players, straight to the board game.
   await playWithPlayers(page, 2);

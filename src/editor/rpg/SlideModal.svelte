@@ -4,7 +4,18 @@
   import type { Slide } from '../../lib/model';
   import SlideEditor from '../slide/SlideEditor.svelte';
 
-  let { slide, title, onclose }: { slide: Slide; title: string; onclose: () => void } = $props();
+  let {
+    slide,
+    title,
+    onclose,
+    fallbackBg,
+  }: {
+    slide: Slide;
+    title: string;
+    onclose: () => void;
+    /** What shows with no background set, as on stage (a board game's zone has its own color). */
+    fallbackBg?: string;
+  } = $props();
   let box = $state<HTMLDivElement>();
 
   /** Esc closes it (the slide editor takes an Esc that deselects first), unless it's for a picker open inside. */
@@ -26,7 +37,7 @@
       <button class="primary" onclick={onclose}>Done</button>
       <button class="ghost modal-x" onclick={onclose} aria-label="Close" title="Close (Esc)">✕</button>
     </div>
-    <div class="body"><SlideEditor {slide} fill placeholder="Click to type" /></div>
+    <div class="body"><SlideEditor {slide} fill placeholder="Click to type" {fallbackBg} /></div>
   </div>
 </div>
 

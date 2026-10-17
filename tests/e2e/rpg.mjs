@@ -1,5 +1,6 @@
 // RPG rounds: build a tiny world (two screens, an item, stats), then play it: move with the pad and the keys, pick
-// the item up, change a stat, undo and redo, show the map, and check viewers never see secret objects.
+// the item up, change a stat, undo and redo, show the map, and check viewers never see secret objects. The editor
+// shows a screen with its background reset in the color viewers see.
 import { chromium } from 'playwright-core';
 import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
@@ -385,6 +386,14 @@ try {
     tabs++;
   }
   assert(!(await onCanvas()) && (await page.evaluate(() => document.activeElement !== document.body)), `Tab goes through the screen's items and on to the next control (${tabs} tabs)`);
+  // ↺ Reset background: the editor shows the screen's green, as viewers will see it, not the theme's tile color.
+  await page.getByRole('button', { name: /Background ▾/ }).click();
+  await page.getByRole('button', { name: '↺ Reset background' }).click();
+  const bgs = await page.evaluate(() => [document.querySelector('.canvas .slide'), document.querySelector('.swatch')].map((e) => getComputedStyle(e).backgroundColor));
+  assert(bgs.every((c) => c === 'rgb(47, 107, 58)'), `a screen with its background reset shows green in the editor, as on stage (${bgs.join(', ')})`);
+  await page.getByRole('button', { name: /Background ▾/ }).click();
+  assert((await page.getByRole('button', { name: '↺ Reset background' }).getAttribute('title')) === 'Back to the default background', "and its Reset doesn't say it's the theme's");
+  await page.getByLabel('Slide background color').press('Escape');
   await page.getByRole('button', { name: '◀ Back to the map' }).click();
   // Clearing Columns (to type another number) deletes nothing: the box shows the size again.
   await page.locator('summary', { hasText: 'Map settings' }).click();

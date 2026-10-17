@@ -70,6 +70,7 @@
     fill = false,
     objectsection,
     tools,
+    fallbackBg = 'var(--tile)',
   }: {
     slide: Slide;
     /** The main text elements "Use this style elsewhere" restyles for a scope (the host knows the round). */
@@ -93,11 +94,16 @@
     objectsection?: Snippet<[SlideElement]>;
     /** Extra toolbar buttons (RPG screens: spawn point, items). `add` puts an element on the slide. */
     tools?: Snippet<[(el: SlideElement) => void]>;
+    /** What shows with no background set: the theme's tile color, or the color a board game or RPG screen has on stage. */
+    fallbackBg?: string;
   } = $props();
   let editingImage = $state<string | null>(null);
   const imageEl = $derived(slide.elements.find((e) => e.id === editingImage && e.kind === 'image') as ImageEl | undefined);
 
   const game = $derived(editedGame());
+  /** The slide's background follows the theme when it has none of its own (not a board game's or RPG screen's). */
+  const themedBg = $derived(fallbackBg === 'var(--tile)');
+  const plainBg = $derived(themedBg ? game.theme.tile : fallbackBg);
   let selected = $state<string[]>([]);
   let picker = $state<MediaKind | null>(null);
   let replacing = $state<string | null>(null);
@@ -1043,7 +1049,7 @@
       <span class="sep"></span>
       <div class="pop">
         <button onclick={() => (bgMenu = !bgMenu)} aria-expanded={bgMenu} title="The slide's background: a color or a picture">
-          <span class="swatch" aria-hidden="true" style:background={slide.background.color ?? game.theme.tile}></span> Background ▾
+          <span class="swatch" aria-hidden="true" style:background={slide.background.color ?? plainBg}></span> Background ▾
         </button>
         {#if bgMenu}
           <div class="backdrop" onclick={() => (bgMenu = false)} role="presentation"></div>
@@ -1064,7 +1070,7 @@
               <input
                 type="color"
                 aria-label="Slide background color"
-                value={slide.background.color ?? game.theme.tile}
+                value={slide.background.color ?? plainBg}
                 oninput={(e) => (slide.background.color = e.currentTarget.value)}
               />
               Color
@@ -1074,7 +1080,7 @@
             <button
               onclick={() => ((bgMenu = false), edit(() => (slide.background = {})))}
               disabled={!slide.background.image && !slide.background.color}
-              title="Back to the theme's background">↺ Reset background</button
+              title={themedBg ? "Back to the theme's background" : 'Back to the default background'}>↺ Reset background</button
             >
           </div>
         {/if}
@@ -1141,10 +1147,10 @@
           {#if previewing}
             {#key previewKey}
               <!-- 'single' is the audible role Play uses in a single window; 'mirror' is muted. -->
-              <SlideView {slide} mode="play" role={previewMuted ? 'mirror' : 'single'} />
+              <SlideView {slide} mode="play" role={previewMuted ? 'mirror' : 'single'} {fallbackBg} />
             {/key}
           {:else}
-            <SlideView slide={editView} mode="edit" {placeholder} onfit={(id, r) => (fits[id] = r)} />
+            <SlideView slide={editView} mode="edit" {placeholder} {fallbackBg} onfit={(id, r) => (fits[id] = r)} />
             <EditLayer
               {slide}
               bind:selected
@@ -1205,7 +1211,7 @@
         <Inspector
           el={single}
           {game}
-          onTile={!slide.background.color && !slide.background.gradient && !slide.background.image}
+          onTile={themedBg && !slide.background.color && !slide.background.gradient && !slide.background.image}
           fit={fits[single.id]}
           bind:textArea
           onorder={order}
@@ -1318,7 +1324,7 @@
 
 {#if drawpad}
   <DrawPad oninsert={insertDrawing} oncancel={() => (drawpad = false)}>
-    {#snippet backdrop()}<Stage><SlideView {slide} mode="edit" /></Stage>{/snippet}
+    {#snippet backdrop()}<Stage><SlideView {slide} mode="edit" {fallbackBg} /></Stage>{/snippet}
   </DrawPad>
 {/if}
 
