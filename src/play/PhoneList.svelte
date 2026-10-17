@@ -165,7 +165,7 @@
 {#if onlock && session.remote}
   <label class="check small lock">
     <input type="checkbox" checked={locked} onchange={(e) => onlock(e.currentTarget.checked)} />
-    🔒 Lock seats: no new phones (players already in can come back)
+    🔒 Lock seats: no new phones ({teams ? 'people already on a team' : 'players already in'} can come back)
   </label>
 {/if}
 {#if waiting.length}

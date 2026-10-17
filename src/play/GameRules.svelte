@@ -11,11 +11,14 @@
   let {
     s,
     players,
+    teams = false,
     folded = true,
   }: {
     s: GameSettings;
     /** Players in the game now ("Most players" never goes below it). */
     players: number;
+    /** Phone buzzer teams are on: each player is a team (the words say "team"). */
+    teams?: boolean;
     /** On the pre-game screen: a fold with its heading (mid-game, the window around it has the heading). */
     folded?: boolean;
   } = $props();
@@ -41,11 +44,14 @@
     }
   });
 
+  /** "players" or "teams". */
+  const nouns = $derived(teams ? 'teams' : 'players');
+
   /** The rules at a glance, on the closed fold. */
   const gist = $derived(
     [
       s.defaultTimerSeconds ? `${s.defaultTimerSeconds} s countdown` : 'No countdown',
-      `${s.maxPlayers} players at most`,
+      `${s.maxPlayers} ${nouns} at most`,
       s.allowNegativeScores ? 'Negative scores' : 'No negative scores',
     ].join(' · '),
   );
@@ -53,14 +59,14 @@
 
 {#snippet body()}
   <div class="body">
-    <h3>Scoring and players</h3>
+    <h3>Scoring and {nouns}</h3>
     <div class="grid">
       <label class="check"><input type="checkbox" bind:checked={s.allowNegativeScores} /> Allow negative scores</label>
       <label class="check">
         <input type="checkbox" bind:checked={s.deductOnWrong} /> Show quick ✔/✘ buttons (one click for right or wrong)
       </label>
       <label class="check">
-        <input type="checkbox" bind:checked={s.pickerFollowsAward} /> Player who gets points picks next
+        <input type="checkbox" bind:checked={s.pickerFollowsAward} /> {teams ? 'Team' : 'Player'} who gets points picks next
       </label>
       <!-- (Left out until ticked: a game saved without it has no steals. Each partner clue can say otherwise.) -->
       <label class="check" title="After ✘ Missed on a 🤝 partner clue, everyone else can answer it for the tile's value (the buzzers open for them, or you pick who). Each partner clue can say otherwise in the editor.">
@@ -71,7 +77,7 @@
         <input bind:value={s.currencySymbol} placeholder="$, pts, 🧠, or blank" maxlength="6" title="A word (pts, coins) goes after the number: 200 pts. $, € or 🧠 goes in front: $200" />
       </label>
       <label class="field">
-        Most players
+        Most {nouns}
         <input
           type="number"
           min={Math.max(1, players)}
@@ -88,9 +94,9 @@
       </label>
     </div>
     {#if s.maxPlayers > 9}
-      <p class="muted small">While hosting, the number keys 1–9 pick only the first 9 players: click the others.</p>
+      <p class="muted small">While hosting, the number keys 1–9 pick only the first 9 {nouns}: click the others.</p>
     {:else}
-      <p class="muted small">While hosting, the number keys 1–{s.maxPlayers} pick players.</p>
+      <p class="muted small">While hosting, the number keys 1–{s.maxPlayers} pick {nouns}.</p>
     {/if}
 
     <h3>Timers</h3>

@@ -311,7 +311,7 @@
       {players.length}/{max} {lower}s · each color must be unique{inGame ? ' · reordering changes the number keys (1–9)' : ''}
     </span>
     {#if players.length >= max && onraise}
-      <button class="small" onclick={onraise} title="⚖ Game rules › Most players">Raise Most players to {max + 1}</button>
+      <button class="small" onclick={onraise} title="⚖ Game rules › Most {lower}s">Raise Most {lower}s to {max + 1}</button>
     {/if}
   </div>
   {#if sameNames.length}

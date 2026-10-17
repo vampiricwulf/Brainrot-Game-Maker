@@ -12,7 +12,7 @@ import { existsSync, mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { addClassicRounds, addPlayers, answerReplace, stored } from './helpers.mjs';
+import { addClassicRounds, addPlayers, answerReplace, openRules, stored } from './helpers.mjs';
 
 const file = resolve(process.env.APP_FILE || 'dist/index.html');
 if (!existsSync(file)) throw new Error('Run `npm run build` first');
@@ -105,6 +105,18 @@ try {
   await card.getByLabel(/Teams: people join a team/).check();
   const emptyRoster = host.locator('[data-place="play:players"]');
   assert((await emptyRoster.locator('.warn').innerText()).startsWith('Add teams to start: ＋ Add team, or'), 'with Teams on and nobody yet, the list says to add teams (＋ Add team)');
+  const startButton = host.getByRole('button', { name: 'Start game ▶' });
+  assert(
+    (await host.getByText('Add teams to start', { exact: true }).isVisible()) && (await startButton.getAttribute('title')) === 'Add teams to start',
+    'and so do the line by Start game and its tip',
+  );
+  const rules = await openRules(host);
+  const rulesText = (await rules.innerText()).replace(/\s+/g, ' ');
+  assert(
+    ['8 teams at most', 'Scoring and teams', 'Team who gets points picks next', 'the number keys 1–8 pick teams'].every((t) => rulesText.includes(t)) && (await rules.getByLabel('Most teams').isVisible()),
+    `⚖ Game rules speak of teams too (${rulesText.slice(0, 160)}…)`,
+  );
+  await rules.locator('summary').click();
   await emptyRoster.getByRole('button', { name: '＋ Add 3 sample teams' }).click();
   const samples = await emptyRoster.locator('input.name').evaluateAll((els) => els.map((e) => e.value));
   assert(samples.join() === 'Team 1,Team 2,Team 3', `＋ Add 3 sample teams adds teams with team names, not people's (${samples.join(', ')})`);
@@ -124,6 +136,7 @@ try {
   const code = (await codeEl.getAttribute('aria-label')).slice('Room code '.length);
   await card.getByText('0 people on 0 of 2 teams').waitFor();
   assert(true, `a real room (${code}); the card counts people on teams`);
+  assert(await card.getByText('🔒 Lock seats: no new phones (people already on a team can come back)', { exact: true }).isVisible(), 'its 🔒 Lock seats says people already on a team can come back');
 
   // ---------- People join teams from their phones ----------
   const phone = async (name, team) => {

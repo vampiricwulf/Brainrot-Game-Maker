@@ -1349,7 +1349,7 @@
     // (Not added at all: their phone would never hear it, and wait to be let in for good.)
     if (remote.status !== 'online') return roomOffline();
     if (session.players.length >= game.settings.maxPlayers)
-      return toast(`The game is full: ${game.settings.maxPlayers} ${pregameTeams ? 'teams' : 'players'} at most (⚖ Game rules › Most players)`);
+      return toast(`The game is full: ${game.settings.maxPlayers} ${pregameTeams ? 'teams' : 'players'} at most (⚖ Game rules › Most ${pregameTeams ? 'teams' : 'players'})`);
     let who = clip(name.trim(), SEAT_NAME_MAX) || `Player ${session.players.length + 1}`;
     // Never a second "Ann": the new one is "Ann 2".
     const taken = (n: string) => session.players.some((x) => x.name.trim().toLowerCase() === n.toLowerCase());
@@ -1491,11 +1491,11 @@
     toast(told ? 'Buzzer room closed: the phones were told' : 'Buzzer room closed: it’s out of reach right now; the phones are told if it answers within a minute');
   }
 
-  /** 🔒 Lock seats: no new phone takes a seat or asks to join; players already in come back. */
+  /** 🔒 Lock seats: no new phone takes a seat or asks to join; players already in (teams: people on one) come back. */
   function lockSeats(on: boolean): void {
     if (!session.remote) return;
     session.remote.locked = on || undefined;
-    toast(on ? '🔒 Seats locked: only players already in can come back' : 'Seats open again');
+    toast(on ? `🔒 Seats locked: only ${pregameTeams ? 'people already on a team' : 'players already in'} can come back` : 'Seats open again');
   }
 
   /** Buzzer mode with the room out of reach: the host panel says the phones can't buzz (not "Buzzers open"). */
@@ -3232,7 +3232,7 @@
       const t = e.target instanceof Element ? e.target : null;
       if (showSound || t?.closest('[role="dialog"], [role="menu"]')) return;
       e.preventDefault();
-      if (!session.players.length) return void toast('Add players to start');
+      if (!session.players.length) return void toast(`Add ${pregameTeams ? 'teams' : 'players'} to start`);
       // (A field being typed in keeps what's in it: its change lands first.)
       if (document.activeElement instanceof HTMLElement) document.activeElement.blur();
       return void startClicked();
@@ -4004,7 +4004,7 @@
         {/if}
       </div>
       <div class="col">
-        <GameRules s={game.settings} players={session.players.length} />
+        <GameRules s={game.settings} players={session.players.length} teams={pregameTeams} />
 
         <section class="part" aria-labelledby="pregame-display">
           <h2 id="pregame-display">🖥 Display</h2>
@@ -4163,7 +4163,7 @@
             📱 Room <b>{remote.code}</b> · {joinedText}
           </span>
         {/if}
-        {#if !session.players.length}<span class="muted small">Add players to start</span>{/if}
+        {#if !session.players.length}<span class="muted small">Add {pregameTeams ? 'teams' : 'players'} to start</span>{/if}
         {#if checks.length}
           <!-- The checks can be below the fold (a 720-high window): this brings them up, open. -->
           <button
@@ -4192,7 +4192,7 @@
         onclick={() => void startClicked()}
         disabled={!session.players.length}
         aria-keyshortcuts="Control+Enter"
-        title={session.players.length ? `Start the game${wantAudience && !dual ? ', opening the audience window to capture in OBS' : ''} (Ctrl+Enter)` : 'Add players to start'}
+        title={session.players.length ? `Start the game${wantAudience && !dual ? ', opening the audience window to capture in OBS' : ''} (Ctrl+Enter)` : `Add ${pregameTeams ? 'teams' : 'players'} to start`}
       >
         {wantAudience && !dual ? '📺 Open audience window & start' : 'Start game ▶'}
         {#if session.players.length}<kbd class="start-key" aria-hidden="true">Ctrl+⏎</kbd>{/if}
@@ -4477,7 +4477,7 @@
         <button class="ghost modal-x" onclick={() => (showRules = false)} aria-label="Close" title="Close (Esc)">✕</button>
       </div>
       <p class="muted">For this game from now on{editorHasIt() ? ', and kept with it in the editor' : ''}.</p>
-      <GameRules s={game.settings} players={session.players.length} folded={false} />
+      <GameRules s={game.settings} players={session.players.length} teams={pregameTeams} folded={false} />
       <div class="modal-foot"><button class="primary" onclick={() => (showRules = false)}>Done</button></div>
     </div>
   </div>
