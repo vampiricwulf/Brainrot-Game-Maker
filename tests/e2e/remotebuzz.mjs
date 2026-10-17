@@ -621,6 +621,8 @@ try {
   await page.getByRole('button', { name: '▶ Play' }).click();
   const buzzerMode = card.getByLabel(/Buzzer mode/);
   await buzzerMode.waitFor();
+  await page.locator('.pregame input.name').nth(4).waitFor();
+  assert((await page.locator('.pregame input.name').count()) === 5, 'the 5 players kept with the room are this game’s own now: still listed once the room is closed');
   if (!(await buzzerMode.isChecked())) await buzzerMode.check();
   await card.getByRole('button', { name: '▶ Start the room' }).click();
   await card.getByLabel('Room code BCDF').waitFor();
@@ -644,7 +646,7 @@ try {
   /** Start the room and a game, wait until the game is saved with it, then reload: the editor keeps it to resume. */
   const playThenReload = async () => {
     await page.evaluate(() => (window.__room.gone = 0));
-    // (The players came with the room just closed: this game has none of its own yet.)
+    // (A game with no players needs some to start.)
     if (!(await page.locator('.pregame input.name').count())) await addPlayers(page, 2);
     await card.getByRole('button', { name: '▶ Start the room' }).click();
     await card.getByLabel('Room code BCDF').waitFor();

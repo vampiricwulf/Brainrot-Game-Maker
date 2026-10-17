@@ -3,8 +3,9 @@
 // buzzes first answers for it, the host and viewers see who ("Al (Player 1)"), a teammate's later buzz is no new place
 // in the order, and a wrong answer locks out the whole team. The host moves someone to another team and takes someone
 // off; a phone reload comes back on its team. Teams on or off with phones in the room asks first. On a ✍ clue, one
-// member's answer fills in their teammates' boxes. The room kept for another game keeps its teams; with 24 phones on
-// teams, the next one is told the game is full. Needs `npm ci` in buzzer/.
+// member's answer fills in their teammates' boxes. The room kept for another game keeps its teams, through Ctrl+Z before
+// the game and Resume with my edits; with 24 phones on teams, the next one is told the game is full. Needs `npm ci` in
+// buzzer/.
 import { chromium } from 'playwright-core';
 import { spawn } from 'node:child_process';
 import { createServer } from 'node:net';
@@ -410,6 +411,27 @@ try {
   assert((await teamsBox.isChecked()) && (await roster.getByRole('heading', { level: 2 }).innerText()) === '👥 Teams', 'kept for a game without Teams ticked: Teams stays on, with the same teams');
   for (const [p, name, team] of [[ann, 'Ann', 'Player 1'], [bea, 'Bea', 'Player 2'], [mal, 'Mal', 'Player 1']]) await p.locator('#me').getByText(`${name} · ${team} · $0`, { exact: true }).waitFor();
   assert(!(await ann.locator('#seats-note').isVisible()), 'and nobody’s phone is sent back to pick again');
+  // Ctrl+Z before the game takes back only what it undoes: Teams and the kept teams stay.
+  const keptRules = await openRules(host);
+  const negative = keptRules.getByLabel('Allow negative scores');
+  const wasNegative = await negative.isChecked();
+  await negative.click();
+  await host.keyboard.press('Control+z');
+  await host.locator('.toast', { hasText: /^↶ Undid Rule: Negative scores/ }).waitFor();
+  if ((await negative.isChecked()) !== wasNegative) throw new Error('Ctrl+Z didn’t take back the rule');
+  await keptRules.locator('summary').click();
+  // A team renamed, then undone, is back as it was (the game in the editor has the kept teams too).
+  const firstTeam = roster.locator('input.name').first();
+  await firstTeam.fill('Sharks');
+  await firstTeam.press('Tab');
+  await ann.locator('#me').getByText('Ann · Sharks · $0', { exact: true }).waitFor();
+  await host.keyboard.press('Control+z');
+  await ann.locator('#me').getByText('Ann · Player 1 · $0', { exact: true }).waitFor();
+  const keptNames = await roster.locator('input.name').evaluateAll((els) => els.map((e) => e.value));
+  assert(
+    (await teamsBox.isChecked()) && keptNames.join() === 'Player 1,Player 2' && (await card.getByText('4 people on 2 of 2 teams').isVisible()) && !(await ann.locator('#seats-note').isVisible()),
+    `Ctrl+Z of a rule, then of a team’s new name: Teams stays on, the same 2 teams are listed, and the phones stay on them (${keptNames.join(', ')})`,
+  );
 
   // ---------- 24 phones on teams: the next one is told the game is full, and joins once someone leaves ----------
   await zed.close();
@@ -451,6 +473,28 @@ try {
   await zoe.close();
   await host.getByRole('button', { name: 'Start game ▶' }).click();
   await host.getByRole('button', { name: 'Skip intro' }).click();
+
+  // ---------- Exit › Keep & leave, then Resume with my edits: the game kept the room's Teams, so the teams play on ----------
+  await host.getByRole('button', { name: 'Exit' }).click();
+  await host.waitForTimeout(450);
+  await host.getByRole('button', { name: 'Keep & leave', exact: true }).click();
+  const settingUp = ann.locator('main').getByText('The host is setting up — hang on');
+  await settingUp.waitFor();
+  // An edit undone in the editor: the game is as it was played, so nothing is offered to resume with.
+  const withEdits = host.locator('.status-bar .kept').getByRole('button', { name: 'Resume with my edits' });
+  const gameTitle = host.getByLabel('Game title');
+  await gameTitle.fill('Team night');
+  await gameTitle.press('Tab');
+  await withEdits.waitFor();
+  await host.keyboard.press('Control+z');
+  await withEdits.waitFor({ state: 'detached' });
+  assert(true, 'played in the kept room, the game in the editor has Teams on and the kept teams: an edit undone leaves no "Resume with my edits"');
+  await host.keyboard.press('Control+y');
+  await withEdits.click();
+  await host.locator('.mode-ask .mode', { hasText: 'Single window' }).click();
+  await settingUp.waitFor({ state: 'detached' });
+  for (const [p, name, team] of [[ann, 'Ann', 'Player 1'], [bea, 'Bea', 'Player 2']]) await p.locator('#me').getByText(`${name} · ${team} · $0`, { exact: true }).waitFor();
+  assert(!(await ann.locator('#seats-note').isVisible()) && (await host.locator('.panel').isVisible()), 'Resume with my edits: the game goes on with Teams, every phone still on its team');
 
   // ---------- Exit › Discard & leave ends the room (Keep & leave would keep it for Resume) ----------
   await host.getByRole('button', { name: 'Exit' }).click();

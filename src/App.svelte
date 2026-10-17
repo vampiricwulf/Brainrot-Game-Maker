@@ -69,8 +69,10 @@
     savePoint,
     settledGame,
     startHistory,
+    step,
     toSave,
   } from './lib/history.svelte';
+  import { keptRoster } from './play/roster';
   import type { Game, Session } from './lib/model';
   import Play from './play/Play.svelte';
 
@@ -601,25 +603,21 @@
     // players), the safe answer (Enter, Esc) keeping it.
     const open = kept.room;
     if (open && open.gameId !== app.game.id && !(await keepRoomFor(open))) await closeKeptRoom(true);
+    // The same room again (phones stay joined).
+    const room = kept.room;
+    kept.room = null;
+    if (room) keepRoomSetup(room);
     mark('played', 'Played');
     saveEditorSoon.flush();
     // (From the editor watcher's plain copy: copying the game through its proxies took most of ▶ Play in a big game.)
     app.playGame = clone(watch && watching === app.game ? watch.value() : app.game);
     app.session = newSession(app.playGame);
-    // The same room again (phones stay joined).
-    const room = kept.room;
-    kept.room = null;
-    // (A kept room means Buzzer mode is on: turning it off closes the room. The editor's copy of the setting may not
-    // say so yet after a quick reload.)
     if (room) {
       app.session.remote = room.remote;
-      app.playGame.settings.buzzer = true;
       // The players the phones joined as (the Play screen sets the players; a quick reload can leave the editor's copy
-      // of them behind). Another game's room brings its players along, seats and all, at 0. Either way the phones keep
-      // the team mode they joined with.
+      // of them behind). Another game's room brings its players along, seats and all, at 0.
       const same = room.gameId === app.game.id;
       if (Array.isArray(room.players) && room.players.length) app.session.players = room.players.map((p) => (same ? p : { ...p, startScore: 0 }));
-      app.playGame.settings.buzzTeams = roomTeams(room, app.playGame.settings);
     }
     app.live = newLive();
     app.pregame = true;
@@ -643,6 +641,34 @@
       { title: `Keep buzzer room ${code}${players}?`, cancel: n ? (teams ? 'Keep room & teams' : 'Keep room & players') : 'Keep the room', ok: 'Close it, start fresh', danger: true },
     );
     return !close && kept.room === room;
+  }
+
+  /**
+   * ▶ Play into a kept room: the game plays with Buzzer mode on and the team mode the phones joined with, and another
+   * game's room brings its players along. The game in the editor keeps them too (one step, undoable there), as ticking
+   * them on the pre-game screen does. Otherwise Resume with my edits, or an undo before the game, would take them back
+   * off unasked (and after a quick reload, the editor's copy may not say Buzzer mode is on yet).
+   */
+  function keepRoomSetup(room: SavedRoom): void {
+    const g = app.game;
+    const teams = roomTeams(room, g.settings);
+    const had = $state.snapshot(g.players);
+    const rows = room.gameId !== g.id && Array.isArray(room.players) ? room.players.map(({ id, name, color, avatar }) => ({ id, name, color, ...(avatar ? { avatar } : {}) })) : [];
+    const players = rows.length ? keptRoster(had, rows) : null;
+    const brings = !!players && JSON.stringify(players) !== JSON.stringify(had);
+    const on = [...(g.settings.buzzer ? [] : ['Buzzer mode on']), ...(!!g.settings.buzzTeams === !!teams ? [] : [teams ? 'Teams on' : 'Teams off'])];
+    if (!on.length && !brings) return;
+    const n = rows.length;
+    const label = `Kept buzzer room ${room.remote.code}${brings ? ` and its ${n} ${teams ? 'team' : 'player'}${n === 1 ? '' : 's'}` : ''}${on.length ? ` (${on.join(', ')})` : ''}`;
+    step(
+      label,
+      () => {
+        g.settings.buzzer = true;
+        g.settings.buzzTeams = teams;
+        if (brings) g.players = players!;
+      },
+      { during: 'play' },
+    );
   }
 
   /**
