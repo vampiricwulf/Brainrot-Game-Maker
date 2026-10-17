@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { colorDistance, contrast, CVD_SAFE_UPTO, luminance, nearKey, parseHex, PLAYER_PALETTE, textOn, toHex, type Vision } from './colors';
+import { colorDistance, contrast, CVD_SAFE_UPTO, luminance, nearKey, obsKeyed, parseHex, PLAYER_PALETTE, textOn, toHex, type Vision } from './colors';
 
 describe('contrast', () => {
   it('follows WCAG: black on white is 21, a color on itself is 1', () => {
@@ -85,6 +85,18 @@ describe('player colors near the chroma key', () => {
     }
     expect(nearKey('#3cb44b', '#ff00ff')).toBe(false);
     expect(nearKey('not a color', '#00ff00')).toBe(false);
+  });
+});
+
+describe('colors OBS’s Chroma Key makes see-through', () => {
+  it('by its own maths, at its default Similarity and Smoothness', () => {
+    // Brainrot Neon's green values: gone on a green key.
+    expect(obsKeyed('#39ff14', '#00ff00')).toBe(true);
+    // Classic's blue tiles on a magenta key: partly see-through (0.45 away).
+    expect(obsKeyed('#060ce9', '#ff00ff')).toBe(true);
+    for (const c of ['#060ce9', '#ffcc00', '#ffffff', '#000000', '#808080']) expect(obsKeyed(c, '#00ff00')).toBe(false);
+    for (const c of ['#ffcc00', '#00ff00', '#ffffff', '#000000']) expect(obsKeyed(c, '#ff00ff')).toBe(false);
+    expect(obsKeyed('not a color', '#00ff00')).toBe(false);
   });
 });
 

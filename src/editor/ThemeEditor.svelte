@@ -24,6 +24,7 @@
     BANNER_MAX,
     BANNER_MIN,
     clueTextColor,
+    keyedThemeColors,
     LOOK_RANGES,
     lookNumber,
     stageText,
@@ -78,6 +79,9 @@
   /** How well the values and the category names read on their colors (a note under 3:1). */
   const readable = $derived(themeReadability(t));
   const hard = (r: number | null): r is number => r !== null && r < 3;
+  /** The colors OBS would make see-through with the stage background's chroma key (a note offers the other key when it wouldn't). */
+  const keyed = $derived(keyedThemeColors(t));
+  const otherKey = $derived(t.stageBg === 'green' ? 'magenta' : 'green');
 
   const COLORS: [keyof typeof t, string][] = [
     ['tile', 'Tiles & slide background'],
@@ -364,6 +368,12 @@
         </label>
       {/if}
     </div>
+    {#if keyed.length}
+      <p class="warn small" role="status">
+        ⚠ With a {t.stageBg} key, OBS would make these see-through on stream: {keyed.join(', ')}. Pick colors further from
+        {t.stageBg}{keyedThemeColors(t, otherKey).length ? '' : `, or the ${otherKey} key`}.
+      </p>
+    {/if}
     <p class="muted small">
       Slides use the tile color as their background unless they set their own. Text styles are set in the slide editor;
       category images and board images in each round's tab.

@@ -48,7 +48,7 @@
   import { isColorTaken, nearKey, nextFreeColor, PLAYER_PALETTE } from '../lib/colors';
   import { announce } from '../lib/announce';
   import { ask } from '../lib/ask.svelte';
-  import { STAGE_KEYS } from '../lib/theme';
+  import { keyedThemeColors, STAGE_KEYS } from '../lib/theme';
   import ToolLauncher from './host/ToolLauncher.svelte';
   import KeysHelp from './KeysHelp.svelte';
   import Stage from '../lib/Stage.svelte';
@@ -892,6 +892,8 @@
     const key = game.theme?.stageBg ? STAGE_KEYS[game.theme.stageBg] : undefined;
     return key ? session.players.filter((p) => nearKey(p.color, key)) : [];
   });
+  /** The theme's colors that key would make see-through (🎨 Theme says so too). */
+  const keyedTheme = $derived(game.theme ? keyedThemeColors(game.theme) : []);
 
   const info = $derived(currentClueInfo(session, game));
 
@@ -3973,6 +3975,13 @@
             <p class="warn small" data-warn="chroma">
               ⚠ {nameList(keyedOut.map((p) => p.name || 'A player'))}’s color is close to the chroma key ({game.theme.stageBg}, 🎨 Theme ›
               Stage background): OBS would key it out on stream. Pick another color, or a {other} key.
+            </p>
+          {/if}
+          {#if keyedTheme.length && game.theme.stageBg}
+            {@const other = game.theme.stageBg === 'green' ? 'magenta' : 'green'}
+            <p class="warn small" data-warn="chroma-theme">
+              ⚠ Some of the theme’s colors are close to the chroma key ({game.theme.stageBg}, 🎨 Theme › Stage background): OBS would
+              make them see-through on stream ({keyedTheme.join(', ').toLowerCase()}). Pick others in 🎨 Theme{keyedThemeColors(game.theme, other).length ? '' : `, or a ${other} key`}.
             </p>
           {/if}
           {#if !session.players.length}

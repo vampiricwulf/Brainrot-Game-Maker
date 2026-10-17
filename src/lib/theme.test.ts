@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { contrast } from './colors';
-import { altTile, EXTRA_LOOKS, headerBackground, isThemeColor, isThemeFont, lookNumber, presetEdited, presetTheme, stageText, themeReadability, themeStyle, tileBackground, type Theme } from './theme';
+import { altTile, EXTRA_LOOKS, headerBackground, isThemeColor, isThemeFont, keyedThemeColors, lookNumber, presetEdited, presetTheme, stageText, themeReadability, themeStyle, tileBackground, type Theme } from './theme';
 import { migrateGame, newGame } from './model';
 import { categoryBox } from './boardfit';
 
@@ -191,5 +191,27 @@ describe('readability', () => {
     expect(themeReadability({ ...pastel, clueColor: '#ffcc00' }).clue!).toBeLessThan(1.5);
     // Plain white is drawn in the slides' text color, which `text` checks.
     expect(themeReadability({ ...pastel, clueColor: '#FFFFFF' }).clue).toBeNull();
+  });
+});
+
+describe('colors OBS would key out', () => {
+  it('names the theme colors a chroma-key stage background makes see-through', () => {
+    const neon = presetTheme('neon');
+    expect(keyedThemeColors(neon)).toEqual([]);
+    // Neon's green values on the green key (its cyan names go partly see-through), its magenta glow on the magenta one.
+    expect(keyedThemeColors({ ...neon, stageBg: 'green' })).toEqual(['Values', 'Category names']);
+    expect(keyedThemeColors({ ...neon, stageBg: 'magenta' })).toEqual(['Tiles & slide background', 'Tile glow']);
+    expect(keyedThemeColors(presetTheme('classic'), 'green')).toEqual([]);
+    // (Classic's blue tiles are less than half there on a magenta key.)
+    expect(keyedThemeColors(presetTheme('classic'), 'magenta')).toEqual(['Tiles & slide background', 'Used tiles']);
+    expect(keyedThemeColors(presetTheme('dark'), 'green')).toEqual([]);
+    expect(keyedThemeColors(presetTheme('dark'), 'magenta')).toEqual([]);
+  });
+
+  it('only the looks that show: played tiles in their color, a glow, alternating tiles, a line under the categories', () => {
+    const t: Theme = { ...presetTheme('dark'), stageBg: 'green', tileUsed: '#00ff00', glow: '#00ff00', tile2: '#00ff00', headerLine: '#00ff00' };
+    expect(keyedThemeColors(t)).toEqual(['Used tiles', 'Tile glow', 'Line under the categories']);
+    expect(keyedThemeColors({ ...t, usedLook: 'dim', glow: 'none', tilePattern: 'rows', headerLine: 'none' })).toEqual(['Second tile color']);
+    expect(keyedThemeColors({ ...t, tileUsed: 'rgb(0, 200, 0)', clueColor: '#33ee33' }, 'green')).toEqual(['Used tiles', 'Tile glow', 'Clue text color', 'Line under the categories']);
   });
 });

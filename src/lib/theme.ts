@@ -1,5 +1,5 @@
 // Board/stage themes (spec §5.7): presets plus per-game overrides, applied as CSS variables.
-import { contrast, mixHex, textOn, toHex } from './colors';
+import { contrast, mixHex, obsKeyed, textOn, toHex } from './colors';
 import { cssUrl } from './links';
 import type { Id } from './model';
 
@@ -196,6 +196,33 @@ export function themeReadability(t: Theme): { values: number | null; names: numb
     // slides' text color: TextBox).
     clue: worst(clueTextColor(t), [t.tile]),
   };
+}
+
+/**
+ * The theme's colors on stream that OBS's Chroma Key would make see-through with this key (the stage background's, by
+ * default), by their names on the 🎨 Theme page. None without a key.
+ */
+export function keyedThemeColors(t: Theme, key: Theme['stageBg'] = t.stageBg): string[] {
+  if (!key) return [];
+  const shown: [string, string | undefined][] = [
+    ['Tiles & slide background', t.tile],
+    // (Dimmed played tiles are the tile color, darker; hidden ones are gone.)
+    ['Used tiles', t.usedLook ? undefined : t.tileUsed],
+    ['Values', t.value],
+    ['Category names', t.boardText],
+    ['Text on slides & scores', stageText(t)],
+    ['Score bar', t.scoreBarBg],
+    ['Tile glow', t.glow === 'none' ? undefined : t.glow],
+    ['Clue text color', clueTextColor(t)],
+    ['Second tile color', t.tilePattern ? t.tile2 : undefined],
+    ['Tile gradient', t.tileGradient],
+    ['Border color', t.tileBorder],
+    ['Category color', t.headerBg],
+    ['Second category color', t.header2],
+    ['Category gradient', t.headerGradient],
+    ['Line under the categories', t.headerLine === 'none' ? undefined : t.headerLine],
+  ];
+  return shown.filter(([, c]) => obsKeyed(toHex(c) ?? '', STAGE_KEYS[key])).map(([name]) => name);
 }
 
 /**

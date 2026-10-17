@@ -165,3 +165,19 @@ export function nearKey(color: string, key: string): boolean {
   const d = Math.abs(hue(c) - hue(k));
   return Math.min(d, 360 - d) < 30;
 }
+
+/** A 0–255 color as OBS's Chroma Key filter sees it: its Cb and Cr (BT.709, as in OBS's chroma_key_filter_v2.effect). */
+const obsCbCr = ([r, g, b]: [number, number, number]) => [(-0.100644 * r - 0.338572 * g + 0.439216 * b) / 255, (0.439216 * r - 0.398942 * g - 0.040274 * b) / 255];
+
+/**
+ * A color OBS's Chroma Key filter makes see-through with this key color, at its default Similarity (400) and
+ * Smoothness (80): closer to the key than 0.4 in Cb and Cr it's gone, and up to 0.48 it's partly see-through.
+ */
+export function obsKeyed(color: string, key: string): boolean {
+  const c = parseHex(color);
+  const k = parseHex(key);
+  if (!c || !k) return false;
+  const a = obsCbCr(c);
+  const b = obsCbCr(k);
+  return Math.hypot(a[0] - b[0], a[1] - b[1]) < 0.48;
+}

@@ -16,6 +16,7 @@ in plain words for the people who make and host games. Anything committed but no
 ### Added
 - A board game that moves by a wheel whose slices name no number (“One”, “Lose a turn”) says why a spin fills in nothing: Move by in the editor and the checklist warn about it (name the slices “3”, “Move 3”, “Back 2”), and in play the host is told to type the steps once it lands.
 - The editor's checklist notes a board-game space so near the top of the board that the turn banner, the win notes or a zone's label can cover it on stream (near the bottom, when the scores are at the top), and says to move it down (or up) a little.
+- With a chroma-key Stage background (🎨 Theme › Board), the Theme page and the pre-game screen name the theme's colors OBS's Chroma Key would make see-through on stream, worked out as OBS does at its default settings: Brainrot Neon's green values (and its cyan category names) on the green key, its tiles and glow on the magenta one, or Classic's blue tiles on magenta. They suggest the other key when it would leave every color alone.
 - 🎭 Deal… warns before 📤 Send when the deal's cards would fill the phones (they hold 8 cards at once, all phones together, so a deal to 8 players fills them): until you take its cards back, or the round ends, no other 🤫 card could reach a phone, a partner clue's included.
 
 ### Fixed

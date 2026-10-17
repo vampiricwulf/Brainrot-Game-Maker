@@ -82,12 +82,27 @@ try {
   await page.getByLabel('Stage background (OBS)').selectOption('green');
   const bg = await page.locator('.preview .board-bg').evaluate((e) => getComputedStyle(e).backgroundColor);
   assert(bg === 'rgb(0, 255, 0)', `the board's background is chroma green (${bg})`);
+  // Theme colors close to the key: the page names them.
+  const keyNote = page.getByRole('status').filter({ hasText: 'OBS would make these see-through' });
+  await page.locator('.preset', { hasText: 'Brainrot Neon' }).click();
+  await keyNote.waitFor();
+  const neonNote = await keyNote.innerText();
+  assert(neonNote.includes(': Values, Category names.') && !neonNote.includes('magenta key'), `Brainrot Neon on a green key: the Theme page names its green values and cyan names, and doesn't offer magenta, where its glow goes (${neonNote})`);
+  await page.getByRole('button', { name: 'Classic', exact: true }).click();
+  await keyNote.waitFor({ state: 'detached' });
+  assert(true, 'Classic on a green key: no note');
+  await page.getByLabel('Values', { exact: true }).fill('#39ff14');
+  await keyNote.waitFor();
+  assert((await keyNote.innerText()).includes(': Values.'), 'green values on Classic: the note names them');
 
   // ---------- Play: players on the pre-game screen; Start places a Daily Double the board wants but hasn't got ----------
   await page.locator('nav button.round-tab').first().click();
   await page.getByLabel('How many Daily Doubles').fill('1');
   await page.getByLabel('How many Daily Doubles').press('Tab');
   await playWithPlayers(page, 3);
+  const themeKeyNote = page.locator('[data-warn="chroma-theme"]');
+  await themeKeyNote.waitFor();
+  assert((await themeKeyNote.innerText()).includes('see-through on stream (values)'), 'and so does the pre-game screen');
   const ddNote = page.locator('.actions', { hasText: '⭐ 1 Daily Double not placed' });
   assert((await ddNote.count()) === 1, 'the pre-game screen says, next to Start game, that a Daily Double isn’t placed yet');
   // (Its random pick is the last tile it could take, so the first tile clicked below is an ordinary clue.)

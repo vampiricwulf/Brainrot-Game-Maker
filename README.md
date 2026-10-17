@@ -253,7 +253,8 @@ off in the editor's 🔊 Sounds tab (↺ goes back to the built-in sound; a soun
 The players and rules aren't there: the tab says so at the top, with a button to the ▶ Play screen.
 
 **For OBS:** Theme › Stage background can be chroma green or magenta for keying (the pre-game screen warns when a
-player's color is close to the key, which would key it out), and **▭** (or `Shift+A`) opens a
+player's color is close to the key, which would key it out, and the Theme page and the pre-game screen name the theme's
+colors OBS would make see-through, such as Brainrot Neon's green values on the green key), and **▭** (or `Shift+A`) opens a
 scores-only window for a lower-third capture. The "Starting soon" and cover cards can be edited, with a countdown
 (the host sees its time left). **Reduce motion on stream** is in the pre-game screen's On stream section too.
 
