@@ -22,7 +22,7 @@ describe('settings', () => {
     savePrefs();
     expect(prefs.buzzerServer).toBe('https://buzz.example.workers.dev');
     expect(serverAddress('http://localhost:8787')).toBe('http://localhost:8787');
-    expect(serverAddress('HTTPS://Buzz.example.workers.dev//')).toBe('HTTPS://Buzz.example.workers.dev');
+    expect(serverAddress('HTTPS://Buzz.example.workers.dev//')).toBe('https://Buzz.example.workers.dev');
     expect(serverAddress('  ')).toBe('');
   });
 });

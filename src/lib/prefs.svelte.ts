@@ -45,10 +45,14 @@ function load(): Prefs {
 
 export const prefs = $state<Prefs>(load());
 
-/** A buzzer server's address: one typed without its https:// (as Cloudflare's dashboard shows it) gets it. */
+/**
+ * A buzzer server's address: one typed without its https:// (as Cloudflare's dashboard shows it) gets it, and one typed
+ * HTTPS:// has it in small letters (as ⚙ Settings › Test and the room link on stream read it).
+ */
 export function serverAddress(url: string): string {
   const u = url.trim().replace(/\/+$/, '');
-  return u && !/^[a-z][a-z\d+.-]*:\/\//i.test(u) ? `https://${u}` : u;
+  const scheme = /^[a-z][a-z\d+.-]*:\/\//i.exec(u)?.[0];
+  return scheme ? scheme.toLowerCase() + u.slice(scheme.length) : u && `https://${u}`;
 }
 
 /** The numbers last kept: a box emptied (to type another) keeps its number instead of saving 0 or 1. */
