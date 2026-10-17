@@ -204,18 +204,21 @@ describe('board game: the host’s moves on the stage', () => {
     ];
     const name = (live: ReturnType<typeof newLive>) => (live.overlay?.kind === 'wheel' ? live.overlay.name : null);
     const live = newLive();
-    runSpace(game, session, live, sp, ['a']);
+    expect(runSpace(game, session, live, sp, ['a'])).toBe(`${sp.name}: Spin Pick a player: then press the outcome`);
     expect(name(live)).toBe('Pick a player');
     const was = prefs.buzzerServer;
     prefs.buzzerServer = 'https://buzz.example.workers.dev';
     game.settings.buzzer = true;
     game.settings.buzzTeams = true;
+    let said = '';
     try {
-      runSpace(game, session, live, sp, ['a']);
+      said = runSpace(game, session, live, sp, ['a']);
     } finally {
       prefs.buzzerServer = was;
     }
     expect(name(live)).toBe('Pick a team');
+    // What the host is told says so too.
+    expect(said).toBe(`${sp.name}: Spin Pick a team: then press the outcome`);
   });
 
   it('going back past Start is no pass of it; a player who left takes their last move’s buttons with them', () => {

@@ -18,6 +18,7 @@ in plain words for the people who make and host games. Anything committed but no
 - With a chroma-key Stage background, the Daily Double splash's pink and purple (gone on a magenta key) and 🤝 PARTNER UP!'s greens (gone on a green key) take each other's colors, so OBS no longer punches a hole in the middle of the stage on each one.
 - The chroma-key notes (🎨 Theme and the pre-game screen) no longer name Tile glow or Border color when its size is 0, where it doesn't show (it also kept the other key from being offered), and they name a Tile or Category gradient whose middle OBS would make see-through, though both its colors are clear of the key (orange to blue on magenta).
 - With a chroma-key Stage background, the pre-game note about a player's color close to the key now works it out as OBS does, as the theme's note does: it warns about the palette's red (the first player's color) on a magenta key and its yellow on a green one, which OBS makes see-through, and no longer suggests the other key when it would take a player's red or yellow out.
+- With phone buzzer Teams on, a button that spins the 🎯 wheel reads “Spin Pick a team”, as the wheel on stream does, and so does what the host is told when it's pressed: a board space's buttons (as it's landed on or passed, and on its card, ▶ Start too), an RPG object's or item's, and a wheel slice's or a die face's. They said “Spin Pick a player”.
 
 ## 2026-10-17
 

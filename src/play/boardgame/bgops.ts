@@ -102,8 +102,8 @@ export function runSpace(game: Game, session: Session, live: Live, space: BoardS
   let said: string[] = [];
   const ctx = { game, session, live, board: round, bs, selected: who, chosen: who, teams: buzzerOn(game.settings) && teamsOn(game.settings), offerCard: offerIn(session) };
   const on = which === 'onPass' ? 'pass' : 'land';
-  logged(session, `${space.name}: ${run.map((a) => describeAction(game, a, on)).join(', ')}`, () => {
-    said = run.map((a) => runAction(ctx, a, `${space.name}: ${describeAction(game, a, on)}`));
+  logged(session, `${space.name}: ${run.map((a) => describeAction(game, a, on, ctx.teams)).join(', ')}`, () => {
+    said = run.map((a) => runAction(ctx, a, `${space.name}: ${describeAction(game, a, on, ctx.teams)}`));
   });
   return decides ? `${said.join(' · ')}: then press the outcome` : said.join(' · ');
 }

@@ -32,7 +32,7 @@ function playerSegments(session: Session): WheelSegment[] {
 }
 
 /** The built-in "Pick a player" wheel's name on screen ("Pick a team" when each player is a team). */
-const playerWheelName = (teams: boolean) => (teams ? 'Pick a team' : 'Pick a player');
+export const playerWheelName = (teams: boolean) => (teams ? 'Pick a team' : 'Pick a player');
 
 /** The built-in "Pick a player" wheel: lands on one of the current players. `teams`: each player is a team. */
 export function openPlayerWheel(live: Live, session: Session, teams = false): void {

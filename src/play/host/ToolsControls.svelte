@@ -111,7 +111,7 @@
   function runOutcome(a: Action, from: string): void {
     if (needsPlayers(a) && !chosen.length && !selected.length) return void toast('Tag who it was for first');
     const { world, st } = rpgNow(game, session);
-    toast(runAction({ game, session, live: app.live, world, st, selected, chosen, teams, offerCard: offerIn(session) }, a, `${from}: ${describeAction(game, a)}`), 3000);
+    toast(runAction({ game, session, live: app.live, world, st, selected, chosen, teams, offerCard: offerIn(session) }, a, `${from}: ${describeAction(game, a, undefined, teams)}`), 3000);
     // The button can go with what it did (a question pop-up replaces the wheel): the keys go to the main button, not to
     // the Amount box, where R, Esc and N mean nothing.
     void tick().then(() => {
@@ -271,7 +271,7 @@
     {#if outcome?.actions?.length && !busy && (o.kind === 'wheel' || o.kind === 'dice')}
       <div class="row">
         <span class="muted small">{outcomeName}:</span>
-        {#each outcome.actions as a (a.id)}<button class="small" onclick={() => runOutcome(a, `${o.name} → ${outcomeName}`)}>{describeAction(game, a)}</button>{/each}
+        {#each outcome.actions as a (a.id)}<button class="small" onclick={() => runOutcome(a, `${o.name} → ${outcomeName}`)}>{describeAction(game, a, undefined, teams)}</button>{/each}
       </div>
     {/if}
     {#if !busy}
@@ -280,7 +280,7 @@
         {@const diceName = o.kind === 'dice' ? o.name : ''}
         <div class="row">
           <span class="muted small">Die {f.i + 1} → {label}:</span>
-          {#each f.face.actions ?? [] as a (a.id)}<button class="small" onclick={() => runOutcome(a, `${diceName} → ${label}`)}>{describeAction(game, a)}</button>{/each}
+          {#each f.face.actions ?? [] as a (a.id)}<button class="small" onclick={() => runOutcome(a, `${diceName} → ${label}`)}>{describeAction(game, a, undefined, teams)}</button>{/each}
           {#if f.face.timerSeconds}<button class="small" onclick={() => startTimer(app.live, f.face.timerSeconds!)}>⏱ Start {f.face.timerSeconds}s</button>{/if}
         </div>
         {#if f.face.scoreAction && !cardDone(`${actionKey}-die${f.i}`)}
@@ -302,7 +302,7 @@
         {#if r.seg.actions?.length || r.seg.scoreAction || r.seg.timerSeconds}
           <div class="row">
             <span class="muted small">{r.w.name} → {label}:</span>
-            {#each r.seg.actions ?? [] as a (a.id)}<button class="small" onclick={() => runOutcome(a, `${r.w.name} → ${label}`)}>{describeAction(game, a)}</button>{/each}
+            {#each r.seg.actions ?? [] as a (a.id)}<button class="small" onclick={() => runOutcome(a, `${r.w.name} → ${label}`)}>{describeAction(game, a, undefined, teams)}</button>{/each}
             {#if r.seg.timerSeconds}<button class="small" onclick={() => startTimer(app.live, r.seg.timerSeconds!)}>⏱ Start {r.seg.timerSeconds}s</button>{/if}
           </div>
           {#if r.seg.scoreAction && !cardDone(`${actionKey}-${r.w.key}`)}

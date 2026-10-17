@@ -77,8 +77,8 @@
     if (list.some(needsPlayers) && !who.length) return void toast('Pick who it’s for first');
     let said: string[] = [];
     // One undoable step for all of them.
-    logged(session, `${title}: ${list.map((a) => describeAction(game, a)).join(', ')}`, () => {
-      said = list.map((a) => runAction({ ...ctx, chosen: who, world, st, at: screen.id }, a, `${title}: ${describeAction(game, a)}`));
+    logged(session, `${title}: ${list.map((a) => describeAction(game, a, undefined, ctx.teams)).join(', ')}`, () => {
+      said = list.map((a) => runAction({ ...ctx, chosen: who, world, st, at: screen.id }, a, `${title}: ${describeAction(game, a, undefined, ctx.teams)}`));
     });
     toast(said.join(' · '), 4000);
   }
@@ -107,7 +107,7 @@
 
   function run(a: NonNullable<typeof role>['actions'] extends (infer T)[] | undefined ? T : never): void {
     if (needsPlayers(a) && !who.length) return void toast('Pick who it’s for first');
-    toast(runAction({ ...ctx, chosen: who, world, st, at: screen.id }, a, `${title}: ${describeAction(game, a)}`), 3000);
+    toast(runAction({ ...ctx, chosen: who, world, st, at: screen.id }, a, `${title}: ${describeAction(game, a, undefined, ctx.teams)}`), 3000);
   }
 
   function setShown(v: boolean): void {
@@ -235,7 +235,7 @@
     {#if role?.dialogue}<button onclick={talk}>💬 Talk</button>{/if}
     {#if role?.shop}<button onclick={openShop} disabled={!shopExists} title={shopExists ? undefined : 'That shop no longer exists: pick another with ✎ Edit'}>🛒 Shop</button>{/if}
     {#each role?.actions ?? [] as a (a.id)}
-      <button onclick={() => run(a)}>{describeAction(game, a)}</button>
+      <button onclick={() => run(a)}>{describeAction(game, a, undefined, ctx.teams)}</button>
     {/each}
     {#if (role?.actions?.length ?? 0) > 1}<button class="small" onclick={runAll} title="Every action above, in order">▶ Run all</button>{/if}
   </div>

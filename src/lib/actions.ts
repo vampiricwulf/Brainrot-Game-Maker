@@ -3,7 +3,7 @@
 import { formatPoints, newId, PLAYER_WHEEL, type Action, type BoardGameRound, type BoardGameState, type CardWho, type Game, type Session, type Slide, type Who, type World, type WorldState } from './model';
 import { movePlayer, sendTo, skipTurns, spaceById } from './boardgame';
 import { blip, playSound, startTimer, type Live } from './live';
-import { addWheel, openPlayerWheel, openWheel, quickDice, rollDice } from './overlay';
+import { addWheel, openPlayerWheel, openWheel, playerWheelName, quickDice, rollDice } from './overlay';
 import { parseDice } from './tools';
 import { layerLabel } from './layerlabel';
 import { actionProblem, objectsWhere } from './refs';
@@ -136,8 +136,11 @@ export function needsPlayers(a: Action): boolean {
   return a.do === 'stat' || a.do === 'item' || a.do === 'score' || ((a.do === 'move' || a.do === 'goto') && a.who !== 'party');
 }
 
-/** A one-line description for buttons and the log ("HP −1", "Give 2 Potion"). `on`: where its button is (cardFor). */
-export function describeAction(game: Game, a: Action, on?: ActionOn): string {
+/**
+ * A one-line description for buttons and the log ("HP −1", "Give 2 Potion"). `on`: where its button is (cardFor);
+ * `teams`: each player is a team (the built-in wheel is "Pick a team").
+ */
+export function describeAction(game: Game, a: Action, on?: ActionOn, teams = false): string {
   switch (a.do) {
     case 'stat': {
       const f = statFields(game).find((x) => x.id === a.field);
@@ -148,7 +151,7 @@ export function describeAction(game: Game, a: Action, on?: ActionOn): string {
     case 'score':
       return `${a.amount >= 0 ? '+' : '−'}${formatPoints(Math.abs(a.amount), game.settings.currencySymbol)}`;
     case 'wheel': {
-      const name = (id: string) => (id === PLAYER_WHEEL ? 'Pick a player' : (game.wheels.find((w) => w.id === id)?.name ?? 'wheel'));
+      const name = (id: string) => (id === PLAYER_WHEEL ? playerWheelName(teams) : (game.wheels.find((w) => w.id === id)?.name ?? 'wheel'));
       return `Spin ${[a.wheel, ...(a.also ?? [])].map(name).join(' + ')}`;
     }
     case 'dice':
@@ -196,7 +199,7 @@ export function describeAction(game: Game, a: Action, on?: ActionOn): string {
 /** Run one action. Returns a message for the host (what happened, or why not). */
 export function runAction(ctx: RunContext, a: Action, label?: string): string {
   const { game, session, live } = ctx;
-  const text = label ?? describeAction(game, a);
+  const text = label ?? describeAction(game, a, undefined, !!ctx.teams);
   // What it points at was deleted (or never chosen): say so instead of doing something odd.
   const gone = actionProblem(game, a, ctx);
   if (gone) return gone;

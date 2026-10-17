@@ -28,6 +28,14 @@ describe('a wheel button', () => {
     runAction({ ...ctx, teams: true }, { id: '1', do: 'wheel', wheel: PLAYER_WHEEL, also: [PLAYER_WHEEL] });
     expect(names()).toEqual(['Pick a team', 'Pick a team']);
   });
+
+  it('says so on its button and in what it tells the host', () => {
+    const ctx = setup();
+    const spin: Action = { id: '1', do: 'wheel', wheel: PLAYER_WHEEL };
+    expect(describeAction(ctx.game, spin)).toBe('Spin Pick a player');
+    expect(describeAction(ctx.game, spin, 'land', true)).toBe('Spin Pick a team');
+    expect(runAction({ ...ctx, teams: true }, spin)).toBe('Spin Pick a team');
+  });
 });
 
 describe('running buttons that point nowhere', () => {

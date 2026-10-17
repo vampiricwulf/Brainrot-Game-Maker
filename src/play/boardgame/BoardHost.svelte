@@ -129,7 +129,7 @@
 
   function run(a: Action, who: string, on: 'land' | 'pass'): void {
     if (needsPlayers(a) && !who) return void hint('Pick who it’s for first');
-    toast(runAction({ ...ctx, chosen: [who] }, a, describeAction(game, a, on)), 3000);
+    toast(runAction({ ...ctx, chosen: [who] }, a, describeAction(game, a, on, ctx.teams)), 3000);
   }
 
   function send(to: string): void {
@@ -384,7 +384,7 @@
       <div class="row acts">
         {#each passed as s (s.id)}
           <span class="muted small">Passed {s.name}:</span>
-          {#each s.onPass ?? [] as a (a.id)}<button class="small" onclick={() => run(a, last.playerId, 'pass')}>{describeAction(game, a, 'pass')}</button>{/each}
+          {#each s.onPass ?? [] as a (a.id)}<button class="small" onclick={() => run(a, last.playerId, 'pass')}>{describeAction(game, a, 'pass', ctx.teams)}</button>{/each}
         {/each}
         {#if landed}
           <!-- Landing on a space counts as passing it too (landing on Start still pays), unless sent back onto it
@@ -393,8 +393,8 @@
           <span class="muted small"
             >Landed on <b>{landed.name}</b>{passOn.length ? ' (counts as passing)' : ''}{landed.onLand?.length || passOn.length ? ':' : '.'}</span
           >
-          {#each passOn as a (a.id)}<button class="small" onclick={() => run(a, last.playerId, 'pass')}>{describeAction(game, a, 'pass')}</button>{/each}
-          {#each landed.onLand ?? [] as a (a.id)}<button class="small" onclick={() => run(a, last.playerId, 'land')}>{describeAction(game, a, 'land')}</button>{/each}
+          {#each passOn as a (a.id)}<button class="small" onclick={() => run(a, last.playerId, 'pass')}>{describeAction(game, a, 'pass', ctx.teams)}</button>{/each}
+          {#each landed.onLand ?? [] as a (a.id)}<button class="small" onclick={() => run(a, last.playerId, 'land')}>{describeAction(game, a, 'land', ctx.teams)}</button>{/each}
           {#if landed.secret && !bs.revealed?.includes(landed.id)}<button class="small ghost" onclick={() => reveal(landed)}>👁 Reveal space</button>{/if}
           {#if landed.hostNotes && !dual}<span class="notes">📝 {landed.hostNotes}</span>{/if}
         {/if}
