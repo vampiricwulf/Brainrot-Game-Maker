@@ -18,7 +18,7 @@ import { chromium } from 'playwright-core';
 import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { editorReady, macClicks, openGameFile, packGame, png, recordSeen, shownOf, startBuzzer, stored } from './helpers.mjs';
+import { editorReady, forgetSeen, macClicks, openGameFile, packGame, png, recordSeen, shownOf, startBuzzer, stored } from './helpers.mjs';
 
 const file = resolve(process.env.APP_FILE || 'dist/index.html');
 if (!existsSync(file)) throw new Error('Run `npm run build` first');
@@ -326,8 +326,9 @@ try {
   // B. Play, one window, against the real buzzer room
   // =====================================================================================================================
   console.log('Play, one window:');
-  // (What the editor showed doesn't count: from here on the host page is on stream.)
-  await host.evaluate(() => (window.__seen.length = 0));
+  // (What the editor showed doesn't count, nor its last notices (the Delete above), said a moment late: from here on the
+  // host page is on stream.)
+  await forgetSeen(host);
   await host.getByRole('button', { name: '▶ Play' }).click();
   const roomCard = host.getByRole('region', { name: 'Phone buzzers' });
   await roomCard.getByRole('button', { name: '▶ Start the room' }).click();
