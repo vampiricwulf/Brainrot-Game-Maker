@@ -149,7 +149,7 @@ export function moverDiceName(game: Game, round: BoardGameRound): string | undef
  */
 export function moverResult(game: Game, round: BoardGameRound, o: Live['overlay']): number | null {
   const m = round.mover;
-  // A custom face that names a number ("Back 2") moves by it, as viewers see it; any other face by the number it came up on.
+  // A die's own face that names a number ("Back 2") moves by it, as viewers see; any other by the number it came up on.
   if (o?.kind === 'dice' && o.roll && o.mover && m.kind === 'dice') return o.roll.dice.reduce((t, d) => t + (stepsIn(d.face?.label ?? '') ?? d.value), 0);
   if (o?.kind === 'wheel' && o.spin && o.result !== null && m.kind === 'wheel' && o.wheelId === m.wheel) return stepsIn(o.segments[o.result]?.label ?? '');
   return null;

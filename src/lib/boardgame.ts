@@ -111,8 +111,8 @@ export function previousOf(round: BoardGameRound, id: Id): BoardSpace[] {
 
 /**
  * A space about to be deleted: the spaces that led to it lead everywhere it led instead, not back to themselves (a
- * space in the middle of a both-ways path, A ⇄ B ⇄ C, leaves A ⇄ C; a deleted fork moves back one space). True when
- * any of them leads somewhere new.
+ * space in the middle of a both-ways path, A ⇄ B ⇄ C, leaves A ⇄ C; a deleted fork moves back one space). True
+ * when any of them leads somewhere new.
  */
 export function closeUpOver(round: BoardGameRound, s: BoardSpace): boolean {
   let bridged = false;
@@ -335,7 +335,7 @@ export const MAX_STEPS = 99;
 /** A longer move than this many spaces jumps straight to where it ends on screen, rather than stepping for a minute. */
 export const MAX_HOPS = 20;
 
-/** The steps a wheel slice or die face says ("3", "Move 3"; "Back 2" or "← 2" backwards), or null when it names no number. */
+/** The steps a wheel slice or a die's face says ("3", "Move 3"; "Back 2" or "← 2" go back), or null: no number. */
 export function stepsIn(label: string): number | null {
   const n = parseInt(label.match(/-?\d+/)?.[0] ?? '', 10);
   return Number.isFinite(n) ? (/^\W*(back|←)/i.test(label.trim()) ? -Math.abs(n) : n) : null;
@@ -404,7 +404,7 @@ export function shownSpace(bs: BoardGameState, playerId: Id, now: number): Id | 
 /** A board space's radius (BoardSpaces draws them 116px across), and how far a token may tuck in over its rim. */
 const SPACE_R = 58;
 const TUCK = 12;
-/** About how far the turn banner reaches into the board on stream, from its edge (board px, with the stats strip in). */
+/** About how far the turn banner reaches into the board on stream (board px, with the stats strip in). */
 const LABELS_H = 110;
 
 /** How big a token is (its radius) with `n` on one space: smaller as the crowd grows. */
@@ -506,7 +506,8 @@ export function boardGameProblems(game: Game, round: BoardGameRound, name: strin
   if (moverDiceUnknown(round))
     out.push({ text: `${name}: Move by “${round.mover.kind === 'dice' ? round.mover.dice : ''}” isn’t dice the app knows: it rolls a d6 (try “2d6”, or pick saved dice)`, tab, level: 'warn', place: at() });
   // (No space is ever under the stats strip: in play the board is scaled into the room the strip leaves.) The turn
-  // banner, the win notes and the zones' labels do go over the board, along the top (the bottom, with the strip at the top).
+  // banner, the win notes and the zones' labels do go over the board: along the top (with the strip at the top, the
+  // bottom).
   const low = game.theme?.scoreBar === 'top';
   const under = round.spaces.filter((s) => (low ? SLIDE_H - s.y : s.y) - SPACE_R < LABELS_H);
   if (under.length)
