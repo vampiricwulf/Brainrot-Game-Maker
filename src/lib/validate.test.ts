@@ -158,7 +158,7 @@ describe('🤝 partner clues', () => {
     expect(mine(game)).toEqual([]);
   });
 
-  it('says a named card by its name; notes a name that repeats what’s on it or the answer, and two cards called alike', () => {
+  it('says a named card by its name; notes a name that repeats what’s on it, the question or the answer, and two cards called alike', () => {
     const { game, round, clue } = partnerGame();
     game.settings.buzzer = true;
     setSlideText(clue.answerSlide, 'Shrek');
@@ -174,7 +174,7 @@ describe('🤝 partner clues', () => {
     expect(nameGivesAway(game, card, [clue.answerSlide])).toBe(true);
     expect(mine(game)).toEqual([
       {
-        text: 'Movies $400: the name of card “Shrek tip” repeats what’s on it or the answer, and in one window viewers can read a card’s name in the host panel',
+        text: 'Movies $400: the name of card “Shrek tip” repeats what’s on it, the question or the answer, and in one window viewers can read a card’s name in the host panel',
         tab: 0,
         level: 'info',
         place: at(card.id),
@@ -182,7 +182,11 @@ describe('🤝 partner clues', () => {
     ]);
     // (Its own words too.)
     card.name = 'Ogre hint';
-    expect(mine(game).map((p) => p.text)).toEqual(['Movies $400: the name of card “Ogre hint” repeats what’s on it or the answer, and in one window viewers can read a card’s name in the host panel']);
+    expect(mine(game).map((p) => p.text)).toEqual(['Movies $400: the name of card “Ogre hint” repeats what’s on it, the question or the answer, and in one window viewers can read a card’s name in the host panel']);
+    // (The question too: a Daily Double's cards are in the panel during its wager, before the question is shown.)
+    setSlideText(clue.questionSlide, 'Swamp');
+    card.name = 'Swamp tip';
+    expect(mine(game).map((p) => p.text)).toEqual(['Movies $400: the name of card “Swamp tip” repeats what’s on it, the question or the answer, and in one window viewers can read a card’s name in the host panel']);
     card.name = 'Clue tip';
     expect(mine(game)).toEqual([]);
     // Card 1 called "Card 2" beside an unnamed card 2: said once, going to the second.
@@ -362,17 +366,21 @@ describe('a Final’s 🤫 cards', () => {
     vi.unstubAllGlobals();
   });
 
-  it('notes a name that repeats what’s on it or the Final’s answer, and two cards called alike', () => {
+  it('notes a name that repeats what’s on it, the Final’s question or its answer, and two cards called alike', () => {
     const { game, final, card } = finalGame();
     card.name = 'Shrek hint';
     expect(mine(game)).toEqual([
       {
-        text: 'Final Jeopardy!: the name of card “Shrek hint” repeats what’s on it or the answer, and in one window viewers can read a card’s name in the host panel',
+        text: 'Final Jeopardy!: the name of card “Shrek hint” repeats what’s on it, the question or the answer, and in one window viewers can read a card’s name in the host panel',
         tab: 1,
         level: 'info',
         place: at(final, card.id),
       },
     ]);
+    // Its question: in the panel from the wagers on, while the question is still hidden.
+    setSlideText(final.questionSlide, 'Bald eagle');
+    card.name = 'Bald eagle hint';
+    expect(mine(game).map((p) => p.text)).toEqual(['Final Jeopardy!: the name of card “Bald eagle hint” repeats what’s on it, the question or the answer, and in one window viewers can read a card’s name in the host panel']);
     card.name = 'Card 2';
     const second = addCard(final, 'nobody')!;
     setSlideText(second, 'Side bet');

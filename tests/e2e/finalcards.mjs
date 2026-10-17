@@ -2,14 +2,16 @@
 // built app hosts a game against the real buzzer room (buzzer/ under `wrangler dev`, local), with three phones on the
 // real phone page.
 // In the editor, a tile's card has a Card name: its tab and its words box say it, typing it is one undo step, a name
-// that repeats the answer says so (and the checklist notes it), and F2 on its tab comes back to it. A Final takes cards
-// too (＋ Card: its words box in focus, Goes to "everyone playing it"), the checklist's line about an empty one goes to
-// it, 🗑 Delete card offers ↶ Undo, 📱 On their phone shows one as a phone gets it, 🔍 Find finds one by its words (its
+// that repeats the answer says so (and the checklist notes it), and F2 on its tab comes back to it (Enter there goes
+// back to the tab). A Final takes cards too (＋ Card: its words box in focus, Goes to "everyone playing it"), the
+// checklist's line about an empty one goes to it, 🗑 Delete card offers ↶ Undo (the last one deleted: the question
+// opens, the keys on its tab), 📱 On their phone shows one as a phone gets it, 🔍 Find finds one by its words (its
 // words box) or its name (its Card name box), and 🖼 Media counts a file used only on one as used, where.
 // In play, one window: a named tile card is offered by its name; the Final's panel lists its cards under the wager rows
 // (above the step's buttons), each starting with everyone playing it (it follows the ticks, and their Undo), and
 // 📤 Send puts one on those phones beside the wager box, by a press, with neither its name nor a file name ever reaching
-// the room. 🤫 Send a card… lists them once the Final is reached; a host reload keeps them out under their ids. Two
+// the room. 🤫 Send a card… lists them once the Final's category is on screen (not from its title card, nor after
+// backing out of it, when its card names never were on the host page); a host reload keeps them out under their ids. Two
 // windows: the column beside the stage shows what's on them, the cards out say which Final and card each one is, never
 // on the audience window. They stay out through the question and the answer, and go when the Final ends; Ctrl+Z back
 // into its reveals doesn't bring them back.
@@ -73,7 +75,7 @@ try {
     title: 'Final cards',
     settings: {
       allowNegativeScores: true, deductOnWrong: false, defaultTimerSeconds: 30, finalTimerSeconds: 30, currencySymbol: '$', rollOffDie: 20, pickerFollowsAward: true, timerAutoStart: false,
-      roundIntro: { titleCard: false, tileFill: false, categoryReveal: 'off' }, maxPlayers: 8, stream: { clueCaption: true }, buzzer: true,
+      roundIntro: { titleCard: true, tileFill: false, categoryReveal: 'off' }, maxPlayers: 8, stream: { clueCaption: true }, buzzer: true,
     },
     players: ['Ann', 'Bob', 'Cat'].map((name, i) => ({ id: `p${i + 1}`, name, color: ['#e6194b', '#3cb44b', '#4363d8'][i] })),
     rounds: [
@@ -190,6 +192,11 @@ try {
   await host.keyboard.press('F2');
   await focused('[data-field="card-name"]');
   assert(true, 'F2 on its tab puts the focus in its Card name');
+  await host.keyboard.press('Enter');
+  await focused('[role="dialog"] [role="tab"][aria-selected="true"][data-card="1"]');
+  assert(true, 'Enter there: the keys are back on its tab');
+  await host.keyboard.press('F2');
+  await focused('[data-field="card-name"]');
   await host.keyboard.press('Escape');
   await dialog.waitFor({ state: 'detached' });
   assert(true, 'Esc from the Card name box closes the clue');
@@ -237,12 +244,33 @@ try {
   await main.getByRole('button', { name: '🗑 Delete card' }).click();
   await tabsAre(main, ['Question slide', '🤫 Leader hint', '🤫 Card 2', 'Answer'], 'deleted again');
 
+  // Its last card deleted (the Answer open before it): the question opens, the keys on its tab, not at the page's top.
+  await main.getByRole('tab', { name: 'Answer' }).click();
+  await main.getByRole('tab', { name: '🤫 Card 2' }).click();
+  await main.getByRole('button', { name: '🗑 Delete card' }).click();
+  await tabsAre(main, ['Question slide', '🤫 Leader hint', 'Answer'], 'Card 2 deleted: Leader hint, beside it, opens');
+  await main.getByRole('button', { name: '🗑 Delete card' }).click();
+  await tabsAre(main, ['Question slide', 'Answer slide (hidden until revealed)'], 'and then the last one');
+  assert((await main.getByRole('tab', { name: 'Question slide' }).getAttribute('aria-selected')) === 'true', 'the question opens, not the Answer open before the card');
+  await focused('main [role="tab"][aria-selected="true"][data-qslide="1"]');
+  assert(true, 'with the keys on its tab');
+  await host.keyboard.press('Control+z');
+  await tabsAre(main, ['Question slide', '🤫 Leader hint', 'Answer'], 'Ctrl+Z: Leader hint back');
+  await host.keyboard.press('Control+z');
+  await tabsAre(main, ['Question slide', '🤫 Leader hint', '🤫 Card 2', 'Answer'], 'Ctrl+Z again: Card 2 back');
+
   // 📱 On their phone.
   await main.getByRole('tab', { name: '🤫 Leader hint' }).click();
   await main.getByRole('button', { name: '📱 On their phone' }).click();
   const phone = host.getByRole('complementary', { name: 'Card on their phone' });
   await phone.locator('img').waitFor();
   assert((await phone.innerText()).includes(HINT), '📱 On their phone: its words and its picture, as a phone gets them');
+  await main.getByRole('tab', { name: '🤫 Leader hint' }).focus();
+  await host.keyboard.press('F2');
+  await focused('main [data-field="card-name"]');
+  await host.keyboard.press('Enter');
+  await focused('main [role="tab"][aria-selected="true"][data-card="1"]');
+  assert(true, 'a Final’s card: F2 on its tab goes to its Card name, Enter back to its tab');
 
   // 🔍 Find: by its words (its words box), by its name (its Card name box).
   const findIt = async (q) => {
@@ -281,10 +309,13 @@ try {
   // B. Play, one window, against the real buzzer room
   // =====================================================================================================================
   console.log('Play, one window:');
-  // (What the editor showed doesn't count: from here on the host page is on stream.)
-  await host.evaluate(() => (window.__seen.length = 0));
   await host.getByRole('button', { name: '▶ Play' }).click();
   const roomCard = host.getByRole('region', { name: 'Phone buzzers' });
+  await roomCard.waitFor();
+  // (What the editor showed doesn't count, nor what it still changed on its way out (↷ Redo's tooltip names a card):
+  // from here on the host page is on stream.)
+  await host.locator('.editor').waitFor({ state: 'detached' });
+  await host.evaluate(() => (window.__seen.length = 0));
   await roomCard.getByRole('button', { name: '▶ Start the room' }).click();
   const codeEl = roomCard.locator('[aria-label^="Room code "]');
   await codeEl.waitFor();
@@ -307,6 +338,8 @@ try {
   const bob = await join('bob', 'Bob');
   const cat = await join('cat', 'Cat');
   await host.getByRole('button', { name: 'Start game ▶' }).click();
+  // (Round 1's title card first.)
+  await host.getByRole('button', { name: 'Skip intro' }).click();
   await host.locator('.stage-box .tile').first().waitFor();
   const seat = Object.fromEntries(last().seats.map((x) => [x.name, x.id]));
   const cardsOn = (p) => p.locator('.card').count();
@@ -329,12 +362,36 @@ try {
   await host.locator('.stage-box .board').waitFor();
   assert((await host.getByRole('alertdialog').count()) === 0, 'nothing went: Shift+Esc puts the tile back without asking');
 
-  // ---------- The Final's wager screen: its cards, under the wager rows ----------
+  // ---------- The Final's title card: its category isn't on screen, nor are its cards' names ----------
+  const tools = host.locator('.panel .toolsrow');
+  const toFinal = async () => {
+    await sleep(450);
+    await host.locator('.rn button', { hasText: '▶' }).click();
+    await confirmStrip(host).waitFor();
+    await sleep(450);
+    await confirmStrip(host).getByRole('button', { name: 'Yes', exact: true }).click();
+  };
+  /** 🤫 Send a card… has nothing made in the editor to pick: none of the Final's cards (and no tile played). */
+  const noneFromEditor = async (when) => {
+    await tools.getByRole('button', { name: '🤫 Send a card…' }).click();
+    const d = host.getByRole('dialog', { name: 'Send a card' });
+    await d.waitFor();
+    assert(await d.getByRole('radio', { name: 'One made in the editor' }).isDisabled(), `${when}: 🤫 Send a card… lists none of the Final’s cards`);
+    await host.keyboard.press('Escape');
+    await d.waitFor({ state: 'detached' });
+  };
+  await toFinal();
+  await host.locator('.panel .status', { hasText: 'Title card' }).waitFor();
+  await noneFromEditor('the Final’s title card');
+  // ◀ Prev round from its title card: its category never went on screen.
   await sleep(450);
-  await host.locator('.rn button', { hasText: '▶' }).click();
-  await confirmStrip(host).waitFor();
-  await sleep(450);
-  await confirmStrip(host).getByRole('button', { name: 'Yes', exact: true }).click();
+  await host.locator('.rn button', { hasText: 'Prev round' }).click();
+  await host.locator('.stage-box .board').waitFor();
+  await noneFromEditor('back on the board from its title card');
+  assert(!(await shownOf(host, ['Leader hint'])).length, 'nor were its cards’ names ever on the host page');
+
+  // ---------- The Final's wager screen (no title card the second time): its cards, under the wager rows ----------
+  await toFinal();
   await host.locator('.fj .wagers input[data-wager]').first().waitFor();
   const panel = host.locator('[data-final-cards]');
   await panel.waitFor();
@@ -395,8 +452,7 @@ try {
   assert(await until(async () => (await cardsOn(bob)) === 2), 'Bob’s phone has both');
   assert(!heard.ann.join('').includes('Side-qkzvx') && !heard.cat.join('').includes('Side-qkzvx'), 'Ann’s and Cat’s phones never get anything of it');
 
-  // ---------- 🤫 Send a card…: the Final's cards, once it's reached ----------
-  const tools = host.locator('.panel .toolsrow');
+  // ---------- 🤫 Send a card…: the Final's cards, once its category is on screen ----------
   const openSend = async () => {
     await tools.getByRole('button', { name: '🤫 Send a card…' }).click();
     const d = host.getByRole('dialog', { name: 'Send a card' });

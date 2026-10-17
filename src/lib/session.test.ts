@@ -9,7 +9,7 @@ import {
   backToLastRound, finalAdvance, finalUnjudged, findClueRef, rebaseSession, removePlayer, restorePlayer, startIntro, stepOf, toggleStep,
   toggleUsed, usedTiles, describeStep, awardOpen, clueMarks, clueScored, places, clueName, standings, finalWagersOk, finalWagerProblems, finalChoose,
   finalWagerRefused, finalSetWager, finalWagerEditable, wagerFromPhone, finalShow, migrateSession, finalStepFix, wagerSentBy, forViewers,
-  blankSlide, toolOnlyClue, finalBack, rosterChange, nameList, coWinnersHold, winnerKnown, finalTakeNewcomers,
+  blankSlide, toolOnlyClue, finalBack, rosterChange, nameList, coWinnersHold, winnerKnown, finalTakeNewcomers, finalReached,
 } from './session';
 import { newRpgRound } from './rpg';
 import { applyAction } from './tools';
@@ -545,6 +545,29 @@ describe('round navigation', () => {
     fresh.session.introducedRounds = [0, 2];
     migrateSession(fresh.session, fresh.game);
     expect(fresh.session.introducedRounds).toEqual([0, 2]);
+  });
+
+  it('counts a Final as reached once its category was on stream: never from its title card, nor after backing out of it', () => {
+    const { game, session } = twoRounds();
+    const id = game.rounds[2].id;
+    goToRound(session, game, 2);
+    expect([session.phase, session.intro?.stage, finalReached(session, id)]).toEqual(['final', 'title', false]);
+    // ◀ Prev round from its title card: its category was never up.
+    goToRound(session, game, 1);
+    expect([session.finals?.[id]?.titleOnly, finalReached(session, id)]).toEqual([true, false]);
+    // Back to it: no title card this time, its wager screen (the category) is up.
+    goToRound(session, game, 2);
+    expect([session.intro, finalReached(session, id)]).toEqual([null, true]);
+    goToRound(session, game, 1);
+    expect([session.finals?.[id]?.titleOnly, finalReached(session, id)]).toEqual([undefined, true]);
+    // Its title card gone (N): reached, and still once the game is over.
+    const fresh = twoRounds();
+    const fid = fresh.game.rounds[2].id;
+    goToRound(fresh.session, fresh.game, 2);
+    introNext(fresh.session, fresh.game);
+    expect(finalReached(fresh.session, fid)).toBe(true);
+    goToRound(fresh.session, fresh.game, 3);
+    expect([fresh.session.phase, finalReached(fresh.session, fid)]).toEqual(['end', true]);
   });
 
   it('goes back from Final to the board and returns with the wagers kept', () => {

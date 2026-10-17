@@ -5,10 +5,18 @@ import { slideHasContent } from './usage';
 
 /** Something was written or added to this clue (a new clue has none of it): its 🤫 cards' too (a card's name counts). */
 export function clueHasContent(clue: Clue): boolean {
+  return clueClearable(clue) || cardSlides(clue).some(cardKept);
+}
+
+/**
+ * What ⌫ Clear clue takes out (clearClue): something on its slides or its 🤫 cards, its host notes or tile face. A
+ * card's name doesn't count: clearing keeps it.
+ */
+export function clueClearable(clue: Clue): boolean {
   return (
     questionSlides(clue).some(slideHasContent) ||
     slideHasContent(clue.answerSlide) ||
-    cardSlides(clue).some(cardKept) ||
+    cardSlides(clue).some(slideHasContent) ||
     !!clue.hostNotes?.trim() ||
     !!clue.tileFace?.text ||
     !!clue.tileFace?.image

@@ -34,6 +34,7 @@
   import PhoneCardPreview from './PhoneCardPreview.svelte';
   import { followClueText } from '../lib/cluetext';
   import SlideEditor from './slide/SlideEditor.svelte';
+  import { NARROW_CARDS } from './SlideTabs.svelte';
   import MediaPicker from './slide/MediaPicker.svelte';
   import { mediaDrop } from '../lib/mediadrop';
   import { commit as commitHistory, step as record } from '../lib/history.svelte';
@@ -97,8 +98,9 @@
   const goesList = $derived(clue?.type === 'partner' ? (card?.to === 'picker' ? [...GOES_TO, 'picker' as const] : GOES_TO) : TILE_GOES_TO);
   /** The tab shown: a card's when there's one to show (its type changed, it was deleted: the question). */
   const shown = $derived<ClueSide>(side === 'card' && !card ? 'q' : side);
-  /** Short card tab names (🤫 1, 🤫 2…) when there are many tabs. */
+  /** Short card tab names (🤫 1, 🤫 2…) when there are many tabs; named ones cut shorter from four cards. */
   const shortCards = $derived(qslides.length + cards.length > 6);
+  const narrow = $derived(cards.length >= NARROW_CARDS);
   /** The open card's bar (its Card name box: F2 or a double-click on its tab). */
   let bar = $state<ReturnType<typeof CardBar>>();
   const focusName = () => tick().then(() => bar?.focusName());
@@ -136,7 +138,11 @@
     });
     focusQuestion();
   }
-  const deleteCardTab = () => cardStep(`Deleted ${clueCardWords(card!, cardAt)} of ${tileName()}`, () => deleteCard(clue, cardAt), true);
+  function deleteCardTab(): void {
+    cardStep(`Deleted ${clueCardWords(card!, cardAt)} of ${tileName()}`, () => deleteCard(clue, cardAt), true);
+    // (The last one: its bar goes with the button pressed, so the keys go on from the question's tab.)
+    if (!cardSlides(clue).length) void focusTab();
+  }
   /** Who the open card starts with when the cards are handed out. */
   function setGoesTo(to: CardGoesTo): void {
     const c = card;
@@ -617,6 +623,7 @@
                 role="tab"
                 class="card-tab"
                 class:on
+                class:narrow
                 aria-selected={on}
                 tabindex={on ? 0 : -1}
                 data-card={i + 1}
@@ -671,11 +678,13 @@
             {goesList}
             {goesTo}
             goesTitle="Who this card starts with when you hand the cards out: you can give it to anyone then"
+            question={qslides}
             answer={clue.answerSlide}
             bind:phoneView
             ongoes={setGoesTo}
             oncopy={copyAnswer}
             ondelete={deleteCardTab}
+            ondone={focusTab}
           />
         {/if}
         <!-- (📱 On their phone sits beside the slide editor, never over its toolbar or inspector.) -->
@@ -687,7 +696,7 @@
               stylecategory
               quickfield={shown}
               placeholder={shown === 'card' ? 'Click to type what they’ll see' : shown === 'a' ? 'Click to type the answer' : at ? 'Click to type what this slide adds' : 'Click to type the question'}
-              badge={shown === 'card' && card ? `🤫 ${clip(clueCardName(card, cardAt), 24).toUpperCase()} · ONLY WHO YOU SEND IT TO SEES IT` : shown === 'a' ? 'ANSWER' : undefined}
+              badge={shown === 'card' && card ? `🤫 ${clip(clueCardName(card, cardAt), 16).toUpperCase()} · ONLY WHO YOU SEND IT TO SEES IT` : shown === 'a' ? 'ANSWER' : undefined}
               fill
             />
           {/key}
@@ -813,6 +822,9 @@
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
+  }
+  .card-tab.narrow {
+    max-width: 12ch;
   }
   .tabs button {
     border-radius: 6px 6px 0 0;

@@ -9,9 +9,9 @@
   to exactly the players it's out to, for as long (↻ Send again in the cards out is for that).
   In one window viewers see this: the 🤫 Cards are listed by name and counted, never said; a tile's are listed by tile
   and name ("Card 2" when it has none) and counted, and only for tiles played or open (the others would say where a
-  Daily Double is), and a Final's by the Final's name and theirs only once it's reached; what's typed for a quick card
-  is hidden unless the host asks (👁 Show); the 🖼 Media list (file names) and what's on the card picked from the editor
-  are only shown with the audience window open.
+  Daily Double is), and a Final's by the Final's name and theirs only once its category has been on screen (never from
+  its title card); what's typed for a quick card is hidden unless the host asks (👁 Show); the 🖼 Media list (file
+  names) and what's on the card picked from the editor are only shown with the audience window open.
   With `preset`, the card an action offered (an RPG object's, an item's, a wheel slice's or a board space's 🤫 button):
   who it starts with and how long it lasts come from the action, the card is fixed (counted, never shown), and it goes
   only when the host presses 📤 Send here.
@@ -35,7 +35,7 @@
   import { buzzerOn, remote, roomHasCards, roomHasFiles, roomMembers } from '../../lib/remote.svelte';
   import { findIn, focusRef, screenElements, screenSlide, worldById } from '../../lib/rpg';
   import { cleanTo, fileItem, linkItem, listedCards, memberTo, quickSlide, savedCard, sendCard, sentToText, tileCard } from '../../lib/sentcards';
-  import { currentClueInfo, currentFinal, shownQuestionSlide, slidesRound } from '../../lib/session';
+  import { currentClueInfo, currentFinal, finalReached, shownQuestionSlide, slidesRound } from '../../lib/session';
   import { hideFromViewers } from '../../lib/sync.svelte';
   import { cardWindow, openCardWindow } from '../../lib/cardwindow.svelte';
   import { copyText } from '../standings';
@@ -138,11 +138,12 @@
   });
   /**
    * Each Final's 🤫 cards ("Final Jeopardy! · Leader hint · 1 line of words"), never what's on them. In one window only a
-   * Final being played or reached before: one not reached yet would put its cards' names on stream early.
+   * Final whose category has been on stream (finalReached: not while its title card is up, nor after backing out of it):
+   * one not reached yet would put its cards' names on stream early.
    */
   const finals = $derived.by((): FromEditor[] =>
     game.rounds.flatMap((r) =>
-      !isFinal(r) || (!dual && session.final?.roundId !== r.id && !session.finals?.[r.id])
+      !isFinal(r) || (!dual && !finalReached(session, r.id))
         ? []
         : cardSlides(r).map((card, i) => ({ key: `${r.id}/${card.id}`, clue: r.id, card: card.id, label: `${finalName(r)} · ${clueCardName(card, i)} · ${cardSummary(game, card)}` })),
     ),
@@ -432,7 +433,7 @@
     </div>
     {#if !dual}
       <div class="muted small" data-saved-note>
-        Cards on tiles not played yet are listed with the audience window open (viewers see this one), as are a Final’s before it comes up.
+        Cards on tiles not played yet are listed with the audience window open (viewers see this one), as are a Final’s before its category is on screen.
       </div>
     {/if}
     {#if kind === 'saved'}

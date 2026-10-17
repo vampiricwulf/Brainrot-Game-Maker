@@ -22,6 +22,7 @@ import {
   questionSlides,
   roundName,
   savedCardName,
+  slidesOfClue,
   type Action,
   type BoardRound,
   type ClueCard,
@@ -357,7 +358,7 @@ export function partnerProblems(game: Game, round: BoardRound, tab: number, file
         if (!slideHasContent(card)) warn(`${tile}: ${clueCardWords(card, n)} is empty: there's nothing on it to send`, card);
         for (const t of cardFileProblems(game, card, filesOff)) warn(`${tile}: ${clueCardWords(card, n)} has ${t}`, card);
       });
-      out.push(...cardNameProblems(game, cards, cl.answerSlide, tile, tab, (card) => at(card)!));
+      out.push(...cardNameProblems(game, cards, slidesOfClue(cl), tile, tab, (card) => at(card)!));
     });
   return out;
 }
@@ -377,21 +378,23 @@ export function finalCardProblems(game: Game, round: FinalRound, name: string, t
     if (!slideHasContent(card)) warn(`${name}: ${clueCardWords(card, n)} is empty: there's nothing on it to send`, card);
     for (const t of cardFileProblems(game, card, filesOff)) warn(`${name}: ${clueCardWords(card, n)} has ${t}`, card);
   });
-  out.push(...cardNameProblems(game, cards, round.answerSlide, name, tab, at));
+  out.push(...cardNameProblems(game, cards, slidesOfClue(round), name, tab, at));
   return out;
 }
 
 /**
  * A tile's or a Final's card names (`where`: "Movies $200", "Final Jeopardy!"): one that repeats what's on its card or
- * the answer, and two cards that read alike (one with no name is "Card 2"; said once, going to the second). Info only.
+ * on `secret` (the tile's or the Final's question and answer slides: a Final's cards, and a Daily Double's, are in the
+ * panel before its question is shown), and two cards that read alike (one with no name is "Card 2"; said once, going
+ * to the second). Info only.
  */
-function cardNameProblems(game: Game, cards: ClueCard[], answer: Slide, where: string, tab: number, at: (c: ClueCard) => Place): Problem[] {
+function cardNameProblems(game: Game, cards: ClueCard[], secret: Slide[], where: string, tab: number, at: (c: ClueCard) => Place): Problem[] {
   const out: Problem[] = [];
   const seen = new Set<string>();
   const told = new Set<string>();
   cards.forEach((c, i) => {
-    if (nameGivesAway(game, c, [answer]))
-      out.push({ text: `${where}: the name of ${clueCardWords(c, i)} repeats what’s on it or the answer, and in one window viewers can read a card’s name in the host panel`, tab, level: 'info', place: at(c) });
+    if (nameGivesAway(game, c, secret))
+      out.push({ text: `${where}: the name of ${clueCardWords(c, i)} repeats what’s on it, the question or the answer, and in one window viewers can read a card’s name in the host panel`, tab, level: 'info', place: at(c) });
     const key = clueCardName(c, i).toLowerCase();
     if (seen.has(key) && !told.has(key)) {
       told.add(key);
@@ -484,8 +487,8 @@ const norm = (s: string) => s.toLowerCase().replace(/[^\p{L}\p{N}]+/gu, ' ').tri
 
 /**
  * A 🤫 card's name repeats what's on it (its words, its phone title, or a file's name, at least 3 letters) or what's in
- * `also` (a tile's or a Final's answer): in one window viewers read a card's name in the host panel and 🤫 Send a
- * card…. ("Mission 1" on "Your mission: …" doesn't.)
+ * `also` (a tile's or a Final's question and answer slides): in one window viewers read a card's name in the host panel
+ * and 🤫 Send a card…. ("Mission 1" on "Your mission: …" doesn't.)
  */
 export function nameGivesAway(game: Game, c: Slide & { name?: string }, also: Slide[] = []): boolean {
   const name = norm(c.name ?? '');

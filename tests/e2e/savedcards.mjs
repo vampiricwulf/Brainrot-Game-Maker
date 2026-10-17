@@ -4,7 +4,7 @@
 // In the editor, 🤫 Cards (2) sits right after 🎡 Wheels, Dice & Deals: ＋ Add card opens a new one with its words box in
 // focus, the checklist's line about an empty card goes to it (it flashes), typing and renaming are named undo steps, a
 // name that repeats what's on the card says so, and the list's right-click ⧉ Duplicate, Alt+↓, F2 and Delete (with ↶ Undo)
-// work as they do for wheels. 📱 On their phone shows a card as a phone gets it, 🔍 Find finds one by its words, and 🖼 Media
+// work as they do for wheels (a rename there ended by a click elsewhere leaves the keys where the click put them). 📱 On their phone shows a card as a phone gets it, 🔍 Find finds one by its words, and 🖼 Media
 // counts a file used only on a card as used.
 // In play, one window: 🤫 Send a card… › One made in the editor lists them by name and counted, never what's on them
 // (a tile's card once the tile is played, under its own heading), Lasts follows the card picked, and 📤 Send puts it on
@@ -195,6 +195,14 @@ try {
   await host.keyboard.press('Control+z');
   assert(await until(async () => (await wordsBox.inputValue()) === ''), 'Ctrl+Z twice: back to Private card 3, with no words');
   assert((await host.locator('[data-name-repeats]').count()) === 0, 'and the name note’s line is gone');
+  // A rename in the list ended by a click elsewhere: the keys stay where the click put them.
+  await row('Private card 3').dblclick();
+  const renameBox = list.getByLabel('Card name', { exact: true });
+  await renameBox.waitFor();
+  await wordsBox.click();
+  await renameBox.waitFor({ state: 'detached' });
+  await host.waitForFunction(() => document.activeElement?.matches('main [data-field="card"]'));
+  assert(true, 'a rename in the list ended by a click in the words box: the keys stay in the words box');
 
   // ---------- The list: ⧉ Duplicate, Alt+↓, F2, Delete ----------
   await row('Tip A').click({ button: 'right' });

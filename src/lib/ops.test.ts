@@ -11,6 +11,7 @@ import {
   categoryHasContent,
   clearClue,
   clone,
+  clueClearable,
   clueHasContent,
   copyClue,
   deleteRow,
@@ -375,6 +376,18 @@ describe('🤝 partner clues on the board', () => {
     expect([clue.cards![0].id, clue.cards![0].to, slideText(clue.cards![0]), clue.cards![0].elements.length, clue.cards![0].name]).toEqual([id, 'both', '', 1, 'Clue tip']);
     expect(clue.type).toBe('partner');
     expect(clue.partner).toEqual(gameRules('describe'));
+  });
+
+  it('⌫ Clear clue has nothing to take out of a tile whose only content is a named card (it keeps names)', () => {
+    const { clue } = partnerTile();
+    clue.cards![0].name = 'Only a name';
+    expect([clueHasContent(clue), clueClearable(clue)]).toEqual([true, false]);
+    setSlideText(clue.cards![0], 'Shrek');
+    expect(clueClearable(clue)).toBe(true);
+    clearClue(clue);
+    expect([clueHasContent(clue), clueClearable(clue)]).toEqual([true, false]);
+    clue.hostNotes = 'Say it slowly';
+    expect(clueClearable(clue)).toBe(true);
   });
 
   it('a copied clue, or a copied round, gets fresh ids for its cards and their items', () => {

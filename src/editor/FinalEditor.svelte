@@ -51,6 +51,8 @@
   let phoneView = $state(false);
   /** The open card's bar (its Card name box: F2 or a double-click on its tab). */
   let bar = $state<ReturnType<typeof CardBar>>();
+  /** The slide tabs (the keys go back to the open one). */
+  let tabs = $state<ReturnType<typeof SlideTabs>>();
   let cardField = $state<HTMLTextAreaElement>();
   const cards = $derived(cardSlides(round));
   const cardAt = $derived(Math.min(ci, Math.max(0, cards.length - 1)));
@@ -87,8 +89,8 @@
       },
       { place, undoPlace, notify },
     );
-    onCard = to >= 0;
-    if (to >= 0) ci = to;
+    if (to < 0) ((onCard = false), (side = 'q'));
+    else ((onCard = true), (ci = to));
   }
   /** ＋ Card: a new card at the end, starting with everyone playing, its words box ready to type in. */
   function newCardTab(): void {
@@ -99,7 +101,11 @@
     });
     void tick().then(() => cardField?.focus());
   }
-  const deleteCardTab = () => cardStep(`Deleted ${clueCardWords(card!, cardAt)} of ${finalName(round)}`, () => deleteCard(round, cardAt), true);
+  function deleteCardTab(): void {
+    cardStep(`Deleted ${clueCardWords(card!, cardAt)} of ${finalName(round)}`, () => deleteCard(round, cardAt), true);
+    // (The last one: its bar goes with the button pressed, so the keys go on from the question's tab, not the top.)
+    if (!cardSlides(round).length) void tabs?.focusTab();
+  }
   /** Who the open card starts with in the Final's panel. */
   function setGoesTo(to: CardGoesTo): void {
     const c = card;
@@ -195,6 +201,7 @@
   </label>
 </div>
 <SlideTabs
+  bind:this={tabs}
   holder={round}
   bind:side
   bind:qi
@@ -218,11 +225,13 @@
     goesList={FINAL_GOES_TO}
     goesTo={finalGoesToLabel}
     goesTitle="Who this card starts with in the Final’s panel: everyone ticked to play it on the wager screen (it follows the ticks), or nobody until you choose. You can give it to anyone then"
+    question={qslides}
     answer={round.answerSlide}
     bind:phoneView
     ongoes={setGoesTo}
     oncopy={copyAnswer}
     ondelete={deleteCardTab}
+    ondone={() => void tabs?.focusTab()}
   />
 {/if}
 <!-- (📱 On their phone sits beside the slide editor, never over its toolbar or inspector.) -->
@@ -234,7 +243,7 @@
       stylescope="round-qa"
       quickfield={shown}
       placeholder={shown === 'card' ? 'Click to type what they’ll see' : side === 'q' ? 'Click to type the final question' : 'Click to type the final answer'}
-      badge={shown === 'card' && card ? `🤫 ${clip(clueCardName(card, cardAt), 24).toUpperCase()} · ONLY WHO YOU SEND IT TO SEES IT` : side === 'a' ? 'ANSWER' : undefined}
+      badge={shown === 'card' && card ? `🤫 ${clip(clueCardName(card, cardAt), 16).toUpperCase()} · ONLY WHO YOU SEND IT TO SEES IT` : side === 'a' ? 'ANSWER' : undefined}
     />
   {/key}
   <!-- (No clue: a Final's card has no role or hint line, and is each player's own, as sessionCards sends it.) -->

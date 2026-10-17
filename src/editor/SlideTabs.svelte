@@ -14,6 +14,8 @@
     if (!slideNo.has(slide)) slideNo.set(slide, ++slideCount);
     return `q${slideNo.get(slide)}`;
   }
+  /** From this many 🤫 cards, a named card's tab is cut shorter (the clue editor's too), so the row of tabs still fits. */
+  export const NARROW_CARDS = 4;
 </script>
 
 <script lang="ts">
@@ -69,6 +71,7 @@
   const cardOpen = $derived(onCard && !!list[cardAt]);
   /** Short card tab names (🤫 1, 🤫 2…) when there are many tabs. */
   const shortCards = $derived(qslides.length + list.length > 6);
+  const narrow = $derived(list.length >= NARROW_CARDS);
 
   /** The question slide `s` (the first one has no id), or the answer: where a slide change shows. */
   const placeOf = (s: Slide | undefined, sd: Side = 'q'): Place => place(sd, sd === 'q' ? (s as Partial<ExtraSlide> | undefined)?.id : undefined);
@@ -105,7 +108,10 @@
   /** Many question slides: short tab names (Q1, Q2…), so the tabs stay on one line. */
   const SHORT_TABS = 4;
   let tablist = $state<HTMLElement>();
-  const focusTab = () => tick().then(() => tablist?.querySelector<HTMLElement>('[role="tab"][aria-selected="true"]')?.focus());
+  /** The focus on the open tab (after a key changed the tabs, a card's bar went, or Enter in its Card name box). */
+  export function focusTab(): Promise<void> {
+    return tick().then(() => tablist?.querySelector<HTMLElement>('[role="tab"][aria-selected="true"]')?.focus());
+  }
   function tabKey(e: KeyboardEvent): void {
     const n = qslides.length;
     const k = list.length;
@@ -192,6 +198,7 @@
           role="tab"
           class="card-tab"
           class:on
+          class:narrow
           aria-selected={on}
           tabindex={on ? 0 : -1}
           data-card={i + 1}
@@ -265,6 +272,9 @@
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
+  }
+  .card-tab.narrow {
+    max-width: 12ch;
   }
   .tabs button {
     border-radius: 6px 6px 0 0;

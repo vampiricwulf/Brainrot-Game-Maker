@@ -98,11 +98,15 @@
 
   /** The card being renamed in place. */
   let renaming = $state<string | null>(null);
-  function rename(c: SavedCard, name: string): void {
+  /**
+   * Done renaming: Enter or Esc (`refocus`: the keys go back to its button in the list), or a click elsewhere (they stay
+   * where the click put them).
+   */
+  function rename(c: SavedCard, name: string, refocus = true): void {
     renaming = null;
     const to = name.trim();
     if (to && to !== c.name) step(`Renamed card “${named(c)}” to “${to}”`, () => (c.name = to));
-    focusItem(c.id);
+    if (refocus) focusItem(c.id);
   }
   const focusAll = (el: HTMLInputElement) => {
     el.focus();
@@ -178,7 +182,7 @@
                     rename(c, c.name);
                   }
                 }}
-                onblur={(e) => renaming === c.id && rename(c, e.currentTarget.value)}
+                onblur={(e) => renaming === c.id && rename(c, e.currentTarget.value, !e.relatedTarget)}
               />
             {:else}
               <button

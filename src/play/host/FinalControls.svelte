@@ -1,7 +1,7 @@
 <!--
   Final round host flow (spec §6.4): one wager screen while the category is up (who plays, and each one's wager), then
   the question, the answer and a one-by-one reveal; and its own 🤫 cards (TileCards), from the wagers to the last
-  reveal.
+  reveal (below the panel's foot, 🤫 N cards ↓ in the step's row goes to them).
 -->
 <script lang="ts">
   import { onDestroy, tick, untrack } from 'svelte';
@@ -273,6 +273,39 @@
     if (why === 'whole') return toast('A wager is a whole number, 0 or more', 3000);
     if (why === 'over') return toast(`Over ${byId[id]?.name ?? '?'}’s max of ${formatPoints(finalWagerCap(session, id), sym)}`, 3000);
     logged(session, wagerText(id, was, v, wagerFromPhone(fs, id)), () => finalSetWager(session, id, v));
+  }
+
+  // ---------- Its 🤫 cards, out of sight ----------
+  /** How many 🤫 cards the Final has (its box comes under the rows). */
+  const cardCount = $derived(round ? cardSlides(round).length : 0);
+  /** The box of the Final's 🤫 cards. */
+  let cardsBox = $state<HTMLElement>();
+  /** Its heading ("🤫 This Final’s cards") isn't all in sight: it's below the panel's foot, or behind the step's row there. */
+  let cardsBelow = $state(false);
+  /** What scrolls the panel: the nearest box around `el` that scrolls (none: the window). */
+  function scroller(el: HTMLElement): HTMLElement | null {
+    for (let p = el.parentElement; p; p = p.parentElement) if (/auto|scroll/.test(getComputedStyle(p).overflowY)) return p;
+    return null;
+  }
+  // With many players (or a short window) the box is below the panel's foot: the step's row says it's there. (Its sticky
+  // row covers the foot of the panel's scrolling part: the heading has to be above it.)
+  $effect(() => {
+    const head = cardsBox?.querySelector<HTMLElement>('[data-final-cards] > .row');
+    if (!head || typeof IntersectionObserver === 'undefined') return;
+    const seen = new IntersectionObserver(
+      ([e]) => (cardsBelow = e.intersectionRatio < 1 && (!e.rootBounds || e.boundingClientRect.bottom > e.rootBounds.bottom)),
+      { root: scroller(head), rootMargin: '0px 0px -48px 0px', threshold: [0, 1] },
+    );
+    seen.observe(head);
+    return () => {
+      seen.disconnect();
+      cardsBelow = false;
+    };
+  });
+  /** 🤫 N cards ↓: the box in sight, the keys on its first button. */
+  function toCards(): void {
+    cardsBox?.scrollIntoView({ block: 'nearest' });
+    cardsBox?.querySelector<HTMLElement>('button:not(:disabled)')?.focus({ preventScroll: true });
   }
 
   // The spotlit row stays in sight in a long list (8 players in a short window).
@@ -560,8 +593,10 @@
       </div>
     {/if}
     <!-- The Final's own 🤫 cards: under the wager or reveal rows (every wager box comes first), above the step's buttons. -->
-    {#if round && cardSlides(round).length}
-      {#key round.id}<TileCards {game} {session} final={round} {dual} ontakeback={oncardtakeback} />{/key}
+    {#if round && cardCount}
+      {#key round.id}
+        <div class="cards-box" bind:this={cardsBox}><TileCards {game} {session} final={round} {dual} ontakeback={oncardtakeback} /></div>
+      {/key}
     {/if}
     <div class="row">
       {#if session.finalStep === 'wagers'}
@@ -584,6 +619,11 @@
         {:else if unjudged}
           <span class="muted small">{unjudged} still to judge</span>
         {/if}
+      {/if}
+      {#if cardsBelow}
+        <button class="ghost small" data-cards-down onclick={toCards} title="This Final’s 🤫 cards are further down the panel: go to them"
+          >🤫 {cardCount} card{cardCount === 1 ? '' : 's'} ↓</button
+        >
       {/if}
       <span class="spacer"></span>
       {#if session.finalStep === 'reveal' && unjudged && !askFinish}
@@ -615,6 +655,10 @@
     z-index: 1;
     padding: 4px 0;
     background: var(--panel);
+  }
+  /* (Scrolled to by 🤫 N cards ↓, it stops above the step's sticky row, not behind it.) */
+  .cards-box {
+    scroll-margin-bottom: 48px;
   }
   .no-wager {
     color: var(--warn);

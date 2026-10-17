@@ -35,6 +35,7 @@
     categoryHasContent,
     clearClue,
     clone,
+    clueClearable,
     clueHasContent,
     copyClue,
     deleteRow,
@@ -317,10 +318,10 @@
     cursor = to;
   }
 
-  /** Take out what's written on a tile. Done at once: the note at the bottom offers Undo. */
+  /** Take out what's written on a tile (its cards' names stay). Done at once: the note at the bottom offers Undo. */
   function clearTile(p: TilePos): void {
     const clue = round.categories[p.cat].clues[p.row];
-    if (!clueHasContent(clue)) return;
+    if (!clueClearable(clue)) return;
     step(`Cleared ${tileName(p)}`, () => clearClue(clue), { notify: true, place: tilePlace(p.cat, clue.id) });
   }
 
@@ -529,7 +530,7 @@
       { sep: true },
       { label: '📋 Copy clue', onclick: () => copyTile(p), keys: 'Ctrl+C' },
       { label: '📋 Paste clue here', onclick: () => pasteTile(p), disabled: !clipboard.clue, keys: 'Ctrl+V' },
-      { label: '⌫ Clear clue', onclick: () => clearTile(p), disabled: !clueHasContent(clue), keys: 'Delete' },
+      { label: '⌫ Clear clue', onclick: () => clearTile(p), disabled: !clueClearable(clue), keys: 'Delete' },
       ...rowItems(p.row),
     ]);
   }
@@ -604,7 +605,7 @@
       { label: '＋ Insert category right', onclick: () => insertCat(ci + 1), disabled: n >= 10 },
       { label: '⧉ Duplicate', onclick: () => step(`Duplicated category “${categoryLabel(cat)}”`, () => (duplicateCategory(round, ci), followDailyDoubles(round))), disabled: n >= 10 },
       { label: '🖼 Image…', onclick: () => (catPicker = ci) },
-      { label: '⌫ Clear its clues', onclick: () => clearCat(ci), disabled: !cat.clues.some(clueHasContent) },
+      { label: '⌫ Clear its clues', onclick: () => clearCat(ci), disabled: !cat.clues.some(clueClearable) },
       { sep: true },
       { label: '🗑 Delete category', danger: true, onclick: () => deleteCat(ci), disabled: n <= 1 },
     ]);

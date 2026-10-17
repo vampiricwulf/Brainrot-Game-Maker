@@ -53,6 +53,11 @@
   const cards = $derived(cardSlides(holder));
   const until = $derived<'tile' | 'round'>(final ? 'round' : 'tile');
   const lasts = $derived(final ? 'until the Final ends' : 'until the tile closes');
+  /**
+   * During a Final's wagers a card sits above the wager box on the phone: more than one or two push the box down, past
+   * the bottom of the screen.
+   */
+  const aside = $derived(final && session.finalStep === 'wagers' ? ' (on their phone it sits above the wager box: one or two per player keep the box in sight)' : '');
   const teams = $derived(buzzerOn(game.settings) && teamsOn(game.settings));
   /** A buzzer room is open for this game. */
   const room = $derived(buzzerOn(game.settings) && !!remote.code && remote.status !== 'off' && remote.status !== 'error');
@@ -172,7 +177,7 @@
           {#if !off}<button class="small" onclick={() => again(out, card, i)} aria-label="Send {w} again" title="Sends it again under a new id: a phone that came late (a player on a new phone) gets it too, with what’s on the card now">↻ Send again</button>{/if}
           <button class="ghost small" onclick={() => ontakeback(out.id)} aria-label="Take {w} back" title="Takes it off every phone it went to">✖ Take back</button>
         {:else}
-          <button class="small" onclick={() => send(card, i)} disabled={!to.length || full} aria-label="Send {w}" title={full ? cardsFullText(game, session) : to.length ? `Sends it to ${sentToText(session, to, teams)} now, ${lasts}` : 'Choose who gets it first'}>📤 Send</button>
+          <button class="small" onclick={() => send(card, i)} disabled={!to.length || full} aria-label="Send {w}" title={full ? cardsFullText(game, session) : to.length ? `Sends it to ${sentToText(session, to, teams)} now, ${lasts}${aside}` : 'Choose who gets it first'}>📤 Send</button>
         {/if}
       {:else if out}
         <button class="ghost small" onclick={() => ontakeback(out.id)} aria-label="Take {w} back" title="Takes it out of the 🪟 card window">✖ Take back</button>

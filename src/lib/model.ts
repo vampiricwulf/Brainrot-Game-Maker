@@ -1087,8 +1087,11 @@ export interface Session {
   finalStep?: FinalStep;
   /** The Final round being played (or last played). */
   final?: FinalState;
-  /** Other Final rounds' state, by round id, kept while the game is elsewhere. */
-  finals?: Record<Id, { state: FinalState; step: FinalStep }>;
+  /**
+   * Other Final rounds' state, by round id, kept while the game is elsewhere. `titleOnly`: left while its title card was
+   * up, so its category never went on stream (finalReached).
+   */
+  finals?: Record<Id, { state: FinalState; step: FinalStep; titleOnly?: boolean }>;
   /** Tiebreaker clue showing the answer. */
   tiebreakerRevealed?: boolean;
   /** The host declared the tied leaders co-winners: who they were (true, from older saves: whoever is tied). */

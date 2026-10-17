@@ -173,6 +173,10 @@ describe('🤝 partner clues in the checklist', () => {
     clue.cards![1].name = 'Clue tip';
     expect(line().details).toContain(`${board.categories[1].title} $600: card “Clue tip” is empty: there's nothing on it to send`);
     expect(line().text).toBe('Jeopardy!: 1 clue to finish');
+    // (Its name may hold curly quotes of its own.)
+    clue.cards![1].name = 'Bob’s “big” tip';
+    expect(line().details).toContain(`${board.categories[1].title} $600: card “Bob’s “big” tip” is empty: there's nothing on it to send`);
+    expect(line().text).toBe('Jeopardy!: 1 clue to finish');
     for (const card of clue.cards!) setSlideText(card, 'Shrek');
     expect(line()).toBeUndefined();
     // A ready-made game with no card at all.
