@@ -4,8 +4,8 @@
 // in the order, and a wrong answer locks out the whole team. The host moves someone to another team and takes someone
 // off; a phone reload comes back on its team. Teams on or off with phones in the room asks first. On a ✍ clue, one
 // member's answer fills in their teammates' boxes. The room kept for another game keeps its teams, through Ctrl+Z before
-// the game and Resume with my edits; with 24 phones on teams, the next one is told the game is full. Needs `npm ci` in
-// buzzer/.
+// the game and Resume with my edits (an editor Ctrl+Z of ▶ Play's step for it too, but not of the host's own Buzzer mode
+// step); with 24 phones on teams, the next one is told the game is full. Needs `npm ci` in buzzer/.
 import { chromium } from 'playwright-core';
 import { spawn } from 'node:child_process';
 import { createServer } from 'node:net';
@@ -537,6 +537,42 @@ try {
   await host.locator('.toast', { hasText: /^↶ Undid Rule: Negative scores/ }).waitFor();
   const sampleNames = await roster.locator('input.name').evaluateAll((els) => els.map((e) => e.value));
   assert(sampleNames.join() === 'Team 1,Team 2,Team 3', `back in the same room, Ctrl+Z of a rule keeps the sample teams listed (${sampleNames.join(', ')})`);
+
+  // ---------- Your own Buzzer mode step undone in the editor closes the room, behind ▶ Play's step for its Teams ----------
+  // The host's steps: Teams off, Buzzer mode off (the room closes) and on again, Teams on. A new room, a phone on a team.
+  await teamsBox.uncheck();
+  await card.getByLabel(/Buzzer mode/).uncheck();
+  await codeEl.waitFor({ state: 'detached' });
+  await card.getByLabel(/Buzzer mode/).check();
+  await teamsBox.check();
+  await card.getByRole('button', { name: '▶ Start the room' }).click();
+  await codeEl.waitFor();
+  const code2 = (await codeEl.getAttribute('aria-label')).slice('Room code '.length);
+  await ann.goto(`${base}/${code2}`);
+  await ann.getByRole('button', { name: 'Team 1' }).click();
+  await ann.getByRole('textbox', { name: 'Your name (everyone sees it)' }).fill('Ann');
+  await ann.getByRole('button', { name: 'Join the team' }).click();
+  await ann.locator('#me').getByText('Ann · Team 1').waitFor();
+  // ◀ Back to editor, Ctrl+Z there (Teams off), and ▶ Play turns Teams back on for the room: a step of its own, with
+  // Buzzer mode on already.
+  await host.getByRole('button', { name: '◀ Back to editor' }).click();
+  await roomBar.getByText('▶ Play goes back into it').waitFor();
+  await host.keyboard.press('Control+z');
+  await editorSaid('Undid Teams');
+  await host.getByRole('button', { name: '▶ Play' }).click();
+  await card.getByText('1 person on 1 of 3 teams').waitFor();
+  assert(await teamsBox.isChecked(), `▶ Play into room ${code2}: Teams is on again`);
+  // Ctrl+Z of that step leaves the room open; Ctrl+Z of the host's own Buzzer mode step closes it.
+  await host.getByRole('button', { name: '◀ Back to editor' }).click();
+  await roomBar.getByText('▶ Play goes back into it').waitFor();
+  await host.keyboard.press('Control+z');
+  await editorSaid(`Undid Kept buzzer room ${code2} (Teams on)`);
+  assert(await roomBar.isVisible(), 'Ctrl+Z of ▶ Play’s step for the room’s Teams leaves the room open');
+  await host.keyboard.press('Control+z');
+  await editorSaid('Undid Buzzer mode');
+  await ann.locator('main').getByText('The game is over').waitFor();
+  await roomBar.waitFor({ state: 'detached' });
+  assert(true, 'then Ctrl+Z of the host’s own Buzzer mode step closes the room: the phone is told the game is over');
 
   assert(errors.length === 0, `no page errors (${errors.join(' | ')})`);
   console.log('Team buzzers E2E passed.');

@@ -266,11 +266,11 @@
   // Buzzer mode turned off in the editor (an undo, say) while its room waits: the room closes, as on the Play screen
   // (▶ Play would otherwise go back into it with Buzzer mode on again). Only a change made here: a quick reload can
   // come back before the editor's copy of the setting was written, and that mustn't close the room. Nor when it's the
-  // step ▶ Play made for the room taken back (keepRoomSetup): the room was open before it, and the host was undoing
-  // their own edits. (Checked once the undo is done: it changes the game before it moves back.)
+  // step ▶ Play made to turn Buzzer mode on for the room taken back (keepRoomSetup): the room was open before it, and
+  // the host was undoing their own edits. (Checked once the undo is done: it changes the game before it moves back.)
   let buzzerWas: { id: string; on: boolean } | null = null;
-  /** The step keepRoomSetup made last, by its id. */
-  let roomStep: string | null = null;
+  /** The step keepRoomSetup made last that turned Buzzer mode on, by its id, and the room it was for. */
+  let roomStep: { id: string; code: string } | null = null;
   $effect(() => {
     const now = { id: app.game.id, on: !!app.game.settings.buzzer };
     untrack(() => {
@@ -278,7 +278,8 @@
       buzzerWas = now;
       if (!(was?.id === now.id && was.on && !now.on && app.screen === 'editor' && kept.room?.gameId === now.id)) return;
       void tick().then(() => {
-        const at = history.entries.findIndex((e) => e.id === roomStep);
+        const r = roomStep;
+        const at = r && kept.room?.remote.code === r.code ? history.entries.findIndex((e) => e.id === r.id) : -1;
         if (at >= 0 && at >= history.index) return;
         if (!app.game.settings.buzzer && app.screen === 'editor' && kept.room?.gameId === app.game.id) void closeKeptRoom();
       });
@@ -669,6 +670,9 @@
     if (!on.length && !brings) return;
     const n = rows.length;
     const label = `Kept buzzer room ${room.remote.code}${brings ? ` and its ${n} ${teams ? 'team' : 'player'}${n === 1 ? '' : 's'}` : ''}${on.length ? ` (${on.join(', ')})` : ''}`;
+    // (Noted only when it turns Buzzer mode on: with it on already, an undo that turns it off takes back the host's own
+    // step, and the room closes.)
+    const turnsOn = !g.settings.buzzer;
     step(
       label,
       () => {
@@ -679,7 +683,7 @@
       { during: 'play' },
     );
     const made = history.entries[history.index - 1];
-    if (made?.label === label) roomStep = made.id;
+    if (turnsOn && made?.label === label) roomStep = { id: made.id, code: room.remote.code };
   }
 
   /**
