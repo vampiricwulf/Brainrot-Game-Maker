@@ -13,7 +13,7 @@
   import { joinSpot, type Ink, type Rect } from '../lib/joinspot';
   import { holdWhile, provideCover } from '../lib/hold';
   import { imgFallback, mediaUrls } from '../lib/media.svelte';
-  import { mediaScope, type MediaRole } from '../lib/mediactl.svelte';
+  import { mediaScope, previewMediaScope, type MediaRole } from '../lib/mediactl.svelte';
   import { autoPlay } from '../lib/audioout.svelte';
   import { cuesAfter, tileToolUp, type Live, type SoundCue, type StageAction } from '../lib/live';
   import { plateCenter } from './flow';
@@ -42,6 +42,7 @@
     session,
     live,
     role = 'single',
+    demo = false,
     onpick,
     ontilemenu,
     onpicker,
@@ -63,6 +64,8 @@
     live: Live;
     /** single: one-window mode · mirror: host's copy in dual mode (muted) · audience: the stream window */
     role?: MediaRole;
+    /** An editor's preview (🎨 Theme, 🖼 Board images): its media keeps out of where a game left mid-clue had its own. */
+    demo?: boolean;
     onpick?: (ref: ClueRef) => void;
     /** Host only: a tile was right-clicked (its menu: open it, skip it, put it back). */
     ontilemenu?: (e: MouseEvent, ref: ClueRef) => void;
@@ -253,8 +256,10 @@
   }
   // (A tool's result card on stage waits under the cover too.)
   provideCover(() => !!live.cover);
-  // A clue's (or a Final's) media goes on where it was when its slide comes back (the answer hidden again).
+  // A clue's (or a Final's) media goes on where it was when its slide comes back (the answer hidden again). An editor's
+  // preview plays its own from the start and leaves a game left mid-clue its places, for Resume.
   $effect.pre(() => {
+    if (demo) return previewMediaScope();
     const c = session.currentClue;
     mediaScope(
       session.phase === 'clue' && c

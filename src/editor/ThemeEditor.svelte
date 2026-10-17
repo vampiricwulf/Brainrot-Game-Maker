@@ -554,7 +554,7 @@
     <!-- Only a picture of the result: its tiles and players aren't the page's (screen readers skip it). -->
     <div class="preview" aria-hidden="true" inert>
       <Stage hostOnly>
-        <AudienceView game={shown} session={demo} {live} role="mirror" />
+        <AudienceView game={shown} session={demo} {live} role="mirror" demo />
       </Stage>
     </div>
   </div>

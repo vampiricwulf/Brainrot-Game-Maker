@@ -94,17 +94,27 @@ export function mediaScope(s: string): void {
   restoring.clear();
 }
 
+/** The scope and kept places from before the editor's previews, while any is open (see previewMediaScope). */
+let held: { scope: string; kept: Map<string, Kept> } | null = null;
+let previews = 0;
+
 /**
- * The editor's ▶ Preview: its media plays from the start and keeps nothing, and a game left mid-clue still has where
- * its media was, for Resume. Call what it returns when the preview stops.
+ * The editor's ▶ Preview (or a page's demo stage, 🎨 Theme's): its media plays from the start and keeps nothing, and a
+ * game left mid-clue still has where its media was, for Resume. Call what it returns when the preview stops. Previews
+ * open at once (the theme import dialog's over 🎨 Theme's) put it back when the last one stops, in whatever order.
  */
 export function previewMediaScope(): () => void {
-  const was = scope;
-  const saved = new Map(kept);
+  if (!previews++) held = { scope, kept: new Map(kept) };
   mediaScope('');
+  let open = true;
   return () => {
-    mediaScope(was);
-    saved.forEach((k, key) => kept.set(key, k));
+    if (!open) return;
+    open = false;
+    if (--previews || !held) return;
+    const was = held;
+    held = null;
+    mediaScope(was.scope);
+    was.kept.forEach((k, key) => kept.set(key, k));
   };
 }
 

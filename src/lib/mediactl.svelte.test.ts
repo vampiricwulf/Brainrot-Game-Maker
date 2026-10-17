@@ -97,6 +97,30 @@ describe('the editor’s ▶ Preview after a game left mid-clue', () => {
     mediaScope('clue:0.0.0');
     expect(comesUp('a').filter((c) => !c.endsWith('mute'))).toEqual(['seek 2.5', 'pause']);
   });
+
+  it('two at once (the theme import dialog’s preview over 🎨 Theme’s): the game’s clip is still where it was, whichever stops first', () => {
+    for (const outerFirst of [false, true]) {
+      mediaScope('clue:0.0.0');
+      comesUp('a');
+      updateMedia('a', { time: 2.5, paused: true });
+      unregisterMedia('a');
+      const outer = previewMediaScope();
+      const inner = previewMediaScope();
+      expect(comesUp('a')).toEqual([]);
+      unregisterMedia('a');
+      if (outerFirst) {
+        outer();
+        inner();
+      } else {
+        inner();
+        outer();
+      }
+      mediaScope('clue:0.0.0');
+      expect(comesUp('a').filter((c) => !c.endsWith('mute'))).toEqual(['seek 2.5', 'pause']);
+      unregisterMedia('a');
+      mediaScope('');
+    }
+  });
 });
 
 describe('a clip that plays by itself, still waiting for its entrance', () => {

@@ -428,6 +428,15 @@ try {
   await page.keyboard.press('Escape');
   await page.locator('.canvas.previewing').waitFor({ state: 'detached' });
   await page.getByRole('button', { name: 'Done' }).click();
+  // 🎨 Theme and 🖼 Board images show the board on a stage of their own: they leave the game's clip where it was too.
+  await page.getByRole('button', { name: '🎨 Theme' }).click();
+  await page.locator('.preview .board').waitFor();
+  await page.locator('nav button.round-tab').first().click();
+  await page.getByRole('button', { name: /Board images/ }).click();
+  const decor = page.locator('[aria-label="Board images"]');
+  await decor.locator('.board').first().waitFor();
+  await decor.getByRole('button', { name: 'Done' }).click();
+  await decor.waitFor({ state: 'detached' });
   await page.getByRole('button', { name: 'Resume game' }).click();
   await page.getByRole('button', { name: /Single window/ }).click();
   await page.waitForFunction(([s, t]) => {
@@ -437,7 +446,7 @@ try {
   // (Past the moment its autoplay could start it again.)
   await page.waitForTimeout(1700);
   now = await page.locator(hostSong).evaluate((a) => ({ paused: a.paused, t: a.currentTime }));
-  assert(now.paused && Math.abs(now.t - left) < 0.3, `and after the previews, Resume game has it paused where the game left it (${left.toFixed(1)} s → ${now.t.toFixed(1)} s, paused)`);
+  assert(now.paused && Math.abs(now.t - left) < 0.3, `and after the previews, 🎨 Theme and 🖼 Board images, Resume game has it paused where the game left it (${left.toFixed(1)} s → ${now.t.toFixed(1)} s, paused)`);
 
   assert(!errors.length, 'no page errors' + (errors.length ? ': ' + errors.join(' | ') : ''));
   console.log('\nStage media E2E passed.');

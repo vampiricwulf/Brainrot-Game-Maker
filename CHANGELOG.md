@@ -20,6 +20,7 @@ in plain words for the people who make and host games. Anything committed but no
 - With a chroma-key Stage background, the pre-game note about a player's color close to the key now works it out as OBS does, as the theme's note does: it warns about the palette's red (the first player's color) on a magenta key and its yellow on a green one, which OBS makes see-through, and no longer suggests the other key when it would take a player's red or yellow out.
 - With phone buzzer Teams on, a button that spins the 🎯 wheel reads “Spin Pick a team”, as the wheel on stream does, and so does what the host is told when it's pressed: a board space's buttons (as it's landed on or passed, and on its card, ▶ Start too), an RPG object's or item's, and a wheel slice's or a die face's. They said “Spin Pick a player”.
 - A buzzer room kept for another game: after ◀ Back to editor, Ctrl+Z there takes back the step ▶ Play made for the room (Buzzer mode, Teams and its players) without closing the room, so the phones stay in it (they were told the game is over, and Ctrl+Y couldn't bring them back). Ctrl+Y puts the step back, and ▶ Play goes back into the room.
+- After leaving a game mid-clue, opening 🎨 Theme (or its 📂 Import theme…) or 🖼 Board images… no longer makes Resume game start the clue's video or sound again from 0:00, playing: it's paused where the game left it, as after the slide editor's ▶ Preview.
 
 ## 2026-10-17
 

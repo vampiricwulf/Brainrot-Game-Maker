@@ -128,7 +128,7 @@
       <div class="preview">
         {#if shown && demo}
           <Stage hostOnly>
-            <AudienceView game={shown} session={demo} {live} role="mirror" />
+            <AudienceView game={shown} session={demo} {live} role="mirror" demo />
           </Stage>
         {/if}
       </div>
