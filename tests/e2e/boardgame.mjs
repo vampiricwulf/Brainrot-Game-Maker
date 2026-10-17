@@ -671,8 +671,11 @@ try {
     id: 'g_board_long',
     title: 'Board long names',
     players: crowd.players.map((p, i) => ({ ...p, name: longNames[i] })),
-    // (The second board moves by a wheel of words.)
-    rounds: [crowd.rounds[0], { ...crowd.rounds[0], id: 'r_bg2', name: 'Board two', mover: { kind: 'wheel', wheel: 'w_words' } }],
+    // (The first board has a long name shown at its right edge; the second moves by a wheel of words.)
+    rounds: [
+      { ...crowd.rounds[0], spaces: [...board.spaces, sp('b9', 'The Very Long Lava Pit of Doom', 1860, 760, [], { showName: true })] },
+      { ...crowd.rounds[0], id: 'r_bg2', name: 'Board two', mover: { kind: 'wheel', wheel: 'w_words' } },
+    ],
   };
   const longFile = resolve('test-results/boardgame-long.json');
   writeFileSync(longFile, JSON.stringify(long));
@@ -682,10 +685,23 @@ try {
   await one.goto(pathToFileURL(file).href);
   await openGameFile(one, longFile);
   await one.getByText(/^Opened “/).waitFor();
+  // A long name at the right edge moves in to stay on the board, in the editor and on stream (it was cut off).
+  const lavaIn = (where) =>
+    one.evaluate((sel) => {
+      const [frame, label] = sel.split(' | ').map((q) => document.querySelector(q)?.getBoundingClientRect());
+      return label && frame ? { left: Math.round(label.left - frame.left), right: Math.round(frame.right - label.right) } : null;
+    }, where);
+  await one.locator('nav > button.round-tab', { hasText: 'Board game' }).click();
+  await one.locator('.canvas [data-space="b9"] .label').waitFor();
+  const lavaEditor = await lavaIn('.canvas-box | .canvas [data-space="b9"] .label');
+  assert(lavaEditor.right >= 0 && lavaEditor.left >= 0, `a long name at the board's right edge is all on the board in the editor (${JSON.stringify(lavaEditor)})`);
   await one.getByRole('button', { name: '▶ Play' }).click();
   await one.getByRole('button', { name: 'Start game ▶' }).click();
   await one.locator('.bh').waitFor();
   if (await one.locator('.stage-box .title-card').count()) await one.locator('.stage-box .title-card').click();
+  await one.locator('.stage [data-space="b9"] .label').waitFor();
+  const lavaStage = await lavaIn('.stage .play-area | .stage [data-space="b9"] .label');
+  assert(lavaStage.right >= 0 && lavaStage.left >= 0, `and on the stage (${JSON.stringify(lavaStage)})`);
   const stageAt = () => one.evaluate(() => ({ stage: Math.round(document.querySelector('.stage-box').getBoundingClientRect().top), scrolled: document.querySelector('main.play').scrollTop }));
   const stageBefore = await stageAt();
   // 3 from Start: through Space 2 onto the Fork, with 1 to go.

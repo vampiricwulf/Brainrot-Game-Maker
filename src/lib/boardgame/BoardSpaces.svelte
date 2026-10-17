@@ -47,6 +47,10 @@
   const labelled = (s: BoardSpace) => !hidden(s) && (nameShown(s) || allNames);
   /** The bottom of a space's name, below its center (board px). */
   const LABEL_BOTTOM = 112;
+  /** About half as wide as a space's name (board px): 16 a letter (Anton at 30px), and its padding. */
+  const halfName = (s: BoardSpace) => (s.name.length * 16 + 40) / 2;
+  /** How far a space's name moves sideways to stay on the board, near its left or right edge (board px). */
+  const nameShift = (s: BoardSpace) => Math.max(8 + halfName(s) - s.x, Math.min(0, SLIDE_W - 8 - halfName(s) - s.x));
 
   /**
    * How far from a space's center a link to or from it stops: at the edge of its circle, or, coming in from below,
@@ -55,9 +59,9 @@
   function clear(s: BoardSpace, ux: number, uy: number): number {
     const edge = R + 6;
     if (!labelled(s) || uy <= 0) return edge;
-    // The name's box: about 16 board px a letter (Anton at 30px), from just under the circle down to LABEL_BOTTOM.
-    const half = (s.name.length * 16 + 40) / 2;
-    const t = Math.min(LABEL_BOTTOM / uy, Math.abs(ux) > 1e-6 ? half / Math.abs(ux) : Infinity);
+    // The name's box, from just under the circle down to LABEL_BOTTOM: as far out on the link's side as it reaches.
+    const side = halfName(s) + (ux > 0 ? nameShift(s) : -nameShift(s));
+    const t = Math.min(LABEL_BOTTOM / uy, Math.abs(ux) > 1e-6 ? side / Math.abs(ux) : Infinity);
     return Math.max(edge, t + 4);
   }
 
@@ -130,8 +134,8 @@
     {/if}
     <!-- (No numbers in the circles: a board's spaces aren't counted out loud; their names show when ticked.) -->
     {#if labelled(s)}
-      <!-- (Absolutely placed under the circle: a hidden name leaves the board as it is.) -->
-      <span class="label" class:off={!nameShown(s)} data-name-hidden={nameShown(s) ? undefined : ''}>{#if !nameShown(s)}<span class="eye" aria-hidden="true">⊘</span>{/if}{s.name}</span>
+      <!-- (Absolutely placed under the circle: a hidden name leaves the board as it is. Near a side it moves in.) -->
+      <span class="label" class:off={!nameShown(s)} style:translate={nameShift(s) ? `${nameShift(s)}px 0` : undefined} data-name-hidden={nameShown(s) ? undefined : ''}>{#if !nameShown(s)}<span class="eye" aria-hidden="true">⊘</span>{/if}{s.name}</span>
     {/if}
   </div>
 {/each}
