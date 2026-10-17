@@ -17,6 +17,8 @@ export interface MediaState {
   volume: number;
   muted: boolean;
   loop: boolean;
+  /** A silent loop (a GIF turned into a video, or a looping muted video): the keys go to other media first. */
+  silent?: boolean;
   /** Autoplay with sound was blocked by the browser (fell back to muted or paused). */
   blocked?: boolean;
   /** The media failed (e.g. YouTube refused to embed); the host should use the "open" fallback. */

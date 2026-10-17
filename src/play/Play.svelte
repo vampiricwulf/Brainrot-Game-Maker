@@ -722,10 +722,11 @@
     if (t && game.settings.timerAutoStart) startTimer(app.live, t);
   }
 
-  /** The first controllable media element on screen (for the Space / ← → / M / Y shortcuts). */
+  /** The first controllable media element on screen (for the Space / ← → / M / Y shortcuts): not a silent loop (a GIF), if
+   *  there's other media. */
   function firstMedia(): [string, { paused: boolean; muted: boolean; openUrl?: string }] | undefined {
     const src = dual ? Object.entries(remoteMedia) : Object.entries(localMedia).filter(([, s]) => s.role !== 'mirror');
-    return src[0];
+    return src.find(([, s]) => !s.silent) ?? src[0];
   }
 
   /** Open the audience window, or bring it to the front if it's already open. Never closes it. */

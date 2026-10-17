@@ -3,7 +3,8 @@
 // the host paused stays paused where it was when the audience window is reloaded, or closed and opened again. The
 // audience window closed or opened mid-clue: the host's controls reach the copy with the sound, and only one has sound.
 // A game left mid-clue: the editor's ▶ Preview and ↻ Replay of that clue play its sound from the start. A video (and a
-// YouTube video) that comes in after the slide starts playing as it shows.
+// YouTube video) that comes in after the slide starts playing as it shows. Space and M go to a sound before a looping,
+// muted video (a GIF), and ▶ plays a sound stopped at its Stop at again from its start.
 import { chromium } from 'playwright-core';
 import { existsSync } from 'node:fs';
 import { resolve } from 'node:path';
@@ -137,6 +138,19 @@ try {
   await page.locator('.canvas .card').waitFor();
   await comesIn();
   await page.getByRole('button', { name: 'Done' }).click();
+  // A fourth clue with a looping, muted video (as a GIF becomes) under a sound that's started by hand and cut at 1.5 s.
+  await page.locator('.tile').nth(3).click();
+  await page.getByRole('button', { name: '🎬 Video' }).click();
+  [fc] = await Promise.all([page.waitForEvent('filechooser'), page.getByRole('button', { name: '⬆ Upload video file…' }).click()]);
+  await fc.setFiles({ name: 'gif.webm', mimeType: 'video/webm', buffer: clip });
+  await page.locator('.insp').getByLabel('Loop', { exact: true }).check();
+  await page.locator('.insp').getByLabel('Start muted').check();
+  await page.getByRole('button', { name: '🔊 Audio' }).click();
+  [fc] = await Promise.all([page.waitForEvent('filechooser'), page.getByRole('button', { name: '⬆ Upload audio file…' }).click()]);
+  await fc.setFiles({ name: 'cut.wav', mimeType: 'audio/wav', buffer: wav(4) });
+  await page.locator('.insp').getByLabel('Autoplay when the slide appears').uncheck();
+  await page.locator('.insp').getByLabel('Stop at (s)').fill('1.5');
+  await page.getByRole('button', { name: 'Done' }).click();
   await page.waitForTimeout(900);
   await page.evaluate(
     () =>
@@ -190,6 +204,30 @@ try {
   const ytAt = (await yt.evaluate(() => window.__yt.plays))[0];
   const ytShows = await page.locator('.stage-box .full iframe').evaluate((f) => window.__showsAt(f.closest('.el')));
   assert(ytShows !== null && ytAt >= ytShows - 1000, `it's started as it shows (${ytShows === null ? 'before its entrance began' : `${Math.round(ytAt - ytShows)} ms from it`})`);
+  await page.keyboard.press('Shift+Escape');
+  await page.locator('.stage-box .board').waitFor();
+  await guard();
+
+  // The clue with a looping, muted video (a GIF) under its sound: Space and M are for the sound, and the GIF keeps
+  // looping, silent. The sound cut at its Stop at plays again from its start with ▶, not on past the cut.
+  const gif = '.stage-box .full video';
+  const cut = '.stage-box .full audio';
+  await page.locator('.board .tile').nth(3).click();
+  await waitPaused(page, gif, false);
+  await page.locator('.mc .item').nth(1).waitFor();
+  await page.keyboard.press(' ');
+  const heard = await waitPaused(page, cut, false).then(() => true, () => false);
+  assert(heard && !(await paused(page, gif)), 'Space plays the sound, not the GIF over it (it keeps looping)');
+  const soundRow = page.locator('.mc .item', { has: page.locator('.ic', { hasText: '🔊' }) });
+  await page.waitForFunction((s) => { const a = document.querySelector(s); return a.paused && a.currentTime >= 1.4; }, cut);
+  await soundRow.getByRole('button', { name: 'Play' }).waitFor();
+  await soundRow.getByRole('button', { name: 'Play' }).click();
+  const again = await page.waitForFunction((s) => { const a = document.querySelector(s); return !a.paused && a.currentTime < 1; }, cut, { timeout: 5000 }).then(() => true, () => false);
+  assert(again, '▶ on a sound stopped at its Stop at plays it again from its start');
+  await soundRow.getByRole('button', { name: 'Pause' }).waitFor();
+  await page.keyboard.press('m');
+  const hushed = await page.waitForFunction((s) => document.querySelector(s).muted, cut, { timeout: 5000 }).then(() => true, () => false);
+  assert(hushed && (await page.locator(gif).evaluate((v) => v.muted)), 'M mutes the sound, and the GIF stays silent');
   await page.keyboard.press('Shift+Escape');
   await page.locator('.stage-box .board').waitFor();
   await guard();

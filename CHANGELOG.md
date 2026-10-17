@@ -19,6 +19,8 @@ in plain words for the people who make and host games. Anything committed but no
 - 🎭 Deal… warns before 📤 Send when the deal's cards would fill the phones (they hold 8 cards at once, all phones together, so a deal to 8 players fills them): until you take its cards back, or the round ends, no other 🤫 card could reach a phone, a partner clue's included.
 
 ### Fixed
+- Space and M (and ← →) go to a slide's sound or video before a looping, muted video such as a GIF: on a clue with a GIF they used to pause the GIF or unmute it, and the sound never started.
+- ▶ (or Space, or a click) on a video or sound stopped at its Stop at plays it again from its start: each press used to play a moment of the part after the cut, and never replay it.
 - A video, sound or YouTube video that plays by itself waits for its entrance animation's Delay: it starts as it shows, instead of at once while it was still hidden (viewers heard it before seeing anything, and missed the start of the picture).
 - After leaving a game mid-clue, the slide editor's ▶ Preview of that clue plays its video or sound from the start, and so does ↻ Replay: they used to pick it up where the game left it, and once it had ended it stayed stuck on its end, even on stream after Resume game.
 - Opening the 📺 audience window while a clue's video or sound is playing in one window: your copy stays silent when you mute and unmute it (🔇 🔈 or M), instead of playing along with the audience window's, out of step. Closing the audience window mid-clue: the clip you now hear keeps its media controls row, and Space and M still work on it.

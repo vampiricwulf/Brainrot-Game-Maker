@@ -111,6 +111,7 @@
         volume: el.volume,
         muted: role === 'mirror' || el.muted,
         loop,
+        silent: el.loop && el.muted,
         openUrl: youtubeWatchUrl(vid, startAt),
       },
       startAt,

@@ -49,6 +49,8 @@
   function tryPlay(): void {
     const n = node;
     if (!n) return;
+    // Stopped at its Stop at: it plays again from its start, not on into the part it cuts off.
+    if (range.end && n.currentTime >= range.end - 0.05) n.currentTime = start();
     sinkReady.then(() => n.play()).catch((err: DOMException) => {
       // Autoplay with sound blocked: fall back to muted playback and tell the host.
       if (err?.name === 'NotAllowedError' && !n.muted) {
@@ -133,6 +135,7 @@
         volume: n.volume,
         muted: n.muted,
         loop,
+        silent: !isAudio && el.loop && el.muted,
         openUrl: remote ? openUrl : undefined,
       },
       start(),
