@@ -4,8 +4,8 @@
 // audience window closed or opened mid-clue: the host's controls reach the copy with the sound, and only one has sound.
 // A game left mid-clue: the editor's ▶ Preview and ↻ Replay of that clue play its sound from the start, and Resume game
 // still has it where the game left it. A video (and a YouTube video) that comes in after the slide starts playing as it
-// shows. Space and M go to a sound before a looping, muted video (a GIF), and ▶ plays a sound stopped at its Stop at
-// again from its start.
+// shows, even if its slide comes back, or the audience window reloads, before it does. Space and M go to a sound before
+// a looping, muted video (a GIF), and ▶ plays a sound stopped at its Stop at again from its start.
 import { chromium } from 'playwright-core';
 import { existsSync } from 'node:fs';
 import { resolve } from 'node:path';
@@ -72,8 +72,10 @@ const YT = `<!doctype html><script>
   addEventListener('message', (e) => {
     const d = JSON.parse(e.data);
     if (d.event === 'listening') {
-      say({ event: 'initialDelivery', info: { playerState: auto === '1' ? 1 : 5, currentTime: 0, duration: 10 } });
+      const info = { playerState: auto === '1' ? 1 : 5, currentTime: 0, duration: 10 };
+      say({ event: 'initialDelivery', info });
       say({ event: 'onReady' });
+      say({ event: 'infoDelivery', info });
     }
     if (d.event === 'command' && d.func === 'playVideo') {
       window.__yt.plays.push(performance.timeOrigin + performance.now());
@@ -138,6 +140,9 @@ try {
   await page.locator('.linkbox').getByLabel('Paste a link').press('Enter');
   await page.locator('.canvas .card').waitFor();
   await comesIn();
+  await page.getByRole('tab', { name: /Answer/ }).click();
+  await page.getByRole('button', { name: /Text/ }).first().click();
+  await page.keyboard.type('The later answer');
   await page.getByRole('button', { name: 'Done' }).click();
   // A fourth clue with a looping, muted video (as a GIF becomes) under a sound that's started by hand and cut at 1.5 s.
   await page.locator('.tile').nth(3).click();
@@ -205,6 +210,24 @@ try {
   const ytAt = (await yt.evaluate(() => window.__yt.plays))[0];
   const ytShows = await page.locator('.stage-box .full iframe').evaluate((f) => window.__showsAt(f.closest('.el')));
   assert(ytShows !== null && ytAt >= ytShows - 1000, `it's started as it shows (${ytShows === null ? 'before its entrance began' : `${Math.round(ytAt - ytShows)} ms from it`})`);
+  await page.keyboard.press('Shift+Escape');
+  await page.locator('.stage-box .board').waitFor();
+  await guard();
+  // Its answer shown and hidden again before they come in: they still start by themselves (they came back paused at 0:00).
+  const laterVideo = '.stage-box .full video';
+  await page.locator('.board .tile').nth(2).click();
+  await page.waitForFunction((s) => (document.querySelector(s)?.readyState ?? 0) >= 1, laterVideo);
+  await page.locator('.mc .time', { hasText: '/ 0:10' }).waitFor(); // (the YouTube video's length, from its player)
+  const laterAnswer = page.locator('.stage-box').getByText('The later answer');
+  await page.keyboard.press('r');
+  await laterAnswer.waitFor();
+  await page.keyboard.press('r');
+  await laterAnswer.waitFor({ state: 'detached' });
+  let ran = await page.waitForFunction((s) => (document.querySelector(s)?.currentTime ?? 0) > 0.3, laterVideo, { timeout: 15000 }).then(() => true, () => false);
+  assert(ran, 'the answer shown and hidden before the video comes in: it still starts by itself');
+  const ytBack = await (await page.locator('.stage-box .full iframe').elementHandle()).contentFrame();
+  ran = await ytBack.waitForFunction(() => window.__yt?.plays.length > 0, null, { timeout: 15000 }).then(() => true, () => false);
+  assert(ran, 'and so does the YouTube video');
   await page.keyboard.press('Shift+Escape');
   await page.locator('.stage-box .board').waitFor();
   await guard();
@@ -296,9 +319,24 @@ try {
   await aud.getByText('The answer text').waitFor();
   assert(true, 'clicking elsewhere on the slide still reveals the answer');
 
+  // The clue whose video and YouTube video come in later, the audience window reloaded (OBS, F5) before they show: they
+  // still start by themselves there (they were held at 0:00, paused).
+  await page.keyboard.press('Escape');
+  await page.locator('.stage-box .board').waitFor();
+  await guard();
+  await page.locator('.stage-box .board .tile').nth(2).click();
+  await aud.waitForFunction(() => (document.querySelector('.full video')?.readyState ?? 0) >= 1);
+  await page.locator('.mc .time', { hasText: '/ 0:10' }).waitFor();
+  await aud.reload();
+  ran = await aud.waitForFunction(() => (document.querySelector('.full video')?.currentTime ?? 0) > 0.3, null, { timeout: 15000 }).then(() => true, () => false);
+  assert(ran, 'the audience window reloaded before the video comes in: it still starts by itself there');
+  const ytAud = await (await aud.locator('.full iframe').elementHandle()).contentFrame();
+  ran = await ytAud.waitForFunction(() => window.__yt?.plays.length > 0, null, { timeout: 15000 }).then(() => true, () => false);
+  assert(ran, 'and so does the YouTube video');
+
   // The sound that plays by itself, paused by the host: the audience window reloaded (OBS, F5) or closed and opened
   // again keeps it paused where it was, rather than playing it again from 0:00 with sound.
-  await page.keyboard.press('Escape');
+  await page.keyboard.press('Shift+Escape');
   await page.locator('.stage-box .board').waitFor();
   await guard();
   await page.locator('.stage-box .board .tile').nth(1).click();

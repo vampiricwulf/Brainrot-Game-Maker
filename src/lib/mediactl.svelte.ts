@@ -19,6 +19,8 @@ export interface MediaState {
   loop: boolean;
   /** A silent loop (a GIF turned into a video, or a looping muted video): the keys go to other media first. */
   silent?: boolean;
+  /** It plays by itself, and hasn't yet: it waits for its entrance delay (or to load). */
+  waiting?: boolean;
   /** Autoplay with sound was blocked by the browser (fell back to muted or paused). */
   blocked?: boolean;
   /** The media failed (e.g. YouTube refused to embed); the host should use the "open" fallback. */
@@ -163,8 +165,9 @@ export function updateMedia(id: string, patch: Partial<MediaState>): void {
 export function unregisterMedia(id: string): void {
   const e = entries.get(id);
   const st = localMedia[id];
-  // Only in the scope it came up in: not the editor's preview's media (it came up in none).
-  if (e && st && scope && e.scope === scope && st.kind !== 'external')
+  // Only in the scope it came up in: not the editor's preview's media (it came up in none). Nor one still waiting to
+  // play by itself: it starts afresh, after its entrance again.
+  if (e && st && scope && e.scope === scope && st.kind !== 'external' && !st.waiting)
     kept.set(`${e.role}:${id}`, { time: st.time, muted: st.muted, paused: st.paused });
   restoring.delete(id);
   entries.delete(id);

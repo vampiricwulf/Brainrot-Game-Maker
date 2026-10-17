@@ -267,9 +267,10 @@ function fromAudience(msg: AudienceMsg): void {
     const at = Date.now();
     mediaWas = {};
     for (const [k, m] of Object.entries(remoteMedia))
-      // Not a site's own player (it can't be sought), nor one that hadn't loaded yet (it starts afresh anyway). Muted
-      // only if the host muted it, not a blocked autoplay's fallback.
-      if (m.kind !== 'external' && m.duration > 0)
+      // Not a site's own player (it can't be sought), nor one that hadn't loaded yet (it starts afresh anyway), nor one
+      // still waiting to play by itself (it does there, after its entrance). Muted only if the host muted it, not a
+      // blocked autoplay's fallback.
+      if (m.kind !== 'external' && m.duration > 0 && !m.waiting)
         mediaWas[k] = { paused: m.paused, muted: m.muted && !m.blocked, time: m.time, at, until: at + 10000 };
     for (const k of Object.keys(remoteMedia)) delete remoteMedia[k];
     audience.open = true;

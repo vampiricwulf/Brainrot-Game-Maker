@@ -33,6 +33,13 @@
   let autoTimer: ReturnType<typeof setTimeout> | undefined;
   /** Told to play or pause (by the host, or its slide coming back): an autoplay still waiting leaves it alone. */
   let told = false;
+  /** Its autoplay hasn't started it yet: its slide coming back, or the audience window reloading, starts it afresh. */
+  let waiting = false;
+  /** Started by itself, or told to play or pause: no more waiting. */
+  function stopWaiting(): void {
+    clearTimeout(autoTimer);
+    if (waiting) updateMedia(el.id, { waiting: (waiting = false) });
+  }
 
   const ORIGIN = 'https://www.youtube.com';
 
@@ -67,7 +74,11 @@
     if (!later || told || autoTimer !== undefined) return;
     const box = iframe?.closest('.el');
     const delay = box ? (parseFloat(getComputedStyle(box).animationDelay) || 0) * 1000 : 0;
-    autoTimer = setTimeout(() => !told && cmd('playVideo'), Math.max(0, delay - (performance.now() - mountedAt)));
+    const go = () => {
+      stopWaiting();
+      cmd('playVideo');
+    };
+    autoTimer = setTimeout(() => !told && go(), Math.max(0, delay - (performance.now() - mountedAt)));
   }
 
   function fail(): void {
@@ -80,18 +91,19 @@
     if (mode !== 'play' || !vid) return;
     mountedAt = performance.now();
     loop = el.loop;
+    waiting = later;
     registerMedia(
       el.id,
       role,
       {
         play: () => {
           told = true;
-          clearTimeout(autoTimer);
+          stopWaiting();
           cmd('playVideo');
         },
         pause: () => {
           told = true;
-          clearTimeout(autoTimer);
+          stopWaiting();
           cmd('pauseVideo');
         },
         seek: (t) => cmd('seekTo', [t, true]),
@@ -105,13 +117,14 @@
       {
         label,
         kind: 'youtube',
-        paused: !el.autoplay,
+        paused: !el.autoplay || later,
         time: startAt,
         duration: 0,
         volume: el.volume,
         muted: role === 'mirror' || el.muted,
         loop,
         silent: el.loop && el.muted,
+        waiting,
         openUrl: youtubeWatchUrl(vid, startAt),
       },
       startAt,

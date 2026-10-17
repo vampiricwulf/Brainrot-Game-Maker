@@ -98,3 +98,16 @@ describe('the editor’s ▶ Preview after a game left mid-clue', () => {
     expect(comesUp('a').filter((c) => !c.endsWith('mute'))).toEqual(['seek 2.5', 'pause']);
   });
 });
+
+describe('a clip that plays by itself, still waiting for its entrance', () => {
+  it('starts afresh when its slide comes back (it isn’t kept as paused at 0:00)', () => {
+    mediaScope('clue:0.0.0');
+    comesUp('a', { paused: true, waiting: true });
+    unregisterMedia('a');
+    expect(comesUp('a', { paused: true, waiting: true })).toEqual([]);
+    // Once it has started (or the host paused it), it comes back where it was.
+    updateMedia('a', { waiting: false, time: 1, paused: true });
+    unregisterMedia('a');
+    expect(comesUp('a').filter((c) => !c.endsWith('mute'))).toEqual(['seek 1', 'pause']);
+  });
+});

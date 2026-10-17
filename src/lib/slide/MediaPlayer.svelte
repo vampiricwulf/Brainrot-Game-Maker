@@ -66,13 +66,24 @@
   let autoTimer: ReturnType<typeof setTimeout> | undefined;
   /** Told to play or pause (by the host, or its slide coming back): an autoplay still waiting leaves it alone. */
   let told = false;
+  /** It plays by itself and hasn't yet: its slide coming back, or the audience window reloading, starts it afresh. */
+  let waiting = false;
+  /** Started by itself, or told to play or pause: no more waiting. */
+  function stopWaiting(): void {
+    clearTimeout(autoTimer);
+    if (waiting) updateMedia(el.id, { waiting: (waiting = false) });
+  }
   /** Autoplay starts as the item shows: after its entrance delay (none when motion is reduced: app.css). */
   function autoplay(): void {
     const box = node?.closest('.el');
     const delay = box ? (parseFloat(getComputedStyle(box).animationDelay) || 0) * 1000 : 0;
     const wait = delay - (performance.now() - mountedAt);
-    if (wait <= 0) return tryPlay();
-    autoTimer = setTimeout(() => !told && tryPlay(), wait);
+    const go = () => {
+      stopWaiting();
+      tryPlay();
+    };
+    if (wait <= 0) return go();
+    autoTimer = setTimeout(() => !told && go(), wait);
   }
 
   // Muted on mount and when the role changes (the host's copy turning silent when the audience window opens), not as an
@@ -101,6 +112,7 @@
     const n = node;
     mountedAt = performance.now();
     loop = el.loop;
+    waiting = el.autoplay;
     n.volume = Math.max(0, Math.min(1, el.volume));
     n.muted = role === 'mirror' || el.muted;
     if (role !== 'mirror') sinkReady = applySink(n);
@@ -110,12 +122,12 @@
       {
         play: () => {
           told = true;
-          clearTimeout(autoTimer);
+          stopWaiting();
           tryPlay();
         },
         pause: () => {
           told = true;
-          clearTimeout(autoTimer);
+          stopWaiting();
           n.pause();
         },
         seek: (t) => (n.currentTime = t),
@@ -136,6 +148,7 @@
         muted: n.muted,
         loop,
         silent: !isAudio && el.loop && el.muted,
+        waiting,
         openUrl: remote ? openUrl : undefined,
       },
       start(),
