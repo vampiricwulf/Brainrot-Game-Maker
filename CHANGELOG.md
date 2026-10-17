@@ -19,6 +19,7 @@ in plain words for the people who make and host games. Anything committed but no
 - 🎭 Deal… warns before 📤 Send when the deal's cards would fill the phones (they hold 8 cards at once, all phones together, so a deal to 8 players fills them): until you take its cards back, or the round ends, no other 🤫 card could reach a phone, a partner clue's included.
 
 ### Fixed
+- After leaving a game mid-clue, the slide editor's ▶ Preview of that clue plays its video or sound from the start, and so does ↻ Replay: they used to pick it up where the game left it, and once it had ended it stayed stuck on its end, even on stream after Resume game.
 - Opening the 📺 audience window while a clue's video or sound is playing in one window: your copy stays silent when you mute and unmute it (🔇 🔈 or M), instead of playing along with the audience window's, out of step. Closing the audience window mid-clue: the clip you now hear keeps its media controls row, and Space and M still work on it.
 - On a board game's board, the name of a space near the left or right edge moves in to stay on the board, in the editor and on stream (a long one was cut off at the edge).
 - A board-game player sent back exactly onto Start (by a “Back 3” space, or ◀ Back) is no longer offered Start's “when passed” buttons, as one sent back past it never was; a Start they passed earlier in the turn is still offered.

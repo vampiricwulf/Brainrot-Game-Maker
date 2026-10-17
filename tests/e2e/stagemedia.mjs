@@ -2,6 +2,7 @@
 // revealing the answer — in one window, and from the host's copy in dual-window mode (the audience plays it). A sound
 // the host paused stays paused where it was when the audience window is reloaded, or closed and opened again. The
 // audience window closed or opened mid-clue: the host's controls reach the copy with the sound, and only one has sound.
+// A game left mid-clue: the editor's ▶ Preview and ↻ Replay of that clue play its sound from the start.
 import { chromium } from 'playwright-core';
 import { existsSync } from 'node:fs';
 import { resolve } from 'node:path';
@@ -254,6 +255,28 @@ try {
   await page.waitForFunction(() => document.querySelector('.mc [aria-label="Mute"]')?.getAttribute('aria-pressed') === 'false');
   await aud3.waitForFunction((s) => document.querySelector(s)?.muted === false, song);
   assert(await page.locator(hostSong).evaluate((a) => a.muted), "the audience window opened mid-clue: muted and unmuted, the sound comes back in the audience window only (the host's copy stays silent)");
+
+  // Left mid-clue in one window (Keep & leave): the editor's ▶ Preview of that clue plays its sound from the start, and
+  // so does ↻ Replay, rather than going on from where it was.
+  await aud3.close();
+  await page.locator('[data-audience-lost]').waitFor();
+  await page.waitForFunction((s) => { const a = document.querySelector(s); return !!a && !a.muted && !a.paused && a.currentTime > 4; }, hostSong);
+  await page.getByRole('button', { name: '🚪 Exit' }).click();
+  await page.waitForTimeout(450); // (a click right away is ignored: a double-click guard)
+  await page.getByRole('button', { name: 'Keep & leave', exact: true }).click();
+  await page.getByRole('button', { name: 'Resume game' }).waitFor();
+  await page.locator('.tile').nth(1).click();
+  await page.getByRole('button', { name: '▶ Preview' }).click();
+  const previewSong = '.canvas.previewing audio:not([data-old])';
+  const started = () => page.waitForFunction((s) => { const a = document.querySelector(s); return !!a && !a.paused && a.currentTime > 0; }, previewSong).then(() => page.locator(previewSong).evaluate((a) => a.currentTime));
+  let from = await started();
+  assert(from < 2, `the preview plays it from the start, not from where the game left it (${from.toFixed(1)} s)`);
+  await page.waitForFunction((s) => (document.querySelector(s)?.currentTime ?? 0) > 3, previewSong);
+  await page.locator(previewSong).evaluate((a) => (a.dataset.old = '1'));
+  await page.getByRole('button', { name: '↻ Replay' }).click();
+  from = await started();
+  assert(from < 2, `↻ Replay plays it again from the start (${from.toFixed(1)} s)`);
+  await page.keyboard.press('Escape');
 
   assert(!errors.length, 'no page errors' + (errors.length ? ': ' + errors.join(' | ') : ''));
   console.log('\nStage media E2E passed.');

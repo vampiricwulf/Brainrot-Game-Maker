@@ -32,6 +32,7 @@
   import { copyIsTheBrowsers } from '../../lib/undokeys';
   import { dropdown } from '../../lib/menustate.svelte';
   import { addMediaFile, slideImageSize, type LinkAdded } from '../../lib/media.svelte';
+  import { mediaScope } from '../../lib/mediactl.svelte';
   import { isGameDrop, warnIfUnplayable } from '../../lib/mediadrop';
   import { isLinkProblem, isMediaHost, parseMediaLink, youtubeStart } from '../../lib/links';
   import { registerGameFonts, uploadedFamily } from '../../lib/fonts';
@@ -649,6 +650,8 @@
   function togglePreview(): void {
     previewing = !previewing;
     if (previewing) {
+      // Its media from the start: not where a game left mid-clue had it (nor, for ↻ Replay, where the preview was).
+      mediaScope('');
       selected = [];
       shapeMenu = false;
       drawing = false;
