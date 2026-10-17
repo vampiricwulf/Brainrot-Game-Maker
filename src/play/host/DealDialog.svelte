@@ -173,7 +173,7 @@
   let lasts = $state<'round' | 'host'>('round');
   /** How long the cards last: as chosen, or as they lasted when sent before (📤 Send again after ✖ Take back). */
   const until = $derived<'round' | 'host'>(!roundOn ? 'host' : d?.stage === 'sent' && d.until ? d.until : lasts);
-  /** More players than the phones take cards at once (the room's CARDS_MAX). */
+  /** More players than the phones hold cards at once, all together (the room's CARDS_MAX). */
   const tooMany = $derived(!!d && cardsOn && d.hands.length > CARDS_MAX);
   const full = $derived(!!d && cardsOn && !out.length && !tooMany && roomCardsFull(game, session, dealTrial(game, d, until)));
   /** Why it can't go when `full`: the cards out, what the deal adds, how many to take back. */
@@ -192,7 +192,7 @@
   /** 📤 Send (or ✔ Hand them out, with no phones getting cards): every player's card goes now. */
   function send(): void {
     if (!d) return;
-    if (tooMany) return hint(`The phones take ${CARDS_MAX} cards at once: deal fewer in`);
+    if (tooMany) return hint(`The phones hold ${CARDS_MAX} cards at once, all phones together: deal fewer in`);
     if (full) return toast(fullText, 4000);
     const cards = sendDeal(game, session, until, Date.now(), cardsOn && roomCardsFull(game, session, dealTrial(game, d, until)));
     if (!cards.length) return toast('The deal can’t be sent now');
@@ -235,12 +235,12 @@
     if (!d || d.stage !== 'sent') return '';
     if (!out.length)
       return tooMany
-        ? `Its cards are back: the phones take ${CARDS_MAX} at once, so 🎭 Deal a new one with fewer in`
+        ? `Its cards are back: the phones hold ${CARDS_MAX} at once, all phones together, so 🎭 Deal a new one with fewer in`
         : full
           ? `Its cards are back, and the phones have no room for them now: ${fullText}`
           : 'Its cards are back (or over): 📤 Send puts them out again';
     if (over)
-      return `Only ${out.length - leftOff.size} of the ${out.length} cards are on the phones (they take ${CARDS_MAX} at once): copy ${dual ? 'the others theirs (📋, marked below)' : 'everyone theirs (📋)'}, or ✖ Take back and deal fewer in`;
+      return `Only ${out.length - leftOff.size} of the ${out.length} cards are on the phones (they hold ${CARDS_MAX} at once, all phones together): copy ${dual ? 'the others theirs (📋, marked below)' : 'everyone theirs (📋)'}, or ✖ Take back and deal fewer in`;
     if (!cardsOn) return `Dealt: copy each card to its player (📋)${cardWindow.open ? ', or show them in the 🪟 card window' : ''}`;
     const seen = out.filter((c) => seenSeats(session, c).length).length;
     const parts = [seen ? `✓ seen by ${seen} of ${out.length}` : `Sent to ${out.length}`];
@@ -400,7 +400,7 @@
         </div>
       {/if}
       {#if left}<div class="small warn">{left}</div>{/if}
-      {#if tooMany}<div class="small warn">The phones take {CARDS_MAX} cards at once: this deal has {d.hands.length}. Deal fewer in.</div>{/if}
+      {#if tooMany}<div class="small warn">The phones hold {CARDS_MAX} cards at once, all phones together: this deal has {d.hands.length}, one each. Deal fewer in.</div>{/if}
       {#if full}<div class="small warn" data-cards-full>{fullText}</div>{/if}
       <div class="actions">
         <div class="row wrap">
@@ -420,7 +420,7 @@
           {#if cardsOn && !over}<button class="small" onclick={again} title="Every card of the deal goes again under a new id: a phone that came late (a player on a new phone) gets theirs">↻ Send again</button>{/if}
           <button class="ghost small" onclick={takeBack} title="Takes every card of the deal off the phones (the deal stays, for Who was who)">✖ Take back</button>
         {:else}
-          <button class="small" onclick={send} disabled={tooMany || full} title={tooMany ? `The phones take ${CARDS_MAX} cards at once: this deal has ${d.hands.length}` : full ? fullText : 'The same cards go out again'}>📤 Send</button>
+          <button class="small" onclick={send} disabled={tooMany || full} title={tooMany ? `The phones hold ${CARDS_MAX} cards at once, all phones together: this deal has ${d.hands.length}, one each` : full ? fullText : 'The same cards go out again'}>📤 Send</button>
         {/if}
         {#if d.shown}
           <button class="small" onclick={() => reveal(false)} data-deal-hide>🙈 Hide Who was who</button>

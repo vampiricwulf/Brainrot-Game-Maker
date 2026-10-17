@@ -5,8 +5,8 @@
 // takes it off; viewers never get who had which before that; a reload keeps it right.
 import { describe, expect, it } from 'vitest';
 import { jeopardyGame } from './testgame';
-import { migrateGame, newImageEl, setSlideText, textSlide, type CardTo, type DealPreset, type Game, type Session } from './model';
-import { forViewers, migrateSession, newSession, removePlayer } from './session';
+import { migrateGame, newImageEl, setSlideText, textSlide, type BoardRound, type CardTo, type DealPreset, type Game, type Session } from './model';
+import { forViewers, migrateSession, newSession, openClue, removePlayer } from './session';
 import { cardsFullText, cardsLeftOff, dealFullText, hostCards, roomCardsFull, sessionCards } from './buzz';
 import { CARDS_MAX, type CardLate, type PhoneInfo } from './buzzproto';
 import { listedCards, quickSlide, sendCard, sentCardId } from './sentcards';
@@ -14,7 +14,7 @@ import { phoneCard } from './phonecard';
 import { undoAction, redoAction, whoWasWhoStep } from './toolset';
 import { windowCards } from './cardwindow';
 import { WHEEL_TEMPLATES, wheelFromTemplate } from './wheeltemplates';
-import { toKey } from './partner';
+import { addCard, sendCards, setPartner, setPartnerGame, toKey } from './partner';
 import { validate } from './validate';
 import { mediaUsage } from './usage';
 import {
@@ -376,7 +376,7 @@ describe('📤 sending a deal: only when the host confirms, one card per player,
     };
     quick();
     expect(roomCardsFull(g, session, dealTrial(g, d, 'host'))).toBe(true);
-    const text = `5 cards are out on the phones, and this deal adds 6: they take ${CARDS_MAX} at once, so ✖ Take 3 back first`;
+    const text = `5 cards are out on the phones, and this deal adds 6: they hold ${CARDS_MAX} at once, all phones together, so ✖ Take 3 back first`;
     expect(dealFullText(g, session, dealTrial(g, d, 'host'))).toBe(text);
     // Sent, taken back, then the quick cards: the same (its cards out are none of the five).
     session.cards = [];
@@ -388,6 +388,49 @@ describe('📤 sending a deal: only when the host confirms, one card per player,
     expect(dealFullText(g, session, dealTrial(g, d, 'host'))).toBe(text);
     session.cards = session.cards!.slice(3);
     expect(roomCardsFull(g, session, dealTrial(g, d, 'host'))).toBe(false);
+  });
+
+  it('a send of more than one card (a partner clue’s) that won’t fit: the refusal counts what’s out and whose, what it sends, and how many to take back', () => {
+    const { g, session, pool, tpl } = setup(5);
+    const deal = tpl('roles');
+    const r = dealtOf(dealHands(g, deal, pool, { rand: seeded(3) }));
+    startDeal(session, deal, r.hands, r.dealtIn, 500);
+    sendDeal(g, session, 'host', 1000);
+    sendCard(g, session, { to: pool, content: { slide: quickSlide('Wild') }, until: 'host' }, 1100);
+    sendCard(g, session, { to: [{ seat: 'a' }], content: { slide: quickSlide('Tip') }, until: 'host' }, 1200);
+    const pc = (g.rounds[0] as BoardRound).categories[1].clues[0];
+    pc.type = 'partner';
+    setPartnerGame(pc, 'describe');
+    addCard(pc);
+    addCard(pc);
+    pc.cards!.forEach((c, i) => setSlideText(c, `Part${i + 1}`));
+    openClue(session, { round: 0, cat: 1, row: 0 }, g);
+    const s = session.partner!;
+    setPartner(session, s, 'b', 'wheel');
+    const all = (t: Session) => sendCards(t, t.partner!, pc.cards!, 2000);
+    expect(roomCardsFull(g, session, all)).toBe(true);
+    expect(cardsFullText(g, session, all)).toBe(
+      `7 cards are out on the phones, 5 of them the 🎭 deal’s, and this sends 3: they hold ${CARDS_MAX} at once, all phones together, so ✖ Take 2 back first (the deal’s go together, in 🎭 Deal…)`,
+    );
+    // One goes (8 out): the next card's refusal names the partner clue's too.
+    sendCards(session, s, [pc.cards![0]], 2000);
+    const next = (t: Session) => sendCards(t, t.partner!, [pc.cards![1]], 3000);
+    expect(roomCardsFull(g, session, next)).toBe(true);
+    expect(cardsFullText(g, session, next)).toBe(`${CARDS_MAX} cards are out on the phones, 5 of them the 🎭 deal’s and 1 this partner clue’s: ✖ Take them back in 🎭 Deal…, or take back another one`);
+    // The deal back, a second partner card out: the deal's refusal says where those are.
+    takeBackDeal(g, session);
+    sendCards(session, s, [pc.cards![1]], 3000);
+    expect(roomCardsFull(g, session, dealTrial(g, session.deal!, 'host'))).toBe(true);
+    expect(dealFullText(g, session, dealTrial(g, session.deal!, 'host'))).toBe(
+      `4 cards are out on the phones, 2 of them this partner clue’s, and this deal adds 5: they hold ${CARDS_MAX} at once, all phones together, so ✖ Take 1 back first`,
+    );
+    // A send bigger than the phones hold: nothing taken back makes room.
+    const many = (t: Session) => {
+      for (let i = 0; i < CARDS_MAX + 1; i++) sendCard(g, t, { to: [{ seat: 'c' }], content: { slide: quickSlide(`m${i}`) }, until: 'host' }, 4000 + i);
+    };
+    expect(cardsFullText(g, session, many)).toBe(
+      `4 cards are out on the phones, 2 of them this partner clue’s, and this sends ${CARDS_MAX + 1}: they hold ${CARDS_MAX} at once, all phones together, so send fewer at once`,
+    );
   });
 
   it('a deal handed out to more players than the phones take (before the room took cards): which never reach them, and the refusal counts what they hold', () => {

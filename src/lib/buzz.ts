@@ -444,27 +444,49 @@ export function roomCardsFull(game: Game, session: Session, go?: (trial: Session
 }
 
 /**
+ * Which of the cards out aren't in the list of cards out: a 🎭 deal's (in 🎭 Deal…) and the open partner clue's (on its
+ * rows), as ", 5 of them the 🎭 deal’s and 3 this partner clue’s" ('' when none).
+ */
+function ofThem(dealAll: number, partner: number): string {
+  const parts = [...(dealAll ? [`${dealAll} of them the 🎭 deal’s`] : []), ...(partner ? [`${partner}${dealAll ? '' : ' of them'} this partner clue’s`] : [])];
+  return parts.length ? `, ${parts.join(' and ')}` : '';
+}
+
+/** The open partner clue's cards the room is told now (one per part of a send). */
+const partnerCount = (game: Game, session: Session): number => partnerCards(game, session, { files: {} })?.length ?? 0;
+
+/**
  * Why a 🎭 deal's 📤 Send is refused (roomCardsFull with dealTrial: its cards aren't out): how many cards are out, how
- * many the deal adds, and how many to take back (cardsFullText is for one card).
+ * many the deal adds, and how many to take back.
  */
 export function dealFullText(game: Game, session: Session, go: (trial: Session) => void): string {
   const now = roomCardCount(game, session);
   const add = countAfter(game, session, go) - now;
-  return `${now} card${now === 1 ? ' is' : 's are'} out on the phones, and this deal adds ${add}: they take ${CARDS_MAX} at once, so ✖ Take ${now + add - CARDS_MAX} back first`;
+  return `${now} card${now === 1 ? ' is' : 's are'} out on the phones${ofThem(0, partnerCount(game, session))}, and this deal adds ${add}: they hold ${CARDS_MAX} at once, all phones together, so ✖ Take ${now + add - CARDS_MAX} back first`;
 }
 
 /**
- * Why a send is refused when the room has all the cards it takes (the button's title, and the toast). A 🎭 deal's cards
- * count too, though the list of cards out leaves them to 🎭 Deal…: then it says where they are, and how many.
+ * Why a send is refused when the room hasn't room for it (the button's title, and the toast). `go`: the send, as
+ * roomCardsFull got it (without it, one card). A 🎭 deal's cards and the open partner clue's count too, though the list
+ * of cards out leaves them off: then it says how many are whose. A send of more than one card says how many it sends,
+ * and how many to take back.
  */
-export function cardsFullText(game: Game, session: Session): string {
+export function cardsFullText(game: Game, session: Session, go?: (trial: Session) => void): string {
   const dealAll = cardsOut(game, session).filter((c) => c.deal).length;
-  if (!dealAll) return `${CARDS_MAX} cards are out on the phones: ✖ Take one back first`;
   // (A deal handed out before the room took cards can have more than the phones hold: then they hold only the deal's,
   // and taking another card back frees nothing.)
-  const all = dealAll >= CARDS_MAX;
-  const others = !all && roomCardCount(game, session) > dealAll;
-  return `${CARDS_MAX} cards are out on the phones, ${all ? 'all' : dealAll} of them the 🎭 deal’s: ✖ Take ${dealAll === 1 ? 'it' : 'them'} back in 🎭 Deal…${others ? ', or take back another one' : ''}`;
+  if (dealAll >= CARDS_MAX) return `${CARDS_MAX} cards are out on the phones, all of them the 🎭 deal’s: ✖ Take them back in 🎭 Deal…`;
+  const now = roomCardCount(game, session);
+  const whose = ofThem(dealAll, partnerCount(game, session));
+  const add = go ? countAfter(game, session, go) - now : 1;
+  if (add > 1) {
+    const need = now + add - CARDS_MAX;
+    // (More than the phones hold by itself: taking cards back can't make room for it.)
+    const then = need > now ? 'send fewer at once' : `✖ Take ${need} back first${dealAll ? ' (the deal’s go together, in 🎭 Deal…)' : ''}`;
+    return `${now} card${now === 1 ? ' is' : 's are'} out on the phones${whose}, and this sends ${add}: they hold ${CARDS_MAX} at once, all phones together, so ${then}`;
+  }
+  if (!dealAll) return `${CARDS_MAX} cards are out on the phones${whose}: ✖ Take one back first`;
+  return `${CARDS_MAX} cards are out on the phones${whose}: ✖ Take ${dealAll === 1 ? 'it' : 'them'} back in 🎭 Deal…${now > dealAll ? ', or take back another one' : ''}`;
 }
 
 /** The last bit of a card's id on the wire for each part, when a send goes as one card per part (partnerCards). */

@@ -87,7 +87,7 @@
   import { shopBuy } from './host/shopops';
   import { SLIDE_H, SLIDE_W } from '../lib/model';
   import { clone, randomizePartnerTiles } from '../lib/ops';
-  import type { ActionEvent, Dir8, Game, GameSettings, Player, ScoreEvent, SentCard } from '../lib/model';
+  import type { ActionEvent, Dir8, Game, GameSettings, Player, ScoreEvent, SentCard, Session } from '../lib/model';
   import type { Pop } from '../lib/live';
   import {
     audience,
@@ -1981,7 +1981,8 @@
     if (session.revealed) return hint('The answer is showing: Esc goes back to the board');
     // (Never more cards than the buzzer room takes: a send over that waits for a ✖ Take back.)
     const unsent = unsentCards();
-    if (unsent.length && roomCardsFull(game, session, (t) => sendCards(t, t.partner!, unsent))) return hint(cardsFullText(game, session));
+    const go = (t: Session) => sendCards(t, t.partner!, unsent);
+    if (unsent.length && roomCardsFull(game, session, go)) return hint(cardsFullText(game, session, go));
     const went = phoneCards ? sendCards(session, s, unsent) : [];
     if (went.length) announce(went.map((c) => `${clueCardWords(c, cardSlides(info.clue).indexOf(c), true)} sent to ${recipientsText(session, s, partnerRules(info.clue), c)}`).join('. '));
     s.stage = 'live';

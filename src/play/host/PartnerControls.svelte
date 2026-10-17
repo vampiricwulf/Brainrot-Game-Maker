@@ -131,7 +131,8 @@
     void ask(`${name(old)} already has ${which}: take it back and send it to ${name(id)}?`, { ok: '📤 Send changes', cancel: `Leave it with ${name(old)}` }).then((yes) => {
       if (!yes || session.partner !== s) return;
       // (Never more cards than the buzzer room takes.)
-      if (roomCardsFull(game, session, (t) => moved.forEach(({ card }) => sendChanges(t, t.partner!, card)))) return toast(cardsFullText(game, session), 4000);
+      const go = (t: Session) => moved.forEach(({ card }) => sendChanges(t, t.partner!, card));
+      if (roomCardsFull(game, session, go)) return toast(cardsFullText(game, session, go), 4000);
       for (const { card } of moved) sendChanges(session, s, card);
       announce(`${moved.map(({ card, n }) => clueCardWords(card, n - 1, true)).join(' and ')} sent to ${name(id)}`);
     });
@@ -312,12 +313,14 @@
   /** "Card 1 sent to Bob", or "Card “Clue tip” sent to Bob" (names only, never what's on it). */
   const sentText = (card: ClueCard, n: number) => `${clueCardWords(card, n - 1, true)} sent to ${recipientsText(session, s, rules, card)}`;
 
-  /** Sending this card now would take the buzzer room past the cards it takes (a send can be one card per part). */
-  const sendFull = (card: ClueCard): boolean => roomCardsFull(game, session, (t) => sendCards(t, t.partner!, [card]));
+  /** 📤 Send for this card, made on a copy of the session (roomCardsFull's `go`: a send can be one card per part). */
+  const sendGo = (card: ClueCard) => (t: Session) => sendCards(t, t.partner!, [card]);
+  /** Sending this card now would take the buzzer room past the cards it takes. */
+  const sendFull = (card: ClueCard): boolean => roomCardsFull(game, session, sendGo(card));
   /** 📤 Send: this card to its players' phones now (the countdown doesn't start). */
   function sendOne(card: ClueCard, n: number): void {
     if (!cardsOn) return;
-    if (sendFull(card)) return toast(cardsFullText(game, session), 4000);
+    if (sendFull(card)) return toast(cardsFullText(game, session, sendGo(card)), 4000);
     if (!sendCards(session, s, [card]).length) return toast(`Choose who gets ${clueCardWords(card, n - 1)} first`);
     announce(sentText(card, n));
   }
@@ -341,11 +344,13 @@
     retryFiles(game, session, [card]);
     if (sendAgain(session, s, card)) announce(`${clueCardWords(card, n - 1, true)} sent again to ${sentTo(session, s, card.id).map((t) => toName(session, t)).join(', ')}`);
   }
+  /** 📤 Send changes for this card, made on a copy of the session. */
+  const changesGo = (card: ClueCard) => (t: Session) => sendChanges(t, t.partner!, card);
   /** 📤 Send changes would take the buzzer room past the cards it takes. */
-  const changesFull = (card: ClueCard): boolean => roomCardsFull(game, session, (t) => sendChanges(t, t.partner!, card));
+  const changesFull = (card: ClueCard): boolean => roomCardsFull(game, session, changesGo(card));
   /** 📤 Send changes: to whoever was added, and taken back from whoever was taken off. */
   function changes(card: ClueCard, n: number): void {
-    if (changesFull(card)) return toast(cardsFullText(game, session), 4000);
+    if (changesFull(card)) return toast(cardsFullText(game, session, changesGo(card)), 4000);
     sendChanges(session, s, card);
     announce(cardSends(s, card.id).length ? sentText(card, n) : `${clueCardWords(card, n - 1, true)} taken back`);
   }
@@ -471,8 +476,9 @@
       const unsentNow = cardsOn ? cards.filter((c) => !cardSends(st, c.id).length && cardRecipients(session, st, c).length) : [];
       if (unsentNow.length) {
         // (Never more cards than the buzzer room takes: ✖ Take one back first.)
-        const full = roomCardsFull(game, session, (t) => sendCards(t, t.partner!, unsentNow));
-        return { label: '📤 Send and start', key: '⏎', title: full ? cardsFullText(game, session) : 'Enter or N: the cards not sent yet go to their phones, and the countdown starts', disabled: full, run: onclock };
+        const go = (t: Session) => sendCards(t, t.partner!, unsentNow);
+        const full = roomCardsFull(game, session, go);
+        return { label: '📤 Send and start', key: '⏎', title: full ? cardsFullText(game, session, go) : 'Enter or N: the cards not sent yet go to their phones, and the countdown starts', disabled: full, run: onclock };
       }
       return { label: '⏱ Start the clock', key: '⏎', title: cardsOn ? 'Enter or N: the countdown starts' : 'Enter or N: the countdown starts (copy the cards to their players first)', run: onclock };
     }
@@ -714,11 +720,11 @@
             {#if cardsOn}
               {#if st === 'unsent'}
                 {@const full = to.length > 0 && sendFull(card)}
-                <button class="small" onclick={() => sendOne(card, n)} disabled={!to.length || full} aria-label="Send {w}" title={full ? cardsFullText(game, session) : to.length ? `Sends it to ${to.map((t) => toName(session, t)).join(', ')} now (the countdown doesn’t start)` : 'Choose who gets it first'}>📤 Send</button>
+                <button class="small" onclick={() => sendOne(card, n)} disabled={!to.length || full} aria-label="Send {w}" title={full ? cardsFullText(game, session, sendGo(card)) : to.length ? `Sends it to ${to.map((t) => toName(session, t)).join(', ')} now (the countdown doesn’t start)` : 'Choose who gets it first'}>📤 Send</button>
               {:else}
                 {#if st === 'changed'}
                   {@const full = changesFull(card)}
-                  <button class="small" onclick={() => changes(card, n)} disabled={full} aria-label="Send {w}’s changes" title={full ? cardsFullText(game, session) : 'Sends it to whoever you added, and takes it back from whoever you took off'}>📤 Send changes</button>
+                  <button class="small" onclick={() => changes(card, n)} disabled={full} aria-label="Send {w}’s changes" title={full ? cardsFullText(game, session, changesGo(card)) : 'Sends it to whoever you added, and takes it back from whoever you took off'}>📤 Send changes</button>
                 {:else}
                   <button class="small" onclick={() => again(card, n)} aria-label="Send {w} again" title="Sends it again under a new id: a phone that came late (a player on a new phone) gets it too, with what’s on the card now">↻ Send again</button>
                 {/if}
