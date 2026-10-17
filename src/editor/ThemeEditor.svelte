@@ -222,9 +222,11 @@
     <summary>Colors</summary>
     <div class="grid">
       {#each COLORS as [key, label]}
-        <label class="check" data-k={key} data-color>
+        {@const unused = key === 'tileUsed' && t.usedLook ? (t.usedLook === 'dim' ? 'Dimmed' : 'Hidden') : ''}
+        <!-- (A note when Played tiles doesn't show the used-tile color: it can still be set, for later.) -->
+        <label class="check" data-k={key} data-color title={unused ? `Not shown while Played tiles (in Tiles) is ${unused}` : undefined}>
           <input type="color" value={hex(key === 'stageText' ? stageText(t) : (t[key] as string), '#000000')} oninput={(e) => ((t as unknown as Record<string, string>)[key] = e.currentTarget.value)} />
-          {label}
+          {#if unused}<span>{label} <span class="hint">(not shown: Played tiles is {unused})</span></span>{:else}{label}{/if}
         </label>
       {/each}
       <label class="check" data-k="glow" data-color>

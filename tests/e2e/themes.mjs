@@ -119,6 +119,13 @@ try {
   await page.getByRole('combobox', { name: 'Played tiles' }).selectOption('hidden');
   const played = await preview.locator('.board .tile.used').first().evaluate((e) => getComputedStyle(e).backgroundColor);
   assert(played === 'rgba(0, 0, 0, 0)', `played tiles can be hidden (${played})`);
+  const usedColor = page.locator('label[data-k="tileUsed"]');
+  await usedColor.getByText('(not shown: Played tiles is Hidden)').waitFor();
+  assert(await usedColor.locator('input[type=color]').isEnabled(), 'then Colors › Used tiles says it isn’t shown (its color can still be set)');
+  await usedColor.click({ button: 'right', position: { x: 5, y: 5 } });
+  await menu.waitFor();
+  assert((await menu.innerText()).startsWith('Used tiles\n'), 'and its right-click menu is still called Used tiles');
+  await page.keyboard.press('Escape');
   await page.getByLabel('Rounded corners (0)').fill('20');
   assert((await preview.locator('.board .tile').first().evaluate((e) => getComputedStyle(e).borderRadius)) === '20px', 'rounded tile corners');
   await openSection('Categories');
