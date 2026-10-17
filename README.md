@@ -239,7 +239,8 @@ the tiebreaker, going to another round, or the Final going on).
 A player on a computer opens the same link: `Space` (or `Enter`) buzzes, `1`–`9` pick their seat or team, `Esc` goes back, and the page says when another window (the stream, say) has the keyboard. The room stays open
 through the pre-game screen, a reload of it, **◀ Back to editor**, **Exit › Keep & leave** (Resume goes back into it)
 and **▶ Next game…** (▶ Play asks to keep it for another game, which then has its players, and Teams on if it was); it closes with **Exit › Discard & leave**, when you leave the results screen any other way than
-▶ Next game…, with **✕ Close the room**, or when Buzzer mode is turned off. The join code shows small in a corner of the stream
+▶ Next game…, with **✕ Close the room**, or when Buzzer mode is turned off (not by undoing, in the editor, the step ▶ Play
+made to keep it). The join code shows small in a corner of the stream
 during the game (at the end of the score bar on the board) and on the cover card; the On stream options can hide it.
 **🔒 Lock seats** keeps new phones out, and a player whose seat you take back (✕) can't take it again for 2 minutes.
 The rooms run on a small buzzer server

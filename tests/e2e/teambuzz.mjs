@@ -432,6 +432,24 @@ try {
     (await teamsBox.isChecked()) && keptNames.join() === 'Player 1,Player 2' && (await card.getByText('4 people on 2 of 2 teams').isVisible()) && !(await ann.locator('#seats-note').isVisible()),
     `Ctrl+Z of a rule, then of a team’s new name: Teams stays on, the same 2 teams are listed, and the phones stay on them (${keptNames.join(', ')})`,
   );
+  // ◀ Back to editor, then Ctrl+Z there: it takes back the step ▶ Play made for the room (Buzzer mode and Teams on, its
+  // teams), but the room stays open and the phones on their teams; Ctrl+Y brings the step back, and ▶ Play goes back
+  // into the room.
+  await host.getByRole('button', { name: '◀ Back to editor' }).click();
+  await roomBar.getByText('▶ Play goes back into it').waitFor();
+  // (The note under the editor says what it undid.)
+  const editorSaid = (text) => host.locator('.history-notice', { hasText: text }).waitFor();
+  await host.keyboard.press('Control+z');
+  await editorSaid(`Undid Kept buzzer room ${code}`);
+  await host.keyboard.press('Control+y');
+  await editorSaid(`Redid Kept buzzer room ${code}`);
+  await host.getByRole('button', { name: '▶ Play' }).click();
+  await card.getByText('4 people on 2 of 2 teams').waitFor();
+  for (const [p, name, team] of [[ann, 'Ann', 'Player 1'], [bea, 'Bea', 'Player 2'], [mal, 'Mal', 'Player 1']]) await p.locator('#me').getByText(`${name} · ${team} · $0`, { exact: true }).waitFor();
+  assert(
+    (await teamsBox.isChecked()) && !(await ann.locator('main').getByText('The game is over').isVisible()),
+    'Ctrl+Z in the editor of the step ▶ Play made for the room leaves it open (Ctrl+Y puts the step back): ▶ Play goes back into it with Teams on, every phone still on its team',
+  );
 
   // ---------- 24 phones on teams: the next one is told the game is full, and joins once someone leaves ----------
   await zed.close();
