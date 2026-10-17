@@ -254,8 +254,9 @@ The players and rules aren't there: the tab says so at the top, with a button to
 
 **For OBS:** Theme › Stage background can be chroma green or magenta for keying (the pre-game screen warns when a
 player's color is close to the key, which would key it out, and the Theme page and the pre-game screen name the theme's
-colors OBS would make see-through, such as Brainrot Neon's green values on the green key; the Daily Double splash and
-🤝 PARTNER UP! take colors the key leaves alone), and **▭** (or `Shift+A`) opens a
+colors OBS would make see-through, such as Brainrot Neon's green values on the green key, and the pre-game screen also a
+board game's backdrop, spaces and zones or RPG screens it would, such as a new board's green backdrop; the Daily Double
+splash and 🤝 PARTNER UP! take colors the key leaves alone), and **▭** (or `Shift+A`) opens a
 scores-only window for a lower-third capture. The "Starting soon" and cover cards can be edited, with a countdown
 (the host sees its time left). **Reduce motion on stream** is in the pre-game screen's On stream section too.
 

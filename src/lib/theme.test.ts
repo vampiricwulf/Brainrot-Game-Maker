@@ -1,8 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import { contrast, obsKeyed } from './colors';
-import { altTile, EXTRA_LOOKS, headerBackground, isThemeColor, isThemeFont, keyedThemeColors, lookNumber, otherStageKey, presetEdited, presetTheme, splashColors, STAGE_KEYS, stageText, themeReadability, themeStyle, tileBackground, type Theme } from './theme';
+import { altTile, EXTRA_LOOKS, headerBackground, isThemeColor, isThemeFont, keyedRoundColors, keyedThemeColors, lookNumber, otherStageKey, presetEdited, presetTheme, roundStageColors, splashColors, STAGE_KEYS, stageText, themeReadability, themeStyle, tileBackground, type Theme } from './theme';
 import { migrateGame, newGame } from './model';
 import { categoryBox } from './boardfit';
+import { newBoardGameRound } from './boardgame';
+import { newRpgRound } from './rpg';
 
 describe('theme presets', () => {
   it("notices when the colors or fonts no longer match the theme's preset", () => {
@@ -261,6 +263,45 @@ describe('colors OBS would key out', () => {
     expect(keyedThemeColors(glow, 'magenta')).toEqual(['Tile glow']);
     expect(otherStageKey(glow)).toBeUndefined();
     expect(otherStageKey(glow, [], false)).toBe('magenta');
+  });
+
+  it('names what board games and RPG screens show behind everything, as they come, that the key takes out', () => {
+    const game = newGame();
+    const board = newBoardGameRound();
+    game.rounds = [board];
+    // The board's green backdrop, and its green and cyan spaces, on green; its red, purple and magenta spaces on magenta.
+    expect(keyedRoundColors(roundStageColors(game), 'green')).toEqual(['the board game’s backdrop', 'board spaces']);
+    expect(keyedRoundColors(roundStageColors(game), 'magenta')).toEqual(['board spaces']);
+    expect(keyedRoundColors(roundStageColors(game), undefined)).toEqual([]);
+    board.spaces.forEach((sp) => (sp.color = '#f58231'));
+    expect(keyedRoundColors(roundStageColors(game), 'magenta')).toEqual([]);
+    // An off-board zone left as it comes is purple, partly gone on magenta.
+    board.zones.push({ id: 'z1', name: 'Shadow Realm', slide: { background: {}, elements: [] } });
+    expect(keyedRoundColors(roundStageColors(game), 'magenta')).toEqual(['an off-board zone']);
+    // A backdrop under a picture or a gradient isn't counted.
+    board.slide.background = { color: '#1d5e3a', image: 'm1' };
+    expect(keyedRoundColors(roundStageColors(game), 'green')).toEqual([]);
+    board.slide.background = { gradient: 'linear-gradient(#00ff00, #00ff00)' };
+    expect(keyedRoundColors(roundStageColors(game), 'green')).toEqual([]);
+    // RPG screens: green as they come, and their other looks.
+    const rpg = newRpgRound(game);
+    game.rounds = [rpg];
+    expect(keyedRoundColors(roundStageColors(game), 'green')).toEqual(['RPG screens']);
+    const start = game.worlds![0].maps[0].screens[0];
+    start.slide.background = { color: '#2b2b38' };
+    expect(keyedRoundColors(roundStageColors(game), 'green')).toEqual([]);
+    start.variants = [{ id: 'v1', name: 'On fire', slide: { background: {}, elements: [] } }];
+    expect(keyedRoundColors(roundStageColors(game), 'green')).toEqual(['RPG screens']);
+  });
+
+  it('doesn’t offer the other key where it would take out a board game’s or RPG screen’s own colors', () => {
+    const dark: Theme = { ...presetTheme('dark'), stageBg: 'magenta' };
+    expect(otherStageKey(dark)).toBe('green');
+    const game = newGame();
+    game.rounds = [newRpgRound(game)];
+    expect(otherStageKey(dark, roundStageColors(game).map(([, c]) => c))).toBeUndefined();
+    game.worlds![0].maps[0].screens[0].slide.background = { color: '#2b2b38' };
+    expect(otherStageKey(dark, roundStageColors(game).map(([, c]) => c))).toBe('green');
   });
 
   it('the Daily Double and PARTNER UP! splashes swap colors where the key would take their own', () => {

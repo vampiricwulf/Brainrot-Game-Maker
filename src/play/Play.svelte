@@ -48,7 +48,7 @@
   import { isColorTaken, nextFreeColor, obsKeyed, PLAYER_PALETTE } from '../lib/colors';
   import { announce } from '../lib/announce';
   import { ask } from '../lib/ask.svelte';
-  import { keyedThemeColors, otherStageKey, STAGE_KEYS } from '../lib/theme';
+  import { keyedRoundColors, keyedThemeColors, otherStageKey, roundStageColors, STAGE_KEYS } from '../lib/theme';
   import ToolLauncher from './host/ToolLauncher.svelte';
   import KeysHelp from './KeysHelp.svelte';
   import Stage from '../lib/Stage.svelte';
@@ -896,8 +896,12 @@
   const hasBoard = $derived(game.rounds.some(isBoard));
   /** The theme's colors that key would make see-through (🎨 Theme says so too), of those the game shows. */
   const keyedTheme = $derived(game.theme ? keyedThemeColors(game.theme, game.theme.stageBg, hasBoard) : []);
-  /** The other key, which both notes offer only when it would leave the theme's colors and every player's alone. */
-  const otherKey = $derived(game.theme ? otherStageKey(game.theme, session.players.map((p) => p.color), hasBoard) : undefined);
+  /** What the board-game and RPG rounds show behind everything (their backdrops, spaces, screens), with its color. */
+  const roundColors = $derived(roundStageColors(game));
+  /** Those that key would make see-through (a note of their own: they're changed in the round's editor). */
+  const keyedRounds = $derived(keyedRoundColors(roundColors, game.theme?.stageBg));
+  /** The other key, which the notes offer only when it would leave the theme's colors, every player's and the rounds' alone. */
+  const otherKey = $derived(game.theme ? otherStageKey(game.theme, [...session.players.map((p) => p.color), ...roundColors.map(([, c]) => c)], hasBoard) : undefined);
 
   const info = $derived(currentClueInfo(session, game));
 
@@ -4002,6 +4006,12 @@
             <p class="warn small" data-warn="chroma-theme">
               ⚠ Some of the theme’s colors are close to the chroma key ({game.theme.stageBg}, 🎨 Theme › Stage background): OBS would
               make them see-through on stream ({keyedTheme.join(', ').toLowerCase()}). Pick others in 🎨 Theme{otherKey ? `, or a ${otherKey} key` : ''}.
+            </p>
+          {/if}
+          {#if keyedRounds.length && game.theme.stageBg}
+            <p class="warn small" data-warn="chroma-rounds">
+              ⚠ Some of the rounds’ colors are close to the chroma key ({game.theme.stageBg}, 🎨 Theme › Stage background): OBS would
+              make them see-through on stream ({keyedRounds.join(', ')}). Pick others in their round’s editor{otherKey ? `, or a ${otherKey} key` : ''}.
             </p>
           {/if}
           {#if !session.players.length}

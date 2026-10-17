@@ -1,7 +1,7 @@
 // Board/stage themes (spec §5.7): presets plus per-game overrides, applied as CSS variables.
 import { contrast, mixHex, obsKeyed, obsKeyedFade, textOn, toHex } from './colors';
 import { cssUrl } from './links';
-import type { Id } from './model';
+import type { Game, Id, Slide } from './model';
 
 export type ThemePreset = 'classic' | 'dark' | 'neon' | 'pastel';
 
@@ -235,13 +235,42 @@ export function keyedThemeColors(t: Theme, key: Theme['stageBg'] = t.stageBg, bo
 }
 
 /**
- * The other chroma key, to offer when the stage background's would key out a color: only when it would leave the
- * theme's colors (as keyedThemeColors, `board` the same) and these player colors alone. None without a key.
+ * What a game's board-game and RPG rounds show behind everything, named as the pre-game screen says it, with its
+ * color, as their stages draw it (BoardGameStage, BoardSpaces, RpgStage: a backdrop left as it comes is theirs, not the
+ * theme's): a board game's backdrop, its spaces and off-board zones, RPG screens. One under a picture or a gradient
+ * isn't counted.
  */
-export function otherStageKey(t: Theme, players: string[] = [], board = true): Theme['stageBg'] {
+export function roundStageColors(game: Pick<Game, 'rounds' | 'worlds'>): [string, string][] {
+  const out: [string, string][] = [];
+  const add = (name: string, s: Slide, def: string) => {
+    if (!s.background.image && !s.background.gradient) out.push([name, s.background.color ?? def]);
+  };
+  for (const r of game.rounds)
+    if (r.mode === 'boardgame') {
+      add('the board game’s backdrop', r.slide, '#1d5e3a');
+      for (const sp of r.spaces) out.push(['board spaces', sp.color]);
+      for (const z of r.zones) add('an off-board zone', z.slide, '#2a0845');
+    } else if (r.mode === 'rpg') {
+      const screens = game.worlds?.find((w) => w.id === r.world)?.maps.flatMap((m) => m.screens) ?? [];
+      for (const sc of screens) for (const sl of [sc.slide, ...(sc.variants ?? []).map((v) => v.slide)]) add('RPG screens', sl, '#2f6b3a');
+    }
+  return out;
+}
+
+/** Of those (roundStageColors), what OBS's Chroma Key would make see-through with this key, each named once. None without a key. */
+export function keyedRoundColors(colors: [string, string][], key: Theme['stageBg']): string[] {
+  return key ? [...new Set(colors.filter(([, c]) => obsKeyed(toHex(c) ?? '', STAGE_KEYS[key])).map(([name]) => name))] : [];
+}
+
+/**
+ * The other chroma key, to offer when the stage background's would key out a color: only when it would leave the
+ * theme's colors (as keyedThemeColors, `board` the same) and these other colors alone (the players', the rounds' as
+ * roundStageColors has them). None without a key.
+ */
+export function otherStageKey(t: Theme, colors: string[] = [], board = true): Theme['stageBg'] {
   if (!t.stageBg) return undefined;
   const other = t.stageBg === 'green' ? 'magenta' : 'green';
-  return keyedThemeColors(t, other, board).length || players.some((c) => obsKeyed(c, STAGE_KEYS[other])) ? undefined : other;
+  return keyedThemeColors(t, other, board).length || colors.some((c) => obsKeyed(toHex(c) ?? '', STAGE_KEYS[other])) ? undefined : other;
 }
 
 /** The Daily Double splash's pink and purple, and 🤝 PARTNER UP!'s greens (AudienceView). */

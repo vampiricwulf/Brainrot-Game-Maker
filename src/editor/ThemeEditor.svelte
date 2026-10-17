@@ -28,6 +28,7 @@
     LOOK_RANGES,
     lookNumber,
     otherStageKey,
+    roundStageColors,
     stageText,
     themeReadability,
     type Ranged,
@@ -85,7 +86,8 @@
   const hard = (r: number | null): r is number => r !== null && r < 3;
   /** The colors OBS would make see-through with the stage background's chroma key (a note offers the other key when it wouldn't). */
   const keyed = $derived(keyedThemeColors(t));
-  const otherKey = $derived(otherStageKey(t));
+  // (Not one that would take out the board games' or RPG screens' own colors.)
+  const otherKey = $derived(otherStageKey(t, roundStageColors(game).map(([, c]) => c)));
 
   const COLORS: [keyof typeof t, string][] = [
     ['tile', 'Tiles & slide background'],

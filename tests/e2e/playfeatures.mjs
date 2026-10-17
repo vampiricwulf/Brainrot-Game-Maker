@@ -271,7 +271,7 @@ try {
   assert(slidesNote.includes('see-through on stream (tiles & slide background).'), `with no Jeopardy board, the pre-game screen leaves out the glow only a board has (${slidesNote})`);
   await slidesContext.close();
 
-  // ---------- The Daily Double splash and PARTNER UP! keep clear of the key ----------
+  // ---------- The Daily Double splash and PARTNER UP! keep clear of the key; a board game's own colors ----------
   const words = (t) => ({ background: {}, elements: [{ id: `t_${t}`, kind: 'text', text: t, x: 120, y: 90, w: 1680, h: 400, rotation: 0, opacity: 1, zIndex: 1, font: 'Arial', size: 90, weight: 700, italic: false, underline: false, uppercase: false, color: '#ffffff', align: 'center', vAlign: 'middle', lineHeight: 1.2, letterSpacing: 0, autoFit: true }] });
   const partner = { game: 'describe', giver: 'partner', got: { giver: 100, guesser: 50 }, missed: { giver: 0, guesser: -50 }, partnerSafe: true, points: 'game' };
   const splashGame = (stageBg) => ({
@@ -280,7 +280,11 @@ try {
     rounds: [{ id: 'r_board', name: 'Round 1', mode: 'board', values: [200, 400], dailyDoubleCount: 1, categories: [{ id: 'cat0', title: 'Movies', clues: [
       { id: 'q_dd', value: null, type: 'dailyDouble', questionSlide: words('A clue'), answerSlide: words('An answer') },
       { id: 'q_pt', value: null, type: 'partner', partner, timerSeconds: 45, questionSlide: words('Describe it'), answerSlide: words('Shrek') },
-    ] }] }],
+    ] }] }, {
+      // As ＋ Add round makes it (its backdrop green), with a magenta space.
+      id: 'r_bg', name: 'Board game', mode: 'boardgame', slide: { background: { color: '#1d5e3a' }, elements: [] }, mover: { kind: 'dice', dice: 'd6' }, zones: [],
+      spaces: [['Start', '#ffcc00'], ['Space 2', '#f032e6'], ['Space 3', '#f58231']].map(([name, color], i) => ({ id: `s${i}`, name, x: 400 + i * 550, y: 540, color, next: [`s${(i + 1) % 3}`] })),
+    }],
     theme: { stageBg },
   });
   // (rgb(61, 255, 176): PARTNER UP!'s green; rgb(255, 61, 203): the Daily Double's pink.)
@@ -292,6 +296,16 @@ try {
     await sp.getByText(/^Opened “/).waitFor();
     await editorReady(sp);
     await sp.getByRole('button', { name: '▶ Play' }).click();
+    // The pre-game screen names the board game's colors the key takes out, and offers no key that takes them out:
+    // magenta takes its magenta space (and Classic's blue tiles), green its backdrop.
+    const roundsNote = sp.locator('[data-warn="chroma-rounds"]');
+    await roundsNote.waitFor();
+    const notes = await sp.locator('[data-warn^="chroma"]').allInnerTexts();
+    const named = key === 'magenta' ? '(board spaces)' : '(the board game’s backdrop)';
+    assert(
+      (await roundsNote.innerText()).includes(`OBS would make them see-through on stream ${named}. Pick others in their round’s editor.`) && !notes.some((n) => n.includes(' key.')),
+      `on a ${key} key, the pre-game screen names ${named} and no note offers the other key (${notes.join(' | ')})`,
+    );
     await sp.getByRole('button', { name: 'Start game ▶' }).click();
     const look = (sel) => sp.locator(`.stage-box ${sel}`).evaluate((e) => getComputedStyle(e).backgroundImage);
     await sp.locator('.stage-box .tile[data-clue="q_dd"]').click();
