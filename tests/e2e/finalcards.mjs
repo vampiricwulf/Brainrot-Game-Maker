@@ -19,7 +19,7 @@ import { chromium } from 'playwright-core';
 import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { confirmStrip, editorReady, mainButton, openGameFile, packGame, png, recordSeen, roomStored, shownOf, startBuzzer, stored } from './helpers.mjs';
+import { confirmStrip, editorReady, forgetSeen, mainButton, openGameFile, packGame, png, recordSeen, roomStored, seenWhere, shownOf, startBuzzer, stored } from './helpers.mjs';
 
 const file = resolve(process.env.APP_FILE || 'dist/index.html');
 if (!existsSync(file)) throw new Error('Run `npm run build` first');
@@ -312,10 +312,12 @@ try {
   await host.getByRole('button', { name: '▶ Play' }).click();
   const roomCard = host.getByRole('region', { name: 'Phone buzzers' });
   await roomCard.waitFor();
-  // (What the editor showed doesn't count, nor what it still changed on its way out (↷ Redo's tooltip names a card):
-  // from here on the host page is on stream.)
+  // (What the editor showed doesn't count, nor what it still changed on its way out (↷ Redo's tooltip names a card),
+  // nor what it was still to say: its last notices ("Deleted card “Leader hint”…" and their Ctrl+Z) go to the screen
+  // reader in one batch 430 ms after the last, which can be after ▶ Play and the editor gone (it was on CI). The live
+  // region is drawn nowhere. From here on the host page is on stream.)
   await host.locator('.editor').waitFor({ state: 'detached' });
-  await host.evaluate(() => (window.__seen.length = 0));
+  await forgetSeen(host);
   await roomCard.getByRole('button', { name: '▶ Start the room' }).click();
   const codeEl = roomCard.locator('[aria-label^="Room code "]');
   await codeEl.waitFor();
@@ -343,9 +345,11 @@ try {
   await host.locator('.stage-box .tile').first().waitFor();
   const seat = Object.fromEntries(last().seats.map((x) => [x.name, x.id]));
   const cardsOn = (p) => p.locator('.card').count();
+  /** For a check's message: where a page showed or said each of `found` (seenWhere), so a failure says what drew it. */
+  const whereFound = async (p, found) => (found.length ? `:\n    ${(await seenWhere(p, found)).join('\n    ')}` : '');
   const offStream = async (p, name, when, more = []) => {
     const found = await shownOf(p, [...SECRETS, ...more]);
-    assert(!found.length, `${when}: ${name} holds no card’s words or file name${more.length ? ', nor its name' : ''}${found.length ? ` (found ${found.join(', ')})` : ''}`);
+    assert(!found.length, `${when}: ${name} holds no card’s words or file name${more.length ? ', nor its name' : ''}${found.length ? ` (found ${found.join(', ')})` : ''}${await whereFound(p, found)}`);
   };
 
   // ---------- A named tile card, offered by its name ----------
@@ -388,7 +392,8 @@ try {
   await host.locator('.rn button', { hasText: 'Prev round' }).click();
   await host.locator('.stage-box .board').waitFor();
   await noneFromEditor('back on the board from its title card');
-  assert(!(await shownOf(host, ['Leader hint'])).length, 'nor were its cards’ names ever on the host page');
+  const named = await shownOf(host, ['Leader hint']);
+  assert(!named.length, `nor were its cards’ names ever on the host page${await whereFound(host, named)}`);
 
   // ---------- The Final's wager screen (no title card the second time): its cards, under the wager rows ----------
   await toFinal();

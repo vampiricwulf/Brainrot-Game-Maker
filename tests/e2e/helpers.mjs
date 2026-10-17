@@ -344,29 +344,106 @@ export async function packGame(game, files) {
 /**
  * An init script: everything the page puts on screen or says from now on (text added, and the labels, titles and alt
  * texts set, the screen-reader announcements included: the live region's host keeps its words in data-said) goes in
- * window.__seen, so a toast or an announcement that came and went is still there to check.
+ * window.__seen, so a toast or an announcement that came and went is still there to check. Beside each, in
+ * window.__seenWhere (same place, kept in step when a test empties __seen), where it was: the element, its ancestors,
+ * when (performance.now()) and whether it was still on the page then (seenWhere reads them).
  */
 export function recordSeen() {
   const seen = (window.__seen = []);
+  const where = (window.__seenWhere = []);
   const ATTRS = ['aria-label', 'title', 'alt', 'aria-description', 'placeholder', 'data-said'];
   // (A style sheet's or a script's text is never shown: a font's base64 would hold any short word.)
   const unseen = (n) => !!n?.closest?.('style, script, noscript, template');
+  /** An element's opening tag, short. */
+  const tag = (el) => (el ? `<${el.localName}${[...el.attributes].map((a) => ` ${a.name}="${a.value.slice(0, 40)}"`).join('')}>`.slice(0, 160) : '?');
+  /** Its ancestors (tag#id.class), from the outermost of the nearest 8. */
+  const path = (el) => {
+    const out = [];
+    for (let p = el; p && out.length < 8; p = p.parentElement) out.push(p.localName + (p.id ? `#${p.id}` : '') + [...p.classList].map((c) => `.${c}`).join(''));
+    return out.reverse().join(' > ');
+  };
+  const push = (text, el) => {
+    // (A test empties __seen by setting its length to 0: the places go with it.)
+    if (where.length > seen.length) where.length = seen.length;
+    seen.push(text);
+    where.push({ at: Math.round(performance.now()), el: tag(el), path: path(el), on: !!el?.isConnected });
+  };
   const take = (n) => {
     if (n.nodeType === Node.TEXT_NODE) {
-      if (!unseen(n.parentElement)) seen.push(n.data);
+      if (!unseen(n.parentElement)) push(n.data, n.parentElement);
     } else if (n.nodeType === Node.ELEMENT_NODE && !unseen(n)) {
       const walk = document.createTreeWalker(n, NodeFilter.SHOW_TEXT);
-      for (let t = walk.nextNode(); t; t = walk.nextNode()) if (!unseen(t.parentElement)) seen.push(t.data);
-      for (const el of [n, ...n.querySelectorAll('*')]) for (const a of ATTRS) if (el.hasAttribute(a)) seen.push(el.getAttribute(a));
+      for (let t = walk.nextNode(); t; t = walk.nextNode()) if (!unseen(t.parentElement)) push(t.data, t.parentElement);
+      for (const el of [n, ...n.querySelectorAll('*')]) for (const a of ATTRS) if (el.hasAttribute(a)) push(el.getAttribute(a), el);
     }
   };
   new MutationObserver((list) => {
     for (const m of list) {
       if (m.type === 'childList') m.addedNodes.forEach(take);
-      else if (m.type === 'characterData') !unseen(m.target.parentElement) && seen.push(m.target.data);
-      else if (m.target.hasAttribute(m.attributeName)) seen.push(m.target.getAttribute(m.attributeName));
+      else if (m.type === 'characterData') !unseen(m.target.parentElement) && push(m.target.data, m.target.parentElement);
+      else if (m.target.hasAttribute(m.attributeName)) push(m.target.getAttribute(m.attributeName), m.target);
     }
   }).observe(document, { subtree: true, childList: true, characterData: true, attributes: true, attributeFilter: ATTRS });
+}
+
+/**
+ * Where a page (with recordSeen) shows or said any of `words` (case aside), now or since it loaded, as lines to print
+ * when a check fails: what held it, the element (its tag, its ancestors), when (ms since the page loaded), and whether
+ * it was still on the page by the time it was recorded ("gone at once": added and taken off before it could be drawn).
+ * (The screen reader's words are the live region's: div#live-region, drawn nowhere.)
+ */
+export function seenWhere(page, words) {
+  return page.evaluate((words) => {
+    const at = (s) => Math.min(...words.map((w) => String(s ?? '').toLowerCase().indexOf(w.toLowerCase())).filter((i) => i >= 0));
+    const has = (s) => at(s) !== Infinity;
+    /** Its words on one line, around the first match when they're long. */
+    const near = (s) => {
+      const t = String(s).replace(/\s+/g, ' ');
+      if (t.length <= 200) return `“${t}”`;
+      const i = at(t);
+      return `“${i > 80 ? '…' : ''}${t.slice(Math.max(0, i - 80), i + 120)}${i + 120 < t.length ? '…' : ''}”`;
+    };
+    const cls = (el) => (el?.getAttribute('class') ? ` class="${el.getAttribute('class')}"` : '');
+    const seen = window.__seen ?? [];
+    const where = (window.__seenWhere ?? []).slice(0, seen.length);
+    const out = [];
+    seen.forEach((s, i) => {
+      if (!has(s)) return;
+      const w = where[i];
+      out.push(`seen at ${w ? `${w.at}ms${w.on ? '' : ' (gone at once)'} in ${w.el} (${w.path})` : '?'}: ${near(s)}`);
+    });
+    const ATTRS = ['aria-label', 'title', 'alt', 'aria-description', 'placeholder', 'data-said'];
+    let inNode = false;
+    const walk = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
+    for (let t = walk.nextNode(); t; t = walk.nextNode())
+      if (has(t.data) && !t.parentElement?.closest('style, script, noscript, template')) {
+        inNode = true;
+        out.push(`on the page now in <${t.parentElement?.localName}${cls(t.parentElement)}>: ${near(t.data)}`);
+      }
+    for (const el of document.body.querySelectorAll('*'))
+      for (const a of ATTRS) if (el.hasAttribute(a) && has(el.getAttribute(a))) out.push(`on the page now in <${el.localName}${cls(el)}> ${a}: ${near(el.getAttribute(a))}`);
+    // (The page's words read together run across elements: "Leader" in one, " hint" in the next.)
+    if (!inNode && has(document.body.innerText)) out.push(`on the page now, across elements: ${near(document.body.innerText)}`);
+    out.push(`(now ${Math.round(performance.now())}ms)`);
+    return out;
+  }, words);
+}
+
+/**
+ * Starts what a page (with recordSeen) showed and said afresh, once it has said what it was still to say. Its screen
+ * reader's words go out in a batch ANNOUNCE_WAIT (400 ms) after the last of them, and reach the live region 30 ms after
+ * that (src/lib/announce.ts): an editor's last notices ("Deleted card “Leader hint”…") are said after ▶ Play when ▶ Play
+ * comes sooner, and would count as said in play. So it waits in the page itself: timers run in the order they're due
+ * however busy the page is, so the batch goes before a 1 s timer, and its last 30 ms before one set after that.
+ */
+export async function forgetSeen(page) {
+  await page.evaluate(async () => {
+    const wait = (ms) => new Promise((ok) => setTimeout(ok, ms));
+    await wait(1000);
+    await wait(100);
+    window.__seen.length = 0;
+    if (window.__seenWhere) window.__seenWhere.length = 0;
+  });
 }
 
 /** Which of `words` a page (with recordSeen) shows or said, now or since it loaded (case aside). */
