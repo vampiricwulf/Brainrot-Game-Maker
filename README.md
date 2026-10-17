@@ -51,7 +51,7 @@ comes in as a copy and this game's stays.
 | Mode | What it is |
 |---|---|
 | 🟦 **Jeopardy board** | 1–10 categories × 1–10 clues. Supports custom values, Daily Doubles, 🤝 partner clues (placed by hand or 🔀 at random; two players, no buzzers, a steal on a miss if you like, private 🤫 cards you send to their phones or copy to them), 🤫 cards on any tile, and images on categories and tiles. |
-| 🏆 **Final Jeopardy** | Private wagers, think music, then a one-by-one reveal and a winner screen. |
+| 🏆 **Final Jeopardy** | Private wagers, think music, then a one-by-one reveal and a winner screen; 🤫 cards of its own for the players you choose (＋ Card in its editor). |
 | 🗺 **RPG** | Players explore a map of screens. It has stats, items, shops, characters and doorways. |
 | ♟ **Board game** | A path of spaces with forks and zones. Players move by dice, a wheel, or one space per turn. |
 | 🖼 **Slides** | A few slides in a row (a welcome, the rules, a break); N goes from one to the next. |
@@ -204,15 +204,20 @@ With **A miss on a partner clue lets the others steal it** (⚖ Game rules, or e
 opens the buzzers for everyone else, the two who missed it locked out (without phones you pick who steals, `1`–`9`):
 a right steal gets the tile's value, a wrong one loses it, as on any clue, and Ctrl+Z on the miss closes the steal.
 **🤫 Send a card…** in the tools row sends a card to any players, teams or people on a team, at any time and in any
-round: one of your 🤫 Cards or a tile's card made in the editor, or a quick one (words typed or pasted, with a picture,
-video or sound, or a link). It lasts until the round ends or until you take it back; **🤫 2 cards out** next to it lists
-them by the name the app gives each ("Card 2 → Ann", never what's on it) with ↻ Send again and ✖ Take back; it turns
-orange when one isn't all on the phones (a picture that didn't go up, a phone that came late), and that card's row says
-what. A card made in the editor that you change after it went (▶ Resume with my edits) comes off the phones until you
-↻ Send it again, keeping its place among the cards the phones hold meanwhile.
+round: one of your 🤫 Cards, a tile's or a Final's card made in the editor, or a quick one (words typed or pasted, with
+a picture, video or sound, or a link). It lasts until the round ends or until you take it back; **🤫 2 cards out** next
+to it lists them by the name the app gives each ("Card 2 → Ann", never what's on it) with ↻ Send again and ✖ Take back;
+it turns orange when one isn't all on the phones (a picture that didn't go up, a phone that came late), and that card's
+row says what. A card made in the editor that you change after it went (▶ Resume with my edits) comes off the phones
+until you ↻ Send it again, keeping its place among the cards the phones hold meanwhile.
 Any tile can have 🤫 cards (＋ Card in the clue editor): a standard or Daily Double tile's are offered in its panel to
 the player who picked it (a private question, a tip before the wager), go only when you send them, and go away when the
-tile closes; the tile plays as it always does. An RPG object, an item, a wheel slice, a die face or a board space can
+tile closes; the tile plays as it always does. A Final can have 🤫 cards too (＋ Card in its editor): its panel offers
+them from the wager screen to the last reveal, each starting with everyone playing it (the chips change who gets it;
+teams go whole), they go when you press 📤 Send, and they go away when the Final ends. Give a tile's or a Final's card
+a name (**Card name** on the card's bar; F2 on its tab) to tell them apart: its tab, the host panel and 🤫 Send a card…
+show it instead of "Card 2". Phones never get it, but in one window viewers can read it in the host panel, so call a
+card what it's for, never what's on it. An RPG object, an item, a wheel slice, a die face or a board space can
 have a **🤫 Send a card** button (who gets it: whoever set it off, the party, a player you pick then, or everyone else):
 pressing it in play only offers the card in the panel, and it goes when you press 📤 Send there (Skip sends nothing).
 For a player with no phone, **🪟 Card window** (in 🤫 Send a card…) opens a window with only that player's cards,
