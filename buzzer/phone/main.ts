@@ -20,7 +20,7 @@
  * in or another button Tab took the keys to, the number keys pick a seat, Esc goes back, and the page shows those keys
  * (and says when another window has them). A phone works as it always has.
  */
-import { isRoomCode, ROOM_ALPHABET, type DenyReason, type PhoneView, type PhoneWager, type RoomToPhone } from '../../src/lib/buzzproto';
+import { isRoomCode, MAX_PHONES, ROOM_ALPHABET, type DenyReason, type PhoneView, type PhoneWager, type RoomToPhone } from '../../src/lib/buzzproto';
 import { PLAYER_COLOR_NAMES, PLAYER_PALETTE, textOn } from '../../src/lib/colors';
 import { cardFocus, clearCards, coverCards, drawCards, initCards, retapCards, retryCardFiles } from './cardpanel';
 import { cardsLine, lateLine } from './cards';
@@ -80,6 +80,8 @@ let newForm = false;
 let teamPick: SeatsMsg['seats'][number] | null = null;
 /** Teams: a join sent for teamPick that the room hasn't answered yet. */
 let teamAsked = false;
+/** Teams: that join was turned away, the room full (the name form says so when it's back). */
+let fullJoin = false;
 let notice: Notice | null = null;
 let seatsNote = '';
 /** Empties the assertive alert once it has been said, so a screen reader browsing later doesn't find a stale "BUZZ!". */
@@ -401,7 +403,7 @@ function onMessage(m: RoomToPhone): void {
       saveSeat({ seatId: m.seatId, token: m.token });
       if (m.name) saveName(m.name);
       teamPick = null;
-      teamAsked = false;
+      teamAsked = fullJoin = false;
       rejoining = newForm = false;
       pendingName = null;
       seatsNote = '';
@@ -486,7 +488,10 @@ function denied(reason: DenyReason): void {
   const wasRejoin = rejoining;
   rejoining = false;
   if (reason === 'full') {
-    // Not for good: the room makes way when phones without a seat sit idle. Try again in a while.
+    // Not for good: the room makes way when phones without a seat sit idle. Try again in a while. (In a team game
+    // everyone holds a place, so it may stay full: the name form says so.)
+    if (teamPick && teamAsked) fullJoin = true;
+    teamAsked = false;
     fullTries++;
     notice = { title: 'This game is full', text: 'Too many phones are connected right now. Trying again in a moment…', full: true };
     if (ws) dropped(ws);
@@ -801,6 +806,10 @@ function renderTeam(t: SeatsMsg['seats'][number]): void {
     if (!inp.value) inp.value = loadName();
     $('team-err').textContent = '';
   }
+  if (fullJoin) {
+    fullJoin = false;
+    $('team-err').textContent = `The game is full (${MAX_PHONES} phones at most): try again when someone leaves.`;
+  }
   // (The error has its own alert.)
   say(sentences([`Join ${t.name}`, t.members?.length ? `On it: ${t.members.join(', ')}` : '', 'Type your name']));
   show('s-team');
@@ -891,7 +900,7 @@ function renderSeats(s: SeatsMsg): void {
         // Teams: then your name (the room needs it to put you on the team).
         if (teams) {
           teamPick = x;
-          teamAsked = false;
+          teamAsked = fullJoin = false;
           return render();
         }
         send({ t: 'join', seatId: x.id, device });
@@ -1654,7 +1663,7 @@ $('team-form').addEventListener('submit', (e) => {
 $('team-back').addEventListener('click', (e) => {
   const was = teamPick?.id;
   teamPick = null;
-  teamAsked = false;
+  teamAsked = fullJoin = false;
   render();
   // (Back with the keys, or Esc: they go back onto that team.)
   if (e.detail === 0 && was) $('seat-list').querySelector<HTMLElement>(`[data-seat="${CSS.escape(was)}"]`)?.focus();

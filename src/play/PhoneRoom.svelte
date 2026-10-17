@@ -7,6 +7,7 @@
   import BuzzerOptions, { type SetBuzzSetting } from './BuzzerOptions.svelte';
   import QrCode from '../lib/QrCode.svelte';
   import { buzzerBase, remote, roomHasTeams, roomLink } from '../lib/remote.svelte';
+  import { MAX_PHONES } from '../lib/buzzproto';
   import { app } from '../lib/app.svelte';
   import { copyText } from './standings';
   import PhoneList from './PhoneList.svelte';
@@ -121,6 +122,12 @@
       </p>
     {:else}
       <BuzzerOptions {settings} onset={setOption} />
+      {#if settings.buzzTeams}
+        <p class="muted small">
+          Teams: each player is a team. People pick theirs on their phone and type their own name; up to {MAX_PHONES} phones
+          can be in the room at once.
+        </p>
+      {/if}
     {/if}
   {/if}
   {#if !base || !settings.buzzer}
@@ -168,8 +175,6 @@
       <p class="warn small" role="alert">
         ⚠ This buzzer server doesn't know teams yet (it needs updating): phones join as players, one each.
       </p>
-    {:else if settings.buzzTeams}
-      <p class="muted small">Teams: each player is a team. People pick theirs on their phone and type their own name.</p>
     {/if}
     <PhoneList {session} {max} {onadd} {onreject} {onkick} {onlock} teams={!!settings.buzzTeams} {onkickmember} {onmove} />
   {/if}

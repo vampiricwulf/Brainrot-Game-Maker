@@ -6,6 +6,7 @@
   import { onMount } from 'svelte';
   import type { Session } from '../lib/model';
   import { FULL_SHOWN_MS, remote, roomCanFree } from '../lib/remote.svelte';
+  import { MAX_PHONES } from '../lib/buzzproto';
   import { awayFor, phoneAwaySince } from './host/phoneaway.svelte';
 
   let {
@@ -148,8 +149,14 @@
 {/if}
 {#if roomFull}
   <p class="warn small" role="status">
-    ⚠ Room full: too many phones are connected, so some were turned away. They try again by themselves; idle ones make
-    room for players.
+    {#if teams}
+      ⚠ Room full: a buzzer room takes {MAX_PHONES} phones at once. Phones still on the join screen make way after a few
+      idle seconds, but once {MAX_PHONES} people are on teams nobody else can join until someone leaves (✕ takes a person
+      off).
+    {:else}
+      ⚠ Room full: too many phones are connected, so some were turned away. They try again by themselves; idle ones make
+      room for players.
+    {/if}
   </p>
 {/if}
 {#if remote.status === 'online' && remote.error}

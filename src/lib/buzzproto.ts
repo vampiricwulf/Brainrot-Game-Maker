@@ -99,6 +99,9 @@ export const ANSWER_MAX = 200;
 /** A team member's name, as typed on their phone (characters). */
 export const MEMBER_NAME_MAX = 24;
 
+/** Phones a buzzer room holds at once, not counting idle ones without a seat (see Full rooms in buzzer/src/room.ts). */
+export const MAX_PHONES = 24;
+
 /** Room codes: consonants only (no words, no 0/O or 1/I mix-ups). */
 export const ROOM_ALPHABET = 'BCDFGHJKLMNPQRSTVWXZ';
 export const ROOM_CODE_LENGTH = 4;

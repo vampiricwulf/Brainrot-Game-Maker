@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { HostCard, HostState, RoomToHost, RoomToPhone } from '../../src/lib/buzzproto';
-import { CARDS_BYTES, CARDS_MAX, clip, cleanName, FILE_MAX_BYTES, ROOM_FILES_BYTES, ROOM_FILES_MAX } from '../../src/lib/buzzproto';
+import { CARDS_BYTES, CARDS_MAX, clip, cleanName, FILE_MAX_BYTES, MAX_PHONES, ROOM_FILES_BYTES, ROOM_FILES_MAX } from '../../src/lib/buzzproto';
 import { FILE_IDLE_MS, FILE_MAKE_ROOM_MS } from './limits';
 import {
   cleanState,
@@ -13,7 +13,6 @@ import {
   lowRtt,
   MAX_GRACE_MS,
   MAX_MEMBERS,
-  MAX_PHONES,
   MAX_RTT_MS,
   MAX_SOCKETS,
   MIN_REACT_MS,

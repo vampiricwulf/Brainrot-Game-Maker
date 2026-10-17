@@ -3,7 +3,8 @@
 // buzzes first answers for it, the host and viewers see who ("Al (Player 1)"), a teammate's later buzz is no new place
 // in the order, and a wrong answer locks out the whole team. The host moves someone to another team and takes someone
 // off; a phone reload comes back on its team. Teams on or off with phones in the room asks first. On a ✍ clue, one
-// member's answer fills in their teammates' boxes. Needs `npm ci` in buzzer/.
+// member's answer fills in their teammates' boxes. The room kept for another game keeps its teams; with 24 phones on
+// teams, the next one is told the game is full. Needs `npm ci` in buzzer/.
 import { chromium } from 'playwright-core';
 import { spawn } from 'node:child_process';
 import { createServer } from 'node:net';
@@ -115,6 +116,8 @@ try {
   const teamsBox = card.getByLabel(/Teams: people join a team/);
   await teamsBox.check();
   assert(await card.getByLabel(/Let new players join from their phone/).isDisabled(), 'Teams is a checkbox on the 📱 card (new players from phones are off with it: people join a team)');
+  await card.getByText(/up to 24 phones\s+can be in the room at once\./).waitFor();
+  assert(true, 'with Teams ticked, the card says a room holds 24 phones at most');
   await card.getByRole('button', { name: '▶ Start the room' }).click();
   const codeEl = card.locator('[aria-label^="Room code "]');
   await codeEl.waitFor();
@@ -376,6 +379,45 @@ try {
   assert((await teamsBox.isChecked()) && (await roster.getByRole('heading', { level: 2 }).innerText()) === '👥 Teams', 'kept for a game without Teams ticked: Teams stays on, with the same teams');
   for (const [p, name, team] of [[ann, 'Ann', 'Player 1'], [bea, 'Bea', 'Player 2'], [mal, 'Mal', 'Player 1']]) await p.locator('#me').getByText(`${name} · ${team} · $0`, { exact: true }).waitFor();
   assert(!(await ann.locator('#seats-note').isVisible()), 'and nobody’s phone is sent back to pick again');
+
+  // ---------- 24 phones on teams: the next one is told the game is full, and joins once someone leaves ----------
+  await zed.close();
+  await card.getByText(/on the join screen/).waitFor({ state: 'detached' });
+  const fans = [];
+  for (let i = 0; i < 20; i++) {
+    const w = new WebSocket(`ws://127.0.0.1:${port}/ws/${code}`);
+    const x = { w, msgs: [] };
+    w.addEventListener('message', (e) => x.msgs.push(JSON.parse(e.data)));
+    fans.push(x);
+    if (!(await until(() => x.msgs.some((m) => m.t === 'seats')))) throw new Error(`fan ${i + 1} got no seat list`);
+    // (On Player 1: Player 2 still turns away new phones from this address for a while, after Zed's kick.)
+    const seat = x.msgs.find((m) => m.t === 'seats').seats[0];
+    w.send(JSON.stringify({ t: 'join', seatId: seat.id, name: `Fan ${i + 1}`, device: `fan-${i}` }));
+    if (!(await until(() => x.msgs.some((m) => m.t === 'joined')))) throw new Error(`fan ${i + 1} wasn't put on a team (${JSON.stringify(x.msgs.at(-1))})`);
+  }
+  await card.getByText('24 people on 2 of 2 teams').waitFor();
+  assert(true, '20 more people join the teams (24 phones in the room, all on teams)');
+  const zoe = watch(await (await browser.newContext({ viewport: { width: 390, height: 760 } })).newPage(), 'zoe');
+  await zoe.goto(`${base}/${code}`);
+  await zoe.getByRole('button', { name: 'Player 1' }).click();
+  await zoe.getByRole('textbox', { name: 'Your name (everyone sees it)' }).fill('Zoe');
+  await zoe.getByRole('button', { name: 'Join the team' }).click();
+  await zoe.locator('main').getByText('This game is full').waitFor();
+  await zoe.locator('#team-err').getByText('The game is full (24 phones at most): try again when someone leaves.', { exact: true }).waitFor();
+  assert(
+    (await zoe.getByRole('heading', { name: 'Join Player 1' }).isVisible()) && (await zoe.getByRole('textbox', { name: 'Your name (everyone sees it)' }).inputValue()) === 'Zoe',
+    'the 25th phone, turned away as full, is back on the team’s name form, which says the game is full until someone leaves',
+  );
+  const fullNote = card.getByText(/^⚠ Room full: a buzzer room takes 24 phones at once\./);
+  await fullNote.waitFor();
+  assert((await fullNote.innerText()).includes('once 24 people are on teams nobody else can join until someone leaves'), 'the host is told 24 phones is the most, and that on teams nobody makes way by themselves');
+  fans[0].w.close();
+  await card.getByText('23 people on 2 of 2 teams').waitFor();
+  await zoe.getByRole('button', { name: 'Join the team' }).click();
+  await zoe.locator('#me').getByText('Zoe · Player 1 · $0', { exact: true }).waitFor();
+  assert(true, 'someone leaves: Join the team gets Zoe on it');
+  for (const x of fans) x.w.close();
+  await zoe.close();
   await host.getByRole('button', { name: 'Start game ▶' }).click();
   await host.getByRole('button', { name: 'Skip intro' }).click();
 

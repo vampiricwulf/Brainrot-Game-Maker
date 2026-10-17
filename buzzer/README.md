@@ -97,11 +97,12 @@ room, plus the phone page it serves. It is not part of the app's single-file bui
 - **Card files** (`'files'`): the host's own pictures, GIFs, videos and sounds for its cards, uploaded only when it
   sends the card or presses ⇡ Get it ready (see "Card files" below for the limits). A phone fetches one only for a card
   sent to it that it isn't late for, with its seat's token in the `Authorization` header; anyone else gets 404.
-- **Full rooms**: at most 24 phones hold a place (`MAX_PHONES`), but phones without a seat that have done nothing for
+- **Full rooms**: at most 24 phones hold a place (`MAX_PHONES`, in `src/lib/buzzproto.ts`), but phones without a seat that have done nothing for
   10 s (viewers, extra tabs) don't: when the room is full the longest idle one is turned away (`denied: full`, closed
   with 4001; the phone page tries again after a few seconds, then less often) to let a newcomer in. With nobody idle,
   a newcomer still gets in (up to 40 sockets) but only to come back to its seat with its token. The host is told
-  (`full`) and its 📱 list says "Room full".
+  (`full`) and its 📱 list says "Room full". In a team game everyone on a team holds a place, so once 24 people are
+  on teams it stays full until someone leaves: a phone turned away while joining a team says so on its name form.
 - **The host comes back**: a buzz the room decided while the host was away is sent again when it reconnects, so the
   host picks the winner. Phones see `hostHere: false` meanwhile ("The host's connection dropped"). The app saves the
   buzzers' state with the game, so a host reload mid-clue keeps who is answering and who already missed it.

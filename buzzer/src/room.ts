@@ -89,6 +89,7 @@ import {
   CARDS_MAX,
   EMBED_SITES,
   isFileId,
+  MAX_PHONES,
   MEMBER_NAME_MAX,
   ROOM_FILES_BYTES,
   ROOM_FILES_MAX,
@@ -121,8 +122,6 @@ import {
 } from '../../src/lib/buzzproto';
 import { FILE_IDLE_MS, FILE_MAKE_ROOM_MS } from './limits';
 
-/** Phones connected at most, not counting idle ones without a seat (see Full rooms above). */
-export const MAX_PHONES = 24;
 /** Sockets at most, counting newcomers let in over MAX_PHONES to come back with a seat's token. */
 export const MAX_SOCKETS = 40;
 /** A phone without a seat that hasn't joined, asked, buzzed or left for this long can be turned away when full. */
