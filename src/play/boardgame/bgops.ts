@@ -1,7 +1,7 @@
 // The board-game host's moves, shared by the host panel, the stage and the keyboard shortcuts. Every change is one
 // undoable step.
 import { describeAction, runAction } from '../../lib/actions';
-import { clampSteps, currentPlayer, moveInOrder, movePlayer, moverPreset, nextTurn, sendTo, spaceById } from '../../lib/boardgame';
+import { clampSteps, currentPlayer, moveInOrder, movePlayer, moverPreset, nextTurn, sendTo, spaceById, stepsIn } from '../../lib/boardgame';
 import { isBoardGame, type Action, type BoardGameRound, type BoardGameState, type BoardSpace, type BoardZone, type Game, type Session } from '../../lib/model';
 import { nameList } from '../../lib/session';
 import { logged } from '../../lib/toolset';
@@ -143,18 +143,15 @@ export function moverDiceName(game: Game, round: BoardGameRound): string | undef
 }
 
 /**
- * The number of spaces the round's own dice or movement wheel just gave (a wheel slice labeled "3" or "Move 3"), or
- * null. Other dice and wheels on screen (a space's "Roll d20", the Pick-a-player wheel, the 🎲 tool) don't count.
+ * The number of spaces the round's own dice or movement wheel just gave (a slice or a die's face labeled "3", "Move 3"
+ * or "Back 2"), or null. Other dice and wheels on screen (a space's "Roll d20", the Pick-a-player wheel, the 🎲 tool)
+ * don't count.
  */
 export function moverResult(game: Game, round: BoardGameRound, o: Live['overlay']): number | null {
   const m = round.mover;
-  if (o?.kind === 'dice' && o.roll && o.mover && m.kind === 'dice') return o.roll.total;
-  if (o?.kind === 'wheel' && o.spin && o.result !== null && m.kind === 'wheel' && o.wheelId === m.wheel) {
-    const label = o.segments[o.result]?.label ?? '';
-    const n = parseInt(label.match(/-?\d+/)?.[0] ?? '', 10);
-    // "Back 2" (or "← 2") moves back.
-    return Number.isFinite(n) ? (/^\W*(back|←)/i.test(label.trim()) ? -Math.abs(n) : n) : null;
-  }
+  // A custom face that names a number ("Back 2") moves by it, as viewers see it; any other face by the number it came up on.
+  if (o?.kind === 'dice' && o.roll && o.mover && m.kind === 'dice') return o.roll.dice.reduce((t, d) => t + (stepsIn(d.face?.label ?? '') ?? d.value), 0);
+  if (o?.kind === 'wheel' && o.spin && o.result !== null && m.kind === 'wheel' && o.wheelId === m.wheel) return stepsIn(o.segments[o.result]?.label ?? '');
   return null;
 }
 

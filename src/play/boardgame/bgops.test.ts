@@ -281,4 +281,25 @@ describe('board game: what fills the Steps box', () => {
     if (live.overlay?.kind === 'wheel') Object.assign(live.overlay, { spin: { from: 0, to: 1, startedAt: 0, duration: 1 }, result: 1 });
     expect(moverResult(game, round, live.overlay)).toBeNull();
   });
+
+  it('saved dice with faces move by what a face says (“Back 2”), else by the number it came up on', () => {
+    const game = newGame();
+    game.players = [{ id: 'a', name: 'Ann', color: '#e6194b' }];
+    const faces = ['1', '2', '3', 'Back 1', 'Back 2', ''].map((label) => ({ label }));
+    game.dice.push({ id: 'mv', name: 'Move die', showTotal: true, dice: [{ id: 'd', sides: 6, count: 2, customFaces: faces }] });
+    const round = newBoardGameRound('Board');
+    round.mover = { kind: 'dice', dice: 'Move die', diceId: 'mv' };
+    game.rounds.push(round);
+    const session = newSession(game);
+    goToRound(session, game, 0);
+    const live = newLive();
+    rollMover(game, session, live);
+    const o = live.overlay;
+    if (o?.kind !== 'dice' || !o.roll) throw new Error('no roll');
+    // Face 5 says “Back 2” (the stream shows that, not 5); face 6 is blank: 6.
+    o.roll.dice = [5, 5].map((value) => ({ sides: 6, value, face: faces[value - 1] }));
+    expect(moverResult(game, round, o)).toBe(-4);
+    o.roll.dice[1] = { sides: 6, value: 6, face: faces[5] };
+    expect(moverResult(game, round, o)).toBe(4);
+  });
 });

@@ -14,6 +14,7 @@ in plain words for the people who make and host games. Anything committed but no
 ## Unreleased
 
 ### Fixed
+- Board games that move by saved dice with faces of their own move by what a face says: one reading “Back 2” moves the player back 2, as viewers see, instead of forward 5 (its place on the die). A face with no number still moves by its place.
 - Deleting a fork space, in the editor or with ✎ Edit board in play, no longer cuts the path there (players coming from Start used to stop at the space before it for good): the space before it now leads everywhere the fork did, as deleting any other space joins the path up over it.
 
 ## 2026-10-16
