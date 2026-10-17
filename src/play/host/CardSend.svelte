@@ -34,7 +34,7 @@
   import { cardItems, cardLinks, cardWords, phoneCard, type CardItem } from '../../lib/phonecard';
   import { buzzerOn, remote, roomHasCards, roomHasFiles, roomMembers } from '../../lib/remote.svelte';
   import { findIn, focusRef, screenElements, screenSlide, worldById } from '../../lib/rpg';
-  import { cleanTo, fileItem, linkItem, listedCards, memberTo, quickSlide, savedCard, sendCard, sentToText, tileCard } from '../../lib/sentcards';
+  import { cleanTo, fileItem, linkItem, listedCards, memberTo, quickSlide, savedCard, sendCard, sentSlide, sentToText, tileCard } from '../../lib/sentcards';
   import { currentClueInfo, currentFinal, finalReached, shownQuestionSlide, slidesRound } from '../../lib/session';
   import { hideFromViewers } from '../../lib/sync.svelte';
   import { cardWindow, openCardWindow } from '../../lib/cardwindow.svelte';
@@ -300,6 +300,12 @@
   });
   /** What was sent last (names only), for the line under the button. */
   let said = $state('');
+  /**
+   * The card sent last, and who of those it went to has no phone here (nor its 🪟 card window open): the line under the
+   * button offers its 📋 copy for them, as a quick card's words are gone from the dialog once it's sent.
+   */
+  let sentCopy = $state<{ card: SentCard; names: string[] } | null>(null);
+  const sentCopySlide = $derived(sentCopy ? sentSlide(game, sentCopy.card) : undefined);
   const noPhone = $derived(cardsOn ? [...new Set(to.map((t) => t.seat))].filter((id) => !phones.has(id)) : []);
   const left = $derived(cardsOn && slide ? leftLine(phoneCard(game, slide, filesOn ? phoneCan(session) : { files: null }).left) : '');
   const names = $derived(to.map((t) => sentToText(session, [t], teams)));
@@ -354,7 +360,9 @@
     const content: SentCard['content'] = !preset && kind === 'saved' && chosen ? (chosen.saved ? { saved: chosen.saved } : { clue: chosen.clue!, card: chosen.card! }) : { slide };
     const c = sendCard(game, session, { to: sendTo, content, until }, Date.now(), cardsOn && roomCardsFull(game, session));
     if (!c) return toast('That card can’t be sent now');
-    said = `${c.label} sent to ${sentToText(session, c.to, teams)}`;
+    const missed = noPhone.filter((id) => !windowTo.some((t) => t.seat === id)).map(nameOf);
+    said = `${c.label} sent to ${sentToText(session, c.to, teams)}${missed.length ? ` · 📵 ${missed.join(', ')} ${missed.length > 1 ? 'have' : 'has'} no phone here: copy it to them (📋)` : ''}`;
+    sentCopy = missed.length ? { card: c, names: missed } : null;
     announce(said);
     onsent?.(c);
     if (kind === 'quick') {
@@ -366,6 +374,12 @@
   function copyWords(): void {
     if (!slide) return;
     void copyText(copyWordsText(game, slide, 'from the host', names), `The card’s words copied: paste them to ${names.join(', ') || 'them'}`);
+  }
+  /** 📋 The card sent last, for those of its players with no phone here. */
+  function copySent(): void {
+    if (!sentCopy || !sentCopySlide) return;
+    const { card, names: whom } = sentCopy;
+    void copyText(copyWordsText(game, sentCopySlide, card.label, whom), `${card.label}’s words copied: paste them to ${whom.join(', ')}`);
   }
   /** 🪟 The card window for a player (from this click: a popup needs one). */
   function openWin(seat: Id): void {
@@ -535,7 +549,7 @@
   {/if}
 
   {#if left}<div class="small warn">{left}</div>{/if}
-  {#if noPhone.length}
+  {#if noPhone.length && hasSomething}
     <div class="small warn">
       📵 {noPhone.map(nameOf).join(', ')} {noPhone.length > 1 ? 'have' : 'has'} no phone here: copy it to them (📋), or
       {#if cardWindow.open && noPhone.includes(cardWindow.seat ?? '')}it shows in the 🪟 card window once sent{:else}<button class="ghost tiny" onclick={() => openWin(noPhone[0])} title="Opens a window with only {nameOf(noPhone[0])}’s cards, to share with them alone">show it in the 🪟 card window</button>{/if}
@@ -563,6 +577,20 @@
     </div>
   {/if}
   {#if said}<div class="small" role="status" data-card-said>✓ {said}</div>{/if}
+  {#if sentCopy && sentCopySlide}
+    {@const label = sentCopy.card.label}
+    {@const whom = sentCopy.names.join(', ')}
+    {@const sl = sentCopySlide}
+    <!-- (The card that went, for those with no phone here: a quick card's words are gone from the form above.) -->
+    <div class="row wrap" data-card-said-copy>
+      {#if cardWords(sl) || cardLinks(game, sl).length}
+        <button class="small" onclick={copySent} aria-label="Copy {label}’s words for {whom}" title="Copies “For {whom} only” with {label}’s words and links, to paste in a DM">📋 Copy words</button>
+      {/if}
+      {#if hasPicture(game, sl) && canCopyPicture}
+        <button class="small" onclick={() => copyCardPicture(game, sl, label, whom)} aria-label="Copy {label}’s picture for {whom}">📋 Copy picture</button>
+      {/if}
+    </div>
+  {/if}
   {#if !dual}
     <span class="exposed"
       >{preset

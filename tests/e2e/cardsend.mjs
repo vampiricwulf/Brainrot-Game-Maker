@@ -11,6 +11,7 @@
 // naming it. The audience window, and the host page in one window, never hold a card's words, its file name or its link.
 // A card's picture whose upload is cut off goes again by itself, unless its card was taken back meanwhile; one the server
 // turns down is said in the list of cards out (and the tools row's cards out turns orange), and ↻ Send again puts it up.
+// Cat's phone gone, a quick card to everyone says after 📤 Send that Cat has none, and copies it for her from there.
 import { chromium } from 'playwright-core';
 import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
@@ -492,6 +493,32 @@ try {
   await host.keyboard.press('Escape');
   await host.unroute('**/api/rooms/*/files', filesRoute);
   await offStream(host, 'the host page in one window', 'a card’s picture that didn’t go up');
+
+  // ---------- A quick card for a player with no phone: copied from the line under 📤 Send, once it went ----------
+  await cat.context().close();
+  await tools.getByRole('button', { name: '🤫 Send a card…' }).click();
+  dialog = host.getByRole('dialog', { name: 'Send a card' });
+  await dialog.waitFor();
+  await dialog.getByRole('radio', { name: 'A quick card' }).check();
+  await dialog.getByRole('button', { name: 'Everyone', exact: true }).click();
+  const LAST = 'Last-call words';
+  await dialog.getByRole('textbox', { name: 'The card’s words' }).fill(LAST);
+  const noPhoneLine = dialog.getByText('📵 Cat has no phone here: copy it to them (📋), or');
+  assert(await until(() => noPhoneLine.isVisible()), 'Cat’s phone gone: the dialog says to copy it to her');
+  await dialog.getByRole('button', { name: '📤 Send' }).click();
+  const saidLine = dialog.locator('[data-card-said]');
+  await saidLine.getByText('sent to Ann, Bob, Cat').waitFor();
+  const lastLabel = (await saidLine.innerText()).match(/Card \d+/)?.[0];
+  assert(
+    (await saidLine.innerText()) === `✓ ${lastLabel} sent to Ann, Bob, Cat · 📵 Cat has no phone here: copy it to them (📋)`,
+    `sent: the line under it says Cat has no phone here (${await saidLine.innerText()})`,
+  );
+  assert(await until(async () => !(await noPhoneLine.count())), 'the words gone from the dialog, its own 📵 line goes (nothing there to copy)');
+  await dialog.getByRole('button', { name: `Copy ${lastLabel}’s words for Cat` }).click();
+  const forCat = `🤫 For Cat only (${lastLabel}): ${LAST}`;
+  assert(await until(async () => (await host.evaluate(() => navigator.clipboard.readText())) === forCat, 5000), `its 📋 Copy words copies what went, for Cat (“${forCat}”)`);
+  await host.keyboard.press('Escape');
+  await dialog.waitFor({ state: 'detached' });
 
   assert(!errors.length, `no page errors (${errors.join('; ')})`);
   console.log('Card send tests passed');
