@@ -1,6 +1,7 @@
 // Media on the stage in play: clicking a video, or a sound's speaker icon, plays or pauses it instead of
 // revealing the answer — in one window, and from the host's copy in dual-window mode (the audience plays it). A sound
-// the host paused stays paused where it was when the audience window is reloaded, or closed and opened again.
+// the host paused stays paused where it was when the audience window is reloaded, or closed and opened again. The
+// audience window closed or opened mid-clue: the host's controls reach the copy with the sound, and only one has sound.
 import { chromium } from 'playwright-core';
 import { existsSync } from 'node:fs';
 import { resolve } from 'node:path';
@@ -218,6 +219,41 @@ try {
   await aud2.waitForTimeout(1700);
   now = await aud2.locator(song).evaluate((a) => ({ paused: a.paused, t: a.currentTime }));
   assert(now.paused && Math.abs(now.t - at) < 0.3, `closed and opened again, it's still paused where it was (${now.t.toFixed(1)} s)`);
+
+  // The audience window closed with the clue up: the host's copy is the one with sound now, so it keeps its media row,
+  // and Space reaches it.
+  const hostSong = '.stage-box .full audio';
+  await aud2.close();
+  await page.locator('[data-audience-lost]').waitFor();
+  await page.waitForFunction((s) => document.querySelector(s)?.muted === false, hostSong);
+  const row = await page.locator('.mc .item').waitFor({ timeout: 5000 }).then(() => true, () => false);
+  assert(row, "the audience window closed mid-clue: the host's copy has sound again, and keeps its media row");
+  await page.keyboard.press(' ');
+  await waitPaused(page, hostSong, false);
+  await page.locator('.mc').getByRole('button', { name: 'Pause' }).waitFor();
+  await page.keyboard.press(' ');
+  await waitPaused(page, hostSong, true);
+  await page.locator('.mc').getByRole('button', { name: 'Play' }).waitFor();
+  assert(true, 'and Space plays and pauses it');
+  // The clue opened again in one window (its sound playing by itself), then the audience window opened: the host's copy
+  // goes silent, and stays silent when the host mutes and unmutes the sound.
+  await page.keyboard.press('Shift+Escape');
+  await page.locator('.stage-box .board').waitFor();
+  await guard();
+  await page.locator('.stage-box .board .tile').nth(1).click();
+  await waitPaused(page, hostSong, false);
+  const [aud3] = await Promise.all([page.waitForEvent('popup'), page.getByRole('button', { name: 'Reopen (A)' }).click()]);
+  aud3.on('pageerror', (e) => errors.push('[audience 3] ' + e.message));
+  await aud3.waitForLoadState('domcontentloaded');
+  await aud3.waitForFunction((s) => (document.querySelector(s)?.readyState ?? 0) >= 1, song);
+  await page.waitForFunction((s) => document.querySelector(s)?.muted === true, hostSong);
+  const mute = page.locator('.mc').getByRole('button', { name: 'Mute' });
+  await mute.click();
+  await page.waitForFunction(() => document.querySelector('.mc [aria-label="Mute"]')?.getAttribute('aria-pressed') === 'true');
+  await mute.click();
+  await page.waitForFunction(() => document.querySelector('.mc [aria-label="Mute"]')?.getAttribute('aria-pressed') === 'false');
+  await aud3.waitForFunction((s) => document.querySelector(s)?.muted === false, song);
+  assert(await page.locator(hostSong).evaluate((a) => a.muted), "the audience window opened mid-clue: muted and unmuted, the sound comes back in the audience window only (the host's copy stays silent)");
 
   assert(!errors.length, 'no page errors' + (errors.length ? ': ' + errors.join(' | ') : ''));
   console.log('\nStage media E2E passed.');

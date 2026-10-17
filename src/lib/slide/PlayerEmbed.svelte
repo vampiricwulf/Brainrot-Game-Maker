@@ -7,10 +7,10 @@
   window. Failures inside it (sign-in, "you need access"…) can't be detected, so nothing swaps automatically.
 -->
 <script lang="ts">
-  import { onMount } from 'svelte';
+  import { onMount, untrack } from 'svelte';
   import type { EmbedEl } from '../model';
   import { playerFor } from '../links';
-  import { registerMedia, unregisterMedia, updateMedia, type MediaRole } from '../mediactl.svelte';
+  import { registerMedia, setMediaRole, unregisterMedia, updateMedia, type MediaRole } from '../mediactl.svelte';
 
   let { el, mode, role, label }: { el: EmbedEl; mode: 'edit' | 'play'; role: MediaRole; label: string } = $props();
 
@@ -19,6 +19,12 @@
   let shown = $state(true);
   /** Bumped to load the player again from the start. */
   let round = $state(0);
+
+  // The audience window opened or closed with the slide up: the host's controls go to the copy on the viewers' screen.
+  $effect(() => {
+    const r = role;
+    if (mode === 'play') untrack(() => setMediaRole(el.id, r));
+  });
 
   onMount(() => {
     const p = player;

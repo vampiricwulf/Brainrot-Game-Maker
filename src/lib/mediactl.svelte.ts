@@ -102,6 +102,16 @@ export function registerMedia(id: string, role: MediaRole, handle: MediaHandle, 
   listeners.forEach((l) => l(id, { ...state, muted }));
 }
 
+/** The same element changing role: the audience window opened or closed while its slide is up. */
+export function setMediaRole(id: string, role: MediaRole): void {
+  const e = entries.get(id);
+  if (!e || e.role === role) return;
+  e.role = role;
+  if (localMedia[id]) localMedia[id].role = role;
+  // The host's copy goes silent at once, so the sound only ever comes from one window.
+  if (role === 'mirror') e.handle.setMuted(true);
+}
+
 /** A media element coming back: its place (once its length is known), and paused if it was (autoplay or not). */
 function restore(id: string, patch: Partial<MediaState>): void {
   const r = restoring.get(id);

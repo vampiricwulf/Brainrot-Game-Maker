@@ -5,11 +5,11 @@
   (spec §5.5 YouTube fallback).
 -->
 <script lang="ts">
-  import { onMount } from 'svelte';
+  import { onMount, untrack } from 'svelte';
   import type { EmbedEl } from '../model';
   import { playRange } from '../editing';
   import {
-    openMediaPopup, registerMedia, unregisterMedia, updateMedia, youtubeId, youtubeStart, youtubeThumb, youtubeWatchUrl,
+    openMediaPopup, registerMedia, setMediaRole, unregisterMedia, updateMedia, youtubeId, youtubeStart, youtubeThumb, youtubeWatchUrl,
     type MediaRole,
   } from '../mediactl.svelte';
 
@@ -48,6 +48,12 @@
     if (startAt) p.set('start', String(Math.floor(startAt)));
     if (range.end) p.set('end', String(Math.floor(range.end)));
     return `${ORIGIN}/embed/${vid}?${p}`;
+  });
+
+  // The audience window opened or closed with the slide up: the host's controls go to the copy with the sound.
+  $effect(() => {
+    const r = role;
+    if (mode === 'play') untrack(() => setMediaRole(el.id, r));
   });
 
   function fail(): void {

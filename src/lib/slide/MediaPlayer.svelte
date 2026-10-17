@@ -1,8 +1,8 @@
 <!-- <video>/<audio> element for local files or direct URLs, with trimming, looping and host control. -->
 <script lang="ts">
-  import { onMount } from 'svelte';
+  import { onMount, untrack } from 'svelte';
   import type { AudioEl, EmbedEl, VideoEl } from '../model';
-  import { localMedia, openMediaPopup, registerMedia, unregisterMedia, updateMedia, type MediaRole } from '../mediactl.svelte';
+  import { localMedia, openMediaPopup, registerMedia, setMediaRole, unregisterMedia, updateMedia, type MediaRole } from '../mediactl.svelte';
   import { mediaCommand } from '../sync.svelte';
   import { applySink } from '../audioout.svelte';
   import { playRange } from '../editing';
@@ -66,7 +66,16 @@
   $effect(() => {
     const key = `${mode}|${role}|${el.muted}`;
     if (!node || key === mutedFor) return;
-    if (mutedFor) node.muted = mode === 'edit' || role === 'mirror' || el.muted;
+    if (mutedFor) {
+      node.muted = mode === 'edit' || role === 'mirror' || el.muted;
+      // The host's controls and keys go to the copy with the sound (the host's own, once the audience window closes).
+      const n = node, r = role;
+      if (mode === 'play')
+        untrack(() => {
+          setMediaRole(el.id, r);
+          if (r !== 'mirror') sinkReady = applySink(n);
+        });
+    }
     mutedFor = key;
   });
 
