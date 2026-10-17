@@ -43,8 +43,8 @@ room, plus the phone page it serves. It is not part of the app's single-file bui
   token the same way but blocks nobody. The seat list marks a taken seat `away` when no connected phone holds it.
   With `locked` in the host's state, only a seat's token gets a seat and nobody can ask to join.
 - **Teams** (`teams` in the host's state): each seat is a team. A phone joins one with its own name (`join` with
-  `name`; 24 characters at most, cleaned as below, unique among people connected; a name only a phone gone quiet has is
-  taken over) and becomes a member with its own token, so a reload brings it back on whichever team the host has put
+  `name`; 24 characters at most, cleaned as below, unique among people connected, and not a team's name; a name only
+  a phone gone quiet has is taken over) and becomes a member with its own token, so a reload brings it back on whichever team the host has put
   it on (`move`). The race still counts one buzz per seat: a team's buzz holds one place in the queue and says who it
   was (`by` on the host's `buzz` and queue, `answering.by` in the phones' view); while the room is still collecting,
   a teammate who reacted faster becomes the team's time; after that, a teammate's buzz only hears where the team

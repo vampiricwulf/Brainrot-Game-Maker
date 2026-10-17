@@ -170,8 +170,15 @@ try {
   await zed.getByRole('button', { name: 'Player 2' }).click();
   await zed.getByRole('textbox', { name: 'Your name (everyone sees it)' }).fill('ann');
   await zed.getByRole('button', { name: 'Join the team' }).click();
-  await zed.locator('#team-err').getByText('Someone in the game already has that name').waitFor();
+  const nameTaken = zed.locator('#team-err').getByText('A team or someone in the game already has that name: add a letter, or pick another.', { exact: true });
+  await nameTaken.waitFor();
   assert(true, 'the team list shows who is on each team, and a name someone has is taken');
+  // A team's name too ("Player 1" on Player 2 would buzz as "Player 1 (Player 2)").
+  // (Join the team empties the line first: what shows next is the room's answer.)
+  await zed.getByRole('textbox', { name: 'Your name (everyone sees it)' }).fill('player 1');
+  await zed.getByRole('button', { name: 'Join the team' }).click();
+  await nameTaken.waitFor();
+  assert(true, 'and so is a team’s name');
   await zed.getByRole('textbox', { name: 'Your name (everyone sees it)' }).fill('Zed');
   await zed.getByRole('button', { name: 'Join the team' }).click();
   await zed.locator('#me').getByText('Zed · Player 2').waitFor();

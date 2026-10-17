@@ -1476,7 +1476,7 @@ describe('teams', () => {
     });
   });
 
-  it('checks a team join: the team must exist, a name is needed (cleaned and cut), names are unique', () => {
+  it('checks a team join: the team must exist, a name is needed (cleaned and cut), names are unique, and not a team’s', () => {
     const g = teams();
     const p = g.phone('x');
     p.send({ t: 'join', seatId: 'zz', name: 'Zed' });
@@ -1489,6 +1489,12 @@ describe('teams', () => {
     expect(p.last('joined')).toBeUndefined();
     p.send({ t: 'join', seatId: 'b', name: ' ann ' });
     expect(p.last('denied')?.reason).toBe('name-taken');
+    // "Red" on Blue would read as Red buzzing ("Red (Blue)"); its own team's name doesn't fit either.
+    for (const [i, name] of ['red', ' B lue '].entries()) {
+      const t = g.phone(`t${i}`);
+      t.send({ t: 'join', seatId: 'b', name });
+      expect(t.last('denied')?.reason).toBe('name-taken');
+    }
     p.send({ t: 'join', seatId: 'b', name: 'A'.repeat(100) });
     expect(Array.from(p.last('joined')!.name!)).toHaveLength(24);
     // No "I'm new" in teams: people join a team.

@@ -1283,8 +1283,8 @@ export class Room {
 
   /**
    * Teams: with a token, the member it names comes back on this phone (on whichever team the host has them now);
-   * otherwise the phone joins team `seatId` as a new member called `raw`. A name someone on a connected phone has is
-   * taken; one a member gone quiet has is theirs to take over (the same person, their token lost).
+   * otherwise the phone joins team `seatId` as a new member called `raw`. A team's name, or one someone on a connected
+   * phone has, is taken; one a member gone quiet has is theirs to take over (the same person, their token lost).
    */
   private joinTeam(p: Phone, seatId: string, token?: string, raw?: string): void {
     const deny = (reason: DenyReason) => this.deps.toPhone(p.conn, { t: 'denied', reason });
@@ -1307,6 +1307,8 @@ export class Room {
     if (st.locked) return deny('locked');
     if (this.blockedFrom(p, seatId)) return deny('blocked');
     const key = (a: string) => a.toLocaleLowerCase().replace(/\s+/g, '');
+    // A team's name isn't a person's: "Sharks" on the Jets would read as the Sharks buzzing (as for new players, askNew).
+    if (st.seats.some((x) => key(x.name) === key(name))) return deny('name-taken');
     const here = (id: string) => [...this.phones.values()].some((o) => o.member === id);
     const same = Object.keys(members).find((k) => k !== p.member && key(members[k].name) === key(name));
     if (same && here(same)) return deny('name-taken');

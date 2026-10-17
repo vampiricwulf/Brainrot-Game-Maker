@@ -519,7 +519,7 @@ function denied(reason: DenyReason): void {
   teamAsked = false;
   if (teamPick && !keepForm) teamPick = null;
   if (keepForm) {
-    $('team-err').textContent = reason === 'name-taken' ? 'Someone in the game already has that name: add a letter, or pick another.' : 'Type your name first.';
+    $('team-err').textContent = reason === 'name-taken' ? 'A team or someone in the game already has that name: add a letter, or pick another.' : 'Type your name first.';
     return;
   }
   seatsNote = tap(
