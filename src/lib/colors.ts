@@ -161,10 +161,22 @@ const obsCbCr = ([r, g, b]: [number, number, number]) => [(-0.100644 * r - 0.338
  * Smoothness (80): closer to the key than 0.4 in Cb and Cr it's gone, and up to 0.48 it's partly see-through.
  */
 export function obsKeyed(color: string, key: string): boolean {
-  const c = parseHex(color);
+  return obsKeyedFade(color, color, key);
+}
+
+/**
+ * A fade from one color to another (as CSS draws a gradient between two #hex colors) that OBS's Chroma Key makes
+ * partly see-through somewhere along the way, as obsKeyed: its ends can both be clear of the key while its middle
+ * isn't. (CSS fades in sRGB, where Cb and Cr change in a straight line, so it's the nearest point on that line.)
+ */
+export function obsKeyedFade(from: string, to: string, key: string): boolean {
+  const f = parseHex(from);
+  const t = parseHex(to);
   const k = parseHex(key);
-  if (!c || !k) return false;
-  const a = obsCbCr(c);
-  const b = obsCbCr(k);
-  return Math.hypot(a[0] - b[0], a[1] - b[1]) < 0.48;
+  if (!f || !t || !k) return false;
+  const [a, b, p] = [obsCbCr(f), obsCbCr(t), obsCbCr(k)];
+  const d = [b[0] - a[0], b[1] - a[1]];
+  const len = d[0] ** 2 + d[1] ** 2;
+  const at = len ? Math.min(1, Math.max(0, ((p[0] - a[0]) * d[0] + (p[1] - a[1]) * d[1]) / len)) : 0;
+  return Math.hypot(a[0] + at * d[0] - p[0], a[1] + at * d[1] - p[1]) < 0.48;
 }

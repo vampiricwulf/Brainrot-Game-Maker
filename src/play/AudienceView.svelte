@@ -30,7 +30,7 @@
   import BoardGameStage from './boardgame/BoardGameStage.svelte';
   import DecorLayer from './DecorLayer.svelte';
   import type { AvatarDrop } from './rpg/hostops';
-  import { boardLayout, STAGE_KEYS, themeStyle } from '../lib/theme';
+  import { boardLayout, splashColors, STAGE_KEYS, themeStyle } from '../lib/theme';
   import AnsweringPlate from './AnsweringPlate.svelte';
   import QrCode from '../lib/QrCode.svelte';
   import CuePlayer from './CuePlayer.svelte';
@@ -218,6 +218,8 @@
   const boardDown = $derived(timerOnBoard && !layout.score ? Math.max(0, TIMER_BAND - layout.board.top) : 0);
   const bandScale = $derived(band ? (1080 - band) / 1080 : undefined);
   const keyColor = $derived(game.theme?.stageBg ? STAGE_KEYS[game.theme.stageBg] : undefined);
+  /** The Daily Double and PARTNER UP! splashes' colors, clear of that key. */
+  const splash = $derived(splashColors(game.theme?.stageBg));
   // A sound cue plays once, when it arrives. One already old by then (this window was opened or reconnected since it
   // started) stays quiet: an audience window opened mid-game doesn't replay the round intro. Short cues overlap (a
   // right-answer sound isn't cut off by the reveal's), a few at most; the host stopping the sound stops them all. Under
@@ -467,7 +469,7 @@
 {:else if session.phase === 'clue' && info}
   {#if session.dd?.stage === 'splash'}
     <!-- The background fills the stage at once; only what's on it spins in (no black corners). -->
-    <div class="full dd">
+    <div class="full dd" style:--splash-1={splash.dd[0]} style:--splash-2={splash.dd[1]}>
       <div class="dd-in" in:scale={{ start: 0.05, duration: 700 }}>
         <div class="dd-text">DAILY<br />DOUBLE!</div>
         {#if ddPlayer}
@@ -478,7 +480,7 @@
   {:else if pt?.stage === 'pick'}
     <!-- 🤝 PARTNER UP!: who picked it, and a "?" until the wheel (or the host) chooses their partner; then the two
          plates come together. -->
-    <div class="full partner-up" data-partner-up>
+    <div class="full partner-up" data-partner-up style:--splash-1={splash.partner[0]} style:--splash-2={splash.partner[1]}>
       <div class="pu-in" in:scale={{ start: 0.05, duration: 700 }}>
         <div class="pu-text">PARTNER<br />UP!</div>
         {@render pairPlates(true)}
@@ -1201,7 +1203,7 @@
   .dd {
     display: grid;
     place-items: center;
-    background: radial-gradient(circle, #ff3dcb 0%, #7a00ff 35%, var(--tile) 70%);
+    background: radial-gradient(circle, var(--splash-1) 0%, var(--splash-2) 35%, var(--tile) 70%);
   }
   .dd-in {
     display: flex;
@@ -1243,7 +1245,7 @@
   .partner-up {
     display: grid;
     place-items: center;
-    background: radial-gradient(circle, #3dffb0 0%, #00a86b 35%, var(--tile) 72%);
+    background: radial-gradient(circle, var(--splash-1) 0%, var(--splash-2) 35%, var(--tile) 72%);
   }
   .pu-in {
     display: flex;

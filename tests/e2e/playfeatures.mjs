@@ -271,6 +271,41 @@ try {
   assert(slidesNote.includes('see-through on stream (tiles & slide background).'), `with no Jeopardy board, the pre-game screen leaves out the glow only a board has (${slidesNote})`);
   await slidesContext.close();
 
+  // ---------- The Daily Double splash and PARTNER UP! keep clear of the key ----------
+  const words = (t) => ({ background: {}, elements: [{ id: `t_${t}`, kind: 'text', text: t, x: 120, y: 90, w: 1680, h: 400, rotation: 0, opacity: 1, zIndex: 1, font: 'Arial', size: 90, weight: 700, italic: false, underline: false, uppercase: false, color: '#ffffff', align: 'center', vAlign: 'middle', lineHeight: 1.2, letterSpacing: 0, autoFit: true }] });
+  const partner = { game: 'describe', giver: 'partner', got: { giver: 100, guesser: 50 }, missed: { giver: 0, guesser: -50 }, partnerSafe: true, points: 'game' };
+  const splashGame = (stageBg) => ({
+    ...slidesGame, id: 'g_splash', title: 'Splashes',
+    players: ['Ann', 'Bob'].map((name, i) => ({ id: `p${i + 1}`, name, color: ['#56b4e9', '#d55e00'][i] })),
+    rounds: [{ id: 'r_board', name: 'Round 1', mode: 'board', values: [200, 400], dailyDoubleCount: 1, categories: [{ id: 'cat0', title: 'Movies', clues: [
+      { id: 'q_dd', value: null, type: 'dailyDouble', questionSlide: words('A clue'), answerSlide: words('An answer') },
+      { id: 'q_pt', value: null, type: 'partner', partner, timerSeconds: 45, questionSlide: words('Describe it'), answerSlide: words('Shrek') },
+    ] }] }],
+    theme: { stageBg },
+  });
+  // (rgb(61, 255, 176): PARTNER UP!'s green; rgb(255, 61, 203): the Daily Double's pink.)
+  for (const [key, want] of [['magenta', 'rgb(61, 255, 176)'], ['green', 'rgb(255, 61, 203)']]) {
+    const splashContext = await browser.newContext({ viewport: { width: 1400, height: 900 } });
+    const sp = watch(await splashContext.newPage(), `${key} splashes`);
+    await sp.goto(pathToFileURL(file).href);
+    await openGameFile(sp, { name: 'Splashes.json', mimeType: 'application/json', buffer: Buffer.from(JSON.stringify(splashGame(key))) });
+    await sp.getByText(/^Opened “/).waitFor();
+    await editorReady(sp);
+    await sp.getByRole('button', { name: '▶ Play' }).click();
+    await sp.getByRole('button', { name: 'Start game ▶' }).click();
+    const look = (sel) => sp.locator(`.stage-box ${sel}`).evaluate((e) => getComputedStyle(e).backgroundImage);
+    await sp.locator('.stage-box .tile[data-clue="q_dd"]').click();
+    await sp.locator('.stage-box .dd-text').waitFor();
+    const ddLook = await look('.full.dd');
+    await sp.locator('.stage-box .dd-text').click();
+    await sp.keyboard.press('Escape');
+    await sp.locator('.stage-box .tile[data-clue="q_pt"]').click();
+    await sp.locator('.stage-box [data-partner-up]').waitFor();
+    const ptLook = await look('[data-partner-up]');
+    assert(ddLook.includes(want) && ptLook.includes(want), `on a ${key} key, the Daily Double splash and PARTNER UP! both take the colors it leaves alone (${ddLook} · ${ptLook})`);
+    await splashContext.close();
+  }
+
   assert(!errors.length, 'no page errors' + (errors.length ? ': ' + errors.join(' | ') : ''));
   console.log('playfeatures e2e passed');
 } finally {

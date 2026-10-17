@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { colorDistance, contrast, CVD_SAFE_UPTO, luminance, obsKeyed, parseHex, PLAYER_PALETTE, textOn, toHex, type Vision } from './colors';
+import { colorDistance, contrast, CVD_SAFE_UPTO, luminance, obsKeyed, obsKeyedFade, parseHex, PLAYER_PALETTE, textOn, toHex, type Vision } from './colors';
 
 describe('contrast', () => {
   it('follows WCAG: black on white is 21, a color on itself is 1', () => {
@@ -89,6 +89,17 @@ describe('colors OBS’s Chroma Key makes see-through', () => {
     for (const c of ['#060ce9', '#ffcc00', '#ffffff', '#000000', '#808080']) expect(obsKeyed(c, '#00ff00')).toBe(false);
     for (const c of ['#ffcc00', '#00ff00', '#ffffff', '#000000']) expect(obsKeyed(c, '#ff00ff')).toBe(false);
     expect(obsKeyed('not a color', '#00ff00')).toBe(false);
+  });
+
+  it('a fade, along the way too', () => {
+    // Orange to blue: both ends clear of magenta, the middle (#984880) not.
+    expect(obsKeyed('#ff4000', '#ff00ff') || obsKeyed('#3050ff', '#ff00ff')).toBe(false);
+    expect(obsKeyedFade('#ff4000', '#3050ff', '#ff00ff')).toBe(true);
+    expect(obsKeyedFade('#ff4000', '#3050ff', '#00ff00')).toBe(false);
+    expect(obsKeyedFade('#ff4000', '#ffcc00', '#ff00ff')).toBe(false);
+    // Its ends count.
+    expect(obsKeyedFade('#202020', '#39ff14', '#00ff00')).toBe(true);
+    expect(obsKeyedFade('#ff4000', 'not a color', '#ff00ff')).toBe(false);
   });
 });
 

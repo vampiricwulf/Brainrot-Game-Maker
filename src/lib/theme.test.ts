@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { contrast } from './colors';
-import { altTile, EXTRA_LOOKS, headerBackground, isThemeColor, isThemeFont, keyedThemeColors, lookNumber, otherStageKey, presetEdited, presetTheme, stageText, themeReadability, themeStyle, tileBackground, type Theme } from './theme';
+import { contrast, obsKeyed } from './colors';
+import { altTile, EXTRA_LOOKS, headerBackground, isThemeColor, isThemeFont, keyedThemeColors, lookNumber, otherStageKey, presetEdited, presetTheme, splashColors, STAGE_KEYS, stageText, themeReadability, themeStyle, tileBackground, type Theme } from './theme';
 import { migrateGame, newGame } from './model';
 import { categoryBox } from './boardfit';
 
@@ -213,6 +213,21 @@ describe('colors OBS would key out', () => {
     expect(keyedThemeColors(t)).toEqual(['Used tiles', 'Tile glow', 'Line under the categories']);
     expect(keyedThemeColors({ ...t, usedLook: 'dim', glow: 'none', tilePattern: 'rows', headerLine: 'none' })).toEqual(['Second tile color']);
     expect(keyedThemeColors({ ...t, tileUsed: 'rgb(0, 200, 0)', clueColor: '#33ee33' }, 'green')).toEqual(['Used tiles', 'Tile glow', 'Clue text color', 'Line under the categories']);
+    // A glow or a border of size 0 doesn't show.
+    const sized: Theme = { ...presetTheme('dark'), stageBg: 'magenta', glow: '#ff00e6', tileBorder: '#ff00ff' };
+    expect(keyedThemeColors(sized)).toEqual(['Tile glow', 'Border color']);
+    expect(keyedThemeColors({ ...sized, glowSize: 0, tileBorderWidth: 0 })).toEqual([]);
+    expect(otherStageKey({ ...sized, stageBg: 'green', glowSize: 0, tileBorderWidth: 0 })).toBe('magenta');
+  });
+
+  it('a gradient whose middle the key takes, though both its ends are clear', () => {
+    const t: Theme = { ...presetTheme('dark'), stageBg: 'magenta', tile: '#ff4000', tileGradient: '#3050ff' };
+    expect(keyedThemeColors(t)).toEqual(['Tile gradient']);
+    expect(keyedThemeColors({ ...t, tileGradient: '#ffcc00' })).toEqual([]);
+    expect(keyedThemeColors({ ...t, tileGradient: undefined, headerBg: '#3050ff', headerGradient: '#ff4000' })).toEqual(['Category gradient']);
+    // From the second tile color too; a start color the key takes is named on its own.
+    expect(keyedThemeColors({ ...t, tile: '#ffcc00', tilePattern: 'checker', tile2: '#ff4000' })).toEqual(['Tile gradient']);
+    expect(keyedThemeColors({ ...t, tile: '#ff00ff', tileGradient: '#ffcc00' })).toEqual(['Tiles & slide background']);
   });
 
   it('a game with no Jeopardy board: only the colors its rounds show', () => {
@@ -246,5 +261,17 @@ describe('colors OBS would key out', () => {
     expect(keyedThemeColors(glow, 'magenta')).toEqual(['Tile glow']);
     expect(otherStageKey(glow)).toBeUndefined();
     expect(otherStageKey(glow, [], false)).toBe('magenta');
+  });
+
+  it('the Daily Double and PARTNER UP! splashes swap colors where the key would take their own', () => {
+    const pink = ['#ff3dcb', '#7a00ff'];
+    const greens = ['#3dffb0', '#00a86b'];
+    expect(splashColors(undefined)).toEqual({ dd: pink, partner: greens });
+    expect(splashColors('magenta')).toEqual({ dd: greens, partner: greens });
+    expect(splashColors('green')).toEqual({ dd: pink, partner: pink });
+    for (const key of ['green', 'magenta'] as const) {
+      const { dd, partner } = splashColors(key);
+      expect([...dd, ...partner].some((c) => obsKeyed(c, STAGE_KEYS[key]))).toBe(false);
+    }
   });
 });

@@ -1,5 +1,5 @@
 // Board/stage themes (spec §5.7): presets plus per-game overrides, applied as CSS variables.
-import { contrast, mixHex, obsKeyed, textOn, toHex } from './colors';
+import { contrast, mixHex, obsKeyed, obsKeyedFade, textOn, toHex } from './colors';
 import { cssUrl } from './links';
 import type { Id } from './model';
 
@@ -205,26 +205,33 @@ export function themeReadability(t: Theme): { values: number | null; names: numb
  */
 export function keyedThemeColors(t: Theme, key: Theme['stageBg'] = t.stageBg, board = true): string[] {
   if (!key) return [];
+  const k = STAGE_KEYS[key];
+  const gone = (c: string | undefined) => obsKeyed(toHex(c) ?? '', k);
+  // A gradient: its color, or the way to it from a color it starts at (one that's clear of the key itself: else that
+  // color is named).
+  const fades = (to: string | undefined, from: (string | undefined)[]) =>
+    gone(to) || (!!toHex(to) && from.some((f) => !!toHex(f) && !gone(f) && obsKeyedFade(toHex(f)!, toHex(to)!, k)));
   // (true: only a Jeopardy board shows it.)
-  const shown: [string, string | undefined, boolean?][] = [
-    ['Tiles & slide background', t.tile],
+  const shown: [string, boolean, boolean?][] = [
+    ['Tiles & slide background', gone(t.tile)],
     // (Dimmed played tiles are the tile color, darker; hidden ones are gone.)
-    ['Used tiles', t.usedLook ? undefined : t.tileUsed, true],
-    ['Values', t.value],
-    ['Category names', t.boardText, true],
-    ['Text on slides & scores', stageText(t)],
-    ['Score bar', t.scoreBarBg],
-    ['Tile glow', t.glow === 'none' ? undefined : t.glow, true],
-    ['Clue text color', clueTextColor(t)],
-    ['Second tile color', t.tilePattern ? t.tile2 : undefined, true],
-    ['Tile gradient', t.tileGradient, true],
-    ['Border color', t.tileBorder, true],
-    ['Category color', t.headerBg, true],
-    ['Second category color', t.header2, true],
-    ['Category gradient', t.headerGradient, true],
-    ['Line under the categories', t.headerLine === 'none' ? undefined : t.headerLine, true],
+    ['Used tiles', !t.usedLook && gone(t.tileUsed), true],
+    ['Values', gone(t.value)],
+    ['Category names', gone(t.boardText), true],
+    ['Text on slides & scores', gone(stageText(t))],
+    ['Score bar', gone(t.scoreBarBg)],
+    // (A glow or a border of size 0 doesn't show.)
+    ['Tile glow', t.glow !== 'none' && !!lookNumber(t, 'glowSize') && gone(t.glow), true],
+    ['Clue text color', gone(clueTextColor(t))],
+    ['Second tile color', !!t.tilePattern && gone(t.tile2), true],
+    ['Tile gradient', fades(t.tileGradient, [t.tile, t.tilePattern ? t.tile2 : undefined]), true],
+    ['Border color', !!lookNumber(t, 'tileBorderWidth') && gone(t.tileBorder), true],
+    ['Category color', gone(t.headerBg), true],
+    ['Second category color', gone(t.header2), true],
+    ['Category gradient', fades(t.headerGradient, [t.headerBg ?? t.tile, t.header2]), true],
+    ['Line under the categories', t.headerLine !== 'none' && gone(t.headerLine), true],
   ];
-  return shown.filter(([, c, onBoard]) => (board || !onBoard) && obsKeyed(toHex(c) ?? '', STAGE_KEYS[key])).map(([name]) => name);
+  return shown.filter(([, keyed, onBoard]) => keyed && (board || !onBoard)).map(([name]) => name);
 }
 
 /**
@@ -235,6 +242,18 @@ export function otherStageKey(t: Theme, players: string[] = [], board = true): T
   if (!t.stageBg) return undefined;
   const other = t.stageBg === 'green' ? 'magenta' : 'green';
   return keyedThemeColors(t, other, board).length || players.some((c) => obsKeyed(c, STAGE_KEYS[other])) ? undefined : other;
+}
+
+/** The Daily Double splash's pink and purple, and 🤝 PARTNER UP!'s greens (AudienceView). */
+const SPLASHES = { dd: ['#ff3dcb', '#7a00ff'], partner: ['#3dffb0', '#00a86b'] } as const;
+
+/**
+ * The Daily Double splash's colors and PARTNER UP!'s, on a stage with this chroma key: each takes the other's where
+ * OBS would make its own see-through (the Daily Double's on magenta, PARTNER UP!'s on green).
+ */
+export function splashColors(key: Theme['stageBg']): { dd: readonly string[]; partner: readonly string[] } {
+  const gone = (c: readonly string[]) => !!key && c.some((x) => obsKeyed(x, STAGE_KEYS[key]));
+  return { dd: gone(SPLASHES.dd) ? SPLASHES.partner : SPLASHES.dd, partner: gone(SPLASHES.partner) ? SPLASHES.dd : SPLASHES.partner };
 }
 
 /**
