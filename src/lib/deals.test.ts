@@ -7,7 +7,7 @@ import { describe, expect, it } from 'vitest';
 import { jeopardyGame } from './testgame';
 import { migrateGame, newImageEl, setSlideText, textSlide, type BoardRound, type CardTo, type DealPreset, type Game, type Session } from './model';
 import { forViewers, migrateSession, newSession, openClue, removePlayer } from './session';
-import { cardsFullText, cardsLeftOff, dealFullText, hostCards, roomCardsFull, sessionCards } from './buzz';
+import { cardsFullText, cardsLeftOff, dealFullText, hostCards, roomCardsAfter, roomCardsFull, sessionCards } from './buzz';
 import { CARDS_MAX, type CardLate, type PhoneInfo } from './buzzproto';
 import { listedCards, quickSlide, sendCard, sentCardId } from './sentcards';
 import { phoneCard } from './phonecard';
@@ -350,11 +350,14 @@ describe('📤 sending a deal: only when the host confirms, one card per player,
   it('the room takes CARDS_MAX cards: a deal that wouldn’t fit is refused whole', () => {
     const { g, session, d } = dealt();
     for (let i = 0; i < CARDS_MAX - 5; i++) sendCard(g, session, { to: [{ seat: 'a' }], content: { slide: quickSlide(`c${i}`) }, until: 'host' });
+    expect(roomCardsAfter(g, session, dealTrial(g, d, 'host'))).toBe(CARDS_MAX + 1);
     expect(roomCardsFull(g, session, dealTrial(g, d, 'host'))).toBe(true);
     expect(sendDeal(g, session, 'host', 1000, roomCardsFull(g, session, dealTrial(g, d, 'host')))).toEqual([]);
     expect(dealOut(g, session)).toEqual([]);
     expect(d.stage).toBe('dealt');
     session.cards = session.cards!.slice(1);
+    // (It fits, filling the phones: the deal's panel says so before 📤 Send.)
+    expect(roomCardsAfter(g, session, dealTrial(g, d, 'host'))).toBe(CARDS_MAX);
     expect(roomCardsFull(g, session, dealTrial(g, d, 'host'))).toBe(false);
   });
 

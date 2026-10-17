@@ -15,7 +15,7 @@
   import { app, hint, toast } from '../../lib/app.svelte';
   import { announce } from '../../lib/announce';
   import { ask } from '../../lib/ask.svelte';
-  import { cardsLeftOff, dealFullText, roomCardsFull, teamsOn } from '../../lib/buzz';
+  import { cardsLeftOff, dealFullText, roomCardsAfter, roomCardsFull, teamsOn } from '../../lib/buzz';
   import { CARDS_MAX } from '../../lib/buzzproto';
   import { filesCounted, phoneCan, retryFiles } from '../../lib/cardfiles.svelte';
   import { cardWindow, openCardWindow } from '../../lib/cardwindow.svelte';
@@ -179,6 +179,11 @@
   /** Why it can't go when `full`: the cards out, what the deal adds, how many to take back. */
   const fullText = $derived(full && d ? dealFullText(game, session, dealTrial(game, d, until)) : '');
   /**
+   * It fits, but fills the phones: once it's out no other 🤫 card can go to one (a partner clue's included), so the host
+   * hears it before 📤 Send, not at the next partner clue.
+   */
+  const fills = $derived(!!d && cardsOn && !out.length && !tooMany && !full && roomCardsAfter(game, session, dealTrial(game, d, until)) >= CARDS_MAX);
+  /**
    * The deal's cards out that never reach a phone (their ids on the wire): handed out before the room took cards, more
    * than it takes at once (it's told the newest CARDS_MAX).
    */
@@ -283,6 +288,15 @@
   }
   const COUNTS = Array.from({ length: MAX_PLAYERS + 1 }, (_, i) => i);
 </script>
+
+{#snippet fillsLine()}
+  {#if fills}
+    <div class="small warn" data-deal-fills>
+      ⚠ This fills the phones: they hold {CARDS_MAX} cards at once, all phones together. Until you ✖ Take its cards back{until === 'round' ? ' (or the round ends)' : ''},
+      no other 🤫 card can go to a phone, a partner clue’s included.
+    </div>
+  {/if}
+{/snippet}
 
 <div class="deal" data-deal>
   {#if !dual}
@@ -402,6 +416,7 @@
       {#if left}<div class="small warn">{left}</div>{/if}
       {#if tooMany}<div class="small warn">The phones hold {CARDS_MAX} cards at once, all phones together: this deal has {d.hands.length}, one each. Deal fewer in.</div>{/if}
       {#if full}<div class="small warn" data-cards-full>{fullText}</div>{/if}
+      {@render fillsLine()}
       <div class="actions">
         <div class="row wrap">
           <button class="primary small" onclick={send} disabled={tooMany || full} title={cardsOn ? 'Each player’s card goes to their phone now, a card of its own' : 'Hands them out: then copy each card to its player (📋), or show it in the 🪟 card window'} data-deal-send>{cardsOn ? '📤 Send' : '✔ Hand them out'}</button>
@@ -414,6 +429,7 @@
       </div>
     {:else}
       {#if status}<div class="small" role="status" data-deal-status>{status}</div>{/if}
+      {@render fillsLine()}
       {#if left && out.length}<div class="small warn">{left}</div>{/if}
       <div class="row wrap">
         {#if out.length}

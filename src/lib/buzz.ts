@@ -423,7 +423,7 @@ export function roomCardCount(game: Game, session: Session): number {
 }
 
 /** How many cards the room would be told after `go`, made on a copy of the session. */
-function countAfter(game: Game, session: Session, go: (trial: Session) => void): number {
+export function roomCardsAfter(game: Game, session: Session, go: (trial: Session) => void): number {
   const trial: Session = { ...session, partner: session.partner ? JSON.parse(JSON.stringify(session.partner)) : session.partner, cards: session.cards ? [...session.cards] : session.cards };
   go(trial);
   return roomCardCount(game, trial);
@@ -439,7 +439,7 @@ function countAfter(game: Game, session: Session, go: (trial: Session) => void):
 export function roomCardsFull(game: Game, session: Session, go?: (trial: Session) => void): boolean {
   const now = roomCardCount(game, session);
   if (!go) return now + 1 > CARDS_MAX;
-  const after = countAfter(game, session, go);
+  const after = roomCardsAfter(game, session, go);
   return after > CARDS_MAX && after > now;
 }
 
@@ -461,7 +461,7 @@ const partnerCount = (game: Game, session: Session): number => partnerCards(game
  */
 export function dealFullText(game: Game, session: Session, go: (trial: Session) => void): string {
   const now = roomCardCount(game, session);
-  const add = countAfter(game, session, go) - now;
+  const add = roomCardsAfter(game, session, go) - now;
   return `${now} card${now === 1 ? ' is' : 's are'} out on the phones${ofThem(0, partnerCount(game, session))}, and this deal adds ${add}: they hold ${CARDS_MAX} at once, all phones together, so ✖ Take ${now + add - CARDS_MAX} back first`;
 }
 
@@ -478,7 +478,7 @@ export function cardsFullText(game: Game, session: Session, go?: (trial: Session
   if (dealAll >= CARDS_MAX) return `${CARDS_MAX} cards are out on the phones, all of them the 🎭 deal’s: ✖ Take them back in 🎭 Deal…`;
   const now = roomCardCount(game, session);
   const whose = ofThem(dealAll, partnerCount(game, session));
-  const add = go ? countAfter(game, session, go) - now : 1;
+  const add = go ? roomCardsAfter(game, session, go) - now : 1;
   if (add > 1) {
     const need = now + add - CARDS_MAX;
     // (More than the phones hold by itself: taking cards back can't make room for it.)

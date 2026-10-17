@@ -7,8 +7,8 @@
 // ↻ Send again renews every card's id; 🎭 Who was who goes on stream only when pressed, and Ctrl+Z takes it off; a host
 // reload keeps the deal and its cards; in one window the panel only counts the parts; ✖ Take back takes them all off.
 // Neither the audience window before Who was who, nor the host page in one window, ever holds a card's words or the
-// location. With the deal's cards and four more out, the 8 the phones hold, a tile's card and a partner clue's say in
-// their panels why they can't go.
+// location. With four cards out, the deal's panel warns that its 📤 Send fills the phones; then, with the 8 they hold
+// out, a tile's card and a partner clue's say in their panels why they can't go.
 import { chromium } from 'playwright-core';
 import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
@@ -300,9 +300,19 @@ try {
   await host.keyboard.press('Escape');
   await quick.waitFor({ state: 'detached' });
   assert(await until(() => cards().length === 4), 'four quick cards to Ann: the room holds them');
+  // The deal would fill the phones: its panel says so before 📤 Send, its cards back or dealt anew.
   dialog = await openDeal();
-  await dialog.getByRole('button', { name: '📤 Send', exact: true }).click();
-  assert(await until(() => cards().length === 8), 'the deal sent again (📤 Send): the room holds 8, all the phones hold at once');
+  const fills = dialog.locator('[data-deal-fills]');
+  const fillsText = '⚠ This fills the phones: they hold 8 cards at once, all phones together. Until you ✖ Take its cards back (or the round ends), no other 🤫 card can go to a phone, a partner clue’s included.';
+  assert((await flat(fills)) === fillsText, `its cards back, 📤 Send would fill the phones: the panel says so first (“${fillsText}”)`);
+  await dialog.getByRole('button', { name: '🎭 Deal a new one' }).click();
+  await dialog.getByRole('combobox', { name: 'The deal' }).selectOption('saved:deal1');
+  await dialog.getByRole('button', { name: '🎭 Deal', exact: true }).click();
+  await dialog.locator('[data-deal-send]').waitFor();
+  assert((await flat(fills)) === fillsText, 'dealt anew, not sent yet: the same');
+  await dialog.locator('[data-deal-send]').click();
+  assert(await until(() => cards().length === 8), '📤 Send: the room holds 8, all the phones hold at once');
+  assert(!(await fills.count()), 'and the warning goes');
   await host.keyboard.press('Escape');
   await dialog.waitFor({ state: 'detached' });
   const fullLine = '8 cards are out on the phones, 4 of them the 🎭 deal’s: ✖ Take them back in 🎭 Deal…, or take back another one';
