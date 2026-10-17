@@ -59,6 +59,20 @@
     });
   }
 
+  /** When the slide appeared: an item's entrance delay counts from then. */
+  let mountedAt = 0;
+  let autoTimer: ReturnType<typeof setTimeout> | undefined;
+  /** Told to play or pause (by the host, or its slide coming back): an autoplay still waiting leaves it alone. */
+  let told = false;
+  /** Autoplay starts as the item shows: after its entrance delay (none when motion is reduced: app.css). */
+  function autoplay(): void {
+    const box = node?.closest('.el');
+    const delay = box ? (parseFloat(getComputedStyle(box).animationDelay) || 0) * 1000 : 0;
+    const wait = delay - (performance.now() - mountedAt);
+    if (wait <= 0) return tryPlay();
+    autoTimer = setTimeout(() => !told && tryPlay(), wait);
+  }
+
   // Muted on mount and when the role changes (the host's copy turning silent when the audience window opens), not as an
   // attribute: an attribute is set again whenever anything else on the element changes (its title says Play/Pause),
   // which unmuted a video the host had muted (M).
@@ -83,6 +97,7 @@
     if (node) node.muted = mode === 'edit' || role === 'mirror' || el.muted;
     if (mode !== 'play' || !node) return;
     const n = node;
+    mountedAt = performance.now();
     loop = el.loop;
     n.volume = Math.max(0, Math.min(1, el.volume));
     n.muted = role === 'mirror' || el.muted;
@@ -91,8 +106,16 @@
       el.id,
       role,
       {
-        play: tryPlay,
-        pause: () => n.pause(),
+        play: () => {
+          told = true;
+          clearTimeout(autoTimer);
+          tryPlay();
+        },
+        pause: () => {
+          told = true;
+          clearTimeout(autoTimer);
+          n.pause();
+        },
         seek: (t) => (n.currentTime = t),
         setVolume: (v) => (n.volume = Math.max(0, Math.min(1, v))),
         setMuted: (m) => (n.muted = m),
@@ -115,6 +138,7 @@
       start(),
     );
     return () => {
+      clearTimeout(autoTimer);
       n.pause();
       unregisterMedia(el.id);
     };
@@ -124,8 +148,9 @@
     if (!node) return;
     if (start()) node.currentTime = start();
     if (mode === 'play') {
+      // (Its slide coming back has put it where it was by now, playing or paused: see restore in mediactl.)
       updateMedia(el.id, { duration: node.duration });
-      if (el.autoplay) tryPlay();
+      if (el.autoplay && !told) autoplay();
     }
   }
 

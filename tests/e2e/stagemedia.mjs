@@ -2,7 +2,8 @@
 // revealing the answer — in one window, and from the host's copy in dual-window mode (the audience plays it). A sound
 // the host paused stays paused where it was when the audience window is reloaded, or closed and opened again. The
 // audience window closed or opened mid-clue: the host's controls reach the copy with the sound, and only one has sound.
-// A game left mid-clue: the editor's ▶ Preview and ↻ Replay of that clue play its sound from the start.
+// A game left mid-clue: the editor's ▶ Preview and ↻ Replay of that clue play its sound from the start. A video (and a
+// YouTube video) that comes in after the slide starts playing as it shows.
 import { chromium } from 'playwright-core';
 import { existsSync } from 'node:fs';
 import { resolve } from 'node:path';
@@ -61,6 +62,25 @@ const paused = (p, sel) => p.locator(sel).evaluate((m) => m.paused);
 const waitPaused = (p, sel, v) => p.waitForFunction(([s, want]) => document.querySelector(s)?.paused === want, [sel, v], { timeout: 5000 });
 const answer = (p) => p.getByText('The answer text').count();
 const guard = () => page.waitForTimeout(500); // past the stage's double-click guard
+// A stand-in YouTube player (tests have no internet): it answers the app, and notes how it was asked to start.
+const YT = `<!doctype html><script>
+  const auto = new URLSearchParams(location.search).get('autoplay');
+  window.__yt = { auto, plays: [] };
+  const say = (m) => parent.postMessage(JSON.stringify(m), '*');
+  addEventListener('message', (e) => {
+    const d = JSON.parse(e.data);
+    if (d.event === 'listening') {
+      say({ event: 'initialDelivery', info: { playerState: auto === '1' ? 1 : 5, currentTime: 0, duration: 10 } });
+      say({ event: 'onReady' });
+    }
+    if (d.event === 'command' && d.func === 'playVideo') {
+      window.__yt.plays.push(performance.timeOrigin + performance.now());
+      say({ event: 'infoDelivery', info: { playerState: 1 } });
+    }
+  });
+</script>`;
+await context.route('https://www.youtube.com/embed/**', (r) => r.fulfill({ body: YT, contentType: 'text/html' }));
+await context.route(/ytimg\.com/, (r) => r.fulfill({ status: 404, body: '' }));
 // 4×4 white PNG.
 const PNG = 'iVBORw0KGgoAAAANSUhEUgAAAAQAAAAECAIAAAAmkwkpAAAAEUlEQVR42mP8z8AARLgBAAC0BAP/HpJ+EwAAAABJRU5ErkJggg==';
 
@@ -100,6 +120,23 @@ try {
   await fc.setFiles({ name: 'song.wav', mimeType: 'audio/wav', buffer: wav(8) });
   assert(await page.locator('.insp').getByLabel('Autoplay when the slide appears').isChecked(), 'a sound plays by itself when its slide appears, unless told not to');
   await page.getByRole('button', { name: 'Done' }).click();
+  // A third clue with a video and a YouTube video that play by themselves, coming in 3 s after the slide.
+  await page.locator('.tile').nth(2).click();
+  await page.getByRole('button', { name: '🎬 Video' }).click();
+  [fc] = await Promise.all([page.waitForEvent('filechooser'), page.getByRole('button', { name: '⬆ Upload video file…' }).click()]);
+  await fc.setFiles({ name: 'later.webm', mimeType: 'video/webm', buffer: clip });
+  const comesIn = async () => {
+    await page.locator('.insp').getByLabel('Entrance animation').selectOption('fade');
+    await page.locator('.insp').getByLabel('Delay (s)').fill('3');
+    await page.locator('.insp').getByLabel('Delay (s)').press('Tab');
+  };
+  await comesIn();
+  await page.getByRole('button', { name: '🌐 Link' }).click();
+  await page.locator('.linkbox').getByLabel('Paste a link').fill('https://www.youtube.com/watch?v=dQw4w9WgXcQ');
+  await page.locator('.linkbox').getByLabel('Paste a link').press('Enter');
+  await page.locator('.canvas .card').waitFor();
+  await comesIn();
+  await page.getByRole('button', { name: 'Done' }).click();
   await page.waitForTimeout(900);
   await page.evaluate(
     () =>
@@ -127,6 +164,36 @@ try {
   await playWithPlayers(page, 1);
   await page.getByRole('button', { name: 'Start game ▶' }).click();
   await page.getByRole('button', { name: 'Skip intro' }).click();
+
+  // The clue whose video and YouTube video come in 3 s after the slide: each starts as it shows, not while it's hidden
+  // (viewers heard it before seeing anything, and missed its start). It may start a frame early: on a loaded machine
+  // that's a while, hence a second's leeway.
+  await page.evaluate(() => {
+    // When an item with an entrance delay shows (its delay is over), on the clock every window shares.
+    window.__showsAt = (box) => {
+      const a = box.getAnimations()[0];
+      return a && a.startTime !== null ? performance.timeOrigin + a.startTime + parseFloat(getComputedStyle(box).animationDelay) * 1000 : null;
+    };
+    document.addEventListener('play', (e) => {
+      if (window.__later || !e.target.matches('.stage-box .full video')) return;
+      window.__later = { at: performance.timeOrigin + performance.now(), shows: window.__showsAt(e.target.closest('.el')) };
+    }, true);
+  });
+  await page.locator('.board .tile').nth(2).click();
+  await page.waitForFunction(() => !!window.__later);
+  const later = await page.evaluate(() => window.__later);
+  assert(later.shows !== null && later.at >= later.shows - 1000, `a video that comes in later starts as it shows (${later.shows === null ? 'before its entrance began' : `${Math.round(later.at - later.shows)} ms from it`})`);
+  const yt = await (await page.locator('.stage-box .full iframe').elementHandle()).contentFrame();
+  await yt.waitForFunction(() => !!window.__yt);
+  assert((await yt.evaluate(() => window.__yt.auto)) === '0', "a YouTube video that comes in later isn't started by its link");
+  await yt.waitForFunction(() => window.__yt.plays.length > 0);
+  const ytAt = (await yt.evaluate(() => window.__yt.plays))[0];
+  const ytShows = await page.locator('.stage-box .full iframe').evaluate((f) => window.__showsAt(f.closest('.el')));
+  assert(ytShows !== null && ytAt >= ytShows - 1000, `it's started as it shows (${ytShows === null ? 'before its entrance began' : `${Math.round(ytAt - ytShows)} ms from it`})`);
+  await page.keyboard.press('Shift+Escape');
+  await page.locator('.stage-box .board').waitFor();
+  await guard();
+
   await page.locator('.board .tile').first().click();
   const video = '.stage-box .full video';
   const audio = '.stage-box .full audio';

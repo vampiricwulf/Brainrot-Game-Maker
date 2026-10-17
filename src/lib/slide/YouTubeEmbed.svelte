@@ -27,6 +27,12 @@
   let loop = false;
   let lastTime = 0;
   let duration = 0;
+  /** An autoplay with an entrance delay waits for the item to show, so the player is told when, not the link. */
+  const later = $derived(mode === 'play' && el.autoplay && !!el.entrance?.delay);
+  let mountedAt = 0;
+  let autoTimer: ReturnType<typeof setTimeout> | undefined;
+  /** Told to play or pause (by the host, or its slide coming back): an autoplay still waiting leaves it alone. */
+  let told = false;
 
   const ORIGIN = 'https://www.youtube.com';
 
@@ -42,7 +48,7 @@
       modestbranding: '1',
       playsinline: '1',
       iv_load_policy: '3',
-      autoplay: el.autoplay ? '1' : '0',
+      autoplay: el.autoplay && !later ? '1' : '0',
       mute: role === 'mirror' || el.muted ? '1' : '0',
     });
     if (startAt) p.set('start', String(Math.floor(startAt)));
@@ -56,6 +62,14 @@
     if (mode === 'play') untrack(() => setMediaRole(el.id, r));
   });
 
+  /** Once the player is ready: it starts as the item shows (at once when motion is reduced: app.css). */
+  function autoplay(): void {
+    if (!later || told || autoTimer !== undefined) return;
+    const box = iframe?.closest('.el');
+    const delay = box ? (parseFloat(getComputedStyle(box).animationDelay) || 0) * 1000 : 0;
+    autoTimer = setTimeout(() => !told && cmd('playVideo'), Math.max(0, delay - (performance.now() - mountedAt)));
+  }
+
   function fail(): void {
     if (failed) return;
     failed = true;
@@ -64,13 +78,22 @@
 
   onMount(() => {
     if (mode !== 'play' || !vid) return;
+    mountedAt = performance.now();
     loop = el.loop;
     registerMedia(
       el.id,
       role,
       {
-        play: () => cmd('playVideo'),
-        pause: () => cmd('pauseVideo'),
+        play: () => {
+          told = true;
+          clearTimeout(autoTimer);
+          cmd('playVideo');
+        },
+        pause: () => {
+          told = true;
+          clearTimeout(autoTimer);
+          cmd('pauseVideo');
+        },
         seek: (t) => cmd('seekTo', [t, true]),
         setVolume: (v) => cmd('setVolume', [Math.round(v * 100)]),
         setMuted: (m) => cmd(m ? 'mute' : 'unMute'),
@@ -107,9 +130,11 @@
           ready = true;
           cmd('setVolume', [Math.round(el.volume * 100)]);
         }
+        autoplay();
       }
       if (data.event === 'infoDelivery' && data.info && typeof data.info === 'object') {
         ready = true;
+        autoplay();
         const info = data.info;
         const patch: Record<string, unknown> = {};
         if (typeof info.currentTime === 'number') patch.time = lastTime = info.currentTime;
@@ -137,6 +162,7 @@
     return () => {
       window.removeEventListener('message', onmsg);
       clearTimeout(timeout);
+      clearTimeout(autoTimer);
       unregisterMedia(el.id);
     };
   });
