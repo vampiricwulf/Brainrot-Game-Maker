@@ -125,6 +125,9 @@ try {
   );
   assert((await page.locator('.side [data-space-kind]').inputValue()) === 'skip', 'its card’s Make it a… box says which kind it is');
   assert((await page.locator('.side .actions').nth(1).innerText()).includes('Skip'), 'and skipping a turn is its landing button');
+  // A space's buttons are for whoever landed there (or passes it): the host isn't asked who.
+  const askOption = (list) => page.locator('.side .actions').nth(list).getByLabel('Who').first().locator('option[value="ask"]').innerText();
+  assert((await askOption(1)) === 'Whoever landed there', `a landing button's Who box says “Whoever landed there”, not “Host picks who” (${await askOption(1)})`);
   await space('Space 8').click();
   await page.locator('.side [data-space-kind]').selectOption('shop');
   assert((await space('Shop').locator('.mark').innerText()) === '🛒', 'Make it a… 🛒 Shop in the space’s card');
@@ -171,6 +174,7 @@ try {
   await page.getByRole('menuitem', { name: /Change the score/ }).click();
   assert(await page.locator('.side .actions').first().getByLabel('Points').evaluate((e) => e === document.activeElement), 'a new button has the focus on its first setting');
   await page.locator('.side .actions').first().getByLabel('Points').fill('100');
+  assert((await askOption(0)) === 'Whoever passes it', `a passing button's Who box says “Whoever passes it” (${await askOption(0)})`);
   await page.locator('.side .actions').first().getByLabel('Who').selectOption('party');
   if (process.env.SHOTS) await page.screenshot({ path: `${process.env.SHOTS}/boardgame-editor.png` });
 

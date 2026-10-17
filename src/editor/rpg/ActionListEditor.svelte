@@ -54,12 +54,14 @@
   const game = $derived(editedGame());
   const numbers = $derived(statFields(game).filter((f) => f.type === 'number'));
   let editing = $state<{ action: Action; which: 'slide' | 'question' | 'answer' } | null>(null);
+  /** On a board space, the player its buttons are for (or the ones picked on its card). */
+  const spacePlayer = $derived(passing ? 'Whoever passes it' : 'Whoever landed there');
   /**
    * Who a 🤫 card goes to, in this list's words (an item's is whoever uses it, a space's whoever landed there or passes
    * it): the same words its button says in play (actions.ts describeAction).
    */
   const cardWho = $derived<[CardWho, string][]>([
-    ['trigger', board ? (passing ? 'Whoever passes it' : 'Whoever landed there') : askLabel === 'Host picks who' ? 'Whoever set it off' : askLabel],
+    ['trigger', board ? spacePlayer : askLabel === 'Host picks who' ? 'Whoever set it off' : askLabel],
     ['party', board ? 'Whoever’s turn it is' : 'The party here'],
     ['ask', 'A player you pick then'],
     ['others', 'Everyone else'],
@@ -257,10 +259,13 @@
   const rows = new DragOrder();
 </script>
 
-<!-- An action without a who is for `fallback` (the party, for a move): showing it doesn't fill that in. -->
+<!--
+  An action without a who is for `fallback` (the party, for a move): showing it doesn't fill that in. On a board space,
+  "ask" is the player the button is for: the host isn't asked.
+-->
 {#snippet who(a: { who?: string }, fallback = 'ask')}
   <select bind:value={() => a.who ?? fallback, (v) => (a.who = v)} aria-label="Who">
-    <option value="ask">{askLabel}</option>
+    <option value="ask">{board ? spacePlayer : askLabel}</option>
     <option value="party">{board ? 'Whoever’s turn it is' : 'The party here'}</option>
     <option value="selected">Selected players</option>
     <option value="picker">The picker (★)</option>
