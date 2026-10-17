@@ -1328,6 +1328,12 @@
     gap: 10px;
     min-height: 0;
   }
+  /* The row's buttons are one height (32px, as its rows' min-heights), whatever font draws a sign in them: ＋ falls back
+     to a taller font on some computers, and a clue's ＋ Award made the row taller than the board's, shrinking the stage. */
+  .act :global(button:not(.small, .tiny)),
+  .award input {
+    line-height: calc(18 / 14);
+  }
   .action {
     display: flex;
     flex-direction: column;
@@ -1522,6 +1528,7 @@
     }
     .panel:not(.side) .award input {
       width: 80px;
+      padding-block: 5px;
     }
     /* (The folded row as tall as the Amount row is here.) */
     .panel:not(.side) .flow {
