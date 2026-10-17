@@ -503,6 +503,23 @@ try {
   await ann.locator('main').getByText('The game is over').waitFor();
   assert(true, 'Discard & leave closes the room');
 
+  // ---------- Sample teams in a room kept for the same game: Ctrl+Z of a rule leaves them listed ----------
+  await host.getByRole('button', { name: '▶ Play' }).click();
+  for (const t of ['Player 1', 'Player 2']) await roster.getByRole('button', { name: `Delete ${t}` }).click();
+  await roster.getByRole('button', { name: '＋ Add 3 sample teams' }).click();
+  await card.getByRole('button', { name: '▶ Start the room' }).click();
+  await codeEl.waitFor();
+  await host.getByRole('button', { name: '◀ Back to editor' }).click();
+  await roomBar.getByText('▶ Play goes back into it').waitFor();
+  await host.getByRole('button', { name: '▶ Play' }).click();
+  await card.getByText('0 people on 0 of 3 teams').waitFor();
+  // (The game in the editor has no sample teams: Ctrl+Z follows only what it undid.)
+  await (await openRules(host)).getByLabel('Allow negative scores').click();
+  await host.keyboard.press('Control+z');
+  await host.locator('.toast', { hasText: /^↶ Undid Rule: Negative scores/ }).waitFor();
+  const sampleNames = await roster.locator('input.name').evaluateAll((els) => els.map((e) => e.value));
+  assert(sampleNames.join() === 'Team 1,Team 2,Team 3', `back in the same room, Ctrl+Z of a rule keeps the sample teams listed (${sampleNames.join(', ')})`);
+
   assert(errors.length === 0, `no page errors (${errors.join(' | ')})`);
   console.log('Team buzzers E2E passed.');
 } finally {

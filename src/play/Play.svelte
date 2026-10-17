@@ -3250,26 +3250,39 @@
     if (!next || editorSteps.has(next.id)) {
       return void toast(key === 'undo' ? 'Nothing more to undo here (earlier changes are undone in the editor)' : 'Nothing to redo');
     }
+    const was = editorSetup();
     const done = key === 'undo' ? undoStep('key') : redoStep('key');
     fields.afterGlobal();
     if (!done) return;
-    fromEditor();
+    fromEditor(was);
     toast(`${key === 'undo' ? '↶ Undid' : '↷ Redid'} ${done.label}`);
   }
 
   /** The buzzer settings (the 📱 Phone buzzers card). */
   const BUZZ = ['buzzer', 'buzzArm', 'phoneJoin', 'phoneColorsOff', 'earlyBuzzLock', 'buzzTeams'] as const satisfies readonly (keyof GameSettings)[];
+  /** The settings set here. */
+  const SETUP = [...RULES, ...BUZZ, 'stream'] as const;
+  /** The editor's copy of what's set here, to see what an undo or redo changed in it. */
+  const editorSetup = () => ({
+    settings: SETUP.map((k) => JSON.stringify($state.snapshot(app.game.settings[k]) ?? null)),
+    players: JSON.stringify($state.snapshot(app.game.players)),
+  });
 
-  /** An undo or redo changed the editor's game: the game here, and the players listed, follow it. */
-  function fromEditor(): void {
+  /**
+   * An undo or redo changed the editor's game (`before`: what it had): the game here, and the players listed, follow
+   * what it changed. The rest stays as it is here, where the two differ (a quick reload can leave the editor's copy
+   * behind).
+   */
+  function fromEditor(before: ReturnType<typeof editorSetup>): void {
     const src = app.game;
     const to = game.settings as unknown as Record<string, unknown>;
-    for (const k of [...RULES, ...BUZZ, 'stream'] as const) {
+    SETUP.forEach((k, i) => {
       const v = $state.snapshot(src.settings[k]);
-      if (JSON.stringify(v ?? null) === JSON.stringify($state.snapshot(to[k]) ?? null)) continue;
+      const json = JSON.stringify(v ?? null);
+      if (json === before.settings[i] || json === JSON.stringify($state.snapshot(to[k]) ?? null)) return;
       if (v === undefined) delete to[k];
       else to[k] = v;
-    }
+    });
     // Buzzer mode undone off: the room closes as the 📱 card's switch closes it (its saved copy too, or a reload would
     // bring the closed room back).
     if (!buzzerOn(game.settings)) {
@@ -3286,7 +3299,14 @@
           if (t && t !== cl.type && (t === 'dailyDouble' || cl.type === 'dailyDouble')) cl.type = t;
         }
     }
-    // The players: as the editor's game has them (start scores kept), and the sample players nobody renamed.
+    // The players, when it changed them.
+    if (JSON.stringify($state.snapshot(src.players)) !== before.players) followPlayers();
+    // The game's name (✎ Rename here).
+    if (src.title !== game.title) game.title = src.title;
+  }
+  /** The players listed: as the editor's game has them (start scores kept), and the sample players nobody renamed. */
+  function followPlayers(): void {
+    const src = app.game;
     const was = new Map(session.players.map((p) => [p.id, p]));
     const kept = src.players.map((t) => {
       const p = was.get(t.id);
@@ -3311,8 +3331,6 @@
     if (JSON.stringify(list) !== JSON.stringify($state.snapshot(session.players))) session.players = list;
     const players = $state.snapshot(src.players);
     if (JSON.stringify(players) !== JSON.stringify($state.snapshot(game.players))) game.players = players;
-    // The game's name (✎ Rename here).
-    if (src.title !== game.title) game.title = src.title;
   }
 
   // Before the game, what Tab reaches near the foot of the window scrolls above the sticky Start bar, not under it.
