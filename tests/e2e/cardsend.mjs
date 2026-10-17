@@ -163,6 +163,20 @@ try {
   assert((await dialog.getByLabel('Goes to').count()) === 0 && (await tabNames()).includes('🤫 Card 1'), 'a Daily Double with a card shows its tab');
   await dialog.getByRole('tab', { name: '🤫 Card 1' }).click();
   assert((await dialog.getByLabel('Goes to').locator('option:checked').innerText()) === 'the Daily Double’s player', 'a Daily Double’s card goes to its player');
+  // Its Card name: typed, its tab and its words box say it, and it's one undo step; F2 on its tab comes back to it.
+  const nameBox = dialog.getByLabel('Card name');
+  assert((await nameBox.inputValue()) === '' && (await nameBox.getAttribute('placeholder')) === 'Card 1', 'a card has no name at first: it’s “Card 1”');
+  await nameBox.fill('Insider tip');
+  assert(await until(async () => (await tabNames()).includes('🤫 Insider tip')), `named, its tab says it (${await tabNames()})`);
+  assert((await dialog.locator('label.field', { has: host.locator('[data-field="card"]') }).innerText()).includes('🤫 Insider tip words'), 'and so does its words box');
+  const undoTitle = () => host.locator('.editor > header').getByRole('button', { name: 'Undo (Ctrl+Z)' }).getAttribute('title');
+  assert(await until(async () => (await undoTitle())?.startsWith('Undo: Renamed card “Insider tip”')), `one undo step, “Renamed card” (${await undoTitle()})`);
+  await dialog.getByRole('tab', { name: '🤫 Insider tip' }).focus();
+  await host.keyboard.press('F2');
+  assert(await until(() => host.evaluate(() => !!document.activeElement?.matches('[data-field="card-name"]'))), 'F2 on its tab puts the focus in its Card name');
+  await dialog.locator('header .value').click();
+  await host.keyboard.press('Control+z');
+  assert(await until(async () => (await tabNames()).includes('🤫 Card 1')), `Ctrl+Z takes the name off: “Card 1” again (${await tabNames()})`);
   await host.keyboard.press('Escape');
   await dialog.waitFor({ state: 'detached' });
 
@@ -266,7 +280,11 @@ try {
   const words = async (loc) => (await loc.innerText()).replace(/\s+/g, ' ').trim();
   const rowText = (label) => words(list.locator(`[data-card-out="${label}"]`));
   assert(await until(async () => (await rowText('Card 1')).includes('Card 1 → Bob · ✓ seen')), `Card 1 → Bob · ✓ seen (${await rowText('Card 1')})`);
-  assert((await rowText('Card 2')).includes('Card 2 → Ann, Cat · sent · until you take it back'), 'Card 2 → Ann, Cat · sent · until you take it back');
+  // (Two windows: a tile's card also says which it is, the tile and the card's name.)
+  assert(
+    (await rowText('Card 2')).includes('Card 2 → Ann, Cat · Movies $200 · Card 1 · sent · until you take it back'),
+    `Card 2 → Ann, Cat · Movies $200 · Card 1 · sent · until you take it back (${await rowText('Card 2')})`,
+  );
   await list.getByRole('button', { name: 'Send Card 1 again' }).click();
   assert(await until(() => cards().length === 2 && cards()[0].id !== c1.id), '↻ Send again: Card 1 goes under a new id');
   const c1b = cards()[0];

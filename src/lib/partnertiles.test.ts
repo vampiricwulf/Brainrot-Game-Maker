@@ -141,6 +141,22 @@ describe('🔀 Randomize (randomizePartnerTiles)', () => {
     expect([timed.type, timed.timerSeconds, timed.partner, timed.cards]).toEqual(['standard', 20, undefined, undefined]);
   });
 
+  it('a card the host named stays with a tile it moves off, even a copy of its answer; placed again, it keeps it', () => {
+    const { r } = board();
+    randomizePartnerTiles(r, 3, seeded(4));
+    const [named, empty] = partners(r);
+    cardSlides(named)[0].name = 'Clue tip';
+    setSlideText(cardSlides(empty)[0], '');
+    cardSlides(empty)[0].name = 'Tip 2';
+    const answer = slideText(named.answerSlide);
+    randomizePartnerTiles(r, 0, seeded(5));
+    expect([named.type, cardSlides(named).map((c) => [c.name, slideText(c)])]).toEqual(['standard', [['Clue tip', answer]]]);
+    expect(cardSlides(empty).map((c) => [c.name, slideText(c)])).toEqual([['Tip 2', '']]);
+    // (A named card, even an empty one, is the tile's own: placing it again gives it no other.)
+    placePartner(r, empty);
+    expect(cardSlides(empty).map((c) => [c.name, slideText(c)])).toEqual([['Tip 2', '']]);
+  });
+
   it('one moved to Help a friend or Split clue (no countdown of their own) goes back without the 45 s it was placed with', () => {
     for (const game of ['help', 'split'] as const) {
       const { r } = board();

@@ -592,11 +592,26 @@ export function currentRound(session: Session, game: Game): Round | undefined {
   return session.phase === 'end' ? undefined : game.rounds[session.currentRound];
 }
 
-/** Put the current Final round's state away (to pick up again when coming back to it). */
+/**
+ * Put the current Final round's state away (to pick up again when coming back to it), saying so when it's left from its
+ * title card: its category never went on stream (finalReached).
+ */
 function stashFinal(session: Session): void {
   const f = session.final;
   if (!f?.roundId) return;
-  session.finals = { ...(session.finals ?? {}), [f.roundId]: { state: f, step: session.finalStep ?? 'wagers' } };
+  const titleOnly = session.intro?.stage === 'title' ? { titleOnly: true } : {};
+  session.finals = { ...(session.finals ?? {}), [f.roundId]: { state: f, step: session.finalStep ?? 'wagers', ...titleOnly } };
+}
+
+/**
+ * A Final whose category has been on stream: the one being played once its title card is gone, or one left from its
+ * wager screen or later (one left from its title card never showed it). In one window 🤫 Send a card… lists only these
+ * Finals' cards: their names would be on stream before the category.
+ */
+export function finalReached(session: Pick<Session, 'phase' | 'final' | 'finals' | 'intro'>, roundId: Id): boolean {
+  if (session.phase === 'final' && session.final?.roundId === roundId) return session.intro?.stage !== 'title';
+  const kept = session.finals?.[roundId];
+  return kept ? !kept.titleOnly : session.final?.roundId === roundId;
 }
 
 /**

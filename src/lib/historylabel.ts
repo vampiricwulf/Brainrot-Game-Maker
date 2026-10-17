@@ -3,7 +3,7 @@
 // historylabel.test.ts.
 import { opPath, type Json, type Op, type Seg } from './historyops';
 import { LAYER_ICON, layerLabel, short } from './layerlabel';
-import { categoryLabel, clueValue, formatPoints, roundName, savedCardName, type Action, type DealPart, type Game, type MediaKind, type Round, type Slide, type SlideElement } from './model';
+import { categoryLabel, clueCardName, clueValue, formatPoints, roundName, savedCardName, type Action, type DealPart, type Game, type MediaKind, type Round, type Slide, type SlideElement } from './model';
 import { describeAction } from './actions';
 import { ROUND_MODES } from './modes';
 import { OBJECT_CLASSES } from './rpg';
@@ -11,7 +11,7 @@ import { PRESETS, type ThemePreset } from './theme';
 import { cueName, hasBuiltin, type CueKey } from './sounds';
 
 export type Side = 'q' | 'a';
-/** A board clue's tabs: a question slide, the answer, or one of a partner clue's 🤫 cards (its id in `slide`). */
+/** A board clue's or a Final's tabs: a question slide, the answer, or one of its 🤫 cards (its id in `slide`). */
 export type ClueSide = Side | 'card';
 
 /** A place in the editor: the tab, and what's open or selected in it. */
@@ -47,8 +47,8 @@ export type RoundPart =
   /** `slide`: one of the clue's extra question slides (its id; none: the first question slide), or with side 'card' its card. */
   | { kind: 'clue'; category: string; clue: string; side?: ClueSide; slide?: string; element?: string; onBoard?: boolean }
   | { kind: 'decor'; element?: string }
-  /** `slide`: a question slide after the first (its id). */
-  | { kind: 'final'; side?: Side; slide?: string; element?: string }
+  /** `slide`: a question slide after the first (its id), or with side 'card' its 🤫 card. */
+  | { kind: 'final'; side?: ClueSide; slide?: string; element?: string }
   /** A slides round's slide: `slide`, one after the first (its id). */
   | { kind: 'slides'; slide?: string; element?: string }
   | { kind: 'space'; space: string }
@@ -181,13 +181,13 @@ export function placeAt(game: Game, path: readonly Seg[]): At {
           return;
         }
         if (path[6] === 'cards') {
-          // One of a partner clue's 🤫 cards ("Card 2").
+          // One of a tile's 🤫 cards ("Card 2", or its name). Its words are still "Edited card 2 “…”", by its place.
           at.crumbs.push('Cards');
           const n = clue.cards?.findIndex((s) => s.id === path[7]) ?? -1;
           if (n < 0) return;
           const card = clue.cards![n];
-          at.crumbs[at.crumbs.length - 1] = `Card ${n + 1}`;
-          reached(8, 'card', `card ${n + 1}`, '🤫', false);
+          at.crumbs[at.crumbs.length - 1] = clueCardName(card, n);
+          reached(8, 'card', card.name?.trim() || `card ${n + 1}`, '🤫', false);
           const at8 = { kind: 'clue', category: cat.id, clue: clue.id, side: 'card', slide: card.id } as const;
           part(at8);
           slide(card, 8, (element) => ({ tab: 'round', round: id, part: { ...at8, element } }), `card ${n + 1}`);
@@ -201,6 +201,20 @@ export function placeAt(game: Game, path: readonly Seg[]): At {
         slide(clue[path[6] as 'questionSlide'], 7, (element) => ({ tab: 'round', round: id, part: { kind: 'clue', category: cat.id, clue: clue.id, side, element } }), side);
       }
     } else if (r.mode === 'final') {
+      if (path[2] === 'cards') {
+        // One of its 🤫 cards ("Card 1", or its name). Its words are still "Edited card 1 “…”", by its place.
+        at.crumbs.push('Cards');
+        part({ kind: 'final', side: 'q' });
+        const n = r.cards?.findIndex((s) => s.id === path[3]) ?? -1;
+        if (n < 0) return;
+        const card = r.cards![n];
+        at.crumbs[at.crumbs.length - 1] = clueCardName(card, n);
+        reached(4, 'card', card.name?.trim() || `card ${n + 1}`, '🤫', false);
+        const at4 = { kind: 'final', side: 'card', slide: card.id } as const;
+        part(at4);
+        slide(card, 4, (element) => ({ tab: 'round', round: id, part: { ...at4, element } }), `card ${n + 1}`);
+        return;
+      }
       if (path[2] === 'extraSlides') {
         // One of its extra question slides ("Question 2").
         at.crumbs.push(SIDE_NAME.q);
@@ -478,6 +492,8 @@ export function itemPlace(game: Game, id: string): Place | null {
       if (side) return placeAt(game, ['rounds', r.id, side, 'elements', id]).place;
       const extra = r.extraSlides?.find(on);
       if (extra) return placeAt(game, ['rounds', r.id, 'extraSlides', extra.id, 'elements', id]).place;
+      const card = r.cards?.find(on);
+      if (card) return placeAt(game, ['rounds', r.id, 'cards', card.id, 'elements', id]).place;
     }
     if (r.mode === 'slides') {
       if (on(r.questionSlide)) return placeAt(game, ['rounds', r.id, 'questionSlide', 'elements', id]).place;

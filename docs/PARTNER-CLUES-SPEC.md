@@ -1152,6 +1152,7 @@ ready.
 | An action | `do: 'card'` on RPG objects and items, wheel slices and board-game spaces (GAMES-MAKER-SPEC §7.10). The action offers the card; the host confirms the send. | P3 |
 | 🎭 Deals | Saved sets of secret roles for everyone (§11), dealt when the host presses 🎭 Deal | P4 |
 | 🤫 Cards (the editor's tab) | Cards made before the show, each with a name only the host uses. Sent from 🤫 Send a card… › One made in the editor, by reference (changed in the editor since: off the phones until ↻ Send again) | P5 |
+| A Final's 🤫 cards | ＋ Card in its editor; offered in its panel (TileCards, Final mode) from the wagers to the last reveal, starting with everyone playing it; until the Final ends; by reference (content {clue: <Final round id>, card}) | P5 |
 
 P3 also adds a list of the cards out now to the host panel. The host panel is on stream in one window, so its labels
 never carry a card's words: each card is numbered in the order it was sent ("Card 2 → Ann · ✓ seen [↻ Send again]
@@ -1438,7 +1439,10 @@ In one window the stage and the host panel are on stream (DDControls.svelte:196-
 - the host checks the cards in the editor's 🤫 Card tabs before the show, and the panel says so;
 - a 🤫 Card's name (the host's own, to pick it by) is listed in 🤫 Send a card…; what's on it never is. The editor tells
   the host so, and the checklist notes a name that repeats what's on the card;
-- the partner panel shows "⚠ Viewers can see this window: what's on a card is never shown here";
+- a tile's or a Final's card name (the host's own) is shown in the host panel and 🤫 Send a card…; what's on the card
+  never is. The editor and the checklist say so; phones and 📋 Copy words never get it;
+- the partner panel, a tile's and a Final's show "⚠ Viewers can see this window: they can read a card's name here,
+  never what's on it";
 - the partner is shown only when the wheel lands (§7.3), in the panel and in 📜 Log › Rolls.
 
 ### 14.3 Other phones
@@ -1739,18 +1743,44 @@ export interface PartnerRules {
   steal?: boolean;
 }
 
-/** A 🤫 card: a slide the host made for a partner clue. Only the phones the host sends it to show it. */
+/**
+ * Who a 🤫 card starts with when the host hands the cards out: on a partner clue a part, both, every player but the two
+ * or nobody; on any other tile (P3) 'picker', 'others' or 'nobody'; on a Final (P5) 'playing' (everyone playing it: its
+ * wager screen's ticks) or 'nobody'.
+ */
+export type CardGoesTo = PartnerRole | 'both' | 'others' | 'nobody' | 'picker' | 'playing';
+
+/**
+ * A 🤫 card: a slide the host made for a tile (a partner clue's, or any tile's) or a Final. Only the phones the host
+ * sends it to show it.
+ */
 export interface ClueCard extends ExtraSlide {
-  /** Who it starts with in the Distribute step. 'others': every player but the two. The host can change it there. */
-  to: PartnerRole | 'both' | 'others' | 'nobody';
+  /** Who it starts with in the Distribute step (or a tile's or the Final's panel). The host can change it there. */
+  to: CardGoesTo;
   /** P2: the line above it on the phone ({giver}, {guesser} filled in): at most 200 characters. */
   hint?: string;
+  /**
+   * P5: the host's name for it, to tell the cards apart (left out: "Card 2", its place): its tab, the host panel, 🤫 Send
+   * a card…, the checklist, 🔍 Find and Undo show it. Phones never get it, nor 📋 Copy words, a sent card's label or its
+   * hash (renaming one that's out keeps it on the phones); in one window viewers can read it in the host panel. At most
+   * 60 characters (CARD_NAME_MAX), never blank.
+   */
+  name?: string;
 }
 
 export interface Clue {
   // …existing fields (model.ts:353-379)…
   partner?: PartnerRules;
-  /** The clue's 🤫 cards, in order (Card 1, Card 2…): at most 6. Never the answer slide itself. */
+  /** The clue's 🤫 cards, in order (Card 1, Card 2…, or their names): at most 6. Never the answer slide itself. */
+  cards?: ClueCard[];
+}
+
+export interface FinalRound {
+  // …existing fields…
+  /**
+   * P5: its 🤫 cards (＋ Card in its editor), in order: at most 6. Offered in the Final's panel from the wagers to the
+   * last reveal, each starting with everyone playing it ('playing') or nobody, and lasting until the Final ends.
+   */
   cards?: ClueCard[];
 }
 
@@ -1844,7 +1874,11 @@ export interface SentCard {
   /** Made by the app, never typed: "Card 2", numbered in the order sent. Shown in the cards-out list, which is on stream in one window. */
   label: string;
   to: (CardTo & { except?: string[] })[];
-  /** P5: `{ saved }` is one of the editor's 🤫 Cards, by its id (changed in the editor since: off the phones until ↻ Send again). */
+  /**
+   * `{ clue, card }` is a tile's card made in the editor, or (P5) a Final's: `clue` is the clue's or the Final round's id.
+   * P5: `{ saved }` is one of the editor's 🤫 Cards, by its id. Either changed in the editor since: off the phones until
+   * ↻ Send again.
+   */
   content: { clue: Id; card: Id } | { saved: Id } | { slide: Slide } | { text: string } | { media: Id } | { link: string };
   role?: string;
   hint?: string;

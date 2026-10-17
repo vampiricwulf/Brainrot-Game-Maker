@@ -3,6 +3,8 @@ import { jeopardyGame } from './testgame';
 import { parseGame } from './fileio';
 import {
   blankName,
+  clueCardName,
+  clueCardWords,
   clueCountdown,
   clueValueTyped,
   compactPoints,
@@ -424,6 +426,115 @@ describe('🤝 partner clues in saved games', () => {
     expect([out[1].elements, out[1].background]).toEqual([[], {}]);
     expect((m.rounds[0] as BoardRound).categories[0].clues[1].cards).toBeUndefined();
     expect(validate(m).some((p) => p.text.includes('has 8 cards'))).toBe(true);
+  });
+
+  it('keeps a card’s name; one that isn’t text or is blank goes, a long one is cut to 60', () => {
+    const g = plain(jeopardyGame());
+    const cards = [
+      { id: 'c1', name: 'Clue tip', to: 'picker', ...textSlide('a') },
+      { id: 'c2', name: 5, to: 'picker', ...textSlide('b') },
+      { id: 'c3', name: '  ', to: 'picker', ...textSlide('c') },
+      { id: 'c4', name: 'N'.repeat(61), to: 'picker', ...textSlide('d') },
+    ];
+    g.rounds[0].categories[0].clues[0].cards = cards;
+    const out = firstClue(migrateGame(g)).cards!;
+    expect(out.map((c) => c.name)).toEqual(['Clue tip', undefined, undefined, 'N'.repeat(60)]);
+    expect(['name' in out[1], 'name' in out[2]]).toEqual([false, false]);
+  });
+
+  it('gives a tile’s card whose id another of its cards has a new one; a whole list stays as it is', () => {
+    const g = plain(jeopardyGame());
+    g.rounds[0].categories[0].clues[0].cards = [
+      { id: 'c1', name: 'Clue tip', to: 'picker', ...textSlide('a') },
+      { id: 'c1', to: 'nobody', ...textSlide('b') },
+    ];
+    const whole = [{ id: 'w1', name: 'Tip', to: 'others', ...textSlide('w') }];
+    const before = plain(whole);
+    g.rounds[0].categories[0].clues[1].cards = whole;
+    const m = migrateGame(g);
+    const ids = firstClue(m).cards!.map((c) => c.id);
+    expect(ids[0]).toBe('c1');
+    expect(new Set(ids).size).toBe(2);
+    const second = (m.rounds[0] as BoardRound).categories[0].clues[1];
+    expect(second.cards).toBe(whole);
+    expect(second.cards).toEqual(before);
+    expect(JSON.stringify(migrateGame(plain(m)))).toBe(JSON.stringify(m));
+  });
+
+  it('sends a tile’s card going to someone a tile doesn’t know (“everyone playing” is a Final’s) to nobody', () => {
+    const g = plain(jeopardyGame());
+    g.rounds[0].categories[0].clues[0].cards = [{ id: 'c1', to: 'playing', ...textSlide('a') }];
+    expect(firstClue(migrateGame(g)).cards![0].to).toBe('nobody');
+  });
+
+  it('names a tile’s card by its name, or by its place when it has none', () => {
+    expect(clueCardName({}, 1)).toBe('Card 2');
+    expect(clueCardName({ name: '  ' }, 1)).toBe('Card 2');
+    expect(clueCardName({ name: ' Tip ' }, 0)).toBe('Tip');
+    expect(clueCardWords({}, 1)).toBe('card 2');
+    expect(clueCardWords({}, 1, true)).toBe('Card 2');
+    expect(clueCardWords({ name: 'Tip' }, 0)).toBe('card “Tip”');
+    expect(clueCardWords({ name: ' Tip ' }, 0, true)).toBe('Card “Tip”');
+  });
+});
+
+describe('a Final’s 🤫 cards in saved games', () => {
+  const plain = (g: unknown) => JSON.parse(JSON.stringify(g));
+  const finalOf = (g: Game) => {
+    const r = g.rounds[1];
+    if (!isFinal(r)) throw new Error('not a Final');
+    return r;
+  };
+
+  it('a game with none gains none', () => {
+    expect('cards' in finalOf(migrateGame(plain(jeopardyGame())))).toBe(false);
+  });
+
+  it('drops cards that aren’t a list, or an empty one; repairs each like a slide, with its own id', () => {
+    const g = plain(jeopardyGame());
+    g.rounds[1].cards = 'oops';
+    expect('cards' in finalOf(migrateGame(plain(g)))).toBe(false);
+    g.rounds[1].cards = [];
+    expect('cards' in finalOf(migrateGame(plain(g)))).toBe(false);
+    g.rounds[1].cards = [
+      { to: 'playing', background: {}, elements: [{ kind: 'text', text: null }] },
+      null,
+      5,
+      { id: 'f1', to: 'playing', elements: 'x' },
+      { id: 'f1', to: 'nobody', ...textSlide('b') },
+    ];
+    const out = finalOf(migrateGame(g)).cards!;
+    expect(out).toHaveLength(3);
+    expect(out.every((c) => typeof c.id === 'string' && c.id)).toBe(true);
+    expect(new Set(out.map((c) => c.id)).size).toBe(3);
+    expect(out[1].id).toBe('f1');
+    expect((out[0].elements[0] as { text: string }).text).toBe('');
+    expect([out[1].elements, out[1].background]).toEqual([[], {}]);
+  });
+
+  it('keeps “everyone playing” and nobody; a tile’s choices, or anything else, go to nobody', () => {
+    const g = plain(jeopardyGame());
+    g.rounds[1].cards = ['playing', 'nobody', 'picker', 'giver', 5].map((to, i) => ({ id: `f${i}`, to, ...textSlide('x') }));
+    expect(finalOf(migrateGame(g)).cards!.map((c) => c.to)).toEqual(['playing', 'nobody', 'nobody', 'nobody', 'nobody']);
+  });
+
+  it('keeps a name; one that isn’t text or is blank goes, a long one is cut to 60', () => {
+    const g = plain(jeopardyGame());
+    g.rounds[1].cards = ['Leader hint', 5, '  ', 'N'.repeat(61)].map((name, i) => ({ id: `f${i}`, name, to: 'playing', ...textSlide('x') }));
+    const out = finalOf(migrateGame(g)).cards!;
+    expect(out.map((c) => c.name)).toEqual(['Leader hint', undefined, undefined, 'N'.repeat(60)]);
+    expect(['name' in out[1], 'name' in out[2]]).toEqual([false, false]);
+  });
+
+  it('leaves a whole list exactly as it is', () => {
+    const g = plain(jeopardyGame());
+    const whole = [{ id: 'f1', name: 'Leader hint', to: 'playing', ...textSlide('Hint') }, { id: 'f2', to: 'nobody', ...textSlide('Side') }];
+    const before = plain(whole);
+    g.rounds[1].cards = whole;
+    const m = migrateGame(g);
+    expect(finalOf(m).cards).toBe(whole);
+    expect(finalOf(m).cards).toEqual(before);
+    expect(JSON.stringify(migrateGame(plain(m)))).toBe(JSON.stringify(m));
   });
 });
 

@@ -1,10 +1,18 @@
 // Structural edits to a Game that must keep rounds/categories/clues consistent.
 import { boardRounds, cardSlides, dailyDoublesPlaced, gameRules, isBoard, isBoardGame, isFinal, isSlides, newCategory, newClue, newId, newTextEl, questionSlides, textSlide, type Category, type Clue, type ClueCard, type ExtraSlide, type Game, type BoardRound, type ClueType, type Round, type Slide, type SlidesRound, type TextEl } from './model';
-import { newCard, partnerSpot, sameAsAnswer, startingCards } from './partner';
+import { cardKept, newCard, partnerSpot, sameAsAnswer, startingCards } from './partner';
 import { slideHasContent } from './usage';
 
-/** Something was written or added to this clue (a new clue has none of it): its 🤫 cards' too. */
+/** Something was written or added to this clue (a new clue has none of it): its 🤫 cards' too (a card's name counts). */
 export function clueHasContent(clue: Clue): boolean {
+  return clueClearable(clue) || cardSlides(clue).some(cardKept);
+}
+
+/**
+ * What ⌫ Clear clue takes out (clearClue): something on its slides or its 🤫 cards, its host notes or tile face. A
+ * card's name doesn't count: clearing keeps it.
+ */
+export function clueClearable(clue: Clue): boolean {
   return (
     questionSlides(clue).some(slideHasContent) ||
     slideHasContent(clue.answerSlide) ||
@@ -74,11 +82,11 @@ export function copyClue(clue: Clue): Clue {
 }
 
 /**
- * ⧉ Same as the answer: the answer slide's items (and its background) copied onto the card, once, with fresh ids. From
- * then on the card is its own: changing the answer doesn't change it.
+ * ⧉ Same as the answer: the answer slide's items (and its background) copied onto the card (a tile's or a Final's),
+ * once, with fresh ids. From then on the card is its own: changing the answer doesn't change it.
  */
-export function cardFromAnswer(clue: Clue, card: ClueCard): void {
-  const copy = clone(clue.answerSlide);
+export function cardFromAnswer(holder: Pick<Clue, 'answerSlide'>, card: ClueCard): void {
+  const copy = clone(holder.answerSlide);
   for (const e of copy.elements) e.id = newId();
   card.background = copy.background;
   card.elements = copy.elements;
@@ -159,7 +167,7 @@ function clearSlide(slide: Slide): void {
 
 /**
  * Take out what was written or added to a clue (its slides, host notes, tile face). Its type and value stay, and so do its
- * 🤫 cards, emptied, with who they go to and the partner rules.
+ * 🤫 cards, emptied, with who they go to and their names, and the partner rules.
  */
 export function clearClue(clue: Clue): void {
   clearSlide(clue.questionSlide);
@@ -186,8 +194,9 @@ export function insertRow(round: BoardRound, at: number): boolean {
  * Make a tile a Daily Double (or a standard, wheel, dice or partner tile). The board's ⭐ Daily Doubles box goes up with
  * the ones placed by hand, so it never says fewer than the board has. A partner clue starts as Describe it (a 45 s
  * countdown when it has none) with its starting card; one made a partner clue before gets its rules and cards back. One
- * only tried (its cards all empty) loses them when it stops being one, and with them rules that are a game's own and the
- * 45 s countdown it started with (whichever game it was moved to after): a card or rules the host wrote stay.
+ * only tried (its cards all empty, none named) loses them when it stops being one, and with them rules that are a
+ * game's own and the 45 s countdown it started with (whichever game it was moved to after): a card the host wrote or
+ * named, or rules they changed, stay.
  */
 export function setClueType(round: BoardRound, clue: Clue, type: ClueType): void {
   const was = clue.type;
@@ -201,7 +210,7 @@ export function setClueType(round: BoardRound, clue: Clue, type: ClueType): void
       const cards = startingCards(clue.partner.game);
       if (cards.length) clue.cards = cards;
     }
-  } else if (was === 'partner' && cardSlides(clue).every((c) => !slideHasContent(c))) {
+  } else if (was === 'partner' && !cardSlides(clue).some(cardKept)) {
     // (Else the tile would keep an empty card to finish, offered in play, and a countdown no other tile has.)
     delete clue.cards;
     const p = clue.partner;
@@ -229,7 +238,7 @@ export function placePartner(round: BoardRound, clue: Clue, cardFrom: 'answer' |
     clue.partner = gameRules(round.partnerGame ?? 'describe');
     if (TIMED_GAMES.has(clue.partner.game)) clue.timerSeconds ??= 45;
   }
-  if (cardSlides(clue).some(slideHasContent)) return;
+  if (cardSlides(clue).some(cardKept)) return;
   const cards = startingCards(clue.partner.game);
   if (cardFrom === 'answer') {
     // (Custom has no starting card: the copy goes to its giver.)
@@ -259,12 +268,12 @@ function canon(x: unknown): unknown {
  * it again if it's picked again): its card when that's only a copy of its answer or empty, then its rules when they're
  * the game's own, and with them its 45 s countdown when placing it could have given it one (its game or the round's has
  * a countdown). Else the tile would keep a countdown no other standard tile has, a card offered in play, and a copy of
- * an answer the host may change before it's picked again. A card the host wrote, rules they changed, and a 45 s the host
- * gave a tile in a round of Help a friend or Split clue, stay for when it's a partner clue again.
+ * an answer the host may change before it's picked again. A card the host wrote or named, rules they changed, and a
+ * 45 s the host gave a tile in a round of Help a friend or Split clue, stay for when it's a partner clue again.
  */
 function unplacePartner(round: BoardRound, clue: Clue): void {
   clue.type = 'standard';
-  if (!cardSlides(clue).every((c) => !slideHasContent(c) || sameAsAnswer(clue, c))) return;
+  if (!cardSlides(clue).every((c) => !c.name?.trim() && (!slideHasContent(c) || sameAsAnswer(clue, c)))) return;
   delete clue.cards;
   const p = clue.partner;
   if (!p || JSON.stringify(canon(p)) !== JSON.stringify(canon(gameRules(p.game)))) return;
@@ -500,7 +509,8 @@ export function reidRound<R extends Round>(round: R): R {
     for (const d of round.decor ?? []) d.id = newId();
   } else if (isFinal(round)) {
     reSlide(round.questionSlide);
-    for (const sl of round.extraSlides ?? []) {
+    // (Its 🤫 cards too: two Finals with one card's id would mix up Find, undo places and a card sent by reference.)
+    for (const sl of [...(round.extraSlides ?? []), ...cardSlides(round)]) {
       sl.id = newId();
       reSlide(sl);
     }

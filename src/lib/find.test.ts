@@ -140,6 +140,40 @@ describe('Find: 🤫 cards', () => {
     clue.type = 'standard';
     expect(findAll(game, 'zorblax')).toHaveLength(1);
   });
+
+  it('finds a tile’s card by its name, says it by its name, and puts the focus in the box that has the words', () => {
+    const game = newGame();
+    addSampleGame(game);
+    const round = game.rounds.find((r) => r.mode === 'board')!;
+    if (round.mode !== 'board') throw new Error('no board');
+    const cat = round.categories[0];
+    const clue = cat.clues[0];
+    clue.cards = [{ id: 'c1', name: 'Clue tip', ...textSlide('Zorblax the ogre'), to: 'picker' }];
+    const place = { tab: 'round', round: round.id, part: { kind: 'clue', category: cat.id, clue: clue.id, side: 'card', slide: 'c1' } };
+    const byName = findAll(game, 'clue tip');
+    expect(byName).toHaveLength(1);
+    expect(byName[0]).toMatchObject({ icon: '🤫', where: `Jeopardy! › ${cat.title} › $200 › Clue tip`, place, focus: '[data-field="card-name"]' });
+    expect(findAll(game, 'zorblax')[0]).toMatchObject({ where: `Jeopardy! › ${cat.title} › $200 › Clue tip`, place, focus: '[data-field="card"]' });
+  });
+
+  it('finds a Final’s card by its words or its name, before its answer, and puts the focus in the box that has them', () => {
+    const game = newGame();
+    addSampleGame(game);
+    const final = game.rounds.find((r) => r.mode === 'final')!;
+    if (final.mode !== 'final') throw new Error('no Final');
+    final.cards = [
+      { id: 'f1', name: 'Leader hint', ...textSlide('Quuxly big'), to: 'playing' },
+      { id: 'f2', ...textSlide('Quuxly small'), to: 'nobody' },
+    ];
+    const name = final.name || 'Final Jeopardy!';
+    const place = (slide: string) => ({ tab: 'round', round: final.id, part: { kind: 'final', side: 'card', slide } });
+    const byWords = findAll(game, 'quuxly');
+    expect(byWords).toEqual([
+      { icon: '🤫', text: 'Quuxly big', where: `${name} › Leader hint`, place: place('f1'), focus: 'main [data-field="card"]' },
+      { icon: '🤫', text: 'Quuxly small', where: `${name} › Card 2`, place: place('f2'), focus: 'main [data-field="card"]' },
+    ]);
+    expect(findAll(game, 'leader')).toEqual([{ icon: '🤫', text: 'Leader hint', where: `${name} › Leader hint`, place: place('f1'), focus: 'main [data-field="card-name"]' }]);
+  });
 });
 
 describe('Find: 🎭 deals', () => {

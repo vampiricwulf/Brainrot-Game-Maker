@@ -1,15 +1,17 @@
 import { describe, expect, it } from 'vitest';
 import { jeopardyGame } from './testgame';
-import { gameRules, newImageEl, newRound, setSlideText, slideText, textSlide, type Clue, type FinalRound, type TextEl, type BoardRound, type Game } from './model';
-import { followClueText } from './cluetext';
-import { setPartnerGame } from './partner';
+import { gameRules, newFinalRound, newImageEl, newRound, setSlideText, slideText, textSlide, type Clue, type FinalRound, type TextEl, type BoardRound, type Game } from './model';
+import { clueSlides, followClueText } from './cluetext';
+import { addCard, setPartnerGame } from './partner';
 
 const board = (g: Game, i: number = 0) => g.rounds[i] as BoardRound;
 import {
   addCategory,
+  cardFromAnswer,
   categoryHasContent,
   clearClue,
   clone,
+  clueClearable,
   clueHasContent,
   copyClue,
   deleteRow,
@@ -346,6 +348,20 @@ describe('🤝 partner clues on the board', () => {
     expect(clueHasContent(clue)).toBe(false);
     setSlideText(clue.cards![0], 'Shrek');
     expect(clueHasContent(clue)).toBe(true);
+    // A card's name only: the host's work too.
+    const named = partnerTile().clue;
+    named.cards![0].name = 'Clue tip';
+    expect(clueHasContent(named)).toBe(true);
+  });
+
+  it('a partner clue whose empty card the host named keeps it, and its rules, when its type changes away', () => {
+    const { round, clue } = partnerTile();
+    clue.cards![0].name = 'Clue tip';
+    setClueType(round, clue, 'standard');
+    expect(clue.cards!.map((c) => c.name)).toEqual(['Clue tip']);
+    expect(clue.partner).toEqual(gameRules('describe'));
+    setClueType(round, clue, 'partner');
+    expect(clue.cards!.map((c) => c.name)).toEqual(['Clue tip']);
   });
 
   it('clearing empties the cards but keeps them, who they go to and the rules', () => {
@@ -353,23 +369,74 @@ describe('🤝 partner clues on the board', () => {
     clue.cards![0].to = 'both';
     setSlideText(clue.cards![0], 'Shrek');
     clue.cards![0].elements.push(newImageEl('pic'));
+    clue.cards![0].name = 'Clue tip';
     const id = clue.cards![0].id;
     clearClue(clue);
     expect(clue.cards).toHaveLength(1);
-    expect([clue.cards![0].id, clue.cards![0].to, slideText(clue.cards![0]), clue.cards![0].elements.length]).toEqual([id, 'both', '', 1]);
+    expect([clue.cards![0].id, clue.cards![0].to, slideText(clue.cards![0]), clue.cards![0].elements.length, clue.cards![0].name]).toEqual([id, 'both', '', 1, 'Clue tip']);
     expect(clue.type).toBe('partner');
     expect(clue.partner).toEqual(gameRules('describe'));
+  });
+
+  it('⌫ Clear clue has nothing to take out of a tile whose only content is a named card (it keeps names)', () => {
+    const { clue } = partnerTile();
+    clue.cards![0].name = 'Only a name';
+    expect([clueHasContent(clue), clueClearable(clue)]).toEqual([true, false]);
+    setSlideText(clue.cards![0], 'Shrek');
+    expect(clueClearable(clue)).toBe(true);
+    clearClue(clue);
+    expect([clueHasContent(clue), clueClearable(clue)]).toEqual([true, false]);
+    clue.hostNotes = 'Say it slowly';
+    expect(clueClearable(clue)).toBe(true);
   });
 
   it('a copied clue, or a copied round, gets fresh ids for its cards and their items', () => {
     const { round, clue } = partnerTile();
     clue.cards![0].elements.push(newImageEl('pic'));
     const ids = (c: Clue) => c.cards!.flatMap((card) => [card.id, ...card.elements.map((e) => e.id)]);
+    clue.cards![0].name = 'Clue tip';
     const copy = copyClue(clue);
     expect(copy.cards![0].elements[1]).toMatchObject({ kind: 'image', media: 'pic' });
+    expect(copy.cards![0].name).toBe('Clue tip');
     expect(ids(copy).some((id) => ids(clue).includes(id))).toBe(false);
     const again = reidRound(clone(round));
     expect(ids(again.categories[0].clues[0]).some((id) => ids(clue).includes(id))).toBe(false);
     expect(again.categories[0].clues[0].cards![0].to).toBe('giver');
+  });
+});
+
+describe('a Final’s 🤫 cards', () => {
+  it('a copied Final (Duplicate round, Paste, Import) gets fresh ids for its cards and their items, names kept', () => {
+    const final = newFinalRound();
+    const card = addCard(final, 'playing')!;
+    card.name = 'Leader hint';
+    card.elements.push(newImageEl('pic'));
+    const ids = (r: FinalRound) => (r.cards ?? []).flatMap((c) => [c.id, ...c.elements.map((e) => e.id)]);
+    const copy = reidRound(clone(final));
+    expect(ids(copy)).toHaveLength(3);
+    expect(ids(copy).some((id) => ids(final).includes(id))).toBe(false);
+    expect(copy.cards![0]).toMatchObject({ name: 'Leader hint', to: 'playing' });
+    expect(copy.cards![0].elements[1]).toMatchObject({ kind: 'image', media: 'pic' });
+  });
+
+  it('⧉ Same as the answer copies the Final’s answer onto its card, once', () => {
+    const final = newFinalRound();
+    setSlideText(final.answerSlide, 'Shrek');
+    const card = addCard(final, 'playing')!;
+    cardFromAnswer(final, card);
+    expect(slideText(card)).toBe('Shrek');
+    expect(card.elements[0].id).not.toBe(final.answerSlide.elements[0].id);
+    setSlideText(final.answerSlide, 'Donkey');
+    expect(slideText(card)).toBe('Shrek');
+  });
+
+  it('take the game’s clue text, as a tile’s do', () => {
+    const g = jeopardyGame();
+    const final = g.rounds[1] as FinalRound;
+    const card = addCard(final, 'playing')!;
+    expect(clueSlides(g)).toContain(card);
+    g.theme.clueFont = 'Comic Neue';
+    followClueText(g);
+    expect(mainText(card).font).toBe('Comic Neue');
   });
 });

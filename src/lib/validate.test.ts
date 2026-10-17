@@ -1,10 +1,11 @@
 import { describe, expect, it, vi } from 'vitest';
 import { jeopardyGame } from './testgame';
-import { newImageEl, newTextEl, newVideoEl, questionSlides, setSlideText, textSlide, type Action, type BoardRound, type Game, type SavedCard, type Slide } from './model';
+import { newImageEl, newTextEl, newVideoEl, questionSlides, setSlideText, textSlide, type Action, type BoardRound, type FinalRound, type Game, type SavedCard, type Slide } from './model';
 import { newWheel } from './tools';
 import { newBoardGameRound } from './boardgame';
 import { newRpgRound, newVariant } from './rpg';
 import { addClueSlide, setClueType } from './ops';
+import { addCard } from './partner';
 import { nameGivesAway, savedCardProblems, validate } from './validate';
 
 describe('the checklist', () => {
@@ -157,6 +158,44 @@ describe('🤝 partner clues', () => {
     expect(mine(game)).toEqual([]);
   });
 
+  it('says a named card by its name; notes a name that repeats what’s on it, the question or the answer, and two cards called alike', () => {
+    const { game, round, clue } = partnerGame();
+    game.settings.buzzer = true;
+    setSlideText(clue.answerSlide, 'Shrek');
+    const card = clue.cards![0];
+    const at = (id: string) => ({ tab: 'round', round: round.id, part: { kind: 'clue', category: round.categories[0].id, clue: clue.id, side: 'card', slide: id } });
+    card.name = 'Tip';
+    expect(mine(game).map((p) => p.text)).toEqual(["Movies $400: card “Tip” is empty: there's nothing on it to send"]);
+    setSlideText(card, 'Ogre');
+    expect(mine(game)).toEqual([]);
+    // The answer is what viewers mustn't read in the panel while the tile is open.
+    card.name = 'Shrek tip';
+    expect(nameGivesAway(game, card)).toBe(false);
+    expect(nameGivesAway(game, card, [clue.answerSlide])).toBe(true);
+    expect(mine(game)).toEqual([
+      {
+        text: 'Movies $400: the name of card “Shrek tip” repeats what’s on it, the question or the answer, and in one window viewers can read a card’s name in the host panel',
+        tab: 0,
+        level: 'info',
+        place: at(card.id),
+      },
+    ]);
+    // (Its own words too.)
+    card.name = 'Ogre hint';
+    expect(mine(game).map((p) => p.text)).toEqual(['Movies $400: the name of card “Ogre hint” repeats what’s on it, the question or the answer, and in one window viewers can read a card’s name in the host panel']);
+    // (The question too: a Daily Double's cards are in the panel during its wager, before the question is shown.)
+    setSlideText(clue.questionSlide, 'Swamp');
+    card.name = 'Swamp tip';
+    expect(mine(game).map((p) => p.text)).toEqual(['Movies $400: the name of card “Swamp tip” repeats what’s on it, the question or the answer, and in one window viewers can read a card’s name in the host panel']);
+    card.name = 'Clue tip';
+    expect(mine(game)).toEqual([]);
+    // Card 1 called "Card 2" beside an unnamed card 2: said once, going to the second.
+    card.name = 'card 2';
+    const second = addCard(clue)!;
+    setSlideText(second, 'More');
+    expect(mine(game)).toEqual([{ text: 'Movies $400 has two cards called “Card 2”: in the host panel you can’t tell them apart', tab: 0, level: 'info', place: at(second.id) }]);
+  });
+
   it('warns of a card’s online link that has expired or soon will', () => {
     const { game, clue } = partnerGame();
     game.settings.buzzer = true;
@@ -270,6 +309,89 @@ describe('🤝 partner clues', () => {
     // Used on the answer too: an older copy keeps it.
     clue.answerSlide.elements.push(newImageEl('pic'));
     expect(older()).toHaveLength(0);
+  });
+});
+
+describe('a Final’s 🤫 cards', () => {
+  /** A game whose Final has its question and answer ("Shrek"), and a card "Leader hint" with words on it. */
+  function finalGame() {
+    const game = jeopardyGame();
+    const final = game.rounds[1] as FinalRound;
+    setSlideText(final.questionSlide, 'Q?');
+    setSlideText(final.answerSlide, 'Shrek');
+    const card = addCard(final, 'playing')!;
+    setSlideText(card, 'Go big');
+    card.name = 'Leader hint';
+    return { game, final, card };
+  }
+  const mine = (game: Game, filesOff = false) => validate(game, { filesOff }).filter((p) => p.tab === 1);
+  const at = (final: FinalRound, id: string) => ({ tab: 'round', round: final.id, part: { kind: 'final', side: 'card', slide: id } });
+
+  it('says nothing of one with something on it', () => {
+    expect(mine(finalGame().game)).toEqual([]);
+  });
+
+  it('warns of an empty one by its name or its place, going to that card', () => {
+    const { game, final, card } = finalGame();
+    const empty = addCard(final, 'playing')!;
+    expect(mine(game)).toEqual([{ text: "Final Jeopardy!: card 2 is empty: there's nothing on it to send", tab: 1, level: 'warn', place: at(final, empty.id) }]);
+    setSlideText(card, '');
+    expect(mine(game).map((p) => p.text)).toEqual(["Final Jeopardy!: card “Leader hint” is empty: there's nothing on it to send", "Final Jeopardy!: card 2 is empty: there's nothing on it to send"]);
+  });
+
+  it('warns of more than six, going to the seventh', () => {
+    const { game, final } = finalGame();
+    for (let i = 0; i < 5; i++) setSlideText(addCard(final, 'playing')!, `More ${i}`);
+    expect(mine(game)).toEqual([]);
+    const seventh = { ...final.cards![0], id: 'c7', name: undefined };
+    final.cards!.push(seventh);
+    expect(mine(game)).toEqual([{ text: 'Final Jeopardy! has 7 cards: a Final holds 6 (＋ Card adds no more)', tab: 1, level: 'warn', place: at(final, 'c7') }]);
+  });
+
+  it('warns of what won’t reach a phone, as a tile’s card', () => {
+    vi.stubGlobal('document', { createElement: () => ({ canPlayType: () => 'maybe' }) });
+    const { game, final, card } = finalGame();
+    card.elements.push({ ...newVideoEl('big'), y: 10 }, { ...newImageEl('pic'), y: 20 });
+    game.media.push(
+      { id: 'big', name: 'zfnqj.mp4', mime: 'video/mp4', size: 40 * 1024 * 1024, kind: 'video' },
+      { id: 'pic', name: 'ogre.png', mime: 'image/png', size: 1000, kind: 'image' },
+    );
+    expect(mine(game)).toEqual([
+      { text: 'Final Jeopardy!: card “Leader hint” has a video too big for phones (40.0 MB; phones get files up to 4.0 MB)', tab: 1, level: 'warn', place: at(final, card.id) },
+    ]);
+    expect(mine(game, true).map((p) => p.text)).toContain(
+      "Final Jeopardy!: card “Leader hint” has a picture that's a file on this computer, and this buzzer server isn't taking files: phones get the words and links only (📋 Copy picture)",
+    );
+    expect(mine(game, true).map((p) => p.text).join()).not.toMatch(/zfnqj|ogre/);
+    vi.unstubAllGlobals();
+  });
+
+  it('notes a name that repeats what’s on it, the Final’s question or its answer, and two cards called alike', () => {
+    const { game, final, card } = finalGame();
+    card.name = 'Shrek hint';
+    expect(mine(game)).toEqual([
+      {
+        text: 'Final Jeopardy!: the name of card “Shrek hint” repeats what’s on it, the question or the answer, and in one window viewers can read a card’s name in the host panel',
+        tab: 1,
+        level: 'info',
+        place: at(final, card.id),
+      },
+    ]);
+    // Its question: in the panel from the wagers on, while the question is still hidden.
+    setSlideText(final.questionSlide, 'Bald eagle');
+    card.name = 'Bald eagle hint';
+    expect(mine(game).map((p) => p.text)).toEqual(['Final Jeopardy!: the name of card “Bald eagle hint” repeats what’s on it, the question or the answer, and in one window viewers can read a card’s name in the host panel']);
+    card.name = 'Card 2';
+    const second = addCard(final, 'nobody')!;
+    setSlideText(second, 'Side bet');
+    expect(mine(game)).toEqual([{ text: 'Final Jeopardy! has two cards called “Card 2”: in the host panel you can’t tell them apart', tab: 1, level: 'info', place: at(final, second.id) }]);
+  });
+
+  it('counts a file used only on one as used only on cards (an older copy’s Delete unused would delete it)', () => {
+    const { game, card } = finalGame();
+    card.elements.push(newImageEl('pic'));
+    game.media.push({ id: 'pic', name: 'hint.png', mime: 'image/png', size: 10, kind: 'image' });
+    expect(validate(game).filter((p) => p.text.includes('Older copies')).map((p) => p.text)).toEqual([expect.stringMatching(/^1 file is used only on 🤫 cards/)]);
   });
 });
 

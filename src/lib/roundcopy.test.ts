@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { addBundledRound, bundleRound, copiesMessage, copyRound, placeFor, settleFiles, uniqueName } from './roundcopy';
 import { clipboard } from './clipboard.svelte';
-import { isBoard, isRpg, newFinalRound, newGame, newRound, type Game } from './model';
+import { isBoard, isRpg, newFinalRound, newGame, newImageEl, newRound, type Game } from './model';
 import { clone } from './ops';
 import { addSampleGame, dungeonRound } from './samples';
 import { newWheel } from './tools';
@@ -29,6 +29,22 @@ describe('rounds between games', () => {
     // Fresh ids: it never mixes with the original.
     expect(added.id).not.toBe(r.id);
     expect(isBoard(added) && added.categories[0].id).not.toBe(r.categories[0].id);
+  });
+
+  it('a Final takes its 🤫 cards’ files along, and its copy gets fresh card ids', () => {
+    const a = newGame();
+    a.media.push({ id: 'm1', name: 'hint.png', mime: 'image/png', size: 1, kind: 'image' }, { id: 'm2', name: 'unused.png', mime: 'image/png', size: 1, kind: 'image' });
+    const f = newFinalRound();
+    f.cards = [{ id: 'fc1', name: 'Leader hint', background: {}, elements: [{ ...newImageEl('m1'), id: 'e1' }], to: 'playing' }];
+    a.rounds.push(f);
+    const b = newGame();
+    const added = addBundledRound(b, bundleRound(a, f));
+    expect(b.media.map((m) => m.id)).toEqual(['m1']);
+    if (added.mode !== 'final') throw new Error('not a Final');
+    expect(added.cards).toHaveLength(1);
+    expect(added.cards![0]).toMatchObject({ name: 'Leader hint', to: 'playing' });
+    expect([added.cards![0].id, added.cards![0].elements[0].id]).not.toContain('fc1');
+    expect(added.cards![0].elements[0].id).not.toBe('e1');
   });
 
   it('an RPG round takes its world and the items and stats on it; pasting twice adds them once', () => {

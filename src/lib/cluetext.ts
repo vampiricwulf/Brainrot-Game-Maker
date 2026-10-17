@@ -1,6 +1,6 @@
 // The game's clue text default (🎨 Theme → Clue text): the font and colour of the main text of every question and
-// answer slide (board clues and their 🤫 cards, Final rounds, the tiebreaker). A clue whose text was given a look of its
-// own keeps it.
+// answer slide (board clues and their 🤫 cards, Final rounds and theirs, the tiebreaker). A clue whose text was given a
+// look of its own keeps it.
 import { cardSlides, isBoard, isFinal, isSlides, newTextEl, questionSlides, slidesOfClue, type Clue, type Game, type Slide, type TextEl } from './model';
 import type { Theme } from './theme';
 
@@ -12,12 +12,12 @@ export const FACTORY_COLOR = FACTORY.color;
 /** A board clue's slides that take the clue text: its question slides, its answer and its 🤫 cards. */
 export const textSlidesOf = (clue: Clue): Slide[] => [...slidesOfClue(clue), ...cardSlides(clue)];
 
-/** The question and answer slides of the game: board clues (and their cards), Final rounds, the tiebreaker. */
+/** The question and answer slides of the game: board clues and Final rounds (and their cards), the tiebreaker. */
 export function clueSlides(game: Game): Slide[] {
   const out: Slide[] = [];
   for (const r of game.rounds) {
     if (isBoard(r)) for (const c of r.categories) for (const cl of c.clues) out.push(...textSlidesOf(cl));
-    else if (isFinal(r)) out.push(...slidesOfClue(r));
+    else if (isFinal(r)) out.push(...slidesOfClue(r), ...cardSlides(r));
     else if (isSlides(r)) out.push(...questionSlides(r));
   }
   if (game.tiebreaker) out.push(...slidesOfClue(game.tiebreaker));

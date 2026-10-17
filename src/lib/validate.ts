@@ -6,6 +6,8 @@ import {
   boardRounds,
   cardSlides,
   categoryLabel,
+  clueCardName,
+  clueCardWords,
   clueValue,
   dailyDoublesPlaced,
   formatPoints,
@@ -20,11 +22,12 @@ import {
   questionSlides,
   roundName,
   savedCardName,
+  slidesOfClue,
   type Action,
   type BoardRound,
   type ClueCard,
+  type FinalRound,
   type Game,
-  type SavedCard,
   type Slide,
 } from './model';
 import { lowerWord, partnerRules, partnerSpot, partWords, stealOn } from './partner';
@@ -127,6 +130,7 @@ export function validate(game: Game, room: { filesOff?: boolean } = {}): Problem
           tab: i,
           level: 'info',
         });
+      out.push(...finalCardProblems(game, round, name, i, !!room.filesOff));
       return;
     }
     if (isRpg(round)) {
@@ -246,6 +250,9 @@ export function validate(game: Game, room: { filesOff?: boolean } = {}): Problem
   for (const r of boardRounds(game))
     for (const c of r.categories)
       for (const cl of c.clues) for (const card of cardSlides(cl)) for (const id of slideMediaIds(card)) onCards.set(id, (onCards.get(id) ?? 0) + 1);
+  // (A Final's too.)
+  for (const r of game.rounds)
+    if (isFinal(r)) for (const card of cardSlides(r)) for (const id of slideMediaIds(card)) onCards.set(id, (onCards.get(id) ?? 0) + 1);
   for (const c of game.cards ?? []) for (const id of slideMediaIds(c)) onCards.set(id, (onCards.get(id) ?? 0) + 1);
   const cardOnly = [...onCards].filter(([id, n]) => known.has(id) && usage.get(id) === n).length;
   if (cardOnly)
@@ -322,8 +329,8 @@ export function validate(game: Game, room: { filesOff?: boolean } = {}): Problem
 /**
  * A board's 🤫 cards (partner-clues spec §5.6): a ready-made 🤝 partner game with no card (the giver has nothing to go
  * on); on any tile, an empty card, more cards than a clue holds, a card's online link that has stopped working or soon
- * will, and what of a card won't reach a phone (`filesOff`: the buzzer server in use takes no files). Each goes to its
- * card.
+ * will, what of a card won't reach a phone (`filesOff`: the buzzer server in use takes no files), and its name
+ * (cardNameProblems). Each goes to its card.
  */
 export function partnerProblems(game: Game, round: BoardRound, tab: number, filesOff = false): Problem[] {
   const out: Problem[] = [];
@@ -348,10 +355,53 @@ export function partnerProblems(game: Game, round: BoardRound, tab: number, file
       }
       if (cards.length > MAX_CARDS) warn(`${tile} has ${cards.length} cards: a clue holds ${MAX_CARDS} (＋ Card adds no more)`, cards[MAX_CARDS]);
       cards.forEach((card, n) => {
-        if (!slideHasContent(card)) warn(`${tile}: card ${n + 1} is empty: there's nothing on it to send`, card);
-        for (const t of cardFileProblems(game, card, filesOff)) warn(`${tile}: card ${n + 1} has ${t}`, card);
+        if (!slideHasContent(card)) warn(`${tile}: ${clueCardWords(card, n)} is empty: there's nothing on it to send`, card);
+        for (const t of cardFileProblems(game, card, filesOff)) warn(`${tile}: ${clueCardWords(card, n)} has ${t}`, card);
       });
+      out.push(...cardNameProblems(game, cards, slidesOfClue(cl), tile, tab, (card) => at(card)!));
     });
+  return out;
+}
+
+/**
+ * A Final's 🤫 cards (`name`: the round's, "Final Jeopardy!"): more than MAX_CARDS, an empty one, what of one won't reach
+ * a phone (`filesOff`: the buzzer server in use takes no files), and their names (cardNameProblems). Each goes to its
+ * card.
+ */
+export function finalCardProblems(game: Game, round: FinalRound, name: string, tab: number, filesOff = false): Problem[] {
+  const out: Problem[] = [];
+  const cards = cardSlides(round);
+  const at = (card: ClueCard): Place => ({ tab: 'round', round: round.id, part: { kind: 'final', side: 'card', slide: card.id } });
+  const warn = (text: string, card: ClueCard) => out.push({ text, tab, level: 'warn', place: at(card) });
+  if (cards.length > MAX_CARDS) warn(`${name} has ${cards.length} cards: a Final holds ${MAX_CARDS} (＋ Card adds no more)`, cards[MAX_CARDS]);
+  cards.forEach((card, n) => {
+    if (!slideHasContent(card)) warn(`${name}: ${clueCardWords(card, n)} is empty: there's nothing on it to send`, card);
+    for (const t of cardFileProblems(game, card, filesOff)) warn(`${name}: ${clueCardWords(card, n)} has ${t}`, card);
+  });
+  out.push(...cardNameProblems(game, cards, slidesOfClue(round), name, tab, at));
+  return out;
+}
+
+/**
+ * A tile's or a Final's card names (`where`: "Movies $200", "Final Jeopardy!"): one that repeats what's on its card or
+ * on `secret` (the tile's or the Final's question and answer slides: a Final's cards, and a Daily Double's, are in the
+ * panel before its question is shown), and two cards that read alike (one with no name is "Card 2"; said once, going
+ * to the second). Info only.
+ */
+function cardNameProblems(game: Game, cards: ClueCard[], secret: Slide[], where: string, tab: number, at: (c: ClueCard) => Place): Problem[] {
+  const out: Problem[] = [];
+  const seen = new Set<string>();
+  const told = new Set<string>();
+  cards.forEach((c, i) => {
+    if (nameGivesAway(game, c, secret))
+      out.push({ text: `${where}: the name of ${clueCardWords(c, i)} repeats what’s on it, the question or the answer, and in one window viewers can read a card’s name in the host panel`, tab, level: 'info', place: at(c) });
+    const key = clueCardName(c, i).toLowerCase();
+    if (seen.has(key) && !told.has(key)) {
+      told.add(key);
+      out.push({ text: `${where} has two cards called “${clueCardName(c, i)}”: in the host panel you can’t tell them apart`, tab, level: 'info', place: at(c) });
+    }
+    seen.add(key);
+  });
   return out;
 }
 
@@ -436,13 +486,19 @@ export function toolButtonProblems(game: Game, filesOff = false): Problem[] {
 const norm = (s: string) => s.toLowerCase().replace(/[^\p{L}\p{N}]+/gu, ' ').trim();
 
 /**
- * A 🤫 card's name repeats what's on it (its words, its phone title, or a file's name, at least 3 letters): in one
- * window viewers read a card's name in 🤫 Send a card…. ("Mission 1" on "Your mission: …" doesn't.)
+ * A 🤫 card's name repeats what's on it (its words, its phone title, or a file's name, at least 3 letters) or what's in
+ * `also` (a tile's or a Final's question and answer slides): in one window viewers read a card's name in the host panel
+ * and 🤫 Send a card…. ("Mission 1" on "Your mission: …" doesn't.)
  */
-export function nameGivesAway(game: Game, c: SavedCard): boolean {
-  const name = norm(c.name);
+export function nameGivesAway(game: Game, c: Slide & { name?: string }, also: Slide[] = []): boolean {
+  const name = norm(c.name ?? '');
   if (!name) return false;
-  const bits = [cardWords(c), phoneCard(game, c, { files: {} }).title ?? '', ...cardItems(game, c).map((it) => it.name.replace(/\.[a-z0-9]{1,5}$/i, ''))];
+  const bits = [
+    cardWords(c),
+    phoneCard(game, c, { files: {} }).title ?? '',
+    ...cardItems(game, c).map((it) => it.name.replace(/\.[a-z0-9]{1,5}$/i, '')),
+    ...also.flatMap((s) => [cardWords(s), phoneCard(game, s, { files: {} }).title ?? '']),
+  ];
   return bits.map(norm).some((b) => b.length >= 3 && name.includes(b));
 }
 

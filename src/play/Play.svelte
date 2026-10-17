@@ -5,7 +5,7 @@
   import { prefs, savePrefs } from '../lib/prefs.svelte';
   import { commit, history, redo as redoStep, step, undo as undoStep } from '../lib/history.svelte';
   import { createFieldTracker, undoKeyOf } from '../lib/undokeys';
-  import { blankName, finalName, formatPoints, getClue, isBoard, isBoardGame, isFinal, isRpg, isSlides, MAX_PLAYERS, newId, PLAYER_WHEEL, questionSlides, wholePoints, type BoardRound, type ClueRef } from '../lib/model';
+  import { blankName, clueCardWords, finalName, formatPoints, getClue, isBoard, isBoardGame, isFinal, isRpg, isSlides, MAX_PLAYERS, newId, PLAYER_WHEEL, questionSlides, wholePoints, type BoardRound, type ClueRef } from '../lib/model';
   import {
     applyScore, awardOpen, backToBoard, backToLastRound, currentFinal, clueName, clueReason, clueScored, currentClueInfo, ddShowQuestion, describeStep,
     finalAdvance, finalBack, finalJudge, finalShow, finalTag, finalUnjudged, findClueRef, goToRound, introNext, nameList, newSession, openClue, playerName,
@@ -1376,7 +1376,7 @@
     else if (free) {
       // A 🤫 card out to that seat: the new phone is late for it (the room never gives it to a new phone by itself).
       const s = partner;
-      const out = s && info && phoneCards ? cardSlides(info.clue).flatMap((c, i) => (sentSeats(session, s, c.id).includes(seatId) ? [`card ${i + 1}`] : [])) : [];
+      const out = s && info && phoneCards ? cardSlides(info.clue).flatMap((c, i) => (sentSeats(session, s, c.id).includes(seatId) ? [clueCardWords(c, i)] : [])) : [];
       // (And the cards out with 🤫 Send a card… or from a tile's panel, by their labels: "Card 3".)
       if (phoneCards) out.push(...listedCards(game, session).flatMap((c) => (c.to.some((t) => t.seat === seatId) ? [c.label] : [])));
       // (A 🎭 deal's: for everyone dealt in, a part or not, the same words. Only those with a part have a card, so
@@ -1980,7 +1980,7 @@
     const unsent = unsentCards();
     if (unsent.length && roomCardsFull(game, session, (t) => sendCards(t, t.partner!, unsent))) return hint(cardsFullText(game, session));
     const went = phoneCards ? sendCards(session, s, unsent) : [];
-    if (went.length) announce(went.map((c) => `Card ${cardSlides(info.clue).indexOf(c) + 1} sent to ${recipientsText(session, s, partnerRules(info.clue), c)}`).join('. '));
+    if (went.length) announce(went.map((c) => `${clueCardWords(c, cardSlides(info.clue).indexOf(c), true)} sent to ${recipientsText(session, s, partnerRules(info.clue), c)}`).join('. '));
     s.stage = 'live';
     partnerClockAt = Date.now();
     partnerSentWithClock = went.length > 0;
@@ -2005,12 +2005,12 @@
       sendHostState(roomState(), true);
       forgetCardFiles(files);
     }
-    announce(`Card ${n} taken back`);
+    announce(`${clueCardWords(c, n - 1, true)} taken back`);
   }
 
   /**
-   * ✖ Take back a card sent with 🤫 Send a card… or from a tile's panel: it goes from every phone it was sent to (the
-   * room's next state hasn't it), and the room deletes its files now unless another card still out uses them.
+   * ✖ Take back a card sent with 🤫 Send a card… or from a tile's or the Final's panel: it goes from every phone it was
+   * sent to (the room's next state hasn't it), and the room deletes its files now unless another card still out uses them.
    */
   function cardTakeBack(id: string): void {
     const c = session.cards?.find((x) => x.id === id);
@@ -2206,7 +2206,13 @@
       const saw = sentIds.filter((id) => seenIds.has(id));
       const got = sentIds.filter((id) => !seenIds.has(id) && phones.has(id));
       const names = (ids: string[]) => nameList(ids.map((id) => playerName(session, id)));
-      const which = out.length === 1 ? `card ${out[0].n}` : `cards ${nameList(out.map((x) => String(x.n)))}`;
+      // (Named ones by name: "card “Clue tip” & card 2"; else by number, "cards 1 & 2".)
+      const which =
+        out.length === 1
+          ? clueCardWords(out[0].c, out[0].n - 1)
+          : out.some(({ c }) => c.name?.trim())
+            ? nameList(out.map(({ c, n }) => clueCardWords(c, n - 1)))
+            : `cards ${nameList(out.map((x) => String(x.n)))}`;
       const said = [saw.length ? `${names(saw)} already saw ${which}` : '', got.length ? `${names(got)} got ${which} but ${got.length > 1 ? 'haven’t' : 'hasn’t'} opened it` : ''].filter(Boolean);
       if (said.length) {
         const clue = info.clue.id;

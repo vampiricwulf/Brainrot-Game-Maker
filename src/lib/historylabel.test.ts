@@ -492,6 +492,22 @@ describe('🤝 partner clues in the history', () => {
     expect(itemPlace(g, cardOf(g, 0).elements[0].id)).toMatchObject({ part: { side: 'card', slide: 'card-1' } });
   });
 
+  it('a card named: its name typed is a rename, and where its words are says its name (they’re still card 2’s)', () => {
+    const cat = board(sample()).categories[0];
+    // (Where it is doesn't say again what the label names: the tile.)
+    const renamed = withCard((g) => (cardOf(g, 1).name = 'Clue tip'));
+    expect(renamed).toMatchObject({ label: 'Renamed card “Clue tip”', where: `Jeopardy! › ${cat.title} › $200` });
+    expect(renamed.place).toMatchObject({ part: { side: 'card', slide: 'card-2' } });
+    const named = renamed.after;
+    const typed = structuredClone(named);
+    (cardOf(typed, 1).elements[0] as TextEl).text = 'Shrek';
+    expect(describeStep(diff(named, typed), named, typed)).toMatchObject({ label: 'Edited card 2 “Shrek”', where: `Jeopardy! › ${cat.title} › $200 › Clue tip` });
+    // Its name cleared: "Card 2" again.
+    const unnamed = structuredClone(typed);
+    delete cardOf(unnamed, 1).name;
+    expect(describeStep(diff(typed, unnamed), typed, unnamed)).toMatchObject({ label: 'Renamed card', where: `Jeopardy! › ${cat.title} › $200 › Card 2` });
+  });
+
   it('names the points typed in a partner clue’s boxes, and its part words', () => {
     const cat = board(sample()).categories[0].title;
     // (Typing a share makes the Points Custom too: still one change, to the points.)
@@ -503,6 +519,41 @@ describe('🤝 partner clues in the history', () => {
     expect(pts.label).toBe(`Changed the points of ${cat} $200`);
     expect(withCard((g) => (board(g).categories[0].clues[0].partner!.words = { giver: 'Spy' })).label).toBe(`Changed the part words of ${cat} $200`);
     expect(withCard((g) => (board(g).categories[0].clues[0].partner!.giver = 'picker')).label).toBe(`Changed the partner rules of ${cat} $200`);
+  });
+});
+
+describe('a Final’s 🤫 cards in the history', () => {
+  /** A step on the sample game whose Final has two cards (the first “Leader hint”, the second unnamed). */
+  const withFinalCards = (edit: (g: Game) => void) => {
+    const before = sample();
+    final(before).cards = [
+      { id: 'fc-1', name: 'Leader hint', background: {}, elements: [newTextEl('')], to: 'playing' },
+      { id: 'fc-2', background: {}, elements: [newTextEl('')], to: 'nobody' },
+    ];
+    const after = structuredClone(before);
+    edit(after);
+    return { ...describeStep(diff(before, after), before, after), before, after };
+  };
+  const cardOf = (g: Game, n: number) => final(g).cards![n];
+
+  it('calls a card’s words its card’s (by its place), where they are by its name, and its tab to go to', () => {
+    const r = withFinalCards((g) => ((cardOf(g, 0).elements[0] as TextEl).text = 'Hi'));
+    expect(r).toMatchObject({ label: 'Edited card 1 “Hi”', where: 'Final Jeopardy! › Leader hint' });
+    expect(r.place).toEqual({ tab: 'round', round: final(r.after).id, part: { kind: 'final', side: 'card', slide: 'fc-1', element: cardOf(r.after, 0).elements[0].id } });
+    expect(withFinalCards((g) => ((cardOf(g, 1).elements[0] as TextEl).text = 'Psst')).where).toBe('Final Jeopardy! › Card 2');
+    // A card's background is a slide's.
+    expect(withFinalCards((g) => (cardOf(g, 1).background.color = '#ff0000')).label).toBe('Slide background color #ff0000');
+  });
+
+  it('a name typed is a rename, going to its card', () => {
+    const r = withFinalCards((g) => (cardOf(g, 1).name = 'Side bet'));
+    expect(r.label).toBe('Renamed card “Side bet”');
+    expect(r.place).toMatchObject({ part: { kind: 'final', side: 'card', slide: 'fc-2' } });
+  });
+
+  it('finds where a card’s item is (a restyle starts there)', () => {
+    const { after } = withFinalCards((g) => (cardOf(g, 1).name = 'Side bet'));
+    expect(itemPlace(after, cardOf(after, 1).elements[0].id)).toEqual({ tab: 'round', round: final(after).id, part: { kind: 'final', side: 'card', slide: 'fc-2', element: cardOf(after, 1).elements[0].id } });
   });
 });
 

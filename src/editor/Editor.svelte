@@ -376,9 +376,15 @@
     if (!place || (place.tab === 'round' && !place.part) || (place.tab !== 'round' && place.tab !== 'world' && place.tab !== 'tiebreaker')) return;
     goTo(place);
     const part = place.tab === 'round' ? place.part : undefined;
-    // A Final's side, a Slides round's slide or the tiebreaker's side: its quick text box (the one with nothing in it).
+    // A Final's side or one of its 🤫 cards, a Slides round's slide or the tiebreaker's side: its quick text box (the one
+    // with nothing in it).
     if (part?.kind === 'final' || part?.kind === 'slides' || place.tab === 'tiebreaker') {
-      const field = (part?.kind === 'final' && part.side === 'a') || (place.tab === 'tiebreaker' && place.side === 'a') ? 'a' : 'q';
+      const field =
+        part?.kind === 'final' && part.side === 'card'
+          ? 'card'
+          : (part?.kind === 'final' && part.side === 'a') || (place.tab === 'tiebreaker' && place.side === 'a')
+            ? 'a'
+            : 'q';
       return void tick()
         .then(tick)
         .then(() => document.querySelector<HTMLElement>(`main [data-field="${field}"]`)?.focus());

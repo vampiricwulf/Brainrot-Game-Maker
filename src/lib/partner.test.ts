@@ -1,9 +1,14 @@
 import { describe, expect, it } from 'vitest';
-import { gameRules, MAX_CARDS, newClue, newImageEl, PARTNER_GAMES, setSlideText, type Clue, type PartnerGame, type PartnerRules } from './model';
+import { gameRules, MAX_CARDS, newClue, newFinalRound, newImageEl, PARTNER_GAMES, setSlideText, textSlide, type Clue, type PartnerGame, type PartnerRules } from './model';
 import {
   addCard,
+  cardCopyText,
+  cardHash,
+  cardKept,
   cardsToFinish,
   deleteCard,
+  FINAL_GOES_TO,
+  finalGoesToLabel,
   goesToLabel,
   missCosts,
   partnerRules,
@@ -14,6 +19,7 @@ import {
   sameAsAnswer,
   setPartnerGame,
   setPartnerPoints,
+  setCardName,
   setPartnerShare,
   setPartWord,
   startingCards,
@@ -173,6 +179,21 @@ describe('changing a partner clue’s rules', () => {
     expect(custom.cards).toHaveLength(2);
   });
 
+  it('a starting card the host named stays, even empty (an unnamed one still gives way)', () => {
+    const clue = partnerClue('describe');
+    const first = clue.cards![0];
+    setCardName(first, 'Clue tip');
+    setPartnerGame(clue, 'split');
+    expect(clue.cards).toEqual([first]);
+    // (Back on Describe it, its one card is its starting card again: unnamed, Split clue's replace it.)
+    setCardName(first, '');
+    setPartnerGame(clue, 'describe');
+    expect(clue.cards).toEqual([first]);
+    setPartnerGame(clue, 'split');
+    expect(clue.cards!.map((c) => c.to)).toEqual(['giver', 'guesser']);
+    expect(clue.cards![0]).not.toBe(first);
+  });
+
   it('a Points choice sets the numbers, and typing one makes it Custom', () => {
     const clue = partnerClue();
     expect(pointsChoice(clue.partner!)).toBe('game');
@@ -231,6 +252,73 @@ describe('🤫 cards', () => {
     expect(clue.cards![0].id).toBe(second);
     while (clue.cards) deleteCard(clue, 0);
     expect(clue.cards).toBeUndefined();
+  });
+
+  it('a Final’s: ＋ Card starts one with everyone playing it, up to six; deleting the last takes the list away', () => {
+    const final = newFinalRound();
+    const first = addCard(final, 'playing');
+    expect(first?.to).toBe('playing');
+    expect(final.cards).toEqual([first]);
+    while (addCard(final, 'playing'));
+    expect(final.cards).toHaveLength(MAX_CARDS);
+    expect(addCard(final, 'playing')).toBeNull();
+    expect(final.cards!.every((c) => c.to === 'playing')).toBe(true);
+    while (final.cards) deleteCard(final, 0);
+    expect('cards' in final).toBe(false);
+    // (A tile's still go to its giver or its picker.)
+    expect(addCard(partnerClue())?.to).toBe('giver');
+    expect(addCard(newClue())?.to).toBe('picker');
+  });
+
+  it('says who a Final’s card starts with: everyone playing it, or nobody', () => {
+    expect(FINAL_GOES_TO).toEqual(['playing', 'nobody']);
+    expect(FINAL_GOES_TO.map((to) => finalGoesToLabel(to))).toEqual(['everyone playing it (ticked on the wager screen)', 'nobody (I’ll choose when playing)']);
+    expect(FINAL_GOES_TO.map((to) => finalGoesToLabel(to, false))).toEqual(['everyone playing', 'nobody']);
+    // (Never on a clue, but every Goes to has words.)
+    expect(goesToLabel(gameRules('describe'), 'playing')).toBe('everyone playing');
+  });
+
+  it('keeps a name as typed, at most 60 characters; blank, it has none ("Card 2" again)', () => {
+    const card = startingCards('describe')[0];
+    setCardName(card, 'Clue tip');
+    expect(card.name).toBe('Clue tip');
+    setCardName(card, ' Leader hint ');
+    expect(card.name).toBe(' Leader hint ');
+    setCardName(card, '  ');
+    expect('name' in card).toBe(false);
+    setCardName(card, 'x');
+    setCardName(card, '');
+    expect('name' in card).toBe(false);
+    setCardName(card, 'N'.repeat(70));
+    expect(card.name).toBe('N'.repeat(60));
+  });
+
+  it('a card with words or files on it, or a name, is the host’s', () => {
+    const card = startingCards('describe')[0];
+    expect(cardKept(card)).toBe(false);
+    card.name = '  ';
+    expect(cardKept(card)).toBe(false);
+    card.name = 'Clue tip';
+    expect(cardKept(card)).toBe(true);
+    delete card.name;
+    setSlideText(card, 'Shrek');
+    expect(cardKept(card)).toBe(true);
+  });
+
+  it('a name is never sent: not in the card’s hash, nor in its copied words', () => {
+    const card = { ...startingCards('describe')[0], ...textSlide('Shrek') };
+    const was = cardHash(card);
+    setCardName(card, 'Clue tip');
+    expect(cardHash(card)).toBe(was);
+    const copied = cardCopyText({ media: [] }, card, 1, 'Movies $400', ['Ann']);
+    expect(copied).toBe('🤫 For Ann only (Movies $400, card 1): Shrek');
+    expect(copied).not.toContain('Clue tip');
+    // A Final's, by the Final's name and its place.
+    const hint = { ...addCard(newFinalRound(), 'playing')!, ...textSlide('Go big') };
+    setCardName(hint, 'Leader hint');
+    const fromFinal = cardCopyText({ media: [] }, hint, 1, 'Final Jeopardy!', ['Ann', 'Bob']);
+    expect(fromFinal).toBe('🤫 For Ann and Bob only (Final Jeopardy!, card 1): Go big');
+    expect(fromFinal).not.toContain('Leader hint');
   });
 
   it('says what a tile’s cards still need', () => {

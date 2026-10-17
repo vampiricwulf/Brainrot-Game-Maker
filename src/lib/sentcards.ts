@@ -1,13 +1,15 @@
 // 🤫 Cards anywhere (partner-clues spec §12): cards the host sends with 🤫 Send a card… (the tools row, in any round:
-// one of the editor's 🤫 Cards, a tile's card or a quick one) or from an open tile's panel (a standard or Daily Double
-// tile's own 🤫 cards: 🤫 Just you, 💡 Insider tip). They live in Session.cards, and only the host's presses add to it
-// (sendCard, sendCardAgain); ✖ Take back, a round ending, a tile closing, a player taken out or a card deleted in the
-// editor take them away. What the buzzer room gets is built from Session.cards alone (buzz.ts sessionCards), as a
-// partner clue's is from its sends. No Svelte state: tested in sentcards.test.ts.
+// one of the editor's 🤫 Cards, a tile's or a Final's card, or a quick one) or from an open tile's panel or the Final's
+// (their own 🤫 cards: a standard or Daily Double tile's, 🤫 Just you, 💡 Insider tip; a Final's). They live in
+// Session.cards, and only the host's presses add to it (sendCard, sendCardAgain); ✖ Take back, a round ending, a tile
+// closing, a player taken out or a card deleted in the editor take them away. What the buzzer room gets is built from
+// Session.cards alone (buzz.ts sessionCards), as a partner clue's is from its sends. No Svelte state: tested in
+// sentcards.test.ts.
 import { isLinkProblem, parseMediaLink, youtubeStart } from './links';
 import {
-  boardRounds,
   cardSlides,
+  isBoard,
+  isFinal,
   newAudioEl,
   newEmbedEl,
   newId,
@@ -18,6 +20,7 @@ import {
   type CardTo,
   type Clue,
   type ClueCard,
+  type FinalRound,
   type Game,
   type Id,
   type MediaRef,
@@ -33,22 +36,32 @@ import { cardHash, toKey } from './partner';
 /** A card's id on the wire: `sc:<id>:<when>`. ↻ Send again gives it a new when: a new card for the room's late rule. */
 export const sentCardId = (c: Pick<SentCard, 'id' | 'at'>): string => `sc:${c.id}:${c.at}`;
 
-/** A clue anywhere in the game's boards, by id. */
-function clueById(game: Pick<Game, 'rounds'>, id: Id): Clue | undefined {
-  for (const r of boardRounds(game as Game)) for (const c of r.categories) for (const cl of c.clues) if (cl.id === id) return cl;
+/** What holds 🤫 cards made in the editor: a board clue, or a Final round. */
+export type CardHolder = Clue | FinalRound;
+
+/** A clue anywhere in the game's boards, or a Final round, by id. */
+function cardHolder(game: Pick<Game, 'rounds'>, id: Id): CardHolder | undefined {
+  for (const r of game.rounds) {
+    if (isFinal(r)) {
+      if (r.id === id) return r;
+    } else if (isBoard(r)) for (const c of r.categories) for (const cl of c.clues) if (cl.id === id) return cl;
+  }
   return undefined;
 }
 
-/** A tile's card in the game, by its clue and card ids (and its number on the tile, from 1). */
-export function tileCard(game: Pick<Game, 'rounds'>, clue: Id, card: Id): { clue: Clue; card: ClueCard; n: number } | undefined {
-  const cl = clueById(game, clue);
-  const cards = cl ? cardSlides(cl) : [];
+/**
+ * A tile's or a Final's card in the game, by its holder's id (the clue's or the Final round's) and its own (and its
+ * number there, from 1).
+ */
+export function tileCard(game: Pick<Game, 'rounds'>, holder: Id, card: Id): { holder: CardHolder; card: ClueCard; n: number } | undefined {
+  const h = cardHolder(game, holder);
+  const cards = h ? cardSlides(h) : [];
   const i = cards.findIndex((c) => c.id === card);
-  return cl && i >= 0 ? { clue: cl, card: cards[i], n: i + 1 } : undefined;
+  return h && i >= 0 ? { holder: h, card: cards[i], n: i + 1 } : undefined;
 }
 
 /**
- * What reading a sent card needs of the game: its boards (tile cards) and its 🤫 Cards. Always pass the game itself: an
+ * What reading a sent card needs of the game: its rounds (tile and Final cards) and its 🤫 Cards. Always pass the game itself: an
  * object with only `rounds` reads every 🤫 Card as deleted.
  */
 export type CardGame = Pick<Game, 'rounds' | 'cards'>;
@@ -57,8 +70,8 @@ export type CardGame = Pick<Game, 'rounds' | 'cards'>;
 export const savedCard = (game: Pick<Game, 'cards'>, id: Id): SavedCard | undefined => game.cards?.find((c) => c.id === id);
 
 /**
- * What a card shows: a tile's card or one of the editor's 🤫 Cards as the editor has it now, or the one made in 🤫 Send
- * a card….
+ * What a card shows: a tile's or a Final's card or one of the editor's 🤫 Cards as the editor has it now, or the one
+ * made in 🤫 Send a card….
  */
 export function sentSlide(game: CardGame, c: Pick<SentCard, 'content'>): Slide | undefined {
   const k = c.content;
@@ -66,8 +79,8 @@ export function sentSlide(game: CardGame, c: Pick<SentCard, 'content'>): Slide |
 }
 
 /**
- * How a card stands: 'sent' (as it went), 'edited' (a card made in the editor, a tile's or a 🤫 Card, changed since: off
- * the phones until ↻ Send again) or 'gone' (that card or its tile was deleted).
+ * How a card stands: 'sent' (as it went), 'edited' (a card made in the editor, a tile's, a Final's or a 🤫 Card, changed
+ * since: off the phones until ↻ Send again) or 'gone' (that card, its tile or its Final was deleted).
  */
 export function sentState(game: CardGame, c: Pick<SentCard, 'content' | 'hash'>): 'sent' | 'edited' | 'gone' {
   const slide = sentSlide(game, c);
@@ -139,7 +152,7 @@ export function cardsOut(game: CardGame, session: Pick<Session, 'cards' | 'curre
 }
 
 /**
- * The list of cards out: those sent with 🤫 Send a card… or from a tile's panel. A 🎭 deal's cards are listed by the
+ * The list of cards out: those sent with 🤫 Send a card… or from a tile's or a Final's panel. A 🎭 deal's cards are listed by the
  * deal (its row only counts them: one per player would say who got which by what's on each).
  */
 export function listedCards(game: CardGame, session: Pick<Session, 'cards' | 'currentRound' | 'phase' | 'currentClue'>): SentCard[] {
@@ -147,8 +160,8 @@ export function listedCards(game: CardGame, session: Pick<Session, 'cards' | 'cu
 }
 
 /**
- * The cards that are over go: their round ended, their tile closed, or the card made in the editor (a tile's or a
- * 🤫 Card) was deleted. Called where the open clue or the round changes (backToBoard, goToRound, backToLastRound,
+ * The cards that are over go: their round ended, their tile closed, or the card made in the editor (a tile's, a Final's
+ * or a 🤫 Card) was deleted. Called where the open clue or the round changes (backToBoard, goToRound, backToLastRound,
  * rebaseSession) and on loading a save.
  */
 export function dropOverCards(game: CardGame, session: Session): void {
@@ -172,8 +185,8 @@ export interface CardToSend {
   /** Who gets it (players' seats, or one person on a team). */
   to: CardTo[];
   /**
-   * A tile's card (by its clue and card ids), a card from 🤫 Cards (by its id), or a card made here (its slide: a copy
-   * is kept).
+   * A tile's or a Final's card (by its holder's id and its own), a card from 🤫 Cards (by its id), or a card made here
+   * (its slide: a copy is kept).
    */
   content: SentCard['content'];
   /** How long it lasts: until this round ends, until the open tile closes, or until taken back. */
@@ -181,10 +194,11 @@ export interface CardToSend {
 }
 
 /**
- * 📤 Send (🤫 Send a card…, or a tile's panel): the card goes to `to` now, as a new card with the next label. Null when
- * there's nobody to send it to, or nothing to send (a tile's card deleted, no tile open for a card that lasts until it
- * closes, no round for one that lasts the round), or when `full`: the buzzer room has all the cards it takes (buzz.ts
- * roomCardsFull, which the callers ask: the room is never told a card by leaving an older one off).
+ * 📤 Send (🤫 Send a card…, or a tile's or a Final's panel): the card goes to `to` now, as a new card with the next
+ * label. Null when there's nobody to send it to, or nothing to send (a tile's or a Final's card deleted, no tile open for
+ * a card that lasts until it closes (a Final's never does: it lasts the round), no round for one that lasts the round),
+ * or when `full`: the buzzer room has all the cards it takes (buzz.ts roomCardsFull, which the callers ask: the room is
+ * never told a card by leaving an older one off).
  */
 export function sendCard(game: CardGame, session: Session, card: CardToSend, now = Date.now(), full = false): SentCard | null {
   if (full) return null;
@@ -244,6 +258,15 @@ export function tileRecipients(session: Pick<Session, 'players' | 'dd' | 'curren
   if (card.to === 'picker') return session.players.filter((p) => p.id === who).map((p) => ({ seat: p.id }));
   if (card.to === 'others') return session.players.filter((p) => p.id !== who).map((p) => ({ seat: p.id }));
   return [];
+}
+
+/**
+ * Who a Final's card goes to by default: everyone playing it now (its wager screen's ticks; teams as whole teams), in
+ * the players' order; set to nobody, nobody yet.
+ */
+export function finalRecipients(session: Pick<Session, 'players' | 'final'>, card: Pick<ClueCard, 'to'>): CardTo[] {
+  const playing = session.final?.players ?? [];
+  return card.to === 'playing' ? session.players.filter((p) => playing.includes(p.id)).map((p) => ({ seat: p.id })) : [];
 }
 
 /** Who a card went to, in words ("Ann, Bob", "Mia (Red Team)"): names only, never what's on it. */

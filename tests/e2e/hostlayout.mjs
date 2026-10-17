@@ -10,7 +10,8 @@
 // with a player picked (on a $1,000 clue too: a long name is cut short on ＋ Award and − Deduct, never the amount), and
 // through a 🤝 partner clue from PARTNER UP! (the wheel, 📤 Distribute) to ✔ Got it, its ✔ / ✘ in sight (the wheel's own
 // bar too, and the players' chips where they fit), up to 1240px wide 🤫 Send a card… and 🎭 Deal… show as 🤫 and 🎭
-// (named in full), 🔊 Sound opens in the host panel, and every Final wager box is in sight. A three-round game keeps the
+// (named in full), 🔊 Sound opens in the host panel, and every Final wager box is in sight (the Final's own 🤫 cards
+// under them: below the panel's foot, 🤫 1 card ↓ in the step's sticky row goes to them). A three-round game keeps the
 // stage one size from the board to a clue with 🔇 Stop sounds (the round intro's music), a card out, both or neither on
 // the board's tools row, in both its board rounds (the second's ▶ is a long Final name, cut short and named in full),
 // from 960 to 1366px wide; at 1920 they keep their words.
@@ -31,7 +32,7 @@ function assert(cond, msg) {
 }
 
 // A game with every kind of round: a board (a Daily Double on its first Speedruns tile), an RPG round, a board game and
-// a Final.
+// a Final (with a 🤫 card of its own).
 const text = (id, t) => ({ id, kind: 'text', text: t, x: 160, y: 340, w: 1600, h: 400, rotation: 0, opacity: 1, zIndex: 1, font: 'Arial', size: 72, weight: 700, italic: false, underline: false, uppercase: false, color: '#fff', align: 'center', vAlign: 'middle', lineHeight: 1.2, letterSpacing: 0, autoFit: true });
 const slide = (id, t) => ({ background: { color: '#0a1a6b' }, elements: [text(id, t)] });
 let n = 0;
@@ -55,7 +56,7 @@ const game = {
     board,
     { id: 'r_rpg', name: 'Adventure', mode: 'rpg', world: 'w1' },
     { id: 'r_bg', name: 'Board game', mode: 'boardgame', slide: { background: { color: '#1d5e3a' }, elements: [] }, spaces: [sp('b0', 'Start', 300, 300, ['b1']), sp('b1', 'Middle', 900, 300, ['b2']), sp('b2', 'Finish', 1500, 300, [])], mover: { kind: 'dice', dice: 'dp1' }, zones: [] },
-    { id: 'r_final', name: 'Final Jeopardy!', mode: 'final', category: 'Internet History', questionSlide: slide('fq', 'The first video'), extraSlides: [{ id: 'fx2', ...slide('fq2', 'Uploaded in 2005') }], answerSlide: slide('fa', 'Me at the zoo'), timerSeconds: 30, allowNonPositive: true },
+    { id: 'r_final', name: 'Final Jeopardy!', mode: 'final', category: 'Internet History', questionSlide: slide('fq', 'The first video'), extraSlides: [{ id: 'fx2', ...slide('fq2', 'Uploaded in 2005') }], answerSlide: slide('fa', 'Me at the zoo'), timerSeconds: 30, allowNonPositive: true, cards: [{ id: 'fcard', name: 'Leader hint', to: 'playing', ...slide('fc', 'A hint') }] },
   ],
   media: [], audio: {}, theme: {}, wheels: [],
   dice: [{ id: 'dp1', name: 'Move die', dice: [{ id: 'd1', sides: 6, count: 1 }], showTotal: true }],
@@ -588,6 +589,26 @@ try {
       );
       assert(hidden.length === 0, `${w}×${h}: every wager box and “Ignore the limits” are in sight on the Final's wager screen${hidden.length ? ` (not: ${hidden.join(', ')})` : ''}`);
       assert((await p4.locator('.fj input[data-wager]').first().getAttribute('title')).startsWith('No limit now'), 'with the limits ignored, a wager box says so in its tooltip');
+      // The Final's own 🤫 cards come after every wager row; gone to, they're in sight, the step's sticky row too.
+      const finalCards = p4.locator('[data-final-cards]');
+      const lastRow = await p4.locator('.fj .wagers .wrow').last().boundingBox();
+      const cardsAt = await finalCards.boundingBox();
+      assert(cardsAt && cardsAt.y >= lastRow.y + lastRow.height - 1, `${w}×${h}: the Final's 🤫 cards are under the last wager row (they start at ${Math.round(cardsAt?.y)}, the row ends at ${Math.round(lastRow.y + lastRow.height)})`);
+      // (Six players: the box's heading is behind the step's sticky row or below it, and that row says the box is there.)
+      const head = await p4.locator('[data-final-cards] > .row').first().boundingBox();
+      const sticky = await p4.locator('.fj > .row:last-child').boundingBox();
+      assert(head.y + head.height > sticky.y, `${w}×${h}: with six players the box's heading isn't all in sight (it ends at ${Math.round(head.y + head.height)}, the step's row starts at ${Math.round(sticky.y)})`);
+      const down = p4.locator('.fj > .row:last-child [data-cards-down]');
+      await down.waitFor();
+      assert((await down.innerText()).trim() === '🤫 1 card ↓', `the step's row offers 🤫 1 card ↓ (${(await down.innerText()).trim()})`);
+      const wagersOut = await outOfSight('.fj input[data-wager], .fj input[data-limits]');
+      assert(wagersOut.length === 0, `${w}×${h}: with it there, every wager box is still in sight${wagersOut.length ? ` (not: ${wagersOut.join(', ')})` : ''}`);
+      await down.click();
+      await p4.waitForFunction(() => !!document.activeElement?.closest('[data-final-cards]'));
+      await down.waitFor({ state: 'detached' });
+      assert(true, 'pressed: the keys are on the box’s first button, and the chip goes once the box is in sight');
+      const notInSight = await outOfSight('[data-final-cards] > .row, .fj > .row:last-child');
+      assert(notInSight.length === 0, `${w}×${h}: gone to, the Final's 🤫 cards and the step's sticky row are in sight${notInSight.length ? ` (not: ${notInSight.join(', ')})` : ''}`);
     }
     await ctx.close();
   }

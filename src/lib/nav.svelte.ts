@@ -225,6 +225,13 @@ export function resolve(game: Game, place: Place): Place | null {
         case 'final':
           if (r.mode !== 'final') return round;
         {
+          // (One of its 🤫 cards: deleted since, the Final at its question. Before the extra slides, or a card's id reads
+          // as a deleted extra slide.)
+          if (part.side === 'card') {
+            const card = has(r.cards, part.slide);
+            if (!card) return at({ kind: 'final', side: 'q' });
+            return !part.element || inSlide(card, part.element) ? place : at({ kind: 'final', side: 'card', slide: card.id });
+          }
           const extra = part.slide ? r.extraSlides?.find((s) => s.id === part.slide) : undefined;
           if (part.slide && !extra) return at({ kind: 'final', side: part.side });
           const sl = part.side === 'a' ? r.answerSlide : (extra ?? r.questionSlide);
