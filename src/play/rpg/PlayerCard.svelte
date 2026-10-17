@@ -22,6 +22,8 @@
   import { textOn } from '../../lib/colors';
   import { describeAction, runAction, type CardOffer } from '../../lib/actions';
   import { offerIn } from '../host/offered.svelte';
+  import { teamsOn } from '../../lib/buzz';
+  import { buzzerOn } from '../../lib/remote.svelte';
   import { formatPoints, newId, type BoardGameRound, type BoardGameState, type Game, type Player, type Session, type World, type WorldState } from '../../lib/model';
   import { applyScore, score } from '../../lib/session';
   import { blip } from '../../lib/live';
@@ -144,6 +146,7 @@
       bs,
       selected,
       chosen: [p.id],
+      teams: buzzerOn(game.settings) && teamsOn(game.settings),
       at: st?.positions[p.id]?.screen,
       offerCard: (o: CardOffer) => ((offered = true), offer(o)),
     };

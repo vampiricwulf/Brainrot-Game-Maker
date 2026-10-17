@@ -7,7 +7,8 @@ import { goToRound, newSession } from '../../lib/session';
 import { newWheel } from '../../lib/tools';
 import { forgetGameParts, redoAction, undoAction } from '../../lib/toolset';
 import { runAction } from '../../lib/actions';
-import type { Action } from '../../lib/model';
+import { PLAYER_WHEEL, type Action } from '../../lib/model';
+import { prefs } from '../../lib/prefs.svelte';
 import { moveCounts, moveNow, moverResult, moverSliceNoNumber, reorderTurns, rollMover, runSpace, sendNow, setTurn, turnNow } from './bgops';
 import { openPlayerWheel, quickDice, rollDice, toggleScoreboard } from '../../lib/overlay';
 
@@ -192,6 +193,29 @@ describe('board game: the host’s moves on the stage', () => {
     expect(runSpace(game, session, live, sp, ['a'])).toMatch(/then press the outcome$/);
     expect(live.overlay?.kind).toBe('dice');
     expect(session.scoreLog).toEqual([]);
+  });
+
+  it('Start on a space whose 🎯 wheel spins: “Pick a team” on stream with phone buzzer Teams on', () => {
+    const { game, session, round } = playing();
+    const sp = round.spaces[2];
+    sp.onLand = [
+      { id: 'w', do: 'wheel', wheel: PLAYER_WHEEL },
+      { id: 's', do: 'score', amount: 200, who: 'ask' },
+    ];
+    const name = (live: ReturnType<typeof newLive>) => (live.overlay?.kind === 'wheel' ? live.overlay.name : null);
+    const live = newLive();
+    runSpace(game, session, live, sp, ['a']);
+    expect(name(live)).toBe('Pick a player');
+    const was = prefs.buzzerServer;
+    prefs.buzzerServer = 'https://buzz.example.workers.dev';
+    game.settings.buzzer = true;
+    game.settings.buzzTeams = true;
+    try {
+      runSpace(game, session, live, sp, ['a']);
+    } finally {
+      prefs.buzzerServer = was;
+    }
+    expect(name(live)).toBe('Pick a team');
   });
 
   it('going back past Start is no pass of it; a player who left takes their last move’s buttons with them', () => {
