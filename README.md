@@ -169,7 +169,7 @@ outlined.
 **Tools, any time:**
 
 - 🎲 Dice
-- 🎡 Wheels, including a built-in **Pick a player** wheel. Several wheels can spin at once.
+- 🎡 Wheels, including a built-in **Pick a player** wheel (**Pick a team** with phone buzzer Teams). Several wheels can spin at once.
 - 🏁 Who goes first
 - 📊 Scores (with 📋 Copy standings for chat)
 

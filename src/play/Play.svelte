@@ -1600,7 +1600,7 @@
     if (session.dd || session.partner) return;
     if (c?.clue.type === 'wheel') {
       const w = game.wheels.find((x) => x.id === c.clue.wheelId);
-      if (c.clue.wheelId === PLAYER_WHEEL) openPlayerWheel(app.live, session);
+      if (c.clue.wheelId === PLAYER_WHEEL) openPlayerWheel(app.live, session, pregameTeams);
       else if (w) openWheel(app.live, session, w);
       else toast('This tile has no wheel chosen');
     } else if (c?.clue.type === 'dice') {

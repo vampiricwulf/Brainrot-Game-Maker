@@ -31,12 +31,15 @@ function playerSegments(session: Session): WheelSegment[] {
   return session.players.map((p) => ({ id: p.id, label: p.name, color: p.color, weight: 1 }));
 }
 
-/** The built-in "Pick a player" wheel: lands on one of the current players. */
-export function openPlayerWheel(live: Live, session: Session): void {
+/** The built-in "Pick a player" wheel's name on screen ("Pick a team" when each player is a team). */
+const playerWheelName = (teams: boolean) => (teams ? 'Pick a team' : 'Pick a player');
+
+/** The built-in "Pick a player" wheel: lands on one of the current players. `teams`: each player is a team. */
+export function openPlayerWheel(live: Live, session: Session, teams = false): void {
   live.overlay = {
     kind: 'wheel',
     nonce: newId(),
-    name: 'Pick a player',
+    name: playerWheelName(teams),
     players: true,
     segments: playerSegments(session),
     rotation: 0,
@@ -237,8 +240,8 @@ export function wheelSpentUp(o: WheelLike, session: Session, game: Game): boolea
   return wheelUsedUp(session, preset, o.pool ? onSlices(o.pool).map((s) => s.id) : undefined);
 }
 
-/** Add another wheel to spin together with the one on screen (a saved wheel, or the player wheel). */
-export function addWheel(live: Live, session: Session, game: Game, wheelId: string): void {
+/** Add another wheel to spin together with the one on screen (a saved wheel, or the player wheel: `teams` as above). */
+export function addWheel(live: Live, session: Session, game: Game, wheelId: string, teams = false): void {
   const o = live.overlay;
   if (!o || o.kind !== 'wheel') return;
   const preset = game.wheels.find((w) => w.id === wheelId);
@@ -246,7 +249,7 @@ export function addWheel(live: Live, session: Session, game: Game, wheelId: stri
   if (!preset && !players) return;
   const w: ExtraWheel = {
     key: newId(),
-    name: preset?.name ?? 'Pick a player',
+    name: preset?.name ?? playerWheelName(teams),
     wheelId: preset?.id,
     players: players || undefined,
     segments: preset ? copy(activeSegments(session, preset)) : playerSegments(session),

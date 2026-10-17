@@ -36,6 +36,20 @@ describe('Pick a player wheel', () => {
     ]);
   });
 
+  it('is "Pick a team" on screen and in the log when each player is a team, on its own or spun with another', () => {
+    const { game, session, live } = withPlayers();
+    openPlayerWheel(live, session, true);
+    expect(live.overlay?.kind === 'wheel' && live.overlay.name).toBe('Pick a team');
+    const w = newWheel('Dares');
+    game.wheels.push(w);
+    openWheel(live, session, w);
+    addWheel(live, session, game, PLAYER_WHEEL, true);
+    const o = live.overlay!;
+    expect(o.kind === 'wheel' && o.extra?.map((x) => x.name)).toEqual(['Pick a team']);
+    spinWheel(live, session, game);
+    expect(session.rollLog?.map((r) => r.name)).toEqual(['Dares', 'Pick a team']);
+  });
+
   it('a land-once wheel keeps its Spin again slice: it lands as often as it comes up', () => {
     const { game, session, live } = withPlayers();
     const w = newWheel('Dares', ['Sing', 'Dance', 'Spin again']);

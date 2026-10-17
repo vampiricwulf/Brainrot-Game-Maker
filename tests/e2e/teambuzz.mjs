@@ -354,6 +354,17 @@ try {
   await teamsDialog.getByRole('button', { name: 'Remove', exact: true }).click();
   await teamsDialog.getByRole('button', { name: 'Done' }).click();
 
+  // ---------- 🎡 Wheel › 🎯 Pick a team: viewers see "Pick a team" over the teams ----------
+  await host.getByRole('button', { name: '🎡 Wheel' }).click();
+  const pickTeam = host.getByRole('button', { name: '🎯 Pick a team', exact: true });
+  assert((await pickTeam.getAttribute('title')) === 'A wheel of the teams, in their colors', 'with Teams on, 🎡 Wheel offers 🎯 Pick a team (“A wheel of the teams”)');
+  await pickTeam.click();
+  const wheelTitle = host.locator('.stage-box .wrap:has(> .disc.single) > .title');
+  await wheelTitle.getByText('Pick a team', { exact: true }).waitFor();
+  assert(true, 'the stage (what viewers see) reads “Pick a team” over the wheel, not “Pick a player”');
+  await host.keyboard.press('Escape');
+  await wheelTitle.waitFor({ state: 'detached' });
+
   // ---------- Kept for another game: the room keeps its teams, so nobody picks again ----------
   await host.getByRole('button', { name: 'Exit' }).click();
   await host.waitForTimeout(450);

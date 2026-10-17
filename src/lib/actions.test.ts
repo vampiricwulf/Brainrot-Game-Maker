@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { cardTargets, describeAction, runAction, targets, typedSteps, type CardOffer, type RunContext } from './actions';
 import { ensureBoard, movePlayer, newBoardGameRound, nextTurn } from './boardgame';
 import { newLive } from './live';
-import { newGame, newImageEl, newShapeEl, textSlide, type Action, type CardWho } from './model';
+import { newGame, newImageEl, newShapeEl, PLAYER_WHEEL, textSlide, type Action, type CardWho } from './model';
 import { copyActions } from './listedit';
 import { cardsOut } from './sentcards';
 import { mediaUsage } from './usage';
@@ -18,6 +18,17 @@ function setup(): RunContext {
   game.items = [{ id: 'potion', name: 'Potion', stackable: true }];
   return { game, session: newSession(game), live: newLive(), selected: ['a'] };
 }
+
+describe('a wheel button', () => {
+  it('spins the 🎯 wheel as "Pick a team" when each player is a team (alone, or with another)', () => {
+    const ctx = setup();
+    const names = () => (ctx.live.overlay?.kind === 'wheel' ? [ctx.live.overlay.name, ...(ctx.live.overlay.extra ?? []).map((w) => w.name)] : []);
+    runAction(ctx, { id: '1', do: 'wheel', wheel: PLAYER_WHEEL });
+    expect(names()).toEqual(['Pick a player']);
+    runAction({ ...ctx, teams: true }, { id: '1', do: 'wheel', wheel: PLAYER_WHEEL, also: [PLAYER_WHEEL] });
+    expect(names()).toEqual(['Pick a team', 'Pick a team']);
+  });
+});
 
 describe('running buttons that point nowhere', () => {
   it('won’t write a number into a stat that isn’t a number', () => {

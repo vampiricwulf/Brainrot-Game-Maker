@@ -7,6 +7,8 @@
   import { app, toast } from '../../lib/app.svelte';
   import { textOn } from '../../lib/colors';
   import { describeAction, needsPlayers, runAction } from '../../lib/actions';
+  import { teamsOn } from '../../lib/buzz';
+  import { buzzerOn } from '../../lib/remote.svelte';
   import type { Action, BoardGameRound, BoardGameState, BoardSpace, Game, Session } from '../../lib/model';
   import { nameList } from '../../lib/session';
   import { logged } from '../../lib/toolset';
@@ -42,7 +44,8 @@
 
   function run(a: Action, on: 'land' | 'pass'): void {
     if (needsPlayers(a) && !who.length) return void toast('Pick who it’s for first');
-    toast(runAction({ game, session, live: app.live, board: round, bs, selected, chosen: who, offerCard: offerIn(session) }, a, `${space.name}: ${describeAction(game, a, on)}`), 3000);
+    const teams = buzzerOn(game.settings) && teamsOn(game.settings);
+    toast(runAction({ game, session, live: app.live, board: round, bs, selected, chosen: who, teams, offerCard: offerIn(session) }, a, `${space.name}: ${describeAction(game, a, on)}`), 3000);
   }
 
   function reveal(): void {

@@ -9,6 +9,8 @@
   import { app, hint, toast } from '../../lib/app.svelte';
   import { textOn } from '../../lib/colors';
   import { describeAction, needsPlayers, runAction, type RunContext } from '../../lib/actions';
+  import { teamsOn } from '../../lib/buzz';
+  import { buzzerOn } from '../../lib/remote.svelte';
   import { clampSteps, currentPlayer, MAX_STEPS, spaceById, waysOn } from '../../lib/boardgame';
   import { DragOrder } from '../../lib/dragorder.svelte';
   import { newId, type Action, type BoardSpace, type Game, type Session } from '../../lib/model';
@@ -63,7 +65,7 @@
   /** One-space boards: where the player whose turn it is can go (not straight back along a two-way link). */
   const turnSpace = $derived(turnId ? bs?.positions[turnId]?.space : undefined);
   const stepWays = $derived(round && bs && turnSpace ? waysOn(round, turnSpace, turnId ? bs.prev?.[turnId] : undefined) : []);
-  const ctx = $derived<RunContext>({ game, session, live: app.live, board: round, bs, selected, offerCard: offerIn(session) });
+  const ctx = $derived<RunContext>({ game, session, live: app.live, board: round, bs, selected, teams: buzzerOn(game.settings) && teamsOn(game.settings), offerCard: offerIn(session) });
   const recent = $derived(lastAction(session, session.currentRound));
   /** Zones with players in them, or on screen: their notes (how to escape…) are worth having at hand. */
   const zones = $derived(round && bs ? busyZones(round, bs) : []);

@@ -23,6 +23,8 @@ export interface RunContext {
   bs?: BoardGameState;
   /** Players the host has selected (the 1–9 keys / chips). */
   selected: string[];
+  /** Each player is a team (phone buzzers with Teams): the 🎯 wheel is "Pick a team" on screen. */
+  teams?: boolean;
   /** Who "ask" means: the players the host picked on the card. In board games also who "party" means (the mover). */
   chosen?: string[];
   /** RPG rounds: the screen the object whose button it is stands on ("party" is the party standing there). */
@@ -231,13 +233,13 @@ export function runAction(ctx: RunContext, a: Action, label?: string): string {
       return `${text}: ${names(ctx, who)}`;
     }
     case 'wheel': {
-      if (a.wheel === PLAYER_WHEEL) openPlayerWheel(live, session);
+      if (a.wheel === PLAYER_WHEEL) openPlayerWheel(live, session, !!ctx.teams);
       else {
         const w = game.wheels.find((x) => x.id === a.wheel);
         if (!w) return 'That wheel no longer exists';
         openWheel(live, session, w);
       }
-      for (const id of a.also ?? []) addWheel(live, session, game, id);
+      for (const id of a.also ?? []) addWheel(live, session, game, id, !!ctx.teams);
       return text;
     }
     case 'dice': {

@@ -15,6 +15,8 @@
   import ShopControls from './ShopControls.svelte';
   import { newId, PLAYER_WHEEL, type Action } from '../../lib/model';
   import { describeAction, needsPlayers, runAction } from '../../lib/actions';
+  import { teamsOn } from '../../lib/buzz';
+  import { buzzerOn } from '../../lib/remote.svelte';
   import { toast } from '../../lib/app.svelte';
   import { rpgNow } from '../rpg/hostops';
   import { setPicker } from '../../lib/toolset';
@@ -26,6 +28,8 @@
   import { announce } from '../../lib/announce';
 
   let { game, session, selected = [], onclose }: { game: Game; session: Session; selected?: string[]; onclose: () => void } = $props();
+  /** Each player is a team: the 🎯 wheel picks a team. */
+  const teams = $derived(buzzerOn(game.settings) && teamsOn(game.settings));
   const o = $derived(app.live.overlay);
   let now = $state(Date.now());
   onMount(() => {
@@ -107,7 +111,7 @@
   function runOutcome(a: Action, from: string): void {
     if (needsPlayers(a) && !chosen.length && !selected.length) return void toast('Tag who it was for first');
     const { world, st } = rpgNow(game, session);
-    toast(runAction({ game, session, live: app.live, world, st, selected, chosen, offerCard: offerIn(session) }, a, `${from}: ${describeAction(game, a)}`), 3000);
+    toast(runAction({ game, session, live: app.live, world, st, selected, chosen, teams, offerCard: offerIn(session) }, a, `${from}: ${describeAction(game, a)}`), 3000);
     // The button can go with what it did (a question pop-up replaces the wheel): the keys go to the main button, not to
     // the Amount box, where R, Esc and N mean nothing.
     void tick().then(() => {
@@ -202,12 +206,12 @@
             const id = e.currentTarget.value;
             e.currentTarget.value = '';
             e.currentTarget.blur();
-            if (id) addWheel(app.live, session, game, id);
+            if (id) addWheel(app.live, session, game, id, teams);
           }}
         >
           <option value="">＋ Spin another wheel too…</option>
           {#each game.wheels as w (w.id)}<option value={w.id}>{w.name}</option>{/each}
-          <option value={PLAYER_WHEEL}>🎯 Pick a player</option>
+          <option value={PLAYER_WHEEL}>🎯 Pick a {teams ? 'team' : 'player'}</option>
         </select>
         {#if spent && !busy}<span class="warn small" role="status">Every slice has landed: Restore to spin again</span>
         {:else if again && landed}<span class="small" role="status">↻ It landed on {outcomeName}: spin again (W)</span>{/if}

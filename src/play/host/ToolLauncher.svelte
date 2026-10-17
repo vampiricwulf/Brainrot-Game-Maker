@@ -11,7 +11,7 @@
   import { WHEEL_TEMPLATES } from '../../lib/wheeltemplates';
   import { parseDice, parseQuickWheel, QUICK_DICE } from '../../lib/tools';
   import { audience } from '../../lib/sync.svelte';
-  import { cardsLeftOff } from '../../lib/buzz';
+  import { cardsLeftOff, teamsOn } from '../../lib/buzz';
   import { buzzerOn, remote, roomHasCards, roomHasFiles } from '../../lib/remote.svelte';
   import { listedCards, sentCardId } from '../../lib/sentcards';
   import { cardWindow, closeCardWindow, openCardWindow } from '../../lib/cardwindow.svelte';
@@ -50,6 +50,8 @@
    */
   const listed = $derived(listedCards(game, session));
   const out = $derived(listed.length);
+  /** Each player is a team: the 🎯 wheel picks a team. */
+  const teams = $derived(buzzerOn(game.settings) && teamsOn(game.settings));
   /**
    * A card out isn't all on the phones (a picture that didn't go up, a phone late for it…): its row in the list is
    * orange and says what, and so is this button, as nothing else in sight would say so once the send dialog is closed.
@@ -185,14 +187,14 @@
           <button
             class="small item"
             disabled={session.players.length < 2}
-            title={session.players.length < 2 ? 'Needs at least two players' : 'A wheel of the players, in their colors'}
-            onclick={() => wheel(() => openPlayerWheel(app.live, session))}>🎯 Pick a player</button>
+            title={session.players.length < 2 ? `Needs at least two ${teams ? 'teams' : 'players'}` : `A wheel of the ${teams ? 'teams' : 'players'}, in their colors`}
+            onclick={() => wheel(() => openPlayerWheel(app.live, session, teams))}>🎯 Pick a {teams ? 'team' : 'player'}</button>
           <button
             class="small ghost"
             disabled={session.players.length < 2}
-            aria-label="Edit Pick a player, then spin"
-            title="Leave players out or change their chances for this spin"
-            onclick={() => wheel(() => openPlayerWheel(app.live, session), true)}>✎</button>
+            aria-label="Edit Pick a {teams ? 'team' : 'player'}, then spin"
+            title="Leave {teams ? 'teams' : 'players'} out or change their chances for this spin"
+            onclick={() => wheel(() => openPlayerWheel(app.live, session, teams), true)}>✎</button>
         </div>
         {#if cats !== null}
           <div class="wl">
