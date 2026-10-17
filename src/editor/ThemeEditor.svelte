@@ -108,7 +108,9 @@
     const kept = `${game.id} ${k}`;
     if (on) return set(k, offColor[kept] ?? start);
     const was = t[k];
+    // (A line under the categories in its default black comes back black.)
     if (was && was !== 'none') offColor[kept] = was;
+    else delete offColor[kept];
     set(k, off);
   }
   /** A slider's number, or its default (unset) at the default. */

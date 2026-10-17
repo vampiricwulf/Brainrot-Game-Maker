@@ -139,6 +139,13 @@ try {
   await page.getByLabel('Line under them').uncheck();
   await page.getByLabel('Line under them').check();
   assert((await page.getByLabel('Line under the categories color').inputValue()) === '#ff0000', 'Line under them unticked and ticked again keeps its red');
+  // Back to its default black line (↺ Reset to Classic), then off and on again: black, not the red from before.
+  await page.locator('label[data-k="headerLine"]').click({ button: 'right', position: { x: 5, y: 5 } });
+  await menu.getByRole('menuitem', { name: '↺ Reset to Classic' }).click();
+  await page.waitForFunction(() => document.querySelector('[aria-label="Line under the categories color"]')?.value === '#000000');
+  await page.getByLabel('Line under them').uncheck();
+  await page.getByLabel('Line under them').check();
+  assert((await page.getByLabel('Line under the categories color').inputValue()) === '#000000', 'one back to its default black, unticked and ticked again, is black');
   await page.getByLabel('Tile glow', { exact: true }).check();
   await page.getByLabel('Tile glow color').fill('#ffd700');
   await page.getByLabel('Tile glow', { exact: true }).uncheck();
