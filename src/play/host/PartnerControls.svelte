@@ -356,6 +356,12 @@
   }
   /** The cards not sent yet: their files are what ⇡ Get it ready puts in the room. */
   const unsent = $derived(cards.filter((c) => !cardSends(s, c.id).length));
+  /** Those with someone to go to, when phones get cards: what 📤 Send and start sends. */
+  const unsentToGo = $derived(cardsOn ? unsent.filter((c) => cardRecipients(session, s, c).length) : []);
+  /** 📤 Send and start's send, made on a copy of the session. */
+  const sendAll = (t: Session) => sendCards(t, t.partner!, unsentToGo);
+  /** They don't fit in the buzzer room (nor does any one that doesn't): said in the panel, not only in a tooltip. */
+  const allFull = $derived(!verdict.judged && unsentToGo.length > 0 && roomCardsFull(game, session, sendAll));
   /** ⇡ Get it ready now: the files of the cards not sent yet go up to the buzzer room (no phone gets them until they're sent). */
   function getReady(): void {
     retryFiles(game, session, unsent);
@@ -473,12 +479,9 @@
     // (Judged meanwhile, by a click: the clue's own next, the answer. The answer shown meanwhile (R): no countdown over
     // it, the clue's own next, ▦ Done.)
     if (st.stage === 'distribute' && !verdict.judged && !session.revealed) {
-      const unsentNow = cardsOn ? cards.filter((c) => !cardSends(st, c.id).length && cardRecipients(session, st, c).length) : [];
-      if (unsentNow.length) {
+      if (unsentToGo.length) {
         // (Never more cards than the buzzer room takes: ✖ Take one back first.)
-        const go = (t: Session) => sendCards(t, t.partner!, unsentNow);
-        const full = roomCardsFull(game, session, go);
-        return { label: '📤 Send and start', key: '⏎', title: full ? cardsFullText(game, session, go) : 'Enter or N: the cards not sent yet go to their phones, and the countdown starts', disabled: full, run: onclock };
+        return { label: '📤 Send and start', key: '⏎', title: allFull ? cardsFullText(game, session, sendAll) : 'Enter or N: the cards not sent yet go to their phones, and the countdown starts', disabled: allFull, run: onclock };
       }
       return { label: '⏱ Start the clock', key: '⏎', title: cardsOn ? 'Enter or N: the countdown starts' : 'Enter or N: the countdown starts (copy the cards to their players first)', run: onclock };
     }
@@ -751,6 +754,7 @@
           {#if left}<div class="small warn left" data-card-left={n}>{left}</div>{/if}
         {/each}
       </div>
+      {#if allFull}<div class="small warn" data-cards-full>{cardsFullText(game, session, sendAll)}</div>{/if}
     {/if}
     {#if cards.length && !verdict.judged}
       {#if older}<span class="muted small" data-partner-readiness>{readiness}</span>{/if}

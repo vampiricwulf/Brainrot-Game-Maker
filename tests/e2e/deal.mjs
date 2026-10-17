@@ -7,12 +7,13 @@
 // ↻ Send again renews every card's id; 🎭 Who was who goes on stream only when pressed, and Ctrl+Z takes it off; a host
 // reload keeps the deal and its cards; in one window the panel only counts the parts; ✖ Take back takes them all off.
 // Neither the audience window before Who was who, nor the host page in one window, ever holds a card's words or the
-// location.
+// location. With the deal's cards and four more out, the 8 the phones hold, a tile's card and a partner clue's say in
+// their panels why they can't go.
 import { chromium } from 'playwright-core';
 import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { openGameFile, packGame, recordSeen, shownOf, startBuzzer, stored } from './helpers.mjs';
+import { forgetSeen, mainButton, mainLabel, openGameFile, packGame, recordSeen, shownOf, startBuzzer, stored } from './helpers.mjs';
 
 const file = resolve(process.env.APP_FILE || 'dist/index.html');
 if (!existsSync(file)) throw new Error('Run `npm run build` first');
@@ -54,7 +55,12 @@ const watch = (p, name) => {
 try {
   browser = await chromium.launch({ executablePath });
 
-  const plain = (id) => ({ id, value: null, type: 'standard', questionSlide: slide(text('A question')), answerSlide: slide(text('An answer')) });
+  const plain = (id, extra = {}) => ({ id, value: null, type: 'standard', questionSlide: slide(text('A question')), answerSlide: slide(text('An answer')), ...extra });
+  const partnerClue = {
+    type: 'partner', timerSeconds: 60,
+    partner: { game: 'describe', giver: 'partner', got: { giver: 100, guesser: 50 }, missed: { giver: 0, guesser: -50 }, partnerSafe: true, points: 'game' },
+    cards: [{ id: 'p1', to: 'giver', ...slide(text('Describe it')) }],
+  };
   const game = {
     id: 'g_deal',
     version: 2,
@@ -64,7 +70,7 @@ try {
       roundIntro: { titleCard: false, tileFill: false, categoryReveal: 'off' }, maxPlayers: 8, stream: { clueCaption: true }, buzzer: true,
     },
     players: ['Ann', 'Bob', 'Cat', 'Dan'].map((name, i) => ({ id: `p${i + 1}`, name, color: ['#e6194b', '#3cb44b', '#4363d8', '#f58231'][i] })),
-    rounds: [{ id: 'r1', name: 'Round 1', mode: 'board', values: [200, 400], dailyDoubleCount: 0, categories: [{ id: 'cat0', title: 'Movies', clues: [plain('q1'), plain('q2')] }] }],
+    rounds: [{ id: 'r1', name: 'Round 1', mode: 'board', values: [200, 400], dailyDoubleCount: 0, categories: [{ id: 'cat0', title: 'Movies', clues: [plain('q1', { cards: [{ id: 't1', to: 'picker', ...slide(text('A tip')) }] }), plain('q2', partnerClue)] }] }],
     media: [], audio: {}, dice: [], theme: {},
     wheels: [{ id: 'w_loc', name: 'Places', segments: PLACES.map((label, i) => ({ id: `s${i}`, label, color: '#e6194b', weight: 1 })), spinDurationMs: 3000, removeAfterLanding: false }],
     deals: [
@@ -274,6 +280,56 @@ try {
   await dialog.locator('[data-deal-reveal]').click();
   await host.locator('.stage-box [data-who-was-who]').waitFor();
   assert((await flat(host.locator('.stage-box [data-who-was-who]'))).includes('Bob Spy'), 'Who was who after the cards came back: on the stage');
+
+  // ---------- The phones full: a tile's card and a partner clue's say why they can't go ----------
+  await dialog.locator('[data-deal-hide]').click();
+  await host.locator('.stage-box [data-who-was-who]').waitFor({ state: 'detached' });
+  // (Who was who showed the location on stream, as it should: the host page is watched again from here.)
+  await forgetSeen(host);
+  await host.keyboard.press('Escape');
+  await dialog.waitFor({ state: 'detached' });
+  await tools.getByRole('button', { name: '🤫 Send a card…' }).click();
+  const quick = host.getByRole('dialog', { name: 'Send a card' });
+  await quick.getByRole('radio', { name: 'A quick card' }).check();
+  await quick.getByRole('button', { name: 'Ann', exact: true }).click();
+  for (let i = 1; i <= 4; i++) {
+    await quick.getByRole('textbox', { name: 'The card’s words' }).fill(`Note ${i}`);
+    await quick.getByRole('button', { name: '📤 Send' }).click();
+    await quick.locator('[data-card-said]').getByText(`Card ${i} sent to Ann`).waitFor();
+  }
+  await host.keyboard.press('Escape');
+  await quick.waitFor({ state: 'detached' });
+  assert(await until(() => cards().length === 4), 'four quick cards to Ann: the room holds them');
+  dialog = await openDeal();
+  await dialog.getByRole('button', { name: '📤 Send', exact: true }).click();
+  assert(await until(() => cards().length === 8), 'the deal sent again (📤 Send): the room holds 8, all the phones hold at once');
+  await host.keyboard.press('Escape');
+  await dialog.waitFor({ state: 'detached' });
+  const fullLine = '8 cards are out on the phones, 4 of them the 🎭 deal’s: ✖ Take them back in 🎭 Deal…, or take back another one';
+  await host.keyboard.press('p');
+  await host.keyboard.press('1');
+  await host.locator('.stage-box .tile[aria-label^="Movies for $200"]').click();
+  const tilePart = host.locator('.panel [data-tile-cards]');
+  await tilePart.waitFor();
+  assert(await tilePart.getByRole('button', { name: 'Send card 1' }).isDisabled(), 'a tile’s card can’t go');
+  assert((await tilePart.locator('[data-cards-full]').innerText()) === fullLine, `and its panel says why, in sight: “${fullLine}”`);
+  await host.keyboard.press('r');
+  await host.keyboard.press('Escape');
+  await host.keyboard.press('p');
+  await host.keyboard.press('1');
+  await host.locator('.stage-box .tile[aria-label^="Movies for $400"]').click();
+  const partner = host.locator('.panel [data-partner-panel]');
+  await partner.getByText('Ann picked it.').waitFor();
+  await host.keyboard.press('3');
+  await mainButton(host).click();
+  const pRow = partner.locator('[data-card="1"]');
+  await pRow.waitFor();
+  assert(
+    (await pRow.getByRole('button', { name: 'Send card 1' }).isDisabled()) && (await mainLabel(host)) === '📤 Send and start' && (await mainButton(host).isDisabled()),
+    'a partner clue’s: its 📤 Send and 📤 Send and start are off',
+  );
+  assert((await partner.locator('[data-cards-full]').innerText()) === fullLine, `and its panel says why, in sight: “${fullLine}”`);
+  await offStream(host, 'the host page in one window', 'the phones full');
 
   assert(!errors.length, `no page errors (${errors.join('; ')})`);
   console.log('Deal tests passed');
