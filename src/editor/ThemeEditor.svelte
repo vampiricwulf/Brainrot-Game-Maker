@@ -100,6 +100,16 @@
   function set<K extends keyof Theme>(k: K, v: Theme[K]): void {
     t[k] = v;
   }
+  /** The color a look had when it was switched off on this page, by game and look: switched back on, it comes back. */
+  const offColor: Record<string, string> = {};
+  /** Switch a look with a color of its own on (its last color, else `start`) or off (to `off`). */
+  function switchColor(k: 'glow' | 'headerLine' | 'bgGradient' | 'tileGradient' | 'header2' | 'headerGradient', on: boolean, start: string | undefined, off: 'none' | undefined): void {
+    const kept = `${game.id} ${k}`;
+    if (on) return set(k, offColor[kept] ?? start);
+    const was = t[k];
+    if (was && was !== 'none') offColor[kept] = was;
+    set(k, off);
+  }
   /** A slider's number, or its default (unset) at the default. */
   function setNumber(k: Ranged, v: number): void {
     set(k, v === LOOK_RANGES[k].def ? undefined : v);
@@ -230,7 +240,7 @@
         </label>
       {/each}
       <label class="check" data-k="glow" data-color>
-        <input type="checkbox" checked={t.glow !== 'none'} onchange={(e) => (t.glow = e.currentTarget.checked ? '#ff00e6' : 'none')} />
+        <input type="checkbox" checked={t.glow !== 'none'} onchange={(e) => switchColor('glow', e.currentTarget.checked, '#ff00e6', 'none')} />
         Tile glow
         {#if t.glow !== 'none'}<input type="color" value={hex(t.glow, '#ff00e6')} oninput={(e) => (t.glow = e.currentTarget.value)} aria-label="Tile glow color" />{/if}
       </label>
@@ -371,7 +381,7 @@
         <input type="range" min={LOOK_RANGES.tileGap.min} max={LOOK_RANGES.tileGap.max} step="1" value={lookNumber(t, 'tileGap')} oninput={(e) => setNumber('tileGap', +e.currentTarget.value)} />
       </label>
       <label class="check" data-k="bgGradient" data-color title="The board's background fades from the line color (in Colors) to this one">
-        <input type="checkbox" checked={!!t.bgGradient} onchange={(e) => set('bgGradient', e.currentTarget.checked ? near(t.boardGap) : undefined)} />
+        <input type="checkbox" checked={!!t.bgGradient} onchange={(e) => switchColor('bgGradient', e.currentTarget.checked, near(t.boardGap), undefined)} />
         Background gradient
         {#if t.bgGradient}<input type="color" value={hex(t.bgGradient, '#000000')} oninput={(e) => set('bgGradient', e.currentTarget.value)} aria-label="Background gradient color" />{/if}
       </label>
@@ -422,7 +432,7 @@
         </label>
       {:else}<span></span>{/if}
       <label class="check" data-k="tileGradient" data-name="Tile gradient" data-color>
-        <input type="checkbox" checked={!!t.tileGradient} onchange={(e) => set('tileGradient', e.currentTarget.checked ? near(t.tile) : undefined)} />
+        <input type="checkbox" checked={!!t.tileGradient} onchange={(e) => switchColor('tileGradient', e.currentTarget.checked, near(t.tile), undefined)} />
         Gradient
         {#if t.tileGradient}<input type="color" value={hex(t.tileGradient, '#000000')} oninput={(e) => set('tileGradient', e.currentTarget.value)} aria-label="Tile gradient color" />{/if}
       </label>
@@ -487,17 +497,17 @@
         {#if t.headerBg}<button class="small ghost" onclick={() => set('headerBg', undefined)} title="Back to the tile color" aria-label="Category color back to the tile color">↺</button>{/if}
       </label>
       <label class="check" data-k="header2" data-name="Second category color" data-color>
-        <input type="checkbox" checked={!!t.header2} onchange={(e) => set('header2', e.currentTarget.checked ? near(t.headerBg ?? t.tile) : undefined)} />
+        <input type="checkbox" checked={!!t.header2} onchange={(e) => switchColor('header2', e.currentTarget.checked, near(t.headerBg ?? t.tile), undefined)} />
         Alternate colors
         {#if t.header2}<input type="color" value={hex(t.header2, '#000000')} oninput={(e) => set('header2', e.currentTarget.value)} aria-label="Second category color" />{/if}
       </label>
       <label class="check" data-k="headerGradient" data-name="Category gradient" data-color>
-        <input type="checkbox" checked={!!t.headerGradient} onchange={(e) => set('headerGradient', e.currentTarget.checked ? near(t.headerBg ?? t.tile) : undefined)} />
+        <input type="checkbox" checked={!!t.headerGradient} onchange={(e) => switchColor('headerGradient', e.currentTarget.checked, near(t.headerBg ?? t.tile), undefined)} />
         Gradient
         {#if t.headerGradient}<input type="color" value={hex(t.headerGradient, '#000000')} oninput={(e) => set('headerGradient', e.currentTarget.value)} aria-label="Category gradient color" />{/if}
       </label>
       <label class="check" data-k="headerLine" data-color>
-        <input type="checkbox" checked={t.headerLine !== 'none'} onchange={(e) => set('headerLine', e.currentTarget.checked ? undefined : 'none')} />
+        <input type="checkbox" checked={t.headerLine !== 'none'} onchange={(e) => switchColor('headerLine', e.currentTarget.checked, undefined, 'none')} />
         Line under them
         {#if t.headerLine !== 'none'}<input type="color" value={hex(t.headerLine, '#000000')} oninput={(e) => set('headerLine', e.currentTarget.value)} aria-label="Line under the categories color" />{/if}
       </label>

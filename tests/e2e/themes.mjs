@@ -134,6 +134,17 @@ try {
   assert((await headerBg(preview, 0)) === CLASSIC_TILE && (await headerBg(preview, 1)) === 'rgb(0, 255, 0)', 'alternating category colors');
   // White names on bright green: a note says they're hard to read (under Categories, and under Colors).
   assert((await page.getByRole('status').filter({ hasText: 'category names are hard to read' }).count()) === 2, 'category names too close to an alternate color: a note says so');
+  // A look switched off for a moment and on again keeps the color picked for it.
+  await page.getByLabel('Line under the categories color').fill('#ff0000');
+  await page.getByLabel('Line under them').uncheck();
+  await page.getByLabel('Line under them').check();
+  assert((await page.getByLabel('Line under the categories color').inputValue()) === '#ff0000', 'Line under them unticked and ticked again keeps its red');
+  await page.getByLabel('Tile glow', { exact: true }).check();
+  await page.getByLabel('Tile glow color').fill('#ffd700');
+  await page.getByLabel('Tile glow', { exact: true }).uncheck();
+  await page.getByLabel('Tile glow', { exact: true }).check();
+  assert((await page.getByLabel('Tile glow color').inputValue()) === '#ffd700', 'so does Tile glow, its gold');
+  await page.getByLabel('Tile glow', { exact: true }).uncheck();
   await openSection('Score plates');
   await page.getByRole('combobox', { name: 'Plate corners' }).selectOption('pill');
   // A pill's round ends don't cut the names.
