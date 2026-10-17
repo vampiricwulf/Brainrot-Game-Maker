@@ -48,7 +48,7 @@
   import { isColorTaken, nearKey, nextFreeColor, PLAYER_PALETTE } from '../lib/colors';
   import { announce } from '../lib/announce';
   import { ask } from '../lib/ask.svelte';
-  import { keyedThemeColors, STAGE_KEYS } from '../lib/theme';
+  import { keyedThemeColors, otherStageKey, STAGE_KEYS } from '../lib/theme';
   import ToolLauncher from './host/ToolLauncher.svelte';
   import KeysHelp from './KeysHelp.svelte';
   import Stage from '../lib/Stage.svelte';
@@ -892,8 +892,12 @@
     const key = game.theme?.stageBg ? STAGE_KEYS[game.theme.stageBg] : undefined;
     return key ? session.players.filter((p) => nearKey(p.color, key)) : [];
   });
-  /** The theme's colors that key would make see-through (🎨 Theme says so too). */
-  const keyedTheme = $derived(game.theme ? keyedThemeColors(game.theme) : []);
+  /** Does the game have a Jeopardy board? (Without one, the theme's board-only looks never show.) */
+  const hasBoard = $derived(game.rounds.some(isBoard));
+  /** The theme's colors that key would make see-through (🎨 Theme says so too), of those the game shows. */
+  const keyedTheme = $derived(game.theme ? keyedThemeColors(game.theme, game.theme.stageBg, hasBoard) : []);
+  /** The other key, which both notes offer only when it would leave the theme's colors and every player's alone. */
+  const otherKey = $derived(game.theme ? otherStageKey(game.theme, session.players.map((p) => p.color), hasBoard) : undefined);
 
   const info = $derived(currentClueInfo(session, game));
 
@@ -3989,17 +3993,15 @@
             onraise={game.settings.maxPlayers < MAX_PLAYERS ? raiseMost : undefined}
           />
           {#if keyedOut.length && game.theme?.stageBg}
-            {@const other = game.theme.stageBg === 'green' ? 'magenta' : 'green'}
             <p class="warn small" data-warn="chroma">
               ⚠ {nameList(keyedOut.map((p) => p.name || 'A player'))}’s color is close to the chroma key ({game.theme.stageBg}, 🎨 Theme ›
-              Stage background): OBS would key it out on stream. Pick another color, or a {other} key.
+              Stage background): OBS would key it out on stream. Pick another color{otherKey ? `, or a ${otherKey} key` : ''}.
             </p>
           {/if}
           {#if keyedTheme.length && game.theme.stageBg}
-            {@const other = game.theme.stageBg === 'green' ? 'magenta' : 'green'}
             <p class="warn small" data-warn="chroma-theme">
               ⚠ Some of the theme’s colors are close to the chroma key ({game.theme.stageBg}, 🎨 Theme › Stage background): OBS would
-              make them see-through on stream ({keyedTheme.join(', ').toLowerCase()}). Pick others in 🎨 Theme{keyedThemeColors(game.theme, other).length ? '' : `, or a ${other} key`}.
+              make them see-through on stream ({keyedTheme.join(', ').toLowerCase()}). Pick others in 🎨 Theme{otherKey ? `, or a ${otherKey} key` : ''}.
             </p>
           {/if}
           {#if !session.players.length}

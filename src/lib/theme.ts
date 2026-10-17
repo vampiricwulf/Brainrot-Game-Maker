@@ -1,5 +1,5 @@
 // Board/stage themes (spec §5.7): presets plus per-game overrides, applied as CSS variables.
-import { contrast, mixHex, obsKeyed, textOn, toHex } from './colors';
+import { contrast, mixHex, nearKey, obsKeyed, textOn, toHex } from './colors';
 import { cssUrl } from './links';
 import type { Id } from './model';
 
@@ -200,29 +200,41 @@ export function themeReadability(t: Theme): { values: number | null; names: numb
 
 /**
  * The theme's colors on stream that OBS's Chroma Key would make see-through with this key (the stage background's, by
- * default), by their names on the 🎨 Theme page. None without a key.
+ * default), by their names on the 🎨 Theme page. None without a key. `board` false: a game with no Jeopardy board,
+ * which shows none of the looks only a board has (its category names, glow, borders …).
  */
-export function keyedThemeColors(t: Theme, key: Theme['stageBg'] = t.stageBg): string[] {
+export function keyedThemeColors(t: Theme, key: Theme['stageBg'] = t.stageBg, board = true): string[] {
   if (!key) return [];
-  const shown: [string, string | undefined][] = [
+  // (true: only a Jeopardy board shows it.)
+  const shown: [string, string | undefined, boolean?][] = [
     ['Tiles & slide background', t.tile],
     // (Dimmed played tiles are the tile color, darker; hidden ones are gone.)
-    ['Used tiles', t.usedLook ? undefined : t.tileUsed],
+    ['Used tiles', t.usedLook ? undefined : t.tileUsed, true],
     ['Values', t.value],
-    ['Category names', t.boardText],
+    ['Category names', t.boardText, true],
     ['Text on slides & scores', stageText(t)],
     ['Score bar', t.scoreBarBg],
-    ['Tile glow', t.glow === 'none' ? undefined : t.glow],
+    ['Tile glow', t.glow === 'none' ? undefined : t.glow, true],
     ['Clue text color', clueTextColor(t)],
-    ['Second tile color', t.tilePattern ? t.tile2 : undefined],
-    ['Tile gradient', t.tileGradient],
-    ['Border color', t.tileBorder],
-    ['Category color', t.headerBg],
-    ['Second category color', t.header2],
-    ['Category gradient', t.headerGradient],
-    ['Line under the categories', t.headerLine === 'none' ? undefined : t.headerLine],
+    ['Second tile color', t.tilePattern ? t.tile2 : undefined, true],
+    ['Tile gradient', t.tileGradient, true],
+    ['Border color', t.tileBorder, true],
+    ['Category color', t.headerBg, true],
+    ['Second category color', t.header2, true],
+    ['Category gradient', t.headerGradient, true],
+    ['Line under the categories', t.headerLine === 'none' ? undefined : t.headerLine, true],
   ];
-  return shown.filter(([, c]) => obsKeyed(toHex(c) ?? '', STAGE_KEYS[key])).map(([name]) => name);
+  return shown.filter(([, c, onBoard]) => (board || !onBoard) && obsKeyed(toHex(c) ?? '', STAGE_KEYS[key])).map(([name]) => name);
+}
+
+/**
+ * The other chroma key, to offer when the stage background's would key out a color: only when it would leave the
+ * theme's colors (as keyedThemeColors, `board` the same) and these player colors alone. None without a key.
+ */
+export function otherStageKey(t: Theme, players: string[] = [], board = true): Theme['stageBg'] {
+  if (!t.stageBg) return undefined;
+  const other = t.stageBg === 'green' ? 'magenta' : 'green';
+  return keyedThemeColors(t, other, board).length || players.some((c) => nearKey(c, STAGE_KEYS[other])) ? undefined : other;
 }
 
 /**

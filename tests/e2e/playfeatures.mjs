@@ -4,7 +4,7 @@ import { chromium } from 'playwright-core';
 import { existsSync, mkdirSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { addClassicRounds, playWithPlayers } from './helpers.mjs';
+import { addClassicRounds, editorReady, openGameFile, playWithPlayers } from './helpers.mjs';
 
 const file = resolve(process.env.APP_FILE || 'dist/index.html');
 if (!existsSync(file)) throw new Error('Run `npm run build` first');
@@ -103,6 +103,16 @@ try {
   const themeKeyNote = page.locator('[data-warn="chroma-theme"]');
   await themeKeyNote.waitFor();
   assert((await themeKeyNote.innerText()).includes('see-through on stream (values)'), 'and so does the pre-game screen');
+  // A green player: neither note offers the magenta key, where Classic's blue tiles would go see-through.
+  const p1Color = page.getByLabel('Color for Player 1');
+  const p1Was = await p1Color.inputValue();
+  await p1Color.fill('#00c000');
+  const playerKeyNote = page.locator('[data-warn="chroma"]');
+  await playerKeyNote.waitFor();
+  const playerNote = await playerKeyNote.innerText();
+  assert(playerNote.includes('OBS would key it out on stream. Pick another color.') && !(await themeKeyNote.innerText()).includes('magenta'), `a green player gets a note, and neither note offers the magenta key the tiles would go on (${playerNote})`);
+  await p1Color.fill(p1Was);
+  await playerKeyNote.waitFor({ state: 'detached' });
   const ddNote = page.locator('.actions', { hasText: '⭐ 1 Daily Double not placed' });
   assert((await ddNote.count()) === 1, 'the pre-game screen says, next to Start game, that a Daily Double isn’t placed yet');
   // (Its random pick is the last tile it could take, so the first tile clicked below is an ordinary clue.)
@@ -228,6 +238,32 @@ try {
   await aud.keyboard.press('?');
   await keyList.waitFor({ state: 'detached', timeout: 2000 });
   assert(true, '? there opens it and closes it again');
+
+  // ---------- A game with no Jeopardy board: the pre-game note names only the colors it shows ----------
+  const slidesContext = await browser.newContext({ viewport: { width: 1400, height: 900 } });
+  const slidesPage = watch(await slidesContext.newPage(), 'slides game');
+  await slidesPage.goto(pathToFileURL(file).href);
+  const slidesGame = {
+    id: 'g_slides', version: 2, title: 'Slides only',
+    settings: { allowNegativeScores: true, deductOnWrong: true, defaultTimerSeconds: null, finalTimerSeconds: 30, currencySymbol: '$', rollOffDie: 20, pickerFollowsAward: true, timerAutoStart: false, roundIntro: { titleCard: false, tileFill: false, categoryReveal: 'off' }, maxPlayers: 8 },
+    players: [], rounds: [{ id: 'r_slides', name: 'Show', mode: 'slides', questionSlide: { background: { color: '#223344' }, elements: [] } }],
+    media: [], audio: {}, wheels: [], dice: [], theme: {},
+  };
+  await openGameFile(slidesPage, { name: 'Slides only.json', mimeType: 'application/json', buffer: Buffer.from(JSON.stringify(slidesGame)) });
+  await slidesPage.getByText(/^Opened “/).waitFor();
+  await editorReady(slidesPage);
+  await slidesPage.getByRole('button', { name: '🎨 Theme' }).click();
+  await slidesPage.getByLabel('Stage background (OBS)').selectOption('magenta');
+  await slidesPage.locator('.preset', { hasText: 'Brainrot Neon' }).click();
+  const slidesKeyNote = slidesPage.getByRole('status').filter({ hasText: 'OBS would make these see-through' });
+  await slidesKeyNote.waitFor();
+  assert((await slidesKeyNote.innerText()).includes(': Tiles & slide background, Tile glow.'), 'Brainrot Neon on a magenta key: the Theme page names its tiles and its glow (for every round)');
+  await slidesPage.getByRole('button', { name: '▶ Play' }).click();
+  const slidesPregame = slidesPage.locator('[data-warn="chroma-theme"]');
+  await slidesPregame.waitFor();
+  const slidesNote = await slidesPregame.innerText();
+  assert(slidesNote.includes('see-through on stream (tiles & slide background).'), `with no Jeopardy board, the pre-game screen leaves out the glow only a board has (${slidesNote})`);
+  await slidesContext.close();
 
   assert(!errors.length, 'no page errors' + (errors.length ? ': ' + errors.join(' | ') : ''));
   console.log('playfeatures e2e passed');

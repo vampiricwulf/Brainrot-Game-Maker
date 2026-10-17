@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { contrast } from './colors';
-import { altTile, EXTRA_LOOKS, headerBackground, isThemeColor, isThemeFont, keyedThemeColors, lookNumber, presetEdited, presetTheme, stageText, themeReadability, themeStyle, tileBackground, type Theme } from './theme';
+import { altTile, EXTRA_LOOKS, headerBackground, isThemeColor, isThemeFont, keyedThemeColors, lookNumber, otherStageKey, presetEdited, presetTheme, stageText, themeReadability, themeStyle, tileBackground, type Theme } from './theme';
 import { migrateGame, newGame } from './model';
 import { categoryBox } from './boardfit';
 
@@ -213,5 +213,36 @@ describe('colors OBS would key out', () => {
     expect(keyedThemeColors(t)).toEqual(['Used tiles', 'Tile glow', 'Line under the categories']);
     expect(keyedThemeColors({ ...t, usedLook: 'dim', glow: 'none', tilePattern: 'rows', headerLine: 'none' })).toEqual(['Second tile color']);
     expect(keyedThemeColors({ ...t, tileUsed: 'rgb(0, 200, 0)', clueColor: '#33ee33' }, 'green')).toEqual(['Used tiles', 'Tile glow', 'Clue text color', 'Line under the categories']);
+  });
+
+  it('a game with no Jeopardy board: only the colors its rounds show', () => {
+    const neon = presetTheme('neon');
+    expect(keyedThemeColors(neon, 'green', false)).toEqual(['Values']);
+    expect(keyedThemeColors(neon, 'magenta', false)).toEqual(['Tiles & slide background']);
+    const t: Theme = { ...presetTheme('dark'), stageBg: 'green', tileUsed: '#00ff00', glow: '#00ff00', tilePattern: 'rows', tile2: '#00ff00', tileGradient: '#00ff00', tileBorder: '#00ff00' };
+    expect(keyedThemeColors({ ...t, boardText: '#00ff00', headerBg: '#00ff00', header2: '#00ff00', headerGradient: '#00ff00', headerLine: '#00ff00' }, 'green', false)).toEqual([]);
+    expect(keyedThemeColors({ ...t, scoreBarBg: '#00ff00', clueColor: '#00ff00' }, 'green', false)).toEqual(['Score bar', 'Clue text color']);
+  });
+
+  it('offers the other key only when it leaves the theme’s colors and the players’ alone', () => {
+    const neon = presetTheme('neon');
+    expect(otherStageKey(neon)).toBeUndefined();
+    // Neon's tiles go on magenta (and its glow), its values on green.
+    expect(otherStageKey({ ...neon, stageBg: 'green' })).toBeUndefined();
+    expect(otherStageKey({ ...neon, stageBg: 'green' }, [], false)).toBeUndefined();
+    expect(otherStageKey({ ...neon, stageBg: 'magenta' }, [], false)).toBeUndefined();
+    const dark: Theme = { ...presetTheme('dark'), stageBg: 'green', value: '#39ff14' };
+    expect(otherStageKey(dark)).toBe('magenta');
+    expect(otherStageKey(dark, ['#00c000', '#4363d8'])).toBe('magenta');
+    // A magenta player would be keyed out there.
+    expect(otherStageKey(dark, ['#4363d8', '#f032e6'])).toBeUndefined();
+    expect(otherStageKey({ ...dark, stageBg: 'magenta' }, ['#00c000'])).toBeUndefined();
+    // Classic's blue tiles go on magenta.
+    expect(otherStageKey({ ...presetTheme('classic'), stageBg: 'green' })).toBeUndefined();
+    // A pink glow goes on magenta, but only a board has one.
+    const glow: Theme = { ...neon, stageBg: 'green', tile: '#202020', glow: '#ff00e6' };
+    expect(keyedThemeColors(glow, 'magenta')).toEqual(['Tile glow']);
+    expect(otherStageKey(glow)).toBeUndefined();
+    expect(otherStageKey(glow, [], false)).toBe('magenta');
   });
 });

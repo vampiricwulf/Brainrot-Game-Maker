@@ -27,6 +27,7 @@
     keyedThemeColors,
     LOOK_RANGES,
     lookNumber,
+    otherStageKey,
     stageText,
     themeReadability,
     type Ranged,
@@ -84,7 +85,7 @@
   const hard = (r: number | null): r is number => r !== null && r < 3;
   /** The colors OBS would make see-through with the stage background's chroma key (a note offers the other key when it wouldn't). */
   const keyed = $derived(keyedThemeColors(t));
-  const otherKey = $derived(t.stageBg === 'green' ? 'magenta' : 'green');
+  const otherKey = $derived(otherStageKey(t));
 
   const COLORS: [keyof typeof t, string][] = [
     ['tile', 'Tiles & slide background'],
@@ -395,7 +396,7 @@
     {#if keyed.length}
       <p class="warn small" role="status">
         ⚠ With a {t.stageBg} key, OBS would make these see-through on stream: {keyed.join(', ')}. Pick colors further from
-        {t.stageBg}{keyedThemeColors(t, otherKey).length ? '' : `, or the ${otherKey} key`}.
+        {t.stageBg}{otherKey ? `, or the ${otherKey} key` : ''}.
       </p>
     {/if}
     <p class="muted small">
