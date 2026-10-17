@@ -360,7 +360,7 @@
   const unsentToGo = $derived(cardsOn ? unsent.filter((c) => cardRecipients(session, s, c).length) : []);
   /** 📤 Send and start's send, made on a copy of the session. */
   const sendAll = (t: Session) => sendCards(t, t.partner!, unsentToGo);
-  /** They don't fit in the buzzer room (nor does any one that doesn't): said in the panel, not only in a tooltip. */
+  /** Not all of them fit in the buzzer room (so whenever a row's 📤 Send won't): said under the list, not only in tooltips. */
   const allFull = $derived(!verdict.judged && unsentToGo.length > 0 && roomCardsFull(game, session, sendAll));
   /** ⇡ Get it ready now: the files of the cards not sent yet go up to the buzzer room (no phone gets them until they're sent). */
   function getReady(): void {
