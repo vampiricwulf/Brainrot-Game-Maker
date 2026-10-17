@@ -234,6 +234,26 @@ describe('a tile’s own cards (🤫 Just you, 💡 Insider tip)', () => {
     }
     expect(hostCards(g, session, { files: {} })!.map((c) => c.text)).toEqual(['PARTNER-card']);
   });
+
+  it('the room gets them in the order sent, whichever kind each is (a phone shows the newest first); ↻ Send again makes one the newest', () => {
+    const { g, session } = setup();
+    const r = g.rounds[0] as BoardRound;
+    const pc = r.categories[1].clues[0];
+    pc.type = 'partner';
+    setPartnerGame(pc, 'describe');
+    setSlideText(pc.cards![0], 'PARTNER-card');
+    const old = sendCard(g, session, { to: [{ seat: 'b' }], content: { slide: quickSlide('OLD-role') }, until: 'host' }, 1000)!;
+    sendCard(g, session, { to: [{ seat: 'b' }], content: { slide: quickSlide('WILD-card') }, until: 'host' }, 2000);
+    openClue(session, { round: 0, cat: 1, row: 0 }, g);
+    setPartner(session, session.partner!, 'b', 'wheel');
+    sendCards(session, session.partner!, pc.cards!, 3000);
+    const texts = () => hostCards(g, session, { files: {} })!.map((c) => c.text);
+    expect(texts()).toEqual(['OLD-role', 'WILD-card', 'PARTNER-card']);
+    sendCard(g, session, { to: [{ seat: 'c' }], content: { slide: quickSlide('TIP-later') }, until: 'host' }, 4000);
+    expect(texts()).toEqual(['OLD-role', 'WILD-card', 'PARTNER-card', 'TIP-later']);
+    sendCardAgain(g, session, old.id, 5000);
+    expect(texts()).toEqual(['WILD-card', 'PARTNER-card', 'TIP-later', 'OLD-role']);
+  });
 });
 
 describe('one of the editor’s 🤫 Cards', () => {

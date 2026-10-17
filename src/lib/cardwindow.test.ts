@@ -110,6 +110,22 @@ describe('what the card window shows', () => {
     session.revealed = true;
     expect(windowCards(g, session, 'b')[0].open).toBe(false);
   });
+
+  it('a partner clue’s sends and the cards out together, newest first by when each went', () => {
+    const { g, session } = setup();
+    const pc = (g.rounds[0] as BoardRound).categories[1].clues[0];
+    pc.type = 'partner';
+    setPartnerGame(pc, 'describe');
+    setSlideText(pc.cards![0], 'PARTNER-card');
+    sendCard(g, session, { to: [{ seat: 'b' }], content: { slide: quickSlide('OLD-role') }, until: 'host' }, 1000);
+    sendCard(g, session, { to: [{ seat: 'b' }], content: { slide: quickSlide('WILD-card') }, until: 'host' }, 2000);
+    openClue(session, { round: 0, cat: 1, row: 0 }, g);
+    setPartner(session, session.partner!, 'b', 'wheel');
+    sendCards(session, session.partner!, pc.cards!, 3000);
+    expect(windowCards(g, session, 'b').map((c) => c.text)).toEqual(['PARTNER-card', 'WILD-card', 'OLD-role']);
+    sendCard(g, session, { to: [{ seat: 'b' }], content: { slide: quickSlide('TIP-later') }, until: 'host' }, 4000);
+    expect(windowCards(g, session, 'b').map((c) => c.text)).toEqual(['TIP-later', 'PARTNER-card', 'WILD-card', 'OLD-role']);
+  });
 });
 
 // ---------- The card window's own channel ----------

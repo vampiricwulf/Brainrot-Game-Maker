@@ -380,13 +380,23 @@ function dealLines(role: string, pc: { title?: string; text?: string }): Pick<Ho
   return { title: `You’re the ${clip(role, CARD_ROLE_MAX)}`, ...(text ? { text } : {}) };
 }
 
+/** When a card on the wire was sent: every id ends in its send's time (cardId, sentCardId). */
+const sentAt = (wireId: string): number => Number(sendOf(wireId).split(':').pop()) || 0;
+
 /**
- * Every 🤫 card the buzzer room gets now: the open partner clue's sends (partnerCards) and the cards sent with
- * 🤫 Send a card… or from a tile's panel (sessionCards), at most CARDS_MAX (the newest) in CARDS_BYTES. Null when none
- * are out.
+ * The open partner clue's sends (partnerCards) and the cards out (sessionCards) together, the oldest send first, as the
+ * room gets them (a phone shows them newest first, whichever kind each is). One send's parts stay together.
+ */
+function roomCards(game: Game, session: Session, room: PhoneCan): HostCard[] {
+  return [...(partnerCards(game, session, room) ?? []), ...(sessionCards(game, session, room) ?? [])].sort((a, b) => sentAt(a.id) - sentAt(b.id));
+}
+
+/**
+ * Every 🤫 card the buzzer room gets now: the open partner clue's sends and the cards sent with 🤫 Send a card… or from
+ * a tile's panel, in the order sent (roomCards), at most CARDS_MAX (the newest) in CARDS_BYTES. Null when none are out.
  */
 export function hostCards(game: Game, session: Session, room: PhoneCan): HostCard[] | null {
-  const all = [...(partnerCards(game, session, room) ?? []), ...(sessionCards(game, session, room) ?? [])];
+  const all = roomCards(game, session, room);
   return all.length ? fitCards(all.slice(-CARDS_MAX)) : null;
 }
 
@@ -397,7 +407,7 @@ export function hostCards(game: Game, session: Session, room: PhoneCan): HostCar
  * window, say). Their ids on the wire.
  */
 export function cardsLeftOff(game: Game, session: Session): string[] {
-  const all = [...(partnerCards(game, session, { files: {} }) ?? []), ...(sessionCards(game, session, { files: {} }) ?? [])];
+  const all = roomCards(game, session, { files: {} });
   return all.slice(0, Math.max(0, all.length - CARDS_MAX)).map((c) => c.id);
 }
 

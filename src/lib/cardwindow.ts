@@ -81,13 +81,14 @@ export function windowContent(game: Pick<Game, 'media'>, slide: Slide): Pick<Win
 const wholeSeat = (to: CardTo[], seat: Id): CardTo[] => to.filter((t) => t.seat === seat && !t.member && !t.except?.length);
 
 /**
- * The cards the card window shows for one player, newest first: the open partner clue's sends to their seat and the
- * cards out to it (🤫 Send a card…, a tile's panel, an action's), as they went (a card edited in the editor since is
- * left out until ↻ Send again, as on the phones). Never anything the host didn't send to that player.
+ * The cards the card window shows for one player, newest first (by when each went, whichever kind, as on a phone): the
+ * open partner clue's sends to their seat and the cards out to it (🤫 Send a card…, a tile's panel, an action's), as
+ * they went (a card edited in the editor since is left out until ↻ Send again, as on the phones). Never anything the
+ * host didn't send to that player.
  */
 export function windowCards(game: Game, session: Session, seat: Id): WindowCard[] {
   if (!session.players.some((p) => p.id === seat)) return [];
-  const out: WindowCard[] = [];
+  const out: { at: number; card: WindowCard }[] = [];
   const s = session.partner;
   const clue = session.phase === 'clue' ? currentClueInfo(session, game)?.clue : undefined;
   if (s?.sent?.length && clue && clue.id === s.clue) {
@@ -97,15 +98,18 @@ export function windowCards(game: Game, session: Session, seat: Id): WindowCard[
       const card = cardSlides(clue).find((c) => c.id === send.card);
       const to = wholeSeat(send.to, seat);
       if (!card || cardHash(card) !== send.hash || !to.length) continue;
-      out.push({ id: cardId(clue.id, send), ...cardLines(rules, s, card, to, nameOf), ...windowContent(game, card), open: !session.revealed });
+      out.push({ at: send.at, card: { id: cardId(clue.id, send), ...cardLines(rules, s, card, to, nameOf), ...windowContent(game, card), open: !session.revealed } });
     }
   }
   for (const c of cardsOut(game, session)) {
     const slide = sentSlide(game, c);
     if (!slide || sentState(game, c) !== 'sent' || !wholeSeat(c.to, seat).length) continue;
-    out.push({ id: sentCardId(c), ...(c.role ? { role: c.role } : {}), ...windowContent(game, slide), open: c.until !== 'tile' || !session.revealed });
+    out.push({ at: c.at, card: { id: sentCardId(c), ...(c.role ? { role: c.role } : {}), ...windowContent(game, slide), open: c.until !== 'tile' || !session.revealed } });
   }
-  return out.reverse();
+  return out
+    .sort((a, b) => a.at - b.at)
+    .reverse()
+    .map((x) => x.card);
 }
 
 /** The files from this computer the cards show (media ids, each once): only these go to the card window. */
