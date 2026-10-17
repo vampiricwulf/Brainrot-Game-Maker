@@ -404,6 +404,8 @@ export function shownSpace(bs: BoardGameState, playerId: Id, now: number): Id | 
 /** A board space's radius (BoardSpaces draws them 116px across), and how far a token may tuck in over its rim. */
 const SPACE_R = 58;
 const TUCK = 12;
+/** About how far the turn banner reaches into the board on stream, from its edge (board px, with the stats strip in). */
+const LABELS_H = 110;
 
 /** How big a token is (its radius) with `n` on one space: smaller as the crowd grows. */
 export function tokenRadius(n: number): number {
@@ -494,7 +496,17 @@ export function boardGameProblems(game: Game, round: BoardGameRound, name: strin
   if (moverDiceGone(game, round)) out.push({ text: `${name}: the movement dice no longer exist (pick others in Move by)`, tab, level: 'warn', place: at() });
   if (moverDiceUnknown(round))
     out.push({ text: `${name}: Move by “${round.mover.kind === 'dice' ? round.mover.dice : ''}” isn’t dice the app knows: it rolls a d6 (try “2d6”, or pick saved dice)`, tab, level: 'warn', place: at() });
-  // (No space is ever under the stats strip: in play the board is scaled into the room the strip leaves.)
+  // (No space is ever under the stats strip: in play the board is scaled into the room the strip leaves.) The turn
+  // banner, the win notes and the zones' labels do go over the board, along the top (the bottom, with the strip at the top).
+  const low = game.theme?.scoreBar === 'top';
+  const under = round.spaces.filter((s) => (low ? SLIDE_H - s.y : s.y) - SPACE_R < LABELS_H);
+  if (under.length)
+    out.push({
+      text: `${name}: ${nameList(under.map((s) => s.name), 3)} can be hidden under the turn banner on stream (move ${under.length === 1 ? 'it' : 'them'} ${low ? 'up' : 'down'} a little)`,
+      tab,
+      level: 'info',
+      place: at(under[0]),
+    });
   // A deleted space, zone, item… (or nothing chosen).
   const nowhere = round.spaces.flatMap((s) => [...(s.onPass ?? []), ...(s.onLand ?? [])].filter((a) => actionProblem(game, a, { board: round })).map(() => s));
   if (nowhere.length) {

@@ -286,7 +286,8 @@ hidden objects. Use the separate audience window when that matters.
   its shape, and one drag is one undo step.
 
 **Board game rounds** have these controls (as in RPG rounds, the board is scaled into the room above the stats
-strip, so no space is ever under it):
+strip, so no space is ever under it; the turn banner does go over the board's top edge, and the editor's checklist
+notes a space up there):
 
 - Roll (or spin the movement wheel) and move, picking the way at each fork. A wheel's slice or a die's own face moves
   as far as the number it names ("3", "Move 3"; "Back 2" moves back). Moving back goes back the way the player came.

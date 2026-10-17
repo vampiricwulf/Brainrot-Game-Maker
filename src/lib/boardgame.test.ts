@@ -397,6 +397,22 @@ describe('board game: what spaces show', () => {
     round.spaces[3].name = 'Finish';
     expect(boardGameProblems(game, round, 'Board', 1).some((p) => p.text.includes('stats strip'))).toBe(false);
   });
+
+  it('notes spaces the turn banner can cover on stream: along the top, or the bottom with the scores at the top', () => {
+    const { game, round } = setup();
+    // The new board's loop starts clear of it.
+    expect(boardGameProblems(game, round, 'Board', 1)).toEqual([]);
+    round.spaces[1].y = 60;
+    expect(boardGameProblems(game, round, 'Board', 1)).toEqual([
+      { text: 'Board: “Space 2” can be hidden under the turn banner on stream (move it down a little)', tab: 1, level: 'info', place: { tab: 'round', round: round.id, part: { kind: 'space', space: round.spaces[1].id } } },
+    ]);
+    game.theme.scoreBar = 'top';
+    round.spaces[1].y = 300;
+    expect(boardGameProblems(game, round, 'Board', 1)).toEqual([]);
+    round.spaces[7].y = 1040;
+    round.spaces[8].y = 1000;
+    expect(boardGameProblems(game, round, 'Board', 1).map((p) => p.text)).toEqual(['Board: “Space 8” and “Space 9” can be hidden under the turn banner on stream (move them up a little)']);
+  });
 });
 
 describe('board game editor: the arrow keys', () => {

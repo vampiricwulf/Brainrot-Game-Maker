@@ -13,6 +13,9 @@ in plain words for the people who make and host games. Anything committed but no
 
 ## Unreleased
 
+### Added
+- The editor's checklist notes a board-game space so near the top of the board that the turn banner, the win notes or a zone's label can cover it on stream (near the bottom, when the scores are at the top), and says to move it down (or up) a little.
+
 ### Fixed
 - A board space's buttons (💯 score, 📊 stat, 🎒 item, 📍 Send to…) said "Host picks who" in their Who box, though they always go to the player they're for: whoever landed there or passes it (or the players picked on the space's card). The box now says "Whoever landed there" or "Whoever passes it"; to have the host pick, choose "Selected players".
 - Board games that move by saved dice with faces of their own move by what a face says: one reading “Back 2” moves the player back 2, as viewers see, instead of forward 5 (its place on the die). A face with no number still moves by its place.
