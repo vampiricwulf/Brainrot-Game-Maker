@@ -469,7 +469,8 @@ export function dealFullText(game: Game, session: Session, go: (trial: Session) 
  * Why a send is refused when the room hasn't room for it (the button's title, and the toast). `go`: the send, as
  * roomCardsFull got it (without it, one card). A 🎭 deal's cards and the open partner clue's count too, though the list
  * of cards out leaves them off: then it says how many are whose. A send of more than one card says how many it sends,
- * and how many to take back.
+ * and how many to take back, and so does one card when more than the phones hold are out (sent to the 🪟 card window
+ * before the room took cards, say).
  */
 export function cardsFullText(game: Game, session: Session, go?: (trial: Session) => void): string {
   const dealAll = cardsOut(game, session).filter((c) => c.deal).length;
@@ -479,14 +480,18 @@ export function cardsFullText(game: Game, session: Session, go?: (trial: Session
   const now = roomCardCount(game, session);
   const whose = ofThem(dealAll, partnerCount(game, session));
   const add = go ? roomCardsAfter(game, session, go) - now : 1;
+  const need = Math.max(1, now + add - CARDS_MAX);
   if (add > 1) {
-    const need = now + add - CARDS_MAX;
     // (More than the phones hold by itself: taking cards back can't make room for it.)
     const then = need > now ? 'send fewer at once' : `✖ Take ${need} back first${dealAll ? ' (the deal’s go together, in 🎭 Deal…)' : ''}`;
     return `${now} card${now === 1 ? ' is' : 's are'} out on the phones${whose}, and this sends ${add}: they hold ${CARDS_MAX} at once, all phones together, so ${then}`;
   }
-  if (!dealAll) return `${CARDS_MAX} cards are out on the phones${whose}: ✖ Take one back first`;
-  return `${CARDS_MAX} cards are out on the phones${whose}: ✖ Take ${dealAll === 1 ? 'it' : 'them'} back in 🎭 Deal…${now > dealAll ? ', or take back another one' : ''}`;
+  // (Refused, at least as many as the phones hold are out.)
+  const out = `${Math.max(now, CARDS_MAX)} cards are out on the phones${whose}`;
+  if (!dealAll) return `${out}: ✖ Take ${need === 1 ? 'one' : need} back first`;
+  // (Taking the deal's back isn't enough when more than it are to go.)
+  if (dealAll < need) return `${out}: ✖ Take ${need} back first (the deal’s go together, in 🎭 Deal…)`;
+  return `${out}: ✖ Take ${dealAll === 1 ? 'it' : 'them'} back in 🎭 Deal…${now > dealAll ? `, or take back ${need === 1 ? 'another one' : `${need} others`}` : ''}`;
 }
 
 /** The last bit of a card's id on the wire for each part, when a send goes as one card per part (partnerCards). */

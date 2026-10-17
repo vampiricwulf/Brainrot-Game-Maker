@@ -368,8 +368,27 @@ describe('📤 sending a deal: only when the host confirms, one card per player,
     for (let i = 0; i < CARDS_MAX - 6; i++) sendCard(g, session, { to: [{ seat: 'a' }], content: { slide: quickSlide(`c${i}`) }, until: 'host' });
     expect(roomCardsFull(g, session)).toBe(true);
     expect(cardsFullText(g, session)).toBe(`${CARDS_MAX} cards are out on the phones, 6 of them the 🎭 deal’s: ✖ Take them back in 🎭 Deal…, or take back another one`);
-    session.cards = session.cards!.filter((c) => c.deal);
-    expect(cardsFullText(g, session)).toBe(`${CARDS_MAX} cards are out on the phones, 6 of them the 🎭 deal’s: ✖ Take them back in 🎭 Deal…`);
+  });
+
+  it('more cards out than the phones hold (shown in the 🪟 card window before the room took cards): one card’s refusal counts them all, and how many to take back', () => {
+    const { g, session } = dealt();
+    const quick = (n: number) => {
+      for (let i = 0; i < n; i++) sendCard(g, session, { to: [{ seat: 'c' }], content: { slide: quickSlide(`w${i}`) }, until: 'host' });
+    };
+    quick(CARDS_MAX + 2);
+    expect(roomCardsFull(g, session)).toBe(true);
+    expect(cardsFullText(g, session)).toBe(`${CARDS_MAX + 2} cards are out on the phones: ✖ Take 3 back first`);
+    session.cards = session.cards!.slice(1);
+    expect(cardsFullText(g, session)).toBe(`${CARDS_MAX + 1} cards are out on the phones: ✖ Take 2 back first`);
+    session.cards = session.cards!.slice(1);
+    expect(cardsFullText(g, session)).toBe(`${CARDS_MAX} cards are out on the phones: ✖ Take one back first`);
+    // With the deal's out too: taking those back, or as many others.
+    session.cards = session.cards!.slice(4);
+    sendDeal(g, session, 'host', 1000);
+    expect(cardsFullText(g, session)).toBe(`${CARDS_MAX + 2} cards are out on the phones, 6 of them the 🎭 deal’s: ✖ Take them back in 🎭 Deal…, or take back 3 others`);
+    // More to go than the deal's: they aren't enough by themselves.
+    quick(4);
+    expect(cardsFullText(g, session)).toBe(`${CARDS_MAX + 6} cards are out on the phones, 6 of them the 🎭 deal’s: ✖ Take 7 back first (the deal’s go together, in 🎭 Deal…)`);
   });
 
   it('a deal that wouldn’t fit: its refusal counts the cards out, what the deal adds, and how many to take back, sent or not', () => {
