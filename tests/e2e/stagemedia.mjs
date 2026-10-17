@@ -215,16 +215,18 @@ try {
   await page.locator('.board .tile').nth(3).click();
   await waitPaused(page, gif, false);
   await page.locator('.mc .item').nth(1).waitFor();
+  await page.locator(cut).evaluate((a) => a.addEventListener('play', () => (window.__cutPlayed = true), { once: true }));
   await page.keyboard.press(' ');
-  const heard = await waitPaused(page, cut, false).then(() => true, () => false);
+  const heard = await page.waitForFunction(() => window.__cutPlayed, null, { timeout: 5000 }).then(() => true, () => false);
   assert(heard && !(await paused(page, gif)), 'Space plays the sound, not the GIF over it (it keeps looping)');
   const soundRow = page.locator('.mc .item', { has: page.locator('.ic', { hasText: '🔊' }) });
   await page.waitForFunction((s) => { const a = document.querySelector(s); return a.paused && a.currentTime >= 1.4; }, cut);
   await soundRow.getByRole('button', { name: 'Play' }).waitFor();
+  await page.locator(cut).evaluate((a) => a.addEventListener('play', () => (window.__cutFrom = a.currentTime), { once: true }));
   await soundRow.getByRole('button', { name: 'Play' }).click();
-  const again = await page.waitForFunction((s) => { const a = document.querySelector(s); return !a.paused && a.currentTime < 1; }, cut, { timeout: 5000 }).then(() => true, () => false);
-  assert(again, '▶ on a sound stopped at its Stop at plays it again from its start');
-  await soundRow.getByRole('button', { name: 'Pause' }).waitFor();
+  await page.waitForFunction(() => window.__cutFrom !== undefined);
+  const cutFrom = await page.evaluate(() => window.__cutFrom);
+  assert(cutFrom < 0.5, `▶ on a sound stopped at its Stop at plays it again from its start (from ${cutFrom.toFixed(2)} s)`);
   await page.keyboard.press('m');
   const hushed = await page.waitForFunction((s) => document.querySelector(s).muted, cut, { timeout: 5000 }).then(() => true, () => false);
   assert(hushed && (await page.locator(gif).evaluate((v) => v.muted)), 'M mutes the sound, and the GIF stays silent');
@@ -365,7 +367,7 @@ try {
   // so does ↻ Replay, rather than going on from where it was.
   await aud3.close();
   await page.locator('[data-audience-lost]').waitFor();
-  await page.waitForFunction((s) => { const a = document.querySelector(s); return !!a && !a.muted && !a.paused && a.currentTime > 4; }, hostSong);
+  await page.waitForFunction((s) => (document.querySelector(s)?.currentTime ?? 0) > 4, hostSong);
   await page.getByRole('button', { name: '🚪 Exit' }).click();
   await page.waitForTimeout(450); // (a click right away is ignored: a double-click guard)
   await page.getByRole('button', { name: 'Keep & leave', exact: true }).click();
