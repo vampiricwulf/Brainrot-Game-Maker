@@ -99,10 +99,10 @@ movement dice are kept by the dice themselves, so renaming them in 🎡 Wheels, 
 Other editor tabs:
 
 - 🔊 **Sounds**: the sounds played on stream (right, wrong, dice, wheel, buzz…): preview, replace or switch each off.
-- 🎨 **Theme**: presets, colors, fonts and background images. **💾 Save as new theme…** keeps a look in My themes (in
-  this browser, or on this computer in the desktop app) for any game; **⬇ Export theme** (a `.brainrot-theme` file)
-  or **📋 Copy theme code** shares it, and **📂 Import theme…** / **⌨ Paste theme code…** show someone else's on your
-  board before you use or keep it.
+- 🎨 **Theme**: presets, colors, fonts (your own font file too: Fonts › Your own font file) and background images.
+  **💾 Save as new theme…** keeps a look in My themes (in this browser, or on this computer in the desktop app) for any
+  game; **⬇ Export theme** (a `.brainrot-theme` file) or **📋 Copy theme code** shares it, and **📂 Import theme…** /
+  **⌨ Paste theme code…** show someone else's on your board before you use or keep it.
 - 🎡 **Wheels, Dice & Deals**: weighted wheels, custom dice and 🎭 deals (a secret part for everyone). Each wheel or
   dice outcome can carry a score effect or action buttons.
 - 🤫 **Cards**: private cards made before the show (words, pictures, GIFs, videos, sounds or a link on each), each with

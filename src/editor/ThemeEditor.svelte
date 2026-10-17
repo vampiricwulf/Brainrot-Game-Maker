@@ -13,7 +13,7 @@
   import { referenceLook, themeOrigin } from '../lib/themesource';
   import { copyText } from '../play/standings';
   import { untrack } from 'svelte';
-  import { fontChoices } from '../lib/fonts';
+  import { fontChoices, uploadedFamily } from '../lib/fonts';
   import { imgFallback, mediaUrls } from '../lib/media.svelte';
   import { newLive } from '../lib/live';
   import { isBoard, newRound, roundName } from '../lib/model';
@@ -48,7 +48,10 @@
   const game = $derived(app.game);
   const t = $derived(game.theme);
   const fonts = $derived(fontChoices(game));
-  let picking = $state<'bg' | 'banner' | null>(null);
+  /** The picture or font file being chosen (a font: for the category names or the values). */
+  let picking = $state<'bg' | 'banner' | 'boardFont' | 'valueFont' | null>(null);
+  /** A font file put on the category names or the values (listed in every font box from then on). */
+  const useFont = (k: 'boardFont' | 'valueFont', id: string) => set(k, `'${uploadedFamily(id)}', sans-serif`);
 
   // The preview shows one of the game's rounds as it plays (the one last open, else the first), or a clue; a sample
   // board while the game has no rounds (not added to the game).
@@ -254,6 +257,15 @@
           {#if !fonts.some((f) => f.css === t.valueFont)}<option value={t.valueFont}>{t.valueFont.split(',')[0]}</option>{/if}
         </select>
       </label>
+    </div>
+    <div class="row own-font" role="group" aria-label="Your own font file">
+      <span class="muted small" title="A .ttf, .otf or .woff file, kept with the game: then it's in every font list here">Your own font file:</span>
+      <button class="small" onclick={() => (picking = 'boardFont')} use:mediaDrop={{ kind: 'font', onpick: (id) => useFont('boardFont', id) }}>＋ Category names…</button>
+      <button class="small" onclick={() => (picking = 'valueFont')} use:mediaDrop={{ kind: 'font', onpick: (id) => useFont('valueFont', id) }}>＋ Values & scores…</button>
+      {#if picking === 'boardFont' || picking === 'valueFont'}
+        {@const k = picking}
+        <MediaPicker kind="font" onpick={(id) => (useFont(k, id), (picking = null))} onclose={() => (picking = null)} />
+      {/if}
     </div>
     </details>
 
@@ -597,6 +609,9 @@
   }
   .tip {
     margin: 16px 0 0;
+  }
+  .own-font {
+    margin-top: 8px;
   }
   /* A picture's thumbnail: a wide banner shrinks (whole, letterboxed) rather than pushing its buttons out of the column,
      under the preview. */

@@ -88,6 +88,25 @@ try {
   await clueWarn.waitFor({ state: 'detached' });
   assert((await bg(preview, 1, 0)) === CLASSIC_TILE && (await page.getByLabel('Clue text color').inputValue()) === '#ffffff', 'Ctrl+Z twice: Classic and the clues’ own color again');
 
+  // ---------- Fonts: your own font file ----------
+  const namesFont = page.getByRole('combobox', { name: 'Category names' });
+  const oswald = await namesFont.inputValue();
+  await page.getByRole('button', { name: '＋ Category names…' }).click();
+  const fontPicker = page.getByRole('dialog', { name: 'Choose font' });
+  const [fontChooser] = await Promise.all([page.waitForEvent('filechooser'), fontPicker.getByRole('button', { name: '⬆ Upload font file…' }).click()]);
+  await fontChooser.setFiles({ name: 'Channel Font.woff2', mimeType: 'font/woff2', buffer: readFileSync(resolve('node_modules/@fontsource/press-start-2p/files/press-start-2p-latin-400-normal.woff2')) });
+  await fontPicker.waitFor({ state: 'detached' });
+  await page.waitForFunction(() => /^'jb-\w+', sans-serif$/.test(document.querySelector('label[data-k="boardFont"] select').value));
+  const ownFont = await namesFont.inputValue();
+  assert((await namesFont.locator('option:checked').innerText()) === 'Channel Font (uploaded)', `＋ Category names… (Your own font file) uploads a font file and puts it on the category names (${ownFont})`);
+  const previewFont = await preview.locator('.board .header').first().evaluate((e) => getComputedStyle(e).fontFamily);
+  assert(previewFont.includes(ownFont.split(',')[0].replace(/'/g, '')), `the preview's category names are in it (${previewFont})`);
+  const listed = (name) => page.getByRole('combobox', { name }).locator('option', { hasText: 'Channel Font (uploaded)' }).count();
+  assert((await listed('Values & scores')) === 1 && (await listed('Clue text font')) === 1, 'and it is listed for the values and the clue text too');
+  await page.keyboard.press('Control+z');
+  await page.waitForFunction((was) => document.querySelector('label[data-k="boardFont"] select').value === was, oswald);
+  assert((await listed('Values & scores')) === 0, 'Ctrl+Z takes the file and its use back in one step');
+
   // ---------- Alternating tiles and categories ----------
   await openSection('Tiles');
   await page.getByRole('combobox', { name: 'Alternating tiles' }).selectOption('checker');
