@@ -88,8 +88,8 @@
   const sentOf = (card: ClueCard): SentCard | undefined =>
     [...cardsOut(game, session)].reverse().find((c) => 'clue' in c.content && c.content.clue === holder.id && c.content.card === card.id);
 
-  /** The buzzer room has all the cards it takes: ✖ Take one back first. */
-  const full = $derived(roomCardsFull(game, session));
+  /** Phones get cards, and the buzzer room has all it takes: ✖ Take one back first (the 🪟 card window has no limit). */
+  const full = $derived(cardsOn && roomCardsFull(game, session));
   /** The cards out that never reach a phone (their ids on the wire): more than the room takes (see CardsOut). */
   const leftOff = $derived(new Set(cardsOn ? cardsLeftOff(game, session) : []));
   /**
@@ -97,8 +97,9 @@
    * to the card window's player alone (no phones get cards).
    */
   function send(card: ClueCard, i: number, to = recipients(card)): void {
-    if (roomCardsFull(game, session)) return toast(cardsFullText(game, session), 4000);
-    const c = sendCard(game, session, { to, content: { clue: holder.id, card: card.id }, until }, Date.now(), roomCardsFull(game, session));
+    const over = cardsOn && roomCardsFull(game, session);
+    if (over) return toast(cardsFullText(game, session), 4000);
+    const c = sendCard(game, session, { to, content: { clue: holder.id, card: card.id }, until }, Date.now(), over);
     if (!c) return toast(`Choose who gets ${clueCardWords(card, i)} first`);
     announce(`${clueCardWords(card, i, true)} ${cardsOn ? 'sent to' : 'shown in the 🪟 card window to'} ${sentToText(session, c.to, teams)}`);
   }
@@ -184,7 +185,7 @@
         <button class="ghost small" onclick={() => ontakeback(out.id)} aria-label="Take {w} back" title="Takes it out of the 🪟 card window">✖ Take back</button>
       {:else if windowSeat(to)}
         {@const seat = windowSeat(to)!}
-        <button class="small" onclick={() => send(card, i, [{ seat }])} disabled={full} aria-label="Show {w} to {nameOf(seat)}" title={full ? cardsFullText(game, session) : `Shows it in the 🪟 card window, to ${nameOf(seat)} alone, ${lasts}`}>🪟 Show {nameOf(seat)}</button>
+        <button class="small" onclick={() => send(card, i, [{ seat }])} aria-label="Show {w} to {nameOf(seat)}" title="Shows it in the 🪟 card window, to {nameOf(seat)} alone, {lasts}">🪟 Show {nameOf(seat)}</button>
       {/if}
       {#if copying}
         <button

@@ -311,8 +311,8 @@
   const windowName = $derived(windowTo.length ? sentToText(session, windowTo, teams) : '');
   /** Who 📤 Send sends it to: their phones, else the card window's player. */
   const sendTo = $derived(cardsOn ? to : windowTo);
-  /** The buzzer room has all the cards it takes: ✖ Take one back first. */
-  const full = $derived(roomCardsFull(game, session));
+  /** Phones get cards, and the buzzer room has all it takes: ✖ Take one back first (the 🪟 card window has no limit). */
+  const full = $derived(cardsOn && roomCardsFull(game, session));
   /** How long a card lasts, the shortest first (a tile closes before its round ends). */
   const LASTS_RANK: Record<SentCard['until'], number> = { tile: 0, round: 1, host: 2 };
   /**
@@ -352,7 +352,7 @@
     if (full) return toast(cardsFullText(game, session), 4000);
     if (!canSend || !slide) return;
     const content: SentCard['content'] = !preset && kind === 'saved' && chosen ? (chosen.saved ? { saved: chosen.saved } : { clue: chosen.clue!, card: chosen.card! }) : { slide };
-    const c = sendCard(game, session, { to: sendTo, content, until }, Date.now(), roomCardsFull(game, session));
+    const c = sendCard(game, session, { to: sendTo, content, until }, Date.now(), cardsOn && roomCardsFull(game, session));
     if (!c) return toast('That card can’t be sent now');
     said = `${c.label} sent to ${sentToText(session, c.to, teams)}`;
     announce(said);

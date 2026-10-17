@@ -327,10 +327,12 @@
    */
   const inWindow = (card: ClueCard) => cardsOut(game, session).find((c) => 'clue' in c.content && c.content.clue === clue.id && c.content.card === card.id);
   const windowSeat = (to: CardTo[]): Id | null => (!cardsOn && cardWindow.open && cardWindow.seat && to.some((t) => t.seat === cardWindow.seat) ? cardWindow.seat : null);
-  /** 🪟 Show: the card in the card window, for its player alone, until the tile closes (the same path as a tile's card). */
+  /**
+   * 🪟 Show: the card in the card window, for its player alone, until the tile closes (the same path as a tile's card).
+   * No phone gets cards then, so the buzzer room's limit doesn't apply.
+   */
   function showInWindow(card: ClueCard, n: number, seat: Id): void {
-    if (roomCardsFull(game, session)) return toast(cardsFullText(game, session), 4000);
-    const c = sendCard(game, session, { to: [{ seat }], content: { clue: clue.id, card: card.id }, until: 'tile' }, Date.now(), roomCardsFull(game, session));
+    const c = sendCard(game, session, { to: [{ seat }], content: { clue: clue.id, card: card.id }, until: 'tile' });
     if (!c) return toast(`${clueCardWords(card, n - 1, true)} can’t be shown now`);
     announce(`${clueCardWords(card, n - 1, true)} shown in the 🪟 card window to ${name(seat)}`);
   }
@@ -728,8 +730,7 @@
               <button class="ghost small" onclick={() => oncardtakeback(shown.id)} aria-label="Take {w} back" title="Takes it out of the 🪟 card window">✖ Take back</button>
             {:else if windowSeat(to)}
               {@const seat = windowSeat(to)!}
-              {@const full = roomCardsFull(game, session)}
-              <button class="small" onclick={() => showInWindow(card, n, seat)} disabled={full} aria-label="Show {w} to {name(seat)}" title={full ? cardsFullText(game, session) : `Shows it in the 🪟 card window, to ${name(seat)} alone, until the tile closes`}>🪟 Show {name(seat)}</button>
+              <button class="small" onclick={() => showInWindow(card, n, seat)} aria-label="Show {w} to {name(seat)}" title="Shows it in the 🪟 card window, to {name(seat)} alone, until the tile closes">🪟 Show {name(seat)}</button>
             {/if}
             {#if copying}
               <button class="small" onclick={() => copyWords(card, n)} disabled={!to.length || !copyable}

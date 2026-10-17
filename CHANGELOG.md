@@ -24,6 +24,7 @@ in plain words for the people who make and host games. Anything committed but no
 - Board games that move by saved dice with faces of their own move by what a face says: one reading “Back 2” moves the player back 2, as viewers see, instead of forward 5 (its place on the die). A face with no number still moves by its place.
 - Deleting a fork space, in the editor or with ✎ Edit board in play, no longer cuts the path there (players coming from Start used to stop at the space before it for good): the space before it now leads everywhere the fork did, as deleting any other space joins the path up over it.
 - Phones and the 🪟 card window show a 🤝 partner clue's cards on top, newest first like any other card: they used to land under older ones (a 🎭 deal's part, a card from 🤫 Send a card…), often below the bottom of a phone's screen. A card sent again with ↻ moves to the top too.
+- With no phones getting cards, 🪟 Show (in 🤫 Send a card…, a tile's cards and a partner clue's) no longer stops at 8 cards out, saying "8 cards are out on the phones": that limit is the buzzer room's, and the 🪟 card window has none. After a 🎭 deal to 8 or more players, the card window works again.
 
 ## 2026-10-16
 

@@ -5,7 +5,8 @@
 // host presses 📤 Send there, and Skip sends nothing. The 🪟 card window shows only its player's cards (a picture from
 // this computer included), "Nothing private right now" between them, and the audience window never gets one of its
 // messages, nor a card's words. With no phone buzzers, 🪟 Show puts an offered card in the card window, and so it does a
-// standard tile's card (the stream then says "Cat has a private question") and a partner clue's, until the tile closes.
+// standard tile's card (the stream then says "Cat has a private question") and a partner clue's, until the tile closes,
+// with more cards out than the phones' 8 (that limit is the buzzer room's).
 import { chromium } from 'playwright-core';
 import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
@@ -321,6 +322,22 @@ try {
   await solo.locator('.stage-box .tile').first().waitFor();
   await win2.getByText('Nothing private right now').waitFor();
   assert(true, 'the next round: the offered card (until the round ends) goes from the card window');
+  // The buzzer room's limit (8 cards at once) is for phones: with none, the card window takes more.
+  await tools2.getByRole('button', { name: '🤫 Send a card…' }).click();
+  const fillSend = solo.getByRole('dialog', { name: 'Send a card' });
+  await fillSend.getByRole('radio', { name: 'A quick card' }).check();
+  await fillSend.getByRole('button', { name: 'Cat', exact: true }).click();
+  for (let i = 1; i <= 9; i++) {
+    await fillSend.getByRole('textbox', { name: 'The card’s words' }).fill(`Extra card ${i}`);
+    const show = fillSend.getByRole('button', { name: '🪟 Show Cat' });
+    assert(await until(() => show.isEnabled()), `no phones: 🪟 Show Cat can show card ${i}`);
+    await show.click();
+    await fillSend.locator('[data-card-said]').getByText(`Card ${i} sent to Cat`).waitFor();
+  }
+  await win2.getByText('Extra card 9').waitFor();
+  assert(!(await fillSend.locator('[data-cards-full]').count()) && (await tools2.locator('[data-cards-out-count]').innerText()).trim() === '🤫 9 cards out', 'all nine are in the card window, and nothing says the phones are full');
+  await solo.keyboard.press('Escape');
+  await fillSend.waitFor({ state: 'detached' });
   await solo.keyboard.press('p');
   await solo.keyboard.press('3');
   await solo.locator('.stage-box .tile[aria-label^="Movies for $200"]').click();
@@ -363,8 +380,8 @@ try {
   await soloOut.waitFor({ state: 'detached' });
   await solo.keyboard.press('r');
   await solo.keyboard.press('Escape');
-  await win2.getByText('Nothing private right now').waitFor();
-  assert(true, 'the tile closed: its card goes from the card window');
+  await win2.getByText(TIP).waitFor({ state: 'detached' });
+  assert(await win2.getByText('Extra card 9').isVisible(), 'the tile closed: its card goes from the card window (the round’s stay)');
 
   await solo.keyboard.press('p');
   await solo.keyboard.press('1');
@@ -382,7 +399,7 @@ try {
   assert(!(await shownOf(solo, SECRETS)).length && sockets === 0, 'the host page holds none of its words, and nothing went anywhere else');
   await solo.keyboard.press('r');
   await solo.keyboard.press('Escape');
-  await win2.getByText('Nothing private right now').waitFor();
+  await win2.getByText(DESCRIBE).waitFor({ state: 'detached' });
   assert(true, 'the tile closed: the partner clue’s card goes from the card window');
 
   assert(!errors.length, `no page errors (${errors.join('; ')})`);
