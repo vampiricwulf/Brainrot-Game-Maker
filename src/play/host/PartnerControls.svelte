@@ -360,8 +360,22 @@
   const unsentToGo = $derived(cardsOn ? unsent.filter((c) => cardRecipients(session, s, c).length) : []);
   /** 📤 Send and start's send, made on a copy of the session. */
   const sendAll = (t: Session) => sendCards(t, t.partner!, unsentToGo);
-  /** Not all of them fit in the buzzer room (so whenever a row's 📤 Send won't): said under the list, not only in tooltips. */
-  const allFull = $derived(!verdict.judged && unsentToGo.length > 0 && roomCardsFull(game, session, sendAll));
+  /** 📤 Send and start (the main button, until the clock runs or the answer shows) won't fit in the buzzer room. */
+  const allFull = $derived(s.stage === 'distribute' && !verdict.judged && !session.revealed && unsentToGo.length > 0 && roomCardsFull(game, session, sendAll));
+  /**
+   * What the buzzer room has no room for now (its send, for cardsFullText), said under the list, not only in tooltips:
+   * 📤 Send and start's, else the first row whose 📤 Send or 📤 Send changes is off for it.
+   */
+  const fullGo = $derived.by((): ((t: Session) => void) | null => {
+    if (!cardsOn || verdict.judged || s.stage === 'pick') return null;
+    if (allFull) return sendAll;
+    for (const card of cards) {
+      const st = sendState(session, s, card);
+      if (st === 'unsent' && recipients(card).length && sendFull(card)) return sendGo(card);
+      if (st === 'changed' && changesFull(card)) return changesGo(card);
+    }
+    return null;
+  });
   /** ⇡ Get it ready now: the files of the cards not sent yet go up to the buzzer room (no phone gets them until they're sent). */
   function getReady(): void {
     retryFiles(game, session, unsent);
@@ -754,7 +768,7 @@
           {#if left}<div class="small warn left" data-card-left={n}>{left}</div>{/if}
         {/each}
       </div>
-      {#if allFull}<div class="small warn" data-cards-full>{cardsFullText(game, session, sendAll)}</div>{/if}
+      {#if fullGo}<div class="small warn" data-cards-full>{cardsFullText(game, session, fullGo)}</div>{/if}
     {/if}
     {#if cards.length && !verdict.judged}
       {#if older}<span class="muted small" data-partner-readiness>{readiness}</span>{/if}

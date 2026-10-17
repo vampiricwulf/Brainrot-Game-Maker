@@ -8,7 +8,8 @@
 // reload keeps the deal and its cards; in one window the panel only counts the parts; ✖ Take back takes them all off.
 // Neither the audience window before Who was who, nor the host page in one window, ever holds a card's words or the
 // location. With four cards out, the deal's panel warns that its 📤 Send fills the phones; then, with the 8 they hold
-// out, a tile's card and a partner clue's say in their panels why they can't go.
+// out, a tile's card and a partner clue's say in their panels why they can't go: the partner clue's by what's off now
+// (📤 Send and start, then, the clock running, a card's 📤 Send or 📤 Send changes), never by what isn't.
 import { chromium } from 'playwright-core';
 import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
@@ -59,7 +60,10 @@ try {
   const partnerClue = {
     type: 'partner', timerSeconds: 60,
     partner: { game: 'describe', giver: 'partner', got: { giver: 100, guesser: 50 }, missed: { giver: 0, guesser: -50 }, partnerSafe: true, points: 'game' },
-    cards: [{ id: 'p1', to: 'giver', ...slide(text('Describe it')) }],
+    cards: [
+      { id: 'p1', to: 'giver', ...slide(text('Describe it')) },
+      { id: 'p2', to: 'giver', ...slide(text('Then this')) },
+    ],
   };
   const game = {
     id: 'g_deal',
@@ -334,11 +338,53 @@ try {
   await mainButton(host).click();
   const pRow = partner.locator('[data-card="1"]');
   await pRow.waitFor();
+  const sendRow = (n) => partner.getByRole('button', { name: `Send card ${n}`, exact: true });
   assert(
-    (await pRow.getByRole('button', { name: 'Send card 1' }).isDisabled()) && (await mainLabel(host)) === '📤 Send and start' && (await mainButton(host).isDisabled()),
+    (await sendRow(1).isDisabled()) && (await sendRow(2).isDisabled()) && (await mainLabel(host)) === '📤 Send and start' && (await mainButton(host).isDisabled()),
     'a partner clue’s: its 📤 Send and 📤 Send and start are off',
   );
-  assert((await partner.locator('[data-cards-full]').innerText()) === fullLine, `and its panel says why, in sight: “${fullLine}”`);
+  const pFull = partner.locator('[data-cards-full]');
+  const bothLine = '8 cards are out on the phones, 4 of them the 🎭 deal’s, and this sends 2: they hold 8 at once, all phones together, so ✖ Take 2 back first (the deal’s go together, in 🎭 Deal…)';
+  assert((await pFull.innerText()) === bothLine, `and its panel says why, for 📤 Send and start, in sight: “${bothLine}”`);
+  // Two quick cards back: both fit, and 📤 Send and start sends them (8 out), the clock running.
+  await tools.locator('[data-cards-out-count]').click();
+  const outList = host.getByRole('dialog', { name: 'Cards out' });
+  await outList.getByRole('button', { name: 'Take Card 1 back' }).click();
+  await outList.getByRole('button', { name: 'Take Card 2 back' }).click();
+  assert(await until(() => cards().length === 6), 'two quick cards taken back: the room holds 6');
+  await host.keyboard.press('Escape');
+  await outList.waitFor({ state: 'detached' });
+  assert(await until(async () => !(await pFull.count()) && (await mainButton(host).isEnabled())), 'then 📤 Send and start can go, and the line goes');
+  await mainButton(host).click();
+  assert(await until(() => cards().length === 8), '📤 Send and start: both cards go (8 out)');
+  // Both back, and one more quick card (7 out): each row's 📤 Send fits, though both together wouldn't.
+  await partner.getByRole('button', { name: 'Take card 1 back' }).click();
+  await partner.getByRole('button', { name: 'Take card 2 back' }).click();
+  assert(await until(() => cards().length === 6), 'the clock running, both partner cards taken back: 6 out');
+  await tools.getByRole('button', { name: '🤫 Send a card…' }).click();
+  await quick.getByRole('radio', { name: 'A quick card' }).check();
+  await quick.getByRole('button', { name: 'Ann', exact: true }).click();
+  await quick.getByRole('textbox', { name: 'The card’s words' }).fill('Note 5');
+  await quick.getByRole('button', { name: '📤 Send' }).click();
+  await quick.locator('[data-card-said]').getByText('Card 5 sent to Ann').waitFor();
+  await host.keyboard.press('Escape');
+  await quick.waitFor({ state: 'detached' });
+  assert(await until(() => cards().length === 7), 'one more quick card: 7 out');
+  assert(
+    (await sendRow(1).isEnabled()) && (await sendRow(2).isEnabled()) && !(await pFull.count()),
+    'the clock running: each card’s 📤 Send can go, and no line says otherwise (📤 Send and start is gone)',
+  );
+  await sendRow(1).click();
+  assert(await until(() => cards().length === 8), 'card 1 goes: 8 out');
+  const oneLine = '8 cards are out on the phones, 4 of them the 🎭 deal’s and 1 this partner clue’s: ✖ Take them back in 🎭 Deal…, or take back another one';
+  assert(await until(async () => (await sendRow(2).isDisabled()) && (await pFull.count()) === 1 && (await pFull.innerText()) === oneLine), `card 2 can’t go now, and the line says why: “${oneLine}”`);
+  // Card 2 to nobody: nothing is refused. Card 1 given to Bob too: its 📤 Send changes is off, and the line says why.
+  await partner.getByRole('button', { name: 'Card 2 to nobody' }).click();
+  assert(await until(async () => !(await pFull.count())), 'card 2 to nobody: the line goes');
+  await pRow.getByRole('button', { name: /^Card 1 to Bob/ }).click();
+  const changesBtn = partner.getByRole('button', { name: 'Send card 1’s changes' });
+  await changesBtn.waitFor();
+  assert(await until(async () => (await changesBtn.isDisabled()) && (await pFull.count()) === 1 && (await pFull.innerText()) === oneLine), `card 1 changed: 📤 Send changes is off, and the line says why: “${oneLine}”`);
   await offStream(host, 'the host page in one window', 'the phones full');
 
   assert(!errors.length, `no page errors (${errors.join('; ')})`);
