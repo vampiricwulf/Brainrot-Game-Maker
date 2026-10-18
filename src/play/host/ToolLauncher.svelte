@@ -5,6 +5,7 @@
 <script lang="ts">
   import { tick, untrack } from 'svelte';
   import { anchored } from '../../lib/anchored';
+  import { modalOpen } from '../../lib/modal';
   import { app, toast } from '../../lib/app.svelte';
   import type { Game, SentCard, Session } from '../../lib/model';
   import { openCategories, openCategoryWheel, openPlayerWheel, openQuickWheel, openTemplateWheel, openWheel, quickDice, rollDice, toggleScoreboard } from '../../lib/overlay';
@@ -132,10 +133,11 @@
   }
 </script>
 
-<!-- Esc closes an open menu (even from its text boxes) and does nothing else: no overlay closed, no clue left. -->
+<!-- Esc closes an open menu (even from its text boxes) and does nothing else: no overlay closed, no clue left. (Not
+     while a window opened from it is over it, 🗜 Make smaller's: Esc closes that one.) -->
 <svelte:window
   onkeydowncapture={(e) => {
-    if (menu && e.key === 'Escape') {
+    if (menu && e.key === 'Escape' && !modalOpen()) {
       e.stopImmediatePropagation();
       menu = null;
       opener?.focus();

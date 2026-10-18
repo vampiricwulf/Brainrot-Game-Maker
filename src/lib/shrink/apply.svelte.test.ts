@@ -1,13 +1,15 @@
 // 🗜 A copy put in the game (card-files spec §4.4, §4.13.6): only when the file is still the very one it was made from,
 // never one hardly smaller than a file phones can play as it is, and always as a step of its own, after any step being
-// made by hand meanwhile (a drag, a file being stored), never joining it. The making itself is stood in for here: it
-// needs a browser (tests/e2e/phonecopies.mjs makes real ones).
+// made by hand meanwhile (a drag, a file being stored), never joining it. In play (§4.9), into the game being played,
+// and into the editor's as a step when it has the file. The making itself is stood in for here: it needs a browser
+// (tests/e2e/phonecopies.mjs and playcopies.mjs make real ones).
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { app } from '../app.svelte';
 import { arriving, begin, history, startHistory } from '../history.svelte';
 import { mediaUrls, registerBlob } from '../media.svelte';
 import type { Game, MediaRef } from '../model';
 import { jeopardyGame } from '../testgame';
+import { clone } from '../ops';
 import { watchGame, type GameWatch } from '../watch.svelte';
 import { CHANGED, queuePhoneCopy } from './apply';
 import { clearJobs, jobs } from './jobs.svelte';
@@ -15,11 +17,12 @@ import type { CopyPlan } from './plan';
 import { convertBlob } from './run';
 
 /** Where the test steps in: when the copy is made (release), and once its bytes are stored. */
-const at = vi.hoisted(() => ({ release: null as (() => void) | null, stored: null as (() => void) | null }));
+const at = vi.hoisted(() => ({ release: null as (() => void) | null, stored: null as (() => void) | null, hw: false, hardware: undefined as boolean | undefined }));
 
 vi.mock('./gif', () => ({
   gifInfo: () => ({ width: 64, height: 36, frames: 10, seconds: 1 }),
-  gifToVideo: async () => {
+  gifToVideo: async (_b: unknown, _i: unknown, _p: unknown, ctl: { hardware?: boolean }) => {
+    at.hardware = ctl.hardware;
     await new Promise<void>((ok) => (at.release = ok));
     return { blob: new Blob([new Uint8Array(100)], { type: 'video/webm' }), mime: 'video/webm', seconds: 2, width: 64, height: 36 };
   },
@@ -28,6 +31,7 @@ vi.mock('./probe', async (orig) => ({
   ...(await orig<typeof import('./probe')>()),
   probe: async () => ({ ok: true, aac: false, opus: true }),
   encodersFor: async () => ({ avc: false, vp9: true, vp8: true }),
+  hardwareFor: async () => at.hw,
 }));
 vi.mock('./run', async (orig) => ({ ...(await orig<typeof import('./run')>()), checkMade: async () => null, convertBlob: vi.fn() }));
 vi.mock('../desktop.svelte', async (orig) => ({
@@ -71,8 +75,11 @@ beforeEach(() => {
   registerBlob('gif', new Blob([new Uint8Array(5000)], { type: 'image/gif' }));
   registerBlob('mov', new Blob([new Uint8Array(4000)], { type: 'video/quicktime' }));
   at.release = at.stored = null;
+  at.hw = false;
+  at.hardware = undefined;
 });
 afterEach(() => {
+  Object.assign(app, { screen: 'editor', playGame: null, pregame: false, playerOnly: false });
   clearJobs();
   w.destroy();
   vi.mocked(convertBlob).mockReset();
@@ -165,5 +172,85 @@ describe('a 🗜 copy put in the game', () => {
     end();
     await ended(job);
     expect(labels()).toEqual(['Replaced file “other.png” with “new.png”', 'Made a smaller copy of a GIF for phones']);
+  });
+});
+
+describe('a 🗜 copy made in play', () => {
+  /** The game being played: a copy of the editor's (`more`: files of its own, a quick card's). */
+  function play(pregame: boolean, more: MediaRef[] = []): Game {
+    Object.assign(app, { screen: 'play', pregame, playGame: { ...clone($state.snapshot(g)), media: [...clone($state.snapshot(g.media)), ...more] } });
+    return app.playGame!;
+  }
+  const copiesIn = (game: Game) => game.media.filter((m) => m.phoneCopy).map((m) => m.phoneCopy!.of);
+
+  it('goes into the game being played, and into the editor’s as a step made in play (the pre-game Ctrl+Z takes it back)', async () => {
+    const p = play(true);
+    const job = queuePhoneCopy('gif')!;
+    await made();
+    at.release!();
+    await ended(job);
+    expect([copiesIn(p), copies(), labels(), history.entries.map((e) => e.during)]).toEqual([['gif'], ['gif'], ['Made a smaller copy of a GIF for phones'], ['play']]);
+    expect(jobs.ended[job]).toMatchObject({ done: expect.stringMatching(/^🗜 Phones get the smaller copy now: .* \(Ctrl\+Z takes it back\)$/) });
+    // (The same copy in both: the same bytes, under the same id.)
+    expect(p.media.find((m) => m.phoneCopy)!.id).toBe(g.media.find((m) => m.phoneCopy)!.id);
+  });
+
+  it('once the game has started, the toast says no Ctrl+Z (nothing here takes it back)', async () => {
+    play(false);
+    const job = queuePhoneCopy('gif')!;
+    await made();
+    at.release!();
+    await ended(job);
+    expect(jobs.ended[job]).toMatchObject({ done: expect.not.stringContaining('Ctrl+Z') });
+    expect(labels()).toEqual(['Made a smaller copy of a GIF for phones']);
+  });
+
+  it('a quick card’s file (the game being played’s alone), or a player-only file’s: into the game being played only', async () => {
+    registerBlob('quick', new Blob([new Uint8Array(5000)], { type: 'image/gif' }));
+    const p = play(false, [{ id: 'quick', name: 'quick.gif', mime: 'image/gif', size: 5000, kind: 'image' }]);
+    const job = queuePhoneCopy('quick')!;
+    await made();
+    at.release!();
+    await ended(job);
+    expect([copiesIn(p), copies(), labels()]).toEqual([['quick'], [], []]);
+    app.playerOnly = true;
+    at.release = null;
+    const own = queuePhoneCopy('gif')!;
+    await made();
+    at.release!();
+    await ended(own);
+    expect([copiesIn(p), copies(), labels()]).toEqual([['quick', 'gif'], [], []]);
+  });
+
+  it('back in the editor before it’s done: nothing is changed', async () => {
+    const p = play(true);
+    const job = queuePhoneCopy('gif')!;
+    await made();
+    Object.assign(app, { screen: 'editor', playGame: null, pregame: false });
+    at.release!();
+    await ended(job);
+    expect([jobs.ended[job], copiesIn(p), copies(), labels()]).toEqual([{ failed: CHANGED }, [], [], []]);
+  });
+
+  it('made on the graphics chip when asked (in play) and this computer has one that can, else as ever', async () => {
+    play(false);
+    const job = queuePhoneCopy('gif', undefined, { hardware: true })!;
+    await made();
+    expect(at.hardware).toBe(false);
+    at.release!();
+    await ended(job);
+    at.hw = true;
+    at.release = null;
+    vi.mocked(convertBlob).mockResolvedValue({ blob: new Blob([new Uint8Array(100)], { type: 'video/webm' }), mime: 'video/webm', seconds: 2, width: 64, height: 36 });
+    const v: CopyPlan = { ...plan(false), run: { box: 'webm', video: { codec: 'vp9', width: 64, height: 36, bitrate: 200_000 } } };
+    const vjob = queuePhoneCopy('mov', v, { hardware: true })!;
+    await ended(vjob);
+    expect(vi.mocked(convertBlob).mock.calls.at(-1)![1].video).toEqual({ codec: 'vp9', width: 64, height: 36, bitrate: 200_000, hardwareAcceleration: 'prefer-hardware' });
+    // (Not asked: as ever, even where it could.)
+    const again = queuePhoneCopy('gif')!;
+    await made();
+    expect(at.hardware).toBe(false);
+    at.release!();
+    await ended(again);
   });
 });

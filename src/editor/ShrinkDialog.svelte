@@ -6,17 +6,20 @@
   how big it came out (Ctrl+Z takes it back). Several files at once (🖼 Media's "big for phones") get a row each, one
   copy and one step a file. Closed while it works, the work goes on (the header's pill shows how far it got). The
   editor isn't on stream, so files are named here.
+  In play (the host panel's 🗜 Make smaller, the pre-game checklist, the two-window host column: §4.9) it's for the game
+  being played, a row a file with its own default copy, and it warns that the stream may stutter. In one window
+  (`secret`: the host's window is on stream) a row is only its kind and size: no name, no preview.
 -->
 <script lang="ts">
   import { onDestroy, onMount, untrack } from 'svelte';
   import { app } from '../lib/app.svelte';
   import { modal } from '../lib/modal';
   import { formatBytes, getBlob, mediaUrls } from '../lib/media.svelte';
-  import type { Id } from '../lib/model';
+  import type { Id, MediaRef } from '../lib/model';
   import { phoneCopyOf } from '../lib/phonecard';
   import { cardUses } from '../lib/phonecopies';
   import { fileLimitsNow } from '../lib/serverlimits.svelte';
-  import { isGifRef, phonesTake, queuePhoneCopy, readForCopy, shrinkable } from '../lib/shrink/apply';
+  import { copyOfWhat, isGifRef, phonesTake, queuePhoneCopy, readForCopy, shrinkable } from '../lib/shrink/apply';
   import { gifInfo } from '../lib/shrink/gif';
   import { jobFor, jobs, progressText, stopJob, watchJobs } from '../lib/shrink/jobs.svelte';
   import {
@@ -38,11 +41,26 @@
   } from '../lib/shrink/plan';
   import { encodersFor, probe } from '../lib/shrink/probe';
 
-  let { ids, onclose }: { ids: Id[]; onclose: () => void } = $props();
+  let {
+    ids,
+    onclose,
+    secret = false,
+  }: {
+    ids: Id[];
+    onclose: () => void;
+    /** In play, in one window: the host's window is on stream, so no file is named or shown. */
+    secret?: boolean;
+  } = $props();
 
-  const game = $derived(app.game);
-  // (The window is made again for other files: Editor's #key.)
+  /** Opened in play (the pre-game screen too): for the game being played, a row a file. */
+  const play = untrack(() => app.screen === 'play' && !!app.playGame);
+  const game = $derived(play ? (app.playGame ?? app.game) : app.game);
+  // (The window is made again for other files: Editor's and Play's #key.)
   const many = untrack(() => ids.length > 1);
+  /** A row a file (several, or in play: each its own default copy). */
+  const listed = untrack(() => many || play);
+  /** In play, the editor's copy of this game keeps the copies too (a step each there). */
+  const kept = untrack(() => play && !app.playerOnly && app.game.id === app.playGame?.id);
   const id = untrack(() => ids[0]);
   const ref = $derived(game.media.find((m) => m.id === id));
   const copy = $derived(ref ? phoneCopyOf(game, ref) : undefined);
@@ -61,7 +79,7 @@
   /** Why nothing can be made (this browser, or the file). */
   let cant = $state('');
   // (A job already working on it: shown as it goes.)
-  let jobId = $state<string | null>(untrack(() => (many ? null : (jobFor(id)?.id ?? null))));
+  let jobId = $state<string | null>(untrack(() => (listed ? null : (jobFor(id)?.id ?? null))));
   const job = $derived(jobId ? jobs.list.find((j) => j.id === jobId) : undefined);
   const ended = $derived(jobId ? jobs.ended[jobId] : undefined);
   /** The copy made, playing under the result. */
@@ -75,7 +93,7 @@
     on: boolean;
     job: string | null;
   }
-  let rows = $state<Row[]>(untrack(() => (many ? ids.map((id) => ({ id, plan: null, on: false, job: jobFor(id)?.id ?? null })) : [])));
+  let rows = $state<Row[]>(untrack(() => (listed ? ids.map((id) => ({ id, plan: null, on: false, job: jobFor(id)?.id ?? null })) : [])));
   const reading = $derived(rows.some((r) => !r.plan));
   const picked = $derived(rows.filter((r) => r.on && !r.job && r.plan && !('refuse' in r.plan)));
   const rowJobs = $derived(rows.flatMap((r) => (r.job ? [r.job] : [])));
@@ -91,7 +109,7 @@
   onMount(async () => {
     const can = await probe();
     if (!can.ok) return void (cant = can.why ?? '');
-    if (many) {
+    if (listed) {
       for (const row of rows) {
         const m = game.media.find((x) => x.id === row.id);
         const blob = getBlob(row.id);
@@ -123,7 +141,7 @@
     av = read;
   });
   // Their ends are said here while it's open, else in toasts.
-  $effect(() => watchJobs(many ? rowJobs : jobId ? [jobId] : []));
+  $effect(() => watchJobs(listed ? rowJobs : jobId ? [jobId] : []));
   onDestroy(() => watchJobs([]));
 
   function toggleTrim(): void {
@@ -143,7 +161,7 @@
   // moves to the new ones (Stop, or Close) instead of falling to the page, where a keyboard or screen-reader user would
   // lose their place.
   let foot = $state<HTMLElement>();
-  const footFor = $derived(many ? (working ? 'working' : rowJobs.length ? 'ended' : 'pick') : job ? 'working' : ended ? 'ended' : 'pick');
+  const footFor = $derived(listed ? (working ? 'working' : rowJobs.length ? 'ended' : 'pick') : job ? 'working' : ended ? 'ended' : 'pick');
   let footWas = untrack(() => footFor);
   $effect(() => {
     const now = footFor;
@@ -157,7 +175,8 @@
     for (const r of picked) {
       const m = game.media.find((x) => x.id === r.id);
       if (!m || !r.plan || 'refuse' in r.plan) continue;
-      r.job = isGifRef(m) ? queuePhoneCopy(r.id) : queuePhoneCopy(r.id, r.plan as CopyPlan);
+      // (In play, on the graphics chip where it can be: the stream stutters less.)
+      r.job = queuePhoneCopy(r.id, isGifRef(m) ? undefined : (r.plan as CopyPlan), { hardware: play });
       r.on = false;
     }
   }
@@ -165,14 +184,23 @@
   const phaseText = (p: string): string => (p === 'waiting' ? 'Waiting for the other file to finish…' : p === 'checking' ? 'Checking it plays…' : p === 'storing' ? 'Storing it in the game…' : 'Making it…');
   const madeRef = $derived(ended && 'done' in ended && ended.media ? game.media.find((m) => m.id === ended.media) : undefined);
   const ICON = { image: '🖼', video: '🎬', audio: '🔊', font: '🔤' } as const;
+  /** Where it shows how far it got once this window is closed: the editor's header, or in play the 🗜 button. */
+  const goesOn = play ? 'its 🗜 button shows how far it got' : 'the header shows how far it got';
 
-  /** A row's copy in a few words: "about 9.8 MB (854×480, 0:12–0:45 only)". */
+  /**
+   * A row's copy in a few words: "about 9.8 MB (854×480, 0:12–0:45 only)". In one window in play, its size only ("about
+   * 9.8 MB, only the part the cards play"): nothing of what the file is.
+   */
   function rowPlan(p: CopyPlan | GifPlan): string {
-    if (!('run' in p)) return `about ${formatBytes(p.estimate)} (a looping video, ${p.width}×${p.height})`;
+    if (!('run' in p)) return `about ${formatBytes(p.estimate)} (a looping video${secret ? '' : `, ${p.width}×${p.height}`})`;
+    const size = p.estimate ? `about ${formatBytes(p.estimate)}` : 'a copy';
+    if (secret) return `${size}${p.range ? ', only the part the cards play' : ''}`;
     const part = p.range ? `${clockTenths(p.range.from)}–${p.range.to === null ? 'the end' : clockTenths(p.range.to)} only` : '';
     const bits = [p.out.width ? `${p.out.width}×${p.out.height}` : typeWord(p.mime), ...(part ? [part] : [])];
-    return `${p.estimate ? `about ${formatBytes(p.estimate)}` : 'a copy'} (${bits.join(', ')})`;
+    return `${size} (${bits.join(', ')})`;
   }
+  /** A row's file: its name and size, or in one window in play, what it is and its size only ("a video · 148.2 MB"). */
+  const rowName = (m: MediaRef): string => (secret ? `a ${copyOfWhat(m)}` : m.name);
   /** How a row's job is doing (`pct`: how far it got, kept apart so a screen reader doesn't read it out every percent). */
   function rowState(r: Row): { text: string; pct?: string; cls: string } | null {
     if (!r.job) return null;
@@ -193,10 +221,19 @@
   <div class="modal" role="dialog" aria-modal="true" aria-labelledby="shrink-title" use:modal={{ esc: onclose }} data-undo="off">
     <div class="modal-head">
       <h2 class="modal-title" id="shrink-title">🗜 {many ? `Make smaller copies for phones` : 'Make a smaller copy for phones'}</h2>
-      <button class="ghost modal-x" onclick={onclose} aria-label="Close" title={job || working ? 'Close: it carries on (the header shows how far it got)' : 'Close (Esc)'}>✕</button>
+      <button class="ghost modal-x" onclick={onclose} aria-label="Close" title={job || working ? `Close: it carries on (${goesOn})` : 'Close (Esc)'}>✕</button>
     </div>
-    {#if many}
-      <p class="muted">Phones get the copies; the show keeps the files as they are. Ctrl+Z takes them back, one at a time.</p>
+    {#if listed}
+      {#if !play}
+        <p class="muted">Phones get the copies; the show keeps the files as they are. Ctrl+Z takes them back, one at a time.</p>
+      {:else}
+        <p class="muted">
+          {many ? 'Phones get the copies; the show keeps the files as they are.' : 'Phones get the copy; the show keeps the file as it is.'}
+          {#if app.playerOnly}{many ? 'These copies are for this game only: the file can’t keep them.' : 'This copy is for this game only: the file can’t keep it.'}
+          {:else if kept && app.pregame}Ctrl+Z takes {many ? 'them back, one at a time' : 'it back'}.{/if}
+        </p>
+        <p class="warn" data-shrink-stutter>This works your computer hard for a minute or two; your stream may stutter. Best done in the editor before the show.</p>
+      {/if}
       {#if cant}<p class="warn">{cant}</p>{/if}
       <ul class="rows">
         {#each rows as r (r.id)}
@@ -206,9 +243,9 @@
             <li data-shrink-row={r.id}>
               <label>
                 {#if r.plan && !('refuse' in r.plan) && !r.job}
-                  <input type="checkbox" bind:checked={r.on} aria-label="Make a copy of {m.name}" />
+                  <input type="checkbox" bind:checked={r.on} aria-label={secret ? `Make a copy of ${rowName(m)} (${formatBytes(m.size)})` : `Make a copy of ${m.name}`} />
                 {/if}
-                <span>{ICON[m.kind]} <b>{m.name}</b> · {formatBytes(m.size)}</span>
+                <span>{ICON[m.kind]} {#if secret}{rowName(m)}{:else}<b>{m.name}</b>{/if} · {formatBytes(m.size)}</span>
               </label>
               {#if st}<div class={st.cls} role="status">{st.text}{#if st.pct}{' '}<span aria-hidden="true">{st.pct}</span>{/if}</div>
               {:else if !r.plan}{#if !cant}<div class="muted">Reading the file…</div>{/if}
@@ -299,9 +336,9 @@
     {/if}
 
     <div class="modal-foot" bind:this={foot}>
-      {#if many}
+      {#if listed}
         {#if working}
-          <button class="ghost" onclick={onclose} title="Close this window: they carry on (the header shows how far they got)">Keep working</button>
+          <button class="ghost" onclick={onclose} title="Close this window: {many ? 'they carry on' : 'it carries on'} ({goesOn})">Keep working</button>
           <button data-stop onclick={() => rowJobs.forEach((j) => stopJob(j))} title="Stop them: nothing more is changed">Stop all</button>
         {:else if rowJobs.length}
           <button class="primary" onclick={onclose}>Close</button>

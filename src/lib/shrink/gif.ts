@@ -60,9 +60,14 @@ const stopped = () => new DOMException('Stopped', 'AbortError');
 /**
  * A GIF as a video, made as `plan` says: each frame matted on the phone card's background (a video has no see-through
  * parts) and scaled, the GIF gone through `plan.loops` times, a key frame every 2 seconds. It gives the page a moment
- * every 10 frames. `signal` stops it (an AbortError).
+ * every 10 frames. `signal` stops it (an AbortError). `hardware`: made on the graphics chip (it can: see hardwareFor).
  */
-export async function gifToVideo(bytes: Uint8Array, info: GifInfo, plan: GifPlan, ctl: { signal?: AbortSignal; onProgress?: (done: number) => void } = {}): Promise<Made> {
+export async function gifToVideo(
+  bytes: Uint8Array,
+  info: GifInfo,
+  plan: GifPlan,
+  ctl: { signal?: AbortSignal; onProgress?: (done: number) => void; hardware?: boolean } = {},
+): Promise<Made> {
   const mb = await import('./mb');
   const frame = offCanvas(info.width, info.height);
   const out = offCanvas(plan.width, plan.height);
@@ -72,7 +77,12 @@ export async function gifToVideo(bytes: Uint8Array, info: GifInfo, plan: GifPlan
   ctx.imageSmoothingQuality = 'high';
   const t = blobTarget(mb);
   const output = new mb.Output({ format: plan.box === 'mp4' ? new mb.Mp4OutputFormat({ fastStart: false }) : new mb.WebMOutputFormat(), target: t.target });
-  const source = new mb.CanvasSource(out, { codec: plan.codec, quality: new mb.Quality({ bitrate: plan.bitrate }), keyFrameInterval: 2 });
+  const source = new mb.CanvasSource(out, {
+    codec: plan.codec,
+    quality: new mb.Quality({ bitrate: plan.bitrate }),
+    keyFrameInterval: 2,
+    ...(ctl.hardware ? { hardwareAcceleration: 'prefer-hardware' as const } : {}),
+  });
   output.addVideoTrack(source);
   const stop = () => void output.cancel().catch(() => {});
   ctl.signal?.addEventListener('abort', stop, { once: true });

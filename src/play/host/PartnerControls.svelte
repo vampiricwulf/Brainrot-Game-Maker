@@ -32,6 +32,7 @@
   import { copyText } from '../standings';
   import { canCopyPicture, copyCardPicture } from './cardcopy';
   import { leftLine, pctText, slowKinds, slowLine } from './cardrow';
+  import ShrinkButton from './ShrinkButton.svelte';
   import { offerNext } from './slots.svelte';
 
   let {
@@ -769,8 +770,9 @@
               <button class="small" onclick={() => copyPicture(card, n)} disabled={!to.length} title={to.length ? 'Copies the card’s picture, to paste in a DM' : 'Choose who gets it first'}>📋 Copy picture</button>
             {/if}
           </div>
-          {#if left}<div class="small warn left" data-card-left={n}>{left}</div>{/if}
-          {#if slow}<div class="small muted" data-card-slow={n}>{slow}</div>{/if}
+          <!-- (🗜 Make smaller: the files of it that are big, or too big for the buzzer server, made smaller for phones.) -->
+          {#if left}<div class="small warn left"><span data-card-left={n}>{left}</span><ShrinkButton {game} items={phoneOf(card).items} which="big" /></div>{/if}
+          {#if slow}<div class="small muted"><span data-card-slow={n}>{slow}</span><ShrinkButton {game} items={phoneOf(card).items} which="slow" /></div>{/if}
         {/each}
       </div>
       {#if fullGo}<div class="small warn" data-cards-full>{cardsFullText(game, session, fullGo)}</div>{/if}

@@ -34,6 +34,7 @@
   import { WHEEL_TEMPLATES, wheelFromTemplate } from '../../lib/wheeltemplates';
   import { copyText } from '../standings';
   import { leftLine, pctText, seenSeats, slowKinds, slowLine } from './cardrow';
+  import ShrinkButton from './ShrinkButton.svelte';
   import { dealDraft } from './dealdraft.svelte';
 
   let {
@@ -278,6 +279,8 @@
   const phoneHands = $derived(cardsOn && d ? d.hands.map((h) => phoneCard(game, h.slide, can)) : []);
   const left = $derived(leftLine(phoneHands.flatMap((p) => p.left)));
   const slow = $derived(slowLine(phoneHands.flatMap((p) => slowKinds(p.items))));
+  /** Every card's items, for 🗜 Make smaller (the whole deal's files at once: never one player's card). */
+  const handItems = $derived(phoneHands.flatMap((p) => p.items));
   const seenBy = (seat: Id, member?: string) =>
     out.some((c) => c.to.some((t) => t.seat === seat && t.member?.id === member) && (session.remote?.cardsSeen?.[sentCardId(c)] ?? []).some((w) => w === (member ? `${seat}/${member}` : seat)));
   /** Their card is one the phones never get (said only with the audience window open: only those with a part have one). */
@@ -426,8 +429,8 @@
           <label class="check small"><input type="radio" name="deal-lasts-{uid}" value="host" bind:group={lasts} /> until I take them back</label>
         </div>
       {/if}
-      {#if left}<div class="small warn">{left}</div>{/if}
-      {#if slow}<div class="small muted" data-card-slow>{slow}</div>{/if}
+      {#if left}<div class="small warn"><span>{left}</span><ShrinkButton {game} items={handItems} which="big" /></div>{/if}
+      {#if slow}<div class="small muted"><span data-card-slow>{slow}</span><ShrinkButton {game} items={handItems} which="slow" /></div>{/if}
       {#if tooMany}<div class="small warn">The phones hold {CARDS_MAX} cards at once, all phones together: this deal has {d.hands.length}, one each. Deal fewer in.</div>{/if}
       {#if full}<div class="small warn" data-cards-full>{fullText}</div>{/if}
       {@render fillsLine()}
@@ -444,8 +447,8 @@
     {:else}
       {#if status.head}<div class="small" role="status" data-deal-status>{status.head}{#if status.pct}<span aria-hidden="true">{status.pct}</span>{/if}{status.tail}</div>{/if}
       {@render fillsLine()}
-      {#if left && out.length}<div class="small warn">{left}</div>{/if}
-      {#if slow && out.length}<div class="small muted" data-card-slow>{slow}</div>{/if}
+      {#if left && out.length}<div class="small warn"><span>{left}</span><ShrinkButton {game} items={handItems} which="big" /></div>{/if}
+      {#if slow && out.length}<div class="small muted"><span data-card-slow>{slow}</span><ShrinkButton {game} items={handItems} which="slow" /></div>{/if}
       <div class="row wrap">
         {#if out.length}
           {#if cardsOn && !over}<button class="small" onclick={again} title="Every card of the deal goes again under a new id: a phone that came late (a player on a new phone) gets theirs">↻ Send again</button>{/if}

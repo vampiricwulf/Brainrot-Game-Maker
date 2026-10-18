@@ -10,6 +10,9 @@ export interface ModalOptions {
 
 const stack: HTMLElement[] = [];
 
+/** A modal window is open (a menu under it leaves Esc to it). */
+export const modalOpen = (): boolean => stack.length > 0;
+
 // (A details box's summary is a Tab stop too: Shift+Tab from one mustn't jump to the window's last control.)
 const TABBABLE =
   'a[href], details > summary:first-of-type, button:not(:disabled), input:not(:disabled):not([type="hidden"]), select:not(:disabled), textarea:not(:disabled), [tabindex]:not([tabindex="-1"]), [contenteditable="true"]';

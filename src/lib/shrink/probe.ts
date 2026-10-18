@@ -49,3 +49,22 @@ export async function encodersFor(w: number, h: number, bps?: number): Promise<E
   const [avc, vp9, vp8] = await Promise.all([one('avc'), one('vp9'), one('vp8')]);
   return { avc, vp9, vp8 };
 }
+
+const hardware = new Map<string, Promise<boolean>>();
+
+/**
+ * Whether this computer's graphics chip can make a `w`×`h` video in `codec` (asked once each): in play, a copy is made
+ * there when it can, so the stream stutters less. (Asked first, as some browsers take "prefer hardware" as "hardware
+ * only" and would fail where there's none.)
+ */
+export async function hardwareFor(codec: 'avc' | 'vp9' | 'vp8', w: number, h: number): Promise<boolean> {
+  if (!shrinkMaybe()) return false;
+  const key = `${codec}:${w}×${h}`;
+  let p = hardware.get(key);
+  if (!p) {
+    const mb = await import('./mb');
+    p = mb.canEncodeVideo(codec, { width: w, height: h, hardwareAcceleration: 'prefer-hardware' }).catch(() => false);
+    hardware.set(key, p);
+  }
+  return p;
+}

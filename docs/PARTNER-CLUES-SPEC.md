@@ -1305,12 +1305,12 @@ The phone bundles src/lib/links.ts, which has no imports, and builds an `<img>`,
      panel only counts: "🎞 1 video is too big for phones"). (Later: "too big for the buzzer server". One over 16 MB that
      the server takes goes, with a note instead of a warning in the 📱 preview, the editor's checklist and the panel,
      "📶 1 video is big: phones on mobile data may wait for it (WiFi is fine)": card-files spec §3.)
-   - (Later, 🗜: a file can have a smaller copy for phones, made in the editor, a hidden file of the game,
-     `MediaRef.phoneCopy`, that goes up in its place once it's stored here; the show keeps the file. A GIF's copy is a
-     looping video, sent with `gif: true` to a room that lists `'gifs'`, which phones show like the GIF. A video's or a
-     sound's is smaller, or of a type phones play, and may hold only the part the cards play (`from`, `to`): it goes for
-     an item only when it holds all the item plays, the item's times moved by `from`. Copies never reach the viewers'
-     windows: card-files spec §4.)
+   - (Later, 🗜: a file can have a smaller copy for phones, made in the editor (or in play, from the panel's line about
+     it), a hidden file of the game, `MediaRef.phoneCopy`, that goes up in its place once it's stored here; the show
+     keeps the file. A GIF's copy is a looping video, sent with `gif: true` to a room that lists `'gifs'`, which phones
+     show like the GIF. A video's or a sound's is smaller, or of a type phones play, and may hold only the part the
+     cards play (`from`, `to`): it goes for an item only when it holds all the item plays, the item's times moved by
+     `from`. Copies never reach the viewers' windows: card-files spec §4.)
 2. The app hashes the bytes (SHA-256) and sends `POST /api/rooms/:code/files` with `Authorization: Bearer <hostToken>`
    and the file's type (later: not when the room already lists that hash: it's taken as up). The Worker passes it to the room's Durable Object, which checks the host token (`sameToken`,
    index.ts:57-63).

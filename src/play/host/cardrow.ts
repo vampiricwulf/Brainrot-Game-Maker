@@ -1,8 +1,8 @@
 // How a 🤫 card stands on the phones, for the host panel's rows (a partner clue's Distribute list, a tile's cards, the
-// list of cards out): what of it won't reach a phone, what of it is big for phones on mobile data, and, for a card sent
-// with 🤫 Send a card… or from a tile's panel, sent, ✓ seen, uploading, and a phone late for it. In one window the panel
-// is on stream: these lines count a card's pictures and videos and name players, never what's on a card, an item's name
-// or its size.
+// list of cards out): what of it won't reach a phone, what of it is big for phones on mobile data (and which of those
+// files 🗜 can make smaller copies of), and, for a card sent with 🤫 Send a card… or from a tile's panel, sent, ✓ seen,
+// uploading, and a phone late for it. In one window the panel is on stream: these lines count a card's pictures and
+// videos and name players, never what's on a card, an item's name or its size.
 import { CARDS_MAX } from '../../lib/buzzproto';
 import { cardFileCounts } from '../../lib/cardfiles.svelte';
 import { nameList } from '../../lib/session';
@@ -44,6 +44,16 @@ export function slowLine(kinds: CardItem['kind'][]): string {
   const n = kinds.length;
   if (!n) return '';
   return `📶 ${countItems(kinds)} ${n === 1 ? 'is' : 'are'} big: phones on mobile data may wait for ${n === 1 ? 'it' : 'them'} (WiFi is fine)`;
+}
+
+/**
+ * The files of a card's items that 🗜 Make smaller offers smaller copies of for phones (each once): those that go but are
+ * big ('slow'), or those too big for the buzzer server ('big'), going as themselves (not as a copy already), that `can`
+ * says 🗜 makes copies of here.
+ */
+export function shrinkIds(items: PhoneItem[], which: 'slow' | 'big', can: (id: Id) => boolean): Id[] {
+  const ids = items.flatMap((i) => ((which === 'slow' ? i.slow : i.why === 'big') && i.media && (!i.sends || i.sends === i.media) && can(i.media) ? [i.media] : []));
+  return [...new Set(ids)];
 }
 
 /** " (34%)": how far the file going up now got, when it has said. */

@@ -17,6 +17,7 @@
   import { tileToolUp } from '../lib/live';
   import { dealOut } from '../lib/deals';
   import { toKey } from '../lib/partner';
+  import ShrinkButton from './host/ShrinkButton.svelte';
 
   let { game, session }: { game: Game; session: Session } = $props();
   const info = $derived(currentClueInfo(session, game));
@@ -114,7 +115,8 @@
   {/if}
 {/snippet}
 
-<!-- A tile's or a Final's 🤫 cards: who each goes to (`out`), its words and its items as a phone gets them. -->
+<!-- A tile's or a Final's 🤫 cards: who each goes to (`out`), its words and its items as a phone gets them (one that's big
+     for phones, or too big for the buzzer server, with 🗜 Make smaller). -->
 {#snippet cardsInfo(cards: ClueCard[], out: (c: ClueCard) => string, isAnswer: (c: ClueCard) => boolean)}
   {#each cards as card, i (card.id)}
     <div class="q"><b>{clueCardName(card, i)}</b> → {out(card)}</div>
@@ -125,7 +127,10 @@
       {@const src = thumb(it)}
       <div class="small item">
         {#if src}<img class="thumb" {src} alt="" referrerpolicy="no-referrer" />{/if}
-        <span>{ITEM[it.kind][0]} {it.name} · {ITEM[it.kind][1]} · <span class:muted={!it.why}>{reach(it)}</span></span>
+        <span
+          >{ITEM[it.kind][0]} {it.name} · {ITEM[it.kind][1]} · <span class:muted={!it.why}>{reach(it)}</span
+          >{#if phones}<ShrinkButton {game} items={[it]} which={it.slow ? 'slow' : 'big'} title="Make a smaller copy of this file for phones" />{/if}</span
+        >
       </div>
     {/each}
   {/each}

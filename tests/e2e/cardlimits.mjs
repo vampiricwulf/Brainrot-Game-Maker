@@ -7,9 +7,9 @@
 // address typed in ⚙ Settings is asked once it's done, never each half-typed one.
 // A file over 16 MB that the server takes is a note, not a refusal: the 📱 preview and the editor's checklist say
 // phones on mobile data may wait for it (the pre-game list doesn't), and in one window the host panel counts it,
-// never naming it. Its upload (slowed down here) says how far it got, and a phone how much has come; ✖ Take back
-// stops one partway (the room never lists it); and a file the room holds already isn't uploaded again. Needs
-// `npm ci` in buzzer/.
+// never naming it, with 🗜 Make smaller (its window names no file either). Its upload (slowed down here) says how far
+// it got, and a phone how much has come; ✖ Take back stops one partway (the room never lists it); and a file the room
+// holds already isn't uploaded again. Needs `npm ci` in buzzer/.
 import { chromium } from 'playwright-core';
 import { createHash } from 'node:crypto';
 import { createServer } from 'node:http';
@@ -310,6 +310,16 @@ try {
     };
     await openList();
     assert((await list.locator('[data-card-slow="Card 1"]').innerText()) === SLOW, 'and so does its row in the cards out');
+    // 🗜 Make smaller beside it (stage 7): its window lists the file by its kind and size only. (Padded: the app can't
+    // read it, so it says so, and offers nothing to make.)
+    await list.locator('[data-card-slow="Card 1"]').locator('..').getByRole('button', { name: '🗜 Make smaller' }).click();
+    const shrink = page.getByRole('dialog', { name: '🗜 Make a smaller copy for phones' });
+    await shrink.locator('[data-shrink-row="slow"]').getByText(/can’t read/).waitFor();
+    const shrinkRow = (await shrink.locator('[data-shrink-row="slow"]').innerText()).replace(/\s+/g, ' ');
+    assert(shrinkRow === '🎬 a video · 17.0 MB The app can’t read this file, so it can’t make a copy of it.', `its 🗜 Make smaller opens a window naming no file (${shrinkRow})`);
+    assert(!(await shownOf(page, NAMES)).length, 'nothing on the page names it');
+    await page.keyboard.press('Escape');
+    await shrink.waitFor({ state: 'detached' });
     // (Its row's words as they went by, since `from`: the percent changes faster than a look at it.)
     const sawUpload = (from = 0) => page.evaluate((from) => new Set((window.__seen ?? []).slice(from).flatMap((t) => t.match(/uploading 1 of 1 \((\d+)%\)…/)?.[1] ?? [])).size, from);
     assert(await until(async () => (await sawUpload()) >= 3, 30_000), `its upload says how far it got (“uploading 1 of 1 (…%)…”, ${await sawUpload()} percents)`);

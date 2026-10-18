@@ -27,6 +27,7 @@
   import { copyText } from '../standings';
   import { canCopyPicture, copyCardPicture, hasPicture } from './cardcopy';
   import { leftLine, sentLine, slowKinds, slowLine } from './cardrow';
+  import ShrinkButton from './ShrinkButton.svelte';
 
   let {
     game,
@@ -201,8 +202,9 @@
         <button class="small" onclick={() => copyCardPicture(game, card, clueCardWords(card, i, true), sentToText(session, to, teams))} disabled={!to.length} title="Copies the card’s picture, to paste in a DM">📋 Copy picture</button>
       {/if}
     </div>
-    {#if left}<div class="small warn left" data-card-left={n}>{left}</div>{/if}
-    {#if slow}<div class="small muted" data-card-slow={n}>{slow}</div>{/if}
+    <!-- (🗜 Make smaller: the files of it that are big, or too big for the buzzer server, made smaller for phones.) -->
+    {#if left}<div class="small warn left"><span data-card-left={n}>{left}</span><ShrinkButton {game} items={pc?.items ?? []} which="big" /></div>{/if}
+    {#if slow}<div class="small muted"><span data-card-slow={n}>{slow}</span><ShrinkButton {game} items={pc?.items ?? []} which="slow" /></div>{/if}
   {/each}
   {#if full && cards.some((c) => !sentOf(c))}<div class="small warn" data-cards-full>{cardsFullText(game, session)}</div>{/if}
   {#if older}<span class="muted small">This buzzer server is older: copy the cards to them (📋).</span>{/if}

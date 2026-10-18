@@ -41,6 +41,7 @@
   import { copyText } from '../standings';
   import { canCopyPicture, copyCardPicture, hasPicture } from './cardcopy';
   import { leftLine, slowKinds, slowLine } from './cardrow';
+  import ShrinkButton from './ShrinkButton.svelte';
   import { libraryMedia } from '../../lib/phonecopies';
 
   let {
@@ -557,8 +558,9 @@
     </div>
   {/if}
 
-  {#if left}<div class="small warn">{left}</div>{/if}
-  {#if slow}<div class="small muted" data-card-slow>{slow}</div>{/if}
+  <!-- (🗜 Make smaller: the files of it that are big, or too big for the buzzer server, made smaller for phones.) -->
+  {#if left}<div class="small warn"><span>{left}</span><ShrinkButton {game} items={phone?.items ?? []} which="big" /></div>{/if}
+  {#if slow}<div class="small muted"><span data-card-slow>{slow}</span><ShrinkButton {game} items={phone?.items ?? []} which="slow" /></div>{/if}
   {#if noPhone.length && hasSomething}
     <div class="small warn">
       📵 {noPhone.map(nameOf).join(', ')} {noPhone.length > 1 ? 'have' : 'has'} no phone here: copy it to them (📋), or

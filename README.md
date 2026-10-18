@@ -196,8 +196,9 @@ on (a Daily Double's player sees "you're up"; on a 🤝 partner clue every phone
 and who guesses), beep and flash when BUZZ! lights up (🔔 mutes), and **Not you?** lets a
 player change seats. 🤫 Cards go to a player's phone through the buzzer server, only when you send them (📤 in the
 partner clue's panel): their words, links, pictures and videos, your own files included (pictures are shrunk first;
-a big GIF, video or sound can go as a smaller copy for phones: **🗜 Make smaller…** on its card in 🖼 Media, see Card
-files under [Set up your own buzzer server](#set-up-your-own-buzzer-server)).
+a big GIF, video or sound can go as a smaller copy for phones: **🗜 Make smaller…** on its card in 🖼 Media, or
+**🗜 Make smaller** on the host panel's line about it during the game, see Card files under
+[Set up your own buzzer server](#set-up-your-own-buzzer-server)).
 The phone shows a card in place of the buzz button, behind **Tap to see** (🙈 Hide covers it again), and the panel says
 ✓ seen once it's opened. YouTube, Drive and Streamable videos play in their own player when tapped. The buzzer server
 keeps a card until the tile closes (or the round ends, or you take it back, for one sent with 🤫 Send a card…), and
@@ -473,9 +474,13 @@ To build the address into your own releases too (so nobody has to paste it), add
   show keeps the file as it is (Ctrl+Z takes it back): a GIF as a small looping video that phones show like the GIF, a
   video at 720p, 480p or 360p, a sound made again, and a video or sound can hold only the part its cards play. 🖼
   Media's **🗜 2 files are big for phones** makes copies of all of them at once, and a video or sound phones can't play
-  (a .mov, a FLAC) can get a copy they can. It needs the app opened from a file or an https:// address, in Chrome, Edge,
-  Firefox or the desktop app; where the browser makes H.264 and AAC (Chrome and Edge on Windows or Mac, the desktop app)
-  it makes MP4 and M4A files every phone plays, elsewhere WebM and OGG (Opus), which some iPhones may not play.
+  (a .mov, a FLAC) can get a copy they can. During the game too: the host panel's line about a card's big files, the
+  pre-game checklist's and the host column's have **🗜 Make smaller**, for the game being played (the editor's game
+  keeps the copy as well; a card already out switches over to it). In one window its window names no file and shows no
+  preview. It works the computer hard for a minute or two, so the stream may stutter: it's best done in the editor
+  before the show. It needs the app opened from a file or an https:// address, in Chrome, Edge, Firefox or the desktop
+  app; where the browser makes H.264 and AAC (Chrome and Edge on Windows or Mac, the desktop app) it makes MP4 and M4A
+  files every phone plays, elsewhere WebM and OGG (Opus), which some iPhones may not play.
   See [buzzer/README.md](buzzer/README.md#card-files). Each room keeps
   its cards only until the tile closes (or the round ends, or the host takes it back, for one sent with 🤫 Send a card…),
   and their files up to 10 minutes longer (20 hours after their upload began at most: the app puts one up again if a

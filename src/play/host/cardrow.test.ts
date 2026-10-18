@@ -2,12 +2,13 @@
 // button that's there (↻ Send again with phones; without them, ✖ Take back and show it again).
 import { describe, expect, it } from 'vitest';
 import { jeopardyGame } from '../../lib/testgame';
-import { newVideoEl, setSlideText, type SavedCard } from '../../lib/model';
+import { newImageEl, newVideoEl, setSlideText, type SavedCard, type Slide } from '../../lib/model';
+import { phoneCard } from '../../lib/phonecard';
 import { newSession } from '../../lib/session';
 import { remote } from '../../lib/remote.svelte';
 import { sendCard, sentCardId } from '../../lib/sentcards';
 import { clearUploads, uploads } from '../../lib/cardfiles.svelte';
-import { leftLine, sentLine, slowLine } from './cardrow';
+import { leftLine, sentLine, shrinkIds, slowLine } from './cardrow';
 
 /** Ann (a) and Bob (b); the editor's 🤫 Cards have the Wild card, out to Bob. */
 function setup() {
@@ -78,5 +79,30 @@ describe('a card’s file going up', () => {
       clearUploads();
       Object.assign(remote, was);
     }
+  });
+});
+
+describe('🗜 Make smaller on a card’s line', () => {
+  it('offers the files of the items that are big, or too big for the buzzer server, each once, going as themselves', () => {
+    const MB = 1024 * 1024;
+    const g = jeopardyGame();
+    g.media.push(
+      { id: 'huge', name: 'huge.gif', mime: 'image/gif', size: 50 * MB, kind: 'image' },
+      { id: 'slow', name: 'slow.mp4', mime: 'video/mp4', size: 20 * MB, kind: 'video' },
+      { id: 'small', name: 'small.mp4', mime: 'video/mp4', size: MB, kind: 'video' },
+      // (Its copy is what goes, and is big itself: another one made the same way wouldn't be smaller.)
+      { id: 'had', name: 'had.mp4', mime: 'video/mp4', size: 40 * MB, kind: 'video' },
+      { id: 'hadcopy', name: 'had (phones).webm', mime: 'video/webm', size: 25 * MB, kind: 'video', phoneCopy: { of: 'had' } },
+      { id: 'other', name: 'other.mp4', mime: 'video/mp4', size: 20 * MB, kind: 'video' },
+    );
+    const card: Slide = { background: {}, elements: [newImageEl('huge'), newVideoEl('slow'), newVideoEl('small'), newVideoEl('slow'), newVideoEl('had'), newVideoEl('other')] };
+    const { items } = phoneCard(g, card, { files: {}, fileBytes: 30 * MB });
+    const here = (id: string) => id !== 'other';
+    expect(shrinkIds(items, 'big', here)).toEqual(['huge']);
+    expect(shrinkIds(items, 'slow', here)).toEqual(['slow']);
+    expect(shrinkIds(items, 'slow', () => false)).toEqual([]);
+    // (A 'big' line's are only those too big for the buzzer server: the ones that go are on the 'slow' one.)
+    expect(shrinkIds(items, 'big', () => true)).toEqual(['huge']);
+    expect(shrinkIds(items, 'slow', () => true)).toEqual(['slow', 'other']);
   });
 });

@@ -88,7 +88,7 @@
   import { shopBuy } from './host/shopops';
   import { SLIDE_H, SLIDE_W } from '../lib/model';
   import { clone, randomizePartnerTiles } from '../lib/ops';
-  import type { ActionEvent, Dir8, Game, GameSettings, Player, ScoreEvent, SentCard, Session } from '../lib/model';
+  import type { ActionEvent, Dir8, Game, GameSettings, MediaRef, Player, ScoreEvent, SentCard, Session } from '../lib/model';
   import type { Pop } from '../lib/live';
   import {
     audience,
@@ -115,6 +115,11 @@
   import { MediaQuery } from 'svelte/reactivity';
   import { watchPhonesAway } from './host/phoneaway.svelte';
   import { knownVerdict } from '../lib/shrink/checks.svelte';
+  import ShrinkDialog from '../editor/ShrinkDialog.svelte';
+  import { openShrinkDialog, shrinkDialog } from '../lib/shrink/dialog.svelte';
+  import { jobFor, progressText, stopAll } from '../lib/shrink/jobs.svelte';
+  import { shrinkable } from '../lib/shrink/apply';
+  import { shrinkMaybe } from '../lib/shrink/probe';
 
   let {
     onexit,
@@ -646,6 +651,12 @@
 
   // ✎ Edit board ends with the game.
   onMount(() => () => setEditing(false));
+  // A 🗜 copy for phones made here belongs to the game being played: leaving it (back to the editor, or a resume that
+  // replaces it) stops the copy (nothing is changed), and its window closes.
+  onMount(() => () => {
+    stopAll();
+    shrinkDialog.open = null;
+  });
   // A hint goes once the host picks someone, or types an amount or the steps ("Select a player first", "Enter an amount
   // first", "Roll first (D), or type the steps").
   onMount(() => sceneFrom(() => `${selected.join()}|${amount}|${bgSteps}`));
@@ -3017,13 +3028,21 @@
     // (A board short of Daily Doubles gets a button to place them.)
     // (Daily Doubles not placed yet are only a note in the editor, as Start places them: here they're listed with it.)
     // (Whether a video or sound plays in this browser: as worked out in the editor, as nothing is checked here.)
-    return validate(g, { filesOff, fileBytes, gifs, stored: (id) => id in mediaUrls, plays: knownVerdict })
+    // (A card's file too big for the buzzer server that 🗜 can make a smaller copy of: its line gets 🗜 Make smaller.)
+    const canShrink = (m: MediaRef) => shrinkMaybe() && shrinkable(m) && !!mediaUrls[m.id];
+    return validate(g, { filesOff, fileBytes, gifs, stored: (id) => id in mediaUrls, plays: knownVerdict, canShrink })
       .map((p) => {
         const r = typeof p.tab === 'number' ? g.rounds[p.tab] : undefined;
         const dd = isBoard(r) && !!dailyDoublesShort(r) && p.text.includes('Daily Double') && p.text.includes(' not placed yet');
         const pt = isBoard(r) && partnerShort(r) && p.text.includes('partner clue') && p.text.includes(' not placed yet');
         // (A player-only file can't add or swap files: its own words for those.)
-        return { text: app.playerOnly && p.player ? p.player : p.text, level: p.level, ddRound: dd ? (p.tab as number) : undefined, ptRound: pt ? (p.tab as number) : undefined };
+        return {
+          text: app.playerOnly && p.player ? p.player : p.text,
+          level: p.level,
+          ddRound: dd ? (p.tab as number) : undefined,
+          ptRound: pt ? (p.tab as number) : undefined,
+          shrink: p.shrink,
+        };
       })
       .filter((p) => p.level === 'warn' || p.ddRound !== undefined || p.ptRound !== undefined);
   }
@@ -3263,8 +3282,8 @@
     const key = undoKeyOf(e);
     if (!key || e.defaultPrevented || fields.native(e, key)) return;
     e.preventDefault();
-    // A window over the screen (🔊 Sound for Discord / OBS, ⚙ Settings) isn't about the game.
-    if (showSound || showSettings) return;
+    // A window over the screen (🔊 Sound for Discord / OBS, ⚙ Settings, 🗜) isn't about the game.
+    if (showSound || showSettings || shrinkDialog.open) return;
     if (!editorHasIt()) return void toast(app.playerOnly ? 'Nothing to undo here' : 'Undo works for the game open in the editor');
     commit();
     const next = key === 'undo' ? history.entries[history.index - 1] : history.entries[history.index];
@@ -3287,7 +3306,10 @@
   const editorSetup = () => ({
     settings: SETUP.map((k) => JSON.stringify($state.snapshot(app.game.settings[k]) ?? null)),
     players: JSON.stringify($state.snapshot(app.game.players)),
+    copies: copiesOf(app.game),
   });
+  /** A game's 🗜 copies for phones, to see whether an undo or redo changed them. */
+  const copiesOf = (g: Game): string => JSON.stringify($state.snapshot(g.media.filter((m) => m.phoneCopy)));
 
   /**
    * An undo or redo changed the editor's game (`before`: what it had): the game here, and the players listed, follow
@@ -3322,8 +3344,24 @@
     }
     // The players, when it changed them.
     if (JSON.stringify($state.snapshot(src.players)) !== before.players) followPlayers();
+    // 🗜 copies for phones made here.
+    if (copiesOf(src) !== before.copies) followCopies();
     // The game's name (✎ Rename here).
     if (src.title !== game.title) game.title = src.title;
+  }
+  /**
+   * The 🗜 copies for phones of the files the editor's game has: as it has them (a quick card's file is this game's
+   * alone, and its copy stays).
+   */
+  function followCopies(): void {
+    const src = app.game;
+    const files = new Set(src.media.map((m) => m.id));
+    const theirs = src.media.filter((m) => m.phoneCopy);
+    for (let i = game.media.length - 1; i >= 0; i--) {
+      const m = game.media[i];
+      if (m.phoneCopy && files.has(m.phoneCopy.of) && !theirs.some((c) => c.id === m.id)) game.media.splice(i, 1);
+    }
+    for (const c of theirs) if (!game.media.some((m) => m.id === c.id) && game.media.some((m) => m.id === c.phoneCopy!.of)) game.media.push($state.snapshot(c));
   }
   /** The players listed: as the editor's game has them (start scores kept), and the sample players nobody renamed. */
   function followPlayers(): void {
@@ -3586,8 +3624,8 @@
     if (showKeys && !e.target && (e.key === 'Escape' || e.key === '?')) return void (showKeys = false);
     if (showPlayers && e.key === 'Escape' && e.target) return playersEsc(e);
     if (app.pregame) return pregameKey(e);
-    // The live screen editor (RPG) has its own keys.
-    if (showPlayers || showRules || showKeys || showSound || app.editGame || rpgMap) return;
+    // The live screen editor (RPG) has its own keys, and 🗜's window its own buttons.
+    if (showPlayers || showRules || showKeys || showSound || app.editGame || rpgMap || shrinkDialog.open) return;
     // (A key from the audience window has no target here.)
     const t = e.target instanceof HTMLElement ? e.target : null;
     // Typing in a field (a quick-wheel list, a wager…) is never a shortcut, not even '?'. A ticked checkbox isn't a field,
@@ -4180,6 +4218,15 @@
                       }}>🎲 Place now</button
                     >
                   {/if}
+                  {#if c.shrink}
+                    {@const id = c.shrink}
+                    {@const job = jobFor(id)}
+                    {@const pct = job ? progressText(job) : ''}
+                    <!-- (Names no file: in one window this screen is on stream. While its copy is made, how far it got.) -->
+                    <button class="small" data-checklist-shrink onclick={() => openShrinkDialog(id)} title="Make smaller copies of these files for phones"
+                      >{#if job}🗜 Making smaller…{#if pct}{' '}<span aria-hidden="true">{pct}</span>{/if}{:else}🗜 Make smaller{/if}</button
+                    >
+                  {/if}
                 </li>
               {/each}
             </ul>
@@ -4573,6 +4620,10 @@
 
 {#if showSettings}
   <SettingsDialog at="buzzer" onclose={() => (showSettings = false)} />
+{/if}
+{#if shrinkDialog.open}
+  <!-- 🗜 for the game being played: in one window the host's window is on stream, so it names no file. -->
+  {#key shrinkDialog.open}<ShrinkDialog ids={shrinkDialog.open} secret={!dual} onclose={() => (shrinkDialog.open = null)} />{/key}
 {/if}
 {#if showSound && (dual || app.pregame || panelBox)}
   <!-- Single window, mid-game: in the host panel (it grows for it), never over the stage viewers see. Its steps share the

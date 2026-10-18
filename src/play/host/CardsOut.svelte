@@ -18,6 +18,7 @@
   import { copyText } from '../standings';
   import { canCopyPicture, copyCardPicture, hasPicture } from './cardcopy';
   import { leftLine, sentLine, slowKinds, slowLine } from './cardrow';
+  import ShrinkButton from './ShrinkButton.svelte';
 
   let { game, session, dual = false, ontakeback }: { game: Game; session: Session; dual?: boolean; ontakeback: (id: Id) => void } = $props();
 
@@ -72,8 +73,9 @@
     {@const slide = sentSlide(game, c)}
     {@const off = leftOff.has(sentCardId(c))}
     {@const state = sentLine(game, session, c, filesOn, off, cardsOn)}
+    {@const items = cardsOn && slide && !off ? phoneCard(game, slide, can).items : []}
     {@const left = cardsOn && slide && !off ? leftOf(slide) : ''}
-    {@const slow = cardsOn && slide && !off ? slowLine(slowKinds(phoneCard(game, slide, can).items)) : ''}
+    {@const slow = slowLine(slowKinds(items))}
     <div class="row" data-card-out={c.label} role="group" aria-label="{c.label} to {sentToText(session, c.to, teams)}: {state.text}">
       <b>{c.label}</b>
       <span aria-hidden="true">→</span>
@@ -91,8 +93,9 @@
       <span class="small" class:warn={state.warn} data-card-state>· {state.text}</span>
       <span class="muted small">· {lastsOf(c)}</span>
     </div>
-    {#if left}<div class="small warn" data-card-left={c.label}>{left}</div>{/if}
-    {#if slow}<div class="small muted" data-card-slow={c.label}>{slow}</div>{/if}
+    <!-- (🗜 Make smaller: the files of it that are big, or too big for the buzzer server, made smaller for phones.) -->
+    {#if left}<div class="small warn"><span data-card-left={c.label}>{left}</span><ShrinkButton {game} {items} which="big" /></div>{/if}
+    {#if slow}<div class="small muted"><span data-card-slow={c.label}>{slow}</span><ShrinkButton {game} {items} which="slow" /></div>{/if}
     <div class="row btns">
       {#if cardsOn && !off}
         <button class="small" onclick={() => again(c)} aria-label="Send {c.label} again" title="Sends it again under a new id: a phone that came late (a player on a new phone) gets it too">↻ Send again</button>
