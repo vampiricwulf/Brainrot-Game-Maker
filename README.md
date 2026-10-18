@@ -191,7 +191,9 @@ see "🔔 Ann is answering" whenever one player is picked during a clue. Phones 
 on (a Daily Double's player sees "you're up"; on a 🤝 partner clue every phone's button greys and says who describes
 and who guesses), beep and flash when BUZZ! lights up (🔔 mutes), and **Not you?** lets a
 player change seats. 🤫 Cards go to a player's phone through the buzzer server, only when you send them (📤 in the
-partner clue's panel): their words, links, pictures and videos, your own files included (pictures are shrunk first).
+partner clue's panel): their words, links, pictures and videos, your own files included (pictures are shrunk first;
+a big GIF, video or sound can go as a smaller copy for phones: **🗜 Make smaller…** on its card in 🖼 Media, see Card
+files under [Set up your own buzzer server](#set-up-your-own-buzzer-server)).
 The phone shows a card in place of the buzz button, behind **Tap to see** (🙈 Hide covers it again), and the panel says
 ✓ seen once it's opened. YouTube, Drive and Streamable videos play in their own player when tapped. The buzzer server
 keeps a card until the tile closes (or the round ends, or you take it back, for one sent with 🤫 Send a card…), and
@@ -508,12 +510,27 @@ game in progress and media. Settings go in `%APPDATA%\com.brainrotgames.maker`. 
 
 🗜 (smaller copies of 🤫 cards' files for phones) uses two libraries, bundled into the app as they are:
 
-- [mediabunny](https://github.com/Vanilagy/mediabunny) 1.61.6, under the Mozilla Public License 2.0 (its source is at
-  github.com/Vanilagy/mediabunny): it reads videos and sounds, and writes the copies, with the browser's own video and
-  sound encoders (WebCodecs).
-- [omggif](https://github.com/deanm/omggif) 1.0.10, under the MIT license: it reads a GIF's frames.
+- [mediabunny](https://github.com/Vanilagy/mediabunny) 1.61.6, © 2026-present Vanilagy and contributors, under the
+  Mozilla Public License 2.0 (its source is at github.com/Vanilagy/mediabunny): it reads videos and sounds, and writes
+  the copies, with the browser's own video and sound encoders (WebCodecs).
+- [omggif](https://github.com/deanm/omggif) 1.0.10, © 2013 Dean McNamee, under the MIT license: it reads a GIF's
+  frames. Its license:
 
-ℹ About says so too.
+  > Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated
+  > documentation files (the "Software"), to deal in the Software without restriction, including without limitation
+  > the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to
+  > permit persons to whom the Software is furnished to do so, subject to the following conditions:
+  >
+  > The above copyright notice and this permission notice shall be included in all copies or substantial portions of
+  > the Software.
+  >
+  > THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO
+  > THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+  > AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
+  > TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+  > SOFTWARE.
+
+ℹ About says so too, with omggif's license.
 
 ## Development
 

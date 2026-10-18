@@ -84,8 +84,27 @@
       <dd><a href={`${REPO}/issues`} target="_blank" rel="noreferrer" onclick={link}>Report an issue</a></dd>
       <dt>License</dt>
       <dd>
-        MIT. Bundled fonts: SIL Open Font License. 🗜 (smaller copies for phones): mediabunny (MPL-2.0, source at
-        <a href="https://github.com/Vanilagy/mediabunny" target="_blank" rel="noreferrer" onclick={link}>github.com/Vanilagy/mediabunny</a>) and omggif (MIT).
+        MIT. Bundled fonts: SIL Open Font License. 🗜 (smaller copies for phones): mediabunny © 2026-present Vanilagy and
+        contributors (MPL-2.0, source at
+        <a href="https://github.com/Vanilagy/mediabunny" target="_blank" rel="noreferrer" onclick={link}>github.com/Vanilagy/mediabunny</a>) and omggif ©
+        2013 Dean McNamee (MIT,
+        <a href="https://github.com/deanm/omggif" target="_blank" rel="noreferrer" onclick={link}>github.com/deanm/omggif</a>).
+        <details class="license">
+          <summary>omggif’s license</summary>
+          <p>
+            Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the
+            "Software"), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish,
+            distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the
+            following conditions:
+          </p>
+          <p>The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.</p>
+          <p>
+            THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+            MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
+            CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
+            SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+          </p>
+        </details>
       </dd>
     </dl>
 
@@ -184,6 +203,14 @@
   }
   dd {
     margin: 0;
+  }
+  .license {
+    margin-top: 4px;
+  }
+  .license p {
+    margin: 4px 0 0;
+    font-size: 12px;
+    color: var(--muted);
   }
   .updates {
     display: flex;
