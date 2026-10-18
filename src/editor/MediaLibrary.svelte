@@ -21,13 +21,13 @@
   import { libraryMedia, withCopies } from '../lib/phonecopies';
   import { phoneCopyOf, phonesGetLink } from '../lib/phonecard';
   import { bigForPhones, isGifRef, phonesTake, removePhoneCopy, shrinkable } from '../lib/shrink/apply';
-  import { openShrinkDialog } from '../lib/shrink/dialog.svelte';
+  import { openMediaDialog, openShrinkDialog } from '../lib/shrink/dialog.svelte';
   import { jobFor, progressText, stopJob } from '../lib/shrink/jobs.svelte';
   import { clockTenths, SHRINK_OFFER_BYTES, typeWord } from '../lib/shrink/plan';
   import { fileLimitsNow } from '../lib/serverlimits.svelte';
   import { checkAdded, verdictOf } from '../lib/shrink/checks.svelte';
   import { aOrAn, fixBoxName, tracksOf, whyLine } from '../lib/shrink/words';
-  import { convertNow, typeName } from '../lib/shrink/apply';
+  import { convertNow, editOffer, typeName } from '../lib/shrink/apply';
   import type { Job } from '../lib/shrink/jobs.svelte';
 
   const game = $derived(app.game);
@@ -48,6 +48,7 @@
   /** What a file's job is doing, on its card. */
   function jobText(j: Job): string {
     if (j.kind === 'convert') return j.phase === 'waiting' ? '🔄 Waiting to convert it…' : `🔄 ${j.copying ? 'Repackaging' : 'Converting'}… ${progressText(j)}`;
+    if (j.kind === 'edit') return j.phase === 'waiting' ? '✂ Waiting to save its edit…' : `✂ Saving the edit… ${progressText(j)}`;
     return j.phase === 'waiting' ? '🗜 Waiting to make its copy for phones…' : `🗜 Making a smaller copy for phones… ${progressText(j)}`;
   }
   /** 🗜 is offered on a file's card: a GIF, video or sound stored here, over 2 MB, that phones don't get from its link. */
@@ -544,8 +545,28 @@
               class="ghost small"
               onclick={() => replace(m)}
               disabled={!!job}
-              title={job ? (job.kind === 'convert' ? 'Wait for it to be converted (or Stop it)' : 'Wait for its copy for phones to be made (or Stop it)') : "Swap in another file; every place it's used follows"}
+              title={job
+                ? job.kind === 'convert'
+                  ? 'Wait for it to be converted (or Stop it)'
+                  : job.kind === 'edit'
+                    ? 'Wait for its edit to be saved (or Stop it)'
+                    : 'Wait for its copy for phones to be made (or Stop it)'
+                : "Swap in another file; every place it's used follows"}
               >Replace…</button
+            >
+          {/if}
+          {#if editOffer(m)}
+            <button
+              class="ghost small"
+              data-edit-media
+              onclick={() => openMediaDialog({ mode: 'edit', id: m.id })}
+              disabled={editOffer(m) === 'busy'}
+              title={editOffer(m) === 'busy'
+                ? 'Wait for it to finish (the header shows how far it got)'
+                : m.kind === 'video'
+                  ? 'Trim, crop or resize this video: every place that uses it gets the edited one, on stream too (Ctrl+Z puts the old one back)'
+                  : 'Trim this sound: every place that uses it gets the trimmed one (Ctrl+Z puts the old one back). Sounds in 🔊 Sounds, wheels, dice and RPG music have no Start/Stop of their own: trimming the file is how to trim them.'}
+              >✎ Edit…</button
             >
           {/if}
           <!-- 🔄 one that won't play here (or plays without its sound); ↻ one on a 🤫 card that phones can't open. -->

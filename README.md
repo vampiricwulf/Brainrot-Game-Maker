@@ -83,6 +83,10 @@ Center / Right / Top / Middle / Bottom line them up with each other, and **Space
 shadows and glows get room inside their box, so they're never cut off at its edge, and **Typewriter (letter by
 letter)** types the text out (all at once with reduced motion). The same file added twice is stored once (a toast says
 it's already in 🖼 Media). Replacing a file in 🖼 Media redoes the ✎ edits of pictures made from it on the new file.
+**✎ Edit…** in 🖼 Media (or ✎ Edit video… on a slide's item, in its panel or its right-click menu) trims a video or
+sound, and crops and resizes a video, for every place that uses it; slides' Start at / Stop at move with the trim. Save
+as a new file keeps the original too, and from a slide item, Only this item edits it for that item alone. Ctrl+Z puts
+the old file back.
 
 **RPG map editor:** drag a screen to move it or swap it with another (dropping past the edge grows the map, dropping
 on a map tab moves it there), `Delete` deletes the selected screens, arrows / `Enter` / `Alt`+arrows / `Ctrl+D` /

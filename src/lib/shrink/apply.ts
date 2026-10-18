@@ -2,7 +2,7 @@
 // that plays here, put in its place (§4.12.6): made outside the undo history (it takes a while, and the host keeps
 // working meanwhile), checked, stored, then put in as one step of its own, which Ctrl+Z takes back. History labels and
 // toasts never name the file: the pre-game screen and play show them on stream.
-import { app } from '../app.svelte';
+import { app, toast } from '../app.svelte';
 import { fileType, SLOW_FILE_BYTES } from '../buzzproto';
 import { whileWriting } from '../desktop.svelte';
 import { step, whenSettled } from '../history.svelte';
@@ -10,9 +10,11 @@ import { ask } from '../ask.svelte';
 import { dropPhoneCopies, dropStoredMedia, formatBytes, getBlob, mediaUrls, moveToFile, putMedia, renameForType, restoreStash } from '../media.svelte';
 import { flash } from '../nav.svelte';
 import { uniqueMediaName } from '../medianame';
-import { newId, type Game, type Id, type MediaRef } from '../model';
+import { newId, type AudioEl, type Game, type Id, type MediaRef, type VideoEl } from '../model';
 import { phoneCopyOf, phonesGetLink } from '../phonecard';
-import { allCardSlides, slideMediaIds } from '../usage';
+import { allCardSlides, mediaUsage, slideMediaIds } from '../usage';
+import { cardUses } from '../phonecopies';
+import { fileLimitsNow } from '../serverlimits.svelte';
 import { readFacts } from './facts';
 import { gifInfo, gifToVideo } from './gif';
 import { addJob, jobFor, type JobCtl } from './jobs.svelte';
@@ -31,7 +33,15 @@ import {
   smallEnough,
   SOUND_TOO_LONG,
   videoChoices,
+  avDefault,
+  CANT_READ_EDIT,
+  CANT_SIZE,
+  editedName,
+  lengthText,
   type AvRead,
+  type EditExtra,
+  type EditPlan,
+  type How,
   type CopyOf,
   type CopyPlan,
   type GifInfo,
@@ -43,6 +53,7 @@ import { isLossless, type Fix, type Verdict } from './playable';
 import { encodersFor, probe, type Encoders } from './probe';
 import { checkMade, convertBlob, RunError, type Made, type RunReason, type Want } from './run';
 import { soundHere } from './sound';
+import { itemsPlaying, refitBoxes, retimeUses } from './retime';
 import { fixBoxName } from './words';
 
 export const CAME_OUT_WRONG = 'The copy didn’t come out right: nothing was changed.';
@@ -387,3 +398,175 @@ export function convertNow(game: Game, id: Id): void {
 
 /** A file's type as phones know it, for "phones can't open MKV files": its name's extension ("MKV"). */
 export const typeName = (m: Pick<MediaRef, 'name'>): string => (m.name.match(/\.([a-z0-9]{1,5})$/i)?.[1] ?? '').toUpperCase();
+
+// ---------- ✎ Edit (card-files spec §4.11.6) ----------
+
+export const EDIT_WRONG = 'The edit didn’t come out right: nothing was changed.';
+
+/**
+ * Whether ✎ Edit… is offered for file `m` here: in the editor, for a video or sound stored in this browser (not a
+ * link, a missing file or a 🗜 copy) that plays here, or hasn't been checked yet. 'busy': a job is working on it
+ * (offered, but not now). Null: not offered.
+ */
+export function editOffer(m: MediaRef | undefined): 'on' | 'busy' | null {
+  if (!m || (m.kind !== 'video' && m.kind !== 'audio') || m.url || m.phoneCopy || !mediaUrls[m.id]) return null;
+  if (app.screen !== 'editor' || app.editGame || app.playerOnly) return null;
+  const v = verdictOf(m.id);
+  if (typeof v === 'object' && v.is !== 'plays' && v.is !== 'silent') return null;
+  return jobFor(m.id) ? 'busy' : 'on';
+}
+
+/** The video or sound item with this id playing file `media` in `game` (null: it's gone, or plays another now). */
+function findItem(game: Game, itemId: string, media: Id): VideoEl | AudioEl | null {
+  return itemsPlaying(game, media).find((el) => el.id === itemId) ?? null;
+}
+
+/**
+ * Inside a step: edited bytes `to` (of type `made.mime`) go in as `how` says. 'all': in file `id`'s place everywhere
+ * it's used (its name's extension following its type), the items playing it retimed and their boxes refitted.
+ * 'item': a new file, for that one item only (retimed and refitted). 'new': a new file next to it, nothing else
+ * changed. Returns the new file's ref and how the items' times went.
+ */
+export function applyFileEdit(
+  game: Game,
+  id: Id,
+  to: Id,
+  made: { mime: string; size: number },
+  plan: Pick<EditPlan, 'cut'> & Pick<EditExtra, 'aspect'>,
+  how: How,
+  itemId?: string,
+): { ref: MediaRef; times: { kept: number; clipped: number; whole: number } } {
+  const none = { kept: 0, clipped: 0, whole: 0 };
+  if (how === 'all') {
+    const ref = moveToFile(game, id, to, made);
+    renameForType(game, ref, made.mime);
+    const times = plan.cut ? retimeUses(game, to, plan.cut) : none;
+    if (plan.aspect) refitBoxes(game, to, plan.aspect.was, plan.aspect.now);
+    return { ref, times };
+  }
+  const orig = game.media.find((m) => m.id === id);
+  if (!orig) throw new Error('That file is no longer in the game.');
+  const item = how === 'item' && itemId ? findItem(game, itemId, id) : null;
+  if (how === 'item' && !item) throw new Error('That item is no longer in the game.');
+  game.media.push({
+    id: to,
+    name: uniqueMediaName(
+      game.media.map((m) => m.name),
+      editedName(orig.name, made.mime),
+    ),
+    mime: made.mime,
+    size: made.size,
+    kind: orig.kind,
+  });
+  const ref = game.media[game.media.length - 1];
+  if (!item) return { ref, times: none };
+  item.media = to;
+  const times = plan.cut ? retimeUses(game, to, plan.cut, item) : none;
+  if (plan.aspect && item.kind === 'video') refitBoxes(game, to, plan.aspect.was, plan.aspect.now, item);
+  return { ref, times };
+}
+
+/** Why an edit couldn't be made, as the host is told. */
+function editFailed(e: RunError): string {
+  if (e.reason === 'no-encoder') return CANT_SIZE;
+  if (e.reason === 'unreadable') return `${CANT_READ_EDIT.replace(/\.$/, '')}: nothing was changed.`;
+  return EDIT_WRONG;
+}
+
+/**
+ * ✎ Edit file `id` of `game` (in the editor) as `plan` says, put in as `how` says (`item`: the one slide item, for
+ * 'item'): made outside the undo history as a job, checked, stored, then put in as one step, unless the file, the item
+ * or the game changed meanwhile. `remakeCopy`: its 🗜 copy for phones went with the old file, so a new one is made
+ * after (another job). Returns the job's id (null: it isn't a file ✎ edits).
+ */
+export function queueFileEdit(game: Game, id: Id, plan: EditPlan & EditExtra, how: How, item?: VideoEl | AudioEl, remakeCopy = false): string | null {
+  const ref = game.media.find((m) => m.id === id);
+  if (!ref || ref.url || ref.phoneCopy || (ref.kind !== 'video' && ref.kind !== 'audio')) return null;
+  const had = jobFor(id);
+  if (had) return had.id;
+  const src = getBlob(id);
+  if (!src) return null;
+  const kind = ref.kind;
+  const what = kind === 'audio' ? 'sound' : 'video';
+  const gameId = game.id;
+  const itemId = how === 'item' ? item?.id : undefined;
+  if (how === 'item' && !itemId) return null;
+  const others = Math.max(0, (mediaUsage(game).get(id) ?? 1) - 1);
+  return addJob({ kind: 'edit', what, media: id, gameId, copying: plan.copied }, async (ctl) => {
+    ctl.phase('working');
+    let made: Made;
+    try {
+      made = await convertBlob(src, plan.run, plan.mime, ctl);
+    } catch (e) {
+      if (e instanceof RunError) {
+        console.warn('A file couldn’t be edited:', e.reason, e.message);
+        return { failed: editFailed(e) };
+      }
+      throw e;
+    }
+    if (ctl.signal.aborted) throw stopped();
+    ctl.phase('checking');
+    const bad = await checkMade(made, { ...plan.out, seconds: plan.out.seconds ?? made.seconds });
+    if (bad) {
+      console.warn('An edited file came out wrong:', bad);
+      return { failed: EDIT_WRONG };
+    }
+    if (ctl.signal.aborted || !(await roomFor(made.blob.size))) throw stopped();
+    // Still the editor, the same game, the very file it was made from (and, for one item, that item on it).
+    const same = () =>
+      app.screen === 'editor' &&
+      !app.editGame &&
+      app.game.id === gameId &&
+      app.game.media.some((m) => m.id === id) &&
+      getBlob(id) === src &&
+      (!itemId || !!findItem(app.game, itemId, id));
+    // (Not while a step is being made, a drag or a file being stored: the edit's would join it.)
+    await whenSettled();
+    if (ctl.signal.aborted) throw stopped();
+    if (!same()) return { failed: CONVERT_CHANGED };
+    ctl.phase('storing');
+    const to = newId();
+    await whileWriting(() => putMedia(to, made.blob));
+    await whenSettled();
+    if (ctl.signal.aborted || !same()) {
+      await dropStoredMedia(to);
+      if (ctl.signal.aborted) throw stopped();
+      return { failed: CONVERT_CHANGED };
+    }
+    // (At once after the checks: nothing can change in between. The ops say where it was.)
+    const { times } = step(plan.labels[how], () => applyFileEdit(app.game, id, to, { mime: made.mime, size: made.blob.size }, plan, how, itemId));
+    markChecked(made.blob, { is: 'plays', repack: null });
+    // (One that played without its sound plays now: it's left out of what was made.)
+    if (how === 'all') dismissOffer(id);
+    flash(`media:${to}`);
+    if (remakeCopy && how === 'all') void remakePhoneCopy(to);
+    if (how === 'new') return { toast: '✂ Saved as a new file in 🖼 Media: the original is unchanged.', media: to };
+    if (how === 'item')
+      return { toast: `✂ This item plays its own edited copy now: ${others === 1 ? 'the other place keeps' : `the other ${others} places keep`} the original.`, media: to };
+    const length = made.seconds ?? plan.out.seconds;
+    const bits = [
+      ...(length ? [lengthText(length)] : []),
+      ...(kind === 'video' && plan.aspect && made.width ? [`${made.width}×${made.height}`] : []),
+      `${formatBytes(made.blob.size)} (was ${formatBytes(src.size)})`,
+    ];
+    const verb = kind === 'video' && !/^Trimmed/.test(plan.labels.all) ? 'edited' : 'trimmed';
+    const whole = times.whole
+      ? ` ${times.whole} slide item${times.whole === 1 ? '' : 's'} played a part you cut out: ${times.whole === 1 ? 'it plays' : 'they play'} the whole clip now.`
+      : '';
+    return { toast: `✂ ${what === 'sound' ? 'Sound' : 'Video'} ${verb}: ${bits.join(', ')}. Ctrl+Z puts the old one back.${whole}`, media: to };
+  });
+}
+
+/** A new 🗜 copy for phones of file `id` (just edited), as 🗜 makes one unasked: another job, after this one. */
+async function remakePhoneCopy(id: Id): Promise<void> {
+  const ref = app.game.media.find((m) => m.id === id);
+  const blob = getBlob(id);
+  if (!ref || !blob) return;
+  try {
+    const plan = avDefault(await readForCopy(ref, blob, cardUses(app.game, id)), fileLimitsNow().limits.fileBytes);
+    if ('refuse' in plan) return void toast(`🗜 Its copy for phones wasn’t made again: ${plan.refuse[0].toLowerCase()}${plan.refuse.slice(1)}.`);
+    queuePhoneCopy(id, plan);
+  } catch (e) {
+    console.warn('The copy for phones couldn’t be planned', e);
+  }
+}

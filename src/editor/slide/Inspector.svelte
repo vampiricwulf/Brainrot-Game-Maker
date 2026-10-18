@@ -3,7 +3,7 @@
   import type { Snippet } from 'svelte';
   import type { FitResult } from '../../lib/autofit';
   import { fontChoices } from '../../lib/fonts';
-  import type { EntranceType, Fit, Game, SlideElement, TextEl } from '../../lib/model';
+  import type { AudioEl, EntranceType, Fit, Game, SlideElement, TextEl, VideoEl } from '../../lib/model';
   import { openMediaPopup } from '../../lib/mediactl.svelte';
   import { DRIVE_SHARE_HINT, embedName, embedOpenUrl, formatWhen, linkHost } from '../../lib/links';
   import { stageText } from '../../lib/theme';
@@ -11,7 +11,8 @@
   import SaveCopyButton from '../SaveCopyButton.svelte';
   import NumField from './NumField.svelte';
   import { app } from '../../lib/app.svelte';
-  import { convertNow } from '../../lib/shrink/apply';
+  import { convertNow, editOffer } from '../../lib/shrink/apply';
+  import { openMediaDialog } from '../../lib/shrink/dialog.svelte';
   import { verdictOf } from '../../lib/shrink/checks.svelte';
   import { jobFor } from '../../lib/shrink/jobs.svelte';
   import { shortWhy } from '../../lib/shrink/words';
@@ -357,7 +358,26 @@
           <label class="field">Rounded corners<NumField min={0} bind:value={() => el.radius ?? 0, (v) => (el.radius = v)} /></label>
         {/if}
       {:else}
-        <button class="small" onclick={(e) => onreplace(e.currentTarget)}>Replace file…</button>
+        <div class="row">
+          <button class="small" onclick={(e) => onreplace(e.currentTarget)}>Replace file…</button>
+          {#if el.kind === 'video' || el.kind === 'audio'}
+            {@const offer = editOffer(game.media.find((m) => m.id === el.media))}
+            {#if offer}
+              <button
+                class="small"
+                data-edit-media
+                onclick={() => openMediaDialog({ mode: 'edit', id: el.media, item: el as VideoEl | AudioEl })}
+                disabled={offer === 'busy'}
+                title={offer === 'busy'
+                  ? 'Wait for it to finish (the header shows how far it got)'
+                  : el.kind === 'video'
+                    ? 'Trim, crop or resize this video: every place that uses it gets the edited one, on stream too (Ctrl+Z puts the old one back)'
+                    : 'Trim this sound: every place that uses it gets the trimmed one (Ctrl+Z puts the old one back)'}
+                >{el.kind === 'video' ? '✎ Edit video…' : '✎ Edit sound…'}</button
+              >
+            {/if}
+          {/if}
+        </div>
         {@render liveNote()}
         {@render playsNote(el.media)}
       {/if}

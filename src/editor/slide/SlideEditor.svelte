@@ -35,6 +35,7 @@
   import { previewMediaScope } from '../../lib/mediactl.svelte';
   import { isGameDrop } from '../../lib/mediadrop';
   import { checkAdded } from '../../lib/shrink/checks.svelte';
+  import { openMediaDialog } from '../../lib/shrink/dialog.svelte';
   import { isLinkProblem, isMediaHost, parseMediaLink, youtubeStart } from '../../lib/links';
   import { registerGameFonts, uploadedFamily } from '../../lib/fonts';
   import { clone, restyle } from '../../lib/ops';
@@ -533,6 +534,7 @@
       replacing = 'bg';
       picker = 'image';
     } else if (a === 'edit-image' && single?.kind === 'image') editingImage = single.id;
+    else if (a === 'edit-media' && (single?.kind === 'video' || single?.kind === 'audio')) openMediaDialog({ mode: 'edit', id: single.media, item: single });
   }
 
   /** Ctrl+A: every item that isn't locked or hidden. */

@@ -12,6 +12,7 @@ export {
   canEncodeVideo,
   Conversion,
   ConversionCanceledError,
+  EncodedPacketSink,
   FLAC,
   FlacOutputFormat,
   Input,

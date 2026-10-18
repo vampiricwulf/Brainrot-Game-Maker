@@ -4,7 +4,8 @@
 // videos (WebCodecs) is checked in the test browser (tests/e2e/phonecopies.mjs, convert.mjs).
 import { BufferTarget } from 'mediabunny';
 import { describe, expect, it } from 'vitest';
-import { readFacts } from './facts';
+import { keyBefore, readFacts } from './facts';
+import { noEdit, planEdit, type FileEdit } from './plan';
 import { checkMade, convertBlob, discardReason, RunError, type RunPlan } from './run';
 import { mux, muxTs } from './testclip';
 
@@ -156,5 +157,47 @@ describe('🔄 repackaging: the tracks copied as they are, nothing decoded', () 
     stop.abort();
     const mkv = await made((t) => mux('mkv', t, true), 'video/x-matroska');
     await expect(convertBlob(mkv, { box: 'webm', copy: FORCED }, 'video/webm', ctl(stop.signal).ctl)).rejects.toMatchObject({ name: 'AbortError' });
+  });
+});
+
+describe('✎ Edit’s plans, made (card-files spec §4.11.4)', () => {
+  // (Node: no WebCodecs, so nothing is made again but what mediabunny does itself.)
+  const can = { ok: false, aac: false, opus: false };
+  const NONE = { avc: false, vp9: false, vp8: false };
+  const plan = (f: Awaited<ReturnType<typeof readFacts>>, e: Partial<FileEdit>, kind: 'video' | 'audio', key: number | null = null) => {
+    const p = planEdit(f, { ...noEdit(f), ...e }, can, NONE, key, kind);
+    if ('refuse' in p) throw new Error(p.refuse);
+    return p;
+  };
+
+  it('a WAV trimmed to the sample, as a WAV', async () => {
+    const blob = wav(4);
+    const p = plan(await readFacts(blob), { start: 1, end: 3 }, 'audio');
+    const made = await convertBlob(blob, p.run, p.mime, ctl().ctl);
+    expect([made.mime, made.seconds]).toEqual(['audio/wav', 2]);
+    expect(await readFacts(made.blob)).toMatchObject({ box: 'wav', audio: { codec: 'pcm-s16' } });
+  });
+
+  it('an MP4 trimmed exactly with nothing re-encoded, its picture cut where asked', async () => {
+    const t = new BufferTarget();
+    await mux('mp4', t, true);
+    const blob = new Blob([t.buffer!]);
+    const p = plan(await readFacts(blob), { start: 1.2, end: 2.5 }, 'video');
+    expect(p.copied).toBe(true);
+    const made = await convertBlob(blob, p.run, p.mime, ctl().ctl);
+    expect(made.seconds).toBeCloseTo(1.3, 1);
+    expect(await checkMade(made, { ...p.out, seconds: p.out.seconds }, async () => ({ opens: true, picture: true }))).toBeNull();
+  });
+
+  it('a WebM’s quick trim starts at the key frame before, nothing re-encoded', async () => {
+    const t = new BufferTarget();
+    await mux('webm', t, true);
+    const blob = new Blob([t.buffer!]);
+    const key = await keyBefore(blob, 1.3);
+    expect(key).toBe(1);
+    const p = plan(await readFacts(blob), { start: 1.3, end: 2.5, quick: true }, 'video', key);
+    expect([p.copied, p.cut]).toEqual([true, { from: 1, to: 2.5, length: 3 }]);
+    const made = await convertBlob(blob, p.run, p.mime, ctl().ctl);
+    expect(made.seconds).toBeCloseTo(1.5, 1);
   });
 });

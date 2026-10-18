@@ -2,12 +2,12 @@
 // before anything is made, for a GIF (a looping video), a video (a smaller picture, or only the part the cards play) or
 // a sound. And how 🔄 Convert makes a file that plays here in its place (§4.12.6). Pure, so it's unit-tested.
 import { SLOW_FILE_BYTES } from '../buzzproto';
-import type { MediaFacts } from './facts';
+import { isPcm, type MediaFacts } from './facts';
 import type { Can, Encoders } from './probe';
 import { NO_WEBCODECS } from './probe';
-import { fixMime, isLossless, type Fix } from './playable';
-import type { RunAudio, RunPlan, RunVideo, Want } from './run';
-import { codecName, fixBoxName } from './words';
+import { boxFor, fixMime, isLossless, type Fix } from './playable';
+import type { OutBox, RunAudio, RunPlan, RunVideo, Want } from './run';
+import { aOrAn, codecName, fixBoxName } from './words';
 
 /** 🖼 Media offers 🗜 for a file over this (bytes). */
 export const SHRINK_OFFER_BYTES = 2 * 1024 * 1024;
@@ -240,12 +240,12 @@ export function clockText(s: number): string {
   return h ? `${h}:${String(m).padStart(2, '0')}:${sec}` : `${m}:${sec}`;
 }
 
-/** "0:12.4" (tenths; a whole second: "0:12"). */
-export function clockTenths(s: number): string {
+/** "0:12.4" (tenths; a whole second: "0:12", or "0:12.0" with `always`). */
+export function clockTenths(s: number, always = false): string {
   const t = Math.max(0, Math.round(s * 10) / 10);
   const whole = Math.floor(t);
   const tenth = Math.round((t - whole) * 10);
-  return tenth ? `${clockText(whole)}.${tenth}` : clockText(whole);
+  return tenth || always ? `${clockText(whole)}.${tenth}` : clockText(whole);
 }
 
 /** "2.4 s", "1:32". */
@@ -541,5 +541,319 @@ export function planConvert(f: MediaFacts, fix: Fix, can: Can, kind: 'video' | '
     format: `${fixBoxName(fix.box)}${names.length ? ` (${names.join(', ')})` : ''}`,
     notes,
     label: convertLabel(kind, fix),
+  };
+}
+
+// ---------- ✎ Edit (card-files spec §4.11.4) ----------
+
+/**
+ * What ✎ Edit does to a video or sound: the part kept (seconds on the file's timeline; `end` at its length: nothing
+ * cut at the end), a WebM's quick trim (from the key frame before `start`, nothing re-encoded), the part of the
+ * picture kept (0 to 1 of the picture as shown, after any rotation), its short side (null: as cropped), and its sound
+ * kept or not.
+ */
+export interface FileEdit {
+  start: number;
+  end: number;
+  quick: boolean;
+  crop: { x: number; y: number; w: number; h: number } | null;
+  short: Short | null;
+  sound: boolean;
+}
+/** The picture sizes offered, by their short side ("720p"). */
+export const SIZES = [1080, 720, 480, 360] as const;
+export type Short = (typeof SIZES)[number];
+/** How an edit goes in: in the file's place everywhere (`all`), for one slide item only, or as a new file. */
+export type How = 'all' | 'item' | 'new';
+
+/** Less than this cut off an end isn't a trim (seconds). */
+const NO_CUT = 0.05;
+/** A WebM cut this close after its key frame is copied as it is (mediabunny may move it this much). */
+const KEY_SLACK = 0.1;
+const GiB = 1024 ** 3;
+
+export const CANT_READ_EDIT = 'The app can’t read this file, so it can’t edit it.';
+export const NO_REENCODE_HERE =
+  'Cropping and resizing need Chrome, Edge, Firefox or the desktop app, with the app opened from a file or an https:// address. Trimming works here.';
+export const CANT_SIZE = 'This browser can’t make a video this size: pick a smaller size.';
+export const TOO_SHORT = 'Keep at least a tenth of a second.';
+/** Said when a video's picture is made again as VP9 in an MP4 (there's no H.264 encoder here). */
+export const VP9_IN_MP4 = 'This browser can’t make H.264 videos, so the video is VP9 in an MP4: it plays in Chrome, Edge, Firefox and the desktop app; some iPhones may not play it.';
+/** Said when a video that wasn't a WebM is saved as one (there's no H.264 encoder here). */
+export const WEBM_EDIT_NOTE = 'This browser makes WebM videos: some iPhones may not play them. For one every phone plays, edit it in Chrome or Edge on Windows or Mac, or in the desktop app.';
+/** "This browser can't re-encode HEVC (H.265) video: only trimming works here…". */
+export const cantReencode = (codec: string | null): string => `This browser can’t re-encode ${codecName(codec) ?? 'this'} video: only trimming works here, which keeps the video as it is.`;
+/** "This browser can't re-encode its sound (AAC) for a WebM: untick Keep its sound…". */
+export const cantSound = (codec: string | null, box: OutBox): string =>
+  `This browser can’t re-encode its sound (${codecName(codec) ?? 'its format'}) for ${aOrAn(fixBoxName(box))}: untick Keep its sound, or edit it in Chrome or Edge on Windows or Mac.`;
+
+/** What each file type holds of the sounds, copied as they are. */
+const SOUND_FITS: Record<OutBox, string[]> = {
+  mp4: ['aac', 'mp3', 'opus', 'flac'],
+  webm: ['opus', 'vorbis'],
+  ogg: ['opus', 'vorbis'],
+  m4a: ['aac'],
+  mp3: ['mp3'],
+  flac: ['flac'],
+  wav: ['pcm-u8', 'pcm-s16', 'pcm-s24', 'pcm-s32', 'pcm-f32', 'ulaw', 'alaw'],
+};
+const WEBM_VIDEO = ['vp8', 'vp9', 'av1'];
+
+/** A file as it is: all of it, its picture whole and its size, with its sound (`silent`: a sound that won't play here, left out). */
+export function noEdit(f: MediaFacts, silent = false): FileEdit {
+  return { start: 0, end: f.seconds ?? 0, quick: false, crop: null, short: null, sound: !!f.audio && !silent };
+}
+
+/** Whether `e` cuts something off either end of a file `length` long. */
+const cuts = (e: Pick<FileEdit, 'start' | 'end'>, length: number): boolean => e.start > NO_CUT || e.end < length - NO_CUT;
+
+/** The picture's short side once cropped (as shown). */
+const croppedShort = (f: MediaFacts, e: FileEdit): number => {
+  const c = cropPixels(f, e);
+  return Math.min(c?.width ?? f.video?.width ?? 0, c?.height ?? f.video?.height ?? 0);
+};
+const resizes = (f: MediaFacts, e: FileEdit): boolean => !!f.video && e.short !== null && e.short < croppedShort(f, e);
+
+/** Whether `e` changes nothing (Apply has nothing to do). */
+export function isNoEdit(e: FileEdit, f: MediaFacts, silent = false): boolean {
+  return !cuts(e, f.seconds ?? 0) && !cropPixels(f, e) && !resizes(f, e) && e.sound === noEdit(f, silent).sound;
+}
+
+/**
+ * The part of the picture `e` keeps, in pixels of the picture as shown: even numbers, inside it, 16 px at least
+ * (null: no crop, or all of it).
+ */
+export function cropPixels(f: MediaFacts, e: Pick<FileEdit, 'crop'>): { left: number; top: number; width: number; height: number } | null {
+  const v = f.video;
+  if (!e.crop || !v) return null;
+  const even = (n: number) => Math.round(n / 2) * 2;
+  const W = v.width;
+  const H = v.height;
+  const left = Math.min(Math.max(0, even(e.crop.x * W)), Math.max(0, W - 16));
+  const top = Math.min(Math.max(0, even(e.crop.y * H)), Math.max(0, H - 16));
+  const width = Math.min(Math.max(16, even(e.crop.w * W)), evenBelow(W - left));
+  const height = Math.min(Math.max(16, even(e.crop.h * H)), evenBelow(H - top));
+  if (left === 0 && top === 0 && width >= evenBelow(W) && height >= evenBelow(H)) return null;
+  return { left, top, width, height };
+}
+
+/** The picture's size as `e` makes it: cropped, then its short side `e.short` (never bigger than the crop), even both ways. */
+export function outputSize(f: MediaFacts, e: FileEdit): { w: number; h: number } {
+  const c = cropPixels(f, e);
+  const cw = c?.width ?? f.video?.width ?? 2;
+  const ch = c?.height ?? f.video?.height ?? 2;
+  const short = Math.min(cw, ch);
+  if (!e.short || e.short >= short) return { w: evenBelow(cw), h: evenBelow(ch) };
+  const k = e.short / short;
+  const even = (n: number, max: number) => Math.min(evenBelow(max), Math.max(2, Math.round(n / 2) * 2));
+  return { w: even(cw * k, cw), h: even(ch * k, ch) };
+}
+
+/** "0:12" or 12.4 s, typed: m:ss(.s), h:mm:ss(.s) or plain seconds (null: not a time). */
+export function parseClock(t: string): number | null {
+  const s = t.trim().replace(',', '.');
+  let m = /^(\d+(?:\.\d+)?)$/.exec(s);
+  if (m) return +m[1];
+  m = /^(\d+):([0-5]?\d(?:\.\d+)?)$/.exec(s);
+  if (m) return +m[1] * 60 + +m[2];
+  m = /^(\d+):([0-5]?\d):([0-5]?\d(?:\.\d+)?)$/.exec(s);
+  if (m) return +m[1] * 3600 + +m[2] * 60 + +m[3];
+  return null;
+}
+
+/**
+ * History's words for an edit (never the file's name): "Trimmed a video to 0:01–0:03", "Edited a video (trimmed to
+ * 0:01–0:03, cropped, 720p, without its sound)", "… for one slide item (…)", "Saved an edited copy of a video (…)".
+ */
+export function editLabel(kind: 'video' | 'audio', e: FileEdit, f: MediaFacts, how: How): string {
+  const what = kind === 'audio' ? 'sound' : 'video';
+  const length = f.seconds ?? 0;
+  const trim = cuts(e, length) ? `${clockText(e.start)}–${clockText(Math.min(e.end, length || e.end))}` : null;
+  const parts = [
+    ...(trim ? [`trimmed to ${trim}`] : []),
+    ...(kind === 'video' && cropPixels(f, e) ? ['cropped'] : []),
+    ...(kind === 'video' && resizes(f, e) ? [`${e.short}p`] : []),
+    ...(kind === 'video' && f.audio && !e.sound ? ['without its sound'] : []),
+  ];
+  const list = parts.length ? ` (${parts.join(', ')})` : '';
+  if (how === 'item') return `Edited a ${what} for one slide item${list}`;
+  if (how === 'new') return `Saved an edited copy of a ${what}${list}`;
+  if (trim && parts.length === 1) return `Trimmed a ${what} to ${trim}`;
+  return `Edited a ${what}${list}`;
+}
+
+/** A file type's extension: "mp4", "webm", "m4a". */
+export const extFor = (mime: string): string =>
+  ({ 'video/mp4': 'mp4', 'video/webm': 'webm', 'audio/mp4': 'm4a', 'audio/ogg': 'ogg', 'audio/mpeg': 'mp3', 'audio/wav': 'wav', 'audio/flac': 'flac' })[mime.split(';')[0]] ?? 'bin';
+
+/** What an edited copy is called: "Clip.webm" → "Clip (edited).mp4" (its own type's extension). */
+export function editedName(name: string, mime: string): string {
+  const base = name.replace(/\.[a-z0-9]{1,5}$/i, '').trim() || 'File';
+  return `${base} (edited).${extFor(mime)}`;
+}
+
+/** What else ✎'s plan has: History's words for each way it can go in, and the picture's shape before and after (width ÷ height). */
+export interface EditExtra {
+  labels: Record<How, string>;
+  aspect?: { was: number; now: number };
+}
+
+/**
+ * The file type ✎ keeps a file in while its picture is copied as it is (`sound`: its sound kept): an MP4 or MOV stays
+ * an MP4, a WebM a WebM, an MKV goes by its codecs (a WebM for VP8, VP9 or AV1 with Opus, Vorbis or no sound); a sound
+ * keeps its family (MP3, M4A, OGG, FLAC, WAV).
+ */
+export function editBox(f: MediaFacts, sound: boolean, can: Pick<Can, 'aac'>, kind: 'video' | 'audio'): OutBox {
+  const v = kind === 'video' ? f.video : null;
+  const keep = sound ? f.audio : null;
+  if (kind === 'audio') return boxFor('audio', null, f.audio?.codec ?? null) ?? (can.aac ? 'm4a' : 'ogg');
+  if (f.box === 'webm') return 'webm';
+  if (f.box === 'mp4' || f.box === 'mov') return 'mp4';
+  const webmCodecs = !!v && WEBM_VIDEO.includes(v.codec ?? '') && (!keep || keep.codec === 'opus' || keep.codec === 'vorbis');
+  if (f.box === 'mkv') return webmCodecs ? 'webm' : 'mp4';
+  return boxFor('video', v?.codec ?? null, keep?.codec ?? null) ?? 'mp4';
+}
+
+/**
+ * Where a quick trim of `e` would start: the key frame `keyAt` before its start, when it's a WebM's picture copied as
+ * it is, trimmed at its start more than a tenth of a second after that key frame (else null: an exact trim needs no
+ * re-encoding, or it isn't one).
+ */
+export function quickTrimAt(f: MediaFacts, e: FileEdit, keyAt: number | null, kind: 'video' | 'audio', can: Pick<Can, 'aac'>): number | null {
+  if (kind !== 'video' || !f.video || keyAt === null || cropPixels(f, e) || resizes(f, e) || e.start <= NO_CUT) return null;
+  if (editBox(f, e.sound && !!f.audio, can, kind) !== 'webm') return null;
+  return keyAt <= e.start && e.start - keyAt > KEY_SLACK ? keyAt : null;
+}
+
+/** Whether the start of a trim of `f` at `start` waits for its key frame to be found (a WebM's picture copied). */
+export const needsKey = (f: MediaFacts, e: FileEdit, kind: 'video' | 'audio', can: Pick<Can, 'aac'>): boolean =>
+  kind === 'video' && !!f.video && e.start > NO_CUT && !cropPixels(f, e) && !resizes(f, e) && editBox(f, e.sound && !!f.audio, can, kind) === 'webm';
+
+/**
+ * How ✎ Edit makes file `f` (a `kind` file of the game) again as `e` says (`can` and `enc`: what this browser can make,
+ * `enc` at the picture's new size; `keyAt`: the key frame at or before `e.start`, for a WebM). Copied as it is where it
+ * can be: a trim of an MP4 is exact without re-encoding, and a sound's always is; a WebM's is exact when it starts
+ * at a key frame, else its picture is made again, unless it's a quick trim (from that key frame). A crop or a new size
+ * makes the picture again: H.264 in an MP4 where this browser can, else VP9 or VP8 (in a WebM, or with its sound
+ * copied in an MP4). Or why it can't be made here.
+ */
+export function planEdit(f: MediaFacts, e: FileEdit, can: Can, enc: Encoders, keyAt: number | null, kind: 'video' | 'audio'): (EditPlan & EditExtra) | { refuse: string } {
+  if (!f.box) return { refuse: CANT_READ_EDIT };
+  const length = f.seconds ?? 0;
+  const v = kind === 'video' ? f.video : null;
+  const a = f.audio;
+  const start = e.start > NO_CUT ? Math.min(e.start, length) : 0;
+  const end = length && e.end < length - NO_CUT ? Math.max(e.end, start) : length;
+  if (length && end - start < 0.1) return { refuse: TOO_SHORT };
+  const keep = a && e.sound ? a : null;
+  const crop = v ? cropPixels(f, e) : null;
+  const size = v ? outputSize(f, e) : null;
+  const reshape = !!crop || resizes(f, e);
+  const copyBox = editBox(f, !!keep, can, kind);
+  // A WebM can be cut as it is only at a key frame: an exact cut after one makes the picture again, a quick one starts there.
+  const webmCut = !!v && !reshape && copyBox === 'webm' && start > 0;
+  const atKey = keyAt !== null && keyAt <= start && start - keyAt <= KEY_SLACK;
+  const quick = webmCut && !atKey && e.quick && keyAt !== null;
+  const from = quick ? keyAt! : start;
+  const encodeVideo = !!v && (reshape || (webmCut && !atKey && !quick));
+
+  let box = copyBox;
+  let video: RunVideo | undefined;
+  let vcodec: string | null = v?.codec ?? null;
+  if (v && encodeVideo) {
+    if (!can.ok) return { refuse: reshape ? NO_REENCODE_HERE : `This browser can’t re-encode ${codecName(v.codec) ?? 'this video'}: pick the quick trim.` };
+    if (!v.decodes) return { refuse: cantReencode(v.codec) };
+    // (H.264 goes with AAC or MP3, as phones play it: copied, or made.)
+    const soundForAvc = !keep || keep.codec === 'aac' || keep.codec === 'mp3' || (can.aac && keep.decodes);
+    let codec: 'avc' | 'vp9' | 'vp8';
+    if (enc.avc && soundForAvc) [codec, box] = ['avc', 'mp4'];
+    else if (enc.vp9 || enc.vp8) {
+      codec = enc.vp9 ? 'vp9' : 'vp8';
+      box = !keep || SOUND_FITS.webm.includes(keep.codec ?? '') || !SOUND_FITS.mp4.includes(keep.codec ?? '') ? 'webm' : 'mp4';
+    } else return { refuse: CANT_SIZE };
+    vcodec = codec;
+    video = {
+      ...(crop ? { crop } : {}),
+      width: size!.w,
+      height: size!.h,
+      fit: 'fill',
+      codec,
+      // (Its own rate, or the file's less its sound's when its picture's isn't said: never more a pixel than it has.)
+      bitrate: videoBitrate(size!.w, size!.h, codec, { bps: v.bps ?? (length ? Math.max(0, (f.size * 8) / length - (a?.bps ?? 0)) : null), w: v.width, h: v.height, codec: v.codec }),
+      bitrateMode: 'variable',
+      keyFrameInterval: KEY_EVERY,
+      forceTranscode: true,
+      ...(v.fps && v.fps > 61 ? { frameRate: 60 } : {}),
+    };
+  } else if (kind === 'audio' || (f.video && !v)) video = { discard: true };
+
+  // The sound: left out, copied as it is when its type holds it, else made again (H.264's: AAC).
+  let audio: RunAudio | undefined;
+  let acodec: string | null = keep?.codec ?? null;
+  const cutting = cuts({ start, end }, length) || quick;
+  if (a && !keep) audio = { discard: true };
+  else if (keep) {
+    const fits = vcodec === 'avc' && encodeVideo ? keep.codec === 'aac' || keep.codec === 'mp3' : SOUND_FITS[box].includes(keep.codec ?? '');
+    // (Uncompressed sound copied goes by pieces of a tenth of a second or so: made again as it was, it's cut to the
+    // sample, with nothing lost.)
+    if (fits && cutting && isPcm(keep.codec)) audio = { codec: keep.codec as RunAudio['codec'], forceTranscode: true };
+    else if (!fits) {
+      const codec = box === 'webm' || box === 'ogg' ? 'opus' : box === 'm4a' ? 'aac' : can.aac ? 'aac' : 'opus';
+      if (!can.ok || !keep.decodes || !can[codec] || (vcodec === 'avc' && encodeVideo && codec !== 'aac')) return { refuse: cantSound(keep.codec, box) };
+      acodec = codec;
+      audio = { codec, bitrate: keep.channels === 1 ? MONO_BPS : SOUND_BPS, forceTranscode: true, ...(keep.channels > 2 ? { numberOfChannels: 2 } : {}) };
+    }
+  }
+  const copied = !encodeVideo && (!audio?.codec || isPcm(audio.codec));
+
+  // About how big: the part kept of the file as it is, less what's left out, when nothing is made again; else the rates.
+  const kept = length ? end - from : 0;
+  const ownBps = (t: { bps: number | null } | null, rest: number) => t?.bps ?? (length ? Math.max(0, (f.size * 8) / length - rest) : 0);
+  let estimate: number;
+  if (copied) {
+    const share = length ? kept / length : 1;
+    const less = (a && !keep ? (ownBps(a, f.video?.bps ?? 0) * kept) / 8 : 0) + (f.video && !v ? (ownBps(f.video, a?.bps ?? 0) * kept) / 8 : 0);
+    estimate = Math.round(Math.max(f.size * share * 0.05, f.size * share * 1.01 - less));
+  } else {
+    const vbps = !v ? 0 : (video?.bitrate ?? ownBps(v, a?.bps ?? 0));
+    const abps = !keep ? 0 : (audio?.bitrate ?? ownBps(keep, v?.bps ?? 0));
+    estimate = estimateBytes(vbps + abps, kept);
+  }
+
+  const notes: string[] = [];
+  if (keep && f.moreAudio) notes.push(`It has ${f.moreAudio + 1} sound tracks: the edited file keeps ${keep.label ? `“${keep.label}”` : 'the first'} only.`);
+  if (f.subtitles) notes.push('Its subtitles aren’t kept.');
+  if (v?.hdr && encodeVideo) notes.push('It’s an HDR video (iPhones film in HDR): re-encoding may make its colors look a little dull.');
+  if (encodeVideo && vcodec !== 'avc' && box === 'mp4') notes.push(VP9_IN_MP4);
+  else if (encodeVideo && vcodec !== 'avc' && copyBox !== 'webm') notes.push(WEBM_EDIT_NOTE);
+  if (estimate > 2 * GiB) notes.push(`About ${(estimate / GiB).toFixed(1)} GB: a .brainrot pack this big can’t be opened again (2 GB at most).`);
+
+  const names = [
+    ...(v ? [codecName(vcodec) ?? 'its video'] : []),
+    ...(a ? [keep ? (codecName(acodec) ?? 'its sound') : 'no sound'] : []),
+  ];
+  const cut = cutting ? { from, to: end, length } : null;
+  const done = { ...e, start: from, end };
+  const labels = { all: editLabel(kind, done, f, 'all'), item: editLabel(kind, done, f, 'item'), new: editLabel(kind, done, f, 'new') };
+  const out = size && encodeVideo ? size : v ? { w: v.width, h: v.height } : null;
+  return {
+    run: {
+      box,
+      ...(video ? { video } : {}),
+      ...(audio ? { audio } : {}),
+      ...(cut ? { trim: { start: from, ...(end < length ? { end } : {}) } } : {}),
+      // (A track copied as it is may move by a tenth of a second to fit the cut: it stays with the other.)
+      copy: { shiftTolerance: KEY_SLACK },
+    },
+    mime: fixMime(box, kind),
+    out: { seconds: length ? end - from : null, ...(out ? { width: out.w, height: out.h } : {}), sound: !!keep },
+    copied,
+    cut,
+    estimate,
+    format: `${fixBoxName(box)}${names.length ? ` (${names.join(', ')})` : ''}`,
+    notes,
+    label: labels.all,
+    labels,
+    ...(v && out && reshape ? { aspect: { was: v.width / v.height, now: out.w / out.h } } : {}),
   };
 }

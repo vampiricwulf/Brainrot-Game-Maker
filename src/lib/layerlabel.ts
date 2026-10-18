@@ -12,7 +12,7 @@ export type Align = 'left' | 'hcenter' | 'right' | 'top' | 'vcenter' | 'bottom' 
  */
 export type LayerAction =
   | 'front' | 'forward' | 'backward' | 'back' | 'duplicate' | 'lock' | 'unlock' | 'hide' | 'delete'
-  | 'cut' | 'copy' | 'paste' | 'edit-image' | `align-${Align}`
+  | 'cut' | 'copy' | 'paste' | 'edit-image' | 'edit-media' | `align-${Align}`
   | 'select-all' | 'paste-slide' | 'add-text' | 'background';
 
 /** The one notice for an action that left locked items alone (delete, cut, align, nudge). */

@@ -100,6 +100,16 @@
       ],
     ],
     [
+      '✎ Edit video',
+      [
+        ['Ctrl+Enter', 'Apply the edit'],
+        ['Space', 'Play or pause'],
+        ['I / O', 'Start or end the trim here'],
+        ['← / → on a handle', '0.1 s (Shift: 1 s)'],
+        ['Esc', 'Cancel (it asks first when there are changes)'],
+      ],
+    ],
+    [
       'Board images',
       [
         ['Same as on a slide', 'Tab, Alt+click, arrows, Ctrl+[ / ], Ctrl+D, Ctrl+A, Delete, right-click'],

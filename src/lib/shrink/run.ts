@@ -19,9 +19,13 @@ export interface RunVideo {
   width?: number;
   height?: number;
   fit?: 'fill' | 'contain' | 'cover';
+  /** The part of the picture kept (pixels of the picture as shown, after any rotation), before it's resized. */
+  crop?: { left: number; top: number; width: number; height: number };
   codec?: 'avc' | 'vp9' | 'vp8';
   /** Bits a second. */
   bitrate?: number;
+  /** 'variable': the bitrate may rise and fall with the picture (the show's own file); else it's kept even. */
+  bitrateMode?: 'constant' | 'variable';
   keyFrameInterval?: number;
   frameRate?: number;
   forceTranscode?: boolean;
@@ -31,7 +35,8 @@ export interface RunVideo {
 /** What's done to the sound. */
 export interface RunAudio {
   discard?: true;
-  codec?: 'aac' | 'opus';
+  /** (Uncompressed sound made again as it was: a trim exact to the sample, with nothing lost.) */
+  codec?: 'aac' | 'opus' | `pcm-${string}` | 'ulaw' | 'alaw';
   bitrate?: number;
   numberOfChannels?: number;
   forceTranscode?: boolean;
@@ -92,10 +97,13 @@ export function discardReason(d: Pick<DiscardedTrack, 'reason'>): RunReason | nu
 
 /** A plan's picture and sound options as mediabunny's (its bitrates as a Quality). */
 function options(mb: typeof import('./mb'), plan: RunPlan): { video?: ConversionVideoOptions; audio?: ConversionAudioOptions } {
-  const quality = (bps?: number) => (bps ? { quality: new mb.Quality({ bitrate: bps }) } : {});
-  const { bitrate: vbps, ...video } = plan.video ?? {};
+  const quality = (bps?: number, bitrateMode?: 'constant' | 'variable') => (bps ? { quality: new mb.Quality({ bitrate: bps, ...(bitrateMode ? { bitrateMode } : {}) }) } : {});
+  const { bitrate: vbps, bitrateMode, ...video } = plan.video ?? {};
   const { bitrate: abps, ...audio } = plan.audio ?? {};
-  return { ...(plan.video ? { video: { ...video, ...quality(vbps) } } : {}), ...(plan.audio ? { audio: { ...audio, ...quality(abps) } } : {}) };
+  return {
+    ...(plan.video ? { video: { ...video, ...quality(vbps, bitrateMode) } } : {}),
+    ...(plan.audio ? { audio: { ...audio, codec: audio.codec as ConversionAudioOptions['codec'], ...quality(abps) } } : {}),
+  };
 }
 
 /** The container for a file type. */

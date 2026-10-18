@@ -257,6 +257,19 @@ RollEvent  { id, ts, source: 'wheel' | 'dice', presetName?, result: string /* la
   name's extension follows the type), the 🗜 copy for phones goes, and Ctrl+Z puts the old file back. 🖼 Media's
   cards, a slide item's panel and the checklist offer it too, and **↻** repackages a 🤫 card's file that plays here but
   phones can't open (an MKV, a MOV) into a type they take, for everyone. Nothing is checked or converted in play.
+- **✎ Edit** (editor only): a stored video or sound that plays here can be trimmed (a bar with two handles, Start and
+  End boxes, I / O at the playhead), and a video cropped (Free, 16:9, 4:3, 1:1, 9:16) and made smaller (1080p, 720p,
+  480p, 360p, never bigger), from its 🖼 Media card, its slide item's panel or right-click menu. The window shows the
+  size it will come out at and what it's saved as, and undoes its own changes with Ctrl+Z. Nothing is re-encoded where
+  that can be helped: an MP4's trim is exact (an edit list), a sound's is copied (uncompressed sound made again as it
+  was, so it's cut to the sample), a WebM's is exact when it starts at a key frame, else its picture is made again or,
+  with Quick trim, it starts at the key frame before. A crop or a size makes the picture again (H.264 in an MP4 where
+  the browser can, else VP9). Applying puts the new bytes under a new id everywhere the file is used (on stream too),
+  as one undo step: items' Start at / Stop at move with the trim (one whose part was cut out plays the whole file, and
+  the window says which first), a video box that had the picture's old shape takes its new one, and the 🗜 copy for
+  phones goes (it can be made again at once). Save as a new file keeps both; Only this item (from a slide item whose
+  file is used elsewhere) gives that item an edited copy of its own. Toasts and History name no file. Nothing is
+  edited in play.
 - A media library panel lists everything in the game with its size and usage count. "Remove unused" is available.
 - Per-element playback settings: autoplay, loop, muted, start/end trim, and volume.
 - **Online links (optional)**: every file picker (except fonts) has *Paste a link*, and the slide editor has *🌐 Link* (and

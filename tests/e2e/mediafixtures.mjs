@@ -27,16 +27,18 @@ const AC3_FRAME =
 
 /**
  * A clip made in `page` (fixturePage): `seconds` long at `fps`, `w`×`h`, its picture `codec` ('vp8' or 'vp9'; null:
- * none) at about `bitrate` bits a second (big blocks of noise, new each frame, so it comes out as big as asked), a key
- * frame every `keyEvery` seconds, with a sound when `audio`: an Opus tone (true or 'opus'), or AC-3 silence ('ac3').
- * In a WebM, or an MKV (`box: 'mkv'`, which holds AC-3). Returns its bytes.
+ * none) at about `bitrate` bits a second (big blocks of noise, new each frame, so it comes out as big as asked; or with
+ * `hue`, one colour all over whose hue goes round from red (0°) at the start to 300° at the end, which hueAt reads
+ * back), a key frame every `keyEvery` seconds, with a sound when `audio`: an Opus tone (true or 'opus'), or AC-3
+ * silence ('ac3'). In a WebM, an MKV (`box: 'mkv'`, which holds AC-3) or an MP4 (`box: 'mp4'`). Returns its bytes.
  */
-export async function clip(page, { w = 320, h = 240, seconds = 2, fps = 30, codec = 'vp8', bitrate = 1_000_000, keyEvery = 1, audio = true, box = 'webm' } = {}) {
+export async function clip(page, { w = 320, h = 240, seconds = 2, fps = 30, codec = 'vp8', bitrate = 1_000_000, keyEvery = 1, audio = true, box = 'webm', hue = false } = {}) {
   const b64 = await page.evaluate(
     async (o) => {
       const M = window.Mediabunny;
       const target = new M.BufferTarget();
-      const out = new M.Output({ format: o.box === 'mkv' ? new M.MkvOutputFormat() : new M.WebMOutputFormat(), target });
+      const format = o.box === 'mkv' ? new M.MkvOutputFormat() : o.box === 'mp4' ? new M.Mp4OutputFormat() : new M.WebMOutputFormat();
+      const out = new M.Output({ format, target });
       const canvas = Object.assign(document.createElement('canvas'), { width: o.w, height: o.h });
       const g = canvas.getContext('2d');
       const small = Object.assign(document.createElement('canvas'), { width: Math.ceil(o.w / 8), height: Math.ceil(o.h / 8) });
@@ -70,7 +72,11 @@ export async function clip(page, { w = 320, h = 240, seconds = 2, fps = 30, code
       const frames = Math.round(o.seconds / step);
       for (let i = 0; i < frames; i++) {
         const t = i * step;
-        if (video) {
+        if (video && o.hue) {
+          g.fillStyle = `hsl(${(300 * t) / o.seconds}, 100%, 50%)`;
+          g.fillRect(0, 0, o.w, o.h);
+          await video.add(t, step);
+        } else if (video) {
           const img = sg.createImageData(small.width, small.height);
           for (let p = 0; p < img.data.length; p += 4) [img.data[p], img.data[p + 1], img.data[p + 2], img.data[p + 3]] = [rnd(), rnd(), rnd(), 255];
           sg.putImageData(img, 0, 0);
@@ -93,7 +99,7 @@ export async function clip(page, { w = 320, h = 240, seconds = 2, fps = 30, code
       for (let i = 0; i < bytes.length; i += 0x8000) bin += String.fromCharCode(...bytes.subarray(i, i + 0x8000));
       return btoa(bin);
     },
-    { w, h, seconds, fps, codec, bitrate, keyEvery, audio, box, ac3Frame: AC3_FRAME },
+    { w, h, seconds, fps, codec, bitrate, keyEvery, audio, box, hue, ac3Frame: AC3_FRAME },
   );
   return Buffer.from(b64, 'base64');
 }
@@ -142,6 +148,36 @@ export async function readBack(page, buf) {
     const [format, seconds, v, a] = await Promise.all([input.getFormat(), input.computeDuration(), input.getPrimaryVideoTrack(), input.getPrimaryAudioTrack()]);
     return { format: format.name, seconds, video: v ? await v.getCodec() : null, audio: a ? await a.getCodec() : null };
   }, Buffer.from(buf).toString('base64'));
+}
+
+/**
+ * The hue (degrees, 0 to 360) in the middle of a video's picture at `t` seconds (its bytes, `buf`), as `page`
+ * (fixturePage) shows it, and how long it lasts: for clip({ hue: true }) a hue says when in the clip a frame was.
+ */
+export async function hueAt(page, buf, t) {
+  return page.evaluate(
+    async ({ b64, t }) => {
+      const bytes = Uint8Array.from(atob(b64), (c) => c.charCodeAt(0));
+      const v = document.createElement('video');
+      v.muted = true;
+      v.src = URL.createObjectURL(new Blob([bytes]));
+      await new Promise((ok, no) => ((v.onloadeddata = ok), (v.onerror = () => no(new Error('the video didn’t load')))));
+      // (Seeked to, even at 0: the frame shown there is drawn by then.)
+      v.currentTime = Math.max(t, 0.001);
+      await new Promise((ok) => (v.onseeked = ok));
+      const c = Object.assign(document.createElement('canvas'), { width: v.videoWidth, height: v.videoHeight });
+      const g = c.getContext('2d');
+      g.drawImage(v, 0, 0);
+      const [r, gr, b] = g.getImageData(c.width >> 1, c.height >> 1, 1, 1).data;
+      const max = Math.max(r, gr, b);
+      const min = Math.min(r, gr, b);
+      const d = max - min || 1;
+      const hue = max === r ? ((gr - b) / d) % 6 : max === gr ? (b - r) / d + 2 : (r - gr) / d + 4;
+      URL.revokeObjectURL(v.src);
+      return { hue: (hue * 60 + 360) % 360, seconds: v.duration, width: v.videoWidth, height: v.videoHeight };
+    },
+    { b64: Buffer.from(buf).toString('base64'), t },
+  );
 }
 
 /** A WAV of a 440 Hz tone: `seconds` long, 16-bit, `rate` samples a second, `channels` of them. */

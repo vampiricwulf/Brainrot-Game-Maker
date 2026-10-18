@@ -42,6 +42,25 @@ import {
   planConvert,
   videoBitrate,
   convertLabel,
+  CANT_READ_EDIT,
+  CANT_SIZE,
+  cantReencode,
+  cantSound,
+  cropPixels,
+  editedName,
+  editLabel,
+  isNoEdit,
+  needsKey,
+  noEdit,
+  NO_REENCODE_HERE,
+  outputSize,
+  parseClock,
+  planEdit,
+  quickTrimAt,
+  TOO_SHORT,
+  VP9_IN_MP4,
+  WEBM_EDIT_NOTE,
+  type FileEdit,
 } from './plan';
 import { NO_WEBCODECS, type Can, type Encoders } from './probe';
 
@@ -498,5 +517,229 @@ describe('how 🔄 Convert makes a file that plays here', () => {
     expect(convertLabel('video', { video: 'encode', audio: 'drop', box: 'webm' })).toBe('Converted a video to WebM without its sound');
     expect(convertLabel('audio', { audio: 'encode', box: 'ogg' })).toBe('Converted a sound to OGG');
     expect(convertLabel('audio', { audio: 'keep', box: 'm4a' })).toBe('Repackaged a sound as M4A (nothing lost)');
+  });
+});
+
+describe('✎ Edit: what an edit makes', () => {
+  const t = (codec: string, o: Partial<TrackFacts> = {}): TrackFacts => ({ codec, str: codec, decodes: true, bps: 1_000_000, cpt: true, ...o });
+  const pic = (codec: string, o: Partial<TrackFacts> & { width?: number; height?: number; fps?: number } = {}) => ({
+    ...t(codec, { bps: 20_000_000, ...o }),
+    width: o.width ?? 1920,
+    height: o.height ?? 1080,
+    rotation: 0 as const,
+    hdr: false,
+    ...(o.fps ? { fps: o.fps } : {}),
+  });
+  const snd = (codec: string, o: Partial<TrackFacts> & { channels?: number } = {}) => ({ ...t(codec, { bps: 128_000, ...o }), channels: o.channels ?? 2, label: null });
+  const facts = (box: MediaFacts['box'], video: MediaFacts['video'], audio: MediaFacts['audio'], o: Partial<MediaFacts> = {}): MediaFacts => ({
+    box,
+    seconds: 10,
+    size: 10_000_000,
+    video,
+    audio,
+    moreAudio: 0,
+    subtitles: false,
+    ...o,
+  });
+  const CHROMIUM: Can = { ok: true, aac: false, opus: true };
+  const WINDOWS: Can = { ok: true, aac: true, opus: true };
+  const VP: Encoders = { avc: false, vp9: true, vp8: true };
+  const AVC: Encoders = { avc: true, vp9: true, vp8: true };
+  const edit = (f: MediaFacts, o: Partial<FileEdit> = {}): FileEdit => ({ ...noEdit(f), ...o });
+  const plan = (f: MediaFacts, e: Partial<FileEdit>, o: { can?: Can; enc?: Encoders; key?: number | null; kind?: 'video' | 'audio' } = {}) => {
+    const p = planEdit(f, edit(f, e), o.can ?? CHROMIUM, o.enc ?? VP, o.key ?? null, o.kind ?? 'video');
+    if ('refuse' in p) throw new Error(`refused: ${p.refuse}`);
+    return p;
+  };
+  const refusal = (f: MediaFacts, e: Partial<FileEdit>, o: { can?: Can; enc?: Encoders; key?: number | null; kind?: 'video' | 'audio' } = {}) => {
+    const p = planEdit(f, edit(f, e), o.can ?? CHROMIUM, o.enc ?? VP, o.key ?? null, o.kind ?? 'video');
+    return 'refuse' in p ? p.refuse : null;
+  };
+  const mp4 = facts('mp4', pic('avc'), snd('aac'));
+  const webm = facts('webm', pic('vp9'), snd('opus'));
+
+  it('a trim alone copies every track: no picture or sound options, a tenth of a second’s shift allowed', () => {
+    const p = plan(mp4, { start: 1.2, end: 3 });
+    expect(p.run).toEqual({ box: 'mp4', trim: { start: 1.2, end: 3 }, copy: { shiftTolerance: 0.1 } });
+    expect([p.copied, p.cut, p.mime, p.format]).toEqual([true, { from: 1.2, to: 3, length: 10 }, 'video/mp4', 'MP4 (H.264, AAC)']);
+    expect(p.out).toEqual({ seconds: 1.8, width: 1920, height: 1080, sound: true });
+    // (Cut only at the end: no end in the trim when it's kept to the end.)
+    expect(plan(mp4, { start: 2 }).run.trim).toEqual({ start: 2 });
+    // A MOV's trim copies too, into an MP4.
+    expect(plan(facts('mov', pic('hevc'), snd('aac')), { start: 1, end: 4 }).run).toEqual({ box: 'mp4', trim: { start: 1, end: 4 }, copy: { shiftTolerance: 0.1 } });
+  });
+
+  it('a WebM cut within a tenth of a second of a key frame copies; else the picture is made again, or a quick trim starts at the key frame', () => {
+    expect(plan(webm, { start: 1.05 }, { key: 1 }).copied).toBe(true);
+    const exact = plan(webm, { start: 1.3, end: 2.5 }, { key: 1 });
+    expect(exact).toMatchObject({ copied: false, cut: { from: 1.3, to: 2.5 }, run: { box: 'webm', trim: { start: 1.3, end: 2.5 }, video: { codec: 'vp9', width: 1920, height: 1080, forceTranscode: true, bitrateMode: 'variable' } } });
+    expect(exact.run.audio).toBeUndefined();
+    const quick = plan(webm, { start: 1.3, end: 2.5, quick: true }, { key: 1 });
+    expect(quick).toMatchObject({ copied: true, cut: { from: 1, to: 2.5, length: 10 }, run: { trim: { start: 1, end: 2.5 } }, out: { seconds: 1.5 } });
+    expect(quick.run.video).toBeUndefined();
+    // (Where the quick trim would start, and when the window waits for the key frame.)
+    expect(quickTrimAt(webm, edit(webm, { start: 1.3 }), 1, 'video', CHROMIUM)).toBe(1);
+    expect(quickTrimAt(webm, edit(webm, { start: 1.05 }), 1, 'video', CHROMIUM)).toBeNull();
+    expect(quickTrimAt(mp4, edit(mp4, { start: 1.3 }), 1, 'video', CHROMIUM)).toBeNull();
+    expect([needsKey(webm, edit(webm, { start: 1.3 }), 'video', CHROMIUM), needsKey(webm, edit(webm, { end: 5 }), 'video', CHROMIUM), needsKey(mp4, edit(mp4, { start: 1 }), 'video', CHROMIUM)]).toEqual([true, false, false]);
+    // An MKV of WebM's codecs goes in a WebM, and is cut the same way.
+    expect(plan(facts('mkv', pic('vp9'), snd('opus')), { start: 1.3 }, { key: 1 }).run.box).toBe('webm');
+  });
+
+  it('a crop is in even pixels of the picture as shown, inside it, 16 px at least; all of it is no crop', () => {
+    expect(cropPixels(mp4, { crop: { x: 0.25, y: 0.1, w: 0.5, h: 0.5 } })).toEqual({ left: 480, top: 108, width: 960, height: 540 });
+    expect(cropPixels(mp4, { crop: { x: 0.1001, y: 0, w: 0.3333, h: 1 } })).toEqual({ left: 192, top: 0, width: 640, height: 1080 });
+    expect(cropPixels(mp4, { crop: { x: 0.999, y: 0.999, w: 0.001, h: 0.001 } })).toEqual({ left: 1904, top: 1064, width: 16, height: 16 });
+    expect(cropPixels(mp4, { crop: { x: 0, y: 0, w: 1, h: 1 } })).toBeNull();
+    expect(cropPixels(mp4, { crop: null })).toBeNull();
+  });
+
+  it('sizes never make it bigger, and go by the cropped picture’s short side', () => {
+    expect(outputSize(mp4, edit(mp4, { short: 720 }))).toEqual({ w: 1280, h: 720 });
+    expect(outputSize(mp4, edit(mp4, { short: 360 }))).toEqual({ w: 640, h: 360 });
+    const small = facts('webm', pic('vp9', { width: 854, height: 480 }), null);
+    expect(outputSize(small, edit(small, { short: 720 }))).toEqual({ w: 854, h: 480 });
+    // A square crop of 854×480 is 480×480; at 360p, 360×360.
+    const square = { crop: { x: 187 / 854, y: 0, w: 480 / 854, h: 1 } };
+    expect(outputSize(small, edit(small, square))).toEqual({ w: 480, h: 480 });
+    expect(outputSize(small, edit(small, { ...square, short: 360 }))).toEqual({ w: 360, h: 360 });
+    expect(isNoEdit(edit(small, { short: 1080 }), small)).toBe(true);
+    expect(isNoEdit(edit(small, { short: 360 }), small)).toBe(false);
+  });
+
+  it('a crop or a size makes the picture again: H.264 with AAC in an MP4 where it can, else VP9 in a WebM, or in an MP4 beside a sound it copies', () => {
+    const avc = plan(mp4, { short: 720 }, { can: WINDOWS, enc: AVC });
+    expect(avc.run).toMatchObject({ box: 'mp4', video: { codec: 'avc', width: 1280, height: 720, fit: 'fill', keyFrameInterval: 2, bitrate: 5_000_000 } });
+    // (Never more a pixel than the file itself has: 1 Mbps at 1080p is 0.49 Mbps at 720p.)
+    expect(plan(facts('mp4', pic('avc', { bps: 1_000_000 }), snd('aac')), { short: 720 }, { can: WINDOWS, enc: AVC }).run.video?.bitrate).toBe(488_889);
+    expect([avc.run.audio, avc.format, avc.notes]).toEqual([undefined, 'MP4 (H.264, AAC)', []]);
+    // No H.264 here, an AAC sound it can't make again: VP9 in an MP4, the AAC copied.
+    const vp9mp4 = plan(mp4, { short: 720 });
+    expect([vp9mp4.run.box, vp9mp4.run.video?.codec, vp9mp4.run.audio, vp9mp4.format]).toEqual(['mp4', 'vp9', undefined, 'MP4 (VP9, AAC)']);
+    expect(vp9mp4.notes).toContain(VP9_IN_MP4);
+    // Silent: a WebM, saying some iPhones may not play it.
+    const silent = plan(mp4, { short: 720, sound: false });
+    expect([silent.run.box, silent.run.audio, silent.mime, silent.format]).toEqual(['webm', { discard: true }, 'video/webm', 'WebM (VP9, no sound)']);
+    expect(silent.notes).toContain(WEBM_EDIT_NOTE);
+    // A WebM stays one, with no note; the crop goes in as pixels.
+    const crop = plan(webm, { crop: { x: 0.25, y: 0, w: 0.5, h: 1 } });
+    expect(crop.run).toMatchObject({ box: 'webm', video: { crop: { left: 480, top: 0, width: 960, height: 1080 }, width: 960, height: 1080 } });
+    expect([crop.notes, crop.aspect]).toEqual([[], { was: 16 / 9, now: 960 / 1080 }]);
+    // H.264 goes with AAC: an Opus sound becomes AAC where it can be made.
+    expect(plan(webm, { short: 720 }, { can: WINDOWS, enc: AVC }).run).toMatchObject({ box: 'mp4', video: { codec: 'avc' }, audio: { codec: 'aac', bitrate: 128_000 } });
+    // Over 61 frames a second: 60.
+    expect(plan(facts('mp4', pic('avc', { fps: 120 }), null), { short: 720 }).run.video?.frameRate).toBe(60);
+    expect(plan(mp4, { short: 720 }).run.video?.frameRate).toBeUndefined();
+  });
+
+  it('says when the picture can’t be made again here', () => {
+    expect(refusal(mp4, { short: 720 }, { can: { ok: false, aac: false, opus: false } })).toBe(NO_REENCODE_HERE);
+    expect(refusal(facts('mp4', pic('hevc', { decodes: false }), snd('aac')), { short: 720 })).toBe(cantReencode('hevc'));
+    expect(refusal(mp4, { short: 720 }, { enc: { avc: false, vp9: false, vp8: false } })).toBe(CANT_SIZE);
+    expect(refusal(mp4, { start: 2, end: 2.05 })).toBe(TOO_SHORT);
+    expect(refusal(facts(null, null, null), {})).toBe(CANT_READ_EDIT);
+    // (A trim needs nothing made: it works without WebCodecs.)
+    expect(refusal(mp4, { start: 2 }, { can: { ok: false, aac: false, opus: false } })).toBeNull();
+  });
+
+  it('a sound is copied when its file type holds it, made again when it can be, else refused; left out when unticked', () => {
+    // PCM in a MOV: Opus in a WebM (beside VP9 made again).
+    const pcm = facts('mov', pic('vp9'), snd('pcm-s16', { channels: 1 }));
+    expect(plan(pcm, { short: 720 }).run).toMatchObject({ box: 'webm', audio: { codec: 'opus', bitrate: 96_000, forceTranscode: true } });
+    // H.264 + Vorbis in an MKV, trimmed: an MP4, the Vorbis made again (Opus here, AAC where there's AAC).
+    const vorbis = facts('mkv', pic('avc'), snd('vorbis'));
+    expect(plan(vorbis, { start: 1 }).run).toMatchObject({ box: 'mp4', audio: { codec: 'opus' } });
+    expect(plan(vorbis, { start: 1 }, { can: WINDOWS }).run).toMatchObject({ box: 'mp4', audio: { codec: 'aac' } });
+    expect(plan(vorbis, { start: 1 }).copied).toBe(false);
+    // One it can't decode: refused, saying what to do.
+    expect(refusal(facts('mkv', pic('avc'), snd('vorbis', { decodes: false })), { start: 1 })).toBe(cantSound('vorbis', 'mp4'));
+    expect(cantSound('aac', 'webm')).toBe('This browser can’t re-encode its sound (AAC) for a WebM: untick Keep its sound, or edit it in Chrome or Edge on Windows or Mac.');
+    expect(plan(mp4, { start: 1, sound: false }).run.audio).toEqual({ discard: true });
+  });
+
+  it('a sound file keeps its own type, its trim always copied; a picture in it is left out', () => {
+    const mp3 = facts('mp3', null, snd('mp3'), { size: 1_000_000 });
+    expect(plan(mp3, { start: 3, end: 8 }, { kind: 'audio' })).toMatchObject({
+      run: { box: 'mp3', video: { discard: true }, trim: { start: 3, end: 8 }, copy: { shiftTolerance: 0.1 } },
+      mime: 'audio/mpeg',
+      copied: true,
+      format: 'MP3 (MP3)',
+      out: { seconds: 5, sound: true },
+    });
+    const boxes = [facts('wav', null, snd('pcm-s16')), facts('ogg', null, snd('opus')), facts('webm', null, snd('opus')), facts('adts', null, snd('aac')), facts('flac', null, snd('flac'))].map(
+      (f) => [plan(f, { start: 1 }, { kind: 'audio' }).run.box, plan(f, { start: 1 }, { kind: 'audio' }).mime],
+    );
+    expect(boxes).toEqual([
+      ['wav', 'audio/wav'],
+      ['ogg', 'audio/ogg'],
+      ['ogg', 'audio/ogg'],
+      ['m4a', 'audio/mp4'],
+      ['flac', 'audio/flac'],
+    ]);
+    // A video file with no picture stays a video file.
+    expect(plan(facts('mp4', null, snd('aac')), { start: 1 }).mime).toBe('video/mp4');
+    // Uncompressed sound is made again as it was: cut to the sample, nothing lost.
+    const pcm = plan(facts('wav', null, snd('pcm-s16')), { start: 1, end: 3 }, { kind: 'audio' });
+    expect([pcm.run.audio, pcm.copied, pcm.format]).toEqual([{ codec: 'pcm-s16', forceTranscode: true }, true, 'WAV (PCM (uncompressed))']);
+  });
+
+  it('its size, about: the part kept of the file as it is, less a sound left out; else the rates it’s made at', () => {
+    expect(plan(mp4, { start: 2, end: 7 }).estimate).toBe(Math.round(10_000_000 * 0.5 * 1.01));
+    // Without its 128 kbps sound: 5 s less 80 KB.
+    expect(plan(mp4, { start: 2, end: 7, sound: false }).estimate).toBe(Math.round(10_000_000 * 0.5 * 1.01 - (128_000 * 5) / 8));
+    // Made again: the picture's new rate and the sound's own, for the 5 s.
+    const p = plan(mp4, { start: 2, end: 7, short: 720 }, { can: WINDOWS, enc: AVC });
+    expect(p.estimate).toBe(estimateBytes(p.run.video!.bitrate! + 128_000, 5));
+    // Over 2 GB: a pack can't hold it.
+    const big = facts('mp4', pic('avc'), snd('aac'), { size: 3 * 1024 ** 3 });
+    expect(plan(big, { start: 1 }).notes.at(-1)).toMatch(/^About 2\.\d GB: a \.brainrot pack this big can’t be opened again \(2 GB at most\)\.$/);
+  });
+
+  it('says what else to know: another sound track, subtitles, an HDR picture made again', () => {
+    const f = facts('mp4', { ...pic('avc'), hdr: true }, { ...snd('aac'), label: 'English' }, { moreAudio: 1, subtitles: true });
+    expect(plan(f, { short: 720 }, { can: WINDOWS, enc: AVC }).notes).toEqual([
+      'It has 2 sound tracks: the edited file keeps “English” only.',
+      'Its subtitles aren’t kept.',
+      'It’s an HDR video (iPhones film in HDR): re-encoding may make its colors look a little dull.',
+    ]);
+    // (Trimmed only, the picture isn't made again.)
+    expect(plan(f, { start: 1 }).notes).not.toContain('It’s an HDR video (iPhones film in HDR): re-encoding may make its colors look a little dull.');
+  });
+
+  it('History’s words: what was done and to what, never a name', () => {
+    expect(plan(mp4, { start: 1.2, end: 3 }).labels).toEqual({
+      all: 'Trimmed a video to 0:01–0:03',
+      item: 'Edited a video for one slide item (trimmed to 0:01–0:03)',
+      new: 'Saved an edited copy of a video (trimmed to 0:01–0:03)',
+    });
+    expect(editLabel('video', edit(mp4, { start: 1, end: 3, crop: { x: 0.25, y: 0, w: 0.5, h: 1 }, short: 720, sound: false }), mp4, 'all')).toBe(
+      'Edited a video (trimmed to 0:01–0:03, cropped, 720p, without its sound)',
+    );
+    expect(editLabel('video', edit(mp4, { short: 480 }), mp4, 'all')).toBe('Edited a video (480p)');
+    const wav = facts('wav', null, snd('pcm-s16'), { seconds: 30 });
+    expect(editLabel('audio', edit(wav, { start: 3, end: 20 }), wav, 'all')).toBe('Trimmed a sound to 0:03–0:20');
+    // (Less than 0.05 s off either end isn't a trim.)
+    expect(editLabel('video', edit(mp4, { start: 0.04, short: 480 }), mp4, 'all')).toBe('Edited a video (480p)');
+    // A quick trim names where it really starts.
+    expect(plan(webm, { start: 1.3, end: 2.5, quick: true }, { key: 1 }).label).toBe('Trimmed a video to 0:01–0:03');
+  });
+
+  it('nothing changed is no edit (a sound that won’t play here left out is none)', () => {
+    expect(isNoEdit(noEdit(mp4), mp4)).toBe(true);
+    expect(isNoEdit(edit(mp4, { start: 0.03, end: 9.98 }), mp4)).toBe(true);
+    expect(isNoEdit(edit(mp4, { end: 9 }), mp4)).toBe(false);
+    expect(isNoEdit(edit(mp4, { sound: false }), mp4)).toBe(false);
+    expect(noEdit(mp4, true).sound).toBe(false);
+    expect(isNoEdit(noEdit(mp4, true), mp4, true)).toBe(true);
+  });
+
+  it('times: typed, and shown', () => {
+    expect(['12', '12.4', '1:02', '1:02.5', '0:5', '1:02:03', ' 3,5 ', '1:75', 'abc', '', '-1'].map(parseClock)).toEqual([12, 12.4, 62, 62.5, 5, 3723, 3.5, null, null, null, null]);
+    expect([clockTenths(12.44, true), clockTenths(1, true), clockTenths(61.25), clockTenths(61)]).toEqual(['0:12.4', '0:01.0', '1:01.3', '1:01']);
+    expect([clockText(12.4), clockText(92), clockText(3723)]).toEqual(['0:12', '1:32', '1:02:03']);
+  });
+
+  it('an edited copy’s name: “(edited)” and its own type’s extension', () => {
+    expect([editedName('Clip.mkv', 'video/webm'), editedName('Intro', 'audio/mpeg'), editedName('a.b.mp4', 'video/mp4')]).toEqual(['Clip (edited).webm', 'Intro (edited).mp3', 'a.b (edited).mp4']);
   });
 });

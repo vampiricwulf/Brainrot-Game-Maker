@@ -78,7 +78,8 @@
   import FindDialog from './FindDialog.svelte';
   import ShrinkDialog from './ShrinkDialog.svelte';
   import JobPill from './JobPill.svelte';
-  import { mediaDialog, openMediaDialog, openShrinkDialog, shrinkDialog } from '../lib/shrink/dialog.svelte';
+  import { dialogIds, mediaDialog, openMediaDialog, openShrinkDialog, shrinkDialog } from '../lib/shrink/dialog.svelte';
+  import MediaEditDialog from './MediaEditDialog.svelte';
   import ConvertDialog from './ConvertDialog.svelte';
   import ConvertNotice from './ConvertNotice.svelte';
   import { verdictOf } from '../lib/shrink/checks.svelte';
@@ -145,7 +146,7 @@
     untrack(() => {
       stopAll(id);
       if (shrinkDialog.open && !shrinkDialog.open.every((id) => game.media.some((m) => m.id === id))) shrinkDialog.open = null;
-      if (mediaDialog.open && !mediaDialog.open.ids.some((id) => game.media.some((m) => m.id === id))) mediaDialog.open = null;
+      if (mediaDialog.open && !dialogIds(mediaDialog.open).some((id) => game.media.some((m) => m.id === id))) mediaDialog.open = null;
     });
   });
   onDestroy(() => {
@@ -951,6 +952,8 @@
   {/if}
   {#if mediaDialog.open?.mode === 'convert'}
     {#key mediaDialog.open}<ConvertDialog ids={mediaDialog.open.ids} onclose={() => (mediaDialog.open = null)} />{/key}
+  {:else if mediaDialog.open?.mode === 'edit'}
+    {#key mediaDialog.open}<MediaEditDialog id={mediaDialog.open.id} item={mediaDialog.open.item} onclose={() => (mediaDialog.open = null)} />{/key}
   {/if}
   {#if importFrom}<RoundImport source={importFrom} onclose={() => (importFrom = null)} onadded={showNew} />{/if}
   {#if settings}<SettingsDialog onclose={() => (settings = false)} />{/if}

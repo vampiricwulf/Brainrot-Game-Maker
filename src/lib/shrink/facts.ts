@@ -220,3 +220,24 @@ export async function readFacts(blob: Blob, opts: { duration?: 'metadata' | 'com
     input?.dispose();
   }
 }
+
+/**
+ * Where the picture can be cut as it is, at or before `t` (seconds): the key frame there (null: the file has no
+ * picture, or the app can't read it). A WebM trimmed there needs nothing re-encoded (✎ Edit's quick trim).
+ */
+export async function keyBefore(blob: Blob, t: number): Promise<number | null> {
+  const mb = await import('./mb');
+  let input: Input | null = null;
+  try {
+    input = new mb.Input({ source: new mb.BlobSource(blob, { maxCacheSize: 16 * MiB }), formats: mb.INPUTS });
+    const track = await input.getPrimaryVideoTrack();
+    if (!track) return null;
+    const sink = new mb.EncodedPacketSink(track);
+    const p = await sink.getKeyPacket(t, { verifyKeyPackets: true });
+    return p ? Math.max(0, p.timestamp) : null;
+  } catch {
+    return null;
+  } finally {
+    input?.dispose();
+  }
+}

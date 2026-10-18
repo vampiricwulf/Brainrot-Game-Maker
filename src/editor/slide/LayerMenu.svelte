@@ -8,6 +8,7 @@
   import type { Game, SlideElement } from '../../lib/model';
   import { LAYER_ICON, layerLabel, type Align, type LayerAction } from '../../lib/layerlabel';
   import { dropdown } from '../../lib/menustate.svelte';
+  import { editOffer } from '../../lib/shrink/apply';
 
   let {
     x,
@@ -49,6 +50,13 @@
   const unlocked = $derived(selected.filter((e) => !e.locked).length);
   const mod = /Mac|iPhone|iPad/.test(navigator.platform) ? '⌘' : 'Ctrl+';
   const oneImage = $derived(selected.length === 1 && selected[0].kind === 'image');
+  /** ✎ Edit video… / ✎ Edit sound… for one video or sound item whose file ✎ edits ('busy': not now). */
+  const oneMedia = $derived.by(() => {
+    const el = selected.length === 1 ? selected[0] : null;
+    if (el?.kind !== 'video' && el?.kind !== 'audio') return null;
+    const offer = editOffer(game.media.find((m) => m.id === el.media));
+    return offer ? { kind: el.kind, offer } : null;
+  });
   const ALIGNS: [Align, string][] = [['left', 'Left'], ['hcenter', 'Center'], ['right', 'Right'], ['top', 'Top'], ['vcenter', 'Middle'], ['bottom', 'Bottom']];
   /** Align ▸ is open. */
   let aligning = $state(false);
@@ -105,6 +113,14 @@
     <hr />
     <button role="menuitem" onclick={() => act('duplicate')}>Duplicate<kbd>{mod}D</kbd></button>
     {#if oneImage}<button role="menuitem" onclick={() => act('edit-image')}>✎ Edit image…<kbd>Double-click</kbd></button>{/if}
+    {#if oneMedia}
+      <button
+        role="menuitem"
+        onclick={() => act('edit-media')}
+        disabled={oneMedia.offer === 'busy'}
+        title={oneMedia.offer === 'busy' ? 'Wait for it to finish (the header shows how far it got)' : undefined}>{oneMedia.kind === 'video' ? '✎ Edit video…' : '✎ Edit sound…'}</button
+      >
+    {/if}
     <button role="menuitem" aria-haspopup="true" aria-expanded={aligning} onclick={() => (aligning = !aligning)} disabled={!anyUnlocked}>
       Align<kbd>{aligning ? '▾' : '▸'}</kbd>
     </button>
