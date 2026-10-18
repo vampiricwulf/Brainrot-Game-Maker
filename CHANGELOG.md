@@ -11,6 +11,11 @@ the day it's pushed (Pacific time; start the heading on the day's first push) an
 in plain words for the people who make and host games. Anything committed but not pushed yet goes under
 **Unreleased** at the top, and moves under its day when it's pushed.
 
+## Unreleased
+
+### Fixed
+- 🎨 Edit image on a moving GIF keeps it moving: the edits (crop, turn, size, filters, drawing, captions, stickers) go on every frame, and it's saved as a GIF again, each frame as long as before and looping as it did. Before, it became a still picture. 🖼 Media › Replace… with another moving GIF does the edits again on each of its frames too.
+
 ## 2026-10-18
 
 ### Added

@@ -1,7 +1,8 @@
 // 🖼 Media › Replace on a file some pictures show an edited copy of (🎨 Edit image): their edits are done again on the
 // new file, so the slides show it (with the same crop, captions and stickers), not the old file's edited copy.
 import { addMediaFile, mediaUrls } from './media.svelte';
-import { canvasToBlob, loadImage, renderForSave } from './imageedit';
+import { editedFile, fileBytes } from './gifedit';
+import { loadImage } from './imageedit';
 import { boardRounds, type Game, type ImageEl } from './model';
 import { allSlides } from './usage';
 
@@ -29,6 +30,8 @@ export async function redoEdits(game: Game, id: string): Promise<{ redone: numbe
   } catch {
     img = null;
   }
+  // (A moving GIF's frames are each edited again, so it keeps moving.)
+  const gif = ref?.mime === 'image/gif' ? await fileBytes(mediaUrls[id]) : null;
   const made = new Map<string, string>();
   let redone = 0;
   let dropped = 0;
@@ -42,10 +45,8 @@ export async function redoEdits(game: Game, id: string): Promise<{ redone: numbe
     try {
       let copy = made.get(key);
       if (!copy) {
-        const canvas = renderForSave(img, JSON.parse(key));
-        const alpha = /png|gif|webp|svg/.test(ref.mime) || e.edits.rotate % 90 !== 0;
-        const blob = await canvasToBlob(canvas, alpha ? 'image/png' : 'image/jpeg', 0.92);
-        copy = (await addMediaFile(game, blob, `${ref.name.replace(/\.\w+$/, '')}-edited.${alpha ? 'png' : 'jpg'}`)).id;
+        const file = await editedFile(img, ref.mime, JSON.parse(key), gif);
+        copy = (await addMediaFile(game, file.blob, `${ref.name.replace(/\.\w+$/, '')}-edited.${file.ext}`)).id;
         made.set(key, copy);
       }
       e.editedMedia = copy;

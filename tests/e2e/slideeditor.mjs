@@ -9,12 +9,16 @@
 // new crop starting Free, a caption's font drawn once it loads, and Ctrl+V of items or a picture in the clue's Question
 // box (words with a picture stay words; the Answer box doesn't put a picture on the open Question slide). Ctrl+C with
 // words selected with the mouse copies them, not the selected item; items pasted into another game bring their file in
-// the same step.
+// the same step. 🎨 Edit image on a moving GIF edits every frame, so it stays a moving GIF.
 import { chromium } from 'playwright-core';
 import { existsSync, mkdirSync } from 'node:fs';
+import { createRequire } from 'node:module';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { addClassicRounds, answerReplace } from './helpers.mjs';
+import { gif } from './mediafixtures.mjs';
+
+const { GifReader } = createRequire(import.meta.url)('omggif');
 
 const file = resolve(process.env.APP_FILE || 'dist/index.html');
 if (!existsSync(file)) throw new Error('Run `npm run build` first');
@@ -591,6 +595,52 @@ try {
   await page.keyboard.press('Control+z');
   await canvas.locator('.slide .el img').waitFor({ state: 'detached' });
   assert((await mediaCount()) === 0, `one Ctrl+Z takes the picture and its file away (${await undoTitle()})`);
+
+  // ---------- 🎨 Edit image on a moving GIF: every frame is edited, so it keeps moving ----------
+  // (40×30, three frames of one colour each, for 0.1, 0.2 and 0.3 s, looping for ever.)
+  const moving = gif(40, 30, [1, 2, 3].map((i) => ({ px: new Uint8Array(40 * 30).fill(i), delay: i * 10 })));
+  const colours = [1, 2, 3].map((i) => [(i * 37) & 255, (i * 91) & 255, (i * 53) & 255]);
+  await dropAt(await page.evaluateHandle((bytes) => {
+    const d = new DataTransfer();
+    d.items.add(new File([new Uint8Array(bytes)], 'moving.gif', { type: 'image/gif' }));
+    return d;
+  }, [...moving]), 900, 500);
+  await canvas.locator('.slide .el img').waitFor();
+  const gifPic = (await drawn()).find((e) => e.img);
+  await click(gifPic.x + gifPic.w / 2, gifPic.y + gifPic.h / 2);
+  await insp.getByRole('button', { name: '✎ Edit image…' }).click();
+  const gifEditor = page.getByRole('dialog', { name: 'Edit image' });
+  await gifEditor.getByText('A moving GIF: the edits go on every frame, so it keeps moving.').waitFor();
+  assert(true, 'the image editor says a moving GIF keeps moving');
+  await gifEditor.getByRole('button', { name: '⟳ 90°' }).click();
+  await gifEditor.getByRole('button', { name: 'Apply', exact: true }).click();
+  await gifEditor.waitFor({ state: 'detached' });
+  const editedGif = await canvas.locator(`.slide .el[data-el="${gifPic.id}"] img`).evaluate(async (img) => Array.from(new Uint8Array(await (await fetch(img.src)).arrayBuffer())));
+  const r = new GifReader(new Uint8Array(editedGif));
+  const delays = [...Array(r.numFrames())].map((_, i) => r.frameInfo(i).delay);
+  const middles = [...Array(r.numFrames())].map((_, i) => {
+    const px = new Uint8Array(r.width * r.height * 4);
+    r.decodeAndBlitFrameRGBA(i, px);
+    const at = ((r.height >> 1) * r.width + (r.width >> 1)) * 4;
+    return [px[at], px[at + 1], px[at + 2]];
+  });
+  assert(
+    r.width === 30 && r.height === 40 && delays.join() === '10,20,30' && r.loopCount() === 0 && middles.every((c, i) => c.every((v, k) => Math.abs(v - colours[i][k]) <= 2)),
+    `Apply makes a GIF again, every frame turned, each as long as before, looping (${r.width}×${r.height}, ${r.numFrames()} frames of ${delays.join(', ')} hundredths)`,
+  );
+  // 🖼 Media › Replace with another moving GIF: its frames are turned too.
+  await clue.getByRole('button', { name: 'Close' }).click();
+  await page.getByRole('button', { name: /^🖼 Media/ }).click();
+  const gifChooser = page.waitForEvent('filechooser');
+  await page.locator('.card', { hasText: 'moving.gif' }).first().getByRole('button', { name: 'Replace…' }).click();
+  await (await gifChooser).setFiles({ name: 'moving2.gif', mimeType: 'image/gif', buffer: gif(40, 30, [1, 2].map((i) => ({ px: new Uint8Array(40 * 30).fill(i), delay: 50 }))) });
+  await toast.filter({ hasText: 'edits of 1 edited picture done again' }).waitFor();
+  await page.getByRole('button', { name: 'Jeopardy!', exact: true }).click();
+  await page.locator('.grid .tile').first().click();
+  const replaced = new GifReader(
+    new Uint8Array(await canvas.locator(`.slide .el[data-el="${gifPic.id}"] img`).evaluate(async (img) => Array.from(new Uint8Array(await (await fetch(img.src)).arrayBuffer())))),
+  );
+  assert(replaced.numFrames() === 2 && replaced.width === 30 && replaced.height === 40, `Replace with another moving GIF redoes the turn on each of its frames (${replaced.numFrames()} frames, ${replaced.width}×${replaced.height})`);
 
   assert(!errors.length, 'no page errors' + (errors.length ? ': ' + errors.join(' | ') : ''));
   console.log('\nSlide editor E2E passed.');

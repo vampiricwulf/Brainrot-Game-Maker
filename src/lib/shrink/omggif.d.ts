@@ -1,5 +1,5 @@
 // The parts of omggif 1.0.10 (MIT, github.com/deanm/omggif) the app uses: reading a GIF's frames (gif.ts), and making
-// one in the tests.
+// one (gifwrite.ts, and the tests).
 declare module 'omggif' {
   export interface GifFrameInfo {
     x: number;
@@ -32,5 +32,8 @@ declare module 'omggif' {
     constructor(buf: Uint8Array, width: number, height: number, opts?: { loop?: number; palette?: number[]; background?: number });
     addFrame(x: number, y: number, w: number, h: number, indexed: ArrayLike<number>, opts?: { palette?: number[]; delay?: number; disposal?: number; transparent?: number | null }): number;
     end(): number;
+    /** Where the next byte goes in the buffer (set back to 0 once what's written is taken out). */
+    getOutputBufferPosition(): number;
+    setOutputBufferPosition(p: number): void;
   }
 }

@@ -236,7 +236,7 @@ RollEvent  { id, ts, source: 'wheel' | 'dice', presetName?, result: string /* la
 - Filters: brightness, contrast, saturation, hue, blur, grayscale, sepia, and invert.
 - Text overlays (meme style: Impact-like font, stroke) and **stickers/emoji**.
 - Brush / annotate: color, size, eraser, and undo.
-- Output: edits are stored as parameters and baked into a rendered PNG/WebP cached with the pack. "Reset to original" is always available.
+- Output: edits are stored as parameters and baked into a rendered PNG (JPEG for a photo with no see-through parts) cached with the pack; a moving GIF stays a moving GIF, every frame edited, each with its own colours (`src/lib/gifedit.ts`, `gifwrite.ts`). "Reset to original" is always available.
 
 ### 5.5 Media
 - Accepted: **Images** png, jpg/jpeg, gif (animated), webp, svg, avif · **Video** mp4 (H.264/AAC), webm, mov*, mkv*, ogv · **Audio** mp3, wav, ogg, m4a/aac, flac, opus.

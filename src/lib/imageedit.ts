@@ -158,9 +158,10 @@ export function turnCrop(c: { x: number; y: number; w: number; h: number }, dir:
  * onto a canvas no bigger than the output needs (just the cropped part, at the output's scale when that's smaller),
  * so a huge picture turned at an angle never goes past the browser's canvas limits.
  */
-export function renderEdited(img: HTMLImageElement, e: ImageEdits, k = 1): HTMLCanvasElement {
-  const natW = img.naturalWidth;
-  const natH = img.naturalHeight;
+export function renderEdited(img: HTMLImageElement | HTMLCanvasElement, e: ImageEdits, k = 1): HTMLCanvasElement {
+  // (A canvas: one frame of an animated GIF.)
+  const natW = img instanceof HTMLImageElement ? img.naturalWidth : img.width;
+  const natH = img instanceof HTMLImageElement ? img.naturalHeight : img.height;
   const o = orientedSize(natW, natH, e.rotate);
   const crop = e.crop ?? FULL;
   const full = outputSize(natW, natH, e);
@@ -227,7 +228,7 @@ function blank(c: HTMLCanvasElement): boolean {
  * The full render for saving, checked: blank where a small render of the same edits isn't (a browser that ran out of
  * room drew nothing) is an error, never an empty picture saved as if it worked.
  */
-export function renderForSave(img: HTMLImageElement, e: ImageEdits): HTMLCanvasElement {
+export function renderForSave(img: HTMLImageElement | HTMLCanvasElement, e: ImageEdits): HTMLCanvasElement {
   const c = renderEdited(img, e, 1);
   if (blank(c)) {
     const small = renderEdited(img, e, Math.min(1, 64 / Math.max(c.width, c.height)));

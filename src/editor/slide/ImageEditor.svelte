@@ -16,9 +16,10 @@
   import SaveCopyButton from '../SaveCopyButton.svelte';
   import InlineAsk from '../../play/host/InlineAsk.svelte';
   import {
-    angleToOutput, angleToSource, canvasToBlob, defaultEdits, fitCrop, itemAt, loadImage, migrateEdits, orientedSize, outputSize,
-    placedOverlays, renderEdited, renderForSave, sizeToOutput, STICKERS, toOutput, toSource, turnCrop,
+    angleToOutput, angleToSource, defaultEdits, fitCrop, itemAt, loadImage, migrateEdits, orientedSize, outputSize, placedOverlays,
+    renderEdited, sizeToOutput, STICKERS, toOutput, toSource, turnCrop,
   } from '../../lib/imageedit';
+  import { editedFile, fileBytes, gifFrames } from '../../lib/gifedit';
 
   let { el, onclose }: { el: ImageEl; onclose: () => void } = $props();
 
@@ -36,6 +37,10 @@
   let sticker = $state(STICKERS[0]);
   let cropAspect = $state<'free' | number>('free');
   let saving = $state(false);
+  /** How far Apply has got through a GIF's frames (0 to 1), while it saves one. */
+  let progress = $state<number | null>(null);
+  /** A moving GIF's bytes: Apply edits each of its frames, so it keeps moving (null: any other picture). */
+  let gif = $state<Uint8Array | null>(null);
   let discarding = $state(false);
   let host = $state<HTMLDivElement>();
   let box = $state<HTMLDivElement>();
@@ -86,6 +91,7 @@
     loadImage(mediaUrls[el.media])
       .then((i) => {
         img = i;
+        if (source?.mime === 'image/gif') void fileBytes(mediaUrls[el.media]).then((b) => (gif = b && gifFrames(b) > 1 ? b : null));
         // Edits saved before overlays were kept on the source picture: moved there now (they look the same).
         const up = (e: ImageEdits) => migrateEdits(e, i.naturalWidth, i.naturalHeight);
         const same = snapshot(edits) === opened;
@@ -367,20 +373,17 @@
     try {
       // (A font picked a moment ago may still be loading: saved in it, not in a fallback.)
       await captionFonts(edits);
-      const canvas = renderForSave(img, JSON.parse(JSON.stringify(edits)));
-      const alpha = /png|gif|webp|svg/.test(source.mime) || edits.rotate % 90 !== 0;
-      const type = alpha ? 'image/png' : 'image/jpeg';
-      const blob = await canvasToBlob(canvas, type, 0.92);
+      const made = await editedFile(img, source.mime, JSON.parse(JSON.stringify(edits)), gif, (p) => (progress = p));
       const base = source.name.replace(/\.\w+$/, '');
       // The edited file and the image showing it: one undo step.
       await stepAsync('Edited image', async () => {
-        const ref = await addMediaFile(game, blob, `${base}-edited.${alpha ? 'png' : 'jpg'}`);
+        const ref = await addMediaFile(game, made.blob, `${base}-edited.${made.ext}`);
         // The size it had before its first edit, for Use original.
         if (!el.editedMedia && !el.uneditedSize) el.uneditedSize = { w: el.w, h: el.h };
         el.editedMedia = ref.id;
         el.edits = JSON.parse(JSON.stringify(edits));
         // Match the box to the new shape so nothing looks squashed: about as big as it was, where it was, on the slide.
-        Object.assign(el, fitAspect(el, canvas.width / canvas.height, SLIDE_W, SLIDE_H));
+        Object.assign(el, fitAspect(el, made.width / made.height, SLIDE_W, SLIDE_H));
       });
       toast('Image edited (original kept)');
       onclose();
@@ -388,6 +391,7 @@
       toast('Could not save the edit: ' + (e as Error).message);
     } finally {
       saving = false;
+      progress = null;
     }
   }
 
@@ -464,14 +468,14 @@
       {#if tool === 'crop' && edits.crop && img}
         <span class="small crop-size">crop {Math.round(edits.crop.w * oriented.w)}×{Math.round(edits.crop.h * oriented.h)}px</span>
       {/if}
-      {#if source?.mime === 'image/gif'}<span class="warn small">Editing a GIF makes it a still image.</span>{/if}
+      {#if gif}<span class="hint small">A moving GIF: the edits go on every frame, so it keeps moving.</span>{/if}
       <span class="spacer"></span>
       <button class="ghost" onclick={undo} disabled={!history.length} title="Ctrl+Z">↶ Undo</button>
       <button class="ghost" onclick={redo} disabled={!future.length} title="Ctrl+Y or Ctrl+Shift+Z">↷ Redo</button>
       <button class="ghost" onclick={resetAll}>Reset all</button>
       {#if el.editedMedia}<button class="ghost" onclick={revert}>Use original</button>{/if}
       <button class="ghost" onclick={cancel} title="Esc">Cancel</button>
-      <button class="primary" onclick={apply} disabled={saving || !img} title="Ctrl+Enter">{saving ? 'Saving…' : 'Apply'}</button>
+      <button class="primary" onclick={apply} disabled={saving || !img} title="Ctrl+Enter">{saving ? `Saving…${progress === null ? '' : ` ${Math.round(progress * 100)}%`}` : 'Apply'}</button>
       <button class="ghost modal-x" onclick={cancel} aria-label="Close" title="Close (Esc)">✕</button>
     </header>
 
