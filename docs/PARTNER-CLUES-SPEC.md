@@ -1303,9 +1303,9 @@ The phone bundles src/lib/links.ts, which has no imports, and builds an `<img>`,
 2. The app hashes the bytes (SHA-256) and sends `POST /api/rooms/:code/files` with `Authorization: Bearer <hostToken>`
    and the file's type. The Worker passes it to the room's Durable Object, which checks the host token (`sameToken`,
    index.ts:57-63).
-3. The room stores the bytes in 1 MB pieces under their own keys (`file:<hash>:<n>`), never inside the `'room'` key,
-   which is rewritten on every change. An index key lists them. Sending the same hash again does nothing, so a reload
-   just retries.
+3. The room stores the bytes in 1 MB pieces under their own keys (`file:<hash>:<n>`; later a random prefix per upload,
+   `p:<random>:<n>`, see buzzer/src/filestore.ts), never inside the `'room'` key, which is rewritten on every change. An
+   index key lists them. Sending the same hash again does nothing, so a reload just retries.
 4. The ids are kept in `session.remote.files` for that room code, so a reload doesn't upload them again. ⇡ Get it
    ready also notes its cards in `session.partner.ready` (§18.2), so a reload can finish an upload it cut off, and
    nothing else (§15.2).
@@ -2104,7 +2104,8 @@ The message is called `cardSeen`, not `seen`, because the room already keeps a `
   records it and passes it to the host. `hostOpen` (room.ts:370-394) replays the seen list for current cards.
 - **Files:**
   - `RoomSaved.files` is an index only (`{ id: { mime, bytes, parts, at, unusedSince? } }`). The bytes are under
-    `file:<id>:<n>`. A file no card has used yet has `unusedSince = at`.
+    `file:<id>:<n>` (later under the prefix in its `key`, `p:<random>:<n>`). A file no card has used yet has
+    `unusedSince = at`.
   - The two HTTP routes are in §19.3. `forget` deletes files.
   - The alarm, shared with the room's end, deletes files unused for 10 minutes, and `wipe()` takes everything
     (index.ts:307-345; §13.5).

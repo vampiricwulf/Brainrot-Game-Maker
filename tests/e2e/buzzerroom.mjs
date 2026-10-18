@@ -1044,8 +1044,11 @@ try {
     const body = Buffer.from(await got.arrayBuffer());
     assert(got.status === 200 && body.equals(bytes), 'and fetches the file with its own token, all 2.5 MB of it back as it was (3 pieces)');
     assert(
-      got.headers.get('content-type') === 'image/png' && got.headers.get('cache-control') === 'no-store' && got.headers.get('x-content-type-options') === 'nosniff',
-      'served with its type, no-store and nosniff',
+      got.headers.get('content-type') === 'image/png' &&
+        got.headers.get('content-length') === String(bytes.length) &&
+        got.headers.get('cache-control') === 'no-store, no-transform' &&
+        got.headers.get('x-content-type-options') === 'nosniff',
+      `served with its type, its Content-Length (${got.headers.get('content-length')}), no-store, no-transform and nosniff`,
     );
     const others = [(await get(hash, ann.token)).status, (await get(hash)).status, (await get(hash, made.hostToken)).status, (await fetch(`${filesUrl(made.code, hash)}?token=${bob.token}`)).status];
     assert(others.join() === '404,404,404,404', `Ann's phone, no token, the host's token and a token in the address get 404 (${others.join()})`);

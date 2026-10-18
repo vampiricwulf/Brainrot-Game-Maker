@@ -12,15 +12,16 @@
  *
  * Card files ('files'): the host uploads a card's picture, video or sound (POST /api/rooms/:code/files, its host token
  * in the Authorization header) and a phone the card was sent to fetches it (GET …/files/:id, its seat token in the
- * header, never in the address). The room checks who may have what (room.ts fileFor); the Durable Object keeps the bytes
- * in 1 MB pieces under their own keys (file:<id>:<n>), never in 'room', which is written on every change. Uploads are
- * limited per address (FILE_LIMIT) and by a daily byte budget for the whole server (FILES_MB_PER_DAY, counted by
- * RoomCounter). The room's one alarm both ends it and deletes files no card has used for a while (nextAlarm).
+ * header, never in the address). The room checks who may have what (room.ts fileFor); the Durable Object stores the
+ * bytes as they arrive and sends them a 1 MB piece at a time (filestore.ts), under their own keys (p:<random>:<n>),
+ * never in 'room', which is written on every change. Uploads are limited per address (FILE_LIMIT) and by a daily byte
+ * budget for the whole server (FILES_MB_PER_DAY, counted by RoomCounter). The room's one alarm both ends it and deletes
+ * files no card has used for a while (nextAlarm).
  */
 import { DurableObject } from 'cloudflare:workers';
 import {
   BUZZ_PROTOCOL,
-  FILE_MAX_BYTES,
+  OLD_FILE_LIMITS,
   ROOM_ALPHABET,
   ROOM_CODE_LENGTH,
   fileType,
@@ -45,10 +46,12 @@ import {
   TOO_MANY_LOOKUPS,
   TOO_MANY_ROOMS,
   TOO_MANY_TODAY,
+  tooBig,
   uncountBytes,
   type DayBytes,
   type DayCount,
 } from './limits';
+import { FILE_PART_BYTES, FileStore, type Hasher, type PieceSource, type Upload } from './filestore';
 import { Room, emptyRoom, type PhoneSaved, type RoomSaved } from './room';
 
 export interface Env {
@@ -71,10 +74,6 @@ export interface Env {
 const IDLE_MS = 6 * 60 * 60 * 1000;
 /** …or this long after it was made, if the host never came. */
 const UNUSED_MS = 30 * 60 * 1000;
-/** What an upload comes to: 200 with the file's id, or the HTTP status and why. */
-type Upload = { status: number; id?: string; error?: string };
-/** A card file's bytes are stored in pieces this big (a Durable Object value is at most 2 MB, its key included). */
-const FILE_PART_BYTES = 1024 * 1024;
 
 const CORS = {
   'Access-Control-Allow-Origin': '*',
@@ -102,47 +101,51 @@ function randomCode(): string {
 /** The token in an `Authorization: Bearer <token>` header, or ''. */
 const bearer = (request: Request): string => request.headers.get('Authorization')?.match(/^Bearer\s+(\S+)$/i)?.[1] ?? '';
 
-/** Refused for its size (413). */
-const TOO_BIG = `Too big for phones (${FILE_MAX_BYTES / 1024 / 1024} MB at most)`;
-
 /**
- * A card file as it streams in, read once: straight into the FILE_PART_BYTES pieces it's stored in, a whole piece at a
- * time (reading it in network-sized bits cost the room about 20 ms of CPU a MB), its SHA-256 (the file's id) worked out
- * on the way. 'big' when it runs past max bytes (reading stops there); 'empty' with no bytes.
+ * An upload's body, read straight into the FILE_PART_BYTES pieces it's stored in, a whole piece at a time (reading it
+ * in network-sized bits cost the room about 20 ms of CPU a MB), a new buffer for each. next() throws once cancel() was
+ * called (a read cut short that way isn't the end of the file).
  */
-async function readPieces(body: ReadableStream<Uint8Array> | null, max: number): Promise<{ id: string; pieces: Uint8Array[]; bytes: number } | 'big' | 'empty'> {
-  if (!body) return 'empty';
-  const digest = new crypto.DigestStream('SHA-256');
-  const hash = digest.getWriter();
+function pieceSource(body: ReadableStream<Uint8Array>): PieceSource {
   const reader = body.getReader({ mode: 'byob' });
-  const pieces: Uint8Array[] = [];
-  let n = 0;
-  for (let done = false; !done; ) {
-    let piece = new Uint8Array(FILE_PART_BYTES);
-    let at = 0;
-    while (at < FILE_PART_BYTES && !done) {
-      // (Waits for the rest of the piece, or the end: the bytes land in it, which comes back as r.value's buffer.)
-      const r = await reader.readAtLeast(FILE_PART_BYTES - at, new Uint8Array(piece.buffer, at));
-      if (r.value) {
-        piece = new Uint8Array(r.value.buffer);
-        at += r.value.byteLength;
+  let done = false;
+  let cancelled = false;
+  return {
+    async next() {
+      let piece = new Uint8Array(FILE_PART_BYTES);
+      let at = 0;
+      while (at < FILE_PART_BYTES && !done) {
+        // (Waits for the rest of the piece, or the end: the bytes land in it, which comes back as r.value's buffer.)
+        const r = await reader.readAtLeast(FILE_PART_BYTES - at, new Uint8Array(piece.buffer, at));
+        if (cancelled) throw new Error('upload stopped');
+        if (r.value) {
+          piece = new Uint8Array(r.value.buffer);
+          at += r.value.byteLength;
+        }
+        done = r.done;
       }
-      done = r.done;
-    }
-    n += at;
-    if (n > max) {
-      void reader.cancel();
-      return 'big';
-    }
-    if (!at) break;
-    const part = at === FILE_PART_BYTES ? piece : piece.slice(0, at);
-    await hash.write(part);
-    pieces.push(part);
-  }
-  if (!n) return 'empty';
-  await hash.close();
-  const id = [...new Uint8Array(await digest.digest)].map((b) => b.toString(16).padStart(2, '0')).join('');
-  return { id, pieces, bytes: n };
+      if (!at) return null;
+      return at === FILE_PART_BYTES ? piece : piece.slice(0, at);
+    },
+    cancel() {
+      if (cancelled) return;
+      cancelled = true;
+      void reader.cancel().catch(() => {});
+    },
+  };
+}
+
+/** SHA-256 as 64 hex digits, fed piece by piece. */
+function sha256(): Hasher {
+  const digest = new crypto.DigestStream('SHA-256');
+  const w = digest.getWriter();
+  return {
+    write: (b) => w.write(b),
+    async hex() {
+      await w.close();
+      return [...new Uint8Array(await digest.digest)].map((b) => b.toString(16).padStart(2, '0')).join('');
+    },
+  };
 }
 
 /**
@@ -158,12 +161,14 @@ async function roomFiles(request: Request, env: Env, ip: string, code: string, i
   const token = bearer(request);
   if (download) {
     // The room answers with the file as a response, its pieces streaming through: the Worker never holds it. (Over
-    // HTTP, not RPC: a stream an RPC call returns counts as a disconnected call, an error, once it's been read.)
+    // HTTP, not RPC: a stream an RPC call returns counts as a disconnected call, an error, once it's been read.) Its
+    // length comes with it (the room's download), and so does a phone letting go partway: passed on as it is.
     const room = token && isRoomCode(code) && isFileId(id) ? env.BUZZ_ROOM.getByName(code) : null;
     const file = room ? await room.fetch(new Request(`https://room/file/${id}`, { headers: { Authorization: `Bearer ${token}` } })) : null;
-    if (!file?.ok) return json({ error: 'not found' }, 404);
+    if (!file?.ok || !file.body) return json({ error: 'not found' }, 404);
     return new Response(file.body, {
-      headers: { 'Content-Type': file.headers.get('Content-Type') ?? '', 'Cache-Control': 'no-store', 'X-Content-Type-Options': 'nosniff', ...CORS },
+      // (no-transform: Cloudflare compressing it would drop its Content-Length.)
+      headers: { 'Content-Type': file.headers.get('Content-Type') ?? '', 'Cache-Control': 'no-store, no-transform', 'X-Content-Type-Options': 'nosniff', ...CORS },
     });
   }
   if (!filesBudget(env.FILES_MB_PER_DAY)) return json({ error: FILES_OFF }, 503);
@@ -176,10 +181,15 @@ async function roomFiles(request: Request, env: Env, ip: string, code: string, i
   // missing token above.)
   const stub = env.BUZZ_ROOM.getByName(code);
   if (!(await stub.isHost(token))) return json({ error: 'wrong host token' }, 401);
-  if (Number(request.headers.get('Content-Length') ?? 0) > FILE_MAX_BYTES) return json({ error: TOO_BIG }, 413);
+  const lim = OLD_FILE_LIMITS;
+  // (The room keeps this much room for it before reading it: a whole file's limit when it doesn't say.)
+  const length = request.headers.get('Content-Length');
+  const size = length && /^\d+$/.test(length) && Number.isSafeInteger(Number(length)) ? Number(length) : null;
+  if (size !== null && size > lim.fileBytes) return json({ error: tooBig(lim) }, 413);
+  if (size === 0) return json({ error: 'empty file' }, 400);
   // The bytes stream on to the room as they come, never gathered here: copying a file's worth through the Worker cost
   // it several times a request's CPU on the Free plan (README.md, "Card files").
-  const r = await stub.upload(token, mime, request.body, who);
+  const r = await stub.upload(token, mime, request.body, who, size);
   return json(r.id ? { id: r.id } : { error: r.error }, r.status);
 }
 
@@ -270,10 +280,28 @@ export class BuzzRoom extends DurableObject<Env> {
   /** When the alarm is set for (null: none; undefined: not read from storage yet). */
   private alarmAt: number | null | undefined = undefined;
   /**
-   * Card files on their way into storage now, by id: their size (kept for them under the room's caps), the idle files
-   * deleted to make room for them once they're sure to be stored (room.ts fileRoom), and their answer.
+   * Up by one whenever a room begins or ends here (init, wipe): an upload or download that began in a room stops once
+   * this changes, so nothing of it reaches storage after the wipe, or a new room under the same code.
    */
-  private uploading = new Map<string, { bytes: number; drop: string[]; done: Promise<Upload> }>();
+  private epoch = 0;
+  /** Card files in and out a piece at a time (filestore.ts). */
+  private files = new FileStore({
+    limits: () => OLD_FILE_LIMITS,
+    put: (key, piece) => this.ctx.storage.put(key, piece),
+    get: async (key) => {
+      const v = await this.ctx.storage.get<Uint8Array | ArrayBuffer>(key);
+      return v === undefined ? undefined : v instanceof Uint8Array ? v : new Uint8Array(v);
+    },
+    drop: (prefix, parts) => this.dropPieces([{ prefix, parts }]),
+    prefix: () => `p:${randomToken(9)}`,
+    hasher: sha256,
+    take: async (who, n) => {
+      const took = await this.env.ROOM_COUNTER.getByName('rooms').takeBytes(who, n);
+      return took === 'ok' ? { ok: true, ticket: null } : took;
+    },
+    refund: (who, n) => this.env.ROOM_COUNTER.getByName('rooms').refundBytes(who, n).catch(() => {}),
+    busyText: (took) => (took === 'address' ? TOO_MANY_FILES_TODAY : FILES_BUSY_TODAY),
+  });
 
   constructor(ctx: DurableObjectState, env: Env) {
     super(ctx, env);
@@ -300,7 +328,23 @@ export class BuzzRoom extends DurableObject<Env> {
         else if (a?.role === 'host' && s.readyState === OPEN) hostHere = true;
       }
       this.room = this.makeRoom(this.meta.code, saved, phones, hostHere);
+      // The pieces of uploads that stopped with the last instance (a deploy, a crash, out of memory): nothing can be
+      // writing yet. (Their part of today's budget isn't given back: that errs safe.)
+      this.dropPieces(this.room.takeUploads());
     });
+  }
+
+  /** Deletes pieces 0 to parts − 1 under each prefix, 128 keys a call. Not after wipe(): deleteAll took them. */
+  private dropPieces(files: { prefix: string; parts: number }[]): void {
+    const keys = files.flatMap((f) => Array.from({ length: f.parts }, (_, i) => `${f.prefix}:${i}`));
+    if (!this.meta || !keys.length) return;
+    for (let i = 0; i < keys.length; i += 128) void this.ctx.storage.delete(keys.slice(i, i + 128));
+    // In Workers Logs: whether the room's storage gets smaller again once files are deleted (README.md, "Card files").
+    try {
+      console.log(`card file pieces deleted: ${keys.length}; room storage now ${this.ctx.storage.sql.databaseSize} bytes`);
+    } catch {
+      // (not SQLite-backed)
+    }
   }
 
   private makeRoom(code: string, saved?: RoomSaved, phones?: PhoneSaved[], hostHere?: boolean): Room {
@@ -338,12 +382,9 @@ export class BuzzRoom extends DurableObject<Env> {
         },
         schedule: (ms, fn) => setTimeout(fn, ms),
         cancel: (id) => clearTimeout(id as ReturnType<typeof setTimeout>),
-        dropFiles: (files) => {
-          const keys = files.flatMap((f) => Array.from({ length: f.parts }, (_, i) => `file:${f.id}:${i}`));
-          // (Not after wipe(): deleteAll took them.) At most 128 keys a call.
-          for (let i = 0; this.meta && i < keys.length; i += 128) void this.ctx.storage.delete(keys.slice(i, i + 128));
-        },
+        dropFiles: (files) => this.dropPieces(files),
         cleanupAt: (at) => void this.wakeBy(at),
+        limits: OLD_FILE_LIMITS,
       },
       saved,
       phones,
@@ -354,6 +395,7 @@ export class BuzzRoom extends DurableObject<Env> {
   /** Called by the Worker for a new code. false: the code is in use. */
   async init(code: string, hostToken: string): Promise<boolean> {
     if (this.meta) return false;
+    this.epoch++;
     this.meta = { code, hostToken, createdAt: Date.now(), lastHostAt: 0 };
     this.savedHostAt = 0;
     await this.ctx.storage.put('meta', this.meta);
@@ -388,105 +430,35 @@ export class BuzzRoom extends DurableObject<Env> {
   }
 
   /**
-   * A card file from the host, its bytes streaming in (the Worker checked its type): read into its pieces, at most
-   * FILE_MAX_BYTES. The same bytes again store nothing new. Otherwise the room's caps (counting the files still on their
-   * way, so uploads at the same time can't pass them together), then today's budget, then its pieces are stored: only
-   * then are the idle files that make room for it deleted.
+   * A card file from the host, its bytes streaming in (the Worker checked its type, and its size when it gave one):
+   * stored a piece at a time as they come (filestore.ts). size: its Content-Length (null: it didn't say).
    */
-  async upload(token: string, mime: string, body: ReadableStream<Uint8Array> | null, who: string): Promise<Upload> {
-    const wrong = { status: 401, error: 'wrong host token' };
+  async upload(token: string, mime: string, body: ReadableStream<Uint8Array> | null, who: string, size: number | null = null): Promise<Upload> {
     if (!this.meta || !this.room || !sameToken(token, this.meta.hostToken)) {
       void body?.cancel().catch(() => {});
-      return wrong;
+      return { status: 401, error: 'wrong host token' };
     }
     this.touchHost();
-    const file = await readPieces(body, FILE_MAX_BYTES);
-    if (file === 'big') return { status: 413, error: TOO_BIG };
-    if (file === 'empty') return { status: 400, error: 'empty file' };
-    const { id } = file;
-    // The same file already on its way (a second host window, a reload mid-upload): its answer, counted once.
-    const going = this.uploading.get(id);
-    if (going) return going.done;
-    if (!this.meta || !this.room) return wrong;
-    const ahead = [...this.uploading.values()];
-    const pending = { files: ahead.length, bytes: ahead.reduce((n, u) => n + u.bytes, 0), drop: ahead.flatMap((u) => u.drop) };
-    const room = this.room.fileRoom(id, file.bytes, pending);
-    if (room === 'have') return { status: 200, id };
-    if (room === 'full') return { status: 409, error: 'This room holds all the card files it can: send fewer pictures and videos at once' };
-    // (Its room is kept for it from here: nothing between this and the store can fill the room or store it first.)
-    const done = this.store(id, mime, file.pieces, file.bytes, who, room.drop);
-    this.uploading.set(id, { bytes: file.bytes, drop: room.drop, done });
-    try {
-      return await done;
-    } finally {
-      this.uploading.delete(id);
-    }
+    if (!body) return { status: 400, error: 'empty file' };
+    const epoch = this.epoch;
+    return this.files.upload({ mime, size, who, body: pieceSource(body), room: () => (this.meta && this.epoch === epoch ? this.room : null) });
   }
 
   /**
-   * upload()'s second half: today's budget, then the idle files `drop` go to make room, then the pieces. A file counted
-   * and then not stored is given back.
-   */
-  private async store(id: string, mime: string, parts: Uint8Array[], n: number, who: string, drop: string[]): Promise<Upload> {
-    const wrong = { status: 401, error: 'wrong host token' };
-    const counter = this.env.ROOM_COUNTER.getByName('rooms');
-    const took = await counter.takeBytes(who, n);
-    if (took === 'off') return { status: 503, error: FILES_OFF };
-    if (took !== 'ok') return { status: 429, error: took === 'address' ? TOO_MANY_FILES_TODAY : FILES_BUSY_TODAY };
-    const refund = () => counter.refundBytes(who, n).catch(() => {});
-    // (The room may have ended meanwhile.)
-    if (!this.meta || !this.room) {
-      await refund();
-      return wrong;
-    }
-    // (Only now, with today's budget taken: a file refused for it leaves every other where it was.)
-    this.room.dropIdle(drop);
-    const pieces: Record<string, Uint8Array> = {};
-    parts.forEach((part, i) => (pieces[`file:${id}:${i}`] = part));
-    try {
-      await this.ctx.storage.put(pieces);
-    } catch (e) {
-      await refund();
-      throw e;
-    }
-    if (!this.meta || !this.room) {
-      await this.ctx.storage.delete(Object.keys(pieces));
-      await refund();
-      return wrong;
-    }
-    this.room.fileAdded(id, mime, n, parts.length);
-    return { status: 200, id };
-  }
-
-  /**
-   * Card file `id` for the phone holding `token`, when the room lets it have it (room.ts fileFor); else 404. Its pieces
-   * go out one after another as they're stored, never joined into one copy.
+   * Card file `id` for the phone holding `token`, when the room lets it have it (room.ts fileFor, asked once its turn
+   * comes); else 404. Its pieces go out one after another, read as they're asked for, with its Content-Length (so the
+   * phone knows a body that broke off when it sees one: fewer bytes than that, an error).
    */
   private async download(token: string, id: string): Promise<Response> {
-    const missing = new Response(null, { status: 404 });
-    const file = this.room?.fileFor(token, id);
-    if (!file) return missing;
-    const keys = Array.from({ length: file.parts }, (_, i) => `file:${id}:${i}`);
-    const got = await this.ctx.storage.get<Uint8Array | ArrayBuffer>(keys);
-    const parts: Uint8Array[] = [];
-    let at = 0;
-    for (const k of keys) {
-      const v = got.get(k);
-      if (!v) return missing;
-      const part = v instanceof Uint8Array ? v : new Uint8Array(v);
-      parts.push(part);
-      at += part.byteLength;
-    }
-    if (at !== file.bytes) return missing;
-    let next = 0;
-    const body = new ReadableStream({
-      type: 'bytes',
-      pull(c) {
-        if (next < parts.length) c.enqueue(parts[next++]);
-        else c.close();
-      },
-    });
-    return new Response(body, { headers: { 'Content-Type': file.mime } });
+    const epoch = this.epoch;
+    const file = await this.files.send(id, () => this.room?.fileFor(token, id) ?? null, () => !!this.meta && this.epoch === epoch);
+    const n = Number(file.headers.get('X-File-Bytes'));
+    if (!file.ok || !file.body || !Number.isSafeInteger(n) || n <= 0) return file;
+    // (Here, not in the Worker: piped there, a phone letting go partway never reached this end, and the download kept
+    // its place in the room for good.)
+    const { readable, writable } = new FixedLengthStream(n);
+    void file.body.pipeTo(writable).catch(() => {});
+    return new Response(readable, { headers: { 'Content-Type': file.headers.get('Content-Type') ?? '' } });
   }
 
   async isOpen(): Promise<boolean> {
@@ -618,6 +590,9 @@ export class BuzzRoom extends DurableObject<Env> {
 
   /** Ends the room: closes every socket and forgets everything (the code can be used again). */
   private async wipe(): Promise<void> {
+    // (First: no upload writes another piece, and no download sends one.)
+    this.epoch++;
+    this.files.abortAll();
     for (const s of this.ctx.getWebSockets()) {
       try {
         s.close(1000, 'closed');

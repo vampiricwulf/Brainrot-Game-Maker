@@ -11,6 +11,14 @@ the day it's pushed (Pacific time; start the heading on the day's first push) an
 in plain words for the people who make and host games. Anything committed but not pushed yet goes under
 **Unreleased** at the top, and moves under its day when it's pushed.
 
+## Unreleased
+
+### Changed
+- The buzzer server stores a 🤫 card's file a 1 MB piece at a time as it arrives, and sends it to phones a piece at a time, so a big file takes no more of its memory than a small one. An upload cut off partway (the room closed, or the server restarted) leaves nothing behind, and a phone fetches a card's files two at a time, so on a slow line the first ones come sooner.
+
+### Fixed
+- A phone whose download of a 🤫 card's picture, video or sound broke off partway tries again, instead of saying it won't come.
+
 ## 2026-10-17
 
 ### Added

@@ -143,7 +143,10 @@ Private cards: `'cards'` and `'files'` in `welcome.features` (`'files'` only whi
 media items, a card's `shared`, `cardSeen` both ways (phone → room `{id}`, room → host `{id, seatId, member, by}`),
 the room → host `cardsLate` (`{late: [{id, seatId, member, by}]}`), the host's `forget` (delete these files now), the
 room → host `files` (the files it holds, on welcome and whenever that changes), and the two file routes. An app that doesn't see `'cards'` sends no card and has the host copy them; one that doesn't see
-`'files'` sends a card's own files by hand.
+`'files'` sends a card's own files by hand. Since card files are stored a piece at a time: an upload's answers 400
+(it broke off, or was longer than its Content-Length), 429 (the room is taking 2 already) and 500 (the room couldn't
+store it: try again), an upload without a Content-Length keeping room for a whole file limit, and a download's
+`Content-Length`, its body ending in an error when its file is deleted partway.
 
 ## Fair timing
 
@@ -208,21 +211,39 @@ can't try every code to find live games.
 A card's pictures, GIFs, videos and sounds from the host's computer go to the room as files (`POST
 /api/rooms/:code/files` with `Authorization: Bearer <hostToken>` and the file's type), only when the host sends the card
 or presses ⇡ Get it ready. The app shrinks pictures first (1600 px at most). Its answer is `{id}` (the file's SHA-256;
-the same bytes again store nothing new) or an error: 401 (wrong host token, or no such room), 409 (the room holds all it
-can), 413 (too big), 415 (a type it doesn't take), 429 (too many, or today's budget is used up) or 503 (files are off).
-The host token is checked before the body is read, so a wrong one costs the room nothing. Uploads going on at the same
-time count against the room's caps together, the same file twice at once is stored (and counted) once, and bytes
-counted against today's budget for a file that then isn't stored (the room ended meanwhile) are given back.
+the same bytes again store nothing new) or an error: 400 (empty, or it broke off, or was longer than its
+Content-Length said), 401 (wrong host token, or no such room), 409 (the room holds all it can), 413 (too big), 415 (a
+type it doesn't take), 429 (too many, today's budget is used up, or the room is taking 2 files already), 500 (the room
+couldn't store it; the app tries again) or 503 (files are off). The host token is checked before the body is read, so a
+wrong one costs the room nothing. Room for a file under the room's caps and today's budget is kept before a byte of it
+is stored: its Content-Length, or a whole file limit when it gives none (so in a nearly full room such an upload gets
+409 even when small), and what it didn't use is given back after. One turned away for the room's caps, today's budget
+or the 2 at once is read to its end and thrown away first, so its answer gets there (an upload cut off can reach the
+app as a broken connection). A room takes 2 uploads at once at most, counted against its caps together; the same file
+twice at once is stored (and counted) once, and bytes counted against today's budget for a file that then isn't stored
+(it broke off, or the room ended meanwhile) are given back.
 
 - **Types**: PNG, JPEG, WebP, GIF; MP4, WebM; MP3, OGG, WAV, M4A. No SVG, no HTML. Served back with their own type,
-  `Cache-Control: no-store` and `X-Content-Type-Options: nosniff`.
+  `Cache-Control: no-store, no-transform` and `X-Content-Type-Options: nosniff`.
 - **At most 16 MB a file, and 64 MB and 32 files a room.**
-- **Kept** in the room's own Durable Object storage, in 1 MB pieces under their own keys (`file:<id>:<n>`), never in
-  the room's state. A file streams through the Worker both ways, never held there: the room reads an upload straight
-  into its pieces, a whole piece at a time (working out its id on the way), and answers a download with a response
-  whose pieces go out one after another. A file no current card uses is deleted 10 minutes after (one got ready and
-  never sent: 10 minutes after its upload), by the room's alarm (the same one that ends the room) and on the host's
-  next state; the host can also `forget` them. Everything goes when the room ends.
+- **Kept** in the room's own Durable Object storage, in 1 MB pieces under keys of their own, never in the room's
+  state (`src/filestore.ts`). Each upload's pieces go under a new random prefix (`p:<12 characters>:<n>`), stored as
+  they arrive, a whole piece at a time, its id worked out on the way; once it has all come, the room lists the file
+  under that prefix (`RoomFile.key`), or deletes the new pieces if it holds the same file already (a twin that finished
+  first). A file streams through the Worker both ways, never held there, and the room holds a piece or two of it in
+  memory at a time, whatever its size: a download reads a piece from storage only as the line takes the last one, and
+  carries the file's `Content-Length`, so a phone knows one that broke off and tries again. A room sends 24 files at
+  once at most (more wait their turn), and a phone fetches 2 at once. A file no current card uses is deleted 10
+  minutes after (one got ready and never sent: 10 minutes after its upload), by the room's alarm (the same one that
+  ends the room) and on the host's next state; the host can also `forget` them. One deleted while a phone is fetching
+  it ends that download early (no card uses it, so no phone needs it). Everything goes when the room ends, and an
+  upload going on then stores nothing more.
+- **A room that stops mid-upload** (a deploy, a crash): each upload is noted in the room's state before its first
+  piece (`RoomSaved.uploads`) and taken off when it ends, so a room starting again deletes what such an upload left.
+  Its part of today's budget isn't given back. The app sees its upload fail and sends the file again.
+- **Rolling back** to a version that kept pieces only under `file:<id>:<n>`: the files stored since answer 404
+  (phones say they didn't load), and their pieces stay until the room ends. The other way, rooms open across the
+  deploy keep their older files (`file:<id>:<n>`, no `key`) and serve them as before.
 - **120 uploads and 120 downloads a minute per address** (`FILE_LIMIT` in `wrangler.jsonc`).
 - **A daily budget for the whole server: 2,000 MB of uploads a UTC day** by default (`FILES_MB_PER_DAY`), of which one
   address may use a quarter and one IPv6 /48 half. Over it, uploads are refused with "The buzzer server isn't taking
@@ -252,7 +273,9 @@ counted against today's budget for a file that then isn't stored (the room ended
   Pages › the Worker › Metrics › CPU time, and Durable Objects › each class › Metrics, for those minutes. Workers Logs
   are on (`observability` in `wrangler.jsonc`), so Observability › Logs also has each request's own CPU time, the
   room's calls included: there, `--gap 10 --runs 3` (a request every 10 s, each size three times) is enough. The logs
-  leave query strings out, so find the requests by the times it prints. With `--analytics <account id>` and an API
+  leave query strings out, so find the requests by the times it prints. Each time a room deletes a file's pieces it
+  logs its storage's size (`card file pieces deleted: …; room storage now … bytes`), which shows whether deleting
+  files gives the space back. With `--analytics <account id>` and an API
   token with Account Analytics Read in `CLOUDFLARE_API_TOKEN`, it reads them itself once Cloudflare's analytics have
   them (a few minutes): each request's CPU time in the Worker, in the room and in the daily counter, and any call that
   didn't end well.
@@ -274,8 +297,11 @@ Tests: the room's unit tests run with the root `npm test`; `npm run test:buzzer`
 host dropping mid-race, 24 idle sockets, kicks, locked seats, dead sockets and presses sent again, a phone held
 sideways, a long name on small screens, a flooding socket, and the limit on new rooms; `tests/e2e/buzzerlive.mjs`: the
 built app hosting two phones, through a reload and ◀ Back to editor on the pre-game screen, a host reload mid-clue,
-and a dropped host connection; `tests/e2e/phonecards.mjs`: the phone's private cards, from the greyed button through
-Tap to see, card files, a video, a YouTube player and the content policy to a phone that joined too late;
+and a dropped host connection; `tests/e2e/buzzerfiles.mjs`: card files a piece at a time, with an upload cut off by
+the room closing, the server stopping or its connection dropping (nothing of it left stored), a full room's answer, a
+download's Content-Length, one whose file is deleted partway, and downloads stopped partway; `tests/e2e/phonecards.mjs`: the phone's private cards, from the
+greyed button through Tap to see, card files (two at once), a video, a YouTube player and the content policy to a
+phone that joined too late;
 `tests/e2e/partnersend.mjs`: the built app sending a partner clue's cards, with nothing in the room or its saved state
 before a send, a picture shrunk before it goes up, host reloads mid-upload, a phone on a freed seat, ↻ Send again,
 📤 Send changes, ✖ Take back, ⇡ Get it ready, no phone fetching another card's file, and the room's 64 MB turning a

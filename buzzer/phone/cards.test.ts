@@ -17,6 +17,7 @@ import {
   mediaName,
   missingLine,
   playerSrc,
+  readCardFile,
   retryAfter,
   roleLine,
 } from './cards';
@@ -168,5 +169,33 @@ describe('card files on the phone', () => {
     expect(retryAfter(null, 4)).toBeNull();
     expect(retryAfter(401, 1)).toBeNull();
     expect(retryAfter(415, 1)).toBeNull();
+    // (A body that broke off partway counts as no network.)
+    expect(retryAfter(null, 1)).toBe(1500);
+  });
+
+  it('reads a file to its end, and throws when its body breaks off or ends short of its Content-Length', async () => {
+    const bytes = (n: number) => new Uint8Array(n).fill(7);
+    const stream = (chunks: Uint8Array[], fail = false) =>
+      new ReadableStream<Uint8Array>({
+        start(c) {
+          for (const x of chunks) c.enqueue(x);
+          if (fail) c.error(new Error('cut'));
+          else c.close();
+        },
+      });
+    const seen: [number, number][] = [];
+    const res = new Response(stream([bytes(3), bytes(4)]), { headers: { 'Content-Type': 'image/png', 'Content-Length': '7' } });
+    const whole = await readCardFile(res, (got, total) => seen.push([got, total]));
+    expect(whole.size).toBe(7);
+    expect(whole.type).toBe('image/png');
+    expect(seen).toEqual([
+      [3, 7],
+      [7, 7],
+    ]);
+    await expect(readCardFile(new Response(stream([bytes(3)], true), { headers: { 'Content-Length': '7' } }))).rejects.toThrow();
+    await expect(readCardFile(new Response(stream([bytes(3)]), { headers: { 'Content-Length': '7' } }))).rejects.toThrow();
+    // No length to check (or a compressed body's, which isn't the file's): what came is the file.
+    expect((await readCardFile(new Response(stream([bytes(3)])))).size).toBe(3);
+    expect((await readCardFile(new Response(stream([bytes(3)]), { headers: { 'Content-Length': '7', 'Content-Encoding': 'gzip' } }))).size).toBe(3);
   });
 });

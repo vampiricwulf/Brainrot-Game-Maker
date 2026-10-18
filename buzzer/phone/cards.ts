@@ -110,7 +110,29 @@ export function lateLine(n: number, team: boolean): string {
 export const filesIn = (cards: readonly PhoneCard[]): Set<string> =>
   new Set(cards.flatMap((c) => (c.media ?? []).flatMap((m) => ('file' in m && isFileId(m.file) ? [m.file] : []))));
 
-/** A download worth trying again (and how many tries in all): a moment's 404 (the room catching up), too many, a server error, no network. */
+/**
+ * A card file's body, read to its end (onBytes hears how much has come, and its Content-Length, 0 when it has none).
+ * Throws when it broke off: an error, or fewer bytes than its Content-Length (a body cut short can look like its end).
+ */
+export async function readCardFile(r: Response, onBytes?: (got: number, total: number) => void): Promise<Blob> {
+  const length = Number(r.headers.get('Content-Length'));
+  // (A compressed body's length isn't the file's.)
+  const total = !r.headers.get('Content-Encoding') && Number.isSafeInteger(length) && length > 0 ? length : 0;
+  const chunks: Uint8Array<ArrayBuffer>[] = [];
+  let got = 0;
+  const reader = r.body?.getReader();
+  for (;;) {
+    const next = await reader?.read();
+    if (!next || next.done) break;
+    chunks.push(next.value);
+    got += next.value.byteLength;
+    onBytes?.(got, total);
+  }
+  if (total && got !== total) throw new Error(`card file broke off: ${got} of ${total} bytes`);
+  return new Blob(chunks, { type: r.headers.get('Content-Type') ?? '' });
+}
+
+/** A download worth trying again (and how many tries in all): a moment's 404 (the room catching up), too many, a server error, no network (or a body that broke off). */
 export function retryAfter(status: number | null, tries: number): number | null {
   const max = status === 404 ? 2 : 4;
   if (tries >= max) return null;

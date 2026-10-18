@@ -75,13 +75,21 @@ export function bigWords(s: string | undefined): boolean {
 export const EMBED_SITES = ['youtube', 'drive', 'streamable'] as const;
 
 /**
- * Card files ('files'): at most this big each, and per room in all (bytes and files). A room holds a file whole while
- * it stores it, well inside a Durable Object's 128 MB (the app sends one at a time); what each costs the server is
+ * Card files ('files'): at most this big each, and per room in all (bytes and files). A room stores and sends a file a
+ * 1 MB piece at a time, so a big one takes no more of its memory than a small one; what each costs the server is
  * measured in buzzer/README.md, "Card files".
  */
 export const FILE_MAX_BYTES = 16 * 1024 * 1024;
 export const ROOM_FILES_BYTES = 64 * 1024 * 1024;
 export const ROOM_FILES_MAX = 32;
+/** Card file limits: the most bytes a file, the most bytes a room holds, and the most files a room holds. */
+export interface FileLimits {
+  fileBytes: number;
+  roomBytes: number;
+  roomFiles: number;
+}
+/** The limits above, which every buzzer server has had so far. */
+export const OLD_FILE_LIMITS: FileLimits = { fileBytes: FILE_MAX_BYTES, roomBytes: ROOM_FILES_BYTES, roomFiles: ROOM_FILES_MAX };
 /** The types a card file may have. No SVG, no HTML. */
 export const FILE_TYPES = ['image/png', 'image/jpeg', 'image/webp', 'image/gif', 'video/mp4', 'video/webm', 'audio/mpeg', 'audio/ogg', 'audio/wav', 'audio/mp4'] as const;
 /** A card file's id: the SHA-256 of its bytes, as 64 lowercase hex digits. */
@@ -804,10 +812,14 @@ export interface NewRoom {
 /**
  * Card files ('files'). The host uploads one with POST {base}/api/rooms/{code}/files, `Authorization: Bearer
  * <hostToken>`, the file's type (FILE_TYPES) as Content-Type and its bytes (at most FILE_MAX_BYTES): 200 {id} (its
- * SHA-256; the same bytes again store nothing new), or {error} with 401, 409 (the room's files are full), 413 (too big),
- * 415 (a type it doesn't take), 429 (too many, or today's budget is used up) or 503 (the server takes no files). A phone
- * fetches one with GET …/files/{id} and `Authorization: Bearer <its seat or member token>` (never in the address): only
- * for a card sent to it that it isn't late for, else 404.
+ * SHA-256; the same bytes again store nothing new), or {error} with 400 (empty, or the upload broke off or was longer
+ * than its Content-Length), 401, 409 (the room's files are full), 413 (too big), 415 (a type it doesn't take), 429 (too
+ * many, today's budget is used up, or the room is taking 2 files already), 500 (the room couldn't store it: try again)
+ * or 503 (the server takes no files). Room for a file is kept before its bytes are read: its Content-Length, or with
+ * none a whole FILE_MAX_BYTES (so in a nearly full room it gets 409 even when small). A phone fetches one with GET
+ * …/files/{id} and `Authorization: Bearer <its seat or member token>` (never in the address): only for a card sent to
+ * it that it isn't late for, else 404. Added later: the answer has a Content-Length, and a file deleted while it goes
+ * out (no card uses it any more) ends the body early, with an error.
  */
 export const filesUrl = (base: string, code: string, id?: string): string => `${base.replace(/\/+$/, '')}/api/rooms/${code}/files${id ? `/${id}` : ''}`;
 

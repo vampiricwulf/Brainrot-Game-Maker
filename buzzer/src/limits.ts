@@ -9,6 +9,7 @@
  * (FILES_MB_PER_DAY, see filesBudget) that RoomCounter counts with countBytes. A room's one alarm both ends it and
  * cleans up its files: nextAlarm picks when.
  */
+import type { FileLimits } from '../../src/lib/buzzproto';
 
 /** Rooms made per UTC day, at most. A game night makes one; this leaves plenty for a busy day. */
 export const DAILY_ROOMS = 1000;
@@ -100,6 +101,8 @@ export const TOO_MANY_FILES = 'Too many files — wait a minute';
 export const FILES_OFF = "This buzzer server doesn't take files";
 export const FILES_BUSY_TODAY = "The buzzer server isn't taking files right now — try again tomorrow";
 export const TOO_MANY_FILES_TODAY = 'Too many files from here today — try again tomorrow';
+/** A file over the server's limit (413). */
+export const tooBig = (lim: FileLimits): string => `Too big for phones (${lim.fileBytes / 1024 / 1024} MB at most)`;
 
 /** The daily budget in bytes from the FILES_MB_PER_DAY setting: its default when missing or not a number; 0 is off. */
 export function filesBudget(setting: unknown): number {

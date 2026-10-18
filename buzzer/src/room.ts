@@ -69,10 +69,11 @@
  * card sent to more than one seat says on the phone that others have it too (shared), never who. The seat list never
  * carries a card. An id gone from the state is forgotten at once (the tile closed).
  *
- * Card files ('files'): the bytes are stored by the Durable Object under their own keys (index.ts); the room keeps an
- * index (RoomSaved.files), checks the caps, and gives a file only to a phone holding a token for a current card it may
- * see (fileFor). A file no current card uses is deleted FILE_IDLE_MS after (one got ready and never sent, after its
- * upload), by the alarm and on each new state.
+ * Card files ('files'): the bytes are stored by the Durable Object in 1 MB pieces under their own keys (filestore.ts);
+ * the room keeps an index (RoomSaved.files, each file's pieces under its `key`), checks the caps, notes the uploads
+ * writing now (RoomSaved.uploads, so a room restarted mid-upload deletes their pieces), and gives a file only to a phone
+ * holding a token for a current card it may see (fileFor). A file no current card uses is deleted FILE_IDLE_MS after
+ * (one got ready and never sent, after its upload), by the alarm and on each new state.
  */
 import {
   BUZZ_PROTOCOL,
@@ -91,7 +92,6 @@ import {
   isFileId,
   MAX_PHONES,
   MEMBER_NAME_MAX,
-  ROOM_FILES_BYTES,
   ROOM_FILES_MAX,
   WAGER_MAX,
   ANSWER_MAX,
@@ -104,6 +104,7 @@ import {
   type CardMedia,
   type CardTo,
   type DenyReason,
+  type FileLimits,
   type HostCard,
   type HostState,
   type MemberRef,
@@ -259,8 +260,14 @@ export interface RoomSaved {
    * and who has seen it (cardSeen). Ids gone from the state are forgotten at once.
    */
   cards?: { at: Record<string, number>; seen: Record<string, CardSeen[]> };
-  /** Card files ('files'), by id: an index only (the bytes are under their own keys, file:<id>:<n>; see index.ts). */
+  /** Card files ('files'), by id: an index only (the bytes are under their own keys, see pieceKey and filestore.ts). */
   files?: Record<string, RoomFile>;
+  /**
+   * Added later: the uploads writing pieces now, by their keys' prefix, and the most pieces each may write. Noted before
+   * the first piece and gone once the file is listed (or the upload ends), so a room restarted mid-upload (a deploy, a
+   * crash) deletes what an upload left (takeUploads).
+   */
+  uploads?: Record<string, number>;
 }
 
 /** A card file the room holds. unusedSince: no current card uses it (since its upload, for one no card used yet). */
@@ -269,10 +276,17 @@ export interface RoomFile {
   bytes: number;
   /** How many 1 MB pieces its bytes are stored in. */
   parts: number;
+  /** Added later: the prefix its pieces are under (p:<random>). Without it, file:<id> (stored by older code). */
+  key?: string;
   /** When it was uploaded. */
   at: number;
   unusedSince?: number;
 }
+
+/** The prefix card file `id`'s pieces are under: its own, or file:<id> for one stored by older code. */
+const piecesOf = (id: string, f: Pick<RoomFile, 'key'>): string => f.key ?? `file:${id}`;
+/** The key of piece i of card file `id`. */
+export const pieceKey = (id: string, f: Pick<RoomFile, 'key'>, i: number): string => `${piecesOf(id, f)}:${i}`;
 
 /** A phone of seatId (teams: member, called by) showed a card. */
 export interface CardSeen {
@@ -326,10 +340,12 @@ export interface RoomDeps {
   /** Run fn in ms (the grace window); returns a handle for cancel. */
   schedule(ms: number, fn: () => void): unknown;
   cancel(handle: unknown): void;
-  /** Delete these card files' bytes (all their pieces). */
-  dropFiles(files: { id: string; parts: number }[]): void;
+  /** Delete these card files' bytes: pieces 0 to parts − 1 under each prefix (see pieceKey). */
+  dropFiles(files: { prefix: string; parts: number }[]): void;
   /** A card file's clean-up is due at `at`: the room must be woken by then (index.ts moves its alarm earlier if need be). */
   cleanupAt(at: number): void;
+  /** The server's card file limits (the room's caps). */
+  limits: FileLimits;
 }
 
 interface Phone extends PhoneSaved {
@@ -657,12 +673,12 @@ export class Room {
 
   /** Forgets card files and has their bytes deleted (the host hears what is left); how many there were. */
   private dropFiles(ids: string[]): number {
-    const gone: { id: string; parts: number }[] = [];
+    const gone: { prefix: string; parts: number }[] = [];
     for (const id of ids) {
       const f = this.s.files?.[id];
       if (!f) continue;
       delete this.s.files![id];
-      gone.push({ id, parts: f.parts });
+      gone.push({ prefix: piecesOf(id, f), parts: f.parts });
     }
     if (!gone.length) return 0;
     if (!Object.keys(this.s.files ?? {}).length) delete this.s.files;
@@ -683,28 +699,18 @@ export class Room {
   }
 
   /**
-   * Whether card file `id` (`bytes` long) can be stored: 'have' (it's here already: its clean-up time starts again if no
-   * card uses it, as the host is getting it ready again), { ok, drop } (it fits once the files in `drop` are deleted), or
-   * 'full' (ROOM_FILES_MAX files or ROOM_FILES_BYTES). Out of space, the files no current card has used for
+   * Whether a new card file `bytes` long can be stored: { ok, drop } (it fits once the files in `drop` are deleted), or
+   * 'full' (ROOM_FILES_MAX files or the server's roomBytes). Out of space, the files no current card has used for
    * FILE_MAKE_ROOM_MS make room, oldest first, if that makes it fit (cards that ended fill a room long before the
-   * clean-up time). Nothing is deleted here: the caller does that with dropIdle once the file is sure to be stored, so
-   * one refused after this (today's budget) costs the room nothing. `pending`: files still on their way into storage,
-   * counted as here already, and the files to be deleted for them (`drop`), counted as here still and never chosen again.
+   * clean-up time). Nothing is deleted here: the caller does that with dropIdle once today's budget is taken, so one
+   * refused for it costs the room nothing. `pending`: files still on their way into storage, counted as here already,
+   * and the files to be deleted for them (`drop`), counted as here still and never chosen again.
    */
-  fileRoom(id: string, bytes: number, pending: { files: number; bytes: number; drop?: string[] } = { files: 0, bytes: 0 }): 'have' | 'full' | { ok: true; drop: string[] } {
-    const files = this.s.files ?? {};
-    const had = files[id];
-    if (had) {
-      if (had.unusedSince !== undefined) {
-        had.unusedSince = this.deps.now();
-        this.deps.saveRoom(this.s);
-      }
-      return 'have';
-    }
-    const all = Object.entries(files);
+  fileSpace(bytes: number, pending: { files: number; bytes: number; drop?: string[] } = { files: 0, bytes: 0 }): 'full' | { ok: true; drop: string[] } {
+    const all = Object.entries(this.s.files ?? {});
     let count = all.length + pending.files;
     let size = all.reduce((n, [, f]) => n + f.bytes, 0) + pending.bytes + bytes;
-    const fits = () => count < ROOM_FILES_MAX && size <= ROOM_FILES_BYTES;
+    const fits = () => count < ROOM_FILES_MAX && size <= this.deps.limits.roomBytes;
     const drop: string[] = [];
     if (fits()) return { ok: true, drop };
     for (const [k, f] of this.idleFiles().filter(([k]) => !pending.drop?.includes(k))) {
@@ -714,6 +720,20 @@ export class Room {
       size -= f.bytes;
     }
     return fits() ? { ok: true, drop } : 'full';
+  }
+
+  /**
+   * Card file `id` is here already (an upload of the same bytes): its clean-up time starts again if no card uses it, as
+   * the host is getting it ready again.
+   */
+  fileHave(id: string): boolean {
+    const had = this.s.files?.[id];
+    if (!had) return false;
+    if (had.unusedSince !== undefined) {
+      had.unusedSince = this.deps.now();
+      this.deps.saveRoom(this.s);
+    }
+    return true;
   }
 
   /** The card files that can make room for a new one, oldest first: no current card uses them, nor has for FILE_MAKE_ROOM_MS. */
@@ -726,23 +746,55 @@ export class Room {
   }
 
   /**
-   * Deletes the files fileRoom chose to make room (its `drop`), now that the new one is being stored: those still idle.
-   * One a card uses again meanwhile, or the host got ready again, stays (the room holds a file more than it should,
-   * until the clean-up, rather than lose one the host is about to name).
+   * Deletes the files fileSpace chose to make room (its `drop`), now that the new one is being stored: those still idle.
+   * One a card uses again meanwhile, or the host got ready again, stays. (FileStore asks fileSpace again just before,
+   * in the same go, so every file it names is still idle.)
    */
   dropIdle(ids: string[]): void {
     const idle = new Set(this.idleFiles().map(([k]) => k));
     if (this.dropFiles(ids.filter((k) => idle.has(k)))) this.save();
   }
 
+  /** An upload is about to write pieces under `prefix`, `parts` of them at most (saved before the first one). */
+  uploadStarted(prefix: string, parts: number): void {
+    (this.s.uploads ??= {})[prefix] = parts;
+    this.deps.saveRoom(this.s);
+  }
+
+  /** The upload under `prefix` ended without a new file (its pieces are being deleted). */
+  uploadEnded(prefix: string): void {
+    if (!this.s.uploads || !(prefix in this.s.uploads)) return;
+    this.endUpload(prefix);
+    this.deps.saveRoom(this.s);
+  }
+
+  private endUpload(prefix: string): void {
+    if (!this.s.uploads) return;
+    delete this.s.uploads[prefix];
+    if (!Object.keys(this.s.uploads).length) delete this.s.uploads;
+  }
+
   /**
-   * Card file `id` is stored (its bytes in `parts` pieces). No card uses it until the host sends a state that names it,
-   * so it waits, given to nobody, and is cleaned up FILE_IDLE_MS after this if none does.
+   * The uploads a room that just started found noted (the last one stopped mid-upload: a deploy, a crash), forgotten
+   * now: the Durable Object deletes their pieces.
    */
-  fileAdded(id: string, mime: string, bytes: number, parts: number): void {
-    if (this.s.files?.[id]) return;
+  takeUploads(): { prefix: string; parts: number }[] {
+    const u = this.s.uploads;
+    if (!u) return [];
+    delete this.s.uploads;
+    this.deps.saveRoom(this.s);
+    return Object.entries(u).map(([prefix, parts]) => ({ prefix, parts }));
+  }
+
+  /**
+   * Card file `id` is stored: its bytes in `parts` pieces under `prefix` (the upload noted there ends in the same save).
+   * No card uses it until the host sends a state that names it, so it waits, given to nobody, and is cleaned up
+   * FILE_IDLE_MS after this if none does. (FileStore asks fileHave first: the same bytes are never listed twice.)
+   */
+  fileStored(prefix: string, id: string, mime: string, bytes: number, parts: number): void {
     const now = this.deps.now();
-    (this.s.files ??= {})[id] = { mime, bytes, parts, at: now, unusedSince: now };
+    this.endUpload(prefix);
+    (this.s.files ??= {})[id] = { mime, bytes, parts, key: prefix, at: now, unusedSince: now };
     this.deps.cleanupAt(now + FILE_IDLE_MS);
     this.tellFiles();
     this.save();

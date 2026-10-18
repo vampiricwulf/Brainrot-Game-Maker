@@ -3,8 +3,9 @@
  * newest first, each behind "Tap to see" with 🙈 Hide. Built with createElement and textContent only, never innerHTML.
  *
  * - Pictures, GIFs, videos and sounds from a link load from that link (a picture with no referrer); the host's own
- *   files are fetched from the room with this phone's token in a header (never in an address), and shown from blob:
- *   addresses that are revoked once no card uses that file. A file on its way shows "🖼 Picture coming…" and fills in.
+ *   files are fetched from the room (two at a time) with this phone's token in a header (never in an address), and
+ *   shown from blob: addresses that are revoked once no card uses that file. A file on its way shows "🖼 Picture
+ *   coming…" and fills in; one whose download broke off is tried again.
  * - A YouTube, Drive or Streamable player is framed only when its play button is tapped, and taken down on Hide.
  * - Video plays muted and inline once the card is open ("🔊 Tap for sound"); sound waits for a tap. With reduced
  *   motion, video doesn't start by itself and a GIF shows still with "▶ Play".
@@ -14,7 +15,7 @@
  */
 import { cardLink, filesUrl, isFileId, type CardMedia, type PhoneCard } from '../../src/lib/buzzproto';
 import { imageFallback } from '../../src/lib/links';
-import { arrivedLine, bigWords, brokenLine, cardBuild, cardHead, cardSame, comingLine, filesIn, isGif, mediaName, missingLine, playerSrc, retryAfter, roleLine } from './cards';
+import { arrivedLine, bigWords, brokenLine, cardBuild, cardHead, cardSame, comingLine, filesIn, isGif, mediaName, missingLine, playerSrc, readCardFile, retryAfter, roleLine } from './cards';
 
 /** What the panel needs from the page. */
 export interface PanelHost {
@@ -512,15 +513,43 @@ function embedSlot(m: Extract<CardMedia, { kind: 'embed' }>): Slot {
 
 // ---- card files ----
 
+/**
+ * Card files downloading at once on this phone; the rest wait their turn ("… coming…"), so on a slow line the first
+ * ones come sooner, and the room sends fewer at once.
+ */
+const FETCHES_AT_ONCE = 2;
+let fetching = 0;
+/** Card files waiting their turn, first in first out (one let go meanwhile is skipped). */
+const queue: { id: string; f: FileEntry }[] = [];
+
 /** Card file `id`, fetched once (shared by every card that uses it). */
 function fetchFile(id: string): FileEntry {
   let f = files.get(id);
   if (!f) {
     f = { state: 'loading', tries: 0 };
     files.set(id, f);
-    void load(id, f);
+    fetchSoon(id, f);
   }
   return f;
+}
+
+/** In line for its download (or its next try). */
+function fetchSoon(id: string, f: FileEntry): void {
+  queue.push({ id, f });
+  nextFetches();
+}
+
+/** Starts the downloads next in line, while there's a place. */
+function nextFetches(): void {
+  while (fetching < FETCHES_AT_ONCE && queue.length) {
+    const { id, f } = queue.shift()!;
+    if (files.get(id) !== f) continue;
+    fetching++;
+    void load(id, f).finally(() => {
+      fetching--;
+      nextFetches();
+    });
+  }
 }
 
 /** Fetches a card file with this phone's token in a header (never in the address); tries again a few times if it can. */
@@ -539,7 +568,7 @@ async function load(id: string, f: FileEntry): Promise<void> {
       });
       status = r.status;
       if (r.ok) {
-        const blob = await r.blob();
+        const blob = await readCardFile(r);
         if (files.get(id) !== f) return;
         f.url = URL.createObjectURL(blob);
         f.state = 'ok';
@@ -547,6 +576,8 @@ async function load(id: string, f: FileEntry): Promise<void> {
       }
     } catch {
       if (ctrl.signal.aborted) return;
+      // (No answer, or a body that broke off partway: tried again as for no network.)
+      status = null;
     }
   }
   if (files.get(id) !== f) return;
@@ -555,7 +586,7 @@ async function load(id: string, f: FileEntry): Promise<void> {
     f.state = 'failed';
     return host!.redraw();
   }
-  f.timer = window.setTimeout(() => void load(id, f), wait);
+  f.timer = window.setTimeout(() => fetchSoon(id, f), wait);
 }
 
 /** Back online: files that wouldn't come are tried again on the next draw. */

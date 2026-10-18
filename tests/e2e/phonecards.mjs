@@ -639,6 +639,31 @@ try {
   assert(true, 'opened at the end of a page that scrolls, the card’s words stay in sight');
   await bob.setViewportSize({ width: 390, height: 760 });
 
+  // ---------- Three files on one card: two come at once, the third in its turn ----------
+  const three = [];
+  for (let i = 1; i <= 3; i++) three.push(await upload(png(60 * i, 90, 200 - 50 * i, 120 + i, 80), 'image/png'));
+  let fetching = 0;
+  let most = 0;
+  const slowly = async (r) => {
+    fetching++;
+    most = Math.max(most, fetching);
+    const res = await r.fetch();
+    await sleep(500);
+    // (Counted done before the phone has it: it starts the next one only then.)
+    fetching--;
+    await r.fulfill({ response: res });
+  };
+  await bob.route('**/api/rooms/*/files/*', slowly);
+  const pics = { id: 'pc:c6:1:1', to: [{ seat: 'b' }], open: true, title: 'Three-qz', media: three.map((file, i) => ({ kind: 'image', file, mime: 'image/png', name: `Pic ${i + 1}` })) };
+  hostState({ cards: [pics] });
+  await bob.locator(`.card[data-card="${pics.id}"]`).getByRole('button', { name: 'Tap to see' }).tap();
+  await until(
+    () => bob.evaluate(() => [...document.querySelectorAll('.card img[alt^="Pic "]')].filter((i) => i.src.startsWith('blob:') && i.complete && i.naturalWidth > 0).length === 3),
+    'the three pictures',
+  );
+  assert(most === 2, `a card’s three files: all three come, two downloading at once (${most} at most)`);
+  await bob.unroute('**/api/rooms/*/files/*', slowly);
+
   // ---------- A phone seated after the card went out ----------
   h.send({ t: 'kick', seatId: 'b', block: false });
   await bob.getByRole('heading', { name: 'The host freed your seat' }).waitFor();

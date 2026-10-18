@@ -259,7 +259,8 @@ export function png(r, g, b, w = 40, h = 24) {
 
 /**
  * The buzzer room (buzzer/ under `wrangler dev`, local), its storage in a new folder (`persist`): its address once it
- * answers, and stop() (which also deletes that folder). Needs `npm ci` in buzzer/.
+ * answers, stop() (which also deletes that folder), and restart() (stopped and started again on the same address and
+ * storage, as a deploy or a crash would: its rooms come back from storage). Needs `npm ci` in buzzer/.
  */
 export async function startBuzzer(prefix) {
   const { spawn } = await import('node:child_process');
@@ -277,38 +278,107 @@ export async function startBuzzer(prefix) {
       });
     });
   const port = await freePort();
-  const inspector = await freePort();
   const persist = mkdtempSync(join(tmpdir(), prefix));
   const base = `http://127.0.0.1:${port}`;
   let log = '';
-  const wrangler = spawn(
-    join(dir, 'node_modules/.bin/wrangler'),
-    ['dev', '--ip', '127.0.0.1', '--port', String(port), '--inspector-port', String(inspector), '--persist-to', persist, '--log-level', 'warn'],
-    { cwd: dir, detached: true, env: { ...process.env, WRANGLER_SEND_METRICS: 'false', NO_PROXY: '127.0.0.1,localhost', no_proxy: '127.0.0.1,localhost' } },
-  );
-  wrangler.stdout.on('data', (d) => (log += d));
-  wrangler.stderr.on('data', (d) => (log += d));
-  const stop = () => {
+  let wrangler;
+  const start = async () => {
+    log = '';
+    wrangler = spawn(
+      join(dir, 'node_modules/.bin/wrangler'),
+      ['dev', '--ip', '127.0.0.1', '--port', String(port), '--inspector-port', String(await freePort()), '--persist-to', persist, '--log-level', 'warn'],
+      { cwd: dir, detached: true, env: { ...process.env, WRANGLER_SEND_METRICS: 'false', NO_PROXY: '127.0.0.1,localhost', no_proxy: '127.0.0.1,localhost' } },
+    );
+    wrangler.stdout.on('data', (d) => (log += d));
+    wrangler.stderr.on('data', (d) => (log += d));
+    for (let i = 0; ; i++) {
+      if (wrangler.exitCode !== null) throw new Error('wrangler dev exited:\n' + log);
+      try {
+        if ((await fetch(`${base}/api/health`)).ok) break;
+      } catch {
+        // not up yet
+      }
+      if (i > 120) throw new Error('wrangler dev never came up:\n' + log);
+      await new Promise((r) => setTimeout(r, 500));
+    }
+  };
+  const kill = (signal = 'SIGTERM') => {
     try {
-      process.kill(-wrangler.pid, 'SIGTERM');
+      process.kill(-wrangler.pid, signal);
     } catch {
       // already gone
     }
+  };
+  const stop = () => {
+    kill();
     rmSync(persist, { recursive: true, force: true });
+  };
+  const restart = async () => {
+    const gone = wrangler.exitCode !== null ? Promise.resolve() : new Promise((ok) => wrangler.once('exit', ok));
+    kill();
+    const late = setTimeout(() => kill('SIGKILL'), 5000);
+    await gone;
+    clearTimeout(late);
+    // (Its address free again: nothing answers there.)
+    for (let i = 0; ; i++) {
+      try {
+        await fetch(`${base}/api/health`);
+      } catch {
+        break;
+      }
+      if (i > 100) throw new Error('the old wrangler dev still answers');
+      await new Promise((r) => setTimeout(r, 100));
+    }
+    await start();
   };
   process.on('exit', stop);
   for (const sig of ['SIGINT', 'SIGTERM']) process.on(sig, () => process.exit(1));
-  for (let i = 0; ; i++) {
-    if (wrangler.exitCode !== null) throw new Error('wrangler dev exited:\n' + log);
+  await start();
+  return { base, persist, stop, restart };
+}
+
+/**
+ * The keys every buzzer room (BuzzRoom Durable Object) under `persist` has stored now: read from a copy of their
+ * SQLite files (wrangler dev keeps one per object, its keys in the _cf_KV table), so the server needs no test code.
+ */
+export async function roomKeys(persist) {
+  const { copyFileSync, existsSync, mkdtempSync, readdirSync, rmSync } = await import('node:fs');
+  const { tmpdir } = await import('node:os');
+  const { join } = await import('node:path');
+  const { DatabaseSync } = await import('node:sqlite');
+  const dir = join(persist, 'v3/do/brainrot-buzzer-BuzzRoom');
+  // (The room writes as this reads: a file gone or half written meanwhile, and it's read again.)
+  for (let tries = 1; ; tries++) {
+    const copy = mkdtempSync(join(tmpdir(), 'room-keys-'));
     try {
-      if ((await fetch(`${base}/api/health`)).ok) break;
-    } catch {
-      // not up yet
+      if (!existsSync(dir)) return [];
+      const names = readdirSync(dir);
+      for (const f of names) {
+        try {
+          copyFileSync(join(dir, f), join(copy, f));
+        } catch (e) {
+          if (e.code !== 'ENOENT') throw e;
+        }
+      }
+      const keys = [];
+      for (const f of names) {
+        if (!f.endsWith('.sqlite') || f === 'metadata.sqlite' || !existsSync(join(copy, f))) continue;
+        const db = new DatabaseSync(join(copy, f), { readOnly: true });
+        try {
+          // (A room that ended has no table left.)
+          if (db.prepare("SELECT 1 FROM sqlite_master WHERE name = '_cf_KV'").get()) keys.push(...db.prepare('SELECT key FROM _cf_KV').all().map((r) => r.key));
+        } finally {
+          db.close();
+        }
+      }
+      return keys;
+    } catch (e) {
+      if (tries >= 5) throw e;
+      await new Promise((r) => setTimeout(r, 100));
+    } finally {
+      rmSync(copy, { recursive: true, force: true });
     }
-    if (i > 120) throw new Error('wrangler dev never came up:\n' + log);
-    await new Promise((r) => setTimeout(r, 500));
   }
-  return { base, persist, stop };
 }
 
 /**

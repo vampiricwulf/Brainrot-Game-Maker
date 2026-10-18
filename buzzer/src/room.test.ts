@@ -1,9 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import type { HostCard, HostState, RoomToHost, RoomToPhone } from '../../src/lib/buzzproto';
-import { CARDS_BYTES, CARDS_MAX, clip, cleanName, FILE_MAX_BYTES, MAX_PHONES, ROOM_FILES_BYTES, ROOM_FILES_MAX } from '../../src/lib/buzzproto';
+import { CARDS_BYTES, CARDS_MAX, clip, cleanName, FILE_MAX_BYTES, MAX_PHONES, OLD_FILE_LIMITS, ROOM_FILES_BYTES, ROOM_FILES_MAX } from '../../src/lib/buzzproto';
 import { FILE_IDLE_MS, FILE_MAKE_ROOM_MS } from './limits';
 import {
   cleanState,
+  emptyRoom,
   FLOOD_BLOCK_MS,
   FLOOD_BURST,
   GRACE_MS,
@@ -29,9 +30,11 @@ import {
   cardLink,
   COLOR_WINDOW_MS,
   WAGER_WINDOW_MS,
+  pieceKey,
   Room,
   TOO_BIG,
   type PhoneSaved,
+  type RoomFile,
   type RoomSaved,
 } from './room';
 
@@ -46,7 +49,7 @@ function state(over: Partial<HostState> = {}): HostState {
 }
 
 /** A room with a clock and timers the test runs (tick), counting tokens and inboxes for the host and each phone. */
-function setup(saved?: RoomSaved, phonesSaved: PhoneSaved[] = []) {
+function setup(saved?: RoomSaved, phonesSaved: PhoneSaved[] = [], limits = OLD_FILE_LIMITS) {
   const t = { now: 10_000 };
   let n = 0;
   let timers: { at: number; fn: () => void; id: number }[] = [];
@@ -67,8 +70,9 @@ function setup(saved?: RoomSaved, phonesSaved: PhoneSaved[] = []) {
   const inbox = new Map<string, RoomToPhone[]>();
   const phoneSaves = new Map<string, PhoneSaved>();
   const dropped: string[] = [];
-  /** Card files whose bytes the room had deleted, and the clean-up times it asked to be woken for. */
+  /** Card files whose bytes the room had deleted (their pieces' prefixes; all of each), and the clean-up times it asked to be woken for. */
   const filesDropped: string[] = [];
+  const piecesDropped: { prefix: string; parts: number }[] = [];
   const wakes: number[] = [];
   let saves = 0;
   const room = new Room(
@@ -86,8 +90,12 @@ function setup(saved?: RoomSaved, phonesSaved: PhoneSaved[] = []) {
         return timerId;
       },
       cancel: (id) => (timers = timers.filter((x) => x.id !== id)),
-      dropFiles: (files) => filesDropped.push(...files.map((f) => f.id)),
+      dropFiles: (files) => {
+        filesDropped.push(...files.map((f) => f.prefix));
+        piecesDropped.push(...files);
+      },
       cleanupAt: (at) => wakes.push(at),
+      limits,
     },
     saved,
     phonesSaved,
@@ -106,7 +114,7 @@ function setup(saved?: RoomSaved, phonesSaved: PhoneSaved[] = []) {
   });
   const hostLast = <T extends RoomToHost['t']>(type: T) => host.filter((m) => m.t === type).at(-1) as Extract<RoomToHost, { t: T }> | undefined;
   const hostAll = <T extends RoomToHost['t']>(type: T) => host.filter((m) => m.t === type) as Extract<RoomToHost, { t: T }>[];
-  return { t, tick, timers: () => timers.length, room, host, hostLast, hostAll, send, phone, phoneOf, phoneSaves, dropped, filesDropped, wakes, saves: () => saves };
+  return { t, tick, timers: () => timers.length, room, host, hostLast, hostAll, send, phone, phoneOf, phoneSaves, dropped, filesDropped, piecesDropped, wakes, saves: () => saves };
 }
 
 /** Host connected and sent a state; phones a, b, c seated on seats a, b, c. */
@@ -2549,6 +2557,8 @@ describe('card files', () => {
   const F2 = 'b'.repeat(64);
   const pic = (file: string): HostCard['media'] => [{ kind: 'image', file, mime: 'image/png' }];
   const card = (x: Partial<HostCard> = {}): HostCard => ({ id: 'pc:c1:1:1', to: [{ seat: 'b' }], open: true, text: 'SHREK', ...x });
+  /** A file stored, its pieces under its own id here (so the room's deletes read as ids). */
+  const add = (g: { room: Room }, id: string, mime: string, bytes: number, parts: number) => g.room.fileStored(id, id, mime, bytes, parts);
   function sent() {
     const g = game();
     g.t.now += 1000;
@@ -2559,20 +2569,25 @@ describe('card files', () => {
 
   it('the room’s caps: 32 files and 64 MB; the same file again is already here', () => {
     const g = sent();
-    expect(g.room.fileRoom(F1, FILE_MAX_BYTES)).toEqual({ ok: true, drop: [] });
-    g.room.fileAdded(F1, 'image/png', FILE_MAX_BYTES, 4);
-    expect(g.room.fileRoom(F1, FILE_MAX_BYTES)).toBe('have');
-    for (let i = 1; i < ROOM_FILES_BYTES / FILE_MAX_BYTES; i++) g.room.fileAdded(String(i).repeat(64).slice(0, 64), 'video/mp4', FILE_MAX_BYTES, 4);
-    expect(g.room.fileRoom(F2, 1)).toBe('full');
+    expect(g.room.fileSpace(FILE_MAX_BYTES)).toEqual({ ok: true, drop: [] });
+    expect(g.room.fileHave(F1)).toBe(false);
+    add(g, F1, 'image/png', FILE_MAX_BYTES, 16);
+    expect(g.room.fileHave(F1)).toBe(true);
+    for (let i = 1; i < ROOM_FILES_BYTES / FILE_MAX_BYTES; i++) add(g, String(i).repeat(64).slice(0, 64), 'video/mp4', FILE_MAX_BYTES, 16);
+    expect(g.room.fileSpace(1)).toBe('full');
     const h = sent();
-    for (let i = 0; i < ROOM_FILES_MAX; i++) h.room.fileAdded(i.toString(16).padStart(64, '0'), 'image/png', 1000, 1);
-    expect(h.room.fileRoom(F2, 1)).toBe('full');
+    for (let i = 0; i < ROOM_FILES_MAX; i++) add(h, i.toString(16).padStart(64, '0'), 'image/png', 1000, 1);
+    expect(h.room.fileSpace(1)).toBe('full');
     // Files still on their way count as here: uploads at the same time can't pass the caps together.
     const k = sent();
-    expect(k.room.fileRoom(F1, FILE_MAX_BYTES, { files: ROOM_FILES_BYTES / FILE_MAX_BYTES - 1, bytes: ROOM_FILES_BYTES - FILE_MAX_BYTES })).toEqual({ ok: true, drop: [] });
-    expect(k.room.fileRoom(F1, FILE_MAX_BYTES, { files: ROOM_FILES_BYTES / FILE_MAX_BYTES, bytes: ROOM_FILES_BYTES })).toBe('full');
-    expect(k.room.fileRoom(F1, 1, { files: ROOM_FILES_MAX, bytes: ROOM_FILES_MAX })).toBe('full');
+    expect(k.room.fileSpace(FILE_MAX_BYTES, { files: ROOM_FILES_BYTES / FILE_MAX_BYTES - 1, bytes: ROOM_FILES_BYTES - FILE_MAX_BYTES })).toEqual({ ok: true, drop: [] });
+    expect(k.room.fileSpace(FILE_MAX_BYTES, { files: ROOM_FILES_BYTES / FILE_MAX_BYTES, bytes: ROOM_FILES_BYTES })).toBe('full');
+    expect(k.room.fileSpace(1, { files: ROOM_FILES_MAX, bytes: ROOM_FILES_MAX })).toBe('full');
     expect(h.hostLast('files')!.ids).toHaveLength(ROOM_FILES_MAX);
+    // The server's own room cap.
+    const small = setup(undefined, [], { ...OLD_FILE_LIMITS, roomBytes: 5000 });
+    expect(small.room.fileSpace(5000)).toEqual({ ok: true, drop: [] });
+    expect(small.room.fileSpace(5001)).toBe('full');
   });
 
   it('out of space: files no card has used for a minute make room, oldest first, once the new one is stored; never one a card uses or just stored', () => {
@@ -2580,43 +2595,94 @@ describe('card files', () => {
     const id = (i: number) => i.toString(16).padStart(64, '0');
     const quarter = ROOM_FILES_BYTES / 4;
     for (let i = 0; i < 4; i++) {
-      g.room.fileAdded(id(i), 'video/mp4', quarter, 4);
+      add(g, id(i), 'video/mp4', quarter, 16);
       g.t.now += 1000;
     }
     // The newest is on a card; the others' cards ended (or they were got ready and never sent).
     g.sendCards([card({ media: pic(id(3)) })]);
     // Stored just now: the host's next state may be about to name them.
-    expect(g.room.fileRoom(F1, 1000)).toBe('full');
+    expect(g.room.fileSpace(1000)).toBe('full');
     expect(g.filesDropped).toEqual([]);
     g.t.now += FILE_MAKE_ROOM_MS;
     // Room for one: the oldest is to go, but nothing is deleted yet (a file refused after this, for today's budget, leaves
     // every other where it was).
-    expect(g.room.fileRoom(F1, 1000)).toEqual({ ok: true, drop: [id(0)] });
+    expect(g.room.fileSpace(1000)).toEqual({ ok: true, drop: [id(0)] });
     expect(g.filesDropped).toEqual([]);
     expect(Object.keys(g.room.saved.files!)).toEqual([0, 1, 2, 3].map(id));
     // Another upload at the same time never counts on the same file (it's counted as here still): the next one is to go.
-    expect(g.room.fileRoom(F2, 1000, { files: 1, bytes: 1000, drop: [id(0)] })).toEqual({ ok: true, drop: [id(1)] });
+    expect(g.room.fileSpace(1000, { files: 1, bytes: 1000, drop: [id(0)] })).toEqual({ ok: true, drop: [id(1)] });
     // Stored: the oldest goes, and the host hears what's left.
     g.room.dropIdle([id(0)]);
     expect(g.filesDropped).toEqual([id(0)]);
     expect(g.hostLast('files')!.ids).toEqual([id(1), id(2), id(3)]);
     // Room for two: the next two are to go, never the one a card uses.
-    expect(g.room.fileRoom(F2, quarter * 3)).toEqual({ ok: true, drop: [id(1), id(2)] });
+    expect(g.room.fileSpace(quarter * 3)).toEqual({ ok: true, drop: [id(1), id(2)] });
     // One got ready again meanwhile stays (the host may be about to name it); the other goes.
-    expect(g.room.fileRoom(id(2), quarter)).toBe('have');
+    expect(g.room.fileHave(id(2))).toBe(true);
     g.room.dropIdle([id(1), id(2)]);
     expect(g.filesDropped).toEqual([id(0), id(1)]);
     expect(Object.keys(g.room.saved.files!)).toEqual([id(2), id(3)]);
     // More than fits even then: 'full', and nothing is to go for it.
-    g.room.fileAdded(F2, 'video/mp4', quarter, 4);
+    add(g, F2, 'video/mp4', quarter, 16);
     g.t.now += FILE_MAKE_ROOM_MS;
-    expect(g.room.fileRoom(F1, quarter * 3 + 1)).toBe('full');
+    expect(g.room.fileSpace(quarter * 3 + 1)).toBe('full');
     expect(Object.keys(g.room.saved.files!)).toEqual([id(2), id(3), F2]);
+  });
+
+  it('a file is listed with the prefix its pieces are under, and the upload noted before its pieces ends in the same save', () => {
+    const g = sent();
+    g.room.uploadStarted('p:abc', 3);
+    g.room.uploadStarted('p:def', 16);
+    expect(g.room.saved.uploads).toEqual({ 'p:abc': 3, 'p:def': 16 });
+    const saves = g.saves();
+    g.room.fileStored('p:abc', F1, 'video/mp4', 2.5 * 1024 * 1024, 3);
+    expect(g.saves()).toBe(saves + 1);
+    expect(g.room.saved.uploads).toEqual({ 'p:def': 16 });
+    expect(g.room.saved.files![F1]).toEqual({ mime: 'video/mp4', bytes: 2.5 * 1024 * 1024, parts: 3, key: 'p:abc', at: g.t.now, unusedSince: g.t.now });
+    expect(g.hostLast('files')).toEqual({ t: 'files', ids: [F1] });
+    expect(g.wakes.at(-1)).toBe(g.t.now + FILE_IDLE_MS);
+    // An upload that ended without a file (its pieces are deleted by FileStore): the last one gone, none noted.
+    g.room.uploadEnded('p:def');
+    expect(g.room.saved.uploads).toBeUndefined();
+    g.room.uploadEnded('p:never');
+    expect(g.room.saved.uploads).toBeUndefined();
+  });
+
+  it('a room started again finds the uploads it was writing, once: their pieces are to be deleted', () => {
+    const g = sent();
+    g.room.uploadStarted('p:abc', 3);
+    g.room.uploadStarted('p:def', 16);
+    const saved = structuredClone(g.room.saved);
+    const again = setup(saved);
+    const saves = again.saves();
+    expect(again.room.takeUploads()).toEqual([
+      { prefix: 'p:abc', parts: 3 },
+      { prefix: 'p:def', parts: 16 },
+    ]);
+    expect(again.saves()).toBe(saves + 1);
+    expect(again.room.saved.uploads).toBeUndefined();
+    expect(again.room.takeUploads()).toEqual([]);
+    expect(again.saves()).toBe(saves + 1);
+  });
+
+  it('a file’s pieces are deleted under its own prefix, or file:<id> for one stored by older code', () => {
+    const old: RoomFile = { mime: 'image/png', bytes: 3000, parts: 1, at: 10_000, unusedSince: 10_000 };
+    const g = setup({ ...emptyRoom(), files: { [F1]: old } });
+    g.room.hostOpen();
+    g.room.fileStored('p:new', F2, 'image/png', 3 * 1024 * 1024, 3);
+    expect(pieceKey(F1, old, 0)).toBe(`file:${F1}:0`);
+    expect(pieceKey(F2, g.room.saved.files![F2], 2)).toBe('p:new:2');
+    g.send({ t: 'forget', files: [F1, F2] });
+    expect(g.piecesDropped).toEqual([
+      { prefix: `file:${F1}`, parts: 1 },
+      { prefix: 'p:new', parts: 3 },
+    ]);
+    expect(g.room.saved.files).toBeUndefined();
   });
 
   it('a phone gets a file only for a current card sent to it that it isn’t late for', () => {
     const g = sent();
-    g.room.fileAdded(F1, 'image/png', 1000, 1);
+    add(g, F1, 'image/png', 1000, 1);
     // Got ready, not sent: nobody gets it.
     expect(g.room.fileFor(g.tokenOf(g.pb), F1)).toBeNull();
     g.sendCards([card({ media: pic(F1) })]);
@@ -2654,7 +2720,7 @@ describe('card files', () => {
     const bea = g.phone('bea');
     bea.send({ t: 'join', seatId: 'b', name: 'Bea' });
     g.t.now += 1000;
-    g.room.fileAdded(F1, 'video/mp4', 2000, 1);
+    add(g, F1, 'video/mp4', 2000, 1);
     g.send({ t: 'state', state: st({ cards: [card({ to: [{ seat: 'b' }], media: [{ kind: 'video', file: F1, mime: 'video/mp4' }] })] }) });
     const tok = (p: typeof ann) => p.last('joined')!.token;
     expect(g.room.fileFor(tok(bea), F1)).not.toBeNull();
@@ -2669,7 +2735,7 @@ describe('card files', () => {
     const g = sent();
     g.sendCards([card({ media: pic(F1) })]);
     expect(g.pb.last('view')!.view.cards!.list[0].media).toEqual([{ kind: 'image', pending: true }]);
-    g.room.fileAdded(F1, 'image/gif', 1000, 1);
+    add(g, F1, 'image/gif', 1000, 1);
     // (The host says the type and kind; the room's own wins.)
     g.sendCards([card({ media: [{ kind: 'video', file: F1, mime: 'text/html', name: 'shrek.gif' }] })]);
     expect(g.pb.last('view')!.view.cards!.list[0].media).toEqual([{ kind: 'image', file: F1, mime: 'image/gif', name: 'shrek.gif' }]);
@@ -2679,7 +2745,7 @@ describe('card files', () => {
   it('files no card uses are deleted 10 minutes after, by the alarm and on each new state; forget', () => {
     const g = sent();
     // Got ready and never sent: 10 minutes from its upload.
-    g.room.fileAdded(F1, 'image/png', 1000, 1);
+    add(g, F1, 'image/png', 1000, 1);
     const up = g.t.now;
     expect(g.wakes).toEqual([up + FILE_IDLE_MS]);
     expect(g.hostLast('files')).toEqual({ t: 'files', ids: [F1] });
@@ -2692,7 +2758,7 @@ describe('card files', () => {
     expect(g.room.saved.files).toBeUndefined();
     expect(g.hostLast('files')).toEqual({ t: 'files', ids: [] });
     // Used by a card: kept as long as it is, then 10 minutes from the state that dropped it.
-    g.room.fileAdded(F2, 'image/png', 1000, 1);
+    add(g, F2, 'image/png', 1000, 1);
     g.sendCards([card({ media: pic(F2) })]);
     expect(g.room.saved.files![F2].unusedSince).toBeUndefined();
     g.t.now += 2 * FILE_IDLE_MS;
@@ -2707,14 +2773,14 @@ describe('card files', () => {
     g.send({ t: 'state', state: state({ title: 'Next' }) });
     expect(g.filesDropped).toEqual([F1, F2]);
     // Getting a file ready again restarts its clean-up time.
-    g.room.fileAdded(F1, 'image/png', 1000, 1);
+    add(g, F1, 'image/png', 1000, 1);
     g.t.now += FILE_IDLE_MS - 1000;
-    expect(g.room.fileRoom(F1, 1000)).toBe('have');
+    expect(g.room.fileHave(F1)).toBe(true);
     g.t.now += 2000;
     g.room.sweepFiles();
     expect(g.room.saved.files![F1]).toBeDefined();
     // forget: the host is done with them; one a current card uses stays.
-    g.room.fileAdded(F2, 'image/png', 1000, 1);
+    add(g, F2, 'image/png', 1000, 1);
     g.sendCards([card({ media: pic(F2) })]);
     g.send({ t: 'forget', files: [F1, F2, 'junk'] });
     expect(Object.keys(g.room.saved.files!)).toEqual([F2]);
@@ -2723,7 +2789,7 @@ describe('card files', () => {
 
   it('the host hears which files the room holds when it comes back', () => {
     const g = sent();
-    g.room.fileAdded(F1, 'image/png', 1000, 1);
+    add(g, F1, 'image/png', 1000, 1);
     g.room.hostClose();
     g.room.hostOpen();
     expect(g.hostLast('files')).toEqual({ t: 'files', ids: [F1] });
