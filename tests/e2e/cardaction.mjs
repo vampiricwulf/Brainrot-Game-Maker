@@ -11,7 +11,7 @@ import { chromium } from 'playwright-core';
 import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { confirmStrip, mainButton, openGameFile, packGame, png, recordSeen, shownOf, startBuzzer } from './helpers.mjs';
+import { confirmStrip, mainButton, openGameFile, packGame, png, recordSeen, shownOf, startBuzzer, startRoomOn } from './helpers.mjs';
 
 const file = resolve(process.env.APP_FILE || 'dist/index.html');
 if (!existsSync(file)) throw new Error('Run `npm run build` first');
@@ -136,10 +136,7 @@ try {
   // ---------- Play, with phones for Ann and Bob ----------
   await host.getByRole('button', { name: '▶ Play' }).click();
   const roomCard = host.getByRole('region', { name: 'Phone buzzers' });
-  await roomCard.getByRole('button', { name: '▶ Start the room' }).click();
-  const codeEl = roomCard.locator('[aria-label^="Room code "]');
-  await codeEl.waitFor();
-  const code = (await codeEl.getAttribute('aria-label')).slice('Room code '.length);
+  const code = await startRoomOn(roomCard);
   const heard = {};
   const join = async (label, seat) => {
     const c = await browser.newContext({ viewport: { width: 390, height: 760 }, hasTouch: true });

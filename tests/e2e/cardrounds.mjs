@@ -16,7 +16,7 @@ import { chromium } from 'playwright-core';
 import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { confirmStrip, mainButton, mainLabel, openGameFile, packGame, png, recordSeen, shownOf, startBuzzer } from './helpers.mjs';
+import { confirmStrip, mainButton, mainLabel, openGameFile, packGame, png, recordSeen, shownOf, startBuzzer, startRoomOn } from './helpers.mjs';
 
 const file = resolve(process.env.APP_FILE || 'dist/index.html');
 if (!existsSync(file)) throw new Error('Run `npm run build` first');
@@ -197,10 +197,7 @@ try {
   await host.getByText(/^Opened “/).waitFor();
   await host.getByRole('button', { name: '▶ Play' }).click();
   const roomCard = host.getByRole('region', { name: 'Phone buzzers' });
-  await roomCard.getByRole('button', { name: '▶ Start the room' }).click();
-  const codeEl = roomCard.locator('[aria-label^="Room code "]');
-  await codeEl.waitFor();
-  const code = (await codeEl.getAttribute('aria-label')).slice('Room code '.length);
+  const code = await startRoomOn(roomCard);
 
   // ---------- Phones for Ann, Bob and Cat (Dan has none yet) ----------
   /** What each phone heard from the room. */

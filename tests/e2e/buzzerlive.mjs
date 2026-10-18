@@ -8,7 +8,7 @@ import { existsSync, mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { addClassicRounds, openRules, playWithPlayers, tap, tieThem } from './helpers.mjs';
+import { addClassicRounds, openRules, playWithPlayers, startRoomOn, tap, tieThem } from './helpers.mjs';
 
 const file = resolve(process.env.APP_FILE || 'dist/index.html');
 if (!existsSync(file)) throw new Error('Run `npm run build` first');
@@ -93,10 +93,7 @@ try {
   // No negative scores: a wrong answer from a player on $0 takes nothing, but still locks them out (below).
   const neg = (await openRules(host)).getByLabel('Allow negative scores');
   await neg.uncheck();
-  await card.getByRole('button', { name: '▶ Start the room' }).click();
-  const codeEl = card.locator('[aria-label^="Room code "]');
-  await codeEl.waitFor();
-  const code = (await codeEl.getAttribute('aria-label')).slice('Room code '.length);
+  const code = await startRoomOn(card);
   assert(/^[BCDFGHJKLMNPQRSTVWXZ]{4}$/.test(code), `the app made a real room (${code})`);
   assert((await card.getByRole('link').innerText()) === `${base}/${code}`, 'the join link points at the room server');
 

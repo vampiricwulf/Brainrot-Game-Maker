@@ -14,7 +14,7 @@ import { chromium } from 'playwright-core';
 import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { openGameFile, openRules, recordSeen, shownOf, startBuzzer, stored } from './helpers.mjs';
+import { openGameFile, openRules, recordSeen, shownOf, startBuzzer, startRoomOn, stored } from './helpers.mjs';
 
 const file = resolve(process.env.APP_FILE || 'dist/index.html');
 if (!existsSync(file)) throw new Error('Run `npm run build` first');
@@ -152,10 +152,7 @@ try {
   assert(!(await stealRule.isChecked()), '⚖ Game rules: steals start off');
   await stealRule.check();
   const roomCard = host.getByRole('region', { name: 'Phone buzzers' });
-  await roomCard.getByRole('button', { name: '▶ Start the room' }).click();
-  const codeEl = roomCard.locator('[aria-label^="Room code "]');
-  await codeEl.waitFor();
-  const code = (await codeEl.getAttribute('aria-label')).slice('Room code '.length);
+  const code = await startRoomOn(roomCard);
   const phones = {};
   const heard = {};
   for (const seat of ['Ann', 'Bob', 'Cat', 'Dan']) {

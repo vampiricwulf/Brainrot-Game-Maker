@@ -15,7 +15,7 @@ import { createServer } from 'node:http';
 import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { editorReady, forgetSeen, openGameFile, packGame, recordSeen, roomKeys, shownOf, startBuzzer } from './helpers.mjs';
+import { editorReady, forgetSeen, openGameFile, packGame, recordSeen, roomKeys, shownOf, startBuzzer, startRoomOn } from './helpers.mjs';
 
 const file = resolve(process.env.APP_FILE || 'dist/index.html');
 if (!existsSync(file)) throw new Error('Run `npm run build` first');
@@ -166,8 +166,7 @@ try {
     await notesAre(page, notes, [], 'nothing heard from the server: the 📱 preview goes by the defaults (90 MB), so both videos go, each with its note');
     await page.getByRole('button', { name: '▶ Play' }).click();
     const roomCard = page.getByRole('region', { name: 'Phone buzzers' });
-    await roomCard.getByRole('button', { name: '▶ Start the room' }).click();
-    await roomCard.locator('[aria-label^="Room code "]').waitFor();
+    await startRoomOn(roomCard);
     await page.getByRole('button', { name: '◀ Back to editor' }).click();
     await page.locator('.room-bar').waitFor();
     await editorReady(page);
@@ -244,10 +243,7 @@ try {
 
     await page.getByRole('button', { name: '▶ Play' }).click();
     const roomCard = page.getByRole('region', { name: 'Phone buzzers' });
-    await roomCard.getByRole('button', { name: '▶ Start the room' }).click();
-    const codeEl = roomCard.locator('[aria-label^="Room code "]');
-    await codeEl.waitFor();
-    const code = (await codeEl.getAttribute('aria-label')).slice('Room code '.length);
+    const code = await startRoomOn(roomCard);
     // The pre-game list keeps the warnings only: the 25 MB video, never the 17 MB one's note.
     const checks = page.locator('details.checks');
     await checks.locator('li', { hasText: '🤫 Card “Tip” has a video too big to send to phones' }).waitFor({ state: 'attached' });

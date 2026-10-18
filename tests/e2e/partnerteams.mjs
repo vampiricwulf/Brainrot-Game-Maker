@@ -11,7 +11,7 @@ import { chromium } from 'playwright-core';
 import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { mainButton, mainLabel, openGameFile, packGame, png, recordSeen, shownOf, startBuzzer } from './helpers.mjs';
+import { mainButton, mainLabel, openGameFile, packGame, png, recordSeen, shownOf, startBuzzer, startRoomOn } from './helpers.mjs';
 
 const file = resolve(process.env.APP_FILE || 'dist/index.html');
 if (!existsSync(file)) throw new Error('Run `npm run build` first');
@@ -126,10 +126,7 @@ try {
   await host.getByRole('button', { name: '▶ Play' }).click();
   const roomCard = host.getByRole('region', { name: 'Phone buzzers' });
   assert(await roomCard.getByLabel(/Teams: people join a team/).isChecked(), 'a team game: Teams is on');
-  await roomCard.getByRole('button', { name: '▶ Start the room' }).click();
-  const codeEl = roomCard.locator('[aria-label^="Room code "]');
-  await codeEl.waitFor();
-  const code = (await codeEl.getAttribute('aria-label')).slice('Room code '.length);
+  const code = await startRoomOn(roomCard);
   /** The host page (viewers see it) holds none of a card's words nor its file name, and never did since it loaded. */
   const offStream = async (when) => {
     const found = await shownOf(host, SECRETS);

@@ -13,7 +13,7 @@ import { existsSync, mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { addClassicRounds, addPlayers, answerReplace, openRules, stored } from './helpers.mjs';
+import { addClassicRounds, addPlayers, answerReplace, openRules, startRoomOn, stored } from './helpers.mjs';
 
 const file = resolve(process.env.APP_FILE || 'dist/index.html');
 if (!existsSync(file)) throw new Error('Run `npm run build` first');
@@ -131,10 +131,8 @@ try {
   assert(await card.getByLabel(/Let new players join from their phone/).isDisabled(), 'Teams is a checkbox on the 📱 card (new players from phones are off with it: people join a team)');
   await card.getByText(/up to 24 phones\s+can be in the room at once\./).waitFor();
   assert(true, 'with Teams ticked, the card says a room holds 24 phones at most');
-  await card.getByRole('button', { name: '▶ Start the room' }).click();
   const codeEl = card.locator('[aria-label^="Room code "]');
-  await codeEl.waitFor();
-  const code = (await codeEl.getAttribute('aria-label')).slice('Room code '.length);
+  const code = await startRoomOn(card);
   await card.getByText('0 people on 0 of 2 teams').waitFor();
   assert(true, `a real room (${code}); the card counts people on teams`);
   assert(await card.getByText('🔒 Lock seats: no new phones (people already on a team can come back)', { exact: true }).isVisible(), 'its 🔒 Lock seats says people already on a team can come back');

@@ -339,6 +339,45 @@ export async function startBuzzer(prefix, { vars = {} } = {}) {
   return { base, persist, stop, restart };
 }
 
+/**
+ * ▶ Start the room on a 📱 Phone buzzers card: its code, once the card shows it. If it never does, it fails saying what
+ * the card says instead (the buzzer server's refusal, or still its Start button) and what the page asked the buzzer
+ * server meanwhile.
+ */
+export async function startRoomOn(card) {
+  const page = card.page();
+  const t0 = Date.now();
+  const asked = [];
+  const note = (what) => asked.push(`+${Date.now() - t0} ms ${what}`);
+  const ours = (url) => /\/(api|ws)\//.test(url);
+  const path = (url) => url.replace(/\?.*/, '');
+  const onRequest = (r) => ours(r.url()) && note(`${r.method()} ${path(r.url())}`);
+  const onResponse = (r) => ours(r.url()) && note(`${r.status()} ${path(r.url())}`);
+  const onFailed = (r) => ours(r.url()) && note(`failed ${path(r.url())}: ${r.failure()?.errorText}`);
+  const onSocket = (ws) => ours(ws.url()) && (note(`socket ${path(ws.url())}`), ws.on('close', () => note(`socket closed ${path(ws.url())}`)));
+  page.on('request', onRequest);
+  page.on('response', onResponse);
+  page.on('requestfailed', onFailed);
+  page.on('websocket', onSocket);
+  try {
+    await card.getByRole('button', { name: '▶ Start the room' }).click();
+    note('clicked ▶ Start the room');
+    const codeEl = card.locator('[aria-label^="Room code "]');
+    try {
+      await codeEl.waitFor();
+    } catch (e) {
+      const says = (await card.innerText({ timeout: 1000 }).catch(() => '(no card)')).replace(/\s+/g, ' ').trim();
+      throw new Error(`The room's code never showed. The card says: ${says}\nThe page and the buzzer server:\n  ${asked.join('\n  ')}`, { cause: e });
+    }
+    return (await codeEl.getAttribute('aria-label')).slice('Room code '.length);
+  } finally {
+    page.off('request', onRequest);
+    page.off('response', onResponse);
+    page.off('requestfailed', onFailed);
+    page.off('websocket', onSocket);
+  }
+}
+
 /** wrangler dev's arguments for these settings (startBuzzer's `vars`): --var K:V each, over wrangler.jsonc's. */
 export const buzzerVars = (vars) => Object.entries(vars).flatMap(([k, v]) => ['--var', `${k}:${v}`]);
 

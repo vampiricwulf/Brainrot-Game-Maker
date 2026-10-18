@@ -19,7 +19,7 @@ import { chromium } from 'playwright-core';
 import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { confirmStrip, editorReady, forgetSeen, mainButton, openGameFile, packGame, png, recordSeen, roomStored, seenWhere, shownOf, startBuzzer, stored } from './helpers.mjs';
+import { confirmStrip, editorReady, forgetSeen, mainButton, openGameFile, packGame, png, recordSeen, roomStored, seenWhere, shownOf, startBuzzer, startRoomOn, stored } from './helpers.mjs';
 
 const file = resolve(process.env.APP_FILE || 'dist/index.html');
 if (!existsSync(file)) throw new Error('Run `npm run build` first');
@@ -318,10 +318,7 @@ try {
   // region is drawn nowhere. From here on the host page is on stream.)
   await host.locator('.editor').waitFor({ state: 'detached' });
   await forgetSeen(host);
-  await roomCard.getByRole('button', { name: '▶ Start the room' }).click();
-  const codeEl = roomCard.locator('[aria-label^="Room code "]');
-  await codeEl.waitFor();
-  const code = (await codeEl.getAttribute('aria-label')).slice('Room code '.length);
+  const code = await startRoomOn(roomCard);
 
   // ---------- Three phones ----------
   const heard = {};

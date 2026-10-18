@@ -13,7 +13,7 @@ import { existsSync, mkdirSync, mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { addClassicRounds, mainButton, playWithPlayers } from './helpers.mjs';
+import { addClassicRounds, mainButton, playWithPlayers, startRoomOn } from './helpers.mjs';
 
 const file = resolve(process.env.APP_FILE || 'dist/index.html');
 if (!existsSync(file)) throw new Error('Run `npm run build` first');
@@ -88,10 +88,7 @@ async function startRoom(host, teams = false) {
   await card.getByLabel(/Buzzer mode/).check();
   await card.getByLabel('Open the buzzers').selectOption('host');
   if (teams) await card.getByLabel(/Teams: people join a team/).check();
-  await card.getByRole('button', { name: '▶ Start the room' }).click();
-  const codeEl = card.locator('[aria-label^="Room code "]');
-  await codeEl.waitFor();
-  return (await codeEl.getAttribute('aria-label')).slice('Room code '.length);
+  return await startRoomOn(card);
 }
 
 async function phonePage(code, name) {
