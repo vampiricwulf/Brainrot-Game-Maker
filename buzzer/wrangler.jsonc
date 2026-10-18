@@ -45,15 +45,18 @@
   // server for these (/api/health, the host's welcome), so changing them here is all it takes. See README.md, "Card files".
   "vars": {
     // How big one file may be. Cloudflare turns away a request body over the plan's limit before it reaches the Worker
-    // (Free and Pro 100 MB, Business 200 MB, Enterprise 500 MB): keep this a little under it.
-    "FILE_MB": "16",
+    // (Free and Pro 100 MB, Business 200 MB, Enterprise 500 MB): keep this a little under it. 90 MiB is 94,371,840
+    // bytes, under Free's 100,000,000.
+    "FILE_MB": "90",
     // A room's files together (it holds 32 files at most too), deleted 10 minutes after no card uses them (and 20 hours
-    // after their upload at most). Check the plan's storage per Durable Object before raising it (on Free, 1 GB each).
-    "ROOM_FILES_MB": "64",
+    // after their upload at most). Check the plan's storage per Durable Object before raising it (on Free, 1 GB each):
+    // room for an upload is kept before it's stored, so the files held and on their way stay within 900 MiB
+    // (943,718,400 bytes), about 56 MB under that.
+    "ROOM_FILES_MB": "900",
     // What the whole server takes in any 24 hours (counted by the hour): further uploads are refused until enough of it
     // frees, and the host copies the card instead. 0 turns card files off. No file is kept more than 20 hours, so the
     // files kept are never more than this: keep it under the plan's storage in all (on Free, 5 GB, which every room's
-    // own state needs some of too).
-    "FILES_MB_PER_DAY": "2000"
+    // own state needs some of too: 4,000 MiB is 4,194,304,000 bytes, which leaves about 0.8 GB).
+    "FILES_MB_PER_DAY": "4000"
   }
 }

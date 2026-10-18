@@ -1334,9 +1334,10 @@ The phone bundles src/lib/links.ts, which has no imports, and builds an `<img>`,
 
 - Types: PNG, JPEG, WebP, GIF; MP4, WebM; MP3, OGG, WAV, M4A. No SVG, no HTML.
 - At most 4 MB a file, and 16 MB and 32 files a room. The measurement below may allow more for video (**ask**, §23).
-  (Later: 16 MB and 64 MB, then set by each buzzer server, `FILE_MB` and `ROOM_FILES_MB` in buzzer/wrangler.jsonc. It
-  says them in the host's welcome and in `GET /api/health`, so the editor knows them before a room is open, and an
-  older server that says nothing is taken as 16 MB and 64 MB: buzzer/README.md, "Card files".)
+  (Later: 16 MB and 64 MB, then set by each buzzer server, `FILE_MB` and `ROOM_FILES_MB` in buzzer/wrangler.jsonc, by
+  default 90 MB and 900 MB, just under what Cloudflare's free plan allows. It says them in the host's welcome and in
+  `GET /api/health`, so the editor knows them before a room is open, and an older server that says nothing is taken
+  as 16 MB and 64 MB: buzzer/README.md, "Card files".)
 - A server-wide daily byte budget, `FILES_MB_PER_DAY`. 0 turns uploads off, and the room then doesn't list `files`.
   **The repo's default is set in P2 from the measurement**, to a value that keeps a Free account well inside its daily
   limits even on a busy day. The starting guess is 1 GB a day; the measurement can lower it. A self-hosted server can
@@ -2177,8 +2178,8 @@ and `text` (or `seatsText`) as the small line (§8.2):
 | Media per card | 6 | new |
 | Link length | 2048 characters | new |
 | Phones / sockets / team members | 24 / 40 / 64 | room.ts:89-108 |
-| File size / room total | 4 MB / 16 MB and 32 files, confirmed by the measurement; later 16 MB / 64 MB, then each server's `FILE_MB` / `ROOM_FILES_MB` (it tells the app) | new: room.ts |
-| Files a day, server-wide | `FILES_MB_PER_DAY`: the repo's default set from the P2 measurement (starting guess 1 GB); 0 turns files off; later counted over any 24 hours, by the hour | new: index.ts `RoomCounter`, limits.ts `countBytes` |
+| File size / room total | 4 MB / 16 MB and 32 files, confirmed by the measurement; later 16 MB / 64 MB, then each server's `FILE_MB` / `ROOM_FILES_MB` (it tells the app; by default 90 MB / 900 MB) | new: room.ts |
+| Files a day, server-wide | `FILES_MB_PER_DAY`: the repo's default set from the P2 measurement (starting guess 1 GB); 0 turns files off; later counted over any 24 hours, by the hour, by default 4,000 MB | new: index.ts `RoomCounter`, limits.ts `countBytes` |
 | Uploads per address | a new `FILE_LIMIT` binding | new: wrangler.jsonc |
 | A file got ready or left unused | deleted after 10 minutes (later: any file 20 hours after its upload) | new: room.ts, limits.ts `nextAlarm` |
 | Durable Object value | 2 MB (files are stored in 1 MB pieces) | Cloudflare, external: re-check before P2 |
@@ -2369,7 +2370,7 @@ answer slide", points on a miss, who picks next and media are answered (§3). Th
    link that follows later edits to the answer?
 4. **File sizes:** are 4 MB a file and 16 MB a room enough for the host's own videos? *Proposed: start there, and raise
    the file cap to 8 MB in P2 if the measurement shows an upload fits the Free plan's CPU limit.* (Later: 16 MB and
-   64 MB, then each server sets its own and tells the app.)
+   64 MB, then each server sets its own and tells the app: 90 MB and 900 MB by default.)
 5. **The wheel lands on the picker** (when allowed): Solo, with the giver's cards held back until the host sends them
    (proposed)? Spin again? Or play alone with a card as a hint?
 6. **A Partner Double** (a wager first, then the wager is split)? As a separate type, a tile can't be both.

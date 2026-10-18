@@ -1,9 +1,9 @@
 // What card files cost the buzzer server (README.md, "Card files": the measurement before raising FILE_MB).
 // It opens a room with a host and one phone, then for each size uploads a file as the host and fetches it as the phone,
 // each request in a minute of its own (15 s past it, as the dashboard's charts count by the minute), printing when each
-// went. The room is closed at the end. Each run uses its sizes' worth of the server's budget.
+// went. The room is closed at the end. Each run uses its sizes' worth of the server's budget (it says how much).
 //
-//   node measure-files.mjs <server> [--sizes 1,2,3,4] [--runs 1] [--gap <seconds>] [--analytics [account-id]]
+//   node measure-files.mjs <server> [--sizes 16,48,90] [--runs 1] [--gap <seconds>] [--analytics [account-id]]
 //
 // --gap waits that long between requests instead of a minute each (for Workers Logs or --analytics, which see every
 // request).
@@ -20,10 +20,10 @@ const opt = (name, fallback) => {
 };
 const server = args[0] && !args[0].startsWith('--') ? args[0].replace(/\/+$/, '') : null;
 if (!server) {
-  console.error('Usage: node measure-files.mjs <server> [--sizes 1,2,3,4] [--runs 1] [--gap <seconds>] [--analytics [account-id]] [--name <worker>]');
+  console.error('Usage: node measure-files.mjs <server> [--sizes 16,48,90] [--runs 1] [--gap <seconds>] [--analytics [account-id]] [--name <worker>]');
   process.exit(1);
 }
-const sizes = String(opt('sizes', '1,2,3,4')).split(',').map(Number).filter((n) => n > 0);
+const sizes = String(opt('sizes', '16,48,90')).split(',').map(Number).filter((n) => n > 0);
 const runs = Number(opt('runs', 1));
 const gap = opt('gap', null) === null ? null : Number(opt('gap')) * 1000;
 const analytics = opt('analytics', null);
@@ -45,6 +45,9 @@ const post = (path, body, headers = {}) => fetch(`${server}${path}`, { method: '
 const made = await (await post('/api/rooms')).json();
 if (!made.code) throw new Error(`no room: ${JSON.stringify(made)}`);
 console.log(`${clock()} room ${made.code}: ${sizes.length * runs * 2} requests${gap === null ? ', one a minute at :15 (UTC)' : ''}`);
+// (What the uploads take from the server's budget, counted for 24 hours: one address may use a quarter of it.)
+const takes = sizes.reduce((n, mb) => n + mb, 0) * runs;
+console.log(`${clock()} the uploads take up to ${takes.toLocaleString('en-US')} MB of the server's card file budget (FILES_MB_PER_DAY) for the next 24 hours`);
 const wsBase = server.replace(/^http/, 'ws');
 function socket(url) {
   const ws = new WebSocket(url);
@@ -80,7 +83,11 @@ try {
       const tag = `${mb}MB-${run}`;
       let t = performance.now();
       let at = new Date();
-      const up = await post(`/api/rooms/${made.code}/files`, bytes, { 'Content-Type': 'video/mp4', Authorization: `Bearer ${made.hostToken}` });
+      // (A body over the plan's limit is turned away by Cloudflare before the Worker: the connection just drops.)
+      const up = await post(`/api/rooms/${made.code}/files`, bytes, { 'Content-Type': 'video/mp4', Authorization: `Bearer ${made.hostToken}` }).catch((e) => ({
+        status: 0,
+        json: async () => ({ error: `no answer (${e.cause?.code ?? e.message}): Cloudflare may have turned it away` }),
+      }));
       const answer = await up.json().catch(() => ({}));
       rows.push({ label: `up-${tag}`, at, status: up.status, ms: performance.now() - t, note: answer.error ?? (answer.id === hash ? '' : 'wrong id') });
       console.log(`${clock()} up-${tag}: ${up.status}`);

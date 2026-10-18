@@ -1,12 +1,13 @@
 // 🤫 Card files as big as the buzzer server takes (card-files spec §2.3, §3), end to end: a buzzer server of our own
-// (buzzer/ under `wrangler dev`, local) set to 24 MB a file, 60 MB a room and 400 MB a day. The editor asks it
-// (/api/health) before any room is open, so the 📱 preview and the checklist go by its number; a room's welcome says it
-// too, so with /api/health out of reach the editor goes by the defaults until a room is open, then by the room's. A
-// server that says nothing (an older one) is taken as 16 MB a file, and ⚙ Settings › Test says so.
-// A file over 16 MB that the server takes is a note, not a refusal: the 📱 preview and the editor's checklist say phones
-// on mobile data may wait for it (the pre-game list doesn't), and in one window the host panel counts it, never naming
-// it. Its upload (slowed down here) says how far it got, and a phone how much has come; ✖ Take back stops one partway
-// (the room never lists it); and a file the room holds already isn't uploaded again. Needs `npm ci` in buzzer/.
+// (buzzer/ under `wrangler dev`, local) set to 24 MB a file, 60 MB a room and 400 MB in any 24 hours. The editor
+// asks it (/api/health) before any room is open, so the 📱 preview and the checklist go by its number; a room's
+// welcome says it too, so with /api/health out of reach the editor goes by the defaults until a room is open, then
+// by the room's. A server that says nothing (an older one) is taken as 16 MB a file, and ⚙ Settings › Test says so.
+// A file over 16 MB that the server takes is a note, not a refusal: the 📱 preview and the editor's checklist say
+// phones on mobile data may wait for it (the pre-game list doesn't), and in one window the host panel counts it,
+// never naming it. Its upload (slowed down here) says how far it got, and a phone how much has come; ✖ Take back
+// stops one partway (the room never lists it); and a file the room holds already isn't uploaded again. Needs
+// `npm ci` in buzzer/.
 import { chromium } from 'playwright-core';
 import { createHash } from 'node:crypto';
 import { createServer } from 'node:http';
@@ -156,7 +157,12 @@ try {
   {
     const { ctx, page } = await open(base, { noHealth: true });
     const notes = await preview(page);
-    await notesAre(page, notes, [bigNote('big-zfnqj.mp4', '25.0 MB', '16.0 MB'), bigNote('mid-zfnqj.mp4', '20.0 MB', '16.0 MB')], 'nothing heard from the server: the 📱 preview goes by the defaults (16 MB)');
+    // Nothing heard from the server: the defaults, 90 MB a file. Both go, each with the note for a big file (once those
+    // show, so would a warning).
+    const slow = page.locator('.phone-preview .notes li.slow');
+    for (const [name, size] of [['big-zfnqj.mp4', '25.0 MB'], ['mid-zfnqj.mp4', '20.0 MB']])
+      await slow.filter({ hasText: `🎞 ${name} is ${size}: on WiFi or a computer it comes in seconds, but phones on mobile data may wait a while for it` }).waitFor();
+    await notesAre(page, notes, [], 'nothing heard from the server: the 📱 preview goes by the defaults (90 MB), so both videos go, each with its note');
     await page.getByRole('button', { name: '▶ Play' }).click();
     const roomCard = page.getByRole('region', { name: 'Phone buzzers' });
     await roomCard.getByRole('button', { name: '▶ Start the room' }).click();

@@ -1,3 +1,4 @@
+import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { DEFAULT_FILE_LIMITS, OLD_FILE_LIMITS, ROOM_FILES_MAX } from '../../src/lib/buzzproto';
 import {
@@ -139,8 +140,9 @@ describe('card files in any 24 hours', () => {
     expect(filesBudget(2.5)).toBe(2.5 * MB);
     expect(filesBudget('0')).toBe(0);
     expect(filesBudget(0)).toBe(0);
-    // The default is on, and less than the Free plan's 5 GB of storage.
-    expect(FILES_MB_PER_DAY).toBeGreaterThan(0);
+    // The default is on, and less than the Free plan's 5 GB of storage, with room left for the rooms' own state.
+    expect(FILES_MB_PER_DAY).toBe(4000);
+    expect(filesBudget(undefined)).toBeLessThan(5e9 - 500_000_000);
     expect(FILES_MB_PER_DAY).toBeLessThan(5000);
   });
 
@@ -166,8 +168,19 @@ describe('card files in any 24 hours', () => {
     expect(fileLimits({ ROOM_FILES_MB: '8' }).fileBytes).toBe(Math.min(DEFAULT_FILE_LIMITS.fileBytes, 8 * MB));
     // At most 2^40 bytes (what the app takes from a server).
     expect(fileLimits({ FILE_MB: '1e12', ROOM_FILES_MB: '1e12' })).toEqual({ fileBytes: 2 ** 40, roomBytes: 2 ** 40, roomFiles: ROOM_FILES_MAX });
-    // The defaults are, for now, what every server has had.
-    expect(DEFAULT_FILE_LIMITS).toEqual(OLD_FILE_LIMITS);
+    // The defaults: 90 MB a file and 900 MB a room, just under what Cloudflare's free plan allows (a request body of
+    // 100,000,000 bytes, 1 GB a Durable Object), more than older servers took.
+    expect(DEFAULT_FILE_LIMITS).toEqual({ fileBytes: 90 * MB, roomBytes: 900 * MB, roomFiles: ROOM_FILES_MAX });
+    expect(DEFAULT_FILE_LIMITS.fileBytes).toBeLessThan(100_000_000);
+    expect(DEFAULT_FILE_LIMITS.roomBytes).toBeLessThan(1e9 - 50_000_000);
+    expect(DEFAULT_FILE_LIMITS.fileBytes).toBeGreaterThan(OLD_FILE_LIMITS.fileBytes);
+  });
+
+  it('wrangler.jsonc sets the same as the defaults', () => {
+    const jsonc = readFileSync(new URL('../wrangler.jsonc', import.meta.url), 'utf8');
+    const set = (k: string) => jsonc.match(new RegExp(`"${k}":\\s*"([^"]*)"`))?.[1];
+    expect(fileLimits({ FILE_MB: set('FILE_MB'), ROOM_FILES_MB: set('ROOM_FILES_MB') })).toEqual(DEFAULT_FILE_LIMITS);
+    expect([set('FILE_MB'), set('ROOM_FILES_MB'), set('FILES_MB_PER_DAY')]).toEqual(['90', '900', String(FILES_MB_PER_DAY)]);
   });
 
   it('a file over the limit is turned away with the server’s own number', () => {

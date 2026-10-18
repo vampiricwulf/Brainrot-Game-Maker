@@ -87,7 +87,7 @@ export function countRoom(
  * file is kept FILE_MAX_AGE_MS at most, so the files kept are never more than this, and can't fill that (README.md,
  * "Card files", has what a file costs).
  */
-export const FILES_MB_PER_DAY = 2000;
+export const FILES_MB_PER_DAY = 4000;
 /** One address (addressKey) may upload this share of the budget, and one IPv6 /48 (networkKey) this one. */
 export const ADDRESS_FILE_SHARE = 1 / 4;
 export const NETWORK_FILE_SHARE = 1 / 2;

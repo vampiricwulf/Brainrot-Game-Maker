@@ -27,7 +27,8 @@ async function until(pred, what, ms = 10_000) {
 /** The card file pieces stored now, in every room. */
 const pieces = async () => (await roomKeys(buzzer.persist)).filter((k) => /^(p|file):/.test(k));
 
-const buzzer = await startBuzzer('buzzer-files-');
+// (16 MB a file and 64 MB a room, what older servers took, whatever wrangler.jsonc says: a full room is four 16 MB files.)
+const buzzer = await startBuzzer('buzzer-files-', { vars: { FILE_MB: 16, ROOM_FILES_MB: 64 } });
 const { base } = buzzer;
 const ws = base.replace(/^http/, 'ws');
 /** The server with limits of its own (started once the first is done). */

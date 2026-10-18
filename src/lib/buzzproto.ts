@@ -91,8 +91,11 @@ export interface FileLimits {
 export const ROOM_FILES_MAX = 32;
 /** What a server that doesn't say takes (every buzzer server before they said). */
 export const OLD_FILE_LIMITS: FileLimits = { fileBytes: 16 * MiB, roomBytes: 64 * MiB, roomFiles: ROOM_FILES_MAX };
-/** The server's defaults (buzzer/wrangler.jsonc has the same), and the app's guess before a server has said. */
-export const DEFAULT_FILE_LIMITS: FileLimits = { fileBytes: 16 * MiB, roomBytes: 64 * MiB, roomFiles: ROOM_FILES_MAX };
+/**
+ * The server's defaults (buzzer/wrangler.jsonc has the same), and the app's guess before a server has said: just under
+ * what Cloudflare's free plan allows (a request body of 100,000,000 bytes, 1 GB a Durable Object).
+ */
+export const DEFAULT_FILE_LIMITS: FileLimits = { fileBytes: 90 * MiB, roomBytes: 900 * MiB, roomFiles: ROOM_FILES_MAX };
 /** The most ids a 'files' message may list (more than a room holds now, so a server can raise roomFiles). */
 export const FILES_LIST_MAX = 1024;
 /** Over this, phones on mobile data may wait a while for a file (the app's note, not a limit). */
