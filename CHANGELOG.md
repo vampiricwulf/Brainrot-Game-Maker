@@ -11,11 +11,6 @@ the day it's pushed (Pacific time; start the heading on the day's first push) an
 in plain words for the people who make and host games. Anything committed but not pushed yet goes under
 **Unreleased** at the top, and moves under its day when it's pushed.
 
-## Unreleased
-
-### Fixed
-- 🎨 Edit image on a moving GIF keeps it moving: the edits (crop, turn, size, filters, drawing, captions, stickers) go on every frame, and it's saved as a GIF again, each frame as long as before and looping as it did. Before, it became a still picture. 🖼 Media › Replace… with another moving GIF does the edits again on each of its frames too.
-
 ## 2026-10-18
 
 ### Added
@@ -32,6 +27,7 @@ in plain words for the people who make and host games. Anything committed but no
 - The buzzer server stores a 🤫 card's file a 1 MB piece at a time as it arrives, and sends it to phones a piece at a time, so a big file takes no more of its memory than a small one. An upload cut off partway (the room closed, or the server restarted) leaves nothing behind, and a phone fetches a card's files two at a time, so on a slow line the first ones come sooner. A room sends 24 files at once (more wait their turn), 4 at most to one phone, and ends a download whose phone has taken nothing of it for 5 minutes, so one player, or phones gone to sleep, can't hold up everyone else's. (2eface4, fb841c6)
 
 ### Fixed
+- 🎨 Edit image on a moving GIF keeps it moving: the edits (crop, turn, size, filters, drawing, captions, stickers) go on every frame, and it's saved as a GIF again, each frame as long as before and looping as it did. Before, it became a still picture. 🖼 Media › Replace… with another moving GIF does the edits again on each of its frames too. (4e05459)
 - A phone whose download of a 🤫 card's picture, video or sound broke off partway tries again, instead of saying it won't come. (2eface4, 68b1694)
 
 ## 2026-10-17
