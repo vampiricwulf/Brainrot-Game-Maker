@@ -214,8 +214,10 @@ can't try every code to find live games.
 
 A card's pictures, GIFs, videos and sounds from the host's computer go to the room as files (`POST
 /api/rooms/:code/files` with `Authorization: Bearer <hostToken>` and the file's type), only when the host sends the card
-or presses ⇡ Get it ready. The app shrinks pictures first (1600 px at most). Its answer is `{id}` (the file's SHA-256;
-the same bytes again store nothing new) or an error: 400 (empty, or it broke off, or was longer than its
+or presses ⇡ Get it ready. The app shrinks pictures first (1600 px at most), sends one file at a time (saying how far
+it got), never sends one the room already lists (it works out the SHA-256 first), stops one whose card is taken back,
+and gives up one that hasn't moved for a minute and tries it again. Its answer is `{id}` (the file's SHA-256; the same
+bytes again store nothing new) or an error: 400 (empty, or it broke off, or was longer than its
 Content-Length said), 401 (wrong host token, or no such room), 409 (the room holds all it can), 413 (too big), 415 (a
 type it doesn't take), 429 (too many, today's budget is used up, or the room is taking 2 files already), 500 (the room
 couldn't store it; the app tries again) or 503 (files are off). The host token is checked before the body is read, so a
@@ -233,7 +235,9 @@ twice at once is stored (and counted) once, and bytes counted against today's bu
   tells the app (`GET /api/health`, and the host's welcome), so the app follows on its own. A missing or unreadable
   `FILE_MB` or `ROOM_FILES_MB`, or 0, means its default; a file is never more than a room. A room holds 32 files at
   most too, whatever these say. For `wrangler dev` only, `npx wrangler dev --var FILE_MB:4` (or a `.dev.vars` file
-  here) sets one.
+  here) sets one. A file over 16 MB that the server takes still goes; the app's editor and host panel only note that
+  phones on mobile data may wait a while for it. Over 100,000,000 bytes, Cloudflare turns an upload away before the
+  Worker sees it, with no CORS headers, so the app only sees the connection drop and says Cloudflare may have.
 
   | Setting | Default | What | Keep it under (Workers Free) |
   | --- | --- | --- | --- |
@@ -316,12 +320,14 @@ the room closing, the server stopping or its connection dropping (nothing of it 
 download's Content-Length, one whose file is deleted partway, and downloads stopped partway; then a server with limits
 of its own saying them and holding to them, and giving back the room an upload stopped partway kept and the budget a
 twin kept; `tests/e2e/cardlimits.mjs`: the built app going by a server's own limits, asked before any room is open
-and said by a room's welcome, and an older server's 16 MB; `tests/e2e/phonecards.mjs`: the phone's private cards, from the
+and said by a room's welcome, and an older server's 16 MB; a 17 MB file that a 24 MB server takes, noted (never named
+in the host panel), its upload's percent on slowed-down lines and the phone's, ✖ Take back stopping it partway, and a
+file the room holds not sent again; `tests/e2e/phonecards.mjs`: the phone's private cards, from the
 greyed button through Tap to see, card files (two at once), a video, a YouTube player and the content policy to a
 phone that joined too late;
 `tests/e2e/partnersend.mjs`: the built app sending a partner clue's cards, with nothing in the room or its saved state
 before a send, a picture shrunk before it goes up, host reloads mid-upload, a phone on a freed seat, ↻ Send again,
-📤 Send changes, ✖ Take back, ⇡ Get it ready, no phone fetching another card's file, and the room's 64 MB turning a
+📤 Send changes, ✖ Take back, ⇡ Get it ready, no phone fetching another card's file, and a room of 10 MB turning a
 GIF down; `tests/e2e/partnerteams.mjs`: the same on team phones, with someone joining or moved onto the team after
 the send). `npm run check` here type-checks the Worker and the phone page.
 

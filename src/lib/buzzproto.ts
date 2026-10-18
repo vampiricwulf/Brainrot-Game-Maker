@@ -95,6 +95,8 @@ export const OLD_FILE_LIMITS: FileLimits = { fileBytes: 16 * MiB, roomBytes: 64 
 export const DEFAULT_FILE_LIMITS: FileLimits = { fileBytes: 16 * MiB, roomBytes: 64 * MiB, roomFiles: ROOM_FILES_MAX };
 /** The most ids a 'files' message may list (more than a room holds now, so a server can raise roomFiles). */
 export const FILES_LIST_MAX = 1024;
+/** Over this, phones on mobile data may wait a while for a file (the app's note, not a limit). */
+export const SLOW_FILE_BYTES = 16 * MiB;
 
 /** Limits a server sent, checked (whole numbers of bytes up to 2^40, a file no bigger than a room), or null. */
 export function parseFileLimits(x: unknown): FileLimits | null {

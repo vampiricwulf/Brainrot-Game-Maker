@@ -40,7 +40,7 @@
   import { cardWindow, openCardWindow } from '../../lib/cardwindow.svelte';
   import { copyText } from '../standings';
   import { canCopyPicture, copyCardPicture, hasPicture } from './cardcopy';
-  import { leftLine } from './cardrow';
+  import { leftLine, slowKinds, slowLine } from './cardrow';
 
   let {
     game,
@@ -310,7 +310,10 @@
   let sentCopy = $state<{ card: SentCard; names: string[] } | null>(null);
   const sentCopySlide = $derived(sentCopy ? sentSlide(game, sentCopy.card) : undefined);
   const noPhone = $derived(cardsOn ? [...new Set(to.map((t) => t.seat))].filter((id) => !phones.has(id)) : []);
-  const left = $derived(cardsOn && slide ? leftLine(phoneCard(game, slide, can).left) : '');
+  const phone = $derived(cardsOn && slide ? phoneCard(game, slide, can) : null);
+  const left = $derived(phone ? leftLine(phone.left) : '');
+  /** What of it goes but is big for phones on mobile data, counted. */
+  const slow = $derived(phone ? slowLine(slowKinds(phone.items)) : '');
   const names = $derived(to.map((t) => sentToText(session, [t], teams)));
   /**
    * The 🪟 card window is open for one of them (their whole seat): with no phones getting cards, 📤 Send shows it there,
@@ -554,6 +557,7 @@
   {/if}
 
   {#if left}<div class="small warn">{left}</div>{/if}
+  {#if slow}<div class="small muted" data-card-slow>{slow}</div>{/if}
   {#if noPhone.length && hasSomething}
     <div class="small warn">
       📵 {noPhone.map(nameOf).join(', ')} {noPhone.length > 1 ? 'have' : 'has'} no phone here: copy it to them (📋), or

@@ -364,7 +364,7 @@ export function partnerProblems(game: Game, round: BoardRound, tab: number, room
       if (cards.length > MAX_CARDS) warn(`${tile} has ${cards.length} cards: a clue holds ${MAX_CARDS} (＋ Card adds no more)`, cards[MAX_CARDS]);
       cards.forEach((card, n) => {
         if (!slideHasContent(card)) warn(`${tile}: ${clueCardWords(card, n)} is empty: there's nothing on it to send`, card);
-        for (const t of cardFileProblems(game, card, room)) warn(`${tile}: ${clueCardWords(card, n)} has ${t}`, card);
+        out.push(...cardLines(game, [card], `${tile}: ${clueCardWords(card, n)}`, tab, at(card)!, room));
       });
       out.push(...cardNameProblems(game, cards, slidesOfClue(cl), tile, tab, (card) => at(card)!));
     });
@@ -383,7 +383,7 @@ export function finalCardProblems(game: Game, round: FinalRound, name: string, t
   if (cards.length > MAX_CARDS) warn(`${name} has ${cards.length} cards: a Final holds ${MAX_CARDS} (＋ Card adds no more)`, cards[MAX_CARDS]);
   cards.forEach((card, n) => {
     if (!slideHasContent(card)) warn(`${name}: ${clueCardWords(card, n)} is empty: there's nothing on it to send`, card);
-    for (const t of cardFileProblems(game, card, room)) warn(`${name}: ${clueCardWords(card, n)} has ${t}`, card);
+    out.push(...cardLines(game, [card], `${name}: ${clueCardWords(card, n)}`, tab, at(card), room));
   });
   out.push(...cardNameProblems(game, cards, slidesOfClue(round), name, tab, at));
   return out;
@@ -415,36 +415,53 @@ function cardNameProblems(game: Game, cards: ClueCard[], secret: Slide[], where:
 /** What phoneCard's kinds of thing are called in the checklist. */
 const KIND = { picture: 'picture', gif: 'GIF', video: 'video', sound: 'sound', embed: 'online video' } as const;
 
+/** One of cardFileProblems' lines, "… has <text>": a warning, or a note ('info': the editor's checklist only). */
+interface CardFileProblem {
+  text: string;
+  level: 'warn' | 'info';
+  /** What it means in a player-only file, which can't add or swap files (none: the same text). */
+  player?: string;
+}
+
 /**
  * What of a 🤫 card won't reach a phone or will stop working, as "… has <this>": an online link that has expired or soon
  * will, and (spec §5.6, §13.5) a file too big for the buzzer server in use (`room.fileBytes`) or of a kind phones
- * can't play, a file from this computer when that server takes none (`room.filesOff`), words past CARD_TEXT_MAX.
+ * can't play, a file from this computer when that server takes none (`room.filesOff`), words past CARD_TEXT_MAX. A
+ * file that goes but is big (phoneCard's `slow`) is a note: phones on mobile data may wait for it.
  */
-function cardFileProblems(game: Game, card: Slide, room: CardRoom): string[] {
-  const out: string[] = [];
+function cardFileProblems(game: Game, card: Slide, room: CardRoom): CardFileProblem[] {
+  const out: CardFileProblem[] = [];
+  const warn = (text: string, player?: string) => out.push({ text, level: 'warn', ...(player ? { player } : {}) });
   const life = slideMediaIds(card).flatMap((id) => {
     const m = game.media.find((x) => x.id === id);
     return m?.url ? [linkLifetime(m)] : [];
   });
-  if (life.includes('expired')) out.push('an online link that has expired: add that file again');
-  else if (life.includes('temporary')) out.push('an online link that stops working soon: save a copy or add the file');
+  if (life.includes('expired')) warn('an online link that has expired: add that file again');
+  else if (life.includes('temporary')) warn('an online link that stops working soon: save a copy or add the file');
   const fileBytes = room.fileBytes ?? DEFAULT_FILE_LIMITS.fileBytes;
   for (const it of phoneCard(game, card, { files: room.filesOff ? null : {}, fileBytes }).items) {
-    const size = game.media.find((m) => m.id === it.media)?.size ?? 0;
-    if (it.why === 'big') out.push(`a ${KIND[it.kind]} too big for phones (${formatBytes(size)}; phones get files up to ${formatBytes(fileBytes)})`);
-    else if (it.why === 'kind' && it.file) out.push(`a ${KIND[it.kind]} phones can't play: add it as MP4, WebM, MP3, OGG, WAV or M4A, or from a link`);
-    else if (it.why === 'nofiles') out.push(`a ${KIND[it.kind]} that's a file on this computer, and this buzzer server isn't taking files: phones get the words and links only (📋 Copy picture)`);
+    const size = formatBytes(game.media.find((m) => m.id === it.media)?.size ?? 0);
+    if (it.why === 'big') {
+      const big = `a ${KIND[it.kind]} too big to send to phones (${size}; this buzzer server takes files up to ${formatBytes(fileBytes)})`;
+      warn(`${big}: add it from a link instead`, `${big}: the host shows it on stream instead`);
+    } else if (it.why === 'kind' && it.file) warn(`a ${KIND[it.kind]} phones can't play: add it as MP4, WebM, MP3, OGG, WAV or M4A, or from a link`);
+    else if (it.why === 'nofiles') warn(`a ${KIND[it.kind]} that's a file on this computer, and this buzzer server isn't taking files: phones get the words and links only (📋 Copy picture)`);
+    else if (it.slow) out.push({ text: `a ${KIND[it.kind]} of ${size}: phones on mobile data may wait a while for it (WiFi is fine)`, level: 'info' });
   }
-  if ([...cardWords(card)].length > CARD_TEXT_MAX) out.push(`more than ${CARD_TEXT_MAX} characters of words: phones get the first ${CARD_TEXT_MAX}`);
+  if ([...cardWords(card)].length > CARD_TEXT_MAX) warn(`more than ${CARD_TEXT_MAX} characters of words: phones get the first ${CARD_TEXT_MAX}`);
   return out;
 }
 
 /** The cards of the 🤫 Send a card buttons in some lists of buttons. */
 const cardsIn = (...lists: (Action[] | undefined)[]): Slide[] => lists.flatMap((l) => l ?? []).flatMap((a) => (a.do === 'card' ? [a.slide] : []));
 
-/** The cardFileProblems of some cards, each said once: "<says> has <this>", going to `place`. */
+/** The cardFileProblems of some cards, each said once: "<says> has <this>", going to `place`, each at its own level. */
 function cardLines(game: Game, cards: Slide[], says: string, tab: Problem['tab'], place: Place, room: CardRoom): Problem[] {
-  return [...new Set(cards.flatMap((c) => cardFileProblems(game, c, room)))].map((t) => ({ text: `${says} has ${t}`, tab, level: 'warn', place }));
+  const seen = new Set<string>();
+  return cards
+    .flatMap((c) => cardFileProblems(game, c, room))
+    .filter((p) => !seen.has(p.text) && !!seen.add(p.text))
+    .map((p) => ({ text: `${says} has ${p.text}`, tab, level: p.level, place, ...(p.player ? { player: `${says} has ${p.player}` } : {}) }));
 }
 
 /**

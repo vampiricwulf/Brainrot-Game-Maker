@@ -219,6 +219,41 @@ describe('phoneCard: the stack a phone gets (spec §12.3, §13.4, §13.5)', () =
     ]);
   });
 
+  it('a file over 16 MB that the server takes goes, marked slow (never a why); a picture never is; over the limit it’s too big', () => {
+    const MB = 1024 * 1024;
+    const files: MediaRef[] = [
+      { id: 'v', name: 'clip.mp4', mime: 'video/mp4', size: 16 * MB + 1, kind: 'video' },
+      { id: 'g', name: 'dance.gif', mime: 'image/gif', size: 20 * MB, kind: 'image' },
+      { id: 'p', name: 'huge.png', mime: 'image/png', size: 40 * MB, kind: 'image' },
+      { id: 's', name: 'tune.mp3', mime: 'audio/mpeg', size: 16 * MB, kind: 'audio' },
+    ];
+    const slide = card(at(newVideoEl('v'), 0, 1), at(newImageEl('g'), 0, 2), at(newImageEl('p'), 0, 3), at(newAudioEl('s'), 0, 4));
+    const pc = (fileBytes: number) => phoneCard({ media: files }, slide, { fileBytes, files: {} });
+    const roomy = pc(24 * MB);
+    expect(roomy.items.map((i) => [i.name, i.slow ?? false, i.why ?? null])).toEqual([
+      ['clip.mp4', true, null],
+      ['dance.gif', true, null],
+      // (A picture is shrunk first; 16 MB is no more than 16 MB.)
+      ['huge.png', false, null],
+      ['tune.mp3', false, null],
+    ]);
+    // A note only: they go up as any other (what's sent and what's left out are the same).
+    expect(roomy.left).toEqual([]);
+    expect(filesToSend(roomy)).toEqual(['v', 'g', 'p', 's']);
+    // Up there, still slow: the phones still download them.
+    expect(phoneCard({ media: files }, slide, { fileBytes: 24 * MB, files: { v: HASH } }).items[0]).toMatchObject({ slow: true, goes: { file: HASH } });
+    // Over the server's limit (an older server's 16 MB: no band in between), too big and never slow.
+    const old = pc(FILE_BYTES);
+    expect(old.items.map((i) => [i.name, i.slow ?? false, i.why ?? null])).toEqual([
+      ['clip.mp4', false, 'big'],
+      ['dance.gif', false, 'big'],
+      ['huge.png', false, null],
+      ['tune.mp3', false, null],
+    ]);
+    // Nor when it won't go for another reason.
+    expect(phoneCard({ media: files }, slide, { fileBytes: 24 * MB, files: null }).items.some((i) => i.slow)).toBe(false);
+  });
+
   it('an item’s own name goes with it (for the phone’s text alternative), never its file’s', () => {
     const pc = phoneCard(g, card(at(newImageEl('linked'), 0, 1, { name: 'The ogre' }), at(newImageEl('pic'), 0, 2)), { fileBytes: FILE_BYTES, files: { pic: HASH } });
     expect(pc.media).toEqual([

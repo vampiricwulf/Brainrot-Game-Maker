@@ -33,7 +33,7 @@
   import { whoWasWhoStep } from '../../lib/toolset';
   import { WHEEL_TEMPLATES, wheelFromTemplate } from '../../lib/wheeltemplates';
   import { copyText } from '../standings';
-  import { leftLine, seenSeats } from './cardrow';
+  import { leftLine, pctText, seenSeats, slowKinds, slowLine } from './cardrow';
   import { dealDraft } from './dealdraft.svelte';
 
   let {
@@ -236,23 +236,30 @@
    * How the deal's cards stand on the phones, all together (never one player's card: that would say who had which). In
    * one window the phones that came after the cards went are only counted, a part or not, from the room's list of phones
    * (dealPhonesLate): only those with a part have a card to be late for, so their names, or any count of the room's late
-   * phones, would say who got one (a deal with no part for "the rest") as each phone came.
+   * phones, would say who got one (a deal with no part for "the rest") as each phone came. The upload's percent (`pct`,
+   * between `head` and `tail`) is shown, not said: a screen reader would hear the whole line again at each one.
    */
-  const status = $derived.by(() => {
-    if (!d || d.stage !== 'sent') return '';
+  const status = $derived.by((): { head: string; pct: string; tail: string } => {
+    const both = (t: string) => ({ head: t, pct: '', tail: '' });
+    if (!d || d.stage !== 'sent') return both('');
     if (!out.length)
-      return tooMany
-        ? `Its cards are back: the phones hold ${CARDS_MAX} at once, all phones together, so 🎭 Deal a new one with fewer in`
-        : full
-          ? `Its cards are back, and the phones have no room for them now: ${fullText}`
-          : 'Its cards are back (or over): 📤 Send puts them out again';
+      return both(
+        tooMany
+          ? `Its cards are back: the phones hold ${CARDS_MAX} at once, all phones together, so 🎭 Deal a new one with fewer in`
+          : full
+            ? `Its cards are back, and the phones have no room for them now: ${fullText}`
+            : 'Its cards are back (or over): 📤 Send puts them out again',
+      );
     if (over)
-      return `Only ${out.length - leftOff.size} of the ${out.length} cards are on the phones (they hold ${CARDS_MAX} at once, all phones together): copy ${dual ? 'the others theirs (📋, marked below)' : 'everyone theirs (📋)'}, or ✖ Take back and deal fewer in`;
-    if (!cardsOn) return `Dealt: copy each card to its player (📋)${cardWindow.open ? ', or show them in the 🪟 card window' : ''}`;
+      return both(
+        `Only ${out.length - leftOff.size} of the ${out.length} cards are on the phones (they hold ${CARDS_MAX} at once, all phones together): copy ${dual ? 'the others theirs (📋, marked below)' : 'everyone theirs (📋)'}, or ✖ Take back and deal fewer in`,
+      );
+    if (!cardsOn) return both(`Dealt: copy each card to its player (📋)${cardWindow.open ? ', or show them in the 🪟 card window' : ''}`);
     const seen = out.filter((c) => seenSeats(session, c).length).length;
     const parts = [seen ? `✓ seen by ${seen} of ${out.length}` : `Sent to ${out.length}`];
     const f = filesOn ? filesCounted(game, session, out.flatMap((c) => sentSlide(game, c) ?? [])) : null;
-    if (f?.going) parts.push(`uploading ${Math.min(f.files, f.up + 1)} of ${f.files - f.failed}…`);
+    const uploading = f?.going ? `uploading ${Math.min(f.files, f.up + 1)} of ${f.files - f.failed}` : '';
+    if (uploading) parts.push(`${uploading}…`);
     if (dual) {
       const lateHere = remote.cardsLate.filter((l) => out.some((c) => sentCardId(c) === l.id));
       const late = [...new Set(lateHere.map((l) => (l.by ? `${l.by}’s phone (${nameOf(l.seatId)})` : `${nameOf(l.seatId)}’s new phone`)))];
@@ -263,10 +270,14 @@
     }
     // (Never taken off the count above: it counts the parts, so the difference would say whether they got one.)
     if (noPhone.length) parts.push(`📵 ${nameList(noPhone.map(who))} ${noPhone.length > 1 ? 'have' : 'has'} no phone here: copy theirs (📋)`);
-    return parts.join(' · ');
+    const all = parts.join(' · ');
+    const at = uploading ? all.indexOf(`${uploading}…`) + uploading.length : all.length;
+    return { head: all.slice(0, at), pct: uploading ? pctText(f?.progress) : '', tail: all.slice(at) };
   });
-  /** What of the cards won't reach the phones, counted for the whole deal. */
-  const left = $derived(cardsOn && d ? leftLine(d.hands.flatMap((h) => phoneCard(game, h.slide, can).left)) : '');
+  /** What of the cards won't reach the phones, and what goes but is big, counted for the whole deal. */
+  const phoneHands = $derived(cardsOn && d ? d.hands.map((h) => phoneCard(game, h.slide, can)) : []);
+  const left = $derived(leftLine(phoneHands.flatMap((p) => p.left)));
+  const slow = $derived(slowLine(phoneHands.flatMap((p) => slowKinds(p.items))));
   const seenBy = (seat: Id, member?: string) =>
     out.some((c) => c.to.some((t) => t.seat === seat && t.member?.id === member) && (session.remote?.cardsSeen?.[sentCardId(c)] ?? []).some((w) => w === (member ? `${seat}/${member}` : seat)));
   /** Their card is one the phones never get (said only with the audience window open: only those with a part have one). */
@@ -416,6 +427,7 @@
         </div>
       {/if}
       {#if left}<div class="small warn">{left}</div>{/if}
+      {#if slow}<div class="small muted" data-card-slow>{slow}</div>{/if}
       {#if tooMany}<div class="small warn">The phones hold {CARDS_MAX} cards at once, all phones together: this deal has {d.hands.length}, one each. Deal fewer in.</div>{/if}
       {#if full}<div class="small warn" data-cards-full>{fullText}</div>{/if}
       {@render fillsLine()}
@@ -430,9 +442,10 @@
         </div>
       </div>
     {:else}
-      {#if status}<div class="small" role="status" data-deal-status>{status}</div>{/if}
+      {#if status.head}<div class="small" role="status" data-deal-status>{status.head}{#if status.pct}<span aria-hidden="true">{status.pct}</span>{/if}{status.tail}</div>{/if}
       {@render fillsLine()}
       {#if left && out.length}<div class="small warn">{left}</div>{/if}
+      {#if slow && out.length}<div class="small muted" data-card-slow>{slow}</div>{/if}
       <div class="row wrap">
         {#if out.length}
           {#if cardsOn && !over}<button class="small" onclick={again} title="Every card of the deal goes again under a new id: a phone that came late (a player on a new phone) gets theirs">↻ Send again</button>{/if}

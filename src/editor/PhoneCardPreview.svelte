@@ -1,9 +1,10 @@
 <!--
   📱 On their phone (partner-clues spec §5.3, §12.3): a 🤫 card exactly as a phone gets it, drawn from the same
   phoneCard() that builds what's sent: its lines, its words, then its pictures, GIFs, videos, sounds and embeds one under
-  another. Each item that won't reach a phone gets a line saying why, written for the buzzer server this copy uses. The
-  editor isn't on stream, so items are named here. A card from the editor's 🤫 Cards (no `clue`) has no role or hint
-  line, and is only theirs, as a phone gets it.
+  another. Each item that won't reach a phone gets a line saying why, written for the buzzer server this copy uses, and
+  a file big enough that phones on mobile data may wait for it gets a note. The editor isn't on stream, so items are
+  named here. A card from the editor's 🤫 Cards (no `clue`) has no role or hint line, and is only theirs, as a phone
+  gets it.
 -->
 <script lang="ts">
   import { bigWords } from '../lib/buzzproto';
@@ -42,13 +43,14 @@
   const ICON: Record<PhoneItem['kind'], string> = { picture: '🖼', gif: '🖼', video: '🎞', sound: '🔊', embed: '▶' };
   const KIND: Record<PhoneItem['kind'], string> = { picture: 'picture', gif: 'GIF', video: 'video', sound: 'sound', embed: 'online video' };
 
+  /** An item's file size, as people read it ("148.2 MB"). */
+  const sizeOf = (it: PhoneItem): string => formatBytes(game.media.find((m) => m.id === it.media)?.size ?? 0);
   /** Why an item won't reach a phone, naming it (only the editor and the two-window host column name items). */
   function why(it: PhoneItem, w: LeftOut): string {
-    const ref = game.media.find((m) => m.id === it.media);
     const what = `${ICON[it.kind]} ${it.name}`;
     switch (w) {
       case 'big':
-        return `${what} is ${formatBytes(ref?.size ?? 0)}: phones get files up to ${formatBytes(limits.limits.fileBytes)}. Add it from a link (YouTube, Drive…) instead.`;
+        return `${what} is ${sizeOf(it)}: this buzzer server${limits.old ? ' (an older one)' : ''} takes files up to ${formatBytes(limits.limits.fileBytes)}. Add it from a link (YouTube, Drive…) instead.`;
       case 'expired':
         return `${what}: its link has expired. Add it again, or from a lasting link.`;
       case 'kind':
@@ -102,7 +104,8 @@
       <li>Pictures and videos from this computer go up to the buzzer server when you send the card (if it’s taking files then).</li>
     {/if}
     {#each pc.items as it (it.el)}
-      {#if it.why}<li class="warn">{why(it, it.why)}</li>{/if}
+      {#if it.why}<li class="warn">{why(it, it.why)}</li>
+      {:else if it.slow}<li class="slow">{ICON[it.kind]} {it.name} is {sizeOf(it)}: on WiFi or a computer it comes in seconds, but phones on mobile data may wait a while for it (and use up their data).</li>{/if}
     {/each}
     {#if (pc.title ? 1 : 0) + (pc.text ? 1 : 0) + pc.items.filter((i) => i.why !== 'many').length > 1}<li>Phones show the words and pictures one under another: where things sit on the slide isn’t kept.</li>{/if}
   </ul>

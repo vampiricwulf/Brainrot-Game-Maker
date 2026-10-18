@@ -226,13 +226,15 @@ describe('🤝 partner clues', () => {
       { id: 'huge', name: 'huge.png', mime: 'image/png', size: 40 * 1024 * 1024, kind: 'image' },
     );
     expect(mine(game).map((p) => p.text)).toEqual([
-      'Movies $400: card 1 has a video too big for phones (40.0 MB; phones get files up to 16.0 MB)',
+      'Movies $400: card 1 has a video too big to send to phones (40.0 MB; this buzzer server takes files up to 16.0 MB): add it from a link instead',
       "Movies $400: card 1 has a video phones can't play: add it as MP4, WebM, MP3, OGG, WAV or M4A, or from a link",
     ]);
-    // The buzzer server's own limit: too big says its number, and a server that takes it says nothing.
-    expect(mine(game, { fileBytes: 24 * 1024 * 1024 }).map((p) => p.text)[0]).toBe('Movies $400: card 1 has a video too big for phones (40.0 MB; phones get files up to 24.0 MB)');
-    expect(mine(game, { fileBytes: 40 * 1024 * 1024 }).map((p) => p.text)).toEqual([
-      "Movies $400: card 1 has a video phones can't play: add it as MP4, WebM, MP3, OGG, WAV or M4A, or from a link",
+    // The buzzer server's own limit: too big says its number, and with a server that takes it, it's only a note (over
+    // 16 MB, phones on mobile data may wait for it).
+    expect(mine(game, { fileBytes: 24 * 1024 * 1024 }).map((p) => p.text)[0]).toBe('Movies $400: card 1 has a video too big to send to phones (40.0 MB; this buzzer server takes files up to 24.0 MB): add it from a link instead');
+    expect(mine(game, { fileBytes: 40 * 1024 * 1024 }).map((p) => [p.level, p.text])).toEqual([
+      ['info', 'Movies $400: card 1 has a video of 40.0 MB: phones on mobile data may wait a while for it (WiFi is fine)'],
+      ['warn', "Movies $400: card 1 has a video phones can't play: add it as MP4, WebM, MP3, OGG, WAV or M4A, or from a link"],
     ]);
     card.elements = card.elements.filter((e) => e.kind !== 'video');
     setSlideText(card, 'x'.repeat(1001));
@@ -280,18 +282,28 @@ describe('🤝 partner clues', () => {
     const start = world.maps[0].screens[0];
     start.variants = [newVariant(undefined, start, 'Night'), newVariant(undefined, start, 'Open')];
     game.rounds.push(rpg);
-    const too = 'has a video too big for phones (40.0 MB; phones get files up to 16.0 MB)';
+    const big = 'has a video too big to send to phones (40.0 MB; this buzzer server takes files up to 16.0 MB)';
+    const too = `${big}: add it from a link instead`;
+    // (A player-only file can't add one from a link.)
+    const shown = `${big}: the host shows it on stream instead`;
     expect(validate(game, OLD).filter((p) => p.text.includes('too big'))).toEqual([
-      { text: `Race: a 🤫 card on “${board.spaces[1].name}” ${too}`, tab: 2, level: 'warn', place: { tab: 'round', round: board.id, part: { kind: 'space', space: board.spaces[1].id } } },
+      {
+        text: `Race: a 🤫 card on “${board.spaces[1].name}” ${too}`,
+        tab: 2,
+        level: 'warn',
+        place: { tab: 'round', round: board.id, part: { kind: 'space', space: board.spaces[1].id } },
+        player: `Race: a 🤫 card on “${board.spaces[1].name}” ${shown}`,
+      },
       {
         text: `Quest: a 🤫 card on “Chest” on “Start” ${too}`,
         tab: 3,
         level: 'warn',
         place: { tab: 'world', world: world.id, map: world.maps[0].id, screen: world.maps[0].screens[0].id, look: undefined, inSlide: true, element: chest.id },
+        player: `Quest: a 🤫 card on “Chest” on “Start” ${shown}`,
       },
-      { text: `Item “Map”: a Use button’s 🤫 card ${too}`, tab: 'stats', level: 'warn', place: { tab: 'stats', item: 'i1' } },
-      { text: `Wheel “Prizes”: a slice’s 🤫 card ${too}`, tab: 'tools', level: 'warn', place: { tab: 'tools', wheel: 'w1' } },
-      { text: `Deal “Mafia”: Boss’s card ${too}`, tab: 'tools', level: 'warn', place: { tab: 'tools', deal: 'd1' } },
+      { text: `Item “Map”: a Use button’s 🤫 card ${too}`, tab: 'stats', level: 'warn', place: { tab: 'stats', item: 'i1' }, player: `Item “Map”: a Use button’s 🤫 card ${shown}` },
+      { text: `Wheel “Prizes”: a slice’s 🤫 card ${too}`, tab: 'tools', level: 'warn', place: { tab: 'tools', wheel: 'w1' }, player: `Wheel “Prizes”: a slice’s 🤫 card ${shown}` },
+      { text: `Deal “Mafia”: Boss’s card ${too}`, tab: 'tools', level: 'warn', place: { tab: 'tools', deal: 'd1' }, player: `Deal “Mafia”: Boss’s card ${shown}` },
     ]);
     vi.unstubAllGlobals();
   });
@@ -366,7 +378,13 @@ describe('a Final’s 🤫 cards', () => {
       { id: 'pic', name: 'ogre.png', mime: 'image/png', size: 1000, kind: 'image' },
     );
     expect(mine(game)).toEqual([
-      { text: 'Final Jeopardy!: card “Leader hint” has a video too big for phones (40.0 MB; phones get files up to 16.0 MB)', tab: 1, level: 'warn', place: at(final, card.id) },
+      {
+        text: 'Final Jeopardy!: card “Leader hint” has a video too big to send to phones (40.0 MB; this buzzer server takes files up to 16.0 MB): add it from a link instead',
+        tab: 1,
+        level: 'warn',
+        place: at(final, card.id),
+        player: 'Final Jeopardy!: card “Leader hint” has a video too big to send to phones (40.0 MB; this buzzer server takes files up to 16.0 MB): the host shows it on stream instead',
+      },
     ]);
     expect(mine(game, true).map((p) => p.text)).toContain(
       "Final Jeopardy!: card “Leader hint” has a picture that's a file on this computer, and this buzzer server isn't taking files: phones get the words and links only (📋 Copy picture)",
@@ -428,7 +446,13 @@ describe('🤫 Cards (the editor’s tab)', () => {
     );
     game.cards = [card('sc1', 'Tip A', newTextEl('A secret'), { ...newVideoEl('big'), y: 10 })];
     expect(mine(game)).toEqual([
-      { text: '🤫 Card “Tip A” has a video too big for phones (40.0 MB; phones get files up to 16.0 MB)', tab: 'cards', level: 'warn', place: { tab: 'cards', card: 'sc1' } },
+      {
+        text: '🤫 Card “Tip A” has a video too big to send to phones (40.0 MB; this buzzer server takes files up to 16.0 MB): add it from a link instead',
+        tab: 'cards',
+        level: 'warn',
+        place: { tab: 'cards', card: 'sc1' },
+        player: '🤫 Card “Tip A” has a video too big to send to phones (40.0 MB; this buzzer server takes files up to 16.0 MB): the host shows it on stream instead',
+      },
     ]);
     game.cards[0].elements = [newTextEl('A secret'), { ...newImageEl('pic'), y: 10 }];
     expect(mine(game)).toEqual([]);
@@ -437,6 +461,39 @@ describe('🤫 Cards (the editor’s tab)', () => {
     ]);
     // (The same lines on their own, for the checklist.)
     expect(savedCardProblems(game, { ...OLD, filesOff: true })).toEqual(mine(game, true));
+    vi.unstubAllGlobals();
+  });
+
+  it('a file over 16 MB that the server takes is a note (the editor’s only: the pre-game list keeps warnings); one over its limit, a warning', () => {
+    vi.stubGlobal('document', { createElement: () => ({ canPlayType: () => 'maybe' }) });
+    const MB = 1024 * 1024;
+    const game = jeopardyGame();
+    game.media.push(
+      { id: 'mid', name: 'zfnqj-mid.mp4', mime: 'video/mp4', size: 17 * MB, kind: 'video' },
+      { id: 'big', name: 'zfnqj-big.mp4', mime: 'video/mp4', size: 25 * MB, kind: 'video' },
+      { id: 'gif', name: 'zfnqj.gif', mime: 'image/gif', size: 20 * MB, kind: 'image' },
+      // (A picture is shrunk before it goes: never a note.)
+      { id: 'pic', name: 'zfnqj.png', mime: 'image/png', size: 30 * MB, kind: 'image' },
+    );
+    game.cards = [card('sc1', 'Tip', newTextEl('A secret'), { ...newVideoEl('mid'), y: 10 }, { ...newVideoEl('big'), y: 20 }, { ...newImageEl('gif'), y: 30 }, { ...newImageEl('pic'), y: 40 })];
+    const lines = validate(game, { fileBytes: 24 * MB }).filter((p) => p.tab === 'cards');
+    expect(lines.map((p) => [p.level, p.text, p.player])).toEqual([
+      ['info', '🤫 Card “Tip” has a video of 17.0 MB: phones on mobile data may wait a while for it (WiFi is fine)', undefined],
+      [
+        'warn',
+        '🤫 Card “Tip” has a video too big to send to phones (25.0 MB; this buzzer server takes files up to 24.0 MB): add it from a link instead',
+        '🤫 Card “Tip” has a video too big to send to phones (25.0 MB; this buzzer server takes files up to 24.0 MB): the host shows it on stream instead',
+      ],
+      ['info', '🤫 Card “Tip” has a GIF of 20.0 MB: phones on mobile data may wait a while for it (WiFi is fine)', undefined],
+    ]);
+    // The pre-game screen keeps the warnings only (Play.svelte's gameChecks): the one too big.
+    expect(lines.filter((p) => p.level === 'warn').map((p) => p.text)).toEqual([
+      '🤫 Card “Tip” has a video too big to send to phones (25.0 MB; this buzzer server takes files up to 24.0 MB): add it from a link instead',
+    ]);
+    // (Never a file's name: the checklist can be on stream.)
+    expect(JSON.stringify(lines)).not.toContain('zfnqj');
+    // An older server's 16 MB: both videos and the GIF are too big, nothing is a note.
+    expect(validate(game, OLD).filter((p) => p.tab === 'cards').map((p) => p.level)).toEqual(['warn', 'warn', 'warn']);
     vi.unstubAllGlobals();
   });
 

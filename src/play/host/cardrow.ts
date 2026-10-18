@@ -1,18 +1,19 @@
 // How a 🤫 card stands on the phones, for the host panel's rows (a partner clue's Distribute list, a tile's cards, the
-// list of cards out): what of it won't reach a phone, and, for a card sent with 🤫 Send a card… or from a tile's panel,
-// sent, ✓ seen, uploading, and a phone late for it. In one window the panel is on stream: these lines count a card's
-// pictures and videos and name players, never what's on a card or an item's name.
+// list of cards out): what of it won't reach a phone, what of it is big for phones on mobile data, and, for a card sent
+// with 🤫 Send a card… or from a tile's panel, sent, ✓ seen, uploading, and a phone late for it. In one window the panel
+// is on stream: these lines count a card's pictures and videos and name players, never what's on a card, an item's name
+// or its size.
 import { CARDS_MAX } from '../../lib/buzzproto';
 import { cardFileCounts } from '../../lib/cardfiles.svelte';
 import { nameList } from '../../lib/session';
 import type { Game, Id, SentCard, Session } from '../../lib/model';
 import { countItems } from '../../lib/partner';
-import type { CardItem, LeftOut } from '../../lib/phonecard';
+import type { CardItem, LeftOut, PhoneItem } from '../../lib/phonecard';
 import { remote } from '../../lib/remote.svelte';
 import { sentCardId, sentSlide, sentState } from '../../lib/sentcards';
 
 const WHY: Record<LeftOut, string> = {
-  big: 'too big for phones',
+  big: 'too big for the buzzer server',
   expired: 'its link has expired',
   kind: 'phones can’t show it',
   nofiles: 'this buzzer server isn’t taking files right now',
@@ -22,12 +23,31 @@ const WHY: Record<LeftOut, string> = {
   many: 'one card shows 6 at most',
 };
 
-/** What of a card won't reach the phones, counted ("🖼 1 picture won't reach the phones (too big for phones)"), or ''. */
+/**
+ * What of a card won't reach the phones, counted ("🖼 1 video won't reach the phones (too big for the buzzer server)"),
+ * or ''.
+ */
 export function leftLine(left: { kind: CardItem['kind']; why: LeftOut }[]): string {
   if (!left.length) return '';
   const why = [...new Set(left.map((l) => WHY[l.why]))].join('; ');
   return `🖼 ${countItems(left.map((l) => l.kind))} won’t reach the phones (${why})`;
 }
+
+/** The kinds of a card's items that go but are big for phones on mobile data (phoneCard's `slow`), for slowLine. */
+export const slowKinds = (items: PhoneItem[]): CardItem['kind'][] => items.flatMap((i) => (i.slow ? [i.kind] : []));
+
+/**
+ * What of a card goes but is big, counted, never named or sized ("📶 1 video is big: phones on mobile data may wait for
+ * it (WiFi is fine)"), or ''.
+ */
+export function slowLine(kinds: CardItem['kind'][]): string {
+  const n = kinds.length;
+  if (!n) return '';
+  return `📶 ${countItems(kinds)} ${n === 1 ? 'is' : 'are'} big: phones on mobile data may wait for ${n === 1 ? 'it' : 'them'} (WiFi is fine)`;
+}
+
+/** " (34%)": how far the file going up now got, when it has said. */
+export const pctText = (progress: number | undefined): string => (progress === undefined ? '' : ` (${Math.floor(progress * 100)}%)`);
 
 /** The players whose phone showed a card (its send now), by seat. */
 export function seenSeats(session: Pick<Session, 'players' | 'remote'>, c: Pick<SentCard, 'id' | 'at'>): Id[] {
@@ -38,7 +58,7 @@ export function seenSeats(session: Pick<Session, 'players' | 'remote'>, c: Pick<
 
 /**
  * A card sent with 🤫 Send a card… or from a tile's panel, as its row says it: "sent", "✓ seen" (by whom, when not by
- * everyone it went to), "uploading 1 of 2…", a phone that came late for it ("Ann's new phone hasn't got it: ↻ Send
+ * everyone it went to), "uploading 1 of 2 (34%)…", a phone that came late for it ("Ann's new phone hasn't got it: ↻ Send
  * again"), a card made in the editor (a tile's or a 🤫 Card) changed there since, or one the phones never get.
  * `filesOn`: the room takes files. `off`: the buzzer room isn't told it (buzz.ts cardsLeftOff: a 🎭 deal handed out
  * before it took cards took them past what it holds); its row offers no ↻ Send again, as under a new id it would be
@@ -63,7 +83,7 @@ export function sentLine(game: Game, session: Session, c: SentCard, filesOn: boo
   const out = [seen.length ? `✓ seen${seen.length < seats.length ? ` by ${nameList(seen.map(name))}` : ''}` : 'sent'];
   const slide = sentSlide(game, c);
   const f = slide && filesOn ? cardFileCounts(game, session, slide) : null;
-  if (f?.going) out.push(`uploading ${Math.min(f.files, f.up + 1)} of ${f.files - f.failed}…`);
+  if (f?.going) out.push(`uploading ${Math.min(f.files, f.up + 1)} of ${f.files - f.failed}${pctText(f.progress)}…`);
   if (late.length) {
     const whose = late.map((l) => (l.by ? `${l.by}’s phone (${name(l.seat)})` : `${name(l.seat)}’s new phone`));
     out.push(`${nameList(whose)} ${late.length > 1 ? 'haven’t' : 'hasn’t'} got it: ↻ Send again`);

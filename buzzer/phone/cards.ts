@@ -62,6 +62,15 @@ export const mediaName = (m: CardMedia): string => ('name' in m && m.name?.trim(
 
 /** A file on its way: "🖼 Picture coming…". */
 export const comingLine = (kind: CardMedia['kind']): string => `${icon(kind)} ${upper(mediaWord(kind))} coming…`;
+/** A file whose download says how far it got over this (its Content-Length) shows how much has come. */
+export const SHOW_PCT_BYTES = 4 * 1024 * 1024;
+/** How much of a big file has come, in whole percents (null: not one that says it). */
+export const pctOf = (got: number, total: number): number | null => (total > SHOW_PCT_BYTES ? Math.min(100, Math.floor((got / total) * 100)) : null);
+/** A file on its way, and for a big one how much has come: "🎞 Video coming… 40%". */
+export function waitLine(kind: CardMedia['kind'], got = 0, total = 0): string {
+  const pct = pctOf(got, total);
+  return pct === null ? comingLine(kind) : `${comingLine(kind)} ${pct}%`;
+}
 /** A file that won't come (too big, the server takes none, the upload failed): the host shows it another way. */
 export const missingLine = (kind: CardMedia['kind']): string => `${icon(kind)} The host will show you this ${mediaWord(kind)}`;
 /** One this phone couldn't load (a link that didn't work, a download that failed): the host doesn't know, so ask. */

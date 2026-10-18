@@ -458,7 +458,8 @@ To build the address into your own releases too (so nobody has to paste it), add
   by default, and count against a daily budget for the whole server, 2,000 MB by default; past it, hosts copy those to
   their players (📋) until the next day. Change them with `FILE_MB`, `ROOM_FILES_MB` and `FILES_MB_PER_DAY` in
   `buzzer/wrangler.jsonc` (`0` a day turns card files off), then deploy again: the app asks the server, so it follows
-  on its own, and ⚙ Settings › Buzzer server › Test says what it takes. See
+  on its own, and ⚙ Settings › Buzzer server › Test says what it takes. A file over 16 MB that the server takes still
+  goes, with a note in the editor and the host panel that phones on mobile data may wait a while for it. See
   [buzzer/README.md](buzzer/README.md#card-files). Each room keeps its cards only until the tile closes (or the round
   ends, or the host takes it back, for one sent with 🤫 Send a card…), and their files up to 10 minutes longer.
 

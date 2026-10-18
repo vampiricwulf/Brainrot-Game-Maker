@@ -13,7 +13,12 @@ in plain words for the people who make and host games. Anything committed but no
 
 ## Unreleased
 
+### Added
+- On a buzzer server that takes 🤫 card files over 16 MB, such a file gets a note instead of a warning: the editor's 📱 preview and checklist, and the host panel (counted, never named), say phones on mobile data may wait a while for it (WiFi or a computer is fine). Only a file over the server's own limit is too big ("too big for the buzzer server"), and only those are on the pre-game screen's list.
+- Uploading a 🤫 card's file shows how far it got (“uploading 1 of 2 (34%)…”), and a phone shows how much of a big file has come (“🎞 Video coming… 40%”).
+
 ### Changed
+- A 🤫 card's file stops uploading as soon as its card is taken back; a file the buzzer room already holds isn't uploaded again; one that stops moving for a minute is tried again; and a file over 16 MB that didn't get through is tried again once on its own (a smaller one still three times).
 - The app asks the buzzer server how big a 🤫 card file it takes (in the editor too, before any room is open) instead of assuming 16 MB: a server you run yourself sets it in buzzer/wrangler.jsonc (FILE_MB a file, ROOM_FILES_MB a room's files together), and the 📱 preview, the checklist and the uploads go by its number. An older server is taken as 16 MB a file and 64 MB a room. ⚙ Settings › Buzzer server › Test says what it takes, and a file over the limit is turned away with "Too big for the buzzer server (16 MB at most)".
 - The buzzer server stores a 🤫 card's file a 1 MB piece at a time as it arrives, and sends it to phones a piece at a time, so a big file takes no more of its memory than a small one. An upload cut off partway (the room closed, or the server restarted) leaves nothing behind, and a phone fetches a card's files two at a time, so on a slow line the first ones come sooner.
 

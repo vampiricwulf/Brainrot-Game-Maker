@@ -3,7 +3,7 @@
 // host column, the partner panel's counts, 📋 Copy words and Copy picture); phoneCard builds the stack a phone gets from
 // it, so the editor's 📱 preview, the host column and what goes to the buzzer room are the same card. Model types,
 // links.ts and buzzproto.ts only, so the phone page can share it.
-import { cardLink, CARD_MEDIA_MAX, CARD_TEXT_MAX, CARD_TITLE_MAX, clip, fileType, type CardMedia } from './buzzproto';
+import { cardLink, CARD_MEDIA_MAX, CARD_TEXT_MAX, CARD_TITLE_MAX, clip, fileType, SLOW_FILE_BYTES, type CardMedia } from './buzzproto';
 import { embedName, isLinkProblem, linkLifetime, nameFromUrl, parseMediaLink, playerFor, youtubeId } from './links';
 import type { EmbedEl, Game, Id, MediaRef, Playback, Slide, SlideElement, TextEl } from './model';
 
@@ -86,6 +86,11 @@ export interface PhoneItem extends CardItem {
   /** It goes up from this computer (the room's file, or on its way). */
   file?: boolean;
   why?: LeftOut;
+  /**
+   * A file that goes, but big enough (over SLOW_FILE_BYTES) that phones on mobile data may wait a while for it: a note
+   * only, never in `why` or `left`.
+   */
+  slow?: true;
 }
 
 export interface PhoneCardContent {
@@ -223,7 +228,8 @@ export function phoneCard(game: Pick<Game, 'media'>, slide: Slide, can: PhoneCan
       continue;
     }
     const id = can.files?.[ref.id];
-    items.push({ ...item, file: true, goes: id ? { kind, file: id, mime: ref.mime, ...times(e), ...name } : { kind, pending: true } });
+    const slow = !shrinks(item) && ref.size > SLOW_FILE_BYTES;
+    items.push({ ...item, file: true, ...(slow ? { slow: true as const } : {}), goes: id ? { kind, file: id, mime: ref.mime, ...times(e), ...name } : { kind, pending: true } });
   }
   const media = items.filter((i) => i.why !== 'many').map((i) => i.goes);
   return {

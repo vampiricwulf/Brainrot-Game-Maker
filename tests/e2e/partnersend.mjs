@@ -9,7 +9,8 @@
 // that wasn't. A phone that takes a freed seat afterwards gets nothing of the card (nor its file) until ↻ Send again;
 // 📤 Send changes adds and takes back one player; no phone can fetch a file of a card it wasn't sent; ⇡ Get it ready
 // cut off by a reload finishes after it, given to no phone; ✖ Take back. A card with more GIFs than the room holds:
-// the upload the room turns down, and one too big for phones, are said in plain words and offered 📋 Copy picture.
+// the upload the room turns down, and one too big for the buzzer server, are said in plain words and offered 📋 Copy
+// picture.
 // The audience window, and the host page in one window, never hold a card's words, its file names or its link.
 import { chromium } from 'playwright-core';
 import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
@@ -91,8 +92,8 @@ const youtube = (url, y) => ({ ...box(y), kind: 'embed', embedKind: 'youtube', u
 const slide = (...elements) => ({ background: {}, elements });
 
 const executablePath = process.env.CHROMIUM_PATH || (existsSync('/opt/pw-browsers/chromium') ? '/opt/pw-browsers/chromium' : undefined);
-// (Its own limits, so the sizes below hold whatever wrangler.jsonc says.)
-const buzzer = await startBuzzer('buzzer-partnersend-', { vars: { FILE_MB: 16, ROOM_FILES_MB: 64 } });
+// (Its own limits, so the sizes below hold whatever wrangler.jsonc says: small ones, so the files are small too.)
+const buzzer = await startBuzzer('buzzer-partnersend-', { vars: { FILE_MB: 3, ROOM_FILES_MB: 10, FILES_MB_PER_DAY: 200 } });
 const { base, persist } = buzzer;
 let browser;
 const errors = [];
@@ -131,16 +132,16 @@ try {
   await maker.close();
 
   // Files: a big picture (shrunk before it goes up), the video, two small pictures; for the second clue a small
-  // picture, five GIFs of about 13.7 MB (the room holds 64 MB: the fifth is turned down) and one over 16 MB, each four
-  // frames of the size a phone draws easily.
+  // picture, five GIFs of about 2.2 MB (the room holds 10 MB: the fifth is turned down) and one over 3 MB, each four
+  // frames.
   const files = {
     big: png(200, 60, 20, 3000, 2000),
     clip,
     swamp: png(20, 160, 60, 400, 300),
     third: png(60, 20, 160, 300, 200),
     first: png(240, 200, 40, 300, 200),
-    ...Object.fromEntries([1, 2, 3, 4, 5].map((i) => [`gif${i}`, noiseGif(1740, 1740, i * 7919, 4)])),
-    huge: noiseGif(2000, 2000, 4242, 4),
+    ...Object.fromEntries([1, 2, 3, 4, 5].map((i) => [`gif${i}`, noiseGif(700, 700, i * 7919, 4)])),
+    huge: noiseGif(900, 900, 4242, 4),
   };
   const ref = (id, name, mime, kind) => ({ id, name, mime, size: files[id].length, kind });
   const media = [
@@ -152,7 +153,8 @@ try {
     ...[1, 2, 3, 4, 5].map((i) => ref(`gif${i}`, `zfnqj-gif${i}.gif`, 'image/gif', 'image')),
     ref('huge', 'zfnqj-huge.gif', 'image/gif', 'image'),
   ];
-  assert(files.gif1.length > 13.5e6 && files.gif1.length < 13.9e6 && files.huge.length > 16 * 1024 * 1024, `the GIFs: five of ${(files.gif1.length / 1e6).toFixed(2)} MB, one of ${(files.huge.length / 1e6).toFixed(2)} MB`);
+  // (Four of them and the rest fit in 10 MiB, five don't; the one too big is over 3 MiB.)
+  assert(files.gif1.length > 2.15e6 && files.gif1.length < 2.4e6 && files.huge.length > 3 * 1024 * 1024, `the GIFs: five of ${(files.gif1.length / 1e6).toFixed(2)} MB, one of ${(files.huge.length / 1e6).toFixed(2)} MB`);
   const rules = { game: 'describe', giver: 'partner', got: { giver: 100, guesser: 50 }, missed: { giver: 0, guesser: -50 }, partnerSafe: true, points: 'game' };
   const plain = (id, q, a) => ({ id, value: null, type: 'standard', questionSlide: slide(text(q)), answerSlide: slide(text(a)) });
   const partnerClue = (id, q, a, cards) => ({ ...plain(id, q, a), type: 'partner', partner: { ...rules }, timerSeconds: 60, cards });
@@ -568,7 +570,7 @@ try {
   assert(await until(async () => !(await dan.locator('.card').count()) && !(await ann.locator('.card').count())), 'and Dan’s and Ann’s phones drop them');
   assert((await shownOf(host, SECRETS)).length === 0, 'the host page in one window held no card’s words, file names or link, through the whole clue');
 
-  // ---------- More GIFs than the room holds, and one too big for phones ----------
+  // ---------- More GIFs than the room holds, and one too big for the buzzer server ----------
   console.log('Over the caps:');
   const [aud2] = await Promise.all([host.waitForEvent('popup'), host.keyboard.press('a')]);
   watch(aud2, 'audience 2');
@@ -581,20 +583,20 @@ try {
   await mainButton(host).click();
   await host.locator('.stage-box [data-partner-badge]').waitFor();
   const left2 = panel.locator('[data-card-left="2"]');
-  assert((await left2.innerText()) === '🖼 1 GIF won’t reach the phones (too big for phones)', 'the GIF over 16 MB, counted: “🖼 1 GIF won’t reach the phones (too big for phones)”');
+  assert((await left2.innerText()) === '🖼 1 GIF won’t reach the phones (too big for the buzzer server)', 'the GIF over 3 MB, counted: “🖼 1 GIF won’t reach the phones (too big for the buzzer server)”');
   assert(await row(2).getByRole('button', { name: '📋 Copy picture' }).isVisible(), 'and its row offers 📋 Copy picture');
   const upBefore = uploads.length;
   await mainButton(host).click();
-  // (About 68 MB going up, one file at a time.)
-  assert(await until(() => answers.some((a) => a.status === 409 && a.read), 240000), 'sent: the room turns an upload down once it holds 64 MB');
+  // (About 11 MB going up, one file at a time.)
+  assert(await until(() => answers.some((a) => a.status === 409 && a.read), 120000), 'sent: the room turns an upload down once it holds 10 MB');
   const turned = answers.find((a) => a.status === 409);
   assert(turned.error === 'This room holds all the card files it can: send fewer pictures and videos at once', `in plain words (“${turned.error}”)`);
-  assert(uploads.length - upBefore === 6, 'six uploads (the picture and five GIFs; never the one over 16 MB)');
+  assert(uploads.length - upBefore === 6, 'six uploads (the picture and five GIFs; never the one over 3 MB)');
   await panel.locator('[data-card-left="1"]').waitFor();
   const fullLine = '🖼 1 GIF won’t reach the phones (the buzzer room holds all the files it can: ✖ take a card back, then ↻ Send again)';
   assert((await panel.locator('[data-card-left="1"]').innerText()) === fullLine, `the panel counts it, and says why: “${fullLine}”`);
   const info = host.locator('.info [data-partner-cards-info]');
-  assert((await info.innerText()).includes(`📋 copy it: ${turned.error}`) && (await info.innerText()).includes('📋 copy it: too big for phones'), 'the two-window host column names them, with why');
+  assert((await info.innerText()).includes(`📋 copy it: ${turned.error}`) && (await info.innerText()).includes('📋 copy it: too big for the buzzer server (3 MB at most)'), 'the two-window host column names them, with why');
   await row(1).getByRole('button', { name: '📋 Copy picture' }).click();
   await host.locator('.toast', { hasText: 'Card 1’s picture copied: paste it to Bob' }).waitFor();
   const copied = await host.evaluate(async () => (await navigator.clipboard.read()).flatMap((i) => i.types));

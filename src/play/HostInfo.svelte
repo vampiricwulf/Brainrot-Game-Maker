@@ -7,7 +7,8 @@
   import { cardWords, phoneCard, type CardItem, type PhoneItem } from '../lib/phonecard';
   import { buzzerOn, remote, roomHasCards } from '../lib/remote.svelte';
   import { phoneCan, uploads } from '../lib/cardfiles.svelte';
-  import { mediaUrls } from '../lib/media.svelte';
+  import { formatBytes, mediaUrls } from '../lib/media.svelte';
+  import { mbText } from '../lib/buzzproto';
   import { findIn, focusRef } from '../lib/rpg';
   import { currentPlayer, spaceById } from '../lib/boardgame';
   import { rpgNow } from './rpg/hostops';
@@ -36,17 +37,29 @@
   const ITEM: Record<CardItem['kind'], [string, string]> = { picture: ['🖼', 'picture'], gif: ['🖼', 'GIF'], video: ['🎞', 'video'], sound: ['🔊', 'sound'], embed: ['🌐', 'online video'] };
   /** The cards go to phones (a buzzer room that takes them), not only by 📋 copying. */
   const phones = $derived(buzzerOn(game.settings) && !!remote.code && remote.status !== 'off' && remote.status !== 'error' && roomHasCards());
-  /** How an item reaches a phone, in a few words ("✔ goes to phones", "📋 copy it: too big for phones"). */
+  /** What the phones can get now (its server's biggest file too). */
+  const can = $derived(phoneCan(session));
+  /**
+   * How an item reaches a phone, in a few words ("✔ goes to phones", "📋 copy it: too big for the buzzer server (16 MB at
+   * most)"), and a big one that goes, how big (phones on mobile data may wait for it).
+   */
   function reach(it: PhoneItem): string {
     if (!phones) return '📋 you copy it';
-    if (it.why === 'big') return '📋 copy it: too big for phones';
+    const goes = reachOf(it);
+    return it.slow ? `${goes} · big (${formatBytes(game.media.find((m) => m.id === it.media)?.size ?? 0)}): phones on mobile data may wait for it` : goes;
+  }
+  /** Whether it goes, and how (reach() adds how big). */
+  function reachOf(it: PhoneItem): string {
+    if (it.why === 'big') return `📋 copy it: too big for the buzzer server (${mbText(can.fileBytes)} at most)`;
     if (it.why === 'expired') return '📋 copy it: its link has expired';
     if (it.why === 'kind') return '📋 copy it: phones can’t show it';
     if (it.why === 'nofiles') return '📋 copy it: this buzzer server isn’t taking files right now';
     if (it.why === 'failed' || it.why === 'full') return `📋 copy it: ${uploads.jobs[it.media ?? '']?.error || 'it didn’t go up'}`;
     if (it.why === 'lost') return '📋 it isn’t in the game any more';
     if (it.why === 'many') return '📋 copy it: a card shows 6 at most';
-    if (it.file) return 'file' in it.goes ? '✔ goes to phones (up)' : uploads.jobs[it.media ?? '']?.state === 'uploading' ? '✔ goes to phones (uploading…)' : '✔ goes to phones (from this computer)';
+    const job = uploads.jobs[it.media ?? ''];
+    const pct = job?.progress === undefined ? '' : ` ${Math.floor(job.progress * 100)}%`;
+    if (it.file) return 'file' in it.goes ? '✔ goes to phones (up)' : job?.state === 'uploading' ? `✔ goes to phones (uploading…${pct})` : '✔ goes to phones (from this computer)';
     return '✔ goes to phones (its link)';
   }
   /** A still of a picture or GIF, for the host's eyes (never a player: a card's video here could be taken for the stage's). */
@@ -108,7 +121,7 @@
     {#if isAnswer(card)}<div class="muted small">This card shows the answer</div>{/if}
     <div class="notes">{cardWords(card) || '(no words)'}</div>
     <!-- Its items as a phone gets them (phoneCard), each with whether it reaches one; pictures as a small still. -->
-    {#each phoneCard(game, card, phoneCan(session)).items as it (it.el)}
+    {#each phoneCard(game, card, can).items as it (it.el)}
       {@const src = thumb(it)}
       <div class="small item">
         {#if src}<img class="thumb" {src} alt="" referrerpolicy="no-referrer" />{/if}

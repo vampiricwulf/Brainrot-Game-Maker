@@ -1294,15 +1294,19 @@ The phone bundles src/lib/links.ts, which has no imports, and builds an `<img>`,
    question shows. On a send, the card's words and links go out at once and its files follow; the phone fills them in
    as they arrive. ⇡ Get it ready uploads a tile's card files early, so the send is instant. It gives no phone
    anything: the room serves a file only for a card sent to that phone (below). The panel's line counts files
-   ("uploading 1 of 2…") and never names them (§6.10).
+   ("uploading 1 of 2…"; later with how far the one going up got, "uploading 1 of 2 (34%)…") and never names them
+   (§6.10). (Later: an upload whose card is taken back stops at once, and one that stops moving for a minute is tried
+   again.)
    - Pictures come from `storedBlob` (media.svelte.ts:45-58) and are shrunk to at most 1600 px, as WebP or JPEG at 0.85
      (`loadImage`, a canvas and `canvasToBlob`, imageedit.ts:25, 302-304). That is usually 150–400 KB. An edited picture
      uses `editedMedia`.
    - A GIF, a video or a sound goes as it is if it's at most 4 MB (later: the buzzer server's own limit, which it tells
      the app). Otherwise it's left out, with "too big for phones: add it from a link" (the editor names the item; the
-     panel only counts: "🎞 1 video is too big for phones").
+     panel only counts: "🎞 1 video is too big for phones"). (Later: "too big for the buzzer server". One over 16 MB that
+     the server takes goes, with a note instead of a warning in the 📱 preview, the editor's checklist and the panel,
+     "📶 1 video is big: phones on mobile data may wait for it (WiFi is fine)": card-files spec §3.)
 2. The app hashes the bytes (SHA-256) and sends `POST /api/rooms/:code/files` with `Authorization: Bearer <hostToken>`
-   and the file's type. The Worker passes it to the room's Durable Object, which checks the host token (`sameToken`,
+   and the file's type (later: not when the room already lists that hash: it's taken as up). The Worker passes it to the room's Durable Object, which checks the host token (`sameToken`,
    index.ts:57-63).
 3. The room stores the bytes in 1 MB pieces under their own keys (`file:<hash>:<n>`; later a random prefix per upload,
    `p:<random>:<n>`, see buzzer/src/filestore.ts), never inside the `'room'` key, which is rewritten on every change. An
@@ -1696,7 +1700,7 @@ The phone has the same token and so the same seat time (or `teamAt`): the card s
 | A server without `files` (turned off, or today's budget is used up) | Words and links; each file's place says "the host will show you this picture"; the row offers 📋 Copy picture. |
 | Card text over 1000 characters | Cut, with "…"; the editor warns. |
 | The room state near 32 KB | The app measures before sending: it drops media from the newest send first, then trims words, and warns. |
-| A file over 4 MB | Left out, with "too big for phones". |
+| A file over 4 MB | Left out, with "too big for phones" (later: over the buzzer server's own limit, "too big for the buzzer server"). |
 | An upload fails | The phone's "Picture coming…" turns into "the host will show you this picture"; the row counts it ("🖼 1 picture didn't reach the phone: 📋 Copy picture"). |
 | An online link has expired | Never sent. The editor names the item; the panel only counts ("🖼 1 picture's link has expired: 📋 Copy picture"), as it is on stream in one window (§14.2). |
 | A tile with several question slides | Next slide ▶ is the main button once the cards went out. Cards are sent from the Distribute step, not per slide. |

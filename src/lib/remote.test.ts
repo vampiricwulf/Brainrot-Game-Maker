@@ -1,6 +1,6 @@
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { BUZZ_PROTOCOL, OLD_FILE_LIMITS } from './buzzproto';
-import { buzzerBase, closeRoom, rejoinRoom, remote, setRemoteDeps } from './remote.svelte';
+import { buzzerBase, closeRoom, rejoinRoom, remote, setRemoteDeps, UPLOAD_STALL_MS, uploadCardFile } from './remote.svelte';
 import { prefs } from './prefs.svelte';
 import { fileLimitsNow, forgetServerFiles } from './serverlimits.svelte';
 import { retryDelay, type LinkDeps, type SocketLike } from './roomlink';
@@ -154,15 +154,15 @@ describe('the server’s card file limits', () => {
     rejoinRoom(room);
     sockets[0].welcome({ features: ['cards', 'files'], limits });
     expect(remote.limits).toEqual(limits);
-    expect(fileLimitsNow()).toEqual({ limits, known: true, off: false });
+    expect(fileLimitsNow()).toEqual({ limits, known: true, off: false, old: false });
     closeRoom();
     expect(remote.limits).toBeNull();
     // (What the server said stays known.)
-    expect(fileLimitsNow()).toEqual({ limits, known: true, off: false });
+    expect(fileLimitsNow()).toEqual({ limits, known: true, off: false, old: false });
     rejoinRoom(room);
     sockets.at(-1)!.welcome({ features: ['cards', 'files'] });
     expect(remote.limits).toBeNull();
-    expect(fileLimitsNow().limits).toEqual(OLD_FILE_LIMITS);
+    expect(fileLimitsNow()).toMatchObject({ limits: OLD_FILE_LIMITS, old: true });
     closeRoom();
     expect(fileLimitsNow().limits).toEqual(OLD_FILE_LIMITS);
     prefs.buzzerServer = was;
@@ -176,5 +176,115 @@ describe('buzzerBase', () => {
     prefs.buzzerServer = 'buzz.example.workers.dev';
     expect(buzzerBase()).toBe('https://buzz.example.workers.dev');
     prefs.buzzerServer = was;
+  });
+});
+
+/** An XMLHttpRequest the test answers: how much went up, the room's answer, or a dropped connection. */
+class FakeXhr {
+  static made: FakeXhr[] = [];
+  upload: { onprogress: ((e: { lengthComputable: boolean; loaded: number; total: number }) => void) | null } = { onprogress: null };
+  onprogress: (() => void) | null = null;
+  onload: (() => void) | null = null;
+  onerror: (() => void) | null = null;
+  onabort: (() => void) | null = null;
+  status = 0;
+  responseText = '';
+  method = '';
+  url = '';
+  headers: Record<string, string> = {};
+  body: unknown;
+  constructor() {
+    FakeXhr.made.push(this);
+  }
+  open(method: string, url: string) {
+    Object.assign(this, { method, url });
+  }
+  setRequestHeader(k: string, v: string) {
+    this.headers[k] = v;
+  }
+  send(body: unknown) {
+    this.body = body;
+  }
+  abort() {
+    this.onabort?.();
+  }
+  went(loaded: number, total: number) {
+    this.upload.onprogress?.({ lengthComputable: true, loaded, total });
+  }
+  answer(status: number, body: unknown) {
+    Object.assign(this, { status, responseText: JSON.stringify(body) });
+    this.onload?.();
+  }
+}
+
+describe('uploadCardFile', () => {
+  const ID = 'c'.repeat(64);
+  function inRoom() {
+    sockets = [];
+    FakeXhr.made = [];
+    setRemoteDeps(fakeDeps().deps);
+    vi.stubGlobal('XMLHttpRequest', FakeXhr);
+    rejoinRoom(room);
+    sockets[0].welcome({ features: ['cards', 'files'] });
+  }
+  afterEach(() => {
+    closeRoom();
+    vi.unstubAllGlobals();
+    vi.useRealTimers();
+  });
+
+  it('posts the file with the host token in a header, says how much went up, and gives the room’s id', async () => {
+    inRoom();
+    const said: number[] = [];
+    const blob = new Blob(['hello'], { type: 'image/png' });
+    const up = uploadCardFile(blob, 'image/png', { onProgress: (p) => said.push(p) });
+    const x = FakeXhr.made[0];
+    expect([x.method, x.url, x.headers, x.body]).toEqual(['POST', 'https://buzz.test/api/rooms/BCDF/files', { Authorization: 'Bearer tok', 'Content-Type': 'image/png' }, blob]);
+    x.went(2, 5);
+    x.went(5, 5);
+    x.answer(200, { id: ID });
+    expect(await up).toEqual({ id: ID });
+    expect(said).toEqual([0.4, 1]);
+  });
+
+  it('a refusal says why in the room’s words; a dropped connection, that it didn’t reach the server', async () => {
+    inRoom();
+    const full = uploadCardFile(new Blob(['x']), 'image/png');
+    FakeXhr.made[0].answer(409, { error: 'This room holds all the card files it can' });
+    expect(await full).toEqual({ refused: 'full', error: 'This room holds all the card files it can' });
+    const big = uploadCardFile(new Blob(['x']), 'image/png');
+    FakeXhr.made[1].answer(413, {});
+    expect(await big).toEqual({ refused: 'big', error: 'The buzzer server said no (413)' });
+    const lost = uploadCardFile(new Blob(['x']), 'image/png');
+    FakeXhr.made[2].onerror?.();
+    expect(await lost).toEqual({ refused: 'error', error: 'Couldn’t reach the buzzer server' });
+    // (Over 100,000,000 bytes, Cloudflare turns it away first, and the page only sees the connection drop.)
+    const huge = uploadCardFile({ size: 100_000_001 } as Blob, 'video/mp4');
+    FakeXhr.made[3].onerror?.();
+    expect(await huge).toEqual({ refused: 'error', error: 'Couldn’t reach the buzzer server (Cloudflare may turn files this big away before they reach it)' });
+  });
+
+  it('stops when told (✖ Take back), and when nothing has moved for a minute (then as a dropped connection)', async () => {
+    inRoom();
+    const stop = new AbortController();
+    const up = uploadCardFile(new Blob(['x']), 'image/png', { signal: stop.signal });
+    stop.abort();
+    expect(await up).toEqual({ refused: 'error', error: 'Stopped', aborted: true });
+    // (Already stopped: nothing goes.)
+    expect(await uploadCardFile(new Blob(['x']), 'image/png', { signal: stop.signal })).toMatchObject({ aborted: true });
+    expect(FakeXhr.made).toHaveLength(1);
+    vi.useFakeTimers();
+    const stuck = uploadCardFile(new Blob(['x']), 'image/png');
+    const x = FakeXhr.made[1];
+    let done = false;
+    void stuck.then(() => (done = true));
+    vi.advanceTimersByTime(UPLOAD_STALL_MS - 1000);
+    // (Each bit that goes up puts it off.)
+    x.went(1, 2);
+    vi.advanceTimersByTime(UPLOAD_STALL_MS - 1000);
+    await Promise.resolve();
+    expect(done).toBe(false);
+    vi.advanceTimersByTime(1000);
+    expect(await stuck).toEqual({ refused: 'error', error: 'Couldn’t reach the buzzer server' });
   });
 });

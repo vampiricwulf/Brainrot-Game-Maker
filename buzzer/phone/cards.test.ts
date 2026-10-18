@@ -16,10 +16,12 @@ import {
   lateLine,
   mediaName,
   missingLine,
+  pctOf,
   playerSrc,
   readCardFile,
   retryAfter,
   roleLine,
+  waitLine,
 } from './cards';
 
 const DRIVE = '1AbCdEfGhIjKlMnOpQrStUvWxYz012345';
@@ -121,6 +123,19 @@ describe('a card’s lines', () => {
     expect(missingLine('audio')).toBe('🔊 The host will show you this sound');
     expect(brokenLine('embed')).toBe('🎞 This video didn’t load. Ask the host to show you.');
     expect(arrivedLine('image')).toBe('Your picture is here');
+  });
+
+  it('a big file on its way says how much has come; a small one, or one that didn’t say its length, doesn’t', () => {
+    const MB = 1024 * 1024;
+    expect(waitLine('video', 40 * MB * 0.4, 40 * MB)).toBe('🎞 Video coming… 40%');
+    expect(waitLine('audio', 5 * MB, 5 * MB)).toBe('🔊 Sound coming… 100%');
+    expect(waitLine('image', 0, 4 * MB + 1)).toBe('🖼 Picture coming… 0%');
+    // (Whole percents, never more than there is.)
+    expect(pctOf(10 * MB - 1, 10 * MB)).toBe(99);
+    expect(pctOf(11 * MB, 10 * MB)).toBe(100);
+    expect(waitLine('video', 1 * MB, 4 * MB)).toBe('🎞 Video coming…');
+    expect(waitLine('video', 30 * MB, 0)).toBe('🎞 Video coming…');
+    expect(waitLine('video')).toBe('🎞 Video coming…');
   });
 
   it('tells a GIF by its type, or a link’s name', () => {

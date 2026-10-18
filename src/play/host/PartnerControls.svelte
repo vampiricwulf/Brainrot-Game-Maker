@@ -31,7 +31,7 @@
   import { announce } from '../../lib/announce';
   import { copyText } from '../standings';
   import { canCopyPicture, copyCardPicture } from './cardcopy';
-  import { leftLine } from './cardrow';
+  import { leftLine, pctText, slowKinds, slowLine } from './cardrow';
   import { offerNext } from './slots.svelte';
 
   let {
@@ -293,7 +293,8 @@
   const sentCards = (): { card: ClueCard; n: number }[] => cards.flatMap((card, i) => (cardSends(s, card.id).length ? [{ card, n: i + 1 }] : []));
   /** What a phone gets for each card, and how far its files are. */
   const can = $derived(phoneCan(session));
-  const lefts = (card: ClueCard) => (cardsOn ? phoneCard(game, card, filesOn ? can : { ...can, files: null }).left : []);
+  const phoneOf = (card: ClueCard) => phoneCard(game, card, filesOn ? can : { ...can, files: null });
+  const lefts = (card: ClueCard) => (cardsOn ? phoneOf(card).left : []);
   /** The phones here now that a card was sent to but that are late for it (a new phone for the seat), by seat. */
   function lateFor(card: ClueCard): { seat: Id; by?: string }[] {
     const ids = new Set(cardSends(s, card.id).map((x) => cardId(s.clue, x)));
@@ -402,7 +403,7 @@
     if (!files.files) return null;
     const items = (c: ClueCard) => phoneCard(game, c, can).items.filter((i) => i.file);
     if (files.up >= files.files - files.failed) return files.up ? { text: `🖼 ${fileKinds((c) => items(c).filter((i) => 'file' in i.goes))} ready in the buzzer room (no phone gets ${files.up === 1 ? 'it' : 'them'} until you send)`, ready: false } : null;
-    if (files.going) return { text: `⇡ getting ${Math.min(files.files, files.up + 1)} of ${files.files - files.failed} ready…`, ready: false };
+    if (files.going) return { text: `⇡ getting ${Math.min(files.files, files.up + 1)} of ${files.files - files.failed} ready${pctText(files.progress)}…`, ready: false };
     const waiting = (c: ClueCard) => items(c).filter((i) => !i.why && 'pending' in i.goes);
     // (Named by the cards they're on: "its card" when one card has them all.)
     const withFiles = unsent.filter((c) => waiting(c).length > 0);
@@ -437,15 +438,17 @@
     const late = lateFor(card);
     const f = cardFileCounts(game, session, card);
     const out = [st === 'changed' ? 'changed:' : seen.length ? `✓ seen${seen.length < sentSeats(session, s, card.id).length ? ` by ${seen.map(name).join(', ')}` : ''}` : 'sent'];
-    if (filesOn && f.going) out.push(`uploading ${Math.min(f.files, f.up + 1)} of ${f.files - f.failed}…`);
+    if (filesOn && f.going) out.push(`uploading ${Math.min(f.files, f.up + 1)} of ${f.files - f.failed}${pctText(f.progress)}…`);
     if (late.length) {
       const whose = late.map((l) => (l.by ? `${l.by}’s phone (${name(l.seat)})` : `${name(l.seat)}’s new phone`));
       out.push(`${nameList(whose)} ${late.length > 1 ? 'haven’t' : 'hasn’t'} got it: ↻ Send again`);
     }
     return { text: out.join(' · '), ...(late.length ? { warn: true } : {}) };
   }
-  /** What of a card won't reach the phones, counted ("🖼 1 picture won't reach the phones (too big for phones)"). */
+  /** What of a card won't reach the phones, counted ("🖼 1 video won't reach the phones (too big for the buzzer server)"). */
   const leftOf = (card: ClueCard): string => leftLine(lefts(card));
+  /** What of it goes but is big for phones on mobile data, counted ("📶 1 video is big: …"). */
+  const slowOf = (card: ClueCard): string => (cardsOn ? slowLine(slowKinds(phoneOf(card).items)) : '');
 
   /**
    * The guess the guesser typed on their phone (PartnerRules.typeGuess): the guesser's now (after ⇄ Swap, not the old
@@ -689,6 +692,7 @@
           {@const st = cardsOn ? sendState(session, s, card) : 'unsent'}
           {@const state = cardsOn ? rowState(card) : null}
           {@const left = cardsOn ? leftOf(card) : ''}
+          {@const slow = slowOf(card)}
           <!-- (📋 when a player it goes to has no phone here, or the room can't put cards on phones.) -->
           {@const copying = !cardsOn || to.some((t) => !hasPhone(t.seat))}
           {@const sentNow = st === 'unsent' ? [] : sentSeats(session, s, card.id)}
@@ -766,6 +770,7 @@
             {/if}
           </div>
           {#if left}<div class="small warn left" data-card-left={n}>{left}</div>{/if}
+          {#if slow}<div class="small muted" data-card-slow={n}>{slow}</div>{/if}
         {/each}
       </div>
       {#if fullGo}<div class="small warn" data-cards-full>{cardsFullText(game, session, fullGo)}</div>{/if}

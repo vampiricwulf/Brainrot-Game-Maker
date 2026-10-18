@@ -5,7 +5,8 @@
  * - Pictures, GIFs, videos and sounds from a link load from that link (a picture with no referrer); the host's own
  *   files are fetched from the room (two at a time) with this phone's token in a header (never in an address), and
  *   shown from blob: addresses that are revoked once no card uses that file. A file on its way shows "🖼 Picture
- *   coming…" and fills in; one whose download broke off is tried again.
+ *   coming…" (a big one how much has come: "🎞 Video coming… 40%") and fills in; one whose download broke off is tried
+ *   again.
  * - A YouTube, Drive or Streamable player is framed only when its play button is tapped, and taken down on Hide.
  * - Video plays muted and inline once the card is open ("🔊 Tap for sound"); sound waits for a tap. With reduced
  *   motion, video doesn't start by itself and a GIF shows still with "▶ Play".
@@ -15,7 +16,7 @@
  */
 import { cardLink, filesUrl, isFileId, type CardMedia, type PhoneCard } from '../../src/lib/buzzproto';
 import { imageFallback } from '../../src/lib/links';
-import { arrivedLine, bigWords, brokenLine, cardBuild, cardHead, cardSame, comingLine, filesIn, isGif, mediaName, missingLine, playerSrc, readCardFile, retryAfter, roleLine } from './cards';
+import { arrivedLine, bigWords, brokenLine, cardBuild, cardHead, cardSame, comingLine, filesIn, isGif, mediaName, missingLine, pctOf, playerSrc, readCardFile, retryAfter, roleLine, waitLine } from './cards';
 
 /** What the panel needs from the page. */
 export interface PanelHost {
@@ -40,6 +41,9 @@ interface FileEntry {
   tries: number;
   ctrl?: AbortController;
   timer?: number;
+  /** How much of it has come, and its Content-Length (0: it didn't say), while it comes. */
+  got?: number;
+  total?: number;
 }
 
 /** One picture, video, sound or embed as drawn. */
@@ -326,6 +330,12 @@ function update(c: PhoneCard, d: Drawn): void {
     const was = d.slots[i];
     if (was?.key === key) return was;
     const s = slotFor(m, key);
+    // (Still on its way, how much has come: the line's words change in place.)
+    if (was?.shows === 'wait' && s.shows === 'wait') {
+      if (was.el.textContent !== s.el.textContent) was.el.textContent = s.el.textContent;
+      Object.assign(was, { key, kind: s.kind });
+      return was;
+    }
     if (was) {
       was.drop?.();
       was.el.replaceWith(s.el);
@@ -339,11 +349,11 @@ function update(c: PhoneCard, d: Drawn): void {
   open(c.id, d, isOpen);
 }
 
-/** What an item is drawn from: its own fields, and for a file, how its download stands. */
+/** What an item is drawn from: its own fields, and for a file, how its download stands (a big one's percent too). */
 function slotKey(m: CardMedia): string {
   if (!('file' in m) || !isFileId(m.file)) return JSON.stringify(m);
   const f = fetchFile(m.file);
-  return JSON.stringify([m, f.state, f.url ?? '']);
+  return JSON.stringify([m, f.state, f.url ?? '', f.state === 'loading' ? pctOf(f.got ?? 0, f.total ?? 0) : null]);
 }
 
 /** A line in an item's place: on its way ('wait'), or not coming ('gone'). */
@@ -365,7 +375,7 @@ function slotFor(m: CardMedia, key: string): Slot {
         ? mediaSlot(m, f.url, false)
         : f?.state === 'failed'
           ? line('gone', m.kind, brokenLine(m.kind))
-          : line('wait', m.kind, comingLine(m.kind));
+          : line('wait', m.kind, waitLine(m.kind, f?.got, f?.total));
   } else {
     const url = cardLink(m.url);
     s = url ? mediaSlot(m, url, true) : line('gone', m.kind, brokenLine(m.kind));
@@ -552,9 +562,13 @@ function nextFetches(): void {
   }
 }
 
+/** A big file's "… coming… 40%" is drawn again at most this often. */
+const PCT_EVERY_MS = 500;
+
 /** Fetches a card file with this phone's token in a header (never in the address); tries again a few times if it can. */
 async function load(id: string, f: FileEntry): Promise<void> {
   f.tries++;
+  f.got = f.total = 0;
   let status: number | null = null;
   const token = host!.token();
   if (token) {
@@ -568,7 +582,15 @@ async function load(id: string, f: FileEntry): Promise<void> {
       });
       status = r.status;
       if (r.ok) {
-        const blob = await readCardFile(r);
+        let drawn = 0;
+        const blob = await readCardFile(r, (got, total) => {
+          if (files.get(id) !== f) return;
+          f.got = got;
+          f.total = total;
+          if (pctOf(got, total) === null || Date.now() - drawn < PCT_EVERY_MS) return;
+          drawn = Date.now();
+          host!.redraw();
+        });
         if (files.get(id) !== f) return;
         f.url = URL.createObjectURL(blob);
         f.state = 'ok';

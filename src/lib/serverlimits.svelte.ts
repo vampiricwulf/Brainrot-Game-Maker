@@ -61,17 +61,18 @@ export function askServerFiles(base: string): void {
 
 /**
  * The card file limits to go by now: this window's room's (its welcome), when it's open on the buzzer server in use;
- * else what that server said (askServerFiles); else the defaults (`known` false). `off`: it takes no files.
+ * else what that server said (askServerFiles); else the defaults (`known` false). `off`: it takes no files. `old`: an
+ * older server, which didn't say (OLD_FILE_LIMITS).
  */
-export function fileLimitsNow(): { limits: FileLimits; known: boolean; off: boolean } {
+export function fileLimitsNow(): { limits: FileLimits; known: boolean; off: boolean; old: boolean } {
   const base = buzzerBase();
   if (base && remote.welcomed && remote.status === 'online' && serverAddress(remote.base) === base)
-    return { limits: remote.limits ?? OLD_FILE_LIMITS, known: true, off: remote.features.includes('cards') && !remote.features.includes('files') };
+    return { limits: remote.limits ?? OLD_FILE_LIMITS, known: true, off: remote.features.includes('cards') && !remote.features.includes('files'), old: !remote.limits };
   const s = base ? said[base] : undefined;
-  if (s === 'old') return { limits: OLD_FILE_LIMITS, known: true, off: false };
-  if (s === 'off') return { limits: DEFAULT_FILE_LIMITS, known: true, off: true };
-  if (s) return { limits: s.files, known: true, off: false };
-  return { limits: DEFAULT_FILE_LIMITS, known: false, off: false };
+  if (s === 'old') return { limits: OLD_FILE_LIMITS, known: true, off: false, old: true };
+  if (s === 'off') return { limits: DEFAULT_FILE_LIMITS, known: true, off: true, old: false };
+  if (s) return { limits: s.files, known: true, off: false, old: false };
+  return { limits: DEFAULT_FILE_LIMITS, known: false, off: false, old: false };
 }
 
 /** For tests: forget what every server said. */

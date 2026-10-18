@@ -26,7 +26,7 @@
   import { clueName } from '../../lib/session';
   import { copyText } from '../standings';
   import { canCopyPicture, copyCardPicture, hasPicture } from './cardcopy';
-  import { leftLine, sentLine } from './cardrow';
+  import { leftLine, sentLine, slowKinds, slowLine } from './cardrow';
 
   let {
     game,
@@ -157,7 +157,9 @@
     {@const off = !!out && leftOff.has(sentCardId(out))}
     {@const copying = !cardsOn || off || to.some((t) => !phones.has(t.seat))}
     {@const copyable = !!cardWords(card) || cardLinks(game, card).length > 0}
-    {@const left = cardsOn ? leftLine(phoneCard(game, card, filesOn ? can : { ...can, files: null }).left) : ''}
+    {@const pc = cardsOn ? phoneCard(game, card, filesOn ? can : { ...can, files: null }) : null}
+    {@const left = pc ? leftLine(pc.left) : ''}
+    {@const slow = pc ? slowLine(slowKinds(pc.items)) : ''}
     {@const state = out ? sentLine(game, session, out, filesOn, off, cardsOn) : null}
     <div class="row card" data-tile-card={n} role="group" aria-label="{clueCardWords(card, i, true)}: {state ? `${out?.label}, ${state.text}` : cardsOn ? 'not sent' : sentToText(session, to, teams)}">
       <b class="cname" title={nm}>{nm}</b>
@@ -200,6 +202,7 @@
       {/if}
     </div>
     {#if left}<div class="small warn left" data-card-left={n}>{left}</div>{/if}
+    {#if slow}<div class="small muted" data-card-slow={n}>{slow}</div>{/if}
   {/each}
   {#if full && cards.some((c) => !sentOf(c))}<div class="small warn" data-cards-full>{cardsFullText(game, session)}</div>{/if}
   {#if older}<span class="muted small">This buzzer server is older: copy the cards to them (📋).</span>{/if}

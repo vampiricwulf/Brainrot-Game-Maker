@@ -17,7 +17,7 @@
   import { clueName, findClueRef } from '../../lib/session';
   import { copyText } from '../standings';
   import { canCopyPicture, copyCardPicture, hasPicture } from './cardcopy';
-  import { leftLine, sentLine } from './cardrow';
+  import { leftLine, sentLine, slowKinds, slowLine } from './cardrow';
 
   let { game, session, dual = false, ontakeback }: { game: Game; session: Session; dual?: boolean; ontakeback: (id: Id) => void } = $props();
 
@@ -73,6 +73,7 @@
     {@const off = leftOff.has(sentCardId(c))}
     {@const state = sentLine(game, session, c, filesOn, off, cardsOn)}
     {@const left = cardsOn && slide && !off ? leftOf(slide) : ''}
+    {@const slow = cardsOn && slide && !off ? slowLine(slowKinds(phoneCard(game, slide, can).items)) : ''}
     <div class="row" data-card-out={c.label} role="group" aria-label="{c.label} to {sentToText(session, c.to, teams)}: {state.text}">
       <b>{c.label}</b>
       <span aria-hidden="true">→</span>
@@ -91,6 +92,7 @@
       <span class="muted small">· {lastsOf(c)}</span>
     </div>
     {#if left}<div class="small warn" data-card-left={c.label}>{left}</div>{/if}
+    {#if slow}<div class="small muted" data-card-slow={c.label}>{slow}</div>{/if}
     <div class="row btns">
       {#if cardsOn && !off}
         <button class="small" onclick={() => again(c)} aria-label="Send {c.label} again" title="Sends it again under a new id: a phone that came late (a player on a new phone) gets it too">↻ Send again</button>

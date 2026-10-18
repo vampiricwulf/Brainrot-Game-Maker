@@ -232,31 +232,95 @@ export const roomHasFiles = (): boolean => roomHasCards() && remote.features.inc
 /** Why the room turned a card file down (its HTTP answer): plain words for each, and whether trying again may help. */
 export type UploadRefusal = 'full' | 'big' | 'kind' | 'busy' | 'off' | 'room' | 'error';
 
+/** An upload with no bytes going up (nor an answer coming) for this long is stuck: stopped, and taken as a network blip. */
+export const UPLOAD_STALL_MS = 60_000;
+/**
+ * Cloudflare turns away a request body over this (its Free and Pro plans' limit) before it reaches the buzzer server,
+ * with no CORS headers, so the page only sees the connection drop.
+ */
+const CLOUDFLARE_BODY_MAX = 100_000_000;
+/** What an upload came to: the room's id for the file, or why not (`aborted`: stopped from here). */
+export type UploadAnswer = { id: string } | { refused: UploadRefusal; error: string; aborted?: true };
+
 /**
  * Upload one 🤫 card file to the room this window is in (POST …/files, the host token in a header, never in the
- * address): its id there, or why not. Only a send or ⇡ Get it ready gets here (cardfiles.svelte.ts).
+ * address): its id there, or why not. Only a send or ⇡ Get it ready gets here (cardfiles.svelte.ts). `onProgress`
+ * hears how much of it went up (0 to 1); `signal` stops it ({ aborted: true }).
  */
-export async function uploadCardFile(blob: Blob, type: string): Promise<{ id: string } | { refused: UploadRefusal; error: string }> {
+export function uploadCardFile(
+  blob: Blob,
+  type: string,
+  { onProgress, signal }: { onProgress?: (done: number) => void; signal?: AbortSignal } = {},
+): Promise<UploadAnswer> {
   const room = link?.room;
-  if (!room || !remote.base) return { refused: 'room', error: 'The buzzer room isn’t open' };
-  try {
-    const res = await fetch(filesUrl(remote.base, room.code), { method: 'POST', headers: { Authorization: `Bearer ${room.hostToken}`, 'Content-Type': type }, body: blob });
-    const body: unknown = await res.json().catch(() => null);
-    const said = typeof body === 'object' && body && 'error' in body && typeof body.error === 'string' ? body.error.slice(0, 200) : '';
-    const id = typeof body === 'object' && body && 'id' in body && typeof body.id === 'string' ? body.id : '';
-    if (res.ok && /^[0-9a-f]{64}$/.test(id)) {
-      // (The room holds it now: its 'files' list says so in a moment; until then, so does this.)
-      if (link?.room === room && link.files && !link.files.includes(id)) {
-        link.files = [...link.files, id];
-        sync();
+  if (!room || !remote.base) return Promise.resolve({ refused: 'room', error: 'The buzzer room isn’t open' });
+  if (signal?.aborted) return Promise.resolve({ refused: 'error', error: 'Stopped', aborted: true });
+  const base = remote.base;
+  return new Promise((done) => {
+    // (XMLHttpRequest, not fetch: only it says how much of a body went up.)
+    const x = new XMLHttpRequest();
+    let stall: ReturnType<typeof setTimeout> | undefined;
+    let stalled = false;
+    let over = false;
+    const unreached = () => ({
+      refused: 'error' as const,
+      error: blob.size > CLOUDFLARE_BODY_MAX ? 'Couldn’t reach the buzzer server (Cloudflare may turn files this big away before they reach it)' : 'Couldn’t reach the buzzer server',
+    });
+    const end = (r: UploadAnswer) => {
+      if (over) return;
+      over = true;
+      clearTimeout(stall);
+      signal?.removeEventListener('abort', stop);
+      done(r);
+    };
+    const stop = () => x.abort();
+    // (Each bit that goes up, or comes back, puts off the stall.)
+    const moved = () => {
+      clearTimeout(stall);
+      stall = setTimeout(() => {
+        stalled = true;
+        x.abort();
+      }, UPLOAD_STALL_MS);
+    };
+    x.upload.onprogress = (e) => {
+      moved();
+      if (e.lengthComputable && e.total > 0) onProgress?.(Math.min(1, e.loaded / e.total));
+    };
+    x.onprogress = moved;
+    x.onerror = () => end(unreached());
+    x.onabort = () => end(stalled ? unreached() : { refused: 'error', error: 'Stopped', aborted: true });
+    x.onload = () => {
+      let body: unknown = null;
+      try {
+        body = JSON.parse(x.responseText);
+      } catch {
+        // (Not JSON: said by its status.)
       }
-      return { id };
+      const said = typeof body === 'object' && body && 'error' in body && typeof body.error === 'string' ? body.error.slice(0, 200) : '';
+      const id = typeof body === 'object' && body && 'id' in body && typeof body.id === 'string' ? body.id : '';
+      if (x.status >= 200 && x.status < 300 && /^[0-9a-f]{64}$/.test(id)) {
+        // (The room holds it now: its 'files' list says so in a moment; until then, so does this.)
+        if (link?.room === room && link.files && !link.files.includes(id)) {
+          link.files = [...link.files, id];
+          sync();
+        }
+        return end({ id });
+      }
+      const s = x.status;
+      const refused: UploadRefusal = s === 409 ? 'full' : s === 413 ? 'big' : s === 415 ? 'kind' : s === 429 ? 'busy' : s === 503 ? 'off' : s === 401 ? 'room' : 'error';
+      end({ refused, error: said || `The buzzer server said no (${s})` });
+    };
+    signal?.addEventListener('abort', stop);
+    try {
+      x.open('POST', filesUrl(base, room.code));
+      x.setRequestHeader('Authorization', `Bearer ${room.hostToken}`);
+      x.setRequestHeader('Content-Type', type);
+      moved();
+      x.send(blob);
+    } catch {
+      end(unreached());
     }
-    const refused: UploadRefusal = res.status === 409 ? 'full' : res.status === 413 ? 'big' : res.status === 415 ? 'kind' : res.status === 429 ? 'busy' : res.status === 503 ? 'off' : res.status === 401 ? 'room' : 'error';
-    return { refused, error: said || `The buzzer server said no (${res.status})` };
-  } catch {
-    return { refused: 'error', error: 'Couldn’t reach the buzzer server' };
-  }
+  });
 }
 
 /** ✖ Take back: the room deletes these card files now (only those no card still out uses). */

@@ -2,10 +2,11 @@
 // buzzer room for the phones the card is sent to. Only the host's presses start an upload: a send (a partner clue's
 // sent cards, and the cards out with 🤫 Send a card… or from a tile's panel: Session.cards) or ⇡ Get it ready
 // (PartnerState.ready); a reload only finishes what one of those started (filesWanted). Pictures are shrunk here first;
-// one file goes up at a time. The panel counts them ("uploading 1 of 2…") and never names them.
-import { fileType, mbText } from './buzzproto';
+// one file goes up at a time, and stops as soon as no card wants it. One the room holds already isn't sent again. The
+// panel counts them ("uploading 1 of 2 (34%)…") and never names them.
+import { fileType, isFileId, mbText, SLOW_FILE_BYTES } from './buzzproto';
 import { canvasToBlob, loadImage } from './imageedit';
-import { storedBlob } from './media.svelte';
+import { fileDigest, storedBlob } from './media.svelte';
 import type { Clue, Game, Id, PartnerState, Session, Slide } from './model';
 import { cardHash, cardSends, cardSlides, filesWanted } from './partner';
 import { filesToSend, phoneCard, shrinks, type LeftOut, type PhoneCan } from './phonecard';
@@ -27,15 +28,21 @@ interface Upload {
   tries?: number;
   /** Waiting until then (Date.now()) after such a try: its timer lifts it. */
   after?: number;
+  /** How much of it went up (0 to 1), while it goes. */
+  progress?: number;
 }
 
 /** A file that didn't reach the buzzer server goes again this many times (5 s, 10 s, then 15 s later), then no more. */
 const RETRIES = 3;
+/** A big one (over SLOW_FILE_BYTES) only once more: each try may take minutes on a slow line. */
+const RETRIES_BIG = 1;
 
 export const uploads = $state<{ jobs: Record<Id, Upload> }>({ jobs: {} });
 
 /** Whether one is going up now (one at a time). */
 let busy = false;
+/** The one going up now (by media id), and what stops it. */
+let going: { id: Id; stop: AbortController } | null = null;
 
 /** The files the room holds now (its id for each, by media id), or null when it takes none. */
 export function heldFiles(session: Pick<Session, 'remote'>): Record<Id, string> | null {
@@ -101,6 +108,8 @@ export function syncUploads(game: Game, session: Session, clue: Clue | undefined
   const mine = (slide: Slide) => phoneCard(game, slide, { ...can, files: {} }).items.flatMap((i) => (i.file && i.media ? [i.media] : []));
   wantedNow = new Set([...(live ? cardsWanting(game, session, clue!, s!) : []), ...sent.flatMap(mine)]);
   for (const [id, j] of Object.entries(uploads.jobs)) if (j.state === 'waiting' && !wantedNow.has(id)) delete uploads.jobs[id];
+  // (The one going up stops too: next() then drops it.)
+  if (going && !wantedNow.has(going.id)) going.stop.abort();
   const held = heldFiles(session);
   if ((!live && !sent.length) || !code || !held || remote.status !== 'online') return;
   const failed = failedFiles(session);
@@ -152,8 +161,15 @@ async function next(game: Game, session: Session): Promise<void> {
   const [id, job] = entry;
   busy = true;
   job.state = 'uploading';
+  const stop = new AbortController();
+  going = { id, stop };
   try {
-    const r = await putFile(game, id);
+    // (Kept in whole percents: the panels show no more, and each change draws them again.)
+    const onProgress = (p: number) => {
+      if (Math.floor(p * 100) !== Math.floor((job.progress ?? -1) * 100)) job.progress = p;
+    };
+    const r = await putFile(game, id, { signal: stop.signal, onProgress });
+    delete job.progress;
     const room = session.remote;
     if (job.code !== room?.code) return;
     if ('id' in r) {
@@ -165,7 +181,7 @@ async function next(game: Game, session: Session): Promise<void> {
     } else if (r.retry && !wantedNow.has(id)) {
       // Its card was taken back (or the tile closed) while it went: no use trying again.
       delete uploads.jobs[id];
-    } else if (r.retry && (job.tries ?? 0) < RETRIES) {
+    } else if (r.retry && (job.tries ?? 0) < (r.bytes > SLOW_FILE_BYTES ? RETRIES_BIG : RETRIES)) {
       // (Not one the server turned down: off, too busy today, too big… That goes the same way again.)
       const tries = (job.tries ?? 0) + 1;
       const wait = 5000 * tries;
@@ -178,29 +194,45 @@ async function next(game: Game, session: Session): Promise<void> {
     } else Object.assign(job, { state: 'failed', why: r.why, error: r.error });
   } finally {
     busy = false;
+    going = null;
     void next(game, session);
   }
 }
 
-/** One file of the game into the room: a picture shrunk first, anything else as it is (if phones take its type and size). */
-async function putFile(game: Game, id: Id): Promise<{ id: string } | { why: LeftOut; error: string; retry?: boolean }> {
+/**
+ * One file of the game into the room: a picture shrunk first, anything else as it is (if phones take its type and
+ * size), unless the room holds it already (another card's, or one whose answer was lost on the way). `retry`: it didn't
+ * reach the buzzer server (or was stopped); `bytes`: how big what goes up is.
+ */
+async function putFile(
+  game: Game,
+  id: Id,
+  opts: { signal?: AbortSignal; onProgress?: (done: number) => void } = {},
+): Promise<{ id: string } | { why: LeftOut; error: string; retry?: boolean; bytes: number }> {
   const ref = game.media.find((m) => m.id === id);
   const blob = await storedBlob(id);
-  if (!ref || !blob) return { why: 'lost', error: 'That file isn’t in this game any more' };
+  if (!ref || !blob) return { why: 'lost', error: 'That file isn’t in this game any more', bytes: 0 };
   const kind = ref.kind === 'image' ? (/gif/i.test(ref.mime) || /\.gif$/i.test(ref.name) ? 'gif' : 'picture') : ref.kind === 'video' ? 'video' : 'sound';
   let body: Blob = blob;
   let type: string | null = fileType(ref.mime) ?? fileType(blob.type);
   if (shrinks({ kind })) {
     const small = await shrink(blob).catch(() => null);
-    if (!small) return { why: 'kind', error: 'This picture can’t be read here' };
+    if (!small) return { why: 'kind', error: 'This picture can’t be read here', bytes: 0 };
     ({ blob: body, type } = small);
   }
-  if (!type) return { why: 'kind', error: 'Phones don’t take this kind of file' };
+  const bytes = body.size;
+  if (!type) return { why: 'kind', error: 'Phones don’t take this kind of file', bytes };
   const max = fileLimitsNow().limits.fileBytes;
-  if (body.size > max) return { why: 'big', error: `Too big for the buzzer server (${mbText(max)} at most)` };
-  const r = await uploadCardFile(body, type);
+  if (bytes > max) return { why: 'big', error: `Too big for the buzzer server (${mbText(max)} at most)`, bytes };
+  // (Its id in the room is its SHA-256. A page with no Web Crypto (not https) just sends it.)
+  if (globalThis.crypto?.subtle) {
+    const have = await fileDigest(body).catch(() => '');
+    if (isFileId(have) && remote.files?.includes(have)) return { id: have };
+  }
+  if (opts.signal?.aborted) return { why: 'failed', error: 'Stopped', retry: true, bytes };
+  const r = await uploadCardFile(body, type, opts);
   if ('id' in r) return r;
-  return { why: r.refused === 'big' ? 'big' : r.refused === 'kind' ? 'kind' : r.refused === 'full' ? 'full' : 'failed', error: r.error, retry: r.refused === 'error' };
+  return { why: r.refused === 'big' ? 'big' : r.refused === 'kind' ? 'kind' : r.refused === 'full' ? 'full' : 'failed', error: r.error, retry: r.refused === 'error', bytes };
 }
 
 /**
@@ -237,27 +269,44 @@ async function shrink(blob: Blob): Promise<{ blob: Blob; type: string }> {
 /**
  * How a card's files stand, counted for the panel (never named): `files` going up from this computer in all, how many
  * are `up`, `going` up now or waiting their turn, and `failed` (turned down, too big, or a kind phones don't take).
+ * `progress`: how much of the one going up now went (0 to 1), once it has said.
  */
-export function cardFileCounts(game: Game, session: Session, card: Slide): { files: number; up: number; going: number; failed: number } {
+export interface FileCounts {
+  files: number;
+  up: number;
+  going: number;
+  failed: number;
+  progress?: number;
+}
+
+export function cardFileCounts(game: Game, session: Session, card: Slide): FileCounts {
   const code = session.remote?.code;
   const items = phoneCard(game, card, phoneCan(session)).items.filter((i) => i.file);
   // (Only what's moving: a file up once that the room let go of since is pending again, not on its way.)
-  const going = items.filter((i) => {
+  const moving = items.flatMap((i) => {
     const j = i.media ? uploads.jobs[i.media] : undefined;
-    return !i.why && 'pending' in i.goes && !!j && j.code === code && (j.state === 'waiting' || j.state === 'uploading');
-  }).length;
-  return { files: items.length, up: items.filter((i) => 'file' in i.goes).length, going, failed: items.filter((i) => i.why).length };
+    return !i.why && 'pending' in i.goes && !!j && j.code === code && (j.state === 'waiting' || j.state === 'uploading') ? [j] : [];
+  });
+  const progress = moving.find((j) => j.state === 'uploading' && j.progress !== undefined)?.progress;
+  return {
+    files: items.length,
+    up: items.filter((i) => 'file' in i.goes).length,
+    going: moving.length,
+    failed: items.filter((i) => i.why).length,
+    ...(progress !== undefined ? { progress } : {}),
+  };
 }
 
 /** Cards' files from this computer, counted together (the clue's not sent yet: what ⇡ Get it ready puts in the room). */
-export function filesCounted(game: Game, session: Session, cards: Slide[]): { files: number; up: number; going: number; failed: number } {
-  const all = { files: 0, up: 0, going: 0, failed: 0 };
+export function filesCounted(game: Game, session: Session, cards: Slide[]): FileCounts {
+  const all: FileCounts = { files: 0, up: 0, going: 0, failed: 0 };
   for (const card of cards) {
     const c = cardFileCounts(game, session, card);
     all.files += c.files;
     all.up += c.up;
     all.going += c.going;
     all.failed += c.failed;
+    if (c.progress !== undefined) all.progress = c.progress;
   }
   return all;
 }
