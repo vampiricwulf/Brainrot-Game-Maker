@@ -131,6 +131,8 @@ export interface CardRoom {
    * Problem.convert.
    */
   plays?: (m: MediaRef) => Verdict | undefined;
+  /** False where there's no ↻ (in play): a file phones can't open that ↻ would repackage gets 🗜's words instead. */
+  repack?: boolean;
 }
 
 /** What validate goes by: the buzzer server in use, and whether files play here (CardRoom). */
@@ -503,7 +505,7 @@ function cardFileProblems(game: Game, card: Slide, room: CardRoom): CardFileProb
       const types = 'add it as MP4, WebM, MP3, OGG, WAV or M4A, or from a link';
       // (The same video and sound in a type phones open, nothing lost: one file, so no copy is needed.)
       const v = ref ? room.plays?.(ref) : undefined;
-      const repack = v?.is === 'plays' ? v.repack : null;
+      const repack = v?.is === 'plays' && room.repack !== false ? v.repack : null;
       if (ref && repack) out.push({ text: `a ${KIND[it.kind]} phones can't open: repackage it as ${aOrAn(fixBoxName(repack.box))} (↻, nothing lost), or ${types}`, level: 'warn', convert: [ref.id] });
       else out.push({ text: `a ${KIND[it.kind]} phones can't play: ${shrink.shrink ? `make a copy they can play (🗜), or ${types}` : types}`, level: 'warn', ...shrink });
     }

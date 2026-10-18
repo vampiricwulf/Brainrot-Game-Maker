@@ -15,6 +15,10 @@
 // 9. The handles are sliders saying their time, I and O set the trim at the playhead, Esc asks before throwing edits
 //    away.
 // 10. A 🤫 card's file with a 🗜 copy for phones: the copy goes with the edit, and a new one is made after.
+// 11. Over the clue editor (from the Inspector), the window keeps the keys: after Remove crop the focus is on ✂ Crop;
+//     with the focus lost to the page, arrows and Delete leave the item under it alone, and an Esc from outside both
+//     doesn't close the clue; Ctrl+Enter in the End box applies the time just typed; while it's open after Apply, the
+//     editor under it stays inert, the focus is on Close, and Esc closes the window only.
 // Then: no toast, History row or pill names a file. 5. ▶ Play while an edit is saved asks first: Keep working stays,
 // Stop it and play starts the game with the file unchanged.
 import { chromium } from 'playwright-core';
@@ -454,6 +458,58 @@ try {
   await toasted('🗜 Phones get the smaller copy now');
   const g10b = await draftWhen((g) => g.media.some((m) => m.phoneCopy?.of === cardNew.id), 'a new copy');
   assert(g10b.media.some((m) => m.phoneCopy?.of === cardNew.id), 'and a 🗜 job made a new one, of the edited file');
+
+  // ---------- 11. Over the clue editor, the window keeps the keys ----------
+  console.log('11. Keys stay in the window over the clue editor:');
+  await page.getByRole('button', { name: 'Round 1', exact: true }).click();
+  await page.locator('.grid .tile').nth(4).click();
+  await clueEditor.waitFor();
+  const at11 = await clueEditor.locator(`.slide .el[data-el="${items.p1.id}"]`).boundingBox();
+  await page.mouse.click(at11.x + at11.width / 2, at11.y + at11.height / 2);
+  await clueEditor.locator('.insp [data-edit-media]').click();
+  await dialog.locator('[data-trimbar]').waitFor({ timeout: 30_000 });
+  const focused = () => page.evaluate(() => (document.activeElement === document.body ? 'the page' : (document.activeElement?.textContent?.trim().slice(0, 40) ?? 'nothing')));
+  await dialog.getByRole('button', { name: '✂ Crop' }).click();
+  await dialog.getByRole('button', { name: 'Remove crop' }).click();
+  await page.waitForFunction(() => document.activeElement?.textContent?.trim() === '✂ Crop', null, { timeout: 5000 }).catch(async () => {
+    throw new Error(`After Remove crop the focus is on “${await focused()}”, not ✂ Crop`);
+  });
+  assert(true, 'Remove crop: the focus goes to ✂ Crop');
+  const rectOf = () => page.evaluate((id) => {
+    const r = document.querySelector(`.slide .el[data-el="${id}"]`)?.getBoundingClientRect();
+    return r ? `${Math.round(r.x)},${Math.round(r.y)}` : 'gone';
+  }, items.p1.id);
+  const was11 = await rectOf();
+  await page.evaluate(() => document.activeElement instanceof HTMLElement && document.activeElement.blur());
+  for (let i = 0; i < 5; i++) await page.keyboard.press('ArrowRight');
+  await page.keyboard.press('Delete');
+  // (A key from outside both, as from a toast's button: the clue under the window stays open.)
+  await page.evaluate(() => document.documentElement.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true })));
+  // The trim typed: 0.3 in Start (Enter), then 1.2 in End and Ctrl+Enter there, without leaving it.
+  await dialog.locator('[data-trim-start]').fill('0.3');
+  await dialog.locator('[data-trim-start]').press('Enter');
+  await dialog.locator('[data-trim-end]').fill('1.2');
+  await dialog.locator('[data-trim-end]').press('Control+Enter');
+  await dialog.locator('[data-edit-done], [data-edit-failed]').waitFor({ timeout: 90_000 });
+  const done11 = (await dialog.locator('[data-edit-done], [data-edit-failed]').innerText()).trim();
+  assert(done11.startsWith('✓ 0.9 s'), `Ctrl+Enter in End: the trim with the end just typed, 0.3–1.2 (${done11})`);
+  assert((await rectOf()) === was11, `arrows and Delete with the focus lost left the item under the window where it was (${was11} → ${await rectOf()})`);
+  assert(await clueEditor.isVisible(), 'and an Esc from outside both left the clue open');
+  assert(await page.evaluate(() => document.querySelector('.editor > .body')?.inert === true), 'after Apply, the editor under the window is still inert');
+  await page.waitForFunction(() => document.activeElement?.textContent?.trim() === 'Close' && !!document.activeElement.closest('[data-media-edit]'), null, { timeout: 5000 }).catch(async () => {
+    throw new Error(`Once done the focus is on “${await focused()}”, not Close`);
+  });
+  assert(true, 'once done the focus is on Close');
+  await page.keyboard.press('Escape');
+  await dialog.waitFor({ state: 'detached' });
+  assert(await clueEditor.isVisible(), 'Esc closes the window, not the clue under it');
+  await clueEditor.getByRole('button', { name: 'Close' }).last().click();
+  await clueEditor.waitFor({ state: 'detached' });
+  const g11 = await draftWhen((g) => itemsOf(g)[items.p1.id]?.media !== pairNew.id, 'the item on its trimmed file');
+  const p11 = itemsOf(g11)[items.p1.id];
+  assert(p11 && p11.x === items.p1.x && p11.y === items.p1.y, `the stored item is where it was (${p11?.x}, ${p11?.y})`);
+  const read11 = await readBack(fx, await bytesOf(p11.media));
+  assert(near(read11.seconds, 0.9, 0.12), `the file lasts 0.9 s (${read11.seconds})`);
 
   // ---------- No toast, History row or pill named a file ----------
   const named = (list) => list.filter((t) => NAMES.some((n) => t.includes(n)));

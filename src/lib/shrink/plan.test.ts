@@ -467,6 +467,9 @@ describe('how 🔄 Convert makes a file that plays here', () => {
     expect(p.out.sound).toBe(false);
     // 1 MB, less 10 s at 400 kbps (500 KB).
     expect(p.estimate).toBe(Math.round(1_000_000 * 1.01 - 500_000));
+    // A sound whose own rate the file doesn't say: the file's 800 kbps less the picture's 600 (250 KB for 10 s).
+    const unsaid = facts('mkv', pic('vp9', { bps: 600_000 }), snd('ac3', { bps: null, decodes: false, cpt: false }), { element: { opens: 'yes', picture: true, sound: 'no' } });
+    expect(planFor(unsaid, 'video', 'video/x-matroska').estimate).toBe(Math.round(1_000_000 * 1.01 - 250_000));
   });
 
   it('a sound file with a picture in it (an MP3’s cover) leaves the picture out', () => {
@@ -627,6 +630,9 @@ describe('✎ Edit: what an edit makes', () => {
     expect([crop.notes, crop.aspect]).toEqual([[], { was: 16 / 9, now: 960 / 1080 }]);
     // H.264 goes with AAC: an Opus sound becomes AAC where it can be made.
     expect(plan(webm, { short: 720 }, { can: WINDOWS, enc: AVC }).run).toMatchObject({ box: 'mp4', video: { codec: 'avc' }, audio: { codec: 'aac', bitrate: 128_000 } });
+    // Where it can't (an H.264 encoder but no AAC one, as Chrome on Linux): VP9 in a WebM, the Opus copied as it is.
+    const noAac = plan(webm, { short: 720 }, { can: CHROMIUM, enc: AVC });
+    expect([noAac.run.box, noAac.run.video?.codec, noAac.run.audio, noAac.format]).toEqual(['webm', 'vp9', undefined, 'WebM (VP9, Opus)']);
     // Over 61 frames a second: 60.
     expect(plan(facts('mp4', pic('avc', { fps: 120 }), null), { short: 720 }).run.video?.frameRate).toBe(60);
     expect(plan(mp4, { short: 720 }).run.video?.frameRate).toBeUndefined();
@@ -657,10 +663,11 @@ describe('✎ Edit: what an edit makes', () => {
     expect(plan(mp4, { start: 1, sound: false }).run.audio).toEqual({ discard: true });
   });
 
-  it('a sound file keeps its own type, its trim always copied; a picture in it is left out', () => {
+  it('a sound file keeps its own type, its trim always copied (moved by two of its pieces at most); a picture in it is left out', () => {
     const mp3 = facts('mp3', null, snd('mp3'), { size: 1_000_000 });
+    // (An MP3 can't start partway into a piece, nor before its start: it starts at the first piece in the part kept.)
     expect(plan(mp3, { start: 3, end: 8 }, { kind: 'audio' })).toMatchObject({
-      run: { box: 'mp3', video: { discard: true }, trim: { start: 3, end: 8 }, copy: { shiftTolerance: 0.1 } },
+      run: { box: 'mp3', video: { discard: true }, trim: { start: 3, end: 8 }, copy: { shiftTolerance: 0.2, boundaryPolicy: 'shrink' } },
       mime: 'audio/mpeg',
       copied: true,
       format: 'MP3 (MP3)',
@@ -676,8 +683,12 @@ describe('✎ Edit: what an edit makes', () => {
       ['m4a', 'audio/mp4'],
       ['flac', 'audio/flac'],
     ]);
-    // A video file with no picture stays a video file.
+    // A video file with no picture stays a video file (its sound alone, moved by two pieces at most).
     expect(plan(facts('mp4', null, snd('aac')), { start: 1 }).mime).toBe('video/mp4');
+    expect(plan(facts('mp4', null, snd('aac')), { start: 1 }).run.copy).toEqual({ shiftTolerance: 0.2 });
+    expect(plan(facts('flac', null, snd('flac')), { start: 1 }, { kind: 'audio' }).run.copy).toEqual({ shiftTolerance: 0.2 });
+    // A sound file with a picture (an MP3's cover) too: the picture is left out.
+    expect(plan(facts('mp4', pic('avc'), snd('aac')), { start: 1 }, { kind: 'audio' }).run.copy).toEqual({ shiftTolerance: 0.2 });
     // Uncompressed sound is made again as it was: cut to the sample, nothing lost.
     const pcm = plan(facts('wav', null, snd('pcm-s16')), { start: 1, end: 3 }, { kind: 'audio' });
     expect([pcm.run.audio, pcm.copied, pcm.format]).toEqual([{ codec: 'pcm-s16', forceTranscode: true }, true, 'WAV (PCM (uncompressed))']);
@@ -690,6 +701,18 @@ describe('✎ Edit: what an edit makes', () => {
     // Made again: the picture's new rate and the sound's own, for the 5 s.
     const p = plan(mp4, { start: 2, end: 7, short: 720 }, { can: WINDOWS, enc: AVC });
     expect(p.estimate).toBe(estimateBytes(p.run.video!.bitrate! + 128_000, 5));
+    // A WebM that says neither track's rate (most don't), trimmed to 0–7 of 9 s without its sound: about the 7 s of
+    // the file less 128 kbps of sound, not a twentieth of it.
+    const unsaid = facts('webm', pic('vp9', { bps: null }), snd('opus', { bps: null }), { seconds: 9, size: 25_900_000 });
+    const silent = plan(unsaid, { end: 7, sound: false });
+    const near = (25_900_000 * 7) / 9 - (128_000 * 7) / 8;
+    expect(Math.abs(silent.estimate - near) / near).toBeLessThan(0.1);
+    // (Kept, the sound beside a picture made again is charged about 128 kbps, not the whole file's rate.)
+    const crop = plan(unsaid, { end: 7, short: 360 });
+    expect(crop.estimate).toBe(estimateBytes(crop.run.video!.bitrate! + 128_000, 7));
+    // (A sound left out of a file whose picture's rate is said: the file's rate less the picture's.)
+    const said = facts('webm', pic('vp9', { bps: 20_000_000 }), snd('opus', { bps: null }), { seconds: 10, size: 25_200_000 });
+    expect(plan(said, { end: 5, sound: false }).estimate).toBe(Math.round(25_200_000 * 0.5 * 1.01 - (160_000 * 5) / 8));
     // Over 2 GB: a pack can't hold it.
     const big = facts('mp4', pic('avc'), snd('aac'), { size: 3 * 1024 ** 3 });
     expect(plan(big, { start: 1 }).notes.at(-1)).toMatch(/^About 2\.\d GB: a \.brainrot pack this big can’t be opened again \(2 GB at most\)\.$/);

@@ -140,3 +140,15 @@ export function shortWhy(v: Verdict): string {
 
 /** "video and sound", "video", "sound": what a fix keeps of a file. */
 export const tracksOf = (f: Fix): string => (f.video && f.audio && f.audio !== 'drop' ? 'video and sound' : f.video ? 'video' : 'sound');
+
+/**
+ * Files just added that don't play here, several of them, in a few words: "2 files you just added won't play in this
+ * browser", "… play without their sound in this browser" (each plays, silent), or "… won't play in this browser, or
+ * play without their sound" (some of each).
+ */
+export function severalText(is: ('fails' | 'silent')[]): string {
+  const silent = is.filter((x) => x === 'silent').length;
+  const head = `${is.length} files you just added`;
+  if (silent === is.length) return `${head} play without their sound in this browser`;
+  return silent ? `${head} won’t play in this browser, or play without their sound` : `${head} won’t play in this browser`;
+}

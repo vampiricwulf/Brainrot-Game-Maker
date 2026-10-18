@@ -3,8 +3,9 @@
 // it, and 🔄's repackaging (an MKV into a WebM, an MPEG-TS's MP3 into an MP4: tracks copied as they are). Making
 // videos (WebCodecs) is checked in the test browser (tests/e2e/phonecopies.mjs, convert.mjs).
 import { BufferTarget } from 'mediabunny';
-import { describe, expect, it } from 'vitest';
-import { keyBefore, readFacts } from './facts';
+import { describe, expect, it, vi } from 'vitest';
+import { canPlayTrack, keyBefore, readFacts } from './facts';
+import { verdict } from './playable';
 import { noEdit, planEdit, type FileEdit } from './plan';
 import { checkMade, convertBlob, discardReason, RunError, type RunPlan } from './run';
 import { mux, muxTs } from './testclip';
@@ -32,6 +33,40 @@ function wav(seconds: number, channels = 1): Blob {
   return new Blob([b.buffer], { type: 'audio/wav' });
 }
 
+/** A WAV of `seconds` of 8-bit μ-law (format 7) or A-law (6) sound at 8 kHz, as phones and voicemail save. */
+function lawWav(format: 6 | 7, seconds: number): Blob {
+  const rate = 8000;
+  const n = rate * seconds;
+  const b = new DataView(new ArrayBuffer(44 + n));
+  const text = (at: number, s: string) => [...s].forEach((c, i) => b.setUint8(at + i, c.charCodeAt(0)));
+  text(0, 'RIFF');
+  b.setUint32(4, 36 + n, true);
+  text(8, 'WAVE');
+  text(12, 'fmt ');
+  b.setUint32(16, 16, true);
+  b.setUint16(20, format, true);
+  b.setUint16(22, 1, true);
+  b.setUint32(24, rate, true);
+  b.setUint32(28, rate, true);
+  b.setUint16(32, 1, true);
+  b.setUint16(34, 8, true);
+  text(36, 'data');
+  b.setUint32(40, n, true);
+  for (let i = 0; i < n; i++) b.setUint8(44 + i, Math.round(128 + 100 * Math.sin(i / 3)) & 255);
+  return new Blob([b.buffer], { type: 'audio/wav' });
+}
+
+/** An MP3 of `seconds` of silence at 8 kHz, one channel, 8 kbps: 72-byte pieces of 72 ms each. */
+function mp3At8k(seconds: number): Blob {
+  // (MPEG-2.5 layer III, no CRC; 8 kbps, 8 kHz; one channel; the rest zeros: silence.)
+  const piece = new Uint8Array(72);
+  piece.set([0xff, 0xe3, 0x18, 0xc0]);
+  const n = Math.ceil((seconds * 8000) / 576);
+  const b = new Uint8Array(72 * n);
+  for (let i = 0; i < n; i++) b.set(piece, i * 72);
+  return new Blob([b], { type: 'audio/mpeg' });
+}
+
 const ctl = (signal = new AbortController().signal) => {
   const said: number[] = [];
   return { said, ctl: { signal, progress: (p: number) => said.push(p) } };
@@ -46,6 +81,24 @@ describe('readFacts', () => {
     expect(f.audio).toMatchObject({ codec: 'pcm-s16', channels: 2, decodes: true });
     // (Its bitrate from its size over its length, header and all.)
     expect(Math.abs(f.audio!.bps! - 256_000)).toBeLessThan(1000);
+  });
+
+  it('a μ-law or A-law WAV (phone and voicemail recordings) plays where a browser plays WAVs', async () => {
+    // (A browser here: its <audio> plays WAVs, of any kind of uncompressed sound; its <video> says nothing.)
+    vi.stubGlobal('document', { createElement: (tag: string) => ({ canPlayType: (t: string) => (tag === 'audio' && t === 'audio/wav' ? 'maybe' : '') }) });
+    try {
+      for (const [tag, codec] of [
+        [7, 'ulaw'],
+        [6, 'alaw'],
+      ] as const) {
+        const f = await readFacts(lawWav(tag, 2));
+        expect(f).toMatchObject({ box: 'wav', audio: { codec, cpt: true } });
+        expect(verdict(f, { ok: true, aac: false, opus: true }, 'audio', 'audio/wav')).toEqual({ is: 'plays', repack: null });
+        expect(canPlayTrack(codec, null)).toBe(true);
+      }
+    } finally {
+      vi.unstubAllGlobals();
+    }
   });
 
   it('says it can’t read one that isn’t a media file', async () => {
@@ -176,6 +229,23 @@ describe('✎ Edit’s plans, made (card-files spec §4.11.4)', () => {
     const made = await convertBlob(blob, p.run, p.mime, ctl().ctl);
     expect([made.mime, made.seconds]).toEqual(['audio/wav', 2]);
     expect(await readFacts(made.blob)).toMatchObject({ box: 'wav', audio: { codec: 'pcm-s16' } });
+  });
+
+  it('an 8 kHz MP3 (a voice memo) trimmed anywhere, nothing re-encoded: its pieces are 72 ms, and an MP3 can’t start partway into one', async () => {
+    const blob = mp3At8k(4);
+    const f = await readFacts(blob, { duration: 'compute' });
+    const failed: string[] = [];
+    for (let i = 1; i <= 20; i++) {
+      const start = i / 10;
+      const p = plan(f, { start, end: 3 }, 'audio');
+      const made = await convertBlob(blob, p.run, p.mime, ctl().ctl).catch((e: RunError) => e);
+      if (made instanceof Error) failed.push(`${start}: ${made.reason}`);
+      else {
+        const bad = await checkMade(made, p.out, opens);
+        if (bad) failed.push(`${start}: ${bad}`);
+      }
+    }
+    expect(failed).toEqual([]);
   });
 
   it('an MP4 trimmed exactly with nothing re-encoded, its picture cut where asked', async () => {

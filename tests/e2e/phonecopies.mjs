@@ -4,18 +4,19 @@
 // another, the header's pill, and the toast at the end, none naming the file. Then videos and sounds (stage 6): 🖼
 // Media's "2 files are big for phones" makes both copies at once; a 4 s 720p WebM made at 480p, which plays and seeks,
 // then only the part its card plays (1 to 3 s); a WAV made an OGG (Opus), or an M4A (AAC) where the browser makes AAC;
-// a video phones can't play (a .mov with a WebM inside) repackaged as a WebM from the 📱 preview (↻, stage 6b.2), which
-// clears the checklist's line. One made while a drag on a slide is held waits for it: a step of its own, after the
-// drag's. ▶ Play asks first while one is made. Then in play, with a buzzer server of our own (buzzer/ under `wrangler
-// dev`, local): the card goes up as the copy, the phone shows it looping, silent and without controls (with reduced
-// motion, or on a phone that won't start it by itself, still with "▶ Play"), and the audience window's copy of the game
-// never lists it. Needs `npm ci` in buzzer/.
+// a video phones can't play (a .mov with a WebM inside) repackaged as a WebM from the 📱 preview (↻, stage 6b.2), and a
+// FLAC (which nothing repackages) given a copy they can play from it (🗜), each clearing the checklist's line. One made
+// while a drag on a slide is held waits for it: a step of its own, after the drag's. ▶ Play asks first while one is
+// made. Then in play, with a buzzer server of our own (buzzer/ under `wrangler dev`, local): the card goes up as the
+// copy, the phone shows it looping, silent and without controls (with reduced motion, or on a phone that won't start
+// it by itself, still with "▶ Play"), and the audience window's copy of the game never lists it. Needs `npm ci` in
+// buzzer/.
 import { chromium } from 'playwright-core';
 import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { editorReady, forgetSeen, openGameFile, packGame, recordSeen, startBuzzer, startRoomOn } from './helpers.mjs';
-import { clip, fixturePage, gif, noise, wav } from './mediafixtures.mjs';
+import { clip, fixturePage, flac, gif, noise, wav } from './mediafixtures.mjs';
 
 const file = resolve(process.env.APP_FILE || 'dist/index.html');
 if (!existsSync(file)) throw new Error('Run `npm run build` first');
@@ -44,6 +45,8 @@ const long = gif(1024, 720, [
 
 // 20 s of a tone, 3.5 MB: big for the buzzer server below (3 MB a file).
 const song = wav(20);
+// 2 s of a tone in a FLAC (32 KB): phones take no FLAC, and nothing repackages one.
+const tone = flac(4);
 
 let ids = 0;
 const box = (y) => ({ id: `e${ids++}`, x: 100, y, w: 800, h: 160, rotation: 0, opacity: 1, zIndex: 1 });
@@ -75,6 +78,7 @@ const gameWith = (movie, mov) => ({
     { id: 'song', name: 'song-zfnqj.wav', mime: 'audio/wav', size: song.length, kind: 'audio' },
     // (A WebM inside, as phones can't tell: a .mov is a kind they don't take.)
     { id: 'mov', name: 'clip-zfnqj.mov', mime: 'video/quicktime', size: mov.length, kind: 'video' },
+    { id: 'tone', name: 'tone-zfnqj.flac', mime: 'audio/flac', size: tone.length, kind: 'audio' },
   ],
   audio: {}, wheels: [], dice: [], theme: {},
   cards: [
@@ -83,6 +87,7 @@ const gameWith = (movie, mov) => ({
     { id: 'sc_movie', name: 'Movie', background: {}, elements: [text('Watch'), videoEl('movie', 300, { startAt: 1, endAt: 3 })] },
     { id: 'sc_song', name: 'Song', background: {}, elements: [text('Hum'), soundEl('song', 300)] },
     { id: 'sc_mov', name: 'Mov', background: {}, elements: [text('Look'), videoEl('mov', 300)] },
+    { id: 'sc_tone', name: 'Tone', background: {}, elements: [text('Sing'), soundEl('tone', 300)] },
   ],
 });
 const packPath = resolve('test-results/phone-copies.brainrot');
@@ -105,7 +110,7 @@ try {
   const mov = await clip(fx, { w: 320, h: 240, seconds: 1, bitrate: 600_000, audio: false });
   await fx.close();
   if (movie.length <= 3 * 1024 ** 2) throw new Error(`The video fixture came out ${movie.length} bytes: it has to be over 3 MB`);
-  writeFileSync(packPath, await packGame(gameWith(movie, mov), { dance, long, movie, song, mov }));
+  writeFileSync(packPath, await packGame(gameWith(movie, mov), { dance, long, movie, song, mov, tone }));
   await ctx.addInitScript(recordSeen);
   await ctx.addInitScript((server) => {
     try {
@@ -220,7 +225,7 @@ try {
   assert(line.startsWith('📱 Phone copy · ') && line.includes(` KB · 320×240 ${gifBox.word}`), `the GIF's card says phones get a copy (${line})`);
   const header = (await page.locator('.library .page-header').innerText()).replace(/\s+/g, ' ');
   assert(header.includes('(1 phone copy)'), `the header counts it (${header.slice(0, 90)})`);
-  assert((await page.locator('.library .card').count()) === 5, 'and it has no card of its own');
+  assert((await page.locator('.library .card').count()) === 6, 'and it has no card of its own');
   assert((await historyCount()) === before + 1, 'one step in History');
 
   // ---------- Ctrl+Z, Ctrl+Y ----------
@@ -294,9 +299,11 @@ try {
   await progress.filter({ hasText: 'Waiting for the other file to finish…' }).waitFor();
   await close();
   const atDrag = await historyCount();
-  await page.locator('nav > button.round-tab').first().click();
-  await page.locator('.grid .tile').first().click();
-  const words = page.locator('.slide .el[data-el="e0"]').first();
+  // (On a 🤫 card's slide, in the page: a window such as the clue's would leave the header's pill out of reach.)
+  await page.locator('nav > button', { hasText: '🤫 Cards' }).click();
+  await page.locator('[data-card-editor]').waitFor();
+  await page.locator('[data-saved-card="sc_tip"]').click();
+  const words = page.locator('[data-card-editor] .slide .el[data-el="e2"]').first();
   await words.waitFor();
   const b0 = await words.boundingBox();
   await page.mouse.move(b0.x + b0.width / 2, b0.y + b0.height / 2);
@@ -455,11 +462,32 @@ try {
   const movRef = page.locator('.card', { has: page.locator('button.nm', { hasText: 'clip-zfnqj.webm' }) });
   await movRef.waitFor();
   assert(!(await movRef.locator('[data-phone-copy]').count()), 'the file itself is clip-zfnqj.webm now');
+
+  // A FLAC phones can't play, which nothing repackages: 🗜 makes a copy they can, from the 📱 preview.
+  const toneLine = page.locator('nav .problem', { hasText: '🤫 Card “Tone” has a sound phones can\'t play: make a copy they can play (🗜)' });
+  await toneLine.waitFor({ timeout: 60_000 });
+  const tonePhone = await cardPreview('sc_tone');
+  const toneNote = tonePhone.locator('.notes li.warn', { hasText: 'phones can’t play this kind of sound' });
+  await toneNote.getByRole('button', { name: '🗜 Make a copy phones can play' }).click();
+  await dialog.getByText('Phones can’t play this kind of file as it is: the copy is one they can.').waitFor({ timeout: 60_000 });
+  assert(true, 'its window says phones can’t play this kind of file, and the copy is one they can');
+  await dialog.getByText(/^A sound for phones: about \d+ KB\.$/).waitFor({ timeout: 60_000 });
+  await dialog.getByRole('button', { name: 'Make it', exact: true }).click();
+  await dialog.locator('[data-shrink-done]').waitFor({ timeout: 120_000 });
+  await close();
+  await toneNote.waitFor({ state: 'detached' });
+  await toneLine.waitFor({ state: 'detached' });
+  const toneCopy = (await tonePhone.locator('[data-copy-note]').innerText()).replace(/\s+/g, ' ');
+  assert(toneCopy.startsWith('📱 Phones get a copy they can play instead (') && toneCopy.includes(aac ? 'M4A' : 'OGG'), `🗜 Make a copy phones can play: the 📱 preview’s note and the checklist’s line are gone, a copy goes instead (${toneCopy})`);
+  await media();
   const toasts6 = await page.evaluate(() => (window.__seen ?? []).filter((t) => /^(🗜|↻|Stopped)/.test(t)));
-  assert(toasts6.length >= 3 && !toasts6.some((t) => t.includes('zfnqj')), `no toast names a file (${toasts6.join(' | ')})`);
+  assert(toasts6.length >= 4 && !toasts6.some((t) => t.includes('zfnqj')), `no toast names a file (${toasts6.join(' | ')})`);
   await page.locator('nav > button', { hasText: '🕘 History' }).click();
   const rows6 = (await page.locator('main').innerText()).split('\n').filter((t) => /copy of a (video|sound)|^Repackaged/.test(t));
-  assert(rows6.length >= 4 && !rows6.some((t) => t.includes('zfnqj')) && rows6.some((t) => t.includes('Repackaged a video as WebM (nothing lost)')), `nor does History (${rows6.join(' | ')})`);
+  assert(
+    rows6.length >= 5 && !rows6.some((t) => t.includes('zfnqj')) && rows6.some((t) => t.includes('Repackaged a video as WebM (nothing lost)')) && rows6.some((t) => t.includes('Made a copy of a sound that phones can play')),
+    `nor does History (${rows6.join(' | ')})`,
+  );
   await media();
   await cdp.send('Emulation.setCPUThrottlingRate', { rate: 4 });
 
@@ -570,7 +598,7 @@ try {
   await ann.c.close();
   await cy.c.close();
   const audGames = await aud.evaluate(() => window.__games);
-  assert(audGames.length > 0 && audGames.every((names) => names.length === 5 && !names.some((n) => n.includes('(phones)'))), `the audience window’s copy of the game never lists the copies (${audGames.at(-1)?.join(', ')})`);
+  assert(audGames.length > 0 && audGames.every((names) => names.length === 6 && !names.some((n) => n.includes('(phones)'))), `the audience window’s copy of the game never lists the copies (${audGames.at(-1)?.join(', ')})`);
   await phoneCtx.close();
 
   assert(!errors.length, `no page errors (${errors.join('; ')})`);

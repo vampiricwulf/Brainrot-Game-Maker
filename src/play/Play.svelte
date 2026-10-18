@@ -3028,9 +3028,10 @@
     // (A board short of Daily Doubles gets a button to place them.)
     // (Daily Doubles not placed yet are only a note in the editor, as Start places them: here they're listed with it.)
     // (Whether a video or sound plays in this browser: as worked out in the editor, as nothing is checked here.)
-    // (A card's file too big for the buzzer server that 🗜 can make a smaller copy of: its line gets 🗜 Make smaller.)
+    // (A card's file too big for the buzzer server, or of a kind phones can't play, that 🗜 can make a copy of: its
+    // line gets 🗜 Make smaller. There's no ↻ here: an MKV that plays is 🗜's too.)
     const canShrink = (m: MediaRef) => shrinkMaybe() && shrinkable(m) && !!mediaUrls[m.id];
-    return validate(g, { filesOff, fileBytes, gifs, stored: (id) => id in mediaUrls, plays: knownVerdict, canShrink })
+    return validate(g, { filesOff, fileBytes, gifs, stored: (id) => id in mediaUrls, plays: knownVerdict, canShrink, repack: false })
       .map((p) => {
         const r = typeof p.tab === 'number' ? g.rounds[p.tab] : undefined;
         const dd = isBoard(r) && !!dailyDoublesShort(r) && p.text.includes('Daily Double') && p.text.includes(' not placed yet');

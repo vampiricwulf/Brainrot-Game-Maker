@@ -1,6 +1,6 @@
 <script lang="ts">
   import { focusRescue } from '../lib/focusrescue';
-  import { modal } from '../lib/modal';
+  import { modal, topModal } from '../lib/modal';
   import { onMount, tick, untrack } from 'svelte';
   import { app, toast } from '../lib/app.svelte';
   import { take, type ClueSide, type Place, type RoundPart } from '../lib/nav.svelte';
@@ -372,13 +372,16 @@
     return mac && !!t?.closest?.('input:not([type="checkbox"]), textarea, [contenteditable="true"]');
   }
 
+  let clueBox = $state<HTMLElement>();
   function onkey(e: KeyboardEvent): void {
     // Esc closes from anywhere but the slide editor's own fields (the quick fields, and the Type, Value, Countdown and
     // Tile shows row, save as you type).
     const quick = !!(e.target as HTMLElement)?.closest?.('.quick, .opts, .partner-opts, .cardbar');
     // (A wheel or dice open over the clue has the keys, and so does the tile image picker: a picture picked after
-    // moving on would go on the next clue.)
+    // moving on would go on the next clue. So does any window over it, such as ✎ Edit video.)
     if (tool || facePicker) return;
+    const top = topModal();
+    if (top && top !== clueBox) return;
     if (e.key === 'Escape' && (!typing(e) || quick)) onclose();
     else if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
       e.preventDefault();
@@ -395,7 +398,7 @@
 
 {#if clue}
   <div class="modal-backdrop clue-backdrop" role="presentation">
-    <div class="modal clue" role="dialog" aria-modal="true" aria-label="Edit clue" use:modal use:focusRescue>
+    <div class="modal clue" role="dialog" aria-modal="true" aria-label="Edit clue" use:modal use:focusRescue bind:this={clueBox}>
       <header>
         <div>
           <div class="hint">{round.name} · {cat.title || `Category ${pos.cat + 1}`}</div>

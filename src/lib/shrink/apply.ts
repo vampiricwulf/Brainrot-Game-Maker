@@ -36,6 +36,7 @@ import {
   videoChoices,
   avDefault,
   CANT_READ_EDIT,
+  CANT_CUT_SOUND,
   CANT_SIZE,
   editedName,
   lengthText,
@@ -511,9 +512,10 @@ export function applyFileEdit(
   return { ref, times };
 }
 
-/** Why an edit couldn't be made, as the host is told. */
-function editFailed(e: RunError): string {
-  if (e.reason === 'no-encoder') return CANT_SIZE;
+/** Why an edit of a `kind` file couldn't be made, as the host is told. */
+function editFailed(e: RunError, kind: 'video' | 'audio'): string {
+  // (A sound needs no encoder unless it can't be cut there as it is: that's never about a video's size.)
+  if (e.reason === 'no-encoder') return kind === 'audio' ? CANT_CUT_SOUND : CANT_SIZE;
   if (e.reason === 'unreadable') return `${CANT_READ_EDIT.replace(/\.$/, '')}: nothing was changed.`;
   return EDIT_WRONG;
 }
@@ -545,7 +547,7 @@ export function queueFileEdit(game: Game, id: Id, plan: EditPlan & EditExtra, ho
     } catch (e) {
       if (e instanceof RunError) {
         console.warn('A file couldn’t be edited:', e.reason, e.message);
-        return { failed: editFailed(e) };
+        return { failed: editFailed(e, kind) };
       }
       throw e;
     }

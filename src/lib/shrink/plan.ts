@@ -198,6 +198,26 @@ export function soundBps(f: Pick<MediaFacts, 'audio'>): number {
   return a.channels === 1 ? MONO_BPS : SOUND_BPS;
 }
 
+/**
+ * About what a file's picture or sound takes of it (bits a second): its own rate, else the file's less the other
+ * track's, else for a sound the usual 128/96 kbps (never over half the file's), and for a picture the rest. (WebM and
+ * MKV rarely say a track's own rate: a track left out is never charged the whole file.)
+ */
+export function trackBps(f: Pick<MediaFacts, 'size' | 'seconds' | 'video' | 'audio'>, which: 'video' | 'audio'): number {
+  const t = f[which];
+  if (!t) return 0;
+  if (t.bps) return t.bps;
+  const all = f.seconds ? (f.size * 8) / f.seconds : 0;
+  const other = which === 'audio' ? f.video : f.audio;
+  if (all && other?.bps) return Math.max(0, all - other.bps);
+  const usual = (a: { channels: number }) => {
+    const bps = a.channels === 1 ? MONO_BPS : SOUND_BPS;
+    return all ? Math.min(bps, all / 2) : bps;
+  };
+  if (which === 'audio') return usual(t as NonNullable<MediaFacts['audio']>);
+  return Math.max(0, all - (f.audio ? usual(f.audio) : 0));
+}
+
 /** The part of a file a copy holds (seconds; to null: to the end). */
 export interface Span {
   from: number;
@@ -507,12 +527,11 @@ export function planConvert(f: MediaFacts, fix: Fix, can: Can, kind: 'video' | '
     audio = { codec, bitrate: a.channels === 1 ? MONO_BPS : SOUND_BPS, forceTranscode: true, ...(a.channels > 2 ? { numberOfChannels: 2 } : {}) };
   }
   // About how big: the file as it is, less what's left out, when nothing is made again; else the rates it's made at.
-  const ownBps = (t: { bps: number | null } | null, rest: number) => t?.bps ?? (secs ? Math.max(0, (f.size * 8) / secs - rest) : 0);
-  const abps = !a || dropped ? 0 : audio?.bitrate ?? ownBps(a, v?.bps ?? 0);
-  const vbps = !v ? 0 : video?.bitrate ?? ownBps(v, a?.bps ?? 0);
+  const abps = !a || dropped ? 0 : audio?.bitrate ?? trackBps(f, 'audio');
+  const vbps = !v ? 0 : video?.bitrate ?? trackBps(f, 'video');
   let estimate: number;
   if (lossless) {
-    const less = (dropped && secs ? ((a?.bps ?? 0) * secs) / 8 : 0) + (f.video && !v && secs ? ((f.video.bps ?? 0) * secs) / 8 : 0);
+    const less = (dropped && secs ? (trackBps(f, 'audio') * secs) / 8 : 0) + (f.video && !v && secs ? (trackBps(f, 'video') * secs) / 8 : 0);
     estimate = Math.round(Math.max(f.size * 0.05, f.size * 1.01 - less));
   } else estimate = secs ? estimateBytes(vbps + abps, secs) : 0;
   const names = [
@@ -570,12 +589,19 @@ export type How = 'all' | 'item' | 'new';
 const NO_CUT = 0.05;
 /** A WebM cut this close after its key frame is copied as it is (mediabunny may move it this much). */
 const KEY_SLACK = 0.1;
+/**
+ * How far a sound with no picture beside it may move to be cut as it is (seconds): two of its pieces, which for a FLAC
+ * at 22 kHz are 0.19 s, and for an 8 kHz MP3 (a voice memo, a phone recording) 72 ms each.
+ */
+const SOUND_SLACK = 0.2;
 const GiB = 1024 ** 3;
 
 export const CANT_READ_EDIT = 'The app can’t read this file, so it can’t edit it.';
 export const NO_REENCODE_HERE =
   'Cropping and resizing need Chrome, Edge, Firefox or the desktop app, with the app opened from a file or an https:// address. Trimming works here.';
 export const CANT_SIZE = 'This browser can’t make a video this size: pick a smaller size.';
+/** Said when a sound can't be cut where asked without making it again, and this browser can't make its kind. */
+export const CANT_CUT_SOUND = 'This browser can’t cut this sound there as it is: move the start a little. Nothing was changed.';
 export const TOO_SHORT = 'Keep at least a tenth of a second.';
 /** Said when a video's picture is made again as VP9 in an MP4 (there's no H.264 encoder here). */
 export const VP9_IN_MP4 = 'This browser can’t make H.264 videos, so the video is VP9 in an MP4: it plays in Chrome, Edge, Firefox and the desktop app; some iPhones may not play it.';
@@ -808,15 +834,14 @@ export function planEdit(f: MediaFacts, e: FileEdit, can: Can, enc: Encoders, ke
 
   // About how big: the part kept of the file as it is, less what's left out, when nothing is made again; else the rates.
   const kept = length ? end - from : 0;
-  const ownBps = (t: { bps: number | null } | null, rest: number) => t?.bps ?? (length ? Math.max(0, (f.size * 8) / length - rest) : 0);
   let estimate: number;
   if (copied) {
     const share = length ? kept / length : 1;
-    const less = (a && !keep ? (ownBps(a, f.video?.bps ?? 0) * kept) / 8 : 0) + (f.video && !v ? (ownBps(f.video, a?.bps ?? 0) * kept) / 8 : 0);
+    const less = (a && !keep ? (trackBps(f, 'audio') * kept) / 8 : 0) + (f.video && !v ? (trackBps(f, 'video') * kept) / 8 : 0);
     estimate = Math.round(Math.max(f.size * share * 0.05, f.size * share * 1.01 - less));
   } else {
-    const vbps = !v ? 0 : (video?.bitrate ?? ownBps(v, a?.bps ?? 0));
-    const abps = !keep ? 0 : (audio?.bitrate ?? ownBps(keep, v?.bps ?? 0));
+    const vbps = !v ? 0 : (video?.bitrate ?? trackBps(f, 'video'));
+    const abps = !keep ? 0 : (audio?.bitrate ?? trackBps(f, 'audio'));
     estimate = estimateBytes(vbps + abps, kept);
   }
 
@@ -842,8 +867,10 @@ export function planEdit(f: MediaFacts, e: FileEdit, can: Can, enc: Encoders, ke
       ...(video ? { video } : {}),
       ...(audio ? { audio } : {}),
       ...(cut ? { trim: { start: from, ...(end < length ? { end } : {}) } } : {}),
-      // (A track copied as it is may move by a tenth of a second to fit the cut: it stays with the other.)
-      copy: { shiftTolerance: KEY_SLACK },
+      // (A track copied as it is may move by a tenth of a second to fit the cut: it stays with the other. A sound
+      // alone may move by two of its pieces. An MP3 can't start partway into one, nor before its start: it starts at
+      // the first piece in the part kept, not one before it, or a slow one would move too far.)
+      copy: v ? { shiftTolerance: KEY_SLACK } : { shiftTolerance: SOUND_SLACK, ...(box === 'mp3' ? { boundaryPolicy: 'shrink' as const } : {}) },
     },
     mime: fixMime(box, kind),
     out: { seconds: length ? end - from : null, ...(out ? { width: out.w, height: out.h } : {}), sound: !!keep },

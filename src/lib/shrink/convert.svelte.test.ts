@@ -5,8 +5,9 @@
 // browser (tests/e2e/convert.mjs makes real ones; run.test.ts repackages real ones in Node).
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { app, toast } from '../app.svelte';
-import { arriving, heldMedia, history, redo, startHistory, undo } from '../history.svelte';
-import { getBlob, registerBlob } from '../media.svelte';
+import { ask } from '../ask.svelte';
+import { arriving, begin, heldMedia, history, redo, startHistory, undo } from '../history.svelte';
+import { getBlob, mediaUrls, registerBlob } from '../media.svelte';
 import type { Game, MediaRef } from '../model';
 import { newVideoEl } from '../model';
 import { jeopardyGame } from '../testgame';
@@ -17,10 +18,10 @@ import { mediaDialog } from './dialog.svelte';
 import type { MediaFacts } from './facts';
 import { clearJobs, jobs } from './jobs.svelte';
 import type { Verdict } from './playable';
-import { convertBlob, RunError } from './run';
+import { checkMade, convertBlob, RunError } from './run';
 
-/** Where the test steps in: once the file is made (release). */
-const at = vi.hoisted(() => ({ release: null as (() => void) | null }));
+/** Where the test steps in: once the file is made (release), and once its bytes are stored. */
+const at = vi.hoisted(() => ({ release: null as (() => void) | null, stored: null as (() => void) | null }));
 const track = { str: null, decodes: true, bps: 64_000, cpt: true };
 const TS: MediaFacts = { box: 'ts', seconds: 3, size: 900, video: null, audio: { ...track, codec: 'mp3', channels: 1, label: null }, moreAudio: 0, subtitles: false };
 
@@ -29,8 +30,16 @@ vi.mock('../app.svelte', async (orig) => ({ ...(await orig<typeof import('../app
 vi.mock('../nav.svelte', async (orig) => ({ ...(await orig<typeof import('../nav.svelte')>()), flash: vi.fn() }));
 vi.mock('./facts', async (orig) => ({ ...(await orig<typeof import('./facts')>()), readFacts: async () => TS }));
 vi.mock('./probe', async (orig) => ({ ...(await orig<typeof import('./probe')>()), probe: async () => ({ ok: true, aac: false, opus: true }) }));
-vi.mock('./run', async (orig) => ({ ...(await orig<typeof import('./run')>()), checkMade: async () => null, convertBlob: vi.fn() }));
-vi.mock('../desktop.svelte', async (orig) => ({ ...(await orig<typeof import('../desktop.svelte')>()), whileWriting: async <T,>(fn: () => Promise<T>): Promise<T> => fn() }));
+vi.mock('./run', async (orig) => ({ ...(await orig<typeof import('./run')>()), checkMade: vi.fn(async () => null), convertBlob: vi.fn() }));
+vi.mock('../desktop.svelte', async (orig) => ({
+  ...(await orig<typeof import('../desktop.svelte')>()),
+  whileWriting: async <T,>(fn: () => Promise<T>): Promise<T> => {
+    const r = await fn();
+    at.stored?.();
+    return r;
+  },
+}));
+vi.mock('../ask.svelte', async (orig) => ({ ...(await orig<typeof import('../ask.svelte')>()), ask: vi.fn(async () => false) }));
 
 const PARTY: MediaRef = { id: 'party', name: 'Party.mts', mime: 'video/mp2t', size: 900, kind: 'video' };
 const COPY: MediaRef = { id: 'partyc', name: 'Party (phones).webm', mime: 'video/webm', size: 300, kind: 'video', phoneCopy: { of: 'party' } };
@@ -64,14 +73,22 @@ beforeEach(() => {
   stored('party', FAILS);
   registerBlob('partyc', new Blob([new Uint8Array(300)], { type: 'video/webm' }));
   checks.offers.splice(0, checks.offers.length, 'party');
-  at.release = null;
+  at.release = at.stored = null;
   mediaDialog.open = null;
 });
 afterEach(() => {
   clearJobs();
   w.destroy();
   vi.mocked(convertBlob).mockReset();
+  vi.mocked(ask).mockClear();
+  vi.unstubAllGlobals();
 });
+/** The file made, once the test lets it go (release). */
+const madeLater = () =>
+  vi.mocked(convertBlob).mockImplementation(async () => {
+    await new Promise<void>((ok) => (at.release = ok));
+    return { blob: new Blob([new Uint8Array(600)], { type: 'video/mp4' }), mime: 'video/mp4', seconds: 3 };
+  });
 
 describe('🔄 a converted file put in its place', () => {
   it('goes in as one step: every use on the new bytes, its name following its type, its copy for phones gone, its note too', async () => {
@@ -166,5 +183,72 @@ describe('🔄 a converted file put in its place', () => {
       { id: 's2', name: 'talk.ogg', mime: 'audio/ogg', size: 5, kind: 'audio' },
       { id: 's2', name: 'talk.ogg', mime: 'audio/ogg', size: 5, kind: 'audio' },
     ]);
+  });
+});
+
+describe('🔄 never joining a step made meanwhile, and never put in over other bytes', () => {
+  it('done while a step is being made by hand (a drag): nothing is stored till it ends, then a step of its own after it', async () => {
+    madeLater();
+    const files = Object.keys(mediaUrls).length;
+    const job = queueConvert(g, 'party')!;
+    await vi.waitFor(() => expect(at.release).not.toBeNull());
+    // (A drag on a slide: a group with no name of its own, named from what it changed.)
+    const end = begin();
+    g.title = 'Dragged';
+    at.release!();
+    await new Promise((ok) => setTimeout(ok, 400));
+    expect([jobs.list.map((j) => [j.id, j.phase]), Object.keys(mediaUrls).length, g.media.map((m) => m.id)]).toEqual([[[job, 'checking']], files, ['party', 'partyc']]);
+    end();
+    await ended(job);
+    expect(history.entries.map((e) => e.label)).toEqual(['Renamed the game “Dragged”', 'Repackaged a video as MP4 (nothing lost)']);
+  });
+
+  it('a step begun while its bytes were stored: waited for too', async () => {
+    made();
+    let end = () => {};
+    at.stored = () => {
+      end = begin('Replaced file “other.png” with “new.png”');
+      g.title = 'Replaced meanwhile';
+    };
+    const job = queueConvert(g, 'party')!;
+    await vi.waitFor(() => expect(jobs.list[0]?.phase).toBe('storing'));
+    await new Promise((ok) => setTimeout(ok, 400));
+    expect([jobs.list.map((j) => j.id), g.media.map((m) => m.id)]).toEqual([[job], ['party', 'partyc']]);
+    end();
+    await ended(job);
+    expect(history.entries.map((e) => e.label)).toEqual(['Replaced file “other.png” with “new.png”', 'Repackaged a video as MP4 (nothing lost)']);
+  });
+
+  it('the file replaced while the new bytes were stored: those go too, and nothing is changed', async () => {
+    made();
+    const files = Object.keys(mediaUrls).length;
+    at.stored = () => registerBlob('party', new Blob([new Uint8Array(950)]));
+    const job = queueConvert(g, 'party')!;
+    await ended(job);
+    expect(jobs.ended[job]).toEqual({ failed: CONVERT_CHANGED, toast: CONVERT_CHANGED });
+    expect([g.media.map((m) => m.id), labels(), Object.keys(mediaUrls).length]).toEqual([['party', 'partyc'], [], files]);
+  });
+
+  it('a file that didn’t come out right isn’t put in: nothing is stored or changed', async () => {
+    made();
+    vi.mocked(checkMade).mockResolvedValueOnce('it lasts 1 s, not 3 s');
+    const files = Object.keys(mediaUrls).length;
+    const job = queueConvert(g, 'party')!;
+    await ended(job);
+    expect(jobs.ended[job]).toEqual({ failed: 'It didn’t come out right: nothing was changed.', toast: '🔄 A video couldn’t be converted: it didn’t come out right. Nothing was changed.' });
+    expect([g.media.map((m) => m.id), labels(), Object.keys(mediaUrls).length]).toEqual([['party', 'partyc'], [], files]);
+  });
+
+  it('one too big for the room left in this browser’s storage asks first; Cancel stops it, nothing changed', async () => {
+    // (A stand-in for 300 MB made: only its size is asked for before the question.)
+    const big = { size: 300 * 1024 ** 2, type: 'video/mp4' } as Blob;
+    vi.mocked(convertBlob).mockResolvedValue({ blob: big, mime: 'video/mp4', seconds: 3 });
+    vi.stubGlobal('navigator', { storage: { estimate: async () => ({ quota: 1024 ** 3, usage: 0.9 * 1024 ** 3 }) } });
+    const job = queueConvert(g, 'party')!;
+    await ended(job);
+    expect(vi.mocked(ask).mock.calls[0]?.[0]).toBe(
+      "This needs about 0.3 GB of room, and this browser has about 0.1 GB left for the app's files. The new file would be kept in memory only until you 💾 Save. Go ahead?",
+    );
+    expect([jobs.ended[job], g.media.map((m) => m.id), labels()]).toEqual([{ stopped: true }, ['party', 'partyc'], []]);
   });
 });

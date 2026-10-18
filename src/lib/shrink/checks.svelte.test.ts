@@ -16,6 +16,8 @@ const FACTS: Record<number, Partial<MediaFacts>> = {
   1: { box: 'webm', video: { ...track, codec: 'vp9', width: 160, height: 90, rotation: 0, hdr: false }, audio: { ...track, codec: 'opus', channels: 2, label: null } },
   2: { box: 'mkv', video: { ...track, codec: 'vp9', width: 160, height: 90, rotation: 0, hdr: false }, audio: { ...track, codec: 'opus', channels: 2, label: null } },
   3: { box: 'mkv', video: { ...track, codec: 'vp9', width: 160, height: 90, rotation: 0, hdr: false }, audio: { ...track, codec: 'ac3', decodes: false, cpt: false, channels: 2, label: null } },
+  // 4 an MKA, its sound AC-3 alone (it won't play at all).
+  4: { box: 'mkv', video: null, audio: { ...track, codec: 'ac3', decodes: false, cpt: false, channels: 2, label: null } },
 };
 vi.mock('./facts', async (orig) => ({
   ...(await orig<typeof import('./facts')>()),
@@ -27,7 +29,7 @@ vi.mock('./facts', async (orig) => ({
     return { box: null, seconds: 2, size: blob.size, video: null, audio: null, moreAudio: 0, subtitles: false, ...FACTS[first] };
   }),
   // (The page element: it plays the picture, and the sound when it isn't AC-3.)
-  elementTest: vi.fn(async (blob: Blob) => ({ opens: 'yes', picture: true, sound: new Uint8Array(await blob.arrayBuffer())[0] === 3 ? 'no' : 'yes' })),
+  elementTest: vi.fn(async (blob: Blob) => ({ opens: 'yes', picture: true, sound: [3, 4].includes(new Uint8Array(await blob.arrayBuffer())[0]) ? 'no' : 'yes' })),
 }));
 vi.mock('../app.svelte', async (orig) => ({ ...(await orig<typeof import('../app.svelte')>()), toast: vi.fn() }));
 vi.mock('./probe', async (orig) => ({
@@ -140,14 +142,31 @@ describe('a file just added: 🔄 offered when it won’t play here', () => {
     expect(checks.offers).toEqual([]);
   });
 
-  it('several added together: one toast for them all', async () => {
+  it('several added together: one toast for them all, saying whether they play without their sound or not at all', async () => {
     app.game.media.push(ref('t1'), ref('t2'));
     registerBlob('t1', new Blob([new Uint8Array([3, 1])]));
     registerBlob('t2', new Blob([new Uint8Array([3, 2])]));
     for (const id of ['t1', 't2']) checkAdded(app.game.media.find((m) => m.id === id)!);
     await settled(['t1', 't2']);
-    await vi.waitFor(() => expect(toasts()).toEqual(['⚠ 2 files you just added won’t play in this browser: see the note at the top.']));
+    // (Both play, silent.)
+    await vi.waitFor(() => expect(toasts()).toEqual(['⚠ 2 files you just added play without their sound in this browser: see the note at the top.']));
     expect(checks.offers).toEqual(['t1', 't2']);
+    // One that won't play at all with one that plays silent.
+    vi.mocked(toast).mockClear();
+    app.game.media.push(ref('t3'), ref('t4', 'audio'));
+    registerBlob('t3', new Blob([new Uint8Array([3, 3])]));
+    registerBlob('t4', new Blob([new Uint8Array([4, 4])]));
+    for (const id of ['t3', 't4']) checkAdded(app.game.media.find((m) => m.id === id)!);
+    await settled(['t3', 't4']);
+    await vi.waitFor(() => expect(toasts()).toEqual(['⚠ 2 files you just added won’t play in this browser, or play without their sound: see the note at the top.']));
+    // Two that won't play at all.
+    vi.mocked(toast).mockClear();
+    app.game.media.push(ref('t5', 'audio'), ref('t6', 'audio'));
+    registerBlob('t5', new Blob([new Uint8Array([4, 5])]));
+    registerBlob('t6', new Blob([new Uint8Array([4, 6])]));
+    for (const id of ['t5', 't6']) checkAdded(app.game.media.find((m) => m.id === id)!);
+    await settled(['t5', 't6']);
+    await vi.waitFor(() => expect(toasts()).toEqual(['⚠ 2 files you just added won’t play in this browser: see the note at the top.']));
   });
 
   it('one dismissed before its toast isn’t counted; one added after it landed isn’t waited for', async () => {

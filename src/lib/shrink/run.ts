@@ -48,7 +48,7 @@ export interface RunPlan {
   audio?: RunAudio;
   /** Seconds on the file's timeline (no end: to the end). */
   trim?: { start: number; end?: number };
-  copy?: { mode?: 'forced' | 'preferred'; shiftTolerance?: number };
+  copy?: { mode?: 'forced' | 'preferred'; shiftTolerance?: number; boundaryPolicy?: 'expand' | 'shrink' };
 }
 
 /** What was made: its bytes and type, and how long and big it came out (as read back). */

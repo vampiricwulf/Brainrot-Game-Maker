@@ -135,12 +135,12 @@ const PLAY_TYPES: Record<string, string[]> = {
 };
 
 /** Whether an element here says it plays a track of this codec (string), in any of its family's types. */
-function canPlayTrack(codec: string | null, str: string | null): boolean {
+export function canPlayTrack(codec: string | null, str: string | null): boolean {
   if (typeof document === 'undefined' || !codec) return false;
-  const el = document.createElement(PLAY_TYPES[codec]?.[0]?.startsWith('audio') || codec.startsWith('pcm') ? 'audio' : 'video');
-  // (MP3 and PCM have no codecs= string.)
+  const el = document.createElement(PLAY_TYPES[codec]?.[0]?.startsWith('audio') || isPcm(codec) ? 'audio' : 'video');
+  // (MP3 and PCM, μ-law and A-law too, have no codecs= string.)
   if (codec === 'mp3' && el.canPlayType('audio/mpeg') !== '') return true;
-  if (codec.startsWith('pcm')) return el.canPlayType('audio/wav') !== '';
+  if (isPcm(codec)) return el.canPlayType('audio/wav') !== '';
   return (PLAY_TYPES[codec] ?? []).some((t) => el.canPlayType(str ? `${t}; codecs="${str}"` : t) !== '');
 }
 

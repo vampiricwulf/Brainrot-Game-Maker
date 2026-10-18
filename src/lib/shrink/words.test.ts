@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { Verdict, Why } from './playable';
-import { ADVICE, advice, aOrAn, boxName, codecName, fixBoxName, rowText, shortWhy, tracksOf, whyLine, whyText } from './words';
+import { ADVICE, advice, aOrAn, boxName, codecName, fixBoxName, rowText, severalText, shortWhy, tracksOf, whyLine, whyText } from './words';
 
 const fails = (why: Omit<Why, 'kind'> & { kind?: Why['kind'] }, fix: Extract<Verdict, { is: 'fails' }>['fix'] = null): Verdict => ({ is: 'fails', fix, why: { kind: 'video', ...why } });
 const silent = (why: Omit<Why, 'kind'>, fix: Extract<Verdict, { is: 'silent' }>['fix'] = null): Verdict => ({ is: 'silent', fix, why: { kind: 'video', ...why } });
@@ -153,5 +153,13 @@ describe('🔄 Convert’s rows, and a slide item’s note', () => {
       'video',
       'sound',
     ]);
+  });
+});
+
+describe('several files just added', () => {
+  it('won’t play, play without their sound (each plays, silent), or some of each', () => {
+    expect(severalText(['fails', 'fails'])).toBe('2 files you just added won’t play in this browser');
+    expect(severalText(['silent', 'silent', 'silent'])).toBe('3 files you just added play without their sound in this browser');
+    expect(severalText(['silent', 'fails'])).toBe('2 files you just added won’t play in this browser, or play without their sound');
   });
 });

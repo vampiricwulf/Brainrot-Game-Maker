@@ -1,11 +1,11 @@
 // Whether a video or sound really plays in this browser, and 🔄 Convert for one that doesn't (card-files spec §4.12,
 // stages 6b.1 and 6b.2), end to end in the test Chromium, with files made here.
-// Part 1: an MKV with VP9 and Opus (which plays though its type says it may not), one whose sound is AC-3 (which no
-// browser plays), an AC-3 sound alone and bytes no app can read (named .mov), added in 🖼 Media. Each card says what
+// Part 1: an MKV with VP9 and Opus (which plays though its type says it may not), one whose sound is AC-3 (which the
+// test Chromium doesn't play), an AC-3 sound alone and bytes no app can read (named .mov), added in 🖼 Media. Each card says what
 // was found once the file is checked: nothing, "plays without its sound here", "won't play here" (its title says why),
 // or today's "may not play" and toast, word for word, for the one the app can't read. So does the checklist, counting
 // and naming nothing. A reload checks the files again.
-// Part 2: a camcorder-like .mts (an MP3 sound in MPEG-TS, which no browser opens) added in 🖼 Media gets the note at
+// Part 2: a camcorder-like .mts (an MP3 sound in MPEG-TS, which the test Chromium doesn't open) added in 🖼 Media gets the note at
 // the top, and 🔄 repackages it as an MP4 in its place (Ctrl+Z and Ctrl+Y); the AC-3 MKV dropped on a slide becomes a
 // WebM without its sound, on that item; the AC-3 sound alone gets only OK; two .mts at once go through 🔄 Convert's
 // window, one step each; the VP9 MKV on a 🤫 card gets ↻ from the 📱 preview. No toast, History row or pill names a
@@ -213,14 +213,35 @@ try {
   }, talkFile.buffer.toString('base64'));
   await clueEditor.locator('.canvas').dispatchEvent('drop', { dataTransfer: talkDrop });
   await page.locator('.insp h4', { hasText: 'Video' }).waitFor();
+  // Once its check lands, the item's panel says so, with 🔄.
+  const playsNote = page.locator('.insp [data-plays-note]');
+  await playsNote.waitFor({ timeout: 60_000 });
+  const noteSays = (await playsNote.innerText()).replace(/\s+/g, ' ').trim();
+  assert(noteSays === '⚠ It plays without its sound here (AC-3 (Dolby Digital)). 🔄 Convert…', `the item’s panel: “${noteSays}”`);
   const itemMedia = (g) => g.rounds?.[0]?.categories?.[0]?.clues?.[0]?.questionSlide?.elements.find((e) => e.kind === 'video')?.media;
   const talkId = refNamed(await draftWhen((g) => !!itemMedia(g), 'the video item'), 'talk.mkv').id;
   await page.keyboard.press('Escape');
   await clueEditor.waitFor({ state: 'detached' });
   await notice.waitFor();
   assert((await noticeText()).startsWith('⚠ “talk.mkv” plays without its sound in this browser: its sound is AC-3 (Dolby Digital)'), `the note: ${await noticeText()}`);
-  await notice.getByRole('button', { name: '🔄 Convert it without its sound (quick)' }).click();
+  // From the keys: the focus stays on what takes the button's place (Stop), and goes to the editor's tab once the
+  // note goes, never to the page.
+  await notice.getByRole('button', { name: '🔄 Convert it without its sound (quick)' }).focus();
+  await page.evaluate(() => {
+    window.__lostFocus = 0;
+    const look = () => setTimeout(() => document.activeElement === document.body && window.__lostFocus++, 50);
+    window.__noticeWatch = new MutationObserver(look);
+    window.__noticeWatch.observe(document.querySelector('[data-convert-notice]').parentElement, { childList: true, subtree: true });
+  });
+  await page.keyboard.press('Enter');
   await notice.waitFor({ state: 'detached' });
+  await page
+    .waitForFunction(() => document.activeElement?.matches('.editor nav [aria-current="page"]'), null, { timeout: 10_000 })
+    .catch(async () => {
+      throw new Error(`Once the note went the focus was on ${await page.evaluate(() => (document.activeElement === document.body ? 'the page' : document.activeElement?.outerHTML.slice(0, 80)))}`);
+    });
+  const lost = await page.evaluate(() => (window.__noticeWatch.disconnect(), window.__lostFocus));
+  assert(lost === 0, `🔄 from the keys: the focus never fell to the page (${lost}), and is on the editor’s tab once the note goes`);
   const silentGame = await draftWhen((g) => !!refNamed(g, 'talk.webm'), 'talk.webm');
   const webm = refNamed(silentGame, 'talk.webm');
   assert(webm.mime === 'video/webm' && webm.id !== talkId && itemMedia(silentGame) === webm.id, `the item is on the new file, talk.webm, video/webm (${JSON.stringify(webm)})`);
@@ -309,6 +330,23 @@ try {
   await repack.waitFor({ timeout: 30_000 });
   await lineOf('has a video phones can\'t open: repackage it as a WebM (↻, nothing lost)').waitFor();
   assert(true, 'the checklist’s line says ↻ too');
+  // Before the game there's no ↻: its line there offers 🗜, a copy phones can play.
+  await page.getByRole('button', { name: '▶ Play' }).click();
+  const preChecks = page.locator('details.checks');
+  const kindLine = preChecks.locator('li', { hasText: 'has a video phones can\'t play: make a copy they can play (🗜)' });
+  await kindLine.waitFor({ state: 'attached', timeout: 30_000 });
+  if (!(await preChecks.evaluate((d) => d.open))) await preChecks.locator('summary').click();
+  assert(
+    (await kindLine.getByRole('button', { name: '🗜 Make smaller' }).count()) === 1 && !(await preChecks.innerText()).includes('↻'),
+    `before the game: “${(await kindLine.innerText()).replace(/\s+/g, ' ').trim()}”, and no ↻`,
+  );
+  await page.getByRole('button', { name: '◀ Back to editor', exact: true }).click();
+  await editorReady(page);
+  if (!(await phone.isVisible())) {
+    await page.locator('nav > button', { hasText: '🤫 Cards' }).click();
+    await page.getByRole('button', { name: '📱 On their phone' }).click();
+  }
+  await repack.waitFor({ timeout: 30_000 });
   await repack.click();
   await kindNote.waitFor({ state: 'detached' });
   await toasted('↻ Repackaged as WebM: nothing lost, and phones can open it now. Ctrl+Z puts the old one back.');

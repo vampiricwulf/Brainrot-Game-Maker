@@ -19,8 +19,8 @@ export async function fixturePage(ctx) {
   return page;
 }
 
-// One second of silence in AC-3 (Dolby Digital) is 31.25 of this frame (48 kHz, mono, 64 kbps, 1,536 samples): no
-// browser plays AC-3, so it stands in for a camcorder's or a film's sound. Made with
+// One second of silence in AC-3 (Dolby Digital) is 31.25 of this frame (48 kHz, mono, 64 kbps, 1,536 samples): the
+// test Chromium doesn't play AC-3, so it stands in for a camcorder's or a film's sound. Made with
 // `ffmpeg -f lavfi -i anullsrc=r=48000:cl=mono -t 0.032 -c:a ac3 -b:a 64k -f ac3 silence.ac3`.
 const AC3_FRAME =
   'C3eQMQhAL4QpQ/51fPnz58+fPnz58+fPnz58+fPnz58+fPnz58+fPnz58+fPjL/BEAAAAA2vnz58222228ePHjx48ePHjx48btttvnzWtSgAAAAAbXz58+bbbbbePHjx48ePHjx48eN2223z5rWpQAAAAANr58+fNttttvHjx48ePHjx48ePG7bbb581rUoAAAAAG18+fPm22223jx48ePHjx48ePHjdttt8+a1qUAAAAADa+fPnzbbbbbx48ePHjx48ePHjxu222+fNa1KAAAAABtfPnz5ttttt48ePHjx48ePHjx43bbbfPmtakAAAAAAAAAAAAAAAAAAAAABLCg==';
@@ -111,7 +111,7 @@ const MP3_FRAME =
 
 /**
  * An MPEG-TS holding only an MP3 sound (silence), `seconds` long, made in `page` (fixturePage): a camcorder's .mts
- * stands in, as no browser opens one, though its sound plays. Returns its bytes.
+ * stands in, as the test Chromium doesn't open one, though its sound plays. Returns its bytes.
  */
 export async function ts(page, { seconds = 3 } = {}) {
   const b64 = await page.evaluate(
@@ -228,4 +228,52 @@ export function gif(w, h, frames) {
   const g = new GifWriter(buf, w, h, { palette, loop: 0 });
   for (const f of frames) g.addFrame(f.x ?? 0, f.y ?? 0, f.w ?? w, f.h ?? h, f.px, { delay: f.delay, disposal: 1 });
   return Buffer.from(buf.slice(0, g.end()));
+}
+
+/**
+ * A FLAC of a 440 Hz tone: 16-bit, one channel at 8 kHz, in frames of 4,096 samples stored as they are (FLAC's
+ * "verbatim" kind, so nothing has to encode it), `frames` of them (about half a second each). Phones' 🤫 cards take no
+ * FLAC, and nothing repackages one: it stands in for a file only 🗜's copy helps.
+ */
+export function flac(frames = 4) {
+  const block = 4096;
+  const rate = 8000;
+  const crc8 = (b) => {
+    let c = 0;
+    for (const x of b) {
+      c ^= x;
+      for (let i = 0; i < 8; i++) c = c & 0x80 ? ((c << 1) ^ 0x07) & 0xff : (c << 1) & 0xff;
+    }
+    return c;
+  };
+  const crc16 = (b) => {
+    let c = 0;
+    for (const x of b) {
+      c ^= x << 8;
+      for (let i = 0; i < 8; i++) c = c & 0x8000 ? ((c << 1) ^ 0x8005) & 0xffff : (c << 1) & 0xffff;
+    }
+    return c;
+  };
+  // "fLaC", then its one block of facts (the last), STREAMINFO: block sizes, frame sizes not given, then 8 kHz, one
+  // channel and 16 bits, how many samples in all, and no MD5.
+  const info = Buffer.alloc(4 + 34);
+  info.writeUInt8(0x80, 0);
+  info.writeUIntBE(34, 1, 3);
+  info.writeUInt16BE(block, 4);
+  info.writeUInt16BE(block, 6);
+  info.writeBigUInt64BE((BigInt(rate) << 44n) | (15n << 36n) | BigInt(block * frames), 14);
+  const parts = [Buffer.from('fLaC'), info];
+  for (let f = 0; f < frames; f++) {
+    // Sync, fixed blocks; 4,096 samples (code 12) at 8 kHz (code 4); one channel, 16 bits; frame number f; CRC-8.
+    const head = Buffer.from([0xff, 0xf8, 0xc4, 0x08, f]);
+    const frame = Buffer.alloc(head.length + 1 + 1 + block * 2 + 2);
+    head.copy(frame);
+    frame[5] = crc8(head);
+    // The one subframe: verbatim (type 1), then its samples.
+    frame[6] = 0x02;
+    for (let i = 0; i < block; i++) frame.writeInt16BE(Math.round(8000 * Math.sin(((f * block + i) / rate) * 2 * Math.PI * 440)), 7 + i * 2);
+    frame.writeUInt16BE(crc16(frame.subarray(0, frame.length - 2)), frame.length - 2);
+    parts.push(frame);
+  }
+  return Buffer.concat(parts);
 }

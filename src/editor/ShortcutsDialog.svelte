@@ -103,6 +103,7 @@
       '✎ Edit video',
       [
         ['Ctrl+Enter', 'Apply the edit'],
+        ['Ctrl+Z / Ctrl+Y', 'Undo / redo inside the edit window'],
         ['Space', 'Play or pause'],
         ['I / O', 'Start or end the trim here'],
         ['← / → on a handle', '0.1 s (Shift: 1 s)'],

@@ -11,7 +11,7 @@ import type { Game, MediaRef } from '../model';
 import { jeopardyGame } from '../testgame';
 import { clone } from '../ops';
 import { watchGame, type GameWatch } from '../watch.svelte';
-import { CHANGED, queuePhoneCopy } from './apply';
+import { CHANGED, queuePhoneCopy, shrinkHere } from './apply';
 import { clearJobs, jobs } from './jobs.svelte';
 import type { CopyPlan } from './plan';
 import { convertBlob } from './run';
@@ -222,6 +222,30 @@ describe('a 🗜 copy made in play', () => {
     expect([copiesIn(p), copies(), labels()]).toEqual([['quick', 'gif'], [], []]);
   });
 
+  it('another game being played by the time it’s done (the game left, another started): nothing is changed', async () => {
+    const p = play(true);
+    const job = queuePhoneCopy('gif')!;
+    await made();
+    // (The same files, but another game: not the one it was made for.)
+    const next = { ...clone($state.snapshot(p)), id: 'g_next' };
+    app.playGame = next;
+    at.release!();
+    await ended(job);
+    expect([jobs.ended[job], copiesIn(p), copiesIn(next), copies(), labels()]).toEqual([{ failed: CHANGED }, [], [], [], []]);
+  });
+
+  it('a game in play that isn’t the editor’s (opened from Recent games): into the game being played only, no step in the editor', async () => {
+    const p = play(true);
+    p.id = 'g_recent';
+    const job = queuePhoneCopy('gif')!;
+    await made();
+    at.release!();
+    await ended(job);
+    expect([copiesIn(p), copies(), labels()]).toEqual([['gif'], [], []]);
+    // (Nothing here takes it back: the toast says no Ctrl+Z.)
+    expect(jobs.ended[job]).toMatchObject({ done: expect.not.stringContaining('Ctrl+Z') });
+  });
+
   it('back in the editor before it’s done: nothing is changed', async () => {
     const p = play(true);
     const job = queuePhoneCopy('gif')!;
@@ -252,5 +276,19 @@ describe('a 🗜 copy made in play', () => {
     expect(at.hardware).toBe(false);
     at.release!();
     await ended(again);
+  });
+});
+
+describe('🗜 Make smaller in play', () => {
+  it('is offered for a GIF, video or sound stored here, not for one phones get from its link (a copy wouldn’t help)', () => {
+    vi.stubGlobal('isSecureContext', true);
+    vi.stubGlobal('VideoEncoder', class {});
+    try {
+      registerBlob('linked', new Blob([new Uint8Array(5000)], { type: 'image/gif' }));
+      const game = { media: [{ ...GIF }, { id: 'linked', name: 'cat.gif', mime: 'image/gif', size: 5000, kind: 'image' as const, source: 'https://files.catbox.moe/abc123.gif' }] };
+      expect([shrinkHere(game, 'gif'), shrinkHere(game, 'linked'), shrinkHere(game, 'gone')]).toEqual([true, false, false]);
+    } finally {
+      vi.unstubAllGlobals();
+    }
   });
 });

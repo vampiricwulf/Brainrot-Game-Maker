@@ -1,5 +1,6 @@
 <script lang="ts">
   import { focusRescue } from '../lib/focusrescue';
+  import { inertWhile } from '../lib/modal';
   import { dropMenu, showMenu } from '../lib/menustate.svelte';
   import SettingsDialog from './SettingsDialog.svelte';
   import OpenSaves from './OpenSaves.svelte';
@@ -886,7 +887,7 @@
 <svelte:document {ondrop} />
 
 <div class="editor" aria-busy={replacing || !!opening}>
-  <header inert={replacing}>
+  <header use:inertWhile={replacing}>
     <input class="title" bind:value={game.title} aria-label="Game title" data-place="title" />
     <button class="ghost" onclick={() => undo()} disabled={!history.canUndo} title={history.undoTitle} aria-label="Undo (Ctrl+Z)"><span aria-hidden="true">↶</span><span class="word">Undo</span></button>
     <button class="ghost" onclick={() => redo()} disabled={!history.canRedo} title={history.redoTitle} aria-label="Redo (Ctrl+Y)"><span aria-hidden="true">↷</span><span class="word">Redo</span></button>
@@ -999,7 +1000,7 @@
   {/if}
 
   <svelte:boundary onerror={(e) => console.error('The editor failed to show this game', e)}>
-  <div class="body" inert={replacing || !!opening} use:focusRescue>
+  <div class="body" use:inertWhile={replacing || !!opening} use:focusRescue>
     <nav aria-label="Editor">
       <div class="navlabel muted">Rounds</div>
       {#each game.rounds as round, i (round.id)}

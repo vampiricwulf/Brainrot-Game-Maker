@@ -64,6 +64,15 @@ describe('retimeUses', () => {
     expect(times(plain)).toEqual([undefined, undefined]);
   });
 
+  it('a Stop at within 0.05 s of the new end goes: it plays to the end', () => {
+    const el = at('clip', 1.5, 2.97);
+    expect(retimeUses(withItems(el), 'clip', CUT)).toEqual({ kept: 1, clipped: 0, whole: 0 });
+    expect(times(el)).toEqual([0.3, undefined]);
+    const before = at('clip', 1.5, 2.9);
+    retimeUses(withItems(before), 'clip', CUT);
+    expect(times(before)).toEqual([0.3, 1.7]);
+  });
+
   it('rounds to hundredths, and drops a Start at of almost nothing', () => {
     const el = at('clip', 1.288, 2.6666);
     retimeUses(withItems(el), 'clip', CUT);
@@ -116,6 +125,20 @@ describe('cutLeavesOut and timedItems', () => {
     expect(cutLeavesOut(game, 'clip', CUT)).toEqual([{ where: 'Jeopardy! · Category 1 #1 (question)', start: 0.2, end: 0.8 }]);
     expect(timedItems(game, 'clip')).toBe(2);
   });
+
+  it('agree with retimeUses where an item ends just as the part kept starts, or starts just as it ends', () => {
+    const items = [at('clip', 0.2, 1.2), at('clip', 3, 3.5)];
+    const game = withItems(...items);
+    expect(cutLeavesOut(game, 'clip', CUT).map((u) => [u.start, u.end])).toEqual([
+      [0.2, 1.2],
+      [3, 3.5],
+    ]);
+    expect(retimeUses(game, 'clip', CUT)).toEqual({ kept: 0, clipped: 0, whole: 2 });
+    expect(items.map(times)).toEqual([
+      [undefined, undefined],
+      [undefined, undefined],
+    ]);
+  });
 });
 
 describe('refitBoxes', () => {
@@ -129,6 +152,13 @@ describe('refitBoxes', () => {
     expect(wide.x + wide.w / 2).toBe(960);
     expect(near.w).toBe(near.h);
     expect([four.w, four.h]).toEqual([800, 600]);
+  });
+
+  it('leaves a box 3% off the old shape as it is', () => {
+    const off = { ...at('clip'), x: 0, y: 0, w: 1483, h: 810 };
+    expect(Math.abs(off.w / off.h - 16 / 9) / (16 / 9)).toBeGreaterThan(0.02);
+    expect(refitBoxes(withItems(off), 'clip', 16 / 9, 1)).toBe(0);
+    expect([off.w, off.h]).toEqual([1483, 810]);
   });
 
   it('with `only`, that box alone; and nothing when the shape didn’t change', () => {

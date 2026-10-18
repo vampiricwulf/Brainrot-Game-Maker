@@ -9,6 +9,7 @@ import type { Game, Id, MediaRef } from '../model';
 import { elementTest, needsElementTest, readFacts } from './facts';
 import { verdict, type Verdict } from './playable';
 import { encodersFor, probe } from './probe';
+import { severalText } from './words';
 
 /**
  * `version`: up by one each time a check lands (what shows a verdict reads it). `offers`: files added in the editor
@@ -125,7 +126,7 @@ function sayFresh(): void {
   fresh = [];
   if (!said.length) return;
   const one = said[0];
-  if (said.length > 1) toast(`⚠ ${said.length} files you just added won’t play in this browser: see the note at the top.`);
+  if (said.length > 1) toast(`⚠ ${severalText(said.map((f) => f.is))}: see the note at the top.`);
   else toast(`⚠ A ${one.kind === 'audio' ? 'sound' : 'video'} you just added ${one.is === 'silent' ? 'plays without its sound' : 'won’t play'} in this browser: see the note at the top.`);
 }
 

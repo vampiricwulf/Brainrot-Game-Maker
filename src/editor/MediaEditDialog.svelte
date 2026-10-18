@@ -7,7 +7,7 @@
   changes undo with Ctrl+Z while it's open. The editor isn't on stream, so the file is named here.
 -->
 <script lang="ts">
-  import { onDestroy, onMount, untrack } from 'svelte';
+  import { onDestroy, onMount, tick, untrack } from 'svelte';
   import { app } from '../lib/app.svelte';
   import { fileType, mbText, SLOW_FILE_BYTES } from '../lib/buzzproto';
   import { playRange, SnapshotHistory, type Box } from '../lib/editing';
@@ -69,6 +69,11 @@
     return typeof v === 'object' && v.is === 'silent' ? v : null;
   });
   const NONE: Encoders = { avc: false, vp9: false, vp8: false };
+  /** The keys went nowhere: to the page, or with a part of this window made inert. */
+  const focusLost = (): boolean => {
+    const a = document.activeElement;
+    return !a || a === document.body || !!a.closest('[inert]');
+  };
 
   let facts = $state<MediaFacts | null>(null);
   let can = $state<Can | null>(null);
@@ -279,10 +284,13 @@
     cropAspect = a;
     if (a !== 'free') change(() => (edit.crop = fitCrop(a, W, H)));
   }
+  let cropButton = $state<HTMLButtonElement>();
   function removeCrop(): void {
     change(() => (edit.crop = null));
     cropAspect = 'free';
     cropping = false;
+    // (Its button goes with the crop: the keys go to ✂ Crop.)
+    void tick().then(() => focusLost() && cropButton?.focus());
   }
   const setShort = (s: Short | null) => change(() => (edit.short = s));
 
@@ -308,12 +316,33 @@
     asked = { seconds: ok.out.seconds, ...(picture && ok.aspect ? { w: ok.out.width, h: ok.out.height } : {}) };
     jobId = queueFileEdit(game, id, ok, h, item, h === 'all' && !!copy && remakeOn);
   }
+  // Asked from the keys: once a WebM's key frame is found (the start was just typed), it applies.
+  let applyAsked = $state<How | null>(null);
+  $effect(() => {
+    if (!applyAsked || keyPending) return;
+    const h = applyAsked;
+    applyAsked = null;
+    untrack(() => apply(h));
+  });
   const doneText = $derived.by(() => {
     if (!done || !madeRef) return '';
     if (how === 'new') return `✓ Saved as “${madeRef.name}”: the original is unchanged.`;
     if (how === 'item') return '✓ This item plays its own edited copy now.';
     const bits = [...(asked?.seconds ? [lengthText(asked.seconds)] : []), ...(asked?.w ? [`${asked.w}×${asked.h}`] : []), `${formatBytes(madeRef.size)} (was ${formatBytes(was.size)})`];
     return `✓ ${bits.join(' · ')}. Ctrl+Z puts the old one back.`;
+  });
+
+  // The buttons at the foot change as it goes (Apply, then Stop, then Close): when the one focused goes, or is in a
+  // part made inert while it works, the focus moves to the new ones.
+  let foot = $state<HTMLElement>();
+  const footFor = $derived(cant || !facts ? 'reading' : working ? 'working' : done ? 'ended' : 'pick');
+  let footWas = untrack(() => footFor);
+  $effect(() => {
+    const now = footFor;
+    if (now === footWas) return;
+    footWas = now;
+    if (focusLost())
+      (foot?.querySelector<HTMLElement>('[data-stop]') ?? foot?.querySelector<HTMLElement>('button.primary:not(:disabled)') ?? foot?.querySelector<HTMLElement>('button:not(:disabled)'))?.focus();
   });
 
   // ---------- Closing ----------
@@ -346,7 +375,9 @@
     if (mod && k === 'enter') {
       e.preventDefault();
       e.stopImmediatePropagation();
-      apply('all');
+      // (A time typed in Start or End counts, as when leaving the box: it's left first, then it applies.)
+      if (t?.matches?.('[data-trim-start], [data-trim-end]')) t.blur();
+      void tick().then(() => (applyAsked = 'all'));
     } else if (mod && ((k === 'z' && e.shiftKey) || k === 'y') && !typing) {
       e.preventDefault();
       e.stopImmediatePropagation();
@@ -497,7 +528,9 @@
                 <p class="warn small">{cantReencode(facts.video?.codec ?? null)}</p>
               {/if}
               <div class="row">
-                <button class="small" class:on={cropping} aria-pressed={cropping} onclick={() => (cropping ? (cropping = false) : startCrop())} disabled={!reencodes}>✂ Crop</button>
+                <button class="small" class:on={cropping} aria-pressed={cropping} onclick={() => (cropping ? (cropping = false) : startCrop())} disabled={!reencodes} bind:this={cropButton}
+                  >✂ Crop</button
+                >
                 {#if cropping || edit.crop}
                   {#each ASPECTS as [a, l] (l)}
                     <button class="small" class:on={cropAspect === a} aria-pressed={cropAspect === a} onclick={() => setAspect(a)} disabled={!reencodes}>{l}</button>
@@ -589,7 +622,7 @@
       <p class="good" role="status" data-edit-done>{doneText}</p>
     {/if}
 
-    <div class="modal-foot">
+    <div class="modal-foot" bind:this={foot}>
       {#if cant || !facts}
         <button class={cant ? 'primary' : 'ghost'} onclick={onclose}>{cant ? 'Close' : 'Cancel'}</button>
       {:else if working && jobId}

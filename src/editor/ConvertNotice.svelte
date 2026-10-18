@@ -5,6 +5,7 @@
   get one line. Never a window that pops up while the host works; the editor isn't on stream, so files are named here.
 -->
 <script lang="ts">
+  import { tick } from 'svelte';
   import { app } from '../lib/app.svelte';
   import { flash } from '../lib/nav.svelte';
   import { queueConvert } from '../lib/shrink/apply';
@@ -12,7 +13,7 @@
   import { openMediaDialog } from '../lib/shrink/dialog.svelte';
   import { jobFor, progressText, stopJob } from '../lib/shrink/jobs.svelte';
   import { isLossless, type Verdict } from '../lib/shrink/playable';
-  import { advice, whyText } from '../lib/shrink/words';
+  import { advice, severalText, whyText } from '../lib/shrink/words';
   import type { MediaRef } from '../lib/model';
 
   let { onshow }: { onshow: () => void } = $props();
@@ -32,17 +33,38 @@
     onshow();
     for (const m of refs) flash(`media:${m.id}`);
   }
+
+  // The note's buttons change as it goes (🔄, then Stop), and it goes once done: when the focus was in it and is lost,
+  // it moves to the button in its place (Stop), or to the editor's tab.
+  let note = $state<HTMLElement>();
+  let had = false;
+  const shown = $derived(`${list.length}:${list.map((x) => jobFor(x.m.id)?.id ?? '').join()}`);
+  $effect(() => {
+    void shown;
+    void tick().then(() => {
+      const a = document.activeElement;
+      if (!had || (a && a !== document.body)) return;
+      const to = note?.querySelector<HTMLElement>('[data-stop]') ?? note?.querySelector<HTMLElement>('button') ?? document.querySelector<HTMLElement>('.editor nav [aria-current="page"]');
+      had = !!note && !!to && note.contains(to);
+      to?.focus();
+    });
+  });
+  const focusIn = () => (had = true);
+  const focusOut = (e: FocusEvent) => {
+    // (Gone to something else: not when it was taken away with its button.)
+    if (e.relatedTarget instanceof Node && !note?.contains(e.relatedTarget)) had = false;
+  };
 </script>
 
 {#if list.length === 1}
   {@const { m, v } = list[0]}
   {@const fix = fixOf(v)}
   {@const job = jobFor(m.id)}
-  <div class="data-notice" role="status" data-convert-notice>
+  <div class="data-notice" role="status" data-convert-notice bind:this={note} onfocusin={focusIn} onfocusout={focusOut}>
     <span>⚠ “{m.name}” {v.is === 'silent' ? 'plays without its sound' : 'won’t play'} in this browser: {whyText(v)}.{advice(v)}</span>
     {#if job}
       <span class="muted">🔄 {job.copying ? 'Repackaging' : 'Converting'}… <span aria-hidden="true">{progressText(job)}</span></span>
-      <button class="small ghost" onclick={() => stopJob(job.id)} title="Stop it: nothing is changed">Stop</button>
+      <button class="small ghost" onclick={() => stopJob(job.id)} title="Stop it: nothing is changed" data-stop>Stop</button>
     {:else if fix}
       {#if isLossless(fix)}
         <button class="small primary" onclick={() => queueConvert(game, m.id)} title="Put a copy that plays here in its place, everywhere it's used (Ctrl+Z puts the old one back)"
@@ -57,8 +79,8 @@
     {/if}
   </div>
 {:else if list.length > 1}
-  <div class="data-notice" role="status" data-convert-notice>
-    <span>⚠ {list.length} files you just added won’t play in this browser.</span>
+  <div class="data-notice" role="status" data-convert-notice bind:this={note} onfocusin={focusIn} onfocusout={focusOut}>
+    <span>⚠ {severalText(list.map((x) => (x.v.is === 'silent' ? 'silent' : 'fails')))}.</span>
     {#if list.some((x) => fixOf(x.v))}
       <button class="small primary" onclick={() => openMediaDialog({ mode: 'convert', ids: list.map((x) => x.m.id) })}>🔄 Convert them…</button>
     {/if}

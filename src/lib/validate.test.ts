@@ -554,6 +554,10 @@ describe('🤫 Cards (the editor’s tab)', () => {
     // Not worked out yet, or nothing to repackage it as: 🗜, as before.
     expect(validate(game, { canShrink }).filter((p) => p.tab === 'cards').map((p) => [p.shrink, p.convert])).toEqual([['mkv', undefined]]);
     expect(validate(game, { canShrink, plays: () => ({ is: 'plays', repack: null }) }).filter((p) => p.tab === 'cards').map((p) => p.shrink)).toEqual(['mkv']);
+    // Before the game (no ↻ there): 🗜's words and button, though ↻ could repackage it.
+    expect(validate(game, { canShrink, plays, repack: false }).filter((p) => p.tab === 'cards').map((p) => [p.text, p.shrink, p.convert])).toEqual([
+      ["🤫 Card “Tip” has a video phones can't play: make a copy they can play (🗜), or add it as MP4, WebM, MP3, OGG, WAV or M4A, or from a link", 'mkv', undefined],
+    ]);
     vi.unstubAllGlobals();
   });
 

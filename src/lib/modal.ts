@@ -13,6 +13,34 @@ const stack: HTMLElement[] = [];
 /** A modal window is open (a menu under it leaves Esc to it). */
 export const modalOpen = (): boolean => stack.length > 0;
 
+/** The window on top (the keys are its), or null. */
+export const topModal = (): HTMLElement | null => stack.at(-1) ?? null;
+
+/** Who keeps each element inert (a window over it, an editor busy opening a file): it stays inert while any does. */
+const holds = new WeakMap<HTMLElement, Set<object>>();
+
+/** Keeps `el` inert for `by` (`on`), or no longer: it stays inert while anything else keeps it so. */
+export function holdInert(el: HTMLElement, by: object, on: boolean): void {
+  let set = holds.get(el);
+  if (!set) holds.set(el, (set = new Set()));
+  if (on) set.add(by);
+  else set.delete(by);
+  el.inert = set.size > 0;
+}
+
+/**
+ * `use:inertWhile={busy}`: the element is inert while `busy`. Unlike `inert={busy}`, which the page writes again each
+ * time anything near it changes, this leaves a window's own marks alone: what's under a window stays out of reach.
+ */
+export function inertWhile(node: HTMLElement, busy: boolean) {
+  const me = {};
+  holdInert(node, me, busy);
+  return {
+    update: (b: boolean) => holdInert(node, me, b),
+    destroy: () => holdInert(node, me, false),
+  };
+}
+
 // (A details box's summary is a Tab stop too: Shift+Tab from one mustn't jump to the window's last control.)
 const TABBABLE =
   'a[href], details > summary:first-of-type, button:not(:disabled), input:not(:disabled):not([type="hidden"]), select:not(:disabled), textarea:not(:disabled), [tabindex]:not([tabindex="-1"]), [contenteditable="true"]';
@@ -30,9 +58,11 @@ function inertOutside(box: HTMLElement): HTMLElement[] {
   const changed: HTMLElement[] = [];
   for (let el: HTMLElement | null = box; el && el !== document.body; el = el.parentElement) {
     for (const sib of el.parentElement?.children ?? []) {
-      if (sib === el || !(sib instanceof HTMLElement) || sib.inert || sib.hasAttribute('data-over-modal')) continue;
+      if (sib === el || !(sib instanceof HTMLElement) || sib.hasAttribute('data-over-modal')) continue;
       if (sib.tagName === 'SCRIPT' || sib.tagName === 'STYLE') continue;
-      sib.inert = true;
+      // (Inert for reasons of its own, it stays so: one kept inert by holdInert is kept for this window too.)
+      if (sib.inert && !holds.get(sib)?.size) continue;
+      holdInert(sib, box, true);
       changed.push(sib);
     }
   }
@@ -94,7 +124,7 @@ export function modal(node: HTMLElement, opts: ModalOptions = {}) {
       window.removeEventListener('keydown', onkey, true);
       const i = stack.lastIndexOf(node);
       if (i >= 0) stack.splice(i, 1);
-      for (const el of changed) el.inert = false;
+      for (const el of changed) holdInert(el, node, false);
       const lost = !document.activeElement || document.activeElement === document.body || node.contains(document.activeElement);
       if (lost && opener?.isConnected && !opener.closest('[inert]')) opener.focus({ preventScroll: true });
     },

@@ -1,6 +1,7 @@
 <!-- Freeform 16:9 slide editor (spec §5.3): toolbar, canvas with handles, and an inspector. -->
 <script module lang="ts">
   import { freeOffset, isMediaLink, officeTextPaste, placeNewPicture } from '../../lib/editing';
+  import { topModal } from '../../lib/modal';
 
   // The Final tab shows two slide editors at once. Only the one the user last clicked or focused
   // handles keyboard shortcuts, copy and paste (and becoming active clears the other's selection),
@@ -199,6 +200,9 @@
     return [...within.querySelectorAll('[role="dialog"]')].some((d) => !d.contains(root!) && !root!.contains(d));
   }
   function inCharge(): boolean {
+    // (A window over the clue editor or this slide's own, such as ✎ Edit video, has the keys, even with the focus lost.)
+    const top = topModal();
+    if (top && root && !top.contains(root)) return false;
     return imageEditors === 0 && !covered() && (active === me || (!active && instances.size === 1));
   }
   onMount(() => {
