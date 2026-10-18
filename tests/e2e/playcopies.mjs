@@ -1,4 +1,4 @@
-// 🗜 in play (card-files spec §4.9), end to end in the test Chromium (WebM, VP9): a buzzer server of our own (buzzer/
+// 🗜 in play (card-files spec §4.9), end to end in Chromium (WebM here, MP4 in CI's): a buzzer server of our own (buzzer/
 // under `wrangler dev`, local) that takes card files up to 1 MB, so both 🤫 cards' GIFs are too big for it. Before the
 // game, in one window, the checklist's line about one has 🗜 Make smaller: its window lists the file by its kind and
 // size only, warns the stream may stutter, makes the copy, and the line goes; Ctrl+Z takes the copy back and Ctrl+Y
@@ -167,6 +167,10 @@ try {
   await page.keyboard.press('Control+y');
   await saidSoon('↷ Redid Made a smaller copy of a GIF for phones');
   assert(await until(async () => !(await tipLine.count())), 'Ctrl+Y: the copy is back, and the line gone again');
+  // (An MP4 where this browser makes H.264, as CI's does; a WebM in the test Chromium here.)
+  let ext = '';
+  const copyName = async () => ((await stored(page, 'editorDraft'))?.media ?? []).map((m) => m.name).find((n) => n.startsWith('dance-zfnqj (phones).'));
+  assert(await until(async () => ['mp4', 'webm'].includes((ext = (await copyName())?.split('.').pop() ?? ''))), `the editor’s game has the copy (${await copyName()})`);
 
   // ---------- In the game ----------
   console.log('In the game:');
@@ -227,7 +231,7 @@ try {
   await namesNone('one window, its window open');
   await makeIt('twirl');
   assert(
-    await until(() => spin()?.media?.[0]?.file && JSON.stringify(spin().media[0]) === JSON.stringify({ kind: 'video', file: spin().media[0].file, mime: 'video/webm', gif: true }), 60_000),
+    await until(() => spin()?.media?.[0]?.file && JSON.stringify(spin().media[0]) === JSON.stringify({ kind: 'video', file: spin().media[0].file, mime: `video/${ext}`, gif: true }), 60_000),
     `the card already out switches over: its copy goes up, as a GIF sent as a video (${JSON.stringify(spin()?.media)})`,
   );
   assert(await until(async () => !(await left.count())), 'and the panel line goes');
@@ -248,7 +252,7 @@ try {
 
   // Kept: the game being played has both copies, and so does the editor's.
   const names = (g) => (g?.media ?? []).map((m) => m.name).sort();
-  const want = ['dance-zfnqj (phones).webm', 'dance-zfnqj.gif', 'twirl-zfnqj (phones).webm', 'twirl-zfnqj.gif'];
+  const want = [`dance-zfnqj (phones).${ext}`, 'dance-zfnqj.gif', `twirl-zfnqj (phones).${ext}`, 'twirl-zfnqj.gif'];
   assert(await until(async () => JSON.stringify(names((await stored(page, 'playSession'))?.game)) === JSON.stringify(want)), 'the game being played keeps both copies');
   assert(await until(async () => JSON.stringify(names(await stored(page, 'editorDraft'))) === JSON.stringify(want)), 'and so does the editor’s');
   const [aud2] = await Promise.all([page.waitForEvent('popup'), page.keyboard.press('a')]);

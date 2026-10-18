@@ -171,6 +171,14 @@ try {
     throw new Error(`The stored game never got to: ${what}`);
   };
   const refNamed = (g, name) => g.media.find((m) => m.name === name);
+  /** The file `name` is in the game, and isn't file `id` any more (edited, a new one in its place). */
+  const changed = (g, name, id) => !!refNamed(g, name) && refNamed(g, name).id !== id;
+  /** What the open edit saves as, by the window's "Saved as …" line: 'mp4' or 'webm'. */
+  const madeAs = async () => {
+    const line = dialog.locator('[data-edit-format]');
+    await line.filter({ hasText: /^Saved as (MP4|WebM)/ }).waitFor();
+    return (await line.innerText()).startsWith('Saved as MP4') ? 'mp4' : 'webm';
+  };
   /** Every slide item in a game, by id (they're found anywhere). */
   const itemsOf = (g) => {
     const out = {};
@@ -309,12 +317,17 @@ try {
   assert(await dialog.locator('[data-crop-box]').count(), 'the crop box lies over the picture');
   await dialog.getByRole('button', { name: '360p', exact: true }).click();
   assert((await dialog.getByRole('button', { name: '360p', exact: true }).getAttribute('title')) === '360×360', '360p is 360×360');
+  // (Made again with no sound: an MP4 (H.264) where this browser makes H.264, as CI's does, named for it; else a WebM.)
+  const wideExt = await madeAs();
   await applyAnd();
   await closeDialog();
-  const g3 = await draftWhen((g) => refNamed(g, 'wide.webm')?.id !== 'wide', 'wide.webm cropped');
-  const wideBytes = await bytesOf(refNamed(g3, 'wide.webm').id);
+  const g3 = await draftWhen((g) => changed(g, `wide.${wideExt}`, 'wide'), 'wide cropped');
+  const wideBytes = await bytesOf(refNamed(g3, `wide.${wideExt}`).id);
   const wideRead = await hueAt(fx, wideBytes, 0.5);
-  assert(refNamed(g3, 'wide.webm').mime === 'video/webm' && wideRead.width === 360 && wideRead.height === 360, `the file: 360×360 video/webm (${wideRead.width}×${wideRead.height})`);
+  assert(
+    refNamed(g3, `wide.${wideExt}`).mime === `video/${wideExt}` && wideRead.width === 360 && wideRead.height === 360,
+    `the file: 360×360 video/${wideExt} (${wideRead.width}×${wideRead.height})`,
+  );
   const [b169, b43] = [itemsOf(g3)[items.wide169.id], itemsOf(g3)[items.wide43.id]];
   assert(b169.w === b169.h && b169.w > 0, `the 16:9 box is square now (${b169.w}×${b169.h})`);
   assert(b43.w === 800 && b43.h === 600, 'the 4:3 box is as it was');
@@ -325,6 +338,7 @@ try {
   await editFromMedia('long.webm');
   await dialog.getByRole('button', { name: '✂ Crop' }).click();
   await dialog.getByRole('button', { name: '4:3', exact: true }).click();
+  const longExt = await madeAs();
   // (The page's work slowed down 4 times: the edit is still being made when Stop is pressed.)
   const cdp = await ctx.newCDPSession(page);
   await cdp.send('Emulation.setCPUThrottlingRate', { rate: 4 });
@@ -344,9 +358,9 @@ try {
   await toasted('✂ Video edited: ');
   const said4 = (await toastsSeen()).find((t) => t.startsWith('✂ Video edited: '));
   assert(/^✂ Video edited: 20 s, 960×720, [\d.]+ [KM]B \(was [\d.]+ [KM]B\)\. Ctrl\+Z puts the old one back\.$/.test(said4), `then a toast: “${said4}”`);
-  const g4b = await draftWhen((g) => refNamed(g, 'long.webm')?.id !== 'long', 'long.webm cropped');
+  const g4b = await draftWhen((g) => changed(g, `long.${longExt}`, 'long'), 'long cropped');
   assert((await historyRows()).filter((t) => t.startsWith('Edited a video')).length === rowsBefore + 1, 'one History row: the stopped one made none');
-  const longId = refNamed(g4b, 'long.webm').id;
+  const longId = refNamed(g4b, `long.${longExt}`).id;
 
   // ---------- 6. Save as a new file ----------
   console.log('6. Save as a new file:');
@@ -522,7 +536,7 @@ try {
 
   // ---------- 5. ▶ Play while an edit is being saved ----------
   console.log('5. ▶ Play asks first:');
-  await editFromMedia('long.webm');
+  await editFromMedia(`long.${longExt}`);
   await dialog.getByRole('button', { name: '✂ Crop' }).click();
   await dialog.getByRole('button', { name: '1:1', exact: true }).click();
   // (The page's work slowed down 4 times again: the edit is still being made after the clicks below.)
@@ -545,8 +559,8 @@ try {
   await page.locator('.editor').waitFor({ state: 'detached' });
   await cdp.send('Emulation.setCPUThrottlingRate', { rate: 1 });
   assert(true, 'Stop it and play: the game starts');
-  const g5 = await draftWhen((g) => !!refNamed(g, 'long.webm'), 'the editor’s game');
-  assert(refNamed(g5, 'long.webm').id === longId, 'with the file unchanged');
+  const g5 = await draftWhen((g) => !!refNamed(g, `long.${longExt}`), 'the editor’s game');
+  assert(refNamed(g5, `long.${longExt}`).id === longId, 'with the file unchanged');
 
   await fx.close();
   if (errors.length) throw new Error('Page errors: ' + errors.join(' | '));

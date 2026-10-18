@@ -162,9 +162,16 @@ export async function hueAt(page, buf, t) {
       v.muted = true;
       v.src = URL.createObjectURL(new Blob([bytes]));
       await new Promise((ok, no) => ((v.onloadeddata = ok), (v.onerror = () => no(new Error('the video didn’t load')))));
-      // (Seeked to, even at 0: the frame shown there is drawn by then.)
+      // (Seeked to, even at 0, and that frame shown: a newer Chromium can still draw the frame before it right after
+      // 'seeked', so it waits for the frame to be presented, a second at most.)
+      const shown = new Promise((ok) => {
+        if (!v.requestVideoFrameCallback) return ok();
+        v.requestVideoFrameCallback(() => ok());
+        setTimeout(ok, 1000);
+      });
       v.currentTime = Math.max(t, 0.001);
       await new Promise((ok) => (v.onseeked = ok));
+      await shown;
       const c = Object.assign(document.createElement('canvas'), { width: v.videoWidth, height: v.videoHeight });
       const g = c.getContext('2d');
       g.drawImage(v, 0, 0);
