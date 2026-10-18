@@ -336,7 +336,8 @@ try {
   await d.waitForFunction(() => window.__closed === true, null, { timeout: 60_000 });
   await cdp.send('Emulation.setCPUThrottlingRate', { rate: 1 });
   const atClose = await d.evaluate(() => window.__draftAtClose);
-  assert(atClose?.includes('dance (phones).webm'), `Wait: the app closes once the copy is made, with it written (${atClose?.join(', ')})`);
+  // (An MP4 where the browser makes H.264, as CI's does; a WebM in the test Chromium here.)
+  assert(atClose?.some((n) => /^dance \(phones\)\.(mp4|webm)$/.test(n)), `Wait: the app closes once the copy is made, with it written (${atClose?.join(', ')})`);
 
   assert(!errors.length, 'no page errors' + (errors.length ? ': ' + errors.join(' | ') : ''));
   console.log('\nDesktop E2E passed.');

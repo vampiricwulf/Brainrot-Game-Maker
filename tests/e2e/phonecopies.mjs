@@ -1,14 +1,15 @@
-// 🗜 Smaller copies for phones (card-files spec §4), end to end in the test Chromium, which makes WebM (VP9) and Opus
-// only: a 🤫 card's GIF made into a small looping video from 🖼 Media, which plays; Ctrl+Z and Ctrl+Y; Stop partway
-// leaves nothing; one waiting behind another, the header's pill, and the toast at the end, none naming the file. Then
-// videos and sounds (stage 6): 🖼 Media's "2 files are big for phones" makes both copies at once; a 4 s 720p WebM made
-// at 480p, which plays and seeks, then only the part its card plays (1 to 3 s); a WAV made an OGG (Opus); a video
-// phones can't play (a .mov) given a copy they can from the 📱 preview, which clears the checklist's line. One made
-// while a drag on a slide is held waits for it: a step of its own, after the drag's. ▶ Play asks first while one is
-// made. Then in play, with a buzzer server of our own (buzzer/ under `wrangler dev`, local): the card goes up as the
-// copy, the phone shows it looping, silent and without controls (with reduced motion, or on a phone that won't start
-// it by itself, still with "▶ Play"), and the audience window's copy of the game never lists it. The MP4 (H.264, AAC)
-// path needs a browser that makes H.264: checked by hand. Needs `npm ci` in buzzer/.
+// 🗜 Smaller copies for phones (card-files spec §4), end to end in Chromium: the test Chromium here makes WebM (VP9) and
+// Opus only, CI's makes MP4 (H.264) too, and the test follows what the dialog says it makes: a 🤫 card's GIF made into a
+// small looping video from 🖼 Media, which plays; Ctrl+Z and Ctrl+Y; Stop partway leaves nothing; one waiting behind
+// another, the header's pill, and the toast at the end, none naming the file. Then videos and sounds (stage 6): 🖼
+// Media's "2 files are big for phones" makes both copies at once; a 4 s 720p WebM made at 480p, which plays and seeks,
+// then only the part its card plays (1 to 3 s); a WAV made an OGG (Opus), or an M4A (AAC) where the browser makes AAC;
+// a video phones can't play (a .mov) given a copy they can from the 📱 preview, which clears the checklist's line. One
+// made while a drag on a slide is held waits for it: a step of its own, after the drag's. ▶ Play asks first while one
+// is made. Then in play, with a buzzer server of our own (buzzer/ under `wrangler dev`, local): the card goes up as the
+// copy, the phone shows it looping, silent and without controls (with reduced motion, or on a phone that won't start it
+// by itself, still with "▶ Play"), and the audience window's copy of the game never lists it. Needs `npm ci` in
+// buzzer/.
 import { chromium } from 'playwright-core';
 import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
@@ -185,7 +186,14 @@ try {
   const says = (await dialog.innerText()).replace(/\s+/g, ' ');
   assert(says.includes('dance-zfnqj.gif') && says.includes('2.4 s') && says.includes('320×240'), `its dialog names the file, its length and size (the editor isn't on stream): ${says.slice(0, 160)}`);
   assert(says.includes('Phones get the copy; the show keeps this file as it is.'), 'and says the show keeps the file');
-  assert(says.includes('Made as a WebM (VP9). This browser makes WebM videos: some iPhones may not play them.'), 'this browser makes WebM, and it says some iPhones may not play it');
+  // What this browser makes, as the dialog says (from what it can encode): an MP4 (H.264) where it can (CI's Chromium),
+  // else a WebM (the test Chromium here). What follows goes by it, so each is checked somewhere.
+  const avc = says.includes('Made as an MP4 (H.264), which every phone plays.');
+  const gifBox = avc ? { mime: 'video/mp4', word: 'MP4' } : { mime: 'video/webm', word: 'WebM' };
+  assert(
+    avc || says.includes('Made as a WebM (VP9). This browser makes WebM videos: some iPhones may not play them.'),
+    avc ? 'this browser makes MP4 (H.264), and it says every phone plays it' : 'this browser makes WebM, and it says some iPhones may not play it',
+  );
   const before = await historyCount();
   await dialog.getByRole('button', { name: 'Make it', exact: true }).click();
   await dialog.locator('[data-shrink-done]').waitFor({ timeout: 60_000 });
@@ -203,10 +211,10 @@ try {
   await dialog.getByLabel('The copy for phones').waitFor();
   await close();
   const first = await copyOf('dance');
-  assert(first.type === 'video/webm' && first.size < dance.length / 5, `the copy is a WebM under a fifth of the GIF (${first.size} bytes of ${dance.length})`);
+  assert(first.type === gifBox.mime && first.size < dance.length / 5, `the copy is an ${gifBox.word} under a fifth of the GIF (${first.size} bytes of ${dance.length})`);
   assert(first.meta?.w === 320 && first.meta.h === 240 && Math.abs(first.meta.seconds - 2.4) < 0.3, `and it plays: ${JSON.stringify(first.meta)}`);
   const line = (await copyLine('dance').innerText()).replace(/\s+/g, ' ');
-  assert(/^📱 Phone copy · \d+ KB · 320×240 WebM/.test(line), `the GIF's card says phones get a copy (${line})`);
+  assert(line.startsWith('📱 Phone copy · ') && line.includes(` KB · 320×240 ${gifBox.word}`), `the GIF's card says phones get a copy (${line})`);
   const header = (await page.locator('.library .page-header').innerText()).replace(/\s+/g, ' ');
   assert(header.includes('(1 phone copy)'), `the header counts it (${header.slice(0, 90)})`);
   assert((await page.locator('.library .card').count()) === 5, 'and it has no card of its own');
@@ -269,7 +277,7 @@ try {
   assert(rows.length >= 2 && !rows.some((t) => t.includes('zfnqj')), `nor does History (${rows.join(' | ')})`);
   await media();
   let copy = await copyOf('dance');
-  assert(copy.type === 'video/webm' && copy.hash, 'the GIF has its copy (made again)');
+  assert(copy.type === gifBox.mime && copy.hash, 'the GIF has its copy (made again)');
 
   // ---------- Done while a drag is held ----------
   console.log('Done while a drag on a slide is held:');
@@ -344,16 +352,19 @@ try {
   await row('song').getByText(/^→ about /).waitFor({ timeout: 60_000 });
   const listed = (await several.locator('[data-shrink-row]').allInnerTexts()).map((t) => t.replace(/\s+/g, ' ').trim());
   assert(
-    listed.length === 2 && /^🎬 movie-zfnqj\.webm · 4\.0 MB → about [\d.]+ (KB|MB) \(1280×720, 0:01–0:03 only\)$/.test(listed[0]) && /^🔊 song-zfnqj\.wav · 3\.4 MB → about \d+ KB \(OGG\)$/.test(listed[1]),
+    listed.length === 2 && /^🎬 movie-zfnqj\.webm · 4\.0 MB → about [\d.]+ (KB|MB) \(1280×720, 0:01–0:03 only\)$/.test(listed[0]) && /^🔊 song-zfnqj\.wav · 3\.4 MB → about \d+ KB \((OGG|M4A)\)$/.test(listed[1]),
     `a row each, with the copy it gets: the video only the part its card plays (${listed.join(' | ')})`,
   );
+  // (A browser that makes AAC sound makes an M4A of the sound, and an MP4 of the video, its Opus sound made AAC.)
+  const aac = listed[1].endsWith('(M4A)');
+  const movieBox = avc && aac ? { mime: 'video/mp4', word: 'MP4' } : { mime: 'video/webm', word: 'WebM' };
   await several.getByRole('button', { name: 'Make 2 copies' }).click();
   await row('movie').getByText(/^✓ /).waitFor({ timeout: 120_000 });
   await row('song').getByText(/^✓ /).waitFor({ timeout: 120_000 });
   assert((await historyCount()) === at6 + 2 && (await bigButton.count()) === 0, 'both are made: one step each, and 🖼 Media no longer says they’re big');
   await several.locator('.modal-foot').getByRole('button', { name: 'Close' }).click();
   await several.waitFor({ state: 'detached' });
-  assert((await copyLine('movie').innerText()).replace(/\s+/g, ' ').includes('· 1280×720 WebM · 0:01–0:03'), `the video’s card says its copy holds 0:01–0:03 (${(await copyLine('movie').innerText()).replace(/\s+/g, ' ')})`);
+  assert((await copyLine('movie').innerText()).replace(/\s+/g, ' ').includes(`· 1280×720 ${movieBox.word} · 0:01–0:03`), `the video’s card says its copy holds 0:01–0:03 (${(await copyLine('movie').innerText()).replace(/\s+/g, ' ')})`);
   await page.keyboard.press('Control+z');
   await copyLine('song').waitFor({ state: 'detached' });
   await page.keyboard.press('Control+z');
@@ -371,7 +382,10 @@ try {
   assert(/^◉ Phones · 1280×720 · about [\d.]+ (KB|MB) \| ○ Small · 854×480 · about [\d.]+ (KB|MB) \| ○ Tiny · 640×360 · about [\d.]+ (KB|MB)$/.test(radios), `720p, 480p and 360p, with their sizes; 720p picked (${radios})`);
   const trim = dialog.getByRole('checkbox', { name: /^Only the part the cards play: 0:01 → 0:03 \(2 s\)/ });
   assert(await trim.isChecked(), 'only the part its card plays (1 to 3 s of 4) is ticked');
-  assert(plan.includes('Made as a WebM (VP9, Opus). This browser makes WebM videos: some iPhones may not play them.'), 'this browser makes WebM, with its Opus sound, and it says so');
+  assert(
+    plan.includes(avc && aac ? 'Made as an MP4 (H.264, AAC), which every phone plays.' : 'Made as a WebM (VP9, Opus). This browser makes WebM videos: some iPhones may not play them.'),
+    `this browser makes ${movieBox.word}, with its ${aac ? 'AAC' : 'Opus'} sound, and it says so`,
+  );
   await trim.uncheck();
   await dialog.getByRole('radio', { name: /^Small · 854×480/ }).check();
   await dialog.getByRole('button', { name: 'Make it', exact: true }).click();
@@ -383,7 +397,7 @@ try {
   assert(/^[\d.]+ (KB|MB) \(was 4\.0 MB\)\. Phones get this copy \(Ctrl\+Z takes it back\)\.$/.test(done6), `and how big it came out (${done6})`);
   await close();
   const whole = await copyOf('movie', 1);
-  assert(whole.type === 'video/webm' && whole.size < 0.9 * movie.length, `the copy is a smaller WebM (${whole.size} bytes of ${movie.length})`);
+  assert(whole.type === movieBox.mime && whole.size < 0.9 * movie.length, `the copy is a smaller ${movieBox.word} (${whole.size} bytes of ${movie.length})`);
   assert(whole.meta?.w === 854 && whole.meta.h === 480 && Math.abs(whole.meta.seconds - 4) < 0.3, `480p, all 4 s of it: ${JSON.stringify(whole.meta)}`);
   assert(Math.abs(whole.meta.at - 1) < 0.1, `and it plays from 1 s when sent there (${whole.meta.at})`);
 
@@ -398,22 +412,31 @@ try {
   assert(part.meta?.w === 1280 && Math.abs(part.meta.seconds - 2) < 0.3, `the copy holds 1 to 3 s only: ${JSON.stringify(part.meta)}`);
   const phone = await cardPreview('sc_movie');
   const note = (await phone.locator('[data-copy-note]').innerText()).replace(/\s+/g, ' ');
-  assert(/^📱 Phones get its smaller copy instead \([\d.]+ (KB|MB), 1280×720 WebM\)\. ▶ Watch it 🗜 Make it again ✕ Remove it$/.test(note), `the card’s 📱 preview says its phones get the copy (${note})`);
+  assert(
+    new RegExp(`^📱 Phones get its smaller copy instead \\([\\d.]+ (KB|MB), 1280×720 ${movieBox.word}\\)\\. ▶ Watch it 🗜 Make it again ✕ Remove it$`).test(note),
+    `the card’s 📱 preview says its phones get the copy (${note})`,
+  );
   await phone.getByRole('button', { name: '▶ Watch it' }).click();
   await phone.getByLabel('The copy phones get').waitFor();
   assert(true, 'and plays it (▶ Watch it)');
   await media();
 
-  // A WAV: an OGG (Opus), as this browser makes no AAC.
+  // A WAV: an M4A (AAC) where this browser makes AAC, else an OGG (Opus).
   await card('song').getByRole('button', { name: '🗜 Make smaller…' }).click();
   await dialog.getByText(/^A sound for phones: about \d+ KB\.$/).waitFor({ timeout: 60_000 });
   const ogg = (await dialog.innerText()).replace(/\s+/g, ' ');
-  assert(ogg.includes('song-zfnqj.wav · 3.4 MB · 20 s') && ogg.includes('Made as an OGG (Opus). Its sound is Opus: some iPhones may not play it.'), `a sound: it says what it makes (${ogg.slice(0, 260)})`);
+  assert(
+    ogg.includes('song-zfnqj.wav · 3.4 MB · 20 s') && ogg.includes(aac ? 'Made as an M4A (AAC), which every phone plays.' : 'Made as an OGG (Opus). Its sound is Opus: some iPhones may not play it.'),
+    `a sound: it says what it makes (${ogg.slice(0, 260)})`,
+  );
   await dialog.getByRole('button', { name: 'Make it', exact: true }).click();
   await dialog.locator('[data-shrink-done]').waitFor({ timeout: 120_000 });
   await close();
   const sound = await copyOf('song');
-  assert(sound.type === 'audio/ogg' && sound.size < song.length / 5 && Math.abs(sound.meta?.seconds - 20) < 0.5, `the copy is an OGG, under a fifth of the WAV, that plays: ${sound.size} bytes, ${JSON.stringify(sound.meta)}`);
+  assert(
+    sound.type === (aac ? 'audio/mp4' : 'audio/ogg') && sound.size < song.length / 5 && Math.abs(sound.meta?.seconds - 20) < 0.5,
+    `the copy is an ${aac ? 'M4A' : 'OGG'}, under a fifth of the WAV, that plays: ${sound.size} bytes, ${JSON.stringify(sound.meta)}`,
+  );
 
   // A .mov phones can't play.
   const movLine = page.locator('nav .problem', { hasText: '🤫 Card “Mov” has a video phones can\'t play: make a copy they can play (🗜)' });
@@ -429,7 +452,7 @@ try {
   await kindNote.waitFor({ state: 'detached' });
   await movLine.waitFor({ state: 'detached' });
   const movNote = (await movPhone.locator('[data-copy-note]').innerText()).replace(/\s+/g, ' ');
-  assert(movNote.startsWith('📱 Phones get a copy they can play instead (') && movNote.includes('320×240 WebM'), `🗜 Make a copy phones can play: the 📱 preview’s note and the checklist’s line are gone (${movNote})`);
+  assert(movNote.startsWith('📱 Phones get a copy they can play instead (') && movNote.includes(`320×240 ${gifBox.word}`), `🗜 Make a copy phones can play: the 📱 preview’s note and the checklist’s line are gone (${movNote})`);
   const toasts6 = await page.evaluate(() => (window.__seen ?? []).filter((t) => /^(🗜|Stopped)/.test(t)));
   assert(toasts6.length >= 3 && !toasts6.some((t) => t.includes('zfnqj')), `no toast names a file (${toasts6.join(' | ')})`);
   await page.locator('nav > button', { hasText: '🕘 History' }).click();
@@ -514,7 +537,7 @@ try {
   await page.keyboard.press('Escape');
   const sentMedia = () => states.at(-1)?.cards?.[0]?.media;
   assert(await until(() => sentMedia()?.[0]?.file === copy.hash, 60_000), `the card goes up as the copy (${JSON.stringify(sentMedia())})`);
-  assert(JSON.stringify(sentMedia()) === JSON.stringify([{ kind: 'video', file: copy.hash, mime: 'video/webm', gif: true }]), 'marked as a GIF sent as a video');
+  assert(JSON.stringify(sentMedia()) === JSON.stringify([{ kind: 'video', file: copy.hash, mime: gifBox.mime, gif: true }]), 'marked as a GIF sent as a video');
   assert(posts.length === 1, `one file is uploaded, the copy (${posts.length})`);
   await bob.getByRole('button', { name: 'Tap to see' }).tap();
   const v = bob.locator('.card .card-item video');
