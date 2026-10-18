@@ -28,9 +28,10 @@ function assert(cond, msg) {
 
 /**
  * A GIF of `w`×`h` random pixels (seeded), its picture data stored uncompressed (a clear code every 250 pixels keeps
- * every code 9 bits wide): about 9 bits a pixel, so its size is known, and it's a real GIF a browser draws.
+ * every code 9 bits wide): about 9 bits a pixel, so its size is known, and it's a real GIF a browser draws. With
+ * `frames`, as many pictures one after another: that many times the bytes, with no bigger a picture to draw.
  */
-function noiseGif(w, h, seed) {
+function noiseGif(w, h, seed, frames = 1) {
   let x = seed >>> 0 || 1;
   const rnd = () => ((x ^= x << 13), (x ^= x >>> 17), (x ^= x << 5), x >>> 0);
   const head = Buffer.alloc(13);
@@ -40,29 +41,34 @@ function noiseGif(w, h, seed) {
   head[10] = 0xf7; // a global table of 256 colors
   const palette = Buffer.alloc(768);
   for (let i = 0; i < 768; i++) palette[i] = rnd() & 255;
-  const desc = Buffer.alloc(10);
-  desc[0] = 0x2c;
-  desc.writeUInt16LE(w, 5);
-  desc.writeUInt16LE(h, 7);
-  const n = w * h;
-  const codes = n + Math.ceil(n / 250) + 1;
-  const data = Buffer.alloc(Math.ceil((codes * 9) / 8) + 2);
-  let bit = 0;
-  const put = (c) => {
-    for (let k = 0; k < 9; k++, bit++) if ((c >> k) & 1) data[bit >> 3] |= 1 << (bit & 7);
-  };
-  for (let i = 0; i < n; i++) {
-    if (i % 250 === 0) put(256);
-    put(rnd() & 255);
+  const out = [head, palette];
+  for (let f = 0; f < frames; f++) {
+    const desc = Buffer.alloc(10);
+    desc[0] = 0x2c;
+    desc.writeUInt16LE(w, 5);
+    desc.writeUInt16LE(h, 7);
+    const n = w * h;
+    const codes = n + Math.ceil(n / 250) + 1;
+    const data = Buffer.alloc(Math.ceil((codes * 9) / 8) + 2);
+    let bit = 0;
+    const put = (c) => {
+      for (let k = 0; k < 9; k++, bit++) if ((c >> k) & 1) data[bit >> 3] |= 1 << (bit & 7);
+    };
+    for (let i = 0; i < n; i++) {
+      if (i % 250 === 0) put(256);
+      put(rnd() & 255);
+    }
+    put(257);
+    const bytes = data.subarray(0, Math.ceil(bit / 8));
+    out.push(desc, Buffer.from([8]));
+    for (let i = 0; i < bytes.length; i += 255) {
+      const part = bytes.subarray(i, i + 255);
+      out.push(Buffer.from([part.length]), part);
+    }
+    out.push(Buffer.from([0]));
   }
-  put(257);
-  const bytes = data.subarray(0, Math.ceil(bit / 8));
-  const blocks = [];
-  for (let i = 0; i < bytes.length; i += 255) {
-    const part = bytes.subarray(i, i + 255);
-    blocks.push(Buffer.from([part.length]), part);
-  }
-  return Buffer.concat([head, palette, desc, Buffer.from([8]), ...blocks, Buffer.from([0, 0x3b])]);
+  out.push(Buffer.from([0x3b]));
+  return Buffer.concat(out);
 }
 
 // ---------- The game ----------
@@ -124,15 +130,16 @@ try {
   await maker.close();
 
   // Files: a big picture (shrunk before it goes up), the video, two small pictures; for the second clue a small
-  // picture, five GIFs of about 3.4 MB (the room holds 16 MB: the fifth is turned down) and one over 4 MB.
+  // picture, five GIFs of about 13.7 MB (the room holds 64 MB: the fifth is turned down) and one over 16 MB, each four
+  // frames of the size a phone draws easily.
   const files = {
     big: png(200, 60, 20, 3000, 2000),
     clip,
     swamp: png(20, 160, 60, 400, 300),
     third: png(60, 20, 160, 300, 200),
     first: png(240, 200, 40, 300, 200),
-    ...Object.fromEntries([1, 2, 3, 4, 5].map((i) => [`gif${i}`, noiseGif(1740, 1740, i * 7919)])),
-    huge: noiseGif(2000, 2000, 4242),
+    ...Object.fromEntries([1, 2, 3, 4, 5].map((i) => [`gif${i}`, noiseGif(1740, 1740, i * 7919, 4)])),
+    huge: noiseGif(2000, 2000, 4242, 4),
   };
   const ref = (id, name, mime, kind) => ({ id, name, mime, size: files[id].length, kind });
   const media = [
@@ -144,7 +151,7 @@ try {
     ...[1, 2, 3, 4, 5].map((i) => ref(`gif${i}`, `zfnqj-gif${i}.gif`, 'image/gif', 'image')),
     ref('huge', 'zfnqj-huge.gif', 'image/gif', 'image'),
   ];
-  assert(files.gif1.length > 3.3e6 && files.gif1.length < 3.5e6 && files.huge.length > 4 * 1024 * 1024, `the GIFs: five of ${(files.gif1.length / 1e6).toFixed(2)} MB, one of ${(files.huge.length / 1e6).toFixed(2)} MB`);
+  assert(files.gif1.length > 13.5e6 && files.gif1.length < 13.9e6 && files.huge.length > 16 * 1024 * 1024, `the GIFs: five of ${(files.gif1.length / 1e6).toFixed(2)} MB, one of ${(files.huge.length / 1e6).toFixed(2)} MB`);
   const rules = { game: 'describe', giver: 'partner', got: { giver: 100, guesser: 50 }, missed: { giver: 0, guesser: -50 }, partnerSafe: true, points: 'game' };
   const plain = (id, q, a) => ({ id, value: null, type: 'standard', questionSlide: slide(text(q)), answerSlide: slide(text(a)) });
   const partnerClue = (id, q, a, cards) => ({ ...plain(id, q, a), type: 'partner', partner: { ...rules }, timerSeconds: 60, cards });
@@ -573,15 +580,15 @@ try {
   await mainButton(host).click();
   await host.locator('.stage-box [data-partner-badge]').waitFor();
   const left2 = panel.locator('[data-card-left="2"]');
-  assert((await left2.innerText()) === '🖼 1 GIF won’t reach the phones (too big for phones)', 'the GIF over 4 MB, counted: “🖼 1 GIF won’t reach the phones (too big for phones)”');
+  assert((await left2.innerText()) === '🖼 1 GIF won’t reach the phones (too big for phones)', 'the GIF over 16 MB, counted: “🖼 1 GIF won’t reach the phones (too big for phones)”');
   assert(await row(2).getByRole('button', { name: '📋 Copy picture' }).isVisible(), 'and its row offers 📋 Copy picture');
   const upBefore = uploads.length;
   await mainButton(host).click();
-  // (About 17 MB going up, one file at a time.)
-  assert(await until(() => answers.some((a) => a.status === 409 && a.read), 90000), 'sent: the room turns an upload down once it holds 16 MB');
+  // (About 68 MB going up, one file at a time.)
+  assert(await until(() => answers.some((a) => a.status === 409 && a.read), 240000), 'sent: the room turns an upload down once it holds 64 MB');
   const turned = answers.find((a) => a.status === 409);
   assert(turned.error === 'This room holds all the card files it can: send fewer pictures and videos at once', `in plain words (“${turned.error}”)`);
-  assert(uploads.length - upBefore === 6, 'six uploads (the picture and five GIFs; never the one over 4 MB)');
+  assert(uploads.length - upBefore === 6, 'six uploads (the picture and five GIFs; never the one over 16 MB)');
   await panel.locator('[data-card-left="1"]').waitFor();
   const fullLine = '🖼 1 GIF won’t reach the phones (the buzzer room holds all the files it can: ✖ take a card back, then ↻ Send again)';
   assert((await panel.locator('[data-card-left="1"]').innerText()) === fullLine, `the panel counts it, and says why: “${fullLine}”`);

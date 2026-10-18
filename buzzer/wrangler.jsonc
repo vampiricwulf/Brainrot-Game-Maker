@@ -44,7 +44,7 @@
   "vars": {
     // Card files (pictures, GIFs, videos and sounds on private cards) the whole server takes a UTC day, in MB: further
     // uploads are refused until the next day, and the host copies the card instead. 0 turns card files off. Each room
-    // holds 16 MB of them at most, deleted 10 minutes after no card uses them. See README.md, "Card files".
-    "FILES_MB_PER_DAY": "300"
+    // holds 64 MB of them at most, deleted 10 minutes after no card uses them. See README.md, "Card files".
+    "FILES_MB_PER_DAY": "2000"
   }
 }

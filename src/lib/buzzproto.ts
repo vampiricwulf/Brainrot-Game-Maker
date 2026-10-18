@@ -74,9 +74,13 @@ export function bigWords(s: string | undefined): boolean {
 /** Sites whose player a card may embed (the phone builds the frame from the link, see links.ts playerFor). */
 export const EMBED_SITES = ['youtube', 'drive', 'streamable'] as const;
 
-/** Card files ('files'): at most this big each, and per room in all (bytes and files). */
-export const FILE_MAX_BYTES = 4 * 1024 * 1024;
-export const ROOM_FILES_BYTES = 16 * 1024 * 1024;
+/**
+ * Card files ('files'): at most this big each, and per room in all (bytes and files). A room holds a file whole while
+ * it stores it, well inside a Durable Object's 128 MB (the app sends one at a time); what each costs the server is
+ * measured in buzzer/README.md, "Card files".
+ */
+export const FILE_MAX_BYTES = 16 * 1024 * 1024;
+export const ROOM_FILES_BYTES = 64 * 1024 * 1024;
 export const ROOM_FILES_MAX = 32;
 /** The types a card file may have. No SVG, no HTML. */
 export const FILE_TYPES = ['image/png', 'image/jpeg', 'image/webp', 'image/gif', 'video/mp4', 'video/webm', 'audio/mpeg', 'audio/ogg', 'audio/wav', 'audio/mp4'] as const;

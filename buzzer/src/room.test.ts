@@ -2557,7 +2557,7 @@ describe('card files', () => {
     return { ...g, sendCards, tokenOf };
   }
 
-  it('the room’s caps: 32 files and 16 MB; the same file again is already here', () => {
+  it('the room’s caps: 32 files and 64 MB; the same file again is already here', () => {
     const g = sent();
     expect(g.room.fileRoom(F1, FILE_MAX_BYTES)).toEqual({ ok: true, drop: [] });
     g.room.fileAdded(F1, 'image/png', FILE_MAX_BYTES, 4);

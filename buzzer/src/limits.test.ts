@@ -128,9 +128,9 @@ describe('card files a day', () => {
     expect(filesBudget(2.5)).toBe(2.5 * MB);
     expect(filesBudget('0')).toBe(0);
     expect(filesBudget(0)).toBe(0);
-    // The default is on, and small.
+    // The default is on, and less than the Free plan's 5 GB of storage.
     expect(FILES_MB_PER_DAY).toBeGreaterThan(0);
-    expect(FILES_MB_PER_DAY).toBeLessThanOrEqual(1024);
+    expect(FILES_MB_PER_DAY).toBeLessThan(5000);
   });
 
   it('counts the bytes up, and refuses an upload that would go over the day’s budget until the next UTC day', () => {

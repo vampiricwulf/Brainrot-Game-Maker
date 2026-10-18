@@ -80,10 +80,11 @@ export function countRoom(
 // ---- card files ----
 
 /**
- * Card files the whole server takes a UTC day (MB) when FILES_MB_PER_DAY isn't set (or isn't a number). Small on
- * purpose: Free plan CPU time and rows written per upload aren't measured yet, and storage is shared by every room.
+ * Card files the whole server takes a UTC day (MB) when FILES_MB_PER_DAY isn't set (or isn't a number): enough for a
+ * few games a day, one host's quarter for several full rooms, and less than the Free plan's 5 GB of storage, so a day
+ * of it can't fill that even if no file were ever deleted (README.md, "Card files", has what a file costs).
  */
-export const FILES_MB_PER_DAY = 300;
+export const FILES_MB_PER_DAY = 2000;
 /** One address (addressKey) may upload this share of the day's budget, and one IPv6 /48 (networkKey) this one. */
 export const ADDRESS_FILE_SHARE = 1 / 4;
 export const NETWORK_FILE_SHARE = 1 / 2;

@@ -216,7 +216,7 @@ counted against today's budget for a file that then isn't stored (the room ended
 
 - **Types**: PNG, JPEG, WebP, GIF; MP4, WebM; MP3, OGG, WAV, M4A. No SVG, no HTML. Served back with their own type,
   `Cache-Control: no-store` and `X-Content-Type-Options: nosniff`.
-- **At most 4 MB a file, and 16 MB and 32 files a room.**
+- **At most 16 MB a file, and 64 MB and 32 files a room.**
 - **Kept** in the room's own Durable Object storage, in 1 MB pieces under their own keys (`file:<id>:<n>`), never in
   the room's state. A file streams through the Worker both ways, never held there: the room reads an upload straight
   into its pieces, a whole piece at a time (working out its id on the way), and answers a download with a response
@@ -224,36 +224,38 @@ counted against today's budget for a file that then isn't stored (the room ended
   never sent: 10 minutes after its upload), by the room's alarm (the same one that ends the room) and on the host's
   next state; the host can also `forget` them. Everything goes when the room ends.
 - **120 uploads and 120 downloads a minute per address** (`FILE_LIMIT` in `wrangler.jsonc`).
-- **A daily budget for the whole server: 300 MB of uploads a UTC day** by default (`FILES_MB_PER_DAY`), of which one
+- **A daily budget for the whole server: 2,000 MB of uploads a UTC day** by default (`FILES_MB_PER_DAY`), of which one
   address may use a quarter and one IPv6 /48 half. Over it, uploads are refused with "The buzzer server isn't taking
   files right now — try again tomorrow" (or "Too many files from here today"), the welcome stops listing `'files'`, and
   the app falls back to its 📋 copy buttons. **To change it**, set `FILES_MB_PER_DAY` under `vars` in `wrangler.jsonc`
   (a number of MB; `0` turns card files off) and deploy again; for `wrangler dev` only, put `FILES_MB_PER_DAY=…` in a
-  `.dev.vars` file here. A missing or unreadable value means 300. The default is kept small on purpose (see what a
-  file costs, below).
-- **What a file costs**, measured on a Free account on 2026-10-17, before files streamed through the Worker (CPU time
-  per request, from the dashboard's per-minute charts, one request a minute):
+  `.dev.vars` file here. A missing or unreadable value means 2000. That's enough for a few games a day (one host's
+  quarter fills several rooms), and under the Free plan's 5 GB of storage, so even a day of it can't fill that.
+- **What a file costs**, measured on a Free account on 2026-10-17 (CPU time per request, three of each, with
+  `measure-files.mjs --analytics`; in brackets, before files streamed through the Worker, when it read and copied each
+  one whole, from the dashboard's per-minute charts):
 
   | File | Upload: Worker | Upload: room | Download: Worker | Download: room |
   | --- | --- | --- | --- | --- |
-  | 1 MB | ~10 ms | ~10 ms | ~3 ms | ~7 ms |
-  | 2 MB | ~48 ms | ~17 ms | ~7 ms | ~20 ms |
-  | 3 MB | ~50 ms | ~28 ms | ~8 ms | ~35 ms |
-  | 4 MB | ~32 ms | ~27 ms | ~6 ms | ~48 ms |
+  | 1 MB | ~2 ms (10) | ~8 ms (10) | ~2 ms (3) | ~4 ms (7) |
+  | 2 MB | ~3 ms (48) | ~11 ms (17) | ~1 ms (7) | ~16 ms (20) |
+  | 3 MB | ~2 ms (50) | ~20 ms (28) | ~1 ms (8) | ~17 ms (35) |
+  | 4 MB | ~2 ms (32) | ~19 ms (27) | ~2 ms (6) | ~17 ms (48) |
 
-  The daily counter (`RoomCounter`) took under 1 ms a call; no request failed or ran out of CPU, and 10 MB of files
-  wrote 46 rows, their deletion included. The Free plan gives a Worker 10 ms of CPU a request, with some leeway for one
-  that runs over now and then, and a Durable Object 30 seconds (Cloudflare's limits pages): the Worker's part was the
-  one over. **To measure again** (after a change, or before raising `FILE_MAX_BYTES` in `src/lib/buzzproto.ts`), run
+  The Free plan gives a Worker 10 ms of CPU a request, with some leeway for one that runs over now and then, and a
+  Durable Object 30 seconds (Cloudflare's limits pages). The Worker now spends a request's usual 1–4 ms whatever the
+  file; the room's part grows about 5 ms a MB, so a 16 MB file costs it about 80 ms. The daily counter (`RoomCounter`)
+  takes under 2 ms a call, no request failed or ran out of CPU, and 10 MB of files wrote 46 rows, their deletion
+  included. **To measure again** (after a change, or before raising `FILE_MAX_BYTES` in `src/lib/buzzproto.ts`), run
   `node measure-files.mjs https://<your server> --sizes 1,2,3,4` here: it opens a room with a host and a phone, then
   uploads and fetches one file a minute, printing when each went, and uses that much of the day's budget. Read Workers &
   Pages › the Worker › Metrics › CPU time, and Durable Objects › each class › Metrics, for those minutes. Workers Logs
   are on (`observability` in `wrangler.jsonc`), so Observability › Logs also has each request's own CPU time, the
-  room's calls (`upload`, `download`) included: there, `--gap 10 --runs 3` (a request every 10 s, each size three times)
-  is enough. The logs leave query strings out, so find the requests by the times it prints. With `--analytics
-  <account id>` and an API token with Account Analytics Read in `CLOUDFLARE_API_TOKEN`, it reads them itself once
-  Cloudflare's analytics have them (a few minutes): each request's CPU time in the Worker, in the room and in the
-  daily counter, and any call that didn't end well.
+  room's calls included: there, `--gap 10 --runs 3` (a request every 10 s, each size three times) is enough. The logs
+  leave query strings out, so find the requests by the times it prints. With `--analytics <account id>` and an API
+  token with Account Analytics Read in `CLOUDFLARE_API_TOKEN`, it reads them itself once Cloudflare's analytics have
+  them (a few minutes): each request's CPU time in the Worker, in the room and in the daily counter, and any call that
+  didn't end well.
 
 ## Local development
 
@@ -276,7 +278,7 @@ and a dropped host connection; `tests/e2e/phonecards.mjs`: the phone's private c
 Tap to see, card files, a video, a YouTube player and the content policy to a phone that joined too late;
 `tests/e2e/partnersend.mjs`: the built app sending a partner clue's cards, with nothing in the room or its saved state
 before a send, a picture shrunk before it goes up, host reloads mid-upload, a phone on a freed seat, ↻ Send again,
-📤 Send changes, ✖ Take back, ⇡ Get it ready, no phone fetching another card's file, and the room's 16 MB turning a
+📤 Send changes, ✖ Take back, ⇡ Get it ready, no phone fetching another card's file, and the room's 64 MB turning a
 GIF down; `tests/e2e/partnerteams.mjs`: the same on team phones, with someone joining or moved onto the team after
 the send). `npm run check` here type-checks the Worker and the phone page.
 
@@ -299,9 +301,9 @@ available on Free, and a game night is a handful of small messages per second at
 is ever reached the room stops working until the daily reset; it never bills. Sockets use the Hibernation API, so a
 room with nothing happening can sleep without dropping anyone (phones ping every 10 s, which wakes it briefly). Each
 room keeps up to 32 KB of state, which can include the private cards the host sent (words and links) until the tile
-closes (or the round ends, or the host takes it back, for a card sent with 🤫 Send a card…), and up to 16 MB of card
+closes (or the round ends, or the host takes it back, for a card sent with 🤫 Send a card…), and up to 64 MB of card
 files until 10 minutes after no card uses them; it is all wiped when the room ends.
-Durable Object storage (5 GB on Free) is shared by every room on the account: 100 open rooms at their file cap is 1.6
+Durable Object storage (5 GB on Free) is shared by every room on the account: 20 open rooms at their file cap is 1.3
 GB. Card file uploads stop for the day at the daily budget (see Card files above, which says how to change it).
 Whoever runs the server (for the public one, its Cloudflare account) could read what is stored while it is there, and
 Cloudflare may keep earlier copies of Durable Object storage for a while (point-in-time recovery).

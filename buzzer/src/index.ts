@@ -172,7 +172,7 @@ async function roomFiles(request: Request, env: Env, ip: string, code: string, i
   const mime = fileType(request.headers.get('Content-Type'));
   if (!mime) return json({ error: 'Pictures (PNG, JPEG, WebP, GIF), videos (MP4, WebM) and sounds (MP3, OGG, WAV, M4A) only' }, 415);
   // The token is checked before the body is read: the room code is on stream, and a wrong token mustn't cost the room a
-  // 4 MB read and RPC. (upload() checks it again, for a room that ended meanwhile. The body is left unread, as for a
+  // file's read. (upload() checks it again, for a room that ended meanwhile. The body is left unread, as for a
   // missing token above.)
   const stub = env.BUZZ_ROOM.getByName(code);
   if (!(await stub.isHost(token))) return json({ error: 'wrong host token' }, 401);

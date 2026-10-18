@@ -222,7 +222,7 @@ describe('🤝 partner clues', () => {
       { id: 'huge', name: 'huge.png', mime: 'image/png', size: 40 * 1024 * 1024, kind: 'image' },
     );
     expect(mine(game).map((p) => p.text)).toEqual([
-      'Movies $400: card 1 has a video too big for phones (40.0 MB; phones get files up to 4.0 MB)',
+      'Movies $400: card 1 has a video too big for phones (40.0 MB; phones get files up to 16.0 MB)',
       "Movies $400: card 1 has a video phones can't play: add it as MP4, WebM, MP3, OGG, WAV or M4A, or from a link",
     ]);
     card.elements = card.elements.filter((e) => e.kind !== 'video');
@@ -271,7 +271,7 @@ describe('🤝 partner clues', () => {
     const start = world.maps[0].screens[0];
     start.variants = [newVariant(undefined, start, 'Night'), newVariant(undefined, start, 'Open')];
     game.rounds.push(rpg);
-    const too = 'has a video too big for phones (40.0 MB; phones get files up to 4.0 MB)';
+    const too = 'has a video too big for phones (40.0 MB; phones get files up to 16.0 MB)';
     expect(validate(game).filter((p) => p.text.includes('too big'))).toEqual([
       { text: `Race: a 🤫 card on “${board.spaces[1].name}” ${too}`, tab: 2, level: 'warn', place: { tab: 'round', round: board.id, part: { kind: 'space', space: board.spaces[1].id } } },
       {
@@ -357,7 +357,7 @@ describe('a Final’s 🤫 cards', () => {
       { id: 'pic', name: 'ogre.png', mime: 'image/png', size: 1000, kind: 'image' },
     );
     expect(mine(game)).toEqual([
-      { text: 'Final Jeopardy!: card “Leader hint” has a video too big for phones (40.0 MB; phones get files up to 4.0 MB)', tab: 1, level: 'warn', place: at(final, card.id) },
+      { text: 'Final Jeopardy!: card “Leader hint” has a video too big for phones (40.0 MB; phones get files up to 16.0 MB)', tab: 1, level: 'warn', place: at(final, card.id) },
     ]);
     expect(mine(game, true).map((p) => p.text)).toContain(
       "Final Jeopardy!: card “Leader hint” has a picture that's a file on this computer, and this buzzer server isn't taking files: phones get the words and links only (📋 Copy picture)",
@@ -419,7 +419,7 @@ describe('🤫 Cards (the editor’s tab)', () => {
     );
     game.cards = [card('sc1', 'Tip A', newTextEl('A secret'), { ...newVideoEl('big'), y: 10 })];
     expect(mine(game)).toEqual([
-      { text: '🤫 Card “Tip A” has a video too big for phones (40.0 MB; phones get files up to 4.0 MB)', tab: 'cards', level: 'warn', place: { tab: 'cards', card: 'sc1' } },
+      { text: '🤫 Card “Tip A” has a video too big for phones (40.0 MB; phones get files up to 16.0 MB)', tab: 'cards', level: 'warn', place: { tab: 'cards', card: 'sc1' } },
     ]);
     game.cards[0].elements = [newTextEl('A secret'), { ...newImageEl('pic'), y: 10 }];
     expect(mine(game)).toEqual([]);
