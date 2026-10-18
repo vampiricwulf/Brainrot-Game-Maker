@@ -94,9 +94,10 @@ export const NETWORK_FILE_SHARE = 1 / 2;
 /** A card file no current card uses is deleted this long after (one got ready and never sent: after its upload). */
 export const FILE_IDLE_MS = 10 * 60_000;
 /**
- * A card file is deleted this long after its upload, even one a card uses (the app puts it up again if a card still
- * needs it), so the files kept are only ever ones the budget counts. Not 24 hours: the budget is counted by the hour,
- * so an upload late in its hour stops being counted 23 hours on, and the room's alarm can be a little late.
+ * A card file is deleted this long after its upload took its part of the budget, even one a card uses (the app puts it
+ * up again if a card still needs it), so the files kept are only ever ones the budget counts. Not 24 hours: the budget
+ * is counted by the hour, so an upload late in its hour stops being counted 23 hours on, and the room's alarm can be a
+ * little late. (An upload is stopped an hour after it began: filestore.ts UPLOAD_MAX_MS.)
  */
 export const FILE_MAX_AGE_MS = 20 * 60 * 60_000;
 /**

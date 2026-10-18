@@ -9,8 +9,10 @@
  * own (p:<random>:<n>, never used again), noted in the room before the first one (RoomSaved.uploads, so a room
  * restarted mid-upload deletes them), and its id, the SHA-256, is worked out on the way. Then the room lists it under
  * that prefix, or, when it holds the same bytes already (a twin that finished first), its pieces are deleted. An upload
- * that fails deletes what it wrote and gives back what it took of the budget. Nothing more is written once the room has
- * ended, or a new room took its code (room() is null then): the room's wipe deletes what was.
+ * that fails deletes what it wrote and gives back what it took of the budget, and so does one still going UPLOAD_MAX_MS
+ * after the budget was taken. A file's age counts from then too, so what the budget paid for is gone before it stops
+ * counting. Nothing more is written once the room has ended, or a new room took its code (room() is null then): the
+ * room's wipe deletes what was.
  *
  * Downloads: piece 0 is read before answering (a missing file is a clean 404), then one piece a pull, so a slow phone
  * holds one piece in memory, never the file. SENDS_AT_ONCE at once per room; the rest wait their turn, SENDS_PER_PHONE
@@ -25,6 +27,11 @@ import { pieceKey, type RoomFile } from './room';
 export const FILE_PART_BYTES = 1024 * 1024;
 /** Uploads at once per room (the app sends one at a time; this lets a stale second window send too). */
 export const UPLOADS_AT_ONCE = 2;
+/**
+ * An upload still going this long after its part of the budget was taken is stopped (408), its pieces deleted: what it
+ * stores must be gone before that part stops counting (limits.ts FILE_MAX_AGE_MS). 90 MB in an hour is 200 kbps.
+ */
+export const UPLOAD_MAX_MS = 60 * 60 * 1000;
 /** Downloads at once per room; more wait their turn (first in, first out). */
 export const SENDS_AT_ONCE = 24;
 /**
@@ -54,7 +61,8 @@ export interface FileRoom {
   uploadStarted(prefix: string, parts: number): void;
   uploadEnded(prefix: string): void;
   fileHave(id: string): boolean;
-  fileStored(prefix: string, id: string, mime: string, bytes: number, parts: number): void;
+  /** at: when its part of the budget was taken (its age counts from then). */
+  fileStored(prefix: string, id: string, mime: string, bytes: number, parts: number, at: number): void;
 }
 
 /** An upload's body as whole FILE_PART_BYTES pieces (the last one shorter); null at the end. next() throws if the body broke off. */
@@ -74,6 +82,7 @@ export type Took = { ok: true; ticket: unknown } | 'off' | 'busy' | 'address';
 
 export interface StoreDeps {
   limits(): FileLimits;
+  now(): number;
   put(key: string, piece: Uint8Array): Promise<void>;
   get(key: string): Promise<Uint8Array | undefined>;
   /** Deletes pieces 0 to parts − 1 under prefix (not awaited). */
@@ -107,6 +116,7 @@ const TAKING_ANOTHER = 'The buzzer room is taking another file: try again in a m
 const BROKE_OFF = 'The upload broke off';
 const TOO_LONG = 'The upload was longer than it said';
 const NOT_STORED = "The buzzer room couldn't store it";
+const TOO_SLOW = 'The upload took too long';
 
 /** An upload on its way: the bytes kept for it, the idle files to be deleted for it, and how to stop it. */
 interface Job {
@@ -202,6 +212,10 @@ export class FileStore {
     let ticket: unknown = null;
     let taken = false;
     let parts = 0;
+    /** When the budget was asked for: the file's age counts from then, as the budget does. */
+    let takenAt = 0;
+    let late = false;
+    let deadline: ReturnType<typeof setTimeout> | null = null;
     /** Done: no longer on its way, and what it took of the budget and didn't use is given back. */
     const end = async (answer: Upload, unused: number): Promise<Upload> => {
       this.jobs.delete(prefix);
@@ -219,6 +233,7 @@ export class FileStore {
     };
     try {
       let took: Took;
+      takenAt = this.deps.now();
       try {
         took = await this.deps.take(who, reserve);
       } catch {
@@ -230,6 +245,11 @@ export class FileStore {
       }
       taken = true;
       ticket = took.ticket;
+      // (Stopped reading: next() throws, and it fails as one that broke off, with its own words.)
+      deadline = setTimeout(() => {
+        late = true;
+        body.cancel();
+      }, UPLOAD_MAX_MS);
       // In one go: the room again (a file chosen to make room may be on a card again by now), then the idle files that
       // make room go, and the upload is noted before its first piece.
       r = room();
@@ -253,7 +273,7 @@ export class FileStore {
         try {
           piece = await body.next();
         } catch {
-          return await fail(400, BROKE_OFF);
+          return await (late ? fail(408, TOO_SLOW) : fail(400, BROKE_OFF));
         }
         if (!piece) break;
         n += piece.byteLength;
@@ -289,9 +309,10 @@ export class FileStore {
         r.uploadEnded(prefix);
         return await end({ status: 200, id }, reserve);
       }
-      r.fileStored(prefix, id, mime, n, parts);
+      r.fileStored(prefix, id, mime, n, parts, takenAt);
       return await end({ status: 200, id }, reserve - n);
     } finally {
+      if (deadline !== null) clearTimeout(deadline);
       this.jobs.delete(prefix);
     }
   }

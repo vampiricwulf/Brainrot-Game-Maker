@@ -18,7 +18,7 @@
  * for the whole server in any 24 hours (FILES_MB_PER_DAY, counted by the hour by RoomCounter); how big a file and a
  * room's files may be is set too (FILE_MB, ROOM_FILES_MB), and told to the app (/api/health, the host's welcome). The
  * room's one alarm both ends it and deletes files no card has used for a while, and any file 20 hours after its upload
- * (nextAlarm), so the files kept are never more than the budget.
+ * began (nextAlarm; an upload is stopped an hour after it began), so the files kept are never more than the budget.
  */
 import { DurableObject } from 'cloudflare:workers';
 import {
@@ -299,6 +299,7 @@ export class BuzzRoom extends DurableObject<Env> {
   /** Card files in and out a piece at a time (filestore.ts). */
   private files = new FileStore({
     limits: () => fileLimits(this.env),
+    now: () => Date.now(),
     put: (key, piece) => this.ctx.storage.put(key, piece),
     get: async (key) => {
       const v = await this.ctx.storage.get<Uint8Array | ArrayBuffer>(key);

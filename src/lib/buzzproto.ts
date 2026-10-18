@@ -841,18 +841,19 @@ export interface NewRoom {
 
 /**
  * Card files ('files'). The host uploads one with POST {base}/api/rooms/{code}/files, `Authorization: Bearer
- * <hostToken>`, the file's type (FILE_TYPES) as Content-Type and its bytes (at most the server's fileBytes: Health): 200
- * {id} (its SHA-256; the same bytes again store nothing new), or {error} with 400 (empty, or the upload broke off or was
- * longer than its Content-Length), 401, 409 (the room's files are full), 413 (too big: the words say the server's
- * limit), 415 (a type it doesn't take), 429 (too many, the server's budget for 24 hours is used up: the words say in
- * about how many hours to try again; or the room is taking 2 files already), 500 (the room couldn't store it: try
- * again) or 503 (the server takes no files). Room for a file is kept before its bytes are read: its Content-Length, or
- * with none a whole fileBytes (so in a nearly full room it gets 409 even when small). A room deletes a file 20 hours
- * after its upload, even one a card uses: the host hears it's gone ('files') and puts it up again. A phone fetches one
- * with GET …/files/{id} and `Authorization: Bearer <its seat or member token>` (never in the address): only for a card
- * sent to it that it isn't late for, else 404. Added later: the answer has a Content-Length, and a file deleted while
- * it goes out (no card uses it any more), or one the phone takes nothing of for 5 minutes, ends the body early, with an
- * error; 429 when that phone has 4 downloads going already (try again in a moment).
+ * <hostToken>`, the file's type (FILE_TYPES) as Content-Type and its bytes (at most the server's fileBytes: Health):
+ * 200 {id} (its SHA-256; the same bytes again store nothing new), or {error} with 400 (empty, or the upload broke off
+ * or was longer than its Content-Length), 401, 408 (still going an hour after it began: try again), 409 (the room's
+ * files are full), 413 (too big: the words say the server's limit), 415 (a type it doesn't take), 429 (too many, the
+ * server's budget for 24 hours is used up: the words say in about how many hours to try again; or the room is taking 2
+ * files already), 500 (the room couldn't store it: try again) or 503 (the server takes no files). Room for a file is
+ * kept before its bytes are read: its Content-Length, or with none a whole fileBytes (so in a nearly full room it gets
+ * 409 even when small). A room deletes a file 20 hours after its upload began, even one a card uses: the host hears
+ * it's gone ('files') and puts it up again. A phone fetches one with GET …/files/{id} and `Authorization: Bearer <its
+ * seat or member token>` (never in the address): only for a card sent to it that it isn't late for, else 404. Added
+ * later: the answer has a Content-Length, and a file deleted while it goes out (no card uses it any more), or one the
+ * phone takes nothing of for 5 minutes, ends the body early, with an error; 429 when that phone has 4 downloads going
+ * already (try again in a moment).
  */
 export const filesUrl = (base: string, code: string, id?: string): string => `${base.replace(/\/+$/, '')}/api/rooms/${code}/files${id ? `/${id}` : ''}`;
 

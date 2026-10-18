@@ -2562,7 +2562,7 @@ describe('card files', () => {
   const pic = (file: string): HostCard['media'] => [{ kind: 'image', file, mime: 'image/png' }];
   const card = (x: Partial<HostCard> = {}): HostCard => ({ id: 'pc:c1:1:1', to: [{ seat: 'b' }], open: true, text: 'SHREK', ...x });
   /** A file stored, its pieces under its own id here (so the room's deletes read as ids). */
-  const add = (g: { room: Room }, id: string, mime: string, bytes: number, parts: number) => g.room.fileStored(id, id, mime, bytes, parts);
+  const add = (g: { room: Room; t: { now: number } }, id: string, mime: string, bytes: number, parts: number) => g.room.fileStored(id, id, mime, bytes, parts, g.t.now);
   function sent() {
     const g = game();
     g.t.now += 1000;
@@ -2639,10 +2639,11 @@ describe('card files', () => {
     g.room.uploadStarted('p:def', 16);
     expect(g.room.saved.uploads).toEqual({ 'p:abc': 3, 'p:def': 16 });
     const saves = g.saves();
-    g.room.fileStored('p:abc', F1, 'video/mp4', 2.5 * 1024 * 1024, 3);
+    // (Its age counts from when its upload took its part of the budget, a while before it was all here.)
+    g.room.fileStored('p:abc', F1, 'video/mp4', 2.5 * 1024 * 1024, 3, g.t.now - 5000);
     expect(g.saves()).toBe(saves + 1);
     expect(g.room.saved.uploads).toEqual({ 'p:def': 16 });
-    expect(g.room.saved.files![F1]).toEqual({ mime: 'video/mp4', bytes: 2.5 * 1024 * 1024, parts: 3, key: 'p:abc', at: g.t.now, unusedSince: g.t.now });
+    expect(g.room.saved.files![F1]).toEqual({ mime: 'video/mp4', bytes: 2.5 * 1024 * 1024, parts: 3, key: 'p:abc', at: g.t.now - 5000, unusedSince: g.t.now });
     expect(g.hostLast('files')).toEqual({ t: 'files', ids: [F1] });
     expect(g.wakes.at(-1)).toBe(g.t.now + FILE_IDLE_MS);
     // An upload that ended without a file (its pieces are deleted by FileStore): the last one gone, none noted.
@@ -2673,7 +2674,7 @@ describe('card files', () => {
     const old: RoomFile = { mime: 'image/png', bytes: 3000, parts: 1, at: 10_000, unusedSince: 10_000 };
     const g = setup({ ...emptyRoom(), files: { [F1]: old } });
     g.room.hostOpen();
-    g.room.fileStored('p:new', F2, 'image/png', 3 * 1024 * 1024, 3);
+    g.room.fileStored('p:new', F2, 'image/png', 3 * 1024 * 1024, 3, g.t.now);
     expect(pieceKey(F1, old, 0)).toBe(`file:${F1}:0`);
     expect(pieceKey(F2, g.room.saved.files![F2], 2)).toBe('p:new:2');
     g.send({ t: 'forget', files: [F1, F2] });

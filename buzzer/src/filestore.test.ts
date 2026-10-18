@@ -1,7 +1,7 @@
 import { createHash, randomBytes } from 'node:crypto';
 import { describe, expect, it, vi } from 'vitest';
 import type { FileLimits, HostCard, HostState, RoomToHost } from '../../src/lib/buzzproto';
-import { FILE_PART_BYTES, FileStore, SEND_STALL_MS, SENDS_AT_ONCE, SENDS_PER_PHONE, UPLOADS_AT_ONCE, type FileRoom, type PieceSource, type Took } from './filestore';
+import { FILE_PART_BYTES, FileStore, SEND_STALL_MS, SENDS_AT_ONCE, SENDS_PER_PHONE, UPLOAD_MAX_MS, UPLOADS_AT_ONCE, type FileRoom, type PieceSource, type Took } from './filestore';
 import { FILE_MAKE_ROOM_MS } from './limits';
 import { Room, type RoomFile } from './room';
 
@@ -45,7 +45,11 @@ function body(bytes: Uint8Array, o: { pauseAt?: number; breakAt?: number } = {})
       given++;
       return bytes.slice(at, at + FILE_PART_BYTES);
     },
-    cancel: () => void (cancelled = true),
+    // (As a real body's read: one waiting ends at once.)
+    cancel: () => {
+      cancelled = true;
+      pause.ok();
+    },
   };
   return src;
 }
@@ -104,6 +108,7 @@ function setup(limits: FileLimits = LIMITS) {
   let prefixes = 0;
   const store = new FileStore({
     limits: () => limits,
+    now: () => t.now,
     put: async (key, piece) => {
       await tick();
       if (s.putFails) throw new Error('storage');
@@ -253,6 +258,52 @@ describe('uploads', () => {
     // Unsized: the rest of a file limit goes back with its own.
     expect(await g.upload(body(randomBytes(MB)), null)).toMatchObject({ status: 200 });
     expect(g.budget.refunds.at(-1)).toEqual({ n: LIMITS.fileBytes - MB, ticket: 42 });
+  });
+
+  it('a file’s age counts from when its upload took its part of the budget, not from when it was all here', async () => {
+    const g = setup();
+    const bytes = randomBytes(3 * MB);
+    const b = body(bytes, { pauseAt: 2 });
+    const took = g.t.now;
+    const going = g.upload(b, bytes.length);
+    await b.atPause;
+    g.t.now += 30 * 60_000;
+    b.go();
+    expect(await going).toEqual({ status: 200, id: sha(bytes) });
+    expect(g.files()[sha(bytes)]).toMatchObject({ at: took, unusedSince: g.t.now });
+  });
+
+  it('an upload still going an hour after it took its part of the budget is stopped: 408, its pieces deleted, the budget given back', async () => {
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+    try {
+      const g = setup();
+      g.budget.ticket = 7;
+      const b = body(randomBytes(3 * MB), { pauseAt: 2 });
+      let answer: unknown = null;
+      void g.upload(b, 3 * MB).then((a) => (answer = a));
+      await b.atPause;
+      expect(g.r.room.saved.uploads).toEqual({ 'p:u1': 3 });
+      vi.advanceTimersByTime(UPLOAD_MAX_MS - 1000);
+      for (let i = 0; i < 5; i++) await tick();
+      expect(answer).toBeNull();
+      vi.advanceTimersByTime(1000);
+      for (let i = 0; i < 5; i++) await tick();
+      expect(answer).toEqual({ status: 408, error: 'The upload took too long' });
+      expect(b.cancelled()).toBe(true);
+      expect(g.s.drops).toEqual([{ prefix: 'p:u1', parts: 2 }]);
+      expect(g.stored.size).toBe(0);
+      expect(g.r.room.saved.uploads).toBeUndefined();
+      expect(g.budget.used).toBe(0);
+      expect(g.budget.refunds).toEqual([{ n: 3 * MB, ticket: 7 }]);
+      // One done within the hour is never stopped after.
+      expect(await g.upload(body(randomBytes(MB)), MB)).toMatchObject({ status: 200 });
+      vi.advanceTimersByTime(UPLOAD_MAX_MS);
+      for (let i = 0; i < 5; i++) await tick();
+      expect(Object.keys(g.files())).toHaveLength(1);
+      expect(g.budget.used).toBe(MB);
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it('a full room: 409 before anything is taken or written', async () => {

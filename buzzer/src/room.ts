@@ -279,7 +279,7 @@ export interface RoomFile {
   parts: number;
   /** Added later: the prefix its pieces are under (p:<random>). Without it, file:<id> (stored by older code). */
   key?: string;
-  /** When it was uploaded. */
+  /** When it was uploaded (its upload took its part of the budget: FileStore). */
   at: number;
   unusedSince?: number;
 }
@@ -797,12 +797,13 @@ export class Room {
   /**
    * Card file `id` is stored: its bytes in `parts` pieces under `prefix` (the upload noted there ends in the same save).
    * No card uses it until the host sends a state that names it, so it waits, given to nobody, and is cleaned up
-   * FILE_IDLE_MS after this if none does. (FileStore asks fileHave first: the same bytes are never listed twice.)
+   * FILE_IDLE_MS after this if none does. `at`: when its upload took its part of the budget, which its age counts from
+   * (FILE_MAX_AGE_MS). (FileStore asks fileHave first: the same bytes are never listed twice.)
    */
-  fileStored(prefix: string, id: string, mime: string, bytes: number, parts: number): void {
+  fileStored(prefix: string, id: string, mime: string, bytes: number, parts: number, at: number): void {
     const now = this.deps.now();
     this.endUpload(prefix);
-    (this.s.files ??= {})[id] = { mime, bytes, parts, key: prefix, at: now, unusedSince: now };
+    (this.s.files ??= {})[id] = { mime, bytes, parts, key: prefix, at, unusedSince: now };
     this.deps.cleanupAt(now + FILE_IDLE_MS);
     this.tellFiles();
     this.save();
