@@ -13,8 +13,9 @@
  * ended, or a new room took its code (room() is null then): the room's wipe deletes what was.
  *
  * Downloads: piece 0 is read before answering (a missing file is a clean 404), then one piece a pull, so a slow phone
- * holds one piece in memory, never the file. SENDS_AT_ONCE at once per room; the rest wait their turn. A file deleted
- * while it goes out (no card uses it any more) ends the body with an error.
+ * holds one piece in memory, never the file. SENDS_AT_ONCE at once per room; the rest wait their turn, SENDS_PER_PHONE
+ * at most for one phone, and one that stops taking pieces gives its place up after SEND_STALL_MS. A file deleted while
+ * it goes out (no card uses it any more) ends the body with an error.
  */
 import type { FileLimits } from '../../src/lib/buzzproto';
 import { FILES_OFF, tooBig } from './limits';
@@ -26,6 +27,16 @@ export const FILE_PART_BYTES = 1024 * 1024;
 export const UPLOADS_AT_ONCE = 2;
 /** Downloads at once per room; more wait their turn (first in, first out). */
 export const SENDS_AT_ONCE = 24;
+/**
+ * Downloads going or waiting at once for one phone's token; more get 429 (the phone tries again). A phone fetches 2 at
+ * once, and a reload can leave 2 more half-open: one player can't hold the room's places.
+ */
+export const SENDS_PER_PHONE = 4;
+/**
+ * A download whose line hasn't taken a piece for this long (a phone asleep, or gone without letting go) is ended, and
+ * its place freed. Long, so a slow line isn't cut: 1 MB in 5 minutes is under 30 kbps.
+ */
+export const SEND_STALL_MS = 5 * 60_000;
 
 /** What an upload comes to: 200 with the file's id, or the HTTP status and why. */
 export type Upload = { status: number; id?: string; error?: string };
@@ -147,6 +158,8 @@ export class FileStore {
   /** The uploads on their way, by their pieces' prefix. */
   private jobs = new Map<string, Job>();
   private gate = new Gate(SENDS_AT_ONCE);
+  /** Downloads going or waiting, by phone token. */
+  private sending = new Map<string, number>();
 
   constructor(private deps: StoreDeps) {}
 
@@ -290,12 +303,33 @@ export class FileStore {
   }
 
   /**
-   * Card file `id` as a response, its pieces read one a pull: file() is the room's say (room.ts fileFor), asked once
-   * its turn comes; live() is false once the room ended. 404 when it may not have it or it's gone. The answer carries
-   * its size in X-File-Bytes, for its Content-Length (index.ts download).
+   * Card file `id` as a response, its pieces read one a pull: file() is the room's say (room.ts fileFor), asked before it
+   * waits and again once its turn comes; live() is false once the room ended. 404 when it may not have it or it's gone;
+   * 429 when `who` (the phone's token) has SENDS_PER_PHONE going or waiting already. The answer carries its size in
+   * X-File-Bytes, for its Content-Length (index.ts download).
    */
-  async send(id: string, file: () => RoomFile | null, live: () => boolean): Promise<Response> {
-    const release = await this.gate.acquire();
+  async send(id: string, who: string, file: () => RoomFile | null, live: () => boolean): Promise<Response> {
+    // (One it may not have never waits behind a full room.)
+    if (!(live() ? file() : null)) return new Response(null, { status: 404 });
+    const mine = this.sending.get(who) ?? 0;
+    if (mine >= SENDS_PER_PHONE) return new Response(null, { status: 429 });
+    this.sending.set(who, mine + 1);
+    const place = await this.gate.acquire();
+    let held = true;
+    let stall: ReturnType<typeof setTimeout> | null = null;
+    const unwait = () => {
+      if (stall !== null) clearTimeout(stall);
+      stall = null;
+    };
+    const release = () => {
+      unwait();
+      if (!held) return;
+      held = false;
+      const n = (this.sending.get(who) ?? 1) - 1;
+      if (n > 0) this.sending.set(who, n);
+      else this.sending.delete(who);
+      place();
+    };
     const missing = () => {
       release();
       return new Response(null, { status: 404 });
@@ -311,9 +345,28 @@ export class FileStore {
     if (!first?.byteLength || !live()) return missing();
     let i = 0;
     let sent = 0;
+    let line: ReadableByteStreamController | undefined;
+    const end = (why: string) => {
+      release();
+      try {
+        line?.error(new Error(why));
+      } catch {
+        // cancelled meanwhile
+      }
+    };
+    // (Started again each time a piece goes into the line, stopped while the next is read from storage.)
+    const wait = () => {
+      unwait();
+      stall = setTimeout(() => end('card file stalled'), SEND_STALL_MS);
+    };
     const body = new ReadableStream({
       type: 'bytes',
+      start: (c) => {
+        line = c;
+        wait();
+      },
       pull: async (c) => {
+        unwait();
         try {
           let piece: Uint8Array | undefined;
           if (i === 0) {
@@ -327,14 +380,9 @@ export class FileStore {
           if (i >= f.parts) {
             c.close();
             release();
-          }
+          } else wait();
         } catch {
-          release();
-          try {
-            c.error(new Error('card file gone'));
-          } catch {
-            // cancelled meanwhile
-          }
+          end('card file gone');
         }
       },
       cancel: () => release(),

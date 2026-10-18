@@ -1,7 +1,7 @@
 import { createHash, randomBytes } from 'node:crypto';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import type { FileLimits, HostCard, HostState, RoomToHost } from '../../src/lib/buzzproto';
-import { FILE_PART_BYTES, FileStore, SENDS_AT_ONCE, UPLOADS_AT_ONCE, type FileRoom, type PieceSource, type Took } from './filestore';
+import { FILE_PART_BYTES, FileStore, SEND_STALL_MS, SENDS_AT_ONCE, SENDS_PER_PHONE, UPLOADS_AT_ONCE, type FileRoom, type PieceSource, type Took } from './filestore';
 import { FILE_MAKE_ROOM_MS } from './limits';
 import { Room, type RoomFile } from './room';
 
@@ -9,7 +9,8 @@ const MB = 1024 * 1024;
 /** Small limits, so the files here stay small: 4 MB a file, 10 MB a room. */
 const LIMITS: FileLimits = { fileBytes: 4 * MB, roomBytes: 10 * MB, roomFiles: 32 };
 const sha = (b: Uint8Array) => createHash('sha256').update(b).digest('hex');
-const tick = () => new Promise((r) => setTimeout(r, 0));
+// (Not setTimeout: tests with fake timers still get their storage's answers.)
+const tick = () => new Promise((r) => setImmediate(r));
 
 function later<T = void>() {
   let ok!: (v: T) => void;
@@ -421,7 +422,7 @@ describe('downloads', () => {
     const g = setup();
     const bytes = randomBytes(2.5 * MB);
     const { id } = await g.upload(body(bytes), bytes.length);
-    const res = await g.store.send(id!, () => g.files()[id!], () => true);
+    const res = await g.store.send(id!, 'tok', () => g.files()[id!], () => true);
     expect(res.status).toBe(200);
     expect(res.headers.get('Content-Type')).toBe('video/mp4');
     expect(res.headers.get('X-File-Bytes')).toBe(String(bytes.length));
@@ -430,17 +431,17 @@ describe('downloads', () => {
     const old = randomBytes(MB + 10);
     g.stored.set(`file:${sha(old)}:0`, old.subarray(0, MB));
     g.stored.set(`file:${sha(old)}:1`, old.subarray(MB));
-    const back = await g.store.send(sha(old), () => file(old.length, 2), () => true);
+    const back = await g.store.send(sha(old), 'tok', () => file(old.length, 2), () => true);
     expect(Buffer.from(await back.arrayBuffer()).equals(old)).toBe(true);
   });
 
   it('404 when the room says no, it ended, or its first piece is missing', async () => {
     const g = setup();
     const { id } = await g.upload(body(randomBytes(MB)), MB);
-    expect((await g.store.send(id!, () => null, () => true)).status).toBe(404);
-    expect((await g.store.send(id!, () => g.files()[id!], () => false)).status).toBe(404);
+    expect((await g.store.send(id!, 'tok', () => null, () => true)).status).toBe(404);
+    expect((await g.store.send(id!, 'tok', () => g.files()[id!], () => false)).status).toBe(404);
     g.s.missing.add('p:u1:0');
-    expect((await g.store.send(id!, () => g.files()[id!], () => true)).status).toBe(404);
+    expect((await g.store.send(id!, 'tok', () => g.files()[id!], () => true)).status).toBe(404);
   });
 
   it('a piece gone partway (the file deleted, or the room ended): the body ends in an error', async () => {
@@ -448,17 +449,17 @@ describe('downloads', () => {
     const { id } = await g.upload(body(randomBytes(3 * MB)), 3 * MB);
     const f = g.files()[id!];
     g.s.missing.add('p:u1:2');
-    const cut = await g.store.send(id!, () => f, () => true);
+    const cut = await g.store.send(id!, 'tok', () => f, () => true);
     await expect(cut.arrayBuffer()).rejects.toThrow();
     g.s.missing.clear();
     let live = true;
-    const ended = await g.store.send(id!, () => f, () => live);
+    const ended = await g.store.send(id!, 'tok', () => f, () => live);
     const reader = ended.body!.getReader();
     expect((await reader.read()).value!.byteLength).toBe(MB);
     live = false;
     await expect(reader.read()).rejects.toThrow();
     // A size that doesn't add up is an error too, never a short or long body.
-    const wrong = await g.store.send(id!, () => ({ ...f, bytes: f.bytes + 1 }), () => true);
+    const wrong = await g.store.send(id!, 'tok', () => ({ ...f, bytes: f.bytes + 1 }), () => true);
     await expect(wrong.arrayBuffer()).rejects.toThrow();
   });
 
@@ -467,9 +468,10 @@ describe('downloads', () => {
     const bytes = randomBytes(2 * MB);
     const { id } = await g.upload(body(bytes), bytes.length);
     const f = () => g.files()[id!];
-    const open = await Promise.all(Array.from({ length: SENDS_AT_ONCE }, () => g.store.send(id!, f, () => true)));
+    // (24 phones, one each.)
+    const open = await Promise.all(Array.from({ length: SENDS_AT_ONCE }, (_, i) => g.store.send(id!, `seat-${i}`, f, () => true)));
     let next: Response | null = null;
-    const waiting = g.store.send(id!, f, () => true).then((r) => (next = r));
+    const waiting = g.store.send(id!, 'tok', f, () => true).then((r) => (next = r));
     for (let i = 0; i < 5; i++) await tick();
     expect(next).toBeNull();
     // One read to its end frees a place.
@@ -478,7 +480,7 @@ describe('downloads', () => {
     expect(next!.status).toBe(200);
     // So does one stopped partway (the phone let go).
     let after: Response | null = null;
-    const last = g.store.send(id!, f, () => true).then((r) => (after = r));
+    const last = g.store.send(id!, 'tok', f, () => true).then((r) => (after = r));
     for (let i = 0; i < 5; i++) await tick();
     expect(after).toBeNull();
     await open[1].body!.cancel();
@@ -486,7 +488,79 @@ describe('downloads', () => {
     expect(Buffer.from(await after!.arrayBuffer()).equals(bytes)).toBe(true);
     // And a 404 never keeps one: with every place free again, more of them in a row than there are places.
     await Promise.all([...open.slice(2), next!].map((r) => r.body!.cancel()));
-    for (let i = 0; i < SENDS_AT_ONCE + 2; i++) expect((await g.store.send(id!, () => null, () => true)).status).toBe(404);
-    expect((await g.store.send(id!, f, () => true)).status).toBe(200);
+    for (let i = 0; i < SENDS_AT_ONCE + 2; i++) expect((await g.store.send(id!, 'tok', () => null, () => true)).status).toBe(404);
+    expect((await g.store.send(id!, 'tok', f, () => true)).status).toBe(200);
+  });
+
+  it('one it may not have is a 404 at once, even while every place is taken', async () => {
+    const g = setup();
+    const { id } = await g.upload(body(randomBytes(2 * MB)), 2 * MB);
+    const f = () => g.files()[id!];
+    const open = await Promise.all(Array.from({ length: SENDS_AT_ONCE }, (_, i) => g.store.send(id!, `seat-${i}`, f, () => true)));
+    let answer: Response | null = null;
+    void g.store.send(id!, 'stranger', () => null, () => true).then((r) => (answer = r));
+    for (let i = 0; i < 3; i++) await tick();
+    expect(answer!.status).toBe(404);
+    await Promise.all(open.map((r) => r.body!.cancel()));
+  });
+
+  it(`one phone gets ${SENDS_PER_PHONE} at once (waiting ones too); more get 429, and other phones still get theirs`, async () => {
+    const g = setup();
+    const bytes = randomBytes(2 * MB);
+    const { id } = await g.upload(body(bytes), bytes.length);
+    const f = () => g.files()[id!];
+    expect(SENDS_PER_PHONE).toBe(4);
+    const mine = await Promise.all(Array.from({ length: SENDS_PER_PHONE }, () => g.store.send(id!, 'greedy', f, () => true)));
+    expect(mine.map((r) => r.status)).toEqual([200, 200, 200, 200]);
+    expect((await g.store.send(id!, 'greedy', f, () => true)).status).toBe(429);
+    const other = await g.store.send(id!, 'tok', f, () => true);
+    expect(Buffer.from(await other.arrayBuffer()).equals(bytes)).toBe(true);
+    // One of its own ended: it may have another.
+    await mine[0].body!.cancel();
+    expect((await g.store.send(id!, 'greedy', f, () => true)).status).toBe(200);
+    // Waiting for a place counts too: with the room's places taken, its 4 waiting, a 5th is 429 at once.
+    const g2 = setup();
+    const { id: id2 } = await g2.upload(body(bytes), bytes.length);
+    const f2 = () => g2.files()[id2!];
+    const full = await Promise.all(Array.from({ length: SENDS_AT_ONCE }, (_, i) => g2.store.send(id2!, `seat-${i}`, f2, () => true)));
+    const queued = Array.from({ length: SENDS_PER_PHONE }, () => g2.store.send(id2!, 'greedy', f2, () => true));
+    expect((await g2.store.send(id2!, 'greedy', f2, () => true)).status).toBe(429);
+    await Promise.all(full.map((r) => r.body!.cancel()));
+    for (const r of await Promise.all(queued)) await r.body!.cancel();
+  });
+
+  it(`a download whose line takes nothing for ${SEND_STALL_MS / 60_000} minutes (a phone asleep) ends, and frees its place`, async () => {
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+    try {
+      const g = setup();
+      const bytes = randomBytes(2 * MB);
+      const { id } = await g.upload(body(bytes), bytes.length);
+      const f = () => g.files()[id!];
+      // 24 phones that read none of theirs, or only the first piece.
+      const open = await Promise.all(Array.from({ length: SENDS_AT_ONCE }, (_, i) => g.store.send(id!, `seat-${i}`, f, () => true)));
+      const reader = open[0].body!.getReader();
+      expect((await reader.read()).value!.byteLength).toBe(MB);
+      let next: Response | null = null;
+      const waiting = g.store.send(id!, 'tok', f, () => true).then((r) => (next = r));
+      vi.advanceTimersByTime(SEND_STALL_MS - 1000);
+      for (let i = 0; i < 5; i++) await tick();
+      expect(next).toBeNull();
+      vi.advanceTimersByTime(1000);
+      await waiting;
+      expect(next!.status).toBe(200);
+      // Their bodies end in an error (the phone tries again); the new one comes whole.
+      await expect(reader.read()).rejects.toThrow();
+      await expect(open[1].arrayBuffer()).rejects.toThrow();
+      expect(Buffer.from(await next!.arrayBuffer()).equals(bytes)).toBe(true);
+      // One that keeps taking pieces, however slowly, isn't cut.
+      const slow = (await g.store.send(id!, 'tok', f, () => true)).body!.getReader();
+      vi.advanceTimersByTime(SEND_STALL_MS - 1000);
+      expect((await slow.read()).value!.byteLength).toBe(MB);
+      vi.advanceTimersByTime(SEND_STALL_MS - 1000);
+      expect((await slow.read()).value!.byteLength).toBe(MB);
+      expect((await slow.read()).done).toBe(true);
+    } finally {
+      vi.useRealTimers();
+    }
   });
 });

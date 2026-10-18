@@ -146,7 +146,8 @@ room → host `files` (the files it holds, on welcome and whenever that changes)
 `'files'` sends a card's own files by hand. Since card files are stored a piece at a time: an upload's answers 400
 (it broke off, or was longer than its Content-Length), 429 (the room is taking 2 already) and 500 (the room couldn't
 store it: try again), an upload without a Content-Length keeping room for a whole file limit, and a download's
-`Content-Length`, its body ending in an error when its file is deleted partway. Since each server sets its own card
+`Content-Length`, its body ending in an error when its file is deleted partway (or when its phone takes nothing for 5
+minutes), and a download's 429 (that phone has 4 going already: try again). Since each server sets its own card
 file limits: `welcome.limits` (`{fileBytes, roomBytes, roomFiles}`, only alongside `'files'`) and `files` in
 `GET /api/health` (the same, or `null` when it takes no files), a 413's words giving the server's limit ("Too big for
 the buzzer server (90 MB at most)"), and a `files` list of up to 1024 ids. An app that hears no limits (an older
@@ -257,7 +258,9 @@ isn't stored (it broke off, or the room ended meanwhile) are given back, to the 
   first). A file streams through the Worker both ways, never held there, and the room holds a piece or two of it in
   memory at a time, whatever its size: a download reads a piece from storage only as the line takes the last one, and
   carries the file's `Content-Length`, so a phone knows one that broke off and tries again. A room sends 24 files at
-  once at most (more wait their turn), and a phone fetches 2 at once. A file no current card uses is deleted 10
+  once at most (more wait their turn), and a phone fetches 2 at once. One phone gets 4 going or waiting at most (more
+  get 429, and the phone tries again), so a player can't hold the room's places, and a download whose phone has taken
+  nothing for 5 minutes (asleep, or gone without letting go) is ended, freeing its place. A file no current card uses is deleted 10
   minutes after (one got ready and never sent: 10 minutes after its upload), by the room's alarm (the same one that
   ends the room) and on the host's next state; the host can also `forget` them. Any file is deleted 20 hours after its
   upload, even one a card uses: the host hears it's gone, and the app puts it up again if a card still needs it (see

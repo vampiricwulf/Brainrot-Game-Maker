@@ -3,9 +3,9 @@
 // (helpers.mjs roomKeys). An upload cut off by the host closing the room, by the server stopping (a deploy, a crash)
 // or by the uploader leaves nothing stored, and a new upload works after; a full room's answer reaches the uploader;
 // a download carries its Content-Length, and one whose file is deleted partway (the host took its card back) ends
-// short, with an error; downloads a phone stopped partway don't keep the room from sending more. Then a server with
-// limits of its own (FILE_MB, ROOM_FILES_MB, FILES_MB_PER_DAY): it says them, holds to them, and gives back what an
-// upload kept for itself and didn't store. Needs `npm ci` in buzzer/.
+// short, with an error; downloads a phone stopped partway don't keep the room from sending more, and one phone can't
+// hold more than 4 places. Then a server with limits of its own (FILE_MB, ROOM_FILES_MB, FILES_MB_PER_DAY): it says
+// them, holds to them, and gives back what an upload kept for itself and didn't store. Needs `npm ci` in buzzer/.
 import { createHash, randomBytes } from 'node:crypto';
 import { request } from 'node:http';
 import { roomKeys, startBuzzer } from './helpers.mjs';
@@ -218,19 +218,47 @@ try {
     assert(whole.headers.get('cache-control') === 'no-store, no-transform', 'never stored on the way, nor compressed (which would drop its length)');
 
     // Phones that stop partway (gone from the room, a card taken back) don't keep the room from sending more: more of
-    // them than the room sends at once, each read a little and let go.
+    // them than the room sends at once, each read a little and let go. (One phone may have 4 going: a 429 until the
+    // room hears the last ones were let go, which the phone page tries again too.)
+    const turn = async (id, extra) => {
+      for (const end = Date.now() + 20_000; ; await sleep(200)) {
+        const res = await r.get(id, extra);
+        if (res.status !== 429 || Date.now() > end) return res;
+        await res.arrayBuffer();
+      }
+    };
     for (let i = 0; i < 26; i++) {
       const ctrl = new AbortController();
-      const res = await r.get(id, { signal: ctrl.signal });
+      const res = await turn(id, { signal: ctrl.signal });
+      if (res.status !== 200) throw new Error(`download ${i + 1} of 26: ${res.status}`);
       await res.body.getReader().read();
       ctrl.abort();
     }
-    const after = await Promise.race([r.get(id).then((x) => x.arrayBuffer()), sleep(20_000).then(() => null)]);
+    const after = await Promise.race([turn(id).then((x) => x.arrayBuffer()), sleep(20_000).then(() => null)]);
     assert(after?.byteLength === bytes.length, 'downloads stopped partway free their place: the next one comes whole');
+
+    // One phone can't hold the room's places: 4 of its downloads held unread, its 5th gets 429 at once.
+    const heldTurn = async (id) => {
+      for (const end = Date.now() + 20_000; ; await sleep(200)) {
+        const g = await r.heldGet(id);
+        if (g.res.statusCode !== 429 || Date.now() > end) return g;
+        await g.rest();
+      }
+    };
+    const four = [];
+    for (let i = 0; i < 4; i++) four.push(await heldTurn(id));
+    assert(four.every((g) => g.res.statusCode === 200), 'a phone has 4 downloads going, none of them read');
+    const fifth = await Promise.race([r.get(id), sleep(10_000).then(() => null)]);
+    const fifthSaid = await fifth?.json().catch(() => null);
+    assert(fifth?.status === 429 && fifthSaid?.error === 'Too many files — wait a minute', `its 5th is turned away at once, to try again (${fifth?.status} ${JSON.stringify(fifthSaid)})`);
+    const read = await Promise.all(four.map((g) => g.rest()));
+    assert(read.every((x) => x.whole && x.got === bytes.length), 'the 4 come whole once read');
+    const again = await r.get(id);
+    assert(again.status === 200 && (await again.arrayBuffer()).byteLength === bytes.length, 'and once they’re done, the next one comes');
 
     // Deleted partway: the host takes the card back and is done with its file while a phone is still reading it. (The
     // room reads a piece as the line takes it: here the line holds about 10 MB with nothing read, so 16 MB is enough.)
-    const going = await r.heldGet(id);
+    const going = await heldTurn(id);
     const total = Number(going.res.headers['content-length']);
     r.state({ cards: null });
     r.host.send({ t: 'forget', files: [id] });

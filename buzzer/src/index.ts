@@ -173,6 +173,8 @@ async function roomFiles(request: Request, env: Env, ip: string, code: string, i
     // length comes with it (the room's download), and so does a phone letting go partway: passed on as it is.
     const room = token && isRoomCode(code) && isFileId(id) ? env.BUZZ_ROOM.getByName(code) : null;
     const file = room ? await room.fetch(new Request(`https://room/file/${id}`, { headers: { Authorization: `Bearer ${token}` } })) : null;
+    // (The phone tries again: it has more going than the room sends one phone at once.)
+    if (file?.status === 429) return json({ error: TOO_MANY_FILES }, 429);
     if (!file?.ok || !file.body) return json({ error: 'not found' }, 404);
     return new Response(file.body, {
       // (no-transform: Cloudflare compressing it would drop its Content-Length.)
@@ -456,13 +458,13 @@ export class BuzzRoom extends DurableObject<Env> {
   }
 
   /**
-   * Card file `id` for the phone holding `token`, when the room lets it have it (room.ts fileFor, asked once its turn
-   * comes); else 404. Its pieces go out one after another, read as they're asked for, with its Content-Length (so the
+   * Card file `id` for the phone holding `token`, when the room lets it have it (room.ts fileFor, asked again once its
+   * turn comes); else 404, or 429 when that phone has 4 going already. Its pieces go out one after another, read as they're asked for, with its Content-Length (so the
    * phone knows a body that broke off when it sees one: fewer bytes than that, an error).
    */
   private async download(token: string, id: string): Promise<Response> {
     const epoch = this.epoch;
-    const file = await this.files.send(id, () => this.room?.fileFor(token, id) ?? null, () => !!this.meta && this.epoch === epoch);
+    const file = await this.files.send(id, token, () => this.room?.fileFor(token, id) ?? null, () => !!this.meta && this.epoch === epoch);
     const n = Number(file.headers.get('X-File-Bytes'));
     if (!file.ok || !file.body || !Number.isSafeInteger(n) || n <= 0) return file;
     // (Here, not in the Worker: piped there, a phone letting go partway never reached this end, and the download kept

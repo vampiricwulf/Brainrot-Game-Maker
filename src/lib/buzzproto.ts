@@ -851,7 +851,8 @@ export interface NewRoom {
  * after its upload, even one a card uses: the host hears it's gone ('files') and puts it up again. A phone fetches one
  * with GET …/files/{id} and `Authorization: Bearer <its seat or member token>` (never in the address): only for a card
  * sent to it that it isn't late for, else 404. Added later: the answer has a Content-Length, and a file deleted while
- * it goes out (no card uses it any more) ends the body early, with an error.
+ * it goes out (no card uses it any more), or one the phone takes nothing of for 5 minutes, ends the body early, with an
+ * error; 429 when that phone has 4 downloads going already (try again in a moment).
  */
 export const filesUrl = (base: string, code: string, id?: string): string => `${base.replace(/\/+$/, '')}/api/rooms/${code}/files${id ? `/${id}` : ''}`;
 
