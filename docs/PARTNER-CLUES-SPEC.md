@@ -2131,7 +2131,9 @@ GET  /api/rooms/:code/files/:id    Authorization: Bearer <seat or member token>
 GET  /api/health                   (added later) → {ok, protocol, files: {fileBytes, roomBytes, roomFiles} | null}
 ```
 
-(Later: the body's limit and the room's are each server's own, `FILE_MB` and `ROOM_FILES_MB`; the 413 says the number.)
+(Later: the body's limit and the room's are each server's own, `FILE_MB` and `ROOM_FILES_MB`; the 413 says the number.
+An upload still going an hour after it began gets 408, and a phone with 4 downloads going gets 429: buzzer/README.md,
+"Protocol changes".)
 
 Both are matched in the Worker before the `/api/` catch-all 404 (index.ts:109), rate-limited by the new `FILE_LIMIT`
 binding, and charged to the daily byte budget in `RoomCounter` (index.ts:347-355). CORS allows `Authorization`.
