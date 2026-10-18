@@ -386,7 +386,8 @@ The main ones (press `?` during the game for all of them):
   `.brainrot` instead.
 - Add pictures, videos, sounds and fonts on the **🖼 Media** page: drop them there, or use **＋ Add files…**. A video or
   sound this browser can't play is offered a fix as soon as it's added (🔄 Convert: repackaged in seconds with nothing
-  lost when only its file type is the problem, as with a camcorder's .mts or an MKV), and Ctrl+Z puts the old file back.
+  lost when only its file type is the problem, as with an MKV, or an .mts whose sound plays here; a camcorder's .mts
+  usually loses its Dolby Digital sound), and Ctrl+Z puts the old file back.
 - **⚙ Settings** (in the header's ⋯ menu, with Export as a web page, Export JSON, ⌨ Keyboard shortcuts and ℹ About) has these options:
   - **Reduce motion on stream** (the editor and host controls also follow your computer's reduce-motion setting).
   - **Undo**: how many changes Ctrl+Z and the 🕘 History tab remember (300 by default).
@@ -473,14 +474,16 @@ To build the address into your own releases too (so nobody has to paste it), add
   smaller…** on its card in 🖼 Media (or 🗜 in the 📱 preview or the checklist) makes one, which phones get while the
   show keeps the file as it is (Ctrl+Z takes it back): a GIF as a small looping video that phones show like the GIF, a
   video at 720p, 480p or 360p, a sound made again, and a video or sound can hold only the part its cards play. 🖼
-  Media's **🗜 2 files are big for phones** makes copies of all of them at once, and a video or sound phones can't play
-  (a .mov, a FLAC) can get a copy they can. During the game too: the host panel's line about a card's big files, the
-  pre-game checklist's and the host column's have **🗜 Make smaller**, for the game being played (the editor's game
-  keeps the copy as well; a card already out switches over to it). In one window its window names no file and shows no
-  preview. It works the computer hard for a minute or two, so the stream may stutter: it's best done in the editor
-  before the show. It needs the app opened from a file or an https:// address, in Chrome, Edge, Firefox or the desktop
-  app; where the browser makes H.264 and AAC (Chrome and Edge on Windows or Mac, the desktop app) it makes MP4 and M4A
-  files every phone plays, elsewhere WebM and OGG (Opus), which some iPhones may not play.
+  Media's **🗜 2 files are big for phones** makes copies of all of them at once. A .mov or MKV that plays here but phones
+  can't open is repackaged for them with **↻** instead (in its place, for the show too, nothing lost; Ctrl+Z undoes it),
+  and a video or sound phones can't play that can't be repackaged (a FLAC, say) can get a copy they can (🗜). During the
+  game too: the host panel's line about a card's big files, the pre-game checklist's and the host column's have
+  **🗜 Make smaller**, for the game being played (the editor's game keeps the copy as well; a card already out switches
+  over to it). In one window its window names no file and shows no preview. It works the computer hard for a minute or
+  two, so the stream may stutter: it's best done in the editor before the show. It needs the app opened from a file or
+  an https:// address, in Chrome, Edge, Firefox or the desktop app; where the browser makes H.264 and AAC (Chrome and
+  Edge on Windows or Mac, the desktop app) it makes MP4 and M4A files every phone plays, elsewhere WebM and OGG (Opus),
+  which some iPhones may not play.
   See [buzzer/README.md](buzzer/README.md#card-files). Each room keeps
   its cards only until the tile closes (or the round ends, or the host takes it back, for one sent with 🤫 Send a card…),
   and their files up to 10 minutes longer (20 hours after their upload began at most: the app puts one up again if a
@@ -519,13 +522,15 @@ game in progress and media. Settings go in `%APPDATA%\com.brainrotgames.maker`. 
 
 ## Third-party code
 
-🗜 (smaller copies of 🤫 cards' files for phones) and 🔄 Convert use two libraries, bundled into the app as they are:
+Two libraries are bundled into the app as they are:
 
 - [mediabunny](https://github.com/Vanilagy/mediabunny) 1.61.6, © 2026-present Vanilagy and contributors, under the
-  Mozilla Public License 2.0 (its source is at github.com/Vanilagy/mediabunny): it reads videos and sounds, and writes
-  the copies and converted files, with the browser's own video and sound encoders (WebCodecs).
-- [omggif](https://github.com/deanm/omggif) 1.0.10, © 2013 Dean McNamee, under the MIT license: it reads a GIF's
-  frames. Its license:
+  Mozilla Public License 2.0 (its source is at github.com/Vanilagy/mediabunny): 🗜 (smaller copies of 🤫 cards' files
+  for phones), 🔄 Convert, ✎ Edit and the check whether a video or sound plays here use it. It reads videos and sounds,
+  and writes the copies, converted and edited files (repackaged as they are, or made again with the browser's own
+  video and sound encoders, WebCodecs).
+- [omggif](https://github.com/deanm/omggif) 1.0.10, © 2013 Dean McNamee, under the MIT license: 🗜 uses it to read a
+  GIF's frames. Its license:
 
   > Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated
   > documentation files (the "Software"), to deal in the Software without restriction, including without limitation

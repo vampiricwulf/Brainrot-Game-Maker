@@ -84,10 +84,10 @@
       <dd><a href={`${REPO}/issues`} target="_blank" rel="noreferrer" onclick={link}>Report an issue</a></dd>
       <dt>License</dt>
       <dd>
-        MIT. Bundled fonts: SIL Open Font License. 🗜 (smaller copies for phones) and 🔄 Convert: mediabunny © 2026-present Vanilagy and
-        contributors (MPL-2.0, source at
-        <a href="https://github.com/Vanilagy/mediabunny" target="_blank" rel="noreferrer" onclick={link}>github.com/Vanilagy/mediabunny</a>) and omggif ©
-        2013 Dean McNamee (MIT,
+        MIT. Bundled fonts: SIL Open Font License. 🗜 (smaller copies for phones), 🔄 Convert, ✎ Edit and the check whether a video or sound plays
+        here: mediabunny © 2026-present Vanilagy and contributors (MPL-2.0, source at
+        <a href="https://github.com/Vanilagy/mediabunny" target="_blank" rel="noreferrer" onclick={link}>github.com/Vanilagy/mediabunny</a>). 🗜 for a GIF's
+        frames: omggif © 2013 Dean McNamee (MIT,
         <a href="https://github.com/deanm/omggif" target="_blank" rel="noreferrer" onclick={link}>github.com/deanm/omggif</a>).
         <details class="license">
           <summary>omggif’s license</summary>

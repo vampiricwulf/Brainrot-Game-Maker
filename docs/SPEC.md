@@ -252,11 +252,12 @@ RollEvent  { id, ts, source: 'wheel' | 'dice', presetName?, result: string /* la
   everywhere it's used (on stream too), as one undo step: its tracks copied into a type this browser opens when only
   the file type is the trouble (quick, nothing lost: an MKV into a WebM or an MP4, an .mts's MP3 sound into an MP4), a
   track made again in this browser's own codecs otherwise (🔄 Convert's window says what it costs first), or a sound
-  no browser reads (Dolby Digital, DTS) left out when the picture gains a type phones and Safari open. A fix whose
-  result wouldn't play here isn't offered; the words say why and what to do instead. The new bytes get a new id (the
-  name's extension follows the type), the 🗜 copy for phones goes, and Ctrl+Z puts the old file back. 🖼 Media's
-  cards, a slide item's panel and the checklist offer it too, and **↻** repackages a 🤫 card's file that plays here but
-  phones can't open (an MKV, a MOV) into a type they take, for everyone. Nothing is checked or converted in play.
+  this browser can't read (Dolby Digital or DTS, in most browsers) left out when the picture gains a type phones and
+  Safari open. A fix whose result wouldn't play here isn't offered; the words say why and what to do instead. The new
+  bytes get a new id (the name's extension follows the type), the 🗜 copy for phones goes, and Ctrl+Z puts the old file
+  back. 🖼 Media's cards, a slide item's panel and the checklist offer it too, and **↻** repackages a 🤫 card's file that
+  plays here but phones can't open (an MKV, a MOV) into a type they take, for everyone. Nothing is checked or converted
+  in play.
 - **✎ Edit** (editor only): a stored video or sound that plays here can be trimmed (a bar with two handles, Start and
   End boxes, I / O at the playhead), and a video cropped (Free, 16:9, 4:3, 1:1, 9:16) and made smaller (1080p, 720p,
   480p, 360p, never bigger), from its 🖼 Media card, its slide item's panel or right-click menu. The window shows the
