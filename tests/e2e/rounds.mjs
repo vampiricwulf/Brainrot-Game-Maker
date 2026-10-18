@@ -4,7 +4,7 @@ import { chromium } from 'playwright-core';
 import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { macClicks, playWithPlayers } from './helpers.mjs';
+import { macClicks, noDailyDoubles, playWithPlayers } from './helpers.mjs';
 
 const file = resolve(process.env.APP_FILE || 'dist/index.html');
 if (!existsSync(file)) throw new Error('Run `npm run build` first');
@@ -30,6 +30,8 @@ try {
   assert(await page.getByRole('button', { name: '▶ Play' }).isDisabled(), 'Play waits for a round');
   assert((await page.locator('.first-round .mode').count()) === 5, 'every mode can be the first round');
   await page.locator('.first-round').getByRole('button', { name: /Jeopardy board/ }).click();
+  // (Its first tile is played below as a plain clue: no Daily Double may land on it at random when the game starts.)
+  await noDailyDoubles(page);
   await page.getByRole('button', { name: '＋ Add round' }).click();
   await page.getByRole('menuitem', { name: /Final Jeopardy/ }).click();
   assert((await roundNames()).join('|') === 'Jeopardy!|Final Jeopardy!', `the host adds a board and a Final (${(await roundNames()).join(', ')})`);
