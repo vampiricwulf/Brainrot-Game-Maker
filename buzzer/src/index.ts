@@ -15,18 +15,19 @@
  * header, never in the address). The room checks who may have what (room.ts fileFor); the Durable Object stores the
  * bytes as they arrive and sends them a 1 MB piece at a time (filestore.ts), under their own keys (p:<random>:<n>),
  * never in 'room', which is written on every change. Uploads are limited per address (FILE_LIMIT) and by a daily byte
- * budget for the whole server (FILES_MB_PER_DAY, counted by RoomCounter). The room's one alarm both ends it and deletes
- * files no card has used for a while (nextAlarm).
+ * budget for the whole server (FILES_MB_PER_DAY, counted by RoomCounter); how big a file and a room's files may be is
+ * set too (FILE_MB, ROOM_FILES_MB), and told to the app (/api/health, the host's welcome). The room's one alarm both ends
+ * it and deletes files no card has used for a while (nextAlarm).
  */
 import { DurableObject } from 'cloudflare:workers';
 import {
   BUZZ_PROTOCOL,
-  OLD_FILE_LIMITS,
   ROOM_ALPHABET,
   ROOM_CODE_LENGTH,
   fileType,
   isFileId,
   isRoomCode,
+  type Health,
   type NewRoom,
   type RoomToHost,
   type RoomToPhone,
@@ -37,6 +38,7 @@ import {
   bytesLeft,
   countBytes,
   countRoom,
+  fileLimits,
   filesBudget,
   FILES_BUSY_TODAY,
   FILES_OFF,
@@ -67,6 +69,9 @@ export interface Env {
   FILE_LIMIT: RateLimit;
   /** Card files the whole server takes a UTC day, in MB (wrangler.jsonc vars; 0 turns them off; see filesBudget). */
   FILES_MB_PER_DAY?: string | number;
+  /** How big a card file may be, and a room's card files together, in MB (wrangler.jsonc vars; see fileLimits). */
+  FILE_MB?: string | number;
+  ROOM_FILES_MB?: string | number;
   ASSETS: Fetcher;
 }
 
@@ -181,7 +186,7 @@ async function roomFiles(request: Request, env: Env, ip: string, code: string, i
   // missing token above.)
   const stub = env.BUZZ_ROOM.getByName(code);
   if (!(await stub.isHost(token))) return json({ error: 'wrong host token' }, 401);
-  const lim = OLD_FILE_LIMITS;
+  const lim = fileLimits(env);
   // (The room keeps this much room for it before reading it: a whole file's limit when it doesn't say.)
   const length = request.headers.get('Content-Length');
   const size = length && /^\d+$/.test(length) && Number.isSafeInteger(Number(length)) ? Number(length) : null;
@@ -207,7 +212,9 @@ export default {
     const path = url.pathname;
     if (request.method === 'OPTIONS' && (path.startsWith('/api/') || path.startsWith('/ws/'))) return new Response(null, { status: 204, headers: CORS });
 
-    if (path === '/api/health') return json({ ok: true, protocol: BUZZ_PROTOCOL });
+    // (What card files it takes, so the app knows before a room is open: no room is asked.)
+    if (path === '/api/health')
+      return json({ ok: true, protocol: BUZZ_PROTOCOL, files: filesBudget(env.FILES_MB_PER_DAY) ? fileLimits(env) : null } satisfies Health);
 
     // Cloudflare sets CF-Connecting-IP to the caller's address (a caller can't choose it).
     const ip = request.headers.get('CF-Connecting-IP') ?? 'unknown';
@@ -286,7 +293,7 @@ export class BuzzRoom extends DurableObject<Env> {
   private epoch = 0;
   /** Card files in and out a piece at a time (filestore.ts). */
   private files = new FileStore({
-    limits: () => OLD_FILE_LIMITS,
+    limits: () => fileLimits(this.env),
     put: (key, piece) => this.ctx.storage.put(key, piece),
     get: async (key) => {
       const v = await this.ctx.storage.get<Uint8Array | ArrayBuffer>(key);
@@ -384,7 +391,7 @@ export class BuzzRoom extends DurableObject<Env> {
         cancel: (id) => clearTimeout(id as ReturnType<typeof setTimeout>),
         dropFiles: (files) => this.dropPieces(files),
         cleanupAt: (at) => void this.wakeBy(at),
-        limits: OLD_FILE_LIMITS,
+        limits: fileLimits(this.env),
       },
       saved,
       phones,

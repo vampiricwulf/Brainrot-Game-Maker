@@ -146,7 +146,11 @@ room → host `files` (the files it holds, on welcome and whenever that changes)
 `'files'` sends a card's own files by hand. Since card files are stored a piece at a time: an upload's answers 400
 (it broke off, or was longer than its Content-Length), 429 (the room is taking 2 already) and 500 (the room couldn't
 store it: try again), an upload without a Content-Length keeping room for a whole file limit, and a download's
-`Content-Length`, its body ending in an error when its file is deleted partway.
+`Content-Length`, its body ending in an error when its file is deleted partway. Since each server sets its own card
+file limits: `welcome.limits` (`{fileBytes, roomBytes, roomFiles}`, only alongside `'files'`) and `files` in
+`GET /api/health` (the same, or `null` when it takes no files), a 413's words giving the server's limit ("Too big for
+the buzzer server (16 MB at most)"), and a `files` list of up to 1024 ids. An app that hears no limits (an older
+server) takes 16 MB a file and 64 MB a room; an older app keeps its own 16 MB check, which a server set higher takes.
 
 ## Fair timing
 
@@ -225,7 +229,17 @@ twice at once is stored (and counted) once, and bytes counted against today's bu
 
 - **Types**: PNG, JPEG, WebP, GIF; MP4, WebM; MP3, OGG, WAV, M4A. No SVG, no HTML. Served back with their own type,
   `Cache-Control: no-store, no-transform` and `X-Content-Type-Options: nosniff`.
-- **At most 16 MB a file, and 64 MB and 32 files a room.**
+- **How big**: set under `vars` in `wrangler.jsonc`, in MB (MiB: 1024 × 1024 bytes), and deployed again. The server
+  tells the app (`GET /api/health`, and the host's welcome), so the app follows on its own. A missing or unreadable
+  `FILE_MB` or `ROOM_FILES_MB`, or 0, means its default; a file is never more than a room. A room holds 32 files at
+  most too, whatever these say. For `wrangler dev` only, `npx wrangler dev --var FILE_MB:4` (or a `.dev.vars` file
+  here) sets one.
+
+  | Setting | Default | What | Keep it under (Workers Free) |
+  | --- | --- | --- | --- |
+  | `FILE_MB` | 16 | One file | 100 MB: Cloudflare turns a request body over the plan's limit away before the Worker sees it (Free and Pro 100 MB, Business 200 MB, Enterprise 500 MB), so keep it a little under that |
+  | `ROOM_FILES_MB` | 64 | A room's files together | 1 GB, a Durable Object's storage on Free: check the plan's before raising it |
+  | `FILES_MB_PER_DAY` | 2000 | The whole server, a UTC day (below) | 5 GB of storage in all, which every room's own state needs some of too |
 - **Kept** in the room's own Durable Object storage, in 1 MB pieces under keys of their own, never in the room's
   state (`src/filestore.ts`). Each upload's pieces go under a new random prefix (`p:<12 characters>:<n>`), stored as
   they arrive, a whole piece at a time, its id worked out on the way; once it has all come, the room lists the file
@@ -267,7 +281,7 @@ twice at once is stored (and counted) once, and bytes counted against today's bu
   Durable Object 30 seconds (Cloudflare's limits pages). The Worker now spends a request's usual 1–4 ms whatever the
   file; the room's part grows about 5 ms a MB, so a 16 MB file costs it about 80 ms. The daily counter (`RoomCounter`)
   takes under 2 ms a call, no request failed or ran out of CPU, and 10 MB of files wrote 46 rows, their deletion
-  included. **To measure again** (after a change, or before raising `FILE_MAX_BYTES` in `src/lib/buzzproto.ts`), run
+  included. **To measure again** (after a change, or before raising `FILE_MB`), run
   `node measure-files.mjs https://<your server> --sizes 1,2,3,4` here: it opens a room with a host and a phone, then
   uploads and fetches one file a minute, printing when each went, and uses that much of the day's budget. Read Workers &
   Pages › the Worker › Metrics › CPU time, and Durable Objects › each class › Metrics, for those minutes. Workers Logs
@@ -299,7 +313,10 @@ sideways, a long name on small screens, a flooding socket, and the limit on new 
 built app hosting two phones, through a reload and ◀ Back to editor on the pre-game screen, a host reload mid-clue,
 and a dropped host connection; `tests/e2e/buzzerfiles.mjs`: card files a piece at a time, with an upload cut off by
 the room closing, the server stopping or its connection dropping (nothing of it left stored), a full room's answer, a
-download's Content-Length, one whose file is deleted partway, and downloads stopped partway; `tests/e2e/phonecards.mjs`: the phone's private cards, from the
+download's Content-Length, one whose file is deleted partway, and downloads stopped partway; then a server with limits
+of its own saying them and holding to them, and giving back the room an upload stopped partway kept and the budget a
+twin kept; `tests/e2e/cardlimits.mjs`: the built app going by a server's own limits, asked before any room is open
+and said by a room's welcome, and an older server's 16 MB; `tests/e2e/phonecards.mjs`: the phone's private cards, from the
 greyed button through Tap to see, card files (two at once), a video, a YouTube player and the content policy to a
 phone that joined too late;
 `tests/e2e/partnersend.mjs`: the built app sending a partner clue's cards, with nothing in the room or its saved state
@@ -327,8 +344,8 @@ available on Free, and a game night is a handful of small messages per second at
 is ever reached the room stops working until the daily reset; it never bills. Sockets use the Hibernation API, so a
 room with nothing happening can sleep without dropping anyone (phones ping every 10 s, which wakes it briefly). Each
 room keeps up to 32 KB of state, which can include the private cards the host sent (words and links) until the tile
-closes (or the round ends, or the host takes it back, for a card sent with 🤫 Send a card…), and up to 64 MB of card
-files until 10 minutes after no card uses them; it is all wiped when the room ends.
+closes (or the round ends, or the host takes it back, for a card sent with 🤫 Send a card…), and up to `ROOM_FILES_MB`
+(64 MB by default) of card files until 10 minutes after no card uses them; it is all wiped when the room ends.
 Durable Object storage (5 GB on Free) is shared by every room on the account: 20 open rooms at their file cap is 1.3
 GB. Card file uploads stop for the day at the daily budget (see Card files above, which says how to change it).
 Whoever runs the server (for the public one, its Cloudflare account) could read what is stored while it is there, and

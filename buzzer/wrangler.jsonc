@@ -41,10 +41,18 @@
   // Query strings are left out of the logged addresses: the host's connection carries the room's host token in one.
   // (It's here, not just switched on in the dashboard: a deploy without it switches it off again.)
   "observability": { "enabled": true, "redact_query_string": true },
+  // Card files (pictures, GIFs, videos and sounds on private cards), in MB (MiB: 1024 × 1024 bytes). The app asks the
+  // server for these (/api/health, the host's welcome), so changing them here is all it takes. See README.md, "Card files".
   "vars": {
-    // Card files (pictures, GIFs, videos and sounds on private cards) the whole server takes a UTC day, in MB: further
-    // uploads are refused until the next day, and the host copies the card instead. 0 turns card files off. Each room
-    // holds 64 MB of them at most, deleted 10 minutes after no card uses them. See README.md, "Card files".
+    // How big one file may be. Cloudflare turns away a request body over the plan's limit before it reaches the Worker
+    // (Free and Pro 100 MB, Business 200 MB, Enterprise 500 MB): keep this a little under it.
+    "FILE_MB": "16",
+    // A room's files together (it holds 32 files at most too), deleted 10 minutes after no card uses them. Check the
+    // plan's storage per Durable Object before raising it (on Free, 1 GB each).
+    "ROOM_FILES_MB": "64",
+    // What the whole server takes a UTC day: further uploads are refused until the next day, and the host copies the
+    // card instead. 0 turns card files off. Keep it under the plan's storage in all (on Free, 5 GB, which every room's
+    // own state needs some of too).
     "FILES_MB_PER_DAY": "2000"
   }
 }

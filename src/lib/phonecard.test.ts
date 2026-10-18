@@ -3,6 +3,10 @@
 import { describe, expect, it } from 'vitest';
 import { newAudioEl, newEmbedEl, newImageEl, newShapeEl, newTextEl, newVideoEl, type MediaRef, type Slide, type SlideElement } from './model';
 import { cardItems, cardLinks, cardWords, filesToSend, phoneCard } from './phonecard';
+import { OLD_FILE_LIMITS } from './buzzproto';
+
+/** How big a file the buzzer server takes in these tests (one that doesn't say: 16 MB). */
+const FILE_BYTES = OLD_FILE_LIMITS.fileBytes;
 
 const at = <T extends SlideElement>(el: T, x: number, y: number, more: Partial<T> = {}): T => ({ ...el, x, y, ...more });
 const media: MediaRef[] = [
@@ -123,7 +127,7 @@ describe('phoneCard: the stack a phone gets (spec §12.3, §13.4, §13.5)', () =
       at(newImageEl('pic'), 0, 500),
       at(newEmbedEl('https://youtu.be/abcdefghijk', 'youtube'), 0, 1000, { startAt: 30 }),
     );
-    const pc = phoneCard(g, slide, { files: { pic: HASH } });
+    const pc = phoneCard(g, slide, { fileBytes: FILE_BYTES, files: { pic: HASH } });
     expect(pc.title).toBe('SHREK');
     expect(pc.text).toBe('Don’t say: ogre, green');
     expect(pc.media).toEqual([
@@ -134,8 +138,8 @@ describe('phoneCard: the stack a phone gets (spec §12.3, §13.4, §13.5)', () =
     expect(pc.left).toEqual([]);
     expect(filesToSend(pc)).toEqual(['clip']);
     // One line of words is the words, not a title.
-    expect(phoneCard(g, card(newTextEl('Shrek')), { files: {} })).toMatchObject({ text: 'Shrek', media: [] });
-    expect(phoneCard(g, card(newTextEl('Shrek')), { files: {} }).title).toBeUndefined();
+    expect(phoneCard(g, card(newTextEl('Shrek')), { fileBytes: FILE_BYTES, files: {} })).toMatchObject({ text: 'Shrek', media: [] });
+    expect(phoneCard(g, card(newTextEl('Shrek')), { fileBytes: FILE_BYTES, files: {} }).title).toBeUndefined();
   });
 
   it('online items go as their links; a stored copy of a lasting link goes as that link (not when edited)', () => {
@@ -147,7 +151,7 @@ describe('phoneCard: the stack a phone gets (spec §12.3, §13.4, §13.5)', () =
       at(newEmbedEl('https://files.example/a/clip.mp4', 'remoteVideo'), 0, 5),
       at(newEmbedEl('https://streamable.com/abc', 'streamable'), 0, 6),
     );
-    expect(phoneCard(g, slide, { files: {} }).media).toEqual([
+    expect(phoneCard(g, slide, { fileBytes: FILE_BYTES, files: {} }).media).toEqual([
       { kind: 'image', url: 'https://files.example/poster.jpg' },
       { kind: 'image', url: 'https://files.catbox.moe/abc123.png' },
       { kind: 'image', pending: true },
@@ -155,7 +159,7 @@ describe('phoneCard: the stack a phone gets (spec §12.3, §13.4, §13.5)', () =
       { kind: 'video', url: 'https://files.example/a/clip.mp4' },
       { kind: 'embed', site: 'streamable', url: 'https://streamable.com/abc' },
     ]);
-    expect(filesToSend(phoneCard(g, slide, { files: {} }))).toEqual(['pic', 'brief']);
+    expect(filesToSend(phoneCard(g, slide, { fileBytes: FILE_BYTES, files: {} }))).toEqual(['pic', 'brief']);
   });
 
   it('what won’t reach a phone, and why: too big, expired, a kind phones can’t play, no files, turned down, gone, past six', () => {
@@ -168,7 +172,7 @@ describe('phoneCard: the stack a phone gets (spec §12.3, §13.4, §13.5)', () =
       at(newEmbedEl('http://files.example/a.png', 'remoteImage'), 0, 6),
       at(newAudioEl('tune'), 0, 7),
     );
-    const pc = phoneCard(g, slide, { files: {}, failed: { pic: 'failed' } });
+    const pc = phoneCard(g, slide, { fileBytes: FILE_BYTES, files: {}, failed: { pic: 'failed' } });
     expect(pc.left.map((l) => [l.item, l.why])).toEqual([
       ['clip.mp4', 'big'],
       ['old.png', 'expired'],
@@ -183,7 +187,7 @@ describe('phoneCard: the stack a phone gets (spec §12.3, §13.4, §13.5)', () =
     expect(pc.media.every((m) => 'missing' in m)).toBe(true);
     expect(filesToSend(pc)).toEqual([]);
     // A buzzer server that takes no files: the files from this computer won't come; links still do.
-    const none = phoneCard(g, card(at(newImageEl('pic'), 0, 1), at(newImageEl('linked'), 0, 2)), { files: null });
+    const none = phoneCard(g, card(at(newImageEl('pic'), 0, 1), at(newImageEl('linked'), 0, 2)), { fileBytes: FILE_BYTES, files: null });
     expect(none.media).toEqual([{ kind: 'image', missing: true }, { kind: 'image', url: 'https://files.example/poster.jpg' }]);
     expect(none.left).toEqual([{ item: 'shrek.png', kind: 'picture', why: 'nofiles' }]);
   });
@@ -193,13 +197,30 @@ describe('phoneCard: the stack a phone gets (spec §12.3, §13.4, §13.5)', () =
       { id: 'p', name: 'huge.png', mime: 'image/png', size: 30 * 1024 * 1024, kind: 'image' },
       { id: 'g', name: 'huge.gif', mime: 'image/gif', size: 30 * 1024 * 1024, kind: 'image' },
     ];
-    const pc = phoneCard({ media: big }, card(at(newImageEl('p'), 0, 1), at(newImageEl('g'), 0, 2)), { files: {} });
+    const pc = phoneCard({ media: big }, card(at(newImageEl('p'), 0, 1), at(newImageEl('g'), 0, 2)), { fileBytes: FILE_BYTES, files: {} });
     expect(pc.media).toEqual([{ kind: 'image', pending: true }, { kind: 'image', missing: true }]);
     expect(pc.left).toEqual([{ item: 'huge.gif', kind: 'gif', why: 'big' }]);
   });
 
+  it('too big is the buzzer server’s own limit (can.fileBytes), to the byte', () => {
+    const MB = 1024 * 1024;
+    const files: MediaRef[] = [
+      { id: 'v', name: 'clip.mp4', mime: 'video/mp4', size: 24 * MB, kind: 'video' },
+      { id: 's', name: 'tune.mp3', mime: 'audio/mpeg', size: 24 * MB + 1, kind: 'audio' },
+    ];
+    const slide = card(at(newVideoEl('v'), 0, 1), at(newAudioEl('s'), 0, 2));
+    const big = (fileBytes: number) => phoneCard({ media: files }, slide, { fileBytes, files: {} }).left.map((l) => l.item);
+    expect(big(FILE_BYTES)).toEqual(['clip.mp4', 'tune.mp3']);
+    expect(big(24 * MB)).toEqual(['tune.mp3']);
+    expect(big(24 * MB + 1)).toEqual([]);
+    expect(phoneCard({ media: files }, slide, { fileBytes: 24 * MB, files: {} }).items.map((i) => i.goes)).toEqual([
+      { kind: 'video', pending: true },
+      { kind: 'audio', missing: true },
+    ]);
+  });
+
   it('an item’s own name goes with it (for the phone’s text alternative), never its file’s', () => {
-    const pc = phoneCard(g, card(at(newImageEl('linked'), 0, 1, { name: 'The ogre' }), at(newImageEl('pic'), 0, 2)), { files: { pic: HASH } });
+    const pc = phoneCard(g, card(at(newImageEl('linked'), 0, 1, { name: 'The ogre' }), at(newImageEl('pic'), 0, 2)), { fileBytes: FILE_BYTES, files: { pic: HASH } });
     expect(pc.media).toEqual([
       { kind: 'image', url: 'https://files.example/poster.jpg', name: 'The ogre' },
       { kind: 'image', file: HASH, mime: 'image/png' },

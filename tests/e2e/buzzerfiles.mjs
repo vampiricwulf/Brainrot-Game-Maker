@@ -3,8 +3,9 @@
 // (helpers.mjs roomKeys). An upload cut off by the host closing the room, by the server stopping (a deploy, a crash)
 // or by the uploader leaves nothing stored, and a new upload works after; a full room's answer reaches the uploader;
 // a download carries its Content-Length, and one whose file is deleted partway (the host took its card back) ends
-// short, with an error; downloads a phone stopped partway don't keep the room from sending more. Needs `npm ci` in
-// buzzer/.
+// short, with an error; downloads a phone stopped partway don't keep the room from sending more. Then a server with
+// limits of its own (FILE_MB, ROOM_FILES_MB, FILES_MB_PER_DAY): it says them, holds to them, and gives back what an
+// upload kept for itself and didn't store. Needs `npm ci` in buzzer/.
 import { createHash, randomBytes } from 'node:crypto';
 import { request } from 'node:http';
 import { roomKeys, startBuzzer } from './helpers.mjs';
@@ -29,6 +30,8 @@ const pieces = async () => (await roomKeys(buzzer.persist)).filter((k) => /^(p|f
 const buzzer = await startBuzzer('buzzer-files-');
 const { base } = buzzer;
 const ws = base.replace(/^http/, 'ws');
+/** The server with limits of its own (started once the first is done). */
+let small;
 
 /** A socket and everything it heard. */
 async function socket(url) {
@@ -42,18 +45,23 @@ async function socket(url) {
   return { s, heard, send: (m) => s.send(JSON.stringify(m)), last: (t) => heard.filter((m) => m.t === t).at(-1) };
 }
 
-/** A new room with its host connected and one seat: the host, a phone seated on it, and what they can do with files. */
-async function newRoom(ip) {
-  const made = await (await fetch(`${base}/api/rooms`, { method: 'POST', headers: { 'CF-Connecting-IP': ip } })).json();
+/**
+ * A new room (on the server at `at`) with its host connected and one seat: the host, a phone seated on it, and what
+ * they can do with files.
+ */
+async function newRoom(ip, at = base) {
+  const ws = at.replace(/^http/, 'ws');
+  const made = await (await fetch(`${at}/api/rooms`, { method: 'POST', headers: { 'CF-Connecting-IP': ip } })).json();
   const host = await socket(`${ws}/ws/${made.code}?host=${encodeURIComponent(made.hostToken)}`);
   await until(() => host.last('welcome'), 'the welcome');
   assert(host.last('welcome').features.includes('files'), `room ${made.code} takes card files`);
   let st = { title: 'Files', seats: [{ id: 'a', name: 'Ann', color: '#e5484d' }], allowNew: false, phase: 'lobby', armId: 0, clue: null, answering: null, lockedOut: [], earlyLockMs: 0, scores: {} };
   const state = (patch) => host.send({ t: 'state', state: (st = { ...st, ...patch }) });
   state({});
-  const url = (id) => `${base}/api/rooms/${made.code}/files${id ? `/${id}` : ''}`;
-  const upload = (body, extra = {}) =>
-    fetch(url(), { method: 'POST', headers: { 'Content-Type': 'video/mp4', Authorization: `Bearer ${made.hostToken}` }, body, ...extra });
+  const url = (id) => `${at}/api/rooms/${made.code}/files${id ? `/${id}` : ''}`;
+  /** An upload (`from`: the address it comes from, which the server's budget counts by). */
+  const upload = (body, { from, ...extra } = {}) =>
+    fetch(url(), { method: 'POST', headers: { 'Content-Type': 'video/mp4', Authorization: `Bearer ${made.hostToken}`, ...(from ? { 'CF-Connecting-IP': from } : {}) }, body, ...extra });
   /**
    * An upload that gives `bytes` slowly, 256 KB at a time, and stops after `holdAt` bytes until go(): its answer
    * (or the error that cut it off), and when it got there.
@@ -85,9 +93,15 @@ async function newRoom(ip) {
   await until(() => phone.last('seats'), 'the phone sees the seats');
   phone.send({ t: 'join', seatId: 'a' });
   const joined = await until(() => phone.last('joined'), 'the phone takes its seat');
-  /** An upload that says it's twice as long as `bytes`, sends them, and waits: its connection, to drop as a closed tab would. */
-  const halfUpload = (bytes) => {
-    const req = request(url(), { method: 'POST', headers: { 'Content-Type': 'video/mp4', 'Content-Length': String(2 * bytes.length), Authorization: `Bearer ${made.hostToken}` } });
+  /**
+   * An upload that says it's twice as long as `bytes`, sends them, and waits: its connection, to drop as a closed tab
+   * (or ✖ Take back in the app) would.
+   */
+  const halfUpload = (bytes, from) => {
+    const req = request(url(), {
+      method: 'POST',
+      headers: { 'Content-Type': 'video/mp4', 'Content-Length': String(2 * bytes.length), Authorization: `Bearer ${made.hostToken}`, ...(from ? { 'CF-Connecting-IP': from } : {}) },
+    });
     req.on('error', () => {});
     req.write(bytes);
     return req;
@@ -225,6 +239,78 @@ try {
     assert((await r.get(id)).status === 404, 'and the next try gets 404');
     r.host.send({ t: 'close' });
   }
+  buzzer.stop();
+
+  // ---------- A server with limits of its own: 4 MB a file, 12 MB a room, 24 MB a day (6 MB of it an address) ----------
+  small = await startBuzzer('buzzer-files-small-', { vars: { FILE_MB: 4, ROOM_FILES_MB: 12, FILES_MB_PER_DAY: 24 } });
+  {
+    const limits = JSON.stringify({ fileBytes: 4 * MB, roomBytes: 12 * MB, roomFiles: 32 });
+    const health = await (await fetch(`${small.base}/api/health`)).json();
+    assert(JSON.stringify(health.files) === limits, `its /api/health says what card files it takes (${JSON.stringify(health.files)})`);
+    const r = await newRoom('198.51.100.70', small.base);
+    assert(JSON.stringify(r.host.last('welcome').limits) === limits, `and so does the host's welcome (${JSON.stringify(r.host.last('welcome').limits)})`);
+    const big = await r.upload(randomBytes(4 * MB + 1), { from: '198.51.100.71' });
+    const said = await big.json().catch(() => null);
+    assert(big.status === 413 && said?.error === 'Too big for the buzzer server (4 MB at most)', `a file over 4 MB is turned away with its number (${big.status} ${JSON.stringify(said)})`);
+
+    // An upload stopped partway gives back the room it kept: 8 MB held (on a card, so nothing makes room for another)…
+    const held = [];
+    for (const from of ['198.51.100.71', '198.51.100.72']) {
+      const res = await r.upload(randomBytes(4 * MB), { from });
+      if (res.status === 200) held.push((await res.json()).id);
+    }
+    assert(held.length === 2, '4 MB files 1 and 2 stored');
+    r.state({ cards: [{ id: 'pc:c1:1:1', to: [{ seat: 'a' }], open: true, text: 'Two', media: held.map((file) => ({ kind: 'video', file, mime: 'video/mp4' })) }] });
+    await until(() => r.phone.last('view')?.view.cards?.list[0]?.media?.length === 2, 'the phone gets the card');
+    // …and a 4 MB one going fills the room…
+    const going = r.halfUpload(randomBytes(2 * MB), '198.51.100.73');
+    await until(async () => (await roomKeys(small.persist)).filter((k) => k.startsWith('p:')).length > 8, 'pieces of the upload going');
+    const meanwhile = await r.upload(randomBytes(4 * MB), { from: '198.51.100.73' });
+    assert(meanwhile.status === 409, `while it goes, another 4 MB file doesn't fit (${meanwhile.status})`);
+    // …and once it's stopped (✖ Take back), the next one does.
+    going.destroy();
+    let after;
+    for (const end = Date.now() + 5000; ; await sleep(200)) {
+      after = await r.upload(randomBytes(4 * MB), { from: '198.51.100.73' });
+      if (after.status === 200 || Date.now() > end) break;
+    }
+    assert(after.status === 200, `an upload stopped partway gives back the room it kept: the next 4 MB file is stored (${after.status})`);
+
+    // A file that doesn't say how big it is keeps a whole file's room for itself: in a nearly full room it's turned away
+    // even when small, where the same file saying its size is taken.
+    const third = (await after.json()).id;
+    await until(() => r.host.last('files')?.ids.includes(third), 'the files list with it');
+    r.host.send({ t: 'forget', files: [third] });
+    await until(() => r.host.last('files')?.ids.length === 2, 'the third let go');
+    assert((await r.upload(randomBytes(100 * 1024), { from: '198.51.100.74' })).status === 200, 'with 8 MB held, a 100 KB file saying its size is taken');
+    const unsized = (bytes) =>
+      r.upload(
+        new ReadableStream({
+          start(c) {
+            c.enqueue(bytes);
+            c.close();
+          },
+        }),
+        { from: '198.51.100.74', duplex: 'half' },
+      );
+    const small100 = await unsized(randomBytes(100 * 1024));
+    assert(small100.status === 409, `the same size not saying it is turned away: it could be 4 MB (${small100.status})`);
+    r.host.send({ t: 'close' });
+  }
+  {
+    // What a twin (the same bytes again) kept of the day's budget is given back: one address has 6 MB of it.
+    const r = await newRoom('198.51.100.80', small.base);
+    const from = '198.51.100.81';
+    const one = randomBytes(MB);
+    assert((await r.upload(randomBytes(4 * MB), { from })).status === 200 && (await r.upload(one, { from })).status === 200, 'an address uploads 4 MB and 1 MB');
+    const twin = await r.upload(one, { from });
+    assert(twin.status === 200 && (await twin.json()).id === createHash('sha256').update(one).digest('hex'), 'the same 1 MB again is taken (its id, stored once)');
+    const last = await r.upload(randomBytes(MB), { from });
+    assert(last.status === 200, `and another 1 MB still fits its 6 MB: the twin's share was given back (${last.status})`);
+    const over = await r.upload(randomBytes(1024), { from });
+    assert(over.status === 429, `past its 6 MB, the next is turned away (${over.status})`);
+    r.host.send({ t: 'close' });
+  }
 
   console.log('Buzzer files E2E passed.');
 } catch (e) {
@@ -232,4 +318,5 @@ try {
   process.exitCode = 1;
 } finally {
   buzzer.stop();
+  small?.stop();
 }

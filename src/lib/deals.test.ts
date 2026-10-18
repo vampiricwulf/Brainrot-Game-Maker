@@ -8,7 +8,7 @@ import { jeopardyGame } from './testgame';
 import { migrateGame, newImageEl, setSlideText, textSlide, type BoardRound, type CardTo, type DealPreset, type Game, type Session } from './model';
 import { forViewers, migrateSession, newSession, openClue, removePlayer } from './session';
 import { cardsFullText, cardsLeftOff, dealFullText, hostCards, roomCardsAfter, roomCardsFull, sessionCards } from './buzz';
-import { CARDS_MAX, type CardLate, type PhoneInfo } from './buzzproto';
+import { CARDS_MAX, type CardLate, type PhoneInfo, OLD_FILE_LIMITS } from './buzzproto';
 import { listedCards, quickSlide, sendCard, sentCardId } from './sentcards';
 import { phoneCard } from './phonecard';
 import { undoAction, redoAction, whoWasWhoStep } from './toolset';
@@ -41,6 +41,9 @@ import {
   startDeal,
   takeBackDeal,
 } from './deals';
+
+/** How big a file the buzzer server takes in these tests (one that doesn't say: 16 MB). */
+const FILE_BYTES = OLD_FILE_LIMITS.fileBytes;
 
 /** A seeded random (mulberry32): the same deals every run. */
 function seeded(seed: number): () => number {
@@ -197,7 +200,7 @@ describe('🎡 cards drawn from a saved wheel', () => {
       expect(places.segments.map((s) => s.label)).toContain(rest[0].slice);
       seen.add(rest[0].slice!);
       // The card says the location; the spy's card never does.
-      expect(phoneCard(g, rest[0].slide, { files: {} })).toMatchObject({ title: 'The location:', text: rest[0].slice });
+      expect(phoneCard(g, rest[0].slide, { fileBytes: FILE_BYTES, files: {} })).toMatchObject({ title: 'The location:', text: rest[0].slice });
       expect(JSON.stringify(spy[0].slide)).not.toContain(rest[0].slice!);
     }
     // (Drawn at random: many locations come up.)
@@ -247,9 +250,9 @@ describe('🎡 cards drawn from a saved wheel', () => {
     g.media.push({ id: 'pic', name: 'beach.png', mime: 'image/png', size: 100, kind: 'image' });
     const card = textSlide('The location:');
     const s = handSlide(g, card, { label: 'Beach', details: 'Sand, sea and sun', media: 'pic' });
-    expect(phoneCard(g, s, { files: {} })).toMatchObject({ title: 'The location:', text: 'Beach\nSand, sea and sun', media: [{ kind: 'image', pending: true }] });
+    expect(phoneCard(g, s, { fileBytes: FILE_BYTES, files: {} })).toMatchObject({ title: 'The location:', text: 'Beach\nSand, sea and sun', media: [{ kind: 'image', pending: true }] });
     setSlideText(card, 'changed');
-    expect(phoneCard(g, s, { files: {} }).title).toBe('The location:');
+    expect(phoneCard(g, s, { fileBytes: FILE_BYTES, files: {} }).title).toBe('The location:');
   });
 
   it('Team captain, per team: one captain on each team, among the people on it (or the host’s pick there)', () => {
@@ -280,14 +283,14 @@ function dealt(seed = 5) {
   return { ...s, deal, d, h };
 }
 
-const words = (g: Game, session: Session) => JSON.stringify(hostCards(g, session, { files: {} }));
+const words = (g: Game, session: Session) => JSON.stringify(hostCards(g, session, { fileBytes: FILE_BYTES, files: {} }));
 
 describe('📤 sending a deal: only when the host confirms, one card per player, each its own id', () => {
   it('dealt but not sent: nothing reaches the room; the counts follow the deal’s order, not the players’', () => {
     const { g, session, d } = dealt();
     expect(d.stage).toBe('dealt');
     expect(session.cards).toBeUndefined();
-    expect(hostCards(g, session, { files: {} })).toBeNull();
+    expect(hostCards(g, session, { fileBytes: FILE_BYTES, files: {} })).toBeNull();
     expect(dealCounts(d)).toBe('Spy ×1, Villager ×5');
     // (Whoever the spy is.)
     for (let seed = 1; seed <= 20; seed++) expect(dealCounts(dealt(seed).d)).toBe('Spy ×1, Villager ×5');
@@ -298,7 +301,7 @@ describe('📤 sending a deal: only when the host confirms, one card per player,
     const cards = sendDeal(g, session, 'round', 1000);
     expect(cards).toHaveLength(6);
     expect(d.stage).toBe('sent');
-    const room = sessionCards(g, session, { files: {} })!;
+    const room = sessionCards(g, session, { fileBytes: FILE_BYTES, files: {} })!;
     expect(room).toHaveLength(6);
     expect(new Set(room.map((c) => c.id)).size).toBe(6);
     for (const [i, c] of room.entries()) {
@@ -322,9 +325,9 @@ describe('📤 sending a deal: only when the host confirms, one card per player,
     const { g, session } = dealt();
     const other = sendCard(g, session, { to: [{ seat: 'a' }], content: { slide: quickSlide('x') }, until: 'host' }, 900)!;
     sendDeal(g, session, 'host', 1000);
-    const before = sessionCards(g, session, { files: {} })!.map((c) => c.id);
+    const before = sessionCards(g, session, { fileBytes: FILE_BYTES, files: {} })!.map((c) => c.id);
     expect(sendDealAgain(g, session, 1000)).toBe(6);
-    const after = sessionCards(g, session, { files: {} })!.map((c) => c.id);
+    const after = sessionCards(g, session, { fileBytes: FILE_BYTES, files: {} })!.map((c) => c.id);
     expect(after[0]).toBe(sentCardId(other));
     expect(after.slice(1).every((id) => !before.includes(id))).toBe(true);
   });
@@ -466,7 +469,7 @@ describe('📤 sending a deal: only when the host confirms, one card per player,
     const sent = sendDeal(g, session, 'host', 1000);
     expect(sent).toHaveLength(CARDS_MAX + 2);
     // The room is told the newest CARDS_MAX: the first two never reach a phone.
-    expect(hostCards(g, session, { files: {} })!.map((c) => c.id)).toEqual(sent.slice(2).map(sentCardId));
+    expect(hostCards(g, session, { fileBytes: FILE_BYTES, files: {} })!.map((c) => c.id)).toEqual(sent.slice(2).map(sentCardId));
     expect(cardsLeftOff(g, session)).toEqual(sent.slice(0, 2).map(sentCardId));
     expect(cardsFullText(g, session)).toBe(`${CARDS_MAX} cards are out on the phones, all of them the 🎭 deal’s: ✖ Take them back in 🎭 Deal…`);
     takeBackDeal(g, session);
@@ -488,13 +491,13 @@ describe('📤 sending a deal: only when the host confirms, one card per player,
       expect(sent).toHaveLength(n);
       // The room is told the deal's newest CARDS_MAX: the quick cards (and the deal's first, past CARDS_MAX) never reach a phone.
       const off = [...quick, ...sent.slice(0, n - CARDS_MAX)].map(sentCardId);
-      expect(hostCards(g, session, { files: {} })!.map((c) => c.id)).toEqual(sent.slice(n - CARDS_MAX).map(sentCardId));
+      expect(hostCards(g, session, { fileBytes: FILE_BYTES, files: {} })!.map((c) => c.id)).toEqual(sent.slice(n - CARDS_MAX).map(sentCardId));
       expect(cardsLeftOff(g, session)).toEqual(off);
       // Taking back another card frees nothing on the phones: only the deal's, said as all of them.
       expect(cardsFullText(g, session)).toBe(`${CARDS_MAX} cards are out on the phones, all of them the 🎭 deal’s: ✖ Take them back in 🎭 Deal…`);
       takeBackDeal(g, session);
       expect(cardsLeftOff(g, session)).toEqual([]);
-      expect(hostCards(g, session, { files: {} })!.map((c) => c.id)).toEqual(quick.map(sentCardId));
+      expect(hostCards(g, session, { fileBytes: FILE_BYTES, files: {} })!.map((c) => c.id)).toEqual(quick.map(sentCardId));
     }
   });
 
@@ -677,7 +680,7 @@ describe('a reload, and a damaged save', () => {
     whoWasWhoStep(session, true);
     const back = migrateSession(JSON.parse(JSON.stringify(session)), g);
     expect(back.deal).toEqual(session.deal);
-    expect(sessionCards(g, back, { files: {} })).toEqual(sessionCards(g, session, { files: {} }));
+    expect(sessionCards(g, back, { fileBytes: FILE_BYTES, files: {} })).toEqual(sessionCards(g, session, { fileBytes: FILE_BYTES, files: {} }));
   });
 
   it('a damaged deal is put away, and a deal’s cards without their deal are taken back', () => {

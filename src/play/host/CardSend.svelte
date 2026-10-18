@@ -65,6 +65,8 @@
   /** Its phones get the cards the host sends (else the host copies them: 📋). */
   const cardsOn = $derived(room && roomHasCards());
   const filesOn = $derived(cardsOn && roomHasFiles());
+  /** What the phones can get (with files off, none from this computer). */
+  const can = $derived(filesOn ? phoneCan(session) : { ...phoneCan(session), files: null });
   const phones = $derived(new Set(app.live.phones ?? []));
 
   // ---------- Who ----------
@@ -308,7 +310,7 @@
   let sentCopy = $state<{ card: SentCard; names: string[] } | null>(null);
   const sentCopySlide = $derived(sentCopy ? sentSlide(game, sentCopy.card) : undefined);
   const noPhone = $derived(cardsOn ? [...new Set(to.map((t) => t.seat))].filter((id) => !phones.has(id)) : []);
-  const left = $derived(cardsOn && slide ? leftLine(phoneCard(game, slide, filesOn ? phoneCan(session) : { files: null }).left) : '');
+  const left = $derived(cardsOn && slide ? leftLine(phoneCard(game, slide, can).left) : '');
   const names = $derived(to.map((t) => sentToText(session, [t], teams)));
   /**
    * The 🪟 card window is open for one of them (their whole seat): with no phones getting cards, 📤 Send shows it there,

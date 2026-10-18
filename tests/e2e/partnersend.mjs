@@ -91,7 +91,8 @@ const youtube = (url, y) => ({ ...box(y), kind: 'embed', embedKind: 'youtube', u
 const slide = (...elements) => ({ background: {}, elements });
 
 const executablePath = process.env.CHROMIUM_PATH || (existsSync('/opt/pw-browsers/chromium') ? '/opt/pw-browsers/chromium' : undefined);
-const buzzer = await startBuzzer('buzzer-partnersend-');
+// (Its own limits, so the sizes below hold whatever wrangler.jsonc says.)
+const buzzer = await startBuzzer('buzzer-partnersend-', { vars: { FILE_MB: 16, ROOM_FILES_MB: 64 } });
 const { base, persist } = buzzer;
 let browser;
 const errors = [];

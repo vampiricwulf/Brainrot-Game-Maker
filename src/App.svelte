@@ -26,6 +26,7 @@
     type SavedRoom,
   } from './lib/persist';
   import { buzzerBase, buzzerOn, endRoom, kept, leaveRoom, rejoinRoom, remote, roomHasCards, roomHasFiles, sendHostState } from './lib/remote.svelte';
+  import { askServerFiles, fileLimitsNow } from './lib/serverlimits.svelte';
   import { setupState } from './lib/buzz';
   import { joinUrl } from './lib/buzzproto';
   import { MAX_PACK_READ, openPack } from './lib/pack';
@@ -455,12 +456,25 @@
   // depends on the ones loaded, too.)
   let checklist = $state.raw<ChecklistLine[]>([]);
   /** The checklist's lines (one a round) for this game: the watcher's plain copy, or the game itself as it arrives. */
-  // (A room kept open that puts cards on phones but takes no files: a card's file from this computer won't reach one.)
-  const check = (game: Game) => (checklist = checklistLines(game, validate(game, { filesOff: !!remote.code && remote.status === 'online' && roomHasCards() && !roomHasFiles() })));
+  // (A room kept open that puts cards on phones but takes no files, or a server that takes none: a card's file from this
+  // computer won't reach one. How big a file the server takes, as it said.)
+  const check = (game: Game) => {
+    const lim = fileLimitsNow();
+    const filesOff = (!!remote.code && remote.status === 'online' && roomHasCards() && !roomHasFiles()) || lim.off;
+    checklist = checklistLines(game, validate(game, { filesOff, fileBytes: lim.limits.fileBytes }));
+  };
   const checkSoon = debounce(() => watch && check(watch.value()), 300);
   $effect(() => {
     void Object.keys(mediaUrls).length;
+    const lim = fileLimitsNow();
+    void [lim.off, lim.limits.fileBytes];
     untrack(checkSoon);
+  });
+  // What card files the buzzer server takes, asked once a game has a file from this computer (the 📱 preview and the
+  // checklist go by it before any room is open).
+  $effect(() => {
+    const b = buzzerBase();
+    if (b && app.game.media.some((m) => !m.url && m.kind !== 'font')) askServerFiles(b);
   });
 
   // Each game that arrives (the draft at the start, New, Open…) gets its own watcher, started once the game is on

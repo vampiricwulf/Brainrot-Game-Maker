@@ -6,18 +6,26 @@
   line, and is only theirs, as a phone gets it.
 -->
 <script lang="ts">
-  import { bigWords, FILE_MAX_BYTES } from '../lib/buzzproto';
+  import { bigWords } from '../lib/buzzproto';
   import { formatBytes, mediaUrls } from '../lib/media.svelte';
   import type { Clue, ClueCard, Game, Slide } from '../lib/model';
   import { cardLines, partnerRules } from '../lib/partner';
   import { phoneCard, type LeftOut, type PhoneItem } from '../lib/phonecard';
   import { buzzerBase, remote, roomHasCards, roomHasFiles } from '../lib/remote.svelte';
+  import { fileLimitsNow } from '../lib/serverlimits.svelte';
 
   let { game, clue, card }: { game: Game; clue?: Clue; card: Slide & Partial<Pick<ClueCard, 'to' | 'hint'>> } = $props();
 
-  /** The buzzer server this copy uses: none, an open room's (it says what it takes), or one not asked yet. */
-  const server = $derived(!buzzerBase() ? 'none' : remote.code && remote.status === 'online' ? (roomHasCards() ? (roomHasFiles() ? 'files' : 'nofiles') : 'older') : 'unknown');
-  const pc = $derived(phoneCard(game, card, { files: server === 'nofiles' || server === 'older' ? null : {} }));
+  /** What card files the buzzer server takes, as it said (its room's welcome, or its answer before a room is open). */
+  const limits = $derived(fileLimitsNow());
+  /**
+   * The buzzer server this copy uses: none, an open room's (it says what it takes), one that said it takes no files, or
+   * one with no room open.
+   */
+  const server = $derived(
+    !buzzerBase() ? 'none' : remote.code && remote.status === 'online' ? (roomHasCards() ? (roomHasFiles() ? 'files' : 'nofiles') : 'older') : limits.off ? 'nofiles' : 'unknown',
+  );
+  const pc = $derived(phoneCard(game, card, { files: server === 'nofiles' || server === 'older' ? null : {}, fileBytes: limits.limits.fileBytes }));
   /**
    * Its lines as its part's phone shows them (anyone but the two: the line for them), "the picker" and "the partner" for
    * the names. A card on any other tile has none, nor does one from 🤫 Cards.
@@ -40,7 +48,7 @@
     const what = `${ICON[it.kind]} ${it.name}`;
     switch (w) {
       case 'big':
-        return `${what} is ${formatBytes(ref?.size ?? 0)}: phones get files up to ${formatBytes(FILE_MAX_BYTES)}. Add it from a link (YouTube, Drive…) instead.`;
+        return `${what} is ${formatBytes(ref?.size ?? 0)}: phones get files up to ${formatBytes(limits.limits.fileBytes)}. Add it from a link (YouTube, Drive…) instead.`;
       case 'expired':
         return `${what}: its link has expired. Add it again, or from a lasting link.`;
       case 'kind':

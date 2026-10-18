@@ -3,14 +3,15 @@
 // sent cards, and the cards out with 🤫 Send a card… or from a tile's panel: Session.cards) or ⇡ Get it ready
 // (PartnerState.ready); a reload only finishes what one of those started (filesWanted). Pictures are shrunk here first;
 // one file goes up at a time. The panel counts them ("uploading 1 of 2…") and never names them.
-import { FILE_MAX_BYTES, fileType } from './buzzproto';
+import { fileType, mbText } from './buzzproto';
 import { canvasToBlob, loadImage } from './imageedit';
 import { storedBlob } from './media.svelte';
 import type { Clue, Game, Id, PartnerState, Session, Slide } from './model';
 import { cardHash, cardSends, cardSlides, filesWanted } from './partner';
-import { filesToSend, phoneCard, shrinks, type LeftOut } from './phonecard';
+import { filesToSend, phoneCard, shrinks, type LeftOut, type PhoneCan } from './phonecard';
 import { cardsOut, sentSlide } from './sentcards';
 import { forgetCardFiles, remote, roomHasFiles, uploadCardFile } from './remote.svelte';
+import { fileLimitsNow } from './serverlimits.svelte';
 
 /** A picture's longest side on a phone, and how it's packed (WebP, else JPEG). */
 export const SHRINK_PX = 1600;
@@ -58,20 +59,23 @@ export function failedFiles(session: Pick<Session, 'remote'>): Record<Id, LeftOu
   return Object.fromEntries(Object.entries(uploads.jobs).flatMap(([id, j]) => (j.code === code && j.state === 'failed' ? [[id, j.why ?? 'failed']] : [])));
 }
 
-/** What the phones can get now (phoneCard's `can`): the room's files, and those turned down. */
-export const phoneCan = (session: Pick<Session, 'remote'>) => ({ files: heldFiles(session), failed: failedFiles(session) });
+/**
+ * What the phones can get now (phoneCard's `can`): the room's files, those turned down, and how big a file its server
+ * takes. Only listing a card's files: `{ ...phoneCan(session), files: {} }`, so the same file is picked as goes up.
+ */
+export const phoneCan = (session: Pick<Session, 'remote'>): PhoneCan => ({ files: heldFiles(session), failed: failedFiles(session), fileBytes: fileLimitsNow().limits.fileBytes });
 
 /** The files of the open partner clue's cards that are out (sent, not edited since) or got ready (⇡), by media id. */
 let wantedNow = new Set<Id>();
 
 /** The files of the cards that are out or got ready now: any other upload isn't wanted (taken back, the tile closed). */
-function cardsWanting(game: Game, clue: Clue, s: PartnerState): Id[] {
+function cardsWanting(game: Game, session: Session, clue: Clue, s: PartnerState): Id[] {
   return cardSlides(clue)
     .filter((c) => {
       const sends = cardSends(s, c.id);
       return (sends.length > 0 && sends.every((x) => x.hash === cardHash(c))) || !!s.ready?.includes(c.id);
     })
-    .flatMap((c) => phoneCard(game, c, { files: {} }).items.flatMap((i) => (i.file && i.media ? [i.media] : [])));
+    .flatMap((c) => phoneCard(game, c, { ...phoneCan(session), files: {} }).items.flatMap((i) => (i.file && i.media ? [i.media] : [])));
 }
 
 /** The cards out with 🤫 Send a card… or from a tile's panel, as they went (not edited since): what's on each. */
@@ -93,15 +97,16 @@ export function syncUploads(game: Game, session: Session, clue: Clue | undefined
   const code = session.remote?.code;
   const live = !!s && !!clue && clue.id === s.clue;
   const sent = sentSlides(game, session);
-  const mine = (slide: Slide) => phoneCard(game, slide, { files: {} }).items.flatMap((i) => (i.file && i.media ? [i.media] : []));
-  wantedNow = new Set([...(live ? cardsWanting(game, clue!, s!) : []), ...sent.flatMap(mine)]);
+  const can = phoneCan(session);
+  const mine = (slide: Slide) => phoneCard(game, slide, { ...can, files: {} }).items.flatMap((i) => (i.file && i.media ? [i.media] : []));
+  wantedNow = new Set([...(live ? cardsWanting(game, session, clue!, s!) : []), ...sent.flatMap(mine)]);
   for (const [id, j] of Object.entries(uploads.jobs)) if (j.state === 'waiting' && !wantedNow.has(id)) delete uploads.jobs[id];
   const held = heldFiles(session);
   if ((!live && !sent.length) || !code || !held || remote.status !== 'online') return;
   const failed = failedFiles(session);
   const wanted = new Set([
-    ...(live ? filesWanted(game, clue!, s!, held, putFiles(session), failed) : []),
-    ...sent.flatMap((slide) => filesToSend(phoneCard(game, slide, { files: held, failed }))),
+    ...(live ? filesWanted(game, clue!, s!, held, putFiles(session), can, failed) : []),
+    ...sent.flatMap((slide) => filesToSend(phoneCard(game, slide, { ...can, files: held, failed }))),
   ]);
   let added = false;
   for (const id of wanted) {
@@ -124,7 +129,7 @@ export function unputGone(game: Game, session: Session, cards: Slide[]): void {
   const ids = { ...r.files.ids };
   let gone = false;
   for (const card of cards)
-    for (const it of phoneCard(game, card, { files: {} }).items)
+    for (const it of phoneCard(game, card, { ...phoneCan(session), files: {} }).items)
       if (it.media && it.media in ids && !(it.media in held)) {
         delete ids[it.media];
         gone = true;
@@ -136,7 +141,7 @@ export function unputGone(game: Game, session: Session, cards: Slide[]): void {
 export function retryFiles(game: Game, session: Session, cards: Slide[]): void {
   const code = session.remote?.code;
   for (const card of cards)
-    for (const it of phoneCard(game, card, { files: {} }).items) if (it.media && uploads.jobs[it.media]?.code === code && uploads.jobs[it.media].state === 'failed') delete uploads.jobs[it.media];
+    for (const it of phoneCard(game, card, { ...phoneCan(session), files: {} }).items) if (it.media && uploads.jobs[it.media]?.code === code && uploads.jobs[it.media].state === 'failed') delete uploads.jobs[it.media];
 }
 
 /** The next file waiting, up it goes; then the one after. */
@@ -191,7 +196,8 @@ async function putFile(game: Game, id: Id): Promise<{ id: string } | { why: Left
     ({ blob: body, type } = small);
   }
   if (!type) return { why: 'kind', error: 'Phones don’t take this kind of file' };
-  if (body.size > FILE_MAX_BYTES) return { why: 'big', error: 'Too big for phones' };
+  const max = fileLimitsNow().limits.fileBytes;
+  if (body.size > max) return { why: 'big', error: `Too big for the buzzer server (${mbText(max)} at most)` };
   const r = await uploadCardFile(body, type);
   if ('id' in r) return r;
   return { why: r.refused === 'big' ? 'big' : r.refused === 'kind' ? 'kind' : r.refused === 'full' ? 'full' : 'failed', error: r.error, retry: r.refused === 'error' };

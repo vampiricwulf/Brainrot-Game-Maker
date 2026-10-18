@@ -3,7 +3,7 @@
 // host column, the partner panel's counts, 📋 Copy words and Copy picture); phoneCard builds the stack a phone gets from
 // it, so the editor's 📱 preview, the host column and what goes to the buzzer room are the same card. Model types,
 // links.ts and buzzproto.ts only, so the phone page can share it.
-import { cardLink, CARD_MEDIA_MAX, CARD_TEXT_MAX, CARD_TITLE_MAX, clip, FILE_MAX_BYTES, fileType, type CardMedia } from './buzzproto';
+import { cardLink, CARD_MEDIA_MAX, CARD_TEXT_MAX, CARD_TITLE_MAX, clip, fileType, type CardMedia } from './buzzproto';
 import { embedName, isLinkProblem, linkLifetime, nameFromUrl, parseMediaLink, playerFor, youtubeId } from './links';
 import type { EmbedEl, Game, Id, MediaRef, Playback, Slide, SlideElement, TextEl } from './model';
 
@@ -71,11 +71,11 @@ export function cardLinks(game: Pick<Game, 'media'>, slide: Slide): string[] {
 // ---------- What a phone gets (partner-clues spec §12.3, §13.4, §13.5) ----------
 
 /**
- * Why an item won't reach a phone: a file over FILE_MAX_BYTES ('big'), an online link that stopped working
- * ('expired'), a kind of file or link phones don't take ('kind'), a file from this computer while the buzzer server
- * takes none ('nofiles'), an upload the server turned down or that broke off ('failed'), or turned down as the buzzer
- * room holds all the files it can ('full'), a file no longer in the game's media ('lost'), or more than CARD_MEDIA_MAX
- * on one card ('many').
+ * Why an item won't reach a phone: a file over the buzzer server's limit ('big': PhoneCan.fileBytes), an online link
+ * that stopped working ('expired'), a kind of file or link phones don't take ('kind'), a file from this computer while
+ * the buzzer server takes none ('nofiles'), an upload the server turned down or that broke off ('failed'), or turned
+ * down as the buzzer room holds all the files it can ('full'), a file no longer in the game's media ('lost'), or more
+ * than CARD_MEDIA_MAX on one card ('many').
  */
 export type LeftOut = 'big' | 'expired' | 'kind' | 'nofiles' | 'failed' | 'full' | 'lost' | 'many';
 
@@ -103,12 +103,20 @@ export interface PhoneCardContent {
 
 /**
  * What the phones can get: `files`, the room's ids for the files already up (by media id), or null when the buzzer
- * server takes no files (they go as { missing }). `failed`: files whose upload didn't work, and why.
+ * server takes no files (they go as { missing }). `failed`: files whose upload didn't work, and why. `fileBytes`: the
+ * biggest file the buzzer server takes (serverlimits.svelte.ts fileLimitsNow).
  */
 export interface PhoneCan {
   files: Record<Id, string> | null;
   failed?: Record<Id, LeftOut>;
+  fileBytes: number;
 }
+
+/**
+ * For what doesn't hang on the buzzer server (a card's words and title, how many cards there are, the 🪟 card window):
+ * every file as if it went, whatever its size.
+ */
+export const ANY_SERVER: PhoneCan = Object.freeze({ files: {}, fileBytes: Infinity });
 
 /** A link a phone may load: https, CARD_LINK_MAX characters at most, no user name or password (the room checks it again). */
 export const phoneLink = (s: string | undefined): string | null => cardLink(s);
@@ -207,7 +215,7 @@ export function phoneCard(game: Pick<Game, 'media'>, slide: Slide, can: PhoneCan
         ? 'nofiles'
         : !shrinks(item) && (!type || !type.startsWith(`${kind}/`))
           ? 'kind'
-          : !shrinks(item) && ref.size > FILE_MAX_BYTES
+          : !shrinks(item) && ref.size > can.fileBytes
             ? 'big'
             : (can.failed?.[ref.id] ?? null);
     if (why) {

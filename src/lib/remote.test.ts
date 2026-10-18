@@ -1,7 +1,8 @@
 import { afterEach, describe, expect, it } from 'vitest';
-import { BUZZ_PROTOCOL } from './buzzproto';
+import { BUZZ_PROTOCOL, OLD_FILE_LIMITS } from './buzzproto';
 import { buzzerBase, closeRoom, rejoinRoom, remote, setRemoteDeps } from './remote.svelte';
 import { prefs } from './prefs.svelte';
+import { fileLimitsNow, forgetServerFiles } from './serverlimits.svelte';
 import { retryDelay, type LinkDeps, type SocketLike } from './roomlink';
 
 class FakeSocket implements SocketLike {
@@ -23,10 +24,10 @@ class FakeSocket implements SocketLike {
     this.readyState = 3;
   }
   // The room's side: it lets the host in (welcome), or the connection drops.
-  welcome() {
+  welcome(more: object = {}) {
     this.readyState = 1;
     this.onopen?.({});
-    this.onmessage?.({ data: JSON.stringify({ t: 'welcome', code: 'BCDF', protocol: BUZZ_PROTOCOL, serverNow: 1 }) });
+    this.onmessage?.({ data: JSON.stringify({ t: 'welcome', code: 'BCDF', protocol: BUZZ_PROTOCOL, serverNow: 1, ...more }) });
   }
   drop() {
     this.readyState = 3;
@@ -138,6 +139,34 @@ describe('closeRoom', () => {
     t.advance(120_000);
     expect(sockets.length).toBe(4);
     expect(remote.status).toBe('off');
+  });
+});
+
+describe('the server’s card file limits', () => {
+  it('a welcome with files says them, for this room and for the editor once it’s closed; one that doesn’t is an older server', () => {
+    sockets = [];
+    forgetServerFiles();
+    const t = fakeDeps();
+    setRemoteDeps(t.deps);
+    const was = prefs.buzzerServer;
+    prefs.buzzerServer = room.base;
+    const limits = { fileBytes: 4 << 20, roomBytes: 12 << 20, roomFiles: 32 };
+    rejoinRoom(room);
+    sockets[0].welcome({ features: ['cards', 'files'], limits });
+    expect(remote.limits).toEqual(limits);
+    expect(fileLimitsNow()).toEqual({ limits, known: true, off: false });
+    closeRoom();
+    expect(remote.limits).toBeNull();
+    // (What the server said stays known.)
+    expect(fileLimitsNow()).toEqual({ limits, known: true, off: false });
+    rejoinRoom(room);
+    sockets.at(-1)!.welcome({ features: ['cards', 'files'] });
+    expect(remote.limits).toBeNull();
+    expect(fileLimitsNow().limits).toEqual(OLD_FILE_LIMITS);
+    closeRoom();
+    expect(fileLimitsNow().limits).toEqual(OLD_FILE_LIMITS);
+    prefs.buzzerServer = was;
+    forgetServerFiles();
   });
 });
 

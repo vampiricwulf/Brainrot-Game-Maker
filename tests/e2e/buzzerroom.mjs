@@ -9,7 +9,7 @@ import { createServer } from 'node:net';
 import { existsSync, mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
-import { tap, tieThem } from './helpers.mjs';
+import { buzzerVars, tap, tieThem } from './helpers.mjs';
 
 const dir = resolve('buzzer');
 if (!existsSync(join(dir, 'node_modules/.bin/wrangler'))) throw new Error('Run `npm ci` in buzzer/ first');
@@ -30,7 +30,8 @@ const base = `http://127.0.0.1:${port}`;
 let log = '';
 const wrangler = spawn(
   join(dir, 'node_modules/.bin/wrangler'),
-  ['dev', '--ip', '127.0.0.1', '--port', String(port), '--inspector-port', String(inspector), '--persist-to', state, '--log-level', 'warn'],
+  // (Its own limits, so the exact sizes below hold whatever wrangler.jsonc says.)
+  ['dev', '--ip', '127.0.0.1', '--port', String(port), '--inspector-port', String(inspector), '--persist-to', state, '--log-level', 'warn', ...buzzerVars({ FILE_MB: 16, ROOM_FILES_MB: 64 })],
   { cwd: dir, detached: true, env: { ...process.env, WRANGLER_SEND_METRICS: 'false', NO_PROXY: '127.0.0.1,localhost', no_proxy: '127.0.0.1,localhost' } },
 );
 wrangler.stdout.on('data', (d) => (log += d));
@@ -102,6 +103,10 @@ try {
   }
   const health = await (await fetch(`${base}/api/health`)).json();
   assert(health.ok && health.protocol === 1, 'the room server is up (/api/health)');
+  assert(
+    JSON.stringify(health.files) === JSON.stringify({ fileBytes: 16 * 1024 * 1024, roomBytes: 64 * 1024 * 1024, roomFiles: 32 }),
+    `it says what card files it takes (${JSON.stringify(health.files)})`,
+  );
 
   const pre = await fetch(`${base}/api/rooms`, { method: 'OPTIONS', headers: { Origin: 'null', 'Access-Control-Request-Method': 'POST' } });
   assert(pre.headers.get('access-control-allow-origin') === '*', 'CORS lets the app (file://, origin null) make rooms');
@@ -949,6 +954,7 @@ try {
     const h = await connectHost(made.code, made.hostToken);
     const welcome = await h.wait((m) => m.t === 'welcome', 'welcome');
     assert(welcome.features.includes('cards') && welcome.features.includes('files'), `the room takes cards and files (${welcome.features.join(', ')})`);
+    assert(welcome.limits?.fileBytes === 16 * 1024 * 1024 && welcome.limits.roomBytes === 64 * 1024 * 1024, `and says how big (${JSON.stringify(welcome.limits)})`);
     const pre = await fetch(`${base}/api/rooms/${made.code}/files`, {
       method: 'OPTIONS',
       headers: { Origin: 'null', 'Access-Control-Request-Method': 'POST', 'Access-Control-Request-Headers': 'authorization,content-type' },
@@ -1011,7 +1017,7 @@ try {
     const streamed = await unsized(randomBytes(16 * 1024 * 1024 + 1));
     const nothing = await up(new Uint8Array(0), 'video/mp4');
     assert(
-      streamed.status === 413 && (await streamed.json()).error === 'Too big for phones (16 MB at most)' && nothing.status === 400,
+      streamed.status === 413 && (await streamed.json()).error === 'Too big for the buzzer server (16 MB at most)' && nothing.status === 400,
       `a file over 16 MB that doesn't give its size is refused as too big (${streamed.status}), and an empty one (${nothing.status})`,
     );
     const whole = randomBytes(1536 * 1024);

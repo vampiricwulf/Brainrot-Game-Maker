@@ -7,6 +7,10 @@ import { newRpgRound, newVariant } from './rpg';
 import { addClueSlide, setClueType } from './ops';
 import { addCard } from './partner';
 import { nameGivesAway, savedCardProblems, validate } from './validate';
+import { OLD_FILE_LIMITS } from './buzzproto';
+
+/** How big a file the buzzer server takes in these tests (one that doesn't say: 16 MB). */
+const OLD = { fileBytes: OLD_FILE_LIMITS.fileBytes };
 
 describe('the checklist', () => {
   it('counts in words: "1 clue", "30 clues", "2 categories"', () => {
@@ -128,7 +132,7 @@ describe('🤝 partner clues', () => {
     setClueType(round, clue, 'partner');
     return { game, round, clue };
   }
-  const mine = (game: Game) => validate(game).filter((p) => /card|partner/i.test(p.text) && !p.text.includes('Older copies'));
+  const mine = (game: Game, room = OLD) => validate(game, room).filter((p) => /card|partner/i.test(p.text) && !p.text.includes('Older copies'));
 
   it('warns of an empty card and of a ready-made game with no card, going to the card', () => {
     const { game, round, clue } = partnerGame();
@@ -225,6 +229,11 @@ describe('🤝 partner clues', () => {
       'Movies $400: card 1 has a video too big for phones (40.0 MB; phones get files up to 16.0 MB)',
       "Movies $400: card 1 has a video phones can't play: add it as MP4, WebM, MP3, OGG, WAV or M4A, or from a link",
     ]);
+    // The buzzer server's own limit: too big says its number, and a server that takes it says nothing.
+    expect(mine(game, { fileBytes: 24 * 1024 * 1024 }).map((p) => p.text)[0]).toBe('Movies $400: card 1 has a video too big for phones (40.0 MB; phones get files up to 24.0 MB)');
+    expect(mine(game, { fileBytes: 40 * 1024 * 1024 }).map((p) => p.text)).toEqual([
+      "Movies $400: card 1 has a video phones can't play: add it as MP4, WebM, MP3, OGG, WAV or M4A, or from a link",
+    ]);
     card.elements = card.elements.filter((e) => e.kind !== 'video');
     setSlideText(card, 'x'.repeat(1001));
     expect(mine(game).map((p) => p.text)).toEqual(['Movies $400: card 1 has more than 1000 characters of words: phones get the first 1000']);
@@ -272,7 +281,7 @@ describe('🤝 partner clues', () => {
     start.variants = [newVariant(undefined, start, 'Night'), newVariant(undefined, start, 'Open')];
     game.rounds.push(rpg);
     const too = 'has a video too big for phones (40.0 MB; phones get files up to 16.0 MB)';
-    expect(validate(game).filter((p) => p.text.includes('too big'))).toEqual([
+    expect(validate(game, OLD).filter((p) => p.text.includes('too big'))).toEqual([
       { text: `Race: a 🤫 card on “${board.spaces[1].name}” ${too}`, tab: 2, level: 'warn', place: { tab: 'round', round: board.id, part: { kind: 'space', space: board.spaces[1].id } } },
       {
         text: `Quest: a 🤫 card on “Chest” on “Start” ${too}`,
@@ -324,7 +333,7 @@ describe('a Final’s 🤫 cards', () => {
     card.name = 'Leader hint';
     return { game, final, card };
   }
-  const mine = (game: Game, filesOff = false) => validate(game, { filesOff }).filter((p) => p.tab === 1);
+  const mine = (game: Game, filesOff = false) => validate(game, { ...OLD, filesOff }).filter((p) => p.tab === 1);
   const at = (final: FinalRound, id: string) => ({ tab: 'round', round: final.id, part: { kind: 'final', side: 'card', slide: id } });
 
   it('says nothing of one with something on it', () => {
@@ -397,7 +406,7 @@ describe('a Final’s 🤫 cards', () => {
 
 describe('🤫 Cards (the editor’s tab)', () => {
   const card = (id: string, name: string, ...els: Slide['elements']): SavedCard => ({ id, name, background: {}, elements: els });
-  const mine = (game: Game, filesOff = false) => validate(game, { filesOff }).filter((p) => p.tab === 'cards');
+  const mine = (game: Game, filesOff = false) => validate(game, { ...OLD, filesOff }).filter((p) => p.tab === 'cards');
 
   it('warns of an empty card, going to it', () => {
     const game = jeopardyGame();
@@ -427,7 +436,7 @@ describe('🤫 Cards (the editor’s tab)', () => {
       "🤫 Card “Tip A” has a picture that's a file on this computer, and this buzzer server isn't taking files: phones get the words and links only (📋 Copy picture)",
     ]);
     // (The same lines on their own, for the checklist.)
-    expect(savedCardProblems(game, true)).toEqual(mine(game, true));
+    expect(savedCardProblems(game, { ...OLD, filesOff: true })).toEqual(mine(game, true));
     vi.unstubAllGlobals();
   });
 

@@ -2,8 +2,8 @@
 // same code and host token after a drop), send the host's state, and pass on what the room says. No Svelte here, so it
 // can be tested with a fake WebSocket; remote.svelte.ts makes it reactive for the app.
 import {
-  ANSWER_MAX, BUZZ_PROTOCOL, CARD_ID_MAX, CARD_MEMBER_MAX, isFileId, isRoomCode, ROOM_FILES_MAX, socketUrl, type CardLate, type HostMsg, type HostState, type NewRoom, type PhoneInfo, type QueuedBuzz,
-  type RoomToHost,
+  ANSWER_MAX, BUZZ_PROTOCOL, CARD_ID_MAX, CARD_MEMBER_MAX, FILES_LIST_MAX, isFileId, isRoomCode, parseFileLimits, socketUrl, type CardLate, type FileLimits, type HostMsg, type HostState, type NewRoom,
+  type PhoneInfo, type QueuedBuzz, type RoomToHost,
 } from './buzzproto';
 
 export type RoomStatus = 'off' | 'connecting' | 'online' | 'reconnecting' | 'error';
@@ -94,16 +94,20 @@ export function parseRoomMsg(data: unknown): RoomToHost | null {
   }
   if (!isObj(m)) return null;
   switch (m.t) {
-    case 'welcome':
+    case 'welcome': {
       if (!(isStr(m.code) && isRoomCode(m.code) && isNum(m.protocol) && isNum(m.serverNow))) return null;
-      // features (added later): what the room can do beyond protocol 1 (teams…).
+      // features (added later): what the room can do beyond protocol 1 (teams…). limits (added later, with 'files'): how
+      // big a card file the server takes (limits that don't add up are left out: taken as an older server's).
+      const limits = parseFileLimits(m.limits);
       return {
         t: 'welcome',
         code: m.code,
         protocol: m.protocol,
         serverNow: m.serverNow,
         ...(Array.isArray(m.features) ? { features: m.features.filter((f): f is string => isStr(f, 40)).slice(0, 20) } : {}),
+        ...(limits ? { limits } : {}),
       };
+    }
     case 'buzz':
       return isNum(m.armId) && isStr(m.seatId) && isNum(m.rank) && m.rank >= 1 && isNum(m.afterMs)
         ? { t: 'buzz', armId: m.armId, seatId: m.seatId, rank: m.rank, afterMs: m.afterMs, ...(isStr(m.by, 100) && m.by ? { by: m.by } : {}) }
@@ -147,7 +151,7 @@ export function parseRoomMsg(data: unknown): RoomToHost | null {
           }
         : null;
     case 'files':
-      return Array.isArray(m.ids) && m.ids.length <= ROOM_FILES_MAX * 4 && m.ids.every(isFileId) ? { t: 'files', ids: m.ids as string[] } : null;
+      return Array.isArray(m.ids) && m.ids.length <= FILES_LIST_MAX && m.ids.every(isFileId) ? { t: 'files', ids: m.ids as string[] } : null;
     case 'cardsLate': {
       if (!Array.isArray(m.late) || m.late.length > 1000) return null;
       const late: CardLate[] = [];
@@ -202,6 +206,8 @@ export class RoomLink {
   welcomed = false;
   /** The 🤫 card files the room holds ('files'), as it last said; null until it has said, again after each welcome. */
   files: string[] | null = null;
+  /** How big a card file the room's server takes, as its last welcome said (null: it didn't, or no welcome yet). */
+  limits: FileLimits | null = null;
   /** The phones here that a 🤫 card was sent to but that are late for it ('cardsLate'), as the room last said. */
   cardsLate: CardLate[] = [];
   error = '';
@@ -328,6 +334,7 @@ export class RoomLink {
     this.phones = [];
     this.listed = false;
     this.files = null;
+    this.limits = null;
     this.cardsLate = [];
     this.sent = '';
     this.attempts = 0;
@@ -453,6 +460,7 @@ export class RoomLink {
         }
         this.code = m.code;
         this.features = m.features ?? [];
+        this.limits = m.limits ?? null;
         this.welcomed = true;
         // (The room says which files it holds right after; until then, nothing is known. Late phones it says again, and
         // its phones.)

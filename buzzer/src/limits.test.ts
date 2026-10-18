@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { DEFAULT_FILE_LIMITS, OLD_FILE_LIMITS, ROOM_FILES_MAX } from '../../src/lib/buzzproto';
 import {
   addressKey,
   ADDRESS_FILE_SHARE,
@@ -8,11 +9,14 @@ import {
   countRoom,
   DAILY_ROOMS,
   FILE_IDLE_MS,
+  fileLimits,
   filesBudget,
   FILES_MB_PER_DAY,
+  mbSetting,
   NETWORK_ROOMS,
   networkKey,
   nextAlarm,
+  tooBig,
   uncountBytes,
   utcDay,
   type DayBytes,
@@ -131,6 +135,38 @@ describe('card files a day', () => {
     // The default is on, and less than the Free plan's 5 GB of storage.
     expect(FILES_MB_PER_DAY).toBeGreaterThan(0);
     expect(FILES_MB_PER_DAY).toBeLessThan(5000);
+  });
+
+  it('a setting in MB: a string or a number, in whole bytes; its fallback when missing, not a number or below 0', () => {
+    expect(mbSetting('16', 2)).toBe(16 * MB);
+    expect(mbSetting(' 4 ', 2)).toBe(4 * MB);
+    expect(mbSetting(0.5, 2)).toBe(MB / 2);
+    // (Whole bytes: a fraction of one is dropped.)
+    expect(mbSetting('0.0000001', 2)).toBe(0);
+    expect(mbSetting(1.0000001, 2)).toBe(Math.floor(1.0000001 * MB));
+    expect(mbSetting('0', 2)).toBe(0);
+    for (const bad of [undefined, null, '', ' ', 'lots', '-1', -1, NaN, Infinity, {}, '1e400']) expect(mbSetting(bad, 2)).toBe(2 * MB);
+  });
+
+  it('the server’s card file limits come from FILE_MB and ROOM_FILES_MB, each its default when missing, 0, below 0 or not a number', () => {
+    expect(fileLimits({})).toEqual(DEFAULT_FILE_LIMITS);
+    expect(fileLimits({ FILE_MB: '4', ROOM_FILES_MB: '12' })).toEqual({ fileBytes: 4 * MB, roomBytes: 12 * MB, roomFiles: ROOM_FILES_MAX });
+    expect(fileLimits({ FILE_MB: 2.5, ROOM_FILES_MB: '100.25' })).toEqual({ fileBytes: 2.5 * MB, roomBytes: 100.25 * MB, roomFiles: ROOM_FILES_MAX });
+    for (const bad of ['0', 0, '-3', 'big', '', '0.0000001'])
+      expect(fileLimits({ FILE_MB: bad, ROOM_FILES_MB: bad }), String(bad)).toEqual(DEFAULT_FILE_LIMITS);
+    // A file is never bigger than a room's files together.
+    expect(fileLimits({ FILE_MB: '50', ROOM_FILES_MB: '20' })).toEqual({ fileBytes: 20 * MB, roomBytes: 20 * MB, roomFiles: ROOM_FILES_MAX });
+    expect(fileLimits({ ROOM_FILES_MB: '8' }).fileBytes).toBe(Math.min(DEFAULT_FILE_LIMITS.fileBytes, 8 * MB));
+    // At most 2^40 bytes (what the app takes from a server).
+    expect(fileLimits({ FILE_MB: '1e12', ROOM_FILES_MB: '1e12' })).toEqual({ fileBytes: 2 ** 40, roomBytes: 2 ** 40, roomFiles: ROOM_FILES_MAX });
+    // The defaults are, for now, what every server has had.
+    expect(DEFAULT_FILE_LIMITS).toEqual(OLD_FILE_LIMITS);
+  });
+
+  it('a file over the limit is turned away with the server’s own number', () => {
+    expect(tooBig(OLD_FILE_LIMITS)).toBe('Too big for the buzzer server (16 MB at most)');
+    expect(tooBig({ fileBytes: 4 * MB, roomBytes: 12 * MB, roomFiles: 32 })).toBe('Too big for the buzzer server (4 MB at most)');
+    expect(tooBig({ fileBytes: 2.5 * MB, roomBytes: 12 * MB, roomFiles: 32 })).toBe('Too big for the buzzer server (2.5 MB at most)');
   });
 
   it('counts the bytes up, and refuses an upload that would go over the day’s budget until the next UTC day', () => {

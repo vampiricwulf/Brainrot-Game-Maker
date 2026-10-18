@@ -7,9 +7,12 @@ import {
   buzzArm, buzzClueOpened, buzzDone, buzzIdle, buzzMissed, buzzOrder, buzzReset, buzzTake, cardsLeftOff, hostCards, hostState, newBuzz, phoneStatus, questionText, roomCardCount,
   roomCardsFull, seenAtOnce, sessionCards, setupState, teamsOn, wagerAsk, whoBuzzed,
 } from './buzz';
-import { CARDS_MAX, phoneView } from './buzzproto';
+import { CARDS_MAX, phoneView, OLD_FILE_LIMITS } from './buzzproto';
 import { phoneCard } from './phonecard';
 import { sendCard, sendCardAgain, sentCardId } from './sentcards';
+
+/** How big a file the buzzer server takes in these tests (one that doesn't say: 16 MB). */
+const FILE_BYTES = OLD_FILE_LIMITS.fileBytes;
 
 const P = ['a', 'b', 'c'];
 
@@ -622,12 +625,12 @@ describe('one of the editor’s 🤫 Cards on the phones (sessionCards)', () => 
   it('goes as phoneCard builds it (title, words, the picture), to exactly who it was sent to; its name never goes', () => {
     const { g, session, wild } = setup();
     const c = sendCard(g, session, { to: [{ seat: 'b' }], content: { saved: 'sc1' }, until: 'host' }, 1000)!;
-    const pc = phoneCard(g, wild, { files: {} });
+    const pc = phoneCard(g, wild, { fileBytes: FILE_BYTES, files: {} });
     expect(pc.title).toBe('WILD-title');
-    expect(sessionCards(g, session, { files: {} })).toEqual([{ id: sentCardId(c), to: [{ seat: 'b' }], open: true, title: pc.title, text: pc.text, media: pc.media }]);
+    expect(sessionCards(g, session, { fileBytes: FILE_BYTES, files: {} })).toEqual([{ id: sentCardId(c), to: [{ seat: 'b' }], open: true, title: pc.title, text: pc.text, media: pc.media }]);
     // (No name at all on a card: not the card's, nor a file's.)
-    expect(JSON.stringify(sessionCards(g, session, { files: {} }))).not.toMatch(/"name"|NAME-|secret-pic/);
-    const told = JSON.stringify(hostState(g, session, buzzIdle(newBuzz(3)), 0, { status: phoneStatus(g, session, false, { cards: true }), cards: hostCards(g, session, { files: {} }) }));
+    expect(JSON.stringify(sessionCards(g, session, { fileBytes: FILE_BYTES, files: {} }))).not.toMatch(/"name"|NAME-|secret-pic/);
+    const told = JSON.stringify(hostState(g, session, buzzIdle(newBuzz(3)), 0, { status: phoneStatus(g, session, false, { cards: true }), cards: hostCards(g, session, { fileBytes: FILE_BYTES, files: {} }) }));
     expect(told).toContain('WILD-plugh words');
     expect(told).not.toMatch(/NAME-|secret-pic|TIP-qwop/);
   });
@@ -636,9 +639,9 @@ describe('one of the editor’s 🤫 Cards on the phones (sessionCards)', () => 
     const { g, session, tip } = setup();
     sendCard(g, session, { to: [{ seat: 'a' }], content: { saved: 'sc1' }, until: 'host' }, 1000);
     const t = sendCard(g, session, { to: [{ seat: 'c' }], content: { saved: 'sc2' }, until: 'round' }, 2000)!;
-    expect(sessionCards(g, session, { files: {} })!.map((x) => x.id)).toHaveLength(2);
+    expect(sessionCards(g, session, { fileBytes: FILE_BYTES, files: {} })!.map((x) => x.id)).toHaveLength(2);
     setSlideText(tip, 'TIP-changed');
-    const now = sessionCards(g, session, { files: {} })!;
+    const now = sessionCards(g, session, { fileBytes: FILE_BYTES, files: {} })!;
     expect(now.map((x) => x.id)).not.toContain(sentCardId(t));
     expect(JSON.stringify(now)).not.toMatch(/TIP-/);
   });
@@ -671,7 +674,7 @@ describe('one of the editor’s 🤫 Cards on the phones (sessionCards)', () => 
   it('one changed in the editor since it went keeps its place: no new card takes it, and ↻ Send again leaves no older one off', () => {
     const { edited, session, tip } = fullThenEdited();
     // (Off Bob's phone until ↻ Send again, but still out.)
-    expect(sessionCards(edited, session, { files: {} })!.map((x) => x.id)).not.toContain(sentCardId(tip));
+    expect(sessionCards(edited, session, { fileBytes: FILE_BYTES, files: {} })!.map((x) => x.id)).not.toContain(sentCardId(tip));
     expect(roomCardCount(edited, session)).toBe(CARDS_MAX);
     expect(roomCardsFull(edited, session)).toBe(true);
     expect(sendCard(edited, session, { to: [{ seat: 'b' }], content: { saved: 'sc1' }, until: 'host' }, 3000, roomCardsFull(edited, session))).toBeNull();
@@ -680,7 +683,7 @@ describe('one of the editor’s 🤫 Cards on the phones (sessionCards)', () => 
     expect(sendCardAgain(edited, session, tip.id, 4000)).toBe(true);
     expect(roomCardCount(edited, session)).toBe(CARDS_MAX);
     expect(cardsLeftOff(edited, session)).toEqual([]);
-    expect(hostCards(edited, session, { files: {} })).toHaveLength(CARDS_MAX);
+    expect(hostCards(edited, session, { fileBytes: FILE_BYTES, files: {} })).toHaveLength(CARDS_MAX);
   });
 
   it('a ▶ Resume that undoes the change puts it back with no older card left off', () => {
@@ -689,6 +692,6 @@ describe('one of the editor’s 🤫 Cards on the phones (sessionCards)', () => 
     rebaseSession(session, edited, g);
     expect(roomCardCount(g, session)).toBe(CARDS_MAX);
     expect(cardsLeftOff(g, session)).toEqual([]);
-    expect(hostCards(g, session, { files: {} })!.map((x) => x.id)).toContain(sentCardId(first));
+    expect(hostCards(g, session, { fileBytes: FILE_BYTES, files: {} })!.map((x) => x.id)).toContain(sentCardId(first));
   });
 });

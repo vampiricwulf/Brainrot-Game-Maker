@@ -20,7 +20,7 @@ import { createServer } from 'node:net';
 import { existsSync, mkdirSync, mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
-import { png } from './helpers.mjs';
+import { buzzerVars, png } from './helpers.mjs';
 
 const dir = resolve('buzzer');
 if (!existsSync(join(dir, 'node_modules/.bin/wrangler'))) throw new Error('Run `npm ci` in buzzer/ first');
@@ -41,7 +41,8 @@ const base = `http://127.0.0.1:${port}`;
 let log = '';
 const wrangler = spawn(
   join(dir, 'node_modules/.bin/wrangler'),
-  ['dev', '--ip', '127.0.0.1', '--port', String(port), '--inspector-port', String(inspector), '--persist-to', persist, '--log-level', 'warn'],
+  // (Its own limits, so the sizes below hold whatever wrangler.jsonc says.)
+  ['dev', '--ip', '127.0.0.1', '--port', String(port), '--inspector-port', String(inspector), '--persist-to', persist, '--log-level', 'warn', ...buzzerVars({ FILE_MB: 16, ROOM_FILES_MB: 64 })],
   { cwd: dir, detached: true, env: { ...process.env, WRANGLER_SEND_METRICS: 'false', NO_PROXY: '127.0.0.1,localhost', no_proxy: '127.0.0.1,localhost' } },
 );
 wrangler.stdout.on('data', (d) => (log += d));

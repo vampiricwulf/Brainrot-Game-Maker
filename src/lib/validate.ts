@@ -31,8 +31,8 @@ import {
   type Slide,
 } from './model';
 import { lowerWord, partnerRules, partnerSpot, partWords, stealOn } from './partner';
-import { cardItems, cardWords, phoneCard } from './phonecard';
-import { CARD_TEXT_MAX, FILE_MAX_BYTES } from './buzzproto';
+import { ANY_SERVER, cardItems, cardWords, phoneCard } from './phonecard';
+import { CARD_TEXT_MAX, DEFAULT_FILE_LIMITS } from './buzzproto';
 import { rpgProblems, worldById } from './rpg';
 import { boardGameProblems } from './boardgame';
 import { mediaUsage, onlineCount, slideHasContent, slideMediaIds } from './usage';
@@ -104,10 +104,18 @@ export function partnerTilesOver(round: BoardRound): { want: number; placed: num
 }
 
 /**
- * `room.filesOff`: the buzzer room open now puts cards on phones but takes no files (its server is off them, or out for
- * today): a card's file from this computer won't reach a phone.
+ * What the buzzer server in use takes, for what of a 🤫 card won't reach a phone. `filesOff`: the room open now puts
+ * cards on phones but takes no files (its server is off them, or out for today), or the server said it takes none: a
+ * card's file from this computer won't reach a phone. `fileBytes`: the biggest file it takes (serverlimits.svelte.ts
+ * fileLimitsNow; DEFAULT_FILE_LIMITS when not given).
  */
-export function validate(game: Game, room: { filesOff?: boolean } = {}): Problem[] {
+export interface CardRoom {
+  filesOff?: boolean;
+  fileBytes?: number;
+}
+
+/** The checklist's problems for `game`, as the buzzer server in use (`room`) would have them. */
+export function validate(game: Game, room: CardRoom = {}): Problem[] {
   const out: Problem[] = [];
   // Its title shows on stream (the title card, the audience window): a game never named says "Untitled Game" there.
   if (!game.title.trim() || game.title.trim() === 'Untitled Game')
@@ -130,7 +138,7 @@ export function validate(game: Game, room: { filesOff?: boolean } = {}): Problem
           tab: i,
           level: 'info',
         });
-      out.push(...finalCardProblems(game, round, name, i, !!room.filesOff));
+      out.push(...finalCardProblems(game, round, name, i, room));
       return;
     }
     if (isRpg(round)) {
@@ -143,7 +151,7 @@ export function validate(game: Game, room: { filesOff?: boolean } = {}): Problem
         for (const { el, map, screen, look } of objectsWhere(world)) {
           const what = el.name?.trim() ? `“${el.name.trim()}”` : 'an object';
           const place: Place = { tab: 'world', world: world.id, map: map.id, screen: screen.id, look, inSlide: true, element: el.id };
-          for (const p of cardLines(game, cardsIn(el.role?.actions), `${name}: a 🤫 card on ${what} on “${screen.name}”`, i, place, !!room.filesOff)) {
+          for (const p of cardLines(game, cardsIn(el.role?.actions), `${name}: a 🤫 card on ${what} on “${screen.name}”`, i, place, room)) {
             if (said.has(p.text)) continue;
             said.add(p.text);
             out.push(p);
@@ -154,7 +162,7 @@ export function validate(game: Game, room: { filesOff?: boolean } = {}): Problem
     if (isBoardGame(round)) {
       out.push(...boardGameProblems(game, round, name, i));
       for (const s of round.spaces)
-        out.push(...cardLines(game, cardsIn(s.onLand, s.onPass), `${name}: a 🤫 card on “${s.name}”`, i, { tab: 'round', round: round.id, part: { kind: 'space', space: s.id } }, !!room.filesOff));
+        out.push(...cardLines(game, cardsIn(s.onLand, s.onPass), `${name}: a 🤫 card on “${s.name}”`, i, { tab: 'round', round: round.id, part: { kind: 'space', space: s.id } }, room));
       return;
     }
     if (isSlides(round)) {
@@ -230,7 +238,7 @@ export function validate(game: Game, room: { filesOff?: boolean } = {}): Problem
         tab: i,
         level: 'info',
       });
-    out.push(...partnerProblems(game, round, i, !!room.filesOff));
+    out.push(...partnerProblems(game, round, i, room));
   });
   // The tiebreaker once ticked on: a tie at the end offers it as the main button, so an empty one puts a blank slide on stream.
   const tb = game.tiebreaker;
@@ -241,7 +249,7 @@ export function validate(game: Game, room: { filesOff?: boolean } = {}): Problem
       out.push({ text: 'The tiebreaker has no answer', tab: 'tiebreaker', level: 'warn', place: { tab: 'tiebreaker', side: 'a' } });
   }
 
-  out.push(...statsProblems(game), ...toolButtonProblems(game, !!room.filesOff), ...savedCardProblems(game, !!room.filesOff));
+  out.push(...statsProblems(game), ...toolButtonProblems(game, room), ...savedCardProblems(game, room));
 
   const known = new Set(game.media.map((m) => m.id));
   const usage = mediaUsage(game);
@@ -329,10 +337,10 @@ export function validate(game: Game, room: { filesOff?: boolean } = {}): Problem
 /**
  * A board's 🤫 cards (partner-clues spec §5.6): a ready-made 🤝 partner game with no card (the giver has nothing to go
  * on); on any tile, an empty card, more cards than a clue holds, a card's online link that has stopped working or soon
- * will, what of a card won't reach a phone (`filesOff`: the buzzer server in use takes no files), and its name
+ * will, what of a card won't reach a phone (`room`: what the buzzer server in use takes), and its name
  * (cardNameProblems). Each goes to its card.
  */
-export function partnerProblems(game: Game, round: BoardRound, tab: number, filesOff = false): Problem[] {
+export function partnerProblems(game: Game, round: BoardRound, tab: number, room: CardRoom = {}): Problem[] {
   const out: Problem[] = [];
   const sym = game.settings.currencySymbol;
   for (const c of round.categories)
@@ -356,7 +364,7 @@ export function partnerProblems(game: Game, round: BoardRound, tab: number, file
       if (cards.length > MAX_CARDS) warn(`${tile} has ${cards.length} cards: a clue holds ${MAX_CARDS} (＋ Card adds no more)`, cards[MAX_CARDS]);
       cards.forEach((card, n) => {
         if (!slideHasContent(card)) warn(`${tile}: ${clueCardWords(card, n)} is empty: there's nothing on it to send`, card);
-        for (const t of cardFileProblems(game, card, filesOff)) warn(`${tile}: ${clueCardWords(card, n)} has ${t}`, card);
+        for (const t of cardFileProblems(game, card, room)) warn(`${tile}: ${clueCardWords(card, n)} has ${t}`, card);
       });
       out.push(...cardNameProblems(game, cards, slidesOfClue(cl), tile, tab, (card) => at(card)!));
     });
@@ -365,10 +373,9 @@ export function partnerProblems(game: Game, round: BoardRound, tab: number, file
 
 /**
  * A Final's 🤫 cards (`name`: the round's, "Final Jeopardy!"): more than MAX_CARDS, an empty one, what of one won't reach
- * a phone (`filesOff`: the buzzer server in use takes no files), and their names (cardNameProblems). Each goes to its
- * card.
+ * a phone (`room`: what the buzzer server in use takes), and their names (cardNameProblems). Each goes to its card.
  */
-export function finalCardProblems(game: Game, round: FinalRound, name: string, tab: number, filesOff = false): Problem[] {
+export function finalCardProblems(game: Game, round: FinalRound, name: string, tab: number, room: CardRoom = {}): Problem[] {
   const out: Problem[] = [];
   const cards = cardSlides(round);
   const at = (card: ClueCard): Place => ({ tab: 'round', round: round.id, part: { kind: 'final', side: 'card', slide: card.id } });
@@ -376,7 +383,7 @@ export function finalCardProblems(game: Game, round: FinalRound, name: string, t
   if (cards.length > MAX_CARDS) warn(`${name} has ${cards.length} cards: a Final holds ${MAX_CARDS} (＋ Card adds no more)`, cards[MAX_CARDS]);
   cards.forEach((card, n) => {
     if (!slideHasContent(card)) warn(`${name}: ${clueCardWords(card, n)} is empty: there's nothing on it to send`, card);
-    for (const t of cardFileProblems(game, card, filesOff)) warn(`${name}: ${clueCardWords(card, n)} has ${t}`, card);
+    for (const t of cardFileProblems(game, card, room)) warn(`${name}: ${clueCardWords(card, n)} has ${t}`, card);
   });
   out.push(...cardNameProblems(game, cards, slidesOfClue(round), name, tab, at));
   return out;
@@ -410,10 +417,10 @@ const KIND = { picture: 'picture', gif: 'GIF', video: 'video', sound: 'sound', e
 
 /**
  * What of a 🤫 card won't reach a phone or will stop working, as "… has <this>": an online link that has expired or soon
- * will, and (spec §5.6, §13.5) a file too big or of a kind phones can't play, a file from this computer when the buzzer
- * server in use takes none (`filesOff`), words past CARD_TEXT_MAX.
+ * will, and (spec §5.6, §13.5) a file too big for the buzzer server in use (`room.fileBytes`) or of a kind phones
+ * can't play, a file from this computer when that server takes none (`room.filesOff`), words past CARD_TEXT_MAX.
  */
-function cardFileProblems(game: Game, card: Slide, filesOff: boolean): string[] {
+function cardFileProblems(game: Game, card: Slide, room: CardRoom): string[] {
   const out: string[] = [];
   const life = slideMediaIds(card).flatMap((id) => {
     const m = game.media.find((x) => x.id === id);
@@ -421,9 +428,10 @@ function cardFileProblems(game: Game, card: Slide, filesOff: boolean): string[] 
   });
   if (life.includes('expired')) out.push('an online link that has expired: add that file again');
   else if (life.includes('temporary')) out.push('an online link that stops working soon: save a copy or add the file');
-  for (const it of phoneCard(game, card, { files: filesOff ? null : {} }).items) {
+  const fileBytes = room.fileBytes ?? DEFAULT_FILE_LIMITS.fileBytes;
+  for (const it of phoneCard(game, card, { files: room.filesOff ? null : {}, fileBytes }).items) {
     const size = game.media.find((m) => m.id === it.media)?.size ?? 0;
-    if (it.why === 'big') out.push(`a ${KIND[it.kind]} too big for phones (${formatBytes(size)}; phones get files up to ${formatBytes(FILE_MAX_BYTES)})`);
+    if (it.why === 'big') out.push(`a ${KIND[it.kind]} too big for phones (${formatBytes(size)}; phones get files up to ${formatBytes(fileBytes)})`);
     else if (it.why === 'kind' && it.file) out.push(`a ${KIND[it.kind]} phones can't play: add it as MP4, WebM, MP3, OGG, WAV or M4A, or from a link`);
     else if (it.why === 'nofiles') out.push(`a ${KIND[it.kind]} that's a file on this computer, and this buzzer server isn't taking files: phones get the words and links only (📋 Copy picture)`);
   }
@@ -435,17 +443,17 @@ function cardFileProblems(game: Game, card: Slide, filesOff: boolean): string[] 
 const cardsIn = (...lists: (Action[] | undefined)[]): Slide[] => lists.flatMap((l) => l ?? []).flatMap((a) => (a.do === 'card' ? [a.slide] : []));
 
 /** The cardFileProblems of some cards, each said once: "<says> has <this>", going to `place`. */
-function cardLines(game: Game, cards: Slide[], says: string, tab: Problem['tab'], place: Place, filesOff: boolean): Problem[] {
-  return [...new Set(cards.flatMap((c) => cardFileProblems(game, c, filesOff)))].map((t) => ({ text: `${says} has ${t}`, tab, level: 'warn', place }));
+function cardLines(game: Game, cards: Slide[], says: string, tab: Problem['tab'], place: Place, room: CardRoom): Problem[] {
+  return [...new Set(cards.flatMap((c) => cardFileProblems(game, c, room)))].map((t) => ({ text: `${says} has ${t}`, tab, level: 'warn', place }));
 }
 
 /**
  * Items' Use buttons, wheel slices' and dice's buttons that point at something deleted (a shop, a stat, an item, a
  * wheel) or at nothing: in play they only say why they can't. Also their 🤫 cards, and 🎭 deals' parts' cards, that
- * won't reach a phone as they are (cardFileProblems; `filesOff`: the buzzer server in use takes no files). (RPG
- * objects' and board spaces' are their rounds'.)
+ * won't reach a phone as they are (cardFileProblems; `room`: what the buzzer server in use takes). (RPG objects' and
+ * board spaces' are their rounds'.)
  */
-export function toolButtonProblems(game: Game, filesOff = false): Problem[] {
+export function toolButtonProblems(game: Game, room: CardRoom = {}): Problem[] {
   const out: Problem[] = [];
   const why = (list: (Action[] | undefined)[]): string | null => {
     for (const a of list.flatMap((l) => l ?? [])) {
@@ -458,26 +466,26 @@ export function toolButtonProblems(game: Game, filesOff = false): Problem[] {
     const p = why([it.onUse]);
     const place: Place = { tab: 'stats', item: it.id };
     if (p) out.push({ text: `Item “${it.name}”: a Use button points nowhere (${p})`, tab: 'stats', level: 'warn', place });
-    out.push(...cardLines(game, cardsIn(it.onUse), `Item “${it.name}”: a Use button’s 🤫 card`, 'stats', place, filesOff));
+    out.push(...cardLines(game, cardsIn(it.onUse), `Item “${it.name}”: a Use button’s 🤫 card`, 'stats', place, room));
   }
   for (const w of game.wheels) {
     const p = why(w.segments.map((s) => s.actions));
     const place: Place = { tab: 'tools', wheel: w.id };
     if (p) out.push({ text: `Wheel “${w.name}”: a slice's button points nowhere (${p})`, tab: 'tools', level: 'warn', place });
-    out.push(...cardLines(game, cardsIn(...w.segments.map((s) => s.actions)), `Wheel “${w.name}”: a slice’s 🤫 card`, 'tools', place, filesOff));
+    out.push(...cardLines(game, cardsIn(...w.segments.map((s) => s.actions)), `Wheel “${w.name}”: a slice’s 🤫 card`, 'tools', place, room));
   }
   for (const d of game.dice) {
     const lists = [...d.dice.flatMap((x) => (x.customFaces ?? []).map((f) => f.actions)), ...(d.totalOutcomes ?? []).map((t) => t.outcome.actions)];
     const p = why(lists);
     const place: Place = { tab: 'tools', dice: d.id };
     if (p) out.push({ text: `Dice “${d.name}”: a button points nowhere (${p})`, tab: 'tools', level: 'warn', place });
-    out.push(...cardLines(game, cardsIn(...lists), `Dice “${d.name}”: a 🤫 card`, 'tools', place, filesOff));
+    out.push(...cardLines(game, cardsIn(...lists), `Dice “${d.name}”: a 🤫 card`, 'tools', place, room));
   }
   // 🎭 Deals that can't be dealt as they are, and parts' cards that won't reach a phone as they are.
   for (const dl of game.deals ?? []) {
     const place: Place = { tab: 'tools', deal: dl.id };
     for (const p of dealSetupProblems(game, dl)) out.push({ text: `Deal “${dl.name}”: ${p}`, tab: 'tools', level: 'warn', place });
-    dl.parts.forEach((part, i) => out.push(...cardLines(game, [part.card], `Deal “${dl.name}”: ${partName(part, i)}’s card`, 'tools', place, filesOff)));
+    dl.parts.forEach((part, i) => out.push(...cardLines(game, [part.card], `Deal “${dl.name}”: ${partName(part, i)}’s card`, 'tools', place, room)));
   }
   return out;
 }
@@ -495,18 +503,18 @@ export function nameGivesAway(game: Game, c: Slide & { name?: string }, also: Sl
   if (!name) return false;
   const bits = [
     cardWords(c),
-    phoneCard(game, c, { files: {} }).title ?? '',
+    phoneCard(game, c, ANY_SERVER).title ?? '',
     ...cardItems(game, c).map((it) => it.name.replace(/\.[a-z0-9]{1,5}$/i, '')),
-    ...also.flatMap((s) => [cardWords(s), phoneCard(game, s, { files: {} }).title ?? '']),
+    ...also.flatMap((s) => [cardWords(s), phoneCard(game, s, ANY_SERVER).title ?? '']),
   ];
   return bits.map(norm).some((b) => b.length >= 3 && name.includes(b));
 }
 
 /**
- * 🤫 Cards (the editor's tab): an empty one, what of one won't reach a phone (`filesOff`: the buzzer server in use takes
- * no files), a name that repeats what's on it, two with one name. Each goes to its card.
+ * 🤫 Cards (the editor's tab): an empty one, what of one won't reach a phone (`room`: what the buzzer server in use
+ * takes), a name that repeats what's on it, two with one name. Each goes to its card.
  */
-export function savedCardProblems(game: Game, filesOff = false): Problem[] {
+export function savedCardProblems(game: Game, room: CardRoom = {}): Problem[] {
   const out: Problem[] = [];
   const seen = new Set<string>();
   const told = new Set<string>();
@@ -515,7 +523,7 @@ export function savedCardProblems(game: Game, filesOff = false): Problem[] {
     const says = `🤫 Card “${name}”`;
     const place: Place = { tab: 'cards', card: c.id };
     if (!slideHasContent(c)) out.push({ text: `${says} is empty: there's nothing on it to send`, tab: 'cards', level: 'warn', place });
-    out.push(...cardLines(game, [c], says, 'cards', place, filesOff));
+    out.push(...cardLines(game, [c], says, 'cards', place, room));
     if (nameGivesAway(game, c))
       out.push({ text: `${says}: its name repeats what’s on it, and in one window viewers read a card’s name in 🤫 Send a card…`, tab: 'cards', level: 'info', place });
     // (Said once for each name, going to the second card with it.)

@@ -75,21 +75,43 @@ export function bigWords(s: string | undefined): boolean {
 export const EMBED_SITES = ['youtube', 'drive', 'streamable'] as const;
 
 /**
- * Card files ('files'): at most this big each, and per room in all (bytes and files). A room stores and sends a file a
- * 1 MB piece at a time, so a big one takes no more of its memory than a small one; what each costs the server is
- * measured in buzzer/README.md, "Card files".
+ * Card files ('files'): how big each may be, and how much a room holds. Each buzzer server sets its own (FILE_MB and
+ * ROOM_FILES_MB in buzzer/wrangler.jsonc) and says so: the host's welcome (`limits`) and GET /api/health (`files`). A room
+ * stores and sends a file a 1 MB piece at a time, so a big one takes no more of its memory than a small one; what each
+ * costs the server is measured in buzzer/README.md, "Card files". MB here are MiB (1024 × 1024 bytes).
  */
-export const FILE_MAX_BYTES = 16 * 1024 * 1024;
-export const ROOM_FILES_BYTES = 64 * 1024 * 1024;
-export const ROOM_FILES_MAX = 32;
-/** Card file limits: the most bytes a file, the most bytes a room holds, and the most files a room holds. */
+const MiB = 1024 * 1024;
+/** Card file limits a buzzer server tells the app: the most bytes a file, the most bytes a room holds, the most files. */
 export interface FileLimits {
   fileBytes: number;
   roomBytes: number;
   roomFiles: number;
 }
-/** The limits above, which every buzzer server has had so far. */
-export const OLD_FILE_LIMITS: FileLimits = { fileBytes: FILE_MAX_BYTES, roomBytes: ROOM_FILES_BYTES, roomFiles: ROOM_FILES_MAX };
+/** Files a room holds at most (the same on every server). */
+export const ROOM_FILES_MAX = 32;
+/** What a server that doesn't say takes (every buzzer server before they said). */
+export const OLD_FILE_LIMITS: FileLimits = { fileBytes: 16 * MiB, roomBytes: 64 * MiB, roomFiles: ROOM_FILES_MAX };
+/** The server's defaults (buzzer/wrangler.jsonc has the same), and the app's guess before a server has said. */
+export const DEFAULT_FILE_LIMITS: FileLimits = { fileBytes: 16 * MiB, roomBytes: 64 * MiB, roomFiles: ROOM_FILES_MAX };
+/** The most ids a 'files' message may list (more than a room holds now, so a server can raise roomFiles). */
+export const FILES_LIST_MAX = 1024;
+
+/** Limits a server sent, checked (whole numbers of bytes up to 2^40, a file no bigger than a room), or null. */
+export function parseFileLimits(x: unknown): FileLimits | null {
+  if (typeof x !== 'object' || !x) return null;
+  const { fileBytes, roomBytes, roomFiles } = x as Record<string, unknown>;
+  const bytes = (n: unknown): n is number => Number.isSafeInteger(n) && (n as number) > 0 && (n as number) <= 2 ** 40;
+  if (!bytes(fileBytes) || !bytes(roomBytes) || fileBytes > roomBytes) return null;
+  if (!Number.isSafeInteger(roomFiles) || (roomFiles as number) < 1 || (roomFiles as number) > FILES_LIST_MAX) return null;
+  return { fileBytes, roomBytes, roomFiles: roomFiles as number };
+}
+
+/** A limit in MB, as people read it: "16 MB", "0.5 MB", "2,000 MB" (MiB, rounded down to one decimal). */
+export function mbText(bytes: number): string {
+  const mb = Math.floor((bytes / MiB) * 10) / 10;
+  return mb > 0 ? `${mb.toLocaleString('en-US')} MB` : `${Math.floor(bytes / 1024).toLocaleString('en-US')} KB`;
+}
+
 /** The types a card file may have. No SVG, no HTML. */
 export const FILE_TYPES = ['image/png', 'image/jpeg', 'image/webp', 'image/gif', 'video/mp4', 'video/webm', 'audio/mpeg', 'audio/ogg', 'audio/wav', 'audio/mp4'] as const;
 /** A card file's id: the SHA-256 of its bytes, as 64 lowercase hex digits. */
@@ -650,8 +672,11 @@ export const TIE_MS = 10;
 
 /** The room → host. */
 export type RoomToHost =
-  /** features (added later): what this room can do beyond protocol 1 (ROOM_FEATURES; an older room sends none). */
-  | { t: 'welcome'; code: string; protocol: number; serverNow: number; features?: string[] }
+  /**
+   * features (added later): what this room can do beyond protocol 1 (ROOM_FEATURES; an older room sends none). limits
+   * (added later, only alongside 'files'): how big a card file this server takes (none: an older one, OLD_FILE_LIMITS).
+   */
+  | { t: 'welcome'; code: string; protocol: number; serverNow: number; features?: string[]; limits?: FileLimits }
   /**
    * A buzz the room counted while armed. rank 1 is the winner (the room has moved to 'answering'); later ranks came
    * after. afterMs: 0 for the winner; for later ranks, how much slower than the winner they reacted (ms).
@@ -811,17 +836,27 @@ export interface NewRoom {
 
 /**
  * Card files ('files'). The host uploads one with POST {base}/api/rooms/{code}/files, `Authorization: Bearer
- * <hostToken>`, the file's type (FILE_TYPES) as Content-Type and its bytes (at most FILE_MAX_BYTES): 200 {id} (its
- * SHA-256; the same bytes again store nothing new), or {error} with 400 (empty, or the upload broke off or was longer
- * than its Content-Length), 401, 409 (the room's files are full), 413 (too big), 415 (a type it doesn't take), 429 (too
- * many, today's budget is used up, or the room is taking 2 files already), 500 (the room couldn't store it: try again)
- * or 503 (the server takes no files). Room for a file is kept before its bytes are read: its Content-Length, or with
- * none a whole FILE_MAX_BYTES (so in a nearly full room it gets 409 even when small). A phone fetches one with GET
- * …/files/{id} and `Authorization: Bearer <its seat or member token>` (never in the address): only for a card sent to
- * it that it isn't late for, else 404. Added later: the answer has a Content-Length, and a file deleted while it goes
- * out (no card uses it any more) ends the body early, with an error.
+ * <hostToken>`, the file's type (FILE_TYPES) as Content-Type and its bytes (at most the server's fileBytes: Health): 200
+ * {id} (its SHA-256; the same bytes again store nothing new), or {error} with 400 (empty, or the upload broke off or was
+ * longer than its Content-Length), 401, 409 (the room's files are full), 413 (too big: the words say the server's
+ * limit), 415 (a type it doesn't take), 429 (too many, today's budget is used up, or the room is taking 2 files
+ * already), 500 (the room couldn't store it: try again) or 503 (the server takes no files). Room for a file is kept
+ * before its bytes are read: its Content-Length, or with none a whole fileBytes (so in a nearly full room it gets 409
+ * even when small). A phone fetches one with GET …/files/{id} and `Authorization: Bearer <its seat or member token>`
+ * (never in the address): only for a card sent to it that it isn't late for, else 404. Added later: the answer has a
+ * Content-Length, and a file deleted while it goes out (no card uses it any more) ends the body early, with an error.
  */
 export const filesUrl = (base: string, code: string, id?: string): string => `${base.replace(/\/+$/, '')}/api/rooms/${code}/files${id ? `/${id}` : ''}`;
+
+/**
+ * GET {base}/api/health. files (added later): the card file limits this server has, or null when it takes no files
+ * (FILES_MB_PER_DAY 0); missing from an older server (OLD_FILE_LIMITS).
+ */
+export interface Health {
+  ok: true;
+  protocol: number;
+  files?: FileLimits | null;
+}
 
 /** The link players open (it fills the code in). */
 export const joinUrl = (base: string, code: string): string => `${base.replace(/\/+$/, '')}/${code}`;

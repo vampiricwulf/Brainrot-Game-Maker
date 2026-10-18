@@ -6,7 +6,7 @@ import { categoryLabel, finalName, formatPoints, PARTNER_GAMES, roundName, type 
 import {
   cardHash, cardId, cardLines, cardSlides, describer, giverLine, partnerRoles, partnerRules, partnerVerdict, partOfTo, partsLine, partWords, resultLine, type CardPart,
 } from './partner';
-import { cardWords, clipWords, phoneCard, type PhoneCan } from './phonecard';
+import { ANY_SERVER, cardWords, clipWords, phoneCard, type PhoneCan } from './phonecard';
 import { cardsOut, sentCardId, sentSlide, sentState } from './sentcards';
 import { clueMarks, currentClueInfo, currentFinal, ddCap, finalWagerCap, nameList, partnerSteal, score, shownQuestionSlide, tiedForFirst, wagerFromPhone } from './session';
 
@@ -407,7 +407,7 @@ export function hostCards(game: Game, session: Session, room: PhoneCan): HostCar
  * window, say). Their ids on the wire.
  */
 export function cardsLeftOff(game: Game, session: Session): string[] {
-  const all = roomCards(game, session, { files: {} });
+  const all = roomCards(game, session, ANY_SERVER);
   return all.slice(0, Math.max(0, all.length - CARDS_MAX)).map((c) => c.id);
 }
 
@@ -419,7 +419,7 @@ export function cardsLeftOff(game: Game, session: Session): string[] {
  */
 export function roomCardCount(game: Game, session: Session): number {
   const edited = cardsOut(game, session).filter((c) => sentState(game, c) === 'edited' && c.to.some((t) => session.players.some((p) => p.id === t.seat))).length;
-  return (partnerCards(game, session, { files: {} })?.length ?? 0) + (sessionCards(game, session, { files: {} })?.length ?? 0) + edited;
+  return (partnerCards(game, session, ANY_SERVER)?.length ?? 0) + (sessionCards(game, session, ANY_SERVER)?.length ?? 0) + edited;
 }
 
 /** How many cards the room would be told after `go`, made on a copy of the session. */
@@ -453,7 +453,7 @@ function ofThem(dealAll: number, partner: number): string {
 }
 
 /** The open partner clue's cards the room is told now (one per part of a send). */
-const partnerCount = (game: Game, session: Session): number => partnerCards(game, session, { files: {} })?.length ?? 0;
+const partnerCount = (game: Game, session: Session): number => partnerCards(game, session, ANY_SERVER)?.length ?? 0;
 
 /**
  * Why a 🎭 deal's 📤 Send is refused (roomCardsFull with dealTrial: its cards aren't out): how many cards are out, how

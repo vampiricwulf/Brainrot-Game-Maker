@@ -6,10 +6,11 @@
  * is unit-tested (limits.test.ts).
  *
  * Card files the same way: FILE_LIMIT in wrangler.jsonc per address, and a daily byte budget for the whole server
- * (FILES_MB_PER_DAY, see filesBudget) that RoomCounter counts with countBytes. A room's one alarm both ends it and
- * cleans up its files: nextAlarm picks when.
+ * (FILES_MB_PER_DAY, see filesBudget) that RoomCounter counts with countBytes. How big a file and a room's files may be
+ * comes from the settings too (FILE_MB, ROOM_FILES_MB: fileLimits). A room's one alarm both ends it and cleans up its
+ * files: nextAlarm picks when.
  */
-import type { FileLimits } from '../../src/lib/buzzproto';
+import { DEFAULT_FILE_LIMITS, mbText, ROOM_FILES_MAX, type FileLimits } from '../../src/lib/buzzproto';
 
 /** Rooms made per UTC day, at most. A game night makes one; this leaves plenty for a busy day. */
 export const DAILY_ROOMS = 1000;
@@ -102,12 +103,34 @@ export const FILES_OFF = "This buzzer server doesn't take files";
 export const FILES_BUSY_TODAY = "The buzzer server isn't taking files right now — try again tomorrow";
 export const TOO_MANY_FILES_TODAY = 'Too many files from here today — try again tomorrow';
 /** A file over the server's limit (413). */
-export const tooBig = (lim: FileLimits): string => `Too big for phones (${lim.fileBytes / 1024 / 1024} MB at most)`;
+export const tooBig = (lim: FileLimits): string => `Too big for the buzzer server (${mbText(lim.fileBytes)} at most)`;
+
+const MiB = 1024 * 1024;
+
+/**
+ * A setting in MB (MiB; wrangler.jsonc vars are strings, a number works too) in whole bytes: `fallbackMb` when it's
+ * missing, not a number or below 0.
+ */
+export function mbSetting(setting: unknown, fallbackMb: number): number {
+  const mb = typeof setting === 'number' ? setting : typeof setting === 'string' && setting.trim() ? Number(setting) : NaN;
+  return Math.floor((Number.isFinite(mb) && mb >= 0 ? mb : fallbackMb) * MiB);
+}
 
 /** The daily budget in bytes from the FILES_MB_PER_DAY setting: its default when missing or not a number; 0 is off. */
-export function filesBudget(setting: unknown): number {
-  const mb = typeof setting === 'number' ? setting : typeof setting === 'string' && setting.trim() ? Number(setting) : NaN;
-  return Math.floor((Number.isFinite(mb) && mb >= 0 ? mb : FILES_MB_PER_DAY) * 1024 * 1024);
+export const filesBudget = (setting: unknown): number => mbSetting(setting, FILES_MB_PER_DAY);
+
+/**
+ * The server's card file limits from its settings (FILE_MB a file, ROOM_FILES_MB a room's files together, in MB): each
+ * its default (DEFAULT_FILE_LIMITS) when missing, not a number, 0 or below, and at most 2^40 bytes (what the app takes);
+ * a file never more than a room. Files a room: always ROOM_FILES_MAX.
+ */
+export function fileLimits(env: { FILE_MB?: unknown; ROOM_FILES_MB?: unknown }): FileLimits {
+  const read = (setting: unknown, def: number) => {
+    const n = mbSetting(setting, def / MiB);
+    return n > 0 ? Math.min(n, 2 ** 40) : def;
+  };
+  const roomBytes = read(env.ROOM_FILES_MB, DEFAULT_FILE_LIMITS.roomBytes);
+  return { fileBytes: Math.min(read(env.FILE_MB, DEFAULT_FILE_LIMITS.fileBytes), roomBytes), roomBytes, roomFiles: ROOM_FILES_MAX };
 }
 
 /** Today's card file bytes (day: YYYY-MM-DD, UTC); by: per address key and per networkKey. */

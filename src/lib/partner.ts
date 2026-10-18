@@ -32,7 +32,7 @@ import {
   type Slide,
   type TeamMember,
 } from './model';
-import { cardItems, cardLinks, cardWords, filesToSend, phoneCard, type CardItem, type LeftOut } from './phonecard';
+import { cardItems, cardLinks, cardWords, filesToSend, phoneCard, type CardItem, type LeftOut, type PhoneCan } from './phonecard';
 import { slideHasContent } from './usage';
 
 export { cardSlides, PARTNER_GAMES };
@@ -889,7 +889,8 @@ export function cardLines(
  * The card files to put in the buzzer room now, by media id (partner-clues spec §13.5, §15.2): those of the cards the
  * host sent (and didn't edit since) that the room doesn't hold (`held`: its ids for what it holds now), and those of the
  * cards got ready (⇡) that were never put in this room (`put`: every file put there, Session.remote.files). Never a
- * card's that wasn't sent or got ready, so a reload only finishes what a press started. `failed`: not tried again.
+ * card's that wasn't sent or got ready, so a reload only finishes what a press started. `can`: what the buzzer server
+ * takes (phoneCan). `failed`: not tried again.
  */
 export function filesWanted(
   game: Pick<Game, 'media'>,
@@ -897,14 +898,15 @@ export function filesWanted(
   s: Pick<PartnerState, 'sent' | 'ready'>,
   held: Record<Id, string>,
   put: Record<Id, string>,
+  can: Pick<PhoneCan, 'fileBytes'>,
   failed: Record<Id, LeftOut> = {},
 ): Id[] {
   const out = new Set<Id>();
   for (const card of cardSlides(clue)) {
     const sends = cardSends(s, card.id);
     const sent = sends.length > 0 && sends.every((x) => x.hash === cardHash(card));
-    if (sent) for (const id of filesToSend(phoneCard(game, card, { files: held, failed }))) out.add(id);
-    else if (s.ready?.includes(card.id)) for (const id of filesToSend(phoneCard(game, card, { files: put, failed }))) out.add(id);
+    if (sent) for (const id of filesToSend(phoneCard(game, card, { ...can, files: held, failed }))) out.add(id);
+    else if (s.ready?.includes(card.id)) for (const id of filesToSend(phoneCard(game, card, { ...can, files: put, failed }))) out.add(id);
   }
   return [...out];
 }

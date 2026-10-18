@@ -159,10 +159,10 @@ describe('uploads', () => {
   it('too big: refused at once when it says so; past the limit without a size, or past its size, its pieces go and the budget comes back', async () => {
     const g = setup();
     const big = body(randomBytes(LIMITS.fileBytes + 1));
-    expect(await g.upload(big, LIMITS.fileBytes + 1)).toEqual({ status: 413, error: 'Too big for phones (4 MB at most)' });
+    expect(await g.upload(big, LIMITS.fileBytes + 1)).toEqual({ status: 413, error: 'Too big for the buzzer server (4 MB at most)' });
     expect(big.cancelled()).toBe(true);
     expect(g.budget.took).toEqual([]);
-    expect(await g.upload(body(randomBytes(LIMITS.fileBytes + 1)), null)).toEqual({ status: 413, error: 'Too big for phones (4 MB at most)' });
+    expect(await g.upload(body(randomBytes(LIMITS.fileBytes + 1)), null)).toEqual({ status: 413, error: 'Too big for the buzzer server (4 MB at most)' });
     expect(await g.upload(body(randomBytes(2 * MB + 1)), 2 * MB)).toEqual({ status: 400, error: 'The upload was longer than it said' });
     expect(g.stored.size).toBe(0);
     expect(g.budget.used).toBe(0);

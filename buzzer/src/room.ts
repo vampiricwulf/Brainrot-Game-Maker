@@ -344,7 +344,7 @@ export interface RoomDeps {
   dropFiles(files: { prefix: string; parts: number }[]): void;
   /** A card file's clean-up is due at `at`: the room must be woken by then (index.ts moves its alarm earlier if need be). */
   cleanupAt(at: number): void;
-  /** The server's card file limits (the room's caps). */
+  /** The server's card file limits (the room's caps; the host's welcome says them). */
   limits: FileLimits;
 }
 
@@ -459,14 +459,17 @@ export class Room {
 
   // ---- host ----
 
-  /** files: the server takes card files now (listed in the welcome as 'files'; index.ts knows its setting and budget). */
+  /**
+   * files: the server takes card files now (listed in the welcome as 'files', with the server's limits; index.ts knows
+   * its settings and budget).
+   */
   hostOpen(files = false): void {
     this.hostHere = true;
     this.lastPhones = '';
     this.lastQueue = '';
     this.lastLate = '';
     const features = ROOM_FEATURES.filter((f) => f !== 'files' || files);
-    this.deps.toHost({ t: 'welcome', code: this.code, protocol: BUZZ_PROTOCOL, serverNow: this.deps.now(), features });
+    this.deps.toHost({ t: 'welcome', code: this.code, protocol: BUZZ_PROTOCOL, serverNow: this.deps.now(), features, ...(files ? { limits: { ...this.deps.limits } } : {}) });
     this.tellFiles();
     this.settle();
     this.sync();

@@ -260,9 +260,11 @@ export function png(r, g, b, w = 40, h = 24) {
 /**
  * The buzzer room (buzzer/ under `wrangler dev`, local), its storage in a new folder (`persist`): its address once it
  * answers, stop() (which also deletes that folder), and restart() (stopped and started again on the same address and
- * storage, as a deploy or a crash would: its rooms come back from storage). Needs `npm ci` in buzzer/.
+ * storage, as a deploy or a crash would: its rooms come back from storage). `vars`: its settings for this test (as
+ * wrangler.jsonc's vars, e.g. { FILE_MB: 4 }), passed as --var (never buzzer/.dev.vars: the working tree is shared).
+ * Needs `npm ci` in buzzer/.
  */
-export async function startBuzzer(prefix) {
+export async function startBuzzer(prefix, { vars = {} } = {}) {
   const { spawn } = await import('node:child_process');
   const { createServer } = await import('node:net');
   const { existsSync, mkdtempSync, rmSync } = await import('node:fs');
@@ -286,7 +288,7 @@ export async function startBuzzer(prefix) {
     log = '';
     wrangler = spawn(
       join(dir, 'node_modules/.bin/wrangler'),
-      ['dev', '--ip', '127.0.0.1', '--port', String(port), '--inspector-port', String(await freePort()), '--persist-to', persist, '--log-level', 'warn'],
+      ['dev', '--ip', '127.0.0.1', '--port', String(port), '--inspector-port', String(await freePort()), '--persist-to', persist, '--log-level', 'warn', ...buzzerVars(vars)],
       { cwd: dir, detached: true, env: { ...process.env, WRANGLER_SEND_METRICS: 'false', NO_PROXY: '127.0.0.1,localhost', no_proxy: '127.0.0.1,localhost' } },
     );
     wrangler.stdout.on('data', (d) => (log += d));
@@ -336,6 +338,9 @@ export async function startBuzzer(prefix) {
   await start();
   return { base, persist, stop, restart };
 }
+
+/** wrangler dev's arguments for these settings (startBuzzer's `vars`): --var K:V each, over wrangler.jsonc's. */
+export const buzzerVars = (vars) => Object.entries(vars).flatMap(([k, v]) => ['--var', `${k}:${v}`]);
 
 /**
  * The keys every buzzer room (BuzzRoom Durable Object) under `persist` has stored now: read from a copy of their

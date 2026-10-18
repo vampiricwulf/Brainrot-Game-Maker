@@ -1298,8 +1298,9 @@ The phone bundles src/lib/links.ts, which has no imports, and builds an `<img>`,
    - Pictures come from `storedBlob` (media.svelte.ts:45-58) and are shrunk to at most 1600 px, as WebP or JPEG at 0.85
      (`loadImage`, a canvas and `canvasToBlob`, imageedit.ts:25, 302-304). That is usually 150–400 KB. An edited picture
      uses `editedMedia`.
-   - A GIF, a video or a sound goes as it is if it's at most 4 MB. Otherwise it's left out, with "too big for phones:
-     add it from a link" (the editor names the item; the panel only counts: "🎞 1 video is too big for phones").
+   - A GIF, a video or a sound goes as it is if it's at most 4 MB (later: the buzzer server's own limit, which it tells
+     the app). Otherwise it's left out, with "too big for phones: add it from a link" (the editor names the item; the
+     panel only counts: "🎞 1 video is too big for phones").
 2. The app hashes the bytes (SHA-256) and sends `POST /api/rooms/:code/files` with `Authorization: Bearer <hostToken>`
    and the file's type. The Worker passes it to the room's Durable Object, which checks the host token (`sameToken`,
    index.ts:57-63).
@@ -1329,13 +1330,16 @@ The phone bundles src/lib/links.ts, which has no imports, and builds an `<img>`,
 
 - Types: PNG, JPEG, WebP, GIF; MP4, WebM; MP3, OGG, WAV, M4A. No SVG, no HTML.
 - At most 4 MB a file, and 16 MB and 32 files a room. The measurement below may allow more for video (**ask**, §23).
+  (Later: 16 MB and 64 MB, then set by each buzzer server, `FILE_MB` and `ROOM_FILES_MB` in buzzer/wrangler.jsonc. It
+  says them in the host's welcome and in `GET /api/health`, so the editor knows them before a room is open, and an
+  older server that says nothing is taken as 16 MB and 64 MB: buzzer/README.md, "Card files".)
 - A server-wide daily byte budget, `FILES_MB_PER_DAY`. 0 turns uploads off, and the room then doesn't list `files`.
   **The repo's default is set in P2 from the measurement**, to a value that keeps a Free account well inside its daily
   limits even on a busy day. The starting guess is 1 GB a day; the measurement can lower it. A self-hosted server can
   set its own.
 - Uploads are rate-limited per address, like room creation.
 - Storage stays bounded:
-  - at most 16 MB per open room;
+  - at most 16 MB per open room (later: the server's `ROOM_FILES_MB`);
   - files no current card has used for 10 minutes are deleted, by the room's alarm and on each new state. A file that
     was got ready and never sent counts its 10 minutes from the upload;
   - everything goes when the room is wiped (index.ts:30-33, 307-345).
@@ -2117,7 +2121,10 @@ POST /api/rooms/:code/files        Authorization: Bearer <hostToken>; Content-Ty
      → 200 {id} | 401 | 409 room full (16 MB / 32 files) | 413 too big | 415 type | 429 budget or rate | 503 uploads off
 GET  /api/rooms/:code/files/:id    Authorization: Bearer <seat or member token>
      → the bytes (no-store, nosniff) | 404
+GET  /api/health                   (added later) → {ok, protocol, files: {fileBytes, roomBytes, roomFiles} | null}
 ```
+
+(Later: the body's limit and the room's are each server's own, `FILE_MB` and `ROOM_FILES_MB`; the 413 says the number.)
 
 Both are matched in the Worker before the `/api/` catch-all 404 (index.ts:109), rate-limited by the new `FILE_LIMIT`
 binding, and charged to the daily byte budget in `RoomCounter` (index.ts:347-355). CORS allows `Authorization`.
@@ -2164,7 +2171,7 @@ and `text` (or `seatsText`) as the small line (§8.2):
 | Media per card | 6 | new |
 | Link length | 2048 characters | new |
 | Phones / sockets / team members | 24 / 40 / 64 | room.ts:89-108 |
-| File size / room total | 4 MB / 16 MB and 32 files, confirmed by the measurement | new: room.ts |
+| File size / room total | 4 MB / 16 MB and 32 files, confirmed by the measurement; later 16 MB / 64 MB, then each server's `FILE_MB` / `ROOM_FILES_MB` (it tells the app) | new: room.ts |
 | Files a day, server-wide | `FILES_MB_PER_DAY`: the repo's default set from the P2 measurement (starting guess 1 GB); 0 turns files off | new: index.ts `RoomCounter`, limits.ts `countBytes` |
 | Uploads per address | a new `FILE_LIMIT` binding | new: wrangler.jsonc |
 | A file got ready or left unused | deleted after 10 minutes | new: room.ts, limits.ts `nextAlarm` |
@@ -2198,7 +2205,7 @@ both ways, `forget`, and the two file routes. A new "Private cards" section sits
 | Play | src/play/Play.svelte (pick, partnerSpin, partnerLanded, partnerShow, the Distribute step's sends, partnerJudge with `timerSteps` and the guesser picking next, the double-Enter guard, keys, back and cancel, resume); src/play/HostPanel.svelte; src/play/host/PartnerControls.svelte (new, with the Distribute list); src/play/host/slots.svelte.ts; src/play/HostInfo.svelte (the cards as text); src/play/AudienceView.svelte; src/play/KeysHelp.svelte; src/lib/app.svelte.ts (scene key); src/editor/themedemo.ts | P1 |
 | Phones, app side | src/lib/buzz.ts (`phoneStatus` partner branch: P1; its `room` parameter, `partnerCards`, `cardText`: P2); src/lib/phonecard.ts (new: `cardItems` for the host column and the counts: P1; `phoneCard`: P2); src/lib/remote.svelte.ts (`roomHasCards`, `roomHasFiles`); src/lib/roomlink.ts (`cardSeen`) | P1, P2 |
 | Buzzer room | src/lib/buzzproto.ts; buzzer/src/room.ts (`cards`, `teamAt`, `status.off`, the file index and clean-up); buzzer/phone/main.ts (the card panel: words, pictures, GIFs, video, sound, embeds), index.html (the content policy), style.css | P2 |
-| Files | buzzer/src/index.ts (the routes before the `/api/` 404 at 109, CORS `Authorization`, the alarm shared with the room's end at 307-318, `RoomCounter.takeBytes` at 347-355, `Env`); buzzer/src/limits.ts (`countBytes`, `nextAlarm`); buzzer/wrangler.jsonc (the `FILE_LIMIT` ratelimit binding, `FILES_MB_PER_DAY` from the measurement); src/lib/cardfiles.svelte.ts (new: shrinking, the upload queue, started only by a send or ⇡) | P2 |
+| Files | buzzer/src/index.ts (the routes before the `/api/` 404 at 109, CORS `Authorization`, the alarm shared with the room's end at 307-318, `RoomCounter.takeBytes` at 347-355, `Env`); buzzer/src/limits.ts (`countBytes`, `nextAlarm`); buzzer/wrangler.jsonc (the `FILE_LIMIT` ratelimit binding, `FILES_MB_PER_DAY` from the measurement; later `FILE_MB` and `ROOM_FILES_MB`); src/lib/cardfiles.svelte.ts (new: shrinking, the upload queue, started only by a send or ⇡) | P2 |
 | Send a card, the card window | src/play/host/CardSend.svelte and CardsOut.svelte (new); a card window posted to directly, not through `post()` (sync.svelte.ts); `forViewers` drops `cards` (session.ts); src/lib/actions.ts (`do: 'card'`, confirmed by the host) | P3 |
 | Docs | docs/SPEC.md (§4 type union at line 114, §5.2, §6.3, §7); README.md (phones, 169-190); buzzer/README.md (28-31, 86-103, 193-200, a "Private cards" section); the comments at buzzproto.ts:12 and buzz.ts:210-213 (§14.9); CHANGELOG.md | every milestone |
 
@@ -2355,7 +2362,8 @@ answer slide", points on a miss, who picks next and media are answered (§3). Th
 3. **⧉ Same as the answer:** a one-time copy (proposed: the card is exactly what the host sees in its tab), or a live
    link that follows later edits to the answer?
 4. **File sizes:** are 4 MB a file and 16 MB a room enough for the host's own videos? *Proposed: start there, and raise
-   the file cap to 8 MB in P2 if the measurement shows an upload fits the Free plan's CPU limit.*
+   the file cap to 8 MB in P2 if the measurement shows an upload fits the Free plan's CPU limit.* (Later: 16 MB and
+   64 MB, then each server sets its own and tells the app.)
 5. **The wheel lands on the picker** (when allowed): Solo, with the giver's cards held back until the host sends them
    (proposed)? Spin again? Or play alone with a card as a hint?
 6. **A Partner Double** (a wager first, then the wager is split)? As a separate type, a tile can't be both.

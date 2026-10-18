@@ -157,7 +157,7 @@
     {@const off = !!out && leftOff.has(sentCardId(out))}
     {@const copying = !cardsOn || off || to.some((t) => !phones.has(t.seat))}
     {@const copyable = !!cardWords(card) || cardLinks(game, card).length > 0}
-    {@const left = cardsOn ? leftLine(phoneCard(game, card, filesOn ? can : { files: null }).left) : ''}
+    {@const left = cardsOn ? leftLine(phoneCard(game, card, filesOn ? can : { ...can, files: null }).left) : ''}
     {@const state = out ? sentLine(game, session, out, filesOn, off, cardsOn) : null}
     <div class="row card" data-tile-card={n} role="group" aria-label="{clueCardWords(card, i, true)}: {state ? `${out?.label}, ${state.text}` : cardsOn ? 'not sent' : sentToText(session, to, teams)}">
       <b class="cname" title={nm}>{nm}</b>

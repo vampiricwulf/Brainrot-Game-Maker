@@ -1,4 +1,4 @@
-// What card files cost the buzzer server (README.md, "Card files": the measurement before raising FILE_MAX_BYTES).
+// What card files cost the buzzer server (README.md, "Card files": the measurement before raising FILE_MB).
 // It opens a room with a host and one phone, then for each size uploads a file as the host and fetches it as the phone,
 // each request in a minute of its own (15 s past it, as the dashboard's charts count by the minute), printing when each
 // went. The room is closed at the end. Each run uses its sizes' worth of the server's daily budget.

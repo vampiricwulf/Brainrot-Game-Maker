@@ -454,9 +454,11 @@ To build the address into your own releases too (so nobody has to paste it), add
 - **The deploy asks about Durable Objects or a plan**: the free plan is enough; this server uses the kind of Durable
   Objects the free plan includes.
 - If the free plan's daily limits are ever reached, new buzzes stop until the next day's reset. It never charges you.
-- **Card files** (the pictures and videos hosts send to phones on 🤫 cards) count against a daily budget for the whole
-  server, 2,000 MB by default; past it, hosts copy those to their players (📋) until the next day. Change it with
-  `FILES_MB_PER_DAY` in `buzzer/wrangler.jsonc` (`0` turns card files off), then deploy again: see
+- **Card files** (the pictures and videos hosts send to phones on 🤫 cards) are 16 MB each at most and 64 MB a room
+  by default, and count against a daily budget for the whole server, 2,000 MB by default; past it, hosts copy those to
+  their players (📋) until the next day. Change them with `FILE_MB`, `ROOM_FILES_MB` and `FILES_MB_PER_DAY` in
+  `buzzer/wrangler.jsonc` (`0` a day turns card files off), then deploy again: the app asks the server, so it follows
+  on its own, and ⚙ Settings › Buzzer server › Test says what it takes. See
   [buzzer/README.md](buzzer/README.md#card-files). Each room keeps its cards only until the tile closes (or the round
   ends, or the host takes it back, for one sent with 🤫 Send a card…), and their files up to 10 minutes longer.
 

@@ -8,7 +8,7 @@
 import type { CardMedia } from './buzzproto';
 import { cardSlides, type CardTo, type Game, type Id, type Session, type Slide } from './model';
 import { cardHash, cardId, cardLines, partnerRules } from './partner';
-import { phoneCard } from './phonecard';
+import { ANY_SERVER, phoneCard } from './phonecard';
 import { cardsOut, sentCardId, sentSlide, sentState } from './sentcards';
 import { currentClueInfo } from './session';
 
@@ -55,7 +55,7 @@ export const CARD_WIN_TYPES: readonly string[] = ['private-cards', 'private-file
 
 /** A card's words and items for the card window: as phoneCard builds them for a phone, with files from this computer as files. */
 export function windowContent(game: Pick<Game, 'media'>, slide: Slide): Pick<WindowCard, 'title' | 'text' | 'media'> {
-  const pc = phoneCard(game, slide, { files: {} });
+  const pc = phoneCard(game, slide, ANY_SERVER);
   const media: WindowItem[] = [];
   for (const it of pc.items) {
     // (One card shows 6 at most, as on a phone.)

@@ -293,7 +293,7 @@
   const sentCards = (): { card: ClueCard; n: number }[] => cards.flatMap((card, i) => (cardSends(s, card.id).length ? [{ card, n: i + 1 }] : []));
   /** What a phone gets for each card, and how far its files are. */
   const can = $derived(phoneCan(session));
-  const lefts = (card: ClueCard) => (cardsOn ? phoneCard(game, card, filesOn ? can : { files: null }).left : []);
+  const lefts = (card: ClueCard) => (cardsOn ? phoneCard(game, card, filesOn ? can : { ...can, files: null }).left : []);
   /** The phones here now that a card was sent to but that are late for it (a new phone for the seat), by seat. */
   function lateFor(card: ClueCard): { seat: Id; by?: string }[] {
     const ids = new Set(cardSends(s, card.id).map((x) => cardId(s.clue, x)));

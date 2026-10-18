@@ -31,7 +31,10 @@ import {
   takeBack,
 } from './partner';
 import { buzzIdle, cardText, fitCards, hostState, newBuzz, partnerAnswerAsk, partnerAnswerId, partnerCards, phoneStatus, sendOf } from './buzz';
-import { CARDS_BYTES, type HostCard } from './buzzproto';
+import { CARDS_BYTES, type HostCard, OLD_FILE_LIMITS } from './buzzproto';
+
+/** How big a file the buzzer server takes in these tests (one that doesn't say: 16 MB). */
+const FILE_BYTES = OLD_FILE_LIMITS.fileBytes;
 
 const HASH = 'a'.repeat(64);
 
@@ -63,16 +66,16 @@ function setup(game: PartnerGame = 'describe', opts: { typeGuess?: boolean; team
 
 /** Everything the room is told now, with or without files. */
 const told = (g: Game, session: Session, files: Record<string, string> | null = {}) =>
-  JSON.stringify(hostState(g, session, buzzIdle(newBuzz(2)), 0, { status: phoneStatus(g, session, false, { cards: true }), cards: partnerCards(g, session, { files }) }));
+  JSON.stringify(hostState(g, session, buzzIdle(newBuzz(2)), 0, { status: phoneStatus(g, session, false, { cards: true }), cards: partnerCards(g, session, { fileBytes: FILE_BYTES, files }) }));
 
 describe('nothing goes to the room until the host sends it', () => {
   it('the tile opening, the wheel, ⇄ Swap, the chips and Show question send nothing, and upload nothing', () => {
     const { g, session, s, clue, two } = setup();
     const quiet = () => {
-      expect(partnerCards(g, session, { files: {} })).toBeNull();
+      expect(partnerCards(g, session, { fileBytes: FILE_BYTES, files: {} })).toBeNull();
       expect(s.sent).toBeUndefined();
       expect(s.ready).toBeUndefined();
-      expect(filesWanted(g, clue, s, {}, {})).toEqual([]);
+      expect(filesWanted(g, clue, s, {}, {}, { fileBytes: FILE_BYTES })).toEqual([]);
       expect(told(g, session)).not.toMatch(/xyzzy|plugh|secret-pic|"cards"/);
     };
     quiet();
@@ -93,7 +96,7 @@ describe('nothing goes to the room until the host sends it', () => {
     setPartner(session, s, 'b', 'wheel');
     s.stage = 'distribute';
     expect(sendCards(session, s, [one], 1000)).toEqual([one]);
-    expect(partnerCards(g, session, { files: {} })).toEqual([
+    expect(partnerCards(g, session, { fileBytes: FILE_BYTES, files: {} })).toEqual([
       { id: `pc:${clue.id}:${one.id}:1000`, to: [{ seat: 'b' }], open: true, role: 'Describer', hint: 'Describe it to Ann: don’t say what’s on it!', text: 'CARD-ONE-xyzzy' },
     ]);
     expect(told(g, session)).not.toMatch(/plugh|secret-pic/);
@@ -108,10 +111,10 @@ describe('nothing goes to the room until the host sends it', () => {
     setPartner(session, s, 'b', 'wheel');
     s.stage = 'distribute';
     sendCards(session, s, [one], 1000);
-    expect(partnerCards(g, session, { files: {} })!.map((c) => c.text)).toEqual(['CARD-ONE-xyzzy']);
+    expect(partnerCards(g, session, { fileBytes: FILE_BYTES, files: {} })!.map((c) => c.text)).toEqual(['CARD-ONE-xyzzy']);
     one.name = 'NAME-other';
-    expect(partnerCards(g, session, { files: {} })!.map((c) => c.text)).toEqual(['CARD-ONE-xyzzy']);
-    expect(JSON.stringify(partnerCards(g, session, { files: {} }))).not.toMatch(/NAME-|"name"/);
+    expect(partnerCards(g, session, { fileBytes: FILE_BYTES, files: {} })!.map((c) => c.text)).toEqual(['CARD-ONE-xyzzy']);
+    expect(JSON.stringify(partnerCards(g, session, { fileBytes: FILE_BYTES, files: {} }))).not.toMatch(/NAME-|"name"/);
     expect(told(g, session)).not.toMatch(/NAME-/);
   });
 
@@ -123,7 +126,7 @@ describe('nothing goes to the room until the host sends it', () => {
     expect(sendCards(session, s, clue.cards!, 2000)).toEqual([]);
     setRecipients(session, s, two, ['c']);
     expect(sendCards(session, s, clue.cards!, 3000)).toEqual([two]);
-    expect(partnerCards(g, session, { files: {} })!.map((c) => [c.id, c.to])).toEqual([
+    expect(partnerCards(g, session, { fileBytes: FILE_BYTES, files: {} })!.map((c) => [c.id, c.to])).toEqual([
       [cardId(clue.id, { card: one.id, at: 1000 }), [{ seat: 'b' }]],
       [cardId(clue.id, { card: two.id, at: 3000 }), [{ seat: 'c' }]],
     ]);
@@ -133,12 +136,12 @@ describe('nothing goes to the room until the host sends it', () => {
     const { g, session, s, two } = setup();
     setPartner(session, s, 'b', 'wheel');
     sendCards(session, s, [two], 1000);
-    const media = (files: Record<string, string> | null) => partnerCards(g, session, { files })![0].media;
+    const media = (files: Record<string, string> | null) => partnerCards(g, session, { fileBytes: FILE_BYTES, files })![0].media;
     expect(media(null)).toEqual([{ kind: 'image', missing: true }]);
     expect(media({})).toEqual([{ kind: 'image', pending: true }]);
     expect(media({ m1: HASH })).toEqual([{ kind: 'image', file: HASH, mime: 'image/png' }]);
     // (Never its name: it's often the answer.)
-    expect(JSON.stringify(partnerCards(g, session, { files: { m1: HASH } }))).not.toContain('secret-pic');
+    expect(JSON.stringify(partnerCards(g, session, { fileBytes: FILE_BYTES, files: { m1: HASH } }))).not.toContain('secret-pic');
   });
 
   it('the answer on screen marks the cards (they stay); the tile closing takes them all away', () => {
@@ -146,9 +149,9 @@ describe('nothing goes to the room until the host sends it', () => {
     setPartner(session, s, 'b', 'wheel');
     sendCards(session, s, [one], 1000);
     session.revealed = true;
-    expect(partnerCards(g, session, { files: {} })![0].open).toBe(false);
+    expect(partnerCards(g, session, { fileBytes: FILE_BYTES, files: {} })![0].open).toBe(false);
     backToBoard(session, g, { markUsed: true });
-    expect(partnerCards(g, session, { files: {} })).toBeNull();
+    expect(partnerCards(g, session, { fileBytes: FILE_BYTES, files: {} })).toBeNull();
     expect(told(g, session)).not.toContain('xyzzy');
   });
 });
@@ -158,7 +161,7 @@ describe('one send at a time (spec §14.4)', () => {
     const { g, session, s, clue, one, two } = setup();
     setPartner(session, s, 'b', 'wheel');
     sendCards(session, s, [one, two], 1000);
-    const ids = () => partnerCards(g, session, { files: {} })!.map((c) => c.id);
+    const ids = () => partnerCards(g, session, { fileBytes: FILE_BYTES, files: {} })!.map((c) => c.id);
     const before = ids();
     expect(sendAgain(session, s, one, 5000)).toBe(true);
     const after = ids();
@@ -166,7 +169,7 @@ describe('one send at a time (spec §14.4)', () => {
     expect(after).not.toContain(before[0]);
     expect(after).toContain(cardId(clue.id, { card: one.id, at: 5000 }));
     // To the same players.
-    expect(partnerCards(g, session, { files: {} })!.find((c) => c.id.includes(one.id))!.to).toEqual([{ seat: 'b' }]);
+    expect(partnerCards(g, session, { fileBytes: FILE_BYTES, files: {} })!.find((c) => c.id.includes(one.id))!.to).toEqual([{ seat: 'b' }]);
   });
 
   it('two sends in the same millisecond still get two ids', () => {
@@ -186,7 +189,7 @@ describe('one send at a time (spec §14.4)', () => {
     setRecipients(session, s, two, ['c', 'b']);
     expect(sendState(session, s, two)).toBe('changed');
     sendChanges(session, s, two, 2000);
-    expect(partnerCards(g, session, { files: {} })!.map((c) => [c.id, c.to])).toEqual([
+    expect(partnerCards(g, session, { fileBytes: FILE_BYTES, files: {} })!.map((c) => [c.id, c.to])).toEqual([
       [cardId(clue.id, { card: two.id, at: 1000 }), [{ seat: 'c' }]],
       [cardId(clue.id, { card: two.id, at: 2000 }), [{ seat: 'b' }]],
     ]);
@@ -199,10 +202,10 @@ describe('one send at a time (spec §14.4)', () => {
     sendCards(session, s, [one, two], 1000);
     sendAgain(session, s, two, 2000);
     takeBack(s, two.id);
-    expect(partnerCards(g, session, { files: {} })!.map((c) => c.text)).toEqual(['CARD-ONE-xyzzy']);
+    expect(partnerCards(g, session, { fileBytes: FILE_BYTES, files: {} })!.map((c) => c.text)).toEqual(['CARD-ONE-xyzzy']);
     takeBack(s, one.id);
     expect(s.sent).toBeUndefined();
-    expect(partnerCards(g, session, { files: {} })).toBeNull();
+    expect(partnerCards(g, session, { fileBytes: FILE_BYTES, files: {} })).toBeNull();
   });
 
   it('⇄ Swap after a send moves nothing by itself: the row reads changed until 📤 Send changes', () => {
@@ -211,9 +214,9 @@ describe('one send at a time (spec §14.4)', () => {
     sendCards(session, s, [one], 1000);
     swapParts(s);
     expect(sendState(session, s, one)).toBe('changed');
-    expect(partnerCards(g, session, { files: {} })![0].to).toEqual([{ seat: 'b' }]);
+    expect(partnerCards(g, session, { fileBytes: FILE_BYTES, files: {} })![0].to).toEqual([{ seat: 'b' }]);
     sendChanges(session, s, one, 2000);
-    expect(partnerCards(g, session, { files: {} })!.map((c) => c.to)).toEqual([[{ seat: 'a' }]]);
+    expect(partnerCards(g, session, { fileBytes: FILE_BYTES, files: {} })!.map((c) => c.to)).toEqual([[{ seat: 'a' }]]);
   });
 
   it('a card edited after it was sent comes off the phones until ↻ Send again', () => {
@@ -222,9 +225,9 @@ describe('one send at a time (spec §14.4)', () => {
     sendCards(session, s, [one], 1000);
     setSlideText(one, 'EDITED-later');
     expect(sendState(session, s, one)).toBe('edited');
-    expect(partnerCards(g, session, { files: {} })).toBeNull();
+    expect(partnerCards(g, session, { fileBytes: FILE_BYTES, files: {} })).toBeNull();
     sendAgain(session, s, one, 2000);
-    expect(partnerCards(g, session, { files: {} })![0].text).toBe('EDITED-later');
+    expect(partnerCards(g, session, { fileBytes: FILE_BYTES, files: {} })![0].text).toBe('EDITED-later');
   });
 
   it('a player taken out loses the cards sent to them; one sent to others too stays with the others', () => {
@@ -233,10 +236,10 @@ describe('one send at a time (spec §14.4)', () => {
     setRecipients(session, s, two, ['a', 'c']);
     sendCards(session, s, [one, two], 1000);
     removePlayer(session, 'c');
-    expect(partnerCards(g, session, { files: {} })!.map((c) => c.to)).toEqual([[{ seat: 'b' }], [{ seat: 'a' }]]);
+    expect(partnerCards(g, session, { fileBytes: FILE_BYTES, files: {} })!.map((c) => c.to)).toEqual([[{ seat: 'b' }], [{ seat: 'a' }]]);
     removePlayer(session, 'a');
     // (Ann was the picker: the clue goes back to choosing, and her card is gone from her.)
-    expect(partnerCards(g, session, { files: {} })!.map((c) => c.to)).toEqual([[{ seat: 'b' }]]);
+    expect(partnerCards(g, session, { fileBytes: FILE_BYTES, files: {} })!.map((c) => c.to)).toEqual([[{ seat: 'b' }]]);
   });
 });
 
@@ -247,17 +250,17 @@ describe('one card per part (spec §12.3: each phone gets its own lines)', () =>
     setRecipients(session, s, one, ['b', 'c']);
     sendCards(session, s, [one], 1000);
     const id = cardId(clue.id, { card: one.id, at: 1000 });
-    expect(partnerCards(g, session, { files: {} })).toEqual([
+    expect(partnerCards(g, session, { fileBytes: FILE_BYTES, files: {} })).toEqual([
       { id: `${id}~g`, to: [{ seat: 'b' }], open: true, role: 'Describer', hint: 'Describe it to Ann: don’t say what’s on it!', shared: true, text: 'CARD-ONE-xyzzy' },
       { id: `${id}~o`, to: [{ seat: 'c' }], open: true, hint: 'A card from the host: don’t show it to Ann', shared: true, text: 'CARD-ONE-xyzzy' },
     ]);
     // Each is the send, for ✓ seen.
-    expect(partnerCards(g, session, { files: {} })!.map((c) => sendOf(c.id))).toEqual([id, id]);
+    expect(partnerCards(g, session, { fileBytes: FILE_BYTES, files: {} })!.map((c) => sendOf(c.id))).toEqual([id, id]);
     // A card to one part only is one card, its own id, not shared (the room marks one to several seats shared).
     const { g: g2, session: s2, s: p2, one: one2 } = setup();
     setPartner(s2, p2, 'b', 'wheel');
     sendCards(s2, p2, [one2], 1000);
-    expect(partnerCards(g2, s2, { files: {} })![0]).not.toHaveProperty('shared');
+    expect(partnerCards(g2, s2, { fileBytes: FILE_BYTES, files: {} })![0]).not.toHaveProperty('shared');
   });
 
   it('which card a phone has stays as it was sent: ⇄ Swap changes its lines, never its id', () => {
@@ -265,11 +268,11 @@ describe('one card per part (spec §12.3: each phone gets its own lines)', () =>
     setPartner(session, s, 'b', 'wheel');
     setRecipients(session, s, one, ['b', 'c']);
     sendCards(session, s, [one], 1000);
-    const ids = () => partnerCards(g, session, { files: {} })!.map((c) => c.id);
+    const ids = () => partnerCards(g, session, { fileBytes: FILE_BYTES, files: {} })!.map((c) => c.id);
     const before = ids();
     swapParts(s);
     expect(ids()).toEqual(before);
-    expect(partnerCards(g, session, { files: {} })![0]).toMatchObject({ to: [{ seat: 'b' }], role: 'Guesser' });
+    expect(partnerCards(g, session, { fileBytes: FILE_BYTES, files: {} })![0]).toMatchObject({ to: [{ seat: 'b' }], role: 'Guesser' });
   });
 
   it('the card’s own line is for the part it’s set to go to; anyone else gets the line for them', () => {
@@ -313,7 +316,7 @@ describe('one person describes to their own team (spec §10.2)', () => {
     s.stage = 'distribute';
     sendCards(session, s, [one], 1000);
     const id = cardId(clue.id, { card: one.id, at: 1000 });
-    expect(partnerCards(g, session, { files: {} })).toEqual([
+    expect(partnerCards(g, session, { fileBytes: FILE_BYTES, files: {} })).toEqual([
       { id, to: [{ seat: 'a', member: 'mZoe' }], open: true, role: 'Describer', hint: 'Describe it to your team: don’t say what’s on it!', text: 'CARD-ONE-xyzzy' },
       { id: `${id}~t`, to: [{ seat: 'a', except: ['mZoe'] }], open: true, role: 'Guesser', hint: '🎯 Your team is guessing! Zoe is describing', tap: false },
     ]);
@@ -321,9 +324,9 @@ describe('one person describes to their own team (spec §10.2)', () => {
     // A new describer later: the card stays with Zoe until 📤 Send changes.
     setDescriber(s, { id: 'mMax', name: 'Max' });
     expect(sendState(session, s, one)).toBe('changed');
-    expect(partnerCards(g, session, { files: {} })![0].to).toEqual([{ seat: 'a', member: 'mZoe' }]);
+    expect(partnerCards(g, session, { fileBytes: FILE_BYTES, files: {} })![0].to).toEqual([{ seat: 'a', member: 'mZoe' }]);
     sendChanges(session, s, one, 2000);
-    expect(partnerCards(g, session, { files: {} })!.map((c) => c.to)).toEqual([[{ seat: 'a', member: 'mMax' }], [{ seat: 'a', except: ['mMax'] }]]);
+    expect(partnerCards(g, session, { fileBytes: FILE_BYTES, files: {} })!.map((c) => c.to)).toEqual([[{ seat: 'a', member: 'mMax' }], [{ seat: 'a', except: ['mMax'] }]]);
   });
 
   it('the phones’ lines say who describes; the team’s line goes to Zoe too, so it never says she guesses', () => {
@@ -348,7 +351,7 @@ describe('one person describes to their own team (spec §10.2)', () => {
     expect(bad.partner!.sent).toBeUndefined();
     const ok: Session = JSON.parse(JSON.stringify(session));
     migrateSession(ok, g);
-    expect(partnerCards(g, ok, { files: {} })).toEqual(partnerCards(g, session, { files: {} }));
+    expect(partnerCards(g, ok, { fileBytes: FILE_BYTES, files: {} })).toEqual(partnerCards(g, session, { fileBytes: FILE_BYTES, files: {} }));
   });
 });
 
@@ -374,28 +377,28 @@ describe('a reload uploads only what a press started (spec §15.2)', () => {
     const { g, session, s, clue, two } = setup();
     setPartner(session, s, 'b', 'wheel');
     s.stage = 'distribute';
-    expect(filesWanted(g, clue, s, {}, {})).toEqual([]);
+    expect(filesWanted(g, clue, s, {}, {}, { fileBytes: FILE_BYTES })).toEqual([]);
     markReady(s, [two.id]);
     expect(s.ready).toEqual([two.id]);
     expect(s.sent).toBeUndefined();
-    expect(filesWanted(g, clue, s, {}, {})).toEqual(['m1']);
+    expect(filesWanted(g, clue, s, {}, {}, { fileBytes: FILE_BYTES })).toEqual(['m1']);
     // Got ready once already (the room cleaned it up since): not again until it's sent.
-    expect(filesWanted(g, clue, s, {}, { m1: HASH })).toEqual([]);
+    expect(filesWanted(g, clue, s, {}, { m1: HASH }, { fileBytes: FILE_BYTES })).toEqual([]);
     sendCards(session, s, [two], 1000);
-    expect(filesWanted(g, clue, s, {}, { m1: HASH })).toEqual(['m1']);
-    expect(filesWanted(g, clue, s, { m1: HASH }, { m1: HASH })).toEqual([]);
+    expect(filesWanted(g, clue, s, {}, { m1: HASH }, { fileBytes: FILE_BYTES })).toEqual(['m1']);
+    expect(filesWanted(g, clue, s, { m1: HASH }, { m1: HASH }, { fileBytes: FILE_BYTES })).toEqual([]);
     // One that was turned down isn't tried again by itself.
-    expect(filesWanted(g, clue, s, {}, {}, { m1: 'failed' })).toEqual([]);
+    expect(filesWanted(g, clue, s, {}, {}, { fileBytes: FILE_BYTES }, { m1: 'failed' })).toEqual([]);
   });
 
   it('a send saved with the game comes back the same after a reload: the same ids, nothing sent again', () => {
     const { g, session, s, one } = setup();
     setPartner(session, s, 'b', 'wheel');
     sendCards(session, s, [one], 1000);
-    const before = partnerCards(g, session, { files: {} });
+    const before = partnerCards(g, session, { fileBytes: FILE_BYTES, files: {} });
     const saved: Session = JSON.parse(JSON.stringify(session));
     migrateSession(saved, g);
-    expect(partnerCards(g, saved, { files: {} })).toEqual(before);
+    expect(partnerCards(g, saved, { fileBytes: FILE_BYTES, files: {} })).toEqual(before);
     expect(saved.partner!.sent).toHaveLength(1);
   });
 
@@ -412,7 +415,7 @@ describe('a reload uploads only what a press started (spec §15.2)', () => {
     migrateSession(bad, g);
     expect(bad.partner!.sent).toBeUndefined();
     expect(bad.partner!.ready).toBeUndefined();
-    expect(partnerCards(g, bad, { files: {} })).toBeNull();
+    expect(partnerCards(g, bad, { fileBytes: FILE_BYTES, files: {} })).toBeNull();
   });
 
   it('Resume with my edits: a deleted card goes from the phones and from the cards got ready', () => {

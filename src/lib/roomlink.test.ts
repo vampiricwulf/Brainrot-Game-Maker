@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { BUZZ_PROTOCOL, type HostState } from './buzzproto';
+import { BUZZ_PROTOCOL, FILES_LIST_MAX, mbText, parseFileLimits, type HostState } from './buzzproto';
 import { closedText, parseNewRoom, parseRoomMsg, retryDelay, RoomLink, PING_MS, SILENT_MS, STATE_MS, type LinkDeps, type SocketLike } from './roomlink';
 
 class FakeSocket implements SocketLike {
@@ -144,6 +144,44 @@ describe('parseRoomMsg', () => {
     expect(parseRoomMsg('{"t":"files","ids":[]}')).toEqual({ t: 'files', ids: [] });
     for (const bad of ['{"t":"cardSeen","id":"","seatId":"a"}', `{"t":"cardSeen","id":"${'x'.repeat(101)}","seatId":"a"}`, '{"t":"cardSeen","id":"c"}', '{"t":"files","ids":["nope"]}', '{"t":"files"}'])
       expect(parseRoomMsg(bad), bad).toBeNull();
+  });
+
+  it('takes the server’s card file limits (added later) from a welcome, and leaves out limits that don’t add up', () => {
+    const limits = { fileBytes: 4 << 20, roomBytes: 12 << 20, roomFiles: 32 };
+    expect(parseRoomMsg(JSON.stringify({ ...welcome, features: ['files'], limits }))).toEqual({ ...welcome, features: ['files'], limits });
+    // (Only those three: anything else on it is dropped.)
+    expect(parseRoomMsg(JSON.stringify({ ...welcome, limits: { ...limits, evil: 1 } }))).toEqual({ ...welcome, limits });
+    for (const bad of [
+      null,
+      7,
+      'big',
+      { ...limits, fileBytes: 0 },
+      { ...limits, fileBytes: -1 },
+      { ...limits, fileBytes: 1.5 },
+      { ...limits, fileBytes: '4194304' },
+      { ...limits, fileBytes: 13 << 20 },
+      { ...limits, roomBytes: 2 ** 40 + 1 },
+      { ...limits, roomFiles: 0 },
+      { ...limits, roomFiles: FILES_LIST_MAX + 1 },
+      { fileBytes: 1, roomBytes: 2 },
+    ])
+      expect(parseRoomMsg(JSON.stringify({ ...welcome, limits: bad })), JSON.stringify(bad)).toEqual(welcome);
+    expect(parseFileLimits({ fileBytes: 2 ** 40, roomBytes: 2 ** 40, roomFiles: FILES_LIST_MAX })).toEqual({ fileBytes: 2 ** 40, roomBytes: 2 ** 40, roomFiles: FILES_LIST_MAX });
+  });
+
+  it('a limit in words: whole MB, or one decimal rounded down', () => {
+    expect(mbText(16 << 20)).toBe('16 MB');
+    expect(mbText(4 << 20)).toBe('4 MB');
+    expect(mbText(1 << 19)).toBe('0.5 MB');
+    expect(mbText((16 << 20) - 1)).toBe('15.9 MB');
+    expect(mbText(2000 << 20)).toBe('2,000 MB');
+    expect(mbText(50 << 10)).toBe('50 KB');
+  });
+
+  it('takes a files list of up to FILES_LIST_MAX ids, so a server can hold more than 32', () => {
+    const ids = (n: number) => Array.from({ length: n }, (_, i) => i.toString(16).padStart(64, '0'));
+    expect(parseRoomMsg(JSON.stringify({ t: 'files', ids: ids(FILES_LIST_MAX) }))).toEqual({ t: 'files', ids: ids(FILES_LIST_MAX) });
+    expect(parseRoomMsg(JSON.stringify({ t: 'files', ids: ids(FILES_LIST_MAX + 1) }))).toBeNull();
   });
 
   it('takes the phones late for a card (added later), and an empty list once none are', () => {
@@ -301,6 +339,25 @@ describe('RoomLink', () => {
     expect(link.files).toBeNull();
     expect(link.send({ t: 'forget', files: ['d'.repeat(64)] })).toBe(true);
     expect(sockets[0].sent.at(-1)).toEqual({ t: 'forget', files: ['d'.repeat(64)] });
+  });
+
+  it('keeps the server’s card file limits from each welcome: none from one that doesn’t say, none once stopped', async () => {
+    sockets = [];
+    const t = fakeDeps();
+    const link = new RoomLink('https://buzz.test', {}, t.deps);
+    await link.create();
+    sockets[0].open();
+    expect(link.limits).toBeNull();
+    const limits = { fileBytes: 4 << 20, roomBytes: 12 << 20, roomFiles: 32 };
+    sockets[0].say({ ...welcome, features: ['cards', 'files'], limits });
+    expect(link.limits).toEqual(limits);
+    // (A welcome after a reconnect says again: one without files has none.)
+    sockets[0].say({ ...welcome, features: ['cards'] });
+    expect(link.limits).toBeNull();
+    sockets[0].say({ ...welcome, features: ['cards', 'files'], limits: { ...limits, fileBytes: 6 << 20 } });
+    expect(link.limits).toEqual({ ...limits, fileBytes: 6 << 20 });
+    link.stop();
+    expect(link.limits).toBeNull();
   });
 
   it('reconnects with the same code and token after a drop, backing off, and sends the state again', async () => {

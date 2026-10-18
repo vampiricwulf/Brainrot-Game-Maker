@@ -27,6 +27,8 @@
   const room = $derived(buzzerOn(game.settings) && !!remote.code && remote.status !== 'off' && remote.status !== 'error');
   const cardsOn = $derived(room && roomHasCards());
   const filesOn = $derived(cardsOn && roomHasFiles());
+  /** What the phones can get (with files off, none from this computer). */
+  const can = $derived(filesOn ? phoneCan(session) : { ...phoneCan(session), files: null });
   /**
    * The cards out that never reach a phone (their ids on the wire): more than the room takes, as a 🎭 deal handed out
    * before it took cards took them past that.
@@ -52,7 +54,7 @@
    * up, what to do: the row would otherwise say "sent" and "✓ seen" while the phone waits for it.
    */
   function leftOf(slide: Slide): string {
-    const left = phoneCard(game, slide, filesOn ? phoneCan(session) : { files: null }).left;
+    const left = phoneCard(game, slide, can).left;
     const line = leftLine(left);
     if (!line || !left.some((l) => l.why === 'failed')) return line;
     return `${line}: ↻ Send again tries again${hasPicture(game, slide) && canCopyPicture ? ', or 📋 Copy picture' : ''}`;

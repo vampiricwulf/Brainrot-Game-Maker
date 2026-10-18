@@ -55,6 +55,8 @@
   /** Its phones get the cards the host sends (else the host copies them: 📋, or the 🪟 card window). */
   const cardsOn = $derived(room && roomHasCards());
   const filesOn = $derived(cardsOn && roomHasFiles());
+  /** What the phones can get (with files off, none from this computer). */
+  const can = $derived(filesOn ? phoneCan(session) : { ...phoneCan(session), files: null });
   const nameOf = (id: Id) => session.players.find((p) => p.id === id)?.name ?? '?';
   const who = (t: CardTo) => (t.member ? `${t.member.name} (${nameOf(t.seat)})` : nameOf(t.seat));
 
@@ -264,7 +266,7 @@
     return parts.join(' · ');
   });
   /** What of the cards won't reach the phones, counted for the whole deal. */
-  const left = $derived(cardsOn && d ? leftLine(d.hands.flatMap((h) => phoneCard(game, h.slide, filesOn ? phoneCan(session) : { files: null }).left)) : '');
+  const left = $derived(cardsOn && d ? leftLine(d.hands.flatMap((h) => phoneCard(game, h.slide, can).left)) : '');
   const seenBy = (seat: Id, member?: string) =>
     out.some((c) => c.to.some((t) => t.seat === seat && t.member?.id === member) && (session.remote?.cardsSeen?.[sentCardId(c)] ?? []).some((w) => w === (member ? `${seat}/${member}` : seat)));
   /** Their card is one the phones never get (said only with the audience window open: only those with a part have one). */

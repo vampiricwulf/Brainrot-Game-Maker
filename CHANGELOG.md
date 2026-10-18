@@ -14,6 +14,7 @@ in plain words for the people who make and host games. Anything committed but no
 ## Unreleased
 
 ### Changed
+- The app asks the buzzer server how big a 🤫 card file it takes (in the editor too, before any room is open) instead of assuming 16 MB: a server you run yourself sets it in buzzer/wrangler.jsonc (FILE_MB a file, ROOM_FILES_MB a room's files together), and the 📱 preview, the checklist and the uploads go by its number. An older server is taken as 16 MB a file and 64 MB a room. ⚙ Settings › Buzzer server › Test says what it takes, and a file over the limit is turned away with "Too big for the buzzer server (16 MB at most)".
 - The buzzer server stores a 🤫 card's file a 1 MB piece at a time as it arrives, and sends it to phones a piece at a time, so a big file takes no more of its memory than a small one. An upload cut off partway (the room closed, or the server restarted) leaves nothing behind, and a phone fetches a card's files two at a time, so on a slow line the first ones come sooner.
 
 ### Fixed

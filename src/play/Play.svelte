@@ -19,6 +19,7 @@
   } from '../lib/partner';
   import { phoneCard } from '../lib/phonecard';
   import { phoneCan, syncUploads } from '../lib/cardfiles.svelte';
+  import { askServerFiles, fileLimitsNow } from '../lib/serverlimits.svelte';
   import { cardsOut, listedCards, sentCardId, sentSlide, takeBackCard } from '../lib/sentcards';
   import { dealOut, dealtIn, dropGonePhones } from '../lib/deals';
   import { windowCards } from '../lib/cardwindow';
@@ -2975,8 +2976,16 @@
     onresume?.(withEdits, room);
   }
 
-  // (A room open now that puts cards on phones but takes no files: a card's file from this computer won't reach one.)
-  const filesOff = $derived(!!remote.code && remote.status === 'online' && roomHasCards() && !roomHasFiles());
+  // (A room open now that puts cards on phones but takes no files, or a server that takes none: a card's file from this
+  // computer won't reach one. How big a file the server takes, as it said.)
+  const fileLimits = $derived(fileLimitsNow());
+  const filesOff = $derived((!!remote.code && remote.status === 'online' && roomHasCards() && !roomHasFiles()) || fileLimits.off);
+  const fileBytes = $derived(fileLimits.limits.fileBytes);
+  // (Asked before a room is open, for the checklist here.)
+  $effect(() => {
+    const b = buzzerBase();
+    if (b && game.media.some((m) => !m.url && m.kind !== 'font')) askServerFiles(b);
+  });
   /**
    * Things worth fixing before going live (warnings only: Start still works). Worked out from the watcher's plain copy
    * once the screen is up, then a moment after changes stop (as the editor's checklist): reading the whole game through
@@ -2993,7 +3002,7 @@
   }
   $effect(() => {
     void gameRev;
-    void filesOff;
+    void [filesOff, fileBytes];
     // (Whether files are missing depends on the ones loaded, too.)
     void Object.keys(mediaUrls).length;
     if (app.pregame) untrack(recheck);
@@ -3004,7 +3013,7 @@
   function gameChecks(g: Game) {
     // (A board short of Daily Doubles gets a button to place them.)
     // (Daily Doubles not placed yet are only a note in the editor, as Start places them: here they're listed with it.)
-    return validate(g, { filesOff })
+    return validate(g, { filesOff, fileBytes })
       .map((p) => {
         const r = typeof p.tab === 'number' ? g.rounds[p.tab] : undefined;
         const dd = isBoard(r) && !!dailyDoublesShort(r) && p.text.includes('Daily Double') && p.text.includes(' not placed yet');

@@ -1,12 +1,13 @@
 // Phone buzzers, the host's side: one buzzer room at a time (see roomlink.ts for the connection, buzzproto.ts for what is
 // said). Reactive, for the pre-game card and the host panel.
-import { filesUrl, joinUrl, type CardLate, type HostState, type NewRoom, type PhoneInfo } from './buzzproto';
+import { filesUrl, joinUrl, mbText, type CardLate, type FileLimits, type HostState, type NewRoom, type PhoneInfo } from './buzzproto';
 import type { TeamMember } from './model';
 import type { SavedRoom } from './persist';
 import { embeddedBuzzerServer } from './export';
 import { prefs, serverAddress } from './prefs.svelte';
 import { app } from './app.svelte';
 import { PING_MS, RoomLink, type LinkDeps, type RoomBuzz, type RoomCardSeen, type RoomQueue, type RoomStatus, type RoomWager, type RoomAnswer } from './roomlink';
+import { healthFiles, noteServerFiles } from './serverlimits.svelte';
 
 /** The buzzer server this copy was built with (CI passes it), or ''. */
 export const DEFAULT_BUZZER_URL: string = (import.meta.env.VITE_BUZZER_URL ?? '').trim();
@@ -42,6 +43,8 @@ export const remote = $state<{
   welcomed: boolean;
   /** The 🤫 card files the room holds now (their ids), as it last said; null until it has. */
   files: string[] | null;
+  /** How big a 🤫 card file the room's server takes, as its welcome said (null: it didn't: an older one, or no files). */
+  limits: FileLimits | null;
   /** The phones here now that a 🤫 card was sent to but that are late for it (the panel suggests ↻ Send again). */
   cardsLate: CardLate[];
   error: string;
@@ -53,7 +56,7 @@ export const remote = $state<{
   answered: string[];
   /** When the room last turned a phone away because it was full (0: not lately). */
   fullAt: number;
-}>({ status: 'off', code: null, base: '', phones: [], listed: false, features: [], welcomed: false, files: null, cardsLate: [], error: '', closedCode: 0, attempts: 0, answered: [], fullAt: 0 });
+}>({ status: 'off', code: null, base: '', phones: [], listed: false, features: [], welcomed: false, files: null, limits: null, cardsLate: [], error: '', closedCode: 0, attempts: 0, answered: [], fullAt: 0 });
 
 /** How long "Room full" shows after the room last turned a phone away. */
 export const FULL_SHOWN_MS = 2 * 60_000;
@@ -88,6 +91,9 @@ function sync(): void {
   if (remote.features.join() !== link.features.join()) remote.features = link.features;
   remote.welcomed = link.welcomed;
   if (remote.files?.join() !== link.files?.join()) remote.files = link.files;
+  if (JSON.stringify(remote.limits) !== JSON.stringify(link.limits)) remote.limits = link.limits;
+  // (What the server takes, for the editor and the next room on it too: a welcome with 'files' says it.)
+  if (link.welcomed && link.features.includes('files')) noteServerFiles(link.base, link.limits ? { files: link.limits } : 'old');
   if (JSON.stringify(remote.cardsLate) !== JSON.stringify(link.cardsLate)) remote.cardsLate = link.cardsLate;
   remote.error = link.error;
   remote.closedCode = link.closedCode;
@@ -273,7 +279,7 @@ export function closeRoom(): boolean {
   l?.stop();
   // (8 tries: 0.5 s, 1 s, 2 s… 15 s, about a minute in all.)
   if (l && room) new RoomLink(l.base, {}, deps).end(room, 8);
-  Object.assign(remote, { status: 'off', code: null, phones: [], listed: false, features: [], welcomed: false, files: null, cardsLate: [], error: '', closedCode: 0, attempts: 0, answered: [], fullAt: 0 });
+  Object.assign(remote, { status: 'off', code: null, phones: [], listed: false, features: [], welcomed: false, files: null, limits: null, cardsLate: [], error: '', closedCode: 0, attempts: 0, answered: [], fullAt: 0 });
   return told || !room;
 }
 
@@ -284,7 +290,7 @@ export function closeRoom(): boolean {
 export function leaveRoom(): void {
   link?.stop();
   link = null;
-  Object.assign(remote, { status: 'off', code: null, phones: [], listed: false, features: [], welcomed: false, files: null, cardsLate: [], error: '', closedCode: 0, attempts: 0, answered: [], fullAt: 0 });
+  Object.assign(remote, { status: 'off', code: null, phones: [], listed: false, features: [], welcomed: false, files: null, limits: null, cardsLate: [], error: '', closedCode: 0, attempts: 0, answered: [], fullAt: 0 });
 }
 
 /** Close a room this window isn't in (one an earlier page left open), without touching the one it is in. */
@@ -308,13 +314,19 @@ export function roomLink(code = remote.code): string {
   return code && remote.base ? joinUrl(remote.base, code) : '';
 }
 
-/** ⚙ Settings › Test: is a buzzer server answering there? */
+/** ⚙ Settings › Test: is a buzzer server answering there, and what card files does it take? */
 export async function testServer(base: string): Promise<string> {
   const url = serverAddress(base);
   if (!/^https?:\/\//.test(url)) return 'Type the server’s address, starting with https://';
   try {
     const res = await fetch(`${url}/api/health`);
-    return res.ok ? '✔ The buzzer server is answering' : `✘ It answered, but not as a buzzer server (${res.status})`;
+    if (!res.ok) return `✘ It answered, but not as a buzzer server (${res.status})`;
+    const said = healthFiles(await res.json().catch(() => null));
+    if (said) noteServerFiles(url, said);
+    if (said === 'off') return '✔ The buzzer server is answering (it takes no card files)';
+    if (said === 'old') return '✔ The buzzer server is answering (an older one: card files up to 16 MB)';
+    if (said) return `✔ The buzzer server is answering: card files up to ${mbText(said.files.fileBytes)} each, ${mbText(said.files.roomBytes)} a room`;
+    return '✔ The buzzer server is answering';
   } catch {
     return '✘ No answer from there';
   }

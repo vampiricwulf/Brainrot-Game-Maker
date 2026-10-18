@@ -1,7 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import type { HostCard, HostState, RoomToHost, RoomToPhone } from '../../src/lib/buzzproto';
-import { CARDS_BYTES, CARDS_MAX, clip, cleanName, FILE_MAX_BYTES, MAX_PHONES, OLD_FILE_LIMITS, ROOM_FILES_BYTES, ROOM_FILES_MAX } from '../../src/lib/buzzproto';
+import { CARDS_BYTES, CARDS_MAX, clip, cleanName, MAX_PHONES, OLD_FILE_LIMITS, ROOM_FILES_MAX } from '../../src/lib/buzzproto';
 import { FILE_IDLE_MS, FILE_MAKE_ROOM_MS } from './limits';
+
+/** The limits these tests run with (the room's caps). */
+const { fileBytes: FILE_BYTES, roomBytes: ROOM_BYTES } = OLD_FILE_LIMITS;
 import {
   cleanState,
   emptyRoom,
@@ -136,10 +139,11 @@ describe('host', () => {
     const g = setup();
     g.room.hostOpen();
     expect(g.host[0]).toEqual({ t: 'welcome', code: 'BCDF', protocol: 1, serverNow: 10_000, features: ['teams', 'wagers', 'free', 'color', 'answers', 'cards'] });
-    // 'files' only while the server takes card files (index.ts knows its setting and today's budget).
-    const f = setup();
+    // 'files' only while the server takes card files (index.ts knows its setting and today's budget), and with it the
+    // server's limits.
+    const f = setup(undefined, [], { fileBytes: 4 << 20, roomBytes: 12 << 20, roomFiles: 32 });
     f.room.hostOpen(true);
-    expect(f.host[0]).toMatchObject({ t: 'welcome', features: ['teams', 'wagers', 'free', 'color', 'answers', 'cards', 'files'] });
+    expect(f.host[0]).toMatchObject({ t: 'welcome', features: ['teams', 'wagers', 'free', 'color', 'answers', 'cards', 'files'], limits: { fileBytes: 4 << 20, roomBytes: 12 << 20, roomFiles: 32 } });
     g.send({ t: 'state', state: state({ title: 'New' }) });
     expect(g.room.saved.state?.title).toBe('New');
     g.send({ t: 'ping', at: 5 });
@@ -2569,19 +2573,19 @@ describe('card files', () => {
 
   it('the room’s caps: 32 files and 64 MB; the same file again is already here', () => {
     const g = sent();
-    expect(g.room.fileSpace(FILE_MAX_BYTES)).toEqual({ ok: true, drop: [] });
+    expect(g.room.fileSpace(FILE_BYTES)).toEqual({ ok: true, drop: [] });
     expect(g.room.fileHave(F1)).toBe(false);
-    add(g, F1, 'image/png', FILE_MAX_BYTES, 16);
+    add(g, F1, 'image/png', FILE_BYTES, 16);
     expect(g.room.fileHave(F1)).toBe(true);
-    for (let i = 1; i < ROOM_FILES_BYTES / FILE_MAX_BYTES; i++) add(g, String(i).repeat(64).slice(0, 64), 'video/mp4', FILE_MAX_BYTES, 16);
+    for (let i = 1; i < ROOM_BYTES / FILE_BYTES; i++) add(g, String(i).repeat(64).slice(0, 64), 'video/mp4', FILE_BYTES, 16);
     expect(g.room.fileSpace(1)).toBe('full');
     const h = sent();
     for (let i = 0; i < ROOM_FILES_MAX; i++) add(h, i.toString(16).padStart(64, '0'), 'image/png', 1000, 1);
     expect(h.room.fileSpace(1)).toBe('full');
     // Files still on their way count as here: uploads at the same time can't pass the caps together.
     const k = sent();
-    expect(k.room.fileSpace(FILE_MAX_BYTES, { files: ROOM_FILES_BYTES / FILE_MAX_BYTES - 1, bytes: ROOM_FILES_BYTES - FILE_MAX_BYTES })).toEqual({ ok: true, drop: [] });
-    expect(k.room.fileSpace(FILE_MAX_BYTES, { files: ROOM_FILES_BYTES / FILE_MAX_BYTES, bytes: ROOM_FILES_BYTES })).toBe('full');
+    expect(k.room.fileSpace(FILE_BYTES, { files: ROOM_BYTES / FILE_BYTES - 1, bytes: ROOM_BYTES - FILE_BYTES })).toEqual({ ok: true, drop: [] });
+    expect(k.room.fileSpace(FILE_BYTES, { files: ROOM_BYTES / FILE_BYTES, bytes: ROOM_BYTES })).toBe('full');
     expect(k.room.fileSpace(1, { files: ROOM_FILES_MAX, bytes: ROOM_FILES_MAX })).toBe('full');
     expect(h.hostLast('files')!.ids).toHaveLength(ROOM_FILES_MAX);
     // The server's own room cap.
@@ -2593,7 +2597,7 @@ describe('card files', () => {
   it('out of space: files no card has used for a minute make room, oldest first, once the new one is stored; never one a card uses or just stored', () => {
     const g = sent();
     const id = (i: number) => i.toString(16).padStart(64, '0');
-    const quarter = ROOM_FILES_BYTES / 4;
+    const quarter = ROOM_BYTES / 4;
     for (let i = 0; i < 4; i++) {
       add(g, id(i), 'video/mp4', quarter, 16);
       g.t.now += 1000;
