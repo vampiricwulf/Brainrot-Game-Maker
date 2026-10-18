@@ -78,7 +78,10 @@
   import FindDialog from './FindDialog.svelte';
   import ShrinkDialog from './ShrinkDialog.svelte';
   import JobPill from './JobPill.svelte';
-  import { openShrinkDialog, shrinkDialog } from '../lib/shrink/dialog.svelte';
+  import { mediaDialog, openMediaDialog, openShrinkDialog, shrinkDialog } from '../lib/shrink/dialog.svelte';
+  import ConvertDialog from './ConvertDialog.svelte';
+  import ConvertNotice from './ConvertNotice.svelte';
+  import { verdictOf } from '../lib/shrink/checks.svelte';
   import { stopAll } from '../lib/shrink/jobs.svelte';
   import { checkGame } from '../lib/shrink/checks.svelte';
   import { libraryMedia } from '../lib/phonecopies';
@@ -142,11 +145,13 @@
     untrack(() => {
       stopAll(id);
       if (shrinkDialog.open && !shrinkDialog.open.every((id) => game.media.some((m) => m.id === id))) shrinkDialog.open = null;
+      if (mediaDialog.open && !mediaDialog.open.ids.some((id) => game.media.some((m) => m.id === id))) mediaDialog.open = null;
     });
   });
   onDestroy(() => {
     stopAll(undefined, true);
     shrinkDialog.open = null;
+    mediaDialog.open = null;
   });
 
   // Where an undo or redo changed something: that tab (the parts inside it open the rest, see nav.svelte.ts).
@@ -937,11 +942,15 @@
       <UpdateControls release={latest} notice />
     </div>
   {/if}
+  <ConvertNotice onshow={() => (tab = 'media')} />
   {#if about}<AboutDialog onclose={() => (about = false)} />{/if}
   {#if shortcuts}<ShortcutsDialog onclose={() => (shortcuts = false)} />{/if}
   {#if finding}<FindDialog onclose={() => (finding = false)} />{/if}
   {#if shrinkDialog.open}
     {#key shrinkDialog.open}<ShrinkDialog ids={shrinkDialog.open} onclose={() => (shrinkDialog.open = null)} />{/key}
+  {/if}
+  {#if mediaDialog.open?.mode === 'convert'}
+    {#key mediaDialog.open}<ConvertDialog ids={mediaDialog.open.ids} onclose={() => (mediaDialog.open = null)} />{/key}
   {/if}
   {#if importFrom}<RoundImport source={importFrom} onclose={() => (importFrom = null)} onadded={showNew} />{/if}
   {#if settings}<SettingsDialog onclose={() => (settings = false)} />{/if}
@@ -1101,7 +1110,22 @@
         <div class="problems" class:warn={checklist.some((l) => l.level === 'warn')}>
           <div class="navlabel">Checklist</div>
           {#each checklist as line}
-            {#if line.shrink?.length}
+            {#if line.convert?.length}
+              <!-- (🔄 beside it, or ↻ for files phones can't open: never naming a file, as the line doesn't.) -->
+              {@const repack = line.convert.every((id) => (v => typeof v === 'object' && v.is === 'plays')(verdictOf(id)))}
+              <div class="problem-row">
+                <button class="problem {line.level}" onclick={() => goFix(line)} title={line.details.length > 1 ? line.details.join('\n') : undefined}>
+                  {line.level === 'warn' ? '⚠' : 'ℹ'} {line.text}
+                </button>
+                <button
+                  class="small ghost"
+                  data-checklist-convert
+                  onclick={() => openMediaDialog({ mode: 'convert', ids: line.convert! })}
+                  title={repack ? 'Repackage it so phones can open it (nothing lost)' : 'Convert them so they play in this browser'}
+                  aria-label={repack ? 'Repackage it so phones can open it' : 'Convert them so they play in this browser'}>{repack ? '↻' : '🔄'}</button
+                >
+              </div>
+            {:else if line.shrink?.length}
               <!-- (🗜 beside it: never naming the file, as the line doesn't.) -->
               <div class="problem-row">
                 <button class="problem {line.level}" onclick={() => goFix(line)} title={line.details.length > 1 ? line.details.join('\n') : undefined}>

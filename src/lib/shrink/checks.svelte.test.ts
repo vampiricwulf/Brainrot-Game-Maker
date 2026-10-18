@@ -2,11 +2,11 @@
 // (card-files spec §4.12.3). Reading a file and the page element are stood in for: they need a browser
 // (tests/e2e/convert.mjs reads real ones).
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { app } from '../app.svelte';
+import { app, toast } from '../app.svelte';
 import { registerBlob } from '../media.svelte';
 import type { MediaRef } from '../model';
 import { jeopardyGame } from '../testgame';
-import { checkGame, checks, checkSoon, knownVerdict, markChecked, verdictOf } from './checks.svelte';
+import { checkAdded, checkGame, checks, checkSoon, dismissOffer, knownVerdict, markChecked, verdictOf } from './checks.svelte';
 import { elementTest, readFacts, type MediaFacts } from './facts';
 
 const at = vi.hoisted(() => ({ reading: 0, most: 0 }));
@@ -29,6 +29,7 @@ vi.mock('./facts', async (orig) => ({
   // (The page element: it plays the picture, and the sound when it isn't AC-3.)
   elementTest: vi.fn(async (blob: Blob) => ({ opens: 'yes', picture: true, sound: new Uint8Array(await blob.arrayBuffer())[0] === 3 ? 'no' : 'yes' })),
 }));
+vi.mock('../app.svelte', async (orig) => ({ ...(await orig<typeof import('../app.svelte')>()), toast: vi.fn() }));
 vi.mock('./probe', async (orig) => ({
   ...(await orig<typeof import('./probe')>()),
   probe: async () => ({ ok: true, aac: false, opus: true }),
@@ -41,8 +42,15 @@ const ref = (id: string, kind: MediaRef['kind'] = 'video', more: Partial<MediaRe
 const settled = (ids: string[]) => vi.waitFor(() => expect(ids.map((id) => verdictOf(id)).includes('checking')).toBe(false), { timeout: 5000 });
 const is = (id: string) => (v => (typeof v === 'object' ? v.is : v))(verdictOf(id));
 
+/** What an element's canPlayType says (canPlay: today's warning, by type alone). */
+const cpt = vi.hoisted(() => ({ says: '' }));
+
 beforeEach(() => {
-  vi.stubGlobal('document', { hidden: false, addEventListener: () => {} });
+  vi.stubGlobal('document', { hidden: false, addEventListener: () => {}, createElement: () => ({ canPlayType: () => cpt.says }) });
+  cpt.says = '';
+  checks.offers.length = 0;
+  app.editGame = null;
+  app.playerOnly = false;
   vi.mocked(readFacts).mockClear();
   vi.mocked(elementTest).mockClear();
   at.most = 0;
@@ -109,5 +117,101 @@ describe('checking whether files play here', () => {
     markChecked(b, { is: 'plays', repack: null });
     checkGame(app.game);
     expect([is('made'), vi.mocked(readFacts).mock.calls.length]).toEqual(['plays', 0]);
+  });
+});
+
+describe('a file just added: 🔄 offered when it won’t play here', () => {
+  /** Toasts said (the app's own toast(), in order). */
+  const toasts = () => vi.mocked(toast).mock.calls.map((c) => c[0]);
+  beforeEach(() => vi.mocked(toast).mockClear());
+
+  it('in the editor, a stored video or sound is checked soon; one that won’t play (or plays silent) is offered, and a toast says so once', async () => {
+    app.game.media.push(ref('talk'), ref('song', 'audio'), ref('fine'));
+    registerBlob('talk', file(3));
+    registerBlob('song', file(9));
+    registerBlob('fine', file(1));
+    checkAdded(app.game.media.find((m) => m.id === 'talk')!);
+    checkAdded(app.game.media.find((m) => m.id === 'fine')!);
+    expect([is('talk'), is('fine'), toasts()]).toEqual(['checking', 'checking', []]);
+    await settled(['talk', 'fine']);
+    expect(checks.offers).toEqual(['talk']);
+    await vi.waitFor(() => expect(toasts()).toEqual(['⚠ A video you just added plays without its sound in this browser: see the note at the top.']));
+    dismissOffer('talk');
+    expect(checks.offers).toEqual([]);
+  });
+
+  it('several added together: one toast for them all', async () => {
+    app.game.media.push(ref('t1'), ref('t2'));
+    registerBlob('t1', new Blob([new Uint8Array([3, 1])]));
+    registerBlob('t2', new Blob([new Uint8Array([3, 2])]));
+    for (const id of ['t1', 't2']) checkAdded(app.game.media.find((m) => m.id === id)!);
+    await settled(['t1', 't2']);
+    await vi.waitFor(() => expect(toasts()).toEqual(['⚠ 2 files you just added won’t play in this browser: see the note at the top.']));
+    expect(checks.offers).toEqual(['t1', 't2']);
+  });
+
+  it('one dismissed before its toast isn’t counted; one added after it landed isn’t waited for', async () => {
+    app.game.media.push(ref('d1'), ref('d2'), ref('late'));
+    registerBlob('d1', new Blob([new Uint8Array([3, 4])]));
+    registerBlob('d2', new Blob([new Uint8Array([3, 5])]));
+    registerBlob('late', new Blob([new Uint8Array([3, 6])]));
+    checkAdded(app.game.media.find((m) => m.id === 'd1')!);
+    await settled(['d1']);
+    // (Dismissed at once, and another file added while its toast waits: it says nothing of the first.)
+    dismissOffer('d1');
+    checkAdded(app.game.media.find((m) => m.id === 'd2')!);
+    await settled(['d2']);
+    await vi.waitFor(() => expect(toasts()).toEqual(['⚠ A video you just added plays without its sound in this browser: see the note at the top.']));
+    expect(checks.offers).toEqual(['d2']);
+    // A file added after an offer landed: the offer's toast goes without it.
+    vi.mocked(toast).mockClear();
+    checkAdded(app.game.media.find((m) => m.id === 'late')!);
+    await settled(['late']);
+    await vi.waitFor(() => expect(toasts()).toHaveLength(1));
+  });
+
+  it('the same bytes as a file checked already: offered at once', async () => {
+    app.game.media.push(ref('again'));
+    const b = file(3);
+    registerBlob('again', b);
+    markChecked(b, { is: 'silent', fix: null, why: { kind: 'video', sound: 'ac3' } });
+    checkAdded(app.game.media[app.game.media.length - 1]);
+    expect(checks.offers).toEqual(['again']);
+    expect(vi.mocked(readFacts)).not.toHaveBeenCalled();
+  });
+
+  it('one the app can’t read: today’s toast, only when its type alone says it may not play', async () => {
+    app.game.media.push(ref('fake'), ref('fake2', 'video', { mime: 'video/webm', name: 'fake2.webm' }));
+    registerBlob('fake', file(7));
+    registerBlob('fake2', file(8));
+    checkAdded(app.game.media.find((m) => m.id === 'fake')!);
+    await settled(['fake']);
+    expect(toasts()).toEqual(['⚠ This browser may not play "fake.mkv" (video/x-matroska). Try converting it to MP4 (H.264) or MP3.']);
+    cpt.says = 'maybe';
+    checkAdded(app.game.media.find((m) => m.id === 'fake2')!);
+    await settled(['fake2']);
+    expect([toasts().length, checks.offers]).toEqual([1, []]);
+  });
+
+  it('never with a game opened from play, in play, or in a player-only file: today’s toast at once, nothing checked', () => {
+    const m = ref('x');
+    app.game.media.push(m);
+    registerBlob('x', file(3));
+    app.editGame = app.game;
+    checkAdded(m);
+    app.editGame = null;
+    app.screen = 'play';
+    checkAdded(m);
+    app.screen = 'editor';
+    app.playerOnly = true;
+    checkAdded(m);
+    // (A link, in the editor, too.)
+    app.playerOnly = false;
+    checkAdded(ref('web', 'video', { url: 'https://example.com/a.mkv' }));
+    expect(toasts()).toHaveLength(4);
+    expect([is('x'), checks.offers]).toEqual([undefined, []]);
+    // (Pictures say nothing.)
+    checkAdded(ref('pic', 'image', { mime: 'image/png' }));
+    expect(toasts()).toHaveLength(4);
   });
 });

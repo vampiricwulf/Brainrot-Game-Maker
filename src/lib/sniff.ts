@@ -87,13 +87,13 @@ const MIME_EXT: Record<string, string> = {
   'image/heic': 'heic', 'image/svg+xml': 'svg', 'video/mp4': 'mp4', 'video/webm': 'webm', 'video/quicktime': 'mov',
   'video/x-matroska': 'mkv', 'video/ogg': 'ogv', 'video/x-msvideo': 'avi', 'audio/mp4': 'm4a', 'audio/mpeg': 'mp3',
   'audio/aac': 'aac', 'audio/ogg': 'ogg', 'audio/wav': 'wav', 'audio/flac': 'flac', 'audio/webm': 'weba',
-  'audio/x-matroska': 'mka',
+  'audio/x-matroska': 'mka', 'video/mp2t': 'mts',
 };
 
 /** The media type a file name's extension stands for, or null. */
 export function mimeFromName(name: string): string | null {
   const ext = name.split('.').pop()?.toLowerCase() ?? '';
-  const alias: Record<string, string> = { jpeg: 'jpg', m4v: 'mp4', oga: 'ogg', opus: 'ogg' };
+  const alias: Record<string, string> = { jpeg: 'jpg', m4v: 'mp4', oga: 'ogg', opus: 'ogg', m2ts: 'mts' };
   const want = alias[ext] ?? ext;
   return Object.keys(MIME_EXT).find((m) => MIME_EXT[m] === want) ?? null;
 }
@@ -104,11 +104,25 @@ export function withExtension(name: string, mime: string): string {
   if (!ext) return name;
   const dot = name.lastIndexOf('.');
   const cur = dot > 0 ? name.slice(dot + 1).toLowerCase() : '';
-  const same = cur === ext || (ext === 'jpg' && cur === 'jpeg') || (ext === 'mp4' && cur === 'm4v') || (ext === 'ogg' && (cur === 'oga' || cur === 'opus'));
+  const same =
+    cur === ext || (ext === 'jpg' && cur === 'jpeg') || (ext === 'mp4' && cur === 'm4v') || (ext === 'ogg' && (cur === 'oga' || cur === 'opus')) || (ext === 'mts' && cur === 'm2ts');
   if (same) return name;
   // A known media extension that disagrees (e.g. ".png" on a JPEG) is replaced; anything else is kept.
-  const base = dot > 0 && /^(png|jpe?g|gif|webp|bmp|avif|svg|mp4|m4v|webm|mov|mkv|ogv|avi|mp3|m4a|aac|ogg|oga|opus|wav|flac|weba|mka|bin)$/.test(cur) ? name.slice(0, dot) : name;
+  const base = dot > 0 && MEDIA_EXT.test(cur) ? name.slice(0, dot) : name;
   return `${base}.${ext}`;
+}
+
+/** The extensions of picture, video and sound files (and a download's ".bin"). */
+const MEDIA_EXT = /^(png|jpe?g|gif|webp|bmp|avif|svg|mp4|m4v|webm|mov|mkv|ogv|avi|mts|m2ts|ts|mp3|m4a|aac|ogg|oga|opus|wav|flac|weba|mka|bin)$/;
+
+/**
+ * A converted file's name: its media extension replaced by its new type's ("Party.mts" → "Party.mp4"). A name with
+ * no media extension ("Intro") is kept as it is.
+ */
+export function swapExtension(name: string, mime: string): string {
+  const dot = name.lastIndexOf('.');
+  if (dot <= 0 || !MEDIA_EXT.test(name.slice(dot + 1).toLowerCase())) return name;
+  return withExtension(name, mime);
 }
 
 /** The file name from a Content-Disposition header (filename*=UTF-8''… wins over filename="…"). */

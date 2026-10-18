@@ -7,8 +7,8 @@
   import { attachBlobSwap, nameStep, step, stepAsync } from '../lib/history.svelte';
   import { flash } from '../lib/nav.svelte';
   import { uniqueMediaName } from '../lib/medianame';
-  import { hasFiles, notMedia, warnIfUnplayable } from '../lib/mediadrop';
-  import { allEmbeds, allSlides, mediaUsage } from '../lib/usage';
+  import { hasFiles, notMedia } from '../lib/mediadrop';
+  import { allCardSlides, allEmbeds, allSlides, mediaUsage, slideMediaIds } from '../lib/usage';
   import { redoEdits } from '../lib/reedit';
   import { recentMedia } from '../lib/recent';
   import { openMediaPopup } from '../lib/mediactl.svelte';
@@ -25,8 +25,10 @@
   import { jobFor, progressText, stopJob } from '../lib/shrink/jobs.svelte';
   import { clockTenths, SHRINK_OFFER_BYTES, typeWord } from '../lib/shrink/plan';
   import { fileLimitsNow } from '../lib/serverlimits.svelte';
-  import { verdictOf } from '../lib/shrink/checks.svelte';
-  import { whyLine } from '../lib/shrink/words';
+  import { checkAdded, verdictOf } from '../lib/shrink/checks.svelte';
+  import { aOrAn, fixBoxName, tracksOf, whyLine } from '../lib/shrink/words';
+  import { convertNow, typeName } from '../lib/shrink/apply';
+  import type { Job } from '../lib/shrink/jobs.svelte';
 
   const game = $derived(app.game);
   const usage = $derived(mediaUsage(game));
@@ -41,6 +43,13 @@
   const unused = $derived(files.filter((m) => !usage.get(m.id)));
   /** 🤫 cards' files that are big for phones and have no 🗜 copy yet: the header offers copies of them all at once. */
   const big = $derived(bigForPhones(game, fileLimitsNow().limits.fileBytes));
+  /** The files on 🤫 cards: one phones can't open that plays here gets ↻ (the same video and sound in a type they take). */
+  const onCards = $derived(new Set(allCardSlides(game).flatMap(({ slide }) => slideMediaIds(slide))));
+  /** What a file's job is doing, on its card. */
+  function jobText(j: Job): string {
+    if (j.kind === 'convert') return j.phase === 'waiting' ? '🔄 Waiting to convert it…' : `🔄 ${j.copying ? 'Repackaging' : 'Converting'}… ${progressText(j)}`;
+    return j.phase === 'waiting' ? '🗜 Waiting to make its copy for phones…' : `🗜 Making a smaller copy for phones… ${progressText(j)}`;
+  }
   /** 🗜 is offered on a file's card: a GIF, video or sound stored here, over 2 MB, that phones don't get from its link. */
   const offerShrink = (m: MediaRef): boolean => shrinkable(m) && !!mediaUrls[m.id] && m.size > SHRINK_OFFER_BYTES && !phonesGetLink(m);
   /** A copy's part of its file, when it holds only part ("0:12–0:45"). */
@@ -241,6 +250,9 @@
         // Pictures showing an edited copy of the old file get their edits again, on the new one.
         edited = await redoEdits(game, m.id);
       });
+      // (A video or sound: checked, and offered 🔄 Convert if it won't play here.)
+      const now = game.media.find((x) => x === m || x.id === m.id);
+      if (now) checkAdded(now);
       const n = edited.redone + edited.plain;
       const note = !n
         ? ''
@@ -272,7 +284,7 @@
     for (const f of files) {
       try {
         const ref = await addMediaFile(game, f);
-        warnIfUnplayable(ref);
+        checkAdded(ref);
         last = ref;
       } catch (e) {
         toast((e as Error).message);
@@ -484,7 +496,7 @@
         </div>
         {#if job}
           <div class="meta muted" data-job-line>
-            🗜 {job.phase === 'waiting' ? 'Waiting to make its copy for phones…' : `Making a smaller copy for phones… ${progressText(job)}`}
+            {jobText(job)}
             <button class="small ghost" onclick={() => stopJob(job.id)} title="Stop it: nothing is changed">Stop</button>
           </div>
         {/if}
@@ -528,11 +540,35 @@
           {#if !m.url && !mediaUrls[m.id]}
             <button class="small primary" onclick={() => replace(m)} title="Pick the file again (or another one) to fix every place it's used">🔗 Replace file…</button>
           {:else}
-            <button class="ghost small" onclick={() => replace(m)} disabled={!!job} title={job ? 'Wait for its copy for phones to be made (or Stop it)' : "Swap in another file; every place it's used follows"}
+            <button
+              class="ghost small"
+              onclick={() => replace(m)}
+              disabled={!!job}
+              title={job ? (job.kind === 'convert' ? 'Wait for it to be converted (or Stop it)' : 'Wait for its copy for phones to be made (or Stop it)') : "Swap in another file; every place it's used follows"}
               >Replace…</button
             >
           {/if}
-          {#if !copy && offerShrink(m)}
+          <!-- 🔄 one that won't play here (or plays without its sound); ↻ one on a 🤫 card that phones can't open. -->
+          {#if typeof v === 'object' && (v.is === 'fails' || v.is === 'silent') && v.fix}
+            <button
+              class="small {v.is === 'fails' ? 'primary' : 'ghost'}"
+              data-convert
+              onclick={() => convertNow(game, m.id)}
+              disabled={!!job}
+              title="Put a copy that plays here in its place, everywhere it's used (Ctrl+Z puts the old one back)">🔄 Convert…</button
+            >
+          {:else if typeof v === 'object' && v.is === 'plays' && v.repack && onCards.has(m.id)}
+            {@const to = fixBoxName(v.repack.box)}
+            <button
+              class="small ghost"
+              data-repack
+              onclick={() => convertNow(game, m.id)}
+              disabled={!!job}
+              title="Phones' 🤫 cards can't open {typeName(m) || 'these'} files: this puts the same {tracksOf(v.repack)} in {aOrAn(to)}, in seconds, with nothing lost. The show uses it too. Ctrl+Z puts the old one back."
+              >↻ Make it {aOrAn(to)}</button
+            >
+          {/if}
+          {#if !copy && offerShrink(m) && !(typeof v === 'object' && v.is === 'plays' && v.repack && !phonesTake(m))}
             {@const plays = phonesTake(m)}
             <button
               class="small {m.size > SLOW_FILE_BYTES || !plays ? 'primary' : 'ghost'}"

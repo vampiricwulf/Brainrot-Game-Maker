@@ -379,7 +379,9 @@ The main ones (press `?` during the game for all of them):
 - **⋯ → ⬇ Export as a web page…** (Export HTML) makes a single file to play the game from, without this app, with everything inside. It shows the answers, so keep
   it to yourself. A game over about 375 MB is too big for one HTML file (browsers can't read it back): save a
   `.brainrot` instead.
-- Add pictures, videos, sounds and fonts on the **🖼 Media** page: drop them there, or use **＋ Add files…**.
+- Add pictures, videos, sounds and fonts on the **🖼 Media** page: drop them there, or use **＋ Add files…**. A video or
+  sound this browser can't play is offered a fix as soon as it's added (🔄 Convert: repackaged in seconds with nothing
+  lost when only its file type is the problem, as with a camcorder's .mts or an MKV), and Ctrl+Z puts the old file back.
 - **⚙ Settings** (in the header's ⋯ menu, with Export as a web page, Export JSON, ⌨ Keyboard shortcuts and ℹ About) has these options:
   - **Reduce motion on stream** (the editor and host controls also follow your computer's reduce-motion setting).
   - **Undo**: how many changes Ctrl+Z and the 🕘 History tab remember (300 by default).
@@ -508,11 +510,11 @@ game in progress and media. Settings go in `%APPDATA%\com.brainrotgames.maker`. 
 
 ## Third-party code
 
-🗜 (smaller copies of 🤫 cards' files for phones) uses two libraries, bundled into the app as they are:
+🗜 (smaller copies of 🤫 cards' files for phones) and 🔄 Convert use two libraries, bundled into the app as they are:
 
 - [mediabunny](https://github.com/Vanilagy/mediabunny) 1.61.6, © 2026-present Vanilagy and contributors, under the
   Mozilla Public License 2.0 (its source is at github.com/Vanilagy/mediabunny): it reads videos and sounds, and writes
-  the copies, with the browser's own video and sound encoders (WebCodecs).
+  the copies and converted files, with the browser's own video and sound encoders (WebCodecs).
 - [omggif](https://github.com/deanm/omggif) 1.0.10, © 2013 Dean McNamee, under the MIT license: it reads a GIF's
   frames. Its license:
 

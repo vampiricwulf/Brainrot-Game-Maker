@@ -15,7 +15,10 @@
   import { copyCovers, copyNote, phoneCard, phoneCopyOf, playTimes, sendsOf, sizeWords, type LeftOut, type PhoneItem } from '../lib/phonecard';
   import { buzzerBase, remote, roomHasCards, roomHasFiles } from '../lib/remote.svelte';
   import { fileLimitsNow } from '../lib/serverlimits.svelte';
-  import { phonesTake, removePhoneCopy, shrinkable } from '../lib/shrink/apply';
+  import { phonesTake, queueConvert, removePhoneCopy, shrinkable } from '../lib/shrink/apply';
+  import { verdictOf } from '../lib/shrink/checks.svelte';
+  import { jobFor } from '../lib/shrink/jobs.svelte';
+  import { aOrAn, fixBoxName, tracksOf } from '../lib/shrink/words';
   import { openShrinkDialog } from '../lib/shrink/dialog.svelte';
   import { clockTenths, typeWord } from '../lib/shrink/plan';
   import { shrinkMaybe } from '../lib/shrink/probe';
@@ -62,6 +65,11 @@
   const canShrink = (it: PhoneItem): boolean => {
     const ref = refOf(it);
     return !!ref && shrinkMaybe() && shrinkable(ref) && !!mediaUrls[ref.id];
+  };
+  /** ↻ for an item's file phones can't open that plays here: the same video and sound in a type they take. */
+  const repackOf = (it: PhoneItem) => {
+    const v = it.media ? verdictOf(it.media) : undefined;
+    return typeof v === 'object' && v.is === 'plays' ? v.repack : null;
   };
   /** An item's 🗜 copy for phones, when it has one. */
   const copyOf = (it: PhoneItem) => {
@@ -176,7 +184,18 @@
 </aside>
 
 {#snippet shrinkButton(it: PhoneItem)}
-  {#if canShrink(it) && (it.slow || it.why === 'big')}
+  {@const repack = it.why === 'kind' && it.file ? repackOf(it) : null}
+  {#if repack}
+    <!-- (The same video and sound in a type phones open, for everyone: one file, so no copy is needed.) -->
+    {' '}<button
+      class="small"
+      data-repack
+      onclick={() => queueConvert(game, it.media!)}
+      disabled={!!jobFor(it.media!)}
+      title="Puts the same {tracksOf(repack)} in {aOrAn(fixBoxName(repack.box))}, which phones can play. The show uses it too; nothing is re-encoded, so nothing is lost. Ctrl+Z puts the old one back."
+      >{jobFor(it.media!) ? '↻ Repackaging…' : `↻ Repackage as ${fixBoxName(repack.box)} (for everyone, nothing lost)`}</button
+    >
+  {:else if canShrink(it) && (it.slow || it.why === 'big')}
     {' '}<button class="small" data-shrink onclick={() => openShrinkDialog(it.media!)}>🗜 Make a smaller copy for phones</button>
   {:else if canShrink(it) && it.why === 'kind' && it.file}
     {' '}<button class="small" data-shrink onclick={() => openShrinkDialog(it.media!)}>🗜 Make a copy phones can play</button>

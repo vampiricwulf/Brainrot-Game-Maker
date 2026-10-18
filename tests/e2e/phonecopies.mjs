@@ -4,12 +4,12 @@
 // another, the header's pill, and the toast at the end, none naming the file. Then videos and sounds (stage 6): 🖼
 // Media's "2 files are big for phones" makes both copies at once; a 4 s 720p WebM made at 480p, which plays and seeks,
 // then only the part its card plays (1 to 3 s); a WAV made an OGG (Opus), or an M4A (AAC) where the browser makes AAC;
-// a video phones can't play (a .mov) given a copy they can from the 📱 preview, which clears the checklist's line. One
-// made while a drag on a slide is held waits for it: a step of its own, after the drag's. ▶ Play asks first while one
-// is made. Then in play, with a buzzer server of our own (buzzer/ under `wrangler dev`, local): the card goes up as the
-// copy, the phone shows it looping, silent and without controls (with reduced motion, or on a phone that won't start it
-// by itself, still with "▶ Play"), and the audience window's copy of the game never lists it. Needs `npm ci` in
-// buzzer/.
+// a video phones can't play (a .mov with a WebM inside) repackaged as a WebM from the 📱 preview (↻, stage 6b.2), which
+// clears the checklist's line. One made while a drag on a slide is held waits for it: a step of its own, after the
+// drag's. ▶ Play asks first while one is made. Then in play, with a buzzer server of our own (buzzer/ under `wrangler
+// dev`, local): the card goes up as the copy, the phone shows it looping, silent and without controls (with reduced
+// motion, or on a phone that won't start it by itself, still with "▶ Play"), and the audience window's copy of the game
+// never lists it. Needs `npm ci` in buzzer/.
 import { chromium } from 'playwright-core';
 import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
@@ -441,26 +441,25 @@ try {
     `the copy is an ${aac ? 'M4A' : 'OGG'}, under a fifth of the WAV, that plays: ${sound.size} bytes, ${JSON.stringify(sound.meta)}`,
   );
 
-  // A .mov phones can't play.
-  const movLine = page.locator('nav .problem', { hasText: '🤫 Card “Mov” has a video phones can\'t play: make a copy they can play (🗜)' });
-  await movLine.waitFor();
+  // A .mov phones can't play: a WebM inside, so ↻ puts the same video in a WebM, for everyone, in its place (one file,
+  // no copy).
+  const movLine = page.locator('nav .problem', { hasText: '🤫 Card “Mov” has a video phones can\'t open: repackage it as a WebM (↻, nothing lost)' });
+  await movLine.waitFor({ timeout: 60_000 });
   const movPhone = await cardPreview('sc_mov');
   const kindNote = movPhone.locator('.notes li.warn', { hasText: 'phones can’t play this kind of video' });
-  await kindNote.getByRole('button', { name: '🗜 Make a copy phones can play' }).click();
-  await dialog.getByText('Phones can’t play this kind of file as it is: the copy is one they can.').waitFor();
-  await dialog.getByRole('radio', { name: /^Tiny · 320×240/ }).waitFor({ timeout: 60_000 });
-  await dialog.getByRole('button', { name: 'Make it', exact: true }).click();
-  await dialog.locator('[data-shrink-done]').waitFor({ timeout: 120_000 });
-  await close();
+  await kindNote.getByRole('button', { name: '↻ Repackage as WebM (for everyone, nothing lost)' }).click();
   await kindNote.waitFor({ state: 'detached' });
   await movLine.waitFor({ state: 'detached' });
-  const movNote = (await movPhone.locator('[data-copy-note]').innerText()).replace(/\s+/g, ' ');
-  assert(movNote.startsWith('📱 Phones get a copy they can play instead (') && movNote.includes(`320×240 ${gifBox.word}`), `🗜 Make a copy phones can play: the 📱 preview’s note and the checklist’s line are gone (${movNote})`);
-  const toasts6 = await page.evaluate(() => (window.__seen ?? []).filter((t) => /^(🗜|Stopped)/.test(t)));
+  assert(!(await movPhone.locator('[data-copy-note]').count()), '↻ Repackage as WebM: the 📱 preview’s note and the checklist’s line are gone, and no copy is made');
+  await media();
+  const movRef = page.locator('.card', { has: page.locator('button.nm', { hasText: 'clip-zfnqj.webm' }) });
+  await movRef.waitFor();
+  assert(!(await movRef.locator('[data-phone-copy]').count()), 'the file itself is clip-zfnqj.webm now');
+  const toasts6 = await page.evaluate(() => (window.__seen ?? []).filter((t) => /^(🗜|↻|Stopped)/.test(t)));
   assert(toasts6.length >= 3 && !toasts6.some((t) => t.includes('zfnqj')), `no toast names a file (${toasts6.join(' | ')})`);
   await page.locator('nav > button', { hasText: '🕘 History' }).click();
-  const rows6 = (await page.locator('main').innerText()).split('\n').filter((t) => /copy of a (video|sound)/.test(t));
-  assert(rows6.length >= 4 && !rows6.some((t) => t.includes('zfnqj')) && rows6.some((t) => t.includes('Made a copy of a video that phones can play')), `nor does History (${rows6.join(' | ')})`);
+  const rows6 = (await page.locator('main').innerText()).split('\n').filter((t) => /copy of a (video|sound)|^Repackaged/.test(t));
+  assert(rows6.length >= 4 && !rows6.some((t) => t.includes('zfnqj')) && rows6.some((t) => t.includes('Repackaged a video as WebM (nothing lost)')), `nor does History (${rows6.join(' | ')})`);
   await media();
   await cdp.send('Emulation.setCPUThrottlingRate', { rate: 4 });
 

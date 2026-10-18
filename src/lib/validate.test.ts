@@ -540,6 +540,23 @@ describe('🤫 Cards (the editor’s tab)', () => {
     vi.unstubAllGlobals();
   });
 
+  it('one phones can’t open that plays here, the same video and sound fitting a type they take: ↻, with the file to repackage', () => {
+    vi.stubGlobal('document', { createElement: () => ({ canPlayType: () => 'maybe' }) });
+    const game = jeopardyGame();
+    game.media.push({ id: 'mkv', name: 'zfnqj.mkv', mime: 'video/x-matroska', size: 5000, kind: 'video' });
+    game.cards = [card('sc1', 'Tip', newTextEl('A secret'), { ...newVideoEl('mkv'), y: 30 })];
+    const canShrink = (m: { kind: string }) => m.kind === 'video';
+    const plays = (): Verdict => ({ is: 'plays', repack: { video: 'keep', audio: 'keep', box: 'webm' } });
+    const lines = validate(game, { canShrink, plays }).filter((p) => p.tab === 'cards');
+    expect(lines.map((p) => [p.level, p.text, p.shrink, p.convert])).toEqual([
+      ['warn', "🤫 Card “Tip” has a video phones can't open: repackage it as a WebM (↻, nothing lost), or add it as MP4, WebM, MP3, OGG, WAV or M4A, or from a link", undefined, ['mkv']],
+    ]);
+    // Not worked out yet, or nothing to repackage it as: 🗜, as before.
+    expect(validate(game, { canShrink }).filter((p) => p.tab === 'cards').map((p) => [p.shrink, p.convert])).toEqual([['mkv', undefined]]);
+    expect(validate(game, { canShrink, plays: () => ({ is: 'plays', repack: null }) }).filter((p) => p.tab === 'cards').map((p) => p.shrink)).toEqual(['mkv']);
+    vi.unstubAllGlobals();
+  });
+
   it('notes a name that repeats what’s on the card: its words, its phone title or a file’s name (at least 3 letters)', () => {
     const game = jeopardyGame();
     game.media.push({ id: 'pic', name: 'spoon.png', mime: 'image/png', size: 10, kind: 'image' });
@@ -597,13 +614,19 @@ describe('videos and sounds this browser won’t play', () => {
       e: { is: 'unknown' },
     };
     expect(playLines(game, (m) => said[m.id])).toEqual([
-      ['warn', 'media', '2 video/audio files won’t play in this browser: 🖼 Media says why'],
+      // (c can be converted, a can't.)
+      ['warn', 'media', '1 video/audio file won’t play in this browser: 🔄 Convert it in 🖼 Media'],
+      ['warn', 'media', '1 video/audio file won’t play in this browser, and it can’t convert it: 🖼 Media says why'],
       ['warn', 'media', '1 video plays without its sound in this browser (🖼 Media says why)'],
       // (e: the app can't read it; f and g: not worked out yet.)
       ['warn', 'media', '3 video/audio files this browser may not play'],
     ]);
+    // The one 🔄 can fix is the line's to convert (its button opens 🔄 Convert with it).
+    expect(validate(game, { plays: (m) => said[m.id] }).find((p) => p.text.includes('🔄'))?.convert).toEqual(['c']);
     said.f = { ...said.b };
-    expect(playLines(game, (m) => said[m.id])[1]).toEqual(['warn', 'media', '2 videos play without their sound in this browser (🖼 Media says why)']);
+    said.g = { ...said.c };
+    expect(playLines(game, (m) => said[m.id])[0]).toEqual(['warn', 'media', '2 video/audio files won’t play in this browser: 🔄 Convert them in 🖼 Media']);
+    expect(playLines(game, (m) => said[m.id])[2]).toEqual(['warn', 'media', '2 videos play without their sound in this browser (🖼 Media says why)']);
     // With none worked out, as before.
     expect(playLines(game)).toEqual([['warn', 'media', '7 video/audio files this browser may not play']]);
     vi.unstubAllGlobals();

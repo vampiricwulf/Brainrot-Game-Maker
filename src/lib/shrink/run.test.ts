@@ -1,11 +1,12 @@
 // Making one file from another (card-files spec §4.13.3), in Node: a WAV's sound copied as it is into an M4A needs no
 // encoder, so convertBlob's trimming, progress, Stop and refusals are checked here, and readFacts and checkMade with
-// it. Making videos (WebCodecs) is checked in the test browser (tests/e2e/phonecopies.mjs).
+// it, and 🔄's repackaging (an MKV into a WebM, an MPEG-TS's MP3 into an MP4: tracks copied as they are). Making
+// videos (WebCodecs) is checked in the test browser (tests/e2e/phonecopies.mjs, convert.mjs).
 import { BufferTarget } from 'mediabunny';
 import { describe, expect, it } from 'vitest';
 import { readFacts } from './facts';
 import { checkMade, convertBlob, discardReason, RunError, type RunPlan } from './run';
-import { mux } from './testclip';
+import { mux, muxTs } from './testclip';
 
 /** A WAV of `seconds` of a tone: 16-bit, 8 kHz, `channels` of them. */
 function wav(seconds: number, channels = 1): Blob {
@@ -111,5 +112,49 @@ describe('checkMade', () => {
     expect(await checkMade(made, { seconds: 3, width: 64, height: 36, sound: false }, shows)).toBeNull();
     expect(await checkMade(made, { seconds: 3, width: 64, height: 36, sound: true }, shows)).toMatch(/no sound/);
     expect(await checkMade(made, { seconds: 3, width: 64, height: 36, sound: false }, async () => ({ opens: true, picture: false }))).toMatch(/no picture here/);
+  });
+});
+
+describe('🔄 repackaging: the tracks copied as they are, nothing decoded', () => {
+  const FORCED = { mode: 'forced', shiftTolerance: 0.1 } as const;
+  const made = async (fill: (t: BufferTarget) => Promise<void>, type: string) => {
+    const t = new BufferTarget();
+    await fill(t);
+    return new Blob([t.buffer!], { type });
+  };
+
+  it('an MKV of VP9 and Opus into a WebM', async () => {
+    const mkv = await made((t) => mux('mkv', t, true), 'video/x-matroska');
+    expect(await readFacts(mkv)).toMatchObject({ box: 'mkv', video: { codec: 'vp9' }, audio: { codec: 'opus' } });
+    const out = await convertBlob(mkv, { box: 'webm', copy: FORCED }, 'video/webm', ctl().ctl);
+    expect(out).toMatchObject({ mime: 'video/webm', width: 64, height: 36 });
+    expect(await readFacts(out.blob)).toMatchObject({ box: 'webm', video: { codec: 'vp9', width: 64, height: 36 }, audio: { codec: 'opus' } });
+    // Without its sound: the picture alone.
+    const silent = await convertBlob(mkv, { box: 'webm', audio: { discard: true }, copy: FORCED }, 'video/webm', ctl().ctl);
+    expect(await readFacts(silent.blob)).toMatchObject({ box: 'webm', video: { codec: 'vp9' }, audio: null });
+  });
+
+  it('the MP3 of an MPEG-TS into an MP4, and into an MP3', async () => {
+    const ts = await made((t) => muxTs(t, 2), 'video/mp2t');
+    expect(await readFacts(ts)).toMatchObject({ box: 'ts', video: null, audio: { codec: 'mp3' } });
+    const mp4 = await convertBlob(ts, { box: 'mp4', copy: FORCED }, 'video/mp4', ctl().ctl);
+    expect(await readFacts(mp4.blob)).toMatchObject({ box: 'mp4', audio: { codec: 'mp3' } });
+    expect(Math.abs(mp4.seconds! - 2)).toBeLessThan(0.1);
+    const mp3 = await convertBlob(ts, { box: 'mp3', copy: FORCED }, 'audio/mpeg', ctl().ctl);
+    expect(await readFacts(mp3.blob)).toMatchObject({ box: 'mp3', audio: { codec: 'mp3' } });
+  });
+
+  it('a track that can’t go in the file type as it is: “it couldn’t be repackaged” (cannot-copy), never made again', async () => {
+    const ts = await made((t) => muxTs(t, 1), 'video/mp2t');
+    const e = await convertBlob(ts, { box: 'ogg', copy: FORCED }, 'audio/ogg', ctl().ctl).catch((x) => x);
+    expect(e).toBeInstanceOf(RunError);
+    expect(e.reason).toBe('cannot-copy');
+  });
+
+  it('stops when asked, with an AbortError', async () => {
+    const stop = new AbortController();
+    stop.abort();
+    const mkv = await made((t) => mux('mkv', t, true), 'video/x-matroska');
+    await expect(convertBlob(mkv, { box: 'webm', copy: FORCED }, 'video/webm', ctl(stop.signal).ctl)).rejects.toMatchObject({ name: 'AbortError' });
   });
 });

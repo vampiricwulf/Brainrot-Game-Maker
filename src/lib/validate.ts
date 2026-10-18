@@ -45,6 +45,7 @@ import { statsProblems } from './toolset';
 import { actionProblem, objectsWhere } from './refs';
 import { dealSetupProblems, partName } from './deals';
 import type { Verdict } from './shrink/playable';
+import { aOrAn, fixBoxName } from './shrink/words';
 
 export interface Problem {
   text: string;
@@ -60,6 +61,8 @@ export interface Problem {
   player?: string;
   /** 🗜: the file to make a smaller copy of for phones (the editor's checklist line gets a button for it). */
   shrink?: Id;
+  /** 🔄: the files to convert, so they play here (or ↻: so phones can open them); the editor's line gets a button. */
+  convert?: Id[];
 }
 
 /** "1 clue", "3 clues" ("category" → "categories"). */
@@ -122,16 +125,16 @@ export interface CardRoom {
   stored?: (id: Id) => boolean;
   gifs?: boolean;
   canShrink?: (ref: MediaRef) => boolean;
-}
-
-/**
- * What validate goes by: the buzzer server in use (CardRoom), and `plays`: whether a stored video or sound plays in
- * this browser, as worked out from what's inside it (checks.svelte.ts verdictOf; undefined: not yet, and its type
- * says).
- */
-export interface Checking extends CardRoom {
+  /**
+   * Whether a stored video or sound plays in this browser, as worked out from what's inside it (checks.svelte.ts
+   * knownVerdict; undefined: not yet, and its type says). A file phones can't open that ↻ can repackage gets
+   * Problem.convert.
+   */
   plays?: (m: MediaRef) => Verdict | undefined;
 }
+
+/** What validate goes by: the buzzer server in use, and whether files play here (CardRoom). */
+export type Checking = CardRoom;
 
 /** The checklist's problems for `game`, as the buzzer server in use (`room`) would have them. */
 export function validate(game: Game, room: Checking = {}): Problem[] {
@@ -330,17 +333,23 @@ export function validate(game: Game, room: Checking = {}): Problem[] {
   // Videos and sounds this browser won't play, or plays without their sound: as worked out from what's inside them
   // (`room.plays`), else as their type says. (A live link already played when it was added; its type is often unknown
   // from the address.)
+  // (🔄 Convert can fix some: the line says so and gets a button; for the others, 🖼 Media says why.)
+  const convert: Id[] = [];
   let fails = 0;
   let silent = 0;
   let unsure = 0;
   for (const m of game.media) {
     if (m.url || m.phoneCopy || (m.kind !== 'video' && m.kind !== 'audio')) continue;
     const v = room.plays?.(m);
-    if (v?.is === 'fails') fails++;
+    if (v?.is === 'fails' && v.fix) convert.push(m.id);
+    else if (v?.is === 'fails') fails++;
     else if (v?.is === 'silent') silent++;
     else if ((!v || v.is === 'unknown') && !canPlay(m.mime)) unsure++;
   }
-  if (fails) out.push({ text: `${plural(fails, 'video/audio file')} won’t play in this browser: 🖼 Media says why`, tab: 'media', level: 'warn' });
+  const them = (n: number) => (n === 1 ? 'it' : 'them');
+  if (convert.length)
+    out.push({ text: `${plural(convert.length, 'video/audio file')} won’t play in this browser: 🔄 Convert ${them(convert.length)} in 🖼 Media`, tab: 'media', level: 'warn', convert });
+  if (fails) out.push({ text: `${plural(fails, 'video/audio file')} won’t play in this browser, and it can’t convert ${them(fails)}: 🖼 Media says why`, tab: 'media', level: 'warn' });
   if (silent)
     out.push({ text: `${plural(silent, 'video')} play${silent === 1 ? 's' : ''} without ${silent === 1 ? 'its' : 'their'} sound in this browser (🖼 Media says why)`, tab: 'media', level: 'warn' });
   if (unsure) out.push({ text: `${plural(unsure, 'video/audio file')} this browser may not play`, tab: 'media', level: 'warn' });
@@ -457,6 +466,8 @@ interface CardFileProblem {
   player?: string;
   /** 🗜: the file a smaller copy for phones would help (Problem.shrink). */
   shrink?: Id;
+  /** ↻: the file to repackage for phones (Problem.convert). */
+  convert?: Id[];
 }
 
 /**
@@ -490,7 +501,11 @@ function cardFileProblems(game: Game, card: Slide, room: CardRoom): CardFileProb
       });
     } else if (it.why === 'kind' && it.file) {
       const types = 'add it as MP4, WebM, MP3, OGG, WAV or M4A, or from a link';
-      out.push({ text: `a ${KIND[it.kind]} phones can't play: ${shrink.shrink ? `make a copy they can play (🗜), or ${types}` : types}`, level: 'warn', ...shrink });
+      // (The same video and sound in a type phones open, nothing lost: one file, so no copy is needed.)
+      const v = ref ? room.plays?.(ref) : undefined;
+      const repack = v?.is === 'plays' ? v.repack : null;
+      if (ref && repack) out.push({ text: `a ${KIND[it.kind]} phones can't open: repackage it as ${aOrAn(fixBoxName(repack.box))} (↻, nothing lost), or ${types}`, level: 'warn', convert: [ref.id] });
+      else out.push({ text: `a ${KIND[it.kind]} phones can't play: ${shrink.shrink ? `make a copy they can play (🗜), or ${types}` : types}`, level: 'warn', ...shrink });
     }
     else if (it.why === 'nofiles') warn(`a ${KIND[it.kind]} that's a file on this computer, and this buzzer server isn't taking files: phones get the words and links only (📋 Copy picture)`);
     else if (it.slow) out.push({ text: `a ${KIND[it.kind]} of ${size}: phones on mobile data may wait a while for it (WiFi is fine)`, level: 'info', ...shrink });
@@ -508,7 +523,15 @@ function cardLines(game: Game, cards: Slide[], says: string, tab: Problem['tab']
   return cards
     .flatMap((c) => cardFileProblems(game, c, room))
     .filter((p) => !seen.has(p.text) && !!seen.add(p.text))
-    .map((p) => ({ text: `${says} has ${p.text}`, tab, level: p.level, place, ...(p.player ? { player: `${says} has ${p.player}` } : {}), ...(p.shrink ? { shrink: p.shrink } : {}) }));
+    .map((p) => ({
+      text: `${says} has ${p.text}`,
+      tab,
+      level: p.level,
+      place,
+      ...(p.player ? { player: `${says} has ${p.player}` } : {}),
+      ...(p.shrink ? { shrink: p.shrink } : {}),
+      ...(p.convert ? { convert: p.convert } : {}),
+    }));
 }
 
 /**

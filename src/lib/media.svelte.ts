@@ -12,7 +12,7 @@ import { askToKeepStorage, loadPlay, playFileKey, unstored, write } from './pers
 import { recentMedia } from './recent';
 import { imageFallback, isLinkProblem, isWebUrl, linkMessages, nameFromUrl, parseMediaLink, type LinkKind, type MediaLink } from './links';
 import { DownloadError, downloadDrive, downloadFirst, isAbort, LinkError, probeLink, type Downloaded, type DownloadJob } from './download';
-import { kindOfMime, mimeFromName, soundTwin } from './sniff';
+import { kindOfMime, mimeFromName, soundTwin, swapExtension } from './sniff';
 import { inTauri } from './platform';
 import { toast } from './app.svelte';
 
@@ -217,7 +217,7 @@ export async function pruneMedia(games: (Game | null | undefined)[], held: Reado
 
 const EXT_KIND: Record<string, MediaKind> = {
   png: 'image', jpg: 'image', jpeg: 'image', gif: 'image', webp: 'image', svg: 'image', avif: 'image', bmp: 'image',
-  mp4: 'video', webm: 'video', mov: 'video', mkv: 'video', ogv: 'video', m4v: 'video',
+  mp4: 'video', webm: 'video', mov: 'video', mkv: 'video', ogv: 'video', m4v: 'video', mts: 'video', m2ts: 'video',
   mp3: 'audio', wav: 'audio', ogg: 'audio', oga: 'audio', m4a: 'audio', aac: 'audio', flac: 'audio', opus: 'audio',
   weba: 'audio', mka: 'audio', ttf: 'font', otf: 'font', woff: 'font', woff2: 'font',
 };
@@ -225,7 +225,7 @@ const EXT_KIND: Record<string, MediaKind> = {
 const EXT_MIME: Record<string, string> = {
   png: 'image/png', jpg: 'image/jpeg', jpeg: 'image/jpeg', gif: 'image/gif', webp: 'image/webp', svg: 'image/svg+xml',
   avif: 'image/avif', bmp: 'image/bmp', mp4: 'video/mp4', webm: 'video/webm', mov: 'video/quicktime',
-  mkv: 'video/x-matroska', ogv: 'video/ogg', m4v: 'video/mp4', mp3: 'audio/mpeg', wav: 'audio/wav', ogg: 'audio/ogg',
+  mkv: 'video/x-matroska', ogv: 'video/ogg', m4v: 'video/mp4', mts: 'video/mp2t', m2ts: 'video/mp2t', mp3: 'audio/mpeg', wav: 'audio/wav', ogg: 'audio/ogg',
   oga: 'audio/ogg', m4a: 'audio/mp4', aac: 'audio/aac', flac: 'audio/flac', opus: 'audio/opus', weba: 'audio/webm',
   mka: 'audio/x-matroska', ttf: 'font/ttf', otf: 'font/otf', woff: 'font/woff', woff2: 'font/woff2',
 };
@@ -242,7 +242,11 @@ export function mediaKind(name: string, mime: string): MediaKind | null {
 }
 
 export function mimeFor(name: string, mime?: string): string {
-  return mime || EXT_MIME[extOf(name)] || 'application/octet-stream';
+  const ext = extOf(name);
+  // (A camcorder's .mts can come as "model/vnd.mts" or "video/vnd.dlna.mpeg-tts": a video or sound file's name says.)
+  const av = EXT_KIND[ext] === 'video' || EXT_KIND[ext] === 'audio';
+  if (mime && av && !/^(video|audio)\//.test(mime)) return EXT_MIME[ext];
+  return mime || EXT_MIME[ext] || 'application/octet-stream';
 }
 
 /** HEIC photos (the iPhone's format): no browser, nor the desktop app, can show them. */
@@ -263,10 +267,11 @@ async function checkedFile(file: Blob, name: string): Promise<{ mime: string; ki
 
 export const ACCEPT = {
   image: 'image/*,.svg,.avif',
-  video: 'video/*,.mkv,.mov',
+  // (A camcorder's .mts and .m2ts; not .ts, which is also a TypeScript file.)
+  video: 'video/*,.mkv,.mov,.mts,.m2ts',
   audio: 'audio/*,.flac,.opus,.m4a,.weba,.mka',
   font: '.ttf,.otf,.woff,.woff2',
-  any: 'image/*,video/*,audio/*,.mkv,.mov,.flac,.opus,.m4a,.weba,.mka',
+  any: 'image/*,video/*,audio/*,.mkv,.mov,.mts,.m2ts,.flac,.opus,.m4a,.weba,.mka',
 };
 
 /** A file's SHA-256 (hex), worked out once per stored blob. */
@@ -543,6 +548,40 @@ export function dropPhoneCopies(game: Game, id: string): number {
 }
 
 /**
+ * Inside a step: every use of file `from` in this game (the ref's own id too) moves to stored bytes `to`, of type
+ * `made.mime` and `made.size` bytes: a converted or edited file in the old one's place. It's a stored file now (not a
+ * link), and its 🗜 copy for phones goes: it was made from the old bytes. Undo moves them all back. Returns the ref.
+ */
+export function moveToFile(game: Game, from: string, to: string, made: { mime: string; size: number }): MediaRef {
+  const ref = game.media.find((m) => m.id === from);
+  if (!ref) throw new Error('That file is no longer in the game.');
+  // (Before the uses move: moving them would point the copy at the new file.)
+  dropPhoneCopies(game, from);
+  moveMediaRefs(game, from, to, ref.kind === 'font');
+  ref.mime = made.mime;
+  ref.size = made.size;
+  delete ref.url;
+  delete ref.expiresAt;
+  delete ref.source;
+  return ref;
+}
+
+/**
+ * A converted file's name: its extension follows its new type ("Party.mts" → "Party.mp4"), only when it has a media
+ * extension ("Intro" stays "Intro"), kept unique in the game. Its own file name (`file`, kept when it was renamed)
+ * likewise.
+ */
+export function renameForType(game: Game, ref: MediaRef, mime: string): void {
+  const name = swapExtension(ref.name, mime);
+  if (name !== ref.name) ref.name = uniqueMediaName(game.media.filter((m) => m !== ref).map((m) => m.name), name);
+  if (ref.file !== undefined) ref.file = swapExtension(ref.file, mime);
+  if (ref.file === ref.name) delete ref.file;
+}
+
+/** Forget stored bytes nothing uses (made, but not put in the game after all). */
+export const dropStoredMedia = (id: string): Promise<void> => restoreStash(id, null);
+
+/**
  * Put a new file in place of a game file (one that went missing, or one to swap), keeping its id so
  * every tile, slide and sound that uses it is fixed at once. The new file must be the same kind. It takes the new
  * file's name, unless `keepName` (a missing file found again under its own name). With `copy` (another game kept here
@@ -556,20 +595,21 @@ export async function replaceMediaFile(game: Game, id: string, file: File, keepN
   if (kind !== ref.kind) throw new Error(`"${file.name}" is ${KIND_WORD[kind]}, but "${ref.name}" is ${KIND_WORD[ref.kind]}. Pick ${KIND_WORD[ref.kind]}.`);
   const to = copy ? newId() : id;
   await putMedia(to, blob.type ? blob : new Blob([blob], { type: mime }));
-  // (Before the uses move: moving them would point the copy at the new file.)
-  dropPhoneCopies(game, id);
-  // (The file's own id too.)
-  if (to !== id) moveMediaRefs(game, id, to, ref.kind === 'font');
+  // Its uses move to the new id (the file's own id too), and its phone copy goes; or, the same id, the copy goes.
+  // It's a stored file now, not a link.
+  if (to !== id) moveToFile(game, id, to, { mime, size: blob.size });
+  else {
+    dropPhoneCopies(game, id);
+    ref.mime = mime;
+    ref.size = blob.size;
+    delete ref.url;
+    delete ref.expiresAt;
+    delete ref.source;
+  }
   // A file the user renamed keeps the name they gave it (the new file's name is its own name now).
   if (ref.file !== undefined) ref.file = file.name;
   else if (!keepName) ref.name = uniqueMediaName(game.media.filter((m) => m.id !== to).map((m) => m.name), file.name);
   if (ref.file === ref.name) delete ref.file;
-  ref.mime = mime;
-  ref.size = blob.size;
-  // It's a stored file now, not a link.
-  delete ref.url;
-  delete ref.expiresAt;
-  delete ref.source;
   return ref;
 }
 

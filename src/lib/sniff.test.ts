@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { jeopardyGame } from './testgame';
-import { fileMime, filenameFromDisposition, looksLikeHtml, mimeFromName, readDrivePage, sniffMime, soundTwin, withExtension } from './sniff';
+import { fileMime, filenameFromDisposition, looksLikeHtml, mimeFromName, readDrivePage, sniffMime, soundTwin, swapExtension, withExtension } from './sniff';
 import { migrateGame, newAudioEl, newEmbedEl, newImageEl, type BoardRound, type Game } from './model';
 
 const board = (g: Game, i: number = 0) => g.rounds[i] as BoardRound;
@@ -123,6 +123,23 @@ describe('file names', () => {
     expect(mimeFromName('a.MP3')).toBe('audio/mpeg');
     expect(mimeFromName('a.jpeg')).toBe('image/jpeg');
     expect(mimeFromName('noext')).toBeNull();
+    // A camcorder's MPEG-TS.
+    expect([mimeFromName('Party.mts'), mimeFromName('Party.M2TS'), withExtension('Party.m2ts', 'video/mp2t'), withExtension('Party.mts', 'video/mp4')]).toEqual([
+      'video/mp2t',
+      'video/mp2t',
+      'Party.m2ts',
+      'Party.mp4',
+    ]);
+  });
+
+  it('a converted file’s name: its media extension follows its new type; any other name is kept', () => {
+    expect(swapExtension('Party.mts', 'video/mp4')).toBe('Party.mp4');
+    expect(swapExtension('clip.ts', 'video/mp4')).toBe('clip.mp4');
+    expect(swapExtension('talk.mkv', 'video/webm')).toBe('talk.webm');
+    expect(swapExtension('song.mka', 'audio/ogg')).toBe('song.ogg');
+    expect(swapExtension('Intro', 'video/mp4')).toBe('Intro');
+    expect(swapExtension('v1.2 final', 'video/mp4')).toBe('v1.2 final');
+    expect(swapExtension('clip.webm', 'video/webm')).toBe('clip.webm');
   });
 });
 

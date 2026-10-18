@@ -2,7 +2,8 @@
 // a video's sizes and their estimates, the part the cards play, and how a video's and a sound's copies are made.
 import { describe, expect, it } from 'vitest';
 import { SLOW_FILE_BYTES } from '../buzzproto';
-import type { MediaFacts } from './facts';
+import type { MediaFacts, TrackFacts } from './facts';
+import { verdict } from './playable';
 import {
   avDefault,
   CANT_MAKE_SOUND,
@@ -38,8 +39,11 @@ import {
   videoOptions,
   type AvRead,
   type CopyPlan,
+  planConvert,
+  videoBitrate,
+  convertLabel,
 } from './plan';
-import { NO_WEBCODECS, type Can } from './probe';
+import { NO_WEBCODECS, type Can, type Encoders } from './probe';
 
 const ALL = { avc: true, vp9: true, vp8: true };
 const WEBM = { avc: false, vp9: true, vp8: true };
@@ -386,5 +390,113 @@ describe('avDefault: a file’s copy as made unasked (several at once)', () => {
     expect(ok(avDefault(r, 90 * MiB))).toMatchObject({ range: { from: 10, to: 20 }, out: { seconds: 10, width: 1280, height: 720 } });
     expect(ok(avDefault({ ...r, span: { ...r.span!, ticked: false } }, 90 * MiB))).toMatchObject({ range: null, out: { width: 854 } });
     expect(ok(avDefault({ ...r, kind: 'audio', facts: sound(60, 10 * MiB) }, 90 * MiB))).toMatchObject({ mime: 'audio/mp4', range: { from: 10, to: 20 } });
+  });
+});
+
+// ---------- 🔄 Convert (card-files spec §4.12.6) ----------
+describe('how 🔄 Convert makes a file that plays here', () => {
+  const t = (codec: string, o: Partial<TrackFacts> = {}): TrackFacts => ({ codec, str: codec, decodes: true, bps: 200_000, cpt: true, ...o });
+  const pic = (codec: string, o: Partial<TrackFacts> = {}) => ({ ...t(codec, o), width: 1280, height: 720, rotation: 0 as const, hdr: false });
+  const snd = (codec: string, o: Partial<TrackFacts> & { channels?: number } = {}) => ({ ...t(codec, o), channels: o.channels ?? 2, label: null });
+  const facts = (box: MediaFacts['box'], video: MediaFacts['video'], audio: MediaFacts['audio'], o: Partial<MediaFacts> = {}): MediaFacts => ({
+    box,
+    seconds: 10,
+    size: 1_000_000,
+    video,
+    audio,
+    moreAudio: 0,
+    subtitles: false,
+    ...o,
+  });
+  const CHROMIUM: Can = { ok: true, aac: false, opus: true };
+  const ENC: Encoders = { avc: false, vp9: true, vp8: true };
+  const refused = { opens: 'no' as const, picture: null, sound: 'unsure' as const };
+  /** The fix verdict() finds for a file (playable.ts), then its plan. */
+  const planFor = (f: MediaFacts, kind: 'video' | 'audio', mime: string, can = CHROMIUM, enc = ENC) => {
+    const v = verdict(f, can, kind, mime, enc);
+    const fix = v.is === 'plays' ? v.repack : v.is === 'unknown' ? null : v.fix;
+    if (!fix) throw new Error(`no fix: ${JSON.stringify(v)}`);
+    return planConvert(f, fix, can, kind);
+  };
+
+  it('a quick fix copies every track as it is, forced: never re-encoded behind the host’s back', () => {
+    const p = planFor(facts('mkv', pic('vp9'), snd('opus'), { element: { opens: 'yes', picture: true, sound: 'yes' } }), 'video', 'video/x-matroska');
+    expect(p).toMatchObject({ run: { box: 'webm', copy: { mode: 'forced', shiftTolerance: 0.1 } }, mime: 'video/webm', copied: true, cut: null, label: 'Repackaged a video as WebM (nothing lost)' });
+    expect(p.run.video).toBeUndefined();
+    expect(p.run.audio).toBeUndefined();
+    expect(p.out).toEqual({ seconds: 10, width: 1280, height: 720, sound: true });
+    expect(p.format).toBe('WebM (VP9, Opus)');
+  });
+
+  it('a MOV goes in an MP4, a VP9 MKV in a WebM, and MP3 in an MPEG-TS in an MP4 (a video) or an MP3 (a sound)', () => {
+    const mov = facts('mov', pic('vp9'), snd('aac', { cpt: false, decodes: false }), { element: { opens: 'yes', picture: true, sound: 'yes' } });
+    expect(planFor(mov, 'video', 'video/quicktime').run.box).toBe('mp4');
+    const mkv = facts('mkv', pic('vp9'), snd('vorbis'), { element: { opens: 'yes', picture: true, sound: 'yes' } });
+    expect(planFor(mkv, 'video', 'video/x-matroska').run.box).toBe('webm');
+    const ts = facts('ts', null, snd('mp3'), { element: refused });
+    expect([planFor(ts, 'video', 'video/mp2t'), planFor(ts, 'audio', 'video/mp2t')].map((p) => [p.run.box, p.mime, p.format, p.label])).toEqual([
+      ['mp4', 'video/mp4', 'MP4 (MP3)', 'Repackaged a video as MP4 (nothing lost)'],
+      ['mp3', 'audio/mpeg', 'MP3 (MP3)', 'Repackaged a sound as MP3 (nothing lost)'],
+    ]);
+    expect(planFor(ts, 'video', 'video/mp2t').out).toEqual({ seconds: 10, sound: true });
+  });
+
+  it('a sound it can’t play is left out (discarded), and its share comes off the size', () => {
+    const f = facts('mkv', pic('vp9', { bps: 600_000 }), snd('ac3', { bps: 400_000, decodes: false, cpt: false }), { element: { opens: 'yes', picture: true, sound: 'no' } });
+    const p = planFor(f, 'video', 'video/x-matroska');
+    expect(p).toMatchObject({ run: { box: 'webm', audio: { discard: true }, copy: { mode: 'forced' } }, copied: true, label: 'Repackaged a video as WebM without its sound', format: 'WebM (VP9, no sound)' });
+    expect(p.out.sound).toBe(false);
+    // 1 MB, less 10 s at 400 kbps (500 KB).
+    expect(p.estimate).toBe(Math.round(1_000_000 * 1.01 - 500_000));
+  });
+
+  it('a sound file with a picture in it (an MP3’s cover) leaves the picture out', () => {
+    const f = facts('ts', pic('vp9'), snd('mp3'), { element: refused });
+    expect(planFor(f, 'audio', 'video/mp2t').run.video).toEqual({ discard: true });
+  });
+
+  it('a track made again: this browser’s codec, at the picture’s own size, a key frame every 2 s; the sound at 128 or 96 kbps', () => {
+    // (HEVC this browser decodes but doesn't play: VP9, in a WebM since the sound is Opus.)
+    const f = facts('mp4', pic('hevc', { cpt: false, bps: 4_000_000 }), snd('opus'), { element: { opens: 'yes', picture: false, sound: 'yes' } });
+    const p = planFor(f, 'video', 'video/mp4');
+    expect(p.run).toEqual({
+      box: 'webm',
+      video: { codec: 'vp9', bitrate: videoBitrate(1280, 720, 'vp9', { bps: 4_000_000, w: 1280, h: 720, codec: 'hevc' }), keyFrameInterval: 2, forceTranscode: true },
+      copy: {},
+    });
+    expect([p.copied, p.label, p.format]).toEqual([false, 'Converted a video to WebM', 'WebM (VP9, Opus)']);
+    // Its size, about: the picture at its new rate and the sound at its own, 10 s.
+    expect(p.estimate).toBe(estimateBytes(p.run.video!.bitrate! + 200_000, 10));
+    // Uncompressed sound in a MOV that doesn't play: Opus (96 kbps for one channel), the picture kept.
+    const pcm = facts('mov', pic('vp9'), snd('pcm-s16', { cpt: false, channels: 1 }), { element: { opens: 'yes', picture: true, sound: 'no' } });
+    const q = planFor(pcm, 'video', 'video/quicktime');
+    expect([q.run.box, q.run.video, q.run.audio, q.label]).toEqual(['webm', undefined, { codec: 'opus', bitrate: 96_000, forceTranscode: true }, 'Converted a video to WebM']);
+  });
+
+  it('says what else to know: another sound track, subtitles, an HDR picture made again', () => {
+    const f = facts('mp4', { ...pic('hevc', { cpt: false }), hdr: true }, { ...snd('opus'), label: 'English' }, { moreAudio: 1, subtitles: true, element: { opens: 'yes', picture: false, sound: 'yes' } });
+    expect(planFor(f, 'video', 'video/mp4').notes).toEqual([
+      'It has 2 sound tracks: the converted file keeps “English” only.',
+      'Its subtitles aren’t kept.',
+      'It’s an HDR video (iPhones film in HDR): converting it may make its colors look a little dull.',
+    ]);
+  });
+
+  it('a picture’s bitrate for the show: 8 Mbps at 1080p, 5 at 720p, by its pixels, a fifth less for VP9, never past what the source has', () => {
+    expect([videoBitrate(1920, 1080, 'avc'), videoBitrate(1280, 720, 'avc'), videoBitrate(854, 480, 'avc'), videoBitrate(640, 360, 'avc')]).toEqual([8_000_000, 5_000_000, 2_223_958, 1_250_000]);
+    expect(videoBitrate(1280, 720, 'vp9')).toBe(4_000_000);
+    expect(videoBitrate(320, 180, 'avc')).toBe(1_200_000);
+    // A 2 Mbps source: 2.2 Mbps at most (3 Mbps from HEVC to H.264); never under 300 kbps.
+    expect(videoBitrate(1280, 720, 'vp9', { bps: 2_000_000, w: 1280, h: 720, codec: 'vp9' })).toBe(2_200_000);
+    expect(videoBitrate(1280, 720, 'avc', { bps: 2_000_000, w: 1280, h: 720, codec: 'hevc' })).toBe(3_000_000);
+    expect(videoBitrate(1280, 720, 'avc', { bps: 50_000, w: 1280, h: 720, codec: 'avc' })).toBe(300_000);
+  });
+
+  it('History’s words: what it is and what it became, never its name', () => {
+    expect(convertLabel('video', { video: 'keep', audio: 'keep', box: 'mp4' })).toBe('Repackaged a video as MP4 (nothing lost)');
+    expect(convertLabel('video', { video: 'keep', audio: 'drop', box: 'webm' })).toBe('Repackaged a video as WebM without its sound');
+    expect(convertLabel('video', { video: 'encode', audio: 'drop', box: 'webm' })).toBe('Converted a video to WebM without its sound');
+    expect(convertLabel('audio', { audio: 'encode', box: 'ogg' })).toBe('Converted a sound to OGG');
+    expect(convertLabel('audio', { audio: 'keep', box: 'm4a' })).toBe('Repackaged a sound as M4A (nothing lost)');
   });
 });

@@ -10,6 +10,11 @@
   import { toHex } from '../../lib/colors';
   import SaveCopyButton from '../SaveCopyButton.svelte';
   import NumField from './NumField.svelte';
+  import { app } from '../../lib/app.svelte';
+  import { convertNow } from '../../lib/shrink/apply';
+  import { verdictOf } from '../../lib/shrink/checks.svelte';
+  import { jobFor } from '../../lib/shrink/jobs.svelte';
+  import { shortWhy } from '../../lib/shrink/words';
 
   let {
     el,
@@ -116,6 +121,24 @@
       {#if liveRef.expiresAt}The link {liveRef.expiresAt < Date.now() ? 'expired' : 'expires'} {formatWhen(liveRef.expiresAt)}.{/if}
     </p>
     <SaveCopyButton id={liveRef.id} />
+  {/if}
+{/snippet}
+
+<!-- A video or sound this browser won't play (or plays without its sound), as worked out in the editor: why, and 🔄. -->
+{#snippet playsNote(id: string)}
+  {@const v = app.screen === 'editor' && !app.editGame && !liveRef ? verdictOf(id) : undefined}
+  {#if typeof v === 'object' && (v.is === 'fails' || v.is === 'silent')}
+    <p class="warn small" data-plays-note>
+      ⚠ {v.is === 'fails' ? `This browser can’t play this file (${shortWhy(v)}).` : `It plays without its sound here (${shortWhy(v)}).`}
+      {#if v.fix}
+        <button
+          class="small"
+          onclick={() => convertNow(game, id)}
+          disabled={!!jobFor(id)}
+          title="Put a copy that plays here in its place, everywhere it's used (Ctrl+Z puts the old one back)">{jobFor(id) ? '🔄 Converting…' : '🔄 Convert…'}</button
+        >
+      {/if}
+    </p>
   {/if}
 {/snippet}
 
@@ -336,6 +359,7 @@
       {:else}
         <button class="small" onclick={(e) => onreplace(e.currentTarget)}>Replace file…</button>
         {@render liveNote()}
+        {@render playsNote(el.media)}
       {/if}
       {#if !sitePlayer && (el.kind !== 'embed' || el.embedKind !== 'remoteImage')}
         <label class="check"><input type="checkbox" bind:checked={el.autoplay} /> Autoplay when the slide appears</label>

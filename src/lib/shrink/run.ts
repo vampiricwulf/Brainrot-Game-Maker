@@ -10,7 +10,7 @@ import { blobTarget } from './target';
 const MiB = 1024 * 1024;
 
 /** The file types made here. */
-export type OutBox = 'mp4' | 'webm' | 'm4a' | 'ogg';
+export type OutBox = 'mp4' | 'webm' | 'm4a' | 'ogg' | 'mp3' | 'flac' | 'wav';
 
 /** What's done to the picture (as mediabunny's video options, with a plain bitrate: plan.ts loads no mediabunny). */
 export interface RunVideo {
@@ -108,6 +108,12 @@ function outputFormat(mb: typeof import('./mb'), box: OutBox) {
       return new mb.WebMOutputFormat();
     case 'ogg':
       return new mb.OggOutputFormat();
+    case 'mp3':
+      return new mb.Mp3OutputFormat();
+    case 'flac':
+      return new mb.FlacOutputFormat();
+    case 'wav':
+      return new mb.WavOutputFormat();
   }
 }
 

@@ -6,9 +6,10 @@
 import { FILE_TYPES, fileType } from '../buzzproto';
 import { isPcm, opensByCodecs, type Box, type MediaFacts } from './facts';
 import type { Can, Encoders } from './probe';
+import type { OutBox } from './run';
 
 /** The file types a fix makes (FLAC is never a fix's: phones don't take it). */
-export type FixBox = 'mp4' | 'webm' | 'm4a' | 'ogg' | 'mp3' | 'flac' | 'wav';
+export type FixBox = OutBox;
 /** What's done to a track: copied as it is, made again, or left out. */
 export type TrackFix = 'keep' | 'encode' | 'drop';
 /**

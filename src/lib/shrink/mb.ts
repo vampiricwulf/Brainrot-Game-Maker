@@ -1,4 +1,4 @@
-// The one module that imports mediabunny (MPL-2.0, github.com/Vanilagy/mediabunny), naming only what 🗜 uses. Everything
+// The one module that imports mediabunny (MPL-2.0, github.com/Vanilagy/mediabunny), naming only what 🗜 and 🔄 use. Everything
 // else loads it with `await import('./mb')` (and imports its types with `import type`), so it's read only when a file
 // is first read or a copy first made.
 import { ADTS, FLAC, MATROSKA, MP3, MP4, MPEG_TS, OGG, QTFF, WAVE, WEBM } from 'mediabunny';
@@ -13,9 +13,11 @@ export {
   Conversion,
   ConversionCanceledError,
   FLAC,
+  FlacOutputFormat,
   Input,
   MATROSKA,
   MP3,
+  Mp3OutputFormat,
   MP4,
   Mp4OutputFormat,
   MPEG_TS,
@@ -26,6 +28,7 @@ export {
   Quality,
   StreamTarget,
   WAVE,
+  WavOutputFormat,
   WEBM,
   WebMOutputFormat,
 } from 'mediabunny';

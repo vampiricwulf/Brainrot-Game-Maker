@@ -1,11 +1,13 @@
 // What a 🗜 copy for phones comes out as (card-files spec §4.6, §4.7): its size, codec, file type and name, worked out
 // before anything is made, for a GIF (a looping video), a video (a smaller picture, or only the part the cards play) or
-// a sound. Pure, so it's unit-tested.
+// a sound. And how 🔄 Convert makes a file that plays here in its place (§4.12.6). Pure, so it's unit-tested.
 import { SLOW_FILE_BYTES } from '../buzzproto';
 import type { MediaFacts } from './facts';
 import type { Can, Encoders } from './probe';
 import { NO_WEBCODECS } from './probe';
-import type { RunAudio, RunPlan, Want } from './run';
+import { fixMime, isLossless, type Fix } from './playable';
+import type { RunAudio, RunPlan, RunVideo, Want } from './run';
+import { codecName, fixBoxName } from './words';
 
 /** 🖼 Media offers 🗜 for a file over this (bytes). */
 export const SHRINK_OFFER_BYTES = 2 * 1024 * 1024;
@@ -106,7 +108,8 @@ export function formatLine(plan: Pick<GifPlan, 'codec'>, sound?: string): string
 }
 
 /** A copy's type in a word: "MP4", "WebM". */
-export const typeWord = (mime: string): string => ({ 'video/mp4': 'MP4', 'video/webm': 'WebM', 'audio/mp4': 'M4A', 'audio/ogg': 'OGG' })[mime.split(';')[0]] ?? mime;
+export const typeWord = (mime: string): string =>
+  ({ 'video/mp4': 'MP4', 'video/webm': 'WebM', 'audio/mp4': 'M4A', 'audio/ogg': 'OGG', 'audio/mpeg': 'MP3', 'audio/wav': 'WAV', 'audio/flac': 'FLAC' })[mime.split(';')[0]] ?? mime;
 
 /** What's copied, for History and toasts (never its name: they can be on stream). */
 export type CopyOf = 'video' | 'GIF' | 'sound';
@@ -425,4 +428,118 @@ export function avDefault(r: AvRead, fileBytes: number): CopyPlan | { refuse: st
   const o = avOptions(r, trim, fileBytes);
   if ('refuse' in o) return o;
   return avPlan(r, trim, o.choices[o.pick] ?? null);
+}
+
+// ---------- 🔄 Convert (card-files spec §4.12.6) ----------
+
+/**
+ * How a file of the game is made again in its own place (🔄 Convert; ✎ Edit later): what convertBlob does, what it
+ * should come out as, and its words.
+ */
+export interface EditPlan {
+  run: RunPlan;
+  mime: string;
+  /** What it should come out as (checkMade). */
+  out: Want;
+  /** Nothing re-encoded: quick, and nothing lost. */
+  copied: boolean;
+  /** The part of the file kept, which items' times move by (null: all of it). */
+  cut: { from: number; to: number; length: number } | null;
+  /** Its size, about (bytes; 0: not known). */
+  estimate: number;
+  /** "MP4 (H.264, AAC)". */
+  format: string;
+  /** What else to know: a second sound track or subtitles left out, an HDR picture made again. */
+  notes: string[];
+  /** History's words (never the file's name). */
+  label: string;
+}
+
+/**
+ * A picture's bitrate when it's made again for the show (bits a second): 5 Mbps at 720p, by its pixels, from 1.2 to 8
+ * Mbps (a fifth less for VP9), never more than the source's own rate a pixel allows (half as much again from HEVC,
+ * AV1 or VP9 to H.264, a tenth otherwise), and 300 kbps at least.
+ */
+export function videoBitrate(w: number, h: number, codec: 'avc' | 'vp9' | 'vp8', src?: { bps: number | null; w: number; h: number; codec: string | null }): number {
+  let bps = Math.min(8_000_000, Math.max(1_200_000, (5_000_000 * w * h) / (1280 * 720))) * (codec === 'vp9' ? 0.8 : 1);
+  if (src?.bps && src.w > 0 && src.h > 0) {
+    const k = codec === 'avc' && (src.codec === 'hevc' || src.codec === 'av1' || src.codec === 'vp9') ? 1.5 : 1.1;
+    bps = Math.min(bps, ((src.bps * w * h) / (src.w * src.h)) * k);
+  }
+  return Math.round(Math.max(300_000, bps));
+}
+
+/** History: "Repackaged a video as MP4 (nothing lost)", "Converted a sound to OGG", "… without its sound". */
+export function convertLabel(kind: 'video' | 'audio', fix: Fix): string {
+  const what = kind === 'audio' ? 'sound' : 'video';
+  const box = fixBoxName(fix.box);
+  const silent = fix.audio === 'drop' ? ' without its sound' : '';
+  if (isLossless(fix)) return silent ? `Repackaged a ${what} as ${box}${silent}` : `Repackaged a ${what} as ${box} (nothing lost)`;
+  return `Converted a ${what} to ${box}${silent}`;
+}
+
+/**
+ * How file `f` (a `kind` file of the game) is made into one that plays here, as `fix` (playable.ts) says: its main
+ * picture and sound copied as they are (forced: never re-encoded behind the host's back), or made again in this
+ * browser's own codecs at the picture's own size, or the sound left out; all of it, in the type `fix.box`.
+ */
+export function planConvert(f: MediaFacts, fix: Fix, can: Can, kind: 'video' | 'audio'): EditPlan {
+  const lossless = isLossless(fix);
+  const v = kind === 'video' ? f.video : null;
+  const a = f.audio;
+  const secs = f.seconds;
+  let video: RunVideo | undefined;
+  if (f.video && !v) video = { discard: true };
+  else if (v && fix.video === 'encode') {
+    const codec = fix.to?.video ?? 'vp9';
+    video = {
+      codec,
+      bitrate: videoBitrate(v.width, v.height, codec, { bps: v.bps, w: v.width, h: v.height, codec: v.codec }),
+      keyFrameInterval: KEY_EVERY,
+      forceTranscode: true,
+    };
+  }
+  let audio: RunAudio | undefined;
+  const dropped = !!a && (!fix.audio || fix.audio === 'drop');
+  if (dropped) audio = { discard: true };
+  else if (a && fix.audio === 'encode') {
+    const codec = fix.to?.audio ?? (can.aac ? 'aac' : 'opus');
+    audio = { codec, bitrate: a.channels === 1 ? MONO_BPS : SOUND_BPS, forceTranscode: true, ...(a.channels > 2 ? { numberOfChannels: 2 } : {}) };
+  }
+  // About how big: the file as it is, less what's left out, when nothing is made again; else the rates it's made at.
+  const ownBps = (t: { bps: number | null } | null, rest: number) => t?.bps ?? (secs ? Math.max(0, (f.size * 8) / secs - rest) : 0);
+  const abps = !a || dropped ? 0 : audio?.bitrate ?? ownBps(a, v?.bps ?? 0);
+  const vbps = !v ? 0 : video?.bitrate ?? ownBps(v, a?.bps ?? 0);
+  let estimate: number;
+  if (lossless) {
+    const less = (dropped && secs ? ((a?.bps ?? 0) * secs) / 8 : 0) + (f.video && !v && secs ? ((f.video.bps ?? 0) * secs) / 8 : 0);
+    estimate = Math.round(Math.max(f.size * 0.05, f.size * 1.01 - less));
+  } else estimate = secs ? estimateBytes(vbps + abps, secs) : 0;
+  const names = [
+    ...(v ? [codecName(fix.video === 'encode' ? fix.to?.video : v.codec) ?? 'its video'] : []),
+    ...(a ? [dropped ? 'no sound' : (codecName(fix.audio === 'encode' ? fix.to?.audio : a.codec) ?? 'its sound')] : []),
+  ];
+  const notes: string[] = [];
+  if (a && !dropped && f.moreAudio) notes.push(`It has ${f.moreAudio + 1} sound tracks: the converted file keeps ${a.label ? `“${a.label}”` : 'the first'} only.`);
+  if (f.subtitles) notes.push('Its subtitles aren’t kept.');
+  if (v?.hdr && fix.video === 'encode') notes.push('It’s an HDR video (iPhones film in HDR): converting it may make its colors look a little dull.');
+  if (v && fix.video === 'encode' && fix.box === 'mp4' && fix.to?.video !== 'avc')
+    notes.push('This browser can’t make H.264 videos, so the video is VP9 in an MP4: it plays in Chrome, Edge, Firefox and the desktop app; some iPhones may not play it.');
+  return {
+    run: {
+      box: fix.box,
+      ...(video ? { video } : {}),
+      ...(audio ? { audio } : {}),
+      // (Copied as they are, a tenth of a second's shift allowed; made again, with its times exact.)
+      copy: lossless ? { mode: 'forced', shiftTolerance: 0.1 } : {},
+    },
+    mime: fixMime(fix.box, kind),
+    out: { seconds: secs, ...(v ? { width: v.width, height: v.height } : {}), sound: !!a && !dropped },
+    copied: lossless,
+    cut: null,
+    estimate,
+    format: `${fixBoxName(fix.box)}${names.length ? ` (${names.join(', ')})` : ''}`,
+    notes,
+    label: convertLabel(kind, fix),
+  };
 }

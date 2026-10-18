@@ -33,7 +33,8 @@
   import { dropdown } from '../../lib/menustate.svelte';
   import { addMediaFile, slideImageSize, type LinkAdded } from '../../lib/media.svelte';
   import { previewMediaScope } from '../../lib/mediactl.svelte';
-  import { isGameDrop, warnIfUnplayable } from '../../lib/mediadrop';
+  import { isGameDrop } from '../../lib/mediadrop';
+  import { checkAdded } from '../../lib/shrink/checks.svelte';
   import { isLinkProblem, isMediaHost, parseMediaLink, youtubeStart } from '../../lib/links';
   import { registerGameFonts, uploadedFamily } from '../../lib/fonts';
   import { clone, restyle } from '../../lib/ops';
@@ -424,7 +425,7 @@
       for (const file of Array.from(files)) {
         try {
           const ref = await addMediaFile(game, file);
-          warnIfUnplayable(ref);
+          checkAdded(ref);
           await addMedia(ref.kind, ref.id, at);
         } catch (e) {
           toast((e as Error).message);

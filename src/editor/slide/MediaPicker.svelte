@@ -7,7 +7,8 @@
   import { pickFile } from '../../lib/fileio';
   import { stepAsync } from '../../lib/history.svelte';
   import { linkHost } from '../../lib/links';
-  import { fittingFile, hasFiles, useFile, warnIfUnplayable } from '../../lib/mediadrop';
+  import { fittingFile, hasFiles, useFile } from '../../lib/mediadrop';
+  import { checkAdded } from '../../lib/shrink/checks.svelte';
   import type { MediaKind } from '../../lib/model';
   import { libraryMedia } from '../../lib/phonecopies';
   import LinkField from '../LinkField.svelte';
@@ -41,7 +42,7 @@
         // Another kind (the file dialog's "All files"): kept in the library, but not used here (a video as the theme's
         // background, a picture as a sound, shows or plays nothing), as a dropped one isn't.
         if (ref.kind !== kind) return void toast(`That's ${ref.kind === 'image' || ref.kind === 'audio' ? 'an' : 'a'} ${ref.kind} file, not ${kind === 'image' || kind === 'audio' ? 'an' : 'a'} ${kind}: it's in 📁 Media, but not used here.`);
-        warnIfUnplayable(ref);
+        checkAdded(ref);
         await onpick(ref.id);
       });
     } catch (e) {

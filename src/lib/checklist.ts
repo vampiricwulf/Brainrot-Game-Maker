@@ -18,6 +18,8 @@ export interface ChecklistLine {
   place?: Place;
   /** 🗜: files a smaller copy for phones would help (Problem.shrink): the line gets a button for the first. */
   shrink?: Id[];
+  /** 🔄: files to convert (Problem.convert): the line gets a button for them all. */
+  convert?: Id[];
 }
 
 /**
@@ -57,7 +59,7 @@ export function checklistLines(game: Game, problems: Problem[]): ChecklistLine[]
   const byRound = new Map<number, ChecklistLine>();
   for (const p of problems) {
     const round = typeof p.tab === 'number' ? game.rounds[p.tab] : undefined;
-    const shrink = p.shrink ? { shrink: [p.shrink] } : {};
+    const shrink = { ...(p.shrink ? { shrink: [p.shrink] } : {}), ...(p.convert?.length ? { convert: [...p.convert] } : {}) };
     if (!round) {
       lines.push({ text: p.text, level: p.level, tab: p.tab, details: [p.text], place: p.place, ...shrink });
       continue;
@@ -66,6 +68,7 @@ export function checklistLines(game: Game, problems: Problem[]): ChecklistLine[]
     if (line) {
       line.details.push(p.text);
       if (p.shrink && !line.shrink?.includes(p.shrink)) line.shrink = [...(line.shrink ?? []), p.shrink];
+      for (const id of p.convert ?? []) if (!line.convert?.includes(id)) line.convert = [...(line.convert ?? []), id];
       // (The first warning's place: the first thing worth fixing.)
       if (p.level === 'warn' && line.level !== 'warn' && p.place) line.place = p.place;
       if (p.level === 'warn') line.level = 'warn';

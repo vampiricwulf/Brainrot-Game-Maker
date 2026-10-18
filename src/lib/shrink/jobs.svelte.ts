@@ -1,6 +1,7 @@
-// The editor's file jobs (card-files spec §4.13.5): a 🗜 copy for phones being made, one at a time, the rest waiting
-// their turn. Each says how far it got for the header's pill and the dialog, and stops at once when asked (nothing is
-// changed then). A job belongs to the game it was started in: another game, ▶ Play or ▶ Test stops it (they ask first).
+// The editor's file jobs (card-files spec §4.13.5): a 🗜 copy for phones being made, or a file 🔄 converted, one at a
+// time, the rest waiting their turn. Each says how far it got for the header's pill and the dialog, and stops at once
+// when asked (nothing is changed then). A job belongs to the game it was started in: another game, ▶ Play or ▶ Test
+// stops it (they ask first).
 import { announce } from '../announce';
 import { toast } from '../app.svelte';
 import type { Id } from '../model';
@@ -30,9 +31,9 @@ export interface JobCtl {
   progress(p: number): void;
 }
 
-/** How a job ended: done (what the toast says), failed (why), or stopped. */
-export type JobEnd = { done: string; media?: Id } | { failed: string } | { stopped: true };
-type Work = (ctl: JobCtl) => Promise<{ toast: string; media?: Id } | { failed: string }>;
+/** How a job ended: done (what the toast says), failed (why; `toast`: the toast's words, when not why), or stopped. */
+export type JobEnd = { done: string; media?: Id } | { failed: string; toast?: string } | { stopped: true };
+type Work = (ctl: JobCtl) => Promise<{ toast: string; media?: Id } | { failed: string; toast?: string }>;
 
 const state = $state<{ list: Job[]; ended: Record<string, JobEnd>; watched: string[] }>({ list: [], ended: {}, watched: [] });
 const work = new Map<string, Work>();
@@ -41,6 +42,8 @@ const stops = new Map<string, AbortController>();
 const quietly = new Set<string>();
 let running: string | null = null;
 let seq = 0;
+/** The jobs started together (🔄 Convert's window, a row each), by batch: one toast says how they all went. */
+const batches = new Map<string, string[]>();
 /** Up by one when every job is forgotten (clearJobs): a job ending after that says nothing. */
 let generation = 0;
 
@@ -77,6 +80,7 @@ export function addJob(j: Pick<Job, 'kind' | 'what' | 'media' | 'gameId' | 'batc
   const id = `job${++seq}`;
   state.list.push({ ...j, id, phase: 'waiting', progress: 0, left: null });
   work.set(id, w);
+  if (j.batch) batches.set(j.batch, [...(batches.get(j.batch) ?? []), id]);
   void next();
   return id;
 }
@@ -88,9 +92,10 @@ export function stopJob(id: string, quiet = false): void {
   quietly.delete(id);
   const i = state.list.findIndex((j) => j.id === id);
   if (i < 0) return;
-  state.list.splice(i, 1);
+  const [gone] = state.list.splice(i, 1);
   work.delete(id);
   state.ended[id] = { stopped: true };
+  if (gone.batch) batchEnded(gone.batch, quiet);
 }
 
 /** Stop every job (`keepGame`: only those of other games than that one). `quiet`: no toast says so. */
@@ -118,7 +123,7 @@ export function jobAsk(): string | null {
 
 /** The header's pill: "🗜 Making a smaller copy for phones…", with how far it got. */
 export function pillText(j: Job): string {
-  if (j.kind === 'convert') return `🔄 Converting a ${j.what}…`;
+  if (j.kind === 'convert') return `🔄 ${j.copying ? 'Repackaging' : 'Converting'} a ${j.what}…`;
   if (j.kind === 'edit') return `✂ Saving a ${j.what}’s edit…`;
   return '🗜 Making a smaller copy for phones…';
 }
@@ -165,9 +170,9 @@ async function next(): Promise<void> {
   };
   try {
     const r = await w(ctl);
-    end = stop.signal.aborted ? { stopped: true } : 'failed' in r ? { failed: r.failed } : { done: r.toast, ...(r.media ? { media: r.media } : {}) };
+    end = stop.signal.aborted ? { stopped: true } : 'failed' in r ? { failed: r.failed, ...(r.toast ? { toast: r.toast } : {}) } : { done: r.toast, ...(r.media ? { media: r.media } : {}) };
   } catch (e) {
-    end = stop.signal.aborted || (e as Error)?.name === 'AbortError' ? { stopped: true } : { failed: 'The copy didn’t come out right: nothing was changed.' };
+    end = stop.signal.aborted || (e as Error)?.name === 'AbortError' ? { stopped: true } : wentWrong(job);
     if (!('stopped' in end)) console.warn('A file job failed', e);
   }
   if (gen !== generation) return;
@@ -179,14 +184,41 @@ async function next(): Promise<void> {
   stops.delete(j.id);
   running = null;
   state.ended[j.id] = end;
-  // (A dialog showing it says how it ended: no toast then, but a screen reader still hears it.)
+  // (A dialog showing it says how it ended: no toast then, but a screen reader still hears it. One of several started
+  // together: a toast says how they all went, once the last one ends.)
   const quiet = quietly.delete(j.id);
-  const said = 'done' in end ? end.done : 'failed' in end ? `🗜 ${end.failed}` : 'Stopped: nothing was changed.';
+  const said = 'done' in end ? end.done : 'failed' in end ? (end.toast ?? (job.kind === 'phone' ? `🗜 ${end.failed}` : end.failed)) : 'Stopped: nothing was changed.';
+  const together = !!job.batch && (batches.get(job.batch)?.length ?? 0) > 1;
   if (!quiet) {
-    if (state.watched.includes(j.id)) announce(said);
+    if (state.watched.includes(j.id) || together) announce(said);
     else toast(said);
   }
+  if (job.batch) batchEnded(job.batch, quiet);
   void next();
+}
+
+/** How a job that broke ends (something went wrong that it didn't foresee). */
+function wentWrong(j: Job): JobEnd {
+  if (j.kind === 'phone') return { failed: 'The copy didn’t come out right: nothing was changed.' };
+  if (j.kind === 'convert') return { failed: 'It didn’t come out right: nothing was changed.', toast: `🔄 A ${j.what} couldn’t be converted: it didn’t come out right. Nothing was changed.` };
+  return { failed: 'The edit didn’t come out right: nothing was changed.' };
+}
+
+/** A job of `batch` ended: once they all have, a toast says how they went ("🔄 3 files converted (1 couldn't be…)"). */
+function batchEnded(batch: string, quiet = false): void {
+  const ids = batches.get(batch) ?? [];
+  if (state.list.some((j) => j.batch === batch)) return;
+  batches.delete(batch);
+  if (ids.length < 2 || quiet) return;
+  const ends = ids.map((id) => state.ended[id]).filter(Boolean);
+  const done = ends.filter((e) => 'done' in e).length;
+  const failed = ends.filter((e) => 'failed' in e).length;
+  const stopped = ends.length - done - failed;
+  if (!done && !failed) return void toast('Stopped: nothing was changed.');
+  if (!done) return void toast(`🔄 ${failed === 1 ? 'The file' : `The ${failed} files`} couldn’t be converted (🖼 Media says why): nothing was changed.`);
+  const back = done === 1 ? 'Ctrl+Z puts the old one back.' : 'Ctrl+Z puts the old ones back, one at a time.';
+  const rest = [...(failed ? [`${failed} couldn’t be: 🖼 Media says why`] : []), ...(stopped ? [`${stopped} stopped`] : [])];
+  toast(`🔄 ${done} file${done === 1 ? '' : 's'} converted${rest.length ? ` (${rest.join('; ')})` : ''}. ${back}`);
 }
 
 /** For tests: forget every job. */
@@ -199,5 +231,6 @@ export function clearJobs(): void {
   work.clear();
   stops.clear();
   quietly.clear();
+  batches.clear();
   running = null;
 }

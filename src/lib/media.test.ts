@@ -1,5 +1,22 @@
 import { describe, expect, it, vi } from 'vitest';
-import { addMediaFile, dropPhoneCopies, getBlob, identicalMedia, keepLinkCopy, mediaUrls, missingMedia, pruneMedia, registerBlob, relinkMissing, replaceMediaFile, restoreStash, stashMedia } from './media.svelte';
+import {
+  addMediaFile,
+  dropPhoneCopies,
+  dropStoredMedia,
+  getBlob,
+  identicalMedia,
+  keepLinkCopy,
+  mediaUrls,
+  missingMedia,
+  moveToFile,
+  pruneMedia,
+  registerBlob,
+  relinkMissing,
+  renameForType,
+  replaceMediaFile,
+  restoreStash,
+  stashMedia,
+} from './media.svelte';
 import { libraryMedia, withCopies } from './phonecopies';
 import { mediaUsage } from './usage';
 import { bundleRound } from './roundcopy';
@@ -175,5 +192,50 @@ describe('🗜 copies for phones', () => {
     game.media.push(gif, copy);
     game.rounds.push({ id: 'r', mode: 'slides', name: 'Intro', questionSlide: { background: { image: 'g1' }, elements: [] } });
     expect(bundleRound(game, game.rounds[0]).media.map((m) => m.id)).toEqual(['g1', 'g1c']);
+  });
+});
+
+describe('🔄 a converted file in its place', () => {
+  const vid = (more = {}) => ({ id: 'v1', name: 'Party.mts', mime: 'video/mp2t', size: 900, kind: 'video' as const, ...more });
+
+  it('moveToFile: new bytes under a new id take every use, the file’s own ref (in its place) too; links and copies go', () => {
+    const game = newGame();
+    game.media.push(
+      { id: 'pic', name: 'a.png', mime: 'image/png', size: 1, kind: 'image' },
+      vid({ source: 'https://example.com/party', expiresAt: 5, url: 'https://example.com/p.mts' }),
+      { id: 'v1c', name: 'Party (phones).webm', mime: 'video/webm', size: 9, kind: 'video', phoneCopy: { of: 'v1' } },
+    );
+    game.audio = { right: 'v1' };
+    game.cards = [{ id: 'sc1', name: 'Tip', background: { image: 'pic' }, elements: [{ ...newImageEl('pic'), kind: 'video', media: 'v1' } as never] }];
+    const ref = moveToFile(game, 'v1', 'v2', { mime: 'video/mp4', size: 500 });
+    expect(game.media.map((m) => m.id)).toEqual(['pic', 'v2']);
+    expect(game.media[1]).toBe(ref);
+    expect(ref).toEqual({ id: 'v2', name: 'Party.mts', mime: 'video/mp4', size: 500, kind: 'video' });
+    expect([game.audio.right, (game.cards[0].elements[0] as { media: string }).media, game.cards[0].background.image]).toEqual(['v2', 'v2', 'pic']);
+    expect(() => moveToFile(game, 'gone', 'x', { mime: 'video/mp4', size: 1 })).toThrow();
+  });
+
+  it('renameForType: a media extension follows the new type, kept unique; a name without one is kept, and its own name likewise', () => {
+    const game = newGame();
+    game.media.push(vid(), { id: 'other', name: 'Party.mp4', mime: 'video/mp4', size: 1, kind: 'video' }, vid({ id: 'v3', name: 'Intro' }), vid({ id: 'v4', name: 'Clip', file: 'clip.m2ts' }));
+    renameForType(game, game.media[0], 'video/mp4');
+    expect(game.media[0].name).not.toBe('Party.mp4');
+    expect(game.media[0].name).toMatch(/^Party.*\.mp4$/);
+    renameForType(game, game.media[2], 'video/mp4');
+    expect(game.media[2].name).toBe('Intro');
+    renameForType(game, game.media[3], 'video/webm');
+    expect([game.media[3].name, game.media[3].file]).toEqual(['Clip', 'clip.webm']);
+    const sound = { id: 's', name: 'Talk.mka', mime: 'audio/x-matroska', size: 1, kind: 'audio' as const };
+    game.media.push(sound);
+    renameForType(game, game.media[4], 'audio/ogg');
+    expect(game.media[4].name).toBe('Talk.ogg');
+  });
+
+  it('a camcorder’s .mts or .m2ts is a video (MPEG-TS), whatever odd type the browser gives it', async () => {
+    const game = newGame();
+    const a = await addMediaFile(game, new File(['ts1'], 'Party.mts', { type: 'model/vnd.mts' }));
+    const b = await addMediaFile(game, new File(['ts2'], 'Beach.m2ts', { type: '' }));
+    expect([a.kind, a.mime, b.kind, b.mime]).toEqual(['video', 'video/mp2t', 'video', 'video/mp2t']);
+    expect(dropStoredMedia).toBeTypeOf('function');
   });
 });

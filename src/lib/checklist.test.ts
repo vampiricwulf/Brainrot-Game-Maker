@@ -58,6 +58,19 @@ describe('the checklist: Daily Doubles, RPG screens and board-game spaces', () =
     ]);
   });
 
+  it('keeps the files 🔄 would convert (each once) on the line, for its button', () => {
+    const game = jeopardyGame();
+    const lines = checklistLines(game, [
+      { text: 'Jeopardy!: a 🤫 card has a video phones can’t open', tab: 0, level: 'warn', convert: ['v1'] },
+      { text: 'Jeopardy!: another 🤫 card has a video phones can’t open', tab: 0, level: 'warn', convert: ['v1', 'v2'] },
+      { text: '2 video/audio files won’t play in this browser: 🔄 Convert them in 🖼 Media', tab: 'media', level: 'warn', convert: ['a', 'b'] },
+    ]);
+    expect(lines.map((l) => [l.text.split(':')[0], l.convert])).toEqual([
+      ['Jeopardy!', ['v1', 'v2']],
+      ['2 video/audio files won’t play in this browser', ['a', 'b']],
+    ]);
+  });
+
   it('says when a board has fewer Daily Doubles than it wants, as the pre-game screen does', () => {
     const game = jeopardyGame();
     const board = game.rounds[0] as BoardRound;

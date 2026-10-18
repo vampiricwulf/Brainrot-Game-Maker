@@ -239,7 +239,7 @@ RollEvent  { id, ts, source: 'wheel' | 'dice', presetName?, result: string /* la
 - Output: edits are stored as parameters and baked into a rendered PNG (JPEG for a photo with no see-through parts) cached with the pack; a moving GIF stays a moving GIF, every frame edited, each with its own colours (`src/lib/gifedit.ts`, `gifwrite.ts`). "Reset to original" is always available.
 
 ### 5.5 Media
-- Accepted: **Images** png, jpg/jpeg, gif (animated), webp, svg, avif · **Video** mp4 (H.264/AAC), webm, mov*, mkv*, ogv · **Audio** mp3, wav, ogg, m4a/aac, flac, opus.
+- Accepted: **Images** png, jpg/jpeg, gif (animated), webp, svg, avif · **Video** mp4 (H.264/AAC), webm, mov*, mkv*, mts/m2ts* (a camcorder's MPEG-TS), ogv · **Audio** mp3, wav, ogg, m4a/aac, flac, opus.
   `*` Playback depends on the browser's codec support. In the editor, each stored video and sound is read for what's
   inside it (its file type by its content, and each track's codec, asked of the browser with the track's own codec
   string); for an MKV, MOV or MPEG-TS, an HEVC or AV1 picture, or uncompressed sound outside a WAV, a hidden, muted
@@ -247,6 +247,16 @@ RollEvent  { id, ts, source: 'wheel' | 'dice', presetName?, result: string /* la
   says "won't play here" or "plays without its sound here" (its title says why: an HEVC picture, Dolby Digital
   sound…), and the checklist counts them. A file the app can't read keeps the type-based warning ("may not play"),
   as does one not checked yet.
+- **🔄 Convert** (editor only): a video or sound added in the editor that won't play here (or plays without its sound)
+  gets a note at the top of the editor and a toast (naming nothing). The fix puts a file that plays in its place,
+  everywhere it's used (on stream too), as one undo step: its tracks copied into a type this browser opens when only
+  the file type is the trouble (quick, nothing lost: an MKV into a WebM or an MP4, an .mts's MP3 sound into an MP4), a
+  track made again in this browser's own codecs otherwise (🔄 Convert's window says what it costs first), or a sound
+  no browser reads (Dolby Digital, DTS) left out when the picture gains a type phones and Safari open. A fix whose
+  result wouldn't play here isn't offered; the words say why and what to do instead. The new bytes get a new id (the
+  name's extension follows the type), the 🗜 copy for phones goes, and Ctrl+Z puts the old file back. 🖼 Media's
+  cards, a slide item's panel and the checklist offer it too, and **↻** repackages a 🤫 card's file that plays here but
+  phones can't open (an MKV, a MOV) into a type they take, for everyone. Nothing is checked or converted in play.
 - A media library panel lists everything in the game with its size and usage count. "Remove unused" is available.
 - Per-element playback settings: autoplay, loop, muted, start/end trim, and volume.
 - **Online links (optional)**: every file picker (except fonts) has *Paste a link*, and the slide editor has *🌐 Link* (and

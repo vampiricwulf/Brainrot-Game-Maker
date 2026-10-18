@@ -3,7 +3,7 @@
 // tested. 🖼 Media and the editor may name the file around these; these words never do.
 import type { Box } from './facts';
 import { isPcm } from './facts';
-import type { FixBox, Verdict } from './playable';
+import type { Fix, FixBox, Verdict } from './playable';
 
 /** Codecs by mediabunny's names. */
 export const CODEC_NAME: Record<string, string> = {
@@ -97,3 +97,46 @@ export function whyLine(v: Verdict): string {
   const w = whyText(v);
   return w ? `${w[0].toUpperCase()}${w.slice(1)}.${advice(v)}` : '';
 }
+
+const sentence = (s: string): string => (s ? `${s[0].toUpperCase()}${s.slice(1)}` : s);
+
+/**
+ * What 🔄 Convert would do with a file, for its row in the window (`own`: its type as phones know it, "MKV", for one
+ * that plays here but not on phones): why it doesn't play, and how it's fixed: repackaged in seconds with nothing
+ * lost, without its sound, or made again (slower, a little less sharp). With no fix: why, and what to do.
+ */
+export function rowText(v: Verdict, own = ''): string {
+  if (v.is === 'plays')
+    return v.repack ? `It plays in this browser, but the phones’ 🤫 cards can’t open ${own || 'these'} files: it can be repackaged as ${aOrAn(fixBoxName(v.repack.box))} in seconds, with nothing lost.` : '';
+  if (v.is !== 'silent' && v.is !== 'fails') return '';
+  const { fix, why } = v;
+  if (!fix) return whyLine(v);
+  const box = aOrAn(fixBoxName(fix.box));
+  const w = sentence(whyText(v));
+  if (fix.video !== 'encode' && fix.audio !== 'encode') {
+    if (fix.audio !== 'drop') return `${w}: it can be repackaged as ${box} in seconds, with nothing lost.`;
+    return `${w}${v.is === 'silent' ? ', so it plays without sound' : ''}. It can be repackaged as ${box} without its sound in seconds: the picture loses nothing.${advice(v)}`;
+  }
+  if (fix.video === 'encode') {
+    const sound = fix.audio === 'keep' ? ' Its sound is kept as it is.' : fix.audio === 'encode' ? ` Its sound becomes ${codecName(fix.to?.audio) ?? 'one it plays'}.` : fix.audio === 'drop' ? ` It loses its sound.${advice(v)}` : '';
+    return `${w}. It can be converted to ${box} (${codecName(fix.to?.video) ?? 'a video it plays'}): that takes a while, at a little less quality.${sound}`;
+  }
+  const to = codecName(fix.to?.audio) ?? 'a sound it plays';
+  return why.kind === 'audio' || fix.video === undefined ? `${w}: it can be converted to ${box} (${to}).` : `${w}: it can be converted to ${to}, keeping the picture as it is.`;
+}
+
+/**
+ * Why a file doesn't play, in a few words for a slide item's panel: "its video is HEVC (H.265)" (fails), or the sound
+ * it plays without: "AC-3 (Dolby Digital)" (silent).
+ */
+export function shortWhy(v: Verdict): string {
+  if (v.is === 'silent') return codecName(v.why.sound) ?? 'its sound’s format';
+  if (v.is !== 'fails') return '';
+  const { why } = v;
+  if (why.video !== undefined) return why.video ? `its video is ${codecName(why.video)}` : 'its video is in a format it can’t play';
+  if (why.sound !== undefined) return `${why.kind === 'audio' ? 'it’s' : 'its sound is'} ${codecName(why.sound) ?? 'in a format it can’t play'}`;
+  return why.box ? `it’s ${aOrAn(boxName(why.box, why.kind))} file` : 'it doesn’t open here';
+}
+
+/** "video and sound", "video", "sound": what a fix keeps of a file. */
+export const tracksOf = (f: Fix): string => (f.video && f.audio && f.audio !== 'drop' ? 'video and sound' : f.video ? 'video' : 'sound');

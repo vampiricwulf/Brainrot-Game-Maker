@@ -98,6 +98,52 @@ export async function clip(page, { w = 320, h = 240, seconds = 2, fps = 30, code
   return Buffer.from(b64, 'base64');
 }
 
+// A silent MP3 frame (MPEG-1 Layer III, 44.1 kHz, mono, 32 kbps, 1,152 samples): the first 104 bytes of
+// `ffmpeg -f lavfi -i anullsrc=r=44100:cl=mono -t 0.1 -c:a libmp3lame -b:a 32k -write_xing 0 -id3v2_version 0 -f mp3 s.mp3`.
+const MP3_FRAME =
+  '//sQxAADwAABpAAAACAAADSAAAAETEFNRTMuMTAwVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVU=';
+
+/**
+ * An MPEG-TS holding only an MP3 sound (silence), `seconds` long, made in `page` (fixturePage): a camcorder's .mts
+ * stands in, as no browser opens one, though its sound plays. Returns its bytes.
+ */
+export async function ts(page, { seconds = 3 } = {}) {
+  const b64 = await page.evaluate(
+    async (o) => {
+      const M = window.Mediabunny;
+      const target = new M.BufferTarget();
+      const out = new M.Output({ format: new M.MpegTsOutputFormat(), target });
+      const src = new M.EncodedAudioPacketSource('mp3');
+      out.addAudioTrack(src);
+      await out.start();
+      const frame = Uint8Array.from(atob(o.frame), (c) => c.charCodeAt(0));
+      const d = 1152 / 44_100;
+      for (let k = 0; k * d < o.seconds; k++) await src.add(new M.EncodedPacket(frame, 'key', k * d, d), k ? undefined : { decoderConfig: { codec: 'mp3', numberOfChannels: 1, sampleRate: 44_100 } });
+      await out.finalize();
+      const bytes = new Uint8Array(target.buffer);
+      let bin = '';
+      for (let i = 0; i < bytes.length; i += 0x8000) bin += String.fromCharCode(...bytes.subarray(i, i + 0x8000));
+      return btoa(bin);
+    },
+    { seconds, frame: MP3_FRAME },
+  );
+  return Buffer.from(b64, 'base64');
+}
+
+/**
+ * What's in a file (its bytes, `buf`), read in `page` (fixturePage): its type, length, and picture and sound codecs
+ * (null: none).
+ */
+export async function readBack(page, buf) {
+  return page.evaluate(async (b64) => {
+    const M = window.Mediabunny;
+    const bytes = Uint8Array.from(atob(b64), (c) => c.charCodeAt(0));
+    const input = new M.Input({ source: new M.BufferSource(bytes), formats: M.ALL_FORMATS });
+    const [format, seconds, v, a] = await Promise.all([input.getFormat(), input.computeDuration(), input.getPrimaryVideoTrack(), input.getPrimaryAudioTrack()]);
+    return { format: format.name, seconds, video: v ? await v.getCodec() : null, audio: a ? await a.getCodec() : null };
+  }, Buffer.from(buf).toString('base64'));
+}
+
 /** A WAV of a 440 Hz tone: `seconds` long, 16-bit, `rate` samples a second, `channels` of them. */
 export function wav(seconds, { rate = 44_100, channels = 2 } = {}) {
   const n = Math.round(rate * seconds);

@@ -84,7 +84,7 @@
       <dd><a href={`${REPO}/issues`} target="_blank" rel="noreferrer" onclick={link}>Report an issue</a></dd>
       <dt>License</dt>
       <dd>
-        MIT. Bundled fonts: SIL Open Font License. 🗜 (smaller copies for phones): mediabunny © 2026-present Vanilagy and
+        MIT. Bundled fonts: SIL Open Font License. 🗜 (smaller copies for phones) and 🔄 Convert: mediabunny © 2026-present Vanilagy and
         contributors (MPL-2.0, source at
         <a href="https://github.com/Vanilagy/mediabunny" target="_blank" rel="noreferrer" onclick={link}>github.com/Vanilagy/mediabunny</a>) and omggif ©
         2013 Dean McNamee (MIT,

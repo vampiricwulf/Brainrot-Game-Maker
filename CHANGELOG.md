@@ -13,6 +13,9 @@ in plain words for the people who make and host games. Anything committed but no
 
 ## Unreleased
 
+### Added
+- A video or sound this browser can't play is noticed as soon as it's added: a note at the top of the editor says why, and 🔄 Convert puts a copy that plays in its place, everywhere it's used (on stream too). It's quick, with nothing lost, when only the file type was the trouble (an MKV, a camcorder's .mts); otherwise it's made again, with a window that says what it becomes and about how big first, progress and Stop. When its sound is Dolby Digital or DTS, which browsers can't read, it says so and offers the picture without the sound. Several files added at once get one note and one window, a step each. 🖼 Media's cards, a slide item's panel and the checklist offer 🔄 too, and a file used on a 🤫 card that phones can't open (an MKV, a MOV) can be repackaged for them with ↻, in 🖼 Media or the 📱 preview. Camcorder .mts and .m2ts files can be added now. Ctrl+Z puts the old file back.
+
 ### Fixed
 - 🖼 Media and the checklist now find out whether a video or sound really plays in this browser, from what's inside it: an MKV or MOV this browser plays is no longer called “may not play”, one that won't play says “⚠ won't play here” (point at it to see why, and what to do: an iPhone's HEVC video, say), and a video whose sound won't play (Dolby Digital, DTS) is named as playing without its sound. A file the app can't read is still called “may not play”, as before.
 

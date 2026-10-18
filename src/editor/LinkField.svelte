@@ -9,7 +9,7 @@
   import { app, toast, editedGame } from '../lib/app.svelte';
   import { ask } from '../lib/ask.svelte';
   import { ACCEPT, addMediaFile, addMediaLink, formatBytes, type LinkAdded } from '../lib/media.svelte';
-  import { warnIfUnplayable } from '../lib/mediadrop';
+  import { checkAdded } from '../lib/shrink/checks.svelte';
   import { isAbort, LinkError } from '../lib/download';
   import { DRIVE_SHARE_HINT, driveUrls, isLinkProblem, linkMessages, parseMediaLink, type LinkKind, type MediaLink } from '../lib/links';
   import { inTauri } from '../lib/platform';
@@ -100,7 +100,7 @@
       drive = null;
       toast(`${added.warn ? '⚠' : added.saved ? '✓' : '🌐'} ${added.message}`);
       const r = added.ref;
-      if (added.saved) warnIfUnplayable(r);
+      if (added.saved) checkAdded(r);
       onmedia(r, added);
     } catch (e) {
       if (isAbort(e)) {
@@ -153,7 +153,7 @@
     if (!file) return;
     try {
       const ref = await addMediaFile(editedGame(), file, file.name, { source: drive?.link.source });
-      warnIfUnplayable(ref);
+      checkAdded(ref);
       drive = null;
       text = '';
       onmedia(ref, null);
