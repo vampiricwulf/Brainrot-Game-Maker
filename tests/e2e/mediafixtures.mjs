@@ -19,26 +19,44 @@ export async function fixturePage(ctx) {
   return page;
 }
 
+// One second of silence in AC-3 (Dolby Digital) is 31.25 of this frame (48 kHz, mono, 64 kbps, 1,536 samples): no
+// browser plays AC-3, so it stands in for a camcorder's or a film's sound. Made with
+// `ffmpeg -f lavfi -i anullsrc=r=48000:cl=mono -t 0.032 -c:a ac3 -b:a 64k -f ac3 silence.ac3`.
+const AC3_FRAME =
+  'C3eQMQhAL4QpQ/51fPnz58+fPnz58+fPnz58+fPnz58+fPnz58+fPnz58+fPjL/BEAAAAA2vnz58222228ePHjx48ePHjx48btttvnzWtSgAAAAAbXz58+bbbbbePHjx48ePHjx48eN2223z5rWpQAAAAANr58+fNttttvHjx48ePHjx48ePG7bbb581rUoAAAAAG18+fPm22223jx48ePHjx48ePHjdttt8+a1qUAAAAADa+fPnzbbbbbx48ePHjx48ePHjxu222+fNa1KAAAAABtfPnz5ttttt48ePHjx48ePHjx43bbbfPmtakAAAAAAAAAAAAAAAAAAAAABLCg==';
+
 /**
- * A WebM clip made in `page` (fixturePage): `seconds` long at `fps`, `w`×`h`, its picture `codec` ('vp8' or 'vp9') at
- * about `bitrate` bits a second (big blocks of noise, new each frame, so it comes out as big as asked), a key frame
- * every `keyEvery` seconds, with an Opus tone when `audio`. Returns its bytes.
+ * A clip made in `page` (fixturePage): `seconds` long at `fps`, `w`×`h`, its picture `codec` ('vp8' or 'vp9'; null:
+ * none) at about `bitrate` bits a second (big blocks of noise, new each frame, so it comes out as big as asked), a key
+ * frame every `keyEvery` seconds, with a sound when `audio`: an Opus tone (true or 'opus'), or AC-3 silence ('ac3').
+ * In a WebM, or an MKV (`box: 'mkv'`, which holds AC-3). Returns its bytes.
  */
-export async function clip(page, { w = 320, h = 240, seconds = 2, fps = 30, codec = 'vp8', bitrate = 1_000_000, keyEvery = 1, audio = true } = {}) {
+export async function clip(page, { w = 320, h = 240, seconds = 2, fps = 30, codec = 'vp8', bitrate = 1_000_000, keyEvery = 1, audio = true, box = 'webm' } = {}) {
   const b64 = await page.evaluate(
     async (o) => {
       const M = window.Mediabunny;
       const target = new M.BufferTarget();
-      const out = new M.Output({ format: new M.WebMOutputFormat(), target });
+      const out = new M.Output({ format: o.box === 'mkv' ? new M.MkvOutputFormat() : new M.WebMOutputFormat(), target });
       const canvas = Object.assign(document.createElement('canvas'), { width: o.w, height: o.h });
       const g = canvas.getContext('2d');
       const small = Object.assign(document.createElement('canvas'), { width: Math.ceil(o.w / 8), height: Math.ceil(o.h / 8) });
       const sg = small.getContext('2d');
-      const video = new M.CanvasSource(canvas, { codec: o.codec, quality: new M.Quality({ bitrate: o.bitrate }), keyFrameInterval: o.keyEvery });
-      out.addVideoTrack(video, { frameRate: o.fps });
-      const sound = o.audio ? new M.AudioSampleSource({ codec: 'opus', quality: new M.Quality({ bitrate: 64_000 }) }) : null;
+      const video = o.codec ? new M.CanvasSource(canvas, { codec: o.codec, quality: new M.Quality({ bitrate: o.bitrate }), keyFrameInterval: o.keyEvery }) : null;
+      if (video) out.addVideoTrack(video, { frameRate: o.fps });
+      const opus = o.audio === true || o.audio === 'opus';
+      const sound = opus ? new M.AudioSampleSource({ codec: 'opus', quality: new M.Quality({ bitrate: 64_000 }) }) : null;
       if (sound) out.addAudioTrack(sound);
+      const ac3 = o.audio === 'ac3' ? new M.EncodedAudioPacketSource('ac3') : null;
+      if (ac3) out.addAudioTrack(ac3);
       await out.start();
+      if (ac3) {
+        const frame = Uint8Array.from(atob(o.ac3Frame), (c) => c.charCodeAt(0));
+        const d = 1536 / 48_000;
+        for (let k = 0; k * d < o.seconds; k++)
+          await ac3.add(new M.EncodedPacket(frame, 'key', k * d, d), k ? undefined : { decoderConfig: { codec: 'ac-3', numberOfChannels: 1, sampleRate: 48_000 } });
+      }
+      // (A sound alone: no frames, and the Opus tone below is a second at a time all the same.)
+      const step = video ? 1 / o.fps : 1;
       let seed = 2463534242;
       const rnd = () => {
         seed ^= seed << 13;
@@ -49,19 +67,22 @@ export async function clip(page, { w = 320, h = 240, seconds = 2, fps = 30, code
         return seed & 255;
       };
       const rate = 48_000;
-      const frames = Math.round(o.seconds * o.fps);
+      const frames = Math.round(o.seconds / step);
       for (let i = 0; i < frames; i++) {
-        const img = sg.createImageData(small.width, small.height);
-        for (let p = 0; p < img.data.length; p += 4) [img.data[p], img.data[p + 1], img.data[p + 2], img.data[p + 3]] = [rnd(), rnd(), rnd(), 255];
-        sg.putImageData(img, 0, 0);
-        g.imageSmoothingEnabled = false;
-        g.drawImage(small, 0, 0, o.w, o.h);
-        await video.add(i / o.fps, 1 / o.fps);
+        const t = i * step;
+        if (video) {
+          const img = sg.createImageData(small.width, small.height);
+          for (let p = 0; p < img.data.length; p += 4) [img.data[p], img.data[p + 1], img.data[p + 2], img.data[p + 3]] = [rnd(), rnd(), rnd(), 255];
+          sg.putImageData(img, 0, 0);
+          g.imageSmoothingEnabled = false;
+          g.drawImage(small, 0, 0, o.w, o.h);
+          await video.add(t, step);
+        }
         // A second of sound with each second of picture.
-        if (sound && i % o.fps === 0) {
-          const n = Math.min(rate, Math.round((o.seconds - i / o.fps) * rate));
-          const data = Float32Array.from({ length: n }, (_, k) => 0.2 * Math.sin((2 * Math.PI * 440 * (i / o.fps * rate + k)) / rate));
-          const s = new M.AudioSample({ data, format: 'f32-planar', numberOfChannels: 1, sampleRate: rate, timestamp: i / o.fps });
+        if (sound && Math.abs(t - Math.round(t)) < step / 2) {
+          const n = Math.min(rate, Math.round((o.seconds - t) * rate));
+          const data = Float32Array.from({ length: n }, (_, k) => 0.2 * Math.sin((2 * Math.PI * 440 * (t * rate + k)) / rate));
+          const s = new M.AudioSample({ data, format: 'f32-planar', numberOfChannels: 1, sampleRate: rate, timestamp: t });
           await sound.add(s);
           s.close();
         }
@@ -72,7 +93,7 @@ export async function clip(page, { w = 320, h = 240, seconds = 2, fps = 30, code
       for (let i = 0; i < bytes.length; i += 0x8000) bin += String.fromCharCode(...bytes.subarray(i, i + 0x8000));
       return btoa(bin);
     },
-    { w, h, seconds, fps, codec, bitrate, keyEvery, audio },
+    { w, h, seconds, fps, codec, bitrate, keyEvery, audio, box, ac3Frame: AC3_FRAME },
   );
   return Buffer.from(b64, 'base64');
 }

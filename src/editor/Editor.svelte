@@ -80,6 +80,7 @@
   import JobPill from './JobPill.svelte';
   import { openShrinkDialog, shrinkDialog } from '../lib/shrink/dialog.svelte';
   import { stopAll } from '../lib/shrink/jobs.svelte';
+  import { checkGame } from '../lib/shrink/checks.svelte';
   import { libraryMedia } from '../lib/phonecopies';
   import RoundImport from './RoundImport.svelte';
   import { clipboard } from '../lib/clipboard.svelte';
@@ -127,6 +128,12 @@
   });
   $effect(() => {
     document.title = game.title ? `${game.title} · Brainrot Games Maker` : 'Brainrot Games Maker';
+  });
+  // Whether each video and sound really plays in this browser, worked out as files arrive or change (🖼 Media and the
+  // checklist say; nothing pops up for files already in a game).
+  $effect(() => {
+    for (const m of game.media) if (m.kind === 'video' || m.kind === 'audio') void mediaUrls[m.id];
+    untrack(() => checkGame(game));
   });
   // A 🗜 copy being made belongs to its game in the editor: another game (New, Open…) stops it, and its window closes;
   // so does going to play (▶ Play and Resume ask first).

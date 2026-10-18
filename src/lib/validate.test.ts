@@ -8,6 +8,7 @@ import { addClueSlide, setClueType } from './ops';
 import { addCard } from './partner';
 import { nameGivesAway, savedCardProblems, validate } from './validate';
 import { OLD_FILE_LIMITS } from './buzzproto';
+import type { Verdict } from './shrink/playable';
 
 /** How big a file the buzzer server takes in these tests (one that doesn't say: 16 MB). */
 const OLD = { fileBytes: OLD_FILE_LIMITS.fileBytes };
@@ -576,5 +577,44 @@ describe('🤫 Cards (the editor’s tab)', () => {
     expect(older().map((p) => p.text)).toEqual([expect.stringMatching(/^1 file is used only on 🤫 cards/)]);
     (game.rounds[0] as BoardRound).categories[0].clues[0].answerSlide.elements.push(newImageEl('pic'));
     expect(older()).toEqual([]);
+  });
+});
+
+describe('videos and sounds this browser won’t play', () => {
+  const ref = (id: string, kind: 'video' | 'audio' = 'video', more: Partial<Game['media'][number]> = {}) => ({ id, name: `${id}.mkv`, mime: 'video/x-matroska', size: 10, kind, ...more });
+  const playLines = (game: Game, plays?: NonNullable<Parameters<typeof validate>[1]>['plays']) => validate(game, { plays }).filter((p) => p.text.includes('browser')).map((p) => [p.level, p.tab, p.text]);
+
+  it('as worked out from what’s inside them: won’t play, plays without its sound, or (not worked out yet) as their type says', () => {
+    // (Its type alone says none of these play here.)
+    vi.stubGlobal('document', { createElement: () => ({ canPlayType: () => '' }) });
+    const game = jeopardyGame();
+    game.media.push(ref('a'), ref('b'), ref('c', 'audio'), ref('d'), ref('e'), ref('f'), ref('g'));
+    const said: Record<string, Verdict> = {
+      a: { is: 'fails', fix: null, why: { kind: 'video', video: 'hevc', cant: 'undecodable' } },
+      b: { is: 'silent', fix: { video: 'keep', audio: 'drop', box: 'webm' }, why: { kind: 'video', sound: 'ac3' } },
+      c: { is: 'fails', fix: { audio: 'keep', box: 'mp3' }, why: { kind: 'audio', box: 'ts' } },
+      d: { is: 'plays', repack: { video: 'keep', audio: 'keep', box: 'webm' } },
+      e: { is: 'unknown' },
+    };
+    expect(playLines(game, (m) => said[m.id])).toEqual([
+      ['warn', 'media', '2 video/audio files won’t play in this browser: 🖼 Media says why'],
+      ['warn', 'media', '1 video plays without its sound in this browser (🖼 Media says why)'],
+      // (e: the app can't read it; f and g: not worked out yet.)
+      ['warn', 'media', '3 video/audio files this browser may not play'],
+    ]);
+    said.f = { ...said.b };
+    expect(playLines(game, (m) => said[m.id])[1]).toEqual(['warn', 'media', '2 videos play without their sound in this browser (🖼 Media says why)']);
+    // With none worked out, as before.
+    expect(playLines(game)).toEqual([['warn', 'media', '7 video/audio files this browser may not play']]);
+    vi.unstubAllGlobals();
+  });
+
+  it('a file that plays says nothing, whatever its type says; links and 🗜 copies for phones aren’t counted', () => {
+    vi.stubGlobal('document', { createElement: () => ({ canPlayType: () => '' }) });
+    const game = jeopardyGame();
+    game.media.push(ref('a'), ref('link', 'video', { url: 'https://example.com/a.mkv' }), ref('copy', 'video', { phoneCopy: { of: 'a' } }));
+    const fails: Verdict = { is: 'fails', fix: null, why: { kind: 'video', video: 'hevc' } };
+    expect(playLines(game, (m) => (m.id === 'a' ? { is: 'plays', repack: null } : fails))).toEqual([]);
+    vi.unstubAllGlobals();
   });
 });

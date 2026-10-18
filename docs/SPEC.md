@@ -240,8 +240,13 @@ RollEvent  { id, ts, source: 'wheel' | 'dice', presetName?, result: string /* la
 
 ### 5.5 Media
 - Accepted: **Images** png, jpg/jpeg, gif (animated), webp, svg, avif · **Video** mp4 (H.264/AAC), webm, mov*, mkv*, ogv · **Audio** mp3, wav, ogg, m4a/aac, flac, opus.
-  `*` Playback depends on the browser's codec support. The editor tests-decodes on import and warns
-  if the file won't play (e.g. HEVC `.mov`).
+  `*` Playback depends on the browser's codec support. In the editor, each stored video and sound is read for what's
+  inside it (its file type by its content, and each track's codec, asked of the browser with the track's own codec
+  string); for an MKV, MOV or MPEG-TS, an HEVC or AV1 picture, or uncompressed sound outside a WAV, a hidden, muted
+  page element also plays a moment of it, to see whether it opens, decodes frames and decodes sound. 🖼 Media then
+  says "won't play here" or "plays without its sound here" (its title says why: an HEVC picture, Dolby Digital
+  sound…), and the checklist counts them. A file the app can't read keeps the type-based warning ("may not play"),
+  as does one not checked yet.
 - A media library panel lists everything in the game with its size and usage count. "Remove unused" is available.
 - Per-element playback settings: autoplay, loop, muted, start/end trim, and volume.
 - **Online links (optional)**: every file picker (except fonts) has *Paste a link*, and the slide editor has *🌐 Link* (and

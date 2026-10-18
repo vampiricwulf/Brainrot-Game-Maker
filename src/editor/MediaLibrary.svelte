@@ -25,6 +25,8 @@
   import { jobFor, progressText, stopJob } from '../lib/shrink/jobs.svelte';
   import { clockTenths, SHRINK_OFFER_BYTES, typeWord } from '../lib/shrink/plan';
   import { fileLimitsNow } from '../lib/serverlimits.svelte';
+  import { verdictOf } from '../lib/shrink/checks.svelte';
+  import { whyLine } from '../lib/shrink/words';
 
   const game = $derived(app.game);
   const usage = $derived(mediaUsage(game));
@@ -401,6 +403,7 @@
       {@const n = usage.get(m.id) ?? 0}
       {@const copy = phoneCopyOf(game, m)}
       {@const job = jobFor(m.id)}
+      {@const v = !m.url && (m.kind === 'video' || m.kind === 'audio') ? verdictOf(m.id) : undefined}
       <!-- The keyboard selects with the checkbox. -->
       <!-- svelte-ignore a11y_click_events_have_key_events, a11y_no_noninteractive_element_interactions -->
       <div
@@ -469,9 +472,15 @@
             >{m.name}</button>
           </div>
         {/if}
-        <div class="meta muted">
+        <div class="meta muted" data-verdict={typeof v === 'object' ? v.is : v}>
           {m.url ? `🌐 ${linkHost(m.url)}` : formatBytes(m.size)} · <span class:where={!!usedWhere(m)} title={usedWhere(m)}>{n ? `used ${n}×` : 'unused'}</span>
-          {#if !m.url && (m.kind === 'video' || m.kind === 'audio') && !canPlay(m.mime)}<span class="warn" title={m.mime}> · may not play</span>{/if}
+          <!-- (Worked out from what's inside it once it's been checked; till then, or when the app can't read it, its type says.) -->
+          {#if typeof v === 'object' && v.is === 'fails'}<span class="warn" title={whyLine(v)}> · ⚠ won’t play here</span>
+          {:else if typeof v === 'object' && v.is === 'silent'}<span class="warn" title={whyLine(v)}> · ⚠ plays without its sound here</span>
+          {:else if !m.url && (m.kind === 'video' || m.kind === 'audio') && (typeof v !== 'object' || v.is === 'unknown') && !canPlay(m.mime)}<span
+              class="warn"
+              title={m.mime}> · may not play</span
+            >{/if}
         </div>
         {#if job}
           <div class="meta muted" data-job-line>

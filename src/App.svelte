@@ -38,6 +38,7 @@
   import { validate } from './lib/validate';
   import { shrinkMaybe } from './lib/shrink/probe';
   import { shrinkable } from './lib/shrink/apply';
+  import { checks, knownVerdict } from './lib/shrink/checks.svelte';
   import { jobAsk, jobLine, jobs, stopAll } from './lib/shrink/jobs.svelte';
   import { checklistLines, type ChecklistLine } from './lib/checklist';
   import { blankName, isBoard, migrateGame, newId } from './lib/model';
@@ -463,15 +464,17 @@
   // (A room kept open that puts cards on phones but takes no files, or a server that takes none: a card's file from this
   // computer won't reach one. How big a file the server takes, as it said.)
   // (Which 🗜 copies for phones go, and whether 🗜 can make one of a file here: its lines say so, with a button.)
+  // (Whether each video and sound plays in this browser, as worked out from what's inside it so far.)
   const check = (game: Game) => {
     const lim = fileLimitsNow();
     const filesOff = (!!remote.code && remote.status === 'online' && roomHasCards() && !roomHasFiles()) || lim.off;
     const canShrink = (m: MediaRef) => shrinkMaybe() && shrinkable(m) && !!mediaUrls[m.id];
-    checklist = checklistLines(game, validate(game, { filesOff, fileBytes: lim.limits.fileBytes, stored: (id) => id in mediaUrls, gifs: lim.gifs, canShrink }));
+    checklist = checklistLines(game, validate(game, { filesOff, fileBytes: lim.limits.fileBytes, stored: (id) => id in mediaUrls, gifs: lim.gifs, canShrink, plays: knownVerdict }));
   };
   const checkSoon = debounce(() => watch && check(watch.value()), 300);
   $effect(() => {
     void Object.keys(mediaUrls).length;
+    void checks.version;
     const lim = fileLimitsNow();
     void [lim.off, lim.limits.fileBytes, lim.gifs];
     untrack(checkSoon);

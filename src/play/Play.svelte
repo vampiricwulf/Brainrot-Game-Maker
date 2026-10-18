@@ -114,6 +114,7 @@
   import { NEXT_GAME } from './host/nextgame';
   import { MediaQuery } from 'svelte/reactivity';
   import { watchPhonesAway } from './host/phoneaway.svelte';
+  import { knownVerdict } from '../lib/shrink/checks.svelte';
 
   let {
     onexit,
@@ -3015,7 +3016,8 @@
   function gameChecks(g: Game) {
     // (A board short of Daily Doubles gets a button to place them.)
     // (Daily Doubles not placed yet are only a note in the editor, as Start places them: here they're listed with it.)
-    return validate(g, { filesOff, fileBytes, gifs, stored: (id) => id in mediaUrls })
+    // (Whether a video or sound plays in this browser: as worked out in the editor, as nothing is checked here.)
+    return validate(g, { filesOff, fileBytes, gifs, stored: (id) => id in mediaUrls, plays: knownVerdict })
       .map((p) => {
         const r = typeof p.tab === 'number' ? g.rounds[p.tab] : undefined;
         const dd = isBoard(r) && !!dailyDoublesShort(r) && p.text.includes('Daily Double') && p.text.includes(' not placed yet');

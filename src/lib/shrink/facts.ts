@@ -1,7 +1,8 @@
 // What's inside a video or sound file (card-files spec §4.12.1): its file type by its content (not its name), how long
 // it is, and its picture and sound tracks: their codecs, size and bitrate, and whether this browser can decode them.
-// Read with mediabunny, a few small pieces of the file at a time (never the whole of it). 🗜's dialog shows it, and
-// what 🗜 made is checked with it before it's put in.
+// Read with mediabunny, a few small pieces of the file at a time (never the whole of it). 🗜's dialog shows it, what
+// 🗜 made is checked with it before it's put in, and checks.svelte.ts tells from it whether a file plays here: with
+// a page element nobody sees, for the file types and codecs where the facts alone can't tell (elementTest).
 import type { Input, InputAudioTrack, InputFormat, InputVideoTrack } from 'mediabunny';
 
 const MiB = 1024 * 1024;
@@ -34,6 +35,85 @@ export interface MediaFacts {
   /** Sound tracks besides the main one. */
   moreAudio: number;
   subtitles: boolean;
+  /** What a page element made of it (elementTest), when it was asked. */
+  element?: ElementResult;
+}
+
+/**
+ * What a page element nobody sees made of a file: it opened it (or said it can't, or said nothing in 8 s), showed its
+ * picture (null: not asked, or it couldn't tell), and decoded its sound ('unsure': it couldn't tell).
+ */
+export interface ElementResult {
+  opens: 'yes' | 'no' | 'unknown';
+  picture: boolean | null;
+  sound: 'yes' | 'no' | 'unsure';
+}
+
+/** Uncompressed sound (PCM, and its μ-law and A-law kin). */
+export const isPcm = (codec: string | null | undefined): boolean => !!codec && (codec.startsWith('pcm') || codec === 'ulaw' || codec === 'alaw');
+
+/** File types every browser that plays their codecs opens: the facts tell for these. */
+const OPENS_BY_CODECS = new Set<Box>(['mp4', 'webm', 'ogg', 'mp3', 'wav', 'flac', 'adts']);
+export const opensByCodecs = (box: Box): boolean => OPENS_BY_CODECS.has(box);
+
+/**
+ * Whether only a page element can tell if a file plays here: an MKV, MOV or MPEG-TS (canPlayType says no to an MKV
+ * that plays, and a browser may not open one whose codecs it plays), an HEVC or AV1 picture (that depends on the
+ * computer's hardware), or uncompressed sound outside a WAV.
+ */
+export function needsElementTest(f: MediaFacts): boolean {
+  if (!f.box) return false;
+  return !opensByCodecs(f.box) || f.video?.codec === 'hevc' || f.video?.codec === 'av1' || (isPcm(f.audio?.codec) && f.box !== 'wav');
+}
+
+/**
+ * Whether a page element nobody sees (muted) opens a file and plays it: a picture (when `picture`: the file has one)
+ * whose frames it decodes, and a sound whose bytes it decodes. It plays a moment of it, 0.3 s or 1.5 s at most.
+ */
+export function elementTest(blob: Blob, kind: 'video' | 'audio', picture: boolean): Promise<ElementResult> {
+  return new Promise((resolve) => {
+    const el = document.createElement(kind);
+    const url = URL.createObjectURL(blob);
+    let done = false;
+    let timer: ReturnType<typeof setTimeout>;
+    const end = (r: ElementResult) => {
+      if (done) return;
+      done = true;
+      clearTimeout(timer);
+      el.ontimeupdate = el.onerror = el.onloadedmetadata = null;
+      el.pause();
+      el.removeAttribute('src');
+      el.load();
+      URL.revokeObjectURL(url);
+      resolve(r);
+    };
+    // (Nothing at all within 8 s: it can't tell, and the facts decide.)
+    timer = setTimeout(() => end({ opens: 'unknown', picture: null, sound: 'unsure' }), 8000);
+    el.muted = true;
+    if (el instanceof HTMLVideoElement) el.playsInline = true;
+    el.preload = 'auto';
+    el.onerror = () => end({ opens: 'no', picture: null, sound: 'unsure' });
+    el.onloadedmetadata = () => {
+      el.onloadedmetadata = null;
+      const video = el instanceof HTMLVideoElement && picture ? el : null;
+      const shows = video ? video.videoWidth > 0 : null;
+      const look = () => {
+        const played = el.currentTime >= 0.3;
+        let seen = shows;
+        const frames = video?.getVideoPlaybackQuality?.().totalVideoFrames;
+        // (Frames decoded say for sure; none, when it hardly played (a hidden tab, a slow computer), say nothing.)
+        if (seen && frames !== undefined) seen = frames > 0 ? true : played ? false : null;
+        const bytes = (el as HTMLMediaElement & { webkitAudioDecodedByteCount?: number }).webkitAudioDecodedByteCount;
+        const sound = typeof bytes !== 'number' ? 'unsure' : bytes > 0 ? 'yes' : played ? 'no' : 'unsure';
+        end({ opens: 'yes', picture: seen, sound });
+      };
+      clearTimeout(timer);
+      timer = setTimeout(look, 1500);
+      el.ontimeupdate = () => el.currentTime >= 0.3 && look();
+      el.play().catch(() => end({ opens: 'yes', picture: shows, sound: 'unsure' }));
+    };
+    el.src = url;
+  });
 }
 
 /** An element's types for a codec family, to ask canPlayType with the track's own codec string. */

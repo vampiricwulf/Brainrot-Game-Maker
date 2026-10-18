@@ -11,6 +11,11 @@ the day it's pushed (Pacific time; start the heading on the day's first push) an
 in plain words for the people who make and host games. Anything committed but not pushed yet goes under
 **Unreleased** at the top, and moves under its day when it's pushed.
 
+## Unreleased
+
+### Fixed
+- 🖼 Media and the checklist now find out whether a video or sound really plays in this browser, from what's inside it: an MKV or MOV this browser plays is no longer called “may not play”, one that won't play says “⚠ won't play here” (point at it to see why, and what to do: an iPhone's HEVC video, say), and a video whose sound won't play (Dolby Digital, DTS) is named as playing without its sound. A file the app can't read is still called “may not play”, as before.
+
 ## 2026-10-18
 
 ### Added

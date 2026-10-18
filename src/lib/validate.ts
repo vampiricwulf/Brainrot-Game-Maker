@@ -44,6 +44,7 @@ import { categoryTooLong } from './boardfit';
 import { statsProblems } from './toolset';
 import { actionProblem, objectsWhere } from './refs';
 import { dealSetupProblems, partName } from './deals';
+import type { Verdict } from './shrink/playable';
 
 export interface Problem {
   text: string;
@@ -123,8 +124,17 @@ export interface CardRoom {
   canShrink?: (ref: MediaRef) => boolean;
 }
 
+/**
+ * What validate goes by: the buzzer server in use (CardRoom), and `plays`: whether a stored video or sound plays in
+ * this browser, as worked out from what's inside it (checks.svelte.ts verdictOf; undefined: not yet, and its type
+ * says).
+ */
+export interface Checking extends CardRoom {
+  plays?: (m: MediaRef) => Verdict | undefined;
+}
+
 /** The checklist's problems for `game`, as the buzzer server in use (`room`) would have them. */
-export function validate(game: Game, room: CardRoom = {}): Problem[] {
+export function validate(game: Game, room: Checking = {}): Problem[] {
   const out: Problem[] = [];
   // Its title shows on stream (the title card, the audience window): a game never named says "Untitled Game" there.
   if (!game.title.trim() || game.title.trim() === 'Untitled Game')
@@ -317,9 +327,23 @@ export function validate(game: Game, room: CardRoom = {}): Problem[] {
       level: 'warn',
       player: `${plural(others, 'media file')} missing from this game: ask whoever made it for a new copy`,
     });
-  // (A live link already played when it was added; its type is often unknown from the address.)
-  const unplayable = game.media.filter((m) => !m.url && !m.phoneCopy && (m.kind === 'video' || m.kind === 'audio') && !canPlay(m.mime)).length;
-  if (unplayable) out.push({ text: `${plural(unplayable, 'video/audio file')} this browser may not play`, tab: 'media', level: 'warn' });
+  // Videos and sounds this browser won't play, or plays without their sound: as worked out from what's inside them
+  // (`room.plays`), else as their type says. (A live link already played when it was added; its type is often unknown
+  // from the address.)
+  let fails = 0;
+  let silent = 0;
+  let unsure = 0;
+  for (const m of game.media) {
+    if (m.url || m.phoneCopy || (m.kind !== 'video' && m.kind !== 'audio')) continue;
+    const v = room.plays?.(m);
+    if (v?.is === 'fails') fails++;
+    else if (v?.is === 'silent') silent++;
+    else if ((!v || v.is === 'unknown') && !canPlay(m.mime)) unsure++;
+  }
+  if (fails) out.push({ text: `${plural(fails, 'video/audio file')} won’t play in this browser: 🖼 Media says why`, tab: 'media', level: 'warn' });
+  if (silent)
+    out.push({ text: `${plural(silent, 'video')} play${silent === 1 ? 's' : ''} without ${silent === 1 ? 'its' : 'their'} sound in this browser (🖼 Media says why)`, tab: 'media', level: 'warn' });
+  if (unsure) out.push({ text: `${plural(unsure, 'video/audio file')} this browser may not play`, tab: 'media', level: 'warn' });
 
   const links = game.media.filter((m) => m.url);
   const online = onlineCount(game);
