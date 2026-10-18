@@ -152,17 +152,18 @@ describe('the server’s card file limits', () => {
     prefs.buzzerServer = room.base;
     const limits = { fileBytes: 4 << 20, roomBytes: 12 << 20, roomFiles: 32 };
     rejoinRoom(room);
-    sockets[0].welcome({ features: ['cards', 'files'], limits });
+    sockets[0].welcome({ features: ['cards', 'files', 'gifs'], limits });
     expect(remote.limits).toEqual(limits);
-    expect(fileLimitsNow()).toEqual({ limits, known: true, off: false, old: false });
+    expect(fileLimitsNow()).toEqual({ limits, known: true, off: false, old: false, gifs: true });
     closeRoom();
     expect(remote.limits).toBeNull();
     // (What the server said stays known.)
-    expect(fileLimitsNow()).toEqual({ limits, known: true, off: false, old: false });
+    expect(fileLimitsNow()).toEqual({ limits, known: true, off: false, old: false, gifs: true });
     rejoinRoom(room);
     sockets.at(-1)!.welcome({ features: ['cards', 'files'] });
     expect(remote.limits).toBeNull();
-    expect(fileLimitsNow()).toMatchObject({ limits: OLD_FILE_LIMITS, old: true });
+    // (An older room: no "gifs" either.)
+    expect(fileLimitsNow()).toMatchObject({ limits: OLD_FILE_LIMITS, old: true, gifs: false });
     closeRoom();
     expect(fileLimitsNow().limits).toEqual(OLD_FILE_LIMITS);
     prefs.buzzerServer = was;

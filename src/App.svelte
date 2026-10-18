@@ -36,6 +36,9 @@
   import { claimEditor, markBusy, watchEditor, type Busy } from './lib/editorlock';
   import { hasWork } from './lib/recent';
   import { validate } from './lib/validate';
+  import { shrinkMaybe } from './lib/shrink/probe';
+  import { shrinkable } from './lib/shrink/apply';
+  import { jobAsk, jobLine, jobs, stopAll } from './lib/shrink/jobs.svelte';
   import { checklistLines, type ChecklistLine } from './lib/checklist';
   import { blankName, isBoard, migrateGame, newId } from './lib/model';
   import { nextFreeColor } from './lib/colors';
@@ -74,7 +77,7 @@
     toSave,
   } from './lib/history.svelte';
   import { keptRoster } from './play/roster';
-  import type { Game, Session } from './lib/model';
+  import type { Game, MediaRef, Session } from './lib/model';
   import Play from './play/Play.svelte';
 
   /**
@@ -410,7 +413,8 @@
       const playing = app.screen === 'play' && !app.pregame && !app.test;
       const playLost = mayPlay() && (unstored('play') || (playing && !app.storageOk && savePlaySoon.pending()));
       const editLost = editing && !app.storageOk && hasWork(app.game) && !savedSinceChange();
-      if (!playLost && !editLost) return;
+      // (A 🗜 copy being made would be lost too.)
+      if (!playLost && !editLost && !jobs.current) return;
       e.preventDefault();
       e.returnValue = '';
     };
@@ -458,16 +462,18 @@
   /** The checklist's lines (one a round) for this game: the watcher's plain copy, or the game itself as it arrives. */
   // (A room kept open that puts cards on phones but takes no files, or a server that takes none: a card's file from this
   // computer won't reach one. How big a file the server takes, as it said.)
+  // (Which 🗜 copies for phones go, and whether 🗜 can make one of a file here: its lines say so, with a button.)
   const check = (game: Game) => {
     const lim = fileLimitsNow();
     const filesOff = (!!remote.code && remote.status === 'online' && roomHasCards() && !roomHasFiles()) || lim.off;
-    checklist = checklistLines(game, validate(game, { filesOff, fileBytes: lim.limits.fileBytes }));
+    const canShrink = (m: MediaRef) => shrinkMaybe() && shrinkable(m) && !!mediaUrls[m.id];
+    checklist = checklistLines(game, validate(game, { filesOff, fileBytes: lim.limits.fileBytes, stored: (id) => id in mediaUrls, gifs: lim.gifs, canShrink }));
   };
   const checkSoon = debounce(() => watch && check(watch.value()), 300);
   $effect(() => {
     void Object.keys(mediaUrls).length;
     const lim = fileLimitsNow();
-    void [lim.off, lim.limits.fileBytes];
+    void [lim.off, lim.limits.fileBytes, lim.gifs];
     untrack(checkSoon);
   });
   // What card files the buzzer server takes, asked once a game has a file from this computer (the 📱 preview and the
@@ -568,8 +574,8 @@
       savePlaySoon.flush();
     };
     const onvis = () => document.visibilityState === 'hidden' && flush();
-    // Desktop app: closing the window waits for these writes.
-    flushOnClose(flush);
+    // Desktop app: closing the window waits for these writes (and asks about a 🗜 copy being made).
+    flushOnClose(flush, jobLine);
     window.addEventListener('pagehide', flush);
     document.addEventListener('visibilitychange', onvis);
     return () => {
@@ -616,10 +622,21 @@
 
   const savedTime = (ts: number) => new Date(ts).toLocaleString();
 
+  /** A 🗜 copy being made (the editor's file jobs): ▶ Play, ▶ Test and Resume ask first. True: go on (they were stopped). */
+  async function stopJobsFirst(): Promise<boolean> {
+    const q = jobAsk();
+    if (!q) return true;
+    if (!(await ask(q, { ok: 'Stop it and play', cancel: 'Keep working' }))) return false;
+    // (Quietly: the game is starting.)
+    stopAll(undefined, true);
+    return true;
+  }
+
   async function startPlay(): Promise<void> {
     // (A player-only file has no ＋ Add round: one with no rounds can only be exported again from the builder.)
     if (!app.game.rounds.length)
       return toast(playerOnly ? 'This game has no rounds to play: ask whoever made it for a new copy.' : 'Add a round first (＋ Add round)', 5000);
+    if (!(await stopJobsFirst())) return;
     // (A game kept to resume isn't asked about here: the pre-game screen offers ▶ Resume it, and Start replaces it.)
     app.test = null;
     backTo = null;
@@ -705,7 +722,8 @@
    * game's players, or three sample players). Nothing is saved: the game kept to resume, and a buzzer room left open,
    * stay as they are. Exit comes back to the editor on that round.
    */
-  function testRound(index: number): void {
+  async function testRound(index: number): Promise<void> {
+    if (!app.game.rounds[index] || !(await stopJobsFirst())) return;
     const round = app.game.rounds[index];
     if (!round) return;
     saveEditorSoon.flush();
@@ -761,7 +779,8 @@
     void app.resumable;
     untrack(() => compareSoon());
   });
-  function askResume(withEdits = false): void {
+  async function askResume(withEdits = false): Promise<void> {
+    if (!(await stopJobsFirst())) return;
     if (app.resumable?.session.phase === 'end') {
       // A finished game asks nothing, but an audience window from before is found again (opening it by its name pings it),
       // or the results fixed now never reach the stream.

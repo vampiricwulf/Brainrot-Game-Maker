@@ -4,7 +4,7 @@
   import SettingsDialog from './SettingsDialog.svelte';
   import OpenSaves from './OpenSaves.svelte';
   import { listSaves, onOpenedFile, readSave, type SaveEntry } from '../lib/desktop.svelte';
-  import { onMount, tick, untrack } from 'svelte';
+  import { onDestroy, onMount, tick, untrack } from 'svelte';
   import { app, toast } from '../lib/app.svelte';
   import { announce } from '../lib/announce';
   import {
@@ -76,6 +76,11 @@
   import HistoryNotice from './HistoryNotice.svelte';
   import HistoryPanel from './HistoryPanel.svelte';
   import FindDialog from './FindDialog.svelte';
+  import ShrinkDialog from './ShrinkDialog.svelte';
+  import JobPill from './JobPill.svelte';
+  import { openShrinkDialog, shrinkDialog } from '../lib/shrink/dialog.svelte';
+  import { stopAll } from '../lib/shrink/jobs.svelte';
+  import { libraryMedia } from '../lib/phonecopies';
   import RoundImport from './RoundImport.svelte';
   import { clipboard } from '../lib/clipboard.svelte';
   import { bundleName, sameContent } from '../lib/roundcopy';
@@ -122,6 +127,19 @@
   });
   $effect(() => {
     document.title = game.title ? `${game.title} · Brainrot Games Maker` : 'Brainrot Games Maker';
+  });
+  // A 🗜 copy being made belongs to its game in the editor: another game (New, Open…) stops it, and its window closes;
+  // so does going to play (▶ Play and Resume ask first).
+  $effect(() => {
+    const id = game.id;
+    untrack(() => {
+      stopAll(id);
+      if (shrinkDialog.open && !game.media.some((m) => m.id === shrinkDialog.open)) shrinkDialog.open = null;
+    });
+  });
+  onDestroy(() => {
+    stopAll(undefined, true);
+    shrinkDialog.open = null;
   });
 
   // Where an undo or redo changed something: that tab (the parts inside it open the rest, see nav.svelte.ts).
@@ -872,6 +890,7 @@
     {#if exporting}
       <span class="muted autosave" role="status">⬇ Exporting the web page…{packPct !== null ? ` ${packPct}%` : ''}</span>
     {/if}
+    <JobPill />
     {#if opening}
       <span class="muted autosave" role="status">📂 Opening “{opening}”…</span>
     {/if}
@@ -914,6 +933,9 @@
   {#if about}<AboutDialog onclose={() => (about = false)} />{/if}
   {#if shortcuts}<ShortcutsDialog onclose={() => (shortcuts = false)} />{/if}
   {#if finding}<FindDialog onclose={() => (finding = false)} />{/if}
+  {#if shrinkDialog.open}
+    {#key shrinkDialog.open}<ShrinkDialog id={shrinkDialog.open} onclose={() => (shrinkDialog.open = null)} />{/key}
+  {/if}
   {#if importFrom}<RoundImport source={importFrom} onclose={() => (importFrom = null)} onadded={showNew} />{/if}
   {#if settings}<SettingsDialog onclose={() => (settings = false)} />{/if}
   {#if saveList}
@@ -1062,7 +1084,7 @@
       {#if showStats}
         <button class:active={tab === 'stats'} aria-current={tab === 'stats' ? 'page' : undefined} onclick={() => (tab = 'stats')} title="Player stats, items and shops (RPG and board game rounds)">📊 Stats & Items</button>
       {/if}
-      <button class:active={tab === 'media'} aria-current={tab === 'media' ? 'page' : undefined} onclick={() => (tab = 'media')}>🖼 Media ({game.media.length})</button>
+      <button class:active={tab === 'media'} aria-current={tab === 'media' ? 'page' : undefined} onclick={() => (tab = 'media')}>🖼 Media ({libraryMedia(game).length})</button>
       <button class:active={tab === 'history'} aria-current={tab === 'history' ? 'page' : undefined} onclick={() => (tab = 'history')} title="Every change to this game: go back to any point">
         🕘 History{history.entries.length ? ` (${history.entries.length})` : ''}
       </button>
@@ -1072,9 +1094,19 @@
         <div class="problems" class:warn={checklist.some((l) => l.level === 'warn')}>
           <div class="navlabel">Checklist</div>
           {#each checklist as line}
-            <button class="problem {line.level}" onclick={() => goFix(line)} title={line.details.length > 1 ? line.details.join('\n') : undefined}>
-              {line.level === 'warn' ? '⚠' : 'ℹ'} {line.text}
-            </button>
+            {#if line.shrink?.length}
+              <!-- (🗜 beside it: never naming the file, as the line doesn't.) -->
+              <div class="problem-row">
+                <button class="problem {line.level}" onclick={() => goFix(line)} title={line.details.length > 1 ? line.details.join('\n') : undefined}>
+                  {line.level === 'warn' ? '⚠' : 'ℹ'} {line.text}
+                </button>
+                <button class="small ghost" data-checklist-shrink onclick={() => openShrinkDialog(line.shrink![0])} title="Make a smaller copy for phones" aria-label="Make a smaller copy for phones">🗜</button>
+              </div>
+            {:else}
+              <button class="problem {line.level}" onclick={() => goFix(line)} title={line.details.length > 1 ? line.details.join('\n') : undefined}>
+                {line.level === 'warn' ? '⚠' : 'ℹ'} {line.text}
+              </button>
+            {/if}
           {/each}
         </div>
       {:else}
@@ -1378,6 +1410,15 @@
   }
   .problem.info {
     color: var(--muted);
+  }
+  .problem-row {
+    display: flex;
+    align-items: flex-start;
+    gap: 2px;
+  }
+  .problem-row > .small {
+    flex-shrink: 0;
+    margin-top: 4px;
   }
   .problem:hover {
     background: var(--panel-2);

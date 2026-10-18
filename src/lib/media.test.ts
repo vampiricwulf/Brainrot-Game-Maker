@@ -1,6 +1,9 @@
 import { describe, expect, it, vi } from 'vitest';
-import { addMediaFile, getBlob, keepLinkCopy, mediaUrls, pruneMedia, registerBlob, relinkMissing, replaceMediaFile, restoreStash, stashMedia } from './media.svelte';
-import { newGame } from './model';
+import { addMediaFile, dropPhoneCopies, getBlob, identicalMedia, keepLinkCopy, mediaUrls, missingMedia, pruneMedia, registerBlob, relinkMissing, replaceMediaFile, restoreStash, stashMedia } from './media.svelte';
+import { libraryMedia, withCopies } from './phonecopies';
+import { mediaUsage } from './usage';
+import { bundleRound } from './roundcopy';
+import { newGame, newImageEl } from './model';
 import { uploadedFamily } from './fonts';
 import { app } from './app.svelte';
 import { saveEditor, watchWrites } from './persist';
@@ -137,5 +140,40 @@ describe('missing files found again, and copies of links saved', () => {
     expect(game.media[0]).toEqual({ id: 'web', name: 'cat.png', mime: 'image/png', size: 3, kind: 'image' });
     expect(getBlob('web')).toBe(blob);
     expect(await keepLinkCopy(game, 'web', { blob, mime: 'image/png' })).toBe(false);
+  });
+});
+
+describe('🗜 copies for phones', () => {
+  const gif = { id: 'g1', name: 'dance.gif', mime: 'image/gif', size: 4, kind: 'image' as const };
+  const copy = { id: 'g1c', name: 'dance (phones).webm', mime: 'video/webm', size: 4, kind: 'video' as const, phoneCopy: { of: 'g1' } };
+
+  it('aren’t one of the game’s files to a person: no list shows them, nor is one the same file again, nor missing', async () => {
+    const game = newGame();
+    game.media.push(gif, copy);
+    expect(libraryMedia(game).map((m) => m.id)).toEqual(['g1']);
+    // (Its bytes aren't here: phones get its file.)
+    registerBlob('g1', new Blob(['GIF8']));
+    expect(missingMedia(game)).toEqual([]);
+    registerBlob('g1c', new Blob(['webm']));
+    expect(await identicalMedia(game, new Blob(['webm']), 'video')).toBeUndefined();
+    expect(await identicalMedia(game, new Blob(['GIF8']), 'image')).toBe(game.media[0]);
+  });
+
+  it('are used where their file is, go with it, and come along with a round that uses it', () => {
+    const game = newGame();
+    game.media.push(gif, copy, { ...gif, id: 'g2', name: 'other.gif' });
+    game.cards = [{ id: 'sc1', name: 'Tip', background: {}, elements: [newImageEl('g1')] }];
+    expect([mediaUsage(game).get('g1'), mediaUsage(game).get('g1c'), mediaUsage(game).get('g2')]).toEqual([1, 1, undefined]);
+    expect(withCopies(game, ['g1', 'g2'])).toEqual(['g1', 'g2', 'g1c']);
+    expect(withCopies(game, ['g2'])).toEqual(['g2']);
+    expect(dropPhoneCopies(game, 'g1')).toBe(1);
+    expect(game.media.map((m) => m.id)).toEqual(['g1', 'g2']);
+  });
+
+  it('come with their file when a round is copied', () => {
+    const game = newGame();
+    game.media.push(gif, copy);
+    game.rounds.push({ id: 'r', mode: 'slides', name: 'Intro', questionSlide: { background: { image: 'g1' }, elements: [] } });
+    expect(bundleRound(game, game.rounds[0]).media.map((m) => m.id)).toEqual(['g1', 'g1c']);
   });
 });

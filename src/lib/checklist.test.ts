@@ -42,6 +42,22 @@ describe('the checklist in the sidebar', () => {
 });
 
 describe('the checklist: Daily Doubles, RPG screens and board-game spaces', () => {
+  it('keeps the files 🗜 would help (each once) on the line, for its button: a round’s line, or a line of its own', () => {
+    const game = jeopardyGame();
+    const lines = checklistLines(game, [
+      { text: 'Jeopardy!: a 🤫 card has a GIF of 20.0 MB', tab: 0, level: 'info', shrink: 'g1' },
+      { text: 'Jeopardy!: another 🤫 card has a GIF of 20.0 MB', tab: 0, level: 'info', shrink: 'g1' },
+      { text: 'Jeopardy!: a 🤫 card has a GIF too big', tab: 0, level: 'warn', shrink: 'g2' },
+      { text: '🤫 Card “Tip” has a GIF of 20.0 MB', tab: 'cards', level: 'info', shrink: 'g3' },
+      { text: 'Nothing to copy', tab: 'tools', level: 'warn' },
+    ]);
+    expect(lines.map((l) => [l.text, l.shrink])).toEqual([
+      ['Jeopardy!: 30 clues to finish, 3 more to fix', ['g1', 'g2']],
+      ['🤫 Card “Tip” has a GIF of 20.0 MB', ['g3']],
+      ['Nothing to copy', undefined],
+    ]);
+  });
+
   it('says when a board has fewer Daily Doubles than it wants, as the pre-game screen does', () => {
     const game = jeopardyGame();
     const board = game.rounds[0] as BoardRound;

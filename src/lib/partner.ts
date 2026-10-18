@@ -898,7 +898,7 @@ export function filesWanted(
   s: Pick<PartnerState, 'sent' | 'ready'>,
   held: Record<Id, string>,
   put: Record<Id, string>,
-  can: Pick<PhoneCan, 'fileBytes'>,
+  can: Pick<PhoneCan, 'fileBytes' | 'stored' | 'gifs'>,
   failed: Record<Id, LeftOut> = {},
 ): Id[] {
   const out = new Set<Id>();

@@ -4,6 +4,7 @@
 // tab's Go there).
 import { categoryLabel, clueCardName, formatPoints, questionSlides, roundName, savedCardName, type Action, type Game, type Slide } from './model';
 import type { ClueSide, Place } from './historylabel';
+import { libraryMedia } from './phonecopies';
 
 export interface Hit {
   icon: string;
@@ -152,7 +153,7 @@ export function findAll(game: Game, query: string, limit = 200): Hit[] {
   (game.cards ?? []).forEach((c, i) =>
     look('🤫', [c.name, ...slideWords(c)], `Cards › ${savedCardName(c, i)}`, { tab: 'cards', card: c.id }, field([[c.name, 'main [data-field="card-name"]']]) ?? 'main [data-field="card"]'),
   );
-  for (const m of game.media) look('🖼', [m.name], 'Media', { tab: 'media', media: m.id });
+  for (const m of libraryMedia(game)) look('🖼', [m.name], 'Media', { tab: 'media', media: m.id });
   const tb = game.tiebreaker;
   if (tb) {
     look('❓', slideWords(tb.questionSlide), `Tiebreaker › Question${tb.extraSlides?.length ? ' 1' : ''}`, { tab: 'tiebreaker', side: 'q' }, 'main [data-field="q"]');

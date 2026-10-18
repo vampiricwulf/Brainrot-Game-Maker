@@ -17,15 +17,25 @@
   import { categoryLabel, isBoard, roundName, type MediaRef } from '../lib/model';
   import LinkField from './LinkField.svelte';
   import SaveCopyButton from './SaveCopyButton.svelte';
+  import { SLOW_FILE_BYTES } from '../lib/buzzproto';
+  import { libraryMedia, withCopies } from '../lib/phonecopies';
+  import { phoneCopyOf, phonesGetLink } from '../lib/phonecard';
+  import { removePhoneCopy, shrinkable } from '../lib/shrink/apply';
+  import { openShrinkDialog } from '../lib/shrink/dialog.svelte';
+  import { jobFor, progressText, stopJob } from '../lib/shrink/jobs.svelte';
+  import { SHRINK_OFFER_BYTES, typeWord } from '../lib/shrink/plan';
 
   const game = $derived(app.game);
   const usage = $derived(mediaUsage(game));
   // Live links aren't stored, so they take no space.
   // (A missing file isn't stored here: it's counted apart.)
+  // (🗜 copies for phones are stored with the game too, but aren't cards of their own: each shows on its file's card.)
+  const files = $derived(libraryMedia(game));
   const stored = $derived(game.media.filter((m) => !m.url && mediaUrls[m.id]));
+  const copies = $derived(stored.filter((m) => m.phoneCopy).length);
   const total = $derived(stored.reduce((a, m) => a + m.size, 0));
   const links = $derived(game.media.filter((m) => m.url).length);
-  const unused = $derived(game.media.filter((m) => !usage.get(m.id)));
+  const unused = $derived(files.filter((m) => !usage.get(m.id)));
   const embeds = $derived(allEmbeds(game));
   /** The slides each file shows on ("Jeopardy! · Memes #2 (question)"), for its "used 3×" tooltip. */
   const places = $derived.by(() => {
@@ -73,7 +83,7 @@
   let filter = $state('');
   const shown = $derived.by(() => {
     const words = filter.toLowerCase().split(/\s+/).filter(Boolean);
-    return words.length ? game.media.filter((m) => words.every((w) => `${m.name} ${m.kind}`.toLowerCase().includes(w))) : game.media;
+    return words.length ? files.filter((m) => words.every((w) => `${m.name} ${m.kind}`.toLowerCase().includes(w))) : files;
   });
   const icon = { image: '🖼', video: '🎬', audio: '🔊', font: '🔤' } as const;
   const EMBED_ICON: Record<string, string> = { youtube: '▶️', drive: '🎞', streamable: '🎞' };
@@ -96,12 +106,16 @@
 
   /**
    * Done at once: the note at the bottom offers Undo (the files stay stored while a step can bring them back). One still
-   * in use isn't saved with the game: the checklist says so until it's put back or taken off those slides.
+   * in use isn't saved with the game: the checklist says so until it's put back or taken off those slides. A file's 🗜
+   * copy for phones goes with it.
    */
   function remove(ids: string[], label: string): void {
-    step(label, () => (game.media = game.media.filter((m) => !ids.includes(m.id))), { notify: true });
+    const all = withCopies(game, ids);
+    step(label, () => (game.media = game.media.filter((m) => !all.includes(m.id))), { notify: true });
     picked = picked.filter((id) => !ids.includes(id));
   }
+  /** The file whose 🗜 copy plays in its card's picture (▶), instead of the file. */
+  let watching = $state<string | null>(null);
 
   // ---------- Selecting several cards (Ctrl+click toggles one, Shift+click takes the run from the last one) ----------
   let picked = $state<string[]>([]);
@@ -308,7 +322,7 @@
 >
   <PageHeader title="Media">
     {#snippet sub()}
-      Files stored with this game: {stored.length} · {formatBytes(total)}{#if missing.length}{' '}({missing.length} more missing){/if}.
+      Files stored with this game: {stored.length} · {formatBytes(total)}{#if copies}{' '}({copies} phone cop{copies === 1 ? 'y' : 'ies'}){/if}{#if missing.length}{' '}({missing.length} more missing){/if}.
       {#if links}🌐 {links} more play{links === 1 ? 's' : ''} from the internet.{/if}
       {#if total > 100 * 1024 ** 2}<span class="warn">Large games are fine as .brainrot packs but make big standalone HTML exports.</span>{/if}
     {/snippet}
@@ -337,7 +351,7 @@
       title="Delete the files nothing in the game uses (Undo brings them back)">🗑 Delete unused ({unused.length})</button
     >
   </div>
-  {#if game.media.length}
+  {#if files.length}
     <div class="row picking">
       {#if picked.length}
         <span>{picked.length} selected</span>
@@ -351,11 +365,11 @@
       {/if}
       <span class="spacer"></span>
       <input class="filter" type="search" bind:value={filter} placeholder="🔍 Filter by name or kind" aria-label="Filter files" />
-      {#if filter.trim()}<span class="hint">{shown.length} of {game.media.length}</span>{/if}
+      {#if filter.trim()}<span class="hint">{shown.length} of {files.length}</span>{/if}
     </div>
   {/if}
 
-  {#if !game.media.length}
+  {#if !files.length}
     <div class="empty muted">
       <span class="ic" aria-hidden="true">🖼</span>
       No files yet. Drop pictures, videos, sounds or fonts here, or use ＋ Add files…
@@ -365,6 +379,8 @@
   <div class="grid">
     {#each shown as m (m.id)}
       {@const n = usage.get(m.id) ?? 0}
+      {@const copy = phoneCopyOf(game, m)}
+      {@const job = jobFor(m.id)}
       <!-- The keyboard selects with the checkbox. -->
       <!-- svelte-ignore a11y_click_events_have_key_events, a11y_no_noninteractive_element_interactions -->
       <div
@@ -381,7 +397,9 @@
         aria-label={m.name}
       >
         <div class="thumb">
-          {#if m.kind === 'image' && mediaUrls[m.id]}
+          {#if watching === m.id && copy && mediaUrls[copy.id]}
+            <video src={mediaUrls[copy.id]} autoplay loop muted playsinline aria-label="Its smaller copy for phones"></video>
+          {:else if m.kind === 'image' && mediaUrls[m.id]}
             <img src={mediaUrls[m.id]} alt="" onerror={imgFallback} />
           {:else if m.kind === 'video' && mediaUrls[m.id]}
             <!-- svelte-ignore a11y_media_has_caption -->
@@ -428,6 +446,32 @@
           {m.url ? `🌐 ${linkHost(m.url)}` : formatBytes(m.size)} · <span class:where={!!usedWhere(m)} title={usedWhere(m)}>{n ? `used ${n}×` : 'unused'}</span>
           {#if !m.url && (m.kind === 'video' || m.kind === 'audio') && !canPlay(m.mime)}<span class="warn" title={m.mime}> · may not play</span>{/if}
         </div>
+        {#if job}
+          <div class="meta muted" data-job-line>
+            🗜 {job.phase === 'waiting' ? 'Waiting to make its copy for phones…' : `Making a smaller copy for phones… ${progressText(job)}`}
+            <button class="small ghost" onclick={() => stopJob(job.id)} title="Stop it: nothing is changed">Stop</button>
+          </div>
+        {/if}
+        {#if copy}
+          <div class="meta copy" data-phone-copy>
+            <span title="Phones get this copy on 🤫 cards; the show keeps the file as it is"
+              >📱 Phone copy · {formatBytes(copy.size)}{copy.phoneCopy?.width ? ` · ${copy.phoneCopy.width}×${copy.phoneCopy.height}` : ''} {typeWord(copy.mime)}</span
+            >
+            {#if mediaUrls[copy.id]}
+              <button
+                class="small ghost"
+                onclick={() => (watching = watching === m.id ? null : m.id)}
+                aria-label={watching === m.id ? 'Stop watching its copy for phones' : 'Watch its copy for phones'}
+                title={watching === m.id ? 'Back to the file itself' : 'Watch the copy phones get'}>{watching === m.id ? '⏹' : '▶'}</button
+              >
+            {/if}
+            <button class="small ghost" onclick={() => openShrinkDialog(m.id)} disabled={!!job} title="Make its copy for phones again">🗜 Again</button>
+            <button class="small ghost" onclick={() => removePhoneCopy(game, m.id)} aria-label="Remove its copy for phones" title="Remove its copy: phones get the file itself (Undo brings the copy back)">✕</button>
+          </div>
+        {/if}
+        {#if shrinkable(m) && !copy && m.size > SHRINK_OFFER_BYTES && phonesGetLink(m)}
+          <div class="meta muted">Phones get this one from its link: no copy needed</div>
+        {/if}
         {#if m.url}
           {@const exp = expiry(m)}
           {#if exp}<div class="meta warn">⏳ {exp}</div>{/if}
@@ -446,7 +490,18 @@
           {#if !m.url && !mediaUrls[m.id]}
             <button class="small primary" onclick={() => replace(m)} title="Pick the file again (or another one) to fix every place it's used">🔗 Replace file…</button>
           {:else}
-            <button class="ghost small" onclick={() => replace(m)} title="Swap in another file; every place it's used follows">Replace…</button>
+            <button class="ghost small" onclick={() => replace(m)} disabled={!!job} title={job ? 'Wait for its copy for phones to be made (or Stop it)' : "Swap in another file; every place it's used follows"}
+              >Replace…</button
+            >
+          {/if}
+          {#if shrinkable(m) && !copy && mediaUrls[m.id] && m.size > SHRINK_OFFER_BYTES && !phonesGetLink(m)}
+            <button
+              class="small {m.size > SLOW_FILE_BYTES ? 'primary' : 'ghost'}"
+              data-shrink
+              onclick={() => openShrinkDialog(m.id)}
+              disabled={!!job}
+              title="Make a smaller copy for phones: they get it on 🤫 cards, and the show keeps this file as it is">🗜 Make smaller…</button
+            >
           {/if}
           <button
             class="ghost small danger"
@@ -621,6 +676,12 @@
   }
   .meta {
     font-size: 12px;
+  }
+  .meta.copy {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 4px;
   }
   /* "used 3×": the tooltip says where. */
   .where {

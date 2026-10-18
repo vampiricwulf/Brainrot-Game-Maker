@@ -8,7 +8,8 @@
  *   coming…" (a big one how much has come: "🎞 Video coming… 40%") and fills in; one whose download broke off is tried
  *   again.
  * - A YouTube, Drive or Streamable player is framed only when its play button is tapped, and taken down on Hide.
- * - Video plays muted and inline once the card is open ("🔊 Tap for sound"); sound waits for a tap. With reduced
+ * - Video plays muted and inline once the card is open ("🔊 Tap for sound"); sound waits for a tap. A GIF sent as a
+ *   video (the host's smaller copy of it) shows like the GIF: looping and silent, with no controls. With reduced
  *   motion, video doesn't start by itself and a GIF shows still with "▶ Play".
  * - Cards live in memory only. A card that goes is taken down: its players stopped, its frames removed.
  * - A card is drawn again only when its words changed (the lines over its cover change in place), so a playing video
@@ -16,7 +17,7 @@
  */
 import { cardLink, filesUrl, isFileId, type CardMedia, type PhoneCard } from '../../src/lib/buzzproto';
 import { imageFallback } from '../../src/lib/links';
-import { arrivedLine, bigWords, brokenLine, cardBuild, cardHead, cardSame, comingLine, filesIn, isGif, mediaName, missingLine, pctOf, playerSrc, readCardFile, retryAfter, roleLine, waitLine } from './cards';
+import { arrivedLine, bigWords, brokenLine, cardBuild, cardHead, cardSame, comingLine, filesIn, isGif, mediaName, missingLine, pctOf, playerSrc, readCardFile, retryAfter, roleLine, shownKind, waitLine } from './cards';
 
 /** What the panel needs from the page. */
 export interface PanelHost {
@@ -369,13 +370,14 @@ function slotFor(m: CardMedia, key: string): Slot {
   else if ('file' in m) {
     // (The room checked these; the phone checks them again before loading anything: a file's id goes in an address.)
     const f = isFileId(m.file) ? files.get(m.file) : undefined;
+    const kind = shownKind(m);
     s = !isFileId(m.file)
-      ? line('gone', m.kind, brokenLine(m.kind))
+      ? line('gone', kind, brokenLine(kind))
       : f?.state === 'ok' && f.url
         ? mediaSlot(m, f.url, false)
         : f?.state === 'failed'
-          ? line('gone', m.kind, brokenLine(m.kind))
-          : line('wait', m.kind, waitLine(m.kind, f?.got, f?.total));
+          ? line('gone', kind, brokenLine(kind))
+          : line('wait', kind, waitLine(kind, f?.got, f?.total));
   } else {
     const url = cardLink(m.url);
     s = url ? mediaSlot(m, url, true) : line('gone', m.kind, brokenLine(m.kind));
@@ -389,7 +391,7 @@ function mediaSlot(m: Extract<CardMedia, { kind: 'image' | 'video' | 'audio' }>,
   const box = el('div', 'card-item');
   let gone = false;
   const broken = () => {
-    if (!gone) box.replaceChildren(el('p', 'card-gone', brokenLine(m.kind)));
+    if (!gone) box.replaceChildren(el('p', 'card-gone', brokenLine(shownKind(m))));
   };
   if (m.kind === 'image') {
     const img = el('img', '');
@@ -410,6 +412,7 @@ function mediaSlot(m: Extract<CardMedia, { kind: 'image' | 'video' | 'audio' }>,
     else box.append(img);
     return { key: '', el: box, shows: 'media', kind: m.kind, drop: () => void (gone = true) };
   }
+  if (m.kind === 'video' && 'gif' in m && m.gif === true) return gifVideo(m, src, box, broken, () => (gone = true));
   const player = el(m.kind, '');
   player.controls = true;
   player.preload = 'metadata';
@@ -442,6 +445,47 @@ function mediaSlot(m: Extract<CardMedia, { kind: 'image' | 'video' | 'audio' }>,
   // A sound waits for a tap on its own play button.
   player.src = src;
   return { key: '', el: box, shows: 'media', kind: m.kind, stop, drop };
+}
+
+/**
+ * A GIF sent as a video ('gifs'): looping, muted and inline with no controls, playing as the card opens, as the GIF
+ * would. With reduced motion it waits on its first frame for "▶ Play", like a still GIF.
+ */
+function gifVideo(m: CardMedia, src: string, box: HTMLElement, broken: () => void, gone: () => void): Slot {
+  const v = el('video', '');
+  v.muted = v.defaultMuted = true;
+  v.loop = true;
+  v.playsInline = true;
+  v.setAttribute('playsinline', '');
+  v.preload = 'auto';
+  v.setAttribute('aria-label', mediaName(m));
+  v.addEventListener('error', broken);
+  box.append(v);
+  let still = reduced();
+  if (still) {
+    const play = el('button', 'card-sound', '▶ Play');
+    play.type = 'button';
+    play.setAttribute('aria-label', `▶ Play ${mediaName(m)}`);
+    play.addEventListener('click', () => {
+      const had = document.activeElement === play;
+      still = false;
+      play.remove();
+      void v.play().catch(() => {});
+      if (had) {
+        v.tabIndex = -1;
+        v.focus();
+      }
+    });
+    box.append(play);
+  }
+  v.src = src;
+  const drop = () => {
+    gone();
+    v.pause();
+    v.removeAttribute('src');
+    v.load();
+  };
+  return { key: '', el: box, shows: 'media', kind: 'image', start: () => void (still || v.play().catch(() => {})), stop: () => v.pause(), drop };
 }
 
 /** Reduced motion: a GIF shows its first frame, still, until "▶ Play". */

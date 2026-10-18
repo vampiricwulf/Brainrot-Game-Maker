@@ -96,7 +96,9 @@ room, plus the phone page it serves. It is not part of the app's single-file bui
   those three players; it sets no `default-src` or `script-src`, as the page's script and style are inline.
 - **Card files** (`'files'`): the host's own pictures, GIFs, videos and sounds for its cards, uploaded only when it
   sends the card or presses ⇡ Get it ready (see "Card files" below for the limits). A phone fetches one only for a card
-  sent to it that it isn't late for, with its seat's token in the `Authorization` header; anyone else gets 404.
+  sent to it that it isn't late for, with its seat's token in the `Authorization` header; anyone else gets 404. A GIF
+  can go as the small looping video the app made of it (🗜, `'gifs'`: the card's item says `gif`): the phone shows it
+  like the GIF, looping and silent, with no controls.
 - **Full rooms**: at most 24 phones hold a place (`MAX_PHONES`, in `src/lib/buzzproto.ts`), but phones without a seat that have done nothing for
   10 s (viewers, extra tabs) don't: when the room is full the longest idle one is turned away (`denied: full`, closed
   with 4001; the phone page tries again after a few seconds, then less often) to let a newcomer in. With nobody idle,
@@ -154,7 +156,9 @@ server's limit ("Too big for the buzzer server (90 MB at most)"), and a `files` 
 hears no limits (an older server) takes 16 MB a file and 64 MB a room; an older app keeps its own 16 MB check, which a
 server set higher takes. Since the budget counts any 24 hours: its 429s say when to try again ("… — try again in about 5
 hours"), and a room deletes a file 20 hours after its upload began, even one a card uses (the host hears `files` without
-it and puts it up again).
+it and puts it up again). Since the app makes smaller copies of GIFs for phones: `'gifs'` in `welcome.features`, and
+`gif: true` on a card's file item (kept only when its stored file is a video): a GIF sent as a video, which the phone
+shows like the GIF. An app that doesn't see `'gifs'` sends the GIF itself when it fits, else its copy as a plain video.
 
 ## Fair timing
 

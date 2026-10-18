@@ -9,6 +9,7 @@
   import { linkHost } from '../../lib/links';
   import { fittingFile, hasFiles, useFile, warnIfUnplayable } from '../../lib/mediadrop';
   import type { MediaKind } from '../../lib/model';
+  import { libraryMedia } from '../../lib/phonecopies';
   import LinkField from '../LinkField.svelte';
 
   let {
@@ -24,7 +25,7 @@
     onpick: (id: string) => unknown;
     onclose: () => void;
   } = $props();
-  const items = $derived(editedGame().media.filter((m) => m.kind === kind));
+  const items = $derived(libraryMedia(editedGame()).filter((m) => m.kind === kind));
 
   // Fixed to the window, so no scrolling panel or dialog edge cuts it off (see anchored.ts): under the button (over it
   // when there's more room above), moved in from the window's edges, and kept there as things scroll or resize. Placed

@@ -2981,6 +2981,8 @@
   const fileLimits = $derived(fileLimitsNow());
   const filesOff = $derived((!!remote.code && remote.status === 'online' && roomHasCards() && !roomHasFiles()) || fileLimits.off);
   const fileBytes = $derived(fileLimits.limits.fileBytes);
+  // (Which 🗜 copies for phones go: those stored here, a GIF's only to a room that shows it as one.)
+  const gifs = $derived(fileLimits.gifs);
   // (Asked before a room is open, for the checklist here.)
   $effect(() => {
     const b = buzzerBase();
@@ -3002,7 +3004,7 @@
   }
   $effect(() => {
     void gameRev;
-    void [filesOff, fileBytes];
+    void [filesOff, fileBytes, gifs];
     // (Whether files are missing depends on the ones loaded, too.)
     void Object.keys(mediaUrls).length;
     if (app.pregame) untrack(recheck);
@@ -3013,7 +3015,7 @@
   function gameChecks(g: Game) {
     // (A board short of Daily Doubles gets a button to place them.)
     // (Daily Doubles not placed yet are only a note in the editor, as Start places them: here they're listed with it.)
-    return validate(g, { filesOff, fileBytes })
+    return validate(g, { filesOff, fileBytes, gifs, stored: (id) => id in mediaUrls })
       .map((p) => {
         const r = typeof p.tab === 'number' ? g.rounds[p.tab] : undefined;
         const dd = isBoard(r) && !!dailyDoublesShort(r) && p.text.includes('Daily Double') && p.text.includes(' not placed yet');

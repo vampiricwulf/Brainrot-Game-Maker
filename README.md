@@ -460,7 +460,12 @@ To build the address into your own releases too (so nobody has to paste it), add
   `FILE_MB`, `ROOM_FILES_MB` and `FILES_MB_PER_DAY` in `buzzer/wrangler.jsonc` (`FILES_MB_PER_DAY` `0` turns card files
   off), then deploy again: the app asks the server, so it follows on its own, and ⚙ Settings › Buzzer server › Test says
   what it takes. A file over 16 MB that the server takes still goes, with a note in the editor and the host panel that
-  phones on mobile data may wait a while for it. See [buzzer/README.md](buzzer/README.md#card-files). Each room keeps
+  phones on mobile data may wait a while for it. A big GIF can go as a small looping video instead: **🗜 Make
+  smaller…** on its card in 🖼 Media (or 🗜 in the 📱 preview or the checklist) makes one, which phones get and show
+  like the GIF, while the show keeps the GIF (Ctrl+Z takes it back). It needs the app opened from a file or an
+  https:// address, in Chrome, Edge, Firefox or the desktop app; where the browser makes H.264 (Chrome and Edge on
+  Windows or Mac, the desktop app) it makes an MP4 every phone plays, elsewhere a WebM, which some iPhones may not play.
+  See [buzzer/README.md](buzzer/README.md#card-files). Each room keeps
   its cards only until the tile closes (or the round ends, or the host takes it back, for one sent with 🤫 Send a card…),
   and their files up to 10 minutes longer (20 hours after their upload began at most: the app puts one up again if a
   card still needs it).
@@ -495,6 +500,16 @@ The desktop app keeps its data in `%LOCALAPPDATA%\com.brainrotgames.maker`: the 
 game in progress and media. Settings go in `%APPDATA%\com.brainrotgames.maker`. Your saves, exports and autosaves are in
 **BrainrotSaves** next to the `.exe`. **ℹ About** shows and opens all three. To uninstall, delete the `.exe` and the two
 `com.brainrotgames.maker` folders; keep BrainrotSaves (or move it) if you want your saved games.
+
+## Third-party code
+
+🗜 (smaller copies of 🤫 cards' files for phones) uses two libraries, bundled into the app as they are:
+
+- [mediabunny](https://github.com/Vanilagy/mediabunny) 1.61.6, under the Mozilla Public License 2.0 (its source is at
+  github.com/Vanilagy/mediabunny): it writes the copies, with the browser's own video encoders (WebCodecs).
+- [omggif](https://github.com/deanm/omggif) 1.0.10, under the MIT license: it reads a GIF's frames.
+
+ℹ About says so too.
 
 ## Development
 

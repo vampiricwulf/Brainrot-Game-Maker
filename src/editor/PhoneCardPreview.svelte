@@ -2,18 +2,21 @@
   📱 On their phone (partner-clues spec §5.3, §12.3): a 🤫 card exactly as a phone gets it, drawn from the same
   phoneCard() that builds what's sent: its lines, its words, then its pictures, GIFs, videos, sounds and embeds one under
   another. Each item that won't reach a phone gets a line saying why, written for the buzzer server this copy uses, and
-  a file big enough that phones on mobile data may wait for it gets a note. The editor isn't on stream, so items are
-  named here. A card from the editor's 🤫 Cards (no `clue`) has no role or hint line, and is only theirs, as a phone
-  gets it.
+  a file big enough that phones on mobile data may wait for it gets a note. A GIF there gets 🗜 Make a smaller copy for
+  phones, and one with a copy says so. The editor isn't on stream, so items are named here. A card from the editor's 🤫
+  Cards (no `clue`) has no role or hint line, and is only theirs, as a phone gets it.
 -->
 <script lang="ts">
   import { bigWords } from '../lib/buzzproto';
   import { formatBytes, mediaUrls } from '../lib/media.svelte';
   import type { Clue, ClueCard, Game, Slide } from '../lib/model';
   import { cardLines, partnerRules } from '../lib/partner';
-  import { phoneCard, type LeftOut, type PhoneItem } from '../lib/phonecard';
+  import { phoneCard, phoneCopyOf, sendsOf, type LeftOut, type PhoneItem } from '../lib/phonecard';
   import { buzzerBase, remote, roomHasCards, roomHasFiles } from '../lib/remote.svelte';
   import { fileLimitsNow } from '../lib/serverlimits.svelte';
+  import { removePhoneCopy, shrinkable } from '../lib/shrink/apply';
+  import { openShrinkDialog } from '../lib/shrink/dialog.svelte';
+  import { shrinkMaybe } from '../lib/shrink/probe';
 
   let { game, clue, card }: { game: Game; clue?: Clue; card: Slide & Partial<Pick<ClueCard, 'to' | 'hint'>> } = $props();
 
@@ -26,7 +29,9 @@
   const server = $derived(
     !buzzerBase() ? 'none' : remote.code && remote.status === 'online' ? (roomHasCards() ? (roomHasFiles() ? 'files' : 'nofiles') : 'older') : limits.off ? 'nofiles' : 'unknown',
   );
-  const pc = $derived(phoneCard(game, card, { files: server === 'nofiles' || server === 'older' ? null : {}, fileBytes: limits.limits.fileBytes }));
+  const pc = $derived(
+    phoneCard(game, card, { files: server === 'nofiles' || server === 'older' ? null : {}, fileBytes: limits.limits.fileBytes, stored: (id) => id in mediaUrls, gifs: limits.gifs }),
+  );
   /**
    * Its lines as its part's phone shows them (anyone but the two: the line for them), "the picker" and "the partner" for
    * the names. A card on any other tile has none, nor does one from 🤫 Cards.
@@ -43,14 +48,25 @@
   const ICON: Record<PhoneItem['kind'], string> = { picture: '🖼', gif: '🖼', video: '🎞', sound: '🔊', embed: '▶' };
   const KIND: Record<PhoneItem['kind'], string> = { picture: 'picture', gif: 'GIF', video: 'video', sound: 'sound', embed: 'online video' };
 
-  /** An item's file size, as people read it ("148.2 MB"). */
-  const sizeOf = (it: PhoneItem): string => formatBytes(game.media.find((m) => m.id === it.media)?.size ?? 0);
+  /** The size of what goes up for an item (its 🗜 copy, when that's what goes), as people read it ("148.2 MB"). */
+  const sizeOf = (it: PhoneItem): string => formatBytes(game.media.find((m) => m.id === sendsOf(it))?.size ?? 0);
+  const refOf = (it: PhoneItem) => (it.media ? game.media.find((m) => m.id === it.media) : undefined);
+  /** 🗜 can make a smaller copy of an item's file for phones here (a GIF stored in the game). */
+  const canShrink = (it: PhoneItem): boolean => {
+    const ref = refOf(it);
+    return !!ref && shrinkMaybe() && shrinkable(ref) && !!mediaUrls[ref.id];
+  };
+  /** An item's 🗜 copy for phones, when it has one. */
+  const copyOf = (it: PhoneItem) => {
+    const ref = refOf(it);
+    return ref ? phoneCopyOf(game, ref) : undefined;
+  };
   /** Why an item won't reach a phone, naming it (only the editor and the two-window host column name items). */
   function why(it: PhoneItem, w: LeftOut): string {
     const what = `${ICON[it.kind]} ${it.name}`;
     switch (w) {
       case 'big':
-        return `${what} is ${sizeOf(it)}: this buzzer server${limits.old ? ' (an older one)' : ''} takes files up to ${formatBytes(limits.limits.fileBytes)}. Add it from a link (YouTube, Drive…) instead.`;
+        return `${what} is ${sizeOf(it)}: this buzzer server${limits.old ? ' (an older one)' : ''} takes files up to ${formatBytes(limits.limits.fileBytes)}. ${canShrink(it) ? '🗜 Make a smaller copy for phones, or add it from a link (YouTube, Drive…) instead.' : 'Add it from a link (YouTube, Drive…) instead.'}`;
       case 'expired':
         return `${what}: its link has expired. Add it again, or from a lasting link.`;
       case 'kind':
@@ -104,12 +120,30 @@
       <li>Pictures and videos from this computer go up to the buzzer server when you send the card (if it’s taking files then).</li>
     {/if}
     {#each pc.items as it (it.el)}
-      {#if it.why}<li class="warn">{why(it, it.why)}</li>
-      {:else if it.slow}<li class="slow">{ICON[it.kind]} {it.name} is {sizeOf(it)}: on WiFi or a computer it comes in seconds, but phones on mobile data may wait a while for it (and use up their data).</li>{/if}
+      {@const copy = copyOf(it)}
+      {#if it.why}<li class="warn">{why(it, it.why)}{@render shrinkButton(it)}</li>
+      {:else if it.slow}<li class="slow">
+          {ICON[it.kind]} {it.name} is {sizeOf(it)}: on WiFi or a computer it comes in seconds, but phones on mobile data may wait a while for it (and use up their data).{@render shrinkButton(it)}
+        </li>{/if}
+      {#if copy && it.sends === copy.id && !it.why}
+        <li data-copy-note>
+          📱 Phones get {it.kind === 'gif' ? 'it as a small looping video' : 'its smaller copy instead'} ({formatBytes(copy.size)}).
+          <button class="small ghost" onclick={() => openShrinkDialog(copy.phoneCopy!.of)} title="Make its copy for phones again">🗜 Make it again</button>
+          <button class="small ghost" onclick={() => removePhoneCopy(game, copy.phoneCopy!.of)} title="Phones get the file itself (Undo brings the copy back)">✕ Remove it</button>
+        </li>
+      {:else if copy && it.kind === 'gif' && !it.sends && !limits.gifs && it.file}
+        <li>📱 This buzzer server is older: phones get the GIF itself, not its smaller video.</li>
+      {/if}
     {/each}
     {#if (pc.title ? 1 : 0) + (pc.text ? 1 : 0) + pc.items.filter((i) => i.why !== 'many').length > 1}<li>Phones show the words and pictures one under another: where things sit on the slide isn’t kept.</li>{/if}
   </ul>
 </aside>
+
+{#snippet shrinkButton(it: PhoneItem)}
+  {#if canShrink(it) && (it.slow || it.why === 'big')}
+    {' '}<button class="small" data-shrink onclick={() => openShrinkDialog(it.media!)}>🗜 Make a smaller copy for phones</button>
+  {/if}
+{/snippet}
 
 <style>
   /* Beside the slide editor, as tall as it (scrolling if it must). */

@@ -29,7 +29,9 @@ import {
   wholeHistory,
 } from './history.svelte';
 import { watchGame, type GameWatch } from './watch.svelte';
-import { getBlob, registerBlob, stashMedia } from './media.svelte';
+import { getBlob, registerBlob, replaceMediaFile, stashMedia } from './media.svelte';
+import { applyPhoneCopy, removePhoneCopy } from './shrink/apply';
+import { madeLabel } from './shrink/plan';
 import type { BoardRound, Game, TextEl } from './model';
 import { jeopardyGame } from './testgame';
 import { newRpgRound, newScreen } from './rpg';
@@ -626,6 +628,63 @@ describe('undo history: files', () => {
     expect(history.entries[2]).toMatchObject({ ops: [], place: { tab: 'media', media: 'pic' } });
     undo();
     expect(getBlob('pic')).toBe(fresh);
+  });
+});
+
+describe('undo history: 🗜 copies for phones', () => {
+  const gif = () => ({ id: 'gif', name: 'dance.gif', mime: 'image/gif', size: 3000, kind: 'image' as const });
+  const made = (id: string) => ({ id, mime: 'video/webm', size: 100, ext: 'webm', width: 480, height: 270 });
+  const copies = () => g.media.filter((m) => m.phoneCopy).map((m) => m.id);
+
+  it('a copy goes in as one step: Ctrl+Z takes it out, Ctrl+Y puts it back (its bytes kept for that)', () => {
+    step(null, () => g.media.push(gif()));
+    step(madeLabel('GIF'), () => applyPhoneCopy(g, 'gif', made('c1')), { place: { tab: 'media', media: 'gif' } });
+    expect(g.media.find((m) => m.id === 'c1')).toEqual({
+      id: 'c1',
+      name: 'dance (phones).webm',
+      mime: 'video/webm',
+      size: 100,
+      kind: 'video',
+      phoneCopy: { of: 'gif', width: 480, height: 270 },
+    });
+    // (Neither its name nor its file's: the pre-game screen's Ctrl+Z says it on stream.)
+    expect(history.entries.at(-1)).toMatchObject({ label: 'Made a smaller copy of a GIF for phones', where: 'Media', media: ['c1'] });
+    expect(heldMedia().has('c1')).toBe(true);
+    // Made again: the new one takes the old one's place, in one step.
+    step(madeLabel('GIF'), () => applyPhoneCopy(g, 'gif', made('c2')));
+    expect(copies()).toEqual(['c2']);
+    undo();
+    expect(copies()).toEqual(['c1']);
+    undo();
+    expect(copies()).toEqual([]);
+    redo();
+    redo();
+    expect(copies()).toEqual(['c2']);
+    removePhoneCopy(g, 'gif');
+    expect(history.entries.at(-1)).toMatchObject({ label: 'Removed a GIF’s smaller copy for phones', where: 'Media' });
+    expect(copies()).toEqual([]);
+    undo();
+    expect(copies()).toEqual(['c2']);
+  });
+
+  it('Replace… takes the file’s copy out in the same step (it was made from the old file), and Ctrl+Z brings it back', async () => {
+    vi.spyOn(console, 'warn').mockImplementation(() => {});
+    registerBlob('gif', new Blob(['GIF89a old']));
+    step(null, () => {
+      g.media.push(gif());
+      applyPhoneCopy(g, 'gif', made('c1'));
+    });
+    await stepAsync('Replaced file “dance.gif” with “other.gif”', () => replaceMediaFile(g, 'gif', new File(['GIF89a new'], 'other.gif', { type: 'image/gif' })));
+    expect(copies()).toEqual([]);
+    expect(history.entries.at(-1)?.label).toBe('Replaced file “dance.gif” with “other.gif”');
+    undo();
+    expect(copies()).toEqual(['c1']);
+    // With a copy of its own (a kept game shares the file): the copy doesn't follow the uses to the new file.
+    await stepAsync('Replaced', () => replaceMediaFile(g, 'gif', new File(['GIF89a newer'], 'other.gif', { type: 'image/gif' }), false, true));
+    expect(copies()).toEqual([]);
+    expect(g.media.some((m) => m.phoneCopy)).toBe(false);
+    undo();
+    expect(g.media.find((m) => m.id === 'c1')?.phoneCopy?.of).toBe('gif');
   });
 });
 

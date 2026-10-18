@@ -84,7 +84,7 @@ export function slideMediaIds(slide: Slide): string[] {
   return ids.filter((id): id is string => !!id);
 }
 
-/** How many times each media id is used anywhere in the game. */
+/** How many times each media id is used anywhere in the game (a 🗜 copy for phones: as often as its file). */
 export function mediaUsage(game: Game): Map<string, number> {
   const n = new Map<string, number>();
   const bump = (id?: string) => id && n.set(id, (n.get(id) ?? 0) + 1);
@@ -104,6 +104,11 @@ export function mediaUsage(game: Game): Map<string, number> {
     }
   }
   for (const id of extraMediaRefs(game)) bump(id);
+  // A 🗜 copy for phones is used where its file is: never "unused" on its own (🗑 Delete unused takes it with its file).
+  for (const m of game.media) {
+    const of = m.phoneCopy ? n.get(m.phoneCopy.of) : undefined;
+    if (of) n.set(m.id, of);
+  }
   return n;
 }
 

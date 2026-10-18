@@ -21,6 +21,7 @@ import {
   readCardFile,
   retryAfter,
   roleLine,
+  shownKind,
   waitLine,
 } from './cards';
 
@@ -145,6 +146,15 @@ describe('a card’s lines', () => {
     expect(isGif({ kind: 'image', url: 'https://a.test/x.png#a.gif' })).toBe(false);
     expect(isGif({ kind: 'video', url: 'https://a.test/x.gif' })).toBe(false);
     expect(isGif({ kind: 'image', pending: true })).toBe(false);
+  });
+
+  it('takes a GIF sent as a video (the host’s smaller copy) for the picture it shows as', () => {
+    const copy: CardMedia = { kind: 'video', file: FILE, mime: 'video/webm', gif: true };
+    expect(isGif(copy)).toBe(true);
+    expect(shownKind(copy)).toBe('image');
+    expect(mediaName(copy)).toBe('Picture');
+    expect(mediaName({ ...copy, name: 'The dance' })).toBe('The dance');
+    expect(shownKind({ kind: 'video', file: FILE, mime: 'video/webm' })).toBe('video');
   });
 
   it('counts the cards for a screen reader, and the ones this phone joined too late for', () => {

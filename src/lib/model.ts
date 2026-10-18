@@ -37,6 +37,12 @@ export interface MediaRef {
   expiresAt?: number;
   /** Renamed in 📁 Media: the file's own name (Find missing files finds it by that too; Replace… keeps the new name). */
   file?: string;
+  /**
+   * Added for 🗜: this file is a smaller copy of `of`, made for phones only (never shown on stream, never sent to viewers'
+   * windows, not listed in 🖼 Media). from/to: the stretch of the original it holds (seconds; to null: to the end), for a
+   * copy of the part the cards play. One at most per file.
+   */
+  phoneCopy?: { of: Id; from?: number; to?: number | null; width?: number; height?: number };
 }
 
 // ---------- Slides ----------
@@ -2037,9 +2043,19 @@ function repairGame(g: Game): void {
       repairExtraSlides(g.tiebreaker);
     }
   }
-  const media = objects<MediaRef>(g.media).filter((m) => typeof m.id === 'string' && m.id);
+  const refs = objects<MediaRef>(g.media).filter((m) => typeof m.id === 'string' && m.id);
+  for (const m of refs) if (typeof m.name !== 'string') m.name = m.id;
+  // A 🗜 phone copy is a stored file of another file in the game that isn't a copy itself, one per file: any other
+  // goes (phones get the file itself then).
+  const copied = new Set<Id>();
+  const media = refs.filter((m) => {
+    if (m.phoneCopy === undefined) return true;
+    const of = isObj(m.phoneCopy) ? m.phoneCopy.of : undefined;
+    const ok = typeof of === 'string' && !m.url && !copied.has(of) && refs.some((o) => o.id === of && o !== m && o.phoneCopy === undefined);
+    if (ok) copied.add(of);
+    return ok;
+  });
   if (media.length !== g.media.length) g.media = media;
-  for (const m of media) if (typeof m.name !== 'string') m.name = m.id;
   for (const k of ['wheels', 'dice'] as const) {
     const list = objects<WheelPreset & DicePreset>(g[k]);
     if (list !== g[k]) g[k] = list;

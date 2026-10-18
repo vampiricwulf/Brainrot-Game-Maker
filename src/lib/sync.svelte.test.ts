@@ -6,7 +6,7 @@ import { jeopardyGame } from './testgame';
 import { newRpgRound, newScreen } from './rpg';
 import { newBoardGameRound } from './boardgame';
 import { watchGame, type GameWatch } from './watch.svelte';
-import { applyGamePatch, gamePatch } from './sync.svelte';
+import { applyGamePatch, gamePatch, hideFromViewers, viewersGame } from './sync.svelte';
 
 /** A board, a Final, an RPG world with a screen holding a text, and a board game. */
 function sample(): Game {
@@ -80,5 +80,22 @@ describe('the game patch for the viewers’ windows', () => {
     expect(gamePatch(v1, w.value())).toBeNull();
     // (Another game: every id differs.)
     expect(gamePatch(sample(), sample())).toBeNull();
+  });
+});
+
+describe('the game the viewers’ windows get', () => {
+  it('never has a 🤫 card’s own files, nor 🗜 copies for phones (that one exists would tell which file is on a card)', () => {
+    const g = sample();
+    g.media.push(
+      { id: 'pic', name: 'pic.png', mime: 'image/png', size: 1, kind: 'image' },
+      { id: 'gif', name: 'dance.gif', mime: 'image/gif', size: 9, kind: 'image' },
+      { id: 'gifc', name: 'dance (phones).webm', mime: 'video/webm', size: 1, kind: 'video', phoneCopy: { of: 'gif' } },
+      { id: 'quick', name: 'secret.png', mime: 'image/png', size: 1, kind: 'image' },
+    );
+    hideFromViewers(['quick']);
+    expect(viewersGame(g).media.map((m) => m.id)).toEqual(['pic', 'gif']);
+    // (Nothing to leave out: the game itself.)
+    const plain = sample();
+    expect(viewersGame(plain)).toBe(plain);
   });
 });

@@ -41,13 +41,13 @@ describe('what a buzzer server says about card files', () => {
       return answer();
     });
     prefs.buzzerServer = 'https://a.test';
-    expect(fileLimitsNow()).toEqual({ limits: DEFAULT_FILE_LIMITS, known: false, off: false, old: false });
+    expect(fileLimitsNow()).toEqual({ limits: DEFAULT_FILE_LIMITS, known: false, off: false, old: false, gifs: true });
     askServerFiles('https://a.test');
     // (Not again while the answer is on its way.)
     askServerFiles('a.test/');
     await settle();
     expect(asked).toEqual(['https://a.test/api/health']);
-    expect(fileLimitsNow()).toEqual({ limits: LIMITS, known: true, off: false, old: false });
+    expect(fileLimitsNow()).toEqual({ limits: LIMITS, known: true, off: false, old: false, gifs: true });
     askServerFiles('https://a.test');
     await settle();
     expect(asked).toHaveLength(1);
@@ -75,7 +75,7 @@ describe('what a buzzer server says about card files', () => {
     askServerFiles('https://b.test');
     await settle();
     expect(asked).toHaveLength(4);
-    expect(fileLimitsNow()).toEqual({ limits: OLD_FILE_LIMITS, known: true, off: false, old: true });
+    expect(fileLimitsNow()).toEqual({ limits: OLD_FILE_LIMITS, known: true, off: false, old: true, gifs: true });
     // An address that isn't one is never asked.
     askServerFiles('');
     askServerFiles('ftp://c.test');
@@ -84,24 +84,26 @@ describe('what a buzzer server says about card files', () => {
 
   it('goes by this window’s room on the server in use first, then what that server said, then the defaults', () => {
     prefs.buzzerServer = '';
-    expect(fileLimitsNow()).toEqual({ limits: DEFAULT_FILE_LIMITS, known: false, off: false, old: false });
+    expect(fileLimitsNow()).toEqual({ limits: DEFAULT_FILE_LIMITS, known: false, off: false, old: false, gifs: true });
     prefs.buzzerServer = 'https://a.test';
-    expect(fileLimitsNow()).toEqual({ limits: DEFAULT_FILE_LIMITS, known: false, off: false, old: false });
+    expect(fileLimitsNow()).toEqual({ limits: DEFAULT_FILE_LIMITS, known: false, off: false, old: false, gifs: true });
     noteServerFiles('https://a.test', 'old');
-    expect(fileLimitsNow()).toEqual({ limits: OLD_FILE_LIMITS, known: true, off: false, old: true });
+    expect(fileLimitsNow()).toEqual({ limits: OLD_FILE_LIMITS, known: true, off: false, old: true, gifs: true });
     noteServerFiles('https://a.test/', 'off');
     expect(fileLimitsNow()).toMatchObject({ known: true, off: true });
     noteServerFiles('https://a.test', { files: LIMITS });
-    expect(fileLimitsNow()).toEqual({ limits: LIMITS, known: true, off: false, old: false });
+    expect(fileLimitsNow()).toEqual({ limits: LIMITS, known: true, off: false, old: false, gifs: true });
     // (Another server's word is its own.)
     noteServerFiles('https://b.test', { files: { ...LIMITS, fileBytes: 2 * MB } });
     expect(fileLimitsNow().limits).toEqual(LIMITS);
     // A room open on it: its welcome says (none: an older server's).
     const limits = { ...LIMITS, fileBytes: 6 * MB };
-    Object.assign(remote, { status: 'online', base: 'https://a.test', features: ['cards', 'files'], welcomed: true, limits });
-    expect(fileLimitsNow()).toEqual({ limits, known: true, off: false, old: false });
+    Object.assign(remote, { status: 'online', base: 'https://a.test', features: ['cards', 'files', 'gifs'], welcomed: true, limits });
+    expect(fileLimitsNow()).toEqual({ limits, known: true, off: false, old: false, gifs: true });
+    // (An older room doesn't show a GIF's video copy like a GIF.)
+    remote.features = ['cards', 'files'];
     remote.limits = null;
-    expect(fileLimitsNow()).toEqual({ limits: OLD_FILE_LIMITS, known: true, off: false, old: true });
+    expect(fileLimitsNow()).toEqual({ limits: OLD_FILE_LIMITS, known: true, off: false, old: true, gifs: false });
     // One that puts cards on phones but takes no files now.
     remote.features = ['cards'];
     expect(fileLimitsNow()).toMatchObject({ known: true, off: true });

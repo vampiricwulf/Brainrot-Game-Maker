@@ -138,12 +138,12 @@ describe('host', () => {
   it('is welcomed and keeps the latest state', () => {
     const g = setup();
     g.room.hostOpen();
-    expect(g.host[0]).toEqual({ t: 'welcome', code: 'BCDF', protocol: 1, serverNow: 10_000, features: ['teams', 'wagers', 'free', 'color', 'answers', 'cards'] });
+    expect(g.host[0]).toEqual({ t: 'welcome', code: 'BCDF', protocol: 1, serverNow: 10_000, features: ['teams', 'wagers', 'free', 'color', 'answers', 'cards', 'gifs'] });
     // 'files' only while the server takes card files (index.ts knows its setting and budget), and with it the
     // server's limits.
     const f = setup(undefined, [], { fileBytes: 4 << 20, roomBytes: 12 << 20, roomFiles: 32 });
     f.room.hostOpen(true);
-    expect(f.host[0]).toMatchObject({ t: 'welcome', features: ['teams', 'wagers', 'free', 'color', 'answers', 'cards', 'files'], limits: { fileBytes: 4 << 20, roomBytes: 12 << 20, roomFiles: 32 } });
+    expect(f.host[0]).toMatchObject({ t: 'welcome', features: ['teams', 'wagers', 'free', 'color', 'answers', 'cards', 'files', 'gifs'], limits: { fileBytes: 4 << 20, roomBytes: 12 << 20, roomFiles: 32 } });
     g.send({ t: 'state', state: state({ title: 'New' }) });
     expect(g.room.saved.state?.title).toBe('New');
     g.send({ t: 'ping', at: 5 });
@@ -1461,7 +1461,7 @@ describe('teams', () => {
 
   it('the room says it knows teams, and the host state keeps teams on', () => {
     const g = teams();
-    expect(g.host[0]).toMatchObject({ t: 'welcome', features: ['teams', 'wagers', 'free', 'color', 'answers', 'cards'] });
+    expect(g.host[0]).toMatchObject({ t: 'welcome', features: ['teams', 'wagers', 'free', 'color', 'answers', 'cards', 'gifs'] });
     expect(g.room.saved.state?.teams).toBe(true);
     expect(cleanState({ ...state(), teams: 'yes' })?.teams).toBeUndefined();
   });
@@ -2745,6 +2745,20 @@ describe('card files', () => {
     g.sendCards([card({ media: [{ kind: 'video', file: F1, mime: 'text/html', name: 'shrek.gif' }] })]);
     expect(g.pb.last('view')!.view.cards!.list[0].media).toEqual([{ kind: 'image', file: F1, mime: 'image/gif', name: 'shrek.gif' }]);
     expect(cleanState({ ...state(), cards: [card({ media: [{ kind: 'image', file: 'not-a-hash', mime: 'image/png' }] })] })!.cards![0]).not.toHaveProperty('media');
+  });
+
+  it('a GIF sent as a video ("gifs") keeps its mark only on a stored video', () => {
+    const g = sent();
+    add(g, F1, 'video/webm', 1000, 1);
+    add(g, F2, 'image/gif', 1000, 1);
+    g.sendCards([card({ media: [{ kind: 'image', file: F1, mime: 'video/webm', gif: true }, { kind: 'image', file: F2, mime: 'image/gif', gif: true }] })]);
+    expect(g.pb.last('view')!.view.cards!.list[0].media).toEqual([
+      { kind: 'video', file: F1, mime: 'video/webm', gif: true },
+      { kind: 'image', file: F2, mime: 'image/gif' },
+    ]);
+    // (Only `true` is the mark.)
+    g.sendCards([card({ media: [{ kind: 'video', file: F1, mime: 'video/webm', gif: 'yes' as never }] })]);
+    expect(g.pb.last('view')!.view.cards!.list[0].media).toEqual([{ kind: 'video', file: F1, mime: 'video/webm' }]);
   });
 
   it('files no card uses are deleted 10 minutes after, by the alarm and on each new state; forget', () => {

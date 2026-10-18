@@ -4,7 +4,7 @@
   import { clueSlideIndex, coWinnersHold, currentClueInfo, currentFinal, nameList, ownPlayers, places, playerName, slidesRound, tiedLeaders, toolOnlyClue } from '../lib/session';
   import { cardId, cardSends, cardSlides, finalGoesToLabel, partnerRules, recipientsText, sameAsAnswer, sendState, sentTo, tileGoesToLabel, toName } from '../lib/partner';
   import { cardsOut, sentCardId, sentState, sentToText } from '../lib/sentcards';
-  import { cardWords, phoneCard, type CardItem, type PhoneItem } from '../lib/phonecard';
+  import { cardWords, phoneCard, sendsOf, type CardItem, type PhoneItem } from '../lib/phonecard';
   import { buzzerOn, remote, roomHasCards } from '../lib/remote.svelte';
   import { phoneCan, uploads } from '../lib/cardfiles.svelte';
   import { formatBytes, mediaUrls } from '../lib/media.svelte';
@@ -46,7 +46,7 @@
   function reach(it: PhoneItem): string {
     if (!phones) return '📋 you copy it';
     const goes = reachOf(it);
-    return it.slow ? `${goes} · big (${formatBytes(game.media.find((m) => m.id === it.media)?.size ?? 0)}): phones on mobile data may wait for it` : goes;
+    return it.slow ? `${goes} · big (${formatBytes(game.media.find((m) => m.id === sendsOf(it))?.size ?? 0)}): phones on mobile data may wait for it` : goes;
   }
   /** Whether it goes, and how (reach() adds how big). */
   function reachOf(it: PhoneItem): string {
@@ -54,10 +54,10 @@
     if (it.why === 'expired') return '📋 copy it: its link has expired';
     if (it.why === 'kind') return '📋 copy it: phones can’t show it';
     if (it.why === 'nofiles') return '📋 copy it: this buzzer server isn’t taking files right now';
-    if (it.why === 'failed' || it.why === 'full') return `📋 copy it: ${uploads.jobs[it.media ?? '']?.error || 'it didn’t go up'}`;
+    if (it.why === 'failed' || it.why === 'full') return `📋 copy it: ${uploads.jobs[sendsOf(it) ?? '']?.error || 'it didn’t go up'}`;
     if (it.why === 'lost') return '📋 it isn’t in the game any more';
     if (it.why === 'many') return '📋 copy it: a card shows 6 at most';
-    const job = uploads.jobs[it.media ?? ''];
+    const job = uploads.jobs[sendsOf(it) ?? ''];
     const pct = job?.progress === undefined ? '' : ` ${Math.floor(job.progress * 100)}%`;
     if (it.file) return 'file' in it.goes ? '✔ goes to phones (up)' : job?.state === 'uploading' ? `✔ goes to phones (uploading…${pct})` : '✔ goes to phones (from this computer)';
     return '✔ goes to phones (its link)';

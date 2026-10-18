@@ -1,5 +1,5 @@
 // The editor's checklist in the sidebar: the problems validate() finds, one line a round, and where a click on it goes.
-import { isBoard, roundName, type BoardRound, type Game } from './model';
+import { isBoard, roundName, type BoardRound, type Game, type Id } from './model';
 import type { Place } from './historylabel';
 import { toolChosen } from './tools';
 import { cardsToFinish } from './partner';
@@ -16,6 +16,8 @@ export interface ChecklistLine {
   round?: string;
   /** The first thing to finish in it (a board's first unfinished tile, an RPG's screen, a board game's space). */
   place?: Place;
+  /** 🗜: files a smaller copy for phones would help (Problem.shrink): the line gets a button for the first. */
+  shrink?: Id[];
 }
 
 /**
@@ -55,19 +57,21 @@ export function checklistLines(game: Game, problems: Problem[]): ChecklistLine[]
   const byRound = new Map<number, ChecklistLine>();
   for (const p of problems) {
     const round = typeof p.tab === 'number' ? game.rounds[p.tab] : undefined;
+    const shrink = p.shrink ? { shrink: [p.shrink] } : {};
     if (!round) {
-      lines.push({ text: p.text, level: p.level, tab: p.tab, details: [p.text], place: p.place });
+      lines.push({ text: p.text, level: p.level, tab: p.tab, details: [p.text], place: p.place, ...shrink });
       continue;
     }
     const line = byRound.get(p.tab as number);
     if (line) {
       line.details.push(p.text);
+      if (p.shrink && !line.shrink?.includes(p.shrink)) line.shrink = [...(line.shrink ?? []), p.shrink];
       // (The first warning's place: the first thing worth fixing.)
       if (p.level === 'warn' && line.level !== 'warn' && p.place) line.place = p.place;
       if (p.level === 'warn') line.level = 'warn';
     } else {
       // An RPG's or a board game's problem says where it is (the screen, the space): the line goes there.
-      const fresh: ChecklistLine = { text: p.text, level: p.level, tab: p.tab, details: [p.text], round: round.id, place: p.place ?? { tab: 'round', round: round.id } };
+      const fresh: ChecklistLine = { text: p.text, level: p.level, tab: p.tab, details: [p.text], round: round.id, place: p.place ?? { tab: 'round', round: round.id }, ...shrink };
       byRound.set(p.tab as number, fresh);
       lines.push(fresh);
     }

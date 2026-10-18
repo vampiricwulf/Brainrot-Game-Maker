@@ -2,7 +2,7 @@
 // the names the host knows them by, its words top to bottom, and its links once each.
 import { describe, expect, it } from 'vitest';
 import { newAudioEl, newEmbedEl, newImageEl, newShapeEl, newTextEl, newVideoEl, type MediaRef, type Slide, type SlideElement } from './model';
-import { cardItems, cardLinks, cardWords, filesToSend, phoneCard } from './phonecard';
+import { cardItems, cardLinks, cardWords, filesToSend, phoneCard, phoneCopyOf, phonesGetLink, sendsOf } from './phonecard';
 import { OLD_FILE_LIMITS } from './buzzproto';
 
 /** How big a file the buzzer server takes in these tests (one that doesn't say: 16 MB). */
@@ -260,5 +260,79 @@ describe('phoneCard: the stack a phone gets (spec §12.3, §13.4, §13.5)', () =
       { kind: 'image', url: 'https://files.example/poster.jpg', name: 'The ogre' },
       { kind: 'image', file: HASH, mime: 'image/png' },
     ]);
+  });
+});
+
+describe('phoneCard: 🗜 smaller copies for phones (card-files spec §4.2)', () => {
+  const MB = 1024 * 1024;
+  const HASH = 'c'.repeat(64);
+  const files: MediaRef[] = [
+    { id: 'g', name: 'dance.gif', mime: 'image/gif', size: 20 * MB, kind: 'image' },
+    { id: 'gc', name: 'dance (phones).webm', mime: 'video/webm', size: 1 * MB, kind: 'video', phoneCopy: { of: 'g', width: 480, height: 270 } },
+    { id: 'v', name: 'clip.mp4', mime: 'video/mp4', size: 30 * MB, kind: 'video' },
+    // (A copy of 0:10 to 0:40 of it, still big.)
+    { id: 'vc', name: 'clip (phones).mp4', mime: 'video/mp4', size: 17 * MB, kind: 'video', phoneCopy: { of: 'v', from: 10, to: 40 } },
+  ];
+  const g = { media: files };
+  const gifCard = card(at(newImageEl('g'), 0, 1));
+  const can = { fileBytes: 24 * MB, files: {} };
+
+  it('finds a file’s copy', () => {
+    expect(phoneCopyOf(g, files[0])?.id).toBe('gc');
+    expect(phoneCopyOf(g, files[1])).toBeUndefined();
+  });
+
+  it('a GIF with a copy whose bytes are here goes as that copy: a looping video, "Picture coming…" while it goes up', () => {
+    const pc = phoneCard(g, gifCard, can);
+    expect(pc.items[0]).toMatchObject({ media: 'g', sends: 'gc', file: true, goes: { kind: 'image', pending: true } });
+    expect(pc.items[0].slow).toBeUndefined();
+    expect(sendsOf(pc.items[0])).toBe('gc');
+    // What goes up is the copy, and the room's file is the copy's.
+    expect(filesToSend(pc)).toEqual(['gc']);
+    expect(phoneCard(g, gifCard, { ...can, files: { gc: HASH } }).media).toEqual([{ kind: 'video', file: HASH, mime: 'video/webm', gif: true }]);
+    // (The GIF's own id in the room isn't it.)
+    expect(phoneCard(g, gifCard, { ...can, files: { g: HASH } }).media).toEqual([{ kind: 'image', pending: true }]);
+  });
+
+  it('a copy whose bytes aren’t here: the file itself', () => {
+    const pc = phoneCard(g, gifCard, { ...can, stored: (id) => id !== 'gc' });
+    expect(pc.items[0].sends).toBeUndefined();
+    expect(pc.items[0]).toMatchObject({ media: 'g', slow: true });
+    expect(filesToSend(pc)).toEqual(['g']);
+  });
+
+  it('an older room (no "gifs"): the GIF itself when it fits, else its copy as a plain video', () => {
+    const fits = phoneCard(g, gifCard, { ...can, gifs: false, files: { g: HASH } });
+    expect(fits.items[0].sends).toBeUndefined();
+    expect(fits.media).toEqual([{ kind: 'image', file: HASH, mime: 'image/gif' }]);
+    const big = phoneCard(g, gifCard, { fileBytes: 16 * MB, files: { gc: HASH }, gifs: false });
+    expect(big.items[0].sends).toBe('gc');
+    expect(big.media).toEqual([{ kind: 'video', file: HASH, mime: 'video/webm' }]);
+  });
+
+  it('slow and too big go by the copy’s size, and a copy turned down is the copy’s failure', () => {
+    const slide = card(at(newVideoEl('v'), 0, 1, { startAt: 12, endAt: 30 }));
+    // A 17 MB copy of a 30 MB video: slow, not too big.
+    expect(phoneCard(g, slide, can).items[0]).toMatchObject({ sends: 'vc', slow: true });
+    expect(phoneCard(g, slide, can).items[0].why).toBeUndefined();
+    // Without the copy, it's too big.
+    expect(phoneCard(g, slide, { ...can, stored: () => false }).items[0]).toMatchObject({ why: 'big' });
+    // A 16 MB server: the copy is too big too.
+    expect(phoneCard(g, slide, { fileBytes: 16 * MB, files: {} }).items[0]).toMatchObject({ sends: 'vc', why: 'big' });
+    expect(phoneCard(g, slide, { ...can, failed: { vc: 'full' } }).items[0]).toMatchObject({ why: 'full', sends: 'vc' });
+    expect(phoneCard(g, slide, { ...can, failed: { v: 'full' } }).items[0].why).toBeUndefined();
+  });
+
+  it('a copy of part of a file goes only for an item inside that part, its times moved by where the copy starts', () => {
+    const at12 = phoneCard(g, card(at(newVideoEl('v'), 0, 1, { startAt: 12, endAt: 30 })), { ...can, files: { vc: HASH } });
+    expect(at12.media).toEqual([{ kind: 'video', file: HASH, mime: 'video/mp4', start: 2, end: 20 }]);
+    // Starting before it, ending after it, or with no end (to the file's end): the file itself.
+    for (const t of [{ startAt: 5, endAt: 30 }, { startAt: 12, endAt: 45 }, { startAt: 12 }, {}])
+      expect(phoneCard(g, card(at(newVideoEl('v'), 0, 1, t)), can).items[0]).toMatchObject({ media: 'v', why: 'big' });
+  });
+
+  it('a file that phones get from its lasting link needs no copy', () => {
+    expect(phonesGetLink({ id: 'k', name: 'cat.gif', mime: 'image/gif', size: 5, kind: 'image', source: 'https://files.catbox.moe/abc123.gif' })).toBe(true);
+    expect(phonesGetLink(files[0])).toBe(false);
   });
 });

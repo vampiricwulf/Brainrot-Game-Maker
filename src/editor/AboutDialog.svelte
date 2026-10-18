@@ -83,7 +83,10 @@
       <dt>Problems</dt>
       <dd><a href={`${REPO}/issues`} target="_blank" rel="noreferrer" onclick={link}>Report an issue</a></dd>
       <dt>License</dt>
-      <dd>MIT. Bundled fonts: SIL Open Font License.</dd>
+      <dd>
+        MIT. Bundled fonts: SIL Open Font License. 🗜 (smaller copies for phones): mediabunny (MPL-2.0, source at
+        <a href="https://github.com/Vanilagy/mediabunny" target="_blank" rel="noreferrer" onclick={link}>github.com/Vanilagy/mediabunny</a>) and omggif (MIT).
+      </dd>
     </dl>
 
     <h3>Where your data is saved</h3>

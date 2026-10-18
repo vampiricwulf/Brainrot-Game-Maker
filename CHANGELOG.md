@@ -11,6 +11,11 @@ the day it's pushed (Pacific time; start the heading on the day's first push) an
 in plain words for the people who make and host games. Anything committed but not pushed yet goes under
 **Unreleased** at the top, and moves under its day when it's pushed.
 
+## Unreleased
+
+### Added
+- 🗜 Make a smaller copy for phones (on a GIF's card in 🖼 Media, or 🗜 in the 📱 preview and the checklist for a big one) turns a 🤫 card's GIF into a small looping video that phones get and show like the GIF, while the show keeps the GIF. Chrome and Edge on Windows or Mac and the desktop app make MP4s every phone plays; elsewhere it says it makes WebM, which some iPhones may not play. It's made in the background (the header shows how far it got, with Stop; ▶ Play and closing the app ask first), and Ctrl+Z takes it back.
+
 ## 2026-10-18
 
 ### Added

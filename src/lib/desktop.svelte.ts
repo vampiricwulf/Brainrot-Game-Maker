@@ -343,12 +343,24 @@ export async function restartIntoUpdate(): Promise<void> {
   await invoke('restart_app');
 }
 
+/** Resolves once `busy` says nothing is under way (asked twice a second). */
+function idle(busy: () => string | null): Promise<void> {
+  return new Promise((resolve) => {
+    const t = setInterval(() => {
+      if (busy()) return;
+      clearInterval(t);
+      resolve();
+    }, 500);
+  });
+}
+
 /**
  * When the app's window is closed: run `flush` (it writes the last edits), then close once those writes are done (the
  * app closes anyway after a few seconds). Closing right after typing no longer loses the last edits. While a save,
- * export or autosave is being written, it asks first: Wait (the app closes once it's done) or Close anyway.
+ * export or autosave is being written, it asks first: Wait (the app closes once it's done) or Close anyway. So it does
+ * while `busy` says what's under way (a 🗜 copy being made, in a sentence): Wait waits for it to finish.
  */
-export function flushOnClose(flush: () => void): void {
+export function flushOnClose(flush: () => void, busy?: () => string | null): void {
   if (!isHost()) return;
   closeFlush = flush;
   /** Waiting for a save to finish before closing (the ✕ clicked again changes nothing). */
@@ -359,6 +371,14 @@ export function flushOnClose(flush: () => void): void {
         if (waiting) return void invoke('hold_close').catch(() => {});
         try {
           flush();
+          const job = busy?.();
+          if (job) {
+            waiting = true;
+            await invoke('hold_close');
+            const done = idle(busy!);
+            const anyway = await ask(`${job} Closing now stops it (nothing is changed).\n\nThe app closes by itself once it’s done.`, { ok: 'Close anyway', cancel: 'Wait', danger: true, until: done });
+            if (!anyway) await done;
+          }
           // A read waits for every write started before it (IndexedDB runs them in order).
           await new Promise((r) => setTimeout(r));
           await (await import('idb-keyval')).get('__probe');

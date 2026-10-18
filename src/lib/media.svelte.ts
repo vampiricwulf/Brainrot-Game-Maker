@@ -290,7 +290,8 @@ export function fileDigest(blob: Blob): Promise<string> {
  * Only stored files of the same kind and size are compared.
  */
 export async function identicalMedia(game: Game, blob: Blob, kind: MediaKind): Promise<MediaRef | undefined> {
-  const same = game.media.filter((m) => !m.url && m.kind === kind && m.size === blob.size && blobs.has(m.id));
+  // (Never a 🗜 copy for phones: it isn't one of the game's files to a person.)
+  const same = game.media.filter((m) => !m.url && !m.phoneCopy && m.kind === kind && m.size === blob.size && blobs.has(m.id));
   if (!same.length) return undefined;
   const mine = await fileDigest(blob);
   for (const m of same) {
@@ -528,10 +529,25 @@ function moveMediaRefs(node: unknown, from: string, to: string, font: boolean): 
 }
 
 /**
+ * Inside a step: file `id`'s 🗜 copy for phones goes (it was made from bytes that are changing, or that are gone). Undo
+ * brings it back. How many went.
+ */
+export function dropPhoneCopies(game: Game, id: string): number {
+  let n = 0;
+  for (let i = game.media.length - 1; i >= 0; i--)
+    if (game.media[i].phoneCopy?.of === id) {
+      game.media.splice(i, 1);
+      n++;
+    }
+  return n;
+}
+
+/**
  * Put a new file in place of a game file (one that went missing, or one to swap), keeping its id so
  * every tile, slide and sound that uses it is fixed at once. The new file must be the same kind. It takes the new
  * file's name, unless `keepName` (a missing file found again under its own name). With `copy` (another game kept here
  * shares the file), the new bytes get an id of their own and this game's uses move to it, so that game keeps the old file.
+ * Its 🗜 copy for phones goes, in the same step: it was made from the old file.
  */
 export async function replaceMediaFile(game: Game, id: string, file: File, keepName = false, copy = false): Promise<MediaRef> {
   const ref = game.media.find((m) => m.id === id);
@@ -540,6 +556,8 @@ export async function replaceMediaFile(game: Game, id: string, file: File, keepN
   if (kind !== ref.kind) throw new Error(`"${file.name}" is ${KIND_WORD[kind]}, but "${ref.name}" is ${KIND_WORD[ref.kind]}. Pick ${KIND_WORD[ref.kind]}.`);
   const to = copy ? newId() : id;
   await putMedia(to, blob.type ? blob : new Blob([blob], { type: mime }));
+  // (Before the uses move: moving them would point the copy at the new file.)
+  dropPhoneCopies(game, id);
   // (The file's own id too.)
   if (to !== id) moveMediaRefs(game, id, to, ref.kind === 'font');
   // A file the user renamed keeps the name they gave it (the new file's name is its own name now).
@@ -555,9 +573,9 @@ export async function replaceMediaFile(game: Game, id: string, file: File, keepN
   return ref;
 }
 
-/** Game files with nothing to show: not stored in this browser and not a link. */
+/** Game files with nothing to show: not stored in this browser and not a link (never a 🗜 copy: phones get its file). */
 export function missingMedia(game: Game): MediaRef[] {
-  return game.media.filter((m) => !m.url && !mediaUrls[m.id]);
+  return game.media.filter((m) => !m.url && !m.phoneCopy && !mediaUrls[m.id]);
 }
 
 /**

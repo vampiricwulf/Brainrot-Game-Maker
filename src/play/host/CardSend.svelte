@@ -41,6 +41,7 @@
   import { copyText } from '../standings';
   import { canCopyPicture, copyCardPicture, hasPicture } from './cardcopy';
   import { leftLine, slowKinds, slowLine } from './cardrow';
+  import { libraryMedia } from '../../lib/phonecopies';
 
   let {
     game,
@@ -211,7 +212,7 @@
   let reveal = $state(false);
   const masked = $derived(!dual && !reveal);
   /** The game's pictures, videos and sounds (by name: offered only with the audience window open). */
-  const mediaFiles = $derived(game.media.filter((m) => m.kind === 'image' || m.kind === 'video' || m.kind === 'audio'));
+  const mediaFiles = $derived(libraryMedia(game).filter((m) => m.kind === 'image' || m.kind === 'video' || m.kind === 'audio'));
   const FILE_ICON: Partial<Record<MediaRef['kind'], string>> = { image: '🖼', video: '🎞', audio: '🔊' };
   /**
    * The card as it would go: an action's, a 🤫 Card, a tile's or a Final's (as the editor has it), the slide on screen, or

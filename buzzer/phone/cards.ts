@@ -43,6 +43,7 @@ export function playerSrc(m: Embed): { src: string; title: string } | null {
 
 /** A picture that moves: a GIF file, or a link to one (by its name: a link without one can't be told). */
 export function isGif(m: CardMedia): boolean {
+  if ('gif' in m && m.gif === true) return true;
   if ('mime' in m) return m.mime === 'image/gif';
   if (!('url' in m) || m.kind !== 'image') return false;
   try {
@@ -58,7 +59,9 @@ const icon = (kind: CardMedia['kind']) => (kind === 'image' ? '🖼' : kind === 
 const upper = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
 
 /** A text alternative: the slide item's own name, else "Picture" (or "Video", "Sound"). */
-export const mediaName = (m: CardMedia): string => ('name' in m && m.name?.trim()) || upper(mediaWord(m.kind));
+export const mediaName = (m: CardMedia): string => ('name' in m && m.name?.trim()) || upper(mediaWord(shownKind(m)));
+/** What an item is to the player: a GIF sent as a video ('gifs') is a picture, as it shows like one. */
+export const shownKind = (m: CardMedia): CardMedia['kind'] => ('gif' in m && m.gif === true ? 'image' : m.kind);
 
 /** A file on its way: "🖼 Picture coming…". */
 export const comingLine = (kind: CardMedia['kind']): string => `${icon(kind)} ${upper(mediaWord(kind))} coming…`;

@@ -28,8 +28,9 @@ export const BUZZ_PROTOCOL = 1;
  * cards the host sent (HostState.cards), the greyed lobby (status.off), the late rule with Member.teamAt, cardSeen,
  * cardsLate and a card's `shared`.
  * 'files': card files over HTTP (POST and GET /api/rooms/:code/files); listed only while the server takes files.
+ * 'gifs': a card's file can be a GIF sent as a looping video (CardMedia `gif`), which phones show like the GIF.
  */
-export const ROOM_FEATURES = ['teams', 'wagers', 'free', 'color', 'answers', 'cards', 'files'] as const;
+export const ROOM_FEATURES = ['teams', 'wagers', 'free', 'color', 'answers', 'cards', 'files', 'gifs'] as const;
 export type RoomFeature = (typeof ROOM_FEATURES)[number];
 
 /** Cards in the host's state at most, and how big they may be together (JSON bytes; over it, media go first, then cards). */
@@ -283,12 +284,13 @@ export interface CardTo {
 /**
  * A picture, video, sound or embed on a card. An https link (a GIF is an image) or a site's player; with 'files', a
  * file the host uploaded to the room (`file`: its id), one still on its way (`pending`), or one that won't come
- * (`missing`: "the host will show you this").
+ * (`missing`: "the host will show you this"). gif (added later, 'gifs'): a GIF sent as a video (the 🗜 copy the app
+ * made of it): the phone shows it like a GIF, looping and silent.
  */
 export type CardMedia =
   | { kind: 'image' | 'video' | 'audio'; url: string; start?: number; end?: number; name?: string }
   | { kind: 'embed'; site: (typeof EMBED_SITES)[number]; url: string; start?: number; end?: number }
-  | { kind: 'image' | 'video' | 'audio'; file: string; mime: string; start?: number; end?: number; name?: string }
+  | { kind: 'image' | 'video' | 'audio'; file: string; mime: string; start?: number; end?: number; name?: string; gif?: true }
   | { kind: 'image' | 'video' | 'audio'; pending: true }
   | { kind: 'image' | 'video' | 'audio'; missing: true };
 

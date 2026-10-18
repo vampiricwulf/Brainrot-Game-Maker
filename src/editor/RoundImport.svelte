@@ -29,7 +29,8 @@
     step(`Imported ${rounds.length === 1 ? `round “${roundName(rounds[0], source.rounds.indexOf(rounds[0]))}”` : `${rounds.length} rounds`} from “${source.title}”`, () => {
       for (const r of rounds) {
         const b = bundleRound(source, r);
-        for (const m of b.media) media.set(m.id, m);
+        // (Not a 🗜 copy for phones: it isn't one of the game's files to a person.)
+        for (const m of b.media) if (!m.phoneCopy) media.set(m.id, m);
         const added = addBundledRound(game, b, placeFor(game, r), copied, ids);
         const i = game.rounds.indexOf(added);
         if (first < 0 || i < first) first = i;

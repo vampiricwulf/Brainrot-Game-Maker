@@ -2052,8 +2052,9 @@ function cleanMedia(m: unknown, files: Record<string, RoomFile>): CardMedia | nu
     if (!isFileId(m.file)) return null;
     const f = files[m.file];
     if (!f) return { kind, pending: true };
-    // Its kind and type are the stored file's own.
-    return { kind: MEDIA_KINDS.find((k) => f.mime.startsWith(`${k}/`)) ?? kind, file: m.file, mime: f.mime, ...times, ...name };
+    // Its kind and type are the stored file's own. (A GIF sent as a video: only a stored video.)
+    const gif = m.gif === true && f.mime.startsWith('video/') ? { gif: true as const } : {};
+    return { kind: MEDIA_KINDS.find((k) => f.mime.startsWith(`${k}/`)) ?? kind, file: m.file, mime: f.mime, ...times, ...name, ...gif };
   }
   const url = cardLink(m.url);
   return url ? { kind, url, ...times, ...name } : null;

@@ -404,6 +404,11 @@ export function placeAt(game: Game, path: readonly Seg[]): At {
       go({ tab: 'media' });
       const m = byId<Game['media'][number]>(game.media, path[1]);
       if (!m) break;
+      // A 🗜 copy for phones is never named (its name is its file's, and History can be on stream): it's on its file's card.
+      if (m.phoneCopy) {
+        go({ tab: 'media', media: m.phoneCopy.of });
+        break;
+      }
       reached(2, 'file', m.name, MEDIA_ICON[m.kind]);
       go({ tab: 'media', media: m.id });
       break;

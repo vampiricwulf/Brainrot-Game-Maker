@@ -497,6 +497,31 @@ describe('🤫 Cards (the editor’s tab)', () => {
     vi.unstubAllGlobals();
   });
 
+  it('a GIF 🗜 can make a smaller copy of says so, with the file to copy (never named); one with a copy goes by the copy', () => {
+    vi.stubGlobal('document', { createElement: () => ({ canPlayType: () => 'maybe' }) });
+    const MB = 1024 * 1024;
+    const game = jeopardyGame();
+    game.media.push(
+      { id: 'gif', name: 'zfnqj.gif', mime: 'image/gif', size: 20 * MB, kind: 'image' },
+      { id: 'big', name: 'zfnqj-big.gif', mime: 'image/gif', size: 30 * MB, kind: 'image' },
+    );
+    game.cards = [card('sc1', 'Tip', newTextEl('A secret'), { ...newImageEl('gif'), y: 30 }, { ...newImageEl('big'), y: 40 })];
+    const canShrink = (m: { kind: string }) => m.kind === 'image';
+    const lines = validate(game, { fileBytes: 24 * MB, canShrink }).filter((p) => p.tab === 'cards');
+    expect(lines.map((p) => [p.level, p.text, p.shrink])).toEqual([
+      ['info', '🤫 Card “Tip” has a GIF of 20.0 MB: phones on mobile data may wait a while for it (WiFi is fine)', 'gif'],
+      ['warn', '🤫 Card “Tip” has a GIF too big to send to phones (30.0 MB; this buzzer server takes files up to 24.0 MB): make a smaller copy for phones (🗜) or add it from a link', 'big'],
+    ]);
+    expect(JSON.stringify(lines.map((p) => [p.text, p.player]))).not.toContain('zfnqj');
+    // The pre-game screen (no 🗜 there): as before.
+    expect(validate(game, { fileBytes: 24 * MB }).filter((p) => p.tab === 'cards').map((p) => p.text)[1]).toMatch(/: add it from a link instead$/);
+    // A copy of the big one, here: it goes, small enough, so no line; its bytes not here: the GIF itself again.
+    game.media.push({ id: 'bigc', name: 'zfnqj-big (phones).webm', mime: 'video/webm', size: 1 * MB, kind: 'video', phoneCopy: { of: 'big' } });
+    expect(validate(game, { fileBytes: 24 * MB, canShrink }).filter((p) => p.tab === 'cards').map((p) => p.shrink)).toEqual(['gif']);
+    expect(validate(game, { fileBytes: 24 * MB, canShrink, stored: (id) => id !== 'bigc' }).filter((p) => p.tab === 'cards').map((p) => p.shrink)).toEqual(['gif', 'big']);
+    vi.unstubAllGlobals();
+  });
+
   it('notes a name that repeats what’s on the card: its words, its phone title or a file’s name (at least 3 letters)', () => {
     const game = jeopardyGame();
     game.media.push({ id: 'pic', name: 'spoon.png', mime: 'image/png', size: 10, kind: 'image' });

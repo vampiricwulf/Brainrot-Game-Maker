@@ -28,10 +28,12 @@ import {
   type ClueCard,
   type FinalRound,
   type Game,
+  type Id,
+  type MediaRef,
   type Slide,
 } from './model';
 import { lowerWord, partnerRules, partnerSpot, partWords, stealOn } from './partner';
-import { ANY_SERVER, cardItems, cardWords, phoneCard } from './phonecard';
+import { ANY_SERVER, cardItems, cardWords, phoneCard, sendsOf } from './phonecard';
 import { CARD_TEXT_MAX, DEFAULT_FILE_LIMITS } from './buzzproto';
 import { rpgProblems, worldById } from './rpg';
 import { boardGameProblems } from './boardgame';
@@ -55,6 +57,8 @@ export interface Problem {
   place?: Place;
   /** What it means in a player-only file, which can't add or swap files (none: the same text). */
   player?: string;
+  /** 🗜: the file to make a smaller copy of for phones (the editor's checklist line gets a button for it). */
+  shrink?: Id;
 }
 
 /** "1 clue", "3 clues" ("category" → "categories"). */
@@ -107,11 +111,16 @@ export function partnerTilesOver(round: BoardRound): { want: number; placed: num
  * What the buzzer server in use takes, for what of a 🤫 card won't reach a phone. `filesOff`: the room open now puts
  * cards on phones but takes no files (its server is off them, or out of budget for now), or the server said it takes
  * none: a card's file from this computer won't reach a phone. `fileBytes`: the biggest file it takes
- * (serverlimits.svelte.ts fileLimitsNow; DEFAULT_FILE_LIMITS when not given).
+ * (serverlimits.svelte.ts fileLimitsNow; DEFAULT_FILE_LIMITS when not given). `stored` and `gifs`: which 🗜 copies for
+ * phones go (PhoneCan). `canShrink`: 🗜 can make a smaller copy of this file here (the editor's checklist only): its
+ * lines say so, and get a button.
  */
 export interface CardRoom {
   filesOff?: boolean;
   fileBytes?: number;
+  stored?: (id: Id) => boolean;
+  gifs?: boolean;
+  canShrink?: (ref: MediaRef) => boolean;
 }
 
 /** The checklist's problems for `game`, as the buzzer server in use (`room`) would have them. */
@@ -289,7 +298,8 @@ export function validate(game: Game, room: CardRoom = {}): Problem[] {
       level: 'warn',
       player: `${plural(deleted.length, 'file')} used on slides but missing from this game: ask whoever made it for a new copy`,
     });
-  const missing = new Set([...[...usage.keys()].filter((id) => !known.has(id) && !deleted.includes(id)), ...game.media.filter((m) => !mediaUrls[m.id]).map((m) => m.id)]);
+  // (A 🗜 copy for phones whose bytes are missing isn't: phones get its file.)
+  const missing = new Set([...[...usage.keys()].filter((id) => !known.has(id) && !deleted.includes(id)), ...game.media.filter((m) => !m.phoneCopy && !mediaUrls[m.id]).map((m) => m.id)]);
   // A sound's missing file is said on its own, pointing to 🔊 Sounds (the built-in sound plays meanwhile).
   const cues = new Set(Object.values(game.audio ?? {}).filter((id): id is string => !!id && missing.has(id)));
   if (cues.size)
@@ -308,7 +318,7 @@ export function validate(game: Game, room: CardRoom = {}): Problem[] {
       player: `${plural(others, 'media file')} missing from this game: ask whoever made it for a new copy`,
     });
   // (A live link already played when it was added; its type is often unknown from the address.)
-  const unplayable = game.media.filter((m) => !m.url && (m.kind === 'video' || m.kind === 'audio') && !canPlay(m.mime)).length;
+  const unplayable = game.media.filter((m) => !m.url && !m.phoneCopy && (m.kind === 'video' || m.kind === 'audio') && !canPlay(m.mime)).length;
   if (unplayable) out.push({ text: `${plural(unplayable, 'video/audio file')} this browser may not play`, tab: 'media', level: 'warn' });
 
   const links = game.media.filter((m) => m.url);
@@ -421,6 +431,8 @@ interface CardFileProblem {
   level: 'warn' | 'info';
   /** What it means in a player-only file, which can't add or swap files (none: the same text). */
   player?: string;
+  /** 🗜: the file a smaller copy for phones would help (Problem.shrink). */
+  shrink?: Id;
 }
 
 /**
@@ -439,14 +451,22 @@ function cardFileProblems(game: Game, card: Slide, room: CardRoom): CardFileProb
   if (life.includes('expired')) warn('an online link that has expired: add that file again');
   else if (life.includes('temporary')) warn('an online link that stops working soon: save a copy or add the file');
   const fileBytes = room.fileBytes ?? DEFAULT_FILE_LIMITS.fileBytes;
-  for (const it of phoneCard(game, card, { files: room.filesOff ? null : {}, fileBytes }).items) {
-    const size = formatBytes(game.media.find((m) => m.id === it.media)?.size ?? 0);
+  for (const it of phoneCard(game, card, { files: room.filesOff ? null : {}, fileBytes, stored: room.stored, gifs: room.gifs }).items) {
+    // (The size of what goes: its 🗜 copy when that's it.)
+    const size = formatBytes(game.media.find((m) => m.id === sendsOf(it))?.size ?? 0);
+    const ref = game.media.find((m) => m.id === it.media);
+    const shrink = ref && room.canShrink?.(ref) ? { shrink: ref.id } : {};
     if (it.why === 'big') {
       const big = `a ${KIND[it.kind]} too big to send to phones (${size}; this buzzer server takes files up to ${formatBytes(fileBytes)})`;
-      warn(`${big}: add it from a link instead`, `${big}: the host shows it on stream instead`);
+      out.push({
+        text: `${big}: ${shrink.shrink ? 'make a smaller copy for phones (🗜) or add it from a link' : 'add it from a link instead'}`,
+        level: 'warn',
+        player: `${big}: the host shows it on stream instead`,
+        ...shrink,
+      });
     } else if (it.why === 'kind' && it.file) warn(`a ${KIND[it.kind]} phones can't play: add it as MP4, WebM, MP3, OGG, WAV or M4A, or from a link`);
     else if (it.why === 'nofiles') warn(`a ${KIND[it.kind]} that's a file on this computer, and this buzzer server isn't taking files: phones get the words and links only (📋 Copy picture)`);
-    else if (it.slow) out.push({ text: `a ${KIND[it.kind]} of ${size}: phones on mobile data may wait a while for it (WiFi is fine)`, level: 'info' });
+    else if (it.slow) out.push({ text: `a ${KIND[it.kind]} of ${size}: phones on mobile data may wait a while for it (WiFi is fine)`, level: 'info', ...shrink });
   }
   if ([...cardWords(card)].length > CARD_TEXT_MAX) warn(`more than ${CARD_TEXT_MAX} characters of words: phones get the first ${CARD_TEXT_MAX}`);
   return out;
@@ -461,7 +481,7 @@ function cardLines(game: Game, cards: Slide[], says: string, tab: Problem['tab']
   return cards
     .flatMap((c) => cardFileProblems(game, c, room))
     .filter((p) => !seen.has(p.text) && !!seen.add(p.text))
-    .map((p) => ({ text: `${says} has ${p.text}`, tab, level: p.level, place, ...(p.player ? { player: `${says} has ${p.player}` } : {}) }));
+    .map((p) => ({ text: `${says} has ${p.text}`, tab, level: p.level, place, ...(p.player ? { player: `${says} has ${p.player}` } : {}), ...(p.shrink ? { shrink: p.shrink } : {}) }));
 }
 
 /**

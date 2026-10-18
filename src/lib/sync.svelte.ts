@@ -9,7 +9,7 @@
 // The audience window picks one link, so nothing is processed twice.
 import { getBlob } from './media.svelte';
 import { applyLocal, onLocalMediaChange, remoteMedia, type MediaCmd, type MediaState } from './mediactl.svelte';
-import { newId, type Game, type Session } from './model';
+import { newId, type Game, type MediaRef, type Session } from './model';
 import type { Live } from './live';
 import { inTauri } from './platform';
 import { browserArgs, closeAudienceNative } from './desktop.svelte';
@@ -183,11 +183,17 @@ export function hideFromViewers(ids: string[]): void {
   ids.forEach((id) => privateMedia.add(id));
 }
 
+/**
+ * A file the viewers' windows never get: a 🤫 card's own (hideFromViewers), or a 🗜 copy for phones (that one exists
+ * would tell which file is on a card).
+ */
+const viewersNever = (ref: MediaRef): boolean => privateMedia.has(ref.id) || !!ref.phoneCopy;
+
 function sendMedia(game: Game): void {
   const items: { id: string; blob: Blob }[] = [];
   for (const ref of game.media) {
     // Live links have no file: the audience window plays them from the link too (registerLinks).
-    if (ref.url || privateMedia.has(ref.id)) continue;
+    if (ref.url || viewersNever(ref)) continue;
     const blob = getBlob(ref.id);
     if (!blob || sentMedia.get(ref.id) === blob) continue;
     items.push({ id: ref.id, blob });
@@ -545,9 +551,11 @@ export function applyGamePatch(game: Game, ops: GamePatch): void {
   }
 }
 
+/** The game as the viewers' windows get it: without a 🤫 card's own files (hideFromViewers), nor 🗜 copies for phones. */
+export const viewersGame = (game: Game): Game => (game.media.some(viewersNever) ? { ...game, media: game.media.filter((m) => !viewersNever(m)) } : game);
+
 export function pushGame(game: Game): void {
-  // (Without a 🤫 card's own files: hideFromViewers.)
-  const viewed = privateMedia.size && game.media.some((m) => privateMedia.has(m.id)) ? { ...game, media: game.media.filter((m) => !privateMedia.has(m.id)) } : game;
+  const viewed = viewersGame(game);
   const before = last.game;
   last.game = viewed;
   sendMedia(viewed);

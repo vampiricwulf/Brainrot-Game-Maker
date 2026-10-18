@@ -6,6 +6,7 @@ import { uniqueMediaName } from './medianame';
 import { uploadedFamily } from './fonts';
 import { isRpg, newId, roundName, type Game, type MediaRef, type Round } from './model';
 import { clone, reidRound } from './ops';
+import { withCopies } from './phonecopies';
 
 export type { RoundBundle };
 
@@ -28,7 +29,10 @@ export function bundleRound(game: Game, round: Round): RoundBundle {
   const size = (f: typeof found) => Object.values(f).reduce((n, l) => n + l.length, 0);
   for (let more = pick(JSON.stringify([r, worlds, found])); size(more) > size(found); more = pick(JSON.stringify([r, worlds, found]))) found = more;
   const { wheels, dice, shops, items, statFields } = clone(found);
-  const media = clone(mediaShownBy([r, worlds, wheels, dice, shops, items, statFields], game.media));
+  const shown = mediaShownBy([r, worlds, wheels, dice, shops, items, statFields], game.media);
+  // (With their 🗜 copies for phones.)
+  const ids = withCopies(game, shown.map((m) => m.id));
+  const media = clone([...shown, ...game.media.filter((m) => m.phoneCopy && ids.includes(m.id))]);
   return { round: r, from: game.title, label: roundName(round, game.rounds.indexOf(round)), worlds, wheels, dice, statFields, items, shops, media };
 }
 

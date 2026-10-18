@@ -614,3 +614,19 @@ describe('🤫 Cards in saved games', () => {
     expect(JSON.stringify(migrateGame(plain(m)))).toBe(JSON.stringify(m));
   });
 });
+
+describe('🗜 copies for phones in saved games', () => {
+  const plain = (g: unknown) => JSON.parse(JSON.stringify(g));
+  const withMedia = (media: unknown[]) => migrateGame(plain({ ...jeopardyGame(), media }));
+  const gif = { id: 'g', name: 'dance.gif', mime: 'image/gif', size: 9, kind: 'image' };
+  const copy = (id: string, of: unknown, more = {}) => ({ id, name: `${id}.webm`, mime: 'video/webm', size: 1, kind: 'video', phoneCopy: { of }, ...more });
+
+  it('keeps one copy a file, of a file in the game that isn’t a copy itself; any other goes', () => {
+    const m = withMedia([gif, copy('c1', 'g'), copy('c2', 'g'), copy('c3', 'gone'), copy('c4', 'c1'), copy('c5', 42), copy('c6', 'g', { phoneCopy: 'x' }), copy('c7', 'c7')]);
+    expect(m.media.map((x) => x.id)).toEqual(['g', 'c1']);
+    expect(gameProblem(m)).toBeNull();
+    // (One with the link of a file isn't a stored copy.)
+    expect(withMedia([gif, copy('c1', 'g', { url: 'https://x.test/a.webm' })]).media.map((x) => x.id)).toEqual(['g']);
+    expect(JSON.stringify(migrateGame(plain(m)))).toBe(JSON.stringify(m));
+  });
+});

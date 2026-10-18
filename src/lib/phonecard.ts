@@ -91,7 +91,15 @@ export interface PhoneItem extends CardItem {
    * only, never in `why` or `left`.
    */
   slow?: true;
+  /**
+   * Added for 🗜: the file that goes up, when it isn't `media` (its smaller copy for phones: MediaRef.phoneCopy). `media`
+   * stays the item's own file (📋 Copy picture, the 🪟 card window).
+   */
+  sends?: Id;
 }
+
+/** The file an item puts in the buzzer room: its copy for phones, else its own (uploads and the room's ids go by it). */
+export const sendsOf = (i: Pick<PhoneItem, 'media' | 'sends'>): Id | undefined => i.sends ?? i.media;
 
 export interface PhoneCardContent {
   /** The card's largest short line, when it has other words too. */
@@ -109,12 +117,16 @@ export interface PhoneCardContent {
 /**
  * What the phones can get: `files`, the room's ids for the files already up (by media id), or null when the buzzer
  * server takes no files (they go as { missing }). `failed`: files whose upload didn't work, and why. `fileBytes`: the
- * biggest file the buzzer server takes (serverlimits.svelte.ts fileLimitsNow).
+ * biggest file the buzzer server takes (serverlimits.svelte.ts fileLimitsNow). `stored`: whether a 🗜 copy's bytes are
+ * on this computer (absent: they are). `gifs`: the room shows a GIF sent as a video like a GIF ('gifs'; absent: it
+ * does).
  */
 export interface PhoneCan {
   files: Record<Id, string> | null;
   failed?: Record<Id, LeftOut>;
   fileBytes: number;
+  stored?: (id: Id) => boolean;
+  gifs?: boolean;
 }
 
 /**
@@ -142,6 +154,22 @@ function times(e: SlideElement): { start?: number; end?: number } {
   return { ...(ok(p.startAt) ? { start: p.startAt } : {}), ...(ok(p.endAt) ? { end: p.endAt } : {}) };
 }
 
+/** A file's 🗜 smaller copy for phones, if it has one. */
+export const phoneCopyOf = (game: Pick<Game, 'media'>, ref: Pick<MediaRef, 'id'>): MediaRef | undefined => game.media.find((m) => m.phoneCopy?.of === ref.id);
+
+/** Whether a copy of part of a file holds all an item plays (`t`: its times on the file): from its start to its end. */
+function covers(copy: NonNullable<MediaRef['phoneCopy']>, t: { start?: number; end?: number }): boolean {
+  if ((copy.from ?? 0) > (t.start ?? 0)) return false;
+  return copy.to === null || copy.to === undefined || (t.end !== undefined && t.end <= copy.to);
+}
+
+/** An item's times on a copy that starts `from` seconds into its file. */
+function shifted(t: { start?: number; end?: number }, from = 0): { start?: number; end?: number } {
+  if (!from) return t;
+  const at = (n: number) => Math.max(0, Math.round((n - from) * 1000) / 1000);
+  return { ...(t.start !== undefined ? { start: at(t.start) } : {}), ...(t.end !== undefined ? { end: at(t.end) } : {}) };
+}
+
 /** An embed in its site's player: YouTube, Google Drive or Streamable, when the link is one. */
 function embedSite(e: EmbedEl): 'youtube' | 'drive' | 'streamable' | null {
   if (e.embedKind === 'youtube') return youtubeId(e.url) ? 'youtube' : null;
@@ -160,6 +188,9 @@ function lastingLink(ref: MediaRef, kind: 'image' | 'video' | 'audio', edited: b
   if (!p || isLinkProblem(p) || p.temporary || p.noLive) return null;
   return phoneLink(p.playUrls[0]);
 }
+
+/** A stored file that phones get from the link it was added from (lastingLink): a 🗜 copy wouldn't help it. */
+export const phonesGetLink = (ref: MediaRef): boolean => ref.kind !== 'font' && !ref.url && !!lastingLink(ref, ref.kind, false);
 
 /**
  * A card as the phones get it (partner-clues spec §12.3): a title (its largest short line, when it has other words
@@ -213,23 +244,43 @@ export function phoneCard(game: Pick<Game, 'media'>, slide: Slide, can: PhoneCan
       continue;
     }
     // A file from this computer. A picture is shrunk first (any size, any type a browser draws); a GIF, a video or a
-    // sound goes as it is.
-    const type = fileType(ref.mime);
+    // sound goes as it is, or as its 🗜 copy for phones when there is one: once its bytes are here, if it holds what the
+    // item plays, and for a GIF (a looping video) if the room shows it like one, or the GIF itself is too big.
+    const t = times(e);
+    const copy = phoneCopyOf(game, ref);
+    const useCopy =
+      !!copy?.phoneCopy &&
+      !copy.url &&
+      (can.stored?.(copy.id) ?? true) &&
+      (item.kind === 'gif' ? can.gifs !== false || ref.size > can.fileBytes : covers(copy.phoneCopy, t));
+    const send = useCopy ? copy! : ref;
+    // (A GIF's copy is a video: its type is checked as one.)
+    const goesAs = useCopy && item.kind === 'gif' ? 'video' : kind;
+    const type = fileType(send.mime);
     const why: LeftOut | null =
       can.files === null
         ? 'nofiles'
-        : !shrinks(item) && (!type || !type.startsWith(`${kind}/`))
+        : !shrinks(item) && (!type || !type.startsWith(`${goesAs}/`))
           ? 'kind'
-          : !shrinks(item) && ref.size > can.fileBytes
+          : !shrinks(item) && send.size > can.fileBytes
             ? 'big'
-            : (can.failed?.[ref.id] ?? null);
+            : (can.failed?.[send.id] ?? null);
+    const sends = useCopy ? { sends: send.id } : {};
     if (why) {
-      items.push({ ...missing(why), file: why !== 'nofiles' });
+      items.push({ ...missing(why), file: why !== 'nofiles', ...sends });
       continue;
     }
-    const id = can.files?.[ref.id];
-    const slow = !shrinks(item) && ref.size > SLOW_FILE_BYTES;
-    items.push({ ...item, file: true, ...(slow ? { slow: true as const } : {}), goes: id ? { kind, file: id, mime: ref.mime, ...times(e), ...name } : { kind, pending: true } });
+    const id = can.files?.[send.id];
+    const slow = !shrinks(item) && send.size > SLOW_FILE_BYTES;
+    const gif = useCopy && item.kind === 'gif' && can.gifs !== false ? { gif: true as const } : {};
+    items.push({
+      ...item,
+      file: true,
+      ...sends,
+      ...(slow ? { slow: true as const } : {}),
+      // (A GIF's copy still on its way: "Picture coming…".)
+      goes: id ? { kind: goesAs, file: id, mime: send.mime, ...shifted(t, useCopy ? send.phoneCopy?.from : 0), ...name, ...gif } : { kind, pending: true },
+    });
   }
   const media = items.filter((i) => i.why !== 'many').map((i) => i.goes);
   return {
@@ -241,7 +292,10 @@ export function phoneCard(game: Pick<Game, 'media'>, slide: Slide, can: PhoneCan
   };
 }
 
-/** The files a card needs uploaded (media ids, each once): its items from this computer that aren't up or left out. */
+/**
+ * The files a card needs uploaded (media ids, each once): its items from this computer that aren't up or left out (a
+ * 🗜 copy instead of its file, when that's what goes).
+ */
 export function filesToSend(content: Pick<PhoneCardContent, 'items'>): Id[] {
-  return [...new Set(content.items.flatMap((i) => (i.file && !i.why && 'pending' in i.goes && i.media ? [i.media] : [])))];
+  return [...new Set(content.items.flatMap((i) => (i.file && !i.why && 'pending' in i.goes && sendsOf(i) ? [sendsOf(i)!] : [])))];
 }
