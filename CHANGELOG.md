@@ -22,7 +22,7 @@ in plain words for the people who make and host games. Anything committed but no
 
 ### Changed
 - The buzzer server streams a 🤫 card's pictures, videos and sounds through to its room instead of reading and copying each file first, so its front end does far less work per file: on Cloudflare's free plan, a 2–4 MB upload took 3 to 5 times the 10 ms of CPU a request gets. buzzer/measure-files.mjs measures what files cost on your own server (buzzer/README.md, "Card files"). (994cdf9)
-- The buzzer server has Cloudflare's Workers Logs on, so its dashboard lists each request's own CPU time (the room's work included), with the query strings of addresses left out so a room's host token is never logged; buzzer/measure-files.mjs can then send a request every few seconds instead of one a minute.
+- The buzzer server has Cloudflare's Workers Logs on, so its dashboard lists each request's own CPU time (the room's work included), with the query strings of addresses left out so a room's host token is never logged; buzzer/measure-files.mjs can then send a request every few seconds instead of one a minute. (665a11e)
 
 ### Fixed
 - ⚙ Settings › Buzzer server: an address typed without its https:// (as Cloudflare's dashboard shows it, like buzz.example.workers.dev) is kept with it, and one saved that way before works too. Starting a room with it used to fail with only "Couldn’t reach the buzzer server". One typed with HTTPS:// in capitals is kept in small letters, so Test takes it. (52b47e3, 8671771)
