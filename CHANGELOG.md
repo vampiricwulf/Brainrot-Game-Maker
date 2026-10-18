@@ -23,7 +23,7 @@ in plain words for the people who make and host games. Anything committed but no
 ### Changed
 - The buzzer server streams a 🤫 card's pictures, videos and sounds through to its room instead of reading and copying each file first, so its front end does far less work per file: on Cloudflare's free plan, a 2–4 MB upload took 3 to 5 times the 10 ms of CPU a request gets. buzzer/measure-files.mjs measures what files cost on your own server (buzzer/README.md, "Card files"). (994cdf9)
 - The buzzer server has Cloudflare's Workers Logs on, so its dashboard lists each request's own CPU time (the room's work included), with the query strings of addresses left out so a room's host token is never logged; buzzer/measure-files.mjs can then send a request every few seconds instead of one a minute. (665a11e)
-- The buzzer server's room reads an uploaded 🤫 card file a whole 1 MB piece at a time instead of in network-sized bits, which took it about 20 ms of CPU a MB. buzzer/measure-files.mjs --analytics reads each request's CPU time from Cloudflare's analytics itself.
+- The buzzer server's room reads an uploaded 🤫 card file a whole 1 MB piece at a time instead of in network-sized bits, which took it about 20 ms of CPU a MB. buzzer/measure-files.mjs --analytics reads each request's CPU time from Cloudflare's analytics itself. (6e5628e)
 
 ### Fixed
 - ⚙ Settings › Buzzer server: an address typed without its https:// (as Cloudflare's dashboard shows it, like buzz.example.workers.dev) is kept with it, and one saved that way before works too. Starting a room with it used to fail with only "Couldn’t reach the buzzer server". One typed with HTTPS:// in capitals is kept in small letters, so Test takes it. (52b47e3, 8671771)
@@ -59,7 +59,7 @@ in plain words for the people who make and host games. Anything committed but no
 - With phone buzzer Teams on, a button that spins the 🎯 wheel reads “Spin Pick a team”, as the wheel on stream does, and so does what the host is told when it's pressed: a board space's buttons (as it's landed on or passed, and on its card, ▶ Start too), an RPG object's or item's, and a wheel slice's or a die face's. They said “Spin Pick a player”. (627325e)
 - A buzzer room kept for another game: after ◀ Back to editor, Ctrl+Z there takes back the step ▶ Play made for the room (Buzzer mode, Teams and its players) without closing the room, so the phones stay in it (they were told the game is over, and Ctrl+Y couldn't bring them back). Ctrl+Y puts the step back, and ▶ Play goes back into the room. Undoing your own Buzzer mode step still closes the room, as turning it off does. (869938a, 61bd04d)
 - After leaving a game mid-clue, opening 🎨 Theme (or its 📂 Import theme…) or 🖼 Board images… no longer makes Resume game start the clue's video or sound again from 0:00, playing: it's paused where the game left it, as after the slide editor's ▶ Preview. (3a8c5fd)
-- The buzzer server no longer counts every card file a phone fetches as an error in Cloudflare's dashboard ("client disconnected"), as it did in 2.22.0, though the phone got all of it.
+- The buzzer server no longer counts every card file a phone fetches as an error in Cloudflare's dashboard ("client disconnected"), as it did in 2.22.0, though the phone got all of it. (6e5628e)
 
 ## 2026-10-16
 
