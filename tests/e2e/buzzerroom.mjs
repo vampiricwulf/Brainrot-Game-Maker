@@ -996,6 +996,30 @@ try {
     assert(refusals.join() === '401,401,401,415,415,413', `uploads need the host token, a picture, video or sound type, and 4 MB at most (${refusals.join()})`);
     // (The token is checked before the body is read: a wrong one over 4 MB is turned away for its token.)
     assert((await up(randomBytes(4 * 1024 * 1024 + 1), 'video/mp4', 'wrong')).status === 401, 'a wrong token is turned away before its body is read');
+    // A file that doesn't say how big it is streams on to the room, which stops reading it past 4 MB; nothing at all is
+    // refused there too.
+    const unsized = (bytes) => {
+      let sent = 0;
+      const body = new ReadableStream({
+        pull(c) {
+          if (sent >= bytes.length) return c.close();
+          c.enqueue(bytes.subarray(sent, (sent += 256 * 1024)));
+        },
+      });
+      return fetch(filesUrl(made.code), { method: 'POST', duplex: 'half', headers: { 'Content-Type': 'video/mp4', Authorization: `Bearer ${made.hostToken}` }, body });
+    };
+    const streamed = await unsized(randomBytes(4 * 1024 * 1024 + 1));
+    const nothing = await up(new Uint8Array(0), 'video/mp4');
+    assert(
+      streamed.status === 413 && (await streamed.json()).error === 'Too big for phones (4 MB at most)' && nothing.status === 400,
+      `a file over 4 MB that doesn't give its size is refused as too big (${streamed.status}), and an empty one (${nothing.status})`,
+    );
+    const whole = randomBytes(1536 * 1024);
+    const wholeAnswer = await unsized(whole);
+    assert(
+      wholeAnswer.status === 200 && (await wholeAnswer.json()).id === createHash('sha256').update(whole).digest('hex'),
+      'one under 4 MB that doesn’t give its size is taken, its id its SHA-256',
+    );
     const first = await up(bytes, 'image/png');
     const firstId = first.status === 200 ? (await first.json()).id : `HTTP ${first.status}: ${await first.text()}`;
     assert(firstId === hash, 'the host uploads a 2.5 MB picture: its id is its SHA-256');

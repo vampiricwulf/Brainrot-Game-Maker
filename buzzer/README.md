@@ -218,7 +218,8 @@ counted against today's budget for a file that then isn't stored (the room ended
   `Cache-Control: no-store` and `X-Content-Type-Options: nosniff`.
 - **At most 4 MB a file, and 16 MB and 32 files a room.**
 - **Kept** in the room's own Durable Object storage, in 1 MB pieces under their own keys (`file:<id>:<n>`), never in
-  the room's state. A file no current card uses is deleted 10 minutes after (one got ready and never sent: 10 minutes
+  the room's state. A file streams through the Worker both ways: the room reads an upload straight into its pieces
+  (working out its id on the way), and sends a download's pieces out one after another, so neither copies it whole. A file no current card uses is deleted 10 minutes after (one got ready and never sent: 10 minutes
   after its upload), by the room's alarm (the same one that ends the room) and on the host's next state; the host can
   also `forget` them. Everything goes when the room ends.
 - **120 uploads and 120 downloads a minute per address** (`FILE_LIMIT` in `wrangler.jsonc`).
@@ -227,13 +228,27 @@ counted against today's budget for a file that then isn't stored (the room ended
   files right now — try again tomorrow" (or "Too many files from here today"), the welcome stops listing `'files'`, and
   the app falls back to its 📋 copy buttons. **To change it**, set `FILES_MB_PER_DAY` under `vars` in `wrangler.jsonc`
   (a number of MB; `0` turns card files off) and deploy again; for `wrangler dev` only, put `FILES_MB_PER_DAY=…` in a
-  `.dev.vars` file here. A missing or unreadable value means 300. The default is kept small on purpose: the Free plan's
-  CPU time and rows written per upload haven't been measured on a real account yet.
-- **Before the public server takes files**, measure on a Free account: deploy, run `npx wrangler tail` while a host
-  uploads a 4 MB file and a phone fetches it, and note each request's CPU time (the Free plan allows 10 ms a request);
-  then read the rows written for the upload in the dashboard (Workers & Pages › the Worker › Durable Objects; the Free
-  plan allows 100,000 a day). Write the numbers here, set `FILES_MB_PER_DAY` from them (and lower `FILE_MAX_BYTES` in
-  `src/lib/buzzproto.ts` if a 4 MB upload doesn't fit the CPU limit), and replace the sentence above.
+  `.dev.vars` file here. A missing or unreadable value means 300. The default is kept small on purpose (see what a
+  file costs, below).
+- **What a file costs**, measured on a Free account on 2026-10-17, before files streamed through the Worker (CPU time
+  per request, from the dashboard's per-minute charts, one request a minute):
+
+  | File | Upload: Worker | Upload: room | Download: Worker | Download: room |
+  | --- | --- | --- | --- | --- |
+  | 1 MB | ~10 ms | ~10 ms | ~3 ms | ~7 ms |
+  | 2 MB | ~48 ms | ~17 ms | ~7 ms | ~20 ms |
+  | 3 MB | ~50 ms | ~28 ms | ~8 ms | ~35 ms |
+  | 4 MB | ~32 ms | ~27 ms | ~6 ms | ~48 ms |
+
+  The daily counter (`RoomCounter`) took under 1 ms a call; no request failed or ran out of CPU, and 10 MB of files
+  wrote 46 rows, their deletion included. The Free plan gives a Worker 10 ms of CPU a request, with some leeway for one
+  that runs over now and then, and a Durable Object 30 seconds (Cloudflare's limits pages): the Worker's part was the
+  one over. **To measure again** (after a change, or before raising `FILE_MAX_BYTES` in `src/lib/buzzproto.ts`), run
+  `node measure-files.mjs https://<your server> --sizes 1,2,3,4` here and read Workers & Pages › the Worker › Metrics ›
+  CPU time, and Durable Objects › each class › Metrics, for the minutes it names: it opens a room with a host and a
+  phone, then uploads and fetches one file a minute (labelled `?measure=up-4MB-1` and so on in its address), using that
+  much of the day's budget. With `--tail`, on a computer logged in to the account, it also reads each request's CPU
+  time from `wrangler tail`.
 
 ## Local development
 

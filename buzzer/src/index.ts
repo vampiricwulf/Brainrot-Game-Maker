@@ -102,12 +102,21 @@ function randomCode(): string {
 /** The token in an `Authorization: Bearer <token>` header, or ''. */
 const bearer = (request: Request): string => request.headers.get('Authorization')?.match(/^Bearer\s+(\S+)$/i)?.[1] ?? '';
 
-/** A request's body, or null when it is longer than max bytes (reading stops there). */
-async function readBody(request: Request, max: number): Promise<Uint8Array | null> {
-  if (Number(request.headers.get('Content-Length') ?? 0) > max) return null;
-  const reader = request.body?.getReader();
-  if (!reader) return new Uint8Array(0);
-  const parts: Uint8Array[] = [];
+/** Refused for its size (413). */
+const TOO_BIG = `Too big for phones (${FILE_MAX_BYTES / 1024 / 1024} MB at most)`;
+
+/**
+ * A card file as it streams in, read once: straight into the FILE_PART_BYTES pieces it's stored in, its SHA-256 (the
+ * file's id) worked out on the way. 'big' when it runs past max bytes (reading stops there); 'empty' with no bytes.
+ */
+async function readPieces(body: ReadableStream<Uint8Array> | null, max: number): Promise<{ id: string; pieces: Uint8Array[]; bytes: number } | 'big' | 'empty'> {
+  if (!body) return 'empty';
+  const digest = new crypto.DigestStream('SHA-256');
+  const hash = digest.getWriter();
+  const reader = body.getReader();
+  const pieces: Uint8Array[] = [];
+  let piece = new Uint8Array(FILE_PART_BYTES);
+  let at = 0;
   let n = 0;
   for (;;) {
     const { done, value } = await reader.read();
@@ -115,17 +124,26 @@ async function readBody(request: Request, max: number): Promise<Uint8Array | nul
     n += value.byteLength;
     if (n > max) {
       void reader.cancel();
-      return null;
+      return 'big';
     }
-    parts.push(value);
+    await hash.write(value);
+    for (let from = 0; from < value.byteLength; ) {
+      const take = Math.min(value.byteLength - from, FILE_PART_BYTES - at);
+      piece.set(value.subarray(from, from + take), at);
+      at += take;
+      from += take;
+      if (at === FILE_PART_BYTES) {
+        pieces.push(piece);
+        piece = new Uint8Array(FILE_PART_BYTES);
+        at = 0;
+      }
+    }
   }
-  const out = new Uint8Array(n);
-  let at = 0;
-  for (const part of parts) {
-    out.set(part, at);
-    at += part.byteLength;
-  }
-  return out;
+  if (!n) return 'empty';
+  if (at) pieces.push(piece.slice(0, at));
+  await hash.close();
+  const id = [...new Uint8Array(await digest.digest)].map((b) => b.toString(16).padStart(2, '0')).join('');
+  return { id, pieces, bytes: n };
 }
 
 /**
@@ -142,6 +160,7 @@ async function roomFiles(request: Request, env: Env, ip: string, code: string, i
   if (download) {
     const file = token && isRoomCode(code) && isFileId(id) ? await env.BUZZ_ROOM.getByName(code).download(token, id) : null;
     if (!file) return json({ error: 'not found' }, 404);
+    // (Its pieces stream through as the room sends them: the Worker never holds the file.)
     return new Response(file.body, {
       headers: { 'Content-Type': file.mime, 'Cache-Control': 'no-store', 'X-Content-Type-Options': 'nosniff', ...CORS },
     });
@@ -156,10 +175,10 @@ async function roomFiles(request: Request, env: Env, ip: string, code: string, i
   // missing token above.)
   const stub = env.BUZZ_ROOM.getByName(code);
   if (!(await stub.isHost(token))) return json({ error: 'wrong host token' }, 401);
-  const body = await readBody(request, FILE_MAX_BYTES);
-  if (!body) return json({ error: `Too big for phones (${FILE_MAX_BYTES / 1024 / 1024} MB at most)` }, 413);
-  if (!body.byteLength) return json({ error: 'empty file' }, 400);
-  const r = await stub.upload(token, mime, body, who);
+  if (Number(request.headers.get('Content-Length') ?? 0) > FILE_MAX_BYTES) return json({ error: TOO_BIG }, 413);
+  // The bytes stream on to the room as they come, never gathered here: copying a file's worth through the Worker cost
+  // it several times a request's CPU on the Free plan (README.md, "Card files").
+  const r = await stub.upload(token, mime, request.body, who);
   return json(r.id ? { id: r.id } : { error: r.error }, r.status);
 }
 
@@ -368,28 +387,34 @@ export class BuzzRoom extends DurableObject<Env> {
   }
 
   /**
-   * A card file from the host (the Worker checked its type and that it's at most FILE_MAX_BYTES). The same bytes again
-   * store nothing new. Otherwise the room's caps (counting the files still on their way, so uploads at the same time
-   * can't pass them together), then today's budget, then it's stored in FILE_PART_BYTES pieces: only then are the idle
-   * files that make room for it deleted.
+   * A card file from the host, its bytes streaming in (the Worker checked its type): read into its pieces, at most
+   * FILE_MAX_BYTES. The same bytes again store nothing new. Otherwise the room's caps (counting the files still on their
+   * way, so uploads at the same time can't pass them together), then today's budget, then its pieces are stored: only
+   * then are the idle files that make room for it deleted.
    */
-  async upload(token: string, mime: string, body: Uint8Array, who: string): Promise<Upload> {
+  async upload(token: string, mime: string, body: ReadableStream<Uint8Array> | null, who: string): Promise<Upload> {
     const wrong = { status: 401, error: 'wrong host token' };
-    if (!this.meta || !this.room || !sameToken(token, this.meta.hostToken)) return wrong;
+    if (!this.meta || !this.room || !sameToken(token, this.meta.hostToken)) {
+      void body?.cancel().catch(() => {});
+      return wrong;
+    }
     this.touchHost();
-    const id = [...new Uint8Array(await crypto.subtle.digest('SHA-256', body))].map((b) => b.toString(16).padStart(2, '0')).join('');
+    const file = await readPieces(body, FILE_MAX_BYTES);
+    if (file === 'big') return { status: 413, error: TOO_BIG };
+    if (file === 'empty') return { status: 400, error: 'empty file' };
+    const { id } = file;
     // The same file already on its way (a second host window, a reload mid-upload): its answer, counted once.
     const going = this.uploading.get(id);
     if (going) return going.done;
     if (!this.meta || !this.room) return wrong;
     const ahead = [...this.uploading.values()];
     const pending = { files: ahead.length, bytes: ahead.reduce((n, u) => n + u.bytes, 0), drop: ahead.flatMap((u) => u.drop) };
-    const room = this.room.fileRoom(id, body.byteLength, pending);
+    const room = this.room.fileRoom(id, file.bytes, pending);
     if (room === 'have') return { status: 200, id };
     if (room === 'full') return { status: 409, error: 'This room holds all the card files it can: send fewer pictures and videos at once' };
     // (Its room is kept for it from here: nothing between this and the store can fill the room or store it first.)
-    const done = this.store(id, mime, body, who, room.drop);
-    this.uploading.set(id, { bytes: body.byteLength, drop: room.drop, done });
+    const done = this.store(id, mime, file.pieces, file.bytes, who, room.drop);
+    this.uploading.set(id, { bytes: file.bytes, drop: room.drop, done });
     try {
       return await done;
     } finally {
@@ -401,10 +426,9 @@ export class BuzzRoom extends DurableObject<Env> {
    * upload()'s second half: today's budget, then the idle files `drop` go to make room, then the pieces. A file counted
    * and then not stored is given back.
    */
-  private async store(id: string, mime: string, body: Uint8Array, who: string, drop: string[]): Promise<Upload> {
+  private async store(id: string, mime: string, parts: Uint8Array[], n: number, who: string, drop: string[]): Promise<Upload> {
     const wrong = { status: 401, error: 'wrong host token' };
     const counter = this.env.ROOM_COUNTER.getByName('rooms');
-    const n = body.byteLength;
     const took = await counter.takeBytes(who, n);
     if (took === 'off') return { status: 503, error: FILES_OFF };
     if (took !== 'ok') return { status: 429, error: took === 'address' ? TOO_MANY_FILES_TODAY : FILES_BUSY_TODAY };
@@ -416,9 +440,8 @@ export class BuzzRoom extends DurableObject<Env> {
     }
     // (Only now, with today's budget taken: a file refused for it leaves every other where it was.)
     this.room.dropIdle(drop);
-    const parts = Math.ceil(n / FILE_PART_BYTES);
     const pieces: Record<string, Uint8Array> = {};
-    for (let i = 0; i < parts; i++) pieces[`file:${id}:${i}`] = body.slice(i * FILE_PART_BYTES, (i + 1) * FILE_PART_BYTES);
+    parts.forEach((part, i) => (pieces[`file:${id}:${i}`] = part));
     try {
       await this.ctx.storage.put(pieces);
     } catch (e) {
@@ -430,27 +453,38 @@ export class BuzzRoom extends DurableObject<Env> {
       await refund();
       return wrong;
     }
-    this.room.fileAdded(id, mime, n, parts);
+    this.room.fileAdded(id, mime, n, parts.length);
     return { status: 200, id };
   }
 
-  /** Card file `id` for the phone holding `token`, when the room lets it have it (room.ts fileFor); else null. */
-  async download(token: string, id: string): Promise<{ mime: string; body: Uint8Array } | null> {
+  /**
+   * Card file `id` for the phone holding `token`, when the room lets it have it (room.ts fileFor); else null. Its pieces
+   * go out one after another as they're stored, never joined into one copy.
+   */
+  async download(token: string, id: string): Promise<{ mime: string; body: ReadableStream<Uint8Array> } | null> {
     const file = this.room?.fileFor(token, id);
     if (!file) return null;
     const keys = Array.from({ length: file.parts }, (_, i) => `file:${id}:${i}`);
     const got = await this.ctx.storage.get<Uint8Array | ArrayBuffer>(keys);
-    const body = new Uint8Array(file.bytes);
+    const parts: Uint8Array[] = [];
     let at = 0;
     for (const k of keys) {
       const v = got.get(k);
       if (!v) return null;
       const part = v instanceof Uint8Array ? v : new Uint8Array(v);
-      if (at + part.byteLength > body.byteLength) return null;
-      body.set(part, at);
+      parts.push(part);
       at += part.byteLength;
     }
-    return at === body.byteLength ? { mime: file.mime, body } : null;
+    if (at !== file.bytes) return null;
+    let next = 0;
+    const body = new ReadableStream({
+      type: 'bytes',
+      pull(c) {
+        if (next < parts.length) c.enqueue(parts[next++]);
+        else c.close();
+      },
+    });
+    return { mime: file.mime, body };
   }
 
   async isOpen(): Promise<boolean> {
