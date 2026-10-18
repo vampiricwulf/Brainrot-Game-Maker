@@ -391,6 +391,9 @@ try {
   assert(!(await soloOut.getByRole('button', { name: /^Send .* again$/ }).count()), 'the cards out offer no ↻ Send again');
   await soloOut.getByRole('button', { name: `Take ${label} back` }).click();
   await soloOut.locator(`[data-card-out="${label}"]`).waitFor({ state: 'detached' });
+  // (The card window hears it a moment after the host page: until then it still shows both copies, and looking for the
+  // card's words would find two.)
+  assert(await until(async () => (await win2.getByText(TIP).count()) === 1), `${label} taken back: the card window shows the tile’s card alone`);
   await solo.keyboard.press('Escape');
   await soloOut.waitFor({ state: 'detached' });
   await solo.keyboard.press('r');
