@@ -21,7 +21,7 @@ in plain words for the people who make and host games. Anything committed but no
 - 🎭 Deal… warns before 📤 Send when the deal's cards would fill the phones (they hold 8 cards at once, all phones together, so a deal to 8 players fills them): until you take its cards back, or the round ends, no other 🤫 card could reach a phone, a partner clue's included. (175d51c)
 
 ### Changed
-- The buzzer server streams a 🤫 card's pictures, videos and sounds through to its room instead of reading and copying each file first, so its front end does far less work per file: on Cloudflare's free plan, a 2–4 MB upload took 3 to 5 times the 10 ms of CPU a request gets. buzzer/measure-files.mjs measures what files cost on your own server (buzzer/README.md, "Card files").
+- The buzzer server streams a 🤫 card's pictures, videos and sounds through to its room instead of reading and copying each file first, so its front end does far less work per file: on Cloudflare's free plan, a 2–4 MB upload took 3 to 5 times the 10 ms of CPU a request gets. buzzer/measure-files.mjs measures what files cost on your own server (buzzer/README.md, "Card files"). (994cdf9)
 
 ### Fixed
 - ⚙ Settings › Buzzer server: an address typed without its https:// (as Cloudflare's dashboard shows it, like buzz.example.workers.dev) is kept with it, and one saved that way before works too. Starting a room with it used to fail with only "Couldn’t reach the buzzer server". One typed with HTTPS:// in capitals is kept in small letters, so Test takes it. (52b47e3, 8671771)
