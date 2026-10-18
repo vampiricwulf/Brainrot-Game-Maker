@@ -11,15 +11,11 @@ the day it's pushed (Pacific time; start the heading on the day's first push) an
 in plain words for the people who make and host games. Anything committed but not pushed yet goes under
 **Unreleased** at the top, and moves under its day when it's pushed.
 
-## Unreleased
-
-### Added
-- 🗜 Make a smaller copy for phones (on a GIF's card in 🖼 Media, or 🗜 in the 📱 preview and the checklist for a big one) turns a 🤫 card's GIF into a small looping video that phones get and show like the GIF (with ▶ Play on a phone set to reduce motion, or one that won't start a video by itself), while the show keeps the GIF. A buzzer server you run yourself needs deploying again for this; until then phones get the GIF itself. Chrome and Edge on Windows or Mac and the desktop app make MP4s every phone plays; elsewhere it says it makes WebM, which some iPhones may not play. It's made in the background (the header shows how far it got, with Stop; ▶ Play and closing the app ask first), and Ctrl+Z takes it back. ℹ About names the code it's made with (mediabunny and omggif) and their licenses.
-- 🗜 also makes smaller copies of videos and sounds for phones (720p, 480p or 360p, or only the part the cards play), and copies phones can play of files they can't (a .mov, a FLAC: "🗜 Make a copy phones can play" in the 📱 preview and the checklist). 🖼 Media's "🗜 2 files are big for phones: make smaller copies…" makes them all at once, one Ctrl+Z step each. Where the browser makes no AAC, a sound's copy is an OGG (Opus), which some iPhones may not play, and the window says so.
-
 ## 2026-10-18
 
 ### Added
+- 🗜 Make a smaller copy for phones (on a GIF's card in 🖼 Media, or 🗜 in the 📱 preview and the checklist for a big one) turns a 🤫 card's GIF into a small looping video that phones get and show like the GIF (with ▶ Play on a phone set to reduce motion, or one that won't start a video by itself), while the show keeps the GIF. A buzzer server you run yourself needs deploying again for this; until then phones get the GIF itself. Where the browser can make an MP4 (H.264), the copy is one every phone plays; elsewhere (Chrome on Linux, for one) it makes a WebM, which some iPhones may not play, and says so. It's made in the background (the header shows how far it got, with Stop; ▶ Play and closing the app ask first), and Ctrl+Z takes it back. ℹ About names the code it's made with (mediabunny and omggif) and their licenses. (1dee35d, a7eeac3, 7670d00)
+- 🗜 also makes smaller copies of videos and sounds for phones (720p, 480p or 360p, or only the part the cards play), and copies phones can play of files they can't (a .mov, a FLAC: "🗜 Make a copy phones can play" in the 📱 preview and the checklist). 🖼 Media's "🗜 2 files are big for phones: make smaller copies…" makes them all at once, one Ctrl+Z step each. Where the browser makes no AAC, a sound's copy is an OGG (Opus), which some iPhones may not play, and the window says so. (f851dc7, a7eeac3)
 - On a buzzer server that takes 🤫 card files over 16 MB, such a file gets a note instead of being turned away: the editor's 📱 preview and checklist, and the host panel (counted, never named), say phones on mobile data may wait a while for it (WiFi or a computer is fine). Only a file over the server's own limit is too big ("too big for the buzzer server"), and only those are on the pre-game screen's list. (8caed91)
 - Uploading a 🤫 card's file shows how far it got (“uploading 1 of 2 (34%)…”), and a phone shows how much of a big file has come (“🎞 Video coming… 40%”). (8caed91)
 
