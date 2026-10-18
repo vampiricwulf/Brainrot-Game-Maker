@@ -2,7 +2,8 @@
 // (buzzer/ under `wrangler dev`, local) set to 24 MB a file, 60 MB a room and 400 MB in any 24 hours. The editor
 // asks it (/api/health) before any room is open, so the 📱 preview and the checklist go by its number; a room's
 // welcome says it too, so with /api/health out of reach the editor goes by the defaults until a room is open, then
-// by the room's. A server that says nothing (an older one) is taken as 16 MB a file, and ⚙ Settings › Test says so.
+// by the room's. A server that says nothing (an older one) is taken as 16 MB a file, and ⚙ Settings › Test says so;
+// an address typed there is asked once it's done, never each half-typed one.
 // A file over 16 MB that the server takes is a note, not a refusal: the 📱 preview and the editor's checklist say
 // phones on mobile data may wait for it (the pre-game list doesn't), and in one window the host panel counts it,
 // never naming it. Its upload (slowed down here) says how far it got, and a phone how much has come; ✖ Take back
@@ -189,11 +190,18 @@ try {
     const said = settings.getByRole('status');
     await said.waitFor();
     assert((await said.innerText()).trim() === '✔ The buzzer server is answering (an older one: card files up to 16 MB)', `⚙ Settings › Test says so (${await said.innerText()})`);
-    await settings.getByLabel('Buzzer server').fill(base);
+    // Our own server's address typed a key at a time: only the whole address is asked, once it's done (Tab), never
+    // each half-typed one (https://h, https://ht…). (Any other address isn't let out.)
+    await page.route((u) => u.pathname === '/api/health' && u.origin !== base && u.origin !== olderBase, (r) => r.abort());
+    await settings.getByLabel('Buzzer server').fill('');
+    await settings.getByLabel('Buzzer server').pressSequentially(base);
     await settings.getByLabel('Buzzer server').press('Tab');
+    assert(await until(() => asked.includes(`${base}/api/health`)), 'the address typed is asked once it’s done');
     await settings.getByRole('button', { name: 'Test' }).click();
     await settings.getByText('✔ The buzzer server is answering: card files up to 24 MB each, 60 MB a room').waitFor();
     assert(true, 'and of ours: “✔ The buzzer server is answering: card files up to 24 MB each, 60 MB a room”');
+    const others = asked.filter((u) => u !== `${base}/api/health` && u !== `${olderBase}/api/health`);
+    assert(!others.length, `no half-typed address is asked (${others.length}: ${others.slice(0, 3).join(', ')})`);
     await ctx.close();
   }
 

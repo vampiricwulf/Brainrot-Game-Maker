@@ -18,8 +18,20 @@
   /** What ⚙ Test found at the buzzer server. */
   let tested = $state('');
   let testing = $state(false);
+  /**
+   * The Buzzer server box as typed: kept in prefs once it's done (a change, or closing), so the app never asks every
+   * half-typed address (b, bu, buzz.e…) what card files it takes.
+   */
+  let server = $state(prefs.buzzerServer);
+  function keepServer(): void {
+    prefs.buzzerServer = server;
+    savePrefs();
+    // (As kept: with its https://.)
+    server = prefs.buzzerServer;
+  }
   /** Esc closes it with a box still focused (no change event then), so whatever was typed is kept here too. */
   function close(): void {
+    prefs.buzzerServer = server;
     savePrefs();
     keepLimits();
     onclose();
@@ -115,17 +127,18 @@
       <input
         class="url"
         type="url"
-        bind:value={prefs.buzzerServer}
-        onchange={() => ((tested = ''), savePrefs())}
+        value={server}
+        oninput={(e) => (server = e.currentTarget.value)}
+        onchange={() => ((tested = ''), keepServer())}
         placeholder={DEFAULT_BUZZER_URL || 'https://…'}
         data-autofocus={at === 'buzzer' ? '' : undefined}
         aria-label="Buzzer server"
       />
       <button
-        disabled={testing || !(prefs.buzzerServer || DEFAULT_BUZZER_URL)}
+        disabled={testing || !(server || DEFAULT_BUZZER_URL)}
         onclick={async () => {
           testing = true;
-          tested = await testServer(prefs.buzzerServer || DEFAULT_BUZZER_URL);
+          tested = await testServer(server || DEFAULT_BUZZER_URL);
           testing = false;
         }}>{testing ? 'Testing…' : 'Test'}</button
       >
@@ -146,6 +159,7 @@
           // (A Test of the address before is about another server now.)
           tested = '';
           savePrefs();
+          server = prefs.buzzerServer;
           keepLimits();
         }}>Back to the defaults</button
       >
