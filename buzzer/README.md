@@ -244,11 +244,13 @@ counted against today's budget for a file that then isn't stored (the room ended
   wrote 46 rows, their deletion included. The Free plan gives a Worker 10 ms of CPU a request, with some leeway for one
   that runs over now and then, and a Durable Object 30 seconds (Cloudflare's limits pages): the Worker's part was the
   one over. **To measure again** (after a change, or before raising `FILE_MAX_BYTES` in `src/lib/buzzproto.ts`), run
-  `node measure-files.mjs https://<your server> --sizes 1,2,3,4` here and read Workers & Pages › the Worker › Metrics ›
-  CPU time, and Durable Objects › each class › Metrics, for the minutes it names: it opens a room with a host and a
-  phone, then uploads and fetches one file a minute (labelled `?measure=up-4MB-1` and so on in its address), using that
-  much of the day's budget. With `--tail`, on a computer logged in to the account, it also reads each request's CPU
-  time from `wrangler tail`.
+  `node measure-files.mjs https://<your server> --sizes 1,2,3,4` here: it opens a room with a host and a phone, then
+  uploads and fetches one file a minute, printing when each went, and uses that much of the day's budget. Read Workers &
+  Pages › the Worker › Metrics › CPU time, and Durable Objects › each class › Metrics, for those minutes. Workers Logs
+  are on (`observability` in `wrangler.jsonc`), so Observability › Logs also has each request's own CPU time, the
+  room's calls (`upload`, `download`) included: there, `--gap 10 --runs 3` (a request every 10 s, each size three times)
+  is enough. The logs leave query strings out, so find the requests by the times it prints. With `--tail`, on a
+  computer logged in to the account, it also reads each request's CPU time from `wrangler tail` itself.
 
 ## Local development
 

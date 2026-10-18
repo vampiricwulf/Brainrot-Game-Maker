@@ -36,6 +36,11 @@
     { "name": "SOCKET_LIMIT", "namespace_id": "1003", "simple": { "limit": 120, "period": 60 } },
     { "name": "FILE_LIMIT", "namespace_id": "1004", "simple": { "limit": 120, "period": 60 } }
   ],
+  // Workers Logs: each request's CPU and wall time, the room's (Durable Object) calls included, in the dashboard
+  // (Workers & Pages › brainrot-buzzer › Observability), for measuring what card files cost (README.md, "Card files").
+  // Query strings are left out of the logged addresses: the host's connection carries the room's host token in one.
+  // (It's here, not just switched on in the dashboard: a deploy without it switches it off again.)
+  "observability": { "enabled": true, "redact_query_string": true },
   "vars": {
     // Card files (pictures, GIFs, videos and sounds on private cards) the whole server takes a UTC day, in MB: further
     // uploads are refused until the next day, and the host copies the card instead. 0 turns card files off. Each room

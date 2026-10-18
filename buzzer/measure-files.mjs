@@ -1,12 +1,13 @@
 // What card files cost the buzzer server (README.md, "Card files": the measurement before raising FILE_MAX_BYTES).
 // It opens a room with a host and one phone, then for each size uploads a file as the host and fetches it as the phone,
-// each request in a minute of its own (15 s past it, as the dashboard's charts count by the minute) and labelled in its
-// address (?measure=up-4MB-1), so it can be found in `wrangler tail` or the dashboard's logs. The room is closed at the
-// end. Each run uses its sizes' worth of the server's daily budget.
+// each request in a minute of its own (15 s past it, as the dashboard's charts count by the minute), printing when each
+// went (and labelling its address, ?measure=up-4MB-1, though Workers Logs leave query strings out). The room is closed
+// at the end. Each run uses its sizes' worth of the server's daily budget.
 //
 //   node measure-files.mjs <server> [--sizes 1,2,3,4] [--runs 1] [--gap <seconds>] [--tail [worker-name]]
 //
-// --gap waits that long between requests instead of a minute each (for `wrangler tail`, which sees every request).
+// --gap waits that long between requests instead of a minute each (for Workers Logs or `wrangler tail`, which see every
+// request).
 //
 // --tail also runs `npx wrangler tail <worker-name> --format json` (on a computer logged in to the account, from
 // buzzer/) and prints each request's CPU time: the Worker's own, and the room's (its Durable Object) while it ran.
@@ -152,7 +153,11 @@ if (tail) {
 }
 const worker = (e) => e.event?.request?.url ?? '';
 for (const r of rows) {
-  const w = events.find((e) => worker(e).includes(`${label(r.label)}`));
+  // (By its label, or else by its time: the Worker's file request that began within a second of it.)
+  const at = Date.parse(`${new Date().toISOString().slice(0, 11)}${r.at}Z`);
+  const w =
+    events.find((e) => worker(e).includes(`${label(r.label)}`)) ??
+    events.find((e) => worker(e).includes(`/files`) && e.event.request.method === (r.label.startsWith('up') ? 'POST' : 'GET') && Math.abs(e.eventTimestamp - at) < 1000);
   if (w) {
     const from = w.eventTimestamp;
     const to = from + (w.wallTime ?? 0) + 50;
