@@ -1,6 +1,7 @@
 // The editor's file jobs (card-files spec §4.13.5): a 🗜 copy for phones being made, one at a time, the rest waiting
 // their turn. Each says how far it got for the header's pill and the dialog, and stops at once when asked (nothing is
 // changed then). A job belongs to the game it was started in: another game, ▶ Play or ▶ Test stops it (they ask first).
+import { announce } from '../announce';
 import { toast } from '../app.svelte';
 import type { Id } from '../model';
 import { leftText } from './plan';
@@ -122,10 +123,10 @@ export function pillText(j: Job): string {
   return '🗜 Making a smaller copy for phones…';
 }
 
-/** How far a job got, in words: "43% (about 40 s left)" ('' before it says). */
-export function progressText(j: Pick<Job, 'progress' | 'left'>): string {
-  if (!j.progress) return '';
-  return `${Math.floor(j.progress * 100)}%${j.left !== null ? ` (${leftText(j.left)})` : ''}`;
+/** How far a job got, in words, while it makes the file: "43% (about 40 s left)" ('' before it says, and after). */
+export function progressText(j: Pick<Job, 'phase' | 'progress' | 'left'>): string {
+  if (j.phase !== 'working' || !j.progress) return '';
+  return `${Math.floor(j.progress * 100)}%${j.left !== null && j.progress < 1 ? ` (${leftText(j.left)})` : ''}`;
 }
 
 /** The next job waiting, run; then the one after. */
@@ -140,6 +141,8 @@ async function next(): Promise<void> {
   stops.set(j.id, stop);
   const job = state.list.find((x) => x.id === j.id)!;
   job.phase = 'reading';
+  // (The pill and the dialog show how far it got; a screen reader hears it start and end.)
+  announce(pillText(job));
   const began = performance.now();
   let end: JobEnd;
   const ctl: JobCtl = {
@@ -176,12 +179,12 @@ async function next(): Promise<void> {
   stops.delete(j.id);
   running = null;
   state.ended[j.id] = end;
-  // (A dialog showing it says how it ended.)
+  // (A dialog showing it says how it ended: no toast then, but a screen reader still hears it.)
   const quiet = quietly.delete(j.id);
-  if (!state.watched.includes(j.id) && !quiet) {
-    if ('done' in end) toast(end.done);
-    else if ('failed' in end) toast(`🗜 ${end.failed}`);
-    else toast('Stopped: nothing was changed.');
+  const said = 'done' in end ? end.done : 'failed' in end ? `🗜 ${end.failed}` : 'Stopped: nothing was changed.';
+  if (!quiet) {
+    if (state.watched.includes(j.id)) announce(said);
+    else toast(said);
   }
   void next();
 }

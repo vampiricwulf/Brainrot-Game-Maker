@@ -27,6 +27,7 @@ import {
   toSave,
   undo,
   wholeHistory,
+  whenSettled,
 } from './history.svelte';
 import { watchGame, type GameWatch } from './watch.svelte';
 import { getBlob, registerBlob, replaceMediaFile, stashMedia } from './media.svelte';
@@ -338,6 +339,24 @@ describe('undo history: named steps', () => {
     });
     await done;
     expect(history.entries.map((e) => e.label)).toEqual(['Pasted two screens', 'Renamed round “Waited for”']);
+  });
+
+  it('says when no step is being made by hand: no group open (a drag, a file being stored), no pointer held', async () => {
+    let settled = 0;
+    const end = begin();
+    void whenSettled().then(() => settled++);
+    win.fire('pointerdown');
+    await vi.advanceTimersByTimeAsync(500);
+    expect(settled).toBe(0);
+    end();
+    await vi.advanceTimersByTimeAsync(500);
+    // (The group ended, but the pointer is still held.)
+    expect(settled).toBe(0);
+    win.fire('pointerup');
+    await vi.advanceTimersByTimeAsync(100);
+    expect(settled).toBe(1);
+    // At once when nothing is.
+    await whenSettled();
   });
 
   it('says where a step is by the place an editor gives it, when that is on another tab than its changes', () => {

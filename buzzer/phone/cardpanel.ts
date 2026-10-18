@@ -449,7 +449,8 @@ function mediaSlot(m: Extract<CardMedia, { kind: 'image' | 'video' | 'audio' }>,
 
 /**
  * A GIF sent as a video ('gifs'): looping, muted and inline with no controls, playing as the card opens, as the GIF
- * would. With reduced motion it waits on its first frame for "▶ Play", like a still GIF.
+ * would. With reduced motion it waits on its first frame for "▶ Play", like a still GIF, and so it does on a phone that
+ * won't start it without a tap (an iPhone in Low Power Mode, when the file came after the card was opened).
  */
 function gifVideo(m: CardMedia, src: string, box: HTMLElement, broken: () => void, gone: () => void): Slot {
   const v = el('video', '');
@@ -461,8 +462,12 @@ function gifVideo(m: CardMedia, src: string, box: HTMLElement, broken: () => voi
   v.setAttribute('aria-label', mediaName(m));
   v.addEventListener('error', broken);
   box.append(v);
-  let still = reduced();
-  if (still) {
+  let still = false;
+  let offered = false;
+  /** "▶ Play" under its first frame: a tap starts it (once). */
+  const offer = () => {
+    if (offered) return;
+    offered = still = true;
     const play = el('button', 'card-sound', '▶ Play');
     play.type = 'button';
     play.setAttribute('aria-label', `▶ Play ${mediaName(m)}`);
@@ -477,7 +482,8 @@ function gifVideo(m: CardMedia, src: string, box: HTMLElement, broken: () => voi
       }
     });
     box.append(play);
-  }
+  };
+  if (reduced()) offer();
   v.src = src;
   const drop = () => {
     gone();
@@ -485,7 +491,9 @@ function gifVideo(m: CardMedia, src: string, box: HTMLElement, broken: () => voi
     v.removeAttribute('src');
     v.load();
   };
-  return { key: '', el: box, shows: 'media', kind: 'image', start: () => void (still || v.play().catch(() => {})), stop: () => v.pause(), drop };
+  // (A phone that turns down a start no one tapped for says NotAllowedError.)
+  const start = () => void (still || v.play().catch((e: unknown) => (e as Error)?.name === 'NotAllowedError' && offer()));
+  return { key: '', el: box, shows: 'media', kind: 'image', start, stop: () => v.pause(), drop };
 }
 
 /** Reduced motion: a GIF shows its first frame, still, until "▶ Play". */

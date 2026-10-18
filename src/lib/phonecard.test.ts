@@ -2,7 +2,7 @@
 // the names the host knows them by, its words top to bottom, and its links once each.
 import { describe, expect, it } from 'vitest';
 import { newAudioEl, newEmbedEl, newImageEl, newShapeEl, newTextEl, newVideoEl, type MediaRef, type Slide, type SlideElement } from './model';
-import { cardItems, cardLinks, cardWords, filesToSend, phoneCard, phoneCopyOf, phonesGetLink, sendsOf } from './phonecard';
+import { cardItems, cardLinks, cardWords, copyNote, filesToSend, phoneCard, phoneCopyOf, phonesGetLink, sendsOf, sizeWords } from './phonecard';
 import { OLD_FILE_LIMITS } from './buzzproto';
 
 /** How big a file the buzzer server takes in these tests (one that doesn't say: 16 MB). */
@@ -361,5 +361,23 @@ describe('phoneCard: 🗜 smaller copies for phones (card-files spec §4.2)', ()
   it('a file that phones get from its lasting link needs no copy', () => {
     expect(phonesGetLink({ id: 'k', name: 'cat.gif', mime: 'image/gif', size: 5, kind: 'image', source: 'https://files.catbox.moe/abc123.gif' })).toBe(true);
     expect(phonesGetLink(files[0])).toBe(false);
+  });
+});
+
+describe('the 📱 preview’s words on a 🗜 copy', () => {
+  const o = { gifs: true, fixes: false, size: '1.2 MB', shape: '854×480 WebM' };
+  it('says what phones get: a GIF’s as a small looping video, a smaller copy, or one they can play', () => {
+    expect(copyNote('gif', o)).toBe('📱 Phones get it as a small looping video (1.2 MB).');
+    expect(copyNote('video', o)).toBe('📱 Phones get its smaller copy instead (1.2 MB, 854×480 WebM).');
+    expect(copyNote('sound', { ...o, fixes: true, shape: 'OGG' })).toBe('📱 Phones get a copy they can play instead (1.2 MB, OGG).');
+  });
+  it('says how big what goes is, and when that’s the copy, that it is', () => {
+    expect(sizeWords('🎞 movie.mp4', { media: 'movie' }, '148.2 MB', false)).toBe('🎞 movie.mp4 is 148.2 MB');
+    expect(sizeWords('🎞 movie.mp4', { media: 'movie', sends: 'movie' }, '148.2 MB', false)).toBe('🎞 movie.mp4 is 148.2 MB');
+    expect(sizeWords('🎞 movie.mp4', { media: 'movie', sends: 'copy' }, '120 MB', false)).toBe('🎞 movie.mp4’s smaller copy for phones is 120 MB');
+    expect(sizeWords('🎞 clip.mov', { media: 'mov', sends: 'copy' }, '20 MB', true)).toBe('🎞 clip.mov’s copy phones can play is 20 MB');
+  });
+  it('a GIF’s with an older room open: an ordinary video, said so', () => {
+    expect(copyNote('gif', { ...o, gifs: false })).toBe('📱 Phones get its smaller video instead (1.2 MB, 854×480 WebM): this buzzer server is older, so it plays as a video, not like the GIF.');
   });
 });

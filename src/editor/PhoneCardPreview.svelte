@@ -12,7 +12,7 @@
   import { formatBytes, mediaUrls } from '../lib/media.svelte';
   import type { Clue, ClueCard, Game, Slide } from '../lib/model';
   import { cardLines, partnerRules } from '../lib/partner';
-  import { copyCovers, phoneCard, phoneCopyOf, playTimes, sendsOf, type LeftOut, type PhoneItem } from '../lib/phonecard';
+  import { copyCovers, copyNote, phoneCard, phoneCopyOf, playTimes, sendsOf, sizeWords, type LeftOut, type PhoneItem } from '../lib/phonecard';
   import { buzzerBase, remote, roomHasCards, roomHasFiles } from '../lib/remote.svelte';
   import { fileLimitsNow } from '../lib/serverlimits.svelte';
   import { phonesTake, removePhoneCopy, shrinkable } from '../lib/shrink/apply';
@@ -53,6 +53,11 @@
   /** The size of what goes up for an item (its 🗜 copy, when that's what goes), as people read it ("148.2 MB"). */
   const sizeOf = (it: PhoneItem): string => formatBytes(game.media.find((m) => m.id === sendsOf(it))?.size ?? 0);
   const refOf = (it: PhoneItem) => (it.media ? game.media.find((m) => m.id === it.media) : undefined);
+  /** "🎞 movie.mp4 is 148.2 MB", or when its 🗜 copy is what goes: "🎞 movie.mp4’s smaller copy for phones is 120 MB". */
+  const isSize = (it: PhoneItem): string => {
+    const ref = refOf(it);
+    return sizeWords(`${ICON[it.kind]} ${it.name}`, it, sizeOf(it), !!ref && !phonesTake(ref));
+  };
   /** 🗜 can make a smaller copy of an item's file for phones here (a GIF, video or sound stored in the game). */
   const canShrink = (it: PhoneItem): boolean => {
     const ref = refOf(it);
@@ -77,7 +82,7 @@
     const what = `${ICON[it.kind]} ${it.name}`;
     switch (w) {
       case 'big':
-        return `${what} is ${sizeOf(it)}: this buzzer server${limits.old ? ' (an older one)' : ''} takes files up to ${formatBytes(limits.limits.fileBytes)}. ${canShrink(it) ? '🗜 Make a smaller copy for phones, or add it from a link (YouTube, Drive…) instead.' : 'Add it from a link (YouTube, Drive…) instead.'}`;
+        return `${isSize(it)}: this buzzer server${limits.old ? ' (an older one)' : ''} takes files up to ${formatBytes(limits.limits.fileBytes)}. ${canShrink(it) ? '🗜 Make a smaller copy for phones, or add it from a link (YouTube, Drive…) instead.' : 'Add it from a link (YouTube, Drive…) instead.'}`;
       case 'expired':
         return `${what}: its link has expired. Add it again, or from a lasting link.`;
       case 'kind':
@@ -134,13 +139,14 @@
       {@const copy = copyOf(it)}
       {#if it.why}<li class="warn">{why(it, it.why)}{@render shrinkButton(it)}</li>
       {:else if it.slow}<li class="slow">
-          {ICON[it.kind]} {it.name} is {sizeOf(it)}: on WiFi or a computer it comes in seconds, but phones on mobile data may wait a while for it (and use up their data).{@render shrinkButton(it)}
+          {isSize(it)}: on WiFi or a computer it comes in seconds, but phones on mobile data may wait a while for it (and use up their data).{@render shrinkButton(it)}
         </li>{/if}
       {#if copy && it.sends === copy.id && !it.why}
-        {@const fixes = !phonesTake(refOf(it) ?? copy)}
+        {@const shape = `${copy.phoneCopy?.width ? `${copy.phoneCopy.width}×${copy.phoneCopy.height} ` : ''}${typeWord(copy.mime)}`}
+        {@const looping = it.kind === 'gif' && limits.gifs}
+        <!-- (A GIF's shows like the GIF, but as an ordinary video with an older room open.) -->
         <li data-copy-note>
-          📱 Phones get {it.kind === 'gif' ? 'it as a small looping video' : fixes ? 'a copy they can play instead' : 'its smaller copy instead'}
-          ({formatBytes(copy.size)}{it.kind === 'gif' ? '' : `, ${copy.phoneCopy?.width ? `${copy.phoneCopy.width}×${copy.phoneCopy.height} ` : ''}${typeWord(copy.mime)}`}).
+          {copyNote(it.kind, { gifs: limits.gifs, fixes: !phonesTake(refOf(it) ?? copy), size: formatBytes(copy.size), shape })}
           {#if mediaUrls[copy.id]}
             <button class="small ghost" onclick={() => (watching = watching === it.el ? null : it.el)} title="Watch the copy phones get">{watching === it.el ? '⏹ Stop watching' : '▶ Watch it'}</button>
           {/if}
@@ -151,7 +157,7 @@
               <audio class="watch" src={mediaUrls[copy.id]} autoplay controls aria-label="The copy phones get"></audio>
             {:else}
               <!-- svelte-ignore a11y_media_has_caption -->
-              <video class="watch" src={mediaUrls[copy.id]} autoplay playsinline loop={it.kind === 'gif'} muted={it.kind === 'gif'} controls={it.kind !== 'gif'} aria-label="The copy phones get"></video>
+              <video class="watch" src={mediaUrls[copy.id]} autoplay playsinline loop={looping} muted={looping} controls={!looping} aria-label="The copy phones get"></video>
             {/if}
           {/if}
         </li>

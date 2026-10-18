@@ -1,12 +1,14 @@
 // Desktop app, with the native side stood in for (window.__TAURI_INTERNALS__): Save replaces the game's own last save
 // (keeping a backup) but never another game's of the same name, Open… lists and opens an exported .html, a game file
-// the app is opened with (at start or by a second launch) opens, and closing the window writes the last edits first.
-// Also in a browser: Open… takes an exported .html.
+// the app is opened with (at start or by a second launch) opens, and closing the window writes the last edits first;
+// closing while a 🗜 copy for phones is made, Wait closes once it's done, with the copy written. Also in a browser:
+// Open… takes an exported .html.
 import { chromium } from 'playwright-core';
 import { existsSync, readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { addClassicRounds, answerReplace, clickExportHtml } from './helpers.mjs';
+import { addClassicRounds, answerReplace, clickExportHtml, editorReady, packGame } from './helpers.mjs';
+import { gif, noise } from './mediafixtures.mjs';
 
 const file = resolve(process.env.APP_FILE || 'dist/index.html');
 if (!existsSync(file)) throw new Error('Run `npm run build` first');
@@ -70,6 +72,16 @@ function fakeDesktop() {
         }
         case 'close_app':
           window.__closed = true;
+          // The files in the draft stored as the app closes (a read started now sees every write started before it).
+          window.__draftAtClose = new Promise((ok) => {
+            const req = indexedDB.open('keyval-store');
+            req.onsuccess = () => {
+              const get = req.result.transaction('keyval').objectStore('keyval').get('editorDraft');
+              get.onsuccess = () => ok(get.result?.media?.map((m) => m.name) ?? null);
+              get.onerror = () => ok(null);
+            };
+            req.onerror = () => ok(null);
+          });
           return null;
         default:
           return null;
@@ -77,6 +89,32 @@ function fakeDesktop() {
     },
   };
   window.__emit = (event, payload) => (listeners[event] ?? []).forEach((id) => callbacks.get(id)?.({ event, id, payload }));
+}
+
+/** A game with two GIFs over 2 MB: a short one, whose copy is quick, and a long one (noise, made here). */
+async function copiesGame() {
+  const dance = gif(320, 240, Array.from({ length: 24 }, () => ({ px: noise(320 * 240), delay: 10 })));
+  const long = gif(1024, 720, [
+    ...Array.from({ length: 2 }, () => ({ px: noise(1024 * 720), delay: 2 })),
+    ...Array.from({ length: 1998 }, (_, i) => ({ x: (i * 16) % 1008, y: (Math.floor(i / 63) * 16) % 704, w: 16, h: 16, px: noise(256), delay: 2 })),
+  ]);
+  const box = (id, y) => ({ id, x: 100, y, w: 800, h: 160, rotation: 0, opacity: 1, zIndex: 1 });
+  const text = { ...box('e0', 40), kind: 'text', text: 'Q', font: 'Arial', size: 90, weight: 700, italic: false, underline: false, uppercase: false, color: '#ffffff', align: 'center', vAlign: 'middle', lineHeight: 1.2, letterSpacing: 0, autoFit: true };
+  const game = {
+    id: 'g_copies',
+    version: 2,
+    title: 'Copies',
+    settings: { allowNegativeScores: true, deductOnWrong: false, defaultTimerSeconds: 30, finalTimerSeconds: 30, currencySymbol: '$', rollOffDie: 20, pickerFollowsAward: true, timerAutoStart: false, roundIntro: { titleCard: false, tileFill: false, categoryReveal: 'off' }, maxPlayers: 8, stream: { clueCaption: true } },
+    players: [],
+    rounds: [{ id: 'r1', name: 'Round 1', mode: 'board', values: [200], dailyDoubleCount: 0, categories: [{ id: 'c0', title: 'Memes', clues: [{ id: 'q1', value: null, type: 'standard', questionSlide: { background: {}, elements: [text] }, answerSlide: { background: {}, elements: [] } }] }] }],
+    media: [
+      { id: 'dance', name: 'dance.gif', mime: 'image/gif', size: dance.length, kind: 'image' },
+      { id: 'long', name: 'long.gif', mime: 'image/gif', size: long.length, kind: 'image' },
+    ],
+    audio: {}, wheels: [], dice: [], theme: {},
+    cards: [{ id: 'sc_tip', name: 'Tip', background: {}, elements: [{ ...box('e1', 300), kind: 'image', media: 'dance', fit: 'contain' }] }],
+  };
+  return packGame(game, { dance, long });
 }
 
 async function newPage(context, name) {
@@ -256,6 +294,49 @@ try {
       }),
   );
   assert(flushed === 'Typed just before closing', 'closing the window writes the last edits first, then closes');
+
+  // Closing while a 🗜 copy for phones is made: Wait, and once it's done the app writes it, then closes.
+  console.log('Closing while a copy for phones is made:');
+  await d.evaluate(() => (window.__closed = false));
+  await d.evaluate(
+    ([name, b64]) => {
+      window.__opened = { name, bytes: Uint8Array.from(atob(b64), (c) => c.charCodeAt(0)) };
+      window.__emit('open-file');
+    },
+    ['Copies.brainrot', (await copiesGame()).toString('base64')],
+  );
+  await answerReplace(d, 'Discard');
+  await d.waitForFunction(() => document.querySelector('input.title')?.value === 'Copies');
+  await editorReady(d);
+  await d.locator('nav > button', { hasText: '🖼 Media' }).click();
+  const shrink = d.getByRole('dialog', { name: '🗜 Make a smaller copy for phones' });
+  const progress = shrink.locator('[data-shrink-progress]');
+  // (The page's work slowed down 4 times: the long one is still being made after the clicks below.)
+  const cdp = await desk.newCDPSession(d);
+  await cdp.send('Emulation.setCPUThrottlingRate', { rate: 4 });
+  // The long one first (stopped below, its copy wouldn't be much smaller), the GIF's copy waiting behind it.
+  for (const [id, waits] of [
+    ['long', /Making it… \d+%/],
+    ['dance', 'Waiting for the other file to finish…'],
+  ]) {
+    await d.locator(`[data-place="media:${id}"]`).getByRole('button', { name: '🗜 Make smaller…' }).click();
+    await shrink.getByText(/^A small looping video/).waitFor();
+    await shrink.getByRole('button', { name: 'Make it', exact: true }).click();
+    await progress.filter({ hasText: waits }).waitFor({ timeout: 60_000 });
+    await shrink.locator('.modal-x').click();
+    await shrink.waitFor({ state: 'detached' });
+  }
+  await d.evaluate(() => window.__emit('close-requested'));
+  const jobAsk = d.getByRole('alertdialog').filter({ hasText: '🗜 A smaller copy for phones is still being made' });
+  await jobAsk.waitFor();
+  assert((await jobAsk.innerText()).includes('Closing now stops it (nothing is changed).'), 'closing while a 🗜 copy is made asks first');
+  await jobAsk.getByRole('button', { name: 'Wait' }).click();
+  await jobAsk.waitFor({ state: 'detached' });
+  await d.locator('[data-job-pill]').getByRole('button', { name: 'Stop' }).click();
+  await d.waitForFunction(() => window.__closed === true, null, { timeout: 60_000 });
+  await cdp.send('Emulation.setCPUThrottlingRate', { rate: 1 });
+  const atClose = await d.evaluate(() => window.__draftAtClose);
+  assert(atClose?.includes('dance (phones).webm'), `Wait: the app closes once the copy is made, with it written (${atClose?.join(', ')})`);
 
   assert(!errors.length, 'no page errors' + (errors.length ? ': ' + errors.join(' | ') : ''));
   console.log('\nDesktop E2E passed.');

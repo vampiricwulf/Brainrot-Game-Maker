@@ -139,6 +139,20 @@
     else if (avp && !('refuse' in avp)) jobId = queuePhoneCopy(id, avp);
   }
 
+  // The buttons at the foot change as it goes (Make it, then Stop, then Close): when the one focused goes, the focus
+  // moves to the new ones (Stop, or Close) instead of falling to the page, where a keyboard or screen-reader user would
+  // lose their place.
+  let foot = $state<HTMLElement>();
+  const footFor = $derived(many ? (working ? 'working' : rowJobs.length ? 'ended' : 'pick') : job ? 'working' : ended ? 'ended' : 'pick');
+  let footWas = untrack(() => footFor);
+  $effect(() => {
+    const now = footFor;
+    if (now === footWas) return;
+    footWas = now;
+    const lost = !document.activeElement || document.activeElement === document.body;
+    if (lost) (foot?.querySelector<HTMLElement>('[data-stop]') ?? foot?.querySelector<HTMLElement>('button.primary'))?.focus();
+  });
+
   function makeAll(): void {
     for (const r of picked) {
       const m = game.media.find((x) => x.id === r.id);
@@ -159,11 +173,11 @@
     const bits = [p.out.width ? `${p.out.width}×${p.out.height}` : typeWord(p.mime), ...(part ? [part] : [])];
     return `${p.estimate ? `about ${formatBytes(p.estimate)}` : 'a copy'} (${bits.join(', ')})`;
   }
-  /** How a row's job is doing. */
-  function rowState(r: Row): { text: string; cls: string } | null {
+  /** How a row's job is doing (`pct`: how far it got, kept apart so a screen reader doesn't read it out every percent). */
+  function rowState(r: Row): { text: string; pct?: string; cls: string } | null {
     if (!r.job) return null;
     const j = jobs.list.find((x) => x.id === r.job);
-    if (j) return { text: j.phase === 'waiting' ? 'Waiting…' : `${phaseText(j.phase)} ${progressText(j)}`, cls: 'muted' };
+    if (j) return { text: j.phase === 'waiting' ? 'Waiting…' : phaseText(j.phase), pct: progressText(j), cls: 'muted' };
     const e = jobs.ended[r.job];
     if (!e) return null;
     if ('done' in e) {
@@ -196,7 +210,7 @@
                 {/if}
                 <span>{ICON[m.kind]} <b>{m.name}</b> · {formatBytes(m.size)}</span>
               </label>
-              {#if st}<div class={st.cls} role="status">{st.text}</div>
+              {#if st}<div class={st.cls} role="status">{st.text}{#if st.pct}{' '}<span aria-hidden="true">{st.pct}</span>{/if}</div>
               {:else if !r.plan}{#if !cant}<div class="muted">Reading the file…</div>{/if}
               {:else if 'refuse' in r.plan}<div class="warn">{r.plan.refuse}.</div>
               {:else}<div class="muted">→ {rowPlan(r.plan)}</div>{/if}
@@ -284,11 +298,11 @@
       {/if}
     {/if}
 
-    <div class="modal-foot">
+    <div class="modal-foot" bind:this={foot}>
       {#if many}
         {#if working}
           <button class="ghost" onclick={onclose} title="Close this window: they carry on (the header shows how far they got)">Keep working</button>
-          <button onclick={() => rowJobs.forEach((j) => stopJob(j))} title="Stop them: nothing more is changed">Stop all</button>
+          <button data-stop onclick={() => rowJobs.forEach((j) => stopJob(j))} title="Stop them: nothing more is changed">Stop all</button>
         {:else if rowJobs.length}
           <button class="primary" onclick={onclose}>Close</button>
         {:else}
@@ -297,7 +311,7 @@
         {/if}
       {:else if job}
         <button class="ghost" onclick={onclose} title="Close this window: it carries on (the header shows how far it got)">Keep working</button>
-        <button onclick={() => stopJob(job.id)} title="Stop it: nothing is changed">Stop</button>
+        <button data-stop onclick={() => stopJob(job.id)} title="Stop it: nothing is changed">Stop</button>
       {:else if ended && 'done' in ended}
         {#if madeRef}<button class="ghost" onclick={() => (watching = !watching)}>{watching ? '⏹ Stop watching' : '▶ Watch it'}</button>{/if}
         <button class="primary" onclick={onclose}>Close</button>

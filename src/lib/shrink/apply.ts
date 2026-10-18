@@ -4,7 +4,7 @@
 import { app } from '../app.svelte';
 import { fileType, SLOW_FILE_BYTES } from '../buzzproto';
 import { whileWriting } from '../desktop.svelte';
-import { step } from '../history.svelte';
+import { step, whenSettled } from '../history.svelte';
 import { dropPhoneCopies, formatBytes, getBlob, mediaUrls, putMedia, restoreStash } from '../media.svelte';
 import { uniqueMediaName } from '../medianame';
 import { newId, type Game, type Id, type MediaRef } from '../model';
@@ -157,15 +157,20 @@ async function putIn(
   if (ctl.signal.aborted) throw stopped();
   // Still the editor, the same game, and the very file it was made from.
   const same = () => app.screen === 'editor' && !app.editGame && app.game.id === gameId && app.game.media.some((m) => m.id === of) && getBlob(of) === src;
+  // (Not while a step is being made, a drag or a file being stored: the copy's would join it, and take its name.)
+  await whenSettled();
+  if (ctl.signal.aborted) throw stopped();
   if (!same()) return { failed: CHANGED };
   ctl.phase('storing');
   const id = newId();
   await whileWriting(() => putMedia(id, made.blob));
+  await whenSettled();
   if (ctl.signal.aborted || !same()) {
     await restoreStash(id, null);
     if (ctl.signal.aborted) throw stopped();
     return { failed: CHANGED };
   }
+  // (At once after the checks: nothing can change in between.)
   const copy: StoredCopy = { id, mime: made.mime, size: made.blob.size, ext: c.ext, width: made.width, height: made.height };
   step(madeLabel(c.what, c.playable), () => applyPhoneCopy(app.game, of, copy, rangeOf(c.range)), { place: { tab: 'media', media: of } });
   const size = formatBytes(made.blob.size);

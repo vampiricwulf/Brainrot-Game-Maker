@@ -358,7 +358,8 @@ function idle(busy: () => string | null): Promise<void> {
  * When the app's window is closed: run `flush` (it writes the last edits), then close once those writes are done (the
  * app closes anyway after a few seconds). Closing right after typing no longer loses the last edits. While a save,
  * export or autosave is being written, it asks first: Wait (the app closes once it's done) or Close anyway. So it does
- * while `busy` says what's under way (a 🗜 copy being made, in a sentence): Wait waits for it to finish.
+ * while `busy` says what's under way (a 🗜 copy being made, in a sentence): Wait waits for it to finish, then writes
+ * what it made too.
  */
 export function flushOnClose(flush: () => void, busy?: () => string | null): void {
   if (!isHost()) return;
@@ -377,7 +378,11 @@ export function flushOnClose(flush: () => void, busy?: () => string | null): voi
             await invoke('hold_close');
             const done = idle(busy!);
             const anyway = await ask(`${job} Closing now stops it (nothing is changed).\n\nThe app closes by itself once it’s done.`, { ok: 'Close anyway', cancel: 'Wait', danger: true, until: done });
-            if (!anyway) await done;
+            if (!anyway) {
+              await done;
+              // What it made is a step now: written too, before the app closes.
+              flush();
+            }
           }
           // A read waits for every write started before it (IndexedDB runs them in order).
           await new Promise((r) => setTimeout(r));

@@ -3,7 +3,8 @@
 // asks it (/api/health) before any room is open, so the 📱 preview and the checklist go by its number; a room's
 // welcome says it too, so with /api/health out of reach the editor goes by the defaults until a room is open, then
 // by the room's. A server that says nothing (an older one) is taken as 16 MB a file, and ⚙ Settings › Test says so;
-// an address typed there is asked once it's done, never each half-typed one.
+// its rooms show a GIF's 🗜 copy as a plain video, so the 📱 preview says phones get a small GIF as itself there. An
+// address typed in ⚙ Settings is asked once it's done, never each half-typed one.
 // A file over 16 MB that the server takes is a note, not a refusal: the 📱 preview and the editor's checklist say
 // phones on mobile data may wait for it (the pre-game list doesn't), and in one window the host panel counts it,
 // never naming it. Its upload (slowed down here) says how far it got, and a phone how much has come; ✖ Take back
@@ -39,8 +40,12 @@ let ids = 0;
 const box = (y) => ({ id: `e${ids++}`, x: 100, y, w: 800, h: 160, rotation: 0, opacity: 1, zIndex: 1 });
 const text = (t, y = 40) => ({ ...box(y), kind: 'text', text: t, font: 'Arial', size: 90, weight: 700, italic: false, underline: false, uppercase: false, color: '#ffffff', align: 'center', vAlign: 'middle', lineHeight: 1.2, letterSpacing: 0, autoFit: true });
 const video = (media, y) => ({ ...box(y), kind: 'video', media, fit: 'contain', autoplay: false, loop: false, muted: false, volume: 1 });
+const image = (media, y) => ({ ...box(y), kind: 'image', media, fit: 'contain' });
 const files = { big: Buffer.alloc(25 * MB), mid: Buffer.alloc(20 * MB, 1), slow: Buffer.alloc(17 * MB, 2) };
 files.twin = files.slow;
+// A small GIF with a 🗜 copy for phones (a looping video: padded too).
+files.pic = Buffer.from('R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7', 'base64');
+files.piccopy = Buffer.alloc(2048, 3);
 /** A card file's id in the room: its SHA-256. */
 const fileId = (b) => createHash('sha256').update(b).digest('hex');
 // (Every file's name carries "zfnqj": none may show in the host panel in one window.)
@@ -65,12 +70,15 @@ const game = {
     { id: 'mid', name: 'mid-zfnqj.mp4', mime: 'video/mp4', size: files.mid.length, kind: 'video' },
     { id: 'slow', name: 'slow-zfnqj.mp4', mime: 'video/mp4', size: files.slow.length, kind: 'video' },
     { id: 'twin', name: 'twin-zfnqj.mp4', mime: 'video/mp4', size: files.twin.length, kind: 'video' },
+    { id: 'pic', name: 'pic-zfnqj.gif', mime: 'image/gif', size: files.pic.length, kind: 'image' },
+    { id: 'piccopy', name: 'pic-zfnqj (phones).webm', mime: 'video/webm', size: files.piccopy.length, kind: 'video', phoneCopy: { of: 'pic', width: 320, height: 240 } },
   ],
   audio: {}, wheels: [], dice: [], theme: {},
   cards: [
     { id: 'sc_tip', name: 'Tip', background: {}, elements: [text('Look'), video('big', 300), video('mid', 500)] },
     { id: 'sc_slow', name: 'Slow', background: {}, elements: [text('Watch'), video('slow', 300)] },
     { id: 'sc_twin', name: 'Twin', background: {}, elements: [text('Again'), video('twin', 300)] },
+    { id: 'sc_gif', name: 'Gif', background: {}, elements: [text('Dance'), image('pic', 300)] },
   ],
 };
 const packPath = resolve('test-results/card-limits.brainrot');
@@ -152,6 +160,10 @@ try {
     await page.locator('nav .problem', { hasText: '🤫 Card “Tip” has a video too big to send to phones (25.0 MB; this buzzer server takes files up to 24.0 MB): make a smaller copy for phones (🗜) or add it from a link' }).waitFor();
     const lines = await page.locator('nav .problem', { hasText: 'too big to send to phones' }).allInnerTexts();
     assert(lines.length === 1, `and so does the checklist, for the 25 MB one only (${lines.join(' | ')})`);
+    // A GIF with a copy: phones get it as a small looping video, which they show like the GIF.
+    await preview(page, 'sc_gif');
+    await page.locator('.phone-preview .notes li', { hasText: /^📱 Phones get it as a small looping video \(2 KB\)\./ }).waitFor();
+    assert(true, 'a GIF with a 🗜 copy: “📱 Phones get it as a small looping video”');
     await ctx.close();
   }
 
@@ -184,6 +196,10 @@ try {
     const notes = await preview(page);
     assert(await until(() => answered.length === 1), `the editor asks it too, and it answers (${asked.length})`);
     await notesAre(page, notes, [bigNote('big-zfnqj.mp4', '25.0 MB', '16.0 MB', true), bigNote('mid-zfnqj.mp4', '20.0 MB', '16.0 MB', true)], 'one that says nothing is an older server: 16 MB a file, said so');
+    // (Its rooms show a GIF's video copy as a plain video: phones get a GIF this small as itself.)
+    await preview(page, 'sc_gif');
+    await page.locator('.phone-preview .notes li', { hasText: '📱 This buzzer server is older: phones get the GIF itself, not its smaller video.' }).waitFor();
+    assert(true, 'and it says phones get the GIF itself, not its copy');
     await page.getByRole('button', { name: /^More:/ }).click();
     await page.getByRole('menuitem', { name: '⚙ Settings' }).click();
     const settings = page.getByRole('dialog', { name: 'Settings' });

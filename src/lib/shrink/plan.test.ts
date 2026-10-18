@@ -20,6 +20,7 @@ import {
   leftText,
   lengthText,
   madeLabel,
+  NO_ENCODER,
   NO_PICTURE,
   NOT_MUCH_SMALLER,
   OPUS_NOTE,
@@ -78,7 +79,9 @@ describe('planGif', () => {
     expect(planGif(info, ALL)).toMatchObject({ codec: 'avc', box: 'mp4', mime: 'video/mp4', ext: 'mp4', width: 720, height: 404, loops: 1, seconds: 5 });
     expect(planGif(info, WEBM)).toMatchObject({ codec: 'vp9', box: 'webm', mime: 'video/webm', ext: 'webm' });
     expect(planGif(info, { avc: false, vp9: false, vp8: true })).toMatchObject({ codec: 'vp8', box: 'webm' });
-    expect(planGif(info, { avc: false, vp9: false, vp8: false })).toEqual({ refuse: NO_WEBCODECS });
+    expect(planGif(info, { avc: false, vp9: false, vp8: false })).toEqual({ refuse: NO_ENCODER });
+    // (The window adds the full stop; where WebCodecs is there at all, it doesn't say to open the app another way.)
+    expect(NO_ENCODER).toBe('This browser can’t make this copy: try Chrome, Edge, Firefox or the desktop app');
   });
 
   it('goes round a short GIF until the copy lasts 2 s, and says about how big it comes out', () => {
@@ -312,7 +315,7 @@ describe('planVideoCopy', () => {
     expect(ok(planVideoCopy(vorbis, OPUS, { avc: false, vp9: false, vp8: true }, phones, null, true)).run).toMatchObject({ video: { codec: 'vp8' }, audio: {} });
     // A sound it can't make Opus of, or no video encoder at all.
     expect(planVideoCopy(big, { ok: true, aac: true, opus: false }, { avc: false, vp9: true, vp8: true }, phones, null, true)).toEqual({ refuse: CANT_MAKE_SOUND });
-    expect(planVideoCopy(big, CAN, { avc: false, vp9: false, vp8: false }, phones, null, true)).toEqual({ refuse: NO_WEBCODECS });
+    expect(planVideoCopy(big, CAN, { avc: false, vp9: false, vp8: false }, phones, null, true)).toEqual({ refuse: NO_ENCODER });
     expect(planVideoCopy(big, { ok: false, aac: false, opus: false, why: NO_WEBCODECS }, ALL, phones, null, true)).toEqual({ refuse: NO_WEBCODECS });
   });
 
@@ -341,7 +344,7 @@ describe('planSoundCopy', () => {
     const o = ok(planSoundCopy(sound(60, 10 * MiB, { audio: { ...track, codec: 'flac', channels: 1, label: null } }), OPUS, null, false));
     expect(o.run).toEqual({ box: 'ogg', audio: { codec: 'opus', bitrate: 96_000, forceTranscode: true } });
     expect([o.mime, o.ext, o.format]).toEqual(['audio/ogg', 'ogg', `Made as an OGG (Opus). ${OPUS_NOTE}`]);
-    expect(planSoundCopy(sound(60, 10 * MiB), { ok: true, aac: false, opus: false }, null, true)).toEqual({ refuse: NO_WEBCODECS });
+    expect(planSoundCopy(sound(60, 10 * MiB), { ok: true, aac: false, opus: false }, null, true)).toEqual({ refuse: NO_ENCODER });
   });
 
   it('leaves a picture out, keeps 2 channels at most, and holds only the part the cards play when asked', () => {

@@ -3,20 +3,19 @@
 // leaves nothing; one waiting behind another, the header's pill, and the toast at the end, none naming the file. Then
 // videos and sounds (stage 6): 🖼 Media's "2 files are big for phones" makes both copies at once; a 4 s 720p WebM made
 // at 480p, which plays and seeks, then only the part its card plays (1 to 3 s); a WAV made an OGG (Opus); a video
-// phones can't play (a .mov) given a copy they can from the 📱 preview, which clears the checklist's line. ▶ Play asks
-// first while one is made. Then in play, with a buzzer server of our own (buzzer/ under `wrangler dev`, local): the
-// card goes up as the copy, the phone shows it looping, silent and without controls, and the audience window's copy of
-// the game never lists it. The MP4 (H.264, AAC) path needs a browser that makes H.264: checked by hand. Needs `npm ci`
-// in buzzer/.
+// phones can't play (a .mov) given a copy they can from the 📱 preview, which clears the checklist's line. One made
+// while a drag on a slide is held waits for it: a step of its own, after the drag's. ▶ Play asks first while one is
+// made. Then in play, with a buzzer server of our own (buzzer/ under `wrangler dev`, local): the card goes up as the
+// copy, the phone shows it looping, silent and without controls (with reduced motion, or on a phone that won't start
+// it by itself, still with "▶ Play"), and the audience window's copy of the game never lists it. The MP4 (H.264, AAC)
+// path needs a browser that makes H.264: checked by hand. Needs `npm ci` in buzzer/.
 import { chromium } from 'playwright-core';
-import { createRequire } from 'node:module';
 import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { editorReady, forgetSeen, openGameFile, packGame, recordSeen, startBuzzer, startRoomOn } from './helpers.mjs';
-import { clip, fixturePage, wav } from './mediafixtures.mjs';
+import { clip, fixturePage, gif, noise, wav } from './mediafixtures.mjs';
 
-const { GifWriter } = createRequire(import.meta.url)('omggif');
 const file = resolve(process.env.APP_FILE || 'dist/index.html');
 if (!existsSync(file)) throw new Error('Run `npm run build` first');
 mkdirSync('test-results', { recursive: true });
@@ -33,23 +32,6 @@ function assert(cond, msg) {
 
 // ---------- Two GIFs, made here: noise, so they're big for what they show (about 2.5 MB each) ----------
 
-let x = 2463534242;
-const noise = (n) =>
-  Uint8Array.from({ length: n }, () => {
-    x ^= x << 13;
-    x >>>= 0;
-    x ^= x >>> 17;
-    x ^= x << 5;
-    x >>>= 0;
-    return x & 255;
-  });
-const palette = Array.from({ length: 256 }, (_, i) => (((i * 37) & 255) << 16) | (((i * 91) & 255) << 8) | ((i * 53) & 255));
-function gif(w, h, frames) {
-  const buf = new Uint8Array(w * h * 2 * frames.length + 100_000);
-  const g = new GifWriter(buf, w, h, { palette, loop: 0 });
-  for (const f of frames) g.addFrame(f.x ?? 0, f.y ?? 0, f.w ?? w, f.h ?? h, f.px, { delay: f.delay, disposal: 1 });
-  return Buffer.from(buf.slice(0, g.end()));
-}
 // 2.4 s of it, on a 🤫 card.
 const dance = gif(320, 240, Array.from({ length: 24 }, () => ({ px: noise(320 * 240), delay: 10 })));
 // 2,000 frames (as many as 🗜 takes) of small changes over a big picture: long enough to stop partway, or to wait
@@ -78,7 +60,7 @@ const gameWith = (movie, mov) => ({
     allowNegativeScores: true, deductOnWrong: false, defaultTimerSeconds: 30, finalTimerSeconds: 30, currencySymbol: '$', rollOffDie: 20, pickerFollowsAward: true, timerAutoStart: false,
     roundIntro: { titleCard: false, tileFill: false, categoryReveal: 'off' }, maxPlayers: 8, stream: { clueCaption: true }, buzzer: true,
   },
-  players: ['Ann', 'Bob'].map((name, i) => ({ id: `p${i + 1}`, name, color: ['#e6194b', '#3cb44b'][i] })),
+  players: ['Ann', 'Bob', 'Cy'].map((name, i) => ({ id: `p${i + 1}`, name, color: ['#e6194b', '#3cb44b', '#4363d8'][i] })),
   rounds: [
     {
       id: 'r1', name: 'Round 1', mode: 'board', values: [200], dailyDoubleCount: 0,
@@ -142,6 +124,14 @@ try {
   await openGameFile(page, packPath);
   await page.getByText(/^Opened “/).waitFor();
   await editorReady(page);
+  // What screen readers are told (the page's live region keeps its last words in data-said).
+  await page.evaluate(() => {
+    window.__said = [];
+    const host = document.getElementById('live-region');
+    new MutationObserver(() => host.dataset.said && window.__said.push(host.dataset.said)).observe(host, { attributes: true, attributeFilter: ['data-said'] });
+  });
+  /** The words of the focused element ('' for the page itself: the focus was lost). */
+  const focused = () => page.evaluate(() => (document.activeElement === document.body ? '' : (document.activeElement?.textContent?.trim() ?? '')));
 
   const dialog = page.getByRole('dialog', { name: '🗜 Make a smaller copy for phones' });
   const card = (id) => page.locator(`[data-place="media:${id}"]`);
@@ -201,6 +191,14 @@ try {
   await dialog.locator('[data-shrink-done]').waitFor({ timeout: 60_000 });
   const done = await dialog.locator('[data-shrink-done]').innerText();
   assert(/^\d+(\.\d)? (KB|MB) \(was 2\.\d MB\)\. Phones get this copy \(Ctrl\+Z takes it back\)\.$/.test(done), `it says how big it came out (${done})`);
+  // (Make it, then Stop, went as they were pressed: the focus is on Close, not lost to the page.)
+  assert((await focused()) === 'Close', `the focus moves on with the window’s buttons: on Close now (“${await focused()}”)`);
+  const told = () => page.evaluate(() => window.__said.join(' | '));
+  await page.waitForFunction(() => window.__said.some((t) => t.includes('🗜 Phones get the smaller copy now:')), null, { timeout: 10_000 }).catch(() => {});
+  assert(
+    (await told()).includes('🗜 Making a smaller copy for phones…') && (await told()).includes('🗜 Phones get the smaller copy now:') && !(await page.locator('.toast', { hasText: 'Phones get' }).count()),
+    `a screen reader is told it started and how it ended, though the window shows it (no toast): ${await told()}`,
+  );
   await dialog.getByRole('button', { name: '▶ Watch it' }).click();
   await dialog.getByLabel('The copy for phones').waitFor();
   await close();
@@ -235,8 +233,10 @@ try {
   await dialog.getByRole('button', { name: 'Make it', exact: true }).click();
   const progress = dialog.locator('[data-shrink-progress]');
   await progress.filter({ hasText: /Making it… \d+%/ }).waitFor({ timeout: 60_000 });
+  assert((await focused()) === 'Stop', `Make it goes as it’s pressed: the focus is on Stop (“${await focused()}”)`);
   await dialog.getByRole('button', { name: 'Stop', exact: true }).click();
   await dialog.locator('[data-shrink-stopped]', { hasText: 'Stopped: nothing was changed.' }).waitFor();
+  assert((await focused()) === 'Make it again', `then on Make it again (“${await focused()}”)`);
   await close();
   assert((await copyLine('long').count()) === 0 && (await historyCount()) === steps, 'Stop leaves nothing: no copy, no step');
 
@@ -268,8 +268,58 @@ try {
   const rows = (await page.locator('main').innerText()).split('\n').filter((t) => t.includes('smaller copy'));
   assert(rows.length >= 2 && !rows.some((t) => t.includes('zfnqj')), `nor does History (${rows.join(' | ')})`);
   await media();
-  const copy = await copyOf('dance');
+  let copy = await copyOf('dance');
   assert(copy.type === 'video/webm' && copy.hash, 'the GIF has its copy (made again)');
+
+  // ---------- Done while a drag is held ----------
+  console.log('Done while a drag on a slide is held:');
+  // (The GIF's waits behind the long one, and starts once that's stopped, from the keyboard: the mouse holds a drag.)
+  await openShrink('long');
+  await dialog.getByRole('button', { name: 'Make it', exact: true }).click();
+  await progress.filter({ hasText: /Making it… \d+%/ }).waitFor({ timeout: 60_000 });
+  await close();
+  await openShrink('dance', '🗜 Again');
+  await dialog.getByRole('button', { name: 'Make it again' }).click();
+  await progress.filter({ hasText: 'Waiting for the other file to finish…' }).waitFor();
+  await close();
+  const atDrag = await historyCount();
+  await page.locator('nav > button.round-tab').first().click();
+  await page.locator('.grid .tile').first().click();
+  const words = page.locator('.slide .el[data-el="e0"]').first();
+  await words.waitFor();
+  const b0 = await words.boundingBox();
+  await page.mouse.move(b0.x + b0.width / 2, b0.y + b0.height / 2);
+  await page.mouse.down();
+  for (let i = 1; i <= 10; i++) await page.mouse.move(b0.x + b0.width / 2 + i * 4, b0.y + b0.height / 2 + i * 3);
+  const mark = await page.evaluate(() => window.__seen.length);
+  await pill.getByRole('button', { name: 'Stop' }).focus();
+  await page.keyboard.press('Enter');
+  // The GIF's made (its pill said 100%), then checked: the pill says how far it got no more. A moment longer, held.
+  await page.waitForFunction((mark) => window.__seen.slice(mark).includes('100%'), mark, { timeout: 60_000 });
+  await page.waitForFunction(() => document.querySelector('[data-job-pill] span[aria-hidden="true"]')?.textContent?.trim() === '', null, { timeout: 60_000 });
+  await sleep(1500);
+  const putIn = () => page.evaluate((mark) => window.__seen.slice(mark).some((t) => t.startsWith('🗜 Phones get the smaller copy now')), mark);
+  assert((await pill.count()) === 1 && (await historyCount()) === atDrag && !(await putIn()), 'a copy made while a drag is held waits for it: not put in yet');
+  await page.mouse.up();
+  await page.locator('.toast', { hasText: '🗜 Phones get the smaller copy now' }).waitFor({ timeout: 60_000 });
+  const b1 = await words.boundingBox();
+  const undoTitle = () => page.locator('.editor > header').getByRole('button', { name: 'Undo (Ctrl+Z)' }).getAttribute('title');
+  assert(Math.round(b1.x - b0.x) === 40 && Math.round(b1.y - b0.y) === 30, `the drag moved the words (${Math.round(b1.x - b0.x)}, ${Math.round(b1.y - b0.y)})`);
+  assert(
+    (await historyCount()) === atDrag + 2 && (await undoTitle()) === 'Undo: Made a smaller copy of a GIF for phones (Ctrl+Z)',
+    `once it’s let go, the copy goes in as a step of its own, after the drag’s (${(await historyCount()) - atDrag} steps; ${await undoTitle()})`,
+  );
+  // (Ctrl+Z puts the GIF's copy from before back.)
+  await page.keyboard.press('Control+z');
+  await notice.filter({ hasText: '↶ Undid Made a smaller copy of a GIF for phones' }).waitFor();
+  const moveTitle = await undoTitle();
+  assert(/^Undo: Moved /.test(moveTitle), `Ctrl+Z takes out that copy only: the drag is the next step back (${moveTitle})`);
+  await media();
+  assert((await copyOf('dance')).hash === copy.hash, 'and the GIF has the copy it had before');
+  // (Ctrl+Y: the one just made, again; nothing left to redo.)
+  await page.keyboard.press('Control+y');
+  await notice.filter({ hasText: '↷ Redid Made a smaller copy of a GIF for phones' }).waitFor();
+  copy = await copyOf('dance');
 
   // ---------- Videos and sounds ----------
   console.log('A video’s and a sound’s copies (stage 6):');
@@ -328,6 +378,7 @@ try {
   await dialog.locator('[data-shrink-done]').waitFor({ timeout: 120_000 });
   const said6 = await page.evaluate(() => window.__progress);
   assert(said6.some((t) => /^Making it… \d+%/.test(t)), `it says how far it got (${said6.join(' | ')})`);
+  assert(!said6.some((t) => /^(Checking|Storing)/.test(t) && /%/.test(t)) && !said6.some((t) => /100% \(about/.test(t)), 'with no percent or time left once it’s made, nor while it’s checked and stored');
   const done6 = await dialog.locator('[data-shrink-done]').innerText();
   assert(/^[\d.]+ (KB|MB) \(was 4\.0 MB\)\. Phones get this copy \(Ctrl\+Z takes it back\)\.$/.test(done6), `and how big it came out (${done6})`);
   await close();
@@ -426,13 +477,24 @@ try {
   );
   page.on('request', (r) => r.method() === 'POST' && /\/files$/.test(new URL(r.url()).pathname) && posts.push(r.url()));
   const code = await startRoomOn(roomCard);
-  const phoneCtx = await browser.newContext({ viewport: { width: 390, height: 760 }, hasTouch: true });
-  const bob = await phoneCtx.newPage();
-  bob.on('pageerror', (e) => errors.push(`[bob] ${e.message}`));
-  await bob.goto(`${base}/${code}`);
-  await bob.getByRole('heading', { name: 'Tap your name' }).waitFor();
-  await bob.getByRole('button', { name: 'Bob', exact: true }).click();
-  await bob.locator('#me').getByText('Bob').waitFor();
+  /** A phone in a window of its own, in the room as `name`. */
+  const joinAs = async (name, opts = {}, init) => {
+    const c = await browser.newContext({ viewport: { width: 390, height: 760 }, hasTouch: true, ...opts });
+    if (init) await c.addInitScript(init);
+    const p = await c.newPage();
+    p.on('pageerror', (e) => errors.push(`[${name}] ${e.message}`));
+    await p.goto(`${base}/${code}`);
+    await p.getByRole('heading', { name: 'Tap your name' }).waitFor();
+    await p.getByRole('button', { name, exact: true }).click();
+    await p.locator('#me').getByText(name).waitFor();
+    return { c, p };
+  };
+  const { c: phoneCtx, p: bob } = await joinAs('Bob');
+  // Ann's phone asks for reduced motion; Cy's won't start a video no one tapped for (an iPhone in Low Power Mode).
+  const ann = await joinAs('Ann', { reducedMotion: 'reduce' });
+  const cy = await joinAs('Cy', {}, () => {
+    HTMLMediaElement.prototype.play = () => Promise.reject(new DOMException('The request is not allowed by the user agent', 'NotAllowedError'));
+  });
   await page.getByRole('button', { name: 'Start game ▶' }).click();
   await page.locator('.stage-box .tile').first().waitFor();
   const [aud] = await Promise.all([page.waitForEvent('popup'), page.keyboard.press('a')]);
@@ -446,9 +508,9 @@ try {
   await send.waitFor();
   await send.getByRole('radio', { name: 'One made in the editor' }).check();
   await send.getByRole('combobox', { name: 'The card to send' }).selectOption('saved:sc_tip');
-  await send.getByRole('button', { name: 'Bob', exact: true }).click();
+  for (const name of ['Bob', 'Ann', 'Cy']) await send.getByRole('button', { name, exact: true }).click();
   await send.getByRole('button', { name: '📤 Send' }).click();
-  await send.locator('[data-card-said]').getByText('Card 1 sent to Bob').waitFor();
+  await send.locator('[data-card-said]').getByText('Card 1 sent to Ann, Bob, Cy').waitFor();
   await page.keyboard.press('Escape');
   const sentMedia = () => states.at(-1)?.cards?.[0]?.media;
   assert(await until(() => sentMedia()?.[0]?.file === copy.hash, 60_000), `the card goes up as the copy (${JSON.stringify(sentMedia())})`);
@@ -468,6 +530,20 @@ try {
   );
   assert(shown.loop && !shown.controls && shown.muted && shown.playing && shown.w === 320, `Bob’s phone shows it like a GIF: looping, silent, playing, no controls (${JSON.stringify(shown)})`);
   assert((await bob.getByRole('button', { name: '🔊 Tap for sound' }).count()) === 0 && shown.label === 'Picture', `with no 🔊 button, and named a picture (“${shown.label}”)`);
+  /** Whether the card's video on phone `p` is paused. */
+  const paused = (p) => p.locator('.card .card-item video').evaluate((v) => v.paused);
+  await ann.p.getByRole('button', { name: 'Tap to see' }).tap();
+  const annPlay = ann.p.getByRole('button', { name: '▶ Play Picture' });
+  await annPlay.waitFor({ timeout: 60_000 });
+  assert(await paused(ann.p), 'with reduced motion, it waits on its first frame for “▶ Play”');
+  await annPlay.tap();
+  await ann.p.waitForFunction(() => document.querySelector('.card .card-item video')?.paused === false);
+  assert(true, 'which plays it');
+  await cy.p.getByRole('button', { name: 'Tap to see' }).tap();
+  await cy.p.getByRole('button', { name: '▶ Play Picture' }).waitFor({ timeout: 60_000 });
+  assert(await paused(cy.p), 'a phone that won’t start it by itself gets “▶ Play” too, not a picture that never moves');
+  await ann.c.close();
+  await cy.c.close();
   const audGames = await aud.evaluate(() => window.__games);
   assert(audGames.length > 0 && audGames.every((names) => names.length === 5 && !names.some((n) => n.includes('(phones)'))), `the audience window’s copy of the game never lists the copies (${audGames.at(-1)?.join(', ')})`);
   await phoneCtx.close();

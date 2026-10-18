@@ -1,9 +1,11 @@
 // Making one file from another (card-files spec §4.13.3), in Node: a WAV's sound copied as it is into an M4A needs no
 // encoder, so convertBlob's trimming, progress, Stop and refusals are checked here, and readFacts and checkMade with
 // it. Making videos (WebCodecs) is checked in the test browser (tests/e2e/phonecopies.mjs).
+import { BufferTarget } from 'mediabunny';
 import { describe, expect, it } from 'vitest';
 import { readFacts } from './facts';
 import { checkMade, convertBlob, discardReason, RunError, type RunPlan } from './run';
+import { mux } from './testclip';
 
 /** A WAV of `seconds` of a tone: 16-bit, 8 kHz, `channels` of them. */
 function wav(seconds: number, channels = 1): Blob {
@@ -92,11 +94,22 @@ describe('checkMade', () => {
     expect(await checkMade(made, { seconds: 2.2, sound: true }, opens)).toBeNull();
   });
 
-  it('fails one too short or long, with no picture or sound it should have, or one that doesn’t open here', async () => {
+  it('fails one too short or long, missing its picture, or one that doesn’t open here', async () => {
     const made = await convertBlob(wav(2), COPY, 'audio/mp4', ctl().ctl);
     expect(await checkMade(made, { seconds: 3, sound: true }, opens)).toMatch(/lasts 2 s, not 3 s/);
     expect(await checkMade(made, { seconds: 2, width: 640, height: 360, sound: true }, opens)).toMatch(/picture is missing/);
     expect(await checkMade({ blob: new Blob([new Uint8Array(100)]), mime: 'audio/mp4' }, { seconds: null, sound: true }, opens)).toMatch(/can’t be read/);
     expect(await checkMade(made, { seconds: 2, sound: true }, async () => ({ opens: false, picture: false }))).toMatch(/doesn’t open/);
+  });
+
+  it('fails a video with no sound it should have, or one whose picture doesn’t show here', async () => {
+    // (3 s of a 64×36 video, no sound.)
+    const t = new BufferTarget();
+    await mux('webm', t);
+    const made = { blob: new Blob([t.buffer!], { type: 'video/webm' }), mime: 'video/webm' };
+    const shows = async () => ({ opens: true, picture: true });
+    expect(await checkMade(made, { seconds: 3, width: 64, height: 36, sound: false }, shows)).toBeNull();
+    expect(await checkMade(made, { seconds: 3, width: 64, height: 36, sound: true }, shows)).toMatch(/no sound/);
+    expect(await checkMade(made, { seconds: 3, width: 64, height: 36, sound: false }, async () => ({ opens: true, picture: false }))).toMatch(/no picture here/);
   });
 });

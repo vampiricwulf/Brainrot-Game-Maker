@@ -163,6 +163,27 @@ export function copyCovers(copy: NonNullable<MediaRef['phoneCopy']>, t: { start?
   return copy.to === null || copy.to === undefined || (t.end !== undefined && t.end <= copy.to);
 }
 
+/**
+ * What the 📱 preview says phones get when an item goes as its file's 🗜 copy (`size`: the copy's, `shape`: its picture
+ * and type, "854×480 WebM"): a GIF's as a small looping video, or as an ordinary one where the room is older (`gifs`
+ * false); for a file phones can't play (`fixes`), a copy they can; else its smaller copy.
+ */
+export function copyNote(kind: PhoneItem['kind'], o: { gifs: boolean; fixes: boolean; size: string; shape: string }): string {
+  if (kind === 'gif' && o.gifs) return `📱 Phones get it as a small looping video (${o.size}).`;
+  if (kind === 'gif') return `📱 Phones get its smaller video instead (${o.size}, ${o.shape}): this buzzer server is older, so it plays as a video, not like the GIF.`;
+  return `📱 Phones get ${o.fixes ? 'a copy they can play instead' : 'its smaller copy instead'} (${o.size}, ${o.shape}).`;
+}
+
+/**
+ * How big what goes up for an item is, in the 📱 preview's words (`what`: "🎞 movie.mp4"): "🎞 movie.mp4 is 148.2 MB",
+ * or when that's its file's 🗜 copy, "🎞 movie.mp4’s smaller copy for phones is 120 MB" (`fixes`: a copy of a file
+ * phones can't play, "…’s copy phones can play is…").
+ */
+export function sizeWords(what: string, it: Pick<PhoneItem, 'media' | 'sends'>, size: string, fixes: boolean): string {
+  if (!it.sends || it.sends === it.media) return `${what} is ${size}`;
+  return `${what}’s ${fixes ? 'copy phones can play' : 'smaller copy for phones'} is ${size}`;
+}
+
 /** An item's times on a copy that starts `from` seconds into its file. */
 function shifted(t: { start?: number; end?: number }, from = 0): { start?: number; end?: number } {
   if (!from) return t;

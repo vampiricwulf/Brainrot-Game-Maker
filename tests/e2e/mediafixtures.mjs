@@ -1,9 +1,13 @@
-// Videos and sounds for the e2e tests, made here, a few MB at most: videos with mediabunny in a blank page of their own
-// (Node has no video encoder; never the app's page, where mediabunny would be loaded twice), WAV sounds in Node.
+// Videos, sounds and GIFs for the e2e tests, made here, a few MB at most: videos with mediabunny in a blank page of
+// their own (Node has no video encoder; never the app's page, where mediabunny would be loaded twice), WAV sounds and
+// GIFs (omggif) in Node.
 import { writeFileSync } from 'node:fs';
+import { createRequire } from 'node:module';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
+
+const { GifWriter } = createRequire(import.meta.url)('omggif');
 
 /** A blank page in `ctx` with mediabunny in it, as `window.Mediabunny`. */
 export async function fixturePage(ctx) {
@@ -96,4 +100,29 @@ export function wav(seconds, { rate = 44_100, channels = 2 } = {}) {
     for (let c = 0; c < channels; c++) b.writeInt16LE(v, 44 + (i * channels + c) * 2);
   }
   return b;
+}
+
+let seed = 2463534242;
+/** `n` bytes of noise: the same ones each run, in the order they're asked for. */
+export const noise = (n) =>
+  Uint8Array.from({ length: n }, () => {
+    seed ^= seed << 13;
+    seed >>>= 0;
+    seed ^= seed >>> 17;
+    seed ^= seed << 5;
+    seed >>>= 0;
+    return seed & 255;
+  });
+const palette = Array.from({ length: 256 }, (_, i) => (((i * 37) & 255) << 16) | (((i * 91) & 255) << 8) | ((i * 53) & 255));
+
+/**
+ * A looping GIF, `w`×`h`: each of `frames` is `px` (a palette index a pixel) over all of it, or over its own rectangle
+ * (x, y, w, h), drawn over the frame before, for `delay` hundredths of a second. Noise makes a big GIF of a little.
+ */
+export function gif(w, h, frames) {
+  // (Room for each frame's own pixels, twice over: noise doesn't compress.)
+  const buf = new Uint8Array(100_000 + frames.reduce((n, f) => n + (f.w ?? w) * (f.h ?? h) * 2, 0));
+  const g = new GifWriter(buf, w, h, { palette, loop: 0 });
+  for (const f of frames) g.addFrame(f.x ?? 0, f.y ?? 0, f.w ?? w, f.h ?? h, f.px, { delay: f.delay, disposal: 1 });
+  return Buffer.from(buf.slice(0, g.end()));
 }

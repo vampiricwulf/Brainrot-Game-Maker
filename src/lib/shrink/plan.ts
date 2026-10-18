@@ -22,6 +22,8 @@ export const GIF_MAX_SHARE = 0.5;
 export const GIF_MATTE = '#2a293e';
 
 export const TOO_LONG = 'This GIF is too long to turn into a video here';
+/** Said where WebCodecs is here but not the encoder a copy needs (no VP9 at that size, no AAC or Opus for a sound). */
+export const NO_ENCODER = 'This browser can’t make this copy: try Chrome, Edge, Firefox or the desktop app';
 export const NOT_SMALLER = 'A video of it wouldn’t be much smaller: nothing was changed';
 /** Said under the choice when this browser makes WebM only. */
 export const WEBM_NOTE = 'This browser makes WebM videos: some iPhones may not play them. For a copy every phone plays, make it in Chrome or Edge on Windows or Mac, or in the desktop app.';
@@ -72,7 +74,7 @@ export interface GifPlan {
 export function planGif(info: GifInfo, enc: Encoders): GifPlan | { refuse: string } {
   if (info.frames > GIF_MAX_FRAMES || info.seconds > GIF_MAX_SECONDS) return { refuse: TOO_LONG };
   const codec = enc.avc ? 'avc' : enc.vp9 ? 'vp9' : enc.vp8 ? 'vp8' : null;
-  if (!codec) return { refuse: NO_WEBCODECS };
+  if (!codec) return { refuse: NO_ENCODER };
   const { width, height } = gifSize(info.width, info.height);
   const once = Math.max(info.seconds, 0.01);
   const loops = once < GIF_MIN_SECONDS ? Math.ceil(GIF_MIN_SECONDS / once) : 1;
@@ -318,7 +320,7 @@ export function planVideoCopy(f: MediaFacts, can: Can, enc: Encoders, choice: Vi
     if (a?.codec === 'opus' || a?.codec === 'vorbis') [audio, sound] = [{}, a.codec === 'opus' ? 'Opus' : 'Vorbis'];
     else if (a && can.opus && a.decodes) [audio, sound] = [made('opus'), 'Opus'];
     else if (a) return { refuse: CANT_MAKE_SOUND };
-  } else return { refuse: NO_WEBCODECS };
+  } else return { refuse: NO_ENCODER };
   const length = f.seconds ?? 0;
   const seconds = spanSeconds(span, length);
   const box = codec === 'avc' ? 'mp4' : 'webm';
@@ -361,7 +363,7 @@ export function planSoundCopy(f: MediaFacts, can: Can, span: Span | null, playab
   if (!can.ok) return { refuse: can.why ?? NO_WEBCODECS };
   if (f.box && !f.audio) return { refuse: 'The app finds no sound in this file, so it can’t make a copy of it' };
   const codec = can.aac ? 'aac' : can.opus ? 'opus' : null;
-  if (!codec) return { refuse: NO_WEBCODECS };
+  if (!codec) return { refuse: NO_ENCODER };
   const bitrate = f.audio?.channels === 1 ? MONO_BPS : SOUND_BPS;
   const here = !f.box || !f.audio?.decodes;
   if (here && f.seconds !== null && f.seconds > 15 * 60) return { refuse: SOUND_TOO_LONG };

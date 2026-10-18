@@ -62,8 +62,8 @@ export function askServerFiles(base: string): void {
 /**
  * The card file limits to go by now: this window's room's (its welcome), when it's open on the buzzer server in use;
  * else what that server said (askServerFiles); else the defaults (`known` false). `off`: it takes no files. `old`: an
- * older server, which didn't say (OLD_FILE_LIMITS). `gifs`: phones show a GIF's 🗜 copy like a GIF (only an open room
- * says otherwise: an older one).
+ * older server, which didn't say (OLD_FILE_LIMITS). `gifs`: phones show a GIF's 🗜 copy like a GIF (an open room
+ * says whether it does; an older server's don't).
  */
 export function fileLimitsNow(): { limits: FileLimits; known: boolean; off: boolean; old: boolean; gifs: boolean } {
   const base = buzzerBase();
@@ -76,7 +76,8 @@ export function fileLimitsNow(): { limits: FileLimits; known: boolean; off: bool
       gifs: remote.features.includes('gifs'),
     };
   const s = base ? said[base] : undefined;
-  if (s === 'old') return { limits: OLD_FILE_LIMITS, known: true, off: false, old: true, gifs: true };
+  // (An older server's rooms show a GIF's video copy as a video: 'gifs' came later than the limits.)
+  if (s === 'old') return { limits: OLD_FILE_LIMITS, known: true, off: false, old: true, gifs: false };
   if (s === 'off') return { limits: DEFAULT_FILE_LIMITS, known: true, off: true, old: false, gifs: true };
   if (s) return { limits: s.files, known: true, off: false, old: false, gifs: true };
   return { limits: DEFAULT_FILE_LIMITS, known: false, off: false, old: false, gifs: true };

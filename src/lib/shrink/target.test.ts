@@ -1,8 +1,9 @@
 // Where a 🗜 copy is written (card-files spec §4.13.2): Blob parts, with the bytes written back over earlier ones laid
 // over them, so the file comes out exactly as mediabunny's own in-memory target makes it.
-import { BufferTarget, EncodedPacket, EncodedVideoPacketSource, Mp4OutputFormat, Output, StreamTarget, WebMOutputFormat } from 'mediabunny';
+import { BufferTarget, StreamTarget } from 'mediabunny';
 import { describe, expect, it } from 'vitest';
 import { BlobParts, blobTarget } from './target';
+import { mux } from './testclip';
 
 const bytes = async (b: Blob) => [...new Uint8Array(await b.arrayBuffer())];
 const u8 = (...n: number[]) => new Uint8Array(n);
@@ -36,20 +37,6 @@ describe('BlobParts', () => {
     expect(() => p.write(u8(2), 2)).toThrow(/gap/);
   });
 });
-
-/** A short video made of packets (no encoder needed), into `target`. */
-async function mux(format: 'mp4' | 'webm', target: BufferTarget | StreamTarget): Promise<void> {
-  const out = new Output({ format: format === 'mp4' ? new Mp4OutputFormat({ fastStart: false }) : new WebMOutputFormat(), target });
-  const src = new EncodedVideoPacketSource('vp9');
-  out.addVideoTrack(src);
-  await out.start();
-  for (let i = 0; i < 30; i++) {
-    const data = new Uint8Array(500 + ((i * 37) % 300)).fill(i);
-    const meta = i ? undefined : { decoderConfig: { codec: 'vp09.00.10.08', codedWidth: 64, codedHeight: 36 } };
-    await src.add(new EncodedPacket(data, i % 10 ? 'delta' : 'key', i / 10, 0.1), meta);
-  }
-  await out.finalize();
-}
 
 describe('blobTarget', () => {
   for (const format of ['mp4', 'webm'] as const)

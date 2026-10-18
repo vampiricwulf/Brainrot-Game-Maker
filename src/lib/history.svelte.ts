@@ -469,6 +469,18 @@ export function begin(label: string | null = null, opts: StepOptions = {}): () =
   };
 }
 
+/**
+ * Resolves once no step is being made by hand: no group open (a drag, a file being stored by a stepAsync) and no
+ * pointer held (asked every 100 ms). Work that ends on its own (a 🗜 copy made) waits for this, then makes its step at
+ * once, so that step never joins the one being made, nor takes its name.
+ */
+export function whenSettled(): Promise<void> {
+  return new Promise((done) => {
+    const check = () => (!groups && !pointerHeld ? done() : void setTimeout(check, 100));
+    check();
+  });
+}
+
 /** Run `fn` as one step. `label: null` = named from what changed. Never call it inside an $effect. */
 export function step<T>(label: string | null, fn: () => T, opts?: StepOptions): T {
   const end = begin(label, opts);
