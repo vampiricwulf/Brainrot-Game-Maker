@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { BUZZ_PROTOCOL, OLD_FILE_LIMITS } from './buzzproto';
+import { BUZZ_PROTOCOL, OLD_FILE_LIMITS, UPLOADS_BUSY } from './buzzproto';
 import { buzzerBase, closeRoom, rejoinRoom, remote, setRemoteDeps, UPLOAD_STALL_MS, uploadCardFile } from './remote.svelte';
 import { prefs } from './prefs.svelte';
 import { fileLimitsNow, forgetServerFiles } from './serverlimits.svelte';
@@ -262,6 +262,19 @@ describe('uploadCardFile', () => {
     const huge = uploadCardFile({ size: 100_000_001 } as Blob, 'video/mp4');
     FakeXhr.made[3].onerror?.();
     expect(await huge).toEqual({ refused: 'error', error: 'Couldn’t reach the buzzer server (Cloudflare may turn files this big away before they reach it)' });
+  });
+
+  it('the room taking 2 files already is tried again (as a blip); the budget used up is not', async () => {
+    inRoom();
+    const taking = uploadCardFile(new Blob(['x']), 'image/png');
+    FakeXhr.made[0].answer(429, { error: UPLOADS_BUSY });
+    expect(await taking).toEqual({ refused: 'error', error: 'The buzzer room is taking another file: try again in a moment' });
+    const budget = uploadCardFile(new Blob(['x']), 'image/png');
+    FakeXhr.made[1].answer(429, { error: 'The buzzer server has taken all the card files it can for now — try again in about 5 hours' });
+    expect(await budget).toMatchObject({ refused: 'busy' });
+    const minute = uploadCardFile(new Blob(['x']), 'image/png');
+    FakeXhr.made[2].answer(429, { error: 'Too many files — wait a minute' });
+    expect(await minute).toMatchObject({ refused: 'busy' });
   });
 
   it('stops when told (✖ Take back), and when nothing has moved for a minute (then as a dropped connection)', async () => {

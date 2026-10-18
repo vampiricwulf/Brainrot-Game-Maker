@@ -223,17 +223,17 @@ got), never sends one the room already lists (it works out the SHA-256 first), s
 gives up one that hasn't moved for a minute and tries it again. Its answer is `{id}` (the file's SHA-256; the same bytes
 again store nothing new) or an error: 400 (empty, or it broke off, or was longer than its Content-Length said), 401
 (wrong host token, or no such room), 408 (it took over an hour), 409 (the room holds all it can), 413 (too big), 415 (a
-type it doesn't take), 429 (too many, the server's budget is used up for now, or the room is taking 2 files already),
-500 (the room couldn't store it; the app tries again) or 503 (files are off). The host token is checked before the body
-is read, so a wrong one costs the room nothing. Room for a file under the room's caps and the server's budget is kept
-before a byte of it is stored: its Content-Length, or a whole file limit when it gives none (so in a nearly full room
-such an upload gets 409 even when small), and what it didn't use is given back after. One turned away for the room's
-caps, the budget or the 2 at once is read to its end and thrown away first, so its answer gets there (an upload cut off
-can reach the app as a broken connection). A room takes 2 uploads at once at most, counted against its caps together;
-the same file twice at once is stored (and counted) once, and bytes counted against the budget for a file that then
-isn't stored (it broke off, or the room ended meanwhile) are given back, to the hour they were counted in. An upload
-still going an hour after it began is stopped with 408 ("The upload took too long"; the app tries again), what it stored
-deleted and its budget given back: 90 MB in an hour is 200 kbps.
+type it doesn't take), 429 (too many, the server's budget is used up for now, or the room is taking 2 files already: the
+app tries that one again), 500 (the room couldn't store it; the app tries again) or 503 (files are off). The host token
+is checked before the body is read, so a wrong one costs the room nothing. Room for a file under the room's caps and the
+server's budget is kept before a byte of it is stored: its Content-Length, or a whole file limit when it gives none (so
+in a nearly full room such an upload gets 409 even when small), and what it didn't use is given back after. One turned
+away for the room's caps, the budget or the 2 at once is read to its end and thrown away first, so its answer gets there
+(an upload cut off can reach the app as a broken connection). A room takes 2 uploads at once at most, counted against
+its caps together; the same file twice at once is stored (and counted) once, and bytes counted against the budget for a
+file that then isn't stored (it broke off, or the room ended meanwhile) are given back, to the hour they were counted
+in. An upload still going an hour after it began is stopped with 408 ("The upload took too long"; the app tries again),
+what it stored deleted and its budget given back: 90 MB in an hour is 200 kbps.
 
 - **Types**: PNG, JPEG, WebP, GIF; MP4, WebM; MP3, OGG, WAV, M4A. No SVG, no HTML. Served back with their own type,
   `Cache-Control: no-store, no-transform` and `X-Content-Type-Options: nosniff`.

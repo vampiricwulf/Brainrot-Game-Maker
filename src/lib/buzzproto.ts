@@ -100,6 +100,11 @@ export const DEFAULT_FILE_LIMITS: FileLimits = { fileBytes: 90 * MiB, roomBytes:
 export const FILES_LIST_MAX = 1024;
 /** Over this, phones on mobile data may wait a while for a file (the app's note, not a limit). */
 export const SLOW_FILE_BYTES = 16 * MiB;
+/**
+ * A room's 429 to an upload while it takes 2 already (another window's, or one stopped that it hasn't heard stop yet):
+ * over in a moment, unlike the budget's 429s, so the app tries again.
+ */
+export const UPLOADS_BUSY = 'The buzzer room is taking another file: try again in a moment';
 
 /** Limits a server sent, checked (whole numbers of bytes up to 2^40, a file no bigger than a room), or null. */
 export function parseFileLimits(x: unknown): FileLimits | null {

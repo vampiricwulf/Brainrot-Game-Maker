@@ -19,7 +19,7 @@
  * at most for one phone, and one that stops taking pieces gives its place up after SEND_STALL_MS. A file deleted while
  * it goes out (no card uses it any more) ends the body with an error.
  */
-import type { FileLimits } from '../../src/lib/buzzproto';
+import { UPLOADS_BUSY, type FileLimits } from '../../src/lib/buzzproto';
 import { FILES_OFF, tooBig } from './limits';
 import { pieceKey, type RoomFile } from './room';
 
@@ -112,7 +112,6 @@ export interface UploadJob {
 const WRONG = 'wrong host token';
 const EMPTY = 'empty file';
 const ROOM_FULL = 'This room holds all the card files it can: send fewer pictures and videos at once';
-const TAKING_ANOTHER = 'The buzzer room is taking another file: try again in a moment';
 const BROKE_OFF = 'The upload broke off';
 const TOO_LONG = 'The upload was longer than it said';
 const NOT_STORED = "The buzzer room couldn't store it";
@@ -199,7 +198,7 @@ export class FileStore {
     };
     if (size !== null && size > lim.fileBytes) return no(413, tooBig(lim));
     if (size === 0) return no(400, EMPTY);
-    if (this.jobs.size >= UPLOADS_AT_ONCE) return refuse(429, TAKING_ANOTHER);
+    if (this.jobs.size >= UPLOADS_AT_ONCE) return refuse(429, UPLOADS_BUSY);
     const reserve = size ?? lim.fileBytes;
     // In one go: room for it, kept from here (before the budget, which costs a call).
     let r = room();

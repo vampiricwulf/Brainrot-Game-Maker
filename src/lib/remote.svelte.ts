@@ -1,6 +1,6 @@
 // Phone buzzers, the host's side: one buzzer room at a time (see roomlink.ts for the connection, buzzproto.ts for what is
 // said). Reactive, for the pre-game card and the host panel.
-import { filesUrl, joinUrl, mbText, type CardLate, type FileLimits, type HostState, type NewRoom, type PhoneInfo } from './buzzproto';
+import { filesUrl, joinUrl, mbText, UPLOADS_BUSY, type CardLate, type FileLimits, type HostState, type NewRoom, type PhoneInfo } from './buzzproto';
 import type { TeamMember } from './model';
 import type { SavedRoom } from './persist';
 import { embeddedBuzzerServer } from './export';
@@ -307,7 +307,9 @@ export function uploadCardFile(
         return end({ id });
       }
       const s = x.status;
-      const refused: UploadRefusal = s === 409 ? 'full' : s === 413 ? 'big' : s === 415 ? 'kind' : s === 429 ? 'busy' : s === 503 ? 'off' : s === 401 ? 'room' : 'error';
+      // (The room taking 2 already is over in a moment: tried again, as a blip. The budget's 429s aren't.)
+      const busy = s === 429 && said !== UPLOADS_BUSY;
+      const refused: UploadRefusal = s === 409 ? 'full' : s === 413 ? 'big' : s === 415 ? 'kind' : busy ? 'busy' : s === 503 ? 'off' : s === 401 ? 'room' : 'error';
       end({ refused, error: said || `The buzzer server said no (${s})` });
     };
     signal?.addEventListener('abort', stop);
