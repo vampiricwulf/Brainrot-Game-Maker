@@ -134,7 +134,7 @@
     const id = game.id;
     untrack(() => {
       stopAll(id);
-      if (shrinkDialog.open && !game.media.some((m) => m.id === shrinkDialog.open)) shrinkDialog.open = null;
+      if (shrinkDialog.open && !shrinkDialog.open.every((id) => game.media.some((m) => m.id === id))) shrinkDialog.open = null;
     });
   });
   onDestroy(() => {
@@ -934,7 +934,7 @@
   {#if shortcuts}<ShortcutsDialog onclose={() => (shortcuts = false)} />{/if}
   {#if finding}<FindDialog onclose={() => (finding = false)} />{/if}
   {#if shrinkDialog.open}
-    {#key shrinkDialog.open}<ShrinkDialog id={shrinkDialog.open} onclose={() => (shrinkDialog.open = null)} />{/key}
+    {#key shrinkDialog.open}<ShrinkDialog ids={shrinkDialog.open} onclose={() => (shrinkDialog.open = null)} />{/key}
   {/if}
   {#if importFrom}<RoundImport source={importFrom} onclose={() => (importFrom = null)} onadded={showNew} />{/if}
   {#if settings}<SettingsDialog onclose={() => (settings = false)} />{/if}

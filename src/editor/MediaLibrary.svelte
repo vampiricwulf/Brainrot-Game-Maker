@@ -20,10 +20,11 @@
   import { SLOW_FILE_BYTES } from '../lib/buzzproto';
   import { libraryMedia, withCopies } from '../lib/phonecopies';
   import { phoneCopyOf, phonesGetLink } from '../lib/phonecard';
-  import { removePhoneCopy, shrinkable } from '../lib/shrink/apply';
+  import { bigForPhones, isGifRef, phonesTake, removePhoneCopy, shrinkable } from '../lib/shrink/apply';
   import { openShrinkDialog } from '../lib/shrink/dialog.svelte';
   import { jobFor, progressText, stopJob } from '../lib/shrink/jobs.svelte';
-  import { SHRINK_OFFER_BYTES, typeWord } from '../lib/shrink/plan';
+  import { clockTenths, SHRINK_OFFER_BYTES, typeWord } from '../lib/shrink/plan';
+  import { fileLimitsNow } from '../lib/serverlimits.svelte';
 
   const game = $derived(app.game);
   const usage = $derived(mediaUsage(game));
@@ -36,6 +37,16 @@
   const total = $derived(stored.reduce((a, m) => a + m.size, 0));
   const links = $derived(game.media.filter((m) => m.url).length);
   const unused = $derived(files.filter((m) => !usage.get(m.id)));
+  /** 🤫 cards' files that are big for phones and have no 🗜 copy yet: the header offers copies of them all at once. */
+  const big = $derived(bigForPhones(game, fileLimitsNow().limits.fileBytes));
+  /** 🗜 is offered on a file's card: a GIF, video or sound stored here, over 2 MB, that phones don't get from its link. */
+  const offerShrink = (m: MediaRef): boolean => shrinkable(m) && !!mediaUrls[m.id] && m.size > SHRINK_OFFER_BYTES && !phonesGetLink(m);
+  /** A copy's part of its file, when it holds only part ("0:12–0:45"). */
+  const partOf = (c: MediaRef): string => {
+    const p = c.phoneCopy;
+    if (!p || (p.from === undefined && (p.to === undefined || p.to === null))) return '';
+    return `${clockTenths(p.from ?? 0)}–${p.to === undefined || p.to === null ? 'the end' : clockTenths(p.to)}`;
+  };
   const embeds = $derived(allEmbeds(game));
   /** The slides each file shows on ("Jeopardy! · Memes #2 (question)"), for its "used 3×" tooltip. */
   const places = $derived.by(() => {
@@ -344,6 +355,15 @@
         hint="Add from a link: the game saves a copy when the site allows it, e.g. https://files.catbox.moe/abc123.mp3"
       />
     </div>
+    {#if big.length}
+      <button
+        class="primary"
+        data-shrink-big
+        onclick={() => openShrinkDialog(big.map((m) => m.id))}
+        title="Phones get the copies on 🤫 cards; the show keeps the files as they are (one step a file: Ctrl+Z takes each back)"
+        >🗜 {big.length === 1 ? '1 file is big for phones: make a smaller copy…' : `${big.length} files are big for phones: make smaller copies…`}</button
+      >
+    {/if}
     <button
       class="ghost danger"
       disabled={!unused.length}
@@ -398,7 +418,14 @@
       >
         <div class="thumb">
           {#if watching === m.id && copy && mediaUrls[copy.id]}
-            <video src={mediaUrls[copy.id]} autoplay loop muted playsinline aria-label="Its smaller copy for phones"></video>
+            {#if copy.kind === 'audio'}
+              <audio src={mediaUrls[copy.id]} autoplay controls aria-label="Its smaller copy for phones"></audio>
+            {:else if isGifRef(m)}
+              <video src={mediaUrls[copy.id]} autoplay loop muted playsinline aria-label="Its smaller copy for phones"></video>
+            {:else}
+              <!-- svelte-ignore a11y_media_has_caption -->
+              <video src={mediaUrls[copy.id]} autoplay controls playsinline aria-label="Its smaller copy for phones"></video>
+            {/if}
           {:else if m.kind === 'image' && mediaUrls[m.id]}
             <img src={mediaUrls[m.id]} alt="" onerror={imgFallback} />
           {:else if m.kind === 'video' && mediaUrls[m.id]}
@@ -455,7 +482,9 @@
         {#if copy}
           <div class="meta copy" data-phone-copy>
             <span title="Phones get this copy on 🤫 cards; the show keeps the file as it is"
-              >📱 Phone copy · {formatBytes(copy.size)}{copy.phoneCopy?.width ? ` · ${copy.phoneCopy.width}×${copy.phoneCopy.height}` : ''} {typeWord(copy.mime)}</span
+              >📱 Phone copy · {formatBytes(copy.size)}{copy.phoneCopy?.width ? ` · ${copy.phoneCopy.width}×${copy.phoneCopy.height}` : ''} {typeWord(copy.mime)}{partOf(copy)
+                ? ` · ${partOf(copy)}`
+                : ''}</span
             >
             {#if mediaUrls[copy.id]}
               <button
@@ -494,13 +523,17 @@
               >Replace…</button
             >
           {/if}
-          {#if shrinkable(m) && !copy && mediaUrls[m.id] && m.size > SHRINK_OFFER_BYTES && !phonesGetLink(m)}
+          {#if !copy && offerShrink(m)}
+            {@const plays = phonesTake(m)}
             <button
-              class="small {m.size > SLOW_FILE_BYTES ? 'primary' : 'ghost'}"
+              class="small {m.size > SLOW_FILE_BYTES || !plays ? 'primary' : 'ghost'}"
               data-shrink
               onclick={() => openShrinkDialog(m.id)}
               disabled={!!job}
-              title="Make a smaller copy for phones: they get it on 🤫 cards, and the show keeps this file as it is">🗜 Make smaller…</button
+              title={plays
+                ? 'Make a smaller copy for phones: they get it on 🤫 cards, and the show keeps this file as it is'
+                : 'Phones can’t play this kind of file: make a copy they can (they get it on 🤫 cards, and the show keeps this file as it is)'}
+              >{plays ? '🗜 Make smaller…' : '🗜 Make a copy for phones…'}</button
             >
           {/if}
           <button

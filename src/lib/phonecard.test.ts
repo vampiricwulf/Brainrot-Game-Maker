@@ -331,6 +331,33 @@ describe('phoneCard: 🗜 smaller copies for phones (card-files spec §4.2)', ()
       expect(phoneCard(g, card(at(newVideoEl('v'), 0, 1, t)), can).items[0]).toMatchObject({ media: 'v', why: 'big' });
   });
 
+  it('a sound’s copy from a point to the end goes for any item from there on', () => {
+    const sg = {
+      media: [
+        { id: 's', name: 'song.wav', mime: 'audio/wav', size: 40 * MB, kind: 'audio' as const },
+        { id: 'sc', name: 'song (phones).ogg', mime: 'audio/ogg', size: 2 * MB, kind: 'audio' as const, phoneCopy: { of: 's', from: 30, to: null } },
+      ],
+    };
+    const from = (t: { startAt?: number; endAt?: number }) => phoneCard(sg, card(at(newAudioEl('s'), 0, 1, t)), { ...can, files: { sc: HASH } });
+    expect(from({ startAt: 45 }).media).toEqual([{ kind: 'audio', file: HASH, mime: 'audio/ogg', start: 15 }]);
+    expect(from({ startAt: 30, endAt: 90 }).media).toEqual([{ kind: 'audio', file: HASH, mime: 'audio/ogg', start: 0, end: 60 }]);
+    // Before it starts: the file itself (too big).
+    expect(from({ startAt: 10 }).items[0]).toMatchObject({ media: 's', why: 'big' });
+    expect(from({}).items[0].sends).toBeUndefined();
+  });
+
+  it('a file phones can’t play (a .mov) with a copy they can goes as that copy', () => {
+    const mg = {
+      media: [
+        { id: 'm', name: 'clip.mov', mime: 'video/quicktime', size: 5 * MB, kind: 'video' as const },
+        { id: 'mc', name: 'clip (phones).webm', mime: 'video/webm', size: 1 * MB, kind: 'video' as const, phoneCopy: { of: 'm', width: 320, height: 240 } },
+      ],
+    };
+    const movCard = card(at(newVideoEl('m'), 0, 1, { startAt: 2 }));
+    expect(phoneCard(mg, movCard, { ...can, files: { mc: HASH } }).media).toEqual([{ kind: 'video', file: HASH, mime: 'video/webm', start: 2 }]);
+    expect(phoneCard(mg, movCard, { ...can, stored: () => false }).items[0]).toMatchObject({ media: 'm', why: 'kind' });
+  });
+
   it('a file that phones get from its lasting link needs no copy', () => {
     expect(phonesGetLink({ id: 'k', name: 'cat.gif', mime: 'image/gif', size: 5, kind: 'image', source: 'https://files.catbox.moe/abc123.gif' })).toBe(true);
     expect(phonesGetLink(files[0])).toBe(false);

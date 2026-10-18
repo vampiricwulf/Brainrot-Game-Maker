@@ -147,7 +147,7 @@ const MEDIA_KIND = { picture: 'image', gif: 'image', video: 'video', sound: 'aud
 export const shrinks = (item: Pick<CardItem, 'kind'>): boolean => item.kind === 'picture';
 
 /** Where a video, sound or embed starts and ends (seconds), for the phone's player. */
-function times(e: SlideElement): { start?: number; end?: number } {
+export function playTimes(e: SlideElement): { start?: number; end?: number } {
   if (e.kind !== 'video' && e.kind !== 'audio' && e.kind !== 'embed') return {};
   const p: Playback = e;
   const ok = (n: number | undefined) => typeof n === 'number' && Number.isFinite(n) && n >= 0;
@@ -158,7 +158,7 @@ function times(e: SlideElement): { start?: number; end?: number } {
 export const phoneCopyOf = (game: Pick<Game, 'media'>, ref: Pick<MediaRef, 'id'>): MediaRef | undefined => game.media.find((m) => m.phoneCopy?.of === ref.id);
 
 /** Whether a copy of part of a file holds all an item plays (`t`: its times on the file): from its start to its end. */
-function covers(copy: NonNullable<MediaRef['phoneCopy']>, t: { start?: number; end?: number }): boolean {
+export function copyCovers(copy: NonNullable<MediaRef['phoneCopy']>, t: { start?: number; end?: number }): boolean {
   if ((copy.from ?? 0) > (t.start ?? 0)) return false;
   return copy.to === null || copy.to === undefined || (t.end !== undefined && t.end <= copy.to);
 }
@@ -219,10 +219,10 @@ export function phoneCard(game: Pick<Game, 'media'>, slide: Slide, can: PhoneCan
     if (e.kind === 'embed') {
       const url = phoneLink(e.url);
       const site = embedSite(e);
-      if (site) items.push(url ? { ...item, goes: { kind: 'embed', site, url, ...times(e) } } : missing('kind'));
+      if (site) items.push(url ? { ...item, goes: { kind: 'embed', site, url, ...playTimes(e) } } : missing('kind'));
       else if (item.kind === 'embed') items.push(missing('kind'));
       else if (linkLifetime({ url: e.url }) === 'expired') items.push(missing('expired'));
-      else items.push(url ? { ...item, goes: { kind: MEDIA_KIND[item.kind], url, ...times(e), ...name } } : missing('kind'));
+      else items.push(url ? { ...item, goes: { kind: MEDIA_KIND[item.kind], url, ...playTimes(e), ...name } } : missing('kind'));
       continue;
     }
     if (item.kind === 'embed') continue;
@@ -235,24 +235,24 @@ export function phoneCard(game: Pick<Game, 'media'>, slide: Slide, can: PhoneCan
     // A link that plays live (no copy stored): the phone plays it from there too.
     if (ref.url) {
       const url = phoneLink(ref.url);
-      items.push(linkLifetime(ref) === 'expired' ? missing('expired') : url ? { ...item, goes: { kind, url, ...times(e), ...name } } : missing('kind'));
+      items.push(linkLifetime(ref) === 'expired' ? missing('expired') : url ? { ...item, goes: { kind, url, ...playTimes(e), ...name } } : missing('kind'));
       continue;
     }
     const link = lastingLink(ref, kind, e.kind === 'image' && !!e.editedMedia);
     if (link) {
-      items.push({ ...item, goes: { kind, url: link, ...times(e), ...name } });
+      items.push({ ...item, goes: { kind, url: link, ...playTimes(e), ...name } });
       continue;
     }
     // A file from this computer. A picture is shrunk first (any size, any type a browser draws); a GIF, a video or a
     // sound goes as it is, or as its 🗜 copy for phones when there is one: once its bytes are here, if it holds what the
     // item plays, and for a GIF (a looping video) if the room shows it like one, or the GIF itself is too big.
-    const t = times(e);
+    const t = playTimes(e);
     const copy = phoneCopyOf(game, ref);
     const useCopy =
       !!copy?.phoneCopy &&
       !copy.url &&
       (can.stored?.(copy.id) ?? true) &&
-      (item.kind === 'gif' ? can.gifs !== false || ref.size > can.fileBytes : covers(copy.phoneCopy, t));
+      (item.kind === 'gif' ? can.gifs !== false || ref.size > can.fileBytes : copyCovers(copy.phoneCopy, t));
     const send = useCopy ? copy! : ref;
     // (A GIF's copy is a video: its type is checked as one.)
     const goesAs = useCopy && item.kind === 'gif' ? 'video' : kind;

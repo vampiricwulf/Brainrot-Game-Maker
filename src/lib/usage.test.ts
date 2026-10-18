@@ -1,9 +1,14 @@
 import { describe, expect, it } from 'vitest';
 import { uploadedFamily } from './fonts';
 import { defaultEdits } from './imageedit';
-import { isBoard, isFinal, newImageEl, textSlide, type MediaRef } from './model';
+import { isBoard, isFinal, newImageEl, newVideoEl, textSlide, type Action, type MediaRef, type Slide } from './model';
 import { jeopardyGame } from './testgame';
-import { allSlides, mediaUsage } from './usage';
+import { allCardSlides, allSlides, mediaUsage } from './usage';
+import { cardUses } from './phonecopies';
+import { newBoardGameRound, newBoardSpace } from './boardgame';
+import { newDeal } from './deals';
+import { newRpgRound } from './rpg';
+import { newDice, newWheel } from './tools';
 
 const font = (id: string): MediaRef => ({ id, name: `${id}.ttf`, mime: 'font/ttf', size: 1, kind: 'font' });
 const css = (id: string) => `'${uploadedFamily(id)}', sans-serif`;
@@ -86,5 +91,58 @@ describe('the editor’s 🤫 Cards', () => {
     expect([mediaUsage(game).get('pic'), mediaUsage(game).get('bg')]).toEqual([1, 1]);
     delete game.cards;
     expect(mediaUsage(game).get('pic')).toBeUndefined();
+  });
+});
+
+describe('every 🤫 card in the game (allCardSlides)', () => {
+  it('finds a card in each place one is sent from, and none on an empty tile or a plain slide', () => {
+    const game = jeopardyGame();
+    const card = (n: string): Slide => ({ background: {}, elements: [{ ...newVideoEl(n), id: `v_${n}` }] });
+    const send = (n: string): Action => ({ id: `a_${n}`, do: 'card', slide: card(n) });
+    const board = game.rounds[0];
+    const final = game.rounds[1];
+    if (!isBoard(board) || !isFinal(final)) throw new Error('not a board and a Final');
+    board.categories[0].clues[0].cards = [{ id: 'tc', ...card('tile'), to: 'giver' }];
+    board.categories[0].clues[1].cards = [{ id: 'ec', ...card('empty'), to: 'giver' }];
+    board.categories[0].clues[1].empty = true;
+    board.categories[0].clues[2].questionSlide = card('slide');
+    final.cards = [{ id: 'fc', ...card('final'), to: 'playing' }];
+    game.cards = [{ id: 'sc', name: 'Tip', ...card('saved') }];
+    game.items = [{ id: 'it', name: 'Map', stackable: false, onUse: [send('item')] }];
+    const wheel = newWheel('Spin');
+    wheel.segments[0].actions = [send('wheel')];
+    const dice = newDice('Roll');
+    dice.totalOutcomes = [{ id: 'to', min: 1, max: 6, outcome: { label: 'Any', actions: [send('dice')] } }];
+    game.wheels = [wheel];
+    game.dice = [dice];
+    const deal = newDeal('Spies');
+    deal.parts[0].card = card('deal');
+    game.deals = [deal];
+    const rpg = newRpgRound(game, 'Quest');
+    const screen = game.worlds![0].maps[0].screens[0];
+    screen.slide.elements.push({ ...newImageEl('door'), id: 'door', role: { class: 'npc', actions: [send('rpg')] } });
+    screen.variants = [{ id: 'night', name: 'Night', slide: { background: {}, elements: [{ ...newImageEl('door'), id: 'door2', role: { class: 'npc', actions: [send('look')] } }] } }];
+    const bg = newBoardGameRound('Race');
+    const space = newBoardSpace(0, 0, 'Bonus');
+    space.onLand = [send('space')];
+    bg.spaces = [space];
+    game.rounds.push(rpg, bg);
+    const found = allCardSlides(game).flatMap((r) => r.slide.elements.flatMap((e) => (e.kind === 'video' ? [e.media] : [])));
+    expect(found.sort()).toEqual(['deal', 'dice', 'final', 'item', 'look', 'rpg', 'saved', 'space', 'tile', 'wheel']);
+    // (The deal's other part is a card too, with words only.)
+    expect(allCardSlides(game).filter((r) => r.where.startsWith('Deal: Spies'))).toHaveLength(2);
+    expect(allCardSlides(game).map((r) => r.where)).toContain('Card: Tip');
+  });
+
+  it('says where each of a file’s videos and sounds on cards starts and stops (not on other slides)', () => {
+    const game = jeopardyGame();
+    const board = game.rounds[0];
+    if (!isBoard(board)) throw new Error('not a board');
+    board.categories[0].clues[0].questionSlide.elements.push({ ...newVideoEl('clip'), startAt: 50 });
+    game.cards = [
+      { id: 'a', name: 'A', background: {}, elements: [{ ...newVideoEl('clip'), startAt: 12, endAt: 20 }, { ...newVideoEl('other'), startAt: 1 }] },
+      { id: 'b', name: 'B', background: {}, elements: [newVideoEl('clip')] },
+    ];
+    expect(cardUses(game, 'clip')).toEqual([{ start: 12, end: 20 }, {}]);
   });
 });

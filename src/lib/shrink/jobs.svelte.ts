@@ -33,7 +33,7 @@ export interface JobCtl {
 export type JobEnd = { done: string; media?: Id } | { failed: string } | { stopped: true };
 type Work = (ctl: JobCtl) => Promise<{ toast: string; media?: Id } | { failed: string }>;
 
-const state = $state<{ list: Job[]; ended: Record<string, JobEnd>; watched: string | null }>({ list: [], ended: {}, watched: null });
+const state = $state<{ list: Job[]; ended: Record<string, JobEnd>; watched: string[] }>({ list: [], ended: {}, watched: [] });
 const work = new Map<string, Work>();
 const stops = new Map<string, AbortController>();
 /** Jobs stopped with nothing to say (▶ Play stopped them: the game is starting). */
@@ -60,7 +60,12 @@ export const jobs = {
 
 /** A dialog shows this job: its end is said there, not in a toast (null: none). */
 export function watchJob(id: string | null): void {
-  state.watched = id;
+  state.watched = id ? [id] : [];
+}
+
+/** A dialog shows these jobs (a list of files at once): their ends are said there. */
+export function watchJobs(ids: string[]): void {
+  state.watched = [...ids];
 }
 
 /** The job working on file `media`, running or waiting (a file has one at a time). */
@@ -173,7 +178,7 @@ async function next(): Promise<void> {
   state.ended[j.id] = end;
   // (A dialog showing it says how it ended.)
   const quiet = quietly.delete(j.id);
-  if (state.watched !== j.id && !quiet) {
+  if (!state.watched.includes(j.id) && !quiet) {
     if ('done' in end) toast(end.done);
     else if ('failed' in end) toast(`🗜 ${end.failed}`);
     else toast('Stopped: nothing was changed.');
@@ -187,7 +192,7 @@ export function clearJobs(): void {
   for (const s of stops.values()) s.abort();
   state.list.splice(0);
   state.ended = {};
-  state.watched = null;
+  state.watched = [];
   work.clear();
   stops.clear();
   quietly.clear();

@@ -522,6 +522,23 @@ describe('🤫 Cards (the editor’s tab)', () => {
     vi.unstubAllGlobals();
   });
 
+  it('a video phones can’t play that 🗜 can make a copy of says so, with the file to copy; its copy clears the line', () => {
+    vi.stubGlobal('document', { createElement: () => ({ canPlayType: () => 'maybe' }) });
+    const game = jeopardyGame();
+    game.media.push({ id: 'mov', name: 'zfnqj.mov', mime: 'video/quicktime', size: 5000, kind: 'video' });
+    game.cards = [card('sc1', 'Tip', newTextEl('A secret'), { ...newVideoEl('mov'), y: 30 })];
+    const canShrink = (m: { kind: string }) => m.kind === 'video';
+    const said = (room = {}) => validate(game, room).filter((p) => p.tab === 'cards');
+    expect(said({ canShrink }).map((p) => [p.level, p.text, p.shrink])).toEqual([
+      ['warn', "🤫 Card “Tip” has a video phones can't play: make a copy they can play (🗜), or add it as MP4, WebM, MP3, OGG, WAV or M4A, or from a link", 'mov'],
+    ]);
+    // Where 🗜 can't: as before.
+    expect(said().map((p) => [p.text, p.shrink])).toEqual([["🤫 Card “Tip” has a video phones can't play: add it as MP4, WebM, MP3, OGG, WAV or M4A, or from a link", undefined]]);
+    game.media.push({ id: 'movc', name: 'zfnqj (phones).webm', mime: 'video/webm', size: 4000, kind: 'video', phoneCopy: { of: 'mov' } });
+    expect(said({ canShrink })).toEqual([]);
+    vi.unstubAllGlobals();
+  });
+
   it('notes a name that repeats what’s on the card: its words, its phone title or a file’s name (at least 3 letters)', () => {
     const game = jeopardyGame();
     game.media.push({ id: 'pic', name: 'spoon.png', mime: 'image/png', size: 10, kind: 'image' });

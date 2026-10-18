@@ -1,29 +1,82 @@
-// 🗜 A smaller copy for phones, made and put in the game (card-files spec §4.4): made outside the undo history (it takes
-// a while, and the host keeps working meanwhile), checked, stored, then put in as one step of its own, which Ctrl+Z
-// takes back. History labels and toasts never name the file: the pre-game screen and play show them on stream.
+// 🗜 A smaller copy for phones, made and put in the game (card-files spec §4.4, §4.7): made outside the undo history (it
+// takes a while, and the host keeps working meanwhile), checked, stored, then put in as one step of its own, which
+// Ctrl+Z takes back. History labels and toasts never name the file: the pre-game screen and play show them on stream.
 import { app } from '../app.svelte';
+import { fileType, SLOW_FILE_BYTES } from '../buzzproto';
 import { whileWriting } from '../desktop.svelte';
 import { step } from '../history.svelte';
-import { dropPhoneCopies, formatBytes, getBlob, putMedia, restoreStash } from '../media.svelte';
+import { dropPhoneCopies, formatBytes, getBlob, mediaUrls, putMedia, restoreStash } from '../media.svelte';
 import { uniqueMediaName } from '../medianame';
 import { newId, type Game, type Id, type MediaRef } from '../model';
-import { phoneCopyOf } from '../phonecard';
+import { phoneCopyOf, phonesGetLink } from '../phonecard';
+import { allCardSlides, slideMediaIds } from '../usage';
+import { readFacts } from './facts';
 import { gifInfo, gifToVideo } from './gif';
-import { addJob, jobFor } from './jobs.svelte';
-import { copyName, gifSize, madeLabel, NOT_SMALLER, planGif, removedLabel, smallEnough, type CopyOf, type GifInfo } from './plan';
-import { encodersFor } from './probe';
+import { addJob, jobFor, type JobCtl } from './jobs.svelte';
+import {
+  CANT_READ_FILE,
+  CANT_READ_VIDEO,
+  cardSpan,
+  COPY_MAX_SHARE,
+  copyName,
+  gifSize,
+  madeLabel,
+  NOT_SMALLER,
+  planGif,
+  removedLabel,
+  smallEnough,
+  SOUND_TOO_LONG,
+  videoChoices,
+  type AvRead,
+  type CopyOf,
+  type CopyPlan,
+  type GifInfo,
+  type Span,
+} from './plan';
+import { encodersFor, probe, type Encoders } from './probe';
+import { checkMade, convertBlob, RunError, type Made, type Want } from './run';
+import { soundHere } from './sound';
 
 export const CAME_OUT_WRONG = 'The copy didn’t come out right: nothing was changed.';
 export const CHANGED = 'The file changed while the copy was being made: nothing was changed.';
+const NOT_STORED = 'That file isn’t stored in this browser: nothing was changed.';
 
 /** A GIF (by its type, else its name). */
 export const isGifRef = (m: Pick<MediaRef, 'kind' | 'mime' | 'name'>): boolean => m.kind === 'image' && (m.mime === 'image/gif' || /\.gif$/i.test(m.name));
 
-/** Whether 🗜 makes copies of this file: a GIF stored in the game (not a link, nor a copy itself). */
-export const shrinkable = (m: MediaRef): boolean => !m.url && !m.phoneCopy && isGifRef(m);
+/** Whether 🗜 makes copies of this file: a GIF, a video or a sound stored in the game (not a link, nor a copy itself). */
+export const shrinkable = (m: MediaRef): boolean => !m.url && !m.phoneCopy && (isGifRef(m) || m.kind === 'video' || m.kind === 'audio');
+
+/** Phones play this file as it is: its type is one they take (a GIF always is). */
+export const phonesTake = (m: Pick<MediaRef, 'kind' | 'mime' | 'name'>): boolean => isGifRef(m) || !!fileType(m.mime)?.startsWith(`${m.kind}/`);
 
 /** What a file is, for History and toasts ("a GIF"). */
 export const copyOfWhat = (m: Pick<MediaRef, 'kind' | 'mime' | 'name'>): CopyOf => (isGifRef(m) ? 'GIF' : m.kind === 'audio' ? 'sound' : 'video');
+
+/**
+ * The files on 🤫 cards that are big for phones (over SLOW_FILE_BYTES, or over what the buzzer server takes) and have no
+ * copy yet, that 🗜 can make one of here: 🖼 Media's "🗜 3 files are big for phones" (one step a file).
+ */
+export function bigForPhones(game: Game, fileBytes: number): MediaRef[] {
+  const onCards = new Set(allCardSlides(game).flatMap(({ slide }) => slideMediaIds(slide)));
+  return game.media.filter(
+    (m) => onCards.has(m.id) && shrinkable(m) && !!mediaUrls[m.id] && !phoneCopyOf(game, m) && !phonesGetLink(m) && !jobFor(m.id) && m.size > Math.min(SLOW_FILE_BYTES, fileBytes),
+  );
+}
+
+/**
+ * A video or sound read for 🗜's dialog (`uses`: where its 🤫 cards' items start and stop): what's in it (its length
+ * worked out when its header doesn't say), what this browser makes, and the encoders there are at each choice's size.
+ */
+export async function readForCopy(ref: MediaRef, blob: Blob, uses: { start?: number; end?: number }[]): Promise<AvRead> {
+  const kind = ref.kind === 'audio' ? 'audio' : 'video';
+  const can = await probe();
+  const facts = await readFacts(blob, { duration: 'compute', fps: kind === 'video' });
+  const enc: Record<string, Encoders> = {};
+  if (kind === 'video' && facts.video && can.ok)
+    for (const c of videoChoices(facts.video.width, facts.video.height)) enc[`${c.width}×${c.height}`] = await encodersFor(c.width, c.height, c.bps);
+  return { kind, facts, can, playable: phonesTake(ref), span: cardSpan(uses, facts.seconds), enc };
+}
 
 /** What a copy made and stored is (its bytes are under `id` already). */
 export interface StoredCopy {
@@ -57,6 +110,10 @@ export function applyPhoneCopy(game: Game, of: Id, made: StoredCopy, range?: { f
   return game.media[game.media.length - 1];
 }
 
+/** A copy's range as MediaRef.phoneCopy keeps it (none: the whole file). */
+const rangeOf = (span: Span | null): { from?: number; to?: number | null } | undefined =>
+  span ? { ...(span.from > 0 ? { from: span.from } : {}), ...(span.to !== null ? { to: span.to } : span.from > 0 ? { to: null } : {}) } : undefined;
+
 /** As a step of its own: file `of`'s copy for phones goes (phones get the file itself again). */
 export function removePhoneCopy(game: Game, of: Id): void {
   const ref = game.media.find((m) => m.id === of);
@@ -64,38 +121,67 @@ export function removePhoneCopy(game: Game, of: Id): void {
   step(removedLabel(copyOfWhat(ref)), () => dropPhoneCopies(game, of), { place: { tab: 'media', media: of } });
 }
 
-/** A copy plays here: a video element nobody sees opens it within 10 s, with a picture, about as long as it should be. */
-function playsHere(blob: Blob, seconds: number): Promise<boolean> {
-  return new Promise((resolve) => {
-    const v = document.createElement('video');
-    const url = URL.createObjectURL(blob);
-    let done = false;
-    const end = (ok: boolean) => {
-      if (done) return;
-      done = true;
-      clearTimeout(timer);
-      v.removeAttribute('src');
-      v.load();
-      URL.revokeObjectURL(url);
-      resolve(ok);
-    };
-    const timer = setTimeout(() => end(false), 10_000);
-    v.muted = true;
-    v.preload = 'metadata';
-    v.onloadedmetadata = () => end(v.videoWidth > 0 && (!Number.isFinite(v.duration) || Math.abs(v.duration - seconds) <= 0.5));
-    v.onerror = () => end(false);
-    v.src = url;
-  });
+const stopped = () => new DOMException('Stopped', 'AbortError');
+
+/** Why a copy couldn't be made, as the host is told. */
+function runFailed(e: RunError, what: CopyOf): string {
+  switch (e.reason) {
+    case 'unreadable':
+      return `${CANT_READ_FILE}: nothing was changed.`;
+    case 'undecodable':
+      return what === 'sound' ? 'This browser can’t read this sound’s format. Add it as MP3 or M4A, or from a link: nothing was changed.' : `${CANT_READ_VIDEO}: nothing was changed.`;
+    case 'no-encoder':
+      return 'This browser can’t make this copy: nothing was changed.';
+    case 'too-long':
+      return `${SOUND_TOO_LONG}: nothing was changed.`;
+    default:
+      return CAME_OUT_WRONG;
+  }
 }
 
-const stopped = () => new DOMException('Stopped', 'AbortError');
+/**
+ * The end of every copy's job: `made` checked (as `want` says), stored, then put in as one step, unless the file or
+ * the game changed meanwhile. Returns the job's end.
+ */
+async function putIn(
+  ctl: JobCtl,
+  c: { of: Id; src: Blob; gameId: string; what: CopyOf; made: Made; want: Want; ext: string; range: Span | null; playable: boolean },
+): Promise<{ toast: string; media: Id } | { failed: string }> {
+  const { of, src, gameId, made } = c;
+  ctl.phase('checking');
+  const bad = await checkMade(made, c.want);
+  if (bad) {
+    console.warn('A copy for phones came out wrong:', bad);
+    return { failed: CAME_OUT_WRONG };
+  }
+  if (ctl.signal.aborted) throw stopped();
+  // Still the editor, the same game, and the very file it was made from.
+  const same = () => app.screen === 'editor' && !app.editGame && app.game.id === gameId && app.game.media.some((m) => m.id === of) && getBlob(of) === src;
+  if (!same()) return { failed: CHANGED };
+  ctl.phase('storing');
+  const id = newId();
+  await whileWriting(() => putMedia(id, made.blob));
+  if (ctl.signal.aborted || !same()) {
+    await restoreStash(id, null);
+    if (ctl.signal.aborted) throw stopped();
+    return { failed: CHANGED };
+  }
+  const copy: StoredCopy = { id, mime: made.mime, size: made.blob.size, ext: c.ext, width: made.width, height: made.height };
+  step(madeLabel(c.what, c.playable), () => applyPhoneCopy(app.game, of, copy, rangeOf(c.range)), { place: { tab: 'media', media: of } });
+  const size = formatBytes(made.blob.size);
+  return {
+    toast: c.playable ? `🗜 Phones get the smaller copy now: ${size} instead of ${formatBytes(src.size)} (Ctrl+Z takes it back)` : `🗜 Phones get a copy they can play now: ${size} (Ctrl+Z takes it back)`,
+    media: id,
+  };
+}
 
 /**
  * 🗜 Make a smaller copy of file `of` (in the game in the editor) for phones: queued as a job, which puts the copy in
- * as one step when it's done, unless the file or the game changed meanwhile. Returns the job's id (null: it isn't a file
- * 🗜 makes copies of).
+ * as one step when it's done, unless the file or the game changed meanwhile. A GIF's is worked out here; a video's or a
+ * sound's is `plan` (the dialog's choice). Returns the job's id (null: it isn't a file 🗜 makes copies of, or a video or
+ * sound with no plan).
  */
-export function queuePhoneCopy(of: Id): string | null {
+export function queuePhoneCopy(of: Id, plan?: CopyPlan): string | null {
   const game = app.game;
   const ref = game.media.find((m) => m.id === of);
   if (!ref || !shrinkable(ref)) return null;
@@ -103,40 +189,47 @@ export function queuePhoneCopy(of: Id): string | null {
   if (had) return had.id;
   const gameId = game.id;
   const what = copyOfWhat(ref);
+  if (what === 'GIF')
+    return addJob({ kind: 'phone', what, media: of, gameId, copying: false }, async (ctl) => {
+      const src = getBlob(of);
+      if (!src) return { failed: NOT_STORED };
+      let bytes: Uint8Array;
+      let info: GifInfo;
+      try {
+        bytes = new Uint8Array(await src.arrayBuffer());
+        info = gifInfo(bytes);
+      } catch {
+        return { failed: 'The app can’t read this GIF: nothing was changed.' };
+      }
+      if (ctl.signal.aborted) throw stopped();
+      const size = gifSize(info.width, info.height);
+      const p = planGif(info, await encodersFor(size.width, size.height));
+      if ('refuse' in p) return { failed: p.refuse };
+      ctl.phase('working');
+      const made = await gifToVideo(bytes, info, p, { signal: ctl.signal, onProgress: ctl.progress });
+      if (!smallEnough(made.blob.size, src.size)) return { failed: NOT_SMALLER };
+      return putIn(ctl, { of, src, gameId, what, made, want: { seconds: made.seconds, width: p.width, height: p.height, sound: false }, ext: p.ext, range: null, playable: true });
+    });
+  if (!plan) return null;
   return addJob({ kind: 'phone', what, media: of, gameId, copying: false }, async (ctl) => {
     const src = getBlob(of);
-    if (!src) return { failed: 'That file isn’t stored in this browser: nothing was changed.' };
-    let bytes: Uint8Array;
-    let info: GifInfo;
-    try {
-      bytes = new Uint8Array(await src.arrayBuffer());
-      info = gifInfo(bytes);
-    } catch {
-      return { failed: 'The app can’t read this GIF: nothing was changed.' };
-    }
-    if (ctl.signal.aborted) throw stopped();
-    const size = gifSize(info.width, info.height);
-    const plan = planGif(info, await encodersFor(size.width, size.height));
-    if ('refuse' in plan) return { failed: plan.refuse };
+    if (!src) return { failed: NOT_STORED };
     ctl.phase('working');
-    const made = await gifToVideo(bytes, info, plan, { signal: ctl.signal, onProgress: ctl.progress });
-    if (!smallEnough(made.blob.size, src.size)) return { failed: NOT_SMALLER };
-    ctl.phase('checking');
-    if (!(await playsHere(made.blob, made.seconds))) return { failed: CAME_OUT_WRONG };
-    if (ctl.signal.aborted) throw stopped();
-    // Still the editor, the same game, and the very file it was made from.
-    const same = () => app.screen === 'editor' && !app.editGame && app.game.id === gameId && app.game.media.some((m) => m.id === of) && getBlob(of) === src;
-    if (!same()) return { failed: CHANGED };
-    ctl.phase('storing');
-    const id = newId();
-    await whileWriting(() => putMedia(id, made.blob));
-    if (ctl.signal.aborted || !same()) {
-      await restoreStash(id, null);
-      if (ctl.signal.aborted) throw stopped();
-      return { failed: CHANGED };
+    let made: Made;
+    try {
+      made = plan.here ? await soundHere(src, { ...plan.here, mime: plan.mime, range: plan.range }, ctl) : await convertBlob(src, plan.run, plan.mime, ctl);
+    } catch (e) {
+      if (e instanceof RunError) {
+        console.warn('A copy for phones couldn’t be made:', e.reason, e.message);
+        return { failed: runFailed(e, what) };
+      }
+      throw e;
     }
-    const copy: StoredCopy = { id, mime: made.mime, size: made.blob.size, ext: plan.ext, width: made.width, height: made.height };
-    step(madeLabel(what), () => applyPhoneCopy(app.game, of, copy), { place: { tab: 'media', media: of } });
-    return { toast: `🗜 Phones get the smaller copy now: ${formatBytes(made.blob.size)} instead of ${formatBytes(src.size)} (Ctrl+Z takes it back)`, media: id };
+    if (ctl.signal.aborted) throw stopped();
+    // (One phones can play as it is has to be worth it.)
+    if (plan.playable && !(made.blob.size < COPY_MAX_SHARE * src.size))
+      return { failed: `It came out hardly smaller (${formatBytes(made.blob.size)} of ${formatBytes(src.size)}): nothing was changed.` };
+    const want: Want = { ...plan.out, seconds: plan.out.seconds ?? made.seconds };
+    return putIn(ctl, { of, src, gameId, what, made, want, ext: plan.ext, range: plan.range, playable: plan.playable });
   });
 }

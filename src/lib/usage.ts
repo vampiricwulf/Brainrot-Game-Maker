@@ -64,6 +64,37 @@ export function allSlides(game: Game, { empty = false } = {}): SlideRef[] {
   return out;
 }
 
+/**
+ * Every 🤫 card in the game, what phones get (the lists validate walks): tiles' and Finals' cards, 🤫 Cards, deals'
+ * parts' cards, and the cards that items', wheel slices', dice's, RPG objects' and board spaces' buttons send.
+ */
+export function allCardSlides(game: Game): SlideRef[] {
+  const out: SlideRef[] = [];
+  const sent = (actions: Action[] | undefined, where: string) => {
+    for (const a of actions ?? []) if (a.do === 'card') out.push({ slide: a.slide, where });
+  };
+  game.rounds.forEach((r, ri) => {
+    if (isBoard(r))
+      for (const c of r.categories)
+        c.clues.forEach((cl, i) => {
+          if (cl.empty) return;
+          cardSlides(cl).forEach((slide, j) => out.push({ slide, where: `${roundName(r, ri)} · ${categoryLabel(c)} #${i + 1} (${clueCardWords(slide, j)})` }));
+        });
+    else if (isFinal(r)) cardSlides(r).forEach((slide, j) => out.push({ slide, where: `${roundName(r, ri)} (${clueCardWords(slide, j)})` }));
+    else if (isBoardGame(r)) for (const sp of r.spaces) sent([...(sp.onPass ?? []), ...(sp.onLand ?? [])], `${roundName(r, ri)} · ${sp.name}`);
+  });
+  for (const w of game.worlds ?? [])
+    for (const m of w.maps)
+      for (const sc of m.screens)
+        for (const look of [{ name: '', slide: sc.slide }, ...(sc.variants ?? [])])
+          for (const el of look.slide.elements) sent(el.role?.actions, `${w.name} · ${m.name} · ${sc.name}${look.name ? ` (${look.name})` : ''} · ${el.name || 'object'}`);
+  for (const { name, outcome: o } of allOutcomes(game)) sent(o.actions, `${name}: ${o.label}`);
+  for (const it of game.items ?? []) sent(it.onUse, `Item: ${it.name}`);
+  for (const d of game.deals ?? []) d.parts.forEach((p, i) => out.push({ slide: p.card, where: `Deal: ${d.name} (${p.name.trim() || `part ${i + 1}`})` }));
+  (game.cards ?? []).forEach((c, i) => out.push({ slide: c, where: `Card: ${savedCardName(c, i)}` }));
+  return out;
+}
+
 /** Slides inside a list of actions (pop-ups, 🤫 cards and questions). */
 function actionSlides(actions: Action[] | undefined): Slide[] {
   const out: Slide[] = [];

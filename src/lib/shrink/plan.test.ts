@@ -1,7 +1,44 @@
-// What a GIF's 🗜 copy comes out as (card-files spec §4.6): its name, size, codec, bitrate and when it's refused.
+// What a 🗜 copy comes out as (card-files spec §4.6, §4.7): a GIF's name, size, codec, bitrate and when it's refused;
+// a video's sizes and their estimates, the part the cards play, and how a video's and a sound's copies are made.
 import { describe, expect, it } from 'vitest';
-import { copyName, evenBelow, formatLine, gifBitrate, gifSize, leftText, madeLabel, planGif, removedLabel, smallEnough, TOO_LONG, typeWord } from './plan';
-import { NO_WEBCODECS } from './probe';
+import { SLOW_FILE_BYTES } from '../buzzproto';
+import type { MediaFacts } from './facts';
+import {
+  avDefault,
+  CANT_MAKE_SOUND,
+  CANT_READ_FILE,
+  CANT_READ_VIDEO,
+  cardSpan,
+  clockTenths,
+  clockText,
+  copyName,
+  estimateBytes,
+  evenBelow,
+  formatLine,
+  gifBitrate,
+  gifSize,
+  leftText,
+  lengthText,
+  madeLabel,
+  NO_PICTURE,
+  NOT_MUCH_SMALLER,
+  OPUS_NOTE,
+  planGif,
+  planSoundCopy,
+  planVideoCopy,
+  removedLabel,
+  smallEnough,
+  soundBps,
+  SOUND_TOO_LONG,
+  spanText,
+  TOO_LONG,
+  typeWord,
+  videoChoices,
+  videoOptions,
+  type AvRead,
+  type CopyPlan,
+} from './plan';
+import { NO_WEBCODECS, type Can } from './probe';
 
 const ALL = { avc: true, vp9: true, vp8: true };
 const WEBM = { avc: false, vp9: true, vp8: true };
@@ -72,10 +109,279 @@ describe('words', () => {
 
   it('never name the file in History', () => {
     expect(madeLabel('GIF')).toBe('Made a smaller copy of a GIF for phones');
+    expect(madeLabel('video', false)).toBe('Made a copy of a video that phones can play');
     expect(removedLabel('video')).toBe('Removed a video’s smaller copy for phones');
   });
 
   it('say about how long is left', () => {
     expect([leftText(3), leftText(41), leftText(54), leftText(170)]).toEqual(['about 5 s left', 'about 40 s left', 'about 55 s left', 'about 3 min left']);
+  });
+});
+
+// ---------- Videos and sounds ----------
+
+const MiB = 1024 * 1024;
+const track = { str: null, decodes: true, bps: null, cpt: true };
+/** A video's facts: `w`×`h`, `seconds` long, `size` bytes, with an AAC sound unless told otherwise. */
+const video = (w: number, h: number, seconds: number, size: number, more: Partial<MediaFacts> = {}): MediaFacts => ({
+  box: 'mp4',
+  seconds,
+  size,
+  video: { ...track, codec: 'avc', width: w, height: h, rotation: 0, hdr: false },
+  audio: { ...track, codec: 'aac', bps: 128_000, channels: 2, label: null },
+  moreAudio: 0,
+  subtitles: false,
+  ...more,
+});
+const sound = (seconds: number, size: number, more: Partial<MediaFacts> = {}): MediaFacts => ({
+  box: 'wav',
+  seconds,
+  size,
+  video: null,
+  audio: { ...track, codec: 'pcm-s16', channels: 2, label: null },
+  moreAudio: 0,
+  subtitles: false,
+  ...more,
+});
+const CAN: Can = { ok: true, aac: true, opus: true };
+const OPUS: Can = { ok: true, aac: false, opus: true };
+const ok = (p: CopyPlan | { refuse: string }): CopyPlan => {
+  if ('refuse' in p) throw new Error(`refused: ${p.refuse}`);
+  return p;
+};
+
+describe('a video’s sizes', () => {
+  it('are 720p, 480p and 360p by the long side, even, never bigger than the video', () => {
+    expect(videoChoices(1920, 1080).map((c) => [c.name, c.width, c.height, c.bps])).toEqual([
+      ['Phones', 1280, 720, 2_500_000],
+      ['Small', 854, 480, 1_200_000],
+      ['Tiny', 640, 360, 600_000],
+    ]);
+    // Standing up: by its long side too.
+    expect(videoChoices(1080, 1920).map((c) => [c.width, c.height])).toEqual([
+      [720, 1280],
+      [480, 854],
+      [360, 640],
+    ]);
+  });
+
+  it('keep one at the video’s own size: the smallest of those as big as it or bigger (its bitrate suits it best)', () => {
+    expect(videoChoices(854, 480).map((c) => [c.name, c.width, c.height])).toEqual([
+      ['Small', 854, 480],
+      ['Tiny', 640, 360],
+    ]);
+    expect(videoChoices(700, 394).map((c) => [c.name, c.width, c.height])).toEqual([
+      ['Small', 700, 394],
+      ['Tiny', 640, 360],
+    ]);
+    expect(videoChoices(321, 241).map((c) => [c.name, c.width, c.height])).toEqual([['Tiny', 320, 240]]);
+  });
+
+  it('come out about (picture + sound) × length / 8, with 3% for the file', () => {
+    expect(estimateBytes(2_628_000, 60)).toBe(Math.round(((2_628_000 * 60) / 8) * 1.03));
+    // A sound copied as it is costs its own bitrate; another is made again at 128 kbps (96 for one channel).
+    expect(soundBps(video(1, 1, 1, 1))).toBe(128_000);
+    expect(soundBps(video(1, 1, 1, 1, { audio: { ...track, codec: 'opus', bps: 64_000, channels: 2, label: null } }))).toBe(64_000);
+    expect(soundBps(video(1, 1, 1, 1, { audio: { ...track, codec: 'mp3', bps: 320_000, channels: 2, label: null } }))).toBe(128_000);
+    expect(soundBps(video(1, 1, 1, 1, { audio: { ...track, codec: 'ac3', bps: null, channels: 1, label: null } }))).toBe(96_000);
+    expect(soundBps(video(1, 1, 1, 1, { audio: null }))).toBe(0);
+  });
+});
+
+describe('videoOptions: which size is picked', () => {
+  const opts = { fileBytes: 90 * MiB, playable: true };
+
+  it('the biggest under 0.9 × 16 MB; else the biggest under 0.9 × what the server takes; else the smallest, still too big', () => {
+    // 1 minute: 720p is about 20 MB, 480p about 10.
+    const minute = video(1920, 1080, 60, 400 * MiB);
+    const a = videoOptions(minute, 60, opts);
+    if ('refuse' in a) throw new Error('refused');
+    expect(a.choices[a.pick].name).toBe('Small');
+    expect(a.tooBig).toBe(false);
+    // 10 minutes: none under 14.4 MB; 720p is under 0.9 × 900 MB.
+    const b = videoOptions(video(1920, 1080, 600, 4000 * MiB), 600, { ...opts, fileBytes: 900 * MiB });
+    if ('refuse' in b) throw new Error('refused');
+    expect([b.choices[b.pick].name, b.tooBig]).toEqual(['Phones', false]);
+    // A server that takes 16 MB, and an hour: even 360p is over.
+    const c = videoOptions(video(1920, 1080, 3600, 8000 * MiB), 3600, { ...opts, fileBytes: 16 * MiB });
+    if ('refuse' in c) throw new Error('refused');
+    expect([c.choices[c.pick].name, c.tooBig]).toEqual(['Tiny', true]);
+    expect(c.choices.every((x) => x.estimate > 0.9 * SLOW_FILE_BYTES)).toBe(true);
+  });
+
+  it('leaves out sizes not much smaller than the file (under 0.8 of it), unless phones can’t play it as it is', () => {
+    // 60 s at 3 Mbps is 22.5 MB: 720p (about 20 MB) is left out.
+    const lean = video(1280, 720, 60, 22.5 * MiB);
+    const a = videoOptions(lean, 60, opts);
+    if ('refuse' in a) throw new Error('refused');
+    expect(a.choices.map((x) => x.name)).toEqual(['Small', 'Tiny']);
+    const all = videoOptions(lean, 60, { ...opts, playable: false });
+    if ('refuse' in all) throw new Error('refused');
+    expect(all.choices.map((x) => x.name)).toEqual(['Phones', 'Small', 'Tiny']);
+    // None smaller enough: nothing to make.
+    expect(videoOptions(video(640, 360, 60, 4 * MiB), 60, opts)).toEqual({ refuse: NOT_MUCH_SMALLER });
+  });
+
+  it('the part the cards play counts: its estimates are for that part', () => {
+    const a = videoOptions(video(1280, 720, 100, 100 * MiB), 10, opts);
+    if ('refuse' in a) throw new Error('refused');
+    expect(a.choices[0].estimate).toBe(estimateBytes(2_500_000 + 128_000, 10));
+  });
+
+  it('refuses a file it can’t read, one with no picture, or one this browser can’t decode', () => {
+    expect(videoOptions({ ...video(1, 1, 1, 1), box: null }, 1, opts)).toEqual({ refuse: CANT_READ_FILE });
+    expect(videoOptions(video(1, 1, 1, 1, { video: null }), 1, opts)).toEqual({ refuse: NO_PICTURE });
+    const hevc = video(1920, 1080, 60, 400 * MiB);
+    hevc.video = { ...hevc.video!, codec: 'hevc', decodes: false };
+    expect(videoOptions(hevc, 60, opts)).toEqual({ refuse: CANT_READ_VIDEO });
+  });
+});
+
+describe('cardSpan: the part of a file its cards play', () => {
+  it('runs from the earliest start to the latest stop of every use', () => {
+    expect(cardSpan([{ start: 12, end: 20 }, { start: 30, end: 45 }], 92)).toEqual({ span: { from: 12, to: 45 }, ticked: true });
+    expect(cardSpan([{ start: 1, end: 3 }], 4)).toEqual({ span: { from: 1, to: 3 }, ticked: true });
+    expect(cardSpan([{ end: 30 }], 100)).toEqual({ span: { from: 0, to: 30 }, ticked: true });
+  });
+
+  it('runs to the end when one plays to the end (or its Stop at isn’t after its Start at), and isn’t ticked then', () => {
+    expect(cardSpan([{ start: 12, end: 20 }, { start: 30 }], 92)).toEqual({ span: { from: 12, to: null }, ticked: false });
+    expect(cardSpan([{ start: 12, end: 5 }], 92)).toEqual({ span: { from: 12, to: null }, ticked: false });
+    // Stopping at the very end is to the end.
+    expect(cardSpan([{ start: 12, end: 91.98 }], 92)).toEqual({ span: { from: 12, to: null }, ticked: false });
+  });
+
+  it('is ticked only when the part is under 80% of the file, and when the file’s length is known', () => {
+    expect(cardSpan([{ start: 5, end: 84.9 }], 100)?.ticked).toBe(true);
+    expect(cardSpan([{ start: 5, end: 85 }], 100)?.ticked).toBe(false);
+    expect(cardSpan([{ start: 5, end: 30 }], null)).toEqual({ span: { from: 5, to: 30 }, ticked: false });
+  });
+
+  it('is nothing when the cards play all of it, or there are none', () => {
+    expect(cardSpan([], 100)).toBeNull();
+    expect(cardSpan([{}], 100)).toBeNull();
+    expect(cardSpan([{ start: 0.04 }], 100)).toBeNull();
+    expect(cardSpan([{ start: 5, end: 30 }, {}], 100)).toBeNull();
+  });
+
+  it('is said in minutes and seconds', () => {
+    expect([clockText(12), clockText(92), clockText(3723), clockText(59.6)]).toEqual(['0:12', '1:32', '1:02:03', '1:00']);
+    expect([clockTenths(12.4), clockTenths(12), clockTenths(1.25)]).toEqual(['0:12.4', '0:12', '0:01.3']);
+    expect([lengthText(2.4), lengthText(33), lengthText(92)]).toEqual(['2.4 s', '33 s', '1:32']);
+    expect(spanText({ from: 12, to: 45 }, 92)).toBe('0:12 → 0:45 (33 s)');
+    expect(spanText({ from: 12, to: null }, 80)).toBe('0:12 → the end (1:08)');
+    expect(spanText({ from: 1.5, to: 3 }, null)).toBe('0:01.5 → 0:03 (1.5 s)');
+  });
+});
+
+describe('planVideoCopy', () => {
+  const big = video(1920, 1080, 60, 400 * MiB);
+  const [phones, small] = videoChoices(1920, 1080);
+  const ALL = { avc: true, vp9: true, vp8: true };
+
+  it('makes an MP4 (H.264) with the AAC sound copied as it is, a key frame every 2 s', () => {
+    const p = ok(planVideoCopy(big, CAN, ALL, small, null, true));
+    expect(p.run).toEqual({
+      box: 'mp4',
+      video: { width: 854, height: 480, fit: 'fill', codec: 'avc', bitrate: 1_200_000, keyFrameInterval: 2, forceTranscode: true },
+      audio: {},
+      copy: { shiftTolerance: 0.1 },
+    });
+    expect([p.mime, p.ext, p.range]).toEqual(['video/mp4', 'mp4', null]);
+    expect(p.out).toEqual({ seconds: 60, width: 854, height: 480, sound: true });
+    expect(p.estimate).toBe(estimateBytes(1_200_000 + 128_000, 60));
+    expect(p.format).toBe('Made as an MP4 (H.264, AAC), which every phone plays.');
+  });
+
+  it('makes another sound AAC for an MP4, at 128 kbps (96 for one channel), 2 channels at most', () => {
+    const opus = video(1920, 1080, 60, 400 * MiB, { audio: { ...track, codec: 'opus', bps: null, channels: 6, label: null } });
+    expect(ok(planVideoCopy(opus, CAN, ALL, small, null, true)).run.audio).toEqual({ codec: 'aac', bitrate: 128_000, forceTranscode: true, numberOfChannels: 2 });
+    const mono = video(1920, 1080, 60, 400 * MiB, { audio: { ...track, codec: 'mp3', bps: null, channels: 1, label: null } });
+    expect(ok(planVideoCopy(mono, CAN, ALL, small, null, true)).run.audio).toEqual({ codec: 'aac', bitrate: 96_000, forceTranscode: true });
+    expect(ok(planVideoCopy(video(1920, 1080, 60, 1, { audio: null }), CAN, ALL, small, null, true))).toMatchObject({ format: 'Made as an MP4 (H.264), which every phone plays.', out: { sound: false } });
+  });
+
+  it('without H.264 (or AAC for its sound): a WebM, VP9 else VP8, its Opus or Vorbis sound copied, else made Opus', () => {
+    // (Its AAC sound would be copied into an MP4: H.264 needs no AAC encoder then.)
+    expect(ok(planVideoCopy(big, OPUS, ALL, phones, null, true)).run).toMatchObject({ box: 'mp4', video: { codec: 'avc' }, audio: {} });
+    const p = ok(planVideoCopy(big, OPUS, { avc: false, vp9: true, vp8: true }, phones, null, true));
+    expect(p.run).toMatchObject({ box: 'webm', video: { codec: 'vp9', width: 1280, height: 720 }, audio: { codec: 'opus', bitrate: 128_000 } });
+    expect([p.mime, p.ext]).toEqual(['video/webm', 'webm']);
+    expect(p.format).toMatch(/^Made as a WebM \(VP9, Opus\)\. This browser makes WebM videos: some iPhones may not play them\./);
+    const vorbis = video(1920, 1080, 60, 1, { audio: { ...track, codec: 'vorbis', bps: null, channels: 2, label: null } });
+    expect(ok(planVideoCopy(vorbis, OPUS, { avc: false, vp9: false, vp8: true }, phones, null, true)).run).toMatchObject({ video: { codec: 'vp8' }, audio: {} });
+    // A sound it can't make Opus of, or no video encoder at all.
+    expect(planVideoCopy(big, { ok: true, aac: true, opus: false }, { avc: false, vp9: true, vp8: true }, phones, null, true)).toEqual({ refuse: CANT_MAKE_SOUND });
+    expect(planVideoCopy(big, CAN, { avc: false, vp9: false, vp8: false }, phones, null, true)).toEqual({ refuse: NO_WEBCODECS });
+    expect(planVideoCopy(big, { ok: false, aac: false, opus: false, why: NO_WEBCODECS }, ALL, phones, null, true)).toEqual({ refuse: NO_WEBCODECS });
+  });
+
+  it('holds only the part the cards play when asked: trimmed there, as long as that part', () => {
+    const p = ok(planVideoCopy(big, CAN, ALL, small, { from: 12, to: 45 }, true));
+    expect(p.run.trim).toEqual({ start: 12, end: 45 });
+    expect([p.out.seconds, p.range]).toEqual([33, { from: 12, to: 45 }]);
+    expect(p.estimate).toBe(estimateBytes(1_200_000 + 128_000, 33));
+    const end = ok(planVideoCopy(big, CAN, ALL, small, { from: 12, to: null }, true));
+    expect([end.run.trim, end.out.seconds]).toEqual([{ start: 12 }, 48]);
+  });
+
+  it('at most 30 frames a second', () => {
+    const fast = { ...big, video: { ...big.video!, fps: 60 } };
+    expect(ok(planVideoCopy(fast, CAN, ALL, small, null, true)).run.video?.frameRate).toBe(30);
+    const film = { ...big, video: { ...big.video!, fps: 24 } };
+    expect(ok(planVideoCopy(film, CAN, ALL, small, null, true)).run.video).not.toHaveProperty('frameRate');
+  });
+});
+
+describe('planSoundCopy', () => {
+  it('makes AAC in an M4A where it can, else Opus in an OGG, at 128 kbps (96 for one channel)', () => {
+    const p = ok(planSoundCopy(sound(60, 10 * MiB), CAN, null, true));
+    expect(p.run).toEqual({ box: 'm4a', audio: { codec: 'aac', bitrate: 128_000, forceTranscode: true } });
+    expect([p.mime, p.ext, p.estimate, p.format]).toEqual(['audio/mp4', 'm4a', estimateBytes(128_000, 60), 'Made as an M4A (AAC), which every phone plays.']);
+    const o = ok(planSoundCopy(sound(60, 10 * MiB, { audio: { ...track, codec: 'flac', channels: 1, label: null } }), OPUS, null, false));
+    expect(o.run).toEqual({ box: 'ogg', audio: { codec: 'opus', bitrate: 96_000, forceTranscode: true } });
+    expect([o.mime, o.ext, o.format]).toEqual(['audio/ogg', 'ogg', `Made as an OGG (Opus). ${OPUS_NOTE}`]);
+    expect(planSoundCopy(sound(60, 10 * MiB), { ok: true, aac: false, opus: false }, null, true)).toEqual({ refuse: NO_WEBCODECS });
+  });
+
+  it('leaves a picture out, keeps 2 channels at most, and holds only the part the cards play when asked', () => {
+    const withArt = sound(60, 10 * MiB, { video: { ...track, codec: 'avc', width: 300, height: 300, rotation: 0, hdr: false }, audio: { ...track, codec: 'flac', channels: 6, label: null } });
+    const p = ok(planSoundCopy(withArt, CAN, { from: 3, to: 20 }, true));
+    expect(p.run).toEqual({ box: 'm4a', video: { discard: true }, audio: { codec: 'aac', bitrate: 128_000, forceTranscode: true, numberOfChannels: 2 }, trim: { start: 3, end: 20 } });
+    expect(p.out).toEqual({ seconds: 17, sound: true });
+  });
+
+  it('is offered over 1 MB when it comes out under 0.75 of the sound, or whenever phones can’t play the sound', () => {
+    // An MP3 of 128 kbps would come out as big.
+    const mp3 = sound(120, 120 * 16_000, { box: 'mp3', audio: { ...track, codec: 'mp3', channels: 2, label: null } });
+    expect(planSoundCopy(mp3, CAN, null, true)).toEqual({ refuse: NOT_MUCH_SMALLER });
+    expect(planSoundCopy(sound(5, 900_000), CAN, null, true)).toEqual({ refuse: NOT_MUCH_SMALLER });
+    expect(planSoundCopy(sound(5, 900_000), CAN, null, false)).not.toHaveProperty('refuse');
+    // Only part of it: that part's size counts.
+    expect(planSoundCopy(mp3, CAN, { from: 0, to: 20 }, true)).not.toHaveProperty('refuse');
+  });
+
+  it('a sound the app can’t decode is decoded by the browser instead, 15 minutes at most', () => {
+    const odd = sound(60, 10 * MiB, { audio: { ...track, codec: 'ac3', decodes: false, channels: 2, label: null } });
+    expect(ok(planSoundCopy(odd, CAN, null, false)).here).toEqual({ codec: 'aac', bitrate: 128_000 });
+    expect(ok(planSoundCopy({ ...odd, box: null, audio: null, seconds: null }, CAN, null, false))).toMatchObject({ here: { codec: 'aac' }, estimate: 0, out: { seconds: null } });
+    expect(planSoundCopy({ ...odd, seconds: 16 * 60 }, CAN, null, false)).toEqual({ refuse: SOUND_TOO_LONG });
+    expect(ok(planSoundCopy(sound(60, 10 * MiB), CAN, null, true))).not.toHaveProperty('here');
+  });
+});
+
+describe('avDefault: a file’s copy as made unasked (several at once)', () => {
+  it('holds the part the cards play when that’s ticked, at the size picked', () => {
+    const r: AvRead = {
+      kind: 'video',
+      facts: video(1920, 1080, 60, 400 * MiB),
+      can: CAN,
+      playable: true,
+      span: { span: { from: 10, to: 20 }, ticked: true },
+      enc: { '1280×720': { avc: true, vp9: true, vp8: true }, '854×480': { avc: true, vp9: true, vp8: true }, '640×360': { avc: true, vp9: true, vp8: true } },
+    };
+    expect(ok(avDefault(r, 90 * MiB))).toMatchObject({ range: { from: 10, to: 20 }, out: { seconds: 10, width: 1280, height: 720 } });
+    expect(ok(avDefault({ ...r, span: { ...r.span!, ticked: false } }, 90 * MiB))).toMatchObject({ range: null, out: { width: 854 } });
+    expect(ok(avDefault({ ...r, kind: 'audio', facts: sound(60, 10 * MiB) }, 90 * MiB))).toMatchObject({ mime: 'audio/mp4', range: { from: 10, to: 20 } });
   });
 });

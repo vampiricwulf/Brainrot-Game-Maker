@@ -124,7 +124,9 @@ async function preview(page, id) {
   await phone.waitFor();
   return phone.locator('.notes li.warn');
 }
-const bigNote = (name, size, max, older = false) => `🎞 ${name} is ${size}: this buzzer server${older ? ' (an older one)' : ''} takes files up to ${max}. Add it from a link (YouTube, Drive…) instead.`;
+// (A video stored in the game: 🗜 can make a smaller copy of it here, so the note says so, with its button.)
+const bigNote = (name, size, max, older = false) =>
+  `🎞 ${name} is ${size}: this buzzer server${older ? ' (an older one)' : ''} takes files up to ${max}. 🗜 Make a smaller copy for phones, or add it from a link (YouTube, Drive…) instead. 🗜 Make a smaller copy for phones`;
 /** Waits until the preview's warnings are just these. */
 async function notesAre(page, notes, want, what) {
   await page.waitForFunction(
@@ -147,7 +149,7 @@ try {
     await notesAre(page, notes, [bigNote('big-zfnqj.mp4', '25.0 MB', '24.0 MB')], 'the 📱 preview goes by the server’s 24 MB: the 25 MB video is too big, the 20 MB one goes');
     assert(asked.length === 1, `asked once, before any room was open (${asked.length})`);
     // (The checklist is worked out a moment after a change: it says so once it has.)
-    await page.locator('nav .problem', { hasText: '🤫 Card “Tip” has a video too big to send to phones (25.0 MB; this buzzer server takes files up to 24.0 MB): add it from a link instead' }).waitFor();
+    await page.locator('nav .problem', { hasText: '🤫 Card “Tip” has a video too big to send to phones (25.0 MB; this buzzer server takes files up to 24.0 MB): make a smaller copy for phones (🗜) or add it from a link' }).waitFor();
     const lines = await page.locator('nav .problem', { hasText: 'too big to send to phones' }).allInnerTexts();
     assert(lines.length === 1, `and so does the checklist, for the 25 MB one only (${lines.join(' | ')})`);
     await ctx.close();

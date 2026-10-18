@@ -464,7 +464,10 @@ function cardFileProblems(game: Game, card: Slide, room: CardRoom): CardFileProb
         player: `${big}: the host shows it on stream instead`,
         ...shrink,
       });
-    } else if (it.why === 'kind' && it.file) warn(`a ${KIND[it.kind]} phones can't play: add it as MP4, WebM, MP3, OGG, WAV or M4A, or from a link`);
+    } else if (it.why === 'kind' && it.file) {
+      const types = 'add it as MP4, WebM, MP3, OGG, WAV or M4A, or from a link';
+      out.push({ text: `a ${KIND[it.kind]} phones can't play: ${shrink.shrink ? `make a copy they can play (🗜), or ${types}` : types}`, level: 'warn', ...shrink });
+    }
     else if (it.why === 'nofiles') warn(`a ${KIND[it.kind]} that's a file on this computer, and this buzzer server isn't taking files: phones get the words and links only (📋 Copy picture)`);
     else if (it.slow) out.push({ text: `a ${KIND[it.kind]} of ${size}: phones on mobile data may wait a while for it (WiFi is fine)`, level: 'info', ...shrink });
   }

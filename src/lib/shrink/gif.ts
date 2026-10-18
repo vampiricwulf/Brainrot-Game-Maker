@@ -3,6 +3,7 @@
 // decodeGif is plain code (tested in Node); gifToVideo needs a browser.
 import { GifReader } from 'omggif';
 import { GIF_MATTE, type GifInfo, type GifPlan } from './plan';
+import type { Made } from './run';
 import { blobTarget } from './target';
 
 /** One frame as it shows: every pixel (RGBA, width × height), and how long it stays (seconds). */
@@ -52,15 +53,6 @@ function offCanvas(w: number, h: number): OffscreenCanvas | HTMLCanvasElement {
   c.width = w;
   c.height = h;
   return c;
-}
-
-/** The copy made: its bytes and type, how long it lasts and how big its picture is. */
-export interface Made {
-  blob: Blob;
-  mime: string;
-  seconds: number;
-  width: number;
-  height: number;
 }
 
 const stopped = () => new DOMException('Stopped', 'AbortError');

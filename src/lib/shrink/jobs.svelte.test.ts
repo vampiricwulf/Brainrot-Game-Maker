@@ -2,7 +2,7 @@
 // question and the header's pill never name the file.
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { app } from '../app.svelte';
-import { addJob, clearJobs, jobAsk, jobFor, jobLine, jobs, pillText, progressText, stopAll, stopJob, watchJob, type JobCtl } from './jobs.svelte';
+import { addJob, clearJobs, jobAsk, jobFor, jobLine, jobs, pillText, progressText, stopAll, stopJob, watchJob, watchJobs, type JobCtl } from './jobs.svelte';
 
 /** A job that waits to be told how to end, and lets the test move it on. */
 function held() {
@@ -84,6 +84,25 @@ describe('file jobs', () => {
     expect(jobs.ended[ja]).toEqual({ stopped: true });
     expect(app.toast).toBe('');
     expect(jobs.list).toEqual([]);
+  });
+
+  it('a dialog showing several (a list of files) says how each ended; one it doesn’t show ends in a toast', async () => {
+    const a = held();
+    const b = held();
+    const c = held();
+    const ja = addJob(job('m1'), a.work);
+    const jb = addJob(job('m2'), b.work);
+    const jc = addJob(job('m3'), c.work);
+    watchJobs([ja, jb]);
+    await settle();
+    a.end({ toast: 'one' });
+    await settle();
+    b.end({ failed: 'it broke' });
+    await settle();
+    expect([jobs.ended[ja], jobs.ended[jb], app.toast]).toEqual([{ done: 'one' }, { failed: 'it broke' }, '']);
+    c.end({ toast: 'three' });
+    await settle();
+    expect([jobs.ended[jc], app.toast]).toEqual([{ done: 'three' }, 'three']);
   });
 
   it('another game stops the jobs of the one before; ▶ Play stops them all', async () => {

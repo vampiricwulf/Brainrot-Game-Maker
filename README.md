@@ -460,11 +460,14 @@ To build the address into your own releases too (so nobody has to paste it), add
   `FILE_MB`, `ROOM_FILES_MB` and `FILES_MB_PER_DAY` in `buzzer/wrangler.jsonc` (`FILES_MB_PER_DAY` `0` turns card files
   off), then deploy again: the app asks the server, so it follows on its own, and ⚙ Settings › Buzzer server › Test says
   what it takes. A file over 16 MB that the server takes still goes, with a note in the editor and the host panel that
-  phones on mobile data may wait a while for it. A big GIF can go as a small looping video instead: **🗜 Make
-  smaller…** on its card in 🖼 Media (or 🗜 in the 📱 preview or the checklist) makes one, which phones get and show
-  like the GIF, while the show keeps the GIF (Ctrl+Z takes it back). It needs the app opened from a file or an
-  https:// address, in Chrome, Edge, Firefox or the desktop app; where the browser makes H.264 (Chrome and Edge on
-  Windows or Mac, the desktop app) it makes an MP4 every phone plays, elsewhere a WebM, which some iPhones may not play.
+  phones on mobile data may wait a while for it. A big GIF, video or sound can go as a smaller copy instead: **🗜 Make
+  smaller…** on its card in 🖼 Media (or 🗜 in the 📱 preview or the checklist) makes one, which phones get while the
+  show keeps the file as it is (Ctrl+Z takes it back): a GIF as a small looping video that phones show like the GIF, a
+  video at 720p, 480p or 360p, a sound made again, and a video or sound can hold only the part its cards play. 🖼
+  Media's **🗜 2 files are big for phones** makes copies of all of them at once, and a video or sound phones can't play
+  (a .mov, a FLAC) can get a copy they can. It needs the app opened from a file or an https:// address, in Chrome, Edge,
+  Firefox or the desktop app; where the browser makes H.264 and AAC (Chrome and Edge on Windows or Mac, the desktop app)
+  it makes MP4 and M4A files every phone plays, elsewhere WebM and OGG (Opus), which some iPhones may not play.
   See [buzzer/README.md](buzzer/README.md#card-files). Each room keeps
   its cards only until the tile closes (or the round ends, or the host takes it back, for one sent with 🤫 Send a card…),
   and their files up to 10 minutes longer (20 hours after their upload began at most: the app puts one up again if a
@@ -506,7 +509,8 @@ game in progress and media. Settings go in `%APPDATA%\com.brainrotgames.maker`. 
 🗜 (smaller copies of 🤫 cards' files for phones) uses two libraries, bundled into the app as they are:
 
 - [mediabunny](https://github.com/Vanilagy/mediabunny) 1.61.6, under the Mozilla Public License 2.0 (its source is at
-  github.com/Vanilagy/mediabunny): it writes the copies, with the browser's own video encoders (WebCodecs).
+  github.com/Vanilagy/mediabunny): it reads videos and sounds, and writes the copies, with the browser's own video and
+  sound encoders (WebCodecs).
 - [omggif](https://github.com/deanm/omggif) 1.0.10, under the MIT license: it reads a GIF's frames.
 
 ℹ About says so too.
