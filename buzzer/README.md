@@ -273,9 +273,14 @@ deleted and its budget given back: 90 MB in an hour is 200 kbps.
   piece (`RoomSaved.uploads`) and taken off when it ends, so a room starting again deletes what such an upload left.
   Its part of the budget isn't given back (it frees within 24 hours). The app sees its upload fail and sends the file
   again.
-- **Rolling back** to a version that kept pieces only under `file:<id>:<n>`: the files stored since answer 404
-  (phones say they didn't load), and their pieces stay until the room ends. The other way, rooms open across the
-  deploy keep their older files (`file:<id>:<n>`, no `key`) and serve them as before.
+- **Rolling back** to a version that kept pieces only under `file:<id>:<n>`: do it once the rooms holding card files
+  have ended (or set `FILES_MB_PER_DAY` low for that day). That older code doesn't know the files stored since: they
+  answer 404 (phones say they didn't load, for as long as their card is out, as the room says it holds one the app
+  puts up again), and it forgets them without deleting their pieces, which stay until the room ends while it stores up
+  to its own 64 MB more, so a room holding many files can pass a Durable Object's 1 GB on Free (its writes then fail).
+  It also counts the budget by UTC day, from 0 again, and keeps files with no 20-hour limit, so for a day the files
+  kept can be its day's budget on top of the last 24 hours'. The other way, rooms open across the deploy keep their
+  older files (`file:<id>:<n>`, no `key`) and serve them as before.
 - **120 uploads and 120 downloads a minute per address** (`FILE_LIMIT` in `wrangler.jsonc`).
 - **A budget for the whole server: 4,000 MB of uploads in any 24 hours** by default (`FILES_MB_PER_DAY`), of which one
   address may use a quarter and one IPv6 /48 half. `RoomCounter` counts it by the hour: an hour's uploads stop counting
@@ -320,6 +325,12 @@ deleted and its budget given back: 90 MB in an hour is 200 kbps.
   the space back. With `--analytics <account id>` and an API token with Account Analytics Read in
   `CLOUDFLARE_API_TOKEN`, it reads them itself once Cloudflare's analytics have them (a few minutes): each request's
   CPU time in the Worker, in the room and in the budget's counter, and any call that didn't end well.
+
+  A file also costs Durable Object time (billed while a room is working, at 128 MB a room: GB-s): an upload, or a
+  phone's download, keeps its room working for as long as it takes, about 6 minutes for a 90 MB file at 2 Mbps, which
+  is about 50 GB-s of the Free plan's 13,000 a day (an estimate: `measure-files.mjs` hasn't checked it on Cloudflare
+  yet). Transfers at the same time in one room count once. A few hundred such transfers a day would use it up, and
+  then every room's buzzers stop too, until the daily reset.
 
 ## Local development
 
@@ -368,15 +379,17 @@ log in). It lands on `https://brainrot-buzzer.<your-subdomain>.workers.dev`; tha
 ## Costs
 
 It is built for the **Workers Free plan**: SQLite-backed Durable Objects (the `new_sqlite_classes` migration) are
-available on Free, and a game night is a handful of small messages per second at most. The Free plan has daily limits
-(requests, Durable Object time and storage; see Cloudflare's current pricing page) and no card on file, so if a limit
-is ever reached the room stops working until the daily reset; it never bills. Sockets use the Hibernation API, so a
-room with nothing happening can sleep without dropping anyone (phones ping every 10 s, which wakes it briefly). Each
-room keeps up to 32 KB of state, which can include the private cards the host sent (words and links) until the tile
-closes (or the round ends, or the host takes it back, for a card sent with 🤫 Send a card…), and up to `ROOM_FILES_MB`
-(900 MB by default) of card files until 10 minutes after no card uses them; it is all wiped when the room ends.
-Durable Object storage (5 GB on Free) is shared by every room on the account. Card file uploads stop at the budget
-(4,000 MB in any 24 hours by default), and no file is kept more than 20 hours, so the card files of every room
-together are never more than that (see Card files above, which says how to change it).
-Whoever runs the server (for the public one, its Cloudflare account) could read what is stored while it is there, and
-Cloudflare may keep earlier copies of Durable Object storage for a while (point-in-time recovery).
+available on Free, and a game night is a handful of small messages per second at most. Card files cost more: a room is
+working (billed Durable Object time) for as long as a file goes up or down, about 50 GB-s of the Free plan's 13,000 a
+day for a 90 MB file at 2 Mbps (an estimate; see Card files, "What a file costs"). The Free plan has daily limits
+(requests, Durable Object time and storage; see Cloudflare's current pricing page) and no card on file, so if a limit is
+ever reached the room stops working until the daily reset; it never bills. Sockets use the Hibernation API, so a room
+with nothing happening can sleep without dropping anyone (phones ping every 10 s, which wakes it briefly). Each room
+keeps up to 32 KB of state, which can include the private cards the host sent (words and links) until the tile closes
+(or the round ends, or the host takes it back, for a card sent with 🤫 Send a card…), and up to `ROOM_FILES_MB` (900 MB
+by default) of card files until 10 minutes after no card uses them; it is all wiped when the room ends. Durable Object
+storage (5 GB on Free) is shared by every room on the account. Card file uploads stop at the budget (4,000 MB in any 24
+hours by default), and no file is kept more than 20 hours, so the card files of every room together are never more than
+that (see Card files above, which says how to change it). Whoever runs the server (for the public one, its Cloudflare
+account) could read what is stored while it is there, and Cloudflare may keep earlier copies of Durable Object storage
+for a while (point-in-time recovery).
