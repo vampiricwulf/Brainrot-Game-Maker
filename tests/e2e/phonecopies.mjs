@@ -211,7 +211,10 @@ try {
   await dialog.getByLabel('The copy for phones').waitFor();
   await close();
   const first = await copyOf('dance');
-  assert(first.type === gifBox.mime && first.size < dance.length / 5, `the copy is an ${gifBox.word} under a fifth of the GIF (${first.size} bytes of ${dance.length})`);
+  // (A WebM of it comes out under a fifth. CI's H.264 encoder (OpenH264, in software) goes far over its bitrate on this
+  // noise: there, under half, the app's own bar for keeping a copy.)
+  const share = avc ? 'half' : 'fifth';
+  assert(first.type === gifBox.mime && first.size < dance.length / (avc ? 2 : 5), `the copy is an ${gifBox.word} under a ${share} of the GIF (${first.size} bytes of ${dance.length})`);
   assert(first.meta?.w === 320 && first.meta.h === 240 && Math.abs(first.meta.seconds - 2.4) < 0.3, `and it plays: ${JSON.stringify(first.meta)}`);
   const line = (await copyLine('dance').innerText()).replace(/\s+/g, ' ');
   assert(line.startsWith('📱 Phone copy · ') && line.includes(` KB · 320×240 ${gifBox.word}`), `the GIF's card says phones get a copy (${line})`);
