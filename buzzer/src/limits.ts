@@ -5,10 +5,10 @@
  * (RoomCounter in index.ts), using countRoom below. An address is counted by addressKey. No Cloudflare APIs here, so it
  * is unit-tested (limits.test.ts).
  *
- * Card files the same way: FILE_LIMIT in wrangler.jsonc per address, and a daily byte budget for the whole server
- * (FILES_MB_PER_DAY, see filesBudget) that RoomCounter counts with countBytes. How big a file and a room's files may be
- * comes from the settings too (FILE_MB, ROOM_FILES_MB: fileLimits). A room's one alarm both ends it and cleans up its
- * files: nextAlarm picks when.
+ * Card files the same way: FILE_LIMIT in wrangler.jsonc per address, and a byte budget for the whole server over any 24
+ * hours (FILES_MB_PER_DAY, see filesBudget) that RoomCounter counts by the hour with countBytes. How big a file and a
+ * room's files may be comes from the settings too (FILE_MB, ROOM_FILES_MB: fileLimits). A room's one alarm both ends it
+ * and cleans up its files: nextAlarm picks when.
  */
 import { DEFAULT_FILE_LIMITS, mbText, ROOM_FILES_MAX, type FileLimits } from '../../src/lib/buzzproto';
 
@@ -82,16 +82,23 @@ export function countRoom(
 // ---- card files ----
 
 /**
- * Card files the whole server takes a UTC day (MB) when FILES_MB_PER_DAY isn't set (or isn't a number): enough for a
- * few games a day, one host's quarter for several full rooms, and less than the Free plan's 5 GB of storage, so a day
- * of it can't fill that even if no file were ever deleted (README.md, "Card files", has what a file costs).
+ * Card files the whole server takes in any 24 hours (MB) when FILES_MB_PER_DAY isn't set (or isn't a number): enough
+ * for a few games a day, one host's quarter for several full rooms, and less than the Free plan's 5 GB of storage. A
+ * file is kept FILE_MAX_AGE_MS at most, so the files kept are never more than this, and can't fill that (README.md,
+ * "Card files", has what a file costs).
  */
 export const FILES_MB_PER_DAY = 2000;
-/** One address (addressKey) may upload this share of the day's budget, and one IPv6 /48 (networkKey) this one. */
+/** One address (addressKey) may upload this share of the budget, and one IPv6 /48 (networkKey) this one. */
 export const ADDRESS_FILE_SHARE = 1 / 4;
 export const NETWORK_FILE_SHARE = 1 / 2;
 /** A card file no current card uses is deleted this long after (one got ready and never sent: after its upload). */
 export const FILE_IDLE_MS = 10 * 60_000;
+/**
+ * A card file is deleted this long after its upload, even one a card uses (the app puts it up again if a card still
+ * needs it), so the files kept are only ever ones the budget counts. Not 24 hours: the budget is counted by the hour,
+ * so an upload late in its hour stops being counted 23 hours on, and the room's alarm can be a little late.
+ */
+export const FILE_MAX_AGE_MS = 20 * 60 * 60_000;
 /**
  * A room out of space for a new card file deletes the files no current card has used for this long first (they'd go
  * at FILE_IDLE_MS anyway). Not one used or stored just now: the host's next state may be about to name it.
@@ -100,8 +107,15 @@ export const FILE_MAKE_ROOM_MS = 60_000;
 
 export const TOO_MANY_FILES = 'Too many files — wait a minute';
 export const FILES_OFF = "This buzzer server doesn't take files";
-export const FILES_BUSY_TODAY = "The buzzer server isn't taking files right now — try again tomorrow";
-export const TOO_MANY_FILES_TODAY = 'Too many files from here today — try again tomorrow';
+const inHours = (hours: number): string => (hours <= 1 ? 'in about an hour' : `in about ${hours} hours`);
+/**
+ * An upload turned away for the budget (429): the whole server's ('busy') or this address's share ('address'), with
+ * how many hours until enough of it frees (freesIn).
+ */
+export const filesBusy = (took: 'busy' | 'address', hours: number): string =>
+  took === 'address'
+    ? `Too many files from here for now — try again ${inHours(hours)}`
+    : `The buzzer server has taken all the card files it can for now — try again ${inHours(hours)}`;
 /** A file over the server's limit (413). */
 export const tooBig = (lim: FileLimits): string => `Too big for the buzzer server (${mbText(lim.fileBytes)} at most)`;
 
@@ -116,7 +130,7 @@ export function mbSetting(setting: unknown, fallbackMb: number): number {
   return Math.floor((Number.isFinite(mb) && mb >= 0 ? mb : fallbackMb) * MiB);
 }
 
-/** The daily budget in bytes from the FILES_MB_PER_DAY setting: its default when missing or not a number; 0 is off. */
+/** The budget for any 24 hours in bytes, from FILES_MB_PER_DAY: its default when missing or not a number; 0 is off. */
 export const filesBudget = (setting: unknown): number => mbSetting(setting, FILES_MB_PER_DAY);
 
 /**
@@ -133,59 +147,130 @@ export function fileLimits(env: { FILE_MB?: unknown; ROOM_FILES_MB?: unknown }):
   return { fileBytes: Math.min(read(env.FILE_MB, DEFAULT_FILE_LIMITS.fileBytes), roomBytes), roomBytes, roomFiles: ROOM_FILES_MAX };
 }
 
-/** Today's card file bytes (day: YYYY-MM-DD, UTC); by: per address key and per networkKey. */
+/** An hour's card file bytes (h: the hour, hourOf); by: per address key and per networkKey. */
+export interface HourBytes {
+  h: number;
+  bytes: number;
+  by: Record<string, number>;
+}
+/** The card file bytes counted over the last WINDOW_HOURS, by the hour (what RoomCounter keeps). */
+export interface WindowBytes {
+  v: 2;
+  hours: HourBytes[];
+}
+/** What older code kept: a UTC day's count (day: YYYY-MM-DD). */
 export interface DayBytes {
   day: string;
   bytes: number;
   by?: Record<string, number>;
 }
+export type SavedBytes = WindowBytes | DayBytes;
+
+const HOUR_MS = 60 * 60_000;
+/** The budget is for any this many hours. */
+export const WINDOW_HOURS = 24;
+/** The hour `t` is in (hours since 1970, UTC): what bytes taken then are counted under. */
+export const hourOf = (t: number): number => Math.floor(t / HOUR_MS);
 
 /**
- * n more bytes of card files now, from address key `who`, with a budget of `cap` bytes a day? The count to save, or
- * 'off' (the budget is 0), 'busy' (it would go over today's budget) or 'address' (over this address's share, or its
- * network's). A new UTC day starts from 0.
+ * The hours still counted at `now`: this one and the WINDOW_HOURS − 1 before it. Older code's count of a UTC day is
+ * taken as counted in the last hour it can have been (now, for today's), so it stays counted until every file it paid
+ * for is gone.
+ */
+function windowAt(saved: SavedBytes | null | undefined, now: number): HourBytes[] {
+  const h = hourOf(now);
+  let hours: HourBytes[] = [];
+  if (saved && 'hours' in saved && Array.isArray(saved.hours)) hours = saved.hours;
+  else if (saved && 'day' in saved && saved.bytes > 0) {
+    const start = Date.parse(`${saved.day}T00:00:00Z`);
+    if (Number.isFinite(start)) hours = [{ h: Math.min(h, hourOf(start) + 23), bytes: saved.bytes, by: { ...saved.by } }];
+  }
+  return hours.filter((b) => b.h > h - WINDOW_HOURS);
+}
+
+/**
+ * Whether n more bytes from `who` would pass the budget (`cap`) in these hours: 'busy', 'address' (its share, or its
+ * network's), or null.
+ */
+function over(hours: HourBytes[], who: string, n: number, cap: number): 'busy' | 'address' | null {
+  const net = networkKey(who);
+  let all = 0;
+  let mine = 0;
+  let ours = 0;
+  for (const b of hours) {
+    all += b.bytes;
+    mine += b.by[who] ?? 0;
+    if (net) ours += b.by[net] ?? 0;
+  }
+  if (all + n > cap) return 'busy';
+  if (mine + n > cap * ADDRESS_FILE_SHARE || (net && ours + n > cap * NETWORK_FILE_SHARE)) return 'address';
+  return null;
+}
+
+/**
+ * n more bytes of card files now, from address key `who`, with a budget of `cap` bytes in any 24 hours? The count to
+ * save (n added to this hour's), or 'off' (the budget is 0), 'busy' (the last 24 hours' uploads would go over it) or
+ * 'address' (over this address's share, or its network's).
  */
 export function countBytes(
-  saved: DayBytes | null | undefined,
+  saved: SavedBytes | null | undefined,
   now: number,
   who: string,
   n: number,
   cap: number,
-): DayBytes | 'off' | 'busy' | 'address' {
+): WindowBytes | 'off' | 'busy' | 'address' {
   if (cap <= 0) return 'off';
-  const day = utcDay(now);
-  const today = saved?.day === day ? saved : undefined;
-  const used = today?.bytes ?? 0;
-  const mine = today?.by?.[who] ?? 0;
+  const hours = windowAt(saved, now);
+  const no = over(hours, who, n, cap);
+  if (no) return no;
+  const h = hourOf(now);
   const net = networkKey(who);
-  const ours = net ? (today?.by?.[net] ?? 0) : 0;
-  if (used + n > cap) return 'busy';
-  if (mine + n > cap * ADDRESS_FILE_SHARE || (net && ours + n > cap * NETWORK_FILE_SHARE)) return 'address';
-  return { day, bytes: used + n, by: { ...today?.by, [who]: mine + n, ...(net ? { [net]: ours + n } : {}) } };
+  const was = hours.find((b) => b.h === h) ?? { h, bytes: 0, by: {} };
+  const more = (k: string) => ({ [k]: (was.by[k] ?? 0) + n });
+  return { v: 2, hours: [...hours.filter((b) => b !== was), { h, bytes: was.bytes + n, by: { ...was.by, ...more(who), ...(net ? more(net) : {}) } }] };
 }
 
 /**
- * n bytes countBytes counted for `who` today that weren't stored after all, taken off again (never below 0): the count
- * to save, or null when there's nothing to take off (another UTC day began since).
+ * n bytes countBytes counted for `who` in hour `hour` (hourOf; this hour when not given) that weren't stored after
+ * all, taken off that hour again (never below 0): the count to save, or null when there's nothing to take off (that
+ * hour isn't counted any more).
  */
-export function uncountBytes(saved: DayBytes | null | undefined, now: number, who: string, n: number): DayBytes | null {
-  if (!saved || saved.day !== utcDay(now) || !(n > 0)) return null;
-  const by = { ...saved.by };
+export function uncountBytes(saved: SavedBytes | null | undefined, now: number, who: string, n: number, hour = hourOf(now)): WindowBytes | null {
+  const hours = windowAt(saved, now);
+  const was = hours.find((b) => b.h === hour);
+  if (!was || !(n > 0)) return null;
+  const by = { ...was.by };
   for (const k of [who, networkKey(who)]) if (k && by[k] !== undefined) by[k] = Math.max(0, by[k] - n);
-  return { day: saved.day, bytes: Math.max(0, saved.bytes - n), ...(saved.by ? { by } : {}) };
+  return { v: 2, hours: hours.map((b) => (b === was ? { h: b.h, bytes: Math.max(0, b.bytes - n), by } : b)) };
 }
 
-/** What is left of today's budget (bytes). */
-export function bytesLeft(saved: DayBytes | null | undefined, now: number, cap: number): number {
-  return Math.max(0, cap - (saved?.day === utcDay(now) ? saved.bytes : 0));
+/** What is left of the budget now (bytes): `cap` less the last 24 hours' uploads. */
+export function bytesLeft(saved: SavedBytes | null | undefined, now: number, cap: number): number {
+  return Math.max(0, cap - windowAt(saved, now).reduce((n, b) => n + b.bytes, 0));
 }
 
 /**
- * When a room's alarm should go off next: the room's end, or a card file's clean-up (FILE_IDLE_MS after no card used
- * it), whichever comes first. Never before now.
+ * In how many whole hours (1 at least) n more bytes from `who` would fit, as the oldest hours stop being counted: what
+ * a host turned away is told. WINDOW_HOURS when they never would (n is more than its share).
  */
-export function nextAlarm(end: number, files: Record<string, { unusedSince?: number }> | null | undefined, now: number): number {
+export function freesIn(saved: SavedBytes | null | undefined, now: number, who: string, n: number, cap: number): number {
+  const hours = windowAt(saved, now);
+  for (let k = 1; k < WINDOW_HOURS; k++) {
+    const h = hourOf(now + k * HOUR_MS);
+    if (!over(hours.filter((b) => b.h > h - WINDOW_HOURS), who, n, cap)) return k;
+  }
+  return WINDOW_HOURS;
+}
+
+/**
+ * When a room's alarm should go off next: the room's end, a card file's clean-up (FILE_IDLE_MS after no card used it)
+ * or a file getting too old (FILE_MAX_AGE_MS after its upload), whichever comes first. Never before now.
+ */
+export function nextAlarm(end: number, files: Record<string, { at?: number; unusedSince?: number }> | null | undefined, now: number): number {
   let at = end;
-  for (const f of Object.values(files ?? {})) if (f.unusedSince !== undefined) at = Math.min(at, f.unusedSince + FILE_IDLE_MS);
+  for (const f of Object.values(files ?? {})) {
+    if (f.unusedSince !== undefined) at = Math.min(at, f.unusedSince + FILE_IDLE_MS);
+    if (f.at !== undefined) at = Math.min(at, f.at + FILE_MAX_AGE_MS);
+  }
   return Math.max(now, at);
 }

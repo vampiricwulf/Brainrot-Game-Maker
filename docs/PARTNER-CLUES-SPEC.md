@@ -1340,12 +1340,14 @@ The phone bundles src/lib/links.ts, which has no imports, and builds an `<img>`,
 - A server-wide daily byte budget, `FILES_MB_PER_DAY`. 0 turns uploads off, and the room then doesn't list `files`.
   **The repo's default is set in P2 from the measurement**, to a value that keeps a Free account well inside its daily
   limits even on a busy day. The starting guess is 1 GB a day; the measurement can lower it. A self-hosted server can
-  set its own.
+  set its own. (Later: counted over any 24 hours, by the hour, with a file deleted 20 hours after its upload, so the
+  files kept are never more than one budget: buzzer/README.md, "Card files".)
 - Uploads are rate-limited per address, like room creation.
 - Storage stays bounded:
   - at most 16 MB per open room (later: the server's `ROOM_FILES_MB`);
   - files no current card has used for 10 minutes are deleted, by the room's alarm and on each new state. A file that
-    was got ready and never sent counts its 10 minutes from the upload;
+    was got ready and never sent counts its 10 minutes from the upload (later: and any file 20 hours after its upload,
+    even one a card uses; the app puts it up again);
   - everything goes when the room is wiped (index.ts:30-33, 307-345).
 
   100 open rooms at their cap is 1.6 GB of the 5 GB.
@@ -2176,9 +2178,9 @@ and `text` (or `seatsText`) as the small line (§8.2):
 | Link length | 2048 characters | new |
 | Phones / sockets / team members | 24 / 40 / 64 | room.ts:89-108 |
 | File size / room total | 4 MB / 16 MB and 32 files, confirmed by the measurement; later 16 MB / 64 MB, then each server's `FILE_MB` / `ROOM_FILES_MB` (it tells the app) | new: room.ts |
-| Files a day, server-wide | `FILES_MB_PER_DAY`: the repo's default set from the P2 measurement (starting guess 1 GB); 0 turns files off | new: index.ts `RoomCounter`, limits.ts `countBytes` |
+| Files a day, server-wide | `FILES_MB_PER_DAY`: the repo's default set from the P2 measurement (starting guess 1 GB); 0 turns files off; later counted over any 24 hours, by the hour | new: index.ts `RoomCounter`, limits.ts `countBytes` |
 | Uploads per address | a new `FILE_LIMIT` binding | new: wrangler.jsonc |
-| A file got ready or left unused | deleted after 10 minutes | new: room.ts, limits.ts `nextAlarm` |
+| A file got ready or left unused | deleted after 10 minutes (later: any file 20 hours after its upload) | new: room.ts, limits.ts `nextAlarm` |
 | Durable Object value | 2 MB (files are stored in 1 MB pieces) | Cloudflare, external: re-check before P2 |
 | Durable Object storage | 5 GB per account, every room together | Cloudflare Free plan, external: re-check before P2 |
 | Rows written, requests, CPU per request | 100,000 a day, 100,000 a day, small | Cloudflare Free plan, external: measured in P2 |

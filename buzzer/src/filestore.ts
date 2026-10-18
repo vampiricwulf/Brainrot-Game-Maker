@@ -1,16 +1,16 @@
 /**
  * A buzzer room's card files in its Durable Object's storage, a FILE_PART_BYTES piece at a time both ways, so a big file
  * takes no more of the room's memory than a small one. No Cloudflare APIs here (index.ts passes in storage, hashing and
- * the daily counter), so it's unit-tested (filestore.test.ts).
+ * the budget's counter), so it's unit-tested (filestore.test.ts).
  *
- * Uploads: room for the file is kept before a piece is written: the room's caps and today's budget for its stated
+ * Uploads: room for the file is kept before a piece is written: the room's caps and the server's budget for its stated
  * size (Content-Length), or for a whole file limit when it gives none (a refund gives back what it didn't use). Two at
  * once per room at most (UPLOADS_AT_ONCE), counted against the caps together. Its pieces go under a key prefix of its
  * own (p:<random>:<n>, never used again), noted in the room before the first one (RoomSaved.uploads, so a room
  * restarted mid-upload deletes them), and its id, the SHA-256, is worked out on the way. Then the room lists it under
  * that prefix, or, when it holds the same bytes already (a twin that finished first), its pieces are deleted. An upload
- * that fails deletes what it wrote and gives back today's budget. Nothing more is written once the room has ended, or
- * a new room took its code (room() is null then): the room's wipe deletes what was.
+ * that fails deletes what it wrote and gives back what it took of the budget. Nothing more is written once the room has
+ * ended, or a new room took its code (room() is null then): the room's wipe deletes what was.
  *
  * Downloads: piece 0 is read before answering (a missing file is a clean 404), then one piece a pull, so a slow phone
  * holds one piece in memory, never the file. SENDS_AT_ONCE at once per room; the rest wait their turn. A file deleted
@@ -58,7 +58,7 @@ export interface Hasher {
   hex(): Promise<string>;
 }
 
-/** Today's budget taken (ticket: what a refund needs), or why not. */
+/** The budget taken (ticket: what a refund needs, the hour it was counted under), or why not. */
 export type Took = { ok: true; ticket: unknown } | 'off' | 'busy' | 'address';
 
 export interface StoreDeps {
@@ -70,19 +70,19 @@ export interface StoreDeps {
   /** A new key prefix for an upload's pieces. */
   prefix(): string;
   hasher(): Hasher;
-  /** n bytes of today's budget for address key `who` (RoomCounter.takeBytes). */
+  /** n bytes of the budget for address key `who` (RoomCounter.takeBytes). */
   take(who: string, n: number): Promise<Took>;
-  /** n bytes taken that weren't stored after all, given back. */
+  /** n bytes taken that weren't stored after all, given back (with take's ticket). */
   refund(who: string, n: number, ticket: unknown): Promise<void>;
-  /** The 429 for a budget refused. */
-  busyText(took: 'address' | 'busy'): string;
+  /** The 429's words for n bytes from `who` refused (they say when to try again). */
+  busyText(took: 'address' | 'busy', who: string, n: number): Promise<string>;
 }
 
 export interface UploadJob {
   mime: string;
   /** Its Content-Length (null: it didn't say). */
   size: number | null;
-  /** Its address key (addressKey), for today's budget. */
+  /** Its address key (addressKey), for the budget. */
   who: string;
   body: PieceSource;
   /** The room, or null once it ended or a new room took its code. */
@@ -178,7 +178,7 @@ export class FileStore {
     if (size === 0) return no(400, EMPTY);
     if (this.jobs.size >= UPLOADS_AT_ONCE) return refuse(429, TAKING_ANOTHER);
     const reserve = size ?? lim.fileBytes;
-    // In one go: room for it, kept from here (before today's budget, which costs a call).
+    // In one go: room for it, kept from here (before the budget, which costs a call).
     let r = room();
     if (!r) return no(401, WRONG);
     const fit = r.fileSpace(reserve, this.pending());
@@ -189,7 +189,7 @@ export class FileStore {
     let ticket: unknown = null;
     let taken = false;
     let parts = 0;
-    /** Done: no longer on its way, and what it took of today's budget and didn't use is given back. */
+    /** Done: no longer on its way, and what it took of the budget and didn't use is given back. */
     const end = async (answer: Upload, unused: number): Promise<Upload> => {
       this.jobs.delete(prefix);
       if (taken && unused > 0) await this.deps.refund(who, unused, ticket).catch(() => {});
@@ -213,7 +213,7 @@ export class FileStore {
       }
       if (typeof took === 'string') {
         this.jobs.delete(prefix);
-        return await refuse(took === 'off' ? 503 : 429, took === 'off' ? FILES_OFF : this.deps.busyText(took));
+        return await refuse(took === 'off' ? 503 : 429, took === 'off' ? FILES_OFF : await this.deps.busyText(took, who, reserve));
       }
       taken = true;
       ticket = took.ticket;

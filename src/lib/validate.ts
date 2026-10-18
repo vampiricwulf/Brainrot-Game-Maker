@@ -105,9 +105,9 @@ export function partnerTilesOver(round: BoardRound): { want: number; placed: num
 
 /**
  * What the buzzer server in use takes, for what of a 🤫 card won't reach a phone. `filesOff`: the room open now puts
- * cards on phones but takes no files (its server is off them, or out for today), or the server said it takes none: a
- * card's file from this computer won't reach a phone. `fileBytes`: the biggest file it takes (serverlimits.svelte.ts
- * fileLimitsNow; DEFAULT_FILE_LIMITS when not given).
+ * cards on phones but takes no files (its server is off them, or out of budget for now), or the server said it takes
+ * none: a card's file from this computer won't reach a phone. `fileBytes`: the biggest file it takes
+ * (serverlimits.svelte.ts fileLimitsNow; DEFAULT_FILE_LIMITS when not given).
  */
 export interface CardRoom {
   filesOff?: boolean;

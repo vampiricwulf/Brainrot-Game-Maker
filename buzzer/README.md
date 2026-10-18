@@ -151,6 +151,9 @@ file limits: `welcome.limits` (`{fileBytes, roomBytes, roomFiles}`, only alongsi
 `GET /api/health` (the same, or `null` when it takes no files), a 413's words giving the server's limit ("Too big for
 the buzzer server (16 MB at most)"), and a `files` list of up to 1024 ids. An app that hears no limits (an older
 server) takes 16 MB a file and 64 MB a room; an older app keeps its own 16 MB check, which a server set higher takes.
+Since the budget counts any 24 hours: its 429s say when to try again ("… — try again in about 5 hours"), and a room
+deletes a file 20 hours after its upload, even one a card uses (the host hears `files` without it and puts it up
+again).
 
 ## Fair timing
 
@@ -219,15 +222,15 @@ it got), never sends one the room already lists (it works out the SHA-256 first)
 and gives up one that hasn't moved for a minute and tries it again. Its answer is `{id}` (the file's SHA-256; the same
 bytes again store nothing new) or an error: 400 (empty, or it broke off, or was longer than its
 Content-Length said), 401 (wrong host token, or no such room), 409 (the room holds all it can), 413 (too big), 415 (a
-type it doesn't take), 429 (too many, today's budget is used up, or the room is taking 2 files already), 500 (the room
-couldn't store it; the app tries again) or 503 (files are off). The host token is checked before the body is read, so a
-wrong one costs the room nothing. Room for a file under the room's caps and today's budget is kept before a byte of it
-is stored: its Content-Length, or a whole file limit when it gives none (so in a nearly full room such an upload gets
-409 even when small), and what it didn't use is given back after. One turned away for the room's caps, today's budget
-or the 2 at once is read to its end and thrown away first, so its answer gets there (an upload cut off can reach the
-app as a broken connection). A room takes 2 uploads at once at most, counted against its caps together; the same file
-twice at once is stored (and counted) once, and bytes counted against today's budget for a file that then isn't stored
-(it broke off, or the room ended meanwhile) are given back.
+type it doesn't take), 429 (too many, the server's budget is used up for now, or the room is taking 2 files already),
+500 (the room couldn't store it; the app tries again) or 503 (files are off). The host token is checked before the body
+is read, so a wrong one costs the room nothing. Room for a file under the room's caps and the server's budget is kept
+before a byte of it is stored: its Content-Length, or a whole file limit when it gives none (so in a nearly full room
+such an upload gets 409 even when small), and what it didn't use is given back after. One turned away for the room's
+caps, the budget or the 2 at once is read to its end and thrown away first, so its answer gets there (an upload cut off
+can reach the app as a broken connection). A room takes 2 uploads at once at most, counted against its caps together;
+the same file twice at once is stored (and counted) once, and bytes counted against the budget for a file that then
+isn't stored (it broke off, or the room ended meanwhile) are given back, to the hour they were counted in.
 
 - **Types**: PNG, JPEG, WebP, GIF; MP4, WebM; MP3, OGG, WAV, M4A. No SVG, no HTML. Served back with their own type,
   `Cache-Control: no-store, no-transform` and `X-Content-Type-Options: nosniff`.
@@ -243,7 +246,7 @@ twice at once is stored (and counted) once, and bytes counted against today's bu
   | --- | --- | --- | --- |
   | `FILE_MB` | 16 | One file | 100 MB: Cloudflare turns a request body over the plan's limit away before the Worker sees it (Free and Pro 100 MB, Business 200 MB, Enterprise 500 MB), so keep it a little under that |
   | `ROOM_FILES_MB` | 64 | A room's files together | 1 GB, a Durable Object's storage on Free: check the plan's before raising it |
-  | `FILES_MB_PER_DAY` | 2000 | The whole server, a UTC day (below) | 5 GB of storage in all, which every room's own state needs some of too |
+  | `FILES_MB_PER_DAY` | 2000 | The whole server, in any 24 hours (below) | 5 GB of storage in all, which every room's own state needs some of too |
 - **Kept** in the room's own Durable Object storage, in 1 MB pieces under keys of their own, never in the room's
   state (`src/filestore.ts`). Each upload's pieces go under a new random prefix (`p:<12 characters>:<n>`), stored as
   they arrive, a whole piece at a time, its id worked out on the way; once it has all come, the room lists the file
@@ -253,23 +256,32 @@ twice at once is stored (and counted) once, and bytes counted against today's bu
   carries the file's `Content-Length`, so a phone knows one that broke off and tries again. A room sends 24 files at
   once at most (more wait their turn), and a phone fetches 2 at once. A file no current card uses is deleted 10
   minutes after (one got ready and never sent: 10 minutes after its upload), by the room's alarm (the same one that
-  ends the room) and on the host's next state; the host can also `forget` them. One deleted while a phone is fetching
-  it ends that download early (no card uses it, so no phone needs it). Everything goes when the room ends, and an
-  upload going on then stores nothing more.
+  ends the room) and on the host's next state; the host can also `forget` them. Any file is deleted 20 hours after its
+  upload, even one a card uses: the host hears it's gone, and the app puts it up again if a card still needs it (see
+  the budget below for why). One deleted while a phone is fetching it ends that download early (no card uses it, so no
+  phone needs it, or it's one 20 hours old that comes again). Everything goes when the room ends, and an upload going
+  on then stores nothing more.
 - **A room that stops mid-upload** (a deploy, a crash): each upload is noted in the room's state before its first
   piece (`RoomSaved.uploads`) and taken off when it ends, so a room starting again deletes what such an upload left.
-  Its part of today's budget isn't given back. The app sees its upload fail and sends the file again.
+  Its part of the budget isn't given back (it frees within 24 hours). The app sees its upload fail and sends the file
+  again.
 - **Rolling back** to a version that kept pieces only under `file:<id>:<n>`: the files stored since answer 404
   (phones say they didn't load), and their pieces stay until the room ends. The other way, rooms open across the
   deploy keep their older files (`file:<id>:<n>`, no `key`) and serve them as before.
 - **120 uploads and 120 downloads a minute per address** (`FILE_LIMIT` in `wrangler.jsonc`).
-- **A daily budget for the whole server: 2,000 MB of uploads a UTC day** by default (`FILES_MB_PER_DAY`), of which one
-  address may use a quarter and one IPv6 /48 half. Over it, uploads are refused with "The buzzer server isn't taking
-  files right now — try again tomorrow" (or "Too many files from here today"), the welcome stops listing `'files'`, and
-  the app falls back to its 📋 copy buttons. **To change it**, set `FILES_MB_PER_DAY` under `vars` in `wrangler.jsonc`
-  (a number of MB; `0` turns card files off) and deploy again; for `wrangler dev` only, put `FILES_MB_PER_DAY=…` in a
-  `.dev.vars` file here. A missing or unreadable value means 2000. That's enough for a few games a day (one host's
-  quarter fills several rooms), and under the Free plan's 5 GB of storage, so even a day of it can't fill that.
+- **A budget for the whole server: 2,000 MB of uploads in any 24 hours** by default (`FILES_MB_PER_DAY`), of which
+  one address may use a quarter and one IPv6 /48 half. `RoomCounter` counts it by the hour: an hour's uploads stop
+  counting 24 hours after that hour began. Over it, uploads are refused with "The buzzer server has taken all the card
+  files it can for now — try again in about 5 hours" (or "Too many files from here for now — …", the hours worked out
+  from what's counted), the welcome stops listing `'files'`, and the app falls back to its 📋 copy buttons. **To change
+  it**, set `FILES_MB_PER_DAY` under `vars` in `wrangler.jsonc` (a number of MB; `0` turns card files off) and deploy
+  again; for `wrangler dev` only, put `FILES_MB_PER_DAY=…` in a `.dev.vars` file here. A missing or unreadable value
+  means 2000. That's enough for a few games a day (one host's quarter fills several rooms), and under the Free plan's 5
+  GB of storage. As no file is kept more than 20 hours (not 24: an upload late in its hour stops counting 23 hours on,
+  and a room's alarm can be late), the files kept are never more than one budget, so they can't fill that, whatever
+  the rooms do. (Counted by UTC day, as before, a room open across midnight kept yesterday's files while today's
+  budget began again.) A count kept by that older code is taken as counted in the hour it's first read, or at 23:00
+  for the day before, so it counts until every file it paid for is gone.
 - **What a file costs**, measured on a Free account on 2026-10-17 (CPU time per request, three of each, with
   `measure-files.mjs --analytics`; in brackets, before files streamed through the Worker, when it read and copied each
   one whole, from the dashboard's per-minute charts):
@@ -283,11 +295,11 @@ twice at once is stored (and counted) once, and bytes counted against today's bu
 
   The Free plan gives a Worker 10 ms of CPU a request, with some leeway for one that runs over now and then, and a
   Durable Object 30 seconds (Cloudflare's limits pages). The Worker now spends a request's usual 1–4 ms whatever the
-  file; the room's part grows about 5 ms a MB, so a 16 MB file costs it about 80 ms. The daily counter (`RoomCounter`)
+  file; the room's part grows about 5 ms a MB, so a 16 MB file costs it about 80 ms. The budget's counter (`RoomCounter`)
   takes under 2 ms a call, no request failed or ran out of CPU, and 10 MB of files wrote 46 rows, their deletion
   included. **To measure again** (after a change, or before raising `FILE_MB`), run
   `node measure-files.mjs https://<your server> --sizes 1,2,3,4` here: it opens a room with a host and a phone, then
-  uploads and fetches one file a minute, printing when each went, and uses that much of the day's budget. Read Workers &
+  uploads and fetches one file a minute, printing when each went, and uses that much of the budget. Read Workers &
   Pages › the Worker › Metrics › CPU time, and Durable Objects › each class › Metrics, for those minutes. Workers Logs
   are on (`observability` in `wrangler.jsonc`), so Observability › Logs also has each request's own CPU time, the
   room's calls included: there, `--gap 10 --runs 3` (a request every 10 s, each size three times) is enough. The logs
@@ -319,7 +331,7 @@ and a dropped host connection; `tests/e2e/buzzerfiles.mjs`: card files a piece a
 the room closing, the server stopping or its connection dropping (nothing of it left stored), a full room's answer, a
 download's Content-Length, one whose file is deleted partway, and downloads stopped partway; then a server with limits
 of its own saying them and holding to them, and giving back the room an upload stopped partway kept and the budget a
-twin kept; `tests/e2e/cardlimits.mjs`: the built app going by a server's own limits, asked before any room is open
+twin kept, then saying when to try again; `tests/e2e/cardlimits.mjs`: the built app going by a server's own limits, asked before any room is open
 and said by a room's welcome, and an older server's 16 MB; a 17 MB file that a 24 MB server takes, noted (never named
 in the host panel), its upload's percent on slowed-down lines and the phone's, ✖ Take back stopping it partway, and a
 file the room holds not sent again; `tests/e2e/phonecards.mjs`: the phone's private cards, from the
@@ -353,6 +365,7 @@ room keeps up to 32 KB of state, which can include the private cards the host se
 closes (or the round ends, or the host takes it back, for a card sent with 🤫 Send a card…), and up to `ROOM_FILES_MB`
 (64 MB by default) of card files until 10 minutes after no card uses them; it is all wiped when the room ends.
 Durable Object storage (5 GB on Free) is shared by every room on the account: 20 open rooms at their file cap is 1.3
-GB. Card file uploads stop for the day at the daily budget (see Card files above, which says how to change it).
+GB. Card file uploads stop at the budget for 24 hours, and no file is kept more than 20 hours (see Card files above,
+which says how to change it).
 Whoever runs the server (for the public one, its Cloudflare account) could read what is stored while it is there, and
 Cloudflare may keep earlier copies of Durable Object storage for a while (point-in-time recovery).

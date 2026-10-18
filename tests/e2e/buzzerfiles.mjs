@@ -298,7 +298,7 @@ try {
     r.host.send({ t: 'close' });
   }
   {
-    // What a twin (the same bytes again) kept of the day's budget is given back: one address has 6 MB of it.
+    // What a twin (the same bytes again) kept of the budget is given back: one address has 6 MB of it.
     const r = await newRoom('198.51.100.80', small.base);
     const from = '198.51.100.81';
     const one = randomBytes(MB);
@@ -308,7 +308,11 @@ try {
     const last = await r.upload(randomBytes(MB), { from });
     assert(last.status === 200, `and another 1 MB still fits its 6 MB: the twin's share was given back (${last.status})`);
     const over = await r.upload(randomBytes(1024), { from });
+    const said = (await over.json()).error;
     assert(over.status === 429, `past its 6 MB, the next is turned away (${over.status})`);
+    // (Its 6 MB went up this hour, so they count until this hour is 24 hours gone: about 24 hours, or 23 if an hour
+    // began meanwhile.)
+    assert(/^Too many files from here for now — try again in about 2[34] hours$/.test(said), `saying when to try again: "${said}"`);
     r.host.send({ t: 'close' });
   }
 

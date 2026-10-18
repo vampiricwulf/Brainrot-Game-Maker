@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { HostCard, HostState, RoomToHost, RoomToPhone } from '../../src/lib/buzzproto';
 import { CARDS_BYTES, CARDS_MAX, clip, cleanName, MAX_PHONES, OLD_FILE_LIMITS, ROOM_FILES_MAX } from '../../src/lib/buzzproto';
-import { FILE_IDLE_MS, FILE_MAKE_ROOM_MS } from './limits';
+import { FILE_IDLE_MS, FILE_MAKE_ROOM_MS, FILE_MAX_AGE_MS } from './limits';
 
 /** The limits these tests run with (the room's caps). */
 const { fileBytes: FILE_BYTES, roomBytes: ROOM_BYTES } = OLD_FILE_LIMITS;
@@ -139,7 +139,7 @@ describe('host', () => {
     const g = setup();
     g.room.hostOpen();
     expect(g.host[0]).toEqual({ t: 'welcome', code: 'BCDF', protocol: 1, serverNow: 10_000, features: ['teams', 'wagers', 'free', 'color', 'answers', 'cards'] });
-    // 'files' only while the server takes card files (index.ts knows its setting and today's budget), and with it the
+    // 'files' only while the server takes card files (index.ts knows its setting and budget), and with it the
     // server's limits.
     const f = setup(undefined, [], { fileBytes: 4 << 20, roomBytes: 12 << 20, roomFiles: 32 });
     f.room.hostOpen(true);
@@ -2608,8 +2608,8 @@ describe('card files', () => {
     expect(g.room.fileSpace(1000)).toBe('full');
     expect(g.filesDropped).toEqual([]);
     g.t.now += FILE_MAKE_ROOM_MS;
-    // Room for one: the oldest is to go, but nothing is deleted yet (a file refused after this, for today's budget, leaves
-    // every other where it was).
+    // Room for one: the oldest is to go, but nothing is deleted yet (a file refused after this, for the server's budget,
+    // leaves every other where it was).
     expect(g.room.fileSpace(1000)).toEqual({ ok: true, drop: [id(0)] });
     expect(g.filesDropped).toEqual([]);
     expect(Object.keys(g.room.saved.files!)).toEqual([0, 1, 2, 3].map(id));
@@ -2789,6 +2789,31 @@ describe('card files', () => {
     g.send({ t: 'forget', files: [F1, F2, 'junk'] });
     expect(Object.keys(g.room.saved.files!)).toEqual([F2]);
     expect(g.hostLast('files')).toEqual({ t: 'files', ids: [F2] });
+  });
+
+  it('a file is deleted 20 hours after its upload, even one a card uses: the host hears it’s gone', () => {
+    const g = sent();
+    add(g, F1, 'video/mp4', 1000, 1);
+    g.sendCards([card({ media: [{ kind: 'video', file: F1, mime: 'video/mp4' }] })]);
+    g.t.now += FILE_MAX_AGE_MS - 60_000;
+    add(g, F2, 'image/png', 1000, 1);
+    g.sendCards([card({ media: [{ kind: 'video', file: F1, mime: 'video/mp4' }, ...pic(F2)!] })]);
+    g.t.now += 59_999;
+    g.room.sweepFiles();
+    expect(Object.keys(g.room.saved.files!)).toEqual([F1, F2]);
+    // By the alarm.
+    g.t.now += 1;
+    g.room.sweepFiles();
+    expect(g.filesDropped).toEqual([F1]);
+    expect(Object.keys(g.room.saved.files!)).toEqual([F2]);
+    expect(g.hostLast('files')).toEqual({ t: 'files', ids: [F2] });
+    expect(g.room.fileFor(g.tokenOf(g.pb), F1)).toBeNull();
+    // Put up again, it's new: 20 hours from now. (On a new state too, alarm or not.)
+    add(g, F1, 'video/mp4', 1000, 1);
+    g.t.now += FILE_MAX_AGE_MS - 60_000;
+    g.sendCards([card({ media: [{ kind: 'video', file: F1, mime: 'video/mp4' }, ...pic(F2)!] })]);
+    expect(g.filesDropped).toEqual([F1, F2]);
+    expect(Object.keys(g.room.saved.files!)).toEqual([F1]);
   });
 
   it('the host hears which files the room holds when it comes back', () => {

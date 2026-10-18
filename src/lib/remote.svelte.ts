@@ -226,7 +226,7 @@ export function roomMembers(seatId: string): TeamMember[] {
 
 /** The room this window is in puts 🤫 cards on phones (an older buzzer server doesn't: the host copies them). */
 export const roomHasCards = (): boolean => remote.features.includes('cards');
-/** The room this window is in takes card files from this computer now (its server can be off them, or out for today). */
+/** The room this window is in takes card files from this computer now (its server may be off them, or out of budget). */
 export const roomHasFiles = (): boolean => roomHasCards() && remote.features.includes('files');
 
 /** Why the room turned a card file down (its HTTP answer): plain words for each, and whether trying again may help. */

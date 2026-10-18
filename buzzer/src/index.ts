@@ -14,10 +14,11 @@
  * in the Authorization header) and a phone the card was sent to fetches it (GET …/files/:id, its seat token in the
  * header, never in the address). The room checks who may have what (room.ts fileFor); the Durable Object stores the
  * bytes as they arrive and sends them a 1 MB piece at a time (filestore.ts), under their own keys (p:<random>:<n>),
- * never in 'room', which is written on every change. Uploads are limited per address (FILE_LIMIT) and by a daily byte
- * budget for the whole server (FILES_MB_PER_DAY, counted by RoomCounter); how big a file and a room's files may be is
- * set too (FILE_MB, ROOM_FILES_MB), and told to the app (/api/health, the host's welcome). The room's one alarm both ends
- * it and deletes files no card has used for a while (nextAlarm).
+ * never in 'room', which is written on every change. Uploads are limited per address (FILE_LIMIT) and by a byte budget
+ * for the whole server in any 24 hours (FILES_MB_PER_DAY, counted by the hour by RoomCounter); how big a file and a
+ * room's files may be is set too (FILE_MB, ROOM_FILES_MB), and told to the app (/api/health, the host's welcome). The
+ * room's one alarm both ends it and deletes files no card has used for a while, and any file 20 hours after its upload
+ * (nextAlarm), so the files kept are never more than the budget.
  */
 import { DurableObject } from 'cloudflare:workers';
 import {
@@ -40,18 +41,20 @@ import {
   countRoom,
   fileLimits,
   filesBudget,
-  FILES_BUSY_TODAY,
+  filesBusy,
   FILES_OFF,
+  freesIn,
+  hourOf,
   nextAlarm,
   TOO_MANY_FILES,
-  TOO_MANY_FILES_TODAY,
   TOO_MANY_LOOKUPS,
   TOO_MANY_ROOMS,
   TOO_MANY_TODAY,
   tooBig,
   uncountBytes,
-  type DayBytes,
+  WINDOW_HOURS,
   type DayCount,
+  type SavedBytes,
 } from './limits';
 import { FILE_PART_BYTES, FileStore, type Hasher, type PieceSource, type Upload } from './filestore';
 import { Room, emptyRoom, type PhoneSaved, type RoomSaved } from './room';
@@ -67,7 +70,7 @@ export interface Env {
   SOCKET_LIMIT: RateLimit;
   /** Card file uploads and downloads per address per minute (counted apart). */
   FILE_LIMIT: RateLimit;
-  /** Card files the whole server takes a UTC day, in MB (wrangler.jsonc vars; 0 turns them off; see filesBudget). */
+  /** Card files the whole server takes in any 24 hours, in MB (wrangler.jsonc vars; 0 turns them off: filesBudget). */
   FILES_MB_PER_DAY?: string | number;
   /** How big a card file may be, and a room's card files together, in MB (wrangler.jsonc vars; see fileLimits). */
   FILE_MB?: string | number;
@@ -304,10 +307,11 @@ export class BuzzRoom extends DurableObject<Env> {
     hasher: sha256,
     take: async (who, n) => {
       const took = await this.env.ROOM_COUNTER.getByName('rooms').takeBytes(who, n);
-      return took === 'ok' ? { ok: true, ticket: null } : took;
+      // (The ticket is the hour it was counted under: a refund goes back there.)
+      return typeof took === 'string' ? took : { ok: true, ticket: took.hour };
     },
-    refund: (who, n) => this.env.ROOM_COUNTER.getByName('rooms').refundBytes(who, n).catch(() => {}),
-    busyText: (took) => (took === 'address' ? TOO_MANY_FILES_TODAY : FILES_BUSY_TODAY),
+    refund: (who, n, hour) => this.env.ROOM_COUNTER.getByName('rooms').refundBytes(who, n, typeof hour === 'number' ? hour : undefined).catch(() => {}),
+    busyText: async (took, who, n) => filesBusy(took, await this.env.ROOM_COUNTER.getByName('rooms').bytesFreeIn(who, n).catch(() => WINDOW_HOURS)),
   });
 
   constructor(ctx: DurableObjectState, env: Env) {
@@ -336,7 +340,7 @@ export class BuzzRoom extends DurableObject<Env> {
       }
       this.room = this.makeRoom(this.meta.code, saved, phones, hostHere);
       // The pieces of uploads that stopped with the last instance (a deploy, a crash, out of memory): nothing can be
-      // writing yet. (Their part of today's budget isn't given back: that errs safe.)
+      // writing yet. (Their part of the budget isn't given back: that errs safe, and it frees within 24 hours.)
       this.dropPieces(this.room.takeUploads());
     });
   }
@@ -426,7 +430,7 @@ export class BuzzRoom extends DurableObject<Env> {
     return meta.lastHostAt ? meta.lastHostAt + IDLE_MS : meta.createdAt + UNUSED_MS;
   }
 
-  /** The server takes card files now: the setting isn't 0 and today's budget isn't used up. */
+  /** The server takes card files now: the setting isn't 0 and the last 24 hours' uploads haven't used up the budget. */
   private async takingFiles(): Promise<boolean> {
     if (!filesBudget(this.env.FILES_MB_PER_DAY)) return false;
     try {
@@ -627,25 +631,36 @@ export class RoomCounter extends DurableObject<Env> {
   }
 
   /**
-   * n more bytes of card files from address key `who`: 'off' (FILES_MB_PER_DAY is 0), 'busy' when today's budget would
-   * be used up, 'address' when this address's share (or its /48's) would.
+   * n more bytes of card files from address key `who`: { ok, hour } (the hour they're counted under, for a refund), or
+   * 'off' (FILES_MB_PER_DAY is 0), 'busy' when the last 24 hours' uploads would pass the budget, 'address' when this
+   * address's share (or its /48's) would.
    */
-  async takeBytes(who: string, n: number): Promise<'ok' | 'off' | 'busy' | 'address'> {
-    const next = countBytes(await this.ctx.storage.get<DayBytes>('bytes'), Date.now(), who, n, filesBudget(this.env.FILES_MB_PER_DAY));
+  async takeBytes(who: string, n: number): Promise<{ ok: true; hour: number } | 'off' | 'busy' | 'address'> {
+    const now = Date.now();
+    const next = countBytes(await this.ctx.storage.get<SavedBytes>('bytes'), now, who, n, filesBudget(this.env.FILES_MB_PER_DAY));
     if (typeof next === 'string') return next;
     await this.ctx.storage.put('bytes', next);
-    return 'ok';
+    return { ok: true, hour: hourOf(now) };
   }
 
-  /** n bytes counted by takeBytes for `who` weren't stored after all (the room ended, or storing failed): given back. */
-  async refundBytes(who: string, n: number): Promise<void> {
-    const next = uncountBytes(await this.ctx.storage.get<DayBytes>('bytes'), Date.now(), who, n);
+  /** In about how many hours n more bytes from `who` would be taken (for the words of a refusal). */
+  async bytesFreeIn(who: string, n: number): Promise<number> {
+    return freesIn(await this.ctx.storage.get<SavedBytes>('bytes'), Date.now(), who, n, filesBudget(this.env.FILES_MB_PER_DAY));
+  }
+
+  /**
+   * n bytes counted by takeBytes for `who` (in `hour`) weren't stored after all (the room ended, or storing failed):
+   * given back, unless that hour isn't counted any more.
+   */
+  async refundBytes(who: string, n: number, hour?: number): Promise<void> {
+    const now = Date.now();
+    const next = uncountBytes(await this.ctx.storage.get<SavedBytes>('bytes'), now, who, n, Number.isSafeInteger(hour) ? hour : hourOf(now));
     if (next) await this.ctx.storage.put('bytes', next);
   }
 
-  /** Some of today's budget for card files is left. */
+  /** Some of the budget for card files is left. */
   async takingFiles(): Promise<boolean> {
-    return bytesLeft(await this.ctx.storage.get<DayBytes>('bytes'), Date.now(), filesBudget(this.env.FILES_MB_PER_DAY)) > 0;
+    return bytesLeft(await this.ctx.storage.get<SavedBytes>('bytes'), Date.now(), filesBudget(this.env.FILES_MB_PER_DAY)) > 0;
   }
 }
 

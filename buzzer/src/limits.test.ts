@@ -9,9 +9,13 @@ import {
   countRoom,
   DAILY_ROOMS,
   FILE_IDLE_MS,
+  FILE_MAX_AGE_MS,
   fileLimits,
   filesBudget,
+  filesBusy,
   FILES_MB_PER_DAY,
+  freesIn,
+  hourOf,
   mbSetting,
   NETWORK_ROOMS,
   networkKey,
@@ -19,8 +23,11 @@ import {
   tooBig,
   uncountBytes,
   utcDay,
+  WINDOW_HOURS,
   type DayBytes,
   type DayCount,
+  type SavedBytes,
+  type WindowBytes,
 } from './limits';
 
 const day1 = Date.UTC(2026, 9, 1, 12);
@@ -118,7 +125,7 @@ describe('what an address is counted by', () => {
   });
 });
 
-describe('card files a day', () => {
+describe('card files in any 24 hours', () => {
   const MB = 1024 * 1024;
   const cap = 100 * MB;
 
@@ -169,29 +176,131 @@ describe('card files a day', () => {
     expect(tooBig({ fileBytes: 2.5 * MB, roomBytes: 12 * MB, roomFiles: 32 })).toBe('Too big for the buzzer server (2.5 MB at most)');
   });
 
-  it('counts the bytes up, and refuses an upload that would go over the day’s budget until the next UTC day', () => {
-    expect(countBytes(null, day1, 'a', 4 * MB, cap)).toEqual({ day: '2026-10-01', bytes: 4 * MB, by: { a: 4 * MB } });
-    const nearly: DayBytes = { day: '2026-10-01', bytes: cap - MB, by: { b: 10 * MB } };
-    expect(countBytes(nearly, day1, 'a', MB, cap)).toMatchObject({ bytes: cap, by: { a: MB, b: 10 * MB } });
-    expect(countBytes(nearly, day1, 'a', MB + 1, cap)).toBe('busy');
-    expect(bytesLeft(nearly, day1, cap)).toBe(MB);
-    expect(bytesLeft({ ...nearly, bytes: cap }, day1, cap)).toBe(0);
-    // The next UTC day starts from 0.
-    expect(countBytes({ ...nearly, bytes: cap }, day2, 'a', 4 * MB, cap)).toEqual({ day: '2026-10-02', bytes: 4 * MB, by: { a: 4 * MB } });
-    expect(bytesLeft({ ...nearly, bytes: cap }, day2, cap)).toBe(cap);
+  const H = 3600_000;
+  /** 12:30 UTC on 1 October. */
+  const t0 = Date.UTC(2026, 9, 1, 12, 30);
+  /** The budget used up at `at` by four addresses, a quarter each. */
+  const fill = (at: number, saved: SavedBytes | null = null) =>
+    ['a', 'b', 'c', 'd'].reduce<SavedBytes | null>((w, who) => countBytes(w, at, who, cap * ADDRESS_FILE_SHARE, cap) as WindowBytes, saved) as WindowBytes;
+
+  it('counts the bytes up by the hour', () => {
+    let w = countBytes(null, t0, 'a', 4 * MB, cap) as WindowBytes;
+    expect(w).toEqual({ v: 2, hours: [{ h: hourOf(t0), bytes: 4 * MB, by: { a: 4 * MB } }] });
+    // The same hour: added to it.
+    w = countBytes(w, t0 + 20 * 60_000, 'b', MB, cap) as WindowBytes;
+    expect(w.hours).toEqual([{ h: hourOf(t0), bytes: 5 * MB, by: { a: 4 * MB, b: MB } }]);
+    // The next: an hour of its own.
+    w = countBytes(w, t0 + H, 'b', MB, cap) as WindowBytes;
+    expect(w.hours).toEqual([
+      { h: hourOf(t0), bytes: 5 * MB, by: { a: 4 * MB, b: MB } },
+      { h: hourOf(t0) + 1, bytes: MB, by: { b: MB } },
+    ]);
+    expect(bytesLeft(w, t0 + H, cap)).toBe(cap - 6 * MB);
   });
 
-  it('gives back bytes counted for a file that wasn’t stored, never below 0, and only on the same UTC day', () => {
+  it('refuses an upload that would pass the budget in any 24 hours, until the hour it was used in is 24 hours gone', () => {
+    const full = fill(t0);
+    expect(bytesLeft(full, t0, cap)).toBe(0);
+    expect(countBytes(full, t0, 'e', 1, cap)).toBe('busy');
+    // Past midnight (a new UTC day) it still counts.
+    expect(countBytes(full, Date.UTC(2026, 9, 2, 0, 30), 'e', 1, cap)).toBe('busy');
+    // Until 12:00 the next day: 24 hours after its hour began.
+    expect(countBytes(full, Date.UTC(2026, 9, 2, 11, 59, 59), 'e', 1, cap)).toBe('busy');
+    const later = Date.UTC(2026, 9, 2, 12);
+    expect(bytesLeft(full, later, cap)).toBe(cap);
+    expect(countBytes(full, later, 'e', MB, cap)).toEqual({ v: 2, hours: [{ h: hourOf(later), bytes: MB, by: { e: MB } }] });
+    // Two hours: each frees what it took as it goes.
+    const two = countBytes(countBytes(null, t0, 'a', 20 * MB, cap) as WindowBytes, t0 + 5 * H, 'b', 25 * MB, cap) as WindowBytes;
+    expect(bytesLeft(two, t0 + 5 * H, cap)).toBe(55 * MB);
+    expect(bytesLeft(two, t0 + 24 * H, cap)).toBe(75 * MB);
+    expect(bytesLeft(two, t0 + 29 * H, cap)).toBe(cap);
+  });
+
+  it('an address’s share (and its /48’s) is counted over the 24 hours too', () => {
+    let w: SavedBytes | null = null;
+    for (let i = 0; i < 4; i++) w = countBytes(w, t0 + i * H, 'x', 5 * MB, cap) as WindowBytes;
+    expect(countBytes(w, t0 + 5 * H, 'x', 5 * MB + 1, cap)).toBe('address');
+    expect(countBytes(w, t0 + 5 * H, 'x', 5 * MB, cap)).not.toBeTypeOf('string');
+    expect(countBytes(w, t0 + 5 * H, 'y', 25 * MB, cap)).not.toBeTypeOf('string');
+    // Once its first hour is gone, that much more.
+    expect(countBytes(w, t0 + 24 * H, 'x', 10 * MB, cap)).not.toBeTypeOf('string');
+    expect(countBytes(w, t0 + 24 * H, 'x', 10 * MB + 1, cap)).toBe('address');
+    // A /48's /56s together, over hours.
+    const [p, q] = ['2001:db8:1:100::1', '2001:db8:1:200::1'].map(addressKey);
+    w = countBytes(countBytes(null, t0, p, 25 * MB, cap) as WindowBytes, t0 + 3 * H, q, 25 * MB, cap) as WindowBytes;
+    expect(countBytes(w, t0 + 4 * H, addressKey('2001:db8:1:300::1'), 1, cap)).toBe('address');
+    expect(countBytes(w, t0 + 24 * H, addressKey('2001:db8:1:300::1'), 25 * MB, cap)).not.toBeTypeOf('string');
+  });
+
+  it('gives back bytes counted for a file that wasn’t stored into the hour they were counted in, never below 0', () => {
     const who = addressKey('2001:db8:1:100::1');
-    const counted = countBytes(null, day1, who, 4 * MB, cap) as DayBytes;
-    const back = uncountBytes(counted, day1, who, 4 * MB)!;
-    expect(back).toEqual({ day: '2026-10-01', bytes: 0, by: { [who]: 0, '20010db80001/48': 0 } });
-    // The address can upload its whole share again.
-    expect(countBytes(back, day1, who, cap * ADDRESS_FILE_SHARE, cap)).not.toBeTypeOf('string');
-    expect(uncountBytes({ day: '2026-10-01', bytes: MB, by: { a: MB } }, day1, 'a', 4 * MB)).toEqual({ day: '2026-10-01', bytes: 0, by: { a: 0 } });
-    // Another day, or nothing counted: nothing to give back.
-    expect(uncountBytes(counted, day2, who, 4 * MB)).toBeNull();
-    expect(uncountBytes(null, day1, who, 4 * MB)).toBeNull();
+    const first = countBytes(null, t0, who, 4 * MB, cap) as WindowBytes;
+    const both = countBytes(first, t0 + H, who, 3 * MB, cap) as WindowBytes;
+    // Two hours on, the first upload's bytes go back to its own hour.
+    const back = uncountBytes(both, t0 + 2 * H, who, 4 * MB, hourOf(t0))!;
+    expect(back.hours).toEqual([
+      { h: hourOf(t0), bytes: 0, by: { [who]: 0, '20010db80001/48': 0 } },
+      { h: hourOf(t0) + 1, bytes: 3 * MB, by: { [who]: 3 * MB, '20010db80001/48': 3 * MB } },
+    ]);
+    // The address can upload the rest of its share again.
+    expect(countBytes(back, t0 + 2 * H, who, cap * ADDRESS_FILE_SHARE - 3 * MB, cap)).not.toBeTypeOf('string');
+    expect(uncountBytes(both, t0 + H, who, 10 * MB, hourOf(t0) + 1)!.hours[1]).toEqual({ h: hourOf(t0) + 1, bytes: 0, by: { [who]: 0, '20010db80001/48': 0 } });
+    // Without an hour: this one.
+    expect(uncountBytes(both, t0 + H + 60_000, who, MB)!.hours[1].bytes).toBe(2 * MB);
+    // An hour no longer counted, one never counted, or nothing counted: nothing to give back.
+    expect(uncountBytes(both, t0 + 24 * H, who, 4 * MB, hourOf(t0))).toBeNull();
+    expect(uncountBytes(both, t0 + H, who, 4 * MB, hourOf(t0) - 1)).toBeNull();
+    expect(uncountBytes(null, t0, who, 4 * MB, hourOf(t0))).toBeNull();
+    expect(uncountBytes(both, t0 + H, who, 0, hourOf(t0))).toBeNull();
+  });
+
+  it('a count older code kept for a UTC day counts until every file it paid for is gone', () => {
+    const old: DayBytes = { day: '2026-10-01', bytes: 30 * MB, by: { a: 20 * MB, b: 10 * MB } };
+    // Read that day: taken as counted now, and moved on as one hour.
+    expect(bytesLeft(old, t0, cap)).toBe(70 * MB);
+    expect(countBytes(old, t0, 'a', MB, cap)).toEqual({ v: 2, hours: [{ h: hourOf(t0), bytes: 31 * MB, by: { a: 21 * MB, b: 10 * MB } }] });
+    expect(countBytes(old, t0, 'a', 5 * MB + 1, cap)).toBe('address');
+    expect(uncountBytes(old, t0, 'b', 4 * MB)).toEqual({ v: 2, hours: [{ h: hourOf(t0), bytes: 26 * MB, by: { a: 20 * MB, b: 6 * MB } }] });
+    // Read the next day: as counted at 23:00 that day, the last hour it can have been, so it counts until 23:00 now.
+    expect(bytesLeft(old, Date.UTC(2026, 9, 2, 22, 59), cap)).toBe(70 * MB);
+    expect(bytesLeft(old, Date.UTC(2026, 9, 2, 23), cap)).toBe(cap);
+    // Older than that, or nothing in it: nothing counts.
+    expect(bytesLeft({ ...old, day: '2026-09-29' }, t0, cap)).toBe(cap);
+    expect(countBytes({ ...old, bytes: 0 }, t0, 'a', MB, cap)).toEqual({ v: 2, hours: [{ h: hourOf(t0), bytes: MB, by: { a: MB } }] });
+  });
+
+  it('says in how many hours enough of the budget frees', () => {
+    const full = fill(t0);
+    // Its hour goes at 12:00 the next day: from 14:30, in about 22 hours (21.5, rounded up).
+    expect(freesIn(full, t0 + 2 * H, 'e', MB, cap)).toBe(22);
+    expect(freesIn(full, Date.UTC(2026, 9, 2, 11, 30), 'e', MB, cap)).toBe(1);
+    // Spread over hours: as soon as enough has gone.
+    let w: SavedBytes | null = null;
+    for (const [who, mb, at] of [['a', 10, 0], ['b', 15, 2], ['c', 25, 4], ['d', 25, 6], ['e', 25, 6]] as const) w = countBytes(w, t0 + at * H, who, mb * MB, cap) as WindowBytes;
+    // From 19:30: a's 10 MB go at 12:00, b's 15 at 14:00.
+    expect(freesIn(w, t0 + 7 * H, 'f', 10 * MB, cap)).toBe(17);
+    expect(freesIn(w, t0 + 7 * H, 'f', 20 * MB, cap)).toBe(19);
+    // An address over its share: when its own oldest hour goes (d's at 18:00).
+    expect(freesIn(w, t0 + 7 * H, 'd', MB, cap)).toBe(23);
+    // At least an hour; and never, for more than a share: the whole window.
+    expect(freesIn(null, t0, 'a', MB, cap)).toBe(1);
+    expect(freesIn(null, t0, 'a', cap * ADDRESS_FILE_SHARE + 1, cap)).toBe(WINDOW_HOURS);
+  });
+
+  it('a refusal says when to try again', () => {
+    expect(filesBusy('busy', 1)).toBe('The buzzer server has taken all the card files it can for now — try again in about an hour');
+    expect(filesBusy('busy', 22)).toBe('The buzzer server has taken all the card files it can for now — try again in about 22 hours');
+    expect(filesBusy('address', 3)).toBe('Too many files from here for now — try again in about 3 hours');
+  });
+
+  it('a file is deleted before the bytes it took stop counting, however late in its hour it came', () => {
+    // An upload at 12:59:59: its file goes at 08:59:59 the next day, its bytes stop counting at 12:00.
+    const late = Date.UTC(2026, 9, 1, 12, 59, 59);
+    const w = countBytes(null, late, 'a', 10 * MB, cap) as WindowBytes;
+    expect(bytesLeft(w, late + FILE_MAX_AGE_MS, cap)).toBe(cap - 10 * MB);
+    expect(bytesLeft(w, Date.UTC(2026, 9, 2, 12), cap)).toBe(cap);
+    // With hours to spare for a late alarm.
+    expect((WINDOW_HOURS - 1) * H - FILE_MAX_AGE_MS).toBeGreaterThanOrEqual(2 * H);
   });
 
   it('0 turns files off', () => {
@@ -199,8 +308,8 @@ describe('card files a day', () => {
     expect(bytesLeft(null, day1, 0)).toBe(0);
   });
 
-  it("one address (or IPv6 /48) can't use up the day's budget for everyone", () => {
-    let saved: DayBytes | null = null;
+  it("one address (or IPv6 /48) can't use up the budget for everyone", () => {
+    let saved: WindowBytes | null = null;
     let n = 0;
     for (let r = countBytes(saved, day1, 'x', MB, cap); typeof r !== 'string'; r = countBytes(saved, day1, 'x', MB, cap)) {
       saved = r;
@@ -209,7 +318,7 @@ describe('card files a day', () => {
     expect(n).toBe(cap * ADDRESS_FILE_SHARE / MB);
     expect(countBytes(saved, day1, 'x', MB, cap)).toBe('address');
     // Someone else still can.
-    expect(countBytes(saved, day1, 'y', MB, cap)).toMatchObject({ by: { y: MB } });
+    expect(countBytes(saved, day1, 'y', MB, cap)).toMatchObject({ hours: [{ by: { y: MB } }] });
     // The /56s of one /48 share a looser cap.
     saved = null;
     let total = 0;
@@ -221,7 +330,7 @@ describe('card files a day', () => {
       }
     }
     expect(total).toBe(cap / 2);
-    expect(saved!.by!['20010db80001/48']).toBe(cap / 2);
+    expect(saved!.hours[0].by['20010db80001/48']).toBe(cap / 2);
   });
 });
 
@@ -242,5 +351,13 @@ describe('the room’s alarm', () => {
     expect(nextAlarm(day1 + 1000, files, day1)).toBe(day1 + 1000);
     // Overdue: now, never earlier.
     expect(nextAlarm(end, { old: { unusedSince: day1 - 2 * FILE_IDLE_MS } }, day1)).toBe(day1);
+  });
+
+  it('is when a file gets too old, even one a card uses', () => {
+    const at = day1 - FILE_MAX_AGE_MS + 3600_000;
+    expect(nextAlarm(end, { used: { at } }, day1)).toBe(at + FILE_MAX_AGE_MS);
+    expect(nextAlarm(end, { used: { at }, idle: { at: day1, unusedSince: day1 } }, day1)).toBe(day1 + FILE_IDLE_MS);
+    expect(nextAlarm(end, { used: { at: day1 - FILE_MAX_AGE_MS - 1 } }, day1)).toBe(day1);
+    expect(nextAlarm(day1 + 1000, { used: { at } }, day1)).toBe(day1 + 1000);
   });
 });

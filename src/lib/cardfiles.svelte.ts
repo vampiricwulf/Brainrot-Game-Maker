@@ -182,7 +182,7 @@ async function next(game: Game, session: Session): Promise<void> {
       // Its card was taken back (or the tile closed) while it went: no use trying again.
       delete uploads.jobs[id];
     } else if (r.retry && (job.tries ?? 0) < (r.bytes > SLOW_FILE_BYTES ? RETRIES_BIG : RETRIES)) {
-      // (Not one the server turned down: off, too busy today, too big… That goes the same way again.)
+      // (Not one the server turned down: off, out of budget for now, too big… That goes the same way again.)
       const tries = (job.tries ?? 0) + 1;
       const wait = 5000 * tries;
       Object.assign(job, { state: 'waiting', tries, after: Date.now() + wait });

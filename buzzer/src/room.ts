@@ -73,7 +73,8 @@
  * the room keeps an index (RoomSaved.files, each file's pieces under its `key`), checks the caps, notes the uploads
  * writing now (RoomSaved.uploads, so a room restarted mid-upload deletes their pieces), and gives a file only to a phone
  * holding a token for a current card it may see (fileFor). A file no current card uses is deleted FILE_IDLE_MS after
- * (one got ready and never sent, after its upload), by the alarm and on each new state.
+ * (one got ready and never sent, after its upload), and any file FILE_MAX_AGE_MS after its upload (the host hears it's
+ * gone and puts it up again if a card still needs it), by the alarm and on each new state.
  */
 import {
   BUZZ_PROTOCOL,
@@ -121,7 +122,7 @@ import {
   type WagerRefusal,
   type WagerSeat,
 } from '../../src/lib/buzzproto';
-import { FILE_IDLE_MS, FILE_MAKE_ROOM_MS } from './limits';
+import { FILE_IDLE_MS, FILE_MAKE_ROOM_MS, FILE_MAX_AGE_MS } from './limits';
 
 /** Sockets at most, counting newcomers let in over MAX_PHONES to come back with a seat's token. */
 export const MAX_SOCKETS = 40;
@@ -669,9 +670,13 @@ export class Room {
     this.dropStale(now);
   }
 
-  /** Deletes the card files no card has used for FILE_IDLE_MS; how many it deleted. */
+  /**
+   * Deletes the card files no card has used for FILE_IDLE_MS, and those uploaded FILE_MAX_AGE_MS ago, even one a card
+   * uses (the host hears it's gone, and puts it up again); how many it deleted.
+   */
   private dropStale(now: number): number {
-    return this.dropFiles(Object.keys(this.s.files ?? {}).filter((id) => now - (this.s.files![id].unusedSince ?? now) >= FILE_IDLE_MS));
+    const stale = (f: RoomFile) => now - (f.unusedSince ?? now) >= FILE_IDLE_MS || now - f.at >= FILE_MAX_AGE_MS;
+    return this.dropFiles(Object.entries(this.s.files ?? {}).flatMap(([id, f]) => (stale(f) ? [id] : [])));
   }
 
   /** Forgets card files and has their bytes deleted (the host hears what is left); how many there were. */
@@ -696,7 +701,7 @@ export class Room {
     if (this.dropFiles(ids.filter((id) => !used.has(id)))) this.save();
   }
 
-  /** The alarm: deletes the card files no card has used for FILE_IDLE_MS (index.ts then sets the next alarm). */
+  /** The alarm: deletes the card files unused for FILE_IDLE_MS, or too old (index.ts then sets the next alarm). */
   sweepFiles(): void {
     if (this.dropStale(this.deps.now())) this.save();
   }
@@ -705,9 +710,9 @@ export class Room {
    * Whether a new card file `bytes` long can be stored: { ok, drop } (it fits once the files in `drop` are deleted), or
    * 'full' (ROOM_FILES_MAX files or the server's roomBytes). Out of space, the files no current card has used for
    * FILE_MAKE_ROOM_MS make room, oldest first, if that makes it fit (cards that ended fill a room long before the
-   * clean-up time). Nothing is deleted here: the caller does that with dropIdle once today's budget is taken, so one
-   * refused for it costs the room nothing. `pending`: files still on their way into storage, counted as here already,
-   * and the files to be deleted for them (`drop`), counted as here still and never chosen again.
+   * clean-up time). Nothing is deleted here: the caller does that with dropIdle once the server's budget is taken, so
+   * one refused for it costs the room nothing. `pending`: files still on their way into storage, counted as here
+   * already, and the files to be deleted for them (`drop`), counted as here still and never chosen again.
    */
   fileSpace(bytes: number, pending: { files: number; bytes: number; drop?: string[] } = { files: 0, bytes: 0 }): 'full' | { ok: true; drop: string[] } {
     const all = Object.entries(this.s.files ?? {});

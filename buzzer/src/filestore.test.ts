@@ -55,7 +55,7 @@ const cardWith = (file: string): HostCard => ({ id: 'pc:c1:1:1', to: [{ seat: 'a
 
 /**
  * A FileStore over fake storage (counting the bytes it holds at any moment, and the pieces given out and not yet
- * stored) and a real room, with a daily budget that can be held up or refuse.
+ * stored) and a real room, with a budget that can be held up or refuse.
  */
 function setup(limits: FileLimits = LIMITS) {
   const t = { now: 1_000_000 };
@@ -89,7 +89,17 @@ function setup(limits: FileLimits = LIMITS) {
   const r = { room: makeRoom(), epoch: 0 };
   r.room.hostOpen(true);
   r.room.hostMessage(JSON.stringify({ t: 'state', state: state() }));
-  const budget = { used: 0, took: [] as number[], refunds: [] as { n: number; ticket: unknown }[], refuse: null as Took | null, hold: null as Promise<void> | null, asked: later() };
+  const budget = {
+    used: 0,
+    took: [] as number[],
+    refunds: [] as { n: number; ticket: unknown }[],
+    refuse: null as Took | null,
+    hold: null as Promise<void> | null,
+    asked: later(),
+    /** What take gives for a refund (the hour it counted in). */
+    ticket: 'today' as unknown,
+    busyAsked: [] as { who: string; n: number }[],
+  };
   let prefixes = 0;
   const store = new FileStore({
     limits: () => limits,
@@ -118,13 +128,16 @@ function setup(limits: FileLimits = LIMITS) {
       if (budget.refuse) return budget.refuse;
       budget.used += bytes;
       budget.took.push(bytes);
-      return { ok: true, ticket: 'today' };
+      return { ok: true, ticket: budget.ticket };
     },
     refund: async (_who, bytes, ticket) => {
       budget.used -= bytes;
       budget.refunds.push({ n: bytes, ticket });
     },
-    busyText: (took) => `busy: ${took}`,
+    busyText: async (took, who, n) => {
+      budget.busyAsked.push({ who, n });
+      return `busy: ${took}`;
+    },
   });
   /** The room as BuzzRoom passes it: null once it ended, or a new room took its code. */
   const roomNow = (epoch = r.epoch) => (): FileRoom | null => (r.epoch === epoch ? r.room : null);
@@ -218,6 +231,27 @@ describe('uploads', () => {
     expect(g.s.puts.length).toBe(puts);
     expect(Object.keys(g.files())).toHaveLength(2);
     expect(g.files()[sha(old)]).toBeDefined();
+    // (The words are asked for with who and how much, to say when to try again.)
+    expect(g.budget.busyAsked).toEqual([
+      { who: '198.51.100.1', n: 4 * MB },
+      { who: '198.51.100.1', n: 4 * MB },
+    ]);
+  });
+
+  it('what isn’t used goes back with the ticket the budget gave (the hour it was counted in), whenever it ends', async () => {
+    const g = setup();
+    g.budget.ticket = 41;
+    const b = body(randomBytes(3 * MB), { pauseAt: 1, breakAt: 1 });
+    const going = g.upload(b, 3 * MB);
+    await b.atPause;
+    // (Another hour began meanwhile.)
+    g.budget.ticket = 42;
+    b.go();
+    expect(await going).toEqual({ status: 400, error: 'The upload broke off' });
+    expect(g.budget.refunds).toEqual([{ n: 3 * MB, ticket: 41 }]);
+    // Unsized: the rest of a file limit goes back with its own.
+    expect(await g.upload(body(randomBytes(MB)), null)).toMatchObject({ status: 200 });
+    expect(g.budget.refunds.at(-1)).toEqual({ n: LIMITS.fileBytes - MB, ticket: 42 });
   });
 
   it('a full room: 409 before anything is taken or written', async () => {
