@@ -24,6 +24,8 @@ async function until(pred, what, ms = 10_000) {
     if (Date.now() > end) throw new Error('never: ' + what);
   }
 }
+/** p's value, or an error if it takes over `ms`: a wait on a body the test holds would otherwise hang the run. */
+const within = (p, what, ms = 20_000) => Promise.race([p, sleep(ms).then(() => Promise.reject(new Error('never: ' + what)))]);
 /** The card file pieces stored now, in every room. */
 const pieces = async () => (await roomKeys(buzzer.persist)).filter((k) => /^(p|file):/.test(k));
 
@@ -139,11 +141,12 @@ try {
     const r = await newRoom('198.51.100.60');
     assert(!(await pieces()).length, '(nothing stored yet)');
     const up = r.slowUpload(randomBytes(4 * MB), 2 * MB);
-    await up.at;
+    await within(up.at, 'the upload got 2 MB in');
     await until(async () => (await pieces()).filter((k) => k.startsWith('p:')).length >= 1, 'pieces stored mid-upload');
     assert(true, 'an upload is stored a piece at a time as it comes, under a key of its own (p:…)');
     r.host.send({ t: 'close' });
-    const answer = await up.answer;
+    // (Its body is held until then: an upload the room doesn't stop would never answer.)
+    const answer = await within(up.answer, 'an answer to the upload, its room closed');
     up.go();
     assert(answer instanceof Error || answer.status === 401, `the room closed mid-upload: the upload is turned away (${answer.status ?? answer.message})`);
     await until(async () => !(await pieces()).length, 'its pieces gone');
@@ -154,11 +157,11 @@ try {
   {
     const r = await newRoom('198.51.100.61');
     const up = r.slowUpload(randomBytes(4 * MB), 2 * MB);
-    await up.at;
+    await within(up.at, 'the upload got 2 MB in');
     await until(async () => (await pieces()).length >= 1, 'pieces stored mid-upload');
     await buzzer.restart();
     up.go();
-    const answer = await up.answer;
+    const answer = await within(up.answer, 'an answer to the upload, the server restarted');
     assert(answer instanceof Error || answer.status >= 500, `the server stopped mid-upload: the upload didn't get through (${answer.status ?? answer.message})`);
     // The host comes back: the room starts again from its storage, and deletes what the upload left.
     const host = await socket(`${ws}/ws/${r.made.code}?host=${encodeURIComponent(r.made.hostToken)}`);

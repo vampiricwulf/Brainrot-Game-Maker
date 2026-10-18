@@ -3,8 +3,8 @@
 // page. Every phone's button greys while nobody buzzes; a card sent to one phone takes its button's place behind
 // "Tap to see", with its words, a picture fetched from the room with the phone's own token in a header (shown from a
 // blob: address), a picture from a link, a video file playing muted and inline, a YouTube player framed only when
-// tapped (no-cookie, sandboxed, with the referrer YouTube needs), "Picture coming…" filling in, and plain lines for what
-// won't come. The room hears it was seen. Hide covers it again; the card going takes it all down. Also: the content
+// tapped (no-cookie, sandboxed, with the referrer YouTube needs), "Picture coming…" filling in (tried again when its
+// download breaks off), and plain lines for what won't come. The room hears it was seen. Hide covers it again; the card going takes it all down. Also: the content
 // policy, a phone seated too late, the guesser's box, a GIF held still for reduced motion, and on a computer a Space
 // press that began before a card came doesn't open it. An open card sent again (a new id) stays open as it was (its
 // player still framed, even as it moves to the top; a picture that didn't load tried again), and its lines change in
@@ -202,6 +202,22 @@ try {
       { kind: 'audio', missing: true },
     ],
   };
+  // (The picture's first download breaks off halfway, half the bytes its Content-Length says: the phone tries it again.)
+  let picGets = 0;
+  let picAgain = false;
+  const cutOnce = async (r) => {
+    const res = await r.fetch();
+    if (picGets++) {
+      await r.fulfill({ response: res });
+      picAgain = true;
+      return;
+    }
+    const body = await res.body();
+    const headers = { ...res.headers(), 'content-length': String(body.length) };
+    delete headers['content-encoding'];
+    await r.fulfill({ status: 200, headers, body: body.subarray(0, body.length >> 1) });
+  };
+  await bob.route(`**/api/rooms/*/files/${pic}`, cutOnce);
   hostState({ cards: [card] });
   const bobCard = bob.locator('.card');
   await bobCard.waitFor();
@@ -223,6 +239,8 @@ try {
     'its files are fetched with the phone’s own token in a header, never in the address',
   );
   await shot(bob, 'covered');
+  // (Tried again before the card opens, so the video plays as long as ever before the checks below.)
+  await until(() => picAgain, 'the picture fetched again');
 
   await cover.tap();
   await bob.getByText('Green ogre-zz, lives in a swamp').waitFor();
@@ -233,6 +251,8 @@ try {
   const own = bob.getByRole('img', { name: 'The ogre' });
   await until(() => own.evaluate((img) => img.complete && img.naturalWidth === 320), 'the picture file shows');
   assert((await own.getAttribute('src')).startsWith('blob:'), 'the picture file shows from a blob: address, named for a screen reader');
+  assert(picGets === 2, `its first download broke off halfway: the phone tried again, and it came whole (${picGets} downloads)`);
+  await bob.unroute(`**/api/rooms/*/files/${pic}`, cutOnce);
   const linked = bob.locator('img[src="https://img.test/donkey.png"]');
   await until(() => linked.evaluate((img) => img.complete && img.naturalWidth > 0), 'the linked picture shows');
   assert((await linked.getAttribute('referrerpolicy')) === 'no-referrer' && (await linked.getAttribute('alt')) === 'Picture', 'a picture from a link loads from there, with no referrer');
