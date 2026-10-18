@@ -290,16 +290,17 @@ what it stored deleted and its budget given back: 90 MB in an hour is 200 kbps.
   `FILES_MB_PER_DAY` under `vars` in `wrangler.jsonc` (a number of MB; `0` turns card files off) and deploy again; for
   `wrangler dev` only, put `FILES_MB_PER_DAY=…` in a `.dev.vars` file here. A missing or unreadable value means 4000.
   That's enough for a few games a day (one host's quarter, 1,000 MB, fills a room), and under the Free plan's 5 GB of
-  storage. Uploading all of it writes about 18,400 rows (4.6 a MB, as measured below), of the Free plan's 100,000 a day.
+  storage. Uploading all of it and deleting it again writes about 8,500 rows (a row a MB each way, as measured below),
+  of the Free plan's 100,000 a day.
   As no file is kept more than 20 hours from when its upload began (not 24: an upload late in its hour stops counting 23
   hours on, and a room's alarm can be late), and no upload goes on more than an hour, the files kept and on their way
   are never more than one budget, so they can't fill that, whatever the rooms do. (Counted by UTC day, as before, a room
   open across midnight kept yesterday's files while today's budget began again.) A count kept by that older code is
   taken as counted in the hour it's first read, or at 23:00 for the day before, so it counts until every file it paid
   for is gone.
-- **What a file costs**, measured on a Free account on 2026-10-17 (CPU time per request, three of each, with
-  `measure-files.mjs --analytics`; in brackets, before files streamed through the Worker, when it read and copied each
-  one whole, from the dashboard's per-minute charts):
+- **What a file costs**, measured on a Free account (CPU time per request, with `measure-files.mjs --analytics`): 1–4
+  MB three of each on 2026-10-17, in brackets before files streamed through the Worker (when it read and copied each one
+  whole, from the dashboard's per-minute charts); 16, 48 and 90 MB once each on 2026-10-18, with the defaults above:
 
   | File | Upload: Worker | Upload: room | Download: Worker | Download: room |
   | --- | --- | --- | --- | --- |
@@ -307,30 +308,37 @@ what it stored deleted and its budget given back: 90 MB in an hour is 200 kbps.
   | 2 MB | ~3 ms (48) | ~11 ms (17) | ~1 ms (7) | ~16 ms (20) |
   | 3 MB | ~2 ms (50) | ~20 ms (28) | ~1 ms (8) | ~17 ms (35) |
   | 4 MB | ~2 ms (32) | ~19 ms (27) | ~2 ms (6) | ~17 ms (48) |
+  | 16 MB | 1.8 ms | 75 ms | 1.2 ms | 156 ms |
+  | 48 MB | 2.2 ms | 270 ms | 0.9 ms | 704 ms |
+  | 90 MB | 2.6 ms | 569 ms | 2.0 ms | 1,142 ms |
 
   The Free plan gives a Worker 10 ms of CPU a request, with some leeway for one that runs over now and then, and a
-  Durable Object 30 seconds (Cloudflare's limits pages). The Worker now spends a request's usual 1–4 ms whatever the
-  file; the room's part grows about 5 ms a MB, so a 16 MB file costs it about 80 ms, and a 90 MB one about half a
-  second. The budget's counter (`RoomCounter`) takes under 2 ms a call, no request failed or ran out of CPU, and 10 MB
-  of files wrote 46 rows, their deletion included. **To measure again** (after a change, after deploying these
-  defaults, or before raising `FILE_MB`), run `node measure-files.mjs https://<your server>` here (16, 48 and 90 MB
-  files; `--sizes 1,2,3,4` for others): it opens a room with a host and a phone, then uploads and fetches one file a
-  minute, printing when each went, and uses that much of the budget (it says how much). If Cloudflare turns the
-  biggest away (its connection drops, with no answer), set `FILE_MB` lower. Read Workers & Pages › the Worker ›
-  Metrics › CPU time, and Durable Objects › each class › Metrics, for those minutes. Workers Logs are on
-  (`observability` in `wrangler.jsonc`), so Observability › Logs also has each request's own CPU time, the room's
-  calls included: there, `--gap 10 --runs 3` (a request every 10 s, each size three times) is enough. The logs leave
-  query strings out, so find the requests by the times it prints. Each time a room deletes a file's pieces it logs its
-  storage's size (`card file pieces deleted: …; room storage now … bytes`), which shows whether deleting files gives
-  the space back. With `--analytics <account id>` and an API token with Account Analytics Read in
-  `CLOUDFLARE_API_TOKEN`, it reads them itself once Cloudflare's analytics have them (a few minutes): each request's
-  CPU time in the Worker, in the room and in the budget's counter, and any call that didn't end well.
+  Durable Object 30 seconds (Cloudflare's limits pages). The Worker spends a request's usual 1–3 ms whatever the file;
+  the room's part grows about 5–6 ms a MB for an upload and 10–15 ms a MB for each phone's download, so a 90 MB file
+  costs it about half a second to store and a second for each phone. Cloudflare took the 90 MB upload (94,371,840 bytes)
+  and sent it back (a 1 MB file, compared byte for byte, came with its `Content-Length`), and the room's own memory
+  stayed under 20 MB. The budget's counter (`RoomCounter`) takes under 2 ms a call, and no request failed or ran out of
+  CPU. Storing a file writes about a row a MB (a row a piece), and deleting it about as many again; deleting it gives
+  its space back (the room's storage was 128 KB again after its 90 MB file went). **To measure again** (after a change,
+  after deploying these defaults, or before raising `FILE_MB`), run `node measure-files.mjs https://<your server>` here
+  (16, 48 and 90 MB files; `--sizes 1,2,3,4` for others): it opens a room with a host and a phone, then uploads and
+  fetches one file a minute, printing when each went (and whether each download came back the same, with its
+  `Content-Length`), and uses that much of the budget (it says how much). If Cloudflare turns the biggest away (its
+  connection drops, with no answer), set `FILE_MB` lower. Read Workers & Pages › the Worker › Metrics › CPU time, and
+  Durable Objects › each class › Metrics, for those minutes. Workers Logs are on (`observability` in `wrangler.jsonc`),
+  so Observability › Logs also has each request's own CPU time, the room's calls included: there, `--gap 10 --runs 3` (a
+  request every 10 s, each size three times) is enough. The logs leave query strings out, so find the requests by the
+  times it prints. Each time a room deletes a file's pieces it logs its storage's size (`card file pieces deleted: …;
+  room storage now … bytes`), which shows whether deleting files gives the space back. With `--analytics <account id>`
+  and an API token with Account Analytics Read in `CLOUDFLARE_API_TOKEN`, it reads them itself once Cloudflare's
+  analytics have them (a few minutes, once over 10; after 20 it prints the requests without them): each request's CPU
+  time in the Worker, in the room and in the budget's counter, and any call that didn't end well.
 
   A file also costs Durable Object time (billed while a room is working, at 128 MB a room: GB-s): an upload, or a
-  phone's download, keeps its room working for as long as it takes, about 6 minutes for a 90 MB file at 2 Mbps, which
-  is about 50 GB-s of the Free plan's 13,000 a day (an estimate: `measure-files.mjs` hasn't checked it on Cloudflare
-  yet). Transfers at the same time in one room count once. A few hundred such transfers a day would use it up, and
-  then every room's buzzers stop too, until the daily reset.
+  phone's download, keeps its room working for as long as it takes, 0.128 GB-s a second. Measured: the 90 MB upload kept
+  its room working 5 seconds (0.65 GB-s) on a fast line; at 2 Mbps the same file takes about 6 minutes, about 50 GB-s of
+  the Free plan's 13,000 a day. Transfers at the same time in one room count once. A few hundred such transfers a day
+  would use it up, and then every room's buzzers stop too, until the daily reset.
 
 ## Local development
 

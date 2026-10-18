@@ -90,7 +90,7 @@ try {
       }));
       const answer = await up.json().catch(() => ({}));
       rows.push({ label: `up-${tag}`, at, status: up.status, ms: performance.now() - t, note: answer.error ?? (answer.id === hash ? '' : 'wrong id') });
-      console.log(`${clock()} up-${tag}: ${up.status}`);
+      console.log(`${clock()} up-${tag}: ${up.status} ${rows.at(-1).note}`);
       if (up.status !== 200) continue;
       // The phone gets a card with it, fetches it, then the card goes and the room forgets the file (room for the next).
       send({ cards: [{ id: `pc:m:1:${++n}`, to: [{ seat: 'a' }], open: true, text: 'Measure', media: [{ kind: 'video', file: hash, mime: 'video/mp4' }] }] });
@@ -99,9 +99,11 @@ try {
       t = performance.now();
       at = new Date();
       const down = await fetch(`${server}/api/rooms/${made.code}/files/${hash}`, { headers: { Authorization: `Bearer ${token}` } });
+      const length = down.headers.get('Content-Length');
       const got = Buffer.from(await down.arrayBuffer());
-      rows.push({ label: `down-${tag}`, at, status: down.status, ms: performance.now() - t, note: down.status !== 200 ? '' : createHash('sha256').update(got).digest('hex') === hash ? '' : 'different bytes' });
-      console.log(`${clock()} down-${tag}: ${down.status}`);
+      const same = createHash('sha256').update(got).digest('hex') === hash;
+      rows.push({ label: `down-${tag}`, at, status: down.status, ms: performance.now() - t, note: down.status !== 200 ? '' : `${same ? 'same bytes' : 'different bytes'}, Content-Length ${length ?? 'missing'}` });
+      console.log(`${clock()} down-${tag}: ${down.status} ${rows.at(-1).note}`);
       send({ cards: null });
       host.ws.send(JSON.stringify({ t: 'forget', files: [hash] }));
     }
@@ -114,15 +116,17 @@ try {
 
 const fmt = (x) => (typeof x === 'number' ? x.toFixed(x < 10 ? 2 : 0) : (x ?? ''));
 const head = ['request', 'at (UTC)', 'status', 'took ms'];
-if (!analytics) {
+const plain = () => {
   console.log(`\n${[...head, 'note'].join('\t')}`);
   for (const r of rows) console.log([r.label, r.at.toISOString().slice(11, 23), r.status, fmt(r.ms), r.note].join('\t'));
   process.exit(0);
-}
+};
+if (!analytics || !rows.length) plain();
 
 // Each request's CPU time from Cloudflare's analytics, by the second it began in: the Worker's request, and the calls
 // the room took then (the upload's includes the host check; the room is the class with WebSocket calls, the other the
-// daily counter). They show up a few minutes late: it waits for the last one.
+// daily counter). They show up a few minutes late (once, more than 10): it waits up to 20 for the last one, then prints
+// the requests without them.
 const gql = async (query) => {
   const key = process.env.CLOUDFLARE_API_TOKEN;
   const r = await fetch('https://api.cloudflare.com/client/v4/graphql', {
@@ -142,10 +146,13 @@ const second = (d) => Math.floor(Date.parse(d) / 1000);
 const last = Math.floor(+rows.at(-1).at / 1000);
 console.log(`${clock()} waiting for Cloudflare's analytics to show the last request…`);
 let data;
-for (const end = Date.now() + 10 * 60_000; ; await sleep(15_000)) {
+for (const end = Date.now() + 20 * 60_000; ; await sleep(15_000)) {
   data = await gql(query);
   if (data.workersInvocationsAdaptive.some((w) => second(w.dimensions.datetime) >= last)) break;
-  if (Date.now() > end) throw new Error('the analytics never showed the last request');
+  if (Date.now() > end) {
+    console.log(`${clock()} Cloudflare's analytics still don't show the last request: read them on the dashboard for these times`);
+    plain();
+  }
 }
 const calls = data.durableObjectsInvocationsAdaptiveGroups;
 const roomNs = calls.find((c) => c.dimensions.type === 'hibernation')?.dimensions.namespaceId;
