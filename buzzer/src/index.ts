@@ -106,41 +106,40 @@ const bearer = (request: Request): string => request.headers.get('Authorization'
 const TOO_BIG = `Too big for phones (${FILE_MAX_BYTES / 1024 / 1024} MB at most)`;
 
 /**
- * A card file as it streams in, read once: straight into the FILE_PART_BYTES pieces it's stored in, its SHA-256 (the
- * file's id) worked out on the way. 'big' when it runs past max bytes (reading stops there); 'empty' with no bytes.
+ * A card file as it streams in, read once: straight into the FILE_PART_BYTES pieces it's stored in, a whole piece at a
+ * time (reading it in network-sized bits cost the room about 20 ms of CPU a MB), its SHA-256 (the file's id) worked out
+ * on the way. 'big' when it runs past max bytes (reading stops there); 'empty' with no bytes.
  */
 async function readPieces(body: ReadableStream<Uint8Array> | null, max: number): Promise<{ id: string; pieces: Uint8Array[]; bytes: number } | 'big' | 'empty'> {
   if (!body) return 'empty';
   const digest = new crypto.DigestStream('SHA-256');
   const hash = digest.getWriter();
-  const reader = body.getReader();
+  const reader = body.getReader({ mode: 'byob' });
   const pieces: Uint8Array[] = [];
-  let piece = new Uint8Array(FILE_PART_BYTES);
-  let at = 0;
   let n = 0;
-  for (;;) {
-    const { done, value } = await reader.read();
-    if (done) break;
-    n += value.byteLength;
+  for (let done = false; !done; ) {
+    let piece = new Uint8Array(FILE_PART_BYTES);
+    let at = 0;
+    while (at < FILE_PART_BYTES && !done) {
+      // (Waits for the rest of the piece, or the end: the bytes land in it, which comes back as r.value's buffer.)
+      const r = await reader.readAtLeast(FILE_PART_BYTES - at, new Uint8Array(piece.buffer, at));
+      if (r.value) {
+        piece = new Uint8Array(r.value.buffer);
+        at += r.value.byteLength;
+      }
+      done = r.done;
+    }
+    n += at;
     if (n > max) {
       void reader.cancel();
       return 'big';
     }
-    await hash.write(value);
-    for (let from = 0; from < value.byteLength; ) {
-      const take = Math.min(value.byteLength - from, FILE_PART_BYTES - at);
-      piece.set(value.subarray(from, from + take), at);
-      at += take;
-      from += take;
-      if (at === FILE_PART_BYTES) {
-        pieces.push(piece);
-        piece = new Uint8Array(FILE_PART_BYTES);
-        at = 0;
-      }
-    }
+    if (!at) break;
+    const part = at === FILE_PART_BYTES ? piece : piece.slice(0, at);
+    await hash.write(part);
+    pieces.push(part);
   }
   if (!n) return 'empty';
-  if (at) pieces.push(piece.slice(0, at));
   await hash.close();
   const id = [...new Uint8Array(await digest.digest)].map((b) => b.toString(16).padStart(2, '0')).join('');
   return { id, pieces, bytes: n };
@@ -158,11 +157,13 @@ async function roomFiles(request: Request, env: Env, ip: string, code: string, i
   if (!(await env.FILE_LIMIT.limit({ key: upload ? `up:${who}` : `get:${ip}` })).success) return json({ error: TOO_MANY_FILES }, 429);
   const token = bearer(request);
   if (download) {
-    const file = token && isRoomCode(code) && isFileId(id) ? await env.BUZZ_ROOM.getByName(code).download(token, id) : null;
-    if (!file) return json({ error: 'not found' }, 404);
-    // (Its pieces stream through as the room sends them: the Worker never holds the file.)
+    // The room answers with the file as a response, its pieces streaming through: the Worker never holds it. (Over
+    // HTTP, not RPC: a stream an RPC call returns counts as a disconnected call, an error, once it's been read.)
+    const room = token && isRoomCode(code) && isFileId(id) ? env.BUZZ_ROOM.getByName(code) : null;
+    const file = room ? await room.fetch(new Request(`https://room/file/${id}`, { headers: { Authorization: `Bearer ${token}` } })) : null;
+    if (!file?.ok) return json({ error: 'not found' }, 404);
     return new Response(file.body, {
-      headers: { 'Content-Type': file.mime, 'Cache-Control': 'no-store', 'X-Content-Type-Options': 'nosniff', ...CORS },
+      headers: { 'Content-Type': file.headers.get('Content-Type') ?? '', 'Cache-Control': 'no-store', 'X-Content-Type-Options': 'nosniff', ...CORS },
     });
   }
   if (!filesBudget(env.FILES_MB_PER_DAY)) return json({ error: FILES_OFF }, 503);
@@ -458,24 +459,25 @@ export class BuzzRoom extends DurableObject<Env> {
   }
 
   /**
-   * Card file `id` for the phone holding `token`, when the room lets it have it (room.ts fileFor); else null. Its pieces
+   * Card file `id` for the phone holding `token`, when the room lets it have it (room.ts fileFor); else 404. Its pieces
    * go out one after another as they're stored, never joined into one copy.
    */
-  async download(token: string, id: string): Promise<{ mime: string; body: ReadableStream<Uint8Array> } | null> {
+  private async download(token: string, id: string): Promise<Response> {
+    const missing = new Response(null, { status: 404 });
     const file = this.room?.fileFor(token, id);
-    if (!file) return null;
+    if (!file) return missing;
     const keys = Array.from({ length: file.parts }, (_, i) => `file:${id}:${i}`);
     const got = await this.ctx.storage.get<Uint8Array | ArrayBuffer>(keys);
     const parts: Uint8Array[] = [];
     let at = 0;
     for (const k of keys) {
       const v = got.get(k);
-      if (!v) return null;
+      if (!v) return missing;
       const part = v instanceof Uint8Array ? v : new Uint8Array(v);
       parts.push(part);
       at += part.byteLength;
     }
-    if (at !== file.bytes) return null;
+    if (at !== file.bytes) return missing;
     let next = 0;
     const body = new ReadableStream({
       type: 'bytes',
@@ -484,7 +486,7 @@ export class BuzzRoom extends DurableObject<Env> {
         else c.close();
       },
     });
-    return { mime: file.mime, body };
+    return new Response(body, { headers: { 'Content-Type': file.mime } });
   }
 
   async isOpen(): Promise<boolean> {
@@ -497,7 +499,11 @@ export class BuzzRoom extends DurableObject<Env> {
   }
 
   async fetch(request: Request): Promise<Response> {
-    const hostToken = new URL(request.url).searchParams.get('host');
+    const url = new URL(request.url);
+    // A phone's card file, asked for by the Worker (roomFiles) with the phone's token.
+    const file = url.pathname.match(/^\/file\/([0-9a-f]{64})$/);
+    if (file) return this.download(bearer(request), file[1]);
+    const hostToken = url.searchParams.get('host');
     // Turned away: accepted, then closed with a 4xxx code. A browser sees an HTTP refusal only as a dropped connection
     // (and would try again forever); 4000–4999 tells the host the room is gone for good.
     if (!this.meta || !this.room) return refuse(4004, 'no such room');

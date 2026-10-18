@@ -218,10 +218,11 @@ counted against today's budget for a file that then isn't stored (the room ended
   `Cache-Control: no-store` and `X-Content-Type-Options: nosniff`.
 - **At most 4 MB a file, and 16 MB and 32 files a room.**
 - **Kept** in the room's own Durable Object storage, in 1 MB pieces under their own keys (`file:<id>:<n>`), never in
-  the room's state. A file streams through the Worker both ways: the room reads an upload straight into its pieces
-  (working out its id on the way), and sends a download's pieces out one after another, so neither copies it whole. A file no current card uses is deleted 10 minutes after (one got ready and never sent: 10 minutes
-  after its upload), by the room's alarm (the same one that ends the room) and on the host's next state; the host can
-  also `forget` them. Everything goes when the room ends.
+  the room's state. A file streams through the Worker both ways, never held there: the room reads an upload straight
+  into its pieces, a whole piece at a time (working out its id on the way), and answers a download with a response
+  whose pieces go out one after another. A file no current card uses is deleted 10 minutes after (one got ready and
+  never sent: 10 minutes after its upload), by the room's alarm (the same one that ends the room) and on the host's
+  next state; the host can also `forget` them. Everything goes when the room ends.
 - **120 uploads and 120 downloads a minute per address** (`FILE_LIMIT` in `wrangler.jsonc`).
 - **A daily budget for the whole server: 300 MB of uploads a UTC day** by default (`FILES_MB_PER_DAY`), of which one
   address may use a quarter and one IPv6 /48 half. Over it, uploads are refused with "The buzzer server isn't taking
@@ -249,8 +250,10 @@ counted against today's budget for a file that then isn't stored (the room ended
   Pages › the Worker › Metrics › CPU time, and Durable Objects › each class › Metrics, for those minutes. Workers Logs
   are on (`observability` in `wrangler.jsonc`), so Observability › Logs also has each request's own CPU time, the
   room's calls (`upload`, `download`) included: there, `--gap 10 --runs 3` (a request every 10 s, each size three times)
-  is enough. The logs leave query strings out, so find the requests by the times it prints. With `--tail`, on a
-  computer logged in to the account, it also reads each request's CPU time from `wrangler tail` itself.
+  is enough. The logs leave query strings out, so find the requests by the times it prints. With `--analytics
+  <account id>` and an API token with Account Analytics Read in `CLOUDFLARE_API_TOKEN`, it reads them itself once
+  Cloudflare's analytics have them (a few minutes): each request's CPU time in the Worker, in the room and in the
+  daily counter, and any call that didn't end well.
 
 ## Local development
 
