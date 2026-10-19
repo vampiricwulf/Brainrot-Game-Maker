@@ -253,7 +253,9 @@ try {
     assert(four.every((g) => g.res.statusCode === 200), 'a phone has 4 downloads going, none of them read');
     const fifth = await Promise.race([r.get(id), sleep(10_000).then(() => null)]);
     const fifthSaid = await fifth?.json().catch(() => null);
-    assert(fifth?.status === 429 && fifthSaid?.error === 'Too many files — wait a minute', `its 5th is turned away at once, to try again (${fifth?.status} ${JSON.stringify(fifthSaid)})`);
+    // (When it isn't, what the 4 were doing then: one ended or cut off, or bytes read, says why the room let it through.)
+    const heldNow = four.map((g) => `${g.res.complete ? 'ended' : g.res.destroyed ? 'cut off' : 'held'} ${g.res.socket?.bytesRead ?? '?'} B`).join(', ');
+    assert(fifth?.status === 429 && fifthSaid?.error === 'Too many files — wait a minute', `its 5th is turned away at once, to try again (${fifth?.status} ${JSON.stringify(fifthSaid)}; the 4: ${heldNow})`);
     const read = await Promise.all(four.map((g) => g.rest()));
     assert(read.every((x) => x.whole && x.got === bytes.length), 'the 4 come whole once read');
     const again = await r.get(id);
