@@ -11,11 +11,6 @@ the day it's pushed (Pacific time; start the heading on the day's first push) an
 in plain words for the people who make and host games. Anything committed but not pushed yet goes under
 **Unreleased** at the top, and moves under its day when it's pushed.
 
-## Unreleased
-
-### Fixed
-- 🗜 Make a copy phones can play on a 🤫 card's video whose sound this browser can't read (an MKV with Dolby Digital sound) makes the copy without its sound, and says so, instead of refusing.
-
 ## 2026-10-18
 
 ### Added
@@ -35,6 +30,7 @@ in plain words for the people who make and host games. Anything committed but no
 - The buzzer server stores a 🤫 card's file a 1 MB piece at a time as it arrives, and sends it to phones a piece at a time, so a big file takes no more of its memory than a small one. An upload cut off partway (the room closed, or the server restarted) leaves nothing behind, and a phone fetches a card's files two at a time, so on a slow line the first ones come sooner. A room sends 24 files at once (more wait their turn), 4 at most to one phone, and ends a download whose phone has taken nothing of it for 5 minutes, so one player, or phones gone to sleep, can't hold up everyone else's. (2eface4, fb841c6)
 
 ### Fixed
+- 🗜 Make a copy phones can play on a 🤫 card's video whose sound this browser can't read (an MKV with Dolby Digital sound) makes the copy without its sound, and says so, instead of refusing. (14d2cc7)
 - 🖼 Media and the checklist now find out whether a video or sound really plays in this browser, from what's inside it: an MKV or MOV this browser plays is no longer called “may not play”, one that won't play says “⚠ won't play here” (point at it to see why, and what to do: an iPhone's HEVC video, say), and a video whose sound won't play here (Dolby Digital or DTS, in most browsers) is named as playing without its sound. A file the app can't read is still called “may not play”, as before. (019236f, b236550)
 - A window open over the editor, such as 🗜 Make smaller's, keeps the editor under it out of reach: once the game changed while it was open (a copy made, so History's count went up), clicks and keys could reach the editor under the window. (b236550)
 - 🎨 Edit image on a moving GIF keeps it moving: the edits (crop, turn, size, filters, drawing, captions, stickers) go on every frame, and it's saved as a GIF again, each frame as long as before and looping as it did. Before, it became a still picture. 🖼 Media › Replace… with another moving GIF does the edits again on each of its frames too. (4e05459)
