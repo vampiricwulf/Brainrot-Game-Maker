@@ -11,11 +11,6 @@ the day it's pushed (Pacific time; start the heading on the day's first push) an
 in plain words for the people who make and host games. Anything committed but not pushed yet goes under
 **Unreleased** at the top, and moves under its day when it's pushed.
 
-## Unreleased
-
-### Changed
-- ✎ Edit's 📐 Size takes a percent too (type it beside 1080p, 720p, 480p and 360p), for a video of any shape, and says the size in pixels it comes out at, whichever is picked.
-
 ## 2026-10-18
 
 ### Added
@@ -28,6 +23,7 @@ in plain words for the people who make and host games. Anything committed but no
 - Uploading a 🤫 card's file shows how far it got (“uploading 1 of 2 (34%)…”), and a phone shows how much of a big file has come (“🎞 Video coming… 40%”). (8caed91)
 
 ### Changed
+- ✎ Edit's 📐 Size takes a percent too (type it beside 1080p, 720p, 480p and 360p), for a video of any shape, and says the size in pixels it comes out at, whichever is picked. (fe778af)
 - The buzzer server takes 🤫 card files up to 90 MB each (16 MB before), 900 MB a room (64 MB before) and 4,000 MB in any 24 hours (2,000 MB a day before), just under what Cloudflare's free plan allows; until a buzzer server has said what it takes, the editor goes by these too. buzzer/measure-files.mjs now tries 16, 48 and 90 MB files and says how much of the budget it uses. (8b01b7f)
 - The buzzer server counts its budget for 🤫 card files over any 24 hours instead of by UTC day, and deletes a file 20 hours after its upload began even if a card still uses it (the app puts it up again), and stops an upload still going an hour after it began (the app tries again), so the files it keeps can never fill its storage. Turned away for the budget, a host is told about when to try again (“try again in about 5 hours”) instead of “try again tomorrow”. (3ea2144, 1131d29)
 - A 🤫 card's file stops uploading as soon as its card is taken back; a file the buzzer room already holds isn't uploaded again; one that stops moving for a minute, or that the buzzer room turned away while it took another (from a second window, say), is tried again; and a file over 16 MB that didn't get through is tried again once on its own (a smaller one still three times). (8caed91, 514f0cd)
