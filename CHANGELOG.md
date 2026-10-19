@@ -11,6 +11,11 @@ the day it's pushed (Pacific time; start the heading on the day's first push) an
 in plain words for the people who make and host games. Anything committed but not pushed yet goes under
 **Unreleased** at the top, and moves under its day when it's pushed.
 
+## Unreleased
+
+### Fixed
+- 🗜 Make a copy phones can play on a 🤫 card's video whose sound this browser can't read (an MKV with Dolby Digital sound) makes the copy without its sound, and says so, instead of refusing.
+
 ## 2026-10-18
 
 ### Added

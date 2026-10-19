@@ -60,6 +60,7 @@ import {
   TOO_SHORT,
   VP9_IN_MP4,
   WEBM_EDIT_NOTE,
+  WEBM_NOTE,
   type FileEdit,
 } from './plan';
 import { NO_WEBCODECS, type Can, type Encoders } from './probe';
@@ -339,6 +340,19 @@ describe('planVideoCopy', () => {
     // A sound it can't make Opus of, or no video encoder at all.
     expect(planVideoCopy(big, { ok: true, aac: true, opus: false }, { avc: false, vp9: true, vp8: true }, phones, null, true)).toEqual({ refuse: CANT_MAKE_SOUND });
     expect(planVideoCopy(big, CAN, { avc: false, vp9: false, vp8: false }, phones, null, true)).toEqual({ refuse: NO_ENCODER });
+    // A sound no browser here reads (an MKV's Dolby Digital): the copy goes without it, not not at all.
+    const ac3 = video(1280, 720, 10, 1, { box: 'mkv', video: { ...track, codec: 'vp9', width: 1280, height: 720, rotation: 0, hdr: false }, audio: { ...track, codec: 'ac3', decodes: false, cpt: false, bps: 448_000, channels: 6, label: null } });
+    const silent = ok(planVideoCopy(ac3, OPUS, { avc: false, vp9: true, vp8: true }, phones, null, false));
+    expect(silent.run).toMatchObject({ box: 'webm', video: { codec: 'vp9' }, audio: { discard: true } });
+    expect(silent.out.sound).toBe(false);
+    expect(silent.format).toBe(`Made as a WebM (VP9). ${WEBM_NOTE} It goes without its sound: AC-3 (Dolby Digital), which this browser can’t read.`);
+    // (Its sound isn't in the size either.)
+    expect(silent.estimate).toBe(ok(planVideoCopy({ ...ac3, audio: null }, OPUS, { avc: false, vp9: true, vp8: true }, phones, null, false)).estimate);
+    // Where H.264 is made, an MP4 without it: every phone plays that.
+    expect(ok(planVideoCopy(ac3, OPUS, ALL, phones, null, false)).run).toMatchObject({ box: 'mp4', video: { codec: 'avc' }, audio: { discard: true } });
+    // An AAC this browser can't decode is still copied into the MP4, as before.
+    const aacHere = video(1280, 720, 10, 1, { audio: { ...track, codec: 'aac', decodes: false, bps: 128_000, channels: 2, label: null } });
+    expect(ok(planVideoCopy(aacHere, OPUS, ALL, phones, null, true)).run).toMatchObject({ box: 'mp4', audio: {} });
     expect(planVideoCopy(big, { ok: false, aac: false, opus: false, why: NO_WEBCODECS }, ALL, phones, null, true)).toEqual({ refuse: NO_WEBCODECS });
   });
 

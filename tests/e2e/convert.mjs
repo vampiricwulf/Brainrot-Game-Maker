@@ -355,6 +355,33 @@ try {
   await lineOf('phones can\'t open').waitFor({ state: 'detached' });
   assert(true, 'and the checklist’s line');
 
+  // 5b. talk.mkv (VP9, AC-3: it plays here without its sound) on a 🤫 card: phones can't open an MKV and nothing makes
+  // its sound, so the 📱 preview's 🗜 makes a copy they can play, without its sound (it was refused).
+  await page.locator('nav > button', { hasText: '🤫 Cards' }).click();
+  await page.getByRole('button', { name: '＋ Add card' }).click();
+  const talkCardDrop = await page.evaluateHandle((b64) => {
+    const d = new DataTransfer();
+    d.items.add(new File([Uint8Array.from(atob(b64), (c) => c.charCodeAt(0))], 'talk.mkv', { type: 'video/x-matroska' }));
+    return d;
+  }, files.find((f) => f.name === 'talk.mkv').buffer.toString('base64'));
+  await page.locator('main .canvas').dispatchEvent('drop', { dataTransfer: talkCardDrop });
+  await page.locator('.insp h4', { hasText: 'Video' }).waitFor();
+  if (!(await phone.isVisible())) await page.getByRole('button', { name: '📱 On their phone' }).click();
+  const talkNote = phone.locator('.notes li.warn', { hasText: 'phones can’t play this kind of video' });
+  const copyIt = talkNote.getByRole('button', { name: '🗜 Make a copy phones can play' });
+  await copyIt.waitFor({ timeout: 30_000 });
+  await copyIt.click();
+  const shrink = page.getByRole('dialog', { name: '🗜 Make a smaller copy for phones' });
+  await shrink.getByText(/It goes without its sound: AC-3 \(Dolby Digital\), which this browser can’t read\./).waitFor({ timeout: 60_000 });
+  assert(true, 'its 🗜 window says the copy goes without its sound, which this browser can’t read');
+  await shrink.getByRole('button', { name: 'Make it', exact: true }).click();
+  await shrink.locator('[data-shrink-done]').waitFor({ timeout: 60_000 });
+  await shrink.locator('.modal-x').click();
+  await shrink.waitFor({ state: 'detached' });
+  await talkNote.waitFor({ state: 'detached' });
+  const talkCopy = (await phone.locator('[data-copy-note]').innerText()).replace(/\s+/g, ' ');
+  assert(talkCopy.startsWith('📱 Phones get a copy they can play instead ('), `made: phones get a copy they can play, and the 📱 note is gone (${talkCopy})`);
+
   // 6. No toast, History row or pill named a file.
   const named = (list) => list.filter((t) => NAMES.some((n) => t.includes(n)));
   const allToasts = await toastsSeen();

@@ -330,10 +330,13 @@ export function planVideoCopy(f: MediaFacts, can: Can, enc: Encoders, choice: Vi
   if (!f.video) return { refuse: NO_PICTURE };
   if (!f.video.decodes) return { refuse: CANT_READ_VIDEO };
   if (!can.ok) return { refuse: can.why ?? NO_WEBCODECS };
-  const a = f.audio;
+  // A sound this browser can't read, nor copy into a phone's file (Dolby Digital, DTS: phones can't play it either): the
+  // copy goes without it, as the file itself plays here, rather than not at all.
+  const lost = f.audio && !f.audio.decodes && !['aac', 'opus', 'vorbis'].includes(f.audio.codec ?? '') ? f.audio : null;
+  const a = lost ? null : f.audio;
   const made = (codec: 'aac' | 'opus'): RunAudio => ({ codec, bitrate: a?.channels === 1 ? MONO_BPS : SOUND_BPS, forceTranscode: true, ...(a && a.channels > 2 ? { numberOfChannels: 2 } : {}) });
   let codec: 'avc' | 'vp9' | 'vp8';
-  let audio: RunAudio | undefined;
+  let audio: RunAudio | undefined = lost ? { discard: true } : undefined;
   let sound = '';
   if (enc.avc && (!a || a.codec === 'aac' || (can.aac && a.decodes))) {
     codec = 'avc';
@@ -369,12 +372,15 @@ export function planVideoCopy(f: MediaFacts, can: Can, enc: Encoders, choice: Vi
     mime: `video/${box}`,
     ext: box,
     out: { seconds: f.seconds !== null ? seconds : null, width: choice.width, height: choice.height, sound: !!a },
-    estimate: estimateBytes(choice.bps + soundBps(f), seconds),
+    estimate: estimateBytes(choice.bps + (a ? soundBps(f) : 0), seconds),
     range: span,
-    format: formatLine({ codec }, sound || undefined),
+    format: formatLine({ codec }, sound || undefined) + (lost ? ` ${lostSound(lost.codec)}` : ''),
     playable,
   };
 }
+
+/** The words for a copy that goes without its sound, as this browser can't read it. */
+export const lostSound = (codec: string | null): string => `It goes without its sound${codec ? `: ${codecName(codec)},` : ','} which this browser can’t read.`;
 
 /**
  * A sound's copy, of the part `span` holds: AAC in an M4A when this browser can make it, else Opus in an OGG; 128 kbps
