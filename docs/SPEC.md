@@ -260,8 +260,9 @@ RollEvent  { id, ts, source: 'wheel' | 'dice', presetName?, result: string /* la
   in play.
 - **✎ Edit** (editor only): a stored video or sound that plays here can be trimmed (a bar with two handles, Start and
   End boxes, I / O at the playhead), and a video cropped (Free, 16:9, 4:3, 1:1, 9:16) and made smaller (1080p, 720p,
-  480p, 360p, never bigger), from its 🖼 Media card, its slide item's panel or right-click menu. The window shows the
-  size it will come out at and what it's saved as, and undoes its own changes with Ctrl+Z. Nothing is re-encoded where
+  480p, 360p by its short side, or a percent of it typed in, for a picture of any shape; never bigger), from its 🖼
+  Media card, its slide item's panel or right-click menu. The window shows the size it will come out at (in pixels,
+  under the size row) and what it's saved as, and undoes its own changes with Ctrl+Z. Nothing is re-encoded where
   that can be helped: an MP4's trim is exact (an edit list), a sound's is copied (uncompressed sound made again as it
   was, so it's cut to the sample), a WebM's is exact when it starts at a key frame, else its picture is made again or,
   with Quick trim, it starts at the key frame before. A crop or a size makes the picture again (H.264 in an MP4 where

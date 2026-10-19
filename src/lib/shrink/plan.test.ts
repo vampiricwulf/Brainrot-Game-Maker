@@ -624,6 +624,28 @@ describe('✎ Edit: what an edit makes', () => {
     expect(isNoEdit(edit(small, { short: 360 }), small)).toBe(false);
   });
 
+  it('a size in percent goes by the cropped picture whatever its shape, even both ways, never bigger nor under 16 px', () => {
+    expect(outputSize(mp4, edit(mp4, { scale: 50 }))).toEqual({ w: 960, h: 540 });
+    // (A phone's upright video, and an odd shape a preset's short side wouldn't suit.)
+    const upright = facts('mp4', pic('avc', { width: 1080, height: 1920 }), null);
+    expect(outputSize(upright, edit(upright, { scale: 50 }))).toEqual({ w: 540, h: 960 });
+    const small = facts('webm', pic('vp9', { width: 854, height: 480 }), null);
+    expect(outputSize(small, edit(small, { scale: 33 }))).toEqual({ w: 282, h: 158 });
+    const square = { crop: { x: 187 / 854, y: 0, w: 480 / 854, h: 1 } };
+    expect(outputSize(small, edit(small, { ...square, scale: 50 }))).toEqual({ w: 240, h: 240 });
+    // A percent wins over a short side; 100 or more, or none, is the picture as it is.
+    expect(outputSize(mp4, edit(mp4, { short: 360, scale: 50 }))).toEqual({ w: 960, h: 540 });
+    expect(outputSize(mp4, edit(mp4, { scale: 100 }))).toEqual({ w: 1920, h: 1080 });
+    expect(outputSize(mp4, edit(mp4, { scale: 150 }))).toEqual({ w: 1920, h: 1080 });
+    expect(outputSize(mp4, edit(mp4, { scale: 1 }))).toEqual({ w: 20, h: 16 });
+    expect(isNoEdit(edit(small, { scale: 50 }), small)).toBe(false);
+    expect(isNoEdit(edit(small, { scale: 99.9 }), small)).toBe(true);
+    expect(isNoEdit(edit(small, { scale: 100 }), small)).toBe(true);
+    // Made at that size, and History says so.
+    expect(plan(mp4, { scale: 50 }).run.video).toMatchObject({ width: 960, height: 540 });
+    expect(editLabel('video', edit(mp4, { scale: 50 }), mp4, 'all')).toBe('Edited a video (scaled to 50%)');
+  });
+
   it('a crop or a size makes the picture again: H.264 with AAC in an MP4 where it can, else VP9 in a WebM, or in an MP4 beside a sound it copies', () => {
     const avc = plan(mp4, { short: 720 }, { can: WINDOWS, enc: AVC });
     expect(avc.run).toMatchObject({ box: 'mp4', video: { codec: 'avc', width: 1280, height: 720, fit: 'fill', keyFrameInterval: 2, bitrate: 5_000_000 } });

@@ -583,6 +583,8 @@ export interface FileEdit {
   quick: boolean;
   crop: { x: number; y: number; w: number; h: number } | null;
   short: Short | null;
+  /** Or its size as a share of the cropped picture, whatever its shape (percent, 1 to 100; null or missing: by `short`). */
+  scale?: number | null;
   sound: boolean;
 }
 /** The picture sizes offered, by their short side ("720p"). */
@@ -644,7 +646,16 @@ const croppedShort = (f: MediaFacts, e: FileEdit): number => {
   const c = cropPixels(f, e);
   return Math.min(c?.width ?? f.video?.width ?? 0, c?.height ?? f.video?.height ?? 0);
 };
-const resizes = (f: MediaFacts, e: FileEdit): boolean => !!f.video && e.short !== null && e.short < croppedShort(f, e);
+const resizes = (f: MediaFacts, e: FileEdit): boolean => {
+  if (!f.video) return false;
+  if (scaleOf(e) === null) return e.short !== null && e.short < croppedShort(f, e);
+  const c = cropPixels(f, e);
+  const o = outputSize(f, e);
+  return o.w < evenBelow(c?.width ?? f.video.width) || o.h < evenBelow(c?.height ?? f.video.height);
+};
+
+/** `e`'s scale (percent) when it makes the picture smaller (null: none, or 100% or more). */
+export const scaleOf = (e: Pick<FileEdit, 'scale'>): number | null => (e.scale != null && Number.isFinite(e.scale) && e.scale >= 1 && e.scale < 100 ? e.scale : null);
 
 /** Whether `e` changes nothing (Apply has nothing to do). */
 export function isNoEdit(e: FileEdit, f: MediaFacts, silent = false): boolean {
@@ -669,15 +680,20 @@ export function cropPixels(f: MediaFacts, e: Pick<FileEdit, 'crop'>): { left: nu
   return { left, top, width, height };
 }
 
-/** The picture's size as `e` makes it: cropped, then its short side `e.short` (never bigger than the crop), even both ways. */
+/**
+ * The picture's size as `e` makes it: cropped, then scaled to `e.scale` percent, else to its short side `e.short`
+ * (never bigger than the crop, nor under 16 pixels), even both ways.
+ */
 export function outputSize(f: MediaFacts, e: FileEdit): { w: number; h: number } {
   const c = cropPixels(f, e);
   const cw = c?.width ?? f.video?.width ?? 2;
   const ch = c?.height ?? f.video?.height ?? 2;
+  const even = (n: number, max: number) => Math.min(evenBelow(max), Math.max(16, Math.round(n / 2) * 2));
+  const pct = scaleOf(e);
+  if (pct !== null) return { w: even((cw * pct) / 100, cw), h: even((ch * pct) / 100, ch) };
   const short = Math.min(cw, ch);
   if (!e.short || e.short >= short) return { w: evenBelow(cw), h: evenBelow(ch) };
   const k = e.short / short;
-  const even = (n: number, max: number) => Math.min(evenBelow(max), Math.max(2, Math.round(n / 2) * 2));
   return { w: even(cw * k, cw), h: even(ch * k, ch) };
 }
 
@@ -704,7 +720,7 @@ export function editLabel(kind: 'video' | 'audio', e: FileEdit, f: MediaFacts, h
   const parts = [
     ...(trim ? [`trimmed to ${trim}`] : []),
     ...(kind === 'video' && cropPixels(f, e) ? ['cropped'] : []),
-    ...(kind === 'video' && resizes(f, e) ? [`${e.short}p`] : []),
+    ...(kind === 'video' && resizes(f, e) ? [scaleOf(e) !== null ? `scaled to ${Math.round(scaleOf(e)!)}%` : `${e.short}p`] : []),
     ...(kind === 'video' && f.audio && !e.sound ? ['without its sound'] : []),
   ];
   const list = parts.length ? ` (${parts.join(', ')})` : '';

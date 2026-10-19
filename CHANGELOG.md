@@ -11,6 +11,11 @@ the day it's pushed (Pacific time; start the heading on the day's first push) an
 in plain words for the people who make and host games. Anything committed but not pushed yet goes under
 **Unreleased** at the top, and moves under its day when it's pushed.
 
+## Unreleased
+
+### Changed
+- ✎ Edit's 📐 Size takes a percent too (type it beside 1080p, 720p, 480p and 360p), for a video of any shape, and says the size in pixels it comes out at, whichever is picked.
+
 ## 2026-10-18
 
 ### Added

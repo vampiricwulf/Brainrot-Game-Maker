@@ -35,6 +35,7 @@
     parseClock,
     planEdit,
     quickTrimAt,
+    scaleOf,
     SIZES,
     type FileEdit,
     type How,
@@ -272,7 +273,12 @@
   const cw = $derived(cropPx?.width ?? W);
   const ch = $derived(cropPx?.height ?? H);
   const sizes = $derived(SIZES.filter((s) => s < Math.min(cw, ch)));
-  const shortNow = $derived(edit.short !== null && edit.short < Math.min(cw, ch) ? edit.short : null);
+  const pctNow = $derived(scaleOf(edit));
+  const shortNow = $derived(pctNow === null && edit.short !== null && edit.short < Math.min(cw, ch) ? edit.short : null);
+  /** The size it comes out at, as cropped and sized now. */
+  const outNow = $derived(facts ? outputSize(facts, edit) : { w: W, h: H });
+  /** The % box: the share asked, else the one the size chosen comes to (100 kept as it is). */
+  const pctShown = $derived(pctNow ?? Math.round((100 * outNow.w) / Math.max(1, cw)));
   function startCrop(): void {
     if (!edit.crop) {
       change(() => (edit.crop = { x: 0, y: 0, w: 1, h: 1 }));
@@ -292,7 +298,23 @@
     // (Its button goes with the crop: the keys go to ✂ Crop.)
     void tick().then(() => focusLost() && cropButton?.focus());
   }
-  const setShort = (s: Short | null) => change(() => (edit.short = s));
+  const setShort = (s: Short | null) =>
+    change(() => {
+      edit.short = s;
+      edit.scale = null;
+    });
+  /** A share typed in the % box (100 or more: as it is); anything else typed goes back to what it was. */
+  function typedPct(e: Event & { currentTarget: HTMLInputElement }): void {
+    const v = Number(e.currentTarget.value.replace(',', '.').replace('%', '').trim());
+    if (!e.currentTarget.value.trim() || !Number.isFinite(v) || v < 1) {
+      e.currentTarget.value = String(pctShown);
+      return;
+    }
+    change(() => {
+      edit.short = null;
+      edit.scale = v >= 100 ? null : Math.round(v * 10) / 10;
+    });
+  }
 
   // ---------- Applying ----------
   let jobId = $state<string | null>(null);
@@ -376,7 +398,7 @@
       e.preventDefault();
       e.stopImmediatePropagation();
       // (A time typed in Start or End counts, as when leaving the box: it's left first, then it applies.)
-      if (t?.matches?.('[data-trim-start], [data-trim-end]')) t.blur();
+      if (t?.matches?.('[data-trim-start], [data-trim-end], [data-size-pct]')) t.blur();
       void tick().then(() => (applyAsked = 'all'));
     } else if (mod && ((k === 'z' && e.shiftKey) || k === 'y') && !typing) {
       e.preventDefault();
@@ -542,12 +564,20 @@
 
               <h4>📐 Size</h4>
               <div class="row" role="group" aria-label="Size">
-                <button class="small" class:on={shortNow === null} aria-pressed={shortNow === null} onclick={() => setShort(null)} disabled={!reencodes && shortNow === null}>Keep ({cw}×{ch})</button>
+                <button class="small" class:on={shortNow === null && pctNow === null} aria-pressed={shortNow === null && pctNow === null} onclick={() => setShort(null)} disabled={!reencodes && shortNow === null && pctNow === null}
+                  >Keep ({cw}×{ch})</button
+                >
                 {#each sizes as s (s)}
-                  {@const o = outputSize(facts, { ...edit, short: s })}
+                  {@const o = outputSize(facts, { ...edit, short: s, scale: null })}
                   <button class="small" class:on={shortNow === s} aria-pressed={shortNow === s} title="{o.w}×{o.h}" onclick={() => setShort(s)} disabled={!reencodes}>{s}p</button>
                 {/each}
+                <label class="pct small"
+                  >or
+                  <input type="number" min="1" max="100" step="1" value={pctShown} onchange={typedPct} disabled={!reencodes} aria-label="Size, percent of the picture" data-size-pct />
+                  %</label
+                >
               </div>
+              <p class="small" data-size-out>Comes out at {outNow.w}×{outNow.h}{cropPx ? ' (cropped and sized)' : ''}.</p>
 
               {#if facts.audio}
                 <h4>🔊 Sound</h4>
@@ -723,6 +753,14 @@
   }
   .trimrow input {
     width: 84px;
+  }
+  .pct {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+  }
+  .pct input {
+    width: 64px;
   }
   .trimrow .field {
     flex-direction: row;

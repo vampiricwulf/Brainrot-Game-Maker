@@ -6,7 +6,8 @@
 //    plays from 0.3 to the end and item 2 plays it all; History says “Trimmed a video to 0:01–0:03”; Ctrl+Z, Ctrl+Y.
 // 2. A WebM trimmed 1.3–2.5: Exact (re-encoded) by default, 1.2 s; or Quick from the key frame at 1.0, 1.5 s, and an
 //    item playing 1.5–2.0 plays 0.5–1.0.
-// 3. An 854×480 WebM cropped 1:1 at 360p: 360×360, and a box of its old shape is square now (a 4:3 one isn't).
+// 3. An 854×480 WebM cropped 1:1 at 360p (50% typed in the % box says 240×240 first): 360×360, and a box of its old
+//    shape is square now (a 4:3 one isn't).
 // 4. A 20 s 720p WebM cropped: Stop midway changes nothing; Keep working closes the window, the header's pill shows
 //    it, and a toast says when it's done.
 // 6. Save as a new file: “clip (edited).webm” beside it, its uses unchanged.
@@ -317,6 +318,17 @@ try {
   assert(await dialog.locator('[data-crop-box]').count(), 'the crop box lies over the picture');
   await dialog.getByRole('button', { name: '360p', exact: true }).click();
   assert((await dialog.getByRole('button', { name: '360p', exact: true }).getAttribute('title')) === '360×360', '360p is 360×360');
+  // A size in percent instead (a picture may be any shape): the window says what it comes out at, whichever is picked.
+  const sizeOut = () => dialog.locator('[data-size-out]').innerText();
+  const pct = dialog.getByLabel('Size, percent of the picture');
+  assert((await sizeOut()) === 'Comes out at 360×360 (cropped and sized).' && (await pct.inputValue()) === '75', `360p: it comes out at 360×360, which the % box says is 75% (${await sizeOut()} ${await pct.inputValue()}%)`);
+  await pct.fill('50');
+  await pct.press('Tab');
+  await dialog.locator('[data-size-out]', { hasText: 'Comes out at 240×240' }).waitFor();
+  assert((await dialog.getByRole('button', { name: '360p', exact: true }).getAttribute('aria-pressed')) === 'false', '50% typed: it comes out at 240×240, and 360p is no longer picked');
+  await dialog.getByRole('button', { name: '360p', exact: true }).click();
+  await dialog.locator('[data-size-out]', { hasText: 'Comes out at 360×360' }).waitFor();
+  assert((await pct.inputValue()) === '75', '360p again: 360×360, and the % box back at 75');
   // (Made again with no sound: an MP4 (H.264) where this browser makes H.264, as CI's does, named for it; else a WebM.)
   const wideExt = await madeAs();
   await applyAnd();
