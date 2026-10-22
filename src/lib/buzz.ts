@@ -524,6 +524,31 @@ export function fitCards(cards: HostCard[]): HostCard[] {
 }
 
 /**
+ * The buzzer room's id for an answer round of this game (a ✍ clue's: its clue id): the session's answerKey after it, so
+ * a 🔁 Rematch in the same room (whose clues have the same ids) starts with no answers, while reopening the clue in the
+ * same game shows each phone its own again. Without a key (a session saved before), or too long for the room (100
+ * characters), the id itself.
+ */
+export function answerRoundId(session: Pick<Session, 'answerKey'>, base: string): string {
+  const key = session.answerKey;
+  return typeof key === 'string' && key && base.length + key.length + 1 <= 100 ? `${base}@${key}` : base;
+}
+
+/**
+ * A ✍ clue's answers phones may send now (HostState.answers), or null without one open: every player, until its answer
+ * is on screen (or the round locked), with `got`, the last answer the host took from each (Session.remote.answers, this
+ * game's only). Asked only with phone buzzers and a room that takes answers (Play's `everyone`).
+ */
+export function everyoneAnswerAsk(game: Game, session: Session): AnswerAsk | null {
+  const clue = session.phase === 'clue' && !session.dd ? currentClueInfo(session, game)?.clue : undefined;
+  if (!clue?.everyone || clue.type !== 'standard') return null;
+  const id = answerRoundId(session, clue.id);
+  const mine = session.remote?.answers?.id === id ? session.remote.answers : undefined;
+  const got = mine?.seats ?? {};
+  return { id, open: !session.revealed && !mine?.locked, seats: session.players.map((p) => ({ id: p.id, ...(got[p.id] ? { got: got[p.id].n } : {}) })) };
+}
+
+/**
  * A partner clue's typed guesses are one round per play of the tile (when it opened), not per clue: a tile put back or
  * reopened and played again starts with no guess (partner-clues spec §15.1). Undo and a reload keep it.
  */

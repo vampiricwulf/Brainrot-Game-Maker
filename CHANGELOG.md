@@ -21,6 +21,7 @@ in plain words for the people who make and host games. Anything committed but no
 
 - Phones get up to 1,000 characters of a question (500 before), ending in “…” when cut: the end of a long question, where the actual question usually is, was lost.
 - On a computer, the phone page no longer says “Press Space to buzz” under “Wager locked” or “… is answering · Daily Double”, when nothing buzzes.
+- After 🔁 Rematch in the same buzzer room, a ✍ Everyone answers clue no longer shows a phone the answer it sent in the last game (“✔ Sent: …”) while the host panel says “waiting…”: each game's answers are its own.
 
 ## 2026-10-22
 

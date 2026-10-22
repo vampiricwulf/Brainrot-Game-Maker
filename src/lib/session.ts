@@ -18,6 +18,7 @@ export function newSession(game: Game): Session {
     revealed: false,
     scoreLog: [],
     redoStack: [],
+    answerKey: newId().slice(0, 8),
   };
 }
 

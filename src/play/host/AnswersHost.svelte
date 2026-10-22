@@ -10,6 +10,7 @@
   let {
     session,
     clueId,
+    roundId,
     phones = [],
     open,
     dual = true,
@@ -17,7 +18,10 @@
   }: {
     game: Game;
     session: Session;
+    /** The clue (its judgments are in the score log under it). */
     clueId: string;
+    /** Its answer round (answerRoundId): the answers phones sent to it in this game. */
+    roundId: string;
     /** The players with a phone connected now. */
     phones?: string[];
     /** Phones can still send (the answer isn't on screen). */
@@ -27,7 +31,7 @@
     onjudge: (playerId: string, sign: 1 | -1) => void;
   } = $props();
 
-  const answers = $derived(session.remote?.answers?.id === clueId ? session.remote.answers.seats : {});
+  const answers = $derived(session.remote?.answers?.id === roundId ? session.remote.answers.seats : {});
   const inCount = $derived(session.players.filter((p) => answers[p.id]).length);
   /** How each player was judged on this clue (from the score log): 1 right, -1 wrong. */
   const judged = $derived.by(() => {

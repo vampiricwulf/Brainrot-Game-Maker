@@ -27,7 +27,7 @@
   import { dropOffersBut } from './host/offered.svelte';
   import { addTime, newLive, overlayDoneAt, startTimer, tileToolUp, timerRemaining, timerResumed, toggleTimer, toolOverlay, type Live, type StageAction, type TimerState } from '../lib/live';
   import {
-    buzzArm, buzzClueOpened, buzzDone, buzzIdle, buzzMissed, buzzReset, buzzTake, cardsFullText, hostState, newBuzz, partnerAnswerAsk, partnerAnswerId, hostCards, phoneStatus, roomCardsFull, SEAT_NAME_MAX, sendOf, SETTING_UP,
+    answerRoundId, buzzArm, buzzClueOpened, buzzDone, buzzIdle, buzzMissed, buzzReset, buzzTake, cardsFullText, everyoneAnswerAsk, hostState, newBuzz, partnerAnswerAsk, partnerAnswerId, hostCards, phoneStatus, roomCardsFull, SEAT_NAME_MAX, sendOf, SETTING_UP,
     teamsOn, wagerAsk, whoBuzzed,
     type BuzzState,
   } from '../lib/buzz';
@@ -338,7 +338,7 @@
   }
   // A ✍ clue opened: its answers start (kept in the session, see `everyone`; back on it, by Undo or a reload, as they were).
   $effect(() => {
-    const id = everyone && info ? info.clue.id : null;
+    const id = everyone && info ? answerRoundId(session, info.clue.id) : null;
     untrack(() => {
       const r = session.remote;
       if (id && r && r.answers?.id !== id) r.answers = { id, seats: {} };
@@ -347,7 +347,7 @@
   // A ✍ clue's answers lock once its answer is shown, for good (hiding it again doesn't let anyone change theirs).
   $effect(() => {
     if (!everyone || !info || !session.revealed) return;
-    const id = info.clue.id;
+    const id = answerRoundId(session, info.clue.id);
     untrack(() => {
       const r = session.remote;
       if (!r || (r.answers?.id === id && r.answers.locked)) return;
@@ -356,7 +356,7 @@
   });
   // A ✍ clue: viewers see that everyone is answering, and who has (never what).
   $effect(() => {
-    const id = everyone && info ? info.clue.id : null;
+    const id = everyone && info ? answerRoundId(session, info.clue.id) : null;
     const ans = session.remote?.answers;
     const inNow = id && ans?.id === id ? session.players.filter((p) => ans.seats[p.id]).map((p) => p.id) : [];
     untrack(() => {
@@ -927,7 +927,7 @@
       !session.dd &&
       !!info?.clue.everyone &&
       info.clue.type === 'standard' &&
-      ((!!remote.code && roomHasAnswers()) || session.remote?.answers?.id === info.clue.id),
+      ((!!remote.code && roomHasAnswers()) || session.remote?.answers?.id === answerRoundId(session, info.clue.id)),
   );
   /**
    * Buzzer mode, while a clue is open (a Daily Double has its one player, a partner clue its two; a ✍ clue has everyone
@@ -1253,10 +1253,7 @@
       const mine = session.remote?.answers?.id === partnerAnswerId(partner) ? session.remote.answers : undefined;
       return partnerAnswerAsk(game, session, mine?.seats);
     }
-    if (!everyone || !info) return null;
-    const mine = session.remote?.answers?.id === info.clue.id ? session.remote.answers : undefined;
-    const got = mine?.seats ?? {};
-    return { id: info.clue.id, open: !session.revealed && !mine?.locked, seats: session.players.map((p) => ({ id: p.id, ...(got[p.id] ? { got: got[p.id].n } : {}) })) };
+    return everyone ? everyoneAnswerAsk(game, session) : null;
   }
 
   /** A player sent their answer to the ✍ clue from their phone: the host sees it (nobody else). One already taken is skipped. */

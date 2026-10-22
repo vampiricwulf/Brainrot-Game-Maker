@@ -4,7 +4,7 @@ import { finalName, newImageEl, newTextEl, setSlideText, textSlide, PARTNER_GAME
 import { applyScore, ddShowQuestion, finalChoose, finalNext, finalSetWager, goToRound, judgePartner, newSession, openClue, places, rebaseSession, removePlayer, undo } from './session';
 import { addCard, setPartner, setPartnerGame, swapParts } from './partner';
 import {
-  buzzArm, buzzClueOpened, buzzDone, buzzIdle, buzzMissed, buzzOrder, buzzReset, buzzTake, cardsLeftOff, hostCards, hostState, newBuzz, phoneStatus, questionText, roomCardCount,
+  answerRoundId, buzzArm, buzzClueOpened, buzzDone, buzzIdle, buzzMissed, buzzOrder, buzzReset, buzzTake, cardsLeftOff, everyoneAnswerAsk, hostCards, hostState, newBuzz, phoneStatus, questionText, roomCardCount,
   roomCardsFull, seenAtOnce, sessionCards, setupState, teamsOn, wagerAsk, whoBuzzed,
 } from './buzz';
 import { CARDS_MAX, phoneView, OLD_FILE_LIMITS } from './buzzproto';
@@ -498,6 +498,53 @@ describe('wagerAsk (the wagers phones may send)', () => {
     expect(phoneStatus(game, session)?.text).toBe(`${finalName(f)} · US Presidents`);
     f.category = '';
     expect(phoneStatus(game, session)?.text).toBe(finalName(f));
+  });
+});
+
+describe('each game’s answer rounds are its own (answerRoundId, everyoneAnswerAsk)', () => {
+  it('a round is its base id with the session’s key; without a key (a session saved before), or too long for the room, the base', () => {
+    expect(answerRoundId({ answerKey: 'k1234567' }, 'c1')).toBe('c1@k1234567');
+    expect(answerRoundId({}, 'c1')).toBe('c1');
+    expect(answerRoundId({ answerKey: 'k1234567' }, 'x'.repeat(91))).toBe(`${'x'.repeat(91)}@k1234567`);
+    expect(answerRoundId({ answerKey: 'k1234567' }, 'x'.repeat(92))).toBe('x'.repeat(92));
+  });
+
+  it('every new session (a 🔁 Rematch too) gets its own key', () => {
+    const game = jeopardyGame();
+    const a = newSession(game).answerKey;
+    const b = newSession(game).answerKey;
+    expect(a).toMatch(/^\S{8}$/);
+    expect(b).toMatch(/^\S{8}$/);
+    expect(a).not.toBe(b);
+  });
+
+  it('a ✍ clue asks every player under its keyed id, open until the answer shows, with the answers taken', () => {
+    const game = jeopardyGame();
+    game.players = [
+      { id: 'a', name: 'Ann', color: '#ff0000' },
+      { id: 'b', name: 'Bo', color: '#00ff00' },
+    ];
+    const clue = (game.rounds[0] as BoardRound).categories[0].clues[0];
+    const session = newSession(game);
+    session.answerKey = 'k1234567';
+    openClue(session, { round: 0, cat: 0, row: 0 }, game);
+    // Not a ✍ clue: no ask.
+    expect(everyoneAnswerAsk(game, session)).toBeNull();
+    clue.everyone = true;
+    const id = `${clue.id}@k1234567`;
+    expect(everyoneAnswerAsk(game, session)).toEqual({ id, open: true, seats: [{ id: 'a' }, { id: 'b' }] });
+    // The last game's answers to the same clue (a rematch in the same room) don't count as taken.
+    session.remote = { code: 'ABCD', hostToken: 't', base: 'https://x', answers: { id: clue.id, seats: { a: { text: 'Doge', n: 3 } } } };
+    expect(everyoneAnswerAsk(game, session)?.seats).toEqual([{ id: 'a' }, { id: 'b' }]);
+    session.remote.answers = { id, seats: { b: { text: 'Shiba', n: 2 } } };
+    expect(everyoneAnswerAsk(game, session)).toEqual({ id, open: true, seats: [{ id: 'a' }, { id: 'b', got: 2 }] });
+    session.remote.answers.locked = true;
+    expect(everyoneAnswerAsk(game, session)?.open).toBe(false);
+    delete session.remote.answers.locked;
+    session.revealed = true;
+    expect(everyoneAnswerAsk(game, session)?.open).toBe(false);
+    // Never the words.
+    expect(JSON.stringify(everyoneAnswerAsk(game, session))).not.toContain('Shiba');
   });
 });
 

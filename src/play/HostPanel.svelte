@@ -32,7 +32,7 @@
   import { app, hint, toast } from '../lib/app.svelte';
   import { dropMenu } from '../lib/menustate.svelte';
   import { buzzerOn, remote, roomHasCards, roomMembers } from '../lib/remote.svelte';
-  import { teamsOn } from '../lib/buzz';
+  import { answerRoundId, teamsOn } from '../lib/buzz';
   import { scoresWindow } from '../lib/sync.svelte';
   import { onMount, tick, untrack, type Snippet } from 'svelte';
 
@@ -972,7 +972,7 @@
       {/if}
 
       {#if everyone && info}
-        <div class="mode-host"><AnswersHost {game} {session} {dual} clueId={info.clue.id} phones={answerPhones} open={!session.revealed && !session.remote?.answers?.locked} onjudge={onanswerjudge} /></div>
+        <div class="mode-host"><AnswersHost {game} {session} {dual} clueId={info.clue.id} roundId={answerRoundId(session, info.clue.id)} phones={answerPhones} open={!session.revealed && !session.remote?.answers?.locked} onjudge={onanswerjudge} /></div>
       {/if}
 
       <!-- (Not while its title card is up: the category isn't on screen yet.) -->

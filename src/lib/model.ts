@@ -1132,13 +1132,18 @@ export interface Session {
   actionLog?: ActionEvent[];
   actionRedo?: ActionEvent[];
   /**
+   * Names this game's ✍ answer rounds in the buzzer room (answerRoundId): each new session (a 🔁 Rematch too) gets its
+   * own, so a room kept from the last game never shows a phone what it sent then. Left out in sessions saved before.
+   */
+  answerKey?: string;
+  /**
    * Phone buzzers: the buzzer room this game uses, so a reload (or a crash) gets back into the same room. Never sent to the
    * audience window. `armId`: the last time the buzzers opened there (it only goes up). `locked`: 🔒 seats locked (no
    * new phones take a seat; players already in come back). `buzz`: the buzzers during the open clue (`clue`: its
    * round.cat.row; `floor`: the last opening before it), so a reload mid-clue keeps who's answering and who missed.
    * `wagerGot`: the wagers sent from phones the host took in wager round `id` (each player's last count), so one isn't
-   * taken twice; `amounts`: how much each of those was. `answers`: the answers phones sent to the ✍ clue `id` (only the
-   * host sees them).
+   * taken twice; `amounts`: how much each of those was. `answers`: the answers phones sent in answer round `id` (a ✍
+   * clue's, answerRoundId; only the host sees them).
    */
   remote?: {
     code: string;

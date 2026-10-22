@@ -1923,6 +1923,18 @@ describe('answers (everyone answers on their phone)', () => {
     expect(g.hostAll('answer')).toHaveLength(1);
   });
 
+  it('the same clue in another game (a 🔁 Rematch, its own round id) shows no phone what it sent in the last one', () => {
+    const g = game();
+    g.send({ t: 'state', state: state({ answers: ask({ id: 'clue1@game1' }) }) });
+    g.pa.send({ t: 'answer', id: 'clue1@game1', text: 'Doge' });
+    g.send({ t: 'state', state: state() });
+    g.send({ t: 'state', state: state({ answers: ask({ id: 'clue1@game2' }) }) });
+    expect(g.pa.last('view')!.view.answer).toEqual({ id: 'clue1@game2', open: true, mine: true });
+    g.room.hostClose();
+    g.room.hostOpen();
+    expect(g.hostAll('answer')).toHaveLength(1);
+  });
+
   it("teams: someone who joins a team after its answer was sent is told one is in, not what it says", () => {
     const g = setup();
     g.room.hostOpen();
