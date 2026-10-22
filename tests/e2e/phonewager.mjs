@@ -166,7 +166,7 @@ try {
   await form(ann).waitFor();
   assert(await key1.isHidden(), 'picked: the number keys go from the chips (they type the wager now)');
   assert((await ann.locator('#wager-head').innerText()) === 'Your wager', 'the player who found it gets a wager box on their phone (“Your wager”, under “Daily Double — you’re up!”)');
-  assert((await ann.locator('#wager-info').innerText()).includes('Max $1,000 (the host may allow more)'), `with their score and the max, not held to it while the host ignores the limit (${await ann.locator('#wager-info').innerText()})`);
+  assert((await ann.locator('#wager-info').innerText()) === 'Score $0 · No limit', `with their score, and no max while the host ignores the limit (${await ann.locator('#wager-info').innerText()})`);
   await big(bo).getByText('Player 1 is wagering…').waitFor();
   assert(true, 'the other phones see "Player 1 is wagering…"');
   await dd.getByText('📱 waiting…').waitFor();
@@ -228,6 +228,10 @@ try {
   await form(ann).waitFor();
   await form(bo).waitFor();
   assert((await ann.locator('#wager-head').innerText()) === 'Your wager', 'the Final’s wager screen (“Your wager”, under the Final’s name): every phone in it gets its wager box');
+  assert(
+    (await bo.locator('#wager-info').innerText()) === 'Score $0 · No limit',
+    `a player with nothing to wager isn't told "Max $0" while the host ignores the limits (${await bo.locator('#wager-info').innerText()})`,
+  );
   await row('Player 1').getByText('📱 waiting…').waitFor();
   assert(!(await host.evaluate(() => !!document.activeElement?.matches('input[data-wager]'))), 'phones send the wagers: no wager box takes the focus (the keys stay the host’s)');
   assert(

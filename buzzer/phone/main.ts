@@ -1221,7 +1221,8 @@ function renderWager(v: PhoneView, w: PhoneWager, sym: string): void {
     wagerFor = key;
   }
   inp.max = w.limit && w.max !== undefined ? String(w.max) : '';
-  const max = w.max !== undefined ? `Max ${money(w.max, sym)}${w.limit ? '' : ' (the host may allow more)'}` : '';
+  // (Not held to a max: the host takes any amount, so none is shown; a score of 0 or less would read "Max $0".)
+  const max = !w.limit ? 'No limit' : w.max !== undefined ? `Max ${money(w.max, sym)}` : '';
   $('wager-info').textContent = [`Score ${money(you.score, sym)}`, max].filter(Boolean).join(' · ');
   let state = '';
   if (w.amount !== undefined) {
