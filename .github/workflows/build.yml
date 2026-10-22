@@ -93,11 +93,12 @@ jobs:
           path: out/brainrot-game-maker.html
 
   e2e:
-    # The full end-to-end suite (about 10 minutes). It doesn't hold up the release (which only waits for the quick
-    # test): a failure here marks the run red, so it's still heard about, and gets fixed in the next push.
+    # The full end-to-end suite (about 25 minutes). It doesn't hold up the release (which only waits for the quick
+    # test): a failure here marks the run red, so it's still heard about, and gets fixed in the next push. (Room for a
+    # slow browser install too: one took 10 minutes, and ran the suite out of a 30-minute limit.)
     needs: build
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 50
     steps:
       - uses: actions/checkout@v5
       - uses: actions/setup-node@v5
