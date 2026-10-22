@@ -82,7 +82,11 @@
       <section id="s-buzz" hidden>
         <h1 class="sr">Your buzzer</h1>
         <div class="side">
-          <p id="clue"></p>
+          <!-- What's on ("Science · $800"), above the question: it never scrolls away with it. -->
+          <p id="clue-cap" dir="auto" hidden></p>
+          <!-- The question only, fitted to the room left (main.ts fitClue); past that it scrolls, ▼ More over it. -->
+          <p id="clue" dir="auto"></p>
+          <button id="clue-more" type="button" class="more-pill" aria-controls="clue" aria-label="Show more of the question" hidden>▼ More</button>
           <!-- The status line, when cards take the buzzer's place: over them on a phone, beside them on its side. -->
           <p id="card-status" hidden><span id="card-status-big" dir="auto"></span><span id="card-status-small" dir="auto"></span></p>
           <p id="host-note" class="warn-note" hidden>The host's connection dropped. Hang on, they'll be back…</p>

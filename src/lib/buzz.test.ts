@@ -277,6 +277,32 @@ describe('hostState (what the buzzer room is told)', () => {
     expect(questionText(undefined)).toBe('');
   });
 
+  it('question text: up to 1000 characters, cut with “…” on a whole character', () => {
+    const long = 'Name the scientist. '.repeat(50);
+    expect(questionText(textSlide(long.slice(0, 996)))).toBe(long.slice(0, 996).trim());
+    const cut = questionText(textSlide('x'.repeat(1200)));
+    expect(cut.length).toBe(1000);
+    expect(cut.endsWith('x…')).toBe(true);
+    // An emoji (two units) or a flag (four) right at the edge goes whole or not at all.
+    for (const pic of ['😀', '🇬🇧']) {
+      for (let at = 994; at <= 1000; at++) {
+        const q = questionText(textSlide('x'.repeat(at) + pic.repeat(20)));
+        expect(q.length).toBeLessThanOrEqual(1000);
+        expect(q.endsWith('…')).toBe(true);
+        expect(q.slice(at, -1).length % pic.length).toBe(0);
+        expect(q.slice(at, -1).replaceAll(pic, '')).toBe('');
+      }
+    }
+  });
+
+  it('question text: line breaks stay, blank lines go (a slide’s spacing)', () => {
+    expect(questionText(textSlide('first\n\n  \nsecond'))).toBe('first\nsecond');
+    expect(questionText(textSlide('A) x\nB) y'))).toBe('A) x\nB) y');
+    const s = textSlide('Which one?\n\n');
+    s.elements.push(newTextEl('\n\nA) x\n\n\nB) y', { x: 0, y: 500, w: 100, h: 50 }));
+    expect(questionText(s)).toBe('Which one?\nA) x\nB) y');
+  });
+
   it('what viewers see as a slide comes up: no secret, see-through or later item (a hint), for the phones too', () => {
     const s = textSlide('question');
     const hint = newTextEl('hint', { x: 0, y: 200, w: 100, h: 50 });

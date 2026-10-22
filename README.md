@@ -194,7 +194,9 @@ who answers first, or pick one yourself (`1`–`9` or a click always picks by ha
 see "🔔 Ann is answering" whenever one player is picked during a clue. Phones also say who got a clue right and what's
 on (a Daily Double's player sees "you're up"; on a 🤝 partner clue every phone's button greys and says who describes
 and who guesses), beep and flash when BUZZ! lights up (🔔 mutes), and **Not you?** lets a
-player change seats. 🤫 Cards go to a player's phone through the buzzer server, only when you send them (📤 in the
+player change seats. A long question fits the phone: its text gets smaller (down to a size that's still easy to read)
+and past that it scrolls, with ▼ More.
+🤫 Cards go to a player's phone through the buzzer server, only when you send them (📤 in the
 partner clue's panel): their words, links, pictures and videos, your own files included (pictures are shrunk first;
 a big GIF, video or sound can go as a smaller copy for phones: **🗜 Make smaller…** on its card in 🖼 Media, or
 **🗜 Make smaller** on the host panel's line about it during the game, see Card files under

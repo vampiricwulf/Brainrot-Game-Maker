@@ -594,7 +594,10 @@ try {
   assert(wager.amount === 500, 'typed and sent with Enter: the host has Kim’s 500');
   setState({ wager: { ...hs.wager, open: false, seats: [{ id: 'k', max: 1000, amount: 500 }] } });
   await kim.waitForFunction(() => document.activeElement?.id === 'buzz');
-  assert(await keysHint.isVisible(), 'locked: the keys go back to the buzzer, and the hint comes back');
+  assert(
+    (await big(kim).innerText()) === 'Wager locked' && (await keysHint.isHidden()) && (await kim.locator('#buzz').getAttribute('aria-keyshortcuts')) === null,
+    'locked: the keys go back to the buzzer, but no "Press Space to buzz" under "Wager locked" (nothing buzzes)',
+  );
   // A ✍ clue: the answer box takes the keys, even from 🎨 where Tab had left them; a space typed in it is a space (no
   // buzz); Enter sends.
   await kim.locator('#color-btn').focus();

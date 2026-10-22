@@ -704,6 +704,140 @@ try {
   });
   assert(note.h < 100 && Math.abs(note.off) <= 2, `on its side, the note beside BUZZ! keeps no room for a card, and BUZZ! stays in the middle (${JSON.stringify(note)})`);
 
+  // ---------- A long question fits the phone: smaller words, then ▼ More; the place kept as BUZZ! lights ----------
+  const story =
+    'Here is the whole story, so listen to the end. In 1928 a Scottish scientist came back to his untidy London laboratory after a summer holiday with his family. Before leaving, he had stacked a pile of glass dishes growing bacteria on a bench in the corner, instead of cleaning them. Looking through them, he noticed something odd: one dish had been spoiled by a blue-green mould, and all around the mould the bacteria had been killed, leaving a clear ring. He grew the mould on purpose, found that it could kill many kinds of harmful bacteria, and named the substance it made after the mould itself. He wrote it up the next year, but he could not make enough of it to treat anyone, and for over a decade few people paid it much attention. Only during the Second World War did a team at Oxford work out how to make it in large amounts, saving the lives of countless soldiers. In 1945 the three men shared a Nobel Prize. Name the scientist who first noticed the mould, and the drug it gave the world.';
+  await ann.setViewportSize({ width: 360, height: 640 });
+  hostState({ phase: 'closed', armId: 30, clue: { text: story, caption: 'Science · $800' }, status: undefined, cards: null, answers: null });
+  const more = ann.locator('#clue-more');
+  await more.waitFor();
+  await ann.evaluate(() => scrollTo(0, 0));
+  const fit = await ann.evaluate(() => {
+    const r = (id) => document.getElementById(id).getBoundingClientRect();
+    const inside = (b) => b.top >= 0 && b.bottom <= innerHeight;
+    return { buzz: inside(r('buzz')), me: inside(r('me')), wide: document.documentElement.scrollWidth > innerWidth, cap: r('clue-cap').bottom <= r('clue').top, font: getComputedStyle(document.getElementById('clue')).fontSize };
+  });
+  assert(
+    fit.buzz && fit.me && !fit.wide && fit.cap && (await more.textContent()) === '▼ More' && fit.font === '15px',
+    `a 1,000-character question on a small phone (360×640): at 15px it takes the room down to BUZZ!, what’s on above it, BUZZ! and the score in sight, and ▼ More (${JSON.stringify(fit)})`,
+  );
+  // ▼ More goes down the question (said with "▲ Top" once at its end), each tap once its words say where it is.
+  const clueAt = (p) => p.evaluate(() => document.getElementById('clue').scrollTop);
+  const settled = (p) =>
+    until(
+      () =>
+        p.evaluate(() => {
+          const c = document.getElementById('clue');
+          return document.getElementById('clue-more').textContent === (c.scrollTop + c.clientHeight >= c.scrollHeight - 2 ? '▲ Top' : '▼ More');
+        }),
+      '▼ More / ▲ Top saying where the question is',
+    );
+  const toEnd = async (p, press) => {
+    for (let i = 0; i < 10 && (await p.locator('#clue-more').textContent()) !== '▲ Top'; i++) {
+      const was = await clueAt(p);
+      await press();
+      await until(() => clueAt(p).then((t) => t !== was), 'the question scrolls');
+      await settled(p);
+    }
+  };
+  await toEnd(ann, () => more.tap());
+  const end = await ann.evaluate(() => {
+    const c = document.getElementById('clue');
+    const words = document.createRange();
+    words.setStart(c.firstChild, c.firstChild.length - 'the world.'.length);
+    words.setEnd(c.firstChild, c.firstChild.length);
+    const [w, b, p] = [words.getBoundingClientRect(), c.getBoundingClientRect(), document.getElementById('clue-more').getBoundingClientRect()];
+    return { inside: w.top >= b.top && w.bottom <= b.bottom, clear: w.bottom <= p.top, faded: c.classList.contains('more'), name: document.getElementById('clue-more').getAttribute('aria-label') };
+  });
+  assert(
+    (await more.textContent()) === '▲ Top' && end.inside && end.clear && !end.faded && end.name === 'Back to the top of the question',
+    `▼ More scrolls to its end: the last words in sight, clear of ▲ Top, no fade (${JSON.stringify(end)})`,
+  );
+  await more.tap();
+  await until(() => clueAt(ann).then((t) => t === 0), 'back to the top');
+  await settled(ann);
+  assert((await more.textContent()) === '▼ More', '▲ Top goes back to its start');
+  // Part way down: BUZZ! lighting, then a new score, don't fit it again (it stays where the player was, BUZZ! too).
+  const place = () => ann.evaluate(() => [document.getElementById('clue').scrollTop, Object.values(document.getElementById('buzz').getBoundingClientRect().toJSON()).join()]);
+  const partWay = await ann.evaluate(() => {
+    const c = document.getElementById('clue');
+    c.scrollTop = Math.round(c.scrollHeight / 3);
+    return c.scrollTop;
+  });
+  const there = await place();
+  hostState({ phase: 'armed', armId: 31 });
+  await ann.locator('#buzz.armed').waitFor();
+  const lit = await place();
+  hostState({ scores: { ...hs.scores, a: 1234 } });
+  await ann.locator('#me').getByText('1,234').waitFor();
+  const scored = await place();
+  assert(
+    partWay > 0 && [lit, scored].every((x) => x[0] === there[0] && x[1] === there[1]),
+    `part way down the question, BUZZ! lighting and a new score leave the place and BUZZ! where they were (${[there, lit, scored].map((x) => x[0]).join(' → ')}${there[1] === lit[1] && there[1] === scored[1] ? '' : `; BUZZ! ${there[1]} → ${lit[1]} → ${scored[1]}`})`,
+  );
+  // An answer box under it: Send in sight, and sending keeps the place too.
+  hostState({ phase: 'lobby', answers: { id: 'long1', open: true, seats: [{ id: 'a' }] } });
+  await ann.locator('#answer-form').waitFor();
+  await ann.evaluate(() => scrollTo(0, 0));
+  const send = await ann.locator('#answer-send').boundingBox();
+  const spot = await ann.evaluate(() => {
+    const c = document.getElementById('clue');
+    c.scrollTop = Math.round(c.scrollHeight / 3);
+    return c.scrollTop;
+  });
+  await ann.locator('#answer-in').fill('Fleming');
+  await ann.locator('#answer-in').press('Enter');
+  await ann.locator('#answer-state').getByText('✔ Sent').waitFor();
+  assert(
+    send.y >= 0 && send.y + send.height <= 640 && spot > 0 && (await clueAt(ann)) === spot && !(await more.isHidden()),
+    `with the answer box: Send answer in sight, and “✔ Sent” leaves the place in the question (${spot} → ${await clueAt(ann)})`,
+  );
+  // A shorter question on a bigger phone, with a long link and "A) … B) …" lines: whole, left-aligned, the lines kept.
+  await ann.setViewportSize({ width: 390, height: 844 });
+  const quiz =
+    'In his notes, kept at https://www.example.com/archive/lab-notes/supercalifragilisticexpialidocious-pneumonoultramicroscopicsilicovolcanoconiosis?page=1928, the scientist wrote down, in his own untidy hand, where he first found the mould that changed medicine for good. Which of these did he find it on?\nA) A dish of bacteria\nB) A slice of bread\nC) An orange';
+  hostState({ phase: 'closed', armId: 32, clue: { text: quiz, caption: 'Science · $400' }, answers: null });
+  await until(() => ann.locator('#clue').textContent().then((t) => t === quiz), 'the shorter question');
+  const whole = await ann.evaluate(() => {
+    const c = document.getElementById('clue');
+    const line = (s) => {
+      const r = document.createRange();
+      const at = c.firstChild.data.indexOf(s);
+      r.setStart(c.firstChild, at);
+      r.setEnd(c.firstChild, at + 2);
+      return r.getBoundingClientRect();
+    };
+    const [a, b] = [line('A)'), line('B)')];
+    return {
+      fits: c.scrollHeight <= c.clientHeight + 1,
+      pill: !document.getElementById('clue-more').hidden,
+      long: c.classList.contains('long'),
+      wide: c.scrollWidth > c.clientWidth || document.documentElement.scrollWidth > innerWidth,
+      lines: getComputedStyle(c).whiteSpace === 'pre-line' && b.top > a.top && Math.abs(b.left - a.left) < 1,
+    };
+  });
+  assert(
+    whole.fits && !whole.pill && whole.long && !whole.wide && whole.lines,
+    `a 360-character question on a 390×844 phone: whole with no ▼ More, left-aligned, its long link wrapped, “A) … B) …” each on its own line (${JSON.stringify(whole)})`,
+  );
+  // A laptop: Tab goes from the question to ▼ More, and Enter there scrolls it, never buzzes (an early buzz locks).
+  await cat.setViewportSize({ width: 900, height: 450 });
+  await cat.emulateMedia({ reducedMotion: 'reduce' });
+  hostState({ phase: 'closed', armId: 33, clue: { text: story, caption: 'Science · $800' }, earlyLockMs: 2000 });
+  await cat.locator('#clue-more').waitFor();
+  const heard = h.got.length;
+  await cat.locator('#clue').focus();
+  await cat.keyboard.press('Tab');
+  const onPill = () => cat.evaluate(() => document.activeElement?.id === 'clue-more');
+  assert(await onPill(), 'a laptop: the question that scrolls takes the keys (its arrow keys scroll it), and Tab goes on to ▼ More');
+  await toEnd(cat, () => cat.keyboard.press('Enter'));
+  assert(
+    (await cat.locator('#clue-more').textContent()) === '▲ Top' && (await onPill()) && (await big(cat).innerText()) !== 'Too early' && !h.got.slice(heard).some((m) => m.t === 'buzz' && m.seatId === 'c'),
+    'Enter on ▼ More scrolls the question to its end, where it says ▲ Top with the keys still on it: no buzz, no “Too early”',
+  );
+  await cat.emulateMedia({ reducedMotion: null });
+  hostState({ phase: 'lobby', clue: null, earlyLockMs: 0 });
+
   assert(!errors.length, 'no page errors' + (errors.length ? ': ' + errors.join(' | ') : ''));
   console.log('Phone cards E2E passed.');
 } catch (e) {

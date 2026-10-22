@@ -140,6 +140,8 @@ export function fileType(raw: string | null | undefined): (typeof FILE_TYPES)[nu
 export const WAGER_MAX = 1_000_000_000;
 /** The longest answer a phone may type (characters). */
 export const ANSWER_MAX = 200;
+/** The most of a clue's text phones get (UTF-16 units, as the room counts them; cut with "…", see clipUnits). */
+export const CLUE_TEXT_MAX = 1000;
 
 /** A team member's name, as typed on their phone (characters). */
 export const MEMBER_NAME_MAX = 24;
@@ -629,6 +631,21 @@ export function clip(s: string, max: number): string {
   let out = '';
   for (const x of g.slice(0, Math.max(0, max - 1))) {
     if (out.length + x.length >= max * 16) break;
+    out += x;
+  }
+  return `${out.trimEnd()}…`;
+}
+
+/**
+ * At most `max` UTF-16 units (as the room counts them), whole characters only (an emoji or a flag isn't cut apart),
+ * ending in "…" when cut.
+ */
+export function clipUnits(s: string, max: number): string {
+  if (s.length <= max) return s;
+  let out = '';
+  // (Only the start can be kept: a character that runs past 2 × max is longer than max, so never kept either.)
+  for (const x of graphemes(s.slice(0, max * 2))) {
+    if (out.length + x.length + 1 > max) break;
     out += x;
   }
   return `${out.trimEnd()}…`;

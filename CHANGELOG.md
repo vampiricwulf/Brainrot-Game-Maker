@@ -11,6 +11,17 @@ the day it's pushed (Pacific time; start the heading on the day's first push) an
 in plain words for the people who make and host games. Anything committed but not pushed yet goes under
 **Unreleased** at the top, and moves under its day when it's pushed.
 
+## Unreleased
+
+### Changed
+
+- Phones show a long question better: it takes the room between the top of the screen and the buzzer (or the answer box), its text gets smaller to fit, down to a size still easy to read, and past that it scrolls, with a faded edge and ▼ More (▲ Top at the end). Past three lines it's left-aligned, its line breaks stay (“A) … B) …” each on its own line, without the slide's blank lines), and a long link or word wraps instead of running off the side. The category and value sit above it and no longer scroll away. A player keeps their place in it as BUZZ! lights up, and with the keyboard up the question stays above the answer box and Send stays in sight. A screen reader says the question once as the answer box opens, not again with each “✔ Sent”.
+
+### Fixed
+
+- Phones get up to 1,000 characters of a question (500 before), ending in “…” when cut: the end of a long question, where the actual question usually is, was lost.
+- On a computer, the phone page no longer says “Press Space to buzz” under “Wager locked” or “… is answering · Daily Double”, when nothing buzzes.
+
 ## 2026-10-22
 
 ### Fixed

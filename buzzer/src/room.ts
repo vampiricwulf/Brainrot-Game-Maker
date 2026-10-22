@@ -100,7 +100,9 @@ import {
   ROOM_FEATURES,
   TIE_MS,
   clip,
+  clipUnits,
   cleanName,
+  CLUE_TEXT_MAX,
   type BuzzPhase,
   type CardMedia,
   type CardTo,
@@ -1896,7 +1898,7 @@ export function cleanState(x: unknown, files: Record<string, RoomFile> = {}): Ho
   let clue: HostState['clue'] = null;
   if (x.clue !== undefined && x.clue !== null) {
     if (!isObj(x.clue) || typeof x.clue.text !== 'string') return null;
-    clue = { text: x.clue.text.slice(0, 1000) };
+    clue = { text: clipUnits(x.clue.text, CLUE_TEXT_MAX) };
     if (typeof x.clue.caption === 'string' && x.clue.caption) clue.caption = x.clue.caption.slice(0, 200);
   }
   const scores: Record<string, number> = {};

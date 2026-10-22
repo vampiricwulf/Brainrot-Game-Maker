@@ -1,7 +1,7 @@
 // Buzzer mode's state during a clue: whether the buzzers are open, who is answering, who already missed it. The host
 // decides all of it (keys, the host panel, a phone's buzz that the buzzer room let through); it lives in Live, so the
 // audience window shows "🔔 Ann is answering", and the phones get it through hostState().
-import { CARD_HINT_MAX, CARD_ROLE_MAX, CARD_TEXT_MAX, CARDS_BYTES, CARDS_MAX, clip, WAGER_MAX, type BuzzPhase, type HostCard, type HostState, type WagerAsk, type AnswerAsk } from './buzzproto';
+import { CARD_HINT_MAX, CARD_ROLE_MAX, CARD_TEXT_MAX, CARDS_BYTES, CARDS_MAX, clip, clipUnits, CLUE_TEXT_MAX, WAGER_MAX, type BuzzPhase, type HostCard, type HostState, type WagerAsk, type AnswerAsk } from './buzzproto';
 import { categoryLabel, finalName, formatPoints, PARTNER_GAMES, roundName, type CardSend, type CardTo, type Game, type Id, type PartnerState, type Session, type Slide, type SlideElement, type TextEl } from './model';
 import {
   cardHash, cardId, cardLines, cardSlides, describer, giverLine, partnerRoles, partnerRules, partnerVerdict, partOfTo, partsLine, partWords, resultLine, type CardPart,
@@ -116,15 +116,20 @@ export function buzzDone(b: BuzzState): BuzzState {
  */
 export const seenAtOnce = (e: SlideElement): boolean => !e.secret && e.opacity > 0 && (e.entrance?.delay ?? 0) <= 2;
 
-/** The question slide's words, for the phones: text boxes only, top to bottom, none hidden from viewers. */
+/**
+ * The question slide's words, for the phones: text boxes only, top to bottom, none hidden from viewers. Its line breaks
+ * stay (phones show them), but not its blank lines (a slide's spacing would be empty lines on a phone); cut with "…" at
+ * CLUE_TEXT_MAX.
+ */
 export function questionText(s: Slide | undefined): string {
   if (!s) return '';
   const texts = s.elements.filter((e): e is TextEl => e.kind === 'text' && seenAtOnce(e) && !!e.text.trim());
   texts.sort((a, b) => a.y - b.y || a.x - b.x);
-  return texts
+  const words = texts
     .map((t) => t.text.trim())
     .join('\n')
-    .slice(0, 500);
+    .replace(/\n[^\S\n]*(\n[^\S\n]*)+/g, '\n');
+  return clipUnits(words, CLUE_TEXT_MAX);
 }
 
 /** A 🤫 card's words for the phones: every text box, top to bottom (one hidden from viewers too), cut at 1000 characters. */

@@ -121,6 +121,8 @@ let answerSending = false;
 let answerErr = '';
 let answerFor = '';
 let wasAnsUp = false;
+/** The question the answer box last said to a screen reader (said once, see renderAnswer). */
+let saidAsked = '';
 /** What the seat list was last drawn with (see renderSeats). */
 let seatsKey = '';
 /** The colour picker is open; the colours it was last drawn with (redrawn only when they change, so focus stays). */
@@ -715,6 +717,199 @@ let wasBoxUp = false;
 
 function show(id: ScreenId): void {
   for (const s of screens) $(s).hidden = s !== id;
+  // (Every drawing of the buzz screen ends here, before it's painted: the question fits what's around it.)
+  if (id === 's-buzz') fitClue();
+}
+
+// ---- a long question, fitted to the room left ----
+
+/** What the question was last fitted for (see fitClue): the same again does nothing. */
+let fitKey = '';
+/** The question (and what's on) last fitted: a new one starts at its top. */
+let fitFor = '';
+let fitting = false;
+
+/** The part of the screen in sight: above the on-screen keyboard (not a pinch-zoom's, which isn't the page's room). */
+function seenHeight(): number {
+  const vv = window.visualViewport;
+  return vv && Math.abs(vv.scale - 1) < 0.01 ? vv.height : innerHeight;
+}
+
+/** The on-screen keyboard is up over the answer box. */
+function keyboardUp(): boolean {
+  return document.activeElement === $('answer-in') && seenHeight() < innerHeight - 150;
+}
+
+/** Where an element is on screen; null when it isn't drawn. */
+const rectOf = (el: Element): DOMRect | null => (el.getClientRects().length ? el.getBoundingClientRect() : null);
+
+/** The answer box's last line: Send, or "✔ Sent: …" / "Type an answer first." under it. */
+const answerLast = (): HTMLElement =>
+  ['answer-state', 'answer-err']
+    .map((id) => $(id))
+    .filter((el) => el.textContent?.trim())
+    .reduce((last, el) => ((rectOf(el)?.bottom ?? 0) > (rectOf(last)?.bottom ?? 0) ? el : last), $('answer-send'));
+
+/**
+ * The room the question has (px), from what's around it as it's drawn now: the screen in sight, less the header and
+ * what must stay in sight with it (what's on, above it; BUZZ!, the key hint, the name and score, or the open box's
+ * Send). One above the other, 🎨 and "Not you?" may go one scroll down. With the keyboard up over the answer box: that
+ * box, from the question to its last line.
+ */
+function clueRoom(sec: HTMLElement, kbd: boolean): number {
+  const c = $('clue').getBoundingClientRect();
+  const side = $('clue').parentElement!.getBoundingClientRect();
+  const H = seenHeight();
+  const grid = getComputedStyle(sec).display === 'grid';
+  if (kbd) {
+    // (Side by side, the box is beside the question: its column gets the screen in sight.)
+    if (grid) return H - 16 - (side.height - c.height);
+    return H - 16 - (c.top - (rectOf($('clue-cap')) ?? c).top) - (answerLast().getBoundingClientRect().bottom - c.bottom);
+  }
+  const s = getComputedStyle(sec);
+  const header = document.querySelector('header')!.getBoundingClientRect().bottom + scrollY;
+  const free = H - header - parseFloat(s.paddingTop) - parseFloat(s.paddingBottom) - parseFloat(getComputedStyle(document.body).paddingBottom);
+  if (grid) {
+    // Side by side: the question's column, top to bottom, all of it (BUZZ! or the box on the right is in the middle of
+    // the column's height: a column running off the screen would take them down with it).
+    const gap = parseFloat(s.rowGap) || 0;
+    const foot = document.querySelector('.side.foot')!.getBoundingClientRect().height;
+    // (A card under the question keeps room for its Tap to see, as the CSS does; the note about missed cards, its own.)
+    const cards = $('cards');
+    const under = sec.classList.contains('cards-aside') && rectOf(cards) ? gap + (cards.querySelector('.card') ? Math.min(150, 0.4 * innerHeight) : cards.scrollHeight) : 0;
+    return free - (side.height - c.height) - gap - foot - under;
+  }
+  // One above the other: what's above and below it moves with it, so its own height doesn't change theirs. (On a touch
+  // screen, cards under BUZZ! come between it and the name: there BUZZ! is the last that must stay.)
+  const keep = [$('buzz'), $('wager-send'), $('answer-send'), ...(sec.classList.contains('cards-under') && !fine.matches ? [] : [$('keys'), $('me')])];
+  const below = Math.max(c.bottom, ...keep.map((el) => rectOf(el)?.bottom ?? c.bottom)) - c.bottom;
+  return free - (c.top - side.top) - below;
+}
+
+/**
+ * Fits the question to the room it has (clueRoom): its words smaller as needed, down to 15px on a touch screen and 16px
+ * with a mouse; past that it scrolls, its bottom edge faded until the end, with ▼ More (▲ Top at the end). Runs as the
+ * buzz screen is drawn and when the screen, or what's around the question, changes size, but works again only when
+ * something it goes by has changed: a player keeps their place, and BUZZ! lighting, a keystroke or a score cost
+ * nothing. During a clue it goes by the question and the screen only, so a card coming under BUZZ! or a score never
+ * moves it.
+ */
+function fitClue(): void {
+  const sec = $('s-buzz');
+  if (fitting || sec.hidden) return;
+  fitting = true;
+  try {
+    refitClue(sec);
+  } finally {
+    fitting = false;
+  }
+}
+
+function refitClue(sec: HTMLElement): void {
+  const clue = $('clue');
+  const cap = $('clue-cap');
+  const asked = `${cap.hidden ? '' : cap.textContent}\n${clue.textContent}`;
+  const kbd = keyboardUp();
+  const up = ['wager-form', 'answer-form'].find((id) => !$(id).hidden) ?? '';
+  let key = JSON.stringify([asked, innerWidth, innerHeight, Math.round(seenHeight()), fine.matches, kbd, up, $('buzz').hidden]);
+  if (!clue.textContent?.trim()) {
+    if (key === fitKey) return;
+    fitKey = key;
+    fitFor = '';
+    clue.style.removeProperty('font-size');
+    clue.style.removeProperty('--clue-room');
+    clue.classList.remove('long');
+    cap.classList.remove('long');
+    return noMore();
+  }
+  // Between clues, what's around the question counts too (a card opening, a box's notes growing).
+  const lobby = view?.phase === 'lobby';
+  let room = lobby ? Math.floor(clueRoom(sec, kbd)) : 0;
+  if (lobby) key += ` ${room}`;
+  if (key === fitKey) return;
+  fitKey = key;
+  if (!lobby) room = Math.floor(clueRoom(sec, kbd));
+  // The place: as far down (or at the end) as it was, unless it's a new question.
+  const same = asked === fitFor;
+  fitFor = asked;
+  const atEnd = clue.classList.contains('scrolls') && clue.scrollTop + clue.clientHeight >= clue.scrollHeight - 2;
+  const share = clue.scrollHeight ? clue.scrollTop / clue.scrollHeight : 0;
+  // The room (never under 2.6 lines, so two and ▼ More show), and the biggest size that fits it, a quarter pixel at a
+  // time, from the page's own size down to the smallest (never above the page's: a short laptop window starts lower).
+  clue.classList.remove('scrolls', 'more');
+  clue.style.removeProperty('font-size');
+  const start = parseFloat(getComputedStyle(clue).fontSize);
+  const floor = Math.ceil(start * 1.3 * 2.6);
+  clue.style.setProperty('--clue-room', `${Math.max(floor, room)}px`);
+  const fits = () => clue.scrollHeight <= clue.clientHeight + 1;
+  let size = start;
+  if (!fits()) {
+    let [lo, hi] = [Math.min(start, fine.matches ? 16 : 15), start];
+    clue.style.fontSize = `${lo}px`;
+    const mid = () => Math.round(((lo + hi) / 2) * 4) / 4;
+    if (fits())
+      for (let m = mid(); m > lo && m < hi; m = mid()) {
+        clue.style.fontSize = `${m}px`;
+        if (fits()) lo = m;
+        else hi = m;
+      }
+    size = lo;
+    clue.style.fontSize = `${size}px`;
+  }
+  // Past three lines: left-aligned (ragged centred lines are hard to follow), what's on with it.
+  const long = clue.scrollHeight / (size * 1.3) > 3.5;
+  clue.classList.toggle('long', long);
+  cap.classList.toggle('long', long);
+  if (fits()) {
+    noMore();
+    clue.scrollTop = 0;
+  } else {
+    // Still more than fits: it scrolls (the arrow keys too, once Tab is on it), with ▼ More, which never goes while it
+    // does (the keys on it would fall to the page, where Space buzzes).
+    clue.classList.add('scrolls');
+    clue.tabIndex = 0;
+    $('clue-more').hidden = false;
+    clue.scrollTop = !same ? 0 : atEnd ? clue.scrollHeight : Math.round(share * clue.scrollHeight);
+    drawMore();
+  }
+  // The keyboard up over the answer box: the question's top just under the top of what's in sight, the box under it;
+  // with no room for both (a card between them, a small phone), or the box beside it, the box's last line just above
+  // the keyboard, the question one scroll up. (8px from the edge: their scroll-margin. This scrolls what's in sight
+  // too, where the page itself can't scroll that far.)
+  if (kbd) {
+    if (room >= floor && getComputedStyle(sec).display !== 'grid') (cap.hidden ? clue : cap).scrollIntoView({ block: 'start' });
+    else answerLast().scrollIntoView({ block: 'end' });
+  }
+}
+
+/** ▼ More while there's more of the question below (its bottom edge faded); ▲ Top at its end. */
+function drawMore(): void {
+  const clue = $('clue');
+  if (!clue.classList.contains('scrolls')) return;
+  const end = clue.scrollTop + clue.clientHeight >= clue.scrollHeight - 2;
+  clue.classList.toggle('more', !end);
+  const pill = $('clue-more');
+  const text = end ? '▲ Top' : '▼ More';
+  if (pill.textContent === text) return;
+  pill.textContent = text;
+  pill.setAttribute('aria-label', end ? 'Back to the top of the question' : 'Show more of the question');
+}
+
+/** The question fits: no ▼ More, and keys that were on it (or on the question) go to BUZZ!, or to the box that's up. */
+function noMore(): void {
+  const clue = $('clue');
+  const pill = $('clue-more');
+  const at = document.activeElement;
+  if (at === pill || at === clue) {
+    const box = !$('answer-form').hidden ? $('answer-in') : !$('wager-form').hidden ? $('wager-in') : null;
+    // (On a touch screen, not into a box: that would open the keyboard.)
+    const to = !$('buzz').hidden ? $('buzz') : fine.matches ? box : null;
+    if (to) to.focus({ preventScroll: true });
+    else (at as HTMLElement).blur();
+  }
+  clue.classList.remove('scrolls', 'more');
+  clue.removeAttribute('tabindex');
+  pill.hidden = true;
 }
 
 /** What a screen reader hears: the screen's main words, said again whenever they change. */
@@ -943,22 +1138,19 @@ function renderBuzz(v: PhoneView): void {
   const b = $('buzz');
   b.style.setProperty('--seat', you.color);
   b.style.setProperty('--seat-ink', textOn(you.color));
-  const clue = $('clue');
-  clue.replaceChildren();
-  if (v.clue && (v.phase !== 'lobby' || v.answer)) {
-    clue.append(v.clue.text);
-    if (v.clue.caption) {
-      const c = document.createElement('small');
-      c.textContent = v.clue.caption;
-      clue.append(c);
-    }
-  }
   const sym = v.currency ?? '';
   // Wagers: the player's own box instead of the buzzer (or what's locked in; someone else wagering; sitting out).
   const wager = v.phase === 'lobby' && v.wager ? v.wager : null;
   const boxUp = !!wager?.mine && wager.open;
-  // Above the box: what's on screen ("Final Jeopardy! · US Presidents", "Daily Double — you're up!").
-  if (boxUp && !clue.childNodes.length && v.status) clue.append(v.status);
+  // The question while its clue is on (or answers are asked for it), what's on over it ("Science · $800"); above the
+  // wager box, what's on screen ("Final Jeopardy! · US Presidents", "Daily Double — you're up!"). Written only when
+  // they change, so a player keeps their place in a long question.
+  const q = v.clue && (v.phase !== 'lobby' || v.answer) ? v.clue : null;
+  const words = q?.text ?? (boxUp ? (v.status ?? '') : '');
+  if ($('clue').textContent !== words) $('clue').textContent = words;
+  const cap = $('clue-cap');
+  if (cap.textContent !== (q?.caption ?? '')) cap.textContent = q?.caption ?? '';
+  cap.hidden = !q?.caption;
   $('wager-form').hidden = !boxUp;
   // A ✍ clue: the answer box instead of the buzzer while answers are open.
   const ans = !boxUp && v.answer?.mine ? v.answer : null;
@@ -989,27 +1181,22 @@ function renderBuzz(v: PhoneView): void {
   $('s-buzz').classList.toggle('cards-under', !!cards.length && !b.hidden);
   cardsSaid = lateLine(late, team);
   // Desktop: the key that buzzes, under the buzzer (to a screen reader too: its shortcut and description). Not with a
-  // box up (Space types there), nor while nobody buzzes (a partner clue) or once the game is over (it buzzes nothing).
-  const keys = fine.matches && !b.hidden && !(v.phase === 'lobby' && (v.final || v.statusOff));
-  $('keys').hidden = !keys;
-  for (const [attr, value] of [
-    ['aria-keyshortcuts', 'Space'],
-    ['aria-describedby', 'keys'],
-  ] as const)
-    if (keys) b.setAttribute(attr, value);
-    else b.removeAttribute(attr);
+  // box up (Space types there); nor under what isn't a buzzer between clues (below).
+  keyHint(fine.matches && !b.hidden);
   const at = document.activeElement;
   // Desktop: keys the player left on a button under the buzzer (🎨, a colour, Not you?) or on the sound go into a box as
   // it opens too: typing a wager or an answer is what's wanted then, and Space or Enter there would press that button.
   const parked = fine.matches && at instanceof HTMLButtonElement && !!at.closest('.foot, header');
+  // (Keys on a long question or its ▼ More, from Tab or a click on the question, move on as if they were on BUZZ!.)
+  const onClue = at === $('clue') || at === $('clue-more');
   if (ansUp !== wasAnsUp) {
-    const lost = !at || at === document.body || $('answer-form').contains(at) || at === b || (ansUp && parked);
+    const lost = !at || at === document.body || $('answer-form').contains(at) || at === b || onClue || (ansUp && parked);
     wasAnsUp = ansUp;
     if (lost) queueMicrotask(() => (ansUp ? $('answer-in') : b).focus());
   }
   // The keys (and a screen reader) follow: into the box as it opens, back to the buzzer as it goes.
   if (boxUp !== wasBoxUp) {
-    const lost = !at || at === document.body || $('wager-form').contains(at) || at === b || (boxUp && parked);
+    const lost = !at || at === document.body || $('wager-form').contains(at) || at === b || onClue || (boxUp && parked);
     wasBoxUp = boxUp;
     if (lost) queueMicrotask(() => (boxUp ? $('wager-in') : b).focus());
   }
@@ -1021,12 +1208,14 @@ function renderBuzz(v: PhoneView): void {
     // Cards making way for the buzzer close (a neighbour or a webcam would see an open one beside it, and it would push
     // the clue off the screen). One opened while the buzzer is up stays open.
     if (wasCardsUp && !cardsUp && !b.hidden) coverCards();
-    const lost = !at || at === document.body || at === b || (cardsUp && parked) || (!cardsUp && $('cards').contains(at));
+    const lost = !at || at === document.body || at === b || onClue || (cardsUp && parked) || (!cardsUp && $('cards').contains(at));
     wasCardsUp = cardsUp;
     // (Not to the buzzer while a box takes its place: the box has the keys.)
     const to = newest ? cardFocus(newest) : !cardsUp && !b.hidden ? b : null;
     if (lost && to) queueMicrotask(() => to.focus());
   }
+  // (The answer box says its question as it opens: again if it opens again.)
+  if (!ansUp) saidAsked = '';
   if (boxUp) return renderWager(v, wager!, sym);
   if (ansUp) return renderAnswer(v, ans!, sym);
   if (!ans) ((answerFor = ''), (answerErr = ''));
@@ -1111,15 +1300,18 @@ function renderBuzz(v: PhoneView): void {
   } else {
     [cls, big, small] = ['ready', 'Get ready…', "Don't buzz yet"];
   }
+  // Between clues nothing buzzes: no Space hint under what the button says instead ("Wager locked", "Ann is answering ·
+  // Daily Double", "Answers locked", "You sit this one out", where you came). (During a clue it stays, even under
+  // "Wait": coming and going, it would move BUZZ!.)
+  if (v.phase === 'lobby' && cls === 'off') keyHint(false);
   if (sendingArm === v.armId && !mine && v.phase !== 'lobby') small = 'Sending…';
   if (lostArm === v.armId && !mine && cls !== 'first' && cls !== 'locked') small = 'Your buzz didn’t get through — press again';
   // Back from the background: until the room answers the ping, a press may be on a dead connection (it's kept).
   if (probeTimer && cls !== 'first') small = 'Checking connection…';
-  // The moment BUZZ! first shows for this arm: reaction times count from here.
-  if (cls === 'armed' && litArm !== v.armId) {
-    litArm = v.armId;
-    litAt = performance.now();
-  }
+  // BUZZ! shows for this arm for the first time: reaction times count from when it's drawn (taken after show() below,
+  // so fitting the question to the screen never counts against a player).
+  const lit = cls === 'armed' && litArm !== v.armId;
+  if (lit) litArm = v.armId;
   // A beep and a flash when BUZZ! lights up and when you're answering (each once).
   const cue = cls === 'armed' ? `armed ${v.armId}` : cls === 'first' ? `first ${v.armId}` : '';
   if (cue && cue !== cued) {
@@ -1150,9 +1342,22 @@ function renderBuzz(v: PhoneView): void {
   const [sayBig, saySmall] = cardsUp ? [v.status ?? '', v.statusSub ?? ''] : [big, spoken ?? small];
   say(sentences([connected ? '' : awayText(), sayBig, saySmall, cardsSaid, hostGone ? ($('host-note').textContent ?? '') : '']));
   show('s-buzz');
+  if (lit) litAt = performance.now();
   // Count the early lock down.
   clearTimeout(tick);
   if (left > 0) tick = window.setTimeout(render, 200);
+}
+
+/** Desktop: "Press Space to buzz" under the buzzer, and the same to a screen reader (its shortcut and description). */
+function keyHint(on: boolean): void {
+  const b = $('buzz');
+  $('keys').hidden = !on;
+  for (const [attr, value] of [
+    ['aria-keyshortcuts', 'Space'],
+    ['aria-describedby', 'keys'],
+  ] as const)
+    if (on) b.setAttribute(attr, value);
+    else b.removeAttribute(attr);
 }
 
 /** The name and score line under the buzzer (and the wager box), and whether the host is gone. */
@@ -1283,7 +1488,14 @@ function renderAnswer(v: PhoneView, a: NonNullable<PhoneView['answer']>, sym: st
   $('answer-err').textContent = answerErr;
   $<HTMLButtonElement>('answer-send').textContent = a.text ? 'Change answer' : 'Send answer';
   const hostGone = renderFoot(v, sym);
-  const what = guess ? [v.status ?? '', v.statusSub ?? '', $('clue').textContent ?? ''] : [$('clue').textContent ?? '', 'Everyone answers'];
+  // The question (and what's on), said once as it comes: not again before each "Sending…" or "✔ Sent" (it can be 1,000
+  // characters long). It stays on the page to read again.
+  const asked = sentences([$('clue-cap').hidden ? '' : ($('clue-cap').textContent ?? ''), $('clue').textContent ?? '']);
+  if (asked !== saidAsked) {
+    saidAsked = asked;
+    if (asked) news(asked);
+  }
+  const what = guess ? [v.status ?? '', v.statusSub ?? ''] : ['Everyone answers'];
   say(sentences([connected ? '' : awayText(), ...what, state, cardsSaid, hostGone ? ($('host-note').textContent ?? '') : '']));
   show('s-buzz');
 }
@@ -1310,15 +1522,24 @@ const ordinal = (n: number): string => n + (n % 100 >= 11 && n % 100 <= 13 ? 'th
 // ---- private cards ----
 
 let newsTimer = 0;
-/** Says a short line to a screen reader once (a card arriving, its picture arriving), leaving the screen's own words (#live) alone. */
+/** Lines for news() not said yet: two at once (a question and a card coming with it) are said together. */
+let newsLines: string[] = [];
+/**
+ * Says a line to a screen reader once (a card arriving, its picture arriving, the answer box's question), leaving the
+ * screen's own words (#live) alone.
+ */
 function news(text: string): void {
   const n = $('news');
-  n.textContent = '';
-  clearTimeout(newsTimer);
-  queueMicrotask(() => {
-    n.textContent = text;
-    newsTimer = window.setTimeout(() => (n.textContent = ''), 3000);
-  });
+  if (!newsLines.length) {
+    n.textContent = '';
+    clearTimeout(newsTimer);
+    queueMicrotask(() => {
+      n.textContent = newsLines.join(' ');
+      newsLines = [];
+      newsTimer = window.setTimeout(() => (n.textContent = ''), 3000);
+    });
+  }
+  newsLines.push(text);
 }
 
 initCards({
@@ -1546,10 +1767,28 @@ $('wait-cancel').addEventListener('click', (e) => {
   render();
   if (e.detail === 0) $('new-btn').focus();
 });
-// The on-screen keyboard opening (or the phone turning) with the wager box in use: keep the box in sight.
+// A long question: ▼ More scrolls it most of the way down what's in sight; ▲ Top, at the end, back to its start.
+$('clue-more').addEventListener('click', () => {
+  const clue = $('clue');
+  const end = clue.scrollTop + clue.clientHeight >= clue.scrollHeight - 2;
+  const behavior = matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth';
+  clue.scrollTo({ top: end ? 0 : clue.scrollTop + clue.clientHeight * 0.8, behavior });
+});
+$('clue').addEventListener('scroll', drawMore, { passive: true });
+// The screen turning or resized, and what's around the question changing size (a card opening, a box's notes): see
+// whether it still fits as it is (fitClue).
+addEventListener('resize', () => fitClue());
+const aroundClue = new ResizeObserver(() => fitClue());
+for (const el of [$('cards'), $('wager-form'), $('answer-form'), document.querySelector('.side.foot')!]) aroundClue.observe(el);
+// The on-screen keyboard opening (or the phone turning): the answer box and its question fit what's in sight above it
+// (fitClue). Another box in use (a wager has no question above it) stays in the middle of it.
 window.visualViewport?.addEventListener('resize', () => {
+  fitClue();
   const el = document.activeElement;
-  if (el instanceof HTMLInputElement || el instanceof HTMLTextAreaElement) el.scrollIntoView({ block: 'center' });
+  if (el === $('answer-in')) {
+    // (A browser that makes the whole page shorter for the keyboard: no keyboard as fitClue sees it, so just in sight.)
+    if (!keyboardUp()) el.scrollIntoView({ block: 'nearest' });
+  } else if (el instanceof HTMLInputElement || el instanceof HTMLTextAreaElement) el.scrollIntoView({ block: 'center' });
 });
 $('wager-form').addEventListener('submit', (e) => {
   e.preventDefault();

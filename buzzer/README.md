@@ -28,11 +28,11 @@ room, plus the phone page it serves. It is not part of the app's single-file bui
   tie: the room picks nobody and the host decides, by hand or by a roll (`rollOrder` in its state sets the tied
   players' order). To open the buzzers again (after a wrong answer too) the host sends a new `armId`; the host's own
   pick (`answering`) always wins over the room's.
-- **Phones only see their own view**: phase, clue text, who is answering, their own name, colour and score, and (added
-  later, all optional) who got the clue right (`done`), a status line from the host (`status`, with other words for
-  some seats: the Daily Double's player), the points symbol and whether the host is connected. Never answers, notes,
-  media or anyone's token, except the private cards the host sent to that phone (`cards`): their words, links and
-  files, which can be anything the host put on them, the answer included.
+- **Phones only see their own view**: phase, clue text (up to 1,000 characters, cut with “…”), who is answering, their
+  own name, colour and score, and (added later, all optional) who got the clue right (`done`), a status line from the
+  host (`status`, with other words for some seats: the Daily Double's player), the points symbol and whether the host
+  is connected. Never answers, notes, media or anyone's token, except the private cards the host sent to that phone
+  (`cards`): their words, links and files, which can be anything the host put on them, the answer included.
 - **Seats**: tapping a free name gives the phone a token (kept in its localStorage), so a reload or a dropped
   connection gets the same seat back. Only the host frees a held seat (kick, or removing the player), or the phone
   itself ("Not you? Change player"). A buzz before the buzzers open locks that seat out for the host's `earlyLockMs`.

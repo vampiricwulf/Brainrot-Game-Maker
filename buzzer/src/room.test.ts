@@ -1307,6 +1307,16 @@ describe('untrusted input', () => {
     expect(cleanState({ ...state(), seats: [{ id: '', name: 'x' }] })).toBeNull();
   });
 
+  it('cleanState cuts a long clue at 1000 units with "…", never mid-emoji', () => {
+    // An emoji (two units) at 999: it doesn't fit beside the "…", so the cut comes before it.
+    const text = 'x'.repeat(998) + '🎉'.repeat(101);
+    const cut = cleanState({ ...state(), clue: { text } })!.clue!.text;
+    expect(cut).toBe(`${'x'.repeat(998)}…`);
+    const fits = 'y'.repeat(997) + '🎉' + 'z'.repeat(200);
+    expect(cleanState({ ...state(), clue: { text: fits } })!.clue!.text).toBe(`${'y'.repeat(997)}🎉…`);
+    expect(cleanState({ ...state(), clue: { text: 'q'.repeat(1000) } })!.clue!.text).toBe('q'.repeat(1000));
+  });
+
   it('cleanState cuts long names with "…" (never mid-emoji) and checks the later fields', () => {
     const long = 'Bartholomew-Maximilian-the-Magnificent🎉🎉🎉';
     const s = cleanState({
