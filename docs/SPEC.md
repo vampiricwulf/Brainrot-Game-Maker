@@ -425,9 +425,13 @@ The mode isn't saved with the game: it's dual while the audience window is open.
    team: anyone on it) can send their wager from their phone until the question is shown; the amount goes to the host
    only (never to the audience window or other phones), and the host can still change it. A Daily Double's player can
    do the same before its question shows.
-2. Question slide + timer (default 30 s) + optional music file.
+2. Question slide + timer (default 30 s) + optional music file. With phone buzzers (and ✍ Players type their answers on
+   their phones, on unless the host unticks it in the round's editor), each player in it types their answer on their
+   phone (a team: anyone on it) from the question until the answer shows; only the host sees them (in one window, not
+   until each is revealed), and the stream shows ✍ and who has answered, never what.
 3. Answer reveal.
-4. **Per-player reveal**, one at a time in an order the host chooses: show the wager, then mark ✔ / ✘, and the score animates.
+4. **Per-player reveal**, one at a time in an order the host chooses: a typed answer first (show it, then mark ✔ / ✘,
+   and the wager goes up with the mark), otherwise show the wager, then mark ✔ / ✘; the score animates.
 5. **Tie check**: if two or more players are tied for first, the host is offered:
    - **Tiebreaker roll-off** between only the tied players (§6.6), or
    - **Tiebreaker clue** (the pre-written `Game.tiebreaker`, if authored). Scored with the normal scoring panel, or

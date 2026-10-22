@@ -51,7 +51,7 @@ comes in as a copy and this game's stays.
 | Mode | What it is |
 |---|---|
 | 🟦 **Jeopardy board** | 1–10 categories × 1–10 clues. Supports custom values, Daily Doubles, 🤝 partner clues (placed by hand or 🔀 at random; two players, no buzzers, a steal on a miss if you like, private 🤫 cards you send to their phones or copy to them), 🤫 cards on any tile, and images on categories and tiles. |
-| 🏆 **Final Jeopardy** | Private wagers, think music, then a one-by-one reveal and a winner screen; 🤫 cards of its own for the players you choose (＋ Card in its editor). |
+| 🏆 **Final Jeopardy** | Private wagers, think music (with phone buzzers, players type their answer on their phone), then a one-by-one reveal and a winner screen; 🤫 cards of its own for the players you choose (＋ Card in its editor). |
 | 🗺 **RPG** | Players explore a map of screens. It has stats, items, shops, characters and doorways. |
 | ♟ **Board game** | A path of spaces with forks and zones. Players move by dice, a wheel, or one space per turn. |
 | 🖼 **Slides** | A few slides in a row (a welcome, the rules, a break); N goes from one to the next. |
@@ -185,7 +185,7 @@ whoever on it buzzes first answers for the team ("Ann (Red team)" in the buzz or
 whole team. A room holds up to 24 phones at once: once 24 people are on teams, the next phone is told the game is full
 until someone leaves. On a Daily Double or a Final, players type their wager on their phone and send it: it fills in your
 wager box (marked 📱, and you can still change it), they can change it until you show the question, and only you see
-how much. The buzzers open when the clue does, or when you press `U` after reading it. The fastest reaction wins, timed
+how much. In a Final they then type their answer on their phone too, and you reveal each one on stream. The buzzers open when the clue does, or when you press `U` after reading it. The fastest reaction wins, timed
 on each player's own phone, so a slow connection doesn't cost anyone the buzz. Every buzz is listed in the host panel,
 fastest first: a wrong answer locks that player out and the next one who buzzed answers at once (**⏭ Skip**
 passes them on with no points taken); once nobody who buzzed is left, the buzzers open for the rest, and

@@ -538,6 +538,19 @@ describe('a Final’s 🤫 cards in saved games', () => {
   });
 });
 
+describe('a Final’s ✍ switch in saved games', () => {
+  it('keeps true or false (left out: players type on their phones); anything else goes', () => {
+    const g = JSON.parse(JSON.stringify(jeopardyGame()));
+    const off = (v: unknown) => {
+      g.rounds[1].phoneAnswersOff = v;
+      const r = migrateGame(JSON.parse(JSON.stringify(g))).rounds[1];
+      if (!isFinal(r)) throw new Error('not a Final');
+      return 'phoneAnswersOff' in r ? r.phoneAnswersOff : 'gone';
+    };
+    expect([off(true), off(false), off('x'), off(1), off(null)]).toEqual([true, false, 'gone', 'gone', 'gone']);
+  });
+});
+
 describe('🤫 Cards in saved games', () => {
   const plain = (g: unknown) => JSON.parse(JSON.stringify(g));
   const withCards = (cards: unknown) => migrateGame(plain({ ...jeopardyGame(), cards }));

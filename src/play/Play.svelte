@@ -8,7 +8,7 @@
   import { blankName, clueCardWords, finalName, formatPoints, getClue, isBoard, isBoardGame, isFinal, isRpg, isSlides, MAX_PLAYERS, newId, PLAYER_WHEEL, questionSlides, wholePoints, type BoardRound, type ClueRef } from '../lib/model';
   import {
     applyScore, awardOpen, backToBoard, backToLastRound, currentFinal, clueName, clueReason, clueScored, currentClueInfo, ddShowQuestion, describeStep,
-    finalAdvance, finalBack, finalJudge, finalShow, finalTag, finalUnjudged, findClueRef, goToRound, introNext, nameList, newSession, openClue, playerName,
+    finalAdvance, finalBack, finalJudge, finalShow, finalShowAnswer, finalTag, finalUnjudged, findClueRef, hasWager, typedAnswer, goToRound, introNext, nameList, newSession, openClue, playerName,
     randomizeDailyDoubles, redo, removePlayer, restorePlayer, answerShowing, rosterChange, score, skipIntro, startIntro, toggleUsed, undo,
     blankSlide, toolOnlyClue, stepSlide, finalWagerProblems, finalWagersOk, finalStepFix, startTiebreaker, stepOf, logZero, tiedForFirst, tiedLeaders, winnerKnown,
     finalSetWager, finalTakeNewcomers, forViewers, wagerFromPhone, coWinnersHold, ownPlayers, clueMarks, judgePartner, partnerSteal, stealersLeft,
@@ -27,7 +27,7 @@
   import { dropOffersBut } from './host/offered.svelte';
   import { addTime, newLive, overlayDoneAt, startTimer, tileToolUp, timerRemaining, timerResumed, toggleTimer, toolOverlay, type Live, type StageAction, type TimerState } from '../lib/live';
   import {
-    answerRoundId, buzzArm, buzzClueOpened, buzzDone, buzzIdle, buzzMissed, buzzReset, buzzTake, cardsFullText, everyoneAnswerAsk, hostState, newBuzz, partnerAnswerAsk, partnerAnswerId, hostCards, phoneStatus, roomCardsFull, SEAT_NAME_MAX, sendOf, SETTING_UP,
+    answerRoundId, buzzArm, buzzClueOpened, buzzDone, buzzIdle, buzzMissed, buzzReset, buzzTake, cardsFullText, everyoneAnswerAsk, finalAnswerAsk, hostState, newBuzz, partnerAnswerAsk, partnerAnswerId, hostCards, phoneStatus, roomCardsFull, SEAT_NAME_MAX, sendOf, SETTING_UP,
     teamsOn, wagerAsk, whoBuzzed,
     type BuzzState,
   } from '../lib/buzz';
@@ -354,13 +354,22 @@
       r.answers = { id, seats: r.answers?.id === id ? r.answers.seats : {}, locked: true };
     });
   });
-  // A ✍ clue: viewers see that everyone is answering, and who has (never what).
+  // The Final's question shows with phones taking answers: its answers start (kept in FinalState, through a reload and
+  // a trip to another round). Only then: once it has gone by without them, it's out loud (finalAnswerAsk).
+  $effect(() => {
+    const f = finalTyped && session.finalStep === 'question' ? session.final : undefined;
+    untrack(() => {
+      if (f && !f.answers) f.answers = {};
+    });
+  });
+  // A ✍ clue: viewers see that everyone is answering, and who has (never what). The Final's question too, with its players.
   $effect(() => {
     const id = everyone && info ? answerRoundId(session, info.clue.id) : null;
+    const fin = !id && finalTyped && session.finalStep === 'question' ? session.final : undefined;
     const ans = session.remote?.answers;
-    const inNow = id && ans?.id === id ? session.players.filter((p) => ans.seats[p.id]).map((p) => p.id) : [];
+    const inNow = fin ? fin.players.filter((p) => fin.answers?.[p]) : id && ans?.id === id ? session.players.filter((p) => ans.seats[p.id]).map((p) => p.id) : [];
     untrack(() => {
-      if (!id) return void (app.live.answers && delete app.live.answers);
+      if (!id && !fin) return void (app.live.answers && delete app.live.answers);
       const was = app.live.answers?.in ?? [];
       if (app.live.answers && was.length === inNow.length && was.every((x, i) => x === inNow[i])) return;
       app.live.answers = { in: inNow };
@@ -929,6 +938,16 @@
       info.clue.type === 'standard' &&
       ((!!remote.code && roomHasAnswers()) || session.remote?.answers?.id === answerRoundId(session, info.clue.id)),
   );
+  const finalRound = $derived(currentFinal(session, game));
+  /** The Final: players type their answer on their phone (with a room that takes answers; once begun, through a reload too). */
+  const finalTyped = $derived(
+    buzzerOn(game.settings) &&
+      session.phase === 'final' &&
+      !!finalRound &&
+      !finalRound.phoneAnswersOff &&
+      session.intro?.stage !== 'title' &&
+      ((!!remote.code && roomHasAnswers()) || !!session.final?.answers),
+  );
   /**
    * Buzzer mode, while a clue is open (a Daily Double has its one player, a partner clue its two; a ✍ clue has everyone
    * answer): players buzz in.
@@ -1245,7 +1264,7 @@
 
   /**
    * A ✍ clue's answers phones may send now (until its answer is on screen), with the ones already taken. A partner clue
-   * whose guesser types their guess: the guesser's, from the question on.
+   * whose guesser types their guess: the guesser's, from the question on. The Final's, from its question on.
    */
   function phoneAnswerAsk(): AnswerAsk | null {
     if (partner && info && phonesOn && roomHasAnswers()) {
@@ -1253,7 +1272,8 @@
       const mine = session.remote?.answers?.id === partnerAnswerId(partner) ? session.remote.answers : undefined;
       return partnerAnswerAsk(game, session, mine?.seats);
     }
-    return everyone ? everyoneAnswerAsk(game, session) : null;
+    if (everyone) return everyoneAnswerAsk(game, session);
+    return finalTyped ? finalAnswerAsk(game, session) : null;
   }
 
   /** A player sent their answer to the ✍ clue from their phone: the host sees it (nobody else). One already taken is skipped. */
@@ -1263,8 +1283,15 @@
     // (The room decides what's in time: one it took just before the answer showed still counts.)
     const seat = ask?.id === a.id ? ask.seats.find((x) => x.id === a.seatId) : undefined;
     if (!r || !ask || !seat || a.n <= (seat.got ?? 0)) return;
+    const by = a.by && game.settings.buzzTeams ? { by: a.by } : {};
+    // The Final's: kept with the Final (no toast, no step, nothing in the 📜 Log: only the host panel shows it).
+    const f = session.final;
+    if (finalTyped && f) {
+      f.answers = { ...f.answers, [a.seatId]: { text: a.text, n: a.n, ...by } };
+      return;
+    }
     const was = r.answers?.id === ask.id ? r.answers : undefined;
-    r.answers = { id: ask.id, seats: { ...was?.seats, [a.seatId]: { text: a.text, n: a.n, ...(a.by && game.settings.buzzTeams ? { by: a.by } : {}) } }, ...(was?.locked ? { locked: true } : {}) };
+    r.answers = { id: ask.id, seats: { ...was?.seats, [a.seatId]: { text: a.text, n: a.n, ...by } }, ...(was?.locked ? { locked: true } : {}) };
   }
 
   /**
@@ -1351,6 +1378,18 @@
   const wagerNote = $derived(
     phonesOn && remote.status === 'online' && !roomHasWagers() && remote.phones.some((p) => p.seatId)
       ? 'This buzzer server can’t take wagers from phones (it’s an older one): type them in.'
+      : '',
+  );
+  /** An older buzzer server with phones in it, in a Final they'd type their answers in: they answer out loud. */
+  const answersNote = $derived(
+    phonesOn &&
+      session.phase === 'final' &&
+      !!finalRound &&
+      !finalRound.phoneAnswersOff &&
+      remote.status === 'online' &&
+      !roomHasAnswers() &&
+      remote.phones.some((p) => p.seatId)
+      ? 'This buzzer server can’t take answers from phones (it’s an older one): players answer out loud.'
       : '',
   );
 
@@ -2434,21 +2473,25 @@
   }
 
   /**
-   * N in the final reveal: show the wager, then (once they're judged, C or X) the next player still to judge; finishing
-   * takes a second N once all are judged.
+   * N in the final reveal: show their typed answer (if they sent one from their phone) or else their wager, then (once
+   * they're judged, C or X: the wager goes up with it) the next player still to judge; finishing takes a second N once
+   * all are judged.
    */
   function finalRevealNext(): void {
     const f = session.final;
     const cur = f?.current && f.order.includes(f.current) ? f.current : undefined;
-    // Their wager is up: they're judged before anyone else is spotlit (N never skips past them).
+    const answerNext = !!f && !!cur && !!typedAnswer(f, cur) && !f.answerShown?.[cur] && !f.results[cur];
+    // Their answer or wager is up: they're judged before anyone else is spotlit (N never skips past them).
     // (One with no wager in yet can't be judged: N goes on, as the main button says.)
-    if (f && cur && f.shown[cur] && !f.results[cur] && typeof f.wagers[cur] === 'number')
+    if (f && cur && !answerNext && (f.shown[cur] || f.answerShown?.[cur]) && !f.results[cur] && hasWager(f, cur))
       return hint(`Mark ${playerName(session, cur)} right (C) or wrong (X) first`);
     const r = finalAdvance(session);
-    // (Screen readers hear who is spotlit and their wager: they're on the stage and in the rows, not the status line.)
+    // (Screen readers hear who is spotlit and their wager: they're on the stage and in the rows, not the status line.
+    // Never the words of an answer.)
     const now = session.final?.current;
     const wager = now ? session.final?.wagers[now] : undefined;
-    if (r === 'shown' && now)
+    if (r === 'answer' && now) announce(`${playerName(session, now)}’s answer is on screen`);
+    else if (r === 'shown' && now)
       announce(typeof wager === 'number' ? `${playerName(session, now)} wagered ${formatPoints(wager, sym)}` : `${playerName(session, now)}: no wager yet`);
     else if (r === 'next' && now) announce(`Spotlight: ${playerName(session, now)}`);
     if (r === 'done') {
@@ -2472,6 +2515,12 @@
     playCue(app.live, game, right ? 'right' : 'wrong');
     // (Their new total, not ± the wager: with no negative scores a wrong answer can take less.)
     announce(`${playerName(session, id)} ${right ? 'right' : 'wrong'}, now ${formatPoints(score(session, id), sym)}`);
+  }
+
+  /** Put a player's typed Final answer on screen (Show answer in their row or on their plate; N does it as it comes). */
+  function showAnswer(id: string): void {
+    finalShowAnswer(session, id);
+    announce(`${playerName(session, id)}’s answer is on screen`);
   }
 
   /** C / X in the final reveal: judge the spotlit player. */
@@ -2730,6 +2779,7 @@
       session.phase === 'final' && session.finalStep === 'reveal' && f?.order.includes(id)
         ? [
             { label: '🔦 Spotlight', disabled: f.current === id, onclick: () => spotlight(id) },
+            ...(f.answers ? [{ label: 'Show answer', disabled: !typedAnswer(f, id) || !!f.answerShown?.[id], onclick: () => showAnswer(id) }] : []),
             { label: 'Show wager', disabled: !!f.shown[id], onclick: () => finalShow(session, id) },
             { label: `✔ Right${f.current === id ? ' (C)' : ''}`, onclick: () => judge(id, true) },
             { label: `✘ Wrong${f.current === id ? ' (X)' : ''}`, onclick: () => judge(id, false) },
@@ -4374,6 +4424,9 @@
         bind:wagerLimitsOff
         {wagerPhones}
         {wagerNote}
+        {finalTyped}
+        {answersNote}
+        onshowanswer={showAnswer}
         bind:timerSeconds
         bind:bgSteps
         {undoText}

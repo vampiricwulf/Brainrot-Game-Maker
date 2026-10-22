@@ -5,7 +5,7 @@ import { ensureBoard, refindSpaces } from './boardgame';
 import { cardSlides, describer, dropFromSends, pairOnly, partnerPlayers, partnerReason, partnerRoles, partnerRules, partnerShares, resetRecipients, startPartner, stealOn, takeBack } from './partner';
 import { dropOverCards, dropSeatFromCards, repairSentCards } from './sentcards';
 import { dealForViewers, dropSeatFromDeal, repairDeal } from './deals';
-import { categoryLabel, clueValue, FINAL_V1_ROUND_ID, finalName, formatPoints, getClue, isBoard, isBoardGame, isFinal, isRpg, isSlides, MAX_POINTS, newId, playableClues, questionSlides, type BoardRound, type Clue, type ClueRef, type ExtraSlide, type FinalRound, type FinalState, type Game, type Id, type PartnerState, type Player, type Round, type ScoreEvent, type Session, type Slide, type SlidesRound, type TeamMember, type WagerSource } from './model';
+import { categoryLabel, clueValue, FINAL_V1_ROUND_ID, finalName, formatPoints, getClue, isBoard, isBoardGame, isFinal, isRpg, isSlides, MAX_POINTS, newId, playableClues, questionSlides, type BoardRound, type Clue, type ClueRef, type ExtraSlide, type FinalAnswer, type FinalRound, type FinalState, type Game, type Id, type PartnerState, type Player, type Round, type ScoreEvent, type Session, type Slide, type SlidesRound, type TeamMember, type WagerSource } from './model';
 
 export function newSession(game: Game): Session {
   return {
@@ -396,7 +396,10 @@ export function stepSlide(session: Session, game: Game, d: 1 | -1): boolean {
 export function reveal(session: Session): void {
   if (session.phase === 'clue' && !ownPlayers(session)?.setup) session.revealed = true;
   if (session.phase === 'tiebreaker') session.tiebreakerRevealed = true;
-  if (session.phase === 'final' && session.finalStep === 'question') session.finalStep = 'answer';
+  if (session.phase === 'final' && session.finalStep === 'question') {
+    session.finalStep = 'answer';
+    lockFinalAnswers(session.final);
+  }
 }
 
 /** Take the answer off screen again (e.g. it was revealed by accident). */
@@ -854,6 +857,10 @@ export function startFinal(session: Session, game: Game, round: FinalRound): voi
     ...(chosen ? { chosen } : {}),
     // The question was seen: phones stay locked out after a trip to another round too.
     ...(prev?.phonesLocked ? { phonesLocked: true } : {}),
+    // The answers phones typed (theirs who are still in), and whether the answer was seen, come back too.
+    ...(prev?.answers ? { answers: keep(prev.answers) } : {}),
+    ...(prev?.answerShown ? { answerShown: keep(prev.answerShown) } : {}),
+    ...(prev?.answersLocked ? { answersLocked: true as const } : {}),
   };
   // A 0 filled in for nothing to wager goes when there's something to wager now (points given since, in a round before).
   const f = session.final;
@@ -958,9 +965,12 @@ export function wagerSentBy(f: FinalState | null | undefined, playerId: string):
  */
 export function forViewers<S extends Pick<Session, 'final' | 'finals' | 'dd' | 'cards' | 'lastCard' | 'deal'>>(s: S): S {
   const hide = (f: FinalState): FinalState => {
-    const { wagerFrom: _f, wagerBy: _b, ...rest } = f;
+    const { wagerFrom: _f, wagerBy: _b, answers: typed, ...rest } = f;
     const wagers = Object.fromEntries(Object.entries(f.wagers).map(([id, v]) => [id, f.shown[id] || f.results[id] ? v : 0]));
-    return { ...rest, wagers };
+    // Typed answers: only those the host put on screen, their words alone (not the room's count, nor who on a team
+    // sent them). An empty list still says the Final's answers are typed.
+    const answers = typed && Object.fromEntries(Object.entries(typed).flatMap(([id, a]) => (f.answerShown?.[id] ? [[id, { text: a.text } as FinalAnswer]] : [])));
+    return { ...rest, wagers, ...(answers ? { answers } : {}) };
   };
   const out = { ...s };
   // 🤫 Cards the host sent: one made in Send a card… holds the words the host typed (partner-clues spec §14.1).
@@ -1044,6 +1054,7 @@ export function finalNext(session: Session, game: Game): void {
       break;
     case 'question':
       session.finalStep = 'answer';
+      lockFinalAnswers(f);
       break;
     case 'answer':
       session.finalStep = 'reveal';
@@ -1054,15 +1065,24 @@ export function finalNext(session: Session, game: Game): void {
   }
 }
 
+/** The answer is on screen (the question left): phones that typed answers to the Final can't send or change them now. */
+function lockFinalAnswers(f: FinalState | undefined): void {
+  if (f?.answers) f.answersLocked = true;
+}
+
 /**
- * N during the reveal: show the spotlit player's wager if it isn't up yet, otherwise spotlight the next player
- * without a result. 'waiting' means only the spotlit player is left to judge; 'done' means everyone has a
- * result. It never ends the game by itself.
+ * N during the reveal: put the spotlit player's typed answer on screen if they have one not shown yet ('answer'), else
+ * show their wager if it isn't up yet, otherwise spotlight the next player without a result. 'waiting' means only the
+ * spotlit player is left to judge; 'done' means everyone has a result. It never ends the game by itself.
  */
-export function finalAdvance(session: Session): 'shown' | 'next' | 'waiting' | 'done' {
+export function finalAdvance(session: Session): 'answer' | 'shown' | 'next' | 'waiting' | 'done' {
   const f = session.final;
   if (!f) return 'done';
   const cur = f.current && f.order.includes(f.current) ? f.current : undefined;
+  if (cur && typedAnswer(f, cur) && !f.answerShown?.[cur] && !f.results[cur]) {
+    finalShowAnswer(session, cur);
+    return 'answer';
+  }
   if (cur && !f.shown[cur] && !f.results[cur]) {
     finalShow(session, cur);
     return 'shown';
@@ -1096,6 +1116,22 @@ export function finalShow(session: Session, playerId: string): void {
   if (!session.final) return;
   session.final.current = playerId;
   session.final.shown[playerId] = true;
+}
+
+/** The answer a player typed on their phone in this Final, if any. */
+export function typedAnswer(f: FinalState | null | undefined, playerId: string): FinalAnswer | undefined {
+  return f?.answers?.[playerId];
+}
+
+/**
+ * Spotlight a player in the reveal and put the answer they typed on their phone on screen. Not an undo step (as
+ * finalShow): once on stream it has been seen.
+ */
+export function finalShowAnswer(session: Session, playerId: string): void {
+  const f = session.final;
+  if (!f) return;
+  f.current = playerId;
+  f.answerShown = { ...f.answerShown, [playerId]: true };
 }
 
 /** The player's Final wager is in (0 counts; nothing typed doesn't: it's never taken as 0). */

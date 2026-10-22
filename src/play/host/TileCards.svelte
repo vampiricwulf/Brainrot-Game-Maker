@@ -55,10 +55,13 @@
   const until = $derived<'tile' | 'round'>(final ? 'round' : 'tile');
   const lasts = $derived(final ? 'until the Final ends' : 'until the tile closes');
   /**
-   * During a Final's wagers a card sits above the wager box on the phone: more than one or two push the box down, past
-   * the bottom of the screen.
+   * During a Final's wagers, and its question while phones take answers, a card sits above the wager or answer box on
+   * the phone: more than one or two push the box down, past the bottom of the screen.
    */
-  const aside = $derived(final && session.finalStep === 'wagers' ? ' (on their phone it sits above the wager box: one or two per player keep the box in sight)' : '');
+  const boxUp = $derived(
+    !!final && (session.finalStep === 'wagers' || (session.finalStep === 'question' && !!session.final?.answers && !session.final.answersLocked)),
+  );
+  const aside = $derived(boxUp ? ' (on their phone it sits above the wager or answer box: one or two per player keep the box in sight)' : '');
   const teams = $derived(buzzerOn(game.settings) && teamsOn(game.settings));
   /** A buzzer room is open for this game. */
   const room = $derived(buzzerOn(game.settings) && !!remote.code && remote.status !== 'off' && remote.status !== 'error');

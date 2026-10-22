@@ -4,8 +4,9 @@
 // marked 📱, the others see who is wagering, and it locks when the question shows. A Final: two phones wager, change
 // their minds, one reloads, the host changes one, and Show question locks them; the audience window never has an
 // amount on it. Then a team: anyone on it sends the team's wager, and the host sees who; that host keeps one window
-// (viewers see it), so the amounts phones send stay hidden in its panel until the reveals show them. Needs `npm ci` in
-// buzzer/.
+// (viewers see it), so the amounts phones send stay hidden in its panel until the reveals show them. The Final's answers
+// too: typed on the phones once the question shows, only the host sees them (one window: not until each is revealed),
+// and N in the reveals puts each on stream before C / X shows the wager. Needs `npm ci` in buzzer/.
 import { chromium } from 'playwright-core';
 import { spawn } from 'node:child_process';
 import { createServer } from 'node:net';
@@ -13,7 +14,7 @@ import { existsSync, mkdirSync, mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { addClassicRounds, mainButton, playWithPlayers, startRoomOn } from './helpers.mjs';
+import { addClassicRounds, mainButton, playWithPlayers, recordSeen, seenWhere, shownOf, startRoomOn } from './helpers.mjs';
 
 const file = resolve(process.env.APP_FILE || 'dist/index.html');
 if (!existsSync(file)) throw new Error('Run `npm run build` first');
@@ -67,8 +68,11 @@ const watch = (p, name) => {
 };
 const shot = async (name, p) => shots && (await p.screenshot({ path: `${shots}/${name}.png` }));
 
-/** A host window with the buzzer server set, on a new game with a Jeopardy board and a Final. */
-async function newHost(viewport = { width: 1400, height: 900 }) {
+/**
+ * A host window with the buzzer server set, on a new game with a Jeopardy board and a Final. `seen`: it records all it
+ * shows and says (recordSeen).
+ */
+async function newHost(viewport = { width: 1400, height: 900 }, seen = false) {
   const ctx = await browser.newContext({ viewport });
   await ctx.addInitScript((server) => {
     try {
@@ -76,6 +80,7 @@ async function newHost(viewport = { width: 1400, height: 900 }) {
       if (!p.buzzerServer) localStorage.setItem('jb.prefs', JSON.stringify({ ...p, v: 2, buzzerServer: server }));
     } catch {}
   }, base);
+  if (seen) await ctx.addInitScript(recordSeen);
   const host = watch(await ctx.newPage(), 'host');
   await host.goto(pathToFileURL(file).href);
   await addClassicRounds(host);
@@ -101,6 +106,12 @@ async function phonePage(code, name) {
 const big = (p) => p.locator('#buzz-big');
 const small = (p) => p.locator('#buzz-small');
 const form = (p) => p.locator('#wager-form');
+const answerForm = (p) => p.locator('#answer-form');
+/** Type an answer on a phone and send it. */
+async function sendAnswer(p, words) {
+  await p.locator('#answer-in').fill(words);
+  await p.locator('#answer-send').click();
+}
 /** Type a wager on a phone and send it. */
 async function sendWager(p, amount) {
   await p.locator('#wager-in').fill(String(amount));
@@ -289,15 +300,33 @@ try {
   assert(true, 'and that phone shows the host’s amount');
   await shot('pw-5-final-phone', ann);
 
-  // Show question (N, even from a wager box, once every wager is in): locked.
+  // Show question (N, even from a wager box, once every wager is in): locked, and each phone gets its answer box.
   await box('Player 3').focus();
   await host.keyboard.press('n');
-  await big(ann).getByText('Wager locked').waitFor();
-  assert((await small(ann).innerText()) === 'Your wager: $1,300' && (await form(ann).isHidden()), 'Show question locks the wagers: “Wager locked · Your wager: $1,300”, no box to change it');
-  await big(bo).getByText('Wager locked').waitFor();
-  assert((await small(bo).innerText()) === 'Your wager: $2,000', 'the host’s change is what was locked in');
+  await answerForm(ann).waitFor();
+  await answerForm(bo).waitFor();
+  assert(
+    (await ann.locator('#answer-sub').innerText()) === 'Your wager: $1,300 (locked)' && (await form(ann).isHidden()),
+    'Show question locks the wagers: the phone has no box to change it, its answer box instead, under “Your wager: $1,300 (locked)”',
+  );
+  assert((await bo.locator('#answer-sub').innerText()) === 'Your wager: $2,000 (locked)', 'the host’s change is what was locked in');
+  assert((await ann.locator('#clue-cap').innerText()) === 'Final Jeopardy!', `over the question, what’s on (${await ann.locator('#clue-cap').innerText()})`);
   assert(await noneOf(aud, [1234, 1300, 2000, 2222]), 'the audience window still has no amount once the question is up');
-  await shot('pw-6-locked-phone', ann);
+  // The stream: ✍ and who has answered (the Final's three players), never what.
+  const pill = aud.locator('[data-everyone]');
+  await pill.waitFor();
+  assert(
+    (await pill.innerText()).includes('✍ Answers on phones') && (await pill.getByRole('img').getAttribute('aria-label')) === '0 of 3 answers in',
+    'the audience window shows “✍ Answers on phones”, 0 of 3 in',
+  );
+  await sendAnswer(ann, 'Fleming');
+  await ann.locator('#answer-state').getByText('✔ Sent: “Fleming”').waitFor();
+  const answers = host.locator('.fj [aria-label="Answers from phones"]');
+  await answers.locator('[data-answer-row]', { hasText: '“Fleming”' }).waitFor();
+  assert((await answers.getByRole('status').innerText()).startsWith('1 of 3 in · only you see them'), 'Player 1 types “Fleming” and sends it: the host’s panel has it (only the host sees it)');
+  await aud.waitForFunction(() => document.querySelector('[data-everyone] [role="img"]')?.getAttribute('aria-label') === '1 of 3 answers in');
+  assert(!(await text(aud)).includes('Fleming') && !(await text(bo)).includes('Fleming'), 'the stream says 1 of 3 in, never the words; nor does the other phone have them');
+  await shot('pw-6-answer-phone', ann);
   // Back to the wagers (↶ Undo), to the round before and to the Final again: the question was seen, the phones stay locked.
   await host.getByRole('button', { name: '↶ Undo' }).click();
   await host.locator('.fj button', { hasText: '◀ Previous round' }).click();
@@ -309,9 +338,50 @@ try {
   await host.locator('.fj').getByText('📱 The question was on screen: phones can’t send wagers any more').waitFor();
   await big(ann).getByText('Wager locked').waitFor();
   assert((await small(ann).innerText()) === 'Your wager: $1,300' && (await form(ann).isHidden()), 'back at the wagers after a trip to the round before, the phones stay locked (the question was seen)');
+  // The question again: her answer came back with the Final, on her phone and in the host's panel.
+  await mainButton(host).filter({ hasText: 'Show question ▶' }).click();
+  await ann.locator('#answer-state').getByText('✔ Sent: “Fleming”').waitFor();
+  await answers.locator('[data-answer-row]', { hasText: '“Fleming”' }).waitFor();
+  assert(true, 'Show question again: Player 1’s phone still says “✔ Sent: “Fleming””, and the host still has it');
+  // The answer on screen: answers lock, each phone keeping its own (after the wager it was locked with).
+  await mainButton(host).filter({ hasText: 'Reveal answer ▶' }).click();
+  await big(ann).getByText('Answers locked').waitFor();
+  assert((await small(ann).innerText()) === 'Your wager: $1,300 · Yours: “Fleming”', `the answer shows: “Answers locked”, with her wager and her answer (${await small(ann).innerText()})`);
+  await big(bo).getByText('Answers locked').waitFor();
+  assert((await small(bo).innerText()) === 'Your wager: $2,000 · None sent', 'and one who sent none: “None sent”');
+  await shot('pw-6-locked-phone', ann);
+  // The reveals: N puts Player 1's answer on stream, then C judges her and her wager goes up with it.
+  await mainButton(host).filter({ hasText: 'Start player reveals ▶' }).click();
+  const rev = (name) => host.locator('.fj .pl', { hasText: name });
+  await rev('Player 1').locator('[data-typed]').waitFor();
+  assert(
+    (await rev('Player 1').locator('[data-typed]').innerText()) === '“Fleming”' && (await rev('Player 2').innerText()).includes('no typed answer'),
+    'the reveal rows: Player 1’s typed answer (two windows: in sight), Player 2 “no typed answer”',
+  );
+  await rev('Player 1').locator('button.name').click();
+  await mainButton(host).filter({ hasText: 'Show answer ▶' }).waitFor();
+  await host.keyboard.press('n');
+  await aud.locator('.spot-answer', { hasText: '“Fleming”' }).waitFor();
+  assert((await aud.locator('.spot-wager').innerText()).includes('???'), 'N on Player 1: her answer goes on the audience window (“Fleming”), her wager not yet');
+  await host.keyboard.press('n');
+  await host.getByText('Mark Player 1 right (C) or wrong (X) first').first().waitFor();
+  assert(true, 'N again: “Mark Player 1 right (C) or wrong (X) first”');
+  await host.keyboard.press('c');
+  await aud.locator('.spot-result', { hasText: '✔ CORRECT' }).waitFor();
+  assert((await aud.locator('.spot-wager').innerText()).includes('$1,300'), 'C: CORRECT, and her wager ($1,300) goes up with it');
+  // (Its fly-in done:) the card, with the answer's line, still fits above the scores.
+  await aud.waitForFunction(() => document.querySelector('.spot')?.getBoundingClientRect().bottom <= document.querySelector('.score-area')?.getBoundingClientRect().top);
+  assert(true, 'the spotlight card, answer line and all, fits above the scores');
+  // Player 2 answered out loud: N spotlights him, N shows his wager, as before.
+  await host.keyboard.press('n');
+  await aud.locator('.spot-name', { hasText: 'Player 2' }).waitFor();
+  await host.keyboard.press('n');
+  await aud.locator('.spot-wager', { hasText: '$2,000' }).waitFor();
+  assert((await aud.locator('.spot-answer').innerText()).trim() === '', 'Player 2, with no typed answer: N shows his wager, as before (his answer line stays empty)');
+  await shot('pw-6b-reveal-audience', aud);
 
   // ---------- Teams: one wager per team, anyone on it sends it (one window: viewers see the host's panel) ----------
-  const host2 = await newHost();
+  const host2 = await newHost(undefined, true);
   await host2.locator('.tile').nth(3).click();
   await host2.getByRole('combobox', { name: /^Type/ }).selectOption('dailyDouble');
   await host2.getByRole('button', { name: 'Done' }).click();
@@ -415,7 +485,26 @@ try {
 
   // The reveals, still one window: Player 1's row keeps the phone's amount hidden until the host shows it.
   await rows2.locator('.wrow', { hasText: 'Player 2' }).locator('input[data-wager]').fill('0');
-  for (const step of ['Show question ▶', 'Reveal answer ▶', 'Start team reveals ▶']) {
+  await mainButton(host2).filter({ hasText: 'Show question ▶' }).click();
+  // The team's answer: anyone on it types it; in one window the host's panel says who has answered, never what.
+  const TYPED = 'Amy-wqzx guess';
+  await answerForm(amy).waitFor();
+  await sendAnswer(amy, TYPED);
+  await al.locator('#answer-state').getByText(`✔ Amy sent it for your team: “${TYPED}”`).waitFor();
+  const answers2 = host2.locator('.fj [aria-label="Answers from phones"]');
+  await answers2.locator('[data-answer-in]', { hasText: 'Player 1 ✔' }).waitFor();
+  const head2 = await answers2.getByRole('status').innerText();
+  assert(
+    head2.includes('1 of 2 in · viewers see this window') && head2.includes('Open the 📺 audience window to read them before they go on screen'),
+    `one window: Amy sends her team’s answer, the panel shows “Player 1 ✔” and says to open the audience window to read them first (${head2})`,
+  );
+  /** The host page never showed (nor said) the team's answer: with where, if it did. */
+  const typedHidden = async (when) => {
+    const found = await shownOf(host2, [TYPED]);
+    assert(!found.length, `${when}: the host page never showed the team’s typed answer${found.length ? `:\n    ${(await seenWhere(host2, found)).join('\n    ')}` : ''}`);
+  };
+  await typedHidden('the question');
+  for (const step of ['Reveal answer ▶', 'Start team reveals ▶']) {
     await mainButton(host2).filter({ hasText: step }).click();
   }
   const rev1 = host2.locator('.fj .pl', { hasText: 'Player 1' });
@@ -435,6 +524,11 @@ try {
   await rev1.getByRole('button', { name: 'Show wager: Player 1' }).click();
   await rev1.getByText('wager $450').waitFor();
   assert(true, 'Show wager: the row has the amount (“wager $450”) once the stage shows it');
+  assert((await rev1.locator('[data-typed]').innerText()) === '✍ hidden', 'the row’s typed answer: “✍ hidden” (one window) until it’s on screen');
+  await typedHidden('the reveals, before Show answer');
+  await rev1.getByRole('button', { name: 'Show answer: Player 1' }).click();
+  await host2.locator('.stage-box .spot-answer', { hasText: TYPED }).waitFor();
+  assert((await rev1.locator('[data-typed]').innerText()) === `“${TYPED}”`, 'Show answer: on the stage, and in the row');
 
   assert(errors.length === 0, `no page errors (${errors.join(' | ')})`);
   console.log('Phone wagers E2E passed.');

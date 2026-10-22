@@ -4,7 +4,7 @@ import { finalName, newImageEl, newTextEl, setSlideText, textSlide, PARTNER_GAME
 import { applyScore, ddShowQuestion, finalChoose, finalNext, finalSetWager, goToRound, judgePartner, newSession, openClue, places, rebaseSession, removePlayer, undo } from './session';
 import { addCard, setPartner, setPartnerGame, swapParts } from './partner';
 import {
-  answerRoundId, buzzArm, buzzClueOpened, buzzDone, buzzIdle, buzzMissed, buzzOrder, buzzReset, buzzTake, cardsLeftOff, everyoneAnswerAsk, hostCards, hostState, newBuzz, phoneStatus, questionText, roomCardCount,
+  answerRoundId, buzzArm, buzzClueOpened, buzzDone, buzzIdle, buzzMissed, buzzOrder, buzzReset, buzzTake, cardsLeftOff, everyoneAnswerAsk, finalAnswerAsk, hostCards, hostState, newBuzz, phoneStatus, questionText, roomCardCount,
   roomCardsFull, seenAtOnce, sessionCards, setupState, teamsOn, wagerAsk, whoBuzzed,
 } from './buzz';
 import { CARDS_MAX, phoneView, OLD_FILE_LIMITS } from './buzzproto';
@@ -545,6 +545,77 @@ describe('each game’s answer rounds are its own (answerRoundId, everyoneAnswer
     expect(everyoneAnswerAsk(game, session)?.open).toBe(false);
     // Never the words.
     expect(JSON.stringify(everyoneAnswerAsk(game, session))).not.toContain('Shiba');
+  });
+});
+
+describe('the Final’s typed answers (finalAnswerAsk, and its question in hostState)', () => {
+  /** Ann and Bo in the Final (Cy sits it out), wagers in; its question has a line viewers only see later. */
+  function setup() {
+    const game = jeopardyGame();
+    game.players = [
+      { id: 'a', name: 'Ann', color: '#ff0000' },
+      { id: 'b', name: 'Bo', color: '#00ff00' },
+      { id: 'c', name: 'Cy', color: '#0000ff' },
+    ];
+    const fi = game.rounds.findIndex((r) => r.mode === 'final');
+    const round = game.rounds[fi] as FinalRound;
+    round.category = '  US Presidents ';
+    round.questionSlide = textSlide('He was the first');
+    const later = newTextEl('LATER HINT');
+    later.entrance = { type: 'fade', delay: 5, duration: 1 };
+    round.questionSlide.elements.push(later);
+    round.answerSlide = textSlide('Who is Washington?');
+    const session = newSession(game);
+    session.answerKey = 'k1234567';
+    applyScore(session, game, ['a', 'b'], 500, 'x');
+    goToRound(session, game, fi);
+    session.intro = null;
+    finalChoose(session, 'c', false);
+    finalSetWager(session, 'a', 100);
+    finalSetWager(session, 'b', 50);
+    return { game, session, round, id: `final:${round.id}@k1234567` };
+  }
+
+  it('none on the wager screen, nor with typing switched off; open on the question, its players with what was taken', () => {
+    const { game, session, round, id } = setup();
+    expect(finalAnswerAsk(game, session)).toBeNull();
+    finalNext(session, game);
+    expect(finalAnswerAsk(game, session)).toEqual({ id, open: true, seats: [{ id: 'a' }, { id: 'b' }] });
+    session.final!.answers = { b: { text: 'Washington', n: 2 } };
+    expect(finalAnswerAsk(game, session)).toEqual({ id, open: true, seats: [{ id: 'a' }, { id: 'b', got: 2 }] });
+    expect(JSON.stringify(finalAnswerAsk(game, session))).not.toContain('Washington');
+    round.phoneAnswersOff = true;
+    expect(finalAnswerAsk(game, session)).toBeNull();
+  });
+
+  it('closed through the answer and the reveals; none there if the answers never began', () => {
+    const { game, session, id } = setup();
+    finalNext(session, game);
+    finalNext(session, game);
+    expect(finalAnswerAsk(game, session)).toBeNull();
+    finalNext(session, game);
+    expect(finalAnswerAsk(game, session)).toBeNull();
+    session.final!.answers = { a: { text: 'Adams', n: 1 } };
+    expect(finalAnswerAsk(game, session)).toEqual({ id, open: false, seats: [{ id: 'a', got: 1 }, { id: 'b' }] });
+    session.finalStep = 'answer';
+    expect(finalAnswerAsk(game, session)?.open).toBe(false);
+    // Locked once the answer was up, even back on the question (an Undo).
+    session.finalStep = 'question';
+    session.final!.answersLocked = true;
+    expect(finalAnswerAsk(game, session)?.open).toBe(false);
+  });
+
+  it('the phones get the Final’s question and caption only with its answers asked, never what viewers can’t see yet', () => {
+    const { game, session, round } = setup();
+    finalNext(session, game);
+    expect(hostState(game, session, newBuzz(), 0).clue).toBeNull();
+    const s = hostState(game, session, newBuzz(), 0, { answers: finalAnswerAsk(game, session) });
+    expect(s.clue).toEqual({ text: 'He was the first', caption: `${finalName(round)} · US Presidents` });
+    expect(phoneView(s, 'c').clue?.text).toBe('He was the first');
+    const json = JSON.stringify(s);
+    for (const leak of ['LATER', 'Washington']) expect(json).not.toContain(leak);
+    round.category = '';
+    expect(hostState(game, session, newBuzz(), 0, { answers: finalAnswerAsk(game, session) }).clue?.caption).toBe(finalName(round));
   });
 });
 

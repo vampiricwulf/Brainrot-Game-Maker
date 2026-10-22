@@ -13,6 +13,10 @@ in plain words for the people who make and host games. Anything committed but no
 
 ## Unreleased
 
+### Added
+
+- Final: with phone buzzers, players type their answer on their phone once the question shows (on a team, anyone on it), and can change it until you show the answer. Only you see the answers (in one window, not until you reveal each one, or open the audience window to read them first). In the reveals, N puts the spotlit player's answer on stream, then C / X judges them and shows their wager, as on TV; players without a phone answer out loud as before. “✍ Players type their answers on their phones” in the Final's editor (on unless you untick it) goes back to answers on paper. During the question the stream shows “✍ Answers on phones” and who has answered, never what. A buzzer server too old for ✍ Everyone answers can't take them either: players answer out loud, and the host panel says so.
+
 ### Changed
 
 - Phones show a long question better: it takes the room between the top of the screen and the buzzer (or the answer box), its text gets smaller to fit, down to a size still easy to read, and past that it scrolls, with a faded edge and ▼ More (▲ Top at the end). Past three lines it's left-aligned, its line breaks stay (“A) … B) …” each on its own line, without the slide's blank lines), and a long link or word wraps instead of running off the side. The category and value sit above it and no longer scroll away. A player keeps their place in it as BUZZ! lights up, and with the keyboard up the question stays above the answer box and Send stays in sight. A screen reader says the question once as the answer box opens, not again with each “✔ Sent”.

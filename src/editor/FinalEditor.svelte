@@ -112,6 +112,17 @@
     if (!c) return;
     record(`${clueCardWords(c, cardAt, true)} of ${finalName(round)} goes to ${finalGoesToLabel(to, false)}`, () => (c.to = to), { place: cardPlace(c) });
   }
+  /** ✍ Players type their answers on their phones (on unless unticked): a step with its own name in the history. */
+  function setPhoneAnswers(on: boolean): void {
+    record(
+      on ? `${finalName(round)}: players type their answers on their phones` : `${finalName(round)}: players answer out loud or on paper`,
+      () => {
+        if (on) delete round.phoneAnswersOff;
+        else round.phoneAnswersOff = true;
+      },
+      { place: { tab: 'round', round: round.id } },
+    );
+  }
   /** ⧉ Same as the answer: a copy of the answer slide on the open (empty) card, once. */
   function copyAnswer(): void {
     const c = card;
@@ -165,9 +176,17 @@
     <input type="checkbox" checked={round.allowNonPositive ?? false} onchange={(e) => (round.allowNonPositive = e.currentTarget.checked)} />
     Players with a score of 0 or less can play it
   </label>
+  <label
+    class="check"
+    title="With phone buzzers: once the question shows, each player in it types their answer on their phone (on a team, anyone on it) until you show the answer. Only you see them until you reveal each one. Off, or without phone buzzers: they answer out loud or on paper."
+  >
+    <input type="checkbox" checked={!round.phoneAnswersOff} onchange={(e) => setPhoneAnswers(e.currentTarget.checked)} data-final-typed />
+    ✍ Players type their answers on their phones
+  </label>
   <span class="hint">
     While the category is up the host ticks who plays and enters each wager privately (a wager can be more than the
-    player's score: untick "Ignore the limits" then to hold wagers to it), then they're revealed player by player.
+    player's score: untick "Ignore the limits" then to hold wagers to it), then they're revealed player by player. With
+    phone buzzers, players send their wager from their phone, and (ticked above) type their answer there too.
   </span>
 </div>
 <!-- Quick text: the main text of each slide, so a plain final never needs the canvas (like the clue editor's). -->

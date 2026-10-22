@@ -1237,11 +1237,13 @@ function renderBuzz(v: PhoneView): void {
     greyed = v.phase === 'lobby';
     [cls, big, small] = ['off', v.status, ans.text ? `${team ? 'Your team’s guess' : 'Your guess'}: “${ans.text}”` : (v.statusSub ?? '')];
   } else if (ans && !ans.open) {
-    // A ✍ clue whose answer is on screen: what this seat sent stays in sight (or that one is in, as for wagers).
+    // A ✍ clue whose answer is on screen: what this seat sent stays in sight (or that one is in, as for wagers). In the
+    // Final, the wager locked in first: the line shows 3 lines at most, so a long answer is what gets cut.
+    const staked = wager?.kind === 'final' && wager.mine && wager.amount !== undefined ? `${team ? 'Your team’s wager' : 'Your wager'}: ${money(wager.amount, sym)} · ` : '';
     [cls, big, small] = [
       'off',
       'Answers locked',
-      ans.text ? `${team ? 'Your team’s' : 'Yours'}: “${ans.text}”` : ans.hidden ? 'The host has it (not shown on this phone)' : 'None sent',
+      staked + (ans.text ? `${team ? 'Your team’s' : 'Yours'}: “${ans.text}”` : ans.hidden ? 'The host has it (not shown on this phone)' : 'None sent'),
     ];
   } else if (wager?.mine) {
     // Locked: the question is up.
@@ -1467,10 +1469,14 @@ function renderAnswer(v: PhoneView, a: NonNullable<PhoneView['answer']>, sym: st
   const team = !!v.teams;
   // A partner clue's guesser types their guess: their lines over the box ("🎯 You're guessing!", who's describing).
   const guess = !!v.statusOff;
+  // The Final: the wager locked in, over the box (as it showed over the question before).
+  const w = v.wager;
+  const staked = !guess && w?.kind === 'final' && w.mine && w.amount !== undefined ? `${team ? 'Your team’s wager' : 'Your wager'}: ${money(w.amount, sym)} (locked)` : '';
+  const sub = guess ? (v.statusSub ?? '') : staked;
   $('answer-head').hidden = !guess || !v.status;
   $('answer-head').textContent = guess ? (v.status ?? '') : '';
-  $('answer-sub').hidden = !guess || !v.statusSub;
-  $('answer-sub').textContent = guess ? (v.statusSub ?? '') : '';
+  $('answer-sub').hidden = !sub;
+  $('answer-sub').textContent = sub;
   $('answer-label').textContent = team ? 'Your team’s answer (only the host and your team see it)' : 'Your answer (only the host sees it)';
   const inp = $<HTMLTextAreaElement>('answer-in');
   // Filled with what's in when the box comes up, and again when what's in changes (a teammate), unless the box holds
@@ -1495,7 +1501,7 @@ function renderAnswer(v: PhoneView, a: NonNullable<PhoneView['answer']>, sym: st
     saidAsked = asked;
     if (asked) news(asked);
   }
-  const what = guess ? [v.status ?? '', v.statusSub ?? ''] : ['Everyone answers'];
+  const what = guess ? [v.status ?? '', v.statusSub ?? ''] : w?.kind === 'final' ? ['Type your answer', staked] : ['Everyone answers'];
   say(sentences([connected ? '' : awayText(), ...what, state, cardsSaid, hostGone ? ($('host-note').textContent ?? '') : '']));
   show('s-buzz');
 }

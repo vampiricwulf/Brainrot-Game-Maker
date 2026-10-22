@@ -1,56 +1,71 @@
 <!--
-  A ✍ clue: everyone types an answer on their phone and only the host sees them, here. ✔ / ✘ on each marks it right or
-  wrong (the clue's value, as ＋ Award / − Deduct would), once per player; Ctrl+Z takes one back. In a single window
-  (viewers see this panel) only who has answered shows until the answer is up; then the words, to judge.
+  Answers players type on their phone, which only the host sees, here: a ✍ clue's (everyone) or the Final's (its
+  players). On a ✍ clue ✔ / ✘ on each marks it right or wrong (the clue's value, as ＋ Award / − Deduct would), once per
+  player; Ctrl+Z takes one back. In a single window (viewers see this panel) only who has answered shows until the
+  answer is up; then the words, to judge. The Final's stay hidden there until each is revealed (hideUntilShown).
 -->
 <script lang="ts">
   import { textOn } from '../../lib/colors';
-  import type { Game, Session } from '../../lib/model';
+  import type { Session } from '../../lib/model';
 
   let {
     session,
+    players,
+    answers,
+    title = '✍ Everyone answers',
     clueId,
-    roundId,
     phones = [],
     open,
     dual = true,
+    hideUntilShown = false,
     onjudge,
   }: {
-    game: Game;
     session: Session;
-    /** The clue (its judgments are in the score log under it). */
-    clueId: string;
-    /** Its answer round (answerRoundId): the answers phones sent to it in this game. */
-    roundId: string;
+    /** Who answers (ids), in the players' order. */
+    players: string[];
+    /** What their phones sent, by player (teams: `by`, who on it sent it). */
+    answers: Record<string, { text: string; by?: string }>;
+    title?: string;
+    /** A ✍ clue: its judgments are in the score log under it. */
+    clueId?: string;
     /** The players with a phone connected now. */
     phones?: string[];
     /** Phones can still send (the answer isn't on screen). */
     open: boolean;
     /** An audience window is open: this panel is off stream. */
     dual?: boolean;
-    onjudge: (playerId: string, sign: 1 | -1) => void;
+    /** The Final: in a single window the words stay hidden after the answer shows too (each shows as it's revealed). */
+    hideUntilShown?: boolean;
+    /** ✔ / ✘ on each (none without it). */
+    onjudge?: (playerId: string, sign: 1 | -1) => void;
   } = $props();
 
-  const answers = $derived(session.remote?.answers?.id === roundId ? session.remote.answers.seats : {});
-  const inCount = $derived(session.players.filter((p) => answers[p.id]).length);
+  const listed = $derived(session.players.filter((p) => players.includes(p.id)));
+  const inCount = $derived(listed.filter((p) => answers[p.id]).length);
+  /** The words are on this panel: off stream, or (a ✍ clue) once the answer is up. */
+  const words = $derived(dual || (!open && !hideUntilShown));
   /** How each player was judged on this clue (from the score log): 1 right, -1 wrong. */
   const judged = $derived.by(() => {
     const out: Record<string, 1 | -1> = {};
-    for (const e of session.scoreLog) if (!e.undone && e.clueId === clueId) out[e.playerId] = (e.right ?? e.delta > 0) ? 1 : -1;
+    if (clueId) for (const e of session.scoreLog) if (!e.undone && e.clueId === clueId) out[e.playerId] = (e.right ?? e.delta > 0) ? 1 : -1;
     return out;
   });
+  const onStream = $derived(
+    hideUntilShown
+      ? 'viewers see this window: each answer shows here as you reveal it. Open the 📺 audience window to read them before they go on screen'
+      : 'viewers see this window: the answers show here once the answer is up',
+  );
+  const locked = $derived(hideUntilShown ? ' · locked (the answer was on screen)' : ' · locked (the answer is showing)');
 </script>
 
 <section class="answers" aria-label="Answers from phones">
   <div class="head">
-    <b>✍ Everyone answers</b>
-    <span class="muted small" role="status"
-      >{inCount} of {session.players.length} in · {dual ? 'only you see them' : 'viewers see this window: the answers show here once the answer is up'}{open ? '' : ' · locked (the answer is showing)'}</span
-    >
+    <b>{title}</b>
+    <span class="muted small" role="status">{inCount} of {listed.length} in · {dual ? 'only you see them' : onStream}{open ? '' : locked}</span>
   </div>
-  {#if dual || !open}
+  {#if words}
     <ul class:dense={!dual}>
-      {#each session.players as p (p.id)}
+      {#each listed as p (p.id)}
         {@const a = answers[p.id]}
         {@const j = judged[p.id]}
         <li data-answer-row={p.id}>
@@ -60,7 +75,7 @@
           >
           {#if j}
             <span class="mark" class:right={j > 0} class:wrong={j < 0}>{j > 0 ? '✔ Right' : '✘ Wrong'}</span>
-          {:else}
+          {:else if onjudge}
             <button class="good small" onclick={() => onjudge(p.id, 1)} aria-label="{p.name} is right" title="Right: + the clue's value">✔</button>
             <button class="bad small" onclick={() => onjudge(p.id, -1)} aria-label="{p.name} is wrong" title="Wrong: − the clue's value (if the rules take points)">✘</button>
           {/if}
@@ -68,9 +83,9 @@
       {/each}
     </ul>
   {:else}
-    <!-- Single window, answers still open: on one line, who has answered (✔), never the words. -->
+    <!-- Single window, words not to be seen yet: on one line, who has answered (✔), never the words. -->
     <p class="small in">
-      {#each session.players as p (p.id)}
+      {#each listed as p (p.id)}
         {@const a = answers[p.id]}
         <span
           class="who"

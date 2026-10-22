@@ -164,6 +164,15 @@
   /** 🤫 Just you: who the open tile's own card went to ("Ann has a private question"): names only, never what's on it. */
   const privateFor = $derived(session.phase === 'clue' && info && !session.revealed ? (live.tileCardFor ?? []).flatMap((id) => (byId[id] ? [byId[id]] : [])) : []);
   const spotlight = $derived(session.final?.current ? byId[session.final.current] : undefined);
+  /**
+   * The Final's question with phones taking answers: who plays it, for "✍ Answers on phones" (only when one of them has
+   * a phone connected: no pill nobody can fill).
+   */
+  const finalAnswering = $derived.by(() => {
+    const f = session.final;
+    if (session.phase !== 'final' || session.finalStep !== 'question' || !live.answers || !f?.players.some((id) => live.phones?.includes(id))) return [];
+    return session.players.filter((p) => f.players.includes(p.id));
+  });
   const themeCss = $derived(themeStyle(game.theme, game.theme?.boardImage ? mediaUrls[game.theme.boardImage] : undefined));
   const bar = $derived(game.theme?.scoreBar ?? 'bottom');
   const bannerUrl = $derived(game.theme?.banner ? mediaUrls[game.theme.banner] : undefined);
@@ -210,7 +219,15 @@
       session.phase === 'slides';
     if (!onSlide) return 0;
     if (live.timer) return TIMER_BAND;
-    return answering || buzzNow || (session.phase === 'clue' && session.dd?.stage === 'question' && ddPlayer) || ptBadge || privateFor.length || (live.answers && session.phase === 'clue' && !session.revealed) ? PILL_BAND : 0;
+    return answering ||
+      buzzNow ||
+      (session.phase === 'clue' && session.dd?.stage === 'question' && ddPlayer) ||
+      ptBadge ||
+      privateFor.length ||
+      (live.answers && session.phase === 'clue' && !session.revealed) ||
+      finalAnswering.length
+      ? PILL_BAND
+      : 0;
   });
   /**
    * A countdown on the board sits at the right end of the score bar (the plates and the join code make room), so it
@@ -591,9 +608,17 @@
           {#if spotlight && session.final}
             {@const f = session.final}
             {@const res = f.results[spotlight.id]}
+            <!-- (Viewers get only answers already shown; one window reads the host's session, so it's checked here too.) -->
+            {@const shown = f.answerShown?.[spotlight.id] ? f.answers?.[spotlight.id] : undefined}
             {#key spotlight.id}
-              <div class="spot" in:fly={{ y: 80, duration: 400 }} style:--c={spotlight.color}>
+              <div class="spot" class:typed={!!f.answers} in:fly={{ y: 80, duration: 400 }} style:--c={spotlight.color}>
                 <div class="spot-name" style:background={spotlight.color} style:color={textOn(spotlight.color)}>{spotlight.name}</div>
+                {#if f.answers}
+                  <!-- What they typed on their phone, once the host puts it up (its room kept: the card doesn't jump). -->
+                  <div class="spot-answer" dir="auto" data-spot-answer use:autofit={{ size: 72, min: 28, enabled: true, text: shown?.text ?? '' }}>
+                    {#if shown}<span>“{shown.text}”</span>{:else}<span class="hold" aria-hidden="true">&nbsp;</span>{/if}
+                  </div>
+                {/if}
                 <div class="spot-wager">
                   <!-- (No wager in yet: it stays ??? until the host types it, never $0.) -->
                   {#if f.shown[spotlight.id] && typeof f.wagers[spotlight.id] === 'number'}
@@ -691,6 +716,14 @@
     <span>✍ Everyone answers</span>
     <span class="dots" role="img" aria-label="{live.answers.in.length} of {session.players.length} answers in">
       {#each session.players as p (p.id)}<span class="dot" class:in={live.answers.in.includes(p.id)} style:--c={p.color} title={p.name}></span>{/each}
+    </span>
+  </div>
+{:else if live.answers && finalAnswering.length}
+  <!-- The Final's question: its players type their answer on their phone (not "everyone": some may sit it out). -->
+  <div class="everyone" data-everyone in:fly={{ y: -60, duration: 250 }}>
+    <span>✍ Answers on phones</span>
+    <span class="dots" role="img" aria-label="{live.answers.in.length} of {finalAnswering.length} answers in">
+      {#each finalAnswering as p (p.id)}<span class="dot" class:in={live.answers.in.includes(p.id)} style:--c={p.color} title={p.name}></span>{/each}
     </span>
   </div>
 {/if}
@@ -1417,6 +1450,37 @@
     color: #fff;
     font-family: var(--board-font);
     min-width: 900px;
+  }
+  /*
+   * A Final with typed answers: a fixed width (names and answers coming and going don't resize it), a line for the
+   * answer, and the rest a little smaller, so the card still fits above the scores (about 690 of the 740px).
+   */
+  .spot.typed {
+    gap: 12px;
+    padding: 24px 80px;
+    width: 1500px;
+  }
+  .spot.typed .spot-name {
+    max-width: 100%;
+    font-size: 76px;
+  }
+  .spot.typed .spot-result,
+  .spot.typed .spot-hold {
+    font-size: 76px;
+  }
+  .spot.typed .spot-score {
+    font-size: 96px;
+  }
+  .spot-answer {
+    width: 100%;
+    height: 100px;
+    display: grid;
+    place-items: center;
+    font-size: 72px;
+    font-weight: 800;
+    line-height: 1.1;
+    text-align: center;
+    overflow: hidden;
   }
   .spot-name {
     max-width: 1700px;

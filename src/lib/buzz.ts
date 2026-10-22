@@ -8,7 +8,7 @@ import {
 } from './partner';
 import { ANY_SERVER, cardWords, clipWords, phoneCard, type PhoneCan } from './phonecard';
 import { cardsOut, sentCardId, sentSlide, sentState } from './sentcards';
-import { clueMarks, currentClueInfo, currentFinal, ddCap, finalWagerCap, nameList, partnerSteal, score, shownQuestionSlide, tiedForFirst, wagerFromPhone } from './session';
+import { clueMarks, currentClueInfo, currentFinal, ddCap, finalTag, finalWagerCap, nameList, partnerSteal, score, shownQuestionSlide, tiedForFirst, wagerFromPhone } from './session';
 
 export interface BuzzState {
   phase: BuzzPhase;
@@ -549,6 +549,28 @@ export function everyoneAnswerAsk(game: Game, session: Session): AnswerAsk | nul
 }
 
 /**
+ * The Final's answers phones may send (HostState.answers), or null: with typing on (FinalRound.phoneAnswersOff not set),
+ * every player in it, open from the question until the answer shows (FinalState.answersLocked), then closed through the
+ * answer and the reveals, so each phone keeps its own in sight. Never on the wager screen (the question isn't on stream
+ * yet), nor once the question has gone by without them (`f.answers` never set: the room was opened, or one that takes
+ * answers came back, after it), else every phone would say "Answers locked" to a question it was never asked. `got`:
+ * the last answer the host took from each (FinalState.answers).
+ */
+export function finalAnswerAsk(game: Game, session: Session): AnswerAsk | null {
+  const f = session.final;
+  const r = currentFinal(session, game);
+  if (session.phase !== 'final' || !f || !r || r.phoneAnswersOff || f.roundId !== r.id || session.intro?.stage === 'title') return null;
+  const step = session.finalStep ?? 'wagers';
+  if (step !== 'question' && !((step === 'answer' || step === 'reveal') && f.answers)) return null;
+  const got = f.answers ?? {};
+  return {
+    id: answerRoundId(session, finalTag(r.id)),
+    open: step === 'question' && !f.answersLocked,
+    seats: f.players.filter((id) => session.players.some((p) => p.id === id)).map((id) => ({ id, ...(got[id] ? { got: got[id].n } : {}) })),
+  };
+}
+
+/**
  * A partner clue's typed guesses are one round per play of the tile (when it opened), not per clue: a tile put back or
  * reopened and played again starts with no guess (partner-clues spec §15.1). Undo and a reload keep it.
  */
@@ -630,6 +652,8 @@ export function hostState(
   extra: { status?: HostState['status']; locked?: boolean; wager?: WagerAsk | null; answers?: AnswerAsk | null; cards?: HostCard[] | null } = {},
 ): HostState {
   const info = (b.phase !== 'lobby' || extra.answers) && session.phase === 'clue' ? currentClueInfo(session, game) : null;
+  // The Final's question goes along with its answers (never on the wager screen: there are none asked then).
+  const fin = session.phase === 'final' && extra.answers ? currentFinal(session, game) : undefined;
   const seats = session.players.map((p) => ({ id: p.id, name: clip(p.name.trim(), SEAT_NAME_MAX), color: p.color }));
   return {
     title: clip(game.title, 200),
@@ -638,7 +662,11 @@ export function hostState(
     allowNew: !!game.settings.phoneJoin && !teamsOn(game.settings),
     phase: b.phase,
     armId: b.armId,
-    clue: info ? { text: questionText(shownQuestionSlide(session, info.clue)), caption: `${categoryLabel(info.category)} · ${formatPoints(info.value, game.settings.currencySymbol)}` } : null,
+    clue: info
+      ? { text: questionText(shownQuestionSlide(session, info.clue)), caption: `${categoryLabel(info.category)} · ${formatPoints(info.value, game.settings.currencySymbol)}` }
+      : fin
+        ? { text: questionText(shownQuestionSlide(session, fin)), caption: [finalName(fin), fin.category.trim()].filter(Boolean).join(' · ') }
+        : null,
     answering: b.phase === 'answering' ? b.answering : null,
     ...(b.phase === 'answering' && b.rollOrder?.length ? { rollOrder: b.rollOrder.filter((id) => seats.some((s) => s.id === id)) } : {}),
     lockedOut: b.phase === 'lobby' ? [] : b.lockedOut.filter((id) => seats.some((s) => s.id === id)),

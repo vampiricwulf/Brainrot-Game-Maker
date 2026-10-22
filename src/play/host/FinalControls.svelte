@@ -14,10 +14,11 @@
   import { cardSlides, finalName, formatPoints, MAX_POINTS, roundName, type Game, type Id, type Session, type WagerSource } from '../../lib/model';
   import {
     currentFinal, finalChoose, finalSetWager, finalShow, finalUnjudged, finalWagerCap, finalWagerEditable, finalWagerProblems, finalWagerRefused, finalWagersOk,
-    hasWager, nameList, score, slidePosition, wagerFromPhone, wagerSentBy,
+    hasWager, nameList, score, slidePosition, typedAnswer, wagerFromPhone, wagerSentBy,
   } from '../../lib/session';
   import { finalNextStep, logged, startStep } from '../../lib/toolset';
   import { hostAsk, offerNext } from './slots.svelte';
+  import AnswersHost from './AnswersHost.svelte';
   import TileCards from './TileCards.svelte';
 
   let {
@@ -28,6 +29,10 @@
     override = $bindable(false),
     phones = [],
     phoneNote = '',
+    typed = false,
+    answerPhones = [],
+    answersNote = '',
+    onshowanswer = () => {},
     onstep,
     onreveal,
     onrevealnext,
@@ -48,9 +53,17 @@
     phones?: string[];
     /** Why phones can't send wagers here (an older buzzer server), or ''. */
     phoneNote?: string;
+    /** Players type their answer on their phone (from the question until the answer shows). */
+    typed?: boolean;
+    /** The players with a phone connected now. */
+    answerPhones?: string[];
+    /** Why phones can't send answers here (an older buzzer server), or ''. */
+    answersNote?: string;
+    /** Put a player's typed answer on screen (and spotlight them). */
+    onshowanswer?: (id: string) => void;
     onstep: () => void;
     onreveal: () => void;
-    /** N in the reveals: show the spotlit player's wager, then go on to the next player. */
+    /** N in the reveals: show the spotlit player's typed answer or wager, then go on to the next player. */
     onrevealnext: () => void;
     /** Mark a player right or wrong in the reveals (with its sound, as C / X). */
     onjudge: (id: string, right: boolean) => void;
@@ -316,15 +329,19 @@
   });
 
   /**
-   * What N does next in the reveals, for the main button until everyone is judged: show the spotlit player's wager,
-   * or go on to the next player still to judge (none: the spotlit one is waiting on Right or Wrong).
+   * What N does next in the reveals, for the main button until everyone is judged: show the spotlit player's typed
+   * answer, else their wager, or go on to the next player still to judge (none: the spotlit one is waiting on Right or
+   * Wrong).
    */
   const revealStep = $derived.by((): { label: string; disabled?: string; judge?: string } => {
     const fs = f;
     const cur = fs?.current && fs.order.includes(fs.current) ? fs.current : undefined;
-    if (fs && cur && !fs.shown[cur] && !fs.results[cur]) return { label: 'Show wager ▶' };
-    // Their wager is up: judging them is next (N waits for it).
-    if (fs && cur && !fs.results[cur] && hasWager(fs, cur)) return { label: '✔ Right', judge: cur };
+    if (fs && cur && !fs.results[cur]) {
+      if (typedAnswer(fs, cur) && !fs.answerShown?.[cur]) return { label: 'Show answer ▶' };
+      // Their answer or wager is up: judging them is next (N waits for it; the wager goes up with it).
+      if (hasWager(fs, cur) && (fs.shown[cur] || fs.answerShown?.[cur])) return { label: '✔ Right', judge: cur };
+      if (!fs.shown[cur]) return { label: 'Show wager ▶' };
+    }
     if (fs && cur && fs.order.every((id) => id === cur || fs.results[id]))
       return { label: `Next ${noun} ▶`, disabled: `Mark ${byId[cur]?.name ?? '?'} right (C) or wrong (X) first` };
     return { label: `Next ${noun} ▶` };
@@ -501,11 +518,20 @@
     {:else if session.finalStep === 'reveal'}
       <!-- The how-to folds away: the rows (and the stage) keep the room. -->
       <details class="how" bind:open={howOpen}>
-        <summary class="muted">One by one: spotlight → show wager → right or wrong (N, C, X)</summary>
-        <span class="muted small">
-          Click a name here or on the stage to spotlight it. Reorder by dragging ⋮⋮ (or ▲▼, Alt+↑/↓). Keys: N shows the wager,
-          C / X judge them, then N goes to the next {noun} · Shift+N back · 1–9 spotlight · C right · X wrong.
-        </span>
+        {#if f.answers}
+          <summary class="muted">One by one: spotlight → show answer → right or wrong (N, C, X)</summary>
+          <span class="muted small">
+            Click a name here or on the stage to spotlight it. Reorder by dragging ⋮⋮ (or ▲▼, Alt+↑/↓). Keys: N shows their typed
+            answer (or their wager, for a {noun} who answered out loud), C / X judge them (their wager goes up with it), then N
+            goes to the next {noun} · Shift+N back · 1–9 spotlight · C right · X wrong.
+          </span>
+        {:else}
+          <summary class="muted">One by one: spotlight → show wager → right or wrong (N, C, X)</summary>
+          <span class="muted small">
+            Click a name here or on the stage to spotlight it. Reorder by dragging ⋮⋮ (or ▲▼, Alt+↑/↓). Keys: N shows the wager,
+            C / X judge them, then N goes to the next {noun} · Shift+N back · 1–9 spotlight · C right · X wrong.
+          </span>
+        {/if}
       </details>
       <div class="order" role="list" aria-label="Reveal order" bind:this={orderEl}>
         {#each f.order as id, i (id)}
@@ -556,6 +582,23 @@
               }}
               title="Spotlight on screen · drag the row (or Alt+↑/↓) to change the order"
             >{p?.name}</button>
+            {#if f.answers}
+              <!-- What they typed on their phone: in one window (viewers see this panel) only once it's on screen. -->
+              {@const a = typedAnswer(f, id)}
+              {@const shownA = !!f.answerShown?.[id]}
+              {#if !a}
+                <span class="muted small typed">no typed answer</span>
+              {:else if dual || shownA}
+                <span class="typed" dir="auto" title="{a.text}{dual && a.by ? ` · sent by ${a.by}` : ''}" data-typed={id}>“{a.text}”</span>
+              {:else}
+                <span class="muted small typed" title="Shown here once you put it on screen" data-typed={id}>✍ hidden</span>
+              {/if}
+              {#if a}
+                <button class="small" onclick={() => onshowanswer(id)} disabled={shownA} aria-label="Show answer: {p?.name ?? '?'}" title="Puts their answer on screen (N)"
+                  >Show answer</button
+                >
+              {/if}
+            {/if}
             {#if finalWagerEditable(session, id)}
               <!-- Until it's shown (or they're judged) the wager can still be changed here; with none in (it's never taken as
                    0) it's asked for here before they can be judged. -->
@@ -591,6 +634,21 @@
           </div>
         {/each}
       </div>
+    {/if}
+    {#if (session.finalStep === 'question' || session.finalStep === 'answer') && answersNote}
+      <span class="muted small">{answersNote}</span>
+    {:else if (session.finalStep === 'question' || session.finalStep === 'answer') && typed}
+      <!-- The answers phones send: only the host sees them (in one window, not until each is revealed). -->
+      <AnswersHost
+        {session}
+        {dual}
+        players={f.players}
+        answers={f.answers ?? {}}
+        title="✍ Answers from phones"
+        phones={answerPhones}
+        open={session.finalStep === 'question' && !f.answersLocked}
+        hideUntilShown
+      />
     {/if}
     <!-- The Final's own 🤫 cards: under the wager or reveal rows (every wager box comes first), above the step's buttons. -->
     {#if round && cardCount}
@@ -662,6 +720,13 @@
   }
   .no-wager {
     color: var(--warn);
+  }
+  /* A typed answer: one line, cut with … (all of it in its tooltip). */
+  .typed {
+    max-width: 260px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
   .pl input[type='number'] {
     width: 80px;

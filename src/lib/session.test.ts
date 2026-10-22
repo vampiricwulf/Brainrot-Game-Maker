@@ -9,8 +9,10 @@ import {
   backToLastRound, finalAdvance, finalUnjudged, findClueRef, rebaseSession, removePlayer, restorePlayer, startIntro, stepOf, toggleStep,
   toggleUsed, usedTiles, describeStep, awardOpen, clueMarks, clueScored, places, clueName, standings, finalWagersOk, finalWagerProblems, finalChoose,
   finalWagerRefused, finalSetWager, finalWagerEditable, wagerFromPhone, finalShow, migrateSession, finalStepFix, wagerSentBy, forViewers,
-  blankSlide, toolOnlyClue, finalBack, rosterChange, nameList, coWinnersHold, winnerKnown, finalTakeNewcomers, finalReached,
+  blankSlide, toolOnlyClue, finalBack, rosterChange, nameList, coWinnersHold, winnerKnown, finalTakeNewcomers, finalReached, reveal, unreveal,
+  finalShowAnswer, typedAnswer,
 } from './session';
+import { finalNextStep, redoAction, revealStep, undoAction } from './toolset';
 import { newRpgRound } from './rpg';
 import { applyAction } from './tools';
 
@@ -984,6 +986,111 @@ describe('final wagers', () => {
     expect('finalAllowNonPositive' in g.settings).toBe(false);
     delete (old.settings as unknown as Record<string, unknown>).finalAllowNonPositive;
     expect((migrateGame(JSON.parse(JSON.stringify(old))).rounds.find((r) => r.mode === 'final') as FinalRound).allowNonPositive).toBe(false);
+  });
+});
+
+describe('final typed answers', () => {
+  /** Three players in the Final (reveal order c, b, a: lowest score first), with a wager of 0 each. */
+  function typed() {
+    const s = setup();
+    applyScore(s.session, s.game, [s.a], 300, 'x');
+    applyScore(s.session, s.game, [s.b], 200, 'x');
+    applyScore(s.session, s.game, [s.c], 100, 'x');
+    goToRound(s.session, s.game, 1);
+    for (const id of s.session.final!.players) s.session.final!.wagers[id] = 0;
+    return s;
+  }
+
+  it('coming back to the Final from its question keeps the answers, which are shown and the lock (for players still in)', () => {
+    const { game, session, a, b } = typed();
+    finalNext(session, game);
+    const f = session.final!;
+    f.answers = { [a]: { text: 'Fleming', n: 1 }, [b]: { text: 'Curie', n: 2, by: 'Al' } };
+    f.answersLocked = true;
+    f.answerShown = { [a]: true, [b]: true };
+    f.chosen = { [b]: false };
+    goToRound(session, game, 0);
+    goToRound(session, game, 1);
+    expect(session.finalStep).toBe('wagers');
+    expect(session.final!.answers).toEqual({ [a]: { text: 'Fleming', n: 1 } });
+    expect(session.final!.answerShown).toEqual({ [a]: true });
+    expect(session.final!.answersLocked).toBe(true);
+  });
+
+  it('showing the answer locks them (R, or N from the question); a Final nobody typed in gets no lock', () => {
+    const { game, session } = typed();
+    finalNext(session, game);
+    reveal(session);
+    expect([session.finalStep, session.final!.answersLocked]).toEqual(['answer', undefined]);
+    unreveal(session);
+    session.final!.answers = {};
+    reveal(session);
+    expect([session.finalStep, session.final!.answersLocked]).toEqual(['answer', true]);
+    // Hiding it again doesn't open them.
+    unreveal(session);
+    expect(session.final!.answersLocked).toBe(true);
+    const other = typed();
+    finalNext(other.session, other.game);
+    other.session.final!.answers = {};
+    finalNext(other.session, other.game);
+    expect(other.session.final!.answersLocked).toBe(true);
+  });
+
+  it('N in the reveals puts a typed answer on screen first; the wager goes up with the judgment; one who answered out loud as before', () => {
+    const { game, session, b, c } = typed();
+    for (let i = 0; i < 3; i++) finalNext(session, game);
+    const f = session.final!;
+    f.answers = { [c]: { text: 'Fleming', n: 1 } };
+    expect(f.current).toBe(c);
+    expect(typedAnswer(f, c)?.text).toBe('Fleming');
+    expect(finalAdvance(session)).toBe('answer');
+    expect([f.answerShown, f.shown[c]]).toEqual([{ [c]: true }, undefined]);
+    finalJudge(session, game, c, true);
+    expect([f.shown[c], f.results[c]]).toEqual([true, 'right']);
+    expect(finalAdvance(session)).toBe('next');
+    expect(f.current).toBe(b);
+    expect(typedAnswer(f, b)).toBeUndefined();
+    expect(finalAdvance(session)).toBe('shown');
+    expect(f.answerShown).toEqual({ [c]: true });
+    // Show answer from their row spotlights them too.
+    finalShowAnswer(session, c);
+    expect(f.current).toBe(c);
+  });
+
+  it('viewers get only the answers on screen, their words alone (no count, nor who on a team sent it)', () => {
+    const { game, session, a, b } = typed();
+    for (let i = 0; i < 3; i++) finalNext(session, game);
+    const f = session.final!;
+    f.answers = {};
+    expect(forViewers(session).final!.answers).toEqual({});
+    f.answers = { [a]: { text: 'Fleming', n: 3, by: 'Al' }, [b]: { text: 'Curie', n: 1 } };
+    f.answerShown = { [a]: true };
+    const seen = forViewers(session);
+    expect(seen.final!.answers).toEqual({ [a]: { text: 'Fleming' } });
+    expect(seen.final!.answerShown).toEqual({ [a]: true });
+    expect(JSON.stringify(seen)).not.toContain('Curie');
+    // A Final put away is hidden the same way.
+    goToRound(session, game, 0);
+    expect(JSON.stringify(forViewers(session))).not.toContain('Curie');
+    // A Final without typed answers has none.
+    const plain = typed();
+    expect('answers' in forViewers(plain.session).final!).toBe(false);
+  });
+
+  it('an Undo of each Final step leaves the answers and the lock (Ctrl+Z never takes an answer back, nor unlocks phones)', () => {
+    const { game, session, a } = typed();
+    finalNextStep(session, game);
+    const f = session.final!;
+    f.answers = { [a]: { text: 'Fleming', n: 1 } };
+    revealStep(session);
+    finalNextStep(session, game);
+    expect([session.finalStep, f.answersLocked]).toEqual(['reveal', true]);
+    finalAdvance(session);
+    for (let i = 0; i < 3; i++) undoAction(session, game);
+    expect(session.finalStep).toBe('wagers');
+    expect([session.final!.answers, session.final!.answersLocked]).toEqual([{ [a]: { text: 'Fleming', n: 1 } }, true]);
+    redoAction(session, game);
+    expect([session.finalStep, session.final!.answersLocked]).toEqual(['question', true]);
   });
 });
 

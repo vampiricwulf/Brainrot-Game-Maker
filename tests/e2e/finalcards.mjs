@@ -13,8 +13,8 @@
 // the room. 🤫 Send a card… lists them once the Final's category is on screen (not from its title card, nor after
 // backing out of it, when its card names never were on the host page); a host reload keeps them out under their ids. Two
 // windows: the column beside the stage shows what's on them, the cards out say which Final and card each one is, never
-// on the audience window. They stay out through the question and the answer, and go when the Final ends; Ctrl+Z back
-// into its reveals doesn't bring them back.
+// on the audience window. They stay out through the question (a phone's answer box under them) and the answer, and go
+// when the Final ends; Ctrl+Z back into its reveals doesn't bring them back.
 import { chromium } from 'playwright-core';
 import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
@@ -534,16 +534,25 @@ try {
   // (The question locks the phones' wagers: the room is told, the cards with it.)
   assert(await until(() => last()?.wager?.open === false && cards().length === 2), 'the question: both cards stay out');
   assert(await until(async () => (await cardsOn(bob)) === 2), 'and on Bob’s phone');
+  // Players type their answers (on by default): Bob's answer box comes under his two cards, and he sends from it.
+  await bob.locator('#answer-form').waitFor();
+  const [cardsBox, answerBox] = [await bob.locator('#cards').boundingBox(), await bob.locator('#answer-form').boundingBox()];
+  assert(cardsBox.y + cardsBox.height <= answerBox.y + 1, `Bob’s answer box is under both cards (cards end at ${Math.round(cardsBox.y + cardsBox.height)}px, the box starts at ${Math.round(answerBox.y)}px)`);
+  assert((await bob.locator('#clue').innerText()) === 'The final question' && (await bob.locator('#clue-cap').innerText()) === 'Final Jeopardy! · Movies', 'over them, the question and what’s on (“Final Jeopardy! · Movies”)');
+  await bob.locator('#answer-in').fill('Bob-answer');
+  await bob.locator('#answer-send').click();
+  assert(await until(() => last()?.answers?.seats?.find((x) => x.id === seat.Bob)?.got === 1), 'Bob sends his answer: the host took it (the room is told it has it)');
   await next('Reveal answer ▶');
   await host.locator('.panel .status', { hasText: 'Answer on screen' }).waitFor();
   await next('Start player reveals ▶');
   await host.locator('.fj .pl').first().waitFor();
   // (The reveals take the wagers off the phones: the room is told, the cards with it.)
-  assert(await until(() => !last()?.wager && cards().length === 2), 'the answer, then the reveals: both cards stay out');
+  assert(await until(() => !last()?.wager && cards().length === 2 && last()?.answers?.open === false), 'the answer, then the reveals: both cards stay out (and the answers are locked)');
   const marked = states.flatMap((s) => (s.cards ?? []).filter((c) => !c.open));
   assert(!marked.length && !(await bob.locator('body').innerText()).includes('answer’s on screen'), 'never marked “the answer’s on screen”: not to the room, not on Bob’s phone');
   await panel.waitFor();
   assert(/listed as Card 1/.test(await words(row1)), 'the reveals: the Final’s panel is still there, under the rows');
+  // (Judged without Show answer, as a rude one may be: it ends all the same.)
   for (const who of ['Ann', 'Bob', 'Cat']) await host.getByRole('button', { name: `✔ Right: ${who}` }).click();
   await mainButton(host).click();
   const ended = host.locator('.panel .status', { hasText: 'Game over' });

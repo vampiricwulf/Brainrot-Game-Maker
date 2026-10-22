@@ -727,6 +727,11 @@ export interface FinalRound {
    * wagers aren't held to their max unless the host turns the limits on).
    */
   allowNonPositive?: boolean;
+  /**
+   * Phone buzzers: players don't type their answer on their phone (✍); they answer out loud or on paper. Left out: they
+   * type it (from the question until the answer shows).
+   */
+  phoneAnswersOff?: boolean;
   hostNotes?: string;
   /**
    * Was switched off in a Jeopardy Builder game, and kept (as a round that plays) because something was written in it:
@@ -833,6 +838,23 @@ export interface FinalState {
    * of undo steps on purpose: the question was seen).
    */
   phonesLocked?: boolean;
+  /**
+   * Answers typed on phones (FinalRound.phoneAnswersOff not set, phone buzzers), by player: for the host only (viewers
+   * get those shown, see forViewers). Set to {} when the question first shows with phones taking answers. Kept out of
+   * undo steps (Ctrl+Z never takes an answer back).
+   */
+  answers?: Record<Id, FinalAnswer>;
+  /** The answer was on screen: phones can't send or change answers any more (kept out of undo steps, like phonesLocked). */
+  answersLocked?: true;
+  /** Typed answers the host put on screen in the reveals. */
+  answerShown?: Record<Id, true>;
+}
+
+/** A Final answer from a phone: its words, the room's count, and on a team who sent it. */
+export interface FinalAnswer {
+  text: string;
+  n: number;
+  by?: string;
 }
 
 export interface Player {
@@ -2031,6 +2053,7 @@ function repairGame(g: Game): void {
       repairCards(r, FINAL_CARD_TO);
       if (typeof r.category !== 'string') r.category = r.category == null ? '' : String(r.category);
       if (typeof r.timerSeconds !== 'number' || !(r.timerSeconds >= 1)) r.timerSeconds = 30;
+      if (r.phoneAnswersOff !== undefined && typeof r.phoneAnswersOff !== 'boolean') delete r.phoneAnswersOff;
     } else if (isSlides(r)) {
       r.questionSlide = repairSlide(r.questionSlide);
       repairExtraSlides(r);

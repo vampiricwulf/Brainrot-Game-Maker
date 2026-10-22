@@ -49,6 +49,14 @@ try {
   await page.locator('.grid input[data-round-name]').fill('Midgame Wager');
   // TV rule for this one: players with $0 sit it out.
   await page.getByLabel('Players with a score of 0 or less can play it').uncheck();
+  // Answers on paper for this one: a step named so (↶ Undo says it), and Ctrl+Z ticks it again.
+  const typed = page.getByLabel('✍ Players type their answers on their phones');
+  await typed.uncheck();
+  const undoTitle = await page.locator('.editor > header').getByRole('button', { name: 'Undo (Ctrl+Z)' }).getAttribute('title');
+  assert(undoTitle === 'Undo: Midgame Wager: players answer out loud or on paper (Ctrl+Z)', `unticking “✍ Players type their answers on their phones” is a step with its own name (${undoTitle})`);
+  await page.keyboard.press('Control+z');
+  await page.waitForFunction(() => document.querySelector('input[data-final-typed]')?.checked === true);
+  assert(true, 'Ctrl+Z: it is ticked again');
   await page.getByLabel('Category').fill('Snacks');
   await page.getByRole('button', { name: '▲ Move round up' }).click();
   await page.getByRole('button', { name: '▲ Move round up' }).click();

@@ -85,7 +85,7 @@
     {
       title: 'Final',
       keys: [
-        ['N', 'Title card: start the round; then the next step (Show question once every wager is in); in the reveals: show the wager, then (once they’re judged, C or X) the next player'],
+        ['N', 'Title card: start the round; then the next step (Show question once every wager is in); in the reveals: show their typed answer (or their wager), then (once they’re judged, C or X) the next player'],
         ['Enter in a wager box', 'The next wager still to type in; with every wager in, show the question'],
         ['Shift+N', 'Reveals: back to the player before'],
         ['R', 'The question: reveal the answer (again: hide it); the countdown stops'],

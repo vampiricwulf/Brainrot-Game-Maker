@@ -51,6 +51,9 @@
     wagerLimitsOff = $bindable(true),
     wagerPhones = [],
     wagerNote = '',
+    finalTyped = false,
+    answersNote = '',
+    onshowanswer = () => {},
     timerSeconds = $bindable(null),
     bgSteps = $bindable(null),
     undoText = null,
@@ -138,6 +141,12 @@
     wagerPhones?: string[];
     /** Why phones can't send wagers ('' when they can, or there are none): an older buzzer server. */
     wagerNote?: string;
+    /** The Final: players type their answer on their phone. */
+    finalTyped?: boolean;
+    /** Why phones can't send the Final's answers ('' when they can): an older buzzer server. */
+    answersNote?: string;
+    /** Put a player's typed Final answer on screen. */
+    onshowanswer?: (playerId: string) => void;
     /** Seconds typed in the timer box (T uses them too). */
     timerSeconds?: number | null;
     /** Board-game rounds: the steps to move (Enter moves them too). */
@@ -972,7 +981,18 @@
       {/if}
 
       {#if everyone && info}
-        <div class="mode-host"><AnswersHost {game} {session} {dual} clueId={info.clue.id} roundId={answerRoundId(session, info.clue.id)} phones={answerPhones} open={!session.revealed && !session.remote?.answers?.locked} onjudge={onanswerjudge} /></div>
+        <div class="mode-host">
+          <AnswersHost
+            {session}
+            {dual}
+            players={session.players.map((p) => p.id)}
+            answers={session.remote?.answers?.id === answerRoundId(session, info.clue.id) ? session.remote.answers.seats : {}}
+            clueId={info.clue.id}
+            phones={answerPhones}
+            open={!session.revealed && !session.remote?.answers?.locked}
+            onjudge={onanswerjudge}
+          />
+        </div>
       {/if}
 
       <!-- (Not while its title card is up: the category isn't on screen yet.) -->
@@ -986,6 +1006,10 @@
             bind:override={wagerLimitsOff}
             phones={wagerPhones}
             phoneNote={wagerNote}
+            typed={finalTyped}
+            {answerPhones}
+            {answersNote}
+            {onshowanswer}
             onstep={onfinalstep}
             {onreveal}
             {onjudge}
