@@ -1,7 +1,7 @@
 // Where a 🗜 copy is written (card-files spec §4.13.2): Blob parts, with the bytes written back over earlier ones laid
 // over them, so the file comes out exactly as mediabunny's own in-memory target makes it.
 import { BufferTarget, StreamTarget } from 'mediabunny';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { BlobParts, blobTarget } from './target';
 import { mux } from './testclip';
 
@@ -41,12 +41,18 @@ describe('BlobParts', () => {
 describe('blobTarget', () => {
   for (const format of ['mp4', 'webm'] as const)
     it(`makes the very bytes of mediabunny's in-memory target (${format}), in small chunks too`, async () => {
-      const mem = new BufferTarget();
-      await mux(format, mem);
-      const t = blobTarget({ StreamTarget }, 4096);
-      await mux(format, t.target);
-      const want = new Uint8Array(mem.buffer!);
-      expect(t.bytes()).toBe(want.byteLength);
-      expect(new Uint8Array(await t.blob('video/' + format).arrayBuffer())).toEqual(want);
+      // (An MP4 says the second it was made: the two files are made at the same one, even on a busy machine.)
+      const now = vi.spyOn(Date, 'now').mockReturnValue(Date.UTC(2026, 0, 1));
+      try {
+        const mem = new BufferTarget();
+        await mux(format, mem);
+        const t = blobTarget({ StreamTarget }, 4096);
+        await mux(format, t.target);
+        const want = new Uint8Array(mem.buffer!);
+        expect(t.bytes()).toBe(want.byteLength);
+        expect(new Uint8Array(await t.blob('video/' + format).arrayBuffer())).toEqual(want);
+      } finally {
+        now.mockRestore();
+      }
     });
 });
