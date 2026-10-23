@@ -754,6 +754,8 @@
       {:else}
         <span class="muted">{finalStepText[session.finalStep ?? 'wagers']}</span>
       {/if}
+      <!-- (Once its question is up: the notes may give the answer away before that.) -->
+      {#if finalRound?.hostNotes?.trim() && !dual && !session.intro && session.finalStep !== 'wagers'}<span class="notes" title="Host notes (viewers can see them in this window): {finalRound.hostNotes}">📝 {finalRound.hostNotes}</span>{/if}
     {:else if (session.phase === 'rpg' || session.phase === 'boardgame') && session.intro?.stage === 'title'}
       <b>{round?.name}</b>
       <span class="muted">Title card <span class="hint">· click the screen (or N) to go on</span></span>
@@ -773,6 +775,7 @@
       <span class="muted hint"
         >{slidePos && slidePos.at < slidePos.of ? 'N (or a click on the stage) shows the next slide' : 'The last slide: N (or a click on the stage) goes on'} · Shift+N the one before</span
       >
+      {#if round?.mode === 'slides' && round.hostNotes?.trim() && !dual}<span class="notes" title="Host notes (viewers can see them in this window): {round.hostNotes}">📝 {round.hostNotes}</span>{/if}
     {:else if session.phase === 'tiebreaker'}
       <b>Tiebreaker</b>
       {#if slidePos && !answerShowing(session)}<span class="slidepos" data-slidepos>Slide {slidePos.at} of {slidePos.of}</span>{/if}
@@ -784,6 +787,7 @@
       {:else}
         <span class="muted">Select the winner ({nameList(tiedForFirst(session).map((p) => p.name))}) and press ＋ Award (Amount 0 settles the tie without points), then go back to the results.</span>
       {/if}
+      {#if game.tiebreaker?.hostNotes?.trim() && !dual}<span class="notes" title="Host notes (viewers can see them in this window): {game.tiebreaker.hostNotes}">📝 {game.tiebreaker.hostNotes}</span>{/if}
     {:else}
       <b>Game over</b>
       <span class="muted hint">Click a score to fix it.</span>

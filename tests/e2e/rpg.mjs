@@ -890,6 +890,18 @@ try {
   await firstCard.getByLabel('Give Potion to').selectOption({ label: 'Player 2' });
   const secondCard = page.locator('.rh .pc').nth(1);
   assert((await potions()) === 1 && (await secondCard.locator('.it .nm').allInnerTexts()).join().includes('Potion'), 'giving an item gives one');
+  // − on their only item: the keys go to a button on their card, not to "＋ Item…" (an arrow key there would give them
+  // an item instead of moving the party).
+  await secondCard.getByRole('button', { name: 'Remove Potion' }).click();
+  await secondCard.locator('.it').waitFor({ state: 'detached' });
+  await page.waitForFunction(() => document.activeElement?.matches('.rh .pc button'));
+  await page.keyboard.press('ArrowUp');
+  await page.locator('.rh .where', { hasText: / · Start$/ }).waitFor();
+  assert(!(await secondCard.locator('.it').count()), 'after − on a player’s last item, ↑ moves the party (nothing given from ＋ Item…)');
+  await page.keyboard.press('Control+z');
+  await page.locator('.rh .where', { hasText: 'New south of Start' }).waitFor();
+  await page.keyboard.press('Control+z');
+  await secondCard.locator('.it', { hasText: 'Potion' }).waitFor();
 
   // The player sheet.
   await page.keyboard.press('i');

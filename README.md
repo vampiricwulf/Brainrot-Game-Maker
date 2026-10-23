@@ -137,7 +137,8 @@ Viewers see a "Starting soon…" card until you press **Start game**, which stay
 the page gets (on a wide screen the page is two columns). A **🔁 Rematch** keeps the players, their colors and pictures.
 
 - **Single window**: viewers see this window. Press `H` (or **🙈 Hide**) to hide the host controls; **Show controls**
-  waits, out of sight, in the top-right corner until the mouse moves.
+  waits, out of sight, in the top-right corner until the mouse moves. With them hidden, nothing on the stage shows a
+  focus ring.
 - **📺 Separate audience window**: a clean window to capture in OBS or Discord. The host window keeps the answers,
   notes and controls.
 
@@ -365,6 +366,9 @@ The main ones (press `?` during the game for all of them):
 | Arrows, numpad or `Alt`+arrows (RPG) | Move the party |
 | `E` (board game) | ✎ Edit board while you play |
 | `?` | Every key |
+
+A key held down counts once (only the arrows repeat). With the keys on the main button in a slides round, or on a
+round's title card, `Enter` does what the button says, as `N` does.
 
 ## Saving
 

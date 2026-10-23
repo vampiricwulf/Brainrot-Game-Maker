@@ -2,7 +2,9 @@
 // another, a button that turns disabled), they land on the nearest control still there, not on the page itself, so
 // someone on the keyboard carries on from where they were instead of Tabbing from the top.
 
-const FOCUSABLE = 'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])';
+// (Never a list box, a number box or a slider: the arrow keys meant for the game would change what's in it, an item
+// given from "＋ Item…" instead of the party moving.)
+const FOCUSABLE = 'button, [href], input:not([type="number"]):not([type="range"]), textarea, [tabindex]:not([tabindex="-1"])';
 
 const usable = (el: HTMLElement) =>
   !el.matches(':disabled') && !el.closest('[inert]') && el.getClientRects().length > 0 && el.getAttribute('aria-hidden') !== 'true';

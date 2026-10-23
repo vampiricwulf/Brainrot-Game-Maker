@@ -3745,6 +3745,9 @@
     // Typing in a field (a quick-wheel list, a wager…) is never a shortcut, not even '?'. A ticked checkbox isn't a field,
     // but Space still ticks it (not the media), and Enter is its own (the wager boxes' Enter, next to "Ignore the limits").
     if (t?.closest('input:not([type="checkbox"]), textarea, select, [contenteditable]') || ((e.key === ' ' || e.key === 'Enter') && t?.matches('input'))) return;
+    // A held key is one press, as a partner clue's Enter (N would run through every slide on stream, R flash the answer):
+    // only the arrows repeat (seeking, the party's moves, the numpad's too), and Tab and the page keys keep their own.
+    if (e.repeat && (e.key.length === 1 || e.key === 'Enter' || e.key === 'Escape') && !(session.phase === 'rpg' && NUMPAD[e.code])) return void e.preventDefault();
     // Enter or Space on a button reached with the keyboard (see tabbedTo) presses it (a tile opens). On a button clicked
     // with the mouse, Enter still awards.
     if ((e.key === ' ' || e.key === 'Enter') && t && t.matches('button, [role="button"]') && (t === tabbedTo || t.matches('.tile[data-clue]:not(.used)'))) return;
@@ -3855,6 +3858,12 @@
 
     switch (k) {
       case 'enter':
+        // Enter on the main button where Enter awards nothing (a slides round, a round's title card or its categories
+        // coming up): as N. (In clues and the Final's steps, "1, Enter" awards with the keys on it.)
+        if (!selected.length && !e.shiftKey && t?.matches('[data-next]') && (session.intro || session.phase === 'slides') && hostNext?.key === 'N') {
+          if (!hostNext.disabled) hostNext.run();
+          break;
+        }
         // Board games with nobody selected: move (see boardEnter).
         if (session.phase === 'boardgame' && session.intro) break;
         if (session.phase === 'boardgame' && (!selected.length || !amount) && !e.shiftKey && boardEnter()) break;
@@ -4067,14 +4076,13 @@
   onfocusin={(e) => {
     const el = e.target instanceof Element ? e.target : null;
     // The main button never counts, unless Tabbed to: "1, Enter" still awards with the keys on it. Nor does a button
-    // clicked with the mouse that the app gives the keys back to (its window closed with Esc). Nor, where Enter is a
-    // shortcut (awards, moves), the rescue's guess at the nearest button (the one with the keys turned off or went away):
-    // it may change the game (▦ Done ▶ board after ＋ Award, a player's chip after 🎲 Roll), nor boardFocus's pick of the
-    // round's first button (an Adventure's party chip). Unless it's the next row of the list the keys were in (✔ on one
-    // ✍ answer, then the next one's ✔): Enter presses that one too.
+    // clicked with the mouse that the app gives the keys back to (its window closed with Esc). Nor the rescue's guess at
+    // the nearest button (the one with the keys turned off or went away), nor boardFocus's pick of the round's first
+    // button (an Adventure's party chip): Enter or Space there would press a button nobody chose (▦ Done ▶ board after
+    // ＋ Award, ◀ Previous round in the Final's wagers, Start 15s after H, H), not do what the keys say. Unless it's the
+    // next row of the list the keys were in (✔ on one ✍ answer, then the next one's ✔): Enter presses that one too.
     const nextRow = !!el && !!tabbedList?.isConnected && tabbedList.contains(el);
-    // (A partner clue's PARTNER UP! too: Enter is its main button there.)
-    const guess = (rescuing() || placing) && (awardOpen(session) || session.partner?.stage === 'pick') && !nextRow;
+    const guess = (rescuing() || placing) && !nextRow;
     if (tabbing && el) pointed.delete(el);
     tabbedTo = el && (tabbing || (viaKeys && !guess && !pointed.has(el) && !el.matches('[data-next]'))) ? el : null;
     // (Noted while the button is still in the page: a removed one's closest() finds nothing.)
@@ -5008,6 +5016,10 @@
   .stage-box {
     flex: 1;
     min-width: 0;
+  }
+  /* One window with the controls hidden: the stage is all viewers see, so no focus ring on it (the keys still work). */
+  .play.hidden:not(.dual) .stage-box :global(:focus-visible) {
+    outline: none;
   }
   .stage-area.dual > :global(.info) {
     width: min(360px, 35vw);

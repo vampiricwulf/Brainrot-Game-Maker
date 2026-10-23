@@ -19,6 +19,12 @@ in plain words for the people who make and host games. Anything committed but no
 - RPG shops that buy back: a sale never takes a currency past its max. At the max the host is told (“Player 1 can’t carry 🪙2 more Gold (at most 🪙50)”) and the player keeps the item, as with a pile picked up.
 - 📊 Stats & Items: a stat with no color of its own shows the color viewers see on the stats strip (red for a bar or hearts, white for a number) instead of yellow.
 - RPG rounds: screen readers hear where the party is after the minimap's Move here, a doorway's 🚪 Go through (“Party went through Cellar door to Cellar”) and a regroup (G, ⊙, 🤝 Regroup: “Everyone is together in Village”), as after a step.
+- A key held down counts once: a held N no longer runs through every slide and on into the next round on stream, and a held R no longer flashes the answer on and off (nor K, S, T, Space…). The arrows still repeat.
+- With the keys on the main button in a slides round, or on a round's title card or its categories coming up, Enter does what the button says (as N), instead of nothing or “Select a player first”.
+- Enter and Space on a button the app put the keys on (when the one that had them went away, or after H twice) no longer press it outside clues. In the Final's wagers, Enter took the show back to the round before; after H, H, Space started a countdown; after the dice were closed, Space put the slide before back instead of pausing the video.
+- After a player's last item is used up, removed or dropped in an RPG round, the keys go to a button on their card instead of “＋ Item…”, so the next arrow key moves the party instead of giving them an item. Wherever the app moves the keys for you, it no longer puts them on a list or a number box.
+- One window: with the controls hidden (H), nothing on the stage shows a focus ring on stream.
+- One window: the host notes of a slides round, the tiebreaker and the Final (once its question is up) show in the host panel, as a clue's do. They only showed with the audience window open.
 
 ## 2026-10-23
 

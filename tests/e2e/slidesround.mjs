@@ -52,6 +52,7 @@ try {
   await page.waitForFunction(() => document.activeElement?.matches('main [data-field="q"]'), null, { timeout: 3000 });
   assert(true, 'the checklist line for an empty slide opens that slide, with the focus in its text');
   await text.fill('Rules: be nice');
+  await page.locator('main [data-field="round-notes"]').fill('Say hi to chat');
   await page.getByRole('tab', { name: 'Slide 1' }).click();
   assert((await text.inputValue()) === 'Welcome to the show', 'each slide keeps its own text');
   // A Final's line goes to the side with nothing on it (here its answer), from another round.
@@ -81,14 +82,31 @@ try {
   await page.locator('[data-slidepos]').getByText('Slide 1 of 2').waitFor();
   assert(true, 'the game starts on its first slide (no title card), and the panel says "Slide 1 of 2"');
   await page.getByRole('button', { name: 'Next slide ▶' }).waitFor();
-  await page.keyboard.press('n');
+  assert((await page.locator('.panel .status .notes').innerText()) === '📝 Say hi to chat', 'one window: the round’s host notes show in the panel');
+  // The keys are on Next slide ▶: Enter there does what it says, as N does.
+  await page.waitForFunction(() => document.activeElement?.matches('.panel [data-next]'));
+  await page.keyboard.press('Enter');
   await stage.locator('[data-slide="2"]').getByText('Rules: be nice').waitFor();
-  assert((await page.locator('[data-slide-pips]').getAttribute('aria-label')) === 'Slide 2 of 2', 'N shows the next slide (the dots say where it is)');
+  assert((await page.locator('[data-slide-pips]').getAttribute('aria-label')) === 'Slide 2 of 2', 'Enter on Next slide ▶ (the keys on it) shows the next slide (the dots say where it is)');
   await page.keyboard.press('Shift+N');
   await stage.locator('[data-slide="1"]').waitFor();
+  // H, H: the keys come back to a button the app picked. Space and Enter there press nothing (no countdown starts).
+  await page.keyboard.press('h');
+  await page.locator('.panel').waitFor({ state: 'detached' });
+  await page.keyboard.press('h');
+  await page.waitForFunction(() => !!document.activeElement?.matches('.panel button:not([data-next])'));
+  const keysOn = await page.evaluate(() => document.activeElement.textContent.trim());
+  await page.keyboard.press(' ');
+  await page.keyboard.press('Enter');
+  // (Keys are handled as they're pressed: what they did is on the page by the next frame.)
+  await page.evaluate(() => new Promise(requestAnimationFrame));
+  assert(
+    (await stage.locator('.timer').count()) === 0 && (await page.locator('[data-slidepos]').innerText()) === 'Slide 1 of 2',
+    `after H, H (the keys on “${keysOn}”), Space and Enter start nothing and the slide stays`,
+  );
   await page.keyboard.press('n');
   await stage.locator('[data-slide="2"]').waitFor();
-  assert(true, 'Shift+N the one before');
+  assert(true, 'N the next, Shift+N the one before');
   await page.getByRole('button', { name: '◀ Slide' }).click();
   await stage.locator('[data-slide="1"]').waitFor();
   await stage.locator('[data-slide="1"]').click();
@@ -169,7 +187,15 @@ try {
     `a 22-slide outro: its dots say “1 / 22” and stay on the stage (${Math.round(pipBox.x)}–${Math.round(pipBox.x + pipBox.width)} of ${audWidth}px)`,
   );
   assert((await p2.locator('.info .notes').innerText()) === 'Thank the sponsors\nPlug the next stream', 'its host notes keep their lines in the host’s info column');
-  for (let k = 2; k <= 22; k++) {
+  // A held N is one press: down, a repeat, up, then N once more is slide 3 (not 4 or further).
+  await p2.keyboard.down('n');
+  await p2.keyboard.down('n');
+  await p2.keyboard.up('n');
+  await s2.locator('[data-slide="2"]').waitFor();
+  await p2.keyboard.press('n');
+  await p2.locator('[data-slidepos]', { hasText: 'Slide 3 of 22' }).waitFor();
+  assert(!(await s2.locator('[data-slide="4"]').count()), 'a held N shows one slide (its repeats do nothing)');
+  for (let k = 4; k <= 22; k++) {
     await p2.keyboard.press('n');
     await s2.locator(`[data-slide="${k}"]`).waitFor();
   }

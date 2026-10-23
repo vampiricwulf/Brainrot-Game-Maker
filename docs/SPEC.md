@@ -377,7 +377,10 @@ The mode isn't saved with the game: it's dual while the audience window is open.
   - Media plays in the **audience window** so that OBS picks up its audio. The host window shows controls and a muted mirror/progress.
 - **Single window** (the default)
   - One view: the stage, with the host panel under it (beside it in RPG and board-game rounds on a wide window).
-    Nothing answer-revealing is rendered until the host clicks Reveal. `H` (🙈 Hide) hides the host controls.
+    Nothing answer-revealing is rendered until the host clicks Reveal. `H` (🙈 Hide) hides the host controls (then
+    nothing on the stage shows a focus ring). The panel's status line shows the 📝 host notes of the clue, the slides
+    round, the tiebreaker or the Final (once its question is up), with a title saying viewers can see them; with the
+    audience window open they're in the host column instead.
 - **The host panel** has one layout in every round: the status line (📱 phones and ⏱ timer chips), the players' score
   chips, the row of what this moment needs with the one main button (and its key) at its right, the tools with the
   round navigation, then a fixed bar (Undo, Redo, Sound, keys, Log, Players, Rules, Cover, Hide, Audience, Exit).
@@ -527,6 +530,11 @@ The full list, by round, is the in-game `?` sheet (`src/play/KeysHelp.svelte`); 
 | `Ctrl+Z` / `Ctrl+Shift+Z` (`Ctrl+Y`) | Undo / redo (scores, moves, tiles, the Final…) |
 | `A` / `Shift+A` | Open or focus the audience window / the scores-only window |
 | `L` · `H` · `F` · `?` | Log · hide host controls · full-screen · the key list |
+
+A held key counts once: only the arrows (and the numpad in an RPG round) repeat. A button the app put the keys on
+(the one that had them went away, or at the start) doesn't take `Enter` or `Space` for itself until it's chosen (with
+`Tab`, or as the next row of the list the keys were in): the keys keep their shortcuts. `Enter` on the main button in
+a slides round, on a round's title card or its category reveals, does what the button says, as `N`.
 
 ---
 

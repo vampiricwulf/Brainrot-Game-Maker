@@ -266,8 +266,13 @@ try {
   await page.keyboard.press('Escape');
 
   // ---------- 📜 Log in the host panel (single window) ----------
+  // (The keys on a panel button first: H puts them on the stage, where viewers see no focus ring.)
+  await page.locator('.panel').getByRole('button', { name: '⚖ Rules', exact: true }).focus();
   await page.keyboard.press('h');
   await page.locator('.panel').waitFor({ state: 'detached' });
+  await page.waitForFunction(() => !!document.activeElement?.closest('.stage-box'));
+  const ring = await page.evaluate(() => [document.activeElement.matches(':focus-visible'), getComputedStyle(document.activeElement).outlineStyle]);
+  assert(ring.join() === 'true,none', `one window, controls hidden: the keys are on the stage, with no focus ring on stream (${ring.join(', ')})`);
   await page.keyboard.press('l');
   const log = page.locator('aside.in-panel');
   await log.waitFor();
