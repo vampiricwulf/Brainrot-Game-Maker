@@ -125,11 +125,21 @@ try {
   await firstPack;
   await player.waitForTimeout(1000);
   assert(packs === 1, `a double click on ⬇ Download as .brainrot downloads the game pack once (${packs})`);
+  await player.locator('.toast', { hasText: '. To edit it, open it in Brainrot Games Maker.' }).waitFor();
+  const getIt = await player.getByRole('link', { name: 'Get Brainrot Games Maker' }).getAttribute('href');
+  assert(getIt.endsWith('/Brainrot-Game-Maker/releases/latest'), 'it says to open the pack in Brainrot Games Maker, and the start screen links to where to get it');
+  // Ctrl+S out of habit: not the browser's own Save page (a copy of the app, not the game).
+  await player.keyboard.press('Control+s');
+  await player.locator('.toast', { hasText: 'This game keeps its progress in this browser by itself' }).waitFor();
+  assert(true, 'Ctrl+S on its start screen says the file keeps its progress by itself');
 
   // The builder's audience window (OBS's capture) stays up while the player file, opened from disk beside it, resumes
   // its game in one window: that closes only the player file's own audience window.
   await a.getByRole('button', { name: '▶ Play' }).click();
   const [audA] = await Promise.all([a.waitForEvent('popup'), a.locator('.mode', { hasText: 'Separate audience window' }).click()]);
+  await a.keyboard.press('Control+s');
+  await a.locator('.toast', { hasText: 'The game saves itself as you play (💾 Save is in the editor)' }).waitFor();
+  assert(true, 'Ctrl+S on the pre-game screen says the game saves itself (Save is in the editor)');
   await a.getByRole('button', { name: '◀ Back to editor' }).click();
   await audA.locator('.soon-text').waitFor();
   await playWithPlayers(player, 2);
@@ -142,6 +152,10 @@ try {
     await player.getByRole('button', { name: 'Keep & leave', exact: true }).click();
   };
   await keepAndLeave();
+  const resumeFocused = await player
+    .waitForFunction(() => document.activeElement?.textContent?.trim() === 'Resume game', null, { timeout: 5000 })
+    .then(() => true, () => false);
+  assert(resumeFocused, 'Keep & leave in the player file: the keys go on from Resume game');
   await player.getByRole('button', { name: 'Resume game' }).click();
   await player.locator('.mode-ask .mode', { hasText: 'Single window' }).click();
   await player.locator('.panel').waitFor();

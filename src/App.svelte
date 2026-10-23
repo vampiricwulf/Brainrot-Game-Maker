@@ -897,7 +897,8 @@
     if (room && kept.room?.remote.code !== room.code) endRoom(room);
     // (Its 🤫 cards still out on the phones go, as the room stays.)
     else if (kept.room?.cards) {
-      const { cards: _cards, ...rest } = kept.room;
+      // (A plain copy: the stored room can't hold the live state's proxies.)
+      const { cards: _cards, ...rest } = $state.snapshot(kept.room) as SavedRoom;
       kept.room = rest;
       void saveRoom(rest);
       sendSetup(rest);
@@ -906,6 +907,18 @@
     // (A write of it that failed is dropped with it.)
     app.playUnstored = false;
     toast('Saved game discarded');
+    focusMain();
+  }
+
+  /**
+   * The keys go on from the main button (▶ Play, or a player-only file's ▶ Play or Resume game), not from <body>, where
+   * the next Tab starts at the top of the page.
+   */
+  function focusMain(): void {
+    void tick().then(() => {
+      if (document.activeElement && document.activeElement !== document.body) return;
+      document.querySelector<HTMLElement>('.editor button.play, .home button.primary')?.focus({ preventScroll: true });
+    });
   }
 
   function leavePlay(): void {
@@ -918,11 +931,7 @@
     app.pregame = false;
     app.live = newLive();
     app.test = null;
-    // The keys go on from ▶ Play (not from <body>, where the next Tab starts at the top of the editor).
-    void tick().then(() => {
-      if (document.activeElement && document.activeElement !== document.body) return;
-      document.querySelector<HTMLElement>('.editor button.play')?.focus({ preventScroll: true });
-    });
+    focusMain();
   }
 
   /**
@@ -997,13 +1006,32 @@
       toast(inTauri() ? "Couldn't open the audience window." : 'The browser blocked the popup. Allow popups for this file and try again.', 5000);
   }
 
+  /**
+   * Ctrl+S out of habit where there's no 💾 Save (a game being played, an exported file): not the browser's own Save
+   * page (a copy of the app, not the game). It says what keeps the game instead. (The editor has its own.)
+   */
+  function saveKey(e: KeyboardEvent): void {
+    if (!(e.ctrlKey || e.metaKey) || e.altKey || e.shiftKey || e.key.toLowerCase() !== 's' || e.defaultPrevented) return;
+    if (app.screen !== 'play' && !playerOnly) return;
+    e.preventDefault();
+    if (e.repeat) return;
+    if (playerOnly)
+      toast(
+        app.storageOk
+          ? 'This game keeps its progress in this browser by itself'
+          : "This browser isn't saving progress here (its storage is blocked or full), so a refresh restarts the game",
+        5000,
+      );
+    else toast(app.storageOk ? 'The game saves itself as you play (💾 Save is in the editor)' : "Autosave isn't working right now (💾 Save is in the editor)", 5000);
+  }
+
   /** Focus the remembered display's card, so Enter resumes in it. */
   function focusPicked(node: HTMLElement): void {
     requestAnimationFrame(() => node.querySelector<HTMLElement>('.mode.on')?.focus());
   }
 </script>
 
-<svelte:window ondragover={ignoreFiles} ondrop={ignoreFiles} />
+<svelte:window ondragover={ignoreFiles} ondrop={ignoreFiles} onkeydown={saveKey} />
 
 {#if !loaded}
   <div class="loading muted" role="status">

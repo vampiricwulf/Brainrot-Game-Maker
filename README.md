@@ -393,8 +393,9 @@ round's title card, `Enter` does what the button says, as `N` does.
   (Open… checks the file is a game first); going on anyway keeps the old game in Open… → Recent games. Only one browser tab edits at a time: another tab waits, paused, and offers **Edit here** once the
   editing tab closes.
 - **⋯ → ⬇ Export as a web page…** (Export HTML) makes a single file to play the game from, without this app, with everything inside. It shows the answers, so keep
-  it to yourself. A game over about 375 MB is too big for one HTML file (browsers can't read it back): save a
-  `.brainrot` instead.
+  it to yourself. Every file in 🖼 Media goes in, used or not: a big file's size question says how much of it is
+  files nothing in the game uses (**🗑 Delete unused** leaves them out). A game over about 375 MB is too big for one
+  HTML file (browsers can't read it back): save a `.brainrot` instead.
 - Add pictures, videos, sounds and fonts on the **🖼 Media** page: drop them there, or use **＋ Add files…**. A video or
   sound this browser can't play is offered a fix as soon as it's added (🔄 Convert: repackaged in seconds with nothing
   lost when only its file type is the problem, as with an MKV, or an .mts whose sound plays here; a camcorder's .mts

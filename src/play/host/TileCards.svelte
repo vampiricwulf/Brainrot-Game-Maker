@@ -212,7 +212,9 @@
   {#if full && cards.some((c) => !sentOf(c))}<div class="small warn" data-cards-full>{cardsFullText(game, session)}</div>{/if}
   {#if older}<span class="muted small">This buzzer server is older: copy the cards to them (📋).</span>{/if}
   {#if !dual}
-    <span class="exposed">⚠ Viewers can see this window: they can read a card’s name here, never what’s on it (check the cards in the editor’s 🤫 Card tabs).</span>
+    <span class="exposed"
+      >⚠ Viewers can see this window: they can read a card’s name here, never what’s on it{app.playerOnly ? '' : ' (check the cards in the editor’s 🤫 Card tabs)'}.</span
+    >
   {/if}
 </div>
 

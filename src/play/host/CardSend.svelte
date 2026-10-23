@@ -444,11 +444,14 @@
   <div class="head">Card</div>
   {#if preset}
     <!-- (Fixed: the action's. Counted, never shown: in one window viewers see this.) -->
-    <div class="small" data-offer-card>{cardSummary(game, preset.slide) || 'Nothing on it'} <span class="muted">(what’s on it is in the editor, never shown here)</span></div>
+    <div class="small" data-offer-card>{cardSummary(game, preset.slide) || 'Nothing on it'} <span class="muted">{app.playerOnly ? '(what’s on it is never shown here)' : '(what’s on it is in the editor, never shown here)'}</span></div>
   {:else}
     <div class="row wrap" role="radiogroup" aria-label="Which card">
-      <label class="check small" title="A card from the editor’s 🤫 Cards tab, or a tile’s or a Final’s 🤫 card"
-        ><input type="radio" name="card-kind-{uid}" value="saved" bind:group={kind} disabled={!fromEditor.length} /> One made in the editor</label
+      <label
+        class="check small"
+        title={app.playerOnly ? 'A card from this game’s 🤫 Cards, or a tile’s or a Final’s 🤫 card' : 'A card from the editor’s 🤫 Cards tab, or a tile’s or a Final’s 🤫 card'}
+        ><input type="radio" name="card-kind-{uid}" value="saved" bind:group={kind} disabled={!fromEditor.length} />
+        {app.playerOnly ? 'One made for this game' : 'One made in the editor'}</label
       >
       <label class="check small"><input type="radio" name="card-kind-{uid}" value="quick" bind:group={kind} /> A quick card</label>
       <label class="check small" title={onStageSomething ? 'What viewers see on screen now, as a card (nothing hidden from them goes)' : 'Nothing is on screen to send now'}
@@ -608,7 +611,7 @@
     <span class="exposed"
       >{preset
         ? '⚠ Viewers can see this window: it says who gets the card, never what’s on it.'
-        : '⚠ Viewers can see this window: what you type is hidden (👁 Show shows it to them too); of a card made in the editor they see its name or its tile, never what’s on it.'}</span
+        : `⚠ Viewers can see this window: what you type is hidden (👁 Show shows it to them too); of a card made ${app.playerOnly ? 'for this game' : 'in the editor'} they see its name or its tile, never what’s on it.`}</span
     >
   {/if}
 </div>

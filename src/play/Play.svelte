@@ -3094,6 +3094,8 @@
     if (!title || title === game.title) return;
     game.title = title;
     if (editorHasIt()) step(`Named the game “${title}”`, () => (app.game.title = title), { during: 'play' });
+    // (A player-only file's own copy keeps it too, like its players and rules: it has no undo.)
+    else if (keepsSetup()) app.game.title = title;
   }
 
   /** ⚙ Set up phone buzzers… (the 📱 card, when this app has no buzzer server): ⚙ Settings, at the phone buzzers. */
@@ -4202,7 +4204,9 @@
           {#if keyedRounds.length && game.theme.stageBg}
             <p class="warn small" data-warn="chroma-rounds">
               ⚠ Some of the rounds’ colors are close to the chroma key ({game.theme.stageBg}, 🎨 Theme › Stage background): OBS would
-              make them see-through on stream ({keyedRounds.join(', ')}). Pick others in their round’s editor{otherKey ? `, or a ${otherKey} key` : ''}.
+              make them see-through on stream ({keyedRounds.join(', ')}).{app.playerOnly
+                ? otherKey ? ` A ${otherKey} key would keep them.` : ''
+                : ` Pick others in their round’s editor${otherKey ? `, or a ${otherKey} key` : ''}.`}
             </p>
           {/if}
           {#if !session.players.length}
@@ -4416,12 +4420,15 @@
         {/if}
         {#if unplacedDDs}
           <!-- Said here, not only in the folded checks: Start places them, so the round never plays without one. -->
-          <span class="muted small" title="Place them yourself in the editor, or with 🎲 Place now in the checks above">
+          <span class="muted small" title={app.playerOnly ? 'Place them with 🎲 Place now in the checks above' : 'Place them yourself in the editor, or with 🎲 Place now in the checks above'}>
             ⭐ {unplacedDDs} Daily Double{unplacedDDs === 1 ? '' : 's'} not placed yet: Start puts {unplacedDDs === 1 ? 'it' : 'them'} on the board at random
           </span>
         {/if}
         {#if unplacedPartners}
-          <span class="muted small" title="Place them yourself in the editor (🔀 Randomize by the board), or with 🎲 Place now in the checks above">
+          <span
+            class="muted small"
+            title={app.playerOnly ? 'Place them with 🎲 Place now in the checks above' : 'Place them yourself in the editor (🔀 Randomize by the board), or with 🎲 Place now in the checks above'}
+          >
             🤝 {unplacedPartners} partner clue{unplacedPartners === 1 ? '' : 's'} not placed yet: Start puts {unplacedPartners === 1 ? 'it' : 'them'} on the board at random
           </span>
         {/if}

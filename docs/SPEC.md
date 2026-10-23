@@ -32,7 +32,7 @@ decides who gets points, and controls media.
 |---|---|---|
 | `brainrot-game-maker.html` | Single self-contained file (editor + player). Built with Vite + `vite-plugin-singlefile`. | **P0** |
 | Game pack `*.brainrot` (zip) | Main save format: `game.json` plus a `media/` folder. | **P0** |
-| Standalone game `*.html` | Export: player-only HTML with the game and media base64-embedded. Expected games are small (< 100 MB of mostly images + short clips), so this is a first-class sharing option. Soft warning at 100 MB, strong warning at 250 MB. | **P1** |
+| Standalone game `*.html` | Export: player-only HTML with the game and media base64-embedded. Expected games are small (< 100 MB of mostly images + short clips), so this is a first-class sharing option. Soft warning at 100 MB, strong warning at 250 MB; each says how much is files nothing in the game uses (over 10 MB of them). | **P1** |
 | Desktop `.exe` / `.app` | Tauri wrapper around the same build. Saves into a `BrainrotSaves` folder next to the exe (Open… lists it), writes big files natively, opens a game it's opened with, and updates itself in place from signed releases. | **P2** |
 
 **Browser targets:** latest Chrome, Edge, and Firefox. Safari is best-effort.

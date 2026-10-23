@@ -157,7 +157,7 @@
           <button
             class="small ghost"
             onclick={() => (seatedPhones ? (closing = 'close') : onclose())}
-            title="Phones are told the game is over. (◀ Back to editor keeps the room open.)">✕ Close the room</button
+            title="Phones are told the game is over. ({app.playerOnly ? '◀ Back' : '◀ Back to editor'} keeps the room open.)">✕ Close the room</button
           >
         </div>
         {#if remote.status === 'online'}

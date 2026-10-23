@@ -74,7 +74,7 @@
       <!-- The main one is in the panel's main cell; these are the other ways to settle it. -->
       {#if tbReady && onrolloff}<button onclick={rollOff} title="O">🎲 Tiebreaker roll-off</button>{/if}
       {#if !tbReady}
-        <button disabled title="Write one on the editor's Tiebreaker tab">❓ Tiebreaker clue</button>
+        <button disabled title={app.playerOnly ? 'This game has no tiebreaker clue' : "Write one on the editor's Tiebreaker tab"}>❓ Tiebreaker clue</button>
       {/if}
       <button
         onclick={() => {

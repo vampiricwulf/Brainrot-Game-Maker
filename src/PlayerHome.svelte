@@ -8,6 +8,7 @@
   import { mediaUrls } from './lib/media.svelte';
   import { themeStyle } from './lib/theme';
   import { onlineCount } from './lib/usage';
+  import { externalLink, REPO } from './lib/sitelinks';
   import type { Snippet } from 'svelte';
 
   let {
@@ -56,7 +57,7 @@
     try {
       const { where, missing } = await savePack($state.snapshot(game), (done, total) => (packPct = total ? Math.floor((done / total) * 100) : null));
       const left = missing.length ? ` (${missing.length} file${missing.length === 1 ? '' : 's'} weren’t in this copy, so they aren’t in the pack)` : '';
-      toast(`${where}: open it in the Brainrot Games Maker to edit${left}`, 6000);
+      toast(`${where}. To edit it, open it in Brainrot Games Maker${left}.`, 6000);
     } catch (e) {
       // (The save picker closed: nothing to say.)
       if (isCancel(e)) return;
@@ -106,6 +107,8 @@
     <button class="ghost small" onclick={download} disabled={packing}>
       {packing ? `⬇ Packing the game…${packPct !== null ? ` ${packPct}%` : ''}` : '⬇ Download as .brainrot (to edit in the builder)'}
     </button>
+    <!-- (The builder: its download page, as the README's Download.) -->
+    <a class="small" href="{REPO}/releases/latest" target="_blank" rel="noreferrer" onclick={externalLink}>Get Brainrot Games Maker</a>
     <!-- Someone who made it, testing their export: their games are where they left them. -->
     <p class="muted small">This file plays this one game. It can't change it, and your own games in the builder aren't touched.</p>
   </div>

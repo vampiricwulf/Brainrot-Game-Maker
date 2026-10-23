@@ -330,7 +330,7 @@
         {#each DEAL_TEMPLATES as t (t.key)}<option value="tpl:{t.key}">{t.icon} {t.name} · {t.hint}</option>{/each}
       </optgroup>
     </select>
-    <div class="muted small">Make your own in the editor’s 🎡 Wheels, Dice & Deals tab.</div>
+    {#if !app.playerOnly}<div class="muted small">Make your own in the editor’s 🎡 Wheels, Dice & Deals tab.</div>{/if}
     {#if work}
       <div class="head">Parts</div>
       {#each work.parts as part, i (part.id)}

@@ -13,8 +13,22 @@ in plain words for the people who make and host games. Anything committed but no
 
 ## Unreleased
 
+### Added
+
+- Exported game files: a “Get Brainrot Games Maker” link under ⬇ Download as .brainrot, to the app's download page, so whoever was sent the file can find the builder to edit it in.
+
+### Changed
+
+- ⬇ Export as a web page: when much of the file is 🖼 Media files nothing in the game uses (over 10 MB of them), its size question says how much, and that 🖼 Media › 🗑 Delete unused leaves them out. They still go in unless you delete them (a quick 🤫 card can pick one in play).
+
 ### Fixed
 
+- Discarding a kept game while its 🤫 cards were still out on phones (the room left open) no longer stops autosave for good (“⚠ Autosave unavailable here”, and a question on closing the tab), nor sends the discarded game's cards back to the phones after a reload.
+- Ctrl+S on the pre-game or game screen, or anywhere in an exported game file, no longer opens the browser's own Save page (a copy of the app, not the game): it says what keeps the game (“The game saves itself as you play”, or “This game keeps its progress in this browser by itself”).
+- Exported game files: ✎ Rename on the pre-game screen is kept through ◀ Back, ▶ Play again and a rematch, as the players and rules are.
+- Exported game files: 🎭 Deal…, 🤫 Send a card…, the cards of a tile or a partner clue, the tiebreaker button, the room's ✕ and the pre-game notes no longer send the host to an editor the file doesn't have.
+- Exported game files: after 🚪 Exit, ◀ Back or Start over › Discard, the keys go on from ▶ Play or Resume game instead of the top of the page. In the builder, Discard on a kept game puts them on ▶ Play too.
+- Exported game files: ⬇ Download as .brainrot's message reads as one sentence (“… To edit it, open it in Brainrot Games Maker.”).
 - RPG rounds: players arriving on a screen stand clear of its characters, items, doorways and other objects with a class where there's room, as they keep out of No-go areas, so viewers see those and clicks on the host's stage reach them (not of the object they arrive at, nor of one viewers can't see yet). In the 🗺 Mini quest template the Shopkeeper stands up and to the right, out of the party's starting row: the avatars covered him.
 - RPG shops that buy back: a sale never takes a currency past its max. At the max the host is told (“Player 1 can’t carry 🪙2 more Gold (at most 🪙50)”) and the player keeps the item, as with a pile picked up.
 - 📊 Stats & Items: a stat with no color of its own shows the color viewers see on the stats strip (red for a bar or hearts, white for a number) instead of yellow.

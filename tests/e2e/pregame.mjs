@@ -476,11 +476,16 @@ try {
   await player.keyboard.type('Zed');
   await player.keyboard.press('Tab');
   const setUp = await playerNames();
+  await player.getByRole('button', { name: '✎ Rename' }).click();
+  await player.getByLabel('Game title').fill('Friday Quiz');
+  await player.keyboard.press('Enter');
   await player.getByRole('button', { name: '◀ Back', exact: true }).click();
+  assert((await player.locator('.home h1').innerText()) === 'Friday Quiz', 'its start screen has the name given on the pre-game screen');
   await player.getByRole('button', { name: '▶ Play' }).click();
   await player.getByRole('button', { name: 'Start game ▶' }).waitFor();
   assert(setUp.at(-1) === 'Zed' && (await playerNames()).join() === setUp.join(), `a player-only file keeps the players set up through ◀ Back and ▶ Play (${setUp.join(', ')})`);
   assert((await (await openRules(player)).getByLabel('Most players').inputValue()) === mostSet, `…and the rules (Most players ${mostSet})`);
+  assert((await player.locator('.pregame h1').innerText()) === 'Friday Quiz', '…and the name');
   await player.close();
 
   assert(errors.length === 0, `no page errors (${errors.join('; ')})`);

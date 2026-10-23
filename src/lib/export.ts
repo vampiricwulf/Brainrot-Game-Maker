@@ -6,7 +6,7 @@ import { ask, tell } from './ask.svelte';
 import { notWritingWhile } from './desktop.svelte';
 import { formatBytes } from './media.svelte';
 import type { Game } from './model';
-import { onlineCount } from './usage';
+import { mediaUsage, onlineCount } from './usage';
 
 export const PACK_ELEMENT_ID = 'jb-pack';
 
@@ -156,6 +156,18 @@ function selfHtml(): string {
 
 const WARN = 100 * 1024 ** 2;
 const STRONG = 250 * 1024 ** 2;
+/** Files nothing in the game uses over this size are named in the size questions. */
+const UNUSED_SAY = 10 * 1024 ** 2;
+
+/**
+ * Added to the size questions when much of the file is files nothing in the game uses ('' when it isn't): the same test
+ * as 🖼 Media's 🗑 Delete unused. (Only said: in play a quick 🤫 card can still pick one of them.)
+ */
+export function unusedNote(game: Game): string {
+  const usage = mediaUsage(game);
+  const bytes = game.media.filter((m) => !m.url && !usage.get(m.id)).reduce((n, m) => n + (m.size || 0), 0);
+  return bytes > UNUSED_SAY ? `\n\n${formatBytes(bytes)} of it is files nothing in the game uses: 🖼 Media › 🗑 Delete unused leaves them out.` : '';
+}
 
 /** `buzzer`: the buzzer server the exported file uses for phone buzzers ('' for none). */
 export async function exportStandaloneHtml(
@@ -164,8 +176,9 @@ export async function exportStandaloneHtml(
   buzzer = '',
 ): Promise<{ size: number; missing: string[]; online: number; where: string } | null> {
   const { blob: pack, missing } = await buildPack(game, onProgress);
+  const unused = unusedNote(game);
   if (tooBigForHtml(pack.size)) {
-    await notWritingWhile(() => tell(`${TOO_BIG}\n\nThis game's HTML file would be about ${formatBytes(base64Length(pack.size))}.`));
+    await notWritingWhile(() => tell(`${TOO_BIG}\n\nThis game's HTML file would be about ${formatBytes(base64Length(pack.size))}.${unused}`));
     return null;
   }
   // base64 grows the pack by a third.
@@ -173,8 +186,8 @@ export async function exportStandaloneHtml(
   const anyway = { ok: 'Export anyway', cancel: 'Cancel' };
   // Nothing is written while it asks (closing the app meanwhile doesn't wait for an answer).
   const sure = (q: string) => notWritingWhile(() => ask(q, anyway));
-  if (estimate > STRONG && !(await sure(`This HTML file will be about ${formatBytes(estimate)}. Files this big can take a long time to open and may crash some browsers.\n\nFor big games, sharing the .brainrot pack is better. Export anyway?`))) return null;
-  if (estimate > WARN && estimate <= STRONG && !(await sure(`This HTML file will be about ${formatBytes(estimate)} and may be slow to open. Export anyway?`))) return null;
+  if (estimate > STRONG && !(await sure(`This HTML file will be about ${formatBytes(estimate)}. Files this big can take a long time to open and may crash some browsers.${unused}\n\nFor big games, sharing the .brainrot pack is better. Export anyway?`))) return null;
+  if (estimate > WARN && estimate <= STRONG && !(await sure(`This HTML file will be about ${formatBytes(estimate)} and may be slow to open.${unused} Export anyway?`))) return null;
   const html = selfHtml();
   const cut = html.lastIndexOf('</body>');
   const [head, tail] = cut < 0 ? [html, ''] : [html.slice(0, cut), html.slice(cut)];

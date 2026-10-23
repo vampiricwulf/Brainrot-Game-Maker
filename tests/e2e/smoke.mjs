@@ -1493,6 +1493,8 @@ assert((await page.locator('.card .missing').count()) === 0, 'media from the pac
 const discardMsg = await answerDialog(() => page.getByRole('button', { name: 'Discard' }).click(), true);
 assert(discardMsg.includes('Discard the saved game'), 'Discard asks before deleting the saved game');
 await page.getByRole('button', { name: 'Resume game' }).waitFor({ state: 'detached' });
+const playFocused = await page.waitForFunction(() => document.activeElement?.matches('.editor button.play'), null, { timeout: 5000 }).then(() => true, () => false);
+assert(playFocused, 'and the keys go on from ▶ Play');
 
 // Standalone player-only HTML export: opens straight into a Play screen with everything embedded.
 const html = await exportHtml(page);
@@ -1517,6 +1519,13 @@ await player.locator('.board .tile').first().click();
 await player.locator('.full img').waitFor();
 const imgOk = await player.locator('.full img').first().evaluate((i) => new Promise((res) => (i.complete ? res(i.naturalWidth > 0) : (i.onload = () => res(true)))));
 assert(imgOk, 'exported game plays with its embedded (edited) image');
+// Its 🎭 Deal… and 🤫 Send a card… don't send the host to an editor it doesn't have.
+const toolsRow = player.locator('.panel .toolsrow');
+await toolsRow.getByRole('button', { name: '🎭 Deal…' }).click();
+const dealText = await player.getByRole('dialog', { name: 'Deal' }).innerText();
+await toolsRow.getByRole('button', { name: '🤫 Send a card…' }).click();
+const sendText = await player.getByRole('dialog', { name: 'Send a card' }).innerText();
+assert(!/editor/i.test(dealText + sendText), 'the exported file’s 🎭 Deal… and 🤫 Send a card… never mention an editor');
 await player.close();
 
 assert(errors.length === 0, 'no page errors' + (errors.length ? ': ' + errors.join('; ') : ''));

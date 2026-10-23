@@ -16,7 +16,7 @@ import { chromium } from 'playwright-core';
 import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { confirmStrip, mainButton, mainLabel, openGameFile, packGame, png, recordSeen, shownOf, startBuzzer, startRoomOn } from './helpers.mjs';
+import { confirmStrip, mainButton, mainLabel, openGameFile, packGame, png, recordSeen, shownOf, startBuzzer, startRoomOn, stored } from './helpers.mjs';
 
 const file = resolve(process.env.APP_FILE || 'dist/index.html');
 if (!existsSync(file)) throw new Error('Run `npm run build` first');
@@ -731,6 +731,9 @@ try {
   await host.getByRole('alertdialog').getByRole('button', { name: 'Discard', exact: true }).click();
   assert(await until(() => last()?.status?.text === SETTING_UP && !cards().length), 'the kept game discarded: the room (still open) holds no card');
   assert(await until(async () => !(await cardsOn(dan))), 'Dan’s phone drops it');
+  // (Stored as a plain copy: a reload doesn't send the discarded game's card again, and autosave keeps working.)
+  assert(await until(async () => { const r = await stored(host, 'playSession:room'); return !!r && !r.cards; }), 'the room is saved without the discarded game’s cards');
+  assert(await host.locator('.editor > header').getByText('✓ Autosaved').isVisible(), 'autosave still works');
 
   assert(!errors.length, `no page errors (${errors.join('; ')})`);
   console.log('Card rounds tests passed');
