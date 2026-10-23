@@ -475,6 +475,14 @@
       };
     return askcancel ?? slots.ask;
   });
+  // ↩ Cancel (keep tile)'s question and a part's (a partner card's) share the strip: the newer one shows, the older one
+  // is put away (answered no), so a press never seems to do nothing behind an old question.
+  $effect(() => {
+    if (askcancel) untrack(() => slots.ask?.oncancel());
+  });
+  $effect(() => {
+    if (slots.ask) untrack(() => askcancel?.oncancel());
+  });
 
   // The fixed bar ignores the second click of a double-click for a moment after the screen changes (the game starting,
   // a new round or phase): a double-click on Start game ▶ or Done ▶ board never lands on 📺 Audience or 🚪 Exit under

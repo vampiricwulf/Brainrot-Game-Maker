@@ -483,10 +483,13 @@ try {
   assert((await fetchAs(ann, pic1)) === 404 && (await fetchAs(ann, pic2)) === 404 && (await fetchAs(dan, vid1)) === 404 && (await fetchAs(cat, pic2, catToken)) === 404, 'Ann, Dan and Cat’s old phone (with the token it had) can fetch none');
 
   // ---------- ⇄ Swap with card 1 out asks first, in the panel (never a box over the stage); Don't swap keeps it ----------
-  await panel.getByRole('button', { name: '⇄ Swap' }).first().click();
+  // (Over ↩ Cancel (keep tile)'s question, left unanswered: the newer question shows, and the older one goes.)
+  await host.keyboard.press('Shift+Escape');
   const swapAsk = confirmStrip(host);
-  await swapAsk.waitFor();
-  assert((await textOf(swapAsk)).includes('Swap anyway?') && !(await host.getByRole('alertdialog').count()), `⇄ Swap asks first, in the panel (${await textOf(swapAsk)})`);
+  await swapAsk.getByText('Put the tile back anyway?').waitFor();
+  await panel.getByRole('button', { name: '⇄ Swap' }).first().click();
+  await swapAsk.getByText('Swap anyway?').waitFor();
+  assert(!(await host.getByRole('alertdialog').count()), `⇄ Swap asks first, in the panel, in place of the older question (${await textOf(swapAsk)})`);
   await swapAsk.getByRole('button', { name: 'Don’t swap' }).click();
   await swapAsk.waitFor({ state: 'detached' });
   assert((await host.locator('.stage-box [data-partner-badge]', { hasText: 'Bob describes' }).count()) === 1, 'Don’t swap: Bob still describes');

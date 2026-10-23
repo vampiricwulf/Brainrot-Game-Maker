@@ -2369,6 +2369,7 @@
    */
   function back(keep = false): void {
     const clueId = info?.clue.id;
+    keepAsk = null;
     // The host panel's status row then offers "↶ Reopen <tile>" (no toast: it would cover the round buttons).
     backToBoard(session, game, { markUsed: !keep && !notPlayedYet() });
     dropPartnerWheel();
@@ -2414,10 +2415,18 @@
     }
     back(true);
   }
-  /** ↩ Cancel (keep tile) asking first, for the tile it was pressed on: in the panel's strip, never over the stage. */
+  /**
+   * ↩ Cancel (keep tile) asking first, for the tile it was pressed on: in the panel's strip, never over the stage. It
+   * goes with the tile (never asked again by itself when the tile opens again), and a part's newer question in the
+   * strip puts it away (see HostPanel).
+   */
   let keepAsk = $state<{ clue: string; text: string } | null>(null);
+  $effect(() => {
+    if (session.phase !== 'clue') keepAsk = null;
+  });
+  const keepHere = $derived(!!keepAsk && session.phase === 'clue' && info?.clue.id === keepAsk.clue);
   const keepQuestion = $derived<HostAsk | null>(
-    keepAsk && session.phase === 'clue' && info?.clue.id === keepAsk.clue
+    keepHere && keepAsk
       ? { text: keepAsk.text, ok: '↩ Put it back', cancel: 'Keep playing', onok: () => ((keepAsk = null), back(true)), oncancel: () => (keepAsk = null) }
       : null,
   );

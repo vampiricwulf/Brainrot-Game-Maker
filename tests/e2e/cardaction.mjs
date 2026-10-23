@@ -393,10 +393,19 @@ try {
   assert(await until(async () => (await win2.getByText(TIP).count()) === 1), `${label} taken back: the card window shows the tile’s card alone`);
   await solo.keyboard.press('Escape');
   await soloOut.waitFor({ state: 'detached' });
-  await solo.keyboard.press('r');
-  await solo.keyboard.press('Escape');
+  // Shift+Esc asks first (Cat saw the tile's card); left unanswered, ▦ Done ▶ board closes the tile.
+  await solo.keyboard.press('Shift+Escape');
+  await confirmStrip(solo).getByText('Put the tile back anyway?').waitFor();
+  await solo.getByRole('button', { name: '▦ Done ▶ board' }).click();
   await win2.getByText(TIP).waitFor({ state: 'detached' });
   assert(await win2.getByText('Extra card 9').isVisible(), 'the tile closed: its card goes from the card window (the round’s stay)');
+  assert(!(await confirmStrip(solo).count()), 'and the question left unanswered goes with the tile');
+  await solo.getByRole('button', { name: '↶ Reopen Movies $200' }).click();
+  await solo.locator('.stage-box .tile[aria-label^="Movies for $200"]').click();
+  await soloTile.waitFor();
+  assert(!(await confirmStrip(solo).count()), 'opened again, the tile asks nothing by itself');
+  await solo.keyboard.press('Shift+Escape');
+  await soloTile.waitFor({ state: 'detached' });
 
   await solo.keyboard.press('p');
   await solo.keyboard.press('1');
