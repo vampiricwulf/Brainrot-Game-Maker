@@ -612,9 +612,25 @@ try {
   const gifEditor = page.getByRole('dialog', { name: 'Edit image' });
   await gifEditor.getByText('A moving GIF: the edits go on every frame, so it keeps moving.').waitFor();
   assert(true, 'the image editor says a moving GIF keeps moving');
+  // Apply, and the window closed as it starts saving (Esc with nothing changed closes it at once): the save stops.
+  const gifsBefore = await mediaCount();
+  await page.waitForFunction(() => document.querySelector('[aria-label="Edit image"] header button.primary')?.disabled === false);
+  await gifEditor.evaluate((d) => {
+    d.querySelector('header button.primary').click();
+    d.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+  });
+  await gifEditor.waitFor({ state: 'detached' });
+  await insp.getByRole('button', { name: '✎ Edit image…' }).click();
+  await gifEditor.getByText('A moving GIF: the edits go on every frame, so it keeps moving.').waitFor();
   await gifEditor.getByRole('button', { name: '⟳ 90°' }).click();
   await gifEditor.getByRole('button', { name: 'Apply', exact: true }).click();
   await gifEditor.waitFor({ state: 'detached' });
+  const editedSaid = toast.filter({ hasText: /^Image edited/ });
+  await editedSaid.waitFor();
+  assert(
+    /^Image edited \(original kept\): \d+ K?B, was \d+ K?B$/.test(await editedSaid.innerText()) && (await mediaCount()) === gifsBefore + 1 && (await editedSaid.count()) === 1,
+    `a save stopped by closing the window changes nothing; the next one says how big the GIF came out (“${await editedSaid.innerText()}”, ${(await mediaCount()) - gifsBefore} file added)`,
+  );
   const editedGif = await canvas.locator(`.slide .el[data-el="${gifPic.id}"] img`).evaluate(async (img) => Array.from(new Uint8Array(await (await fetch(img.src)).arrayBuffer())));
   const r = new GifReader(new Uint8Array(editedGif));
   const delays = [...Array(r.numFrames())].map((_, i) => r.frameInfo(i).delay);

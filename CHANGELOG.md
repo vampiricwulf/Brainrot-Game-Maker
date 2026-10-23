@@ -36,6 +36,8 @@ in plain words for the people who make and host games. Anything committed but no
 - ✎ Edit video: ✂ Crop pressed with nothing else changed no longer makes Esc or Cancel ask “Discard your edits?”.
 - ✎ Edit, 🗜 Make smaller and 🔄 Convert: once the window says what was made, Ctrl+Z does what it says, closing the window and taking it back. Before, Ctrl+Z did nothing until the window was closed.
 - 🗜 Make smaller: after Stop, the button says “Make it” (“Try again” after a failure), not “Make it again”, when nothing was made.
+- ✎ Edit image on a moving GIF: closing the window while it saves (Esc, ✕, or Discard) stops the save and changes nothing. Before, the edit was still put in a moment later. The tools wait while it saves, and the question asks Discard or Keep editing.
+- ✎ Edit image says how big the edited picture came out (“Image edited (original kept): 2.9 MB, was 206 KB”): a moving GIF can come out many times bigger.
 
 ## 2026-10-22
 

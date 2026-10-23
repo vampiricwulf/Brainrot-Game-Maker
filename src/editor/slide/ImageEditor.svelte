@@ -4,9 +4,9 @@
 -->
 <script lang="ts">
   import { modal } from '../../lib/modal';
-  import { onMount, tick, untrack } from 'svelte';
+  import { onDestroy, onMount, tick, untrack } from 'svelte';
   import { toast, editedGame } from '../../lib/app.svelte';
-  import { addMediaFile, mediaUrls } from '../../lib/media.svelte';
+  import { addMediaFile, formatBytes, mediaUrls } from '../../lib/media.svelte';
   import { step, stepAsync } from '../../lib/history.svelte';
   import { newId, SLIDE_H, SLIDE_W, type ImageEdits, type ImageEl } from '../../lib/model';
   import { aspectCrop, fitAspect, resizeAround } from '../../lib/editing';
@@ -367,28 +367,40 @@
     void tick().then(() => aside?.scrollTo({ top: 0 }));
   }
 
+  /** The window is gone (Discard, Esc or ✕ while a GIF saves): its save stops, and nothing is changed. */
+  let closed = false;
+  onDestroy(() => (closed = true));
+
   async function apply(): Promise<void> {
     if (!img || !source) return;
     saving = true;
+    // (The edits as Apply was pressed: what the file is made from is what the item keeps.)
+    const snap: ImageEdits = JSON.parse(JSON.stringify(edits));
+    const [mime, base, was] = [source.mime, source.name.replace(/\.\w+$/, ''), source.size];
     try {
       // (A font picked a moment ago may still be loading: saved in it, not in a fallback.)
-      await captionFonts(edits);
-      const made = await editedFile(img, source.mime, JSON.parse(JSON.stringify(edits)), gif, (p) => (progress = p));
-      const base = source.name.replace(/\.\w+$/, '');
+      await captionFonts(snap);
+      const made = await editedFile(img, mime, snap, gif, (p) => {
+        // (Between a GIF's frames: a window closed meanwhile stops the save there.)
+        if (closed) throw new DOMException('Stopped', 'AbortError');
+        progress = p;
+      });
+      if (closed) return;
       // The edited file and the image showing it: one undo step.
       await stepAsync('Edited image', async () => {
         const ref = await addMediaFile(game, made.blob, `${base}-edited.${made.ext}`);
         // The size it had before its first edit, for Use original.
         if (!el.editedMedia && !el.uneditedSize) el.uneditedSize = { w: el.w, h: el.h };
         el.editedMedia = ref.id;
-        el.edits = JSON.parse(JSON.stringify(edits));
+        el.edits = snap;
         // Match the box to the new shape so nothing looks squashed: about as big as it was, where it was, on the slide.
         Object.assign(el, fitAspect(el, made.width / made.height, SLIDE_W, SLIDE_H));
       });
-      toast('Image edited (original kept)');
+      // (How big it came out: a moving GIF, its every frame made again, can come out many times bigger.)
+      toast(`Image edited (original kept): ${formatBytes(made.blob.size)}, was ${formatBytes(was)}`);
       onclose();
     } catch (e) {
-      toast('Could not save the edit: ' + (e as Error).message);
+      if (!closed) toast('Could not save the edit: ' + (e as Error).message);
     } finally {
       saving = false;
       progress = null;
@@ -461,7 +473,7 @@
     <header class="row">
       <h2 class="modal-title">✎ Edit image</h2>
       {#if discarding}
-        <InlineAsk text="Discard your image edits?" ok="Discard" cancel="Cancel" danger onok={onclose} oncancel={() => (discarding = false)} />
+        <InlineAsk text="Discard your image edits?" ok="Discard" cancel="Keep editing" danger onok={onclose} oncancel={() => (discarding = false)} />
       {:else}
         <span class="hint">{source?.name} · output {out.w}×{out.h}px</span>
       {/if}
@@ -479,13 +491,14 @@
       <button class="ghost modal-x" onclick={cancel} aria-label="Close" title="Close (Esc)">✕</button>
     </header>
 
-    <div class="tools row">
+    <!-- (Nothing changes while it saves.) -->
+    <div class="tools row" inert={saving}>
       {#each [['move', '✋ Move'], ['crop', '✂ Crop'], ['draw', '🖌 Draw'], ['text', '🅣 Text'], ['sticker', '😂 Sticker']] as [k, l]}
         <button class:on={tool === k} aria-pressed={tool === k} onclick={() => pickTool(k as typeof tool)}>{l}</button>
       {/each}
     </div>
 
-    <div class="body">
+    <div class="body" inert={saving}>
       <div class="stage" bind:clientWidth={stageW} bind:clientHeight={stageH}>
         <div
           class="imgbox"
