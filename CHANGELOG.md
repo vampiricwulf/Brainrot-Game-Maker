@@ -25,6 +25,9 @@ in plain words for the people who make and host games. Anything committed but no
 - After a player's last item is used up, removed or dropped in an RPG round, the keys go to a button on their card instead of “＋ Item…”, so the next arrow key moves the party instead of giving them an item. Wherever the app moves the keys for you, it no longer puts them on a list or a number box.
 - One window: with the controls hidden (H), nothing on the stage shows a focus ring on stream.
 - One window: the host notes of a slides round, the tiebreaker and the Final (once its question is up) show in the host panel, as a clue's do. They only showed with the audience window open.
+- Screen readers hear the buzz order once, as it ends up, never an out-of-date one beside it.
+- Resume game (and testing a round) says so to screen readers and puts the keys on the board or the main button, as Start does.
+- Screen readers hear P then a number (“Bob picks next”), S (“Scores on screen” or “off screen”), T (the countdown starting or pausing) and Shift+T (“+10 s: 24 s left”).
 
 ## 2026-10-23
 

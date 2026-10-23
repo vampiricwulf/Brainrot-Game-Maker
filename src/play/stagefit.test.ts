@@ -130,6 +130,17 @@ describe('announcements for screen readers', () => {
     expect(said).toHaveLength(1);
   });
 
+  it('says a message with a key only as it ends up (one buzz order, the latest, where it first came)', () => {
+    const said: string[] = [];
+    const a = new Announcer((t) => said.push(t));
+    a.push('Bob −$200, now −$200');
+    a.push('Buzz order: 1. Bob (out), 2. Ann', 'buzz-order');
+    a.push('Ann is answering');
+    a.push('Buzz order: 1. Ann, 2. Bob (out)', 'buzz-order');
+    vi.runAllTimers();
+    expect(said).toEqual(['Bob −$200, now −$200. Buzz order: 1. Ann, 2. Bob (out). Ann is answering.']);
+  });
+
   it('ignores empty messages and keeps its own full stops', () => {
     const said: string[] = [];
     const a = new Announcer((t) => said.push(t));

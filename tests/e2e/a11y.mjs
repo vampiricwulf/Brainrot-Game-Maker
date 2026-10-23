@@ -4,7 +4,7 @@ import { chromium } from 'playwright-core';
 import { existsSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { addClassicRounds } from './helpers.mjs';
+import { addClassicRounds, stored } from './helpers.mjs';
 
 const file = resolve(process.env.APP_FILE || 'dist/index.html');
 if (!existsSync(file)) throw new Error('Run `npm run build` first');
@@ -218,12 +218,31 @@ try {
   await undoNote.getByRole('button', { name: '↶ Undo' }).click();
   assert((await names.count()) === before, 'and its Undo brings them back');
 
+  const startedAt = await page.evaluate(() => Date.now());
   await page.getByRole('button', { name: 'Start game ▶' }).click();
   // The whole page changed: screen readers are told, and the keys are on the panel (not on <body>).
   const said = () => page.evaluate(() => document.getElementById('live-region')?.dataset.said ?? '');
-  await page.waitForFunction(() => /Untitled Game has started/.test(document.getElementById('live-region')?.dataset.said ?? ''));
+  const saidHas = (re) => page.waitForFunction((src) => new RegExp(src).test(document.getElementById('live-region')?.dataset.said ?? ''), re.source);
+  await saidHas(/Untitled Game has started/);
   assert((await focused()) !== 'BODY', `starting the game says so, and puts the keys on the panel (${await focused()})`);
+  // The same after a reload (once the game is stored) and Resume game, Enter picking how it's shown.
+  for (let i = 0; i < 100 && !((await stored(page))?.savedAt >= startedAt); i++) await page.waitForTimeout(100);
+  await page.reload();
+  await page.getByRole('button', { name: 'Resume game' }).click();
+  await page.locator('.mode-ask').waitFor();
+  await page.keyboard.press('Enter');
+  await saidHas(/Untitled Game resumed/);
+  assert((await focused()) !== 'BODY', `Resume game says so too, and puts the keys on the panel (${await focused()})`);
   await page.getByRole('button', { name: 'Skip intro' }).click();
+  // P then a player's number, and S, are said.
+  await page.keyboard.press('p');
+  await page.keyboard.press('1');
+  await saidHas(/Player 1 picks next/);
+  await page.keyboard.press('s');
+  await saidHas(/Scores on screen/);
+  await page.keyboard.press('s');
+  await saidHas(/Scores off screen/);
+  assert(true, 'P, 1 says who picks next, and S whether the scores are on screen');
   assert((await page.getByRole('main').getByRole('heading', { level: 1, name: 'Untitled Game' }).count()) === 1, 'the stage and host panel are the main part, under a heading with the game’s title');
   await page.locator('.board .tile').first().click();
   assert((await focused()).includes('Reveal answer'), 'opening a clue puts the focus on 👁 Reveal answer');
@@ -370,7 +389,6 @@ try {
 
   // ---------- The keys after a move, a menu left with Tab, and New ----------
   const saidNow = () => page.evaluate(() => document.getElementById('live-region')?.dataset.said ?? '');
-  const saidHas = (re) => page.waitForFunction((src) => new RegExp(src).test(document.getElementById('live-region')?.dataset.said ?? ''), re.source);
   await page.locator('nav > button.round-tab').first().click();
   assert((await page.getByRole('group', { name: /^Board: arrow keys move between tiles/ }).count()) === 1, 'the board’s tiles are a group whose name says how the keys reach them');
   await page.locator('.cat textarea').first().fill('Animals');

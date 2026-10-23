@@ -44,6 +44,7 @@ const status = () => page.locator('.panel .status').innerText();
 const focused = () => page.evaluate(() => document.activeElement?.getAttribute('aria-label') ?? document.activeElement?.tagName);
 const video = () => stage('.full video').first().evaluate((m) => ({ paused: m.paused, t: m.currentTime, muted: m.muted }));
 const timerNum = () => stage('.timer .num').innerText();
+const saidHas = (re) => page.waitForFunction((src) => new RegExp(src).test(document.getElementById('live-region')?.dataset.said ?? ''), re.source);
 
 /** A short video (a canvas recorded in the page). */
 async function webm(seconds = 6) {
@@ -113,9 +114,13 @@ try {
   await page.keyboard.press('Enter');
   await stage('.timer').waitFor({ state: 'detached' });
   assert(true, 'a right answer stops the countdown (no "Time\'s up" over the answer)');
-  // …and for the answer going up.
+  // …and for the answer going up. (Screen readers hear it start, and +10 s.)
   await page.keyboard.press('t');
   await stage('.timer').waitFor();
+  await saidHas(/Countdown: \d+ s/);
+  await page.keyboard.press('Shift+T');
+  await saidHas(/\+10 s: \d+ s left/);
+  assert(true, 'T and Shift+T are said: the countdown, then +10 s');
   await page.keyboard.press('r');
   await stage('.timer').waitFor({ state: 'detached' });
   assert((await stage('.timesup').count()) === 0, 'revealing the answer stops the countdown');

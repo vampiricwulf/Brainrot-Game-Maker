@@ -7,7 +7,7 @@ export const ANNOUNCE_WAIT = 400;
 
 /** Collects messages and hands them on together after a quiet moment (timers are passed in, for the tests). */
 export class Announcer {
-  private queue: string[] = [];
+  private queue: { text: string; key?: string }[] = [];
   private timer: ReturnType<typeof setTimeout> | undefined;
   constructor(
     private say: (text: string) => void,
@@ -19,10 +19,14 @@ export class Announcer {
     clear: (t: ReturnType<typeof setTimeout> | undefined) => clearTimeout(t),
   };
 
-  push(message: string): void {
+  /** `key`: a message that's out of date once another with the same key comes (the buzz order): that one takes its place. */
+  push(message: string, key?: string): void {
     const m = message.replace(/\s+/g, ' ').trim();
-    if (!m || this.queue.includes(m)) return;
-    this.queue.push(m);
+    if (!m) return;
+    const same = key === undefined ? undefined : this.queue.find((q) => q.key === key);
+    if (same) same.text = m;
+    else if (this.queue.some((q) => q.text === m)) return;
+    else this.queue.push({ text: m, key });
     this.timers.clear(this.timer);
     this.timer = this.timers.set(() => this.flush(), this.wait);
   }
@@ -31,7 +35,7 @@ export class Announcer {
     this.timers.clear(this.timer);
     this.timer = undefined;
     if (!this.queue.length) return;
-    const text = this.queue.map((m) => (/[.!?…]$/.test(m) ? m : `${m}.`)).join(' ');
+    const text = this.queue.map(({ text: m }) => (/[.!?…]$/.test(m) ? m : `${m}.`)).join(' ');
     this.queue = [];
     this.say(text);
   }
@@ -72,9 +76,12 @@ const announcer = new Announcer((text) => {
   }, 30);
 });
 
-/** Say this to screen-reader users (politely: after what they're hearing now). */
-export function announce(message: string): void {
-  announcer.push(message);
+/**
+ * Say this to screen-reader users (politely: after what they're hearing now). `key`: it replaces a message with the same
+ * key still waiting to be said (the buzz order as it ends up, not each one on the way).
+ */
+export function announce(message: string, key?: string): void {
+  announcer.push(message, key);
 }
 
 /**

@@ -1219,13 +1219,14 @@
       ? queueRows.find((r) => !r.out && r.id !== buzz.answering)
       : undefined,
   );
-  // Screen readers hear the buzz order, a tie, and who answers as they change (said once, after a moment's quiet).
+  // Screen readers hear the buzz order, a tie, and who answers as they change (said after a moment's quiet: the order
+  // and the tie only as they end up, never one out of date beside it).
   const buzzOrderSaid = $derived(queueRows.map((r) => `${r.rank}. ${r.name}${r.out ? ' (out)' : ''}`).join(', '));
   $effect(() => {
-    if (buzzOrderSaid) announce(`Buzz order: ${buzzOrderSaid}`);
+    if (buzzOrderSaid) announce(`Buzz order: ${buzzOrderSaid}`, 'buzz-order');
   });
   $effect(() => {
-    if (tie.length) announce(`Tie: ${nameList(tie.map((id) => playerName(session, id)))}`);
+    if (tie.length) announce(`Tie: ${nameList(tie.map((id) => playerName(session, id)))}`, 'buzz-tie');
   });
   $effect(() => {
     const id = buzzing ? app.live.buzz?.answering : null;
@@ -3025,6 +3026,14 @@
     boardFocus();
   }
 
+  // A game resumed (after a reload, or from the editor) or a round tested comes up already started: the same.
+  onMount(() => {
+    if (app.pregame) return;
+    const tested = app.test ? game.rounds.find((r) => r.id === app.test) : undefined;
+    announce(tested ? `Testing ${tested.name.trim() || 'the round'}` : `${game.title.trim() || 'The game'} resumed`);
+    boardFocus();
+  });
+
   // ---------- Pre-game ----------
 
   /** The display picked (🖥 Display, remembered from the last game): the audience window opens on Start if it isn't yet. */
@@ -3827,7 +3836,10 @@
       if (pickerPending) {
         // P then a number with no such player (0 among them) just ends the P.
         const p = session.players[n - 1];
-        if (p) setPicker(session, p.id);
+        if (p) {
+          setPicker(session, p.id);
+          announce(`${p.name} picks next`);
+        }
       } else if (reveal && n) {
         // The final reveals: spotlight player N (in the players' order, as everywhere else: the score plates' and the
         // panel's), if they're in this Final. (N then shows their wager.)
@@ -3929,6 +3941,7 @@
       }
       case 's':
         toggleScoreboard(app.live);
+        announce(app.live.overlay?.kind === 'scoreboard' ? 'Scores on screen' : 'Scores off screen');
         break;
       case 'n':
         // Shift+N goes the other way: the turn before, the player before in the reveals, or a clue's slide before.
@@ -3983,12 +3996,17 @@
       case 'x':
         finalJudgeKey(k === 'c');
         break;
-      case 't':
+      case 't': {
         // Shift+T: 10 more seconds on the countdown that's up.
         if (e.shiftKey && app.live.timer) addTime(app.live, 10);
         else if (app.live.timer && !app.live.timer.expired) toggleTimer(app.live);
         else startTimer(app.live, timerSeconds || clueTimer() || game.settings.defaultTimerSeconds || 30);
+        // (Said once here: the running countdown stays quiet.)
+        const tm = app.live.timer;
+        const left = tm ? Math.ceil(timerRemaining(tm)) : 0;
+        if (tm) announce(e.shiftKey ? `+10 s: ${left} s left` : tm.startedAt === null ? `Countdown paused at ${left} s` : `Countdown: ${left} s`);
         break;
+      }
       // The cover, in every round (B as well, the key many stream tools use for "be right back").
       case 'k':
       case 'b':
