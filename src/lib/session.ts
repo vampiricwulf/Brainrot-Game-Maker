@@ -138,6 +138,15 @@ export function redo(session: Session): ScoreEvent[] {
   return events;
 }
 
+/**
+ * A ✍ clue's answer from `playerId` changed: their score changes on clue `clueId` that were undone (Ctrl+Z opened their
+ * answer again) can't be redone any more, as they were for the words before.
+ */
+export function forgetRedo(session: Session, clueId: string, playerId: string): void {
+  const gone = new Set(session.scoreLog.filter((e) => e.undone && e.clueId === clueId && e.playerId === playerId).map((e) => e.id));
+  if (session.redoStack.some((id) => gone.has(id))) session.redoStack = session.redoStack.filter((id) => !gone.has(id));
+}
+
 /** Undo/restore one specific log entry (from the score log panel). */
 export function toggleEvent(session: Session, eventId: string): void {
   const e = session.scoreLog.find((x) => x.id === eventId);

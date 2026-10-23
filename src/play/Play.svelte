@@ -9,7 +9,7 @@
   import {
     applyScore, awardOpen, backToBoard, backToLastRound, currentFinal, clueName, clueReason, clueScored, currentClueInfo, ddShowQuestion, describeStep,
     finalAdvance, finalBack, finalJudge, finalShow, finalShowAnswer, finalTag, finalUnjudged, findClueRef, hasWager, typedAnswer, goToRound, introNext, nameList, newSession, openClue, playerName,
-    randomizeDailyDoubles, redo, removePlayer, restorePlayer, answerShowing, rosterChange, score, skipIntro, startIntro, toggleUsed, undo,
+    randomizeDailyDoubles, redo, forgetRedo, removePlayer, restorePlayer, answerShowing, rosterChange, score, skipIntro, startIntro, toggleUsed, undo,
     blankSlide, toolOnlyClue, stepSlide, finalWagerProblems, finalWagersOk, finalStepFix, startTiebreaker, stepOf, logZero, tiedForFirst, tiedLeaders, winnerKnown,
     finalSetWager, finalTakeNewcomers, forViewers, wagerFromPhone, coWinnersHold, ownPlayers, clueMarks, judgePartner, partnerSteal, stealersLeft,
   } from '../lib/session';
@@ -1348,6 +1348,8 @@
     }
     const was = r.answers?.id === ask.id ? r.answers : undefined;
     r.answers = { id: ask.id, seats: { ...was?.seats, [a.seatId]: { text: a.text, n: a.n, ...by, ...pick } }, ...(was?.locked ? { locked: true } : {}) };
+    // (A ✔ / ✘ on their answer that Ctrl+Z took back isn't brought back by ↷ Redo beside this one.)
+    if (everyone && info) forgetRedo(session, info.clue.id, a.seatId);
   }
 
   /**

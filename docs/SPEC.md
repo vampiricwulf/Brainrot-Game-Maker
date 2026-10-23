@@ -402,12 +402,12 @@ The mode isn't saved with the game: it's dual while the audience window is open.
      (`1–9`), then Enter / Shift+Enter. Each steal is its own undo step, and undoing the miss closes the steal.
    - *✍ Everyone answers* (a standard tile with the box ticked, with phone buzzers): nobody buzzes; every player types
      an answer on their phone (a team: anyone on it) until the answer is shown, or until the host judges theirs (then
-     it's locked on their phone; undoing the mark opens it again); only the host sees them (in one window, not until the
-     answer is up); the stream shows ✍ and who has answered while answers are open; the host marks each ✔ / ✘ for the
-     tile's value. With **multiple choice** (2–6 choices under ✍ in the editor, one marked ✔ Right), players tap one instead,
-     and ✔ Judge all marks everyone by the right choice in one step. The stream shows the choices under the question
-     (the slide drawn smaller over them, the right one lit with the answer). Without phone buzzers it plays as a normal
-     clue, the choices still on stream.
+     it's locked on their phone; undoing the mark opens it again, and once they change it, redo doesn't bring that mark
+     back); only the host sees them (in one window, not until the answer is up); the stream shows ✍ and who has answered
+     while answers are open; the host marks each ✔ / ✘ for the tile's value. With **multiple choice** (2–6 choices
+     under ✍ in the editor, one marked ✔ Right), players tap one instead, and ✔ Judge all marks everyone by the right
+     choice in one step. The stream shows the choices under the question (the slide drawn smaller over them, the right
+     one lit with the answer). Without phone buzzers it plays as a normal clue, the choices still on stream.
    - *Any tile with 🤫 cards* (PARTNER-CLUES-SPEC.md §12.2): its panel lists them for the picker (a Daily Double's
      player) with 📤 Send (or 📋 to copy them, or 🪟 to show one in the card window); they go when the tile closes, and
      the stream says "Ann has a private question" on a standard tile.

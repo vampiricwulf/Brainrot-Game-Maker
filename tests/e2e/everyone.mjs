@@ -1,8 +1,8 @@
 // ✍ Everyone answers: a clue where every player types an answer on their phone, against the real buzzer room (buzzer/
 // under `wrangler dev`). Only the host sees the answers; the stream sees who has answered (in a single window the host
 // panel too, until the answer is up); showing the answer locks them; the host marks each ✔ / ✘. Then, with an audience
-// window, a second ✍ clue: the host judges while answers are still open (a judged answer is locked on its phone), and a
-// ✔ leaves the others' countdown going. Then a third, with multiple choice: phones tap one, the host sees each pick and
+// window, a second ✍ clue: the host judges while answers are still open (a judged answer is locked on its phone; Ctrl+Z
+// opens it again, and once it's changed ↷ Redo doesn't bring the mark back), and a ✔ leaves the others' countdown going. Then a third, with multiple choice: phones tap one, the host sees each pick and
 // how many picked each (in one window only once the answer is up), the stream shows the choices under the question (the
 // right one lit with the answer), and ✔ Judge all marks everyone in one step (the first right one picks next), its
 // score pops above the choices. Last, a 🔁 Rematch in the same room keeps the phones' 📱 on stream. (In the editor
@@ -250,6 +250,26 @@ try {
   // (Its score pop on stream: the audience window has the state after the ✔.)
   await aud.locator('.pop', { hasText: 'Player 1' }).first().waitFor();
   assert((await aud.locator('.timer').count()) === 1, '✔ on one answer leaves the countdown going for the others');
+  // Ctrl+Z takes the ✔ back and opens Player 1's answer again. Changed, ↷ Redo has nothing left: that ✔ was for the
+  // words before, so it never lands beside the new ones.
+  await host.keyboard.press('Control+z');
+  await p1.getByLabel(/Your answer/).waitFor();
+  await p1.getByLabel(/Your answer/).fill('Persian');
+  await p1.getByLabel(/Your answer/).press('Enter');
+  await row('Player 1').getByText('“Persian”').waitFor();
+  await host.locator('button[title="Nothing to redo"]').waitFor();
+  await host.keyboard.press('Control+Shift+z');
+  assert(
+    (await row('Player 1').getByText('✔ Right').count()) === 0 && (await p1.locator('#answer-form').isVisible()),
+    'an answer changed after Ctrl+Z took its ✔ back: ↷ Redo doesn’t put that ✔ beside the new words, and the answer stays open',
+  );
+  // (Judged again, by keyboard as before: the keys go on to Player 2's ✔.)
+  await row('Player 1').getByRole('button', { name: 'Player 1 is right' }).focus();
+  await host.keyboard.press('Tab');
+  await host.keyboard.press('Shift+Tab');
+  await host.keyboard.press('Enter');
+  await row('Player 1').getByText('✔ Right').waitFor();
+  await host.waitForFunction(() => document.activeElement?.getAttribute('aria-label') === 'Player 2 is right');
   await host.keyboard.press('Enter');
   await row('Player 2').getByText('✔ Right').waitFor();
   assert(true, '✔ reached with Tab and pressed with Enter: the keys go to the next ✔, and Enter marks Player 2 right (not “Select a player first”)');

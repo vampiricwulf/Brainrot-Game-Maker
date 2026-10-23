@@ -5,7 +5,7 @@ import { MAX_POINTS, migrateGame, newFinalRound, newGame, newId, newRound, textS
 const board = (g: Game, i: number = 0) => g.rounds[i] as BoardRound;
 import { setRowCount, addCategory, removeCategory, clone } from './ops';
 import {
-  applyScore, answerShowing, backToBoard, ddCap, finalJudge, toggleReveal, finalNext, finalWagerCap, goToRound, introNext, randomizeDailyDoubles, tiedLeaders, newSession, openClue, redo, roundComplete, score, setScore, toggleEvent, undo,
+  applyScore, answerShowing, backToBoard, ddCap, finalJudge, toggleReveal, finalNext, finalWagerCap, goToRound, introNext, randomizeDailyDoubles, tiedLeaders, newSession, openClue, redo, forgetRedo, roundComplete, score, setScore, toggleEvent, undo,
   backToLastRound, finalAdvance, finalUnjudged, findClueRef, rebaseSession, removePlayer, restorePlayer, startIntro, stepOf, toggleStep,
   toggleUsed, usedTiles, describeStep, awardOpen, clueMarks, clueScored, places, clueName, standings, finalWagersOk, finalWagerProblems, finalChoose,
   finalWagerRefused, finalSetWager, finalWagerEditable, wagerFromPhone, finalShow, migrateSession, finalStepFix, wagerSentBy, forViewers,
@@ -294,6 +294,26 @@ describe('undo as one step', () => {
     undo(session);
     expect(score(session, a)).toBe(0);
     expect(redo(session).map((e) => e.reason)).toEqual(['earlier']);
+  });
+
+  it('a ✍ answer changed after Ctrl+Z took back its ✔ / ✘: Redo never puts that mark back beside it (the rest of its step, yes)', () => {
+    const { game, session, a, b } = setup();
+    applyScore(session, game, [a], 50, 'earlier', 'c0');
+    applyScore(session, game, [a, b], 200, 'x', 'c1');
+    undo(session);
+    // (Another clue's, or another player's: nothing goes.)
+    forgetRedo(session, 'c0', a);
+    forgetRedo(session, 'c1', 'nobody');
+    expect(session.redoStack).toHaveLength(2);
+    forgetRedo(session, 'c1', a);
+    expect(redo(session).map((e) => e.playerId)).toEqual([b]);
+    expect([score(session, a), score(session, b)]).toEqual([50, 200]);
+    // Taken back on its own, nothing is left to redo.
+    applyScore(session, game, [a], 100, 'y', 'c2');
+    undo(session);
+    forgetRedo(session, 'c2', a);
+    expect(redo(session)).toEqual([]);
+    expect(score(session, a)).toBe(50);
   });
 
   it('treats a swap as one step', () => {
