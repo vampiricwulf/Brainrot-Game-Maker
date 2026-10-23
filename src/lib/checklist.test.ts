@@ -105,6 +105,15 @@ describe('the checklist: Daily Doubles, RPG screens and board-game spaces', () =
     const line = checklistLines(game, validate(game)).find((l) => l.tab === 0)!;
     expect(line.details).toHaveLength(2);
     expect([line.text, line.level]).toEqual(['Jeopardy!: 1 Daily Double and 1 partner clue not placed yet (Start game places them)', 'info']);
+    // 🤝 Partner clues asking for more than the board's written tiles: the line counts that note too.
+    const mini = newRound('Mini', 2, [100, 200]);
+    game.rounds = [mini];
+    fill(mini);
+    mini.categories.forEach((c) => c.clues.forEach((cl) => (cl.type = 'standard')));
+    mini.categories[0].clues[0].type = 'dailyDouble';
+    mini.partnerCount = 4;
+    const small = checklistLines(game, validate(game)).find((l) => l.tab === 0)!;
+    expect([small.text, small.details.length]).toEqual(['Mini: 3 partner clues not placed yet (Start game places them) · 1 more note', 2]);
   });
 
   it('goes to the screen or the space a problem is on', () => {
