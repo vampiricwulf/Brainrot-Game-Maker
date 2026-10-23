@@ -826,7 +826,13 @@ function refitClue(sec: HTMLElement): void {
   const lobby = view?.phase === 'lobby';
   let room = lobby ? Math.floor(clueRoom(sec, kbd)) : 0;
   if (lobby) key += ` ${room}`;
-  if (key === fitKey) return;
+  const fits = () => clue.scrollHeight <= clue.clientHeight;
+  if (key === fitKey) {
+    // (The same fit, but its words no longer fit: its column got narrower, as a page scrollbar coming with a card
+    // makes it on a computer. It says it scrolls, moving nothing: it's at its full height already.)
+    if (!clue.classList.contains('scrolls') && !fits()) scrolls();
+    return;
+  }
   fitKey = key;
   if (!lobby) room = Math.floor(clueRoom(sec, kbd));
   // The place: as far down (or at the end) as it was, unless it's a new question.
@@ -841,7 +847,9 @@ function refitClue(sec: HTMLElement): void {
   const start = parseFloat(getComputedStyle(clue).fontSize);
   const floor = Math.ceil(start * 1.3 * 2.6);
   clue.style.setProperty('--clue-room', `${Math.max(floor, room)}px`);
-  const fits = () => clue.scrollHeight <= clue.clientHeight + 1;
+  // (Measured with no scrollbar: where one takes room, one left from a size that didn't fit would make every size
+  // after it look too big.)
+  clue.style.overflow = 'hidden';
   let size = start;
   if (!fits()) {
     let [lo, hi] = [Math.min(start, fine.matches ? 16 : 15), start];
@@ -856,6 +864,7 @@ function refitClue(sec: HTMLElement): void {
     size = lo;
     clue.style.fontSize = `${size}px`;
   }
+  clue.style.removeProperty('overflow');
   // Past three lines: left-aligned (ragged centred lines are hard to follow), what's on with it.
   const long = clue.scrollHeight / (size * 1.3) > 3.5;
   clue.classList.toggle('long', long);
@@ -866,9 +875,7 @@ function refitClue(sec: HTMLElement): void {
   } else {
     // Still more than fits: it scrolls (the arrow keys too, once Tab is on it), with ▼ More, which never goes while it
     // does (the keys on it would fall to the page, where Space buzzes).
-    clue.classList.add('scrolls');
-    clue.tabIndex = 0;
-    $('clue-more').hidden = false;
+    scrolls();
     clue.scrollTop = !same ? 0 : atEnd ? clue.scrollHeight : Math.round(share * clue.scrollHeight);
     drawMore();
   }
@@ -880,6 +887,15 @@ function refitClue(sec: HTMLElement): void {
     if (room >= floor && getComputedStyle(sec).display !== 'grid') (cap.hidden ? clue : cap).scrollIntoView({ block: 'start' });
     else answerLast().scrollIntoView({ block: 'end' });
   }
+}
+
+/** The question scrolls: room under its last line, the arrow keys (once Tab is on it), and ▼ More. */
+function scrolls(): void {
+  const clue = $('clue');
+  clue.classList.add('scrolls');
+  clue.tabIndex = 0;
+  $('clue-more').hidden = false;
+  drawMore();
 }
 
 /** ▼ More while there's more of the question below (its bottom edge faded); ▲ Top at its end. */

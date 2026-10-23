@@ -775,6 +775,25 @@ try {
     partWay > 0 && [lit, scored].every((x) => x[0] === there[0] && x[1] === there[1]),
     `part way down the question, BUZZ! lighting and a new score leave the place and BUZZ! where they were (${[there, lit, scored].map((x) => x[0]).join(' → ')}${there[1] === lit[1] && there[1] === scored[1] ? '' : `; BUZZ! ${there[1]} → ${lit[1]} → ${scored[1]}`})`,
   );
+  // Nor does a card coming under BUZZ! (on a touch screen it takes the name's place under it): the question keeps its size.
+  const fitNow = () =>
+    ann.evaluate(
+      () =>
+        new Promise((ok) =>
+          requestAnimationFrame(() =>
+            requestAnimationFrame(() => {
+              const c = document.getElementById('clue');
+              ok([c.style.getPropertyValue('--clue-room'), c.style.fontSize, c.scrollTop].join(' / '));
+            }),
+          ),
+        ),
+    );
+  const unfit = await fitNow();
+  hostState({ cards: [{ id: 'pc:fit:1', to: [{ seat: 'a' }], open: true, title: 'K', text: 'x' }] });
+  await ann.locator('.card').waitFor();
+  const carded = await fitNow();
+  assert(carded === unfit, `a card coming under BUZZ! mid-clue leaves the question as it was (${unfit} → ${carded})`);
+  hostState({ cards: null });
   // An answer box under it: Send in sight, and sending keeps the place too.
   hostState({ phase: 'lobby', answers: { id: 'long1', open: true, seats: [{ id: 'a' }] } });
   await ann.locator('#answer-form').waitFor();
@@ -820,6 +839,17 @@ try {
     whole.fits && !whole.pill && whole.long && !whole.wide && whole.lines,
     `a 360-character question on a 390×844 phone: whole with no ▼ More, left-aligned, its long link wrapped, “A) … B) …” each on its own line (${JSON.stringify(whole)})`,
   );
+  // Its column narrower mid-clue with nothing else changed (on a computer, a page scrollbar coming with a card does
+  // that; the test browser has none, so it's narrowed by hand): its words no longer fit, and it says it scrolls.
+  await ann.evaluate(() => (document.getElementById('clue').parentElement.style.width = '40%'));
+  hostState({ scores: { ...hs.scores, a: 4321 } });
+  await ann.locator('#me').getByText('4,321').waitFor();
+  const narrow = await ann.evaluate(() => {
+    const c = document.getElementById('clue');
+    return { over: c.scrollHeight - c.clientHeight, pill: !document.getElementById('clue-more').hidden, keys: c.tabIndex === 0 };
+  });
+  assert(narrow.over > 0 && narrow.pill && narrow.keys, `the question’s column narrower mid-clue: what no longer fits gets ▼ More and the keys (${JSON.stringify(narrow)})`);
+  await ann.evaluate(() => document.getElementById('clue').parentElement.style.removeProperty('width'));
   // A laptop: Tab goes from the question to ▼ More, and Enter there scrolls it, never buzzes (an early buzz locks).
   await cat.setViewportSize({ width: 900, height: 450 });
   await cat.emulateMedia({ reducedMotion: 'reduce' });
@@ -830,6 +860,15 @@ try {
   await cat.keyboard.press('Tab');
   const onPill = () => cat.evaluate(() => document.activeElement?.id === 'clue-more');
   assert(await onPill(), 'a laptop: the question that scrolls takes the keys (its arrow keys scroll it), and Tab goes on to ▼ More');
+  // Back on the question at its top (Shift+Tab): its ring shows, with no fade to take it away.
+  await cat.keyboard.press('Shift+Tab');
+  const ring = await cat.evaluate(() => {
+    const c = document.getElementById('clue');
+    const s = getComputedStyle(c);
+    return { on: document.activeElement === c && c.matches(':focus-visible'), more: c.classList.contains('more'), ring: s.outlineStyle, mask: s.maskImage ?? s.webkitMaskImage };
+  });
+  assert(ring.on && ring.more && ring.ring === 'solid' && ring.mask === 'none', `the keys on the question show its ring: its bottom edge isn’t faded meanwhile (${JSON.stringify(ring)})`);
+  await cat.keyboard.press('Tab');
   await toEnd(cat, () => cat.keyboard.press('Enter'));
   assert(
     (await cat.locator('#clue-more').textContent()) === '▲ Top' && (await onPill()) && (await big(cat).innerText()) !== 'Too early' && !h.got.slice(heard).some((m) => m.t === 'buzz' && m.seatId === 'c'),
