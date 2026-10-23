@@ -671,8 +671,9 @@ export function hostState(
   return {
     title: clip(game.title, 200),
     seats,
-    // Teams: phones join a team the host made (no new players from phones).
-    allowNew: !!game.settings.phoneJoin && !teamsOn(game.settings),
+    // Teams: phones join a team the host made (no new players from phones). A full game takes nobody new: its phones
+    // don't offer ＋ I'm new, and those waiting are turned away.
+    allowNew: !!game.settings.phoneJoin && !teamsOn(game.settings) && session.players.length < game.settings.maxPlayers,
     phase: b.phase,
     armId: b.armId,
     clue: info
@@ -709,7 +710,8 @@ export function setupState(game: Game, players: Session['players'], armId: numbe
   return {
     title: clip(game.title, 200),
     seats: players.map((p) => ({ id: p.id, name: clip(p.name.trim(), SEAT_NAME_MAX), color: p.color })),
-    allowNew: !!game.settings.phoneJoin && !teamsOn(game.settings),
+    // (A full game takes nobody new: its phones don't offer ＋ I'm new, and those waiting are turned away.)
+    allowNew: !!game.settings.phoneJoin && !teamsOn(game.settings) && players.length < game.settings.maxPlayers,
     phase: 'lobby',
     armId,
     clue: null,

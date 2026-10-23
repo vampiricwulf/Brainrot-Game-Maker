@@ -186,7 +186,7 @@ outlined.
 **Phone buzzers** (Buzzer mode, on the pre-game screen's 📱 Phone buzzers card, saved with the game): start the room
 and share the code, link or QR code (it's on the viewers' Starting soon card too). Players open the link on their
 phone, tap their name and get a big BUZZ button, Jackbox-style; new players can ask to join from their phone if you
-allow it. With **Teams** on, each player is a team: people pick their team on their phone and type their own name, and
+allow it (until the game has its most players). With **Teams** on, each player is a team: people pick their team on their phone and type their own name, and
 whoever on it buzzes first answers for the team ("Ann (Red team)" in the buzz order); a wrong answer locks out the
 whole team. A room holds up to 24 phones at once: once 24 people are on teams, the next phone is told the game is full
 until someone leaves. On a Daily Double or a Final, players type their wager on their phone and send it: it fills in your
@@ -196,10 +196,11 @@ reveal each one on stream. On a ✍ Everyone answers clue nobody buzzes: everyon
 taps one of its multiple choices (shown on stream under the question too), and only you see what they sent (once you
 judge one, that player can't change it). The buzzers open when the clue does, or when you press `U` after reading it.
 The fastest reaction wins, timed on each player's own phone, so a slow connection doesn't cost anyone the buzz. Every
-buzz is listed in the host panel, fastest first: a wrong answer locks that player out and the next one who buzzed
-answers at once (**⏭ Skip** passes them on with no points taken); once nobody who buzzed is left, the buzzers open for
-the rest, and **↺ Reset buzzers** (`0`) lets everyone buzz again. Buzzes within 0.01 s are a tie: **🎲 Roll for it**
-sets who answers first, or pick one yourself (`1`–`9` or a click always picks by hand). Viewers
+buzz is listed in the host panel, fastest first: a wrong answer locks that player out (struck out where they are in the
+list) and the next one who buzzed answers at once, in bold (**⏭ Skip** passes them on with no points taken); once nobody
+who buzzed is left, the buzzers open for the rest, and **↺ Reset buzzers** (`0`) lets everyone buzz again. Buzzes
+within 0.01 s are a tie: **🎲 Roll for it** sets who answers first (the roll leaves the stage once you judge, skip or
+take the next in line), or pick one yourself (`1`–`9` or a click always picks by hand). Viewers
 see "🔔 Ann is answering" whenever one player is picked during a clue. Phones also say who got a clue right and what's
 on (a Daily Double's player sees "you're up"; on a 🤝 partner clue every phone's button greys and says who describes
 and who guesses), beep and flash when BUZZ! lights up (🔔 mutes), and **Not you?** lets a

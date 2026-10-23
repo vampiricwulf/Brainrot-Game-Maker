@@ -1,6 +1,6 @@
 /**
  * Phone buzzers: whose phone dropped (it held their seat, and none is connected for it now), and since when. The host
- * panel's chips show 📵 on them, the phones list "phone offline 0:12". Only while the room itself is reachable (the
+ * panel's chips show 📵 on them, the phones list "📵 offline 0:12". Only while the room itself is reachable (the
  * room's list of phones is stale otherwise, and would say they all dropped).
  */
 import { untrack } from 'svelte';

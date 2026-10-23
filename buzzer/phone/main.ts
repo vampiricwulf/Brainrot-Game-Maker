@@ -570,7 +570,9 @@ function denied(reason: DenyReason): void {
 /** "Not you?": let go of this seat and pick again (it asks first: the link is right under the buzz button). */
 function leaveSeat(): void {
   const what = seats?.teams ? 'this team' : 'this player';
-  const ask = seats?.locked
+  // (A seated phone hears it in its view: the seat list it last saw may be from before the lock, or before an unlock.)
+  const locked = view ? !!view.locked : !!seats?.locked;
+  const ask = locked
     ? `Give up ${what}? The host has locked the seats: you can't get back in until they unlock them.`
     : `Give up ${what} and pick again?`;
   if (!confirm(ask)) return;
@@ -1357,7 +1359,8 @@ function renderBuzz(v: PhoneView): void {
     if (you.lockedOut) [cls, big, small] = ['off', 'Wait', who];
     else if (mine?.outcome === 'tie') [cls, big, small] = ['off', 'Tie!', 'The host decides who goes first'];
     else if (mine?.outcome === 'late' && mine.rank) {
-      const how = mine.rolled ? `Tie — you rolled ${ordinal(mine.rolled)}` : mine.afterMs !== undefined && mine.behind ? `${secs(mine.afterMs)} behind ${mine.behind}` : who;
+      // (Teams: the whole team rolled as one, whoever on it buzzed.)
+      const how = mine.rolled ? `Tie — ${team ? 'your team' : 'you'} rolled ${ordinal(mine.rolled)}` : mine.afterMs !== undefined && mine.behind ? `${secs(mine.afterMs)} behind ${mine.behind}` : who;
       [cls, big, small] = ['off', team ? `Your team is ${ordinal(mine.rank)}` : `You're ${ordinal(mine.rank)}`, mate ? `${mate} buzzed for your team · ${how}` : how];
     } else if (v.canQueue && !mine) [cls, big, small] = ['queue', 'You can still buzz', `${who}. Buzz to be next in line if they miss`];
     else [cls, big, small] = ['off', mine?.outcome === 'late' ? 'Too late' : 'Wait', who];

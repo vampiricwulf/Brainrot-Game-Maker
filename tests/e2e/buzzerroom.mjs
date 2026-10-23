@@ -668,8 +668,21 @@ try {
   await bob.locator('#seats-status').getByText('The host has locked the seats').waitFor();
   assert(await bob.getByRole('button', { name: 'Bob' }).isDisabled(), '🔒 seats locked: free seats are greyed out');
   assert(await bob.getByRole('button', { name: "＋ I'm new" }).isHidden(), '🔒 and nobody can ask to join');
+  /** What "Not you? Change player" asks Dee now, seated since before the lock (she says no). */
+  const deeAsks = async () => {
+    const said = new Promise((r) => dee.once('dialog', (d) => (r(d.message()), void d.dismiss())));
+    await dee.getByRole('button', { name: 'Not you? Change player' }).click();
+    return said;
+  };
+  /** Waits (up to 10 s) until Dee's "Not you?" asks with (or without) the lock's warning. */
+  const deeWarned = async (on) => {
+    for (const end = Date.now() + 10000; Date.now() < end; await sleep(200)) if ((await deeAsks()).includes('locked the seats') === on) return true;
+    return false;
+  };
+  assert(await deeWarned(true), '🔒 a seated phone’s “Not you?” warns that the seats are locked (she couldn’t get back in)');
   setState({ locked: false });
   await bob.locator('#seats-status').getByText('The host has locked the seats').waitFor({ state: 'hidden' });
+  assert(await deeWarned(false), 'unlocked: it asks plainly again');
 
   // A status line when nobody buzzes: the Daily Double's player sees their own words.
   setState({ status: { text: 'Daily Double: Ann', seats: ['a'], seatsText: "Daily Double — you're up!" } });

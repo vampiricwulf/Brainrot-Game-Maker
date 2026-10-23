@@ -1136,8 +1136,11 @@
         {@const n = Array.isArray(room.players) ? room.players.length : 0}
         {@const other = room.gameId !== app.game.id}
         <!-- (The player-only start screen has no ▶ Play while a game is kept: Resume game goes into the room; a finished
-             game's View results doesn't, its New game then ▶ Play does.) -->
-        {@const via = playerOnly && app.resumable ? (app.resumable.session.phase === 'end' ? 'New game, then ▶ Play,' : 'Resume game') : '▶ Play'}
+             game's View results doesn't, its New game then ▶ Play does. In the builder, a game kept mid-play in this
+             room goes back into it with Resume game: ▶ Play would start it again, the phones at 0. Its line hidden
+             (✕), ▶ Play offers to resume it.) -->
+        {@const keptHere = !!saved && saved.session.phase !== 'end' && saved.game.id === room.gameId}
+        {@const via = playerOnly && app.resumable ? (app.resumable.session.phase === 'end' ? 'New game, then ▶ Play,' : 'Resume game') : keptHere ? 'Resume game' : '▶ Play'}
         <span class="item room-bar" role="status">
           <span class="what" title="Phones in the room are told you're setting up">
             📱 Buzzer room <b>{room.remote.code}</b> is still open{n ? ` (${n} ${roomTeams(room, app.game.settings) ? 'team' : 'player'}${n === 1 ? '' : 's'})` : ''}.

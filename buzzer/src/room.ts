@@ -591,7 +591,7 @@ export class Room {
       }
     } else if (race && same && next.phase === 'answering' && next.answering && race.graceUntil === undefined) {
       // The host picked who answers (a tie settled, the next in line, a key): that seat goes first.
-      if (next.answering !== race.winner || (next.rollOrder && next.rollOrder.join() !== race.rolled?.join())) this.hostPick(race, next.answering, next.rollOrder);
+      if (next.answering !== race.winner || (next.rollOrder && next.rollOrder.join() !== race.rolled?.join())) this.hostPick(race, next.answering, next.rollOrder, next.lockedOut);
     } else if (next.phase === 'armed' && (!race || !same || race.decided)) {
       this.newRace(next.armId, now);
     }
@@ -899,10 +899,19 @@ export class Room {
 
   /**
    * The host's pick: `seatId` answers and goes first. After a tie, rollOrder (the tied seats as rolled) goes first in
-   * that order; picked by hand, the rest of the tie keep their arrival order.
+   * that order; picked by hand, the rest of the tie keep their arrival order. The next in line after those who missed
+   * (`out`: a wrong answer, ⏭ Skip) answers where they are: the order stays as they buzzed, those who missed struck out
+   * in their places, and later buzzes still go in behind the one answering.
    */
-  private hostPick(race: Race, seatId: string, rollOrder?: string[]): void {
+  private hostPick(race: Race, seatId: string, rollOrder?: string[], out: string[] = []): void {
     if (!race.decided) this.rank(race, false);
+    const next = race.queue.findIndex((b) => !out.includes(b.seatId));
+    if (!rollOrder && !race.tie && next >= 0 && race.queue[next].seatId === seatId) {
+      race.head = Math.max(race.head, next + 1);
+      race.winner = seatId;
+      race.decided = true;
+      return;
+    }
     const tie = race.tie ?? (race.rolled ? race.queue.slice(0, race.head).map((b) => b.seatId) : []);
     const inQueue = (id: string) => race.queue.some((b) => b.seatId === id);
     let head: string[];
@@ -1686,10 +1695,13 @@ export class Room {
     if (!race || !st || !race.decided) return;
     const lead = race.queue[0];
     const name = (id: string) => st.seats.find((x) => x.id === id)?.name ?? '';
+    // The fastest buzz that got here in time (one that missed since included): a late one faster than it says so.
+    const onTime = race.queue.filter((b) => !b.late).map((b) => b.key);
+    const firstKey = onTime.length ? Math.min(...onTime) : (lead?.key ?? 0);
     const queue: QueuedBuzz[] = race.queue.map((b) => {
       const r = race.rolled?.indexOf(b.seatId) ?? -1;
       // Reacted faster than the first, but got here after the window: it says so rather than "0.00 s behind".
-      const late = b.late && b.key < lead.key ? { arrivedLate: true as const } : {};
+      const late = b.late && b.key < firstKey ? { arrivedLate: true as const } : {};
       return { seatId: b.seatId, afterMs: Math.max(0, b.key - lead.key), ...(r >= 0 ? { rolled: r + 1 } : {}), ...late, ...(b.by ? { by: b.by } : {}) };
     });
     const msg: RoomToHost = { t: 'queue', armId: race.armId, queue, ...(race.tie ? { tie: race.tie } : {}) };

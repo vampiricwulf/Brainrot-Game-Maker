@@ -448,6 +448,8 @@ export interface PhoneView {
    * sent to its seat it isn't shown (it took the seat, joined the team or was moved onto it after they were sent).
    */
   cards?: { list: PhoneCard[]; late?: number };
+  /** Added later: 🔒 the host locked the seats (HostState.locked): a phone that gives up its seat can't get back in. */
+  locked?: true;
 }
 
 /**
@@ -529,6 +531,7 @@ export function phoneView(
     ...(s.colorPick && seat && !s.teams ? { colorPick: { taken: s.seats.filter((x) => x.id !== seat.id).map((x) => x.color.toLowerCase()) } } : {}),
     ...answerView(s, seat?.id, me, answer, answerHidden),
     ...(seat && cards && (cards.list.length || cards.late) ? { cards } : {}),
+    ...(s.locked ? { locked: true as const } : {}),
   };
 }
 

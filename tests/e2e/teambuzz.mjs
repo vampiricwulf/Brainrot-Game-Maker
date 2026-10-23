@@ -13,7 +13,7 @@ import { existsSync, mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { addClassicRounds, addPlayers, answerReplace, openRules, startRoomOn, stored } from './helpers.mjs';
+import { addClassicRounds, addPlayers, answerReplace, openRules, startRoomOn, stored, tap, tieThem } from './helpers.mjs';
 
 const file = resolve(process.env.APP_FILE || 'dist/index.html');
 if (!existsSync(file)) throw new Error('Run `npm run build` first');
@@ -138,9 +138,12 @@ try {
   assert(await card.getByText('🔒 Lock seats: no new phones (people already on a team can come back)', { exact: true }).isVisible(), 'its 🔒 Lock seats says people already on a team can come back');
 
   // ---------- People join teams from their phones ----------
+  /** Each phone's buzzes, to hold two for a tie (tieThem). */
+  const taps = new Map();
   const phone = async (name, team) => {
     const ctx = await browser.newContext({ viewport: { width: 390, height: 760 }, hasTouch: true });
     const p = watch(await ctx.newPage(), name);
+    taps.set(p, await tap(p));
     await p.goto(`${base}/${code}`);
     await p.getByRole('heading', { name: 'Pick your team' }).waitFor();
     await p.getByRole('button', { name: team }).click();
@@ -195,6 +198,11 @@ try {
   await zed.getByRole('button', { name: 'Join the team' }).click();
   await zed.locator('#me').getByText('Zed · Player 2').waitFor();
 
+  // The ✕ that takes a whole team off reads differently from each person's ✕ under it.
+  assert(
+    (await card.getByRole('button', { name: 'Take everyone off Player 2' }).innerText()).trim() === '✕ All' && (await card.getByRole('button', { name: 'Take Zed off Player 2' }).innerText()).trim() === '✕',
+    'a team’s row: “✕ All” takes everyone off; each person’s ✕ under it, only them',
+  );
   // The host moves Al to Player 2 and back, and takes Zed off.
   await card.getByLabel('Move Al to another team').selectOption({ label: 'Player 2' });
   await al.locator('#me').getByText('Al · Player 2').waitFor();
@@ -305,6 +313,23 @@ try {
   await host.waitForTimeout(500);
   assert((await small(ann).innerText()) === 'Your team already answered this one', 'a locked-out team stays out: "Your team already answered this one"');
 
+  // ↺ Reset: Ann and Bea tie; 🎲 Roll for it. The team that rolled 2nd reads "Tie — your team rolled 2nd" (Al too,
+  // who didn't buzz: never "you rolled").
+  await host.getByRole('button', { name: '↺ Reset buzzers' }).click();
+  await big(ann).getByText('BUZZ!').waitFor();
+  await big(bea).getByText('BUZZ!').waitFor();
+  tieThem([taps.get(ann), taps.get(bea)]);
+  await press(ann);
+  await press(bea);
+  await host.getByRole('button', { name: '🎲 Roll for it' }).click();
+  const won = await Promise.race([ann, bea].map((p, i) => big(p).getByText("You're answering!").waitFor({ timeout: 30_000 }).then(() => i)));
+  const rolledSecond = won === 0 ? bea : ann;
+  await small(rolledSecond).getByText('Tie — your team rolled 2nd').waitFor();
+  if (won === 1) await small(al).getByText('Ann buzzed for your team · Tie — your team rolled 2nd').waitFor();
+  assert((await big(rolledSecond).innerText()) === 'Your team is 2nd', `a tie rolled: the team that rolled 2nd reads “Your team is 2nd · Tie — your team rolled 2nd”${won === 1 ? ' (Al too, after “Ann buzzed for your team”)' : ''}`);
+  await host.keyboard.press('Escape');
+  await host.locator('.stage-box').getByText('Tie! Roll for it').waitFor({ state: 'detached' });
+
   // ↺ Reset: Ann buzzes for Player 1 this time; awarded, the team scores.
   await host.getByRole('button', { name: '↺ Reset buzzers' }).click();
   await big(ann).getByText('BUZZ!').waitFor();
@@ -391,7 +416,7 @@ try {
   await host.waitForTimeout(450);
   await host.getByRole('button', { name: 'Keep & leave', exact: true }).click();
   const roomBar = host.locator('.status-bar .room-bar');
-  await roomBar.getByText('▶ Play goes back into it').waitFor();
+  await roomBar.getByText('Resume game goes back into it').waitFor();
   const barText = (await roomBar.innerText()).replace(/\s+/g, ' ');
   assert(barText.includes(`Buzzer room ${code} is still open (2 teams)`), `Keep & leave: the bar over the editor counts the room's teams (${barText})`);
   await host.getByRole('button', { name: 'New', exact: true }).click();

@@ -872,6 +872,7 @@
     const buzzBefore = b ? ($state.snapshot(b) as BuzzState) : null;
     let next: string | null = null;
     if (buzzing && b?.answering && events.length && ids.includes(b.answering)) {
+      dropBuzzRoll(b.armId);
       if (sign > 0) setBuzz(buzzDone(b));
       // Wrong: everyone it was taken from is locked out (not only the one answering), so none of them answers next.
       else next = passOn({ ...b, lockedOut: [...new Set([...b.lockedOut, ...ids.filter((id) => id !== b.answering)])] }, b.answering);
@@ -1271,10 +1272,22 @@
     return after.phase === 'answering' ? after.answering : null;
   }
 
+  /**
+   * A buzzer tie's 🎲 roll goes off the stage once the host acts on who answers (judged, ⏭ Skip, → Next in line): its
+   * order is applied, and it would cover the question and who's answering now.
+   */
+  function dropBuzzRoll(armId: number): void {
+    const o = app.live.overlay;
+    const roll = (x: typeof o | undefined) => x?.kind === 'rolloff' && x.purpose === 'buzz' && x.armId === armId;
+    if (roll(o)) app.live.overlay = null;
+    else if (o?.kind === 'scoreboard' && roll(o.under)) o.under = undefined;
+  }
+
   /** ⏭ Skip: the one answering passes, with no points taken (they can't buzz again on this clue). Not an undo step. */
   function skipAnswering(): void {
     const b = app.live.buzz;
     if (!buzzing || !b?.answering) return;
+    dropBuzzRoll(b.armId);
     const who = playerName(session, b.answering);
     const next = passOn(b, b.answering);
     selected = next ? [next] : [];
@@ -1285,6 +1298,7 @@
   function takeNext(id: string, by?: string): void {
     const b = app.live.buzz;
     if (!buzzing || !b) return;
+    dropBuzzRoll(b.armId);
     setBuzz(buzzTake(b, id, true, by)!);
     selected = [id];
     playCue(app.live, game, 'buzz');
@@ -4686,7 +4700,8 @@
           {#if queueRows.length}
             <ol class="buzz-queue" aria-label="Buzz order">
               {#each queueRows as r (r.id)}
-                <li class:out={r.out}>
+                <!-- (In the order they buzzed: the one answering now in bold, those who missed struck out where they are.) -->
+                <li class:out={r.out} class:now={r.id === buzz.answering}>
                   {r.rank}. {r.name}{#if r.rolled}&nbsp;🎲 {ordinal(r.rolled)}{/if}{#if r.after}&nbsp;<span class="muted">{r.after}</span>{/if}
                 </li>
               {/each}
@@ -5010,6 +5025,9 @@
   .buzz-queue .out {
     text-decoration: line-through;
     color: var(--muted);
+  }
+  .buzz-queue .now {
+    font-weight: 700;
   }
   .small {
     font-size: 12px;

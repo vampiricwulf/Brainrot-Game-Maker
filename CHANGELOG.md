@@ -43,6 +43,14 @@ in plain words for the people who make and host games. Anything committed but no
 - Without phones, ↩ Cancel (keep tile) asks first when a card for that tile was shown in the 🪟 card window (“Card 1 went to Dan. Put the tile back anyway?”), as it does with phones. Before, the tile went back with no word, though the player had seen its card.
 - 🤫 Send a card…: after 📤 Send, the ✓ line and its 📋 copy for a player with no phone scroll into view. Before, in one window they sat below the menu's fold.
 - Partner clues: a card given to someone else since it went reads “changed, not sent yet” (before, “changed:”), and the two who played it see “You've had your go on this one” on their phones during a steal, not “You already answered this one” (one of them only described). A buzzer server you run yourself needs deploying again for the phone's line.
+- Phones: once you tick 🔒 Lock seats, a player's “Not you? Change player” warns that they can't get back in until you unlock them (and stops warning once you do). Before, only a phone that saw the seat list after the lock knew. A buzzer server you run yourself needs deploying again for this.
+- In the editor, the “📱 Buzzer room … is still open” bar says Resume game goes back into it when the game in that room is kept to resume. Before, it said ▶ Play, which starts the game over and shows every phone at $0.
+- Phones don't offer “＋ I'm new” once the game has its most players (⚖ Game rules › Most players), and anyone waiting to be let in is told the host isn't taking new players. Before, they waited forever while ✔ Add was greyed out.
+- The host panel's 📱 phones list keeps each player on one line (“✔ joined”, “📵 offline 0:03”, Free seat and ✕ Kick all inside it), a long name cut short instead. Before, rows wrapped onto two to four lines and ✕ Kick was cut off at the right.
+- After a wrong answer or ⏭ Skip, the buzz order stays as they buzzed: those who missed are struck out where they were, the one answering now is in bold, and times stay against the fastest buzz. Before, the one answering jumped to the top, and a player who had missed could read “faster, but arrived late”. A buzzer server you run yourself needs deploying again for this.
+- A buzzer tie's 🎲 roll leaves the stage once you judge, ⏭ Skip or take → Next in line, instead of covering the question and who's answering until Esc.
+- Teams: the ✕ that takes everyone off a team reads “✕ All”, so it isn't mistaken for the ✕ of the person under it.
+- Teams: after a tie roll, a team's phones read “Tie — your team rolled 2nd”, not “you rolled” (one of them may not have buzzed). A buzzer server you run yourself needs deploying again for this.
 
 ## 2026-10-23
 

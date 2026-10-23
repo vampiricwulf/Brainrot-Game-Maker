@@ -44,7 +44,7 @@
   // "Room full" shows for a while after the room last turned a phone away.
   let now = $state(Date.now());
   onMount(() => {
-    // (Every second: "phone offline 0:12" counts up.)
+    // (Every second: "offline 0:12" counts up.)
     const id = setInterval(() => (now = Date.now()), 1000);
     return () => clearInterval(id);
   });
@@ -81,7 +81,8 @@
           <span class="away" data-phone-offline={p.id}>📵 offline {awayFor(at, now)}</span>
         {/if}
         {#if ms.length}
-          <button class="ghost small x" onclick={() => onkick(p.id)} disabled={down} aria-label="Take everyone off {p.name}" title={down ? downTitle : "Take everyone off this team: those phones can't join it again for 2 minutes"}>✕</button>
+          <!-- (Its words set it apart from each person's ✕ right under it.) -->
+          <button class="ghost small x" onclick={() => onkick(p.id)} disabled={down} aria-label="Take everyone off {p.name}" title={down ? downTitle : "Take everyone off this team: those phones can't join it again for 2 minutes"}>✕ All</button>
         {/if}
       </li>
       {#each ms as m (m.member)}
@@ -121,7 +122,7 @@
         <span class="ok">✔ joined</span>
       {:else if ph}
         {@const at = phoneAwaySince(p.id)}
-        <span class="away" data-phone-offline={p.id}>📵 phone offline{at !== null ? ` ${awayFor(at, now)}` : ''}</span>
+        <span class="away" data-phone-offline={p.id}>📵 offline{at !== null ? ` ${awayFor(at, now)}` : ''}</span>
       {:else}
         <span class="muted">waiting</span>
       {/if}
@@ -208,6 +209,12 @@
   }
   .ok {
     color: var(--good, #4caf50);
+  }
+  /* (A row's status on one line: "✔ joined", "📵 offline 0:03".) */
+  li .ok,
+  li .away,
+  li .muted {
+    white-space: nowrap;
   }
   .away {
     color: var(--warn);

@@ -559,6 +559,15 @@ describe('seats', () => {
     expect(back.last('joined')?.seatId).toBe('a');
   });
 
+  it('🔒 a seated phone hears that the seats are locked (Not you? warns it), and that they were unlocked', () => {
+    const g = game();
+    expect(g.pa.last('view')?.view.locked).toBeUndefined();
+    g.send({ t: 'state', state: state({ locked: true }) });
+    expect(g.pa.last('view')?.view.locked).toBe(true);
+    g.send({ t: 'state', state: state() });
+    expect(g.pa.last('view')?.view.locked).toBeUndefined();
+  });
+
   it("names typed on phones are cleaned, and an existing player's name is refused", () => {
     const g = setup();
     g.room.hostOpen();
@@ -875,6 +884,32 @@ describe('the race', () => {
       { seatId: 'b', afterMs: 0, arrivedLate: true },
     ]);
     expect(g.pb.last('result')).toEqual({ t: 'result', armId: 1, outcome: 'late', rank: 2, afterMs: 0, behind: 'Ann', arrivedLate: true });
+  });
+
+  it('a miss passes to the next in line where they are: the order stays as they buzzed, and one who missed is never "arrived late"', () => {
+    const g = game();
+    g.arm(1);
+    const armed = g.t.now;
+    g.t.now = armed + 300;
+    g.pb.send({ t: 'buzz', armId: 1, reactMs: 250 });
+    // The host takes Bob's buzz at once; Cat buzzes 0.5 s behind him, Ann 1.8 s behind.
+    g.send({ t: 'state', state: state({ phase: 'answering', armId: 1, answering: 'b', clue: { text: 'Q?' } }) });
+    g.t.now = armed + 760;
+    g.pc.send({ t: 'buzz', armId: 1, reactMs: 750 });
+    g.t.now = armed + 2060;
+    g.pa.send({ t: 'buzz', armId: 1, reactMs: 2050 });
+    const order = () => g.hostLast('queue')?.queue.map((q) => `${q.seatId} +${q.afterMs}${q.arrivedLate ? ' late' : ''}`);
+    const was = order();
+    expect(was).toEqual(['b +0', 'c +500', 'a +1800']);
+    // Bob wrong: Cat answers, the list as it was.
+    g.send({ t: 'state', state: state({ phase: 'answering', armId: 1, answering: 'c', lockedOut: ['b'], clue: { text: 'Q?' } }) });
+    expect(order()).toEqual(was);
+    expect(g.pc.last('result')).toMatchObject({ outcome: 'first', rank: 1 });
+    expect(g.pa.last('result')).toMatchObject({ outcome: 'late', rank: 2, afterMs: 1300, behind: 'Cat' });
+    // Cat wrong too: Ann answers; Cat never reads "faster, but arrived late".
+    g.send({ t: 'state', state: state({ phase: 'answering', armId: 1, answering: 'a', lockedOut: ['b', 'c'], clue: { text: 'Q?' } }) });
+    expect(order()).toEqual(was);
+    expect(g.pa.last('result')).toMatchObject({ outcome: 'first', rank: 1 });
   });
 
   it('buzzes within TIE_MS tie: nobody answers until the host picks (by hand: the rest of the tie keep arrival order)', () => {

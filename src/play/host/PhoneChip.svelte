@@ -145,7 +145,7 @@
   }
   /* Placed by anchored.ts (fixed to the window, over everything). */
   .pop {
-    width: 300px;
+    width: 360px;
     max-height: 60vh;
     overflow: auto;
     padding: 10px;
@@ -156,6 +156,13 @@
     border: 1px solid var(--border);
     border-radius: 8px;
     box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+  }
+  /* (Here a long name gives way, so each row's status and buttons stay on one line inside it.) */
+  .pop :global(.phones .name) {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
   .row {
     display: flex;

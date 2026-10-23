@@ -122,6 +122,19 @@ describe('team buzzers', () => {
     expect(hostState(game, session, newBuzz(), 0)).toMatchObject({ teams: true, allowNew: false });
     expect(setupState(game, session.players, 3, 0)).toMatchObject({ teams: true, allowNew: false, phase: 'lobby' });
   });
+
+  it('a full game (Most players) offers phones no ＋ I’m new', () => {
+    const game = jeopardyGame();
+    game.players = ['Ann', 'Bob', 'Cat'].map((name, i) => ({ id: name[0].toLowerCase(), name, color: ['#ff0000', '#00ff00', '#0000ff'][i] }));
+    game.settings.phoneJoin = true;
+    game.settings.maxPlayers = 4;
+    const session = newSession(game);
+    expect(hostState(game, session, newBuzz(), 0).allowNew).toBe(true);
+    expect(setupState(game, session.players, 0, 0).allowNew).toBe(true);
+    game.settings.maxPlayers = 3;
+    expect(hostState(game, session, newBuzz(), 0).allowNew).toBe(false);
+    expect(setupState(game, session.players, 0, 0).allowNew).toBe(false);
+  });
 });
 
 describe('hostState (what the buzzer room is told)', () => {

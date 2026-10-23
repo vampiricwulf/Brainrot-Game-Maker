@@ -346,8 +346,12 @@ try {
   await say({ t: 'queue', armId: tieArm, queue: rolled.map((id, i) => ({ seatId: id, afterMs: 0, rolled: i + 1 })) });
   await queue.getByText('🎲 2nd').waitFor();
   assert((await pressed())[0].includes(rolled[0] === seats[0].id ? 'Player 1' : 'Player 2'), 'the first in the roll answers; the queue shows 🎲 1st, 🎲 2nd');
-  await page.keyboard.press('Escape');
+  assert(await aud.getByText('Tie! Roll for it').isVisible(), 'the roll stays up while the host announces it');
+  // ⏭ Skip (as a judged answer would): the roll goes off the stage, and the second in it answers.
+  await page.getByRole('button', { name: /^⏭ Skip/ }).click();
   await aud.getByText('Tie! Roll for it').waitFor({ state: 'detached' });
+  await stateIs((s, id) => s.answering === id, rolled[1]);
+  assert(true, '⏭ Skip: the roll goes off the stage (it would cover the question), and the second in it answers');
 
   // ---------- The 📱 chip: kick, a new player mid-game ----------
   const chip = page.locator('.panel .chip');
@@ -370,7 +374,22 @@ try {
   await page.locator(`.panel .p [data-phone-away="${seats[1].id}"]`).waitFor();
   assert((await page.locator('.panel .p [data-phone-away]').count()) === 1, 'a dropped phone: 📵 on that player’s chip (only theirs)');
   await pop.locator(`[data-phone-offline="${seats[1].id}"]`).waitFor();
-  assert(/📵 phone offline \d+:\d\d/.test(await pop.locator(`[data-phone-offline="${seats[1].id}"]`).innerText()), `and the phones list says “phone offline 0:01” (${await pop.locator(`[data-phone-offline="${seats[1].id}"]`).innerText()})`);
+  assert(/^📵 offline \d+:\d\d$/.test(await pop.locator(`[data-phone-offline="${seats[1].id}"]`).innerText()), `and the phones list says “📵 offline 0:01” (${await pop.locator(`[data-phone-offline="${seats[1].id}"]`).innerText()})`);
+  // One line per player, all of it inside the list: name, status, and ✕ Kick (with either font).
+  const fit = await pop.evaluate((box) => {
+    const ul = box.querySelector('ul.phones');
+    const right = box.getBoundingClientRect().right;
+    const rows = [...ul.children].map((li) => {
+      const status = li.querySelector('.ok, .away, .muted');
+      const lh = status ? parseFloat(getComputedStyle(status).lineHeight) || 18 : 18;
+      return { h: status?.getBoundingClientRect().height ?? 0, lh, out: [...li.querySelectorAll('button')].some((b) => b.getBoundingClientRect().right > right + 0.5) };
+    });
+    return { rows, ul: ul.scrollWidth - ul.clientWidth, pop: box.scrollWidth - box.clientWidth };
+  });
+  assert(
+    fit.rows.every((r) => r.h < r.lh * 1.5 && !r.out) && fit.ul <= 0 && fit.pop <= 0,
+    `each player’s row in the phones list is one line, ✕ Kick inside it, and nothing scrolls sideways (${JSON.stringify(fit)})`,
+  );
   await say({ t: 'phones', phones: [{ conn: 'c2', seatId: seats[1].id, connected: true }, { conn: 'c3', seatId: seats[2].id, connected: true }] });
   await page.locator('.panel .p [data-phone-away]').waitFor({ state: 'detached' });
   assert(true, 'back online, the 📵 goes');
@@ -561,7 +580,7 @@ try {
   await stateIs((s) => s.status?.text === 'The host is setting up — hang on');
   await page.waitForTimeout(300);
   assert((await closes()) === 0, 'Keep & leave keeps the buzzer room: phones are told the host is setting up, not that the game is over');
-  assert((await roomBar.innerText()).includes('▶ Play goes back into it'), 'the bar over the editor says the room is still open');
+  assert((await roomBar.innerText()).includes('Resume game goes back into it'), 'the bar over the editor says the room is still open, and that Resume game (not ▶ Play) goes back into it');
   assert((await page.locator('.status-bar').count()) === 1 && (await page.locator('.status-bar .kept').count()) === 1, 'one status bar over the editor: the room and the kept game on it');
   assert((await page.evaluate(() => document.scrollingElement.scrollHeight <= window.innerHeight)), 'the page itself doesn’t scroll (the bar stays in sight)');
   assert((await page.getByRole('button', { name: 'Resume with my edits' }).count()) === 0, 'nothing was edited: no "Resume with my edits"');
