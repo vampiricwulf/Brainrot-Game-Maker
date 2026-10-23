@@ -4,7 +4,7 @@
   import { getContext, onDestroy } from 'svelte';
   import { NEXT_GAME } from './nextgame';
   import { isFinal, questionSlides, roundName, type Game, type Session } from '../../lib/model';
-  import { coWinnersHold, nameList, tiedForFirst, tiedLeaders } from '../../lib/session';
+  import { coWinnersHold, nameList, tiebreakHolds, tiedForFirst, tiedLeaders } from '../../lib/session';
   import { slideHasContent } from '../../lib/usage';
   import { logged } from '../../lib/toolset';
   import { copyText, standingsText } from '../standings';
@@ -85,7 +85,7 @@
       >
     </div>
   </div>
-{:else if level.some((p) => p.id === session.rollOffWinner)}
+{:else if tiebreakHolds(session, level.map((p) => p.id))}
   <!-- Both are steps: ↶ Undo (Ctrl+Z) takes them back. -->
   <div class="muted">
     {session.tiebreakClue ? '❓' : '🎲'}

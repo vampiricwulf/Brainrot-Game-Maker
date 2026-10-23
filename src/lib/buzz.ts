@@ -9,7 +9,7 @@ import {
 import { ANY_SERVER, cardWords, clipWords, phoneCard, type PhoneCan } from './phonecard';
 import { cardsOut, sentCardId, sentSlide, sentState } from './sentcards';
 import { usableChoices } from './choices';
-import { clueMarks, currentClueInfo, currentFinal, ddCap, finalTag, finalWagerCap, nameList, partnerSteal, score, shownQuestionSlide, tiedForFirst, wagerFromPhone } from './session';
+import { clueMarks, currentClueInfo, currentFinal, ddCap, finalTag, finalWagerCap, nameList, partnerSteal, score, shownQuestionSlide, tiebreakHolds, tiedForFirst, wagerFromPhone } from './session';
 
 export interface BuzzState {
   phase: BuzzPhase;
@@ -695,7 +695,7 @@ export function hostState(
     ...(extra.answers ? { answers: extra.answers } : {}),
     ...(extra.cards?.length ? { cards: extra.cards } : {}),
     // (With a tie for first the tiebreaker settled, its winner: the phones rank the players as the end screen does.)
-    ...(session.phase === 'end' ? { over: true, ...(session.rollOffWinner && tiedForFirst(session).some((p) => p.id === session.rollOffWinner) ? { winner: session.rollOffWinner } : {}) } : {}),
+    ...(session.phase === 'end' ? { over: true, ...(session.rollOffWinner && tiebreakHolds(session, tiedForFirst(session).map((p) => p.id)) ? { winner: session.rollOffWinner } : {}) } : {}),
     ...(!game.settings.phoneColorsOff && !teamsOn(game.settings) ? { colorPick: true } : {}),
     ...(info && session.revealed ? { answerShown: true } : {}),
   };

@@ -1346,6 +1346,33 @@ describe('co-winners', () => {
     session.coWinners = true;
     expect([coWinnersHold(session), winnerKnown(session)]).toEqual([true, true]);
   });
+
+  it('a tiebreaker win settles only the tie it was won in (a new tie with another player is open again)', () => {
+    const game = jeopardyGame();
+    game.players = [
+      { id: 'a', name: 'Ann', color: '#e6194b' },
+      { id: 'b', name: 'Bob', color: '#3cb44b' },
+      { id: 'c', name: 'Cat', color: '#4363d8' },
+    ];
+    const session = newSession(game);
+    setScore(session, 'a', 200);
+    setScore(session, 'b', 200);
+    session.rollOffWinner = 'a';
+    session.tieAmong = ['a', 'b'];
+    expect([tiedLeaders(session), winnerKnown(session)]).toEqual([[], true]);
+    expect(places(session).map((r) => [r.player.id, r.place])).toEqual([['a', 1], ['b', 2], ['c', 3]]);
+    // Cat fixed up to $200 (she never rolled): a three-way tie, open again, everyone level.
+    setScore(session, 'c', 200);
+    expect(tiedLeaders(session).map((p) => p.id)).toEqual(['a', 'b', 'c']);
+    expect(winnerKnown(session)).toBe(false);
+    expect(places(session).map((r) => r.place)).toEqual([1, 1, 1]);
+    // Bob fixed down: the tie left (Ann and Cat) wasn't the one Ann won either.
+    setScore(session, 'b', 0);
+    expect(tiedLeaders(session).map((p) => p.id)).toEqual(['a', 'c']);
+    // Older saves kept no names: any tie with the winner in it counts as settled.
+    delete session.tieAmong;
+    expect([tiedLeaders(session), winnerKnown(session)]).toEqual([[], true]);
+  });
 });
 
 describe('names', () => {
@@ -1391,5 +1418,18 @@ describe('an award that made its player the picker', () => {
     expect(session.currentPickerId).toBe(b);
     toggleEvent(session, second[0].id);
     expect(session.currentPickerId).toBe(c);
+  });
+
+  it('📜 Log › Scores › Undo all on a step for several players gives the picker back, and Restore all takes it again', () => {
+    const { game, session, a, b, c } = setup();
+    session.currentPickerId = a;
+    // (✔ Judge all: one step for two players, the first right one picks next.)
+    const both = applyScore(session, game, [b, c], 200, 'x');
+    both[0].picker = { was: a, now: b };
+    session.currentPickerId = b;
+    toggleStep(session, stepOf(both[0]));
+    expect([score(session, b), session.currentPickerId]).toEqual([0, a]);
+    toggleStep(session, stepOf(both[0]));
+    expect([score(session, b), session.currentPickerId]).toEqual([200, b]);
   });
 });

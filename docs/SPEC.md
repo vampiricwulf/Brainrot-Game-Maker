@@ -479,16 +479,19 @@ The mode isn't saved with the game: it's dual while the audience window is open.
 - **Wheel**: any saved preset, or a quick ad-hoc wheel from a text list. Weighted random.
   Uses `crypto.getRandomValues`, and the spin animation lands on the pre-selected result.
 - **Placement**: the wheel and dice always appear as a **full-screen overlay** on the audience view while spinning
-  or rolling, then show the result. Dismissing the overlay returns to whatever was underneath (board or clue).
+  or rolling, then show the result. Dismissing the overlay returns to whatever was underneath (board or clue). A wheel
+  or dice tile with no question closed before it spun or rolled stays on the board.
 - **Reveal**: the outcome is shown on the audience view (label, plus details/media/custom slide if set), with an
   optional countdown. The host can dismiss it, re-spin/re-roll, or tag it with a player
-  ("this punishment is for Alex"). Every spin/roll goes into the **roll log** (separate from the score log, no score impact).
+  ("this punishment is for Alex"). Every spin/roll goes into the **roll log** (separate from the score log, no score impact),
+  which says "… spinning" or "… rolling" until it has landed on stream (the log can be on stream in one window).
 - **Removing slices**: with "remove after landing" on, a landed segment is removed for the rest of the session (e.g. each
   punishment only once). The host can restore removed segments.
 - **Score actions (optional)**: only if the landed outcome has a `ScoreAction`, the host view shows an action card
   ("Bankrupt → set score to 0"). The host picks the target player(s) (and a source player for steal/swap), previews the
   score change, then clicks **Confirm** or **Skip**. Confirmed actions are written to the score log with a reason
-  ("Wheel: Punishment Wheel → Bankrupt"), so they can be undone like any other score change.
+  ("Wheel: Punishment Wheel → Bankrupt"), so they can be undone like any other score change. Closing the wheel or dice
+  with a card neither confirmed nor skipped says so first; closing again goes on without it.
 - **Timer**: start, pause, reset, and set a custom duration.
 - **Scoreboard overlay**: toggle a large standings view on the audience window.
 - **🤫 Send a card…** (PARTNER-CLUES-SPEC.md §12): a private card for chosen players' phones, in any round (a tile's

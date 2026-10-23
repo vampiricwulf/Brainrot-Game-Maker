@@ -100,8 +100,15 @@ try {
   // 👥 Players: each change is a step; Esc leaves the name box, then closes.
   await page.getByRole('button', { name: '👥 Players' }).click();
   await page.getByLabel('Player 1 name').fill('Alice');
+  // A name cleared to retype it, and left blank, goes back to what it was (never a nameless player on stream). A click
+  // in the box while it's retyped leaves it be.
+  const box2 = page.getByLabel('Player 2 name');
+  await box2.fill('');
+  await box2.click();
+  const leftBlank = (await box2.inputValue()) === '';
   await page.keyboard.press('Escape');
   assert(await page.getByRole('dialog', { name: 'Players' }).isVisible(), 'the first Esc only leaves the name box');
+  assert(leftBlank && (await box2.inputValue()) === 'Player 2', 'a name left blank goes back to what it was once its box is left (not while it’s clicked in)');
   await page.keyboard.press('Escape');
   assert((await page.getByRole('dialog', { name: 'Players' }).count()) === 0, 'the next Esc closes the Players dialog');
   assert((await names()) === 'Alice, Player 2, Player 3', 'the new name is in the host panel');

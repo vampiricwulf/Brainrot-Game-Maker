@@ -1147,6 +1147,11 @@ export interface Session {
   coWinners?: boolean | Id[];
   /** Won the tiebreaker roll-off (or the tiebreaker clue) for first place: ranked above the players tied with them. */
   rollOffWinner?: Id;
+  /**
+   * Who was tied for first when rollOffWinner won: the win settles that tie only (a later one with someone else is open
+   * again). Left out in older saves: any tie with the winner in it.
+   */
+  tieAmong?: Id[];
   /** rollOffWinner won the tiebreaker clue (not a roll-off). */
   tiebreakClue?: boolean;
   /** Every spin / roll (no score impact). */

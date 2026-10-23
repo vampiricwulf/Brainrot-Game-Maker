@@ -3,7 +3,7 @@
 </script>
 
 <script lang="ts">
-  import { formatPoints, roundName, type Game, type ScoreEvent, type Session } from '../lib/model';
+  import { formatPoints, roundName, type Game, type RollEvent, type ScoreEvent, type Session } from '../lib/model';
   import { ROUND_MODES } from '../lib/modes';
   import { nameList, stepAmount, stepOf, toggleEvent, toggleStep } from '../lib/session';
   import { timelineRows, type TimelineRow } from '../lib/timeline';
@@ -36,7 +36,7 @@
     onclose: () => void;
     /** Single window: the host panel's box. The log shows in there, never over the stage viewers see. */
     area?: { top: number; left: number; width: number; height: number } | null;
-    /** Rolls whose wheel is still spinning: their result waits for the landing (this log can be on stream). */
+    /** Rolls whose wheel, dice or roll-off is still going: their result waits for the landing (this log can be on stream). */
     spinning?: string[];
   } = $props();
   const byId = $derived(Object.fromEntries([...(session.removedPlayers ?? []), ...session.players].map((p) => [p.id, p])));
@@ -55,12 +55,14 @@
     return out.reverse();
   });
   const rolls = $derived([...(session.rollLog ?? [])].reverse());
-  /** A roll whose wheel is still spinning: "… spinning" in place of its result, until it lands. */
+  /** A roll still going on stage: "… spinning" (a wheel) or "… rolling" (dice, a roll-off) in place of its result, until it lands. */
   const stillSpinning = (id: string) => spinning.includes(id);
-  /** A History row's words (a roll still spinning: its name, without the result). */
+  const going = (r: RollEvent | undefined) => (r && r.source !== 'wheel' ? '… rolling' : '… spinning');
+  /** A History row's words (a roll still going: its name, without the result). */
   function rowText(row: TimelineRow): string {
     if (row.kind !== 'roll' || !stillSpinning(row.id)) return row.text;
-    return `${session.rollLog?.find((r) => r.id === row.id)?.name ?? 'Spin'}: … spinning`;
+    const r = session.rollLog?.find((x) => x.id === row.id);
+    return `${r?.name ?? 'Spin'}: ${going(r)}`;
   }
   let expanded = $state<Record<string, boolean>>({});
   const icon = { wheel: '🎡', dice: '🎲', rolloff: '🏁' } as const;
@@ -219,7 +221,7 @@
       {#each rolls as r (r.id)}
         <div class="roll">
           <div><span>{icon[r.source]}</span> <b>{r.name}</b> <span class="muted small">{time(r.ts)}</span></div>
-          <div>{stillSpinning(r.id) ? '… spinning' : r.result}</div>
+          <div>{stillSpinning(r.id) ? going(r) : r.result}</div>
           {#if r.playerIds?.length && !stillSpinning(r.id)}
             <div class="small">For: {nameList(r.playerIds.map((id) => byId[id]?.name ?? '?'))}</div>
           {/if}

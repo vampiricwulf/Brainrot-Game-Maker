@@ -210,6 +210,7 @@ export function toggleStep(session: Session, step: string): void {
   const ids = new Set(events.map((e) => e.id));
   session.redoStack = session.redoStack.filter((id) => !ids.has(id));
   followFinals(session, events);
+  followPicker(session, events);
 }
 
 // ---------- Players ----------
@@ -1182,8 +1183,20 @@ export function finalJudge(session: Session, game: Game, playerId: string, right
 /** Players tied for the lead (empty if there's a single leader). */
 export function tiedLeaders(session: Session): Player[] {
   const tied = tiedForFirst(session);
-  // Settled by the tiebreaker roll-off or clue (only while its winner is still one of the tied leaders).
-  return tied.some((p) => p.id === session.rollOffWinner) ? [] : tied;
+  // Settled by the tiebreaker roll-off or clue (only the tie it was won in).
+  return tiebreakHolds(session, tied.map((p) => p.id)) ? [] : tied;
+}
+
+/**
+ * The tiebreaker's win (the roll-off or the clue) settles this tie for first (`tied`: everyone level on the top score):
+ * its winner is one of them, and so is everyone else, as they were when it was won. A later tie with another player is
+ * open again, as with co-winners. Older saves kept no names: any tie with the winner in it.
+ */
+export function tiebreakHolds(session: Session, tied: Id[]): boolean {
+  const won = session.rollOffWinner;
+  if (!won || !tied.includes(won)) return false;
+  const among = session.tieAmong;
+  return !among || tied.every((id) => among.includes(id));
 }
 
 /** The players level on the top score (none when one player is ahead), settled or not. */
@@ -1439,8 +1452,9 @@ export function standings(session: Session): { player: Player; score: number }[]
  * that takes them out of first leaves them sharing their place like anyone else.
  */
 function tieWinner(session: Session, ranked: { player: Player; score: number }[]): string | undefined {
-  const won = ranked.find((r) => r.player.id === session.rollOffWinner);
-  return won && ranked.every((r) => r.score <= won.score) ? won.player.id : undefined;
+  // (Who is level on top, from these scores: tiedForFirst ranks with this.)
+  const top = Math.max(...ranked.map((r) => r.score));
+  return tiebreakHolds(session, ranked.filter((r) => r.score === top).map((r) => r.player.id)) ? session.rollOffWinner : undefined;
 }
 
 /** Standings with each player's place, equal scores sharing one ("1, 1, 3"). */

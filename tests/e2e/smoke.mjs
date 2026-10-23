@@ -971,12 +971,23 @@ assert(aud.isClosed(), 'audience window closes from the host');
 await page.locator('.board .tile').nth(4).click();
 await page.locator('.ov .wheel').waitFor();
 assert(true, 'wheel tile opens the wheel overlay');
+// Closed before it's spun (opened by mistake): the tile stays on the board.
+assert((await page.getByRole('button', { name: '✕ Close' }).getAttribute('title')) === 'Close it without spinning (the tile stays on the board)', '✕ Close on a wheel tile says the tile stays');
+await page.keyboard.press('Escape');
+await page.getByText('Never spun: the tile stays on the board').waitFor();
+assert(!(await isUsed(4)), 'Esc on a wheel tile before it spins keeps the tile on the board');
+await page.locator('.board .tile').nth(4).click();
+await page.locator('.ov .wheel').waitFor();
 await page.waitForTimeout(500); // past the double-click guard (a double-click on the tile doesn't spin it too)
 await page.locator('.stage-box .ov').click();
 await page.locator('.tc .result').waitFor({ timeout: 8000 });
 assert((await page.locator('.tc .result').innerText()).includes('Bankrupt'), 'weighted spin lands on the heavy slice');
 await page.locator('.ov .card').waitFor();
 assert((await page.locator('.ov .card .label').innerText()) === 'Bankrupt', 'result card revealed on screen');
+// Esc with its score effect neither confirmed nor skipped: it says so first, and the wheel stays.
+await page.keyboard.press('Escape');
+await page.getByText('Score effect not given yet: Confirm or Skip it (Esc again closes without it)').waitFor();
+assert((await page.locator('.ov .wheel').count()) === 1, 'Esc with the score effect not given yet says so, and the wheel stays');
 await page.locator('.tc .chip', { hasText: 'Player 3' }).first().click();
 await page.locator('.ac').waitFor();
 await page.locator('.ac').getByRole('button', { name: 'Skip' }).click();

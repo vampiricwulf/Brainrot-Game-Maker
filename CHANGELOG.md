@@ -20,6 +20,12 @@ in plain words for the people who make and host games. Anything committed but no
 - Daily Double: a second Enter right after the one that showed the question (a double press, or Enter on 👁 Reveal answer, where the keys go) no longer gives its player the wager as right before they've answered. It says to press Enter again.
 - Daily Double: marking its player wrong stops the countdown, as a right answer does, so TIME'S UP no longer goes on stream after they've missed (Ctrl+Z brings the countdown back).
 - ± Adjust score puts the keys in the Amount box, so you type the points and then pick who gets them. Before, the keys were on Done, and typing 50 selected players instead.
+- One window: 📜 Log says “… rolling” for dice or a roll-off until they land on stream, as it says “… spinning” for a wheel. Before, it showed the result (the tiebreaker roll-off's winner too) while the dice still tumbled.
+- A tiebreaker win (the roll-off or the clue) settles only the tie it was won in. A score fixed later into a tie with someone who never rolled is a tie again, to settle, instead of the old winner still winning.
+- Closing a wheel or dice with its score effect neither confirmed nor skipped (Esc, Close, or a click on the stage) says so first; closing again goes on without it. Before, the effect was dropped without a word, with nothing to undo.
+- A wheel or dice tile with no question closed before it spun or rolled (Esc, or ✕ Close) stays on the board, instead of being used up.
+- A name cleared in 👥 Players mid-game and left blank goes back to what it was (a new row: “Player N”), so no player plays nameless on stream, on the end screen or in the log.
+- 📜 Log › Scores › Undo all on a step for several players (✔ Judge all) gives back the picker it made, and Restore all takes it again, as Undo on one player does.
 
 ## 2026-10-23
 

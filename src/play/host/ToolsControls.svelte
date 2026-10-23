@@ -8,7 +8,7 @@
   import { textOn } from '../../lib/colors';
   import { overlayDoneAt, startTimer } from '../../lib/live';
   import type { Game, Outcome, Session } from '../../lib/model';
-  import { addWheel, removeWheel, rollDice, spinSegments, spinWheel, wheelEdited, wheelSpentUp } from '../../lib/overlay';
+  import { addWheel, cardDone as isCardDone, cardsKey, removeWheel, rollDice, spinSegments, spinWheel, wheelEdited, wheelSpentUp } from '../../lib/overlay';
   import { faceText, isRespin, outcomeText, rollOutcome, rollResult, sliceLabel } from '../../lib/tools';
   import ActionCard from './ActionCard.svelte';
   import WheelEdit from './WheelEdit.svelte';
@@ -37,14 +37,8 @@
     return () => clearInterval(id);
   });
   const busy = $derived(!!o && now < overlayDoneAt(o));
-  /**
-   * Score cards dealt with (kept on the overlay, see cardsDone): skipped, or the score step they applied, so an Undo of it
-   * brings the card back (the points went to the wrong player).
-   */
-  const cardDone = (key: string): boolean => {
-    const d = o?.kind === 'wheel' || o?.kind === 'dice' ? o.cardsDone?.[key] : undefined;
-    return d === true || (!!d && session.scoreLog.some((e) => e.batchId === d && !e.undone));
-  };
+  /** A score card dealt with (see overlay.ts: closing the tool asks first while one isn't). */
+  const cardDone = (key: string): boolean => isCardDone(o, session, key);
   const finish = (key: string) => (applied: boolean, batch?: string) => {
     if (o?.kind === 'wheel' || o?.kind === 'dice') o.cardsDone = { ...o.cardsDone, [key]: applied && batch ? batch : true };
   };
@@ -69,7 +63,7 @@
     if (o?.kind === 'dice' && o.roll) return rollResult(o.roll);
     return '';
   });
-  const actionKey = $derived(o && 'nonce' in o ? `${o.nonce}-${o.kind === 'wheel' ? o.spin?.startedAt : o.kind === 'dice' ? o.startedAt : ''}` : '');
+  const actionKey = $derived(o ? cardsKey(o) : '');
   const lastRoll = $derived(session.rollLog?.at(-1));
   /** This spin's roll-log entries (one per wheel spun together: a spent one, or one added since, didn't spin). */
   const spunExtras = $derived(o?.kind === 'wheel' && o.spin ? (o.extra ?? []).filter((w) => w.spin && w.spin.startedAt >= o.spin!.startedAt).length : 0);
@@ -265,7 +259,9 @@
       {#if resultText && !busy}<span class="result" title={resultText}>Result: <b>{resultText}</b></span>{/if}
       <!-- Before it's spun or rolled: a way out without (Spin! / Roll! is the main button; Esc can't, from a box). -->
       {#if (o.kind === 'wheel' || o.kind === 'dice') && !landed && !busy}
-        <button class="small ghost" onclick={onclose} title="Close it without {o.kind === 'wheel' ? 'spinning' : 'rolling'}">✕ Close</button>
+        <button class="small ghost" onclick={onclose} title="Close it without {o.kind === 'wheel' ? 'spinning' : 'rolling'}{tileDone && !spent ? ' (the tile stays on the board)' : ''}"
+          >✕ Close</button
+        >
       {/if}
     </div>
     {#if outcome?.actions?.length && !busy && (o.kind === 'wheel' || o.kind === 'dice')}

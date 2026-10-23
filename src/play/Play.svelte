@@ -10,7 +10,7 @@
     applyScore, awardOpen, backToBoard, backToLastRound, currentFinal, clueName, clueReason, clueScored, currentClueInfo, ddShowQuestion, describeStep,
     finalAdvance, finalBack, finalJudge, finalShow, finalShowAnswer, finalTag, finalUnjudged, findClueRef, hasWager, typedAnswer, goToRound, introNext, nameList, newSession, openClue, playerName,
     randomizeDailyDoubles, redo, forgetRedo, removePlayer, restorePlayer, answerShowing, rosterChange, score, skipIntro, startIntro, toggleUsed, undo,
-    blankSlide, toolOnlyClue, stepSlide, finalWagerProblems, finalWagersOk, finalStepFix, startTiebreaker, stepOf, logZero, tiedForFirst, tiedLeaders, winnerKnown,
+    blankSlide, toolOnlyClue, stepSlide, finalWagerProblems, finalWagersOk, finalStepFix, startTiebreaker, stepOf, logZero, tiebreakHolds, tiedForFirst, tiedLeaders, winnerKnown,
     finalSetWager, finalTakeNewcomers, forViewers, wagerFromPhone, coWinnersHold, ownPlayers, clueMarks, judgePartner, partnerSteal, stealersLeft,
   } from '../lib/session';
   import {
@@ -43,7 +43,7 @@
   import PhoneRoom from './PhoneRoom.svelte';
   import type { SetBuzzSetting } from './BuzzerOptions.svelte';
   import PhoneChip from './host/PhoneChip.svelte';
-  import { openDice, openMemberWheel, openPartnerWheel, openPlayerWheel, openWheel, quickDice, rollDice, spinningRolls, spinWheel, startRollOff, toggleScoreboard, wheelSpentUp } from '../lib/overlay';
+  import { openDice, openMemberWheel, openPartnerWheel, openPlayerWheel, openWheel, quickDice, rollDice, scoreCardsLeft, spinningRolls, spinWheel, startRollOff, toggleScoreboard, wheelSpentUp } from '../lib/overlay';
   import type { DicePreset } from '../lib/model';
   import { tileDice } from '../lib/tools';
   import { dailyDoublesShort, partnerTilesShort, validate } from '../lib/validate';
@@ -961,9 +961,11 @@
     if (ids.length > 1) return hint(`Select the one ${pregameTeams ? 'team' : 'player'} who won the tiebreaker`);
     // (Tied, settled or not: picking the other one replaces a wrong pick, as a step of its own.)
     if (!tiedForFirst(session).some((p) => p.id === id)) return hint(`${playerName(session, id)} isn’t tied for first`);
-    if (session.rollOffWinner === id && session.tiebreakClue) return hint(`${playerName(session, id)} already won the tiebreaker: 🏁 Back to results`);
+    const tied = tiedForFirst(session).map((p) => p.id);
+    if (session.rollOffWinner === id && session.tiebreakClue && tiebreakHolds(session, tied)) return hint(`${playerName(session, id)} already won the tiebreaker: 🏁 Back to results`);
     logged(session, `${playerName(session, id)} won the tiebreaker clue`, () => {
       session.rollOffWinner = id;
+      session.tieAmong = tied;
       session.tiebreakClue = true;
     });
     playCue(app.live, game, 'right');
@@ -1796,6 +1798,8 @@
     if (o.purpose === 'tiebreak') {
       logged(s, `${playerName(s, o.winner)} won the roll-off`, () => {
         s.rollOffWinner = o.winner;
+        // (The tie it settles: who rolled. A later tie with someone else is open again.)
+        s.tieAmong = [...o.ranking];
         s.tiebreakClue = undefined;
       });
       // Settled: now there's a winner to cheer.
@@ -1927,10 +1931,20 @@
     else closeOverlay();
   }
 
+  /** The score cards a close was held back for (the next close goes ahead without them). */
+  let cardsAsked = '';
   function closeOverlay(): void {
     const o = app.live.overlay;
     // The scores over a wheel, dice or a pop-up: closing them shows it again (its result and score card are still to come).
     if (o?.kind === 'scoreboard' && o.under) return void (app.live.overlay = o.under);
+    // A score effect that landed on stream, neither confirmed nor skipped: the first close says so (Esc, Close, a click on
+    // the stage), a second one closes without it.
+    const left = scoreCardsLeft(o, session).join();
+    if (left && left !== cardsAsked) {
+      cardsAsked = left;
+      return hint('Score effect not given yet: Confirm or Skip it (Esc again closes without it)');
+    }
+    cardsAsked = '';
     // The result was decided up front, so closing early (skipping the animation) still sets the picker.
     if (o?.kind === 'rolloff') rollOffResult(session, o);
     // (The partner wheel's too: its landing is the partner. The keys go to the main button, ▶ Show question, not to the
@@ -1945,9 +1959,14 @@
     if (session.phase !== 'clue' || !info || o?.kind !== info.clue.type || app.live.toolTile !== info.clue.id) return;
     delete app.live.toolTile;
     // A wheel/dice tile shows its question once the tool is closed, and its countdown starts (not over its answer,
-    // revealed meanwhile). One with nothing to ask is done: no empty slide, no countdown.
-    if (toolOnlyClue(info.clue)) back();
-    else if (!session.revealed && !questionSlides(info.clue).every(blankSlide)) autoTimer();
+    // revealed meanwhile). One with nothing to ask is done: no empty slide, no countdown. Unless it never spun or rolled
+    // (opened by mistake): that one stays on the board. (A "land once" wheel with every slice landed can't spin: closing
+    // it uses the tile up, or nothing ever could.)
+    if (toolOnlyClue(info.clue)) {
+      const unused = (o.kind === 'wheel' && !o.spin && !wheelSpentUp(o, session, game)) || (o.kind === 'dice' && !o.roll);
+      back(unused);
+      if (unused) hint(`${o.kind === 'wheel' ? 'Never spun' : 'Never rolled'}: the tile stays on the board`);
+    } else if (!session.revealed && !questionSlides(info.clue).every(blankSlide)) autoTimer();
   }
 
   // A Daily Double's wager fixed in the Amount box once its question is up (a typo on the splash): the wager is that now,
@@ -3641,14 +3660,35 @@
     rosterStep = startStep(session);
   }
 
-  function commitRoster(): void {
+  /** `clicked`: what was clicked, when a click ends the step (see fillNames). */
+  function commitRoster(clicked?: EventTarget | null): void {
     if (!rosterStep) return;
+    // (A click in a name box cleared to retype it: the step goes on until the box is left.)
+    if (!fillNames(clicked)) return;
     // The round's party or turn order takes the change in with it, so its Undo puts them back too (a Final: the players
     // added or restored by this change).
     const had = new Set(rosterBefore.players.map((p) => p.id));
     catchUp(session.players.filter((p) => !had.has(p.id)).map((p) => p.id));
     rosterStep(rosterChange(rosterBefore, { players: session.players, removed: session.removedPlayers }));
     beginRoster();
+  }
+
+  /**
+   * A name left blank goes back to the one it had (a new row: "Player N", as at Start game), so viewers never see a
+   * nameless player. Not the box clicked in: it's being retyped (leaving it, Done or Esc fills it). False while that one
+   * is still blank.
+   */
+  function fillNames(clicked?: EventTarget | null): boolean {
+    const typing = clicked instanceof HTMLInputElement && clicked.matches('input.name') ? clicked.closest('[data-place]')?.getAttribute('data-place') : null;
+    const had = new Map([...rosterBefore.players, ...rosterBefore.removed].map((p) => [p.id, p.name]));
+    let filled = true;
+    session.players.forEach((p, i) => {
+      if (!blankName(p.name)) return;
+      if (typing === `player:${p.id}`) return void (filled = false);
+      const was = had.get(p.id);
+      p.name = was && !blankName(was) ? was : `${pregameTeams ? 'Team' : 'Player'} ${i + 1}`;
+    });
+    return filled;
   }
 
   function openPlayers(): void {
@@ -4691,9 +4731,9 @@
       style:width={panelBox ? `${panelBox.width}px` : undefined}
       style:height={panelBox ? `${panelBox.height}px` : undefined}
       role="presentation"
-      onclick={(e) => (e.target === e.currentTarget ? closePlayers() : commitRoster())}
-      onchange={commitRoster}
-      ondrop={commitRoster}
+      onclick={(e) => (e.target === e.currentTarget ? closePlayers() : commitRoster(e.target))}
+      onchange={() => commitRoster()}
+      ondrop={() => commitRoster()}
     >
       <!-- Phone buzzer teams: each row is a team, as before the game (a new one is "Team 4", not "Player 4"). -->
       <div class="modal" role="dialog" aria-modal="true" aria-label={pregameTeams ? 'Teams' : 'Players'} use:modal bind:this={playersBox}>

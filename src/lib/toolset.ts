@@ -393,7 +393,7 @@ export function forgetGameParts(session: Session): void {
 }
 
 /** The host's own choices a step can put back as they were: the picker, how a tie for first was settled, the players. */
-const HOST = ['currentPickerId', 'coWinners', 'rollOffWinner', 'tiebreakClue', 'players', 'removedPlayers'] as const;
+const HOST = ['currentPickerId', 'coWinners', 'rollOffWinner', 'tieAmong', 'tiebreakClue', 'players', 'removedPlayers'] as const;
 
 /** Every Final round's state (the one being played, and the ones put away), one per round. */
 function finalStates(session: Session): FinalState[] {

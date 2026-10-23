@@ -1,9 +1,9 @@
 // Host actions that open / drive the tool overlays (wheel, dice, roll-off, scoreboard).
 import { categoryLabel, isBoard, newId, PLAYER_WHEEL, type DicePreset, type Game, type Id, type PartnerState, type Session, type TeamMember, type WheelPreset, type WheelSegment } from './model';
 import { mixHex } from './colors';
-import type { ExtraWheel, Live, Overlay } from './live';
+import { overlayDoneAt, type ExtraWheel, type Live, type Overlay } from './live';
 import {
-  activeSegments, describeRoll, isRespin, logRoll, newSegment, onSlices, planRollOff, rollPreset, sliceLabel, spinTarget, weightedIndex, wheelUsedUp,
+  activeSegments, describeRoll, isRespin, logRoll, newSegment, onSlices, planRollOff, rollOutcome, rollPreset, sliceLabel, spinTarget, weightedIndex, wheelUsedUp,
   type PoolSlice,
 } from './tools';
 import { templateSegments, type WheelTemplate } from './wheeltemplates';
@@ -113,11 +113,50 @@ export function wheelEdited(o: WheelLike, session: Session): boolean {
   return o.pool.length !== opened.length || o.pool.some((x, i) => x.id !== opened[i].id || x.weight !== 1 || !!x.off !== !!opened[i].off);
 }
 
-/** The rolls of the wheels on screen still spinning at `now` (the main wheel's and each extra one's): 📜 Log hides them. */
+/**
+ * The rolls still going on screen at `now`: the wheels' (the main wheel's and each extra one's), the dice's or the
+ * roll-off's. 📜 Log hides them until they land.
+ */
 export function spinningRolls(o: Overlay | null | undefined, now: number): Id[] {
   const w = o?.kind === 'scoreboard' ? o.under : o;
+  if (w?.kind === 'dice' || w?.kind === 'rolloff') return w.rollId && now < overlayDoneAt(w) ? [w.rollId] : [];
   if (w?.kind !== 'wheel') return [];
   return [w, ...(w.extra ?? [])].flatMap((x) => (x.rollId && x.spin && x.spin.startedAt + x.spin.duration > now ? [x.rollId] : []));
+}
+
+/** This spin's or roll's score cards go by this key (another die's or wheel's: this, then which one). See cardsDone. */
+export function cardsKey(o: Overlay): string {
+  return `${o.nonce}-${o.kind === 'wheel' ? o.spin?.startedAt : o.kind === 'dice' ? o.startedAt : ''}`;
+}
+
+/**
+ * A score card dealt with (kept on the overlay, see cardsDone): skipped, or the score step it applied, so an Undo of
+ * that step brings the card back (the points went to the wrong player).
+ */
+export function cardDone(o: Overlay | null | undefined, session: Session, key: string): boolean {
+  const d = o?.kind === 'wheel' || o?.kind === 'dice' ? o.cardsDone?.[key] : undefined;
+  return d === true || (!!d && session.scoreLog.some((e) => e.batchId === d && !e.undone));
+}
+
+/**
+ * The score cards of the wheel or dice on screen still waiting once it has landed (neither confirmed nor skipped): its
+ * result's (not a 🎯 player wheel's), the other dice's faces' and the other wheels'. Closing it with one left asks first.
+ */
+export function scoreCardsLeft(o: Overlay | null | undefined, session: Session, now = Date.now()): string[] {
+  if ((o?.kind !== 'wheel' && o?.kind !== 'dice') || now < overlayDoneAt(o)) return [];
+  const key = cardsKey(o);
+  const keys: string[] = [];
+  if (o.kind === 'dice') {
+    if (!o.roll) return [];
+    const { main, others } = rollOutcome(o.roll);
+    if (main?.scoreAction) keys.push(key);
+    for (const f of others) if (f.face.scoreAction) keys.push(`${key}-die${f.i}`);
+  } else {
+    if (!o.spin) return [];
+    if (!o.players && !o.members && o.result !== null && o.segments[o.result]?.scoreAction) keys.push(key);
+    for (const w of o.extra ?? []) if (w.spin && w.result !== null && w.segments[w.result]?.scoreAction) keys.push(`${key}-${w.key}`);
+  }
+  return keys.filter((k) => !cardDone(o, session, k));
 }
 
 /** A throwaway wheel from a plain list of options (with optional weights). */
@@ -343,8 +382,8 @@ export function openDice(live: Live, preset: DicePreset): void {
 export function rollDice(live: Live, session: Session, preset: DicePreset, mover = false): void {
   const p = JSON.parse(JSON.stringify(preset)) as DicePreset;
   const roll = rollPreset(p);
-  live.overlay = { kind: 'dice', nonce: newId(), name: p.name, preset: p, roll, startedAt: Date.now(), duration: 1300, ...(mover ? { mover } : {}) };
-  logRoll(session, 'dice', p.name, describeRoll(roll));
+  const logged = logRoll(session, 'dice', p.name, describeRoll(roll));
+  live.overlay = { kind: 'dice', nonce: newId(), name: p.name, preset: p, roll, startedAt: Date.now(), duration: 1300, ...(mover ? { mover } : {}), rollId: logged.id };
 }
 
 /** Quick dice like "2d6" that aren't saved with the game. */
@@ -358,7 +397,7 @@ export function startRollOff(live: Live, session: Session, playerIds: string[], 
   // A blank die is a d20, and a die has at least 2 sides (a d1 would tie every round).
   sides = Math.min(1000, Math.max(2, Math.floor(sides) || 20));
   const plan = planRollOff(playerIds, sides, undefined, purpose === 'buzz');
-  live.overlay = {
+  const overlay: Overlay = {
     kind: 'rolloff',
     nonce: newId(),
     purpose,
@@ -372,13 +411,14 @@ export function startRollOff(live: Live, session: Session, playerIds: string[], 
   };
   const name = (id: string) => session.players.find((p) => p.id === id)?.name ?? '?';
   const first = plan.rounds[0];
-  logRoll(
+  const logged = logRoll(
     session,
     'rolloff',
     purpose === 'tiebreak' ? `Tiebreaker roll-off (d${sides})` : purpose === 'buzz' ? `Buzzer tie roll (d${sides})` : `Roll-off (d${sides})`,
     `${purpose === 'buzz' ? plan.ranking.map(name).join(' → ') : `${name(plan.winner)} ${purpose === 'tiebreak' ? 'wins' : 'goes first'}`} · ${first.players.map((p) => `${name(p)} ${first.rolls[p]}`).join(', ')}${plan.rounds.length > 1 ? ` (+${plan.rounds.length - 1} tiebreak)` : ''}`,
     [plan.winner],
   );
+  live.overlay = { ...overlay, rollId: logged.id };
 }
 
 /** The scores on screen, over whatever is up (a wheel still to land, a result still to act on): S again puts it back. */

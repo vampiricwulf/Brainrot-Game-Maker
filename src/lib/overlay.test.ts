@@ -5,8 +5,8 @@ import { PLAYER_WHEEL, type BoardRound, type Game } from './model';
 
 const board = (g: Game, i: number = 0) => g.rounds[i] as BoardRound;
 import {
-  addWheel, editWheel, openCategories, openCategoryWheel, openPartnerWheel, openPlayerWheel, openQuickWheel, removeWheel, openWheel, resetWheelEdits, spinningRolls,
-  spinSegments, spinWheel, startRollOff, toggleScoreboard, wheelEdited, wheelPool, wheelSpentUp,
+  addWheel, editWheel, openCategories, openCategoryWheel, openDice, openPartnerWheel, openPlayerWheel, openQuickWheel, quickDice, removeWheel, openWheel, resetWheelEdits,
+  rollDice, spinningRolls, spinSegments, spinWheel, startRollOff, toggleScoreboard, wheelEdited, wheelPool, wheelSpentUp,
 } from './overlay';
 import { newWheel, parseQuickWheel } from './tools';
 import { newSession } from './session';
@@ -405,5 +405,27 @@ describe('🤝 the partner wheel, and the rolls 📜 Log hides while they spin',
     openPartnerWheel(live, session, { clue: 'q1', stage: 'pick', giver: 'partner', pickerId: 'a' }, 'Ann');
     expect(spinningRolls(live.overlay, Date.now())).toEqual([]);
     expect(spinningRolls(null, Date.now())).toEqual([]);
+  });
+
+  it('lists a dice roll or a roll-off until it lands, under the scores too', () => {
+    const { session, live } = withPlayers();
+    rollDice(live, session, quickDice(20, 1));
+    const dice = live.overlay!;
+    expect(dice.kind === 'dice' && dice.rollId).toBe(session.rollLog!.at(-1)!.id);
+    if (dice.kind !== 'dice') return;
+    expect(spinningRolls(dice, dice.startedAt + 200)).toEqual([dice.rollId]);
+    toggleScoreboard(live);
+    expect(spinningRolls(live.overlay, dice.startedAt + 200)).toEqual([dice.rollId]);
+    expect(spinningRolls(dice, overlayDoneAt(dice))).toEqual([]);
+    // Dice not rolled yet: nothing to hide.
+    openDice(live, quickDice(6, 1));
+    expect(spinningRolls(live.overlay, Date.now())).toEqual([]);
+    // The tiebreaker roll-off: who won stays out of the log until the dice land.
+    startRollOff(live, session, ['a', 'b'], 20, 'tiebreak');
+    const ro = live.overlay!;
+    if (ro.kind !== 'rolloff') throw new Error('no roll-off');
+    expect(ro.rollId).toBe(session.rollLog!.at(-1)!.id);
+    expect(spinningRolls(ro, ro.startedAt + 200)).toEqual([ro.rollId]);
+    expect(spinningRolls(ro, overlayDoneAt(ro))).toEqual([]);
   });
 });

@@ -116,6 +116,8 @@ export type Overlay =
        * step they applied. Kept on the overlay so they stay dealt with through a reload.
        */
       cardsDone?: Record<string, string | true>;
+      /** The roll it logged (RollEvent id): 📜 Log hides its result until the dice land, as a wheel's. */
+      rollId?: Id;
     }
   | {
       kind: 'rolloff';
@@ -133,6 +135,8 @@ export type Overlay =
       winner: Id;
       startedAt: number;
       roundMs: number;
+      /** The roll it logged (RollEvent id): 📜 Log hides who won until the dice land, as a wheel's. */
+      rollId?: Id;
     }
   | {
       kind: 'scoreboard';

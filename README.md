@@ -333,7 +333,8 @@ notes a space up there):
 - A tiebreaker clue: select the winner and ＋ Award. Its Amount starts at 0, so settling the tie adds no points.
 - Co-winners.
 
-The winner fanfare plays once the tie is settled.
+The winner fanfare plays once the tie is settled. Each way settles only the tie it was used for: a score fixed later
+into a tie with someone else opens it again.
 
 **Exit** keeps the game in progress, and **Resume game** picks it up later, even after a crash. Resume asks how the
 game is shown, **Single window** or **📺 Separate audience window** (the same choice as before the game), and a game
