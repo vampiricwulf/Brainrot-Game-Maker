@@ -282,7 +282,7 @@
     if (skipped) toast(`Skipped ${skipped} item${skipped === 1 ? '' : 's'}: board images are pictures only`);
     if (!pics.length) return;
     const copies: BoardDecor[] = pics.map((x) => ({ ...clone(x), id: newId(), clickThrough: true }));
-    if (at) centreOn(copies, at);
+    if (at) centreOn(copies, at, SLIDE_W, SLIDE_H);
     else {
       const k = freeOffset(copies, decor);
       for (const c of copies) {

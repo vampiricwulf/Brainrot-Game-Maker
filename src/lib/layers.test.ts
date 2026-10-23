@@ -167,6 +167,18 @@ describe('centreOn', () => {
     centreOn([a, b], { x: 1000, y: 500 });
     expect([a.x, a.y, b.x, b.y]).toEqual([850, 400, 1050, 500]);
   });
+  it('keeps the group wholly on the stage when pasted near a corner, or centred when it is bigger', () => {
+    const a = { x: 0, y: 0, w: 600, h: 400 };
+    centreOn([a], { x: 1878, y: 1039 });
+    expect([a.x, a.y]).toEqual([1320, 680]);
+    const b = { x: 0, y: 0, w: 100, h: 100 };
+    const c = { x: 300, y: 50, w: 100, h: 100 };
+    centreOn([b, c], { x: 20, y: 1070 });
+    expect([b.x, b.y, c.x, c.y]).toEqual([0, 930, 300, 980]);
+    const wide = { x: 0, y: 0, w: 2000, h: 100 };
+    centreOn([wide], { x: 1900, y: 500 });
+    expect([wide.x, wide.y]).toEqual([-40, 450]);
+  });
 });
 
 describe('drag-to-select and items off the slide', () => {

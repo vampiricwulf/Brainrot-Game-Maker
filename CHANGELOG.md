@@ -32,6 +32,12 @@ in plain words for the people who make and host games. Anything committed but no
 - The checklist says what a finished board's notes are (“Jeopardy!: 1 Daily Double and 1 partner clue not placed yet (Start game places them)”), not “0 things to fix”.
 - The checklist's “deleted file still used” line names where (“on Introduction › Slide 1 › Image”) and goes there, instead of to an empty 🖼 Media page, and says the delete can be undone in 🕘 History.
 - 🤫 Cards and 🎡 Wheels, Dice & Deals: deleting the card (or wheel, dice or deal) that's open opens the one now in its place, or the one before, and deleted from the list (Delete, or its menu) that one's row takes the keys. Before, the first card opened and took them, so a second Delete deleted it.
+- In the clue editor, a choice in a slide's right-click menu (or Shift+F10's: Bring to front, 🔒 Lock, Duplicate, 📋 Copy, Hide while editing…) leaves the keys on the slide, so Delete deletes the item and Enter edits the selected text box. Before, they went to 🅣 Text: Delete did nothing and Enter added a text box.
+- A small item or a thin line on a slide drawn small (a laptop's clue editor) moves when you drag it by its middle: on a short side its handles sit outside it. Before, they covered it, so a drag resized it.
+- A video, or a YouTube, Google Drive or Streamable link, added to a slide goes beside its question, or moves the question into a band under it, as a picture does. Before, it landed in the middle and hid the question. A new 🅣 Text box starts low on the slide, under where a question's words usually are, not on them.
+- Right-click › Paste here near the slide's edge puts the pasted items wholly on the slide, as a drop does (they hung mostly off it, with handles out of reach).
+- The Layers list scrolls to the item picked on the slide (a click, or Tab), so its row shows.
+- ✏ Draw a line draws in white as you drag, the color the line is saved in (it showed yellow, then turned white).
 
 ## 2026-10-23
 

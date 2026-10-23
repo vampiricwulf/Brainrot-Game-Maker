@@ -560,6 +560,24 @@ try {
   await clue.waitFor();
   await click(960, 540);
   await insp.locator('textarea').fill('Who is this?');
+  // A YouTube link pasted there goes the same way (the player covered the question).
+  await context.route(/i\.ytimg\.com/, (r) =>
+    r.fulfill({ contentType: 'image/png', body: Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==', 'base64') }),
+  );
+  await canvas.focus();
+  await page.evaluate(() => {
+    const dt = new DataTransfer();
+    dt.setData('text/plain', 'https://www.youtube.com/watch?v=dQw4w9WgXcQ');
+    document.body.dispatchEvent(new ClipboardEvent('paste', { clipboardData: dt, bubbles: true }));
+  });
+  await canvas.locator('.slide .card').waitFor();
+  {
+    const player = await canvas.locator('.slide .el:has(.card)').boundingBox();
+    const words = await canvas.locator('.slide .el:has(.text)').boundingBox();
+    assert(player.y + player.height <= words.y + 2, 'a pasted YouTube link goes above the question, the text in a band under it');
+  }
+  await page.keyboard.press('Control+z');
+  await canvas.locator('.slide .card').waitFor({ state: 'detached' });
   await page.getByRole('button', { name: '🖼 Image' }).click();
   await page.getByRole('dialog', { name: 'Choose image' }).dispatchEvent('drop', { dataTransfer: await picture('face.png', 800, 600, '#00aa00') });
   await canvas.locator('.slide .el img').waitFor();

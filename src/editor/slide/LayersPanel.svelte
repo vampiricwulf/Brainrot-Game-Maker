@@ -37,6 +37,19 @@
 
   const top = $derived([...elements].sort((a, b) => b.zIndex - a.zIndex));
   let listEl = $state<HTMLDivElement>();
+  // The selected item's row stays in sight when it's picked on the slide (a click, Tab): the list scrolls just far
+  // enough. (Not while the keys are in the list: ↑/↓ there move the focus, which the browser keeps in sight.)
+  $effect(() => {
+    const id = selected[selected.length - 1];
+    void top;
+    if (!id || !listEl || listEl.contains(document.activeElement)) return;
+    const row = listEl.querySelector<HTMLElement>(`[data-layer="${id}"]`);
+    if (!row) return;
+    const box = listEl.getBoundingClientRect();
+    const r = row.getBoundingClientRect();
+    if (r.top < box.top) listEl.scrollTop -= box.top - r.top;
+    else if (r.bottom > box.bottom) listEl.scrollTop += r.bottom - box.bottom;
+  });
   function pick(e: MouseEvent, el: SlideElement): void {
     if (e.shiftKey || e.ctrlKey || e.metaKey) selected = selected.includes(el.id) ? selected.filter((x) => x !== el.id) : [...selected, el.id];
     else selected = [el.id];

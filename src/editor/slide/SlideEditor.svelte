@@ -294,7 +294,8 @@
         t.color = game.theme.clueColor ?? t.color;
       }
     } else {
-      t = newTextEl('New text', { x: 460, y: 390, w: 1000, h: 300 });
+      // Low on the slide, under where a question's words usually are (the question stays where it is).
+      t = newTextEl('New text', { x: 460, y: 700, w: 1000, h: 300 });
       t.size = 90;
       const k = freeOffset([t], slide.elements, 40);
       t.x += k * 40;
@@ -324,7 +325,8 @@
     } else if (kind === 'video') {
       const v = newVideoEl(id);
       if (gif) Object.assign(v, { loop: true, muted: true });
-      add(v, at);
+      // Clear of the text, as a picture is.
+      add(v, at, at ? undefined : () => placeNewPicture(slide.elements, v));
     }
     else if (kind === 'audio') add(newAudioEl(id), at);
     else if (kind === 'font') {
@@ -390,7 +392,8 @@
   function addEmbed(url: string, kind: EmbedKind, at?: { x: number; y: number }): void {
     const el = newEmbedEl(url, kind);
     if (kind === 'youtube') el.startAt = youtubeStart(url);
-    add(el, at);
+    // Clear of the text, as a picture is (a sound's speaker stays in its corner).
+    add(el, at, at || kind === 'remoteAudio' ? undefined : () => placeNewPicture(slide.elements, el));
   }
 
   /** The link box turned a link into a file (downloaded, or a live link): put it on the slide. */
@@ -509,6 +512,15 @@
 
   function order(dir: 'front' | 'back' | 'up' | 'down'): void {
     restackSelected(dir === 'up' ? 'forward' : dir === 'down' ? 'backward' : dir);
+  }
+
+  /**
+   * A choice made in the right-click menu puts the keys back on the canvas before the menu goes, and before the choice
+   * runs (one that opens something, Text here or Background…, then takes them): in the clue editor they'd land on the
+   * nearest button, 🅣 Text, so Delete did nothing and Enter added a text box.
+   */
+  function menuKeysHome(): void {
+    if (document.activeElement?.closest('[role="menu"]')) canvasEl?.focus({ preventScroll: true });
   }
 
   /** A right-click menu choice (`at`: where on the slide the menu was opened). */
@@ -871,7 +883,7 @@
     const copies = clipboard.elements.map((x) => ({ ...clone(x), id: newId() }));
     // (Copied from the board images: their board-only settings stay behind.)
     for (const c of copies) for (const key of ['behind', 'clickThrough'] as const) delete (c as Record<string, unknown>)[key];
-    if (at) centreOn(copies, at);
+    if (at) centreOn(copies, at, SLIDE_W, SLIDE_H);
     else {
       // Copies that would land exactly on an existing item (pasting onto the same slide) shift down-right.
       const k = freeOffset(copies, slide.elements);
@@ -962,11 +974,16 @@
     canPaste={clipboard.elements.length > 0}
     slideExtras={{ canPasteSlide: !!clipboard.slide }}
     onpick={(id) => (selected = [id])}
-    onaction={(a) => menuAction(a, at)}
+    onaction={(a) => {
+      menuKeysHome();
+      menuAction(a, at);
+    }}
     onclose={() => {
+      menuKeysHome();
       menu = null;
       // The keys stay with the slide (on its canvas) once the menu is done, not wherever they were before it, nor on
-      // the page: Esc then deselects, rather than closing the clue around it.
+      // the page: Esc then deselects, rather than closing the clue around it. (After a click outside the menu, once
+      // that click has put them where it does.)
       setTimeout(() => {
         if (!root?.contains(document.activeElement) && !document.querySelector('[role="menu"]')) canvasEl?.focus({ preventScroll: true });
       });

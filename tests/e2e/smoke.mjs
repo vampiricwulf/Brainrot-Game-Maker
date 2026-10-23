@@ -473,7 +473,17 @@ assert(
   (await page.locator('.ribbon', { hasText: 'DRAWING' }).count()) === 1 && (await page.getByRole('button', { name: '■ Stop' }).boundingBox()).width === shapeWidth,
   "draw mode says so on the slide, and ■ Stop takes the Shape button's place at the same width (the toolbar doesn't move)",
 );
+// The line shows as it's drawn in the color it's saved with (it was yellow, then turned white on letting go).
+{
+  const cv = await page.locator('.canvas').boundingBox();
+  await page.mouse.move(cv.x + cv.width * 0.3, cv.y + cv.height * 0.3);
+  await page.mouse.down();
+  await page.mouse.move(cv.x + cv.width * 0.5, cv.y + cv.height * 0.4, { steps: 4 });
+  const stroke = await page.locator('.draw polyline').getAttribute('stroke');
+  assert(stroke === '#ffffff', `a line being drawn is white, as it's saved (${stroke})`);
+}
 await page.keyboard.press('Escape');
+await page.mouse.up();
 assert((await page.locator('.draw').count()) === 0 && (await clueOpen()), 'Esc stops drawing, not the clue');
 await page.getByRole('button', { name: '🌐 Link' }).click();
 await page.locator('.canvas').click({ position: { x: 3, y: 3 } });
@@ -561,8 +571,8 @@ assert((await hits()) === 1, 'Ctrl+A then Delete skips the locked image');
 await page.keyboard.press('Control+z');
 assert((await hits()) === 3, 'and Ctrl+Z brings the text boxes back');
 // Alt+click walks down everything under the pointer from the top, locked items included: first the
-// locked image, then the text box under it.
-const mid = center(await page.locator('.canvas .stage').boundingBox());
+// locked image, then the text box under it (the second one, whose style differs from the other slides').
+const mid = center(await page.locator('.canvas .hit').nth(1).boundingBox());
 await page.keyboard.down('Alt');
 await page.mouse.click(...mid);
 assert((await insp.getByText('Locked — unlock to delete').count()) === 1, 'Alt+click reaches the locked image on top');

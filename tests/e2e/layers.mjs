@@ -306,6 +306,58 @@ try {
   await layers.first().getByRole('button', { name: /^Unlock: / }).click();
   assert(!(await page.locator('.insp').getByLabel('Lock', { exact: true }).isChecked()), 'and unlocks it from there');
 
+  // A choice in the keyboard's menu (Shift+F10, arrows, Enter) leaves the keys on the slide. In the clue editor they
+  // went to 🅣 Text: Delete then did nothing, and Enter added a text box.
+  /** Let the page's own timers (set off by what was just done) run first. */
+  const settle = () => page.evaluate(() => new Promise((r) => setTimeout(() => setTimeout(r))));
+  const menuPick = async (name) => {
+    await page.keyboard.press('Shift+F10');
+    const item = menu.getByRole('menuitem', { name });
+    await item.waitFor();
+    while (!(await item.evaluate((b) => b === document.activeElement))) await page.keyboard.press('ArrowDown');
+    await page.keyboard.press('Enter');
+    await menu.waitFor({ state: 'detached' });
+    await settle();
+  };
+  await page.getByRole('button', { name: '◼ Shape ▾' }).click();
+  await page.getByRole('button', { name: '▭ Rectangle' }).click();
+  await canvas.focus();
+  await menuPick(/🔒 Lock/);
+  assert(await canvasFocused(), 'after 🔒 Lock from the keyboard menu, the keys are still on the slide');
+  await menuPick(/🔓 Unlock/);
+  await page.keyboard.press('Tab');
+  assert((await inspectorKind()) === 'text', 'Tab picks the question under the rectangle');
+  await menuPick(/^Bring to front/);
+  await page.keyboard.press('Delete');
+  await layers.filter({ hasText: label }).waitFor({ state: 'detached' });
+  assert((await layers.count()) === 1, 'after Bring to front from the keyboard menu, Delete deletes the item');
+
+  // A small item is moved by any part of it: on a short side the handles sit outside it (they covered it, so a drag
+  // near its top edge, or on a laptop by its middle, resized it).
+  await layers.first().locator('.name').click();
+  for (const [k, v] of [['W', 40], ['H', 40], ['X', 800], ['Y', 300]]) await pos.getByLabel(k, { exact: true }).fill(String(v));
+  {
+    const from = await at(820, 306);
+    await page.mouse.move(from.x, from.y);
+    await page.mouse.down();
+    await page.mouse.move(from.x + 60, from.y + 30, { steps: 6 });
+    await page.mouse.up();
+    const [x, w, h] = await Promise.all(['X', 'W', 'H'].map((k) => pos.getByLabel(k, { exact: true }).inputValue().then(Number)));
+    assert(x > 850 && w === 40 && h === 40, `dragging a 40×40 item just inside its top edge moves it (X ${x}, ${w}×${h})`);
+  }
+
+  // The Layers list shows the row of the item picked on the slide (it stayed below the list's fold).
+  await canvas.focus();
+  for (let i = 0; i < 10; i++) await page.keyboard.press('Control+d');
+  assert((await layers.count()) === 11, 'ten copies of it');
+  for (let i = 0; i < 10; i++) await page.keyboard.press('Tab');
+  const shown = await page.evaluate(() => {
+    const list = document.querySelector('.layers-box .layers').getBoundingClientRect();
+    const row = document.querySelector('.layers-box .row.sel').getBoundingClientRect();
+    return { scrolls: document.querySelector('.layers-box .layers').scrollHeight > list.height + 1, inside: row.top >= list.top - 1 && row.bottom <= list.bottom + 1 };
+  });
+  assert(shown.scrolls && shown.inside, `the Layers list scrolls to the bottom item picked with Tab (${JSON.stringify(shown)})`);
+
   assert(!errors.length, 'no page errors' + (errors.length ? ': ' + errors.join(' | ') : ''));
   console.log('\nLayers E2E passed.');
 } finally {

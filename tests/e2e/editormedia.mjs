@@ -261,7 +261,8 @@ try {
   assert((await layers.count()) === 3, 'Paste here pastes the copy');
   const px = Number(await pos.getByLabel('X', { exact: true }).inputValue());
   const pw = Number(await pos.getByLabel('W', { exact: true }).inputValue());
-  assert(Math.abs(px + pw / 2 - 1700) < 5, `centred where the menu was opened (${px}+${pw}/2)`);
+  // (Centred there as far as the slide allows: it hung off the right edge, as a drop no longer does.)
+  assert(pw === 600 && px === 1920 - pw, `where the menu was opened, kept wholly on the slide (${px}+${pw})`);
   // Align ▸ Left.
   await rightClick(1700, 150);
   await menu.getByRole('menuitem', { name: /^Align/ }).click();

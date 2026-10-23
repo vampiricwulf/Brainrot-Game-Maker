@@ -176,15 +176,20 @@ export function clampOnto(e: { x: number; y: number; w: number; h: number }, W =
   e.y = fit(e.y, e.h, H);
 }
 
-/** Move a group of items together so the middle of the box around them is at `at` (a paste at the pointer). */
-export function centreOn(els: { x: number; y: number; w: number; h: number }[], at: Pt): void {
+/**
+ * Move a group of items together so the middle of the box around them is at `at` (a paste at the pointer), but never
+ * partly off the stage (pasted near an edge): wholly on it, or centred when the group is bigger, as a drop is.
+ */
+export function centreOn(els: { x: number; y: number; w: number; h: number }[], at: Pt, W = 1920, H = 1080): void {
   if (!els.length) return;
   const x0 = Math.min(...els.map((e) => e.x));
   const y0 = Math.min(...els.map((e) => e.y));
   const x1 = Math.max(...els.map((e) => e.x + e.w));
   const y1 = Math.max(...els.map((e) => e.y + e.h));
-  const dx = Math.round(at.x - (x0 + x1) / 2);
-  const dy = Math.round(at.y - (y0 + y1) / 2);
+  const box = { x: x0 + Math.round(at.x - (x0 + x1) / 2), y: y0 + Math.round(at.y - (y0 + y1) / 2), w: x1 - x0, h: y1 - y0 };
+  clampOnto(box, W, H);
+  const dx = box.x - x0;
+  const dy = box.y - y0;
   for (const e of els) {
     e.x += dx;
     e.y += dy;

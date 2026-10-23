@@ -354,6 +354,12 @@
     [-1, 1], [0, 1], [1, 1],
   ];
   const cursor = (hx: number, hy: number) => (hx === 0 ? 'ns-resize' : hy === 0 ? 'ew-resize' : hx === hy ? 'nwse-resize' : 'nesw-resize');
+  /**
+   * A side shorter than this on screen (px: three handles' worth) has its handles outside it, so a thin line or a small
+   * logo can still be grabbed by its middle and moved, not resized.
+   */
+  const SHORT_PX = 42;
+  const shift = (h: number, short: boolean) => (!short || h === 0 ? '-50%' : h < 0 ? '-100%' : '0%');
   const inv = $derived(1 / (stage.scale || 1));
   // The rotate handle sits 44 screen px out; flip it below (or inside) when that would be off the slide.
   const knob = $derived(single ? knobPlacement(single, 52 * inv) : 'above');
@@ -402,11 +408,14 @@
       style:--inv={inv}
     >
       {#if single && !el.locked}
+        {@const shortW = el.w * (stage.scale || 1) < SHORT_PX}
+        {@const shortH = el.h * (stage.scale || 1) < SHORT_PX}
         {#each HANDLES as [hx, hy]}
           <div
             class="handle"
             style:left="{((hx + 1) / 2) * 100}%"
             style:top="{((hy + 1) / 2) * 100}%"
+            style:translate="{shift(hx, shortW)} {shift(hy, shortH)}"
             style:cursor={cursor(hx, hy)}
             onpointerdown={(e) => handleDown(e, hx, hy)}
             role="presentation"
@@ -475,7 +484,6 @@
     position: absolute;
     width: calc(14px * var(--inv));
     height: calc(14px * var(--inv));
-    translate: -50% -50%;
     background: #fff;
     border: calc(2px * var(--inv)) solid #4f7cff;
     border-radius: 2px;
