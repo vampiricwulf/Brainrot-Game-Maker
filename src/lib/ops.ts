@@ -24,9 +24,12 @@ export function clueClearable(clue: Clue): boolean {
   );
 }
 
-/** A category with clues, an image or its own name (not the "Category 3" it started with). */
+/** A name the board made up ("Category 3", "New category"), which nobody wants to keep. */
+export const madeUpCategoryName = (t: string): boolean => /^(Category \d+|New category( \d+)?)$/.test(t.trim());
+
+/** A category with clues, an image or its own name (not the "Category 3" or "New category" it started with). */
 export function categoryHasContent(cat: Category): boolean {
-  return !!cat.image || (!!cat.title.trim() && !/^Category \d+$/.test(cat.title.trim())) || cat.clues.some(clueHasContent);
+  return !!cat.image || (!!cat.title.trim() && !madeUpCategoryName(cat.title)) || cat.clues.some(clueHasContent);
 }
 
 /**

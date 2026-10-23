@@ -3,6 +3,7 @@
   import { modal, topModal } from '../lib/modal';
   import { onMount, tick, untrack } from 'svelte';
   import { app, toast } from '../lib/app.svelte';
+  import { announce } from '../lib/announce';
   import { take, type ClueSide, type Place, type RoundPart } from '../lib/nav.svelte';
   import { imgFallback, mediaUrls } from '../lib/media.svelte';
   import { addClueSlide, cardFromAnswer, deleteClueSlide, duplicateClueSlide, followDailyDoubles, moveClueSlide, neighbourClue, setClueType, stepClue, textStyleTargets } from '../lib/ops';
@@ -17,6 +18,7 @@
     MAX_CARDS,
     PLAYER_WHEEL,
     questionSlides,
+    roundName,
     type ClueType,
     setSlideText,
     slideText,
@@ -342,6 +344,8 @@
     qi = 0;
     ci = 0;
     focusQuestion();
+    // (A screen reader hears only "Question, edit text" again: it's told which tile this is, the last one when keys come fast.)
+    announce(tileName(), 'clue-editor-tile');
   }
   /** Ctrl+Enter / Ctrl+Shift+Enter: the next or previous clue; at the end of the board, a note says so. */
   function step(d: 1 | -1): void {
@@ -402,7 +406,7 @@
     <div class="modal clue" role="dialog" aria-modal="true" aria-label="Edit clue" use:modal use:focusRescue bind:this={clueBox}>
       <header>
         <div>
-          <div class="hint">{round.name} · {cat.title || `Category ${pos.cat + 1}`}</div>
+          <div class="hint">{roundName(round, app.game.rounds.indexOf(round))} · {cat.title || `Category ${pos.cat + 1}`}</div>
           <h2 class="modal-title value">{formatPoints(clue.value ?? round.values[pos.row] ?? 0, sym)}</h2>
         </div>
         <span class="spacer"></span>

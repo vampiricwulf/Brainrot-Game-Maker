@@ -78,12 +78,19 @@ function plural(n: number, word: string): string {
  */
 export function dailyDoublesShort(round: BoardRound): { want: number; placed: number } | null {
   const placed = dailyDoublesPlaced(round);
-  // No more than placing them can add: one a category, on a standard tile, in a category without one yet.
+  const want = Math.min(round.dailyDoubleCount ?? 1, dailyDoublesMost(round));
+  return placed < want ? { want, placed } : null;
+}
+
+/**
+ * The most Daily Doubles a board can have once the rest are placed: those on it, and no more than placing them can
+ * add (one a category, on a standard tile, in a category without one yet).
+ */
+export function dailyDoublesMost(round: BoardRound): number {
   const room = round.categories.filter(
     (c) => !c.clues.some((cl) => cl.type === 'dailyDouble' && !cl.empty) && c.clues.some((cl) => !cl.empty && cl.type === 'standard'),
   ).length;
-  const want = Math.min(round.dailyDoubleCount ?? 1, playableClues(round).length, placed + room);
-  return placed < want ? { want, placed } : null;
+  return Math.min(playableClues(round).length, dailyDoublesPlaced(round) + room);
 }
 
 /** A board with more Daily Doubles placed than its ⭐ Daily Doubles box says (lowered after placing them): both. */

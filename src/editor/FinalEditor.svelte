@@ -55,6 +55,7 @@
   /** The slide tabs (the keys go back to the open one). */
   let tabs = $state<ReturnType<typeof SlideTabs>>();
   let cardField = $state<HTMLTextAreaElement>();
+  let qField = $state<HTMLTextAreaElement>();
   const cards = $derived(cardSlides(round));
   const cardAt = $derived(Math.min(ci, Math.max(0, cards.length - 1)));
   /** The card open, else the last one opened (Card 1 at first): the 4th quick box is its words. */
@@ -198,7 +199,7 @@
 <div class="quick" class:four={!!card}>
   <label class="field">
     {qslides.length > 1 ? `Question (slide ${at + 1} of ${qslides.length})` : 'Question'}
-    <textarea rows="2" data-field="q" placeholder="Type the final question…" value={slideText(qslide)} oninput={(e) => setSlideText(qslide, e.currentTarget.value) && followClueText(app.game, [qslide])}></textarea>
+    <textarea bind:this={qField} rows="2" data-field="q" placeholder="Type the final question…" value={slideText(qslide)} oninput={(e) => setSlideText(qslide, e.currentTarget.value) && followClueText(app.game, [qslide])}></textarea>
   </label>
   <label class="field">
     Answer (hidden until revealed)
@@ -240,6 +241,7 @@
     title: (c, i) => `🤫 ${clueCardName(c, i)}: only the players you send it to see it, never on stream. It starts with ${finalGoesToLabel(c.to, false)}. F2: rename it`,
     place: (id) => ({ tab: 'round', round: round.id, part: { kind: 'final', side: 'card', slide: id } }),
   }}
+  onadded={() => void tick().then(() => qField?.focus())}
 />
 {#if shown === 'card' && card}
   <CardBar

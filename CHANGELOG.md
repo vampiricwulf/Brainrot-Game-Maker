@@ -11,6 +11,18 @@ the day it's pushed (Pacific time; start the heading on the day's first push) an
 in plain words for the people who make and host games. Anything committed but not pushed yet goes under
 **Unreleased** at the top, and moves under its day when it's pushed.
 
+## Unreleased
+
+### Fixed
+
+- ＋ Add slide (and ⧉ Duplicate) in a Slides round, the tiebreaker and a Final put the keys in the new slide's text box, as the clue editor's does. Before, they stayed on the button: what you typed went nowhere, and each Space added another empty slide.
+- A mouse wheel over a number box you're typing in (Rows, Categories, a row value, a clue's value or countdown, the host panel's amounts) scrolls the page instead of changing the number. Before, Chrome and Edge changed it a step a tick, and a lower Rows or Categories then deleted clues on the next click.
+- Right-clicking a new category's made-up name (“Category 1”) opens the category menu, not the browser's own.
+- ⭐ Daily Doubles: the hint beside the box says how many Start game places by the checklist's rule, and when the box asks for more than one a category allows (“0 placed (Start places 6 at random: one a category, 6 at most)”). 🔀 Randomize says so when it places fewer (“Placed 6 of 8 Daily Doubles: one a category”), and is greyed at 0 (“Say how many first”), as the partner clues' is.
+- Screen readers: moving to another clue in the clue editor (Ctrl+Enter, Alt+arrows, ◀ Prev / Next ▶) says which tile it's on (“Category 2 $400”).
+- Fewer categories: ↶ Undo and the note name the category removed (“removed “Topic F””), or say how many weren't empty, instead of “removed 1 with clues in” for one that had only its name. A made-up “New category” counts as empty.
+- A round with its name cleared: the clue editor's and 🖼 Board images' headers show the name it plays under (“Round 2”), as its tab does, and a Slides round's name box suggests that name instead of “Introduction”.
+
 ## 2026-10-23
 
 ### Added

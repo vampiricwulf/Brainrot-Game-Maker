@@ -84,6 +84,8 @@ try {
   await key('Alt+ArrowRight');
   await key('Alt+ArrowUp');
   assert((await page.getByPlaceholder('Type the question…').inputValue()) === 'What is skibidi?', 'Alt+→ and Alt+↑ go across and up');
+  await page.waitForFunction(() => /Category 2 \$200\.$/.test(document.getElementById('live-region')?.dataset.said ?? ''));
+  assert(true, 'a screen reader is told which tile the clue editor moved to');
   await key('Escape');
   assert((await focused()) === '1,0', 'Done goes back to the tile it ended on');
   // Opened on one tile and moved on with Ctrl+Enter: closing it goes to the tile it ended on, not the one it opened from.
@@ -176,6 +178,12 @@ try {
   await page.keyboard.type('!');
   assert((await catNames())[2] === 'Snacks!', 'a name of your own keeps the caret where it’s clicked');
   await page.getByLabel('Category 3 name').fill('Category 3');
+  await page.locator('main').click({ position: { x: 4, y: 4 } });
+  // A right-click on a made-up name (which the app selects as the keys go in) opens the category menu, not the browser's.
+  await page.getByLabel('Category 3 name').click({ button: 'right' });
+  const catMenuShown = await menu.getByRole('menuitem', { name: /Delete category/ }).waitFor({ timeout: 3000 }).then(() => true, () => false);
+  assert(catMenuShown, 'right-clicking a made-up category name opens the category menu');
+  await page.keyboard.press('Escape');
   await page.locator('main').click({ position: { x: 4, y: 4 } });
 
   // ---------- ED-20: rows anywhere ----------

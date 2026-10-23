@@ -553,6 +553,10 @@
   function ignoreFiles(e: DragEvent): void {
     if (e.dataTransfer?.types.includes('Files')) e.preventDefault();
   }
+  /** A mouse wheel over a number box with the keys scrolls the page, never changes the number (Rows would delete clues). */
+  function wheelNumber(e: WheelEvent): void {
+    if (e.target instanceof HTMLInputElement && e.target.type === 'number' && e.target === document.activeElement) e.target.blur();
+  }
 
   // Every press, a key in another field and focus moving on start a new undo step (history.svelte.ts).
   onMount(() => (playerOnly ? undefined : listen()));
@@ -1036,7 +1040,7 @@
   }
 </script>
 
-<svelte:window ondragover={ignoreFiles} ondrop={ignoreFiles} onkeydown={saveKey} />
+<svelte:window ondragover={ignoreFiles} ondrop={ignoreFiles} onkeydown={saveKey} onwheel={wheelNumber} />
 
 {#if !loaded}
   <div class="loading muted" role="status">

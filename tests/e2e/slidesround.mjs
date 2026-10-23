@@ -44,6 +44,8 @@ try {
   await text.fill('Welcome to the show');
   await page.getByRole('button', { name: '＋ Add slide' }).click();
   await page.getByRole('tab', { name: 'Slide 2' }).waitFor();
+  await page.waitForFunction(() => document.activeElement?.matches('main [data-field="q"]'));
+  assert(true, '＋ Add slide puts the keys in the new slide’s text');
   assert((await page.getByRole('tab', { name: /Answer/ }).count()) === 0, 'its tabs are Slide 1, Slide 2 (no Answer)');
   // The checklist's line for an empty slide opens that slide, with the focus in its text.
   await page.getByRole('tab', { name: 'Slide 1' }).click();
@@ -55,6 +57,19 @@ try {
   await page.locator('main [data-field="round-notes"]').fill('Say hi to chat');
   await page.getByRole('tab', { name: 'Slide 1' }).click();
   assert((await text.inputValue()) === 'Welcome to the show', 'each slide keeps its own text');
+  // A round name left empty: the box and the clue editor show the name it plays under, as its tab does.
+  const nameBox = page.locator('main [data-round-name]');
+  await nameBox.fill('');
+  assert((await nameBox.getAttribute('placeholder')) === 'Round 1' && (await roundNames())[0] === 'Round 1', `an empty name's box suggests “Round 1”, its tab's name (${await nameBox.getAttribute('placeholder')})`);
+  await nameBox.fill('Introduction');
+  await page.locator('nav > button.round-tab').nth(1).click();
+  await nameBox.fill('');
+  await page.locator('.tile').first().click();
+  const clueHead = await page.getByRole('dialog', { name: 'Edit clue' }).locator('header .hint').first().innerText();
+  assert(clueHead === 'Round 2 · Category 1', `the clue editor names it as its tab does (${clueHead})`);
+  await page.keyboard.press('Escape');
+  await nameBox.fill('Jeopardy!');
+  await page.locator('nav > button.round-tab', { hasText: 'Introduction' }).click();
   // A Final's line goes to the side with nothing on it (here its answer), from another round.
   await page.locator('nav > button.round-tab', { hasText: 'Final' }).click();
   await page.locator('main [data-field="q"]').fill('The final question');

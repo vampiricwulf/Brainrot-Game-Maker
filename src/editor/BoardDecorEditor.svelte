@@ -17,7 +17,7 @@
   import { adoptMedia, clipboard, copyElements, copyFromMenu, elementMediaIds, pastingOurs } from '../lib/clipboard.svelte';
   import { freeOffset } from '../lib/editing';
   import { copyIsTheBrowsers } from '../lib/undokeys';
-  import { boardRounds, MAX_PLAYERS, mostPlayers, newId, newImageEl, SLIDE_H, SLIDE_W, type BoardDecor, type ImageEl, type BoardRound, type Slide, type SlideElement } from '../lib/model';
+  import { boardRounds, MAX_PLAYERS, mostPlayers, newId, newImageEl, roundName, SLIDE_H, SLIDE_W, type BoardDecor, type ImageEl, type BoardRound, type Slide, type SlideElement } from '../lib/model';
   import { newSession } from '../lib/session';
   import Stage from '../lib/Stage.svelte';
   import AudienceView from '../play/AudienceView.svelte';
@@ -427,7 +427,7 @@
   <div class="modal decor" role="dialog" aria-modal="true" aria-label="Board images" use:modal>
     <header>
       <div>
-        <div class="hint">{round.name}</div>
+        <div class="hint">{roundName(round, game.rounds.indexOf(round))}</div>
         <h2 class="modal-title">🖼 Board images</h2>
       </div>
       <div class="pop">

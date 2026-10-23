@@ -1,10 +1,10 @@
 <!-- A slides round: slides shown one after another (an introduction, the rules, a break), nothing to answer. -->
 <script lang="ts">
-  import { untrack } from 'svelte';
+  import { tick, untrack } from 'svelte';
   import { app } from '../lib/app.svelte';
   import { take } from '../lib/nav.svelte';
   import { textStyleTargets } from '../lib/ops';
-  import { questionSlides, setSlideText, slideText, type SlidesRound, type TextEl } from '../lib/model';
+  import { questionSlides, roundName, setSlideText, slideText, type SlidesRound, type TextEl } from '../lib/model';
   import { followClueText } from '../lib/cluetext';
   import SlideEditor from './slide/SlideEditor.svelte';
   import SlideTabs, { slideKeyOf } from './SlideTabs.svelte';
@@ -16,6 +16,7 @@
   const slides = $derived(questionSlides(round));
   const at = $derived(Math.min(qi, Math.max(0, slides.length - 1)));
   const slide = $derived(slides[at]);
+  let qField = $state<HTMLTextAreaElement>();
 
   // An undo or redo here shows the slide it changed.
   const handled = { seq: 0 };
@@ -33,7 +34,8 @@
 <div class="grid">
   <label class="field">
     Round name
-    <input bind:value={round.name} placeholder="Introduction" maxlength="40" data-round-name />
+    <!-- (Left empty, it plays under the name its tab shows.) -->
+    <input bind:value={round.name} placeholder={roundName(round, app.game.rounds.indexOf(round))} maxlength="40" data-round-name />
   </label>
   <label class="field grow">
     Host notes (off stream, except in a single window)
@@ -47,9 +49,17 @@
 <!-- Quick text: the slide's main text, so a plain slide never needs the canvas. -->
 <label class="field quick">
   {slides.length > 1 ? `Text (slide ${at + 1} of ${slides.length})` : 'Text'}
-  <textarea rows="2" data-field="q" placeholder="Type what the slide says…" value={slideText(slide)} oninput={(e) => setSlideText(slide, e.currentTarget.value) && followClueText(app.game, [slide])}></textarea>
+  <textarea bind:this={qField} rows="2" data-field="q" placeholder="Type what the slide says…" value={slideText(slide)} oninput={(e) => setSlideText(slide, e.currentTarget.value) && followClueText(app.game, [slide])}></textarea>
 </label>
-<SlideTabs holder={round} bind:side bind:qi what="the round’s" plain place={(_, slide) => ({ tab: 'round', round: round.id, part: { kind: 'slides', slide } })} />
+<SlideTabs
+  holder={round}
+  bind:side
+  bind:qi
+  what="the round’s"
+  plain
+  place={(_, slide) => ({ tab: 'round', round: round.id, part: { kind: 'slides', slide } })}
+  onadded={() => void tick().then(() => qField?.focus())}
+/>
 {#key `${round.id}-${slideKeyOf(slide)}`}
   <SlideEditor {slide} styletargets={styleTargets} quickfield="q" placeholder="Click to type on the slide" />
 {/key}

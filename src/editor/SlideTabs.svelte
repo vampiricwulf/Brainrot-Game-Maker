@@ -35,6 +35,7 @@
     cards,
     ci = $bindable(0),
     onCard = $bindable(false),
+    onadded,
   }: {
     holder: SlideHolder;
     /** Slides with nothing to answer (a slides round): no Answer tab, and they're "Slide 1, 2…". */
@@ -61,6 +62,8 @@
     ci?: number;
     /** A card's tab is open (`side` is kept for when another opens). */
     onCard?: boolean;
+    /** After ＋ Add slide or ⧉ Duplicate: the keys go to the new slide's text box. */
+    onadded?: () => void;
   } = $props();
 
   const qslides = $derived(questionSlides(holder));
@@ -218,7 +221,7 @@
   </div>
   <button
     class="ghost add"
-    onclick={addSlide}
+    onclick={() => (addSlide(), onadded?.())}
     title={plain
       ? 'Add a slide after this one'
       : side === 'a' || cardOpen
@@ -241,7 +244,7 @@
       <span class="muted small">Slide {at + 1} of {qslides.length}</span>
       <button class="ghost small" onclick={() => moveSlide(-1)} disabled={at === 0} aria-label="Move slide earlier" title="Move this slide earlier">◀ Earlier</button>
       <button class="ghost small" onclick={() => moveSlide(1)} disabled={at === qslides.length - 1} aria-label="Move slide later" title="Move this slide later">Later ▶</button>
-      <button class="ghost small" onclick={duplicateSlide} title="A copy of this slide, right after it">⧉ Duplicate</button>
+      <button class="ghost small" onclick={() => (duplicateSlide(), onadded?.())} title="A copy of this slide, right after it">⧉ Duplicate</button>
       <button class="ghost small danger" onclick={deleteSlide} title="Delete this {plain ? '' : 'question '}slide (Ctrl+Z brings it back)">🗑 Delete slide</button>
     </div>
   {/if}

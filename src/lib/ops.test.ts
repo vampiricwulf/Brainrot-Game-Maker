@@ -241,6 +241,9 @@ describe('what shrinking a board would lose', () => {
     expect(clueHasContent(b.clues[0])).toBe(true);
     b.clues[0].tileFace = undefined;
     expect(categoryHasContent(b)).toBe(false);
+    // (A name the board made up between others, too.)
+    b.title = 'New category 2';
+    expect(categoryHasContent(b)).toBe(false);
     b.title = 'Movies';
     expect(categoryHasContent(b)).toBe(true);
     b.title = '';

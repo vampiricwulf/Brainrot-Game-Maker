@@ -115,6 +115,15 @@ try {
   assert(sideways <= 1, `ten categories fit across at 1280 (${sideways}px over)`);
   await header.getByRole('button', { name: 'Undo (Ctrl+Z)' }).click();
   assert((await page.locator('.cat').count()) === 6, 'back to six');
+  // Fewer categories: the note names the one that went, when it had only a name of its own.
+  await page.locator('[data-cat-name="5"]').fill('Topic F');
+  await page.getByLabel('Categories').fill('5');
+  await page.getByLabel('Categories').press('Tab');
+  const fewer = await page.locator('.history-notice', { hasText: 'to 5 categories' }).innerText();
+  assert(fewer.startsWith('Changed Jeopardy! to 5 categories (removed “Topic F”)'), `fewer categories names the one removed (${fewer.split('\n')[0]})`);
+  await header.getByRole('button', { name: 'Undo (Ctrl+Z)' }).click();
+  await header.getByRole('button', { name: 'Undo (Ctrl+Z)' }).click();
+  assert((await page.locator('.cat').count()) === 6 && (await page.locator('[data-cat-name="5"]').inputValue()) === 'Category 6', 'Ctrl+Z brings it back, then its old name');
   // A narrower window (a 1024 laptop, half a 1920 screen): the six columns narrow to fit, none runs past the edge.
   for (const w of [1024, 960]) {
     await page.setViewportSize({ width: w, height: 720 });
@@ -184,11 +193,40 @@ try {
   assert((await row1.inputValue()) === '251', 'a row value is whole points');
   await row1.fill('200');
   await row1.press('Tab');
+  // A mouse wheel over a number box with the keys scrolls the page; it never changes the number (nor deletes rows).
+  await page.evaluate(() => ((window.__wheels = 0), addEventListener('wheel', () => window.__wheels++, { passive: true })));
+  let wheels = 0;
+  for (const box of [row1, page.getByLabel('Rows (questions per category)')]) {
+    await box.click();
+    const r = await box.boundingBox();
+    await page.mouse.move(r.x + r.width / 2, r.y + r.height / 2);
+    // (Each tick handled before the next: a change the wheel made would be in the box by then.)
+    for (let i = 0; i < 3; i++) {
+      await page.mouse.wheel(0, 100);
+      await page.waitForFunction((n) => window.__wheels > n, wheels++);
+    }
+    await page.evaluate(() => document.activeElement?.blur());
+  }
+  assert(
+    (await vals()).join() === '200,400,600,800,1000' && (await page.locator('.tile .val').first().innerText()).startsWith('$200'),
+    `a mouse wheel over a focused number box leaves it as it was (${await vals()})`,
+  );
   const dd = page.getByLabel('How many Daily Doubles');
+  const ddGroup = page.getByRole('group', { name: '⭐ Daily Doubles' });
   await dd.fill('50');
-  await page.getByRole('button', { name: '🔀 Randomize' }).click();
+  await dd.press('Tab');
+  const ddHint = await ddGroup.locator('.hint').innerText();
+  assert(ddHint === '0 placed (Start places 6 at random: one a category, 6 at most)', `the hint says what Start places, one a category (${ddHint})`);
+  await ddGroup.getByRole('button', { name: '🔀 Randomize' }).click();
   const placed = await page.locator('.tile .dd', { hasText: 'DD' }).count();
   assert(placed === 6 && (await dd.inputValue()) === '6', `Daily Doubles are clamped and the box says how many were placed (${placed}, ${await dd.inputValue()})`);
+  await page.locator('.toast', { hasText: 'Daily Doubles' }).waitFor();
+  assert((await toastText()) === 'Placed 6 of 10 Daily Doubles: one a category', `and the note says why there are fewer (${await toastText()})`);
+  await dd.fill('0');
+  await dd.press('Tab');
+  assert(await ddGroup.getByRole('button', { name: '🔀 Randomize' }).isDisabled(), '🔀 Randomize is greyed at 0 Daily Doubles');
+  await dd.fill('6');
+  await dd.press('Tab');
 
   // ---------- Standard dice and new wheels from a tile ----------
   await page.locator('.tile').nth(2).click();

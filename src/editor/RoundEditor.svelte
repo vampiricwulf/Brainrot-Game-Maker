@@ -29,7 +29,7 @@
   import { nameStep, step, stepAsync } from '../lib/history.svelte';
   import { slideHasContent } from '../lib/usage';
   import { toolChosen } from '../lib/tools';
-  import { choiceFaults } from '../lib/validate';
+  import { choiceFaults, dailyDoublesMost, dailyDoublesShort } from '../lib/validate';
   import { cardsToFinish, partnerSpot } from '../lib/partner';
   import {
     addCategory,
@@ -42,6 +42,7 @@
     deleteRow,
     duplicateCategory,
     insertRow,
+    madeUpCategoryName,
     moveCategory,
     moveRow,
     randomizePartnerTiles,
@@ -357,7 +358,16 @@
   /** The tile Enter in a category's name just went down to (until the next key there). */
   let cameFromName: string | null = null;
   const ddPlaced = $derived(dailyDoublesPlaced(round));
-  const ddWanted = $derived(Math.min(ddMax, round.dailyDoubleCount ?? 1));
+  /** "1 placed (Start places 3 at random: one a category, 4 at most)", by the checklist's rule. */
+  const ddHint = $derived.by(() => {
+    const short = dailyDoublesShort(round);
+    const most = dailyDoublesMost(round);
+    const notes = [
+      short ? `Start places ${short.want - short.placed} at random` : '',
+      (round.dailyDoubleCount ?? 1) > most ? `one a category, ${most} at most` : '',
+    ].filter(Boolean);
+    return `${ddPlaced} placed${notes.length ? ` (${notes.join(': ')})` : ''}`;
+  });
   const catNameField = (ci: number) => gridEl?.querySelector<HTMLTextAreaElement>(`[data-cat-name="${ci}"]`);
 
   /**
@@ -426,19 +436,17 @@
     toast(`Pasted ${r.placed} clue${r.placed === 1 ? '' : 's'} into “${categoryLabel(cat)}”${r.left ? ` (${r.left} didn’t fit: add rows first)` : ''}`);
   }
 
-  /** A name the board made up ("Category 3", "New category"), which nobody wants to keep. */
-  const madeUpName = (t: string) => /^(Category \d+|New category( \d+)?)$/.test(t.trim());
   /** The name box just got the focus: a click in it doesn't put the caret in a made-up name, it selects it to type over. */
   let freshName: HTMLTextAreaElement | null = null;
   function catNameFocus(e: FocusEvent): void {
     const t = e.currentTarget as HTMLTextAreaElement;
-    if (!madeUpName(t.value)) return;
+    if (!madeUpCategoryName(t.value)) return;
     t.select();
     freshName = t;
   }
   function catNameClick(e: MouseEvent): void {
     const t = e.currentTarget as HTMLTextAreaElement;
-    if (freshName === t && t.selectionStart === t.selectionEnd && madeUpName(t.value)) t.select();
+    if (freshName === t && t.selectionStart === t.selectionEnd && madeUpCategoryName(t.value)) t.select();
     freshName = null;
   }
 
@@ -594,7 +602,8 @@
 
   /** Right-click on a category, or its ⋯ button (`button`: the menu drops from it). */
   function catMenu(e: MouseEvent, ci: number, button = false): void {
-    if (textSelected(e)) return;
+    // (Not a made-up name, which the app selected itself when the right-click put the keys in it.)
+    if (textSelected(e) && !(e.target instanceof HTMLTextAreaElement && madeUpCategoryName(e.target.value))) return;
     const cat = round.categories[ci];
     const n = round.categories.length;
     (button ? dropMenu : showMenu)(e, [
@@ -708,11 +717,13 @@
         if (!e.currentTarget.value.trim() || !Number.isFinite(+e.currentTarget.value)) return void (e.currentTarget.value = String(round.categories.length));
         const n = Math.max(1, Math.min(10, Math.floor(+e.currentTarget.value) || 1));
         // Fewer categories drops the last ones at once: if any had something in it, the note at the bottom offers Undo.
-        const gone = round.categories.slice(n).filter(categoryHasContent).length;
-        const lost = gone > 0;
+        const gone = round.categories.slice(n).filter(categoryHasContent);
+        const lost = gone.length > 0;
+        // (Named when it's one: it may have only its name.)
+        const removed = gone.length === 1 ? ` (removed “${categoryLabel(gone[0])}”)` : lost ? ` (removed ${gone.length} that weren’t empty)` : '';
         if (n !== round.categories.length)
           step(
-            `Changed ${name} to ${n} categor${n === 1 ? 'y' : 'ies'}${lost ? ` (removed ${gone} with clues in)` : ''}`,
+            `Changed ${name} to ${n} categor${n === 1 ? 'y' : 'ies'}${removed}`,
             () => {
               while (round.categories.length < n) addCategory(round);
               while (round.categories.length > n) removeCategory(round, round.categories.length - 1);
@@ -798,16 +809,21 @@
   />
   <button
     onclick={() => {
+      const want = Math.min(ddMax, round.dailyDoubleCount ?? 1);
       const n = step('Placed Daily Doubles at random', () => {
-        const placed = randomizeDailyDoubles(round, Math.min(ddMax, round.dailyDoubleCount ?? 1));
+        const placed = randomizeDailyDoubles(round, want);
         // The box says how many there are now.
         round.dailyDoubleCount = placed;
         return placed;
       });
-      toast(`Placed ${n} Daily Double${n === 1 ? '' : 's'} (weighted toward the bottom rows)`);
+      toast(n < want ? `Placed ${n} of ${want} Daily Doubles: one a category` : `Placed ${n} Daily Double${n === 1 ? '' : 's'} (weighted toward the bottom rows)`);
     }}
-    title="Scatter Daily Doubles at random. To set one by hand, right-click a tile → ⭐ Make it a Daily Double (or pick ⭐ Daily Double as its Type).">🔀 Randomize</button>
-  <span class="hint">{ddPlaced} placed{ddPlaced < ddWanted ? ` (Start places ${ddWanted - ddPlaced} at random)` : ''}</span>
+    disabled={(round.dailyDoubleCount ?? 1) === 0}
+    title={(round.dailyDoubleCount ?? 1) === 0
+      ? 'Say how many first'
+      : 'Scatter Daily Doubles at random, one a category. To set one by hand, right-click a tile → ⭐ Make it a Daily Double (or pick ⭐ Daily Double as its Type).'}>🔀 Randomize</button
+  >
+  <span class="hint">{ddHint}</span>
     </div>
   </div>
   <div class="group" role="group" aria-labelledby="pt-{round.id}" data-partner-count>

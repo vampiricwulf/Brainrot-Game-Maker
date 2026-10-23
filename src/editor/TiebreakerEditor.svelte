@@ -1,5 +1,6 @@
 <!-- The tiebreaker clue: optional, played from the end screen when players are tied for first. -->
 <script lang="ts">
+  import { tick } from 'svelte';
   import { app } from '../lib/app.svelte';
   import { take } from '../lib/nav.svelte';
   import { step } from '../lib/history.svelte';
@@ -18,6 +19,7 @@
   const qslides = $derived(app.game.tiebreaker ? questionSlides(app.game.tiebreaker) : []);
   const at = $derived(Math.min(qi, Math.max(0, qslides.length - 1)));
   const qslide = $derived(qslides[at]);
+  let qField = $state<HTMLTextAreaElement>();
   // An undo or redo here shows the side (and the slide) it changed.
   const handled = { seq: 0 };
   $effect(() => {
@@ -81,7 +83,7 @@
   <div class="quick">
     <label class="field">
       {qslides.length > 1 ? `Question (slide ${at + 1} of ${qslides.length})` : 'Question'}
-      <textarea rows="2" data-field="q" placeholder="Type the tiebreaker question…" value={slideText(qslide)} oninput={(e) => setSlideText(qslide, e.currentTarget.value) && followClueText(app.game, [qslide])}></textarea>
+      <textarea bind:this={qField} rows="2" data-field="q" placeholder="Type the tiebreaker question…" value={slideText(qslide)} oninput={(e) => setSlideText(qslide, e.currentTarget.value) && followClueText(app.game, [qslide])}></textarea>
     </label>
     <label class="field">
       Answer (hidden until revealed)
@@ -93,7 +95,14 @@
       <textarea rows="1" data-field="notes" value={tb.hostNotes ?? ''} oninput={(e) => (tb.hostNotes = e.currentTarget.value)}></textarea>
     </label>
   </div>
-  <SlideTabs holder={tb} bind:side={tbSide} bind:qi what="tiebreaker" place={(sd, slide) => ({ tab: 'tiebreaker', side: sd, slide })} />
+  <SlideTabs
+    holder={tb}
+    bind:side={tbSide}
+    bind:qi
+    what="tiebreaker"
+    place={(sd, slide) => ({ tab: 'tiebreaker', side: sd, slide })}
+    onadded={() => void tick().then(() => qField?.focus())}
+  />
   {#key slideKey}
     <SlideEditor
       slide={tbSide === 'q' ? qslide : tb.answerSlide}
