@@ -15,7 +15,8 @@
 // stage one size from the board to a clue with 🔇 Stop sounds (the round intro's music), a card out, both or neither on
 // the board's tools row, in both its board rounds (the second's ▶ is a long Final name, cut short and named in full),
 // from 960 to 1366px wide; at 1920 they keep their words. At 1366 and 1024px wide the crowded game's stage keeps the
-// board's size through a Daily Double's splash and slides, a clue with a sound on its slide and one with two slides.
+// board's size through a Daily Double's splash and slides, a clue with a sound on its slide and one with two slides, and
+// at 1110 and 1184px through the two-slide clue (◀ Slide and ▦ Done ▶ board in words, its hint cut short).
 import { chromium } from 'playwright-core';
 import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
@@ -678,6 +679,32 @@ try {
       const notInSight = await outOfSight('[data-final-cards] > .row, .fj > .row:last-child');
       assert(notInSight.length === 0, `${w}×${h}: gone to, the Final's 🤫 cards and the step's sticky row are in sight${notInSight.length ? ` (not: ${notInSight.join(', ')})` : ''}`);
     }
+    await ctx.close();
+  }
+  // Just over 1100px and just over 1180px wide (◀ Slide and ▦ Done ▶ board in words, the buttons a size bigger): the
+  // "Pick who answered" hint takes only the room left, so a two-slide clue's row stays one line, in either font.
+  for (const w of [1110, 1184]) {
+    const ctx = await browser.newContext({ viewport: { width: w, height: 768 } });
+    const p5 = await ctx.newPage();
+    p5.on('pageerror', (e) => errors.push(e.message));
+    await p5.goto(pathToFileURL(file).href);
+    await openGameFile(p5, crowdFile);
+    await p5.getByText(/^Opened “/).waitFor();
+    await p5.getByRole('button', { name: '▶ Play' }).click();
+    await p5.getByRole('button', { name: 'Start game ▶' }).click();
+    await p5.getByRole('button', { name: 'Skip intro' }).click();
+    const two = p5.locator('.stage-box .board .tile[data-clue="c_two"]');
+    await two.waitFor();
+    const stageH = async () => Math.round((await p5.locator('.stage-box').boundingBox()).height);
+    const sizes = [await stageH()];
+    await two.click();
+    await p5.locator('.panel [data-slidepos]', { hasText: 'Slide 1 of 2' }).waitFor();
+    sizes.push(await stageH());
+    await p5.keyboard.press('n');
+    await p5.locator('.panel [data-slidepos]', { hasText: 'Slide 2 of 2' }).waitFor();
+    sizes.push(await stageH());
+    const words = await p5.locator('.panel .award .done-board').innerText();
+    assert(sizes.every((x) => x === sizes[0]) && words.includes('Done'), `${w}×768, a clue with two slides: the stage keeps the board's size, ▦ Done ▶ board in words (${sizes.join(' / ')})`);
     await ctx.close();
   }
 

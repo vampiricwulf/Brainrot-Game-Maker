@@ -1263,11 +1263,11 @@
             <button class="ghost" onclick={() => (adjust = false)}>Done</button>
           {:else if !toolOnly && !buzzing}
             <!-- (The tiebreaker takes one of the tied players.) -->
-            <span class="muted hint pick-hint"
-              >{session.phase === 'tiebreaker'
+            {@const pickHint =
+              session.phase === 'tiebreaker'
                 ? `Pick the winner (1–${Math.min(9, session.players.length) || 9})`
-                : `Pick who answered (1–${Math.min(9, session.players.length) || 9}, 0 for everyone)`}</span
-            >
+                : `Pick who answered (1–${Math.min(9, session.players.length) || 9}, 0 for everyone)`}
+            <span class="muted hint pick-hint" title={pickHint}>{pickHint}</span>
           {/if}
           <span class="spacer"></span>
           {@render others()}
@@ -1623,9 +1623,19 @@
       display: inline;
     }
   }
-  /* Up to 1100px wide under the stage, a clue with several question slides (◀ Slide on its row): the "Pick who answered"
-     hint goes (its keys are in the tooltips and ⌨), and ◀ Slide and ▦ Done ▶ board show as ◀ and ▦ (still read out by
-     name), so the row stays one line and the stage keeps its size. */
+  /* "Pick who answered" takes only the room the row has left (its keys are in the tooltips and ⌨): on a crowded row it's
+     cut short (…), or not there, instead of wrapping the row, which would shrink the stage. */
+  .award .pick-hint {
+    flex: 1 1 0;
+    min-width: 0;
+    max-width: max-content;
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+  }
+  /* Up to 1100px wide under the stage, a clue with several question slides (◀ Slide on its row): the hint goes, and
+     ◀ Slide and ▦ Done ▶ board show as ◀ and ▦ (still read out by name), so the row stays one line and the stage keeps
+     its size. */
   @media (max-width: 1100px) {
     .panel:not(.side) .award:has(.back-slide) .pick-hint {
       display: none;
