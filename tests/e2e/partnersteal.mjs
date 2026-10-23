@@ -186,7 +186,7 @@ try {
   assert(await until(async () => (await badge.innerText()).replace(/\s+/g, ' ').trim() === '🔔 Steal! Bob and Ann missed it'), 'the stream: “🔔 Steal! Bob and Ann missed it”');
   assert(await until(() => last()?.phase === 'armed' && lockedOut() === 'p1,p2'), 'the buzzers open for the others: Ann and Bob locked out');
   assert(await until(async () => (await big('Cat')) === 'BUZZ!' && (await big('Dan')) === 'BUZZ!'), 'Cat’s and Dan’s phones light up: BUZZ!');
-  assert((await small('Ann')).includes('already answered') && (await small('Bob')).includes('already answered'), 'Ann’s and Bob’s phones say they already answered this one');
+  assert((await small('Ann')).includes('had your go') && (await small('Bob')).includes('had your go'), 'Ann’s and Bob’s phones say they’ve had their go on this one');
   await host.screenshot({ path: 'test-results/partner-steal-open.png' });
 
   // ---------- Cat buzzes in and steals it ----------

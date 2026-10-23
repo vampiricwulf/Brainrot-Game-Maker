@@ -143,7 +143,7 @@ try {
     await host.evaluate(() => (window.__seen.length = 0));
     await dialog.getByRole('button', { name: '🎭 Deal a new one' }).click();
     await dialog.getByRole('button', { name: '🎭 Deal', exact: true }).click();
-    const askBox = host.getByRole('alertdialog');
+    const askBox = dialog.locator('[data-deal-ask]');
     await askBox.waitFor();
     await askBox.getByRole('button', { name: 'Take them back and deal' }).click();
     await askBox.waitFor({ state: 'detached' });

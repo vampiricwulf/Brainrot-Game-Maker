@@ -431,9 +431,10 @@ try {
   // ---------- 🎭 Deal a new one asks first while the cards are out ----------
   await dialog.getByRole('button', { name: '🎭 Deal a new one' }).click();
   await dialog.getByRole('button', { name: '🎭 Deal', exact: true }).click();
-  const askBox = host.getByRole('alertdialog');
+  const askBox = dialog.locator('[data-deal-ask]');
   await askBox.waitFor();
-  assert((await flat(askBox)).includes('Dealing a new one takes the cards of “Odd one out” back from the phones.'), 'dealing a new one asks first: the cards out would go');
+  assert((await flat(askBox)).includes('Deal a new one? It takes the cards of “Odd one out” back from the phones.'), 'dealing a new one asks first, in the deal’s window: the cards out would go');
+  assert(!(await host.getByRole('alertdialog').count()), 'nothing pops up over the stage (viewers see it in one window)');
   await askBox.getByRole('button', { name: 'Cancel' }).click();
   await askBox.waitFor({ state: 'detached' });
   await sleep(500);

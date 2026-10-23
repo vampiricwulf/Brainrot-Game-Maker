@@ -361,7 +361,7 @@ try {
   assert((await tileRow.getByRole('button', { name: 'Card “Clue tip” to Ann' }).getAttribute('aria-pressed')) === 'true', 'and it starts with the picker, Ann');
   await host.keyboard.press('Shift+Escape');
   await host.locator('.stage-box .board').waitFor();
-  assert((await host.getByRole('alertdialog').count()) === 0, 'nothing went: Shift+Esc puts the tile back without asking');
+  assert(!(await host.getByRole('alertdialog').count()) && !(await host.locator('.panel .confirm').count()), 'nothing went: Shift+Esc puts the tile back without asking');
 
   // ---------- The Final's title card: its category isn't on screen, nor are its cards' names ----------
   const tools = host.locator('.panel .toolsrow');

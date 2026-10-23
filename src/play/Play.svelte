@@ -49,7 +49,6 @@
   import { dailyDoublesShort, partnerTilesShort, validate } from '../lib/validate';
   import { isColorTaken, nextFreeColor, obsKeyed, PLAYER_PALETTE } from '../lib/colors';
   import { announce } from '../lib/announce';
-  import { ask } from '../lib/ask.svelte';
   import { keyedRoundColors, keyedThemeColors, otherStageKey, roundStageColors, STAGE_KEYS } from '../lib/theme';
   import ToolLauncher from './host/ToolLauncher.svelte';
   import KeysHelp from './KeysHelp.svelte';
@@ -60,7 +59,7 @@
   import InlineAsk from './host/InlineAsk.svelte';
   import { keptRoster, type RosterRow } from './roster';
   import AudienceView from './AudienceView.svelte';
-  import type { NextAction } from './host/slots.svelte';
+  import type { HostAsk, NextAction } from './host/slots.svelte';
   import HostPanel from './HostPanel.svelte';
   import ModeCards from './ModeCards.svelte';
   import ScoreLog, { type LogTab } from './ScoreLog.svelte';
@@ -2389,22 +2388,24 @@
             ? nameList(out.map(({ c, n }) => clueCardWords(c, n - 1)))
             : `cards ${nameList(out.map((x) => String(x.n)))}`;
       const said = [saw.length ? `${names(saw)} already saw ${which}` : '', got.length ? `${names(got)} got ${which} but ${got.length > 1 ? 'haven’t' : 'hasn’t'} opened it` : ''].filter(Boolean);
-      if (said.length) {
-        const clue = info.clue.id;
-        void ask(`${said.join('; ')}. Put the tile back anyway?`, { ok: '↩ Put it back', cancel: 'Keep playing' }).then((yes) => yes && info?.clue.id === clue && back(true));
-        return;
-      }
+      if (said.length) return void (keepAsk = { clue: info.clue.id, text: `${said.join('; ')}. Put the tile back anyway?` });
     }
-    // The same for a card sent from the tile's own panel (it goes when the tile closes, but it was seen).
-    const mine = info && phoneCards ? cardsOut(game, session).filter((c) => c.until === 'tile') : [];
+    // The same for a card sent from the tile's own panel, or shown in the 🪟 card window (a partner card's too, with no
+    // phones): it goes when the tile closes, but it was seen.
+    const mine = info ? cardsOut(game, session).filter((c) => c.until === 'tile') : [];
     if (info && mine.length) {
-      const clue = info.clue.id;
       const to = nameList([...new Set(mine.flatMap((c) => c.to.map((t) => playerName(session, t.seat))))]);
-      void ask(`${nameList(mine.map((c) => c.label))} went to ${to}. Put the tile back anyway?`, { ok: '↩ Put it back', cancel: 'Keep playing' }).then((yes) => yes && info?.clue.id === clue && back(true));
-      return;
+      return void (keepAsk = { clue: info.clue.id, text: `${nameList(mine.map((c) => c.label))} went to ${to}. Put the tile back anyway?` });
     }
     back(true);
   }
+  /** ↩ Cancel (keep tile) asking first, for the tile it was pressed on: in the panel's strip, never over the stage. */
+  let keepAsk = $state<{ clue: string; text: string } | null>(null);
+  const keepQuestion = $derived<HostAsk | null>(
+    keepAsk && session.phase === 'clue' && info?.clue.id === keepAsk.clue
+      ? { text: keepAsk.text, ok: '↩ Put it back', cancel: 'Keep playing', onok: () => ((keepAsk = null), back(true)), oncancel: () => (keepAsk = null) }
+      : null,
+  );
 
   /** Put a used tile back on the board, or mark one as played (an undoable step, unlike closing a clue). */
   function toggleTile(clueId: string): void {
@@ -4615,6 +4616,7 @@
         onslide={slideStep}
         onback={() => back()}
         oncancelclue={cancelClue}
+        askcancel={keepQuestion}
         onreopen={toggleTile}
         onundo={doUndo}
         onredo={doRedo}

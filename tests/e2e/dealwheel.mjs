@@ -272,7 +272,7 @@ try {
   await dialog.getByRole('combobox', { name: 'The wheel its cards draw from' }).selectOption('tpl:locations');
   assert(!(await dialog.locator('[data-deal-problem]').count()), 'the ready-made Locations wheel can be drawn from');
   await dialog.getByRole('button', { name: '🎭 Deal', exact: true }).click();
-  const askBox = host.getByRole('alertdialog');
+  const askBox = dialog.locator('[data-deal-ask]');
   await askBox.waitFor();
   await askBox.getByRole('button', { name: 'Take them back and deal' }).click();
   assert(await until(() => !cards().length), 'its cards out are taken back first');

@@ -38,6 +38,11 @@ in plain words for the people who make and host games. Anything committed but no
 - One window: a deal that leaves some players without a part (🧢 Team captain) says only “Sent to N”, never “✓ seen by 1 of 2”, which ticked as a player with a part opened their card.
 - A tile's card for “whoever picked it” stays with the player who picked the tile. Before, a right answer that moved the picker on moved the card's default with it (and “everyone else” swapped too).
 - 🪟 Card window: a partner clue's card shown with 🪟 Show says the part and what to do (“You're the Describer”, “Describe it to Ann: don't say what's on it!”), as a phone does.
+- One window: after 📤 Send of a quick card, 👁 Show is off again, so the next card's words are hidden as they're typed (pressed, the button reads 🙈 Hide). Before, it stayed on and the next secret card was typed in plain view on stream.
+- One window: “Deal a new one?”, “Put the deal away?”, a partner clue's “take it back and send it to Cat?” and “Swap anyway?”, and ↩ Cancel (keep tile)'s “Put the tile back anyway?” are asked in the host panel (the deal's in its own window), as other questions in play are. Before, a box came up over the stage and dimmed it for viewers.
+- Without phones, ↩ Cancel (keep tile) asks first when a card for that tile was shown in the 🪟 card window (“Card 1 went to Dan. Put the tile back anyway?”), as it does with phones. Before, the tile went back with no word, though the player had seen its card.
+- 🤫 Send a card…: after 📤 Send, the ✓ line and its 📋 copy for a player with no phone scroll into view. Before, in one window they sat below the menu's fold.
+- Partner clues: a card given to someone else since it went reads “changed, not sent yet” (before, “changed:”), and the two who played it see “You've had your go on this one” on their phones during a steal, not “You already answered this one” (one of them only described). A buzzer server you run yourself needs deploying again for the phone's line.
 
 ## 2026-10-23
 

@@ -5,7 +5,8 @@
  * - The confirmation strip: a question (Leave this game? Next round with clues left?) as one full-width strip above the
  *   panel's fixed bar, never squeezed into a row of buttons.
  */
-import { getContext, setContext, untrack } from 'svelte';
+import { getContext, onDestroy, setContext, untrack } from 'svelte';
+import { ask as askDialog } from '../../lib/ask.svelte';
 
 /** The main button: what it says, its key (shown as a small key cap), and what it does. */
 export type NextAction = {
@@ -72,5 +73,32 @@ export function hostAsk(): (ask: HostAsk | null) => void {
   const s = getContext<Slots | undefined>(KEY);
   return (ask) => {
     if (s) s.ask = ask;
+  };
+}
+
+/**
+ * A yes-or-no question in the confirmation strip, from a part inside the panel: true for the answer button. A new one
+ * replaces it (that one answers no), and so does the part going. Outside a panel, the app's own question box asks.
+ */
+export function hostConfirm(): (text: string, opts: { ok: string; cancel?: string; danger?: boolean }) => Promise<boolean> {
+  const s = getContext<Slots | undefined>(KEY);
+  let open: { ask: HostAsk | null; done: (yes: boolean) => void } | null = null;
+  const end = (yes: boolean) => {
+    if (!open) return;
+    const { ask, done } = open;
+    open = null;
+    if (s && s.ask === ask) s.ask = null;
+    done(yes);
+  };
+  onDestroy(() => end(false));
+  return (text, opts) => {
+    if (!s) return askDialog(text, opts);
+    end(false);
+    return new Promise((done) => {
+      open = { ask: null, done };
+      s.ask = { text, ...opts, onok: () => end(true), oncancel: () => end(false) };
+      // (The strip's own copy, to know it's still this one.)
+      open.ask = s.ask;
+    });
   };
 }

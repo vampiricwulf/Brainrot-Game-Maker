@@ -965,7 +965,7 @@ two locked out), or the host picks who steals (1–9, or the steal row's chips i
 Shift+Enter judge the one answering at the Amount (the tile's value): each steal is its own undo step, a wrong one locks
 that player out too and opens the buzzers for the rest, and a right one gives them the board. The stream's badge reads
 "🔔 Steal! Bob and Ann missed it" until someone steals it or the answer shows; the others' phones light up as on any
-clue, and the two's phones say "You already answered this one". In the host panel the steal row takes the place of
+clue, and the two's phones say "You’ve had your go on this one". In the host panel the steal row takes the place of
 ✔ Got it / ✘ Missed, starting with what they gave ("Judged: Ann ✘ −$200 · Bob ✘ 0").
 
 ## 9. Scoring

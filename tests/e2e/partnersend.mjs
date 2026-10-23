@@ -16,7 +16,7 @@ import { chromium } from 'playwright-core';
 import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { mainButton, mainLabel, openGameFile, packGame, png, recordSeen, roomStored, shownOf, startBuzzer, startRoomOn, stored } from './helpers.mjs';
+import { confirmStrip, mainButton, mainLabel, openGameFile, packGame, png, recordSeen, roomStored, shownOf, startBuzzer, startRoomOn, stored } from './helpers.mjs';
 
 const file = resolve(process.env.APP_FILE || 'dist/index.html');
 if (!existsSync(file)) throw new Error('Run `npm run build` first');
@@ -482,10 +482,19 @@ try {
   assert((await fetchAs(bob, pic2)) === 404 && (await fetchAs(cat2, pic1)) === 404 && (await fetchAs(cat2, vid1)) === 404 && (await fetchAs(bob, pic1)) === 200 && (await fetchAs(bob, vid1)) === 200, 'Bob can’t fetch card 2’s picture, nor Cat card 1’s files; each can fetch their own');
   assert((await fetchAs(ann, pic1)) === 404 && (await fetchAs(ann, pic2)) === 404 && (await fetchAs(dan, vid1)) === 404 && (await fetchAs(cat, pic2, catToken)) === 404, 'Ann, Dan and Cat’s old phone (with the token it had) can fetch none');
 
+  // ---------- ⇄ Swap with card 1 out asks first, in the panel (never a box over the stage); Don't swap keeps it ----------
+  await panel.getByRole('button', { name: '⇄ Swap' }).first().click();
+  const swapAsk = confirmStrip(host);
+  await swapAsk.waitFor();
+  assert((await textOf(swapAsk)).includes('Swap anyway?') && !(await host.getByRole('alertdialog').count()), `⇄ Swap asks first, in the panel (${await textOf(swapAsk)})`);
+  await swapAsk.getByRole('button', { name: 'Don’t swap' }).click();
+  await swapAsk.waitFor({ state: 'detached' });
+  assert((await host.locator('.stage-box [data-partner-badge]', { hasText: 'Bob describes' }).count()) === 1, 'Don’t swap: Bob still describes');
+
   // ---------- 📤 Send changes: Dan added, then Bob taken off ----------
   await chip('Card 1 to Dan').click();
-  await row(1).getByText('changed:').waitFor();
-  assert(!(await dan.locator('.card').count()), 'a chip alone sends nothing (the row reads “changed:”)');
+  await row(1).getByText('changed, not sent yet').waitFor();
+  assert(!(await dan.locator('.card').count()), 'a chip alone sends nothing (the row reads “changed, not sent yet”)');
   await row(1).getByRole('button', { name: 'Send card 1’s changes' }).click();
   await dan.getByRole('button', { name: 'Tap to see' }).waitFor();
   const changed = sendOf('c1');

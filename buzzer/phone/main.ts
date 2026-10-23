@@ -1368,7 +1368,7 @@ function renderBuzz(v: PhoneView): void {
     [cls, big, small] = ['off', '…', 'Buzzed! Checking who was first'];
   } else if (you.lockedOut) {
     // (Out: on another team for this clue; the one they're on now hasn't answered.)
-    [cls, big, small] = ['off', 'Wait', you.out ? 'You were on another team for this one' : team ? 'Your team already answered this one' : 'You already answered this one'];
+    [cls, big, small] = ['off', 'Wait', you.out ? 'You were on another team for this one' : team ? 'Your team already answered this one' : 'You’ve had your go on this one'];
   } else if (left > 0) {
     [cls, big, small] = ['locked', 'Too early', `You buzzed before it lit up · wait ${left}s`];
     spoken = 'Wait a moment before buzzing again';

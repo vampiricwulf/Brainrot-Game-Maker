@@ -71,6 +71,7 @@
     onslide,
     onback,
     oncancelclue,
+    askcancel = null,
     onreopen,
     onundo,
     onredo,
@@ -177,6 +178,8 @@
     onback: () => void;
     /** Back to the board without using up the tile. */
     oncancelclue: () => void;
+    /** What ↩ Cancel (keep tile) asks first when a card went (Play asks it): in the strip. */
+    askcancel?: HostAsk | null;
     /** Put a used tile back on the board. */
     onreopen: (clueId: string) => void;
     onundo: () => void;
@@ -470,7 +473,7 @@
         onok: () => ((askCloseAudience = false), onaudience()),
         oncancel: () => (askCloseAudience = false),
       };
-    return slots.ask;
+    return askcancel ?? slots.ask;
   });
 
   // The fixed bar ignores the second click of a double-click for a moment after the screen changes (the game starting,

@@ -17,7 +17,7 @@
   only when the host presses 📤 Send here.
 -->
 <script lang="ts">
-  import { untrack } from 'svelte';
+  import { tick, untrack } from 'svelte';
   import { app, toast } from '../../lib/app.svelte';
   import { popupBlocked } from '../../lib/platform';
   import { announce } from '../../lib/announce';
@@ -212,6 +212,8 @@
   let fileInput = $state<HTMLInputElement>();
   /** In one window what's typed is hidden (viewers see this window), unless the host asks to see it (👁 Show). */
   let reveal = $state(false);
+  let saidRow = $state<HTMLElement>();
+  let copyRow = $state<HTMLElement>();
   const masked = $derived(!dual && !reveal);
   /** The game's pictures, videos and sounds (by name: offered only with the audience window open). */
   const mediaFiles = $derived(libraryMedia(game).filter((m) => m.kind === 'image' || m.kind === 'video' || m.kind === 'audio'));
@@ -380,7 +382,11 @@
       words = '';
       items = [];
       link = '';
+      // (The next card starts hidden again: in one window viewers see what's typed here.)
+      reveal = false;
     }
+    // (What happened, where the host just clicked: in one window the menu is short, and it went below its fold.)
+    void tick().then(() => (copyRow ?? saidRow)?.scrollIntoView({ block: 'nearest' }));
   }
   function copyWords(): void {
     if (!slide) return;
@@ -511,7 +517,7 @@
           style:-webkit-text-security={masked ? 'disc' : undefined}
         ></textarea>
         {#if !dual}
-          <button class="ghost tiny" aria-pressed={reveal} onclick={() => (reveal = !reveal)} title={reveal ? 'Hide what you type again' : 'Shows what you type here (viewers see it too)'}>👁 Show</button>
+          <button class="ghost tiny" aria-pressed={reveal} onclick={() => (reveal = !reveal)} title={reveal ? 'Hide what you type again' : 'Shows what you type here (viewers see it too)'}>{reveal ? '🙈 Hide' : '👁 Show'}</button>
         {/if}
       </div>
       <div class="row wrap">
@@ -593,13 +599,13 @@
         <button class="ghost tiny" onclick={() => openWin(firstSeat)} title="Opens a window with only {nameOf(firstSeat)}’s cards, to share with them alone">open a 🪟 card window for {nameOf(firstSeat)}</button>{:else}, or open a 🪟 card window for one of them.{/if}
     </div>
   {/if}
-  {#if said}<div class="small" role="status" data-card-said>✓ {said}</div>{/if}
+  {#if said}<div class="small" role="status" data-card-said bind:this={saidRow}>✓ {said}</div>{/if}
   {#if sentCopy && sentCopySlide}
     {@const label = sentCopy.card.label}
     {@const whom = sentCopy.names.join(', ')}
     {@const sl = sentCopySlide}
     <!-- (The card that went, for those with no phone here: a quick card's words are gone from the form above.) -->
-    <div class="row wrap" data-card-said-copy>
+    <div class="row wrap" data-card-said-copy bind:this={copyRow}>
       {#if cardWords(sl) || cardLinks(game, sl).length}
         <button class="small" onclick={copySent} aria-label="Copy {label}’s words for {whom}" title="Copies “For {whom} only” with {label}’s words and links, to paste in a DM">📋 Copy words</button>
       {/if}

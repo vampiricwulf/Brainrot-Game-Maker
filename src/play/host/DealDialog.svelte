@@ -12,10 +12,10 @@
   there.
 -->
 <script lang="ts">
+  import { untrack } from 'svelte';
   import { app, hint, toast } from '../../lib/app.svelte';
   import { popupBlocked } from '../../lib/platform';
   import { announce } from '../../lib/announce';
-  import { ask } from '../../lib/ask.svelte';
   import { cardsLeftOff, dealFullText, roomCardsAfter, roomCardsFull, teamsOn } from '../../lib/buzz';
   import { CARDS_MAX } from '../../lib/buzzproto';
   import { filesCounted, phoneCan, retryFiles } from '../../lib/cardfiles.svelte';
@@ -35,6 +35,7 @@
   import { WHEEL_TEMPLATES, wheelFromTemplate } from '../../lib/wheeltemplates';
   import { copyText } from '../standings';
   import { leftLine, pctText, seenSeats, slowKinds, slowLine } from './cardrow';
+  import InlineAsk from './InlineAsk.svelte';
   import ShrinkButton from './ShrinkButton.svelte';
   import { dealDraft } from './dealdraft.svelte';
 
@@ -153,15 +154,30 @@
     dealDraft.picks = rest;
   }
 
-  /** 🎭 Deal: who gets which, nothing sent. A deal whose cards are out is taken back first (one deal at a time). */
-  async function deal(): Promise<void> {
+  /**
+   * A question asked right here in the menu (never a box over the stage: in one window viewers see both). `run` on its
+   * answer button.
+   */
+  let confirm = $state<{ kind: 'deal' | 'away'; text: string; ok: string; run: () => void } | null>(null);
+  // (It goes with the view it was asked in: setting up, or the deal on the table.)
+  $effect(() => {
+    void setup;
+    untrack(() => (confirm = null));
+  });
+
+  /**
+   * 🎭 Deal: who gets which, nothing sent. A deal whose cards are out is taken back first (one deal at a time): it asks,
+   * unless `sure`.
+   */
+  function deal(sure = false): void {
     if (!work) return;
     const r = dealHands(drawFrom, work, pool, { picks, perTeam });
     if ('problem' in r) return toast(r.problem);
-    if (d && dealOut(game, session).length) {
-      const yes = await ask(`Dealing a new one takes the cards of “${d.name}” back from the phones.`, { title: 'Deal a new one?', ok: 'Take them back and deal' });
-      if (!yes) return;
+    if (!sure && d && dealOut(game, session).length) {
+      confirm = { kind: 'deal', text: `Deal a new one? It takes the cards of “${d.name}” back from the phones.`, ok: 'Take them back and deal', run: () => deal(true) };
+      return;
     }
+    confirm = null;
     const gone = (session.cards ?? []).filter((c) => c.deal);
     dealDraft.dealt = startDeal(session, work, r.hands, r.dealtIn).id;
     if (gone.length) ongone(gone);
@@ -222,9 +238,13 @@
     if (gone.length) ongone(gone);
     announce(`${d.name}: cards taken back`);
   }
-  async function putAway(): Promise<void> {
+  function putAway(sure = false): void {
     if (!d) return;
-    if (out.length && !(await ask(`The cards of “${d.name}” go from the phones, and who had which part is forgotten.`, { title: 'Put the deal away?', ok: 'Put it away' }))) return;
+    if (!sure && out.length) {
+      confirm = { kind: 'away', text: `Put the deal away? The cards of “${d.name}” go from the phones, and who had which part is forgotten.`, ok: 'Put it away', run: () => putAway(true) };
+      return;
+    }
+    confirm = null;
     const gone = (session.cards ?? []).filter((c) => c.deal);
     clearDeal(session);
     if (gone.length) ongone(gone);
@@ -307,6 +327,15 @@
   }
   const COUNTS = Array.from({ length: MAX_PLAYERS + 1 }, (_, i) => i);
 </script>
+
+{#snippet askLine(kind: 'deal' | 'away')}
+  {#if confirm?.kind === kind}
+    {@const c = confirm}
+    <div class="small" role="alert" data-deal-ask>
+      {#key c}<InlineAsk text={c.text} ok={c.ok} focusCancel onok={c.run} oncancel={() => (confirm = null)} />{/key}
+    </div>
+  {/if}
+{/snippet}
 
 {#snippet fillsLine()}
   {#if fills}
@@ -413,8 +442,9 @@
       <!-- (Held at the menu's foot while the parts scroll: the way on is always in view.) -->
       <div class="actions">
         {#if problem}<div class="small warn" data-deal-problem>{problem}</div>{/if}
+        {@render askLine('deal')}
         <div class="row wrap">
-          <button class="primary small" onclick={deal} disabled={!!problem} title={problem || 'Deals the parts: nothing goes to anyone until you send them'}>🎭 Deal</button>
+          <button class="primary small" onclick={() => deal()} disabled={!!problem} title={problem || 'Deals the parts: nothing goes to anyone until you send them'}>🎭 Deal</button>
           {#if d}<button class="ghost small" onclick={() => (fresh = false)}>Back to “{d.name}”</button>{/if}
         </div>
       </div>
@@ -441,10 +471,10 @@
         <div class="row wrap">
           <button class="primary small" onclick={send} disabled={tooMany || full} title={cardsOn ? 'Each player’s card goes to their phone now, a card of its own' : 'Hands them out: then copy each card to its player (📋), or show it in the 🪟 card window'} data-deal-send>{cardsOn ? '📤 Send' : '✔ Hand them out'}</button>
           {#if dealDraft.dealt === d.id}
-            <button class="small" onclick={deal} disabled={!!problem || !work} title="Deals it again, the same way (nothing was sent)">↻ Deal again</button>
+            <button class="small" onclick={() => deal()} disabled={!!problem || !work} title="Deals it again, the same way (nothing was sent)">↻ Deal again</button>
           {/if}
           <button class="ghost small" onclick={() => (fresh = true)}>✎ Change it</button>
-          <button class="ghost small" onclick={putAway}>✖ Put it away</button>
+          <button class="ghost small" onclick={() => putAway()}>✖ Put it away</button>
         </div>
       </div>
     {:else}
@@ -465,8 +495,9 @@
           <button class="small" onclick={() => reveal(true)} title="Puts everyone’s part on screen, for viewers too (Ctrl+Z takes it off)" data-deal-reveal>🎭 Who was who</button>
         {/if}
         <button class="ghost small" onclick={() => (fresh = true)}>🎭 Deal a new one</button>
-        <button class="ghost small" onclick={putAway}>✖ Put it away</button>
+        <button class="ghost small" onclick={() => putAway()}>✖ Put it away</button>
       </div>
+      {@render askLine('away')}
       {#if out.length && (!cardsOn || dual || over || noPhone.length)}
         <!-- Each player dealt in, to copy their card (a DM) or show it in the 🪟 card window: by name only, the same
              buttons for everyone, those with no part included (listing only the others would say who got one). In one

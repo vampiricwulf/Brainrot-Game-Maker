@@ -263,7 +263,7 @@ try {
   // Wrong: the host re-arms with a new armId, locking the winner out. Bob (lock over) wins.
   await sleep(1300);
   setState({ phase: 'armed', armId: 2, answering: null, lockedOut: [first.seatId] });
-  await small(winner).getByText('You already answered this one').waitFor();
+  await small(winner).getByText('You’ve had your go on this one').waitFor();
   await big(bob).getByText('BUZZ!').waitFor();
   await press(winner);
   await press(bob);

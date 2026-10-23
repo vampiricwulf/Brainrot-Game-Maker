@@ -243,7 +243,7 @@ try {
   assert((await stealRow.innerText()).includes('🔔 Steal!') && (await stealRow.innerText()).includes(`Enter: right +$${value}`), `the steal row: 🔔 Steal!, a right steal worth the tile’s $${value} (the game’s rule)`);
   assert(await until(() => last()?.phase === 'armed' && lockedOut() === 'p1,p2'), 'the buzzers open at once for the others (no U needed): Ann and Bob locked out');
   assert(await until(async () => (await big('Cat')) === 'BUZZ!' && (await big('Dan')) === 'BUZZ!'), 'Cat’s and Dan’s phones light up');
-  assert((await small('Ann')).includes('already answered') && (await small('Bob')).includes('already answered'), 'Ann’s and Bob’s phones say they already answered this one');
+  assert((await small('Ann')).includes('had your go') && (await small('Bob')).includes('had your go'), 'Ann’s and Bob’s phones say they’ve had their go on this one');
   assert(['Cat', 'Dan'].every((s) => !heard[s].join('\n').includes(ANSWER)), 'the stealers never get the card');
 
   // ---------- Cat buzzes in and misses; Dan, alone, steals it ----------

@@ -232,8 +232,8 @@ try {
   );
   // Wrong too: everyone has missed it, the buzzers stay closed. ↺ Reset buzzers lets them both buzz again.
   await host.keyboard.press('Shift+Enter');
-  await small(p1).getByText('You already answered this one').waitFor();
-  await small(p2).getByText('You already answered this one').waitFor();
+  await small(p1).getByText('You’ve had your go on this one').waitFor();
+  await small(p2).getByText('You’ve had your go on this one').waitFor();
   assert((await big(p2).innerText()) !== 'BUZZ!', 'and who already missed it: Player 2 (wrong before the reload) is still locked out');
   await host.getByRole('button', { name: '↺ Reset buzzers' }).click();
   await big(p2).getByText('BUZZ!').waitFor();

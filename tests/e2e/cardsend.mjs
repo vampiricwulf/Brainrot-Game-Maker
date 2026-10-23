@@ -376,11 +376,11 @@ try {
   await ann.getByRole('button', { name: 'Tap to see' }).waitFor();
   assert(await ann.locator('#buzz').isVisible(), 'Ann’s phone keeps its buzz button beside the card');
   assert(await until(async () => /· (sent|✓ seen) · listed as Card 3/.test(await words(tileRow))), `its row says it went, listed as Card 3 (${await words(tileRow)})`);
-  // Shift+Esc puts the tile back: the card was seen, so it asks.
+  // Shift+Esc puts the tile back: the card was seen, so it asks (in the panel: one window, nothing goes over the stage).
   await host.keyboard.press('Shift+Escape');
-  const askBox = host.getByRole('alertdialog');
+  const askBox = confirmStrip(host);
   await askBox.waitFor();
-  assert((await words(askBox)).includes('Card 3 went to Ann'), `it asks first: “${await words(askBox)}”`);
+  assert((await words(askBox)).includes('Card 3 went to Ann') && !(await host.getByRole('alertdialog').count()), `it asks first, in the panel: “${await words(askBox)}”`);
   await askBox.getByRole('button', { name: '↩ Put it back' }).click();
   assert(await until(() => cards().length === 1 && cards()[0].id === c1b.id), 'the tile closed: its card goes, the round’s stays');
   assert(await until(async () => !(await cardsOn(ann))), 'Ann’s phone drops it');
@@ -502,9 +502,29 @@ try {
   await dialog.getByRole('textbox', { name: 'The card’s words' }).fill(LAST);
   const noPhoneLine = dialog.getByText('📵 Cat has no phone here: copy it to them (📋), or');
   assert(await until(() => noPhoneLine.isVisible()), 'Cat’s phone gone: the dialog says to copy it to her');
+  // 👁 Show to check the words: it reads 🙈 Hide while on, and the next card starts hidden again.
+  const wordsBox = dialog.getByRole('textbox', { name: 'The card’s words' });
+  const hidden = () => wordsBox.evaluate((el) => getComputedStyle(el).webkitTextSecurity === 'disc');
+  await dialog.getByRole('button', { name: '👁 Show', exact: true }).click();
+  const hideBtn = dialog.getByRole('button', { name: '🙈 Hide', exact: true });
+  assert((await hideBtn.getAttribute('aria-pressed')) === 'true' && !(await hidden()), '👁 Show: the words show, and the button reads 🙈 Hide');
   await dialog.getByRole('button', { name: '📤 Send' }).click();
   const saidLine = dialog.locator('[data-card-said]');
   await saidLine.getByText('sent to Ann, Bob, Cat').waitFor();
+  assert(
+    (await hidden()) && (await dialog.getByRole('button', { name: '👁 Show', exact: true }).getAttribute('aria-pressed')) === 'false' && !(await hideBtn.count()),
+    'sent: the next card’s words are hidden again (viewers see this window)',
+  );
+  /** Inside what its scrolling menu shows. */
+  const inView = (loc) =>
+    loc.evaluate((el) => {
+      let box = el.parentElement;
+      while (box && !(box.scrollHeight > box.clientHeight && /auto|scroll/.test(getComputedStyle(box).overflowY))) box = box.parentElement;
+      const r = el.getBoundingClientRect();
+      const b = box?.getBoundingClientRect() ?? { top: 0, bottom: innerHeight };
+      return r.top >= b.top - 1 && r.bottom <= b.bottom + 1;
+    });
+  assert(await until(async () => (await inView(saidLine)) && (await inView(dialog.locator('[data-card-said-copy]')))), 'the ✓ line and its 📋 copy row are in view under 📤 Send');
   const lastLabel = (await saidLine.innerText()).match(/Card \d+/)?.[0];
   assert(
     (await saidLine.innerText()) === `✓ ${lastLabel} sent to Ann, Bob, Cat · 📵 Cat has no phone here: copy it to them (📋)`,

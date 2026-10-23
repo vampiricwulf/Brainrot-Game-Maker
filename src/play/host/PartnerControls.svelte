@@ -23,7 +23,6 @@
   import { clueName, nameList, partnerSteal, stealersLeft } from '../../lib/session';
   import { buzzerOn, remote, roomHasCards, roomHasFiles, roomMembers } from '../../lib/remote.svelte';
   import { cardFileCounts, filesCounted, phoneCan, retryFiles, unputGone } from '../../lib/cardfiles.svelte';
-  import { ask } from '../../lib/ask.svelte';
   import { cardsFullText, partnerAnswerId, roomCardsFull, sendOf, teamsOn } from '../../lib/buzz';
   import { cardWindow } from '../../lib/cardwindow.svelte';
   import { cardsOut, sendCard } from '../../lib/sentcards';
@@ -33,7 +32,7 @@
   import { canCopyPicture, copyCardPicture } from './cardcopy';
   import { leftLine, pctText, slowKinds, slowLine } from './cardrow';
   import ShrinkButton from './ShrinkButton.svelte';
-  import { offerNext } from './slots.svelte';
+  import { hostConfirm, offerNext } from './slots.svelte';
 
   let {
     game,
@@ -88,6 +87,8 @@
   const words = $derived(partWords(rules));
   const roles = $derived(partnerRoles(s));
   const cards = $derived(cardSlides(clue));
+  /** A question asks in the panel's strip, never in a box over the stage (in one window viewers see both). */
+  const ask = hostConfirm();
   /** With no cards, ▶ Show question starts the countdown: when it starts by itself (⚖ Game rules) and the clue has one. */
   const autoClock = $derived(game.settings.timerAutoStart && (clue.timerSeconds ?? game.settings.defaultTimerSeconds ?? 0) > 0);
   const byId = $derived(Object.fromEntries(session.players.map((p) => [p.id, p])));
@@ -438,7 +439,7 @@
     const seen = seenBy(card);
     const late = lateFor(card);
     const f = cardFileCounts(game, session, card);
-    const out = [st === 'changed' ? 'changed:' : seen.length ? `✓ seen${seen.length < sentSeats(session, s, card.id).length ? ` by ${seen.map(name).join(', ')}` : ''}` : 'sent'];
+    const out = [st === 'changed' ? 'changed, not sent yet' : seen.length ? `✓ seen${seen.length < sentSeats(session, s, card.id).length ? ` by ${seen.map(name).join(', ')}` : ''}` : 'sent'];
     if (filesOn && f.going) out.push(`uploading ${Math.min(f.files, f.up + 1)} of ${f.files - f.failed}${pctText(f.progress)}…`);
     if (late.length) {
       const whose = late.map((l) => (l.by ? `${l.by}’s phone (${name(l.seat)})` : `${name(l.seat)}’s new phone`));

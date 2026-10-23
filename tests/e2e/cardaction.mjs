@@ -412,6 +412,16 @@ try {
   await win2.getByText(DESCRIBE).waitFor();
   assert((await pRow.innerText()).includes('in the 🪟 card window'), 'from the Distribute row, 🪟 Show puts it in Cat’s card window, and the row says so');
   assert(!(await shownOf(solo, SECRETS)).length && sockets === 0, 'the host page holds none of its words, and nothing went anywhere else');
+  await win2.getByText('You’re the Describer').waitFor();
+  assert(await win2.getByText('Describe it to Ann: don’t say what’s on it!').isVisible(), 'the card window says Cat’s part and what to do, as a phone does');
+  // Cat saw it: ↩ Cancel (keep tile) asks first, as with phones, in the panel (nothing goes over the stage).
+  await solo.keyboard.press('Shift+Escape');
+  const keepAsk = confirmStrip(solo);
+  await keepAsk.waitFor();
+  assert(/went to Cat\. Put the tile back anyway\?/.test(await keepAsk.innerText()) && !(await solo.getByRole('alertdialog').count()), `Shift+Esc asks first, in the panel (${(await keepAsk.innerText()).replace(/\s+/g, ' ')})`);
+  await keepAsk.getByRole('button', { name: 'Keep playing' }).click();
+  await keepAsk.waitFor({ state: 'detached' });
+  assert((await soloPartner.count()) === 1 && (await win2.getByText(DESCRIBE).count()) === 1, 'Keep playing: the tile stays open, its card in the card window');
   await solo.keyboard.press('r');
   await solo.keyboard.press('Escape');
   await win2.getByText(DESCRIBE).waitFor({ state: 'detached' });
