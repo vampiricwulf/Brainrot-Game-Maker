@@ -1215,7 +1215,11 @@
             <p class="muted">A game is a list of rounds, and each round picks how it plays. Add as many as you like, in any order.</p>
             {#if !inTauri()}
               <!-- The one thing a first-time browser user can lose: the game lives in this browser until it's saved as a file. -->
-              <p class="muted small">Your game is kept in this browser as you work. <b>💾 Save</b> gives you it as a file: keep that to move it to another computer or browser, or to share it.</p>
+              {#if app.storageOk}
+                <p class="muted small">Your game is kept in this browser as you work. <b>💾 Save</b> gives you it as a file: keep that to move it to another computer or browser, or to share it.</p>
+              {:else}
+                <p class="small warn">⚠ This browser isn't keeping your game (its storage is blocked or full): <b>💾 Save</b> it to a file before you close the tab.</p>
+              {/if}
             {/if}
             <button class="sample" onclick={showSample}>
               <span class="icon" aria-hidden="true">✨</span>

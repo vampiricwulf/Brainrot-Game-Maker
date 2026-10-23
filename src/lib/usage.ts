@@ -7,6 +7,32 @@ export interface SlideRef {
   where: string;
 }
 
+/**
+ * The path to the first place in the game that uses file `id` (a slide's item or background, a tile's face…), as the
+ * history writes paths (a list of things with ids by the id), for historylabel's placeAt. Null: none.
+ */
+export function mediaPath(game: Game, id: string): (string | number)[] | null {
+  const walk = (node: unknown, path: (string | number)[]): (string | number)[] | null => {
+    if (Array.isArray(node)) {
+      const items = node as { id?: unknown }[];
+      const ids = items.every((x) => typeof x?.id === 'string') && new Set(items.map((x) => x.id)).size === items.length;
+      for (const [i, x] of items.entries()) {
+        const found = walk(x, [...path, ids ? (x.id as string) : i]);
+        if (found) return found;
+      }
+    } else if (node && typeof node === 'object')
+      for (const [k, v] of Object.entries(node)) {
+        // (Not the library itself, nor the sounds: 🔊 Sounds says those.)
+        if (!path.length && (k === 'media' || k === 'audio')) continue;
+        if (v === id && k !== 'id') return [...path, k];
+        const found = typeof v === 'object' ? walk(v, [...path, k]) : null;
+        if (found) return found;
+      }
+    return null;
+  };
+  return walk(game, []);
+}
+
 /** `empty`: empty tiles' slides too (kept for when the tile is used again: their files are still in use). */
 export function allSlides(game: Game, { empty = false } = {}): SlideRef[] {
   const out: SlideRef[] = [];

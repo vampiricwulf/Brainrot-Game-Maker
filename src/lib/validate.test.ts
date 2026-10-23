@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import { jeopardyGame } from './testgame';
-import { newImageEl, newTextEl, newVideoEl, questionSlides, setSlideText, textSlide, type Action, type BoardRound, type FinalRound, type Game, type SavedCard, type Slide } from './model';
+import { newImageEl, newSlidesRound, newTextEl, newVideoEl, questionSlides, setSlideText, textSlide, type Action, type BoardRound, type FinalRound, type Game, type SavedCard, type Slide } from './model';
 import { newWheel } from './tools';
 import { newBoardGameRound } from './boardgame';
 import { newRpgRound, newVariant } from './rpg';
@@ -84,6 +84,21 @@ describe('the checklist', () => {
     // One deleted but still on a tile too: its own words in a player-only file (not two identical lines).
     (game.rounds[0] as BoardRound).categories[0].clues[0].tileFace = { image: 'deleted1' };
     expect(validate(game).find((p) => p.text.includes('deleted file'))?.player).toBe('1 file used on slides but missing from this game: ask whoever made it for a new copy');
+  });
+
+  it('names where a deleted file is still used, and its line goes there', () => {
+    const game = jeopardyGame();
+    const intro = newSlidesRound();
+    game.rounds.unshift(intro);
+    const pic = newImageEl('gone1', 100, 100);
+    intro.questionSlide.elements.push(pic);
+    expect(validate(game).find((p) => p.text.includes('deleted file'))).toMatchObject({
+      text: '1 deleted file still used on Introduction › Slide 1 › Image: not saved with the game. Undo the delete in History, or take it off there',
+      tab: 'media',
+      place: { tab: 'round', round: intro.id, part: { kind: 'slides', element: pic.id } },
+    });
+    (game.rounds[1] as BoardRound).categories[0].clues[0].tileFace = { image: 'gone1' };
+    expect(validate(game).find((p) => p.text.includes('deleted file'))?.text).toMatch(/^1 deleted file still used on Introduction › Slide 1 › Image and 1 more place: .* off those slides$/);
   });
 
   it('sends player problems to the Play screen, where players are set', () => {

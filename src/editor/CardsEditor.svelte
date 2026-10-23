@@ -71,8 +71,13 @@
     flash(`card:${copy.id}`);
   }
 
-  // Deleting is done at once: the note at the bottom offers Undo.
-  function remove(c: SavedCard): void {
+  /**
+   * Deleting is done at once: the note at the bottom offers Undo. The card now in its place (else the one before) opens
+   * if this one was open, as round tabs do; from the list (its keys or its menu) that card's row takes the keys.
+   */
+  function remove(c: SavedCard, fromList = false): void {
+    const at = list.indexOf(c);
+    const wasOpen = card?.id === c.id;
     step(
       `Deleted card “${named(c)}”`,
       () => {
@@ -82,7 +87,9 @@
       },
       { notify: true },
     );
-    if (sel === c.id) sel = null;
+    const next = list[Math.min(at, list.length - 1)];
+    if (wasOpen) sel = next?.id ?? null;
+    if (fromList && next) focusItem(next.id);
   }
 
   function move(from: number, to: number): void {
@@ -120,7 +127,7 @@
       { label: '▲ Move up', onclick: () => move(i, i - 1), disabled: i === 0, keys: 'Alt+↑' },
       { label: '▼ Move down', onclick: () => move(i, i + 1), disabled: i === list.length - 1, keys: 'Alt+↓' },
       { sep: true },
-      { label: '🗑 Delete card', danger: true, onclick: () => remove(c), keys: 'Delete' },
+      { label: '🗑 Delete card', danger: true, onclick: () => remove(c, true), keys: 'Delete' },
     ]);
   }
 
@@ -128,7 +135,7 @@
   function itemKey(e: KeyboardEvent, c: SavedCard, i: number): void {
     if (e.repeat && e.key !== 'ArrowUp' && e.key !== 'ArrowDown') return;
     const mod = e.ctrlKey || e.metaKey;
-    if ((e.key === 'Delete' || e.key === 'Backspace') && !mod && !e.altKey) remove(c);
+    if ((e.key === 'Delete' || e.key === 'Backspace') && !mod && !e.altKey) remove(c, true);
     else if (e.key === 'F2') renaming = c.id;
     else if (mod && !e.altKey && e.key.toLowerCase() === 'd') dup(c, true);
     else if (e.altKey && !mod && (e.key === 'ArrowUp' || e.key === 'ArrowDown')) move(i, i + (e.key === 'ArrowUp' ? -1 : 1));

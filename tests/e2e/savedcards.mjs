@@ -227,6 +227,8 @@ try {
   await host.waitForFunction(() => document.activeElement?.textContent?.trim() === 'Tip B');
   await host.keyboard.press('Delete');
   await listIs('Wild card, Tip A, Private card 3');
+  await host.waitForFunction(() => document.activeElement?.textContent?.trim() === 'Private card 3' && document.activeElement.getAttribute('aria-current') === 'true');
+  assert(true, 'the card before it (it was the last) opens and its row takes the keys, so a second Delete acts there');
   const notice = host.locator('.history-notice');
   await notice.waitFor();
   assert((await words(notice)).startsWith('Deleted card “Tip B”'), `Delete deletes it, and the note says so (${await words(notice)})`);

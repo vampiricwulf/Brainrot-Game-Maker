@@ -39,9 +39,9 @@ import { CARD_TEXT_MAX, CHOICE_MAX, cleanName, DEFAULT_FILE_LIMITS } from './buz
 import { rightChoice, usableChoices } from './choices';
 import { rpgProblems, worldById } from './rpg';
 import { boardGameProblems } from './boardgame';
-import { mediaUsage, onlineCount, slideHasContent, slideMediaIds } from './usage';
+import { mediaPath, mediaUsage, onlineCount, slideHasContent, slideMediaIds } from './usage';
 import { toolChosen } from './tools';
-import type { Place } from './historylabel';
+import { placeAt, type Place } from './historylabel';
 import { categoryTooLong } from './boardfit';
 import { statsProblems } from './toolset';
 import { actionProblem, objectsWhere } from './refs';
@@ -323,13 +323,20 @@ export function validate(game: Game, room: Checking = {}): Problem[] {
     });
   // Deleted from 🖼 Media but still on slides: they show nothing (and aren't saved with the game).
   const deleted = [...usage.keys()].filter((id) => !known.has(id) && !Object.values(game.audio ?? {}).includes(id));
-  if (deleted.length)
+  if (deleted.length) {
+    // Where the first is still used ("Introduction › Slide 1 › Image"): named, and the line goes there.
+    const path = mediaPath(game, deleted[0]);
+    const at = path ? placeAt(game, path) : null;
+    const uses = deleted.reduce((n, id) => n + (usage.get(id) ?? 0), 0);
+    const where = at?.crumbs.length ? ` on ${at.crumbs.join(' › ')}${uses > 1 ? ` and ${plural(uses - 1, 'more place')}` : ''}` : ` (${plural(uses, 'place')})`;
     out.push({
-      text: `${plural(deleted.length, 'deleted file')} still used (${plural(deleted.reduce((n, id) => n + (usage.get(id) ?? 0), 0), 'place')}): not saved with the game. Undo the delete, or take ${deleted.length === 1 ? 'it' : 'them'} off those slides`,
+      text: `${plural(deleted.length, 'deleted file')} still used${where}: not saved with the game. Undo the delete in History, or take ${deleted.length === 1 ? 'it' : 'them'} off ${uses === 1 ? 'there' : 'those slides'}`,
       tab: 'media',
       level: 'warn',
+      ...(at?.place ? { place: at.place } : {}),
       player: `${plural(deleted.length, 'file')} used on slides but missing from this game: ask whoever made it for a new copy`,
     });
+  }
   // (A 🗜 copy for phones whose bytes are missing isn't: phones get its file.)
   const missing = new Set([...[...usage.keys()].filter((id) => !known.has(id) && !deleted.includes(id)), ...game.media.filter((m) => !m.phoneCopy && !mediaUrls[m.id]).map((m) => m.id)]);
   // A sound's missing file is said on its own, pointing to 🔊 Sounds (the built-in sound plays meanwhile).

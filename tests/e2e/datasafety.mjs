@@ -64,6 +64,22 @@ const storedKeys = () =>
   );
 
 try {
+  // ---------- Storage blocked from the start: the first screen says nothing is kept ----------
+  {
+    const blocked = await browser.newContext({ viewport: { width: 1280, height: 720 } });
+    await blocked.addInitScript(() => {
+      IDBObjectStore.prototype.put = () => {
+        throw new DOMException('Quota exceeded', 'QuotaExceededError');
+      };
+    });
+    const p = await blocked.newPage();
+    await p.goto(url);
+    await p.locator('header').getByText('⚠ Autosave unavailable here: use Save').waitFor();
+    const first = await p.locator('.first-round').innerText();
+    assert(first.includes("This browser isn't keeping your game") && !first.includes('kept in this browser as you work'), 'with storage blocked from the start, the first screen says the game isn’t kept, to 💾 Save it');
+    await blocked.close();
+  }
+
   await page.goto(url);
   await page.getByRole('button', { name: 'Open…' }).waitFor();
   await page.waitForTimeout(600);

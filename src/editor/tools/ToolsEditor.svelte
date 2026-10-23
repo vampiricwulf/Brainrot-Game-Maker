@@ -65,8 +65,12 @@
     sel = copy.id;
   }
 
-  // Deleting is done at once: the note at the bottom offers Undo.
-  function remove(kind: Kind, item: Tool): void {
+  /**
+   * Deleting is done at once: the note at the bottom offers Undo. The one now in its place in its list (else the one
+   * before) opens if this one was open; from the list (its keys or its menu) its row takes the keys.
+   */
+  function remove(kind: Kind, item: Tool, fromList = false): void {
+    const at = listOf(kind).indexOf(item);
     step(
       `Deleted ${kind} “${item.name}”`,
       () => {
@@ -79,7 +83,10 @@
       },
       { notify: true },
     );
-    if (sel === item.id) sel = null;
+    const list = listOf(kind);
+    const next = list[Math.min(at, list.length - 1)];
+    if (sel === item.id) sel = next?.id ?? null;
+    if (fromList && next) focusItem(next.id);
   }
 
   function move(kind: Kind, from: number, to: number): void {
@@ -116,7 +123,7 @@
       { label: '▲ Move up', onclick: () => move(kind, i, i - 1), disabled: i === 0, keys: 'Alt+↑' },
       { label: '▼ Move down', onclick: () => move(kind, i, i + 1), disabled: i === n - 1, keys: 'Alt+↓' },
       { sep: true },
-      { label: `🗑 Delete ${kind}`, danger: true, onclick: () => remove(kind, item), keys: 'Delete' },
+      { label: `🗑 Delete ${kind}`, danger: true, onclick: () => remove(kind, item, true), keys: 'Delete' },
     ]);
   }
 
@@ -124,7 +131,7 @@
   function itemKey(e: KeyboardEvent, kind: Kind, item: Tool, i: number): void {
     if (e.repeat && e.key !== 'ArrowUp' && e.key !== 'ArrowDown') return;
     const mod = e.ctrlKey || e.metaKey;
-    if ((e.key === 'Delete' || e.key === 'Backspace') && !mod && !e.altKey) remove(kind, item);
+    if ((e.key === 'Delete' || e.key === 'Backspace') && !mod && !e.altKey) remove(kind, item, true);
     else if (e.key === 'F2') renaming = item.id;
     else if (mod && !e.altKey && e.key.toLowerCase() === 'd') dup(kind, item);
     else if (e.altKey && !mod && (e.key === 'ArrowUp' || e.key === 'ArrowDown')) move(kind, i, i + (e.key === 'ArrowUp' ? -1 : 1));

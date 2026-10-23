@@ -219,6 +219,8 @@ try {
   await wheelList.nth(2).focus();
   await page.keyboard.press('Delete');
   assert((await texts(wheelList)).join() === 'Wheel 1,Dares' && (await notice.innerText()).startsWith('Deleted wheel “Dares (copy)”'), 'Delete removes it, with a note');
+  await page.waitForFunction(() => document.activeElement?.textContent?.trim() === 'Dares' && document.activeElement.getAttribute('aria-current') === 'true');
+  assert(true, 'the wheel before it (it was the last) opens and its row takes the keys');
   // The built-in 🎯 Pick a player is listed, and a ready-made wheel comes in filled in.
   await page.getByRole('button', { name: /🎯 Pick a player/ }).click();
   assert((await page.getByRole('heading', { name: '🎯 Pick a player' }).count()) === 1, 'the built-in 🎯 Pick a player wheel is in the list, and says what it is');

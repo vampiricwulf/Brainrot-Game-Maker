@@ -91,6 +91,22 @@ describe('the checklist: Daily Doubles, RPG screens and board-game spaces', () =
     expect(validate(game).some((p) => p.text.includes('Daily Double'))).toBe(false);
   });
 
+  it('a finished board with Daily Doubles and partner clues still to place says so, not "0 things to fix"', () => {
+    const game = jeopardyGame();
+    const board = game.rounds[0] as BoardRound;
+    fill(board);
+    board.categories.forEach((c) => c.clues.forEach((cl) => (cl.type = 'standard')));
+    board.dailyDoubleCount = 2;
+    board.categories[1].clues[4].type = 'dailyDouble';
+    board.partnerCount = 2;
+    const partner = board.categories[2].clues[1];
+    setClueType(board, partner, 'partner');
+    for (const card of partner.cards ?? []) setSlideText(card, 'Shrek');
+    const line = checklistLines(game, validate(game)).find((l) => l.tab === 0)!;
+    expect(line.details).toHaveLength(2);
+    expect([line.text, line.level]).toEqual(['Jeopardy!: 1 Daily Double and 1 partner clue not placed yet (Start game places them)', 'info']);
+  });
+
   it('goes to the screen or the space a problem is on', () => {
     const game = jeopardyGame();
     game.rounds = [];

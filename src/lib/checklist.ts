@@ -92,9 +92,16 @@ export function checklistLines(game: Game, problems: Problem[]): ChecklistLine[]
           line.details.filter((d) =>
             /clues? with no (question|answer)|wheel\/dice tile|Daily Doubles? not placed yet|partner clues? not placed yet|a written question and answer for one|: card (\d+|“.*”) is empty:|partner clue with no card:/.test(d),
           ).length;
-        line.text = !todo.length
-          ? `${name}: ${plural(others, 'thing')} to fix`
-          : `${name}: ${plural(todo.length, 'clue')} to finish${others ? `, ${others} more to fix` : ''}`;
+        // (Only what Start game places: said as it is, not "0 things to fix".)
+        const unplaced = line.details.map((d) => /: (\d+ (?:Daily Doubles?|partner clues?)) not placed yet/.exec(d)?.[1]).filter((u) => u !== undefined);
+        const n = unplaced.reduce((a, u) => a + parseInt(u), 0);
+        line.text = todo.length
+          ? `${name}: ${plural(todo.length, 'clue')} to finish${others ? `, ${others} more to fix` : ''}`
+          : others
+            ? `${name}: ${plural(others, 'thing')} to fix`
+            : unplaced.length
+              ? `${name}: ${unplaced.join(' and ')} not placed yet (Start game places ${n === 1 ? 'it' : 'them'})`
+              : `${name}: ${plural(line.details.length, 'note')}`;
       }
     } else if (line.details.length > 1) line.text = `${name}: ${plural(line.details.length, 'thing')} to fix`;
   }

@@ -28,6 +28,10 @@ in plain words for the people who make and host games. Anything committed but no
 - A whole sheet (several categories) pasted on a category's name opens 📥 Import clues with it, instead of putting every category's clues in that one column. A column pasted there says what it did once, in the note at the bottom (with “N didn’t fit: add rows first”), not in a toast over it too.
 - 📥 Import clues opens with the keys in its paste box, so Ctrl+V pastes the cells copied at once.
 - A CSV or TSV file dropped on 📥 Import clues is read in, as Choose file… does. Dropped elsewhere in the editor, the note says where a sheet of clues goes.
+- With the browser's storage blocked or full from the start (a private window, blocked site data), the first screen says your game isn't being kept and to 💾 Save it to a file before you close the tab, instead of “Your game is kept in this browser as you work”.
+- The checklist says what a finished board's notes are (“Jeopardy!: 1 Daily Double and 1 partner clue not placed yet (Start game places them)”), not “0 things to fix”.
+- The checklist's “deleted file still used” line names where (“on Introduction › Slide 1 › Image”) and goes there, instead of to an empty 🖼 Media page, and says the delete can be undone in 🕘 History.
+- 🤫 Cards and 🎡 Wheels, Dice & Deals: deleting the card (or wheel, dice or deal) that's open opens the one now in its place, or the one before, and deleted from the list (Delete, or its menu) that one's row takes the keys. Before, the first card opened and took them, so a second Delete deleted it.
 
 ## 2026-10-23
 
