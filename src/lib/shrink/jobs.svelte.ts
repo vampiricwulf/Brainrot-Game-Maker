@@ -1,7 +1,7 @@
 // The editor's file jobs (card-files spec §4.13.5): a 🗜 copy for phones being made, or a file 🔄 converted, one at a
 // time, the rest waiting their turn. Each says how far it got for the header's pill and the dialog, and stops at once
-// when asked (nothing is changed then). A job belongs to the game it was started in: another game, ▶ Play or ▶ Test
-// stops it (they ask first).
+// when asked (nothing is changed then). A job belongs to the game it was started in: another game (New, Open…), ▶ Play
+// or ▶ Test stops it (they ask first).
 import { announce } from '../announce';
 import { toast } from '../app.svelte';
 import type { Id } from '../model';
@@ -113,12 +113,12 @@ export function jobLine(): string | null {
   return `🗜 A smaller copy for phones is still being made ${pct}.`;
 }
 
-/** What ▶ Play and ▶ Test ask while a job runs (null: none runs). */
-export function jobAsk(): string | null {
+/** What ▶ Play and ▶ Test ask while a job runs, or New and Open… (`then`: what stopping it is for); null: none runs. */
+export function jobAsk(then = 'start the game'): string | null {
   const line = jobLine();
   if (!line) return null;
   const more = state.list.length - 1;
-  return `${line} Stop it and start the game? Nothing is changed by stopping, and it can be done again afterwards.${more ? ` (${more} more ${more === 1 ? 'is' : 'are'} waiting.)` : ''}`;
+  return `${line} Stop it and ${then}? Nothing is changed by stopping, and it can be done again afterwards.${more ? ` (${more} more ${more === 1 ? 'is' : 'are'} waiting.)` : ''}`;
 }
 
 /** The header's pill: "🗜 Making a smaller copy for phones…", with how far it got. */

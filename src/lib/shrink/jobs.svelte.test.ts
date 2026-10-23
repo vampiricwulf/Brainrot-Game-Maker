@@ -56,6 +56,8 @@ describe('file jobs', () => {
     expect(jobs.ended[ja]).toEqual({ done: '🗜 Phones get the smaller copy now' });
     expect(jobs.current?.id).toBe(jb);
     expect(jobAsk()).toMatch(/\(0%\)\. Stop it and start the game\? Nothing is changed by stopping, and it can be done again afterwards\.$/);
+    // (New and Open… ask it too.)
+    expect(jobAsk('leave this game')).toMatch(/\(0%\)\. Stop it and leave this game\? Nothing is changed by stopping/);
     b.end({ failed: 'A video of it wouldn’t be much smaller: nothing was changed' });
     await settle();
     expect(app.toast).toBe('🗜 A video of it wouldn’t be much smaller: nothing was changed');

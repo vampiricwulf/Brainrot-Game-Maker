@@ -84,7 +84,7 @@
   import ConvertDialog from './ConvertDialog.svelte';
   import ConvertNotice from './ConvertNotice.svelte';
   import { verdictOf } from '../lib/shrink/checks.svelte';
-  import { stopAll } from '../lib/shrink/jobs.svelte';
+  import { jobAsk, stopAll } from '../lib/shrink/jobs.svelte';
   import { checkGame } from '../lib/shrink/checks.svelte';
   import { libraryMedia } from '../lib/phonecopies';
   import RoundImport from './RoundImport.svelte';
@@ -141,7 +141,7 @@
     untrack(() => checkGame(game));
   });
   // A 🗜 copy being made belongs to its game in the editor: another game (New, Open…) stops it, and its window closes;
-  // so does going to play (▶ Play and Resume ask first).
+  // so does going to play (each asks first: mayReplace, and ▶ Play and Resume).
   $effect(() => {
     const id = game.id;
     untrack(() => {
@@ -460,6 +460,10 @@
     // Typing not yet made a step (it becomes one after a pause) counts as a change too.
     commit();
     lossAccepted = false;
+    // A ✂ / 🗜 / 🔄 job on this game's files stops with it: asked first, as ▶ Play does. (Stopped once the game really
+    // changes: a Cancel to the question below leaves it working.)
+    const job = jobAsk('leave this game');
+    if (job && !(await ask(job, { ok: 'Stop it', cancel: 'Keep working' }))) return false;
     // (A game New made has nothing in it: anything in it now is a change, even one made before its history started
     // a moment after it arrived.)
     if (!hasWork(game) || (savedSinceChange() && !(history.origin.kind === 'new' && !history.entries.length && !history.marks.length))) return true;

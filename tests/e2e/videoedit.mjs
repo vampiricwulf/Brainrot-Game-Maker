@@ -20,8 +20,8 @@
 //     with the focus lost to the page, arrows and Delete leave the item under it alone, and an Esc from outside both
 //     doesn't close the clue; Ctrl+Enter in the End box applies the time just typed; while it's open after Apply, the
 //     editor under it stays inert, the focus is on Close, and Esc closes the window only.
-// Then: no toast, History row or pill names a file. 5. ▶ Play while an edit is saved asks first: Keep working stays,
-// Stop it and play starts the game with the file unchanged.
+// Then: no toast, History row or pill names a file. 5. ▶ Play (and New) while an edit is saved asks first: Keep working
+// stays, Stop it and play starts the game with the file unchanged.
 import { chromium } from 'playwright-core';
 import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
@@ -585,6 +585,17 @@ try {
   await playAsk.getByRole('button', { name: 'Keep working' }).click();
   await playAsk.waitFor({ state: 'detached' });
   assert(await page.locator('[data-job-pill]').isVisible(), 'Keep working: still in the editor, the edit going on');
+  // New asks the same first (another game would stop it), and Keep working keeps this game and the edit.
+  await page.getByRole('button', { name: 'New', exact: true }).click();
+  const newAsk = page.getByRole('alertdialog').filter({ hasText: 'Stop it and leave this game?' });
+  await newAsk.waitFor();
+  assert((await newAsk.innerText()).includes('✂ A video’s edit is still being saved'), 'New while it’s saved asks first: “✂ A video’s edit is still being saved (…%). Stop it and leave this game?”');
+  await newAsk.getByRole('button', { name: 'Keep working' }).click();
+  await newAsk.waitFor({ state: 'detached' });
+  assert(
+    (await page.locator('[data-job-pill]').isVisible()) && !!refNamed(await stored(page, 'editorDraft'), `long.${longExt}`),
+    'Keep working: the same game, the edit going on',
+  );
   await play.click();
   await playAsk.waitFor();
   await playAsk.getByRole('button', { name: 'Stop it and play' }).click();
