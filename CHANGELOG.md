@@ -11,27 +11,22 @@ the day it's pushed (Pacific time; start the heading on the day's first push) an
 in plain words for the people who make and host games. Anything committed but not pushed yet goes under
 **Unreleased** at the top, and moves under its day when it's pushed.
 
-## Unreleased
+## 2026-10-22
 
 ### Added
 
-- Final: with phone buzzers, players type their answer on their phone once the question shows (on a team, anyone on it), and can change it until you show the answer. Only you see the answers (in one window, not until you reveal each one, or open the audience window to read them first). In the reveals, N puts the spotlit player's answer on stream, then C / X judges them and shows their wager, as on TV; players without a phone answer out loud as before. “✍ Players type their answers on their phones” in the Final's editor (on unless you untick it) goes back to answers on paper. During the question the stream shows “✍ Answers on phones” and who has answered, never what. A buzzer server too old for ✍ Everyone answers can't take them either: players answer out loud, and the host panel says so.
+- Final: with phone buzzers, players type their answer on their phone once the question shows (on a team, anyone on it), and can change it until you show the answer. Only you see the answers (in one window, not until you reveal each one, or open the audience window to read them first). In the reveals, N puts the spotlit player's answer on stream, then C / X judges them and shows their wager, as on TV; players without a phone answer out loud as before. “✍ Players type their answers on their phones” in the Final's editor (on unless you untick it) goes back to answers on paper. During the question the stream shows “✍ Answers on phones” and who has answered, never what. A buzzer server too old for ✍ Everyone answers can't take them either: players answer out loud, and the host panel says so. (6db232b, f82271c)
 
 ### Changed
 
-- Phones show a long question better: it takes the room between the top of the screen and the buzzer (or the answer box), its text gets smaller to fit, down to a size still easy to read, and past that it scrolls, with a faded edge and ▼ More (▲ Top at the end). Past three lines it's left-aligned, its line breaks stay (“A) … B) …” each on its own line, without the slide's blank lines), and a long link or word wraps instead of running off the side. The category and value sit above it and no longer scroll away. A player keeps their place in it as BUZZ! lights up, and with the keyboard up the question stays above the answer box and Send stays in sight. A screen reader says the question once as the answer box opens, not again with each “✔ Sent”.
-
-### Fixed
-
-- Phones get up to 1,000 characters of a question (500 before), ending in “…” when cut: the end of a long question, where the actual question usually is, was lost.
-- On a computer, the phone page no longer says “Press Space to buzz” under “Wager locked” or “… is answering · Daily Double”, when nothing buzzes.
-- After 🔁 Rematch in the same buzzer room, a ✍ Everyone answers clue no longer shows a phone the answer it sent in the last game (“✔ Sent: …”) while the host panel says “waiting…”: each game's answers are its own.
-
-## 2026-10-22
+- Phones show a long question better: it takes the room between the top of the screen and the buzzer (or the answer box), its text gets smaller to fit, down to a size still easy to read, and past that it scrolls, with a faded edge and ▼ More (▲ Top at the end). Past three lines it's left-aligned, its line breaks stay (“A) … B) …” each on its own line, without the slide's blank lines), and a long link or word wraps instead of running off the side. The category and value sit above it and no longer scroll away. A player keeps their place in it as BUZZ! lights up, and with the keyboard up the question stays above the answer box and Send stays in sight. A screen reader says the question once as the answer box opens, not again with each “✔ Sent”. (50e4457, 3e8cced)
 
 ### Fixed
 
 - Phone wagers: while the host ignores the limits (the default), the wager box says "No limit" instead of a max. A player at $0 or below was told "Max $0" though any amount is taken. (0cdf24a)
+- Phones get up to 1,000 characters of a question (500 before), ending in “…” when cut: the end of a long question, where the actual question usually is, was lost. (50e4457)
+- On a computer, the phone page no longer says “Press Space to buzz” under “Wager locked” or “… is answering · Daily Double”, when nothing buzzes. (50e4457)
+- After 🔁 Rematch in the same buzzer room, a ✍ Everyone answers clue no longer shows a phone the answer it sent in the last game (“✔ Sent: …”) while the host panel says “waiting…”: each game's answers are its own. (9a2769c)
 
 ## 2026-10-18
 
