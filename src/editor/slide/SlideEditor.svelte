@@ -1,6 +1,6 @@
 <!-- Freeform 16:9 slide editor (spec §5.3): toolbar, canvas with handles, and an inspector. -->
 <script module lang="ts">
-  import { freeOffset, isMediaLink, officeTextPaste, placeNewPicture } from '../../lib/editing';
+  import { freeOffset, freeSpot, isMediaLink, officeTextPaste, placeNewPicture } from '../../lib/editing';
   import { topModal } from '../../lib/modal';
 
   // The Final tab shows two slide editors at once. Only the one the user last clicked or focused
@@ -300,9 +300,7 @@
       // Low on the slide, under where a question's words usually are (the question stays where it is).
       t = newTextEl('New text', { x: 460, y: 700, w: 1000, h: 300 });
       t.size = 90;
-      const k = freeOffset([t], slide.elements, 40);
-      t.x += k * 40;
-      t.y += k * 40;
+      Object.assign(t, freeSpot(t, slide.elements));
     }
     add(t, at);
     focusText(true);
@@ -424,9 +422,7 @@
     }
     const t = newTextEl(text, { x: 460, y: 390, w: 1000, h: 300 });
     t.size = 90;
-    const k = freeOffset([t], slide.elements, 40);
-    t.x += k * 40;
-    t.y += k * 40;
+    Object.assign(t, freeSpot(t, slide.elements));
     add(t, at);
   }
 

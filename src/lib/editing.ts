@@ -1,6 +1,7 @@
 // Pure helpers behind the slide and image editors: undo history, placement, crop geometry, pastes and playback.
 // (Hit testing and restacking live in layers.ts.) No DOM or Svelte state here, so all of it is
 // unit-tested (editing.test.ts).
+import { clampOnto } from './layers';
 import { SLIDE_H, SLIDE_W, type SlideElement } from './model';
 
 // ---------- Undo history ----------
@@ -68,6 +69,20 @@ export function freeOffset(items: { x: number; y: number }[], existing: { x: num
   let k = 0;
   while (k < 40 && taken(k)) k++;
   return k;
+}
+
+/**
+ * Where a new text box goes: `box`'s own spot, else the first diagonal step from it (down and right) that no item is
+ * on, each kept wholly on the slide, so a fifth box neither lands on the fourth nor hangs off the bottom.
+ */
+export function freeSpot(box: Box, existing: { x: number; y: number }[], step = 40, W = SLIDE_W, H = SLIDE_H): { x: number; y: number } {
+  let spot = { ...box };
+  for (let k = 0; k < 40; k++) {
+    spot = { ...box, x: box.x + k * step, y: box.y + k * step };
+    clampOnto(spot, W, H);
+    if (!existing.some((o) => o.x === spot.x && o.y === spot.y)) break;
+  }
+  return { x: spot.x, y: spot.y };
 }
 
 /**

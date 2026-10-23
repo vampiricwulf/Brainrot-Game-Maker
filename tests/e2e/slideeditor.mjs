@@ -9,7 +9,7 @@
 // new crop starting Free, a caption's font drawn once it loads, and Ctrl+V of items or a picture in the clue's Question
 // box (words with a picture stay words; the Answer box doesn't put a picture on the open Question slide). Ctrl+C with
 // words selected with the mouse copies them, not the selected item; items pasted into another game bring their file in
-// the same step. 🎨 Edit image on a moving GIF edits every frame, so it stays a moving GIF.
+// the same step. 🎨 Edit image on a moving GIF edits every frame, so it stays a moving GIF. New 🅣 Text boxes stay on the slide.
 import { chromium } from 'playwright-core';
 import { existsSync, mkdirSync, readFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
@@ -583,6 +583,19 @@ try {
   }
   await page.keyboard.press('Control+z');
   await canvas.locator('.slide .card').waitFor({ state: 'detached' });
+  // New 🅣 Text boxes step down and right, each wholly on the slide and none on another (the 4th hung off its bottom).
+  {
+    const before = new Set((await drawn()).map((e) => e.id));
+    for (let i = 0; i < 5; i++) await clue.getByRole('button', { name: '🅣 Text' }).click();
+    await canvas.locator('.slide .el:has(.text)').nth(5).waitFor();
+    const boxes = (await drawn()).filter((e) => !before.has(e.id));
+    assert(
+      boxes.length === 5 && new Set(boxes.map((b) => `${b.x},${b.y}`)).size === 5 && boxes.every((b) => b.x + b.w <= 1920 && b.y + b.h <= 1080),
+      `five new text boxes are all on the slide, none on another (bottoms ${boxes.map((b) => b.y + b.h).join(', ')})`,
+    );
+    for (let i = 0; i < 5; i++) await clue.getByRole('button', { name: 'Undo (Ctrl+Z)' }).click();
+    await canvas.locator('.slide .el:has(.text)').nth(1).waitFor({ state: 'detached' });
+  }
   await page.getByRole('button', { name: '🖼 Image' }).click();
   await page.getByRole('dialog', { name: 'Choose image' }).dispatchEvent('drop', { dataTransfer: await picture('face.png', 800, 600, '#00aa00') });
   await canvas.locator('.slide .el img').waitFor();

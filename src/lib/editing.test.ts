@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { aspectCrop, freeOffset, isMediaLink, knobPlacement, officeTextPaste, placeNewPicture, placePicture, playRange, SnapshotHistory } from './editing';
+import { aspectCrop, freeOffset, freeSpot, isMediaLink, knobPlacement, officeTextPaste, placeNewPicture, placePicture, playRange, SnapshotHistory } from './editing';
 import { newTextEl } from './model';
 
 describe('slide undo history', () => {
@@ -40,6 +40,14 @@ describe('placement', () => {
     expect(freeOffset([{ x: 100, y: 100 }], existing)).toBe(2);
     expect(freeOffset([{ x: 500, y: 100 }], existing)).toBe(0);
     expect(freeOffset([{ x: 460, y: 390 }], [{ x: 460, y: 390 }], 40)).toBe(1);
+  });
+
+  it('steps new text boxes down and right, each wholly on the slide and none on another', () => {
+    const box = { x: 460, y: 700, w: 1000, h: 300 };
+    const placed: { x: number; y: number }[] = [];
+    for (let i = 0; i < 6; i++) placed.push(freeSpot(box, placed));
+    expect(placed).toEqual([{ x: 460, y: 700 }, { x: 500, y: 740 }, { x: 540, y: 780 }, { x: 580, y: 780 }, { x: 620, y: 780 }, { x: 660, y: 780 }]);
+    expect(freeSpot(box, [{ x: 0, y: 0 }])).toEqual({ x: 460, y: 700 });
   });
 
   it('keeps the rotate handle on the slide', () => {
