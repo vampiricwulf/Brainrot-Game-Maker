@@ -306,6 +306,21 @@ try {
 
   // ---------- A new phone on Bob's seat (freed for it) came late: nothing, until ↻ Send again ----------
   await host.getByRole('button', { name: /^📱 \d/ }).click();
+  // (The phones list: one line per player, status, Free seat and ✕ Kick all inside it, with either font.)
+  const fit = await host.getByRole('region', { name: 'Phone buzzers' }).evaluate((box) => {
+    const ul = box.querySelector('ul.phones');
+    const right = box.getBoundingClientRect().right;
+    const rows = [...ul.children].map((li) => {
+      const status = li.querySelector('.ok, .away, .muted');
+      const lh = parseFloat(getComputedStyle(li).lineHeight) || 18;
+      return { h: Math.round(status?.getBoundingClientRect().height ?? 0), lh, out: [...li.querySelectorAll('button')].some((b) => b.getBoundingClientRect().right > right + 0.5) };
+    });
+    return { rows, ul: ul.scrollWidth - ul.clientWidth, pop: box.scrollWidth - box.clientWidth };
+  });
+  assert(
+    fit.rows.length >= 3 && fit.rows.every((r) => r.h && r.h < r.lh * 1.5 && !r.out) && fit.ul <= 0 && fit.pop <= 0,
+    `the phones list: each player on one line, Free seat and ✕ Kick inside it, nothing scrolling sideways (${JSON.stringify(fit)})`,
+  );
   await host.getByRole('button', { name: 'Free Bob’s seat (moved phone)' }).click();
   await bob.getByRole('heading', { name: 'The host freed your seat' }).waitFor();
   assert(!(await cardsOn(bob)), 'Bob’s seat freed: his old phone drops the card');

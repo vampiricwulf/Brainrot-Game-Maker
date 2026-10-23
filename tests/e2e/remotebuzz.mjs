@@ -375,21 +375,6 @@ try {
   assert((await page.locator('.panel .p [data-phone-away]').count()) === 1, 'a dropped phone: 📵 on that player’s chip (only theirs)');
   await pop.locator(`[data-phone-offline="${seats[1].id}"]`).waitFor();
   assert(/^📵 offline \d+:\d\d$/.test(await pop.locator(`[data-phone-offline="${seats[1].id}"]`).innerText()), `and the phones list says “📵 offline 0:01” (${await pop.locator(`[data-phone-offline="${seats[1].id}"]`).innerText()})`);
-  // One line per player, all of it inside the list: name, status, and ✕ Kick (with either font).
-  const fit = await pop.evaluate((box) => {
-    const ul = box.querySelector('ul.phones');
-    const right = box.getBoundingClientRect().right;
-    const rows = [...ul.children].map((li) => {
-      const status = li.querySelector('.ok, .away, .muted');
-      const lh = status ? parseFloat(getComputedStyle(status).lineHeight) || 18 : 18;
-      return { h: status?.getBoundingClientRect().height ?? 0, lh, out: [...li.querySelectorAll('button')].some((b) => b.getBoundingClientRect().right > right + 0.5) };
-    });
-    return { rows, ul: ul.scrollWidth - ul.clientWidth, pop: box.scrollWidth - box.clientWidth };
-  });
-  assert(
-    fit.rows.every((r) => r.h < r.lh * 1.5 && !r.out) && fit.ul <= 0 && fit.pop <= 0,
-    `each player’s row in the phones list is one line, ✕ Kick inside it, and nothing scrolls sideways (${JSON.stringify(fit)})`,
-  );
   await say({ t: 'phones', phones: [{ conn: 'c2', seatId: seats[1].id, connected: true }, { conn: 'c3', seatId: seats[2].id, connected: true }] });
   await page.locator('.panel .p [data-phone-away]').waitFor({ state: 'detached' });
   assert(true, 'back online, the 📵 goes');
