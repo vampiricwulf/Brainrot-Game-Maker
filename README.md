@@ -22,7 +22,7 @@ Get it from the **[Latest release](../../releases/latest)** (every push to `main
 - The desktop app updates itself: **⬆ Update to …** downloads the new `.exe`, checks it's signed with the project's
   key, saves your game and restarts into it, in the same place. (A copy built without the key offers the download.)
   It asks first while a ✎ / 🗜 / 🔄 job runs, and once a game has started it doesn't restart by itself: **⟳ Restart
-  into …** in the editor finishes it.
+  into …** in the editor finishes it (if it failed, the editor says why).
 - The HTML file offers the new file: save it in place of the old one (same name and folder) and open it. Your games
   carry over: they're kept in the browser, not in the file.
 

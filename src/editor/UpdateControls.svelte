@@ -54,12 +54,15 @@
     } catch (err) {
       update.status = 'available';
       const why = typeof err === 'string' ? err : err instanceof Error ? err.message : '';
-      // (Shown until it's read: it can say what the next start needs.)
-      void tell(
+      const msg =
         update.installed === release.version
           ? `Version ${release.version} is in place, but the app didn't restart${why ? ` (${why})` : ''}. Press Restart again, or close the app and open it.`
-          : why || "The update didn't install.",
-      );
+          : why || "The update didn't install.";
+      // (Shown until it's read: it can say what the next start needs. During a game, back in the editor: nothing pops
+      // up over the stage, nor takes the keys.)
+      if (app.screen !== 'play') return void tell(msg);
+      update.failed = msg;
+      toast(`Version ${release.version} didn't install: the editor says why when you go back.`, 8000);
     }
   }
   const ready = $derived(update.installed === release.version);

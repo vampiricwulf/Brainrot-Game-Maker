@@ -2,8 +2,9 @@
 // (keeping a backup) but never another game's of the same name, Open… lists and opens an exported .html (a save that
 // can't be read says why), a game file the app is opened with (at start or by a second launch) opens, and closing the
 // window writes the last edits first; closing while a 🗜 copy for phones is made, Wait closes once it's done, with the
-// copy written; closing while autosave can't write asks first. ⬆ Update: a failure stays until it's read, and one that
-// finishes once a game has started waits for ⟳ Restart. Also in a browser: Open… takes an exported .html.
+// copy written; closing while autosave can't write (or read) asks first. ⬆ Update: a failure stays until it's read
+// (one during a game waits for the editor), and one that finishes once a game has started waits for ⟳ Restart. Also in
+// a browser: Open… takes an exported .html.
 import { chromium } from 'playwright-core';
 import { existsSync, readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
@@ -25,11 +26,17 @@ function assert(cond, msg) {
 /** The native side: BrainrotSaves in memory, the commands the page uses, and events (window.__emit). */
 function fakeDesktop() {
   window.__JB_AUDIO_FIX = true;
-  // Storage fills up while window.__full is set (as when the disk is full).
+  // Storage fills up while window.__full is set (as when the disk is full), and can't be read either while
+  // window.__unreadable is (as when it's blocked).
   const put = IDBObjectStore.prototype.put;
   IDBObjectStore.prototype.put = function (...a) {
     if (window.__full) throw new DOMException('Quota exceeded', 'QuotaExceededError');
     return put.apply(this, a);
+  };
+  const idbGet = IDBObjectStore.prototype.get;
+  IDBObjectStore.prototype.get = function (...a) {
+    if (window.__unreadable) throw new DOMException('Internal error', 'UnknownError');
+    return idbGet.apply(this, a);
   };
   const saves = (window.__saves = new Map());
   window.__calls = [];
@@ -96,7 +103,7 @@ function fakeDesktop() {
           window.__draftAtClose = new Promise((ok) => {
             const req = indexedDB.open('keyval-store');
             req.onsuccess = () => {
-              const get = req.result.transaction('keyval').objectStore('keyval').get('editorDraft');
+              const get = idbGet.call(req.result.transaction('keyval').objectStore('keyval'), 'editorDraft');
               get.onsuccess = () => ok(get.result?.media?.map((m) => m.name) ?? null);
               get.onerror = () => ok(null);
             };
@@ -339,12 +346,10 @@ try {
   await failed.waitFor();
   assert(true, 'a failed ⬆ Update says why, until OK');
   await failed.getByRole('button', { name: 'OK' }).click();
-  // Pressed again, then a game started while it downloads: it doesn't restart by itself.
+  // Pressed again, then a game started while it downloads: when it fails, nothing pops up over the game.
   await d.evaluate(() => {
-    window.__installFail = null;
     window.__installGo = new Promise((go) => (window.__installDone = go));
   });
-  await calls(d);
   await updateBtn.click();
   await aboutDlg.getByRole('button', { name: 'Updating…' }).waitFor();
   await d.keyboard.press('Escape');
@@ -360,10 +365,27 @@ try {
   assert(true, 'a game file given during a game says it opens back in the editor');
   await d.evaluate(() => (window.__opened = null));
   await d.evaluate(() => window.__installDone());
+  await d.locator('.toast', { hasText: "Version 99.0.0 didn't install: the editor says why when you go back." }).waitFor();
+  assert((await d.getByRole('alertdialog').count()) === 0, 'an update that fails once a game has started pops nothing up over it: a toast says the editor says why');
+  await d.getByRole('button', { name: '◀ Back to editor' }).click();
+  await failed.waitFor();
+  assert(true, '…and back in the editor, it does');
+  await failed.getByRole('button', { name: 'OK' }).click();
+  // Once more (the editor's notice), then a game started: when it works, it doesn't restart by itself.
+  await d.evaluate(() => {
+    window.__installFail = null;
+    window.__installGo = new Promise((go) => (window.__installDone = go));
+  });
+  await calls(d);
+  const notice = d.locator('.data-notice', { hasText: '99.0.0 is out' });
+  await notice.getByRole('button', { name: '⬆ Update to 99.0.0' }).click();
+  await notice.getByRole('button', { name: 'Updating…' }).waitFor();
+  await d.getByRole('button', { name: '▶ Play' }).click();
+  await d.getByRole('button', { name: 'Start game ▶' }).waitFor();
+  await d.evaluate(() => window.__installDone());
   await d.locator('.toast', { hasText: 'Version 99.0.0 is ready' }).waitFor();
   assert(!(await calls(d)).includes('restart_app'), 'an update that finishes once a game has started doesn’t restart the app');
   await d.getByRole('button', { name: '◀ Back to editor' }).click();
-  const notice = d.locator('.data-notice', { hasText: '99.0.0 is out' });
   await notice.getByRole('button', { name: '⟳ Restart into 99.0.0' }).waitFor();
   assert(true, 'back in the editor, ⟳ Restart into 99.0.0 is offered');
   await notice.getByRole('button', { name: 'Not now' }).click();
@@ -418,11 +440,15 @@ try {
   await lostAsk.waitFor({ state: 'detached' });
   const stayed = await calls(d);
   assert(stayed.includes('hold_close') && !stayed.includes('close_app'), `storage full: closing asks first, and Stay keeps the window open (${stayed.join(', ')})`);
-  await d.evaluate(() => window.__emit('close-requested'));
+  // (Storage that can't be read either asks the same.)
+  await d.evaluate(() => {
+    window.__unreadable = true;
+    window.__emit('close-requested');
+  });
   await lostAsk.getByRole('button', { name: 'Close anyway' }).click();
   await d.waitForFunction(() => window.__closed === true);
-  assert(true, '…the next ✕ asks again, and Close anyway closes');
-  await d.evaluate(() => (window.__full = false));
+  assert(true, '…the next ✕ asks again (storage that can’t be read either too), and Close anyway closes');
+  await d.evaluate(() => (window.__full = window.__unreadable = false));
 
   // Closing while a 🗜 copy for phones is made: Wait, and once it's done the app writes it, then closes.
   console.log('Closing while a copy for phones is made:');

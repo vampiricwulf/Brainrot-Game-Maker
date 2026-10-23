@@ -33,7 +33,9 @@ export const update = $state<{
   checkedAt: number;
   /** The version whose .exe the desktop app already put in place (only the restart into it is left). */
   installed: string;
-}>({ status: 'idle', latest: null, error: '', skipped: readSkip(), checkedAt: 0, installed: '' });
+  /** Why ⬆ Update failed during a game: said back in the editor (nothing pops up over the stage). */
+  failed: string;
+}>({ status: 'idle', latest: null, error: '', skipped: readSkip(), checkedAt: 0, installed: '', failed: '' });
 
 function storedFlag(key: string): boolean {
   try {

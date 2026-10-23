@@ -876,6 +876,13 @@
   onMount(() => {
     if (inTauri()) dataFolders().then((f) => (movedNotice = !!f?.moved));
   });
+  // ⬆ Update failed during a game: why, now that the host is back here (see UpdateControls).
+  onMount(() => {
+    const why = update.failed;
+    if (!why) return;
+    update.failed = '';
+    void tell(why);
+  });
   function dismissNotice(): void {
     dataNotice = false;
     movedNotice = false;

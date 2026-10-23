@@ -406,9 +406,10 @@ export function flushOnClose(flush: () => void, busy?: () => string | null, lost
               flush();
             }
           }
-          // A read waits for every write started before it (IndexedDB runs them in order).
+          // A read waits for every write started before it (IndexedDB runs them in order). (One that fails, storage
+          // that can't be read either, still asks below.)
           await new Promise((r) => setTimeout(r));
-          await (await import('idb-keyval')).get('__probe');
+          await (await import('idb-keyval')).get('__probe').catch(() => {});
           if (writing()) {
             waiting = true;
             // The window stays open for as long as this takes.
