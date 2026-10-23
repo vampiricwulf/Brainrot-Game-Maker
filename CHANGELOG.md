@@ -38,6 +38,10 @@ in plain words for the people who make and host games. Anything committed but no
 - Right-click › Paste here near the slide's edge puts the pasted items wholly on the slide, as a drop does (they hung mostly off it, with handles out of reach).
 - The Layers list scrolls to the item picked on the slide (a click, or Tab), so its row shows.
 - ✏ Draw a line draws in white as you drag, the color the line is saved in (it showed yellow, then turned white).
+- ↶ Undo and 🕘 History name slide items' settings as the panel does: “Changed stop at of video “clip.webm””, start at, start muted, speaker icon, autoplay, thickness, border (a line's color), corners, type, all caps (they said “end at”, “stroke width”, “radius”…). ↺ Reset background says “Reset the slide background”, and items pasted from another game are named by their file (“Pasted image “face.png”” instead of “Image”).
+- A Slides round's “Use this style elsewhere” offers “The other slides in this round” (and the whole game's), not questions and answers it doesn't have.
+- A font uploaded from a text box's ＋ says “Font added and used for this text box”, as it already is, not “pick it from the Font list”.
+- A text box's style buttons wrap by whole groups (B I U AA, left/center/right, top/middle/bottom), so ⤓ no longer sits alone on a second line in the clue editor.
 
 ## 2026-10-23
 

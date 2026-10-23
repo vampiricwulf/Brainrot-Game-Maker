@@ -61,7 +61,7 @@
   onadded={() => void tick().then(() => qField?.focus())}
 />
 {#key `${round.id}-${slideKeyOf(slide)}`}
-  <SlideEditor {slide} styletargets={styleTargets} quickfield="q" placeholder="Click to type on the slide" />
+  <SlideEditor {slide} styletargets={styleTargets} styleslides quickfield="q" placeholder="Click to type on the slide" />
 {/key}
 
 <style>

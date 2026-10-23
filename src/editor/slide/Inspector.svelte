@@ -29,6 +29,7 @@
     onreplace,
     onapplystyle,
     stylecategory = false,
+    styleslides = false,
     stylescope,
     onuploadfont,
     oneditimage,
@@ -52,6 +53,8 @@
     onapplystyle?: (el: TextEl, scope: string) => void;
     /** Offer "this category" scopes for it. */
     stylecategory?: boolean;
+    /** A slides round's: its round scope is its other slides (it has no answers). */
+    styleslides?: boolean;
     /** The scope it starts on (else this category's questions, or this round's). */
     stylescope?: string;
     /** Upload a font: a picker drops from `from`, the ＋ button. */
@@ -182,19 +185,24 @@
           ⚠ The text doesn't fit{el.autoFit ? ', even at the smallest size' : ''}. Make the box bigger or the text shorter{el.autoFit ? '' : ', or tick Shrink to fit'}.
         </p>
       {/if}
+      <!-- Three groups (style, alignment, height in the box): one that doesn't fit goes to the next line whole. -->
       <div class="row toggles">
-        <button class:on={el.weight >= 700} aria-pressed={el.weight >= 700} onclick={() => (el.weight = el.weight >= 700 ? 400 : 700)} aria-label="Bold" title="Bold (Ctrl+B)"><b>B</b></button>
-        <button class:on={el.italic} aria-pressed={el.italic} onclick={() => (el.italic = !el.italic)} aria-label="Italic" title="Italic (Ctrl+I)"><i>I</i></button>
-        <button class:on={el.underline} aria-pressed={el.underline} onclick={() => (el.underline = !el.underline)} aria-label="Underline" title="Underline (Ctrl+U)"><u>U</u></button>
-        <button class:on={el.uppercase} aria-pressed={el.uppercase} onclick={() => (el.uppercase = !el.uppercase)} aria-label="All caps" title="ALL CAPS">AA</button>
-        <span class="sep"></span>
-        {#each ['left', 'center', 'right'] as const as a}
-          <button class:on={el.align === a} aria-pressed={el.align === a} onclick={() => (el.align = a)} aria-label={ALIGN[a][1]} title={ALIGN[a][1]}>{ALIGN[a][0]}</button>
-        {/each}
-        <span class="sep"></span>
-        {#each ['top', 'middle', 'bottom'] as const as v}
-          <button class:on={el.vAlign === v} aria-pressed={el.vAlign === v} onclick={() => (el.vAlign = v)} aria-label={VALIGN[v][1]} title={VALIGN[v][1]}>{VALIGN[v][0]}</button>
-        {/each}
+        <span class="grp">
+          <button class:on={el.weight >= 700} aria-pressed={el.weight >= 700} onclick={() => (el.weight = el.weight >= 700 ? 400 : 700)} aria-label="Bold" title="Bold (Ctrl+B)"><b>B</b></button>
+          <button class:on={el.italic} aria-pressed={el.italic} onclick={() => (el.italic = !el.italic)} aria-label="Italic" title="Italic (Ctrl+I)"><i>I</i></button>
+          <button class:on={el.underline} aria-pressed={el.underline} onclick={() => (el.underline = !el.underline)} aria-label="Underline" title="Underline (Ctrl+U)"><u>U</u></button>
+          <button class:on={el.uppercase} aria-pressed={el.uppercase} onclick={() => (el.uppercase = !el.uppercase)} aria-label="All caps" title="ALL CAPS">AA</button>
+        </span>
+        <span class="grp">
+          {#each ['left', 'center', 'right'] as const as a}
+            <button class:on={el.align === a} aria-pressed={el.align === a} onclick={() => (el.align = a)} aria-label={ALIGN[a][1]} title={ALIGN[a][1]}>{ALIGN[a][0]}</button>
+          {/each}
+        </span>
+        <span class="grp">
+          {#each ['top', 'middle', 'bottom'] as const as v}
+            <button class:on={el.vAlign === v} aria-pressed={el.vAlign === v} onclick={() => (el.vAlign = v)} aria-label={VALIGN[v][1]} title={VALIGN[v][1]}>{VALIGN[v][0]}</button>
+          {/each}
+        </span>
       </div>
       <label class="check"><input type="checkbox" bind:checked={el.autoFit} /> Shrink text to fit the box</label>
       <div class="grid2">
@@ -260,9 +268,13 @@
               <option value="cat-a">Answers in this category</option>
               <option value="cat-qa">Questions + answers in this category</option>
             {/if}
-            <option value="round-q">Questions in this round</option>
-            <option value="round-a">Answers in this round</option>
-            <option value="round-qa">Questions + answers in this round</option>
+            {#if styleslides}
+              <option value="round-q">The other slides in this round</option>
+            {:else}
+              <option value="round-q">Questions in this round</option>
+              <option value="round-a">Answers in this round</option>
+              <option value="round-qa">Questions + answers in this round</option>
+            {/if}
             <option value="game-q">Questions in the whole game</option>
             <option value="game-a">Answers in the whole game</option>
             <option value="game-qa">Everything in the whole game</option>
@@ -517,8 +529,14 @@
     border-color: var(--accent-fill);
     color: #fff;
   }
-  .sep {
-    width: 6px;
+  /* (The space between groups is as wide as the spacers it had.) */
+  .toggles {
+    column-gap: 22px;
+  }
+  .grp {
+    display: inline-flex;
+    gap: 8px;
+    flex-wrap: nowrap;
   }
   .hint {
     margin: 0;

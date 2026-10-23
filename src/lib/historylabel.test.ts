@@ -1,7 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import { diff } from './historyops';
 import { describe as describeStep, itemPlace, placeAt, placeWhere, short } from './historylabel';
-import { gameRules, newImageEl, newSavedCard, newTextEl, type BoardGameRound, type BoardRound, type FinalRound, type Game, type ImageEl, type TextEl } from './model';
+import {
+  gameRules, newAudioEl, newImageEl, newSavedCard, newShapeEl, newTextEl, newVideoEl,
+  type AudioEl, type BoardGameRound, type BoardRound, type FinalRound, type Game, type ImageEl, type ShapeEl, type SlideElement, type TextEl, type VideoEl,
+} from './model';
 import { jeopardyGame } from './testgame';
 import { addSampleGame } from './samples';
 import { newRpgRound, newScreen, newVariant } from './rpg';
@@ -185,6 +188,28 @@ describe('step labels', () => {
     const wider = structuredClone(outlined);
     text(wider).stroke!.width = 20;
     expect(describeStep(diff(outlined, wider), outlined, wider).label).toMatch(/^Changed outline width of text box/);
+  });
+
+  it("names slide items' settings as the Inspector does", () => {
+    const q = (g: Game) => board(g).categories[0].clues[1].questionSlide;
+    const base = sample();
+    q(base).elements.push(newShapeEl('line'), newShapeEl('rect'), newVideoEl('v1'), newAudioEl('a1'));
+    base.media.push({ id: 'v1', name: 'clip.webm', mime: 'video/webm', size: 10, kind: 'video' }, { id: 'a1', name: 'beep.wav', mime: 'audio/wav', size: 10, kind: 'audio' });
+    const label = (edit: (els: SlideElement[]) => void) => {
+      const after = structuredClone(base);
+      edit(q(after).elements);
+      return describeStep(diff(base, after), base, after).label;
+    };
+    expect(label((e) => ((e[3] as VideoEl).endAt = 4))).toBe('Changed stop at of video “clip.webm”');
+    expect(label((e) => ((e[3] as VideoEl).startAt = 1))).toBe('Changed start at of video “clip.webm”');
+    expect(label((e) => ((e[4] as AudioEl).muted = true))).toBe('Changed start muted of audio clip “beep.wav”');
+    expect(label((e) => ((e[4] as AudioEl).visible = true))).toBe('Changed speaker icon of audio clip “beep.wav”');
+    expect(label((e) => ((e[2] as ShapeEl).strokeWidth = 8))).toBe('Changed thickness of shape “Rectangle”');
+    expect(label((e) => ((e[2] as ShapeEl).stroke = '#ff0000'))).toBe('Changed border of shape “Rectangle”');
+    expect(label((e) => ((e[1] as ShapeEl).stroke = '#ff0000'))).toBe('Changed color of shape “Line”');
+    expect(label((e) => ((e[2] as ShapeEl).radius = 20))).toBe('Changed corners of shape “Rectangle”');
+    expect(label((e) => ((e[2] as ShapeEl).shape = 'ellipse'))).toBe('Changed type of shape “Ellipse”');
+    expect(label((e) => ((e[0] as TextEl).uppercase = false))).toMatch(/^Changed all caps of text box/);
   });
 
   it('names moves, resizes and restacks of slide items', () => {

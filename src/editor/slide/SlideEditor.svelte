@@ -66,6 +66,7 @@
     slide,
     styletargets,
     stylecategory = false,
+    styleslides = false,
     stylescope,
     quickfield,
     placeholder,
@@ -80,6 +81,8 @@
     styletargets?: (el: TextEl, scope: string) => TextEl[];
     /** Offer "this category" in "Use this style elsewhere" (a clue's slides, not the Final's). */
     stylecategory?: boolean;
+    /** A slides round's: "Use this style elsewhere" offers its other slides, not questions and answers. */
+    styleslides?: boolean;
     /** The slides "Use this style elsewhere" starts on (a Final's questions + answers: it mostly has one question slide). */
     stylescope?: string;
     /**
@@ -332,7 +335,7 @@
     else if (kind === 'font') {
       await registerGameFonts(game);
       if (single?.kind === 'text') single.font = `'${uploadedFamily(id)}', sans-serif`;
-      toast('Font added: pick it from the Font list');
+      toast(single?.kind === 'text' ? 'Font added and used for this text box' : 'Font added: pick it from the Font list');
     }
   }
 
@@ -613,7 +616,7 @@
   // Restyling many slides is one step, so it's done at once and offers Undo (the words stay the same).
   function applyStyle(el: TextEl, scope: string): void {
     const targets = styletargets?.(el, scope) ?? [];
-    if (!targets.length) return void tell('There are no other slides in that group yet.');
+    if (!targets.length) return void tell(styleslides && scope === 'round-q' ? 'This round has no other slides yet.' : 'There are no other slides in that group yet.');
     const slides = `${targets.length} slide${targets.length === 1 ? '' : 's'}`;
     const top = undoApi.top;
     // It shows on this slide (the ones it changed may be anywhere).
@@ -895,8 +898,9 @@
     // On top, stacked among themselves as they were copied (a caption stays over its picture).
     const z = topZ();
     copies.sort((a, b) => a.zIndex - b.zIndex).forEach((c, i) => (c.zIndex = z + i));
-    // (Their files, wheels and dice from another game come in the same step: one Ctrl+Z takes them out too.)
-    undoApi.step(`Pasted ${named(copies)}`, () => {
+    // (Their files, wheels and dice from another game come in the same step: one Ctrl+Z takes them out too. They're
+    // named by those files, not in this game yet.)
+    undoApi.step(`Pasted ${itemsNamed(copies, { ...game, media: [...game.media, ...clipboard.media] })}`, () => {
       adoptMedia(game, elementMediaIds(copies));
       adoptUsedBy(game, copies);
       slide.elements.push(...copies);
@@ -1107,7 +1111,7 @@
             <button onclick={() => ((bgMenu = false), (picker = 'image'), (replacing = 'bg'))} title="A picture behind everything on the slide">🖼 Picture…</button>
             <!-- Always there (disabled when there's nothing to reset), so the box keeps its size while the color changes. -->
             <button
-              onclick={() => ((bgMenu = false), edit(() => (slide.background = {})))}
+              onclick={() => ((bgMenu = false), edit(() => (slide.background = {}), 'Reset the slide background'))}
               disabled={!slide.background.image && !slide.background.color}
               title={themedBg ? "Back to the theme's background" : 'Back to the default background'}>↺ Reset background</button
             >
@@ -1255,6 +1259,7 @@
           }}
           onapplystyle={styletargets ? applyStyle : undefined}
           {stylecategory}
+          {styleslides}
           {stylescope}
           onuploadfont={(from) => {
             replacing = null;

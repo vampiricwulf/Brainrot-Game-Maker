@@ -57,6 +57,13 @@ try {
   await page.locator('main [data-field="round-notes"]').fill('Say hi to chat');
   await page.getByRole('tab', { name: 'Slide 1' }).click();
   assert((await text.inputValue()) === 'Welcome to the show', 'each slide keeps its own text');
+  // Use this style elsewhere offers this round's other slides, not questions and answers it doesn't have.
+  await page.locator('.canvas .hit').first().click();
+  const scopes = await page.getByRole('combobox', { name: 'Which slides get this style' }).locator('option').allInnerTexts();
+  assert(
+    scopes[0] === 'The other slides in this round' && scopes.filter((o) => o.includes('this round')).length === 1,
+    `a slides round's Use this style elsewhere offers its other slides (${scopes.join(' / ')})`,
+  );
   // A round name left empty: the box and the clue editor show the name it plays under, as its tab does.
   const nameBox = page.locator('main [data-round-name]');
   await nameBox.fill('');

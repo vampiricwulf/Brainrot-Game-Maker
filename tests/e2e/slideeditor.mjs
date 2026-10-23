@@ -11,7 +11,7 @@
 // words selected with the mouse copies them, not the selected item; items pasted into another game bring their file in
 // the same step. 🎨 Edit image on a moving GIF edits every frame, so it stays a moving GIF.
 import { chromium } from 'playwright-core';
-import { existsSync, mkdirSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
@@ -372,6 +372,11 @@ try {
   });
   await page.getByLabel('Slide background color').press('Escape');
   await page.waitForTimeout(900);
+  // ↺ Reset background says so (with a color and a picture it said “Removed the slide background color”).
+  await clue.getByRole('button', { name: /Background ▾/ }).click();
+  await page.getByRole('button', { name: '↺ Reset background' }).click();
+  assert((await undoTitle()).startsWith('Undo: Reset the slide background'), `↺ Reset background is named so (${await undoTitle()})`);
+  await page.keyboard.press('Control+z');
   await clue.getByRole('button', { name: 'Close' }).click();
 
   // ---------- 🖼 Media › Replace redoes the edited picture's edits on the new file ----------
@@ -609,10 +614,23 @@ try {
   await canvas.focus();
   await page.keyboard.press('Control+v');
   await canvas.locator('.slide .el img').waitFor();
-  assert((await mediaCount()) === 1 && (await undoTitle()).startsWith('Undo: Pasted image'), `a picture pasted from another game brings its file (${await undoTitle()})`);
+  assert((await mediaCount()) === 1 && (await undoTitle()).startsWith('Undo: Pasted image “face.png”'), `a picture pasted from another game brings its file, named by it (${await undoTitle()})`);
   await page.keyboard.press('Control+z');
   await canvas.locator('.slide .el img').waitFor({ state: 'detached' });
   assert((await mediaCount()) === 0, `one Ctrl+Z takes the picture and its file away (${await undoTitle()})`);
+
+  // ---------- A font uploaded from a text box's ＋ is put on it, and the note says so (it said to pick it from the list) ----------
+  await click(960, 540);
+  await insp.getByRole('button', { name: 'Upload a font file' }).click();
+  const fontPicker = page.getByRole('dialog', { name: 'Choose font' });
+  const [fontChooser] = await Promise.all([page.waitForEvent('filechooser'), fontPicker.getByRole('button', { name: '⬆ Upload font file…' }).click()]);
+  await fontChooser.setFiles({ name: 'Channel Font.woff2', mimeType: 'font/woff2', buffer: readFileSync(resolve('node_modules/@fontsource/press-start-2p/files/press-start-2p-latin-400-normal.woff2')) });
+  const fontSaid = toast.filter({ hasText: /^Font added/ });
+  await fontSaid.waitFor();
+  assert(
+    (await fontSaid.innerText()) === 'Font added and used for this text box' && (await insp.getByLabel('Font', { exact: true }).locator('option:checked').innerText()) === 'Channel Font (uploaded)',
+    `a font uploaded from the text box's ＋ is used for it, and the note says so (“${await fontSaid.innerText()}”)`,
+  );
 
   // ---------- 🎨 Edit image on a moving GIF: every frame is edited, so it keeps moving ----------
   // (40×30, three frames of one colour each, for 0.1, 0.2 and 0.3 s, looping for ever.)

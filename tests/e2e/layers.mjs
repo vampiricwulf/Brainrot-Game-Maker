@@ -253,6 +253,20 @@ try {
   await page.getByRole('button', { name: 'Next ▶' }).click();
   await page.locator('.canvas .hit').first().click();
   assert((await page.locator('.insp input[type=color]').first().inputValue()) === '#ff00aa', 'the next clue (down the category) got the new text color');
+  // The text's style buttons wrap by whole groups: ⤓ ended up alone under B at this size.
+  {
+    /** How far apart the group's buttons are up and down (a wrapped one is a line lower). */
+    const tops = async (names) => {
+      const ys = await Promise.all(names.map(async (n) => (await page.locator('.insp').getByRole('button', { name: n, exact: true }).boundingBox()).y));
+      return Math.round(Math.max(...ys) - Math.min(...ys));
+    };
+    const rows = [
+      await tops(['Bold', 'Italic', 'Underline', 'All caps']),
+      await tops(['Align text left', 'Center the text', 'Align text right']),
+      await tops(['Text at the top of the box', 'Text in the middle of the box', 'Text at the bottom of the box']),
+    ];
+    assert(rows.every((r) => r < 8), `the text style buttons wrap by whole groups (each group's spread up and down: ${rows.join(', ')} px)`);
+  }
 
   // Resize a picture, then drag it straight away. The resize used to leave a text selection on the page,
   // and the next press started the browser's own drag of it: a 'no' cursor and the move stopped early.

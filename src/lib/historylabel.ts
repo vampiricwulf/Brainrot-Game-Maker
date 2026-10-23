@@ -810,6 +810,7 @@ const TEXT_FIELDS: Record<string, string> = {
   weight: 'bold',
   vAlign: 'vertical position',
   align: 'alignment',
+  uppercase: 'all caps',
 };
 const EFFECT_PARTS: Record<string, string> = { width: 'width', color: 'color', blur: 'blur', x: 'X', y: 'Y', padding: 'padding', radius: 'corners' };
 const EFFECTS = new Set(['stroke', 'shadow', 'glow', 'background']);
@@ -827,6 +828,33 @@ function textBoxChange(op: Op & { t: 'set' }, at: At): string | null {
   }
   const part = sub.length > 1 && typeof sub[1] === 'string' ? ` ${EFFECT_PARTS[sub[1]] ?? fieldName(sub[1])}` : '';
   return `Changed ${name}${part} of ${what(at)}`;
+}
+
+/** Other slide items' settings as the Inspector calls them (a line's, an arrow's or a drawing's `stroke` is its color). */
+const ITEM_FIELDS: Record<string, string> = {
+  startAt: 'start at',
+  endAt: 'stop at',
+  muted: 'start muted',
+  visible: 'speaker icon',
+  autoplay: 'autoplay',
+  strokeWidth: 'thickness',
+  stroke: 'border',
+  radius: 'corners',
+  shape: 'type',
+};
+const ITEM_NOUNS = new Set(['shape', 'drawing', 'hotspot', 'video', 'audio clip', 'image', 'link']);
+
+/** A change to a slide item's setting, other than a text box's ("Changed stop at of video “clip.webm”"). */
+function itemChange(op: Op & { t: 'set' }, at: At, game: Game): string | null {
+  if (!ITEM_NOUNS.has(at.noun)) return null;
+  const path = opPath(op);
+  const field = path[at.depth];
+  if (path.length !== at.depth + 1 || typeof field !== 'string' || !ITEM_FIELDS[field]) return null;
+  let el: unknown = game;
+  for (const s of path.slice(0, at.depth)) el = Array.isArray(el) ? (byId(el, s) ?? el[s as number]) : (el as Obj | undefined)?.[s];
+  const shape = (el as Obj | undefined)?.shape;
+  const name = field === 'stroke' && (shape === 'line' || shape === 'arrow' || shape === 'path') ? 'color' : ITEM_FIELDS[field];
+  return `Changed ${name} of ${what(at)}`;
 }
 
 /**
@@ -990,7 +1018,7 @@ function labelOf(ops: readonly Op[], op: Op, at: At, moved: string[], alike: num
     const field = k === 'text' ? (at.main ?? 'text') : fieldName(k);
     return typeof v === 'string' && v.trim() ? `Edited ${field}${quoted(v)}` : `Cleared the ${field}`;
   }
-  const textChange = op.t === 'set' ? textBoxChange(op, at) : null;
+  const textChange = op.t === 'set' ? (textBoxChange(op, at) ?? itemChange(op, at, after)) : null;
   if (textChange) return textChange;
   return `Changed ${fieldName(typeof k === 'number' ? (op.p[op.p.length - 1] ?? k) : k)} of ${what(at)}`;
 }
