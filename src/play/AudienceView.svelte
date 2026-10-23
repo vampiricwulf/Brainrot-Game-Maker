@@ -67,7 +67,7 @@
     role?: MediaRole;
     /** An editor's preview (🎨 Theme, 🖼 Board images): its media keeps out of where a game left mid-clue had its own. */
     demo?: boolean;
-    onpick?: (ref: ClueRef) => void;
+    onpick?: (ref: ClueRef, byKey?: boolean) => void;
     /** Host only: a tile was right-clicked (its menu: open it, skip it, put it back). */
     ontilemenu?: (e: MouseEvent, ref: ClueRef) => void;
     onpicker?: (id: string) => void;

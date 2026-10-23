@@ -15,7 +15,8 @@
   }: {
     game: Game;
     session: Session;
-    onpick?: (ref: ClueRef) => void;
+    /** A tile picked (`byKey`: with Enter or Space on it, not a click). */
+    onpick?: (ref: ClueRef, byKey?: boolean) => void;
     /** Host views only: a tile's right-click menu (used tiles then stay enabled for it, but can't be picked). */
     ontilemenu?: (e: MouseEvent, ref: ClueRef) => void;
     /**
@@ -132,7 +133,7 @@
           style:animation-delay="{delays[(row + 1) * round.categories.length + ci] ?? 0}s"
           disabled={(used && !ontilemenu) || !onpick || !!intro}
           aria-disabled={used || undefined}
-          onclick={() => !used && onpick?.({ round: session.currentRound, cat: ci, row })}
+          onclick={(e) => !used && onpick?.({ round: session.currentRound, cat: ci, row }, e.detail === 0)}
           oncontextmenu={ontilemenu && !clue.empty ? (e) => ontilemenu(e, { round: session.currentRound, cat: ci, row }) : undefined}
           aria-label="{categoryLabel(cat)} for {value}{clue.empty ? ', empty' : used ? ', played' : mark ? `, ${mark[1]}` : ''}"
         >

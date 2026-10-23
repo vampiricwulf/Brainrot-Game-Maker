@@ -11,6 +11,12 @@ the day it's pushed (Pacific time; start the heading on the day's first push) an
 in plain words for the people who make and host games. Anything committed but not pushed yet goes under
 **Unreleased** at the top, and moves under its day when it's pushed.
 
+## Unreleased
+
+### Fixed
+
+- Enter or Space on a board tile opens it even right after a click on the stage: the guard against double-clicks took it for a second click and did nothing.
+
 ## 2026-10-23
 
 ### Added

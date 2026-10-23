@@ -1875,9 +1875,10 @@
   // under the pointer.
   let lastStageAct = 0;
   let boardBackAt = 0;
-  function stagePick(ref: ClueRef): void {
+  function stagePick(ref: ClueRef, byKey = false): void {
     const now = Date.now();
-    if (now - boardBackAt < 450) return;
+    // (Enter or Space on a tile is no double-click: it opens it, however soon after a click on the stage.)
+    if (!byKey && now - boardBackAt < 450) return;
     lastStageAct = now;
     pick(ref);
   }
