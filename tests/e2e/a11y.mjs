@@ -229,7 +229,8 @@ try {
   for (let i = 0; i < 100 && !((await stored(page))?.savedAt >= startedAt); i++) await page.waitForTimeout(100);
   await page.reload();
   await page.getByRole('button', { name: 'Resume game' }).click();
-  await page.locator('.mode-ask').waitFor();
+  // (The keys go to the one used last a frame after the question shows.)
+  await page.waitForFunction(() => !!document.activeElement?.matches('.mode-ask .mode.on'));
   await page.keyboard.press('Enter');
   await saidHas(/Untitled Game resumed/);
   assert((await focused()) !== 'BODY', `Resume game says so too, and puts the keys on the panel (${await focused()})`);
