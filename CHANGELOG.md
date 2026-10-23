@@ -11,49 +11,15 @@ the day it's pushed (Pacific time; start the heading on the day's first push) an
 in plain words for the people who make and host games. Anything committed but not pushed yet goes under
 **Unreleased** at the top, and moves under its day when it's pushed.
 
-## Unreleased
+## 2026-10-23
 
 ### Added
 
-- Exported game files: a “Get Brainrot Games Maker” link under ⬇ Download as .brainrot, to the app's download page, so whoever was sent the file can find the builder to edit it in.
+- Exported game files: a “Get Brainrot Games Maker” link under ⬇ Download as .brainrot, to the app's download page, so whoever was sent the file can find the builder to edit it in. (8f83268)
 
 ### Changed
 
-- ⬇ Export as a web page: when much of the file is 🖼 Media files nothing in the game uses (over 10 MB of them), its size question says how much, and that 🖼 Media › 🗑 Delete unused leaves them out. They still go in unless you delete them (a quick 🤫 card can pick one in play).
-
-### Fixed
-
-- Discarding a kept game while its 🤫 cards were still out on phones (the room left open) no longer stops autosave for good (“⚠ Autosave unavailable here”, and a question on closing the tab), nor sends the discarded game's cards back to the phones after a reload.
-- Ctrl+S on the pre-game or game screen, or anywhere in an exported game file, no longer opens the browser's own Save page (a copy of the app, not the game): it says what keeps the game (“The game saves itself as you play”, or “This game keeps its progress in this browser by itself”).
-- Exported game files: ✎ Rename on the pre-game screen is kept through ◀ Back, ▶ Play again and a rematch, as the players and rules are.
-- Exported game files: 🎭 Deal…, 🤫 Send a card…, the cards of a tile or a partner clue, the tiebreaker button, the room's ✕ and the pre-game notes no longer send the host to an editor the file doesn't have.
-- Exported game files: after 🚪 Exit, ◀ Back or Start over › Discard, the keys go on from ▶ Play or Resume game instead of the top of the page. In the builder, Discard on a kept game puts them on ▶ Play too.
-- Exported game files: ⬇ Download as .brainrot's message reads as one sentence (“… To edit it, open it in Brainrot Games Maker.”).
-- Desktop app: ⬆ Update no longer restarts the app by itself when a game was started while it downloaded (the stream went black and the phones lost the host): the button becomes ⟳ Restart into …, for when the game is over. While a ✎ / 🗜 / 🔄 job runs, it asks first.
-- Desktop app: a failed ⬆ Update says why in a message that stays until OK, instead of a toast gone after 5 seconds. During a game it waits for the editor (a toast says so), so nothing pops up over the stage.
-- Desktop app: closing the window while autosave can't write (a full disk, or storage that's blocked) asks first, as a browser tab does, instead of losing the game in progress or the changes since the last Save. Stay keeps it open.
-- Desktop app: Open… › BrainrotSaves says why a save can't be opened (moved since the list was made, or open in another program) instead of nothing.
-- Desktop app: ⚙ Settings' link to the guide for your own buzzer server, and ℹ About's mediabunny and omggif links, open in the browser instead of “Couldn't open the browser”.
-- Desktop app: New, Open… and Recent games say games are kept “on this PC”, not “in this browser”, and a 🪟 card window or the scores window that doesn't open says “Couldn't open the window. Try again.” instead of naming a browser's popups.
-- Desktop app: Open… › BrainrotSaves shows each save's date and size in full (under a long name, such as an autosave's), dated as Recent games are.
-- Desktop app: a game file opened from Explorer during a game says it opens when you go back to the editor, instead of nothing.
-- ℹ About: each 📂 Open folder button tells a screen reader which folder it opens.
-- RPG rounds: players arriving on a screen stand clear of its characters, items, doorways and other objects with a class where there's room, as they keep out of No-go areas, so viewers see those and clicks on the host's stage reach them (not of the object they arrive at, nor of one viewers can't see yet). In the 🗺 Mini quest template the Shopkeeper stands up and to the right, out of the party's starting row: the avatars covered him.
-- RPG shops that buy back: a sale never takes a currency past its max. At the max the host is told (“Player 1 can’t carry 🪙2 more Gold (at most 🪙50)”) and the player keeps the item, as with a pile picked up.
-- 📊 Stats & Items: a stat with no color of its own shows the color viewers see on the stats strip (red for a bar or hearts, white for a number) instead of yellow.
-- RPG rounds: screen readers hear where the party is after the minimap's Move here, a doorway's 🚪 Go through (“Party went through Cellar door to Cellar”) and a regroup (G, ⊙, 🤝 Regroup: “Everyone is together in Village”), as after a step.
-- A key held down counts once: a held N no longer runs through every slide and on into the next round on stream, and a held R no longer flashes the answer on and off (nor K, S, T, Space…). The arrows still repeat.
-- With the keys on the main button in a slides round, or on a round's title card or its categories coming up, Enter does what the button says (as N), instead of nothing or “Select a player first”.
-- Enter and Space on a button the app put the keys on (when the one that had them went away, or after H twice) no longer press it outside clues. In the Final's wagers, Enter took the show back to the round before; after H, H, Space started a countdown; after the dice were closed, Space put the slide before back instead of pausing the video.
-- After a player's last item is used up, removed or dropped in an RPG round, the keys go to a button on their card instead of “＋ Item…”, so the next arrow key moves the party instead of giving them an item. Wherever the app moves the keys for you, it no longer puts them on a list or a number box.
-- One window: with the controls hidden (H), nothing on the stage shows a focus ring on stream until you move the keys yourself (Tab, or the board's arrow keys: then you see which tile Enter opens).
-- One window: the host notes of a slides round, the tiebreaker and the Final (once its answer is up: before that they could give it away while the players write) show in the host panel, as a clue's do. They only showed with the audience window open.
-- Host notes fields say “off stream, except in a single window” instead of “never shown on stream”: in a single window, the host panel that shows them is on stream.
-- Screen readers hear the buzz order once, as it ends up, never an out-of-date one beside it.
-- Resume game (and testing a round) says so to screen readers and puts the keys on the board or the main button, as Start does.
-- Screen readers hear P then a number (“Bob picks next”), S (“Scores on screen” or “off screen”), T (the countdown starting or pausing) and Shift+T (“+10 s: 24 s left”, or the countdown starting when none is up).
-
-## 2026-10-23
+- ⬇ Export as a web page: when much of the file is 🖼 Media files nothing in the game uses (over 10 MB of them), its size question says how much, and that 🖼 Media › 🗑 Delete unused leaves them out. They still go in unless you delete them (a quick 🤫 card can pick one in play). (8f83268)
 
 ### Fixed
 
@@ -85,6 +51,35 @@ in plain words for the people who make and host games. Anything committed but no
 - One window, mid-game: 🗜 Make smaller's window opens in the host panel, as 👥 Players and 🔊 Sound do, never over the stage viewers see. (38280aa)
 - 🗜: a copy that still comes out too big for the buzzer server (an encoder can go over on a busy picture) says so (“still too big for this buzzer server (1.3 MB; it takes 1.0 MB)”) instead of “Phones get the smaller copy now”. 🗜 again then offers only copies smaller than it: a smaller picture, or only the part the cards play (ticked), their sizes as far over as that one went. Where none can be smaller (a GIF's, or a sound's its cards play all of), it says to add the file from a link instead, and the host panel's line and the checklist offer no 🗜 for it. (38280aa, 9917ad3)
 - 🗜 Make smaller with a buzzer server that takes less than 16 MB a file (one you run yourself) picks the biggest size that fits it, not one that's only under 16 MB. (9917ad3)
+- Discarding a kept game while its 🤫 cards were still out on phones (the room left open) no longer stops autosave for good (“⚠ Autosave unavailable here”, and a question on closing the tab), nor sends the discarded game's cards back to the phones after a reload. (8f83268)
+- Ctrl+S on the pre-game or game screen, or anywhere in an exported game file, no longer opens the browser's own Save page (a copy of the app, not the game): it says what keeps the game (“The game saves itself as you play”, or “This game keeps its progress in this browser by itself”). (8f83268)
+- Exported game files: ✎ Rename on the pre-game screen is kept through ◀ Back, ▶ Play again and a rematch, as the players and rules are. (8f83268)
+- Exported game files: 🎭 Deal…, 🤫 Send a card…, the cards of a tile or a partner clue, the tiebreaker button, the room's ✕ and the pre-game notes no longer send the host to an editor the file doesn't have. (8f83268)
+- Exported game files: after 🚪 Exit, ◀ Back or Start over › Discard, the keys go on from ▶ Play or Resume game instead of the top of the page. In the builder, Discard on a kept game puts them on ▶ Play too. (8f83268)
+- Exported game files: ⬇ Download as .brainrot's message reads as one sentence (“… To edit it, open it in Brainrot Games Maker.”). (8f83268)
+- Desktop app: ⬆ Update no longer restarts the app by itself when a game was started while it downloaded (the stream went black and the phones lost the host): the button becomes ⟳ Restart into …, for when the game is over. While a ✎ / 🗜 / 🔄 job runs, it asks first. (860a6bd)
+- Desktop app: a failed ⬆ Update says why in a message that stays until OK, instead of a toast gone after 5 seconds. During a game it waits for the editor (a toast says so), so nothing pops up over the stage. (860a6bd, 9066c60)
+- Desktop app: closing the window while autosave can't write (a full disk, or storage that's blocked) asks first, as a browser tab does, instead of losing the game in progress or the changes since the last Save. Stay keeps it open. (860a6bd, 9066c60)
+- Desktop app: Open… › BrainrotSaves says why a save can't be opened (moved since the list was made, or open in another program) instead of nothing. (860a6bd)
+- Desktop app: ⚙ Settings' link to the guide for your own buzzer server, and ℹ About's mediabunny and omggif links, open in the browser instead of “Couldn't open the browser”. (860a6bd)
+- Desktop app: New, Open… and Recent games say games are kept “on this PC”, not “in this browser”, and a 🪟 card window or the scores window that doesn't open says “Couldn't open the window. Try again.” instead of naming a browser's popups. (860a6bd)
+- Desktop app: Open… › BrainrotSaves shows each save's date and size in full (under a long name, such as an autosave's), dated as Recent games are. (860a6bd)
+- Desktop app: a game file opened from Explorer during a game says it opens when you go back to the editor, instead of nothing. (860a6bd)
+- ℹ About: each 📂 Open folder button tells a screen reader which folder it opens. (860a6bd)
+- RPG rounds: players arriving on a screen stand clear of its characters, items, doorways and other objects with a class where there's room, as they keep out of No-go areas, so viewers see those and clicks on the host's stage reach them (not of the object they arrive at, nor of one viewers can't see yet). In the 🗺 Mini quest template the Shopkeeper stands up and to the right, out of the party's starting row: the avatars covered him. (dba880b)
+- RPG shops that buy back: a sale never takes a currency past its max. At the max the host is told (“Player 1 can’t carry 🪙2 more Gold (at most 🪙50)”) and the player keeps the item, as with a pile picked up. (1d963c4)
+- 📊 Stats & Items: a stat with no color of its own shows the color viewers see on the stats strip (red for a bar or hearts, white for a number) instead of yellow. (1d963c4)
+- RPG rounds: screen readers hear where the party is after the minimap's Move here, a doorway's 🚪 Go through (“Party went through Cellar door to Cellar”) and a regroup (G, ⊙, 🤝 Regroup: “Everyone is together in Village”), as after a step. (1d963c4)
+- A key held down counts once: a held N no longer runs through every slide and on into the next round on stream, and a held R no longer flashes the answer on and off (nor K, S, T, Space…). The arrows still repeat. (c49ae8a)
+- With the keys on the main button in a slides round, or on a round's title card or its categories coming up, Enter does what the button says (as N), instead of nothing or “Select a player first”. (c49ae8a)
+- Enter and Space on a button the app put the keys on (when the one that had them went away, or after H twice) no longer press it outside clues. In the Final's wagers, Enter took the show back to the round before; after H, H, Space started a countdown; after the dice were closed, Space put the slide before back instead of pausing the video. (c49ae8a)
+- After a player's last item is used up, removed or dropped in an RPG round, the keys go to a button on their card instead of “＋ Item…”, so the next arrow key moves the party instead of giving them an item. Wherever the app moves the keys for you, it no longer puts them on a list or a number box. (c49ae8a)
+- One window: with the controls hidden (H), nothing on the stage shows a focus ring on stream until you move the keys yourself (Tab, or the board's arrow keys: then you see which tile Enter opens). (c49ae8a, 1f898f9)
+- One window: the host notes of a slides round, the tiebreaker and the Final (once its answer is up: before that they could give it away while the players write) show in the host panel, as a clue's do. They only showed with the audience window open. (c49ae8a, 1f898f9)
+- Host notes fields say “off stream, except in a single window” instead of “never shown on stream”: in a single window, the host panel that shows them is on stream. (1f898f9)
+- Screen readers hear the buzz order once, as it ends up, never an out-of-date one beside it. (b8239bb)
+- Resume game (and testing a round) says so to screen readers and puts the keys on the board or the main button, as Start does. (b8239bb)
+- Screen readers hear P then a number (“Bob picks next”), S (“Scores on screen” or “off screen”), T (the countdown starting or pausing) and Shift+T (“+10 s: 24 s left”, or the countdown starting when none is up). (b8239bb, 1f898f9)
 
 ## 2026-10-22
 
