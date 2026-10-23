@@ -416,7 +416,7 @@ try {
   await page.getByRole('button', { name: 'Start game ▶' }).click();
   await page.getByRole('button', { name: 'Skip intro' }).click();
   const stage = (sel, opts) => page.locator(`.stage-box ${sel}`, opts);
-  const tileOf = (value) => stage(`.tile[aria-label="Movies for ${value}"]`);
+  const tileOf = (value) => stage(`.tile[aria-label^="Movies for ${value}"]`);
   await tileOf('$400').waitFor();
   const panel = page.locator('.panel [data-partner-panel]');
   const chip = (name) => panel.getByRole('button', { name, exact: true });
@@ -662,7 +662,7 @@ try {
   {
     const { p, stage: rs, panel: rp, state, sent, say, stateIs, toast: rtoast } = await roomGame(['Ann', 'Bob', 'Cat'], false);
     // A plain clue opens the buzzers at once (the room is live, Buzzer mode on).
-    await rs('.tile[aria-label="Movies for $200"]').click();
+    await rs('.tile[aria-label^="Movies for $200"]').click();
     await stateIs((st) => st.phase === 'armed' && !!st.clue);
     await p.keyboard.press('Escape');
     await stateIs((st) => st.phase === 'lobby');
@@ -672,7 +672,7 @@ try {
     await stateIs((st) => st.status?.text === 'Ann picks the next clue');
     const from = (await sent()).length;
 
-    await rs('.tile[aria-label="Movies for $400"]').click();
+    await rs('.tile[aria-label^="Movies for $400"]').click();
     await stateIs((st) => st.status?.text === '🤝 Partner clue: Ann needs a partner…');
     let st = await state();
     assert(st.phase === 'lobby' && !st.clue && st.status.seats.join() === 'p1' && st.status.seatsText === '🤝 Your partner clue! Spinning for your partner…', 'a partner clue opens with the buzzers off: the phones hear who needs a partner (Ann’s: it’s hers)');
@@ -724,7 +724,7 @@ try {
   console.log('Teams:');
   {
     const { p, stage: rs, panel: rp, state, stateIs } = await roomGame(['Red Team', 'Green Team', 'Blue Team'], true);
-    await rs('.tile[aria-label="Movies for $400"]').click();
+    await rs('.tile[aria-label^="Movies for $400"]').click();
     await rs('[data-partner-up]').waitFor();
     assert((await rp.innerText()).includes('Which team picked it?') && (await mainButton(p).isDisabled()), 'nobody marked to pick: “Which team picked it?”, and no spin until then');
     assert((await mainButton(p).getAttribute('title')).startsWith('Which team picked it? Press their number first'), 'the main button says why');

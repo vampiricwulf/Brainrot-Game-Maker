@@ -506,7 +506,8 @@
         onclick={() => session.intro && act('intro')}
         role="presentation"
       >
-        <Board {game} {session} {onpick} {ontilemenu} />
+        <!-- (The host's own board with the audience window open marks its Daily Doubles, 🤝 and ✍ tiles.) -->
+        <Board {game} {session} {onpick} {ontilemenu} hostMarks={role === 'mirror'} />
       </div>
       {#if layout.score}
         <div class="score-area bar-{bar}" style:top="{layout.score.top}px" style:height="{layout.score.height}px">

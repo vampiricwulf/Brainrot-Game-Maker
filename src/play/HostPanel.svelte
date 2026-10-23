@@ -9,7 +9,7 @@
   import { textOn } from '../lib/colors';
   import { hostSlots, type HostAsk, type NextAction } from './host/slots.svelte';
   import { phoneAwaySince } from './host/phoneaway.svelte';
-  import { categoryLabel, clueCardWords, finalName, formatPoints, isBoard, typedPoints, wholePoints, type Game, type Session } from '../lib/model';
+  import { categoryLabel, clueCardWords, finalName, formatPoints, isBoard, questionSlides, typedPoints, wholePoints, type Game, type Session } from '../lib/model';
   import { answerShowing, awardOpen, clueMarks, clueName, clueScored, currentClueInfo, currentFinal, findClueRef, nameList, ownPlayers, partnerSteal, roundComplete, score, setScore, slidePosition, stealersLeft, tiebreakHolds, tiedForFirst, toolOnlyClue, usedTiles } from '../lib/session';
   import MediaControls from './MediaControls.svelte';
   import SoundWarnings from './host/SoundWarnings.svelte';
@@ -279,6 +279,27 @@
    * Daily Double's question, so the stage viewers see keeps one size.
    */
   const roomForBuzzers = $derived(!dual && buzzerOn(game.settings));
+  /**
+   * Single window: a board round with a video, a sound or an embed on any of its clues' slides keeps the media controls'
+   * room (empty) through the round, so the stage viewers see doesn't shrink when a clue's media comes up. (Other games
+   * don't give up that room.)
+   */
+  const roomForMedia = $derived.by(() => {
+    // (Not in a 🤝 partner clue: its panel keeps a height of its own.)
+    if (dual || side || partner || (session.phase !== 'board' && session.phase !== 'clue') || !isBoard(round)) return false;
+    return round.categories.some((c) => c.clues.some((q) => [...questionSlides(q), q.answerSlide].some((sl) => sl?.elements.some((e) => e.kind === 'video' || e.kind === 'audio' || e.kind === 'embed'))));
+  });
+  /**
+   * Single window: the panel's height on the board (measured there). A Daily Double's splash holds the panel to it (its
+   * box scrolls, the chips and the Wager box in sight), so the stage keeps its size from the board to the splash to the
+   * question.
+   */
+  let panelH = $state(0);
+  let boardH = $state(0);
+  $effect(() => {
+    if (session.phase === 'board' && !session.intro && panelH) boardH = panelH;
+  });
+  const ddHold = $derived(ddWager && !dual && !side && boardH > 0);
   /** Phone buzzer teams: each player is a team (the 👥 button says so, as the list it opens does). */
   const teams = $derived(buzzerOn(game.settings) && teamsOn(game.settings));
   /**
@@ -665,7 +686,16 @@
   });
 </script>
 
-<div class="panel" class:dual class:side class:final={session.phase === 'final' && !side} class:partnerclue={!!partner && !side}>
+<div
+  class="panel"
+  class:dual
+  class:side
+  class:final={session.phase === 'final' && !side}
+  class:partnerclue={!!partner && !side}
+  class:ddhold={ddHold}
+  bind:offsetHeight={panelH}
+  style:height={ddHold ? `${boardH}px` : undefined}
+>
   <!-- What's going on, read out to screen readers as it changes (buttons and hints left out). Its chips on the right. -->
   <div class="status row" use:announceChanges>
     {#if session.phase === 'board'}
@@ -840,7 +870,7 @@
   {/if}
 
   <SoundWarnings {dual} onhelp={onsound} />
-  <MediaControls {dual} />
+  <MediaControls {dual} reserve={roomForMedia} />
 
   {#if showPlayers}
     <div class="players">
@@ -1082,7 +1112,7 @@
         {#if session.phase === 'clue' && !setup}
           {#if slidePos && !session.revealed}
             <!-- A clue's question slides: back one (quiet), and on when something else is the main button. -->
-            <button class="ghost" onclick={() => onslide(-1)} disabled={slidePos.at <= 1} title="Shift+N: the slide before">◀ Slide</button>
+            <button class="ghost back-slide" onclick={() => onslide(-1)} disabled={slidePos.at <= 1} title="Shift+N: the slide before">◀ <span class="word">Slide</span></button>
             {#if moreSlides && next?.run !== nextSlide}<button onclick={nextSlide} title="N: the next slide">Next slide ▶</button>{/if}
           {/if}
           {#if buzzClosed && !answerUp && next?.run !== openBuzzers && !tieNames && !allMissed}
@@ -1095,7 +1125,7 @@
           {/if}
           <!-- A wheel/dice tile with nothing to ask has one way out: its tool's Close ▶ board. -->
           {#if !(toolOnly && app.live.overlay) && next?.run !== doneUnscored}
-            <button onclick={onback} title="Esc: back to the board (marks the tile used)">▦ Done ▶ board</button>
+            <button class="done-board" onclick={onback} title="Esc: back to the board (marks the tile used)">▦ <span class="word">Done ▶ board</span></button>
           {/if}
         {:else if session.phase === 'slides'}
           {#if slidePos}<button class="ghost" onclick={() => onslide(-1)} disabled={slidePos.at <= 1} title="Shift+N: the slide before">◀ Slide</button>{/if}
@@ -1222,7 +1252,7 @@
             <button class="ghost" onclick={() => (adjust = false)}>Done</button>
           {:else if !toolOnly && !buzzing}
             <!-- (The tiebreaker takes one of the tied players.) -->
-            <span class="muted hint"
+            <span class="muted hint pick-hint"
               >{session.phase === 'tiebreaker'
                 ? `Pick the winner (1–${Math.min(9, session.players.length) || 9})`
                 : `Pick who answered (1–${Math.min(9, session.players.length) || 9}, 0 for everyone)`}</span
@@ -1489,7 +1519,8 @@
     max-height: 100%;
     overflow: auto;
   }
-  .panel:is(.final, .partnerclue):not(.dual) > .toolsrow {
+  .panel:is(.final, .partnerclue):not(.dual) > .toolsrow,
+  .panel.ddhold > .toolsrow {
     margin-top: auto;
   }
   .side > .act {
@@ -1579,6 +1610,22 @@
     }
     .panel:not(.side) .clear .x {
       display: inline;
+    }
+  }
+  /* Up to 1100px wide under the stage, a clue with several question slides (◀ Slide on its row): the "Pick who answered"
+     hint goes (its keys are in the tooltips and ⌨), and ◀ Slide and ▦ Done ▶ board show as ◀ and ▦ (still read out by
+     name), so the row stays one line and the stage keeps its size. */
+  @media (max-width: 1100px) {
+    .panel:not(.side) .award:has(.back-slide) .pick-hint {
+      display: none;
+    }
+    .panel:not(.side) .award:has(.back-slide) :is(.back-slide, .done-board) .word {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      overflow: hidden;
+      clip-path: inset(50%);
+      white-space: nowrap;
     }
   }
   /* A narrow window under the stage: the fixed bar's buttons a little smaller, so 🚪 Exit stays on its line at the right

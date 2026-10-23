@@ -1,6 +1,6 @@
 <!-- The game board in stage coordinates (fills its parent). -->
 <script lang="ts">
-  import { categoryLabel, clueValue, formatPoints, isBoard, type ClueRef, type Game, type Session } from '../lib/model';
+  import { categoryLabel, clueValue, formatPoints, isBoard, type Clue, type ClueRef, type Game, type Session } from '../lib/model';
   import { autofit, softHyphens } from '../lib/autofit';
   import { CAT_FLOOR, CAT_MIN } from '../lib/boardfit';
   import { imgFallback, mediaUrls } from '../lib/media.svelte';
@@ -11,13 +11,22 @@
     session,
     onpick,
     ontilemenu,
+    hostMarks = false,
   }: {
     game: Game;
     session: Session;
     onpick?: (ref: ClueRef) => void;
     /** Host views only: a tile's right-click menu (used tiles then stay enabled for it, but can't be picked). */
     ontilemenu?: (e: MouseEvent, ref: ClueRef) => void;
+    /**
+     * The host's own board with the audience window open (never on stream): a tile still to play that's a Daily Double,
+     * a 🤝 partner clue or a ✍ one has a small badge in its corner, and its name says which.
+     */
+    hostMarks?: boolean;
   } = $props();
+  /** A tile's badge and the words for it (hostMarks). */
+  const markOf = (clue: Clue): [string, string] | null =>
+    clue.type === 'dailyDouble' ? ['⭐', 'Daily Double'] : clue.type === 'partner' ? ['🤝', 'partner clue'] : clue.everyone && clue.type === 'standard' ? ['✍', 'everyone answers'] : null;
   const round = $derived.by(() => {
     const r = game.rounds[session.currentRound];
     return isBoard(r) ? r : undefined;
@@ -103,6 +112,7 @@
         {@const clue = cat.clues[row]}
         {@const used = clue.empty || !!session.used[clue.id]}
         {@const value = formatPoints(clueValue(round, row, clue), sym)}
+        {@const mark = hostMarks && !used ? markOf(clue) : null}
         <!-- One Tab stop for the whole board (the arrow keys reach every tile, played ones too, for their menu). -->
         <button
           class="cell tile"
@@ -110,6 +120,8 @@
           class:alt={altTile(theme?.tilePattern, row, ci)}
           class:dim={used && usedLook === 'dim'}
           class:gone={used && usedLook === 'hidden'}
+          class:host-mark={!!mark}
+          data-mark={mark?.[0]}
           data-clue={clue.id}
           data-row={row}
           data-cat={ci}
@@ -122,7 +134,7 @@
           aria-disabled={used || undefined}
           onclick={() => !used && onpick?.({ round: session.currentRound, cat: ci, row })}
           oncontextmenu={ontilemenu && !clue.empty ? (e) => ontilemenu(e, { round: session.currentRound, cat: ci, row }) : undefined}
-          aria-label="{categoryLabel(cat)} for {value}{clue.empty ? ', empty' : used ? ', played' : ''}"
+          aria-label="{categoryLabel(cat)} for {value}{clue.empty ? ', empty' : used ? ', played' : mark ? `, ${mark[1]}` : ''}"
         >
           {#if !used}
             {#if clue.tileFace?.image && mediaUrls[clue.tileFace.image]}
@@ -295,5 +307,15 @@
   }
   .tile:disabled {
     opacity: 1;
+  }
+  /* (Drawn content: never in the tile's text, so the host's stage reads as the audience's.) */
+  .tile.host-mark::after {
+    content: attr(data-mark);
+    position: absolute;
+    top: 6px;
+    right: 10px;
+    font-size: 34px;
+    line-height: 1;
+    text-shadow: none;
   }
 </style>

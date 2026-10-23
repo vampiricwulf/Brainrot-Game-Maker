@@ -138,6 +138,8 @@ try {
   // (Where a tile is on the stage, as a part of its width and height: a double-click there later lands on it.)
   const stageBox = () => page.locator('.stage-box .stage').boundingBox();
   const spot = await (async (s, t) => [(t.x + t.width / 2 - s.x) / s.width, (t.y + t.height / 2 - s.y) / s.height])(await stageBox(), await page.locator('.stage-box .board .tile').nth(8).boundingBox());
+  // (One window: the board is on stream, so it marks no tile.)
+  assert((await page.locator('.stage-box .board .tile.host-mark').count()) === 0, 'one window: the board marks no Daily Double');
   await page.locator('.stage-box .board .tile').first().dblclick();
   await page.waitForTimeout(300);
   assert((await status()).includes('Answer hidden'), `a double-click on a tile opens it, the answer stays hidden (${await status()})`);
@@ -179,6 +181,16 @@ try {
   const sb = await stageBox();
   await page.mouse.dblclick(sb.x + spot[0] * sb.width, sb.y + spot[1] * sb.height);
   assert((await status()).includes('Pick a tile'), `a double-click on the answer goes back to the board, no other tile opens (${await status()})`);
+  // With the audience window open, the host's own board marks the Daily Double Start placed at random; viewers' doesn't.
+  const marked = page.locator('.stage-box .board .tile.host-mark');
+  await aud.locator('.board .tile').first().waitFor();
+  assert(
+    (await marked.count()) === 1 &&
+      (await marked.getAttribute('data-mark')) === '⭐' &&
+      (await marked.getAttribute('aria-label')).endsWith(', Daily Double') &&
+      (await aud.locator('.board .tile.host-mark, .board .tile[data-mark]').count()) === 0,
+    `two windows: the host's board marks its Daily Double (${await marked.getAttribute('aria-label')}), the audience window's doesn't`,
+  );
   await page.keyboard.press('d');
   await aud.waitForFunction(() => window.__plays.some((s) => s.endsWith('#dice')));
   assert(true, 'rolling dice rattles in the audience window');

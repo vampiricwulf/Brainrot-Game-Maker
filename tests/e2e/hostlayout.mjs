@@ -14,7 +14,8 @@
 // under them: below the panel's foot, 🤫 1 card ↓ in the step's sticky row goes to them). A three-round game keeps the
 // stage one size from the board to a clue with 🔇 Stop sounds (the round intro's music), a card out, both or neither on
 // the board's tools row, in both its board rounds (the second's ▶ is a long Final name, cut short and named in full),
-// from 960 to 1366px wide; at 1920 they keep their words.
+// from 960 to 1366px wide; at 1920 they keep their words. At 1366 and 1024px wide the crowded game's stage keeps the
+// board's size through a Daily Double's splash and slides, a clue with a sound on its slide and one with two slides.
 import { chromium } from 'playwright-core';
 import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
@@ -439,24 +440,48 @@ try {
   // wager box is in sight. (A long Final name, so the board's tools row holds a wide ▶ beside 🤫 Send a card… and
   // 🎭 Deal…: it still fits on one line, as in a clue.)
   console.log('A crowded single window:');
-  const crowdFile = resolve('test-results/hostlayout-crowd.json');
+  /** A second of tone, as a WAV file. */
+  const tone = () => {
+    const w = Buffer.alloc(44 + 8000, 128);
+    w.write('RIFF', 0); w.writeUInt32LE(36 + 8000, 4); w.write('WAVE', 8); w.write('fmt ', 12);
+    w.writeUInt32LE(16, 16); w.writeUInt16LE(1, 20); w.writeUInt16LE(1, 22); w.writeUInt32LE(8000, 24);
+    w.writeUInt32LE(8000, 28); w.writeUInt16LE(1, 32); w.writeUInt16LE(8, 34); w.write('data', 36); w.writeUInt32LE(8000, 40);
+    for (let i = 0; i < 8000; i++) w[44 + i] = 128 + Math.round(40 * Math.sin((i / 8000) * 2 * Math.PI * 440));
+    return w;
+  };
+  const crowdFile = resolve('test-results/hostlayout-crowd.brainrot');
   const crowd = ['Annabelle', 'Bobby Tables', 'Cyrus', 'Deedee', 'Eleanor', 'Frankie'];
   const crowdColors = ['#e6194b', '#3cb44b', '#4363d8', '#f58231', '#911eb4', '#42d4f4'];
   // (Its Memes $400 is a partner clue, with a card for each part.)
   const partnerRules = { game: 'describe', giver: 'partner', got: { giver: 100, guesser: 50 }, missed: { giver: 0, guesser: -50 }, partnerSafe: true, points: 'game' };
   const partnerCards = ['giver', 'guesser'].map((to, k) => ({ id: `pc${k}`, to, ...slide(`pcs${k}`, `Card ${k + 1}`) }));
+  // (And its Minecraft $200 has a sound on its question slide; its Rizz $200, two question slides.)
+  const sound = { id: 'snd', kind: 'audio', media: 'm_tone', visible: true, x: 860, y: 800, w: 200, h: 200, rotation: 0, opacity: 1, zIndex: 2, autoplay: false, loop: false, muted: false, volume: 1 };
   const crowdBoard = {
     ...board,
-    categories: board.categories.map((c, ci) => (ci ? c : { ...c, clues: c.clues.map((q, ri) => (ri === 1 ? { ...q, id: 'c_partner', type: 'partner', partner: partnerRules, timerSeconds: 45, cards: partnerCards } : q)) })),
+    categories: board.categories.map((c, ci) => ({
+      ...c,
+      clues: c.clues.map((q, ri) =>
+        ri ? (ci ? q : ri === 1 ? { ...q, id: 'c_partner', type: 'partner', partner: partnerRules, timerSeconds: 45, cards: partnerCards } : q)
+        : ci === 2 ? { ...q, id: 'c_sound', questionSlide: { ...q.questionSlide, elements: [...q.questionSlide.elements, sound] } }
+        : ci === 3 ? { ...q, id: 'c_two', extraSlides: [{ id: 'c_two2', ...slide('c_two2s', 'Rizz, the question') }] }
+        : q,
+      ),
+    })),
   };
+  const toneWav = tone();
   writeFileSync(
     crowdFile,
-    JSON.stringify({
-      ...game,
-      id: 'g_layout_crowd',
-      players: crowd.map((name, i) => ({ id: `p${i + 1}`, name, color: crowdColors[i], startScore: 500 })),
-      rounds: [crowdBoard, { ...game.rounds[3], name: 'Final Jeopardy: Internet Legends' }],
-    }),
+    await packGame(
+      {
+        ...game,
+        id: 'g_layout_crowd',
+        players: crowd.map((name, i) => ({ id: `p${i + 1}`, name, color: crowdColors[i], startScore: 500 })),
+        rounds: [crowdBoard, { ...game.rounds[3], name: 'Final Jeopardy: Internet Legends' }],
+        media: [{ id: 'm_tone', name: 'tone.wav', mime: 'audio/wav', size: toneWav.length, kind: 'audio' }],
+      },
+      { m_tone: toneWav },
+    ),
   );
   for (const [w, h] of [
     [1366, 768],
@@ -547,6 +572,49 @@ try {
     await p4.locator('.stage-box [data-slide="answer"]').waitFor();
     await p4.keyboard.press('Escape');
     await p4.locator('.stage-box .board').waitFor();
+    // One stage size on through the round: a Daily Double's splash (its chips and Wager box in sight) and question
+    // slides, a clue with a sound on its slide (the media controls' room is kept from the board on), and a clue with two
+    // question slides (◀ Slide on its row: up to 1100px wide, ◀ and ▦ alone, and no "Pick who answered" hint).
+    if (w === 1366 || w === 1024) {
+      const tileAt = (cat) => p4.locator(`.stage-box .board .tile[data-cat="${cat}"][data-row="0"]`);
+      const sizes = [];
+      await tileAt(4).click();
+      await p4.locator('.stage-box .dd-text').waitFor();
+      sizes.push(await stageH());
+      const ddOut = await outOfSight('.panel .dd .chip, .panel .dd input[type=number]');
+      assert(ddOut.length === 0, `${w}×${h}, a Daily Double's splash: its chips and Wager box are in sight${ddOut.length ? ` (not: ${ddOut.join(', ')})` : ''}`);
+      await p4.locator('.panel .dd .chip', { hasText: 'Bobby Tables' }).click();
+      await p4.locator('.panel .dd input[type=number]').fill('100');
+      await p4.keyboard.press('Enter');
+      await p4.waitForFunction(() => document.querySelector('.panel .status')?.textContent?.includes('DD'));
+      sizes.push(await stageH());
+      await p4.keyboard.press('n');
+      await p4.locator('.panel [data-slidepos]', { hasText: 'Slide 2 of 3' }).waitFor();
+      sizes.push(await stageH());
+      await p4.keyboard.press('Escape');
+      await p4.locator('.stage-box .board').waitFor();
+      await tileAt(2).click();
+      await p4.locator('.panel .mc:not(.held)').waitFor();
+      sizes.push(await stageH());
+      await p4.keyboard.press('r');
+      await p4.locator('.stage-box [data-slide="answer"]').waitFor();
+      sizes.push(await stageH());
+      await p4.keyboard.press('Escape');
+      await p4.locator('.stage-box .board').waitFor();
+      await tileAt(3).click();
+      await p4.locator('.panel [data-slidepos]', { hasText: 'Slide 1 of 2' }).waitFor();
+      sizes.push(await stageH());
+      await p4.keyboard.press('n');
+      await p4.locator('.panel [data-slidepos]', { hasText: 'Slide 2 of 2' }).waitFor();
+      sizes.push(await stageH());
+      await p4.keyboard.press('Escape');
+      await p4.locator('.stage-box .board').waitFor();
+      sizes.push(await stageH());
+      assert(
+        sizes.every((x) => x === onBoard),
+        `${w}×${h}: the stage keeps the board's size through a Daily Double (splash, question, slide 2), a clue with a sound (question, answer) and one with two slides (${onBoard} / ${sizes.join(' / ')})`,
+      );
+    }
     if (w === 1366) {
       await p4.locator('.panel').getByRole('button', { name: '🔊 Sound' }).click();
       const help = p4.getByRole('dialog', { name: 'Streaming the sound' });
@@ -618,11 +686,7 @@ try {
   // list and on the second round's ▶) keeps the stage one size from the board to a clue, all still named in full.
   console.log('🔇 Stop sounds and cards out on the board:');
   // (A second of tone: the intro's own file, so 🔇 Stop sounds shows.)
-  const intro = Buffer.alloc(44 + 8000, 128);
-  intro.write('RIFF', 0); intro.writeUInt32LE(36 + 8000, 4); intro.write('WAVE', 8); intro.write('fmt ', 12);
-  intro.writeUInt32LE(16, 16); intro.writeUInt16LE(1, 20); intro.writeUInt16LE(1, 22); intro.writeUInt32LE(8000, 24);
-  intro.writeUInt32LE(8000, 28); intro.writeUInt16LE(1, 32); intro.writeUInt16LE(8, 34); intro.write('data', 36); intro.writeUInt32LE(8000, 40);
-  for (let i = 0; i < 8000; i++) intro[44 + i] = 128 + Math.round(40 * Math.sin((i / 8000) * 2 * Math.PI * 440));
+  const intro = tone();
   const board2 = { id: 'r_board2', name: 'Double Jeopardy!', mode: 'board', values: [400, 800, 1200, 1600, 2000], dailyDoubleCount: 0, categories: cats.map((c, ci) => ({ id: `cat2${ci}`, title: c, clues: [0, 1, 2, 3, 4].map((ri) => clue(`${c} again ${ri}`, `Answer 2.${ci}.${ri}`)) })) };
   const introFile = resolve('test-results/hostlayout-intro.brainrot');
   writeFileSync(

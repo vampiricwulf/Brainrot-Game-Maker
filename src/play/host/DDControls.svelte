@@ -124,8 +124,9 @@
 </script>
 
 <div class="dd">
-  <b>Daily Double!</b>
-  <span class="muted">Who found it?{#if !playerId}{' '}<span class="warn">Pick a {noun}.</span>{:else}{' '}Click another to change.{/if}</span>
+  <!-- (One line, so the chips and the Wager box are near the top: in one window the panel keeps the board's height while
+       this is up, and the rest scrolls. See HostPanel's ddHold.) -->
+  <span><b>Daily Double!</b> <span class="muted">Who found it?{#if !playerId}{' '}<span class="warn">Pick a {noun}.</span>{:else}{' '}Click another to change.{/if}</span></span>
   <div class="row">
     {#each session.players as p, i (p.id)}
       <button

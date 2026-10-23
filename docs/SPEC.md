@@ -371,7 +371,8 @@ The mode isn't saved with the game: it's dual while the audience window is open.
 
 - **Dual window** (📺 Separate audience window)
   - *Host window*: board, host-only info (answer preview, host notes, clue value, and type indicator,
-    including Daily Doubles before they are revealed), scoring panel, media controls, timer controls, and tools.
+    including Daily Doubles before they are revealed: the host's board marks a Daily Double, 🤝 partner or ✍ tile still
+    to play with ⭐, 🤝 or ✍ in its corner, never in one window), scoring panel, media controls, timer controls, and tools.
   - *Audience window*: opened with a button. Clean, full-screen friendly, no controls, and never shows answers until the
     host reveals them. Meant to be captured in OBS (window capture). It mirrors state via `postMessage`.
   - Media plays in the **audience window** so that OBS picks up its audio. The host window shows controls and a muted mirror/progress.
@@ -381,7 +382,9 @@ The mode isn't saved with the game: it's dual while the audience window is open.
     nothing on the stage shows a focus ring until the host moves the keys: Tab, or the board's arrow keys). The
     panel's status line shows the 📝 host notes of the clue, the slides round, the tiebreaker or the Final (once its
     answer is up), with a title saying viewers can see them; with the audience window open they're in the host column
-    instead. The editor's notes fields say so ("off stream, except in a single window").
+    instead. The editor's notes fields say so ("off stream, except in a single window"). The stage keeps one size
+    from the board through a clue's steps (a Daily Double's splash, its question slides, a clue's media controls),
+    so viewers don't see it zoom down and up.
 - **The host panel** has one layout in every round: the status line (📱 phones and ⏱ timer chips), the players' score
   chips, the row of what this moment needs with the one main button (and its key) at its right, the tools with the
   round navigation, then a fixed bar (Undo, Redo, Sound, keys, Log, Players, Rules, Cover, Hide, Audience, Exit).

@@ -4,7 +4,8 @@
   import { mediaCommand } from '../lib/sync.svelte';
   import { toast } from '../lib/app.svelte';
 
-  let { dual }: { dual: boolean } = $props();
+  /** `reserve`: with nothing playing, the row keeps its room, empty (a board round with media on its slides, see HostPanel). */
+  let { dual, reserve = false }: { dual: boolean; reserve?: boolean } = $props();
 
   // In dual mode the audience window's copies are the real (audible) ones.
   const items = $derived<[string, MediaState][]>(
@@ -79,6 +80,11 @@
       </div>
     {/each}
   </div>
+{:else if reserve}
+  <!-- (A hidden row like an item's, as tall: the stage viewers see keeps its size when a clue's media comes up.) -->
+  <div class="mc held" aria-hidden="true" inert>
+    <div class="item"><button class="small" tabindex="-1" disabled aria-label="Play">▶</button><input class="seek" type="range" tabindex="-1" disabled aria-label="Seek" /></div>
+  </div>
 {/if}
 
 <style>
@@ -95,6 +101,9 @@
     background: var(--panel-2);
     border-radius: 8px;
     padding: 4px 8px;
+  }
+  .held {
+    visibility: hidden;
   }
   .item.failed {
     border: 1px solid var(--warn);
