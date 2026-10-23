@@ -3,7 +3,7 @@
   import { textOn } from '../../lib/colors';
   import { formatPoints, type Game, type Player, type Session } from '../../lib/model';
   import { score } from '../../lib/session';
-  import { formatStat, statFields, statValue } from '../../lib/toolset';
+  import { formatStat, statColor, statFields, statValue } from '../../lib/toolset';
   import Avatar from '../../lib/rpg/Avatar.svelte';
   import { dropHover } from '../dragdrop.svelte';
 
@@ -58,14 +58,14 @@
           {#each fields as f (f.id)}
             {@const v = statValue(game, session, p.id, f)}
             {#if f.type === 'number' && f.display === 'bar' && f.max}
-              <span class="bar" title="{f.name} {v}" style:--fc={f.color ?? '#e6194b'}>
+              <span class="bar" title="{f.name} {v}" style:--fc={statColor(f)}>
                 <span class="fill" style:width="{Math.max(0, Math.min(100, (Number(v) / f.max) * 100))}%"></span>
                 <span class="lbl">{f.name} {v}</span>
               </span>
             {:else if f.type === 'number' && f.display === 'hearts' && Math.max(f.max ?? 0, Number(v)) > heartsUpTo}
-              <span class="hearts count" title="{f.name} {v}" style:color={f.color ?? '#e6194b'}>♥ {v}{f.max ? `/${f.max}` : ''}</span>
+              <span class="hearts count" title="{f.name} {v}" style:color={statColor(f)}>♥ {v}{f.max ? `/${f.max}` : ''}</span>
             {:else if f.type === 'number' && f.display === 'hearts'}
-              <span class="hearts" title="{f.name} {v}" style:color={f.color ?? '#e6194b'}>
+              <span class="hearts" title="{f.name} {v}" style:color={statColor(f)}>
                 {'♥'.repeat(Math.max(0, Math.min(20, Number(v))))}{f.max ? '♡'.repeat(Math.max(0, Math.min(20, f.max) - Math.max(0, Number(v)))) : ''}
               </span>
             {:else if f.type === 'tags'}

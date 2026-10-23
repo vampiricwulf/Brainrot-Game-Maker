@@ -93,6 +93,11 @@ export function currencyFields(game: Game): StatField[] {
   return statFields(game).filter((f) => f.type === 'number' && f.currency);
 }
 
+/** The color a stat shows in on the stats strip: its own, else red for a bar or hearts, else the strip's white. */
+export function statColor(f: StatField): string {
+  return f.color ?? (f.type === 'number' && ((f.display === 'bar' && f.max) || f.display === 'hearts') ? '#e6194b' : '#ffffff');
+}
+
 export function formatStat(field: StatField, v: StatValue): string {
   if (Array.isArray(v)) return v.join(', ');
   if (typeof v === 'boolean') return v ? '✔' : '✘';
@@ -346,6 +351,11 @@ export function sell(game: Game, session: Session, shop: Shop, playerId: string,
   if (!e) return { ok: false, error: 'They don’t have that any more' };
   const price = sellPrice(game, shop, e.item);
   if (price === null) return { ok: false, error: shop.buysBack ? `${shop.name} doesn’t buy ${entryName(game, e)}` : `${shop.name} doesn’t buy things back` };
+  const who = session.players.find((p) => p.id === playerId)?.name ?? 'Someone';
+  // Never past the currency's max (as a pile picked up, or Score → Gold): they keep the item.
+  const cur = shopCurrency(game, shop);
+  if (price && cur !== 'score' && price > statRoom(game, session, playerId, cur))
+    return { ok: false, error: `${who} can’t carry ${formatPrice(game, shop, price)} more ${cur.name} (at most ${formatStat(cur, cur.max ?? 0)})` };
   // That very one (not another of the same item, which may be the one they wear).
   const list = inv(session, playerId);
   e.qty -= 1;
@@ -353,7 +363,6 @@ export function sell(game: Game, session: Session, shop: Shop, playerId: string,
   if (price) pay(game, session, shop, playerId, -price, `Sold ${entryName(game, e)} (${shop.name})`);
   const left = stockLeft(session, shop, e.item!, game);
   if (left !== null && shop.stock.some((x) => x.item === e.item)) setStock(session, shop, e.item!, left + 1);
-  const who = session.players.find((p) => p.id === playerId)?.name ?? 'Someone';
   return { ok: true, text: `${who} sold ${entryName(game, e)}${price ? ` for ${formatPrice(game, shop, price)}` : ''}` };
 }
 

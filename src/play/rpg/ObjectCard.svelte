@@ -4,6 +4,7 @@
 -->
 <script lang="ts">
   import { toast } from '../../lib/app.svelte';
+  import { announce } from '../../lib/announce';
   import { textOn } from '../../lib/colors';
   import { describeAction, needsPlayers, runAction, type RunContext } from '../../lib/actions';
   import { newId, type Screen, type SlideElement, type World, type WorldState } from '../../lib/model';
@@ -134,6 +135,7 @@
     const label = players ? whoNames : 'Party';
     logged(session, `${label} through ${title}`, () => moveTo(game, st, world, to, { players: movers, arriveAt: role?.arrive }));
     blip(ctx.live, 'doorway');
+    announce(`${label} went through ${title} to ${findIn(world, to)?.screen.name}`);
     onclose();
   }
 

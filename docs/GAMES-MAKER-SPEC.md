@@ -538,7 +538,7 @@ interface StatField {
   currency?: { symbol: string; icon?: Id };  // a currency field: used by shops and currency objects
   // all:
   audience: 'hud' | 'sheet' | 'hidden';    // HUD strip, only on the full sheet, or host-only
-  color?: string;
+  color?: string;                          // none: red for a bar or hearts, white for a number (the editor's swatch too)
 }
 ```
 
@@ -604,6 +604,8 @@ interface Shop {
   4. If they can't afford it, the host sees "short by 9g" with **Buy anyway (go negative)**, **Free** and **Change
      price** buttons.
 - **Haggling:** the price can be edited on the card before confirming. A one-off price doesn't change the shop.
+- **Selling back** (a shop with `buysBack`): the player gets rate × price, never past the currency's max. At the max the
+  host is told they can't carry that much more, and they keep the item (as with a pile picked up).
 - **Shared stock:** shops in the same pool (e.g. the Village shop and the Shadow Realm shop) draw on the same
   quantities.
 - **Live edits:** restock, add an item, and change prices, all from the shop overlay and all undoable.

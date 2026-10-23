@@ -18,7 +18,7 @@
   import { newId, type ItemDef, type Shop, type StatField, type Wearable } from '../lib/model';
   import { allWorldsAsOne } from '../lib/rpg';
   import { allActions, worldObjects } from '../lib/refs';
-  import { currencyFields, newStatField, STAT_PRESETS, shopCurrency, shopCurrencyGone, SCORE_CURRENCY, statRangeProblem } from '../lib/toolset';
+  import { currencyFields, newStatField, STAT_PRESETS, shopCurrency, shopCurrencyGone, SCORE_CURRENCY, statColor, statRangeProblem } from '../lib/toolset';
   import { mediaUrls } from '../lib/media.svelte';
   import MediaPicker from './slide/MediaPicker.svelte';
   import { mediaDrop } from '../lib/mediadrop';
@@ -409,7 +409,7 @@
           <option value="sheet">Only on the player sheet</option>
           <option value="hidden">Host only</option>
         </select>
-        <input type="color" value={f.color ?? '#ffcc00'} oninput={(e) => (f.color = e.currentTarget.value)} aria-label="{f.name} color" />
+        <input type="color" value={statColor(f)} oninput={(e) => (f.color = e.currentTarget.value)} aria-label="{f.name} color" />
         <button class="ghost tiny" onclick={() => duplicate('stat', f)} aria-label="Duplicate {f.name}" title="Duplicate (Ctrl+D)">⧉</button>
         <button class="ghost tiny danger" onclick={() => removeField(f)} aria-label="Delete {f.name}" title="Delete (Undo brings it back)">🗑</button>
       </div>

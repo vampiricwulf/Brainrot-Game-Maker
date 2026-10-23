@@ -36,9 +36,11 @@ import {
   itemQty,
   MAX_UNSTACKED,
   shopCurrencyGone,
+  statColor,
   statRangeProblem,
   statRoom,
   statsProblems,
+  STAT_PRESETS,
 } from './toolset';
 
 /** How many of catalog item `item` a player holds (all stacks). */
@@ -650,6 +652,17 @@ describe('the host’s own choices', () => {
   });
 });
 
+describe('a stat’s color', () => {
+  it('is the one viewers see on the stats strip: its own, else red for a bar or hearts, else white', () => {
+    const power = STAT_PRESETS.find((p) => p.label.includes('Power'))!.make();
+    const hearts = { ...newStatField('Lives'), max: 3, display: 'hearts' as const };
+    const bar = { ...newStatField('Stamina'), max: 5, display: 'bar' as const };
+    // (A bar with no max shows as a number.)
+    const noMax = { ...newStatField('Stamina'), display: 'bar' as const };
+    expect([power, hearts, bar, noMax, STAT_PRESETS[1].make()].map(statColor)).toEqual(['#ffffff', '#e6194b', '#e6194b', '#ffffff', '#ffcc00']);
+  });
+});
+
 describe('selling', () => {
   it('sells the very entry picked (not another of the same item they wear)', () => {
     const { game, session } = setup();
@@ -660,6 +673,21 @@ describe('selling', () => {
     expect(sell(game, session, s, 'a', first.id)).toEqual({ ok: true, text: 'Ann sold Sword for 🪙6' });
     expect(inventory(session, 'a')).toEqual([second]);
     expect(inventory(session, 'a')[0].equipped).toBe(true);
+  });
+
+  it('pays no more than fits under the currency’s max: at the max, the item is kept', () => {
+    const { game, session } = setup();
+    const gold = game.statFields![1];
+    gold.max = 50;
+    const s: Shop = { id: 'v', name: 'Village', currency: 'gold', stock: [], buysBack: { rate: 0.5 } };
+    giveItem(game, session, 'a', 'potion', 1);
+    setStat(session, 'a', gold, 50);
+    const entry = inventory(session, 'a')[0].id;
+    expect(sell(game, session, s, 'a', entry)).toEqual({ ok: false, error: 'Ann can’t carry 🪙2 more Gold (at most 🪙50)' });
+    expect([countItem(session, 'a', 'potion'), statValue(game, session, 'a', gold)]).toEqual([1, 50]);
+    setStat(session, 'a', gold, 48);
+    expect(sell(game, session, s, 'a', entry).ok).toBe(true);
+    expect([countItem(session, 'a', 'potion'), statValue(game, session, 'a', gold)]).toEqual([0, 50]);
   });
 
   it('doesn’t buy secret items or ones with no price', () => {

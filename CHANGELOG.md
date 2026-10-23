@@ -16,6 +16,9 @@ in plain words for the people who make and host games. Anything committed but no
 ### Fixed
 
 - RPG rounds: players arriving on a screen stand clear of its characters, items, doorways and other objects with a class where there's room, as they keep out of No-go areas, so viewers see those and clicks on the host's stage reach them (not of the object they arrive at, nor of one viewers can't see yet). In the 🗺 Mini quest template the Shopkeeper stands up and to the right, out of the party's starting row: the avatars covered him.
+- RPG shops that buy back: a sale never takes a currency past its max. At the max the host is told (“Player 1 can’t carry 🪙2 more Gold (at most 🪙50)”) and the player keeps the item, as with a pile picked up.
+- 📊 Stats & Items: a stat with no color of its own shows the color viewers see on the stats strip (red for a bar or hearts, white for a number) instead of yellow.
+- RPG rounds: screen readers hear where the party is after the minimap's Move here, a doorway's 🚪 Go through (“Party went through Cellar door to Cellar”) and a regroup (G, ⊙, 🤝 Regroup: “Everyone is together in Village”), as after a step.
 
 ## 2026-10-23
 

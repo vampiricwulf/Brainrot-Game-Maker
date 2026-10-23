@@ -128,6 +128,8 @@ describe('dragging avatars on the RPG stage', () => {
     regroupAll(game, session, ann.id);
     expect(Object.values(st.positions).every((p) => p.screen === beach.screen)).toBe(true);
     expect(session.actionLog?.at(-1)?.text).toBe('Regroup with Party 2');
+    // Screen readers hear where everyone is now.
+    expect(announce).toHaveBeenLastCalledWith('Everyone is together in Beach');
   });
 
   it('says which party moved once there are several', () => {

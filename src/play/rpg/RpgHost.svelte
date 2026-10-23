@@ -6,6 +6,7 @@
   import { tick, untrack } from 'svelte';
   import { showMenu } from '../../lib/menustate.svelte';
   import { app, hint, toast } from '../../lib/app.svelte';
+  import { announce } from '../../lib/announce';
   import { step } from '../../lib/history.svelte';
   import { textOn } from '../../lib/colors';
   import type { RunContext } from '../../lib/actions';
@@ -274,7 +275,10 @@
     const to = picked;
     const s = st;
     const w = world;
-    logged(session, `${label ?? party?.name ?? 'Party'} to ${pickedFound?.screen.name}`, () => moveTo(game, s, w, to, { players: who }));
+    const name = pickedFound?.screen.name;
+    logged(session, `${label ?? party?.name ?? 'Party'} to ${name}`, () => moveTo(game, s, w, to, { players: who }));
+    // (Screen readers hear where they are now, as after a step.)
+    if (name) announce(`${label ?? party?.name ?? 'Party'} moved to ${name}`);
     picked = null;
   }
 

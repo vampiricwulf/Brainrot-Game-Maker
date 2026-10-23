@@ -302,6 +302,8 @@ async function bigWorld() {
   await host.getByRole('button', { name: '🚪 Go through (party)' }).click();
   await host.waitForTimeout(500);
   assert((await there()).includes('Dungeon 1') && (await cues(aud)).includes('doorway'), 'through the door, with the Doorway sound');
+  await host.waitForFunction(() => (document.getElementById('live-region')?.dataset.said ?? '').includes('Party went through Dungeon door to Dungeon 1'));
+  assert(true, 'and screen readers hear where it led');
   await host.getByRole('button', { name: '🗺 Map on stream' }).click();
   await aud.locator('.map-ov').waitFor();
   assert((await aud.locator('.map-ov').innerText()).includes('This map is hidden from viewers') && !(await aud.locator('.map-ov .cell').count()), 'on a hidden map, the viewers’ map says it’s hidden');

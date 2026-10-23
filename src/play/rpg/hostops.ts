@@ -67,6 +67,10 @@ export function regroupAll(game: Game, session: Session, partyId?: string): void
     if (with_) st.active = with_.id;
     regroup(game, st, world, session.players.map((p) => p.id));
   });
+  // Where everyone is now, for screen readers (as after a step).
+  const at = focusRef(st);
+  const here = at && findIn(world, at);
+  if (here) announce(`Everyone is together in ${here.screen.name}`);
 }
 
 export function splitOff(game: Game, session: Session, ids: string[]): string | null {
