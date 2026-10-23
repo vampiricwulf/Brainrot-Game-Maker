@@ -94,20 +94,23 @@ describe('🗜 Make smaller on a card’s line', () => {
       { id: 'had', name: 'had.mp4', mime: 'video/mp4', size: 40 * MB, kind: 'video' },
       { id: 'hadcopy', name: 'had (phones).webm', mime: 'video/webm', size: 25 * MB, kind: 'video', phoneCopy: { of: 'had' } },
       { id: 'other', name: 'other.mp4', mime: 'video/mp4', size: 20 * MB, kind: 'video' },
-      // (Its copy came out too big for the buzzer server: 🗜 again offers smaller ones.)
+      // (Its copy came out too big for the buzzer server: 🗜 again offers smaller ones, when there are.)
       { id: 'over', name: 'over.mp4', mime: 'video/mp4', size: 60 * MB, kind: 'video' },
       { id: 'overcopy', name: 'over (phones).webm', mime: 'video/webm', size: 35 * MB, kind: 'video', phoneCopy: { of: 'over', width: 854, height: 480 } },
     );
     const card: Slide = { background: {}, elements: [newImageEl('huge'), newVideoEl('slow'), newVideoEl('small'), newVideoEl('slow'), newVideoEl('had'), newVideoEl('other')] };
     const { items } = phoneCard(g, card, { files: {}, fileBytes: 30 * MB });
     const here = (id: string) => id !== 'other';
-    expect(shrinkIds(items, 'big', here)).toEqual(['huge']);
-    expect(shrinkIds(items, 'slow', here)).toEqual(['slow']);
-    expect(shrinkIds(items, 'slow', () => false)).toEqual([]);
+    const yes = () => true;
+    expect(shrinkIds(items, 'big', here, yes)).toEqual(['huge']);
+    expect(shrinkIds(items, 'slow', here, yes)).toEqual(['slow']);
+    expect(shrinkIds(items, 'slow', () => false, yes)).toEqual([]);
     // (A 'big' line's are only those too big for the buzzer server: the ones that go are on the 'slow' one.)
-    expect(shrinkIds(items, 'big', () => true)).toEqual(['huge']);
+    expect(shrinkIds(items, 'big', yes, yes)).toEqual(['huge']);
     const over = phoneCard(g, { background: {}, elements: [newVideoEl('over')] }, { files: {}, fileBytes: 30 * MB }).items;
-    expect([shrinkIds(over, 'big', () => true), shrinkIds(over, 'slow', () => true)]).toEqual([['over'], []]);
-    expect(shrinkIds(items, 'slow', () => true)).toEqual(['slow', 'other']);
+    expect([shrinkIds(over, 'big', yes, yes), shrinkIds(over, 'slow', yes, yes)]).toEqual([['over'], []]);
+    // (None smaller left than that copy: 🗜 again would make it the same.)
+    expect(shrinkIds(over, 'big', yes, (id) => id !== 'over')).toEqual([]);
+    expect(shrinkIds(items, 'slow', yes, yes)).toEqual(['slow', 'other']);
   });
 });

@@ -6,6 +6,8 @@ import type { MediaFacts, TrackFacts } from './facts';
 import { verdict } from './playable';
 import {
   avDefault,
+  avOptions,
+  avPlan,
   CANT_MAKE_SOUND,
   CANT_READ_FILE,
   CANT_READ_VIDEO,
@@ -25,6 +27,7 @@ import {
   NO_PICTURE,
   NOT_MUCH_SMALLER,
   NO_SMALLER,
+  NO_SMALLER_PART,
   OPUS_NOTE,
   planGif,
   planSoundCopy,
@@ -35,6 +38,7 @@ import {
   SOUND_TOO_LONG,
   spanText,
   TOO_LONG,
+  trimAtFirst,
   typeWord,
   videoChoices,
   videoOptions,
@@ -237,12 +241,29 @@ describe('videoOptions: which size is picked', () => {
     expect(c.choices.every((x) => x.estimate > 0.9 * SLOW_FILE_BYTES)).toBe(true);
   });
 
-  it('after a copy that came out too big for the buzzer server, offers only smaller sizes than it (none: says so)', () => {
-    const minute = video(1920, 1080, 60, 400 * MiB);
-    const a = videoOptions(minute, 60, { ...opts, smallerThan: { width: 854, height: 480 } });
+  it('a buzzer server that takes less than 16 MB: the biggest under 0.9 × what it takes', () => {
+    // 1 minute: 480p is about 10 MB, 360p about 5.4: a server that takes 8 MB gets 360p.
+    const a = videoOptions(video(1920, 1080, 60, 400 * MiB), 60, { ...opts, fileBytes: 8 * MiB });
     if ('refuse' in a) throw new Error('refused');
-    expect([a.choices.map((x) => x.name), a.pick]).toEqual([['Tiny'], 0]);
-    expect(videoOptions(minute, 60, { ...opts, smallerThan: { width: 640, height: 360 } })).toEqual({ refuse: NO_SMALLER });
+    expect([a.choices[a.pick].name, a.tooBig]).toEqual(['Tiny', false]);
+  });
+
+  it('after a copy that came out too big for the buzzer server: only those smaller than it, their sizes as far over (none: says so)', () => {
+    const minute = video(1920, 1080, 60, 400 * MiB);
+    // Its 480p copy of all of it came out twice its estimate.
+    const over = { size: 2 * estimateBytes(1_200_000 + 128_000, 60), seconds: 60, width: 854, height: 480 };
+    const a = videoOptions(minute, 60, { ...opts, over });
+    if ('refuse' in a) throw new Error('refused');
+    expect([a.choices.map((x) => [x.name, x.estimate]), a.pick]).toEqual([[['Tiny', 2 * estimateBytes(600_000 + 128_000, 60)]], 0]);
+    expect(videoOptions(minute, 60, { ...opts, over: { ...over, width: 640, height: 360 } })).toEqual({ refuse: NO_SMALLER });
+    // Of a part a sixth as long, every size is smaller (720p's too), each as far over.
+    const b = videoOptions(minute, 10, { ...opts, over });
+    if ('refuse' in b) throw new Error('refused');
+    expect(b.choices.map((x) => [x.name, x.estimate])).toEqual([
+      ['Phones', 2 * estimateBytes(2_500_000 + 128_000, 10)],
+      ['Small', 2 * estimateBytes(1_200_000 + 128_000, 10)],
+      ['Tiny', 2 * estimateBytes(600_000 + 128_000, 10)],
+    ]);
   });
 
   it('leaves out sizes not much smaller than the file (under 0.8 of it), unless phones can’t play it as it is', () => {
@@ -432,6 +453,43 @@ describe('avDefault: a file’s copy as made unasked (several at once)', () => {
     expect(ok(avDefault(r, 90 * MiB))).toMatchObject({ range: { from: 10, to: 20 }, out: { seconds: 10, width: 1280, height: 720 } });
     expect(ok(avDefault({ ...r, span: { ...r.span!, ticked: false } }, 90 * MiB))).toMatchObject({ range: null, out: { width: 854 } });
     expect(ok(avDefault({ ...r, kind: 'audio', facts: sound(60, 10 * MiB) }, 90 * MiB))).toMatchObject({ mime: 'audio/mp4', range: { from: 10, to: 20 } });
+  });
+});
+
+describe('🗜 again, after a copy that came out too big for the buzzer server', () => {
+  const ENC = { avc: true, vp9: true, vp8: true };
+  // A 15 s video whose cards play 0:01–0:03: its Tiny copy of all of it came out 2.9 MB, over twice its estimate.
+  const r: AvRead = {
+    kind: 'video',
+    facts: video(1280, 720, 15, 7.4 * MiB),
+    can: CAN,
+    playable: true,
+    span: { span: { from: 1, to: 3 }, ticked: true },
+    enc: { '1280×720': ENC, '854×480': ENC, '640×360': ENC },
+    over: { size: 2.9 * MiB, seconds: 15, width: 640, height: 360 },
+  };
+
+  it('none smaller of all of it: the part the cards play still offers every size, picked by what fits; the refusal says so', () => {
+    expect(avOptions(r, false, MiB)).toEqual({ refuse: NO_SMALLER_PART });
+    const part = avOptions(r, true, MiB);
+    if ('refuse' in part) throw new Error('refused');
+    // (720p's 2 s would be about 1.4 MB, as far over as the Tiny one went: 480p's fits.)
+    expect([part.choices.map((x) => x.name), part.choices[part.pick].name, part.tooBig]).toEqual([['Phones', 'Small', 'Tiny'], 'Small', false]);
+    expect(ok(avPlan(r, true, part.choices[part.pick])).estimate).toBe(part.choices[part.pick].estimate);
+    // Ticked at first, even where it wouldn't be by itself; made unasked, of that part.
+    expect(trimAtFirst({ ...r, span: { ...r.span!, ticked: false } })).toBe(true);
+    expect(ok(avDefault({ ...r, span: { ...r.span!, ticked: false } }, MiB))).toMatchObject({ range: { from: 1, to: 3 }, out: { width: 854 } });
+    // No part to try: nothing to make.
+    expect(avOptions({ ...r, span: null }, false, MiB)).toEqual({ refuse: NO_SMALLER });
+  });
+
+  it('a sound’s comes out at one size: only one of a shorter part is smaller', () => {
+    const s: AvRead = { kind: 'audio', facts: sound(90, 15 * MiB), can: CAN, playable: true, span: null, enc: {}, over: { size: 1.4 * MiB, seconds: 90 } };
+    expect(avOptions(s, false, MiB)).toEqual({ refuse: NO_SMALLER });
+    const part: AvRead = { ...s, span: { span: { from: 0, to: 30 }, ticked: true } };
+    expect(avOptions(part, false, MiB)).toEqual({ refuse: NO_SMALLER_PART });
+    expect(avOptions(part, true, MiB)).toEqual({ choices: [], pick: 0, tooBig: false });
+    expect(ok(avPlan(part, true, null)).estimate).toBe(estimateBytes(128_000, 30));
   });
 });
 

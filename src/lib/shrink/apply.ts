@@ -40,7 +40,9 @@ import {
   CANT_SIZE,
   editedName,
   lengthText,
+  spanSeconds,
   type AvRead,
+  type OverCopy,
   type EditExtra,
   type EditPlan,
   type How,
@@ -97,15 +99,51 @@ export function bigForPhones(game: Game, fileBytes: number): MediaRef[] {
 /**
  * A video or sound read for 🗜's dialog (`uses`: where its 🤫 cards' items start and stop): what's in it (its length
  * worked out when its header doesn't say), what this browser makes, and the encoders there are at each choice's size.
+ * `over`: its copy, when that came out too big for the buzzer server (only smaller ones are offered then).
  */
-export async function readForCopy(ref: MediaRef, blob: Blob, uses: { start?: number; end?: number }[], smallerThan?: AvRead['smallerThan']): Promise<AvRead> {
+export async function readForCopy(ref: MediaRef, blob: Blob, uses: { start?: number; end?: number }[], over?: MediaRef): Promise<AvRead> {
   const kind = ref.kind === 'audio' ? 'audio' : 'video';
   const can = await probe();
   const facts = await readFacts(blob, { duration: 'compute', fps: kind === 'video' });
   const enc: Record<string, Encoders> = {};
   if (kind === 'video' && facts.video && can.ok)
     for (const c of videoChoices(facts.video.width, facts.video.height)) enc[`${c.width}×${c.height}`] = await encodersFor(c.width, c.height, c.bps);
-  return { kind, facts, can, playable: phonesTake(ref), span: cardSpan(uses, facts.seconds), enc, ...(smallerThan ? { smallerThan } : {}) };
+  const was = over && overOf(over, facts.seconds ?? 0);
+  return { kind, facts, can, playable: phonesTake(ref), span: cardSpan(uses, facts.seconds), enc, ...(was ? { over: was } : {}) };
+}
+
+/** The part of its file a 🗜 copy holds (to null: to the end). */
+const copySpan = (pc: NonNullable<MediaRef['phoneCopy']>): Span => ({ from: pc.from ?? 0, to: pc.to ?? null });
+
+/** A 🗜 copy as the plan weighs one that came out too big: its size, its part's length (of a file `length` long), its picture. */
+function overOf(c: MediaRef, length: number): OverCopy | undefined {
+  const pc = c.phoneCopy;
+  return pc && { size: c.size, seconds: spanSeconds(copySpan(pc), length), ...(pc.width && pc.height ? { width: pc.width, height: pc.height } : {}) };
+}
+
+/**
+ * Whether 🗜 again can make file `ref`'s copy smaller (one that came out too big for the buzzer server): a video's at
+ * a smaller picture, or a video's or a sound's of only the part its 🤫 cards play, when that's shorter than the copy's.
+ * (A GIF's comes out the same each time, and a sound's is at one size only.)
+ */
+export function smallerLeft(game: Game, ref: MediaRef | undefined): boolean {
+  const pc = ref && phoneCopyOf(game, ref)?.phoneCopy;
+  if (!ref || !pc || isGifRef(ref)) return false;
+  if (ref.kind === 'video' && (!pc.width || !pc.height || videoChoices(pc.width, pc.height).length > 1)) return true;
+  const part = cardSpan(cardUses(game, ref.id), null)?.span;
+  const copy = copySpan(pc);
+  // (Within the copy's part, and shorter: its end isn't known here, so "to the end" is longer than any time.)
+  const end = (t: number | null) => t ?? Infinity;
+  return !!part && part.from >= copy.from - 0.05 && end(part.to) <= end(copy.to) + 0.05 && (part.from > copy.from + 0.05 || end(part.to) < end(copy.to) - 0.05);
+}
+
+/**
+ * Whether 🗜 has a smaller copy of file `ref` to make than the one it has (for the checklist's 🗜): it has none, or one
+ * that a buzzer server taking files up to `fileBytes` takes, or one too big that smallerLeft says can be made smaller.
+ */
+export function shrinksFurther(game: Game, ref: MediaRef, fileBytes: number): boolean {
+  const c = phoneCopyOf(game, ref);
+  return !c || c.size <= fileBytes || smallerLeft(game, ref);
 }
 
 /** What a copy made and stored is (its bytes are under `id` already). */
@@ -230,10 +268,13 @@ async function putIn(
   const size = formatBytes(made.blob.size);
   const back = undo ? ' (Ctrl+Z takes it back)' : '';
   // (An encoder can go far over its bitrate on a busy picture: a copy still over what this buzzer server takes is kept,
-  // as it's smaller, but phones can't get it, and the words say so. 🗜 again offers only smaller ones.)
+  // as it's smaller, but phones can't get it, and the words say so. 🗜 again offers only smaller ones, where there are.)
   const limit = fileLimitsNow().limits.fileBytes;
-  if (made.blob.size > limit)
-    return { toast: `🗜 Made a smaller copy, but it’s still too big for this buzzer server (${size}; it takes ${formatBytes(limit)}): 🗜 again makes a smaller one, or add it from a link${back}`, media: id };
+  if (made.blob.size > limit) {
+    const g = here();
+    const next = g && smallerLeft(g, g.media.find((m) => m.id === of)) ? '🗜 again makes a smaller one, or add it from a link' : 'add it from a link instead';
+    return { toast: `🗜 Made a smaller copy, but it’s still too big for this buzzer server (${size}; it takes ${formatBytes(limit)}): ${next}${back}`, media: id };
+  }
   return {
     toast: c.playable ? `🗜 Phones get the smaller copy now: ${size} instead of ${formatBytes(src.size)}${back}` : `🗜 Phones get a copy they can play now: ${size}${back}`,
     media: id,

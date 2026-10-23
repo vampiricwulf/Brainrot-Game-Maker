@@ -19,7 +19,7 @@
   import { phoneCopyOf } from '../lib/phonecard';
   import { cardUses } from '../lib/phonecopies';
   import { fileLimitsNow } from '../lib/serverlimits.svelte';
-  import { copyOfWhat, isGifRef, phonesTake, queuePhoneCopy, readForCopy, shrinkable } from '../lib/shrink/apply';
+  import { copyOfWhat, isGifRef, phonesTake, queuePhoneCopy, readForCopy, shrinkable, smallerLeft } from '../lib/shrink/apply';
   import { gifInfo } from '../lib/shrink/gif';
   import { jobFor, jobs, progressText, stopJob, watchJobs } from '../lib/shrink/jobs.svelte';
   import {
@@ -30,9 +30,11 @@
     formatLine,
     gifSize,
     lengthText,
+    NO_SMALLER,
     planGif,
     spanText,
     STILL_TOO_BIG,
+    trimAtFirst,
     typeWord,
     type AvRead,
     type CopyPlan,
@@ -70,10 +72,10 @@
   const copy = $derived(ref ? phoneCopyOf(game, ref) : undefined);
   const fileBytes = $derived(fileLimitsNow().limits.fileBytes);
 
-  /** File `m`'s copy now, when it came out too big for this buzzer server: only smaller pictures are offered. */
-  function overCopy(m: MediaRef): AvRead['smallerThan'] {
+  /** File `m`'s copy now, when it came out too big for this buzzer server: only smaller ones are offered. */
+  function overCopy(m: MediaRef): MediaRef | undefined {
     const c = phoneCopyOf(game, m);
-    return c && c.size > fileBytes && c.phoneCopy?.width && c.phoneCopy.height ? { width: c.phoneCopy.width, height: c.phoneCopy.height } : undefined;
+    return c && c.size > fileBytes ? c : undefined;
   }
 
   // ---------- One file ----------
@@ -88,10 +90,14 @@
   const avp = $derived(av ? avPlan(av, trim, choice) : null);
   /** Why nothing can be made (this browser, or the file). */
   let cant = $state('');
+  /** What's picked can be made (Make it). */
+  const canMake = $derived(!cant && (ref && isGifRef(ref) ? !!gifPlan && !('refuse' in gifPlan) : !!avp && !('refuse' in avp) && !(opts && 'refuse' in opts)));
   // (A job already working on it: shown as it goes.)
   let jobId = $state<string | null>(untrack(() => (listed ? null : (jobFor(id)?.id ?? null))));
   const job = $derived(jobId ? jobs.list.find((j) => j.id === jobId) : undefined);
   const ended = $derived(jobId ? jobs.ended[jobId] : undefined);
+  /** Make it is offered (nothing working on it, nor just made), and what's picked can be made: only then "making it again". */
+  const again = $derived(canMake && !job && !(ended && 'done' in ended));
   /** The copy made, playing under the result. */
   let watching = $state(false);
 
@@ -109,11 +115,11 @@
   const rowJobs = $derived(rows.flatMap((r) => (r.job ? [r.job] : [])));
   const working = $derived(rowJobs.some((j) => jobs.list.some((x) => x.id === j)));
 
-  /** A GIF's copy, as it would be made. */
-  async function readGif(blob: Blob): Promise<{ info: GifInfo; plan: GifPlan | { refuse: string } }> {
+  /** GIF `m`'s copy, as it would be made (one that came out too big would again: it comes out the same each time). */
+  async function readGif(m: MediaRef, blob: Blob): Promise<{ info: GifInfo; plan: GifPlan | { refuse: string } }> {
     const info = gifInfo(new Uint8Array(await blob.arrayBuffer()));
     const size = gifSize(info.width, info.height);
-    return { info, plan: planGif(info, await encodersFor(size.width, size.height)) };
+    return { info, plan: overCopy(m) ? { refuse: NO_SMALLER } : planGif(info, await encodersFor(size.width, size.height)) };
   }
 
   onMount(async () => {
@@ -125,7 +131,7 @@
         const blob = getBlob(row.id);
         try {
           if (!m || !shrinkable(m) || !blob) row.plan = { refuse: 'That file isn’t stored in this browser' };
-          else if (isGifRef(m)) row.plan = (await readGif(blob)).plan;
+          else if (isGifRef(m)) row.plan = (await readGif(m, blob)).plan;
           else row.plan = avDefault(await readForCopy(m, blob, cardUses(game, row.id), overCopy(m)), fileBytes);
         } catch {
           row.plan = { refuse: 'The app can’t read this file' };
@@ -138,14 +144,14 @@
     if (!ref || !shrinkable(ref) || !blob) return void (cant = 'That file isn’t stored in this browser.');
     if (isGifRef(ref)) {
       try {
-        ({ info, plan: gifPlan } = await readGif(blob));
+        ({ info, plan: gifPlan } = await readGif(ref, blob));
       } catch {
         cant = 'The app can’t read this GIF.';
       }
       return;
     }
     const read = await readForCopy(ref, blob, cardUses(game, id), overCopy(ref));
-    trim = read.span?.ticked ?? false;
+    trim = trimAtFirst(read);
     const o = avOptions(read, trim, fileBytes);
     sel = 'refuse' in o ? 0 : o.pick;
     av = read;
@@ -205,7 +211,8 @@
     if (!madeRef || !ref) return 'Done.';
     const sizes = `${formatBytes(madeRef.size)} (was ${formatBytes(ref.size)})`;
     if (madeRef.size <= fileBytes) return `${sizes}. Phones get this copy (Ctrl+Z takes it back).`;
-    return `${sizes}: still too big for this buzzer server, which takes files up to ${formatBytes(fileBytes)}. 🗜 again makes a smaller one, or add it from a link (Ctrl+Z takes it back).`;
+    const next = smallerLeft(game, ref) ? '🗜 again makes a smaller one, or add it from a link' : 'Add it from a link instead';
+    return `${sizes}: still too big for this buzzer server, which takes files up to ${formatBytes(fileBytes)}. ${next} (Ctrl+Z takes it back).`;
   });
   const ICON = { image: '🖼', video: '🎬', audio: '🔊', font: '🔤' } as const;
   /** Where it shows how far it got once this window is closed: the editor's header, or in play the 🗜 button. */
@@ -300,9 +307,11 @@
       <p class="muted">Phones get the copy; the show keeps this file as it is.</p>
       {#if av && !av.playable}<p class="muted">Phones can’t play this kind of file as it is: the copy is one they can.</p>{/if}
       {#if copy && copy.size > fileBytes}
-        <p class="warn">📱 Its copy ({formatBytes(copy.size)}) is too big for this buzzer server, which takes files up to {formatBytes(fileBytes)}: making it again puts a smaller one in its place.</p>
+        <p class="warn">
+          📱 Its copy ({formatBytes(copy.size)}) is too big for this buzzer server, which takes files up to {formatBytes(fileBytes)}{again ? ': making it again puts a smaller one in its place' : ''}.
+        </p>
       {:else if copy}
-        <p class="muted">📱 Phones get {ref && !phonesTake(ref) ? 'a copy they can play' : 'its smaller copy'} now ({formatBytes(copy.size)}): making it again puts a new one in its place.</p>
+        <p class="muted">📱 Phones get {ref && !phonesTake(ref) ? 'a copy they can play' : 'its smaller copy'} now ({formatBytes(copy.size)}){again ? ': making it again puts a new one in its place' : ''}.</p>
       {/if}
 
       {#if job}
@@ -393,7 +402,7 @@
         <button
           class="primary"
           onclick={make}
-          disabled={!!cant || (ref && isGifRef(ref) ? !gifPlan || 'refuse' in gifPlan : !avp || 'refuse' in avp || (!!opts && 'refuse' in opts))}
+          disabled={!canMake}
           >{copy ? 'Make it again' : ended && 'failed' in ended ? 'Try again' : 'Make it'}</button
         >
       {/if}

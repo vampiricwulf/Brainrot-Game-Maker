@@ -41,7 +41,8 @@ in plain words for the people who make and host games. Anything committed but no
 - New, Open… and reopening a recent game ask first (Keep working / Stop it) while a ✎ edit, 🗜 copy or 🔄 conversion is still being made, as ▶ Play does. Before, they stopped it at once, with only a toast to say so.
 - The editor header's pill for a ✎ / 🗜 / 🔄 job keeps its Stop in sight in a narrower window (1366 px or less): its words end in “…” instead.
 - One window, mid-game: 🗜 Make smaller's window opens in the host panel, as 👥 Players and 🔊 Sound do, never over the stage viewers see.
-- 🗜: a copy that still comes out too big for the buzzer server (an encoder can go over on a busy picture) says so (“still too big for this buzzer server (1.3 MB; it takes 1.0 MB)”) instead of “Phones get the smaller copy now”. In play the host panel's line keeps its 🗜 Make smaller, and 🗜's window then offers only smaller sizes than that copy.
+- 🗜: a copy that still comes out too big for the buzzer server (an encoder can go over on a busy picture) says so (“still too big for this buzzer server (1.3 MB; it takes 1.0 MB)”) instead of “Phones get the smaller copy now”. 🗜 again then offers only copies smaller than it: a smaller picture, or only the part the cards play (ticked), their sizes as far over as that one went. Where none can be smaller (a GIF's, or a sound's its cards play all of), it says to add the file from a link instead, and the host panel's line and the checklist offer no 🗜 for it.
+- 🗜 Make smaller with a buzzer server that takes less than 16 MB a file (one you run yourself) picks the biggest size that fits it, not one that's only under 16 MB.
 
 ## 2026-10-22
 

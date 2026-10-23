@@ -7,7 +7,7 @@
 <script lang="ts">
   import type { Game } from '../../lib/model';
   import type { PhoneItem } from '../../lib/phonecard';
-  import { shrinkHere } from '../../lib/shrink/apply';
+  import { shrinkHere, smallerLeft } from '../../lib/shrink/apply';
   import { openShrinkDialog } from '../../lib/shrink/dialog.svelte';
   import { jobFor, progressText } from '../../lib/shrink/jobs.svelte';
   import { shrinkIds } from './cardrow';
@@ -26,7 +26,14 @@
     title?: string;
   } = $props();
 
-  const ids = $derived(shrinkIds(items, which, (id) => shrinkHere(game, id)));
+  const ids = $derived(
+    shrinkIds(
+      items,
+      which,
+      (id) => shrinkHere(game, id),
+      (id) => smallerLeft(game, game.media.find((m) => m.id === id)),
+    ),
+  );
   /** One of them being made (or waiting its turn). */
   const job = $derived(ids.map((id) => jobFor(id)).find((j) => !!j));
   const pct = $derived(job ? progressText(job) : '');

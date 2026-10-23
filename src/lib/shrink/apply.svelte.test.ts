@@ -7,7 +7,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { app } from '../app.svelte';
 import { arriving, begin, history, startHistory } from '../history.svelte';
 import { mediaUrls, registerBlob } from '../media.svelte';
-import type { Game, MediaRef } from '../model';
+import { newAudioEl, newSavedCard, type Game, type MediaRef } from '../model';
 import { jeopardyGame } from '../testgame';
 import { clone } from '../ops';
 import { watchGame, type GameWatch } from '../watch.svelte';
@@ -101,15 +101,32 @@ describe('a 🗜 copy put in the game', () => {
     const was = prefs.buzzerServer;
     prefs.buzzerServer = 'https://a.test';
     noteServerFiles('https://a.test', { files: { fileBytes: 50, roomBytes: 1000, roomFiles: 32 } });
+    const over = (next: string) => `🗜 Made a smaller copy, but it’s still too big for this buzzer server (100 B; it takes 50 B): ${next} (Ctrl+Z takes it back)`;
     try {
+      // A GIF's comes out the same each time: no "🗜 again".
       const job = queuePhoneCopy('gif')!;
       await made();
       at.release!();
       await ended(job);
-      expect(jobs.ended[job]).toMatchObject({
-        done: '🗜 Made a smaller copy, but it’s still too big for this buzzer server (100 B; it takes 50 B): 🗜 again makes a smaller one, or add it from a link (Ctrl+Z takes it back)',
-      });
+      expect(jobs.ended[job]).toMatchObject({ done: over('add it from a link instead') });
       expect(copies()).toEqual(['gif']);
+      // A video's at 480p: there's a smaller picture.
+      vi.mocked(convertBlob).mockResolvedValue({ blob: new Blob([new Uint8Array(100)], { type: 'video/webm' }), mime: 'video/webm', seconds: 2, width: 854, height: 480 });
+      const vid = queuePhoneCopy('mov', plan(false))!;
+      await ended(vid);
+      expect(jobs.ended[vid]).toMatchObject({ done: over('🗜 again makes a smaller one, or add it from a link') });
+      // A sound's comes out at one size: only one of the part the cards play is smaller.
+      g.media.push({ id: 'snd', name: 'long.wav', mime: 'audio/wav', size: 4000, kind: 'audio' });
+      registerBlob('snd', new Blob([new Uint8Array(4000)], { type: 'audio/wav' }));
+      vi.mocked(convertBlob).mockResolvedValue({ blob: new Blob([new Uint8Array(100)], { type: 'audio/mp4' }), mime: 'audio/mp4', seconds: 2 });
+      const snd: CopyPlan = { ...plan(false), mime: 'audio/mp4', ext: 'm4a', out: { seconds: 2, sound: true } };
+      const all = queuePhoneCopy('snd', snd)!;
+      await ended(all);
+      expect(jobs.ended[all]).toMatchObject({ done: over('add it from a link instead') });
+      g.cards = [{ ...newSavedCard('Listen'), elements: [{ ...newAudioEl('snd'), endAt: 1 }] }];
+      const again = queuePhoneCopy('snd', snd)!;
+      await ended(again);
+      expect(jobs.ended[again]).toMatchObject({ done: over('🗜 again makes a smaller one, or add it from a link') });
     } finally {
       forgetServerFiles();
       prefs.buzzerServer = was;

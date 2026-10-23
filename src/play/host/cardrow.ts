@@ -49,11 +49,15 @@ export function slowLine(kinds: CardItem['kind'][]): string {
 /**
  * The files of a card's items that 🗜 Make smaller offers smaller copies of for phones (each once), that `can` says 🗜
  * makes copies of here: those that go but are big ('slow'), going as themselves (a copy that's big itself: one made the
- * same way wouldn't be smaller), or those too big for the buzzer server ('big'), a copy that came out too big too (its
- * window offers only smaller ones).
+ * same way wouldn't be smaller), or those too big for the buzzer server ('big'), a copy that came out too big too when
+ * `smaller` says 🗜 can make one smaller than it (apply.ts smallerLeft: its window offers only those).
  */
-export function shrinkIds(items: PhoneItem[], which: 'slow' | 'big', can: (id: Id) => boolean): Id[] {
-  const ids = items.flatMap((i) => (i.media && (which === 'slow' ? i.slow && (!i.sends || i.sends === i.media) : i.why === 'big') && can(i.media) ? [i.media] : []));
+export function shrinkIds(items: PhoneItem[], which: 'slow' | 'big', can: (id: Id) => boolean, smaller: (id: Id) => boolean): Id[] {
+  const ids = items.flatMap((i) => {
+    if (!i.media || !can(i.media)) return [];
+    const asCopy = !!i.sends && i.sends !== i.media;
+    return (which === 'slow' ? i.slow && !asCopy : i.why === 'big' && (!asCopy || smaller(i.media))) ? [i.media] : [];
+  });
   return [...new Set(ids)];
 }
 

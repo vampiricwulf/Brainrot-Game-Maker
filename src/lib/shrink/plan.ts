@@ -160,8 +160,10 @@ export const SOUND_TOO_LONG = 'This browser can only make a copy of a sound like
 export const OPUS_NOTE = 'Its sound is Opus: some iPhones may not play it. For a copy every phone plays, make it in Chrome or Edge on Windows or Mac, or in the desktop app.';
 /** Said under the choices when even the smallest is over what the buzzer server takes. */
 export const STILL_TOO_BIG = 'Still too big for this buzzer server: try only the part the cards play, or add it from a link.';
-/** Its copy came out too big for the buzzer server at the smallest size there is. */
-export const NO_SMALLER = 'Its copy came out too big for this buzzer server, and there’s no smaller size to make: add it from a link instead';
+/** Its copy came out too big for the buzzer server, and none smaller can be made of it. */
+export const NO_SMALLER = 'Its copy came out too big for this buzzer server, and there’s no smaller one to make: add it from a link instead';
+/** The same, but one of only the part its cards play would be smaller. */
+export const NO_SMALLER_PART = 'Its copy came out too big for this buzzer server, and there’s no smaller one of all of it: try only the part the cards play, or add it from a link';
 
 /** One of a video's copies: its preset, its picture's size and its bitrate. */
 export interface VideoChoice {
@@ -277,30 +279,58 @@ export const lengthText = (s: number): string => (s < 60 ? `${Math.round(s * 10)
 export const spanText = (span: Span, length: number | null): string =>
   `${clockTenths(span.from)} → ${span.to === null ? 'the end' : clockTenths(span.to)}${length !== null || span.to !== null ? ` (${lengthText(spanSeconds(span, length ?? 0))})` : ''}`;
 
+/** A file's 🗜 copy that came out too big for the buzzer server: how big, how long (seconds), and a video's picture. */
+export interface OverCopy {
+  size: number;
+  seconds: number;
+  width?: number;
+  height?: number;
+}
+
+/**
+ * What file `f`'s copy that came out too big (`o`) tells of one made again (a `kind` copy): `est`, about how big that
+ * copy should have come out (0: not known), and `k`, its size over that (1 at least). An encoder can go far over on a
+ * busy picture, and would again on the same file: a new copy comes out at about its own estimate × `k`.
+ */
+export function overBy(kind: 'video' | 'audio', f: MediaFacts, o: OverCopy | undefined): { est: number; k: number } {
+  if (!o) return { est: 0, k: 1 };
+  let bps = 0;
+  if (kind === 'audio') bps = f.audio?.channels === 1 ? MONO_BPS : SOUND_BPS;
+  else if (f.video) {
+    const was = videoChoices(f.video.width, f.video.height).find((c) => c.width === o.width && c.height === o.height);
+    if (was) bps = was.bps + soundBps(f);
+  }
+  const est = bps ? estimateBytes(bps, o.seconds) : 0;
+  return { est, k: est ? Math.max(1, o.size / est) : 1 };
+}
+
 /**
  * A video's copies as they'd come out (`seconds` of it), each with its size about, biggest first; and the one picked:
- * the biggest under 0.9 × SLOW_FILE_BYTES, else under 0.9 × the buzzer server's `fileBytes`, else the smallest
- * (`tooBig`). Those not much smaller than the file are left out, unless phones can't play the file as it is
- * (`playable` false).
+ * the biggest under 0.9 × SLOW_FILE_BYTES (or × the buzzer server's `fileBytes`, when that's less), else under 0.9 ×
+ * `fileBytes`, else the smallest (`tooBig`). Those not much smaller than the file are left out, unless phones can't
+ * play the file as it is (`playable` false). After a copy that came out too big for the buzzer server (`over`), only
+ * those that come out smaller than it are offered (a smaller picture, or a shorter part), their sizes as far over.
  */
 export function videoOptions(
   f: MediaFacts,
   seconds: number,
-  opts: { fileBytes: number; playable: boolean; smallerThan?: { width: number; height: number } },
+  opts: { fileBytes: number; playable: boolean; over?: OverCopy },
 ): { choices: (VideoChoice & { estimate: number })[]; pick: number; tooBig: boolean } | { refuse: string } {
   if (!f.box) return { refuse: CANT_READ_FILE };
   if (!f.video) return { refuse: NO_PICTURE };
   if (!f.video.decodes) return { refuse: CANT_READ_VIDEO };
   const abps = soundBps(f);
   let all = videoChoices(f.video.width, f.video.height).map((c) => ({ ...c, estimate: estimateBytes(c.bps + abps, seconds) }));
-  // (Its copy at one size came out too big for the buzzer server, over its estimate: only smaller ones, never that again.)
-  const s = opts.smallerThan;
-  if (s) all = all.filter((c) => c.width * c.height < s.width * s.height);
-  if (!all.length) return { refuse: NO_SMALLER };
+  if (opts.over) {
+    const { est, k } = overBy('video', f, opts.over);
+    const below = est || opts.over.size;
+    all = all.filter((c) => c.estimate < below).map((c) => ({ ...c, estimate: Math.round(c.estimate * k) }));
+    if (!all.length) return { refuse: NO_SMALLER };
+  }
   const choices = opts.playable ? all.filter((c) => c.estimate < PRESET_MAX_SHARE * f.size) : all;
   if (!choices.length) return { refuse: NOT_MUCH_SMALLER };
   const under = (n: number) => choices.findIndex((c) => c.estimate < 0.9 * n);
-  let pick = under(SLOW_FILE_BYTES);
+  let pick = under(Math.min(SLOW_FILE_BYTES, opts.fileBytes));
   if (pick < 0) pick = under(opts.fileBytes);
   return pick < 0 ? { choices, pick: choices.length - 1, tooBig: true } : { choices, pick, tooBig: false };
 }
@@ -435,30 +465,50 @@ export interface AvRead {
   span: { span: Span; ticked: boolean } | null;
   /** The video encoders there are at each choice's size ("1280×720"). */
   enc: Record<string, Encoders>;
-  /** Its copy now came out too big for the buzzer server at this size: only smaller ones are offered. */
-  smallerThan?: { width: number; height: number };
+  /** Its copy now, which came out too big for the buzzer server: only copies smaller than it are offered. */
+  over?: OverCopy;
 }
 
 const NO_ENCODERS: Encoders = { avc: false, vp9: false, vp8: false };
 
-/** A video's copies as they'd come out, with only the part the cards play (`trim`) or all of it (a sound has none). */
+/**
+ * A video's copies as they'd come out, with only the part the cards play (`trim`) or all of it (a sound has none).
+ * After a copy that came out too big, a sound's is refused unless it's of a shorter part, and where only the part the
+ * cards play would be smaller, the refusal says so.
+ */
 export function avOptions(r: AvRead, trim: boolean, fileBytes: number): ReturnType<typeof videoOptions> {
-  if (r.kind === 'audio') return { choices: [], pick: 0, tooBig: false };
   const span = trim && r.span ? r.span.span : null;
-  return videoOptions(r.facts, spanSeconds(span, r.facts.seconds ?? 0), { fileBytes, playable: r.playable, smallerThan: r.smallerThan });
+  const seconds = spanSeconds(span, r.facts.seconds ?? 0);
+  const o =
+    r.kind === 'audio'
+      ? r.over && !(seconds < r.over.seconds - 0.05)
+        ? { refuse: NO_SMALLER }
+        : { choices: [], pick: 0, tooBig: false }
+      : videoOptions(r.facts, seconds, { fileBytes, playable: r.playable, ...(r.over ? { over: r.over } : {}) });
+  if ('refuse' in o && o.refuse === NO_SMALLER && !trim && r.span && !('refuse' in avOptions(r, true, fileBytes))) return { refuse: NO_SMALLER_PART };
+  return o;
 }
 
-/** How a video's copy at `choice` (a sound's: there's one), with or without only the part the cards play, is made. */
+/**
+ * How a video's copy at `choice` (a sound's: there's one), with or without only the part the cards play, is made (its
+ * size, about, as far over as a copy that came out too big went).
+ */
 export function avPlan(r: AvRead, trim: boolean, choice: VideoChoice | null): CopyPlan | { refuse: string } {
   const span = trim && r.span ? r.span.span : null;
-  if (r.kind === 'audio') return planSoundCopy(r.facts, r.can, span, r.playable);
-  if (!choice) return { refuse: NOT_MUCH_SMALLER };
-  return planVideoCopy(r.facts, r.can, r.enc[`${choice.width}×${choice.height}`] ?? NO_ENCODERS, choice, span, r.playable);
+  const p = r.kind === 'audio' ? planSoundCopy(r.facts, r.can, span, r.playable) : choice ? planVideoCopy(r.facts, r.can, r.enc[`${choice.width}×${choice.height}`] ?? NO_ENCODERS, choice, span, r.playable) : { refuse: NOT_MUCH_SMALLER };
+  const { k } = overBy(r.kind, r.facts, r.over);
+  return 'refuse' in p || k === 1 ? p : { ...p, estimate: Math.round(p.estimate * k) };
 }
+
+/**
+ * Whether "Only the part the cards play" is ticked at first: when it's ticked by itself (cardSpan), or after a copy that
+ * came out too big (the part can only be smaller).
+ */
+export const trimAtFirst = (r: Pick<AvRead, 'span' | 'over'>): boolean => !!r.span && (r.span.ticked || !!r.over);
 
 /** A file's copy as 🗜 makes it unasked (a list of files at once): the part the cards play when ticked, the picked size. */
 export function avDefault(r: AvRead, fileBytes: number): CopyPlan | { refuse: string } {
-  const trim = r.span?.ticked ?? false;
+  const trim = trimAtFirst(r);
   const o = avOptions(r, trim, fileBytes);
   if ('refuse' in o) return o;
   return avPlan(r, trim, o.choices[o.pick] ?? null);

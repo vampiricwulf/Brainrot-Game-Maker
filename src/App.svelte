@@ -37,7 +37,7 @@
   import { hasWork } from './lib/recent';
   import { validate } from './lib/validate';
   import { shrinkMaybe } from './lib/shrink/probe';
-  import { shrinkable } from './lib/shrink/apply';
+  import { shrinkable, shrinksFurther } from './lib/shrink/apply';
   import { checks, knownVerdict } from './lib/shrink/checks.svelte';
   import { jobAsk, jobLine, jobs, stopAll } from './lib/shrink/jobs.svelte';
   import { checklistLines, type ChecklistLine } from './lib/checklist';
@@ -468,7 +468,7 @@
   const check = (game: Game) => {
     const lim = fileLimitsNow();
     const filesOff = (!!remote.code && remote.status === 'online' && roomHasCards() && !roomHasFiles()) || lim.off;
-    const canShrink = (m: MediaRef) => shrinkMaybe() && shrinkable(m) && !!mediaUrls[m.id];
+    const canShrink = (m: MediaRef) => shrinkMaybe() && shrinkable(m) && !!mediaUrls[m.id] && shrinksFurther(game, m, lim.limits.fileBytes);
     checklist = checklistLines(game, validate(game, { filesOff, fileBytes: lim.limits.fileBytes, stored: (id) => id in mediaUrls, gifs: lim.gifs, canShrink, plays: knownVerdict }));
   };
   const checkSoon = debounce(() => watch && check(watch.value()), 300);

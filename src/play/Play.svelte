@@ -119,7 +119,7 @@
   import ShrinkDialog from '../editor/ShrinkDialog.svelte';
   import { openShrinkDialog, shrinkDialog } from '../lib/shrink/dialog.svelte';
   import { jobFor, progressText, stopAll } from '../lib/shrink/jobs.svelte';
-  import { shrinkable } from '../lib/shrink/apply';
+  import { shrinkable, shrinksFurther } from '../lib/shrink/apply';
   import { shrinkMaybe } from '../lib/shrink/probe';
 
   let {
@@ -3143,7 +3143,7 @@
     // (Whether a video or sound plays in this browser: as worked out in the editor, as nothing is checked here.)
     // (A card's file too big for the buzzer server, or of a kind phones can't play, that 🗜 can make a copy of: its
     // line gets 🗜 Make smaller. There's no ↻ here: an MKV that plays is 🗜's too.)
-    const canShrink = (m: MediaRef) => shrinkMaybe() && shrinkable(m) && !!mediaUrls[m.id];
+    const canShrink = (m: MediaRef) => shrinkMaybe() && shrinkable(m) && !!mediaUrls[m.id] && shrinksFurther(g, m, fileBytes);
     return validate(g, { filesOff, fileBytes, gifs, stored: (id) => id in mediaUrls, plays: knownVerdict, canShrink, repack: false })
       .map((p) => {
         const r = typeof p.tab === 'number' ? g.rounds[p.tab] : undefined;

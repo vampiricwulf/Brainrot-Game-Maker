@@ -6,13 +6,16 @@
 // host column's item has 🗜 Make smaller, whose window names the file (the host's window isn't on stream then); in one
 // window, a tile's card sent to Ann's phone, too big, gets 🗜 Make smaller on its panel line: its window names no file,
 // shows no preview, and the copy goes up to the phone, which shows it looping. Nothing in play names a file, the
-// editor's game keeps both copies, and the audience window's game never lists one. Needs `npm ci` in buzzer/.
+// editor's game keeps both copies, and the audience window's game never lists one. First, in the editor, two sounds
+// whose copies came out too big for the server: 🗜 Again offers one of only the part its card plays (none of all of
+// it), or, for one whose card plays all of it, says there's none smaller to make; the checklist offers 🗜 for the first
+// only. Needs `npm ci` in buzzer/.
 import { chromium } from 'playwright-core';
 import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { editorReady, forgetSeen, openGameFile, packGame, recordSeen, seenWhere, shownOf, startBuzzer, startRoomOn, stored } from './helpers.mjs';
-import { gif, noise } from './mediafixtures.mjs';
+import { gif, noise, wav } from './mediafixtures.mjs';
 
 const file = resolve(process.env.APP_FILE || 'dist/index.html');
 if (!existsSync(file)) throw new Error('Run `npm run build` first');
@@ -33,11 +36,17 @@ function assert(cond, msg) {
 const dance = gif(320, 240, Array.from({ length: 24 }, () => ({ px: noise(320 * 240), delay: 10 })));
 const twirl = gif(320, 240, Array.from({ length: 16 }, () => ({ px: noise(320 * 240), delay: 10 })));
 if (twirl.length <= 1024 ** 2) throw new Error(`The GIF fixture came out ${twirl.length} bytes: it has to be over 1 MB`);
+// Two sounds with a copy for phones each that came out too big for 1 MB (1.2 MB): "hum" (8 s) on a card that plays its
+// first 2 s, "drone" on one that plays all of it.
+const hum = wav(8);
+const drone = wav(1);
+const tooBig = wav(7);
 
 let ids = 0;
 const box = (y) => ({ id: `e${ids++}`, x: 100, y, w: 800, h: 160, rotation: 0, opacity: 1, zIndex: 1 });
 const text = (t, y = 40) => ({ ...box(y), kind: 'text', text: t, font: 'Arial', size: 90, weight: 700, italic: false, underline: false, uppercase: false, color: '#ffffff', align: 'center', vAlign: 'middle', lineHeight: 1.2, letterSpacing: 0, autoFit: true });
 const image = (media, y) => ({ ...box(y), kind: 'image', media, fit: 'contain' });
+const sound = (media, more = {}) => ({ ...box(300), kind: 'audio', media, visible: true, autoplay: false, loop: false, muted: false, volume: 1, ...more });
 const slide = (...elements) => ({ background: {}, elements });
 // (Every file's name carries "zfnqj": nothing in play may show one in one window.)
 const NAMES = ['zfnqj'];
@@ -64,12 +73,20 @@ const game = {
   media: [
     { id: 'dance', name: 'dance-zfnqj.gif', mime: 'image/gif', size: dance.length, kind: 'image' },
     { id: 'twirl', name: 'twirl-zfnqj.gif', mime: 'image/gif', size: twirl.length, kind: 'image' },
+    { id: 'hum', name: 'hum-zfnqj.wav', mime: 'audio/wav', size: hum.length, kind: 'audio' },
+    { id: 'humc', name: 'hum-zfnqj (phones).wav', mime: 'audio/wav', size: tooBig.length, kind: 'audio', phoneCopy: { of: 'hum' } },
+    { id: 'drone', name: 'drone-zfnqj.wav', mime: 'audio/wav', size: drone.length, kind: 'audio' },
+    { id: 'dronec', name: 'drone-zfnqj (phones).wav', mime: 'audio/wav', size: tooBig.length, kind: 'audio', phoneCopy: { of: 'drone' } },
   ],
   audio: {}, wheels: [], dice: [], theme: {},
-  cards: [{ id: 'sc_tip', name: 'Tip', ...slide(text('Do this'), image('dance', 300)) }],
+  cards: [
+    { id: 'sc_tip', name: 'Tip', ...slide(text('Do this'), image('dance', 300)) },
+    { id: 'sc_hum', name: 'Hum', ...slide(text('Hum'), sound('hum', { endAt: 2 })) },
+    { id: 'sc_drone', name: 'Drone', ...slide(text('Drone'), sound('drone')) },
+  ],
 };
 const packPath = resolve('test-results/play-copies.brainrot');
-writeFileSync(packPath, await packGame(game, { dance, twirl }));
+writeFileSync(packPath, await packGame(game, { dance, twirl, hum, humc: tooBig, drone, dronec: tooBig }));
 
 const executablePath = process.env.CHROMIUM_PATH || (existsSync('/opt/pw-browsers/chromium') ? '/opt/pw-browsers/chromium' : undefined);
 const buzzer = await startBuzzer('buzzer-playcopies-', { vars: { FILE_MB: 1, ROOM_FILES_MB: 8, FILES_MB_PER_DAY: 40 } });
@@ -124,6 +141,33 @@ try {
     await dialog.waitFor({ state: 'detached' });
   };
 
+  // ---------- In the editor: 🗜 Again on a copy that came out too big ----------
+  console.log('A copy that came out too big:');
+  await page.locator('nav > button', { hasText: '🖼 Media' }).click();
+  const again = async (id) => {
+    await page.locator(`[data-place="media:${id}"] [data-phone-copy]`).getByRole('button', { name: '🗜 Again' }).click();
+    await dialog.waitFor();
+  };
+  const says = async () => (await dialog.innerText()).replace(/\s+/g, ' ');
+  const makeAgain = dialog.getByRole('button', { name: 'Make it again' });
+  const tooBigLine = '📱 Its copy (1.2 MB) is too big for this buzzer server, which takes files up to 1.0 MB';
+  await again('hum');
+  await dialog.getByText(/^A sound for phones: about \d+ KB\.$/).waitFor({ timeout: 60_000 });
+  const partBox = dialog.getByRole('checkbox', { name: /^Only the part the cards play: 0:00 → 0:02 \(2 s\)/ });
+  assert(
+    (await partBox.isChecked()) && (await says()).includes(`${tooBigLine}: making it again puts a smaller one in its place.`) && (await makeAgain.isEnabled()),
+    'its sound’s copy came out too big: 🗜 Again offers one of only the part its card plays (ticked), smaller than it',
+  );
+  await partBox.uncheck();
+  await dialog.getByText('there’s no smaller one of all of it: try only the part the cards play, or add it from a link.').waitFor();
+  assert((await says()).includes(`${tooBigLine}.`) && !(await says()).includes('making it again') && (await makeAgain.isDisabled()), 'all of it: none smaller, and the window says so once, never “making it again”');
+  await dialog.getByRole('button', { name: 'Cancel' }).click();
+  await again('drone');
+  await dialog.getByText('Its copy came out too big for this buzzer server, and there’s no smaller one to make: add it from a link instead.').waitFor({ timeout: 60_000 });
+  assert(!(await says()).includes('making it again') && (await makeAgain.isDisabled()) && (await dialog.getByRole('checkbox').count()) === 0, 'a sound its card plays all of: none smaller to make, so a link instead');
+  await dialog.getByRole('button', { name: 'Cancel' }).click();
+  await dialog.waitFor({ state: 'detached' });
+
   // ---------- Before the game: the checklist ----------
   console.log('The pre-game checklist:');
   await page.getByRole('button', { name: '▶ Play' }).click();
@@ -139,6 +183,12 @@ try {
   assert(
     /^🤫 Card “Tip” has a GIF too big to send to phones \(2\.\d MB; this buzzer server takes files up to 1\.0 MB\): make a smaller copy for phones \(🗜\) or add it from a link 🗜 Make smaller$/.test(said),
     `its line offers 🗜 Make smaller (${said})`,
+  );
+  const soundLines = await Promise.all(['Hum', 'Drone'].map(async (c) => (await checks.locator('li', { hasText: `🤫 Card “${c}” has a sound` }).innerText()).replace(/\s+/g, ' ')));
+  assert(
+    soundLines[0].endsWith('(1.2 MB; this buzzer server takes files up to 1.0 MB): make a smaller copy for phones (🗜) or add it from a link 🗜 Make smaller') &&
+      soundLines[1].endsWith('(1.2 MB; this buzzer server takes files up to 1.0 MB): add it from a link instead'),
+    `a copy too big: 🗜 Make smaller only where a smaller one can be made (${soundLines.join(' | ')})`,
   );
   const tipButton = tipLine.getByRole('button', { name: '🗜 Make smaller' });
   assert((await tipButton.getAttribute('title')) === 'Make smaller copies of these files for phones', 'titled for what it does, naming no file');
@@ -205,7 +255,7 @@ try {
   await dialog.waitFor({ state: 'detached' });
   await aud.waitForFunction(() => window.__games.length > 0);
   const audGames = await aud.evaluate(() => window.__games);
-  assert(audGames.every((names) => names.length === 2 && !names.some((n) => n.includes('(phones)'))), `the audience window’s game never lists the copy made before the game (${audGames.at(-1)?.join(', ')})`);
+  assert(audGames.every((names) => names.length === 4 && !names.some((n) => n.includes('(phones)'))), `the audience window’s game never lists the copy made before the game (${audGames.at(-1)?.join(', ')})`);
   await aud.close();
   await page.locator('[data-partner-cards-info]').waitFor({ state: 'detached' });
 
@@ -258,14 +308,14 @@ try {
 
   // Kept: the game being played has both copies, and so does the editor's.
   const names = (g) => (g?.media ?? []).map((m) => m.name).sort();
-  const want = [`dance-zfnqj (phones).${ext}`, 'dance-zfnqj.gif', `twirl-zfnqj (phones).${ext}`, 'twirl-zfnqj.gif'];
+  const want = [`dance-zfnqj (phones).${ext}`, 'dance-zfnqj.gif', 'drone-zfnqj (phones).wav', 'drone-zfnqj.wav', 'hum-zfnqj (phones).wav', 'hum-zfnqj.wav', `twirl-zfnqj (phones).${ext}`, 'twirl-zfnqj.gif'];
   assert(await until(async () => JSON.stringify(names((await stored(page, 'playSession'))?.game)) === JSON.stringify(want)), 'the game being played keeps both copies');
   assert(await until(async () => JSON.stringify(names(await stored(page, 'editorDraft'))) === JSON.stringify(want)), 'and so does the editor’s');
   const [aud2] = await Promise.all([page.waitForEvent('popup'), page.keyboard.press('a')]);
   await aud2.waitForLoadState('domcontentloaded');
   await aud2.waitForFunction(() => window.__games.length > 0);
   const audLater = await aud2.evaluate(() => window.__games);
-  assert(audLater.every((names) => names.length === 2 && !names.some((n) => n.includes('(phones)'))), `the audience window’s game never lists one (${audLater.at(-1)?.join(', ')})`);
+  assert(audLater.every((names) => names.length === 4 && !names.some((n) => n.includes('(phones)'))), `the audience window’s game never lists one (${audLater.at(-1)?.join(', ')})`);
   await phoneCtx.close();
 
   assert(!errors.length, `no page errors (${errors.join('; ')})`);

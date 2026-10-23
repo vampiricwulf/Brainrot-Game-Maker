@@ -15,7 +15,7 @@
   import { copyCovers, copyNote, phoneCard, phoneCopyOf, playTimes, sendsOf, sizeWords, type LeftOut, type PhoneItem } from '../lib/phonecard';
   import { buzzerBase, remote, roomHasCards, roomHasFiles } from '../lib/remote.svelte';
   import { fileLimitsNow } from '../lib/serverlimits.svelte';
-  import { phonesTake, queueConvert, removePhoneCopy, shrinkable } from '../lib/shrink/apply';
+  import { phonesTake, queueConvert, removePhoneCopy, shrinkable, smallerLeft } from '../lib/shrink/apply';
   import { verdictOf } from '../lib/shrink/checks.svelte';
   import { jobFor } from '../lib/shrink/jobs.svelte';
   import { aOrAn, fixBoxName, tracksOf } from '../lib/shrink/words';
@@ -61,10 +61,14 @@
     const ref = refOf(it);
     return sizeWords(`${ICON[it.kind]} ${it.name}`, it, sizeOf(it), !!ref && !phonesTake(ref));
   };
-  /** 🗜 can make a smaller copy of an item's file for phones here (a GIF, video or sound stored in the game). */
+  /**
+   * 🗜 can make a smaller copy of an item's file for phones here (a GIF, video or sound stored in the game), and when what
+   * goes is its copy, which came out too big, one smaller than that.
+   */
   const canShrink = (it: PhoneItem): boolean => {
     const ref = refOf(it);
-    return !!ref && shrinkMaybe() && shrinkable(ref) && !!mediaUrls[ref.id];
+    const asCopy = !!it.sends && it.sends !== it.media;
+    return !!ref && shrinkMaybe() && shrinkable(ref) && !!mediaUrls[ref.id] && (!asCopy || it.why !== 'big' || smallerLeft(game, ref));
   };
   /** ↻ for an item's file phones can't open that plays here: the same video and sound in a type they take. */
   const repackOf = (it: PhoneItem) => {
