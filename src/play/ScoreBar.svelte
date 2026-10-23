@@ -193,7 +193,8 @@
     height: 46px;
     z-index: 1;
     border-radius: 50%;
-    background: #1f9d55;
+    /* (AudienceView's --right: a blue on a green stage key.) */
+    background: var(--right, #1f9d55);
     border: 3px solid #fff;
     color: #fff;
     font-size: 26px;

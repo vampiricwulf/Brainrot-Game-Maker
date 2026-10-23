@@ -30,7 +30,7 @@
   import BoardGameStage from './boardgame/BoardGameStage.svelte';
   import DecorLayer from './DecorLayer.svelte';
   import type { AvatarDrop } from './rpg/hostops';
-  import { boardLayout, presetTheme, splashColors, STAGE_KEYS, themeStyle } from '../lib/theme';
+  import { boardLayout, presetTheme, rightFill, splashColors, STAGE_KEYS, themeStyle } from '../lib/theme';
   import AnsweringPlate from './AnsweringPlate.svelte';
   import QrCode from '../lib/QrCode.svelte';
   import CuePlayer from './CuePlayer.svelte';
@@ -265,6 +265,8 @@
   const keyColor = $derived(game.theme?.stageBg ? STAGE_KEYS[game.theme.stageBg] : undefined);
   /** The Daily Double and PARTNER UP! splashes' colors, clear of that key. */
   const splash = $derived(splashColors(game.theme?.stageBg));
+  /** The green for what's right (a blue where a green stage key would make it see-through in OBS). */
+  const rightBg = $derived(rightFill(game.theme?.stageBg));
   // A sound cue plays once, when it arrives. One already old by then (this window was opened or reconnected since it
   // started) stays quiet: an audience window opened mid-game doesn't replay the round intro. Short cues overlap (a
   // right-answer sound isn't cut off by the reveal's), a few at most; the host stopping the sound stops them all. Under
@@ -430,7 +432,7 @@
   </div>
 {/snippet}
 
-<div class="theme" style={themeCss}>
+<div class="theme" style={themeCss} style:--right={rightBg}>
 {#if live.pregame}
   <!-- The host is still on the pre-game screen. -->
   <div class="full title-card" in:fade={{ duration: 300 }}>
@@ -1137,7 +1139,7 @@
     overflow: hidden;
   }
   .choice.right {
-    background: #1f9d55;
+    background: var(--right, #1f9d55);
     border-color: #fff;
   }
   .choice.dim {
@@ -1631,7 +1633,7 @@
     visibility: hidden;
   }
   .spot-result.right {
-    background: #1f9d55;
+    background: var(--right, #1f9d55);
   }
   .spot-result.wrong {
     background: #c53030;

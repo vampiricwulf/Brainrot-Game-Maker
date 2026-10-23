@@ -285,6 +285,12 @@ export function splashColors(key: Theme['stageBg']): { dd: readonly string[]; pa
   return { dd: gone(SPLASHES.dd) ? SPLASHES.partner : SPLASHES.dd, partner: gone(SPLASHES.partner) ? SPLASHES.dd : SPLASHES.partner };
 }
 
+/** The stream's green for what's right (the lit choice, ✔ CORRECT, a wager's ✔), and a blue clear of both keys. */
+const RIGHT = ['#1f9d55', '#1f6fd1'] as const;
+
+/** That green, or the blue where OBS would make the green see-through (a green stage key): AudienceView's --right. */
+export const rightFill = (key: Theme['stageBg']): string => (key && obsKeyed(RIGHT[0], STAGE_KEYS[key]) ? RIGHT[1] : RIGHT[0]);
+
 /**
  * The CSS variables of the optional looks. Without them each is what the board, the headers and the plates always
  * had (Board.svelte, ScoreBar.svelte and AudienceView.svelte read them), so an older game looks the same.

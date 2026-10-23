@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { contrast, obsKeyed } from './colors';
-import { altTile, EXTRA_LOOKS, headerBackground, isThemeColor, isThemeFont, keyedRoundColors, keyedThemeColors, lookNumber, otherStageKey, presetEdited, presetTheme, roundStageColors, splashColors, STAGE_KEYS, stageText, themeReadability, themeStyle, tileBackground, type Theme } from './theme';
+import { altTile, EXTRA_LOOKS, headerBackground, isThemeColor, isThemeFont, keyedRoundColors, keyedThemeColors, lookNumber, otherStageKey, presetEdited, presetTheme, rightFill, roundStageColors, splashColors, STAGE_KEYS, stageText, themeReadability, themeStyle, tileBackground, type Theme } from './theme';
 import { migrateGame, newGame } from './model';
 import { categoryBox } from './boardfit';
 import { newBoardGameRound } from './boardgame';
@@ -314,5 +314,12 @@ describe('colors OBS would key out', () => {
       const { dd, partner } = splashColors(key);
       expect([...dd, ...partner].some((c) => obsKeyed(c, STAGE_KEYS[key]))).toBe(false);
     }
+  });
+
+  it('the green for what is right on stream turns blue where the key would take it', () => {
+    expect(rightFill(undefined)).toBe('#1f9d55');
+    expect(rightFill('magenta')).toBe('#1f9d55');
+    expect(rightFill('green')).toBe('#1f6fd1');
+    for (const key of ['green', 'magenta'] as const) expect(obsKeyed(rightFill(key), STAGE_KEYS[key])).toBe(false);
   });
 });
