@@ -5,9 +5,11 @@
 -->
 <script lang="ts">
   import { onMount } from 'svelte';
-  import { toast } from '../lib/app.svelte';
+  import { app, toast } from '../lib/app.svelte';
+  import { ask, tell } from '../lib/ask.svelte';
   import { canSelfUpdate, installUpdate, openLink, restartIntoUpdate } from '../lib/desktop.svelte';
   import { inTauri } from '../lib/platform';
+  import { jobAsk, jobLine, stopAll } from '../lib/shrink/jobs.svelte';
   import { ASSETS, skipVersion, update, type Release } from '../lib/update.svelte';
 
   let { release, notice = false }: { release: Release; notice?: boolean } = $props();
@@ -28,6 +30,12 @@
 
   async function install(): Promise<void> {
     if (!exe || !sig) return;
+    // A ✎ / 🗜 / 🔄 job would be cut off by the restart: asked first, as New and ▶ Play do.
+    const job = jobAsk('restart into the new version');
+    if (job) {
+      if (!(await ask(job, { ok: 'Stop it and update', cancel: 'Keep working' }))) return;
+      stopAll(undefined, true);
+    }
     update.status = 'installing';
     try {
       // Already in place (the restart failed last time): only the restart is left.
@@ -35,11 +43,19 @@
         await installUpdate(exe, sig);
         update.installed = release.version;
       }
+      // A game (or a job) started while it downloaded: no restart by itself. The button says ⟳ Restart into it.
+      if (app.screen === 'play' || jobLine()) {
+        update.status = 'available';
+        const when = app.screen === 'play' ? 'from the editor when the game is over' : 'once the job is done';
+        toast(`Version ${release.version} is ready: ⟳ Restart into it ${when}.`, 8000);
+        return;
+      }
       await restartIntoUpdate();
     } catch (err) {
       update.status = 'available';
       const why = typeof err === 'string' ? err : err instanceof Error ? err.message : '';
-      toast(
+      // (Shown until it's read: it can say what the next start needs.)
+      void tell(
         update.installed === release.version
           ? `Version ${release.version} is in place, but the app didn't restart${why ? ` (${why})` : ''}. Press Restart again, or close the app and open it.`
           : why || "The update didn't install.",

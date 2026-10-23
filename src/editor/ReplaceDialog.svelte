@@ -1,6 +1,7 @@
 <!-- Asked before New, Open… or a recent game replaces a game with changes that aren't saved to a file. -->
 <script lang="ts">
   import { modal } from '../lib/modal';
+  import { inTauri, keptHere } from '../lib/platform';
   import type { ReplaceChoice } from '../lib/recent';
 
   /**
@@ -32,9 +33,12 @@
     </div>
     <p>“{title}” has changes that aren't saved to a file yet.</p>
     {#if full}
-      <p class="warn small">This browser's storage is full, so “{title}” can't be kept here: {go} anyway loses it. Save first to keep it.</p>
+      <p class="warn small">
+        {inTauri() ? 'Storage on this PC' : "This browser's storage"} is full, so “{title}” can't be kept here: {go} anyway loses it. Save first to keep
+        it.
+      </p>
     {:else}
-      <p class="hint">Either way “{title}” isn't lost: {go} anyway keeps it in this browser, and Open… → Recent games brings it back.</p>
+      <p class="hint">Either way “{title}” isn't lost: {go} anyway keeps it {keptHere()}, and Open… → Recent games brings it back.</p>
     {/if}
     <div class="modal-foot">
       <button class="ghost" onclick={() => onchoice('cancel')}>Cancel</button>

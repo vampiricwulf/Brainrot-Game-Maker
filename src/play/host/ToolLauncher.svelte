@@ -7,6 +7,7 @@
   import { anchored } from '../../lib/anchored';
   import { modalOpen } from '../../lib/modal';
   import { app, toast } from '../../lib/app.svelte';
+  import { popupBlocked } from '../../lib/platform';
   import type { Game, SentCard, Session } from '../../lib/model';
   import { openCategories, openCategoryWheel, openPlayerWheel, openQuickWheel, openTemplateWheel, openWheel, quickDice, rollDice, toggleScoreboard } from '../../lib/overlay';
   import { WHEEL_TEMPLATES } from '../../lib/wheeltemplates';
@@ -122,7 +123,7 @@
    * the card can go to the window next; from the 🪟 button's own menu, it closes.
    */
   function cardWindowFor(id: string): void {
-    if (!openCardWindow(id)) return void toast('The browser blocked the popup. Allow popups for this file and try again.', 5000);
+    if (!openCardWindow(id)) return void toast(popupBlocked(), 5000);
     if (menu === 'win') done();
   }
 

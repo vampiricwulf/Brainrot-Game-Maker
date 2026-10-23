@@ -6,6 +6,7 @@
   import { focusRescue } from '../lib/focusrescue';
   import { modal } from '../lib/modal';
   import type { RecentEntry } from '../lib/recent';
+  import { keptHere } from '../lib/platform';
 
   let {
     recent,
@@ -42,7 +43,7 @@
     <h3 class="sec" id="open-recent">Recent games</h3>
     <p class="hint">
       The last {recent.length === 1 ? 'game' : `${recent.length} games`} New or Open… replaced, with their undo history. They're
-      kept in this browser only (not your saved files), so use Save for a copy that lasts.
+      kept {keptHere()} only (not your saved files), so use Save for a copy that lasts.
     </p>
     <div class="list" role="group" aria-labelledby="open-recent" bind:this={list}>
       {#each recent as e (e.key)}
@@ -57,7 +58,7 @@
             class="ghost small danger"
             onclick={() => onforget(e)}
             aria-label="Delete “{e.title}” from Recent games"
-            title="Stop keeping this game in this browser (asks first: its files are cleaned up)">🗑 Delete</button
+            title="Stop keeping this game {keptHere()} (asks first: its files are cleaned up)">🗑 Delete</button
           >
         </div>
       {/each}

@@ -1,8 +1,9 @@
 // Desktop app, with the native side stood in for (window.__TAURI_INTERNALS__): Save replaces the game's own last save
-// (keeping a backup) but never another game's of the same name, Open… lists and opens an exported .html, a game file
-// the app is opened with (at start or by a second launch) opens, and closing the window writes the last edits first;
-// closing while a 🗜 copy for phones is made, Wait closes once it's done, with the copy written. Also in a browser:
-// Open… takes an exported .html.
+// (keeping a backup) but never another game's of the same name, Open… lists and opens an exported .html (a save that
+// can't be read says why), a game file the app is opened with (at start or by a second launch) opens, and closing the
+// window writes the last edits first; closing while a 🗜 copy for phones is made, Wait closes once it's done, with the
+// copy written; closing while autosave can't write asks first. ⬆ Update: a failure stays until it's read, and one that
+// finishes once a game has started waits for ⟳ Restart. Also in a browser: Open… takes an exported .html.
 import { chromium } from 'playwright-core';
 import { existsSync, readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
@@ -24,6 +25,12 @@ function assert(cond, msg) {
 /** The native side: BrainrotSaves in memory, the commands the page uses, and events (window.__emit). */
 function fakeDesktop() {
   window.__JB_AUDIO_FIX = true;
+  // Storage fills up while window.__full is set (as when the disk is full).
+  const put = IDBObjectStore.prototype.put;
+  IDBObjectStore.prototype.put = function (...a) {
+    if (window.__full) throw new DOMException('Quota exceeded', 'QuotaExceededError');
+    return put.apply(this, a);
+  };
   const saves = (window.__saves = new Map());
   window.__calls = [];
   window.__opened = null;
@@ -62,7 +69,20 @@ function fakeDesktop() {
         case 'list_saves':
           return [...saves.keys()].filter((n) => /\.(brainrot|jbr|json|html)$/i.test(n)).map(entry).sort((a, b) => b.modified - a.modified);
         case 'read_save':
+          // (The app's own message, as a string: a save moved since the list was made, or locked by another program.)
+          if (window.__readFail?.[args.name]) throw window.__readFail[args.name];
           return saves.get(args.name).bytes.buffer;
+        case 'can_self_update':
+          return true;
+        case 'install_update':
+          // (Done when the test says: window.__installGo.)
+          await window.__installGo;
+          if (window.__installFail) throw window.__installFail;
+          return null;
+        case 'data_folders': {
+          const at = (path) => ({ path, exists: true });
+          return { data: at('C:\\Data'), settings: at('C:\\Settings'), saves: at('C:\\Games\\BrainrotSaves'), savesDocuments: at('C:\\Docs\\BrainrotSaves'), oldData: at('C:\\Old') };
+        }
         case 'opened_file':
           return window.__opened?.name ?? null;
         case 'take_opened_file': {
@@ -159,6 +179,19 @@ try {
   // ---------- Desktop app ----------
   const desk = await browser.newContext({ viewport: { width: 1280, height: 720 } });
   await desk.addInitScript(fakeDesktop);
+  // GitHub's latest release (ℹ About › Check for updates), with the .exe and its signature: ⬆ Update offers it.
+  const DL = 'https://github.com/vampiricwulf/Brainrot-Game-Maker/releases/download/v99.0.0';
+  const latest = {
+    tag_name: 'v99.0.0',
+    html_url: 'https://github.com/vampiricwulf/Brainrot-Game-Maker/releases/tag/v99.0.0',
+    body: '',
+    draft: false,
+    prerelease: false,
+    assets: ['brainrot-game-maker-portable.exe', 'brainrot-game-maker-portable.exe.sig'].map((name) => ({ name, browser_download_url: `${DL}/${name}` })),
+  };
+  await desk.route('https://api.github.com/**', (route) =>
+    route.fulfill({ status: 200, contentType: 'application/json', headers: { 'access-control-allow-origin': '*' }, body: JSON.stringify(latest) }),
+  );
   // Started by "Open with" on a game file: it opens.
   await desk.addInitScript(
     ([name, text]) => {
@@ -201,16 +234,45 @@ try {
     'another game with the same title never replaces it: it saves as "Quiz (2)" and keeps saving there',
   );
 
-  // Open… lists the saves and the exported game, but not the backups.
+  // Open… lists the saves and the exported game, but not the backups. An autosave too (its name is long), whose file
+  // can't be read now.
   await d.evaluate((text) => window.__saves.set('Exported Quiz.html', { bytes: new TextEncoder().encode(text), modified: 1 }), readFileSync(htmlPath, 'utf8'));
+  const LOCKED = "Couldn't open My-Big-Quiz-Night (autosave 1, g1a2b3).brainrot: another program is using it. Close it in the other program and try again.";
+  await d.evaluate((why) => {
+    const name = 'My-Big-Quiz-Night (autosave 1, g1a2b3).brainrot';
+    window.__saves.set(name, { ...window.__saves.get('Quiz.brainrot'), modified: new Date(2026, 9, 23, 11, 33, 12).getTime() });
+    window.__readFail = { [name]: why };
+  }, LOCKED);
   // Open… shows Recent games first (New kept the first Quiz there): BrainrotSaves… lists the saves.
   await d.getByRole('button', { name: 'Open…' }).click();
   const list = d.getByRole('dialog', { name: 'Open a game' });
+  await list.getByRole('button', { name: 'BrainrotSaves…' }).waitFor();
+  assert((await list.innerText()).includes('kept on this PC only'), 'Recent games say they’re kept on this PC (not “in this browser”)');
   await list.getByRole('button', { name: 'BrainrotSaves…' }).click();
   await list.locator('button.save').first().waitFor();
   const listed = await list.locator('button.save b').allInnerTexts();
   assert(listed.includes('Exported Quiz.html') && !listed.some((n) => n.endsWith('.bak')), `Open… lists the exported game, not the backups (${listed.join(', ')})`);
   await d.screenshot({ path: 'test-results/desktop-open.png' });
+  // Each save's date and size stay inside its row (they go under a long name instead), the date as Recent games says it.
+  const rowHints = await list.locator('button.save').evaluateAll((bs) =>
+    bs.map((b) => {
+      const [row, hint, css] = [b.getBoundingClientRect(), b.querySelector('.hint'), getComputedStyle(b)];
+      const right = row.right - parseFloat(css.paddingRight) - parseFloat(css.borderRightWidth);
+      return { inside: hint.getBoundingClientRect().right <= right + 0.5, text: hint.textContent };
+    }),
+  );
+  assert(
+    rowHints.every((r) => r.inside && !/\d:\d\d:\d\d/.test(r.text)),
+    `every save's date and size show in full, without seconds (${rowHints.map((r) => `${r.text}${r.inside ? '' : ' (cut off)'}`).join(' | ')})`,
+  );
+  // A save that can't be read says why (the app's own words).
+  await list.getByRole('button', { name: /autosave 1/ }).click();
+  const locked = d.getByRole('alertdialog').filter({ hasText: 'another program is using it' });
+  await locked.waitFor();
+  assert(true, 'a save that can’t be read says why');
+  await locked.getByRole('button', { name: 'OK' }).click();
+  await d.getByRole('button', { name: 'Open…' }).click();
+  await list.getByRole('button', { name: 'BrainrotSaves…' }).click();
   await list.getByRole('button', { name: /Exported Quiz\.html/ }).click();
   await d.waitForFunction(() => document.querySelector('input.title')?.value === 'Exported Quiz');
   assert(true, 'an exported game in the list opens');
@@ -249,6 +311,7 @@ try {
   const unsavedAsk = d.getByRole('dialog', { name: 'Start a new game?' });
   await unsavedAsk.waitFor();
   assert(true, 'a change typed while Save was writing the file is unsaved: New asks about it');
+  assert((await unsavedAsk.innerText()).includes('keeps it on this PC'), '…and says Recent games keep it on this PC');
   await unsavedAsk.getByRole('button', { name: 'Cancel' }).click();
   await d.locator('nav').getByRole('button', { name: /🕘 History/ }).click();
   await d.locator('.list > .mark').first().waitFor();
@@ -258,6 +321,52 @@ try {
   const typedAt = rows.findIndex((t) => t.includes('Typed while saving'));
   assert(typedAt >= 0 && savedAt === typedAt + 1, 'the history shows the save where the game was when it started, with the change typed meanwhile after it');
   await d.locator('nav > button.round-tab').first().click();
+
+  // ---------- ℹ About's folders; ⬆ Update ----------
+  console.log('ℹ About and ⬆ Update:');
+  await d.getByRole('button', { name: /^More:/ }).click();
+  await d.getByRole('menuitem', { name: /About/ }).click();
+  const aboutDlg = d.getByRole('dialog', { name: 'About Brainrot Games Maker' });
+  await aboutDlg.getByRole('button', { name: /^Open folder:/ }).first().waitFor();
+  const folderNames = await aboutDlg.getByRole('button', { name: /^Open folder:/ }).evaluateAll((bs) => bs.map((b) => b.getAttribute('aria-label')));
+  assert(folderNames.length === 5 && new Set(folderNames).size === 5, `ℹ About's 📂 buttons each say which folder they open (${folderNames.join(' | ')})`);
+  // A failed update says why until it's read.
+  await d.evaluate(() => (window.__installFail = "Couldn't put the new version in place of this one (Access is denied)."));
+  await aboutDlg.getByRole('button', { name: 'Check for updates' }).click();
+  const updateBtn = aboutDlg.getByRole('button', { name: '⬆ Update to 99.0.0' });
+  await updateBtn.click();
+  const failed = d.getByRole('alertdialog').filter({ hasText: 'Access is denied' });
+  await failed.waitFor();
+  assert(true, 'a failed ⬆ Update says why, until OK');
+  await failed.getByRole('button', { name: 'OK' }).click();
+  // Pressed again, then a game started while it downloads: it doesn't restart by itself.
+  await d.evaluate(() => {
+    window.__installFail = null;
+    window.__installGo = new Promise((go) => (window.__installDone = go));
+  });
+  await calls(d);
+  await updateBtn.click();
+  await aboutDlg.getByRole('button', { name: 'Updating…' }).waitFor();
+  await d.keyboard.press('Escape');
+  await aboutDlg.waitFor({ state: 'detached' });
+  await d.getByRole('button', { name: '▶ Play' }).click();
+  await d.getByRole('button', { name: 'Start game ▶' }).waitFor();
+  // A game file given meanwhile (Explorer's Open with) waits for the editor, and says so.
+  await d.evaluate(() => {
+    window.__opened = { name: 'Next-show.json', bytes: new TextEncoder().encode('{}') };
+    window.__emit('open-file');
+  });
+  await d.locator('.toast', { hasText: 'That game file opens when you go back to the editor.' }).waitFor();
+  assert(true, 'a game file given during a game says it opens back in the editor');
+  await d.evaluate(() => (window.__opened = null));
+  await d.evaluate(() => window.__installDone());
+  await d.locator('.toast', { hasText: 'Version 99.0.0 is ready' }).waitFor();
+  assert(!(await calls(d)).includes('restart_app'), 'an update that finishes once a game has started doesn’t restart the app');
+  await d.getByRole('button', { name: '◀ Back to editor' }).click();
+  const notice = d.locator('.data-notice', { hasText: '99.0.0 is out' });
+  await notice.getByRole('button', { name: '⟳ Restart into 99.0.0' }).waitFor();
+  assert(true, 'back in the editor, ⟳ Restart into 99.0.0 is offered');
+  await notice.getByRole('button', { name: 'Not now' }).click();
 
   // Closing the window while a save is being written asks first: Wait closes once it's done.
   await d.evaluate(() => (window.__saveDelay = 2500));
@@ -294,6 +403,26 @@ try {
       }),
   );
   assert(flushed === 'Typed just before closing', 'closing the window writes the last edits first, then closes');
+
+  // Storage full: closing asks first (the changes aren't stored anywhere), Stay keeps the window open.
+  await d.evaluate(() => {
+    window.__closed = false;
+    window.__full = true;
+  });
+  await d.locator('input.title').fill('Not stored anywhere');
+  await d.getByText('⚠ Autosave unavailable here').waitFor();
+  await calls(d);
+  await d.evaluate(() => window.__emit('close-requested'));
+  const lostAsk = d.getByRole('alertdialog').filter({ hasText: "Autosave isn't working, so closing now loses your changes since the last Save." });
+  await lostAsk.getByRole('button', { name: 'Stay' }).click();
+  await lostAsk.waitFor({ state: 'detached' });
+  const stayed = await calls(d);
+  assert(stayed.includes('hold_close') && !stayed.includes('close_app'), `storage full: closing asks first, and Stay keeps the window open (${stayed.join(', ')})`);
+  await d.evaluate(() => window.__emit('close-requested'));
+  await lostAsk.getByRole('button', { name: 'Close anyway' }).click();
+  await d.waitForFunction(() => window.__closed === true);
+  assert(true, '…the next ✕ asks again, and Close anyway closes');
+  await d.evaluate(() => (window.__full = false));
 
   // Closing while a 🗜 copy for phones is made: Wait, and once it's done the app writes it, then closes.
   console.log('Closing while a copy for phones is made:');

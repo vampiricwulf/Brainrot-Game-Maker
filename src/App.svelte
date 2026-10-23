@@ -408,14 +408,18 @@
 
   // Closing the tab while nothing can be autosaved loses the changes since the last Save, or the game in progress (being
   // played, or kept to resume when its last write failed and waits to be tried again): the browser asks first.
+  // (The desktop app asks the same when its window is closed: flushOnClose.)
+  function wouldLose(): 'play' | 'edit' | null {
+    // (While autosave fails, a host action whose write waits a moment for more clicks counts too.)
+    const playing = app.screen === 'play' && !app.pregame && !app.test;
+    if (mayPlay() && (unstored('play') || (playing && !app.storageOk && savePlaySoon.pending()))) return 'play';
+    if (editing && !app.storageOk && hasWork(app.game) && !savedSinceChange()) return 'edit';
+    return null;
+  }
   onMount(() => {
     const warn = (e: BeforeUnloadEvent) => {
-      // (While autosave fails, a host action whose write waits a moment for more clicks counts too.)
-      const playing = app.screen === 'play' && !app.pregame && !app.test;
-      const playLost = mayPlay() && (unstored('play') || (playing && !app.storageOk && savePlaySoon.pending()));
-      const editLost = editing && !app.storageOk && hasWork(app.game) && !savedSinceChange();
       // (A 🗜 copy being made would be lost too.)
-      if (!playLost && !editLost && !jobs.current) return;
+      if (!wouldLose() && !jobs.current) return;
       e.preventDefault();
       e.returnValue = '';
     };
@@ -577,8 +581,9 @@
       savePlaySoon.flush();
     };
     const onvis = () => document.visibilityState === 'hidden' && flush();
-    // Desktop app: closing the window waits for these writes (and asks about a 🗜 copy being made).
-    flushOnClose(flush, jobLine);
+    // Desktop app: closing the window waits for these writes (and asks about a 🗜 copy being made, or what autosave
+    // couldn't keep).
+    flushOnClose(flush, jobLine, wouldLose);
     window.addEventListener('pagehide', flush);
     document.addEventListener('visibilitychange', onvis);
     return () => {

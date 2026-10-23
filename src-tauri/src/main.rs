@@ -618,11 +618,19 @@ fn close_after_wait(click: usize) -> bool {
 /// The project's own pages (ℹ About's links); `open_link` opens nothing else.
 const REPO_URL: &str = "https://github.com/vampiricwulf/Brainrot-Game-Maker";
 
+/// The pages of the code the app includes, as ℹ About › License links them.
+const LICENSE_URLS: [&str; 2] = [
+    "https://github.com/Vanilagy/mediabunny",
+    "https://github.com/deanm/omggif",
+];
+
+/// One of the project's pages, or a part of one (the README's buzzer server guide), or a license page.
 fn is_repo_link(url: &str) -> bool {
     url == REPO_URL
         || url
             .strip_prefix(REPO_URL)
-            .is_some_and(|rest| rest.starts_with('/'))
+            .is_some_and(|rest| rest.starts_with('/') || rest.starts_with('#'))
+        || LICENSE_URLS.contains(&url)
 }
 
 /// Open one of the project's pages (source, releases, issues) in the default browser rather than
@@ -1206,6 +1214,11 @@ mod tests {
         assert!(is_repo_link(REPO_URL));
         assert!(is_repo_link(&format!("{REPO_URL}/releases/latest")));
         assert!(is_repo_link(&format!("{REPO_URL}/issues")));
+        assert!(is_repo_link(&format!("{REPO_URL}#set-up-your-own-buzzer-server")));
+        assert!(is_repo_link("https://github.com/Vanilagy/mediabunny"));
+        assert!(is_repo_link("https://github.com/deanm/omggif"));
+        assert!(!is_repo_link("https://github.com/deanm/omggif/../evil"));
+        assert!(!is_repo_link("https://github.com/someone/Brainrot-Game-Maker"));
         assert!(!is_repo_link(&format!("{REPO_URL}.evil.example/x")));
         assert!(!is_repo_link(&format!("{REPO_URL}-fork")));
         assert!(!is_repo_link("https://example.com/"));

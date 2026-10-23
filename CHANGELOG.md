@@ -29,6 +29,15 @@ in plain words for the people who make and host games. Anything committed but no
 - Exported game files: 🎭 Deal…, 🤫 Send a card…, the cards of a tile or a partner clue, the tiebreaker button, the room's ✕ and the pre-game notes no longer send the host to an editor the file doesn't have.
 - Exported game files: after 🚪 Exit, ◀ Back or Start over › Discard, the keys go on from ▶ Play or Resume game instead of the top of the page. In the builder, Discard on a kept game puts them on ▶ Play too.
 - Exported game files: ⬇ Download as .brainrot's message reads as one sentence (“… To edit it, open it in Brainrot Games Maker.”).
+- Desktop app: ⬆ Update no longer restarts the app by itself when a game was started while it downloaded (the stream went black and the phones lost the host): the button becomes ⟳ Restart into …, for when the game is over. While a ✎ / 🗜 / 🔄 job runs, it asks first.
+- Desktop app: a failed ⬆ Update says why in a message that stays until OK, instead of a toast gone after 5 seconds.
+- Desktop app: closing the window while autosave can't write (a full disk) asks first, as a browser tab does, instead of losing the game in progress or the changes since the last Save. Stay keeps it open.
+- Desktop app: Open… › BrainrotSaves says why a save can't be opened (moved since the list was made, or open in another program) instead of nothing.
+- Desktop app: ⚙ Settings' link to the guide for your own buzzer server, and ℹ About's mediabunny and omggif links, open in the browser instead of “Couldn't open the browser”.
+- Desktop app: New, Open… and Recent games say games are kept “on this PC”, not “in this browser”, and a 🪟 card window or the scores window that doesn't open says “Couldn't open the window. Try again.” instead of naming a browser's popups.
+- Desktop app: Open… › BrainrotSaves shows each save's date and size in full (under a long name, such as an autosave's), dated as Recent games are.
+- Desktop app: a game file opened from Explorer during a game says it opens when you go back to the editor, instead of nothing.
+- ℹ About: each 📂 Open folder button tells a screen reader which folder it opens.
 - RPG rounds: players arriving on a screen stand clear of its characters, items, doorways and other objects with a class where there's room, as they keep out of No-go areas, so viewers see those and clicks on the host's stage reach them (not of the object they arrive at, nor of one viewers can't see yet). In the 🗺 Mini quest template the Shopkeeper stands up and to the right, out of the party's starting row: the avatars covered him.
 - RPG shops that buy back: a sale never takes a currency past its max. At the max the host is told (“Player 1 can’t carry 🪙2 more Gold (at most 🪙50)”) and the player keeps the item, as with a pile picked up.
 - 📊 Stats & Items: a stat with no color of its own shows the color viewers see on the stats strip (red for a bar or hearts, white for a number) instead of yellow.

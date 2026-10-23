@@ -19,7 +19,8 @@
     onrecent?: () => void;
     onclose: () => void;
   } = $props();
-  const when = (ms: number) => (ms ? new Date(ms).toLocaleString() : '');
+  // (As Recent games says it.)
+  const when = (ms: number) => (ms ? new Date(ms).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' }) : '');
   /** An exported .html: Open… edits the game inside it. */
   const exported = (s: SaveEntry) => /\.html?$/i.test(s.name);
   // Saves go to Documents when the app's folder can't be written: 📂 shows the folder the newest save is in.
@@ -74,10 +75,20 @@
     overflow: auto;
     max-height: 60vh;
   }
+  /* A long name (an autosave's) wraps, and its date and size go under it rather than out of the button. */
   .save {
     display: flex;
+    flex-wrap: wrap;
     justify-content: space-between;
-    gap: 12px;
+    column-gap: 12px;
+    row-gap: 0;
     text-align: left;
+  }
+  .save > b {
+    min-width: 0;
+    overflow-wrap: anywhere;
+  }
+  .save > .hint {
+    margin-left: auto;
   }
 </style>

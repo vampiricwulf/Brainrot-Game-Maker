@@ -19,6 +19,7 @@
 <script lang="ts">
   import { untrack } from 'svelte';
   import { app, toast } from '../../lib/app.svelte';
+  import { popupBlocked } from '../../lib/platform';
   import { announce } from '../../lib/announce';
   import { CARD_MEDIA_MAX, clip } from '../../lib/buzzproto';
   import { cardsFullText, roomCardsFull, seenAtOnce, teamsOn } from '../../lib/buzz';
@@ -393,7 +394,7 @@
   }
   /** 🪟 The card window for a player (from this click: a popup needs one). */
   function openWin(seat: Id): void {
-    if (!openCardWindow(seat)) toast('The browser blocked the popup. Allow popups for this file and try again.', 5000);
+    if (!openCardWindow(seat)) toast(popupBlocked(), 5000);
   }
   const nameOf = (id: Id) => session.players.find((p) => p.id === id)?.name ?? '?';
   /** The first player chosen as a whole seat (the card window shows a seat's cards). */

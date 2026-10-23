@@ -21,6 +21,8 @@ Get it from the **[Latest release](../../releases/latest)** (every push to `main
 
 - The desktop app updates itself: **⬆ Update to …** downloads the new `.exe`, checks it's signed with the project's
   key, saves your game and restarts into it, in the same place. (A copy built without the key offers the download.)
+  It asks first while a ✎ / 🗜 / 🔄 job runs, and once a game has started it doesn't restart by itself: **⟳ Restart
+  into …** in the editor finishes it.
 - The HTML file offers the new file: save it in place of the old one (same name and folder) and open it. Your games
   carry over: they're kept in the browser, not in the file.
 
@@ -376,14 +378,15 @@ round's title card, `Enter` does what the button says, as `N` does.
 - **Save** (`Ctrl+S`) writes a `.brainrot` pack: the game plus all its media.
   - In the desktop app, saves go in a **BrainrotSaves** folder next to the `.exe` (in Documents\BrainrotSaves when the
     app may not write there, e.g. in Program Files). Closing the window while a save is being written asks whether to
-    wait for it.
+    wait for it. While autosave can't write (a full disk), closing the window asks first too, as a browser tab does.
   - In a browser, they're downloads. A file over 100 MB asks where to save it instead (Chrome, Edge), so a big download
     can't fail unnoticed.
   - Changes made while a save is being written aren't in it, so they still count as unsaved.
 - **Open…** lists your **Recent games** and, in the desktop app, BrainrotSaves. It also opens `.json` games, exported
   HTML files and the desktop app's `.bak` backups. Dropping a game file (`.brainrot`, `.zip`, `.json`, `.html`) on the
   editor opens it (a `.brainrot-theme` file opens on the 🎨 Theme page), and the desktop app opens a game, a `.bak` or
-  a theme file you open it with ("Open with", or dropped on the `.exe`).
+  a theme file you open it with ("Open with", or dropped on the `.exe`). One given during a game opens when you're
+  back in the editor.
   - **Recent games** keeps the last 8 games New or Open… replaced (about 1 GB of files at most), with their undo
     history. When one has to go to make room, the app says which. Two versions of one game are both kept. A game with
     only a title isn't kept. **🗑 Delete** asks first: it deletes the kept copy and its files.

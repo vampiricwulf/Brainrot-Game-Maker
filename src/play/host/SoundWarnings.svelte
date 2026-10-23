@@ -2,6 +2,7 @@
 <script lang="ts">
   import { audience, audienceTitle, openAudienceWindow, sound } from '../../lib/sync.svelte';
   import { app, toast } from '../../lib/app.svelte';
+  import { popupBlocked } from '../../lib/platform';
   import { audioOut } from '../../lib/audioout.svelte';
   import { captureProblem, desktop, RESTART_ASK, restartApp } from '../../lib/desktop.svelte';
   import InlineAsk from './InlineAsk.svelte';
@@ -16,7 +17,7 @@
 
   /** The audience window was closed by accident: open it again (from this click, or the browser blocks it). */
   async function reopen(): Promise<void> {
-    if (!(await openAudienceWindow(audienceTitle(app.playGame ?? app.game)))) toast('The browser blocked the popup. Allow popups for this file and try again.', 5000);
+    if (!(await openAudienceWindow(audienceTitle(app.playGame ?? app.game)))) toast(popupBlocked(), 5000);
   }
 
   async function retry(): Promise<void> {

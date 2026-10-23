@@ -124,18 +124,19 @@
             {#if folders.savesDocuments?.exists}
               <div class="hint">
                 Also in <code>{folders.savesDocuments.path}</code> (saves made when the app’s folder couldn’t be written).
-                <button class="small ghost" onclick={() => show('saves-documents')}>📂 Open</button>
+                <button class="small ghost" onclick={() => show('saves-documents')} aria-label="Open folder: saves in Documents">📂 Open</button>
               </div>
             {/if}
           </div>
-          <button class="small" onclick={() => show('saves')}>📂 Open folder</button>
+          <!-- (Each says which folder to a screen reader, starting with the words on it.) -->
+          <button class="small" onclick={() => show('saves')} aria-label="Open folder: your saves">📂 Open folder</button>
         </div>
         <div class="folder">
           <div>
             <div class="what">The game you’re editing, Recent games, a game in progress and media</div>
             <code>{folders.data.path ?? 'unknown'}</code>
           </div>
-          <button class="small" disabled={!folders.data.exists} onclick={() => show('data')}>📂 Open folder</button>
+          <button class="small" disabled={!folders.data.exists} onclick={() => show('data')} aria-label="Open folder: game data and media">📂 Open folder</button>
         </div>
         <div class="folder">
           <div>
@@ -143,7 +144,7 @@
             <code>{folders.settings.path ?? 'unknown'}</code>
             {#if !folders.settings.exists}<div class="hint">Not made yet: it’s only made if you switch the Discord audio fix off.</div>{/if}
           </div>
-          {#if folders.settings.exists}<button class="small" onclick={() => show('settings')}>📂 Open folder</button>{/if}
+          {#if folders.settings.exists}<button class="small" onclick={() => show('settings')} aria-label="Open folder: settings">📂 Open folder</button>{/if}
         </div>
         {#if leftovers.length}
           <div class="leftover" role="note">
@@ -156,7 +157,7 @@
             {#each leftovers as [which, f] (which)}
               <div class="folder">
                 <code>{f!.path}</code>
-                <button class="small" onclick={() => show(which)}>📂 Open folder</button>
+                <button class="small" onclick={() => show(which)} aria-label="Open folder: old {which === 'old-data' ? 'game data' : 'settings'}">📂 Open folder</button>
               </div>
             {/each}
           </div>

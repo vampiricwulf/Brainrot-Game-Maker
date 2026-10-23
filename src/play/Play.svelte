@@ -110,7 +110,7 @@
   import { mediaUrls } from '../lib/media.svelte';
   import { localMedia, openMediaPopup, POPUP_FAILED, remoteMedia } from '../lib/mediactl.svelte';
   import { registerGameFonts } from '../lib/fonts';
-  import { inTauri, toggleFullscreen } from '../lib/platform';
+  import { inTauri, popupBlocked, toggleFullscreen } from '../lib/platform';
   import { onMount, setContext, tick, untrack } from 'svelte';
   import { NEXT_GAME } from './host/nextgame';
   import { MediaQuery } from 'svelte/reactivity';
@@ -778,7 +778,7 @@
   }
 
   function openScores(): void {
-    if (!openScoresWindow()) toast('The browser blocked the popup. Allow popups for this file and try again.', 5000);
+    if (!openScoresWindow()) toast(popupBlocked(), 5000);
   }
 
   /** The host panel's audience button (it asks before closing, since it's usually the stream capture). */

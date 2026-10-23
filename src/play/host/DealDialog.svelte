@@ -13,6 +13,7 @@
 -->
 <script lang="ts">
   import { app, hint, toast } from '../../lib/app.svelte';
+  import { popupBlocked } from '../../lib/platform';
   import { announce } from '../../lib/announce';
   import { ask } from '../../lib/ask.svelte';
   import { cardsLeftOff, dealFullText, roomCardsAfter, roomCardsFull, teamsOn } from '../../lib/buzz';
@@ -300,7 +301,7 @@
     void copyText(dealCopyText(game, session, d, to), `${who(to)}’s card copied: paste it to them alone`);
   }
   function openWin(seat: Id): void {
-    if (!openCardWindow(seat)) toast('The browser blocked the popup. Allow popups for this file and try again.', 5000);
+    if (!openCardWindow(seat)) toast(popupBlocked(), 5000);
   }
   const COUNTS = Array.from({ length: MAX_PLAYERS + 1 }, (_, i) => i);
 </script>

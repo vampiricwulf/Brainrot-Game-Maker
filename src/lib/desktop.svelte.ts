@@ -2,6 +2,7 @@
 // "Discord audio fix" setting (see src-tauri/src/main.rs).
 import { inTauri } from './platform';
 import { ask, tell } from './ask.svelte';
+import { toast } from './app.svelte';
 
 declare global {
   interface Window {
@@ -215,8 +216,13 @@ export async function listSaves(): Promise<SaveEntry[]> {
 
 /** One save as a File (to open it like a picked file). */
 export async function readSave(entry: SaveEntry): Promise<File> {
-  const buf = await invoke<ArrayBuffer>('read_save', { name: entry.name, place: entry.place });
-  return new File([buf], entry.name);
+  try {
+    const buf = await invoke<ArrayBuffer>('read_save', { name: entry.name, place: entry.place });
+    return new File([buf], entry.name);
+  } catch (err) {
+    // (The app's own message, such as a file moved since the list was made, or locked by another program.)
+    throw new Error(typeof err === 'string' ? err : "Couldn't open the save.");
+  }
 }
 
 /** Delete an autosave past the number kept (the app deletes nothing else). */
@@ -270,11 +276,25 @@ let taking: Promise<void> = Promise.resolve();
 function openWaiting(): void {
   taking = taking.then(() => {
     const open = opener;
-    if (!open) return;
+    if (!open) return sayWaiting();
     return takeOpenedFile()
       .then((file) => void (file && open(file)))
       .catch((err) => void tell(err instanceof Error ? err.message : String(err)));
   });
+}
+
+/** The game files said to wait, by name (each is said once). */
+const waitingSaid = new Set<string>();
+
+/**
+ * A game file given while a game is played waits for the editor: the host is told so, once for each file. (Not by its
+ * name: in one window, the next show's name would be on stream.)
+ */
+async function sayWaiting(): Promise<void> {
+  const name = await invoke<string | null>('opened_file').catch(() => null);
+  if (!name || waitingSaid.has(name)) return;
+  waitingSaid.add(name);
+  toast('That game file opens when you go back to the editor.', 5000);
 }
 
 /** Saves, exports and autosaves being written now (closing the window asks first, see flushOnClose). */
@@ -359,9 +379,10 @@ function idle(busy: () => string | null): Promise<void> {
  * app closes anyway after a few seconds). Closing right after typing no longer loses the last edits. While a save,
  * export or autosave is being written, it asks first: Wait (the app closes once it's done) or Close anyway. So it does
  * while `busy` says what's under way (a 🗜 copy being made, in a sentence): Wait waits for it to finish, then writes
- * what it made too.
+ * what it made too. While `lost` says autosave isn't working, closing would lose the game in progress ('play') or the
+ * changes since the last Save ('edit'): it asks first, as a browser tab does, and Stay keeps the window open.
  */
-export function flushOnClose(flush: () => void, busy?: () => string | null): void {
+export function flushOnClose(flush: () => void, busy?: () => string | null, lost?: () => 'play' | 'edit' | null): void {
   if (!isHost()) return;
   closeFlush = flush;
   /** Waiting for a save to finish before closing (the ✕ clicked again changes nothing). */
@@ -370,6 +391,7 @@ export function flushOnClose(flush: () => void, busy?: () => string | null): voi
     .then(({ listen }) =>
       listen('close-requested', async () => {
         if (waiting) return void invoke('hold_close').catch(() => {});
+        let stay = false;
         try {
           flush();
           const job = busy?.();
@@ -395,9 +417,17 @@ export function flushOnClose(flush: () => void, busy?: () => string | null): voi
             const anyway = await ask(CLOSE_ASK, { ok: 'Close anyway', cancel: 'Wait', danger: true, until: done });
             if (!anyway) await done;
           }
+          const loses = lost?.();
+          if (loses) {
+            waiting = true;
+            await invoke('hold_close');
+            const what = loses === 'play' ? 'the game in progress' : 'your changes since the last Save';
+            stay = !(await ask(`Autosave isn't working, so closing now loses ${what}.`, { ok: 'Close anyway', cancel: 'Stay', danger: true }));
+          }
         } finally {
           waiting = false;
-          await invoke('close_app');
+          // (Stay: the window stays open, and the next ✕ asks again.)
+          if (!stay) await invoke('close_app');
         }
       }),
     )

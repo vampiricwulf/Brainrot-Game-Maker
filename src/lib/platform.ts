@@ -5,6 +5,16 @@ export function inTauri(): boolean {
   return typeof window !== 'undefined' && '__TAURI_INTERNALS__' in window;
 }
 
+/** Where the app keeps games by itself (autosave, Recent games): "on this PC" in the desktop app. */
+export function keptHere(): string {
+  return inTauri() ? 'on this PC' : 'in this browser';
+}
+
+/** Said when a window (a 🪟 card window, the scores or audience window) didn't open. */
+export function popupBlocked(): string {
+  return inTauri() ? "Couldn't open the window. Try again." : 'The browser blocked the popup. Allow popups for this file and try again.';
+}
+
 /**
  * Toggle full-screen for this window. In the desktop app the webview can't take over the monitor by
  * itself (HTML full-screen only fills the window), so the native window is made full-screen instead.

@@ -61,7 +61,7 @@
   import { update } from '../lib/update.svelte';
   import AboutDialog from './AboutDialog.svelte';
   import ShortcutsDialog from './ShortcutsDialog.svelte';
-  import { inTauri } from '../lib/platform';
+  import { inTauri, keptHere } from '../lib/platform';
   import { dataFolders } from '../lib/desktop.svelte';
   import { registerGameFonts } from '../lib/fonts';
   import { validate } from '../lib/validate';
@@ -514,7 +514,7 @@
       if (
         !kept &&
         !lossAccepted &&
-        !(await ask(`“${title}” couldn't be kept in Recent games (this browser's storage is full or blocked), so it would be lost. Replace it anyway?`, {
+        !(await ask(`“${title}” couldn't be kept in Recent games (${inTauri() ? 'storage on this PC' : "this browser's storage"} is full or blocked), so it would be lost. Replace it anyway?`, {
           ok: 'Replace it',
           danger: true,
         }))
@@ -551,7 +551,7 @@
     if (!kept) {
       previous = null;
       await forgetRecent(entry.key);
-      return void tell(`“${entry.title}” is no longer kept in this browser.`);
+      return void tell(`“${entry.title}” is no longer kept ${keptHere()}.`);
     }
     if (!(await mayReplace(`Reopen “${entry.title}”?`, 'Reopen'))) return;
     // Brought up to date if an older version kept it; its history goes on only if that changed nothing but the order of
@@ -584,7 +584,7 @@
 
   async function forget(e: RecentEntry): Promise<void> {
     const sure = await ask(
-      `Delete “${e.title}” from Recent games? This browser's copy goes for good, with its files and undo history. Game files you saved aren't touched.`,
+      `Delete “${e.title}” from Recent games? The copy ${keptHere()} goes for good, with its files and undo history. Game files you saved aren't touched.`,
       { ok: 'Delete', danger: true },
     );
     if (!sure) return;
@@ -915,12 +915,12 @@
     {#if app.storageOk}
       <span
         class="muted autosave saved"
-        title={`Every change is autosaved ${inTauri() ? 'on this PC' : 'in this browser'}.${app.fileAutosave ? ` Last autosave file: ${app.fileAutosave.path}` : ''}`}
+        title={`Every change is autosaved ${keptHere()}.${app.fileAutosave ? ` Last autosave file: ${app.fileAutosave.path}` : ''}`}
       >
         ✓ Autosaved{app.fileAutosave ? ` · file ${new Date(app.fileAutosave.at).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}` : ''}
       </span>
     {:else}
-      <span class="autosave warn" title={`Changes can't be kept ${inTauri() ? 'on this PC' : 'in this browser'} right now (storage is blocked or full). Use Save often.`}>
+      <span class="autosave warn" title={`Changes can't be kept ${keptHere()} right now (storage is blocked or full). Use Save often.`}>
         ⚠ Autosave unavailable here: use Save
       </span>
     {/if}
