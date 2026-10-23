@@ -36,7 +36,8 @@
   let box = $state<HTMLElement>();
   /** The keys into choice `i`'s box (once it's drawn). */
   const focusBox = (i: number) => tick().then(() => box?.querySelector<HTMLInputElement>(`[data-field="choice-${i}"]`)?.focus());
-  const change = <T,>(label: string, fn: () => T): T => record(label, fn, place ? { place } : undefined);
+  /** A step; `notify`: with "… · Undo" shown (typed words went, as deleting a card says). */
+  const change = <T,>(label: string, fn: () => T, notify = false): T => record(label, fn, { ...(place ? { place } : {}), ...(notify ? { notify: true } : {}) });
 
   function start(): void {
     change(`Added multiple choice to ${where()}`, () => (owner.choices = Array.from({ length: 4 }, () => ({ id: newId(), text: '' }))));
@@ -48,10 +49,14 @@
     void focusBox(list.length - 1);
   }
   function remove(i: number): void {
-    change(`Deleted choice ${letter(i)} of ${where()}`, () => {
-      owner.choices!.splice(i, 1);
-      if (!owner.choices!.length) delete owner.choices;
-    });
+    change(
+      `Deleted choice ${letter(i)} of ${where()}`,
+      () => {
+        owner.choices!.splice(i, 1);
+        if (!owner.choices!.length) delete owner.choices;
+      },
+      !!list[i].text.trim(),
+    );
     if (list.length) void focusBox(Math.min(i, list.length - 1));
   }
   function move(i: number, d: 1 | -1): void {
@@ -72,7 +77,7 @@
     });
   }
   function takeOff(): void {
-    change(`Took the choices off ${where()}`, () => delete owner.choices);
+    change(`Took the choices off ${where()}`, () => delete owner.choices, list.some((c) => c.text.trim()));
   }
   /** Enter: the next choice's box. */
   function key(e: KeyboardEvent, i: number): void {

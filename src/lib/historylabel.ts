@@ -587,6 +587,8 @@ const TOGGLES: Record<string, (on: boolean, who: string) => string> = {
   secret: (on, who) => (on ? `Made ${who} secret` : `Made ${who} not secret`),
   showName: (on, who) => (on ? `Showed the name of ${who}` : `Hid the name of ${who}`),
   statsShown: (on, who) => (on ? `Showed the stats of ${who} to viewers` : `Hid the stats of ${who} from viewers`),
+  // (A Final's.)
+  allowNonPositive: (on, who) => (on ? `${who}: players at 0 or less can play it` : `${who}: players at 0 or less sit it out`),
 };
 /** Fields that are words people type: a change says what they say now. */
 const TEXTS = new Set(['text', 'category', 'hostNotes', 'details', 'description', 'label', 'winNotes', 'notes']);
@@ -939,6 +941,8 @@ function labelOf(ops: readonly Op[], op: Op, at: At, moved: string[], alike: num
     return TOGGLES[k](!!v, who);
   }
   if (k === 'dailyDoubleCount' && typeof v === 'number') return `Set ${what(at)} to ${v} Daily Double${v === 1 ? '' : 's'}`;
+  // (Only a Final round has its own: a clue's countdown and a wheel slice's stay "timer".)
+  if (k === 'timerSeconds' && at.noun === 'round' && typeof v === 'number') return `Set the think time of ${what(at)} to ${v} s`;
   if (k === 'partnerCount' && at.noun === 'round')
     return typeof v === 'number' ? `Set ${what(at)} to ${v} partner clue${v === 1 ? '' : 's'}` : `Set ${what(at)} to no partner clues placed at random`;
   if (at.noun === 'row values') return 'Changed the row values';

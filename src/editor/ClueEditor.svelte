@@ -545,7 +545,8 @@
         <PartnerSettings {clue} value={clue.value ?? round.values[pos.row] ?? 0} tile={tileName} />
       {/if}
       {#if !clue.empty && clue.type === 'standard' && clue.everyone}
-        <ChoicesEditor owner={clue} where={tileName} />
+        <!-- (In a box of its own: with the choices taken off, the keys land on ＋ Multiple choice, not the header's Next ▶.) -->
+        <div><ChoicesEditor owner={clue} where={tileName} /></div>
       {/if}
       {#if !clue.empty && (clue.type === 'wheel' || clue.type === 'dice')}
         <p class="hint">

@@ -430,6 +430,14 @@ describe('step labels', () => {
     expect(describeStep(diff(forked, before), forked, before).label).toBe('Disconnected Space 3 → Space 7');
     expect(step((g) => (board(g).dailyDoubleCount = 2)).label).toBe('Set round “Jeopardy!” to 2 Daily Doubles');
     expect(step((g) => (board(g).partnerCount = 3)).label).toBe('Set round “Jeopardy!” to 3 partner clues');
+    // A Final's settings, as its editor names them.
+    const sits = structuredClone(sample());
+    final(sits).allowNonPositive = false;
+    const plays = structuredClone(sits);
+    final(plays).allowNonPositive = true;
+    expect(describeStep(diff(sits, plays), sits, plays).label).toBe('“Final Jeopardy!”: players at 0 or less can play it');
+    expect(describeStep(diff(plays, sits), plays, sits).label).toBe('“Final Jeopardy!”: players at 0 or less sit it out');
+    expect(step((g) => (final(g).timerSeconds = 45)).label).toBe('Set the think time of round “Final Jeopardy!” to 45 s');
     const counted = structuredClone(sample());
     board(counted).partnerCount = 3;
     const uncounted = structuredClone(counted);

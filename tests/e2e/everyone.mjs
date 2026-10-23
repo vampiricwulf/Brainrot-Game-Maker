@@ -5,7 +5,8 @@
 // ✔ leaves the others' countdown going. Then a third, with multiple choice: phones tap one, the host sees each pick and
 // how many picked each (in one window only once the answer is up), the stream shows the choices under the question (the
 // right one lit with the answer), and ✔ Judge all marks everyone in one step (the first right one picks next), its
-// score pops above the choices. Last, a 🔁 Rematch in the same room keeps the phones' 📱 on stream.
+// score pops above the choices. Last, a 🔁 Rematch in the same room keeps the phones' 📱 on stream. (In the editor
+// first: a ✍ tile with an empty choice says so on the board, and Take the choices off leaves the keys on ＋ Multiple choice.)
 // Needs `npm ci` in buzzer/.
 import { chromium } from 'playwright-core';
 import { spawn } from 'node:child_process';
@@ -108,7 +109,23 @@ try {
   await editor.getByLabel(/Everyone answers/).check();
   await editor.getByRole('button', { name: '＋ Multiple choice' }).click();
   await host.waitForFunction(() => document.activeElement?.getAttribute('aria-label') === 'Choice A');
+  // The board marks the tile while a choice is empty, as the checklist warns of it.
+  const tile3 = host.locator('.tile').nth(2);
+  assert(
+    (await tile3.locator('.missing', { hasText: 'Empty choice' }).count()) === 1 && (await tile3.getAttribute('aria-label')).endsWith(', empty choice'),
+    'with a choice still empty, its tile on the board says “Empty choice”',
+  );
   for (const [l, words] of [['A', 'Paris'], ['B', 'Stockholm'], ['C', 'Oslo'], ['D', 'Bern']]) await editor.getByLabel(`Choice ${l}`, { exact: true }).fill(words);
+  await tile3.getByText('Empty choice').waitFor({ state: 'detached' });
+  // Take the choices off by keyboard: the keys go to ＋ Multiple choice (not the header's Next ▶), with words gone a
+  // note says so (as deleting a card does), and Ctrl+Z puts them back.
+  await editor.getByRole('button', { name: 'Take the choices off' }).focus();
+  await host.keyboard.press('Enter');
+  await host.waitForFunction(() => document.activeElement?.textContent?.trim() === '＋ Multiple choice');
+  await host.locator('.toast', { hasText: /^Took the choices off .+ \$200/ }).waitFor();
+  await host.keyboard.press('Control+z');
+  await editor.getByLabel('Choice D', { exact: true }).waitFor();
+  assert((await editor.getByLabel('Choice D', { exact: true }).inputValue()) === 'Bern', 'Take the choices off: the keys land on ＋ Multiple choice, a note says so, and Ctrl+Z puts them back');
   await editor.locator('[data-choice-row]').nth(1).getByRole('button', { name: '✔ Right' }).click();
   await editor.locator('[data-choice-row]').nth(1).locator('button[aria-pressed="true"]').waitFor();
   const choiceUndo = await host.locator('.editor > header button[aria-label="Undo (Ctrl+Z)"]').getAttribute('title');

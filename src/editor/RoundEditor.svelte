@@ -29,6 +29,7 @@
   import { nameStep, step, stepAsync } from '../lib/history.svelte';
   import { slideHasContent } from '../lib/usage';
   import { toolChosen } from '../lib/tools';
+  import { choiceFaults } from '../lib/validate';
   import { cardsToFinish, partnerSpot } from '../lib/partner';
   import {
     addCategory,
@@ -981,6 +982,9 @@
         {@const noTool = tool && !clue.empty && !toolChosen(app.game, clue)}
         {@const everyone = !!clue.everyone && clue.type === 'standard' && !clue.empty}
         {@const choices = everyone && !!clue.choices?.length}
+        <!-- Its choices' first fault, as the checklist warns of it (not "none marked ✔ Right": the host judges then). -->
+        {@const cf = choices ? choiceFaults(clue.choices!) : null}
+        {@const choiceFault = cf ? (cf.one ? 'Only one choice' : cf.empty ? 'Empty choice' : cf.same ? 'Two choices the same' : '') : ''}
         <!-- A partner clue's 🤫 cards still to fill in (none on a ready-made game's, or an empty one). -->
         {@const cardTodo = clue.empty ? null : cardsToFinish(clue)}
         {@const faceText = clue.empty ? '' : (clue.tileFace?.text ?? '')}
@@ -992,7 +996,7 @@
           ? 'empty space'
           : tool
             ? `${q || kinds.join(', ') || 'no question'}${noTool ? `, no ${clue.type} chosen` : ''}`
-            : `${q || kinds.join(', ') || 'no question yet'}${a ? '' : ', no answer'}${cardTodo === 'none' ? ', no card' : cardTodo ? `, card ${cardTodo} empty` : ''}`}
+            : `${q || kinds.join(', ') || 'no question yet'}${a ? '' : ', no answer'}${cardTodo === 'none' ? ', no card' : cardTodo ? `, card ${cardTodo} empty` : ''}${choiceFault ? `, ${choiceFault.toLowerCase()}` : ''}`}
         <button
           class="tile"
           aria-label="{categoryLabel(cat) || `Category ${ci + 1}`}, {value}{kind}: {what}"
@@ -1041,6 +1045,7 @@
             {/if}
             {#if !a && !tool}<span class="missing small">No answer</span>{/if}
             {#if cardTodo}<span class="missing small">{cardTodo === 'none' ? 'No card' : `Card ${cardTodo} empty`}</span>{/if}
+            {#if choiceFault}<span class="missing small">{choiceFault}</span>{/if}
             {#if noTool}<span class="missing small">No {clue.type} chosen</span>{/if}
           {/if}
         </button>

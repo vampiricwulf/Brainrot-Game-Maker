@@ -22,6 +22,10 @@ in plain words for the people who make and host games. Anything committed but no
 - The stream's “✍ Everyone answers” (or the Final's “✍ Answers on phones”) no longer comes back when the answer is hidden again: the answers are locked by then.
 - The answers box says “locked (the answer is showing)” while the answer is up, and “locked (the answer was on screen)” only once it's hidden again (a Final's said “was on screen” while it was still up).
 - A right-to-left answer (Arabic, Hebrew) sits by its player's name in the answers box, not at the far end of the row.
+- The editor's board marks a ✍ tile whose multiple choices have an empty one, only one, or two the same (“Empty choice” on the tile, as “No answer” is), so you can see which tiles the checklist's line means.
+- In the clue editor, taking the choices off (Take the choices off, ✕ on the last one, or Ctrl+Z of ＋ Multiple choice) leaves the keys on ＋ Multiple choice instead of Next ▶, so the next Enter no longer jumps to another clue.
+- Take the choices off, and ✕ on a choice with words in it, say so in a note, as deleting a card does (Ctrl+Z puts them back).
+- ↶ Undo and 🕘 History name the Final's settings plainly: “Final Jeopardy!”: players at 0 or less sit it out (or can play it), and Set the think time of round “Final Jeopardy!” to 45 s.
 
 ## 2026-10-22
 
