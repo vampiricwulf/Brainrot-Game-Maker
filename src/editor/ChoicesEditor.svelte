@@ -28,8 +28,9 @@
     /** A Final's: no ✔ Judge all there, the reveals say whether each pick is the right one. */
     final?: boolean;
   } = $props();
-  const rightTitle = $derived(final ? 'The right answer: the reveals say whether each pick is it' : 'The right answer: ✔ Judge all marks everyone by it');
-  const rightHint = $derived(final ? 'In the reveals you see whether each pick is the one marked ✔ Right.' : '✔ Right is the one ✔ Judge all goes by.');
+  const rightTitle = $derived(
+    final ? 'The right answer: it lights up on stream with the answer, and the reveals say whether each pick is it' : 'The right answer: it lights up on stream with the answer, and ✔ Judge all marks everyone by it',
+  );
 
   const list = $derived(owner.choices ?? []);
   let box = $state<HTMLElement>();
@@ -118,7 +119,10 @@
     <div class="foot">
       <button class="ghost small" onclick={add} disabled={list.length >= CHOICES_MAX} title={list.length >= CHOICES_MAX ? `${CHOICES_MAX} choices at most` : undefined}>＋ Choice</button>
       <button class="ghost small" onclick={takeOff}>Take the choices off</button>
-      <span class="hint">Players tap one on their phone (no typing) until you show the answer. {rightHint}</span>
+      <span class="hint"
+        >Players tap one on their phone (no typing) until you show the answer. On stream they show under the question (the slide is drawn a
+        little smaller to make room), and the one marked ✔ Right lights up with the answer. Without phone buzzers, players say the letter.</span
+      >
     </div>
   </fieldset>
 {/if}

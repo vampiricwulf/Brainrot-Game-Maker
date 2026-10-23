@@ -300,6 +300,12 @@ export function validate(game: Game, room: Checking = {}): Problem[] {
   const partners = boardRounds(game).flatMap((r) => playableClues(r).filter((c) => c.type === 'partner'));
   if (partners.length && !game.settings.buzzer)
     out.push({ text: 'Partner clues: without phone buzzers you copy the cards to the players yourself', tab: 'play', level: 'info' });
+  // Multiple choice with nobody on phones: the choices still show on stream, under the question.
+  const choices =
+    boardRounds(game).some((r) => playableClues(r).some((c) => c.type === 'standard' && c.everyone && usableChoices(c.choices).length)) ||
+    game.rounds.some((r) => isFinal(r) && !r.phoneAnswersOff && usableChoices(r.choices).length);
+  if (choices && !game.settings.buzzer)
+    out.push({ text: 'Multiple choice: without phone buzzers, the choices show on stream and players say the letter', tab: 'play', level: 'info' });
   // Steal on a miss with nobody buzzing: the host picks who steals.
   const steals = partners.filter((c) => stealOn(partnerRules(c), game.settings)).length;
   if (steals && !game.settings.buzzer)

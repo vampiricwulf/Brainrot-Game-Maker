@@ -3,7 +3,8 @@
 // panel too, until the answer is up); showing the answer locks them; the host marks each ✔ / ✘. Then, with an audience
 // window, a second ✍ clue: the host judges while answers are still open, and a ✔ leaves the others' countdown going.
 // Then a third, with multiple choice: phones tap one, the host sees each pick and how many picked each (in one window
-// only once the answer is up), and ✔ Judge all marks everyone in one step. Needs `npm ci` in buzzer/.
+// only once the answer is up), the stream shows the choices under the question (the right one lit with the answer),
+// and ✔ Judge all marks everyone in one step, its score pops above the choices. Needs `npm ci` in buzzer/.
 import { chromium } from 'playwright-core';
 import { spawn } from 'node:child_process';
 import { createServer } from 'node:net';
@@ -258,6 +259,15 @@ try {
     await host.screenshot({ path: `${process.env.SCREENSHOTS}/everyone-choices-host.png` });
     await p1.screenshot({ path: `${process.env.SCREENSHOTS}/everyone-choices-phone.png` });
   }
+  // The stream: the 4 choices under the question, lettered as the phones letter them, none lit yet.
+  const strip = aud.locator('[data-choices]');
+  await strip.locator('.choice').nth(3).waitFor();
+  assert(
+    (await strip.locator('.choice').count()) === 4 &&
+      (await strip.locator('.choice').nth(1).innerText()).replace(/\s+/g, ' ') === 'B Stockholm' &&
+      (await strip.locator('.choice.right, .choice.dim').count()) === 0,
+    'the audience window shows the 4 choices under the question, A to D, none lit before the answer',
+  );
   const audText = await aud.locator('body').innerText();
   assert(!audText.includes('B · Stockholm') && !audText.includes('A · Paris') && !audText.includes('A 1 ·'), 'the audience window shows none of the picks or the counts');
   assert(!(await p2.content()).includes('B · Stockholm') && !(await p1.content()).includes('A · Paris'), 'no phone sees another’s pick');
@@ -275,11 +285,23 @@ try {
   await row('Player 1').getByText('B · Stockholm').waitFor();
   await counts.getByText('A 1 · B 1 · C 0 · D 0').waitFor();
   assert(true, 'then the panel shows each pick and the counts');
+  const stageStrip = host.locator('.stage-box [data-choices]');
+  await stageStrip.locator('.choice.right').waitFor();
+  assert(
+    (await stageStrip.locator('.choice.right').innerText()).replace(/\s+/g, ' ') === '✔ Stockholm' && (await stageStrip.locator('.choice.dim').count()) === 3,
+    'with the answer, the stage’s choices light the one marked ✔ Right (B), the others dimmed',
+  );
   if (process.env.SCREENSHOTS) await host.screenshot({ path: `${process.env.SCREENSHOTS}/everyone-choices-locked.png` });
   const before = await p1.locator('#me').innerText();
   await answersBox.getByRole('button', { name: '✔ Judge all: B is right' }).click();
   await row('Player 1').getByText('✔ Right').waitFor();
   await row('Player 2').getByText('✘ Wrong').waitFor();
+  // Its score pops come in above the choices, not over them: the line they stand on (their box's foot; a pop is there
+  // only a moment, so it's the box that's measured) is above the strip.
+  const [popsFoot, stripTop] = await host.evaluate(() =>
+    ['.stage-box .pops', '.stage-box [data-choices]'].map((q, i) => document.querySelector(q)?.getBoundingClientRect()[i ? 'top' : 'bottom'] ?? NaN),
+  );
+  assert(popsFoot <= stripTop, `✔ Judge all’s score pops sit above the stage’s choices (their foot at ${Math.round(popsFoot)}px, the choices’ top at ${Math.round(stripTop)}px)`);
   await p1.waitForFunction((was) => document.querySelector('#me')?.textContent !== was, before);
   const judgedUndo = await host.getByRole('button', { name: '↶ Undo' }).getAttribute('title');
   assert(!judgedUndo.includes('Stockholm') && !judgedUndo.includes('Paris'), `✔ Judge all marks Player 1 right and Player 2 wrong, as one step that names no pick (${judgedUndo})`);

@@ -47,6 +47,17 @@ describe('joinSpot (the join code on a slide)', () => {
     expect(joinSpot(s, [], 1, { [s.elements[0].id]: { y: 380, h: 140 } })).toBeNull();
   });
 
+  it('a slide drawn smaller toward its origin (slideFit), and a multiple choice strip along the foot', () => {
+    // Words across the top and across the foot: no corner free at full size.
+    const s = slide([0, 0, 1920, 200], [0, 880, 1920, 200]);
+    expect(joinSpot(s)).toBeNull();
+    // Smaller toward the bottom (under a countdown): the top corners come free; toward the top (over a strip), the bottom.
+    expect(joinSpot(s, [], 0.7)).toEqual({ corner: 'tr', small: false });
+    expect(joinSpot(s, [], 0.7, {}, 0)).toEqual({ corner: 'br', small: false });
+    // The strip itself takes the bottom corners.
+    expect(joinSpot(s, [{ x: 0, y: 920, w: 1920, h: 160 }], 0.7, {}, 0)).toBeNull();
+  });
+
   it('a turned item takes the room of its turned box', () => {
     // 1000×100 bar turned 90°: 100 wide, 1000 tall, centred on (1810, 540): reaches the right corners.
     const s = slide([1310, 490, 1000, 100]);

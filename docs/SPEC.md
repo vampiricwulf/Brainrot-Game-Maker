@@ -403,7 +403,9 @@ The mode isn't saved with the game: it's dual while the audience window is open.
      an answer on their phone (a team: anyone on it) until the answer is shown; only the host sees them (in one window,
      not until the answer is up); the stream shows ✍ and who has answered; the host marks each ✔ / ✘ for the tile's
      value. With **multiple choice** (2–6 choices under ✍ in the editor, one marked ✔ Right), players tap one instead,
-     and ✔ Judge all marks everyone by the right choice in one step.
+     and ✔ Judge all marks everyone by the right choice in one step. The stream shows the choices under the question
+     (the slide drawn smaller over them, the right one lit with the answer). Without phone buzzers it plays as a normal
+     clue, the choices still on stream.
    - *Any tile with 🤫 cards* (PARTNER-CLUES-SPEC.md §12.2): its panel lists them for the picker (a Daily Double's
      player) with 📤 Send (or 📋 to copy them, or 🪟 to show one in the card window); they go when the tile closes, and
      the stream says "Ann has a private question" on a standard tile.
@@ -434,7 +436,8 @@ The mode isn't saved with the game: it's dual while the audience window is open.
    their phones, on unless the host unticks it in the round's editor), each player in it types their answer on their
    phone (a team: anyone on it) from the question until the answer shows; only the host sees them (in one window, not
    until each is revealed), and the stream shows ✍ and who has answered, never what. With multiple choice (under the
-   switch in its editor, as a ✍ clue's) they tap one instead, and each reveal says whether it's the one marked ✔ Right.
+   switch in its editor, as a ✍ clue's) they tap one instead, the choices show on stream under the question (the right
+   one lit with the answer), and each reveal says whether a pick is the one marked ✔ Right.
 3. Answer reveal.
 4. **Per-player reveal**, one at a time in an order the host chooses: a typed answer first (show it, then mark ✔ / ✘,
    and the wager goes up with the mark), otherwise show the wager, then mark ✔ / ✘; the score animates.

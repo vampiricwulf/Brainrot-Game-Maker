@@ -35,8 +35,8 @@
   import QrCode from '../lib/QrCode.svelte';
   import CuePlayer from './CuePlayer.svelte';
   import { soundUrl } from './cues';
-  import { JOIN_ROOM, PILL_BAND, TIMER_BAND, TIMER_ROOM } from './stagefit';
-  import { letter, pickOf, usableChoices } from '../lib/choices';
+  import { choiceStrip, JOIN_ROOM, PILL_BAND, slideFit, TIMER_BAND, TIMER_ROOM } from './stagefit';
+  import { letter, pickOf, rightChoice, usableChoices, type UsableChoice } from '../lib/choices';
 
   let {
     game,
@@ -240,7 +240,28 @@
   const timerOnBoard = $derived(!!live.timer && session.phase === 'board' && session.intro?.stage !== 'title');
   const timerBar = $derived(timerOnBoard && layout.score ? layout.score : null);
   const boardDown = $derived(timerOnBoard && !layout.score ? Math.max(0, TIMER_BAND - layout.board.top) : 0);
-  const bandScale = $derived(band ? (1080 - band) / 1080 : undefined);
+  /**
+   * A ✍ clue's (or a typed Final's) multiple choices, in a strip under the question from its first slide (the phones
+   * get them as it opens: never before viewers do), with or without phone buzzers. With the answer it stays only while
+   * one is marked ✔ Right, that one lit (`right`). Never who picked what.
+   */
+  const strip = $derived.by((): { key: string; list: UsableChoice[]; right?: string; cols: number; h: number } | null => {
+    let key = '';
+    let list: UsableChoice[] = [];
+    let answer = false;
+    if (session.phase === 'clue' && info && !own && info.clue.type === 'standard' && info.clue.everyone) {
+      [key, list, answer] = [info.clue.id, usableChoices(info.clue.choices), session.revealed];
+    } else if (session.phase === 'final' && finalRound && !finalRound.phoneAnswersOff && (session.finalStep === 'question' || session.finalStep === 'answer')) {
+      [key, list, answer] = [finalRound.id, usableChoices(finalRound.choices), session.finalStep === 'answer'];
+    }
+    const right = rightChoice(list)?.id;
+    if (introName || !list.length || (answer && !right)) return null;
+    return { key, list, ...(answer ? { right } : {}), ...choiceStrip(list.length) };
+  });
+  /** The slide drawn smaller between the top band and the strip of choices (both, either or neither). */
+  const fit = $derived(slideFit(band, strip?.h ?? 0));
+  /** What's along the foot (the caption, the slide dots, score pops) sits this far up: above the strip, if it's there. */
+  const foot = $derived(strip ? strip.h + 8 : 0);
   const keyColor = $derived(game.theme?.stageBg ? STAGE_KEYS[game.theme.stageBg] : undefined);
   /** The Daily Double and PARTNER UP! splashes' colors, clear of that key. */
   const splash = $derived(splashColors(game.theme?.stageBg));
@@ -359,13 +380,14 @@
     const taken: Rect[] = [];
     if (band) taken.push({ x: 0, y: 0, w: 1920, h: band });
     if (tb) taken.push({ x: 0, y: 24, w: 1920, h: 70 });
+    if (strip) taken.push({ x: 0, y: 1080 - strip.h, w: 1920, h: strip.h });
     if (session.phase === 'clue' && info && stream?.clueCaption) {
       const text = captionText;
-      taken.push({ x: 24, y: 1080 - 24 - 72, w: Math.min(1500, 44 + text.length * 26), h: 72 });
+      taken.push({ x: 24, y: 1080 - (foot || 24) - 72, w: Math.min(1500, 44 + text.length * 26), h: 72 });
     }
     const of = session.phase === 'clue' && info ? questionSlides(info.clue).length : tb ? questionSlides(tb).length : sr ? questionSlides(sr).length : 1;
-    if (of > 1) taken.push({ x: 960 - pipsW(of) / 2, y: 1080 - 31 - 40, w: pipsW(of), h: 40 });
-    return joinSpot(slide, taken, bandScale ?? 1, ink);
+    if (of > 1) taken.push({ x: 960 - pipsW(of) / 2, y: 1080 - (foot || 31) - 40, w: pipsW(of), h: 40 });
+    return joinSpot(slide, taken, fit?.scale ?? 1, ink, fit?.originY);
   });
   /** Under a wheel, dice or roll-off the code goes (its room on the score bar stays: the plates don't move). */
   const codeShown = $derived(!!codeSpot && !live.overlay && (codeSpot !== 'corner' || !!spot));
@@ -383,7 +405,7 @@
 
 <!-- Several question slides: where it is (● ● ○), so viewers know there's more to come; a long deck, as "3 / 45". -->
 {#snippet slidePips(at: number, of: number)}
-  <div class="pips" role="img" aria-label="Slide {at + 1} of {of}" data-slide-pips>
+  <div class="pips" role="img" aria-label="Slide {at + 1} of {of}" data-slide-pips style:bottom={foot ? `${foot}px` : undefined}>
     {#if of > PIPS_MAX}<b>{at + 1} / {of}</b>{:else}{#each { length: of } as _, i (i)}<span class:on={i <= at}></span>{/each}{/if}
   </div>
 {/snippet}
@@ -538,7 +560,9 @@
             {@render pairPlates(false)}
             <div class="pc-cat">{categoryLabel(info.category)}</div>
           </div>
-        {:else}<div class="slide-area" style:scale={bandScale} use:inkOf><SlideView slide={session.revealed ? info.clue.answerSlide : shownQuestionSlide(session, info.clue)} {role} /></div>{/if}
+        {:else}<div class="slide-area" style:scale={fit?.scale} style:transform-origin={fit && `50% ${fit.originY}px`} use:inkOf
+            ><SlideView slide={session.revealed ? info.clue.answerSlide : shownQuestionSlide(session, info.clue)} {role} /></div
+          >{/if}
       </div>
     {/key}
     <!-- A clue with several question slides: where it is (● ● ○), so viewers know there's more to come. -->
@@ -549,7 +573,7 @@
            code in the corner, short of that, about 420px wide.) -->
       {@const pipsMax = of > 1 && !session.revealed ? 960 - pipsW(of) / 2 - 24 - 44 - 16 : 1500}
       {@const captionMax = `${Math.min(pipsMax, codeShown && live.room && spot?.corner === 'br' ? 1920 - 24 - 44 - 16 - (spot.small ? 300 : 440) - 24 : 1500)}px`}
-      <div class="caption" style:max-width={captionMax}>{captionText}</div>
+      <div class="caption" style:max-width={captionMax} style:bottom={foot ? `${foot}px` : undefined}>{captionText}</div>
     {/if}
     {#if session.dd?.stage === 'question' && ddPlayer}
       <div class="dd-badge" style:border-color={ddPlayer.color}>
@@ -600,12 +624,14 @@
         {#if finalRound}
           {@const fAt = clueSlideIndex(session, finalRound)}
           {@const fOf = questionSlides(finalRound).length}
-          <div class="slide-area" style:scale={bandScale} data-slide={fAt + 1}><SlideView slide={shownQuestionSlide(session, finalRound)} {role} /></div>
+          <div class="slide-area" style:scale={fit?.scale} style:transform-origin={fit && `50% ${fit.originY}px`} data-slide={fAt + 1}>
+            <SlideView slide={shownQuestionSlide(session, finalRound)} {role} />
+          </div>
           <!-- Several question slides: where it is (● ○), as on a clue. -->
           {#if fOf > 1}{@render slidePips(fAt, fOf)}{/if}
         {/if}
       {:else if session.finalStep === 'answer'}
-        {#if finalRound}<div class="slide-area" style:scale={bandScale}><SlideView slide={finalRound.answerSlide} {role} /></div>{/if}
+        {#if finalRound}<div class="slide-area" style:scale={fit?.scale} style:transform-origin={fit && `50% ${fit.originY}px`}><SlideView slide={finalRound.answerSlide} {role} /></div>{/if}
       {:else if session.finalStep === 'reveal'}
         <div class="reveal">
           <div class="final-label small">{finalLabel}</div>
@@ -663,7 +689,7 @@
   {@const srOf = questionSlides(sr).length}
   {#key `${sr.id}-${srAt}`}
     <div class="full" class:clickable={!!onact} onclick={() => act('reveal')} role="presentation" data-slide={srAt + 1} in:fade={{ duration: 300 }}>
-      <div class="slide-area" style:scale={bandScale} use:inkOf><SlideView slide={shownQuestionSlide(session, sr)} {role} /></div>
+      <div class="slide-area" style:scale={fit?.scale} use:inkOf><SlideView slide={shownQuestionSlide(session, sr)} {role} /></div>
     </div>
   {/key}
   {#if srOf > 1}{@render slidePips(srAt, srOf)}{/if}
@@ -680,7 +706,7 @@
       data-slide={session.tiebreakerRevealed ? 'answer' : tbAt + 1}
       in:fade={{ duration: 300 }}
     >
-      <div class="slide-area" style:scale={bandScale} use:inkOf><SlideView slide={session.tiebreakerRevealed ? tb.answerSlide : shownQuestionSlide(session, tb)} {role} /></div>
+      <div class="slide-area" style:scale={fit?.scale} use:inkOf><SlideView slide={session.tiebreakerRevealed ? tb.answerSlide : shownQuestionSlide(session, tb)} {role} /></div>
       <div class="final-label small">TIEBREAKER</div>
     </div>
   {/key}
@@ -710,6 +736,20 @@
         </li>
       {/each}
     </ol>
+  </div>
+{/if}
+
+{#if strip}
+  <!-- The question's multiple choices, A to F as the phones letter them; with the answer, the right one lit. -->
+  <div class="choices" data-choices style:--cols={strip.cols} style:height="{strip.h - 40}px" in:fade={{ duration: 300 }}>
+    {#each strip.list as c, i (c.id)}
+      <div class="choice" class:right={strip.right === c.id} class:dim={!!strip.right && strip.right !== c.id}>
+        <span class="letter" style:background={chipBg} style:color={chipInk}>{strip.right === c.id ? '✔' : letter(i)}</span>
+        <span class="words" dir="auto" use:autofit={{ size: 56, min: 24, enabled: true, group: `choices:${strip.key}`, text: `${c.text}|${strip.cols}` }}
+          ><span>{c.text}</span></span
+        >
+      </div>
+    {/each}
   </div>
 {/if}
 
@@ -754,7 +794,7 @@
 <div
   class="pops"
   style:top={popsOnBar ? `${barTop ? popsOnBar.top + popsOnBar.height - 30 : popsOnBar.top + 30}px` : undefined}
-  style:bottom={popsOnBar ? undefined : captionUp ? '130px' : '40px'}
+  style:bottom={popsOnBar ? undefined : `${(foot || 40) + (captionUp ? 90 : 0)}px`}
   class:on-bar={!!popsOnBar}
   class:bar-top={barTop}
 >
@@ -1040,7 +1080,68 @@
        caption, pops, tools and cover (as it does while shifted down). */
     isolation: isolate;
     transform-origin: 50% 100%;
-    transition: scale 0.3s ease;
+    transition:
+      scale 0.3s ease,
+      transform-origin 0.3s ease;
+  }
+  /* A question's multiple choices along the foot of the stage (the slide is drawn smaller over them: slideFit). */
+  .choices {
+    position: absolute;
+    left: 24px;
+    right: 24px;
+    bottom: 24px;
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    align-content: flex-end;
+    gap: 16px;
+    z-index: 15;
+    pointer-events: none;
+  }
+  .choice {
+    box-sizing: border-box;
+    width: calc((100% - (var(--cols) - 1) * 16px) / var(--cols));
+    height: 120px;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    padding: 8px 20px;
+    border-radius: 18px;
+    background: rgba(0, 0, 0, 0.75);
+    border: 5px solid var(--value, #ffcc00);
+    color: #fff;
+    font-family: var(--board-font);
+    font-weight: 800;
+    transition:
+      opacity 0.3s,
+      background 0.3s;
+  }
+  .choice .letter {
+    flex: none;
+    width: 84px;
+    height: 84px;
+    border-radius: 50%;
+    display: grid;
+    place-items: center;
+    font-size: 56px;
+    font-weight: 900;
+  }
+  .choice .words {
+    flex: 1;
+    min-width: 0;
+    height: 100%;
+    display: grid;
+    align-items: center;
+    font-size: 56px;
+    line-height: 1.1;
+    overflow: hidden;
+  }
+  .choice.right {
+    background: #1f9d55;
+    border-color: #fff;
+  }
+  .choice.dim {
+    opacity: 0.4;
   }
   .clickable {
     cursor: pointer;

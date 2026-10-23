@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { aboveStrip, PILL_BAND, TIMER_BAND } from './stagefit';
+import { aboveStrip, choiceStrip, PILL_BAND, slideFit, TIMER_BAND } from './stagefit';
 import { CONFETTI_MS, confettiAlpha, confettiRunning, confettiX, PIECES } from './confetti';
 import { Announcer, ANNOUNCE_WAIT } from '../lib/announce';
 
@@ -27,6 +27,42 @@ describe('the play area and the stats strip', () => {
 
   it('keeps the countdown’s band taller than the answering plate’s', () => {
     expect(TIMER_BAND).toBeGreaterThan(PILL_BAND);
+  });
+});
+
+describe('a slide between a top band and a multiple choice strip (slideFit)', () => {
+  /** Where the slide's top and foot land, drawn at that scale toward originY. */
+  const edges = (f: { scale: number; originY: number }) => [f.originY * (1 - f.scale), f.originY + (1080 - f.originY) * f.scale];
+
+  it('full size with neither; a band only, as before: smaller toward the bottom', () => {
+    expect(slideFit(0, 0)).toBeUndefined();
+    expect(slideFit(TIMER_BAND, 0)).toEqual({ scale: (1080 - TIMER_BAND) / 1080, originY: 1080 });
+  });
+
+  it('a strip only: smaller toward the top, its foot on the strip', () => {
+    const f = slideFit(0, 160)!;
+    expect(f.originY).toBe(0);
+    expect(edges(f)[1]).toBeCloseTo(1080 - 160);
+  });
+
+  it('both: just the room between them (a countdown and 4 choices 0.68, 6 choices 0.55)', () => {
+    const four = slideFit(TIMER_BAND, choiceStrip(4).h)!;
+    expect(four.scale).toBeCloseTo(0.68, 2);
+    expect(edges(four)[0]).toBeCloseTo(TIMER_BAND);
+    expect(edges(four)[1]).toBeCloseTo(1080 - 160);
+    const six = slideFit(TIMER_BAND, choiceStrip(6).h)!;
+    expect(six.scale).toBeCloseTo(0.55, 2);
+    expect(edges(six)[1]).toBeCloseTo(1080 - 296);
+  });
+
+  it('the strip: 2 to 4 choices in a row (160 tall), 5 or 6 in two rows of 3 (296)', () => {
+    expect([2, 3, 4, 5, 6].map((n) => choiceStrip(n))).toEqual([
+      { cols: 2, h: 160 },
+      { cols: 3, h: 160 },
+      { cols: 4, h: 160 },
+      { cols: 3, h: 296 },
+      { cols: 3, h: 296 },
+    ]);
   });
 });
 

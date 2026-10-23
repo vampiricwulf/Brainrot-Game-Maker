@@ -101,6 +101,8 @@ describe('the checklist', () => {
 describe('✍ multiple choice', () => {
   it('warns of an empty choice, only one, or two the same, and notes none marked ✔ Right; only on ✍ standard tiles', () => {
     const game = jeopardyGame();
+    // (With phone buzzers: without them there's a line of its own, below.)
+    game.settings.buzzer = true;
     const round = game.rounds[0] as BoardRound;
     const [a, b, c, d] = round.categories[0].clues;
     for (const cl of [a, b, c, d]) cl.everyone = true;
@@ -125,6 +127,7 @@ describe('✍ multiple choice', () => {
 
   it('a Final’s too, while its players type their answers on their phones', () => {
     const game = jeopardyGame();
+    game.settings.buzzer = true;
     const i = game.rounds.findIndex((r) => r.mode === 'final');
     const fin = game.rounds[i] as FinalRound;
     fin.choices = [{ id: '1', text: 'Paris' }, { id: '2', text: '' }, { id: '3', text: 'paris' }];
@@ -140,6 +143,26 @@ describe('✍ multiple choice', () => {
     // Answers on paper: kept, unused.
     fin.phoneAnswersOff = true;
     expect(mine()).toEqual([]);
+  });
+
+  it('notes that without phone buzzers the choices show on stream and players say the letter', () => {
+    const game = jeopardyGame();
+    const line = () => validate(game).find((p) => p.text.startsWith('Multiple choice:'));
+    const clue = (game.rounds[0] as BoardRound).categories[0].clues[0];
+    clue.choices = [{ id: '1', text: 'Paris' }, { id: '2', text: 'Oslo' }];
+    expect(line()).toBeUndefined();
+    clue.everyone = true;
+    expect(line()).toEqual({ text: 'Multiple choice: without phone buzzers, the choices show on stream and players say the letter', tab: 'play', level: 'info' });
+    game.settings.buzzer = true;
+    expect(line()).toBeUndefined();
+    // A Final's too (while its players would type their answers).
+    game.settings.buzzer = false;
+    delete clue.everyone;
+    const fin = game.rounds.find((r) => r.mode === 'final') as FinalRound;
+    fin.choices = clue.choices;
+    expect(line()?.tab).toBe('play');
+    fin.phoneAnswersOff = true;
+    expect(line()).toBeUndefined();
   });
 });
 

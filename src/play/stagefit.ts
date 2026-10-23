@@ -8,6 +8,29 @@ export const TIMER_ROOM = 250;
 export const JOIN_ROOM = 230;
 /** "Ann is answering" / the Daily Double badge along the top. */
 export const PILL_BAND = 130;
+/** A multiple choice's box in the strip under a question, and the gap between boxes (and rows). */
+export const CHOICE_H = 120;
+export const CHOICE_GAP = 16;
+
+/**
+ * The strip of a question's multiple choices along the foot of the stage: how many a row (all of 2 to 4 in one, 5 or 6
+ * in rows of 3), and the room it takes from the slide (24 below it, 16 above it).
+ */
+export function choiceStrip(n: number): { cols: number; h: number } {
+  const cols = n <= 4 ? n : 3;
+  const rows = Math.ceil(n / cols);
+  return { cols, h: rows * CHOICE_H + (rows - 1) * CHOICE_GAP + 24 + 16 };
+}
+
+/**
+ * A slide drawn smaller between a top band (`top`, the countdown's or a badge's) and a bottom strip (`bottom`, the
+ * multiple choices): its scale, and where it shrinks toward (stage px from the top), so it fills just the room between
+ * them. Neither: undefined (full size). A band only shrinks it toward the bottom, as it always has.
+ */
+export function slideFit(top: number, bottom: number): { scale: number; originY: number } | undefined {
+  if (!top && !bottom) return undefined;
+  return { scale: (1080 - top - bottom) / 1080, originY: (top * 1080) / (top + bottom) };
+}
 
 /**
  * The play area above (or below) a stats strip `strip` px tall: how much it's scaled, and where it sits, so the whole

@@ -7,7 +7,8 @@
 // (viewers see it), so the amounts phones send stay hidden in its panel until the reveals show them. The Final's answers
 // too: typed on the phones once the question shows, only the host sees them (one window: not until each is revealed),
 // and N in the reveals puts each on stream before C / X shows the wager. The team's Final has multiple choice (made in
-// its editor): a member taps one, and the reveal says whether it's the right one. Needs `npm ci` in buzzer/.
+// its editor): they show on stream under the question (the right one lit with the answer), a member taps one, and the
+// reveal says whether it's the right one. Needs `npm ci` in buzzer/.
 import { chromium } from 'playwright-core';
 import { spawn } from 'node:child_process';
 import { createServer } from 'node:net';
@@ -528,9 +529,17 @@ try {
     );
   };
   await typedHidden('the question');
-  for (const step of ['Reveal answer ▶', 'Start team reveals ▶']) {
-    await mainButton(host2).filter({ hasText: step }).click();
-  }
+  // The stream (one window: the host's stage) has the 4 choices under the question, none lit; with the answer, B.
+  const stageStrip = host2.locator('.stage-box [data-choices]');
+  assert(
+    (await stageStrip.locator('.choice').count()) === 4 && (await stageStrip.locator('.choice.right').count()) === 0,
+    'the stage shows the Final’s 4 choices under the question, none lit',
+  );
+  await mainButton(host2).filter({ hasText: 'Reveal answer ▶' }).click();
+  await stageStrip.locator('.choice.right', { hasText: CHOICES[1] }).waitFor();
+  assert(true, 'with the answer, the one marked ✔ Right (B) lights up');
+  await mainButton(host2).filter({ hasText: 'Start team reveals ▶' }).click();
+  await stageStrip.waitFor({ state: 'detached' });
   const rev1 = host2.locator('.fj .pl', { hasText: 'Player 1' });
   const revIn = rev1.locator('input[data-reveal-wager]');
   await revIn.waitFor();

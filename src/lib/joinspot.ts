@@ -46,12 +46,13 @@ export function cornerRect(corner: Corner, size: { w: number; h: number }): Rect
 }
 
 /**
- * The first free corner for the badge on `slide`, full size or small. `scale`: the slide drawn smaller from the bottom
- * middle (under a countdown). `taken`: other things on screen there (the caption, the slide dots, the countdown). `ink`:
+ * The first free corner for the badge on `slide`, full size or small. `scale`: the slide drawn smaller toward the middle
+ * of the line `originY` px down the stage (the bottom: under a countdown; higher with a multiple choice strip under it,
+ * slideFit). `taken`: other things on screen there (the caption, the slide dots, the countdown, the choices). `ink`:
  * where text boxes' words are, when measured. An item filling (nearly) the whole stage is a backdrop, not something the
  * badge would hide.
  */
-export function joinSpot(slide: Slide | undefined, taken: Rect[] = [], scale = 1, ink: Ink = {}): { corner: Corner; small: boolean } | null {
+export function joinSpot(slide: Slide | undefined, taken: Rect[] = [], scale = 1, ink: Ink = {}, originY = H): { corner: Corner; small: boolean } | null {
   const boxes = (slide?.elements ?? []).flatMap((e) => {
     let b = seen(e);
     if (!b) return [];
@@ -69,8 +70,8 @@ export function joinSpot(slide: Slide | undefined, taken: Rect[] = [], scale = 1
     const x1 = Math.min(W, b.x + b.w);
     const y1 = Math.min(H, b.y + b.h);
     if (x1 <= x0 || y1 <= y0 || (x1 - x0) * (y1 - y0) >= 0.85 * W * H) return [];
-    // Drawn smaller towards the bottom middle.
-    return [{ x: W / 2 + (x0 - W / 2) * scale, y: H - (H - y0) * scale, w: (x1 - x0) * scale, h: (y1 - y0) * scale }];
+    // Drawn smaller towards the middle of originY's line.
+    return [{ x: W / 2 + (x0 - W / 2) * scale, y: originY + (y0 - originY) * scale, w: (x1 - x0) * scale, h: (y1 - y0) * scale }];
   });
   const all = [...boxes, ...taken];
   for (const small of [false, true]) {
