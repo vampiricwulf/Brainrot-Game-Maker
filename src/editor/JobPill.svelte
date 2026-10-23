@@ -12,8 +12,8 @@
 
 {#if job}
   <span class="pill" data-job-pill>
-    <span role="status">{pillText(job)}</span>
-    <span aria-hidden="true">{progressText(job)}{waiting ? ` (+${waiting} waiting)` : ''}</span>
+    <!-- (Short of room, the words end in "…": Stop stays.) -->
+    <span class="words"><span role="status">{pillText(job)}</span> <span aria-hidden="true">{progressText(job)}{waiting ? ` (+${waiting} waiting)` : ''}</span></span>
     <button class="small ghost" onclick={() => stopJob(job.id)} title="Stop it: nothing is changed">Stop</button>
   </span>
 {/if}
@@ -30,5 +30,13 @@
     font-size: 12px;
     white-space: nowrap;
     overflow: hidden;
+  }
+  .words {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  button {
+    flex-shrink: 0;
   }
 </style>

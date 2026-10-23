@@ -39,6 +39,7 @@ in plain words for the people who make and host games. Anything committed but no
 - ✎ Edit image on a moving GIF: closing the window while it saves (Esc, ✕, or Discard) stops the save and changes nothing. Before, the edit was still put in a moment later. The tools wait while it saves, and the question asks Discard or Keep editing.
 - ✎ Edit image says how big the edited picture came out (“Image edited (original kept): 2.9 MB, was 206 KB”): a moving GIF can come out many times bigger.
 - New, Open… and reopening a recent game ask first (Keep working / Stop it) while a ✎ edit, 🗜 copy or 🔄 conversion is still being made, as ▶ Play does. Before, they stopped it at once, with only a toast to say so.
+- The editor header's pill for a ✎ / 🗜 / 🔄 job keeps its Stop in sight in a narrower window (1366 px or less): its words end in “…” instead.
 
 ## 2026-10-22
 

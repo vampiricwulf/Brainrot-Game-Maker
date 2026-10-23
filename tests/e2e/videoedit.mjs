@@ -596,6 +596,14 @@ try {
     (await page.locator('[data-job-pill]').isVisible()) && !!refNamed(await stored(page, 'editorDraft'), `long.${longExt}`),
     'Keep working: the same game, the edit going on',
   );
+  // A narrower window (a laptop's, or half a screen): the pill's words shorten, and its Stop stays in sight.
+  await page.setViewportSize({ width: 1024, height: 950 });
+  const stopShown = await page.locator('[data-job-pill]').evaluate((p) => {
+    const [b, r] = [p.querySelector('button').getBoundingClientRect(), p.getBoundingClientRect()];
+    return { inside: b.left >= r.left && b.right <= r.right + 0.5 && b.right <= innerWidth, stop: Math.round(b.width), pill: Math.round(r.width) };
+  });
+  assert(stopShown.inside && stopShown.stop >= 30, `at 1024 px wide the pill’s Stop is whole and in sight (${JSON.stringify(stopShown)})`);
+  await page.setViewportSize({ width: 1400, height: 950 });
   await play.click();
   await playAsk.waitFor();
   await playAsk.getByRole('button', { name: 'Stop it and play' }).click();
