@@ -96,16 +96,17 @@ room, plus the phone page it serves. It is not part of the app's single-file bui
   gone from the host's state is forgotten at once, so a closed tile leaves nothing of its cards in the room.
   With `status.off` the phones in the lobby grey their buzz button (disabled, to a screen reader too), with the status
   line as its big line and `status.sub` (and `seatsSub` for the status line's seats) as the small one.
-- **On the phone**, a card takes the buzz button's place while nobody buzzes (above a wager or answer box when one is
-  up), newest first, its part and hint over a "Tap to see" cover (🙈 Hide puts it back). The phone says a card came
-  ("A card only you can see") and gives it a short buzz, and tells the room it was seen when it's opened. Card files
-  are fetched with the phone's token in a header and shown from `blob:` addresses, let go when the card goes; "🖼
-  Picture coming…" fills in as a file arrives. Videos play muted and inline ("🔊 Tap for sound"), sounds wait for a
-  tap, and a YouTube (no-cookie), Drive or Streamable player is framed only when tapped, sandboxed, with the referrer
-  YouTube needs (only the site's origin goes, never the page's address with its room code). Cards are kept in memory
-  only. The page has a content policy (a `<meta>` in `phone/index.html`, as the page is a static file the Worker
-  doesn't serve) that lets pictures and media load only from https, `blob:` and the page itself, and frames only from
-  those three players; it sets no `default-src` or `script-src`, as the page's script and style are inline.
+- **On the phone**, a card takes the buzz button's place while nobody buzzes, with what the button would say over it
+  ("Answers locked" or "Wager locked" with what's in, where they came; between clues, the status line), and goes above a
+  wager or answer box when one is up, newest first, its part and hint over a "Tap to see" cover (🙈 Hide puts it back).
+  The phone says a card came ("A card only you can see") and gives it a short buzz, and tells the room it was seen when
+  it's opened. Card files are fetched with the phone's token in a header and shown from `blob:` addresses, let go when
+  the card goes; "🖼 Picture coming…" fills in as a file arrives. Videos play muted and inline ("🔊 Tap for sound"),
+  sounds wait for a tap, and a YouTube (no-cookie), Drive or Streamable player is framed only when tapped, sandboxed,
+  with the referrer YouTube needs (only the site's origin goes, never the page's address with its room code). Cards are
+  kept in memory only. The page has a content policy (a `<meta>` in `phone/index.html`, as the page is a static file the
+  Worker doesn't serve) that lets pictures and media load only from https, `blob:` and the page itself, and frames only
+  from those three players; it sets no `default-src` or `script-src`, as the page's script and style are inline.
 - **Card files** (`'files'`): the host's own pictures, GIFs, videos and sounds for its cards, uploaded only when it
   sends the card or presses ⇡ Get it ready (see "Card files" below for the limits). A phone fetches one only for a card
   sent to it that it isn't late for, with its seat's token in the `Authorization` header; anyone else gets 404. A GIF

@@ -13,7 +13,10 @@
 // doesn't open it; opened at the end of a page that scrolls, its words stay in sight; on its side, the cards keep room
 // for Tap to see under a long clue with BUZZ! where it was, the guesser's box stays below the header and in place, an
 // open card scrolls in its own place beside it, and a late phone's note keeps no room; in a laptop's taller window a
-// box beside a card stays put as it opens. Needs `npm ci` in buzzer/.
+// box beside a card stays put as it opens. A question of three lines over choices shows whole on a small phone. A card in
+// the buzzer's place has what's locked in over it (said too), and the keys go into a box from a covered card or the
+// wager box; an edit not sent yet says so in amber; the end says where you came as one sentence. Needs `npm ci` in
+// buzzer/.
 import { chromium } from 'playwright-core';
 import { spawn } from 'node:child_process';
 import { createServer } from 'node:net';
@@ -830,6 +833,23 @@ try {
   await ann.locator('#answer-state').getByText('✔ Sent: B').waitFor();
   const tapped = await pickTops();
   assert(tapped === untapped, `a long question over multiple choice: “✔ Sent: B” leaves the buttons where they were (${untapped} → ${tapped})`);
+  // A question of three lines over four choices on a small phone: smaller, and whole (no ▼ More over its last line).
+  await ann.setViewportSize({ width: 320, height: 568 });
+  const threeLines = 'Which of these cities\nis the capital\nof Australia?';
+  hostState({ clue: { text: threeLines, caption: 'Geography · $400' }, answers: { id: 'three', open: true, seats: [{ id: 'a' }], choices: ['Sydney', 'Canberra', 'Perth', 'Darwin'].map((text, i) => ({ id: `t${i}`, text })) } });
+  await until(() => ann.locator('#clue').textContent().then((t) => t === threeLines), 'the three-line question');
+  const lines3 = await ann.evaluate(
+    () =>
+      new Promise((ok) =>
+        requestAnimationFrame(() =>
+          requestAnimationFrame(() => {
+            const c = document.getElementById('clue');
+            ok({ fits: c.scrollHeight <= c.clientHeight, more: !document.getElementById('clue-more').hidden, font: parseFloat(getComputedStyle(c).fontSize), room: c.style.getPropertyValue('--clue-room') });
+          }),
+        ),
+      ),
+  );
+  assert(lines3.fits && !lines3.more && lines3.font < 17, `a three-line question over four choices on a 320×568 phone: smaller, and whole, with no ▼ More (${JSON.stringify(lines3)})`);
   // A shorter question on a bigger phone, with a long link and "A) … B) …" lines: whole, left-aligned, the lines kept.
   await ann.setViewportSize({ width: 390, height: 844 });
   const quiz =
@@ -895,6 +915,109 @@ try {
   );
   await cat.emulateMedia({ reducedMotion: null });
   hostState({ phase: 'lobby', clue: null, earlyLockMs: 0 });
+
+  // ---------- A card in the buzzer's place: what's locked in over it, and the keys where they're wanted ----------
+  await cat.setViewportSize({ width: 1280, height: 800 });
+  const spyFor = (seat) => ({ id: `pc:lock:${seat}`, to: [{ seat }], open: true, title: 'Your part', text: 'SECRET-zq: you are the spy' });
+  /** Where the keys are: a card's Tap to see, or an id. */
+  const keysAt = (p) =>
+    p.evaluate(() => {
+      const at = document.activeElement;
+      return at?.classList.contains('card-cover') ? 'cover' : at?.id || at?.tagName || '';
+    });
+  const colour = (p, id) => p.locator(`#${id}`).evaluate((el) => [el.textContent, getComputedStyle(el).color]);
+  hostState({ cards: [spyFor('c')] });
+  await until(() => keysAt(cat).then((k) => k === 'cover'), 'the keys on the card’s Click to see');
+  // A ✍ clue on a laptop: the box takes the keys from the covered card, so the words go in and Enter sends them.
+  hostState({ clue: { text: 'Name a dog breed' }, answers: { id: 'lock1', open: true, seats: [{ id: 'a' }, { id: 'c' }] } });
+  await until(() => keysAt(cat).then((k) => k === 'answer-in'), 'the keys in the answer box');
+  await cat.keyboard.type('Poodle');
+  await cat.keyboard.press('Enter');
+  await cat.locator('#answer-state').getByText('✔ Sent').waitFor();
+  assert(
+    h.got.some((m) => m.t === 'answer' && m.seatId === 'c' && m.text === 'Poodle') && !(await cat.getByText('SECRET-zq').isVisible()),
+    'a ✍ box opening on a laptop takes the keys from a covered card: “Poodle” and Enter send it, and the card stays covered',
+  );
+  // An edit not sent yet says so in amber, not in the green of “✔ Sent”.
+  await cat.keyboard.type(', Beagle');
+  const unsentAnswer = await colour(cat, 'answer-state');
+  assert(
+    unsentAnswer[0] === 'Not sent yet: click Change answer to send it. What the host has: “Poodle”' && unsentAnswer[1] === 'rgb(255, 210, 122)',
+    `an answer changed but not sent: “Not sent yet…”, in amber (${unsentAnswer.join(', ')})`,
+  );
+  await cat.keyboard.press('Enter');
+  await cat.locator('#answer-state').getByText('✔ Sent: “Poodle, Beagle”').waitFor();
+  // (A phone reloaded mid-clue: nothing tapped since, so the browser would ring what the page gives the keys to.)
+  await ann.reload();
+  await ann.locator('#answer-form').waitFor();
+  // The answer up: over the card, “Answers locked” with what's in (said too), the keys on its Click to see.
+  hostState({ answers: { id: 'lock1', open: false, seats: [{ id: 'a' }, { id: 'c' }] } });
+  await cat.locator('#card-status-big').getByText('Answers locked').waitFor();
+  const overCard = async (p) => ({
+    buzz: await p.locator('#buzz').isVisible(),
+    small: await p.locator('#card-status-small').innerText(),
+    live: await p.locator('#live').textContent(),
+    keys: await keysAt(p),
+  });
+  const locked = await overCard(cat);
+  assert(
+    !locked.buzz && locked.small === 'Yours: “Poodle, Beagle”' && locked.live === 'Answers locked. Yours: “Poodle, Beagle”.' && locked.keys === 'cover',
+    `the answer up, a card in the buzzer’s place: over it “Answers locked” with what’s in, said too, the keys on its Click to see (${JSON.stringify(locked)})`,
+  );
+  await ann.locator('#buzz-big').getByText('Answers locked').waitFor();
+  const touchRing = await ann.evaluate(() => {
+    const b = document.getElementById('buzz');
+    return { keys: document.activeElement === b, outline: getComputedStyle(b).outlineStyle };
+  });
+  assert(touchRing.keys && touchRing.outline === 'none', `a touch phone: BUZZ! takes the keys as answers lock, with no ring that looks like its lit border (${JSON.stringify(touchRing)})`);
+  // The Final: the wager box takes the keys from the card's cover; an amount typed over the one sent says it isn't sent.
+  hostState({
+    clue: null,
+    answers: null,
+    status: { text: 'Final Jeopardy! · Space' },
+    cards: [spyFor('c'), spyFor('a')],
+    wager: { id: 'fin1', kind: 'final', open: true, seats: [{ id: 'a', max: 1000 }, { id: 'c', max: 1000 }] },
+  });
+  await until(() => keysAt(cat).then((k) => k === 'wager-in'), 'the keys in the wager box');
+  await cat.keyboard.type('300');
+  await cat.keyboard.press('Enter');
+  await cat.locator('#wager-state').getByText('✔ Sent: 300').waitFor();
+  await cat.locator('#wager-in').fill('900');
+  const unsentWager = await colour(cat, 'wager-state');
+  assert(
+    unsentWager[0] === 'Not sent yet: click Change wager to send it. What the host has: 300' && unsentWager[1] === 'rgb(255, 210, 122)',
+    `a wager changed but not sent: “Not sent yet…”, in amber, not “✔ Sent: 300” (${unsentWager.join(', ')})`,
+  );
+  await cat.locator('#wager-in').fill('300');
+  assert((await cat.locator('#wager-state').innerText()).startsWith('✔ Sent: 300'), 'the amount sent typed back: “✔ Sent: 300” again');
+  // The question: the answer box takes the keys from the wager box; Ann (on paper) sees her wager locked over her card.
+  hostState({
+    wager: { id: 'fin1', kind: 'final', open: false, seats: [{ id: 'a', max: 1000, amount: 500 }, { id: 'c', max: 1000, amount: 300 }] },
+    clue: { text: 'Name the first man on the Moon' },
+    answers: { id: 'fin1a', open: true, seats: [{ id: 'c' }] },
+  });
+  await until(() => keysAt(cat).then((k) => k === 'answer-in'), 'the keys in the Final’s answer box');
+  await ann.locator('#card-status-big').getByText('Wager locked').waitFor();
+  const annWager = await overCard(ann);
+  assert(
+    !annWager.buzz && annWager.small === 'Your wager: 500' && annWager.live === 'Wager locked. Your wager: 500.',
+    `the question up, a card in the buzzer’s place: over it “Wager locked” with the wager, said too (${JSON.stringify(annWager)})`,
+  );
+  await cat.keyboard.type('Neil Armstrong');
+  await cat.keyboard.press('Enter');
+  await cat.locator('#answer-state').getByText('✔ Sent').waitFor();
+  hostState({ answers: { id: 'fin1a', open: false, seats: [{ id: 'c' }] } });
+  await cat.locator('#card-status-big').getByText('Answers locked').waitFor();
+  const finalLocked = await overCard(cat);
+  assert(
+    finalLocked.small === 'Your wager: 300 · Yours: “Neil Armstrong”' && finalLocked.keys === 'cover',
+    `the Final’s answer up: over the card “Answers locked” with the wager and the answer, the keys on its Click to see (${JSON.stringify(finalLocked)})`,
+  );
+  // The end: where you came is said as one sentence.
+  hostState({ over: true, wager: null, answers: null, clue: null, cards: null, status: undefined });
+  await big(ann).getByText('You came 1st').waitFor();
+  const came = { live: await ann.locator('#live').textContent(), name: await ann.locator('#buzz').getAttribute('aria-label') };
+  assert(came.live === 'You came 1st with 4,321 🎉.' && came.name === came.live, `the end: “You came 1st with 4,321 🎉.”, one sentence (${JSON.stringify(came)})`);
 
   assert(!errors.length, 'no page errors' + (errors.length ? ': ' + errors.join(' | ') : ''));
   console.log('Phone cards E2E passed.');

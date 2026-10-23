@@ -869,19 +869,21 @@ function refitClue(sec: HTMLElement): void {
   fitFor = asked;
   const atEnd = clue.classList.contains('scrolls') && clue.scrollTop + clue.clientHeight >= clue.scrollHeight - 2;
   const share = clue.scrollHeight ? clue.scrollTop / clue.scrollHeight : 0;
-  // The room (never under 2.6 lines, so two and ▼ More show), and the biggest size that fits it, a quarter pixel at a
-  // time, from the page's own size down to the smallest (never above the page's: a short laptop window starts lower).
+  // The room (never under 2.6 lines, so two and ▼ More show, nor under 3 at the smallest size, so a question of three
+  // lines always shows whole), and the biggest size that fits it, a quarter pixel at a time, from the page's own size
+  // down to the smallest (never above the page's: a short laptop window starts lower).
   clue.classList.remove('scrolls', 'more');
   clue.style.removeProperty('font-size');
   const start = parseFloat(getComputedStyle(clue).fontSize);
-  const floor = Math.ceil(start * 1.3 * 2.6);
+  const smallest = Math.min(start, fine.matches ? 16 : 15);
+  const floor = Math.ceil(Math.max(start * 2.6, smallest * 3) * 1.3);
   clue.style.setProperty('--clue-room', `${Math.max(floor, room)}px`);
   // (Measured with no scrollbar: where one takes room, one left from a size that didn't fit would make every size
   // after it look too big.)
   clue.style.overflow = 'hidden';
   let size = start;
   if (!fits()) {
-    let [lo, hi] = [Math.min(start, fine.matches ? 16 : 15), start];
+    let [lo, hi] = [smallest, start];
     clue.style.fontSize = `${lo}px`;
     const mid = () => Math.round(((lo + hi) / 2) * 4) / 4;
     if (fits())
@@ -1217,9 +1219,8 @@ function renderBuzz(v: PhoneView): void {
   $('cards').hidden = !cards.length && !late;
   $('cards-late').hidden = !late;
   $('cards-late').textContent = lateLine(late, team);
-  $('card-status').hidden = !cardsUp || !v.status;
-  $('card-status-big').textContent = cardsUp ? (v.status ?? '') : '';
-  $('card-status-small').textContent = cardsUp ? (v.statusSub ?? '') : '';
+  // (The line over cards in the buzzer's place is filled in below, once what the buzzer would say is known.)
+  if (!cardsUp) $('card-status').hidden = true;
   $('s-buzz').classList.toggle('cards-up', cardsUp);
   $('s-buzz').classList.toggle('cards-aside', !!(cards.length || late) && !cardsUp);
   // A buzzer that's up stays where the finger is: cards beside it go under it, not over (a box keeps its cards over it).
@@ -1234,17 +1235,23 @@ function renderBuzz(v: PhoneView): void {
   const parked = fine.matches && at instanceof HTMLButtonElement && !!at.closest('.foot, header');
   // (Keys on a long question or its ▼ More, from Tab or a click on the question, move on as if they were on BUZZ!.)
   const onClue = at === $('clue') || at === $('clue-more');
+  // (Keys in a box as it goes, the Final's wager box as its answer box opens, say; or on a card's Tap to see, where they
+  // wait between clues: Enter there would open the card, when it's meant for the box.)
+  const inBox = $('answer-form').contains(at) || $('wager-form').contains(at);
+  const covered = at instanceof HTMLElement && at.classList.contains('card-cover');
+  /** The buzzer, while it's drawn (cards in its place take the keys then: below). */
+  const buzzer = () => (b.hidden ? null : b);
   if (ansUp !== wasAnsUp) {
-    const lost = !at || at === document.body || $('answer-form').contains(at) || at === b || onClue || (ansUp && parked);
+    const lost = !at || at === document.body || inBox || at === b || onClue || covered || (ansUp && parked);
     wasAnsUp = ansUp;
     // (Multiple choice: the one picked, or the first.)
-    if (lost) queueMicrotask(() => (ansUp ? (choiceFocus() ?? $('answer-in')) : b).focus());
+    if (lost) queueMicrotask(() => (ansUp ? (choiceFocus() ?? $('answer-in')) : buzzer())?.focus());
   }
   // The keys (and a screen reader) follow: into the box as it opens, back to the buzzer as it goes.
   if (boxUp !== wasBoxUp) {
-    const lost = !at || at === document.body || $('wager-form').contains(at) || at === b || onClue || (boxUp && parked);
+    const lost = !at || at === document.body || inBox || at === b || onClue || covered || (boxUp && parked);
     wasBoxUp = boxUp;
-    if (lost) queueMicrotask(() => (boxUp ? $('wager-in') : b).focus());
+    if (lost) queueMicrotask(() => (boxUp ? $('wager-in') : buzzer())?.focus());
   }
   // A card coming in the buzzer's place takes the keys (and a screen reader) to its Tap to see, unless they're busy
   // elsewhere (reading another card, say); they go back to the buzzer as the cards go. (A Space press that began
@@ -1254,7 +1261,7 @@ function renderBuzz(v: PhoneView): void {
     // Cards making way for the buzzer close (a neighbour or a webcam would see an open one beside it, and it would push
     // the clue off the screen). One opened while the buzzer is up stays open.
     if (wasCardsUp && !cardsUp && !b.hidden) coverCards();
-    const lost = !at || at === document.body || at === b || onClue || (cardsUp && parked) || (!cardsUp && $('cards').contains(at));
+    const lost = !at || at === document.body || at === b || onClue || inBox || (cardsUp && parked) || (!cardsUp && $('cards').contains(at));
     wasCardsUp = cardsUp;
     // (Not to the buzzer while a box takes its place: the box has the keys.)
     const to = newest ? cardFocus(newest) : !cardsUp && !b.hidden ? b : null;
@@ -1277,6 +1284,10 @@ function renderBuzz(v: PhoneView): void {
   let spoken: string | null = null;
   /** Nobody buzzes now (a partner clue): the button is greyed and does nothing, to a screen reader too. */
   let greyed = false;
+  /** Between clues with nothing of this seat's to say: cards in the buzzer's place have the host's status line over them. */
+  let plain = false;
+  /** The two lines are one sentence ("You came 1st" "with $700 🎉"), said as one. */
+  let whole = false;
   /** Teams: a teammate's buzz holds your team's place (not yours). */
   const mate = team && !!mine?.by && !mine.byYou ? mine.by : null;
   if (ans && !ans.open && v.statusOff && v.status) {
@@ -1310,6 +1321,7 @@ function renderBuzz(v: PhoneView): void {
   } else if (v.phase === 'lobby' && v.final) {
     ({ big, small } = placeLine(v));
     cls = 'off';
+    whole = true;
   } else if (v.phase === 'lobby' && v.statusOff && v.status) {
     // Nobody buzzes (a partner clue): greyed, with who plays which part as the big line and what's going on under it.
     [cls, big, small] = ['off', v.status, v.statusSub ?? ''];
@@ -1317,6 +1329,7 @@ function renderBuzz(v: PhoneView): void {
   } else if (v.phase === 'lobby') {
     big = you.name;
     small = v.status || 'Wait for the next clue';
+    plain = true;
   } else if (v.phase === 'answering' && v.answering?.you && team && !v.answering.byYou) {
     // Your team is answering: a teammate buzzed (or the host picked the team).
     const by = v.answering.by;
@@ -1354,6 +1367,12 @@ function renderBuzz(v: PhoneView): void {
   // Daily Double", "Answers locked", "You sit this one out", where you came). (During a clue it stays, even under
   // "Wait": coming and going, it would move BUZZ!.)
   if (v.phase === 'lobby' && cls === 'off') keyHint(false);
+  // Cards in the buzzer's place: what it would say over them ("Answers locked", "Wager locked", where you came), or the
+  // host's status line between clues (none: no line).
+  const [cardBig, cardSmall] = !cardsUp ? ['', ''] : plain ? [v.status ?? '', v.statusSub ?? ''] : [big, small];
+  $('card-status').hidden = !cardBig;
+  $('card-status-big').textContent = cardBig;
+  $('card-status-small').textContent = cardSmall;
   if (sendingArm === v.armId && !mine && v.phase !== 'lobby') small = 'Sending…';
   if (lostArm === v.armId && !mine && cls !== 'first' && cls !== 'locked') small = 'Your buzz didn’t get through — press again';
   // Back from the background: until the room answers the ping, a press may be on a dead connection (it's kept).
@@ -1384,13 +1403,14 @@ function renderBuzz(v: PhoneView): void {
     $(id).textContent = text;
     $(id).classList.toggle('name', names.some((n) => text.includes(n)));
   }
-  b.setAttribute('aria-label', sentences([big, spoken ?? small]));
+  const heard = whole ? [`${big} ${small}`] : [big, spoken ?? small];
+  b.setAttribute('aria-label', sentences(heard));
   if (greyed) b.setAttribute('aria-disabled', 'true');
   else b.removeAttribute('aria-disabled');
   const hostGone = renderFoot(v, sym);
-  // (Cards up: the status line over them is what's said, not the hidden buzzer's.)
-  const [sayBig, saySmall] = cardsUp ? [v.status ?? '', v.statusSub ?? ''] : [big, spoken ?? small];
-  say(sentences([connected ? '' : awayText(), sayBig, saySmall, cardsSaid, hostGone ? ($('host-note').textContent ?? '') : '']));
+  // (Cards up: the line over them is what's said, not the hidden buzzer's.)
+  const said = cardsUp && plain ? [cardBig, cardSmall] : heard;
+  say(sentences([connected ? '' : awayText(), ...said, cardsSaid, hostGone ? ($('host-note').textContent ?? '') : '']));
   show('s-buzz');
   if (lit) litAt = performance.now();
   // Count the early lock down.
@@ -1479,18 +1499,8 @@ function renderWager(v: PhoneView, w: PhoneWager, sym: string): void {
   // (Not held to a max: the host takes any amount, so none is shown; a score of 0 or less would read "Max $0".)
   const max = !w.limit ? 'No limit' : w.max !== undefined ? `Max ${money(w.max, sym)}` : '';
   $('wager-info').textContent = [`Score ${money(you.score, sym)}`, max].filter(Boolean).join(' · ');
-  let state = '';
-  if (w.amount !== undefined) {
-    const amt = money(w.amount, sym);
-    if (w.host) state = `The host has your wager as ${amt}`;
-    else if (team && w.by) state = `✔ ${w.byYou ? 'You' : w.by} sent ${amt} for your team`;
-    else if (w.sent) state = `✔ Sent: ${amt}`;
-    state += '. You can change it until the question shows.';
-  } else if (w.hidden) {
-    // Seated after the wagers began: one is in, but this phone isn't shown it.
-    state = `${team ? 'Your team’s' : 'Your'} wager is in with the host (not shown on a phone that joined after the wagers began). Sending one replaces it.`;
-  }
-  $('wager-state').textContent = wagerSending ? 'Sending…' : state;
+  const state = wagerState(w, team, sym);
+  drawState('wager-state', state, wagerSending);
   // Green for what's in and shown; plain for "not shown here".
   $('wager-state').classList.toggle('plain-note', !!w.hidden && w.amount === undefined);
   $('wager-err').textContent = wagerErr;
@@ -1499,6 +1509,25 @@ function renderWager(v: PhoneView, w: PhoneWager, sym: string): void {
   // (What it's for first: "Final Jeopardy! · US Presidents". The error has its own alert, so it isn't said twice.)
   say(sentences([connected ? '' : awayText(), $('clue').textContent ?? '', $('wager-head').textContent ?? '', $('wager-info').textContent ?? '', state, cardsSaid, hostGone ? ($('host-note').textContent ?? '') : '']));
   show('s-buzz');
+}
+
+/** What's in with the host, or that the box holds an amount not sent yet (one not sent would read as sent). */
+function wagerState(w: PhoneWager, team: boolean, sym: string): string {
+  // Seated after the wagers began: one is in, but this phone isn't shown it.
+  if (w.amount === undefined)
+    return w.hidden ? `${team ? 'Your team’s' : 'Your'} wager is in with the host (not shown on a phone that joined after the wagers began). Sending one replaces it.` : '';
+  const amt = money(w.amount, sym);
+  // (As numbers: "00" typed after the 0 the host put in for a player with nothing to wager is the same wager.)
+  const typed = $<HTMLInputElement>('wager-in').value.trim();
+  if (typed && Number(typed) !== w.amount) return `${tap(`Not sent yet: tap ${w.host ? 'Send' : 'Change'} wager to send it.`)} What the host has: ${amt}`;
+  const what = w.host ? `The host has your wager as ${amt}` : team && w.by ? `✔ ${w.byYou ? 'You' : w.by} sent ${amt} for your team` : w.sent ? `✔ Sent: ${amt}` : '';
+  return `${what}. You can change it until the question shows.`;
+}
+
+/** A box's state line: "Sending…", what's in (green), or an edit not sent yet (amber: it isn't in). */
+function drawState(id: 'answer-state' | 'wager-state', state: string, sending: boolean): void {
+  $(id).textContent = sending ? 'Sending…' : state;
+  $(id).classList.toggle('unsent', !sending && state.startsWith('Not sent yet'));
 }
 
 /** What's in with the host, or that the box holds something not sent yet (an edit not sent would read as sent). */
@@ -1609,7 +1638,7 @@ function renderAnswer(v: PhoneView, a: NonNullable<PhoneView['answer']>, sym: st
     answerFor = key;
   }
   const state = answerState(a, team);
-  $('answer-state').textContent = answerSending ? 'Sending…' : state;
+  drawState('answer-state', state, answerSending);
   // Green for what's in and shown; plain for "not shown here".
   $('answer-state').classList.toggle('plain-note', !!a.hidden && !a.text);
   $('answer-err').textContent = answerErr;
@@ -2039,9 +2068,14 @@ $('new-back').addEventListener('click', (e) => {
   // (Back with the keys, or Esc: they go back onto ＋ I'm new.)
   if (e.detail === 0) $('new-btn').focus();
 });
+// What's in, or "Not sent yet", as the box changes (only that line: the rest, and what a screen reader hears, stay).
 $('answer-in').addEventListener('input', () => {
   const a = view?.answer;
-  if (a && !answerSending) $('answer-state').textContent = answerState(a, !!view?.teams);
+  if (a && !answerSending) drawState('answer-state', answerState(a, !!view?.teams), false);
+});
+$('wager-in').addEventListener('input', () => {
+  const w = view?.wager;
+  if (w?.mine && !wagerSending) drawState('wager-state', wagerState(w, !!view?.teams, view?.currency ?? ''), false);
 });
 $('new-form').addEventListener('submit', (e) => {
   e.preventDefault();

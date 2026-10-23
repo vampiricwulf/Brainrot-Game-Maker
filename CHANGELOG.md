@@ -26,6 +26,12 @@ in plain words for the people who make and host games. Anything committed but no
 - In the clue editor, taking the choices off (Take the choices off, ✕ on the last one, or Ctrl+Z of ＋ Multiple choice) leaves the keys on ＋ Multiple choice instead of Next ▶, so the next Enter no longer jumps to another clue.
 - Take the choices off, and ✕ on a choice with words in it, say so in a note, as deleting a card does (Ctrl+Z puts them back).
 - ↶ Undo and 🕘 History name the Final's settings plainly: “Final Jeopardy!”: players at 0 or less sit it out (or can play it), and Set the think time of round “Final Jeopardy!” to 45 s.
+- Phones: with a 🤫 card in the buzz button's place, the line over it says what the button would: “Answers locked” with your answer or pick (in the Final, your wager too), “Wager locked” with your wager, or where you came, and a screen reader hears it. Before, it showed the host's line (“Daily Double — you're up!”, the Final's name again) or nothing.
+- Phones on a computer: a ✍ answer box opening while the keys are on a card's “Click to see” takes them, so what you type goes in and Enter sends it, instead of opening the card. The keys also go from the Final's wager box into its answer box, and to a card's Click to see when it takes the buzzer's place, instead of being lost.
+- Phones: an answer or a wager changed but not sent says so in amber (“Not sent yet: tap Change wager to send it. What the host has: $600”). The wager box said “✔ Sent: $600” in green beside a different amount.
+- Phones: a question of three lines over multiple choice shows whole on a small phone, with no ▼ More over its last line.
+- Touch phones: no white ring around BUZZ!, a choice or a card's Tap to see after a reload. It looked like the lit buzzer's border, or a pick.
+- Phones: a screen reader hears the end as one sentence: “You came 1st with $1,300 🎉”.
 
 ## 2026-10-22
 
