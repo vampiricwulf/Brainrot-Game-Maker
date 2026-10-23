@@ -623,7 +623,20 @@ try {
   await insp.getByRole('button', { name: '✎ Edit image…' }).click();
   await gifEditor.getByText('A moving GIF: the edits go on every frame, so it keeps moving.').waitFor();
   await gifEditor.getByRole('button', { name: '⟳ 90°' }).click();
-  await gifEditor.getByRole('button', { name: 'Apply', exact: true }).click();
+  await gifEditor.getByText('output 30×40px').waitFor();
+  // Ctrl+Z as it starts saving changes nothing on screen (↶ Undo, ↷ Redo and Reset all wait too): what's saved is
+  // what the host saw. (Read before the save's next frame: only the page's own microtasks run in between.)
+  const whileSaving = await gifEditor.evaluate(async (d) => {
+    d.querySelector('header button.primary').click();
+    d.dispatchEvent(new KeyboardEvent('keydown', { key: 'z', ctrlKey: true, bubbles: true }));
+    for (let i = 0; i < 5; i++) await Promise.resolve();
+    const b = (t) => [...d.querySelectorAll('header button')].find((x) => x.textContent.trim() === t);
+    return { hint: d.querySelector('header .hint').textContent, off: ['↶ Undo', '↷ Redo', 'Reset all'].map((t) => b(t).disabled), label: d.querySelector('header button.primary').textContent };
+  });
+  assert(
+    whileSaving.hint.endsWith('output 30×40px') && whileSaving.off.every(Boolean) && whileSaving.label.startsWith('Saving'),
+    `while it saves, Ctrl+Z leaves the picture as it is, and ↶ Undo, ↷ Redo and Reset all wait (${JSON.stringify(whileSaving)})`,
+  );
   await gifEditor.waitFor({ state: 'detached' });
   const editedSaid = toast.filter({ hasText: /^Image edited/ });
   await editedSaid.waitFor();

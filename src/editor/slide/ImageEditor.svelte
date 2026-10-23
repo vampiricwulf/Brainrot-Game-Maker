@@ -435,11 +435,12 @@
     } else if (mod && ((k === 'z' && e.shiftKey) || k === 'y') && !typing) {
       e.preventDefault();
       e.stopImmediatePropagation();
-      redo();
+      // (Nothing changes while it saves: what's saved is what's on screen.)
+      if (!saving) redo();
     } else if (mod && k === 'z' && !typing) {
       e.preventDefault();
       e.stopImmediatePropagation();
-      undo();
+      if (!saving) undo();
     } else if (e.key === 'Escape') {
       e.stopImmediatePropagation();
       // Esc in a field (e.g. the meme caption) just leaves the field; while it asks, Esc keeps editing.
@@ -451,7 +452,7 @@
       e.stopImmediatePropagation();
     } else if ((e.key === 'Delete' || e.key === 'Backspace') && selectedId && !inField) {
       e.stopImmediatePropagation();
-      removeSelected();
+      if (!saving) removeSelected();
     }
   }
 </script>
@@ -482,9 +483,9 @@
       {/if}
       {#if gif}<span class="hint small">A moving GIF: the edits go on every frame, so it keeps moving.</span>{/if}
       <span class="spacer"></span>
-      <button class="ghost" onclick={undo} disabled={!history.length} title="Ctrl+Z">↶ Undo</button>
-      <button class="ghost" onclick={redo} disabled={!future.length} title="Ctrl+Y or Ctrl+Shift+Z">↷ Redo</button>
-      <button class="ghost" onclick={resetAll}>Reset all</button>
+      <button class="ghost" onclick={undo} disabled={saving || !history.length} title="Ctrl+Z">↶ Undo</button>
+      <button class="ghost" onclick={redo} disabled={saving || !future.length} title="Ctrl+Y or Ctrl+Shift+Z">↷ Redo</button>
+      <button class="ghost" onclick={resetAll} disabled={saving}>Reset all</button>
       {#if el.editedMedia}<button class="ghost" onclick={revert}>Use original</button>{/if}
       <button class="ghost" onclick={cancel} title="Esc">Cancel</button>
       <button class="primary" onclick={apply} disabled={saving || !img} title="Ctrl+Enter">{saving ? `Saving…${progress === null ? '' : ` ${Math.round(progress * 100)}%`}` : 'Apply'}</button>
