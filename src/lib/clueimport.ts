@@ -1,6 +1,6 @@
 // Importing board clues from a table: a CSV or TSV file, or a block copied from Google Sheets or Excel (which paste
 // as tab-separated rows). Columns: category, value, question, answer (a header row can name them in any order).
-import { clueValue, newCategory, newClue, setSlideText, slideText, type BoardRound, type Clue } from './model';
+import { clueValue, formatPoints, newCategory, newClue, setSlideText, slideText, type BoardRound, type Clue } from './model';
 import { clearClue, clone, clueHasContent } from './ops';
 
 export interface ImportedClue {
@@ -73,18 +73,23 @@ export function parseTable(text: string, sep?: ',' | ';' | '\t'): string[][] {
   return rows.map((r) => r.map((c) => c.trim())).filter((r) => r.some((c) => c));
 }
 
-/** "$1,000", "400 pts", "-200" → a number; anything else → null. */
+/** "$1,000", "1.000" (where a comma is the decimal mark), "400 pts", "200 €", "-200" → a number; anything else → null. */
 export function parseValue(cell: string | undefined): number | null {
-  const m = /^([-−]?)[^\p{L}\d\-−]{0,3}([-−]?)(\d+(?:\.\d+)?)(?:pts?|points?)?$/iu.exec((cell ?? '').replace(/[\s,]/g, ''));
-  return m ? (m[1] || m[2] ? -1 : 1) * Number(m[3]) : null;
+  const m = /^([-−]?)[^\p{L}\d\-−]{0,3}([-−]?)(\d+(?:\.\d+)?)(?:pts?|points?|\p{Sc}{1,3})?$/iu.exec((cell ?? '').replace(/[\s,]/g, ''));
+  if (!m) return null;
+  // (Dots before groups of three digits are thousands marks: "2.5" stays 2.5.)
+  const n = /^[1-9]\d{0,2}(\.\d{3})+$/.test(m[3]) ? m[3].replace(/\./g, '') : m[3];
+  return (m[1] || m[2] ? -1 : 1) * Number(n);
 }
 
 type Col = 'category' | 'value' | 'question' | 'answer';
+// (The whole cell, with the words sheets put around them: "Point Value", "Clue Text", "Correct Response". A cell that
+// only has the word in it is a clue: "Its answer is a question".)
 const NAMES: Record<Col, RegExp> = {
-  category: /^(category|categories|cat|topic|column)$/i,
-  value: /^(value|values|points|pts|price|amount|\$|worth)$/i,
-  question: /^(question|questions|clue|clues|prompt|q)$/i,
-  answer: /^(answer|answers|response|solution|a)$/i,
+  category: /^(categor(y|ies)|cat|topic|column)(\s+name)?$/i,
+  value: /^((point|dollar)\s+)?(values?|points|pts|price|amount|\$|worth)$/i,
+  question: /^(questions?|clues?|prompt|q)(\s+text)?$/i,
+  answer: /^((correct|right)\s+)?(answers?|responses?|solution|a)(\s+text)?$/i,
 };
 
 /** Which column is which, from a header row (null: it isn't one). */
@@ -166,19 +171,31 @@ export interface ImportPlan {
 }
 
 /**
- * Which row each clue goes on, among the rows `free` allows: a clue with a value goes on the row of that value when
- * it's free, the others on the free rows left, top down. Clues with no room are left out.
+ * Which row each clue goes on, among the rows `free` allows: when every clue with a value finds a free row of that
+ * value, it goes there, and the others on the free rows left, top down. Otherwise (a sheet of 100–500 on a board of
+ * 200–1,000) they all go top down, in value order, so a column never comes out scrambled. Clues with no room are left out.
  */
 function rowsFor(clues: ImportedClue[], values: number[], free: (row: number) => boolean): [number, ImportedClue][] {
   const taken = new Set<number>();
   const out: [number, ImportedClue][] = [];
   const rest: ImportedClue[] = [];
   for (const c of clues) {
-    const row = c.value === null ? -1 : values.findIndex((v, i) => v === c.value && free(i) && !taken.has(i));
-    if (row >= 0) {
-      taken.add(row);
-      out.push([row, c]);
-    } else rest.push(c);
+    if (c.value === null) {
+      rest.push(c);
+      continue;
+    }
+    const row = values.findIndex((v, i) => v === c.value && free(i) && !taken.has(i));
+    if (row < 0) {
+      // (Those without a value after the others, as the sheet has them.)
+      const inOrder = [...clues.filter((x) => x.value !== null).sort((a, b) => a.value! - b.value!), ...clues.filter((x) => x.value === null)];
+      return values
+        .map((_, i) => i)
+        .filter(free)
+        .slice(0, inOrder.length)
+        .map((r, i) => [r, inOrder[i]]);
+    }
+    taken.add(row);
+    out.push([row, c]);
   }
   for (let row = 0; row < values.length && rest.length; row++) {
     if (!free(row) || taken.has(row)) continue;
@@ -202,8 +219,9 @@ function valuesFor(groups: { clues: ImportedClue[] }[], fallback: number[]): num
 
 /**
  * The board after importing: `fill` keeps what's there, putting each category's clues on its empty tiles (a category
- * of the same name, else an unused one, else a new one); `replace` makes the board exactly the imported categories
- * (with the imported values as its rows, when every clue has one). A clue goes on the row of its value when it can.
+ * of the same name, else an unused one, else a new one; on a board with nothing on it yet, its rows take the imported
+ * values when there are as many); `replace` makes the board exactly the imported categories (with the imported values
+ * as its rows, when every clue has one). A clue goes on the row of its value when its category's all can (rowsFor).
  */
 export function planImport(source: BoardRound, clues: ImportedClue[], mode: 'fill' | 'replace'): ImportPlan {
   const round = clone(source);
@@ -251,6 +269,11 @@ export function planImport(source: BoardRound, clues: ImportedClue[], mode: 'fil
       return cat;
     });
   } else if (mode === 'fill') {
+    // On a board with nothing on it yet, the rows take the sheet's values, as replacing does, when there are as many as
+    // its rows (filling never adds or drops rows).
+    const values = [...new Set(clues.map((c) => c.value))].sort((a, b) => (a ?? 0) - (b ?? 0));
+    const blank = round.categories.every((c) => c.clues.every((cl) => !clueHasContent(cl) && cl.type !== 'wheel' && cl.type !== 'dice'));
+    if (blank && clues.every((c) => c.value !== null) && values.length === round.values.length) round.values = values as number[];
     const used = new Set<string>();
     for (const g of groups) {
       const name = g.name.trim();
@@ -306,8 +329,15 @@ export function pasteColumn(round: BoardRound, ci: number, text: string): { plac
   return { placed, left: clues.length - placed };
 }
 
-/** A tile's text for the preview: its question, else its value. */
-export function previewText(round: BoardRound, ci: number, row: number): string {
+/** Text pasted on a category's name that holds several categories (a whole sheet): 📥 Import clues takes it instead. */
+export function isWholeSheet(text: string): boolean {
+  return groupByCategory(cluesFromTable(parseTable(text.trim(), '\t'))).length > 1;
+}
+
+/** An imported tile's text for the preview: its value and question ("$100 · This dog started it all"). */
+export function previewText(round: BoardRound, ci: number, row: number, sym: string): string {
   const clue = round.categories[ci].clues[row];
-  return slideText(clue.questionSlide).trim() || String(clueValue(round, row, clue));
+  const value = formatPoints(clueValue(round, row, clue), sym);
+  const question = slideText(clue.questionSlide).trim();
+  return question ? `${value} · ${question}` : value;
 }

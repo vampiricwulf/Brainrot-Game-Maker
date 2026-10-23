@@ -38,7 +38,8 @@ Old Jeopardy Builder games (`.jbr` packs and exported HTML files) still open.
 3. Press **▶ Play**, then add the players (and set the game rules) on the pre-game screen.
 
 New here? **Try a sample game** on the first screen, or start from a template in **＋ Add round**. **📥 Import clues…**
-on a board takes a sheet pasted from Google Sheets or Excel, and **Find** (`Ctrl+F`) searches the whole game.
+on a board takes a sheet pasted from Google Sheets or Excel (or a CSV or TSV file chosen or dropped on it), and **Find**
+(`Ctrl+F`) searches the whole game.
 
 ![The editor](docs/screenshots/editor.png)
 

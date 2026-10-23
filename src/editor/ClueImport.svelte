@@ -2,7 +2,8 @@
   Import clues… on a board round: paste a block from Google Sheets or Excel, or pick a CSV / TSV file (category,
   value, question, answer), see the board as it will be, and fill the empty tiles or replace the board. One step.
   Closing it (Esc, ✕, Cancel) keeps what was pasted for the next time it's opened on that board; a click outside
-  doesn't close it.
+  doesn't close it. A sheet file dropped on it is read in, as Choose file… does; a sheet of several categories pasted
+  on a category's name opens it with that sheet.
 -->
 <script module lang="ts">
   /** What was pasted (or read from a file) into Import clues on each board, until it's imported. */
@@ -19,10 +20,19 @@
   import { followClueText, textSlidesOf } from '../lib/cluetext';
   import { app } from '../lib/app.svelte';
 
-  let { round, onclose }: { round: BoardRound; onclose: () => void } = $props();
+  let {
+    round,
+    onclose,
+    pasted,
+  }: {
+    round: BoardRound;
+    onclose: () => void;
+    /** A sheet pasted on a category's name, to fill the board with (instead of what was kept from last time). */
+    pasted?: string;
+  } = $props();
 
   // (Read once, when it opens: what was pasted on this board last time.)
-  const draft = untrack(() => drafts.get(round.id));
+  const draft = untrack(() => (pasted ? { text: pasted, from: null, mode: 'fill' as const } : drafts.get(round.id)));
   let text = $state(draft?.text ?? '');
   let from = $state<string | null>(draft?.from ?? null);
   let mode = $state<'fill' | 'replace'>(draft?.mode ?? 'fill');
@@ -40,6 +50,14 @@
   async function chooseFile(): Promise<void> {
     const file = await pickFile('.csv,.tsv,.txt,text/csv,text/tab-separated-values,text/plain');
     if (!file) return;
+    text = await readTextFile(file);
+    from = file.name;
+  }
+  /** A sheet file dropped on the window: read in, as Choose file… does (not a game file to open). */
+  async function dropped(e: DragEvent): Promise<void> {
+    const file = Array.from(e.dataTransfer?.files ?? []).find((f) => /\.(csv|tsv|txt)$/i.test(f.name));
+    if (!file) return;
+    e.preventDefault();
     text = await readTextFile(file);
     from = file.name;
   }
@@ -71,7 +89,17 @@
 
 <!-- (A click outside doesn't close it: a sheet pasted in isn't lost to a stray click.) -->
 <div class="modal-backdrop" role="presentation">
-  <div class="modal import" role="dialog" aria-modal="true" aria-label="Import clues" use:modal data-undo="off">
+  <div
+    class="modal import"
+    role="dialog"
+    aria-modal="true"
+    aria-label="Import clues"
+    tabindex="-1"
+    use:modal
+    data-undo="off"
+    ondragover={(e) => e.dataTransfer?.types.includes('Files') && e.preventDefault()}
+    ondrop={dropped}
+  >
     <div class="modal-head">
       <h2 class="modal-title">📥 Import clues</h2>
       <button class="ghost modal-x" onclick={close} aria-label="Close" title="Close (Esc): what's pasted is kept for next time">✕</button>
@@ -92,6 +120,7 @@
       rows="6"
       placeholder={'Memes\t200\tThis dog started it all\tWhat is Doge?\nMemes\t400\tNever gonna give you up\tWho is Rick Astley?'}
       aria-label="Clues to import"
+      data-autofocus
     ></textarea>
 
     <div class="row">
@@ -106,7 +135,7 @@
         {:else if plan}
           {clues.length} clue{clues.length === 1 ? '' : 's'} found · {plan.placed} go on the board{plan.left ? ` · ${plan.left} don’t fit` : ''}{plan.leftOut.length
             ? ` (only 10 categories fit on a board: ${plan.leftOut.map((n) => `“${n}”`).join(', ')} ${plan.leftOut.length === 1 ? 'is' : 'are'} left out)`
-            : ''}
+            : ''}{clues.some((c) => c.answer) ? '' : ' · none has an answer: is there an “Answer” column?'}
         {/if}
       </span>
     </div>
@@ -120,8 +149,9 @@
         {#each r.values as _, row (row)}
           {#each r.categories as cat, ci (cat.id)}
             {@const clue = cat.clues[row]}
-            <div class="tile" class:new={plan.filled.has(clue.id)} class:empty={clue.empty} title={previewText(r, ci, row)}>
-              {plan.filled.has(clue.id) ? previewText(r, ci, row) : formatPoints(clue.value ?? r.values[row], sym)}
+            {@const words = previewText(r, ci, row, sym)}
+            <div class="tile" class:new={plan.filled.has(clue.id)} class:empty={clue.empty} title={words}>
+              {plan.filled.has(clue.id) ? words : formatPoints(clue.value ?? r.values[row], sym)}
             </div>
           {/each}
         {/each}

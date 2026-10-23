@@ -74,8 +74,23 @@ try {
 
   // ---------- Import clues ----------
   await page.getByRole('button', { name: '📥 Import clues…' }).click();
-  await page.getByLabel('Clues to import').fill('category\tvalue\tquestion\tanswer\nScience\t200\tH2O is this\tWater\nScience\t600\tCO2 is this\tCarbon dioxide');
-  assert((await page.getByRole('dialog', { name: 'Import clues' }).innerText()).includes('2 clues found'), 'a pasted block shows how many clues it has');
+  const importDlg = page.getByRole('dialog', { name: 'Import clues' });
+  // The paste box has the keys as it opens: Ctrl+V pastes the cells copied.
+  await page.waitForFunction(() => document.activeElement?.getAttribute('aria-label') === 'Clues to import');
+  assert(true, '📥 Import clues opens with the keys in its paste box');
+  // A sheet whose answer column isn't named so: it says none has an answer, before Import.
+  await page.getByLabel('Clues to import').fill('Category\tValue\tClue\tReply\nScience\t200\tH2O is this\tWater');
+  assert((await importDlg.getByRole('status').innerText()).includes('none has an answer'), 'clues found without an answer say so');
+  // A CSV file dropped on it is read in, as Choose file… does.
+  await page.evaluate(() => {
+    const data = new DataTransfer();
+    data.items.add(new File(['category,value,question,answer\nScience,200,H2O is this,Water\nScience,600,CO2 is this,Carbon dioxide'], 'clues.csv', { type: 'text/csv' }));
+    document.querySelector('.modal.import').dispatchEvent(new DragEvent('drop', { dataTransfer: data, bubbles: true, cancelable: true }));
+  });
+  await importDlg.getByText('clues.csv').waitFor();
+  assert((await importDlg.innerText()).includes('2 clues found') && (await page.locator('.toast', { hasText: 'Drop pictures' }).count()) === 0, 'a sheet dropped on it is read in, and shows how many clues it has');
+  const previewTile = await importDlg.locator('.tile.new').first().innerText();
+  assert(/^\$[\d,]+ · H2O is this$/.test(previewTile), `the preview shows each imported tile's value with its question (${previewTile})`);
   await page.getByLabel('Replace the board').check();
   await page.getByRole('button', { name: 'Import 2 clues' }).click();
   const cats = await page.locator('.cat textarea').evaluateAll((els) => els.map((e) => e.value));
@@ -100,7 +115,8 @@ try {
   assert((await page.locator('[data-cat-name="1"]').inputValue()) === 'Snacks', 'a column pasted on a category’s name names it');
   assert((await page.locator('[data-tile="1,1"]').innerText()).includes('Cheesy triangles'), 'and fills its tiles top down');
   const pasteStep = await page.locator('.editor > header').getByRole('button', { name: 'Undo (Ctrl+Z)' }).getAttribute('title');
-  assert(pasteStep === 'Undo: Pasted 2 clues into “Snacks” (Ctrl+Z)', `its step is named as the toast says (${pasteStep})`);
+  assert(pasteStep === 'Undo: Pasted 2 clues into “Snacks” (Ctrl+Z)', `its step is named for what it did (${pasteStep})`);
+  assert((await page.locator('.toast', { hasText: 'Pasted 2 clues' }).count()) === 0, 'the note at the bottom says it, with no toast on top of it');
   // Ctrl+Z in the renamed box takes the paste back (it was the browser's own undo of the name typed before).
   await page.keyboard.press('Control+z');
   await page.waitForFunction((n) => document.querySelector('[data-cat-name="1"]')?.value === n, oldName, { timeout: 3000 }).catch(() => {});
@@ -111,6 +127,21 @@ try {
   );
   await page.keyboard.press('Control+y');
   await page.waitForFunction(() => document.querySelector('[data-cat-name="1"]')?.value === 'Snacks', null, { timeout: 3000 });
+  // A whole sheet (several categories) pasted on a name opens 📥 Import clues with it, instead of one mixed column.
+  const wholeSheet = 'Memes\t200\tThis dog started it all\tDoge\nMovies\t200\tBig ship\tTitanic';
+  await page.locator('[data-cat-name="2"]').focus();
+  await page.evaluate((text) => {
+    const data = new DataTransfer();
+    data.setData('text/plain', text);
+    document.querySelector('[data-cat-name="2"]').dispatchEvent(new ClipboardEvent('paste', { clipboardData: data, bubbles: true, cancelable: true }));
+  }, wholeSheet);
+  await importDlg.waitFor();
+  assert(
+    (await importDlg.getByLabel('Clues to import').inputValue()) === wholeSheet && (await importDlg.getByLabel('Fill empty tiles').isChecked()) && !(await page.locator('[data-tile="2,0"]').innerText()).includes('Big ship'),
+    'a sheet of two categories pasted on a name opens 📥 Import clues with it (Fill empty tiles), and changes nothing yet',
+  );
+  await importDlg.getByRole('button', { name: 'Clear' }).click();
+  await importDlg.getByRole('button', { name: 'Cancel' }).click();
 
   // ---------- Find ----------
   await page.locator('nav > button.round-tab').nth(2).click();

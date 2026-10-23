@@ -691,7 +691,7 @@
     if (file) openFile(file);
     else
       toast(
-        'Drop pictures, videos and sounds on 🖼 Media, a slide, a tile or a Choose… button. A game file (.brainrot, .json, exported .html) dropped here opens, and a theme file (.brainrot-theme) shows on 🎨 Theme.',
+        'Drop pictures, videos and sounds on 🖼 Media, a slide, a tile or a Choose… button, and a sheet of clues (.csv, .tsv) on a board’s 📥 Import clues…. A game file (.brainrot, .json, exported .html) dropped here opens, and a theme file (.brainrot-theme) shows on 🎨 Theme.',
       );
   }
 

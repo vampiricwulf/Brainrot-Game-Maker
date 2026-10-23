@@ -22,6 +22,12 @@ in plain words for the people who make and host games. Anything committed but no
 - Screen readers: moving to another clue in the clue editor (Ctrl+Enter, Alt+arrows, ◀ Prev / Next ▶) says which tile it's on (“Category 2 $400”).
 - Fewer categories: ↶ Undo and the note name the category removed (“removed “Topic F””), or say how many weren't empty, instead of “removed 1 with clues in” for one that had only its name. A made-up “New category” counts as empty.
 - A round with its name cleared: the clue editor's and 🖼 Board images' headers show the name it plays under (“Round 2”), as its tab does, and a Slides round's name box suggests that name instead of “Introduction”.
+- 📥 Import clues › Fill empty tiles keeps each category's clues in value order when the sheet's values aren't the board's rows (a 100–500 sheet on a $200–$1,000 board came out $200, $400, $100, $300, $500), and on a board with nothing on it yet the rows take the sheet's values, as Replace the board does. The preview shows each imported tile's value with its question.
+- 📥 Import clues reads “1.000” as one thousand (a CSV from where a comma is the decimal mark), and a value with its currency sign after it (“200 €”).
+- 📥 Import clues reads header rows as sheets word them (“Point Value”, “Clue Text”, “Correct Answer”, “Correct Response”, “Category Name”…), and says before you import when none of the clues found has an answer (“is there an “Answer” column?”).
+- A whole sheet (several categories) pasted on a category's name opens 📥 Import clues with it, instead of putting every category's clues in that one column. A column pasted there says what it did once, in the note at the bottom (with “N didn’t fit: add rows first”), not in a toast over it too.
+- 📥 Import clues opens with the keys in its paste box, so Ctrl+V pastes the cells copied at once.
+- A CSV or TSV file dropped on 📥 Import clues is read in, as Choose file… does. Dropped elsewhere in the editor, the note says where a sheet of clues goes.
 
 ## 2026-10-23
 

@@ -63,7 +63,7 @@
   import BoardDecorEditor from './BoardDecorEditor.svelte';
   import MediaPicker from './slide/MediaPicker.svelte';
   import ClueImport from './ClueImport.svelte';
-  import { pasteColumn } from '../lib/clueimport';
+  import { isWholeSheet, pasteColumn } from '../lib/clueimport';
 
   let { round }: { round: BoardRound } = $props();
   /** The clue open in the clue editor, by ids (an undo that puts a category back moves the others along). */
@@ -90,7 +90,8 @@
     void tick().then(() => focusTile(at.cat, at.row, true));
   }
   let decorOpen = $state(false);
-  let importing = $state(false);
+  /** 📥 Import clues is open (with a sheet pasted on a category's name to fill the board with, or what it kept). */
+  let importing = $state<boolean | string>(false);
   let catPicker = $state<number | null>(null);
   let dropTarget = $state<string | null>(null);
   const sym = $derived(app.game.settings.currencySymbol);
@@ -408,7 +409,10 @@
     }
   }
 
-  /** Several lines pasted on a category's name (a column copied from a spreadsheet): its clues, top down. One step. */
+  /**
+   * Several lines pasted on a category's name (a column copied from a spreadsheet): its clues, top down. One step. A
+   * whole sheet (several categories) opens 📥 Import clues with it instead.
+   */
   function catNamePaste(e: ClipboardEvent, ci: number): void {
     const box = e.currentTarget as HTMLTextAreaElement;
     const text = e.clipboardData?.getData('text/plain') ?? '';
@@ -416,14 +420,20 @@
     // A two-line name (Shift+Enter makes one), copied from another category: just pasted as the name, not two clues.
     const lines = text.trim().split(/\r?\n/).filter((l) => l.trim());
     if (lines.length <= 2 && !/[\t]/.test(text)) return;
+    // A sheet of several categories: 📥 Import clues fills a column for each, instead of all of them in this one.
+    if (isWholeSheet(text)) {
+      e.preventDefault();
+      importing = text;
+      return;
+    }
     const cat = round.categories[ci];
     const place: Place = { tab: 'round', round: round.id, part: { kind: 'category', category: cat.id } };
     const r = step(
       null,
       () => {
         const r = pasteColumn(round, ci, text);
-        // (Named as the toast says, not "Renamed category …" or "6 changes".)
-        if (r) nameStep(`Pasted ${r.placed} clue${r.placed === 1 ? '' : 's'} into “${categoryLabel(cat)}”`);
+        // (Named for what it did, not "Renamed category …" or "6 changes": the note at the bottom says it.)
+        if (r) nameStep(`Pasted ${r.placed} clue${r.placed === 1 ? '' : 's'} into “${categoryLabel(cat)}”${r.left ? ` (${r.left} didn’t fit: add rows first)` : ''}`);
         return r;
       },
       { notify: true, place },
@@ -433,7 +443,6 @@
     // The name box changed under the caret (a name line renamed it): as if just focused it has no typing of its own, so
     // Ctrl+Z undoes this step, not the browser's own undo of the last field typed in (see createFieldTracker).
     box.dispatchEvent(new FocusEvent('focusin', { bubbles: true }));
-    toast(`Pasted ${r.placed} clue${r.placed === 1 ? '' : 's'} into “${categoryLabel(cat)}”${r.left ? ` (${r.left} didn’t fit: add rows first)` : ''}`);
   }
 
   /** The name box just got the focus: a click in it doesn't put the caret in a made-up name, it selects it to type over. */
@@ -1077,7 +1086,7 @@
   <BoardDecorEditor {round} onclose={() => (decorOpen = false)} />
 {/if}
 {#if importing}
-  <ClueImport {round} onclose={() => (importing = false)} />
+  <ClueImport {round} pasted={typeof importing === 'string' ? importing : undefined} onclose={() => (importing = false)} />
 {/if}
 <div class="tip">
   <Tips id="board" hint="Click a tile (or press Enter) to write its clue. Right-click (or Shift+F10) a tile, a category or a row value for more.">
@@ -1085,7 +1094,7 @@
       <li>Keys: arrows move between tiles (↑ from the top row: the category name), Enter or F2 edits, Delete clears, Ctrl+C / Ctrl+V copy and paste a clue, Shift+F10 opens a tile's menu.</li>
       <li>Drag a tile onto another to swap them (hold Ctrl to copy), and a category to move it.</li>
       <li>Drop image files onto a category for its picture, or onto a tile to put them in its question (or on its face).</li>
-      <li>Paste a column of clues from a spreadsheet on a category's name to fill it.</li>
+      <li>Paste a column of clues from a spreadsheet on a category's name to fill it (a whole sheet opens 📥 Import clues).</li>
     </ul>
   </Tips>
 </div>

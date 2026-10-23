@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { applyPlan, cluesFromTable, parseTable, parseValue, pasteColumn, planImport, tableSeparator } from './clueimport';
+import { applyPlan, cluesFromTable, isWholeSheet, parseTable, parseValue, pasteColumn, planImport, tableSeparator } from './clueimport';
 import { newRound, setSlideText, slideText } from './model';
 import { setClueType } from './ops';
 
@@ -15,6 +15,14 @@ describe('clue import: reading tables', () => {
       { category: 'Geo', value: 200, question: 'Capital of France, obviously', answer: 'Paris' },
       { category: 'Words', value: 400, question: 'Greeting?', answer: 'He said "hi"' },
     ]);
+  });
+
+  it('reads headers as sheets word them, and a first clue with such a word in it is still a clue', () => {
+    const pick = (text: string) => cluesFromTable(parseTable(text)).map((c) => [c.category, c.value, c.question, c.answer]);
+    expect(pick('Category\tPoint Value\tClue\tCorrect Response\nGeo\t200\tCapital of France\tParis')).toEqual([['Geo', 200, 'Capital of France', 'Paris']]);
+    expect(pick('Category Name,Value,Clue Text,Correct Answer\nGeo,200,Capital of France,Paris')).toEqual([['Geo', 200, 'Capital of France', 'Paris']]);
+    expect(pick('Topic;Dollar Amount;Question Text;Right Answer\nGeo;400;Capital of Spain;Madrid')).toEqual([['Geo', 400, 'Capital of Spain', 'Madrid']]);
+    expect(pick('Science\t200\tIts answer is a question\tYes')).toEqual([['Science', 200, 'Its answer is a question', 'Yes']]);
   });
 
   it('reads a block pasted from a spreadsheet (tabs, no header)', () => {
@@ -40,6 +48,8 @@ describe('clue import: reading tables', () => {
 
   it('reads values written with symbols and separators', () => {
     expect([parseValue('$1,000'), parseValue('400 pts'), parseValue('−200'), parseValue('abc'), parseValue('')]).toEqual([1000, 400, -200, null, null]);
+    // A dot before three digits is a thousands mark (where a comma is the decimal mark); a currency sign can come after.
+    expect([parseValue('1.000'), parseValue('12.500'), parseValue('2.5'), parseValue('200 €'), parseValue('1.000 €')]).toEqual([1000, 12500, 2.5, 200, 1000]);
   });
 });
 
@@ -68,7 +78,8 @@ describe('clue import: onto a board', () => {
     Object.assign(round.categories[0].clues[0], { type: 'wheel', wheelId: 'w1' });
     const plan = planImport(round, cluesFromTable(parseTable(table)), 'fill');
     const geo = plan.round.categories[0].clues;
-    expect([geo[0].type, slideText(geo[0].questionSlide), slideText(geo[1].questionSlide), plan.placed]).toEqual(['wheel', '', 'G2', 3]);
+    // (Its $200 row isn't free: the column goes on top down, in value order.)
+    expect([geo[0].type, slideText(geo[0].questionSlide), slideText(geo[1].questionSlide), slideText(geo[2].questionSlide), plan.placed]).toEqual(['wheel', '', 'G1', 'G2', 3]);
     const replaced = planImport(round, cluesFromTable(parseTable(table)), 'replace').round.categories[0].clues[0];
     expect([replaced.type, replaced.wheelId, slideText(replaced.questionSlide)]).toEqual(['standard', undefined, 'G1']);
   });
@@ -96,6 +107,27 @@ describe('clue import: onto a board', () => {
     expect([q(r2, 0, 2), q(r2, 1, 1), q(r2, 1, 0)]).toEqual(['a3', 'b2', '']);
   });
 
+  it('filling: a sheet whose values aren’t the rows’ keeps each column in value order', () => {
+    const sheet = ['Science', 'History', 'Sports'].flatMap((c) => [500, 100, 200, 300, 400].map((v) => `${c},${v},${c} ${v},a`)).join('\n');
+    // A board with nothing on it: its rows take the sheet's values.
+    const blank = newRound('R', 6);
+    applyPlan(blank, planImport(blank, cluesFromTable(parseTable(sheet)), 'fill'));
+    expect(blank.values).toEqual([100, 200, 300, 400, 500]);
+    for (const c of [0, 1, 2]) expect([0, 1, 2, 3, 4].map((r) => q(blank, c, r).split(' ')[1])).toEqual(['100', '200', '300', '400', '500']);
+    expect(blank.categories[0].clues.every((cl) => cl.value === null)).toBe(true);
+    // Something on the board already: its rows stay, and the clues go top down, in value order, with their own values.
+    const used = newRound('R', 6);
+    setSlideText(used.categories[5].clues[0].questionSlide, 'Mine');
+    applyPlan(used, planImport(used, cluesFromTable(parseTable(sheet)), 'fill'));
+    expect(used.values).toEqual([200, 400, 600, 800, 1000]);
+    expect([0, 1, 2, 3, 4].map((r) => used.categories[1].clues[r].value)).toEqual([100, 200, 300, 400, 500]);
+    expect(q(used, 1, 1)).toBe('History 200');
+    // Fewer values than rows: the rows stay as they are.
+    const two = newRound('R', 2);
+    applyPlan(two, planImport(two, cluesFromTable(parseTable('A,100,a1,x\nA,300,a3,x')), 'fill'));
+    expect([two.values.length, q(two, 0, 0), q(two, 0, 1)]).toEqual([5, 'a1', 'a3']);
+  });
+
   it('adds categories up to 10 and counts what found no room', () => {
     const round = newRound('R', 1, [100]);
     const rows = Array.from({ length: 12 }, (_, i) => `C${i},100,Q${i},A${i}`).join('\n');
@@ -113,6 +145,16 @@ describe('clue import: onto a board', () => {
     const many = Array.from({ length: 7 }, (_, i) => `${(i + 1) * 100}\tQ${i}\tA${i}`).join('\n');
     expect(pasteColumn(round, 0, many)).toEqual({ placed: 5, left: 2 });
     expect(round.categories[0].clues[0].value).toBe(100);
+  });
+});
+
+describe('clue import: a sheet pasted on a category’s name', () => {
+  it('is a whole sheet when it has several categories (with a header or without); one category’s column is not', () => {
+    expect(isWholeSheet('Memes\t200\tQ1\tA1\nMemes\t400\tQ2\tA2\nMovies\t200\tBig ship\tTitanic')).toBe(true);
+    expect(isWholeSheet('Category\tValue\tQuestion\tAnswer\nMemes\t200\tQ1\tA1\nMovies\t200\tQ2\tA2')).toBe(true);
+    expect(isWholeSheet('Snacks\nCrunchy potato slices\tChips\nCheesy triangles\tNachos\n')).toBe(false);
+    expect(isWholeSheet('Memes\t200\tQ1\tA1\n\t400\tQ2\tA2')).toBe(false);
+    expect(isWholeSheet('What is 2+2?\nWho wrote Hamlet?\nThe capital of France?')).toBe(false);
   });
 });
 
