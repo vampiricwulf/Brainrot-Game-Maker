@@ -35,7 +35,7 @@ describe('multiple choice', () => {
     expect(judgeAllPlan(['p1'], { p1: { text: 'Paris', pick: 'a' } }, u)).toEqual({ right: [], wrong: [] });
   });
 
-  it('typed words name a choice by its letter (with a sign or in brackets), or by its words alone', () => {
+  it('typed words name a choice by its words alone, or by its letter (with a sign or in brackets)', () => {
     const u = usableChoices(four());
     for (const t of ['b', 'B', ' B) ', '(b)', '[b]', 'b.', 'b:', 'b-', 'b. stockholm', 'B) Stockholm', 'stockholm', '  STOCKHOLM ']) expect(matchChoice(t, u), t).toBe('b');
     expect(matchChoice('d', u)).toBe('d');
@@ -45,6 +45,14 @@ describe('multiple choice', () => {
     const twice = usableChoices([{ id: 'a', text: 'Oslo' }, { id: 'b', text: 'oslo' }, { id: 'c', text: 'Bern' }]);
     expect(matchChoice('Oslo', twice)).toBeNull();
     expect(matchChoice('bern', twice)).toBe('c');
+    // A choice's own words that start like a letter and a sign are that choice; the letter forms still work.
+    const authors = usableChoices([{ id: 'a', text: 'Mark Twain' }, { id: 'b', text: 'F. Scott Fitzgerald' }, { id: 'c', text: 'Ernest Hemingway' }, { id: 'd', text: 'C.S. Lewis' }]);
+    expect(matchChoice('C.S. Lewis', authors)).toBe('d');
+    expect(matchChoice('c.s. lewis', authors)).toBe('d');
+    expect(matchChoice('F. Scott Fitzgerald', authors)).toBe('b');
+    expect(matchChoice('c', authors)).toBe('c');
+    expect(matchChoice('d) C.S. Lewis', authors)).toBe('d');
+    expect(matchChoice('A-ha', usableChoices([{ id: 'q', text: 'Queen' }, { id: 'ab', text: 'Abba' }, { id: 'ah', text: 'A-ha' }]))).toBe('ah');
     // A pick goes by its id while it's still a choice, else by its words.
     expect(pickOf({ text: 'Paris', pick: 'c' }, u)).toBe('c');
     expect(pickOf({ text: 'Oslo', pick: 'gone' }, u)).toBe('c');

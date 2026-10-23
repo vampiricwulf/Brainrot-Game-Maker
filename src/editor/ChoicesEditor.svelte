@@ -107,6 +107,7 @@
             class="small"
             class:good={!!c.right}
             aria-pressed={!!c.right}
+            aria-label="✔ Right: choice {letter(i)}"
             onclick={() => markRight(i)}
             title={rightTitle}>✔ Right</button
           >

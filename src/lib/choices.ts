@@ -37,16 +37,17 @@ export const rightChoice = (usable: readonly UsableChoice[]): UsableChoice | und
 const flat = (s: string) => s.toLowerCase().replace(/\s+/g, ' ').trim();
 
 /**
- * The choice typed words name (from a phone that shows no buttons): a letter alone or in brackets ("b", "B)", "(b)"), a
- * letter then a sign and words ("b. stockholm"), or the words of exactly one choice. Null for anything else.
+ * The choice typed words name (from a phone that shows no buttons): the words of exactly one choice (first, so "C.S.
+ * Lewis" or "A-ha" is that choice, not C or A), else a letter alone or in brackets ("b", "B)", "(b)"), or a letter then
+ * a sign and words ("b. stockholm"). Null for anything else.
  */
 export function matchChoice(text: string, usable: readonly UsableChoice[]): Id | null {
   const t = flat(text);
+  const same = usable.filter((c) => flat(c.text) === t);
+  if (same.length === 1) return same[0].id;
   const m = /^[([]?([a-z])(?:$|[)\].:-])/.exec(t);
   const at = m ? m[1].charCodeAt(0) - 97 : -1;
-  if (at >= 0 && at < usable.length) return usable[at].id;
-  const same = usable.filter((c) => flat(c.text) === t);
-  return same.length === 1 ? same[0].id : null;
+  return at >= 0 && at < usable.length ? usable[at].id : null;
 }
 
 /** What an answer picked: the choice it was sent as (if it's still one), else the one its words name, else null. */
