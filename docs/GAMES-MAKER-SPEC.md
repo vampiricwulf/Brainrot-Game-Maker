@@ -479,7 +479,9 @@ interface WorldState {
 - **Side move:** avatars enter from the opposite edge, keeping their relative spacing.
 - **Doorway:** avatars arrive at the named spawn or object, else at the screen's first spawn point, else in the
   middle.
-- Avatars are fanned out so they don't overlap, and they avoid `blocker` regions.
+- Avatars are fanned out so they don't overlap, and they avoid `blocker` regions. Where there's room, they also stand
+  clear of objects with a class (characters, items, doorways…; not zones), so viewers see them and clicks reach them:
+  not of the object they arrive at, nor of one viewers can't see yet (stepping around it would give it away).
 - The screen becomes **visited**. Its open neighbors become **discovered** if the map is set to reveal adjacent
   screens.
 

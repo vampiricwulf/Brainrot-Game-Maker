@@ -317,22 +317,25 @@ export function place(game: Game, st: WorldState, world: World, players: string[
     .filter(([id, p]) => p.screen === to.screen && !p.hidden && !players.includes(id))
     .map(([, p]) => p);
   // Nor in a No-go area (lava, a wall drawn on the background).
+  const onTop = (a: { x: number; y: number }, b: SlideElement) =>
+    a.x > b.x - AVATAR / 2 && a.x < b.x + b.w + AVATAR / 2 && a.y > b.y - AVATAR / 2 && a.y < b.y + b.h + AVATAR / 2;
   const blocked = els.filter((e) => e.role?.class === 'blocker');
-  const inBlocker = (a: { x: number; y: number }) =>
-    blocked.some((b) => a.x > b.x - AVATAR / 2 && a.x < b.x + b.w + AVATAR / 2 && a.y > b.y - AVATAR / 2 && a.y < b.y + b.h + AVATAR / 2);
   const clear = (row: { x: number; y: number }[]) =>
-    row.every((a) => !inBlocker(a) && others.every((o) => Math.abs(a.x - o.x) >= AVATAR || Math.abs(a.y - o.y) >= AVATAR));
+    row.every((a) => !blocked.some((b) => onTop(a, b)) && others.every((o) => Math.abs(a.x - o.x) >= AVATAR || Math.abs(a.y - o.y) >= AVATAR));
+  // Where there's room, not over the screen's characters, items, doorways… either (viewers wouldn't see them, and the
+  // avatars would take the clicks meant for them). Not the one they arrive at, nor one viewers can't see: stepping
+  // around it would give it away.
+  const things = screenElements(st, screen, true).filter((e) => e.role && !['zone', 'spawn', 'blocker'].includes(e.role.class) && e.id !== anchor?.id);
+  const roomy = (row: { x: number; y: number }[]) => clear(row) && row.every((a) => !things.some((b) => onTop(a, b)));
   // Along the edge first, then a little further in (a No-go area right along the edge).
-  let row = spots(0);
-  search: for (let deeper = 0; deeper <= 6; deeper++)
-    for (let k = deeper ? 0 : 1; k <= 12; k++) {
-      if (clear(row)) break search;
-      const next = spots((k % 2 ? 1 : -1) * Math.ceil(k / 2) * gap, deeper);
-      if (clear(next)) {
-        row = next;
-        break search;
+  const search = (ok: (row: { x: number; y: number }[]) => boolean) => {
+    for (let deeper = 0; deeper <= 6; deeper++)
+      for (let k = 0; k <= 12; k++) {
+        const row = spots((k % 2 ? 1 : -1) * Math.ceil(k / 2) * gap, deeper);
+        if (ok(row)) return row;
       }
-    }
+  };
+  const row = search(roomy) ?? search(clear) ?? spots(0);
   players.forEach((id, i) => (st.positions[id] = { ...st.positions[id], map: to.map, screen: to.screen, ...row[i] }));
 }
 

@@ -11,6 +11,12 @@ the day it's pushed (Pacific time; start the heading on the day's first push) an
 in plain words for the people who make and host games. Anything committed but not pushed yet goes under
 **Unreleased** at the top, and moves under its day when it's pushed.
 
+## Unreleased
+
+### Fixed
+
+- RPG rounds: players arriving on a screen stand clear of its characters, items, doorways and other objects with a class where there's room, as they keep out of No-go areas, so viewers see those and clicks on the host's stage reach them (not of the object they arrive at, nor of one viewers can't see yet). In the 🗺 Mini quest template the Shopkeeper stands up and to the right, out of the party's starting row: the avatars covered him.
+
 ## 2026-10-23
 
 ### Fixed

@@ -144,8 +144,9 @@ export function miniQuestRound(game: Game, name = 'Mini quest'): RpgRound {
   ];
   const world = gridWorld(`${name} world`, 3, 1, (c) => ['Village', 'Forest', 'Boss lair'][c], (c) => ['#2f6b3a', '#1d4a26', '#3a1420'][c]);
   const [village, forest, lair] = world.maps[0].screens;
+  // (Up and to the side: everyone starts in a row through the middle.)
   village.slide.elements.push(
-    thing('🧑‍🌾', 'Shopkeeper', 850, 480, { class: 'npc', shop: shop.id, dialogue: textSlide('“Gear up! The boss is to the east.”') }),
+    thing('🧑‍🌾', 'Shopkeeper', 1250, 300, { class: 'npc', shop: shop.id, dialogue: textSlide('“Gear up! The boss is to the east.”') }),
   );
   village.hostNotes = 'Everyone starts with 10 gold: click the Shopkeeper and press 🛒 Shop. Then walk east.';
   forest.slide.elements.push(thing('🪙', 'Gold coins', 850, 520, { class: 'currency', field: coin.id, amount: 5 }));

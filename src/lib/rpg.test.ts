@@ -564,6 +564,48 @@ describe('RPG: where arriving players stand', () => {
     expect(ids.every((id) => st.positions[id].x >= 420 + 40)).toBe(true);
   });
 
+  it('stands clear of the screen’s characters, items and doorways, but not of one viewers can’t see', () => {
+    const { game, world, st } = four();
+    const to = at(world, '0,1');
+    const screen = world.maps.flatMap((m) => m.screens).find((x) => x.id === to.screen)!;
+    // A character right where the row would stand (the middle of the screen).
+    const npc = { ...newShapeEl('rect'), x: 850, y: 480, w: 220, h: 220, role: { class: 'npc' as const } };
+    screen.slide.elements.push(npc);
+    const near = (p: { x: number; y: number }) => p.x > npc.x - 75 && p.x < npc.x + npc.w + 75 && p.y > npc.y - 75 && p.y < npc.y + npc.h + 75;
+    for (const ids of [['a1', 'a2'], Array.from({ length: 8 }, (_, i) => `b${i}`)]) {
+      place(game, st, world, ids, to, null);
+      const ps = ids.map((id) => st.positions[id]);
+      expect(ps.some(near)).toBe(false);
+      expect(apart(ps)).toBe(true);
+    }
+    // A secret one (not revealed) changes nothing: stepping around it would give it away on stream.
+    npc.secret = true;
+    place(game, st, world, ['c1', 'c2'], to, null);
+    expect([st.positions.c1, st.positions.c2].map((p) => [p.x, p.y])).toEqual([
+      [875, 660],
+      [1045, 660],
+    ]);
+  });
+
+  it('still arrives at a doorway’s arrival object, and stands clear of a No-go area where objects fill the screen', () => {
+    const { game, world, st } = four();
+    const to = at(world, '0,1');
+    const screen = world.maps.flatMap((m) => m.screens).find((x) => x.id === to.screen)!;
+    const door = { ...newShapeEl('rect'), x: 850, y: 480, w: 220, h: 220, role: { class: 'doorway' as const } };
+    screen.slide.elements.push(door);
+    place(game, st, world, ['a1', 'a2'], to, null, door.id);
+    expect([st.positions.a1, st.positions.a2].map((p) => [p.x, p.y])).toEqual([
+      [875, 590],
+      [1045, 590],
+    ]);
+    // A picture with a class over the whole screen, lava in the middle: no spot is clear of the picture, so it's the
+    // lava they keep clear of.
+    screen.slide.elements.push({ ...newShapeEl('rect'), x: 0, y: 0, w: 1920, h: 1080, role: { class: 'interactable' as const } });
+    screen.slide.elements.push({ ...newShapeEl('rect'), x: 700, y: 500, w: 520, h: 300, role: { class: 'blocker' as const } });
+    place(game, st, world, ['b1', 'b2'], to, null);
+    expect([st.positions.b1, st.positions.b2].every((p) => p.x < 700 - 75 || p.x > 1220 + 75 || p.y < 500 - 75 || p.y > 800 + 75)).toBe(true);
+  });
+
   it('a column too long for the screen goes on in a second one, further in', () => {
     const { game, world, st } = four();
     const many = Array.from({ length: 6 }, (_, i) => `x${i}`);

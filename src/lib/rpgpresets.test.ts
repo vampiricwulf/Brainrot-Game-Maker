@@ -1,8 +1,9 @@
 import { describe, expect, it } from 'vitest';
-import { newGame, newTextEl, type BoardSpace, type Game } from './model';
+import { newGame, newTextEl, type BoardSpace, type Game, type RpgRound } from './model';
 import { addFork, applySpaceKind, nameShown, newBoardGameRound, SPACE_KINDS, spaceKindOf, spaceNumber } from './boardgame';
 import { enemyObject, enemyRole, newShop, numberStat, presetStat } from './rpgpresets';
-import { classIcon, classLabel } from './rpg';
+import { classIcon, classLabel, ensureWorld } from './rpg';
+import { newSession } from './session';
 import { layerIcon } from './layerlabel';
 import { STAT_PRESETS } from './toolset';
 import { miniQuestRound, TEMPLATES } from './samples';
@@ -192,6 +193,21 @@ describe('templates with shops and fights', () => {
     // Every price is one the starting gold can pay.
     const cheapest = Math.min(...game.items!.map((i) => i.price ?? 0));
     expect(cheapest).toBeLessThanOrEqual(10);
+  });
+
+  it('Mini quest: the party starts in the Village clear of the Shopkeeper (3 players or 8)', () => {
+    for (const n of [3, 8]) {
+      const game = newGame();
+      game.players = Array.from({ length: n }, (_, i) => ({ id: `p${i}`, name: `Player ${i + 1}`, color: '#e6194b' }));
+      game.rounds.push(miniQuestRound(game));
+      const session = newSession(game);
+      const st = ensureWorld(session, game, game.rounds[0] as RpgRound)!;
+      const keeper = game.worlds![0].maps[0].screens[0].slide.elements.find((e) => e.name === 'Shopkeeper')!;
+      const ps = Object.values(st.positions);
+      expect(ps).toHaveLength(n);
+      // (An avatar's token and nameplate around where it stands.)
+      expect(ps.filter((p) => p.x + 60 > keeper.x && p.x - 60 < keeper.x + keeper.w && p.y + 90 > keeper.y && p.y - 60 < keeper.y + keeper.h)).toEqual([]);
+    }
   });
 
   it('the 20-space loop gives 2 gold for passing Start when the game has gold', () => {
