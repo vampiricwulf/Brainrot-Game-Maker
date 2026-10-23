@@ -2,7 +2,8 @@
 // under `wrangler dev`). Only the host sees the answers; the stream sees who has answered (in a single window the host
 // panel too, until the answer is up); showing the answer locks them; the host marks each ✔ / ✘. Then, with an audience
 // window, a second ✍ clue: the host judges while answers are still open, and a ✔ leaves the others' countdown going.
-// Needs `npm ci` in buzzer/.
+// Then a third, with multiple choice: phones tap one, the host sees each pick and how many picked each (in one window
+// only once the answer is up), and ✔ Judge all marks everyone in one step. Needs `npm ci` in buzzer/.
 import { chromium } from 'playwright-core';
 import { spawn } from 'node:child_process';
 import { createServer } from 'node:net';
@@ -98,6 +99,18 @@ try {
   await editor.getByLabel(/Everyone answers/).check();
   await editor.getByRole('button', { name: /Done/ }).click();
   assert(true, 'a clue is set to ✍ Everyone answers in the clue editor');
+  // (And a third, with multiple choice: B is right.)
+  await host.locator('.tile').nth(2).click();
+  await editor.locator('[data-field="q"]').fill('The capital of Sweden?');
+  await editor.getByLabel(/Everyone answers/).check();
+  await editor.getByRole('button', { name: '＋ Multiple choice' }).click();
+  await host.waitForFunction(() => document.activeElement?.getAttribute('aria-label') === 'Choice A');
+  for (const [l, words] of [['A', 'Paris'], ['B', 'Stockholm'], ['C', 'Oslo'], ['D', 'Bern']]) await editor.getByLabel(`Choice ${l}`, { exact: true }).fill(words);
+  await editor.locator('[data-choice-row]').nth(1).getByRole('button', { name: '✔ Right' }).click();
+  await editor.locator('[data-choice-row]').nth(1).locator('button[aria-pressed="true"]').waitFor();
+  const choiceUndo = await host.locator('.editor > header button[aria-label="Undo (Ctrl+Z)"]').getAttribute('title');
+  assert(/^Undo: Marked B right on .+ \$200 \(Ctrl\+Z\)$/.test(choiceUndo), `＋ Multiple choice gives a ✍ clue A to D, and ✔ Right on B is a step of its own (${choiceUndo})`);
+  await editor.getByRole('button', { name: /Done/ }).click();
 
   await playWithPlayers(host, 2);
   const card = host.getByRole('region', { name: 'Phone buzzers' });
@@ -214,6 +227,71 @@ try {
   await host.keyboard.press('r');
   await aud.locator('.timer').waitFor({ state: 'detached' });
   assert(true, 'showing the answer ends it');
+
+  // ---------- Multiple choice: phones tap one; the host sees the picks, how many picked each, and ✔ Judge all ----------
+  await host.keyboard.press('Escape');
+  await host.locator('.stage-box .board').waitFor();
+  await aud.locator('.board').waitFor();
+  await host.locator('.stage-box .board .tile[data-row="0"][data-cat="2"]').click();
+  for (const p of [p1, p2]) await p.locator('#answer-choices .choice').nth(3).waitFor();
+  assert(
+    (await p1.locator('#answer-choices .choice').count()) === 4 &&
+      (await p1.locator('#answer-in').isHidden()) &&
+      (await p1.locator('#answer-choices .choice').first().innerText()).replace(/\s+/g, ' ') === 'A Paris' &&
+      (await p1.evaluate(() => document.querySelector('#answer-choices .choice:last-child').getBoundingClientRect().bottom <= innerHeight)),
+    'the phones show the 4 choices as buttons, lettered A to D, in place of the box to type in, the last one on screen',
+  );
+  const choice = (p, words) => p.locator('#answer-choices .choice', { hasText: words });
+  await choice(p1, 'Oslo').click();
+  await p1.locator('#answer-state').getByText('✔ Sent: C · Oslo').waitFor();
+  await choice(p1, 'Stockholm').click();
+  await p1.locator('#answer-state').getByText('✔ Sent: B · Stockholm').waitFor();
+  await choice(p2, 'Paris').click();
+  await p2.locator('#answer-state').getByText('✔ Sent: A · Paris').waitFor();
+  assert((await choice(p1, 'Stockholm').getAttribute('aria-pressed')) === 'true' && (await choice(p1, 'Oslo').getAttribute('aria-pressed')) === 'false', 'a tap sends a choice at once, and another tap changes it');
+  await row('Player 1').getByText('B · Stockholm').waitFor();
+  await row('Player 2').getByText('A · Paris').waitFor();
+  const counts = answersBox.locator('[data-choice-counts]');
+  await counts.getByText('A 1 · B 1 · C 0 · D 0').waitFor();
+  assert(!(await answersBox.getByRole('status').innerText()).includes('A 1'), 'with an audience window the host sees each pick by its letter, and how many picked each (not in the head’s status line)');
+  if (process.env.SCREENSHOTS) {
+    await host.screenshot({ path: `${process.env.SCREENSHOTS}/everyone-choices-host.png` });
+    await p1.screenshot({ path: `${process.env.SCREENSHOTS}/everyone-choices-phone.png` });
+  }
+  const audText = await aud.locator('body').innerText();
+  assert(!audText.includes('B · Stockholm') && !audText.includes('A · Paris') && !audText.includes('A 1 ·'), 'the audience window shows none of the picks or the counts');
+  assert(!(await p2.content()).includes('B · Stockholm') && !(await p1.content()).includes('A · Paris'), 'no phone sees another’s pick');
+  // A single window: the host panel is on stream again, and shows only who has answered.
+  await aud.close();
+  await answersBox.locator('[data-answer-in]', { hasText: 'Player 1 ✔' }).waitFor();
+  const oneWindow = await host.locator('.panel').innerText();
+  assert(
+    !oneWindow.includes('Stockholm') && !oneWindow.includes('Paris') && !oneWindow.includes('A 1 ·') && (await counts.count()) === 0,
+    'in a single window, before the answer is up: names ✔ only, no picks and no counts',
+  );
+  await host.keyboard.press('r');
+  await p1.locator('#buzz-big').getByText('Answers locked').waitFor();
+  assert((await p1.locator('#buzz-small').innerText()) === 'Yours: B · Stockholm' && (await p2.locator('#buzz-small').innerText()) === 'Yours: A · Paris', 'showing the answer locks the picks: each phone keeps its own in sight');
+  await row('Player 1').getByText('B · Stockholm').waitFor();
+  await counts.getByText('A 1 · B 1 · C 0 · D 0').waitFor();
+  assert(true, 'then the panel shows each pick and the counts');
+  if (process.env.SCREENSHOTS) await host.screenshot({ path: `${process.env.SCREENSHOTS}/everyone-choices-locked.png` });
+  const before = await p1.locator('#me').innerText();
+  await answersBox.getByRole('button', { name: '✔ Judge all: B is right' }).click();
+  await row('Player 1').getByText('✔ Right').waitFor();
+  await row('Player 2').getByText('✘ Wrong').waitFor();
+  await p1.waitForFunction((was) => document.querySelector('#me')?.textContent !== was, before);
+  const judgedUndo = await host.getByRole('button', { name: '↶ Undo' }).getAttribute('title');
+  assert(!judgedUndo.includes('Stockholm') && !judgedUndo.includes('Paris'), `✔ Judge all marks Player 1 right and Player 2 wrong, as one step that names no pick (${judgedUndo})`);
+  await host.getByRole('button', { name: '↶ Undo' }).click();
+  await row('Player 1').getByRole('button', { name: 'Player 1 is right' }).waitFor();
+  await row('Player 2').getByRole('button', { name: 'Player 2 is wrong' }).waitFor();
+  await answersBox.getByRole('button', { name: '✔ Judge all: B is right' }).waitFor();
+  await p1.locator('#me').getByText(before).waitFor();
+  await host.getByRole('button', { name: '↷ Redo' }).click();
+  await row('Player 1').getByText('✔ Right').waitFor();
+  await row('Player 2').getByText('✘ Wrong').waitFor();
+  assert(true, 'one ↶ Undo un-judges both, and ↷ Redo judges both again');
 
   assert(errors.length === 0, `no page errors (${errors.join(' | ')})`);
   console.log('Everyone answers E2E passed.');

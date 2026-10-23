@@ -25,6 +25,7 @@ import {
   slidesOfClue,
   type Action,
   type BoardRound,
+  type Choice,
   type ClueCard,
   type FinalRound,
   type Game,
@@ -34,7 +35,8 @@ import {
 } from './model';
 import { lowerWord, partnerRules, partnerSpot, partWords, stealOn } from './partner';
 import { ANY_SERVER, cardItems, cardWords, phoneCard, sendsOf } from './phonecard';
-import { CARD_TEXT_MAX, DEFAULT_FILE_LIMITS } from './buzzproto';
+import { CARD_TEXT_MAX, CHOICE_MAX, cleanName, DEFAULT_FILE_LIMITS } from './buzzproto';
+import { rightChoice, usableChoices } from './choices';
 import { rpgProblems, worldById } from './rpg';
 import { boardGameProblems } from './boardgame';
 import { mediaUsage, onlineCount, slideHasContent, slideMediaIds } from './usage';
@@ -263,6 +265,7 @@ export function validate(game: Game, room: Checking = {}): Problem[] {
         level: 'info',
       });
     out.push(...partnerProblems(game, round, i, room));
+    out.push(...boardChoiceProblems(round, r.name, i));
   });
   // The tiebreaker once ticked on: a tie at the end offers it as the main button, so an empty one puts a blank slide on stream.
   const tb = game.tiebreaker;
@@ -414,6 +417,38 @@ export function partnerProblems(game: Game, round: BoardRound, tab: number, room
       out.push(...cardNameProblems(game, cards, slidesOfClue(cl), tile, tab, (card) => at(card)!));
     });
   return out;
+}
+
+/** What's off with a ✍ clue's multiple choices: one with no words, only one, two the same, none marked ✔ Right. */
+export function choiceFaults(list: readonly Choice[]): { empty: boolean; one: boolean; same: boolean; noRight: boolean } {
+  const words = list.map((c) => cleanName(c.text, CHOICE_MAX).toLowerCase());
+  const said = words.filter(Boolean);
+  const usable = usableChoices(list);
+  return { empty: said.length < words.length, one: list.length === 1, same: new Set(said).size < said.length, noRight: usable.length >= 2 && !rightChoice(usable) };
+}
+
+/**
+ * A board's ✍ clues with multiple choices (standard tiles with ✍ ticked: other tiles don't use them) that have an
+ * empty choice, only one, two the same (warnings), or none marked ✔ Right (only a note: the host judges each answer).
+ * Each goes to the first such tile.
+ */
+function boardChoiceProblems(round: BoardRound, name: string, tab: number): Problem[] {
+  const found = { empty: [] as Place[], one: [] as Place[], same: [] as Place[], noRight: [] as Place[] };
+  for (const c of round.categories)
+    for (const cl of c.clues) {
+      if (cl.empty || cl.type !== 'standard' || !cl.everyone || !cl.choices?.length) continue;
+      const f = choiceFaults(cl.choices);
+      const place: Place = { tab: 'round', round: round.id, part: { kind: 'clue', category: c.id, clue: cl.id } };
+      for (const k of ['empty', 'one', 'same', 'noRight'] as const) if (f[k]) found[k].push(place);
+    }
+  const line = (k: keyof typeof found, words: string, level: Problem['level']): Problem[] =>
+    found[k].length ? [{ text: `${name}: ${plural(found[k].length, '✍ clue')} with ${words}`, tab, level, place: found[k][0] }] : [];
+  return [
+    ...line('empty', 'an empty choice', 'warn'),
+    ...line('one', 'only one choice (add another, or take it off)', 'warn'),
+    ...line('same', 'two choices the same', 'warn'),
+    ...line('noRight', 'choices but none marked ✔ Right (you judge each answer)', 'info'),
+  ];
 }
 
 /**

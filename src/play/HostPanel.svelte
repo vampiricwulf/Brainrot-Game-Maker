@@ -33,6 +33,7 @@
   import { dropMenu } from '../lib/menustate.svelte';
   import { buzzerOn, remote, roomHasCards, roomMembers } from '../lib/remote.svelte';
   import { answerRoundId, teamsOn } from '../lib/buzz';
+  import { usableChoices } from '../lib/choices';
   import { scoresWindow } from '../lib/sync.svelte';
   import { onMount, tick, untrack, type Snippet } from 'svelte';
 
@@ -78,8 +79,10 @@
     ongotoround,
     onbackfromfinal,
     everyone = false,
+    choicesNote = '',
     answerPhones = [],
     onanswerjudge = () => {},
+    onanswerjudgeall = () => {},
     onbackfromend,
     onrematch,
     onintronext,
@@ -187,8 +190,12 @@
     everyone?: boolean;
     /** The players with a phone connected now. */
     answerPhones?: string[];
+    /** A ✍ clue's multiple choices that the buzzer server can't show on phones (an older one): why they type. */
+    choicesNote?: string;
     /** ✔ / ✘ on one player's phone answer. */
     onanswerjudge?: (playerId: string, sign: 1 | -1) => void;
+    /** ✔ Judge all on a multiple-choice ✍ clue (once its answers are locked). */
+    onanswerjudgeall?: () => void;
     onbackfromend: () => void;
     onrematch: () => void;
     onintronext: () => void;
@@ -991,6 +998,9 @@
             phones={answerPhones}
             open={!session.revealed && !session.remote?.answers?.locked}
             onjudge={onanswerjudge}
+            choices={usableChoices(info.clue.choices)}
+            note={choicesNote}
+            onjudgeall={onanswerjudgeall}
           />
         </div>
       {/if}

@@ -5,6 +5,7 @@ import { isWebUrl } from './links';
 import { nextFreeColor } from './colors';
 import { dedupeMediaNames } from './medianame';
 import { presetTheme, type Theme } from './theme';
+import { CHOICE_MAX, CHOICES_MAX } from './buzzproto';
 import type { BuzzState } from './buzz';
 
 export type Id = string;
@@ -507,10 +508,25 @@ export interface Clue {
    * the host sees them, and judges each.
    */
   everyone?: boolean;
+  /**
+   * ✍ multiple choice: 2 to CHOICES_MAX choices players pick from on their phone (kept when ✍ is off or the type
+   * changes, unused then, like partner rules).
+   */
+  choices?: Choice[];
   /** A partner clue's rules (kept when the type changes away, like wheelId). */
   partner?: PartnerRules;
   /** A tile's 🤫 cards, in order (Card 1, Card 2…, or their names): at most MAX_CARDS. Never the answer slide itself. */
   cards?: ClueCard[];
+}
+
+/**
+ * One of a ✍ clue's multiple choices: lettered A, B, C… by place (in play, by place among those with words: see
+ * choices.ts usableChoices). `right`: the one ✔ Judge all goes by (at most one).
+ */
+export interface Choice {
+  id: Id;
+  text: string;
+  right?: true;
 }
 
 // ---------- Wheels & dice (spec §4, §5.6) ----------
@@ -1175,7 +1191,8 @@ export interface Session {
     locked?: boolean;
     buzz?: BuzzState & { clue: string; floor: number };
     wagerGot?: { id: string; seats: Record<Id, number>; amounts?: Record<Id, number> };
-    answers?: { id: string; seats: Record<Id, { text: string; n: number; by?: string }>; locked?: boolean };
+    /** A ✍ clue's answers from phones (`pick`: the choice picked, its id, on a multiple-choice clue). */
+    answers?: { id: string; seats: Record<Id, { text: string; n: number; by?: string; pick?: Id }>; locked?: boolean };
     /**
      * 🤫 Card files put in room `code` for phones: a picture's (or its edited copy's), video's or sound's media id → the
      * room's id for it. So a reload doesn't upload them again (the room's 'files' list says which it still holds).
@@ -1910,6 +1927,27 @@ function repairCards(h: { cards?: ClueCard[] }, goes: ReadonlySet<unknown>): voi
  * A partner clue's rules (partner-clues spec §18.5), and its cards (repairCards). Rules that aren't an object are
  * dropped; a partner clue with none plays Describe it.
  */
+/**
+ * A ✍ clue's multiple choices: not a list, none; each needs words (cut to CHOICE_MAX) and an id of its own; ✔ Right
+ * only on the first marked; at most CHOICES_MAX. None left: none.
+ */
+function repairChoices(o: { choices?: Choice[] }): void {
+  if (o.choices === undefined) return;
+  const list = objects<Choice>(o.choices).filter((c) => typeof c.text === 'string');
+  const seen = new Set<Id>();
+  let right = false;
+  for (const c of list) {
+    if (typeof c.id !== 'string' || !c.id || seen.has(c.id)) c.id = newId();
+    seen.add(c.id);
+    if (c.text.length > CHOICE_MAX) c.text = c.text.slice(0, CHOICE_MAX);
+    if (c.right !== true || right) delete c.right;
+    else right = true;
+  }
+  if (list.length > CHOICES_MAX) list.length = CHOICES_MAX;
+  if (!list.length) delete o.choices;
+  else if (list.length !== o.choices.length || list.some((c, i) => c !== o.choices![i])) o.choices = list;
+}
+
 function repairPartner(cl: Clue): void {
   repairCards(cl, CARD_TO);
   if (cl.partner !== undefined && !isObj(cl.partner)) delete cl.partner;
@@ -2030,6 +2068,7 @@ function repairGame(g: Game): void {
           cl.answerSlide = repairSlide(cl.answerSlide);
           repairExtraSlides(cl);
           repairPartner(cl);
+          repairChoices(cl);
         }
       }
       // No row values: the usual 200, 400… for as many rows as the board has.

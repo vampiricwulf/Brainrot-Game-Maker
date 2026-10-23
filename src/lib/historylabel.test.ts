@@ -106,6 +106,17 @@ describe('step labels', () => {
     const everyone = step((g) => (board(g).categories[0].clues[0].everyone = true));
     expect(everyone.label).toBe(`Made ${cat} $200 ✍ Everyone answers`);
     expect(describeStep(diff(everyone.after, everyone.before), everyone.after, everyone.before).label).toBe(`Took ✍ Everyone answers off ${cat} $200`);
+    // A multiple choice typed in: which one, by its letter, and where.
+    const typed = sample();
+    board(typed).categories[0].clues[1].choices = [
+      { id: 'ca', text: 'Paris' },
+      { id: 'cb', text: 'Oslo' },
+    ];
+    const next = structuredClone(typed);
+    board(next).categories[0].clues[1].choices![1].text = 'Stockholm';
+    const edit = describeStep(diff(typed, next), typed, next);
+    expect(edit).toMatchObject({ label: `Edited choice B of ${cat} $400`, where: `Jeopardy! › ${cat} › $400 › Choices` });
+    expect(edit.place).toMatchObject({ part: { kind: 'clue', clue: board(next).categories[0].clues[1].id } });
     // A value changed: the tile as it was, and what it is now.
     const valued = step((g) => (board(g).categories[0].clues[1].value = 750));
     expect(valued.label).toBe(`Changed ${cat} $400 to $750`);

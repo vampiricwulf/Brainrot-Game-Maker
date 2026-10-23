@@ -11,7 +11,8 @@
  * phone says it didn't get through. One socket at a time: a new one replaces the old, whose events are ignored.
  *
  * Wagers: while the host takes them (a Daily Double, a Final), the player's own box replaces the buzzer; what they send
- * goes to the host only. Their view says what's in (and once locked, what was locked in).
+ * goes to the host only. Their view says what's in (and once locked, what was locked in). The same for a ✍ clue's
+ * answer box, or its multiple choices (a button each, sent as soon as one is tapped).
  *
  * Private cards (cardpanel.ts): a card the host sent to this phone takes the buzzer's place while nobody buzzes (a
  * partner clue greys every phone's button, status.off), behind "Tap to see". The page tells the room once it was seen.
@@ -120,6 +121,12 @@ let wagerSending = false;
 let answerSending = false;
 let answerErr = '';
 let answerFor = '';
+/** A ✍ clue's choice just tapped (its id): shown picked until the room's view has it (or turns it down). */
+let answerTap = '';
+/** The room took it ('answered'): the next view has it. */
+let answerTapTaken = false;
+/** The choices drawn (their ids and words), so they're drawn again only when they change (the keys stay put). */
+let choicesKey = '';
 let wasAnsUp = false;
 /** The question the answer box last said to a screen reader (said once, see renderAnswer). */
 let saidAsked = '';
@@ -414,6 +421,8 @@ function onMessage(m: RoomToPhone): void {
       break;
     case 'view':
       view = m.view;
+      if (answerTapTaken) answerTap = '';
+      answerTapTaken = false;
       if (result && result.armId !== view.armId) result = null;
       if (sendingArm >= 0 && (view.armId !== sendingArm || view.phase === 'lobby')) stopSending();
       if (lostArm >= 0 && view.armId !== lostArm) lostArm = -1;
@@ -447,13 +456,18 @@ function onMessage(m: RoomToPhone): void {
       if (m.ok) vibrate(40);
       break;
     }
-    case 'answered':
+    case 'answered': {
       answerSending = false;
+      const picked = !!answerTap;
+      if (m.ok) answerTapTaken = picked;
+      else answerTap = '';
       answerErr = m.ok
         ? ''
-        : ({ closed: 'Answers are closed now.', bad: 'Type an answer first.', slow: 'Too many tries: wait a few seconds.' }[m.reason ?? 'bad'] ?? "That didn't work. Try again.");
+        : ({ closed: 'Answers are closed now.', bad: picked ? "That answer wasn't taken. Try again." : 'Type an answer first.', slow: 'Too many tries: wait a few seconds.' }[m.reason ?? 'bad'] ??
+          "That didn't work. Try again.");
       if (m.ok) vibrate(40);
       break;
+    }
     case 'kicked': {
       seatMoved = false;
       const team = !!view?.teams;
@@ -753,8 +767,8 @@ const answerLast = (): HTMLElement =>
 /**
  * The room the question has (px), from what's around it as it's drawn now: the screen in sight, less the header and
  * what must stay in sight with it (what's on, above it; BUZZ!, the key hint, the name and score, or the open box's
- * Send). One above the other, 🎨 and "Not you?" may go one scroll down. With the keyboard up over the answer box: that
- * box, from the question to its last line.
+ * Send, or its last choice). One above the other, 🎨 and "Not you?" may go one scroll down. With the keyboard up over
+ * the answer box: that box, from the question to its last line.
  */
 function clueRoom(sec: HTMLElement, kbd: boolean): number {
   const c = $('clue').getBoundingClientRect();
@@ -781,7 +795,14 @@ function clueRoom(sec: HTMLElement, kbd: boolean): number {
   }
   // One above the other: what's above and below it moves with it, so its own height doesn't change theirs. (On a touch
   // screen, cards under BUZZ! come between it and the name: there BUZZ! is the last that must stay.)
-  const keep = [$('buzz'), $('wager-send'), $('answer-send'), ...(sec.classList.contains('cards-under') && !fine.matches ? [] : [$('keys'), $('me')])];
+  const keep = [
+    $('buzz'),
+    $('wager-send'),
+    $('answer-send'),
+    // (Multiple choice: the last choice, in Send's place.)
+    ...($('answer-choices').lastElementChild ? [$('answer-choices').lastElementChild!] : []),
+    ...(sec.classList.contains('cards-under') && !fine.matches ? [] : [$('keys'), $('me')]),
+  ];
   const below = Math.max(c.bottom, ...keep.map((el) => rectOf(el)?.bottom ?? c.bottom)) - c.bottom;
   return free - (c.top - side.top) - below;
 }
@@ -810,7 +831,9 @@ function refitClue(sec: HTMLElement): void {
   const cap = $('clue-cap');
   const asked = `${cap.hidden ? '' : cap.textContent}\n${clue.textContent}`;
   const kbd = keyboardUp();
-  const up = ['wager-form', 'answer-form'].find((id) => !$(id).hidden) ?? '';
+  // (Multiple choice: which ones, as their buttons take the room a box would.)
+  const box = ['wager-form', 'answer-form'].find((id) => !$(id).hidden) ?? '';
+  const up = box === 'answer-form' && !$('answer-choices').hidden ? `choices ${choicesKey}` : box;
   let key = JSON.stringify([asked, innerWidth, innerHeight, Math.round(seenHeight()), fine.matches, kbd, up, $('buzz').hidden]);
   if (!clue.textContent?.trim()) {
     if (key === fitKey) return;
@@ -917,7 +940,7 @@ function noMore(): void {
   const pill = $('clue-more');
   const at = document.activeElement;
   if (at === pill || at === clue) {
-    const box = !$('answer-form').hidden ? $('answer-in') : !$('wager-form').hidden ? $('wager-in') : null;
+    const box = !$('answer-form').hidden ? choiceFocus() ?? $('answer-in') : !$('wager-form').hidden ? $('wager-in') : null;
     // (On a touch screen, not into a box: that would open the keyboard.)
     const to = !$('buzz').hidden ? $('buzz') : fine.matches ? box : null;
     if (to) to.focus({ preventScroll: true });
@@ -1208,7 +1231,8 @@ function renderBuzz(v: PhoneView): void {
   if (ansUp !== wasAnsUp) {
     const lost = !at || at === document.body || $('answer-form').contains(at) || at === b || onClue || (ansUp && parked);
     wasAnsUp = ansUp;
-    if (lost) queueMicrotask(() => (ansUp ? $('answer-in') : b).focus());
+    // (Multiple choice: the one picked, or the first.)
+    if (lost) queueMicrotask(() => (ansUp ? (choiceFocus() ?? $('answer-in')) : b).focus());
   }
   // The keys (and a screen reader) follow: into the box as it opens, back to the buzzer as it goes.
   if (boxUp !== wasBoxUp) {
@@ -1235,6 +1259,7 @@ function renderBuzz(v: PhoneView): void {
   if (boxUp) return renderWager(v, wager!, sym);
   if (ansUp) return renderAnswer(v, ans!, sym);
   if (!ans) ((answerFor = ''), (answerErr = ''));
+  answerTap = '';
   wagerFor = '';
   wagerErr = '';
   const left = Math.ceil((lockedUntil - serverNow()) / 1000);
@@ -1256,10 +1281,11 @@ function renderBuzz(v: PhoneView): void {
     // A ✍ clue whose answer is on screen: what this seat sent stays in sight (or that one is in, as for wagers). In the
     // Final, the wager locked in first: the line shows 3 lines at most, so a long answer is what gets cut.
     const staked = wager?.kind === 'final' && wager.mine && wager.amount !== undefined ? `${team ? 'Your team’s wager' : 'Your wager'}: ${money(wager.amount, sym)} · ` : '';
+    const picked = pickLine(ans);
     [cls, big, small] = [
       'off',
       'Answers locked',
-      staked + (ans.text ? `${team ? 'Your team’s' : 'Yours'}: “${ans.text}”` : ans.hidden ? 'The host has it (not shown on this phone)' : 'None sent'),
+      staked + (ans.text ? `${team ? 'Your team’s' : 'Yours'}: ${picked ?? `“${ans.text}”`}` : ans.hidden ? 'The host has it (not shown on this phone)' : 'None sent'),
     ];
   } else if (wager?.mine) {
     // Locked: the question is up.
@@ -1471,13 +1497,67 @@ function renderWager(v: PhoneView, w: PhoneWager, sym: string): void {
 
 /** What's in with the host, or that the box holds something not sent yet (an edit not sent would read as sent). */
 function answerState(a: NonNullable<PhoneView['answer']>, team: boolean): string {
+  const choices = !!a.choices?.length;
   // Seated after the answers began: one is in, but this phone isn't shown it (as for wagers).
-  if (!a.text) return a.hidden ? `${team ? 'Your team’s' : 'Your'} answer is in with the host (not shown on a phone that joined after the answers began). Sending one replaces it.` : '';
+  if (!a.text)
+    return a.hidden
+      ? `${team ? 'Your team’s' : 'Your'} answer is in with the host (not shown on a phone that joined after the answers began). ${choices ? tap('Tapping one replaces it.') : 'Sending one replaces it.'}`
+      : '';
   const typed = $<HTMLTextAreaElement>('answer-in').value.replace(/\s+/g, ' ').trim();
-  if (typed && typed !== a.text) return `${tap('Not sent yet: tap Change answer to send it.')} What the host has: “${a.text}”`;
+  if (!choices && typed && typed !== a.text) return `${tap('Not sent yet: tap Change answer to send it.')} What the host has: “${a.text}”`;
   // (A partner clue's guess, nobody buzzing, is locked once the host judges it too.)
   const until = view?.statusOff ? 'judges it or shows the answer' : 'shows the answer';
+  // Multiple choice: by its letter ("✔ Sent: B · Paris", "✔ Ann picked B for your team").
+  const picked = pickLine(a);
+  const at = picked ? a.choices!.findIndex((c) => c.id === a.pick) : -1;
+  if (picked && team && a.by) return `✔ ${a.byYou ? 'You' : a.by} picked ${letter(at)} for your team. You can change it until the host ${until}.`;
+  if (picked) return `✔ Sent: ${picked}. You can change it until the host ${until}.`;
   return `${team && a.by ? `✔ ${a.byYou ? 'You' : a.by} sent it for your team` : '✔ Sent'}: “${a.text}”. You can change it until the host ${until}.`;
+}
+
+/** The letter of the choice at place `i`: A, B, C… */
+const letter = (i: number): string => String.fromCharCode(65 + i);
+
+/** A pick as its letter and words ("B · Paris"), while it's one of the choices shown; else undefined. */
+function pickLine(a: NonNullable<PhoneView['answer']>): string | undefined {
+  const i = a.pick ? (a.choices ?? []).findIndex((c) => c.id === a.pick) : -1;
+  return i < 0 ? undefined : `${letter(i)} · ${a.choices![i].text}`;
+}
+
+/** The choice buttons (each drawn once, so the keys stay on one as its pick changes): the one picked is pressed. */
+function drawChoices(a: NonNullable<PhoneView['answer']>): void {
+  const box = $('answer-choices');
+  const list = a.choices ?? [];
+  const key = JSON.stringify(list.map((c) => [c.id, c.text]));
+  if (key !== choicesKey) {
+    choicesKey = key;
+    box.replaceChildren(
+      ...list.map((c, i) => {
+        const b = document.createElement('button');
+        b.type = 'button';
+        b.className = 'choice';
+        b.dataset.choice = c.id;
+        const l = document.createElement('span');
+        l.className = 'letter';
+        l.textContent = letter(i);
+        const w = document.createElement('span');
+        w.className = 'words';
+        w.dir = 'auto';
+        w.textContent = c.text;
+        b.append(l, w);
+        return b;
+      }),
+    );
+  }
+  const on = answerTap || a.pick;
+  for (const b of box.querySelectorAll<HTMLButtonElement>('button.choice')) b.setAttribute('aria-pressed', String(b.dataset.choice === on));
+}
+
+/** Where the keys go in a ✍ clue's choices: the one picked, or the first (null without choices up). */
+function choiceFocus(): HTMLButtonElement | null {
+  const box = $('answer-choices');
+  if (box.hidden) return null;
+  return box.querySelector<HTMLButtonElement>('button.choice[aria-pressed="true"]') ?? box.querySelector<HTMLButtonElement>('button.choice');
 }
 
 /** A ✍ clue: this seat's answer box (what's in, who sent it, why the last one wasn't taken). */
@@ -1493,7 +1573,25 @@ function renderAnswer(v: PhoneView, a: NonNullable<PhoneView['answer']>, sym: st
   $('answer-head').textContent = guess ? (v.status ?? '') : '';
   $('answer-sub').hidden = !sub;
   $('answer-sub').textContent = sub;
-  $('answer-label').textContent = team ? 'Your team’s answer (only the host and your team see it)' : 'Your answer (only the host sees it)';
+  // Multiple choice: a button each in place of the box to type in (and its Send), a tap sends it.
+  const choices = !guess && !!a.choices?.length;
+  $('answer-choices').hidden = !choices;
+  // (The label names the group only while it's up: the box to type in has it otherwise.)
+  if (choices) $('answer-choices').setAttribute('aria-labelledby', 'answer-label');
+  else $('answer-choices').removeAttribute('aria-labelledby');
+  $('answer-in').hidden = choices;
+  $('answer-send').hidden = choices;
+  if (choices) drawChoices(a);
+  else if (choicesKey) ((choicesKey = ''), $('answer-choices').replaceChildren());
+  if (!choices) answerTap = '';
+  $('answer-keys').textContent = choices ? `Press A–${letter(a.choices!.length - 1)} to pick` : 'Enter sends · Shift+Enter for a new line';
+  $('answer-label').textContent = choices
+    ? team
+      ? 'Your team’s answer: pick one (only the host and your team see it)'
+      : 'Pick your answer (only the host sees it)'
+    : team
+      ? 'Your team’s answer (only the host and your team see it)'
+      : 'Your answer (only the host sees it)';
   const inp = $<HTMLTextAreaElement>('answer-in');
   // Filled with what's in when the box comes up, and again when what's in changes (a teammate), unless the box holds
   // an edit not sent yet (as for the wager box).
@@ -1517,7 +1615,8 @@ function renderAnswer(v: PhoneView, a: NonNullable<PhoneView['answer']>, sym: st
     saidAsked = asked;
     if (asked) news(asked);
   }
-  const what = guess ? [v.status ?? '', v.statusSub ?? ''] : w?.kind === 'final' ? ['Type your answer', staked] : ['Everyone answers'];
+  // (Multiple choice: how many to pick from, never each choice on every change: the group is there to read.)
+  const what = guess ? [v.status ?? '', v.statusSub ?? ''] : w?.kind === 'final' ? ['Type your answer', staked] : choices ? [`Pick one of ${a.choices!.length}`] : ['Everyone answers'];
   say(sentences([connected ? '' : awayText(), ...what, state, cardsSaid, hostGone ? ($('host-note').textContent ?? '') : '']));
   show('s-buzz');
 }
@@ -1601,10 +1700,11 @@ $('buzz').addEventListener('click', (e) => {
 });
 $('buzz').addEventListener('contextmenu', (e) => e.preventDefault());
 // A mouse press on 🎨, a colour, Not you? or the sound leaves the keys where they were, not on that button: Space and
-// Enter stay the buzzer's, and a wager or answer box that opens still takes them. (A touch screen's taps as before.)
+// Enter stay the buzzer's, and a wager or answer box that opens still takes them. (A touch screen's taps as before. A
+// ✍ clue's choice takes them: nothing buzzes then, and ↑ / ↓ go on from the one picked.)
 for (const el of [$('s-buzz'), document.querySelector('header')!])
   el.addEventListener('mousedown', (e) => {
-    if (pointerKind !== 'touch' && (e.target as Element).closest('button:not(#buzz)')) e.preventDefault();
+    if (pointerKind !== 'touch' && (e.target as Element).closest('button:not(#buzz):not(.choice)')) e.preventDefault();
   });
 
 /** Keys there are for typing (a name, a wager, an answer): never the buzzer's, nor a shortcut's. */
@@ -1685,6 +1785,23 @@ document.addEventListener('keydown', (e) => {
     } else if (e.key === 'ArrowDown' || e.key === 'ArrowUp') stepFocus(e, $('s-seats').querySelectorAll<HTMLButtonElement>('button.seat'), e.key === 'ArrowDown' ? 1 : -1);
     return;
   }
+  // A ✍ clue's choices: A–F pick one, as a click would; ↑ and ↓ move the keys along them (from one of them, or from
+  // nowhere: on a long question they scroll it).
+  if (!$('s-buzz').hidden && !$('answer-form').hidden && !$('answer-choices').hidden && $('overlay').hidden) {
+    const buttons = $('answer-choices').querySelectorAll<HTMLButtonElement>('button.choice');
+    if (/^[a-f]$/i.test(e.key)) {
+      const b = buttons[e.key.toLowerCase().charCodeAt(0) - 97];
+      if (!b) return;
+      e.preventDefault();
+      if (e.repeat) return;
+      b.focus();
+      b.click();
+      return;
+    }
+    const at = document.activeElement;
+    if ((e.key === 'ArrowDown' || e.key === 'ArrowUp') && (!at || at === document.body || $('answer-choices').contains(at)))
+      return stepFocus(e, buttons, e.key === 'ArrowDown' ? 1 : -1);
+  }
   // The colour picker: the arrow keys go from colour to colour.
   if (colorsOpen && $('colors').contains(document.activeElement) && /^Arrow(Left|Right|Up|Down)$/.test(e.key))
     stepFocus(e, $('colors').querySelectorAll<HTMLButtonElement>('button.swatch'), e.key === 'ArrowRight' || e.key === 'ArrowDown' ? 1 : -1);
@@ -1717,8 +1834,9 @@ drawKeys();
  * are drawn with it (renderBuzz).
  */
 function drawDesk(): void {
-  if (fine.matches) $('answer-in').setAttribute('aria-describedby', 'answer-keys');
-  else $('answer-in').removeAttribute('aria-describedby');
+  for (const id of ['answer-in', 'answer-choices'])
+    if (fine.matches) $(id).setAttribute('aria-describedby', 'answer-keys');
+    else $(id).removeAttribute('aria-describedby');
 }
 drawDesk();
 // A tablet that gets a mouse, a laptop folded into a tablet: the words and hints follow.
@@ -1835,7 +1953,7 @@ $('wager-form').addEventListener('submit', (e) => {
 $('answer-form').addEventListener('submit', (e) => {
   e.preventDefault();
   const a = view?.answer;
-  if (!a?.mine || !a.open) return;
+  if (!a?.mine || !a.open || a.choices?.length) return;
   const text = $<HTMLTextAreaElement>('answer-in').value.trim();
   if (!text) {
     answerErr = 'Type an answer first.';
@@ -1845,6 +1963,22 @@ $('answer-form').addEventListener('submit', (e) => {
   answerSending = connected;
   if (!connected) answerErr = 'Not connected: try again in a moment.';
   send({ t: 'answer', id: a.id, text });
+  render();
+});
+// Multiple choice: a tap sends that choice at once (it can be changed until the host shows the answer).
+$('answer-choices').addEventListener('click', (e) => {
+  const b = (e.target as HTMLElement).closest<HTMLButtonElement>('button.choice');
+  const a = view?.answer;
+  const pick = b?.dataset.choice;
+  if (!pick || !a?.mine || !a.open || !a.choices?.some((c) => c.id === pick)) return;
+  // (Already the one in: nothing to send.)
+  if (pick === a.pick && !answerTap) return;
+  answerErr = '';
+  answerTap = pick;
+  answerTapTaken = false;
+  answerSending = connected;
+  if (!connected) ((answerErr = 'Not connected: try again in a moment.'), (answerTap = ''));
+  send({ t: 'answer', id: a.id, pick });
   render();
 });
 // Enter sends (Shift+Enter: a new line).

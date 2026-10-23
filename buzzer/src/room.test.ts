@@ -138,12 +138,12 @@ describe('host', () => {
   it('is welcomed and keeps the latest state', () => {
     const g = setup();
     g.room.hostOpen();
-    expect(g.host[0]).toEqual({ t: 'welcome', code: 'BCDF', protocol: 1, serverNow: 10_000, features: ['teams', 'wagers', 'free', 'color', 'answers', 'cards', 'gifs'] });
+    expect(g.host[0]).toEqual({ t: 'welcome', code: 'BCDF', protocol: 1, serverNow: 10_000, features: ['teams', 'wagers', 'free', 'color', 'answers', 'cards', 'gifs', 'choices'] });
     // 'files' only while the server takes card files (index.ts knows its setting and budget), and with it the
     // server's limits.
     const f = setup(undefined, [], { fileBytes: 4 << 20, roomBytes: 12 << 20, roomFiles: 32 });
     f.room.hostOpen(true);
-    expect(f.host[0]).toMatchObject({ t: 'welcome', features: ['teams', 'wagers', 'free', 'color', 'answers', 'cards', 'files', 'gifs'], limits: { fileBytes: 4 << 20, roomBytes: 12 << 20, roomFiles: 32 } });
+    expect(f.host[0]).toMatchObject({ t: 'welcome', features: ['teams', 'wagers', 'free', 'color', 'answers', 'cards', 'files', 'gifs', 'choices'], limits: { fileBytes: 4 << 20, roomBytes: 12 << 20, roomFiles: 32 } });
     g.send({ t: 'state', state: state({ title: 'New' }) });
     expect(g.room.saved.state?.title).toBe('New');
     g.send({ t: 'ping', at: 5 });
@@ -1471,7 +1471,7 @@ describe('teams', () => {
 
   it('the room says it knows teams, and the host state keeps teams on', () => {
     const g = teams();
-    expect(g.host[0]).toMatchObject({ t: 'welcome', features: ['teams', 'wagers', 'free', 'color', 'answers', 'cards', 'gifs'] });
+    expect(g.host[0]).toMatchObject({ t: 'welcome', features: ['teams', 'wagers', 'free', 'color', 'answers', 'cards', 'gifs', 'choices'] });
     expect(g.room.saved.state?.teams).toBe(true);
     expect(cleanState({ ...state(), teams: 'yes' })?.teams).toBeUndefined();
   });
@@ -1971,6 +1971,71 @@ describe('answers (everyone answers on their phone)', () => {
     g.t.now += 1000;
     ann.send({ t: 'answer', id: 'clue2', text: 'Grant' });
     expect(spy.last('view')!.view.answer).toMatchObject({ id: 'clue2', text: 'Grant', by: 'Ann' });
+  });
+
+  describe('multiple choice', () => {
+    const four = [
+      { id: 'A1', text: 'Paris' },
+      { id: 'B2', text: 'Stockholm' },
+      { id: 'C3', text: 'Oslo' },
+      { id: 'D4', text: 'Bern' },
+    ];
+    const kept = (choices: unknown) => cleanState(state({ answers: { ...ask(), choices } as HostState['answers'] }))?.answers?.choices;
+
+    it('are kept only as 2 to 6 choices, each with its own id and words, never which is right', () => {
+      expect(kept(four.map((c, i) => (i === 1 ? { ...c, right: true } : c)))).toEqual(four);
+      // Words cleaned and cut as a name is; one choice, seven, an id twice, an empty one or a bad id: none at all.
+      expect(kept([{ id: 'a', text: '  Pa\u200bris  ' }, { id: 'b', text: 'x'.repeat(100) }])).toEqual([{ id: 'a', text: 'Paris' }, { id: 'b', text: clip('x'.repeat(100), 80) }]);
+      for (const bad of [
+        four.slice(0, 1),
+        [...four, ...four.map((c) => ({ ...c, id: c.id + 'x' }))].slice(0, 7),
+        [four[0], { ...four[1], id: 'A1' }],
+        [four[0], { id: 'b', text: '\u200b' }],
+        [four[0], { id: 'x'.repeat(65), text: 'Long id' }],
+        [four[0], { id: 7, text: 'Seven' }],
+        'Paris',
+      ])
+        expect(kept(bad)).toBeUndefined();
+    });
+
+    it('a phone in it sees them and picks one: the host hears the pick with its words, only that seat sees it', () => {
+      const g = game();
+      g.send({ t: 'state', state: state({ answers: ask({ choices: four }) }) });
+      expect(g.pa.last('view')!.view.answer).toEqual({ id: 'clue1', open: true, mine: true, choices: four });
+      // (A phone not in it gets no choices.)
+      expect(g.pc.last('view')!.view.answer).toEqual({ id: 'clue1', open: true, mine: false });
+      g.pa.send({ t: 'answer', id: 'clue1', pick: 'B2' });
+      expect(g.pa.last('answered')).toEqual({ t: 'answered', id: 'clue1', ok: true });
+      expect(g.hostLast('answer')).toEqual({ t: 'answer', id: 'clue1', seatId: 'a', text: 'Stockholm', n: 1, pick: 'B2' });
+      expect(g.pa.last('view')!.view.answer).toMatchObject({ text: 'Stockholm', pick: 'B2' });
+      // (The others' phones get the choices, never a pick.)
+      for (const p of [g.pb, g.pc]) expect(said(p.msgs())).not.toContain('"pick"');
+      // A pick that isn't one of them is turned down; words typed (an older phone page) are taken as words.
+      for (const pick of ['E5', 5, '']) {
+        g.pb.send({ t: 'answer', id: 'clue1', pick, text: 'Oslo' });
+        expect(g.pb.last('answered')).toMatchObject({ ok: false, reason: 'bad' });
+      }
+      g.pb.send({ t: 'answer', id: 'clue1', text: 'b) Stockholm' });
+      expect(g.hostLast('answer')).toEqual({ t: 'answer', id: 'clue1', seatId: 'b', text: 'b) Stockholm', n: 1 });
+      expect(g.pb.last('view')!.view.answer!.pick).toBeUndefined();
+      // Changed: the newest counts; the host back after a drop hears it again with its pick.
+      g.pa.send({ t: 'answer', id: 'clue1', pick: 'C3' });
+      g.room.hostClose();
+      g.room.hostOpen();
+      expect(g.hostAll('answer').filter((m) => m.seatId === 'a').at(-1)).toEqual({ t: 'answer', id: 'clue1', seatId: 'a', text: 'Oslo', n: 2, pick: 'C3' });
+    });
+
+    it('a phone seated after the pick was sent is told one is in, not which', () => {
+      const g = game();
+      g.send({ t: 'state', state: state({ answers: ask({ choices: four }) }) });
+      g.pa.send({ t: 'answer', id: 'clue1', pick: 'D4' });
+      g.pa.send({ t: 'leave' });
+      g.t.now += 1000;
+      const other = g.phone('other');
+      other.send({ t: 'join', seatId: 'a' });
+      expect(other.last('view')!.view.answer).toEqual({ id: 'clue1', open: true, mine: true, hidden: true, choices: four });
+      expect(said(other.msgs())).not.toContain('"pick"');
+    });
   });
 
   it("a seat taken after its answer was sent doesn't show it", () => {

@@ -127,12 +127,12 @@ describe('clue import: review fixes', () => {
   it('replacing the board: a category renamed loses the old one’s picture, and tiles are plain clues again', () => {
     const r = newRound('R', 2, [200]);
     r.categories[0].image = 'img';
-    Object.assign(r.categories[0].clues[0], { type: 'wheel', wheelId: 'w', everyone: true, timerSeconds: 9 });
+    Object.assign(r.categories[0].clues[0], { type: 'wheel', wheelId: 'w', everyone: true, timerSeconds: 9, choices: [{ id: 'a', text: 'Adams' }, { id: 'b', text: 'Bush' }] });
     const plan = planImport(r, cluesFromTable(parseTable('History\t200\tFirst president\tWashington')), 'replace');
     applyPlan(r, plan);
     expect(r.categories[0].image).toBeUndefined();
     const cl = r.categories[0].clues[0];
-    expect([cl.type, cl.wheelId, cl.everyone, cl.timerSeconds]).toEqual(['standard', undefined, undefined, undefined]);
+    expect([cl.type, cl.wheelId, cl.everyone, cl.timerSeconds, cl.choices]).toEqual(['standard', undefined, undefined, undefined, undefined]);
   });
 
   it('a first row whose answer is just "A" is a clue, not a header; more than 10 categories says which were left out', () => {

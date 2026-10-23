@@ -29,8 +29,9 @@ export const BUZZ_PROTOCOL = 1;
  * cardsLate and a card's `shared`.
  * 'files': card files over HTTP (POST and GET /api/rooms/:code/files); listed only while the server takes files.
  * 'gifs': a card's file can be a GIF sent as a looping video (CardMedia `gif`), which phones show like the GIF.
+ * 'choices': a ✍ round's multiple choices (AnswerAsk.choices); phones pick one (PhoneMsg 'answer' with `pick`).
  */
-export const ROOM_FEATURES = ['teams', 'wagers', 'free', 'color', 'answers', 'cards', 'files', 'gifs'] as const;
+export const ROOM_FEATURES = ['teams', 'wagers', 'free', 'color', 'answers', 'cards', 'files', 'gifs', 'choices'] as const;
 export type RoomFeature = (typeof ROOM_FEATURES)[number];
 
 /** Cards in the host's state at most, and how big they may be together (JSON bytes; over it, media go first, then cards). */
@@ -140,6 +141,11 @@ export function fileType(raw: string | null | undefined): (typeof FILE_TYPES)[nu
 export const WAGER_MAX = 1_000_000_000;
 /** The longest answer a phone may type (characters). */
 export const ANSWER_MAX = 200;
+/** A ✍ round's multiple choices: at most CHOICES_MAX (2 at least), each at most CHOICE_MAX characters. */
+export const CHOICES_MAX = 6;
+export const CHOICE_MAX = 80;
+/** A choice's id (characters). */
+export const CHOICE_ID_MAX = 64;
 /** The most of a clue's text phones get (UTF-16 units, as the room counts them; cut with "…", see clipUnits). */
 export const CLUE_TEXT_MAX = 1000;
 
@@ -320,6 +326,8 @@ export interface AnswerAsk {
   open: boolean;
   /** got: the last answer (its `n`) the host took from this seat: one sent while the host was away comes again only if newer. */
   seats: { id: string; got?: number }[];
+  /** Added later ('choices'): 2 to CHOICES_MAX choices to pick from instead of typing (never which one is right). */
+  choices?: { id: string; text: string }[];
 }
 
 /** An answer a phone sent, as the room keeps it (per seat: a team's newest, whoever on it sent it). */
@@ -332,6 +340,8 @@ export interface SentAnswer {
   by?: string;
   /** Added later: when the room took it (a phone seated after the answers began sees only what it sent since). */
   at?: number;
+  /** Added later ('choices'): the choice picked (its id; `text` is its words). */
+  pick?: string;
 }
 
 /** Answers, as one phone sees them: its own seat's only. */
@@ -349,6 +359,9 @@ export interface PhoneAnswer {
    * began). Sending one replaces it.
    */
   hidden?: boolean;
+  /** Added later ('choices'): the choices to pick from (only for a seat in it), and the one this seat picked. */
+  choices?: { id: string; text: string }[];
+  pick?: string;
 }
 
 /** HostState.wager: who is wagering, and on what. */
@@ -526,8 +539,9 @@ function answerView(s: HostState, seatId: string | undefined, me?: MemberRef | n
       id: a.id,
       open: a.open,
       mine,
-      ...(mine && sent ? { text: sent.text, ...(s.teams && sent.by ? { by: sent.by, byYou: !!me && me.id === sent.member } : {}) } : {}),
+      ...(mine && sent ? { text: sent.text, ...(sent.pick ? { pick: sent.pick } : {}), ...(s.teams && sent.by ? { by: sent.by, byYou: !!me && me.id === sent.member } : {}) } : {}),
       ...(mine && !sent && hidden ? { hidden: true } : {}),
+      ...(mine && a.choices?.length ? { choices: a.choices } : {}),
     },
   };
 }
@@ -729,8 +743,11 @@ export type RoomToHost =
   | { t: 'wager'; id: string; seatId: string; amount: number; n: number; by?: string }
   /** Added later ('color'): a seated phone asks for this colour (#rrggbb) for its player. */
   | { t: 'color'; seatId: string; color: string }
-  /** Added later ('answers'): a phone sent seatId's answer for the answer round `id` (n counts up per seat). */
-  | { t: 'answer'; id: string; seatId: string; text: string; n: number; by?: string }
+  /**
+   * Added later ('answers'): a phone sent seatId's answer for the answer round `id` (n counts up per seat). pick (added
+   * later, 'choices'): the choice it picked (its id; `text` is its words).
+   */
+  | { t: 'answer'; id: string; seatId: string; text: string; n: number; by?: string; pick?: string }
   /**
    * Added later ('cards'): card `id` was seen on a phone of seatId (teams: member, called by). Sent again for the
    * current cards when the host comes back.
@@ -777,8 +794,8 @@ export type PhoneMsg =
   | { t: 'wager'; id: string; amount: number }
   /** Added later ('color'): this phone's player wants this colour (#rrggbb); the host takes it if it's free. */
   | { t: 'color'; color: string }
-  /** Added later ('answers'): this phone's seat's answer for the answer round `id`. */
-  | { t: 'answer'; id: string; text: string }
+  /** Added later ('answers'): this phone's seat's answer for the answer round `id`: words, or ('choices') a choice's id. */
+  | { t: 'answer'; id: string; text?: string; pick?: string }
   /** Added later ('cards'): this phone showed card `id` (its player tapped to see it). */
   | { t: 'cardSeen'; id: string };
 

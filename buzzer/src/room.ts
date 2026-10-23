@@ -96,6 +96,9 @@ import {
   ROOM_FILES_MAX,
   WAGER_MAX,
   ANSWER_MAX,
+  CHOICE_ID_MAX,
+  CHOICE_MAX,
+  CHOICES_MAX,
   phoneView,
   ROOM_FEATURES,
   TIE_MS,
@@ -508,7 +511,7 @@ export class Room {
   }
 
   private tellAnswer(id: string, seatId: string, a: SentAnswer): void {
-    if (this.hostHere) this.deps.toHost({ t: 'answer', id, seatId, text: a.text, n: a.n, ...(a.by ? { by: a.by } : {}) });
+    if (this.hostHere) this.deps.toHost({ t: 'answer', id, seatId, text: a.text, n: a.n, ...(a.by ? { by: a.by } : {}), ...(a.pick ? { pick: a.pick } : {}) });
   }
 
   private tellWager(id: string, seatId: string, w: SentWager): void {
@@ -1237,7 +1240,7 @@ export class Room {
         if (typeof m.color === 'string') this.color(p, m.color);
         break;
       case 'answer':
-        if (typeof m.id === 'string') this.answer(p, m.id, m.text);
+        if (typeof m.id === 'string') this.answer(p, m.id, m.text, m.pick);
         break;
       case 'cardSeen':
         if (typeof m.id === 'string') this.cardSeen(p, m.id);
@@ -1551,22 +1554,31 @@ export class Room {
 
   /**
    * A phone sends its seat's answer for the host's answer round `id`: kept for the seat (teams: whoever on it sent it
-   * last), told to the host only, and every phone of the seat sees it. The phone hears either way.
+   * last), told to the host only, and every phone of the seat sees it. The phone hears either way. `pick` ('choices'):
+   * one of the round's choices (its id), whose words are the answer; without one (an older phone page), the words typed.
    */
-  private answer(p: Phone, id: string, text: unknown): void {
+  private answer(p: Phone, id: string, text: unknown, pick?: unknown): void {
     const st = this.s.state;
     const ask = st?.answers;
     const no = (reason: 'closed' | 'bad' | 'slow') => this.deps.toPhone(p.conn, { t: 'answered', id: clip(id, 100), ok: false, reason });
     const seat = p.seatId ? ask?.seats.find((x) => x.id === p.seatId) : undefined;
     if (!st || !ask || !ask.open || ask.id !== id || !seat || !p.seatId) return no('closed');
     if (!this.allow((p.answerRate ??= { start: 0, count: 0 }), ANSWER_RATE, ANSWER_WINDOW_MS)) return no('slow');
+    const choice = pick === undefined ? undefined : ask.choices?.find((c) => c.id === pick);
+    if (pick !== undefined && !choice) return no('bad');
     // (Line breaks are spaces: "George⏎Washington" stays two words.)
-    const words = typeof text === 'string' ? cleanName(text.replace(/[\t\r\n]+/g, ' '), ANSWER_MAX) : '';
+    const words = choice ? choice.text : typeof text === 'string' ? cleanName(text.replace(/[\t\r\n]+/g, ' '), ANSWER_MAX) : '';
     if (!words) return no('bad');
     const now = this.deps.now();
     const sent = this.s.answers?.id === id ? this.s.answers : (this.s.answers = { id, seats: {}, at: now });
     const member = st.teams && p.member ? this.s.members?.[p.member] : undefined;
-    const a: SentAnswer = { text: words, n: Math.max(sent.seats[p.seatId]?.n ?? 0, seat.got ?? 0) + 1, at: now, ...(member && p.member ? { member: p.member, by: member.name } : {}) };
+    const a: SentAnswer = {
+      text: words,
+      n: Math.max(sent.seats[p.seatId]?.n ?? 0, seat.got ?? 0) + 1,
+      at: now,
+      ...(member && p.member ? { member: p.member, by: member.name } : {}),
+      ...(choice ? { pick: choice.id } : {}),
+    };
     sent.seats[p.seatId] = a;
     this.deps.toPhone(p.conn, { t: 'answered', id, ok: true });
     this.tellAnswer(id, p.seatId, a);
@@ -1879,6 +1891,23 @@ const PHASES: BuzzPhase[] = ['lobby', 'closed', 'armed', 'answering'];
 const COLOR = /^#[0-9a-fA-F]{6}$/;
 
 /**
+ * A ✍ round's multiple choices as phones may get them: 2 to CHOICES_MAX, each with its own id (1 to CHOICE_ID_MAX
+ * characters) and words (cleanName, at most CHOICE_MAX). Anything else, even one bad choice, and there are none: the
+ * phones type their answers. Only an id and words, never which is right.
+ */
+function cleanChoices(v: unknown): { id: string; text: string }[] | undefined {
+  if (!Array.isArray(v) || v.length < 2 || v.length > CHOICES_MAX) return undefined;
+  const out: { id: string; text: string }[] = [];
+  for (const c of v) {
+    if (!isObj(c) || typeof c.id !== 'string' || !c.id || c.id.length > CHOICE_ID_MAX || typeof c.text !== 'string') return undefined;
+    const text = cleanName(c.text, CHOICE_MAX);
+    if (!text || out.some((o) => o.id === c.id)) return undefined;
+    out.push({ id: c.id, text });
+  }
+  return out;
+}
+
+/**
  * The host's state checked and trimmed to what the room passes on; null when its shape is wrong. files: the card files
  * the room holds (a card's file item must be one of them).
  */
@@ -1931,7 +1960,8 @@ export function cleanState(x: unknown, files: Record<string, RoomFile> = {}): Ho
       const got = Number.isSafeInteger(a.got) && (a.got as number) > 0 ? (a.got as number) : undefined;
       aseats.push({ id: a.id, ...(got ? { got } : {}) });
     }
-    extra.answers = { id: x.answers.id, open: x.answers.open === true, seats: aseats };
+    const choices = cleanChoices(x.answers.choices);
+    extra.answers = { id: x.answers.id, open: x.answers.open === true, seats: aseats, ...(choices ? { choices } : {}) };
   }
   if (Array.isArray(x.cards)) {
     const cards = cleanCards(x.cards, ids, files);

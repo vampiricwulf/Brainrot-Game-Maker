@@ -11,6 +11,12 @@ the day it's pushed (Pacific time; start the heading on the day's first push) an
 in plain words for the people who make and host games. Anything committed but not pushed yet goes under
 **Unreleased** at the top, and moves under its day when it's pushed.
 
+## Unreleased
+
+### Added
+
+- Multiple choice on ✍ Everyone answers clues: ＋ Multiple choice under ✍ in the clue editor gives the clue choices (A to D to start; 2 to 6, up to 80 characters each), and ✔ Right marks the right one. Players tap theirs on their phone (A–F on a computer) and can change it until you show the answer. Once the answer is up, “✔ Judge all: B is right” marks everyone at once, as one Ctrl+Z step (or judge each as before). Only you see who picked what and how many picked each (in one window, once the answer is up). The checklist warns of an empty choice, only one, or two the same, and Find finds the choices' words. A buzzer server you run yourself needs deploying again for the buttons; until then phones get the answer box, and a typed letter or the choice's words count as that choice.
+
 ## 2026-10-22
 
 ### Added

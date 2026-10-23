@@ -217,6 +217,8 @@ export const roomHasTeams = (): boolean => remote.features.includes('teams');
 export const roomHasWagers = (): boolean => remote.features.includes('wagers');
 /** The room this window is in takes answers from phones (✍ clues; an older buzzer server doesn't). */
 export const roomHasAnswers = (): boolean => remote.features.includes('answers');
+/** The room this window is in puts a ✍ clue's multiple choices on phones (an older buzzer server doesn't: they type). */
+export const roomHasChoices = (): boolean => remote.features.includes('choices');
 /** Teams: the people on team `seatId` with a phone in the room now (each once), for the member wheel. */
 export function roomMembers(seatId: string): TeamMember[] {
   const out: TeamMember[] = [];

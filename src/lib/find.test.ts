@@ -27,6 +27,25 @@ describe('Find', () => {
     expect(findAll(game, 'jeopardy!').find((h) => h.icon === '🏷')?.focus).toBe('main [data-round-name]');
   });
 
+  it('finds a ✍ clue’s multiple choices, going to the box of the one that matches', () => {
+    const g = newGame();
+    addSampleGame(g);
+    const r = g.rounds.find((x) => x.mode === 'board')!;
+    if (r.mode !== 'board') throw new Error('no board');
+    const clue = r.categories[0].clues[0];
+    clue.choices = [
+      { id: 'a', text: 'Paris' },
+      { id: 'b', text: 'Stockholmsyndrome' },
+    ];
+    // (Kept without ✍, unused: not found.)
+    expect(findAll(g, 'stockholmsyndrome')).toEqual([]);
+    clue.everyone = true;
+    clue.type = 'standard';
+    const [hit] = findAll(g, 'stockholmsyndrome');
+    expect(hit).toMatchObject({ icon: '✍', text: 'Stockholmsyndrome', focus: '[data-field="choice-1"]', place: { part: { kind: 'clue', clue: r.categories[0].clues[0].id } } });
+    expect(hit.where).toMatch(/ › Choices$/);
+  });
+
   it('needs every word, in any case', () => {
     expect(findAll(game, 'SHIBA crypto')).toHaveLength(1);
     expect(findAll(game, 'shiba piano')).toHaveLength(0);

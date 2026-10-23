@@ -399,6 +399,11 @@ The mode isn't saved with the game: it's dual while the audience window is open.
      (⚖ Game rules' `partnerSteal`, or the clue's own `PartnerRules.steal`), ✘ Missed lets everyone else answer it as
      any clue for the tile's value: the buzzers open for them with the two locked out, or the host picks who steals
      (`1–9`), then Enter / Shift+Enter. Each steal is its own undo step, and undoing the miss closes the steal.
+   - *✍ Everyone answers* (a standard tile with the box ticked, with phone buzzers): nobody buzzes; every player types
+     an answer on their phone (a team: anyone on it) until the answer is shown; only the host sees them (in one window,
+     not until the answer is up); the stream shows ✍ and who has answered; the host marks each ✔ / ✘ for the tile's
+     value. With **multiple choice** (2–6 choices under ✍ in the editor, one marked ✔ Right), players tap one instead,
+     and ✔ Judge all marks everyone by the right choice in one step.
    - *Any tile with 🤫 cards* (PARTNER-CLUES-SPEC.md §12.2): its panel lists them for the picker (a Daily Double's
      player) with 📤 Send (or 📋 to copy them, or 🪟 to show one in the card window); they go when the tile closes, and
      the stream says "Ann has a private question" on a standard tile.

@@ -236,11 +236,13 @@ export function planImport(source: BoardRound, clues: ImportedClue[], mode: 'fil
         clearClue(clue);
         clue.value = null;
         clue.empty = undefined;
-        // A plain clue again: not the wheel, dice, ✍, partner rules and cards or countdown of the clue that was there.
+        // A plain clue again: not the wheel, dice, ✍ (and its choices), partner rules and cards or countdown of the clue
+        // that was there.
         clue.type = 'standard';
         delete clue.wheelId;
         delete clue.diceId;
         delete clue.everyone;
+        delete clue.choices;
         delete clue.partner;
         delete clue.cards;
         delete clue.timerSeconds;

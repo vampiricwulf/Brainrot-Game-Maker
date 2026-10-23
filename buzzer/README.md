@@ -64,6 +64,17 @@ room, plus the phone page it serves. It is not part of the app's single-file bui
   is back, unless the host's `got` says it took it. The amount goes to the host and to that seat's own phones (their
   view's `wager`) only: never to another phone or in the seat list. Other phones only hear who is wagering (a Daily
   Double) or that they sit it out (a Final). A new round id forgets what was sent.
+- **Answers** (`answers` in the host's state: a round id of 100 characters at most, `open`, its seats with `got`, and,
+  with `'choices'`, 2 to 6 `choices`, each an `id` of 64 characters at most and its words, 80 at most, never which is
+  right): each seat in it sends its own answer from its phone (`answer` with the round id and its words, 200 characters
+  at most, line breaks as spaces, or with `'choices'` a `pick`, one of the choices' ids, whose words become the
+  answer; teams: anyone on the team, the newest counts). The room takes it only while the round is `open` and the seat
+  is in it, at most 10 in 10 seconds per phone, and answers the phone (`answered`, with why not: `closed`, `bad`,
+  `slow`). It keeps it per seat and tells the host (`answer` with a count `n`, teams `by`, and the `pick`); one sent
+  while the host is away comes when it is back, unless the host's `got` says it took it. The words go to the host and
+  to that seat's own phones (their view's `answer`) only, and a phone seated (or on the team) after the round began
+  sees only what it sent itself (`hidden`: one is in). The choices go only to the phones of seats in it. With the round
+  closed the room keeps what was sent: the same id again shows each phone its own; a new id forgets it.
 - **Private cards** (`cards` in the host's state, at most 8): a card is shown only on the phones the host sends it to,
   and only when the host sends it (a partner clue's 📤 Send): nothing goes out by itself. Each has an `id`, who it's
   `to` (a seat, which on a team is everyone on it; one `member` of a team; or a team `except` some members), `open`
@@ -159,6 +170,12 @@ hours"), and a room deletes a file 20 hours after its upload began, even one a c
 it and puts it up again). Since the app makes smaller copies of GIFs for phones: `'gifs'` in `welcome.features`, and
 `gif: true` on a card's file item (kept only when its stored file is a video): a GIF sent as a video, which the phone
 shows like the GIF. An app that doesn't see `'gifs'` sends the GIF itself when it fits, else its copy as a plain video.
+Since everyone can answer a clue on their phone: `'answers'` in `welcome.features`, `HostState.answers`, the phone →
+room `answer`, room → phone `answered`, room → host `answer`, and `PhoneView.answer` (an
+app that doesn't see `'answers'` keeps the clue to buzzing, or a Final's answers out loud). Since a clue's answers can
+be multiple choice: `'choices'` in `welcome.features`, `AnswerAsk.choices`, `pick` on the phone's `answer` (whose
+`text` may then be left out), on the room → host `answer` and on `PhoneView.answer` with its `choices`. An app that
+doesn't see `'choices'` sends no choices: phones type, and a typed letter or the choice's words count as that choice.
 
 ## Fair timing
 

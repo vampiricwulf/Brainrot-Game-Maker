@@ -115,6 +115,13 @@ describe('parseRoomMsg', () => {
     expect(parseRoomMsg('{"t":"wager","id":"","seatId":"a","amount":5,"n":1}')).toBeNull();
   });
 
+  it("takes a phone's answer (added later), with the choice it picked ('choices')", () => {
+    expect(parseRoomMsg('{"t":"answer","id":"c1@k","seatId":"a","text":"Oslo","n":1,"pick":"B2"}')).toEqual({ t: 'answer', id: 'c1@k', seatId: 'a', text: 'Oslo', n: 1, pick: 'B2' });
+    // (A pick that can't be one is dropped; the words stay.)
+    for (const pick of ['', 7, 'x'.repeat(65)])
+      expect(parseRoomMsg(JSON.stringify({ t: 'answer', id: 'c1@k', seatId: 'a', text: 'Oslo', n: 1, pick }))).toEqual({ t: 'answer', id: 'c1@k', seatId: 'a', text: 'Oslo', n: 1 });
+  });
+
   it('takes the teams fields (added later): what the room can do, who on a team buzzed, who is on which phone', () => {
     expect(parseRoomMsg(JSON.stringify({ ...welcome, features: ['teams', 7, 'x'.repeat(50)] }))).toEqual({ ...welcome, features: ['teams'] });
     expect(parseRoomMsg('{"t":"buzz","armId":3,"seatId":"a","rank":1,"afterMs":0,"by":"Ann"}')).toMatchObject({ seatId: 'a', by: 'Ann' });

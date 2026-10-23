@@ -177,6 +177,13 @@ describe('moving clues around the board', () => {
     c.value = 999;
     clearClue(c);
     expect(clueHasContent(c)).toBe(false);
+    // ✍ multiple choices with words are written content too (empty ones aren't).
+    c.choices = [{ id: 'a', text: '' }, { id: 'b', text: ' ' }];
+    expect(clueClearable(c)).toBe(false);
+    c.choices[1].text = 'Oslo';
+    expect([clueClearable(c), clueHasContent(c)]).toEqual([true, true]);
+    clearClue(c);
+    expect(c.choices).toBeUndefined();
     expect(c.questionSlide.elements).toHaveLength(1);
     expect((c.questionSlide.elements[0] as TextEl).color).toBe('#ff0000');
     expect([c.type, c.value, c.hostNotes, c.tileFace]).toEqual(['dailyDouble', 999, undefined, undefined]);

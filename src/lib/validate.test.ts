@@ -98,6 +98,32 @@ describe('the checklist', () => {
   });
 });
 
+describe('✍ multiple choice', () => {
+  it('warns of an empty choice, only one, or two the same, and notes none marked ✔ Right; only on ✍ standard tiles', () => {
+    const game = jeopardyGame();
+    const round = game.rounds[0] as BoardRound;
+    const [a, b, c, d] = round.categories[0].clues;
+    for (const cl of [a, b, c, d]) cl.everyone = true;
+    a.choices = [{ id: '1', text: 'Paris', right: true }, { id: '2', text: '' }, { id: '3', text: 'Oslo' }];
+    b.choices = [{ id: '1', text: 'Paris' }];
+    c.choices = [{ id: '1', text: 'Oslo', right: true }, { id: '2', text: ' oslo ' }];
+    d.choices = [{ id: '1', text: 'Paris' }, { id: '2', text: 'Oslo' }];
+    const mine = () => validate(game).filter((p) => p.text.includes('choice'));
+    const at = (cl: typeof a) => ({ tab: 'round', round: round.id, part: { kind: 'clue', category: round.categories[0].id, clue: cl.id } });
+    expect(mine()).toEqual([
+      { text: 'Jeopardy!: 1 ✍ clue with an empty choice', tab: 0, level: 'warn', place: at(a) },
+      { text: 'Jeopardy!: 1 ✍ clue with only one choice (add another, or take it off)', tab: 0, level: 'warn', place: at(b) },
+      { text: 'Jeopardy!: 1 ✍ clue with two choices the same', tab: 0, level: 'warn', place: at(c) },
+      { text: 'Jeopardy!: 1 ✍ clue with choices but none marked ✔ Right (you judge each answer)', tab: 0, level: 'info', place: at(d) },
+    ]);
+    // Counted per tile; ✍ unticked (kept, unused), or another type: not counted.
+    b.choices = [{ id: '1', text: '' }, { id: '2', text: 'Oslo' }];
+    delete c.everyone;
+    d.type = 'dailyDouble';
+    expect(mine().map((p) => p.text)).toEqual(['Jeopardy!: 2 ✍ clues with an empty choice']);
+  });
+});
+
 describe('buttons on items, wheels and dice', () => {
   it('says which one points at something deleted, and goes there', async () => {
     const { newWheel, newDice } = await import('./tools');

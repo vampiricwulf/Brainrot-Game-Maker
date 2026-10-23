@@ -551,6 +551,33 @@ describe('a Final’s ✍ switch in saved games', () => {
   });
 });
 
+describe('a ✍ clue’s multiple choices in saved games', () => {
+  const choicesOf = (v: unknown) => {
+    const g = JSON.parse(JSON.stringify(jeopardyGame()));
+    g.rounds[0].categories[0].clues[0].choices = v;
+    return (migrateGame(g).rounds[0] as BoardRound).categories[0].clues[0].choices;
+  };
+
+  it('each needs words and an id of its own; ✔ Right on the first marked only; 6 at most; none left, none', () => {
+    const c = choicesOf([
+      { id: 'a', text: 'Paris', right: true },
+      { id: 'a', text: 'Oslo', right: true },
+      { text: 'Bern', right: 'yes' },
+      { id: 'd', text: 5 },
+      'Rome',
+      { id: 'e', text: 'x'.repeat(100) },
+    ])!;
+    expect(c.map((x) => x.text)).toEqual(['Paris', 'Oslo', 'Bern', 'x'.repeat(80)]);
+    expect(new Set(c.map((x) => x.id)).size).toBe(4);
+    expect(c.map((x) => !!x.right)).toEqual([true, false, false, false]);
+    expect(choicesOf(Array.from({ length: 9 }, (_, i) => ({ id: `c${i}`, text: `${i}` })))).toHaveLength(6);
+    for (const v of ['Paris', [], [{ id: 'a' }], null]) expect(choicesOf(v)).toBeUndefined();
+    // A good list is kept as it is.
+    const good = [{ id: 'a', text: 'Paris' }, { id: 'b', text: '', right: true }];
+    expect(choicesOf(good)).toEqual(good);
+  });
+});
+
 describe('🤫 Cards in saved games', () => {
   const plain = (g: unknown) => JSON.parse(JSON.stringify(g));
   const withCards = (cards: unknown) => migrateGame(plain({ ...jeopardyGame(), cards }));

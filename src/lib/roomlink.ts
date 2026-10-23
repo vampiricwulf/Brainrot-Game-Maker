@@ -2,7 +2,7 @@
 // same code and host token after a drop), send the host's state, and pass on what the room says. No Svelte here, so it
 // can be tested with a fake WebSocket; remote.svelte.ts makes it reactive for the app.
 import {
-  ANSWER_MAX, BUZZ_PROTOCOL, CARD_ID_MAX, CARD_MEMBER_MAX, FILES_LIST_MAX, isFileId, isRoomCode, parseFileLimits, socketUrl, type CardLate, type FileLimits, type HostMsg, type HostState, type NewRoom,
+  ANSWER_MAX, BUZZ_PROTOCOL, CARD_ID_MAX, CARD_MEMBER_MAX, CHOICE_ID_MAX, FILES_LIST_MAX, isFileId, isRoomCode, parseFileLimits, socketUrl, type CardLate, type FileLimits, type HostMsg, type HostState, type NewRoom,
   type PhoneInfo, type QueuedBuzz, type RoomToHost,
 } from './buzzproto';
 
@@ -138,7 +138,15 @@ export function parseRoomMsg(data: unknown): RoomToHost | null {
       return isStr(m.seatId) && typeof m.color === 'string' && /^#[0-9a-f]{6}$/i.test(m.color) ? { t: 'color', seatId: m.seatId, color: m.color.toLowerCase() } : null;
     case 'answer':
       return isStr(m.id, 100) && m.id && isStr(m.seatId) && isStr(m.text, ANSWER_MAX * 4) && m.text && Number.isSafeInteger(m.n) && (m.n as number) >= 1
-        ? { t: 'answer', id: m.id, seatId: m.seatId, text: m.text, n: m.n as number, ...(isStr(m.by, 100) && m.by ? { by: m.by } : {}) }
+        ? {
+            t: 'answer',
+            id: m.id,
+            seatId: m.seatId,
+            text: m.text,
+            n: m.n as number,
+            ...(isStr(m.by, 100) && m.by ? { by: m.by } : {}),
+            ...(isStr(m.pick, CHOICE_ID_MAX) && m.pick ? { pick: m.pick } : {}),
+          }
         : null;
     case 'cardSeen':
       return isStr(m.id, CARD_ID_MAX) && m.id && isStr(m.seatId)

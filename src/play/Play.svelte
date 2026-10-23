@@ -34,8 +34,9 @@
   import { clip, type HostState, type WagerAsk, type AnswerAsk } from '../lib/buzzproto';
   import {
     acceptPhone, buzzerBase, buzzerOn, closeRoom, endRoom, forgetCardFiles, inRoom, kept, kickMember, kickSeat, moveMember, onRoomAnswer, onRoomBuzz, onRoomCardSeen, onRoomColor, onRoomQueue,
-    onRoomWager, rejectPhone, rejoinRoom, remote, resendHostState, roomHasAnswers, roomHasCards, roomHasFiles, roomHasWagers, roomLink, roomMembers, sendHostState, startRoom,
+    onRoomWager, rejectPhone, rejoinRoom, remote, resendHostState, roomHasAnswers, roomHasCards, roomHasChoices, roomHasFiles, roomHasWagers, roomLink, roomMembers, sendHostState, startRoom,
   } from '../lib/remote.svelte';
+  import { judgeAllPlan, usableChoices } from '../lib/choices';
   import { clearRoom, debounce, saveRoom, type SavedRoom } from '../lib/persist';
   import { chime } from '../lib/chime';
   import type { RoomBuzz, RoomAnswer, RoomCardSeen, RoomQueue, RoomWager } from '../lib/roomlink';
@@ -839,15 +840,7 @@
     const zero = amt === 0 && session.phase === 'clue' && (own ? !own.setup : info?.value === 0 && !toolOnlyClue(info.clue));
     if (!amt && !zero) return hint('Enter an amount first');
     const batch = newId();
-    const events = zero
-      ? logZero(session, ids, reasonNow(), info?.clue.id, sign > 0, batch)
-      : applyScore(session, game, ids, sign * Math.abs(amt!), reasonNow(), info?.clue.id, false, batch);
-    // Wrong with no negative scores, from a player on 0 (or less): nothing to take, but it's still a wrong answer (the
-    // log says so, the cue plays, and in Buzzer mode that player is locked out).
-    if (!zero && sign < 0) {
-      const missed = ids.filter((id) => !events.some((e) => e.playerId === id));
-      if (missed.length) events.push(...logZero(session, missed, reasonNow(), info?.clue.id, false, batch));
-    }
+    const events = scoreInto(sign, ids, zero ? 0 : amt!, batch);
     if (events.length) playCue(app.live, game, sign > 0 ? 'right' : 'wrong');
     // (A ✍ clue: one right answer doesn't end the others' time; showing the answer does.)
     if (events.length && sign > 0 && !everyone) {
@@ -886,6 +879,60 @@
     // A quick ✔/✘ on someone else (a blurted answer) leaves whoever is answering with the turn.
     const still = buzzing && b?.answering && !ids.includes(b.answering) && app.live.buzz === b ? b.answering : null;
     selected = next ? [next] : still ? [still] : [];
+  }
+
+  /**
+   * Players `ids` right (sign 1) or wrong (-1) for `amt` (0: nothing at stake, still right or wrong), in step `batch`:
+   * the score log's events. Wrong with no negative scores, from a player on 0 (or less): nothing to take, but it's still
+   * a wrong answer (the log says so, the cue plays, and in Buzzer mode that player is locked out).
+   */
+  function scoreInto(sign: 1 | -1, ids: string[], amt: number, batch: string): ScoreEvent[] {
+    if (!amt) return logZero(session, ids, reasonNow(), info?.clue.id, sign > 0, batch);
+    const events = applyScore(session, game, ids, sign * Math.abs(amt), reasonNow(), info?.clue.id, false, batch);
+    if (sign < 0) {
+      const missed = ids.filter((id) => !events.some((e) => e.playerId === id));
+      if (missed.length) events.push(...logZero(session, missed, reasonNow(), info?.clue.id, false, batch));
+    }
+    return events;
+  }
+
+  /**
+   * ✔ Judge all on a ✍ multiple-choice clue, once its answers are locked: everyone not judged yet who picked the choice
+   * marked ✔ Right is right, everyone who picked another is wrong (the clue's value, as ✔ / ✘ on each), in one step.
+   * Players with no answer, or words that name no choice, are left to the host. With no ✔ given on the clue yet, the
+   * first right player (in the players' order) picks next, as judging the rows top to bottom would have it.
+   */
+  function judgeAll(): void {
+    const ans = everyone && info ? session.remote?.answers : undefined;
+    if (!info || !ans || ans.id !== answerRoundId(session, info.clue.id) || !(session.revealed || ans.locked)) return;
+    const clueId = info.clue.id;
+    const judged = Object.fromEntries(session.scoreLog.filter((e) => !e.undone && e.clueId === clueId).map((e) => [e.playerId, true]));
+    const plan = judgeAllPlan(
+      session.players.map((p) => p.id),
+      ans.seats,
+      usableChoices(info.clue.choices),
+      judged,
+    );
+    if (!plan.right.length && !plan.wrong.length) return;
+    const amt = amount ?? info.value;
+    const zero = amt === 0 && info.value === 0 && !toolOnlyClue(info.clue);
+    if (!amt && !zero) return hint('Enter an amount first');
+    const picked = session.scoreLog.some((e) => !e.undone && e.clueId === clueId && (e.right ?? e.delta > 0));
+    const batch = newId();
+    const right = scoreInto(1, plan.right, amt, batch);
+    const wrong = scoreInto(-1, plan.wrong, amt, batch);
+    const events = [...right, ...wrong];
+    if (!events.length) return;
+    playCue(app.live, game, right.length ? 'right' : 'wrong');
+    for (const p of groupPops(events, session.players, sym, game.theme?.value || '#ffcc00')) pop(p);
+    // (Each player's name and total, never what they picked.)
+    for (const e of events) announce(`${playerName(session, e.playerId)} ${e.delta > 0 ? '+' : ''}${formatPoints(e.delta, sym)}, now ${formatPoints(score(session, e.playerId), sym)}`);
+    const first = right.find((e) => e.playerId === plan.right[0]);
+    if (!picked && first && game.settings.pickerFollowsAward !== false && session.currentPickerId !== first.playerId) {
+      first.picker = { was: session.currentPickerId, now: first.playerId };
+      session.currentPickerId = first.playerId;
+    }
+    selected = [];
   }
 
   /** The tiebreaker clue's winner with no points (Amount 0): the tie is settled, the scores stay as they are. */
@@ -1272,7 +1319,7 @@
       const mine = session.remote?.answers?.id === partnerAnswerId(partner) ? session.remote.answers : undefined;
       return partnerAnswerAsk(game, session, mine?.seats);
     }
-    if (everyone) return everyoneAnswerAsk(game, session);
+    if (everyone) return everyoneAnswerAsk(game, session, { choices: roomHasChoices() });
     return finalTyped ? finalAnswerAsk(game, session) : null;
   }
 
@@ -1290,8 +1337,10 @@
       f.answers = { ...f.answers, [a.seatId]: { text: a.text, n: a.n, ...by } };
       return;
     }
+    // (A multiple-choice clue's pick, while it's still one of its choices.)
+    const pick = a.pick && info && usableChoices(info.clue.choices).some((c) => c.id === a.pick) ? { pick: a.pick } : {};
     const was = r.answers?.id === ask.id ? r.answers : undefined;
-    r.answers = { id: ask.id, seats: { ...was?.seats, [a.seatId]: { text: a.text, n: a.n, ...by } }, ...(was?.locked ? { locked: true } : {}) };
+    r.answers = { id: ask.id, seats: { ...was?.seats, [a.seatId]: { text: a.text, n: a.n, ...by, ...pick } }, ...(was?.locked ? { locked: true } : {}) };
   }
 
   /**
@@ -1378,6 +1427,12 @@
   const wagerNote = $derived(
     phonesOn && remote.status === 'online' && !roomHasWagers() && remote.phones.some((p) => p.seatId)
       ? 'This buzzer server can’t take wagers from phones (it’s an older one): type them in.'
+      : '',
+  );
+  /** A ✍ clue's multiple choices with a buzzer server too old to show them: phones type, and a letter counts. */
+  const choicesNote = $derived(
+    everyone && !!info && usableChoices(info.clue.choices).length > 0 && remote.status === 'online' && !roomHasChoices()
+      ? 'This buzzer server can’t show the choices on phones (it’s an older one): players type the letter or the words, and they count as that choice.'
       : '',
   );
   /** An older buzzer server with phones in it, in a Final they'd type their answers in: they answer out loud. */
@@ -4444,6 +4499,8 @@
         onundo={doUndo}
         onredo={doRedo}
         {everyone}
+        {choicesNote}
+        onanswerjudgeall={judgeAll}
         answerPhones={app.live.phones ?? []}
         onanswerjudge={(id, sign) =>
           // (The first right answer picks next, not whoever was ticked last.)

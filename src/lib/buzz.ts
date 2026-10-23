@@ -8,6 +8,7 @@ import {
 } from './partner';
 import { ANY_SERVER, cardWords, clipWords, phoneCard, type PhoneCan } from './phonecard';
 import { cardsOut, sentCardId, sentSlide, sentState } from './sentcards';
+import { usableChoices } from './choices';
 import { clueMarks, currentClueInfo, currentFinal, ddCap, finalTag, finalWagerCap, nameList, partnerSteal, score, shownQuestionSlide, tiedForFirst, wagerFromPhone } from './session';
 
 export interface BuzzState {
@@ -537,15 +538,22 @@ export function answerRoundId(session: Pick<Session, 'answerKey'>, base: string)
 /**
  * A ✍ clue's answers phones may send now (HostState.answers), or null without one open: every player, until its answer
  * is on screen (or the round locked), with `got`, the last answer the host took from each (Session.remote.answers, this
- * game's only). Asked only with phone buzzers and a room that takes answers (Play's `everyone`).
+ * game's only). Asked only with phone buzzers and a room that takes answers (Play's `everyone`). `choices`: the room
+ * shows multiple choices (roomHasChoices): the clue's usable ones go along, their words only (never which is right).
  */
-export function everyoneAnswerAsk(game: Game, session: Session): AnswerAsk | null {
+export function everyoneAnswerAsk(game: Game, session: Session, opts: { choices?: boolean } = {}): AnswerAsk | null {
   const clue = session.phase === 'clue' && !session.dd ? currentClueInfo(session, game)?.clue : undefined;
   if (!clue?.everyone || clue.type !== 'standard') return null;
   const id = answerRoundId(session, clue.id);
   const mine = session.remote?.answers?.id === id ? session.remote.answers : undefined;
   const got = mine?.seats ?? {};
-  return { id, open: !session.revealed && !mine?.locked, seats: session.players.map((p) => ({ id: p.id, ...(got[p.id] ? { got: got[p.id].n } : {}) })) };
+  const choices = opts.choices ? usableChoices(clue.choices).map(({ id, text }) => ({ id, text })) : [];
+  return {
+    id,
+    open: !session.revealed && !mine?.locked,
+    seats: session.players.map((p) => ({ id: p.id, ...(got[p.id] ? { got: got[p.id].n } : {}) })),
+    ...(choices.length ? { choices } : {}),
+  };
 }
 
 /**

@@ -548,6 +548,55 @@ describe('each game’s answer rounds are its own (answerRoundId, everyoneAnswer
   });
 });
 
+describe('a ✍ clue’s multiple choices (everyoneAnswerAsk, phoneView)', () => {
+  function setup() {
+    const game = jeopardyGame();
+    game.players = [
+      { id: 'a', name: 'Ann', color: '#ff0000' },
+      { id: 'b', name: 'Bo', color: '#00ff00' },
+    ];
+    const clue = (game.rounds[0] as BoardRound).categories[0].clues[0];
+    clue.everyone = true;
+    clue.choices = [
+      { id: 'c1', text: 'Paris' },
+      { id: 'c2', text: '' },
+      { id: 'c3', text: 'Stockholm', right: true },
+      { id: 'c4', text: ' Oslo ' },
+    ];
+    const session = newSession(game);
+    openClue(session, { round: 0, cat: 0, row: 0 }, game);
+    return { game, clue, session };
+  }
+
+  it('go along only with a room that shows them, only those with words, and never which one is right', () => {
+    const { game, clue, session } = setup();
+    expect(everyoneAnswerAsk(game, session)?.choices).toBeUndefined();
+    const ask = everyoneAnswerAsk(game, session, { choices: true })!;
+    expect(ask.choices).toEqual([
+      { id: 'c1', text: 'Paris' },
+      { id: 'c3', text: 'Stockholm' },
+      { id: 'c4', text: 'Oslo' },
+    ]);
+    expect(JSON.stringify(ask)).not.toContain('right');
+    // Fewer than two with words: the phones type.
+    clue.choices = [{ id: 'c1', text: 'Paris', right: true }, { id: 'c2', text: ' ' }];
+    expect(everyoneAnswerAsk(game, session, { choices: true })?.choices).toBeUndefined();
+    // Kept on a clue without ✍: not asked at all.
+    delete clue.everyone;
+    expect(everyoneAnswerAsk(game, session, { choices: true })).toBeNull();
+  });
+
+  it('a phone gets them only for a seat in the ask', () => {
+    const { game, session } = setup();
+    const st = hostState(game, session, newBuzz(), 0, { answers: everyoneAnswerAsk(game, session, { choices: true }) });
+    expect(phoneView(st, 'a').answer?.choices?.map((c) => c.text)).toEqual(['Paris', 'Stockholm', 'Oslo']);
+    st.answers!.seats = st.answers!.seats.filter((x) => x.id !== 'b');
+    expect(phoneView(st, 'b').answer).toEqual({ id: st.answers!.id, open: true, mine: false });
+    // Its own pick, with its words.
+    expect(phoneView(st, 'a', null, null, null, false, { text: 'Oslo', n: 1, pick: 'c4' }).answer).toMatchObject({ text: 'Oslo', pick: 'c4' });
+  });
+});
+
 describe('the Final’s typed answers (finalAnswerAsk, and its question in hostState)', () => {
   /** Ann and Bo in the Final (Cy sits it out), wagers in; its question has a line viewers only see later. */
   function setup() {

@@ -980,13 +980,14 @@
         {@const tool = clue.type === 'wheel' || clue.type === 'dice'}
         {@const noTool = tool && !clue.empty && !toolChosen(app.game, clue)}
         {@const everyone = !!clue.everyone && clue.type === 'standard' && !clue.empty}
+        {@const choices = everyone && !!clue.choices?.length}
         <!-- A partner clue's 🤫 cards still to fill in (none on a ready-made game's, or an empty one). -->
         {@const cardTodo = clue.empty ? null : cardsToFinish(clue)}
         {@const faceText = clue.empty ? '' : (clue.tileFace?.text ?? '')}
         <!-- (What its badges say, for a screen reader.) -->
         {@const kind = clue.empty
           ? ''
-          : `${clue.value !== null ? ' (custom)' : ''}${TILE_KIND[clue.type] ?? ''}${everyone ? ', everyone answers' : ''}${clue.extraSlides?.length ? `, ${clue.extraSlides.length + 1} question slides` : ''}${faceText ? `, tile shows “${faceText}”` : ''}`}
+          : `${clue.value !== null ? ' (custom)' : ''}${TILE_KIND[clue.type] ?? ''}${everyone ? ', everyone answers' : ''}${choices ? ', multiple choice' : ''}${clue.extraSlides?.length ? `, ${clue.extraSlides.length + 1} question slides` : ''}${faceText ? `, tile shows “${faceText}”` : ''}`}
         {@const what = clue.empty
           ? 'empty space'
           : tool
@@ -1026,7 +1027,7 @@
             {#if clue.type === 'wheel' && !clue.empty}<span class="dd" title="Wheel tile">🎡</span>{/if}
             {#if clue.type === 'dice' && !clue.empty}<span class="dd" title="Dice tile">🎲</span>{/if}
             {#if clue.type === 'partner' && !clue.empty}<span class="dd" title="Partner clue: played by the picker and a partner, nobody buzzes">🤝</span>{/if}
-            {#if everyone}<span class="dd" title="Everyone answers, in secret on their phones">✍</span>{/if}
+            {#if everyone}<span class="dd" title={choices ? 'Everyone answers · multiple choice' : 'Everyone answers, in secret on their phones'}>✍</span>{/if}
             {#if clue.extraSlides?.length && !clue.empty}
               {@const n = clue.extraSlides.length + 1}
               <span class="dd" title="{n} question slides, shown in order before the answer">▤ {n}</span>

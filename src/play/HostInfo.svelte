@@ -18,6 +18,7 @@
   import { dealOut } from '../lib/deals';
   import { toKey } from '../lib/partner';
   import ShrinkButton from './host/ShrinkButton.svelte';
+  import { letter, usableChoices } from '../lib/choices';
 
   let { game, session }: { game: Game; session: Session } = $props();
   const info = $derived(currentClueInfo(session, game));
@@ -209,6 +210,14 @@
     {/if}
     <div class="label">Answer {session.revealed ? '(on screen)' : '(hidden from viewers)'}</div>
     <div class="a">{slideText(info.clue.answerSlide) || '—'}</div>
+    {#if info.clue.everyone && info.clue.type === 'standard' && usableChoices(info.clue.choices).length}
+      <!-- (Lettered as the phones letter them: those with words only.) -->
+      <div class="notes" data-choices-info>
+        Choices: {usableChoices(info.clue.choices)
+          .map((c, i) => `${letter(i)} ${c.text}${c.right ? ' ✔' : ''}`)
+          .join(' · ')}
+      </div>
+    {/if}
     {#if info.clue.hostNotes}
       <div class="label">Notes</div>
       <div class="notes">{info.clue.hostNotes}</div>

@@ -61,6 +61,14 @@ describe('diff and applyOps', () => {
     roundTrip(before, { els: [el('y'), el('d'), el('z'), el('b', 'B'), el('w')] });
   });
 
+  it('a ✍ clue’s multiple choices moved are a reorder, and the one marked right goes with its words', () => {
+    const c = (id: string, text: string, right = false) => ({ id, text, ...(right ? { right: true } : {}) });
+    const before = { choices: [c('a', 'Paris'), c('b', 'Oslo', true), c('c', 'Bern')] };
+    expect(roundTrip(before, { choices: [c('b', 'Oslo', true), c('a', 'Paris'), c('c', 'Bern')] })).toEqual([
+      { t: 'ord', p: ['choices'], b: ['a', 'b', 'c'], a: ['b', 'a', 'c'] },
+    ]);
+  });
+
   it('handles empty arrays either side', () => {
     expect(roundTrip({ els: [] }, { els: [el('a'), el('b')] }).map((o) => o.t)).toEqual(['ins', 'ins']);
     expect(roundTrip({ els: [el('a'), el('b')] }, { els: [] }).map((o) => o.t)).toEqual(['del', 'del']);

@@ -31,6 +31,7 @@
   import { clip } from '../lib/buzzproto';
   import CardBar from './CardBar.svelte';
   import PartnerSettings from './PartnerSettings.svelte';
+  import ChoicesEditor from './ChoicesEditor.svelte';
   import PhoneCardPreview from './PhoneCardPreview.svelte';
   import { followClueText } from '../lib/cluetext';
   import SlideEditor from './slide/SlideEditor.svelte';
@@ -374,9 +375,9 @@
 
   let clueBox = $state<HTMLElement>();
   function onkey(e: KeyboardEvent): void {
-    // Esc closes from anywhere but the slide editor's own fields (the quick fields, and the Type, Value, Countdown and
-    // Tile shows row, save as you type).
-    const quick = !!(e.target as HTMLElement)?.closest?.('.quick, .opts, .partner-opts, .cardbar');
+    // Esc closes from anywhere but the slide editor's own fields (the quick fields, the Type, Value, Countdown and Tile
+    // shows row, and the multiple choices, save as you type).
+    const quick = !!(e.target as HTMLElement)?.closest?.('.quick, .opts, .partner-opts, .choice-opts, .cardbar');
     // (A wheel or dice open over the clue has the keys, and so does the tile image picker: a picture picked after
     // moving on would go on the next clue. So does any window over it, such as ✎ Edit video.)
     if (tool || facePicker) return;
@@ -542,6 +543,9 @@
 
       {#if !clue.empty && clue.type === 'partner'}
         <PartnerSettings {clue} value={clue.value ?? round.values[pos.row] ?? 0} tile={tileName} />
+      {/if}
+      {#if !clue.empty && clue.type === 'standard' && clue.everyone}
+        <ChoicesEditor owner={clue} where={tileName} />
       {/if}
       {#if !clue.empty && (clue.type === 'wheel' || clue.type === 'dice')}
         <p class="hint">

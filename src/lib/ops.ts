@@ -9,8 +9,8 @@ export function clueHasContent(clue: Clue): boolean {
 }
 
 /**
- * What ⌫ Clear clue takes out (clearClue): something on its slides or its 🤫 cards, its host notes or tile face. A
- * card's name doesn't count: clearing keeps it.
+ * What ⌫ Clear clue takes out (clearClue): something on its slides or its 🤫 cards, its host notes or tile face, or a
+ * multiple choice with words. A card's name doesn't count: clearing keeps it.
  */
 export function clueClearable(clue: Clue): boolean {
   return (
@@ -19,7 +19,8 @@ export function clueClearable(clue: Clue): boolean {
     cardSlides(clue).some(slideHasContent) ||
     !!clue.hostNotes?.trim() ||
     !!clue.tileFace?.text ||
-    !!clue.tileFace?.image
+    !!clue.tileFace?.image ||
+    !!clue.choices?.some((c) => c.text.trim())
   );
 }
 
@@ -166,8 +167,8 @@ function clearSlide(slide: Slide): void {
 }
 
 /**
- * Take out what was written or added to a clue (its slides, host notes, tile face). Its type and value stay, and so do its
- * 🤫 cards, emptied, with who they go to and their names, and the partner rules.
+ * Take out what was written or added to a clue (its slides, host notes, tile face, multiple choices). Its type and value
+ * stay, and so do its 🤫 cards, emptied, with who they go to and their names, and the partner rules.
  */
 export function clearClue(clue: Clue): void {
   clearSlide(clue.questionSlide);
@@ -176,6 +177,7 @@ export function clearClue(clue: Clue): void {
   delete clue.extraSlides;
   delete clue.hostNotes;
   delete clue.tileFace;
+  delete clue.choices;
 }
 
 /**

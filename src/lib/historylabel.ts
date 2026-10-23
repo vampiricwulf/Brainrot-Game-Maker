@@ -9,6 +9,7 @@ import { ROUND_MODES } from './modes';
 import { OBJECT_CLASSES } from './rpg';
 import { PRESETS, type ThemePreset } from './theme';
 import { cueName, hasBuiltin, type CueKey } from './sounds';
+import { letter } from './choices';
 
 export type Side = 'q' | 'a';
 /** A board clue's or a Final's tabs: a question slide, the answer, or one of its 🤫 cards (its id in `slide`). */
@@ -178,6 +179,14 @@ export function placeAt(game: Game, path: readonly Seg[]): At {
           const at8 = { kind: 'clue', category: cat.id, clue: clue.id, side: 'q', slide: sl.id } as const;
           part(at8);
           slide(sl, 8, (element) => ({ tab: 'round', round: id, part: { ...at8, element } }), 'q');
+          return;
+        }
+        if (path[6] === 'choices') {
+          // One of its multiple choices (✍), by its letter: "Edited choice B of Memes $400".
+          at.crumbs.push('Choices');
+          const n = clue.choices?.findIndex((c) => c.id === path[7]) ?? -1;
+          if (n < 0) return;
+          reached(8, 'choice', `choice ${letter(n)} of ${categoryLabel(cat)} ${formatPoints(clueValue(r, row, clue), game.settings.currencySymbol)}`, '✍', false);
           return;
         }
         if (path[6] === 'cards') {
@@ -963,6 +972,8 @@ function labelOf(ops: readonly Op[], op: Op, at: At, moved: string[], alike: num
   if (own && k === 'image' && v === undefined && (op as Op & { t: 'set' }).b !== undefined) return `Removed the image of ${what(at)}`;
   if (own && (k === 'name' || k === 'title' || (k === 'label' && at.noun === 'slice')))
     return `Renamed ${nounOf(at)}${quoted(typeof v === 'string' ? v : '')}`;
+  // (A multiple choice's words: which one, not what it says now.)
+  if (at.noun === 'choice' && k === 'text') return `Edited ${at.name}`;
   if (typeof k === 'string' && TEXTS.has(k)) {
     const field = k === 'text' ? (at.main ?? 'text') : fieldName(k);
     return typeof v === 'string' && v.trim() ? `Edited ${field}${quoted(v)}` : `Cleared the ${field}`;
