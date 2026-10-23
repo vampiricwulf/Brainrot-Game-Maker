@@ -144,7 +144,8 @@ the page gets (on a wide screen the page is two columns). A **🔁 Rematch** kee
 - **📺 Separate audience window**: a clean window to capture in OBS or Discord. The host window keeps the answers,
   notes and controls.
 
-Click a tile to open its clue, then reveal the answer with `R` or a click. A clue can have several question slides (a
+Click a tile to open its clue, then reveal the answer with `R` or a click (a double-click is one step: it never also
+shows the answer, or goes back to the board and opens another tile). A clue can have several question slides (a
 lead-in, then more: **＋ Add slide** in the clue editor): the main button goes **Next slide ▶** (`N`, `Shift+N` back)
 through them first, and the audience window shows the slide you're on. Select players and **＋ Award** (`Enter`) or
 **− Deduct** (`Shift+Enter`); on the board the Amount row stays folded behind **± Adjust score** until a player is
@@ -189,7 +190,7 @@ whoever on it buzzes first answers for the team ("Ann (Red team)" in the buzz or
 whole team. A room holds up to 24 phones at once: once 24 people are on teams, the next phone is told the game is full
 until someone leaves. On a Daily Double or a Final, players type their wager on their phone and send it: it fills in your
 wager box (marked 📱, and you can still change it), they can change it until you show the question, and only you see
-how much. In a Final they then type their answer on their phone too (or tap one of its multiple choices), and you
+how much (in one window, where viewers see your panel, a Daily Double's stays hidden there until **Show wager**). In a Final they then type their answer on their phone too (or tap one of its multiple choices), and you
 reveal each one on stream. On a ✍ Everyone answers clue nobody buzzes: everyone types an answer on their phone, or
 taps one of its multiple choices (shown on stream under the question too), and only you see what they sent (once you
 judge one, that player can't change it). The buzzers open when the clue does, or when you press `U` after reading it.
@@ -371,7 +372,8 @@ The main ones (press `?` during the game for all of them):
 | `?` | Every key |
 
 A key held down counts once (only the arrows repeat). With the keys on the main button in a slides round, or on a
-round's title card, `Enter` does what the button says, as `N` does.
+round's title card, `Enter` does what the button says, as `N` does. An `Enter` right after a Daily Double's question
+goes up doesn't judge its player yet: press it again.
 
 ## Saving
 

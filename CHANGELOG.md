@@ -11,6 +11,16 @@ the day it's pushed (Pacific time; start the heading on the day's first push) an
 in plain words for the people who make and host games. Anything committed but not pushed yet goes under
 **Unreleased** at the top, and moves under its day when it's pushed.
 
+## Unreleased
+
+### Fixed
+
+- A double-click on the stage is one step: on a tile it opens the clue without also putting its answer on stream, and on the answer (or the round intro's last step) it goes back to the board without opening the tile under the pointer.
+- One window: a Daily Double wager sent from a phone stays hidden in the host panel once its question is up (“DD 📱”, the Amount box “hidden”, no amount on ＋ Award, − Deduct or ✔ / ✘), until Show wager or until you type an amount over it. Before, viewers saw it as soon as the question showed.
+- Daily Double: a second Enter right after the one that showed the question (a double press, or Enter on 👁 Reveal answer, where the keys go) no longer gives its player the wager as right before they've answered. It says to press Enter again.
+- Daily Double: marking its player wrong stops the countdown, as a right answer does, so TIME'S UP no longer goes on stream after they've missed (Ctrl+Z brings the countdown back).
+- ± Adjust score puts the keys in the Amount box, so you type the points and then pick who gets them. Before, the keys were on Done, and typing 50 selected players instead.
+
 ## 2026-10-23
 
 ### Added

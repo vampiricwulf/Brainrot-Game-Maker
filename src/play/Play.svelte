@@ -804,8 +804,8 @@
   }
 
   /** The countdown stops (a right answer, the answer going up): no "Time's up" over the answer. */
-  function stopTimer(what: 'right' | 'reveal'): void {
-    if (app.live.timer && stopsTimer(session.phase, what)) app.live.timer = null;
+  function stopTimer(what: 'right' | 'wrong' | 'reveal', ownPlayer = false): void {
+    if (app.live.timer && stopsTimer(session.phase, what, ownPlayer)) app.live.timer = null;
   }
 
   /** The winner fanfare, once the end screen has its winner (not while a tie for first is still to settle). */
@@ -856,13 +856,16 @@
     const batch = newId();
     const events = scoreInto(sign, ids, zero ? 0 : amt!, batch);
     if (events.length) playCue(app.live, game, sign > 0 ? 'right' : 'wrong');
+    // A Daily Double's own player wrong: nobody else answers it, so its clock is done too (no TIME'S UP after).
+    const ownMiss = sign < 0 && session.phase === 'clue' && session.dd?.stage === 'question' && ids.length === 1 && ids[0] === session.dd.playerId;
     // (A ✍ clue: one right answer doesn't end the others' time; showing the answer does.)
-    if (events.length && sign > 0 && !everyone) {
+    if (events.length && ((sign > 0 && !everyone) || ownMiss)) {
       // The countdown it stops, for an Undo of this award while the clue is still open.
+      const what = sign > 0 ? 'right' : 'wrong';
       const t = app.live.timer;
-      if (t && !t.expired && timerRemaining(t) > 0 && stopsTimer(session.phase, 'right'))
+      if (t && !t.expired && timerRemaining(t) > 0 && stopsTimer(session.phase, what, ownMiss))
         timerSteps.set(batch, { clue: info?.clue.id, timer: $state.snapshot(t) as TimerState, at: Date.now() });
-      stopTimer('right');
+      stopTimer(what, ownMiss);
     }
     // Buzzer mode: a right answer closes the buzzers; a wrong one locks that player out, and the next in the buzz order
     // answers (with nobody left in it, the buzzers open for the rest).
@@ -1043,9 +1046,12 @@
     if (events.some((e) => e.steal)) selected = [];
   }
 
-  /** Right answers that stopped a running countdown (by their step): an Undo puts it back with the time it had left. */
+  /**
+   * Right answers (and a Daily Double's player wrong) that stopped a running countdown, by their step: an Undo puts it
+   * back with the time it had left.
+   */
   const timerSteps = new Map<string, { clue: string | undefined; timer: TimerState; at: number }>();
-  /** A right answer undone or redone while its clue is still open (the answer not up): its countdown comes back, or stops again. */
+  /** One of those undone or redone while its clue is still open (the answer not up): its countdown comes back, or stops again. */
   function timerFollow(events: { batchId?: string; id: string }[], undone: boolean): void {
     const key = events.length ? (events[0].batchId ?? events[0].id) : '';
     const s = timerSteps.get(key);
@@ -1846,8 +1852,17 @@
     return stepSlide(session, game, d);
   }
 
-  // Host clicks on the stage. A short guard stops one double-click from both revealing and leaving the clue.
+  // Host clicks on the stage. A short guard stops one double-click from both revealing and leaving the clue, from
+  // opening a tile and revealing its answer, or from going back to the board (or ending the intro) and opening the tile
+  // under the pointer.
   let lastStageAct = 0;
+  let boardBackAt = 0;
+  function stagePick(ref: ClueRef): void {
+    const now = Date.now();
+    if (now - boardBackAt < 450) return;
+    lastStageAct = now;
+    pick(ref);
+  }
   function stageAct(a: StageAction): void {
     const now = Date.now();
     if (now - lastStageAct < 450) return;
@@ -1878,6 +1893,7 @@
         whoWasWhoOff();
         break;
     }
+    if (session.phase === 'board' && !session.intro) boardBackAt = now;
   }
 
   /**
@@ -1949,8 +1965,11 @@
     });
   });
 
+  /** When the Daily Double's question went up (here only, not saved): an Enter right after it doesn't judge its player. */
+  let ddShownAt = 0;
   function ddShow(playerId: string, wager: number): void {
     ddShowQuestion(session, playerId, wager);
+    ddShownAt = Date.now();
     selected = [playerId];
     amount = wager;
     autoTimer();
@@ -3891,6 +3910,12 @@
         if (session.phase === 'boardgame' && (!selected.length || !amount) && !e.shiftKey && boardEnter()) break;
         // A partner clue: its main button, then ✔ Got it / ✘ Missed (with players picked by hand, an award as below).
         if (partnerEnter(e)) break;
+        // A Daily Double's question just went up (the Enter that showed it pressed twice, or Enter on the button the keys
+        // went to): its player isn't judged before they've answered. (No amount: viewers may see this window.)
+        if (session.phase === 'clue' && session.dd?.stage === 'question' && Date.now() - ddShownAt < KEY_GUARD_MS) {
+          hint(`The question just went up: press ${e.shiftKey ? 'Shift+Enter' : 'Enter'} again to judge ${playerName(session, session.dd.playerId ?? '')}`);
+          break;
+        }
         // Only where the award row is up (not on the Daily Double splash, the final reveals or the end screen).
         if (awardOpen(session)) award(e.shiftKey ? -1 : 1);
         break;
@@ -4487,7 +4512,7 @@
             {session}
             live={app.live}
             role={dual ? 'mirror' : 'single'}
-            onpick={pick}
+            onpick={stagePick}
             ontilemenu={tileMenu}
             onpicker={(id) => setPicker(session, session.currentPickerId === id ? undefined : id)}
             onspotlight={spotlight}

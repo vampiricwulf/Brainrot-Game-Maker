@@ -154,9 +154,13 @@ try {
   const pops = (await stage('.pop').allInnerTexts()).filter((t) => t.includes('$400'));
   assert(pops.length === 1 && pops[0] === 'Everyone +$400', `a group award shows one pop (${pops.join(' | ')})`);
   await page.keyboard.press('Escape');
-  // On the board, one player's pop sits over their plate.
+  // On the board, one player's pop sits over their plate. (± Adjust score puts the keys in the Amount box: the points
+  // first, then who gets them.)
+  await page.getByRole('button', { name: '± Adjust score' }).click();
+  await page.keyboard.type('100');
+  assert((await page.locator('.panel .award input').inputValue()) === '100', '± Adjust score puts the keys in the Amount box (typed 100)');
+  await page.keyboard.press('Escape');
   await page.keyboard.press('2');
-  await page.locator('.panel .award input').fill('100');
   await page.locator('.panel .award').getByRole('button', { name: /Award/ }).click();
   const pop = stage('.pop.anchored');
   await pop.waitFor();
@@ -190,9 +194,21 @@ try {
   assert((await mainButton(page).getAttribute('title')) === 'A wager can’t be below 0', 'a Daily Double wager below 0 says so (a toast, and the main button’s tooltip), not “over the max”');
   await page.locator('.dd input[type=number]').fill('100');
   await page.keyboard.press('Enter');
+  // Enter again at once (a double press, or Enter on the button the keys went to): its player isn't judged yet.
+  await page.keyboard.press('Enter');
   await page.waitForFunction(() => document.querySelector('.panel .status')?.textContent?.includes('DD'));
+  await page.locator('.toast', { hasText: 'The question just went up: press Enter again to judge' }).waitFor();
+  assert((await page.locator('.panel .p .mark:not(.empty)').count()) === 0, 'a second Enter right after it doesn’t judge the Daily Double’s player (it says to press it again)');
   await page.waitForTimeout(400);
   assert((await status()).includes('Answer hidden') && (await page.getByRole('button', { name: '👁 Reveal answer' }).count()) === 1, 'Enter in the Daily Double wager box shows the question, the answer stays hidden');
+  // ✘ on its player (nobody else answers a Daily Double): its countdown stops, with no TIME'S UP after; Ctrl+Z brings it back.
+  await page.keyboard.press('t');
+  await stage('.timer').waitFor();
+  await page.locator('.panel .p').getByRole('button', { name: /^Wrong:/ }).click();
+  await stage('.timer').waitFor({ state: 'detached' });
+  await page.keyboard.press('Control+z');
+  await stage('.timer').waitFor();
+  assert((await stage('.timesup').count()) === 0, '✘ on the Daily Double’s player stops its countdown, and Ctrl+Z brings it back');
   await page.keyboard.press('Escape');
 
   // ---------- ✔ / ✘ on a player's chip: shown there, and the same one isn't taken twice; the nav buttons stay put ----------

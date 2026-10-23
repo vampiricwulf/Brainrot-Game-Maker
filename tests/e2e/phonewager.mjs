@@ -436,7 +436,23 @@ try {
   await ddIn.fill('400');
   await dd2.getByText('📱 from phone').waitFor({ state: 'detached' });
   assert((await ddIn.inputValue()) === '400', 'the host types over it: it’s the host’s, shown as typed');
-  await ddIn.press('Escape');
+  // The phone sends it again, and the question shows with it: still hidden in the panel (the tag, the Amount box, the
+  // award buttons and their tooltips) until Show wager.
+  await al.locator('#wager-state').getByText('The host has your wager as $400').waitFor();
+  await sendWager(al, 345);
+  await dd2.getByText('📱 from phone · sent by Al').waitFor();
+  await host2.locator('.panel [data-next]').click();
+  await host2.waitForFunction(() => document.querySelector('.panel .status')?.textContent?.includes('DD'));
+  const amountIn = host2.locator('.panel .award input');
+  const named345 = () => host2.locator('.panel [title*="345"], .panel [aria-label*="345"]').count();
+  assert(
+    (await panelHides([345])) && (await host2.locator('.panel .ddtag').innerText()) === 'DD 📱' && (await amountIn.inputValue()) === '' && (await amountIn.getAttribute('placeholder')) === 'hidden' && (await named345()) === 0,
+    'one window: once its question shows, the phone’s wager stays hidden in the panel (“DD 📱”, the Amount box “hidden”, no amount on the buttons)',
+  );
+  await host2.getByRole('button', { name: 'Show wager' }).click();
+  await host2.locator('.panel .ddtag', { hasText: '$345' }).waitFor();
+  assert((await amountIn.inputValue()) === '345', 'Show wager shows it in the panel too');
+  await host2.keyboard.press('Escape');
   await form(al).waitFor({ state: 'hidden' });
   await host2.waitForTimeout(450);
   await host2.locator('.rn > button').last().click();

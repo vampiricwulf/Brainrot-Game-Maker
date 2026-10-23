@@ -22,6 +22,8 @@ describe('the countdown', () => {
     expect(stopsTimer('tiebreaker', 'right')).toBe(true);
     expect(stopsTimer('final', 'reveal')).toBe(true);
     expect(stopsTimer('clue', 'wrong')).toBe(false);
+    // A Daily Double's own player missing it: nobody else answers, so its clock stops too.
+    expect(stopsTimer('clue', 'wrong', true)).toBe(true);
     // An adjustment on the board isn't an answer: the host's own countdown goes on.
     expect(stopsTimer('board', 'right')).toBe(false);
     expect(stopsTimer('rpg', 'right')).toBe(false);

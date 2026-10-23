@@ -420,7 +420,8 @@ The mode isn't saved with the game: it's dual while the audience window is open.
    - *Dice clue*: the dice roll animation, then the outcome. The question slide is optional too.
    - For wheel/dice tiles with no question, the scoring panel stays available but is collapsed by default.
 3. Optional timer starts automatically or manually. At 0: flash/shake + "TIME'S UP" banner, plus the optional user
-   audio `timesUpAudio`. Nothing else happens automatically: no auto-reveal and no auto-scoring.
+   audio `timesUpAudio`. Nothing else happens automatically: no auto-reveal and no auto-scoring. A right answer or the
+   answer going up stops it; a wrong one doesn't (someone else may answer), except from a Daily Double's player.
 4. **Scoring panel** (always available while a clue is open):
    - One toggle per player (colored chip). **Select zero, one, or many.**
    - Amount field, prefilled with the clue value (or the DD wager). Editable to any number.

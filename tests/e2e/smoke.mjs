@@ -971,6 +971,7 @@ assert(aud.isClosed(), 'audience window closes from the host');
 await page.locator('.board .tile').nth(4).click();
 await page.locator('.ov .wheel').waitFor();
 assert(true, 'wheel tile opens the wheel overlay');
+await page.waitForTimeout(500); // past the double-click guard (a double-click on the tile doesn't spin it too)
 await page.locator('.stage-box .ov').click();
 await page.locator('.tc .result').waitFor({ timeout: 8000 });
 assert((await page.locator('.tc .result').innerText()).includes('Bankrupt'), 'weighted spin lands on the heavy slice');
@@ -988,7 +989,9 @@ assert(true, 'clicking the landed wheel closes it');
 await page.keyboard.press('Escape');
 await page.locator('.board').waitFor();
 
-// Daily Double: splash, wager (TV cap), then the question with the wager prefilled.
+// Daily Double: splash, wager (TV cap), then the question with the wager prefilled. (Past the double-click guard: the
+// click that closed the wheel went back to the board.)
+await page.waitForTimeout(500);
 await page.locator('.board .tile').nth(3).click();
 await page.locator('.dd-text').waitFor();
 assert(true, 'Daily Double splash shows');
@@ -1012,6 +1015,8 @@ assert(!(await page.locator('.dd-badge').innerText()).includes('500'), 'viewers 
 await page.getByRole('button', { name: 'Show wager' }).click();
 assert((await page.locator('.dd-badge').innerText()).includes('$500'), 'Show wager puts it on screen');
 assert((await page.locator('.award input').inputValue()) === '500', 'wager prefilled as the amount');
+// (Past the second in which an Enter right after the question went up doesn't judge yet.)
+await page.waitForTimeout(1100);
 await page.keyboard.press('Enter');
 assert((await scoreOf(1)) === '$850', 'Daily Double wager awarded to the chosen player');
 

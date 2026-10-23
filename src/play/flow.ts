@@ -6,10 +6,11 @@ import { nameList } from '../lib/session';
 
 /**
  * The countdown has done its job: a right answer during a clue (or the tiebreaker), or the answer going up. A wrong
- * answer leaves it running (someone else may still answer).
+ * answer leaves it running (someone else may still answer), unless it's from the clue's own player (a Daily Double's:
+ * nobody else answers it).
  */
-export function stopsTimer(phase: string, what: 'right' | 'wrong' | 'reveal'): boolean {
-  if (what === 'wrong') return false;
+export function stopsTimer(phase: string, what: 'right' | 'wrong' | 'reveal', ownPlayer = false): boolean {
+  if (what === 'wrong') return ownPlayer && phase === 'clue';
   return phase === 'clue' || phase === 'tiebreaker' || (what === 'reveal' && phase === 'final');
 }
 

@@ -133,8 +133,14 @@ try {
   await page.locator('.stage-box .title-card').waitFor();
   assert((await played(page, 'roundIntro')) === 1, 'the round intro plays its built-in sound with the title card');
   await page.getByRole('button', { name: 'Skip intro' }).click();
-  await page.locator('.stage-box .board .tile').first().click();
+  // A double-click on a tile opens it, and nothing more (its second click doesn't reveal the answer).
+  const status = () => page.locator('.panel .status').innerText();
+  // (Where a tile is on the stage, as a part of its width and height: a double-click there later lands on it.)
+  const stageBox = () => page.locator('.stage-box .stage').boundingBox();
+  const spot = await (async (s, t) => [(t.x + t.width / 2 - s.x) / s.width, (t.y + t.height / 2 - s.y) / s.height])(await stageBox(), await page.locator('.stage-box .board .tile').nth(8).boundingBox());
+  await page.locator('.stage-box .board .tile').first().dblclick();
   await page.waitForTimeout(300);
+  assert((await status()).includes('Answer hidden'), `a double-click on a tile opens it, the answer stays hidden (${await status()})`);
   assert((await played(page, 'tileOpen')) === 0, 'the tile-open sound is off, so nothing plays');
 
   // Who's answering: the one player picked during a clue.
@@ -168,6 +174,11 @@ try {
   await page.keyboard.press('r');
   await aud.waitForFunction(() => window.__plays.some((s) => s.endsWith('#reveal')));
   assert(true, 'revealing the answer plays the reveal sound');
+  // A double-click on the answer goes back to the board, and doesn't open the tile then under the pointer.
+  await page.locator('.stage-box .full[data-slide="answer"]').waitFor();
+  const sb = await stageBox();
+  await page.mouse.dblclick(sb.x + spot[0] * sb.width, sb.y + spot[1] * sb.height);
+  assert((await status()).includes('Pick a tile'), `a double-click on the answer goes back to the board, no other tile opens (${await status()})`);
   await page.keyboard.press('d');
   await aud.waitForFunction(() => window.__plays.some((s) => s.endsWith('#dice')));
   assert(true, 'rolling dice rattles in the audience window');

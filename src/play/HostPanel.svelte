@@ -366,6 +366,11 @@
    */
   const cancelBlocked = $derived.by(() => (!setup || (!!partner && Object.keys(marks).length > 0)) && !!info && clueScored(session, info.clue.id));
   const quickValue = $derived(session.dd?.stage === 'question' ? (session.dd.wager ?? 0) : (info?.value ?? 0));
+  /**
+   * One window: a Daily Double wager its player sent from their phone stays hidden in this panel (viewers see it) until
+   * Show wager, as it was in the wager box. Typing an amount over it makes it the host's, and shows it.
+   */
+  const ddHidden = $derived(!dual && session.dd?.stage === 'question' && session.dd.draftFrom === 'phone' && !session.dd.shown);
   /** 0 is an amount too: a Daily Double wagered at 0 or a clue worth 0 (a 0 result), the tiebreaker's winner (no points). */
   const zeroOk = $derived(
     amount === 0 &&
@@ -382,7 +387,7 @@
    */
   const scoreLabel = (word: string, sign: string) => {
     const head = selected.length > 1 ? `${word} (${selected.length})` : word;
-    const tail = selected.length === 1 && amount ? `${sign}${formatPoints(Math.abs(amount), sym)}` : '';
+    const tail = selected.length === 1 && amount && !ddHidden ? `${sign}${formatPoints(Math.abs(amount), sym)}` : '';
     return { head, tail, text: [head, pickedName, tail].filter(Boolean).join(' ') };
   };
   const awardLabel = $derived(scoreLabel('＋ Award', '+'));
@@ -466,6 +471,7 @@
 
   /** On the board, the Amount row stays folded (± Adjust score) until a player is selected. */
   let adjust = $state(false);
+  let amountBox = $state<HTMLInputElement>();
   $effect(() => {
     if (session.phase !== 'board') adjust = false;
   });
@@ -703,11 +709,15 @@
       <span class="val">{formatPoints(info.value, sym)}</span>
       {#if session.dd?.stage === 'question'}
         {@const dd = session.dd}
-        <span class="ddtag">DD {formatPoints(dd.wager ?? 0, sym)}</span>
+        <span class="ddtag">DD {ddHidden ? '📱' : formatPoints(dd.wager ?? 0, sym)}</span>
         <button
           class="ghost small"
           onclick={() => (dd.shown = !dd.shown)}
-          title={dual ? "Viewers don't see the wager until you show it" : 'Puts the wager on the slide (viewers can see this window anyway)'}
+          title={dual
+            ? "Viewers don't see the wager until you show it"
+            : ddHidden
+              ? 'The wager their phone sent stays hidden here and on the slide until you show it'
+              : 'Puts the wager on the slide (viewers can see this window anyway)'}
         >
           {dd.shown ? 'Hide wager' : 'Show wager'}
         </button>
@@ -902,8 +912,9 @@
             <!-- Pressed once on this clue, the same one is off (＋ Award / − Deduct still give or take more on purpose). -->
             {@const was = marks[p.id]?.right}
             <!-- (A partner clue: each of the two's own share, a ✘ often 0 for the partner.) -->
-            {@const gets = quickShare(p.id, true) ?? `+${formatPoints(quickValue, sym)}`}
-            {@const loses = quickShare(p.id, false) ?? `−${formatPoints(quickValue, sym)}`}
+            {@const gets = quickShare(p.id, true) ?? (ddHidden ? 'the wager' : `+${formatPoints(quickValue, sym)}`)}
+            {@const loses = quickShare(p.id, false) ?? (ddHidden ? 'the wager' : `−${formatPoints(quickValue, sym)}`)}
+            {@const worth = ddHidden ? 'the wager' : formatPoints(quickValue, sym)}
             <button
               class="small quick right"
               onclick={() => (onright(p.id), judged())}
@@ -913,7 +924,7 @@
                 ? `${p.name} is marked right on this clue (＋ Award gives more)`
                 : partner && !steal
                   ? `Got it: ${p.name} only, ${gets} (their share)`
-                  : `${steal ? 'Stole it' : 'Correct'}: award ${formatPoints(quickValue, sym)} to ${p.name} only`}
+                  : `${steal ? 'Stole it' : 'Correct'}: award ${worth} to ${p.name} only`}
               >✔</button
             >
             <button
@@ -925,7 +936,7 @@
                 ? `${p.name} is marked wrong on this clue (− Deduct takes more)`
                 : partner && !steal
                   ? `Missed: ${p.name} only, ${loses} (their share)`
-                  : `Wrong: deduct ${formatPoints(quickValue, sym)} from ${p.name}`}
+                  : `Wrong: deduct ${worth} from ${p.name}`}
               >✘</button
             >
           {:else if chipSlots && game.settings.deductOnWrong}
@@ -1101,7 +1112,16 @@
           {/if}
         {/if}
         {#if scoring && !showAward}
-          <button class="ghost" aria-expanded="false" onclick={() => (adjust = true)} title="Give or take points (or press a player's number)">± Adjust score</button>
+          <!-- (The keys go to the Amount box: the points are typed first, then who gets them.) -->
+          <button
+            class="ghost"
+            aria-expanded="false"
+            onclick={() => {
+              adjust = true;
+              void tick().then(() => amountBox?.focus());
+            }}
+            title="Give or take points (or press a player's number)">± Adjust score</button
+          >
         {/if}
       {/snippet}
       {#if !showAward && (session.intro || (session.phase === 'clue' && !setup) || session.phase === 'tiebreaker' || session.phase === 'slides' || scoring)}
@@ -1161,7 +1181,9 @@
             Amount
             <input
               type="number"
-              bind:value={() => amount, (v) => (amount = wholePoints(v))}
+              bind:value={() => (ddHidden ? null : amount), (v) => (amount = wholePoints(v))}
+              placeholder={ddHidden ? 'hidden' : undefined}
+              bind:this={amountBox}
               onkeydown={(e) => {
                 // Give the keys back to the shortcuts afterwards, so the next "2" selects a player instead of typing.
                 if (e.key === 'Enter') {
