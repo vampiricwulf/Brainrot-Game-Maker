@@ -412,6 +412,8 @@ input:focus, textarea:focus { outline: none; border-color: var(--accent); }
 .choice[aria-pressed='true'] .letter { background: #2f9e55; }
 #answer-state { color: #6fdc8c; font-weight: 600; }
 #answer-state.plain-note { color: var(--muted); font-weight: 400; }
+/* Multiple choice: room for two lines from the start, so "Sending…" and "✔ Sent: B…" never move the buttons. */
+#answer-form.picking #answer-state { line-height: 1.25; min-height: 2.5em; }
 #wager-head { font-size: 22px; margin: 0; text-align: center; }
 #answer-head { font-size: 22px; margin: 0; text-align: center; overflow-wrap: anywhere; }
 #wager-in { text-align: center; font-size: 34px; font-weight: 800; }

@@ -803,7 +803,13 @@ function clueRoom(sec: HTMLElement, kbd: boolean): number {
     ...($('answer-choices').lastElementChild ? [$('answer-choices').lastElementChild!] : []),
     ...(sec.classList.contains('cards-under') && !fine.matches ? [] : [$('keys'), $('me')]),
   ];
-  const below = Math.max(c.bottom, ...keep.map((el) => rectOf(el)?.bottom ?? c.bottom)) - c.bottom;
+  // (Multiple choice: the lines under the buttons, "Sending…", "✔ Sent: B" or why a tap wasn't taken, count as the room
+  // kept for them (their min-height) whatever they say now, so a tap never fits the question again and moves the buttons.)
+  const extra =
+    !$('answer-choices').hidden && keep.includes($('me'))
+      ? ['answer-state', 'answer-err'].reduce((n, id) => n + Math.max(0, $(id).offsetHeight - parseFloat(getComputedStyle($(id)).minHeight)), 0)
+      : 0;
+  const below = Math.max(c.bottom, ...keep.map((el) => rectOf(el)?.bottom ?? c.bottom)) - c.bottom - extra;
   return free - (c.top - side.top) - below;
 }
 
@@ -1507,11 +1513,11 @@ function answerState(a: NonNullable<PhoneView['answer']>, team: boolean): string
   if (!choices && typed && typed !== a.text) return `${tap('Not sent yet: tap Change answer to send it.')} What the host has: “${a.text}”`;
   // (A partner clue's guess, nobody buzzing, is locked once the host judges it too.)
   const until = view?.statusOff ? 'judges it or shows the answer' : 'shows the answer';
-  // Multiple choice: by its letter ("✔ Sent: B · Paris", "✔ Ann picked B for your team").
-  const picked = pickLine(a);
-  const at = picked ? a.choices!.findIndex((c) => c.id === a.pick) : -1;
-  if (picked && team && a.by) return `✔ ${a.byYou ? 'You' : a.by} picked ${letter(at)} for your team. You can change it until the host ${until}.`;
-  if (picked) return `✔ Sent: ${picked}. You can change it until the host ${until}.`;
+  // Multiple choice: by its letter alone ("✔ Sent: B", "✔ Ann picked B for your team"): the lit button has its words,
+  // and two lines keep to the room the buttons leave them (a longer one would move them as it comes).
+  const at = a.pick ? (a.choices ?? []).findIndex((c) => c.id === a.pick) : -1;
+  if (at >= 0 && team && a.by) return `✔ ${a.byYou ? 'You' : a.by} picked ${letter(at)} for your team. You can change it until the host ${until}.`;
+  if (at >= 0) return `✔ Sent: ${letter(at)}. You can change it until the host ${until}.`;
   return `${team && a.by ? `✔ ${a.byYou ? 'You' : a.by} sent it for your team` : '✔ Sent'}: “${a.text}”. You can change it until the host ${until}.`;
 }
 
@@ -1576,6 +1582,7 @@ function renderAnswer(v: PhoneView, a: NonNullable<PhoneView['answer']>, sym: st
   // Multiple choice: a button each in place of the box to type in (and its Send), a tap sends it.
   const choices = !guess && !!a.choices?.length;
   $('answer-choices').hidden = !choices;
+  $('answer-form').classList.toggle('picking', choices);
   // (The label names the group only while it's up: the box to type in has it otherwise.)
   if (choices) $('answer-choices').setAttribute('aria-labelledby', 'answer-label');
   else $('answer-choices').removeAttribute('aria-labelledby');

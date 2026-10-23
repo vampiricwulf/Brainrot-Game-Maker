@@ -811,6 +811,25 @@ try {
     send.y >= 0 && send.y + send.height <= 640 && spot > 0 && (await clueAt(ann)) === spot && !(await more.isHidden()),
     `with the answer box: Send answer in sight, and “✔ Sent” leaves the place in the question (${spot} → ${await clueAt(ann)})`,
   );
+  // Multiple choice under it: the line a tap brings (“✔ Sent: B…”) never fits the question again, so the buttons stay
+  // under the finger for the next tap.
+  hostState({ answers: { id: 'long2', open: true, seats: [{ id: 'a' }], choices: ['Penicillin', 'Aspirin', 'Insulin', 'Quinine'].map((text, i) => ({ id: `m${i}`, text })) } });
+  const picks = ann.locator('#answer-choices .choice');
+  await picks.nth(3).waitFor();
+  const pickTops = () =>
+    ann.evaluate(
+      () =>
+        new Promise((ok) =>
+          requestAnimationFrame(() =>
+            requestAnimationFrame(() => ok([...document.querySelectorAll('#answer-choices .choice')].map((b) => Math.round(b.getBoundingClientRect().top)).join())),
+          ),
+        ),
+    );
+  const untapped = await pickTops();
+  await picks.nth(1).tap();
+  await ann.locator('#answer-state').getByText('✔ Sent: B').waitFor();
+  const tapped = await pickTops();
+  assert(tapped === untapped, `a long question over multiple choice: “✔ Sent: B” leaves the buttons where they were (${untapped} → ${tapped})`);
   // A shorter question on a bigger phone, with a long link and "A) … B) …" lines: whole, left-aligned, the lines kept.
   await ann.setViewportSize({ width: 390, height: 844 });
   const quiz =
