@@ -463,10 +463,23 @@ try {
   // Back to the reveals and finish again, tied this time: "Tie for first" gets no fanfare.
   await page.getByRole('button', { name: '◀ Back to final reveals' }).click();
   assert(!(await page.locator('.fj details.how').evaluate((d) => d.open)), 'the how-to is folded after the first time');
+  // (Everything the screen reader is told from here on.)
+  await page.evaluate(() => {
+    window.__said = [];
+    const host = document.getElementById('live-region');
+    new MutationObserver(() => window.__said.push(host.dataset.said)).observe(host, { attributes: true, attributeFilter: ['data-said'] });
+  });
+  const toldOf = (re) => page.waitForFunction((src) => window.__said.some((s) => new RegExp(src).test(s)), re.source);
   await page.getByRole('button', { name: 'Finish game ▶' }).click();
   await page.locator('.tie').waitFor();
   await page.waitForTimeout(300);
   assert((await cues(page, 'winner')) === winner, 'a tied end ("Tie for first") plays no winner fanfare');
+  await toldOf(/Tie for first: Player 1, Player 2 & Player 3/);
+  assert(true, 'screen readers hear the tie for first, with who is tied');
+  /** The space between an element in the end controls and the row after it (px). */
+  const gapUnder = (sel) => page.locator(sel).evaluate((e) => e.nextElementSibling.getBoundingClientRect().top - e.getBoundingClientRect().bottom);
+  const tieGap = await gapUnder('.panel .tie');
+  assert(tieGap >= 5, `the tie box doesn't sit on the buttons under it (${tieGap}px apart)`);
   await page.locator('.panel .status').click();
   await page.keyboard.press('o');
   await stage('.wrap .title').waitFor();
@@ -478,6 +491,8 @@ try {
   await page.waitForFunction(() => / wins the game/.test(document.getElementById('live-region')?.dataset.said ?? ''));
   assert(true, 'the roll-off’s winner is said');
   await page.keyboard.press('Escape');
+  const wonGap = await gapUnder('.panel .end > .muted');
+  assert(wonGap >= 5, `“… won the tiebreaker roll-off.” doesn't sit on the buttons under it (${wonGap}px apart)`);
 
   // ---------- The scores window on the results: nobody lit as the picker (nobody picks) ----------
   const pickerChips = await page.locator('.panel .p.picker').count();
@@ -493,6 +508,12 @@ try {
   await page.keyboard.press('Control+z');
   await page.locator('.tie').waitFor();
   assert((await status()).includes('Game over'), 'Ctrl+Z on the results takes the roll-off back there (the tie is back)');
+  // 🤝 Declare co-winners is said too (then Ctrl+Z: the tie is back to settle).
+  await page.getByRole('button', { name: '🤝 Declare co-winners' }).click();
+  await toldOf(/Co-winners: Player 1, Player 2 & Player 3/);
+  assert(true, 'screen readers hear the co-winners declared');
+  await page.keyboard.press('Control+z');
+  await page.locator('.tie').waitFor();
   // (The scores fixed on the results, one Ctrl+Z each, then the last Final judgment.)
   for (let i = 0; i < 5 && (await status()).includes('Game over'); i++) {
     await page.keyboard.press('Control+z');

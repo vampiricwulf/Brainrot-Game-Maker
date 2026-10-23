@@ -361,7 +361,16 @@ try {
   await teamsDialog.getByRole('button', { name: 'Remove Player 2' }).click();
   const removeAsk = (await teamsDialog.locator('.ask').innerText()).replace(/\s+/g, ' ');
   assert(removeAsk.includes('Its points leave the scoreboard') && removeAsk.includes('The 1 person on it goes back to picking a team on their phone.'), `removing a team says its phones go back to picking a team (${removeAsk})`);
-  await teamsDialog.getByRole('button', { name: 'Keep', exact: true }).click();
+  // Removed, then ↩ Restore (a mistake): its phone says it left, then that it's back, and its person rejoins it.
+  await teamsDialog.locator('.ask').getByRole('button', { name: 'Remove', exact: true }).click();
+  await bea.locator('#seats-note').getByText('Your team left the game. Pick another one.').waitFor();
+  await teamsDialog.getByRole('button', { name: '↩ Restore' }).click();
+  await bea.locator('#seats-note').getByText('Your team is back in the game. Tap it to rejoin.').waitFor();
+  assert(true, 'a team removed and restored: its phone says it left the game, then that it’s back (tap it to rejoin)');
+  await bea.getByRole('button', { name: 'Player 2' }).click();
+  await bea.getByRole('textbox', { name: 'Your name (everyone sees it)' }).fill('Bea');
+  await bea.getByRole('button', { name: 'Join the team' }).click();
+  await bea.locator('#me').getByText('Bea · Player 2').waitFor();
   await teamsDialog.getByRole('button', { name: 'Remove Team 3' }).click();
   await teamsDialog.getByRole('button', { name: 'Remove', exact: true }).click();
   await teamsDialog.getByRole('button', { name: 'Done' }).click();

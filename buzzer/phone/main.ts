@@ -91,6 +91,8 @@ let alertTimer = 0;
 let awayFocus: HTMLElement | null = null;
 /** Another tab or phone took this seat back (the token is kept, so a tap takes it back here): a reconnect doesn't. */
 let seatMoved = false;
+/** The seat (a team) the host took this phone out of, and whether a later list has it back: the note says which. */
+let outOf: { id: string; back: boolean } | null = null;
 let result: ResultMsg | null = null;
 /** Server time this seat's early-buzz lock ends. */
 let lockedUntil = 0;
@@ -357,10 +359,17 @@ function ended(): void {
   const came = view?.final && view.you ? placeLine(view) : null;
   saveSeat(null);
   seatId = null;
+  outOf = null;
   view = null;
   notice = { title: came ? `${came.big} ${came.small}` : 'The game is over', text: 'Thanks for playing!', final: true, button: { label: 'Join another game', run: () => location.assign('/') } };
   ws?.close();
   render();
+}
+
+/** The host took this phone's player (its team) out of the game, or put them back. */
+function outNote(teams: boolean, back: boolean): string {
+  if (back) return teams ? 'Your team is back in the game. Tap it to rejoin.' : 'The host put you back in the game. Tap your name.';
+  return teams ? 'Your team left the game. Pick another one.' : 'The host took you out of the game.';
 }
 
 function onMessage(m: RoomToPhone): void {
@@ -372,11 +381,11 @@ function onMessage(m: RoomToPhone): void {
       // removed the player.
       if (!rejoining && seatId) {
         const wasTeams = !!view?.teams;
+        const out = !m.seats.some((x) => x.id === seatId);
+        outOf = out ? { id: seatId, back: false } : null;
         seatsNote = tap(
-          !m.seats.some((x) => x.id === seatId)
-            ? wasTeams
-              ? 'Your team left the game. Pick another one.'
-              : 'The host took you out of the game.'
+          out
+            ? outNote(wasTeams, false)
             : !!m.teams !== wasTeams
               ? m.teams
                 ? 'The host switched to teams. Pick your team.'
@@ -390,6 +399,10 @@ function onMessage(m: RoomToPhone): void {
         seatMoved = kept;
         seatId = null;
         view = null;
+      } else if (outOf && !seatId && m.seats.some((x) => x.id === outOf!.id) !== outOf.back) {
+        // Put back (the host's Ctrl+Z, ↩ Restore), or out again.
+        outOf.back = !outOf.back;
+        seatsNote = tap(outNote(!!m.teams, outOf.back));
       }
       // Teams turned off while this phone was giving its name, or its team left the game.
       if (teamPick && (!m.teams || !m.seats.some((x) => x.id === teamPick!.id))) teamPick = null;
@@ -408,6 +421,7 @@ function onMessage(m: RoomToPhone): void {
     }
     case 'joined':
       seatMoved = false;
+      outOf = null;
       seatId = m.seatId;
       saveSeat({ seatId: m.seatId, token: m.token });
       if (m.name) saveName(m.name);

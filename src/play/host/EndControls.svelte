@@ -4,7 +4,8 @@
   import { getContext, onDestroy } from 'svelte';
   import { NEXT_GAME } from './nextgame';
   import { isFinal, questionSlides, roundName, type Game, type Session } from '../../lib/model';
-  import { coWinnersHold, nameList, tiebreakHolds, tiedForFirst, tiedLeaders } from '../../lib/session';
+  import { coWinnersHold, nameList, standings, tiebreakHolds, tiedForFirst, tiedLeaders } from '../../lib/session';
+  import { announce } from '../../lib/announce';
   import { slideHasContent } from '../../lib/usage';
   import { logged } from '../../lib/toolset';
   import { copyText, standingsText } from '../standings';
@@ -39,6 +40,21 @@
   /** A tiebreaker clue with a question written (one ticked on but left empty would put a blank slide on stream). */
   const tbReady = $derived(!!game.tiebreaker && questionSlides(game.tiebreaker).some(slideHasContent));
 
+  /**
+   * How it ended, as the stage's heading says it: screen readers hear it on arriving and as it changes (a tie to settle,
+   * co-winners, the winner). Not a roll-off's win: its card says that as it lands.
+   */
+  const outcome = $derived.by(() => {
+    if (ties.length) return `Tie for first: ${nameList(ties.map((p) => p.name))}`;
+    if (coWinnersHold(session) && level.length) return `Co-winners: ${nameList(level.map((p) => p.name))}`;
+    if (!session.tiebreakClue && tiebreakHolds(session, level.map((p) => p.id))) return '';
+    const top = standings(session)[0];
+    return top ? `${top.player.name} wins` : '';
+  });
+  $effect(() => {
+    if (outcome) announce(outcome, 'end-outcome');
+  });
+
   const copyStandings = () => copyText(standingsText(game, session), 'Standings copied: paste them in chat');
   const rollOff = () => onrolloff?.(ties.map((p) => p.id));
 
@@ -67,52 +83,60 @@
   const nextGame = getContext<(() => void) | undefined>(NEXT_GAME);
 </script>
 
-{#if ties.length}
-  <div class="tie">
-    <b>Tie for first:</b> {nameList(ties.map((p) => p.name))}
-    <div class="row">
-      <!-- The main one is in the panel's main cell; these are the other ways to settle it. -->
-      {#if tbReady && onrolloff}<button onclick={rollOff} title="O">🎲 Tiebreaker roll-off</button>{/if}
-      {#if !tbReady}
-        <button disabled title={app.playerOnly ? 'This game has no tiebreaker clue' : "Write one on the editor's Tiebreaker tab"}>❓ Tiebreaker clue</button>
-      {/if}
-      <button
-        onclick={() => {
-          // (Who they are: a different tie later, after a score is fixed, is still to settle.)
-          logged(session, 'Co-winners declared', () => (session.coWinners = ties.map((p) => p.id)));
-          oncowinners?.();
-        }}>🤝 Declare co-winners</button
-      >
+<!-- (One column, spaced as the rest of the panel: the tie box and the line under it never sit on the buttons.) -->
+<div class="end">
+  {#if ties.length}
+    <div class="tie">
+      <b>Tie for first:</b> {nameList(ties.map((p) => p.name))}
+      <div class="row">
+        <!-- The main one is in the panel's main cell; these are the other ways to settle it. -->
+        {#if tbReady && onrolloff}<button onclick={rollOff} title="O">🎲 Tiebreaker roll-off</button>{/if}
+        {#if !tbReady}
+          <button disabled title={app.playerOnly ? 'This game has no tiebreaker clue' : "Write one on the editor's Tiebreaker tab"}>❓ Tiebreaker clue</button>
+        {/if}
+        <button
+          onclick={() => {
+            // (Who they are: a different tie later, after a score is fixed, is still to settle.)
+            logged(session, 'Co-winners declared', () => (session.coWinners = ties.map((p) => p.id)));
+            oncowinners?.();
+          }}>🤝 Declare co-winners</button
+        >
+      </div>
     </div>
-  </div>
-{:else if tiebreakHolds(session, level.map((p) => p.id))}
-  <!-- Both are steps: ↶ Undo (Ctrl+Z) takes them back. -->
-  <div class="muted">
-    {session.tiebreakClue ? '❓' : '🎲'}
-    {session.players.find((p) => p.id === session.rollOffWinner)?.name} won the tiebreaker {session.tiebreakClue ? 'clue' : 'roll-off'}.
-  </div>
-{:else if coWinnersHold(session) && level.length}
-  <div class="muted">🤝 Co-winners declared.</div>
-{/if}
-<!-- The way back quiet on the left, the rematch (it clears the results) at the far end. -->
-<div class="row">
-  {#if last}
-    <button class="ghost" onclick={onback}>{isFinal(last) ? '◀ Back to final reveals' : `◀ Back to ${roundName(last, lastIndex)}`}</button>
+  {:else if tiebreakHolds(session, level.map((p) => p.id))}
+    <!-- Both are steps: ↶ Undo (Ctrl+Z) takes them back. -->
+    <div class="muted">
+      {session.tiebreakClue ? '❓' : '🎲'}
+      {session.players.find((p) => p.id === session.rollOffWinner)?.name} won the tiebreaker {session.tiebreakClue ? 'clue' : 'roll-off'}.
+    </div>
+  {:else if coWinnersHold(session) && level.length}
+    <div class="muted">🤝 Co-winners declared.</div>
   {/if}
-  <button onclick={copyStandings} title="Copy the standings as one line of text">📋 Copy standings</button>
-  <span class="spacer"></span>
-  <!-- (While it asks, the strip's own 🔁 Rematch answers.) -->
-  <!-- (Not after ▶ Test this round either: a rematch would keep the throwaway test as the game to resume.) -->
-  {#if !asking && !app.test}<button onclick={askRematch} title="Same players, scores back to 0, fresh board">🔁 Rematch</button>{/if}
-  <!-- (Not after ▶ Test this round: nothing of a test is kept, and 🚪 Exit goes back to the tested round.) -->
-  {#if nextGame && !asking && !app.test}
-    <button onclick={nextGame} title="Open the stream's next game (Open… / Recent games). The buzzer room, its players and the audience window stay up; these results stay viewable from the editor.">
-      ▶ Next game…
-    </button>
-  {/if}
+  <!-- The way back quiet on the left, the rematch (it clears the results) at the far end. -->
+  <div class="row">
+    {#if last}
+      <button class="ghost" onclick={onback}>{isFinal(last) ? '◀ Back to final reveals' : `◀ Back to ${roundName(last, lastIndex)}`}</button>
+    {/if}
+    <button onclick={copyStandings} title="Copy the standings as one line of text">📋 Copy standings</button>
+    <span class="spacer"></span>
+    <!-- (While it asks, the strip's own 🔁 Rematch answers.) -->
+    <!-- (Not after ▶ Test this round either: a rematch would keep the throwaway test as the game to resume.) -->
+    {#if !asking && !app.test}<button onclick={askRematch} title="Same players, scores back to 0, fresh board">🔁 Rematch</button>{/if}
+    <!-- (Not after ▶ Test this round: nothing of a test is kept, and 🚪 Exit goes back to the tested round.) -->
+    {#if nextGame && !asking && !app.test}
+      <button onclick={nextGame} title="Open the stream's next game (Open… / Recent games). The buzzer room, its players and the audience window stay up; these results stay viewable from the editor.">
+        ▶ Next game…
+      </button>
+    {/if}
+  </div>
 </div>
 
 <style>
+  .end {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
   .tie {
     display: flex;
     flex-direction: column;

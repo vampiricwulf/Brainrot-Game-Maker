@@ -26,6 +26,9 @@ in plain words for the people who make and host games. Anything committed but no
 - A wheel or dice tile with no question closed before it spun or rolled (Esc, or ✕ Close) stays on the board, instead of being used up.
 - A name cleared in 👥 Players mid-game and left blank goes back to what it was (a new row: “Player N”), so no player plays nameless on stream, on the end screen or in the log.
 - 📜 Log › Scores › Undo all on a step for several players (✔ Judge all) gives back the picker it made, and Restore all takes it again, as Undo on one player does.
+- Phones: a player (or team) the host took out of the game and put back (Ctrl+Z, or ↩ Restore in 👥 Players) is told so on their phone (“The host put you back in the game. Tap your name.”), instead of still reading “The host took you out of the game.” A buzzer server you run yourself needs deploying again for this.
+- Screen readers hear how the game ended: who won, “Tie for first: Ann & Bob”, or “Co-winners: Ann & Bob” when you declare them. Before, they heard only “Game over.”
+- The end screen's panel: the tie box and the “… won the tiebreaker” or “Co-winners declared” line no longer sit flush on the buttons under them.
 
 ## 2026-10-23
 
