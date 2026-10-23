@@ -515,17 +515,29 @@ try {
   const answers2 = host2.locator('.fj [aria-label="Answers from phones"]');
   await answers2.locator('[data-answer-in]', { hasText: 'Player 1 ✔' }).waitFor();
   const head2 = await answers2.getByRole('status').innerText();
+  const chips2 = await answers2.locator('[data-answer-in]').allInnerTexts();
   assert(
-    head2.includes('1 of 2 in · viewers see this window') && head2.includes('Open the 📺 audience window to read them before they go on screen'),
-    `one window: Amy taps B for her team, the panel shows “Player 1 ✔” and says to open the audience window to read them first (${head2})`,
+    head2.includes('1 of 2 in · viewers see this window') && head2.includes('Open the 📺 audience window to read them before they go on screen') && JSON.stringify(chips2) === JSON.stringify(['Player 1 ✔', 'Player 2 …']),
+    `one window: Amy taps B for her team, the panel shows “Player 1 ✔” (no letter) and says to open the audience window to read them first (${JSON.stringify(chips2)}; ${head2})`,
   );
-  /** The host page never showed (nor said) the team's pick: with where, if it did. */
+  /**
+   * The host page never showed (nor said) the team's pick: not as “B · …”, nor its words anywhere but the stage's
+   * choices under the question (every choice's words are there for all to see). With where, if it did.
+   */
   const typedHidden = async (when) => {
     const found = await shownOf(host2, [PICKED]);
     const panel = await host2.locator('.panel').innerText();
+    const elsewhere = await host2.evaluate(
+      (w) =>
+        (window.__seen ?? [])
+          .map((s, i) => [String(s), window.__seenWhere?.[i]?.path ?? '?'])
+          .filter(([s, p]) => s.includes(w) && !p.includes('div.choices'))
+          .map(([s, p]) => `${p}: ${s}`),
+      CHOICES[1],
+    );
     assert(
-      !found.length && !panel.includes(CHOICES[1]) && !(await answers2.locator('[data-choice-counts]').count()),
-      `${when}: the host page never showed the team’s pick, nor its panel how many picked each${found.length ? `:\n    ${(await seenWhere(host2, found)).join('\n    ')}` : ''}`,
+      !found.length && !elsewhere.length && !panel.includes(CHOICES[1]) && !(await answers2.locator('[data-choice-counts]').count()),
+      `${when}: the host page never showed the team’s pick, nor its panel how many picked each${found.length ? `:\n    ${(await seenWhere(host2, found)).join('\n    ')}` : ''}${elsewhere.length ? `\n    its words: ${elsewhere.join('\n    ')}` : ''}`,
     );
   };
   await typedHidden('the question');

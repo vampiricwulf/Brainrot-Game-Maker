@@ -4,7 +4,8 @@
 // window, a second ✍ clue: the host judges while answers are still open, and a ✔ leaves the others' countdown going.
 // Then a third, with multiple choice: phones tap one, the host sees each pick and how many picked each (in one window
 // only once the answer is up), the stream shows the choices under the question (the right one lit with the answer),
-// and ✔ Judge all marks everyone in one step, its score pops above the choices. Needs `npm ci` in buzzer/.
+// and ✔ Judge all marks everyone in one step (the first right one picks next), its score pops above the choices.
+// Needs `npm ci` in buzzer/.
 import { chromium } from 'playwright-core';
 import { spawn } from 'node:child_process';
 import { createServer } from 'node:net';
@@ -242,19 +243,21 @@ try {
       (await p1.evaluate(() => document.querySelector('#answer-choices .choice:last-child').getBoundingClientRect().bottom <= innerHeight)),
     'the phones show the 4 choices as buttons, lettered A to D, in place of the box to type in, the last one on screen',
   );
+  // (Player 2 taps the right one and Player 1 another: ✔ Judge all then gives Player 2 the next pick.)
   const choice = (p, words) => p.locator('#answer-choices .choice', { hasText: words });
+  await choice(p2, 'Stockholm').click();
+  await p2.locator('#answer-state').getByText('✔ Sent: B').waitFor();
   await choice(p1, 'Oslo').click();
-  await p1.locator('#answer-state').getByText('✔ Sent: C · Oslo').waitFor();
-  await choice(p1, 'Stockholm').click();
-  await p1.locator('#answer-state').getByText('✔ Sent: B · Stockholm').waitFor();
-  await choice(p2, 'Paris').click();
-  await p2.locator('#answer-state').getByText('✔ Sent: A · Paris').waitFor();
-  assert((await choice(p1, 'Stockholm').getAttribute('aria-pressed')) === 'true' && (await choice(p1, 'Oslo').getAttribute('aria-pressed')) === 'false', 'a tap sends a choice at once, and another tap changes it');
-  await row('Player 1').getByText('B · Stockholm').waitFor();
-  await row('Player 2').getByText('A · Paris').waitFor();
+  await p1.locator('#answer-state').getByText('✔ Sent: C').waitFor();
+  await choice(p1, 'Paris').click();
+  await p1.locator('#answer-state').getByText('✔ Sent: A').waitFor();
+  assert((await choice(p1, 'Paris').getAttribute('aria-pressed')) === 'true' && (await choice(p1, 'Oslo').getAttribute('aria-pressed')) === 'false', 'a tap sends a choice at once, and another tap changes it');
+  await row('Player 1').getByText('A · Paris').waitFor();
+  await row('Player 2').getByText('B · Stockholm').waitFor();
   const counts = answersBox.locator('[data-choice-counts]');
   await counts.getByText('A 1 · B 1 · C 0 · D 0').waitFor();
   assert(!(await answersBox.getByRole('status').innerText()).includes('A 1'), 'with an audience window the host sees each pick by its letter, and how many picked each (not in the head’s status line)');
+  assert((await answersBox.getByRole('button', { name: /Judge all/ }).count()) === 0, 'no ✔ Judge all while the picks can still change');
   if (process.env.SCREENSHOTS) {
     await host.screenshot({ path: `${process.env.SCREENSHOTS}/everyone-choices-host.png` });
     await p1.screenshot({ path: `${process.env.SCREENSHOTS}/everyone-choices-phone.png` });
@@ -270,19 +273,21 @@ try {
   );
   const audText = await aud.locator('body').innerText();
   assert(!audText.includes('B · Stockholm') && !audText.includes('A · Paris') && !audText.includes('A 1 ·'), 'the audience window shows none of the picks or the counts');
-  assert(!(await p2.content()).includes('B · Stockholm') && !(await p1.content()).includes('A · Paris'), 'no phone sees another’s pick');
+  assert(!(await p2.content()).includes('A · Paris') && !(await p1.content()).includes('B · Stockholm'), 'no phone sees another’s pick');
   // A single window: the host panel is on stream again, and shows only who has answered.
   await aud.close();
   await answersBox.locator('[data-answer-in]', { hasText: 'Player 1 ✔' }).waitFor();
   const oneWindow = await host.locator('.panel').innerText();
+  const chips = await answersBox.locator('[data-answer-in]').allInnerTexts();
   assert(
-    !oneWindow.includes('Stockholm') && !oneWindow.includes('Paris') && !oneWindow.includes('A 1 ·') && (await counts.count()) === 0,
-    'in a single window, before the answer is up: names ✔ only, no picks and no counts',
+    !oneWindow.includes('Stockholm') && !oneWindow.includes('Paris') && !oneWindow.includes('A 1 ·') && !oneWindow.includes('Judge all') && (await counts.count()) === 0 && JSON.stringify(chips) === JSON.stringify(['Player 1 ✔', 'Player 2 ✔']),
+    `in a single window, before the answer is up: names ✔ only, no picks, no letters, no counts, no ✔ Judge all (${JSON.stringify(chips)})`,
   );
   await host.keyboard.press('r');
   await p1.locator('#buzz-big').getByText('Answers locked').waitFor();
-  assert((await p1.locator('#buzz-small').innerText()) === 'Yours: B · Stockholm' && (await p2.locator('#buzz-small').innerText()) === 'Yours: A · Paris', 'showing the answer locks the picks: each phone keeps its own in sight');
-  await row('Player 1').getByText('B · Stockholm').waitFor();
+  await p2.locator('#buzz-big').getByText('Answers locked').waitFor();
+  assert((await p1.locator('#buzz-small').innerText()) === 'Yours: A · Paris' && (await p2.locator('#buzz-small').innerText()) === 'Yours: B · Stockholm', 'showing the answer locks the picks: each phone keeps its own in sight');
+  await row('Player 2').getByText('B · Stockholm').waitFor();
   await counts.getByText('A 1 · B 1 · C 0 · D 0').waitFor();
   assert(true, 'then the panel shows each pick and the counts');
   const stageStrip = host.locator('.stage-box [data-choices]');
@@ -292,28 +297,36 @@ try {
     'with the answer, the stage’s choices light the one marked ✔ Right (B), the others dimmed',
   );
   if (process.env.SCREENSHOTS) await host.screenshot({ path: `${process.env.SCREENSHOTS}/everyone-choices-locked.png` });
-  const before = await p1.locator('#me').innerText();
+  const before = await p2.locator('#me').innerText();
+  const picker = (name) => host.locator('.panel .p.picker', { hasText: name });
+  await picker('Player 1').waitFor();
   await answersBox.getByRole('button', { name: '✔ Judge all: B is right' }).click();
-  await row('Player 1').getByText('✔ Right').waitFor();
-  await row('Player 2').getByText('✘ Wrong').waitFor();
+  await row('Player 1').getByText('✘ Wrong').waitFor();
+  await row('Player 2').getByText('✔ Right').waitFor();
+  await picker('Player 2').waitFor();
   // Its score pops come in above the choices, not over them: the line they stand on (their box's foot; a pop is there
   // only a moment, so it's the box that's measured) is above the strip.
   const [popsFoot, stripTop] = await host.evaluate(() =>
     ['.stage-box .pops', '.stage-box [data-choices]'].map((q, i) => document.querySelector(q)?.getBoundingClientRect()[i ? 'top' : 'bottom'] ?? NaN),
   );
   assert(popsFoot <= stripTop, `✔ Judge all’s score pops sit above the stage’s choices (their foot at ${Math.round(popsFoot)}px, the choices’ top at ${Math.round(stripTop)}px)`);
-  await p1.waitForFunction((was) => document.querySelector('#me')?.textContent !== was, before);
+  await p2.waitForFunction((was) => document.querySelector('#me')?.textContent !== was, before);
   const judgedUndo = await host.getByRole('button', { name: '↶ Undo' }).getAttribute('title');
-  assert(!judgedUndo.includes('Stockholm') && !judgedUndo.includes('Paris'), `✔ Judge all marks Player 1 right and Player 2 wrong, as one step that names no pick (${judgedUndo})`);
+  assert(
+    !judgedUndo.includes('Stockholm') && !judgedUndo.includes('Paris'),
+    `✔ Judge all marks Player 2 right and Player 1 wrong, as one step that names no pick, and Player 2 (the first right) picks next (${judgedUndo})`,
+  );
   await host.getByRole('button', { name: '↶ Undo' }).click();
-  await row('Player 1').getByRole('button', { name: 'Player 1 is right' }).waitFor();
-  await row('Player 2').getByRole('button', { name: 'Player 2 is wrong' }).waitFor();
+  await row('Player 1').getByRole('button', { name: 'Player 1 is wrong' }).waitFor();
+  await row('Player 2').getByRole('button', { name: 'Player 2 is right' }).waitFor();
   await answersBox.getByRole('button', { name: '✔ Judge all: B is right' }).waitFor();
-  await p1.locator('#me').getByText(before).waitFor();
+  await p2.locator('#me').getByText(before).waitFor();
+  await picker('Player 1').waitFor();
   await host.getByRole('button', { name: '↷ Redo' }).click();
-  await row('Player 1').getByText('✔ Right').waitFor();
-  await row('Player 2').getByText('✘ Wrong').waitFor();
-  assert(true, 'one ↶ Undo un-judges both, and ↷ Redo judges both again');
+  await row('Player 1').getByText('✘ Wrong').waitFor();
+  await row('Player 2').getByText('✔ Right').waitFor();
+  await picker('Player 2').waitFor();
+  assert(true, 'one ↶ Undo un-judges both and gives Player 1 the pick back, and ↷ Redo judges both again');
 
   assert(errors.length === 0, `no page errors (${errors.join(' | ')})`);
   console.log('Everyone answers E2E passed.');
