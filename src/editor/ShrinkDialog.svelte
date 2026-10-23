@@ -40,6 +40,7 @@
     type GifPlan,
   } from '../lib/shrink/plan';
   import { encodersFor, probe } from '../lib/shrink/probe';
+  import { undoClosing } from './undoclose';
 
   let {
     ids,
@@ -181,6 +182,13 @@
     }
   }
 
+  /** What it made is in (a copy; in a list, one or more), with nothing still working. */
+  const madeIn = $derived(listed ? !working && rowJobs.some((j) => 'done' in (jobs.ended[j] ?? {})) : !job && !!ended && 'done' in ended);
+  /** In the editor, once it's made, Ctrl+Z does what the window says: it closes, and the copy goes (in a list, the last). */
+  function onkey(e: KeyboardEvent): void {
+    if (!play && madeIn) undoClosing(e, onclose);
+  }
+
   const phaseText = (p: string): string => (p === 'waiting' ? 'Waiting for the other file to finish…' : p === 'checking' ? 'Checking it plays…' : p === 'storing' ? 'Storing it in the game…' : 'Making it…');
   const madeRef = $derived(ended && 'done' in ended && ended.media ? game.media.find((m) => m.id === ended.media) : undefined);
   const ICON = { image: '🖼', video: '🎬', audio: '🔊', font: '🔤' } as const;
@@ -216,6 +224,8 @@
     return { text: 'Stopped: nothing was changed.', cls: 'muted' };
   }
 </script>
+
+<svelte:window onkeydowncapture={onkey} />
 
 <div class="modal-backdrop" role="presentation" onclick={(e) => e.target === e.currentTarget && onclose()}>
   <div class="modal" role="dialog" aria-modal="true" aria-labelledby="shrink-title" use:modal={{ esc: onclose }} data-undo="off">
@@ -358,7 +368,7 @@
           class="primary"
           onclick={make}
           disabled={!!cant || (ref && isGifRef(ref) ? !gifPlan || 'refuse' in gifPlan : !avp || 'refuse' in avp || (!!opts && 'refuse' in opts))}
-          >{ended || copy ? 'Make it again' : 'Make it'}</button
+          >{copy ? 'Make it again' : ended && 'failed' in ended ? 'Try again' : 'Make it'}</button
         >
       {/if}
     </div>

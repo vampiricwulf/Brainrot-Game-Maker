@@ -32,6 +32,10 @@ in plain words for the people who make and host games. Anything committed but no
 - Phones: a question of three lines over multiple choice shows whole on a small phone, with no ▼ More over its last line.
 - Touch phones: no white ring around BUZZ!, a choice or a card's Tap to see after a reload. It looked like the lit buzzer's border, or a pick.
 - Phones: a screen reader hears the end as one sentence: “You came 1st with $1,300 🎉”.
+- ✎ Edit video on a laptop's screen: the trim, its “How it’s cut” choice and the window's buttons no longer run over one another (the picture is smaller on a short screen, and the window scrolls when it must).
+- ✎ Edit video: ✂ Crop pressed with nothing else changed no longer makes Esc or Cancel ask “Discard your edits?”.
+- ✎ Edit, 🗜 Make smaller and 🔄 Convert: once the window says what was made, Ctrl+Z does what it says, closing the window and taking it back. Before, Ctrl+Z did nothing until the window was closed.
+- 🗜 Make smaller: after Stop, the button says “Make it” (“Try again” after a failure), not “Make it again”, when nothing was made.
 
 ## 2026-10-22
 

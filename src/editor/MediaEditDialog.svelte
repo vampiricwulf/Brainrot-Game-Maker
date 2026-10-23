@@ -4,7 +4,8 @@
   everywhere it's used, on stream too (slide items' Start at / Stop at move with the trim, so they play the same
   moments); Save as a new file keeps both, and Only this item edits it for the slide item it was opened from. The
   work is a job (the header's pill shows how far it got, Stop leaves nothing), then one Ctrl+Z step. The window's own
-  changes undo with Ctrl+Z while it's open. The editor isn't on stream, so the file is named here.
+  changes undo with Ctrl+Z while it's open (once it's done, Ctrl+Z closes it and takes the edit back). The editor isn't
+  on stream, so the file is named here.
 -->
 <script lang="ts">
   import { onDestroy, onMount, tick, untrack } from 'svelte';
@@ -45,6 +46,7 @@
   import { cutLeavesOut, itemsPlaying, timedItems } from '../lib/shrink/retime';
   import { codecName } from '../lib/shrink/words';
   import { isTextField } from '../lib/undokeys';
+  import { undoClosing } from './undoclose';
   import { allCardSlides, mediaUsage, slideMediaIds } from '../lib/usage';
   import InlineAsk from '../play/host/InlineAsk.svelte';
   import CropBox from './CropBox.svelte';
@@ -370,9 +372,9 @@
   // ---------- Closing ----------
   let discarding = $state(false);
   let box = $state<HTMLElement>();
-  /** Esc, ✕, Cancel: while it works, the work goes on; edits not applied are asked about first. */
+  /** Esc, ✕, Cancel: while it works, the work goes on; edits not applied are asked about first (not ✂ Crop alone). */
   function close(): void {
-    if (working || done || !changed) return onclose();
+    if (working || done || !changed || nothing) return onclose();
     discarding = true;
   }
 
@@ -393,6 +395,8 @@
       return;
     }
     if (e.altKey && e.key.startsWith('Arrow')) return void e.stopImmediatePropagation();
+    // Done: Ctrl+Z does what the window says (it closes, and the old file is back).
+    if (done && undoClosing(e, onclose)) return;
     if (working || done || !facts) return;
     if (mod && k === 'enter') {
       e.preventDefault();
@@ -708,11 +712,11 @@
     text-overflow: ellipsis;
     white-space: nowrap;
   }
+  /* (Never shorter than what's in it: on a short screen the window scrolls, rather than its parts run under its foot.) */
   .body {
     display: grid;
     grid-template-columns: minmax(0, 1fr) 280px;
     gap: 14px;
-    min-height: 0;
   }
   .body.sound {
     grid-template-columns: minmax(0, 1fr) 240px;
@@ -730,6 +734,12 @@
   }
   .stage.sound {
     height: 90px;
+  }
+  /* A laptop's screen: a smaller picture, so the trim, its choices and the buttons fit under it. */
+  @media (max-height: 820px) {
+    .stage:not(.sound) {
+      height: min(34vh, 420px);
+    }
   }
   .picture {
     position: relative;

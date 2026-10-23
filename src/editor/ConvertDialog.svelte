@@ -20,6 +20,7 @@
   import { probe, type Can } from '../lib/shrink/probe';
   import { rowText } from '../lib/shrink/words';
   import JobProgress from './JobProgress.svelte';
+  import { undoClosing } from './undoclose';
 
   let { ids, onclose }: { ids: Id[]; onclose: () => void } = $props();
 
@@ -88,6 +89,11 @@
     onclose();
   }
 
+  /** Once converted, with nothing still working, Ctrl+Z does what the window says: it closes, and the last one goes back. */
+  function onkey(e: KeyboardEvent): void {
+    if (!working && rowJobs.some((j) => 'done' in (jobs.ended[j] ?? {}))) undoClosing(e, onclose);
+  }
+
   // The buttons at the foot change as it goes: when the one focused goes, the focus moves to the new ones.
   let foot = $state<HTMLElement>();
   const footFor = $derived(working ? 'working' : rowJobs.length ? 'ended' : 'pick');
@@ -100,6 +106,8 @@
     if (lost) (foot?.querySelector<HTMLElement>('[data-stop]') ?? foot?.querySelector<HTMLElement>('button.primary'))?.focus();
   });
 </script>
+
+<svelte:window onkeydowncapture={onkey} />
 
 <div class="modal-backdrop" role="presentation" onclick={(e) => e.target === e.currentTarget && onclose()}>
   <div class="modal" role="dialog" aria-modal="true" aria-labelledby="convert-title" use:modal={{ esc: onclose }} data-undo="off">

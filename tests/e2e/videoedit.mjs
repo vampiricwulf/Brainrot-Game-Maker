@@ -251,7 +251,12 @@ try {
   );
   const done1 = await applyAnd();
   assert(/^✓ 1\.8 s · \d+ KB \(was \d+ KB\)\. Ctrl\+Z puts the old one back\.$/.test(done1), `done: ${done1}`);
-  await closeDialog();
+  // Ctrl+Z with the window still open does what it says: the window closes, and the old file is back.
+  await page.keyboard.press('Control+z');
+  await dialog.waitFor({ state: 'detached' });
+  await draftWhen((g) => !!g.media.find((m) => m.id === 'clip'), 'clip.mp4 back, from the window');
+  assert(true, 'Ctrl+Z in the finished window: it closes, and the old file is back');
+  await undoKey('Control+y');
   const g1 = await draftWhen((g) => refNamed(g, 'clip.mp4')?.id !== 'clip', 'clip.mp4 edited');
   const clipNew = refNamed(g1, 'clip.mp4');
   const it1 = itemsOf(g1);
@@ -275,10 +280,18 @@ try {
 
   // ---------- 2. clip.webm, 1.3–2.5: Exact, then Quick ----------
   console.log('2. A WebM: exact or quick:');
+  // (On a laptop's screen, 1366×768 less the browser's bars.)
+  await page.setViewportSize({ width: 1366, height: 657 });
   await editFromMedia('clip.webm');
   await trimTo(1.3, 2.5);
   const choice = dialog.locator('[data-trim-choice]');
   await choice.waitFor({ timeout: 30_000 });
+  const laptop = await dialog.evaluate((d) => ({
+    parts: Math.round(Math.max(...['.controls', 'aside'].map((s) => d.querySelector(s).getBoundingClientRect().bottom))),
+    foot: Math.round(d.querySelector('.modal-foot').getBoundingClientRect().top),
+  }));
+  assert(laptop.parts <= laptop.foot, `a laptop’s screen (1366×657): the trim and its “How it’s cut” end above the window’s buttons, never under them (${JSON.stringify(laptop)})`);
+  await page.setViewportSize({ width: 1400, height: 950 });
   const choiceText = (await choice.innerText()).replace(/\s+/g, ' ');
   assert(choiceText.includes('Quick trim, nothing re-encoded: it starts at 0:01.0, the nearest point before 0:01.3'), `the quick choice says where it starts (${choiceText})`);
   assert(await choice.getByRole('radio').first().isChecked(), 'Exact is the default');
@@ -466,6 +479,13 @@ try {
   await dialog.getByRole('button', { name: 'Discard' }).click();
   await dialog.waitFor({ state: 'detached' });
   assert(refNamed(await stored(page, 'editorDraft'), 'pair.webm').id === 'pair', 'Discard: closed, the file as it was');
+  // ✂ Crop pressed (and put away) changes nothing, as Result says: Esc just closes.
+  await editFromMedia('pair.webm');
+  await dialog.getByRole('button', { name: '✂ Crop' }).click();
+  await dialog.getByRole('button', { name: '✂ Crop' }).click();
+  await page.keyboard.press('Escape');
+  await dialog.waitFor({ state: 'detached', timeout: 5000 });
+  assert(true, '✂ Crop alone, then Esc: the window closes without asking about edits');
 
   // ---------- 10. A 🤫 card's file with a copy for phones ----------
   console.log('10. Its copy for phones:');

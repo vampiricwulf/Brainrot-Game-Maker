@@ -252,7 +252,7 @@ try {
   assert((await focused()) === 'Stop', `Make it goes as it’s pressed: the focus is on Stop (“${await focused()}”)`);
   await dialog.getByRole('button', { name: 'Stop', exact: true }).click();
   await dialog.locator('[data-shrink-stopped]', { hasText: 'Stopped: nothing was changed.' }).waitFor();
-  assert((await focused()) === 'Make it again', `then on Make it again (“${await focused()}”)`);
+  assert((await focused()) === 'Make it', `then on Make it (not “again”: nothing was made) (“${await focused()}”)`);
   await close();
   assert((await copyLine('long').count()) === 0 && (await historyCount()) === steps, 'Stop leaves nothing: no copy, no step');
 
@@ -372,15 +372,15 @@ try {
   await row('movie').getByText(/^✓ /).waitFor({ timeout: 120_000 });
   await row('song').getByText(/^✓ /).waitFor({ timeout: 120_000 });
   assert((await historyCount()) === at6 + 2 && (await bigButton.count()) === 0, 'both are made: one step each, and 🖼 Media no longer says they’re big');
-  await several.locator('.modal-foot').getByRole('button', { name: 'Close' }).click();
-  await several.waitFor({ state: 'detached' });
-  assert((await copyLine('movie').innerText()).replace(/\s+/g, ' ').includes(`· 1280×720 ${movieBox.word} · 0:01–0:03`), `the video’s card says its copy holds 0:01–0:03 (${(await copyLine('movie').innerText()).replace(/\s+/g, ' ')})`);
+  // Ctrl+Z with the window still open does what it says: the window closes, and the last copy goes.
   await page.keyboard.press('Control+z');
+  await several.waitFor({ state: 'detached' });
   await copyLine('song').waitFor({ state: 'detached' });
+  assert((await copyLine('movie').innerText()).replace(/\s+/g, ' ').includes(`· 1280×720 ${movieBox.word} · 0:01–0:03`), `the video’s card says its copy holds 0:01–0:03 (${(await copyLine('movie').innerText()).replace(/\s+/g, ' ')})`);
   await page.keyboard.press('Control+z');
   await copyLine('movie').waitFor({ state: 'detached' });
   await bigButton.waitFor();
-  assert(true, 'Ctrl+Z twice takes both back, one at a time');
+  assert(true, 'Ctrl+Z twice takes both back, one at a time (the first with the window still open, which closes)');
 
   // A copy of the whole video, at 480p.
   await card('movie').getByRole('button', { name: '🗜 Make smaller…' }).click();
@@ -441,7 +441,13 @@ try {
   );
   await dialog.getByRole('button', { name: 'Make it', exact: true }).click();
   await dialog.locator('[data-shrink-done]').waitFor({ timeout: 120_000 });
-  await close();
+  // Ctrl+Z with the window still open does what its line says: it closes, and the copy goes (Ctrl+Y: back).
+  await page.keyboard.press('Control+z');
+  await dialog.waitFor({ state: 'detached' });
+  await copyLine('song').waitFor({ state: 'detached' });
+  await page.keyboard.press('Control+y');
+  await copyLine('song').waitFor();
+  assert(true, 'Ctrl+Z in the finished window: it closes, and the copy goes; Ctrl+Y puts it back');
   const sound = await copyOf('song');
   assert(
     sound.type === (aac ? 'audio/mp4' : 'audio/ogg') && sound.size < song.length / 5 && Math.abs(sound.meta?.seconds - 20) < 0.5,

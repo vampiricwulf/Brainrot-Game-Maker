@@ -306,9 +306,14 @@ try {
   assert(waited, 'the header’s pill said “(+1 waiting)” while the first was made');
   await toasted('🔄 2 files converted. Ctrl+Z puts the old ones back, one at a time.');
   assert(true, 'one toast for both: “🔄 2 files converted. Ctrl+Z puts the old ones back, one at a time.”');
-  await win.locator('.modal-foot').getByRole('button', { name: 'Close' }).click();
+  // Ctrl+Z with the window still open does what it says: the window closes, and the last one goes back (Ctrl+Y: again).
+  await page.keyboard.press('Control+z');
+  await win.waitFor({ state: 'detached' });
+  await card('two-b.mts').waitFor();
+  await undoKey('Control+y');
   await card('two-a.mp4').waitFor();
   await card('two-b.mp4').waitFor();
+  assert(true, 'Ctrl+Z in the finished window: it closes, and the last file converted is back as it was; Ctrl+Y converts it again');
   const stepsAfter = (await historyRows()).filter((t) => t === 'Repackaged a video as MP4 (nothing lost)').length;
   assert(stepsAfter === stepsBefore + 2, `two History steps (${stepsBefore} → ${stepsAfter})`);
 
