@@ -310,14 +310,32 @@ export function clearDeal(session: Session): void {
   session.deal = null;
 }
 
-/** Everyone dealt in, a part or not, in the players' order (a deal saved before they were kept: those with a part). */
+/**
+ * Everyone dealt in, a part or not, in the players' order (a deal saved before they were kept: those with a part). A
+ * player taken out since stays in it (their part too), so the counts never change as someone leaves: dealtHere lists
+ * those still in the game.
+ */
 export const dealtIn = (d: Pick<DealState, 'hands' | 'in'>): CardTo[] => d.in ?? d.hands.map((h) => h.to);
+
+/** Those dealt in still in the game (the rows to copy from, and who has no phone): one taken out is kept for a restore. */
+export const dealtHere = (d: Pick<DealState, 'hands' | 'in'>, session: Pick<Session, 'players'>): CardTo[] =>
+  dealtIn(d).filter((t) => session.players.some((p) => p.id === t.seat));
 
 /** "Spy ×1, Villager ×4": the parts dealt, counted in the deal's order (never the players' order: that would say who). */
 export function dealCounts(d: Pick<DealState, 'parts' | 'hands'>): string {
   const n = (name: string) => d.hands.filter((h) => h.part === name).length;
   const names = [...new Set([...d.parts, ...[...new Set(d.hands.map((h) => h.part))].sort()])];
   return names.flatMap((name) => (n(name) ? [`${name} ×${n(name)}`] : [])).join(', ');
+}
+
+/**
+ * The deal's count once sent: "✓ seen by 2 of 4", or "Sent to 4". `out` cards are out, `seen` of them opened. One window
+ * counts the deal as dealt, never the cards out (a player taken out takes theirs along: a count that dropped would say
+ * they had a part), and has no seen count when some dealt in have no part (it would tick as one with a part opened it).
+ */
+export function dealSentLine(d: Pick<DealState, 'hands' | 'in'>, out: number, seen: number, dual: boolean): string {
+  const of = dual ? out : d.hands.length;
+  return seen && (dual || d.hands.length === dealtIn(d).length) ? `✓ seen by ${seen} of ${of}` : `Sent to ${of}`;
 }
 
 // ---------- Sending ----------
@@ -395,9 +413,19 @@ export function dealTrial(game: CardGame, d: DealState, until: 'round' | 'host')
   };
 }
 
-/** ↻ Send again: each of the deal's cards out goes again under a new id (a phone that came late gets it). How many went. */
+/**
+ * ↻ Send again: each of the deal's cards out goes again under a new id (a phone that came late gets it), and a player
+ * put back (↩ Restore) gets theirs again: it was taken back with them. How many went.
+ */
 export function sendDealAgain(game: CardGame, session: Session, now = Date.now()): number {
-  return dealOut(game, session).filter((c) => sendCardAgain(game, session, c.id, now)).length;
+  const d = session.deal;
+  const out = dealOut(game, session);
+  const n = out.filter((c) => sendCardAgain(game, session, c.id, now)).length;
+  if (!d?.until || !out.length) return n;
+  const have = new Set(out.flatMap((c) => c.to.map(toKey)));
+  const back = dealCards(game, session, { ...d, hands: d.hands.filter((h) => !have.has(toKey(h.to))) }, d.until, now) ?? [];
+  session.cards = [...(session.cards ?? []), ...back];
+  return n + back.length;
 }
 
 /** A phone's place as the buzzer room says it: its seat, or `seat/member` for a person on a team. */
@@ -447,15 +475,6 @@ export function takeBackDeal(game: CardGame, session: Session): SentCard[] {
   const out = dealOut(game, session);
   for (const c of out) takeBackCard(session, c.id);
   return out;
-}
-
-/** A player taken out: they're out of the deal too (their card is taken back with the others': dropSeatFromCards). */
-export function dropSeatFromDeal(session: Session, seat: Id): void {
-  const d = session.deal;
-  if (!d) return;
-  d.hands = d.hands.filter((h) => h.to.seat !== seat);
-  if (d.in) d.in = d.in.filter((t) => t.seat !== seat);
-  if (!d.hands.length) session.deal = null;
 }
 
 /**

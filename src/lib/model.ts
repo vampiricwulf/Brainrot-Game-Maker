@@ -1166,6 +1166,11 @@ export interface Session {
   /** Event ids undone by Undo, most recent last; cleared by any new score change. */
   redoStack: Id[];
   currentPickerId?: Id;
+  /**
+   * Who picked the open tile (its cards for "whoever picked it"), null: nobody. Kept while it's open: a right answer
+   * moves the picker on. Left out off a tile, and in older saves (then the picker now).
+   */
+  tilePicker?: Id | null;
   /** Player stats (host-defined fields), by player then field. */
   stats?: Record<Id, Record<Id, StatValue>>;
   /** What each player carries. */

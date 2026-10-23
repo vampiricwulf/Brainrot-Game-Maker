@@ -6,7 +6,7 @@
 import { describe, expect, it } from 'vitest';
 import { jeopardyGame } from './testgame';
 import { migrateGame, newImageEl, setSlideText, textSlide, type BoardRound, type CardTo, type DealPreset, type Game, type Session } from './model';
-import { forViewers, migrateSession, newSession, openClue, removePlayer } from './session';
+import { forViewers, migrateSession, newSession, openClue, removePlayer, restorePlayer } from './session';
 import { cardsFullText, cardsLeftOff, dealFullText, hostCards, roomCardsAfter, roomCardsFull, sessionCards } from './buzz';
 import { CARDS_MAX, type CardLate, type PhoneInfo, OLD_FILE_LIMITS } from './buzzproto';
 import { listedCards, quickSlide, sendCard, sentCardId } from './sentcards';
@@ -29,6 +29,8 @@ import {
   dealPhonesLate,
   dealProblem,
   dealReveal,
+  dealSentLine,
+  dealtHere,
   dealtIn,
   dealSetupProblems,
   dealTrial,
@@ -162,10 +164,19 @@ describe('🎭 dealing: random, in the deal’s numbers, never two parts for one
     // Each row copies something: the captain their brief, everyone else a note that they have no part.
     expect(b.copies.filter((c) => c.endsWith('no part for you this time'))).toHaveLength(4);
     expect(b.copies.find((c) => c.includes('You’re the Captain'))).toMatch(/^🤫 For \w+ only \(🎭 Team captain\): You’re the Captain/);
-    // A player taken out (not the captain) goes from the list too.
+    // A player taken out (not the captain) goes from the list, but the counts stay as dealt.
     const gone = ['a', 'b', 'c', 'd', 'e'].find((x) => x !== session.deal!.hands[0].to.seat)!;
     removePlayer(session, gone);
-    expect(dealtIn(session.deal!).map((t) => t.seat)).toEqual(['a', 'b', 'c', 'd', 'e'].filter((x) => x !== gone));
+    expect(dealtHere(session.deal!, session).map((t) => t.seat)).toEqual(['a', 'b', 'c', 'd', 'e'].filter((x) => x !== gone));
+    expect(dealtIn(session.deal!)).toHaveLength(5);
+    expect(dealCounts(session.deal!)).toBe(b.counts);
+    // The captain taken out: the deal stays as it was (it going would say who was captain), and a restore lists them again.
+    const captainSeat = session.deal!.hands[0].to.seat;
+    removePlayer(session, captainSeat);
+    expect(session.deal).not.toBeNull();
+    expect([dealtIn(session.deal!).length, dealCounts(session.deal!)]).toEqual([5, b.counts]);
+    restorePlayer(session, captainSeat);
+    expect(dealtHere(session.deal!, session).map((t) => t.seat)).toContain(captainSeat);
   });
 
   it('says why it can’t deal: too few players, two parts for the rest, nobody, no wheel to draw from', () => {
@@ -513,12 +524,22 @@ describe('📤 sending a deal: only when the host confirms, one card per player,
     expect(text).toMatch(/^🤫 For \w+ only \(🎭 Odd one out\): You’re the Spy\nYou’re the spy!/);
   });
 
-  it('a player taken out: their card and their part go; the others stay', () => {
+  it('a player taken out: their card goes, their part stays; a restore brings it back, and ↻ Send again sends their card', () => {
     const { g, session, h } = dealt();
     sendDeal(g, session, 'host', 1000);
-    removePlayer(session, h[0].to.seat);
-    expect(session.deal!.hands).toHaveLength(5);
+    const spy = h.find((x) => x.part === 'Spy')!;
+    const before = dealCounts(session.deal!);
+    removePlayer(session, spy.to.seat);
+    expect(session.deal!.hands).toHaveLength(6);
+    expect(dealCounts(session.deal!)).toBe(before);
     expect(dealOut(g, session)).toHaveLength(5);
+    expect(dealOut(g, session).some((c) => c.to.some((t) => t.seat === spy.to.seat))).toBe(false);
+    restorePlayer(session, spy.to.seat);
+    expect(session.deal!.hands.find((x) => x.to.seat === spy.to.seat)?.part).toBe('Spy');
+    // Their card was taken back with them: ↻ Send again gives it back (the others' go again too).
+    expect(sendDealAgain(g, session, 2000)).toBe(6);
+    expect(dealOut(g, session)).toHaveLength(6);
+    expect(dealOut(g, session).find((c) => c.to.some((t) => t.seat === spy.to.seat))).toMatchObject({ role: 'Spy', until: 'host' });
   });
 });
 
@@ -536,6 +557,22 @@ describe('one window: the phones that came after the cards went are counted blin
     sendDeal(g, session, 'host', 1000);
     return { g, session, d };
   };
+
+  it('the sent line: a deal that leaves some without a part never ticks “seen” as the captain opens theirs; a player taken out leaves it as dealt', () => {
+    const { d } = captainDeal('a');
+    expect(dealSentLine(d, 1, 0, false)).toBe('Sent to 1');
+    expect(dealSentLine(d, 1, 1, false)).toBe('Sent to 1');
+    // (Two windows: only the host sees it.)
+    expect(dealSentLine(d, 1, 1, true)).toBe('✓ seen by 1 of 1');
+    // Everyone with a part: one window counts who saw theirs, of the deal as dealt (Bob taken out took his card along).
+    const { g, session } = dealt();
+    sendDeal(g, session, 'host', 1000);
+    removePlayer(session, 'b');
+    expect(dealOut(g, session)).toHaveLength(5);
+    expect(dealSentLine(session.deal!, 5, 0, false)).toBe('Sent to 6');
+    expect(dealSentLine(session.deal!, 5, 2, false)).toBe('✓ seen by 2 of 6');
+    expect(dealSentLine(session.deal!, 5, 2, true)).toBe('✓ seen by 2 of 5');
+  });
 
   it('Team captain with no teams: Cat’s phone, coming after the send, counts the same whether she’s captain or not', () => {
     const counts = ['a', 'c'].map((captain) => {

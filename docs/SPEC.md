@@ -415,8 +415,8 @@ The mode isn't saved with the game: it's dual while the audience window is open.
      under ✍ in the editor, one marked ✔ Right), players tap one instead, and ✔ Judge all marks everyone by the right
      choice in one step. The stream shows the choices under the question (the slide drawn smaller over them, the right
      one lit with the answer). Without phone buzzers it plays as a normal clue, the choices still on stream.
-   - *Any tile with 🤫 cards* (PARTNER-CLUES-SPEC.md §12.2): its panel lists them for the picker (a Daily Double's
-     player) with 📤 Send (or 📋 to copy them, or 🪟 to show one in the card window); they go when the tile closes, and
+   - *Any tile with 🤫 cards* (PARTNER-CLUES-SPEC.md §12.2): its panel lists them for whoever picked it (a Daily
+     Double's player; a right answer moving the picker on doesn't change it) with 📤 Send (or 📋 to copy them, or 🪟 to show one in the card window); they go when the tile closes, and
      the stream says "Ann has a private question" on a standard tile.
    - *Wheel clue*: the wheel appears and the host spins, then the outcome is revealed. The question slide is optional,
      so a tile can be purely "spin the punishment wheel" with no question at all.
@@ -505,7 +505,8 @@ The mode isn't saved with the game: it's dual while the audience window is open.
   deal saved with the game (the 🎡 Wheels, Dice & Deals tab) or a ready-made one. Each player gets one part at random (or the host's pick,
   with the audience window open), and a part's card can show a slice of a saved wheel (each their own, or one shared
   by everyone but the odd one out). Nothing goes until 📤 Send, which sends each player's card on its own; ↻ Send again
-  and ✖ Take back work on the whole deal. Only the two-window host column says who got which: one window lists everyone
+  and ✖ Take back work on the whole deal. A player taken out loses their card but keeps their part: the counts stay as
+  dealt, and once they're back (Ctrl+Z, ↩ Restore) ↻ Send again sends their card. Only the two-window host column says who got which: one window lists everyone
   dealt in alike, a part or not (with the phones getting the cards, only those with no phone here, 📵, to copy theirs),
   and counts the phones that came late. **🎭 Who was who** puts the names and parts on stream when the host presses it,
   as an undoable step; a click on it, Esc, opening a tile or the tiebreaker, going to another round, or the Final going

@@ -153,6 +153,25 @@ describe('a tile’s own cards (🤫 Just you, 💡 Insider tip)', () => {
     expect(tileRecipients(session, { to: 'picker' })).toEqual([]);
   });
 
+  it('“whoever picked it” stays the one who picked the tile when a right answer moves the picker on', () => {
+    const { g, session } = setup();
+    openClue(session, REF, g);
+    // (A right answer with the picker following it: Bob picks next.)
+    session.currentPickerId = 'b';
+    expect(tileRecipients(session, { to: 'picker' })).toEqual([{ seat: 'a' }]);
+    expect(tileRecipients(session, { to: 'others' })).toEqual([{ seat: 'b' }, { seat: 'c' }]);
+    backToBoard(session, g);
+    expect(session.tilePicker).toBeUndefined();
+    // A tile opened with nobody picking: nobody, whoever answers.
+    session.currentPickerId = undefined;
+    openClue(session, REF, g);
+    session.currentPickerId = 'c';
+    expect(tileRecipients(session, { to: 'picker' })).toEqual([]);
+    // (A save from before it was kept: the picker now.)
+    delete session.tilePicker;
+    expect(tileRecipients(session, { to: 'picker' })).toEqual([{ seat: 'c' }]);
+  });
+
   it('a card from the tile’s panel lasts until the tile closes; it answers "the answer’s on screen" after Reveal', () => {
     const { g, session, clue, card } = setup();
     openClue(session, REF, g);

@@ -111,6 +111,25 @@ describe('what the card window shows', () => {
     expect(windowCards(g, session, 'b')[0].open).toBe(false);
   });
 
+  it('a partner card shown with 🪟 Show has its part and line, as on a phone; a plain tile’s own card has none', () => {
+    const { g, session, clue, card } = setup();
+    const pc = (g.rounds[0] as BoardRound).categories[1].clues[0];
+    pc.type = 'partner';
+    setPartnerGame(pc, 'describe');
+    setSlideText(pc.cards![0], 'PARTNER-card');
+    openClue(session, { round: 0, cat: 1, row: 0 }, g);
+    setPartner(session, session.partner!, 'b', 'wheel');
+    sendCard(g, session, { to: [{ seat: 'b' }], content: { clue: pc.id, card: pc.cards![0].id }, until: 'tile' }, 500);
+    expect(windowCards(g, session, 'b')[0]).toMatchObject({ text: 'PARTNER-card', role: 'Describer', hint: 'Describe it to Ann: don’t say what’s on it!' });
+    // A standard tile's own card goes the same way: no lines.
+    openClue(session, { round: 0, cat: 0, row: 1 }, g);
+    sendCard(g, session, { to: [{ seat: 'b' }], content: { clue: clue.id, card: card.id }, until: 'tile' }, 600);
+    const plain = windowCards(g, session, 'b')[0];
+    expect(plain.text).toBe('TIP-xyzzy');
+    expect(plain.role).toBeUndefined();
+    expect(plain.hint).toBeUndefined();
+  });
+
   it('a partner clue’s sends and the cards out together, newest first by when each went', () => {
     const { g, session } = setup();
     const pc = (g.rounds[0] as BoardRound).categories[1].clues[0];

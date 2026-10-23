@@ -34,6 +34,10 @@ in plain words for the people who make and host games. Anything committed but no
 - Phones: a player (or team) the host took out of the game and put back (Ctrl+Z, or ↩ Restore in 👥 Players) is told so on their phone (“The host put you back in the game. Tap your name.”), instead of still reading “The host took you out of the game.” A buzzer server you run yourself needs deploying again for this.
 - Screen readers hear how the game ended: who won, “Tie for first: Ann & Bob”, or “Co-winners: Ann & Bob” when you declare them. Before, they heard only “Game over.”
 - The end screen's panel: the tie box and the “… won the tiebreaker” or “Co-winners declared” line no longer sit flush on the buttons under them.
+- 🎭 Deals: taking a player out takes only their card off the phones. Their part stays with the deal, so Ctrl+Z or ↩ Restore brings it back (↻ Send again then sends their card), and the counts on stream (“Dealt to 4: Spy ×1, Villager ×3”, “Sent to 4”) never change as someone leaves. Before, their part was lost for good, the counts dropped (in one window telling viewers what part they had), and taking out the only one with a part put the whole deal away.
+- One window: a deal that leaves some players without a part (🧢 Team captain) says only “Sent to N”, never “✓ seen by 1 of 2”, which ticked as a player with a part opened their card.
+- A tile's card for “whoever picked it” stays with the player who picked the tile. Before, a right answer that moved the picker on moved the card's default with it (and “everyone else” swapped too).
+- 🪟 Card window: a partner clue's card shown with 🪟 Show says the part and what to do (“You're the Describer”, “Describe it to Ann: don't say what's on it!”), as a phone does.
 
 ## 2026-10-23
 

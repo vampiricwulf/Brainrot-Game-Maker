@@ -4,7 +4,7 @@ import { ensureWorld, refindPositions } from './rpg';
 import { ensureBoard, refindSpaces } from './boardgame';
 import { cardSlides, describer, dropFromSends, pairOnly, partnerPlayers, partnerReason, partnerRoles, partnerRules, partnerShares, resetRecipients, startPartner, stealOn, takeBack } from './partner';
 import { dropOverCards, dropSeatFromCards, repairSentCards } from './sentcards';
-import { dealForViewers, dropSeatFromDeal, repairDeal } from './deals';
+import { dealForViewers, repairDeal } from './deals';
 import { categoryLabel, clueValue, FINAL_V1_ROUND_ID, finalName, formatPoints, getClue, isBoard, isBoardGame, isFinal, isRpg, isSlides, MAX_POINTS, newId, playableClues, questionSlides, type BoardRound, type Clue, type ClueRef, type ExtraSlide, type FinalAnswer, type FinalRound, type FinalState, type Game, type Id, type PartnerState, type Player, type Round, type ScoreEvent, type Session, type Slide, type SlidesRound, type TeamMember, type WagerSource } from './model';
 
 export function newSession(game: Game): Session {
@@ -244,9 +244,9 @@ export function removePlayer(session: Session, playerId: string): void {
     // A card sent to them is taken back from them (one sent to others too stays with the others).
     dropFromSends(pt, playerId);
   }
-  // The same for the cards sent with 🤫 Send a card… or from a tile's panel, and a 🎭 deal's.
+  // The same for the cards sent with 🤫 Send a card… or from a tile's panel, and a 🎭 deal's (the deal keeps their part:
+  // a restore brings it back, and its counts never change as someone leaves).
   dropSeatFromCards(session, playerId);
-  dropSeatFromDeal(session, playerId);
   if (f) {
     // Their wager and result stay (nothing reads them while they're out), so a restore brings them back.
     f.players = f.players.filter((x) => x !== playerId);
@@ -307,6 +307,7 @@ export function openClue(session: Session, ref: ClueRef, game?: Game): void {
   session.phase = 'clue';
   const clue = game && getClue(game, ref)?.clue;
   session.dd = clue?.type === 'dailyDouble' ? { stage: 'splash', playerId: session.currentPickerId } : null;
+  session.tilePicker = session.currentPickerId ?? null;
   session.partner = clue?.type === 'partner' ? startPartner(session, clue) : null;
 }
 
@@ -540,6 +541,7 @@ export function backToBoard(session: Session, game: Game, { markUsed = true }: {
   delete session.slide;
   session.revealed = false;
   session.dd = null;
+  delete session.tilePicker;
   session.partner = null;
   session.phase = 'board';
   // (A card sent from the tile's panel lasts until it closes.)
@@ -644,6 +646,7 @@ function enterRound(session: Session, game: Game, index: number): void {
   delete session.slide;
   session.revealed = false;
   session.dd = null;
+  delete session.tilePicker;
   session.partner = null;
   if (session.phase === 'final') stashFinal(session);
   if (index >= game.rounds.length) {
@@ -710,6 +713,7 @@ export function backToLastRound(session: Session, game: Game, index = game.round
   delete session.slide;
   session.revealed = false;
   session.dd = null;
+  delete session.tilePicker;
   session.partner = null;
   if (isFinal(round)) {
     startFinal(session, game, round);
@@ -1306,6 +1310,7 @@ function rebase(session: Session, from: Game, to: Game): void {
     session.currentClue = null;
     session.revealed = false;
     session.dd = null;
+    delete session.tilePicker;
     session.partner = null;
     if (session.phase === 'clue') session.phase = 'board';
   }

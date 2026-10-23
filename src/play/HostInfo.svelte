@@ -159,7 +159,8 @@
   {#if deal}
     <div class="group" data-deal-info>
       <div class="label">🎭 {deal.name} · {dealWhere()}{deal.shown ? ' · Who was who on screen' : ''}</div>
-      {#each deal.hands as h (toKey(h.to))}
+      <!-- (A player taken out keeps their part in the deal, for a restore: not listed while they're out.) -->
+      {#each deal.hands.filter((x) => session.players.some((p) => p.id === x.to.seat)) as h (toKey(h.to))}
         <div class="small"><b>{h.to.member ? `${h.to.member.name} (${ptName(h.to.seat)})` : ptName(h.to.seat)}</b> → {h.part}{h.slice ? ` · ${h.slice}` : ''}{phones && handSeen(h.to) ? ' · ✓ seen' : ''}</div>
       {/each}
     </div>

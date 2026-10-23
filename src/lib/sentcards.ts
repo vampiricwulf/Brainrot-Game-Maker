@@ -251,10 +251,10 @@ export function takeBackCard(session: Session, id: Id): void {
 
 /**
  * Who a tile's card goes to by default on any tile but a partner clue (TILE_GOES_TO): whoever picked it (a Daily
- * Double's player), everyone else, or nobody yet.
+ * Double's player; never whoever answered right since, who picks next), everyone else, or nobody yet.
  */
-export function tileRecipients(session: Pick<Session, 'players' | 'dd' | 'currentPickerId'>, card: Pick<ClueCard, 'to'>): CardTo[] {
-  const who = session.dd ? session.dd.playerId : session.currentPickerId;
+export function tileRecipients(session: Pick<Session, 'players' | 'dd' | 'currentPickerId' | 'tilePicker'>, card: Pick<ClueCard, 'to'>): CardTo[] {
+  const who = session.dd ? session.dd.playerId : session.tilePicker !== undefined ? session.tilePicker : session.currentPickerId;
   if (card.to === 'picker') return session.players.filter((p) => p.id === who).map((p) => ({ seat: p.id }));
   if (card.to === 'others') return session.players.filter((p) => p.id !== who).map((p) => ({ seat: p.id }));
   return [];
