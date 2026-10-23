@@ -392,6 +392,17 @@
     const judge = revealStep.judge;
     if (session.finalStep === 'reveal' && unjudged && judge) {
       const who = byId[judge]?.name ?? '?';
+      // Multiple choice with one marked ✔ Right: a pick that isn't it offers ✘ Wrong first (C still marks it right).
+      const a = rightOne ? typedAnswer(f, judge) : undefined;
+      const named = a ? pickOf(a, choices) : null;
+      if (rightOne && named && named !== rightOne.id)
+        return {
+          label: `✘ ${who} wrong`,
+          key: 'X',
+          title: `X: ${who} is wrong`,
+          run: () => onjudge(judge, false),
+          also: [{ label: '✔ Right', key: 'C', title: `C: ${who} is right`, run: () => onjudge(judge, true) }],
+        };
       return {
         label: `✔ ${who} right`,
         key: 'C',
@@ -530,7 +541,7 @@
           <summary class="muted">One by one: spotlight → show answer → right or wrong (N, C, X)</summary>
           <span class="muted small">
             Click a name here or on the stage to spotlight it. Reorder by dragging ⋮⋮ (or ▲▼, Alt+↑/↓). Keys: N shows their typed
-            answer (or their wager, for a {noun} who answered out loud), C / X judge them (their wager goes up with it), then N
+            answer (or their wager, for a {noun} who answered out loud), C / X judge them (their answer and wager go up with it), then N
             goes to the next {noun} · Shift+N back · 1–9 spotlight · C right · X wrong.
           </span>
         {:else}

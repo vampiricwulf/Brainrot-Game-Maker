@@ -2568,6 +2568,8 @@
     // No wager typed for them: it's asked for (never taken as 0).
     if (!finalJudge(session, game, id, right)) return toast(`Enter ${playerName(session, id)}’s wager first (in their row)`, 4000);
     finalShow(session, id);
+    // Their typed answer goes up with it too (judged before N showed it, it would never reach the stream).
+    if (typedAnswer(session.final, id) && !session.final?.answerShown?.[id]) finalShowAnswer(session, id);
     playCue(app.live, game, right ? 'right' : 'wrong');
     // (Their new total, not ± the wager: with no negative scores a wrong answer can take less.)
     announce(`${playerName(session, id)} ${right ? 'right' : 'wrong'}, now ${formatPoints(score(session, id), sym)}`);

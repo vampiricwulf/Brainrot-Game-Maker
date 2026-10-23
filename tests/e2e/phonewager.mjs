@@ -16,7 +16,7 @@ import { existsSync, mkdirSync, mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { addClassicRounds, mainButton, playWithPlayers, recordSeen, seenWhere, shownOf, startRoomOn } from './helpers.mjs';
+import { addClassicRounds, mainButton, mainLabel, playWithPlayers, recordSeen, seenWhere, shownOf, startRoomOn } from './helpers.mjs';
 
 const file = resolve(process.env.APP_FILE || 'dist/index.html');
 if (!existsSync(file)) throw new Error('Run `npm run build` first');
@@ -495,6 +495,12 @@ try {
   await cy.locator('#wager-state').getByText('wager is in with the host (not shown').waitFor();
   assert((await noneOf(cy, [450])) && (await cy.locator('#wager-in').inputValue()) === '', 'someone who joins a team after the wagers began is told one is in, never the amount');
   await shot('pw-9-late-joiner-phone', cy);
+  // Back on Player 2, he'll pick for it (not the one marked ✔ Right).
+  await cy.locator('#leave').click();
+  await cy.getByRole('button', { name: 'Player 2' }).click();
+  await cy.getByRole('textbox', { name: 'Your name (everyone sees it)' }).fill('Cy');
+  await cy.getByRole('button', { name: 'Join the team' }).click();
+  await cy.locator('#me').getByText('Cy · Player 2').waitFor();
 
   // The reveals, still one window: Player 1's row keeps the phone's amount hidden until the host shows it.
   await rows2.locator('.wrow', { hasText: 'Player 2' }).locator('input[data-wager]').fill('0');
@@ -520,6 +526,8 @@ try {
     head2.includes('1 of 2 in · viewers see this window') && head2.includes('Open the 📺 audience window to read them before they go on screen') && JSON.stringify(chips2) === JSON.stringify(['Player 1 ✔', 'Player 2 …']),
     `one window: Amy taps B for her team, the panel shows “Player 1 ✔” (no letter) and says to open the audience window to read them first (${JSON.stringify(chips2)}; ${head2})`,
   );
+  await cy.locator('#answer-choices .choice').filter({ hasText: CHOICES[2] }).click();
+  await answers2.locator('[data-answer-in]', { hasText: 'Player 2 ✔' }).waitFor();
   /**
    * The host page never showed (nor said) the team's pick: not as “B · …”, nor its words anywhere but the stage's
    * choices under the question (every choice's words are there for all to see). With where, if it did.
@@ -574,15 +582,27 @@ try {
     'the row’s answer: “✍ hidden” (one window) until it’s on screen, and nothing yet of whether it’s right',
   );
   await typedHidden('the reveals, before Show answer');
-  await rev1.getByRole('button', { name: 'Show answer: Player 1' }).click();
+  // C before N showed it: judging puts the answer up too, with the wager (never a blank line under ✔ CORRECT).
+  await host2.keyboard.press('c');
   const spotAnswer = host2.locator('.stage-box .spot-answer');
   await spotAnswer.filter({ hasText: CHOICES[1] }).waitFor();
-  assert((await spotAnswer.locator('.pick-letter').innerText()) === 'B', 'Show answer: the stage’s spotlight has the team’s pick, its letter and its words');
+  assert(
+    (await spotAnswer.locator('.pick-letter').innerText()) === 'B' && (await host2.locator('.stage-box .spot-result').innerText()) === '✔ CORRECT',
+    'C before the answer is up: the stage’s spotlight has the team’s pick (its letter and its words) with ✔ CORRECT',
+  );
   assert(
     (await rev1.locator('[data-typed]').innerText()) === PICKED && (await rev1.locator('[data-pick-hint]').innerText()) === '✔ right choice',
     `and the row: “${PICKED}”, “✔ right choice”`,
   );
   await shot('pw-12-pick-reveal-one-window', host2);
+  // N, N: Player 2's pick (C) goes up; the row says it isn't B, and the main button offers ✘ Wrong first (C still works).
+  await host2.keyboard.press('n');
+  await mainButton(host2).filter({ hasText: 'Show answer ▶' }).waitFor();
+  await host2.keyboard.press('n');
+  await host2.locator('.fj .pl', { hasText: 'Player 2' }).locator('[data-pick-hint]', { hasText: '✘ not B' }).waitFor();
+  const main2 = await mainLabel(host2);
+  const also2 = await host2.locator('.panel [data-next-also]').allInnerTexts();
+  assert(main2 === '✘ Player 2 wrong' && also2.some((t) => t.startsWith('✔ Right')), `a pick that isn't the ✔ Right one: the main button is “${main2}”, ✔ Right beside it`);
 
   assert(errors.length === 0, `no page errors (${errors.join(' | ')})`);
   console.log('Phone wagers E2E passed.');

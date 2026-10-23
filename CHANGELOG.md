@@ -11,6 +11,13 @@ the day it's pushed (Pacific time; start the heading on the day's first push) an
 in plain words for the people who make and host games. Anything committed but not pushed yet goes under
 **Unreleased** at the top, and moves under its day when it's pushed.
 
+## Unreleased
+
+### Fixed
+
+- Final reveals: judging a player (C / X, or ✔ Right / ✘ Wrong in their row or on their plate) before N has put their typed answer on stream puts it up with the verdict and the wager. Before, the stream showed a blank answer line over ✔ CORRECT, and N never showed that answer.
+- Final reveals with multiple choice: when a player's pick isn't the one marked ✔ Right, the main button offers “✘ … wrong” (X), with ✔ Right beside it, instead of “✔ … right”.
+
 ## 2026-10-22
 
 ### Added

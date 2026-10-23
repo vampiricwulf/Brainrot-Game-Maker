@@ -440,7 +440,8 @@ The mode isn't saved with the game: it's dual while the audience window is open.
    one lit with the answer), and each reveal says whether a pick is the one marked ✔ Right.
 3. Answer reveal.
 4. **Per-player reveal**, one at a time in an order the host chooses: a typed answer first (show it, then mark ✔ / ✘,
-   and the wager goes up with the mark), otherwise show the wager, then mark ✔ / ✘; the score animates.
+   and the wager goes up with the mark; judging first puts it up too), otherwise show the wager, then mark ✔ / ✘; the
+   score animates. With multiple choice and one marked ✔ Right, a pick that isn't it makes ✘ the main button's offer.
 5. **Tie check**: if two or more players are tied for first, the host is offered:
    - **Tiebreaker roll-off** between only the tied players (§6.6), or
    - **Tiebreaker clue** (the pre-written `Game.tiebreaker`, if authored). Scored with the normal scoring panel, or
