@@ -140,7 +140,7 @@
       {/if}
       {#if cueHere(app.game, key)}
         <label class="vol small" title="Volume">
-          <input type="range" min="0" max="1" step="0.05" value={vol} oninput={(e) => setVolume(key, +e.currentTarget.value)} aria-label="{label} volume" />
+          <input type="range" min="0" max="1" step="0.05" value={vol} oninput={(e) => setVolume(key, +e.currentTarget.value)} aria-label="{label} volume" aria-valuetext="{Math.round(vol * 100)}%" />
           <span class="pct">{Math.round(vol * 100)}%</span>
         </label>
         <button class="small ghost" onclick={() => preview(key)} title={previewing === key ? 'Stop' : 'Preview'} aria-label="Preview {label}"

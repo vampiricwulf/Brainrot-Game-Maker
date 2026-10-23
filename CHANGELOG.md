@@ -42,6 +42,16 @@ in plain words for the people who make and host games. Anything committed but no
 - A Slides round's “Use this style elsewhere” offers “The other slides in this round” (and the whole game's), not questions and answers it doesn't have.
 - A font uploaded from a text box's ＋ says “Font added and used for this text box”, as it already is, not “pick it from the Font list”.
 - A text box's style buttons wrap by whole groups (B I U AA, left/center/right, top/middle/bottom), so ⤓ no longer sits alone on a second line in the clue editor.
+- Pastel (any light theme): a score below zero is white on its dark red band with a black shadow, as on dark themes. Before, it had a pale copy of itself beside it.
+- The 🎨 Theme page's preview, 📂 Import theme…'s and 🖼 Board images' show the board as the stream does, without the host's ⭐ / 🤝 / ✍ tile badges.
+- Light themes: a 🤝 partner clue's card for a blank question shows its category in the theme's slide text color (it was white on Pastel's pink), and the Starting soon words get the theme's own shadow, not a hard black one.
+- 🎨 Theme previews the board when the round last open was a Slides, RPG or board-game round, so changes to tiles and categories show (it stayed on that round's slide).
+- With a Chroma green or magenta Stage background, Lines around tiles and Background gradient say they don't show, as Used tiles does.
+- 💾 Save to my themes of a theme file with pictures or fonts says how to bring them in (📂 Import the file again and 🎨 Use in this game; using the saved theme doesn't), and ⬇ Export theme says why each file was left out (only big ones are “too big”).
+- ↶ Undo and 🕘 History name theme fonts as the font lists do (“Theme: category font Bebas Neue”, “Theme: value font Pixel Party (uploaded)”), not by their CSS or a file's id.
+- A long saved theme name is cut short with … on the save bar's button instead of running past it, and a copy's suggested name stays different from it (“… 2” within the 60 characters).
+- Screen readers: 📂 Import theme…'s and ⌨ Paste theme code…'s preview is skipped (it read out made-up tiles and players), and 🔊 Sounds' volume sliders say “30%”, not “0.3”.
+- 💾 Save as new theme… says the theme is kept in this browser (on this computer in the desktop app), as the rest of the page does.
 
 ## 2026-10-23
 

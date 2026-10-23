@@ -47,9 +47,9 @@ const isObj = (v: unknown): v is Record<string, unknown> => !!v && typeof v === 
 /** A media id as the app makes them (and nothing that could be more). */
 const isMediaId = (v: unknown): v is string => typeof v === 'string' && /^[\w-]{1,64}$/.test(v);
 
-/** A theme's name: one line, 60 characters at most ('' when there's none). */
+/** A theme's name: one line, 60 characters at most ('' when there's none; a cut never ends in a space). */
 export function themeName(v: unknown): string {
-  return typeof v === 'string' ? Array.from(v.replace(/\s+/g, ' ').trim()).slice(0, 60).join('') : '';
+  return typeof v === 'string' ? Array.from(v.replace(/\s+/g, ' ').trim()).slice(0, 60).join('').trimEnd() : '';
 }
 
 const COLORS = ['tile', 'tileUsed', 'boardGap', 'value', 'boardText', 'scoreBarBg'] as const;
@@ -146,6 +146,14 @@ export async function themeFileText(name: string, theme: Theme, media: readonly 
   if (t.banner && !files.some((f) => f.id === t.banner)) delete t.banner;
   const file = { format: THEME_FORMAT, version: THEME_VERSION, app: 'Brainrot Games Maker', name: themeName(name) || 'My theme', theme: t, media: files, ...(leftOut.length ? { leftOut } : {}) };
   return { text: JSON.stringify(file, null, 1), leftOut };
+}
+
+/**
+ * What an exported theme file left out, each with why: "bg.png (too big), category font (not in this game)". (`notHere`:
+ * files this game hasn't got stored; a font's names its reason in its brackets.)
+ */
+export function leftOutLine(tooBig: readonly string[], notHere: readonly string[]): string {
+  return [...(tooBig.length ? [`${tooBig.join(', ')} (too big)`] : []), ...notHere].join(', ');
 }
 
 // (An SVG, as an uploaded logo can be: the preview shows it as a picture, where it runs nothing, and it's cleaned when

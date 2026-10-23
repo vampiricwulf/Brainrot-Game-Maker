@@ -4,6 +4,7 @@ import {
   CODE_PREFIX,
   findCode,
   KNOWN_KEYS,
+  leftOutLine,
   MAX_EMBED,
   parseThemeCode,
   parseThemeFile,
@@ -97,6 +98,15 @@ describe('theme codes', () => {
     await expect(parseThemeCode(notTheme)).rejects.toThrow(/isn’t a Brainrot theme code/);
     const newer = CODE_PREFIX + b64(await deflateRaw(JSON.stringify({ format: THEME_FORMAT, version: 99, theme: presetTheme('dark') })));
     await expect(parseThemeCode(newer)).rejects.toThrow(/newer version/);
+  });
+});
+
+describe('what an exported theme file left out', () => {
+  it('says why for each file: only the ones over the size are “too big”', () => {
+    expect(leftOutLine(['big.png'], [])).toBe('big.png (too big)');
+    expect(leftOutLine(['big.png', 'huge.jpg'], ['logo.png', 'category font (not in this game)'])).toBe('big.png, huge.jpg (too big), logo.png, category font (not in this game)');
+    expect(leftOutLine([], ['logo.png'])).toBe('logo.png');
+    expect(leftOutLine([], [])).toBe('');
   });
 });
 

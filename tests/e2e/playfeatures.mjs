@@ -70,6 +70,7 @@ try {
   const wrongRow = rows.filter({ has: page.getByRole('button', { name: 'Preview Wrong' }) });
   await page.getByLabel('Wrong volume').fill('0.4');
   assert((await wrongRow.innerText()).includes('40%'), 'a sound’s volume can be turned down (40%)');
+  assert((await page.getByLabel('Wrong volume').getAttribute('aria-valuetext')) === '40%', 'a screen reader hears its volume as the page shows it (40%, not 0.4)');
   await page.getByRole('button', { name: 'Preview Wrong' }).click();
   await page.waitForFunction(() => window.__volumes.some(([s, v]) => s.endsWith('#wrong') && Math.abs(v - 0.4) < 0.01));
   assert(true, 'its preview plays at that volume');
@@ -82,6 +83,12 @@ try {
   await page.getByLabel('Stage background (OBS)').selectOption('green');
   const bg = await page.locator('.preview .board-bg').evaluate((e) => getComputedStyle(e).backgroundColor);
   assert(bg === 'rgb(0, 255, 0)', `the board's background is chroma green (${bg})`);
+  // So the lines around the tiles and the background gradient don't show: both say so, as Used tiles does.
+  const notShown = await page.locator('[data-k="boardGap"], [data-k="bgGradient"]').evaluateAll((els) => els.map((e) => e.textContent.replace(/\s+/g, ' ').trim()));
+  assert(
+    notShown.length === 2 && notShown.every((t) => t.includes('(not shown: Stage background is Chroma green)')),
+    `Lines around tiles and Background gradient say they don't show on a green key (${notShown.join(' / ')})`,
+  );
   // Theme colors close to the key: the page names them.
   const keyNote = page.getByRole('status').filter({ hasText: 'OBS would make these see-through' });
   await page.locator('.preset', { hasText: 'Brainrot Neon' }).click();

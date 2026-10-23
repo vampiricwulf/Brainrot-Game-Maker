@@ -165,6 +165,17 @@ describe('my themes (several, named)', () => {
     expect(freshThemeName(list, 'Fresh')).toBe('Fresh');
   });
 
+  it("a copy of a 60-character name stays as long and different (it was cut back to the same name)", () => {
+    const long = 'Party night with a really long name that keeps going on and on';
+    const first = addMyTheme([], long, presetTheme('neon'))!;
+    expect(first[0].name).toBe('Party night with a really long name that keeps going on and');
+    const copy = freshThemeName(first, long);
+    expect(copy).toBe('Party night with a really long name that keeps going on an 2');
+    const both = addMyTheme(first, copy, presetTheme('neon'))!;
+    expect(new Set(both.map((m) => m.name)).size).toBe(2);
+    expect(Array.from(freshThemeName(both, long)).length).toBeLessThanOrEqual(60);
+  });
+
   it('a saved theme brings its own looks, or takes the game’s off', () => {
     const game = { ...presetTheme('classic'), tilePattern: 'rows' as const, tile2: '#111111', leaderGlow: true };
     const plain = withMyTheme(game, presetTheme('dark'));

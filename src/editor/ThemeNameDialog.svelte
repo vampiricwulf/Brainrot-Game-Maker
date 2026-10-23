@@ -1,12 +1,13 @@
 <!-- A saved theme's name: asked when saving one (💾 Save as new theme…) or renaming it. -->
 <script lang="ts">
   import { modal } from '../lib/modal';
+  import { inTauri } from '../lib/platform';
 
   let {
     title,
     value = '',
     ok,
-    note = 'Kept on this computer, for any game: its colors, fonts and layout (pictures stay with their game).',
+    note = `Kept ${inTauri() ? 'on this computer' : 'in this browser'}, for any game: its colors, fonts and layout (pictures stay with their game).`,
     onname,
   }: {
     title: string;

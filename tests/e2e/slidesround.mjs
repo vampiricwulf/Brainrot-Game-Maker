@@ -77,6 +77,10 @@ try {
   await page.keyboard.press('Escape');
   await nameBox.fill('Jeopardy!');
   await page.locator('nav > button.round-tab', { hasText: 'Introduction' }).click();
+  // 🎨 Theme opened from here previews the board (its looks are most of the page), not this round's slide.
+  await page.getByRole('button', { name: '🎨 Theme' }).click();
+  const boardShown = await page.locator('.preview .board').waitFor({ timeout: 5000 }).then(() => true, () => false);
+  assert(boardShown, '🎨 Theme opened from a Slides round previews the first board');
   // A Final's line goes to the side with nothing on it (here its answer), from another round.
   await page.locator('nav > button.round-tab', { hasText: 'Final' }).click();
   await page.locator('main [data-field="q"]').fill('The final question');

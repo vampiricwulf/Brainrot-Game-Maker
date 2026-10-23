@@ -96,12 +96,18 @@ export function deleteMyTheme(list: readonly MyTheme[], id: string): MyTheme[] |
   return storeMyThemes(next) ? next : null;
 }
 
-/** A name for a new saved theme that none has yet: `base`, else "base 2", "base 3"… */
+/**
+ * A name for a new saved theme that none has yet: `base`, else "base 2", "base 3"… (a long base cut short to make room,
+ * so the number stays within a name's 60 characters).
+ */
 export function freshThemeName(list: readonly MyTheme[], base: string): string {
   const name = themeName(base) || 'My theme';
   const taken = new Set(list.map((m) => m.name.toLowerCase()));
   if (!taken.has(name.toLowerCase())) return name;
-  for (let n = 2; ; n++) if (!taken.has(`${name} ${n}`.toLowerCase())) return `${name} ${n}`;
+  for (let n = 2; ; n++) {
+    const next = `${Array.from(name).slice(0, 60 - ` ${n}`.length).join('').trimEnd()} ${n}`;
+    if (!taken.has(next.toLowerCase())) return next;
+  }
 }
 
 /**

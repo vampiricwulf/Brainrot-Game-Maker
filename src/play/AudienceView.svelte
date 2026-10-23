@@ -65,7 +65,10 @@
     live: Live;
     /** single: one-window mode · mirror: host's copy in dual mode (muted) · audience: the stream window */
     role?: MediaRole;
-    /** An editor's preview (🎨 Theme, 🖼 Board images): its media keeps out of where a game left mid-clue had its own. */
+    /**
+     * An editor's preview (🎨 Theme, 🖼 Board images): its media keeps out of where a game left mid-clue had its own, and
+     * its board shows no host marks (it's how the stream looks).
+     */
     demo?: boolean;
     onpick?: (ref: ClueRef, byKey?: boolean) => void;
     /** Host only: a tile was right-clicked (its menu: open it, skip it, put it back). */
@@ -506,8 +509,9 @@
         onclick={() => session.intro && act('intro')}
         role="presentation"
       >
-        <!-- (The host's own board with the audience window open marks its Daily Doubles, 🤝 and ✍ tiles.) -->
-        <Board {game} {session} {onpick} {ontilemenu} hostMarks={role === 'mirror'} />
+        <!-- (The host's own board with the audience window open marks its Daily Doubles, 🤝 and ✍ tiles. The editor's
+             previews show the board as viewers see it: no marks.) -->
+        <Board {game} {session} {onpick} {ontilemenu} hostMarks={role === 'mirror' && !demo} />
       </div>
       {#if layout.score}
         <div class="score-area bar-{bar}" style:top="{layout.score.top}px" style:height="{layout.score.height}px">
@@ -1343,13 +1347,15 @@
     color: var(--stage-text, #fff);
     text-align: center;
     padding: 0 60px;
-    text-shadow: 5px 5px 0 #000;
+    /* (The theme's shadow under its stage text: a light theme's dark words get a light one.) */
+    text-shadow: 5px 5px 0 var(--tile-shadow, #000);
   }
   .soon-count {
     font-family: var(--value-font);
     font-size: 110px;
     color: var(--value);
     font-variant-numeric: tabular-nums;
+    text-shadow: 5px 5px 0 #000;
   }
   .dd {
     display: grid;
@@ -1478,9 +1484,10 @@
     font-family: var(--board-font);
     font-size: 60px;
     font-weight: 800;
-    color: #fff;
+    /* (The theme's stage text, as a slide's: white on pink read poorly on Pastel.) */
+    color: var(--stage-text, #fff);
     text-transform: uppercase;
-    text-shadow: 4px 4px 0 #000;
+    text-shadow: 4px 4px 0 var(--tile-shadow, #000);
   }
   /* (Smaller than the Daily Double's: it stays clear of "Ann is answering" in the middle of the top band.) */
   .private-badge {

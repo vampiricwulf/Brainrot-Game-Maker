@@ -13,10 +13,10 @@
   import { referenceLook, themeOrigin } from '../lib/themesource';
   import { copyText } from '../play/standings';
   import { untrack } from 'svelte';
-  import { fontChoices, uploadedFamily } from '../lib/fonts';
+  import { fontChoices, fontLabel, uploadedFamily } from '../lib/fonts';
   import { imgFallback, mediaUrls } from '../lib/media.svelte';
   import { newLive } from '../lib/live';
-  import { isBoard, newRound, roundName } from '../lib/model';
+  import { isBoard, isFinal, newRound, roundName } from '../lib/model';
   import { ROUND_MODES } from '../lib/modes';
   import { FACTORY_COLOR, FACTORY_FONT, setClueText } from '../lib/cluetext';
   import {
@@ -43,8 +43,8 @@
   import { themeDemo } from './themedemo';
 
   /**
-   * `round`: the round last open in the editor, which the preview starts on. `incoming`: a theme file opened or dropped
-   * on the editor, to show first (taken, it goes back to null).
+   * `round`: the round last open in the editor, which the preview starts on when it's a board or a Final (else the first
+   * board). `incoming`: a theme file opened or dropped on the editor, to show first (taken, it goes back to null).
    */
   let { round: lastRound, incoming = $bindable(null) }: { round?: number; incoming?: SharedTheme | null } = $props();
   const game = $derived(app.game);
@@ -55,12 +55,20 @@
   /** A font file put on the category names or the values (listed in every font box from then on). */
   const useFont = (k: 'boardFont' | 'valueFont', id: string) => set(k, `'${uploadedFamily(id)}', sans-serif`);
 
-  // The preview shows one of the game's rounds as it plays (the one last open, else the first), or a clue; a sample
-  // board while the game has no rounds (not added to the game).
+  // The preview shows one of the game's rounds as it plays (the one last open when it's a board or a Final, else the
+  // first board: the page is mostly the board's looks), or a clue; a sample board while the game has no rounds (not
+  // added to the game).
   const sample = newRound('Jeopardy!', 6);
   const shown = $derived(game.rounds.length ? game : { ...game, rounds: [sample] });
   /** A round's index, or 'clue': the first board's first clue, open. */
-  let previewing = $state<number | 'clue'>(untrack(() => (lastRound !== undefined && lastRound < app.game.rounds.length ? lastRound : 0)));
+  let previewing = $state<number | 'clue'>(
+    untrack(() => {
+      const rounds = app.game.rounds;
+      const last = lastRound !== undefined && lastRound < rounds.length ? lastRound : 0;
+      const board = rounds.findIndex(isBoard);
+      return isBoard(rounds[last]) || isFinal(rounds[last]) || board < 0 ? last : board;
+    }),
+  );
   const firstBoard = $derived(shown.rounds.findIndex(isBoard));
   const view = $derived(previewing === 'clue' ? (firstBoard >= 0 ? 'clue' : 0) : Math.min(previewing, shown.rounds.length - 1));
 
@@ -73,7 +81,7 @@
    */
   function clueText(key: 'font' | 'color', to: string | undefined): void {
     const what = key === 'font' ? 'font' : 'color';
-    step(`Clue text ${what}: ${to ? (key === 'font' ? to.split(',')[0].replace(/'/g, '') : to) : 'each clue’s own'}`, () => setClueText(game, key, to), { notify: true, place: { tab: 'theme' } });
+    step(`Clue text ${what}: ${to ? (key === 'font' ? fontLabel(game, to) : to) : 'each clue’s own'}`, () => setClueText(game, key, to), { notify: true, place: { tab: 'theme' } });
   }
   const live = newLive();
 
@@ -88,6 +96,8 @@
   const keyed = $derived(keyedThemeColors(t));
   // (Not one that would take out the board games' or RPG screens' own colors.)
   const otherKey = $derived(otherStageKey(t, roundStageColors(game).map(([, c]) => c)));
+  /** A chroma key fills the board's background (no picture over it): its line color and gradient don't show. */
+  const keyedStage = $derived(!!t.stageBg && !t.boardImage);
 
   const COLORS: [keyof typeof t, string][] = [
     ['tile', 'Tiles & slide background'],
@@ -237,11 +247,17 @@
     <summary>Colors</summary>
     <div class="grid">
       {#each COLORS as [key, label]}
-        {@const unused = key === 'tileUsed' && t.usedLook ? (t.usedLook === 'dim' ? 'Dimmed' : 'Hidden') : ''}
-        <!-- (A note when Played tiles doesn't show the used-tile color: it can still be set, for later.) -->
-        <label class="check" data-k={key} data-color title={unused ? `Not shown while Played tiles (in Tiles) is ${unused}` : undefined}>
+        <!-- (A note when the color doesn't show: Played tiles hides the used-tile color, a chroma key fills the lines
+             around the tiles. It can still be set, for later.) -->
+        {@const unused =
+          key === 'tileUsed' && t.usedLook
+            ? ['Played tiles', 'Tiles', t.usedLook === 'dim' ? 'Dimmed' : 'Hidden']
+            : key === 'boardGap' && keyedStage
+              ? ['Stage background', 'Board', `Chroma ${t.stageBg}`]
+              : null}
+        <label class="check" data-k={key} data-color title={unused ? `Not shown while ${unused[0]} (in ${unused[1]}) is ${unused[2]}` : undefined}>
           <input type="color" value={hex(key === 'stageText' ? stageText(t) : (t[key] as string), '#000000')} oninput={(e) => ((t as unknown as Record<string, string>)[key] = e.currentTarget.value)} />
-          {#if unused}<span>{label} <span class="hint">(not shown: Played tiles is {unused})</span></span>{:else}{label}{/if}
+          {#if unused}<span>{label} <span class="hint">(not shown: {unused[0]} is {unused[2]})</span></span>{:else}{label}{/if}
         </label>
       {/each}
       <label class="check" data-k="glow" data-color>
@@ -385,9 +401,15 @@
         Space between tiles ({lookNumber(t, 'tileGap')})
         <input type="range" min={LOOK_RANGES.tileGap.min} max={LOOK_RANGES.tileGap.max} step="1" value={lookNumber(t, 'tileGap')} oninput={(e) => setNumber('tileGap', +e.currentTarget.value)} />
       </label>
-      <label class="check" data-k="bgGradient" data-color title="The board's background fades from the line color (in Colors) to this one">
+      <label
+        class="check"
+        data-k="bgGradient"
+        data-color
+        title={keyedStage ? `Not shown while Stage background is Chroma ${t.stageBg}` : "The board's background fades from the line color (in Colors) to this one"}
+      >
         <input type="checkbox" checked={!!t.bgGradient} onchange={(e) => switchColor('bgGradient', e.currentTarget.checked, near(t.boardGap), undefined)} />
         Background gradient
+        {#if keyedStage}<span class="hint">(not shown: Stage background is Chroma {t.stageBg})</span>{/if}
         {#if t.bgGradient}<input type="color" value={hex(t.bgGradient, '#000000')} oninput={(e) => set('bgGradient', e.currentTarget.value)} aria-label="Background gradient color" />{/if}
       </label>
       {#if t.bgGradient}

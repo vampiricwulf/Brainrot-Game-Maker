@@ -37,6 +37,11 @@ export function fontChoices(game: Game): FontChoice[] {
   return [...BUNDLED_FONTS, ...uploaded];
 }
 
+/** A font as the font lists name it ("Bebas Neue", "Pixel Party (uploaded)"), else its first family. */
+export function fontLabel(game: Game, css: string): string {
+  return fontChoices(game).find((f) => f.css === css)?.label ?? css.split(',')[0].replace(/['"]/g, '').trim();
+}
+
 /** The fonts each document has, by media id, with the file they came from (a file replaced is loaded again). */
 const registered = new WeakMap<Document, Map<string, { blob: Blob; face: FontFace }>>();
 

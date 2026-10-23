@@ -27,7 +27,7 @@
   } from '../lib/mytheme';
   import { storeThemeFiles, renameThemeFiles, withShared } from '../lib/themeapply';
   import { setTheme } from '../lib/cluetext';
-  import { parseThemeFile, THEME_EXT, THEME_FILES, themeCode, themeFileText, ThemeError, type SharedTheme, type ThemeMediaFile } from '../lib/themefile';
+  import { leftOutLine, parseThemeFile, THEME_EXT, THEME_FILES, themeCode, themeFileText, ThemeError, type SharedTheme, type ThemeMediaFile } from '../lib/themefile';
   import { clone } from '../lib/ops';
   import { addMedia, sameContent } from '../lib/roundcopy';
   import { copyText } from '../play/standings';
@@ -197,8 +197,8 @@
       const { text, leftOut } = await themeFileText(name, theme, media);
       const filename = `${safeFilename(name)}${THEME_EXT}`;
       const saved = await saveFile(filename, new Blob([text], { type: 'application/json' }));
-      const out = [...leftOut, ...notHere];
-      toast(`${savedWhere(saved, filename)}${out.length ? ` (left out: ${out.join(', ')}${leftOut.length ? ', too big' : ''})` : ''}`);
+      const out = leftOutLine(leftOut, notHere);
+      toast(`${savedWhere(saved, filename)}${out ? ` (left out: ${out})` : ''}`);
     } catch (e) {
       void tell(`The theme couldn’t be saved: ${(e as Error).message}`);
     }
@@ -295,7 +295,7 @@
     const next = addMyTheme(list, freshThemeName(list, s.name), s.theme);
     if (!next) return void toast(NOT_STORED);
     list = next;
-    toast(`Saved “${next[next.length - 1].name}” to My themes${s.media.length ? ' (without its pictures and fonts’ files: use it in a game to bring those in)' : ''}`);
+    toast(`Saved “${next[next.length - 1].name}” to My themes${s.media.length ? ' (without its pictures and fonts: to bring those in, 📂 Import the file again and 🎨 Use in this game)' : ''}`);
   }
 
   async function fromGame(): Promise<void> {
@@ -472,6 +472,14 @@
     display: flex;
     flex-wrap: wrap;
     gap: 6px;
+    min-width: 0;
+    max-width: 100%;
+  }
+  /* A long theme name is cut short with … (the button's title has it whole). */
+  .acts button {
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
   .savebar .hint {
     flex-basis: 100%;

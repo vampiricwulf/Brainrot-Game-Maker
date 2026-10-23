@@ -221,6 +221,8 @@
   /* Below zero: white on a dark red band (red text on the tile's blue read too faintly on a 720p stream). */
   .score.neg {
     color: #fff;
+    /* (The band is always dark: a black shadow, even on light themes.) */
+    text-shadow: 4px 4px 0 #000;
     background: color-mix(in srgb, var(--stage-bad, #ff6b6b) 42%, #000);
     border-radius: 0 0 max(0px, calc(var(--plate-radius, 14px) - 4px)) max(0px, calc(var(--plate-radius, 14px) - 4px));
   }

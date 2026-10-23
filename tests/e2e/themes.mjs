@@ -4,7 +4,7 @@
 // Which card is chosen (the saved theme put on, not the preset it was made from), Save changes to a saved theme (never
 // to a preset), and the right-click menus (and Shift+F10) on the cards and the settings.
 import { chromium } from 'playwright-core';
-import { existsSync, mkdirSync, readFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { addClassicRounds, answerReplace, exportHtml, openGameFile, playWithPlayers, png } from './helpers.mjs';
@@ -53,7 +53,12 @@ async function openSection(name) {
 try {
   await page.goto(pathToFileURL(file).href);
   await addClassicRounds(page);
+  // A Daily Double placed: the preview shows the board as viewers see it, without the host's ⭐ in its corner.
+  await page.locator('.grid .tile').nth(2 * (await page.locator('.cat').count())).click({ button: 'right' });
+  await page.getByRole('menu').getByRole('menuitem', { name: /Make it a Daily Double/ }).click();
   await themePage();
+  await preview.locator('.board .tile').first().waitFor();
+  assert((await preview.locator('.board .tile.host-mark').count()) === 0, 'the Theme page’s preview has no host-only tile badges (a Daily Double is placed)');
 
   // ---------- A plain game looks as it always did ----------
   // (Row 1: the preview plays every other category's first tile.)
@@ -171,9 +176,16 @@ try {
   // ---------- 💾 Save as new theme… ----------
   await page.getByRole('button', { name: '💾 Save as new theme…' }).click();
   const naming = page.getByRole('dialog', { name: '💾 Save as new theme' });
-  await naming.getByLabel('Theme name').fill('Checker party');
+  assert((await naming.innerText()).includes('Kept in this browser, for any game'), 'the name window says where it’s kept: in this browser (it said “on this computer”)');
+  // (A name as long as names go: the bar's button cuts it short with …, inside the bar.)
+  await naming.getByLabel('Theme name').fill('Checker party with a really long name that keeps going on and on');
   await naming.getByRole('button', { name: 'Save', exact: true }).click();
   await card('Checker party').waitFor();
+  const barFit = await savebar.evaluate((bar) => {
+    const right = bar.getBoundingClientRect().right;
+    return [...bar.querySelectorAll('button')].map((b) => Math.round(right - b.getBoundingClientRect().right));
+  });
+  assert(barFit.length === 2 && barFit.every((gap) => gap >= 0), `a long theme name's Save changes button stays inside the bar (room left: ${barFit.join(', ')} px)`);
   assert(await card('Checker party').locator('.use').evaluate((b) => b.getAttribute('aria-pressed') === 'true'), 'a saved theme shows in My themes, marked as the one this game looks like');
   assert((await card('Checker party').locator('.tag').innerText()) === '★', 'marked as yours');
   assert((await classic.getAttribute('aria-pressed')) === 'false' && !(await classic.innerText()).includes('edited'), 'and the game’s theme is that one now, not an edited Classic');
@@ -301,6 +313,10 @@ try {
   const imported = page.getByRole('dialog', { name: /Theme “Checkers”/ });
   await imported.waitFor();
   assert((await bg(imported, 1, 0)) === RED, 'importing a theme file previews it on this game’s board first');
+  assert(
+    await imported.locator('.preview').evaluate((e) => e.getAttribute('aria-hidden') === 'true' && e.inert),
+    'its preview is a picture only: screen readers skip its made-up tiles and players',
+  );
   await shot('2-import-preview');
   await imported.getByRole('button', { name: '🎨 Use in this game' }).click();
   assert((await bg(preview, 1, 0)) === RED, 'Use in this game puts it on the game');
@@ -370,6 +386,18 @@ try {
   await ask.getByRole('button', { name: 'Delete' }).click();
   await card('Checkers 2').waitFor({ state: 'detached' });
   assert((await page.locator('.mine .card').count()) === 1, 'Delete… asks, then takes it off the list');
+  // A file with a picture, saved to My themes: the note says how to bring the picture in (using the saved theme doesn't).
+  const withBanner = { ...JSON.parse(themeText), name: 'Banner show' };
+  withBanner.media = [{ id: 'm_banner1', name: 'banner.png', mime: 'image/png', kind: 'image', data: png(255, 140, 0, 160, 16).toString('base64') }];
+  withBanner.theme = { ...withBanner.theme, banner: 'm_banner1' };
+  const bannerPath = resolve('test-results/themes-banner.brainrot-theme');
+  writeFileSync(bannerPath, JSON.stringify(withBanner));
+  const [bannerChooser] = await Promise.all([page.waitForEvent('filechooser'), page.getByRole('button', { name: '📂 Import theme…' }).click()]);
+  await bannerChooser.setFiles(bannerPath);
+  await page.getByRole('dialog', { name: /Theme “Banner show”/ }).getByRole('button', { name: '💾 Save to my themes' }).click();
+  await card('Banner show').waitFor();
+  const bannerSaved = await page.locator('.toast', { hasText: 'Saved “Banner show”' }).innerText();
+  assert(bannerSaved.includes('📂 Import the file again and 🎨 Use in this game'), `saving a theme file with a picture says how to bring it in (${bannerSaved})`);
 
   // ---------- An exported HTML file ----------
   const html = await exportHtml(page, 'Theme test');
@@ -420,6 +448,11 @@ try {
   await soon.waitForFunction((c) => getComputedStyle(document.querySelector('.soon .round-name')).color === c, PASTEL_VALUE, { timeout: 10000 }).catch(() => {});
   const soonColor = await soonTitle.evaluate((e) => getComputedStyle(e).color);
   assert(soonColor === PASTEL_VALUE, `a theme put on in the editor shows on the audience window’s Starting soon card (${soonColor})`);
+  // Pastel's dark words on the card get its light shadow (a hard black one doubled them), and a score below zero (Jordan's,
+  // in the Theme page's preview) a black one on its dark red band (it had a pale copy of itself).
+  const soonShadow = await soon.locator('.soon-text').evaluate((e) => getComputedStyle(e).textShadow);
+  const negShadow = await host.locator('.preview .score.neg').first().evaluate((e) => getComputedStyle(e).textShadow);
+  assert(soonShadow.startsWith('rgba(255, 255, 255, 0.75)') && negShadow.startsWith('rgb(0, 0, 0)'), `on Pastel: the Starting soon words' shadow is light (${soonShadow}), a score below zero's black (${negShadow})`);
   // A wide banner: on the card too, and its thumbnail leaves Change… and ✕ in the settings column (not under the preview).
   const bannerRow = host.locator('.row.pop', { hasText: 'Banner above the board' });
   const wide = await host.evaluateHandle((b64) => {

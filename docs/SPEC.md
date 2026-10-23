@@ -343,8 +343,8 @@ RollEvent  { id, ts, source: 'wheel' | 'dice', presetName?, result: string /* la
   - Images can be dropped straight onto categories and tiles in the round grid. On a tile it asks where they go: in the
     question (the default) or as the tile's face. Several files fill the next ones.
 
-- **My themes and sharing**: a theme can be saved on this computer under a name (colors, fonts and layout; not the
-  pictures) and put on any game, exported as a small `.brainrot-theme` file (with its pictures and uploaded fonts) or
+- **My themes and sharing**: a theme can be saved in this browser (on this computer in the desktop app) under a name
+  (colors, fonts and layout; not the pictures) and put on any game, exported as a small `.brainrot-theme` file (with its pictures and uploaded fonts) or
   copied as a short text code (`BRT1:…`). An imported theme is shown on the game's own board before it's used or kept.
 
 ### 5.8 Save / load / export
@@ -374,7 +374,8 @@ The mode isn't saved with the game: it's dual while the audience window is open.
 - **Dual window** (📺 Separate audience window)
   - *Host window*: board, host-only info (answer preview, host notes, clue value, and type indicator,
     including Daily Doubles before they are revealed: the host's board marks a Daily Double, 🤝 partner or ✍ tile still
-    to play with ⭐, 🤝 or ✍ in its corner, never in one window), scoring panel, media controls, timer controls, and tools.
+    to play with ⭐, 🤝 or ✍ in its corner, never in one window nor in the editor's previews of the board), scoring
+    panel, media controls, timer controls, and tools.
   - *Audience window*: opened with a button. Clean, full-screen friendly, no controls, and never shows answers until the
     host reveals them. Meant to be captured in OBS (window capture). It mirrors state via `postMessage`.
   - Media plays in the **audience window** so that OBS picks up its audio. The host window shows controls and a muted mirror/progress.

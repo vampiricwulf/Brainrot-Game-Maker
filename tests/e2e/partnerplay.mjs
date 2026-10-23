@@ -55,7 +55,8 @@ const game = {
   players: ['Ann', 'Bob', 'Cat', 'Dan'].map((name, i) => ({ id: `p${i + 1}`, name, color: ['#e6194b', '#3cb44b', '#4363d8', '#f58231'][i] })),
   rounds: [{ id: 'r1', name: 'Round 1', mode: 'board', values, dailyDoubleCount: 0, categories: ['Movies', 'Songs'].map((title, c) => ({ id: `cat${c}`, title, clues: values.map((_, r) => clue(c, r)) })) }],
   media: [{ id: 'm_z', name: PIC, mime: 'image/png', size: 0, kind: 'image', url: 'https://example.invalid/zorbulon-secret.png' }],
-  audio: {}, wheels: [], dice: [], theme: {},
+  // (Its own text color on slides and scores: the blank question's card follows it.)
+  audio: {}, wheels: [], dice: [], theme: { stageText: '#ffe066' },
 };
 const gameFile = resolve('test-results/partner-play.json');
 writeFileSync(gameFile, JSON.stringify(game));
@@ -201,6 +202,8 @@ try {
   assert(!(await stage('.timer').count()), 'the question is up, and no countdown runs');
   const card = (await stage('[data-partner-card]').innerText()).replace(/\s+/g, ' ');
   assert(card.includes('Describe it!') && card.includes('Ann') && card.includes('Dan') && card.includes('MOVIES'), `a blank question shows a card of its own: the game, the two, the category (${card})`);
+  const catColor = await stage('[data-partner-card] .pc-cat').evaluate((e) => getComputedStyle(e).color);
+  assert(catColor === 'rgb(255, 224, 102)', `its category is in the theme's text color, as a slide's text is (it was always white, faint on a light theme) (${catColor})`);
   assert((await mainLabel(page)) === '👁 Reveal answer', 'with no cards to hand out, the question is all: the answer is next');
   await page.keyboard.press('Escape');
 

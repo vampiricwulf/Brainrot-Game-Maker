@@ -258,6 +258,13 @@ describe('step labels', () => {
     expect(step((g) => ((g.theme.tile = '#123456'), (g.theme.boardText = '#abcdef'))).label).toBe('Theme: tile color, category name color');
     // The new value, in words.
     expect(step((g) => (g.theme.stageBg = 'green')).label).toBe('Theme: stage background chroma green');
+    // Fonts as the font lists name them (not a CSS list, nor an uploaded file's id).
+    expect(step((g) => (g.theme.boardFont = "'Bebas Neue', Impact, sans-serif")).label).toBe('Theme: category font Bebas Neue');
+    const withFont = sample();
+    withFont.media.push({ id: '6decd06d-aaaa', name: 'Pixel Party.woff2', mime: 'font/woff2', size: 10, kind: 'font' });
+    const pixel = structuredClone(withFont);
+    pixel.theme.valueFont = "'jb-6decd06d', sans-serif";
+    expect(describeStep(diff(withFont, pixel), withFont, pixel).label).toBe('Theme: value font Pixel Party (uploaded)');
     expect(step((g) => (g.theme.scoreBar = 'top')).label).toBe('Theme: score bar top');
     const file = step((g) => g.media.push({ id: 'm2', name: 'clip.mp4', mime: 'video/mp4', size: 1, kind: 'video' }));
     expect(file).toMatchObject({ label: 'Added file “clip.mp4”', icon: '🎬', place: { tab: 'media', media: 'm2' } });

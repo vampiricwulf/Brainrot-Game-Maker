@@ -10,6 +10,7 @@ import { OBJECT_CLASSES } from './rpg';
 import { PRESETS, type ThemePreset } from './theme';
 import { cueName, hasBuiltin, type CueKey } from './sounds';
 import { letter } from './choices';
+import { fontLabel } from './fonts';
 
 export type Side = 'q' | 'a';
 /** A board clue's or a Final's tabs: a question slide, the answer, or one of its 🤫 cards (its id in `slide`). */
@@ -919,7 +920,9 @@ function labelOf(ops: readonly Op[], op: Op, at: At, moved: string[], alike: num
   if (top === 'theme') {
     const preset = sets.find((o) => o.k === 'preset' && o.p.length === 1);
     if (preset) return `Theme preset: ${PRESETS[preset.a as ThemePreset]?.label ?? preset.a}`;
-    if (ops.length === 1 && op.p.length === 1) return `Theme: ${themeField(k)}${themeValue(k, v)}`;
+    // (A font as the font lists name it: not its CSS, nor an uploaded file's id.)
+    const font = (k === 'boardFont' || k === 'valueFont' || k === 'clueFont') && typeof v === 'string' && v ? ` ${fontLabel(after, v)}` : null;
+    if (ops.length === 1 && op.p.length === 1) return `Theme: ${themeField(k)}${font ?? themeValue(k, v)}`;
     // Several theme settings at once: which ones (the first three).
     const names = [...new Set(sets.filter((o) => o.p[0] === 'theme').map((o) => themeField(o.p.length === 1 ? o.k : o.p[1])))];
     return names.length && names.length <= 3 ? `Theme: ${names.join(', ')}` : 'Changed the theme';
