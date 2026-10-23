@@ -78,8 +78,8 @@ describe('clue import: onto a board', () => {
     Object.assign(round.categories[0].clues[0], { type: 'wheel', wheelId: 'w1' });
     const plan = planImport(round, cluesFromTable(parseTable(table)), 'fill');
     const geo = plan.round.categories[0].clues;
-    // (Its $200 row isn't free: the column goes on top down, in value order.)
-    expect([geo[0].type, slideText(geo[0].questionSlide), slideText(geo[1].questionSlide), slideText(geo[2].questionSlide), plan.placed]).toEqual(['wheel', '', 'G1', 'G2', 3]);
+    // (Its $200 row isn't free: G2 keeps its own row, and G1 goes on the next free one.)
+    expect([geo[0].type, slideText(geo[0].questionSlide), slideText(geo[1].questionSlide), slideText(geo[2].questionSlide), plan.placed]).toEqual(['wheel', '', 'G2', 'G1', 3]);
     const replaced = planImport(round, cluesFromTable(parseTable(table)), 'replace').round.categories[0].clues[0];
     expect([replaced.type, replaced.wheelId, slideText(replaced.questionSlide)]).toEqual(['standard', undefined, 'G1']);
   });
@@ -122,6 +122,15 @@ describe('clue import: onto a board', () => {
     expect(used.values).toEqual([200, 400, 600, 800, 1000]);
     expect([0, 1, 2, 3, 4].map((r) => used.categories[1].clues[r].value)).toEqual([100, 200, 300, 400, 500]);
     expect(q(used, 1, 1)).toBe('History 200');
+    // The sheet's values are the rows': one tile written by hand leaves the others on their own rows, and its clue left out.
+    const mine = newRound('R', 6);
+    mine.categories[0].title = 'Science';
+    setSlideText(mine.categories[0].clues[0].questionSlide, 'Mine');
+    const own = [200, 400, 600, 800, 1000].map((v) => `Science,${v},q${v},a`).join('\n');
+    const plan = planImport(mine, cluesFromTable(parseTable(own)), 'fill');
+    applyPlan(mine, plan);
+    expect([0, 1, 2, 3, 4].map((r) => q(mine, 0, r))).toEqual(['Mine', 'q400', 'q600', 'q800', 'q1000']);
+    expect([mine.categories[0].clues.every((cl) => cl.value === null), plan.left]).toEqual([true, 1]);
     // Fewer values than rows: the rows stay as they are.
     const two = newRound('R', 2);
     applyPlan(two, planImport(two, cluesFromTable(parseTable('A,100,a1,x\nA,300,a3,x')), 'fill'));

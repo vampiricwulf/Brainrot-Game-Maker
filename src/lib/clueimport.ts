@@ -171,28 +171,29 @@ export interface ImportPlan {
 }
 
 /**
- * Which row each clue goes on, among the rows `free` allows: when every clue with a value finds a free row of that
- * value, it goes there, and the others on the free rows left, top down. Otherwise (a sheet of 100–500 on a board of
- * 200–1,000) they all go top down, in value order, so a column never comes out scrambled. Clues with no room are left out.
+ * Which row each clue goes on, among the rows `free` allows: when the sheet's values are the board's, each clue goes on
+ * the row of its value, and those whose row is taken (or that have no value) on the free rows left, top down. A sheet on
+ * another scale (100–500 on a board of 200–1,000) goes top down, in value order, so its column never comes out
+ * scrambled. Clues with no room are left out.
  */
 function rowsFor(clues: ImportedClue[], values: number[], free: (row: number) => boolean): [number, ImportedClue][] {
+  if (clues.some((c) => c.value !== null && !values.includes(c.value))) {
+    // (Those without a value after the others, as the sheet has them.)
+    const inOrder = [...clues.filter((x) => x.value !== null).sort((a, b) => a.value! - b.value!), ...clues.filter((x) => x.value === null)];
+    return values
+      .map((_, i) => i)
+      .filter(free)
+      .slice(0, inOrder.length)
+      .map((r, i) => [r, inOrder[i]]);
+  }
   const taken = new Set<number>();
   const out: [number, ImportedClue][] = [];
   const rest: ImportedClue[] = [];
   for (const c of clues) {
-    if (c.value === null) {
+    const row = c.value === null ? -1 : values.findIndex((v, i) => v === c.value && free(i) && !taken.has(i));
+    if (row < 0) {
       rest.push(c);
       continue;
-    }
-    const row = values.findIndex((v, i) => v === c.value && free(i) && !taken.has(i));
-    if (row < 0) {
-      // (Those without a value after the others, as the sheet has them.)
-      const inOrder = [...clues.filter((x) => x.value !== null).sort((a, b) => a.value! - b.value!), ...clues.filter((x) => x.value === null)];
-      return values
-        .map((_, i) => i)
-        .filter(free)
-        .slice(0, inOrder.length)
-        .map((r, i) => [r, inOrder[i]]);
     }
     taken.add(row);
     out.push([row, c]);
@@ -221,7 +222,7 @@ function valuesFor(groups: { clues: ImportedClue[] }[], fallback: number[]): num
  * The board after importing: `fill` keeps what's there, putting each category's clues on its empty tiles (a category
  * of the same name, else an unused one, else a new one; on a board with nothing on it yet, its rows take the imported
  * values when there are as many); `replace` makes the board exactly the imported categories (with the imported values
- * as its rows, when every clue has one). A clue goes on the row of its value when its category's all can (rowsFor).
+ * as its rows, when every clue has one). A clue goes on the row of its value when the sheet's values are the rows' (rowsFor).
  */
 export function planImport(source: BoardRound, clues: ImportedClue[], mode: 'fill' | 'replace'): ImportPlan {
   const round = clone(source);
