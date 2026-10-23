@@ -11,12 +11,6 @@ the day it's pushed (Pacific time; start the heading on the day's first push) an
 in plain words for the people who make and host games. Anything committed but not pushed yet goes under
 **Unreleased** at the top, and moves under its day when it's pushed.
 
-## Unreleased
-
-### Fixed
-
-- Enter or Space on a board tile opens it even right after a click on the stage: the guard against double-clicks took it for a second click and did nothing.
-
 ## 2026-10-23
 
 ### Added
@@ -119,6 +113,7 @@ in plain words for the people who make and host games. Anything committed but no
 - A buzzer tie's 🎲 roll leaves the stage once you judge, ⏭ Skip or take → Next in line, instead of covering the question and who's answering until Esc. (1e5e091)
 - Teams: the ✕ that takes everyone off a team reads “✕ All”, so it isn't mistaken for the ✕ of the person under it. (1e5e091)
 - Teams: after a tie roll, a team's phones read “Tie — your team rolled 2nd”, not “you rolled” (one of them may not have buzzed). A buzzer server you run yourself needs deploying again for this. (1e5e091)
+- Enter or Space on a board tile opens it even right after a click on the stage: the guard against double-clicks took it for a second click and did nothing. (18ed1be)
 
 ## 2026-10-22
 
