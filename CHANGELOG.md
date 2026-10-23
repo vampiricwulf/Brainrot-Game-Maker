@@ -11,48 +11,6 @@ the day it's pushed (Pacific time; start the heading on the day's first push) an
 in plain words for the people who make and host games. Anything committed but not pushed yet goes under
 **Unreleased** at the top, and moves under its day when it's pushed.
 
-## Unreleased
-
-### Fixed
-
-- ＋ Add slide (and ⧉ Duplicate) in a Slides round, the tiebreaker and a Final put the keys in the new slide's text box, as the clue editor's does. Before, they stayed on the button: what you typed went nowhere, and each Space added another empty slide.
-- A mouse wheel over a number box you're typing in (Rows, Categories, a row value, a clue's value or countdown, the host panel's amounts) scrolls the page instead of changing the number. Before, Chrome and Edge changed it a step a tick, and a lower Rows or Categories then deleted clues on the next click.
-- Right-clicking a new category's made-up name (“Category 1”) opens the category menu, not the browser's own.
-- ⭐ Daily Doubles: the hint beside the box says how many Start game places by the checklist's rule, and when the box asks for more than one a category allows (“0 placed (Start places 6 at random: one a category, 6 at most)”). 🔀 Randomize says so when it places fewer (“Placed 6 of 8 Daily Doubles: one a category”), and is greyed at 0 (“Say how many first”), as the partner clues' is.
-- Screen readers: moving to another clue in the clue editor (Ctrl+Enter, Alt+arrows, ◀ Prev / Next ▶) says which tile it's on (“Category 2 $400”).
-- Fewer categories: ↶ Undo and the note name the category removed (“removed “Topic F””), or say how many weren't empty, instead of “removed 1 with clues in” for one that had only its name. A made-up “New category” counts as empty.
-- A round with its name cleared: the clue editor's and 🖼 Board images' headers show the name it plays under (“Round 2”), as its tab does, and a Slides round's name box suggests that name instead of “Introduction”.
-- 📥 Import clues › Fill empty tiles keeps each category's clues in value order when the sheet's values aren't the board's rows (a 100–500 sheet on a $200–$1,000 board came out $200, $400, $100, $300, $500), and on a board with nothing on it yet the rows take the sheet's values, as Replace the board does. The preview shows each imported tile's value with its question.
-- 📥 Import clues reads “1.000” as one thousand (a CSV from where a comma is the decimal mark), and a value with its currency sign after it (“200 €”).
-- 📥 Import clues reads header rows as sheets word them (“Point Value”, “Clue Text”, “Correct Answer”, “Correct Response”, “Category Name”…), and says before you import when none of the clues found has an answer (“is there an “Answer” column?”).
-- A whole sheet (several categories) pasted on a category's name opens 📥 Import clues with it, instead of putting every category's clues in that one column. A column pasted there says what it did once, in the note at the bottom (with “N didn’t fit: add rows first”), not in a toast over it too.
-- 📥 Import clues opens with the keys in its paste box, so Ctrl+V pastes the cells copied at once.
-- A CSV or TSV file dropped on 📥 Import clues is read in, as Choose file… does. Dropped elsewhere in the editor, the note says where a sheet of clues goes.
-- With the browser's storage blocked or full from the start (a private window, blocked site data), the first screen says your game isn't being kept and to 💾 Save it to a file before you close the tab, instead of “Your game is kept in this browser as you work”.
-- The checklist says what a finished board's notes are (“Jeopardy!: 1 Daily Double and 1 partner clue not placed yet (Start game places them)”, with “· 1 more note” when there are others), not “0 things to fix”.
-- The checklist's “deleted file still used” line names where (“on Introduction › Slide 1 › Image”) and goes there, instead of to an empty 🖼 Media page, and says the delete can be undone in 🕘 History.
-- 🤫 Cards and 🎡 Wheels, Dice & Deals: deleting the card (or wheel, dice or deal) that's open opens the one now in its place, or the one before, and deleted from the list (Delete, or its menu) that one's row takes the keys. Before, the first card opened and took them, so a second Delete deleted it.
-- In the clue editor, a choice in a slide's right-click menu (or Shift+F10's: Bring to front, 🔒 Lock, Duplicate, 📋 Copy, Hide while editing…) leaves the keys on the slide, so Delete deletes the item and Enter edits the selected text box. Before, they went to 🅣 Text: Delete did nothing and Enter added a text box.
-- A small item or a thin line on a slide drawn small (a laptop's clue editor) moves when you drag it by its middle: on a short side its handles sit outside it. Before, they covered it, so a drag resized it.
-- A video, or a YouTube, Google Drive or Streamable link, added to a slide goes beside its question, or moves the question into a band under it, as a picture does. Before, it landed in the middle and hid the question. A new 🅣 Text box starts low on the slide, under where a question's words usually are, not on them, and each one after it (added or pasted) steps across, wholly on the slide.
-- Right-click › Paste here near the slide's edge puts the pasted items wholly on the slide, as a drop does (they hung mostly off it, with handles out of reach).
-- The Layers list scrolls to the item picked on the slide (a click, or Tab), so its row shows.
-- ✏ Draw a line draws in white as you drag, the color the line is saved in (it showed yellow, then turned white).
-- ↶ Undo and 🕘 History name slide items' settings as the panel does: “Changed stop at of video “clip.webm””, start at, start muted, speaker icon, autoplay, thickness, border (a line's color), corners, type, all caps (they said “end at”, “stroke width”, “radius”…). ↺ Reset background says “Reset the slide background”, and items pasted from another game are named by their file (“Pasted image “face.png”” instead of “Image”).
-- A Slides round's “Use this style elsewhere” offers “The other slides in this round” (and the whole game's), not questions and answers it doesn't have.
-- A font uploaded from a text box's ＋ says “Font added and used for this text box”, as it already is, not “pick it from the Font list”.
-- A text box's style buttons wrap by whole groups (B I U AA, left/center/right, top/middle/bottom), so ⤓ no longer sits alone on a second line in the clue editor.
-- Pastel (any light theme): a score below zero is white on its dark red band with a black shadow, as on dark themes. Before, it had a pale copy of itself beside it.
-- The 🎨 Theme page's preview, 📂 Import theme…'s and 🖼 Board images' show the board as the stream does, without the host's ⭐ / 🤝 / ✍ tile badges.
-- Light themes: a 🤝 partner clue's card for a blank question shows its category in the theme's slide text color (it was white on Pastel's pink), and the Starting soon words get the theme's own shadow, not a hard black one.
-- 🎨 Theme previews the board when the round last open was a Slides, RPG or board-game round, so changes to tiles and categories show (it stayed on that round's slide).
-- With a Chroma green or magenta Stage background, Lines around tiles and Background gradient say they don't show, as Used tiles does.
-- 💾 Save to my themes of a theme file with pictures or fonts says how to bring them in (📂 Import the file again and 🎨 Use in this game; using the saved theme doesn't), and ⬇ Export theme says why each file was left out (only big ones are “too big”).
-- ↶ Undo and 🕘 History name theme fonts as the font lists do (“Theme: category font Bebas Neue”, “Theme: value font Pixel Party (uploaded)”), not by their CSS or a file's id.
-- A long saved theme name is cut short with … on the save bar's button instead of running past it, and a copy's suggested name stays different from it (“… 2” within the 60 characters).
-- Screen readers: 📂 Import theme…'s and ⌨ Paste theme code…'s preview is skipped (it read out made-up tiles and players), and 🔊 Sounds' volume sliders say “30%”, not “0.3”.
-- 💾 Save as new theme… says the theme is kept in this browser (on this computer in the desktop app), as the rest of the page does.
-
 ## 2026-10-23
 
 ### Added
@@ -156,6 +114,43 @@ in plain words for the people who make and host games. Anything committed but no
 - Teams: the ✕ that takes everyone off a team reads “✕ All”, so it isn't mistaken for the ✕ of the person under it. (1e5e091)
 - Teams: after a tie roll, a team's phones read “Tie — your team rolled 2nd”, not “you rolled” (one of them may not have buzzed). A buzzer server you run yourself needs deploying again for this. (1e5e091)
 - Enter or Space on a board tile opens it even right after a click on the stage: the guard against double-clicks took it for a second click and did nothing. (18ed1be)
+- ＋ Add slide (and ⧉ Duplicate) in a Slides round, the tiebreaker and a Final put the keys in the new slide's text box, as the clue editor's does. Before, they stayed on the button: what you typed went nowhere, and each Space added another empty slide. (ecd091a)
+- A mouse wheel over a number box you're typing in (Rows, Categories, a row value, a clue's value or countdown, the host panel's amounts) scrolls the page instead of changing the number. Before, Chrome and Edge changed it a step a tick, and a lower Rows or Categories then deleted clues on the next click. (ecd091a)
+- Right-clicking a new category's made-up name (“Category 1”) opens the category menu, not the browser's own. (ecd091a)
+- ⭐ Daily Doubles: the hint beside the box says how many Start game places by the checklist's rule, and when the box asks for more than one a category allows (“0 placed (Start places 6 at random: one a category, 6 at most)”). 🔀 Randomize says so when it places fewer (“Placed 6 of 8 Daily Doubles: one a category”), and is greyed at 0 (“Say how many first”), as the partner clues' is. (ecd091a)
+- Screen readers: moving to another clue in the clue editor (Ctrl+Enter, Alt+arrows, ◀ Prev / Next ▶) says which tile it's on (“Category 2 $400”). (ecd091a)
+- Fewer categories: ↶ Undo and the note name the category removed (“removed “Topic F””), or say how many weren't empty, instead of “removed 1 with clues in” for one that had only its name. A made-up “New category” counts as empty. (ecd091a)
+- A round with its name cleared: the clue editor's and 🖼 Board images' headers show the name it plays under (“Round 2”), as its tab does, and a Slides round's name box suggests that name instead of “Introduction”. (ecd091a)
+- 📥 Import clues › Fill empty tiles keeps each category's clues in value order when the sheet's values aren't the board's rows (a 100–500 sheet on a $200–$1,000 board came out $200, $400, $100, $300, $500), and on a board with nothing on it yet the rows take the sheet's values, as Replace the board does. The preview shows each imported tile's value with its question. (1f3cbdd)
+- 📥 Import clues reads “1.000” as one thousand (a CSV from where a comma is the decimal mark), and a value with its currency sign after it (“200 €”). (1f3cbdd)
+- 📥 Import clues reads header rows as sheets word them (“Point Value”, “Clue Text”, “Correct Answer”, “Correct Response”, “Category Name”…), and says before you import when none of the clues found has an answer (“is there an “Answer” column?”). (1f3cbdd)
+- A whole sheet (several categories) pasted on a category's name opens 📥 Import clues with it, instead of putting every category's clues in that one column. A column pasted there says what it did once, in the note at the bottom (with “N didn’t fit: add rows first”), not in a toast over it too. (1f3cbdd)
+- 📥 Import clues opens with the keys in its paste box, so Ctrl+V pastes the cells copied at once. (1f3cbdd)
+- A CSV or TSV file dropped on 📥 Import clues is read in, as Choose file… does. Dropped elsewhere in the editor, the note says where a sheet of clues goes. (1f3cbdd)
+- With the browser's storage blocked or full from the start (a private window, blocked site data), the first screen says your game isn't being kept and to 💾 Save it to a file before you close the tab, instead of “Your game is kept in this browser as you work”. (5b999de)
+- The checklist says what a finished board's notes are (“Jeopardy!: 1 Daily Double and 1 partner clue not placed yet (Start game places them)”, with “· 1 more note” when there are others), not “0 things to fix”. (5b999de, 28e8855)
+- The checklist's “deleted file still used” line names where (“on Introduction › Slide 1 › Image”) and goes there, instead of to an empty 🖼 Media page, and says the delete can be undone in 🕘 History. (5b999de)
+- 🤫 Cards and 🎡 Wheels, Dice & Deals: deleting the card (or wheel, dice or deal) that's open opens the one now in its place, or the one before, and deleted from the list (Delete, or its menu) that one's row takes the keys. Before, the first card opened and took them, so a second Delete deleted it. (5b999de)
+- In the clue editor, a choice in a slide's right-click menu (or Shift+F10's: Bring to front, 🔒 Lock, Duplicate, 📋 Copy, Hide while editing…) leaves the keys on the slide, so Delete deletes the item and Enter edits the selected text box. Before, they went to 🅣 Text: Delete did nothing and Enter added a text box. (c0d9175)
+- A small item or a thin line on a slide drawn small (a laptop's clue editor) moves when you drag it by its middle: on a short side its handles sit outside it. Before, they covered it, so a drag resized it. (c0d9175)
+- A video, or a YouTube, Google Drive or Streamable link, added to a slide goes beside its question, or moves the question into a band under it, as a picture does. Before, it landed in the middle and hid the question. A new 🅣 Text box starts low on the slide, under where a question's words usually are, not on them, and each one after it (added or pasted) steps across, wholly on the slide. (c0d9175, 3033287)
+- Right-click › Paste here near the slide's edge puts the pasted items wholly on the slide, as a drop does (they hung mostly off it, with handles out of reach). (c0d9175)
+- The Layers list scrolls to the item picked on the slide (a click, or Tab), so its row shows. (c0d9175)
+- ✏ Draw a line draws in white as you drag, the color the line is saved in (it showed yellow, then turned white). (c0d9175)
+- ↶ Undo and 🕘 History name slide items' settings as the panel does: “Changed stop at of video “clip.webm””, start at, start muted, speaker icon, autoplay, thickness, border (a line's color), corners, type, all caps (they said “end at”, “stroke width”, “radius”…). ↺ Reset background says “Reset the slide background”, and items pasted from another game are named by their file (“Pasted image “face.png”” instead of “Image”). (1bc34f7)
+- A Slides round's “Use this style elsewhere” offers “The other slides in this round” (and the whole game's), not questions and answers it doesn't have. (1bc34f7)
+- A font uploaded from a text box's ＋ says “Font added and used for this text box”, as it already is, not “pick it from the Font list”. (1bc34f7)
+- A text box's style buttons wrap by whole groups (B I U AA, left/center/right, top/middle/bottom), so ⤓ no longer sits alone on a second line in the clue editor. (1bc34f7)
+- Pastel (any light theme): a score below zero is white on its dark red band with a black shadow, as on dark themes. Before, it had a pale copy of itself beside it. (5c3d760)
+- The 🎨 Theme page's preview, 📂 Import theme…'s and 🖼 Board images' show the board as the stream does, without the host's ⭐ / 🤝 / ✍ tile badges. (5c3d760)
+- Light themes: a 🤝 partner clue's card for a blank question shows its category in the theme's slide text color (it was white on Pastel's pink), and the Starting soon words get the theme's own shadow, not a hard black one. (5c3d760)
+- 🎨 Theme previews the board when the round last open was a Slides, RPG or board-game round, so changes to tiles and categories show (it stayed on that round's slide). (5c3d760)
+- With a Chroma green or magenta Stage background, Lines around tiles and Background gradient say they don't show, as Used tiles does. (5c3d760)
+- 💾 Save to my themes of a theme file with pictures or fonts says how to bring them in (📂 Import the file again and 🎨 Use in this game; using the saved theme doesn't), and ⬇ Export theme says why each file was left out (only big ones are “too big”). (5c3d760)
+- ↶ Undo and 🕘 History name theme fonts as the font lists do (“Theme: category font Bebas Neue”, “Theme: value font Pixel Party (uploaded)”), not by their CSS or a file's id. (5c3d760)
+- A long saved theme name is cut short with … on the save bar's button instead of running past it, and a copy's suggested name stays different from it (“… 2” within the 60 characters). (5c3d760)
+- Screen readers: 📂 Import theme…'s and ⌨ Paste theme code…'s preview is skipped (it read out made-up tiles and players), and 🔊 Sounds' volume sliders say “30%”, not “0.3”. (5c3d760)
+- 💾 Save as new theme… says the theme is kept in this browser (on this computer in the desktop app), as the rest of the page does. (5c3d760)
 
 ## 2026-10-22
 
