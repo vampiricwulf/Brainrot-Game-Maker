@@ -601,7 +601,7 @@
             </label>
           {/if}
           <label class="field">
-            Host notes (never shown on stream)
+            Host notes (off stream, except in a single window)
             <textarea rows="2" data-field="notes" value={clue.hostNotes ?? ''} oninput={(e) => (clue.hostNotes = e.currentTarget.value)}></textarea>
           </label>
         </div>

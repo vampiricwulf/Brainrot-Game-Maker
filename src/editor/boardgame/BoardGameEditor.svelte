@@ -784,7 +784,7 @@
   <div class="row settings">
     <label class="field grow">How to win<input bind:value={round.winNotes} data-field="win-notes" placeholder="e.g. Own 3 Flamingos and get back to Start" /></label>
     <label class="check small"><input type="checkbox" bind:checked={round.winPublic} /> Show it on the board</label>
-    <label class="field grow">Host notes (never shown on stream)<input bind:value={round.hostNotes} data-field="round-notes" /></label>
+    <label class="field grow">Host notes (off stream, except in a single window)<input bind:value={round.hostNotes} data-field="round-notes" /></label>
   </div>
 
   <!-- Which part of the board to edit: buttons that say which is shown (not tabs, which promise arrow keys). -->
@@ -1020,7 +1020,7 @@
           <h5>When landed on</h5>
           <ActionListEditor bind:actions={sel.onLand} board={round} addLabel="＋ Add button (when landed on)" />
           <label class="check small"><input type="checkbox" bind:checked={sel.secret} /> Secret (viewers see “?” until you reveal it)</label>
-          <label class="field">Host notes (never shown on stream)<textarea rows="2" data-field="space-notes" bind:value={sel.hostNotes}></textarea></label>
+          <label class="field">Host notes (off stream, except in a single window)<textarea rows="2" data-field="space-notes" bind:value={sel.hostNotes}></textarea></label>
           <div class="row">
             <button class="small" onclick={() => makeStart(sel)} disabled={(round.start ?? round.spaces[0]?.id) === sel.id}>🏁 Make it Start</button>
             <button class="small" onclick={() => duplicateSpace(sel)} title="A copy of this space after it on the path (Ctrl+D)">⧉ Duplicate</button>

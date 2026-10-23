@@ -174,7 +174,7 @@
     <input type="checkbox" checked={!!el.secret} onchange={(e) => (el.secret = e.currentTarget.checked || undefined)} /> Secret (hidden until revealed)
   </label>
   <label class="field">
-    Host notes (never shown on stream)
+    Host notes (off stream, except in a single window)
     <textarea rows="2" value={el.hostNotes ?? ''} oninput={(e) => (el.hostNotes = e.currentTarget.value || undefined)} placeholder="What it really does…"></textarea>
   </label>
 </section>

@@ -36,7 +36,7 @@
     <input bind:value={round.name} placeholder="Introduction" maxlength="40" data-round-name />
   </label>
   <label class="field grow">
-    Host notes (never shown on stream)
+    Host notes (off stream, except in a single window)
     <textarea rows="1" data-field="round-notes" value={round.hostNotes ?? ''} oninput={(e) => (round.hostNotes = e.currentTarget.value)}></textarea>
   </label>
 </div>

@@ -1345,7 +1345,7 @@
               {#if sel.music}<button class="ghost small" onclick={() => (sel.music = undefined)}>No music</button>{/if}
             </div>
             <label class="field">
-              Host notes (never shown on stream)
+              Host notes (off stream, except in a single window)
               <textarea rows="3" value={sel.hostNotes ?? ''} oninput={(e) => (sel.hostNotes = e.currentTarget.value || undefined)}></textarea>
             </label>
           {:else if picked.length > 1}

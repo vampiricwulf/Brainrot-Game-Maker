@@ -140,7 +140,7 @@ the page gets (on a wide screen the page is two columns). A **🔁 Rematch** kee
 
 - **Single window**: viewers see this window. Press `H` (or **🙈 Hide**) to hide the host controls; **Show controls**
   waits, out of sight, in the top-right corner until the mouse moves. With them hidden, nothing on the stage shows a
-  focus ring.
+  focus ring until you move the keys yourself (Tab, or the board's arrow keys).
 - **📺 Separate audience window**: a clean window to capture in OBS or Discord. The host window keeps the answers,
   notes and controls.
 

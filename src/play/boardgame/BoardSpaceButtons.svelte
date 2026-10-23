@@ -49,7 +49,7 @@
       <ActionListEditor bind:actions={space.onPass} board={round} passing addLabel="＋ Add button (when passed)" />
       <h5>When landed on</h5>
       <ActionListEditor bind:actions={space.onLand} board={round} addLabel="＋ Add button (when landed on)" />
-      <label class="field">Host notes (never shown on stream)<textarea rows="2" bind:value={space.hostNotes}></textarea></label>
+      <label class="field">Host notes (off stream, except in a single window)<textarea rows="2" bind:value={space.hostNotes}></textarea></label>
     </div>
   </div>
 </div>

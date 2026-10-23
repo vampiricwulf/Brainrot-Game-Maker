@@ -61,7 +61,7 @@
       {/if}
       <!-- (Beside the name and the start, so the map starts higher up on a small screen.) -->
       <label class="field notes">
-        Host notes (never shown on stream)
+        Host notes (off stream, except in a single window)
         <textarea rows="1" data-field="round-notes" value={round.hostNotes ?? ''} oninput={(e) => (round.hostNotes = e.currentTarget.value || undefined)}></textarea>
       </label>
     </div>

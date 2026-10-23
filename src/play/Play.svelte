@@ -615,6 +615,14 @@
     app.onAir = hideControls && !dual;
     return () => (app.onAir = false);
   });
+  /**
+   * Controls hidden: no focus ring on the stage (in one window, viewers see it) until the host moves the keys themselves
+   * (Tab, or the board's arrow keys): then they need to see where they are.
+   */
+  let ringOff = $state(false);
+  $effect(() => {
+    if (hideControls) ringOff = true;
+  });
   // An RPG round's question (a new screen's name…), its object card and a board game's space card are for that round
   // only, and so are a shop, a player's sheet, an object's pop-up, dice or a wheel on the stage: they don't follow into the next round.
   // (Not as the game screen opens: dice or a wheel kept through a reload, see keptOverlay, stay up.)
@@ -3999,14 +4007,15 @@
         finalJudgeKey(k === 'c');
         break;
       case 't': {
-        // Shift+T: 10 more seconds on the countdown that's up.
-        if (e.shiftKey && app.live.timer) addTime(app.live, 10);
+        // Shift+T: 10 more seconds on the countdown that's up (none up: one starts, as with T).
+        const added = e.shiftKey && !!app.live.timer;
+        if (added) addTime(app.live, 10);
         else if (app.live.timer && !app.live.timer.expired) toggleTimer(app.live);
         else startTimer(app.live, timerSeconds || clueTimer() || game.settings.defaultTimerSeconds || 30);
         // (Said once here: the running countdown stays quiet.)
         const tm = app.live.timer;
         const left = tm ? Math.ceil(timerRemaining(tm)) : 0;
-        if (tm) announce(e.shiftKey ? `+10 s: ${left} s left` : tm.startedAt === null ? `Countdown paused at ${left} s` : `Countdown: ${left} s`);
+        if (tm) announce(added ? `+10 s: ${left} s left` : tm.startedAt === null ? `Countdown paused at ${left} s` : `Countdown: ${left} s`);
         break;
       }
       // The cover, in every round (B as well, the key many stream tools use for "be right back").
@@ -4086,6 +4095,7 @@
   onkeydowncapture={(e) => {
     tabbing = e.key === 'Tab';
     viaKeys = true;
+    if (tabbing || (e.key.startsWith('Arrow') && e.target instanceof Element && e.target.closest('.board'))) ringOff = false;
   }}
   onpointerdowncapture={(e) => {
     tabbing = false;
@@ -4452,6 +4462,7 @@
   <main
     class="play"
     class:hidden={hideControls}
+    class:ring-off={ringOff}
     class:side
     class:dual
     class:logged={dual && showLog}
@@ -5042,8 +5053,9 @@
     flex: 1;
     min-width: 0;
   }
-  /* One window with the controls hidden: the stage is all viewers see, so no focus ring on it (the keys still work). */
-  .play.hidden:not(.dual) .stage-box :global(:focus-visible) {
+  /* One window with the controls hidden: the stage is all viewers see, so no focus ring on it (the keys still work)
+     until the host moves the keys themselves (see ringOff). */
+  .play.hidden.ring-off:not(.dual) .stage-box :global(:focus-visible) {
     outline: none;
   }
   .stage-area.dual > :global(.info) {

@@ -1,7 +1,7 @@
 // A slides round: an introduction of several slides, in one round. The host makes it in the editor (it goes first, a
 // template one too, which says so; the checklist goes to an empty slide, to a Final's missing answer, and to a
 // tiebreaker ticked on but left empty), then plays through it with N (Shift+N back) and goes on to the board after the
-// last slide. Then a game that ends with a Final
+// last slide. Then a game that ends with a Final (in one window, its notes wait for its answer to be up)
 // and a long slides outro after it, in two windows: the outro's dots say "1 / 22" (they'd run off the stage), its host
 // notes keep their lines, the tiebreaker's notes show; in the tiebreaker N follows the main button (the answer, then
 // 🏁 Back to results, which warns first with a tied player picked and no winner given), points given there settle the
@@ -145,7 +145,7 @@ try {
     settings: { allowNegativeScores: true, deductOnWrong: true, defaultTimerSeconds: 15, finalTimerSeconds: 30, currencySymbol: '$', rollOffDie: 20, pickerFollowsAward: true, timerAutoStart: false, roundIntro: { titleCard: false, tileFill: false, categoryReveal: 'click' }, maxPlayers: 8 },
     players: ['Ann', 'Bob'].map((name, i) => ({ id: `p${i + 1}`, name, color: ['#e6194b', '#3cb44b'][i], startScore: 500 })),
     rounds: [
-      { id: 'r_final', name: 'Final Jeopardy!', mode: 'final', category: 'Memes', questionSlide: slide('fq', 'The final question'), answerSlide: slide('fa', 'The final answer'), timerSeconds: 30, allowNonPositive: true },
+      { id: 'r_final', name: 'Final Jeopardy!', mode: 'final', category: 'Memes', questionSlide: slide('fq', 'The final question'), answerSlide: slide('fa', 'The final answer'), timerSeconds: 30, allowNonPositive: true, hostNotes: 'Accept Abe Lincoln too' },
       { id: 'r_outro', name: 'Outro', mode: 'slides', questionSlide: outro[0], extraSlides: outro.slice(1).map((sl, i) => ({ id: `ox${i}`, ...sl })), hostNotes: 'Thank the sponsors\nPlug the next stream' },
     ],
     media: [], audio: {}, theme: {}, wheels: [], dice: [], statFields: [], items: [],
@@ -163,16 +163,24 @@ try {
   await p2.getByRole('button', { name: '▶ Play' }).click();
   await p2.getByRole('button', { name: 'Start game ▶' }).click();
   await p2.locator('.fj .wagers input[data-wager]').first().waitFor();
+  const wagers = p2.locator('.fj .wagers input[data-wager]');
+  for (let i = 0; i < 2; i++) await wagers.nth(i).fill('100');
+  const press = async (label) => {
+    await p2.waitForFunction((l) => document.querySelector('.panel [data-next]')?.textContent?.startsWith(l) && !document.querySelector('.panel [data-next]')?.disabled, label);
+    await mainButton(p2).click();
+  };
+  // One window: the Final's notes (they may give its answer away) stay off the panel on stream while the players write.
+  await press('Show question ▶');
+  await p2.locator('.panel .status', { hasText: 'Question on screen' }).waitFor();
+  assert((await p2.locator('.panel .status .notes').count()) === 0, 'one window: the Final’s host notes stay off the panel while its question is up');
+  await press('Reveal answer ▶');
+  await p2.locator('.panel .status .notes', { hasText: '📝 Accept Abe Lincoln too' }).waitFor();
+  assert(true, '…and show there once its answer is up');
   // Two windows: the host's info column (the notes) is up.
   const [aud] = await Promise.all([p2.waitForEvent('popup'), p2.getByRole('button', { name: '📺 Audience', exact: true }).click()]);
   aud.on('pageerror', (e) => errors.push('[audience] ' + e.message));
   await p2.locator('.info').waitFor();
-  const wagers = p2.locator('.fj .wagers input[data-wager]');
-  for (let i = 0; i < 2; i++) await wagers.nth(i).fill('100');
-  for (const label of ['Show question ▶', 'Reveal answer ▶', 'Start player reveals ▶']) {
-    await p2.waitForFunction((l) => document.querySelector('.panel [data-next]')?.textContent?.startsWith(l) && !document.querySelector('.panel [data-next]')?.disabled, label);
-    await mainButton(p2).click();
-  }
+  await press('Start player reveals ▶');
   // Both right: $600 each, a tie for first.
   for (let i = 0; i < 2; i++) await p2.locator('.fj .pl').nth(i).getByRole('button', { name: '✔ Right' }).click();
   await p2.waitForFunction(() => document.querySelector('.panel [data-next]')?.textContent?.startsWith('Next: Outro ▶'));

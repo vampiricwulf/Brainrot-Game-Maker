@@ -114,13 +114,18 @@ try {
   await page.keyboard.press('Enter');
   await stage('.timer').waitFor({ state: 'detached' });
   assert(true, 'a right answer stops the countdown (no "Time\'s up" over the answer)');
-  // …and for the answer going up. (Screen readers hear it start, and +10 s.)
-  await page.keyboard.press('t');
-  await stage('.timer').waitFor();
+  // …and for the answer going up. (Screen readers hear it start, and +10 s. Shift+T with none up starts one, as T does:
+  // once the first T's countdown has been said, nothing else says one.)
   await saidHas(/Countdown: \d+ s/);
+  await page.evaluate(() => (document.getElementById('live-region').dataset.said = ''));
+  await page.keyboard.press('Shift+T');
+  await stage('.timer').waitFor();
+  await saidHas(/Countdown|\+10 s/);
+  const started = await page.evaluate(() => document.getElementById('live-region').dataset.said);
+  assert(/Countdown: \d+ s/.test(started) && !started.includes('+10'), `Shift+T with no countdown up starts one, and says so (${started})`);
   await page.keyboard.press('Shift+T');
   await saidHas(/\+10 s: \d+ s left/);
-  assert(true, 'T and Shift+T are said: the countdown, then +10 s');
+  assert(true, 'then Shift+T says +10 s');
   await page.keyboard.press('r');
   await stage('.timer').waitFor({ state: 'detached' });
   assert((await stage('.timesup').count()) === 0, 'revealing the answer stops the countdown');
@@ -278,6 +283,12 @@ try {
   await page.waitForFunction(() => !!document.activeElement?.closest('.stage-box'));
   const ring = await page.evaluate(() => [document.activeElement.matches(':focus-visible'), getComputedStyle(document.activeElement).outlineStyle]);
   assert(ring.join() === 'true,none', `one window, controls hidden: the keys are on the stage, with no focus ring on stream (${ring.join(', ')})`);
+  // The host's own arrow key on the board: they see which tile has the keys (Enter opens it).
+  const was = await focused();
+  await page.keyboard.press((await page.evaluate(() => document.activeElement.dataset.cat)) === '0' ? 'ArrowRight' : 'ArrowLeft');
+  await page.waitForFunction((w) => document.activeElement?.matches('.stage-box .board .tile') && document.activeElement.getAttribute('aria-label') !== w, was);
+  const moved = await page.evaluate(() => [document.activeElement.getAttribute('aria-label'), getComputedStyle(document.activeElement).outlineStyle]);
+  assert(moved[1] !== 'none', `…until the host moves them with the arrow keys: then the tile they're on shows it (${was} → ${moved.join(', ')})`);
   await page.keyboard.press('l');
   const log = page.locator('aside.in-panel');
   await log.waitFor();

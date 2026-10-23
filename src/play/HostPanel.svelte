@@ -754,8 +754,8 @@
       {:else}
         <span class="muted">{finalStepText[session.finalStep ?? 'wagers']}</span>
       {/if}
-      <!-- (Once its question is up: the notes may give the answer away before that.) -->
-      {#if finalRound?.hostNotes?.trim() && !dual && !session.intro && session.finalStep !== 'wagers'}<span class="notes" title="Host notes (viewers can see them in this window): {finalRound.hostNotes}">📝 {finalRound.hostNotes}</span>{/if}
+      <!-- (Once its answer is up: the notes may give it away while the players are still writing theirs.) -->
+      {#if finalRound?.hostNotes?.trim() && !dual && !session.intro && (session.finalStep === 'answer' || session.finalStep === 'reveal')}<span class="notes" title="Host notes (viewers can see them in this window): {finalRound.hostNotes}">📝 {finalRound.hostNotes}</span>{/if}
     {:else if (session.phase === 'rpg' || session.phase === 'boardgame') && session.intro?.stage === 'title'}
       <b>{round?.name}</b>
       <span class="muted">Title card <span class="hint">· click the screen (or N) to go on</span></span>

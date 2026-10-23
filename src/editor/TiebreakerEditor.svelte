@@ -89,7 +89,7 @@
     </label>
     <!-- (Across both columns: the rule the host judges by, say "closest without going over wins".) -->
     <label class="field notes">
-      Host notes (never shown on stream)
+      Host notes (off stream, except in a single window)
       <textarea rows="1" data-field="notes" value={tb.hostNotes ?? ''} oninput={(e) => (tb.hostNotes = e.currentTarget.value)}></textarea>
     </label>
   </div>

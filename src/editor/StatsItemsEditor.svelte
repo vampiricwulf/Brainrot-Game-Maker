@@ -568,7 +568,7 @@
         {#if openItem === it.id}
           <div class="more">
             <label class="field">Description (on its card)<textarea rows="2" bind:value={it.description}></textarea></label>
-            <label class="field">Host notes (never shown on stream)<textarea rows="2" bind:value={it.hostNotes}></textarea></label>
+            <label class="field">Host notes (off stream, except in a single window)<textarea rows="2" bind:value={it.hostNotes}></textarea></label>
             <div class="hint">"Use" in play runs:</div>
             <ActionListEditor bind:actions={it.onUse} world={allWorldsAsOne(game)} askLabel="Whoever uses it" />
             {#if it.wearable}

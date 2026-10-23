@@ -46,11 +46,12 @@ in plain words for the people who make and host games. Anything committed but no
 - With the keys on the main button in a slides round, or on a round's title card or its categories coming up, Enter does what the button says (as N), instead of nothing or “Select a player first”.
 - Enter and Space on a button the app put the keys on (when the one that had them went away, or after H twice) no longer press it outside clues. In the Final's wagers, Enter took the show back to the round before; after H, H, Space started a countdown; after the dice were closed, Space put the slide before back instead of pausing the video.
 - After a player's last item is used up, removed or dropped in an RPG round, the keys go to a button on their card instead of “＋ Item…”, so the next arrow key moves the party instead of giving them an item. Wherever the app moves the keys for you, it no longer puts them on a list or a number box.
-- One window: with the controls hidden (H), nothing on the stage shows a focus ring on stream.
-- One window: the host notes of a slides round, the tiebreaker and the Final (once its question is up) show in the host panel, as a clue's do. They only showed with the audience window open.
+- One window: with the controls hidden (H), nothing on the stage shows a focus ring on stream until you move the keys yourself (Tab, or the board's arrow keys: then you see which tile Enter opens).
+- One window: the host notes of a slides round, the tiebreaker and the Final (once its answer is up: before that they could give it away while the players write) show in the host panel, as a clue's do. They only showed with the audience window open.
+- Host notes fields say “off stream, except in a single window” instead of “never shown on stream”: in a single window, the host panel that shows them is on stream.
 - Screen readers hear the buzz order once, as it ends up, never an out-of-date one beside it.
 - Resume game (and testing a round) says so to screen readers and puts the keys on the board or the main button, as Start does.
-- Screen readers hear P then a number (“Bob picks next”), S (“Scores on screen” or “off screen”), T (the countdown starting or pausing) and Shift+T (“+10 s: 24 s left”).
+- Screen readers hear P then a number (“Bob picks next”), S (“Scores on screen” or “off screen”), T (the countdown starting or pausing) and Shift+T (“+10 s: 24 s left”, or the countdown starting when none is up).
 
 ## 2026-10-23
 
