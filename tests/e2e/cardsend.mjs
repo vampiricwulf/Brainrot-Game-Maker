@@ -517,16 +517,20 @@ try {
     (await hidden()) && (await dialog.getByRole('button', { name: '👁 Show', exact: true }).getAttribute('aria-pressed')) === 'false' && !(await hideBtn.count()),
     'sent: the next card’s words are hidden again (viewers see this window)',
   );
-  /** Inside what its scrolling menu shows. */
-  const inView = (loc) =>
+  /** Where it is, and what its scrolling menu (or the window) shows. */
+  const place = (loc) =>
     loc.evaluate((el) => {
       let box = el.parentElement;
       while (box && !(box.scrollHeight > box.clientHeight && /auto|scroll/.test(getComputedStyle(box).overflowY))) box = box.parentElement;
       const r = el.getBoundingClientRect();
       const b = box?.getBoundingClientRect() ?? { top: 0, bottom: innerHeight };
-      return r.top >= b.top - 1 && r.bottom <= b.bottom + 1;
+      return { top: Math.round(r.top), bottom: Math.round(r.bottom), shownTop: Math.round(b.top), shownBottom: Math.round(b.bottom), in: r.top >= b.top - 1 && r.bottom <= b.bottom + 1 };
     });
-  assert(await until(async () => (await inView(saidLine)) && (await inView(dialog.locator('[data-card-said-copy]')))), 'the ✓ line and its 📋 copy row are in view under 📤 Send');
+  const copyRow = dialog.locator('[data-card-said-copy]');
+  assert(
+    await until(async () => (await place(saidLine)).in && (await place(copyRow)).in),
+    `the ✓ line and its 📋 copy row are in view under 📤 Send (${JSON.stringify([await place(saidLine), await place(copyRow)])})`,
+  );
   const lastLabel = (await saidLine.innerText()).match(/Card \d+/)?.[0];
   assert(
     (await saidLine.innerText()) === `✓ ${lastLabel} sent to Ann, Bob, Cat · 📵 Cat has no phone here: copy it to them (📋)`,

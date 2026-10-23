@@ -212,6 +212,7 @@
   let fileInput = $state<HTMLInputElement>();
   /** In one window what's typed is hidden (viewers see this window), unless the host asks to see it (👁 Show). */
   let reveal = $state(false);
+  let box = $state<HTMLElement>();
   let saidRow = $state<HTMLElement>();
   let copyRow = $state<HTMLElement>();
   const masked = $derived(!dual && !reveal);
@@ -385,8 +386,15 @@
       // (The next card starts hidden again: in one window viewers see what's typed here.)
       reveal = false;
     }
-    // (What happened, where the host just clicked: in one window the menu is short, and it went below its fold.)
-    void tick().then(() => (copyRow ?? saidRow)?.scrollIntoView({ block: 'nearest' }));
+    // What happened, where the host just clicked (in one window the menu is short, and it went below its fold), and the
+    // keys with it: 📤 Send turned grey, and the keys landing on the first button up the menu would scroll it back up.
+    void tick().then(() => {
+      const row = copyRow ?? saidRow;
+      if (!row) return;
+      const at = document.activeElement;
+      if (!at || at === document.body || box?.contains(at)) (copyRow?.querySelector<HTMLElement>('button') ?? saidRow)?.focus({ preventScroll: true });
+      row.scrollIntoView({ block: 'nearest' });
+    });
   }
   function copyWords(): void {
     if (!slide) return;
@@ -423,7 +431,7 @@
   >
 {/snippet}
 
-<div class="send" data-card-send>
+<div class="send" data-card-send bind:this={box}>
   <div class="head">To</div>
   <div class="row wrap">
     {#each session.players as p (p.id)}
@@ -599,7 +607,7 @@
         <button class="ghost tiny" onclick={() => openWin(firstSeat)} title="Opens a window with only {nameOf(firstSeat)}’s cards, to share with them alone">open a 🪟 card window for {nameOf(firstSeat)}</button>{:else}, or open a 🪟 card window for one of them.{/if}
     </div>
   {/if}
-  {#if said}<div class="small" role="status" data-card-said bind:this={saidRow}>✓ {said}</div>{/if}
+  {#if said}<div class="small" role="status" tabindex="-1" data-card-said bind:this={saidRow}>✓ {said}</div>{/if}
   {#if sentCopy && sentCopySlide}
     {@const label = sentCopy.card.label}
     {@const whom = sentCopy.names.join(', ')}

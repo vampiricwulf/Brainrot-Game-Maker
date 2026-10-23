@@ -347,11 +347,11 @@ try {
   await queue.getByText('🎲 2nd').waitFor();
   assert((await pressed())[0].includes(rolled[0] === seats[0].id ? 'Player 1' : 'Player 2'), 'the first in the roll answers; the queue shows 🎲 1st, 🎲 2nd');
   assert(await aud.getByText('Tie! Roll for it').isVisible(), 'the roll stays up while the host announces it');
-  // ⏭ Skip (as a judged answer would): the roll goes off the stage, and the second in it answers.
-  await page.getByRole('button', { name: /^⏭ Skip/ }).click();
+  // Wrong (Shift+Enter): the roll goes off the stage, and the second in it answers.
+  await page.keyboard.press('Shift+Enter');
   await aud.getByText('Tie! Roll for it').waitFor({ state: 'detached' });
   await stateIs((s, id) => s.answering === id, rolled[1]);
-  assert(true, '⏭ Skip: the roll goes off the stage (it would cover the question), and the second in it answers');
+  assert(true, 'judged wrong: the roll goes off the stage (it would cover the question and who answers now), and the second in it answers');
 
   // ---------- The 📱 chip: kick, a new player mid-game ----------
   const chip = page.locator('.panel .chip');
@@ -404,9 +404,9 @@ try {
   assert((await pop.count()) === 0, 'Esc closes the phones list (and nothing else)');
   assert((await page.locator('.stage-box .board').count()) === 0, 'the clue is still open');
 
-  // Wrong, then right: the main button is 👁 Reveal answer (not the buzzers again), and nobody is "next in line".
+  // Wrong (the first in the roll, above), then right: the main button is 👁 Reveal answer (not the buzzers again), and
+  // nobody is "next in line".
   const r2 = rolled[1];
-  await page.keyboard.press('Shift+Enter');
   await stateIs((st, a) => st.phase === 'answering' && st.answering === a, r2);
   await page.keyboard.press('Enter');
   await stateIs((st) => st.phase === 'closed' && !!st.done);
