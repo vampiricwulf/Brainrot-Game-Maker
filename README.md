@@ -224,9 +224,10 @@ Any tile can have 🤫 cards (＋ Card in the clue editor): a standard or Daily 
 the player who picked it (a private question, a tip before the wager), go only when you send them, and go away when the
 tile closes; the tile plays as it always does. A Final can have 🤫 cards too (＋ Card in its editor): its panel offers
 them from the wager screen to the last reveal, each starting with everyone playing it (the chips change who gets it;
-teams go whole), they go when you press 📤 Send, and they go away when the Final ends (during the wagers a card sits
-above the wager box on the phone, so one or two per player keep that box in sight). Give a tile's or a Final's card
-a name (**Card name** on the card's bar; F2 on its tab) to tell them apart: its tab, the host panel and 🤫 Send a card…
+teams go whole), they go when you press 📤 Send, and they go away when the Final ends (during the wagers, and during
+the question while players type their answers, a card sits above the wager or answer box on the phone, so one or two
+per player keep that box in sight). Give a tile's or a Final's card a name (**Card name** on the card's bar; F2 on
+its tab) to tell them apart: its tab, the host panel and 🤫 Send a card…
 show it instead of "Card 2". Phones never get it, but in one window viewers can read it in the host panel, so call a
 card what it's for, never what's on it. An RPG object, an item, a wheel slice, a die face or a board space can
 have a **🤫 Send a card** button (who gets it: whoever set it off, the party, a player you pick then, or everyone else):

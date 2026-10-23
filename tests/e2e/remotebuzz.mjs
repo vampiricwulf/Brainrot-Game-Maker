@@ -4,7 +4,8 @@
 // the player (and the audience plate), the queue of buzzes, a wrong answer locking them out, → Next in line, ↺ Reset
 // buzzers, a tie and 🎲 Roll for it, a kick, a reconnect, the room ending mid-game (the panel says so, Start a new
 // room), the audience window closed by accident (the host is told), Exit › Keep & leave keeping the room for Resume,
-// another game keeping the room and its players, and ✕ Close the room.
+// another game keeping the room and its players, its Final with a room too old for answers (then back with them after
+// the question: no answers block), and ✕ Close the room.
 import { chromium } from 'playwright-core';
 import { existsSync, mkdirSync, readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
@@ -601,7 +602,34 @@ try {
   if ((await page.locator('.panel .status').innerText()).includes('Title card')) await page.keyboard.press('n');
   const plays = page.locator('.fj .wagers input[data-plays]');
   await plays.first().waitFor();
-  for (let i = 0; i < (await plays.count()); i++) await plays.nth(i).uncheck();
+  // One player plays it, with a phone in a room too old for answers: the panel says they answer out loud.
+  for (let i = 1; i < (await plays.count()); i++) await plays.nth(i).uncheck();
+  await say({ t: 'phones', phones: [{ conn: 'c1', seatId: (await state()).seats[0].id, connected: true }] });
+  const outLoud = page.locator('.fj').getByText('This buzzer server can’t take answers from phones (it’s an older one): players answer out loud.');
+  await page.getByRole('button', { name: 'Show question ▶' }).click();
+  await outLoud.waitFor();
+  await page.getByRole('button', { name: 'Reveal answer ▶' }).click();
+  await page.locator('.panel .status', { hasText: 'Answer on screen' }).waitFor();
+  assert(await outLoud.isVisible(), 'a Final with a room too old for answers: the panel says players answer out loud');
+  // The room back after the question, saying now it takes them (as one started then would): the answers never began,
+  // so no ✍ block says none came in. (A new socket's welcome is heard as it opens: once open, the room is back.)
+  const socketsNow = await page.evaluate(() => {
+    const r = window.__room;
+    r.older = r.features;
+    r.features = [...(r.features ?? []), 'answers'];
+    window.__drop();
+    return r.sockets.length;
+  });
+  await page.waitForFunction((n) => window.__room.sockets.length === n + 1 && window.__room.sockets.at(-1).readyState === 1, socketsNow);
+  assert(
+    !(await outLoud.count()) && !(await page.locator('.fj [aria-label="Answers from phones"]').count()),
+    'the room back with answers after the question: no answers block for a Final whose phones were never asked',
+  );
+  await page.evaluate(() => (window.__room.features = window.__room.older));
+  await page.getByRole('button', { name: 'Start player reveals ▶' }).click();
+  await page.locator('.fj .pl.cur').waitFor();
+  await page.keyboard.press('c');
+  await page.waitForFunction(() => document.querySelector('.panel [data-next]')?.textContent?.startsWith('Finish game'));
   await page.getByRole('button', { name: 'Finish game ▶' }).click();
   await stateIs((s) => s.over === true);
   const chooser = page.waitForEvent('filechooser', { timeout: 5000 }).catch(() => null);

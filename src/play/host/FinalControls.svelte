@@ -637,8 +637,9 @@
     {/if}
     {#if (session.finalStep === 'question' || session.finalStep === 'answer') && answersNote}
       <span class="muted small">{answersNote}</span>
-    {:else if (session.finalStep === 'question' || session.finalStep === 'answer') && typed}
-      <!-- The answers phones send: only the host sees them (in one window, not until each is revealed). -->
+    {:else if (session.finalStep === 'question' || session.finalStep === 'answer') && typed && f.answers}
+      <!-- The answers phones send: only the host sees them (in one window, not until each is revealed). Not for a
+           Final whose answers never began (a room started after the question): its phones were never asked. -->
       <AnswersHost
         {session}
         {dual}
