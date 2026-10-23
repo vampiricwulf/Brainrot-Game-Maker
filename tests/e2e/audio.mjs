@@ -701,9 +701,9 @@ try {
       (await calls(page, 'open_link'))[0].url === 'https://github.com/vampiricwulf/Brainrot-Game-Maker' && context.pages().length === 1,
       "the repo link opens in the default browser (the app's open_link), not in an app window",
     );
-    assert((await about.getByRole('button', { name: '📂 Open folder' }).count()) === 2 && (await about.getByText('Not made yet: it’s only made').count()) === 1, "only folders that exist get Open folder (the settings folder isn't made until needed; the saves folder is made when opened)");
+    assert((await about.getByRole('button', { name: /^Open folder:/ }).count()) === 2 && (await about.getByText('Not made yet: it’s only made').count()) === 1, "only folders that exist get Open folder (the settings folder isn't made until needed; the saves folder is made when opened)");
     assert((await about.innerText()).includes('C:\\Games\\BrainrotSaves'), 'About shows where saves go (BrainrotSaves next to the app)');
-    await about.locator('.folder', { hasText: 'Recent games' }).getByRole('button', { name: '📂 Open folder' }).click();
+    await about.getByRole('button', { name: 'Open folder: game data and media' }).click();
     await called(page, 'open_data_folder');
     assert(JSON.stringify(await calls(page, 'open_data_folder')) === JSON.stringify([{ which: 'data' }]), 'Open folder asks the app to show the data folder');
     await page.keyboard.press('Escape');
@@ -745,7 +745,7 @@ try {
     const leftover = about.getByRole('note');
     await leftover.getByText('com.jeopardybuilder.brainrot').waitFor();
     assert((await leftover.getByText('Left over from Jeopardy Builder').count()) === 1, 'About lists an old folder that could not be moved');
-    await leftover.getByRole('button', { name: '📂 Open folder' }).click();
+    await leftover.getByRole('button', { name: 'Open folder: old game data' }).click();
     await called(page, 'open_data_folder');
     assert(JSON.stringify(await calls(page, 'open_data_folder')) === JSON.stringify([{ which: 'old-data' }]), 'its Open folder shows the old folder');
     await page.keyboard.press('Escape');
