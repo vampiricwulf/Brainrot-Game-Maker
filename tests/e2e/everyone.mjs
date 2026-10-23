@@ -1,10 +1,11 @@
 // ✍ Everyone answers: a clue where every player types an answer on their phone, against the real buzzer room (buzzer/
 // under `wrangler dev`). Only the host sees the answers; the stream sees who has answered (in a single window the host
 // panel too, until the answer is up); showing the answer locks them; the host marks each ✔ / ✘. Then, with an audience
-// window, a second ✍ clue: the host judges while answers are still open, and a ✔ leaves the others' countdown going.
-// Then a third, with multiple choice: phones tap one, the host sees each pick and how many picked each (in one window
-// only once the answer is up), the stream shows the choices under the question (the right one lit with the answer),
-// and ✔ Judge all marks everyone in one step (the first right one picks next), its score pops above the choices.
+// window, a second ✍ clue: the host judges while answers are still open (a judged answer is locked on its phone), and a
+// ✔ leaves the others' countdown going. Then a third, with multiple choice: phones tap one, the host sees each pick and
+// how many picked each (in one window only once the answer is up), the stream shows the choices under the question (the
+// right one lit with the answer), and ✔ Judge all marks everyone in one step (the first right one picks next), its
+// score pops above the choices. Last, a 🔁 Rematch in the same room keeps the phones' 📱 on stream.
 // Needs `npm ci` in buzzer/.
 import { chromium } from 'playwright-core';
 import { spawn } from 'node:child_process';
@@ -189,6 +190,9 @@ try {
   await host.keyboard.press('r');
   await host.waitForTimeout(800);
   assert((await p1.locator('#buzz-big').innerText()) === 'Answers locked' && (await p1.locator('#answer-form').isHidden()), 'hiding the answer again doesn’t open them: nobody changes theirs after seeing it');
+  // Still locked: the stream's ✍ pill doesn't come back (nobody is answering), and the box says the answer was up.
+  await answersBox.getByRole('status').getByText('locked (the answer was on screen)').waitFor();
+  assert((await pill.count()) === 0, 'hidden again: no ✍ pill on stream, and the box says “locked (the answer was on screen)”');
 
   // ---------- With an audience window: the host panel is off stream ----------
   await host.keyboard.press('Escape');
@@ -220,6 +224,12 @@ try {
   await host.keyboard.press('Enter');
   await row('Player 1').getByText('✔ Right').waitFor();
   await host.waitForFunction(() => document.activeElement?.getAttribute('aria-label') === 'Player 2 is right');
+  // Judged, Player 1's answer is final: the phone says it's locked, while Player 2 can still change theirs.
+  await p1.locator('#buzz-big').getByText('Answers locked').waitFor();
+  assert(
+    (await p1.locator('#buzz-small').innerText()) === 'Yours: “Siamese”' && (await p2.locator('#answer-form').isVisible()),
+    'an answer judged while answers are open is locked on its phone (“Yours: “Siamese””); the others stay open',
+  );
   // (Its score pop on stream: the audience window has the state after the ✔.)
   await aud.locator('.pop', { hasText: 'Player 1' }).first().waitFor();
   assert((await aud.locator('.timer').count()) === 1, '✔ on one answer leaves the countdown going for the others');
@@ -327,6 +337,28 @@ try {
   await row('Player 2').getByText('✔ Right').waitFor();
   await picker('Player 2').waitFor();
   assert(true, 'one ↶ Undo un-judges both and gives Player 1 the pick back, and ↷ Redo judges both again');
+
+  // ---------- 🔁 Rematch in the same room: the phones still in it keep their 📱 on stream ----------
+  await host.keyboard.press('Escape');
+  await host.locator('.stage-box .board').waitFor();
+  for (const next of ['Final', 'End game']) {
+    const go = host.locator('.rn > button.next', { hasText: next });
+    await go.waitFor();
+    // (Each takes clicks only after a moment: the second half of a double-click doesn't count.)
+    await host.waitForTimeout(450);
+    await go.click();
+    await host.waitForTimeout(450);
+    await host.locator('.panel .confirm').getByRole('button', { name: 'Yes' }).click();
+  }
+  await host.getByRole('button', { name: '🔁 Rematch' }).click();
+  await host.getByText('Start a rematch? Scores go back to 0.').waitFor();
+  await host.waitForTimeout(450);
+  await host.getByRole('button', { name: '🔁 Rematch' }).click();
+  await host.getByRole('button', { name: 'Start game ▶' }).click();
+  await host.getByRole('button', { name: 'Skip intro' }).click();
+  await host.locator('.stage-box .board').waitFor();
+  await host.locator('.stage-box .plate .phone').nth(1).waitFor();
+  assert((await host.locator('.stage-box .plate .phone').count()) === 2, 'after 🔁 Rematch in the same room, both plates still show 📱');
 
   assert(errors.length === 0, `no page errors (${errors.join(' | ')})`);
   console.log('Everyone answers E2E passed.');

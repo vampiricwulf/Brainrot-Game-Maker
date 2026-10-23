@@ -546,6 +546,25 @@ describe('each game’s answer rounds are its own (answerRoundId, everyoneAnswer
     // Never the words.
     expect(JSON.stringify(everyoneAnswerAsk(game, session))).not.toContain('Shiba');
   });
+
+  it('a player judged on the ✍ clue (✔ / ✘, or an award) is closed while the others can still change theirs; undone, open again', () => {
+    const game = jeopardyGame();
+    game.players = [
+      { id: 'a', name: 'Ann', color: '#ff0000' },
+      { id: 'b', name: 'Bo', color: '#00ff00' },
+    ];
+    const clue = (game.rounds[0] as BoardRound).categories[0].clues[0];
+    clue.everyone = true;
+    const session = newSession(game);
+    openClue(session, { round: 0, cat: 0, row: 0 }, game);
+    // (Another clue's judgment doesn't count.)
+    session.scoreLog.push({ id: 'e0', ts: 0, playerId: 'b', delta: 100, reason: 'x', clueId: 'other' });
+    session.scoreLog.push({ id: 'e1', ts: 1, playerId: 'a', delta: 200, reason: 'x', clueId: clue.id, right: true });
+    expect(everyoneAnswerAsk(game, session)).toMatchObject({ open: true, seats: [{ id: 'a', closed: true }, { id: 'b' }] });
+    expect(everyoneAnswerAsk(game, session)?.seats[1]).not.toHaveProperty('closed');
+    session.scoreLog[1].undone = true;
+    expect(everyoneAnswerAsk(game, session)?.seats[0]).not.toHaveProperty('closed');
+  });
 });
 
 describe('a ✍ clue’s multiple choices (everyoneAnswerAsk, phoneView)', () => {

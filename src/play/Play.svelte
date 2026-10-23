@@ -364,10 +364,12 @@
     });
   });
   // A ✍ clue: viewers see that everyone is answering, and who has (never what). The Final's question too, with its players.
+  // Only while they can: once the answers are locked (the answer shown, hidden again or not), nobody is answering.
   $effect(() => {
-    const id = everyone && info ? answerRoundId(session, info.clue.id) : null;
-    const fin = !id && finalTyped && session.finalStep === 'question' ? session.final : undefined;
     const ans = session.remote?.answers;
+    const clueId = everyone && info ? answerRoundId(session, info.clue.id) : null;
+    const id = clueId && !(ans?.id === clueId && ans.locked) ? clueId : null;
+    const fin = !clueId && finalTyped && session.finalStep === 'question' && !session.final?.answersLocked ? session.final : undefined;
     const inNow = fin ? fin.players.filter((p) => fin.answers?.[p]) : id && ans?.id === id ? session.players.filter((p) => ans.seats[p.id]).map((p) => p.id) : [];
     untrack(() => {
       if (!id && !fin) return void (app.live.answers && delete app.live.answers);
@@ -392,6 +394,8 @@
   // Who has a phone buzzer connected right now: their plates (and the "Starting soon" lineup) show 📱.
   $effect(() => {
     const on = phonesOn && remote.status === 'online' ? [...new Set(remote.phones.filter((p) => p.connected && p.seatId).map((p) => p.seatId!))].sort() : [];
+    // (Again for a new live state: a 🔁 Rematch starts one, with the same phones still in the room.)
+    void app.live;
     untrack(() => {
       const was = app.live.phones ?? [];
       if (on.length === was.length && on.every((x, i) => x === was[i])) return;

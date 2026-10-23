@@ -538,7 +538,7 @@ export function answerRoundId(session: Pick<Session, 'answerKey'>, base: string)
 /**
  * A ✍ clue's answers phones may send now (HostState.answers), or null without one open: every player, until its answer
  * is on screen (or the round locked), with `got`, the last answer the host took from each (Session.remote.answers, this
- * game's only). Asked only with phone buzzers and a room that takes answers (Play's `everyone`). `choices`: the room
+ * game's only), and `closed` for each already judged on it (until that's undone). Asked only with phone buzzers and a room that takes answers (Play's `everyone`). `choices`: the room
  * shows multiple choices (roomHasChoices): the clue's usable ones go along, their words only (never which is right).
  */
 export function everyoneAnswerAsk(game: Game, session: Session, opts: { choices?: boolean } = {}): AnswerAsk | null {
@@ -548,10 +548,12 @@ export function everyoneAnswerAsk(game: Game, session: Session, opts: { choices?
   const mine = session.remote?.answers?.id === id ? session.remote.answers : undefined;
   const got = mine?.seats ?? {};
   const choices = opts.choices ? usableChoices(clue.choices).map(({ id, text }) => ({ id, text })) : [];
+  // Judged on this clue (✔ / ✘, or an award), and not taken back: their answer stays the one judged.
+  const judged = new Set(session.scoreLog.filter((e) => !e.undone && e.clueId === clue.id).map((e) => e.playerId));
   return {
     id,
     open: !session.revealed && !mine?.locked,
-    seats: session.players.map((p) => ({ id: p.id, ...(got[p.id] ? { got: got[p.id].n } : {}) })),
+    seats: session.players.map((p) => ({ id: p.id, ...(got[p.id] ? { got: got[p.id].n } : {}), ...(judged.has(p.id) ? { closed: true as const } : {}) })),
     ...(choices.length ? { choices } : {}),
   };
 }

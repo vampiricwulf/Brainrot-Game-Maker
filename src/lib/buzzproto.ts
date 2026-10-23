@@ -324,8 +324,11 @@ export interface AnswerAsk {
   id: string;
   /** Phones may send (or change) theirs; false: locked (the answer is on screen). */
   open: boolean;
-  /** got: the last answer (its `n`) the host took from this seat: one sent while the host was away comes again only if newer. */
-  seats: { id: string; got?: number }[];
+  /**
+   * got: the last answer (its `n`) the host took from this seat: one sent while the host was away comes again only if newer.
+   * Added later: closed, the host has judged this seat's answer (it can't be changed now, as if locked).
+   */
+  seats: { id: string; got?: number; closed?: true }[];
   /** Added later ('choices'): 2 to CHOICES_MAX choices to pick from instead of typing (never which one is right). */
   choices?: { id: string; text: string }[];
 }
@@ -533,11 +536,13 @@ export function phoneView(
 function answerView(s: HostState, seatId: string | undefined, me?: MemberRef | null, sent?: SentAnswer | null, hidden = false): Pick<PhoneView, 'answer'> {
   const a = s.answers;
   if (!a || !seatId) return {};
-  const mine = a.seats.some((x) => x.id === seatId);
+  const seat = a.seats.find((x) => x.id === seatId);
+  const mine = !!seat;
   return {
     answer: {
       id: a.id,
-      open: a.open,
+      // (A seat already judged is locked, the others still open.)
+      open: a.open && !seat?.closed,
       mine,
       ...(mine && sent ? { text: sent.text, ...(sent.pick ? { pick: sent.pick } : {}), ...(s.teams && sent.by ? { by: sent.by, byYou: !!me && me.id === sent.member } : {}) } : {}),
       ...(mine && !sent && hidden ? { hidden: true } : {}),

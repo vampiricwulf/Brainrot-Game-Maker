@@ -1885,6 +1885,23 @@ describe('answers (everyone answers on their phone)', () => {
     expect(g.hostAll('answer')).toHaveLength(0);
   });
 
+  it('a seat the host has judged (closed) is locked: its phone sees it so, and a change is refused; the others stay open', () => {
+    const g = game();
+    g.send({ t: 'state', state: state({ answers: ask() }) });
+    g.pa.send({ t: 'answer', id: 'clue1', text: 'Siamese' });
+    g.send({ t: 'state', state: state({ answers: ask({ seats: [{ id: 'a', got: 1, closed: true }, { id: 'b' }] }) }) });
+    expect(g.pa.last('view')!.view.answer).toMatchObject({ id: 'clue1', open: false, text: 'Siamese' });
+    expect(g.pb.last('view')!.view.answer).toMatchObject({ open: true });
+    g.pa.send({ t: 'answer', id: 'clue1', text: 'Bulldog' });
+    expect(g.pa.last('answered')).toMatchObject({ ok: false, reason: 'closed' });
+    g.pb.send({ t: 'answer', id: 'clue1', text: 'Corgi' });
+    expect(g.pb.last('answered')).toMatchObject({ ok: true });
+    expect(g.hostAll('answer').map((m) => m.text)).toEqual(['Siamese', 'Corgi']);
+    // The judgment undone: open again.
+    g.send({ t: 'state', state: state({ answers: ask({ seats: [{ id: 'a', got: 1 }, { id: 'b', got: 1 }] }) }) });
+    expect(g.pa.last('view')!.view.answer).toMatchObject({ open: true });
+  });
+
   it('limits how often a phone sends one, and how long it is', () => {
     const g = game();
     g.send({ t: 'state', state: state({ answers: ask() }) });

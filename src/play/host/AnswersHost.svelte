@@ -68,7 +68,9 @@
       ? 'viewers see this window: each answer shows here as you reveal it. Open the 📺 audience window to read them before they go on screen'
       : 'viewers see this window: the answers show here once the answer is up',
   );
-  const locked = $derived(hideUntilShown ? ' · locked (the answer was on screen)' : ' · locked (the answer is showing)');
+  /** The answer is on screen now (the Final: its answer step; a ✍ clue: revealed), not hidden again. */
+  const showing = $derived(hideUntilShown ? session.finalStep === 'answer' : session.revealed);
+  const locked = $derived(showing ? ' · locked (the answer is showing)' : ' · locked (the answer was on screen)');
   const ids = $derived(listed.map((p) => p.id));
   const right = $derived(rightChoice(choices));
   /** Who ✔ Judge all would mark (nobody while answers can still change). */
@@ -105,8 +107,9 @@
         {@const named = a && choices.length && !picked ? matchChoice(a.text, choices) : null}
         <li data-answer-row={p.id}>
           <span class="who" style:background={p.color} style:color={textOn(p.color)}>{p.name}</span>
-          <span class="text" class:muted={!a || (!!a.pick && !picked)} dir="auto"
-            >{#if a}{#if picked}<b>{picked}</b>{:else}“{a.text}”{#if named}<span class="muted"> = {letter(choices.findIndex((c) => c.id === named))}</span>{/if}{/if}{#if a.by}<span
+          <!-- (Each answer keeps its own direction in a <bdi>: a right-to-left one sits by the name, not at the row's far end.) -->
+          <span class="text" class:muted={!a || (!!a.pick && !picked)}
+            >{#if a}{#if picked}<b><bdi>{picked}</bdi></b>{:else}“<bdi>{a.text}</bdi>”{#if named}<span class="muted"> = {letter(choices.findIndex((c) => c.id === named))}</span>{/if}{/if}{#if a.by}<span
                   class="muted small"> · {a.by}</span
                 >{/if}{:else if phones.includes(p.id)}waiting…{:else}no phone connected{/if}</span
           >

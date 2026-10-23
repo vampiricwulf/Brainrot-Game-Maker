@@ -1562,7 +1562,8 @@ export class Room {
     const ask = st?.answers;
     const no = (reason: 'closed' | 'bad' | 'slow') => this.deps.toPhone(p.conn, { t: 'answered', id: clip(id, 100), ok: false, reason });
     const seat = p.seatId ? ask?.seats.find((x) => x.id === p.seatId) : undefined;
-    if (!st || !ask || !ask.open || ask.id !== id || !seat || !p.seatId) return no('closed');
+    // (A seat the host has judged keeps the answer it was judged on.)
+    if (!st || !ask || !ask.open || ask.id !== id || !seat || !p.seatId || seat.closed) return no('closed');
     if (!this.allow((p.answerRate ??= { start: 0, count: 0 }), ANSWER_RATE, ANSWER_WINDOW_MS)) return no('slow');
     const choice = pick === undefined ? undefined : ask.choices?.find((c) => c.id === pick);
     if (pick !== undefined && !choice) return no('bad');
@@ -1954,11 +1955,11 @@ export function cleanState(x: unknown, files: Record<string, RoomFile> = {}): Ho
   if (x.colorPick === true) extra.colorPick = true;
   if (x.answerShown === true) extra.answerShown = true;
   if (isObj(x.answers) && typeof x.answers.id === 'string' && x.answers.id && x.answers.id.length <= 100 && Array.isArray(x.answers.seats)) {
-    const aseats: { id: string; got?: number }[] = [];
+    const aseats: { id: string; got?: number; closed?: true }[] = [];
     for (const a of x.answers.seats.slice(0, 64)) {
       if (!isObj(a) || typeof a.id !== 'string' || !ids.has(a.id) || aseats.some((o) => o.id === a.id)) continue;
       const got = Number.isSafeInteger(a.got) && (a.got as number) > 0 ? (a.got as number) : undefined;
-      aseats.push({ id: a.id, ...(got ? { got } : {}) });
+      aseats.push({ id: a.id, ...(got ? { got } : {}), ...(a.closed === true ? { closed: true as const } : {}) });
     }
     const choices = cleanChoices(x.answers.choices);
     extra.answers = { id: x.answers.id, open: x.answers.open === true, seats: aseats, ...(choices ? { choices } : {}) };

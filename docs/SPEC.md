@@ -400,9 +400,10 @@ The mode isn't saved with the game: it's dual while the audience window is open.
      any clue for the tile's value: the buzzers open for them with the two locked out, or the host picks who steals
      (`1–9`), then Enter / Shift+Enter. Each steal is its own undo step, and undoing the miss closes the steal.
    - *✍ Everyone answers* (a standard tile with the box ticked, with phone buzzers): nobody buzzes; every player types
-     an answer on their phone (a team: anyone on it) until the answer is shown; only the host sees them (in one window,
-     not until the answer is up); the stream shows ✍ and who has answered; the host marks each ✔ / ✘ for the tile's
-     value. With **multiple choice** (2–6 choices under ✍ in the editor, one marked ✔ Right), players tap one instead,
+     an answer on their phone (a team: anyone on it) until the answer is shown, or until the host judges theirs (then
+     it's locked on their phone; undoing the mark opens it again); only the host sees them (in one window, not until the
+     answer is up); the stream shows ✍ and who has answered while answers are open; the host marks each ✔ / ✘ for the
+     tile's value. With **multiple choice** (2–6 choices under ✍ in the editor, one marked ✔ Right), players tap one instead,
      and ✔ Judge all marks everyone by the right choice in one step. The stream shows the choices under the question
      (the slide drawn smaller over them, the right one lit with the answer). Without phone buzzers it plays as a normal
      clue, the choices still on stream.
