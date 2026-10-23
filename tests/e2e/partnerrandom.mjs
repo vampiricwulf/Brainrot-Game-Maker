@@ -252,7 +252,7 @@ try {
   await host.keyboard.press('Shift+Enter');
   assert(await until(async () => (await scoreOf('Cat')) === money(-value)), `Shift+Enter: Cat misses, ${money(-value)}`);
   assert(await until(() => last()?.phase === 'armed' && lockedOut() === 'p1,p2,p3'), 'the buzzers open for Dan alone');
-  assert(await until(async () => (await big('Dan')) === 'BUZZ!' && (await small('Cat')).includes('already answered')), 'Dan’s phone lights up, Cat’s says she answered');
+  assert(await until(async () => (await big('Dan')) === 'BUZZ!' && (await small('Cat')).includes('had your go')), 'Dan’s phone lights up, Cat’s says she’s had her go');
   await phones.Dan.locator('#buzz').dispatchEvent('pointerdown');
   assert(await until(() => last()?.phase === 'answering' && last().answering === 'p4'), 'Dan buzzes in');
   await host.keyboard.press('Enter');

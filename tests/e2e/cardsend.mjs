@@ -381,6 +381,8 @@ try {
   const askBox = confirmStrip(host);
   await askBox.waitFor();
   assert((await words(askBox)).includes('Card 3 went to Ann') && !(await host.getByRole('alertdialog').count()), `it asks first, in the panel: “${await words(askBox)}”`);
+  // (A click on the answer right as it shows is taken as the rest of a double-click, not an answer.)
+  await sleep(500);
   await askBox.getByRole('button', { name: '↩ Put it back' }).click();
   assert(await until(() => cards().length === 1 && cards()[0].id === c1b.id), 'the tile closed: its card goes, the round’s stays');
   assert(await until(async () => !(await cardsOn(ann))), 'Ann’s phone drops it');

@@ -274,6 +274,8 @@ try {
   await dialog.getByRole('button', { name: '🎭 Deal', exact: true }).click();
   const askBox = dialog.locator('[data-deal-ask]');
   await askBox.waitFor();
+  // (A click on the answer right as it shows is taken as the rest of a double-click, not an answer.)
+  await sleep(500);
   await askBox.getByRole('button', { name: 'Take them back and deal' }).click();
   assert(await until(() => !cards().length), 'its cards out are taken back first');
   assert(await until(async () => (await savedDeal())?.hands.every((h) => !PROMPTS.some((s) => s.label === h.slice))), 'the new deal’s slices are places');

@@ -232,7 +232,7 @@ try {
   await host.keyboard.press('Shift+Enter');
   assert(await until(async () => (await scoreOf('Dan')) === '−$400'), 'Shift+Enter: Dan misses the steal, −$400');
   assert(await until(() => last()?.phase === 'armed' && lockedOut() === 'p1,p2,p4'), 'the buzzers open for the rest: Cat alone');
-  assert(await until(async () => (await big('Cat')) === 'BUZZ!' && (await small('Dan')).includes('already answered')), 'Cat’s phone lights up again, Dan’s says he answered');
+  assert(await until(async () => (await big('Cat')) === 'BUZZ!' && (await small('Dan')).includes('had your go')), 'Cat’s phone lights up again, Dan’s says he’s had his go');
   assert(await stealRow.getByRole('button', { name: 'Dan steals it' }).isDisabled(), 'Dan’s steal chip is off now');
 
   // ---------- Cat misses it too: nobody is left to steal it, and the panel says so ----------
