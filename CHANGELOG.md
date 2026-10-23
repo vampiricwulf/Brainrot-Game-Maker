@@ -11,38 +11,38 @@ the day it's pushed (Pacific time; start the heading on the day's first push) an
 in plain words for the people who make and host games. Anything committed but not pushed yet goes under
 **Unreleased** at the top, and moves under its day when it's pushed.
 
-## Unreleased
+## 2026-10-23
 
 ### Fixed
 
-- Final reveals: judging a player (C / X, or ✔ Right / ✘ Wrong in their row or on their plate) before N has put their typed answer on stream puts it up with the verdict and the wager. Before, the stream showed a blank answer line over ✔ CORRECT, and N never showed that answer.
-- Final reveals with multiple choice: when a player's pick isn't the one marked ✔ Right, the main button offers “✘ … wrong” (X), with ✔ Right beside it, instead of “✔ … right”.
-- ✍ Everyone answers: an answer you judge (✔ / ✘, or an award) while answers are still open is final: that player's phone says “Answers locked” with it, and the room takes no change to it, so the mark never ends up beside other words (Ctrl+Z on the mark opens it again, and once they change it, ↷ Redo doesn't bring that mark back). A buzzer server you run yourself needs deploying again for this.
-- After 🔁 Rematch in the same buzzer room, the phones still in it keep their 📱 on the score plates and in the “Rematch! Starting soon…” lineup, the Final's “✍ Answers on phones” shows on stream again, and the answers box says “waiting…” instead of “No phone connected”.
-- The stream's “✍ Everyone answers” (or the Final's “✍ Answers on phones”) no longer comes back when the answer is hidden again: the answers are locked by then.
-- The answers box says “locked (the answer is showing)” while the answer is up, and “locked (the answer was on screen)” only once it's hidden again (a Final's said “was on screen” while it was still up).
-- A right-to-left answer (Arabic, Hebrew) sits by its player's name in the answers box, not at the far end of the row.
-- The editor's board marks a ✍ tile whose multiple choices have an empty one, only one, or two the same (“Empty choice” on the tile, as “No answer” is), so you can see which tiles the checklist's line means.
-- In the clue editor, taking the choices off (Take the choices off, ✕ on the last one, or Ctrl+Z of ＋ Multiple choice) leaves the keys on ＋ Multiple choice instead of Next ▶, so the next Enter no longer jumps to another clue.
-- Take the choices off, and ✕ on a choice with words in it, say so in a note, as deleting a card does (Ctrl+Z puts them back).
-- ↶ Undo and 🕘 History name the Final's settings plainly: “Final Jeopardy!”: players at 0 or less sit it out (or can play it), and Set the think time of round “Final Jeopardy!” to 45 s.
-- Phones: with a 🤫 card in the buzz button's place, the line over it says what the button would: “Answers locked” with your answer or pick (in the Final, your wager too), “Wager locked” with your wager, or where you came, and a screen reader hears it. Before, it showed the host's line (“Daily Double — you're up!”, the Final's name again) or nothing.
-- Phones on a computer: a ✍ answer box opening while the keys are on a card's “Click to see” takes them, so what you type goes in and Enter sends it, instead of opening the card. The keys also go from the Final's wager box into its answer box, and to a card's Click to see when it takes the buzzer's place, instead of being lost.
-- Phones: an answer or a wager changed but not sent says so in amber (“Not sent yet: tap Change wager to send it. What the host has: $600”). The wager box said “✔ Sent: $600” in green beside a different amount.
-- Phones: a question of three lines over multiple choice shows whole on a small phone, with no ▼ More over its last line.
-- Touch phones: no white ring around BUZZ!, a choice or a card's Tap to see after a reload. It looked like the lit buzzer's border, or a pick.
-- Phones: a screen reader hears the end as one sentence: “You came 1st with $1,300 🎉”.
-- ✎ Edit video on a laptop's screen: the trim, its “How it’s cut” choice and the window's buttons no longer run over one another (the picture is smaller on a short screen, and the window scrolls when it must).
-- ✎ Edit video: ✂ Crop pressed with nothing else changed no longer makes Esc or Cancel ask “Discard your edits?”.
-- ✎ Edit, 🗜 Make smaller and 🔄 Convert: once the window says what was made, Ctrl+Z does what it says, closing the window and taking it back. Before, Ctrl+Z did nothing until the window was closed.
-- 🗜 Make smaller: after Stop, the button says “Make it” (“Try again” after a failure), not “Make it again”, when nothing was made.
-- ✎ Edit image on a moving GIF: closing the window while it saves (Esc, ✕, or Discard) stops the save and changes nothing. Before, the edit was still put in a moment later. The tools, ↶ Undo, ↷ Redo and Reset all (and Ctrl+Z) wait while it saves, so what's saved is what you see, and the question asks Discard or Keep editing.
-- ✎ Edit image says how big the edited picture came out (“Image edited (original kept): 2.9 MB, was 206 KB”): a moving GIF can come out many times bigger.
-- New, Open… and reopening a recent game ask first (Keep working / Stop it) while a ✎ edit, 🗜 copy or 🔄 conversion is still being made, as ▶ Play does. Before, they stopped it at once, with only a toast to say so.
-- The editor header's pill for a ✎ / 🗜 / 🔄 job keeps its Stop in sight in a narrower window (1366 px or less): its words end in “…” instead.
-- One window, mid-game: 🗜 Make smaller's window opens in the host panel, as 👥 Players and 🔊 Sound do, never over the stage viewers see.
-- 🗜: a copy that still comes out too big for the buzzer server (an encoder can go over on a busy picture) says so (“still too big for this buzzer server (1.3 MB; it takes 1.0 MB)”) instead of “Phones get the smaller copy now”. 🗜 again then offers only copies smaller than it: a smaller picture, or only the part the cards play (ticked), their sizes as far over as that one went. Where none can be smaller (a GIF's, or a sound's its cards play all of), it says to add the file from a link instead, and the host panel's line and the checklist offer no 🗜 for it.
-- 🗜 Make smaller with a buzzer server that takes less than 16 MB a file (one you run yourself) picks the biggest size that fits it, not one that's only under 16 MB.
+- Final reveals: judging a player (C / X, or ✔ Right / ✘ Wrong in their row or on their plate) before N has put their typed answer on stream puts it up with the verdict and the wager. Before, the stream showed a blank answer line over ✔ CORRECT, and N never showed that answer. (d0a2ea0)
+- Final reveals with multiple choice: when a player's pick isn't the one marked ✔ Right, the main button offers “✘ … wrong” (X), with ✔ Right beside it, instead of “✔ … right”. (d0a2ea0)
+- ✍ Everyone answers: an answer you judge (✔ / ✘, or an award) while answers are still open is final: that player's phone says “Answers locked” with it, and the room takes no change to it, so the mark never ends up beside other words (Ctrl+Z on the mark opens it again, and once they change it, ↷ Redo doesn't bring that mark back). A buzzer server you run yourself needs deploying again for this. (663293d, da8aaa5)
+- After 🔁 Rematch in the same buzzer room, the phones still in it keep their 📱 on the score plates and in the “Rematch! Starting soon…” lineup, the Final's “✍ Answers on phones” shows on stream again, and the answers box says “waiting…” instead of “No phone connected”. (663293d)
+- The stream's “✍ Everyone answers” (or the Final's “✍ Answers on phones”) no longer comes back when the answer is hidden again: the answers are locked by then. (663293d)
+- The answers box says “locked (the answer is showing)” while the answer is up, and “locked (the answer was on screen)” only once it's hidden again (a Final's said “was on screen” while it was still up). (663293d)
+- A right-to-left answer (Arabic, Hebrew) sits by its player's name in the answers box, not at the far end of the row. (663293d)
+- The editor's board marks a ✍ tile whose multiple choices have an empty one, only one, or two the same (“Empty choice” on the tile, as “No answer” is), so you can see which tiles the checklist's line means. (944d2e9)
+- In the clue editor, taking the choices off (Take the choices off, ✕ on the last one, or Ctrl+Z of ＋ Multiple choice) leaves the keys on ＋ Multiple choice instead of Next ▶, so the next Enter no longer jumps to another clue. (944d2e9)
+- Take the choices off, and ✕ on a choice with words in it, say so in a note, as deleting a card does (Ctrl+Z puts them back). (944d2e9)
+- ↶ Undo and 🕘 History name the Final's settings plainly: “Final Jeopardy!”: players at 0 or less sit it out (or can play it), and Set the think time of round “Final Jeopardy!” to 45 s. (944d2e9)
+- Phones: with a 🤫 card in the buzz button's place, the line over it says what the button would: “Answers locked” with your answer or pick (in the Final, your wager too), “Wager locked” with your wager, or where you came, and a screen reader hears it. Before, it showed the host's line (“Daily Double — you're up!”, the Final's name again) or nothing. (bceb77a)
+- Phones on a computer: a ✍ answer box opening while the keys are on a card's “Click to see” takes them, so what you type goes in and Enter sends it, instead of opening the card. The keys also go from the Final's wager box into its answer box, and to a card's Click to see when it takes the buzzer's place, instead of being lost. (bceb77a)
+- Phones: an answer or a wager changed but not sent says so in amber (“Not sent yet: tap Change wager to send it. What the host has: $600”). The wager box said “✔ Sent: $600” in green beside a different amount. (bceb77a)
+- Phones: a question of three lines over multiple choice shows whole on a small phone, with no ▼ More over its last line. (bceb77a)
+- Touch phones: no white ring around BUZZ!, a choice or a card's Tap to see after a reload. It looked like the lit buzzer's border, or a pick. (bceb77a)
+- Phones: a screen reader hears the end as one sentence: “You came 1st with $1,300 🎉”. (bceb77a)
+- ✎ Edit video on a laptop's screen: the trim, its “How it’s cut” choice and the window's buttons no longer run over one another (the picture is smaller on a short screen, and the window scrolls when it must). (de99b54)
+- ✎ Edit video: ✂ Crop pressed with nothing else changed no longer makes Esc or Cancel ask “Discard your edits?”. (de99b54)
+- ✎ Edit, 🗜 Make smaller and 🔄 Convert: once the window says what was made, Ctrl+Z does what it says, closing the window and taking it back. Before, Ctrl+Z did nothing until the window was closed. (de99b54)
+- 🗜 Make smaller: after Stop, the button says “Make it” (“Try again” after a failure), not “Make it again”, when nothing was made. (de99b54)
+- ✎ Edit image on a moving GIF: closing the window while it saves (Esc, ✕, or Discard) stops the save and changes nothing. Before, the edit was still put in a moment later. The tools, ↶ Undo, ↷ Redo and Reset all (and Ctrl+Z) wait while it saves, so what's saved is what you see, and the question asks Discard or Keep editing. (5c2c231, 67aaf77)
+- ✎ Edit image says how big the edited picture came out (“Image edited (original kept): 2.9 MB, was 206 KB”): a moving GIF can come out many times bigger. (5c2c231)
+- New, Open… and reopening a recent game ask first (Keep working / Stop it) while a ✎ edit, 🗜 copy or 🔄 conversion is still being made, as ▶ Play does. Before, they stopped it at once, with only a toast to say so. (6591bda)
+- The editor header's pill for a ✎ / 🗜 / 🔄 job keeps its Stop in sight in a narrower window (1366 px or less): its words end in “…” instead. (7106315)
+- One window, mid-game: 🗜 Make smaller's window opens in the host panel, as 👥 Players and 🔊 Sound do, never over the stage viewers see. (38280aa)
+- 🗜: a copy that still comes out too big for the buzzer server (an encoder can go over on a busy picture) says so (“still too big for this buzzer server (1.3 MB; it takes 1.0 MB)”) instead of “Phones get the smaller copy now”. 🗜 again then offers only copies smaller than it: a smaller picture, or only the part the cards play (ticked), their sizes as far over as that one went. Where none can be smaller (a GIF's, or a sound's its cards play all of), it says to add the file from a link instead, and the host panel's line and the checklist offer no 🗜 for it. (38280aa, 9917ad3)
+- 🗜 Make smaller with a buzzer server that takes less than 16 MB a file (one you run yourself) picks the biggest size that fits it, not one that's only under 16 MB. (9917ad3)
 
 ## 2026-10-22
 
