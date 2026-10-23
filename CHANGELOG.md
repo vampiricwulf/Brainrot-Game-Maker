@@ -11,23 +11,14 @@ the day it's pushed (Pacific time; start the heading on the day's first push) an
 in plain words for the people who make and host games. Anything committed but not pushed yet goes under
 **Unreleased** at the top, and moves under its day when it's pushed.
 
-## Unreleased
-
-### Added
-
-- Multiple choice on ✍ Everyone answers clues: ＋ Multiple choice under ✍ in the clue editor gives the clue choices (A to D to start; 2 to 6, up to 80 characters each), and ✔ Right marks the right one. Players tap theirs on their phone (A–F on a computer) and can change it until you show the answer. Once the answer is up, “✔ Judge all: B is right” marks everyone at once, as one Ctrl+Z step (or judge each as before). Only you see who picked what and how many picked each (in one window, once the answer is up). The checklist warns of an empty choice, only one, or two the same, and Find finds the choices' words. A buzzer server you run yourself needs deploying again for the buttons; until then phones get the answer box, and a typed letter or the choice's words count as that choice.
-- Multiple choice in the Final: under “✍ Players type their answers on their phones” in its editor, the same choices as a ✍ clue's go on phones with the question, and each player's pick shows in their reveal (“B · Stockholm”, on stream too), with a note in the host panel saying whether it's the one marked ✔ Right. The checklist and Find cover them too.
-- Multiple choice on stream: a ✍ clue's or a Final's choices show under the question (the slide is drawn a little smaller to make room, and the caption, slide dots and score pops sit above them), and the one marked ✔ Right lights up with the answer (in blue on a green stage background, so OBS's Chroma Key doesn't make it see-through). Without phone buzzers the choices still show, and players say the letter (the checklist says so).
-
-### Fixed
-
-- With a green stage background (for OBS's Chroma Key), the Final's ✔ CORRECT and the ✔ over a plate once that player's wager is in are blue instead of green: OBS made their green see-through.
-
 ## 2026-10-22
 
 ### Added
 
 - Final: with phone buzzers, players type their answer on their phone once the question shows (on a team, anyone on it), and can change it until you show the answer. Only you see the answers (in one window, not until you reveal each one, or open the audience window to read them first). In the reveals, N puts the spotlit player's answer on stream, then C / X judges them and shows their wager, as on TV; players without a phone answer out loud as before. “✍ Players type their answers on their phones” in the Final's editor (on unless you untick it) goes back to answers on paper. During the question the stream shows “✍ Answers on phones” and who has answered, never what. A buzzer server too old for ✍ Everyone answers can't take them either: players answer out loud, and the host panel says so. (6db232b, f82271c)
+- Multiple choice on ✍ Everyone answers clues: ＋ Multiple choice under ✍ in the clue editor gives the clue choices (A to D to start; 2 to 6, up to 80 characters each), and ✔ Right marks the right one. Players tap theirs on their phone (A–F on a computer) and can change it until you show the answer. Once the answer is up, “✔ Judge all: B is right” marks everyone at once, as one Ctrl+Z step (or judge each as before). Only you see who picked what and how many picked each (in one window, once the answer is up). The checklist warns of an empty choice, only one, or two the same, and Find finds the choices' words. A buzzer server you run yourself needs deploying again for the buttons; until then phones get the answer box, and a typed letter or the choice's words count as that choice. (c92ac11, a5ce9c3, e2aa3b1)
+- Multiple choice in the Final: under “✍ Players type their answers on their phones” in its editor, the same choices as a ✍ clue's go on phones with the question, and each player's pick shows in their reveal (“B · Stockholm”, on stream too), with a note in the host panel saying whether it's the one marked ✔ Right. The checklist and Find cover them too. (9a5005c)
+- Multiple choice on stream: a ✍ clue's or a Final's choices show under the question (the slide is drawn a little smaller to make room, and the caption, slide dots and score pops sit above them), and the one marked ✔ Right lights up with the answer (in blue on a green stage background, so OBS's Chroma Key doesn't make it see-through). Without phone buzzers the choices still show, and players say the letter (the checklist says so). (efe7587, c4a99a4)
 
 ### Changed
 
@@ -39,6 +30,7 @@ in plain words for the people who make and host games. Anything committed but no
 - Phones get up to 1,000 characters of a question (500 before), ending in “…” when cut: the end of a long question, where the actual question usually is, was lost. (50e4457)
 - On a computer, the phone page no longer says “Press Space to buzz” under “Wager locked” or “… is answering · Daily Double”, when nothing buzzes. (50e4457)
 - After 🔁 Rematch in the same buzzer room, a ✍ Everyone answers clue no longer shows a phone the answer it sent in the last game (“✔ Sent: …”) while the host panel says “waiting…”: each game's answers are its own. (9a2769c)
+- With a green stage background (for OBS's Chroma Key), the Final's ✔ CORRECT and the ✔ over a plate once that player's wager is in are blue instead of green: OBS made their green see-through. (c4a99a4)
 
 ## 2026-10-18
 
