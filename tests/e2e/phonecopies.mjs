@@ -382,7 +382,8 @@ try {
   await bigButton.waitFor();
   assert(true, 'Ctrl+Z twice takes both back, one at a time (the first with the window still open, which closes)');
 
-  // A copy of the whole video, at 480p.
+  // A copy of the whole video, at 360p. (The fixture is noise, which encoders can't squeeze to their estimate: CI's
+  // makes it about 3.0 MB at 480p, over this server's 3 MB, and that copy would be refused as still too big.)
   await card('movie').getByRole('button', { name: '🗜 Make smaller…' }).click();
   await dialog.waitFor();
   await dialog.getByRole('radio').first().waitFor({ timeout: 60_000 });
@@ -397,7 +398,7 @@ try {
     `this browser makes ${movieBox.word}, with its ${aac ? 'AAC' : 'Opus'} sound, and it says so`,
   );
   await trim.uncheck();
-  await dialog.getByRole('radio', { name: /^Small · 854×480/ }).check();
+  await dialog.getByRole('radio', { name: /^Tiny · 640×360/ }).check();
   await dialog.getByRole('button', { name: 'Make it', exact: true }).click();
   await dialog.locator('[data-shrink-done]').waitFor({ timeout: 120_000 });
   const said6 = await page.evaluate(() => window.__progress);
@@ -408,7 +409,7 @@ try {
   await close();
   const whole = await copyOf('movie', 1);
   assert(whole.type === movieBox.mime && whole.size < 0.9 * movie.length, `the copy is a smaller ${movieBox.word} (${whole.size} bytes of ${movie.length})`);
-  assert(whole.meta?.w === 854 && whole.meta.h === 480 && Math.abs(whole.meta.seconds - 4) < 0.3, `480p, all 4 s of it: ${JSON.stringify(whole.meta)}`);
+  assert(whole.meta?.w === 640 && whole.meta.h === 360 && Math.abs(whole.meta.seconds - 4) < 0.3, `360p, all 4 s of it: ${JSON.stringify(whole.meta)}`);
   assert(Math.abs(whole.meta.at - 1) < 0.1, `and it plays from 1 s when sent there (${whole.meta.at})`);
 
   // Only the part its card plays.
