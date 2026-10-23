@@ -905,6 +905,8 @@ export class Room {
    */
   private hostPick(race: Race, seatId: string, rollOrder?: string[], out: string[] = []): void {
     if (!race.decided) this.rank(race, false);
+    // The host hears the queue again, changed or not (one that dropped its copy, an Undo say, has it back).
+    this.lastQueue = '';
     const next = race.queue.findIndex((b) => !out.includes(b.seatId));
     if (!rollOrder && !race.tie && next >= 0 && race.queue[next].seatId === seatId) {
       race.head = Math.max(race.head, next + 1);

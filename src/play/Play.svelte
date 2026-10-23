@@ -1034,8 +1034,9 @@
     const s = events.length ? buzzSteps.get(events[0].batchId ?? events[0].id) : undefined;
     if (!s || !buzzing || s.clue !== info?.clue.id) return;
     const to = undone ? s.before : s.after;
-    // The phones' queue was a later opening's.
-    roomQueue = null;
+    // The phones' queue stays for the same opening (a miss undone and made again passes to the same next in line); one
+    // from another opening isn't this one's.
+    if (roomQueue && roomQueue.armId !== to.armId) roomQueue = null;
     setBuzz(to);
     selected = to.phase === 'answering' && to.answering ? [to.answering] : [];
   }

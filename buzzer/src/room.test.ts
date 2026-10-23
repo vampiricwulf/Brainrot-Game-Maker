@@ -901,11 +901,23 @@ describe('the race', () => {
     const order = () => g.hostLast('queue')?.queue.map((q) => `${q.seatId} +${q.afterMs}${q.arrivedLate ? ' late' : ''}`);
     const was = order();
     expect(was).toEqual(['b +0', 'c +500', 'a +1800']);
-    // Bob wrong: Cat answers, the list as it was.
+    // Bob wrong: Cat answers, the list as it was (sent again: a host that dropped its copy has it back).
+    const sent = () => g.hostAll('queue').length;
+    let n = sent();
     g.send({ t: 'state', state: state({ phase: 'answering', armId: 1, answering: 'c', lockedOut: ['b'], clue: { text: 'Q?' } }) });
     expect(order()).toEqual(was);
+    expect(sent()).toBe(++n);
     expect(g.pc.last('result')).toMatchObject({ outcome: 'first', rank: 1 });
     expect(g.pa.last('result')).toMatchObject({ outcome: 'late', rank: 2, afterMs: 1300, behind: 'Cat' });
+    // Undone (Bob answers again) and made again: the host hears the same list each time.
+    g.send({ t: 'state', state: state({ phase: 'answering', armId: 1, answering: 'b', clue: { text: 'Q?' } }) });
+    expect(order()).toEqual(was);
+    expect(sent()).toBe(++n);
+    expect(g.pb.last('result')).toMatchObject({ outcome: 'first', rank: 1 });
+    g.send({ t: 'state', state: state({ phase: 'answering', armId: 1, answering: 'c', lockedOut: ['b'], clue: { text: 'Q?' } }) });
+    expect(order()).toEqual(was);
+    expect(sent()).toBe(++n);
+    expect(g.pc.last('result')).toMatchObject({ outcome: 'first', rank: 1 });
     // Cat wrong too: Ann answers; Cat never reads "faster, but arrived late".
     g.send({ t: 'state', state: state({ phase: 'answering', armId: 1, answering: 'a', lockedOut: ['b', 'c'], clue: { text: 'Q?' } }) });
     expect(order()).toEqual(was);

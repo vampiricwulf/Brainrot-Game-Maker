@@ -217,6 +217,27 @@ try {
   await big(p1).getByText("You're answering!").waitFor();
   await host.waitForFunction(() => [...document.querySelectorAll('.panel .p .sel[aria-pressed="true"]')].some((e) => e.textContent.includes('Player 1')));
   assert(true, 'a wrong answer (on $0, nothing to take) locks Player 2 out, and Player 1, next in the buzz order, answers without buzzing again');
+  // Undone, redone, undone, and wrong again: the buzz order stays, and Player 1 answers again (the buzzers don't open).
+  const order = () => queue.locator('li').evaluateAll((ls) => ls.map((l) => l.textContent.replace(/\s+/g, ' ').replace(/ \+.*$/, '').trim() + (l.classList.contains('now') ? '*' : '')).join());
+  const answering = async (p, other) => {
+    await big(p).getByText("You're answering!").waitFor();
+    await big(other).getByText(/You're 2nd|Wait/).waitFor();
+  };
+  await host.keyboard.press('Control+z');
+  await answering(p2, p1);
+  await host.waitForFunction(() => document.querySelector('.buzz-queue li.now')?.textContent.includes('Player 2'));
+  assert((await order()) === '1. Player 2*,2. Player 1', `Ctrl+Z: Player 2 answers again, the buzz order kept (${await order()})`);
+  await host.keyboard.press('Control+y');
+  await answering(p1, p2);
+  await host.waitForFunction(() => document.querySelector('.buzz-queue li.now')?.textContent.includes('Player 1'));
+  assert((await order()) === '1. Player 2,2. Player 1*', 'Ctrl+Y: Player 1 answers, the buzz order kept');
+  await host.keyboard.press('Control+z');
+  await answering(p2, p1);
+  await host.keyboard.press('Shift+Enter');
+  await p1.waitForFunction(() => /answering|BUZZ/.test(document.getElementById('buzz-big').textContent));
+  assert((await big(p1).innerText()) === "You're answering!", 'wrong again after Ctrl+Z: Player 1, next in the buzz order, answers (the buzzers stay shut)');
+  await host.waitForFunction(() => document.querySelector('.buzz-queue li.now')?.textContent.includes('Player 1'));
+  assert((await order()) === '1. Player 2,2. Player 1*', 'and the buzz order is still there');
   // A reload mid-clue: the game comes back with Player 1 answering and Player 2 still locked out (not opened afresh).
   await host.waitForTimeout(800); // the game is saved (debounced)
   await host.reload();
