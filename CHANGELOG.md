@@ -11,52 +11,12 @@ the day it's pushed (Pacific time; start the heading on the day's first push) an
 in plain words for the people who make and host games. Anything committed but not pushed yet goes under
 **Unreleased** at the top, and moves under its day when it's pushed.
 
-## Unreleased
-
-### Added
-
-- With the audience window open, your own board marks the tiles still to play that are a Daily Double (⭐), a 🤝 partner clue or a ✍ Everyone answers clue, in their corner (and a screen reader names them), Daily Doubles placed at random too. Viewers' board never shows them, nor does the board in one window.
-
-### Fixed
-
-- A double-click on the stage is one step: on a tile it opens the clue without also putting its answer on stream, and on the answer (or the round intro's last step) it goes back to the board without opening the tile under the pointer.
-- One window: a Daily Double wager sent from a phone stays hidden in the host panel once its question is up (“DD 📱”, the Amount box “hidden”, no amount on ＋ Award, − Deduct or ✔ / ✘), until Show wager or until you type an amount over it. Before, viewers saw it as soon as the question showed.
-- Daily Double: a second Enter right after the one that showed the question (a double press, or Enter on 👁 Reveal answer, where the keys go) no longer gives its player the wager as right before they've answered. It says to press Enter again.
-- Daily Double: marking its player wrong stops the countdown, as a right answer does, so TIME'S UP no longer goes on stream after they've missed (Ctrl+Z brings the countdown back).
-- ± Adjust score puts the keys in the Amount box, so you type the points and then pick who gets them. Before, the keys were on Done, and typing 50 selected players instead.
-- One window: the stage viewers see keeps one size through a board round. A Daily Double's splash holds the host panel to the board's height (its chips and Wager box in sight, the rest scrolls), a round with a video, sound or embed on its clues keeps the media controls' room from the board on, the “Pick who answered” hint takes only the room its row has left (cut short with …), and up to 1100px wide a clue with several question slides shows ◀ Slide and ▦ Done ▶ board as ◀ and ▦ (without the hint), so its row no longer wraps. Before, the stage zoomed down and back up at each of these.
-- One window: 📜 Log says “… rolling” for dice or a roll-off until they land on stream, as it says “… spinning” for a wheel. Before, it showed the result (the tiebreaker roll-off's winner too) while the dice still tumbled.
-- A tiebreaker win (the roll-off or the clue) settles only the tie it was won in. A score fixed later into a tie with someone who never rolled is a tie again, to settle, instead of the old winner still winning.
-- Closing a wheel or dice with its score effect neither confirmed nor skipped (Esc, Close, or a click on the stage) says so first; closing again goes on without it. Before, the effect was dropped without a word, with nothing to undo.
-- A wheel or dice tile with no question closed before it spun or rolled (Esc, or ✕ Close) stays on the board, instead of being used up.
-- A name cleared in 👥 Players mid-game and left blank goes back to what it was (a new row: “Player N”), so no player plays nameless on stream, on the end screen or in the log.
-- 📜 Log › Scores › Undo all on a step for several players (✔ Judge all) gives back the picker it made, and Restore all takes it again, as Undo on one player does.
-- Phones: a player (or team) the host took out of the game and put back (Ctrl+Z, or ↩ Restore in 👥 Players) is told so on their phone (“The host put you back in the game. Tap your name.”), instead of still reading “The host took you out of the game.” A buzzer server you run yourself needs deploying again for this.
-- Screen readers hear how the game ended: who won, “Tie for first: Ann & Bob”, or “Co-winners: Ann & Bob” when you declare them. Before, they heard only “Game over.”
-- The end screen's panel: the tie box and the “… won the tiebreaker” or “Co-winners declared” line no longer sit flush on the buttons under them.
-- 🎭 Deals: taking a player out takes only their card off the phones. Their part stays with the deal, so Ctrl+Z or ↩ Restore brings it back (↻ Send again then sends their card), and the counts on stream (“Dealt to 4: Spy ×1, Villager ×3”, “Sent to 4”) never change as someone leaves. Before, their part was lost for good, the counts dropped (in one window telling viewers what part they had), and taking out the only one with a part put the whole deal away.
-- One window: a deal that leaves some players without a part (🧢 Team captain) says only “Sent to N”, never “✓ seen by 1 of 2”, which ticked as a player with a part opened their card.
-- A tile's card for “whoever picked it” stays with the player who picked the tile. Before, a right answer that moved the picker on moved the card's default with it (and “everyone else” swapped too).
-- 🪟 Card window: a partner clue's card shown with 🪟 Show says the part and what to do (“You're the Describer”, “Describe it to Ann: don't say what's on it!”), as a phone does.
-- One window: after 📤 Send of a quick card, 👁 Show is off again, so the next card's words are hidden as they're typed (pressed, the button reads 🙈 Hide). Before, it stayed on and the next secret card was typed in plain view on stream.
-- One window: “Deal a new one?”, “Put the deal away?”, a partner clue's “take it back and send it to Cat?” and “Swap anyway?”, and ↩ Cancel (keep tile)'s “Put the tile back anyway?” are asked in the host panel (the deal's in its 🎭 Deal… menu), as other questions in play are. Left unanswered, ↩ Cancel (keep tile)'s question goes when its tile closes, and gives way to a newer question. Before, a box came up over the stage and dimmed it for viewers.
-- Without phones, ↩ Cancel (keep tile) asks first when a card for that tile was shown in the 🪟 card window (“Card 1 went to Dan. Put the tile back anyway?”), as it does with phones. Before, the tile went back with no word, though the player had seen its card.
-- 🤫 Send a card…: after 📤 Send, the ✓ line and its 📋 copy for a player with no phone scroll into view, with the keys on them. Before, in one window they sat below the menu's fold (and the keys jumped to the top of the menu as 📤 Send turned grey).
-- Partner clues: a card given to someone else since it went reads “changed, not sent yet” (before, “changed:”), and the two who played it see “You've had your go on this one” on their phones during a steal, not “You already answered this one” (one of them only described). A buzzer server you run yourself needs deploying again for the phone's line.
-- Phones: once you tick 🔒 Lock seats, a player's “Not you? Change player” warns that they can't get back in until you unlock them (and stops warning once you do). Before, only a phone that saw the seat list after the lock knew. A buzzer server you run yourself needs deploying again for this.
-- In the editor, the “📱 Buzzer room … is still open” bar says Resume game goes back into it when the game in that room is kept to resume. Before, it said ▶ Play, which starts the game over and shows every phone at $0.
-- Phones don't offer “＋ I'm new” once the game has its most players (⚖ Game rules › Most players), and anyone waiting to be let in is told the host isn't taking new players. Before, they waited forever while ✔ Add was greyed out.
-- The host panel's 📱 phones list keeps each player on one line (“✔ joined”, “📵 offline 0:03”, Free seat and ✕ Kick all inside it), a long name cut short instead. Before, rows wrapped onto two to four lines and ✕ Kick was cut off at the right.
-- After a wrong answer or ⏭ Skip, and through Ctrl+Z or Ctrl+Y of a wrong answer, the buzz order stays as they buzzed: those who missed are struck out where they were, the one answering now is in bold, and times stay against the fastest buzz. Before, the one answering jumped to the top, and a player who had missed could read “faster, but arrived late”. A buzzer server you run yourself needs deploying again for this.
-- A buzzer tie's 🎲 roll leaves the stage once you judge, ⏭ Skip or take → Next in line, instead of covering the question and who's answering until Esc.
-- Teams: the ✕ that takes everyone off a team reads “✕ All”, so it isn't mistaken for the ✕ of the person under it.
-- Teams: after a tie roll, a team's phones read “Tie — your team rolled 2nd”, not “you rolled” (one of them may not have buzzed). A buzzer server you run yourself needs deploying again for this.
-
 ## 2026-10-23
 
 ### Added
 
 - Exported game files: a “Get Brainrot Games Maker” link under ⬇ Download as .brainrot, to the app's download page, so whoever was sent the file can find the builder to edit it in. (8f83268)
+- With the audience window open, your own board marks the tiles still to play that are a Daily Double (⭐), a 🤝 partner clue or a ✍ Everyone answers clue, in their corner (and a screen reader names them), Daily Doubles placed at random too. Viewers' board never shows them, nor does the board in one window. (9d02105)
 
 ### Changed
 
@@ -121,6 +81,38 @@ in plain words for the people who make and host games. Anything committed but no
 - Screen readers hear the buzz order once, as it ends up, never an out-of-date one beside it. (b8239bb)
 - Resume game (and testing a round) says so to screen readers and puts the keys on the board or the main button, as Start does. (b8239bb)
 - Screen readers hear P then a number (“Bob picks next”), S (“Scores on screen” or “off screen”), T (the countdown starting or pausing) and Shift+T (“+10 s: 24 s left”, or the countdown starting when none is up). (b8239bb, 1f898f9)
+- A double-click on the stage is one step: on a tile it opens the clue without also putting its answer on stream, and on the answer (or the round intro's last step) it goes back to the board without opening the tile under the pointer. (aa6aafb)
+- One window: a Daily Double wager sent from a phone stays hidden in the host panel once its question is up (“DD 📱”, the Amount box “hidden”, no amount on ＋ Award, − Deduct or ✔ / ✘), until Show wager or until you type an amount over it. Before, viewers saw it as soon as the question showed. (aa6aafb)
+- Daily Double: a second Enter right after the one that showed the question (a double press, or Enter on 👁 Reveal answer, where the keys go) no longer gives its player the wager as right before they've answered. It says to press Enter again. (aa6aafb)
+- Daily Double: marking its player wrong stops the countdown, as a right answer does, so TIME'S UP no longer goes on stream after they've missed (Ctrl+Z brings the countdown back). (aa6aafb)
+- ± Adjust score puts the keys in the Amount box, so you type the points and then pick who gets them. Before, the keys were on Done, and typing 50 selected players instead. (aa6aafb)
+- One window: the stage viewers see keeps one size through a board round. A Daily Double's splash holds the host panel to the board's height (its chips and Wager box in sight, the rest scrolls), a round with a video, sound or embed on its clues keeps the media controls' room from the board on, the “Pick who answered” hint takes only the room its row has left (cut short with …), and up to 1100px wide a clue with several question slides shows ◀ Slide and ▦ Done ▶ board as ◀ and ▦ (without the hint), so its row no longer wraps. Before, the stage zoomed down and back up at each of these. (9d02105, a9689a2)
+- One window: 📜 Log says “… rolling” for dice or a roll-off until they land on stream, as it says “… spinning” for a wheel. Before, it showed the result (the tiebreaker roll-off's winner too) while the dice still tumbled. (3baea91)
+- A tiebreaker win (the roll-off or the clue) settles only the tie it was won in. A score fixed later into a tie with someone who never rolled is a tie again, to settle, instead of the old winner still winning. (3baea91)
+- Closing a wheel or dice with its score effect neither confirmed nor skipped (Esc, Close, or a click on the stage) says so first; closing again goes on without it. Before, the effect was dropped without a word, with nothing to undo. (3baea91)
+- A wheel or dice tile with no question closed before it spun or rolled (Esc, or ✕ Close) stays on the board, instead of being used up. (3baea91)
+- A name cleared in 👥 Players mid-game and left blank goes back to what it was (a new row: “Player N”), so no player plays nameless on stream, on the end screen or in the log. (3baea91)
+- 📜 Log › Scores › Undo all on a step for several players (✔ Judge all) gives back the picker it made, and Restore all takes it again, as Undo on one player does. (3baea91)
+- Phones: a player (or team) the host took out of the game and put back (Ctrl+Z, or ↩ Restore in 👥 Players) is told so on their phone (“The host put you back in the game. Tap your name.”), instead of still reading “The host took you out of the game.” A buzzer server you run yourself needs deploying again for this. (22790e0)
+- Screen readers hear how the game ended: who won, “Tie for first: Ann & Bob”, or “Co-winners: Ann & Bob” when you declare them. Before, they heard only “Game over.” (22790e0)
+- The end screen's panel: the tie box and the “… won the tiebreaker” or “Co-winners declared” line no longer sit flush on the buttons under them. (22790e0)
+- 🎭 Deals: taking a player out takes only their card off the phones. Their part stays with the deal, so Ctrl+Z or ↩ Restore brings it back (↻ Send again then sends their card), and the counts on stream (“Dealt to 4: Spy ×1, Villager ×3”, “Sent to 4”) never change as someone leaves. Before, their part was lost for good, the counts dropped (in one window telling viewers what part they had), and taking out the only one with a part put the whole deal away. (b5ee721)
+- One window: a deal that leaves some players without a part (🧢 Team captain) says only “Sent to N”, never “✓ seen by 1 of 2”, which ticked as a player with a part opened their card. (b5ee721)
+- A tile's card for “whoever picked it” stays with the player who picked the tile. Before, a right answer that moved the picker on moved the card's default with it (and “everyone else” swapped too). (b5ee721)
+- 🪟 Card window: a partner clue's card shown with 🪟 Show says the part and what to do (“You're the Describer”, “Describe it to Ann: don't say what's on it!”), as a phone does. (b5ee721)
+- One window: after 📤 Send of a quick card, 👁 Show is off again, so the next card's words are hidden as they're typed (pressed, the button reads 🙈 Hide). Before, it stayed on and the next secret card was typed in plain view on stream. (5b83e05)
+- One window: “Deal a new one?”, “Put the deal away?”, a partner clue's “take it back and send it to Cat?” and “Swap anyway?”, and ↩ Cancel (keep tile)'s “Put the tile back anyway?” are asked in the host panel (the deal's in its 🎭 Deal… menu), as other questions in play are. Left unanswered, ↩ Cancel (keep tile)'s question goes when its tile closes, and gives way to a newer question. Before, a box came up over the stage and dimmed it for viewers. (5b83e05, 26886d3, c13a7c7)
+- Without phones, ↩ Cancel (keep tile) asks first when a card for that tile was shown in the 🪟 card window (“Card 1 went to Dan. Put the tile back anyway?”), as it does with phones. Before, the tile went back with no word, though the player had seen its card. (5b83e05)
+- 🤫 Send a card…: after 📤 Send, the ✓ line and its 📋 copy for a player with no phone scroll into view, with the keys on them. Before, in one window they sat below the menu's fold (and the keys jumped to the top of the menu as 📤 Send turned grey). (5b83e05, e610789)
+- Partner clues: a card given to someone else since it went reads “changed, not sent yet” (before, “changed:”), and the two who played it see “You've had your go on this one” on their phones during a steal, not “You already answered this one” (one of them only described). A buzzer server you run yourself needs deploying again for the phone's line. (5b83e05)
+- Phones: once you tick 🔒 Lock seats, a player's “Not you? Change player” warns that they can't get back in until you unlock them (and stops warning once you do). Before, only a phone that saw the seat list after the lock knew. A buzzer server you run yourself needs deploying again for this. (1e5e091)
+- In the editor, the “📱 Buzzer room … is still open” bar says Resume game goes back into it when the game in that room is kept to resume. Before, it said ▶ Play, which starts the game over and shows every phone at $0. (1e5e091)
+- Phones don't offer “＋ I'm new” once the game has its most players (⚖ Game rules › Most players), and anyone waiting to be let in is told the host isn't taking new players. Before, they waited forever while ✔ Add was greyed out. (1e5e091)
+- The host panel's 📱 phones list keeps each player on one line (“✔ joined”, “📵 offline 0:03”, Free seat and ✕ Kick all inside it), a long name cut short instead. Before, rows wrapped onto two to four lines and ✕ Kick was cut off at the right. (1e5e091)
+- After a wrong answer or ⏭ Skip, and through Ctrl+Z or Ctrl+Y of a wrong answer, the buzz order stays as they buzzed: those who missed are struck out where they were, the one answering now is in bold, and times stay against the fastest buzz. Before, the one answering jumped to the top, and a player who had missed could read “faster, but arrived late”. A buzzer server you run yourself needs deploying again for this. (1e5e091, 1e62a39)
+- A buzzer tie's 🎲 roll leaves the stage once you judge, ⏭ Skip or take → Next in line, instead of covering the question and who's answering until Esc. (1e5e091)
+- Teams: the ✕ that takes everyone off a team reads “✕ All”, so it isn't mistaken for the ✕ of the person under it. (1e5e091)
+- Teams: after a tie roll, a team's phones read “Tie — your team rolled 2nd”, not “you rolled” (one of them may not have buzzed). A buzzer server you run yourself needs deploying again for this. (1e5e091)
 
 ## 2026-10-22
 
