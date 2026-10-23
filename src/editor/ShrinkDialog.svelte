@@ -46,11 +46,14 @@
     ids,
     onclose,
     secret = false,
+    area = null,
   }: {
     ids: Id[];
     onclose: () => void;
     /** In play, in one window: the host's window is on stream, so no file is named or shown. */
     secret?: boolean;
+    /** In play, in one window mid-game: the host panel's box, where it opens (never over the stage viewers see). */
+    area?: { top: number; left: number; width: number; height: number } | null;
   } = $props();
 
   /** Opened in play (the pre-game screen too): for the game being played, a row a file. */
@@ -66,6 +69,12 @@
   const ref = $derived(game.media.find((m) => m.id === id));
   const copy = $derived(ref ? phoneCopyOf(game, ref) : undefined);
   const fileBytes = $derived(fileLimitsNow().limits.fileBytes);
+
+  /** File `m`'s copy now, when it came out too big for this buzzer server: only smaller pictures are offered. */
+  function overCopy(m: MediaRef): AvRead['smallerThan'] {
+    const c = phoneCopyOf(game, m);
+    return c && c.size > fileBytes && c.phoneCopy?.width && c.phoneCopy.height ? { width: c.phoneCopy.width, height: c.phoneCopy.height } : undefined;
+  }
 
   // ---------- One file ----------
   let info = $state<GifInfo | null>(null);
@@ -117,7 +126,7 @@
         try {
           if (!m || !shrinkable(m) || !blob) row.plan = { refuse: 'That file isn’t stored in this browser' };
           else if (isGifRef(m)) row.plan = (await readGif(blob)).plan;
-          else row.plan = avDefault(await readForCopy(m, blob, cardUses(game, row.id)), fileBytes);
+          else row.plan = avDefault(await readForCopy(m, blob, cardUses(game, row.id), overCopy(m)), fileBytes);
         } catch {
           row.plan = { refuse: 'The app can’t read this file' };
         }
@@ -135,7 +144,7 @@
       }
       return;
     }
-    const read = await readForCopy(ref, blob, cardUses(game, id));
+    const read = await readForCopy(ref, blob, cardUses(game, id), overCopy(ref));
     trim = read.span?.ticked ?? false;
     const o = avOptions(read, trim, fileBytes);
     sel = 'refuse' in o ? 0 : o.pick;
@@ -191,6 +200,13 @@
 
   const phaseText = (p: string): string => (p === 'waiting' ? 'Waiting for the other file to finish…' : p === 'checking' ? 'Checking it plays…' : p === 'storing' ? 'Storing it in the game…' : 'Making it…');
   const madeRef = $derived(ended && 'done' in ended && ended.media ? game.media.find((m) => m.id === ended.media) : undefined);
+  /** What it says once the copy is in: how big, and that phones get it, or (an encoder went over) that it's still too big. */
+  const doneText = $derived.by(() => {
+    if (!madeRef || !ref) return 'Done.';
+    const sizes = `${formatBytes(madeRef.size)} (was ${formatBytes(ref.size)})`;
+    if (madeRef.size <= fileBytes) return `${sizes}. Phones get this copy (Ctrl+Z takes it back).`;
+    return `${sizes}: still too big for this buzzer server, which takes files up to ${formatBytes(fileBytes)}. 🗜 again makes a smaller one, or add it from a link (Ctrl+Z takes it back).`;
+  });
   const ICON = { image: '🖼', video: '🎬', audio: '🔊', font: '🔤' } as const;
   /** Where it shows how far it got once this window is closed: the editor's header, or in play the 🗜 button. */
   const goesOn = play ? 'its 🗜 button shows how far it got' : 'the header shows how far it got';
@@ -218,6 +234,7 @@
     if (!e) return null;
     if ('done' in e) {
       const made = e.media ? game.media.find((m) => m.id === e.media) : undefined;
+      if (made && made.size > fileBytes) return { text: `⚠ ${formatBytes(made.size)}: still too big for this buzzer server`, cls: 'warn' };
       return { text: `✓ ${made ? formatBytes(made.size) : 'Done'}`, cls: 'good' };
     }
     if ('failed' in e) return { text: `⚠ ${e.failed}`, cls: 'warn' };
@@ -227,7 +244,16 @@
 
 <svelte:window onkeydowncapture={onkey} />
 
-<div class="modal-backdrop" role="presentation" onclick={(e) => e.target === e.currentTarget && onclose()}>
+<div
+  class="modal-backdrop"
+  class:in-panel={!!area}
+  style:top={area ? `${area.top}px` : undefined}
+  style:left={area ? `${area.left}px` : undefined}
+  style:width={area ? `${area.width}px` : undefined}
+  style:height={area ? `${area.height}px` : undefined}
+  role="presentation"
+  onclick={(e) => e.target === e.currentTarget && onclose()}
+>
   <div class="modal" role="dialog" aria-modal="true" aria-labelledby="shrink-title" use:modal={{ esc: onclose }} data-undo="off">
     <div class="modal-head">
       <h2 class="modal-title" id="shrink-title">🗜 {many ? `Make smaller copies for phones` : 'Make a smaller copy for phones'}</h2>
@@ -273,7 +299,9 @@
       </p>
       <p class="muted">Phones get the copy; the show keeps this file as it is.</p>
       {#if av && !av.playable}<p class="muted">Phones can’t play this kind of file as it is: the copy is one they can.</p>{/if}
-      {#if copy}
+      {#if copy && copy.size > fileBytes}
+        <p class="warn">📱 Its copy ({formatBytes(copy.size)}) is too big for this buzzer server, which takes files up to {formatBytes(fileBytes)}: making it again puts a smaller one in its place.</p>
+      {:else if copy}
         <p class="muted">📱 Phones get {ref && !phonesTake(ref) ? 'a copy they can play' : 'its smaller copy'} now ({formatBytes(copy.size)}): making it again puts a new one in its place.</p>
       {/if}
 
@@ -283,9 +311,7 @@
         </p>
         <progress max="1" value={job.progress} aria-label="How far it got"></progress>
       {:else if ended && 'done' in ended}
-        <p role="status" class="good" data-shrink-done>
-          {madeRef ? `${formatBytes(madeRef.size)} (was ${formatBytes(ref.size)}). Phones get this copy (Ctrl+Z takes it back).` : 'Done.'}
-        </p>
+        <p role="status" class={madeRef && madeRef.size > fileBytes ? 'warn' : 'good'} data-shrink-done>{doneText}</p>
         {#if watching && madeRef && mediaUrls[madeRef.id]}
           {#if madeRef.kind === 'audio'}
             <audio class="watch" src={mediaUrls[madeRef.id]} autoplay controls aria-label="The copy for phones"></audio>
@@ -376,6 +402,11 @@
 </div>
 
 <style>
+  /* In one window mid-game: over the host panel only, never the stage viewers see. */
+  .modal-backdrop.in-panel {
+    inset: auto;
+    padding: 8px;
+  }
   .what {
     overflow-wrap: anywhere;
   }

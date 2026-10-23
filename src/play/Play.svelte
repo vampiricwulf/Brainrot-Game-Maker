@@ -262,6 +262,8 @@
   const sym = $derived(game.settings.currencySymbol);
   // (▶ Test this round never goes on stream: an audience window left open keeps its card, and the test plays here.)
   const dual = $derived(audience.open && !app.test);
+  /** Single window: a list or window open in the host panel (?, L, 👥 Players, ⚖ Rules, 🔊 Sound, 🗜 Make smaller). */
+  const panelWindow = $derived(!dual && (showKeys || showPlayers || showRules || showLog || showSound || !!shrinkDialog.open));
   /** The pre-game screen's "things to check" box (the bar at the foot brings it into view). */
   let checksEl = $state<HTMLDetailsElement>();
   /** A window wide for its height (1280×720, 1920×1080), where a tall host panel fits better beside the stage. */
@@ -444,7 +446,7 @@
   // Final's) or a partner to choose needs them: they come back for it, and hide again once it's done (unless the host
   // pressed H meanwhile).
   const needControls = $derived(
-    (!dual && (showKeys || showPlayers || showRules || showLog || showSound)) ||
+    panelWindow ||
       !!ownPlayers(session)?.setup ||
       (session.phase === 'final' && session.finalStep === 'wagers' && session.intro?.stage !== 'title'),
   );
@@ -501,7 +503,7 @@
     };
   });
   $effect(() => {
-    if (dual || !(showKeys || showPlayers || showRules || showLog || showSound)) return void (panelBox = null);
+    if (!panelWindow) return void (panelBox = null);
     let ro: ResizeObserver | undefined;
     const read = () => {
       const el = document.querySelector<HTMLElement>('.play > .panel');
@@ -4418,7 +4420,7 @@
     class:side
     class:dual
     class:logged={dual && showLog}
-    class:roomy={!dual && (showKeys || showPlayers || showRules || showLog || showSound)}
+    class:roomy={panelWindow}
     oncontextmenu={playerMenuAt}
     use:focusRescue
   >
@@ -4736,9 +4738,10 @@
 {#if showSettings}
   <SettingsDialog at="buzzer" onclose={() => (showSettings = false)} />
 {/if}
-{#if shrinkDialog.open}
-  <!-- 🗜 for the game being played: in one window the host's window is on stream, so it names no file. -->
-  {#key shrinkDialog.open}<ShrinkDialog ids={shrinkDialog.open} secret={!dual} onclose={() => (shrinkDialog.open = null)} />{/key}
+{#if shrinkDialog.open && (dual || app.pregame || panelBox)}
+  <!-- 🗜 for the game being played: in one window the host's window is on stream, so it names no file, and mid-game it
+       opens in the host panel (it grows for it), never over the stage viewers see. -->
+  {#key shrinkDialog.open}<ShrinkDialog ids={shrinkDialog.open} secret={!dual} area={panelBox} onclose={() => (shrinkDialog.open = null)} />{/key}
 {/if}
 {#if showSound && (dual || app.pregame || panelBox)}
   <!-- Single window, mid-game: in the host panel (it grows for it), never over the stage viewers see. Its steps share the

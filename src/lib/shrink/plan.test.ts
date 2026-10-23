@@ -24,6 +24,7 @@ import {
   NO_ENCODER,
   NO_PICTURE,
   NOT_MUCH_SMALLER,
+  NO_SMALLER,
   OPUS_NOTE,
   planGif,
   planSoundCopy,
@@ -234,6 +235,14 @@ describe('videoOptions: which size is picked', () => {
     if ('refuse' in c) throw new Error('refused');
     expect([c.choices[c.pick].name, c.tooBig]).toEqual(['Tiny', true]);
     expect(c.choices.every((x) => x.estimate > 0.9 * SLOW_FILE_BYTES)).toBe(true);
+  });
+
+  it('after a copy that came out too big for the buzzer server, offers only smaller sizes than it (none: says so)', () => {
+    const minute = video(1920, 1080, 60, 400 * MiB);
+    const a = videoOptions(minute, 60, { ...opts, smallerThan: { width: 854, height: 480 } });
+    if ('refuse' in a) throw new Error('refused');
+    expect([a.choices.map((x) => x.name), a.pick]).toEqual([['Tiny'], 0]);
+    expect(videoOptions(minute, 60, { ...opts, smallerThan: { width: 640, height: 360 } })).toEqual({ refuse: NO_SMALLER });
   });
 
   it('leaves out sizes not much smaller than the file (under 0.8 of it), unless phones can’t play it as it is', () => {

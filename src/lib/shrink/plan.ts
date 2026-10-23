@@ -160,6 +160,8 @@ export const SOUND_TOO_LONG = 'This browser can only make a copy of a sound like
 export const OPUS_NOTE = 'Its sound is Opus: some iPhones may not play it. For a copy every phone plays, make it in Chrome or Edge on Windows or Mac, or in the desktop app.';
 /** Said under the choices when even the smallest is over what the buzzer server takes. */
 export const STILL_TOO_BIG = 'Still too big for this buzzer server: try only the part the cards play, or add it from a link.';
+/** Its copy came out too big for the buzzer server at the smallest size there is. */
+export const NO_SMALLER = 'Its copy came out too big for this buzzer server, and there’s no smaller size to make: add it from a link instead';
 
 /** One of a video's copies: its preset, its picture's size and its bitrate. */
 export interface VideoChoice {
@@ -284,13 +286,17 @@ export const spanText = (span: Span, length: number | null): string =>
 export function videoOptions(
   f: MediaFacts,
   seconds: number,
-  opts: { fileBytes: number; playable: boolean },
+  opts: { fileBytes: number; playable: boolean; smallerThan?: { width: number; height: number } },
 ): { choices: (VideoChoice & { estimate: number })[]; pick: number; tooBig: boolean } | { refuse: string } {
   if (!f.box) return { refuse: CANT_READ_FILE };
   if (!f.video) return { refuse: NO_PICTURE };
   if (!f.video.decodes) return { refuse: CANT_READ_VIDEO };
   const abps = soundBps(f);
-  const all = videoChoices(f.video.width, f.video.height).map((c) => ({ ...c, estimate: estimateBytes(c.bps + abps, seconds) }));
+  let all = videoChoices(f.video.width, f.video.height).map((c) => ({ ...c, estimate: estimateBytes(c.bps + abps, seconds) }));
+  // (Its copy at one size came out too big for the buzzer server, over its estimate: only smaller ones, never that again.)
+  const s = opts.smallerThan;
+  if (s) all = all.filter((c) => c.width * c.height < s.width * s.height);
+  if (!all.length) return { refuse: NO_SMALLER };
   const choices = opts.playable ? all.filter((c) => c.estimate < PRESET_MAX_SHARE * f.size) : all;
   if (!choices.length) return { refuse: NOT_MUCH_SMALLER };
   const under = (n: number) => choices.findIndex((c) => c.estimate < 0.9 * n);
@@ -429,6 +435,8 @@ export interface AvRead {
   span: { span: Span; ticked: boolean } | null;
   /** The video encoders there are at each choice's size ("1280×720"). */
   enc: Record<string, Encoders>;
+  /** Its copy now came out too big for the buzzer server at this size: only smaller ones are offered. */
+  smallerThan?: { width: number; height: number };
 }
 
 const NO_ENCODERS: Encoders = { avc: false, vp9: false, vp8: false };
@@ -437,7 +445,7 @@ const NO_ENCODERS: Encoders = { avc: false, vp9: false, vp8: false };
 export function avOptions(r: AvRead, trim: boolean, fileBytes: number): ReturnType<typeof videoOptions> {
   if (r.kind === 'audio') return { choices: [], pick: 0, tooBig: false };
   const span = trim && r.span ? r.span.span : null;
-  return videoOptions(r.facts, spanSeconds(span, r.facts.seconds ?? 0), { fileBytes, playable: r.playable });
+  return videoOptions(r.facts, spanSeconds(span, r.facts.seconds ?? 0), { fileBytes, playable: r.playable, smallerThan: r.smallerThan });
 }
 
 /** How a video's copy at `choice` (a sound's: there's one), with or without only the part the cards play, is made. */

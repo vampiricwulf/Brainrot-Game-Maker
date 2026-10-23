@@ -485,11 +485,13 @@ To build the address into your own releases too (so nobody has to paste it), add
   and a video or sound phones can't play that can't be repackaged (a FLAC, say) can get a copy they can (🗜). During the
   game too: the host panel's line about a card's big files, the pre-game checklist's and the host column's have
   **🗜 Make smaller**, for the game being played (the editor's game keeps the copy as well; a card already out switches
-  over to it). In one window its window names no file and shows no preview. It works the computer hard for a minute or
-  two, so the stream may stutter: it's best done in the editor before the show. It needs the app opened from a file or
-  an https:// address, in Chrome, Edge, Firefox or the desktop app; where the browser makes H.264 and AAC (Chrome and
-  Edge on Windows or Mac, the desktop app) it makes MP4 and M4A files every phone plays, elsewhere WebM and OGG (Opus),
-  which some iPhones may not play.
+  over to it). In one window its window names no file and shows no preview, and mid-game it opens in the host panel,
+  never over the stage. A copy that still comes out too big for the server (an encoder can go over on a busy picture)
+  says so, and 🗜 again offers only smaller sizes. It works the computer hard for a minute or two, so the stream may
+  stutter: it's best done in the editor before the show. It needs the app opened from a file or an https:// address, in
+  Chrome, Edge, Firefox or the desktop app; where the browser makes H.264 and AAC (Chrome and Edge on Windows or Mac,
+  the desktop app) it makes MP4 and M4A files every phone plays, elsewhere WebM and OGG (Opus), which some iPhones may
+  not play.
   See [buzzer/README.md](buzzer/README.md#card-files). Each room keeps
   its cards only until the tile closes (or the round ends, or the host takes it back, for one sent with 🤫 Send a card…),
   and their files up to 10 minutes longer (20 hours after their upload began at most: the app puts one up again if a

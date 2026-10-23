@@ -98,14 +98,14 @@ export function bigForPhones(game: Game, fileBytes: number): MediaRef[] {
  * A video or sound read for 🗜's dialog (`uses`: where its 🤫 cards' items start and stop): what's in it (its length
  * worked out when its header doesn't say), what this browser makes, and the encoders there are at each choice's size.
  */
-export async function readForCopy(ref: MediaRef, blob: Blob, uses: { start?: number; end?: number }[]): Promise<AvRead> {
+export async function readForCopy(ref: MediaRef, blob: Blob, uses: { start?: number; end?: number }[], smallerThan?: AvRead['smallerThan']): Promise<AvRead> {
   const kind = ref.kind === 'audio' ? 'audio' : 'video';
   const can = await probe();
   const facts = await readFacts(blob, { duration: 'compute', fps: kind === 'video' });
   const enc: Record<string, Encoders> = {};
   if (kind === 'video' && facts.video && can.ok)
     for (const c of videoChoices(facts.video.width, facts.video.height)) enc[`${c.width}×${c.height}`] = await encodersFor(c.width, c.height, c.bps);
-  return { kind, facts, can, playable: phonesTake(ref), span: cardSpan(uses, facts.seconds), enc };
+  return { kind, facts, can, playable: phonesTake(ref), span: cardSpan(uses, facts.seconds), enc, ...(smallerThan ? { smallerThan } : {}) };
 }
 
 /** What a copy made and stored is (its bytes are under `id` already). */
@@ -229,6 +229,11 @@ async function putIn(
   } else step(label, () => applyPhoneCopy(app.game, of, copy, rangeOf(c.range)), { place });
   const size = formatBytes(made.blob.size);
   const back = undo ? ' (Ctrl+Z takes it back)' : '';
+  // (An encoder can go far over its bitrate on a busy picture: a copy still over what this buzzer server takes is kept,
+  // as it's smaller, but phones can't get it, and the words say so. 🗜 again offers only smaller ones.)
+  const limit = fileLimitsNow().limits.fileBytes;
+  if (made.blob.size > limit)
+    return { toast: `🗜 Made a smaller copy, but it’s still too big for this buzzer server (${size}; it takes ${formatBytes(limit)}): 🗜 again makes a smaller one, or add it from a link${back}`, media: id };
   return {
     toast: c.playable ? `🗜 Phones get the smaller copy now: ${size} instead of ${formatBytes(src.size)}${back}` : `🗜 Phones get a copy they can play now: ${size}${back}`,
     media: id,

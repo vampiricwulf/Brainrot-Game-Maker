@@ -223,6 +223,12 @@ try {
   assert((await panelButton.getAttribute('title')) === 'Make smaller copies of these files for phones', 'and has 🗜 Make smaller, titled for what it does');
   await panelButton.click();
   await dialog.waitFor();
+  const placed = await dialog.evaluate((d) => {
+    const [b, p] = [d.parentElement.getBoundingClientRect(), document.querySelector('.play > .panel').getBoundingClientRect()];
+    const box = (r) => [r.top, r.bottom, r.left, r.right].map(Math.round).join();
+    return { inside: b.top >= p.top - 1 && b.bottom <= p.bottom + 1 && b.left >= p.left - 1 && b.right <= p.right + 1, backdrop: box(b), panel: box(p) };
+  });
+  assert(placed.inside, `one window, mid-game: its window opens in the host panel, never over the stage viewers see (${JSON.stringify(placed)})`);
   await row('twirl').getByText(/^→ about /).waitFor();
   const panelRow = (await row('twirl').innerText()).replace(/\s+/g, ' ');
   assert(/^🖼 a GIF · 1\.\d MB → about \d+ KB \(a looping video\)$/.test(panelRow), `its window names no file: the kind and size only (${panelRow})`);

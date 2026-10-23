@@ -11,6 +11,8 @@ import type { Game, MediaRef } from '../model';
 import { jeopardyGame } from '../testgame';
 import { clone } from '../ops';
 import { watchGame, type GameWatch } from '../watch.svelte';
+import { prefs } from '../prefs.svelte';
+import { forgetServerFiles, noteServerFiles } from '../serverlimits.svelte';
 import { CHANGED, queuePhoneCopy, shrinkHere } from './apply';
 import { clearJobs, jobs } from './jobs.svelte';
 import type { CopyPlan } from './plan';
@@ -93,6 +95,25 @@ describe('a 🗜 copy put in the game', () => {
     await ended(job);
     expect(jobs.ended[job]).toMatchObject({ done: expect.stringMatching(/^🗜 Phones get the smaller copy now: /) });
     expect([copies(), labels()]).toEqual([['gif'], ['Made a smaller copy of a GIF for phones']]);
+  });
+
+  it('came out over what the buzzer server takes (an encoder can overshoot): kept, but never said to be what phones get', async () => {
+    const was = prefs.buzzerServer;
+    prefs.buzzerServer = 'https://a.test';
+    noteServerFiles('https://a.test', { files: { fileBytes: 50, roomBytes: 1000, roomFiles: 32 } });
+    try {
+      const job = queuePhoneCopy('gif')!;
+      await made();
+      at.release!();
+      await ended(job);
+      expect(jobs.ended[job]).toMatchObject({
+        done: '🗜 Made a smaller copy, but it’s still too big for this buzzer server (100 B; it takes 50 B): 🗜 again makes a smaller one, or add it from a link (Ctrl+Z takes it back)',
+      });
+      expect(copies()).toEqual(['gif']);
+    } finally {
+      forgetServerFiles();
+      prefs.buzzerServer = was;
+    }
   });
 
   it('isn’t put in when the file changed while it was made (Replace…, or its Ctrl+Z): nothing is changed', async () => {

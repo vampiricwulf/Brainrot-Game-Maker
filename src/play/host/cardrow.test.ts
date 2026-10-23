@@ -83,7 +83,7 @@ describe('a card’s file going up', () => {
 });
 
 describe('🗜 Make smaller on a card’s line', () => {
-  it('offers the files of the items that are big, or too big for the buzzer server, each once, going as themselves', () => {
+  it('offers the files of the items that are big, or too big for the buzzer server, each once: a big one going as itself, one too big even as its copy', () => {
     const MB = 1024 * 1024;
     const g = jeopardyGame();
     g.media.push(
@@ -94,6 +94,9 @@ describe('🗜 Make smaller on a card’s line', () => {
       { id: 'had', name: 'had.mp4', mime: 'video/mp4', size: 40 * MB, kind: 'video' },
       { id: 'hadcopy', name: 'had (phones).webm', mime: 'video/webm', size: 25 * MB, kind: 'video', phoneCopy: { of: 'had' } },
       { id: 'other', name: 'other.mp4', mime: 'video/mp4', size: 20 * MB, kind: 'video' },
+      // (Its copy came out too big for the buzzer server: 🗜 again offers smaller ones.)
+      { id: 'over', name: 'over.mp4', mime: 'video/mp4', size: 60 * MB, kind: 'video' },
+      { id: 'overcopy', name: 'over (phones).webm', mime: 'video/webm', size: 35 * MB, kind: 'video', phoneCopy: { of: 'over', width: 854, height: 480 } },
     );
     const card: Slide = { background: {}, elements: [newImageEl('huge'), newVideoEl('slow'), newVideoEl('small'), newVideoEl('slow'), newVideoEl('had'), newVideoEl('other')] };
     const { items } = phoneCard(g, card, { files: {}, fileBytes: 30 * MB });
@@ -103,6 +106,8 @@ describe('🗜 Make smaller on a card’s line', () => {
     expect(shrinkIds(items, 'slow', () => false)).toEqual([]);
     // (A 'big' line's are only those too big for the buzzer server: the ones that go are on the 'slow' one.)
     expect(shrinkIds(items, 'big', () => true)).toEqual(['huge']);
+    const over = phoneCard(g, { background: {}, elements: [newVideoEl('over')] }, { files: {}, fileBytes: 30 * MB }).items;
+    expect([shrinkIds(over, 'big', () => true), shrinkIds(over, 'slow', () => true)]).toEqual([['over'], []]);
     expect(shrinkIds(items, 'slow', () => true)).toEqual(['slow', 'other']);
   });
 });

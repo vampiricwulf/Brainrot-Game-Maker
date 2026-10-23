@@ -40,6 +40,8 @@ in plain words for the people who make and host games. Anything committed but no
 - ✎ Edit image says how big the edited picture came out (“Image edited (original kept): 2.9 MB, was 206 KB”): a moving GIF can come out many times bigger.
 - New, Open… and reopening a recent game ask first (Keep working / Stop it) while a ✎ edit, 🗜 copy or 🔄 conversion is still being made, as ▶ Play does. Before, they stopped it at once, with only a toast to say so.
 - The editor header's pill for a ✎ / 🗜 / 🔄 job keeps its Stop in sight in a narrower window (1366 px or less): its words end in “…” instead.
+- One window, mid-game: 🗜 Make smaller's window opens in the host panel, as 👥 Players and 🔊 Sound do, never over the stage viewers see.
+- 🗜: a copy that still comes out too big for the buzzer server (an encoder can go over on a busy picture) says so (“still too big for this buzzer server (1.3 MB; it takes 1.0 MB)”) instead of “Phones get the smaller copy now”. In play the host panel's line keeps its 🗜 Make smaller, and 🗜's window then offers only smaller sizes than that copy.
 
 ## 2026-10-22
 
