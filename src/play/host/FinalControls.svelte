@@ -1,7 +1,8 @@
 <!--
   Final round host flow (spec §6.4): one wager screen while the category is up (who plays, and each one's wager), then
-  the question, the answer and a one-by-one reveal; and its own 🤫 cards (TileCards), from the wagers to the last
-  reveal (below the panel's foot, 🤫 N cards ↓ in the step's row goes to them).
+  the question, the answer and a one-by-one reveal (a typed answer, a multiple choice's pick by its letter and whether
+  it's the one marked ✔ Right); and its own 🤫 cards (TileCards), from the wagers to the last reveal (below the panel's
+  foot, 🤫 N cards ↓ in the step's row goes to them).
 -->
 <script lang="ts">
   import { onDestroy, tick, untrack } from 'svelte';
@@ -17,6 +18,7 @@
     hasWager, nameList, score, slidePosition, typedAnswer, wagerFromPhone, wagerSentBy,
   } from '../../lib/session';
   import { finalNextStep, logged, startStep } from '../../lib/toolset';
+  import { letter, pickLabel, pickOf, rightChoice, usableChoices } from '../../lib/choices';
   import { hostAsk, offerNext } from './slots.svelte';
   import AnswersHost from './AnswersHost.svelte';
   import TileCards from './TileCards.svelte';
@@ -32,6 +34,7 @@
     typed = false,
     answerPhones = [],
     answersNote = '',
+    choicesNote = '',
     onshowanswer = () => {},
     onstep,
     onreveal,
@@ -59,6 +62,8 @@
     answerPhones?: string[];
     /** Why phones can't send answers here (an older buzzer server), or ''. */
     answersNote?: string;
+    /** Why phones can't show its multiple choices (an older buzzer server), or ''. */
+    choicesNote?: string;
     /** Put a player's typed answer on screen (and spotlight them). */
     onshowanswer?: (id: string) => void;
     onstep: () => void;
@@ -88,6 +93,9 @@
   /** The Final being played. */
   const round = $derived(currentFinal(session, game));
   const title = $derived(round ? finalName(round) : 'the Final');
+  /** Its multiple choices (as phones letter them), and the one marked ✔ Right. */
+  const choices = $derived(usableChoices(round?.choices));
+  const rightOne = $derived(rightChoice(choices));
 
   let wagersEl = $state<HTMLElement>();
   const wagerBox = (id: string) => wagersEl?.querySelector<HTMLInputElement>(`input[data-wager="${id}"]`);
@@ -589,7 +597,17 @@
               {#if !a}
                 <span class="muted small typed">no typed answer</span>
               {:else if dual || shownA}
-                <span class="typed" dir="auto" title="{a.text}{dual && a.by ? ` · sent by ${a.by}` : ''}" data-typed={id}>“{a.text}”</span>
+                <!-- Multiple choice: the pick by its letter ("B · Stockholm"), or typed words with the choice they name ("= B");
+                     with one marked ✔ Right, whether it's that one. -->
+                {@const picked = choices.length ? pickLabel(choices, a.pick) : undefined}
+                {@const named = choices.length ? pickOf(a, choices) : null}
+                <span class="typed" class:muted={!!a.pick && !picked} dir="auto" title="{picked ?? a.text}{dual && a.by ? ` · sent by ${a.by}` : ''}" data-typed={id}
+                  >{#if picked}<b>{picked}</b>{:else}“{a.text}”{#if named}<span class="muted"> = {letter(choices.findIndex((c) => c.id === named))}</span>{/if}{/if}</span
+                >
+                {#if rightOne && named}
+                  {#if named === rightOne.id}<span class="small pick-right" data-pick-hint={id}>✔ right choice</span>
+                  {:else}<span class="muted small" data-pick-hint={id}>✘ not {letter(choices.indexOf(rightOne))}</span>{/if}
+                {/if}
               {:else}
                 <span class="muted small typed" title="Shown here once you put it on screen" data-typed={id}>✍ hidden</span>
               {/if}
@@ -649,6 +667,8 @@
         phones={answerPhones}
         open={session.finalStep === 'question' && !f.answersLocked}
         hideUntilShown
+        {choices}
+        note={choicesNote}
       />
     {/if}
     <!-- The Final's own 🤫 cards: under the wager or reveal rows (every wager box comes first), above the step's buttons. -->
@@ -728,6 +748,10 @@
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
+  }
+  .pick-right {
+    color: var(--good);
+    font-weight: 600;
   }
   .pl input[type='number'] {
     width: 80px;

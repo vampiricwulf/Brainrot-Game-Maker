@@ -1,9 +1,9 @@
 <!--
-  A ✍ clue's multiple choices in its editor: ＋ Multiple choice starts A to D, then each choice's words, ✔ Right (at most
-  one, and it can be taken off), ▲ / ▼ and ✕, ＋ Choice up to CHOICES_MAX, and Take the choices off. Each change is a
-  step named by the letters as they were ("Deleted choice C of Memes $400"); typing goes to the history watcher
-  ("Edited choice B of Memes $400"). Lettered by place, as the host types them (in play, those with no words are left
-  out: the checklist warns about them).
+  A ✍ clue's (or a Final's) multiple choices in its editor: ＋ Multiple choice starts A to D, then each choice's words,
+  ✔ Right (at most one, and it can be taken off), ▲ / ▼ and ✕, ＋ Choice up to CHOICES_MAX, and Take the choices off.
+  Each change is a step named by the letters as they were ("Deleted choice C of Memes $400"); typing goes to the history
+  watcher ("Edited choice B of Memes $400"). Lettered by place, as the host types them (in play, those with no words are
+  left out: the checklist warns about them).
 -->
 <script lang="ts">
   import { tick } from 'svelte';
@@ -17,14 +17,19 @@
     owner,
     where,
     place,
+    final = false,
   }: {
-    /** The clue whose choices they are. */
+    /** The clue (or the Final) whose choices they are. */
     owner: { choices?: Choice[] };
-    /** It as the history names it: "Memes $400". */
+    /** It as the history names it: "Memes $400", "Final Jeopardy!". */
     where: () => string;
     /** Where its steps show (left out: where the change is). */
     place?: StepOptions['place'];
+    /** A Final's: no ✔ Judge all there, the reveals say whether each pick is the right one. */
+    final?: boolean;
   } = $props();
+  const rightTitle = $derived(final ? 'The right answer: the reveals say whether each pick is it' : 'The right answer: ✔ Judge all marks everyone by it');
+  const rightHint = $derived(final ? 'In the reveals you see whether each pick is the one marked ✔ Right.' : '✔ Right is the one ✔ Judge all goes by.');
 
   const list = $derived(owner.choices ?? []);
   let box = $state<HTMLElement>();
@@ -102,7 +107,7 @@
             class:good={!!c.right}
             aria-pressed={!!c.right}
             onclick={() => markRight(i)}
-            title="The right answer: ✔ Judge all marks everyone by it">✔ Right</button
+            title={rightTitle}>✔ Right</button
           >
           <button class="ghost tiny" data-up onclick={() => move(i, -1)} disabled={i === 0} aria-label="Move choice {letter(i)} up">▲</button>
           <button class="ghost tiny" data-down onclick={() => move(i, 1)} disabled={i === list.length - 1} aria-label="Move choice {letter(i)} down">▼</button>
@@ -113,7 +118,7 @@
     <div class="foot">
       <button class="ghost small" onclick={add} disabled={list.length >= CHOICES_MAX} title={list.length >= CHOICES_MAX ? `${CHOICES_MAX} choices at most` : undefined}>＋ Choice</button>
       <button class="ghost small" onclick={takeOff}>Take the choices off</button>
-      <span class="hint">Players tap one on their phone (no typing) until you show the answer. ✔ Right is the one ✔ Judge all goes by.</span>
+      <span class="hint">Players tap one on their phone (no typing) until you show the answer. {rightHint}</span>
     </div>
   </fieldset>
 {/if}

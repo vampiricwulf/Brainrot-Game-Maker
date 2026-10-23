@@ -28,6 +28,7 @@ import {
   typedPoints,
   wholePoints,
   type BoardRound,
+  type FinalRound,
   type Game,
   type SavedCard,
 } from './model';
@@ -575,6 +576,15 @@ describe('a ✍ clue’s multiple choices in saved games', () => {
     // A good list is kept as it is.
     const good = [{ id: 'a', text: 'Paris' }, { id: 'b', text: '', right: true }];
     expect(choicesOf(good)).toEqual(good);
+  });
+
+  it('a Final’s too', () => {
+    const g = JSON.parse(JSON.stringify(jeopardyGame()));
+    g.rounds[1].choices = [{ id: 'a', text: 'Paris', right: true }, { id: 'a', text: 'Oslo', right: true }, 'Rome'];
+    const c = (migrateGame(g).rounds[1] as FinalRound).choices!;
+    expect([c.map((x) => x.text), c[0].id !== c[1].id, c.map((x) => !!x.right)]).toEqual([['Paris', 'Oslo'], true, [true, false]]);
+    g.rounds[1].choices = 'Paris';
+    expect('choices' in migrateGame(g).rounds[1]).toBe(false);
   });
 });
 

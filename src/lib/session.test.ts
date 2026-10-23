@@ -1063,10 +1063,12 @@ describe('final typed answers', () => {
     const f = session.final!;
     f.answers = {};
     expect(forViewers(session).final!.answers).toEqual({});
-    f.answers = { [a]: { text: 'Fleming', n: 3, by: 'Al' }, [b]: { text: 'Curie', n: 1 } };
+    f.answers = { [a]: { text: 'Fleming', n: 3, by: 'Al', pick: 'pick-a' }, [b]: { text: 'Curie', n: 1, pick: 'pick-b' } };
     f.answerShown = { [a]: true };
     const seen = forViewers(session);
-    expect(seen.final!.answers).toEqual({ [a]: { text: 'Fleming' } });
+    // (A multiple choice's pick goes with the words it was shown with; one not shown yet, not at all.)
+    expect(seen.final!.answers).toEqual({ [a]: { text: 'Fleming', pick: 'pick-a' } });
+    expect(JSON.stringify(seen)).not.toContain('pick-b');
     expect(seen.final!.answerShown).toEqual({ [a]: true });
     expect(JSON.stringify(seen)).not.toContain('Curie');
     // A Final put away is hidden the same way.

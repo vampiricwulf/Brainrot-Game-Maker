@@ -520,8 +520,9 @@ export interface Clue {
 }
 
 /**
- * One of a ✍ clue's multiple choices: lettered A, B, C… by place (in play, by place among those with words: see
- * choices.ts usableChoices). `right`: the one ✔ Judge all goes by (at most one).
+ * One of a ✍ clue's (or a typed Final's) multiple choices: lettered A, B, C… by place (in play, by place among those
+ * with words: see choices.ts usableChoices). `right`: the one ✔ Judge all goes by (at most one); in the Final, the one
+ * the reveals tell each pick against.
  */
 export interface Choice {
   id: Id;
@@ -748,6 +749,8 @@ export interface FinalRound {
    * type it (from the question until the answer shows).
    */
   phoneAnswersOff?: boolean;
+  /** Its multiple choices, as a ✍ clue's (used while players type their answers on their phones). */
+  choices?: Choice[];
   hostNotes?: string;
   /**
    * Was switched off in a Jeopardy Builder game, and kept (as a round that plays) because something was written in it:
@@ -866,11 +869,13 @@ export interface FinalState {
   answerShown?: Record<Id, true>;
 }
 
-/** A Final answer from a phone: its words, the room's count, and on a team who sent it. */
+/** A Final answer from a phone: its words, the room's count, on a team who sent it, and a multiple choice's pick. */
 export interface FinalAnswer {
   text: string;
   n: number;
   by?: string;
+  /** The choice picked (FinalRound.choices), its words in `text`. */
+  pick?: Id;
 }
 
 export interface Player {
@@ -1924,12 +1929,8 @@ function repairCards(h: { cards?: ClueCard[] }, goes: ReadonlySet<unknown>): voi
 }
 
 /**
- * A partner clue's rules (partner-clues spec §18.5), and its cards (repairCards). Rules that aren't an object are
- * dropped; a partner clue with none plays Describe it.
- */
-/**
- * A ✍ clue's multiple choices: not a list, none; each needs words (cut to CHOICE_MAX) and an id of its own; ✔ Right
- * only on the first marked; at most CHOICES_MAX. None left: none.
+ * A ✍ clue's (or a Final's) multiple choices: not a list, none; each needs words (cut to CHOICE_MAX) and an id of its
+ * own; ✔ Right only on the first marked; at most CHOICES_MAX. None left: none.
  */
 function repairChoices(o: { choices?: Choice[] }): void {
   if (o.choices === undefined) return;
@@ -1948,6 +1949,10 @@ function repairChoices(o: { choices?: Choice[] }): void {
   else if (list.length !== o.choices.length || list.some((c, i) => c !== o.choices![i])) o.choices = list;
 }
 
+/**
+ * A partner clue's rules (partner-clues spec §18.5), and its cards (repairCards). Rules that aren't an object are
+ * dropped; a partner clue with none plays Describe it.
+ */
 function repairPartner(cl: Clue): void {
   repairCards(cl, CARD_TO);
   if (cl.partner !== undefined && !isObj(cl.partner)) delete cl.partner;
@@ -2093,6 +2098,7 @@ function repairGame(g: Game): void {
       if (typeof r.category !== 'string') r.category = r.category == null ? '' : String(r.category);
       if (typeof r.timerSeconds !== 'number' || !(r.timerSeconds >= 1)) r.timerSeconds = 30;
       if (r.phoneAnswersOff !== undefined && typeof r.phoneAnswersOff !== 'boolean') delete r.phoneAnswersOff;
+      repairChoices(r);
     } else if (isSlides(r)) {
       r.questionSlide = repairSlide(r.questionSlide);
       repairExtraSlides(r);

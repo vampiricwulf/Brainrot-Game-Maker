@@ -251,6 +251,14 @@
     {/if}
     <div class="label">Answer</div>
     <div class="a">{slideText(finalRound.answerSlide) || '—'}</div>
+    {#if !finalRound.phoneAnswersOff && usableChoices(finalRound.choices).length}
+      <!-- (Lettered as the phones letter them: those with words only.) -->
+      <div class="notes" data-choices-info>
+        Choices: {usableChoices(finalRound.choices)
+          .map((c, i) => `${letter(i)} ${c.text}${c.right ? ' ✔' : ''}`)
+          .join(' · ')}
+      </div>
+    {/if}
     {#if finalRound.hostNotes}
       <div class="label">Notes</div>
       <div class="notes">{finalRound.hostNotes}</div>

@@ -637,6 +637,31 @@ describe('the Final’s typed answers (finalAnswerAsk, and its question in hostS
     expect(finalAnswerAsk(game, session)).toBeNull();
   });
 
+  it('its multiple choices go along with a room that shows them: those with words, never which is right, closed too', () => {
+    const { game, session, round } = setup();
+    round.choices = [
+      { id: 'c1', text: 'Adams' },
+      { id: 'c2', text: ' ' },
+      { id: 'c3', text: 'Washington', right: true },
+    ];
+    finalNext(session, game);
+    expect(finalAnswerAsk(game, session)?.choices).toBeUndefined();
+    const ask = finalAnswerAsk(game, session, { choices: true })!;
+    expect(ask.choices).toEqual([
+      { id: 'c1', text: 'Adams' },
+      { id: 'c3', text: 'Washington' },
+    ]);
+    expect(JSON.stringify(ask)).not.toContain('right');
+    expect(phoneView(hostState(game, session, newBuzz(), 0, { answers: ask }), 'a').answer?.choices).toEqual(ask.choices);
+    // (Each phone keeps its pick in sight once they lock.)
+    session.final!.answers = {};
+    finalNext(session, game);
+    expect(finalAnswerAsk(game, session, { choices: true })).toMatchObject({ open: false, choices: ask.choices });
+    // Fewer than two with words: the phones type.
+    round.choices = [{ id: 'c1', text: 'Adams' }];
+    expect(finalAnswerAsk(game, session, { choices: true })?.choices).toBeUndefined();
+  });
+
   it('closed through the answer and the reveals; none there if the answers never began', () => {
     const { game, session, id } = setup();
     finalNext(session, game);

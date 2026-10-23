@@ -117,6 +117,15 @@ describe('step labels', () => {
     const edit = describeStep(diff(typed, next), typed, next);
     expect(edit).toMatchObject({ label: `Edited choice B of ${cat} $400`, where: `Jeopardy! › ${cat} › $400 › Choices` });
     expect(edit.place).toMatchObject({ part: { kind: 'clue', clue: board(next).categories[0].clues[1].id } });
+    // A Final's, the same way.
+    final(typed).choices = [
+      { id: 'fa', text: 'Paris' },
+      { id: 'fb', text: 'Oslo' },
+    ];
+    const fnext = structuredClone(typed);
+    final(fnext).choices![1].text = 'Bern';
+    const fedit = describeStep(diff(typed, fnext), typed, fnext);
+    expect(fedit).toMatchObject({ label: 'Edited choice B of Final Jeopardy!', where: 'Final Jeopardy! › Choices', place: { tab: 'round', round: final(fnext).id } });
     // A value changed: the tile as it was, and what it is now.
     const valued = step((g) => (board(g).categories[0].clues[1].value = 750));
     expect(valued.label).toBe(`Changed ${cat} $400 to $750`);

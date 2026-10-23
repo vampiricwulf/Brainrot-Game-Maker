@@ -1320,7 +1320,7 @@
       return partnerAnswerAsk(game, session, mine?.seats);
     }
     if (everyone) return everyoneAnswerAsk(game, session, { choices: roomHasChoices() });
-    return finalTyped ? finalAnswerAsk(game, session) : null;
+    return finalTyped ? finalAnswerAsk(game, session, { choices: roomHasChoices() }) : null;
   }
 
   /** A player sent their answer to the ✍ clue from their phone: the host sees it (nobody else). One already taken is skipped. */
@@ -1331,14 +1331,15 @@
     const seat = ask?.id === a.id ? ask.seats.find((x) => x.id === a.seatId) : undefined;
     if (!r || !ask || !seat || a.n <= (seat.got ?? 0)) return;
     const by = a.by && game.settings.buzzTeams ? { by: a.by } : {};
-    // The Final's: kept with the Final (no toast, no step, nothing in the 📜 Log: only the host panel shows it).
+    // (A multiple choice's pick, while it's still one of the choices.)
     const f = session.final;
+    const list = finalTyped && f ? finalRound?.choices : info?.clue.choices;
+    const pick = a.pick && usableChoices(list).some((c) => c.id === a.pick) ? { pick: a.pick } : {};
+    // The Final's: kept with the Final (no toast, no step, nothing in the 📜 Log: only the host panel shows it).
     if (finalTyped && f) {
-      f.answers = { ...f.answers, [a.seatId]: { text: a.text, n: a.n, ...by } };
+      f.answers = { ...f.answers, [a.seatId]: { text: a.text, n: a.n, ...by, ...pick } };
       return;
     }
-    // (A multiple-choice clue's pick, while it's still one of its choices.)
-    const pick = a.pick && info && usableChoices(info.clue.choices).some((c) => c.id === a.pick) ? { pick: a.pick } : {};
     const was = r.answers?.id === ask.id ? r.answers : undefined;
     r.answers = { id: ask.id, seats: { ...was?.seats, [a.seatId]: { text: a.text, n: a.n, ...by, ...pick } }, ...(was?.locked ? { locked: true } : {}) };
   }
@@ -1429,9 +1430,9 @@
       ? 'This buzzer server can’t take wagers from phones (it’s an older one): type them in.'
       : '',
   );
-  /** A ✍ clue's multiple choices with a buzzer server too old to show them: phones type, and a letter counts. */
+  /** A ✍ clue's (or a typed Final's) multiple choices with a buzzer server too old to show them: phones type, and a letter counts. */
   const choicesNote = $derived(
-    everyone && !!info && usableChoices(info.clue.choices).length > 0 && remote.status === 'online' && !roomHasChoices()
+    usableChoices(everyone ? info?.clue.choices : finalTyped ? finalRound?.choices : undefined).length > 0 && remote.status === 'online' && !roomHasChoices()
       ? 'This buzzer server can’t show the choices on phones (it’s an older one): players type the letter or the words, and they count as that choice.'
       : '',
   );

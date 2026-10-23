@@ -185,11 +185,12 @@ whoever on it buzzes first answers for the team ("Ann (Red team)" in the buzz or
 whole team. A room holds up to 24 phones at once: once 24 people are on teams, the next phone is told the game is full
 until someone leaves. On a Daily Double or a Final, players type their wager on their phone and send it: it fills in your
 wager box (marked 📱, and you can still change it), they can change it until you show the question, and only you see
-how much. In a Final they then type their answer on their phone too, and you reveal each one on stream. On a ✍ Everyone
-answers clue nobody buzzes: everyone types an answer, or taps one of its multiple choices, on their phone, and only you
-see them. The buzzers open when the clue does, or when you press `U` after reading it. The fastest reaction wins, timed
-on each player's own phone, so a slow connection doesn't cost anyone the buzz. Every buzz is listed in the host panel,
-fastest first: a wrong answer locks that player out and the next one who buzzed answers at once (**⏭ Skip**
+how much. In a Final they then type their answer on their phone too (or tap one of its multiple choices), and you
+reveal each one on stream. On a ✍ Everyone answers clue nobody buzzes: everyone types an answer, or taps one of its
+multiple choices, on their phone, and only you see them. The buzzers open when the clue does, or when you press `U`
+after reading it. The fastest reaction wins, timed on each player's own phone, so a slow connection doesn't cost
+anyone the buzz. Every buzz is listed in the host panel, fastest first: a wrong answer locks that player out and the
+next one who buzzed answers at once (**⏭ Skip**
 passes them on with no points taken); once nobody who buzzed is left, the buzzers open for the rest, and
 **↺ Reset buzzers** (`0`) lets everyone buzz again. Buzzes within 0.01 s are a tie: **🎲 Roll for it** sets
 who answers first, or pick one yourself (`1`–`9` or a click always picks by hand). Viewers

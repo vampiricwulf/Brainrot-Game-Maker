@@ -190,7 +190,7 @@
     everyone?: boolean;
     /** The players with a phone connected now. */
     answerPhones?: string[];
-    /** A ✍ clue's multiple choices that the buzzer server can't show on phones (an older one): why they type. */
+    /** A ✍ clue's (or a typed Final's) multiple choices that the buzzer server can't show on phones (an older one): why they type. */
     choicesNote?: string;
     /** ✔ / ✘ on one player's phone answer. */
     onanswerjudge?: (playerId: string, sign: 1 | -1) => void;
@@ -1019,6 +1019,7 @@
             typed={finalTyped}
             {answerPhones}
             {answersNote}
+            {choicesNote}
             {onshowanswer}
             onstep={onfinalstep}
             {onreveal}

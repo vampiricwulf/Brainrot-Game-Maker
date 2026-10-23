@@ -210,6 +210,14 @@ export function placeAt(game: Game, path: readonly Seg[]): At {
         slide(clue[path[6] as 'questionSlide'], 7, (element) => ({ tab: 'round', round: id, part: { kind: 'clue', category: cat.id, clue: clue.id, side, element } }), side);
       }
     } else if (r.mode === 'final') {
+      if (path[2] === 'choices') {
+        // One of its multiple choices (✍), by its letter: "Edited choice B of Final Jeopardy!".
+        at.crumbs.push('Choices');
+        const n = r.choices?.findIndex((c) => c.id === path[3]) ?? -1;
+        if (n < 0) return;
+        reached(4, 'choice', `choice ${letter(n)} of ${roundName(r, index)}`, '✍', false);
+        return;
+      }
       if (path[2] === 'cards') {
         // One of its 🤫 cards ("Card 1", or its name). Its words are still "Edited card 1 “…”", by its place.
         at.crumbs.push('Cards');

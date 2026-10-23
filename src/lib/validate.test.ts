@@ -122,6 +122,25 @@ describe('✍ multiple choice', () => {
     d.type = 'dailyDouble';
     expect(mine().map((p) => p.text)).toEqual(['Jeopardy!: 2 ✍ clues with an empty choice']);
   });
+
+  it('a Final’s too, while its players type their answers on their phones', () => {
+    const game = jeopardyGame();
+    const i = game.rounds.findIndex((r) => r.mode === 'final');
+    const fin = game.rounds[i] as FinalRound;
+    fin.choices = [{ id: '1', text: 'Paris' }, { id: '2', text: '' }, { id: '3', text: 'paris' }];
+    const mine = () => validate(game).filter((p) => p.text.includes('choice'));
+    const place = { tab: 'round', round: fin.id };
+    expect(mine()).toEqual([
+      { text: 'Final Jeopardy! has an empty choice', tab: i, level: 'warn', place },
+      { text: 'Final Jeopardy! has two choices the same', tab: i, level: 'warn', place },
+      { text: 'Final Jeopardy! has choices but none marked ✔ Right (the reveals won’t say whose pick is right)', tab: i, level: 'info', place },
+    ]);
+    fin.choices = [{ id: '1', text: 'Paris', right: true }];
+    expect(mine().map((p) => p.text)).toEqual(['Final Jeopardy! has only one choice (add another, or take it off)']);
+    // Answers on paper: kept, unused.
+    fin.phoneAnswersOff = true;
+    expect(mine()).toEqual([]);
+  });
 });
 
 describe('buttons on items, wheels and dice', () => {

@@ -6,7 +6,8 @@
 // amount on it. Then a team: anyone on it sends the team's wager, and the host sees who; that host keeps one window
 // (viewers see it), so the amounts phones send stay hidden in its panel until the reveals show them. The Final's answers
 // too: typed on the phones once the question shows, only the host sees them (one window: not until each is revealed),
-// and N in the reveals puts each on stream before C / X shows the wager. Needs `npm ci` in buzzer/.
+// and N in the reveals puts each on stream before C / X shows the wager. The team's Final has multiple choice (made in
+// its editor): a member taps one, and the reveal says whether it's the right one. Needs `npm ci` in buzzer/.
 import { chromium } from 'playwright-core';
 import { spawn } from 'node:child_process';
 import { createServer } from 'node:net';
@@ -385,6 +386,17 @@ try {
   await host2.locator('.tile').nth(3).click();
   await host2.getByRole('combobox', { name: /^Type/ }).selectOption('dailyDouble');
   await host2.getByRole('button', { name: 'Done' }).click();
+  // Its Final has multiple choice, made in its editor under the ✍ switch: B is right.
+  const CHOICES = ['Alpha-wqz', 'Bravo-wqz', 'Charlie-wqz', 'Delta-wqz'];
+  await host2.locator('nav > button.round-tab').nth(1).click();
+  await host2.getByRole('button', { name: '＋ Multiple choice' }).click();
+  await host2.waitForFunction(() => document.activeElement?.getAttribute('aria-label') === 'Choice A');
+  for (const [i, words] of CHOICES.entries()) await host2.getByLabel(`Choice ${'ABCD'[i]}`, { exact: true }).fill(words);
+  await host2.locator('[data-choice-row]').nth(1).getByRole('button', { name: '✔ Right' }).click();
+  await host2.locator('[data-choice-row]').nth(1).locator('button[aria-pressed="true"]').waitFor();
+  const choiceUndo = await host2.locator('.editor > header button[aria-label="Undo (Ctrl+Z)"]').getAttribute('title');
+  await shot('pw-10-final-choices-editor', host2);
+  assert(choiceUndo === 'Undo: Marked B right on Final Jeopardy! (Ctrl+Z)', `the Final's editor: ＋ Multiple choice under the ✍ switch, ✔ Right on B a step of its own (${choiceUndo})`);
   await playWithPlayers(host2, 2);
   const code2 = await startRoom(host2, true);
   const member = async (name, team) => {
@@ -486,22 +498,34 @@ try {
   // The reveals, still one window: Player 1's row keeps the phone's amount hidden until the host shows it.
   await rows2.locator('.wrow', { hasText: 'Player 2' }).locator('input[data-wager]').fill('0');
   await mainButton(host2).filter({ hasText: 'Show question ▶' }).click();
-  // The team's answer: anyone on it types it; in one window the host's panel says who has answered, never what.
-  const TYPED = 'Amy-wqzx guess';
+  // The team's answer: anyone on it taps one of the Final's choices; in one window the host's panel says who has
+  // answered, never what.
+  const PICKED = `B · ${CHOICES[1]}`;
   await answerForm(amy).waitFor();
-  await sendAnswer(amy, TYPED);
-  await al.locator('#answer-state').getByText(`✔ Amy sent it for your team: “${TYPED}”`).waitFor();
+  const amyChoices = amy.locator('#answer-choices .choice');
+  await amyChoices.nth(3).waitFor();
+  assert(
+    (await amyChoices.count()) === 4 && (await amy.locator('#answer-in').isHidden()) && (await amy.locator('#answer-sub').innerText()) === 'Your team’s wager: $450 (locked)',
+    'the Final’s multiple choice: every member’s phone has its 4 choices (no box to type in), under the team’s locked wager',
+  );
+  await amyChoices.filter({ hasText: CHOICES[1] }).click();
+  await al.locator('#answer-state').getByText('✔ Amy picked B for your team').waitFor();
+  await shot('pw-11-final-choices-phone', al);
   const answers2 = host2.locator('.fj [aria-label="Answers from phones"]');
   await answers2.locator('[data-answer-in]', { hasText: 'Player 1 ✔' }).waitFor();
   const head2 = await answers2.getByRole('status').innerText();
   assert(
     head2.includes('1 of 2 in · viewers see this window') && head2.includes('Open the 📺 audience window to read them before they go on screen'),
-    `one window: Amy sends her team’s answer, the panel shows “Player 1 ✔” and says to open the audience window to read them first (${head2})`,
+    `one window: Amy taps B for her team, the panel shows “Player 1 ✔” and says to open the audience window to read them first (${head2})`,
   );
-  /** The host page never showed (nor said) the team's answer: with where, if it did. */
+  /** The host page never showed (nor said) the team's pick: with where, if it did. */
   const typedHidden = async (when) => {
-    const found = await shownOf(host2, [TYPED]);
-    assert(!found.length, `${when}: the host page never showed the team’s typed answer${found.length ? `:\n    ${(await seenWhere(host2, found)).join('\n    ')}` : ''}`);
+    const found = await shownOf(host2, [PICKED]);
+    const panel = await host2.locator('.panel').innerText();
+    assert(
+      !found.length && !panel.includes(CHOICES[1]) && !(await answers2.locator('[data-choice-counts]').count()),
+      `${when}: the host page never showed the team’s pick, nor its panel how many picked each${found.length ? `:\n    ${(await seenWhere(host2, found)).join('\n    ')}` : ''}`,
+    );
   };
   await typedHidden('the question');
   for (const step of ['Reveal answer ▶', 'Start team reveals ▶']) {
@@ -524,11 +548,20 @@ try {
   await rev1.getByRole('button', { name: 'Show wager: Player 1' }).click();
   await rev1.getByText('wager $450').waitFor();
   assert(true, 'Show wager: the row has the amount (“wager $450”) once the stage shows it');
-  assert((await rev1.locator('[data-typed]').innerText()) === '✍ hidden', 'the row’s typed answer: “✍ hidden” (one window) until it’s on screen');
+  assert(
+    (await rev1.locator('[data-typed]').innerText()) === '✍ hidden' && !(await rev1.locator('[data-pick-hint]').count()),
+    'the row’s answer: “✍ hidden” (one window) until it’s on screen, and nothing yet of whether it’s right',
+  );
   await typedHidden('the reveals, before Show answer');
   await rev1.getByRole('button', { name: 'Show answer: Player 1' }).click();
-  await host2.locator('.stage-box .spot-answer', { hasText: TYPED }).waitFor();
-  assert((await rev1.locator('[data-typed]').innerText()) === `“${TYPED}”`, 'Show answer: on the stage, and in the row');
+  const spotAnswer = host2.locator('.stage-box .spot-answer');
+  await spotAnswer.filter({ hasText: CHOICES[1] }).waitFor();
+  assert((await spotAnswer.locator('.pick-letter').innerText()) === 'B', 'Show answer: the stage’s spotlight has the team’s pick, its letter and its words');
+  assert(
+    (await rev1.locator('[data-typed]').innerText()) === PICKED && (await rev1.locator('[data-pick-hint]').innerText()) === '✔ right choice',
+    `and the row: “${PICKED}”, “✔ right choice”`,
+  );
+  await shot('pw-12-pick-reveal-one-window', host2);
 
   assert(errors.length === 0, `no page errors (${errors.join(' | ')})`);
   console.log('Phone wagers E2E passed.');

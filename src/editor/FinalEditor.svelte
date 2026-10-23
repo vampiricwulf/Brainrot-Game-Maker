@@ -27,6 +27,7 @@
   import { clip } from '../lib/buzzproto';
   import { followClueText } from '../lib/cluetext';
   import CardBar from './CardBar.svelte';
+  import ChoicesEditor from './ChoicesEditor.svelte';
   import PhoneCardPreview from './PhoneCardPreview.svelte';
   import SlideEditor from './slide/SlideEditor.svelte';
   import SlideTabs, { slideKeyOf } from './SlideTabs.svelte';
@@ -188,6 +189,10 @@
     player's score: untick "Ignore the limits" then to hold wagers to it), then they're revealed player by player. With
     phone buzzers, players send their wager from their phone, and (ticked above) type their answer there too.
   </span>
+  {#if !round.phoneAnswersOff}
+    <!-- Its multiple choices, used while players type their answers on their phones (kept, unused, when unticked). -->
+    <div class="choices"><ChoicesEditor owner={round} where={() => finalName(round)} place={{ tab: 'round', round: round.id }} final /></div>
+  {/if}
 </div>
 <!-- Quick text: the main text of each slide, so a plain final never needs the canvas (like the clue editor's). -->
 <div class="quick" class:four={!!card}>
@@ -320,5 +325,10 @@
   }
   .grid .check {
     align-self: end;
+  }
+  /* (A row of its own, under the switch and the hint.) */
+  .grid .choices {
+    flex-basis: 100%;
+    max-width: 960px;
   }
 </style>

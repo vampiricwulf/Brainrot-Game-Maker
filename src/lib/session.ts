@@ -967,9 +967,11 @@ export function forViewers<S extends Pick<Session, 'final' | 'finals' | 'dd' | '
   const hide = (f: FinalState): FinalState => {
     const { wagerFrom: _f, wagerBy: _b, answers: typed, ...rest } = f;
     const wagers = Object.fromEntries(Object.entries(f.wagers).map(([id, v]) => [id, f.shown[id] || f.results[id] ? v : 0]));
-    // Typed answers: only those the host put on screen, their words alone (not the room's count, nor who on a team
-    // sent them). An empty list still says the Final's answers are typed.
-    const answers = typed && Object.fromEntries(Object.entries(typed).flatMap(([id, a]) => (f.answerShown?.[id] ? [[id, { text: a.text } as FinalAnswer]] : [])));
+    // Typed answers: only those the host put on screen, their words (and a multiple choice's pick) alone, not the room's
+    // count, nor who on a team sent them. An empty list still says the Final's answers are typed.
+    const answers =
+      typed &&
+      Object.fromEntries(Object.entries(typed).flatMap(([id, a]) => (f.answerShown?.[id] ? [[id, { text: a.text, ...(a.pick ? { pick: a.pick } : {}) } as FinalAnswer]] : [])));
     return { ...rest, wagers, ...(answers ? { answers } : {}) };
   };
   const out = { ...s };

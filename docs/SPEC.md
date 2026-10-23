@@ -433,7 +433,8 @@ The mode isn't saved with the game: it's dual while the audience window is open.
 2. Question slide + timer (default 30 s) + optional music file. With phone buzzers (and ✍ Players type their answers on
    their phones, on unless the host unticks it in the round's editor), each player in it types their answer on their
    phone (a team: anyone on it) from the question until the answer shows; only the host sees them (in one window, not
-   until each is revealed), and the stream shows ✍ and who has answered, never what.
+   until each is revealed), and the stream shows ✍ and who has answered, never what. With multiple choice (under the
+   switch in its editor, as a ✍ clue's) they tap one instead, and each reveal says whether it's the one marked ✔ Right.
 3. Answer reveal.
 4. **Per-player reveal**, one at a time in an order the host chooses: a typed answer first (show it, then mark ✔ / ✘,
    and the wager goes up with the mark), otherwise show the wager, then mark ✔ / ✘; the score animates.

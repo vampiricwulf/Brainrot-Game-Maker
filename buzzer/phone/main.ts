@@ -1615,8 +1615,15 @@ function renderAnswer(v: PhoneView, a: NonNullable<PhoneView['answer']>, sym: st
     saidAsked = asked;
     if (asked) news(asked);
   }
-  // (Multiple choice: how many to pick from, never each choice on every change: the group is there to read.)
-  const what = guess ? [v.status ?? '', v.statusSub ?? ''] : w?.kind === 'final' ? ['Type your answer', staked] : choices ? [`Pick one of ${a.choices!.length}`] : ['Everyone answers'];
+  // (Multiple choice: how many to pick from, never each choice on every change: the group is there to read. In the
+  // Final, after it the wager locked in.)
+  const what = guess
+    ? [v.status ?? '', v.statusSub ?? '']
+    : choices
+      ? [`Pick one of ${a.choices!.length}`, staked]
+      : w?.kind === 'final'
+        ? ['Type your answer', staked]
+        : ['Everyone answers'];
   say(sentences([connected ? '' : awayText(), ...what, state, cardsSaid, hostGone ? ($('host-note').textContent ?? '') : '']));
   show('s-buzz');
 }

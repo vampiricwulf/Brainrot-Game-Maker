@@ -44,6 +44,13 @@ describe('Find', () => {
     const [hit] = findAll(g, 'stockholmsyndrome');
     expect(hit).toMatchObject({ icon: '✍', text: 'Stockholmsyndrome', focus: '[data-field="choice-1"]', place: { part: { kind: 'clue', clue: r.categories[0].clues[0].id } } });
     expect(hit.where).toMatch(/ › Choices$/);
+    // A Final's, while its players type their answers on their phones.
+    const fin = g.rounds.find((x) => x.mode === 'final')!;
+    if (fin.mode !== 'final') throw new Error('no final');
+    fin.choices = [{ id: 'f', text: 'Oslofjordqz' }];
+    expect(findAll(g, 'oslofjordqz')[0]).toMatchObject({ icon: '✍', focus: 'main [data-field="choice-0"]', place: { tab: 'round', round: fin.id } });
+    fin.phoneAnswersOff = true;
+    expect(findAll(g, 'oslofjordqz')).toEqual([]);
   });
 
   it('needs every word, in any case', () => {

@@ -562,19 +562,22 @@ export function everyoneAnswerAsk(game: Game, session: Session, opts: { choices?
  * answer and the reveals, so each phone keeps its own in sight. Never on the wager screen (the question isn't on stream
  * yet), nor once the question has gone by without them (`f.answers` never set: the room was opened, or one that takes
  * answers came back, after it), else every phone would say "Answers locked" to a question it was never asked. `got`:
- * the last answer the host took from each (FinalState.answers).
+ * the last answer the host took from each (FinalState.answers). `choices`: as for a ✍ clue (everyoneAnswerAsk), the
+ * Final's usable multiple choices, their words only.
  */
-export function finalAnswerAsk(game: Game, session: Session): AnswerAsk | null {
+export function finalAnswerAsk(game: Game, session: Session, opts: { choices?: boolean } = {}): AnswerAsk | null {
   const f = session.final;
   const r = currentFinal(session, game);
   if (session.phase !== 'final' || !f || !r || r.phoneAnswersOff || f.roundId !== r.id || session.intro?.stage === 'title') return null;
   const step = session.finalStep ?? 'wagers';
   if (step !== 'question' && !((step === 'answer' || step === 'reveal') && f.answers)) return null;
   const got = f.answers ?? {};
+  const choices = opts.choices ? usableChoices(r.choices).map(({ id, text }) => ({ id, text })) : [];
   return {
     id: answerRoundId(session, finalTag(r.id)),
     open: step === 'question' && !f.answersLocked,
     seats: f.players.filter((id) => session.players.some((p) => p.id === id)).map((id) => ({ id, ...(got[id] ? { got: got[id].n } : {}) })),
+    ...(choices.length ? { choices } : {}),
   };
 }
 

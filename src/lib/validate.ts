@@ -165,6 +165,7 @@ export function validate(game: Game, room: Checking = {}): Problem[] {
           level: 'info',
         });
       out.push(...finalCardProblems(game, round, name, i, room));
+      out.push(...finalChoiceProblems(round, name, i));
       return;
     }
     if (isRpg(round)) {
@@ -449,6 +450,23 @@ function boardChoiceProblems(round: BoardRound, name: string, tab: number): Prob
     ...line('same', 'two choices the same', 'warn'),
     ...line('noRight', 'choices but none marked ✔ Right (you judge each answer)', 'info'),
   ];
+}
+
+/**
+ * A Final's multiple choices, while its players type their answers on their phones (unticked, they're kept, unused): as
+ * a ✍ clue's, each said once.
+ */
+function finalChoiceProblems(round: FinalRound, name: string, tab: number): Problem[] {
+  if (round.phoneAnswersOff || !round.choices?.length) return [];
+  const f = choiceFaults(round.choices);
+  const place: Place = { tab: 'round', round: round.id };
+  const lines: [keyof typeof f, string, Problem['level']][] = [
+    ['empty', 'has an empty choice', 'warn'],
+    ['one', 'has only one choice (add another, or take it off)', 'warn'],
+    ['same', 'has two choices the same', 'warn'],
+    ['noRight', 'has choices but none marked ✔ Right (the reveals won’t say whose pick is right)', 'info'],
+  ];
+  return lines.flatMap(([k, words, level]) => (f[k] ? [{ text: `${name} ${words}`, tab, level, place }] : []));
 }
 
 /**

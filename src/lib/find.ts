@@ -93,6 +93,9 @@ export function findAll(game: Game, query: string, limit = 200): Hit[] {
         ),
       );
       look('💬', slideWords(r.answerSlide), `${rn} › Answer`, { tab: 'round', round: r.id, part: { kind: 'final', side: 'a' } }, 'main [data-field="a"]');
+      // Its multiple choices (while players type their answers on their phones: kept, unused, without it).
+      const choices = r.phoneAnswersOff ? [] : (r.choices ?? []);
+      look('✍', choices.map((c) => c.text), `${rn} › Choices`, { tab: 'round', round: r.id }, field(choices.map((c, j) => [c.text, `main [data-field="choice-${j}"]`])));
     } else if (r.mode === 'slides') {
       const n = questionSlides(r).length;
       questionSlides(r).forEach((sl, j) =>

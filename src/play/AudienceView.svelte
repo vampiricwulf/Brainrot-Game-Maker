@@ -30,12 +30,13 @@
   import BoardGameStage from './boardgame/BoardGameStage.svelte';
   import DecorLayer from './DecorLayer.svelte';
   import type { AvatarDrop } from './rpg/hostops';
-  import { boardLayout, splashColors, STAGE_KEYS, themeStyle } from '../lib/theme';
+  import { boardLayout, presetTheme, splashColors, STAGE_KEYS, themeStyle } from '../lib/theme';
   import AnsweringPlate from './AnsweringPlate.svelte';
   import QrCode from '../lib/QrCode.svelte';
   import CuePlayer from './CuePlayer.svelte';
   import { soundUrl } from './cues';
   import { JOIN_ROOM, PILL_BAND, TIMER_BAND, TIMER_ROOM } from './stagefit';
+  import { letter, pickOf, usableChoices } from '../lib/choices';
 
   let {
     game,
@@ -174,6 +175,9 @@
     return session.players.filter((p) => f.players.includes(p.id));
   });
   const themeCss = $derived(themeStyle(game.theme, game.theme?.boardImage ? mediaUrls[game.theme.boardImage] : undefined));
+  /** A multiple choice's letter: on the theme's value color, in black or white, whichever reads on it. */
+  const chipBg = $derived((game.theme ?? presetTheme('classic')).value);
+  const chipInk = $derived(textOn(chipBg));
   const bar = $derived(game.theme?.scoreBar ?? 'bottom');
   const bannerUrl = $derived(game.theme?.banner ? mediaUrls[game.theme.banner] : undefined);
   const layout = $derived(boardLayout(game.theme, !!bannerUrl));
@@ -610,13 +614,18 @@
             {@const res = f.results[spotlight.id]}
             <!-- (Viewers get only answers already shown; one window reads the host's session, so it's checked here too.) -->
             {@const shown = f.answerShown?.[spotlight.id] ? f.answers?.[spotlight.id] : undefined}
+            <!-- (A multiple choice's pick, or words that name one: its letter and its words.) -->
+            {@const usable = finalRound && !finalRound.phoneAnswersOff ? usableChoices(finalRound.choices) : []}
+            {@const pickAt = shown && usable.length ? usable.findIndex((c) => c.id === pickOf(shown, usable)) : -1}
             {#key spotlight.id}
               <div class="spot" class:typed={!!f.answers} in:fly={{ y: 80, duration: 400 }} style:--c={spotlight.color}>
                 <div class="spot-name" style:background={spotlight.color} style:color={textOn(spotlight.color)}>{spotlight.name}</div>
                 {#if f.answers}
                   <!-- What they typed on their phone, once the host puts it up (its room kept: the card doesn't jump). -->
-                  <div class="spot-answer" dir="auto" data-spot-answer use:autofit={{ size: 72, min: 28, enabled: true, text: shown?.text ?? '' }}>
-                    {#if shown}<span>“{shown.text}”</span>{:else}<span class="hold" aria-hidden="true">&nbsp;</span>{/if}
+                  <div class="spot-answer" dir="auto" data-spot-answer use:autofit={{ size: 72, min: 28, enabled: true, text: pickAt >= 0 ? `${pickAt} ${usable[pickAt].text}` : (shown?.text ?? '') }}>
+                    {#if shown && pickAt >= 0}
+                      <span><span class="pick-letter" style:background={chipBg} style:color={chipInk}>{letter(pickAt)}</span> {usable[pickAt].text}</span>
+                    {:else if shown}<span>“{shown.text}”</span>{:else}<span class="hold" aria-hidden="true">&nbsp;</span>{/if}
                   </div>
                 {/if}
                 <div class="spot-wager">
@@ -1481,6 +1490,17 @@
     line-height: 1.1;
     text-align: center;
     overflow: hidden;
+  }
+  /* A multiple choice's letter, in a circle before its words (it scales with them). */
+  .pick-letter {
+    display: inline-grid;
+    place-items: center;
+    width: 1.15em;
+    height: 1.15em;
+    margin-right: 0.2em;
+    border-radius: 50%;
+    font-weight: 900;
+    vertical-align: middle;
   }
   .spot-name {
     max-width: 1700px;
