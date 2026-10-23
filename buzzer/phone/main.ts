@@ -807,7 +807,7 @@ function clueRoom(sec: HTMLElement, kbd: boolean): number {
   // kept for them (their min-height) whatever they say now, so a tap never fits the question again and moves the buttons.)
   const extra =
     !$('answer-choices').hidden && keep.includes($('me'))
-      ? ['answer-state', 'answer-err'].reduce((n, id) => n + Math.max(0, $(id).offsetHeight - parseFloat(getComputedStyle($(id)).minHeight)), 0)
+      ? ['answer-state', 'answer-err'].reduce((n, id) => n + Math.max(0, $(id).getBoundingClientRect().height - parseFloat(getComputedStyle($(id)).minHeight)), 0)
       : 0;
   const below = Math.max(c.bottom, ...keep.map((el) => rectOf(el)?.bottom ?? c.bottom)) - c.bottom - extra;
   return free - (c.top - side.top) - below;
