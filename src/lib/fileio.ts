@@ -193,9 +193,14 @@ export function parseGame(text: string): Game {
   }
   // (Import rounds… and the like take game files only.)
   if (data?.format === 'brainrot-theme') throw new Error('This is a theme file, not a game: use it with 📂 Import theme… on 🎨 Theme.');
-  if (!data || typeof data.version !== 'number' || !Array.isArray(data.rounds) || !Array.isArray(data.players)) {
-    throw new Error('This file is not a Brainrot Games Maker game.');
-  }
+  const no = (what: string) => new Error(`This file is not a Brainrot Games Maker game: ${what}.`);
+  if (!data || typeof data !== 'object' || Array.isArray(data)) throw new Error('This file is not a Brainrot Games Maker game.');
+  if (!Array.isArray(data.rounds)) throw no('it has no "rounds" list');
+  // A hand-made game can leave out what has an obvious fill: its players (added on ▶ Play), and its version (this
+  // app's: an older version's game is read another way, migrateGame).
+  if (!Array.isArray(data.players)) data.players = [];
+  data.version ??= GAME_VERSION;
+  if (typeof data.version !== 'number') throw no('its "version" isn’t a number');
   if (data.version > GAME_VERSION) throw new Error('This game was made with a newer version of Brainrot Games Maker: update the app to open it.');
   if (data.version < 1) throw new Error('This file is not a Brainrot Games Maker game.');
   return data as Game;

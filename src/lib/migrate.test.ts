@@ -280,6 +280,57 @@ describe('hand-edited games', () => {
     expect(allIds(migrateGame(plain(game)))).toEqual(allIds(plain(game)));
   });
 
+  it('reads a clue type it doesn’t know as a plain clue (a Daily Double’s as one), and numbers written as text as numbers', () => {
+    const g = plain(jeopardyGame());
+    const clues = g.rounds[0].categories[0].clues;
+    [clues[0].type, clues[1].type, clues[2].type] = ['daily_double', ' DD', 'bonus'];
+    [clues[3].value, clues[4].value] = [' 500', 'lots'];
+    g.rounds[0].values = ['100', '200', '300', 'x', 500];
+    const b = migrateGame(g).rounds[0] as BoardRound;
+    expect(b.categories[0].clues.map((cl) => [cl.type, cl.value])).toEqual([['dailyDouble', null], ['dailyDouble', null], ['standard', null], ['standard', 500], ['standard', null]]);
+    expect(b.values).toEqual([100, 200, 300, 800, 500]);
+  });
+
+  it('opens a game written without its players (added on ▶ Play) or its version (taken as this one’s)', () => {
+    const g = plain(jeopardyGame());
+    delete g.players;
+    expect(migrateGame(parseGame(JSON.stringify(g))).players).toEqual([]);
+    g.players = 'Ann, Bo';
+    delete g.version;
+    const m = migrateGame(parseGame(JSON.stringify(g)));
+    // (Not read as a version 1 game, which would make the Final a board.)
+    expect([m.version, m.players, m.rounds.map((r) => r.mode)]).toEqual([2, [], ['board', 'final']]);
+    expect(gameProblem(m)).toBeNull();
+  });
+
+  it('gives a copied board-game space, RPG screen, object on a screen, stat or item its own id (what points at the first still does)', () => {
+    const game = newGame();
+    game.rounds.push(TEMPLATES.find((t) => t.mode === 'rpg')!.make(game), TEMPLATES.find((t) => t.mode === 'boardgame')!.make(game));
+    const g = plain(game);
+    const bg = g.rounds[1];
+    const linked = bg.spaces[0].next[0];
+    const at = bg.spaces.findIndex((sp: { id: string }) => sp.id === linked);
+    bg.spaces.push({ ...plain(bg.spaces[at]), name: 'Copy' });
+    const map = g.worlds[0].maps[0];
+    map.screens.push({ ...plain(map.screens[0]), name: 'Copy' });
+    const els = map.screens[0].slide.elements;
+    const obj = els.find((e: { role?: unknown }) => e.role);
+    obj.role.actions = [{ id: 'a', do: 'note', text: 'Hi' }, { id: 'a', do: 'note', text: 'Bye' }];
+    els.push({ ...plain(obj), name: 'Copy' });
+    g.statFields.push({ ...g.statFields[0], name: 'Copy' });
+    g.items.push({ ...plain(g.items[0]), name: 'Copy' });
+    const m = migrateGame(plain(g));
+    const ids = (list: { id: string }[]) => list.map((x) => x.id);
+    const unique = (list: { id: string }[]) => new Set(ids(list)).size === list.length;
+    const [r, w] = [m.rounds[1] as unknown as typeof bg, m.worlds![0]];
+    const [mapM, elsM] = [w.maps[0], w.maps[0].screens[0].slide.elements];
+    expect([r.spaces, mapM.screens, elsM, elsM.find((e) => e.role)!.role!.actions!, m.statFields!, m.items!].map(unique)).toEqual([true, true, true, true, true, true]);
+    // The first of each keeps its id (a way to it, a doorway, a shop's stock still find it); the copy is the one changed.
+    expect([r.spaces[at].id, mapM.screens[0].id, elsM.find((e) => e.role)!.id, m.statFields![0].id, m.items![0].id]).toEqual([linked, map.screens[0].id, obj.id, g.statFields[0].id, g.items[0].id]);
+    expect(r.spaces[0].next[0]).toBe(linked);
+    expect(() => newSession(m)).not.toThrow();
+  });
+
   it('gives a text item without its looks a new text box’s (and an item without a place, one)', () => {
     const g = plain(jeopardyGame());
     const slide = g.rounds[0].categories[0].clues[0].questionSlide;

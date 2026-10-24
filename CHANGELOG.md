@@ -34,6 +34,11 @@ in plain words for the people who make and host games. Anything committed but no
 - Phones held upright: five or six multiple choices are tighter, under a shorter label, so the last one is on a small phone's screen too. A buzzer server you run yourself needs deploying again for this.
 - The Final's locked wager stays on the phones through the player reveals (“Answers locked · Your wager: $40 · Yours: …”). It went just as the reveals began.
 - On a team, **Change team or name** asks “Leave Team Red to pick a team and your name again? Your team plays on.” instead of “Give up this team and pick again?”, which sounded as if the whole team would quit. A buzzer server you run yourself needs deploying again for this.
+- Hand-made game files: a board-game space, an RPG screen, an object on a screen (or one of its buttons), a 📊 stat, an item or a shop copied with its id left as it was opens as if the ids were unique. Clicking its round's tab (or 📊 Stats & Items) showed “This game can't be shown”, and **Try again** showed the same page; it now goes to another tab.
+- Hand-made game files: one without its players list (players are added on ▶ Play) or its version opens; one without a rounds list says that's what it's missing. Both were refused with “This file is not a Brainrot Games Maker game.”
+- Hand-made game files: a clue type the app doesn't know is a plain clue (“daily_double” or “DD”, a Daily Double), and a value written as text (“500”) is that number. The tile showed an empty Type box, and the board's rows went back to $200, $400….
+- 📥 Import clues reads a value with a comma as its decimal mark, as a sheet's currency format writes it there: “200,00 €” is 200 and “1.000,00 €” is 1,000 (they read as 20,000 and 1).
+- An Excel file dropped on 📥 Import clues says, in the window, that it can't be read there (copy the cells and paste them, or save the sheet as CSV), instead of a toast cut off mid-sentence about where pictures go.
 
 ## 2026-10-24
 

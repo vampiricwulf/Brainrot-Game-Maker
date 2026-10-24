@@ -1255,7 +1255,9 @@
           <button class="primary" onclick={async () => (await reopen(prev), reset())}>↶ Back to “{prev.title}”</button>
         {/if}
         <button onclick={async () => (await newFile(), reset())}>Start a new game</button>
-        <button class="ghost" onclick={reset}>Try again</button>
+        <!-- (On the first round's tab, or 🔊 Sounds if that's the one that failed: one tab it can't show leaves the
+             others in reach.) -->
+        <button class="ghost" onclick={() => ((tab = tab === 0 ? 'sounds' : 0), reset())}>Try again</button>
       </div>
     </div>
   {/snippet}

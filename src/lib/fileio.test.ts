@@ -77,7 +77,9 @@ describe('opening game files', () => {
   it('explains a damaged .json instead of showing the parser’s error', () => {
     expect(() => parseGame('{"version": 2, "title": "Cut o')).toThrow("This file isn't a readable game (.json)");
     expect(() => parseGame('PK not json at all')).toThrow("This file isn't a readable game (.json)");
-    expect(() => parseGame('{"hello": 1}')).toThrow('This file is not a Brainrot Games Maker game.');
+    expect(() => parseGame('{"hello": 1}')).toThrow('This file is not a Brainrot Games Maker game: it has no "rounds" list.');
+    expect(() => parseGame('[1]')).toThrow('This file is not a Brainrot Games Maker game.');
+    expect(() => parseGame('{"version": "2", "rounds": []}')).toThrow('its "version" isn’t a number');
     expect(() => parseGame('{"format": "brainrot-theme", "version": 1, "theme": {}}')).toThrow('This is a theme file, not a game');
   });
 

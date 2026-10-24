@@ -73,9 +73,18 @@ export function parseTable(text: string, sep?: ',' | ';' | '\t'): string[][] {
   return rows.map((r) => r.map((c) => c.trim())).filter((r) => r.some((c) => c));
 }
 
-/** "$1,000", "1.000" (where a comma is the decimal mark), "400 pts", "200 €", "-200" → a number; anything else → null. */
+/**
+ * "$1,000", "1.000" and "200,00 €" (where a comma is the decimal mark), "400 pts", "200 €", "-200" → a number; anything
+ * else → null.
+ */
 export function parseValue(cell: string | undefined): number | null {
-  const m = /^([-−]?)[^\p{L}\d\-−]{0,3}([-−]?)(\d+(?:\.\d+)?)(?:pts?|points?|\p{Sc}{1,3})?$/iu.exec((cell ?? '').replace(/[\s,]/g, ''));
+  let text = (cell ?? '').replace(/\s/g, '');
+  // A comma last with one or two digits after it ("200,00 €"), or after a dot ("1.000,00"), is the decimal mark, and
+  // dots are thousands marks; otherwise commas are ("$1,000.00", "1,000").
+  const num = /\d[\d.,]*/.exec(text)?.[0] ?? '';
+  const [comma, dot] = [num.lastIndexOf(','), num.lastIndexOf('.')];
+  if (comma > dot && (dot >= 0 || /,\d{1,2}$/.test(num))) text = text.replace(num, num.replace(/\./g, '').replace(/,(?=\d*$)/, '.'));
+  const m = /^([-−]?)[^\p{L}\d\-−]{0,3}([-−]?)(\d+(?:\.\d+)?)(?:pts?|points?|\p{Sc}{1,3})?$/iu.exec(text.replace(/,/g, ''));
   if (!m) return null;
   // (Dots before groups of three digits are thousands marks: "2.5" stays 2.5.)
   const n = /^[1-9]\d{0,2}(\.\d{3})+$/.test(m[3]) ? m[3].replace(/\./g, '') : m[3];

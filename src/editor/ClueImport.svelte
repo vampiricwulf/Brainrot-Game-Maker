@@ -14,7 +14,8 @@
   import { untrack } from 'svelte';
   import { modal } from '../lib/modal';
   import { applyPlan, cluesFromTable, parseTable, planImport, previewText } from '../lib/clueimport';
-  import { pickFile, readTextFile } from '../lib/fileio';
+  import { isGameFile, pickFile, readTextFile } from '../lib/fileio';
+  import { isThemeFile } from '../lib/themefile';
   import { step } from '../lib/history.svelte';
   import { categoryLabel, formatPoints, roundName, type BoardRound } from '../lib/model';
   import { followClueText, textSlidesOf } from '../lib/cluetext';
@@ -47,17 +48,32 @@
   const plan = $derived(clues.length ? planImport($state.snapshot(round) as BoardRound, clues, mode) : null);
   const sym = $derived(app.game.settings.currencySymbol);
 
+  /** Why the file dropped last wasn't read in (one that isn’t a sheet of text), in the status line. */
+  let dropNote = $state('');
   async function chooseFile(): Promise<void> {
     const file = await pickFile('.csv,.tsv,.txt,text/csv,text/tab-separated-values,text/plain');
     if (!file) return;
+    dropNote = '';
     text = await readTextFile(file);
     from = file.name;
   }
-  /** A sheet file dropped on the window: read in, as Choose file… does (not a game file to open). */
+  /**
+   * A sheet file dropped on the window: read in, as Choose file… does. A game or theme file opens as one (the editor
+   * takes it); any other says here why it can't be read, not in a toast about pictures.
+   */
   async function dropped(e: DragEvent): Promise<void> {
-    const file = Array.from(e.dataTransfer?.files ?? []).find((f) => /\.(csv|tsv|txt)$/i.test(f.name));
-    if (!file) return;
+    const files = Array.from(e.dataTransfer?.files ?? []);
+    const file = files.find((f) => /\.(csv|tsv|txt)$/i.test(f.name));
+    if (!files.length || (!file && files.some((f) => isGameFile(f.name) || isThemeFile(f.name)))) return;
     e.preventDefault();
+    if (!file) {
+      const name = files[0].name;
+      dropNote = /\.(xlsx?|xlsm|ods|numbers)$/i.test(name)
+        ? `“${name}” can’t be read here: copy its cells and paste them, or save the sheet as CSV.`
+        : `“${name}” isn’t a sheet of clues: paste the cells, or drop a CSV or TSV file.`;
+      return;
+    }
+    dropNote = '';
     text = await readTextFile(file);
     from = file.name;
   }
@@ -112,11 +128,11 @@
       <button onclick={chooseFile}>Choose file…</button>
       {#if from}<span class="hint">{from}</span>{/if}
       <span class="spacer"></span>
-      {#if text}<button class="ghost small" onclick={() => ((text = ''), (from = null))}>Clear</button>{/if}
+      {#if text}<button class="ghost small" onclick={() => ((text = ''), (from = null), (dropNote = ''))}>Clear</button>{/if}
     </div>
     <textarea
       bind:value={text}
-      oninput={() => (from = null)}
+      oninput={() => ((from = null), (dropNote = ''))}
       rows="6"
       placeholder={'Memes\t200\tThis dog started it all\tWhat is Doge?\nMemes\t400\tNever gonna give you up\tWho is Rick Astley?'}
       aria-label="Clues to import"
@@ -128,7 +144,9 @@
       <label class="check"><input type="radio" bind:group={mode} value="replace" /> Replace the board</label>
       <span class="spacer"></span>
       <span class="hint" role="status">
-        {#if !text.trim()}
+        {#if dropNote}
+          {dropNote}
+        {:else if !text.trim()}
           Nothing to import yet
         {:else if !clues.length}
           No clues found (each row needs a question or an answer)

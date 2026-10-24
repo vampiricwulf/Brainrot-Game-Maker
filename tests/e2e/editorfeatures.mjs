@@ -81,6 +81,14 @@ try {
   // A sheet whose answer column isn't named so: it says none has an answer, before Import.
   await page.getByLabel('Clues to import').fill('Category\tValue\tClue\tReply\nScience\t200\tH2O is this\tWater');
   assert((await importDlg.getByRole('status').innerText()).includes('none has an answer'), 'clues found without an answer say so');
+  // An Excel file dropped on it says in its status line how to bring the clues in (not a toast about pictures).
+  await page.evaluate(() => {
+    const data = new DataTransfer();
+    data.items.add(new File(['PK'], 'clues.xlsx', { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }));
+    document.querySelector('.modal.import').dispatchEvent(new DragEvent('drop', { dataTransfer: data, bubbles: true, cancelable: true }));
+  });
+  await importDlg.getByRole('status').getByText('“clues.xlsx” can’t be read here: copy its cells and paste them, or save the sheet as CSV.').waitFor();
+  assert((await page.locator('.toast', { hasText: 'Drop pictures' }).count()) === 0, 'an Excel file dropped on it says how to bring its clues in, in its own status line');
   // A CSV file dropped on it is read in, as Choose file… does.
   await page.evaluate(() => {
     const data = new DataTransfer();

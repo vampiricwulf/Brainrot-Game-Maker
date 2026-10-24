@@ -355,6 +355,7 @@ export interface ExtraSlide extends Slide {
 }
 
 export type ClueType = 'standard' | 'dailyDouble' | 'wheel' | 'dice' | 'partner';
+export const CLUE_TYPES: readonly ClueType[] = ['standard', 'dailyDouble', 'wheel', 'dice', 'partner'];
 
 // ---------- Partner clues (docs/PARTNER-CLUES-SPEC.md) ----------
 // A 🤝 partner clue is played by the player who picked it and a partner (picked by a wheel): nobody buzzes. One of them
@@ -1908,6 +1909,26 @@ function ownId(o: { id: Id }, seen: Set<Id>): void {
   if (seen.has(o.id)) o.id = newId();
   seen.add(o.id);
 }
+/**
+ * The objects in a list, an id of its own each in it (a copy made by hand gets a new one; the first keeps its own, so
+ * what points at it still does).
+ */
+function ownIds<T extends { id: Id }>(v: unknown): T[] {
+  const list = objects<T>(v);
+  const seen = new Set<Id>();
+  for (const o of list) ownId(o, seen);
+  return list;
+}
+/** An RPG screen's slide (or one of its looks'): as any slide's, and each object's talk slide and buttons. */
+function repairScreenSlide(s: unknown): Slide {
+  const slide = repairSlide(s);
+  for (const el of slide.elements) {
+    if (!isObj(el.role)) continue;
+    if (el.role.dialogue !== undefined) el.role.dialogue = repairSlide(el.role.dialogue);
+    if (el.role.actions !== undefined) el.role.actions = ownIds<Action>(el.role.actions);
+  }
+  return slide;
+}
 
 /** More question slides (left out: just the one). Each needs an id of its own, and its parts what any slide needs. */
 function repairExtraSlides(o: { extraSlides?: ExtraSlide[] }, ids: Set<Id>): void {
@@ -2106,8 +2127,10 @@ function repairGame(g: Game): void {
         if (clues !== c.clues) c.clues = clues;
         for (const cl of clues) {
           ownId(cl, ids);
-          if (cl.value !== null && typeof cl.value !== 'number') cl.value = null;
-          cl.type ??= 'standard';
+          // (A number written as text, "500", is that number.)
+          if (cl.value !== null && typeof cl.value !== 'number') cl.value = typeof cl.value === 'string' ? clueValueTyped(cl.value) : null;
+          // A type the app doesn't know ("daily_double", "DD", "bonus"): a Daily Double's is one, any other a plain clue.
+          if (!CLUE_TYPES.includes(cl.type)) cl.type = /daily|^dd$/i.test(String(cl.type ?? '').trim()) ? 'dailyDouble' : 'standard';
           cl.questionSlide = repairSlide(cl.questionSlide);
           cl.answerSlide = repairSlide(cl.answerSlide);
           repairExtraSlides(cl, ids);
@@ -2115,7 +2138,10 @@ function repairGame(g: Game): void {
           repairChoices(cl);
         }
       }
-      // No row values: the usual 200, 400… for as many rows as the board has.
+      // Row values written as text ("100") are those numbers; none (or one that isn't a number): the usual 200, 400… for
+      // as many rows as the board has.
+      const typed = (v: unknown) => (typeof v === 'string' ? (clueValueTyped(v) ?? v) : v);
+      if (Array.isArray(r.values) && r.values.some((v) => typeof v === 'string')) r.values = r.values.map(typed) as number[];
       if (!Array.isArray(r.values) || r.values.some((v) => typeof v !== 'number')) {
         const rows = Math.max(0, ...cats.map((c) => c.clues.length));
         r.values = Array.from({ length: rows || DEFAULT_VALUES.length }, (_, i) => (typeof r.values?.[i] === 'number' ? r.values[i] : (i + 1) * 200));
@@ -2143,8 +2169,29 @@ function repairGame(g: Game): void {
       repairExtraSlides(r, ids);
     } else if (isBoardGame(r)) {
       r.slide = repairSlide(r.slide);
-      if (!Array.isArray(r.spaces)) r.spaces = [];
-      if (!Array.isArray(r.zones)) r.zones = [];
+      // (A copied space keeps the ways it had; a way to the first still goes to the first.)
+      r.spaces = ownIds<BoardSpace>(r.spaces);
+      for (const sp of r.spaces) for (const k of ['onPass', 'onLand'] as const) if (sp[k] !== undefined) sp[k] = ownIds<Action>(sp[k]);
+      r.zones = ownIds<BoardZone>(r.zones);
+      for (const z of r.zones) z.slide = repairSlide(z.slide);
+    }
+  }
+  // 📊 Stats, items and shops, and RPG worlds, each world's maps, each map's screens and each screen's looks: an id of
+  // its own each in its list (the editor shows each by it).
+  if (g.statFields !== undefined) g.statFields = ownIds<StatField>(g.statFields);
+  if (g.items !== undefined) g.items = ownIds<ItemDef>(g.items);
+  for (const it of g.items ?? []) if (it.onUse !== undefined) it.onUse = ownIds<Action>(it.onUse);
+  if (g.shops !== undefined) g.shops = ownIds<Shop>(g.shops);
+  if (g.worlds !== undefined) g.worlds = ownIds<World>(g.worlds);
+  for (const w of g.worlds ?? []) {
+    w.maps = ownIds<WorldMap>(w.maps);
+    for (const m of w.maps) {
+      m.screens = ownIds<Screen>(m.screens);
+      for (const sc of m.screens) {
+        sc.slide = repairScreenSlide(sc.slide);
+        if (sc.variants !== undefined) sc.variants = ownIds<ScreenVariant>(sc.variants);
+        for (const v of sc.variants ?? []) v.slide = repairScreenSlide(v.slide);
+      }
     }
   }
   if (g.tiebreaker !== undefined) {

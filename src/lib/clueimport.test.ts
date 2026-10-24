@@ -50,6 +50,8 @@ describe('clue import: reading tables', () => {
     expect([parseValue('$1,000'), parseValue('400 pts'), parseValue('−200'), parseValue('abc'), parseValue('')]).toEqual([1000, 400, -200, null, null]);
     // A dot before three digits is a thousands mark (where a comma is the decimal mark); a currency sign can come after.
     expect([parseValue('1.000'), parseValue('12.500'), parseValue('2.5'), parseValue('200 €'), parseValue('1.000 €')]).toEqual([1000, 12500, 2.5, 200, 1000]);
+    // A comma as the decimal mark (a sheet's currency format there), spaces (a no-break one too) as thousands marks.
+    expect(['200,00 €', '1.000,00 €', '1 000,00 €', '1\u00a0000,00 €', '1\u202f000,00 €', '200,00', '-200,5', '$1,000.00', '1,000'].map(parseValue)).toEqual([200, 1000, 1000, 1000, 1000, 200, -200.5, 1000, 1000]);
   });
 });
 
