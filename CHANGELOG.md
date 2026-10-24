@@ -13,8 +13,13 @@ in plain words for the people who make and host games. Anything committed but no
 
 ## Unreleased
 
+### Added
+
+- The audience and ▭ scores windows opened on their own (as when the address is pasted into an OBS Browser source) say to capture them with OBS's Window Capture instead: a Browser source can't reach the host page.
+
 ### Fixed
 
+- Exit › Keep & leave in the middle of a show (to fix a clue in the editor): the audience window shows the cover card (“Be right back”, or your own cover text, with the banner and the join code) until you resume, and the bar over the editor says so. It showed the game's title and “Starting soon…”. ▶ Next game… and a finished game still show Starting soon.
 - The stage's entrances play again, in the audience window and in one window: a clue zooms in from its tile as it opens, the Daily Double and 🤝 PARTNER UP! splashes zoom in, so does the round's title card at the start, the board fades back in after a clue, the Final's steps and the first slide of a Slides round or the tiebreaker fade in, the first spotlit player in the Final's reveals flies in, and the end screen's places fly in from last to first. Hiding the answer again (R, R) or going back to the first slide brings the question back quietly, instead of zooming it in from nothing. ⚙ Settings › Reduce motion on stream still turns them off, and the editor's previews come up still.
 - The audience window draws each step as one picture, as your own copy does: a question whose countdown starts with it (every Final question) no longer shrinks under the clock just after it comes up, an answer no longer grows in from smaller, and a wheel or dice tile's question no longer shows for a moment before its wheel.
 - One window: a tile or score plate under your mouse keeps its theme color on stream (a tile just a little brighter). It turned the app's flat grey, with the value still on it.

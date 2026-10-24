@@ -292,8 +292,11 @@
   {:else}
     <div class="msg">
       {#if status === 'no-host'}
-        <h1>{scores ? 'Scores window' : 'Audience window'}</h1>
-        <p>Open this from the host's <b>{scores ? '▭ Scores window' : '📺 Audience'}</b> button in Play mode.</p>
+        <div>
+          <h1>{scores ? 'Scores window' : 'Audience window'}</h1>
+          <p>Open this from the host's <b>{scores ? '▭ Scores window' : '📺 Audience'}</b> button in Play mode.</p>
+          <p>In OBS, capture this window with <b>Window Capture</b> (a Browser source can't reach the host).</p>
+        </div>
       {:else}
         <p>Waiting for the host…</p>
       {/if}

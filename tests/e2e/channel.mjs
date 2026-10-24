@@ -26,6 +26,13 @@ function assert(cond, msg) {
   console.log('  ✓ ' + msg);
 }
 try {
+  // The scores window opened on its own (as an OBS Browser source would): it says where it opens from, and how to capture it.
+  const lone = await context.newPage();
+  await lone.goto(base + '#audience-scores');
+  await lone.getByRole('heading', { name: 'Scores window' }).waitFor();
+  assert((await lone.locator('.msg').innerText()).includes('In OBS, capture this window with Window Capture'), 'a viewers’ window opened on its own says to capture it with Window Capture');
+  await lone.close();
+
   const host = await context.newPage();
   host.on('pageerror', (e) => errors.push('[host] ' + e.message));
   host.on('dialog', (d) => d.accept());
@@ -198,21 +205,27 @@ try {
   await Promise.all([sc.waitForEvent('close'), closeScores.click()]);
   assert(sc.isClosed(), 'and the host panel’s ▭ closes it');
 
-  // Leaving the game keeps the audience window (OBS's capture source) up, on the "Starting soon" card.
+  // Leaving the game mid-show keeps the audience window (OBS's capture source) up, on the cover card ("Be right back"),
+  // not "Starting soon" for a game that's halfway through.
   await host2.getByRole('button', { name: '🚪 Exit' }).click();
   await host2.waitForTimeout(450); // (a click right away is ignored: a double-click guard)
   await host2.getByRole('button', { name: 'Keep & leave', exact: true }).click();
-  await aud2.locator('.soon-text').waitFor();
-  assert(!aud2.isClosed() && (await aud2.locator('.board').count()) === 0, 'Keep & leave: the audience window stays up, on the Starting soon card');
+  await aud2.locator('.cover-card', { hasText: 'Be right back' }).waitFor();
+  assert(!aud2.isClosed() && (await aud2.locator('.board').count()) === 0, 'Keep & leave: the audience window stays up, under the cover card');
   const audItem = host2.locator('.status-bar [data-audience-open]');
   await audItem.waitFor();
-  assert(true, 'the bar over the editor says the audience window is up');
+  assert((await audItem.innerText()).includes('“Be right back”'), `the bar over the editor says the audience window is up, on “Be right back” (${await audItem.innerText()})`);
   // ▶ Play and ◀ Back to editor: still there.
   await host2.getByRole('button', { name: '▶ Play' }).click();
   await host2.getByRole('button', { name: '◀ Back to editor' }).click();
   await audItem.waitFor();
   await host2.waitForTimeout(300);
-  assert(!aud2.isClosed() && (await aud2.locator('.soon-text').count()) === 1, '◀ Back to editor keeps it too');
+  assert(!aud2.isClosed() && (await aud2.locator('.cover-card').count()) === 1, '◀ Back to editor keeps it too');
+  // The kept game discarded: the break is over, viewers see "Starting soon" for the next game.
+  await host2.locator('.status-bar .kept').getByRole('button', { name: 'Discard' }).click();
+  await host2.getByRole('alertdialog').getByRole('button', { name: 'Discard' }).click();
+  await aud2.locator('.cover-card').waitFor({ state: 'detached' });
+  assert((await aud2.locator('.soon-text').count()) === 1 && (await audItem.innerText()).includes('“Starting soon”'), 'the kept game discarded: Starting soon, there and in the bar');
   // Its ✕ (asked first) closes it.
   await audItem.getByRole('button', { name: 'Close the audience window' }).click();
   await host2.getByRole('alertdialog').getByRole('button', { name: 'Close it' }).click();

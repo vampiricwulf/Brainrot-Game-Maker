@@ -991,17 +991,20 @@
   // In the editor, an audience window left open shows the "Starting soon" card of the game in the editor, with the
   // buzzer room's code when one is open (viewers can join for the next game). A moment after any change to the game
   // (the editor's watcher, startWatch), and at once when the room or the game does.
+  // A break mid-show (that game kept to resume, Exit › Keep & leave) shows the cover card over it instead.
+  const onBreak = $derived(!!app.resumable && app.resumable.session.phase !== 'end' && app.resumable.game.id === app.game.id);
   function soonCard(): void {
     if (app.screen !== 'editor' || !audience.open || !mayPlay()) return;
     const r = kept.room?.remote;
     pushGame(watch && watching === app.game ? watch.value() : $state.snapshot(app.game));
-    pushLive({ ...newLive(), pregame: true, room: r?.code && r.base ? { code: r.code, link: joinUrl(r.base, r.code) } : null });
+    pushLive({ ...newLive(), pregame: true, ...(onBreak ? { cover: true } : {}), room: r?.code && r.base ? { code: r.code, link: joinUrl(r.base, r.code) } : null });
   }
   const soonCardLater = debounce(soonCard, 400);
   $effect(() => {
     if (!loaded || app.screen !== 'editor' || !audience.open) return;
     void app.game;
     void kept.room?.remote.code;
+    void onBreak;
     untrack(soonCard);
   });
 
@@ -1174,7 +1177,11 @@
       {#if showAudience}
         {#if audience.open}
           <span class="item audience-item" data-audience-open>
-            <span class="what" title="Viewers see the “Starting soon” card until the next game starts">📺 Audience window: <span class="muted">“Starting soon”</span></span>
+            {#if onBreak}
+              <span class="what" title="Viewers see the cover card until you resume the game">📺 Audience window: <span class="muted">“{app.game.settings.stream?.coverText?.trim() || 'Be right back'}”</span></span>
+            {:else}
+              <span class="what" title="Viewers see the “Starting soon” card until the next game starts">📺 Audience window: <span class="muted">“Starting soon”</span></span>
+            {/if}
             <button class="small ghost" onclick={closeAudience} aria-label="Close the audience window" title="Close the audience window (your stream capture goes black)">✕</button>
           </span>
         {:else}

@@ -279,8 +279,9 @@ player's color is close to the key, which would key it out, and the Theme page a
 colors OBS would make see-through, such as Brainrot Neon's green values on the green key, and the pre-game screen also a
 board game's backdrop, spaces and zones or RPG screens it would, such as a new board's green backdrop; the Daily Double
 splash and 🤝 PARTNER UP! take colors the key leaves alone), and **▭** (or `Shift+A`) opens a
-scores-only window for a lower-third capture. The "Starting soon" and cover cards can be edited, with a countdown
-(the host sees its time left). **Reduce motion on stream** is in the pre-game screen's On stream section too.
+scores-only window for a lower-third capture. Capture these windows with OBS's **Window Capture**: a Browser source
+runs in OBS's own browser, which can't reach the host page. The "Starting soon" and cover cards can be edited, with a
+countdown (the host sees its time left). **Reduce motion on stream** is in the pre-game screen's On stream section too.
 
 **Made to read on a scaled-down stream** (720p or 480p in Discord): scores shrink to fit their plates and long names
 end in "…" instead of being cut off, a board's values share one size that fits its columns, category names never get
