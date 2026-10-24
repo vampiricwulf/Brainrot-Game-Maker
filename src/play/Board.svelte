@@ -258,6 +258,10 @@
     cursor: pointer;
     transition: filter 0.12s;
   }
+  /* (Not the buttons' hover colour: viewers see this board too, in a single window. Before .alt and .used, which win.) */
+  .tile:hover {
+    background: var(--tile-bg, var(--tile));
+  }
   .tile:hover:not(:disabled):not(.used) {
     filter: brightness(1.25);
   }

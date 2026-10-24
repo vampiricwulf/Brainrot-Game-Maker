@@ -6,7 +6,7 @@ import {
 import { cuesAfter, MAX_CUES, type SoundCue } from '../lib/live';
 import { finalNextStep, logged, revealStep, undoAction, redoAction } from '../lib/toolset';
 import { jeopardyGame } from '../lib/testgame';
-import { groupPops, plateCenter, plateScore, plateScores, stopsTimer } from './flow';
+import { groupPops, plateCenter, plateScore, plateScores, platesClear, stopsTimer, wagersIn } from './flow';
 
 function setup(players = 3) {
   const game = jeopardyGame();
@@ -69,6 +69,21 @@ describe('score pops', () => {
     expect(plateCenter(8, 7, 230)).toBeLessThan(plateCenter(8, 7));
   });
 
+  it('the scores window’s plates stay put beside its countdown while they fit clear of it', () => {
+    // 3 plates of 420px (1296px) fit between two 304px ends; 4 (1734px) don't, so they make room for it.
+    expect(platesClear(3, 280)).toBe(true);
+    expect(platesClear(4, 280)).toBe(false);
+    expect(platesClear(12, 280)).toBe(false);
+    expect(platesClear(1, 280)).toBe(true);
+  });
+
+  it('a ✔ for each Final wager that’s in, only while wagers are taken', () => {
+    const final = { players: ['a', 'b', 'c'], wagers: { a: 0, b: 500 } } as unknown as Session['final'];
+    expect(wagersIn({ phase: 'final', finalStep: 'wagers', final })).toEqual(['a', 'b']);
+    expect(wagersIn({ phase: 'final', finalStep: 'question', final })).toEqual([]);
+    expect(wagersIn({ phase: 'board', final })).toEqual([]);
+  });
+
   it('a plate shows the whole score when it fits, else a short one (never cut in the middle)', () => {
     expect(plateScore(999_999_999, '$', 3)).toBe('$999,999,999');
     expect(plateScore(12_400, '$', 12)).toBe('$12,400');
@@ -81,9 +96,9 @@ describe('score pops', () => {
     expect(plateScore(1200, 'pts', 16)).toBe('1,200');
     expect(plateScore(5000, 'pts', 14, 250)).toBe('5,000');
     expect(plateScore(123_456, 'pts', 16)).toBe('123K');
-    // The scores-only window's bar beside its countdown (280px less): "$800" fits 18 plates of 1920px, not of 1640px.
+    // The scores-only window's bar making room for its countdown (280px): "$800" fits 18 plates of 1920px, not of 1640px.
     expect(plateScore(800, '$', 18)).toBe('$800');
-    expect(plateScore(800, '$', 18, 0, 1640)).toBe('800');
+    expect(plateScore(800, '$', 18, 280)).toBe('800');
     // Pill plates pad their scores 24px a side, not 8px: 16 of them have room for "1K", not "1,200".
     expect(plateScore(1200, 'pts', 16, 0, 1920, 24)).toBe('1K');
   });

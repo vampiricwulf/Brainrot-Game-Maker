@@ -16,7 +16,7 @@
   import { mediaScope, previewMediaScope, type MediaRole } from '../lib/mediactl.svelte';
   import { autoPlay } from '../lib/audioout.svelte';
   import { cuesAfter, tileToolUp, type Live, type SoundCue, type StageAction } from '../lib/live';
-  import { plateCenter } from './flow';
+  import { plateCenter, wagersIn } from './flow';
   import { autofit } from '../lib/autofit';
   import SlideView from '../lib/slide/SlideView.svelte';
   import Board from './Board.svelte';
@@ -119,11 +119,7 @@
   // With no category the big slide already says the Final's name: no second, smaller one over it.
   const finalLabelShown = $derived(!!finalRound?.category?.trim());
   /** The Final's players whose wager is in (a ✔ on their score plate while wagers are taken). */
-  const wagersIn = $derived(
-    session.phase === 'final' && session.finalStep === 'wagers' && session.final
-      ? session.final.players.filter((id) => typeof session.final?.wagers[id] === 'number')
-      : [],
-  );
+  const ticks = $derived(wagersIn(session));
   const stream = $derived(game.settings.stream);
   /** The "Starting soon" countdown's clock (ticks only while there's one). */
   let clock = $state(Date.now());
@@ -627,7 +623,7 @@
         <SlideView slide={finalCategorySlide} />
         <div class="final-sub">Make your wagers…</div>
         <!-- The scores stay up while players decide what to wager (a ✔ once a wager is in). -->
-        <div class="score-area"><ScoreBar {game} {session} phones={live.phones} host={!!onact} lit={null} ticks={wagersIn} /></div>
+        <div class="score-area"><ScoreBar {game} {session} phones={live.phones} host={!!onact} lit={null} {ticks} /></div>
       {:else if session.finalStep === 'question'}
         {#if finalRound}
           {@const fAt = clueSlideIndex(session, finalRound)}

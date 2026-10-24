@@ -15,7 +15,6 @@
     lit,
     ticks = [],
     reserve = 0,
-    width = 1920,
     phones = [],
   }: {
     game: Game;
@@ -29,10 +28,8 @@
     lit?: string | null;
     /** Players with a ✔ on their plate (their Final wager is in). */
     ticks?: string[];
-    /** Room kept free at the right end (px), for the phone buzzers' join code. */
+    /** Room kept free at the right end (px): the phone buzzers' join code's, the countdown's. */
     reserve?: number;
-    /** How wide the bar is (px): the scores-only window's is narrower while its countdown is beside it. */
-    width?: number;
     /** Players with a phone buzzer connected (📱 on their plate). */
     phones?: string[];
   } = $props();
@@ -57,7 +54,7 @@
    * plate, else 8px).
    */
   const shown = $derived(
-    plateScores(session.players.map((p) => score(session, p.id)), sym, reserve, width, game.theme?.plateShape === 'pill' ? 24 : 8),
+    plateScores(session.players.map((p) => score(session, p.id)), sym, reserve, 1920, game.theme?.plateShape === 'pill' ? 24 : 8),
   );
   const NAME = 36;
   const NAME_MIN = 28;
@@ -113,6 +110,10 @@
     background: var(--tile);
     cursor: pointer;
     transition: box-shadow 0.2s, transform 0.2s;
+  }
+  /* (Not the buttons' hover colour: viewers see these plates too, in a single window.) */
+  .plate:hover {
+    background: var(--tile);
   }
   .plate.wide {
     max-width: 420px;

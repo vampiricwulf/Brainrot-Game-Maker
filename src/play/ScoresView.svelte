@@ -9,6 +9,7 @@
   import { STAGE_KEYS, themeStyle } from '../lib/theme';
   import ScoreBar from './ScoreBar.svelte';
   import TimerDisplay from './TimerDisplay.svelte';
+  import { platesClear, wagersIn } from './flow';
 
   let { game, session, live }: { game: Game; session: Session | null; live: Live } = $props();
 
@@ -18,6 +19,10 @@
   let h = $state(0);
   const scale = $derived(Math.min(w / W, h / H) || 0);
   const keyColor = $derived(game.theme?.stageBg ? STAGE_KEYS[game.theme.stageBg] : undefined);
+  /** The countdown's slot, at the right end. */
+  const CLOCK = 280;
+  /** The plates fit clear of the countdown's slot as they are: they stay put when it comes and goes. */
+  const clear = $derived(platesClear(session?.players.length ?? 0, CLOCK));
 </script>
 
 <!-- data-stage: viewers see it, so ⚙ Settings › Reduce motion on stream calms it like the stage (app.css). -->
@@ -27,12 +32,14 @@
   {#if session && !live.pregame && !live.cover && session.players.length}
     <div class="strip" class:keyed={!!keyColor} style={themeStyle(game.theme)} style:width="{W}px" style:height="{H}px" style:transform="translateX(-50%) scale({scale})">
       <!-- In a Final nobody picks: the spotlit player in its reveals is lit, else nobody (as on the stage); nor on the
-           results or the tiebreaker. Beside the countdown the plates have its 280px less (their scores shortened to fit). -->
+           results or the tiebreaker. Plates too many to fit clear of the countdown make room for it while it's up (their
+           scores shortened to fit). The ✔ of a Final wager that's in, as on the stage. -->
       <div class="plates">
         <ScoreBar
           {game}
           {session}
-          width={live.timer ? W - 280 : W}
+          reserve={live.timer && !clear ? CLOCK : 0}
+          ticks={wagersIn(session)}
           phones={live.phones}
           lit={session.phase === 'final'
             ? session.finalStep === 'reveal'
@@ -77,10 +84,11 @@
     background: none;
   }
   .clock {
-    position: relative;
+    position: absolute;
+    right: 0;
+    bottom: 0;
     width: 280px;
     height: 230px;
-    flex-shrink: 0;
   }
   .clock :global(.timesup) {
     font-size: 64px;

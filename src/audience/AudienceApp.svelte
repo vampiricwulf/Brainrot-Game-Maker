@@ -312,8 +312,10 @@
     inset: 0;
     background: #000;
   }
-  .aud.idle {
-    cursor: none;
+  /* (Over the tiles and plates too: their own cursors would show.) */
+  .aud.idle,
+  .aud.idle :global(*) {
+    cursor: none !important;
   }
   .msg {
     display: grid;

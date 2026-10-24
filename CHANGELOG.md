@@ -15,6 +15,9 @@ in plain words for the people who make and host games. Anything committed but no
 
 ### Fixed
 
+- One window: a tile or score plate under your mouse keeps its theme color on stream (a tile just a little brighter). It turned the app's flat grey, with the value still on it.
+- The audience window hides the cursor over the board and the score plates too once the mouse is still, so OBS's Window Capture doesn't show a hand or an arrow there. In one window with the controls hidden (H), the cursor over the stage goes while the mouse is still, and comes back when it moves.
+- The ▭ scores window: the plates stay where they are when a countdown starts or stops (with more players than fit beside the clock, they still make room for it), and the Final's ✔ for each wager that's in shows there too, as on the stage.
 - Board games: a new turn starts with an empty Amount box, so Enter with a player picked and a count waiting moves them, as ▶ Move says, instead of giving them points typed on an earlier turn (or a space's question's). Points typed on the turn itself stay, for giving them to several players in a row.
 - Board games: Enter while a space's question is up judges whoever answered, as on a clue (“Select a player first” until you pick them; Shift+Enter for wrong). It said “Moved this turn: N for the next turn” and gave nobody the points.
 - Board games that move one space a turn: until the move is made, the main button is the way on (→ Space 2, Enter), or 🔀 Pick a way at a fork, and Enter at a fork says which ways there are. The main button was Next turn ▶ from the start of the turn, and Enter at a fork said “Select a player first”.

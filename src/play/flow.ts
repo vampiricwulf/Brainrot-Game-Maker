@@ -1,7 +1,7 @@
 // Small rules of hosting a board game (Jeopardy-style), kept apart from Play.svelte so they can be tested: when the
 // countdown stops, how score pops are worded and where they go.
 import type { Pop } from '../lib/live';
-import { compactPoints, formatPoints, wordSymbol, type Player, type ScoreEvent } from '../lib/model';
+import { compactPoints, formatPoints, wordSymbol, type Player, type ScoreEvent, type Session } from '../lib/model';
 import { nameList } from '../lib/session';
 
 /**
@@ -58,6 +58,20 @@ export function plateCenter(count: number, index: number, reserve = 0, width = 1
 export function plateWidth(count: number, reserve = 0, width = 1920): number {
   const inner = width - 48 - reserve;
   return Math.min(count <= 4 ? 420 : 320, (inner - 18 * (count - 1)) / Math.max(1, count));
+}
+
+/**
+ * The plates at their full size, centred on the bar, leave `room` px (and the 24px margin) free at each end: the ▭
+ * scores window's countdown fits beside them there, so they needn't move when it comes.
+ */
+export function platesClear(count: number, room: number, width = 1920): boolean {
+  return count * plateWidth(count, 0, width) + 18 * (count - 1) <= width - 2 * (room + 24);
+}
+
+/** The Final's players whose wager is in (a ✔ on their score plate while wagers are taken; never how much). */
+export function wagersIn(session: Pick<Session, 'phase' | 'finalStep' | 'final'>): string[] {
+  const f = session.phase === 'final' && session.finalStep === 'wagers' ? session.final : undefined;
+  return f ? f.players.filter((id) => typeof f.wagers[id] === 'number') : [];
 }
 
 /** About how wide a score is at the smallest size scores shrink to (22px): a wide digit ≈ 0.62em; ",", "." or a space ≈ 0.3em. */

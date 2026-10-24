@@ -115,6 +115,17 @@ async function crowd() {
   );
   assert(catsOver.length === 0, `and they all fit their cells ${catsOver.join(' | ')}`);
 
+  // The mouse left still over the board (after the click that allows sound): the cursor goes, over a tile too.
+  const t5 = await aud.locator('.board .tile').nth(5).boundingBox();
+  const at = { x: t5.x + t5.width / 2, y: t5.y + t5.height / 2 };
+  await aud.mouse.move(at.x, at.y);
+  await aud.locator('.aud.idle').waitFor();
+  const idleCursor = await aud.evaluate(({ x, y }) => {
+    const e = document.elementFromPoint(x, y);
+    return `${e.closest('.tile') ? 'tile' : e.className}: ${getComputedStyle(e).cursor}`;
+  }, at);
+  assert(idleCursor === 'tile: none', `the audience window hides the cursor over a tile once the mouse is still (${idleCursor})`);
+
   // The ▭ scores window (a lower third): no score cut off there either, the countdown beside them.
   const [sc] = await Promise.all([host.waitForEvent('popup'), host.keyboard.press('Shift+A')]);
   await sc.setViewportSize({ width: 1280, height: 240 });
@@ -697,6 +708,23 @@ try {
   await page.getByRole('button', { name: 'Start game ▶' }).click();
   await page.getByRole('button', { name: 'Skip intro' }).click();
 
+  // The host's mouse on the board or a score plate (on stream in one window): the tile keeps its own color (only
+  // brighter), the plate its own, not the buttons' grey under the mouse.
+  const hovered = async (loc) => {
+    await loc.hover();
+    return loc.evaluate((e) => new Promise((done) => {
+      const look = () => (e.matches(':hover') ? done(getComputedStyle(e).backgroundColor) : requestAnimationFrame(look));
+      look();
+    }));
+  };
+  const hoverTile = page.locator('.stage-box .board .tile').nth(4);
+  const tileBg = await hoverTile.evaluate((e) => getComputedStyle(e).backgroundColor);
+  const hoverPlate = page.locator('.stage-box .plate').first();
+  const plateBg = await hoverPlate.evaluate((e) => getComputedStyle(e).backgroundColor);
+  const onTile = await hovered(hoverTile);
+  const onPlate = await hovered(hoverPlate);
+  assert(onTile === tileBg && onPlate === plateBg, `one window: a tile or plate under the mouse keeps its color on stream (${tileBg} → ${onTile}, ${plateBg} → ${onPlate})`);
+
   // A clue opening keeps the stage's size (the ✔ / ✘ buttons don't wrap the player row).
   const board = await stageSize();
   await page.locator('.stage-box .board .tile').nth(0).click();
@@ -735,6 +763,13 @@ try {
   // by H, they come back for it, and go again after.)
   await page.keyboard.press('h');
   await page.locator('.play > .panel').waitFor({ state: 'detached' });
+  // (No cursor over the stage while the mouse is still; it's back once it moves.)
+  const stillCursor = await page.locator('.stage-box .board .tile:not(.used)').first().evaluate((e) => getComputedStyle(e).cursor);
+  await page.mouse.move(300, 200);
+  await page.mouse.move(310, 210);
+  // (Read while "Show controls" shows: the mouse counts as moving for a moment only.)
+  const movedCursor = await (await page.waitForFunction(() => document.querySelector('.show-controls.shown') && getComputedStyle(document.querySelector('.stage-box .board .tile:not(.used)')).cursor)).jsonValue();
+  assert(stillCursor === 'none' && movedCursor === 'pointer', `one window with the controls hidden: no cursor over the stage while the mouse is still (${stillCursor}), until it moves (${movedCursor})`);
   await page.keyboard.press('?');
   // (It moves there once the host panel's box is measured, a frame after it opens.)
   await page.locator('.backdrop.in-panel [role="dialog"]').waitFor({ timeout: 3000 }).catch(() => {});
@@ -777,7 +812,17 @@ try {
   await page.locator('.fj').click({ position: { x: 2, y: 2 } });
   await page.waitForTimeout(200);
   assert((await page.locator('.stage .score-area .tick').count()) === 3 && ticks < 3, 'a ✔ shows on each plate once that wager is in');
+  // The ▭ scores window shows them too; its 3 plates stay put when the question's countdown comes beside them.
+  const [sc] = await Promise.all([page.waitForEvent('popup'), page.keyboard.press('Shift+A')]);
+  await sc.setViewportSize({ width: 1280, height: 180 });
+  await sc.locator('.plate .tick').nth(2).waitFor();
+  const scPlates = () => sc.locator('.plate').evaluateAll((els) => els.map((e) => Math.round(e.getBoundingClientRect().left)).join());
+  const scBefore = await scPlates();
   await page.getByRole('button', { name: 'Show question ▶' }).click();
+  await sc.locator('.clock .timer').waitFor();
+  await sc.locator('.plate .tick').first().waitFor({ state: 'detached' });
+  const scAfter = await scPlates();
+  assert(scAfter === scBefore, `the scores window: a ✔ for each wager in, and 3 plates that stay put when the countdown comes (${scBefore} / ${scAfter})`);
   assert((await stageSize()) === finalSize, 'the question keeps it');
   await page.getByRole('button', { name: 'Reveal answer ▶' }).click();
   await page.getByRole('button', { name: 'Start player reveals ▶' }).click();

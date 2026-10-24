@@ -4570,6 +4570,7 @@
   <main
     class="play"
     class:hidden={hideControls}
+    class:still={!pointerMoved}
     class:ring-off={ringOff}
     class:side
     class:dual
@@ -5170,6 +5171,11 @@
      until the host moves the keys themselves (see ringOff). */
   .play.hidden.ring-off:not(.dual) .stage-box :global(:focus-visible) {
     outline: none;
+  }
+  /* And no cursor over it while the mouse is still (as in the audience window). */
+  .play.hidden.still:not(.dual) .stage-box,
+  .play.hidden.still:not(.dual) .stage-box :global(*) {
+    cursor: none !important;
   }
   .stage-area.dual > :global(.info) {
     width: min(360px, 35vw);
