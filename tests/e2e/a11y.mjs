@@ -64,9 +64,20 @@ try {
   assert(await more.evaluate((b) => b === document.activeElement), 'closing it gives the focus back to ⋯');
   assert(!(await page.locator('[inert]').count()), 'and nothing stays inert');
 
+  // The hosting guide, from the ⋯ menu (a new tab; GitHub is a stand-in here) and from ℹ About.
+  await context.route('https://github.com/**', (r) => r.fulfill({ contentType: 'text/html', body: '<title>Guide</title>' }));
+  await more.click();
+  const [guide] = await Promise.all([context.waitForEvent('page'), page.getByRole('menuitem', { name: /How to host/ }).click()]);
+  await guide.waitForURL('https://github.com/vampiricwulf/Brainrot-Game-Maker#hosting');
+  await guide.close();
   await more.click();
   await page.getByRole('menuitem', { name: 'ℹ About' }).click();
-  await page.getByRole('dialog', { name: 'About Brainrot Games Maker' }).waitFor();
+  const about = page.getByRole('dialog', { name: 'About Brainrot Games Maker' });
+  await about.waitFor();
+  assert(
+    (await about.getByRole('link', { name: /How to host/ }).getAttribute('href')) === 'https://github.com/vampiricwulf/Brainrot-Game-Maker#hosting',
+    'the ⋯ menu’s 📖 How to host opens the hosting guide in a new tab, and ℹ About links to it',
+  );
   await page.keyboard.press('Escape');
   assert((await page.getByRole('dialog').count()) === 0 && (await more.evaluate((b) => b === document.activeElement)), 'Esc on ℹ About gives the focus back too');
 

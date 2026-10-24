@@ -179,6 +179,9 @@
   let showRules = $state(false);
   let hideControls = $state(false);
   let showKeys = $state(false);
+  /** The ⌨ list opens on the keys of what's being played (a Jeopardy board's come right after Everywhere and Tools). */
+  const KEYS_FIRST: Partial<Record<string, string>> = { rpg: 'RPG', boardgame: 'Board game', final: 'Final', tiebreaker: 'Tiebreaker clue', slides: 'Slides round' };
+  const keysFirst = $derived(app.pregame ? 'Before the game' : KEYS_FIRST[session.phase]);
   /** The streaming-sound help (Test sound, output device, Discord/OBS steps). */
   let showSound = $state(false);
   /** P was pressed: the next 1–9 sets the picker. */
@@ -3477,6 +3480,14 @@
    * own undo, which would change the last field typed in.
    */
   function pregameKey(e: KeyboardEvent): void {
+    // ? lists the keys, this screen's first (typed in a field it's a question mark; a window over the screen has its own).
+    if (e.key === '?' && !e.ctrlKey && !e.metaKey && !e.altKey && !e.defaultPrevented) {
+      const t = e.target instanceof Element ? e.target : null;
+      if (showSound || showSettings || shrinkDialog.open || t?.closest('input, textarea, select, [contenteditable], [role="dialog"], [role="menu"]')) return;
+      e.preventDefault();
+      showKeys = true;
+      return;
+    }
     // Ctrl+Enter starts the game from wherever the focus is on the page (not in a window over it).
     if (e.key === 'Enter' && (e.ctrlKey || e.metaKey) && !e.shiftKey && !e.altKey && !e.repeat && !e.defaultPrevented) {
       const t = e.target instanceof Element ? e.target : null;
@@ -4762,9 +4773,6 @@
       </HostPanel>
     {/if}
   </main>
-  {#if showKeys}
-    <KeysHelp area={panelBox} onclose={() => (showKeys = false)} />
-  {/if}
   {#if showLog && (dual || panelBox)}
     <!-- Single window: in the host panel (it grows for it), never over the stage viewers see. -->
     <ScoreLog {game} {session} {sym} bind:tab={logTab} area={panelBox} spinning={spinningIds} onreopen={toggleTile} onback={undoBackTo} onredoto={redoUpTo} onclose={() => (showLog = false)} />
@@ -4832,6 +4840,9 @@
       </div>
     </div>
   {/if}
+{/if}
+{#if showKeys}
+  <KeysHelp area={app.pregame ? null : panelBox} first={keysFirst} onclose={() => (showKeys = false)} />
 {/if}
 {#if showRules && !app.pregame}
   <!-- ⚖ Game rules mid-game: changes count at once, and are kept with the game in the editor (undoable there). -->

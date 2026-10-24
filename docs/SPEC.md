@@ -524,7 +524,8 @@ The mode isn't saved with the game: it's dual while the audience window is open.
   instead of revealing the answer. The host sees ⏸ on a playing sound's icon; the audience sees the plain icon.
 
 ### 6.8 Host keyboard shortcuts
-The full list, by round, is the in-game `?` sheet (`src/play/KeysHelp.svelte`); the main ones:
+The full list, by round, is the in-game `?` sheet (`src/play/KeysHelp.svelte`; the round being played's keys first, and
+on the pre-game screen its own keys first); the main ones:
 
 | Key | Action |
 |---|---|

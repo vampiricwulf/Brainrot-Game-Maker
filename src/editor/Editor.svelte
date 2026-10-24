@@ -91,6 +91,7 @@
   import { clipboard } from '../lib/clipboard.svelte';
   import { bundleName, sameContent } from '../lib/roundcopy';
   import { addRoundItems, addSample, copyRoundOf, pasteRound, pickOtherGame } from './roundtools';
+  import { HOSTING_GUIDE, openSite } from '../lib/sitelinks';
 
   /** `checklist`: worked out by the app a moment after changes stop (one line a round). */
   let {
@@ -848,6 +849,7 @@
         onclick: () => (settings = true),
       },
       { label: '⌨ Keyboard shortcuts', hint: "The editor's keys and mouse moves", keys: '?', onclick: () => (shortcuts = true) },
+      { label: '📖 How to host (guide) ↗', hint: 'The guide on GitHub: hosting, phone buzzers, 🤫 cards, 🎭 deals, teams', onclick: () => openSite(HOSTING_GUIDE) },
       { label: 'ℹ About', hint: 'Version, links, and where your data is saved', onclick: () => (about = true) },
     ]);
   }

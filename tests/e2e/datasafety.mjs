@@ -132,6 +132,12 @@ try {
   await page.getByRole('menuitem', { name: 'ℹ About' }).click();
   await page.getByRole('dialog', { name: 'About Brainrot Games Maker' }).getByText(/^Storage: (kept|may be cleared)/).waitFor();
   assert(true, 'ℹ About says whether the storage is kept for good');
+  // Where it's kept, as it is: shared by every copy of the app opened from a file, and what goes to the buzzer server.
+  const where = await page.getByRole('dialog', { name: 'About Brainrot Games Maker' }).innerText();
+  assert(
+    where.includes('every copy of this app opened from a file shares it') && where.includes('except to the buzzer server while phones play') && !where.includes('this file in another folder'),
+    'ℹ About says every copy of the app opened from a file shares the storage, and what goes to the buzzer server',
+  );
   await page.keyboard.press('Escape');
 
   // ---------- The first Save asks for a name ----------

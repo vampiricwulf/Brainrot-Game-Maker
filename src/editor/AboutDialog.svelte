@@ -1,7 +1,7 @@
 <!-- ℹ About: version and build, links, and where this copy keeps its data (the desktop app's folders, with buttons to
      open them, so nobody is surprised by folders the app made). -->
 <script lang="ts">
-  import { externalLink, REPO } from '../lib/sitelinks';
+  import { externalLink, HOSTING_GUIDE, REPO } from '../lib/sitelinks';
   import { modal } from '../lib/modal';
   import { onMount } from 'svelte';
   import { toast } from '../lib/app.svelte';
@@ -64,6 +64,8 @@
       <dd>{__APP_VERSION__} ({desktopApp ? 'Windows desktop app' : 'single HTML file'})</dd>
       <dt>Build</dt>
       <dd>{__BUILD_COMMIT__ ? `${__BUILD_COMMIT__}, ` : ''}{__BUILD_DATE__}</dd>
+      <dt>Guide</dt>
+      <dd><a href={HOSTING_GUIDE} target="_blank" rel="noreferrer" onclick={link} title="The README on GitHub: hosting, phone buzzers, 🤫 cards, 🎭 deals, teams">📖 How to host (the guide)</a></dd>
       <dt>Source</dt>
       <dd><a href={REPO} target="_blank" rel="noreferrer" onclick={link}>GitHub: vampiricwulf/Brainrot-Game-Maker</a></dd>
       <dt>Updates</dt>
@@ -172,9 +174,10 @@
       {/if}
     {:else}
       <p class="muted">
-        The autosave and the media you add are kept in this browser's storage for this file (nothing is uploaded). Another
-        browser, or this file in another folder, starts empty. Clearing this browser's site data deletes them, so use
-        <b>Save</b> (.brainrot) to keep a copy.
+        The autosave and the media you add are kept in this browser's storage. In Chrome and Edge every copy of this app
+        opened from a file shares it; another browser starts empty. Nothing is uploaded, except to the buzzer server while
+        phones play: what the phones show and send (the clue, names, answers), and 🤫 cards' files. Clearing this
+        browser's site data deletes them, so use <b>Save</b> (.brainrot) to keep a copy.
       </p>
       {#if kept !== null}
         <p class="hint">

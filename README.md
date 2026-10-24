@@ -346,7 +346,8 @@ left with the screen covered comes back covered.
 
 ### Keyboard shortcuts
 
-The main ones (press `?` during the game for all of them):
+The main ones (press `?` before or during the game for all of them, starting with the ones for the round or screen
+you're on):
 
 | Key | Action |
 |---|---|
@@ -410,7 +411,8 @@ goes up doesn't judge its player yet: press it again.
   sound this browser can't play is offered a fix as soon as it's added (🔄 Convert: repackaged in seconds with nothing
   lost when only its file type is the problem, as with an MKV, or an .mts whose sound plays here; a camcorder's .mts
   usually loses its Dolby Digital sound), and Ctrl+Z puts the old file back.
-- **⚙ Settings** (in the header's ⋯ menu, with Export as a web page, Export JSON, ⌨ Keyboard shortcuts and ℹ About) has these options:
+- **⚙ Settings** (in the header's ⋯ menu, with Export as a web page, Export JSON, ⌨ Keyboard shortcuts, 📖 How to host
+  (this guide) and ℹ About) has these options:
   - **Reduce motion on stream** (the editor and host controls also follow your computer's reduce-motion setting).
   - **Undo**: how many changes Ctrl+Z and the 🕘 History tab remember (300 by default).
   - **Autosave** every few minutes (desktop app). The default is every 5 minutes, keeping the last 3.
@@ -583,7 +585,8 @@ npm run check          # type-check
 npm test               # unit tests
 (cd buzzer && npm ci)  # once: the buzzer server's packages (its e2e tests run it)
 npm run test:quick     # the quick end-to-end test (about a minute; CI waits for it before releasing)
-npm run test:e2e       # the full end-to-end suite (about 10 minutes; CI runs it alongside the release)
+npm run test:e2e       # the full end-to-end suite (about 25 minutes in CI; CI runs it alongside the release)
+npm run test:buzzer    # only the phone-buzzer end-to-end files (they start a local buzzer server)
 npm run screenshots    # regenerate docs/screenshots (build first)
 npm run desktop:build  # Windows app (needs Rust + Tauri prerequisites)
 ```

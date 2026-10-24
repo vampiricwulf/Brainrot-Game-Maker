@@ -5,13 +5,25 @@
   let {
     onclose,
     area = null,
+    first,
   }: {
     onclose: () => void;
     /** Single window: the host panel's box, where the list stays (viewers see this window: the stage stays clear). */
     area?: { top: number; left: number; width: number; height: number } | null;
+    /** The group shown first: the round being played's (or the pre-game screen's, the only place it shows). */
+    first?: string;
   } = $props();
+  const BEFORE = 'Before the game';
   /** The keys by where they apply (a key can mean another thing in another round, like N or D). */
   const GROUPS: { title: string; keys: [string, string][] }[] = [
+    {
+      title: BEFORE,
+      keys: [
+        ['Ctrl+Enter', 'Start the game (from anywhere on this screen)'],
+        ['Ctrl+Z / Ctrl+Y', 'Undo / redo the changes made here (players, rules, buzzers, On stream)'],
+        ['Enter in a player’s name', 'Add the next player (as ＋ Add player does), typing in their name'],
+      ],
+    },
     {
       title: 'Everywhere',
       keys: [
@@ -130,6 +142,11 @@
       ],
     },
   ];
+  /** The pre-game screen's keys only there; the group asked for first (its keys on the first screen), then the rest. */
+  const shown = $derived.by(() => {
+    const groups = GROUPS.filter((g) => g.title !== BEFORE || first === BEFORE);
+    return [...groups.filter((g) => g.title === first), ...groups.filter((g) => g.title !== first)];
+  });
 </script>
 
 <svelte:window
@@ -160,7 +177,7 @@
       <button class="ghost modal-x" onclick={onclose} aria-label="Close" title="Close (Esc)">✕</button>
     </div>
     <div class="groups">
-      {#each GROUPS as g (g.title)}
+      {#each shown as g (g.title)}
         <section>
           <h3>{g.title}</h3>
           <table>

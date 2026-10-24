@@ -15,10 +15,17 @@ in plain words for the people who make and host games. Anything committed but no
 
 ### Added
 
+- ⋯ › 📖 How to host (guide) ↗, and a Guide line in ℹ About: the README's guide to hosting (phone buzzers, 🤫 cards, 🎭 deals, teams, the audience window) on GitHub, opened in your browser.
+- `?` on the ▶ Play screen before the game lists the keys, that screen's own first (Ctrl+Enter starts the game, Ctrl+Z / Ctrl+Y, Enter in a name adds the next player). It did nothing there.
 - The audience and ▭ scores windows opened on their own (as when the address is pasted into an OBS Browser source) say to capture them with OBS's Window Capture instead: a Browser source can't reach the host page.
+
+### Changed
+
+- The in-game ⌨ / `?` list starts with the keys of the round being played (RPG, Board game, Final, Tiebreaker clue, Slides round), so they're on its first screen in the host panel beside the stage. It always started with Everywhere, the RPG keys six screens down.
 
 ### Fixed
 
+- ℹ About, in a browser, says where your games are kept as it is: in Chrome and Edge every copy of the app opened from a file shares one storage (another browser starts empty), and with phone buzzers what the phones show and send, and 🤫 cards' files, go through the buzzer server. It said nothing was uploaded, and that a copy in another folder starts empty.
 - Exit › Keep & leave in the middle of a show (to fix a clue in the editor): the audience window shows the cover card (“Be right back”, or your own cover text, with the banner and the join code) until you resume, and the bar over the editor says so. It showed the game's title and “Starting soon…”. ▶ Next game… and a finished game still show Starting soon.
 - The stage's entrances play again, in the audience window and in one window: a clue zooms in from its tile as it opens, the Daily Double and 🤝 PARTNER UP! splashes zoom in, so does the round's title card at the start, the board fades back in after a clue, the Final's steps and the first slide of a Slides round or the tiebreaker fade in, the first spotlit player in the Final's reveals flies in, and the end screen's places fly in from last to first. Hiding the answer again (R, R) or going back to the first slide brings the question back quietly, instead of zooming it in from nothing. ⚙ Settings › Reduce motion on stream still turns them off, and the editor's previews come up still.
 - The audience window draws each step as one picture, as your own copy does: a question whose countdown starts with it (every Final question) no longer shrinks under the clock just after it comes up, an answer no longer grows in from smaller, and a wheel or dice tile's question no longer shows for a moment before its wheel.

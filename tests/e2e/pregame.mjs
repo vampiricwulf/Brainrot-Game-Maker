@@ -171,6 +171,19 @@ try {
   assert((await cyStart.inputValue()) === '1000000000000', 'and one past the most points reads as the most (1,000,000,000,000)');
   await cyStart.fill('0');
   assert((await start.getAttribute('title')).includes('Ctrl+Enter'), 'Start game ▶ says its key, Ctrl+Enter');
+  // ---------- ? lists the keys, this screen's first (typed in a name, it's a question mark) ----------
+  await cy.press('End');
+  await cy.press('?');
+  assert((await cy.inputValue()) === 'Cy?' && (await page.getByRole('dialog', { name: 'Keyboard shortcuts' }).count()) === 0, "'?' typed in a name is just a question mark");
+  await cy.press('Backspace');
+  await page.locator('.pregame h1').click();
+  await page.keyboard.press('?');
+  const keyList = page.getByRole('dialog', { name: 'Keyboard shortcuts' });
+  await keyList.waitFor();
+  const firstKeys = await keyList.locator('section').first().textContent();
+  assert(firstKeys.startsWith('Before the game') && firstKeys.includes('Ctrl+Enter'), `? on the pre-game screen lists the keys, its own first (${firstKeys.slice(0, 40)})`);
+  await page.keyboard.press('?');
+  await keyList.waitFor({ state: 'detached' });
   // ---------- Ctrl+Enter starts the game, from a name being typed in (which keeps the typing) ----------
   await cy.press('End');
   await page.keyboard.type('z');

@@ -165,6 +165,8 @@ async function bigWorld() {
   await keyList.waitFor();
   const rpgKeys = await keyList.locator('section').filter({ has: host.getByRole('heading', { name: 'RPG', exact: true }) }).innerText();
   assert(rpgKeys.includes('← ↑ → ↓'), 'the ? list has the arrow keys among the RPG keys');
+  const firstGroup = await keyList.locator('h3').first().innerText();
+  assert(firstGroup === 'RPG', `in an RPG round the ? list starts with the RPG keys (${firstGroup})`);
   await host.keyboard.press('Escape');
   await keyList.waitFor({ state: 'detached' });
   // Under ⏸ Cover, viewers hear nothing new: a step there and back makes no sound on stream.
