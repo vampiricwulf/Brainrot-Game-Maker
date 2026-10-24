@@ -104,6 +104,7 @@
     pushGame,
     pushLive,
     pushSession,
+    pushState,
   } from '../lib/sync.svelte';
   import { mediaUsage, slideMediaIds } from '../lib/usage';
   import { mediaUrls } from '../lib/media.svelte';
@@ -320,8 +321,9 @@
       // (Until the watcher has started, a copy of its own.)
       const g = gameCopy?.() ?? $state.snapshot(game);
       if (g !== sentGame) pushGame((sentGame = g));
-      if (outSession) pushSession(outSession);
-      if (outLive) pushLive(outLive);
+      if (outSession && outLive) pushState(outSession, outLive);
+      else if (outSession) pushSession(outSession);
+      else if (outLive) pushLive(outLive);
       outSession = outLive = null;
     });
   }

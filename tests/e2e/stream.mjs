@@ -246,6 +246,20 @@ async function viewers() {
   const gameFile = resolve('test-results/stream-viewers.json');
   writeFileSync(gameFile, JSON.stringify(game));
   const ctx = await browser.newContext({ viewport: { width: 1400, height: 900 } });
+  // What came in how (the stage's entrances are element.animate calls): each element's first, with its first frame.
+  await ctx.addInitScript(() => {
+    window.__entrances = [];
+    const started = new WeakSet();
+    const animate = Element.prototype.animate;
+    Element.prototype.animate = function (frames, options) {
+      if (!started.has(this) && Array.isArray(frames) && frames.length) {
+        started.add(this);
+        const from = String(frames[0].transform ?? `opacity ${frames[0].opacity}`).trim().replace(/\d*\.\d+/g, (n) => String(+(+n).toFixed(3)));
+        window.__entrances.push({ el: `${this.localName}.${String(this.className).trim().split(/\s+/).join('.')}`, from });
+      }
+      return animate.call(this, frames, options);
+    };
+  });
   // A fake buzzer room (as in remotebuzz.mjs): room BCDF.
   await ctx.addInitScript(() => {
     try {
@@ -286,6 +300,12 @@ async function viewers() {
   const [aud] = await Promise.all([host.waitForEvent('popup'), host.locator('.mode', { hasText: 'Separate audience window' }).click()]);
   aud.on('pageerror', (e) => errors.push(`[viewers audience] ${e.message}`));
   await aud.setViewportSize({ width: 1280, height: 720 });
+  /** How the elements matching `cls` came in since the last call (the first frame of each), then forgets them. */
+  const cameIn = (cls) => aud.evaluate((cls) => {
+    const out = window.__entrances.filter((e) => e.el.split('.').includes(cls)).map((e) => e.from);
+    window.__entrances = [];
+    return out;
+  }, cls);
   await host.getByRole('button', { name: 'Start game ▶' }).click();
   const skip = host.getByRole('button', { name: 'Skip intro' });
   if (await skip.isVisible().catch(() => false)) await skip.click();
@@ -331,6 +351,8 @@ async function viewers() {
   await host.locator('.dd input[type=number]').press('Enter');
   await aud.locator('.dd-badge').waitFor();
   assert((await badge.count()) === 0, 'no join code over a Daily Double’s question (nobody buzzes)');
+  const ddIn = await aud.evaluate(() => window.__entrances.filter((e) => /\.(dd-in|full)\b/.test(e.el)).map((e) => `${e.el.split('.')[1]} ${e.from}`).join(', '));
+  assert(/dd-in scale\(0\.05\).*full scale\(0\.15\)/.test(ddIn), `the Daily Double splash zooms in, then its question does (${ddIn})`);
   await host.keyboard.press('r');
   await aud.waitForTimeout(300);
   assert((await badge.count()) === 0, 'nor its answer');
@@ -338,14 +360,24 @@ async function viewers() {
   await aud.locator('.board .tile').first().waitFor();
   await badge.waitFor();
   // A clue in the usual text box (its frame nearly the whole slide): the code goes in a corner its words leave free.
+  await cameIn('full');
   await host.locator('.board .tile').nth(1).click();
   await aud.locator('.slide-area').waitFor();
   await badge.waitFor();
   const clueCorner = await badge.getAttribute('data-corner');
   assert(clueCorner === 'br' && (await badge.locator('.jb-link').count()) === 1, `on a clue the whole join badge goes in the corner its words leave free (${clueCorner})`);
+  const opened = await cameIn('full');
+  // Its answer, then its question again (R, R): both quietly, the question not zooming in from nothing again.
+  await host.keyboard.press('r');
+  await aud.locator('[data-slide="answer"]').waitFor();
+  await host.keyboard.press('r');
+  await aud.locator('[data-slide="1"]').waitFor();
+  const again = await cameIn('full');
+  assert(opened.join() === 'scale(0.15)' && again.join() === 'scale(0.98),scale(0.98)', `a clue opened from the board zooms in; its answer and its question again (R, R) come in quietly (${opened} | ${again})`);
   await host.keyboard.press('Escape');
   await aud.locator('.board .tile').first().waitFor();
   await badge.waitFor();
+  assert((await cameIn('board-screen')).join() === 'opacity 0', 'back on the board, it fades in');
 
   // The Final: its category in the theme's clue font; each ✔ above its plate, never over the score.
   await nextRoundOf(host);
@@ -366,8 +398,27 @@ async function viewers() {
     }).length,
   );
   assert(overScore === 0, 'with 12 players, every ✔ (wager in) is clear of its plate’s score');
+  // The question with its countdown, and the answer that stops it, each come as one picture: the slide is drawn at its
+  // size from the start (not full size, then shrinking under the clock a moment later; nor growing into the answer).
+  await aud.evaluate(() => {
+    window.__scales = [];
+    const note = (el) => window.__scales.push(el.style.scale || '1');
+    new MutationObserver((list) => {
+      for (const m of list) {
+        if (m.type === 'attributes' && m.target.classList.contains('slide-area')) note(m.target);
+        for (const n of m.addedNodes) if (n.nodeType === 1) [n, ...n.querySelectorAll('.slide-area')].filter((e) => e.classList.contains('slide-area')).forEach(note);
+      }
+    }).observe(document.body, { subtree: true, childList: true, attributes: true, attributeFilter: ['style'] });
+  });
+  const sizes = () => aud.evaluate(() => [...new Set(window.__scales.splice(0))].join(' → '));
   await host.getByRole('button', { name: 'Show question ▶' }).click();
+  await aud.locator('.slide-area').waitFor();
+  await aud.locator('.timer').waitFor();
+  const asked = await sizes();
   await host.getByRole('button', { name: 'Reveal answer ▶' }).click();
+  await aud.locator('.timer').waitFor({ state: 'detached' });
+  const answered = await sizes();
+  assert(!asked.includes('→') && asked !== '1' && answered === '1', `the Final's question comes in at its size beside the countdown, its answer at full size (${asked} | ${answered})`);
   await host.getByRole('button', { name: 'Start player reveals ▶' }).click();
   const wrongs = await host.getByRole('button', { name: '✘ Wrong' }).count();
   for (let k = 0; k < wrongs; k++) {
@@ -382,6 +433,8 @@ async function viewers() {
 
   // The end: a tie of two long names, 12 places: the heading shrinks to fit, every place stays on the stage.
   await aud.locator('.end h1').waitFor();
+  const places = await aud.evaluate(() => window.__entrances.filter((e) => e.el.startsWith('li.')).length);
+  assert(places === 12, `the end screen's places fly in (${places} of 12)`);
   // (Once the last place has flown in.)
   await aud.waitForTimeout(300 + 12 * 250 + 700);
   const head = await aud.locator('.end h1').innerText();

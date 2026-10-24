@@ -109,6 +109,11 @@
         case 'live':
           live = m.live;
           break;
+        case 'state':
+          // (Both before the window draws again: one picture.)
+          session = m.session;
+          live = m.live;
+          break;
         case 'media':
           for (const it of m.items) registerBlob(it.id, it.blob);
           if (game) registerGameFonts(game);

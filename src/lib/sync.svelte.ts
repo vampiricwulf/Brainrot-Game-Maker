@@ -22,6 +22,8 @@ export type HostMsg =
   | { type: 'game-patch'; ops: GamePatch }
   | { type: 'session'; session: Session }
   | { type: 'live'; live: Live }
+  /** Both at once (they changed together): the window draws them as one picture. */
+  | { type: 'state'; session: Session; live: Live }
   | { type: 'media'; items: { id: string; blob: Blob }[] }
   | { type: 'media-cmd'; cmd: MediaCmd }
   /** Play the test chime and answer with a 'sound' event carrying this nonce. */
@@ -429,7 +431,7 @@ export async function openAudienceWindow(title: string): Promise<boolean> {
 
 // ---------- The scores-only window ----------
 
-const SCORES_MSGS = new Set<HostMsg['type']>(['game', 'game-patch', 'session', 'live', 'media', 'bye']);
+const SCORES_MSGS = new Set<HostMsg['type']>(['game', 'game-patch', 'session', 'live', 'state', 'media', 'bye']);
 let scoresWin: Window | null = null;
 let scoresPoll: ReturnType<typeof setInterval> | undefined;
 /** open: the scores-only window exists. */
@@ -568,16 +570,30 @@ export function pushGame(game: Game): void {
   else if (ops.length) post({ type: 'game-patch', ops });
 }
 
-export function pushSession(session: Session): void {
-  // (Never the 🤫 cards the host sent, whoever calls this: forViewers drops them too. Partner-clues spec §14.1.)
+/** (Never the 🤫 cards the host sent, whoever calls this: forViewers drops them too. Partner-clues spec §14.1.) */
+function viewedSession(session: Session): Session {
   const { cards: _cards, lastCard: _last, ...viewed } = session;
-  last.session = viewed;
-  post({ type: 'session', session: viewed });
+  return viewed;
+}
+
+export function pushSession(session: Session): void {
+  last.session = viewedSession(session);
+  post({ type: 'session', session: last.session });
 }
 
 export function pushLive(live: Live): void {
   last.live = live;
   post({ type: 'live', live });
+}
+
+/**
+ * The session and the live state that changed together, in one message: as two, a window drew the new session a frame
+ * before its countdown or pills (the clue shrank just after it came up, a wheel tile's question showed for a frame).
+ */
+export function pushState(session: Session, live: Live): void {
+  last.session = viewedSession(session);
+  last.live = live;
+  post({ type: 'state', session: last.session, live });
 }
 
 let testTimer: ReturnType<typeof setTimeout> | undefined;

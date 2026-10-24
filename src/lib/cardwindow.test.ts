@@ -235,6 +235,8 @@ describe('the card window’s messages reach it alone', () => {
     for (const l of listeners.message) l({ source: opened['jb-audience'], data: { type: 'private-hello' } });
     sync.pushSession(session);
     sync.pushLive({ ...((await import('./live')).newLive()) });
+    // (Both at once, as one message: still without the cards.)
+    sync.pushState(session, { ...((await import('./live')).newLive()) });
 
     // Nothing of it reached the viewers' windows or the channel, then or since. (The game itself goes to them, its
     // files too, as ever: AudienceView never draws a card.)
@@ -244,7 +246,8 @@ describe('the card window’s messages reach it alone', () => {
     for (const t of CARD_WIN_TYPES) expect(seen).not.toContain(t);
     expect(seen).not.toMatch(/SPY-plugh|private-/);
     // (The scores window gets only the game's state: still nothing private.)
-    expect(opened['jb-audience-scores'].msgs.every((m) => ['game', 'session', 'live', 'media', 'bye'].includes(m.type))).toBe(true);
+    expect(opened['jb-audience'].msgs.some((m) => m.type === 'state')).toBe(true);
+    expect(opened['jb-audience-scores'].msgs.every((m) => ['game', 'session', 'live', 'state', 'media', 'bye'].includes(m.type))).toBe(true);
 
     // ✖ Close: it's told to close, and nothing more goes to it.
     cw.closeCardWindow();

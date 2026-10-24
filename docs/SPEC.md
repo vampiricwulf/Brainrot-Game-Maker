@@ -553,7 +553,9 @@ a slides round, on a round's title card or its category reveals, does what the b
 ## 7. Audience View Requirements
 - Always renders at 16:9, letterboxed to fit any window size. Designed for a 1920×1080 capture.
 - Never renders answer slides, host notes, DD locations, or wagers until they are explicitly revealed.
-- Smooth transitions: tile zoom, slide fade, score tick animations, and a board-fill animation at round start.
+- Smooth transitions: tile zoom (a clue's question the first time it shows; its next slides, its answer and its question
+  again come in quietly), slide fade, score tick animations, and a board-fill animation at round start. Each step
+  arrives as one picture (the session and what's over it in one message), as on the host's own copy.
 - Score bar position is configurable: bottom (default), top, or hidden.
 - Can be opened, closed, and reopened without losing sync. On reopen, the full state is resent.
 

@@ -4,7 +4,8 @@
   stage and the host's mirror in dual mode.
 -->
 <script lang="ts">
-  import { fade, fly, scale } from '../lib/motion.svelte';
+  import { fade as fadeIn, fly as flyIn, scale as scaleIn } from '../lib/motion.svelte';
+  import type { ScaleParams, TransitionConfig } from 'svelte/transition';
   import { textOn } from '../lib/colors';
   import { categoryLabel, finalName, formatPoints, isBoard, isFinal, PARTNER_GAMES, questionSlides, newTextEl, roundName, type ClueRef, type Player, type Slide, type Game, type Session } from '../lib/model';
   import { blankSlide, clueSlideIndex, coWinnersHold, currentClueInfo, currentFinal, nameList, ownPlayers, partnerSteal, shownQuestionSlide, places, score, slidesRound, standings, tiedLeaders } from '../lib/session';
@@ -101,6 +102,26 @@
   } = $props();
   const act = (a: StageAction) => onact?.(a);
   const whoWasWho = $derived(dealReveal(session));
+  // A screen's entrance is |global: it plays when the screen comes up, whatever brought it (a clue opened from the board,
+  // the Final's next step). The editor's previews come up still: each switch of what they show would play it again.
+  const still =
+    <P,>(t: (node: Element, p?: P) => TransitionConfig) =>
+    (node: Element, p?: P): TransitionConfig =>
+      demo ? { duration: 0 } : t(node, p);
+  const fade = still(fadeIn);
+  const fly = still(flyIn);
+  const scale = still(scaleIn);
+  /** The clue whose question has been on screen here (clueIn). */
+  let shownClue = '';
+  /**
+   * How a clue's slide comes in: its question zooms in from the tile the first time it shows (a wheel or dice tile's, once
+   * its tool closes); its next slides, its answer and its question again (R twice, ◀ Slide back) come in quietly.
+   */
+  function clueIn(id: string, waiting: boolean): ScaleParams {
+    const first = !waiting && !session.revealed && shownClue !== id;
+    if (!waiting && !session.revealed) shownClue = id;
+    return first ? { start: 0.15, duration: 450 } : { start: 0.98, duration: 200 };
+  }
 
   const info = $derived(currentClueInfo(session, game));
   const finalRound = $derived(currentFinal(session, game));
@@ -484,13 +505,13 @@
       class:clickable={!!onact}
       onclick={() => act('intro')}
       role="presentation"
-      in:scale={{ start: 0.3, duration: 600 }}
+      in:scale|global={{ start: 0.3, duration: 600 }}
       out:fade={{ duration: 250 }}
     >
       <div class="round-name">{round ? roundName(round, session.currentRound) : ''}</div>
     </div>
   {:else}
-    <div class="board-screen" in:fade={{ duration: 200 }}>
+    <div class="board-screen" in:fade|global={{ duration: 200 }}>
       <div class="board-bg" style:top="{layout.bg.top}px" style:height="{layout.bg.height}px" style:background={game.theme?.boardImage ? undefined : keyColor}></div>
       {#if decorBehind.length}<div class="layer behind"><DecorLayer items={decorBehind} /></div>{/if}
       {#if layout.banner && bannerUrl}
@@ -522,7 +543,7 @@
   {#if session.dd?.stage === 'splash'}
     <!-- The background fills the stage at once; only what's on it spins in (no black corners). -->
     <div class="full dd" style:--splash-1={splash.dd[0]} style:--splash-2={splash.dd[1]}>
-      <div class="dd-in" in:scale={{ start: 0.05, duration: 700 }}>
+      <div class="dd-in" in:scale|global={{ start: 0.05, duration: 700 }}>
         <div class="dd-text">DAILY<br />DOUBLE!</div>
         {#if ddPlayer}
           <div class="dd-player" style:background={ddPlayer.color} style:color={textOn(ddPlayer.color)}>{ddPlayer.name}</div>
@@ -533,7 +554,7 @@
     <!-- 🤝 PARTNER UP!: who picked it, and a "?" until the wheel (or the host) chooses their partner; then the two
          plates come together. -->
     <div class="full partner-up" data-partner-up style:--splash-1={splash.partner[0]} style:--splash-2={splash.partner[1]}>
-      <div class="pu-in" in:scale={{ start: 0.05, duration: 700 }}>
+      <div class="pu-in" in:scale|global={{ start: 0.05, duration: 700 }}>
         <div class="pu-text">PARTNER<br />UP!</div>
         {@render pairPlates(true)}
       </div>
@@ -544,7 +565,6 @@
     {@const waiting = tileToolUp(live, info.clue) && !session.revealed}
     <!-- The question slide the host is on (a clue can have several: the first one zooms in, the next ones come in quietly). -->
     {@const at = clueSlideIndex(session, info.clue)}
-    {@const quiet = session.revealed || at > 0}
     {#key `${info.clue.id}-${session.revealed}-${waiting}-${at}`}
       <div
         class="full"
@@ -552,7 +572,7 @@
         onclick={() => act(session.revealed ? 'back' : 'reveal')}
         role="presentation"
         data-slide={session.revealed ? 'answer' : at + 1}
-        in:scale={{ start: quiet ? 0.98 : 0.15, duration: quiet ? 200 : 450 }}
+        in:scale|global={clueIn(info.clue.id, waiting)}
       >
         {#if waiting}
           <!-- (Nothing until the tool closes.) -->
@@ -616,7 +636,7 @@
       onclick={() =>
         session.finalStep === 'question' ? act('reveal') : session.finalStep === 'answer' ? act('final-next') : undefined}
       role="presentation"
-      in:fade={{ duration: 400 }}
+      in:fade|global={{ duration: 400 }}
     >
       {#if session.finalStep === 'wagers'}
         {#if finalLabelShown}<div class="final-label">{finalLabel}</div>{/if}
@@ -648,7 +668,7 @@
             {@const usable = finalRound && !finalRound.phoneAnswersOff ? usableChoices(finalRound.choices) : []}
             {@const pickAt = shown && usable.length ? usable.findIndex((c) => c.id === pickOf(shown, usable)) : -1}
             {#key spotlight.id}
-              <div class="spot" class:typed={!!f.answers} in:fly={{ y: 80, duration: 400 }} style:--c={spotlight.color}>
+              <div class="spot" class:typed={!!f.answers} in:fly|global={{ y: 80, duration: 400 }} style:--c={spotlight.color}>
                 <div class="spot-name" style:background={spotlight.color} style:color={textOn(spotlight.color)}>{spotlight.name}</div>
                 {#if f.answers}
                   <!-- What they typed on their phone, once the host puts it up (its room kept: the card doesn't jump). -->
@@ -692,7 +712,7 @@
   {@const srAt = clueSlideIndex(session, sr)}
   {@const srOf = questionSlides(sr).length}
   {#key `${sr.id}-${srAt}`}
-    <div class="full" class:clickable={!!onact} onclick={() => act('reveal')} role="presentation" data-slide={srAt + 1} in:fade={{ duration: 300 }}>
+    <div class="full" class:clickable={!!onact} onclick={() => act('reveal')} role="presentation" data-slide={srAt + 1} in:fade|global={{ duration: 300 }}>
       <div class="slide-area" style:scale={fit?.scale} use:inkOf><SlideView slide={shownQuestionSlide(session, sr)} {role} /></div>
     </div>
   {/key}
@@ -708,7 +728,7 @@
       onclick={() => !session.tiebreakerRevealed && act('reveal')}
       role="presentation"
       data-slide={session.tiebreakerRevealed ? 'answer' : tbAt + 1}
-      in:fade={{ duration: 300 }}
+      in:fade|global={{ duration: 300 }}
     >
       <div class="slide-area" style:scale={fit?.scale} use:inkOf><SlideView slide={session.tiebreakerRevealed ? tb.answerSlide : shownQuestionSlide(session, tb)} {role} /></div>
       <div class="final-label small">TIEBREAKER</div>
@@ -733,7 +753,7 @@
     <h1 use:autofit={{ size: Math.round(110 * k), min: Math.round(44 * k), enabled: true, text: heading }}><span dir="auto">{heading}</span></h1>
     <ol>
       {#each ranked as { player, score: s, place }, i (player.id)}
-        <li style:--c={player.color} in:fly={{ y: 60, delay: 300 + (ranked.length - i) * 250, duration: 500 }}>
+        <li style:--c={player.color} in:fly|global={{ y: 60, delay: 300 + (ranked.length - i) * 250, duration: 500 }}>
           <span class="rank">{place}</span>
           <span class="nm" style:background={player.color} style:color={textOn(player.color)}>{player.name}</span>
           <span class="sc">{formatPoints(s, sym)}</span>
