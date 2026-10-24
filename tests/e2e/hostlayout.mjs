@@ -544,18 +544,23 @@ try {
       assert(whole && (await award.textContent()).includes(`+${value}`), `${w}×${h}, a ${value} clue: ＋ Award and − Deduct show the whole amount`);
       if (value === '$1,000') {
         // Three marked ✘ and one ✔ (the ★ goes to them): each chip keeps its width, mark and score, so the row never
-        // wraps anew and the stage keeps its size.
+        // wraps anew and the stage keeps its size. (Eleanor at $8,500 first: her ✔ takes her score to five digits.)
         const widths = () => p4.locator('.panel .players .p').evaluateAll((ps) => ps.map((p) => Math.round(p.getBoundingClientRect().width)).join());
         const scores = () => p4.locator('.panel .players .p .score').evaluateAll((bs) => bs.map((b) => b.textContent.trim()).join());
         const scoresWere = await scores();
+        const eleanor = p4.locator('.panel .players .p', { hasText: 'Eleanor' });
+        await eleanor.locator('button.score').click();
+        await eleanor.locator('input.score-edit').fill('8500');
+        await eleanor.locator('input.score-edit').press('Enter');
+        await eleanor.locator('button.score', { hasText: '$8,500' }).waitFor();
         const before = await widths();
         for (const name of ['Annabelle', 'Cyrus', 'Deedee']) await p4.getByRole('button', { name: new RegExp(`^Wrong: ${name}`) }).click();
         await p4.getByRole('button', { name: /^Right: Eleanor/ }).click();
         await p4.locator('.panel .p.picker', { hasText: 'Eleanor' }).waitFor();
         const after = await widths();
         assert(before === after && (await stageH()) === onBoard, `${w}×${h}, a $1,000 clue: marking three ✘ and one ✔ keeps every chip's width and the stage's size (${before} / ${after}; ${onBoard} / ${await stageH()})`);
-        // (The marks and the pick taken back, for what follows: the scores as they were.)
-        for (let i = 0; i < 4; i++) await p4.keyboard.press('Control+z');
+        // (The marks, the pick and Eleanor's score taken back, for what follows: the scores as they were.)
+        for (let i = 0; i < 5; i++) await p4.keyboard.press('Control+z');
         await p4.waitForFunction((was) => [...document.querySelectorAll('.panel .players .p .score')].map((b) => b.textContent.trim()).join() === was, scoresWere);
         await p4.locator('.panel .p.picker', { hasText: 'Eleanor' }).waitFor({ state: 'detached' });
       }
@@ -721,6 +726,51 @@ try {
     }
     await ctx.close();
   }
+  // Seven players tied at the end (one window, 1024×768): the results and the tiebreaker clue keep the Final's panel
+  // height, and every chip's score stays in sight there (the part under them gives up its room first).
+  console.log('Seven tied at the end:');
+  const tieFile = resolve('test-results/hostlayout-tie.json');
+  const seven = ['Annabelle', 'Bob', 'Cyrus', 'Deedee', 'Eleanor', 'Fay', 'Gus'];
+  const tieBoard = { ...board, id: 'r_tie', values: [200], dailyDoubleCount: 0, categories: [{ ...board.categories[0], clues: [board.categories[0].clues[0]] }] };
+  writeFileSync(tieFile, JSON.stringify({ ...game, id: 'g_layout_tie', players: seven.map((name, i) => ({ id: `t${i + 1}`, name, color: crowdColors[i % 6], startScore: 0 })), rounds: [tieBoard] }));
+  {
+    const ctx = await browser.newContext({ viewport: { width: 1024, height: 768 } });
+    const p7 = await ctx.newPage();
+    p7.on('pageerror', (e) => errors.push(e.message));
+    await p7.goto(pathToFileURL(file).href);
+    await openGameFile(p7, tieFile);
+    await p7.getByText(/^Opened “/).waitFor();
+    await p7.getByRole('button', { name: '▶ Play' }).click();
+    await p7.getByRole('button', { name: 'Start game ▶' }).click();
+    await p7.getByRole('button', { name: 'Skip intro' }).click();
+    await p7.locator('.stage-box .board .tile:not([disabled])').first().click();
+    await p7.waitForFunction(() => document.querySelector('.panel .status')?.textContent?.includes('Answer hidden'));
+    await p7.keyboard.press('Escape');
+    await p7.waitForFunction(() => document.querySelector('.panel [data-next]')?.textContent?.includes('End game'));
+    // (A click in its first 400 ms is taken for the end of a double-click, and ignored.)
+    await p7.waitForTimeout(450);
+    await mainButton(p7).click();
+    await p7.locator('.panel .status', { hasText: 'Game over' }).waitFor();
+    /** The players whose score isn't all in sight in the chips' box. */
+    const scoresOut = () =>
+      p7.locator('.panel > .players').evaluate((box) => {
+        const b = box.getBoundingClientRect();
+        return [...box.querySelectorAll('.p')]
+          .filter((p) => {
+            const r = p.querySelector('.score').getBoundingClientRect();
+            return r.top < b.top - 1 || r.bottom > b.bottom + 1;
+          })
+          .map((p) => p.getAttribute('aria-label'));
+      });
+    const endOut = await scoresOut();
+    assert(endOut.length === 0, `1024×768, seven tied: every score is in sight on the results${endOut.length ? ` (not: ${endOut.join(', ')})` : ''}`);
+    await mainButton(p7).click();
+    await p7.locator('.panel .status', { hasText: 'Tiebreaker' }).waitFor();
+    const clueOut = await scoresOut();
+    assert(clueOut.length === 0, `and in the tiebreaker clue, where the winner is picked from them${clueOut.length ? ` (not: ${clueOut.join(', ')})` : ''}`);
+    await ctx.close();
+  }
+
   // Just over 1100px and just over 1180px wide (◀ Slide and ▦ Done ▶ board in words, the buttons a size bigger): the
   // "Pick who answered" hint takes only the room left, so a two-slide clue's row stays one line, in either font.
   for (const w of [1110, 1184]) {

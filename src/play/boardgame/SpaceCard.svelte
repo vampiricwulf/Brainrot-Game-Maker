@@ -10,7 +10,7 @@
   import { teamsOn } from '../../lib/buzz';
   import { buzzerOn } from '../../lib/remote.svelte';
   import type { Action, BoardGameRound, BoardGameState, BoardSpace, Game, Session } from '../../lib/model';
-  import { spaceSaid } from '../../lib/boardgame';
+  import { spaceSaid, spaceShown } from '../../lib/boardgame';
   import { nameList } from '../../lib/session';
   import { logged } from '../../lib/toolset';
   import { decidingAction, playerName, runSpace, sendNow } from './bgops';
@@ -35,7 +35,10 @@
     selected: string[];
     /** Whose turn it is (the buttons are for them when nobody is selected). */
     turnId: string | undefined;
-    /** An audience window is open. In one window (on stream), toasts and the log say “? (secret)” for a secret space not revealed yet. */
+    /**
+     * An audience window is open. In one window (on stream), this card, toasts and the log say “?” for a secret space not
+     * revealed yet (and its note waits).
+     */
     dual: boolean;
     onclose: () => void;
   } = $props();
@@ -47,10 +50,12 @@
   const isStart = $derived((round.start ?? round.spaces[0]?.id) === space.id);
   /** Each player is a team (phone buzzers with Teams): the 🎯 wheel is "Pick a team". */
   const teams = $derived(buzzerOn(game.settings) && teamsOn(game.settings));
+  /** A button's words (a Send to a secret space says “?” in one window, as on the landing row). */
+  const actText = (a: Action, on: 'land' | 'pass') => describeAction(game, a, on, teams, dual ? undefined : bs);
 
   function run(a: Action, on: 'land' | 'pass'): void {
     if (needsPlayers(a) && !who.length) return void toast('Pick who it’s for first');
-    const label = `${spaceSaid(bs, space, !dual)}: ${describeAction(game, a, on, teams, dual ? undefined : bs)}`;
+    const label = `${spaceSaid(bs, space, !dual)}: ${actText(a, on)}`;
     toast(runAction({ game, session, live: app.live, board: round, bs, hide: !dual, selected, chosen: who, teams, offerCard: offerIn(session) }, a, label), 3000);
   }
 
@@ -59,15 +64,16 @@
   }
 </script>
 
-<div class="card" role="dialog" aria-label="Space: {space.name}">
+<div class="card" role="dialog" aria-label="Space: {spaceSaid(bs, space, !dual)}">
   <div class="row head">
-    <b>{space.name}</b>
+    <b>{spaceShown(round, bs, space.id, !dual)}</b>
     {#if isStart}<span class="tag">🏁 Start</span>{/if}
     {#if space.secret}<span class="vis" class:off={hidden}>{hidden ? '🙈 Secret: viewers see “?”' : '👁 Revealed'}</span>{/if}
     <span class="spacer"></span>
     <button class="ghost small" onclick={onclose} aria-label="Close" title="Esc">✕</button>
   </div>
-  {#if space.hostNotes}<div class="notes">📝 {space.hostNotes}</div>{/if}
+  <!-- (One window: a secret space's note waits for 👁 Reveal to viewers, as its name does.) -->
+  {#if space.hostNotes && (dual || !hidden)}<div class="notes">📝 {space.hostNotes}</div>{/if}
   <div class="row">
     <span class="muted small">Here:</span>
     {#each on as p (p.id)}
@@ -79,7 +85,7 @@
   {#if space.onLand?.length}
     <div class="row">
       <span class="muted small">Landing on it{who.length ? ` (${whoNames})` : ''}:</span>
-      {#each space.onLand as a (a.id)}<button class="small" onclick={() => run(a, 'land')}>{describeAction(game, a, 'land', teams)}</button>{/each}
+      {#each space.onLand as a (a.id)}<button class="small" onclick={() => run(a, 'land')}>{actText(a, 'land')}</button>{/each}
       {#if space.onLand.length > 1}
         <button class="small" onclick={() => toast(runSpace(game, session, app.live, space, who, 'onLand', !dual), 3000)} title={space.onLand.some(decidingAction) ? 'Its roll (or spin, or question) first: then press the outcome it comes to' : 'Every landing action, in order'}
           >▶ {space.onLand.some(decidingAction) ? 'Start' : 'Run all'}</button
@@ -90,7 +96,7 @@
   {#if space.onPass?.length}
     <div class="row">
       <span class="muted small">Passing it:</span>
-      {#each space.onPass as a (a.id)}<button class="small" onclick={() => run(a, 'pass')}>{describeAction(game, a, 'pass', teams)}</button>{/each}
+      {#each space.onPass as a (a.id)}<button class="small" onclick={() => run(a, 'pass')}>{actText(a, 'pass')}</button>{/each}
     </div>
   {/if}
   {#if !space.onLand?.length && !space.onPass?.length}<span class="muted small">No buttons on this space.</span>{/if}

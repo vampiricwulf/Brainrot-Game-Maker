@@ -180,7 +180,9 @@ try {
   const score = await stage('.plate').nth(1).locator('.score').boundingBox();
   assert(pb.y + pb.height <= score.y + 2, 'without covering their score');
   await shot('host-1-pop');
-  // The player first, with the keys on a tile: Enter takes them to the Amount box, and the tile doesn't open.
+  // The player first, with the keys on a tile: Enter takes them to the Amount box, and the tile doesn't open. Its Enter
+  // gives them back to that tile, so the arrows and Enter go on with the board.
+  const from = await stage('.board .tile:not(.used)').last().getAttribute('data-clue');
   await stage('.board .tile:not(.used)').last().focus();
   await page.keyboard.press('2');
   await page.keyboard.press('Enter');
@@ -189,6 +191,8 @@ try {
   await page.keyboard.type('50');
   await page.keyboard.press('Enter');
   await saidHas(/Player 2 \+\$50/);
+  await page.waitForFunction((id) => document.activeElement?.matches(`.stage-box .tile[data-clue="${id}"]`), from);
+  assert(true, 'then 50, Enter: the keys are back on that tile');
   // Redo with nothing to redo says so, as Undo does. (Then Undo: the scores stay as they were.)
   await page.keyboard.press('Control+y');
   await page.locator('.toast', { hasText: 'Nothing to redo' }).waitFor();

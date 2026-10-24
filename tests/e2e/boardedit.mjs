@@ -166,6 +166,30 @@ try {
   await page.keyboard.press('Shift+N');
   await page.keyboard.press('n');
   assert((await turn()).includes('Ann') && (await mainLabel(page)) === '🎲 Roll' && (await page.getByLabel('Steps').inputValue()) === '', `Shift+N then N: her used count isn’t back (${await mainLabel(page)})`);
+  // A smaller window, the panel under the stage holding less (its part scrolls): a move's landing row comes into view.
+  await page.setViewportSize({ width: 1024, height: 700 });
+  await page.getByLabel('Steps').fill('1');
+  await page.getByLabel('Steps').blur();
+  await mainButton(page).click();
+  await page.locator('.acts').waitFor();
+  const actsInSight = await page
+    .waitForFunction(
+      () => {
+        const r = document.querySelector('.acts').getBoundingClientRect();
+        for (let p = document.querySelector('.acts').parentElement; p; p = p.parentElement) {
+          const b = p.getBoundingClientRect();
+          if (/(auto|scroll|hidden)/.test(getComputedStyle(p).overflowY) && (r.top < b.top - 1 || r.bottom > b.bottom + 1)) return false;
+        }
+        return r.bottom <= innerHeight;
+      },
+      null,
+      { timeout: 3000 },
+    )
+    .then(() => true, () => false);
+  assert(actsInSight, 'at 1024×700, after a move the landing row is in sight in the host panel (it scrolls there)');
+  await page.keyboard.press('Control+z');
+  await labelIs(page, '▶ Move 1');
+  await page.setViewportSize({ width: 1400, height: 1000 });
   // A count going back (typed, or a wheel's "Back 2"): the buttons say which way they go.
   await page.getByLabel('Steps').fill('-2');
   await page.getByLabel('Steps').blur();
@@ -252,6 +276,17 @@ try {
   await acts.getByRole('button', { name: 'Back 3 spaces' }).click();
   await acts.filter({ hasText: 'Landed on ? (secret)' }).waitFor();
   assert((await toast()) === 'Space 3: Back 3 spaces: Ann · Landed on ? (secret)' && !(await acts.innerText()).includes('Trap Door'), `a space's Back 3 spaces onto it: “? (secret)” too (${await toast()})`);
+  // Its card (from 🗂 Spaces…, as a click on its “?” on the stage): “?” too, without its name or note.
+  await page.getByLabel("Open a space's card").selectOption('b6');
+  const secretCard = page.getByRole('dialog', { name: /^Space:/ });
+  await secretCard.waitFor();
+  const cardText = await secretCard.innerText();
+  assert(
+    (await secretCard.getAttribute('aria-label')) === 'Space: ? (secret)' && !cardText.includes('Trap Door') && !cardText.includes('lava pit'),
+    `its card says “?” too, without its name or note (${cardText.replace(/\s+/g, ' ')})`,
+  );
+  await secretCard.getByRole('button', { name: 'Close' }).click();
+  await secretCard.waitFor({ state: 'detached' });
   await acts.getByRole('button', { name: '👁 Reveal space' }).click();
   assert((await acts.innerText()).includes('Landed on Trap Door:') && (await acts.innerText()).includes('📝 lava pit'), 'revealed: the panel names it, and shows its note');
   await acts.getByRole('button', { name: '+$100' }).click();

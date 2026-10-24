@@ -624,6 +624,21 @@ try {
   await full.waitFor();
   await page.keyboard.press('Escape');
   assert(!(await full.isVisible()), 'Esc closes the full map');
+  // Over the panel under the stage (a 4:3 window): a picked screen's card sits beside the map, its Move in sight.
+  await page.setViewportSize({ width: 1024, height: 768 });
+  await page.keyboard.press('j');
+  await full.waitFor();
+  await full.getByRole('button', { name: 'Overworld · Screen B1' }).click();
+  const moveHere = full.getByRole('button', { name: /^▶ Move Party here$/ });
+  await moveHere.waitFor();
+  const moveInSight = await moveHere.evaluate((b) => {
+    const r = b.getBoundingClientRect();
+    return b.contains(document.elementFromPoint(r.x + r.width / 2, r.y + r.height / 2));
+  });
+  assert(moveInSight, 'one window at 1024×768 (the map over the panel under the stage): a picked screen’s ▶ Move Party here is in sight');
+  await page.keyboard.press('Escape');
+  await full.waitFor({ state: 'detached' });
+  await page.setViewportSize({ width: 1500, height: 1000 });
 
   // Several wheels at once: the player wheel twice, spun together.
   await page.getByRole('button', { name: '🎡 Wheel' }).click();

@@ -399,7 +399,8 @@
     {/if}
 
     {#if last && (passed.length || landed) && !boardEdit.on}
-      <div class="row acts">
+      <!-- (In sight after each move: in one window under the stage the panel keeps one height, and this part scrolls.) -->
+      <div class="row acts" {@attach (el) => (void last, el.scrollIntoView({ block: 'nearest' }))}>
         {#each passed as s (s.id)}
           <span class="muted small">Passed {shown(s.id)}:</span>
           {#each s.onPass ?? [] as a (a.id)}<button class="small" onclick={() => run(s, a, last.playerId, 'pass')}>{actText(a, 'pass')}</button>{/each}

@@ -518,6 +518,17 @@
   let amountBox = $state<HTMLInputElement>();
   /** The keys are in the Amount box: number keys type points there, so the chips' keys go (see .key.gone). */
   let amountKeys = $state(false);
+  /**
+   * The board's tile the keys came to the Amount box from (2, then Enter on it): its Enter or Esc gives them back there,
+   * so the arrows and Enter go on with the board. (Elsewhere they're let go, for the shortcuts.)
+   */
+  let amountFrom: HTMLElement | null = null;
+  function amountDone(box: HTMLInputElement): void {
+    const to = amountFrom;
+    amountFrom = null;
+    if (to?.isConnected && session.phase === 'board') to.focus({ preventScroll: true });
+    else box.blur();
+  }
   $effect(() => {
     if (session.phase !== 'board') adjust = false;
   });
@@ -628,7 +639,8 @@
    * On the board and in a clue each chip keeps the room its mark and its score can take there, so a ✔ / ✘ never widens
    * it (and the row never wraps anew, shrinking the stage). The mark's: the widest a clue of this round gives
    * ("✘ −$1,000"), in ch, one more for the ✘ and the minus (wider than a digit in some fonts). The score's: as wide as it
-   * gets the round's largest value away, with a minus. (A Daily Double's wager can be more: that one may grow.)
+   * gets the round's largest value away from the score before this clue's marks (so a mark never changes it), with a
+   * minus. (A Daily Double's wager can be more: that one may grow.)
    */
   const markCh = $derived(Math.max(7, `✘ −${formatPoints(topValue, sym)}`.length + 1));
   const scoreRoom = (n: number) => (chipSlots && topValue ? `max(70px, ${`−${formatPoints(Math.abs(n) + topValue, sym)}`.length}ch + 24px)` : undefined);
@@ -734,6 +746,7 @@
   class:final={session.phase === 'final' && !side}
   class:partnerclue={!!partner && !side}
   class:held
+  class:keepchips={held && (session.phase === 'end' || session.phase === 'tiebreaker')}
   class:ddhold={ddHold}
   bind:offsetHeight={panelH}
   style:height={ddHold ? `${boardH}px` : undefined}
@@ -969,7 +982,7 @@
               }}
             />
           {:else}
-            <button class="score ghost" onclick={() => (editingScore = p.id)} title="Click to set this score" style:min-width={scoreRoom(score(session, p.id))}>
+            <button class="score ghost" onclick={() => (editingScore = p.id)} title="Click to set this score" style:min-width={scoreRoom(score(session, p.id) - (marks[p.id]?.delta ?? 0))}>
               {formatPoints(score(session, p.id), sym)}
             </button>
           {/if}
@@ -1258,19 +1271,24 @@
               bind:value={() => (ddHidden ? null : amount), (v) => (amount = wholePoints(v))}
               placeholder={ddHidden ? 'hidden' : undefined}
               bind:this={amountBox}
-              onfocus={() => (amountKeys = true)}
-              onblur={() => (amountKeys = false)}
+              onfocus={(e) => {
+                amountKeys = true;
+                amountFrom = e.relatedTarget instanceof HTMLElement && e.relatedTarget.matches('.tile[data-clue]') ? e.relatedTarget : null;
+              }}
+              onblur={() => ((amountKeys = false), (amountFrom = null))}
               onkeydown={(e) => {
                 // Give the keys back to the shortcuts afterwards, so the next "2" selects a player instead of typing.
+                // (Its Enter goes no further: given back to a tile, it would open it.)
                 if (e.key === 'Enter') {
+                  e.preventDefault();
                   // The points typed first (± Adjust score): who gets them next.
                   if (!selected.length && amount && !ddHidden)
                     hint(
                       `Now pick who ${e.shiftKey ? 'loses' : 'gets'} ${e.shiftKey ? '−' : '+'}${formatPoints(Math.abs(amount), sym)} (1–${Math.min(9, session.players.length) || 9}), then ${e.shiftKey ? 'Shift+Enter' : 'Enter'}`,
                     );
                   else onaward(e.shiftKey ? -1 : 1);
-                  e.currentTarget.blur();
-                } else if (e.key === 'Escape') e.currentTarget.blur();
+                  amountDone(e.currentTarget);
+                } else if (e.key === 'Escape') amountDone(e.currentTarget);
               }}
             />
           </label>
@@ -1836,12 +1854,16 @@
   }
   /* A 🤝 partner clue's panel keeps one height (see .partnerclue), so there it's the action part that gives up height
      first (it scrolls, ✔ Got it / ✘ Missed or the steal's row kept at its foot), down to room for that row and the main
-     button: the chips stay whole, quick buttons and all, while there's room. Then they scroll, as above. */
-  .panel.partnerclue:not(.dual) > .players {
+     button: the chips stay whole, quick buttons and all, while there's room. Then they scroll, as above. The same at
+     the end and in the tiebreaker (held too), down to one row of buttons: every score in sight to fix, and every
+     player to pick the winner from. */
+  .panel:is(.partnerclue, .keepchips):not(.dual) > .players {
     flex-shrink: 1;
   }
-  .panel.partnerclue:not(.dual) > .act {
+  .panel:is(.partnerclue, .keepchips):not(.dual) > .act {
     flex-shrink: 1000;
+  }
+  .panel.partnerclue:not(.dual) > .act {
     min-height: 80px;
   }
   .p {

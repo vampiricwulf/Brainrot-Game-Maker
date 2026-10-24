@@ -3931,9 +3931,12 @@
   /** The list tabbedTo is in (a ✍ clue's ✔ / ✘ rows…): after it goes, the rescue's pick in that same list counts. */
   let tabbedList: Element | null = null;
 
-  /** The Final's steps and the end screen go on with their own keys (N, C / X, O) or a click, never Enter: which. */
+  /**
+   * The Final's steps and the end screen go on with their own keys (N, C / X, O) or a click, never Enter: which. (Not
+   * with the controls hidden: the panel's gone, and its last main button with it.)
+   */
   function goOnHint(): void {
-    if (!hostNext) return;
+    if (!hostNext || hideControls) return;
     const rolloff = session.phase === 'end' && hostNext.key !== 'O' ? ' (O: a roll-off)' : '';
     hint(hostNext.key ? `Press ${hostNext.key} for ${hostNext.label}` : `Click ${hostNext.label} to go on${rolloff}`);
   }
@@ -4106,7 +4109,8 @@
         }
         if (!selected.length && !e.shiftKey && session.phase === 'clue' && info) {
           // A wheel or dice tile's own tool, not spun yet: Enter on its Spin! / Roll! judges nobody. Its key spins it.
-          if (app.live.toolTile === info.clue.id && (hostNext?.key === 'W' || hostNext?.key === 'D') && !hostNext.disabled) {
+          // (With the controls hidden the panel's last main button is out of date: as on any clue then.)
+          if (!hideControls && app.live.toolTile === info.clue.id && (hostNext?.key === 'W' || hostNext?.key === 'D') && !hostNext.disabled) {
             hint(`${hostNext.key === 'W' ? 'Spin the wheel' : 'Roll the dice'} first: ${hostNext.key} (or N)`);
             break;
           }
@@ -4222,7 +4226,7 @@
         } else if (session.phase === 'board' && !e.shiftKey && hostNext && !hostNext.key && roundComplete(session, game)) {
           // A played-out board goes on only from its button (N mashed after the last clue mustn't jump on stream).
           hint(`Round complete: click ${hostNext.label} to go on`);
-        } else if (session.phase === 'end' && !e.shiftKey && hostNext && !hostNext.disabled) {
+        } else if (session.phase === 'end' && !e.shiftKey && !hideControls && hostNext && !hostNext.disabled) {
           // A tie at the end is settled from its button, or O (N mashed after the Final mustn't start one on stream).
           goOnHint();
         } else if (e.shiftKey) break;

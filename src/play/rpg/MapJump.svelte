@@ -188,23 +188,29 @@
     place-items: center;
     padding: 16px;
   }
-  /* Over the host panel: the screen's card goes under the map (beside the stage the panel is narrow). */
+  /* Over the host panel: the screen's card beside the map, as over the stage, where there's room (the panel under the
+     stage); under it where there isn't (beside the stage the panel is narrow). */
   .backdrop.in-panel {
     inset: auto;
     padding: 8px;
   }
-  .in-panel .body {
-    flex-direction: column;
-    overflow: auto;
+  .in-panel .modal {
+    container: mapjump / inline-size;
   }
-  .in-panel .grid {
-    flex: none;
-    max-height: 70%;
-  }
-  .in-panel .side {
-    width: auto;
-    flex-shrink: 0;
-    overflow: visible;
+  @container mapjump (width < 700px) {
+    .in-panel .body {
+      flex-direction: column;
+      overflow: auto;
+    }
+    .in-panel .grid {
+      flex: none;
+      max-height: 70%;
+    }
+    .in-panel .side {
+      width: auto;
+      flex-shrink: 0;
+      overflow: visible;
+    }
   }
   .modal {
     width: min(1500px, 100%);

@@ -394,14 +394,18 @@ The mode isn't saved with the game: it's dual while the audience window is open.
     panel's status line shows the 📝 host notes of the clue, the slides round, the tiebreaker or the Final (once its
     answer is up), with a title saying viewers can see them; with the audience window open they're in the host column
     instead. The editor's notes fields say so ("off stream, except in a single window"); a secret board-game space's
-    notes wait for 👁 Reveal space, as its name does. Windows opened mid-game (?, 📜 Log, 👥 Players, ⚖ Rules, 🔊
-    Sound, the RPG's ⤢ Full map, ✎ Edit board's ⚙ Buttons…) open over the host panel, never the stage; the RPG's ✎
+    notes wait for 👁 Reveal space, as its name does (its card says “?” until then too). Windows opened mid-game (?,
+    📜 Log, 👥 Players, ⚖ Rules, 🔊 Sound, the RPG's ⤢ Full map, ✎ Edit board's ⚙ Buttons…) open over the host panel,
+    never the stage (the full map's screen card beside the map where the panel is wide enough); the RPG's ✎
     Edit screen is too big for it and says viewers see it (📺 Audience edits off stream). The stage keeps one size
     from the board through a clue's steps (a Daily Double's splash, its question slides, a clue's media controls),
     so viewers don't see it zoom down and up: each score chip keeps room for the mark and the score a clue of the
-    round can give it (the ★ of who picks next takes none). A 🤝 partner clue, a wheel or dice tile (its tool, then its
-    question), the Final with the results, a roll-off and the tiebreaker clue, and a board-game round under the stage
-    hold the panel at one height instead: the stage changes size only as they start and end.
+    round can give it, counted from its score before the clue's marks (the ★ of who picks next takes none). A 🤝
+    partner clue, a wheel or dice tile (its tool, then its question), the Final with the results, a roll-off and the
+    tiebreaker clue, and a board-game round under the stage hold the panel at one height instead: the stage changes
+    size only as they start and end. What scrolls in there comes into view as it comes (a board-game move's landing
+    row, a tool's outcome), and at the end and in the tiebreaker clue the score chips stay whole while the part under
+    them scrolls.
 - **The host panel** has one layout in every round: the status line (📱 phones and ⏱ timer chips), the players' score
   chips, the row of what this moment needs with the one main button (and its key) at its right, the tools with the
   round navigation, then a fixed bar (Undo, Redo, Sound · Log, Players, Rules · Cover, Hide · Audience, ▭ · ⌨, Exit).
@@ -564,8 +568,9 @@ A held key counts once: only the arrows (and the numpad in an RPG round) repeat.
 `Tab`, or as the next row of the list the keys were in): the keys keep their shortcuts. `Enter` on the main button in
 a slides round, on a round's title card or its category reveals, does what the button says, as `N`; in the Final's
 steps and on the end screen it says which key (or click) goes on, and on a wheel or dice tile's Spin! / Roll! the key
-that spins or rolls. With players selected on the board, `Enter` on a tile takes the keys to the Amount box (type the
-points, then `Enter`) instead of opening it; while the keys are there, number keys type and the chips hide theirs.
+that spins or rolls (not with the controls hidden: the hidden panel's button may be out of date). With players
+selected on the board, `Enter` on a tile takes the keys to the Amount box (type the points, then `Enter`, and they're
+back on the tile) instead of opening it; while the keys are there, number keys type and the chips hide theirs.
 
 ---
 

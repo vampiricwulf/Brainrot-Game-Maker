@@ -698,10 +698,24 @@ async function tileTools() {
   await host.keyboard.press('Escape');
   await tileOf('qd').waitFor();
 
-  // A dice tile: dice rolled over its question (D) leave it on stream, and its countdown going.
+  // A dice tile: dice rolled over its question (D) leave it on stream, and its countdown going. (Rolled with the
+  // controls hidden, Enter doesn't say to roll first: the panel's gone, its Roll! with it.)
   await tileOf('qd').click();
   await stage('.ov').waitFor();
+  await host.keyboard.press('h');
+  await host.locator('.play > .panel').waitFor({ state: 'detached' });
   await host.keyboard.press('d');
+  // (Rolled and landed: not "Get ready to roll…", no die still rolling.)
+  await host.waitForFunction(() => {
+    const ov = document.querySelector('.stage-box .ov');
+    return !!ov?.querySelector('.die') && !ov.textContent.includes('Get ready to roll') && !ov.querySelector('.die.rolling');
+  });
+  await host.evaluate(() => (document.getElementById('live-region').dataset.said = ''));
+  await host.keyboard.press('Enter');
+  await host.waitForFunction(() => !!document.getElementById('live-region').dataset.said);
+  const saidNow = await host.evaluate(() => document.getElementById('live-region').dataset.said);
+  assert(!saidNow.includes('first: D'), `controls hidden, the dice rolled: Enter doesn't say to roll them first (${saidNow})`);
+  await host.keyboard.press('h');
   await host.locator('.tc .result').waitFor();
   await host.keyboard.press('Escape');
   await stage('.timer .num').waitFor();
