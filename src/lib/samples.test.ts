@@ -102,7 +102,7 @@ describe('round templates', () => {
     const boss = lair.slide.elements.find((e) => e.name === 'Boss')!.role!.stats!.find((x) => x.name === 'Power')!.value as number;
     const session = newSession(game);
     expect(statNumber(game, session, 'a', power)).toBeLessThan(boss);
-    // What its owner's sheet › Use does: it acts on them.
+    // What Use on its owner's card (Players: stats & inventory) does: it acts on them.
     const sword = game.items!.find((x) => x.name === 'Sword')!;
     for (const a of sword.onUse!) runAction({ game, session, live: newLive(), selected: [], chosen: ['a'] }, a);
     expect(statNumber(game, session, 'a', power)).toBeGreaterThan(boss);
@@ -125,6 +125,25 @@ describe('round templates', () => {
     healing.items = [{ id: 'own', name: 'Sword', stackable: false, onUse: [{ id: 'u', do: 'stat', field: hp.id, op: 'add', amount: 2, who: 'ask' }] }];
     TEMPLATES.find((t) => t.label === 'Mini quest')!.make(healing);
     expect(healing.worlds![0].maps[0].screens[2].hostNotes).toMatch(/Use: HP \+2\)/);
+  });
+
+  it('the Mini quest’s own Potion heals when used; one the game already had is left as it is', () => {
+    const game = newGame();
+    game.players = [{ id: 'a', name: 'Ann', color: '#e6194b' }];
+    TEMPLATES.find((t) => t.label === 'Mini quest')!.make(game);
+    const hp = game.statFields!.find((f) => f.name === 'HP')!;
+    const drink = game.items!.find((x) => x.name === 'Potion')!;
+    expect(drink.description).toBe('Drink it: +3 HP.');
+    const session = newSession(game);
+    const run = (a: Parameters<typeof runAction>[1]) => runAction({ game, session, live: newLive(), selected: [], chosen: ['a'] }, a);
+    run({ id: 'hurt', do: 'stat', field: hp.id, op: 'add', amount: -5, who: 'ask' });
+    const before = statNumber(game, session, 'a', hp);
+    for (const a of drink.onUse!) run(a);
+    expect(statNumber(game, session, 'a', hp)).toBe(before + 3);
+    const own = newGame();
+    own.items = [{ id: 'own', name: 'Potion', stackable: true }];
+    TEMPLATES.find((t) => t.label === 'Mini quest')!.make(own);
+    expect(own.items.filter((x) => x.name === 'Potion')).toEqual([{ id: 'own', name: 'Potion', stackable: true }]);
   });
 
   it('the board templates: every name shown is clear of the other spaces, and a token on a space is over that space only', () => {

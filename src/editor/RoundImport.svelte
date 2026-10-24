@@ -9,7 +9,7 @@
   import { step } from '../lib/history.svelte';
   import { ROUND_MODES } from '../lib/modes';
   import { roundName, type Game } from '../lib/model';
-  import { addBundledRound, bundleRound, copiesMessage, placeFor, type CopyIds } from '../lib/roundcopy';
+  import { addBundledRound, bundleRound, copiesMessage, mergedMessage, placeFor, type CopyIds } from '../lib/roundcopy';
   import { copiedFiles } from './roundtools';
 
   let { source, onclose, onadded }: { source: Game; onclose: () => void; onadded: (index: number) => void } = $props();
@@ -23,6 +23,7 @@
     const game = app.game;
     let first = -1;
     const copied: string[] = [];
+    const merged: string[] = [];
     // The rounds share the copies they bring.
     const ids: CopyIds = new Map();
     const media = new Map<string, { id: string; name: string }>();
@@ -31,13 +32,14 @@
         const b = bundleRound(source, r);
         // (Not a 🗜 copy for phones: it isn't one of the game's files to a person.)
         for (const m of b.media) if (!m.phoneCopy) media.set(m.id, m);
-        const added = addBundledRound(game, b, placeFor(game, r), copied, ids);
+        const added = addBundledRound(game, b, placeFor(game, r), copied, ids, merged);
         const i = game.rounds.indexOf(added);
         if (first < 0 || i < first) first = i;
       }
     });
     const copies = copiesMessage([...copied, ...copiedFiles(source, [...media.values()])], 'the file');
-    toast(`Imported ${rounds.length} round${rounds.length === 1 ? '' : 's'} from “${source.title}”${copies ? `. ${copies}` : ''}`);
+    const said = [mergedMessage(merged), copies].filter(Boolean).map((t) => `. ${t}`).join('');
+    toast(`Imported ${rounds.length} round${rounds.length === 1 ? '' : 's'} from “${source.title}”${said}`);
     onclose();
     onadded(first);
   }

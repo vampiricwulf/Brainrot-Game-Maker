@@ -1,9 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import { addBundledRound, bundleRound, copiesMessage, copyRound, placeFor, settleFiles, uniqueName } from './roundcopy';
+import { addBundledRound, bringAlong, bundleRound, copiesMessage, copyRound, mergedMessage, placeFor, settleFiles, uniqueName } from './roundcopy';
+import { keepScreen } from './rpg';
 import { clipboard } from './clipboard.svelte';
 import { isBoard, isRpg, newFinalRound, newGame, newImageEl, newRound, type Game } from './model';
 import { clone } from './ops';
-import { addSampleGame, dungeonRound } from './samples';
+import { addSampleGame, dungeonRound, miniQuestRound } from './samples';
+import { presetStat } from './rpgpresets';
 import { newWheel } from './tools';
 
 describe('rounds between games', () => {
@@ -143,6 +145,60 @@ describe('rounds between games', () => {
     addBundledRound(b, clipboard.round!);
     addBundledRound(b, clipboard.round!);
     expect(b.worlds!.map((w) => w.name)).toEqual(['Mine', a.worlds![0].name]);
+  });
+
+  it('a stat of a name and type this game has is its own (one HP, one Gold), and so is an item the same but for its ids; another comes in named apart', () => {
+    const a = newGame();
+    a.rounds.push(dungeonRound(a));
+    presetStat(a, 'HP');
+    presetStat(a, 'Gold');
+    const [hp, coin] = a.statFields!;
+    const quest = newGame();
+    quest.rounds.push(miniQuestRound(quest));
+    const copied: string[] = [];
+    const merged: string[] = [];
+    const added = addBundledRound(a, bundleRound(quest, quest.rounds[0]), undefined, copied, undefined, merged);
+    expect(a.statFields!.map((f) => f.name)).toEqual(['HP', 'Gold', 'Power']);
+    expect(a.statFields!.slice(0, 2)).toEqual([hp, coin]);
+    expect(merged).toEqual(['HP', 'Gold']);
+    expect(mergedMessage(merged)).toBe('Used this game’s “HP” and “Gold”');
+    expect(a.shops![0].currency).toBe(coin.id);
+    // The quest's Potion heals (the dungeon's doesn't): it comes in named apart, said to be a copy, and the quest uses it.
+    expect(a.items!.map((i) => i.name)).toEqual(['Potion', 'Potion (copy)', 'Sword']);
+    const copy = a.items![1];
+    expect(JSON.stringify(copy.onUse)).toContain(hp.id);
+    expect(copied).toEqual(['“Potion” item']);
+    expect(isRpg(added) && JSON.stringify(a.worlds!.find((w) => w.id === added.world))).toContain(copy.id);
+    // Brought again from the same place, it uses the same copies (one world, one shop, one copy of the Potion).
+    addBundledRound(a, bundleRound(quest, quest.rounds[0]));
+    expect([a.worlds!.length, a.shops!.length, a.items!.length, a.statFields!.length]).toEqual([2, 1, 3, 3]);
+    // Another game's dungeon has the same Potion but for its id: this game's own is used.
+    const other = newGame();
+    other.rounds.push(dungeonRound(other));
+    const more: string[] = [];
+    addBundledRound(a, bundleRound(other, other.rounds[0]), undefined, undefined, undefined, more);
+    expect(a.items!.length).toBe(3);
+    expect(more).toEqual(['Potion']);
+  });
+
+  it('Keep in game brings along the items, shops and files a kept screen uses that the editor’s game hasn’t got', () => {
+    const editor = newGame();
+    editor.rounds.push(miniQuestRound(editor));
+    const play = clone(editor) as Game;
+    const world = play.worlds![0];
+    const village = world.maps[0].screens[0];
+    // Made during the show: an item, a shop selling it, and a character with a picture who runs that shop.
+    play.items!.push({ id: 'i3', name: 'Item 3', stackable: true });
+    play.shops!.push({ id: 'sh2', name: 'Character’s shop', currency: play.shops![0].currency, stock: [{ item: 'i3', qty: null }] });
+    play.media.push({ id: 'pic', name: 'pic.png', mime: 'image/png', size: 1, kind: 'image' });
+    village.slide.elements.push({ ...newImageEl('pic'), role: { class: 'npc', shop: 'sh2' } });
+    const ref = { map: world.maps[0].id, screen: village.id };
+    expect(keepScreen(play, editor, world.id, ref, undefined, (kept) => bringAlong(play, editor, kept))).toBe(
+      'Kept “Village” in the game, with item “Item 3”, shop “Character’s shop” and 1 file',
+    );
+    expect([editor.items!.at(-1)!.id, editor.shops!.at(-1)!.id, editor.media.at(-1)!.id]).toEqual(['i3', 'sh2', 'pic']);
+    // Kept again: nothing more to bring.
+    expect(keepScreen(play, editor, world.id, ref, undefined, (kept) => bringAlong(play, editor, kept))).toBe('Kept “Village” in the game');
   });
 
   it('numbers names that are taken', () => {

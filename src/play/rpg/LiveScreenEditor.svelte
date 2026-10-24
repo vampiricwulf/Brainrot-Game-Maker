@@ -6,7 +6,7 @@
 <script lang="ts">
   import { modal } from '../../lib/modal';
   import { onDestroy, untrack } from 'svelte';
-  import { adoptAdded, focusRef, occupiedScreens } from '../../lib/rpg';
+  import { adoptAdded, avatarBoxes, focusRef, occupiedScreens } from '../../lib/rpg';
   import { app } from '../../lib/app.svelte';
   import type { Screen, Slide, World, WorldState } from '../../lib/model';
   import { startStep } from '../../lib/toolset';
@@ -74,7 +74,8 @@
       <button class="primary" onclick={onclose} title="Esc">Done</button>
       <button class="ghost modal-x" onclick={onclose} aria-label="Close" title="Close (Esc)">✕</button>
     </div>
-    <div class="body"><ScreenEditor {world} {screen} {slide} /></div>
+    <!-- What's added starts clear of the players standing here (avatars are drawn over objects). -->
+    <div class="body"><ScreenEditor {world} {screen} {slide} avatars={st ? avatarBoxes(st, screen.id) : []} /></div>
   </div>
 </div>
 

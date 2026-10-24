@@ -9,7 +9,7 @@ import { nameStep, step } from '../lib/history.svelte';
 import { ROUND_MODES } from '../lib/modes';
 import { roundName, type Game } from '../lib/model';
 import { readGameFile, storeFiles } from '../lib/pack';
-import { addBundledRound, bundleName, copiesMessage, copyRound, placeFor, uniqueName } from '../lib/roundcopy';
+import { addBundledRound, bundleName, copiesMessage, copyRound, mergedMessage, placeFor, uniqueName } from '../lib/roundcopy';
 import { addSampleGame, TEMPLATES, type Template } from '../lib/samples';
 import { validate } from '../lib/validate';
 import type { MenuEntry } from '../lib/menustate.svelte';
@@ -62,15 +62,17 @@ export function pasteRound(game: Game, after?: number): number | null {
   const b = clipboard.round;
   if (!b) return null;
   const copied: string[] = [];
+  const merged: string[] = [];
   const at = step(null, () => {
     const at = after === undefined ? placeFor(game, b.round) : after + 1;
-    const r = addBundledRound(game, b, at, copied);
+    const r = addBundledRound(game, b, at, copied, undefined, merged);
     const i = game.rounds.indexOf(r);
     // Named after the round it adds ("Jeopardy! (copy)"), so two pastes are told apart.
     nameStep(`Pasted round “${roundName(r, i)}”`);
     return i;
   });
-  if (copied.length) toast(copiesMessage(copied, 'the copied round'));
+  const said = [mergedMessage(merged), copiesMessage(copied, 'the copied round')].filter(Boolean).join('. ');
+  if (said) toast(said);
   else saidIfFirst(game, at);
   return at;
 }

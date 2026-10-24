@@ -27,6 +27,7 @@
   import { addMediaFile } from '../../lib/media.svelte';
   import { nameList } from '../../lib/session';
   import { lastAction, logged, wornItems } from '../../lib/toolset';
+  import { bringAlong } from '../../lib/roundcopy';
   import MapView from './MapView.svelte';
   import ObjectCard from './ObjectCard.svelte';
   import PlayerCard, { cardsShown, playerCards } from './PlayerCard.svelte';
@@ -234,7 +235,8 @@
     if (app.game.id !== game.id) return void toast('The editor has a different game open, so there’s nowhere to keep it');
     const w = world;
     const name = w.maps.find((m) => m.id === ref.map)?.screens.find((s) => s.id === ref.screen)?.name ?? 'the screen';
-    toast(step(`Kept “${name}” from the show`, () => keepScreen(game, app.game, w.id, ref, st), { during: 'play' }), 4000);
+    // (With the items, shops and files it uses that the editor's game hasn't got: made during the show.)
+    toast(step(`Kept “${name}” from the show`, () => keepScreen(game, app.game, w.id, ref, st, (kept) => bringAlong(game, app.game, kept)), { during: 'play' }), 4000);
   }
 
   const PAD: (Dir8 | null)[] = ['nw', 'n', 'ne', 'w', null, 'e', 'sw', 's', 'se'];

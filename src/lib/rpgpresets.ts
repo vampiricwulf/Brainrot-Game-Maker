@@ -39,7 +39,7 @@ export function presetStat(game: Game, which: 'HP' | 'Gold' | 'Power'): StatFiel
 
 /** How an enemy is fought, in its host notes (shown on its card in play). */
 export const FIGHT_NOTES =
-  'Fight: use Compare on its card (your Power vs its Power), or roll 🎲 for each side. A win: press − by its HP (at 0 it’s beaten: 🗑 Remove it). A loss: press the HP −1 button for whoever fought.';
+  'Fight: use Compare on its card (your Power vs its Power), or roll 🎲 for each side. A win: press − by its HP (at 0 it’s beaten: 🗑 Remove it). A loss: pick who fought on its card, then press HP −1.';
 
 /**
  * An enemy: a character with its own HP and Power (viewers see them), whose card compares them with a player's, and

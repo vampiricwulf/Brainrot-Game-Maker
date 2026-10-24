@@ -139,6 +139,29 @@ export function exitsOf(map: WorldMap, screen: Screen): Record<Dir8, Exit> {
 
 const AVATAR = 150;
 
+export type Box = { x: number; y: number; w: number; h: number };
+
+/** Each avatar standing on a screen, as the box its token and nameplate cover. */
+export function avatarBoxes(st: WorldState, screenId: string): Box[] {
+  return Object.values(st.positions)
+    .filter((p) => p.screen === screenId && !p.hidden)
+    .map((p) => ({ x: p.x - 90, y: p.y - 80, w: 180, h: 170 }));
+}
+
+export const overlaps = (a: Box, b: Box) => a.x < b.x + b.w && b.x < a.x + a.w && a.y < b.y + b.h && b.y < a.y + a.h;
+
+/**
+ * Where something `w`×`h` meant for (x, y) goes clear of `boxes` (the avatars standing there): where it was meant, else
+ * the nearest of a few spots across the screen that's clear (else where it was meant).
+ */
+export function clearSpot(x: number, y: number, w: number, h: number, boxes: readonly Box[]): { x: number; y: number } {
+  const clear = (s: { x: number; y: number }) => !boxes.some((b) => overlaps({ ...s, w, h }, b));
+  if (clear({ x, y })) return { x, y };
+  const spots: { x: number; y: number }[] = [];
+  for (let r = 0; r < 4; r++) for (let c = 0; c < 6; c++) spots.push({ x: Math.round(40 + (c * (SLIDE_W - 80 - w)) / 5), y: Math.round(40 + (r * (SLIDE_H - 80 - h)) / 3) });
+  return spots.filter(clear).sort((a, b) => Math.hypot(a.x - x, a.y - y) - Math.hypot(b.x - x, b.y - y))[0] ?? { x, y };
+}
+
 /** The world state for a round, created on first use: everyone in one party at the start screen. */
 export function ensureWorld(session: Session, game: Game, round: RpgRound): WorldState | null {
   const world = worldById(game, round.world);
@@ -650,9 +673,11 @@ export function addScreenBeside(map: WorldMap, at: Screen, dir: Dir8, name?: str
 
 /**
  * "Keep in game": copy a screen as it is in the game being played (its looks, and the objects added during play)
- * into another copy of the game, adding its world or map there if they're missing. Returns what it did.
+ * into another copy of the game, adding its world or map there if they're missing. `bring` adds what the kept screen
+ * uses that the other copy hasn't got (an item made during the show), and says what (", with item “Item 3”"). Returns
+ * what it did.
  */
-export function keepScreen(from: Game, to: Game, worldId: string, ref: ScreenRef, st: WorldState | undefined): string {
+export function keepScreen(from: Game, to: Game, worldId: string, ref: ScreenRef, st: WorldState | undefined, bring?: (kept: Screen) => string): string {
   const w = from.worlds?.find((x) => x.id === worldId);
   const found = w && findIn(w, ref);
   if (!w || !found) return 'That screen is gone';
@@ -698,7 +723,7 @@ export function keepScreen(from: Game, to: Game, worldId: string, ref: ScreenRef
   if (clash) return `${tm.name} already has “${clash.name}” in that spot in the editor`;
   if (i >= 0) tm.screens[i] = copy;
   else tm.screens.push(copy);
-  return `Kept “${copy.name}” in the game`;
+  return `Kept “${copy.name}” in the game${bring?.(copy) ?? ''}`;
 }
 
 export function override(st: WorldState, id: string): ObjectOverride {

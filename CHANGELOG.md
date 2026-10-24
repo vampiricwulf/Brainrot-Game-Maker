@@ -32,6 +32,10 @@ in plain words for the people who make and host games. Anything committed but no
 - With two currencies, a player card's currency list shows the one its Score → buttons convert, instead of a blank.
 - With phone buzzers in teams, the RPG host panel's fold reads “Teams: stats & inventory” (the board game's: “Teams”), as the rest of the panel does.
 - One window: the RPG's ⤢ Full map over the host panel keeps its ✕ at the top right, its hint on a line of its own under the title. The ✕ sat alone on a third line at the left.
+- 📂 Import rounds… and 📋 Paste round use this game's own stat where the round brings one of the same name and type (HP, Gold), so there's one HP bar and one Gold counter, not two; the toast says “Used this game’s “HP” and “Gold””. An item or shop of a name this game has is its own when it's the same otherwise; one that differs comes in as “Potion (copy)”, and the toast says so.
+- 💾 Keep in game keeps what the screen needs: an item, shop or file made during the show (✎ Edit screen › ＋ Add new item…, a character's ＋ New shop…) comes along into the editor's game, and the toast names it (“Kept “Village” in the game, with item “Item 3””). The kept screen pointed at a deleted item and shop.
+- ✎ Edit screen during a show places a new character, enemy, doorway, item or arrival point clear of the players standing on the screen. It landed under their avatars on stream, where clicks hit the avatars.
+- The Mini quest template's Potion heals (Use: HP +3) and says so in the shop; its notes send the host to the player's card (Players: stats & inventory) for Use and say to pick who fought on the Boss's card before HP −1 or +500. A Potion the game already had is left as it is.
 
 ## 2026-10-24
 

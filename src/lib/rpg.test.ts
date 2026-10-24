@@ -4,6 +4,9 @@ import {
   addScreenBeside,
   allWorldsAsOne,
   audienceSees,
+  avatarBoxes,
+  clearSpot,
+  overlaps,
   keepScreen,
   newVariant,
   adoptAdded,
@@ -329,6 +332,22 @@ describe('RPG: improvising', () => {
     // Kept again: replaced, not duplicated.
     keepScreen(game, editor, world.id, { map: m.id, screen: d1.id }, st);
     expect(editor.worlds![0].maps[0].screens.filter((s) => s.id === d1.id)).toHaveLength(1);
+  });
+});
+
+describe('RPG: something new on a screen where players stand', () => {
+  it('starts clear of the avatars there: where it was meant, else the nearest clear spot', () => {
+    const { game, session, round } = setup();
+    const st = ensureWorld(session, game, round)!;
+    const here = focusRef(st)!.screen;
+    // Ann stands where a new character would go.
+    Object.assign(st.positions.a, { x: 1300, y: 750 });
+    const boxes = avatarBoxes(st, here);
+    const spot = clearSpot(1180, 600, 260, 300, boxes);
+    expect(boxes.some((b) => overlaps({ ...spot, w: 260, h: 300 }, b))).toBe(false);
+    expect(spot).not.toEqual({ x: 1180, y: 600 });
+    // Nobody in the way: it stays where it was meant.
+    expect(clearSpot(100, 100, 50, 50, boxes)).toEqual({ x: 100, y: 100 });
   });
 });
 

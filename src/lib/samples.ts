@@ -119,10 +119,16 @@ export function dungeonRound(game: Game, name = 'Dungeon'): RpgRound {
  * Adds the HP, Gold and Power stats it uses (when the game has none of those names), a Potion and a Sword, and the shop.
  */
 export function miniQuestRound(game: Game, name = 'Mini quest'): RpgRound {
-  presetStat(game, 'HP');
+  const hp = presetStat(game, 'HP');
   const coin = presetStat(game, 'Gold');
   const power = presetStat(game, 'Power');
+  // Its own Potion heals (one the game already had is left as it is).
+  const made = !game.items?.some((x) => x.name === 'Potion');
   const drink = potion(game);
+  if (made) {
+    drink.description = `Drink it: +3 ${hp.name}.`;
+    drink.onUse = [act({ do: 'stat', field: hp.id, op: 'add', amount: 3, who: 'ask' })];
+  }
   let sword = game.items?.find((x) => x.name === 'Sword');
   if (!sword) {
     // Used before the fight, it beats the boss's Power (everyone starts at 1).
@@ -159,8 +165,10 @@ export function miniQuestRound(game: Game, name = 'Mini quest'): RpgRound {
   boss.y = 420;
   lair.slide.elements.push(boss, chest);
   // (A Sword the game already had may do something else when used, or nothing: the note says what it does, if anything.)
-  const swordTip = sword.onUse?.length ? ` Bought a Sword? Use it first (its owner's sheet › Use: ${sword.onUse.map((a) => describeAction(game, a)).join(', ')}).` : '';
-  lair.hostNotes = `Fight with Compare on the Boss's card (${power.name} vs its Power).${swordTip} Beaten: press Reveal for the treasure and +500.`;
+  const swordTip = sword.onUse?.length
+    ? ` Bought a Sword? Use it first (its owner's card in Players: stats & inventory › Use: ${sword.onUse.map((a) => describeAction(game, a)).join(', ')}).`
+    : '';
+  lair.hostNotes = `Fight with Compare on the Boss's card (${power.name} vs its Power).${swordTip} Beaten: press Reveal for the treasure, then pick who fought on its card and press +500.`;
   game.worlds = [...(game.worlds ?? []), world];
   return { id: newId(), name, mode: 'rpg', world: world.id, start: { map: world.maps[0].id, screen: village.id } };
 }

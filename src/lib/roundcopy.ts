@@ -12,10 +12,8 @@ export type { RoundBundle };
 
 const used = <T extends { id: string }>(list: readonly T[] | undefined, json: string): T[] => (list ?? []).filter((x) => json.includes(x.id));
 
-/** A round of `game` with everything it uses, as copies. */
-export function bundleRound(game: Game, round: Round): RoundBundle {
-  const r = clone(round);
-  const worlds = clone(isRpg(r) ? (game.worlds ?? []).filter((w) => w.id === r.world) : []);
+/** The wheels, dice, shops, items and stats of `game` that `what` uses, however far, and the files it all shows. */
+function usedBy(game: Game, what: unknown) {
   // Until nothing more comes in: shops point at items and stats, items' buttons at wheels, shops and other items,
   // wheels' slices at items and other wheels…
   const pick = (json: string) => ({
@@ -25,15 +23,46 @@ export function bundleRound(game: Game, round: Round): RoundBundle {
     items: used(game.items, json),
     statFields: used(game.statFields, json),
   });
-  let found = pick(JSON.stringify([r, worlds]));
+  let found = pick(JSON.stringify(what));
   const size = (f: typeof found) => Object.values(f).reduce((n, l) => n + l.length, 0);
-  for (let more = pick(JSON.stringify([r, worlds, found])); size(more) > size(found); more = pick(JSON.stringify([r, worlds, found]))) found = more;
-  const { wheels, dice, shops, items, statFields } = clone(found);
-  const shown = mediaShownBy([r, worlds, wheels, dice, shops, items, statFields], game.media);
+  for (let more = pick(JSON.stringify([what, found])); size(more) > size(found); more = pick(JSON.stringify([what, found]))) found = more;
+  const things = clone(found);
+  const shown = mediaShownBy([what, ...Object.values(things)], game.media);
   // (With their 🗜 copies for phones.)
   const ids = withCopies(game, shown.map((m) => m.id));
-  const media = clone([...shown, ...game.media.filter((m) => m.phoneCopy && ids.includes(m.id))]);
+  return { ...things, media: clone([...shown, ...game.media.filter((m) => m.phoneCopy && ids.includes(m.id))]) };
+}
+
+/** A round of `game` with everything it uses, as copies. */
+export function bundleRound(game: Game, round: Round): RoundBundle {
+  const r = clone(round);
+  const worlds = clone(isRpg(r) ? (game.worlds ?? []).filter((w) => w.id === r.world) : []);
+  const { wheels, dice, shops, items, statFields, media } = usedBy(game, [r, worlds]);
   return { round: r, from: game.title, label: roundName(round, game.rounds.indexOf(round)), worlds, wheels, dice, statFields, items, shops, media };
+}
+
+/**
+ * What `what` (a screen kept from the show) uses of `from`'s wheels, dice, stats, items and shops, and the files it shows,
+ * added to `to` where it hasn't got them (an item or shop made during the show). Returns what came along (", with item
+ * “Item 3” and 1 file"), or ''.
+ */
+export function bringAlong(from: Game, to: Game, what: unknown): string {
+  const found = usedBy(from, what);
+  const said: string[] = [];
+  for (const [kind, word] of KINDS) {
+    if (kind === 'worlds') continue;
+    const have = (to[kind] ?? []) as Named[];
+    const extra = (found[kind] as Named[]).filter((x) => !have.some((y) => y.id === x.id));
+    if (!extra.length) continue;
+    (to as Record<Kind, Named[]>)[kind] = [...have, ...extra];
+    said.push(...extra.map((x) => `${word} “${x.name}”`));
+  }
+  const files = found.media.filter((m) => !to.media.some((x) => x.id === m.id));
+  addMedia(to, files);
+  // (A 🗜 copy for phones comes with its file: not one to count.)
+  const n = files.filter((m) => !m.phoneCopy).length;
+  if (n) said.push(`${n} file${n === 1 ? '' : 's'}`);
+  return said.length ? `, with ${said.length === 1 ? said[0] : `${said.slice(0, -1).join(', ')} and ${said[said.length - 1]}`}` : '';
 }
 
 /** A bundled round's name for messages: as its game showed it. */
@@ -107,17 +136,76 @@ function settleIds(game: Game, b: RoundBundle, ids: CopyIds): { b: RoundBundle; 
   return { b: JSON.parse(json), changed };
 }
 
+/** Without its ids (an item's buttons each have one), to tell whether two things are the same otherwise. */
+const noIds = (v: unknown): unknown =>
+  Array.isArray(v) ? v.map(noIds) : v && typeof v === 'object' ? Object.fromEntries(Object.entries(v).filter(([k]) => k !== 'id').map(([k, x]) => [k, noIds(x)])) : v;
+
+/**
+ * Where the bundle brings a stat, item or shop this game hasn't got but has one of the same name: a stat of the same type
+ * is this game's own (one HP bar, not two, as the templates do), and so is an item or shop that's the same apart from its
+ * ids. Any other comes in under a new id (`copies`: named apart and said to be a copy); a copy made for an earlier round
+ * from the same place is used again. Runs before settleIds, so what's this game's own reads as the same there. Returns
+ * the bundle so changed, the names of this game's ones it now uses, and the copies' ids.
+ */
+function settleNames(game: Game, bundle: RoundBundle, ids: CopyIds): { b: RoundBundle; merged: string[]; copies: Set<string> } {
+  type Thing = Named & { type?: string; currency?: boolean };
+  const kinds = ['statFields', 'items', 'shops'] as const;
+  let json = JSON.stringify(bundle);
+  const swap = (from: string, to: string) => (json = json.split(JSON.stringify(from)).join(JSON.stringify(to)));
+  const key = (name: string) => name.trim().toLowerCase();
+  const merged: string[] = [];
+  const copies = new Set<string>();
+  // This game's own, used in the bundle's place.
+  const ours = new Set<string>();
+  // (Stats first: an item or shop then matches this game's when it uses this game's stats.)
+  for (const kind of kinds) {
+    const mine = (game[kind] ?? []) as Thing[];
+    for (const x of ((JSON.parse(json) as RoundBundle)[kind] ?? []) as Thing[]) {
+      if (mine.some((y) => y.id === x.id)) continue;
+      // A copy made for an earlier round from the same place.
+      const before = ids.get(x.id);
+      if (before && mine.some((y) => y.id === before)) {
+        swap(x.id, before);
+        ours.add(before);
+        continue;
+      }
+      const same = mine.find((y) => key(y.name) === key(x.name));
+      if (!same) continue;
+      if (kind === 'statFields' ? same.type === x.type && !!same.currency === !!x.currency : sameContent(noIds({ ...same, name: '' }), noIds({ ...x, name: '' }))) {
+        swap(x.id, same.id);
+        ours.add(same.id);
+        if (!merged.includes(same.name)) merged.push(same.name);
+      } else {
+        const id = newId();
+        ids.set(x.id, id);
+        swap(x.id, id);
+        copies.add(id);
+      }
+    }
+  }
+  const b = JSON.parse(json) as Record<(typeof kinds)[number], Thing[] | undefined>;
+  for (const kind of kinds) {
+    const mine = (game[kind] ?? []) as Thing[];
+    b[kind] = b[kind]?.map((x) => (ours.has(x.id) ? clone(mine.find((y) => y.id === x.id)!) : x));
+  }
+  return { b: b as unknown as RoundBundle, merged, copies };
+}
+
 /**
  * Put a copy of a bundled round into `game` at `at` (fresh ids, so it never mixes with the original), adding the world,
  * wheels, dice, stats, items, shops and files it uses that the game hasn't got. One with the id of one here but other
- * content (from another copy of this game) comes in as a copy with its own id; `copied` hears what each is ("“Adventure”
- * world"). `ids` keeps those copies' ids, so more rounds from the same place share them (by default, one
- * set per copied round). Returns the new round.
+ * content (from another copy of this game), or the name of one here but other content, comes in as a copy with its own
+ * id; `copied` hears what each is ("“Adventure” world"). A stat of a name and type this game has (and an item or shop the
+ * same as this game's) is this game's own: `merged` hears its name. `ids` keeps those copies' ids, so more rounds from
+ * the same place share them (by default, one set per copied round). Returns the new round.
  */
-export function addBundledRound(game: Game, bundle: RoundBundle, at = game.rounds.length, copied?: string[], ids?: CopyIds): Round {
+export function addBundledRound(game: Game, bundle: RoundBundle, at = game.rounds.length, copied?: string[], ids?: CopyIds, merged?: string[]): Round {
   const key = `${bundle.from}\n${bundle.round.id}`;
   if (!ids) pasted.set(key, (ids = pasted.get(key) ?? new Map()));
-  const { b, changed } = settleIds(game, bundle, ids);
+  const named = settleNames(game, bundle, ids);
+  const { b, changed } = settleIds(game, named.b, ids);
+  for (const id of named.copies) changed.add(id);
+  for (const n of named.merged) if (!merged?.includes(n)) merged?.push(n);
   for (const [kind, word] of KINDS) {
     const list = (game[kind] ?? []) as Named[];
     const extra = clone((b[kind] as Named[]).filter((x) => !list.some((y) => y.id === x.id)));
@@ -146,6 +234,13 @@ export function copiesMessage(copied: readonly string[], from: string): string {
   const one = copied.length === 1;
   const list = one ? copied[0] : `${copied.slice(0, -1).join(', ')} and ${copied[copied.length - 1]}`;
   return `Brought ${from}’s ${list} as ${one ? 'a copy' : 'copies'} (this game’s ${one ? 'is' : 'are'} unchanged)`;
+}
+
+/** What to say about this game's stats, items or shops a round now uses ("Used this game’s “HP” and “Gold”"), or ''. */
+export function mergedMessage(merged: readonly string[]): string {
+  if (!merged.length) return '';
+  const list = merged.map((n) => `“${n}”`);
+  return `Used this game’s ${list.length === 1 ? list[0] : `${list.slice(0, -1).join(', ')} and ${list[list.length - 1]}`}`;
 }
 
 /** The same bytes? */

@@ -4,7 +4,7 @@ import {
   type SlideElement, type World, type WorldState,
 } from '../../lib/model';
 import {
-  activeParty, allElements, audienceSees, classLabel, DIR_NAME, DIR_VEC, DIRS, exitOf, findIn, focusRef, joinParty, moveTo, neverShown, override, partyOn, partyScreen, regroup, splitParty,
+  activeParty, allElements, audienceSees, avatarBoxes, classLabel, DIR_NAME, DIR_VEC, DIRS, exitOf, findIn, focusRef, joinParty, moveTo, neverShown, overlaps, override, partyOn, partyScreen, regroup, splitParty,
   step, worldById,
 } from '../../lib/rpg';
 import { nameList } from '../../lib/session';
@@ -341,17 +341,6 @@ export function focusParty(game: Game, session: Session, partyId: string): void 
   const { st } = rpgNow(game, session);
   if (st) st.active = partyId;
 }
-
-type Box = { x: number; y: number; w: number; h: number };
-
-/** Each avatar standing on a screen, as the box its token and nameplate cover. */
-function avatarBoxes(st: WorldState, screenId: string): Box[] {
-  return Object.values(st.positions)
-    .filter((p) => p.screen === screenId && !p.hidden)
-    .map((p) => ({ x: p.x - 90, y: p.y - 80, w: 180, h: 170 }));
-}
-
-const overlaps = (a: Box, b: Box) => a.x < b.x + b.w && b.x < a.x + a.w && a.y < b.y + b.h && b.y < a.y + a.h;
 
 /** Where something `w`×`h` goes next to a player (below, above, right, left of them) without covering anyone. */
 function spotNear(st: WorldState, by: Position, w: number, h: number): { x: number; y: number } {

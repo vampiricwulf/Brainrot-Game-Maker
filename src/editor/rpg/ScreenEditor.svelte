@@ -7,17 +7,26 @@
   import { goTo } from '../../lib/nav.svelte';
   import { newId, newImageEl, newShapeEl, newTextEl, type ItemDef, type Screen, type Slide, type SlideElement, type World } from '../../lib/model';
   import { enemyObject } from '../../lib/rpgpresets';
+  import { clearSpot, type Box } from '../../lib/rpg';
   import SlideEditor from '../slide/SlideEditor.svelte';
   import ObjectPanel from './ObjectPanel.svelte';
 
-  /** `slide`: one of the screen's other looks, edited instead of its own slide. */
-  let { world, screen, slide }: { world: World; screen: Screen; slide?: Slide } = $props();
+  /**
+   * `slide`: one of the screen's other looks, edited instead of its own slide. `avatars`: where the players stand on it
+   * (editing live): what's added starts clear of them.
+   */
+  let { world, screen, slide, avatars = [] }: { world: World; screen: Screen; slide?: Slide; avatars?: Box[] } = $props();
   const game = $derived(editedGame());
+
+  /** A new object, moved clear of the players standing on the screen (live). */
+  function clear(el: SlideElement): SlideElement {
+    return Object.assign(el, clearSpot(el.x, el.y, el.w, el.h, avatars));
+  }
 
   function spawnPoint(): SlideElement {
     const el = newShapeEl('ellipse');
     Object.assign(el, { x: 900, y: 700, w: 120, h: 120, hotspot: true, fill: 'transparent', strokeWidth: 0, name: 'Arrival point', role: { class: 'spawn' } });
-    return el;
+    return clear(el);
   }
 
   /** A catalog item placed on the screen: its icon (or its name as text), ready to be picked up. */
@@ -28,7 +37,7 @@
       : { ...newTextEl(`📦 ${it?.name ?? 'Item'}`), x: 760, y: 480, w: 400, h: 120, size: 60 };
     el.name = it?.name ?? 'Item';
     el.role = { class: 'item', item: itemId, qty: 1 };
-    return el;
+    return clear(el);
   }
 
   /** A doorway or a character to place: a big emoji (swap it for a picture, or class any item with Class). */
@@ -37,7 +46,7 @@
     const el: SlideElement = { ...newTextEl(door ? '🚪' : '🧙', { x: door ? 1500 : 1180, y: 600, w: 260, h: 300 }), size: 200, uppercase: false };
     el.name = door ? 'Doorway' : 'Character';
     el.role = { class: cls };
-    return el;
+    return clear(el);
   }
 
   /** A doorway goes on to where it leads: the panel's screen list has the focus. */
@@ -58,7 +67,7 @@
 
   /** An enemy (a character set up to fight) goes on to its name, typed over, like a character. */
   async function addEnemy(add: (el: SlideElement) => void): Promise<void> {
-    add(enemyObject(game));
+    add(clear(enemyObject(game)));
     await tick();
     const name = document.querySelector<HTMLInputElement>('input[data-field="object-name"]');
     name?.focus();

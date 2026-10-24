@@ -780,7 +780,9 @@ Everything the host can do without prep:
 - Create an improvised item or NPC.
 - **Duplicate a screen as a variant** (e.g. "the village, on fire").
 - Everything improvised belongs to the game in progress. **"Keep in game"** copies improvised objects or screens into
-  the authored world, so they are saved for next time.
+  the authored world, so they are saved for next time, with the items, shops, stats and files they use that the
+  editor's game hasn't got (made during the show). In ✎ Edit screen, what's added starts clear of the players
+  standing on the screen.
 
 ### 9.4 Keys (RPG rounds)
 

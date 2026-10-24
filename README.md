@@ -49,7 +49,9 @@ A game is a list of rounds, and each round has a mode. You can reorder, duplicat
 (a round tab's right-click menu) and **📋 Paste round**, or **📂 Import rounds…** (from a .brainrot file, or the web page a
 game was exported as), bring a round from another game with the worlds, wheels, dice, stats, items, shops and files it
 uses. Where this game already has one of those from another copy of the same game but it differs, the other version
-comes in as a copy and this game's stays.
+comes in as a copy and this game's stays. A stat of a name and type this game has (HP, Gold) is this game's own, and so
+is an item or shop of the same name that's the same otherwise; one of that name that differs comes in named apart
+("Potion (copy)").
 
 | Mode | What it is |
 |---|---|

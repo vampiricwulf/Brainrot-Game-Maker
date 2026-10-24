@@ -160,6 +160,21 @@ async function bigWorld() {
   await host.keyboard.press('ArrowUp');
   await host.waitForTimeout(800);
   assert(!southOf.includes('Village') && (await there()).includes('Village'), `the arrow keys move the party (↓ to ${southOf}, ↑ back)`);
+  // ✎ Edit screen with the four standing here: a character added starts clear of them (avatars are drawn over objects).
+  await host.getByRole('button', { name: '✎ Edit screen' }).click();
+  const liveEd = host.getByRole('dialog', { name: / live$/ });
+  await liveEd.getByRole('button', { name: '🧙 Character' }).click();
+  await liveEd.getByRole('button', { name: 'Done' }).click();
+  await liveEd.waitFor({ state: 'detached' });
+  const wizard = aud.locator('.rpg .el', { hasText: '🧙' });
+  await wizard.waitFor();
+  const onSomeone = await aud.locator('.rpg .avatar[data-player-id]').evaluateAll(
+    (els, w) => els.some((e) => (({ left, right, top, bottom }) => left < w.x + w.width && w.x < right && top < w.y + w.height && w.y < bottom)(e.getBoundingClientRect())),
+    await wizard.boundingBox(),
+  );
+  assert(!onSomeone, 'a character added in ✎ Edit screen starts clear of the players standing there');
+  await host.keyboard.press('Control+z');
+  await wizard.waitFor({ state: 'detached' });
   // The ? list says so, among the RPG keys.
   await host.keyboard.press('?');
   const keyList = host.getByRole('dialog', { name: 'Keyboard shortcuts' });
