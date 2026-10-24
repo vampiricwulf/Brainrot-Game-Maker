@@ -7,13 +7,13 @@
   import { announce } from '../../lib/announce';
   import { textOn } from '../../lib/colors';
   import { describeAction, needsPlayers, runAction, type RunContext } from '../../lib/actions';
-  import { newId, type Screen, type SlideElement, type World, type WorldState } from '../../lib/model';
+  import { newId, type ObjectClass, type Screen, type SlideElement, type World, type WorldState } from '../../lib/model';
   import { activeParty, audienceSees, classLabel, findIn, moveTo, neverShown, OBJECT_CLASSES, override } from '../../lib/rpg';
   import { nameList } from '../../lib/session';
   import { blip } from '../../lib/live';
   import { currencyFields, formatStat, itemDef, logged, statFields, statNumber, statRoom } from '../../lib/toolset';
   import InlineAsk from '../host/InlineAsk.svelte';
-  import { objectName, pickUp as pickUpNow, pileAmount, removeObject } from './hostops';
+  import { count, objectName, pickUp as pickUpNow, pileAmount, removeObject } from './hostops';
 
   let {
     el,
@@ -93,7 +93,7 @@
   function setClass(c: string): void {
     logged(
       session,
-      `${title}: ${c || 'scenery'}`,
+      `${title}: ${classLabel(c as ObjectClass | '')}`,
       () => {
         el.role = c ? { ...(el.role ?? {}), class: c as NonNullable<SlideElement['role']>['class'] } : undefined;
       },
@@ -228,11 +228,15 @@
         {locked ? '🔓 Unlock' : '🔒 Lock'}
       </button>
     {:else if role?.class === 'item'}
-      <button class="primary" onclick={pickUp}>✋ {pickerName} picks up {role.qty ?? 1} {itemDef(game, role.item)?.name ?? title}</button>
+      <button class="primary" onclick={pickUp}>✋ {pickerName} picks up {count(role.qty ?? 1, itemDef(game, role.item)?.name ?? title)}</button>
     {:else if role?.class === 'currency'}
       {@const f = statFields(game).find((x) => x.id === role.field) ?? currencyFields(game)[0]}
       {@const left = pileAmount(st, el)}
-      <button class="primary" onclick={pickUp} disabled={!f} title={f ? undefined : 'Add a currency in 📊 Stats & Items first'}>✋ {pickerName} picks up {f ? formatStat(f, left) : left}</button>
+      <!-- Only what fits under their max ("🪙15 of 🪙30"); the rest stays on the screen. -->
+      {@const fits = f && picker ? Math.min(left, statRoom(game, session, picker, f)) : left}
+      <button class="primary" onclick={pickUp} disabled={!f} title={f ? undefined : 'Add a currency in 📊 Stats & Items first'}
+        >✋ {pickerName} picks up {f ? (fits > 0 && fits < left ? `${formatStat(f, fits)} of ${formatStat(f, left)}` : formatStat(f, left)) : left}</button
+      >
     {/if}
     {#if role?.dialogue}<button onclick={talk}>💬 Talk</button>{/if}
     {#if role?.shop}<button onclick={openShop} disabled={!shopExists} title={shopExists ? undefined : 'That shop no longer exists: pick another with ✎ Edit'}>🛒 Shop</button>{/if}

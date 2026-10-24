@@ -381,6 +381,9 @@ function regroupAfterMove(st: WorldState, moved: string[], to: ScreenRef): void 
   renameParties(st);
 }
 
+/** Why a diagonal step goes nowhere on a map without diagonal moves (a screen may well be there). */
+export const DIAGONALS_OFF = 'Diagonal moves are off on this map (Map settings › Diagonal moves)';
+
 /** Step the active party one screen in a direction. Returns why it couldn't, or null. */
 export function step(game: Game, st: WorldState, world: World, dir: Dir8): string | null {
   const at = focusRef(st);
@@ -388,7 +391,7 @@ export function step(game: Game, st: WorldState, world: World, dir: Dir8): strin
   if (!found) return 'The party isn’t on a screen';
   const e = exitOf(found.map, found.screen, dir);
   if (e.kind === 'blocked') return e.note ? `Blocked: ${e.note}` : 'That way is blocked';
-  if (e.kind === 'none') return `Nothing to the ${DIR_NAME[dir].toLowerCase()}`;
+  if (e.kind === 'none') return diagonal(dir) && !found.map.diagonals ? DIAGONALS_OFF : `Nothing to the ${DIR_NAME[dir].toLowerCase()}`;
   if (e.kind === 'warp' && !findIn(world, e.to)) return 'That way leads nowhere (its screen was deleted)';
   moveTo(game, st, world, e.to, { via: e.kind === 'open' ? dir : null });
   return null;

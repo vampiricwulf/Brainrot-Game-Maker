@@ -277,13 +277,15 @@ export function pileAmount(st: WorldState | undefined, el: SlideElement): number
 /** A player picks up an item or a pile of currency lying on a screen: it's theirs, and gone from the screen. Returns the log line. */
 export function pickUp(game: Game, session: Session, st: WorldState, el: SlideElement, playerId: string): string {
   const role = el.role;
-  let text = `${names(session, [playerId])} picks up ${objectName(el)}`;
   // Currency: only what fits under the player's max; the rest stays on the screen.
   const f = role?.class === 'currency' ? (statFields(game).find((x) => x.id === role.field) ?? currencyFields(game)[0]) : undefined;
   // (No currency in the game: nothing to give, so the pile stays where it is.)
   if (role?.class === 'currency' && !f) return `${objectName(el)} gives no currency: add one in 📊 Stats & Items`;
   const amount = pileAmount(st, el);
   const fits = f ? Math.min(amount, statRoom(game, session, playerId, f)) : amount;
+  // What they got ("3 × Potion", "🪙10"), and the object's name when it says something else ("(Treasure)").
+  const got = f ? formatStat(f, amount) : role?.class === 'item' ? count(role.qty ?? 1, itemDef(game, role.item)?.name ?? objectName(el)) : objectName(el);
+  let text = `${names(session, [playerId])} picks up ${got}${got === objectName(el) ? '' : ` (${objectName(el)})`}`;
   if (f && amount > 0 && fits <= 0) return `${names(session, [playerId])} can’t carry any more ${f.name} (at most ${formatStat(f, f.max ?? 0)})`;
   if (f && fits < amount) text = `${names(session, [playerId])} picks up ${formatStat(f, fits)} of ${objectName(el)} (the most they can carry): ${formatStat(f, amount - fits)} left`;
   logged(session, text, () => {

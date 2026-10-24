@@ -41,7 +41,7 @@ async function bigWorld() {
   screens[0].name = 'Village';
   screens[0].slide.elements.push(
     shape('el_door', 'Dungeon door', 200, 300, { class: 'doorway', to: { map: 'm_dun', screen: 'd_1' } }),
-    shape('el_gold', 'Gold pile', 900, 300, { class: 'currency', field: 'f_gold', amount: 10 }),
+    shape('el_gold', 'Gold pile', 900, 300, { class: 'currency', field: 'f_gold', amount: 12 }),
     shape('el_trap', 'Trap', 1400, 300, { class: 'hazard', actions: [{ id: 'a_trap', do: 'stat', field: 'f_hp', op: 'add', amount: -3, who: 'party' }] }),
     shape('el_heap', 'Coin heap', 200, 650, { class: 'currency', field: 'f_gold', amount: 10 }),
     shape('el_cat', 'Riddle cat', 1550, 650, {
@@ -60,6 +60,7 @@ async function bigWorld() {
     statFields: [
       { id: 'f_hp', name: 'HP', type: 'number', start: 10, min: 0, max: 10, display: 'hearts', audience: 'hud' },
       { id: 'f_gold', name: 'Gold', type: 'number', start: 5, min: 0, max: 15, currency: true, symbol: '🪙', audience: 'hud', display: 'counter' },
+      { id: 'f_gems', name: 'Gems', type: 'number', start: 0, min: 0, currency: true, symbol: '💎', audience: 'hidden', display: 'counter' },
     ],
     items: [{ id: 'i_helmet', name: 'Helmet', stackable: false, wearable: { slot: 'head' } }],
     worlds: [{ id: 'w1', name: 'World', maps: [map('m_main', 'Overworld', 20, 20, screens, 'discovered'), map('m_dun', 'Dungeon', 1, 1, [{ id: 'd_1', name: 'Dungeon 1', col: 0, row: 0, slide: { background: { color: '#222' }, elements: [] } }], 'hidden')] }],
@@ -200,7 +201,7 @@ async function bigWorld() {
   await host.keyboard.press('2');
   await host.locator('.rh .objs button', { hasText: 'Gold pile' }).click();
   const pick = host.getByRole('dialog', { name: 'Object: Gold pile' }).getByRole('button', { name: /picks up/ });
-  assert((await pick.innerText()) === '✋ Ann picks up 🪙10', `the pick-up button names the one who picks it up (${await pick.innerText()})`);
+  assert((await pick.innerText()) === '✋ Ann picks up 🪙10 of 🪙12', `the pick-up button names the one who picks it up, and what fits under her max (${await pick.innerText()})`);
   await pick.click();
   await host.waitForTimeout(300);
   assert((await host.locator('.rpg .strip .card').first().innerText()).includes('🪙15') && (await cues(aud)).includes('pickUp'), 'Ann gets it, with the Pick up sound');
@@ -237,6 +238,9 @@ async function bigWorld() {
   const cardsToggle = host.getByRole('button', { name: /Players: stats & inventory/ });
   await cardsToggle.click();
   const annCard = host.locator('.rh .pc').first();
+  // With two currencies, the card's list shows the one its buttons convert (not a blank).
+  const convertsTo = await annCard.getByLabel('Currency').evaluate((s) => s.options[s.selectedIndex]?.text ?? '');
+  assert(convertsTo === 'Gold' && (await annCard.getByRole('button', { name: 'Score → Gold' }).count()) === 1, `with two currencies the card's list shows the one its buttons use (${convertsTo})`);
   for (let i = 0; i < 2; i++) await annCard.getByLabel('Give Ann an item').selectOption({ label: 'Helmet' });
   for (let i = 1; i <= 2; i++) {
     await annCard.getByRole('button', { name: 'Equip', exact: true }).first().click();
@@ -612,6 +616,8 @@ try {
   // (One window: over the host panel beside the stage, never the stage: the host's map names screens not found yet.)
   const [fb, sb] = [await full.boundingBox(), await page.locator('.stage-box').boundingBox()];
   assert(fb.x >= sb.x + sb.width - 1, `one window: the full map opens over the host panel, not the stage (map at x ${Math.round(fb.x)}, the stage ends at ${Math.round(sb.x + sb.width)})`);
+  const [tb, xb] = [await full.locator('.modal-title').boundingBox(), await full.getByRole('button', { name: 'Close' }).boundingBox()];
+  assert(xb.y < tb.y + tb.height && xb.x + xb.width > fb.x + fb.width - 40, `its ✕ stays at the top right, on the title's line (✕ at ${Math.round(xb.x)},${Math.round(xb.y)}; title at y ${Math.round(tb.y)})`);
   await full.getByRole('button', { name: 'Overworld · Screen B1' }).click();
   await full.getByRole('button', { name: /^▶ Move Party here$/ }).click();
   await page.waitForTimeout(200);
@@ -700,8 +706,21 @@ try {
   await drawn.getByLabel('Object name').press('Enter');
   await page.getByRole('dialog', { name: 'Object: Lava' }).getByLabel('Object class').selectOption('zone');
   const lava = page.getByRole('dialog', { name: 'Object: Lava' });
+  // The step is named in words (Ctrl+Z says it), and Ctrl+Shift+Z makes it a zone again.
+  await lava.locator('.cls', { hasText: 'Zone' }).waitFor();
+  await page.keyboard.press('Control+z');
+  await page.locator('.toast', { hasText: /^Undid Lava: Zone$/ }).waitFor();
+  await page.keyboard.press('Control+Shift+z');
+  await lava.locator('.cls', { hasText: 'Zone' }).waitFor();
   await lava.getByRole('button', { name: '👁 Reveal to viewers' }).click();
-  assert((await lava.locator('.cls').innerText()) === 'Zone', 'it can be named and made a zone');
+  assert((await lava.locator('.cls').innerText()) === 'Zone', 'it can be named and made a zone (a step named in words: “Undid Lava: Zone”)');
+  // Without a name, the stage calls it what it is in words, never a code like “zone”.
+  await lava.getByLabel('Object name').fill('');
+  await lava.getByLabel('Object name').press('Enter');
+  await page.getByRole('button', { name: 'Object: Zone', exact: true }).waitFor();
+  await page.getByRole('dialog', { name: 'Object: Zone' }).getByLabel('Object name').fill('Lava');
+  await page.getByRole('dialog', { name: 'Object: Zone' }).getByLabel('Object name').press('Enter');
+  await lava.waitFor();
   if (process.env.SHOTS) await page.screenshot({ path: `${process.env.SHOTS}/rpg-drawn.png` });
   // Drag it on the stage: it stays where it's dropped.
   const hit = page.getByRole('button', { name: 'Object: Lava' });
@@ -798,7 +817,7 @@ try {
   await page.locator('.rpg .hit').first().waitFor();
   assert((await page.locator('.rpg').innerText()).toLowerCase().includes('potion'), 'revealed, viewers see the Potion');
   await card.locator('.who').getByRole('button').first().click();
-  await card.getByRole('button', { name: /picks up 1 Potion/ }).click();
+  await card.getByRole('button', { name: /picks up Potion$/ }).click();
   const firstCard = page.locator('.rh .pc').first();
   assert((await firstCard.locator('.it').allInnerTexts()).join().includes('Potion'), 'picking it up puts it in the player’s inventory');
   assert(!(await page.locator('.rpg').innerText()).toLowerCase().includes('potion'), 'and it is gone from the screen');
@@ -907,6 +926,15 @@ try {
   await shopTc.getByRole('button', { name: '🚪 Leave shop' }).click();
   await page.locator('.stage .shop').waitFor({ state: 'detached' });
   assert(true, '🚪 Leave shop closes it');
+  // Moving the party on closes a shop left up on stream (Ctrl+Z takes the step back).
+  await page.getByLabel('Open a shop').selectOption({ index: 1 });
+  await page.locator('.stage .shop').waitFor();
+  await page.getByRole('button', { name: 'Go North', exact: true }).click();
+  await page.locator('.rh .where', { hasText: / · Start$/ }).waitFor();
+  await page.locator('.stage .shop').waitFor({ state: 'detached' });
+  assert(true, 'moving the party on closes the shop on stream');
+  await page.keyboard.press('Control+z');
+  await page.locator('.rh .where', { hasText: 'New south of Start' }).waitFor();
   // Give one of the two Potions (not the whole stack), then a typed amount.
   await firstCard.getByLabel('Give Potion to').selectOption({ label: 'Player 2' });
   const secondCard = page.locator('.rh .pc').nth(1);

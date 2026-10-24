@@ -94,7 +94,10 @@ try {
     ],
     media: [{ id: 'kelp', name: 'zfnqt-kelp.png', mime: 'image/png', size: kelp.length, kind: 'image' }],
     audio: {}, wheels: [], dice: [], theme: {},
+    // A quest after the board: its host panel says Teams too.
+    worlds: [{ id: 'w1', name: 'World', maps: [{ id: 'm1', name: 'Map', cols: 1, rows: 1, visibility: 'full', showExits: true, revealNeighbors: true, diagonals: true, wrap: false, transition: 'cut', screens: [{ id: 's1', name: 'Camp', col: 0, row: 0, slide: slide() }] }] }],
   };
+  game.rounds.push({ id: 'r2', name: 'Quest', mode: 'rpg', world: 'w1' });
   const packPath = resolve('test-results/partner-teams.brainrot');
   writeFileSync(packPath, await packGame(game, { kelp }));
 
@@ -343,6 +346,16 @@ try {
     '⇄ Everyone else after Gus alone: the rest of Green (Bo, Gwen, Bea), Red and Blue',
   );
   await host.keyboard.press('Escape');
+
+  // ---------- The quest next: its players' cards fold says Teams, as the rest of the panel does ----------
+  await sleep(450);
+  await host.locator('.rn .next').click();
+  await host.locator('.panel .confirm').getByRole('button', { name: 'Yes' }).waitFor();
+  await sleep(450); // (an ask's buttons ignore clicks right after they appear)
+  await host.locator('.panel .confirm').getByRole('button', { name: 'Yes' }).click();
+  const fold = host.locator('.rh .who > button').first();
+  await fold.waitFor();
+  assert((await fold.innerText()).includes('Teams: stats & inventory'), `a quest's cards fold says Teams (${await fold.innerText()})`);
 
   assert(errors.length === 0, `no page errors (${errors.join(' | ')})`);
   console.log('Partner cards on team phones E2E passed.');

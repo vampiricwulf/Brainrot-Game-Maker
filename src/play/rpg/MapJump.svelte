@@ -127,11 +127,11 @@
             </button>
           {/each}
         </div>
-        <span class="spacer"></span>
-        <span class="muted small">
+        <button class="ghost modal-x" onclick={onclose} aria-label="Close" title="Close (Esc / J)">✕</button>
+        <!-- On a line of its own under the title, so the ✕ stays at the top right however narrow the window. -->
+        <span class="muted small hint">
           {send ? `Sending ${send.label}: click a screen, then Move.` : 'Click a screen, then choose who goes.'} Double-click to move {who} there.
         </span>
-        <button class="ghost modal-x" onclick={onclose} aria-label="Close" title="Close (Esc / J)">✕</button>
       </div>
       <div class="body">
         <div class="grid">
@@ -235,6 +235,12 @@
     display: flex;
     gap: 4px;
     flex-wrap: wrap;
+  }
+  .head .modal-x {
+    margin-left: auto;
+  }
+  .head .hint {
+    flex-basis: 100%;
   }
   .tabs .on {
     border-color: var(--accent);

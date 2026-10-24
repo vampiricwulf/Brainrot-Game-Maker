@@ -15,7 +15,7 @@
   import { activeParty, DIR_VEC, findIn, focusRef, occupiedScreens, screenElements, screenSlide, worldById } from '../../lib/rpg';
   import { wornItems } from '../../lib/toolset';
   import { dragGhost, dropHover, dropTarget } from '../dragdrop.svelte';
-  import { avatarRange, avatarSpot, groupDelta, objectRange, wayOffEdge, type AvatarDrop, type GroupItem } from './hostops';
+  import { avatarRange, avatarSpot, groupDelta, objectName, objectRange, wayOffEdge, type AvatarDrop, type GroupItem } from './hostops';
   import MapView from './MapView.svelte';
   import MusicPlayer from './MusicPlayer.svelte';
   import StatsStrip from './StatsStrip.svelte';
@@ -347,8 +347,8 @@
           if (e.detail === 0) onobject(el.id);
         }}
         aria-pressed={hostCopy ? selectedObjects.includes(el.id) : undefined}
-        aria-label="Object: {el.name || el.role?.class}"
-        title="{el.name || el.role?.class}: click for its card, Shift+click to select it (selected players and objects drag together), drag to move it{el.role?.class === 'item' || el.role?.class === 'currency' ? ' (onto a player: they pick it up)' : ''}"
+        aria-label="Object: {objectName(el)}"
+        title="{objectName(el)}: click for its card, Shift+click to select it (selected players and objects drag together), drag to move it{el.role?.class === 'item' || el.role?.class === 'currency' ? ' (onto a player: they pick it up)' : ''}"
       ></button>
     {/each}
   {/if}

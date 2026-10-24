@@ -78,7 +78,7 @@
   } from './rpg/hostops';
   import { showMenu, type MenuEntry } from '../lib/menustate.svelte';
   import { currentPlayer, ensureBoard, waysNow, waysOn } from '../lib/boardgame';
-  import { ensureWorld, override, refindPositions } from '../lib/rpg';
+  import { ensureWorld, focusRef, override, refindPositions } from '../lib/rpg';
   import { boardNow, moveCounts, moveNow, moverResult, moverSliceNoNumber, rollMover, runSpace, sendNow, setTurn, stepWaysHint, turnNow } from './boardgame/bgops';
   import { boardEdit, editDelete, editDisconnect, editIdle, setEditing } from './boardgame/boardedit.svelte';
   import { playerMenu } from './playermenu';
@@ -660,6 +660,26 @@
       if (gone(o?.kind)) app.live.overlay = null;
       // The scores over one of them stay up, but closing them doesn't bring it back in the new round.
       else if (o?.kind === 'scoreboard' && gone(o.under?.kind)) o.under = undefined;
+    });
+  });
+  // The followed party moving on (the keys, the pad, the map, a doorway, a drag) closes a shop or a pop-up left up on
+  // stream, as a new round does. Not one the same step opened beside its move (a pop-up, then Go to Cellar): that one is new.
+  let overlayAt = untrack(() => ({ nonce: app.live.overlay?.nonce, screen: rpgScreen() }));
+  function rpgScreen(): string | undefined {
+    const { st } = rpgNow(game, session);
+    return st ? focusRef(st)?.screen : undefined;
+  }
+  $effect(() => {
+    const nonce = app.live.overlay?.nonce;
+    const screen = rpgScreen();
+    untrack(() => {
+      const moved = nonce === overlayAt.nonce && screen !== overlayAt.screen && !!screen && !!overlayAt.screen;
+      overlayAt = { nonce, screen };
+      if (!moved) return;
+      const o = app.live.overlay;
+      const left = (k?: string) => k === 'shop' || k === 'popup';
+      if (left(o?.kind)) app.live.overlay = null;
+      else if (o?.kind === 'scoreboard' && left(o.under?.kind)) o.under = undefined;
     });
   });
   /**

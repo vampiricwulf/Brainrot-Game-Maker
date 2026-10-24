@@ -9,6 +9,7 @@ import {
   adoptAdded,
   override,
   copyLook,
+  DIAGONALS_OFF,
   carryObjects,
   screenSlide,
   ensureWorld,
@@ -119,6 +120,10 @@ describe('RPG: moving', () => {
     expect(pa.x).toBe(pb.x);
     expect(Math.abs(pa.y - pb.y)).toBeGreaterThanOrEqual(150);
     expect(step(game, st, world, 'n')).toMatch(/Nothing to the north/);
+    // A diagonal on a map without diagonal moves says so, though a screen is there.
+    world.maps[0].diagonals = false;
+    expect(step(game, st, world, 'sw')).toBe(DIAGONALS_OFF);
+    world.maps[0].diagonals = true;
     world.maps[0].screens[1].exits = { e: { kind: 'blocked', note: 'Lava' } };
     expect(step(game, st, world, 'e')).toBe('Blocked: Lava');
   });

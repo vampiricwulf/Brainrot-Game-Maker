@@ -442,7 +442,8 @@
     <div class="row conv">
       <input class="num" type="number" min="0" placeholder="Amt" bind:value={convertAmt} aria-label="Amount to convert" />
       {#if currencies.length > 1}
-        <select class="tiny" bind:value={convertField} aria-label="Currency">
+        <!-- Shows the one the buttons use (the first, until another is picked). -->
+        <select class="tiny" value={cf?.id} onchange={(e) => (convertField = e.currentTarget.value)} aria-label="Currency">
           {#each currencies as c (c.id)}<option value={c.id}>{c.name}</option>{/each}
         </select>
       {/if}

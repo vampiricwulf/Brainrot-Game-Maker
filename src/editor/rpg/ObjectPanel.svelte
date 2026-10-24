@@ -108,7 +108,7 @@
           <select bind:value={r.arrive} aria-label="Arrive at">
             <option value={undefined}>The screen’s arrival point (or the middle)</option>
             {#if r.arrive && !target.screen.slide.elements.some((e) => e.id === r.arrive)}<option value={r.arrive}>⚠ Deleted object — pick another</option>{/if}
-            {#each target.screen.slide.elements.filter((e) => e.name || e.role) as o (o.id)}<option value={o.id}>{o.name || o.role?.class}</option>{/each}
+            {#each target.screen.slide.elements.filter((e) => e.name || e.role) as o (o.id)}<option value={o.id}>{o.name || classLabel(o.role?.class)}</option>{/each}
           </select>
         </label>
       {/if}

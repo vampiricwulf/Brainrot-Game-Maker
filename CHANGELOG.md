@@ -25,6 +25,13 @@ in plain words for the people who make and host games. Anything committed but no
 - The slice a 🎭 deal's card drew (the place, the prompt) is the card's big line in the 🪟 card window, and on phones for a deal with no parts (🧠 Everyone's own prompt), over “The location:” or “Your secret prompt:”. It was the smallest line on the card.
 - 🎭 Deal… says what became of its cards: “Its cards went when that round ended” (📤 Send puts them out again for this round) or “Its cards are taken back”, not “Its cards are back (or over)”. A screen reader hears “Odd one out: 2 cards sent” (or “1 card sent”), without “one to each player” when some dealt in have no part.
 - A 🤫 card open on a phone stays readable when ↻ Send again moves it to the top. In browsers built on Chromium 141 it went blank. A buzzer server you run yourself needs deploying again for this.
+- RPG rounds: moving the party viewers follow to another screen (the keys, the pad, the map, a doorway, a drag) closes a shop or an object's pop-up (a 💬 Talk slide, a question) left up on stream, as a new round does. Viewers kept seeing the shop over the stage and never saw the move.
+- RPG rounds: a diagonal key on a map without diagonal moves says “Diagonal moves are off on this map (Map settings › Diagonal moves)”, and so does the pad's tooltip, instead of “Nothing to the north-west” with a screen right there on the map.
+- RPG rounds name an object's class in words: “Undid Spikes: Character” (not “npc”), “Object: Character” on the stage for an unnamed one, and “Character” in a doorway's Arrive at list.
+- Picking up says what was got: “✋ Ann picks up 🪙15 of 🪙30” when only that fits under her max, “3 × Potion” (not “3 Potion”), and “Player 1 picks up 3 × Potion (Treasure)” in the toast and Last:, not just the object's name.
+- With two currencies, a player card's currency list shows the one its Score → buttons convert, instead of a blank.
+- With phone buzzers in teams, the RPG host panel's fold reads “Teams: stats & inventory” (the board game's: “Teams”), as the rest of the panel does.
+- One window: the RPG's ⤢ Full map over the host panel keeps its ✕ at the top right, its hint on a line of its own under the title. The ✕ sat alone on a third line at the left.
 
 ## 2026-10-24
 

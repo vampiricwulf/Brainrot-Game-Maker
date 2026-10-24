@@ -429,7 +429,7 @@
       {/if}
       <span class="spacer"></span>
       {#if recent}<button class="muted small last" onclick={onhistory} title="Ctrl+Z undoes it · click for the whole history">Last: {recent.text}</button>{/if}
-      <button class="ghost small" onclick={() => (playerCards.open = !showPlayers)} aria-expanded={showPlayers}>{showPlayers ? '▾' : '▸'} Players</button>
+      <button class="ghost small" onclick={() => (playerCards.open = !showPlayers)} aria-expanded={showPlayers}>{showPlayers ? '▾' : '▸'} {ctx.teams ? 'Teams' : 'Players'}</button>
     </div>
     {#if showPlayers}
       <div class="cards">

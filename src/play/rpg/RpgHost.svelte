@@ -15,7 +15,7 @@
   import { offerIn } from '../host/offered.svelte';
   import { newId, newImageEl, type Dir8, type Game, type Party, type Screen, type ScreenRef, type Session, type Slide } from '../../lib/model';
   import {
-    activeParty, addScreenBeside, classLabel, occupiedScreens, DIR_ARROW, DIR_NAME, DIR_VEC, DIRS, exitOf, findIn, focusRef, keepScreen, moveTo, nameParty, carryObjects, copyLook, screenElements, screenAt,
+    activeParty, addScreenBeside, classLabel, DIAGONALS_OFF, occupiedScreens, DIR_ARROW, DIR_NAME, DIR_VEC, DIRS, exitOf, findIn, focusRef, keepScreen, moveTo, nameParty, carryObjects, copyLook, screenElements, screenAt,
     screenSlide,
   } from '../../lib/rpg';
   import LiveScreenEditor from './LiveScreenEditor.svelte';
@@ -499,7 +499,7 @@
               class:blocked={e.kind === 'blocked'}
               disabled={e.kind === 'none'}
               onclick={() => go(d)}
-              title="{DIR_NAME[d]}: {dest ? dest.screen.name : e.kind === 'blocked' ? `blocked${e.note ? ` (${e.note})` : ''}` : 'nothing there'}"
+              title="{DIR_NAME[d]}: {dest ? dest.screen.name : e.kind === 'blocked' ? `blocked${e.note ? ` (${e.note})` : ''}` : d.length === 2 && !here.map.diagonals ? DIAGONALS_OFF : 'nothing there'}"
               aria-label="Go {DIR_NAME[d]}">{e.kind === 'blocked' ? '🚫' : DIR_ARROW[d]}</button
             >
           {:else if d}
@@ -580,7 +580,7 @@
 
     <div class="row who">
       <button class="ghost small" onclick={() => (playerCards.open = !showPlayers)} aria-expanded={showPlayers}>
-        {showPlayers ? '▾' : '▸'} Players: stats & inventory
+        {showPlayers ? '▾' : '▸'} {ctx.teams ? 'Teams' : 'Players'}: stats & inventory
       </button>
       {#each session.players as pl, i (pl.id)}
         {@const on = selected.includes(pl.id)}

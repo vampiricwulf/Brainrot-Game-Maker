@@ -386,7 +386,8 @@ interface ScreenRef { map: Id; screen: Id }
 - **Neighbors come from the grid.** The screen at (col+1, row) is east, (col+1, row+1) is south-east, and so on.
   Only the exceptions are stored: a blocked side, or a side that leads somewhere else (a Side Warp).
 - **Diagonals:** each map chooses whether diagonal moves are available: always, only where set, or never. The default
-  is "only where both sides aren't blocked".
+  is "only where both sides aren't blocked". On a map without them, a diagonal key (and the pad's tooltip) says
+  diagonal moves are off there.
 - **Wrapping edges** (for a Lost Woods effect) are a per-map option.
 
 ### 7.3 Object classes
@@ -596,7 +597,7 @@ interface Shop {
 
 - **Open shop:** available from a shop or NPC object, or from the Shop menu at any time. The audience sees a shop
   overlay: item icons, names, prices and "sold out", in the theme's style. The host sees the same list with buy
-  buttons.
+  buttons. Moving the party viewers follow to another screen closes it (and an object's pop-up), as a new round does.
 - **Buying:**
   1. The host picks the player (or the player wheel picks one) and the item.
   2. The action card previews it: "Failboat: 15g → 3g, gets Flamingo".

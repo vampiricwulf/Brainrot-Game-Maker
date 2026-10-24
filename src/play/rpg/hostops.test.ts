@@ -240,7 +240,11 @@ describe('objects and items on the RPG stage', () => {
     const { game, session, st, potion, gold } = withLoot();
     expect(pickUp(game, session, st, potion, 'p1')).toBe('Bob picks up Potion');
     expect(inventory(session, 'p1').map((e) => [e.item, e.qty])).toEqual([['potion', 1]]);
-    pickUp(game, session, st, gold, 'p1');
+    // It says what they got, and the object's name when that's something else.
+    const chest = { ...potion, id: 'chest', name: 'Treasure', role: { ...potion.role, qty: 3 } };
+    expect(pickUp(game, session, st, chest, 'p1')).toBe('Bob picks up 3 × Potion (Treasure)');
+    game.statFields![0].symbol = '🪙';
+    expect(pickUp(game, session, st, gold, 'p1')).toBe('Bob picks up 🪙5 (Gold)');
     expect(statNumber(game, session, 'p1', currencyFields(game)[0])).toBe(5);
     expect(st.objects[gold.id].taken).toBe(true);
     undoAction(session, game);
