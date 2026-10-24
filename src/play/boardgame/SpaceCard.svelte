@@ -10,6 +10,7 @@
   import { teamsOn } from '../../lib/buzz';
   import { buzzerOn } from '../../lib/remote.svelte';
   import type { Action, BoardGameRound, BoardGameState, BoardSpace, Game, Session } from '../../lib/model';
+  import { spaceSaid } from '../../lib/boardgame';
   import { nameList } from '../../lib/session';
   import { logged } from '../../lib/toolset';
   import { decidingAction, playerName, runSpace, sendNow } from './bgops';
@@ -23,6 +24,7 @@
     bs,
     selected,
     turnId,
+    dual,
     onclose,
   }: {
     game: Game;
@@ -33,6 +35,8 @@
     selected: string[];
     /** Whose turn it is (the buttons are for them when nobody is selected). */
     turnId: string | undefined;
+    /** An audience window is open. In one window (on stream), toasts and the log say “? (secret)” for a secret space not revealed yet. */
+    dual: boolean;
     onclose: () => void;
   } = $props();
 
@@ -46,7 +50,8 @@
 
   function run(a: Action, on: 'land' | 'pass'): void {
     if (needsPlayers(a) && !who.length) return void toast('Pick who it’s for first');
-    toast(runAction({ game, session, live: app.live, board: round, bs, selected, chosen: who, teams, offerCard: offerIn(session) }, a, `${space.name}: ${describeAction(game, a, on, teams)}`), 3000);
+    const label = `${spaceSaid(bs, space, !dual)}: ${describeAction(game, a, on, teams, dual ? undefined : bs)}`;
+    toast(runAction({ game, session, live: app.live, board: round, bs, hide: !dual, selected, chosen: who, teams, offerCard: offerIn(session) }, a, label), 3000);
   }
 
   function reveal(): void {
@@ -76,7 +81,7 @@
       <span class="muted small">Landing on it{who.length ? ` (${whoNames})` : ''}:</span>
       {#each space.onLand as a (a.id)}<button class="small" onclick={() => run(a, 'land')}>{describeAction(game, a, 'land', teams)}</button>{/each}
       {#if space.onLand.length > 1}
-        <button class="small" onclick={() => toast(runSpace(game, session, app.live, space, who), 3000)} title={space.onLand.some(decidingAction) ? 'Its roll (or spin, or question) first: then press the outcome it comes to' : 'Every landing action, in order'}
+        <button class="small" onclick={() => toast(runSpace(game, session, app.live, space, who, 'onLand', !dual), 3000)} title={space.onLand.some(decidingAction) ? 'Its roll (or spin, or question) first: then press the outcome it comes to' : 'Every landing action, in order'}
           >▶ {space.onLand.some(decidingAction) ? 'Start' : 'Run all'}</button
         >
       {/if}
@@ -90,7 +95,7 @@
   {/if}
   {#if !space.onLand?.length && !space.onPass?.length}<span class="muted small">No buttons on this space.</span>{/if}
   <div class="row">
-    <button class="small" disabled={!who.length || who.every((id) => bs.positions[id]?.space === space.id)} onclick={() => sendNow(game, session, who, { space: space.id })}>
+    <button class="small" disabled={!who.length || who.every((id) => bs.positions[id]?.space === space.id)} onclick={() => sendNow(game, session, who, { space: space.id }, !dual)}>
       📍 Put {selected.length ? `the selected (${selected.length})` : playerName(session, turnId)} here
     </button>
     <span class="muted small">or drag a token onto it</span>

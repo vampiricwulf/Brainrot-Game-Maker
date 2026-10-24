@@ -30,7 +30,8 @@ const board = {
   spaces: [
     sp('b1', 'Start', 300, 300, ['b2']),
     sp('b2', 'Space 2', 650, 300, ['b3']),
-    sp('b3', 'Space 3', 1000, 300, ['b4']),
+    // (Back 3 from here is the secret space.)
+    sp('b3', 'Space 3', 1000, 300, ['b4'], { onLand: [{ id: 'k3', do: 'steps', steps: -3 }] }),
     sp('b4', 'Nap time', 1400, 300, ['b5']),
     // A question worth 100, and a secret space with a button.
     sp('b5', 'Space 5', 1400, 700, ['b6'], { onLand: [{ id: 'q1', do: 'question', question: words('Capital of France?'), answer: words('Paris'), value: 100 }] }),
@@ -218,21 +219,33 @@ try {
   await page.keyboard.press('1');
   await page.keyboard.press('Enter');
   assert((await card('Ann')).includes('$100'), 'then 1, Enter: Ann gets the 100');
-  await page.keyboard.press('Escape');
   // A secret space, in one window (the panel is on stream): the panel and the toast say “?” until it's revealed, and its
-  // buttons are logged with its name (as from its card) once it is.
+  // buttons are logged with its name (as from its card) once it is. Bob's turn, the question still up from Ann's: Enter
+  // moves him, as the main button says, and takes it down.
   await page.keyboard.press('n');
   await page.getByLabel('Steps').fill('5');
-  await page.getByLabel('Steps').press('Enter');
+  await page.getByLabel('Steps').blur();
+  await page.keyboard.press('Enter');
   const acts = page.locator('.acts');
-  await acts.waitFor();
+  const moved = await acts.filter({ hasText: 'Landed on ?' }).waitFor({ timeout: 5000 }).then(() => true, () => false);
+  assert(moved, `Bob's turn, Ann's question still up: Enter moves him (${(await page.locator('.toast').allInnerTexts()).join(' | ') || 'nothing moved'})`);
   assert((await toast()) === 'Bob: Landed on ? (secret)' && (await acts.innerText()).includes('Landed on ? (secret):') && !(await acts.innerText()).includes('Trap Door'), `landing on the secret space: “? (secret)” in the toast and the panel (${(await acts.innerText()).replace(/\s+/g, ' ')})`);
+  await page.locator('.stage-box .ov').waitFor({ state: 'detached' });
   await acts.getByRole('button', { name: '+$100' }).click();
   assert((await toast()) === '? (secret): +$100: Bob', `its button, still secret: “${await toast()}”`);
+  // Sent there by a button (Space 3's Back 3 spaces), the same.
+  await page.keyboard.press('n');
+  await page.getByLabel('Steps').fill('4');
+  await page.getByLabel('Steps').blur();
+  await page.keyboard.press('Enter');
+  await acts.getByRole('button', { name: 'Back 3 spaces' }).click();
+  await acts.filter({ hasText: 'Landed on ? (secret)' }).waitFor();
+  assert((await toast()) === 'Space 3: Back 3 spaces: Ann · Landed on ? (secret)' && !(await acts.innerText()).includes('Trap Door'), `a space's Back 3 spaces onto it: “? (secret)” too (${await toast()})`);
   await acts.getByRole('button', { name: '👁 Reveal space' }).click();
   assert((await acts.innerText()).includes('Landed on Trap Door:'), 'revealed: the panel names it');
   await acts.getByRole('button', { name: '+$100' }).click();
-  assert((await toast()) === 'Trap Door: +$100: Bob', `and its button says whose it is: “${await toast()}”`);
+  assert((await toast()) === 'Trap Door: +$100: Ann', `and its button says whose it is: “${await toast()}”`);
+  await page.keyboard.press('n');
   await page.keyboard.press('n');
   await page.getByLabel('Send to').selectOption({ label: 'Nap time' });
 

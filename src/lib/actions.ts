@@ -1,7 +1,7 @@
 // Running actions (games-maker spec §7.10): the host pressed an object's, item's or wheel slice's button. State
 // changes go through toolset.logged() (undoable); show-only effects (wheels, pop-ups, sounds, timers) go to Live.
 import { formatPoints, newId, PLAYER_WHEEL, type Action, type BoardGameRound, type BoardGameState, type CardWho, type Game, type Session, type Slide, type Who, type World, type WorldState } from './model';
-import { movePlayer, sendTo, skipTurns, spaceById } from './boardgame';
+import { movePlayer, sendTo, skipTurns, spaceById, spaceSaid } from './boardgame';
 import { blip, playSound, startTimer, type Live } from './live';
 import { addWheel, openPlayerWheel, openWheel, playerWheelName, quickDice, rollDice } from './overlay';
 import { parseDice } from './tools';
@@ -21,6 +21,8 @@ export interface RunContext {
   /** Board-game rounds: the round and its state (sending players to spaces and zones). */
   board?: BoardGameRound;
   bs?: BoardGameState;
+  /** Board games in one window (the host panel is on stream): a move says “? (secret)” for a secret space not revealed yet. */
+  hide?: boolean;
   /** Players the host has selected (the 1–9 keys / chips). */
   selected: string[];
   /** Each player is a team (phone buzzers with Teams): the 🎯 wheel is "Pick a team" on screen. */
@@ -138,9 +140,10 @@ export function needsPlayers(a: Action): boolean {
 
 /**
  * A one-line description for buttons and the log ("HP −1", "Give 2 Potion"). `on`: where its button is (cardFor);
- * `teams`: each player is a team (the built-in wheel is "Pick a team").
+ * `teams`: each player is a team (the built-in wheel is "Pick a team"); `secretIn`: one window, the board's state, so a
+ * Send to a secret space not revealed yet in it says “? (secret)”.
  */
-export function describeAction(game: Game, a: Action, on?: ActionOn, teams = false): string {
+export function describeAction(game: Game, a: Action, on?: ActionOn, teams = false, secretIn?: BoardGameState): string {
   switch (a.do) {
     case 'stat': {
       const f = statFields(game).find((x) => x.id === a.field);
@@ -181,7 +184,8 @@ export function describeAction(game: Game, a: Action, on?: ActionOn, teams = fal
     case 'goto': {
       const round = game.rounds.find((r) => r.mode === 'boardgame' && (a.zone ? r.zones.some((z) => z.id === a.zone) : r.spaces.some((s) => s.id === a.space)));
       const board = round?.mode === 'boardgame' ? round : undefined;
-      return `Send to ${a.zone ? (board?.zones.find((z) => z.id === a.zone)?.name ?? 'a zone') : ((board && spaceById(board, a.space)?.name) ?? 'a space')}`;
+      const s = board && spaceById(board, a.space);
+      return `Send to ${a.zone ? (board?.zones.find((z) => z.id === a.zone)?.name ?? 'a zone') : s ? (secretIn ? spaceSaid(secretIn, s, true) : s.name) : 'a space'}`;
     }
     case 'steps': {
       const n = Math.abs(a.steps);
@@ -319,7 +323,7 @@ export function runAction(ctx: RunContext, a: Action, label?: string): string {
       const { board, bs } = ctx;
       let said = '';
       logged(session, `${text} (${names(ctx, who)})`, () => {
-        if (a.do === 'steps') said = moveEach(board, bs, who, Math.round(a.steps) || 0);
+        if (a.do === 'steps') said = moveEach(board, bs, who, Math.round(a.steps) || 0, !!ctx.hide);
         else if (a.do === 'skip') skipTurns(bs, who, a.turns ?? 1);
         else bs.again = who[0];
       });
@@ -340,9 +344,10 @@ export function runAction(ctx: RunContext, a: Action, label?: string): string {
 /**
  * Move each of `who` (a "Move ±N spaces", for one player or several). One at a time, but the board's shared state stays right:
  * the first fork any of them stopped at is the one to pick (a later move doesn't drop it), and the last move shown (the
- * mover's landing buttons, Roll again) stays the mover's, now made if they moved too. Returns the line for the log.
+ * mover's landing buttons, Roll again) stays the mover's, now made if they moved too. Returns what to tell the host
+ * (`hide`: one window, “? (secret)” for a secret space not revealed yet).
  */
-function moveEach(board: BoardGameRound, bs: BoardGameState, who: string[], steps: number): string {
+function moveEach(board: BoardGameRound, bs: BoardGameState, who: string[], steps: number, hide: boolean): string {
   const before = bs.last;
   // The mover's buttons from this turn (the spaces passed, and the one landed on: landing counts as passing) stay offered
   // after a "Back 3" from there, so a Start bonus passed on the way isn't lost by pressing that first.
@@ -351,7 +356,7 @@ function moveEach(board: BoardGameRound, bs: BoardGameState, who: string[], step
   let fork = bs.fork && !who.includes(bs.fork.playerId) ? bs.fork : undefined;
   const lastOf: Record<string, BoardGameState['last']> = {};
   const said = who.map((id) => {
-    const line = movePlayer(board, bs, id, steps);
+    const line = movePlayer(board, bs, id, steps, undefined, hide);
     if (bs.last && id === before?.playerId && kept.length) bs.last = { ...bs.last, passed: [...new Set([...kept, ...bs.last.passed])] };
     lastOf[id] = bs.last;
     fork ??= bs.fork;

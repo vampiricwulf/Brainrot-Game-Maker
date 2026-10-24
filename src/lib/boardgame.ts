@@ -102,6 +102,9 @@ export function spaceShown(round: BoardGameRound, bs: BoardGameState, id: Id | u
   return !s || (hide && unrevealed(bs, s)) ? '?' : s.name;
 }
 
+/** A space's name in what the host is told (toasts, the log). `hide`: in one window, a secret one not revealed yet is “? (secret)”. */
+export const spaceSaid = (bs: BoardGameState, s: BoardSpace | undefined, hide: boolean): string => (!s ? '?' : hide && unrevealed(bs, s) ? '? (secret)' : s.name);
+
 export function startSpace(round: BoardGameRound): BoardSpace | undefined {
   return spaceById(round, round.start) ?? round.spaces[0];
 }
@@ -393,10 +396,7 @@ export function movePlayer(round: BoardGameRound, bs: BoardGameState, playerId: 
   // Going back passes nothing (no Start bonus for being sent back past it, or onto it).
   const passed = steps > 0 ? [...new Set([...prevPassed, ...(w.fork ? w.path : w.path.slice(0, -1))])] : prevPassed;
   bs.last = { playerId, passed, landed: w.fork ? undefined : w.path.at(-1), turn: bs.turns ?? 0, ...(steps < 0 ? { back: true } : {}) };
-  const name = (id?: Id) => {
-    const s = spaceById(round, id);
-    return !s ? '?' : hide && unrevealed(bs, s) ? '? (secret)' : s.name;
-  };
+  const name = (id?: Id) => spaceSaid(bs, spaceById(round, id), hide);
   if (w.fork) return `At ${name(w.fork.at)}: which way? (${Math.abs(w.fork.stepsLeft)} to go)`;
   if (!w.path.length) return 'Nowhere to go from here';
   return `Landed on ${name(w.path.at(-1))}`;

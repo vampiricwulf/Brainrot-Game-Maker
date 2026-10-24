@@ -1,7 +1,7 @@
 // The board-game host's moves, shared by the host panel, the stage and the keyboard shortcuts. Every change is one
 // undoable step.
 import { describeAction, runAction } from '../../lib/actions';
-import { clampSteps, currentPlayer, moveInOrder, movePlayer, moverPreset, moverWheelNoNumbers, nextTurn, sendTo, spaceById, spaceShown, stepsIn } from '../../lib/boardgame';
+import { clampSteps, currentPlayer, moveInOrder, movePlayer, moverPreset, moverWheelNoNumbers, nextTurn, sendTo, spaceById, spaceSaid, spaceShown, stepsIn } from '../../lib/boardgame';
 import { isBoardGame, type Action, type BoardGameRound, type BoardGameState, type BoardSpace, type BoardZone, type Game, type Session } from '../../lib/model';
 import { nameList } from '../../lib/session';
 import { logged } from '../../lib/toolset';
@@ -63,10 +63,14 @@ export function stepWaysHint(round: BoardGameRound, bs: BoardGameState, ways: st
 /** The count each move was made with, by its undo step's id: an Undo of the move puts it back in the Steps box. */
 export const moveCounts = new Map<string, number>();
 
-/** Teleport players to a space or a zone (the ones not there already). Returns the log line. */
-export function sendNow(game: Game, session: Session, who: string[], to: { space?: string; zone?: string }): string | null {
+/**
+ * Teleport players to a space or a zone (the ones not there already). Returns the log line (`hide`: one window, a secret
+ * space not revealed yet is “? (secret)” in it).
+ */
+export function sendNow(game: Game, session: Session, who: string[], to: { space?: string; zone?: string }, hide = false): string | null {
   const { round, bs } = boardNow(game, session);
-  const where = to.zone ? round?.zones.find((z) => z.id === to.zone)?.name : round && spaceById(round, to.space)?.name;
+  const space = round && !to.zone ? spaceById(round, to.space) : undefined;
+  const where = to.zone ? round?.zones.find((z) => z.id === to.zone)?.name : space && bs && spaceSaid(bs, space, hide);
   const moving = who.filter((id) => (to.zone ? bs?.positions[id]?.zone !== to.zone : bs?.positions[id]?.space !== to.space));
   if (!bs || !where || !moving.length) return null;
   const text = `${nameList(moving.map((w) => playerName(session, w)))} → ${where}`;
@@ -100,9 +104,9 @@ export function reorderTurns(game: Game, session: Session, from: number, to: num
 
 /**
  * Run a space's landing (or passing) actions for some players, as one step, as if they'd just landed there. Returns
- * what to tell the host.
+ * what to tell the host (`hide`: one window, a secret space not revealed yet is “? (secret)” in it, and in the log).
  */
-export function runSpace(game: Game, session: Session, live: Live, space: BoardSpace, who: string[], which: 'onLand' | 'onPass' = 'onLand'): string {
+export function runSpace(game: Game, session: Session, live: Live, space: BoardSpace, who: string[], which: 'onLand' | 'onPass' = 'onLand', hide = false): string {
   const { round, bs } = boardNow(game, session);
   const list = space[which] ?? [];
   if (!round || !bs || !list.length) return `${space.name} has no actions`;
@@ -111,10 +115,12 @@ export function runSpace(game: Game, session: Session, live: Live, space: BoardS
   const decides = list.find(decidingAction);
   const run = decides ? [decides] : list;
   let said: string[] = [];
-  const ctx = { game, session, live, board: round, bs, selected: who, chosen: who, teams: buzzerOn(game.settings) && teamsOn(game.settings), offerCard: offerIn(session) };
+  const ctx = { game, session, live, board: round, bs, hide, selected: who, chosen: who, teams: buzzerOn(game.settings) && teamsOn(game.settings), offerCard: offerIn(session) };
   const on = which === 'onPass' ? 'pass' : 'land';
-  logged(session, `${space.name}: ${run.map((a) => describeAction(game, a, on, ctx.teams)).join(', ')}`, () => {
-    said = run.map((a) => runAction(ctx, a, `${space.name}: ${describeAction(game, a, on, ctx.teams)}`));
+  const where = spaceSaid(bs, space, hide);
+  const what = (a: Action) => describeAction(game, a, on, ctx.teams, hide ? bs : undefined);
+  logged(session, `${where}: ${run.map(what).join(', ')}`, () => {
+    said = run.map((a) => runAction(ctx, a, `${where}: ${what(a)}`));
   });
   return decides ? `${said.join(' · ')}: then press the outcome` : said.join(' · ');
 }

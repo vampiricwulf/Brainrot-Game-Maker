@@ -43,6 +43,7 @@
     st,
     board,
     bs,
+    hide = false,
     selected,
     ontoggle,
   }: {
@@ -55,6 +56,8 @@
     /** Board-game rounds: for items whose "Use" sends players somewhere. */
     board?: BoardGameRound;
     bs?: BoardGameState;
+    /** Board games in one window (on stream): a secret space not revealed yet is “? (secret)” in what a Use says. */
+    hide?: boolean;
     selected: string[];
     ontoggle: () => void;
   } = $props();
@@ -146,6 +149,7 @@
       st,
       board,
       bs,
+      hide,
       selected,
       chosen: [p.id],
       teams,
@@ -157,7 +161,7 @@
     // One undoable step: what it does, and using it up (only when it did something: "Pick who it's for first" keeps it).
     logged(session, `${name} uses ${def.name}`, () => {
       const before = JSON.stringify([session, app.live]);
-      said = actions.map((a) => runAction(ctx, a, `${name} uses ${def.name}: ${describeAction(game, a, 'use', teams)}`));
+      said = actions.map((a) => runAction(ctx, a, `${name} uses ${def.name}: ${describeAction(game, a, 'use', teams, hide ? bs : undefined)}`));
       did = offered || JSON.stringify([session, app.live]) !== before;
       if (did && !def.wearable) change(entryId, `used ${def.name}`, (list, i) => (list[i].qty > 1 ? list[i].qty-- : list.splice(i, 1)));
     });
@@ -408,7 +412,7 @@
       </div>
       {#if using === e.id && def?.onUse?.length}
         <InlineAsk
-          text="{name} uses {def.name}: {def.onUse.map((a) => describeAction(game, a, 'use', teams)).join(', ')}. {def.wearable ? 'Use it?' : 'Use it up?'}"
+          text="{name} uses {def.name}: {def.onUse.map((a) => describeAction(game, a, 'use', teams, hide ? bs : undefined)).join(', ')}. {def.wearable ? 'Use it?' : 'Use it up?'}"
           ok="Use"
           onok={() => use(e.id)}
           oncancel={() => (using = null)}

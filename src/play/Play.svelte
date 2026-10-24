@@ -2981,12 +2981,12 @@
           {
             label: `📍 Put ${them} here`,
             disabled: !movers.length || movers.every((m) => bs.positions[m]?.space === sp.id),
-            onclick: () => sendNow(game, session, movers, { space: sp.id }),
+            onclick: () => sendNow(game, session, movers, { space: sp.id }, !dual),
           },
           {
             label: `▶ Run its landing actions for ${them}`,
             disabled: !movers.length || !sp.onLand?.length,
-            onclick: () => toast(runSpace(game, session, app.live, sp, movers), 3000),
+            onclick: () => toast(runSpace(game, session, app.live, sp, movers, 'onLand', !dual), 3000),
           },
           {
             label: '👁 Reveal this space',
@@ -3043,7 +3043,7 @@
   /** A token was clicked (selected), or dragged onto a space or a zone (sent there, with the rest of the selection). */
   function tokenAct(id: string, to?: { space?: string; zone?: string }): void {
     if (!to) return void toggleSelect(id);
-    const said = sendNow(game, session, selected.includes(id) ? selected : [id], to);
+    const said = sendNow(game, session, selected.includes(id) ? selected : [id], to, !dual);
     if (said) toast(said, 3000);
   }
 
@@ -3645,10 +3645,13 @@
 
   // A question from a card's action ("worth 100"): its value goes in the Amount box, as a tile's does when it opens.
   let popupNonce = '';
+  /** The board-game turn the question came up on (Enter judges it on that turn only: see boardEnter). */
+  let popupTurn = '';
   $effect(() => {
     const o = app.live.overlay;
     if (o?.kind !== 'popup' || o.nonce === popupNonce) return;
     popupNonce = o.nonce;
+    popupTurn = untrack(() => bgAmountKey);
     if (typeof o.value === 'number') untrack(() => (amount = o.value!));
   });
 
@@ -3767,9 +3770,10 @@
   function boardEnter(): boolean {
     const { round, bs } = boardNow(game, session);
     if (!round || !bs) return false;
-    // A space's question up (worth points, or with an answer): Enter judges whoever answered, as on a clue.
+    // A space's question up (worth points, or with an answer): Enter judges whoever answered, as on a clue. (Not one
+    // left up from an earlier turn: Enter moves the next player, as the main button says.)
     const q = toolOverlay(app.live);
-    if (q?.kind === 'popup' && (typeof q.value === 'number' || !!q.answer)) return false;
+    if (q?.kind === 'popup' && (typeof q.value === 'number' || !!q.answer) && popupTurn === bgAmountKey) return false;
     if (bs.fork) {
       hint(`${playerName(session, bs.fork.playerId)} is at a fork: pick the way first (on the stage, or in the host panel)`);
       return true;

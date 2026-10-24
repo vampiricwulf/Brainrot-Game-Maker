@@ -185,6 +185,27 @@ describe('board game: the host’s moves on the stage', () => {
     expect(moveNow(game, session, 2, undefined, 'c', true)).toBe('Cat: Landed on Trap Door');
   });
 
+  it('one window: a space’s button, a send or a drop onto a secret space says “? (secret)” too, in the toast and the log', () => {
+    const { game, session, round, bs } = playing();
+    const trap = Object.assign(round.spaces[2], { name: 'Trap Door', secret: true });
+    const s5 = round.spaces[4];
+    s5.onLand = [{ id: 'k', do: 'steps', steps: -2 }];
+    sendNow(game, session, ['a'], { space: s5.id });
+    expect(runSpace(game, session, newLive(), s5, ['a'], 'onLand', true)).toBe('Space 5: Back 2 spaces: Ann · Landed on ? (secret)');
+    expect(runAction({ game, session, live: newLive(), board: round, bs: bs(), hide: true, selected: [], chosen: ['b'] }, { id: 'f', do: 'steps', steps: 2 })).toBe('Forward 2 spaces: Bob · Landed on ? (secret)');
+    // A Send to there: the button, its toast and the log.
+    s5.onLand = [{ id: 'g', do: 'goto', space: trap.id, who: 'ask' }];
+    expect(runSpace(game, session, newLive(), s5, ['c'], 'onLand', true)).toBe('Space 5: Send to ? (secret): Cat');
+    expect(session.actionLog?.at(-1)?.text).toBe('Space 5: Send to ? (secret)');
+    // A token dropped on it (or 📍 Send to).
+    sendNow(game, session, ['a'], { space: s5.id });
+    expect(sendNow(game, session, ['a'], { space: trap.id }, true)).toBe('Ann → ? (secret)');
+    // With an audience window, the names.
+    sendNow(game, session, ['a', 'b', 'c'], { space: s5.id });
+    expect(runSpace(game, session, newLive(), s5, ['c'])).toBe('Space 5: Send to Trap Door: Cat');
+    expect(sendNow(game, session, ['a'], { space: trap.id })).toBe('Ann → Trap Door');
+  });
+
   it('says whose turn it is in the history, going on or back', () => {
     const { game, session, bs } = playing();
     turnNow(game, session);
