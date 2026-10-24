@@ -216,11 +216,14 @@ function special(s: BoardSpace, kind: keyof typeof SPECIAL): void {
 export function loop20Round(name = 'Board game', game?: Game): BoardGameRound {
   const r = newBoardGameRound(name);
   const pts: [number, number][] = [];
-  // 7 across the top and bottom, 3 down each side: 20 spaces.
-  for (let i = 0; i < 7; i++) pts.push([300 + i * 220, 250]);
-  for (let i = 1; i <= 3; i++) pts.push([1620, 250 + i * 145]);
-  for (let i = 6; i >= 0; i--) pts.push([300 + i * 220, 830]);
-  for (let i = 3; i >= 1; i--) pts.push([300, 250 + i * 145]);
+  // 8 across the top and bottom, 2 down each side: 20 spaces, far enough apart down the sides for a name under one, and
+  // a token over one, to stay clear of the next.
+  const x = (i: number) => Math.round(300 + (i * 1320) / 7);
+  const y = (i: number) => Math.round(250 + (i * 580) / 3);
+  for (let i = 0; i < 8; i++) pts.push([x(i), 250]);
+  for (let i = 1; i <= 2; i++) pts.push([1620, y(i)]);
+  for (let i = 7; i >= 0; i--) pts.push([x(i), 830]);
+  for (let i = 2; i >= 1; i--) pts.push([300, y(i)]);
   r.spaces = pts.map(([x, y], i) => newBoardSpace(x, y, i === 0 ? 'Start' : `Space ${i + 1}`, i === 0 ? '#ffcc00' : SPACE_COLORS[i % SPACE_COLORS.length]));
   r.spaces.forEach((s, i) => (s.next = [r.spaces[(i + 1) % r.spaces.length].id]));
   r.spaces[0].onPass = [act({ do: 'score', amount: 200, who: 'party' })];
@@ -240,7 +243,7 @@ export function loop20Round(name = 'Board game', game?: Game): BoardGameRound {
   return r;
 }
 
-/** A winding path from Start to Finish: first one there wins. */
+/** A winding path from Start to Finish (both named on the board, Finish with a 🏆): first one there wins. */
 export function raceRound(name = 'Race'): BoardGameRound {
   const r = newBoardGameRound(name);
   const pts: [number, number][] = [];
@@ -249,6 +252,13 @@ export function raceRound(name = 'Race'): BoardGameRound {
   for (let i = 0; i < 6; i++) pts.push([260 + i * 280, 820]);
   r.spaces = pts.map(([x, y], i) => newBoardSpace(x, y, i === 0 ? 'Start' : i === pts.length - 1 ? 'Finish' : `Space ${i + 1}`, i === 0 || i === pts.length - 1 ? '#ffcc00' : SPACE_COLORS[i % SPACE_COLORS.length]));
   r.spaces.forEach((s, i) => (s.next = r.spaces[i + 1] ? [r.spaces[i + 1].id] : []));
+  const finish = r.spaces[r.spaces.length - 1];
+  setNameShown(r.spaces[0], true);
+  setNameShown(finish, true);
+  finish.mark = '🏆';
+  // (The most points wins the game: the winner's points make them its winner.)
+  finish.onLand = [act({ do: 'score', amount: 500, who: 'party' })];
+  finish.hostNotes = 'First one here wins: give them its +500 (the most points wins the game)';
   [5, 13].forEach((i) => special(r.spaces[i], 'back'));
   special(r.spaces[9], 'again');
   special(r.spaces[15], 'skip');

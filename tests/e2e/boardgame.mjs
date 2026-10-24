@@ -240,6 +240,13 @@ try {
   assert((await spaces.count()) === 12, 'and they go again');
   await space('Start').click();
 
+  // Move by › ＋ Add wheel…: its slices say how far (1 to 6), not “Option 1”…
+  await page.getByLabel('Move by').selectOption('new-wheel');
+  const wheelPop = page.getByRole('dialog', { name: 'Wheel' });
+  await wheelPop.waitFor();
+  const slices = await wheelPop.getByLabel('Slice label').evaluateAll((els) => els.map((e) => e.value));
+  assert(slices.join() === '1,2,3,4,5,6', `Move by › ＋ Add wheel… makes a wheel of 1 to 6 (${slices.join(', ')})`);
+  await wheelPop.getByRole('button', { name: 'Close' }).click();
   // Move by › ＋ Add dice…: the box says Dice (not "＋ Add dice…"), and the dice stay linked when renamed.
   await page.getByLabel('Move by').selectOption('new-dice');
   const dicePop = page.getByRole('dialog', { name: 'Dice' });

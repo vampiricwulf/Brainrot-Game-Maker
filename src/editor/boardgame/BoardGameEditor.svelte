@@ -28,7 +28,8 @@
   import MediaPicker from '../slide/MediaPicker.svelte';
   import { fittingFile, hasFiles, isGameDrop, mediaDrop, useFile } from '../../lib/mediadrop';
   import SlideEditor from '../slide/SlideEditor.svelte';
-  import ToolPopup, { newTool } from '../tools/ToolPopup.svelte';
+  import ToolPopup, { freeName, newTool } from '../tools/ToolPopup.svelte';
+  import { newWheel } from '../../lib/tools';
 
   let { round }: { round: BoardGameRound } = $props();
   const game = $derived(app.game);
@@ -58,7 +59,8 @@
   /** ＋ Add wheel… / ＋ Add dice… in Move by: make one, move by it (one step), and open it. */
   function newMover(kind: 'wheel' | 'dice'): void {
     if (kind === 'wheel') {
-      const w = newTool('wheel');
+      // (Slices that say how far, not “Option 1”…: the steps are read from them.)
+      const w = newWheel(freeName('Wheel', game.wheels), ['1', '2', '3', '4', '5', '6']);
       step(`Move by: new wheel “${w.name}”`, () => {
         game.wheels.push(w);
         round.mover = { kind: 'wheel', wheel: w.id };

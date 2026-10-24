@@ -4,7 +4,7 @@ import { isBoard, isBoardGame, isRpg, newGame } from './model';
 import { slideHasContent } from './usage';
 import { validate } from './validate';
 import { goToRound, newSession } from './session';
-import { movePlayer, nameShown, spaceKindOf, startSpace, walk } from './boardgame';
+import { movePlayer, nameShown, rimSpots, spaceKindOf, startSpace, tokenRadius, walk } from './boardgame';
 import { runAction } from './actions';
 import { newLive } from './live';
 import { statNumber } from './toolset';
@@ -125,6 +125,32 @@ describe('round templates', () => {
     healing.items = [{ id: 'own', name: 'Sword', stackable: false, onUse: [{ id: 'u', do: 'stat', field: hp.id, op: 'add', amount: 2, who: 'ask' }] }];
     TEMPLATES.find((t) => t.label === 'Mini quest')!.make(healing);
     expect(healing.worlds![0].maps[0].screens[2].hostNotes).toMatch(/Use: HP \+2\)/);
+  });
+
+  it('the board templates: every name shown is clear of the other spaces, and a token on a space is over that space only', () => {
+    for (const label of ['20-space loop', 'Race to the finish']) {
+      const r = TEMPLATES.find((t) => t.label === label)!.make(newGame());
+      if (!isBoardGame(r)) throw new Error('not a board game');
+      // (A space is 116 px across; its name sits under it, 6 px down, about 40 px tall at 30 px; a lone token is drawn
+      // over its top, as BoardSpaces and the stage draw them.)
+      const into = (o: { x: number; y: number }, l: number, t: number, rt: number, b: number) => Math.hypot(o.x - Math.max(l, Math.min(o.x, rt)), o.y - Math.max(t, Math.min(o.y, b))) < 58;
+      const [tok] = rimSpots(1, tokenRadius(1));
+      for (const s of r.spaces) {
+        const others = r.spaces.filter((o) => o !== s);
+        const w = s.name.length * 18 + 20;
+        if (nameShown(s)) expect(others.filter((o) => into(o, s.x - w / 2, s.y + 64, s.x + w / 2, s.y + 104)).map((o) => o.name), `${label}: under ${s.name}`).toEqual([]);
+        expect(others.filter((o) => Math.hypot(o.x - (s.x + tok.dx), o.y - (s.y + tok.dy)) < 58).map((o) => o.name), `${label}: a token on ${s.name}`).toEqual([]);
+      }
+    }
+  });
+
+  it('the race names Start and Finish on the board, and Finish (🏆) gives the first one there points: the most points wins the game', () => {
+    const r = TEMPLATES.find((t) => t.label === 'Race to the finish')!.make(newGame());
+    if (!isBoardGame(r)) throw new Error('not a board game');
+    const finish = r.spaces.find((s) => s.name === 'Finish')!;
+    expect([nameShown(startSpace(r)!), nameShown(finish), finish.mark, finish.next]).toEqual([true, true, '🏆', []]);
+    expect(finish.onLand).toEqual([expect.objectContaining({ do: 'score', amount: 500, who: 'party' })]);
+    expect(finish.hostNotes).toMatch(/First one here wins/);
   });
 
   it('the 20-space loop goes round, and its “back 3” spaces send players back', () => {
