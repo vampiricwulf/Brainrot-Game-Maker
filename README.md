@@ -258,7 +258,7 @@ no phone here, 📵, to copy theirs). ↻ Send again and ✖ Take back work on t
 everyone's part on screen when you choose (a click on it, Esc or Ctrl+Z takes it off, and so does opening a tile or
 the tiebreaker, going to another round, or the Final going on).
 A player on a computer opens the same link: `Space` (or `Enter`) buzzes, `1`–`9` pick their seat or team, `Esc` goes back, and the page says when another window (the stream, say) has the keyboard. The room stays open
-through the pre-game screen, a reload of it, **◀ Back to editor**, **Exit › Keep & leave** (Resume goes back into it)
+through the pre-game screen, a reload of it or of the game (▶ Resume it on the pre-game screen goes back into it, unless a phone joined a room started there), **◀ Back to editor**, **Exit › Keep & leave** (Resume goes back into it)
 and **▶ Next game…** (▶ Play asks to keep it for another game, which then has its players, and Teams on if it was); it closes with **Exit › Discard & leave**, when you leave the results screen any other way than
 ▶ Next game…, with **✕ Close the room**, or when Buzzer mode is turned off (not by undoing, in the editor, the step ▶ Play
 made to turn it on for the room). The join code shows small in a corner of the stream

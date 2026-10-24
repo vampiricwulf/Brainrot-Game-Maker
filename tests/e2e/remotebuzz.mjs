@@ -27,14 +27,14 @@ await context.addInitScript(() => {
     const p = JSON.parse(localStorage.getItem('jb.prefs') || '{}');
     if (!p.buzzerServer) localStorage.setItem('jb.prefs', JSON.stringify({ ...p, v: 2, buzzerServer: 'https://buzz.test' }));
   } catch {}
-  const room = (window.__room = { sockets: [], sent: [], posts: 0, health: 0, refuse: '', offline: false, gone: 0 });
+  const room = (window.__room = { sockets: [], sent: [], posts: 0, health: 0, refuse: '', offline: false, gone: 0, code: 'BCDF' });
   const realFetch = window.fetch.bind(window);
   window.fetch = async (url, init) => {
     const u = String(url);
     if (u === 'https://buzz.test/api/rooms' && init?.method === 'POST') {
       room.posts++;
       if (room.refuse) return new Response(JSON.stringify({ error: room.refuse }), { status: 429, headers: { 'content-type': 'application/json' } });
-      return new Response(JSON.stringify({ code: 'BCDF', hostToken: 'secret-token' }), { status: 200, headers: { 'content-type': 'application/json' } });
+      return new Response(JSON.stringify({ code: room.code, hostToken: 'secret-token' }), { status: 200, headers: { 'content-type': 'application/json' } });
     }
     if (u === 'https://buzz.test/api/health') {
       room.health++;
@@ -47,6 +47,7 @@ await context.addInitScript(() => {
     constructor(url) {
       this.url = url;
       this.readyState = 0;
+      this.sent = [];
       this.onopen = this.onmessage = this.onclose = this.onerror = null;
       room.sockets.push(this);
       setTimeout(() => {
@@ -57,11 +58,12 @@ await context.addInitScript(() => {
         }
         this.readyState = 1;
         this.onopen?.({});
-        this.onmessage?.({ data: JSON.stringify({ t: 'welcome', code: 'BCDF', protocol: 1, serverNow: Date.now(), ...(room.features ? { features: room.features } : {}) }) });
+        this.onmessage?.({ data: JSON.stringify({ t: 'welcome', code: url.match(/\/ws\/(\w+)/)?.[1] ?? 'BCDF', protocol: 1, serverNow: Date.now(), ...(room.features ? { features: room.features } : {}) }) });
       }, 20);
     }
     send(d) {
       room.sent.push(JSON.parse(d));
+      this.sent.push(JSON.parse(d));
     }
     close() {
       this.readyState = 3;
@@ -716,7 +718,26 @@ try {
   await page.getByRole('button', { name: '▶ Play' }).click();
   await playThenReload();
   await page.getByRole('button', { name: '▶ Play' }).click();
-  await page.locator('.resume-card').waitFor();
+  const resumeCard = page.locator('.resume-card');
+  await resumeCard.getByText('Its phones wait in room BCDF').waitFor();
+  // A room started here that no phone joined doesn't take the game from its own: ▶ Resume it goes back to the phones
+  // waiting there (not told the game is over), and the empty one closes.
+  await page.evaluate(() => (window.__room.code = 'GHJK'));
+  await card.getByRole('button', { name: '▶ Start the room' }).click();
+  await card.getByLabel('Room code GHJK').waitFor();
+  assert(await resumeCard.getByText('Its phones wait in room BCDF').isVisible(), 'after a reload mid-game the pre-game screen says ▶ Resume it goes back to the game’s room, a room started here or not');
+  const from = await page.evaluate(() => window.__room.sockets.length);
+  await resumeCard.getByRole('button', { name: '▶ Resume it' }).click();
+  await page.waitForFunction((from) => window.__room.sockets.slice(from).some((s) => s.url.includes('/ws/BCDF') && s.sent.some((m) => m.t === 'state')), from);
+  await page.waitForFunction(() => window.__room.sockets.some((s) => s.url.includes('/ws/GHJK') && s.sent.some((m) => m.t === 'close')));
+  assert(
+    await page.evaluate((from) => !window.__room.sockets.slice(from).some((s) => s.url.includes('/ws/BCDF') && s.sent.some((m) => m.t === 'close' || (m.t === 'state' && m.state.over))), from),
+    'and it does: the game plays on in room BCDF (its phones aren’t told it’s over), and the empty room GHJK is closed',
+  );
+  await page.reload();
+  await page.locator('.status-bar .kept').getByText('⏸ Kept to resume:').waitFor();
+  await page.getByRole('button', { name: '▶ Play' }).click();
+  await resumeCard.waitFor();
   await card.getByLabel(/Buzzer mode/).uncheck();
   // (The players added before the reload are the game's own only once the game itself is saved, which a slow machine
   // may not have done by then: a fresh game needs some to start.)

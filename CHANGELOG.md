@@ -11,6 +11,12 @@ the day it's pushed (Pacific time; start the heading on the day's first push) an
 in plain words for the people who make and host games. Anything committed but not pushed yet goes under
 **Unreleased** at the top, and moves under its day when it's pushed.
 
+## Unreleased
+
+### Fixed
+
+- After a reload mid-game, the ▶ Play screen says the game in progress's phones wait in its buzzer room and that ▶ Resume it goes back to them; Going live and Start game no longer say no phone can join. A room started there that no phone joined closes on ▶ Resume it, instead of taking the game and telling the phones in its own room that the game is over.
+
 ## 2026-10-23
 
 ### Added

@@ -3187,11 +3187,29 @@
   /** ⚙ Set up phone buzzers… (the 📱 card, when this app has no buzzer server): ⚙ Settings, at the phone buzzers. */
   let showSettings = $state(false);
 
+  /**
+   * The room of the game kept to resume, when ▶ Resume it goes back into it (a reload mid-game left its phones waiting
+   * there): no room started here has a phone in it. One that has takes the game instead.
+   */
+  const keptRoom = $derived.by(() => {
+    const k = app.resumable;
+    const own = k && k.session.phase !== 'end' ? k.session.remote : null;
+    return own && own.code !== session.remote?.code && !(roomUp && remote.phones.length) ? own.code : '';
+  });
+
   /** The pre-game's ▶ Resume: the game kept to resume plays on, in the display picked here (and its room, if open). */
   async function resumeKept(withEdits: boolean): Promise<void> {
     // Like Start: with the audience window picked (🖥 Display), it opens now, from the click (answers and notes stay off stream).
     if (wantAudience && !dual && !(await openAudience())) return;
     const r = session.remote;
+    // A room started here that no phone is in, while the kept game's phones wait in its own: that one goes on, and this
+    // one closes (nobody is in it to be told).
+    if (r && keptRoom) {
+      closeRoom();
+      session.remote = null;
+      void clearRoom();
+      return onresume?.(withEdits, null);
+    }
     const room = r && phonesOn && inRoom(r.code) ? $state.snapshot(r) : null;
     // The room goes on with the resumed game: leaving this screen mustn't close it.
     if (room) keepRoomOpen = true;
@@ -4285,6 +4303,7 @@
           <span>
             ⏸ A game in progress is kept: <b>{kept.game.title}</b>
             <span class="muted small">(saved {new Date(kept.savedAt).toLocaleString()})</span>
+            {#if keptRoom}<span class="small">· 📱 Its phones wait in room <b>{keptRoom}</b>: ▶ Resume it goes back to them.</span>{/if}
           </span>
           <button class="primary" onclick={() => void resumeKept(false)}>▶ Resume it</button>
           {#if !app.playerOnly && kept.game.id === app.game.id && editsDiffer}
@@ -4527,7 +4546,9 @@
         {#if askNoRoom}
           <!-- Buzzer mode with no room: Start asks here (not a pop-up), and Not yet leaves things as they are. -->
           <InlineAsk
-            text="Buzzer mode is on, but the buzzer room isn't started: no phone can join."
+            text={keptRoom
+              ? `Buzzer mode is on, but no room is started for a new game (the game in progress's phones wait in room ${keptRoom}: ▶ Resume it goes back to them).`
+              : "Buzzer mode is on, but the buzzer room isn't started: no phone can join."}
             alt="📱 Start the room first"
             onalt={startRoomHere}
             ok="Start without phones"
@@ -4895,7 +4916,8 @@
       </li>
       {#if phonesOn}
         <li class:done={roomUp && remote.status === 'online' && phonesIn > 0}>
-          {#if !roomUp}📱 Buzzer mode is on: <button class="link-btn" onclick={startRoomHere}>start the room</button> so players can join.
+          {#if !roomUp && keptRoom}📱 The phones of the game in progress wait in room {keptRoom}: ▶ Resume it goes back to them.
+          {:else if !roomUp}📱 Buzzer mode is on: <button class="link-btn" onclick={startRoomHere}>start the room</button> so players can join.
           {:else if remote.status !== 'online'}📱 Room {remote.code}: {joinedText}
           {:else}📱 Room {remote.code} open: {joinedText}.{/if}
         </li>
