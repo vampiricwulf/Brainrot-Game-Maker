@@ -233,14 +233,14 @@ export function sendCard(game: CardGame, session: Session, card: CardToSend, now
 
 /**
  * ↻ Send again: the card goes again under a new id, to the players it's out to now (a phone that came late for it gets
- * it), with what's on it now. Returns whether it went.
+ * it), with what's on it now. Returns whether it went. A player taken out keeps their place on it (cardsOut leaves them
+ * off while they're out).
  */
 export function sendCardAgain(game: CardGame, session: Session, id: Id, now = Date.now()): boolean {
   const c = session.cards?.find((x) => x.id === id);
   const slide = c && sentSlide(game, c);
-  const to = c ? cleanTo(session, c.to) : [];
-  if (!c || !slide || !to.length) return false;
-  const again: SentCard = { ...c, to, at: Math.max(now, c.at + 1), hash: cardHash(slide) };
+  if (!c || !slide || !cleanTo(session, c.to).length) return false;
+  const again: SentCard = { ...c, at: Math.max(now, c.at + 1), hash: cardHash(slide) };
   session.cards = session.cards!.map((x) => (x.id === id ? again : x));
   return true;
 }

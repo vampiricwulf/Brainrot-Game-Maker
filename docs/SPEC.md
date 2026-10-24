@@ -527,7 +527,7 @@ The mode isn't saved with the game: it's dual while the audience window is open.
   card made in the editor, a quick one, or the slide on screen), lasting until the round ends or until taken back;
   `🤫 N cards out` lists them by number ("Card 2 → Ann"), never what's on them, with ↻ Send again and ✖ Take back. At
   most 8 are out at once. A 🪟 card window shows one player's cards, for a player with no phone. A player taken out
-  keeps their place on the cards, left out of the list while they're out; once they're back (Ctrl+Z, ↩ Restore)
+  keeps their place on the cards (a ↻ Send again meanwhile too), left out of the list while they're out; once they're back (Ctrl+Z, ↩ Restore)
   ↻ Send again sends theirs.
 - **🎭 Deal…** (PARTNER-CLUES-SPEC.md §11): secret parts for everyone (a spy, a wolf, a captain, a prompt each), from a
   deal saved with the game (the 🎡 Wheels, Dice & Deals tab) or a ready-made one. Each player gets one part at random (or the host's pick,

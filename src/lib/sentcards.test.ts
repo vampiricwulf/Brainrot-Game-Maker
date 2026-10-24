@@ -377,6 +377,10 @@ describe('how long a card lasts', () => {
     removePlayer(session, 'b');
     expect(out()).toEqual(['Card 1 → Ann']);
     expect(sessionCards(g, session, { fileBytes: FILE_BYTES, files: {} })!.map((c) => c.to)).toEqual([[{ seat: 'a' }]]);
+    // (↻ Send again while they're out keeps their place too.)
+    expect(sendCardAgain(g, session, session.cards![0].id)).toBe(true);
+    expect(out()).toEqual(['Card 1 → Ann']);
+    expect(sendCardAgain(g, session, session.cards![1].id)).toBe(false);
     restorePlayer(session, 'b');
     expect(out()).toEqual(all);
     // (↻ Send again reaches them: their phone is late for both, the room let their seat go.)
