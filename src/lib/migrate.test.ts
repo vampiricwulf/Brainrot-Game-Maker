@@ -22,6 +22,7 @@ import {
   mostPlayers,
   newGame,
   newSavedCard,
+  newTextEl,
   savedCardName,
   slideText,
   textSlide,
@@ -33,6 +34,8 @@ import {
   type SavedCard,
 } from './model';
 import { validate } from './validate';
+import { presetTheme } from './theme';
+import { addSampleGame, TEMPLATES } from './samples';
 import { applyScore, finalJudge, finalTag, migrateSession, newSession, score } from './session';
 
 /** A game as Jeopardy Builder saved it (format version 1). */
@@ -223,6 +226,112 @@ describe('hand-edited games', () => {
     expect(migrateGame(g).settings.defaultTimerSeconds).toBeNull();
     g.settings.defaultTimerSeconds = null;
     expect(migrateGame(g).settings.defaultTimerSeconds).toBeNull();
+  });
+
+  /** Every `id` in it, in order. */
+  const allIds = (x: unknown): unknown[] =>
+    Array.isArray(x) ? x.flatMap(allIds) : x && typeof x === 'object' ? Object.entries(x).flatMap(([k, v]) => (k === 'id' ? [v] : allIds(v))) : [];
+
+  it('gives a repeated id a new one: a clue id in every category, a pasted round (the first keeps its own)', () => {
+    const g = plain(jeopardyGame());
+    const board = g.rounds[0];
+    for (const c of board.categories) c.clues.forEach((cl: { id: string }, i: number) => (cl.id = `q${i}`));
+    g.rounds.splice(1, 0, plain(board));
+    const m = migrateGame(plain(g));
+    const [a, b] = m.rounds;
+    if (!isBoard(a) || !isBoard(b)) throw new Error('not boards');
+    const tiles = [a, b].flatMap((r) => [r.id, ...r.categories.flatMap((c) => [c.id, ...c.clues.map((cl) => cl.id)])]);
+    expect(new Set(tiles).size).toBe(tiles.length);
+    expect(a.id).toBe(board.id);
+    expect(a.categories[0].id).toBe(board.categories[0].id);
+    expect(a.categories[0].clues.map((cl) => cl.id)).toEqual(['q0', 'q1', 'q2', 'q3', 'q4']);
+    // Playing one tile uses up that one only.
+    const session = newSession(m);
+    session.used[a.categories[0].clues[0].id] = true;
+    expect([a, b].flatMap((r) => r.categories.flatMap((c) => c.clues)).filter((cl) => session.used[cl.id])).toHaveLength(1);
+  });
+
+  it('gives a repeated item on a slide, player, file, wheel or deal part its own id (a file: the first is kept)', () => {
+    const g = plain(jeopardyGame());
+    const slide = g.rounds[0].categories[0].clues[0].questionSlide;
+    slide.elements = [{ ...slide.elements[0], id: 'e' }, { ...slide.elements[0], id: 'e', text: 'Two' }];
+    g.rounds[0].categories[0].clues[0].answerSlide.elements[0].id = 'e';
+    g.players = [{ id: 'p', name: 'Ann', color: '#e6194b' }, { id: 'p', name: 'Bo', color: '#3cb44b' }];
+    g.media = [{ id: 'm', name: 'a.png', mime: 'image/png', size: 1, kind: 'image' }, { id: 'm', name: 'b.png', mime: 'image/png', size: 1, kind: 'image' }];
+    g.wheels = [{ id: 'w', name: 'One', segments: [] }, { id: 'w', name: 'Two', segments: [] }];
+    g.deals = [{ id: 'd', name: 'Deal', parts: [{ id: 'x', name: 'A', count: 1, card: textSlide('A') }, { id: 'x', name: 'B', count: 1, card: textSlide('B') }] }];
+    const m = migrateGame(g);
+    const cl = (m.rounds[0] as BoardRound).categories[0].clues[0];
+    expect(cl.questionSlide.elements[0].id).toBe('e');
+    expect(cl.questionSlide.elements[1].id).not.toBe('e');
+    expect(cl.answerSlide.elements[0].id).toBe('e');
+    expect(m.players[0].id).toBe('p');
+    expect(m.players[1].id).not.toBe('p');
+    expect(m.media.map((f) => f.name)).toEqual(['a.png']);
+    expect(m.wheels[1].id).not.toBe(m.wheels[0].id);
+    expect(m.deals![0].parts[1].id).not.toBe(m.deals![0].parts[0].id);
+    expect(() => newSession(m)).not.toThrow();
+  });
+
+  it('keeps every id of a whole game (the sample game, every template round)', () => {
+    const game = newGame();
+    addSampleGame(game);
+    for (const t of TEMPLATES) game.rounds.push(t.make(game));
+    expect(allIds(migrateGame(plain(game)))).toEqual(allIds(plain(game)));
+  });
+
+  it('gives a text item without its looks a new text box’s (and an item without a place, one)', () => {
+    const g = plain(jeopardyGame());
+    const slide = g.rounds[0].categories[0].clues[0].questionSlide;
+    slide.elements = [{ kind: 'text', text: 'Who painted the Mona Lisa?' }, { ...slide.elements[0], color: 5, x: undefined }, { id: 'sh', kind: 'shape', shape: 'rect', fill: '#fff' }];
+    const els = (migrateGame(g).rounds[0] as BoardRound).categories[0].clues[0].questionSlide.elements;
+    const box = newTextEl();
+    const [t, t2, sh] = els as unknown as Record<string, unknown>[];
+    for (const k of ['font', 'size', 'weight', 'italic', 'underline', 'uppercase', 'color', 'align', 'vAlign', 'lineHeight', 'letterSpacing', 'autoFit', 'x', 'y', 'w', 'h', 'rotation', 'opacity', 'zIndex'] as const)
+      expect(t[k]).toEqual(box[k]);
+    expect(t.id).toBeTruthy();
+    expect(t.text).toBe('Who painted the Mona Lisa?');
+    // (A shadow is a look a text can do without.)
+    expect(t.shadow).toBeUndefined();
+    expect(t2.color).toBe('#ffffff');
+    expect(t2.x).toBe(box.x);
+    expect([sh.x, sh.y, sh.w, sh.h, sh.rotation, sh.opacity, sh.zIndex]).toEqual([0, 0, 100, 100, 0, 1, 0]);
+  });
+
+  it('a theme color or font that isn’t one is the preset’s (an optional one goes), CSS text included', () => {
+    const g = plain(jeopardyGame());
+    g.theme = { ...g.theme, tile: 123, boardFont: null, value: { a: 1 }, scoreBarBg: '#123456; background-image: url(https://example.com/t.png)', tileGradient: 'red;x:url(a)', clueFont: 5, glow: 'url(x)', headerLine: '1px solid url(y)' };
+    const t = migrateGame(plain(g)).theme;
+    const classic = presetTheme('classic');
+    expect([t.tile, t.boardFont, t.value, t.scoreBarBg, t.glow]).toEqual([classic.tile, classic.boardFont, classic.value, classic.scoreBarBg, classic.glow]);
+    expect([t.tileGradient, t.clueFont, t.headerLine]).toEqual([undefined, undefined, undefined]);
+    g.theme = 'pastel';
+    expect(migrateGame(plain(g)).theme).toEqual({ ...newGame().theme, source: undefined });
+    g.theme = { ...presetTheme('pastel'), tile: 'nope!' };
+    expect(migrateGame(plain(g)).theme.tile).toBe(presetTheme('pastel').tile);
+  });
+
+  it('opens what has an obvious fill: stray files, a number for a name, a currency that isn’t text', () => {
+    const g = plain(jeopardyGame());
+    g.media = [null, { id: 'm', name: 5, mime: 'image/png', size: 1, kind: 'image' }, { name: 'no id' }];
+    g.rounds[0].name = 42;
+    g.settings.currencySymbol = { s: 1 };
+    const m = migrateGame(plain(g));
+    expect(m.media.map((f) => [f.id, f.name])).toEqual([['m', 'm']]);
+    expect(m.rounds[0].name).toBe('42');
+    expect(m.settings.currencySymbol).toBe('$');
+    g.media = {};
+    expect(migrateGame(plain(g)).media).toEqual([]);
+    expect(() => validate(m)).not.toThrow();
+  });
+
+  it('opens a game with an RPG round whose world is gone (that round says so)', () => {
+    const g = plain(jeopardyGame());
+    g.rounds.splice(1, 0, { id: 'r_rpg', name: 'Quest', mode: 'rpg', world: 'nowhere' }, { id: 'r_rpg2', name: 'Quest 2', mode: 'rpg', world: '' });
+    const m = migrateGame(g);
+    expect(gameProblem(m)).toBeNull();
+    expect(validate(m).some((p) => p.text === 'Quest: no world chosen')).toBe(true);
+    expect(() => newSession(m)).not.toThrow();
   });
 });
 

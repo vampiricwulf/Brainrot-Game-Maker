@@ -45,6 +45,11 @@ in plain words for the people who make and host games. Anything committed but no
 - At 200% zoom on a laptop (a 683×384 or 640×400 page), the host panel keeps a row of ＋ Award and the main button in sight: the row shrank to a sliver and the main button sat over a player's chip. What doesn't fit scrolls instead.
 - With the computer set to reduce motion, your own copy of the stage beside the audience window comes up still (a Daily Double, a clue, the Final's spotlight no longer zoom in there). What viewers see still follows Reduce motion on stream.
 - On a narrow window (under 700 px wide, as at 200% zoom) the editor's round list takes at most 30% of the height and scrolls in its box, leaving the rest for editing.
+- A game file made by hand or by a chatbot where ids repeat (a round or category pasted twice, “q1” in every category) opens as if they were unique: each tile plays once (playing one no longer takes another off the board), the editor shows every round, clue and tab, and ▶ Play and 📂 Import rounds… work. Of two files with one id, the first is kept.
+- A text item written with just its words gets a new text box's font, size and color (and an item without a place, one): its clue opens on stream and in the editor. It did nothing on stream and broke the editor.
+- A game's theme is checked as a theme file is: a color or font that isn't one (a number, CSS text that would load a picture from another site) is its preset's, or goes when the theme can do without it. Such a game broke the editor, left an exported page on “Loading the game…”, and passed it on through 📂 Use a theme from another game….
+- Open… repairs more small slips in a hand-edited game instead of showing a bare error: a stray entry in its list of files, a file or round named with a number, a currency symbol that isn't text.
+- Open… opens a game with an RPG round whose world is gone (that round says what to fix, as after Import rounds…), instead of refusing the whole file.
 
 ## 2026-10-23
 

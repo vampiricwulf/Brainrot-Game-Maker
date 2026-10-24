@@ -271,12 +271,20 @@ try {
   delete game.rounds[0].categories[0].clues[0].answerSlide;
   game.rounds[0].categories[0].clues[1].questionSlide.elements[0].text = null;
   game.players = [{ name: 'No color' }];
+  // (A category pasted twice keeps its id; a text written as plainly as can be.)
+  game.rounds[0].categories[1].id = game.rounds[0].categories[0].id;
+  game.rounds[0].categories[2].clues[0].questionSlide = { background: {}, elements: [{ kind: 'text', text: 'Who painted the Mona Lisa?' }] };
   writeFileSync(resolve('test-results/datasafety-hand.json'), JSON.stringify(game));
   // (The game open was saved with Save first, as its history remembers: nothing to ask.)
   await openGameFile(page, resolve('test-results/datasafety-hand.json'));
   await page.getByText(/^Opened “/).waitFor();
   await page.locator('nav button.round-tab').first().click();
-  assert((await page.locator('.tile').count()) === 30, 'a hand-edited game missing its row values, a slide and a color opens with them filled in');
+  assert((await page.locator('.tile').count()) === 30, 'a hand-edited game missing its row values, a slide and a color, with a category id twice, opens with them filled in');
+  await page.locator('[data-tile="2,0"]').click();
+  const plainText = page.getByRole('dialog', { name: 'Edit clue' }).locator('[data-field="q"]');
+  await plainText.waitFor();
+  assert((await plainText.inputValue()) === 'Who painted the Mona Lisa?' && !errors.length, 'a text item with nothing but its words opens in the clue editor, as a new text box');
+  await page.keyboard.press('Escape');
   // A category short of clues (or with none) gets empty tiles: the board opens whole, no broken page.
   game.rounds[0].categories[0].clues = game.rounds[0].categories[0].clues.slice(0, 2);
   game.rounds[0].categories[1].clues = null;

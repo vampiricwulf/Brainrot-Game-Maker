@@ -52,8 +52,10 @@ export function themeName(v: unknown): string {
   return typeof v === 'string' ? Array.from(v.replace(/\s+/g, ' ').trim()).slice(0, 60).join('').trimEnd() : '';
 }
 
-const COLORS = ['tile', 'tileUsed', 'boardGap', 'value', 'boardText', 'scoreBarBg'] as const;
-const OPTIONAL_COLORS = ['stageText', 'clueColor', 'tile2', 'tileGradient', 'tileBorder', 'headerBg', 'header2', 'headerGradient', 'bgGradient'] as const;
+/** A theme's colors (a game's theme is checked against them too, see model.ts repairTheme). */
+export const THEME_COLORS = ['tile', 'tileUsed', 'boardGap', 'value', 'boardText', 'scoreBarBg'] as const;
+/** …and those it can do without. */
+export const OPTIONAL_THEME_COLORS = ['stageText', 'clueColor', 'tile2', 'tileGradient', 'tileBorder', 'headerBg', 'header2', 'headerGradient', 'bgGradient'] as const;
 const NUMBERS = Object.keys(LOOK_RANGES) as Ranged[];
 function oneOf<T extends string>(v: unknown, options: readonly T[]): T | undefined {
   return options.includes(v as T) ? (v as T) : undefined;
@@ -71,8 +73,8 @@ export function sanitizeTheme(raw: unknown): Theme | null {
   const t: Theme = { ...base };
   // (No text color of its own: it's worked out from the tiles, as for an older game.)
   delete t.stageText;
-  for (const k of COLORS) if (isThemeColor(raw[k])) t[k] = raw[k];
-  for (const k of OPTIONAL_COLORS) if (isThemeColor(raw[k])) t[k] = raw[k];
+  for (const k of THEME_COLORS) if (isThemeColor(raw[k])) t[k] = raw[k];
+  for (const k of OPTIONAL_THEME_COLORS) if (isThemeColor(raw[k])) t[k] = raw[k];
   if (raw.glow === 'none' || isThemeColor(raw.glow)) t.glow = raw.glow;
   for (const k of ['boardFont', 'valueFont'] as const) if (isThemeFont(raw[k])) t[k] = raw[k];
   if (isThemeFont(raw.clueFont)) t.clueFont = raw.clueFont;
@@ -328,8 +330,8 @@ async function readCode(code: { plain: boolean; body: string }): Promise<SharedT
 /** The looks a code or file has that the app knows (for tests: nothing else gets through). */
 export const KNOWN_KEYS = new Set<string>([
   'preset',
-  ...COLORS,
-  ...OPTIONAL_COLORS,
+  ...THEME_COLORS,
+  ...OPTIONAL_THEME_COLORS,
   'glow',
   'boardFont',
   'valueFont',

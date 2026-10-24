@@ -110,6 +110,15 @@ describe('game packs', () => {
     expect(read.files.map(([id]) => id)).toEqual(['m_a', 'm_b']);
   });
 
+  it('a hand-made pack listing two files with one id keeps the first, with its own file', async () => {
+    const g = game();
+    g.media = [pic('m'), { ...pic('m'), name: 'other.jpg', mime: 'image/jpeg' }];
+    const read = await readGameFile(await packFile(g, { 'media/m.png': 'first', 'media/m.jpg': 'second' }));
+    expect(read.game.media.map((m) => m.name)).toEqual(['m.png']);
+    expect(read.files.map(([id]) => id)).toEqual(['m']);
+    expect(await read.files[0][1].text()).toBe('first');
+  });
+
   it('a damaged game.json is a damaged file: "incomplete", not a game with junk in it', async () => {
     const g = game();
     const { blob } = await buildZip([{ name: 'game.json', data: new Blob([JSON.stringify(g)]) }]);

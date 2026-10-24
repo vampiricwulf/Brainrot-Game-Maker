@@ -110,11 +110,10 @@ export async function openPack(file: Blob, onProgress?: (done: number, total: nu
   // Each file is in the zip under its name as packed: migrateGame may rename one whose name another file has too
   // ("view" → "view-k3f9x2", in a pack from before names were kept apart), and a name with no dot is its own
   // extension. So files are looked up by their names from before it (which changes the game it's given).
-  const packedAt = new Map(
-    (Array.isArray(parsed.media) ? parsed.media : [])
-      .filter((r) => r && typeof r.id === 'string' && typeof r.name === 'string')
-      .map((r) => [r.id, mediaPath(r)] as const),
-  );
+  // (Two with one id: the first is the one the game keeps, so its file is the one looked up.)
+  const packedAt = new Map<string, string>();
+  for (const r of Array.isArray(parsed.media) ? parsed.media : [])
+    if (r && typeof r.id === 'string' && typeof r.name === 'string' && !packedAt.has(r.id)) packedAt.set(r.id, mediaPath(r));
   const game = migrateGame(parsed);
   const files = game.media.filter((ref) => !ref.url);
   for (const [i, ref] of files.entries()) {

@@ -356,7 +356,9 @@ RollEvent  { id, ts, source: 'wheel' | 'dice', presetName?, result: string /* la
 - **Export standalone HTML** (player only, embedded media) with a size warning.
 - **Autosave** of the editing session to IndexedDB after every change: the next launch opens where you left off (a game
   in progress offers Resume game). The desktop app can also write timed autosaves into BrainrotSaves (⚙ Settings).
-- Import/export of plain `game.json` without media, for easy hand-editing or AI-assisted question writing.
+- Import/export of plain `game.json` without media, for easy hand-editing or AI-assisted question writing. A slip with
+  an obvious fill is repaired as the file opens (a repeated id gets a new one, a text item with just its words a new
+  text box's looks, a theme color or font that isn't one the preset's); one the app can't use says where it's wrong.
 
 ---
 

@@ -4,7 +4,8 @@
 import { isWebUrl } from './links';
 import { nextFreeColor } from './colors';
 import { dedupeMediaNames } from './medianame';
-import { presetTheme, type Theme } from './theme';
+import { isThemeColor, isThemeFont, PRESETS, presetTheme, type Theme } from './theme';
+import { OPTIONAL_THEME_COLORS, THEME_COLORS } from './themefile';
 import { CHOICE_MAX, CHOICES_MAX } from './buzzproto';
 import type { BuzzState } from './buzz';
 
@@ -1788,7 +1789,10 @@ export function migrateGame(input: Game): Game {
   const buzzOld = g.settings as GameSettings & { buzzKeys?: string; buzzFrom?: string };
   delete buzzOld.buzzKeys;
   delete buzzOld.buzzFrom;
-  g.media ??= [];
+  // Files with an id, the first of each (items show a file by its id), each with a name.
+  const mediaIds = new Set<Id>();
+  g.media = objects<MediaRef>(data.media).filter((m) => typeof m.id === 'string' && m.id && !mediaIds.has(m.id) && mediaIds.add(m.id));
+  for (const m of g.media) if (typeof m.name !== 'string') m.name = m.id;
   // Links only ever point at web pages (a hand-edited game must not smuggle in javascript: or file:).
   for (const m of g.media) {
     if (m.url !== undefined && !isWebUrl(m.url)) delete m.url;
@@ -1804,9 +1808,10 @@ export function migrateGame(input: Game): Game {
     }
   g.wheels ??= [];
   g.dice ??= [];
-  g.theme = { ...d.theme, ...(data.theme ?? {}) };
+  g.theme = { ...d.theme, ...(isObj(data.theme) ? data.theme : {}) };
   // Where the theme came from is the game's own (an older game has none: the Theme page matches it instead).
-  if (!data.theme?.source) delete g.theme.source;
+  if (!isObj(data.theme) || !data.theme.source) delete g.theme.source;
+  repairTheme(g.theme);
   g.settings.roundIntro = { ...d.settings.roundIntro, ...(data.settings?.roundIntro ?? {}) };
   repairGame(g);
   return g;
@@ -1894,15 +1899,24 @@ function objects<T>(v: unknown): T[] {
   return (v.every(isObj) ? v : v.filter(isObj)) as T[];
 }
 const fixId = (o: { id: Id }) => typeof o.id === 'string' && o.id ? o.id : (o.id = newId());
+/**
+ * fixId, and a new id for one already `seen`: a round or category pasted twice, "q1" in every category. (A repeat
+ * would play, or show, as the first: playing one tile would use up the other.)
+ */
+function ownId(o: { id: Id }, seen: Set<Id>): void {
+  fixId(o);
+  if (seen.has(o.id)) o.id = newId();
+  seen.add(o.id);
+}
 
-/** More question slides (left out: just the one). Each needs an id, and its parts what any slide needs. */
-function repairExtraSlides(o: { extraSlides?: ExtraSlide[] }): void {
+/** More question slides (left out: just the one). Each needs an id of its own, and its parts what any slide needs. */
+function repairExtraSlides(o: { extraSlides?: ExtraSlide[] }, ids: Set<Id>): void {
   if (o.extraSlides === undefined) return;
   const extra = objects<ExtraSlide>(o.extraSlides);
   if (!extra.length) return void delete o.extraSlides;
   if (extra !== o.extraSlides) o.extraSlides = extra;
   for (const sl of extra) {
-    fixId(sl);
+    ownId(sl, ids);
     repairSlide(sl);
   }
 }
@@ -1916,18 +1930,16 @@ const POINTS = new Set<unknown>(['game', 'none', 'all', 'custom'] satisfies Part
  * A tile's or a Final's 🤫 cards: each with its own id and what a slide needs. One that goes to someone the app doesn't
  * know there goes to nobody (a damaged file never hands a card to someone the host didn't choose). A hint that isn't
  * text goes; a name that isn't text or is blank goes, and a long one is cut to CARD_NAME_MAX. A second card with the
- * same id gets a new one (a card is sent by its id). More than MAX_CARDS are kept (validate warns).
+ * same id as one `seen` (in the game) gets a new one (a card is sent by its id). More than MAX_CARDS are kept (validate
+ * warns).
  */
-function repairCards(h: { cards?: ClueCard[] }, goes: ReadonlySet<unknown>): void {
+function repairCards(h: { cards?: ClueCard[] }, goes: ReadonlySet<unknown>, seen: Set<Id>): void {
   if (h.cards === undefined) return;
   const cards = objects<ClueCard>(h.cards);
   if (!cards.length) return void delete h.cards;
   if (cards !== h.cards) h.cards = cards;
-  const seen = new Set<Id>();
   for (const card of cards) {
-    fixId(card);
-    if (seen.has(card.id)) card.id = newId();
-    seen.add(card.id);
+    ownId(card, seen);
     repairSlide(card);
     if (!goes.has(card.to)) card.to = 'nobody';
     if (card.hint !== undefined && typeof card.hint !== 'string') delete card.hint;
@@ -1963,8 +1975,8 @@ function repairChoices(o: { choices?: Choice[] }): void {
  * A partner clue's rules (partner-clues spec §18.5), and its cards (repairCards). Rules that aren't an object are
  * dropped; a partner clue with none plays Describe it.
  */
-function repairPartner(cl: Clue): void {
-  repairCards(cl, CARD_TO);
+function repairPartner(cl: Clue, ids: Set<Id>): void {
+  repairCards(cl, CARD_TO, ids);
   if (cl.partner !== undefined && !isObj(cl.partner)) delete cl.partner;
   const p = cl.partner;
   if (!p) {
@@ -2008,15 +2020,27 @@ function repairPartnerTiles(r: BoardRound): void {
   if (r.partnerCardFrom !== undefined && r.partnerCardFrom !== 'answer' && r.partnerCardFrom !== 'empty') delete r.partnerCardFrom;
 }
 
+/** What a text item needs to be drawn: one that's missing (or not of its kind) is a new text box's. */
+const TEXT_STYLE = ['font', 'size', 'weight', 'italic', 'underline', 'uppercase', 'color', 'align', 'vAlign', 'lineHeight', 'letterSpacing', 'autoFit'] as const;
+const BOX = ['x', 'y', 'w', 'h', 'rotation', 'opacity', 'zIndex'] as const;
+
 function repairSlide(s: unknown): Slide {
   if (!isObj(s)) return textSlide();
   const slide = s as unknown as Slide;
   if (!isObj(slide.background)) slide.background = {};
   const els = objects<SlideElement>(slide.elements);
   if (els !== slide.elements) slide.elements = els;
+  const seen = new Set<Id>();
   for (const el of els) {
-    fixId(el);
-    if (el.kind === 'text' && typeof el.text !== 'string') el.text = el.text == null ? '' : String(el.text);
+    ownId(el, seen);
+    // (Its place: a text box's, or the defaults below, as for one saved empty.)
+    const fill = el.kind === 'text' ? newTextEl() : undefined;
+    for (const k of BOX) if (el[k] === undefined) el[k] = fill?.[k] ?? NUMBER_DEFAULTS.find(([path]) => path === k)![1];
+    if (el.kind === 'text') {
+      if (typeof el.text !== 'string') el.text = el.text == null ? '' : String(el.text);
+      const t = el as unknown as Record<string, unknown>;
+      for (const k of TEXT_STYLE) if (typeof t[k] !== typeof fill![k]) t[k] = fill![k];
+    }
     repairNumbers(el);
   }
   return slide;
@@ -2053,10 +2077,12 @@ function repairGame(g: Game): void {
     if (fixed !== secs) g.settings.defaultTimerSeconds = fixed;
   }
   if (g.settings.partnerSteal !== undefined && typeof g.settings.partnerSteal !== 'boolean') delete g.settings.partnerSteal;
+  if (typeof g.settings.currencySymbol !== 'string') g.settings.currencySymbol = '$';
   const players = objects<PlayerTemplate>(g.players);
   if (players !== g.players) g.players = players;
+  const playerIds = new Set<Id>();
   players.forEach((p, i) => {
-    fixId(p);
+    ownId(p, playerIds);
     if (typeof p.name !== 'string') p.name = `Player ${i + 1}`;
     if (typeof p.color !== 'string' || !p.color) p.color = nextFreeColor(players.filter((o) => o !== p && typeof o.color === 'string').map((o) => o.color));
   });
@@ -2065,24 +2091,27 @@ function repairGame(g: Game): void {
   if (most !== g.settings.maxPlayers) g.settings.maxPlayers = most;
   const rounds = objects<Round>(g.rounds);
   if (rounds !== g.rounds) g.rounds = rounds;
+  // Rounds, categories, clues, their slides and cards: one id each in the whole game (tiles played, Find, undo places).
+  const ids = new Set<Id>();
   for (const r of rounds) {
-    fixId(r);
+    ownId(r, ids);
+    if (r.name != null && typeof r.name !== 'string') r.name = String(r.name);
     if (isBoard(r)) {
       const cats = objects<Category>(r.categories);
       if (cats !== r.categories) r.categories = cats;
       for (const c of cats) {
-        fixId(c);
+        ownId(c, ids);
         if (typeof c.title !== 'string') c.title = c.title == null ? '' : String(c.title);
         const clues = objects<Clue>(c.clues);
         if (clues !== c.clues) c.clues = clues;
         for (const cl of clues) {
-          fixId(cl);
+          ownId(cl, ids);
           if (cl.value !== null && typeof cl.value !== 'number') cl.value = null;
           cl.type ??= 'standard';
           cl.questionSlide = repairSlide(cl.questionSlide);
           cl.answerSlide = repairSlide(cl.answerSlide);
-          repairExtraSlides(cl);
-          repairPartner(cl);
+          repairExtraSlides(cl, ids);
+          repairPartner(cl, ids);
           repairChoices(cl);
         }
       }
@@ -2103,15 +2132,15 @@ function repairGame(g: Game): void {
     } else if (isFinal(r)) {
       r.questionSlide = repairSlide(r.questionSlide);
       r.answerSlide = repairSlide(r.answerSlide);
-      repairExtraSlides(r);
-      repairCards(r, FINAL_CARD_TO);
+      repairExtraSlides(r, ids);
+      repairCards(r, FINAL_CARD_TO, ids);
       if (typeof r.category !== 'string') r.category = r.category == null ? '' : String(r.category);
       if (typeof r.timerSeconds !== 'number' || !(r.timerSeconds >= 1)) r.timerSeconds = 30;
       if (r.phoneAnswersOff !== undefined && typeof r.phoneAnswersOff !== 'boolean') delete r.phoneAnswersOff;
       repairChoices(r);
     } else if (isSlides(r)) {
       r.questionSlide = repairSlide(r.questionSlide);
-      repairExtraSlides(r);
+      repairExtraSlides(r, ids);
     } else if (isBoardGame(r)) {
       r.slide = repairSlide(r.slide);
       if (!Array.isArray(r.spaces)) r.spaces = [];
@@ -2123,18 +2152,16 @@ function repairGame(g: Game): void {
     else {
       g.tiebreaker.questionSlide = repairSlide(g.tiebreaker.questionSlide);
       g.tiebreaker.answerSlide = repairSlide(g.tiebreaker.answerSlide);
-      repairExtraSlides(g.tiebreaker);
+      repairExtraSlides(g.tiebreaker, ids);
     }
   }
-  const refs = objects<MediaRef>(g.media).filter((m) => typeof m.id === 'string' && m.id);
-  for (const m of refs) if (typeof m.name !== 'string') m.name = m.id;
   // A 🗜 phone copy is a stored file of another file in the game that isn't a copy itself, one per file: any other
-  // goes (phones get the file itself then).
+  // goes (phones get the file itself then). (Files without an id, and repeats, went in migrateGame.)
   const copied = new Set<Id>();
-  const media = refs.filter((m) => {
+  const media = g.media.filter((m) => {
     if (m.phoneCopy === undefined) return true;
     const of = isObj(m.phoneCopy) ? m.phoneCopy.of : undefined;
-    const ok = typeof of === 'string' && !m.url && !copied.has(of) && refs.some((o) => o.id === of && o !== m && o.phoneCopy === undefined);
+    const ok = typeof of === 'string' && !m.url && !copied.has(of) && g.media.some((o) => o.id === of && o !== m && o.phoneCopy === undefined);
     if (ok) copied.add(of);
     return ok;
   });
@@ -2142,13 +2169,29 @@ function repairGame(g: Game): void {
   for (const k of ['wheels', 'dice'] as const) {
     const list = objects<WheelPreset & DicePreset>(g[k]);
     if (list !== g[k]) g[k] = list;
-    for (const w of list) fixId(w);
+    const seen = new Set<Id>();
+    for (const w of list) ownId(w, seen);
   }
   for (const w of g.wheels) if (!Array.isArray(w.segments)) w.segments = [];
   for (const d of g.dice) if (!Array.isArray(d.dice)) d.dice = [];
   repairDeals(g);
   repairSavedCards(g);
   linkMoverDice(g);
+}
+
+/**
+ * A game's theme goes into styles: a color or font in it that isn't one (a number, CSS text that would load a picture
+ * from anywhere) is its preset's, or goes when it's one a theme can do without. As a theme file is read (sanitizeTheme).
+ */
+function repairTheme(t: Theme): void {
+  if (!Object.hasOwn(PRESETS, t.preset)) t.preset = 'classic';
+  const preset = presetTheme(t.preset);
+  for (const k of THEME_COLORS) if (!isThemeColor(t[k])) t[k] = preset[k];
+  for (const k of OPTIONAL_THEME_COLORS) if (t[k] !== undefined && !isThemeColor(t[k])) delete t[k];
+  if (t.glow !== 'none' && !isThemeColor(t.glow)) t.glow = preset.glow;
+  if (t.headerLine !== undefined && t.headerLine !== 'none' && !isThemeColor(t.headerLine)) delete t.headerLine;
+  for (const k of ['boardFont', 'valueFont'] as const) if (!isThemeFont(t[k])) t[k] = preset[k];
+  if (t.clueFont !== undefined && !isThemeFont(t.clueFont)) delete t.clueFont;
 }
 
 /**
@@ -2160,13 +2203,15 @@ function repairDeals(g: Game): void {
   const deals = objects<DealPreset>(g.deals);
   if (!deals.length) return void delete g.deals;
   if (deals !== g.deals) g.deals = deals;
+  const seen = new Set<Id>();
   for (const d of deals) {
-    fixId(d);
+    ownId(d, seen);
     if (typeof d.name !== 'string') d.name = 'Deal';
     const parts = objects<DealPart>(d.parts);
     if (parts !== d.parts) d.parts = parts;
+    const partIds = new Set<Id>();
     for (const p of parts) {
-      fixId(p);
+      ownId(p, partIds);
       if (typeof p.name !== 'string') p.name = 'Part';
       else if (p.name.length > DEAL_PART_MAX) p.name = p.name.slice(0, DEAL_PART_MAX);
       if (p.count !== 'rest' && !(Number.isSafeInteger(p.count) && p.count >= 0 && p.count <= MAX_PLAYERS))
@@ -2191,9 +2236,7 @@ function repairSavedCards(g: Game): void {
   if (cards !== g.cards) g.cards = cards;
   const seen = new Set<Id>();
   for (const c of cards) {
-    fixId(c);
-    if (seen.has(c.id)) c.id = newId();
-    seen.add(c.id);
+    ownId(c, seen);
     repairSlide(c);
     if (typeof c.name !== 'string') c.name = '';
     else if (c.name.length > CARD_NAME_MAX) c.name = c.name.slice(0, CARD_NAME_MAX);
@@ -2217,14 +2260,14 @@ export function linkMoverDice(game: Pick<Game, 'dice' | 'rounds'>): void {
 const KNOWN_MODES = new Set<string>(['board', 'final', 'rpg', 'boardgame', 'slides']);
 
 /**
- * What a game the app can't use is missing, as the first place it's wrong ("rounds[2].world: no such world"), or null
- * when it looks whole. For an opened file that the repairs above couldn't fix.
+ * What a game the app can't use is missing, as the first place it's wrong ("rounds[2].mode: …"), or null when it looks
+ * whole. For an opened file that the repairs above couldn't fix. (An RPG round whose world is gone opens: it says so,
+ * as one brought in by Import rounds… does.)
  */
 export function gameProblem(g: Game): string | null {
   for (const [i, r] of g.rounds.entries()) {
     const at = `rounds[${i}]`;
     if (!KNOWN_MODES.has(r.mode)) return `${at}.mode: "${r.mode}" isn't a kind of round`;
-    if (isRpg(r) && !g.worlds?.some((w) => w.id === r.world)) return `${at}.world: no world "${r.world}" in worlds`;
     // (The editor and the board show a tile for every row in every column.)
     if (isBoard(r))
       for (const [ci, c] of r.categories.entries()) {
