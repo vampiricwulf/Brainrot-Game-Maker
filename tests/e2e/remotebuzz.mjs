@@ -22,12 +22,13 @@ const context = await browser.newContext({ viewport: { width: 1400, height: 900 
 
 // The fake buzzer room: POST /api/rooms makes room BCDF; a socket says welcome; everything the host sends is kept.
 // `offline`: new sockets drop at once (the network is down); `gone`: they're turned away with that code (4004: it ended).
+// `ended`: rooms GET /api/rooms/:code says aren't there (404).
 await context.addInitScript(() => {
   try {
     const p = JSON.parse(localStorage.getItem('jb.prefs') || '{}');
     if (!p.buzzerServer) localStorage.setItem('jb.prefs', JSON.stringify({ ...p, v: 2, buzzerServer: 'https://buzz.test' }));
   } catch {}
-  const room = (window.__room = { sockets: [], sent: [], posts: 0, health: 0, refuse: '', offline: false, gone: 0, code: 'BCDF' });
+  const room = (window.__room = { sockets: [], sent: [], posts: 0, health: 0, refuse: '', offline: false, gone: 0, code: 'BCDF', ended: [], lookups: 0 });
   const realFetch = window.fetch.bind(window);
   window.fetch = async (url, init) => {
     const u = String(url);
@@ -35,6 +36,12 @@ await context.addInitScript(() => {
       room.posts++;
       if (room.refuse) return new Response(JSON.stringify({ error: room.refuse }), { status: 429, headers: { 'content-type': 'application/json' } });
       return new Response(JSON.stringify({ code: room.code, hostToken: 'secret-token' }), { status: 200, headers: { 'content-type': 'application/json' } });
+    }
+    const look = u.match(/^https:\/\/buzz\.test\/api\/rooms\/(\w+)$/);
+    if (look && !init?.method) {
+      room.lookups++;
+      const open = !room.ended.includes(look[1]);
+      return new Response(JSON.stringify({ code: look[1], open }), { status: open ? 200 : 404, headers: { 'content-type': 'application/json' } });
     }
     if (u === 'https://buzz.test/api/health') {
       room.health++;
@@ -752,6 +759,48 @@ try {
   assert(
     await page.evaluate((from) => !window.__room.sockets.slice(from).some((s) => s.url.includes('/ws/BCDF') && s.sent.some((m) => m.t === 'close' || (m.t === 'state' && m.state.over))), from),
     'and it does: the game plays on in room BCDF (its phones aren’t told it’s over), and the empty room GHJK is closed',
+  );
+  // So does ◀ Back to editor: the editor's Resume game then goes back to room BCDF too.
+  const overToBCDF = () => page.evaluate(() => window.__room.sockets.filter((s) => s.url.includes('/ws/BCDF')).flatMap((s) => s.sent).filter((m) => m.t === 'close' || (m.t === 'state' && m.state.over)).length);
+  await page.reload();
+  await page.locator('.status-bar .kept').getByText('⏸ Kept to resume:').waitFor();
+  await page.getByRole('button', { name: '▶ Play' }).click();
+  await resumeCard.getByText('Its phones wait in room BCDF').waitFor();
+  await page.evaluate(() => (window.__room.code = 'KLMN'));
+  await card.getByRole('button', { name: '▶ Start the room' }).click();
+  await card.getByLabel('Room code KLMN').waitFor();
+  await page.getByRole('button', { name: '◀ Back to editor' }).click();
+  await page.waitForFunction(() => window.__room.sockets.some((s) => s.url.includes('/ws/KLMN') && s.sent.some((m) => m.t === 'close')));
+  await page.locator('.toast', { hasText: 'Room KLMN closed (no phone had joined it): Resume game goes back to room BCDF' }).waitFor();
+  assert((await page.locator('.status-bar .room-bar').count()) === 0, '◀ Back to editor closes a room started there that no phone joined, while the kept game’s phones wait in theirs (and says so)');
+  await page.locator('.status-bar .kept').getByRole('button', { name: 'Resume game' }).click();
+  await page.locator('.mode-ask .mode', { hasText: 'Single window' }).click();
+  await page.waitForFunction(() => window.__room.sockets.some((s) => s.url.includes('/ws/BCDF') && s.sent.some((m) => m.t === 'state')));
+  await page.waitForTimeout(300);
+  assert((await overToBCDF()) === 0, 'and the editor’s Resume game goes back to room BCDF, its phones not told the game is over');
+  // A kept game's room that has ended isn't waited for: ▶ Resume it keeps the room started here.
+  await page.reload();
+  await page.locator('.status-bar .kept').getByText('⏸ Kept to resume:').waitFor();
+  await page.evaluate(() => (window.__room.ended = ['BCDF']));
+  await page.getByRole('button', { name: '▶ Play' }).click();
+  await resumeCard.waitFor();
+  await page.waitForFunction(() => window.__room.lookups > 0);
+  await page.locator('.live-check li', { hasText: 'start the room' }).waitFor();
+  assert(
+    (await resumeCard.getByText('Its phones wait in room').count()) === 0 && (await page.locator('.live-check li', { hasText: 'wait in room BCDF' }).count()) === 0,
+    'a kept game whose room has ended: the pre-game screen doesn’t say its phones wait there, and Going live says to start the room',
+  );
+  await page.evaluate(() => (window.__room.code = 'PQRS'));
+  await card.getByRole('button', { name: '▶ Start the room' }).click();
+  await card.getByLabel('Room code PQRS').waitFor();
+  const atPQRS = await page.evaluate(() => window.__room.sockets.filter((s) => s.url.includes('/ws/PQRS')).flatMap((s) => s.sent).filter((m) => m.t === 'state').length);
+  await resumeCard.getByRole('button', { name: '▶ Resume it' }).click();
+  await page.locator('.panel .chip').waitFor();
+  await page.waitForFunction((n) => window.__room.sockets.filter((s) => s.url.includes('/ws/PQRS')).flatMap((s) => s.sent).filter((m) => m.t === 'state').length > n, atPQRS);
+  await page.waitForTimeout(300);
+  assert(
+    await page.evaluate(() => !window.__room.sockets.some((s) => s.url.includes('/ws/PQRS') && s.sent.some((m) => m.t === 'close'))),
+    'and ▶ Resume it plays on in the room started there (PQRS), not in the one that ended',
   );
   await page.reload();
   await page.locator('.status-bar .kept').getByText('⏸ Kept to resume:').waitFor();

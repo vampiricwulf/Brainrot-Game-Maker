@@ -374,8 +374,21 @@ if (typeof document !== 'undefined') {
   window.addEventListener('online', () => link?.retryNow());
 }
 
+/**
+ * Is room `code` still there (GET /api/rooms/:code, as a phone asks before it joins)? A room this window isn't in: one a
+ * game kept to resume left its phones in. null: no answer (offline, too many lookups).
+ */
+export async function roomStillOpen(room: { code: string; base: string }): Promise<boolean | null> {
+  try {
+    const res = await (deps?.fetch ?? fetch)(`${room.base.replace(/\/+$/, '')}/api/rooms/${room.code}`, { cache: 'no-store' });
+    return res.status === 404 ? false : res.ok ? true : null;
+  } catch {
+    return null;
+  }
+}
+
 /** The room this window is in, if it's that one and still there. */
-export const inRoom = (code: string): boolean => link?.room?.code === code && link.status !== 'off' && link.status !== 'error';
+export const inRoom =(code: string): boolean => link?.room?.code === code && link.status !== 'off' && link.status !== 'error';
 
 /** The link players open on their phone. */
 export function roomLink(code = remote.code): string {

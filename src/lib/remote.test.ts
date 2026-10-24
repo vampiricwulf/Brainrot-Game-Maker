@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { BUZZ_PROTOCOL, OLD_FILE_LIMITS, UPLOADS_BUSY } from './buzzproto';
-import { buzzerBase, closeRoom, rejoinRoom, remote, setRemoteDeps, UPLOAD_STALL_MS, uploadCardFile } from './remote.svelte';
+import { buzzerBase, closeRoom, rejoinRoom, remote, roomStillOpen, setRemoteDeps, UPLOAD_STALL_MS, uploadCardFile } from './remote.svelte';
 import { prefs } from './prefs.svelte';
 import { fileLimitsNow, forgetServerFiles } from './serverlimits.svelte';
 import { retryDelay, type LinkDeps, type SocketLike } from './roomlink';
@@ -139,6 +139,30 @@ describe('closeRoom', () => {
     t.advance(120_000);
     expect(sockets.length).toBe(4);
     expect(remote.status).toBe('off');
+  });
+});
+
+describe('roomStillOpen', () => {
+  it('asks for the room as a phone does: 404 is ended, no answer is not known', async () => {
+    const asked: string[] = [];
+    const answer = (status: number | null) =>
+      setRemoteDeps({
+        ...fakeDeps().deps,
+        fetch: async (url) => {
+          asked.push(url);
+          if (status === null) throw new Error('offline');
+          return { ok: status === 200, status, json: async () => ({}) };
+        },
+      });
+    answer(200);
+    expect(await roomStillOpen({ code: 'BCDF', base: 'https://buzz.test/' })).toBe(true);
+    expect(asked).toEqual(['https://buzz.test/api/rooms/BCDF']);
+    answer(404);
+    expect(await roomStillOpen(room)).toBe(false);
+    answer(429);
+    expect(await roomStillOpen(room)).toBeNull();
+    answer(null);
+    expect(await roomStillOpen(room)).toBeNull();
   });
 });
 

@@ -34,7 +34,7 @@
   import { clip, type HostState, type WagerAsk, type AnswerAsk } from '../lib/buzzproto';
   import {
     acceptPhone, buzzerBase, buzzerOn, closeRoom, endRoom, forgetCardFiles, inRoom, kept, kickMember, kickSeat, moveMember, onRoomAnswer, onRoomBuzz, onRoomCardSeen, onRoomColor, onRoomQueue,
-    onRoomWager, rejectPhone, rejoinRoom, remote, resendHostState, roomHasAnswers, roomHasCards, roomHasChoices, roomHasFiles, roomHasWagers, roomLink, roomMembers, sendHostState, startRoom,
+    onRoomWager, rejectPhone, rejoinRoom, remote, resendHostState, roomHasAnswers, roomHasCards, roomHasChoices, roomHasFiles, roomHasWagers, roomLink, roomMembers, roomStillOpen, sendHostState, startRoom,
   } from '../lib/remote.svelte';
   import { judgeAllPlan, usableChoices } from '../lib/choices';
   import { clearRoom, debounce, saveRoom, type SavedRoom } from '../lib/persist';
@@ -1622,7 +1622,15 @@
    * Only Exit / End game, ✕ Close the room or turning Buzzer mode off close it.
    */
   function backToEditor(): void {
-    if (app.pregame) keepRoomInEditor();
+    // (A room started here that no phone is in, while the kept game's phones wait in its own: it closes, as with
+    // ▶ Resume it, so Resume game goes back to theirs. Nobody is in it to be told.)
+    if (app.pregame && keptRoom && session.remote) {
+      const code = session.remote.code;
+      closeRoom();
+      session.remote = null;
+      void clearRoom();
+      toast(`📱 Room ${code} closed (no phone had joined it): Resume game goes back to room ${keptRoom}`, 5000);
+    } else if (app.pregame) keepRoomInEditor();
     oncancel();
   }
 
@@ -3193,13 +3201,26 @@
   let showSettings = $state(false);
 
   /**
+   * The kept game's rooms the server says have ended (closed elsewhere, or unused for hours while the app was closed):
+   * their phones were told the game is over, so nothing here waits for them. Each is asked once.
+   */
+  let keptGone = $state<string[]>([]);
+  const keptAsked = new Set<string>();
+  $effect(() => {
+    const own = app.pregame && phonesOn && app.resumable?.session.phase !== 'end' ? app.resumable?.session.remote : null;
+    if (!own || keptAsked.has(own.code)) return;
+    keptAsked.add(own.code);
+    const { code, base } = own;
+    untrack(() => void roomStillOpen({ code, base }).then((open) => open === false && (keptGone = [...keptGone, code])));
+  });
+  /**
    * The room of the game kept to resume, when ▶ Resume it goes back into it (a reload mid-game left its phones waiting
    * there): no room started here has a phone in it. One that has takes the game instead.
    */
   const keptRoom = $derived.by(() => {
     const k = app.resumable;
     const own = k && k.session.phase !== 'end' ? k.session.remote : null;
-    return own && own.code !== session.remote?.code && !(roomUp && remote.phones.length) ? own.code : '';
+    return own && !keptGone.includes(own.code) && own.code !== session.remote?.code && !(roomUp && remote.phones.length) ? own.code : '';
   });
 
   /** The pre-game's ▶ Resume: the game kept to resume plays on, in the display picked here (and its room, if open). */
