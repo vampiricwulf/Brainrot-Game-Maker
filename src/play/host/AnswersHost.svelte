@@ -2,7 +2,8 @@
   Answers players type on their phone, which only the host sees, here: a ✍ clue's (everyone) or the Final's (its
   players). On a ✍ clue ✔ / ✘ on each marks it right or wrong (the clue's value, as ＋ Award / − Deduct would), once per
   player; Ctrl+Z takes one back. In a single window (viewers see this panel) only who has answered shows until the
-  answer is up; then the words, to judge. The Final's stay hidden there until each is revealed (hideUntilShown).
+  answer is up, in the rows (and with the room) the words then take, so the stage on stream keeps its size; then the
+  words, to judge. The Final's stay hidden there until each is revealed (hideUntilShown), on one line.
   Multiple choice: each pick by its letter, how many picked each (where the words show, never in the head's status, so
   a screen reader doesn't read a tally after every pick), and once the answers are locked ✔ Judge all, by the choice
   marked ✔ Right.
@@ -76,16 +77,27 @@
   /** Who ✔ Judge all would mark (nobody while answers can still change). */
   const plan = $derived(onjudgeall && right && !open ? judgeAllPlan(ids, answers, choices, judged) : { right: [], wrong: [] });
   const rightLetter = $derived(right ? letter(choices.indexOf(right)) : '');
+  /** A single window's ✍ clue: the words' rows, counts and ✔ Judge all keep their room while those aren't there. */
+  const keepRoom = $derived(!dual && !hideUntilShown);
+  /** Where the words aren't shown: whether this player's is in (and once locked, that none came). */
+  const inTitle = (id: string) => (answers[id] ? 'Answer in' : !phones.includes(id) ? 'No phone connected' : open ? 'Waiting…' : 'No answer');
+  const inMark = (id: string) => (answers[id] ? '✔' : open ? '…' : '—');
 </script>
 
 <section class="answers" aria-label="Answers from phones">
   <div class="head">
     <b>{title}{choices.length ? ' · multiple choice' : ''}</b>
-    <span class="muted small" role="status">{inCount} of {listed.length} in · {dual ? 'only you see them' : onStream}{open ? '' : locked}</span>
+    <!-- (A single window's ✍ clue: the line keeps the room it takes once locked, its longest, so it never wraps anew.) -->
+    <span class="muted small slot"
+      ><span role="status">{inCount} of {listed.length} in · {dual ? 'only you see them' : onStream}{open ? '' : locked}</span
+      >{#if keepRoom}<span class="room" aria-hidden="true">{inCount} of {listed.length} in · {onStream} · locked (the answer was on screen)</span>{/if}</span
+    >
   </div>
   {#if note}<p class="small note">{note}</p>{/if}
   {#if words && choices.length}
     <p class="small counts" data-choice-counts>{countsLine(choiceCounts(ids, answers, choices))}</p>
+  {:else if keepRoom && choices.length}
+    <p class="small counts" aria-hidden="true">&nbsp;</p>
   {/if}
   {#if plan.right.length || plan.wrong.length}
     <p class="judge-all">
@@ -96,44 +108,53 @@
         >✔ Judge all: {rightLetter} is right</button
       >
     </p>
+  {:else if keepRoom && onjudgeall && right}
+    <p class="judge-all" aria-hidden="true"></p>
   {/if}
-  {#if words}
+  {#if words || keepRoom}
     <ul class:dense={!dual}>
       {#each listed as p (p.id)}
-        {@const a = answers[p.id]}
-        {@const j = judged[p.id]}
-        <!-- Multiple choice: a pick by its letter ("B · Stockholm"); typed words with the choice they name ("= B"), if any. -->
-        {@const picked = a && choices.length ? pickLabel(choices, a.pick) : undefined}
-        {@const named = a && choices.length && !picked ? matchChoice(a.text, choices) : null}
-        <li data-answer-row={p.id}>
-          <span class="who" style:background={p.color} style:color={textOn(p.color)}>{p.name}</span>
-          <!-- (Each answer keeps its own direction in a <bdi>: a right-to-left one sits by the name, not at the row's far end.
-               The spaces go before the spans: one inside a span's start would be dropped.) -->
-          <span class="text" class:muted={!a || (!!a.pick && !picked)}
-            >{#if a}{#if picked}<b><bdi>{picked}</bdi></b>{:else}“<bdi>{a.text}</bdi>”{#if named}{' '}<span class="muted">= {letter(choices.findIndex((c) => c.id === named))}</span>{/if}{/if}{#if a.by}{' '}<span
-                  class="muted small">· {a.by}</span
-                >{/if}{:else if phones.includes(p.id)}waiting…{:else}no phone connected{/if}</span
-          >
-          {#if j}
-            <span class="mark" class:right={j > 0} class:wrong={j < 0}>{j > 0 ? '✔ Right' : '✘ Wrong'}</span>
-          {:else if onjudge}
-            <button class="good small" onclick={() => onjudge(p.id, 1)} aria-label="{p.name} is right" title="Right: + the clue's value">✔</button>
-            <button class="bad small" onclick={() => onjudge(p.id, -1)} aria-label="{p.name} is wrong" title="Wrong: − the clue's value (if the rules take points)">✘</button>
-          {/if}
-        </li>
+        {#if !words}
+          <!-- Single window, the words not to be seen yet: who has answered (✔), never the words. -->
+          <li data-answer-in={p.id} title={inTitle(p.id)}>
+            <span class="who" style:background={p.color} style:color={textOn(p.color)}>{p.name}</span>
+            <span class="text muted">{inMark(p.id)}</span>
+          </li>
+        {:else}
+          {@const a = answers[p.id]}
+          {@const j = judged[p.id]}
+          <!-- Multiple choice: a pick by its letter ("B · Stockholm"); typed words with the choice they name ("= B"), if any. -->
+          {@const picked = a && choices.length ? pickLabel(choices, a.pick) : undefined}
+          {@const named = a && choices.length && !picked ? matchChoice(a.text, choices) : null}
+          <li data-answer-row={p.id}>
+            <span class="who" style:background={p.color} style:color={textOn(p.color)}>{p.name}</span>
+            <!-- (Each answer keeps its own direction in a <bdi>: a right-to-left one sits by the name, not at the row's far end.
+                 The spaces go before the spans: one inside a span's start would be dropped.) -->
+            <span class="text" class:muted={!a || (!!a.pick && !picked)}
+              >{#if a}{#if picked}<b><bdi>{picked}</bdi></b>{:else}“<bdi>{a.text}</bdi>”{#if named}{' '}<span class="muted">= {letter(choices.findIndex((c) => c.id === named))}</span>{/if}{/if}{#if a.by}{' '}<span
+                    class="muted small">· {a.by}</span
+                  >{/if}{:else if phones.includes(p.id)}{open ? 'waiting…' : 'no answer'}{:else}no phone connected{/if}</span
+            >
+            {#if j}
+              <span class="mark" class:right={j > 0} class:wrong={j < 0}>{j > 0 ? '✔ Right' : '✘ Wrong'}</span>
+            {:else if onjudge}
+              <button class="good small" onclick={() => onjudge(p.id, 1)} aria-label="{p.name} is right" title="Right: + the clue's value">✔</button>
+              <button class="bad small" onclick={() => onjudge(p.id, -1)} aria-label="{p.name} is wrong" title="Wrong: − the clue's value (if the rules take points)">✘</button>
+            {/if}
+          </li>
+        {/if}
       {/each}
     </ul>
   {:else}
-    <!-- Single window, words not to be seen yet: on one line, who has answered (✔), never the words. -->
+    <!-- The Final in a single window: on one line, who has answered (✔), never the words. -->
     <p class="small in">
       {#each listed as p (p.id)}
-        {@const a = answers[p.id]}
         <span
           class="who"
           style:background={p.color}
           style:color={textOn(p.color)}
           data-answer-in={p.id}
-          title={a ? 'Answer in' : phones.includes(p.id) ? 'Waiting…' : 'No phone connected'}>{p.name} {a ? '✔' : '…'}</span
+          title={inTitle(p.id)}>{p.name} {inMark(p.id)}</span
         >
       {/each}
     </p>
@@ -152,6 +173,15 @@
     gap: 10px;
     align-items: baseline;
     flex-wrap: wrap;
+  }
+  .slot {
+    display: inline-grid;
+  }
+  .slot > * {
+    grid-area: 1 / 1;
+  }
+  .room {
+    visibility: hidden;
   }
   ul {
     list-style: none;
@@ -173,10 +203,15 @@
     flex-wrap: wrap;
     gap: 4px 8px;
   }
+  /* A row is as tall as its ✔ / ✘ buttons with them or without (16px a line, 2px padding and 1px border each side). */
   li {
     display: flex;
     gap: 8px;
     align-items: center;
+    min-height: 22px;
+  }
+  button.small {
+    line-height: 16px;
   }
   .who {
     flex: none;
@@ -205,6 +240,11 @@
   .counts,
   .judge-all {
     margin: 0;
+  }
+  /* (Its button's height, empty too: see li.) */
+  .judge-all {
+    display: flex;
+    min-height: 22px;
   }
   .note {
     color: var(--warn, var(--muted));

@@ -18,6 +18,9 @@ in plain words for the people who make and host games. Anything committed but no
 - On the board, the join code at the end of the score bar keeps clear of the last score plate when it reads “📱 Players’ buzzers” (seats locked or all taken), whatever the theme's font. With 4 or more players it ran under that plate.
 - Phones on a played-out board say “Jeopardy! is done” (the round's name) instead of who picks the next clue, and the picker's phone no longer asks them to choose one.
 - `N` on a played-out board says to click the main button (Final Jeopardy! ▶, Next round ▶…) to go on, instead of doing nothing.
+- One window: the stage on stream keeps its size when a ✍ Everyone answers clue's answer is shown. Until then the host panel lists each player in the row their answer goes in (✔ once it's in), with room kept for a multiple choice's counts and ✔ Judge all.
+- The answers box says “no answer” for a phone that sent none once the answers are locked (one window: “—”, not “…”), instead of “waiting…”.
+- A phone sitting out the Final says “You’re not in this one” under the question and through the reveals, instead of the Final's name a second time. A buzzer server you run yourself needs deploying again for this.
 - After a reload mid-game, the ▶ Play screen says the game in progress's phones wait in its buzzer room and that ▶ Resume it goes back to them; Going live and Start game no longer say no phone can join. A room started there that no phone joined closes on ▶ Resume it, instead of taking the game and telling the phones in its own room that the game is over.
 
 ## 2026-10-23

@@ -351,6 +351,8 @@ try {
   assert((await small(ann).innerText()) === 'Your wager: $1,300 · Yours: “Fleming”', `the answer shows: “Answers locked”, with her wager and her answer (${await small(ann).innerText()})`);
   await big(bo).getByText('Answers locked').waitFor();
   assert((await small(bo).innerText()) === 'Your wager: $2,000 · None sent', 'and one who sent none: “None sent”');
+  await answers.locator('[data-answer-row]', { hasText: 'Player 2' }).getByText('no answer', { exact: true }).waitFor();
+  assert(true, 'the host’s answers box says “no answer” for him once the answers are locked (not “waiting…”)');
   await shot('pw-6-locked-phone', ann);
   // The reveals: N puts Player 1's answer on stream, then C judges her and her wager goes up with it.
   await mainButton(host).filter({ hasText: 'Start player reveals ▶' }).click();
@@ -619,6 +621,34 @@ try {
   const main2 = await mainLabel(host2);
   const also2 = await host2.locator('.panel [data-next-also]').allInnerTexts();
   assert(main2 === '✘ Player 2 wrong' && also2.some((t) => t.startsWith('✔ Right')), `a pick that isn't the ✔ Right one: the main button is “${main2}”, ✔ Right beside it`);
+
+  // ---------- A team sitting the Final out (a 🔁 Rematch in the same room): its phones name the Final once ----------
+  await host2.keyboard.press('x');
+  await host2.waitForFunction(() => !document.querySelector('.panel [data-next]')?.disabled && !/wrong|right/i.test(document.querySelector('.panel [data-next]')?.textContent ?? ''));
+  await mainButton(host2).click();
+  await host2.getByRole('button', { name: '🔁 Rematch' }).click();
+  await host2.getByText('Start a rematch? Scores go back to 0.').waitFor();
+  await host2.waitForTimeout(450);
+  await host2.getByRole('button', { name: '🔁 Rematch' }).click();
+  await host2.getByRole('button', { name: 'Start game ▶' }).click();
+  await host2.getByRole('button', { name: 'Skip intro' }).click();
+  await host2.locator('.stage-box .board').waitFor();
+  await host2.waitForTimeout(450);
+  await host2.locator('.rn > button').last().click();
+  await host2.waitForTimeout(450);
+  await host2.getByRole('button', { name: 'Yes', exact: true }).click();
+  await host2.waitForFunction(() => document.querySelector('.panel .status')?.textContent?.includes('Final'));
+  if ((await host2.locator('.panel .status').innerText()).includes('Title card')) await host2.keyboard.press('n');
+  await rows2.locator('.wrow', { hasText: 'Player 2' }).locator('input[data-plays]').uncheck();
+  await big(cy).getByText('You sit this one out').waitFor();
+  await mainButton(host2).filter({ hasText: 'Show question ▶' }).click();
+  await cy.locator('#clue-cap').getByText('Final Jeopardy!').waitFor();
+  await small(cy).getByText('Your team isn’t in this one').waitFor();
+  assert((await big(cy).innerText()) === 'You sit this one out', 'a team out of the Final: under the question (the Final’s name over it), its phone says “Your team isn’t in this one”, not the Final’s name again');
+  await mainButton(host2).filter({ hasText: 'Reveal answer ▶' }).click();
+  await mainButton(host2).filter({ hasText: 'Start team reveals ▶' }).click();
+  await big(cy).getByText('Player 2').waitFor();
+  assert((await small(cy).innerText()) === 'Your team isn’t in this one', `and through the reveals (${await small(cy).innerText()})`);
 
   assert(errors.length === 0, `no page errors (${errors.join(' | ')})`);
   console.log('Phone wagers E2E passed.');

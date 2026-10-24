@@ -325,18 +325,23 @@ try {
   await aud.close();
   await answersBox.locator('[data-answer-in]', { hasText: 'Player 1 ✔' }).waitFor();
   const oneWindow = await host.locator('.panel').innerText();
-  const chips = await answersBox.locator('[data-answer-in]').allInnerTexts();
+  const chips = (await answersBox.locator('[data-answer-in]').allInnerTexts()).map((t) => t.replace(/\s+/g, ' '));
   assert(
     !oneWindow.includes('Stockholm') && !oneWindow.includes('Paris') && !oneWindow.includes('A 1 ·') && !oneWindow.includes('Judge all') && (await counts.count()) === 0 && JSON.stringify(chips) === JSON.stringify(['Player 1 ✔', 'Player 2 ✔']),
     `in a single window, before the answer is up: names ✔ only, no picks, no letters, no counts, no ✔ Judge all (${JSON.stringify(chips)})`,
   );
+  // (The stage on stream keeps its size as the answer goes up: the answers box keeps the words' room till then.)
+  const stageH = () => host.locator('.stage-box').evaluate((e) => Math.round(e.getBoundingClientRect().height));
+  const hiddenH = await stageH();
   await host.keyboard.press('r');
   await p1.locator('#buzz-big').getByText('Answers locked').waitFor();
   await p2.locator('#buzz-big').getByText('Answers locked').waitFor();
   assert((await p1.locator('#buzz-small').innerText()) === 'Yours: A · Paris' && (await p2.locator('#buzz-small').innerText()) === 'Yours: B · Stockholm', 'showing the answer locks the picks: each phone keeps its own in sight');
   await row('Player 2').getByText('B · Stockholm').waitFor();
   await counts.getByText('A 1 · B 1 · C 0 · D 0').waitFor();
-  assert(true, 'then the panel shows each pick and the counts');
+  await answersBox.getByRole('button', { name: '✔ Judge all: B is right' }).waitFor();
+  const shownH = await stageH();
+  assert(shownH === hiddenH, `then the panel shows each pick, the counts and ✔ Judge all, and the stage keeps its size (${hiddenH}px, then ${shownH}px)`);
   const stageStrip = host.locator('.stage-box [data-choices]');
   await stageStrip.locator('.choice.right').waitFor();
   assert(
@@ -351,6 +356,7 @@ try {
   await row('Player 1').getByText('✘ Wrong').waitFor();
   await row('Player 2').getByText('✔ Right').waitFor();
   await picker('Player 2').waitFor();
+  assert((await stageH()) === hiddenH, `and once judged too (${await stageH()}px)`);
   // Its score pops come in above the choices, not over them: the line they stand on (their box's foot; a pop is there
   // only a moment, so it's the box that's measured) is above the strip.
   const [popsFoot, stripTop] = await host.evaluate(() =>

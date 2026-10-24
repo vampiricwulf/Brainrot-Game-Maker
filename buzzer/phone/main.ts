@@ -1306,6 +1306,8 @@ function renderBuzz(v: PhoneView): void {
   let whole = false;
   /** Teams: a teammate's buzz holds your team's place (not yours). */
   const mate = team && !!mine?.by && !mine.byYou ? mine.by : null;
+  /** Not answering this round (a Final this seat sits out): what's on is over the question already. */
+  const notIn = team ? 'Your team isn’t in this one' : 'You’re not in this one';
   if (ans && !ans.open && v.statusOff && v.status) {
     // A partner clue's guess, locked (judged, or the answer is up): how it went, over what this seat sent.
     greyed = v.phase === 'lobby';
@@ -1333,7 +1335,7 @@ function renderBuzz(v: PhoneView): void {
     const who = wager.who || 'Someone';
     [cls, big, small] = ['off', wager.open ? `${who} is wagering…` : `${who} is answering`, 'Daily Double'];
   } else if (wager) {
-    [cls, big, small] = ['off', 'You sit this one out', v.status || (team ? 'Your team isn’t in this one' : 'You’re not in this one')];
+    [cls, big, small] = ['off', 'You sit this one out', q?.caption ? notIn : v.status || notIn];
   } else if (v.phase === 'lobby' && v.final) {
     ({ big, small } = placeLine(v));
     cls = 'off';
@@ -1344,7 +1346,8 @@ function renderBuzz(v: PhoneView): void {
     greyed = true;
   } else if (v.phase === 'lobby') {
     big = you.name;
-    small = v.status || 'Wait for the next clue';
+    // (A question up with answers asked, none of them this seat's: the round's name is over it already.)
+    small = q && (!v.status || v.status === q.caption) ? notIn : v.status || 'Wait for the next clue';
     plain = true;
   } else if (v.phase === 'answering' && v.answering?.you && team && !v.answering.byYou) {
     // Your team is answering: a teammate buzzed (or the host picked the team).
