@@ -1218,7 +1218,8 @@ and the names stay the same, because both come from `cardItems`.
 - Cards are kept in memory only, never in localStorage. When a card goes, the phone drops it, removes its frames and
   revokes its `blob:` addresses.
 - Several cards at once (a Split clue's two halves sent to one phone, or P3) stack newest first. A card and a wager or
-  answer box: the card sits above the box.
+  answer box: the card sits above the box, its cover smaller on a phone held upright, so the box's Send and its choices
+  stay on the screen.
 
 ## 13. Getting a card onto a phone
 

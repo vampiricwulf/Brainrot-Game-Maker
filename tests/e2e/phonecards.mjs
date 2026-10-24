@@ -850,6 +850,38 @@ try {
       ),
   );
   assert(lines3.fits && !lines3.more && lines3.font < 17, `a three-line question over four choices on a 320×568 phone: smaller, and whole, with no ▼ More (${JSON.stringify(lines3)})`);
+  /** Where the box's last button ends (the page at its top), and whether the question shows whole, once drawn. */
+  const boxEnd = (sel) =>
+    ann.evaluate(
+      (sel) =>
+        new Promise((ok) => {
+          scrollTo(0, 0);
+          requestAnimationFrame(() =>
+            requestAnimationFrame(() => {
+              const c = document.getElementById('clue');
+              ok({ bottom: Math.round(document.querySelector(sel).getBoundingClientRect().bottom), whole: c.scrollHeight <= c.clientHeight && document.getElementById('clue-more').hidden });
+            }),
+          );
+        }),
+      sel,
+    );
+  // Six choices: tighter, all six on the screen with the question whole.
+  hostState({ answers: { id: 'six', open: true, seats: [{ id: 'a' }], choices: ['Sydney', 'Canberra', 'Perth', 'Darwin', 'Hobart', 'Adelaide'].map((text, i) => ({ id: `s${i}`, text })) } });
+  await picks.nth(5).waitFor();
+  const six = await boxEnd('#answer-choices .choice:last-child');
+  assert(six.bottom <= 568 && six.whole, `six choices under a three-line question on a 320×568 phone: the sixth is on the screen, the question whole (${JSON.stringify(six)})`);
+  // A covered card over the box is small: Send, or the last of four choices, stays on the screen.
+  hostState({ cards: [{ id: 'pc:over:1', to: [{ seat: 'a' }], open: true, title: 'Your part', text: 'x' }], answers: { id: 'over1', open: true, seats: [{ id: 'a' }] } });
+  await ann.locator('.card-cover').waitFor();
+  await ann.locator('#answer-send').waitFor();
+  const overSend = await boxEnd('#answer-send');
+  await ann.setViewportSize({ width: 360, height: 640 });
+  hostState({ answers: { id: 'over2', open: true, seats: [{ id: 'a' }], choices: ['Sydney', 'Canberra', 'Perth', 'Darwin'].map((text, i) => ({ id: `o${i}`, text })) } });
+  await picks.nth(3).waitFor();
+  const overPick = await boxEnd('#answer-choices .choice:last-child');
+  assert(overSend.bottom <= 568 && overPick.bottom <= 640, `a covered card over the box: Send on a 320×568 phone, and the last of four choices on a 360×640 one, stay on the screen (${overSend.bottom}, ${overPick.bottom})`);
+  hostState({ cards: null, answers: null });
+  await ann.locator('.card').waitFor({ state: 'detached' });
   // A shorter question on a bigger phone, with a long link and "A) … B) …" lines: whole, left-aligned, the lines kept.
   await ann.setViewportSize({ width: 390, height: 844 });
   const quiz =
@@ -932,6 +964,12 @@ try {
   hostState({ clue: { text: 'Name a dog breed' }, answers: { id: 'lock1', open: true, seats: [{ id: 'a' }, { id: 'c' }] } });
   await until(() => keysAt(cat).then((k) => k === 'answer-in'), 'the keys in the answer box');
   await cat.keyboard.type('Poodle');
+  // Typed, not sent yet: it says so (typing alone sends nothing).
+  const typedAnswer = await colour(cat, 'answer-state');
+  assert(
+    typedAnswer[0] === 'Not sent yet: click Send answer to send it.' && typedAnswer[1] === 'rgb(255, 210, 122)' && !h.got.some((m) => m.t === 'answer' && m.seatId === 'c'),
+    `an answer typed but not sent: “Not sent yet…”, in amber (${typedAnswer.join(', ')})`,
+  );
   await cat.keyboard.press('Enter');
   await cat.locator('#answer-state').getByText('✔ Sent').waitFor();
   assert(
@@ -980,6 +1018,8 @@ try {
   });
   await until(() => keysAt(cat).then((k) => k === 'wager-in'), 'the keys in the wager box');
   await cat.keyboard.type('300');
+  const typedWager = await colour(cat, 'wager-state');
+  assert(typedWager[0] === 'Not sent yet: click Send wager to send it.' && typedWager[1] === 'rgb(255, 210, 122)', `a wager typed but not sent: “Not sent yet…”, in amber (${typedWager.join(', ')})`);
   await cat.keyboard.press('Enter');
   await cat.locator('#wager-state').getByText('✔ Sent: 300').waitFor();
   await cat.locator('#wager-in').fill('900');

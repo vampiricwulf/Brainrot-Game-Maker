@@ -255,6 +255,21 @@ describe('hostState (what the buzzer room is told)', () => {
     session.phase = 'clue';
     session.dd = { stage: 'splash', playerId: 'b' };
     expect(phoneStatus(game, session)).toEqual({ text: 'Daily Double: Bo', seats: ['b'], seatsText: 'Daily Double — you’re up!' });
+    // Judged, its question up: how it went (an Undo of the mark goes back).
+    openClue(session, { round: 0, cat: 0, row: 0 }, game);
+    session.dd = { stage: 'question', playerId: 'b', wager: 300 };
+    const clue = board.categories[0].clues[0].id;
+    applyScore(session, game, ['b'], 300, 'Right', clue);
+    expect(phoneStatus(game, session)).toEqual({ text: 'Bo got the Daily Double', seats: ['b'], seatsText: 'You got it!' });
+    undo(session);
+    expect(phoneStatus(game, session)?.text).toBe('Daily Double: Bo');
+    applyScore(session, game, ['b'], -300, 'Wrong', clue);
+    expect(phoneStatus(game, session)).toEqual({ text: 'Bo missed the Daily Double', seats: ['b'], seatsText: 'Not this time' });
+    game.settings.buzzTeams = true;
+    undo(session);
+    applyScore(session, game, ['b'], 300, 'Right', clue);
+    expect(phoneStatus(game, session)?.seatsText).toBe('Your team got it!');
+    game.settings.buzzTeams = false;
     session.dd = null;
     expect(phoneStatus(game, session)).toBeNull();
     session.phase = 'end';
@@ -445,13 +460,21 @@ describe('wagerAsk (the wagers phones may send)', () => {
     expect(wagerAsk(game, session, true, { b: 2 })!.seats).toEqual([{ id: 'b', max: 1500, amount: 400, got: 2 }]);
     ddShowQuestion(session, 'b', 400);
     expect(wagerAsk(game, session, true)).toMatchObject({ open: false, seats: [{ id: 'b', amount: 400 }] });
+    // Marked: no wager to show (the phones say how it went); an Undo of the mark brings it back.
+    applyScore(session, game, ['b'], 400, 'Right', clue);
+    expect(wagerAsk(game, session, true)).toBeNull();
+    undo(session);
+    expect(wagerAsk(game, session, true)).toMatchObject({ open: false, seats: [{ id: 'b', amount: 400 }] });
+    // (Another player's score on it isn't the Daily Double's mark.)
+    applyScore(session, game, ['a'], 100, 'x', clue);
+    expect(wagerAsk(game, session, true)).toMatchObject({ open: false });
     // Another player picked: another round of wagers.
     session.dd!.stage = 'splash';
     session.dd!.playerId = 'a';
     expect(wagerAsk(game, session, true)!.id).toBe(`dd:${clue}:a`);
   });
 
-  it('a Final: the players in it on the wager screen; locked through the question and the answer; gone in the reveals', () => {
+  it('a Final: the players in it on the wager screen; locked through the question, the answer and the reveals', () => {
     const { game, session } = setup();
     applyScore(session, game, ['a'], 500, 'x');
     applyScore(session, game, ['b'], 200, 'x');
@@ -476,6 +499,8 @@ describe('wagerAsk (the wagers phones may send)', () => {
     finalNext(session, game);
     expect(wagerAsk(game, session, true)).toMatchObject({ open: false });
     finalNext(session, game);
+    expect([session.finalStep, wagerAsk(game, session, true)]).toMatchObject(['reveal', { id, open: false, seats: [{ id: 'a', amount: 100 }, { id: 'b', amount: 50 }] }]);
+    session.phase = 'end';
     expect(wagerAsk(game, session, true)).toBeNull();
   });
 

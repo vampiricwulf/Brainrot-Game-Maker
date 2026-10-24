@@ -203,9 +203,9 @@ list) and the next one who buzzed answers at once, in bold (**⏭ Skip** passes 
 who buzzed is left, the buzzers open for the rest, and **↺ Reset buzzers** (`0`) lets everyone buzz again. Buzzes
 within 0.01 s are a tie: **🎲 Roll for it** sets who answers first (the roll leaves the stage once you judge, skip or
 take the next in line), or pick one yourself (`1`–`9` or a click always picks by hand). Viewers
-see "🔔 Ann is answering" whenever one player is picked during a clue. Phones also say who got a clue right and what's
-on (a Daily Double's player sees "you're up"; on a 🤝 partner clue every phone's button greys and says who describes
-and who guesses), beep and flash when BUZZ! lights up (🔔 mutes), and **Not you?** lets a
+see "🔔 Ann is answering" whenever one player is picked during a clue. Phones also say who got a clue right (a Daily
+Double too) and what's on (a Daily Double's player sees "you're up"; on a 🤝 partner clue every phone's button greys
+and says who describes and who guesses), beep and flash when BUZZ! lights up (🔔 mutes), and **Not you?** lets a
 player change seats. A long question fits the phone: its text gets smaller (down to a size that's still easy to read)
 and past that it scrolls, with ▼ More.
 🤫 Cards go to a player's phone through the buzzer server, only when you send them (📤 in the

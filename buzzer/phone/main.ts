@@ -569,12 +569,18 @@ function denied(reason: DenyReason): void {
 
 /** "Not you?": let go of this seat and pick again (it asks first: the link is right under the buzz button). */
 function leaveSeat(): void {
-  const what = seats?.teams ? 'this team' : 'this player';
   // (A seated phone hears it in its view: the seat list it last saw may be from before the lock, or before an unlock.)
   const locked = view ? !!view.locked : !!seats?.locked;
-  const ask = locked
-    ? `Give up ${what}? The host has locked the seats: you can't get back in until they unlock them.`
-    : `Give up ${what} and pick again?`;
+  const lock = "The host has locked the seats: you can't get back in until they unlock them.";
+  // Teams: this person leaves; the team goes on without them.
+  const team = view?.teams || seats?.teams ? (view?.you?.name ?? 'this team') : '';
+  const ask = team
+    ? locked
+      ? `Leave ${team}? ${lock}`
+      : `Leave ${team} to pick a team and your name again? Your team plays on.`
+    : locked
+      ? `Give up this player? ${lock}`
+      : 'Give up this player and pick again?';
   if (!confirm(ask)) return;
   send({ t: 'leave' });
   saveSeat(null);
@@ -819,12 +825,11 @@ function clueRoom(sec: HTMLElement, kbd: boolean): number {
     ...($('answer-choices').lastElementChild ? [$('answer-choices').lastElementChild!] : []),
     ...(sec.classList.contains('cards-under') && !fine.matches ? [] : [$('keys'), $('me')]),
   ];
-  // (Multiple choice: the lines under the buttons, "Sending…", "✔ Sent: B" or why a tap wasn't taken, count as the room
-  // kept for them (their min-height) whatever they say now, so a tap never fits the question again and moves the buttons.)
-  const extra =
-    !$('answer-choices').hidden && keep.includes($('me'))
-      ? ['answer-state', 'answer-err'].reduce((n, id) => n + Math.max(0, $(id).getBoundingClientRect().height - parseFloat(getComputedStyle($(id)).minHeight)), 0)
-      : 0;
+  // (A box up: the lines under it, "Sending…", "✔ Sent: B", "Not sent yet…" or why one wasn't taken, count as the room
+  // kept for them (their min-height) whatever they say now, so a tap or a keystroke never fits the question again and
+  // moves the box.)
+  const notes = !$('answer-form').hidden ? ['answer-state', 'answer-err'] : !$('wager-form').hidden ? ['wager-state', 'wager-err'] : [];
+  const extra = keep.includes($('me')) ? notes.reduce((n, id) => n + Math.max(0, $(id).getBoundingClientRect().height - parseFloat(getComputedStyle($(id)).minHeight)), 0) : 0;
   const below = Math.max(c.bottom, ...keep.map((el) => rectOf(el)?.bottom ?? c.bottom)) - c.bottom - extra;
   return free - (c.top - side.top) - below;
 }
@@ -1535,12 +1540,16 @@ function renderWager(v: PhoneView, w: PhoneWager, sym: string): void {
 
 /** What's in with the host, or that the box holds an amount not sent yet (one not sent would read as sent). */
 function wagerState(w: PhoneWager, team: boolean, sym: string): string {
-  // Seated after the wagers began: one is in, but this phone isn't shown it.
-  if (w.amount === undefined)
-    return w.hidden ? `${team ? 'Your team’s' : 'Your'} wager is in with the host (not shown on a phone that joined after the wagers began). Sending one replaces it.` : '';
+  const typed = $<HTMLInputElement>('wager-in').value.trim();
+  if (w.amount === undefined) {
+    // Typed, none sent yet (typing alone sends nothing). Seated after the wagers began: one is in, but this phone isn't
+    // shown it.
+    const unsent = typed ? tap('Not sent yet: tap Send wager to send it.') : '';
+    const hidden = w.hidden ? `${team ? 'Your team’s' : 'Your'} wager is in with the host (not shown on a phone that joined after the wagers began). Sending one replaces it.` : '';
+    return [unsent, hidden].filter(Boolean).join(' ');
+  }
   const amt = money(w.amount, sym);
   // (As numbers: "00" typed after the 0 the host put in for a player with nothing to wager is the same wager.)
-  const typed = $<HTMLInputElement>('wager-in').value.trim();
   if (typed && Number(typed) !== w.amount) return `${tap(`Not sent yet: tap ${w.host ? 'Send' : 'Change'} wager to send it.`)} What the host has: ${amt}`;
   const what = w.host ? `The host has your wager as ${amt}` : team && w.by ? `✔ ${w.byYou ? 'You' : w.by} sent ${amt} for your team` : w.sent ? `✔ Sent: ${amt}` : '';
   return `${what}. You can change it until the question shows.`;
@@ -1555,12 +1564,16 @@ function drawState(id: 'answer-state' | 'wager-state', state: string, sending: b
 /** What's in with the host, or that the box holds something not sent yet (an edit not sent would read as sent). */
 function answerState(a: NonNullable<PhoneView['answer']>, team: boolean): string {
   const choices = !!a.choices?.length;
-  // Seated after the answers began: one is in, but this phone isn't shown it (as for wagers).
-  if (!a.text)
-    return a.hidden
+  const typed = $<HTMLTextAreaElement>('answer-in').value.replace(/\s+/g, ' ').trim();
+  if (!a.text) {
+    // Typed, none sent yet (typing alone sends nothing). Seated after the answers began: one is in, but this phone isn't
+    // shown it (as for wagers).
+    const unsent = !choices && typed ? tap('Not sent yet: tap Send answer to send it.') : '';
+    const hidden = a.hidden
       ? `${team ? 'Your team’s' : 'Your'} answer is in with the host (not shown on a phone that joined after the answers began). ${choices ? tap('Tapping one replaces it.') : 'Sending one replaces it.'}`
       : '';
-  const typed = $<HTMLTextAreaElement>('answer-in').value.replace(/\s+/g, ' ').trim();
+    return [unsent, hidden].filter(Boolean).join(' ');
+  }
   if (!choices && typed && typed !== a.text) return `${tap('Not sent yet: tap Change answer to send it.')} What the host has: “${a.text}”`;
   // (A partner clue's guess, nobody buzzing, is locked once the host judges it too.)
   const until = view?.statusOff ? 'judges it or shows the answer' : 'shows the answer';
@@ -1643,10 +1656,13 @@ function renderAnswer(v: PhoneView, a: NonNullable<PhoneView['answer']>, sym: st
   else if (choicesKey) ((choicesKey = ''), $('answer-choices').replaceChildren());
   if (!choices) answerTap = '';
   $('answer-keys').textContent = choices ? `Press A–${letter(a.choices!.length - 1)} to pick` : 'Enter sends · Shift+Enter for a new line';
+  // (Five or six choices: a shorter label, a line more for the last of them on a small phone.)
   $('answer-label').textContent = choices
-    ? team
-      ? 'Your team’s answer: pick one (only the host and your team see it)'
-      : 'Pick your answer (only the host sees it)'
+    ? a.choices!.length >= 5
+      ? `Pick one (only the host${team ? ' and your team see it' : ' sees it'})`
+      : team
+        ? 'Your team’s answer: pick one (only the host and your team see it)'
+        : 'Pick your answer (only the host sees it)'
     : team
       ? 'Your team’s answer (only the host and your team see it)'
       : 'Your answer (only the host sees it)';

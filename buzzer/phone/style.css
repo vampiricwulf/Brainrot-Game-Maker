@@ -408,19 +408,26 @@ input:focus, textarea:focus { outline: none; border-color: var(--accent); }
   font-weight: 800;
 }
 .choice .words { min-width: 0; overflow-wrap: anywhere; }
+/*
+ * Five or six, one above the other: tighter, so the last one is on a small phone's screen too. (Low specificity: side by
+ * side, below, has its own sizes.)
+ */
+#answer-choices:where(:has(> .choice:nth-child(5))) { gap: 6px; }
+#answer-choices:where(:has(> .choice:nth-child(5))) .choice { min-height: 48px; padding: 4px 12px; }
+#answer-choices:where(:has(> .choice:nth-child(5))) .choice .letter { width: 30px; height: 30px; }
 .choice[aria-pressed='true'] { border-color: #6fdc8c; background: color-mix(in srgb, #6fdc8c 18%, var(--panel-2)); }
 .choice[aria-pressed='true'] .letter { background: #2f9e55; }
 #answer-state { color: #6fdc8c; font-weight: 600; }
 #answer-state.plain-note { color: var(--muted); font-weight: 400; }
-/* Multiple choice: room for two lines from the start, so "Sending…" and "✔ Sent: B…" never move the buttons. */
-#answer-form.picking #answer-state { line-height: 1.25; min-height: 2.5em; }
+/* Room for two lines from the start, so "Sending…", "✔ Sent: B…" and "Not sent yet…" never move what's under them. */
+#answer-state, #wager-state { line-height: 1.25; min-height: 2.5em; }
 #wager-head { font-size: 22px; margin: 0; text-align: center; }
 #answer-head { font-size: 22px; margin: 0; text-align: center; overflow-wrap: anywhere; }
 #wager-in { text-align: center; font-size: 34px; font-weight: 800; }
 #wager-state { color: #6fdc8c; font-weight: 600; }
 #wager-state.plain-note { color: var(--muted); font-weight: 400; }
 /* An edit not sent yet ("Not sent yet: tap Change answer…"): amber, as it isn't in. */
-#answer-state.unsent, #wager-state.unsent { color: #ffd27a; }
+#answer-state.unsent, #wager-state.unsent { color: #ffd27a; font-weight: 600; }
 @media (min-aspect-ratio: 4/3) and (max-height: 600px), (min-aspect-ratio: 4/3) and (max-height: 900px) and (hover: hover) and (pointer: fine) {
   /*
    * The box takes the right side, top to bottom (its notes need the room); the name and score stay on the left. One
@@ -550,7 +557,16 @@ input:focus, textarea:focus { outline: none; border-color: var(--accent); }
 }
 /* In the buzzer's place: the page scrolls past a tall card rather than cut its top off. */
 #s-buzz.cards-up { justify-content: safe center; }
+/*
+ * Over a wager or answer box (cards aside, not under the buzzer), one above the other: a covered card is small, so the
+ * box's Send and its choices stay on the screen (one the player opens is its full size).
+ */
+#s-buzz.cards-aside:not(.cards-under) .card { padding: 8px 12px; gap: 6px; }
+#s-buzz.cards-aside:not(.cards-under) .card-cover { min-height: 52px; font-size: 20px; }
 @media (min-aspect-ratio: 4/3) and (max-height: 600px), (min-aspect-ratio: 4/3) and (max-height: 900px) and (hover: hover) and (pointer: fine) {
+  /* (Side by side, the cards have their own row: a covered one at its full size.) */
+  #s-buzz.cards-aside:not(.cards-under) .card { padding: 14px; gap: 8px; }
+  #s-buzz.cards-aside:not(.cards-under) .card-cover { min-height: 132px; font-size: 26px; }
   /* Side by side: the cards take the right side, top to bottom, and scroll there; the name and score stay on the left. */
   #s-buzz.cards-up #cards { grid-area: buzz; grid-row: 1 / span 2; align-self: center; width: min(520px, 56vw); max-height: calc(100dvh - 84px); overflow-y: auto; }
   .card-item img, .card-item video, .card-item canvas { max-height: 70dvh; }

@@ -546,8 +546,8 @@ try {
   await host.locator('.panel .status', { hasText: 'Answer on screen' }).waitFor();
   await next('Start player reveals ▶');
   await host.locator('.fj .pl').first().waitFor();
-  // (The reveals take the wagers off the phones: the room is told, the cards with it.)
-  assert(await until(() => !last()?.wager && cards().length === 2 && last()?.answers?.open === false), 'the answer, then the reveals: both cards stay out (and the answers are locked)');
+  // (The reveals keep the wagers locked on the phones: the room is told, the cards with it.)
+  assert(await until(() => last()?.wager?.open === false && cards().length === 2 && last()?.answers?.open === false), 'the answer, then the reveals: both cards stay out (and the answers and wagers are locked)');
   const marked = states.flatMap((s) => (s.cards ?? []).filter((c) => !c.open));
   assert(!marked.length && !(await bob.locator('body').innerText()).includes('answer’s on screen'), 'never marked “the answer’s on screen”: not to the room, not on Bob’s phone');
   await panel.waitFor();

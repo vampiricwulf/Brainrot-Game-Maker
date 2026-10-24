@@ -227,6 +227,9 @@ try {
   // Right: Player 1 has 700 to wager in the Final.
   await host.getByRole('button', { name: 'Right: Player 1 +$700' }).click();
   await ann.locator('#me').getByText('Player 1 · $700').waitFor();
+  // Judged: the phones say how it went (the question still up), not “Wager locked” or “is answering”.
+  await small(bo).getByText('Player 1 got the Daily Double').waitFor();
+  assert((await small(ann).innerText()) === 'You got it!' && (await big(ann).innerText()) === 'Player 1', `judged: her phone says “You got it!”, the others “Player 1 got the Daily Double” (${await small(ann).innerText()})`);
   await host.keyboard.press('Escape');
 
   // ---------- The Final: both phones wager ----------
@@ -373,9 +376,12 @@ try {
   await host.keyboard.press('n');
   await host.getByText('Mark Player 1 right (C) or wrong (X) first').first().waitFor();
   assert(true, 'N again: “Mark Player 1 right (C) or wrong (X) first”');
+  const scoreWas = await ann.locator('#me').innerText();
   await host.keyboard.press('c');
   await aud.locator('.spot-result', { hasText: '✔ CORRECT' }).waitFor();
   assert((await aud.locator('.spot-wager').innerText()).includes('$1,300'), 'C: CORRECT, and her wager ($1,300) goes up with it');
+  await ann.waitForFunction((was) => document.getElementById('me').innerText !== was, scoreWas);
+  assert((await small(ann).innerText()) === 'Your wager: $1,300 · Yours: “Fleming”', `through the reveals her phone keeps her wager with her answer (${await small(ann).innerText()})`);
   // (Its fly-in done:) the card, with the answer's line, still fits above the scores.
   await aud.waitForFunction(() => document.querySelector('.spot')?.getBoundingClientRect().bottom <= document.querySelector('.score-area')?.getBoundingClientRect().top);
   assert(true, 'the spotlight card, answer line and all, fits above the scores');
@@ -650,8 +656,12 @@ try {
   assert((await big(cy).innerText()) === 'You sit this one out', 'a team out of the Final: under the question (the Final’s name over it), its phone says “Your team isn’t in this one”, not the Final’s name again');
   await mainButton(host2).filter({ hasText: 'Reveal answer ▶' }).click();
   await mainButton(host2).filter({ hasText: 'Start team reveals ▶' }).click();
-  await big(cy).getByText('Player 2').waitFor();
-  assert((await small(cy).innerText()) === 'Your team isn’t in this one', `and through the reveals (${await small(cy).innerText()})`);
+  // (The reveals change nothing there: the same two lines as under the question.)
+  await host2.locator('.fj .pl').first().waitFor();
+  assert(
+    (await big(cy).innerText()) === 'You sit this one out' && (await small(cy).innerText()) === 'Your team isn’t in this one',
+    `and through the reveals (${await big(cy).innerText()} · ${await small(cy).innerText()})`,
+  );
 
   assert(errors.length === 0, `no page errors (${errors.join(' | ')})`);
   console.log('Phone wagers E2E passed.');

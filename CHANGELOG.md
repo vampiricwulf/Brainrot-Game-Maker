@@ -28,6 +28,12 @@ in plain words for the people who make and host games. Anything committed but no
 - One window: the stage keeps one size from the Final's reveals through the results, a tiebreaker roll-off (rolling, landed and closed) and the tiebreaker clue, and a board-game round under the stage (a 4:3 window) keeps one size through its turns, instead of changing at each step.
 - One window up to 1180 px wide: the stage no longer drops a few pixels as a ✍ multiple-choice clue's answer goes up and comes back after ✔ Judge all; the room kept for ✔ Judge all is as tall as the button.
 - One window: the RPG's ⤢ Full map (`J`) and ✎ Edit board's ⚙ Buttons… open over the host panel, as 👥 Players does, instead of covering the stage on stream (the full map names screens nobody has found yet). ✎ Edit screen, too big for the panel, says viewers see the editor in one window (📺 Audience edits off stream), not “viewers see changes as you make them”.
+- Phones: an answer or wager typed but not sent yet says so in amber (“Not sent yet: tap Send answer to send it.”), as an edit not sent does. Typing alone sends nothing, and the phone said nothing until the box locked with “None sent”. The line under the box keeps room for two lines, so it never moves what's under it. A buzzer server you run yourself needs deploying again for this.
+- After a Daily Double is judged, the phones say how it went (“Player 1 got the Daily Double”, and “You got it!” on theirs; or “missed the Daily Double”, “Not this time”), as they do on any clue, instead of “Player 1 is answering” and “Wager locked” until the board came back. ↶ Undo of the mark brings those back.
+- Phones held upright: a covered 🤫 card over an answer or wager box is smaller, so the box's Send and its choices stay on the screen (on a small phone they were below it, and the question was cut short). A buzzer server you run yourself needs deploying again for this.
+- Phones held upright: five or six multiple choices are tighter, under a shorter label, so the last one is on a small phone's screen too. A buzzer server you run yourself needs deploying again for this.
+- The Final's locked wager stays on the phones through the player reveals (“Answers locked · Your wager: $40 · Yours: …”). It went just as the reveals began.
+- On a team, **Change team or name** asks “Leave Team Red to pick a team and your name again? Your team plays on.” instead of “Give up this team and pick again?”, which sounded as if the whole team would quit. A buzzer server you run yourself needs deploying again for this.
 
 ## 2026-10-24
 

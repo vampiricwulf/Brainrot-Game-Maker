@@ -154,7 +154,12 @@ export function phoneStatus(game: Game, session: Session, pregame = false, room:
   if (session.phase === 'clue' && session.dd) {
     const id = session.dd.playerId;
     const who = nameOf(id);
-    return who && id ? { text: `Daily Double: ${who}`, seats: [id], seatsText: 'Daily Double — you’re up!' } : { text: 'Daily Double!' };
+    if (!who || !id) return { text: 'Daily Double!' };
+    // Judged: how it went, as an ordinary clue's phones say who got it.
+    const right = ddMark(game, session);
+    if (right !== undefined)
+      return { text: `${who} ${right ? 'got' : 'missed'} the Daily Double`, seats: [id], seatsText: right ? (teamsOn(game.settings) ? 'Your team got it!' : 'You got it!') : 'Not this time' };
+    return { text: `Daily Double: ${who}`, seats: [id], seatsText: 'Daily Double — you’re up!' };
   }
   // A partner clue's miss let the others steal it: they buzz in as on any clue (nothing greyed), the two locked out.
   const steal = session.phase === 'clue' && session.partner && !session.revealed ? partnerSteal(session) : null;
@@ -607,8 +612,20 @@ export function partnerAnswerAsk(game: Game, session: Session, got: Record<Id, {
 }
 
 /**
+ * The Daily Double's player's mark on it once its question is up: right (true) or wrong (false), by their last mark
+ * that isn't undone; undefined until they're marked.
+ */
+function ddMark(game: Game, session: Session): boolean | undefined {
+  const dd = session.dd;
+  const clue = currentClueInfo(session, game)?.clue.id;
+  if (dd?.stage !== 'question' || !dd.playerId || !clue) return undefined;
+  return clueMarks(session, clue)[dd.playerId]?.right;
+}
+
+/**
  * The wagers phones may send now (HostState.wager), or null: a Daily Double's player before the question shows (locked
- * once it's up), the Final's players on its wager screen (locked through the question and the answer). Each with their
+ * once it's up, until they're marked), the Final's players on its wager screen (locked through the question, the
+ * answer and the reveals). Each with their
  * max (held to it only when the host turned the limits on: `limitsOff` false), the wager the host has for them, and
  * `got`: the last phone wager the host took for each (Session.remote.wagerGot), `gotAmounts` how much it was.
  */
@@ -631,7 +648,8 @@ export function wagerAsk(
   if (session.phase === 'clue' && session.dd) {
     const dd = session.dd;
     const clue = currentClueInfo(session, game)?.clue.id;
-    if (!clue || !here(dd.playerId)) return null;
+    // (Marked: the phones say how it went instead, phoneStatus.)
+    if (!clue || !here(dd.playerId) || ddMark(game, session) !== undefined) return null;
     const open = dd.stage === 'splash';
     const amount = open ? dd.draft : dd.wager;
     return { id: `dd:${clue}:${dd.playerId}`, kind: 'dd', open, ...limit, seats: [seat(dd.playerId, ddCap(session, game, dd.playerId), amount, dd.draftFrom !== 'phone')] };
@@ -640,7 +658,6 @@ export function wagerAsk(
   const r = currentFinal(session, game);
   if (session.phase === 'final' && f && r && f.roundId === r.id && session.intro?.stage !== 'title') {
     const step = session.finalStep ?? 'wagers';
-    if (step !== 'wagers' && step !== 'question' && step !== 'answer') return null;
     const ids = f.players.filter(here);
     // A phone's wager put back by an Undo (not the last one it sent): the host's, as the phone should say.
     const host = (id: Id) => !wagerFromPhone(f, id) || (gotAmounts[id] !== undefined && f.wagers[id] !== gotAmounts[id]);
