@@ -5,7 +5,7 @@
 -->
 <script lang="ts">
   import { app } from '../../lib/app.svelte';
-  import { applySpaceKind, nameShown, SPACE_KINDS, spaceById } from '../../lib/boardgame';
+  import { applySpaceKind, nameShown, SPACE_KINDS, spaceById, spaceListNames } from '../../lib/boardgame';
   import { numberStat } from '../../lib/rpgpresets';
   import type { BoardGameRound, BoardGameState, Game, Session } from '../../lib/model';
   import BoardSpaceButtons from './BoardSpaceButtons.svelte';
@@ -25,6 +25,8 @@
   const isStart = $derived(!!sel && (round.start ?? round.spaces[0]?.id) === sel.id);
   const here = $derived(sel ? session.players.filter((p) => bs.positions[p.id]?.space === sel.id) : []);
   const name = (id: string) => spaceById(round, id)?.name ?? '?';
+  /** The spaces' names in Connect to… (a name that repeats says where it is: “Bonus (after Space 6)”). */
+  const listNames = $derived(spaceListNames(round));
 </script>
 
 <div class="be" data-board-editing>
@@ -72,9 +74,10 @@
     </span>
   </div>
 
+  <!-- (A pick's row comes into view as it's picked: in one window under the stage this part scrolls, the note above it.) -->
   {#if sel}
     {@const s = sel}
-    <div class="row pick" data-edit-space={s.id}>
+    <div class="row pick" data-edit-space={s.id} {@attach (el) => (void boardEdit.sel, el.scrollIntoView({ block: 'nearest' }))}>
       <label class="small">
         Name
         <input
@@ -163,12 +166,12 @@
         }}
       >
         <option value="">→ Connect to a space…</option>
-        {#each round.spaces.filter((x) => x.id !== s.id && !s.next.includes(x.id)) as x (x.id)}<option value={x.id}>{x.name}</option>{/each}
+        {#each round.spaces.filter((x) => x.id !== s.id && !s.next.includes(x.id)) as x (x.id)}<option value={x.id}>{listNames.get(x.id)}</option>{/each}
       </select>
     </div>
   {:else if link}
     {@const k = link}
-    <div class="row pick" data-edit-link>
+    <div class="row pick" data-edit-link {@attach (el) => (void boardEdit.link, el.scrollIntoView({ block: 'nearest' }))}>
       <b class="small">{k.a.name} {k.both ? '↔' : '→'} {k.b.name}</b>
       <button class="small" onclick={() => editBothWays(game, session, k.l)}>{k.both ? '→ One way only' : '⇄ Both ways'}</button>
       <button class="small" disabled={k.both} onclick={() => editReverse(game, session, k.l)}>↺ Reverse</button>

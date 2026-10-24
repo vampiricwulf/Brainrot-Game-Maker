@@ -92,8 +92,9 @@
       if (!sp) continue;
       // On a space near the top (boards made before spaces started lower), a token that would slip under the turn
       // banner, the win notes or the stats strip comes down just enough to stay in sight; near the bottom, it goes up
-      // above the stats strip; at a side, a crowd moves in. The board itself stays as it is.
-      const { r, spots } = placeTokens(sp.x, sp.y, ids.length, clearTop, SLIDE_H - clearBottom);
+      // above the stats strip; at a side, a crowd moves in. A crowd next to another space keeps off it (smaller tokens).
+      // The board itself stays as it is.
+      const { r, spots } = placeTokens(sp.x, sp.y, ids.length, clearTop, SLIDE_H - clearBottom, round.spaces.filter((o) => o.id !== sp.id));
       ids.forEach((id, i) => out.push({ id, ...spots[i], r }));
     }
     return out;

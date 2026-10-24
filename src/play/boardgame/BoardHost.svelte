@@ -11,7 +11,7 @@
   import { describeAction, needsPlayers, runAction, type RunContext } from '../../lib/actions';
   import { teamsOn } from '../../lib/buzz';
   import { buzzerOn } from '../../lib/remote.svelte';
-  import { clampSteps, currentPlayer, MAX_STEPS, spaceById, spaceSaid, spaceShown, unrevealed, waysOn } from '../../lib/boardgame';
+  import { clampSteps, currentPlayer, MAX_STEPS, spaceById, spaceListNames, spaceSaid, spaceShown, unrevealed, waysOn } from '../../lib/boardgame';
   import { DragOrder } from '../../lib/dragorder.svelte';
   import { newId, type Action, type BoardSpace, type Game, type Session } from '../../lib/model';
   import { lastAction, logged } from '../../lib/toolset';
@@ -115,6 +115,8 @@
   });
 
   const card = $derived(round && space ? spaceById(round, space) : undefined);
+  /** The spaces' names in the lists below (a name that repeats says where it is: “Bonus (after Space 6)”). */
+  const listNames = $derived(round ? spaceListNames(round) : new Map<string, string>());
 
   /** Next turn ▶ / ◀ Previous turn: a skip or a Roll again is said (it isn't the next player's turn). */
   function turnTold(delta: number): void {
@@ -339,7 +341,7 @@
         title="Teleport the selected players (or whoever's turn it is)"
       >
         <option value="">📍 Send {selected.length ? `selected (${selected.length})` : turnName} to…</option>
-        {#each round.spaces as s (s.id)}<option value="s:{s.id}">{s.name}</option>{/each}
+        {#each round.spaces as s (s.id)}<option value="s:{s.id}">{listNames.get(s.id)}</option>{/each}
         {#each round.zones as z (z.id)}<option value="z:{z.id}">🌀 {z.name}</option>{/each}
       </select>
       <!-- A space's card (its actions, Put … here, Reveal) without the mouse: the same as clicking it on the stage. -->
@@ -353,7 +355,7 @@
         }}
       >
         <option value="">🗂 Spaces…</option>
-        {#each round.spaces as s (s.id)}<option value={s.id}>{s.name}{s.secret && !bs.revealed?.includes(s.id) ? ' (secret)' : ''}</option>{/each}
+        {#each round.spaces as s (s.id)}<option value={s.id}>{listNames.get(s.id)}{s.secret && !bs.revealed?.includes(s.id) ? ' (secret)' : ''}</option>{/each}
       </select>
       <select
         class="small"

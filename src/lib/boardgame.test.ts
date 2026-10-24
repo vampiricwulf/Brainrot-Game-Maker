@@ -385,6 +385,23 @@ describe('board game: tokens on a space', () => {
     }
     expect(rimSpots(1, 42)[0]).toEqual({ dx: 0, dy: -88 });
   });
+
+  it('keep off a space nearby: 7 or 8 on the 20-space loop’s Start stay clear of Space 2, smaller, along the rim', () => {
+    const near = [{ x: 489, y: 250 }, { x: 300, y: 443 }];
+    for (const n of [7, 8]) {
+      const { r, spots } = placeTokens(300, 250, n, 0, 1080, near);
+      for (const s of spots) {
+        // (A token may tuck over a space's rim, as over its own.)
+        for (const o of near) expect(Math.hypot(s.x - o.x, s.y - o.y)).toBeGreaterThanOrEqual(58 + r - 12);
+        expect(Math.hypot(s.x - 300, s.y - 250)).toBeGreaterThanOrEqual(58 + r - 13);
+        expect(s.y - 250).toBeLessThanOrEqual(r);
+      }
+    }
+    // Nothing near, or far enough (280 apart): today's spots.
+    const today = rimSpots(8, 32).map((s) => ({ x: 300 + s.dx, y: 250 + s.dy }));
+    expect(placeTokens(300, 250, 8, 0, 1080)).toEqual({ r: 32, spots: today });
+    expect(placeTokens(300, 250, 8, 0, 1080, [{ x: 580, y: 250 }])).toEqual({ r: 32, spots: today });
+  });
 });
 
 describe('board game: moving back where ways split or meet', () => {

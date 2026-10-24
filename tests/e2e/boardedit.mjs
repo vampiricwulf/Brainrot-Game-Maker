@@ -98,6 +98,22 @@ const labelIs = (page, want) =>
     { timeout: 5000 },
   );
 const stageSpaces = (page) => page.locator('.stage-box [data-space]');
+/** After a resize: the stage's box stays put for a few frames (it follows the window a moment later). */
+const settled = (page) =>
+  page.waitForFunction(
+    () =>
+      new Promise((done) => {
+        const el = document.querySelector('.stage-box');
+        let [last, same] = ['', 0];
+        const tick = () => {
+          const r = JSON.stringify(el.getBoundingClientRect());
+          [last, same] = [r, r === last ? same + 1 : 0];
+          if (same >= 3) done(true);
+          else requestAnimationFrame(tick);
+        };
+        tick();
+      }),
+  );
 
 try {
   // ---------- One window, the panel under the stage ----------
@@ -298,6 +314,14 @@ try {
   );
   await secretCard.getByRole('button', { name: 'Close' }).click();
   await secretCard.waitFor({ state: 'detached' });
+  // Right-clicked on the stage (on stream in one window), its menu's heading says so too.
+  await stageSpaces(page).and(page.locator('[data-space="b6"]')).click({ button: 'right' });
+  const spaceMenu = page.getByRole('menu');
+  await spaceMenu.waitFor();
+  const menuHead = await spaceMenu.locator('.heading').innerText();
+  assert(menuHead === '? (secret)' && !(await spaceMenu.innerText()).includes('Trap Door'), `its menu on the stage: “${menuHead}”`);
+  await page.keyboard.press('Escape');
+  await spaceMenu.waitFor({ state: 'detached' });
   await acts.getByRole('button', { name: '👁 Reveal space' }).click();
   assert((await acts.innerText()).includes('Landed on Trap Door:') && (await acts.innerText()).includes('📝 lava pit'), 'revealed: the panel names it, and shows its note');
   await acts.getByRole('button', { name: '+$100' }).click();
@@ -400,6 +424,36 @@ try {
   await kinds.blur();
   await page.keyboard.press('Control+z');
   assert(!(await stageSpaces(page).allInnerTexts()).some((t) => t.includes('⭐')), 'and Ctrl+Z takes it back');
+  // A 4:3 window, the panel under the stage holding less (its part scrolls): a space picked on the stage brings its
+  // settings into view (from the top of that part, where the note is).
+  await page.setViewportSize({ width: 1024, height: 768 });
+  await settled(page);
+  await page.locator('[data-board-editing]').evaluate((e) => {
+    for (let p = e; p; p = p.parentElement) p.scrollTop = 0;
+  });
+  const s3At = await at(1000, 300);
+  await page.mouse.click(s3At.x, s3At.y);
+  const pickInSight = await page
+    .waitForFunction(
+      () => {
+        const row = document.querySelector('[data-edit-space]');
+        const r = row?.getBoundingClientRect();
+        if (!r || row.querySelector('[data-edit-name]')?.value !== 'Space 3') return false;
+        for (let p = row.parentElement; p; p = p.parentElement) {
+          const b = p.getBoundingClientRect();
+          if (/(auto|scroll|hidden)/.test(getComputedStyle(p).overflowY) && (r.top < b.top - 1 || r.bottom > b.bottom + 1)) return false;
+        }
+        return r.bottom <= innerHeight;
+      },
+      null,
+      { timeout: 3000 },
+    )
+    .then(() => true, () => false);
+  assert(pickInSight, 'at 1024×768, a space picked on the stage has its settings in sight in the host panel (it scrolls there)');
+  await page.setViewportSize({ width: 1400, height: 1000 });
+  await settled(page);
+  await page.mouse.click(nap.x, nap.y);
+  await page.waitForFunction(() => document.querySelector('[data-edit-name]')?.value === 'Nap time');
   // Its ⚙ Buttons… (one window: the panel is on stream) open over the host panel, never the stage.
   await page.locator('[data-board-editing]').getByRole('button', { name: /⚙ Buttons/ }).click();
   const btns = page.getByRole('dialog', { name: 'Buttons on Nap time' });

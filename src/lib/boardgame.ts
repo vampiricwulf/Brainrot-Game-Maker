@@ -125,6 +125,21 @@ export function previousOf(round: BoardGameRound, id: Id): BoardSpace[] {
 }
 
 /**
+ * Each space's name in the host's lists (📍 Send to…, 🗂 Spaces…, Connect to…): one whose name repeats says where it is,
+ * “Bonus (after Space 6)”, and one still the same as another its place among them, “Go back (2nd)”.
+ */
+export function spaceListNames(round: BoardGameRound): Map<Id, string> {
+  const many = <T>(list: T[], x: T) => list.filter((y) => y === x).length > 1;
+  const names = round.spaces.map((s) => s.name);
+  const where = round.spaces.map((s) => {
+    const before = many(names, s.name) ? previousOf(round, s.id)[0] : undefined;
+    return before ? `${s.name} (after ${before.name})` : s.name;
+  });
+  const nth = (n: number) => `${n}${n % 10 === 1 && n % 100 !== 11 ? 'st' : n % 10 === 2 && n % 100 !== 12 ? 'nd' : n % 10 === 3 && n % 100 !== 13 ? 'rd' : 'th'}`;
+  return new Map(round.spaces.map((s, i) => [s.id, many(where, where[i]) ? `${s.name} (${nth(names.slice(0, i + 1).filter((n) => n === s.name).length)})` : where[i]]));
+}
+
+/**
  * A space about to be deleted: the spaces that led to it lead everywhere it led instead, not back to themselves (a
  * space in the middle of a both-ways path, A ⇄ B ⇄ C, leaves A ⇄ C; a deleted fork moves back one space). True
  * when any of them leads somewhere new.
@@ -456,22 +471,25 @@ export function tokenRadius(n: number): number {
 /** Above this many tokens on one space, they stand in rows over it instead of along its rim. */
 const RIM_MAX = 8;
 
+/** `n` tokens of radius `r` in rows, centered a little above a space, about as wide as the gap to the next space. */
+function rowSpots(n: number, r: number): { dx: number; dy: number }[] {
+  const gap = 2 * r + 4;
+  const cols = Math.min(n, Math.ceil(Math.sqrt(n * 1.6)));
+  const rows = Math.ceil(n / cols);
+  return Array.from({ length: n }, (_, i) => {
+    const row = Math.floor(i / cols);
+    const inRow = row === rows - 1 ? n - row * cols : cols;
+    return { dx: Math.round((i - row * cols - (inRow - 1) / 2) * gap), dy: Math.round((row - (rows - 1) / 2) * gap - r) };
+  });
+}
+
 /**
  * Where `n` tokens of radius `r` sit on a space: side by side along the top of its rim, never over its number or its
  * name below it. A crowd moves out a little so the tokens don't cover each other, and goes no lower than the sides.
- * More than RIM_MAX stand in rows, centered a little above the space, about as wide as the gap to the next space.
+ * More than RIM_MAX stand in rows over it.
  */
 export function rimSpots(n: number, r: number): { dx: number; dy: number }[] {
-  if (n > RIM_MAX) {
-    const gap = 2 * r + 4;
-    const cols = Math.min(n, Math.ceil(Math.sqrt(n * 1.6)));
-    const rows = Math.ceil(n / cols);
-    return Array.from({ length: n }, (_, i) => {
-      const row = Math.floor(i / cols);
-      const inRow = row === rows - 1 ? n - row * cols : cols;
-      return { dx: Math.round((i - row * cols - (inRow - 1) / 2) * gap), dy: Math.round((row - (rows - 1) / 2) * gap - r) };
-    });
-  }
+  if (n > RIM_MAX) return rowSpots(n, r);
   let ring = SPACE_R + r - TUCK;
   // The angle between two neighbours' centers at that distance; together they reach a little past the sides at most.
   const stepAt = (d: number) => 2 * Math.asin(Math.min(1, (r + 3) / d));
@@ -485,12 +503,22 @@ export function rimSpots(n: number, r: number): { dx: number; dy: number }[] {
 
 /**
  * Where to draw `n` tokens on a space at (x, y), on the board, with `top` and `bottom` the room the labels and the
- * stats strip leave: rows of a crowd move together (so they stay rows); along the rim, a token that would slip under
- * the turn banner or the strip comes down (or up) just enough. Nothing goes off the sides.
+ * stats strip leave, and `near` the other spaces: along the rim, smaller tokens when they'd reach over a space nearby
+ * (they may tuck over its rim, as over their own), and rows over the space when even those don't fit. Rows of a crowd
+ * move together (so they stay rows); along the rim, a token that would slip under the turn banner or the strip comes
+ * down (or up) just enough. Nothing goes off the sides.
  */
-export function placeTokens(x: number, y: number, n: number, top: number, bottom: number): { r: number; spots: { x: number; y: number }[] } {
-  const r = tokenRadius(n);
-  const spots = rimSpots(n, r).map((s) => ({ x: x + s.dx, y: y + s.dy }));
+export function placeTokens(x: number, y: number, n: number, top: number, bottom: number, near: { x: number; y: number }[] = []): { r: number; spots: { x: number; y: number }[] } {
+  const clear = (rel: { dx: number; dy: number }[], r: number) => rel.every((s) => near.every((o) => Math.hypot(x + s.dx - o.x, y + s.dy - o.y) >= SPACE_R + r - TUCK));
+  let r = tokenRadius(n);
+  let rel = rimSpots(n, r);
+  let rows = n > RIM_MAX;
+  if (!rows && !clear(rel, r)) {
+    const fit = [32, 24].filter((s) => s < r).map((s) => ({ r: s, rel: rimSpots(n, s) })).find((f) => clear(f.rel, f.r));
+    if (fit) ({ r, rel } = fit);
+    else [r, rel, rows] = [24, rowSpots(n, 24), true];
+  }
+  const spots = rel.map((s) => ({ x: x + s.dx, y: y + s.dy }));
   // (Too big for the room, the group keeps to the left, or the top.)
   const shift = (lo: number, hi: number, min: number, max: number) => (min < lo ? lo - min : max > hi ? Math.max(hi - max, lo - min) : 0);
   const xs = spots.map((s) => s.x);
@@ -498,7 +526,7 @@ export function placeTokens(x: number, y: number, n: number, top: number, bottom
   const lowest = top + r;
   const highest = Math.max(lowest, bottom - r);
   const ys = spots.map((s) => s.y);
-  const dy = n > RIM_MAX ? shift(lowest, highest, Math.min(...ys), Math.max(...ys)) : 0;
+  const dy = rows ? shift(lowest, highest, Math.min(...ys), Math.max(...ys)) : 0;
   return { r, spots: spots.map((s) => ({ x: s.x + dx, y: Math.min(highest, Math.max(lowest, s.y + dy)) })) };
 }
 

@@ -38,6 +38,10 @@ in plain words for the people who make and host games. Anything committed but no
 - A movement wheel that lands on a slice with no number (“Lose a turn”): Enter says “No number on “Lose a turn”: N for the next turn, or type the steps”. Before a spin it says “Spin first (D)” on a wheel board, not “Roll first (D)”.
 - A player in a zone (the Shadow Realm, say): ▶ Move or Enter with a count says “Ann is in Shadow Realm: 📍 Send them to a space first” and keeps the roll for the zone's escape, instead of moving nobody and throwing the count away. With a count in, the main button is Next turn ▶, not ▶ Move.
 - Board-game words: a move back reads “Ann goes back 3” in 🕘 History, the 📜 Log and Undo (it said “moves -3”); the move buttons read “▶ Move Player 2: 2”; the editor's ✨ Make it a… says “↩ Go back” (it said “Back 3 spaces” for a space whose button goes back 2).
+- One window: right-clicking a secret space on the stage before it's revealed shows “? (secret)” as its menu's heading. It showed the space's name, on stream.
+- Board games: 7 or 8 players on one space (Start on the 20-space loop, say) stand round its rim as smaller tokens, instead of reaching over the space next to it, where viewers read the end ones as standing there.
+- ✎ Edit board: a space or a link picked on the stage brings its settings into view in the host panel. In one window at 1024×768 they were below what the panel showed, so a pick seemed to do nothing.
+- 📍 Send … to…, 🗂 Spaces… and Connect to a space… tell spaces with the same name apart: “Bonus (after Space 6)”, or “Go back (2nd)” when that's the same too. The 20-space loop has three “Go back” and two “Bonus”.
 
 ## 2026-10-24
 

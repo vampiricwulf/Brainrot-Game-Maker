@@ -4,7 +4,7 @@ import { isBoard, isBoardGame, isRpg, newGame } from './model';
 import { slideHasContent } from './usage';
 import { validate } from './validate';
 import { goToRound, newSession } from './session';
-import { movePlayer, nameShown, rimSpots, spaceKindOf, startSpace, tokenRadius, walk } from './boardgame';
+import { movePlayer, nameShown, rimSpots, spaceKindOf, spaceListNames, startSpace, tokenRadius, walk } from './boardgame';
 import { runAction } from './actions';
 import { newLive } from './live';
 import { statNumber } from './toolset';
@@ -161,6 +161,21 @@ describe('round templates', () => {
         expect(others.filter((o) => Math.hypot(o.x - (s.x + tok.dx), o.y - (s.y + tok.dy)) < 58).map((o) => o.name), `${label}: a token on ${s.name}`).toEqual([]);
       }
     }
+  });
+
+  it('the 20-space loop’s lists (📍 Send to…) tell its three “Go back” and two “Bonus” apart', () => {
+    const r = TEMPLATES.find((t) => t.label === '20-space loop')!.make(newGame());
+    if (!isBoardGame(r)) throw new Error('not a board game');
+    const names = spaceListNames(r);
+    expect(new Set(names.values()).size).toBe(r.spaces.length);
+    expect(names.get(r.spaces[6].id)).toBe('Bonus (after Space 6)');
+    // A name of its own stays as it is.
+    expect([names.get(r.spaces[0].id), names.get(r.spaces[1].id)]).toEqual(['Start', 'Space 2']);
+    // Still the same after that (two after the same space): their place among them.
+    r.spaces[16].name = 'Go back';
+    r.spaces[10].next = [r.spaces[11].id, r.spaces[16].id];
+    const now = spaceListNames(r);
+    expect([now.get(r.spaces[11].id), now.get(r.spaces[16].id), now.get(r.spaces[17].id)]).toEqual(['Go back (2nd)', 'Go back (3rd)', 'Go back (after Go back)']);
   });
 
   it('the race names Start and Finish on the board, and Finish (🏆) gives the first one there points: the most points wins the game', () => {

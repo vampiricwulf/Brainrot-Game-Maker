@@ -77,7 +77,7 @@
     type AvatarDrop, type RpgAsk, type StagePoint,
   } from './rpg/hostops';
   import { showMenu, type MenuEntry } from '../lib/menustate.svelte';
-  import { currentPlayer, ensureBoard, waysNow, waysOn } from '../lib/boardgame';
+  import { currentPlayer, ensureBoard, spaceSaid, waysNow, waysOn } from '../lib/boardgame';
   import { ensureWorld, focusRef, override, refindPositions } from '../lib/rpg';
   import { boardNow, moveCounts, moveNow, moverResult, moverSliceNoNumber, moverSliceWords, offBoard, rollMover, runSpace, sendNow, setTurn, stepWaysHint, turnNow } from './boardgame/bgops';
   import { boardEdit, editDelete, editDisconnect, editIdle, setEditing } from './boardgame/boardedit.svelte';
@@ -3057,7 +3057,8 @@
         const movers = selected.length ? selected : turnId ? [turnId] : [];
         const them = selected.length ? `the selected (${selected.length})` : playerName(session, turnId);
         return showMenu(e, [
-          { heading: sp.name },
+          // (One window: on stream, so a secret space not revealed yet is “? (secret)”, as in its toasts.)
+          { heading: spaceSaid(bs, sp, !dual) },
           { label: '🗂 Open its card', onclick: () => ((hideControls = false), (bgSpace = sp.id)) },
           {
             label: `📍 Put ${them} here`,
