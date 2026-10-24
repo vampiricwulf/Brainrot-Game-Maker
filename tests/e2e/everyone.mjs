@@ -210,6 +210,22 @@ try {
     typedShownH === typedH && rows.scrolls && rows.all,
     `then the host sees each player’s answer, a long one whole (the rows scroll), and the stage keeps its size (${typedH}px, then ${typedShownH}px)`,
   );
+  // On a short window (a 1366×768 laptop at 150% zoom) the answers box keeps its rows in sight: each ✔, and ＋ Award.
+  await host.setViewportSize({ width: 911, height: 438 });
+  const inSight = (loc) =>
+    loc.evaluate((b) => {
+      const r = b.getBoundingClientRect();
+      return r.height > 0 && r.top >= 0 && r.bottom <= innerHeight && b.contains(document.elementFromPoint(r.x + r.width / 2, r.y + r.height / 2));
+    });
+  const sightLines = [row('Player 1').getByRole('button', { name: 'Player 1 is right' }), row('Player 2').getByRole('button', { name: 'Player 2 is right' }), host.locator('.panel .award button', { hasText: 'Award' })];
+  let seen = [];
+  for (let i = 0; i < 20; i++) {
+    seen = await Promise.all(sightLines.map(inSight));
+    if (!seen.includes(false)) break;
+    await host.waitForTimeout(100);
+  }
+  assert(!seen.includes(false), `at 911×438 both answers' ✔ and ＋ Award are in sight (${seen})`);
+  await host.setViewportSize({ width: 1400, height: 900 });
 
   await row('Player 1').getByRole('button', { name: 'Player 1 is right' }).click();
   await row('Player 1').getByText('✔ Right').waitFor();

@@ -40,6 +40,9 @@
     overflow: hidden;
     /* The audience window sets a chroma-key color here (the theme's stage background). */
     background: var(--letterbox, #000);
+    /* What viewers see follows the game's theme, not the host's display settings (a Windows contrast theme would
+       repaint it in system colors, the chroma key too). Inherited: the editor's previews keep their colors as well. */
+    forced-color-adjust: none;
   }
   .stage {
     position: absolute;

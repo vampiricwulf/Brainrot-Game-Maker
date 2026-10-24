@@ -624,6 +624,19 @@
     clearTimeout(pointerTimer);
     pointerTimer = setTimeout(() => (pointerMoved = false), 2500);
   }
+  /**
+   * A touch screen has no mouse to move: a tap shows "Show controls" instead. That first tap does nothing else (it
+   * would open a tile or turn a slide on stream, unseen); once the button shows, taps go through.
+   */
+  let swallowTap = false;
+  function touchDown(e: PointerEvent): void {
+    swallowTap = false;
+    if (!hideControls || e.pointerType === 'mouse') return;
+    swallowTap = !pointerMoved && !(e.target instanceof Element && e.target.closest('.show-controls'));
+    pointerMove();
+  }
+  /** A touch screen without a keyboard: the first-time note says to tap, not to press H. */
+  const coarse = typeof matchMedia === 'function' && matchMedia('(pointer: coarse)').matches;
   $effect(() => {
     if (!hideControls) pointerMoved = false;
   });
@@ -4353,7 +4366,14 @@
     viaKeys = true;
     if (tabbing || (e.key.startsWith('Arrow') && e.target instanceof Element && e.target.closest('.board'))) ringOff = false;
   }}
+  onclickcapture={(e) => {
+    if (!swallowTap) return;
+    swallowTap = false;
+    e.preventDefault();
+    e.stopPropagation();
+  }}
   onpointerdowncapture={(e) => {
+    touchDown(e);
     tabbing = false;
     viaKeys = false;
     const b = e.target instanceof Element ? e.target.closest('button, [role="button"]') : null;
@@ -4780,7 +4800,7 @@
     {#if hideControls}
       <!-- (Never where the focus rescue puts the keys: then it would show, on stream. Tab reaches it.) -->
       <button class="show-controls" class:shown={pointerMoved} onclick={() => ((hideAgain = false), (hideControls = false))} title="H" data-no-rescue>Show controls</button>
-      {#if hideNote}<div class="toast note-pill" role="status">Press H to bring the controls back</div>{/if}
+      {#if hideNote}<div class="toast note-pill" role="status">{coarse ? 'Tap the screen, then Show controls (top right), to bring the controls back' : 'Press H to bring the controls back'}</div>{/if}
     {:else}
       <HostPanel
         {game}

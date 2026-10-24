@@ -1644,6 +1644,12 @@
   .grid-wrap:hover .seam {
     opacity: 0.35;
   }
+  /* (A touch screen can't point at the map: they show faintly, so a tap never blocks a way unseen.) */
+  @media (hover: none) {
+    .seam {
+      opacity: 0.35;
+    }
+  }
   .grid-wrap .seam:hover,
   .seam:focus-visible,
   .seam.shut {

@@ -495,6 +495,13 @@
     opacity: 1;
     pointer-events: auto;
   }
+  /* A touch screen can't point at a row: they show, so a tap never presses one unseen. */
+  @media (hover: none) {
+    .acts {
+      opacity: 1;
+      pointer-events: auto;
+    }
+  }
   .item.redo:hover,
   .item.off:hover,
   .item.redo:focus-within {

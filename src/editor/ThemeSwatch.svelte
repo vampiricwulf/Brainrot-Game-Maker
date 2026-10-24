@@ -29,6 +29,8 @@
 
 <style>
   .sw {
+    /* A theme's own colors, whatever the computer's contrast theme (or every card would look the same). */
+    forced-color-adjust: none;
     display: grid;
     grid-template-columns: repeat(4, 1fr);
     grid-template-rows: 0.8fr 1fr 1fr;

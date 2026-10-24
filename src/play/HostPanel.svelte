@@ -1388,14 +1388,14 @@
         disabled={!redoText}
         title={redoText ? `Redo: ${redoText} (Ctrl+Shift+Z · right-click: history)` : 'Nothing to redo'}>↷ <span class="word">Redo</span></button
       >
-      <button onclick={onsound} title="Test sound, sound output, and how to stream the sound (Discord, OBS)">🔊 Sound</button>
+      <button onclick={onsound} title="Test sound, sound output, and how to stream the sound (Discord, OBS)">🔊 <span class="txt">Sound</span></button>
     </span>
     <span class="divider" aria-hidden="true"></span>
     <span class="group g-lists">
-      <button onclick={() => onlog()} title="L: the history, scores and rolls">📜 Log</button>
+      <button onclick={() => onlog()} title="L: the history, scores and rolls">📜 <span class="txt">Log</span></button>
       <!-- The game's rules go with its players (Most players). -->
-      <button onclick={onplayers}>{teams ? '👥 Teams' : '👥 Players'}</button>
-      <button onclick={onrules} title="⚖ Game rules: scoring, most players, timers, the round intro">⚖ Rules</button>
+      <button onclick={onplayers} title={teams ? 'Teams' : 'Players'}>👥 <span class="txt">{teams ? 'Teams' : 'Players'}</span></button>
+      <button onclick={onrules} title="⚖ Game rules: scoring, most players, timers, the round intro">⚖ <span class="txt">Rules</span></button>
     </span>
     <span class="divider" aria-hidden="true"></span>
     <span class="group g-screen">
@@ -1408,7 +1408,7 @@
       >
         {app.live.cover ? '▶ Uncover' : '⏸ Cover'} <kbd aria-hidden="true">K</kbd>
       </button>
-      <button onclick={onhide} title="H: hide the controls (in a single window, viewers see only the stage)">🙈 Hide</button>
+      <button onclick={onhide} title="H: hide the controls (in a single window, viewers see only the stage)">🙈 <span class="txt">Hide</span></button>
     </span>
     <span class="divider" aria-hidden="true"></span>
     <!-- The audience window and the scores-only window (a lower third for OBS). Closing the audience window blacks out
@@ -1419,7 +1419,7 @@
         class:on={dual}
         aria-pressed={dual}
         title={dual ? 'The audience window is open: click to close it (A brings it to the front)' : 'A opens or focuses it'}
-      >{dual ? '📺 Audience ●' : '📺 Audience'}</button>
+      >📺 <span class="txt">Audience</span>{dual ? ' ●' : ''}</button>
       <button
         onclick={onscores}
         class:on={scoresWindow.open}
@@ -1743,6 +1743,19 @@
       padding-right: 9px;
     }
   }
+  /* Narrower still under the stage (a laptop zoomed in): ↶ ↷ 🔊 📜 👥 ⚖ 🙈 📺 as their signs only (still read out by
+     name, their tooltips say what they do), so the fixed bar stays one line, 🚪 Exit at its right, and the stage keeps
+     its height. */
+  @media (max-width: 940px) {
+    .panel:not(.side) > .fixed :is(.word, .txt) {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      overflow: hidden;
+      clip-path: inset(50%);
+      white-space: nowrap;
+    }
+  }
   /* The player cards (RPG and board games) take the column's width and height: the round's box scrolls instead. */
   .side .mode-host :global(.cards) {
     max-height: none;
@@ -1757,6 +1770,20 @@
   .tools:has(~ :global([data-partner-panel])) {
     flex-shrink: 0;
     max-height: 45vh;
+  }
+  /* (While a roll's or a wheel's box is up, the round's own box under it keeps a few rows in sight too: the column, or
+     the act row, scrolls instead of shrinking the round's controls to nothing.) */
+  .mode-host.tools ~ .mode-host {
+    min-height: min(120px, 25vh);
+  }
+  /* A short window under the stage (a laptop zoomed in): the moment's own box (✍ answers with their ✔ / ✘, the Final's
+     wagers and reveals, the end, an RPG or board-game round) keeps a few rows in sight. The stage gives way first, then
+     the panel scrolls (the fixed bar's keys still work when it's out of sight). Not on a taller window: the stage keeps
+     its size there. */
+  @media (max-height: 560px) {
+    .panel:not(.side) > .act:has(> .action > .mode-host:not(.tools)) {
+      min-height: min(150px, 34vh);
+    }
   }
   .val {
     color: var(--value);

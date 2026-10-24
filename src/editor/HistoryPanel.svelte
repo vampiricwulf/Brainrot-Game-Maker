@@ -388,6 +388,12 @@
   .hr.current .gobtn {
     visibility: visible;
   }
+  /* A touch screen can't point at a row: Go there › shows, so a tap never presses it unseen. */
+  @media (hover: none) {
+    .gobtn {
+      visibility: visible;
+    }
+  }
   .hr.undone .pick {
     opacity: 0.55;
     font-style: italic;

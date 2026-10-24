@@ -862,7 +862,21 @@ try {
   await page.keyboard.press('Escape');
   await page.locator('.play > .panel').waitFor({ state: 'detached' });
   assert(true, 'H had hidden the controls: closing the list hides them again');
+  // A touch screen (no mouse to move): a tap on a tile shows Show controls, and does nothing on stream.
+  await page.locator('.show-controls.shown').waitFor({ state: 'detached' });
+  const touch = await context.newCDPSession(page);
+  await touch.send('Emulation.setTouchEmulationEnabled', { enabled: true, maxTouchPoints: 1 });
+  const tile = await page.locator('.stage-box .board .tile:not(.used)').first().boundingBox();
+  await page.evaluate(() => ((window.__clicks = 0), addEventListener('click', () => window.__clicks++, true)));
+  const at = { x: Math.round(tile.x + tile.width / 2), y: Math.round(tile.y + tile.height / 2) };
+  await touch.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [at] });
+  await touch.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
+  await page.waitForFunction(() => window.__clicks > 0);
+  await page.locator('.show-controls.shown').waitFor();
+  await touch.send('Emulation.setTouchEmulationEnabled', { enabled: false });
+  await touch.detach();
   await page.keyboard.press('h');
+  assert((await page.locator('.panel .status').innerText()).includes('Pick a tile'), 'controls hidden, a tap on the touch screen shows Show controls, and the tile it landed on stays shut');
 
   // 📊 Scores: copy the standings.
   await page.getByRole('button', { name: '📊 Scores' }).click();

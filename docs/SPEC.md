@@ -390,7 +390,8 @@ The mode isn't saved with the game: it's dual while the audience window is open.
 - **Single window** (the default)
   - One view: the stage, with the host panel under it (beside it in RPG and board-game rounds on a wide window).
     Nothing answer-revealing is rendered until the host clicks Reveal. `H` (🙈 Hide) hides the host controls (then
-    nothing on the stage shows a focus ring until the host moves the keys: Tab, or the board's arrow keys). The
+    nothing on the stage shows a focus ring until the host moves the keys: Tab, or the board's arrow keys; Show
+    controls shows when the mouse moves, or on a touch screen at a first tap, which does nothing else). The
     panel's status line shows the 📝 host notes of the clue, the slides round, the tiebreaker or the Final (once its
     answer is up), with a title saying viewers can see them; with the audience window open they're in the host column
     instead. The editor's notes fields say so ("off stream, except in a single window"); a secret board-game space's
@@ -408,7 +409,10 @@ The mode isn't saved with the game: it's dual while the audience window is open.
     them scrolls.
 - **The host panel** has one layout in every round: the status line (📱 phones and ⏱ timer chips), the players' score
   chips, the row of what this moment needs with the one main button (and its key) at its right, the tools with the
-  round navigation, then a fixed bar (Undo, Redo, Sound · Log, Players, Rules · Cover, Hide · Audience, ▭ · ⌨, Exit).
+  round navigation, then a fixed bar (Undo, Redo, Sound · Log, Players, Rules · Cover, Hide · Audience, ▭ · ⌨, Exit;
+  under about 940 px wide, the first eight as their signs only, so it stays one line). On a short window the round's own
+  box keeps a few rows in sight (the panel scrolls), a roll's box above it too. The stage (and the editor's previews)
+  keeps the game's colors under a Windows contrast theme; the host's controls take the contrast colors.
   Questions for the host (Exit, leaving a round, a locked door…) appear in one strip above that bar, never over the
   stage.
 

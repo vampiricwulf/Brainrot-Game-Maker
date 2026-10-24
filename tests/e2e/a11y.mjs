@@ -484,20 +484,45 @@ try {
   hc.on('pageerror', (e) => errors.push(`[forced colors] ${e.message}`));
   await hc.goto(pathToFileURL(file).href);
   await addClassicRounds(hc);
+  // (And no hover, as on a touch screen: the buttons a row shows when pointed at show anyway, so a tap never presses
+  // one unseen. 🕘 History's Go there › here, 📜 Log's ↶ Back to here in play.)
+  const noHover = await fc.newCDPSession(hc);
+  await noHover.send('Emulation.setTouchEmulationEnabled', { enabled: true, maxTouchPoints: 1 });
+  await hc.locator('nav > button', { hasText: '🕘 History' }).click();
+  const goThere = hc.locator('main .list .hr:not(.current) .gobtn').first();
+  assert((await goThere.evaluate((b) => getComputedStyle(b).visibility)) === 'visible', 'on a screen without hover, 🕘 History’s Go there › shows on every row');
   await hc.getByRole('button', { name: '🎨 Theme' }).click();
   const outlined = (loc) => loc.evaluate((e) => { const cs = getComputedStyle(e); return cs.outlineStyle !== 'none' && parseFloat(cs.outlineWidth) >= 2; });
   const chosen = hc.locator('.preset[aria-pressed="true"]');
   const other = hc.locator('.preset[aria-pressed="false"]').first();
   assert((await outlined(chosen)) && !(await outlined(other)), 'with forced colors, the chosen theme preset is outlined (the others aren’t)');
+  const swatches = await hc.locator('.preset .sw').evaluateAll((els) => els.map((e) => getComputedStyle(e).backgroundColor));
+  assert(new Set(swatches).size > 1, `and the preset cards keep their own colors (${swatches.join(' | ')})`);
   await hc.getByRole('button', { name: '▶ Play' }).click();
   await hc.getByRole('button', { name: 'Start game ▶' }).waitFor();
   await hc.getByRole('button', { name: '＋ Add player' }).click();
   await hc.getByRole('button', { name: '＋ Add player' }).click();
   await hc.getByRole('button', { name: 'Start game ▶' }).click();
   await hc.getByRole('button', { name: 'Skip intro' }).click();
+  // What viewers see follows the game's theme, not the host's display: a board tile keeps the theme's color.
+  const [tileBg, themeBg] = await hc.locator('.stage .tile').first().evaluate((e) => {
+    const cs = getComputedStyle(e);
+    const c = document.createElement('canvas').getContext('2d');
+    const norm = (v) => ((c.fillStyle = '#000'), (c.fillStyle = v), c.fillStyle);
+    return [norm(cs.backgroundColor), norm(cs.getPropertyValue('--tile-bg').trim() || cs.getPropertyValue('--tile').trim())];
+  });
+  assert(tileBg === themeBg, `with forced colors, a board tile on stage keeps the theme's color (${tileBg}, the theme's ${themeBg})`);
   await hc.keyboard.press('1');
   const sel = hc.locator('.panel .p.on');
   assert((await sel.count()) === 1 && (await outlined(sel)) && !(await outlined(hc.locator('.panel .p:not(.on)').first())), 'and a selected player in the host panel is outlined');
+  // (Two steps: the older one has ↶ Back to here.)
+  for (const who of ['2', '1']) {
+    await hc.keyboard.press('p');
+    await hc.keyboard.press(who);
+  }
+  await hc.keyboard.press('l');
+  const backHere = hc.locator('aside .item .acts').first();
+  assert((await backHere.evaluate((a) => getComputedStyle(a).opacity)) === '1', 'and 📜 Log’s ↶ Back to here shows on its rows');
   await fc.close();
 
   assert(errors.length === 0, `no page errors (${errors.join('; ')})`);

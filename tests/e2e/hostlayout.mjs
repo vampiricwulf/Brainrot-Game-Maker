@@ -394,6 +394,15 @@ try {
   await p2.waitForTimeout(500);
   assert((await p2.locator('.panel .status', { hasText: 'Adventure' }).count()) === 1, 'a double-click on ◀ Prev round goes back one round (Adventure), not two');
   await p2Next('Board game');
+  // A roll on a short window (1366×768 at 125% zoom: the panel still beside the stage): the round's own box keeps a few
+  // rows in sight under the dice's box (the column scrolls instead).
+  await p2.setViewportSize({ width: 1093, height: 526 });
+  await p2.keyboard.press('d');
+  await p2.locator('.panel [data-tool-controls] .result').waitFor();
+  const bgBox = await p2.locator('.panel .mode-host:not(.tools)').evaluate((e) => Math.round(e.getBoundingClientRect().height));
+  assert(bgBox >= 100, `at 1093×526 a roll leaves the board game's own box ${bgBox}px tall (the column scrolls)`);
+  await p2.keyboard.press('Escape');
+  await p2.setViewportSize({ width: 1280, height: 720 });
   await p2Next('Final');
   assert((await p2.locator('.play.side').count()) === 0, 'the Final uses the panel under the stage');
   // A narrow, short window (1024×600): the fixed bar on one line, 🚪 Exit at its right, on the board and in a clue.
@@ -416,6 +425,12 @@ try {
     assert(Math.abs(u.y - e.y) < 2 && f.x + f.width - (e.x + e.width) < 2, `${where}: ↶ Undo and 🚪 Exit on one line, Exit at the right`);
   };
   await oneLine('on the board');
+  // Narrower (a 1366×768 or 1280×720 laptop at 150% zoom): the bar's buttons as their signs, still one line.
+  for (const width of [911, 853]) {
+    await p3.setViewportSize({ width, height: 600 });
+    await oneLine(`at ${width}px wide, on the board`);
+  }
+  await p3.setViewportSize({ width: 1024, height: 600 });
   // Several wheels, edited: one edit box at a time, and a tall one scrolls in the panel, never up over the stage.
   await p3.getByRole('button', { name: '🎡 Wheel' }).click();
   await p3.getByRole('button', { name: '🎯 Pick a player', exact: true }).click();

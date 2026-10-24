@@ -62,6 +62,8 @@
     position: fixed;
     inset: 0;
     overflow: hidden;
+    /* On stream: the theme's colors (and its key color) whatever the host's contrast theme. */
+    forced-color-adjust: none;
   }
   .strip {
     position: absolute;

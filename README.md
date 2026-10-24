@@ -142,8 +142,9 @@ Viewers see a "Starting soon…" card until you press **Start game**, which stay
 the page gets (on a wide screen the page is two columns). A **🔁 Rematch** keeps the players, their colors and pictures.
 
 - **Single window**: viewers see this window. Press `H` (or **🙈 Hide**) to hide the host controls; **Show controls**
-  waits, out of sight, in the top-right corner until the mouse moves. With them hidden, nothing on the stage shows a
-  focus ring until you move the keys yourself (Tab, or the board's arrow keys).
+  waits, out of sight, in the top-right corner until the mouse moves (on a touch screen, until a tap, which does
+  nothing else). With them hidden, nothing on the stage shows a focus ring until you move the keys yourself (Tab, or the
+  board's arrow keys).
 - **📺 Separate audience window**: a clean window to capture in OBS or Discord. The host window keeps the answers,
   notes and controls, and its board marks the Daily Doubles (⭐), 🤝 partner and ✍ tiles still to play.
 
@@ -161,7 +162,8 @@ main button with its key (**👁 Reveal answer** `R`, **▦ Done ▶ board** `Es
 **Next turn ▶** `N`, the Final's next step `N`…). Under it come the tools (🎲 Dice, 🎡 Wheel, 🏁 Who goes first, 🤫
 Send a card…, 🎭 Deal…, 📊 Scores) with the round navigation (◀ Prev round, the round list, Next round ▶) at the right,
 then a fixed bar that never moves: **↶ Undo ↷ Redo 🔊 Sound · 📜 Log 👥 Players ⚖ Rules · ⏸ Cover 🙈 Hide · 📺
-Audience ▭ · ⌨ 🚪 Exit**.
+Audience ▭ · ⌨ 🚪 Exit** (on a narrow window, as their signs only). On a short window (a laptop zoomed in) the round's
+own box (✍ answers, the Final's wagers, an RPG round…) keeps a few rows in sight, and the panel scrolls.
 Anything that asks first (Exit, closing the audience window, leaving a round, 🔁 Rematch) asks in one strip right
 above that bar: Cancel on the left, the answer on the right. Leaving a round always asks, unless a board is played out
 (then **Next round ▶** is the main button). In RPG and board-game rounds on a wide window the panel is a column beside
@@ -177,7 +179,9 @@ scoreboard going on or off, RPG moves (doorways and regroups too) and board-game
 and who is answering, a phone's wager coming in (never how much), and the app's notes are announced (politely, a burst of
 changes said once, with a window open too). The host's board is one Tab
 stop: the arrow keys go from tile to tile. The Stage and the Host controls are named regions, to jump between. In
-Windows High Contrast, the selected players and pressed buttons are outlined.
+Windows High Contrast, the selected players and pressed buttons are outlined, while the stage viewers see (and the
+editor's previews and theme cards) keeps the game's own colors. On a touch screen, the buttons a row shows when pointed
+at (📜 Log's ↶ Back to here, 🕘 History's Go there ›, the RPG map's ⛔) show anyway.
 
 ![A clue on screen](docs/screenshots/play-clue.png)
 
