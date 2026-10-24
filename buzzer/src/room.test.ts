@@ -1117,6 +1117,42 @@ describe('the race', () => {
     expect(g.hostLast('buzz')).toMatchObject({ armId: 2, seatId: 'b', rank: 1 });
   });
 
+  it('a wrong answer undone and made again after the next buzz: the one who missed is out, the next in line answers', () => {
+    const q = { clue: { text: 'Q?' } };
+    const run = (bobBuzzes: boolean) => {
+      const g = game();
+      g.arm(1);
+      g.pa.send({ t: 'buzz', armId: 1 });
+      g.tick(MAX_GRACE_MS);
+      g.send({ t: 'state', state: state({ phase: 'answering', armId: 1, answering: 'a', ...q }) });
+      // Ann wrong: open again without her; Bob buzzes and answers.
+      g.arm(2, { lockedOut: ['a'] });
+      if (bobBuzzes) {
+        g.pb.send({ t: 'buzz', armId: 2 });
+        g.tick(MAX_GRACE_MS);
+        g.send({ t: 'state', state: state({ phase: 'answering', armId: 2, answering: 'b', lockedOut: ['a'], ...q }) });
+      }
+      // Undo (Ann answers again, same opening), then Redo (the opening again, Ann out).
+      g.send({ t: 'state', state: state({ phase: 'answering', armId: 2, answering: 'a', ...q }) });
+      g.arm(2, { lockedOut: ['a'] });
+      return g;
+    };
+    let g = run(true);
+    expect(g.room.saved.state).toMatchObject({ phase: 'answering', answering: 'b' });
+    expect(g.pb.last('result')).toMatchObject({ armId: 2, outcome: 'first' });
+    // The host hears Bob's buzz again (it opened the buzzers: it takes it).
+    expect(g.hostAll('buzz').filter((b) => b.armId === 2 && b.seatId === 'b')).toHaveLength(2);
+    // Nobody else had buzzed: the buzzers really are open, and Bob's buzz wins.
+    g = run(false);
+    expect(g.room.saved.state?.phase).toBe('armed');
+    g.pa.send({ t: 'buzz', armId: 2 });
+    expect(g.pa.last('result')?.outcome).toBe('locked');
+    g.pb.send({ t: 'buzz', armId: 2 });
+    g.tick(MAX_GRACE_MS);
+    expect(g.room.saved.state).toMatchObject({ phase: 'answering', answering: 'b' });
+    expect(g.hostLast('buzz')).toMatchObject({ armId: 2, seatId: 'b', rank: 1 });
+  });
+
   it('the host may take the answer back to closed or the lobby; buzzes then are early or ignored', () => {
     const g = game();
     g.arm(1);

@@ -345,7 +345,7 @@ export function closeRoom(): boolean {
   // (A room that's there answers every ping, PING_MS apart: 5 s more for the pong.)
   const told = !!l && l.send({ t: 'close' }) && l.heardAgo() < PING_MS + 5000;
   l?.stop();
-  // (8 tries: 0.5 s, 1 s, 2 s… 15 s, about a minute in all.)
+  // (8 tries: 0.5 s, 1 s, 2 s… 15 s, about a minute in all; see retryDelay.)
   if (l && room) new RoomLink(l.base, {}, deps).end(room, 8);
   Object.assign(remote, { status: 'off', code: null, phones: [], listed: false, features: [], welcomed: false, files: null, limits: null, cardsLate: [], error: '', closedCode: 0, attempts: 0, answered: [], fullAt: 0 });
   return told || !room;
@@ -368,10 +368,16 @@ export function endRoom(room: NewRoom & { base: string }): void {
 }
 
 // A hidden page's timers are held back (to about one a minute): a connection that dropped meanwhile tries again as soon
-// as the host looks, or the network comes back, not on its next late try.
+// as the host looks, or the network comes back, not on its next late try. One that seems fine is checked then (a
+// router restart can leave it dead without a word), and when the network goes.
 if (typeof document !== 'undefined') {
-  document.addEventListener('visibilitychange', () => document.visibilityState === 'visible' && link?.retryNow());
-  window.addEventListener('online', () => link?.retryNow());
+  const check = () => {
+    link?.retryNow();
+    link?.probe();
+  };
+  document.addEventListener('visibilitychange', () => document.visibilityState === 'visible' && check());
+  window.addEventListener('online', check);
+  window.addEventListener('offline', check);
 }
 
 /**

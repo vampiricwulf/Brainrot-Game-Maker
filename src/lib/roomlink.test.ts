@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { BUZZ_PROTOCOL, FILES_LIST_MAX, mbText, parseFileLimits, type HostState } from './buzzproto';
-import { closedText, parseNewRoom, parseRoomMsg, retryDelay, RoomLink, PING_MS, SILENT_MS, STATE_MS, type LinkDeps, type SocketLike } from './roomlink';
+import { closedText, parseNewRoom, parseRoomMsg, retryDelay, RoomLink, PING_MS, PROBE_MS, SILENT_MS, STATE_MS, type LinkDeps, type SocketLike } from './roomlink';
 
 class FakeSocket implements SocketLike {
   readyState = 0;
@@ -394,7 +394,9 @@ describe('RoomLink', () => {
     expect(link.status).toBe('online');
     expect(link.attempts).toBe(0);
     expect(sockets[2].sent).toEqual([{ t: 'state', state: state() }]);
-    expect(retryDelay(20)).toBe(15_000);
+    // (Back within 5 s of the server, however long it was gone; ending a room waits up to 15 s.)
+    expect(retryDelay(20)).toBe(5000);
+    expect(retryDelay(20, true)).toBe(15_000);
   });
 
   it('pings every 15 s, and starts again when the room goes quiet', async () => {
@@ -442,6 +444,33 @@ describe('RoomLink', () => {
     t.advance(60_000);
     expect(link.status).toBe('reconnecting');
     expect(ws.closed).toBe(true);
+  });
+
+  it('probe() checks the line at once (the network back): no answer within PROBE_MS starts again, any message in time is one', async () => {
+    sockets = [];
+    const t = fakeDeps();
+    const link = new RoomLink('https://buzz.test', {}, t.deps);
+    await link.create();
+    sockets[0].open();
+    sockets[0].say(welcome);
+    link.probe();
+    expect(sockets[0].sent.at(-1)).toMatchObject({ t: 'ping' });
+    t.advance(PROBE_MS - 1);
+    sockets[0].say({ t: 'phones', phones: [] });
+    t.advance(PROBE_MS);
+    expect(link.status).toBe('online');
+    // A socket left dead (a router restart): found out in a few seconds, not at the next pings.
+    link.probe();
+    link.probe(); // (one at a time)
+    expect(sockets[0].sent.filter((m) => (m as { t: string }).t === 'ping')).toHaveLength(2);
+    t.advance(PROBE_MS);
+    expect(link.status).toBe('reconnecting');
+    expect(sockets[0].closed).toBe(true);
+    // (Not online: nothing to check.)
+    link.probe();
+    t.advance(retryDelay(0));
+    expect(sockets).toHaveLength(2);
+    expect(sockets[1].sent).toEqual([]);
   });
 
   it('retryNow() tries again at once while reconnecting (the page in sight again), and does nothing otherwise', async () => {
@@ -518,7 +547,7 @@ describe('RoomLink', () => {
     expect(old.status).toBe('off');
   });
 
-  it('end() gives up after 3 tries, or as many as it’s given (8: about a minute)', async () => {
+  it('end() gives up after 3 tries, or as many as it’s given (8: about a minute, its waits up to 15 s)', async () => {
     sockets = [];
     const t = fakeDeps();
     const tries = (n?: number) => {
@@ -533,7 +562,7 @@ describe('RoomLink', () => {
     };
     expect(tries()).toBe(4);
     expect(tries(8)).toBe(9);
-    expect(Array.from({ length: 8 }, (_, i) => retryDelay(i)).reduce((a, b) => a + b)).toBe(60_500);
+    expect(Array.from({ length: 8 }, (_, i) => retryDelay(i, true)).reduce((a, b) => a + b)).toBe(60_500);
   });
 
   it('close() tells the room and stops; nothing reconnects after', async () => {

@@ -11,6 +11,14 @@ the day it's pushed (Pacific time; start the heading on the day's first push) an
 in plain words for the people who make and host games. Anything committed but not pushed yet goes under
 **Unreleased** at the top, and moves under its day when it's pushed.
 
+## Unreleased
+
+### Fixed
+
+- Undo, then Redo, of a wrong answer after the next player had buzzed leaves the phones as the host has them: the one who missed is out and the next in line answers (with nobody in line, everyone else can buzz). The phones were stuck: “You're answering!” for the one who missed, and nobody could buzz. A buzzer server you run yourself needs deploying again for this.
+- When the host's network drops and comes back, or the app comes back into view, it checks its line to the buzzer room at once and reconnects within a few seconds. A dead line went unnoticed for about 40 seconds, the phones missing the clue while 📱 said all was well.
+- After the buzzer server restarts (an update, say), the host is back within about 5 seconds of it, as the phones are, instead of up to 15.
+
 ## 2026-10-24
 
 ### Added

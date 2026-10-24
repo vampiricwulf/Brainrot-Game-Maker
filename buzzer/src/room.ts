@@ -18,7 +18,7 @@
  *
  * Re-arming: the host always bumps armId to open the buzzers again (after a wrong answer, a new clue…). A state that
  * says 'armed' with the armId of a race the room already decided is the host not having seen the buzz yet: the
- * room keeps its winner ('answering').
+ * room keeps its winner ('answering'), or, if the host has that seat out since, the next in line answers.
  *
  * Seats: a seat with a token is taken, whether or not its phone is connected right now, so a player whose phone
  * sleeps or reloads gets it back with the token (join with token). Another socket coming back with the right token
@@ -579,8 +579,19 @@ export class Room {
       if (same) this.rank(race);
     }
     if (race && same && race.decided && next.phase === 'armed') {
-      // The host hasn't seen the room's decision yet: it stands.
-      if (race.winner && seatIds.has(race.winner)) {
+      // The host hasn't seen the room's decision yet: it stands. Not for a seat the host has out since (a wrong answer
+      // undone and made again): the next in line answers, and the host hears that buzz (one that has it ignores it).
+      const ok = (id: string) => seatIds.has(id) && !next.lockedOut.includes(id);
+      const i = race.winner && !ok(race.winner) ? race.queue.findIndex((b) => ok(b.seatId)) : -1;
+      if (i >= 0) {
+        const b = race.queue[i];
+        race.winner = b.seatId;
+        race.head = Math.max(race.head, i + 1);
+        this.lastQueue = '';
+        next.phase = 'answering';
+        next.answering = b.seatId;
+        if (this.hostHere) this.deps.toHost({ t: 'buzz', armId: race.armId, seatId: b.seatId, rank: 1, afterMs: 0, ...(b.by ? { by: b.by } : {}) });
+      } else if (race.winner && ok(race.winner)) {
         next.phase = 'answering';
         next.answering = race.winner;
       } else if (race.tie) {

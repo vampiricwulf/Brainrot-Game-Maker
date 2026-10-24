@@ -54,10 +54,15 @@ const OPEN = 1;
 export const PING_MS = 15_000;
 /** Nothing heard for this long (not even a pong): the socket is dead, start again. */
 export const SILENT_MS = 40_000;
+/** A probe (the network back, the page in sight again) left unanswered this long: the socket is dead, start again. */
+export const PROBE_MS = 4000;
 /** Debounce for state sends (arming goes at once). */
 export const STATE_MS = 50;
-/** Reconnect waits: 0.5 s, 1 s, 2 s… up to 15 s. */
-export const retryDelay = (attempt: number): number => Math.min(15_000, 500 * 2 ** attempt);
+/**
+ * Reconnect waits: 0.5 s, 1 s, 2 s… up to 5 s, so the host is back soon after the server is (one connection: it can
+ * afford it). Only ending a room (end()): up to 15 s.
+ */
+export const retryDelay = (attempt: number, ending = false): number => Math.min(ending ? 15_000 : 5000, 500 * 2 ** attempt);
 
 const isObj = (x: unknown): x is Record<string, unknown> => typeof x === 'object' && x !== null && !Array.isArray(x);
 const isStr = (x: unknown, max = 200): x is string => typeof x === 'string' && x.length <= max;
@@ -231,6 +236,8 @@ export class RoomLink {
   private stateTimer: unknown = null;
   private pingTimer: unknown = null;
   private retryTimer: unknown = null;
+  /** A probe waiting for its answer (see probe()). */
+  private probeTimer: unknown = null;
   private heard = 0;
   /** When the last ping went (0: none yet). */
   private pingAt = 0;
@@ -365,8 +372,8 @@ export class RoomLink {
   }
 
   private clearTimers(): void {
-    for (const t of [this.stateTimer, this.pingTimer, this.retryTimer]) if (t !== null) this.deps.clearTimeout(t);
-    this.stateTimer = this.pingTimer = this.retryTimer = null;
+    for (const t of [this.stateTimer, this.pingTimer, this.retryTimer, this.probeTimer]) if (t !== null) this.deps.clearTimeout(t);
+    this.stateTimer = this.pingTimer = this.retryTimer = this.probeTimer = null;
   }
 
   private open(status: RoomStatus): void {
@@ -384,8 +391,8 @@ export class RoomLink {
     ws.onclose = (e) => {
       if (ws !== this.ws) return;
       this.ws = null;
-      if (this.pingTimer !== null) this.deps.clearTimeout(this.pingTimer);
-      this.pingTimer = null;
+      for (const t of [this.pingTimer, this.probeTimer]) if (t !== null) this.deps.clearTimeout(t);
+      this.pingTimer = this.probeTimer = null;
       // 4000–4999: the room turned the host away on purpose (closed, expired, a wrong token). No point trying again.
       if (e.code >= 4000 && e.code < 5000) {
         if (this.ending) return this.stop();
@@ -414,11 +421,35 @@ export class RoomLink {
     this.open('reconnecting');
   }
 
+  /**
+   * Check the line now, not at the next ping (the network is back or gone, the page is in sight again): a socket that
+   * died without a word answers nothing, and after PROBE_MS the link starts again. Anything the room says is an answer.
+   */
+  probe(): void {
+    const ws = this.ws;
+    if (this.status !== 'online' || !ws || this.probeTimer !== null) return;
+    this.send({ t: 'ping', at: this.deps.now() });
+    this.probeTimer = this.deps.setTimeout(() => {
+      this.probeTimer = null;
+      if (ws === this.ws) this.dead(ws);
+    }, PROBE_MS);
+  }
+
+  /** A socket that went quiet without closing (a laptop asleep, a dropped Wi-Fi): start again. */
+  private dead(ws: SocketLike): void {
+    ws.onclose?.({ code: 1006 });
+    try {
+      ws.close();
+    } catch {
+      // Gone.
+    }
+  }
+
   private retry(): void {
     if (this.stopped || !this.room) return;
     // Only ending a room: not worth more than a few tries (it ends by itself after hours anyway).
     if (this.ending && this.attempts >= this.endTries) return this.stop();
-    const wait = retryDelay(this.attempts++);
+    const wait = retryDelay(this.attempts++, this.ending);
     this.set('reconnecting');
     this.retryTimer = this.deps.setTimeout(() => {
       this.retryTimer = null;
@@ -434,16 +465,7 @@ export class RoomLink {
       const now = this.deps.now();
       // Dead only when a ping went unanswered and nothing has come for SILENT_MS. A late timer alone is no sign of
       // that: a hidden page's timers run about once a minute, while the pong comes as a message, which isn't held back.
-      if (this.pingAt > this.heard && now - this.heard > SILENT_MS) {
-        // A socket that went quiet without closing (a laptop asleep, a dropped Wi-Fi): start again.
-        ws.onclose?.({ code: 1006 });
-        try {
-          ws.close();
-        } catch {
-          // Gone.
-        }
-        return;
-      }
+      if (this.pingAt > this.heard && now - this.heard > SILENT_MS) return this.dead(ws);
       this.pingAt = now;
       this.send({ t: 'ping', at: now });
       this.ping();
@@ -454,6 +476,8 @@ export class RoomLink {
     const m = parseRoomMsg(data);
     if (!m) return;
     this.heard = this.deps.now();
+    if (this.probeTimer !== null) this.deps.clearTimeout(this.probeTimer);
+    this.probeTimer = null;
     switch (m.t) {
       case 'welcome':
         if (m.protocol !== BUZZ_PROTOCOL) {
