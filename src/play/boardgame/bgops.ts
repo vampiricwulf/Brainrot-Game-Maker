@@ -6,7 +6,7 @@ import { isBoardGame, type Action, type BoardGameRound, type BoardGameState, typ
 import { nameList } from '../../lib/session';
 import { logged } from '../../lib/toolset';
 import { openWheel, quickDice, rollDice, spinWheel, wheelSpentUp } from '../../lib/overlay';
-import { parseDice, sliceLabel } from '../../lib/tools';
+import { isRespin, parseDice, sliceLabel } from '../../lib/tools';
 import { overlayDoneAt, toolOverlay, type Live } from '../../lib/live';
 import { announce } from '../../lib/announce';
 import { offerIn } from '../host/offered.svelte';
@@ -46,10 +46,21 @@ export function moveNow(game: Game, session: Session, steps: number, choose?: st
   const leg = bs.fork?.playerId === who;
   const top = session.actionLog?.at(-1)?.id;
   let msg = '';
-  logged(session, `${playerName(session, who)} moves ${steps}`, () => (msg = movePlayer(round, bs, who, steps, choose, hide)));
+  logged(session, `${playerName(session, who)} ${steps < 0 ? 'goes back' : 'moves'} ${Math.abs(steps)}`, () => (msg = movePlayer(round, bs, who, steps, choose, hide)));
   const step = session.actionLog?.at(-1)?.id;
   if (step && step !== top && !leg) moveCounts.set(step, steps);
   return `${playerName(session, who)}: ${msg}`;
+}
+
+/**
+ * A player on no space (in a zone, say) can't be moved by a count: what to tell the host (“Ann is in Shadow Realm: 📍
+ * Send them to a space first”), else null.
+ */
+export function offBoard(session: Session, round: BoardGameRound, bs: BoardGameState, who: string): string | null {
+  const at = bs.positions[who];
+  if (at?.space) return null;
+  const zone = at?.zone ? round.zones.find((z) => z.id === at.zone)?.name : undefined;
+  return `${playerName(session, who)} ${zone ? `is in ${zone}` : 'isn’t on the board'}: 📍 Send them to a space first`;
 }
 
 /**
@@ -90,6 +101,7 @@ export function setTurn(game: Game, session: Session, playerId: string): void {
     bs.again = undefined;
     bs.last = undefined;
     delete bs.before;
+    delete bs.after;
   });
 }
 
@@ -143,12 +155,8 @@ export function turnNow(game: Game, session: Session, delta = 1): string | null 
   const again = delta > 0 && bs.again && currentPlayer(after) === bs.again ? ' again' : '';
   const skips = skipped.length ? ` (${nameList(skipped.map((id) => playerName(session, id)))} ${skipped.length === 1 ? 'skips' : 'skip'} a turn)` : '';
   const text = `${playerName(session, currentPlayer(after))}’s turn${again}${skips}`;
-  logged(session, text, () => {
-    const back = delta < 0 && !!bs.before;
-    nextTurn(bs, delta);
-    // (Back to the turn before: its move and landing buttons come back with it.)
-    if (!back) bs.last = undefined;
-  });
+  // (Back to the turn before, or on again straight after: its move and landing buttons come back with it.)
+  logged(session, text, () => nextTurn(bs, delta));
   if (again || skips) return text;
   announce(text);
   return null;
@@ -182,6 +190,17 @@ export function moverSliceNoNumber(game: Game, round: BoardGameRound, o: Live['o
   const m = round.mover;
   if (o?.kind !== 'wheel' || !o.spin || o.result === null || m.kind !== 'wheel' || o.wheelId !== m.wheel || !moverWheelNoNumbers(game, round)) return null;
   return sliceLabel(o.segments[o.result], o.result);
+}
+
+/**
+ * The round's movement wheel landed on a slice that names no number (“Lose a turn”; not a “Spin again”), whatever its
+ * other slices say: that slice, as the host's panel names it. Else null.
+ */
+export function moverSliceWords(round: BoardGameRound, o: Live['overlay']): string | null {
+  const m = round.mover;
+  if (o?.kind !== 'wheel' || !o.spin || o.result === null || m.kind !== 'wheel' || o.wheelId !== m.wheel) return null;
+  const seg = o.segments[o.result];
+  return stepsIn(seg?.label ?? '') === null && !isRespin(seg) ? sliceLabel(seg, o.result) : null;
 }
 
 /** Roll the round's dice, or spin its wheel, for a move. Returns why it couldn't, or null. */

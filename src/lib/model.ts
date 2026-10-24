@@ -2424,5 +2424,7 @@ export interface BoardGameState {
   again?: Id;
   /** The turn as it was before the last Next turn, for ◀ Previous turn (the skips and Roll again it used up, its move). */
   before?: { turn: number; turns?: number; skipped: Id[]; again?: Id; last?: BoardGameState['last'] };
+  /** The turn ◀ Previous turn left, with its move, for a Next turn ▶ straight after (nothing else changed the turn). */
+  after?: { turn: number; turns?: number; last?: BoardGameState['last'] };
 }
 

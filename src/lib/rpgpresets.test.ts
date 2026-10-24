@@ -134,6 +134,8 @@ describe('kinds of board space', () => {
     expect(spaceKindOf(s)).toBeNull();
     s.onLand = [{ id: 'a', do: 'steps', steps: -2, who: 'party' }];
     expect(spaceKindOf(s)).toBe('back');
+    // (Its kind in the editor's box names no count: this one goes back 2.)
+    expect(SPACE_KINDS.find((k) => k.kind === 'back')?.label).toBe('↩ Go back');
     s.onLand = [{ id: 'a', do: 'score', amount: -100, who: 'party' }];
     expect(spaceKindOf(s)).toBeNull();
   });

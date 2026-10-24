@@ -79,7 +79,7 @@
   import { showMenu, type MenuEntry } from '../lib/menustate.svelte';
   import { currentPlayer, ensureBoard, waysNow, waysOn } from '../lib/boardgame';
   import { ensureWorld, focusRef, override, refindPositions } from '../lib/rpg';
-  import { boardNow, moveCounts, moveNow, moverResult, moverSliceNoNumber, rollMover, runSpace, sendNow, setTurn, stepWaysHint, turnNow } from './boardgame/bgops';
+  import { boardNow, moveCounts, moveNow, moverResult, moverSliceNoNumber, moverSliceWords, offBoard, rollMover, runSpace, sendNow, setTurn, stepWaysHint, turnNow } from './boardgame/bgops';
   import { boardEdit, editDelete, editDisconnect, editIdle, setEditing } from './boardgame/boardedit.svelte';
   import { playerMenu } from './playermenu';
   import { playerCards } from './rpg/PlayerCard.svelte';
@@ -208,6 +208,8 @@
   let rpgAsk = $state<RpgAsk | null>(null);
   /** Board-game rounds: the steps typed or rolled in the host panel (Enter moves them). */
   let bgSteps = $state<number | null>(null);
+  /** The movement wheel's slice this turn's spin landed on, when it names no number (“Lose a turn”): Enter says so. */
+  let bgNoNumber = $state<string | null>(null);
   // The Steps box's count is kept here, not in the host panel (H takes that away). A new turn starts with no count (the
   // last player's roll isn't theirs), and a move uses it up; an Undo of a move puts its count back, so Enter moves it again.
   /**
@@ -220,6 +222,7 @@
   });
   $effect(() => {
     void bgTurnKey;
+    bgNoNumber = null;
     // (The redo list read untracked: any step, a Shuffle say, starts it afresh, and that mustn't empty a roll waiting here.
     // Only a move undone in this round: another round's count isn't for whoever's turn it is in this one.)
     bgSteps =
@@ -245,13 +248,18 @@
     const o = toolOverlay(app.live);
     const key = o?.kind === 'dice' ? o.roll : o?.kind === 'wheel' ? o.spin : null;
     const r = round ? moverResult(game, round, o) : null;
-    // (A movement wheel whose slices name no number fills in nothing: the host is told why, once a spin.)
+    // (A movement wheel whose slices name no number fills in nothing: the host is told why, once a spin. One that
+    // landed on a slice with none, “Lose a turn”, says nothing until Enter.)
     const words = round && r === null ? moverSliceNoNumber(game, round, o) : null;
-    if ((r === null && words === null) || key === bgFilledFrom) return;
+    const landed = round && r === null ? moverSliceWords(round, o) : null;
+    if ((r === null && words === null && landed === null) || key === bgFilledFrom) return;
     const fill = () => {
       bgFilledFrom = key;
       if (r !== null) bgSteps = r;
-      else hint(`No number on “${words}”: type the steps (slices named “3” or “Back 2” fill them in)`);
+      else {
+        bgNoNumber = landed;
+        if (words !== null) hint(`No number on “${words}”: type the steps (slices named “3” or “Back 2” fill them in)`);
+      }
     };
     const wait = o && (o.kind === 'dice' || o.kind === 'wheel') ? overlayDoneAt(o) - Date.now() : 0;
     if (wait <= 0) return void fill();
@@ -3917,7 +3925,20 @@
       // Nothing to move (it used to fall through to the award, which asked for a player).
       const id = currentPlayer(bs);
       const moved = !!id && bs.last?.playerId === id && (bs.last.turn ?? 0) === (bs.turns ?? 0);
-      hint(moved ? 'Moved this turn: N for the next turn' : `Roll first (D), or type the steps`);
+      hint(
+        moved
+          ? 'Moved this turn: N for the next turn'
+          : bgNoNumber !== null
+            ? `No number on “${bgNoNumber}”: N for the next turn, or type the steps`
+            : `${round.mover.kind === 'wheel' ? 'Spin' : 'Roll'} first (D), or type the steps`,
+      );
+      return true;
+    }
+    // Not on a space (in a zone): the roll stays on screen and in the Steps box (for the zone's escape, say).
+    const who = currentPlayer(bs);
+    const off = who ? offBoard(session, round, bs, who) : null;
+    if (off) {
+      hint(off);
       return true;
     }
     toast(moveNow(game, session, steps, way, undefined, !dual), 3000);

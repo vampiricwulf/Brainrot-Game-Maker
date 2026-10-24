@@ -159,8 +159,11 @@ function syncPlayers(session: Session, round: BoardGameRound, bs: BoardGameState
   const was = bs.order.join();
   bs.order = bs.order.filter((id) => ids.includes(id));
   for (const id of ids) if (!bs.order.includes(id)) bs.order.push(id);
-  // (◀ Previous turn's memory is of another order.)
-  if (bs.order.join() !== was) delete bs.before;
+  // (◀ Previous turn's memory, and Next turn's after it, are of another order.)
+  if (bs.order.join() !== was) {
+    delete bs.before;
+    delete bs.after;
+  }
   const start = startSpace(round);
   for (const id of ids) if (!bs.positions[id]) bs.positions[id] = { space: start?.id };
   bs.turn = keep ? bs.order.indexOf(keep) : 0;
@@ -208,15 +211,20 @@ export function currentPlayer(bs: BoardGameState): Id | undefined {
 
 /**
  * Pass the turn on (`delta` -1: back to the one before). Going on, a player who rolls again keeps it, and players who
- * skip a turn are passed over (one fewer to skip each time). Returns the players passed over.
+ * skip a turn are passed over (one fewer to skip each time). Returns the players passed over. The new turn's move is
+ * still to make, except back to the turn before (its move comes back), and on again straight after that (the turn left
+ * comes back as it was, its move made).
  */
 export function nextTurn(bs: BoardGameState, delta = 1): Id[] {
   const n = bs.order.length;
   bs.fork = undefined;
-  const before = bs.before;
+  const { before, after } = bs;
+  delete bs.after;
   // Back: to the turn as it was before the last Next turn (the skip or Roll again it used up is theirs again), when
   // nothing changed the order since. Otherwise just the player before.
   if (delta < 0 && before && before.turn < n) {
+    // (The turn left, with its move: Next turn ▶ straight after comes back to it.)
+    bs.after = { turn: bs.turn, turns: bs.turns, ...(bs.last ? { last: JSON.parse(JSON.stringify(bs.last)) } : {}) };
     bs.turn = before.turn;
     bs.turns = before.turns;
     // The skips it used up are owed again (any added since stay too).
@@ -233,6 +241,7 @@ export function nextTurn(bs: BoardGameState, delta = 1): Id[] {
   }
   const was = delta > 0 ? { turn: bs.turn, turns: bs.turns, again: bs.again, last: bs.last ? JSON.parse(JSON.stringify(bs.last)) : undefined } : null;
   delete bs.before;
+  delete bs.last;
   // A new turn, even for the same player (one player, 🔁 Roll again): its move is still to make.
   bs.turns = (bs.turns ?? 0) + 1;
   if (!n) return [];
@@ -241,12 +250,17 @@ export function nextTurn(bs: BoardGameState, delta = 1): Id[] {
     bs.turn = at(bs.turn + delta);
     return [];
   }
+  /** On to the turn just gone back from (the same skips and Roll again used up): its move comes back too. */
+  const done = (skipped: Id[]) => {
+    if (after?.last && bs.turn === after.turn && bs.turns === after.turns) bs.last = after.last;
+    return skipped;
+  };
   const again = bs.again;
   bs.again = undefined;
   if (again && bs.order.includes(again)) {
     bs.turn = bs.order.indexOf(again);
     if (was) bs.before = { ...was, skipped: [] };
-    return [];
+    return done([]);
   }
   const skipped: Id[] = [];
   // (New objects, not changed in place: a copy of the state can try a turn out first.)
@@ -263,7 +277,7 @@ export function nextTurn(bs: BoardGameState, delta = 1): Id[] {
   if (Object.keys(skips).length) bs.skips = skips;
   else delete bs.skips;
   if (was) bs.before = { ...was, again: undefined, skipped };
-  return skipped;
+  return done(skipped);
 }
 
 /** Players miss their next `turns` turns (on top of any they already miss). */
@@ -319,7 +333,8 @@ export function walk(round: BoardGameRound, from: Id, steps: number, choose?: Id
 
 /**
  * The spaces the host can pick to move on to now, and for whom: the ways on from a fork (with the steps left), or on a
- * one-space-a-turn board the ways on from where the player whose turn it is stands. Null when there's nothing to pick.
+ * one-space-a-turn board the ways on from where the player whose turn it is stands, until they've moved this turn. Null
+ * when there's nothing to pick.
  */
 export function waysNow(round: BoardGameRound, bs: BoardGameState): { playerId: Id; steps: number; ways: Id[] } | null {
   const f = bs.fork;
@@ -327,6 +342,8 @@ export function waysNow(round: BoardGameRound, bs: BoardGameState): { playerId: 
   const turn = currentPlayer(bs);
   const at = turn ? bs.positions[turn]?.space : undefined;
   if (round.mover.kind !== 'step' || !turn || !at) return null;
+  // (Moved this turn: a click on a space opens its card. The panel's → buttons can still give an extra step.)
+  if (bs.last?.playerId === turn && (bs.last.turn ?? 0) === (bs.turns ?? 0)) return null;
   const ways = waysOn(round, at, bs.prev?.[turn]);
   return ways.length ? { playerId: turn, steps: 1, ways } : null;
 }
@@ -340,6 +357,7 @@ export function moveInOrder(bs: BoardGameState, from: number, to: number): void 
   order.splice(to, 0, id);
   bs.order = order;
   delete bs.before;
+  delete bs.after;
   bs.turn = order.indexOf(cur);
 }
 
@@ -379,6 +397,8 @@ export function movePlayer(round: BoardGameRound, bs: BoardGameState, playerId: 
   if (!steps) return 'No steps to move';
   const w = walk(round, from, steps, choose, bs.prev?.[playerId]);
   const prevPassed = bs.fork?.playerId === playerId && bs.last?.playerId === playerId ? bs.last.passed : [];
+  // (Moved again: Next turn ▶ no longer brings back the move they made in the turn gone back from.)
+  if (bs.after?.last?.playerId === playerId) delete bs.after;
   // A fork on the way back doesn't offer the space it just stepped back from (the walk left it out too).
   const came = w.fork && steps < 0 ? [from, ...w.path].at(-2) : undefined;
   bs.fork = w.fork ? { playerId, at: w.fork.at, stepsLeft: w.fork.stepsLeft, ...(came ? { came } : {}) } : undefined;
@@ -603,7 +623,7 @@ export const SPACE_KINDS: { kind: SpaceKind; label: string; hint: string; name: 
     onLand: () => [{ do: 'question', question: textSlide('Write the question here'), answer: textSlide('The answer'), value: 100 }],
   },
   { kind: 'skip', label: '⏭ Skip a turn', hint: 'Landing misses the next turn', name: 'Skip a turn', mark: '⏭', color: '#911eb4', onLand: () => [{ do: 'skip', turns: 1, who: 'party' }] },
-  { kind: 'back', label: '↩ Back 3 spaces', hint: 'Landing moves them back 3 (change the number in its button)', name: 'Back 3', mark: '↩', color: '#f58231', onLand: () => [{ do: 'steps', steps: -3, who: 'party' }] },
+  { kind: 'back', label: '↩ Go back', hint: 'Landing moves them back 3 (change the number in its button)', name: 'Back 3', mark: '↩', color: '#f58231', onLand: () => [{ do: 'steps', steps: -3, who: 'party' }] },
   { kind: 'star', label: '⭐ Star (bonus points)', hint: 'Landing scores 100', name: 'Star', mark: '⭐', color: '#ffcc00', onLand: () => [{ do: 'score', amount: 100, who: 'party' }] },
 ];
 

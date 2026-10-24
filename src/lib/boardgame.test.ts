@@ -290,6 +290,9 @@ describe('board game: two-way links and one space at a time', () => {
     // One space a turn, from A: only B.
     expect(waysNow(round, bs)).toEqual({ playerId: 'a', steps: 1, ways: [B.id] });
     movePlayer(round, bs, 'a', 1, B.id);
+    // Moved this turn: none (a click opens the space's card), until their next turn.
+    expect(waysNow(round, bs)).toBeNull();
+    nextTurn(bs);
     expect(waysNow(round, bs)?.ways).toEqual([C.id]);
     // A dice board has none, until a move stops at a fork.
     round.mover = { kind: 'dice', dice: 'd6' };

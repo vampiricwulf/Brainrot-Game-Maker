@@ -9,7 +9,7 @@ import { forgetGameParts, redoAction, undoAction } from '../../lib/toolset';
 import { runAction } from '../../lib/actions';
 import { PLAYER_WHEEL, type Action } from '../../lib/model';
 import { prefs } from '../../lib/prefs.svelte';
-import { moveCounts, moveNow, moverResult, moverSliceNoNumber, reorderTurns, rollMover, runSpace, sendNow, setTurn, stepWaysHint, turnNow } from './bgops';
+import { moveCounts, moveNow, moverResult, moverSliceNoNumber, moverSliceWords, offBoard, reorderTurns, rollMover, runSpace, sendNow, setTurn, stepWaysHint, turnNow } from './bgops';
 import { openPlayerWheel, quickDice, rollDice, toggleScoreboard } from '../../lib/overlay';
 
 // (What screen readers are told.)
@@ -53,6 +53,32 @@ describe('board game: the round’s mover', () => {
     // One slice with a number: the others are words on purpose (“Lose a turn”), nothing to say.
     wheel.segments[0].label = 'Move 3';
     expect(moverSliceNoNumber(game, round, live.overlay)).toBeNull();
+  });
+
+  it('knows when the movement wheel landed on a slice with no number (Enter says so), not a “Spin again”', () => {
+    const game = newGame();
+    game.players = [{ id: 'a', name: 'Ann', color: '#e6194b' }];
+    const wheel = newWheel('Move', ['Lose a turn', '2']);
+    game.wheels.push(wheel);
+    const round = newBoardGameRound('Board');
+    round.mover = { kind: 'wheel', wheel: wheel.id };
+    game.rounds.push(round);
+    const session = newSession(game);
+    goToRound(session, game, 0);
+    const live = newLive();
+    rollMover(game, session, live);
+    const o = live.overlay;
+    if (o?.kind !== 'wheel') throw new Error('no wheel');
+    o.result = 0;
+    expect([moverSliceNoNumber(game, round, o), moverSliceWords(round, o)]).toEqual([null, 'Lose a turn']);
+    o.result = 1;
+    expect(moverSliceWords(round, o)).toBeNull();
+    o.segments[1].label = 'Spin again';
+    expect(moverSliceWords(round, o)).toBeNull();
+    // Another wheel on screen (a space's own) says nothing here.
+    o.wheelId = 'other';
+    o.result = 0;
+    expect(moverSliceWords(round, o)).toBeNull();
   });
 
   it('spins the movement wheel with one press of D', () => {
@@ -169,6 +195,16 @@ describe('board game: the host’s moves on the stage', () => {
     const sent = session.actionLog!.at(-1)!.id;
     moveNow(game, session, 2, undefined, 'b');
     expect([session.actionLog!.at(-1)!.id, moveCounts.has(sent)]).toEqual([sent, false]);
+    // A move back says so in the history.
+    moveNow(game, session, -2, undefined, 'c');
+    expect(session.actionLog!.at(-1)!.text).toBe('Cat goes back 2');
+  });
+
+  it('a player in a zone isn’t moved by a count: the host is told to send them to a space first', () => {
+    const { game, session, round, bs } = playing();
+    sendNow(game, session, ['c'], { zone: 'shadow' });
+    expect(offBoard(session, round, bs(), 'c')).toBe('Cat is in Shadow Realm: 📍 Send them to a space first');
+    expect(offBoard(session, round, bs(), 'a')).toBeNull();
   });
 
   it('one window: a secret space not revealed yet is “?” in the move’s line and the way to pick (the name with an audience window)', () => {
@@ -214,6 +250,27 @@ describe('board game: the host’s moves on the stage', () => {
     turnNow(game, session, -1);
     // Back from the first player: the last one's turn.
     expect([bs().order[bs().turn], session.actionLog?.at(-1)?.text]).toEqual(['c', 'Cat’s turn']);
+  });
+
+  it('◀ Previous turn then Next turn ▶ comes back to the turn as it was, its move made (afresh once the order changed)', () => {
+    const { game, session, bs } = playing();
+    moveNow(game, session, 2);
+    turnNow(game, session);
+    moveNow(game, session, 3);
+    const bobs = bs().last;
+    turnNow(game, session, -1);
+    expect(bs().last?.playerId).toBe('a');
+    turnNow(game, session);
+    expect([bs().order[bs().turn], bs().last]).toEqual(['b', bobs]);
+    // As often as wanted.
+    turnNow(game, session, -1);
+    turnNow(game, session);
+    expect(bs().last).toEqual(bobs);
+    // Back to Ann's turn, then Cat put before Bob in the order: on is Cat's turn, afresh (not with Bob's move).
+    turnNow(game, session, -1);
+    reorderTurns(game, session, 2, 1);
+    turnNow(game, session);
+    expect([bs().order[bs().turn], bs().last]).toEqual(['c', undefined]);
   });
 
   it('Start (or Run all) on a space with a roll in it runs just the roll: the host presses the outcome', () => {

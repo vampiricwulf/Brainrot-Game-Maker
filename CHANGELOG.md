@@ -33,6 +33,11 @@ in plain words for the people who make and host games. Anything committed but no
 - A sound deleted in 🖼 Media while 🔊 Sounds and slides still use it: the checklist says where it's still used (“1 deleted file still used on … Undo the delete in History”) besides the 🔊 Sounds line, and its 🔊 Sounds row says its file was deleted (Undo in 🕘 History, or Change…) instead of missing. A file missing on opening that's used both in 🔊 Sounds and on a slide gets both lines too.
 - ✎ Edit: a slide item the trim cuts short (it played from before the new start, or on past the new end) is named with what it will play, instead of being said to play the same moments, and the toast after Apply counts them.
 - A video or sound added in the clue editor that won't play here (or plays without its sound): the toast points to its panel's 🔄 Convert…, not to the note at the top that the clue editor covers.
+- Board games: ◀ Previous turn (Shift+N) then Next turn ▶ (N) comes back to the turn as it was. A player who had moved has moved, with their landing buttons (“+$100”) back, instead of their turn starting afresh with 🎲 Roll and the buttons gone.
+- Boards that move one space a turn: once the player whose turn it is has moved, a click on a space opens its card instead of moving them one more space, and the host's copy stops marking the ways on (the panel's → buttons still give an extra step).
+- A movement wheel that lands on a slice with no number (“Lose a turn”): Enter says “No number on “Lose a turn”: N for the next turn, or type the steps”. Before a spin it says “Spin first (D)” on a wheel board, not “Roll first (D)”.
+- A player in a zone (the Shadow Realm, say): ▶ Move or Enter with a count says “Ann is in Shadow Realm: 📍 Send them to a space first” and keeps the roll for the zone's escape, instead of moving nobody and throwing the count away. With a count in, the main button is Next turn ▶, not ▶ Move.
+- Board-game words: a move back reads “Ann goes back 3” in 🕘 History, the 📜 Log and Undo (it said “moves -3”); the move buttons read “▶ Move Player 2: 2”; the editor's ✨ Make it a… says “↩ Go back” (it said “Back 3 spaces” for a space whose button goes back 2).
 
 ## 2026-10-24
 

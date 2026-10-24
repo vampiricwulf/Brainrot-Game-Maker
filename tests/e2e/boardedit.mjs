@@ -160,12 +160,23 @@ try {
   await page.keyboard.press('Control+z');
   await labelIs(page, rolledMove);
   assert((await page.getByLabel('Steps').inputValue()) === rolledMove.slice(-1), `Ctrl+Z of a move made with Enter puts its count back (${rolledMove})`);
-  // Moved again, then ◀ Previous turn and Next turn ▶: the count is spent, not back for a second move.
+  // Moved again, then ◀ Previous turn and Next turn ▶: her turn as it was, her move made and its landing row back (the
+  // count is spent, not back for a second move).
   await page.keyboard.press('Enter');
   await labelIs(page, 'Next turn ▶');
+  const landedOn = await page.locator('.acts').innerText();
   await page.keyboard.press('Shift+N');
+  await page.locator('.acts').waitFor({ state: 'detached' });
   await page.keyboard.press('n');
-  assert((await turn()).includes('Ann') && (await mainLabel(page)) === '🎲 Roll' && (await page.getByLabel('Steps').inputValue()) === '', `Shift+N then N: her used count isn’t back (${await mainLabel(page)})`);
+  await labelIs(page, 'Next turn ▶');
+  assert(
+    (await turn()).includes('Ann') && (await page.getByLabel('Steps').inputValue()) === '' && (await page.locator('.acts').innerText()) === landedOn,
+    `Shift+N then N: her turn as it was, moved (${landedOn}), and her used count isn’t back`,
+  );
+  // On to her next turn.
+  await page.keyboard.press('n');
+  await page.keyboard.press('n');
+  await labelIs(page, '🎲 Roll');
   // A smaller window, the panel under the stage holding less (its part scrolls): a move's landing row comes into view.
   await page.setViewportSize({ width: 1024, height: 700 });
   await page.getByLabel('Steps').fill('1');
@@ -194,7 +205,7 @@ try {
   await page.getByLabel('Steps').fill('-2');
   await page.getByLabel('Steps').blur();
   const stepButtons = await page.locator('.bh .move button').allInnerTexts();
-  assert((await mainLabel(page)) === '◀ Back 2' && stepButtons.includes('◀ Back Ann 2') && stepButtons.includes('▶ Forward 2'), `-2 steps: ◀ Back 2, and the other button goes forward (${stepButtons.join(' | ')})`);
+  assert((await mainLabel(page)) === '◀ Back 2' && stepButtons.includes('◀ Back Ann: 2') && stepButtons.includes('▶ Forward 2'), `-2 steps: ◀ Back 2, and the other button goes forward (${stepButtons.join(' | ')})`);
   await page.getByLabel('Steps').fill('');
   await page.getByLabel('Steps').blur();
   // Controls hidden (H): D rolls, and once the dice have landed Enter moves her (no host panel to hold the count). The

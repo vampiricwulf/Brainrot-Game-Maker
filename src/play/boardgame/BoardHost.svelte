@@ -17,7 +17,7 @@
   import { lastAction, logged } from '../../lib/toolset';
   import { overlayDoneAt, toolOverlay } from '../../lib/live';
   import PlayerCard, { cardsShown, playerCards } from '../rpg/PlayerCard.svelte';
-  import { boardNow, busyZones, moveNow, moverDiceName, playerName, reorderTurns, rollMover, sendNow, setTurn, stepWaysHint, turnNow, turnOrder } from './bgops';
+  import { boardNow, busyZones, moveNow, moverDiceName, offBoard, playerName, reorderTurns, rollMover, sendNow, setTurn, stepWaysHint, turnNow, turnOrder } from './bgops';
   import SpaceCard from './SpaceCard.svelte';
   import { START_FIRST } from '../rpg/hostops';
   import { offerNext } from '../host/slots.svelte';
@@ -107,6 +107,8 @@
       if (stepWays.length) return { label: '🔀 Pick a way', title: stepWaysHint(round, bs, stepWays, dual), run: () => hint(stepWaysHint(round, bs, stepWays, dual)), also };
       return { ...next, also: [prev] };
     }
+    // (In a zone, a count is no move: the next turn, unless the host sends them out first.)
+    if (steps && turnId && !bs.positions[turnId]?.space) return { ...next, also: [prev] };
     if (steps) return { label: `${steps < 0 ? '◀ Back' : '▶ Move'} ${Math.abs(steps)}`, key: '⏎', title: `Enter: move ${turnName} ${steps < 0 ? 'back ' : ''}${Math.abs(steps)} space${Math.abs(steps) === 1 ? '' : 's'}`, run: () => move(steps), also };
     const wheel = round.mover.kind === 'wheel';
     return { label: wheel ? '🎡 Spin' : '🎲 Roll', key: 'D', title: `D: ${wheel ? 'spin the movement wheel' : `roll ${moverDiceName(game, round)}`}`, run: roll, also };
@@ -137,6 +139,10 @@
     // (Under the scores too: the move would end them unseen.)
     const o = toolOverlay(app.live);
     if ((o?.kind === 'dice' || o?.kind === 'wheel') && Date.now() < overlayDoneAt(o)) return void hint('Still rolling…');
+    // Not on a space (in a zone): the roll stays on screen and in the Steps box (for the zone's escape, say).
+    const mover = who ?? fork?.playerId ?? turnId;
+    const off = round && bs && mover ? offBoard(session, round, bs, mover) : null;
+    if (off) return void hint(off);
     toast(moveNow(game, session, n, choose, who, !dual), 3000);
     app.live.overlay = null;
     // Moved: the count is used up (a fork goes on with the steps left, not these).
@@ -188,6 +194,7 @@
     logged(session, `Shuffle the turn order: ${turnOrder(session, o)}`, () => {
       b.order = o;
       delete b.before;
+      delete b.after;
       b.turn = Math.max(0, now ? o.indexOf(now) : 0);
     });
   }
@@ -316,7 +323,7 @@
         />
       </label>
       <!-- (A negative count, typed or a wheel's "Back 2", moves back: the buttons say which way they go.) -->
-      <button disabled={!steps || !!fork} onclick={() => move(steps)} title="Enter">{steps && steps < 0 ? '◀ Back' : '▶ Move'} {turnName} {steps ? Math.abs(steps) : ''}</button>
+      <button disabled={!steps || !!fork} onclick={() => move(steps)} title="Enter">{steps && steps < 0 ? '◀ Back' : '▶ Move'} {turnName}{steps ? `: ${Math.abs(steps)}` : ''}</button>
       <button class="small" disabled={!steps || !!fork} onclick={() => move(-(steps ?? 0))}>{steps && steps < 0 ? '▶ Forward' : '◀ Back'} {steps ? Math.abs(steps) : ''}</button>
       {/if}
       <span class="spacer"></span>
