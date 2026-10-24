@@ -21,9 +21,13 @@ in plain words for the people who make and host games. Anything committed but no
 - `Enter` on the Final's main button says which key goes on (“Press N for Reveal answer ▶”). It did nothing and said nothing.
 - After the last ✍ answer is judged, or ✔ Judge all, the keys go on to the main button (▦ Done ▶ board), not 🙈 Hide answer, and `Enter` there says everyone is judged instead of “Select a player first”.
 - `Ctrl+Y` with nothing to redo says “Nothing to redo”, as Undo does.
-- One window: a secret board-game space's host note waits for 👁 Reveal space, as its name does. The host panel, on stream, showed it as soon as someone landed there.
-- One window: the RPG's ⤢ Full map (`J`) and ✎ Edit board's ⚙ Buttons… open over the host panel, as 👥 Players does, instead of covering the stage on stream (the full map names screens nobody has found yet). ✎ Edit screen, too big for the panel, says viewers see the editor in one window (📺 Audience edits off stream), not “viewers see changes as you make them”.
 - The end screen with a tie for first: the keys go on from its main button (❓ Tiebreaker clue, or 🎲 Tiebreaker roll-off) instead of the tie box's first button, and `N` or `Enter` there says how to go on (a click, or `O` for a roll-off) instead of doing nothing.
+- One window: a secret board-game space's host note waits for 👁 Reveal space, as its name does. The host panel, on stream, showed it as soon as someone landed there.
+- One window: marking players ✔ or ✘ in a clue no longer widens their score chips, so the chips' row doesn't wrap and the stage on stream doesn't shrink mid-clue. Each chip keeps room for the round's largest mark and score change from the board on, and the ★ of who picks next sits on the name's corner instead of taking room.
+- One window: a wheel or dice tile keeps one stage size from its wheel or dice to its question, as a 🤝 partner clue does (it zoomed down and back up twice in one tile). The outcome's score effect comes into view as it lands, its buttons in sight.
+- One window: the stage keeps one size from the Final's reveals through the results, a tiebreaker roll-off (rolling, landed and closed) and the tiebreaker clue, and a board-game round under the stage (a 4:3 window) keeps one size through its turns, instead of changing at each step.
+- One window up to 1180 px wide: the stage no longer drops a few pixels as a ✍ multiple-choice clue's answer goes up and comes back after ✔ Judge all; the room kept for ✔ Judge all is as tall as the button.
+- One window: the RPG's ⤢ Full map (`J`) and ✎ Edit board's ⚙ Buttons… open over the host panel, as 👥 Players does, instead of covering the stage on stream (the full map names screens nobody has found yet). ✎ Edit screen, too big for the panel, says viewers see the editor in one window (📺 Audience edits off stream), not “viewers see changes as you make them”.
 
 ## 2026-10-24
 

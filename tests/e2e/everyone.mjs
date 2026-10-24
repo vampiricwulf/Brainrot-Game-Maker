@@ -288,6 +288,8 @@ try {
   assert(true, 'showing the answer ends it');
 
   // ---------- Multiple choice: phones tap one; the host sees the picks, how many picked each, and ✔ Judge all ----------
+  // (At 1024×768: up to 1180px wide the host panel's buttons are a size bigger, ✔ Judge all's kept room too.)
+  await host.setViewportSize({ width: 1024, height: 768 });
   await host.keyboard.press('Escape');
   await host.locator('.stage-box .board').waitFor();
   await aud.locator('.board').waitFor();

@@ -9,7 +9,7 @@
   import { textOn } from '../lib/colors';
   import { hostSlots, type HostAsk, type NextAction } from './host/slots.svelte';
   import { phoneAwaySince } from './host/phoneaway.svelte';
-  import { categoryLabel, clueCardWords, finalName, formatPoints, isBoard, questionSlides, typedPoints, wholePoints, type Game, type Session } from '../lib/model';
+  import { categoryLabel, clueCardWords, clueValue, finalName, formatPoints, isBoard, questionSlides, typedPoints, wholePoints, type Game, type Session } from '../lib/model';
   import { answerShowing, awardOpen, clueMarks, clueName, clueScored, currentClueInfo, currentFinal, findClueRef, nameList, ownPlayers, partnerSteal, roundComplete, score, setScore, slidePosition, stealersLeft, tiebreakHolds, tiedForFirst, toolOnlyClue, usedTiles } from '../lib/session';
   import MediaControls from './MediaControls.svelte';
   import SoundWarnings from './host/SoundWarnings.svelte';
@@ -303,6 +303,18 @@
     if (session.phase === 'board' && !session.intro && panelH) boardH = panelH;
   });
   const ddHold = $derived(ddWager && !dual && !side && boardH > 0);
+  /**
+   * Single window, under the stage: the panel keeps one height (the Final's) through the results, a roll-off and the
+   * tiebreaker clue, through a board-game round's turns, and through a wheel or dice tile (its tool, then its question),
+   * so the stage changes size only as the tile opens and closes. Its rows scroll instead (see .held).
+   */
+  const held = $derived(
+    !side &&
+      (session.phase === 'end' ||
+        session.phase === 'tiebreaker' ||
+        session.phase === 'boardgame' ||
+        (session.phase === 'clue' && (info?.clue.type === 'wheel' || info?.clue.type === 'dice'))),
+  );
   /** Phone buzzer teams: each player is a team (the 👥 button says so, as the list it opens does). */
   const teams = $derived(buzzerOn(game.settings) && teamsOn(game.settings));
   /**
@@ -610,6 +622,16 @@
     (!partner || (partner.stage !== 'pick' && (steal ? !steal.out.includes(id) : quickShare(id, true) !== null)));
   /** On the board and through a clue the chips keep one width (the mark's place, and ✔ / ✘'s, kept where unused). */
   const chipSlots = $derived(session.phase === 'board' || (session.phase === 'clue' && !!info));
+  /** The round's largest clue value (0 outside a board round). */
+  const topValue = $derived(isBoard(round) ? Math.max(0, ...round.categories.flatMap((c) => c.clues.map((cl, row) => clueValue(round, row, cl)))) : 0);
+  /**
+   * On the board and in a clue each chip keeps the room its mark and its score can take there, so a ✔ / ✘ never widens
+   * it (and the row never wraps anew, shrinking the stage). The mark's: the widest a clue of this round gives
+   * ("✘ −$1,000"), in ch, one more for the ✘ and the minus (wider than a digit in some fonts). The score's: as wide as it
+   * gets the round's largest value away, with a minus. (A Daily Double's wager can be more: that one may grow.)
+   */
+  const markCh = $derived(Math.max(7, `✘ −${formatPoints(topValue, sym)}`.length + 1));
+  const scoreRoom = (n: number) => (chipSlots && topValue ? `max(70px, ${`−${formatPoints(Math.abs(n) + topValue, sym)}`.length}ch + 24px)` : undefined);
 
   // ---------- The NEXT cell: one main button ----------
   /**
@@ -711,6 +733,7 @@
   class:side
   class:final={session.phase === 'final' && !side}
   class:partnerclue={!!partner && !side}
+  class:held
   class:ddhold={ddHold}
   bind:offsetHeight={panelH}
   style:height={ddHold ? `${boardH}px` : undefined}
@@ -946,7 +969,7 @@
               }}
             />
           {:else}
-            <button class="score ghost" onclick={() => (editingScore = p.id)} title="Click to set this score">
+            <button class="score ghost" onclick={() => (editingScore = p.id)} title="Click to set this score" style:min-width={scoreRoom(score(session, p.id))}>
               {formatPoints(score(session, p.id), sym)}
             </button>
           {/if}
@@ -955,7 +978,7 @@
                opening a clue never wraps the row and shrinks the stage, and ✔ / ✘ never move under the host's cursor. -->
           {#if chipSlots}
             {@const m = marks[p.id]}
-            <span class="mark" class:right={m?.right} class:wrong={m && !m.right} class:empty={!m}>
+            <span class="mark" class:right={m?.right} class:wrong={m && !m.right} class:empty={!m} style:min-width="{markCh}ch">
               {#if m}{m.right ? '✔' : '✘'}{m.delta ? ` ${m.delta > 0 ? '+' : ''}${formatPoints(m.delta, sym)}` : ''}{/if}
             </span>
           {/if}
@@ -1523,12 +1546,18 @@
     }
   }
   /* In the column: the action part takes the height left and scrolls; the tools and the fixed bar stay at its foot. */
-  /* The Final in a single window: the panel keeps one height through its steps (the title card to the reveals), so the
-     stage viewers see doesn't change size; its rows scroll in there instead. A 🤝 partner clue's too, from PARTNER UP!
-     (the wheel, the question and 📤 Distribute, a steal) to the answer: the stage changes size only as the tile opens and
-     closes. Its box scrolls, with ✔ Got it / ✘ Missed (or the steal's row) kept in sight at its foot. */
-  .panel:is(.final, .partnerclue):not(.dual) {
+  /* The Final in a single window: the panel keeps one height through its steps (the title card to the reveals), and on
+     through the results, a roll-off or the tiebreaker clue, so the stage viewers see doesn't change size; its rows
+     scroll in there instead. A board-game round's under the stage too, through its turns (the landing row comes and
+     goes). A 🤝 partner clue's too, from PARTNER UP! (the wheel, the question and 📤 Distribute, a steal) to the answer,
+     and a wheel or dice tile's (its tool, then its question): the stage changes size only as the tile opens and closes.
+     A partner clue's box scrolls, with ✔ Got it / ✘ Missed (or the steal's row) kept in sight at its foot; a tile's
+     tool keeps its height at the top (an outcome's score buttons in sight), what's under it scrolls. */
+  .panel:is(.final, .partnerclue, .held):not(.dual) {
     height: clamp(280px, 44vh, 440px);
+  }
+  .panel.held:not(.dual) > .act > .action > .tools {
+    flex-shrink: 0;
   }
   .panel.partnerclue:not(.dual) :global(:is([data-partner-judge], [data-partner-steal])) {
     position: sticky;
@@ -1549,7 +1578,7 @@
     max-height: 100%;
     overflow: auto;
   }
-  .panel:is(.final, .partnerclue):not(.dual) > .toolsrow,
+  .panel:is(.final, .partnerclue, .held):not(.dual) > .toolsrow,
   .panel.ddhold > .toolsrow {
     margin-top: auto;
   }
@@ -1771,12 +1800,12 @@
     color: var(--warn);
     font-weight: 600;
   }
-  /* A fixed width, kept while empty: the chip doesn't grow when its player is marked. */
+  /* A fixed width (the round's widest mark: see markCh), kept while empty: the chip doesn't grow when its player is
+     marked. */
   .mark {
     font-size: 12px;
     font-weight: 700;
     padding: 0 4px;
-    min-width: 7ch;
     white-space: nowrap;
   }
   .mark.empty {
@@ -1826,12 +1855,21 @@
   .p.on {
     box-shadow: 0 0 0 2px var(--c);
   }
-  /* (Read out as words, not "black star"; a browser without alt text for it keeps the plain star.) */
+  /* (Read out as words, not "black star"; a browser without alt text for it keeps the plain star.) On the name's corner,
+     taking no room: the chip keeps its width as the pick goes to another player. */
   .p.picker .sel::after {
-    content: ' ★';
-    content: ' ★' / ', picks next';
+    content: '★';
+    content: '★' / ', picks next';
+    position: absolute;
+    top: -9px;
+    right: -7px;
+    font-size: 13px;
+    line-height: 1;
+    color: var(--warn);
+    pointer-events: none;
   }
   .sel {
+    position: relative;
     font-weight: 700;
     border: none;
   }

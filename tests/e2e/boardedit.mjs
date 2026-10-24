@@ -115,8 +115,13 @@ try {
   await page.getByLabel('Steps').fill('2');
   await page.getByLabel('Steps').blur();
   assert((await mainLabel(page)) === '▶ Move 2', `steps typed: ▶ Move is the main button (${await mainLabel(page)})`);
+  // (One window, the panel under the stage: it keeps one height through the turns, the landing row coming and going.)
+  const stageH = () => page.locator('.stage-box').evaluate((e) => Math.round(e.getBoundingClientRect().height));
+  const turnSizes = [await stageH()];
   await mainButton(page).click();
   assert((await toast()).includes('Landed on Space 3'), 'it moves');
+  await page.locator('.acts', { hasText: 'Landed on Space 3' }).waitFor();
+  turnSizes.push(await stageH());
   assert((await mainLabel(page)) === 'Next turn ▶', `moved: Next turn ▶ is the main button (${await mainLabel(page)})`);
   await page.keyboard.press('Control+z');
   await page.waitForTimeout(200);
@@ -129,6 +134,9 @@ try {
   if (shots) await page.screenshot({ path: `${shots}/under-stage-next-turn.png` });
   await page.keyboard.press('n');
   assert((await turn()).includes('Bob'), 'N: Bob’s turn');
+  await page.locator('.acts').waitFor({ state: 'detached' });
+  turnSizes.push(await stageH());
+  assert(turnSizes.every((x) => x === turnSizes[0]), `under the stage, the stage keeps one size through a turn: the move (its landing row up) and the next turn (${turnSizes.join(' / ')})`);
   await page.keyboard.press('Shift+N');
   assert((await turn()).includes('Ann'), 'Shift+N: back to Ann');
   assert((await mainLabel(page)) === 'Next turn ▶', `her turn as it was: her move is made (${await mainLabel(page)})`);

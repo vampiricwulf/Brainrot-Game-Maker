@@ -54,7 +54,8 @@
   }
 </script>
 
-<div class="ac">
+<!-- (In sight as it comes, its confirm too: in one window the host panel can keep one height, and it scrolls.) -->
+<div class="ac" {@attach (el) => el.scrollIntoView({ block: 'nearest' })}>
   <div><b>Score effect:</b> {describeAction(action, sym)} <span class="muted small">(only if you confirm)</span></div>
   <!-- (A wheel slice saved with it: say why Confirm never lights up.) -->
   {#if action.kind === 'addRollTimes' && !rollTotal}<div class="warn small" role="status">No dice were rolled: this gives no points (Skip it).</div>{/if}

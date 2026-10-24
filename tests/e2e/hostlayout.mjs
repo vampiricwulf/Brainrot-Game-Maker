@@ -542,6 +542,23 @@ try {
       // (Only the name may be cut short: nothing runs past ＋ Award's or − Deduct's edge, so the amount shows whole.)
       const whole = await p4.locator('.panel .award button.named').evaluateAll((bs) => bs.length === 2 && bs.every((b) => b.scrollWidth <= b.clientWidth));
       assert(whole && (await award.textContent()).includes(`+${value}`), `${w}×${h}, a ${value} clue: ＋ Award and − Deduct show the whole amount`);
+      if (value === '$1,000') {
+        // Three marked ✘ and one ✔ (the ★ goes to them): each chip keeps its width, mark and score, so the row never
+        // wraps anew and the stage keeps its size.
+        const widths = () => p4.locator('.panel .players .p').evaluateAll((ps) => ps.map((p) => Math.round(p.getBoundingClientRect().width)).join());
+        const scores = () => p4.locator('.panel .players .p .score').evaluateAll((bs) => bs.map((b) => b.textContent.trim()).join());
+        const scoresWere = await scores();
+        const before = await widths();
+        for (const name of ['Annabelle', 'Cyrus', 'Deedee']) await p4.getByRole('button', { name: new RegExp(`^Wrong: ${name}`) }).click();
+        await p4.getByRole('button', { name: /^Right: Eleanor/ }).click();
+        await p4.locator('.panel .p.picker', { hasText: 'Eleanor' }).waitFor();
+        const after = await widths();
+        assert(before === after && (await stageH()) === onBoard, `${w}×${h}, a $1,000 clue: marking three ✘ and one ✔ keeps every chip's width and the stage's size (${before} / ${after}; ${onBoard} / ${await stageH()})`);
+        // (The marks and the pick taken back, for what follows: the scores as they were.)
+        for (let i = 0; i < 4; i++) await p4.keyboard.press('Control+z');
+        await p4.waitForFunction((was) => [...document.querySelectorAll('.panel .players .p .score')].map((b) => b.textContent.trim()).join() === was, scoresWere);
+        await p4.locator('.panel .p.picker', { hasText: 'Eleanor' }).waitFor({ state: 'detached' });
+      }
       await p4.keyboard.press('Escape');
       await p4.keyboard.press('Escape');
       await p4.locator('.stage-box .board').waitFor();

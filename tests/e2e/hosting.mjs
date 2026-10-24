@@ -501,8 +501,12 @@ try {
     new MutationObserver(() => window.__said.push(host.dataset.said)).observe(host, { attributes: true, attributeFilter: ['data-said'] });
   });
   const toldOf = (re) => page.waitForFunction((src) => window.__said.some((s) => new RegExp(src).test(s)), re.source);
+  // (One window: the stage keeps the reveals' size on through the results and a roll-off, landed and closed.)
+  const stageH = () => page.locator('.stage-box').evaluate((e) => Math.round(e.getBoundingClientRect().height));
+  const endSizes = [await stageH()];
   await page.getByRole('button', { name: 'Finish game ▶' }).click();
   await page.locator('.tie').waitFor();
+  endSizes.push(await stageH());
   await page.waitForTimeout(300);
   assert((await cues(page, 'winner')) === winner, 'a tied end ("Tie for first") plays no winner fanfare');
   await toldOf(/Tie for first: Player 1, Player 2 & Player 3/);
@@ -524,12 +528,16 @@ try {
   await stage('.wrap .title').waitFor();
   assert((await stage('.wrap .title').innerText()).includes('Tiebreaker roll-off'), 'O on a tie for first rolls off the tied leaders (not "Who goes first?")');
   await page.locator('.panel .muted', { hasText: 'won the tiebreaker roll-off' }).waitFor({ timeout: 15000 });
+  endSizes.push(await stageH());
   await page.waitForTimeout(300);
   assert((await cues(page, 'winner')) === winner + 1, 'the winner fanfare plays once the roll-off settles the tie');
   // (Screen readers hear who won it: it's on the stage and in the tool's card, not the status line.)
   await page.waitForFunction(() => / wins the game/.test(document.getElementById('live-region')?.dataset.said ?? ''));
   assert(true, 'the roll-off’s winner is said');
   await page.keyboard.press('Escape');
+  await stage('.wrap .title').waitFor({ state: 'detached' });
+  endSizes.push(await stageH());
+  assert(endSizes.every((x) => x === endSizes[0]), `one window: the stage keeps one size from the Final's reveals to the results, the roll-off landed and closed (${endSizes.join(' / ')})`);
   const wonGap = await gapUnder('.panel .end > .muted');
   assert(wonGap >= 5, `“… won the tiebreaker roll-off.” doesn't sit on the buttons under it (${wonGap}px apart)`);
 

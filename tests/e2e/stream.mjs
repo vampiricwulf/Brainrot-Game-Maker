@@ -589,14 +589,18 @@ async function tileTools() {
   await host.keyboard.press('Enter');
   await host.locator('.toast', { hasText: 'Spin the wheel first: W (or N)' }).waitFor();
   assert(!(await host.locator('.tc .result').count()), 'Enter on a wheel tile’s Spin! says to spin it first (W, or N), not “Select a player first”');
+  const toolSizes = [await stageH()];
   await host.keyboard.press('w');
   await host.locator('.tc .result').waitFor();
+  toolSizes.push(await stageH());
   assert(
     (await stage('.slide-area').count()) === 0 && (await host.evaluate((n) => window.__states.slice(n).filter((s) => s.clue || s.phase !== 'lobby').length, sentBefore)) === 0,
     'a wheel tile: while its wheel is up nobody can buzz and the phones get no question (the host panel says they wait for it)',
   );
   await host.keyboard.press('Escape');
   await stage('.slide-area').waitFor();
+  toolSizes.push(await stageH());
+  assert(toolSizes.every((x) => x === toolSizes[0]), `a wheel tile keeps one stage size from its wheel to its landing to its question (${toolSizes.join(' / ')})`);
   await host.waitForFunction(() => {
     const s = window.__states.at(-1);
     return s?.phase === 'armed' && s.clue?.text === 'Wheel question';

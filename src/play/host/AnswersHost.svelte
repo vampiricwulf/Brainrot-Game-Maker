@@ -259,10 +259,16 @@
   .judge-all {
     margin: 0;
   }
-  /* (Its button's height, empty too: see li.) */
+  /* (Its button's height, empty too: see li. Up to 1180px wide the host panel's buttons are a size bigger: see the
+     narrow rule in HostPanel.) */
   .judge-all {
     display: flex;
     min-height: 22px;
+  }
+  @media (max-width: 1180px) {
+    .judge-all {
+      min-height: 28px;
+    }
   }
   .note {
     color: var(--warn, var(--muted));

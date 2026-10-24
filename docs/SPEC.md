@@ -395,7 +395,10 @@ The mode isn't saved with the game: it's dual while the audience window is open.
     Sound, the RPG's ⤢ Full map, ✎ Edit board's ⚙ Buttons…) open over the host panel, never the stage; the RPG's ✎
     Edit screen is too big for it and says viewers see it (📺 Audience edits off stream). The stage keeps one size
     from the board through a clue's steps (a Daily Double's splash, its question slides, a clue's media controls),
-    so viewers don't see it zoom down and up.
+    so viewers don't see it zoom down and up: each score chip keeps room for the mark and the score a clue of the
+    round can give it (the ★ of who picks next takes none). A 🤝 partner clue, a wheel or dice tile (its tool, then its
+    question), the Final with the results, a roll-off and the tiebreaker clue, and a board-game round under the stage
+    hold the panel at one height instead: the stage changes size only as they start and end.
 - **The host panel** has one layout in every round: the status line (📱 phones and ⏱ timer chips), the players' score
   chips, the row of what this moment needs with the one main button (and its key) at its right, the tools with the
   round navigation, then a fixed bar (Undo, Redo, Sound · Log, Players, Rules · Cover, Hide · Audience, ▭ · ⌨, Exit).
