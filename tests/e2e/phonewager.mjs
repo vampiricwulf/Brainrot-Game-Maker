@@ -197,6 +197,8 @@ try {
   await host.waitForFunction(() => document.querySelector('.dd input[type=number]')?.value === '777');
   await dd.getByText('📱 from phone').waitFor();
   assert(true, 'sent from the phone: the host’s wager box fills in (777) marked “📱 from phone”, and the phone says “✔ Sent: $777”');
+  const said = (who) => host.waitForFunction((w) => document.getElementById('live-region')?.dataset.said?.includes(`${w}’s wager is in (from their phone)`), who).then(() => host.evaluate(() => document.getElementById('live-region').dataset.said));
+  assert(!/777/.test(await said('Player 1')), 'a screen reader hears that the wager is in, not how much');
   assert((await ddBox()) === ddH, `the Daily Double box keeps its height from the pick to the phone’s wager (${ddH}px)`);
   await shot('pw-1-dd-host', host);
   await shot('pw-2-dd-phone', ann);
@@ -263,6 +265,7 @@ try {
   assert((await box('Player 1').inputValue()) === '1234', 'Player 1’s wager comes in from their phone: “📱 $1,234 from phone ✔”, in their box');
   await sendWager(bo, 2222);
   await row('Player 2').getByText('📱 $2,222 from phone ✔').waitFor();
+  assert(!/2,?222/.test(await said('Player 2')), 'and in the Final too');
   await host.waitForTimeout(300);
   assert(await noneOf(aud, [1234, 2222]), 'the audience window never has the amounts (only the ✔ that a wager is in)');
   assert((await noneOf(ann, [2222])) && (await noneOf(bo, [1234])), 'each phone has its own amount only');

@@ -1452,22 +1452,27 @@
     r.wagerGot = { id: ask.id, seats: { ...same?.seats, [w.seatId]: w.n }, amounts: { ...same?.amounts, [w.seatId]: w.amount } };
     const name = playerName(session, w.seatId);
     const by = w.by && game.settings.buzzTeams ? w.by : '';
+    const from = by ? `from ${by}’s phone` : 'from their phone';
+    // (A screen reader is told it's in, never how much.)
     if (ask.kind === 'dd' && session.dd) {
       session.dd.draft = w.amount;
       session.dd.draftFrom = 'phone';
       if (by) session.dd.draftBy = by;
       else delete session.dd.draftBy;
+      announce(`${name}’s wager is in (${from})`);
       return;
     }
     const f = session.final;
     if (ask.kind !== 'final' || !f) return;
     const was = f.wagers[w.seatId];
     if (was === w.amount && wagerFromPhone(f, w.seatId) && (f.wagerBy?.[w.seatId] ?? '') === by) return;
-    const from = by ? `from ${by}’s phone` : 'from their phone';
     // (The amount stays out of the step's name, as it stays out of the wager box in one window, where viewers see ↶ Undo's
     // toast and the 📜 Log too. A step keeps its name, so it stays out with the audience window open as well: closed, or
     // after a reload in one window, the steps taken before would show it.)
+    const waiting = finalWagerProblems(session).missing.length;
     logged(session, `${name}’s wager (${from})`, () => finalSetWager(session, w.seatId, w.amount, 'phone', by || undefined));
+    announce(`${name}’s wager is in (${from})`);
+    if (waiting && !finalWagerProblems(session).missing.length) announce('All wagers are in');
   }
 
   /**

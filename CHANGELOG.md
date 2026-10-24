@@ -33,6 +33,10 @@ in plain words for the people who make and host games. Anything committed but no
 - What a screen reader or voice control calls ✕ Kick and Free seat starts with their words (“Kick Ann: …”, “Free seat: Ann’s …”), so “click Kick” finds it.
 - 🎨 Theme › Share: a button that wraps lines up under the row's first button, not under its label.
 - After a reload mid-game, the ▶ Play screen says the game in progress's phones wait in its buzzer room and that ▶ Resume it goes back to them; Going live and Start game no longer say no phone can join. A room started there that no phone joined closes on ▶ Resume it, instead of taking the game and telling the phones in its own room that the game is over.
+- Screen readers hear what's said while a window is open: the tile when you go to another clue in the clue editor, toasts, ↶ Undo and ↷ Redo, a player moved in 👥 Players, buzzes and scores. Until the window closed, none of it was read.
+- 🔍 Find gives the focus back to what had it (a tile, a round tab, the 🔍 Find button) when it closes with Esc, ✕ or a click beside it, and after a Go there that has nothing to take the focus. It was lost to the page, and the next Tab started at the top.
+- Tab from a window's last control goes round to its first when the window ends in a list picked with the arrows (🔍 Find's results, the RPG's ⤢ Full map). It lost the focus for one press.
+- A screen reader hears when a phone's wager comes in, for a Daily Double and in the Final (“Player 1’s wager is in (from their phone)”, then “All wagers are in”), never how much.
 
 ## 2026-10-23
 

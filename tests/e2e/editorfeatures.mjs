@@ -150,6 +150,12 @@ try {
   await find.fill('cheesy');
   const opts = await page.getByRole('listbox', { name: 'Found' }).getByRole('option').allInnerTexts();
   assert(opts.length === 1, `Ctrl+F finds a clue by its words (${opts.join(' | ')})`);
+  // Tab past the box goes round to ✕ (the results are reached with ↑/↓), and Esc gives the keys back to the tab.
+  await find.press('Tab');
+  assert(await page.evaluate(() => document.activeElement?.matches('[role="dialog"] .modal-x')), 'Tab past Find’s box (with a result) goes round to its ✕, not out of the window');
+  await page.keyboard.press('Escape');
+  assert(await page.locator('nav > button.round-tab').nth(2).evaluate((t) => t === document.activeElement), 'Esc on Find gives the focus back to the round tab it was opened from');
+  await page.keyboard.press('Control+f');
   await find.press('Enter');
   await page.locator('.clue-editor, [aria-label*="Clue"]').first().waitFor({ timeout: 3000 }).catch(() => {});
   assert((await page.locator('nav > button.round-tab.active').innerText()).includes('Jeopardy!'), 'Enter goes to its round');
@@ -197,20 +203,28 @@ try {
   await page.locator('#find-hit-3[aria-selected="true"]').waitFor();
   assert(true, 'and moving the pointer over a result picks it');
   await page.keyboard.press('Escape');
-  // A world no round plays (its round deleted, no RPG round left): Find says how to add one to see it, and the focus,
-  // lost when Find closed, goes to the editor's page. Not when it's been put somewhere while Find waited for the screen.
+  // A world no round plays (its round deleted, no RPG round left): Find says how to add one to see it, and the focus
+  // goes back to what had it before Find, as on Esc. Not when it's been put somewhere while Find waited for the screen.
   const adventure = page.locator('nav > button.round-tab', { hasText: 'Adventure' });
   await adventure.click({ button: 'right' });
   await page.getByRole('menuitem', { name: /Delete round/ }).click();
   await adventure.waitFor({ state: 'detached' });
+  const firstTab = page.locator('nav > button.round-tab').first();
+  await firstTab.focus();
   await page.keyboard.press('Control+f');
   await find.fill('cave');
   const worldHit = page.getByRole('option', { name: /Sample world/ }).first();
   await worldHit.click();
   await page.locator('.toast', { hasText: "isn't played by any round" }).waitFor();
   assert((await toast()).includes('add an RPG round (＋ Add round › 🗺 RPG) and pick it there'), `with no RPG round left, Find’s toast for a world no round plays says to add one (${await toast()})`);
-  await page.waitForFunction(() => document.activeElement?.closest('main'), null, { timeout: 10000 });
-  assert(true, 'and the focus, lost, goes to the editor’s page');
+  // (Once Find has given up waiting for the screen, after 30 frames.)
+  assert(
+    await firstTab.evaluate(async (t) => {
+      for (let i = 0; i < 40; i++) await new Promise((ok) => requestAnimationFrame(ok));
+      return t === document.activeElement;
+    }),
+    'and the focus goes back to the round tab Find was opened from',
+  );
   await page.keyboard.press('Control+f');
   await find.fill('cave');
   // (In the page, frame by frame: the Board game's tab takes the focus a frame after the click, then Find gives up

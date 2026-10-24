@@ -171,7 +171,8 @@ Screen readers hear what's going on: the game starting or resuming, the host pan
 who picks next, awards and scores (the Final's reveals too), how the game ended (the winner, a tie to settle,
 co-winners), dice, wheel and roll-off results, the countdown and the
 scoreboard going on or off, RPG moves (doorways and regroups too) and board-game turns, the buzz order (as it ends up)
-and who is answering, and the app's notes are announced (politely, a burst of changes said once). The host's board is one Tab
+and who is answering, a phone's wager coming in (never how much), and the app's notes are announced (politely, a burst of
+changes said once, with a window open too). The host's board is one Tab
 stop: the arrow keys go from tile to tile. In Windows High Contrast, the selected players and pressed buttons are
 outlined.
 

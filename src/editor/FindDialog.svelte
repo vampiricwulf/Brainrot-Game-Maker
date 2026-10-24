@@ -46,8 +46,8 @@
         (flashed?.matches('button, input, textarea, select, [tabindex]') ? flashed : flashed?.querySelector<HTMLElement>('input, textarea, select, button'));
       // (What opens there can take a few frames: a clue editor, a space's card.)
       if (!target && ++frames < 30) return void requestAnimationFrame(tryNow);
-      // (Nothing there takes it, e.g. a world no round plays: the editor's page does, as for History's Go there. Only while
-      // the focus is lost: not once it's somewhere, e.g. in a field clicked into while the toast shows.)
+      // (Nothing there takes it, e.g. a world no round plays: it stays where it was before Find, as on Esc. Lost, the
+      // editor's page takes it, as for History's Go there: not once it's somewhere, e.g. a field clicked into meanwhile.)
       const now = document.activeElement;
       if (!target && now && now !== document.body && now.isConnected) return;
       const page = document.querySelector('main')?.querySelectorAll<HTMLElement>(FOCUSABLE) ?? [];
@@ -73,10 +73,12 @@
     }
   }
 
-  const focus = (el: HTMLInputElement) => {
-    el.focus();
-    el.select();
-  };
+  // (After modal() has noted what had the focus before Find, to give it back on Esc or ✕.)
+  const focus = (el: HTMLInputElement) =>
+    queueMicrotask(() => {
+      el.focus();
+      el.select();
+    });
 </script>
 
 <svelte:window

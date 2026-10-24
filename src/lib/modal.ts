@@ -45,10 +45,14 @@ export function inertWhile(node: HTMLElement, busy: boolean) {
 const TABBABLE =
   'a[href], details > summary:first-of-type, button:not(:disabled), input:not(:disabled):not([type="hidden"]), select:not(:disabled), textarea:not(:disabled), [tabindex]:not([tabindex="-1"]), [contenteditable="true"]';
 
-/** What Tab can reach inside a box, in order (skips hidden and inert parts). */
+/**
+ * What Tab can reach inside a box, in order (skips hidden and inert parts, and tabindex="-1": a list's roving cells
+ * and options are reached with the arrows, not Tab).
+ */
 export function tabbables(box: HTMLElement): HTMLElement[] {
   return [...box.querySelectorAll<HTMLElement>(TABBABLE)].filter(
-    (el) => !el.closest('[inert]') && (el.offsetWidth > 0 || el.offsetHeight > 0 || el.getClientRects().length > 0),
+    (el) =>
+      el.getAttribute('tabindex') !== '-1' && !el.closest('[inert]') && (el.offsetWidth > 0 || el.offsetHeight > 0 || el.getClientRects().length > 0),
   );
 }
 

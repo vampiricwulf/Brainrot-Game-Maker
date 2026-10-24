@@ -146,6 +146,10 @@ try {
     toastBox,
   );
   assert(toastBox && hit.length === 0, `a toast while the clue editor is open covers none of its buttons (${hit.join(', ') || 'none'})`);
+  // What's said while a window is open is still read: the live region isn't made inert with the page.
+  await page.keyboard.press('Control+Enter');
+  await page.waitForFunction(() => document.getElementById('live-region')?.dataset.said?.endsWith('Category 1 $400.'), null, { timeout: 3000 });
+  assert(!(await page.locator('#live-region').evaluate((r) => !!r.closest('[inert]'))), 'Ctrl+Enter in the clue editor says which tile it’s on, in a live region the window leaves usable');
   await page.keyboard.press('Escape');
   await clueDlg.waitFor({ state: 'detached' });
 
