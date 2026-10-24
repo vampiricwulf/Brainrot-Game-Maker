@@ -12,7 +12,8 @@
 // again is new to the room too: the panel names him as having no phone here in between, then counts his phone with
 // hers, as it would whatever his part. ↻ Send again reaches them both. 🎭 Who was who goes on the stage only when
 // pressed: Ctrl+Z, Ctrl+Y, and a host reload keep it as it was. "Deal a new one?" asks while cards are out. The next
-// round takes the cards back, and Who was who off the screen (Esc too). The host page never says
+// round takes the cards back (the deal's window and the host's column say they went with that round, back in it
+// too), and Who was who off the screen (Esc too). The host page never says
 // who got which part, nor shows a card's words or the location, until Who was who. The audience window, opened at the
 // end with Who was who up, shows it, and puts who got which in the host's column; closing it takes that away again.
 // Needs `npm ci` in buzzer/.
@@ -463,6 +464,14 @@ try {
   await openDeal();
   assert((await flat(dialog.locator('[data-deal-status]'))).includes('Its cards went when that round ended: 📤 Send puts them out again for this round'), 'the deal’s window says its cards went when that round ended');
   await secret('the next round');
+  // (Back in the deal's own round, nobody took them back: they still went with its end.)
+  await host.keyboard.press('Escape');
+  await dialog.waitFor({ state: 'detached' });
+  await sleep(450); // the round buttons ignore clicks right after they appear
+  await host.locator('.rn button', { hasText: 'Prev round' }).click();
+  assert(await until(async () => (await stored(host))?.session?.currentRound === 0), '◀ Prev round: back in Round 1');
+  await openDeal();
+  assert((await flat(dialog.locator('[data-deal-status]'))).includes('Its cards went when that round ended: 📤 Send puts them out again for this round'), 'back in that round, its cards still went when that round ended (not “taken back”)');
   await dialog.locator('[data-deal-reveal]').click();
   await reveal.waitFor();
   assert((await flat(reveal)).includes(`${spy} Spy`), 'Who was who still shows who was who');
@@ -487,6 +496,7 @@ try {
   await info.waitFor();
   const infoText = await flat(info);
   assert(hands.every((h) => infoText.includes(`${h.name} → ${h.part}${h.slice ? ` · ${h.slice}` : ''}`)), `the column beside the stage (viewers don’t see it) says who got which (${infoText})`);
+  assert(infoText.toLowerCase().includes('🎭 odd one out · its cards went when that round ended'), 'and that its cards went when that round ended');
   const caught = await host.evaluate(whoGotWhich, { hands, ATTRS, skip: '[data-who-was-who]' });
   assert(hands.every((h) => caught.some((x) => x.includes(`(${h.name} → ${h.part})`))), 'and the check that found nothing in one window finds each of them there');
   await openDeal();

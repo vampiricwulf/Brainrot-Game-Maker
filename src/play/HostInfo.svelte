@@ -97,7 +97,7 @@
   function dealWhere(): string {
     if (!deal) return '';
     if (deal.stage === 'dealt') return 'dealt, not sent yet';
-    if (!dealCards.length) return 'its cards are back';
+    if (!dealCards.length) return deal.round ? 'its cards went when that round ended' : 'its cards are taken back';
     return phones ? 'on their phones' : 'dealt: you copy each card';
   }
   /** That player's phone showed their card. */

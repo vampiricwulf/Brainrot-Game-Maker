@@ -30,7 +30,7 @@
   import { phoneCard } from '../../lib/phonecard';
   import { buzzerOn, remote, roomHasCards, roomHasFiles, roomMembers } from '../../lib/remote.svelte';
   import { nameList } from '../../lib/session';
-  import { roundNow, sentCardId, sentSlide } from '../../lib/sentcards';
+  import { sentCardId, sentSlide } from '../../lib/sentcards';
   import { whoWasWhoStep } from '../../lib/toolset';
   import { WHEEL_TEMPLATES, wheelFromTemplate } from '../../lib/wheeltemplates';
   import { copyText } from '../standings';
@@ -264,15 +264,15 @@
   const status = $derived.by((): { head: string; pct: string; tail: string } => {
     const both = (t: string) => ({ head: t, pct: '', tail: '' });
     if (!d || d.stage !== 'sent') return both('');
+    // (Only ✖ Take back forgets the round they lasted: one still kept went with its end, back in it or not.)
+    const gone = d.round ? 'Its cards went when that round ended' : 'Its cards are taken back';
     if (!out.length)
       return both(
         tooMany
-          ? `Its cards are back: the phones hold ${CARDS_MAX} at once, all phones together, so 🎭 Deal a new one with fewer in`
+          ? `${gone}: the phones hold ${CARDS_MAX} at once, all phones together, so 🎭 Deal a new one with fewer in`
           : full
-            ? `Its cards are back, and the phones have no room for them now: ${fullText}`
-            : d.round && d.round !== roundNow(game, session)
-              ? `Its cards went when that round ended: 📤 Send puts them out again${until === 'round' ? ' for this round' : ''}`
-              : 'Its cards are taken back: 📤 Send puts them out again',
+            ? `${gone}, and the phones have no room for them now: ${fullText}`
+            : `${gone}: 📤 Send puts them out again${d.round && until === 'round' ? ' for this round' : ''}`,
       );
     if (over)
       return both(
