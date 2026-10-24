@@ -418,7 +418,7 @@ The mode isn't saved with the game: it's dual while the audience window is open.
      an answer on their phone (a team: anyone on it) until the answer is shown, or until the host judges theirs (then
      it's locked on their phone; undoing the mark opens it again, and once they change it, redo doesn't bring that mark
      back); only the host sees them (in one window, not until the answer is up: till then each player's row says whether
-     theirs is in, in the room the words then take, so the stage keeps its size); the stream shows ✍ and who has answered
+     theirs is in, in the room the words then take, long ones scrolling in it, so the stage keeps its size); the stream shows ✍ and who has answered
      while answers are open; the host marks each ✔ / ✘ for the tile's value. With **multiple choice** (2–6 choices
      under ✍ in the editor, one marked ✔ Right), players tap one instead, and ✔ Judge all marks everyone by the right
      choice in one step. The stream shows the choices under the question (the slide drawn smaller over them, the right

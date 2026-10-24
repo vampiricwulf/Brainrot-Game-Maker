@@ -3,7 +3,7 @@
   players). On a ✍ clue ✔ / ✘ on each marks it right or wrong (the clue's value, as ＋ Award / − Deduct would), once per
   player; Ctrl+Z takes one back. In a single window (viewers see this panel) only who has answered shows until the
   answer is up, in the rows (and with the room) the words then take, so the stage on stream keeps its size; then the
-  words, to judge. The Final's stay hidden there until each is revealed (hideUntilShown), on one line.
+  words, to judge, in that room (long ones scroll). The Final's stay hidden there until each is revealed (hideUntilShown), on one line.
   Multiple choice: each pick by its letter, how many picked each (where the words show, never in the head's status, so
   a screen reader doesn't read a tally after every pick), and once the answers are locked ✔ Judge all, by the choice
   marked ✔ Right.
@@ -79,6 +79,16 @@
   const rightLetter = $derived(right ? letter(choices.indexOf(right)) : '');
   /** A single window's ✍ clue: the words' rows, counts and ✔ Judge all keep their room while those aren't there. */
   const keepRoom = $derived(!dual && !hideUntilShown);
+  /**
+   * The rows' height while the words were hidden: shown, they keep it (long answers scroll in it), so the stage on
+   * stream doesn't shrink as the answer comes up.
+   */
+  let rowsBox = $state<DOMRectReadOnly>();
+  let rowsH = $state(0);
+  $effect(() => {
+    if (keepRoom && !words && rowsBox) rowsH = rowsBox.height;
+  });
+  const capH = $derived(keepRoom && words && rowsH > 0 ? rowsH : 0);
   /** Where the words aren't shown: whether this player's is in (and once locked, that none came). */
   const inTitle = (id: string) => (answers[id] ? 'Answer in' : !phones.includes(id) ? 'No phone connected' : open ? 'Waiting…' : 'No answer');
   const inMark = (id: string) => (answers[id] ? '✔' : open ? '…' : '—');
@@ -112,7 +122,7 @@
     <p class="judge-all" aria-hidden="true"></p>
   {/if}
   {#if words || keepRoom}
-    <ul class:dense={!dual}>
+    <ul class:dense={!dual} class:capped={capH > 0} style:max-height={capH ? `${capH}px` : null} bind:contentRect={rowsBox}>
       {#each listed as p (p.id)}
         {#if !words}
           <!-- Single window, the words not to be seen yet: who has answered (✔), never the words. -->
@@ -196,6 +206,14 @@
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
     gap: 4px 16px;
+  }
+  /* (Rows of a few lines start at their top, name and ✔ / ✘ by the first line: in sight before any scrolling.) */
+  ul.capped {
+    overflow-y: auto;
+    align-items: start;
+  }
+  ul.capped li {
+    align-items: flex-start;
   }
   .in {
     margin: 0;

@@ -161,7 +161,9 @@ try {
   await p1.getByLabel(/Your answer/).fill('Shiba Inu');
   await p1.getByLabel(/Your answer/).press('Enter');
   await p1.locator('#answer-state').getByText('✔ Sent').waitFor();
-  await p2.getByLabel(/Your answer/).fill('Corgi');
+  // (Player 2 types a long one: in a single window the words go up in the room the box kept for them, scrolling.)
+  const long = 'Corgi, the short-legged herding dog from Wales with a fox face, big ears and a fluffy bottom, kept by the Queen';
+  await p2.getByLabel(/Your answer/).fill(long);
   await p2.getByRole('button', { name: 'Send answer' }).click();
   await p2.locator('#answer-state').getByText('✔ Sent').waitFor();
   assert((await p1.getByRole('button', { name: 'Change answer' }).count()) === 1, 'a phone sends its answer (Enter or the button) and can change it');
@@ -189,13 +191,21 @@ try {
   assert(!stageText.includes('Shiba') && !stageText.includes('Corgi'), 'the stream shows who has answered (2 of 2), never the words');
   assert(!(await p2.content()).includes('Shiba') && !(await p1.content()).includes('Corgi'), 'no phone sees another’s answer');
 
+  const stageH = () => host.locator('.stage-box').evaluate((e) => Math.round(e.getBoundingClientRect().height));
+  const typedH = await stageH();
   await host.keyboard.press('r');
   await p1.locator('#buzz-big').getByText('Answers locked').waitFor();
   assert((await p1.locator('#buzz-small').innerText()) === 'Yours: “Shiba Inu”', 'showing the answer locks them: the phone keeps its own in sight');
   const row = (id) => answersBox.locator('li', { hasText: id });
   await row('Player 1').getByText('“Shiba Inu”').waitFor();
-  await row('Player 2').getByText('“Corgi”').waitFor();
-  assert(true, 'then the host sees each player’s answer');
+  await row('Player 2').getByText('“Corgi, the short-legged').waitFor();
+  const rows = await answersBox.locator('ul').evaluate((e, long) => ({ scrolls: e.scrollHeight > e.clientHeight + 1, all: e.textContent.includes(long) }), long);
+  const typedShownH = await stageH();
+  if (process.env.SCREENSHOTS) await host.screenshot({ path: `${process.env.SCREENSHOTS}/everyone-host-shown.png` });
+  assert(
+    typedShownH === typedH && rows.scrolls && rows.all,
+    `then the host sees each player’s answer, a long one whole (the rows scroll), and the stage keeps its size (${typedH}px, then ${typedShownH}px)`,
+  );
 
   await row('Player 1').getByRole('button', { name: 'Player 1 is right' }).click();
   await row('Player 1').getByText('✔ Right').waitFor();
@@ -331,7 +341,6 @@ try {
     `in a single window, before the answer is up: names ✔ only, no picks, no letters, no counts, no ✔ Judge all (${JSON.stringify(chips)})`,
   );
   // (The stage on stream keeps its size as the answer goes up: the answers box keeps the words' room till then.)
-  const stageH = () => host.locator('.stage-box').evaluate((e) => Math.round(e.getBoundingClientRect().height));
   const hiddenH = await stageH();
   await host.keyboard.press('r');
   await p1.locator('#buzz-big').getByText('Answers locked').waitFor();
