@@ -438,7 +438,8 @@ export function placeAt(game: Game, path: readonly Seg[]): At {
       break;
     case 'tiebreaker': {
       at.crumbs.push('Tiebreaker');
-      at.icon = '🏁';
+      // (As in the editor and in play: 🏁 is Start there.)
+      at.icon = '❓';
       go({ tab: 'tiebreaker' });
       const tb = game.tiebreaker;
       if (path[1] === 'extraSlides' && tb) {

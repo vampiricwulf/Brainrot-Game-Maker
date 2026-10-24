@@ -43,7 +43,7 @@
     side: Side;
     /** The question slide open (0: the first), kept while the Answer tab is open. */
     qi: number;
-    /** For the steps' names: "tiebreaker" ("Added tiebreaker question slide 2"). */
+    /** What the slides are of, for the steps' names: "the tiebreaker" ("Added question slide 2 to the tiebreaker"). */
     what: string;
     /** Where a question slide (its id; none: the first) or the answer is, for an undo or redo to show it. */
     place: (side: Side, slide?: string) => Place;
@@ -102,11 +102,11 @@
   function addSlide(): void {
     // (On the Answer or a card's tab: after the last question slide.)
     const after = side === 'a' || cardOpen ? qslides.length - 1 : at;
-    slides(`Added ${what} question slide ${after + 2}`, () => addClueSlide(holder, after));
+    slides(`Added question slide ${after + 2} to ${what}`, () => addClueSlide(holder, after));
   }
-  const duplicateSlide = () => slides(`Duplicated ${what} question slide ${at + 1}`, () => duplicateClueSlide(holder, at));
-  const deleteSlide = () => slides(`Deleted ${what} question slide ${at + 1}`, () => deleteClueSlide(holder, at), true);
-  const moveSlide = (d: -1 | 1) => slides(`Moved ${what} question slide ${at + 1} ${d < 0 ? 'earlier' : 'later'}`, () => moveClueSlide(holder, at, d));
+  const duplicateSlide = () => slides(`Duplicated question slide ${at + 1} of ${what}`, () => duplicateClueSlide(holder, at));
+  const deleteSlide = () => slides(`Deleted question slide ${at + 1} of ${what}`, () => deleteClueSlide(holder, at), true);
+  const moveSlide = (d: -1 | 1) => slides(`Moved question slide ${at + 1} of ${what} ${d < 0 ? 'earlier' : 'later'}`, () => moveClueSlide(holder, at, d));
 
   /** Many question slides: short tab names (Q1, Q2…), so the tabs stay on one line. */
   const SHORT_TABS = 4;

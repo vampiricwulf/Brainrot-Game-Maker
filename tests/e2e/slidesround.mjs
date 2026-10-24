@@ -46,6 +46,8 @@ try {
   await page.getByRole('tab', { name: 'Slide 2' }).waitFor();
   await page.waitForFunction(() => document.activeElement?.matches('main [data-field="q"]'));
   assert(true, '＋ Add slide puts the keys in the new slide’s text');
+  const added = await page.locator('.editor > header').getByRole('button', { name: 'Undo (Ctrl+Z)' }).getAttribute('title');
+  assert(added.startsWith('Undo: Added slide 2 to round “Introduction”'), `its step names the round (${added})`);
   assert((await page.getByRole('tab', { name: /Answer/ }).count()) === 0, 'its tabs are Slide 1, Slide 2 (no Answer)');
   // The checklist's line for an empty slide opens that slide, with the focus in its text.
   await page.getByRole('tab', { name: 'Slide 1' }).click();

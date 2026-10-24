@@ -99,7 +99,7 @@
     holder={tb}
     bind:side={tbSide}
     bind:qi
-    what="tiebreaker"
+    what="the tiebreaker"
     place={(sd, slide) => ({ tab: 'tiebreaker', side: sd, slide })}
     onadded={() => void tick().then(() => qField?.focus())}
   />

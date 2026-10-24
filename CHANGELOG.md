@@ -39,6 +39,10 @@ in plain words for the people who make and host games. Anything committed but no
 - Hand-made game files: a clue type the app doesn't know is a plain clue (“daily_double” or “DD”, a Daily Double), and a value written as text (“500”) is that number. The tile showed an empty Type box, and the board's rows went back to $200, $400….
 - 📥 Import clues reads a value with a comma as its decimal mark, as a sheet's currency format writes it there: “200,00 €” is 200 and “1.000,00 €” is 1,000 (they read as 20,000 and 1).
 - An Excel file dropped on 📥 Import clues says, in the window, that it can't be read there (copy the cells and paste them, or save the sheet as CSV), instead of a toast cut off mid-sentence about where pictures go.
+- 🖼 Board images: after a choice in the right-click or `Shift+F10` menu, the keys stay on the preview, as on a slide, so `Shift+F10`, `Tab` and `Enter` go on with the images. They went to ＋ Add image, where `Enter` opened the picker.
+- Words pasted on a slide (`Ctrl+V`) make a text box low on it, where 🅣 Text puts one, instead of across the middle of the question's words.
+- Undo steps for slides name what they're on: “Added slide 2 to round “Introduction””, “Added question slide 2 to “Final Jeopardy!””, “… to the tiebreaker” (it was “the round’s slide 2”, “Final question slide 2”). 🕘 History shows ❓ for the tiebreaker's steps, as the editor does, not 🏁.
+- The checklist says “1 Daily Double placed, but ⭐ Daily Doubles says 0 (it plays)”, not “1 Daily Doubles placed … (all 1 play)”.
 
 ## 2026-10-24
 

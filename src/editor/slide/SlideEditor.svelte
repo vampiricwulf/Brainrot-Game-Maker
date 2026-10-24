@@ -19,6 +19,11 @@
   // An editor went away. The next one to mount takes over: it's the same editor remounted by a
   // Question/Answer tab switch (tabs sit outside the editor, so clicking one doesn't activate it).
   let vacated = false;
+  /**
+   * Where a new text box goes (added or pasted): low on the slide, under where a question's words usually are (the
+   * question stays where it is); one after it steps across (freeSpot).
+   */
+  const NEW_TEXT_AT = { x: 460, y: 700, w: 1000, h: 300 };
 </script>
 
 <script lang="ts">
@@ -297,8 +302,7 @@
         t.color = game.theme.clueColor ?? t.color;
       }
     } else {
-      // Low on the slide, under where a question's words usually are (the question stays where it is).
-      t = newTextEl('New text', { x: 460, y: 700, w: 1000, h: 300 });
+      t = newTextEl('New text', { ...NEW_TEXT_AT });
       t.size = 90;
       Object.assign(t, freeSpot(t, slide.elements));
     }
@@ -420,7 +424,7 @@
       selected = [main.id];
       return;
     }
-    const t = newTextEl(text, { x: 460, y: 390, w: 1000, h: 300 });
+    const t = newTextEl(text, { ...NEW_TEXT_AT });
     t.size = 90;
     Object.assign(t, freeSpot(t, slide.elements));
     add(t, at);

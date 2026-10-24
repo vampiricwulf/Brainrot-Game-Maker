@@ -294,7 +294,7 @@ describe('step labels', () => {
     const two = (g: Game) => (g.wheels[0].segments[0].actions = [{ id: 'b1', do: 'note', text: 'Hi' }, { id: 'b2', do: 'score', amount: 5 }]);
     expect(step((g) => two(g)).label).toBe('Added 2 buttons');
     const tb = { questionSlide: { background: {}, elements: [] }, answerSlide: { background: {}, elements: [] } };
-    expect(step((g) => (g.tiebreaker = tb))).toMatchObject({ label: 'Tiebreaker on', place: { tab: 'tiebreaker' } });
+    expect(step((g) => (g.tiebreaker = tb))).toMatchObject({ label: 'Tiebreaker on', icon: '❓', place: { tab: 'tiebreaker' } });
   });
 
   it('names cleared text, other fields, and changes to several things', () => {

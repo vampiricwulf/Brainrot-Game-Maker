@@ -245,7 +245,7 @@ export function validate(game: Game, room: Checking = {}): Problem[] {
     const over = dailyDoublesOver(round);
     if (over)
       out.push({
-        text: `${r.name}: ${over.placed} Daily Doubles placed, but ⭐ Daily Doubles says ${over.want} (all ${over.placed} play)`,
+        text: `${r.name}: ${over.placed} Daily Double${over.placed === 1 ? '' : 's'} placed, but ⭐ Daily Doubles says ${over.want} (${over.placed === 1 ? 'it plays' : `all ${over.placed} play`})`,
         tab: i,
         level: 'info',
       });
@@ -268,7 +268,7 @@ export function validate(game: Game, room: Checking = {}): Problem[] {
     const ptOver = partnerTilesOver(round);
     if (ptOver)
       out.push({
-        text: `${r.name}: ${ptOver.placed} partner clues placed, but 🤝 Partner clues says ${ptOver.want} (all ${ptOver.placed} play)`,
+        text: `${r.name}: ${ptOver.placed} partner clue${ptOver.placed === 1 ? '' : 's'} placed, but 🤝 Partner clues says ${ptOver.want} (${ptOver.placed === 1 ? 'it plays' : `all ${ptOver.placed} play`})`,
         tab: i,
         level: 'info',
       });

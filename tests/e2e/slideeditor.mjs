@@ -583,6 +583,21 @@ try {
   }
   await page.keyboard.press('Control+z');
   await canvas.locator('.slide .card').waitFor({ state: 'detached' });
+  // Words pasted on it make a text box low on the slide, as 🅣 Text does (it went across the question's words).
+  {
+    const before = new Set((await drawn()).map((e) => e.id));
+    await canvas.focus();
+    await page.evaluate(() => {
+      const dt = new DataTransfer();
+      dt.setData('text/plain', 'HINT: think croissant');
+      document.body.dispatchEvent(new ClipboardEvent('paste', { clipboardData: dt, bubbles: true }));
+    });
+    await canvas.locator('.slide .el:has(.text)').nth(1).waitFor();
+    const pasted = (await drawn()).filter((e) => !before.has(e.id));
+    assert(pasted.length === 1 && pasted[0].y >= 700, `words pasted on the slide go low on it, under the question (${JSON.stringify(pasted)})`);
+    await page.keyboard.press('Control+z');
+    await canvas.locator('.slide .el:has(.text)').nth(1).waitFor({ state: 'detached' });
+  }
   // New 🅣 Text boxes step down and right, each wholly on the slide and none on another (the 4th hung off its bottom).
   {
     const before = new Set((await drawn()).map((e) => e.id));

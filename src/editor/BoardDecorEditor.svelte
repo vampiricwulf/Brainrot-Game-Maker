@@ -45,6 +45,7 @@
   let replaceFrom = $state<HTMLElement>();
   let editingImage = $state<string | null>(null);
   let canvasEl = $state<HTMLDivElement>();
+  let windowEl = $state<HTMLDivElement>();
   let menu = $state<{ x: number; y: number; at: Pt; stack: SlideElement[] } | null>(null);
   const single = $derived(selected.length === 1 ? decor.find((d) => d.id === selected[0]) : undefined);
   const imageEl = $derived(decor.find((d) => d.id === editingImage) as ImageEl | undefined);
@@ -337,6 +338,11 @@
     return !!(e.target as HTMLElement)?.closest?.('input, textarea, select, [contenteditable]');
   }
 
+  /** A menu choice made with the keys: they go back to the preview first (not to the window's first button). */
+  function menuKeysHome(): void {
+    if (document.activeElement?.closest('[role="menu"]')) canvasEl?.focus({ preventScroll: true });
+  }
+
   function keyMenu(): void {
     const stageEl = canvasEl?.querySelector('.stage');
     if (!stageEl) return;
@@ -418,13 +424,22 @@
     bind:hovered
     canPaste={clipboard.elements.some((x) => x.kind === 'image')}
     onpick={(id) => (selected = [id])}
-    onaction={(a) => menuAction(a, at)}
-    onclose={() => (menu = null)}
+    onaction={(a) => (menuKeysHome(), menuAction(a, at))}
+    onclose={() => {
+      menuKeysHome();
+      menu = null;
+      // The keys stay on the preview once the menu is done, as on a slide (Enter, Shift+F10 and Tab go on with the
+      // images). After a click outside the menu, once that click has put them where it does: back there if they left
+      // the window.
+      setTimeout(() => {
+        if (!windowEl?.contains(document.activeElement) && !document.querySelector('[role="menu"]')) canvasEl?.focus({ preventScroll: true });
+      });
+    }}
   />
 {/if}
 
 <div class="modal-backdrop decor-backdrop" role="presentation">
-  <div class="modal decor" role="dialog" aria-modal="true" aria-label="Board images" use:modal>
+  <div class="modal decor" role="dialog" aria-modal="true" aria-label="Board images" use:modal bind:this={windowEl}>
     <header>
       <div>
         <div class="hint">{roundName(round, game.rounds.indexOf(round))}</div>

@@ -66,6 +66,10 @@ describe('the checklist', () => {
     });
     round.dailyDoubleCount = 3;
     expect(validate(game).some((p) => p.text.includes('Daily Double'))).toBe(false);
+    // One placed, the box at 0.
+    round.dailyDoubleCount = 0;
+    for (const c of round.categories.slice(1, 3)) c.clues[2].type = 'standard';
+    expect(validate(game).find((p) => p.text.includes('placed'))?.text).toBe('Jeopardy!: 1 Daily Double placed, but ⭐ Daily Doubles says 0 (it plays)');
   });
 
   it('sends a sound whose file is missing to 🔊 Sounds, other missing files to Media', () => {

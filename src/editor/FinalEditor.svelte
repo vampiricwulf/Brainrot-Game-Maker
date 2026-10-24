@@ -232,7 +232,7 @@
   bind:qi
   bind:ci
   bind:onCard
-  what="Final"
+  what={`“${finalName(round)}”`}
   place={(sd, slide) => ({ tab: 'round', round: round.id, part: { kind: 'final', side: sd, slide } })}
   cards={{
     list: cards,

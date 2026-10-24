@@ -261,7 +261,7 @@ try {
   await page.getByRole('tab', { name: /Question slide/ }).click();
   await page.getByRole('button', { name: '＋ Add slide' }).click();
   await page.getByRole('tab', { name: 'Question 2' }).waitFor();
-  assert((await undoTitle()).startsWith('Undo: Added Final question slide 2'), `＋ Add slide on the Final is one named step (${await undoTitle()})`);
+  assert((await undoTitle()).startsWith('Undo: Added question slide 2 to “Final Jeopardy!”'), `＋ Add slide on the Final is one named step (${await undoTitle()})`);
   await page.getByPlaceholder('Type the final question…').fill('Then the real question');
   assert(await slideShows('Then the real question'), "the Final's quick field writes on its second question slide");
   // Moved and then undone, the slide that moved back shows (not the first one), as on a clue.
@@ -278,7 +278,7 @@ try {
   await page.getByRole('tab', { name: 'Question slide' }).click();
   await page.keyboard.press('Control+d');
   await page.getByRole('tab', { name: 'Question 2' }).waitFor({ timeout: 3000 });
-  assert((await undoTitle()).startsWith('Undo: Duplicated Final question slide 1'), `Ctrl+D on the Final's only question slide's tab duplicates it (${await undoTitle()})`);
+  assert((await undoTitle()).startsWith('Undo: Duplicated question slide 1 of “Final Jeopardy!”'), `Ctrl+D on the Final's only question slide's tab duplicates it (${await undoTitle()})`);
   await page.keyboard.press('Control+z');
   await page.getByRole('tab', { name: 'Question slide' }).waitFor({ timeout: 3000 });
   // A key on a round's tab is the tab's alone, even with a slide item selected.
@@ -300,7 +300,7 @@ try {
   // Like a clue, the tiebreaker can have more question slides: ＋ Add slide opens a second one, its quick field types on it.
   await page.getByRole('button', { name: '＋ Add slide' }).click();
   await page.getByRole('tab', { name: 'Question 2' }).waitFor();
-  assert((await undoTitle()).startsWith('Undo: Added tiebreaker question slide 2'), `＋ Add slide on the tiebreaker is one named step (${await undoTitle()})`);
+  assert((await undoTitle()).startsWith('Undo: Added question slide 2 to the tiebreaker'), `＋ Add slide on the tiebreaker is one named step (${await undoTitle()})`);
   await page.getByPlaceholder('Type the tiebreaker question…').fill('Second clue line');
   assert(await slideShows('Second clue line'), "the quick field writes on the open (second) question slide");
   await page.getByRole('tab', { name: 'Question 1' }).click();

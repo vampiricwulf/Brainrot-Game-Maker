@@ -55,7 +55,7 @@
   holder={round}
   bind:side
   bind:qi
-  what="the round’s"
+  what={`round “${roundName(round, app.game.rounds.indexOf(round))}”`}
   plain
   place={(_, slide) => ({ tab: 'round', round: round.id, part: { kind: 'slides', slide } })}
   onadded={() => void tick().then(() => qField?.focus())}

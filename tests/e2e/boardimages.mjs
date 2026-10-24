@@ -210,6 +210,23 @@ try {
   const itemMenu = page.getByRole('menu', { name: 'Slide item menu' });
   await itemMenu.waitFor();
   assert(true, 'Shift+F10 on the preview opens the selected image’s menu');
+  // A choice made with the keys (arrows, Enter) leaves them on the preview, as on a slide (they went to ＋ Add image).
+  const pickWithKeys = async (name) => {
+    const item = itemMenu.getByRole('menuitem', { name });
+    await item.waitFor();
+    while (!(await item.evaluate((b) => b === document.activeElement))) await page.keyboard.press('ArrowDown');
+    await page.keyboard.press('Enter');
+    await itemMenu.waitFor({ state: 'detached' });
+    // (The page's own timers, set off by the choice, first.)
+    await page.evaluate(() => new Promise((r) => setTimeout(() => setTimeout(r))));
+  };
+  await pickWithKeys(/🔒 Lock/);
+  assert(await onCanvas(), 'after 🔒 Lock from the keyboard menu, the keys are still on the preview');
+  await page.keyboard.press('Shift+F10');
+  await pickWithKeys(/🔓 Unlock/);
+  await page.keyboard.press('Shift+F10');
+  await itemMenu.waitFor();
+  assert(true, 'and Shift+F10 opens the menu again');
   await page.keyboard.press('Escape');
   await itemMenu.waitFor({ state: 'detached' });
   await shot('bi-2-decor-editor');
