@@ -24,6 +24,13 @@ in plain words for the people who make and host games. Anything committed but no
 - The “Race to the finish” template names Start and Finish on the board, Finish with a 🏆, and landing on Finish offers +500 for the first one there (its note says the most points wins the game). Finish looked just like Start, and reaching it won nothing: the end screen crowned the points leader, or called a tie.
 - The “20-space loop” template has 8 spaces along the top and bottom and 2 down each side, so the names Bonus, Nap time and Go back no longer sit under the next space, and a token on a side space is no longer drawn over the space above it.
 - Board games: Move by › ＋ Add wheel… makes a wheel of 1 to 6, so a spin moves as far as its slice says. It made “Option 1” to “Option 4”.
+- Team games, a 🤝 partner clue the picking team plays itself: until its describer is picked, PARTNER UP! on stream says “Red · its own team!”, and the host's tag “🤝 Red · its own team”. They said “Solo!”, though the team's phones said “Your team plays this one!”.
+- Phones in a team game: a screen reader hears a card sent to that one person (a 🧢 Team captain's, a describer's) as “A card only you can see”, as its heading says, not “only your team can see”.
+- The pre-game 👥 Teams list: deleting a team people are on says they pick a team again (“Deleted Les Incroyables: its 2 people pick a team again”), since ↶ Undo brings back the team, not its people.
+- The 👥 Teams list says team where it said player: “⚠ Teams share a name…” (with no initial to add), “Another team already has that color”, “The game needs at least one team”, its moves in ↶ Undo and 🕘 History, and what a screen reader hears for a row with no name.
+- Phones in a team game: a screen reader hears “Al is answering for your team.” as one sentence, not “Al is answering. for your team.”.
+- The answers box has a space before who sent an answer (“A · Paris · Al”) and before the choice a typed answer names (“= B”), the Final's too.
+- The 📱 card's options that Teams turns off (new players joining from their phone, players picking their color) look greyed, as disabled buttons do.
 
 ## 2026-10-23
 

@@ -284,6 +284,10 @@ try {
   await panel.getByText('Green picked it.').waitFor();
   await panel.getByLabel('Partner from the same team').check();
   assert((await mainLabel(host)) === '🎡 Spin for the describer', 'Green plays it, its own team: the main button is 🎡 Spin for the describer');
+  // (Not “Solo!”: Green has four people, one of them to describe.)
+  const pairLine = await textOf(host.locator('.stage-box [data-partner-up] .pu-and'));
+  const tag = await textOf(host.locator('.panel [data-partner-tag]'));
+  assert(pairLine === '· its own team!' && tag === '🤝 Green · its own team', `PARTNER UP! says “Green · its own team!”, as the host's tag does (“${pairLine}”, “${tag}”)`);
   assert((await textOf(host.locator('.panel .status'))).includes('Partner clue: spin for the describer'), 'and the status row says so too (not to show the question yet)');
   await mainButton(host).click();
   const wheelName = host.locator('.stage-box').getByText('Describer for Green');

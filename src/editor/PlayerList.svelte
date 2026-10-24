@@ -108,15 +108,19 @@
   const removeWord = $derived(inGame ? 'Remove' : 'Delete');
   /** A running game keeps at least one player (its turns, parties and scoreboard need someone). */
   const lastOne = $derived(inGame && players.length <= 1);
-  /** Before the game (no undo history there): the player just deleted, for the note's Undo. */
-  let undone = $state<{ p: P; at: number } | null>(null);
+  /**
+   * Before the game (no undo history there): the player just deleted, for the note's Undo. A team's people (`n`) go back
+   * to picking a team on their phones: its Undo brings back the team, not them.
+   */
+  let undone = $state<{ p: P; at: number; n: number } | null>(null);
   function remove(p: P): void {
-    if (lastOne) return void toast('The game needs at least one player: add another first');
+    if (lastOne) return void toast(`The game needs at least one ${lower}: add another first`);
     const at = players.indexOf(p);
     if (onremove) onremove(p.id);
     else {
+      const n = members?.(p.id).length ?? 0;
       players.splice(at, 1);
-      undone = { p: $state.snapshot(p), at };
+      undone = { p: $state.snapshot(p), at, n };
     }
     // The focus goes on to the next row's delete button (or ＋ Add player), not to the page. (A removal that asks
     // first has put it on the question.)
@@ -152,7 +156,7 @@
   function setColor(p: P, color: string, input: HTMLInputElement): void {
     const others = players.filter((o) => o.id !== p.id).map((o) => o.color);
     if (isColorTaken(color, others)) {
-      toast('Another player already has that color');
+      toast(`Another ${lower} already has that color`);
       input.value = p.color;
       return;
     }
@@ -164,7 +168,7 @@
     const j = i + d;
     if (!d || j < 0 || j >= players.length) return;
     const p = players[i];
-    record(`Moved player “${p.name}” ${d < 0 ? 'up' : 'down'}`, () => {
+    record(`Moved ${lower} “${p.name}” ${d < 0 ? 'up' : 'down'}`, () => {
       players.splice(i, 1);
       players.splice(j, 0, p);
     });
@@ -285,18 +289,18 @@
           step="1"
           bind:value={p.startScore}
           onchange={() => (p.startScore = wholePoints(p.startScore) ?? 0)}
-          aria-label="{p.name || `Player ${i + 1}`}'s start score"
+          aria-label="{p.name || `${noun} ${i + 1}`}'s start score"
         />
       {/if}
-      <button class="ghost tiny up" onclick={() => nudge(i, -1)} disabled={i === 0} aria-label="Move {p.name || `player ${i + 1}`} up">▲</button>
-      <button class="ghost tiny down" onclick={() => nudge(i, 1)} disabled={i === players.length - 1} aria-label="Move {p.name || `player ${i + 1}`} down">▼</button>
+      <button class="ghost tiny up" onclick={() => nudge(i, -1)} disabled={i === 0} aria-label="Move {p.name || `${lower} ${i + 1}`} up">▲</button>
+      <button class="ghost tiny down" onclick={() => nudge(i, 1)} disabled={i === players.length - 1} aria-label="Move {p.name || `${lower} ${i + 1}`} down">▼</button>
       <button
         class="ghost tiny del"
         class:danger={!inGame}
         onclick={() => remove(p)}
         disabled={lastOne}
         aria-label="{removeWord} {p.name}"
-        title={lastOne ? 'The game needs at least one player: add another first' : `${removeWord} ${p.name}`}
+        title={lastOne ? `The game needs at least one ${lower}: add another first` : `${removeWord} ${p.name}`}
       >{inGame ? '−' : '🗑'}</button>
       {#if members}
         {@const on = members(p.id)}
@@ -317,13 +321,16 @@
   {#if sameNames.length}
     <!-- Allowed (it's their name), but the scoreboard and the log can't tell them apart. -->
     <p class="warn small same" role="status">
-      ⚠ Players share a name ({sameNames.map((n) => `“${n}”`).join(', ')}): viewers can't tell them apart on the scores. Add an
-      initial?
+      ⚠ {noun}s share a name ({sameNames.map((n) => `“${n}”`).join(', ')}): viewers can't tell them apart on the scores.{teams
+        ? ''
+        : ' Add an initial?'}
     </p>
   {/if}
   {#if undone}
     <div class="undo-note" role="status">
-      <span>Deleted <b>{undone.p.name}</b></span>
+      <span
+        >Deleted <b>{undone.p.name}</b>{undone.n ? `: its ${undone.n === 1 ? '1 person picks' : `${undone.n} people pick`} a team again` : ''}</span
+      >
       <button class="small" onclick={undoRemove} disabled={players.length >= max}>↶ Undo</button>
       <button class="small ghost" onclick={() => (undone = null)} aria-label="Dismiss">✕</button>
     </div>

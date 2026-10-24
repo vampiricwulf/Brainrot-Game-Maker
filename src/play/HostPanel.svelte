@@ -770,7 +770,9 @@
             ? partner.partnerId === partner.pickerId
               ? partner.member
                 ? ` · ${partner.member.name}`
-                : ' · Solo'
+                : partner.stage === 'pick' && teams
+                  ? ' · its own team'
+                  : ' · Solo'
               : ` + ${named(partner.partnerId) ?? '?'}`
             : ''}</span
         >

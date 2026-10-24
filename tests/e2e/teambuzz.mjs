@@ -129,6 +129,8 @@ try {
   const teamsBox = card.getByLabel(/Teams: people join a team/);
   await teamsBox.check();
   assert(await card.getByLabel(/Let new players join from their phone/).isDisabled(), 'Teams is a checkbox on the 📱 card (new players from phones are off with it: people join a team)');
+  const dimmed = await card.locator('label.check').evaluateAll((els) => els.map((e) => [e.textContent.trim().slice(0, 12), getComputedStyle(e).opacity]));
+  assert(dimmed.filter(([, o]) => o !== '1').map(([t]) => t).join() === 'Let new play,Players can ', `and it and the color choice look greyed, as disabled buttons do (${JSON.stringify(dimmed)})`);
   await card.getByText(/up to 24 phones\s+can be in the room at once\./).waitFor();
   assert(true, 'with Teams ticked, the card says a room holds 24 phones at most');
   const codeEl = card.locator('[aria-label^="Room code "]');
@@ -219,6 +221,26 @@ try {
   await al.locator('#me').getByText('Al · Player 1').waitFor();
   assert(true, 'a phone reload comes back on its team with its name');
 
+  // The list's words are a team's: two teams of one name.
+  await roster.getByRole('button', { name: '＋ Add team' }).click();
+  await roster.locator('input.name').nth(2).fill('player 1');
+  const same = (await roster.locator('.same').innerText()).replace(/\s+/g, ' ');
+  assert(same === '⚠ Teams share a name (“Player 1”): viewers can\'t tell them apart on the scores.', `two teams of one name: “Teams share a name”, no initial to add (${same})`);
+  await roster.locator('button.del').nth(2).click();
+  // A team with people on it deleted: the note says they pick a team again (its Undo brings back the team, not them).
+  await roster.getByRole('button', { name: 'Delete Player 2' }).click();
+  const note = (await roster.locator('.undo-note').innerText()).replace(/\s+/g, ' ');
+  assert(note.startsWith('Deleted Player 2: its 1 person picks a team again'), `deleting a team Bea is on: the note says she picks a team again (${note})`);
+  // (Her phone hears it before the Undo: so she rejoins by hand, as the note says.)
+  await bea.locator('#seats-note').getByText('Your team left the game. Pick another one.').waitFor();
+  await roster.locator('.undo-note').getByRole('button', { name: '↶ Undo' }).click();
+  await bea.locator('#seats-note').getByText('Your team is back in the game. Tap it to rejoin.').waitFor();
+  await bea.getByRole('button', { name: 'Player 2' }).click();
+  await bea.getByRole('textbox', { name: 'Your name (everyone sees it)' }).fill('Bea');
+  await bea.getByRole('button', { name: 'Join the team' }).click();
+  await bea.locator('#me').getByText('Bea · Player 2').waitFor();
+  await card.getByText('3 people on 2 of 2 teams').waitFor();
+
   // Teams off with people on teams: asked first (every phone would pick again), as closing the room is.
   await teamsBox.click();
   const ask = card.getByRole('alertdialog', { name: 'Turn teams off?' });
@@ -280,6 +302,8 @@ try {
   await big(al).getByText("You're answering!").waitFor();
   await big(ann).getByText('Al is answering').waitFor();
   assert((await small(ann).innerText()) === 'for your team', 'Al buzzed: he answers; his teammate Ann sees "Al is answering for your team"');
+  const annHears = await ann.locator('#buzz').getAttribute('aria-label');
+  assert(annHears === 'Al is answering for your team.', `and a screen reader hears it as one sentence (${annHears})`);
   await small(bea).getByText('Player 1 is answering (Al)').waitFor();
   assert(true, 'the other team sees "Player 1 is answering (Al)"');
   await host.waitForFunction(() => [...document.querySelectorAll('.panel .p .sel[aria-pressed="true"]')].some((e) => e.textContent.includes('Player 1')));
@@ -366,6 +390,10 @@ try {
   await big(mal).getByText('Answers locked').waitFor();
   await small(mal).getByText('The host has it (not shown on this phone)').waitFor();
   assert(!(await mal.content()).includes('Poodle'), 'once the answers lock, that phone says the host has the team’s answer (not “None sent”), still without what it says');
+  // (One window: the answers box shows the words once the answer is up.)
+  const sentBy = host.locator('[data-answer-row] .text', { hasText: 'Poodle' });
+  await sentBy.waitFor();
+  assert((await sentBy.innerText()) === '“Poodle” · Al', `the host's answers box says who sent it, apart from the answer (${await sentBy.innerText()})`);
   await host.keyboard.press('Escape');
 
   // ---------- The host's words say team: Enter with no team picked ----------

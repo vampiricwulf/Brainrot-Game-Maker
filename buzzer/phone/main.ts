@@ -1230,7 +1230,7 @@ function renderBuzz(v: PhoneView): void {
   // A card new to this page: a short buzz, and said once ("A card only you can see"; Tap to see is where the keys go).
   if (fresh.length) {
     vibrate([70, 50, 70]);
-    news(cardsLine(fresh.length, team, cards.some((c) => c.shared && fresh.includes(c.id))));
+    news(cardsLine(cards.filter((c) => fresh.includes(c.id))));
   }
   $('cards').hidden = !cards.length && !late;
   $('cards-late').hidden = !late;
@@ -1350,6 +1350,8 @@ function renderBuzz(v: PhoneView): void {
     // Your team is answering: a teammate buzzed (or the host picked the team).
     const by = v.answering.by;
     [cls, big, small] = by ? ['team', `${by} is answering`, 'for your team'] : ['first', 'Your team is answering!', 'Say your answer'];
+    // (“Al is answering for your team.”: one sentence.)
+    whole = !!by;
   } else if (v.phase === 'answering' && v.answering?.you) {
     const how = mine?.rolled === 1 ? 'You won the roll' : mine?.byMs !== undefined ? `You were first by ${secs(mine.byMs)}` : 'Say your answer';
     [cls, big, small] = ['first', "You're answering!", how];

@@ -1090,6 +1090,8 @@ This needs the room to address one person (`member` in §19).
 - `session.partner.member = { id, name }` is saved, so a reload keeps it. Member ids stay valid while the room lives,
   because the room keeps its members in its saved state across host reloads (`RoomSaved.members`, room.ts:192-193). If
   the room is replaced (a new code), the panel asks the host to choose again.
+- Until the describer is picked, PARTNER UP! reads "Red · its own team!" and the host's tag "🤝 Red · its own team"
+  (not "Solo!": the team plays it among itself).
 - With one connected person on the team: "Red Team has one phone here: nobody to describe to". The host can switch this
   tile to team against team.
 - Without phones there is no member wheel: the host says who describes, and copies the card.

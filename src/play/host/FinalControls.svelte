@@ -613,7 +613,7 @@
                 {@const picked = choices.length ? pickLabel(choices, a.pick) : undefined}
                 {@const named = choices.length ? pickOf(a, choices) : null}
                 <span class="typed" class:muted={!!a.pick && !picked} dir="auto" title="{picked ?? a.text}{dual && a.by ? ` · sent by ${a.by}` : ''}" data-typed={id}
-                  >{#if picked}<b>{picked}</b>{:else}“{a.text}”{#if named}<span class="muted"> = {letter(choices.findIndex((c) => c.id === named))}</span>{/if}{/if}</span
+                  >{#if picked}<b>{picked}</b>{:else}“{a.text}”{#if named}{' '}<span class="muted">= {letter(choices.findIndex((c) => c.id === named))}</span>{/if}{/if}</span
                 >
                 {#if rightOne && named}
                   {#if named === rightOne.id}<span class="small pick-right" data-pick-hint={id}>✔ right choice</span>

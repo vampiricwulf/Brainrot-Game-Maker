@@ -428,7 +428,8 @@
     {#if ptSolo && ptMember}
       {@render plate(ptPicker, false)}<span class="pu-and">· {ptMember.name} {ptGame?.verb ?? 'describes'}!</span>
     {:else if ptSolo}
-      {@render plate(ptPicker, false)}<span class="pu-and">· Solo!</span>
+      <!-- (Teams: the picking team plays it among itself, its describer still to be picked.) -->
+      {@render plate(ptPicker, false)}<span class="pu-and">· {game.settings.buzzTeams ? 'its own team' : 'Solo'}!</span>
     {:else}
       {@render plate(ptPicker, false)}<span class="pu-and">🤝</span>{@render plate(ptPartner, waiting && !!ptPicker)}
     {/if}

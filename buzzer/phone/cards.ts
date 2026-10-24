@@ -98,11 +98,15 @@ export const cardBuild = (c: PhoneCard): string => JSON.stringify([c.title, c.te
 /** All a card shows, its pictures and players too: the same card back under a new id (↻ Send again) stays open. */
 export const cardSame = (c: PhoneCard): string => JSON.stringify([c.role, c.hint, c.title, c.text, c.team, c.shared, c.tap, c.media ?? []]);
 
-/** Said once as cards arrive: "A card only you can see" ("A card the host sent to you and others" when one is shared). */
-export function cardsLine(n: number, team: boolean, shared = false): string {
+/**
+ * Said once as cards arrive: "A card only you can see" ("A card the host sent to you and others" when one is shared).
+ * "Your team" only when every new card went to the whole team: on a team, a card can go to one person.
+ */
+export function cardsLine(fresh: Pick<PhoneCard, 'team' | 'shared'>[]): string {
+  const n = fresh.length;
   if (!n) return '';
-  const who = team ? 'your team' : 'you';
-  if (shared) return n === 1 ? `A card the host sent to ${who} and others` : `${n} cards the host sent to ${who} and others`;
+  const who = fresh.every((c) => c.team) ? 'your team' : 'you';
+  if (fresh.some((c) => c.shared)) return n === 1 ? `A card the host sent to ${who} and others` : `${n} cards the host sent to ${who} and others`;
   return n === 1 ? `A card only ${who} can see` : `${n} cards only ${who} can see`;
 }
 

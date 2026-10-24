@@ -158,11 +158,15 @@ describe('a card’s lines', () => {
   });
 
   it('counts the cards for a screen reader, and the ones this phone joined too late for', () => {
-    expect(cardsLine(0, false)).toBe('');
-    expect(cardsLine(1, false)).toBe('A card only you can see');
-    expect(cardsLine(2, true)).toBe('2 cards only your team can see');
-    expect(cardsLine(1, false, true)).toBe('A card the host sent to you and others');
-    expect(cardsLine(2, true, true)).toBe('2 cards the host sent to your team and others');
+    expect(cardsLine([])).toBe('');
+    expect(cardsLine([{}])).toBe('A card only you can see');
+    expect(cardsLine([{ team: true }, { team: true }])).toBe('2 cards only your team can see');
+    // In a team game a card can go to one person on the team (a captain's, the describer's): that's “you”, as its
+    // heading says, and so is a mix of the two.
+    expect(cardsLine([{ team: false }])).toBe('A card only you can see');
+    expect(cardsLine([{ team: true }, {}])).toBe('2 cards only you can see');
+    expect(cardsLine([{ shared: true }])).toBe('A card the host sent to you and others');
+    expect(cardsLine([{ team: true, shared: true }, { team: true }])).toBe('2 cards the host sent to your team and others');
     expect(lateLine(0, false)).toBe('');
     expect(lateLine(1, false)).toBe('A card went to your seat before this phone joined. Ask the host to send it again.');
     expect(lateLine(2, true)).toBe('2 cards went to your team before this phone joined. Ask the host to send them again.');
