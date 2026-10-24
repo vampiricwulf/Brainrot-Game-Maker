@@ -3,7 +3,7 @@
 import { ensureWorld, refindPositions } from './rpg';
 import { ensureBoard, refindSpaces } from './boardgame';
 import { cardSlides, describer, dropFromSends, pairOnly, partnerPlayers, partnerReason, partnerRoles, partnerRules, partnerShares, resetRecipients, startPartner, stealOn, takeBack } from './partner';
-import { dropOverCards, dropSeatFromCards, repairSentCards } from './sentcards';
+import { dropOverCards, repairSentCards } from './sentcards';
 import { dealForViewers, repairDeal } from './deals';
 import { categoryLabel, clueValue, FINAL_V1_ROUND_ID, finalName, formatPoints, getClue, isBoard, isBoardGame, isFinal, isRpg, isSlides, MAX_POINTS, newId, playableClues, questionSlides, type BoardRound, type Clue, type ClueRef, type ExtraSlide, type FinalAnswer, type FinalRound, type FinalState, type Game, type Id, type PartnerState, type Player, type Round, type ScoreEvent, type Session, type Slide, type SlidesRound, type TeamMember, type WagerSource } from './model';
 
@@ -244,9 +244,9 @@ export function removePlayer(session: Session, playerId: string): void {
     // A card sent to them is taken back from them (one sent to others too stays with the others).
     dropFromSends(pt, playerId);
   }
-  // The same for the cards sent with 🤫 Send a card… or from a tile's panel, and a 🎭 deal's (the deal keeps their part:
-  // a restore brings it back, and its counts never change as someone leaves).
-  dropSeatFromCards(session, playerId);
+  // The cards sent with 🤫 Send a card… or from a tile's panel, and a 🎭 deal's, keep their place (the deal their part):
+  // left out while they're out (sentcards.ts cardsOut), back with a restore or an Undo, and the deal's counts never
+  // change as someone leaves.
   if (f) {
     // Their wager and result stay (nothing reads them while they're out), so a restore brings them back.
     f.players = f.players.filter((x) => x !== playerId);

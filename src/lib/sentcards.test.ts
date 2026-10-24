@@ -1,11 +1,12 @@
 // 🤫 Cards anywhere (partner-clues spec §12, §14.1, §18.2, §22): a card goes to the buzzer room only when the host sends
 // it (🤫 Send a card…, or a tile's panel), exactly to who it was sent to, under its own id; ↻ Send again and ✖ Take back
 // touch only that card; a card lasts its round, its tile or until taken back; a tile's card edited since comes off the
-// phones; a player taken out, a reload and Resume with my edits keep it right; and viewers never get Session.cards.
+// phones; a player taken out (back after a restore), a reload and Resume with my edits keep it right; and viewers never
+// get Session.cards.
 import { describe, expect, it } from 'vitest';
 import { jeopardyGame } from './testgame';
 import { newImageEl, newRound, setSlideText, type BoardRound, type FinalRound, type Game, type SavedCard, type SentCard, type Session } from './model';
-import { backToBoard, backToLastRound, finalChoose, finalNext, forViewers, goToRound, migrateSession, newSession, openClue, rebaseSession, removePlayer } from './session';
+import { backToBoard, backToLastRound, finalChoose, finalNext, forViewers, goToRound, migrateSession, newSession, openClue, rebaseSession, removePlayer, restorePlayer } from './session';
 import { addCard, cardHash, sendCards, setCardName, setPartner, setPartnerGame } from './partner';
 import { hostCards, hostState, buzzIdle, newBuzz, phoneStatus, roomCardCount, roomCardsFull, sessionCards } from './buzz';
 import {
@@ -14,6 +15,7 @@ import {
   dropOverCards,
   finalRecipients,
   linkItem,
+  listedCards,
   nextLabel,
   quickSlide,
   repairSentCards,
@@ -366,12 +368,26 @@ describe('how long a card lasts', () => {
     expect(sendCard(g, session, { to: [{ seat: 'a' }], content: { slide: quickSlide('x') }, until: 'round' })).toBeNull();
   });
 
-  it('a player taken out is dropped from every card; a card only for them is taken back', () => {
+  it('a player taken out is left off every card while out, and back on them after a restore (or an added one undone)', () => {
     const { g, session } = setup();
     sendCard(g, session, { to: [{ seat: 'a' }, { seat: 'b' }], content: { slide: quickSlide('AB') }, until: 'host' });
     sendCard(g, session, { to: [{ seat: 'b' }], content: { slide: quickSlide('B') }, until: 'host' });
+    const out = () => listedCards(g, session).map((c) => `${c.label} → ${sentToText(session, c.to)}`);
+    const all = out();
     removePlayer(session, 'b');
-    expect(session.cards!.map((c) => [c.label, c.to])).toEqual([['Card 1', [{ seat: 'a' }]]]);
+    expect(out()).toEqual(['Card 1 → Ann']);
+    expect(sessionCards(g, session, { fileBytes: FILE_BYTES, files: {} })!.map((c) => c.to)).toEqual([[{ seat: 'a' }]]);
+    restorePlayer(session, 'b');
+    expect(out()).toEqual(all);
+    // (↻ Send again reaches them: their phone is late for both, the room let their seat go.)
+    expect(sendCardAgain(g, session, session.cards![1].id)).toBe(true);
+    // Added, sent a card, then the add undone: never "Ann, ?", and one only for them isn't counted.
+    const before = JSON.parse(JSON.stringify(session.players));
+    session.players.push({ id: 'e', name: 'Eve', color: '#123456', startScore: 0 });
+    sendCard(g, session, { to: [{ seat: 'a' }, { seat: 'e' }], content: { slide: quickSlide('AE') }, until: 'host' });
+    sendCard(g, session, { to: [{ seat: 'e' }], content: { slide: quickSlide('E') }, until: 'host' });
+    session.players = before;
+    expect(out()).toEqual([...all, 'Card 3 → Ann']);
   });
 
   it('Resume with my edits: a tile’s card deleted is taken back; a quick card and a kept round stay', () => {

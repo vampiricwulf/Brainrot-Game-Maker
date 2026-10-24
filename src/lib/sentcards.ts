@@ -2,8 +2,9 @@
 // one of the editor's 🤫 Cards, a tile's or a Final's card, or a quick one) or from an open tile's panel or the Final's
 // (their own 🤫 cards: a standard or Daily Double tile's, 🤫 Just you, 💡 Insider tip; a Final's). They live in
 // Session.cards, and only the host's presses add to it (sendCard, sendCardAgain); ✖ Take back, a round ending, a tile
-// closing, a player taken out or a card deleted in the editor take them away. What the buzzer room gets is built from
-// Session.cards alone (buzz.ts sessionCards), as a partner clue's is from its sends. No Svelte state: tested in
+// closing or a card deleted in the editor take them away. A player taken out keeps their place on them, left out of
+// every list while they're out (cardsOut), so a restore or an Undo gives them back. What the buzzer room gets is built
+// from Session.cards alone (buzz.ts sessionCards), as a partner clue's is from its sends. No Svelte state: tested in
 // sentcards.test.ts.
 import { isLinkProblem, parseMediaLink, youtubeStart } from './links';
 import {
@@ -146,16 +147,28 @@ function stillOut(game: CardGame, session: Pick<Session, 'currentRound' | 'phase
   return true;
 }
 
-/** The cards out now, in the order sent (what the buzzer room gets, a 🎭 deal's cards included). */
-export function cardsOut(game: CardGame, session: Pick<Session, 'cards' | 'currentRound' | 'phase' | 'currentClue'>): SentCard[] {
-  return (session.cards ?? []).filter((c) => stillOut(game, session, c));
+/** What reading the cards out needs of the session. */
+type OutSession = Pick<Session, 'cards' | 'currentRound' | 'phase' | 'currentClue' | 'players'>;
+
+/**
+ * The cards out now, in the order sent (what the buzzer room gets, a 🎭 deal's cards included), each to its players
+ * still in the game: a player taken out (or an added one undone) is left off, and a card with none of its players left
+ * isn't out while they're gone. They keep their place on it (a restore or an Undo brings them back, to ↻ Send again).
+ */
+export function cardsOut(game: CardGame, session: OutSession): SentCard[] {
+  const here = new Set(session.players.map((p) => p.id));
+  return (session.cards ?? []).flatMap((c) => {
+    if (!stillOut(game, session, c)) return [];
+    const to = c.to.filter((t) => here.has(t.seat));
+    return to.length === c.to.length ? [c] : to.length ? [{ ...c, to }] : [];
+  });
 }
 
 /**
  * The list of cards out: those sent with 🤫 Send a card… or from a tile's or a Final's panel. A 🎭 deal's cards are listed by the
  * deal (its row only counts them: one per player would say who got which by what's on each).
  */
-export function listedCards(game: CardGame, session: Pick<Session, 'cards' | 'currentRound' | 'phase' | 'currentClue'>): SentCard[] {
+export function listedCards(game: CardGame, session: OutSession): SentCard[] {
   return cardsOut(game, session).filter((c) => !c.deal);
 }
 
@@ -168,16 +181,6 @@ export function dropOverCards(game: CardGame, session: Session): void {
   if (!session.cards) return;
   const kept = session.cards.filter((c) => stillOut(game, session, c));
   if (kept.length !== session.cards.length) session.cards = kept;
-  tidy(session);
-}
-
-/** A player taken out: they're dropped from every card (one sent only to them is taken back). */
-export function dropSeatFromCards(session: Session, seat: Id): void {
-  if (!session.cards) return;
-  session.cards = session.cards.flatMap((c) => {
-    const to = c.to.filter((t) => t.seat !== seat);
-    return to.length === c.to.length ? [c] : to.length ? [{ ...c, to }] : [];
-  });
   tidy(session);
 }
 

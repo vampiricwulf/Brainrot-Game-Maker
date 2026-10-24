@@ -332,6 +332,18 @@ try {
   assert(await until(() => !last()?.cards), 'back on the board: no card in the room’s state');
   await offStream('one person describing to their team');
 
+  // ---------- 🤫 Send a card… to one person, then ⇄ Everyone else: the rest of their team too ----------
+  await host.locator('.panel .toolsrow').getByRole('button', { name: '🤫 Send a card…' }).click();
+  const sendBox = host.getByRole('dialog', { name: 'Send a card' });
+  await sendBox.getByRole('button', { name: 'Gus on Green', exact: true }).click();
+  await sendBox.getByRole('button', { name: '⇄ Everyone else' }).click();
+  const chipOn = async (name) => (await sendBox.getByRole('button', { name, exact: typeof name === 'string' }).getAttribute('aria-pressed')) === 'true';
+  assert(
+    !(await chipOn('Gus on Green')) && !(await chipOn('Green')) && (await chipOn('Bo on Green')) && (await chipOn('Gwen on Green')) && (await chipOn('Bea on Green')) && (await chipOn('Red')) && (await chipOn(/^Blue( \(no phone here\))?$/)),
+    '⇄ Everyone else after Gus alone: the rest of Green (Bo, Gwen, Bea), Red and Blue',
+  );
+  await host.keyboard.press('Escape');
+
   assert(errors.length === 0, `no page errors (${errors.join(' | ')})`);
   console.log('Partner cards on team phones E2E passed.');
 } catch (e) {

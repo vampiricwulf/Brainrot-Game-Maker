@@ -522,13 +522,15 @@ The mode isn't saved with the game: it's dual while the audience window is open.
 - **🤫 Send a card…** (PARTNER-CLUES-SPEC.md §12): a private card for chosen players' phones, in any round (a tile's
   card made in the editor, a quick one, or the slide on screen), lasting until the round ends or until taken back;
   `🤫 N cards out` lists them by number ("Card 2 → Ann"), never what's on them, with ↻ Send again and ✖ Take back. At
-  most 8 are out at once. A 🪟 card window shows one player's cards, for a player with no phone.
+  most 8 are out at once. A 🪟 card window shows one player's cards, for a player with no phone. A player taken out
+  keeps their place on the cards, left out of the list while they're out; once they're back (Ctrl+Z, ↩ Restore)
+  ↻ Send again sends theirs.
 - **🎭 Deal…** (PARTNER-CLUES-SPEC.md §11): secret parts for everyone (a spy, a wolf, a captain, a prompt each), from a
   deal saved with the game (the 🎡 Wheels, Dice & Deals tab) or a ready-made one. Each player gets one part at random (or the host's pick,
   with the audience window open), and a part's card can show a slice of a saved wheel (each their own, or one shared
   by everyone but the odd one out). Nothing goes until 📤 Send, which sends each player's card on its own; ↻ Send again
-  and ✖ Take back work on the whole deal. A player taken out loses their card but keeps their part: the counts stay as
-  dealt, and once they're back (Ctrl+Z, ↩ Restore) ↻ Send again sends their card. Only the two-window host column says who got which: one window lists everyone
+  and ✖ Take back work on the whole deal. A player taken out keeps their part, their card off the phones: the counts stay
+  as dealt, and once they're back (Ctrl+Z, ↩ Restore) ↻ Send again sends their card. Only the two-window host column says who got which: one window lists everyone
   dealt in alike, a part or not (with the phones getting the cards, only those with no phone here, 📵, to copy theirs),
   and counts the phones that came late. **🎭 Who was who** puts the names and parts on stream when the host presses it,
   as an undoable step; a click on it, Esc, opening a tile or the tiebreaker, going to another round, or the Final going

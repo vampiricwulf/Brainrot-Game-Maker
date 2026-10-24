@@ -91,9 +91,17 @@
   function everyone(): void {
     to = everyoneOn ? [] : session.players.map((p) => ({ seat: p.id }));
   }
-  /** ⇄ Everyone else: everyone not chosen now, and none of those chosen (the card after "you're the spy"). */
+  /**
+   * ⇄ Everyone else: everyone not chosen now, and none of those chosen (the card after "you're the spy"). Teams: a team
+   * some of whose people were chosen gets its other people.
+   */
   function flip(): void {
-    to = session.players.filter((p) => !to.some((t) => t.seat === p.id)).map((p) => ({ seat: p.id }));
+    to = session.players.flatMap((p): CardTo[] => {
+      const had = to.filter((t) => t.seat === p.id);
+      if (!had.length) return [{ seat: p.id }];
+      if (had.some((t) => !t.member)) return [];
+      return roomMembers(p.id).flatMap((m) => (memberOn(p.id, m) ? [] : [memberTo(p.id, m)]));
+    });
   }
   /** People on each team with a phone here (teams, a room that takes cards): each can get a card of their own. */
   const people = (id: Id): TeamMember[] => (teams && cardsOn ? roomMembers(id) : []);

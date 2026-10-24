@@ -20,6 +20,8 @@ in plain words for the people who make and host games. Anything committed but no
 - After the buzzer server restarts (an update, say), the host is back within about 5 seconds of it, as the phones are, instead of up to 15.
 - A reload in a busy moment (Final Jeopardy! just begun, the wagers coming in from phones) comes back to the game as it was on stream. It sometimes came back to the board, the move to the Final and the wagers gone.
 - A phone that reloads (a pull down on the page, or the phone reloading the tab in the background) puts back an answer or wager typed and not sent, under “Not sent yet”, while that round is open. A pull down no longer reloads the phone page. A buzzer server you run yourself needs deploying again for this.
+- 🤫 Send a card… in a team game: ⇄ Everyone else after a card to one person picks the rest of their team too, not only the other teams, so the card after “you're the spy” reaches the spy's teammates.
+- A player taken out keeps their place on the 🤫 cards: after Ctrl+Z or ↩ Restore they're back on them, and ↻ Send again gives them theirs, as 🎭 deals already did. The cards out never read “Card 1 → Ann, ?” once an added player is undone, and a card for them alone isn't counted while they're gone.
 
 ## 2026-10-24
 

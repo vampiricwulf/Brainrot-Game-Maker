@@ -376,7 +376,7 @@ export function dealCards(game: CardGame, session: Session, d: DealState, until:
  * The deal's cards that are out now (on the phones, in the card window), in the players' order. Only the host column
  * (two windows) says which is whose: one window's panel only counts them.
  */
-export function dealOut(game: CardGame, session: Pick<Session, 'cards' | 'currentRound' | 'phase' | 'currentClue' | 'deal'>): SentCard[] {
+export function dealOut(game: CardGame, session: Pick<Session, 'cards' | 'currentRound' | 'phase' | 'currentClue' | 'players' | 'deal'>): SentCard[] {
   const id = session.deal?.id;
   return id ? cardsOut(game, session).filter((c) => c.deal === id) : [];
 }
@@ -414,8 +414,9 @@ export function dealTrial(game: CardGame, d: DealState, until: 'round' | 'host')
 }
 
 /**
- * ↻ Send again: each of the deal's cards out goes again under a new id (a phone that came late gets it), and a player
- * put back (↩ Restore) gets theirs again: it was taken back with them. How many went.
+ * ↻ Send again: each of the deal's cards out goes again under a new id (a phone that came late gets it, as a player put
+ * back with ↩ Restore is: the room let their seat go), and a hand with no card out gets its own again (one taken back
+ * with a player taken out, by an older version). How many went.
  */
 export function sendDealAgain(game: CardGame, session: Session, now = Date.now()): number {
   const d = session.deal;
