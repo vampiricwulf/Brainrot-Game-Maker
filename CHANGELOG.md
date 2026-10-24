@@ -11,55 +11,21 @@ the day it's pushed (Pacific time; start the heading on the day's first push) an
 in plain words for the people who make and host games. Anything committed but not pushed yet goes under
 **Unreleased** at the top, and moves under its day when it's pushed.
 
-## Unreleased
-
-### Added
-
-- ⋯ › 📖 How to host (guide) ↗, and a Guide line in ℹ About: the README's guide to hosting (phone buzzers, 🤫 cards, 🎭 deals, teams, the audience window) on GitHub, opened in your browser.
-- `?` on the ▶ Play screen before the game lists the keys, that screen's own first (Ctrl+Enter starts the game, Ctrl+Z / Ctrl+Y, Enter in a name adds the next player), from a box just ticked too, as in the game. It did nothing there.
-- The audience and ▭ scores windows opened on their own (as when the address is pasted into an OBS Browser source) say to capture them with OBS's Window Capture instead: a Browser source can't reach the host page.
-
-### Changed
-
-- The README's pictures show the app as it is now (the host panel's bar, ± Adjust score, the ⋯ menu, 🤫 Cards).
-- The in-game ⌨ / `?` list starts with the keys of the round being played (RPG, Board game, Final, Tiebreaker clue, Slides round), so they're on its first screen in the host panel beside the stage. It always started with Everywhere, the RPG keys six screens down.
-
-### Fixed
-
-- ℹ About, in a browser, says where your games are kept as it is: in Chrome and Edge every copy of the app opened from a file shares one storage (another browser starts empty), and with phone buzzers what the phones show and send, and 🤫 cards' files, go through the buzzer server. It said nothing was uploaded, and that a copy in another folder starts empty.
-- Exit › Keep & leave in the middle of a show (to fix a clue in the editor): the audience window shows the cover card (“Be right back”, or your own cover text, with the banner and the join code) until you resume, and the bar over the editor says so. It showed the game's title and “Starting soon…”. ▶ Next game… and a finished game still show Starting soon.
-- The stage's entrances now play, in the audience window and in one window: a clue zooms in from its tile as it opens, the Daily Double and 🤝 PARTNER UP! splashes zoom in, so does the round's title card at the start, the board fades back in after a clue, the Final's steps and the first slide of a Slides round or the tiebreaker fade in, the first spotlit player in the Final's reveals flies in, and the end screen's places fly in from last to first. Hiding the answer again (R, R) or going back to the first slide brings the question back quietly, instead of zooming it in from nothing. ⚙ Settings › Reduce motion on stream still turns them off, and the editor's previews come up still.
-- The audience window draws each step as one picture, as your own copy does: a question whose countdown starts with it (every Final question) no longer shrinks under the clock just after it comes up, an answer no longer grows in from smaller, and a wheel or dice tile's question no longer shows for a moment before its wheel.
-- One window: a tile or score plate under your mouse keeps its theme color on stream (a tile just a little brighter). It turned the app's flat grey, with the value still on it.
-- The audience window hides the cursor over the board and the score plates too once the mouse is still, so OBS's Window Capture doesn't show a hand or an arrow there. In one window with the controls hidden (H), the cursor over the stage goes while the mouse is still, and comes back when it moves.
-- The ▭ scores window: the plates stay where they are when a countdown starts or stops (with more players than fit beside the clock, they still make room for it), and the Final's ✔ for each wager that's in shows there too, as on the stage.
-- Board games: a new turn starts with an empty Amount box, so Enter with a player picked and a count waiting moves them, as ▶ Move says, instead of giving them points typed on an earlier turn (or a space's question's). Points typed on the turn itself stay, for giving them to several players in a row.
-- Board games: Enter while a space's question is up judges whoever answered, as on a clue (“Select a player first” until you pick them; Shift+Enter for wrong). It said “Moved this turn: N for the next turn” and gave nobody the points. On the next turn, with the question still up, Enter moves the next player, as the main button says.
-- Board games that move one space a turn: until the move is made, the main button is the way on (→ Space 2, Enter), or 🔀 Pick a way at a fork, and Enter at a fork says which ways there are. The main button was Next turn ▶ from the start of the turn, and Enter at a fork said “Select a player first”.
-- Board games: under the round's title card, the host panel's 🎲 Roll, ▶ Move and → buttons say to start the round first, as D and Enter do. The dice rolled over the title card, and the token moved where nobody could see it, using up the turn.
-- One window: a secret space nobody has revealed yet is “?” in the host panel, its toasts and the 📜 Log (“Landed on ? (secret)”, the → buttons, a fork's “which way?”), as on the board, until 👁 Reveal space, however a player gets there: a move, a space's or an item's button (“Back 3 spaces”, a Send to), a token dragged onto it, 📍 Send to. A space's own card and the Spaces… and Send to lists still name it for you. With an audience window you still see its name everywhere.
-- Board games: the buttons of the space someone passed or landed on, in the host panel, name the space in the 📜 Log (“+$200 (Player 1) · Start: +$200”) and in their toast, as the space's card does. The log said “+$200 (Player 1) · +$200”, not where the points came from.
-- The “Race to the finish” template names Start and Finish on the board, Finish with a 🏆, and landing on Finish offers +500 for the first one there (its note says the most points wins the game). Finish looked just like Start, and reaching it won nothing: the end screen crowned the points leader, or called a tie.
-- The “20-space loop” template has 8 spaces along the top and bottom and 2 down each side, so the names Bonus, Nap time and Go back no longer sit under the next space, and a token on a side space is no longer drawn over the space above it.
-- Board games: Move by › ＋ Add wheel… makes a wheel of 1 to 6, so a spin moves as far as its slice says. It made “Option 1” to “Option 4”.
-- Team games, a 🤝 partner clue the picking team plays itself: until its describer is picked, PARTNER UP! on stream says “Red · its own team!”, and the host's tag “🤝 Red · its own team”. They said “Solo!”, though the team's phones said “Your team plays this one!”.
-- Phones in a team game: a screen reader hears a card sent to that one person (a 🧢 Team captain's, a describer's) as “A card only you can see”, as its heading says, not “only your team can see”.
-- The pre-game 👥 Teams list: deleting a team people are on says they pick a team again (“Deleted Les Incroyables: its 2 people pick a team again”), since ↶ Undo brings back the team, not its people.
-- The 👥 Teams list says team where it said player: “⚠ Teams share a name…” (with no initial to add), “Another team already has that color”, “The game needs at least one team”, its moves in ↶ Undo and 🕘 History, and what a screen reader hears for a row with no name.
-- Phones in a team game: a screen reader hears “Al is answering for your team.” as one sentence, not “Al is answering. for your team.”.
-- The answers box has a space before who sent an answer (“A · Paris · Al”) and before the choice a typed answer names (“= B”), the Final's too.
-- The 📱 card's options that Teams turns off (new players joining from their phone, players picking their color) look greyed, as disabled buttons do.
-
 ## 2026-10-23
 
 ### Added
 
 - Exported game files: a “Get Brainrot Games Maker” link under ⬇ Download as .brainrot, to the app's download page, so whoever was sent the file can find the builder to edit it in. (8f83268)
 - With the audience window open, your own board marks the tiles still to play that are a Daily Double (⭐), a 🤝 partner clue or a ✍ Everyone answers clue, in their corner (and a screen reader names them), Daily Doubles placed at random too. Viewers' board never shows them, nor does the board in one window. (9d02105)
+- ⋯ › 📖 How to host (guide) ↗, and a Guide line in ℹ About: the README's guide to hosting (phone buzzers, 🤫 cards, 🎭 deals, teams, the audience window) on GitHub, opened in your browser. (89acedf)
+- `?` on the ▶ Play screen before the game lists the keys, that screen's own first (Ctrl+Enter starts the game, Ctrl+Z / Ctrl+Y, Enter in a name adds the next player), from a box just ticked too, as in the game. It did nothing there. (89acedf, b7e37a6)
+- The audience and ▭ scores windows opened on their own (as when the address is pasted into an OBS Browser source) say to capture them with OBS's Window Capture instead: a Browser source can't reach the host page. (647420e)
 
 ### Changed
 
 - ⬇ Export as a web page: when much of the file is 🖼 Media files nothing in the game uses (over 10 MB of them), its size question says how much, and that 🖼 Media › 🗑 Delete unused leaves them out. They still go in unless you delete them (a quick 🤫 card can pick one in play). (8f83268)
+- The README's pictures show the app as it is now (the host panel's bar, ± Adjust score, the ⋯ menu, 🤫 Cards). (9483820)
+- The in-game ⌨ / `?` list starts with the keys of the round being played (RPG, Board game, Final, Tiebreaker clue, Slides round), so they're on its first screen in the host panel beside the stage. It always started with Everywhere, the RPG keys six screens down. (89acedf)
 
 ### Fixed
 
@@ -190,6 +156,29 @@ in plain words for the people who make and host games. Anything committed but no
 - A long saved theme name is cut short with … on the save bar's button instead of running past it, and a copy's suggested name stays different from it (“… 2” within the 60 characters). (5c3d760)
 - Screen readers: 📂 Import theme…'s and ⌨ Paste theme code…'s preview is skipped (it read out made-up tiles and players), and 🔊 Sounds' volume sliders say “30%”, not “0.3”. (5c3d760)
 - 💾 Save as new theme… says the theme is kept in this browser (on this computer in the desktop app), as the rest of the page does. (5c3d760)
+- ℹ About, in a browser, says where your games are kept as it is: in Chrome and Edge every copy of the app opened from a file shares one storage (another browser starts empty), and with phone buzzers what the phones show and send, and 🤫 cards' files, go through the buzzer server. It said nothing was uploaded, and that a copy in another folder starts empty. (89acedf)
+- Exit › Keep & leave in the middle of a show (to fix a clue in the editor): the audience window shows the cover card (“Be right back”, or your own cover text, with the banner and the join code) until you resume, and the bar over the editor says so. It showed the game's title and “Starting soon…”. ▶ Next game… and a finished game still show Starting soon. (647420e)
+- The stage's entrances now play, in the audience window and in one window: a clue zooms in from its tile as it opens, the Daily Double and 🤝 PARTNER UP! splashes zoom in, so does the round's title card at the start, the board fades back in after a clue, the Final's steps and the first slide of a Slides round or the tiebreaker fade in, the first spotlit player in the Final's reveals flies in, and the end screen's places fly in from last to first. Hiding the answer again (R, R) or going back to the first slide brings the question back quietly, instead of zooming it in from nothing. ⚙ Settings › Reduce motion on stream still turns them off, and the editor's previews come up still. (8f2f6ee)
+- The audience window draws each step as one picture, as your own copy does: a question whose countdown starts with it (every Final question) no longer shrinks under the clock just after it comes up, an answer no longer grows in from smaller, and a wheel or dice tile's question no longer shows for a moment before its wheel. (c62f544)
+- One window: a tile or score plate under your mouse keeps its theme color on stream (a tile just a little brighter). It turned the app's flat grey, with the value still on it. (38d1233)
+- The audience window hides the cursor over the board and the score plates too once the mouse is still, so OBS's Window Capture doesn't show a hand or an arrow there. In one window with the controls hidden (H), the cursor over the stage goes while the mouse is still, and comes back when it moves. (38d1233)
+- The ▭ scores window: the plates stay where they are when a countdown starts or stops (with more players than fit beside the clock, they still make room for it), and the Final's ✔ for each wager that's in shows there too, as on the stage. (38d1233)
+- Board games: a new turn starts with an empty Amount box, so Enter with a player picked and a count waiting moves them, as ▶ Move says, instead of giving them points typed on an earlier turn (or a space's question's). Points typed on the turn itself stay, for giving them to several players in a row. (d80cd3e)
+- Board games: Enter while a space's question is up judges whoever answered, as on a clue (“Select a player first” until you pick them; Shift+Enter for wrong). It said “Moved this turn: N for the next turn” and gave nobody the points. On the next turn, with the question still up, Enter moves the next player, as the main button says. (d80cd3e, ea97b40)
+- Board games that move one space a turn: until the move is made, the main button is the way on (→ Space 2, Enter), or 🔀 Pick a way at a fork, and Enter at a fork says which ways there are. The main button was Next turn ▶ from the start of the turn, and Enter at a fork said “Select a player first”. (d80cd3e)
+- Board games: under the round's title card, the host panel's 🎲 Roll, ▶ Move and → buttons say to start the round first, as D and Enter do. The dice rolled over the title card, and the token moved where nobody could see it, using up the turn. (d80cd3e)
+- One window: a secret space nobody has revealed yet is “?” in the host panel, its toasts and the 📜 Log (“Landed on ? (secret)”, the → buttons, a fork's “which way?”), as on the board, until 👁 Reveal space, however a player gets there: a move, a space's or an item's button (“Back 3 spaces”, a Send to), a token dragged onto it, 📍 Send to. A space's own card and the Spaces… and Send to lists still name it for you. With an audience window you still see its name everywhere. (d80cd3e, ea97b40)
+- Board games: the buttons of the space someone passed or landed on, in the host panel, name the space in the 📜 Log (“+$200 (Player 1) · Start: +$200”) and in their toast, as the space's card does. The log said “+$200 (Player 1) · +$200”, not where the points came from. (d80cd3e, 7419122)
+- The “Race to the finish” template names Start and Finish on the board, Finish with a 🏆, and landing on Finish offers +500 for the first one there (its note says the most points wins the game). Finish looked just like Start, and reaching it won nothing: the end screen crowned the points leader, or called a tie. (cbb1049)
+- The “20-space loop” template has 8 spaces along the top and bottom and 2 down each side, so the names Bonus, Nap time and Go back no longer sit under the next space, and a token on a side space is no longer drawn over the space above it. (cbb1049)
+- Board games: Move by › ＋ Add wheel… makes a wheel of 1 to 6, so a spin moves as far as its slice says. It made “Option 1” to “Option 4”. (cbb1049)
+- Team games, a 🤝 partner clue the picking team plays itself: until its describer is picked, PARTNER UP! on stream says “Red · its own team!”, and the host's tag “🤝 Red · its own team”. They said “Solo!”, though the team's phones said “Your team plays this one!”. (6e30318)
+- Phones in a team game: a screen reader hears a card sent to that one person (a 🧢 Team captain's, a describer's) as “A card only you can see”, as its heading says, not “only your team can see”. (6e30318)
+- The pre-game 👥 Teams list: deleting a team people are on says they pick a team again (“Deleted Les Incroyables: its 2 people pick a team again”), since ↶ Undo brings back the team, not its people. (6e30318)
+- The 👥 Teams list says team where it said player: “⚠ Teams share a name…” (with no initial to add), “Another team already has that color”, “The game needs at least one team”, its moves in ↶ Undo and 🕘 History, and what a screen reader hears for a row with no name. (6e30318)
+- Phones in a team game: a screen reader hears “Al is answering for your team.” as one sentence, not “Al is answering. for your team.”. (6e30318)
+- The answers box has a space before who sent an answer (“A · Paris · Al”) and before the choice a typed answer names (“= B”), the Final's too. (6e30318)
+- The 📱 card's options that Teams turns off (new players joining from their phone, players picking their color) look greyed, as disabled buttons do. (6e30318)
 
 ## 2026-10-22
 
