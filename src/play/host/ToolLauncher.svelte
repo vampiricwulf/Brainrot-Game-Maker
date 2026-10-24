@@ -1,6 +1,7 @@
 <!--
   Dice / wheel / roll-off / scoreboard buttons, usable any time (spec §6.6), 🤫 Send a card…, 🎭 Deal…, the cards out
-  and the 🪟 card window (partner-clues spec §11, §12.2, §13.6), and 🔇 Stop sounds while a round intro may play.
+  and the 🪟 card window (partner-clues spec §11, §12.2, §13.6), and 🔇 Stop sounds while a round intro or the Final's
+  think music may play.
 -->
 <script lang="ts">
   import { tick, untrack } from 'svelte';
@@ -36,7 +37,10 @@
     /** An audience window is open: viewers don't see this window. */
     dual?: boolean;
     onrolloff: (ids: string[], sides: number) => void;
-    /** 🔇 Stop sounds: shown while the round intro's music may still be playing (it goes on until a tile opens). */
+    /**
+     * 🔇 Stop sounds: shown while the round intro's music may still be playing (it goes on until a tile opens), or the
+     * Final's think music (until its answer).
+     */
     onstopsounds?: () => void;
     /** ✖ Take back a card sent with 🤫 Send a card… or from a tile's panel. */
     oncardtakeback: (id: string) => void;
@@ -338,7 +342,7 @@
   {/if}
   <button onclick={() => ((menu = null), toggleScoreboard(app.live))} title="Scores (S)">📊 <span class="name">Scores</span></button>
   {#if onstopsounds}
-    <button class="stop" onclick={() => ((menu = null), onstopsounds())} title="🔇 Stop sounds (Shift+M): the game's sounds on stream, like the round intro's music">🔇 <span class="word">Stop sounds</span></button>
+    <button class="stop" onclick={() => ((menu = null), onstopsounds())} title="🔇 Stop sounds (Shift+M): the game's sounds on stream, like the round intro's music or the Final's think music">🔇 <span class="word">Stop sounds</span></button>
   {/if}
   {#if winName}
     <span class="warn small winwarn" role="status" data-card-window-warn>⚠ The 🪟 card window shows {winName}’s cards: share only the game window with viewers.</span>

@@ -12,6 +12,7 @@ import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { confirmStrip, mainButton, openGameFile, packGame, png, recordSeen, shownOf, startBuzzer, startRoomOn } from './helpers.mjs';
+import { wav } from './mediafixtures.mjs';
 
 const file = resolve(process.env.APP_FILE || 'dist/index.html');
 if (!existsSync(file)) throw new Error('Run `npm run build` first');
@@ -274,9 +275,18 @@ try {
       { id: 'cat1', title: 'Songs', clues: [plain('q_s1', 'A song', 'Song'), plain('q_s2', 'Another song', 'Song')] },
     ],
   };
-  const offline = { ...game, id: 'g_card_action_offline', settings: { ...game.settings, buzzer: false }, rounds: [...game.rounds, board] };
+  // (Here the Spy master's card has a sound too, of which it plays 1 s to 3 s: the card window keeps to that part.)
+  const offlineWorlds = structuredClone(game.worlds);
+  offlineWorlds[0].maps[0].screens[0].slide.elements[0].role.actions[0].slide.elements.push({
+    ...box(600), kind: 'audio', media: 'part', startAt: 1, endAt: 3, autoplay: false, loop: false, muted: false, volume: 1, visible: true,
+  });
+  const part = wav(4, { rate: 8000, channels: 1 });
+  const offline = {
+    ...game, id: 'g_card_action_offline', settings: { ...game.settings, buzzer: false }, rounds: [...game.rounds, board], worlds: offlineWorlds,
+    media: [...media, { id: 'part', name: 'part.wav', mime: 'audio/wav', size: part.length, kind: 'audio' }],
+  };
   const offlinePath = resolve('test-results/card-action-offline.brainrot');
-  writeFileSync(offlinePath, await packGame(offline, files));
+  writeFileSync(offlinePath, await packGame(offline, { ...files, part }));
   const ctx2 = await browser.newContext({ viewport: { width: 1400, height: 950 } });
   await ctx2.grantPermissions(['clipboard-read', 'clipboard-write']);
   const solo = watch(await ctx2.newPage(), 'host, no phones');
@@ -308,6 +318,19 @@ try {
   await offer2.getByRole('button', { name: '🪟 Show Cat' }).click();
   await win2.getByText(MISSION).waitFor();
   assert(await until(() => win2.locator('img').evaluate((i) => i.complete && i.naturalWidth > 0).catch(() => false)), 'with the card window open for Cat, 🪟 Show puts the card there, its picture included');
+  // Its sound plays its part only: from 1 s, and at 3 s it stops and goes back to 1 s, as on a phone.
+  const partSound = win2.locator('audio');
+  const waits = await win2.waitForFunction(() => { const a = document.querySelector('audio'); return !!a && a.readyState >= 1 && Math.abs(a.currentTime - 1) < 0.05; }).then(() => true, () => false);
+  assert(waits, 'its sound waits at its Start at (1 s)');
+  // (A click there first, as Cat's: the window may play sound.)
+  await win2.locator('.head').click();
+  await partSound.evaluate((a) => a.play());
+  await win2.waitForFunction(() => document.querySelector('audio').currentTime > 1.5);
+  const partEnd = await win2
+    .waitForFunction(() => { const a = document.querySelector('audio'); return a.paused && a.currentTime < 1.2; }, null, { timeout: 8000 })
+    .then(() => true, () => false);
+  const partAt = await partSound.evaluate((a) => ({ t: +a.currentTime.toFixed(2), paused: a.paused }));
+  assert(partEnd, `played, it stops at its Stop at (3 s) and goes back to 1 s, as on a phone (${JSON.stringify(partAt)})`);
   assert((await tools2.locator('[data-cards-out-count]').innerText()).trim() === '🤫 1 card out' && sockets === 0, 'it is in the cards out (to take back), and nothing went anywhere else');
 
   // ---------- No phone buzzers, a board round: 🪟 Show a standard tile's card, then a partner clue's ----------

@@ -399,9 +399,10 @@ The mode isn't saved with the game: it's dual while the audience window is open.
     📜 Log, 👥 Players, ⚖ Rules, 🔊 Sound, the RPG's ⤢ Full map, ✎ Edit board's ⚙ Buttons…) open over the host panel,
     never the stage (the full map's screen card beside the map where the panel is wide enough); the RPG's ✎
     Edit screen is too big for it and says viewers see it (📺 Audience edits off stream). The stage keeps one size
-    from the board through a clue's steps (a Daily Double's splash, its question slides, a clue's media controls),
-    so viewers don't see it zoom down and up: each score chip keeps room for the mark and the score a clue of the
-    round can give it, counted from its score before the clue's marks (the ★ of who picks next takes none). A 🤝
+    from the board through a clue's steps (a Daily Double's splash, its question slides, a clue's media controls:
+    room for as many as the round's busiest slide has, in a slides round too), so viewers don't see it zoom down and
+    up: each score chip keeps room for the mark and the score a clue of the round can give it, counted from its score
+    before the clue's marks (the ★ of who picks next takes none). A 🤝
     partner clue, a wheel or dice tile (its tool, then its question), the Final with the results, a roll-off and the
     tiebreaker clue, and a board-game round under the stage hold the panel at one height instead: the stage changes
     size only as they start and end. What scrolls in there comes into view as it comes (a board-game move's landing

@@ -94,9 +94,20 @@
     }
     return playerFor(m.site, m.url)?.src ?? null;
   }
-  /** A video or sound starts where the card says. */
-  function startAt(el: HTMLMediaElement, start: number | undefined): void {
-    if (start && start > 0) el.addEventListener('loadedmetadata', () => (el.currentTime = start), { once: true });
+  /**
+   * A video or sound plays the part the card says, as on a phone: from its Start at, and at its Stop at it stops and goes
+   * back to its start (▶ plays the part again).
+   */
+  function playPart(el: HTMLMediaElement, part: { start?: number; end?: number }): void {
+    const from = part.start && part.start > 0 ? part.start : 0;
+    const end = part.end;
+    if (from) el.addEventListener('loadedmetadata', () => void (el.currentTime < from && (el.currentTime = from)), { once: true });
+    if (end && end > from)
+      el.addEventListener('timeupdate', () => {
+        if (el.currentTime < end) return;
+        el.pause();
+        el.currentTime = from;
+      });
   }
 </script>
 
@@ -141,9 +152,9 @@
               <img src={s} alt={m.name ?? 'Picture'} referrerpolicy="no-referrer" />
             {:else if m.kind === 'video'}
               <!-- svelte-ignore a11y_media_has_caption -->
-              <video src={s} controls playsinline aria-label={m.name ?? 'Video'} use:startAt={m.start}></video>
+              <video src={s} controls playsinline aria-label={m.name ?? 'Video'} use:playPart={m}></video>
             {:else}
-              <audio src={s} controls aria-label={m.name ?? 'Sound'} use:startAt={m.start}></audio>
+              <audio src={s} controls aria-label={m.name ?? 'Sound'} use:playPart={m}></audio>
             {/if}
           {/if}
         {/each}

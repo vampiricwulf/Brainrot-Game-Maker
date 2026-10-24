@@ -9,7 +9,7 @@
   import { textOn } from '../lib/colors';
   import { hostSlots, type HostAsk, type NextAction } from './host/slots.svelte';
   import { phoneAwaySince } from './host/phoneaway.svelte';
-  import { categoryLabel, clueCardWords, clueValue, finalName, formatPoints, isBoard, questionSlides, typedPoints, wholePoints, type Game, type Session } from '../lib/model';
+  import { categoryLabel, clueCardWords, clueValue, finalName, formatPoints, isBoard, isSlides, questionSlides, typedPoints, wholePoints, type Game, type Session } from '../lib/model';
   import { answerShowing, awardOpen, clueMarks, clueName, clueScored, currentClueInfo, currentFinal, findClueRef, nameList, ownPlayers, partnerSteal, roundComplete, score, setScore, slidePosition, stealersLeft, tiebreakHolds, tiedForFirst, toolOnlyClue, usedTiles } from '../lib/session';
   import MediaControls from './MediaControls.svelte';
   import SoundWarnings from './host/SoundWarnings.svelte';
@@ -283,14 +283,20 @@
    */
   const roomForBuzzers = $derived(!dual && buzzerOn(game.settings));
   /**
-   * Single window: a board round with a video, a sound or an embed on any of its clues' slides keeps the media controls'
-   * room (empty) through the round, so the stage viewers see doesn't shrink when a clue's media comes up. (Other games
-   * don't give up that room.)
+   * Single window: a board or slides round with videos, sounds or embeds on its slides keeps the media controls' room
+   * (empty) through the round, as many rows as the most on any one slide, so the stage viewers see doesn't shrink when a
+   * slide's media comes up. (Other games don't give up that room.)
    */
   const roomForMedia = $derived.by(() => {
     // (Not in a 🤝 partner clue: its panel keeps a height of its own.)
-    if (dual || side || partner || (session.phase !== 'board' && session.phase !== 'clue') || !isBoard(round)) return false;
-    return round.categories.some((c) => c.clues.some((q) => [...questionSlides(q), q.answerSlide].some((sl) => sl?.elements.some((e) => e.kind === 'video' || e.kind === 'audio' || e.kind === 'embed'))));
+    if (dual || side || partner) return 0;
+    const slides =
+      isBoard(round) && (session.phase === 'board' || session.phase === 'clue')
+        ? round.categories.flatMap((c) => c.clues.flatMap((q) => [...questionSlides(q), q.answerSlide]))
+        : isSlides(round) && session.phase === 'slides'
+          ? questionSlides(round)
+          : [];
+    return Math.max(0, ...slides.map((sl) => sl?.elements.filter((e) => e.kind === 'video' || e.kind === 'audio' || e.kind === 'embed').length ?? 0));
   });
   /**
    * Single window: the panel's height on the board (measured there). A Daily Double's splash holds the panel to it (its

@@ -15,8 +15,8 @@
 // stage one size from the board to a clue with 🔇 Stop sounds (the round intro's music), a card out, both or neither on
 // the board's tools row, in both its board rounds (the second's ▶ is a long Final name, cut short and named in full),
 // from 960 to 1366px wide; at 1920 they keep their words. At 1366 and 1024px wide the crowded game's stage keeps the
-// board's size through a Daily Double's splash and slides, a clue with a sound on its slide and one with two slides, and
-// at 1110 and 1184px through the two-slide clue (◀ Slide and ▦ Done ▶ board in words, its hint cut short).
+// board's size through a Daily Double's splash and slides, a clue with two sounds on its slide and one with two slides,
+// and at 1110 and 1184px through the two-slide clue (◀ Slide and ▦ Done ▶ board in words, its hint cut short).
 import { chromium } from 'playwright-core';
 import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
@@ -494,15 +494,16 @@ try {
   // (Its Memes $400 is a partner clue, with a card for each part.)
   const partnerRules = { game: 'describe', giver: 'partner', got: { giver: 100, guesser: 50 }, missed: { giver: 0, guesser: -50 }, partnerSafe: true, points: 'game' };
   const partnerCards = ['giver', 'guesser'].map((to, k) => ({ id: `pc${k}`, to, ...slide(`pcs${k}`, `Card ${k + 1}`) }));
-  // (And its Minecraft $200 has a sound on its question slide; its Rizz $200, two question slides.)
+  // (And its Minecraft $200 has two sounds on its question slide, a media row each; its Rizz $200, two question slides.)
   const sound = { id: 'snd', kind: 'audio', media: 'm_tone', visible: true, x: 860, y: 800, w: 200, h: 200, rotation: 0, opacity: 1, zIndex: 2, autoplay: false, loop: false, muted: false, volume: 1 };
+  const sound2 = { ...sound, id: 'snd2', x: 1160 };
   const crowdBoard = {
     ...board,
     categories: board.categories.map((c, ci) => ({
       ...c,
       clues: c.clues.map((q, ri) =>
         ri ? (ci ? q : ri === 1 ? { ...q, id: 'c_partner', type: 'partner', partner: partnerRules, timerSeconds: 45, cards: partnerCards } : q)
-        : ci === 2 ? { ...q, id: 'c_sound', questionSlide: { ...q.questionSlide, elements: [...q.questionSlide.elements, sound] } }
+        : ci === 2 ? { ...q, id: 'c_sound', questionSlide: { ...q.questionSlide, elements: [...q.questionSlide.elements, sound, sound2] } }
         : ci === 3 ? { ...q, id: 'c_two', extraSlides: [{ id: 'c_two2', ...slide('c_two2s', 'Rizz, the question') }] }
         : q,
       ),
@@ -634,8 +635,9 @@ try {
     await p4.keyboard.press('Escape');
     await p4.locator('.stage-box .board').waitFor();
     // One stage size on through the round: a Daily Double's splash (its chips and Wager box in sight) and question
-    // slides, a clue with a sound on its slide (the media controls' room is kept from the board on), and a clue with two
-    // question slides (◀ Slide on its row: up to 1100px wide, ◀ and ▦ alone, and no "Pick who answered" hint).
+    // slides, a clue with two sounds on its slide (the media controls' room for both is kept from the board on), and a
+    // clue with two question slides (◀ Slide on its row: up to 1100px wide, ◀ and ▦ alone, and no "Pick who answered"
+    // hint).
     if (w === 1366 || w === 1024) {
       const tileAt = (cat) => p4.locator(`.stage-box .board .tile[data-cat="${cat}"][data-row="0"]`);
       const sizes = [];
@@ -655,7 +657,7 @@ try {
       await p4.keyboard.press('Escape');
       await p4.locator('.stage-box .board').waitFor();
       await tileAt(2).click();
-      await p4.locator('.panel .mc:not(.held)').waitFor();
+      await p4.locator('.panel .mc:not(.held) .item').nth(1).waitFor();
       sizes.push(await stageH());
       await p4.keyboard.press('r');
       await p4.locator('.stage-box [data-slide="answer"]').waitFor();
@@ -673,7 +675,7 @@ try {
       sizes.push(await stageH());
       assert(
         sizes.every((x) => x === onBoard),
-        `${w}×${h}: the stage keeps the board's size through a Daily Double (splash, question, slide 2), a clue with a sound (question, answer) and one with two slides (${onBoard} / ${sizes.join(' / ')})`,
+        `${w}×${h}: the stage keeps the board's size through a Daily Double (splash, question, slide 2), a clue with two sounds (question, answer) and one with two slides (${onBoard} / ${sizes.join(' / ')})`,
       );
     }
     if (w === 1366) {

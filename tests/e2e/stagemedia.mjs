@@ -7,10 +7,10 @@
 // shows, even if its slide comes back, or the audience window reloads, before it does. Space and M go to a sound before
 // a looping, muted video (a GIF), and ▶ plays a sound stopped at its Stop at again from its start.
 import { chromium } from 'playwright-core';
-import { existsSync } from 'node:fs';
+import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { addClassicRounds, playWithPlayers } from './helpers.mjs';
+import { addClassicRounds, openGameFile, packGame, playWithPlayers } from './helpers.mjs';
 
 const file = resolve(process.env.APP_FILE || 'dist/index.html');
 if (!existsSync(file)) throw new Error('Run `npm run build` first');
@@ -262,6 +262,13 @@ try {
   // Turned down to 20% and set to 🔁 Loop: the answer shown and hidden again (R, R), it comes back so (not at 100%, once).
   await soundRow.getByRole('slider', { name: 'Volume' }).fill('0.2');
   await page.waitForFunction((s) => Math.abs(document.querySelector(s).volume - 0.2) < 0.01, cut);
+  // A screen reader hears which row is which, and the sliders' values as people say them.
+  const rowNames = await page.locator('.mc .item').evaluateAll((els) => els.map((e) => `${e.getAttribute('role')} ${e.getAttribute('aria-label')}`).sort());
+  const said = { volume: await soundRow.getByRole('slider', { name: 'Volume' }).getAttribute('aria-valuetext'), seek: await soundRow.getByRole('slider', { name: 'Seek' }).getAttribute('aria-valuetext') };
+  assert(
+    rowNames.join() === 'group Audio,group Video' && said.volume === '20%' && /^0:0\d of 0:04$/.test(said.seek) && (await soundRow.getByRole('button', { name: 'Back 5 seconds' }).count()) === 1,
+    `the media rows are named Video and Audio, the sliders read “20%” and “0:01 of 0:04”, −5 is “Back 5 seconds” (${rowNames.join(', ')}; ${JSON.stringify(said)})`,
+  );
   await soundRow.getByRole('button', { name: 'Loop' }).click();
   await soundRow.getByRole('button', { name: 'Loop', pressed: true }).waitFor();
   await page.evaluate(() => document.activeElement?.blur());
@@ -486,6 +493,45 @@ try {
   await page.waitForTimeout(1700);
   now = await page.locator(hostSong).evaluate((a) => ({ paused: a.paused, t: a.currentTime }));
   assert(now.paused && Math.abs(now.t - left) < 0.3, `and after the previews, 🎨 Theme and 🖼 Board images, Resume game has it paused where the game left it (${left.toFixed(1)} s → ${now.t.toFixed(1)} s, paused)`);
+
+  // A wheel slice's video: it gets a media row, and Space and M reach it, as any clip on stage (it looped on with
+  // sound, out of the host's reach).
+  {
+    const wheelCtx = await browser.newContext({ viewport: { width: 1400, height: 900 } });
+    const wp = await wheelCtx.newPage();
+    wp.on('pageerror', (e) => errors.push('[wheel] ' + e.message));
+    const wheelGame = {
+      id: 'g_wheel_clip', version: 2, title: 'Wheel clip',
+      settings: { allowNegativeScores: true, deductOnWrong: true, defaultTimerSeconds: null, finalTimerSeconds: 30, currencySymbol: '$', rollOffDie: 20, pickerFollowsAward: true, timerAutoStart: false, roundIntro: { titleCard: false, tileFill: false, categoryReveal: 'off' }, maxPlayers: 8 },
+      players: [{ id: 'p1', name: 'Ann', color: '#e6194b' }],
+      rounds: [{ id: 'r_show', name: 'Show', mode: 'slides', questionSlide: { background: { color: '#223344' }, elements: [] } }],
+      media: [{ id: 'm_clip', name: 'prize.webm', mime: 'video/webm', size: clip.length, kind: 'video' }],
+      audio: {}, dice: [], theme: {},
+      wheels: [{ id: 'w_prize', name: 'Prize wheel', spinDurationMs: 300, removeAfterLanding: false, segments: [{ id: 's_clip', label: 'A clip', color: '#e6194b', weight: 1, media: 'm_clip' }] }],
+    };
+    mkdirSync(resolve('test-results'), { recursive: true });
+    const wheelPack = resolve('test-results/stagemedia-wheel.brainrot');
+    writeFileSync(wheelPack, await packGame(wheelGame, { m_clip: clip }));
+    await wp.goto(pathToFileURL(file).href);
+    await openGameFile(wp, wheelPack);
+    await wp.getByText(/^Opened “/).waitFor();
+    await wp.getByRole('button', { name: '▶ Play' }).click();
+    await wp.getByRole('button', { name: 'Start game ▶' }).click();
+    await wp.keyboard.press('w');
+    await wp.locator('.stage-box .wheel').waitFor();
+    await wp.keyboard.press('w');
+    const prize = '.stage-box .reveal video';
+    await waitPaused(wp, prize, false);
+    await wp.locator('.mc .item', { has: wp.locator('.ic', { hasText: '🎬' }) }).waitFor();
+    assert(true, "a wheel slice's video plays as it lands, with a media row");
+    await wp.evaluate(() => document.activeElement?.blur());
+    await wp.keyboard.press(' ');
+    await waitPaused(wp, prize, true);
+    await wp.keyboard.press('m');
+    const quiet = await wp.waitForFunction((s) => document.querySelector(s).muted, prize, { timeout: 5000 }).then(() => true, () => false);
+    assert(quiet, 'and Space pauses it, M mutes it');
+    await wheelCtx.close();
+  }
 
   assert(!errors.length, 'no page errors' + (errors.length ? ': ' + errors.join(' | ') : ''));
   console.log('\nStage media E2E passed.');

@@ -864,15 +864,20 @@
   }
 
   /**
-   * The round intro's cue while its music may still be playing (a whole theme song, maybe): the first tile opened stops
-   * it, whatever played in between, as does 🔇 Stop sounds. (Not the built-in sound: it's short, and ends by itself.)
+   * The round intro's cue (or the Final's think music) while its music may still be playing (a whole theme song, maybe):
+   * the first tile opened stops the intro's, whatever played in between, the Final's answer the think music, and 🔇 Stop
+   * sounds either. (Not the built-in sound: it's short, and ends by itself.)
    */
   let introNonce = $state<string | undefined>();
-  /** The round intro's sound, with the title card: it stops whatever is still playing (the last round's intro too). */
-  function introCue(): void {
-    playCue(app.live, game, 'roundIntro', true);
+  /** A cue whose music may go on a while: it stops whatever is still playing, and 🔇 Stop sounds shows meanwhile. */
+  function longCue(key: 'roundIntro' | 'finalThink'): void {
+    playCue(app.live, game, key, true);
     const s = app.live.sound;
     introNonce = s && !s.media.startsWith(BUILTIN) ? s.nonce : undefined;
+  }
+  /** The round intro's sound, with the title card: it stops whatever is still playing (the last round's intro too). */
+  function introCue(): void {
+    longCue('roundIntro');
   }
   /** 🔇 Stop sounds (Shift+M): every game sound playing on stream stops (a round intro that goes on, say). */
   function stopSounds(): void {
@@ -2682,9 +2687,9 @@
     if (session.phase === 'final' && session.finalStep === 'question') {
       startTimer(app.live, currentFinal(session, game)?.timerSeconds || game.settings.finalTimerSeconds || 30);
       // (The think music stops the Final's intro, if it's still going.)
-      playCue(app.live, game, 'finalThink', true);
+      longCue('finalThink');
     }
-    if (session.phase === 'final' && session.finalStep === 'answer') app.live.sound = null;
+    if (session.phase === 'final' && session.finalStep === 'answer') stopSounds();
     winnerCue();
     // The Final went on to the next round (another Final too): its title card's sound.
     if (session.intro?.stage === 'title') introCue();
@@ -2828,8 +2833,8 @@
         if (session.finalStep === 'question') {
           app.live.timer = null;
           startTimer(app.live, currentFinal(session, game)?.timerSeconds || game.settings.finalTimerSeconds || 30);
-          playCue(app.live, game, 'finalThink', true);
-        } else if (session.finalStep === 'answer') app.live.sound = null;
+          longCue('finalThink');
+        } else if (session.finalStep === 'answer') stopSounds();
       }
       return t;
     };

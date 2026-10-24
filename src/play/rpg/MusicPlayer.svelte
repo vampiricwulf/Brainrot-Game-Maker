@@ -1,15 +1,20 @@
 <!--
   Looping background music for RPG screens. A new track cross-fades in over the old one; the same track keeps
-  playing without restarting when the party moves between screens that share it.
+  playing without restarting when the party moves between screens that share it. Under the cover (K) it waits, and
+  goes on after.
 -->
 <script lang="ts">
-  import { onDestroy, onMount } from 'svelte';
+  import { onDestroy, onMount, untrack } from 'svelte';
   import { playAndReport } from '../../lib/audioout.svelte';
+  import { coverUp } from '../../lib/hold';
 
   let { src, volume = 0.6 }: { src: string | undefined; volume?: number } = $props();
   const FADE_MS = 900;
   const players: HTMLAudioElement[] = [];
   let current: HTMLAudioElement | null = null;
+  const covered = coverUp();
+  /** The track the cover paused (or one that came in under it): it plays once the cover goes. */
+  let held = false;
 
   function fade(el: HTMLAudioElement, to: number, done?: () => void): void {
     const from = el.volume;
@@ -40,16 +45,32 @@
     el.dataset.src = url;
     players.push(el);
     current = el;
+    held = untrack(covered);
+    if (held) return;
     // Reported like any game sound: a block brings back "Click to enable sound" and tells the host.
     void playAndReport(el);
     fade(el, volume);
+  });
+
+  $effect(() => {
+    const c = covered();
+    if (c && current && !current.paused) {
+      held = true;
+      current.pause();
+    } else if (!c && held) {
+      held = false;
+      if (!current) return;
+      current.volume = 0;
+      void playAndReport(current);
+      fade(current, volume);
+    }
   });
 
   // A track the browser blocked starts on the click (or key) that lets the window play sound: the same track goes on
   // across screens that share it, so nothing else would start it.
   onMount(() => {
     const retry = () => {
-      if (current?.paused && !current.error) void playAndReport(current);
+      if (current?.paused && !current.error && !covered()) void playAndReport(current);
     };
     window.addEventListener('pointerup', retry);
     window.addEventListener('keydown', retry);

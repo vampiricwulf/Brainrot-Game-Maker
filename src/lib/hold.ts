@@ -1,4 +1,5 @@
-// Media that waits under the cover (K) and goes on after it: a cue's sound, a wheel slice's or die face's video.
+// Media that waits under the cover (K) and goes on after it: a cue's sound, an RPG screen's music. (A slide's media, and
+// a wheel slice's or die face's, are held by Play, through the host's media controls.)
 import { getContext, setContext } from 'svelte';
 
 /** Svelte action: pause `node` while `held`, and play it again after (only if it was playing). */
@@ -18,6 +19,6 @@ export function holdWhile(node: HTMLMediaElement, held: boolean) {
 }
 
 const COVER = Symbol('cover');
-/** The stage says whether the cover is up, for what's drawn on it (a tool's result card). */
+/** The stage says whether the cover is up, for what plays on it (an RPG screen's music). */
 export const provideCover = (covered: () => boolean): void => void setContext(COVER, covered);
 export const coverUp = (): (() => boolean) => getContext<(() => boolean) | undefined>(COVER) ?? (() => false);

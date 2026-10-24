@@ -8,7 +8,7 @@ import { createServer } from 'node:http';
 import { readFileSync, existsSync, mkdirSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { addClassicRounds, nameGame, openGameFile, playWithPlayers } from './helpers.mjs';
+import { addClassicRounds, mainButton, nameGame, openGameFile, playWithPlayers } from './helpers.mjs';
 
 const file = resolve(process.env.APP_FILE || 'dist/index.html');
 if (!existsSync(file)) throw new Error('Run `npm run build` first');
@@ -864,6 +864,41 @@ try {
     await context.close();
   }
 
+  // ---------- 6b. The Final's think music: 🔇 Stop sounds is there while it plays (over the question's own clip, say) ----------
+  {
+    const context = await browser.newContext({ viewport: { width: 1400, height: 900 } });
+    const page = watch(await context.newPage(), 'think music');
+    await page.goto(fileUrl);
+    await addClassicRounds(page);
+    await page.getByRole('button', { name: '🔊 Sounds' }).click();
+    await page.locator('.sound', { hasText: 'Final round think music' }).getByRole('button', { name: /^Choose file for/ }).click();
+    const [fc] = await Promise.all([page.waitForEvent('filechooser'), page.getByRole('button', { name: '⬆ Upload audio file…' }).click()]);
+    await fc.setFiles({ name: 'think.wav', mimeType: 'audio/wav', buffer: wav(30) });
+    await page.getByText('🔊 think.wav').waitFor();
+    await playWithPlayers(page, 2);
+    await page.getByRole('button', { name: 'Start game ▶' }).click();
+    await page.getByRole('button', { name: 'Skip intro' }).click();
+    await page.waitForTimeout(450); // the round buttons ignore clicks right after they appear
+    await page.getByRole('button', { name: 'Final Jeopardy! ▶' }).click();
+    await page.waitForTimeout(450);
+    await page.getByRole('button', { name: 'Yes', exact: true }).click();
+    await page.getByRole('button', { name: 'Start the round ▶' }).click();
+    const wagers = page.locator('.fj .wagers input[data-wager]');
+    await wagers.first().waitFor();
+    for (let i = 0; i < (await wagers.count()); i++) await wagers.nth(i).fill('0');
+    await page.waitForFunction(() => document.querySelector('.panel [data-next]')?.textContent?.startsWith('Show question ▶'));
+    await mainButton(page).click();
+    await page.waitForFunction(introPlaying, true);
+    const stop = page.getByRole('button', { name: '🔇 Stop sounds' });
+    const shown = await stop.waitFor({ timeout: 5000 }).then(() => true, () => false);
+    assert(shown, 'the Final’s question: 🔇 Stop sounds is there while its think music plays');
+    await stop.click();
+    await page.waitForFunction(introPlaying, false);
+    await stop.waitFor({ state: 'detached' });
+    assert(true, 'and it stops the think music, then goes away');
+    await context.close();
+  }
+
   // ---------- 7. 🔇 Stop sounds stops a round intro that goes on (an RPG or slides round has no tile to stop it) ----------
   // (Up to 1280px wide it shows as 🔇, beside 🤫 Send a card… in full, so the board's tools row keeps one line.)
   {
@@ -938,6 +973,14 @@ try {
     await page.getByText(/Click the audience window once|blocked a sound/).waitFor({ state: 'detached' });
     await aud.waitForFunction(() => window.__music.length === 1 && !window.__music[0].paused);
     assert(true, 'the click that lets the audience window play sound starts that music (no new screen needed)');
+    // Under ⏸ Cover (K) the music waits, and goes on after (viewers heard it under “Be right back”).
+    await page.keyboard.press('k');
+    await aud.locator('.cover').waitFor();
+    await aud.waitForFunction(() => window.__music.length === 1 && window.__music[0].paused);
+    await page.keyboard.press('k');
+    await aud.locator('.cover').waitFor({ state: 'detached' });
+    await aud.waitForFunction(() => window.__music.length === 1 && !window.__music[0].paused);
+    assert(true, 'under ⏸ Cover (K) the RPG music waits, and goes on after');
     await context.close();
   }
 

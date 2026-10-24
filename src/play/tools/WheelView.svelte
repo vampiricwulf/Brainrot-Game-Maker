@@ -44,7 +44,7 @@
     <div class="disc single"><WheelDisc segments={o.segments} rotation={o.rotation} spin={o.spin} {now} players={!!o.players} /></div>
     {#if !o.spin}<div class="hint">Get ready to spin…</div>{/if}
     {#if landed && seg}
-      <div class="reveal"><OutcomeCard outcome={seg} {game} {role} color={seg.color} fallback={sliceLabel(seg, o.result ?? 0)} /></div>
+      <div class="reveal"><OutcomeCard outcome={seg} {game} {role} mediaId="outcome:{o.nonce}:{o.spin?.startedAt}:{seg.id}" color={seg.color} fallback={sliceLabel(seg, o.result ?? 0)} /></div>
     {/if}
   </div>
 {:else}

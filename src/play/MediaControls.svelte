@@ -4,8 +4,11 @@
   import { mediaCommand } from '../lib/sync.svelte';
   import { toast } from '../lib/app.svelte';
 
-  /** `reserve`: with nothing playing, the row keeps its room, empty (a board round with media on its slides, see HostPanel). */
-  let { dual, reserve = false }: { dual: boolean; reserve?: boolean } = $props();
+  /**
+   * `reserve`: how many rows keep their room, empty where nothing plays (a round with media on its slides, as many as
+   * its busiest slide has: see HostPanel).
+   */
+  let { dual, reserve = 0 }: { dual: boolean; reserve?: number } = $props();
 
   // In dual mode the audience window's copies are the real (audible) ones.
   const items = $derived<[string, MediaState][]>(
@@ -13,17 +16,26 @@
   );
 
   const icon = { video: '🎬', audio: '🔊', youtube: '▶️', remote: '🌐', external: '🎞' } as const;
+  /** What a screen reader calls each row: its label ("Video"), numbered when two rows share one ("Video 1", "Video 2"). */
+  const names = $derived.by(() => {
+    const seen = new Map<string, number>();
+    return items.map(([, m]) => {
+      const n = (seen.get(m.label) ?? 0) + 1;
+      seen.set(m.label, n);
+      return items.filter(([, x]) => x.label === m.label).length > 1 ? `${m.label} ${n}` : m.label;
+    });
+  });
 
   function open(url?: string): void {
     if (url && !openMediaPopup(url)) toast(POPUP_FAILED, 5000);
   }
 </script>
 
-{#if items.length}
-  <div class="mc">
+{#if items.length || reserve}
+  <div class="mc" class:held={!items.length}>
     <!-- "Click the audience window once" is in SoundWarnings: it applies to every sound, not only slide media. -->
-    {#each items as [id, m] (id)}
-      <div class="item" class:failed={m.failed}>
+    {#each items as [id, m], i (id)}
+      <div class="item" class:failed={m.failed} role="group" aria-label={names[i]}>
         <span class="ic" title={m.label}>{icon[m.kind]}</span>
         {#if m.failed}
           <span class="msg">{m.kind === 'youtube' ? "YouTube won't play embedded here." : "Couldn't load this media."}</span>
@@ -44,7 +56,7 @@
         {:else}
           <button class="small" onclick={() => mediaCommand({ el: id, op: 'toggle' })} title="Space" aria-label={m.paused ? 'Play' : 'Pause'}>{m.paused ? '▶' : '⏸'}</button>
           <button class="small ghost" onclick={() => mediaCommand({ el: id, op: 'restart' })} title="Restart" aria-label="Restart">⏮</button>
-          <button class="small ghost" onclick={() => mediaCommand({ el: id, op: 'seekBy', value: -5 })} title="Back 5s (←)">−5</button>
+          <button class="small ghost" onclick={() => mediaCommand({ el: id, op: 'seekBy', value: -5 })} title="Back 5s (←)" aria-label="Back 5 seconds">−5</button>
           <input
             class="seek"
             type="range"
@@ -55,8 +67,9 @@
             disabled={!m.duration}
             onchange={(e) => mediaCommand({ el: id, op: 'seek', value: +e.currentTarget.value })}
             aria-label="Seek"
+            aria-valuetext="{fmtTime(m.time)} of {fmtTime(m.duration)}"
           />
-          <button class="small ghost" onclick={() => mediaCommand({ el: id, op: 'seekBy', value: 5 })} title="Forward 5s (→)">+5</button>
+          <button class="small ghost" onclick={() => mediaCommand({ el: id, op: 'seekBy', value: 5 })} title="Forward 5s (→)" aria-label="Forward 5 seconds">+5</button>
           <span class="time">{fmtTime(m.time)} / {fmtTime(m.duration)}</span>
           <button class="small ghost" onclick={() => mediaCommand({ el: id, op: 'muted', value: !m.muted })} title="Mute (M)" aria-label="Mute" aria-pressed={m.muted}>
             {m.muted ? '🔇' : '🔈'}
@@ -70,6 +83,7 @@
             value={m.volume}
             oninput={(e) => mediaCommand({ el: id, op: 'volume', value: +e.currentTarget.value })}
             aria-label="Volume"
+            aria-valuetext="{Math.round(m.volume * 100)}%"
           />
           <button class="small ghost" class:on={m.loop} onclick={() => mediaCommand({ el: id, op: 'loop', value: !m.loop })} title="Loop" aria-label="Loop" aria-pressed={m.loop}>🔁</button>
           {#if m.openUrl}
@@ -79,11 +93,12 @@
         {/if}
       </div>
     {/each}
-  </div>
-{:else if reserve}
-  <!-- (A hidden row like an item's, as tall: the stage viewers see keeps its size when a clue's media comes up.) -->
-  <div class="mc held" aria-hidden="true" inert>
-    <div class="item"><button class="small" tabindex="-1" disabled aria-label="Play">▶</button><input class="seek" type="range" tabindex="-1" disabled aria-label="Seek" /></div>
+    <!-- (Hidden rows like an item's, as tall, for the rest: the stage viewers see keeps its size as a slide's media comes up.) -->
+    {#each { length: Math.max(0, reserve - items.length) }, i (i)}
+      <div class="held-row" aria-hidden="true" inert>
+        <button class="small" tabindex="-1" disabled aria-label="Play">▶</button><input class="seek" type="range" tabindex="-1" disabled aria-label="Seek" />
+      </div>
+    {/each}
   </div>
 {/if}
 
@@ -93,7 +108,8 @@
     flex-direction: column;
     gap: 4px;
   }
-  .item {
+  .item,
+  .held-row {
     display: flex;
     align-items: center;
     gap: 6px;
@@ -102,7 +118,7 @@
     border-radius: 8px;
     padding: 4px 8px;
   }
-  .held {
+  .held-row {
     visibility: hidden;
   }
   .item.failed {

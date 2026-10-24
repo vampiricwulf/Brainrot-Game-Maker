@@ -24,6 +24,12 @@ in plain words for the people who make and host games. Anything committed but no
 - An exported file's ? list before the game no longer lists Ctrl+Z / Ctrl+Y, which do nothing there.
 - 📺 Audience opened mid-clue: its window picks the clue's video or sound up where the host had it in one window (at its time, playing or paused, muted and at its volume), instead of from 0:00 with sound at full volume. Closed again, the host's copy goes on muted if it was muted there.
 - A clue's video or sound keeps the volume and 🔁 Loop the host set when its slide comes back (the answer shown and hidden again) and when the audience window reloads, as it already kept its place and mute.
+- The Final's think music: 🔇 Stop sounds is on the tools row while it plays (over the question's own video or sound, say), as it is for a round intro's music.
+- A wheel slice's or die face's video or sound gets a media row like any clip on stage: Space, M, the volume and 🔁 reach it, the host's copy stays silent beside an audience window, and the cover (K) holds it. A video with sound looped on out of the host's reach.
+- The 🪟 card window plays a card's video or sound from its Start at to its Stop at, then goes back to its start, as phones do (it played on past Stop at).
+- One window: the stage keeps one size when a slide with two clips comes up (a video and a sound, say), in a board round and now in a slides round too: the host panel keeps room for as many media rows as the round's busiest slide has.
+- RPG screen music waits under ⏸ Cover (K) and goes on after (viewers heard it under “Be right back”).
+- Screen readers: each of the host's media rows is named (Video, Audio; numbered when two share a name), its sliders read “30%” and “0:01 of 0:08”, and −5 / +5 read “Back 5 seconds” / “Forward 5 seconds”.
 
 ## 2026-10-24
 

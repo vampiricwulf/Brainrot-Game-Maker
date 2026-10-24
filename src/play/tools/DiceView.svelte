@@ -53,7 +53,7 @@
     <div class="total">Total: {o.roll.total}</div>
   {/if}
   {#if showCard && outcome && o.roll}
-    <div class="reveal" class:big><OutcomeCard {outcome} {game} {role} fallback={outcomeText(o.roll)} /></div>
+    <div class="reveal" class:big><OutcomeCard {outcome} {game} {role} mediaId="outcome:{o.nonce}:{o.startedAt}" fallback={outcomeText(o.roll)} /></div>
   {/if}
 </div>
 
