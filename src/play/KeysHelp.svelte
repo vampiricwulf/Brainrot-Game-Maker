@@ -1,6 +1,7 @@
 <!-- Host keyboard shortcuts (spec §6.8). -->
 <script lang="ts">
   import { modal } from '../lib/modal';
+  import { app } from '../lib/app.svelte';
 
   let {
     onclose,
@@ -20,7 +21,8 @@
       title: BEFORE,
       keys: [
         ['Ctrl+Enter', 'Start the game (from anywhere on this screen)'],
-        ['Ctrl+Z / Ctrl+Y', 'Undo / redo the changes made here (players, rules, buzzers, On stream)'],
+        // (A player-only file keeps no undo history here.)
+        ...(app.playerOnly ? [] : [['Ctrl+Z / Ctrl+Y', 'Undo / redo the changes made here (players, rules, buzzers, On stream)'] as [string, string]]),
         ['Enter in a player’s name', 'Add the next player (as ＋ Add player does), typing in their name'],
       ],
     },

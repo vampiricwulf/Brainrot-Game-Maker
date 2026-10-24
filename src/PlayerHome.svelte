@@ -56,7 +56,8 @@
     packPct = null;
     try {
       const { where, missing } = await savePack($state.snapshot(game), (done, total) => (packPct = total ? Math.floor((done / total) * 100) : null));
-      const left = missing.length ? ` (${missing.length} file${missing.length === 1 ? '' : 's'} weren’t in this copy, so they aren’t in the pack)` : '';
+      const one = missing.length === 1;
+      const left = missing.length ? ` (${missing.length} file${one ? ' wasn’t' : 's weren’t'} in this copy, so ${one ? 'it isn’t' : 'they aren’t'} in the pack)` : '';
       toast(`${where}. To edit it, open it in Brainrot Games Maker${left}.`, 6000);
     } catch (e) {
       // (The save picker closed: nothing to say.)
@@ -71,7 +72,7 @@
   const online = $derived(onlineCount(game));
 </script>
 
-<div class="home" {style}>
+<main class="home" {style}>
   <div class="card">
     <div class="logo">BRAINROT GAMES</div>
     <h1>{game.title}</h1>
@@ -112,7 +113,7 @@
     <!-- Someone who made it, testing their export: their games are where they left them. -->
     <p class="muted small">This file plays this one game. It can't change it, and your own games in the builder aren't touched.</p>
   </div>
-</div>
+</main>
 
 <style>
   .home {

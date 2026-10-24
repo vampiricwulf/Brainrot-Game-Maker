@@ -479,6 +479,8 @@ try {
   player.on('pageerror', (e) => errors.push('[exported] ' + e.message));
   player.on('dialog', (d) => d.accept());
   await player.goto(pathToFileURL(exported).href);
+  await player.getByRole('button', { name: '▶ Play' }).waitFor();
+  assert((await player.getByRole('main').locator('h1').count()) === 1, 'its start screen is the page’s main part, for a screen reader to jump to');
   await player.getByRole('button', { name: '▶ Play' }).click();
   const card = await player.locator('section[aria-label="Phone buzzers"]').innerText();
   assert(card.includes('This file has no phone buzzers') && !card.includes('⚙') && !card.includes('Settings') && !card.includes('editor'), `the player-only file says it has no phone buzzers, and doesn't send anyone to the editor (${card.replace(/\s+/g, ' ')})`);
@@ -492,6 +494,18 @@ try {
   await player.keyboard.type('Zed');
   await player.keyboard.press('Tab');
   const setUp = await playerNames();
+  // Ctrl+S says what keeps the setup: nothing yet, until the game starts (a refresh starts it again).
+  await player.keyboard.press('Control+s');
+  await player.locator('.toast', { hasText: 'The game is kept in this browser once it starts: until then, a refresh starts the setup again' }).waitFor();
+  assert(true, 'Ctrl+S on its pre-game screen says the game is kept once it starts, and a refresh before that starts the setup again');
+  // Its ? list promises no Ctrl+Z here (a player-only file has no undo history).
+  await player.evaluate(() => document.activeElement?.blur());
+  await player.keyboard.press('?');
+  const fileKeys = player.getByRole('dialog', { name: 'Keyboard shortcuts' });
+  const before = await fileKeys.locator('section').filter({ has: player.getByRole('heading', { name: 'Before the game', exact: true }) }).innerText();
+  assert(before.includes('Ctrl+Enter') && !before.includes('Ctrl+Z'), `its ? list leaves out Ctrl+Z / Ctrl+Y before the game (${before.replace(/\s+/g, ' ')})`);
+  await player.keyboard.press('Escape');
+  await fileKeys.waitFor({ state: 'detached' });
   await player.getByRole('button', { name: '✎ Rename' }).click();
   await player.getByLabel('Game title').fill('Friday Quiz');
   await player.keyboard.press('Enter');

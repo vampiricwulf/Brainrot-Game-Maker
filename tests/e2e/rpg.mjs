@@ -5,7 +5,7 @@ import { chromium } from 'playwright-core';
 import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { addClassicRounds, dragBy, openGameFile, playWithPlayers } from './helpers.mjs';
+import { addClassicRounds, dragBy, exportHtml, openGameFile, playWithPlayers } from './helpers.mjs';
 
 const file = resolve(process.env.APP_FILE || 'dist/index.html');
 if (!existsSync(file)) throw new Error('Run `npm run build` first');
@@ -84,6 +84,19 @@ async function bigWorld() {
   await host.goto(pathToFileURL(file).href);
   await openGameFile(host, gameFile);
   await host.getByText(/^Opened “/).waitFor();
+  // Exported, ✎ Edit screen says its changes last for this game only (the file has no 💾 Keep in game).
+  const fileHtml = await exportHtml(host);
+  const fileCopy = resolve('test-results/rpg-big-world.html');
+  await fileHtml.saveAs(fileCopy);
+  const filePage = await ctx.newPage();
+  filePage.on('pageerror', (e) => errors.push(`[big world file] ${e.message}`));
+  await filePage.goto(pathToFileURL(fileCopy).href);
+  await filePage.getByRole('button', { name: '▶ Play' }).click({ timeout: 20000 });
+  await filePage.getByRole('button', { name: 'Start game ▶' }).click();
+  await filePage.getByRole('button', { name: '✎ Edit screen' }).click();
+  const fileEditor = await filePage.getByRole('dialog', { name: / live$/ }).locator('.row').first().innerText();
+  assert(fileEditor.includes('They last for this game only.') && !fileEditor.includes('Keep in game'), `in an exported file, ✎ Edit screen says the changes last for this game only (${fileEditor.replace(/\s+/g, ' ')})`);
+  await filePage.close();
   await host.getByRole('button', { name: '▶ Play' }).click();
   await host.getByRole('button', { name: 'Start game ▶' }).waitFor();
   const [aud] = await Promise.all([host.waitForEvent('popup'), host.locator('.mode', { hasText: 'Separate audience window' }).click()]);

@@ -4,7 +4,7 @@ import { chromium } from 'playwright-core';
 import { existsSync, mkdirSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { addClassicRounds, editorReady, openGameFile, playWithPlayers } from './helpers.mjs';
+import { addClassicRounds, editorReady, exportHtml, openGameFile, playWithPlayers } from './helpers.mjs';
 
 const file = resolve(process.env.APP_FILE || 'dist/index.html');
 if (!existsSync(file)) throw new Error('Run `npm run build` first');
@@ -299,6 +299,21 @@ try {
   await slidesPregame.waitFor();
   const slidesNote = await slidesPregame.innerText();
   assert(slidesNote.includes('see-through on stream (tiles & slide background).'), `with no Jeopardy board, the pre-game screen leaves out the glow only a board has (${slidesNote})`);
+  // Exported, the file has no 🎨 Theme or ⚙ Settings: the note and Reduce motion's tooltip don't send the host there.
+  await slidesPage.getByRole('button', { name: '◀ Back to editor' }).click();
+  const slidesHtml = await exportHtml(slidesPage);
+  mkdirSync(resolve('test-results'), { recursive: true });
+  const slidesFile = resolve('test-results/playfeatures-slides.html');
+  await slidesHtml.saveAs(slidesFile);
+  const slidesPlayer = watch(await slidesContext.newPage(), 'slides game file');
+  await slidesPlayer.goto(pathToFileURL(slidesFile).href);
+  await slidesPlayer.getByRole('button', { name: '▶ Play' }).click({ timeout: 20000 });
+  const fileNote = await slidesPlayer.locator('[data-warn="chroma-theme"]').innerText();
+  const motionTip = await slidesPlayer.locator('label.check', { hasText: 'Reduce motion on stream' }).getAttribute('title');
+  assert(
+    fileNote.includes('chroma key (magenta):') && fileNote.endsWith('Ask whoever made it for a copy with other colors.') && !fileNote.includes('🎨') && motionTip === 'Kept on this computer',
+    `in the exported file the note asks for other colors instead of 🎨 Theme, and Reduce motion's tooltip names no ⚙ Settings (${fileNote} · ${motionTip})`,
+  );
   await slidesContext.close();
 
   // ---------- The Daily Double splash and PARTNER UP! keep clear of the key; a board game's own colors ----------

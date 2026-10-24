@@ -400,13 +400,29 @@ try {
   assert(bannerSaved.includes('📂 Import the file again and 🎨 Use in this game'), `saving a theme file with a picture says how to bring it in (${bannerSaved})`);
 
   // ---------- An exported HTML file ----------
+  // (Its values in a font file of its own: the file's first screen shows its logo in it from the start.)
+  await openSection('Fonts');
+  await page.getByRole('button', { name: '＋ Values & scores…' }).click();
+  const valuePicker = page.getByRole('dialog', { name: 'Choose font' });
+  const [valueChooser] = await Promise.all([page.waitForEvent('filechooser'), valuePicker.getByRole('button', { name: '⬆ Upload font file…' }).click()]);
+  await valueChooser.setFiles({ name: 'Score Font.woff2', mimeType: 'font/woff2', buffer: readFileSync(resolve('node_modules/@fontsource/press-start-2p/files/press-start-2p-latin-400-normal.woff2')) });
+  await valuePicker.waitFor({ state: 'detached' });
+  await page.waitForFunction(() => /^'jb-\w+', sans-serif$/.test(document.querySelector('label[data-k="valueFont"] select').value));
   const html = await exportHtml(page, 'Theme test');
   const saved = resolve('test-results/themes-export.html');
   await html.saveAs(saved);
   const player = await context.newPage();
   player.on('pageerror', (e) => errors.push(`[player] ${e.message}`));
   await player.goto(pathToFileURL(saved).href);
-  await player.getByRole('button', { name: '▶ Play' }).click({ timeout: 20000 });
+  await player.getByRole('button', { name: '▶ Play' }).waitFor({ timeout: 20000 });
+  const logoFont = await player
+    .waitForFunction(() => {
+      const fam = getComputedStyle(document.querySelector('.home .logo')).fontFamily.split(',')[0].replace(/['"]/g, '').trim();
+      return [...document.fonts].some((f) => f.family.replace(/['"]/g, '') === fam && f.status === 'loaded') && fam;
+    }, null, { timeout: 5000 })
+    .then((h) => h.jsonValue(), () => '');
+  assert(logoFont.startsWith('jb-'), `the exported file's first screen shows its logo in the game's own values font from the start (${logoFont || 'not loaded'})`);
+  await player.getByRole('button', { name: '▶ Play' }).click();
   await player.getByRole('button', { name: '＋ Add player' }).click();
   await player.getByRole('button', { name: 'Start game ▶' }).click();
   await skipIntro(player);

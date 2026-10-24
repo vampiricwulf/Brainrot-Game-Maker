@@ -1051,6 +1051,8 @@
   const roundColors = $derived(roundStageColors(game));
   /** Those that key would make see-through (a note of their own: they're changed in the round's editor). */
   const keyedRounds = $derived(keyedRoundColors(roundColors, game.theme?.stageBg));
+  /** The key the notes name, and where it's set (a player-only file has no 🎨 Theme). */
+  const keyWhere = $derived(app.playerOnly ? game.theme?.stageBg : `${game.theme?.stageBg}, 🎨 Theme › Stage background`);
   /** The other key, which the notes offer only when it would leave the theme's colors, every player's and the rounds' alone. */
   const otherKey = $derived(game.theme ? otherStageKey(game.theme, [...session.players.map((p) => p.color), ...roundColors.map(([, c]) => c)], hasBoard) : undefined);
 
@@ -4478,20 +4480,22 @@
           />
           {#if keyedOut.length && game.theme?.stageBg}
             <p class="warn small" data-warn="chroma">
-              ⚠ {nameList(keyedOut.map((p) => p.name || 'A player'))}’s color is close to the chroma key ({game.theme.stageBg}, 🎨 Theme ›
-              Stage background): OBS would key it out on stream. Pick another color{otherKey ? `, or a ${otherKey} key` : ''}.
+              ⚠ {nameList(keyedOut.map((p) => p.name || 'A player'))}’s color is close to the chroma key ({keyWhere}): OBS would key it out on
+              stream. Pick another color{otherKey && !app.playerOnly ? `, or a ${otherKey} key` : ''}.
             </p>
           {/if}
           {#if keyedTheme.length && game.theme.stageBg}
             <p class="warn small" data-warn="chroma-theme">
-              ⚠ Some of the theme’s colors are close to the chroma key ({game.theme.stageBg}, 🎨 Theme › Stage background): OBS would
-              make them see-through on stream ({keyedTheme.join(', ').toLowerCase()}). Pick others in 🎨 Theme{otherKey ? `, or a ${otherKey} key` : ''}.
+              ⚠ Some of the theme’s colors are close to the chroma key ({keyWhere}): OBS would make them see-through on stream
+              ({keyedTheme.join(', ').toLowerCase()}).{app.playerOnly
+                ? `${otherKey ? ` A ${otherKey} key would keep them.` : ''} Ask whoever made it for a copy with other colors.`
+                : ` Pick others in 🎨 Theme${otherKey ? `, or a ${otherKey} key` : ''}.`}
             </p>
           {/if}
           {#if keyedRounds.length && game.theme.stageBg}
             <p class="warn small" data-warn="chroma-rounds">
-              ⚠ Some of the rounds’ colors are close to the chroma key ({game.theme.stageBg}, 🎨 Theme › Stage background): OBS would
-              make them see-through on stream ({keyedRounds.join(', ')}).{app.playerOnly
+              ⚠ Some of the rounds’ colors are close to the chroma key ({keyWhere}): OBS would make them see-through on stream
+              ({keyedRounds.join(', ')}).{app.playerOnly
                 ? otherKey ? ` A ${otherKey} key would keep them.` : ''
                 : ` Pick others in their round’s editor${otherKey ? `, or a ${otherKey} key` : ''}.`}
             </p>
@@ -4610,7 +4614,7 @@
                 Show the phone buzzers' join code in a corner during the game (and on the cover card), while the room is open
               </label>
             {/if}
-            <label class="check" title="The same as ⚙ Settings › Reduce motion on stream (kept on this computer)">
+            <label class="check" title={app.playerOnly ? 'Kept on this computer' : 'The same as ⚙ Settings › Reduce motion on stream (kept on this computer)'}>
               <input type="checkbox" bind:checked={prefs.reduceMotion} onchange={savePrefs} />
               Reduce motion on stream (no pop-ins, fly-ins or confetti)
             </label>

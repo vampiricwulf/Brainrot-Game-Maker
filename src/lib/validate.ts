@@ -348,14 +348,19 @@ export function validate(game: Game, room: Checking = {}): Problem[] {
       level: 'warn',
       player: `${plural(cues.size, 'sound file')} missing from this game (the built-in sound plays instead)`,
     });
-  const others = [...missing].filter((id) => !cues.has(id)).length;
-  if (others)
+  const others = [...missing].filter((id) => !cues.has(id));
+  if (others.length) {
+    // (A player-only file has no 🖼 Media: it names where the first one used was, which shows nothing now.)
+    const path = others.map((id) => mediaPath(game, id)).find((p) => !!p);
+    const crumbs = path ? placeAt(game, path).crumbs : [];
+    const on = crumbs.length ? ` (${others.length === 1 ? 'on' : 'one on'} ${crumbs.join(' › ')})` : '';
     out.push({
-      text: `${plural(others, 'media file')} missing`,
+      text: `${plural(others.length, 'media file')} missing`,
       tab: 'media',
       level: 'warn',
-      player: `${plural(others, 'media file')} missing from this game: ask whoever made it for a new copy`,
+      player: `${plural(others.length, 'media file')} missing from this game${on}: ask whoever made it for a new copy`,
     });
+  }
   // Videos and sounds this browser won't play, or plays without their sound: as worked out from what's inside them
   // (`room.plays`), else as their type says. (A live link already played when it was added; its type is often unknown
   // from the address.)

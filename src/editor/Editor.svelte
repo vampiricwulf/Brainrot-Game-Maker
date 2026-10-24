@@ -813,12 +813,13 @@
       const r = await whileWriting(() => exportStandaloneHtml($state.snapshot(game), packProgress, buzzerBase()));
       if (r) {
         mark('exported', 'Exported HTML', point);
-        toast(
+        const line =
           `Exported a playable HTML file (${formatBytes(r.size)}): ${r.where.replace(/^(Saved to |Saved |Download started: )/, '')}. Double-click it to play.` +
-            (r.online ? ` ${r.online} item${r.online === 1 ? ' plays' : 's play'} from the internet, so it needs internet during the game.` : ''),
-        );
+          (r.online ? ` ${r.online} item${r.online === 1 ? ' plays' : 's play'} from the internet, so it needs internet during the game.` : '');
+        // (One message, as Save gives: a toast under the missing files' window was cut to one line.)
+        if (r.missing.length) void tell(`${line}\n\nThese media files were missing and weren't included, so the game plays without them:\n${r.missing.join('\n')}`);
+        else toast(line);
       }
-      if (r?.missing.length) void tell(`These media files were missing and weren't included:\n${r.missing.join('\n')}`);
     } catch (e) {
       if (!isCancel(e)) void tell('Export failed: ' + (e as Error).message);
     } finally {

@@ -7,7 +7,7 @@ import { chromium } from 'playwright-core';
 import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { mainButton, mainLabel, openGameFile } from './helpers.mjs';
+import { exportHtml, mainButton, mainLabel, openGameFile } from './helpers.mjs';
 
 const file = resolve(process.env.APP_FILE || 'dist/index.html');
 if (!existsSync(file)) throw new Error('Run `npm run build` first');
@@ -415,6 +415,30 @@ try {
   const edSpaces = page.locator('.canvas [data-space]');
   await edSpaces.first().waitFor();
   assert((await edSpaces.count()) === 6 && !(await edSpaces.allInnerTexts()).some((t) => t.includes('Space 7')), 'without 💾 Keep in game, the game in the editor is unchanged');
+  // An exported file has no 💾 Keep in game: ✎ Edit board and a space's ⚙ Buttons… say the changes last for this game
+  // only, and send no one looking for it.
+  const boardHtml = await exportHtml(page);
+  const boardFile = resolve('test-results/boardedit-export.html');
+  await boardHtml.saveAs(boardFile);
+  const filePage = await ctx.newPage();
+  filePage.on('pageerror', (e) => errors.push(`[file] ${e.message}`));
+  await filePage.goto(pathToFileURL(boardFile).href);
+  await filePage.getByRole('button', { name: '▶ Play' }).click({ timeout: 20000 });
+  await filePage.getByRole('button', { name: 'Start game ▶' }).click();
+  await filePage.locator('.bh').waitFor();
+  await filePage.keyboard.press('e');
+  const fileEditing = filePage.locator('[data-board-editing]');
+  await fileEditing.waitFor();
+  const fileNote = await fileEditing.locator('.note').innerText();
+  const fileLayer = await box(filePage.locator('.stage-box [data-board-edit]'));
+  await filePage.mouse.click(fileLayer.x + (1400 * fileLayer.width) / 1920, fileLayer.y + (300 * fileLayer.height) / 1080);
+  await fileEditing.getByRole('button', { name: /⚙ Buttons/ }).click();
+  const fileButtons = filePage.getByRole('dialog', { name: 'Buttons on Nap time' });
+  const buttonsNote = await fileButtons.locator('.row').first().innerText();
+  assert(
+    fileNote.includes('The changes last for this game only. Each one') && !fileNote.includes('Keep in game') && buttonsNote.includes('For this game only.') && !buttonsNote.includes('Keep in game'),
+    `in an exported file, ✎ Edit board and ⚙ Buttons… say the changes last for this game only, with no 💾 Keep in game (${fileNote.replace(/\s+/g, ' ')} · ${buttonsNote.replace(/\s+/g, ' ')})`,
+  );
   await ctx.close();
 
   // ---------- A wide window with an audience window: the side column ----------

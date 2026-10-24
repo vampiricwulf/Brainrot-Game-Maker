@@ -11,6 +11,18 @@ the day it's pushed (Pacific time; start the heading on the day's first push) an
 in plain words for the people who make and host games. Anything committed but not pushed yet goes under
 **Unreleased** at the top, and moves under its day when it's pushed.
 
+## Unreleased
+
+### Fixed
+
+- Exported game files: Ctrl+S on the ▶ Play screen says the game is kept in this browser once it starts (a refresh before that starts the setup again), instead of saying the file keeps its progress by itself.
+- Exported game files: ✎ Edit screen, ✎ Edit board and a space's ⚙ Buttons… say the changes last for this game only, instead of pointing to a 💾 Keep in game the file doesn't have.
+- ⬇ Export as a web page with media files missing: one message says where the file went, that it needs internet (when it does) and which files it plays without. The result was cut to one line under the missing files' window. In the exported file, the check for a missing file says where the first one was used.
+- Exported game files: the chroma-key notes on the ▶ Play screen ask for a copy with other colors instead of pointing to 🎨 Theme, and Reduce motion's tooltip no longer points to ⚙ Settings.
+- An exported file's ⬇ Download as .brainrot says “1 file wasn’t in this copy” (it said “weren’t”).
+- An exported file's first screen shows its logo in the game's own values font from the start (it did only after ▶ Play and ◀ Back), and a screen reader can jump to it as the page's main region.
+- An exported file's ? list before the game no longer lists Ctrl+Z / Ctrl+Y, which do nothing there.
+
 ## 2026-10-24
 
 ### Added

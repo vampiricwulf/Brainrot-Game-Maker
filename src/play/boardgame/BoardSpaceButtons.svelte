@@ -54,7 +54,7 @@
     <div class="modal" role="dialog" aria-modal="true" aria-label="Buttons on {space.name}" bind:this={box} use:modal>
       <div class="row">
         <b class="modal-title">⚙ {space.name}</b>
-        <span class="muted small">For this game only, unless you press 💾 Keep in game.</span>
+        <span class="muted small">For this game only{app.playerOnly ? '' : ', unless you press 💾 Keep in game'}.</span>
         <span class="spacer"></span>
         <button class="primary" onclick={onclose} title="Esc">Done</button>
         <button class="ghost modal-x" onclick={onclose} aria-label="Close" title="Close (Esc)">✕</button>

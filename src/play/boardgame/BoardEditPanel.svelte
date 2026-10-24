@@ -33,7 +33,7 @@
     <span class="muted small">
       {dual ? 'Viewers see the changes as you make them (not the dashed marks).' : 'Viewers see this: the board changes as you edit it, with its dashed marks.'}
       {dual ? 'Hidden names show dimmed, here only.' : 'Hidden names show dimmed while you edit (on the stage too), and go again when you’re done.'}
-      The changes last for this game only, unless you press 💾 Keep in game. Each one is a step: Ctrl+Z takes it back.
+      The changes last for this game only{app.playerOnly ? '' : ', unless you press 💾 Keep in game'}. Each one is a step: Ctrl+Z takes it back.
     </span>
   </div>
   {#if bs.zoneShown}

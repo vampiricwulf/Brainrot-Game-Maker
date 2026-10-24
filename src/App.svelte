@@ -44,6 +44,7 @@
   import { blankName, isBoard, migrateGame, newId } from './lib/model';
   import { nextFreeColor } from './lib/colors';
   import { checkForUpdate } from './lib/update.svelte';
+  import { registerGameFonts } from './lib/fonts';
   import { audience, audienceTitle, closeAudienceWindow, closeScoresWindow, openAudienceWindow, pushGame, pushLive } from './lib/sync.svelte';
   import ModeCards from './play/ModeCards.svelte';
   import { goToRound, migrateSession, newSession, randomizeDailyDoubles, rebaseSession, startIntro } from './lib/session';
@@ -162,6 +163,8 @@
         keepInMemory();
         app.game = await openPack(await unpackEmbedded(embedded, info.cut), (done, total) => (unpacked = { done, total }));
         document.title = app.game.title;
+        // (Its first screen's logo is in the theme's value font, which may be one of its own files.)
+        void registerGameFonts(app.game);
         usePlayerStorage(app.game.id, info.exported);
         // Files added from now on (a drawing during play) are kept with its saved game; its own files never are.
         storePlayFiles();
@@ -1031,9 +1034,11 @@
     if (e.repeat) return;
     if (playerOnly)
       toast(
-        app.storageOk
-          ? 'This game keeps its progress in this browser by itself'
-          : "This browser isn't saving progress here (its storage is blocked or full), so a refresh restarts the game",
+        !app.storageOk
+          ? "This browser isn't saving progress here (its storage is blocked or full), so a refresh restarts the game"
+          : app.screen === 'play' && app.pregame
+            ? 'The game is kept in this browser once it starts: until then, a refresh starts the setup again'
+            : 'This game keeps its progress in this browser by itself',
         5000,
       );
     else toast(app.storageOk ? 'The game saves itself as you play (💾 Save is in the editor)' : "Autosave isn't working right now (💾 Save is in the editor)", 5000);

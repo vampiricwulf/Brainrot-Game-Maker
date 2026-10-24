@@ -68,7 +68,8 @@
           ? 'One window: viewers see this editor, hidden things too. Open 📺 Audience to edit off stream.'
           : onAir
             ? 'Live: viewers see changes as you make them.'
-            : 'Off air: viewers see it when the party gets here.'} They stay in this game unless you press 💾 Keep in game.
+            : 'Off air: viewers see it when the party gets here.'}
+        {app.playerOnly ? 'They last for this game only.' : 'They stay in this game unless you press 💾 Keep in game.'}
       </span>
       <span class="spacer"></span>
       <button class="primary" onclick={onclose} title="Esc">Done</button>

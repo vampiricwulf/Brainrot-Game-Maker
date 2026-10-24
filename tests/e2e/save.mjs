@@ -310,6 +310,32 @@ try {
   await c.keyboard.press('Control+y');
   await c.getByText('1 file is missing from this browser').waitFor();
   assert((await c.locator('.card', { hasText: 'song.mp3' }).count()) === 1, 'reconnecting is one step "Reconnected 1 file" that Undo takes back (the file keeps its name)');
+  // ⬇ Export as a web page with a file still missing: one message says where the file went and what it plays without
+  // (a toast under the missing files' window was cut to one line).
+  // (A file to play needs a round.)
+  await c.getByRole('button', { name: '＋ Add round' }).click();
+  await c.getByRole('menuitem', { name: /Jeopardy board/ }).click();
+  const missingHtml = await exportHtml(c);
+  const exportTold = c.getByRole('alertdialog');
+  await exportTold.waitFor();
+  const exportSaid = await exportTold.innerText();
+  assert(
+    exportSaid.includes('Exported a playable HTML file') && /missing and weren't included, so the game plays without them:\s*pic\.png/.test(exportSaid) && !(await c.locator('.toast', { hasText: 'Exported a playable' }).count()),
+    `exported with a file missing: one message says where it went and which file it plays without (${exportSaid.replace(/\s+/g, ' ')})`,
+  );
+  await exportTold.getByRole('button', { name: 'OK' }).click();
+  const missingCopy = resolve('test-results/save-missing.html');
+  await missingHtml.saveAs(missingCopy);
+  const short = await fresh.newPage();
+  short.on('pageerror', (e) => errors.push(`[short copy] ${e.message}`));
+  await short.goto(pathToFileURL(missingCopy).href);
+  const shortPack = short.waitForEvent('download');
+  await short.getByRole('button', { name: /Download as \.brainrot/ }).click({ timeout: 20000 });
+  await shortPack;
+  await short.locator('.toast', { hasText: '(1 file wasn’t in this copy, so it isn’t in the pack)' }).waitFor();
+  assert(true, 'its ⬇ Download as .brainrot says 1 file wasn’t in this copy');
+  await short.close();
+  await c.getByRole('button', { name: 'Media (2)' }).click();
   // Replace file… checks the kind, then fixes the picture everywhere it's used.
   const pic = c.locator('.card', { hasText: 'pic.png' });
   const [wrong] = await Promise.all([c.waitForEvent('filechooser'), pic.getByRole('button', { name: '🔗 Replace file…' }).click()]);

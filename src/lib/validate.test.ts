@@ -85,6 +85,12 @@ describe('the checklist', () => {
       tab: 'media',
       player: '1 media file missing from this game: ask whoever made it for a new copy',
     });
+    // One used on a clue: a player-only file names where (it has no 🖼 Media to look in).
+    const clue = (game.rounds[0] as BoardRound).categories[0].clues[1];
+    clue.questionSlide.elements.push(newImageEl('m2', 100, 100));
+    expect(validate(game).find((p) => p.text === '1 media file missing')?.player).toBe(
+      '1 media file missing from this game (on Jeopardy! › Category 1 › $400 › Question › pic.png): ask whoever made it for a new copy',
+    );
     // One deleted but still on a tile too: its own words in a player-only file (not two identical lines).
     (game.rounds[0] as BoardRound).categories[0].clues[0].tileFace = { image: 'deleted1' };
     expect(validate(game).find((p) => p.text.includes('deleted file'))?.player).toBe('1 file used on slides but missing from this game: ask whoever made it for a new copy');
