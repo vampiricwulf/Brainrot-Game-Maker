@@ -2,24 +2,26 @@
 // where a clue's media was, when its slide comes back: not for the editor's preview, nor one that hadn't started yet.
 import { afterEach, describe, expect, it } from 'vitest';
 import {
-  applyLocal, localMedia, mediaScope, previewMediaScope, registerMedia, setMediaRole, unregisterMedia, updateMedia, type MediaHandle,
+  applyLocal, handover, localMedia, mediaScope, previewMediaScope, registerMedia, setMediaRole, unregisterMedia, updateMedia, type MediaHandle,
   type MediaState,
 } from './mediactl.svelte';
 
-/** A stand-in element: its handle records what it was told. */
-function fake(): MediaHandle & { muted: boolean; calls: string[] } {
+/** A stand-in element: its handle records what it was told (its volume and loop apart). */
+function fake(): MediaHandle & { muted: boolean; volume?: number; loop?: boolean; calls: string[] } {
   const f = {
     muted: false,
+    volume: undefined as number | undefined,
+    loop: undefined as boolean | undefined,
     calls: [] as string[],
     play: () => f.calls.push('play'),
     pause: () => f.calls.push('pause'),
     seek: (t: number) => f.calls.push(`seek ${t}`),
-    setVolume: () => {},
+    setVolume: (v: number) => (f.volume = v),
     setMuted: (m: boolean) => {
       f.muted = m;
       f.calls.push(m ? 'mute' : 'unmute');
     },
-    setLoop: () => {},
+    setLoop: (l: boolean) => (f.loop = l),
   };
   return f;
 }
@@ -68,6 +70,22 @@ describe('a media element changing role', () => {
     expect(localMedia.a.role).toBe('single');
     applyLocal({ el: 'a', op: 'muted', value: false });
     expect(h.calls).toContain('unmute');
+  });
+
+  it('notes where the host’s own copy was as the audience window opens (its copy goes on from there), and forgets it as it closes', () => {
+    const h = fake();
+    registerMedia('a', 'single', h, state());
+    updateMedia('a', { duration: 8, time: 3, muted: true, volume: 0.3, loop: true });
+    setMediaRole('a', 'mirror');
+    expect(handover.get('a')).toMatchObject({ time: 3, paused: false, muted: true, volume: 0.3, loop: true });
+    setMediaRole('a', 'single');
+    expect(handover.has('a')).toBe(false);
+    // Not one still waiting to play by itself (it does there, after its entrance), nor one not loaded yet.
+    registerMedia('b', 'single', fake(), state({ duration: 8, waiting: true }));
+    registerMedia('c', 'single', fake(), state());
+    setMediaRole('b', 'mirror');
+    setMediaRole('c', 'mirror');
+    expect([...handover.keys()]).toEqual([]);
   });
 
   it('does nothing for media that isn’t there, or keeps its role', () => {
@@ -120,6 +138,18 @@ describe('the editor’s ▶ Preview after a game left mid-clue', () => {
       unregisterMedia('a');
       mediaScope('');
     }
+  });
+});
+
+describe('a clue’s clip when its slide comes back (R, R)', () => {
+  it('is at the volume and looping as the host left it, as well as where it was', () => {
+    mediaScope('clue:0.0.0');
+    comesUp('a');
+    updateMedia('a', { time: 2, paused: true, volume: 0.2, loop: true });
+    unregisterMedia('a');
+    const h = fake();
+    registerMedia('a', 'single', h, state());
+    expect([h.volume, h.loop, localMedia.a.volume, localMedia.a.loop]).toEqual([0.2, true, 0.2, true]);
   });
 });
 

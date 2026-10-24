@@ -81,6 +81,8 @@ interface Kept {
   time: number;
   muted: boolean;
   paused: boolean;
+  volume: number;
+  loop: boolean;
 }
 const kept = new Map<string, Kept>();
 const restoring = new Map<string, { k: Kept; until: number; seeked: boolean }>();
@@ -122,20 +124,35 @@ export function registerMedia(id: string, role: MediaRole, handle: MediaHandle, 
   entries.set(id, { role, handle, start, scope });
   const k = kept.get(`${role}:${id}`);
   kept.delete(`${role}:${id}`);
-  // Muted as it was (the host's copy always stays muted); its place once it knows its length (see updateMedia).
+  // Muted, at the volume and looping as it was (the host's copy always stays muted); its place once it knows its length
+  // (see updateMedia).
   const muted = role === 'mirror' || (k ? k.muted : state.muted);
+  const now = k ? { ...state, muted, volume: k.volume, loop: k.loop } : { ...state, muted };
+  localMedia[id] = { ...now, role };
   if (k) {
     handle.setMuted(muted);
+    handle.setVolume(k.volume);
+    handle.setLoop(k.loop);
     restoring.set(id, { k, until: Date.now() + 8000, seeked: false });
   }
-  localMedia[id] = { ...state, muted, role };
-  listeners.forEach((l) => l(id, { ...state, muted }));
+  listeners.forEach((l) => l(id, now));
 }
+
+/**
+ * Where the host's own copy was when the audience window opened (as it took the sound): sync puts that window's copy
+ * there when it says hello, so the clip goes on from the host's time, muted and at the volume the host had.
+ */
+export const handover = new Map<string, Kept & { at: number }>();
 
 /** The same element changing role: the audience window opened or closed while its slide is up. */
 export function setMediaRole(id: string, role: MediaRole): void {
   const e = entries.get(id);
   if (!e || e.role === role) return;
+  const st = localMedia[id];
+  // (Not a site's own player, nor one not loaded yet or still waiting to play by itself: those start afresh there.)
+  if (e.role === 'single' && role === 'mirror' && st && st.kind !== 'external' && st.duration > 0 && !st.waiting)
+    handover.set(id, { time: st.time, paused: st.paused, muted: st.muted && !st.blocked, volume: st.volume, loop: st.loop, at: Date.now() });
+  else handover.delete(id);
   e.role = role;
   if (localMedia[id]) localMedia[id].role = role;
   // The host's copy goes silent at once, so the sound only ever comes from one window.
@@ -178,8 +195,9 @@ export function unregisterMedia(id: string): void {
   // Only in the scope it came up in: not the editor's preview's media (it came up in none). Nor one still waiting to
   // play by itself: it starts afresh, after its entrance again.
   if (e && st && scope && e.scope === scope && st.kind !== 'external' && !st.waiting)
-    kept.set(`${e.role}:${id}`, { time: st.time, muted: st.muted, paused: st.paused });
+    kept.set(`${e.role}:${id}`, { time: st.time, muted: st.muted, paused: st.paused, volume: st.volume, loop: st.loop });
   restoring.delete(id);
+  handover.delete(id);
   entries.delete(id);
   delete localMedia[id];
   listeners.forEach((l) => l(id, null));

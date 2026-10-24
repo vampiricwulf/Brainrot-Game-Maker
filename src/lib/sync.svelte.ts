@@ -8,7 +8,7 @@
 //   (e.g. the desktop app had to create the window through its own window API).
 // The audience window picks one link, so nothing is processed twice.
 import { getBlob } from './media.svelte';
-import { applyLocal, onLocalMediaChange, remoteMedia, type MediaCmd, type MediaState } from './mediactl.svelte';
+import { applyLocal, handover, onLocalMediaChange, remoteMedia, type MediaCmd, type MediaState } from './mediactl.svelte';
 import { newId, type Game, type MediaRef, type Session } from './model';
 import type { Live } from './live';
 import { inTauri } from './platform';
@@ -236,11 +236,15 @@ function onSound(ev: SoundReport): void {
 }
 
 /**
- * What the audience window's media was doing when it said hello again (reloaded, or closed and reopened): an element
- * that starts over there (from 0:00, with sound) is put back where it was once its length is known, paused or muted if
- * it was. Like mediactl's restore for a slide coming back.
+ * What the audience window's media was doing when it said hello again (reloaded, or closed and reopened), or the host's
+ * own copy when it first opens mid-clue: an element that starts over there (from 0:00, with sound) is put back where it
+ * was once its length is known, paused or muted if it was, at its volume. Like mediactl's restore for a slide coming
+ * back.
  */
-let mediaWas: Record<string, { paused: boolean; muted: boolean; time: number; at: number; until: number; fresh?: boolean; seeked?: boolean }> = {};
+let mediaWas: Record<
+  string,
+  { paused: boolean; muted: boolean; time: number; volume: number; loop: boolean; at: number; until: number; fresh?: boolean; seeked?: boolean }
+> = {};
 
 function restoreMedia(id: string, st: MediaState): void {
   const was = mediaWas[id];
@@ -255,9 +259,12 @@ function restoreMedia(id: string, st: MediaState): void {
     if (!(Number.isFinite(st.duration) && st.duration > 0)) return; // its length first, so the seek lands
     was.seeked = true;
     const t = was.time + (was.paused ? 0 : (Date.now() - was.at) / 1000);
+    // At the volume, and looping or not, as the host left it.
+    if (was.volume !== st.volume) post({ type: 'media-cmd', cmd: { el: id, op: 'volume', value: was.volume } });
+    if (was.loop !== st.loop) post({ type: 'media-cmd', cmd: { el: id, op: 'loop', value: was.loop } });
     // One that would have ended meanwhile stays at its end (play() there would start it over); a loop goes round.
-    if (t >= st.duration && !st.loop) was.paused = true;
-    post({ type: 'media-cmd', cmd: { el: id, op: 'seek', value: st.loop ? t % st.duration : Math.min(t, st.duration) } });
+    if (t >= st.duration && !was.loop) was.paused = true;
+    post({ type: 'media-cmd', cmd: { el: id, op: 'seek', value: was.loop ? t % st.duration : Math.min(t, st.duration) } });
     post({ type: 'media-cmd', cmd: { el: id, op: was.paused ? 'pause' : 'play' } });
     // Muted again if the host muted it (never unmuted from here: that would stop a muted autoplay before a click).
     if (was.muted && !st.muted) post({ type: 'media-cmd', cmd: { el: id, op: 'muted', value: true } });
@@ -279,7 +286,10 @@ function fromAudience(msg: AudienceMsg): void {
       // still waiting to play by itself (it does there, after its entrance). Muted only if the host muted it, not a
       // blocked autoplay's fallback.
       if (m.kind !== 'external' && m.duration > 0 && !m.waiting)
-        mediaWas[k] = { paused: m.paused, muted: m.muted && !m.blocked, time: m.time, at, until: at + 10000 };
+        mediaWas[k] = { paused: m.paused, muted: m.muted && !m.blocked, time: m.time, volume: m.volume, loop: m.loop, at, until: at + 10000 };
+    // Just opened mid-clue: it takes the clip over from where the host's own copy had it.
+    for (const [k, h] of handover) mediaWas[k] ??= { ...h, until: at + 10000 };
+    handover.clear();
     for (const k of Object.keys(remoteMedia)) delete remoteMedia[k];
     audience.open = true;
     sound.cueBlocked = false;
@@ -511,6 +521,8 @@ export function closeAudienceWindow(): void {
 
 /** Send a playback command to media in this window and, in dual mode, the audience window. */
 export function mediaCommand(cmd: MediaCmd): void {
+  // The host's say from now on: a clip being put back where it was isn't paused again when the host plays it.
+  delete mediaWas[cmd.el];
   applyLocal(cmd);
   post({ type: 'media-cmd', cmd });
 }

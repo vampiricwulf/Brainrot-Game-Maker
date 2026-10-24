@@ -259,6 +259,19 @@ try {
   await page.keyboard.press('m');
   const hushed = await page.waitForFunction((s) => document.querySelector(s).muted, cut, { timeout: 5000 }).then(() => true, () => false);
   assert(hushed && (await page.locator(gif).evaluate((v) => v.muted)), 'M mutes the sound, and the GIF stays silent');
+  // Turned down to 20% and set to 🔁 Loop: the answer shown and hidden again (R, R), it comes back so (not at 100%, once).
+  await soundRow.getByRole('slider', { name: 'Volume' }).fill('0.2');
+  await page.waitForFunction((s) => Math.abs(document.querySelector(s).volume - 0.2) < 0.01, cut);
+  await soundRow.getByRole('button', { name: 'Loop' }).click();
+  await soundRow.getByRole('button', { name: 'Loop', pressed: true }).waitFor();
+  await page.evaluate(() => document.activeElement?.blur());
+  await page.keyboard.press('r');
+  await page.locator(cut).waitFor({ state: 'detached' });
+  await page.keyboard.press('r');
+  await page.locator(cut).waitFor({ state: 'attached' });
+  await page.waitForFunction((s) => document.querySelector(s).readyState >= 1, cut);
+  const back = { volume: await page.locator(cut).evaluate((a) => a.volume), loop: await soundRow.getByRole('button', { name: 'Loop' }).getAttribute('aria-pressed') };
+  assert(Math.abs(back.volume - 0.2) < 0.01 && back.loop === 'true', `the answer shown and hidden again: the sound comes back at its volume, looping (${JSON.stringify(back)})`);
   await page.keyboard.press('Shift+Escape');
   await page.locator('.stage-box .board').waitFor();
   await guard();
@@ -349,6 +362,9 @@ try {
   await aud.waitForFunction((s) => (document.querySelector(s)?.currentTime ?? 0) > 1.5, song);
   await page.locator('.mc').getByRole('button', { name: 'Pause' }).click();
   await waitPaused(aud, song, true);
+  // (Turned down to 40% too.)
+  await page.locator('.mc').getByRole('slider', { name: 'Volume' }).fill('0.4');
+  await aud.waitForFunction((s) => Math.abs(document.querySelector(s).volume - 0.4) < 0.01, song);
   const at = await aud.locator(song).evaluate((a) => a.currentTime);
   const heldAt = (p) =>
     p.waitForFunction(([s, t]) => {
@@ -359,8 +375,9 @@ try {
   await heldAt(aud);
   // (Past the moment its autoplay could start it again.)
   await aud.waitForTimeout(1700);
-  let now = await aud.locator(song).evaluate((a) => ({ paused: a.paused, t: a.currentTime }));
+  let now = await aud.locator(song).evaluate((a) => ({ paused: a.paused, t: a.currentTime, volume: a.volume }));
   assert(now.paused && Math.abs(now.t - at) < 0.3, `a reloaded audience window keeps the paused sound where it was (${at.toFixed(1)} s → ${now.t.toFixed(1)} s, paused)`);
+  assert(Math.abs(now.volume - 0.4) < 0.01, `and at the volume the host left it at (${now.volume})`);
   await page.locator('.mc').getByRole('button', { name: 'Play' }).waitFor();
   assert(true, "and the host's media row still says it's paused");
   await aud.close();
@@ -387,30 +404,47 @@ try {
   await waitPaused(page, hostSong, true);
   await page.locator('.mc').getByRole('button', { name: 'Play' }).waitFor();
   assert(true, 'and Space plays and pauses it');
-  // The clue opened again in one window (its sound playing by itself), then the audience window opened: the host's copy
-  // goes silent, and stays silent when the host mutes and unmutes the sound.
+  // The clue opened again in one window (its sound playing by itself), muted (M) and turned down to 30% there, a second
+  // in; then the audience window opened: its copy takes the sound over from there (muted, at 30%, at the host's time,
+  // not from 0:00 at full volume), and the host's copy goes silent, staying so when the host unmutes and mutes it.
   await page.keyboard.press('Shift+Escape');
   await page.locator('.stage-box .board').waitFor();
   await guard();
   await page.locator('.stage-box .board .tile').nth(1).click();
   await waitPaused(page, hostSong, false);
+  await page.waitForFunction((s) => document.querySelector(s).currentTime > 1, hostSong);
+  await page.keyboard.press('m');
+  await page.waitForFunction((s) => document.querySelector(s).muted, hostSong);
+  await page.locator('.mc').getByRole('slider', { name: 'Volume' }).fill('0.3');
+  await page.waitForFunction((s) => Math.abs(document.querySelector(s).volume - 0.3) < 0.01, hostSong);
+  await page.evaluate(() => document.activeElement?.blur());
   const [aud3] = await Promise.all([page.waitForEvent('popup'), page.getByRole('button', { name: 'Reopen (A)' }).click()]);
   aud3.on('pageerror', (e) => errors.push('[audience 3] ' + e.message));
   await aud3.waitForLoadState('domcontentloaded');
   await aud3.waitForFunction((s) => (document.querySelector(s)?.readyState ?? 0) >= 1, song);
+  const tookOver = await aud3
+    .waitForFunction((s) => { const a = document.querySelector(s); return a.muted && Math.abs(a.volume - 0.3) < 0.01 && a.currentTime > 1; }, song, { timeout: 10000 })
+    .then(() => true, () => false);
+  const [hostT, audT] = await Promise.all([page.locator(hostSong).evaluate((a) => a.currentTime), aud3.locator(song).evaluate((a) => a.currentTime)]);
+  const audWas = await aud3.locator(song).evaluate((a) => ({ muted: a.muted, volume: a.volume }));
+  assert(tookOver && Math.abs(hostT - audT) < 1, `the audience window opened mid-clue picks the sound up where the host had it: muted, at 30%, at its time (host ${hostT.toFixed(1)} s, audience ${audT.toFixed(1)} s, ${JSON.stringify(audWas)})`);
   await page.waitForFunction((s) => document.querySelector(s)?.muted === true, hostSong);
   const mute = page.locator('.mc').getByRole('button', { name: 'Mute' });
-  await mute.click();
   await page.waitForFunction(() => document.querySelector('.mc [aria-label="Mute"]')?.getAttribute('aria-pressed') === 'true');
   await mute.click();
   await page.waitForFunction(() => document.querySelector('.mc [aria-label="Mute"]')?.getAttribute('aria-pressed') === 'false');
   await aud3.waitForFunction((s) => document.querySelector(s)?.muted === false, song);
-  assert(await page.locator(hostSong).evaluate((a) => a.muted), "the audience window opened mid-clue: muted and unmuted, the sound comes back in the audience window only (the host's copy stays silent)");
+  assert(await page.locator(hostSong).evaluate((a) => a.muted), "unmuted, the sound comes back in the audience window only (the host's copy stays silent)");
+  await mute.click();
+  await aud3.waitForFunction((s) => document.querySelector(s)?.muted === true, song);
 
   // Left mid-clue in one window (Keep & leave), the sound paused: the editor's ▶ Preview of that clue plays it from the
   // start, and so does ↻ Replay, rather than going on from where it was. Resume game still has it paused where it was.
+  // (The audience window closed with the sound muted there: the host's copy takes it over muted.)
   await aud3.close();
   await page.locator('[data-audience-lost]').waitFor();
+  await page.locator('.mc .item').waitFor();
+  assert(await page.locator(hostSong).evaluate((a) => a.muted), "the audience window closed with the sound muted there: the host's copy stays muted");
   await page.waitForFunction((s) => (document.querySelector(s)?.currentTime ?? 0) > 4, hostSong);
   await page.locator('.mc').getByRole('button', { name: 'Pause' }).click();
   await waitPaused(page, hostSong, true);

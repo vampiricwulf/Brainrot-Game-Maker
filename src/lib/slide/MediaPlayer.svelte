@@ -2,7 +2,7 @@
 <script lang="ts">
   import { onMount, untrack } from 'svelte';
   import type { AudioEl, EmbedEl, VideoEl } from '../model';
-  import { localMedia, openMediaPopup, registerMedia, setMediaRole, unregisterMedia, updateMedia, type MediaRole } from '../mediactl.svelte';
+  import { localMedia, openMediaPopup, registerMedia, remoteMedia, setMediaRole, unregisterMedia, updateMedia, type MediaRole } from '../mediactl.svelte';
   import { mediaCommand } from '../sync.svelte';
   import { applySink } from '../audioout.svelte';
   import { playRange } from '../editing';
@@ -94,7 +94,9 @@
     const key = `${mode}|${role}|${el.muted}`;
     if (!node || key === mutedFor) return;
     if (mutedFor) {
-      node.muted = mode === 'edit' || role === 'mirror' || el.muted;
+      // The audience window closed: the host's copy takes the sound over muted as it was there (M pressed there).
+      const there = role === 'single' && mutedFor.split('|')[1] === 'mirror' ? untrack(() => remoteMedia[el.id]) : undefined;
+      node.muted = mode === 'edit' || role === 'mirror' || (there ? there.muted && !there.blocked : el.muted);
       // The host's controls and keys go to the copy with the sound (the host's own, once the audience window closes).
       const n = node, r = role;
       if (mode === 'play')

@@ -22,6 +22,8 @@ in plain words for the people who make and host games. Anything committed but no
 - An exported file's ⬇ Download as .brainrot says “1 file wasn’t in this copy” (it said “weren’t”).
 - An exported file's first screen shows its logo in the game's own values font from the start (it did only after ▶ Play and ◀ Back), and a screen reader can jump to it as the page's main region.
 - An exported file's ? list before the game no longer lists Ctrl+Z / Ctrl+Y, which do nothing there.
+- 📺 Audience opened mid-clue: its window picks the clue's video or sound up where the host had it in one window (at its time, playing or paused, muted and at its volume), instead of from 0:00 with sound at full volume. Closed again, the host's copy goes on muted if it was muted there.
+- A clue's video or sound keeps the volume and 🔁 Loop the host set when its slide comes back (the answer shown and hidden again) and when the audience window reloads, as it already kept its place and mute.
 
 ## 2026-10-24
 
