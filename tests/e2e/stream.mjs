@@ -344,7 +344,10 @@ async function viewers() {
   await badge.waitFor();
   assert((await plates()) === before, 'the code is back after it, and the score plates never moved');
 
-  // A Daily Double: only who found it plays, so no join code.
+  // A Daily Double: only who found it plays, so no join code. (The computer set to reduce motion: the host's own copy of
+  // the stage comes up still, what viewers see keeps to Reduce motion on stream, off here.)
+  await host.emulateMedia({ reducedMotion: 'reduce' });
+  await host.evaluate(() => (window.__entrances = []));
   await host.locator('.board .tile').first().click();
   await host.locator('.dd .chip').nth(2).click();
   await host.locator('.dd input[type=number]').fill('0');
@@ -353,6 +356,9 @@ async function viewers() {
   assert((await badge.count()) === 0, 'no join code over a Daily Double’s question (nobody buzzes)');
   const ddIn = await aud.evaluate(() => window.__entrances.filter((e) => /\.(dd-in|full)\b/.test(e.el)).map((e) => `${e.el.split('.')[1]} ${e.from}`).join(', '));
   assert(/dd-in scale\(0\.05\).*full scale\(0\.15\)/.test(ddIn), `the Daily Double splash zooms in, then its question does (${ddIn})`);
+  const hostIn = await host.evaluate(() => window.__entrances.filter((e) => /\.(dd-in|full)\b/.test(e.el)).map((e) => `${e.el.split('.')[1]} ${e.from}`).join(', '));
+  assert(hostIn === '', `with the computer set to reduce motion, the host's own copy of the stage doesn't zoom (${hostIn || 'still'})`);
+  await host.emulateMedia({ reducedMotion: null });
   await host.keyboard.press('r');
   await aud.waitForTimeout(300);
   assert((await badge.count()) === 0, 'nor its answer');

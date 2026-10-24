@@ -38,6 +38,27 @@ const contrastOf = (loc) =>
     const [a, b] = [lum(cs.color), lum(cs.backgroundColor)].sort((x, y) => y - x);
     return (a + 0.05) / (b + 0.05);
   });
+/** The same, on the first background under the text (a link, a key chip on a button); 0 if it's faded (opacity). */
+const inkOn = (loc) =>
+  loc.evaluate((el) => {
+    const rgb = (c) => c.match(/\d+(\.\d+)?/g).slice(0, 3).map(Number);
+    const lum = (c) => {
+      const [r, g, b] = rgb(c).map((v) => ((v /= 255) <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4));
+      return 0.2126 * r + 0.7152 * g + 0.0722 * b;
+    };
+    let faded = false;
+    let bg = getComputedStyle(document.body).backgroundColor;
+    for (let e = el; e; e = e.parentElement) {
+      const cs = getComputedStyle(e);
+      if (cs.opacity !== '1') faded = true;
+      if (!/^rgba\(.*,\s*0\)$|^transparent$/.test(cs.backgroundColor)) {
+        bg = cs.backgroundColor;
+        break;
+      }
+    }
+    const [a, b] = [lum(getComputedStyle(el).color), lum(bg)].sort((x, y) => y - x);
+    return faded ? 0 : (a + 0.05) / (b + 0.05);
+  });
 
 try {
   await page.goto(pathToFileURL(file).href);
@@ -128,7 +149,7 @@ try {
   await page.keyboard.press('Shift+Tab');
   await page.keyboard.press('Tab');
   const kb = await ring();
-  assert(kb.style === 'solid' && kb.width >= 2 && kb.color === 'rgb(79, 124, 255)', `the same button reached with Tab shows the accent ring (${JSON.stringify(kb)})`);
+  assert(kb.style === 'solid' && kb.width >= 2 && kb.color === 'rgb(80, 128, 255)', `the same button reached with Tab shows the accent ring (${JSON.stringify(kb)})`);
 
   // ---------- A toast over a window stays clear of its buttons ----------
   await page.locator('nav > button.round-tab').first().click();
@@ -236,6 +257,10 @@ try {
   assert((await names.count()) === before - 1 && (await undoNote.innerText()).includes('Deleted Player 2'), 'deleting a player before the game says so');
   await undoNote.getByRole('button', { name: '↶ Undo' }).click();
   assert((await names.count()) === before, 'and its Undo brings them back');
+  // Small text in the accent color, and Start game's key chip, read at 4.5:1.
+  const testSound = await inkOn(page.getByRole('button', { name: 'Test the sound' }));
+  const startKey = await inkOn(page.locator('.start-key'));
+  assert(testSound >= 4.5 && startKey >= 4.5, `“Test the sound” reads at ${testSound.toFixed(2)}:1, and Start game’s Ctrl+⏎ at ${startKey.toFixed(2)}:1`);
 
   const startedAt = await page.evaluate(() => Date.now());
   await page.getByRole('button', { name: 'Start game ▶' }).click();
@@ -244,6 +269,13 @@ try {
   const saidHas = (re) => page.waitForFunction((src) => new RegExp(src).test(document.getElementById('live-region')?.dataset.said ?? ''), re.source);
   await saidHas(/Untitled Game has started/);
   assert((await focused()) !== 'BODY', `starting the game says so, and puts the keys on the panel (${await focused()})`);
+  // Regions a screen reader can jump between: the stage and the host controls (🚪 Exit).
+  const main = page.getByRole('main');
+  assert(
+    (await main.getByRole('region', { name: 'Stage' }).count()) === 1 &&
+      (await main.getByRole('region', { name: 'Host controls' }).getByRole('button', { name: '🚪 Exit' }).count()) === 1,
+    'the game screen has a Stage region and a Host controls region (🚪 Exit)',
+  );
   // The same after a reload (once the game is stored) and Resume game, Enter picking how it's shown.
   for (let i = 0; i < 100 && !((await stored(page))?.savedAt >= startedAt); i++) await page.waitForTimeout(100);
   await page.reload();
@@ -406,6 +438,13 @@ try {
     return { over: h.scrollWidth - h.clientWidth, right, page: document.documentElement.scrollWidth, playRight: play.right };
   });
   assert(fit720.over <= 0 && fit720.right <= 720 && fit720.page <= 720 && fit720.playRight <= 720, `at 200% zoom (720px) every header button is on screen and the page doesn’t scroll sideways (${JSON.stringify(fit720)})`);
+  // (640×360, as 1280×720 at 200%: the round list, a bar across the top, keeps to 30% of the height and scrolls.)
+  await page.setViewportSize({ width: 640, height: 360 });
+  const navH = await page.locator('.editor nav').evaluate(async (n) => {
+    await new Promise((ok) => requestAnimationFrame(() => requestAnimationFrame(ok)));
+    return { h: Math.round(n.getBoundingClientRect().height), all: n.scrollHeight };
+  });
+  assert(navH.h <= 108, `at 200% zoom (640×360) the round list takes at most 30% of the height (${navH.h}px of ${navH.all}px)`);
   await page.setViewportSize({ width: 1280, height: 720 });
 
   // ---------- The keys after a move, a menu left with Tab, and New ----------

@@ -1495,12 +1495,14 @@
     .body {
       flex-direction: column;
     }
+    /* (At most 30% of the height, as at 200% zoom on a laptop: the list scrolls in its box, the rest is for editing.) */
     nav {
       width: auto;
       flex-direction: row;
       flex-wrap: wrap;
       border-right: none;
       border-bottom: 1px solid var(--border);
+      max-height: 30vh;
     }
     .navlabel,
     .problems,

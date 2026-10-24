@@ -433,6 +433,24 @@ try {
   await p3.locator('.stage-box .board .tile').first().click();
   await p3.waitForFunction(() => document.querySelector('.panel .status')?.textContent?.includes('Answer hidden'));
   await oneLine('in a clue');
+  // 200% zoom on a laptop (683×384), a player picked: ＋ Award and the main button keep their row, clear of the
+  // players' chips (what's at the middle of each is it). The rest of the row (− Deduct, in a wider font) scrolls under.
+  await p3.setViewportSize({ width: 683, height: 384 });
+  await p3.keyboard.press('1');
+  await p3.locator('.panel .award button.good').waitFor();
+  const covered = await p3.evaluate(async () => {
+    await new Promise((ok) => requestAnimationFrame(() => requestAnimationFrame(ok)));
+    const out = [...document.querySelectorAll('.panel .award button.named.good, .panel [data-next]')]
+      .filter((el) => {
+        const r = el.getBoundingClientRect();
+        return !el.contains(document.elementFromPoint(r.x + r.width / 2, r.y + r.height / 2));
+      })
+      .map((el) => el.textContent.trim().slice(0, 20));
+    const chips = document.querySelector('.panel > .players').getBoundingClientRect();
+    if (document.querySelector('.panel [data-next]').getBoundingClientRect().top < chips.bottom - 1) out.push('the main button is over the chips');
+    return out;
+  });
+  assert(covered.length === 0, `at 683×384 (200% zoom) ＋ Award and the main button are each in sight, under the chips${covered.length ? ` (not: ${covered.join(', ')})` : ''}`);
 
   // A crowded single window (six players, longer names): the stage keeps one size from the board to a clue and with a
   // player picked (a $200 clue, then a $1,000 one), and through a 🤝 partner clue from PARTNER UP! (the wheel, the

@@ -699,6 +699,8 @@
 
 <div
   class="panel"
+  role="region"
+  aria-label="Host controls"
   class:dual
   class:side
   class:final={session.phase === 'final' && !side}
@@ -1523,10 +1525,12 @@
     background: linear-gradient(rgba(43, 182, 115, 0.1), rgba(43, 182, 115, 0.1)), var(--panel);
   }
   /* Under the stage, when the panel runs out of height (a tall wheel editor, a long Final), the action part scrolls in
-     its place: it never spills up over the stage, out of the scrollbar's reach (the row sits at its foot). */
+     its place: it never spills up over the stage, out of the scrollbar's reach (the row sits at its foot). It keeps one
+     row of buttons (＋ Award, the main button) in sight, at 200% zoom on a laptop too: the stage gives way first. */
   .panel:not(.side) > .act {
     flex: 0 1 auto;
     grid-template-rows: minmax(0, 1fr);
+    min-height: 32px;
   }
   .panel:not(.side) > .act > .action {
     max-height: 100%;

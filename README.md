@@ -173,8 +173,8 @@ co-winners), dice, wheel and roll-off results, the countdown and the
 scoreboard going on or off, RPG moves (doorways and regroups too) and board-game turns, the buzz order (as it ends up)
 and who is answering, a phone's wager coming in (never how much), and the app's notes are announced (politely, a burst of
 changes said once, with a window open too). The host's board is one Tab
-stop: the arrow keys go from tile to tile. In Windows High Contrast, the selected players and pressed buttons are
-outlined.
+stop: the arrow keys go from tile to tile. The Stage and the Host controls are named regions, to jump between. In
+Windows High Contrast, the selected players and pressed buttons are outlined.
 
 ![A clue on screen](docs/screenshots/play-clue.png)
 
@@ -414,7 +414,8 @@ goes up doesn't judge its player yet: press it again.
   usually loses its Dolby Digital sound), and Ctrl+Z puts the old file back.
 - **⚙ Settings** (in the header's ⋯ menu, with Export as a web page, Export JSON, ⌨ Keyboard shortcuts, 📖 How to host
   (this guide) and ℹ About) has these options:
-  - **Reduce motion on stream** (the editor and host controls also follow your computer's reduce-motion setting).
+  - **Reduce motion on stream** (the editor, the host controls and your own copy of the stage beside the audience
+    window also follow your computer's reduce-motion setting).
   - **Undo**: how many changes Ctrl+Z and the 🕘 History tab remember (300 by default).
   - **Autosave** every few minutes (desktop app). The default is every 5 minutes, keeping the last 3.
   - **Save replaces the game's last save** and keeps the two before it as `.bak` / `.bak2` (desktop app, on by

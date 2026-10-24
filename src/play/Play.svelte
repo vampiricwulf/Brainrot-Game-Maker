@@ -4629,9 +4629,11 @@
     <h1 class="sr-only">{game.title}</h1>
     <!-- The stage keeps a floor: the host panel's tall parts (tools, Final, results, RPG and board game rounds) scroll. -->
     <div class="stage-area" class:dual>
+      <!-- (Named, as the host panel is, so a screen reader can jump between them.) -->
       <div
         class="stage-box"
-        role="presentation"
+        role="region"
+        aria-label="Stage"
         ondragover={(e) => (itemDrag.now ? itemOver(e) : session.phase === 'rpg' && e.dataTransfer?.types.includes('Files') && e.preventDefault())}
         ondrop={(e) => (itemDrag.now ? itemDrop(e) : dropOnStage(e))}
         ondragleave={() => itemDrag.now && (dropHover.at = null)}
@@ -5171,7 +5173,6 @@
     margin-left: 6px;
     border: 1px solid currentColor;
     border-radius: 4px;
-    opacity: 0.75;
     vertical-align: middle;
   }
   .actions > button {

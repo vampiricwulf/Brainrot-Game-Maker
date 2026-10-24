@@ -13,12 +13,17 @@ in plain words for the people who make and host games. Anything committed but no
 
 ## Unreleased
 
+### Added
+
+- The game screen's stage and host controls are named regions (Stage, Host controls), so a screen reader can jump from the board to ＋ Award or 🚪 Exit instead of tabbing through every tile.
+
 ### Changed
 
 - In the editor the tiebreaker is ❓ (its button in the round list and its empty page), as it is in play, where 🤝 means a partner clue or 🤝 Declare co-winners.
 - The asks on the 📱 Phone buzzers card (✕ Close the room, ticking Teams) and 👥 Players' − put the safe answer first (Keep it open, Keep teams…, Keep) and the red one after it, as every other ask does.
 - ＋ Add round's sample game is ✨ The sample game, as on the first screen (it was 🎁). Undo steps for a board's rows, categories, random partner clues and imported clues name it as round “Jeopardy!”, as other steps do. Open… says “its undo history” when one recent game is listed.
 - README and the spec say players can answer on their phones too; the spec's lines on going online, where players are set and the host panel's bar match the app.
+- The accent blue (links, focus rings, blue labels) is a touch lighter, so small text in it reads at 4.5:1 on the panels, and Start game ▶'s Ctrl+⏎ is no longer faded.
 
 ### Fixed
 
@@ -37,6 +42,9 @@ in plain words for the people who make and host games. Anything committed but no
 - 🔍 Find gives the focus back to what had it (a tile, a round tab, the 🔍 Find button) when it closes with Esc, ✕ or a click beside it, and after a Go there that has nothing to take the focus. It was lost to the page, and the next Tab started at the top.
 - Tab from a window's last control goes round to its first when the window ends in a list picked with the arrows (🔍 Find's results, the RPG's ⤢ Full map). It lost the focus for one press.
 - A screen reader hears when a phone's wager comes in, for a Daily Double and in the Final (“Player 1’s wager is in (from their phone)”, then “All wagers are in”), never how much.
+- At 200% zoom on a laptop (a 683×384 or 640×400 page), the host panel keeps a row of ＋ Award and the main button in sight: the row shrank to a sliver and the main button sat over a player's chip. What doesn't fit scrolls instead.
+- With the computer set to reduce motion, your own copy of the stage beside the audience window comes up still (a Daily Double, a clue, the Final's spotlight no longer zoom in there). What viewers see still follows Reduce motion on stream.
+- On a narrow window (under 700 px wide, as at 200% zoom) the editor's round list takes at most 30% of the height and scrolls in its box, leaving the rest for editing.
 
 ## 2026-10-23
 
