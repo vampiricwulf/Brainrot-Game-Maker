@@ -553,7 +553,10 @@ on the pre-game screen its own keys first); the main ones:
 A held key counts once: only the arrows (and the numpad in an RPG round) repeat. A button the app put the keys on
 (the one that had them went away, or at the start) doesn't take `Enter` or `Space` for itself until it's chosen (with
 `Tab`, or as the next row of the list the keys were in): the keys keep their shortcuts. `Enter` on the main button in
-a slides round, on a round's title card or its category reveals, does what the button says, as `N`.
+a slides round, on a round's title card or its category reveals, does what the button says, as `N`; in the Final's
+steps and on the end screen it says which key (or click) goes on, and on a wheel or dice tile's Spin! / Roll! the key
+that spins or rolls. With players selected on the board, `Enter` on a tile takes the keys to the Amount box (type the
+points, then `Enter`) instead of opening it; while the keys are there, number keys type and the chips hide theirs.
 
 ---
 

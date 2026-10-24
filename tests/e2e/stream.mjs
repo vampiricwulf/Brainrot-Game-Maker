@@ -584,6 +584,11 @@ async function tileTools() {
   await tileOf('qw').click();
   await stage('.ov .wheel').waitFor();
   await host.locator('.panel [data-buzzrow]', { hasText: 'The buzzers wait for the question (after the wheel)' }).waitFor();
+  // Enter with the keys on its Spin! (where the tile put them) judges nobody: it names the key that spins.
+  await host.waitForFunction(() => document.activeElement?.matches('.panel [data-next]'));
+  await host.keyboard.press('Enter');
+  await host.locator('.toast', { hasText: 'Spin the wheel first: W (or N)' }).waitFor();
+  assert(!(await host.locator('.tc .result').count()), 'Enter on a wheel tile’s Spin! says to spin it first (W, or N), not “Select a player first”');
   await host.keyboard.press('w');
   await host.locator('.tc .result').waitFor();
   assert(

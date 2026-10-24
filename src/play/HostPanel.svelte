@@ -504,10 +504,16 @@
   /** On the board, the Amount row stays folded (± Adjust score) until a player is selected. */
   let adjust = $state(false);
   let amountBox = $state<HTMLInputElement>();
+  /** The keys are in the Amount box: number keys type points there, so the chips' keys go (see .key.gone). */
+  let amountKeys = $state(false);
   $effect(() => {
     if (session.phase !== 'board') adjust = false;
   });
   const showAward = $derived(scoring && (session.phase !== 'board' || !!selected.length || adjust));
+  // (A box taken away with the keys in it says no blur.)
+  $effect(() => {
+    if (!showAward) amountKeys = false;
+  });
 
   function toggle(id: string): void {
     selected = selected.includes(id) ? selected.filter((x) => x !== id) : [...selected, id];
@@ -909,7 +915,7 @@
               aria-pressed={on}
               title="Toggle (key {i + 1})"
             >
-              <span class="key">{i + 1}</span>
+              <span class="key" class:gone={amountKeys}>{i + 1}</span>
               <span class="who" dir="auto" title={p.name}>{p.name}</span>{@render away(p.id, p.name)}
             </button>
           {:else}
@@ -1229,10 +1235,17 @@
               bind:value={() => (ddHidden ? null : amount), (v) => (amount = wholePoints(v))}
               placeholder={ddHidden ? 'hidden' : undefined}
               bind:this={amountBox}
+              onfocus={() => (amountKeys = true)}
+              onblur={() => (amountKeys = false)}
               onkeydown={(e) => {
                 // Give the keys back to the shortcuts afterwards, so the next "2" selects a player instead of typing.
                 if (e.key === 'Enter') {
-                  onaward(e.shiftKey ? -1 : 1);
+                  // The points typed first (± Adjust score): who gets them next.
+                  if (!selected.length && amount && !ddHidden)
+                    hint(
+                      `Now pick who ${e.shiftKey ? 'loses' : 'gets'} ${e.shiftKey ? '−' : '+'}${formatPoints(Math.abs(amount), sym)} (1–${Math.min(9, session.players.length) || 9}), then ${e.shiftKey ? 'Shift+Enter' : 'Enter'}`,
+                    );
+                  else onaward(e.shiftKey ? -1 : 1);
                   e.currentTarget.blur();
                 } else if (e.key === 'Escape') e.currentTarget.blur();
               }}
@@ -1838,6 +1851,10 @@
     font-size: 12px;
     opacity: 0.7;
     margin-right: 4px;
+  }
+  /* The keys are in the Amount box: number keys type the points there, not pick (the key's room kept). */
+  .key.gone {
+    visibility: hidden;
   }
   /* Their phone dropped. */
   .away {

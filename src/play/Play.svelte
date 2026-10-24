@@ -966,6 +966,18 @@
     selected = [];
   }
 
+  /**
+   * A ✍ clue's answers judged (a row's ✔ / ✘, ✔ Judge all): with no row left to judge, the keys go on to the main button
+   * (▦ Done ▶ board), not to the rescue's guess (🙈 Hide answer). While one is left, the next row's ✔ takes them.
+   */
+  function answersJudged(): void {
+    void tick().then(() => {
+      const a = document.activeElement;
+      if (document.querySelector('.play .panel [data-answer-row] button') || (a && a !== document.body && !(a as HTMLButtonElement).disabled)) return;
+      document.querySelector<HTMLElement>('.play .panel [data-next]')?.focus({ preventScroll: true });
+    });
+  }
+
   /** The tiebreaker clue's winner with no points (Amount 0): the tie is settled, the scores stay as they are. */
   function tiebreakWin(sign: 1 | -1, ids: string[]): void {
     const id = ids[0];
@@ -2526,9 +2538,10 @@
   }
 
   // The board becomes pickable (the game starts on it, its intro ends): the keys go on from its first open tile (arrows
-  // + Enter), unless the focus is somewhere already.
+  // + Enter), unless the focus is somewhere already. The end screen: from its main button (a tie's ❓ Tiebreaker clue),
+  // not the tie box's first one.
   $effect(() => {
-    if (app.pregame || session.phase !== 'board' || session.intro) return;
+    if (app.pregame || (session.phase !== 'board' && session.phase !== 'end') || session.intro) return;
     untrack(boardFocus);
   });
 
@@ -2800,6 +2813,7 @@
   function doRedo(): void {
     const text = redoOnce();
     if (text) toast(`Redid ${text}`);
+    else toast('Nothing to redo');
   }
 
   const clock = (ts: number) => new Date(ts).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
@@ -3911,6 +3925,13 @@
   /** The list tabbedTo is in (a ✍ clue's ✔ / ✘ rows…): after it goes, the rescue's pick in that same list counts. */
   let tabbedList: Element | null = null;
 
+  /** The Final's steps and the end screen go on with their own keys (N, C / X, O) or a click, never Enter: which. */
+  function goOnHint(): void {
+    if (!hostNext) return;
+    const rolloff = session.phase === 'end' && hostNext.key !== 'O' ? ' (O: a roll-off)' : '';
+    hint(hostNext.key ? `Press ${hostNext.key} for ${hostNext.label}` : `Click ${hostNext.label} to go on${rolloff}`);
+  }
+
   /** A number key changed who's selected: screen readers hear who is now (before Enter awards them). */
   function saySelected(): void {
     announce(selected.length ? `Selected: ${nameList(selected.map((id) => playerName(session, id)))}` : 'No one selected');
@@ -3931,6 +3952,17 @@
     // A held key is one press, as a partner clue's Enter (N would run through every slide on stream, R flash the answer):
     // only the arrows repeat (seeking, the party's moves, the numpad's too), and Tab and the page keys keep their own.
     if (e.repeat && (e.key.length === 1 || e.key === 'Enter' || e.key === 'Escape') && !(session.phase === 'rpg' && NUMPAD[e.code])) return void e.preventDefault();
+    // Players picked on the board (2, then Enter with the keys on a tile): the points next, in the Amount box. The tile
+    // doesn't open, and 1, 2… still pick more first. (A played tile with points typed: Enter awards, below.)
+    if (e.key === 'Enter' && session.phase === 'board' && selected.length && t?.matches('.tile[data-clue]') && (!t.matches('.used') || !amount)) {
+      const box = document.querySelector<HTMLInputElement>('.play .panel .award input[type=number]');
+      if (box) {
+        e.preventDefault();
+        box.focus();
+        box.select();
+        return hint('Type the points, then Enter');
+      }
+    }
     // Enter or Space on a button reached with the keyboard (see tabbedTo) presses it (a tile opens). On a button clicked
     // with the mouse, Enter still awards.
     if ((e.key === ' ' || e.key === 'Enter') && t && t.matches('button, [role="button"]') && (t === tabbedTo || t.matches('.tile[data-clue]:not(.used)'))) return;
@@ -4045,9 +4077,14 @@
     switch (k) {
       case 'enter':
         // Enter on the main button where Enter awards nothing (a slides round, a round's title card or its categories
-        // coming up): as N. (In clues and the Final's steps, "1, Enter" awards with the keys on it.)
+        // coming up): as N. (In clues "1, Enter" awards with the keys on it.)
         if (!selected.length && !e.shiftKey && t?.matches('[data-next]') && (session.intro || session.phase === 'slides') && hostNext?.key === 'N') {
           if (!hostNext.disabled) hostNext.run();
+          break;
+        }
+        // The Final's steps go on with their own keys (N, C / X), the end screen's with a click (or O): Enter says which.
+        if (!selected.length && !e.shiftKey && t?.matches('[data-next]') && (session.phase === 'final' || session.phase === 'end') && hostNext) {
+          goOnHint();
           break;
         }
         // Board games with nobody selected: move (see boardEnter).
@@ -4060,6 +4097,19 @@
         if (session.phase === 'clue' && session.dd?.stage === 'question' && Date.now() - ddShownAt < KEY_GUARD_MS) {
           hint(`The question just went up: press ${e.shiftKey ? 'Shift+Enter' : 'Enter'} again to judge ${playerName(session, session.dd.playerId ?? '')}`);
           break;
+        }
+        if (!selected.length && !e.shiftKey && session.phase === 'clue' && info) {
+          // A wheel or dice tile's own tool, not spun yet: Enter on its Spin! / Roll! judges nobody. Its key spins it.
+          if (app.live.toolTile === info.clue.id && (hostNext?.key === 'W' || hostNext?.key === 'D') && !hostNext.disabled) {
+            hint(`${hostNext.key === 'W' ? 'Spin the wheel' : 'Roll the dice'} first: ${hostNext.key} (or N)`);
+            break;
+          }
+          // A ✍ clue with everyone judged: nobody is left to award.
+          const id = info.clue.id;
+          if (everyone && session.players.every((p) => session.scoreLog.some((e) => !e.undone && e.clueId === id && e.playerId === p.id))) {
+            hint('Everyone is judged: Esc goes back to the board');
+            break;
+          }
         }
         // Only where the award row is up (not on the Daily Double splash, the final reveals or the end screen).
         if (awardOpen(session)) award(e.shiftKey ? -1 : 1);
@@ -4166,6 +4216,9 @@
         } else if (session.phase === 'board' && !e.shiftKey && hostNext && !hostNext.key && roundComplete(session, game)) {
           // A played-out board goes on only from its button (N mashed after the last clue mustn't jump on stream).
           hint(`Round complete: click ${hostNext.label} to go on`);
+        } else if (session.phase === 'end' && !e.shiftKey && hostNext && !hostNext.disabled) {
+          // A tie at the end is settled from its button, or O (N mashed after the Final mustn't start one on stream).
+          goOnHint();
         } else if (e.shiftKey) break;
         else if (session.phase === 'final' && session.finalStep === 'wagers' && !finalWagersOk(session, wagerLimitsOff)) wagersWaiting();
         // The question up: the answer, as the main button shows it (its reveal sound too).
@@ -4695,7 +4748,8 @@
       </div>
     {/if}
     {#if hideControls}
-      <button class="show-controls" class:shown={pointerMoved} onclick={() => ((hideAgain = false), (hideControls = false))} title="H">Show controls</button>
+      <!-- (Never where the focus rescue puts the keys: then it would show, on stream. Tab reaches it.) -->
+      <button class="show-controls" class:shown={pointerMoved} onclick={() => ((hideAgain = false), (hideControls = false))} title="H" data-no-rescue>Show controls</button>
       {#if hideNote}<div class="toast note-pill" role="status">Press H to bring the controls back</div>{/if}
     {:else}
       <HostPanel
@@ -4735,11 +4789,13 @@
         onredo={doRedo}
         {everyone}
         {choicesNote}
-        onanswerjudgeall={judgeAll}
+        onanswerjudgeall={() => (judgeAll(), answersJudged())}
         answerPhones={app.live.phones ?? []}
-        onanswerjudge={(id, sign) =>
+        onanswerjudge={(id, sign) => {
           // (The first right answer picks next, not whoever was ticked last.)
-          award(sign, [id], amount ?? info?.value ?? null, !session.scoreLog.some((e) => !e.undone && e.clueId === info?.clue.id && (e.right ?? e.delta > 0)))}
+          award(sign, [id], amount ?? info?.value ?? null, !session.scoreLog.some((e) => !e.undone && e.clueId === info?.clue.id && (e.right ?? e.delta > 0)));
+          answersJudged();
+        }}
         onnextround={() => nextRound(1)}
         onprevround={() => nextRound(-1)}
         ongotoround={(i) => nextRound(i - session.currentRound)}
@@ -5309,6 +5365,11 @@
   .show-controls:hover,
   .show-controls:focus-visible {
     opacity: 1;
+  }
+  /* (The keys there without the host moving them: still out of sight.) */
+  .play.ring-off:not(.dual) .show-controls:focus-visible:not(.shown, :hover) {
+    outline: none;
+    opacity: 0;
   }
   /* The host panel beside the stage: messages show over it, not over the stage, at its top under the status line (its
      📱 chip and ⏱ stay in sight; at its foot they'd cover the nav buttons: 👥 Players, Exit). */

@@ -68,6 +68,7 @@
         ['Shift+N during a clue', 'A clue with several slides: the slide before'],
         ['R', 'Reveal the answer (again: hide it); the countdown stops'],
         ['← ↑ → ↓ on a tile', 'Move across the board (Enter or Space opens the tile); after a clue the keys go on from its tile'],
+        ['1 – 9, then Enter on a tile', 'The keys go to the Amount box: type the points, then Enter gives them'],
         ['Shift+Esc', 'Cancel the clue: back to the board, the tile stays playable (not once points were given)'],
         ['Enter in the Daily Double wager', 'Show the question (its player answers it)'],
         ['Esc on a Daily Double splash', 'Back to the board: the tile stays playable (no wager was taken)'],

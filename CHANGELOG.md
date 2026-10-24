@@ -11,6 +11,18 @@ the day it's pushed (Pacific time; start the heading on the day's first push) an
 in plain words for the people who make and host games. Anything committed but not pushed yet goes under
 **Unreleased** at the top, and moves under its day when it's pushed.
 
+## Unreleased
+
+### Fixed
+
+- On the board, a player picked first (`2`), then `Enter` with the keys on a tile, takes the keys to the Amount box (“Type the points, then Enter”). It opened that tile on stream. With the keys in the Amount box (± Adjust score), the chips hide their number keys, since those type points there (50, then 2, read 502), and `Enter` there with nobody picked says who to pick next (“Now pick who gets +$50 (1–3), then Enter”).
+- One window with the controls hidden (`H`): opening a clue from the keyboard no longer moves the keys to the hidden **Show controls** button, which then showed in the top-right corner, on stream, with its focus ring.
+- `Enter` on a wheel or dice tile's **Spin!** / **Roll!** says to spin (`W`) or roll (`D`) first, or `N`, instead of “Select a player first”.
+- `Enter` on the Final's main button says which key goes on (“Press N for Reveal answer ▶”). It did nothing and said nothing.
+- After the last ✍ answer is judged, or ✔ Judge all, the keys go on to the main button (▦ Done ▶ board), not 🙈 Hide answer, and `Enter` there says everyone is judged instead of “Select a player first”.
+- `Ctrl+Y` with nothing to redo says “Nothing to redo”, as Undo does.
+- The end screen with a tie for first: the keys go on from its main button (❓ Tiebreaker clue, or 🎲 Tiebreaker roll-off) instead of the tie box's first button, and `N` or `Enter` there says how to go on (a click, or `O` for a roll-off) instead of doing nothing.
+
 ## 2026-10-24
 
 ### Added

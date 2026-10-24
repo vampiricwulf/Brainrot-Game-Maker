@@ -159,7 +159,14 @@ try {
   await page.getByRole('button', { name: '± Adjust score' }).click();
   await page.keyboard.type('100');
   assert((await page.locator('.panel .award input').inputValue()) === '100', '± Adjust score puts the keys in the Amount box (typed 100)');
-  await page.keyboard.press('Escape');
+  assert(
+    await page.locator('.panel .p .key').evaluateAll((ks) => ks.length === 3 && ks.every((k) => getComputedStyle(k).visibility === 'hidden')),
+    'while the keys are in the Amount box, the chips show no number keys (those type points there)',
+  );
+  // Enter with nobody picked yet: who gets them next (not "Select a player first").
+  await page.keyboard.press('Enter');
+  await page.locator('.toast', { hasText: 'Now pick who gets +$100 (1–3), then Enter' }).waitFor();
+  assert(await page.evaluate(() => !document.activeElement?.closest('input')), 'Enter in the Amount box with nobody picked says to pick who gets the points, and gives the keys back');
   await page.keyboard.press('2');
   await page.locator('.panel .award').getByRole('button', { name: /Award/ }).click();
   const pop = stage('.pop.anchored');
@@ -173,6 +180,21 @@ try {
   const score = await stage('.plate').nth(1).locator('.score').boundingBox();
   assert(pb.y + pb.height <= score.y + 2, 'without covering their score');
   await shot('host-1-pop');
+  // The player first, with the keys on a tile: Enter takes them to the Amount box, and the tile doesn't open.
+  await stage('.board .tile:not(.used)').last().focus();
+  await page.keyboard.press('2');
+  await page.keyboard.press('Enter');
+  await page.waitForFunction(() => document.activeElement?.matches('.panel .award input'));
+  assert(!(await status()).includes('Answer hidden'), '2, then Enter on a tile: the keys go to the Amount box, the tile stays on the board');
+  await page.keyboard.type('50');
+  await page.keyboard.press('Enter');
+  await saidHas(/Player 2 \+\$50/);
+  // Redo with nothing to redo says so, as Undo does. (Then Undo: the scores stay as they were.)
+  await page.keyboard.press('Control+y');
+  await page.locator('.toast', { hasText: 'Nothing to redo' }).waitFor();
+  await page.keyboard.press('Control+z');
+  await page.locator('.toast', { hasText: 'Undid' }).waitFor();
+  assert(true, 'then 50, Enter gives them $50; Ctrl+Y with nothing to redo says “Nothing to redo”');
 
   // ---------- Daily Double: Enter in the wager box shows the question, not the answer ----------
   await page.waitForTimeout(500);
@@ -339,6 +361,10 @@ try {
   await page.keyboard.press('Enter');
   await page.locator('.panel').waitFor({ state: 'detached' });
   assert(true, 'and they hide again once the wager is in');
+  // (The wager box gone, the keys don't land on the hidden “Show controls”: with them it shows, on stream. After the
+  // focus rescue's turn, a moment after the panel goes.)
+  await page.evaluate(() => new Promise((r) => setTimeout(() => requestAnimationFrame(() => setTimeout(r)))));
+  assert(!(await page.locator('.show-controls').evaluate((b) => b === document.activeElement)), 'controls hidden: the keys never land on the hidden “Show controls” (it would show on stream)');
   await page.keyboard.press('Escape');
   await page.keyboard.press('h');
 
@@ -422,6 +448,11 @@ try {
   await page.keyboard.press('Control+z');
   await page.waitForFunction(() => document.querySelector('.panel .status')?.textContent?.includes('Question on screen'));
   assert(true, 'Ctrl+Z in the Final goes back one step at a time (reveals → answer → question)');
+  // Enter with the keys on the main button (where N leaves them) says which key goes on: no step runs on Enter.
+  await mainButton(page).focus();
+  await page.keyboard.press('Enter');
+  await page.locator('.toast', { hasText: 'Press N for Reveal answer ▶' }).waitFor();
+  assert((await status()).includes('Question on screen'), 'Enter on the Final’s main button says to press N for it, and the step stays');
   await page.keyboard.press('n');
   await page.keyboard.press('n');
   await page.waitForFunction(() => document.querySelector('.panel .status')?.textContent?.includes('Player reveals'));
@@ -480,6 +511,14 @@ try {
   const gapUnder = (sel) => page.locator(sel).evaluate((e) => e.nextElementSibling.getBoundingClientRect().top - e.getBoundingClientRect().bottom);
   const tieGap = await gapUnder('.panel .tie');
   assert(tieGap >= 5, `the tie box doesn't sit on the buttons under it (${tieGap}px apart)`);
+  // The keys go on from the main button (not the tie box's first); Enter and N there say how to go on, starting nothing.
+  await page.waitForFunction(() => document.activeElement?.matches('.panel [data-next]'));
+  await page.keyboard.press('Enter');
+  await page.locator('.toast', { hasText: 'Press O for 🎲 Tiebreaker roll-off' }).waitFor();
+  await page.locator('.toast').waitFor({ state: 'detached' });
+  await page.keyboard.press('n');
+  await page.locator('.toast', { hasText: 'Press O for 🎲 Tiebreaker roll-off' }).waitFor();
+  assert((await status()).includes('Game over') && !(await stage('.wrap .title').count()), 'a tie at the end: the keys on its main button, Enter and N say to press O (nothing starts)');
   await page.locator('.panel .status').click();
   await page.keyboard.press('o');
   await stage('.wrap .title').waitFor();

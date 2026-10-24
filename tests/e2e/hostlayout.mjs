@@ -279,6 +279,11 @@ try {
   await page.locator('.panel .status', { hasText: 'Game over' }).waitFor();
   states.end = await look();
   assert((await mainLabel(page)) === '❓ Tiebreaker clue', `a tie for first: settling it is the main button (${await mainLabel(page)})`);
+  // The keys on it; N there (mashed after the Final) starts nothing on stream: it says to click it, or O.
+  await page.waitForFunction(() => document.activeElement?.matches('.panel [data-next]'));
+  await page.keyboard.press('n');
+  await page.locator('.toast', { hasText: 'Click ❓ Tiebreaker clue to go on (O: a roll-off)' }).waitFor();
+  assert((await page.locator('.panel .status').innerText()).includes('Game over'), 'the keys go on from it, and N says to click it (or O for a roll-off) without starting it');
   // The tiebreaker's question slides come one at a time (N), as on a clue, then the answer.
   await mainButton(page).click();
   const tbPips = page.locator('.stage-box [data-slide-pips]');

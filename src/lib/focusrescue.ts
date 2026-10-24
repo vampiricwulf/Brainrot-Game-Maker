@@ -8,6 +8,8 @@ const FOCUSABLE = 'button, [href], input:not([type="number"]):not([type="range"]
 
 const usable = (el: HTMLElement) =>
   !el.matches(':disabled') && !el.closest('[inert]') && el.getClientRects().length > 0 && el.getAttribute('aria-hidden') !== 'true';
+/** Where the keys may land. Never on [data-no-rescue] (one window's hidden "Show controls": with the keys it shows on stream). */
+const landing = (el: HTMLElement) => usable(el) && !el.hasAttribute('data-no-rescue');
 
 let moving = false;
 /** True while the rescue itself moves the focus (in that focusin): a guess at the nearest control, not one chosen. */
@@ -32,7 +34,7 @@ export function focusRescue(root: HTMLElement) {
     for (const p of around) {
       if (!p.isConnected) continue;
       // A button first: in a text box, keys mean something else (Esc there closes the clue being edited).
-      const to = [...p.querySelectorAll<HTMLElement>('button')].find(usable) ?? [...p.querySelectorAll<HTMLElement>(FOCUSABLE)].find(usable);
+      const to = [...p.querySelectorAll<HTMLElement>('button')].find(landing) ?? [...p.querySelectorAll<HTMLElement>(FOCUSABLE)].find(landing);
       if (!to) continue;
       moving = true;
       to.focus();

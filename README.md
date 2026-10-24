@@ -150,7 +150,7 @@ shows the answer, or goes back to the board and opens another tile). A clue can 
 lead-in, then more: **＋ Add slide** in the clue editor): the main button goes **Next slide ▶** (`N`, `Shift+N` back)
 through them first, and the audience window shows the slide you're on. Select players and **＋ Award** (`Enter`) or
 **− Deduct** (`Shift+Enter`); on the board the Amount row stays folded behind **± Adjust score** until a player is
-selected.
+selected (pick them with `1`–`9`, then `Enter` takes the keys to the Amount box: type the points, then `Enter`).
 
 The host panel keeps one layout in every round: the status line (with the 📱 phones and ⏱ timer chips and **↩ Cancel
 (keep tile)** on the right), the players' score chips, the row of what this moment needs, and at its right the one

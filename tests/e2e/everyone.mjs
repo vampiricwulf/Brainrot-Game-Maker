@@ -365,6 +365,11 @@ try {
   await row('Player 1').getByText('✘ Wrong').waitFor();
   await row('Player 2').getByText('✔ Right').waitFor();
   await picker('Player 2').waitFor();
+  // Everyone judged: the keys go on to the main button (not 🙈 Hide answer), where Enter says so.
+  await host.waitForFunction(() => document.activeElement?.matches('.panel [data-next]'));
+  await host.keyboard.press('Enter');
+  await host.locator('.toast', { hasText: 'Everyone is judged: Esc goes back to the board' }).waitFor();
+  assert(true, 'after ✔ Judge all the keys are on the main button, and Enter there says everyone is judged');
   assert((await stageH()) === hiddenH, `and once judged too (${await stageH()}px)`);
   // Its score pops come in above the choices, not over them: the line they stand on (their box's foot; a pop is there
   // only a moment, so it's the box that's measured) is above the strip.
