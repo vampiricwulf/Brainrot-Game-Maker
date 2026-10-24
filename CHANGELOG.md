@@ -18,6 +18,8 @@ in plain words for the people who make and host games. Anything committed but no
 - Undo, then Redo, of a wrong answer after the next player had buzzed leaves the phones as the host has them: the one who missed is out and the next in line answers (with nobody in line, everyone else can buzz). The phones were stuck: “You're answering!” for the one who missed, and nobody could buzz. A buzzer server you run yourself needs deploying again for this.
 - When the host's network drops and comes back, or the app comes back into view, it checks its line to the buzzer room at once and reconnects within a few seconds. A dead line went unnoticed for about 40 seconds, the phones missing the clue while 📱 said all was well.
 - After the buzzer server restarts (an update, say), the host is back within about 5 seconds of it, as the phones are, instead of up to 15.
+- A reload in a busy moment (Final Jeopardy! just begun, the wagers coming in from phones) comes back to the game as it was on stream. It sometimes came back to the board, the move to the Final and the wagers gone.
+- A phone that reloads (a pull down on the page, or the phone reloading the tab in the background) puts back an answer or wager typed and not sent, under “Not sent yet”, while that round is open. A pull down no longer reloads the phone page. A buzzer server you run yourself needs deploying again for this.
 
 ## 2026-10-24
 

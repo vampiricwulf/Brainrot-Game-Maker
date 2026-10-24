@@ -438,10 +438,12 @@
   const saveEditorSoon = debounce(saveEditorNow, 500);
   /** This copy may write the game in play: it edits (holds the lock), or it's the player-only file's tab that plays it. */
   const mayPlay = () => editing || playsHere;
-  // The game in play too: a burst of host clicks is one write (flushed when leaving, like the draft).
+  // The game in play too: a burst of host clicks is one write (flushed when leaving, like the draft), a second at most
+  // after the first (phones sending wagers one after another don't put it off).
   const savePlaySoon = debounce(
     (session: Session, cover?: boolean, overlay?: Overlay) => playWatch && mayPlay() && savePlay(playWatch.value(), session, cover, overlay),
     300,
+    1000,
   );
   /**
    * The wheel or dice on screen, kept with the game in progress: a board game's roll to move by, or a wheel's points not

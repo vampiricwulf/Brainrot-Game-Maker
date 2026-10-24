@@ -132,6 +132,21 @@ describe('debounce', () => {
     expect(soon.pending()).toBe(false);
     vi.useRealTimers();
   });
+
+  it('with a longest wait, a run of calls can’t put it off for ever', () => {
+    vi.useFakeTimers();
+    const ran: number[] = [];
+    const soon = debounce((n: number) => void ran.push(n), 300, 1000);
+    for (let n = 1; n <= 8; n++) {
+      soon(n);
+      vi.advanceTimersByTime(200);
+    }
+    // (Called every 200 ms from 0 to 1400: it ran at 1000 with the call from 800, then once the calls stopped.)
+    expect(ran).toEqual([5]);
+    vi.advanceTimersByTime(300);
+    expect(ran).toEqual([5, 8]);
+    vi.useRealTimers();
+  });
 });
 
 describe('a buzzer room kept for the next game', () => {
@@ -197,6 +212,41 @@ describe('the game in progress as the page goes away', () => {
     rescuePlay(game, at([100]));
     await clearPlay();
     expect(await loadPlay()).toBeUndefined();
+  });
+
+  it('the tab’s own copy is used when localStorage lost its one, and both go once a newer one is stored', async () => {
+    vi.useFakeTimers({ toFake: ['Date'] });
+    const fake = () => {
+      const m = new Map<string, string>();
+      return { m, getItem: (k: string) => m.get(k) ?? null, setItem: (k: string, v: string) => void m.set(k, v), removeItem: (k: string) => void m.delete(k) };
+    };
+    const local = fake();
+    const tab = fake();
+    Object.assign(globalThis, { localStorage: local, sessionStorage: tab });
+    try {
+      const game = newGame();
+      const at = (scores: number[]) => ({ gameId: game.id, scoreLog: scores }) as unknown as Session;
+      vi.setSystemTime(1000);
+      await savePlay(game, at([300]));
+      vi.setSystemTime(2000);
+      rescuePlay(game, at([300, 500]));
+      expect(local.m.size + tab.m.size).toBe(2);
+      // The reload found no localStorage copy (its write as the page went away never landed): the tab's is used.
+      local.m.clear();
+      expect(await loadPlay()).toEqual({ game, session: at([300, 500]), savedAt: 2000 });
+      // Both copies: the newest one.
+      vi.setSystemTime(3000);
+      rescuePlay(game, at([300, 500, 200]));
+      local.setItem([...local.m.keys()][0], JSON.stringify({ game, session: at([300, 500]), savedAt: 2500 }));
+      expect((await loadPlay())?.savedAt).toBe(3000);
+      vi.setSystemTime(4000);
+      await savePlay(game, at([300, 500, 200]));
+      expect(local.m.size + tab.m.size).toBe(0);
+      expect((await loadPlay())?.savedAt).toBe(4000);
+      await clearPlay();
+    } finally {
+      delete (globalThis as { sessionStorage?: unknown }).sessionStorage;
+    }
   });
 
   it('a wheel or dice on screen is kept with the game in progress, in the stored write and in the copy', async () => {

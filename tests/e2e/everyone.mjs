@@ -170,6 +170,10 @@ try {
   // Edited and not sent: it says so (not "✔ Sent"), and back as it was, it's sent again.
   await p1.getByLabel(/Your answer/).fill('Shiba Inu dog');
   await p1.locator('#answer-state').getByText('Not sent yet').waitFor();
+  // The phone reloads before it's sent (a pull down, the tab reloaded in the background): the words come back, not sent.
+  await p1.reload();
+  await p1.locator('#answer-state').getByText('Not sent yet').waitFor();
+  assert((await p1.getByLabel(/Your answer/).inputValue()) === 'Shiba Inu dog', 'a phone that reloads keeps the words typed and not sent, and says “Not sent yet”');
   await p1.getByLabel(/Your answer/).fill('Shiba Inu');
   await p1.locator('#answer-state').getByText('✔ Sent: “Shiba Inu”').waitFor();
   assert(true, 'an answer edited on the phone and not sent says “Not sent yet”; back as sent, “✔ Sent: …”');

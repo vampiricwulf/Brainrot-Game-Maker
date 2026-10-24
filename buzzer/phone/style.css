@@ -24,6 +24,8 @@ html, body {
   font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
   font-size: 18px;
   -webkit-tap-highlight-color: transparent;
+  /* A pull down on the page doesn't reload it mid-game (Chrome's pull-to-refresh). */
+  overscroll-behavior-y: contain;
 }
 
 body {

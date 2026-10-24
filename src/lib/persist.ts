@@ -231,53 +231,75 @@ export function usePlayerStorage(gameId: string, exported?: string | null): void
 
 /**
  * The game in progress written to localStorage as the page goes away, as RESCUE_KEY is for the draft: its IndexedDB
- * write waits a moment for more host clicks, and a reload right after one would lose it. One for each playKey.
+ * write waits a moment for more host clicks, and a reload right after one would lose it. One for each playKey. The same
+ * copy goes in the tab's sessionStorage too: a reload stays in the tab, and a write to it as the page goes away has been
+ * seen to land when the one to localStorage didn't.
  */
 const playRescueKey = () => `jb.playRescue:${playKey}`;
+/** Where that copy goes (those this page can use). */
+function rescueStores(): Storage[] {
+  const out: Storage[] = [];
+  for (const store of [() => localStorage, () => sessionStorage])
+    try {
+      const s = store();
+      if (s) out.push(s);
+    } catch {
+      // Storage off (or none here).
+    }
+  return out;
+}
 /** When this page last wrote that copy (0: never, so a copy an earlier page left is older than any write now). */
 let playRescuedAt = 0;
-function dropPlayRescue(): void {
-  try {
-    localStorage.removeItem(playRescueKey());
-  } catch {
-    // Storage off: there's no copy either.
-  }
+function dropPlayRescue(stores = rescueStores()): void {
+  for (const s of stores)
+    try {
+      s.removeItem(playRescueKey());
+    } catch {
+      // Storage off: there's no copy either.
+    }
 }
 /**
  * The page is going away: a copy of the game in progress that's written at once (call it before starting the last
- * IndexedDB write, see rescueDraft). Too big for localStorage with its game: the session alone (the stored game is used).
+ * IndexedDB write, see rescueDraft). Too big for the storage with its game: the session alone (the stored game is used).
  */
 export function rescuePlay(game: Game, session: Session, cover = false, overlay?: Overlay): void {
   const base = { session, savedAt: (playRescuedAt = Date.now()), ...(cover ? { cover } : {}), ...(overlay ? { overlay } : {}) };
-  try {
-    localStorage.setItem(playRescueKey(), JSON.stringify({ ...base, game } satisfies SavedPlay));
-  } catch {
+  for (const s of rescueStores())
     try {
-      localStorage.setItem(playRescueKey(), JSON.stringify(base));
+      s.setItem(playRescueKey(), JSON.stringify({ ...base, game } satisfies SavedPlay));
     } catch {
-      dropPlayRescue();
+      try {
+        s.setItem(playRescueKey(), JSON.stringify(base));
+      } catch {
+        dropPlayRescue([s]);
+      }
     }
-  }
 }
 
-/** The game in progress: the stored one, or the copy written as the page went away when it's newer (see rescuePlay). */
+/** The game in progress: the stored one, or the newest copy written as the page went away when it's newer (see rescuePlay). */
 export async function loadPlay(): Promise<SavedPlay | undefined> {
   const stored = await safe(() => get<SavedPlay>(playKey));
-  try {
-    const r = JSON.parse(localStorage.getItem(playRescueKey()) ?? 'null') as Partial<SavedPlay> | null;
-    const session = r?.session && typeof r.session === 'object' ? r.session : null;
-    if (r && session && typeof r.savedAt === 'number' && !(stored && stored.savedAt >= r.savedAt)) {
-      // (Only its session fitted: its game is the stored one, when that's the same game.)
-      const game = r.game && typeof r.game === 'object' ? r.game : stored?.game?.id === session.gameId ? stored.game : undefined;
-      if (game) return { game, session, savedAt: r.savedAt, ...(r.cover ? { cover: true } : {}), ...(r.overlay ? { overlay: r.overlay } : {}) };
+  let best: SavedPlay | undefined;
+  for (const s of rescueStores()) {
+    try {
+      const r = JSON.parse(s.getItem(playRescueKey()) ?? 'null') as Partial<SavedPlay> | null;
+      const session = r?.session && typeof r.session === 'object' ? r.session : null;
+      if (r && session && typeof r.savedAt === 'number' && !(stored && stored.savedAt >= r.savedAt)) {
+        // (Only its session fitted: its game is the stored one, when that's the same game.)
+        const game = r.game && typeof r.game === 'object' ? r.game : stored?.game?.id === session.gameId ? stored.game : undefined;
+        if (game) {
+          if (!best || r.savedAt > best.savedAt) best = { game, session, savedAt: r.savedAt, ...(r.cover ? { cover: true } : {}), ...(r.overlay ? { overlay: r.overlay } : {}) };
+          continue;
+        }
+      }
+      // (Out of date: it would only take room the draft's rescue copy may need.)
+      if (r) dropPlayRescue([s]);
+    } catch {
+      // None, or not readable (a copy that isn't one is dropped).
+      dropPlayRescue([s]);
     }
-    // (Out of date: it would only take room the draft's rescue copy may need.)
-    if (r) dropPlayRescue();
-  } catch {
-    // None, or not readable (a copy that isn't one is dropped).
-    dropPlayRescue();
   }
-  return stored;
+  return best ?? stored;
 }
 /** Goes up when the game in progress is cleared: a write of it from before then (tried again, say) writes nothing. */
 let playGen = 0;
@@ -370,10 +392,12 @@ export const loadRoom = () => safe(() => get<SavedRoom>(roomKey()));
 export const saveRoom = (r: SavedRoom) => write('room', () => set(roomKey(), r));
 export const clearRoom = () => safe(() => del(roomKey()));
 
-/** Runs `fn` with the latest arguments once calls stop for `ms`. `flush()` runs a pending call now. */
-export function debounce<A extends unknown[]>(fn: (...a: A) => void, ms: number) {
+/** Runs `fn` with the latest arguments once calls stop for `ms` (or `maxMs` after the first). `flush()` runs a pending call now. */
+export function debounce<A extends unknown[]>(fn: (...a: A) => void, ms: number, maxMs = Infinity) {
   let t: ReturnType<typeof setTimeout> | undefined;
   let pending: A | null = null;
+  /** When the call waiting now was first made: a run of calls waits no more than maxMs after it. */
+  let since = 0;
   const run = () => {
     clearTimeout(t);
     if (pending) {
@@ -383,9 +407,10 @@ export function debounce<A extends unknown[]>(fn: (...a: A) => void, ms: number)
     }
   };
   const call = (...a: A) => {
+    if (!pending) since = Date.now();
     pending = a;
     clearTimeout(t);
-    t = setTimeout(run, ms);
+    t = setTimeout(run, Math.max(0, Math.min(ms, since + maxMs - Date.now())));
   };
   call.flush = run;
   /** A call waits to run. */

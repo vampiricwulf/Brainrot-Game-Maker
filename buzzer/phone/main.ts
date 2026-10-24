@@ -188,6 +188,30 @@ function saveName(name: string): void {
   }
 }
 
+/**
+ * What's typed in the answer or wager box and not sent, kept in this tab (a reload, a pull down, the phone reloading
+ * the tab in the background): it comes back in the box while the same round is open, as "Not sent yet".
+ */
+type DraftKind = 'answer' | 'wager';
+const draftKey = (kind: DraftKind) => `brainrot-buzzer:${code}:${kind}-draft`;
+function loadDraft(kind: DraftKind, id: string): string {
+  try {
+    const d = JSON.parse(sessionStorage.getItem(draftKey(kind)) ?? 'null');
+    return d && d.seat === seatId && d.id === id && typeof d.text === 'string' ? d.text : '';
+  } catch {
+    return '';
+  }
+}
+/** Keeps the box's words for round `id` (none: forgets them). */
+function saveDraft(kind: DraftKind, id = '', text = ''): void {
+  try {
+    if (id && text.trim() && seatId) sessionStorage.setItem(draftKey(kind), JSON.stringify({ seat: seatId, id, text }));
+    else sessionStorage.removeItem(draftKey(kind));
+  } catch {
+    // no storage: only until a reload then
+  }
+}
+
 /** A random id for this browser, sent with joins: a kick keeps it off that seat for a while. */
 const device = (() => {
   const k = 'brainrot-buzzer:device';
@@ -467,7 +491,10 @@ function onMessage(m: RoomToPhone): void {
             bad: 'Type a whole number, 0 or more.',
             slow: 'Too many tries: wait a few seconds.',
           }[m.reason ?? 'bad'] ?? "That didn't work. Try again.");
-      if (m.ok) vibrate(40);
+      if (m.ok) {
+        vibrate(40);
+        saveDraft('wager');
+      }
       break;
     }
     case 'answered': {
@@ -479,7 +506,10 @@ function onMessage(m: RoomToPhone): void {
         ? ''
         : ({ closed: 'Answers are closed now.', bad: picked ? "That answer wasn't taken. Try again." : 'Type an answer first.', slow: 'Too many tries: wait a few seconds.' }[m.reason ?? 'bad'] ??
           "That didn't work. Try again.");
-      if (m.ok) vibrate(40);
+      if (m.ok) {
+        vibrate(40);
+        if (!picked) saveDraft('answer');
+      }
       break;
     }
     case 'kicked': {
@@ -1290,6 +1320,9 @@ function renderBuzz(v: PhoneView): void {
   }
   // (The answer box says its question as it opens: again if it opens again.)
   if (!ansUp) saidAsked = '';
+  // Words not sent are kept for their round only.
+  if (!ansUp) saveDraft('answer');
+  if (!boxUp) saveDraft('wager');
   if (boxUp) return renderWager(v, wager!, sym);
   if (ansUp) return renderAnswer(v, ans!, sym);
   if (!ans) ((answerFor = ''), (answerErr = ''));
@@ -1520,6 +1553,9 @@ function renderWager(v: PhoneView, w: PhoneWager, sym: string): void {
   if (key !== wagerFor) {
     const was = wagerFor.startsWith(`${w.id} `) ? wagerFor.slice(w.id.length + 1) : null;
     if (was === null || document.activeElement !== inp || inp.value.trim() === was) inp.value = w.amount !== undefined ? String(w.amount) : '';
+    // (Back after a reload: what was typed and not sent.)
+    const d = was === null ? loadDraft('wager', w.id) : '';
+    if (d && Number(d) !== w.amount) inp.value = d;
     wagerFor = key;
   }
   inp.max = w.limit && w.max !== undefined ? String(w.max) : '';
@@ -1673,6 +1709,9 @@ function renderAnswer(v: PhoneView, a: NonNullable<PhoneView['answer']>, sym: st
   if (key !== answerFor) {
     const was = answerFor.startsWith(`${a.id} `) ? answerFor.slice(a.id.length + 1) : null;
     if (was === null || document.activeElement !== inp || inp.value.replace(/\s+/g, ' ').trim() === was) inp.value = a.text ?? '';
+    // (Back after a reload: what was typed and not sent.)
+    const d = was === null && !choices ? loadDraft('answer', a.id) : '';
+    if (d && d.replace(/\s+/g, ' ').trim() !== a.text) inp.value = d;
     answerFor = key;
   }
   const state = answerState(a, team);
@@ -2107,12 +2146,15 @@ $('new-back').addEventListener('click', (e) => {
   if (e.detail === 0) $('new-btn').focus();
 });
 // What's in, or "Not sent yet", as the box changes (only that line: the rest, and what a screen reader hears, stay).
+// (And the words are kept, for a reload: see saveDraft.)
 $('answer-in').addEventListener('input', () => {
   const a = view?.answer;
+  if (a?.mine && a.open) saveDraft('answer', a.id, $<HTMLTextAreaElement>('answer-in').value);
   if (a && !answerSending) drawState('answer-state', answerState(a, !!view?.teams), false);
 });
 $('wager-in').addEventListener('input', () => {
   const w = view?.wager;
+  if (w?.mine && w.open) saveDraft('wager', w.id, $<HTMLInputElement>('wager-in').value);
   if (w?.mine && !wagerSending) drawState('wager-state', wagerState(w, !!view?.teams, view?.currency ?? ''), false);
 });
 $('new-form').addEventListener('submit', (e) => {
