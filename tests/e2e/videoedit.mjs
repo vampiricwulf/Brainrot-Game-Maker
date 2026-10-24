@@ -245,9 +245,11 @@ try {
     leftOut.length === 1 && leftOut[0].startsWith('⚠ Round 1 · Memes #2 (question) plays 0:00.2–0:00.8, which this trim leaves out'),
     `it names the item the trim leaves out (${leftOut.join(' | ')})`,
   );
+  // The other plays 1.5–3.5, past the trim's end: it's named with what it keeps, not said to play the same moments.
+  const clipped = await dialog.locator('[data-edit-clipped]').allInnerTexts();
   assert(
-    (await dialog.locator('[data-edit-timed]').innerText()) === '2 slide items play parts of it: their Start at and Stop at move with the trim, so they play the same moments.',
-    'and says the items’ times move with the trim',
+    clipped.length === 1 && clipped[0] === '⚠ Round 1 · Memes #1 (question) plays 0:01.5–0:03.5: it’ll play 0:01.5–0:03 of it.' && !(await dialog.locator('[data-edit-timed]').count()),
+    `and names the item the trim cuts short, with what it will play, never saying it plays the same moments (${clipped.join(' | ')})`,
   );
   const done1 = await applyAnd();
   assert(/^✓ 1\.8 s · \d+ KB \(was \d+ KB\)\. Ctrl\+Z puts the old one back\.$/.test(done1), `done: ${done1}`);

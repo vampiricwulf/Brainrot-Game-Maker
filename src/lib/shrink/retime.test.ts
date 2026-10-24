@@ -5,7 +5,7 @@ import { newBoardGameRound, newBoardSpace } from '../boardgame';
 import { isBoard, newAudioEl, newVideoEl, type AudioEl, type Game, type VideoEl } from '../model';
 import { newRpgRound } from '../rpg';
 import { jeopardyGame } from '../testgame';
-import { cutLeavesOut, itemsPlaying, refitBoxes, retimeUses, timedItems } from './retime';
+import { cutClips, cutLeavesOut, itemsPlaying, refitBoxes, retimeUses, timedItems } from './retime';
 
 const at = (media: string, startAt?: number, endAt?: number, id = `v${Math.random()}`): VideoEl => ({
   ...newVideoEl(media),
@@ -50,17 +50,17 @@ describe('retimeUses', () => {
     ]);
   });
 
-  it('one with no times plays from the new start (clipped when the end was cut too); a Stop at not after Start at is none', () => {
+  it('one with no times plays from the new start (it plays the whole trimmed file, as it did); a Stop at not after Start at is none', () => {
     const none = at('clip');
     const bad = at('clip', 2, 1);
-    expect(retimeUses(withItems(none, bad), 'clip', CUT)).toEqual({ kept: 0, clipped: 2, whole: 0 });
+    expect(retimeUses(withItems(none, bad), 'clip', CUT)).toEqual({ kept: 1, clipped: 1, whole: 0 });
     expect([times(none), times(bad)]).toEqual([
       [undefined, undefined],
       [0.8, undefined],
     ]);
-    // Only the end cut: an item with no times keeps none, and isn't clipped at its start.
+    // Only the end cut: an item with no times keeps none.
     const plain = at('clip');
-    expect(retimeUses(withItems(plain), 'clip', { from: 0, to: 3, length: 4 })).toEqual({ kept: 0, clipped: 1, whole: 0 });
+    expect(retimeUses(withItems(plain), 'clip', { from: 0, to: 3, length: 4 })).toEqual({ kept: 1, clipped: 0, whole: 0 });
     expect(times(plain)).toEqual([undefined, undefined]);
   });
 
@@ -116,6 +116,19 @@ describe('retimeUses', () => {
     expect(itemsPlaying(game, 'clip')).toHaveLength(6);
     expect(retimeUses(game, 'clip', CUT)).toEqual({ kept: 0, clipped: 6, whole: 0 });
     expect(els.map((e) => e.startAt)).toEqual([0.8, 0.8, 0.8, 0.8, 0.8, 0.8]);
+  });
+});
+
+describe('cutClips', () => {
+  it('says which timed items lose part of what they play, and what they keep (not those wholly in the part kept, nor left out)', () => {
+    // 1 s to 3 s, trimmed to end at 2.5 s; one inside; one from 0.5 s; one left out; one with no times.
+    const game = withItems(at('clip', 1, 3), at('clip', 1.5, 2), at('clip', 0.5, 2), at('clip', 3.2, 3.8), at('clip'));
+    expect(cutClips(game, 'clip', { from: 1.2, to: 2.5, length: 4 })).toEqual([
+      { where: 'Jeopardy! · Category 1 #1 (question)', start: 1, end: 3, from: 1.2, to: 2.5 },
+      { where: 'Jeopardy! · Category 1 #1 (question)', start: 0.5, end: 2, from: 1.2, to: 2 },
+    ]);
+    // retimeUses counts the same two as clipped.
+    expect(retimeUses(game, 'clip', { from: 1.2, to: 2.5, length: 4 })).toEqual({ kept: 2, clipped: 2, whole: 1 });
   });
 });
 

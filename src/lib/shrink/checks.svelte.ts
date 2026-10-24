@@ -126,8 +126,11 @@ function sayFresh(): void {
   fresh = [];
   if (!said.length) return;
   const one = said[0];
-  if (said.length > 1) toast(`⚠ ${severalText(said.map((f) => f.is))}: see the note at the top.`);
-  else toast(`⚠ A ${one.kind === 'audio' ? 'sound' : 'video'} you just added ${one.is === 'silent' ? 'plays without its sound' : 'won’t play'} in this browser: see the note at the top.`);
+  // (A window over the editor, the clue editor's say, hides the note at the top: the item's own panel beside it says so.)
+  const over = !!document.querySelector?.('[aria-modal="true"]');
+  const see = over ? `🔄 Convert… is in ${said.length > 1 ? 'their panels' : 'its panel'}` : 'see the note at the top';
+  if (said.length > 1) toast(`⚠ ${severalText(said.map((f) => f.is))}: ${see}.`);
+  else toast(`⚠ A ${one.kind === 'audio' ? 'sound' : 'video'} you just added ${one.is === 'silent' ? 'plays without its sound' : 'won’t play'} in this browser: ${see}.`);
 }
 
 /** Check every video and sound stored in `game` that hasn't been (the editor, as files arrive). */

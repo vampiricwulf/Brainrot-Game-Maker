@@ -30,6 +30,9 @@ in plain words for the people who make and host games. Anything committed but no
 - One window: the stage keeps one size when a slide with two clips comes up (a video and a sound, say), in a board round and now in a slides round too: the host panel keeps room for as many media rows as the round's busiest slide has.
 - RPG screen music waits under ⏸ Cover (K) and goes on after (viewers heard it under “Be right back”).
 - Screen readers: each of the host's media rows is named (Video, Audio; numbered when two share a name), its sliders read “30%” and “0:01 of 0:08”, and −5 / +5 read “Back 5 seconds” / “Forward 5 seconds”.
+- A sound deleted in 🖼 Media while 🔊 Sounds and slides still use it: the checklist says where it's still used (“1 deleted file still used on … Undo the delete in History”) besides the 🔊 Sounds line, and its 🔊 Sounds row says its file was deleted (Undo in 🕘 History, or Change…) instead of missing. A file missing on opening that's used both in 🔊 Sounds and on a slide gets both lines too.
+- ✎ Edit: a slide item the trim cuts short (it played from before the new start, or on past the new end) is named with what it will play, instead of being said to play the same moments, and the toast after Apply counts them.
+- A video or sound added in the clue editor that won't play here (or plays without its sound): the toast points to its panel's 🔄 Convert…, not to the note at the top that the clue editor covers.
 
 ## 2026-10-24
 

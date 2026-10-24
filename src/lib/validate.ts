@@ -321,13 +321,16 @@ export function validate(game: Game, room: Checking = {}): Problem[] {
       tab: 'play',
       level: 'info',
     });
+  // A file's uses other than as a 🔊 Sounds cue (on slides, tiles, wheels…): those lines say where; the cue's says 🔊 Sounds.
+  const cueUses = (id: string) => Object.values(game.audio ?? {}).filter((x) => x === id).length;
+  const otherUses = (id: string) => (usage.get(id) ?? 0) - cueUses(id);
   // Deleted from 🖼 Media but still on slides: they show nothing (and aren't saved with the game).
-  const deleted = [...usage.keys()].filter((id) => !known.has(id) && !Object.values(game.audio ?? {}).includes(id));
+  const deleted = [...usage.keys()].filter((id) => !known.has(id) && otherUses(id) > 0);
   if (deleted.length) {
     // Where the first is still used ("Introduction › Slide 1 › Image"): named, and the line goes there.
     const path = mediaPath(game, deleted[0]);
     const at = path ? placeAt(game, path) : null;
-    const uses = deleted.reduce((n, id) => n + (usage.get(id) ?? 0), 0);
+    const uses = deleted.reduce((n, id) => n + otherUses(id), 0);
     const where = at?.crumbs.length ? ` on ${at.crumbs.join(' › ')}${uses > 1 ? ` and ${plural(uses - 1, 'more place')}` : ''}` : ` (${plural(uses, 'place')})`;
     out.push({
       text: `${plural(deleted.length, 'deleted file')} still used${where}: not saved with the game. Undo the delete in History, or take ${deleted.length === 1 ? 'it' : 'them'} off ${uses === 1 ? 'there' : 'those slides'}`,
@@ -339,8 +342,8 @@ export function validate(game: Game, room: Checking = {}): Problem[] {
   }
   // (A 🗜 copy for phones whose bytes are missing isn't: phones get its file.)
   const missing = new Set([...[...usage.keys()].filter((id) => !known.has(id) && !deleted.includes(id)), ...game.media.filter((m) => !m.phoneCopy && !mediaUrls[m.id]).map((m) => m.id)]);
-  // A sound's missing file is said on its own, pointing to 🔊 Sounds (the built-in sound plays meanwhile).
-  const cues = new Set(Object.values(game.audio ?? {}).filter((id): id is string => !!id && missing.has(id)));
+  // A sound's missing (or deleted) file is said on its own, pointing to 🔊 Sounds (the built-in sound plays meanwhile).
+  const cues = new Set(Object.values(game.audio ?? {}).filter((id): id is string => !!id && (missing.has(id) || deleted.includes(id))));
   if (cues.size)
     out.push({
       text: `${plural(cues.size, 'sound file')} missing: see 🔊 Sounds`,
@@ -348,7 +351,8 @@ export function validate(game: Game, room: Checking = {}): Problem[] {
       level: 'warn',
       player: `${plural(cues.size, 'sound file')} missing from this game (the built-in sound plays instead)`,
     });
-  const others = [...missing].filter((id) => !cues.has(id));
+  // (A cue's file used on a slide too: that slide shows nothing, so it's said here as well.)
+  const others = [...missing].filter((id) => !cues.has(id) || otherUses(id) > 0);
   if (others.length) {
     // (A player-only file has no 🖼 Media: it names where the first one used was, which shows nothing now.)
     const path = others.map((id) => mediaPath(game, id)).find((p) => !!p);

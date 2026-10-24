@@ -43,7 +43,7 @@
     type Short,
   } from '../lib/shrink/plan';
   import { encodersFor, probe, type Can, type Encoders } from '../lib/shrink/probe';
-  import { cutLeavesOut, itemsPlaying, timedItems } from '../lib/shrink/retime';
+  import { cutClips, cutLeavesOut, itemsPlaying, timedItems } from '../lib/shrink/retime';
   import { codecName } from '../lib/shrink/words';
   import { isTextField } from '../lib/undokeys';
   import { undoClosing } from './undoclose';
@@ -191,6 +191,10 @@
   const items = $derived(itemsPlaying(game, id).length);
   const timed = $derived(timedItems(game, id));
   const leftOut = $derived(ok?.cut ? cutLeavesOut(game, id, ok.cut) : []);
+  /** Items the trim takes part of what they play from. */
+  const clips = $derived(ok?.cut ? cutClips(game, id, ok.cut) : []);
+  /** Timed items wholly inside the part kept: they play the same moments. */
+  const same = $derived(Math.max(0, timed - leftOut.length - clips.length));
   const onCards = $derived(allCardSlides(game).some(({ slide }) => slideMediaIds(slide).includes(id)));
   const copy = $derived(ref ? phoneCopyOf(game, ref) : undefined);
   const fileBytes = $derived(fileLimitsNow().limits.fileBytes);
@@ -611,13 +615,19 @@
             {/if}
 
             {#if ok?.cut}
-              {#if timed}
+              {#if same}
                 <p class="small" data-edit-timed>
-                  {timed === 1
+                  {same === 1
                     ? '1 slide item plays part of it: its Start at and Stop at move with the trim, so it plays the same moments.'
-                    : `${timed} slide items play parts of it: their Start at and Stop at move with the trim, so they play the same moments.`}
+                    : `${same} slide items play parts of it: their Start at and Stop at move with the trim, so they play the same moments.`}
                 </p>
               {/if}
+              {#each clips.slice(0, 3) as c, i (i)}
+                <p class="warn small" data-edit-clipped>
+                  ⚠ {c.where} plays {clockTenths(c.start)}–{clockTenths(c.end)}: it’ll play {clockTenths(c.from)}–{clockTenths(c.to)} of it.
+                </p>
+              {/each}
+              {#if clips.length > 3}<p class="warn small">and {clips.length - 3} more</p>{/if}
               {#each leftOut.slice(0, 3) as l (l.where)}
                 <p class="warn small" data-edit-left-out>
                   ⚠ {l.where} plays {clockTenths(l.start)}–{clockTenths(l.end)}, which this trim leaves out: it will play the whole trimmed clip instead.

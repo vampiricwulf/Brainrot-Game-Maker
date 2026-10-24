@@ -121,11 +121,15 @@
       {#if off}
         <span class="muted small">Off{#if v} <span title={nameOf(v)}>(keeps {nameOf(v) ?? 'a missing file'})</span>{/if}</span>
       {:else if v && missing}
-        <!-- Its file isn't here, or (an online link) the site says its link has expired, as 🖼 Media shows it. -->
+        {@const instead = builtin ? 'plays the built-in sound' : key === 'partner' ? 'the tile-open sound plays' : 'plays nothing'}
+        <!-- Its file isn't here, or (an online link) the site says its link has expired, as 🖼 Media shows it; or it was
+             deleted from the game. -->
         {#if ref?.url && linkLifetime(ref) === 'expired'}
-          <span class="missing small" title={ref.url}>⚠ {ref.name}’s link expired: {builtin ? 'plays the built-in sound' : key === 'partner' ? 'the tile-open sound plays' : 'plays nothing'} (add the file again)</span>
+          <span class="missing small" title={ref.url}>⚠ {ref.name}’s link expired: {instead} (add the file again)</span>
+        {:else if !ref}
+          <span class="missing small">⚠ Its file was deleted: {instead} (Undo in 🕘 History, or Change…)</span>
         {:else}
-          <span class="missing small" title={nameOf(v)}>⚠ {nameOf(v) ?? 'Its file'} is missing: {builtin ? 'plays the built-in sound' : key === 'partner' ? 'the tile-open sound plays' : 'plays nothing'}</span>
+          <span class="missing small" title={nameOf(v)}>⚠ {nameOf(v) ?? 'Its file'} is missing: {instead}</span>
         {/if}
         <!-- (Not for a file deleted from the game: there's nothing left to put it back in.) -->
         {#if ref}

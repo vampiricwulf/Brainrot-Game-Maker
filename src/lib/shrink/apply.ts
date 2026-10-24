@@ -646,7 +646,8 @@ export function queueFileEdit(game: Game, id: Id, plan: EditPlan & EditExtra, ho
     const whole = times.whole
       ? ` ${times.whole} slide item${times.whole === 1 ? '' : 's'} played a part you cut out: ${times.whole === 1 ? 'it plays' : 'they play'} the whole clip now.`
       : '';
-    return { toast: `✂ ${what === 'sound' ? 'Sound' : 'Video'} ${verb}: ${bits.join(', ')}. Ctrl+Z puts the old one back.${whole}`, media: to };
+    const clipped = times.clipped ? ` ${times.clipped} slide item${times.clipped === 1 ? ' loses' : 's lose'} the part you cut off.` : '';
+    return { toast: `✂ ${what === 'sound' ? 'Sound' : 'Video'} ${verb}: ${bits.join(', ')}. Ctrl+Z puts the old one back.${whole}${clipped}`, media: to };
   });
 }
 

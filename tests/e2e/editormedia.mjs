@@ -454,6 +454,12 @@ try {
       (await b.getByRole('button', { name: '🖼 Media (1)' }).count()) === 1 && nothingMissing,
       '🔗 Find file… on a missing sound’s row puts that file back (same name, no second copy) and the checklist stops saying a file is missing',
     );
+    // 🗑 Deleted in 🖼 Media: its row says so, and how to bring it back (it has no file left to find).
+    await b.getByRole('button', { name: '🖼 Media (1)' }).click();
+    await b.locator('.card', { hasText: 'intro-music.wav' }).getByRole('button', { name: /^Delete / }).click();
+    await b.getByRole('button', { name: '🔊 Sounds' }).click();
+    await row.getByText('⚠ Its file was deleted: plays the built-in sound (Undo in 🕘 History, or Change…)').waitFor();
+    assert((await row.getByRole('button', { name: '🔗 Find file…' }).count()) === 0, 'deleted in 🖼 Media, a sound’s row says its file was deleted: Undo in 🕘 History, or Change…');
     await fresh.close();
   }
 

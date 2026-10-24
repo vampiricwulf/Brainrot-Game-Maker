@@ -169,6 +169,15 @@ describe('a file just added: 🔄 offered when it won’t play here', () => {
     await vi.waitFor(() => expect(toasts()).toEqual(['⚠ 2 files you just added won’t play in this browser: see the note at the top.']));
   });
 
+  it('added in the clue editor (a window over the note at the top): the toast points to its panel’s 🔄 Convert…', async () => {
+    vi.stubGlobal('document', { hidden: false, addEventListener: () => {}, createElement: () => ({ canPlayType: () => cpt.says }), querySelector: (s: string) => (s === '[aria-modal="true"]' ? {} : null) });
+    app.game.media.push(ref('m1'));
+    registerBlob('m1', new Blob([new Uint8Array([3, 7])]));
+    checkAdded(app.game.media.find((m) => m.id === 'm1')!);
+    await settled(['m1']);
+    await vi.waitFor(() => expect(toasts()).toEqual(['⚠ A video you just added plays without its sound in this browser: 🔄 Convert… is in its panel.']));
+  });
+
   it('one dismissed before its toast isn’t counted; one added after it landed isn’t waited for', async () => {
     app.game.media.push(ref('d1'), ref('d2'), ref('late'));
     registerBlob('d1', new Blob([new Uint8Array([3, 4])]));

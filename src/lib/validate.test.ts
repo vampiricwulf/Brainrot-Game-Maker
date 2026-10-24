@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import { jeopardyGame } from './testgame';
-import { newImageEl, newSlidesRound, newTextEl, newVideoEl, questionSlides, setSlideText, textSlide, type Action, type BoardRound, type FinalRound, type Game, type SavedCard, type Slide } from './model';
+import { newAudioEl, newImageEl, newSlidesRound, newTextEl, newVideoEl, questionSlides, setSlideText, textSlide, type Action, type BoardRound, type FinalRound, type Game, type SavedCard, type Slide } from './model';
 import { newWheel } from './tools';
 import { newBoardGameRound } from './boardgame';
 import { newRpgRound, newVariant } from './rpg';
@@ -94,6 +94,32 @@ describe('the checklist', () => {
     // One deleted but still on a tile too: its own words in a player-only file (not two identical lines).
     (game.rounds[0] as BoardRound).categories[0].clues[0].tileFace = { image: 'deleted1' };
     expect(validate(game).find((p) => p.text.includes('deleted file'))?.player).toBe('1 file used on slides but missing from this game: ask whoever made it for a new copy');
+  });
+
+  it('a sound deleted from 🖼 Media while also on slides: its own line names the slides (Undo in History), as well as the 🔊 Sounds one', () => {
+    const game = jeopardyGame();
+    const intro = newSlidesRound();
+    game.rounds.unshift(intro);
+    intro.questionSlide.elements.push(newAudioEl('gone1'));
+    (game.rounds[1] as BoardRound).categories[0].clues[0].questionSlide.elements.push(newAudioEl('gone1'));
+    game.audio.roundIntro = 'gone1';
+    game.audio.finalThink = 'gone1';
+    const lines = validate(game).filter((p) => p.text.includes('missing') || p.text.includes('deleted'));
+    expect(lines.map((p) => p.text)).toEqual([
+      '1 deleted file still used on Introduction › Slide 1 › Audio and 1 more place: not saved with the game. Undo the delete in History, or take it off those slides',
+      '1 sound file missing: see 🔊 Sounds',
+    ]);
+    expect(lines[0].place).toMatchObject({ tab: 'round', round: intro.id });
+  });
+
+  it('a file missing on opening, used in 🔊 Sounds and on a slide: both lines, the slide’s naming where', () => {
+    const game = jeopardyGame();
+    game.media.push({ id: 'm3', name: 'tone.wav', kind: 'audio', mime: 'audio/wav' } as never);
+    game.audio.right = 'm3';
+    (game.rounds[0] as BoardRound).categories[0].clues[0].questionSlide.elements.push(newAudioEl('m3'));
+    const lines = validate(game, { plays: () => ({ is: 'plays', repack: null }) }).filter((p) => p.text.includes('missing'));
+    expect(lines.map((p) => p.text)).toEqual(['1 sound file missing: see 🔊 Sounds', '1 media file missing']);
+    expect(lines[1].player).toBe('1 media file missing from this game (on Jeopardy! › Category 1 › $200 › Question › tone.wav): ask whoever made it for a new copy');
   });
 
   it('names where a deleted file is still used, and its line goes there', () => {

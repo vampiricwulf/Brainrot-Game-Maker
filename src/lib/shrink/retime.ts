@@ -33,15 +33,19 @@ function span(el: Pick<VideoEl, 'startAt' | 'endAt'>, length: number): { s: numb
   return { s, e: stops ? el.endAt! : length, stops };
 }
 
+/** An item with a Start at or a Stop at of its own (one with neither plays the whole file, trimmed or not). */
+const timedEl = (el: Pick<VideoEl, 'startAt' | 'endAt'>): boolean => (el.startAt ?? 0) > 0 || el.endAt !== undefined;
+
 /**
  * Inside a step: every item playing file `id` (now the trimmed one), or only `only`, plays the same moments of it:
  * its times move back by the part cut off the start, and a Stop at past the new end goes. One that played only a
  * part that was cut out loses its times (it plays the whole trimmed file). Returns how many kept their part
- * (`kept`), lost some of it (`clipped`), or play the whole file now (`whole`).
+ * (`kept`: one with no times of its own too), lost some of it (`clipped`), or play the whole file now (`whole`).
  */
 export function retimeUses(game: Game, id: Id, cut: Cut, only?: VideoEl | AudioEl): { kept: number; clipped: number; whole: number } {
   const n = { kept: 0, clipped: 0, whole: 0 };
   for (const el of itemsOn(game, id, only)) {
+    const timed = timedEl(el);
     const { s, e, stops } = span(el, cut.length);
     if (e <= cut.from || s >= cut.to) {
       delete el.startAt;
@@ -54,10 +58,27 @@ export function retimeUses(game: Game, id: Id, cut: Cut, only?: VideoEl | AudioE
     else delete el.startAt;
     if (stops && e < cut.to - SLACK) el.endAt = round2(Math.min(e, cut.to) - cut.from);
     else delete el.endAt;
-    if (s < cut.from || e > cut.to) n.clipped++;
+    if (timed && (s < cut.from || e > cut.to)) n.clipped++;
     else n.kept++;
   }
   return n;
+}
+
+/**
+ * The slide items playing file `id`, with times of their own, that the cut takes part of what they play from: they
+ * play from before it, or on past it. Where they are, what they play (on the old file's timeline), and what of that
+ * they'll play.
+ */
+export function cutClips(game: Game, id: Id, cut: Cut): { where: string; start: number; end: number; from: number; to: number }[] {
+  const out: { where: string; start: number; end: number; from: number; to: number }[] = [];
+  for (const { slide, where } of allSlides(game, { empty: true }))
+    for (const el of slide.elements) {
+      if ((el.kind !== 'video' && el.kind !== 'audio') || el.media !== id || !timedEl(el)) continue;
+      const { s, e } = span(el, cut.length);
+      if (e <= cut.from || s >= cut.to || (s >= cut.from && e <= cut.to)) continue;
+      out.push({ where, start: s, end: e, from: Math.max(s, cut.from), to: Math.min(e, cut.to) });
+    }
+  return out;
 }
 
 /**
@@ -77,7 +98,7 @@ export function cutLeavesOut(game: Game, id: Id, cut: Cut): { where: string; sta
 
 /** The video and sound items playing file `id` with a Start at or a Stop at (the dialog says they move with a trim). */
 export function timedItems(game: Game, id: Id): number {
-  return itemsOn(game, id, undefined).filter((el) => (el.startAt ?? 0) > 0 || el.endAt !== undefined).length;
+  return itemsOn(game, id, undefined).filter(timedEl).length;
 }
 
 /** Every video and sound item playing file `id` (slides of every kind, 🤫 cards, RPG looks, board spaces' slides…). */

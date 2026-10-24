@@ -141,6 +141,15 @@ describe('✎ an edit put in the file’s place', () => {
     expect([now()[0].media, now()[0].startAt, g.media.map((m) => m.id)]).toEqual([to, 0.5, [to]]);
   });
 
+  it('says when an item loses part of what it played', async () => {
+    made();
+    // (The first item plays 0.5–2.0: the trim to 1.0–3.0 cuts its first half second.)
+    now()[0].startAt = 0.5;
+    const job = queueFileEdit(g, 'clip', plan({ start: 1, end: 3 }), 'all')!;
+    await ended(job);
+    expect((jobs.ended[job] as { done: string }).done).toMatch(/ 1 slide item played a part you cut out: it plays the whole clip now\. 1 slide item loses the part you cut off\.$/);
+  });
+
   it('a sound trimmed says so', async () => {
     g.media[0] = { id: 'clip', name: 'Tone.wav', mime: 'audio/wav', size: 900, kind: 'audio' };
     made(500, 'audio/wav');
