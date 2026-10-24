@@ -21,6 +21,7 @@ in plain words for the people who make and host games. Anything committed but no
 
 ### Changed
 
+- The README's pictures show the app as it is now (the host panel's bar, ± Adjust score, the ⋯ menu, 🤫 Cards).
 - The in-game ⌨ / `?` list starts with the keys of the round being played (RPG, Board game, Final, Tiebreaker clue, Slides round), so they're on its first screen in the host panel beside the stage. It always started with Everywhere, the RPG keys six screens down.
 
 ### Fixed

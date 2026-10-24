@@ -15,6 +15,8 @@ const browser = await chromium.launch({ executablePath });
 const page = await (await browser.newContext({ viewport: { width: 1600, height: 900 }, deviceScaleFactor: 1 })).newPage();
 page.on('dialog', (d) => d.accept(d.type() === 'prompt' ? d.defaultValue() : undefined));
 const shot = async (name) => {
+  // (Once the toasts have gone: the Daily Double's would cover the host panel's bar.)
+  await page.locator('.toast').waitFor({ state: 'detached' }).catch(() => {});
   await page.waitForTimeout(400);
   await page.screenshot({ path: `${out}/${name}.png` });
   console.log('  📸', name);
@@ -61,15 +63,16 @@ try {
   await page.locator('nav > button.round-tab').first().click();
   await shot('editor');
 
-  // Stats and an item, for the RPG and board game.
+  // An RPG world (📊 Stats & Items shows once there is one): stats and an item, for it and the board game.
+  await addRound(/RPG/);
   await page.getByRole('button', { name: '📊 Stats & Items' }).click();
   await page.getByRole('button', { name: /HP \(bar/ }).click();
   await page.getByRole('button', { name: /Gold \(currency/ }).click();
-  await page.getByRole('button', { name: '＋ Item', exact: true }).click();
+  await page.getByRole('button', { name: '＋ Add item', exact: true }).click();
   await page.getByLabel('Item name').fill('Potion');
 
-  // An RPG world: a few screens on the map.
-  await addRound(/RPG/);
+  // A few screens on its map.
+  await page.locator('nav > button.round-tab', { hasText: 'Adventure' }).click();
   await page.getByRole('button', { name: 'Add a screen at column 2, row 1' }).click();
   await page.getByRole('button', { name: 'Add a screen at column 2, row 2' }).click();
   await page.getByRole('button', { name: 'Add a screen at column 3, row 2' }).click();
@@ -110,7 +113,7 @@ try {
   await page.getByRole('button', { name: '🎡 Wheel' }).click();
   await page.getByRole('button', { name: '🎯 Pick a player', exact: true }).click();
   await page.getByLabel('Spin another wheel too').selectOption({ label: '🎯 Pick a player' });
-  await page.locator('.tc').getByRole('button', { name: 'Spin!' }).click();
+  await page.getByRole('button', { name: /^Spin!/ }).click();
   await page.waitForFunction(() => document.querySelectorAll('.stage .many .chip').length === 2, null, { timeout: 15000 });
   await shot('wheels');
   await page.keyboard.press('Escape');
@@ -129,8 +132,11 @@ try {
   // The board game.
   await nextRound();
   await page.locator('.bh').waitFor();
+  // Past its title card too (nothing moves under it).
+  if (await card.count()) await card.click();
+  await card.waitFor({ state: 'detached' });
   await page.getByLabel('Steps').fill('3');
-  await page.getByRole('button', { name: /^▶ Move/ }).click();
+  await page.locator('.bh .move').getByRole('button', { name: /^▶ Move/ }).click();
   await page.waitForTimeout(1600);
   await shot('play-boardgame');
   console.log('screenshots: done');
