@@ -165,6 +165,14 @@ export function cardsOut(game: CardGame, session: OutSession): SentCard[] {
 }
 
 /**
+ * The cards still out, whoever they're for: one held for players taken out too (they keep their place on it while
+ * they're gone, and ✖ Take back takes it as well).
+ */
+export function cardsHeld(game: CardGame, session: Pick<Session, 'cards' | 'currentRound' | 'phase' | 'currentClue'>): SentCard[] {
+  return (session.cards ?? []).filter((c) => stillOut(game, session, c));
+}
+
+/**
  * The list of cards out: those sent with 🤫 Send a card… or from a tile's or a Final's panel. A 🎭 deal's cards are listed by the
  * deal (its row only counts them: one per player would say who got which by what's on each).
  */

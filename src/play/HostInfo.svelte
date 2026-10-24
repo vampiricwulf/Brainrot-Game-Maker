@@ -15,7 +15,7 @@
   import { boardNow, busyZones } from './boardgame/bgops';
   import { app } from '../lib/app.svelte';
   import { tileToolUp } from '../lib/live';
-  import { dealOut } from '../lib/deals';
+  import { dealHeld, dealOut } from '../lib/deals';
   import { toKey } from '../lib/partner';
   import ShrinkButton from './host/ShrinkButton.svelte';
   import { letter, usableChoices } from '../lib/choices';
@@ -94,10 +94,12 @@
    */
   const deal = $derived(session.deal ?? null);
   const dealCards = $derived(deal ? dealOut(game, session) : []);
+  /** (Out while any is held, one for a player taken out too.) */
+  const dealKept = $derived(deal ? dealHeld(game, session) : []);
   function dealWhere(): string {
     if (!deal) return '';
     if (deal.stage === 'dealt') return 'dealt, not sent yet';
-    if (!dealCards.length) return deal.round ? 'its cards went when that round ended' : 'its cards are taken back';
+    if (!dealKept.length) return deal.round ? 'its cards went when that round ended' : 'its cards are taken back';
     return phones ? 'on their phones' : 'dealt: you copy each card';
   }
   /** That player's phone showed their card. */

@@ -255,6 +255,10 @@ try {
   await page.keyboard.press('t');
   await scores.locator('.clock .timer').waitFor();
   assert(true, 'the countdown shows there too');
+  // On the key, colors OBS keeps: a wager's ✔ in blue, not the green, and the countdown's box solid black (see-through
+  // over the key it would come out dark green, and go too).
+  const [tick, clockBg] = [await scores.locator('.strip').evaluate((e) => getComputedStyle(e).getPropertyValue('--right').trim()), await scores.locator('.clock .timer').evaluate((e) => getComputedStyle(e).backgroundColor)];
+  assert(tick === '#1f6fd1' && clockBg === 'rgb(0, 0, 0)', `on chroma green, the scores window's ✔ is blue and its countdown box solid (${tick}, ${clockBg})`);
   assert(await page.locator('.panel button[aria-label="Close the scores window"]').isVisible(), 'the host panel’s ▭ button says it closes it');
   await shot('pf-3-scores', scores);
   await shot('pf-4-host');

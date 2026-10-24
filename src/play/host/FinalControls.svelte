@@ -132,8 +132,10 @@
     void tick().then(() => {
       const fs = f;
       if (!fs || session.finalStep !== 'wagers') return;
-      // Phones send the wagers: the keys stay the host's (N goes on once they're all in), no box to type in.
-      if (phones.some((id) => fs.players.includes(id))) return;
+      // Phones send the wagers: the keys stay the host's (N goes on once they're all in), no box to type in. (The list
+      // takes the focus, where it is: else the main button going disabled sends it to the next button, scrolling the
+      // panel's box and cutting its top line, on stream in one window.)
+      if (phones.some((id) => fs.players.includes(id))) return void wagersEl?.focus({ preventScroll: true });
       const todo = rowOrder().find(needsWager);
       if (todo) wagerBox(todo)?.focus();
     });
@@ -436,7 +438,7 @@
         <span class="exposed">⚠ Viewers can see this: they see this window, the wagers as you type them too. Open the 📺 audience window to keep them secret.</span>
       {/if}
       <!-- One row per player: plays or sits out (players at 0 or less sit out unless the round lets them play), and their wager. -->
-      <div class="wagers" role="list" aria-label="Who plays and their wagers" bind:this={wagersEl}>
+      <div class="wagers" role="list" aria-label="Who plays and their wagers" tabindex="-1" bind:this={wagersEl}>
         {#each session.players as p (p.id)}
           {@const plays = f.players.includes(p.id)}
           {@const cap = finalWagerCap(session, p.id)}
@@ -776,6 +778,10 @@
     display: flex;
     flex-wrap: wrap;
     gap: 6px;
+  }
+  /* (Focused only to hold the keys, with phones sending the wagers: no ring on stream.) */
+  .wagers:focus {
+    outline: none;
   }
   .wrow {
     display: flex;

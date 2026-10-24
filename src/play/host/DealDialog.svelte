@@ -22,7 +22,7 @@
   import { cardWindow, openCardWindow } from '../../lib/cardwindow.svelte';
   import { textOn } from '../../lib/colors';
   import {
-    clearDeal, countText, dealCopyText, dealCounts, dealFromTemplate, dealHands, dealOut, dealPhones, dealPhonesLate, dealProblem, dealSentLine, dealtHere, dealtIn, dealTrial, DEAL_TEMPLATES, newDealPart,
+    clearDeal, countText, dealCopyText, dealCounts, dealFromTemplate, dealHands, dealHeld, dealOut, dealPhones, dealPhonesLate, dealProblem, dealSentLine, dealtHere, dealtIn, dealTrial, DEAL_TEMPLATES, newDealPart,
     partName, sendDeal, sendDealAgain, startDeal, takeBackDeal,
   } from '../../lib/deals';
   import { DEAL_PART_MAX, DEAL_PARTS_MAX, MAX_PLAYERS, setSlideText, slideText, type CardTo, type DealPart, type Game, type Id, type SentCard, type Session } from '../../lib/model';
@@ -173,7 +173,7 @@
     if (!work) return;
     const r = dealHands(drawFrom, work, pool, { picks, perTeam });
     if ('problem' in r) return toast(r.problem);
-    if (!sure && d && dealOut(game, session).length) {
+    if (!sure && d && dealHeld(game, session).length) {
       confirm = { kind: 'deal', text: `Deal a new one? It takes the cards of “${d.name}” back from the phones.`, ok: 'Take them back and deal', run: () => deal(true) };
       return;
     }
@@ -189,20 +189,25 @@
 
   /** The deal's cards out now (one per player). */
   const out = $derived(d ? dealOut(game, session) : []);
+  /**
+   * Those and any held for players taken out: while there are any, the deal is out (↻ Send again, ✖ Take back), whoever
+   * is in the game. (Gone with the player taken out, it would say they had a part.)
+   */
+  const held = $derived(d ? dealHeld(game, session) : []);
   const roundOn = $derived(session.phase !== 'end' && session.phase !== 'tiebreaker');
   let lasts = $state<'round' | 'host'>('round');
   /** How long the cards last: as chosen, or as they lasted when sent before (📤 Send again after ✖ Take back). */
   const until = $derived<'round' | 'host'>(!roundOn ? 'host' : d?.stage === 'sent' && d.until ? d.until : lasts);
   /** More players than the phones hold cards at once, all together (the room's CARDS_MAX). */
   const tooMany = $derived(!!d && cardsOn && d.hands.length > CARDS_MAX);
-  const full = $derived(!!d && cardsOn && !out.length && !tooMany && roomCardsFull(game, session, dealTrial(game, d, until)));
+  const full = $derived(!!d && cardsOn && !held.length && !tooMany && roomCardsFull(game, session, dealTrial(game, d, until)));
   /** Why it can't go when `full`: the cards out, what the deal adds, how many to take back. */
   const fullText = $derived(full && d ? dealFullText(game, session, dealTrial(game, d, until)) : '');
   /**
    * It fits, but fills the phones: once it's out no other 🤫 card can go to one (a partner clue's included), so the host
    * hears it before 📤 Send, not at the next partner clue.
    */
-  const fills = $derived(!!d && cardsOn && !out.length && !tooMany && !full && roomCardsAfter(game, session, dealTrial(game, d, until)) >= CARDS_MAX);
+  const fills = $derived(!!d && cardsOn && !held.length && !tooMany && !full && roomCardsAfter(game, session, dealTrial(game, d, until)) >= CARDS_MAX);
   /**
    * The deal's cards out that never reach a phone (their ids on the wire): handed out before the room took cards, more
    * than it takes at once (it's told the newest CARDS_MAX).
@@ -240,7 +245,7 @@
   }
   function putAway(sure = false): void {
     if (!d) return;
-    if (!sure && out.length) {
+    if (!sure && held.length) {
       confirm = { kind: 'away', text: `Put the deal away? The cards of “${d.name}” go from the phones, and who had which part is forgotten.`, ok: 'Put it away', run: () => putAway(true) };
       return;
     }
@@ -266,7 +271,7 @@
     if (!d || d.stage !== 'sent') return both('');
     // (Only ✖ Take back forgets the round they lasted: one still kept went with its end, back in it or not.)
     const gone = d.round ? 'Its cards went when that round ended' : 'Its cards are taken back';
-    if (!out.length)
+    if (!held.length)
       return both(
         tooMany
           ? `${gone}: the phones hold ${CARDS_MAX} at once, all phones together, so 🎭 Deal a new one with fewer in`
@@ -485,7 +490,7 @@
       {#if left && out.length}<div class="small warn"><span>{left}</span><ShrinkButton {game} items={handItems} which="big" /></div>{/if}
       {#if slow && out.length}<div class="small muted"><span data-card-slow>{slow}</span><ShrinkButton {game} items={handItems} which="slow" /></div>{/if}
       <div class="row wrap">
-        {#if out.length}
+        {#if held.length}
           {#if cardsOn && !over}<button class="small" onclick={again} title="Every card of the deal goes again under a new id: a phone that came late (a player on a new phone), or a player put back, gets theirs">↻ Send again</button>{/if}
           <button class="ghost small" onclick={takeBack} title="Takes every card of the deal off the phones (the deal stays, for Who was who)">✖ Take back</button>
         {:else}

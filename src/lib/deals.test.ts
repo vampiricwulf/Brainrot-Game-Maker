@@ -24,6 +24,7 @@ import {
   dealCounts,
   dealFromTemplate,
   dealHands,
+  dealHeld,
   dealOut,
   dealPhones,
   dealPhonesLate,
@@ -572,6 +573,17 @@ describe('one window: the phones that came after the cards went are counted blin
     expect(dealSentLine(session.deal!, 5, 0, false)).toBe('Sent to 6');
     expect(dealSentLine(session.deal!, 5, 2, false)).toBe('✓ seen by 2 of 6');
     expect(dealSentLine(session.deal!, 5, 2, true)).toBe('✓ seen by 2 of 5');
+  });
+
+  it('the captain taken out (the only part): the deal is still out, held for them, and ✖ Take back takes their card too', () => {
+    const { g, session } = captainDeal('c');
+    removePlayer(session, 'c');
+    // (Nothing on the phones, but the panel keeps “Sent to 1”, ↻ Send again and ✖ Take back: going would say Cat had it.)
+    expect([dealOut(g, session).length, dealHeld(g, session).length]).toEqual([0, 1]);
+    expect(takeBackDeal(g, session)).toHaveLength(1);
+    expect((session.cards ?? []).filter((c) => c.deal)).toEqual([]);
+    restorePlayer(session, 'c');
+    expect(dealOut(g, session)).toEqual([]);
   });
 
   it('Team captain with no teams: Cat’s phone, coming after the send, counts the same whether she’s captain or not', () => {

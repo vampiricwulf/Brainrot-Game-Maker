@@ -28,7 +28,7 @@ import {
 import type { PhoneInfo } from './buzzproto';
 import { cardHash, toKey } from './partner';
 import { cardLinks, cardWords } from './phonecard';
-import { cardsOut, cleanTo, fileItem, roundNow, sendCardAgain, takeBackCard, type CardGame } from './sentcards';
+import { cardsHeld, cardsOut, cleanTo, fileItem, roundNow, sendCardAgain, takeBackCard, type CardGame } from './sentcards';
 import { isRespin, random, weightedIndex } from './tools';
 
 // ---------- Ready-made deals ----------
@@ -383,6 +383,15 @@ export function dealOut(game: CardGame, session: Pick<Session, 'cards' | 'curren
   return id ? cardsOut(game, session).filter((c) => c.deal === id) : [];
 }
 
+/**
+ * The deal's cards still out, those held for players taken out included (dealOut leaves them off): while there are any,
+ * the deal is out, whoever is in the game.
+ */
+export function dealHeld(game: CardGame, session: Pick<Session, 'cards' | 'currentRound' | 'phase' | 'currentClue' | 'deal'>): SentCard[] {
+  const id = session.deal?.id;
+  return id ? cardsHeld(game, session).filter((c) => c.deal === id) : [];
+}
+
 /** The cards of any deal go (a new deal replaces them). */
 function takeBackDealCards(session: Session): SentCard[] {
   const gone = (session.cards ?? []).filter((c) => c.deal);
@@ -478,7 +487,8 @@ export function dropGonePhones(d: Pick<DealState, 'phonesAt'>, phones: PhoneInfo
 
 /** ✖ Take back: the deal's cards go from every phone (the deal stays, for Who was who). Returns the cards taken back. */
 export function takeBackDeal(game: CardGame, session: Session): SentCard[] {
-  const out = dealOut(game, session);
+  // (Those held for players taken out go too.)
+  const out = dealHeld(game, session);
   for (const c of out) takeBackCard(session, c.id);
   if (session.deal) delete session.deal.round;
   return out;

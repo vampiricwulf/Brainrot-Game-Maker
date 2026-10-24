@@ -537,7 +537,8 @@ The mode isn't saved with the game: it's dual while the audience window is open.
   with the audience window open), and a part's card can show a slice of a saved wheel (each their own, or one shared
   by everyone but the odd one out). Nothing goes until 📤 Send, which sends each player's card on its own; ↻ Send again
   and ✖ Take back work on the whole deal. A player taken out keeps their part, their card off the phones: the counts stay
-  as dealt, and once they're back (Ctrl+Z, ↩ Restore) ↻ Send again sends their card. Only the two-window host column says who got which: one window lists everyone
+  as dealt, the deal stays out (↻ Send again, and ✖ Take back, which takes theirs too) even when theirs was its only
+  card, and once they're back (Ctrl+Z, ↩ Restore) ↻ Send again sends their card. Only the two-window host column says who got which: one window lists everyone
   dealt in alike, a part or not (with the phones getting the cards, only those with no phone here, 📵, to copy theirs),
   and counts the phones that came late. **🎭 Who was who** puts the names and parts on stream when the host presses it,
   as an undoable step; a click on it, Esc, opening a tile or the tiebreaker, going to another round, or the Final going

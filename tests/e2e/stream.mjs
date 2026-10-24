@@ -318,6 +318,13 @@ async function viewers() {
   const badge = aud.locator('.join-badge');
   await badge.waitFor();
   assert(true, 'on the board the join code is at the end of the score bar');
+  // The window not clicked yet: its “🔊 Click to enable sound” chip (for the host) is in the top left, clear of the code
+  // (in the bottom right here, on slides, a clue and the tiebreaker).
+  const [chipAt, badgeAt] = [await aud.locator('.activate').boundingBox(), await badge.boundingBox()];
+  assert(
+    chipAt.x <= 12 && chipAt.y <= 12 && (chipAt.x + chipAt.width <= badgeAt.x || chipAt.y + chipAt.height <= badgeAt.y),
+    `the “Click to enable sound” chip is in the top left, clear of the join code (${Math.round(chipAt.x)},${Math.round(chipAt.y)} and ${Math.round(badgeAt.x)},${Math.round(badgeAt.y)})`,
+  );
   const plates = () => aud.locator('.plate').evaluateAll((els) => els.map((e) => Math.round(e.getBoundingClientRect().left)).join());
   const before = await plates();
 

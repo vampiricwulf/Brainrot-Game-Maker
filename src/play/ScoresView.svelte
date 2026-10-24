@@ -6,7 +6,7 @@
 <script lang="ts">
   import type { Live } from '../lib/live';
   import type { Game, Session } from '../lib/model';
-  import { STAGE_KEYS, themeStyle } from '../lib/theme';
+  import { rightFill, STAGE_KEYS, themeStyle } from '../lib/theme';
   import ScoreBar from './ScoreBar.svelte';
   import TimerDisplay from './TimerDisplay.svelte';
   import { platesClear, wagersIn } from './flow';
@@ -30,7 +30,8 @@
   <!-- Nothing before the game starts (the host is on the pre-game screen), nor under the cover (scores changing behind
        it would give the judging away). -->
   {#if session && !live.pregame && !live.cover && session.players.length}
-    <div class="strip" class:keyed={!!keyColor} style={themeStyle(game.theme)} style:width="{W}px" style:height="{H}px" style:transform="translateX(-50%) scale({scale})">
+    <!-- (A wager's ✔ in the blue OBS keeps on a green key, as on the stage.) -->
+    <div class="strip" class:keyed={!!keyColor} style={themeStyle(game.theme)} style:--right={rightFill(game.theme?.stageBg)} style:width="{W}px" style:height="{H}px" style:transform="translateX(-50%) scale({scale})">
       <!-- In a Final nobody picks: the spotlit player in its reveals is lit, else nobody (as on the stage); nor on the
            results or the tiebreaker. Plates too many to fit clear of the countdown make room for it while it's up (their
            scores shortened to fit). The ✔ of a Final wager that's in, as on the stage. -->
@@ -91,6 +92,10 @@
     bottom: 0;
     width: 280px;
     height: 230px;
+  }
+  /* Over the key, the countdown's box is solid: see-through, it would blend with the key's color, and OBS take it out. */
+  .strip.keyed .clock :global(.timer) {
+    background: #000;
   }
   .clock :global(.timesup) {
     font-size: 64px;
