@@ -376,7 +376,7 @@ export function sessionCards(game: Game, session: Session, room: PhoneCan): Host
       id: sentCardId(c),
       to: to.map((t) => ({ seat: t.seat, ...(t.member ? { member: t.member.id } : t.except?.length ? { except: [...t.except] } : {}) })),
       open: c.until !== 'tile' || !session.revealed,
-      ...(c.role ? dealLines(c.role, pc) : { ...(pc.title ? { title: pc.title } : {}), ...(pc.text ? { text: pc.text } : {}) }),
+      ...(c.role ? dealLines(c.role, slide) : { ...(pc.title ? { title: pc.title } : {}), ...(pc.text ? { text: pc.text } : {}) }),
       ...(pc.media.length ? { media: pc.media } : {}),
     });
   }
@@ -385,11 +385,11 @@ export function sessionCards(game: Game, session: Session, room: PhoneCan): Host
 
 /**
  * A 🎭 deal's card in words: its part is its secret ("You're the Spy"), so it goes under Tap to see as the card's
- * title, the card's own title and words after it. Never the role line, which a phone shows over the cover, where a
- * neighbour could read it.
+ * title, the card's own words after it, in their places' order ("The location:" then the slice it drew). Never the role
+ * line, which a phone shows over the cover, where a neighbour could read it.
  */
-function dealLines(role: string, pc: { title?: string; text?: string }): Pick<HostCard, 'title' | 'text'> {
-  const text = clip([pc.title, pc.text].filter(Boolean).join('\n'), CARD_TEXT_MAX);
+function dealLines(role: string, slide: Slide): Pick<HostCard, 'title' | 'text'> {
+  const text = clip(cardWords(slide), CARD_TEXT_MAX);
   return { title: `You’re the ${clip(role, CARD_ROLE_MAX)}`, ...(text ? { text } : {}) };
 }
 

@@ -210,8 +210,8 @@ describe('🎡 cards drawn from a saved wheel', () => {
       expect(new Set(rest.map((x) => x.slice)).size).toBe(1);
       expect(places.segments.map((s) => s.label)).toContain(rest[0].slice);
       seen.add(rest[0].slice!);
-      // The card says the location; the spy's card never does.
-      expect(phoneCard(g, rest[0].slide, { fileBytes: FILE_BYTES, files: {} })).toMatchObject({ title: 'The location:', text: rest[0].slice });
+      // The card says the location, as its big line; the spy's card never does.
+      expect(phoneCard(g, rest[0].slide, { fileBytes: FILE_BYTES, files: {} })).toMatchObject({ title: rest[0].slice, text: 'The location:' });
       expect(JSON.stringify(spy[0].slide)).not.toContain(rest[0].slice!);
     }
     // (Drawn at random: many locations come up.)
@@ -256,14 +256,14 @@ describe('🎡 cards drawn from a saved wheel', () => {
     }
   });
 
-  it('a slice’s details and picture go on the card, under the part’s words; the part’s card is copied, not shared', () => {
+  it('a slice’s details and picture go on the card, under the part’s words, its label the big line; the part’s card is copied, not shared', () => {
     const { g } = setup();
     g.media.push({ id: 'pic', name: 'beach.png', mime: 'image/png', size: 100, kind: 'image' });
     const card = textSlide('The location:');
     const s = handSlide(g, card, { label: 'Beach', details: 'Sand, sea and sun', media: 'pic' });
-    expect(phoneCard(g, s, { fileBytes: FILE_BYTES, files: {} })).toMatchObject({ title: 'The location:', text: 'Beach\nSand, sea and sun', media: [{ kind: 'image', pending: true }] });
+    expect(phoneCard(g, s, { fileBytes: FILE_BYTES, files: {} })).toMatchObject({ title: 'Beach', text: 'The location:\nSand, sea and sun', media: [{ kind: 'image', pending: true }] });
     setSlideText(card, 'changed');
-    expect(phoneCard(g, s, { fileBytes: FILE_BYTES, files: {} }).title).toBe('The location:');
+    expect(phoneCard(g, s, { fileBytes: FILE_BYTES, files: {} }).text).toBe('The location:\nSand, sea and sun');
   });
 
   it('Team captain, per team: one captain on each team, among the people on it (or the host’s pick there)', () => {

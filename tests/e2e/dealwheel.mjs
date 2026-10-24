@@ -206,8 +206,8 @@ try {
     const who = nameOf[c.to[0].seat];
     const s = slice(who);
     assert(
-      c.to.length === 1 && !c.role && !c.shared && c.title === THIS_DEAL && c.text === [s.label, s.details].filter(Boolean).join('\n') && !!c.media === !!s.media,
-      `${who}’s card: “${THIS_DEAL}”, then ${s.label}${s.details ? ' and its longer words' : ''}${s.media ? ' and its picture' : ''}`,
+      c.to.length === 1 && !c.role && !c.shared && c.title === s.label && c.text === [THIS_DEAL, s.details].filter(Boolean).join('\n') && !!c.media === !!s.media,
+      `${who}’s card: ${s.label} as its big line, then “${THIS_DEAL}”${s.details ? ' and its longer words' : ''}${s.media ? ' and its picture' : ''}`,
     );
   }
   assert(!JSON.stringify(states).includes('zfnqj') && !JSON.stringify(states).includes(CARD_WORDS), 'no file name goes to the room, nor the saved deal’s words (this deal’s were changed)');
@@ -216,8 +216,8 @@ try {
     const p = phones[name];
     const s = slice(name);
     await p.getByRole('button', { name: 'Tap to see' }).tap();
-    await p.locator('.card-words', { hasText: s.label }).waitFor();
-    assert(!(await p.locator('.card-role').count()) && !(await p.locator('.card').innerText()).includes('You’re the'), `${name}’s phone: ${s.label}, with no part line`);
+    await p.locator('.card-title', { hasText: s.label }).waitFor();
+    assert(!(await p.locator('.card-role').count()) && !(await p.locator('.card').innerText()).includes('You’re the'), `${name}’s phone: ${s.label} as the card’s big line, with no part line`);
     if (s.media) {
       assert(await until(() => p.locator('.card img').evaluate((img) => img.src.startsWith('blob:') && img.complete && img.naturalWidth > 0).catch(() => false)), `${name}’s phone: the picture arrives`);
       fileOf[name] = sent.find((c) => c.to[0].seat === seat[name]).media[0].file;
@@ -258,6 +258,7 @@ try {
   assert(await until(() => !cards().length), '✖ Take back: the room holds none of them');
   assert(await until(async () => !(await phones.Ann.locator('.card').count()) && !(await phones[withPic[0]].locator('.card').count())), 'the phones drop them');
   assert(await until(async () => (await fetchAs(phones[withPic[0]], fileOf[withPic[0]])) === 404), 'and the room lets go of the pictures');
+  assert((await flat(dialog.locator('[data-deal-status]'))).includes('Its cards are taken back: 📤 Send puts them out again'), 'the panel says its cards are taken back');
   await dialog.getByRole('button', { name: '📤 Send' }).click();
   assert(await until(() => cards().length === 4 && cards().every((c) => !sent.some((x) => x.id === c.id))), '📤 Send again: four cards under new ids');
   assert(await until(() => pics().length === 2) && uploads === 4, 'the pictures go up again');
@@ -286,7 +287,7 @@ try {
   await dialog.locator('[data-deal-send]').click();
   assert(await until(() => cards().length === 4), 'sent');
   await phones.Bob.getByRole('button', { name: 'Tap to see' }).tap();
-  await phones.Bob.locator('.card-words', { hasText: places.Bob }).waitFor();
+  await phones.Bob.locator('.card-title', { hasText: places.Bob }).waitFor();
   assert(!heard.Bob.join('\n').includes(places.Ann), 'Bob’s phone gets his place, not Ann’s');
   await offStream(Object.values(places), 'a deal of places sent');
 

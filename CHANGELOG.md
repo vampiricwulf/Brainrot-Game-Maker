@@ -22,6 +22,9 @@ in plain words for the people who make and host games. Anything committed but no
 - A phone that reloads (a pull down on the page, or the phone reloading the tab in the background) puts back an answer or wager typed and not sent, under “Not sent yet”, while that round is open. A pull down no longer reloads the phone page. A buzzer server you run yourself needs deploying again for this.
 - 🤫 Send a card… in a team game: ⇄ Everyone else after a card to one person picks the rest of their team too, not only the other teams, so the card after “you're the spy” reaches the spy's teammates.
 - A player taken out keeps their place on the 🤫 cards: after Ctrl+Z or ↩ Restore they're back on them, and ↻ Send again gives them theirs, as 🎭 deals already did. The cards out never read “Card 1 → Ann, ?” once an added player is undone, and a card for them alone isn't counted while they're gone.
+- The slice a 🎭 deal's card drew (the place, the prompt) is the card's big line in the 🪟 card window, and on phones for a deal with no parts (🧠 Everyone's own prompt), over “The location:” or “Your secret prompt:”. It was the smallest line on the card.
+- 🎭 Deal… says what became of its cards: “Its cards went when that round ended” (📤 Send puts them out again for this round) or “Its cards are taken back”, not “Its cards are back (or over)”. A screen reader hears “Odd one out: 2 cards sent” (or “1 card sent”), without “one to each player” when some dealt in have no part.
+- A 🤫 card open on a phone stays readable when ↻ Send again moves it to the top. In browsers built on Chromium 141 it went blank. A buzzer server you run yourself needs deploying again for this.
 
 ## 2026-10-24
 

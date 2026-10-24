@@ -30,7 +30,7 @@
   import { phoneCard } from '../../lib/phonecard';
   import { buzzerOn, remote, roomHasCards, roomHasFiles, roomMembers } from '../../lib/remote.svelte';
   import { nameList } from '../../lib/session';
-  import { sentCardId, sentSlide } from '../../lib/sentcards';
+  import { roundNow, sentCardId, sentSlide } from '../../lib/sentcards';
   import { whoWasWhoStep } from '../../lib/toolset';
   import { WHEEL_TEMPLATES, wheelFromTemplate } from '../../lib/wheeltemplates';
   import { copyText } from '../standings';
@@ -222,7 +222,7 @@
     const cards = sendDeal(game, session, until, Date.now(), cardsOn && roomCardsFull(game, session, dealTrial(game, d, until)));
     if (!cards.length) return toast('The deal can’t be sent now');
     d.phonesAt = dealPhones(d, remote.phones);
-    announce(cardsOn ? `${d.name}: ${cards.length} cards sent, one to each player` : `${d.name} dealt: copy each card to its player (📋)`);
+    announce(cardsOn ? `${d.name}: ${cards.length} card${cards.length === 1 ? '' : 's'} sent` : `${d.name} dealt: copy each card to its player (📋)`);
   }
   function again(): void {
     if (!d) return;
@@ -230,7 +230,7 @@
     const n = sendDealAgain(game, session);
     if (!n) return;
     d.phonesAt = dealPhones(d, remote.phones);
-    announce(`${d.name}: ${n} cards sent again`);
+    announce(`${d.name}: ${n} card${n === 1 ? '' : 's'} sent again`);
   }
   function takeBack(): void {
     if (!d) return;
@@ -270,7 +270,9 @@
           ? `Its cards are back: the phones hold ${CARDS_MAX} at once, all phones together, so 🎭 Deal a new one with fewer in`
           : full
             ? `Its cards are back, and the phones have no room for them now: ${fullText}`
-            : 'Its cards are back (or over): 📤 Send puts them out again',
+            : d.round && d.round !== roundNow(game, session)
+              ? `Its cards went when that round ended: 📤 Send puts them out again${until === 'round' ? ' for this round' : ''}`
+              : 'Its cards are taken back: 📤 Send puts them out again',
       );
     if (over)
       return both(

@@ -1039,6 +1039,8 @@ export interface DealState {
   stage: 'dealt' | 'sent';
   /** How long its cards last once sent. */
   until?: 'round' | 'host';
+  /** The round its cards went in, when they last that round (none once taken back): the panel says when they went. */
+  round?: Id;
   /**
    * The buzzer room's phones on a place dealt in when its cards last went (📤 Send, ↻ Send again), away ones too: a
    * seat's (its id), or a person's on a team (`seat/member`). A place the room stops listing goes from it (freed,

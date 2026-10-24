@@ -204,8 +204,9 @@ export function dealProblem(game: Pick<Game, 'wheels'>, deal: Pick<DealPreset, '
 
 /**
  * A part's card as one player gets it: the part's card, then the slice it drew (its words, a little longer text, and
- * its picture, video or sound), in that order on a phone. A copy: changing the deal or the wheel afterwards changes
- * nothing that was dealt.
+ * its picture, video or sound), in that order on a phone. The slice's words are the biggest on it, so they're the
+ * card's big line (phonecard.ts takes the largest short line as the title): the secret to read at arm's length, not
+ * "The location:". A copy: changing the deal or the wheel afterwards changes nothing that was dealt.
  */
 export function handSlide(game: Pick<Game, 'media'>, card: Slide, slice?: Pick<WheelSegment, 'label' | 'details' | 'media'>): Slide {
   const out: Slide = JSON.parse(JSON.stringify(card));
@@ -214,8 +215,9 @@ export function handSlide(game: Pick<Game, 'media'>, card: Slide, slice?: Pick<W
   const below = Math.max(0, ...out.elements.map((e) => e.y)) + 1;
   const first = out.elements.find((e) => e.kind === 'text');
   const size = first?.kind === 'text' ? first.size : 110;
+  const top = Math.max(size, ...out.elements.map((e) => (e.kind === 'text' ? e.size : 0)));
   const label = slice.label.trim();
-  if (label) out.elements.push({ ...newTextEl(label, { x: 120, y: below, w: SLIDE_W - 240, h: 160 }), size });
+  if (label) out.elements.push({ ...newTextEl(label, { x: 120, y: below, w: SLIDE_W - 240, h: 160 }), size: Math.round(top * 1.25) });
   const details = slice.details?.trim();
   if (details) out.elements.push({ ...newTextEl(details, { x: 120, y: below + 1, w: SLIDE_W - 240, h: 160 }), size: Math.min(size, 60), uppercase: false });
   const ref = slice.media ? game.media.find((m) => m.id === slice.media) : undefined;
@@ -402,6 +404,9 @@ export function sendDeal(game: CardGame, session: Session, until: 'round' | 'hos
   session.cards = [...(session.cards ?? []), ...cards];
   d.stage = 'sent';
   d.until = until;
+  const round = until === 'round' ? roundNow(game, session) : undefined;
+  if (round) d.round = round;
+  else delete d.round;
   return cards;
 }
 
@@ -475,6 +480,7 @@ export function dropGonePhones(d: Pick<DealState, 'phonesAt'>, phones: PhoneInfo
 export function takeBackDeal(game: CardGame, session: Session): SentCard[] {
   const out = dealOut(game, session);
   for (const c of out) takeBackCard(session, c.id);
+  if (session.deal) delete session.deal.round;
   return out;
 }
 
@@ -578,6 +584,7 @@ export function repairDeal(session: Session): void {
       if (!Array.isArray(d.parts) || !d.parts.every((x) => typeof x === 'string')) deal.parts = [...new Set(hands.map((h) => h.part))].sort();
       if (deal.shown !== undefined && deal.shown !== true) delete deal.shown;
       if (d.phonesAt !== undefined && !(Array.isArray(d.phonesAt) && d.phonesAt.every((x) => typeof x === 'string'))) delete deal.phonesAt;
+      if (d.round !== undefined && typeof d.round !== 'string') delete deal.round;
     }
   }
   const id = session.deal?.id;

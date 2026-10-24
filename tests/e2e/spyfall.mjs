@@ -302,6 +302,9 @@ try {
   console.log('Sending:');
   await dialog.locator('[data-deal-send]').click();
   assert(await until(() => cards().length === 5), 'sent: the room holds five cards, one per player dealt in (Eve’s too, with no phone yet)');
+  const heardSent = () => host.evaluate(() => window.__seen.filter((s) => /cards? sent/.test(s)).join(' | '));
+  assert(await until(async () => (await heardSent()).includes('Odd one out: 5 cards sent')), 'a screen reader hears “Odd one out: 5 cards sent”');
+  assert(!(await heardSent()).includes('one to each player'), `and not “one to each player” (${await heardSent()})`);
   const sent = cards();
   assert(new Set(sent.map((c) => c.id)).size === 5 && sent.every((c) => c.to.length === 1 && !c.to[0].member && !c.shared), 'each under its own id, to one seat, never marked shared');
   assert(!sent.some((c) => c.to[0].seat === seat.Fay), 'none for Fay, who isn’t dealt in');
@@ -458,7 +461,7 @@ try {
   assert(await until(async () => !(await reveal.count())), 'and Who was who goes off the screen (it would cover the next round)');
   await host.evaluate(() => (window.__seen.length = 0));
   await openDeal();
-  assert((await flat(dialog.locator('[data-deal-status]'))).includes('Its cards are back (or over)'), 'the deal’s window says its cards are over');
+  assert((await flat(dialog.locator('[data-deal-status]'))).includes('Its cards went when that round ended: 📤 Send puts them out again for this round'), 'the deal’s window says its cards went when that round ended');
   await secret('the next round');
   await dialog.locator('[data-deal-reveal]').click();
   await reveal.waitFor();

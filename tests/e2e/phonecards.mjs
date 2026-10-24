@@ -455,6 +455,15 @@ try {
     kept.top === 'pc:c4:1:2' && kept.open && kept.player && kept.loads === 1 && kept.keys && !kept.buzzes && kept.said === 1,
     `↻ Send again: a picture that didn’t load is tried again in the open card (and said once as it comes), which moves to the top keeping its player (not loaded again) and the keys (${JSON.stringify(kept)})`,
   );
+  // An open card of words only, made the newest by ↻ Send again: it moves to the top with its words in sight.
+  const plain = bob.locator(`.card[data-card="${other.id}"]`);
+  await plain.getByRole('button', { name: 'Tap to see' }).tap();
+  await plain.getByText('Other-qz').waitFor();
+  hostState({ cards: [shared, { ...retry, id: 'pc:c4:1:2' }, { ...other, id: 'pc:c4:2:2' }] });
+  await until(() => bob.evaluate(() => document.querySelector('#card-list > .card')?.dataset.card === 'pc:c4:2:2'), 'the card of words at the top');
+  const moved = bob.locator('.card[data-card="pc:c4:2:2"]');
+  const wordsH = await moved.locator('.card-title').evaluate((e) => Math.round(e.getBoundingClientRect().height));
+  assert(wordsH > 20 && (await moved.getByText('Other-qz').isVisible()), `↻ Send again: an open card of words only moves to the top, its words in sight (${wordsH}px high)`);
   hostState({ cards: [shared] });
   await again.waitFor({ state: 'detached' });
 

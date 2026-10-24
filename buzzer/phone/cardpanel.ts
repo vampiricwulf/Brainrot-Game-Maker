@@ -187,12 +187,14 @@ export function drawCards(box: HTMLElement, list: readonly PhoneCard[]): string[
   }
   for (const d of going.values()) dropCard(d.id, d);
   // Into place without moving the cards already there (a moved frame would load again). One that must move (↻ Send
-  // again makes an older card the newest) keeps its players and the keys where the browser can (moveBefore).
+  // again makes an older card the newest) keeps its frame where the browser can (moveBefore): only one with a frame, as
+  // Chromium 141 drew any other card moved that way as an empty box. (A video or sound put back at once plays on, and
+  // the keys go back below.)
   const mover = box as HTMLElement & { moveBefore?(node: Node, child: Node | null): void };
   order.forEach((e, i) => {
     const at = box.children[i] ?? null;
     if (at === e) return;
-    if (e.parentNode === box && mover.moveBefore) mover.moveBefore(e, at);
+    if (e.parentNode === box && mover.moveBefore && e.querySelector('iframe')) mover.moveBefore(e, at);
     else box.insertBefore(e, at);
   });
   // The keys back in the card they were in, if drawing it again or moving it lost them.
