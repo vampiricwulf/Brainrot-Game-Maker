@@ -442,6 +442,12 @@ try {
   await soonTitle.waitFor();
   await host.getByRole('button', { name: '◀ Back to editor' }).click();
   await host.getByRole('button', { name: '🎨 Theme' }).click();
+  // Share's buttons that wrap (a 1280-wide window) go on under the first one, not under the row's label.
+  const share = await host.locator('.share .row', { hasText: 'Bring one in' }).evaluate((row) => {
+    const b = [...row.querySelectorAll('button')].map((x) => x.getBoundingClientRect());
+    return { wraps: b.some((r) => r.top > b[0].top + 4), under: b.every((r) => r.left >= b[0].left - 1) };
+  });
+  assert(share.wraps && share.under, `Theme › Share: a button that wraps lines up under the first one, not under “Bring one in” (${JSON.stringify(share)})`);
   await host.locator('.preset', { hasText: 'Pastel' }).click();
   // (Pastel's purple values.)
   const PASTEL_VALUE = 'rgb(122, 76, 255)';

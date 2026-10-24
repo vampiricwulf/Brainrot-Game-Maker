@@ -68,7 +68,7 @@
 {#if !app.game.tiebreaker}
   <!-- Off: what it is, with the switch that turns it on. -->
   <div class="empty">
-    <span class="ic" aria-hidden="true">🤝</span>
+    <span class="ic" aria-hidden="true">❓</span>
     <p><b>No tiebreaker in this game.</b></p>
     <p class="muted">
       When two or more players tie for first after the last round, the host can play one more clue (or roll off) to pick the

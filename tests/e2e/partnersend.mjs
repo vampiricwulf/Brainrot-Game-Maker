@@ -414,7 +414,7 @@ try {
   const catToken = await tokenOf(cat);
   const phonesChip = host.getByRole('button', { name: /^📱 \d/ });
   await phonesChip.click();
-  await host.getByRole('button', { name: 'Free Cat’s seat (moved phone)' }).click();
+  await host.getByRole('button', { name: 'Free seat: Cat’s (moved phone)' }).click();
   await cat.getByRole('heading', { name: 'The host freed your seat' }).waitFor();
   assert(!(await cat.locator('.card').count()), 'Cat’s seat freed: her old phone drops her card');
   await host.getByRole('button', { name: 'Close the phones list' }).click();

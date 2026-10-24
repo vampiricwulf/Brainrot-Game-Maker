@@ -401,16 +401,21 @@
 
 <section class="share" aria-labelledby="share-heading">
   <h3 id="share-heading">Share</h3>
+  <!-- (Buttons that wrap go on under the first one, not under the label.) -->
   <div class="row">
     <span class="lbl">This theme</span>
-    <button class="small" onclick={() => exportTheme(shareName, now(), true)} title="A .brainrot-theme file to send: with this theme’s pictures and uploaded fonts">⬇ Export theme</button>
-    <button class="small" onclick={() => copyCode(shareName, now())} title="A short code to paste in a chat: colors, fonts and layout (no pictures or uploaded fonts)">📋 Copy theme code</button>
+    <span class="btns">
+      <button class="small" onclick={() => exportTheme(shareName, now(), true)} title="A .brainrot-theme file to send: with this theme’s pictures and uploaded fonts">⬇ Export theme</button>
+      <button class="small" onclick={() => copyCode(shareName, now())} title="A short code to paste in a chat: colors, fonts and layout (no pictures or uploaded fonts)">📋 Copy theme code</button>
+    </span>
   </div>
   <div class="row">
     <span class="lbl">Bring one in</span>
-    <button class="small" onclick={importFile} title="Open a .brainrot-theme file">📂 Import theme…</button>
-    <button class="small" onclick={() => (importing = 'code')} title="Paste a theme code someone sent you">⌨ Paste theme code…</button>
-    <button class="small" onclick={fromGame} title="Open a .brainrot game (or its exported web page) and use its theme (with its pictures and uploaded fonts)">📂 Use a theme from another game…</button>
+    <span class="btns">
+      <button class="small" onclick={importFile} title="Open a .brainrot-theme file">📂 Import theme…</button>
+      <button class="small" onclick={() => (importing = 'code')} title="Paste a theme code someone sent you">⌨ Paste theme code…</button>
+      <button class="small" onclick={fromGame} title="Open a .brainrot game (or its exported web page) and use its theme (with its pictures and uploaded fonts)">📂 Use a theme from another game…</button>
+    </span>
   </div>
   <p class="hint">A theme file carries its pictures and uploaded fonts; a code and My themes keep the colors, fonts and layout.</p>
 </section>
@@ -557,12 +562,19 @@
   }
   .share .row {
     display: flex;
-    flex-wrap: wrap;
-    align-items: center;
+    align-items: baseline;
     gap: 6px;
     margin-top: 6px;
   }
+  .btns {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    flex: 1;
+    min-width: 0;
+  }
   .lbl {
+    flex: none;
     width: 7.5em;
     font-size: 12px;
     color: var(--muted);

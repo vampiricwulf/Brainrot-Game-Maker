@@ -125,6 +125,18 @@ try {
     `the history lists steps and score changes newest first (${rows.join(' | ')})`,
   );
   assert((await page.locator('aside .now').count()) === 1, 'with nothing undone, ● Now is at the top');
+  // Each row's time on one line, as the editor's 🕘 History writes it ("5:34 PM", not "05:34" over "PM").
+  const times = await page.locator('aside .item .time').evaluateAll((els) =>
+    els.map((e) => {
+      const r = document.createRange();
+      r.selectNodeContents(e);
+      return { text: e.textContent.trim(), lines: new Set([...r.getClientRects()].map((x) => Math.round(x.top))).size };
+    }),
+  );
+  assert(
+    times.length > 0 && times.every((t) => t.lines === 1 && /^[1-9]\d?:\d\d/.test(t.text)),
+    `each row's time is on one line, without a leading 0 (${times.map((t) => `${t.text}: ${t.lines}`).join(', ')})`,
+  );
   // Back to here on the oldest: asks inline (never a browser dialog), then everything after it is undone.
   const oldest = page.locator('aside .item').last();
   await oldest.hover();

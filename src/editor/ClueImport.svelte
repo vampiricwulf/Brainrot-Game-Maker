@@ -68,7 +68,7 @@
     const name = roundName(round, app.game.rounds.indexOf(round));
     // One note (with Undo), at the board: not "… › Row values" because the import set the rows too.
     const left = p.left ? ` (${p.left} didn’t fit)` : '';
-    step(`Imported ${p.placed} clue${p.placed === 1 ? '' : 's'} into ${name}${left}`, () => {
+    step(`Imported ${p.placed} clue${p.placed === 1 ? '' : 's'} into round “${name}”${left}`, () => {
         applyPlan(round, p);
         // The imported clues take the theme's clue text, as clues added on the board do (one with a look of its own keeps it).
         followClueText(app.game, round.categories.flatMap((c) => c.clues.flatMap(textSlidesOf)));

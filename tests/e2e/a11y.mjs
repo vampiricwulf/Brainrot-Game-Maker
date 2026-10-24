@@ -78,6 +78,10 @@ try {
     (await about.getByRole('link', { name: /How to host/ }).getAttribute('href')) === 'https://github.com/vampiricwulf/Brainrot-Game-Maker#hosting',
     'the ⋯ menu’s 📖 How to host opens the hosting guide in a new tab, and ℹ About links to it',
   );
+  assert(
+    (await more.getAttribute('aria-label')).includes('Keyboard shortcuts, How to host (guide), About') && (await more.getAttribute('title')).includes('📖 How to host (guide), ℹ About'),
+    '⋯’s name and tooltip list 📖 How to host (guide) with the rest of its menu',
+  );
   await page.keyboard.press('Escape');
   assert((await page.getByRole('dialog').count()) === 0 && (await more.evaluate((b) => b === document.activeElement)), 'Esc on ℹ About gives the focus back too');
 
@@ -326,7 +330,8 @@ try {
   const ariaFocused = () => page.evaluate(() => document.activeElement?.getAttribute('aria-label') ?? 'BODY');
   const rowNames = () => playersDlg.locator('input.name').evaluateAll((els) => els.map((e) => e.value).join());
   await playersDlg.getByRole('button', { name: /^Remove / }).first().click();
-  assert((await focused()) === 'Keep', 'removing a player mid-game asks with the focus on Keep');
+  const removeAsk = await playersDlg.locator('.ask button').allInnerTexts();
+  assert((await focused()) === 'Keep' && removeAsk.join(' | ') === 'Keep | Remove', `removing a player mid-game asks with the focus on Keep, before Remove, as every ask puts the safe answer first (${removeAsk.join(' | ')})`);
   await playersDlg.getByRole('button', { name: 'Keep' }).click();
   await page.waitForFunction(() => document.activeElement?.getAttribute('aria-label') === 'Remove Player 1');
   assert(true, 'Keep gives the keys back to that player’s −');

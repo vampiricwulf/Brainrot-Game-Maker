@@ -1,7 +1,7 @@
 # Brainrot Games Maker
 
 Build and host game shows for livestreams: Jeopardy boards, Final Jeopardy, RPG adventures and board games. The host
-runs everything and players answer by voice on the stream.
+runs everything and players answer by voice on the stream, or on their phones.
 
 The whole app is **one HTML file**. Open it in a browser with no install, server or internet. There's also a Windows
 desktop app.

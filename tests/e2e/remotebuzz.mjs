@@ -207,7 +207,7 @@ try {
   assert(
     (await card.getByRole('button', { name: '✔ Add' }).isDisabled()) &&
       (await card.getByRole('button', { name: 'Turn Zed away' }).isDisabled()) &&
-      (await card.getByRole('button', { name: 'Take Player 1’s seat back from their phone' }).isDisabled()),
+      (await card.getByRole('button', { name: 'Kick Player 1: take their seat back from their phone' }).isDisabled()),
     '✔ Add, ✕ (turn away) and ✕ Kick are greyed out while the room can’t be reached',
   );
   await page.evaluate(() => (window.__room.offline = false));
@@ -360,8 +360,8 @@ try {
   assert((await chip.innerText()).startsWith('📱 1/4'), `the host panel shows how many phones joined (${await chip.innerText()})`);
   await chip.click();
   const pop = page.getByRole('region', { name: 'Phone buzzers' });
-  assert((await pop.getByRole('button', { name: /Free .* seat/ }).count()) === 0, 'a room from before Free seat offers only ✕ Kick');
-  await pop.getByRole('button', { name: 'Take Player 1’s seat back from their phone' }).click();
+  assert((await pop.getByRole('button', { name: /^Free seat/ }).count()) === 0, 'a room from before Free seat offers only ✕ Kick');
+  await pop.getByRole('button', { name: 'Kick Player 1: take their seat back from their phone' }).click();
   await page.waitForFunction((id) => window.__room.sent.some((m) => m.t === 'kick' && m.seatId === id && m.block === undefined), seats[0].id);
   assert(true, 'kick ✕ takes Player 1’s seat back');
   await say({ t: 'phones', phones: [{ conn: 'c5', seatId: null, pendingName: 'Amy', connected: true }] });
@@ -427,10 +427,10 @@ try {
   // ---------- Free seat: a player back on a new phone (no block, unlike ✕ Kick) ----------
   await say({ t: 'phones', phones: [{ conn: 'c9', seatId: seats[1].id, connected: false }] });
   await chip.click();
-  const free = pop.getByRole('button', { name: 'Free Player 2’s seat (moved phone)' });
+  const free = pop.getByRole('button', { name: 'Free seat: Player 2’s (moved phone)' });
   await free.waitFor();
   assert(
-    (await pop.getByRole('button', { name: 'Take Player 2’s seat back from their phone' }).innerText()).includes('Kick') && (await free.innerText()) === 'Free seat',
+    (await pop.getByRole('button', { name: 'Kick Player 2: take their seat back from their phone' }).innerText()).includes('Kick') && (await free.innerText()) === 'Free seat',
     'a seat whose phone is gone offers Free seat (moved phone) beside ✕ Kick',
   );
   await free.click();

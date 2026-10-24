@@ -321,7 +321,7 @@ try {
     fit.rows.length >= 3 && fit.rows.every((r) => r.h && r.h < r.lh * 1.5 && !r.out) && fit.ul <= 0 && fit.pop <= 0,
     `the phones list: each player on one line, Free seat and ✕ Kick inside it, nothing scrolling sideways (${JSON.stringify(fit)})`,
   );
-  await host.getByRole('button', { name: 'Free Bob’s seat (moved phone)' }).click();
+  await host.getByRole('button', { name: 'Free seat: Bob’s (moved phone)' }).click();
   await bob.getByRole('heading', { name: 'The host freed your seat' }).waitFor();
   assert(!(await cardsOn(bob)), 'Bob’s seat freed: his old phone drops the card');
   await host.getByRole('button', { name: 'Close the phones list' }).click();

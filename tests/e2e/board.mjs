@@ -291,7 +291,10 @@ try {
   assert((await roundNames()).length === 2 && (await page.locator('.canvas .hit').count()) === slideItems && (await undoTitle()).startsWith('Undo: Deleted round'), 'Delete on a round tab deletes the round, not the selected slide item too');
   await key('Control+z');
   await page.getByRole('button', { name: /^Tiebreaker/ }).click();
+  assert((await page.locator('.empty .ic').innerText()) === '❓', 'the tiebreaker’s empty page shows ❓, as in play (🤝 is a partner clue)');
   await page.getByLabel('Include a tiebreaker clue').check();
+  const tbTab = (await page.getByRole('button', { name: /^Tiebreaker/ }).innerText()).trim();
+  assert(tbTab === '❓ Tiebreaker', `and so does its button in the round list once it’s on (${tbTab})`);
   await page.getByPlaceholder('Type the tiebreaker question…').fill('How many rizz?');
   assert(await slideShows('How many rizz?'), "the Tiebreaker's quick field writes on its slide");
   // Like a clue, the tiebreaker can have more question slides: ＋ Add slide opens a second one, its quick field types on it.

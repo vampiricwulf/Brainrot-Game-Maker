@@ -186,6 +186,8 @@
         they’d join again with a new code.
       </span>
       <div class="row">
+        <!-- svelte-ignore a11y_autofocus -->
+        <button class="small" autofocus onclick={() => (closing = null)}>Keep it open</button>
         <button
           class="danger small"
           onclick={() => {
@@ -195,8 +197,6 @@
             else onclose();
           }}>{closing === 'off' ? 'Turn off and close' : 'Close the room'}</button
         >
-        <!-- svelte-ignore a11y_autofocus -->
-        <button class="small" autofocus onclick={() => (closing = null)}>Keep it open</button>
       </div>
     </div>
   {/if}
@@ -208,6 +208,8 @@
         {seatedPhones === 1 ? 'it' : 'them all'} back to {switching ? 'pick a team' : 'tap their name'}.
       </span>
       <div class="row">
+        <!-- svelte-ignore a11y_autofocus -->
+        <button class="small" autofocus onclick={() => (switching = null)}>Keep teams {switching ? 'off' : 'on'}</button>
         <button
           class="danger small"
           onclick={() => {
@@ -216,8 +218,6 @@
             onset('buzzTeams', on || undefined, 'Teams');
           }}>Turn teams {switching ? 'on' : 'off'}</button
         >
-        <!-- svelte-ignore a11y_autofocus -->
-        <button class="small" autofocus onclick={() => (switching = null)}>Keep teams {switching ? 'off' : 'on'}</button>
       </div>
     </div>
   {/if}

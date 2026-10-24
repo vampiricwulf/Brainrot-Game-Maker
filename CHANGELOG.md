@@ -13,6 +13,13 @@ in plain words for the people who make and host games. Anything committed but no
 
 ## Unreleased
 
+### Changed
+
+- In the editor the tiebreaker is ❓ (its button in the round list and its empty page), as it is in play, where 🤝 means a partner clue or 🤝 Declare co-winners.
+- The asks on the 📱 Phone buzzers card (✕ Close the room, ticking Teams) and 👥 Players' − put the safe answer first (Keep it open, Keep teams…, Keep) and the red one after it, as every other ask does.
+- ＋ Add round's sample game is ✨ The sample game, as on the first screen (it was 🎁). Undo steps for a board's rows, categories, random partner clues and imported clues name it as round “Jeopardy!”, as other steps do. Open… says “its undo history” when one recent game is listed.
+- README and the spec say players can answer on their phones too; the spec's lines on going online, where players are set and the host panel's bar match the app.
+
 ### Fixed
 
 - On the board, the join code at the end of the score bar keeps clear of the last score plate when it reads “📱 Players’ buzzers” (seats locked or all taken), whatever the theme's font. With 4 or more players it ran under that plate.
@@ -21,6 +28,10 @@ in plain words for the people who make and host games. Anything committed but no
 - One window: the stage on stream keeps its size when a ✍ Everyone answers clue's answer is shown. Until then the host panel lists each player in the row their answer goes in (✔ once it's in), with room kept for a multiple choice's counts and ✔ Judge all.
 - The answers box says “no answer” for a phone that sent none once the answers are locked (one window: “—”, not “…”), instead of “waiting…”.
 - A phone sitting out the Final says “You’re not in this one” under the question and through the reveals, instead of the Final's name a second time. A buzzer server you run yourself needs deploying again for this.
+- 📜 Log › History's times are on one line and written as the editor's 🕘 History writes them (“5:34 AM”, not “05:34” over “AM”), as is the time in “Undid 3 steps (back to …)”.
+- ⋯'s tooltip and screen-reader name list 📖 How to host (guide) with the rest of its menu.
+- What a screen reader or voice control calls ✕ Kick and Free seat starts with their words (“Kick Ann: …”, “Free seat: Ann’s …”), so “click Kick” finds it.
+- 🎨 Theme › Share: a button that wraps lines up under the row's first button, not under its label.
 - After a reload mid-game, the ▶ Play screen says the game in progress's phones wait in its buzzer room and that ▶ Resume it goes back to them; Going live and Start game no longer say no phone can join. A room started there that no phone joined closes on ▶ Resume it, instead of taking the game and telling the phones in its own room that the game is over.
 
 ## 2026-10-23

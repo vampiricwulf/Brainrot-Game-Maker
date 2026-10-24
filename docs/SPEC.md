@@ -3,8 +3,8 @@
 Status: **v1.5 (M1–M7 implemented)** · Last updated: 2026-10-02
 
 A tool for building and hosting custom Jeopardy-style games that are livestreamed to friends.
-Players buzz in by voice on the stream, so the app handles no buzzers. The host runs the board,
-decides who gets points, and controls media.
+Players answer by voice on the stream, or buzz in and answer on their phones (phone buzzers, optional: §6). The host
+runs the board, decides who gets points, and controls media.
 
 ---
 
@@ -19,7 +19,7 @@ decides who gets points, and controls media.
 - **Fun tools.** Dice, wheels, Daily Doubles, timers, and Final Jeopardy.
 
 ### Non-Goals (v1)
-- Buzzers, networked multiplayer, or player-side devices.
+- Buzzers, networked multiplayer, or player-side devices (v1's; optional phone buzzers came later: §6).
 - Online hosting, accounts, or a cloud sync backend.
 - Built-in sound-effect library. Users can attach their own audio anywhere (see §9).
 - Mobile-optimized editing. Play mode should still render acceptably on tablets.
@@ -36,9 +36,10 @@ decides who gets points, and controls media.
 | Desktop `.exe` / `.app` | Tauri wrapper around the same build. Saves into a `BrainrotSaves` folder next to the exe (Open… lists it), writes big files natively, opens a game it's opened with, and updates itself in place from signed releases. | **P2** |
 
 **Browser targets:** latest Chrome, Edge, and Firefox. Safari is best-effort.
-Everything must work from a `file://` URL with no server. The app itself makes no network requests (fonts and libraries are
-bundled). The only exception is **online media** (YouTube, Google Drive, file links, §5.5) that the author chooses to use:
-the editor fetches a pasted link once to save a copy in the game, and whatever it couldn't save plays from the internet.
+Everything must work from a `file://` URL with no server. Fonts and libraries are bundled; the app goes online only for
+**online media** (YouTube, Google Drive, file links, §5.5) that the author chooses to use (the editor fetches a pasted link
+once to save a copy in the game, and whatever it couldn't save plays from the internet), the update check (the newest
+GitHub release, at start unless ⚙ Settings turns it off, and in ℹ About) and, with phone buzzers, the buzzer server (§6).
 
 ---
 
@@ -96,7 +97,7 @@ GameSettings {
   currencySymbol: string            // "$", "", "pts", "🧠", ...
 }
 
-PlayerTemplate { id, name, color /* hex, unique */ }   // no avatars: name + color only
+PlayerTemplate { id, name, color /* hex, unique */, avatar? /* a picture: the RPG avatar and player sheet */ }
 
 Round {
   id, name,
@@ -198,9 +199,10 @@ RollEvent  { id, ts, source: 'wheel' | 'dice', presetName?, result: string /* la
 ## 5. Editor Mode (Builder)
 
 ### 5.1 Game setup
-- New game wizard: title, theme preset, number of rounds, and for each round the number of categories, rows, and default values.
 - **Values**: edit per round (row defaults), with per-clue overrides. A "×2 for this round" helper. Any integer is allowed, including negatives and 0.
-- **Players (default roster)**: add/remove (1–8 players), name, unique color. The color picker prevents duplicates and suggests a distinct palette. No avatars; the score bar shows name plates in each player's color.
+- **Players**: set on the ▶ Play pre-game screen (§6.1), kept with the game: add/remove (1–8 players), name, unique
+  color, a picture (an RPG round's avatar and player sheet). The color picker prevents duplicates and suggests a
+  distinct palette. The score bar shows name plates in each player's color.
 - Toggles: Final Jeopardy on/off, negative scores, deduct-on-wrong, default timer.
 
 ### 5.2 Board editor
@@ -390,7 +392,7 @@ The mode isn't saved with the game: it's dual while the audience window is open.
     so viewers don't see it zoom down and up.
 - **The host panel** has one layout in every round: the status line (📱 phones and ⏱ timer chips), the players' score
   chips, the row of what this moment needs with the one main button (and its key) at its right, the tools with the
-  round navigation, then a fixed bar (Undo, Redo, Sound, keys, Log, Players, Rules, Cover, Hide, Audience, Exit).
+  round navigation, then a fixed bar (Undo, Redo, Sound · Log, Players, Rules · Cover, Hide · Audience, ▭ · ⌨, Exit).
   Questions for the host (Exit, leaving a round, a locked door…) appear in one strip above that bar, never over the
   stage.
 
@@ -677,7 +679,7 @@ checked by Vitest; **manual** = not automated yet.
 | Who goes first | One-click roll-off (a die per player, in their color; ties re-roll). The winner becomes the current picker. |
 | Punishment tracking | Roll log only (optional player tag). No on-stream tally or active-effect badges. |
 | Wheel/dice placement | Full-screen overlay on the audience view |
-| Score bar | Name + color only (no avatars) |
+| Score bar | Name + color only (a player's picture is their RPG avatar, not on the plate) |
 | Slides | Freeform 16:9 elements |
 | Image editing | Crop/rotate/flip/resize, filters, text/sticker overlays, brush |
 | Theming | Presets + full override |

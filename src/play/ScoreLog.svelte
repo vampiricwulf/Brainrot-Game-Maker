@@ -66,7 +66,7 @@
   }
   let expanded = $state<Record<string, boolean>>({});
   const icon = { wheel: '🎡', dice: '🎲', rolloff: '🏁' } as const;
-  const time = (ts: number) => new Date(ts).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  const time = (ts: number) => new Date(ts).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
   const name = (id: string) => (byId[id] ? byId[id].name + (removed.has(id) ? ' (removed)' : '') : '(removed player)');
   /** "+$200", "−$200", or "$0" (a Final judgment with nothing wagered). */
   const amount = (d: number) => `${d > 0 ? '+' : d < 0 ? '−' : ''}${formatPoints(Math.abs(d), sym)}`;
@@ -420,7 +420,7 @@
   }
   .item {
     display: grid;
-    grid-template-columns: 56px 24px minmax(0, 1fr) auto;
+    grid-template-columns: 64px 24px minmax(0, 1fr) auto;
     column-gap: 6px;
     align-items: center;
     min-height: 30px;
@@ -456,6 +456,7 @@
   .time {
     font-size: 12px;
     font-variant-numeric: tabular-nums;
+    white-space: nowrap;
   }
   .icon {
     display: flex;

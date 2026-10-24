@@ -133,11 +133,11 @@
             class:ghost={ph.connected}
             onclick={() => onkick(p.id, true)}
             disabled={down}
-            aria-label="Free {p.name}’s seat (moved phone)"
+            aria-label="Free seat: {p.name}’s (moved phone)"
             title={down ? downTitle : "They're on a new phone or browser: free the seat so they can tap their name there. Blocks nobody."}
           >Free seat</button>
         {/if}
-        <button class="ghost small kick" onclick={() => onkick(p.id)} disabled={down} aria-label="Take {p.name}’s seat back from their phone" title={down ? downTitle : "Kick: take the seat back. That phone, and any on the same Wi-Fi, can't take it again for 2 minutes (they can pick another free name)"}>✕ Kick</button>
+        <button class="ghost small kick" onclick={() => onkick(p.id)} disabled={down} aria-label="Kick {p.name}: take their seat back from their phone" title={down ? downTitle : "Kick: take the seat back. That phone, and any on the same Wi-Fi, can't take it again for 2 minutes (they can pick another free name)"}>✕ Kick</button>
       {/if}
     </li>
     {/if}

@@ -2789,7 +2789,7 @@
     if (text) toast(`Redid ${text}`);
   }
 
-  const clock = (ts: number) => new Date(ts).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  const clock = (ts: number) => new Date(ts).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
 
   /** 🕘 History's ↶ Back to here: undo every step newer than the row (a roll or a change undone in Scores marks a moment). */
   function undoBackTo(row: TimelineRow): void {
@@ -4843,8 +4843,8 @@
               <!-- (Its phones lose their place on it: a restored team is picked again from the phones.) -->
               {#if n}{n === 1 ? 'The 1 person on it goes' : `The ${n} people on it go`} back to picking a team on their phone{n === 1 ? '' : 's'}.{/if}
             </span>
-            <button class="bad small" onclick={() => removeFromGame(p.id)}>Remove</button>
             <button class="small" onclick={keepPlayer} use:takeFocus>Keep</button>
+            <button class="bad small" onclick={() => removeFromGame(p.id)}>Remove</button>
           </div>
         {/if}
         {#if session.removedPlayers?.length}

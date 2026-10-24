@@ -934,7 +934,7 @@
       </span>
     {/if}
     <button class="ghost" onclick={() => (finding = true)} aria-label="Find" title="Find clues, screens, spaces, items… anywhere in the game (Ctrl+F)"><span aria-hidden="true">🔍</span><span class="word">Find</span></button>
-    <button class="ghost more" onclick={moreMenu} aria-haspopup="menu" aria-label="More: Export as a web page, Export JSON, Settings, Keyboard shortcuts, About" title={'⬇ Export as a web page, { } Export JSON, ⚙ Settings, ⌨ Keyboard shortcuts, ℹ About'}>⋯</button>
+    <button class="ghost more" onclick={moreMenu} aria-haspopup="menu" aria-label="More: Export as a web page, Export JSON, Settings, Keyboard shortcuts, How to host (guide), About" title={'⬇ Export as a web page, { } Export JSON, ⚙ Settings, ⌨ Keyboard shortcuts, 📖 How to host (guide), ℹ About'}>⋯</button>
     <button class="primary play" onclick={onplay} disabled={!game.rounds.length || !!opening} title={game.rounds.length ? '' : 'Add a round first'}>▶ Play</button>
   </header>
   {#if movedNotice}
@@ -1090,7 +1090,7 @@
           onclick={() => (tab = 'tiebreaker')}
           title={game.tiebreaker ? 'Played after the last round when players tie for the win' : 'Optional: a clue played after the last round when players tie for the win (off)'}
         >
-          {#if game.tiebreaker}<span aria-hidden="true">🤝</span> Tiebreaker{:else}<span aria-hidden="true">＋</span> Tiebreaker <span class="opt">(optional)</span>{/if}
+          {#if game.tiebreaker}<span aria-hidden="true">❓</span> Tiebreaker{:else}<span aria-hidden="true">＋</span> Tiebreaker <span class="opt">(optional)</span>{/if}
         </button>
       {/if}
       <button class="ghost" aria-haspopup="menu" onclick={addRoundMenu}>＋ Add round</button>

@@ -122,13 +122,13 @@
     );
   }
   function setPartnerGame(g: PartnerGame): void {
-    step(`Partner clues placed at random in ${name} play ${PARTNER_GAMES[g].label}`, () => {
+    step(`Partner clues placed at random in round “${name}” play ${PARTNER_GAMES[g].label}`, () => {
       if (g === 'describe') delete round.partnerGame;
       else round.partnerGame = g;
     });
   }
   function setPartnerCardFrom(v: 'answer' | 'empty'): void {
-    step(v === 'answer' ? `Partner clues placed at random in ${name} get the tile’s answer on their card` : `Partner clues placed at random in ${name} get an empty card`, () => {
+    step(v === 'answer' ? `Partner clues placed at random in round “${name}” get the tile’s answer on their card` : `Partner clues placed at random in round “${name}” get an empty card`, () => {
       if (v === 'answer') delete round.partnerCardFrom;
       else round.partnerCardFrom = v;
     });
@@ -674,7 +674,7 @@
 
   // Rows of clues go in, out and around anywhere; the row values stay by position (the top row is still the cheapest).
   function addRow(at: number): void {
-    step(`Inserted a row in ${name}`, () => (insertRow(round, at), followTheme()), { place: rowsPlace() });
+    step(`Inserted a row in round “${name}”`, () => (insertRow(round, at), followTheme()), { place: rowsPlace() });
   }
 
   // Done at once: the note at the bottom offers Undo.
@@ -682,14 +682,14 @@
   function removeRow(row: number): void {
     const onBoard = !!gridEl?.contains(document.activeElement);
     const ci = cur.cat;
-    step(`Deleted row ${row + 1} of ${name}`, () => deleteRow(round, row), { notify: true, place: rowsPlace() });
+    step(`Deleted row ${row + 1} of round “${name}”`, () => deleteRow(round, row), { notify: true, place: rowsPlace() });
     if (onBoard) void tick().then(() => focusTile(ci, Math.min(row, round.values.length - 1), true));
   }
 
   // (From a tile's menu, the focus goes with the tile.)
   function shiftRow(from: number, to: number): void {
     const onBoard = !!gridEl?.contains(document.activeElement);
-    if (step(`Moved row ${from + 1} ${to < from ? 'up' : 'down'} in ${name}`, () => moveRow(round, from, to), { place: rowsPlace() }) && cursor.row === from) {
+    if (step(`Moved row ${from + 1} ${to < from ? 'up' : 'down'} in round “${name}”`, () => moveRow(round, from, to), { place: rowsPlace() }) && cursor.row === from) {
       cursor = { cat: cursor.cat, row: to };
       if (onBoard) void tick().then(() => focusTile(cursor.cat, to, true));
     }
@@ -732,7 +732,7 @@
         const removed = gone.length === 1 ? ` (removed “${categoryLabel(gone[0])}”)` : lost ? ` (removed ${gone.length} that weren’t empty)` : '';
         if (n !== round.categories.length)
           step(
-            `Changed ${name} to ${n} categor${n === 1 ? 'y' : 'ies'}${removed}`,
+            `Changed round “${name}” to ${n} categor${n === 1 ? 'y' : 'ies'}${removed}`,
             () => {
               while (round.categories.length < n) addCategory(round);
               while (round.categories.length > n) removeCategory(round, round.categories.length - 1);
@@ -757,7 +757,7 @@
         // Like fewer categories: the bottom rows go at once, with Undo when they had clues in them.
         const gone = round.categories.reduce((a, c) => a + c.clues.slice(n).filter(clueHasContent).length, 0);
         const lost = gone > 0;
-        const label = `Changed ${name} to ${n} row${n === 1 ? '' : 's'}${lost ? ` (removed ${gone} written clue${gone === 1 ? '' : 's'})` : ''}`;
+        const label = `Changed round “${name}” to ${n} row${n === 1 ? '' : 's'}${lost ? ` (removed ${gone} written clue${gone === 1 ? '' : 's'})` : ''}`;
         if (n !== round.values.length) step(label, () => (setRowCount(round, n), followTheme()), { notify: lost });
         e.currentTarget.value = String(round.values.length);
       }}

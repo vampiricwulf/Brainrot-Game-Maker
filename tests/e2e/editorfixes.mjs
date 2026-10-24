@@ -120,7 +120,7 @@ try {
   await page.getByLabel('Categories').fill('5');
   await page.getByLabel('Categories').press('Tab');
   const fewer = await page.locator('.history-notice', { hasText: 'to 5 categories' }).innerText();
-  assert(fewer.startsWith('Changed Jeopardy! to 5 categories (removed “Topic F”)'), `fewer categories names the one removed (${fewer.split('\n')[0]})`);
+  assert(fewer.startsWith('Changed round “Jeopardy!” to 5 categories (removed “Topic F”)'), `fewer categories names the one removed (${fewer.split('\n')[0]})`);
   await header.getByRole('button', { name: 'Undo (Ctrl+Z)' }).click();
   await header.getByRole('button', { name: 'Undo (Ctrl+Z)' }).click();
   assert((await page.locator('.cat').count()) === 6 && (await page.locator('[data-cat-name="5"]').inputValue()) === 'Category 6', 'Ctrl+Z brings it back, then its old name');
@@ -172,7 +172,7 @@ try {
   await imp.getByRole('button', { name: /^Import \d+ clue/ }).click();
   await note.waitFor();
   const imported = await note.innerText();
-  assert(/Imported \d+ clues? into Jeopardy!/.test(imported) && !imported.includes('Row values') && !(await toastText()).includes('Imported'), `importing says so once, at the board (${imported.replace(/\n/g, ' ')})`);
+  assert(/Imported \d+ clues? into round “Jeopardy!”/.test(imported) && !imported.includes('Row values') && !(await toastText()).includes('Imported'), `importing says so once, at the board (${imported.replace(/\n/g, ' ')})`);
   await page.keyboard.press('Control+z');
   await page.getByRole('button', { name: '📥 Import clues…' }).click();
   assert((await imp.getByLabel('Clues to import').inputValue()) === '', 'once imported, the box starts empty');

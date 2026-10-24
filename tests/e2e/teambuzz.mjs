@@ -251,11 +251,14 @@ try {
   await card.getByRole('button', { name: '✕ Close the room' }).click();
   const closeAsk = card.getByRole('alertdialog', { name: 'Close the room?' });
   await closeAsk.waitFor();
-  assert((await card.getByRole('alertdialog').count()) === 1, 'closing the room while it asks about Teams: only the room’s question shows');
+  const closeButtons = await closeAsk.getByRole('button').allInnerTexts();
+  assert((await card.getByRole('alertdialog').count()) === 1 && closeButtons.join(' | ') === 'Keep it open | Close the room', `closing the room while it asks about Teams: only the room’s question shows, Keep it open first (${closeButtons.join(' | ')})`);
   await closeAsk.getByRole('button', { name: 'Keep it open' }).click();
   await closeAsk.waitFor({ state: 'detached' });
   assert((await card.getByRole('alertdialog').count()) === 0, 'kept open: the Teams question doesn’t come back on its own');
   await teamsBox.click();
+  const teamsButtons = await ask.getByRole('button').allInnerTexts();
+  assert(teamsButtons.join(' | ') === 'Keep teams on | Turn teams off', `the Teams question puts Keep teams on first (${teamsButtons.join(' | ')})`);
   await ask.getByRole('button', { name: 'Keep teams on' }).click();
   await ask.waitFor({ state: 'detached' });
   assert((await teamsBox.isChecked()) && (await card.getByText('3 people on 2 of 2 teams').isVisible()), 'kept on: nobody is sent back');

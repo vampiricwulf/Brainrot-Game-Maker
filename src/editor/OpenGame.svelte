@@ -42,7 +42,7 @@
     </div>
     <h3 class="sec" id="open-recent">Recent games</h3>
     <p class="hint">
-      The last {recent.length === 1 ? 'game' : `${recent.length} games`} New or Open… replaced, with their undo history. They're
+      The last {recent.length === 1 ? 'game' : `${recent.length} games`} New or Open… replaced, with {recent.length === 1 ? 'its' : 'their'} undo history. They're
       kept {keptHere()} only (not your saved files), so use Save for a copy that lasts.
     </p>
     <div class="list" role="group" aria-labelledby="open-recent" bind:this={list}>
