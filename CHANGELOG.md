@@ -11,6 +11,17 @@ the day it's pushed (Pacific time; start the heading on the day's first push) an
 in plain words for the people who make and host games. Anything committed but not pushed yet goes under
 **Unreleased** at the top, and moves under its day when it's pushed.
 
+## Unreleased
+
+### Fixed
+
+- Board games: a new turn starts with an empty Amount box, so Enter with a player picked and a count waiting moves them, as ▶ Move says, instead of giving them points typed on an earlier turn (or a space's question's). Points typed on the turn itself stay, for giving them to several players in a row.
+- Board games: Enter while a space's question is up judges whoever answered, as on a clue (“Select a player first” until you pick them; Shift+Enter for wrong). It said “Moved this turn: N for the next turn” and gave nobody the points.
+- Board games that move one space a turn: until the move is made, the main button is the way on (→ Space 2, Enter), or 🔀 Pick a way at a fork, and Enter at a fork says which ways there are. The main button was Next turn ▶ from the start of the turn, and Enter at a fork said “Select a player first”.
+- Board games: under the round's title card, the host panel's 🎲 Roll, ▶ Move and → buttons say to start the round first, as D and Enter do. The dice rolled over the title card, and the token moved where nobody could see it, using up the turn.
+- One window: a secret space nobody has revealed yet is “?” in the host panel and its toasts (“Landed on ? (secret)”, the → buttons, a fork's “which way?”), as on the board, until 👁 Reveal space. With an audience window you still see its name there.
+- Board games: the buttons of the space someone passed or landed on, in the host panel, are logged with the space's name (“Start: +$200 (Player 1)”), as from the space's card. The 📜 Log said “+$200 (Player 1) · +$200”.
+
 ## 2026-10-23
 
 ### Added

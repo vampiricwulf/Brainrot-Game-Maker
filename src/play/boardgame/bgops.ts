@@ -1,7 +1,7 @@
 // The board-game host's moves, shared by the host panel, the stage and the keyboard shortcuts. Every change is one
 // undoable step.
 import { describeAction, runAction } from '../../lib/actions';
-import { clampSteps, currentPlayer, moveInOrder, movePlayer, moverPreset, moverWheelNoNumbers, nextTurn, sendTo, spaceById, stepsIn } from '../../lib/boardgame';
+import { clampSteps, currentPlayer, moveInOrder, movePlayer, moverPreset, moverWheelNoNumbers, nextTurn, sendTo, spaceById, spaceShown, stepsIn } from '../../lib/boardgame';
 import { isBoardGame, type Action, type BoardGameRound, type BoardGameState, type BoardSpace, type BoardZone, type Game, type Session } from '../../lib/model';
 import { nameList } from '../../lib/session';
 import { logged } from '../../lib/toolset';
@@ -31,8 +31,11 @@ export function busyZones(round: BoardGameRound, bs: BoardGameState): BoardZone[
   return round.zones.filter((z) => bs.zoneShown === z.id || bs.order.some((id) => bs.positions[id]?.zone === z.id));
 }
 
-/** Move whoever's turn it is (or `playerId`) `steps` spaces; `choose` picks the way at a fork. */
-export function moveNow(game: Game, session: Session, steps: number, choose?: string, playerId?: string): string {
+/**
+ * Move whoever's turn it is (or `playerId`) `steps` spaces; `choose` picks the way at a fork. `hide`: one window (the
+ * line is on stream), so a secret space not revealed yet is named “? (secret)”.
+ */
+export function moveNow(game: Game, session: Session, steps: number, choose?: string, playerId?: string, hide = false): string {
   const { round, bs } = boardNow(game, session);
   if (!round || !bs) return 'No board';
   const who = playerId ?? bs.fork?.playerId ?? currentPlayer(bs);
@@ -43,10 +46,18 @@ export function moveNow(game: Game, session: Session, steps: number, choose?: st
   const leg = bs.fork?.playerId === who;
   const top = session.actionLog?.at(-1)?.id;
   let msg = '';
-  logged(session, `${playerName(session, who)} moves ${steps}`, () => (msg = movePlayer(round, bs, who, steps, choose)));
+  logged(session, `${playerName(session, who)} moves ${steps}`, () => (msg = movePlayer(round, bs, who, steps, choose, hide)));
   const step = session.actionLog?.at(-1)?.id;
   if (step && step !== top && !leg) moveCounts.set(step, steps);
   return `${playerName(session, who)}: ${msg}`;
+}
+
+/**
+ * A one-space board where the player whose turn it is has a choice: “Which way? → Space 4 or → Space 9 (or click the
+ * space)”. In one window a secret way not revealed yet is “?”.
+ */
+export function stepWaysHint(round: BoardGameRound, bs: BoardGameState, ways: string[], dual: boolean): string {
+  return `Which way? ${ways.map((w) => `→ ${spaceShown(round, bs, w, !dual)}`).join(' or ')} (or click ${dual ? 'a marked space' : 'the space'})`;
 }
 
 /** The count each move was made with, by its undo step's id: an Undo of the move puts it back in the Steps box. */

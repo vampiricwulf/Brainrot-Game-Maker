@@ -90,6 +90,18 @@ export function spaceById(round: BoardGameRound, id: Id | undefined): BoardSpace
   return id ? round.spaces.find((s) => s.id === id) : undefined;
 }
 
+/** A secret space viewers still see as “?” (not revealed yet). */
+export const unrevealed = (bs: BoardGameState, s: BoardSpace | undefined): boolean => !!s?.secret && !bs.revealed?.includes(s.id);
+
+/**
+ * A space's name for the host's panel. `hide`: in one window (the panel is on stream), a secret space not revealed yet
+ * is “?”, as on the board.
+ */
+export function spaceShown(round: BoardGameRound, bs: BoardGameState, id: Id | undefined, hide: boolean): string {
+  const s = spaceById(round, id);
+  return !s || (hide && unrevealed(bs, s)) ? '?' : s.name;
+}
+
 export function startSpace(round: BoardGameRound): BoardSpace | undefined {
   return spaceById(round, round.start) ?? round.spaces[0];
 }
@@ -354,9 +366,10 @@ export function clampSteps(n: number): number {
 
 /**
  * Move a player: step along the spaces, then remember which spaces were passed and where they landed (their
- * actions become buttons for the host). Stops at forks. Returns a line for the host.
+ * actions become buttons for the host). Stops at forks. Returns a line for the host (`hide`: a secret space not revealed
+ * yet is “? (secret)” in it, for one window).
  */
-export function movePlayer(round: BoardGameRound, bs: BoardGameState, playerId: Id, steps: number, choose?: Id): string {
+export function movePlayer(round: BoardGameRound, bs: BoardGameState, playerId: Id, steps: number, choose?: Id, hide = false): string {
   const from = bs.positions[playerId]?.space;
   if (!from) return 'They aren’t on the board (send them to a space first)';
   steps = clampSteps(steps);
@@ -380,7 +393,10 @@ export function movePlayer(round: BoardGameRound, bs: BoardGameState, playerId: 
   // Going back passes nothing (no Start bonus for being sent back past it, or onto it).
   const passed = steps > 0 ? [...new Set([...prevPassed, ...(w.fork ? w.path : w.path.slice(0, -1))])] : prevPassed;
   bs.last = { playerId, passed, landed: w.fork ? undefined : w.path.at(-1), turn: bs.turns ?? 0, ...(steps < 0 ? { back: true } : {}) };
-  const name = (id?: Id) => spaceById(round, id)?.name ?? '?';
+  const name = (id?: Id) => {
+    const s = spaceById(round, id);
+    return !s ? '?' : hide && unrevealed(bs, s) ? '? (secret)' : s.name;
+  };
   if (w.fork) return `At ${name(w.fork.at)}: which way? (${Math.abs(w.fork.stepsLeft)} to go)`;
   if (!w.path.length) return 'Nowhere to go from here';
   return `Landed on ${name(w.path.at(-1))}`;

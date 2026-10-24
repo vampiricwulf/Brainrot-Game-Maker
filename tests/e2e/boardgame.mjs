@@ -293,6 +293,14 @@ try {
   // The round opens on its title card (the host's status line says so): clicking it goes on.
   await page.locator('.stage-box .title-card').waitFor();
   assert((await page.locator('.status').first().innerText()).includes('Title card'), 'the host panel says the title card is up');
+  // Under it the panel's 🎲 Roll and ▶ Move wait, as D and Enter do (nobody would see the dice or the move).
+  const startFirst = 'Start the round first (N, or click the title card)';
+  await page.locator('.bh .move').getByRole('button', { name: /^🎲 Roll/ }).click();
+  assert((await toast()) === startFirst && !(await page.locator('.stage-box .ov').count()), `under the title card, 🎲 Roll says to start the round first (${await toast()})`);
+  await page.getByLabel('Steps').fill('3');
+  await page.locator('.bh .move').getByRole('button', { name: /^▶ Move/ }).click();
+  assert((await toast()) === startFirst && !(await page.locator('.bh .acts').count()), `and so does ▶ Move, moving nobody (${await toast()})`);
+  await page.getByLabel('Steps').fill('');
   await page.locator('.stage-box .title-card').click();
   await page.locator('.bh').waitFor();
   assert((await page.locator('.stage .turn-banner').innerText()).includes('Player 1'), 'Player 1 goes first');
@@ -484,8 +492,10 @@ try {
   // Its title card has a Skip intro too.
   await page.getByRole('button', { name: 'Skip intro' }).click();
   assert(!(await page.getByRole('button', { name: /Roll/ }).count()), 'one-space boards have no dice');
+  assert((await mainLabel(page)) === '→ Space 2', `until the move is made, the main button is the way on (${await mainLabel(page)})`);
   await page.locator('.bh .move').getByRole('button', { name: '→ Space 2' }).click();
   assert((await toast()).includes('Landed on Space 2'), 'a player moves one space');
+  assert((await mainLabel(page)) === 'Next turn ▶', `then it's Next turn ▶ (${await mainLabel(page)})`);
   // Enter then doesn't walk them on in the same turn (the → buttons still can, on purpose).
   await page.evaluate(() => document.activeElement?.blur?.());
   await page.keyboard.press('Enter');
@@ -493,6 +503,12 @@ try {
   await page.keyboard.press('n');
   await page.keyboard.press('n');
   await page.locator('.bh .move').getByRole('button', { name: '→ Space 3' }).click();
+  // Their next turn starts on the fork: the main button and Enter say to pick the way.
+  await page.keyboard.press('n');
+  await page.keyboard.press('n');
+  assert((await mainLabel(page)) === '🔀 Pick a way', `a turn on a fork: 🔀 Pick a way (${await mainLabel(page)})`);
+  await page.keyboard.press('Enter');
+  assert((await toast()) === 'Which way? → Space 4 or → Space 7 (or click the space)', `and Enter says which ways there are (${await toast()})`);
   const ways = await page.locator('.bh .move button.good').allInnerTexts();
   assert(ways.join('|') === '→ Space 4|→ Space 7', `at a fork the host picks the way (${ways.join(', ')})`);
   await page.locator('.stage [data-space]').nth(6).click();

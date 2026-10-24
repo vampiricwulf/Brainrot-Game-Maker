@@ -79,7 +79,7 @@
   import { showMenu, type MenuEntry } from '../lib/menustate.svelte';
   import { currentPlayer, ensureBoard, waysNow, waysOn } from '../lib/boardgame';
   import { ensureWorld, override, refindPositions } from '../lib/rpg';
-  import { boardNow, moveCounts, moveNow, moverResult, moverSliceNoNumber, rollMover, runSpace, sendNow, setTurn, turnNow } from './boardgame/bgops';
+  import { boardNow, moveCounts, moveNow, moverResult, moverSliceNoNumber, rollMover, runSpace, sendNow, setTurn, stepWaysHint, turnNow } from './boardgame/bgops';
   import { boardEdit, editDelete, editDisconnect, editIdle, setEditing } from './boardgame/boardedit.svelte';
   import { playerMenu } from './playermenu';
   import { playerCards } from './rpg/PlayerCard.svelte';
@@ -222,6 +222,15 @@
         const top = session.actionRedo?.at(-1);
         return top && top.round === session.currentRound ? moveCounts.get(top.id) : undefined;
       }) ?? null;
+  });
+  // A new turn empties the Amount box too: points typed (or a question's) on an earlier turn aren't this one's, and Enter
+  // would give them away instead of moving. (Not a move: points typed this turn stay, for 100, 1 Enter, 2 Enter.)
+  const bgAmountKey = $derived.by(() => {
+    const { bs } = boardNow(game, session);
+    return bs ? JSON.stringify([session.currentRound, currentPlayer(bs) ?? null, bs.turns ?? 0]) : '';
+  });
+  $effect(() => {
+    if (bgAmountKey) untrack(() => (amount = null));
   });
   /** The roll or spin whose count already went in: S hiding or bringing it back doesn't put it back over a typed count or a new turn's empty box. */
   let bgFilledFrom: unknown = null;
@@ -3038,7 +3047,7 @@
     const { round, bs } = boardNow(game, session);
     const w = round && bs ? waysNow(round, bs) : null;
     if (w?.ways.includes(id)) {
-      toast(moveNow(game, session, w.steps, id, w.playerId), 3000);
+      toast(moveNow(game, session, w.steps, id, w.playerId, !dual), 3000);
       app.live.overlay = null;
     } else bgSpace = bgSpace === id ? null : id;
   }
@@ -3745,6 +3754,9 @@
   function boardEnter(): boolean {
     const { round, bs } = boardNow(game, session);
     if (!round || !bs) return false;
+    // A space's question up (worth points, or with an answer): Enter judges whoever answered, as on a clue.
+    const q = toolOverlay(app.live);
+    if (q?.kind === 'popup' && (typeof q.value === 'number' || !!q.answer)) return false;
     if (bs.fork) {
       hint(`${playerName(session, bs.fork.playerId)} is at a fork: pick the way first (on the stage, or in the host panel)`);
       return true;
@@ -3769,7 +3781,12 @@
       }
       const at = id ? bs.positions[id]?.space : undefined;
       const ways = id && at ? waysOn(round, at, bs.prev?.[id]) : [];
-      if (ways.length !== 1) return false;
+      if (ways.length !== 1) {
+        // (A player picked: Enter is their award.)
+        if (selected.length) return false;
+        hint(ways.length ? stepWaysHint(round, bs, ways, dual) : at ? 'No way on from here: N for the next turn' : `${playerName(session, id ?? '')} isn’t on the board: N for the next turn`);
+        return true;
+      }
       [steps, way] = [1, ways[0]];
     }
     if (!steps) {
@@ -3781,7 +3798,7 @@
       hint(moved ? 'Moved this turn: N for the next turn' : `Roll first (D), or type the steps`);
       return true;
     }
-    toast(moveNow(game, session, steps, way), 3000);
+    toast(moveNow(game, session, steps, way, undefined, !dual), 3000);
     app.live.overlay = null;
     bgSteps = null;
     return true;

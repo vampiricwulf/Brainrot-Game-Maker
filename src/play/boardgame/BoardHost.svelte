@@ -11,14 +11,15 @@
   import { describeAction, needsPlayers, runAction, type RunContext } from '../../lib/actions';
   import { teamsOn } from '../../lib/buzz';
   import { buzzerOn } from '../../lib/remote.svelte';
-  import { clampSteps, currentPlayer, MAX_STEPS, spaceById, waysOn } from '../../lib/boardgame';
+  import { clampSteps, currentPlayer, MAX_STEPS, spaceById, spaceShown, unrevealed, waysOn } from '../../lib/boardgame';
   import { DragOrder } from '../../lib/dragorder.svelte';
   import { newId, type Action, type BoardSpace, type Game, type Session } from '../../lib/model';
   import { lastAction, logged } from '../../lib/toolset';
   import { overlayDoneAt, toolOverlay } from '../../lib/live';
   import PlayerCard, { cardsShown, playerCards } from '../rpg/PlayerCard.svelte';
-  import { boardNow, busyZones, moveNow, moverDiceName, playerName, reorderTurns, rollMover, sendNow, setTurn, turnNow, turnOrder } from './bgops';
+  import { boardNow, busyZones, moveNow, moverDiceName, playerName, reorderTurns, rollMover, sendNow, setTurn, stepWaysHint, turnNow, turnOrder } from './bgops';
   import SpaceCard from './SpaceCard.svelte';
+  import { START_FIRST } from '../rpg/hostops';
   import { offerNext } from '../host/slots.svelte';
   import { offerIn } from '../host/offered.svelte';
   import { boardEdit, setEditing } from './boardedit.svelte';
@@ -70,12 +71,14 @@
   /** Zones with players in them, or on screen: their notes (how to escape…) are worth having at hand. */
   const zones = $derived(round && bs ? busyZones(round, bs) : []);
   const showPlayers = $derived(cardsShown());
-  /** This turn's move is made (or there's nothing to roll: a one-space board, a fork to pick). */
-  const moved = $derived(!!bs && (!!bs.fork || round?.mover.kind === 'step' || (!!last && last.playerId === turnId && (last.turn ?? 0) === (bs.turns ?? 0))));
+  /** This turn's move is made (or there's nothing to roll: a fork to pick). */
+  const moved = $derived(!!bs && (!!bs.fork || (!!last && last.playerId === turnId && (last.turn ?? 0) === (bs.turns ?? 0))));
+  /** A space's name here: in one window (on stream), a secret one not revealed yet is “?”, as on the board. */
+  const shown = (id: string | undefined) => (round && bs ? spaceShown(round, bs, id, !dual) : '?');
   /**
    * The round's main button, in the host panel's main cell: 🎲 Roll (D), then ▶ Move (Enter), then Next turn ▶ (N), with
-   * ◀ Previous turn (Shift+N) right beside it (and Next turn ▶ too while the main button rolls or moves). While the
-   * board is being edited: ✓ Done editing (Esc).
+   * ◀ Previous turn (Shift+N) right beside it (and Next turn ▶ too while the main button rolls or moves). A one-space
+   * board starts with its way on (→ Space 2, Enter) or 🔀 Pick a way. While the board is being edited: ✓ Done editing (Esc).
    */
   offerNext('turn', () => {
     if (!bs || !round) return null;
@@ -95,6 +98,13 @@
       };
     if (moved) return { ...next, also: [prev] };
     const also = [prev, next];
+    // One space a turn: the way on is the move (Enter); at a fork, the way is picked first; nowhere to go, the next turn.
+    if (round.mover.kind === 'step') {
+      const [w] = stepWays;
+      if (stepWays.length === 1) return { label: `→ ${shown(w)}`, key: '⏎', title: `Enter: ${turnName} moves to ${shown(w)}`, run: () => move(1, w, turnId), also };
+      if (stepWays.length) return { label: '🔀 Pick a way', title: stepWaysHint(round, bs, stepWays, dual), run: () => hint(stepWaysHint(round, bs, stepWays, dual)), also };
+      return { ...next, also: [prev] };
+    }
     if (steps) return { label: `${steps < 0 ? '◀ Back' : '▶ Move'} ${Math.abs(steps)}`, key: '⏎', title: `Enter: move ${turnName} ${steps < 0 ? 'back ' : ''}${Math.abs(steps)} space${Math.abs(steps) === 1 ? '' : 's'}`, run: () => move(steps), also };
     const wheel = round.mover.kind === 'wheel';
     return { label: wheel ? '🎡 Spin' : '🎲 Roll', key: 'D', title: `D: ${wheel ? 'spin the movement wheel' : `roll ${moverDiceName(game, round)}`}`, run: roll, also };
@@ -109,27 +119,33 @@
   }
 
   function roll(): void {
+    // (As D: under the round's title card nobody would see it.)
+    if (session.intro) return void hint(START_FIRST);
     const why = rollMover(game, session, app.live);
     // (Each says what to do first: it goes once that's done, or the next turn starts.)
     if (why) hint(why);
   }
 
   function move(n: number | null, choose?: string, who?: string): void {
+    // (Nor a move: the token would go unseen, and the turn be used up.)
+    if (session.intro) return void hint(START_FIRST);
     // A whole number, at most MAX_STEPS (a typo of 100000 isn't walked).
     n = n === null ? null : clampSteps(n);
     if (!n) return void hint('How many spaces? Roll first, or type a number');
     // (Under the scores too: the move would end them unseen.)
     const o = toolOverlay(app.live);
     if ((o?.kind === 'dice' || o?.kind === 'wheel') && Date.now() < overlayDoneAt(o)) return void hint('Still rolling…');
-    toast(moveNow(game, session, n, choose, who), 3000);
+    toast(moveNow(game, session, n, choose, who, !dual), 3000);
     app.live.overlay = null;
     // Moved: the count is used up (a fork goes on with the steps left, not these).
     steps = null;
   }
 
-  function run(a: Action, who: string, on: 'land' | 'pass'): void {
+  /** A passed or landed space's button: logged with the space's name, as from its card. */
+  function run(s: BoardSpace, a: Action, who: string, on: 'land' | 'pass'): void {
     if (needsPlayers(a) && !who) return void hint('Pick who it’s for first');
-    toast(runAction({ ...ctx, chosen: [who] }, a, describeAction(game, a, on, ctx.teams)), 3000);
+    const where = bs && !dual && unrevealed(bs, s) ? '? (secret)' : s.name;
+    toast(runAction({ ...ctx, chosen: [who] }, a, `${where}: ${describeAction(game, a, on, ctx.teams)}`), 3000);
   }
 
   function send(to: string): void {
@@ -271,7 +287,7 @@
         {:else}
           <span class="muted small">{stepWays.length > 1 ? 'Which way?' : 'Move to:'}</span>
           {#each stepWays as w (w)}
-            <button class="good" onclick={() => move(1, w, turnId)}>→ {spaceById(round, w)?.name}</button>
+            <button class="good" onclick={() => move(1, w, turnId)}>→ {shown(w)}</button>
           {/each}
         {/if}
       {:else}
@@ -372,10 +388,10 @@
 
     {#if fork && forkSpace && !boardEdit.on}
       <div class="row fork" role="alert" bind:this={forkEl}>
-        <b>{playerName(session, fork.playerId)} is at {forkSpace.name}: which way? ({Math.abs(fork.stepsLeft)} to go)</b>
+        <b>{playerName(session, fork.playerId)} is at {shown(forkSpace.id)}: which way? ({Math.abs(fork.stepsLeft)} to go)</b>
         <span class="muted small">(or click the space on the stage)</span>
         {#each forkWays as n (n)}
-          <button class="good" onclick={() => move(fork.stepsLeft, n)}>→ {spaceById(round, n)?.name}</button>
+          <button class="good" onclick={() => move(fork.stepsLeft, n)}>→ {shown(n)}</button>
         {/each}
       </div>
     {/if}
@@ -383,19 +399,19 @@
     {#if last && (passed.length || landed) && !boardEdit.on}
       <div class="row acts">
         {#each passed as s (s.id)}
-          <span class="muted small">Passed {s.name}:</span>
-          {#each s.onPass ?? [] as a (a.id)}<button class="small" onclick={() => run(a, last.playerId, 'pass')}>{describeAction(game, a, 'pass', ctx.teams)}</button>{/each}
+          <span class="muted small">Passed {shown(s.id)}:</span>
+          {#each s.onPass ?? [] as a (a.id)}<button class="small" onclick={() => run(s, a, last.playerId, 'pass')}>{describeAction(game, a, 'pass', ctx.teams)}</button>{/each}
         {/each}
         {#if landed}
           <!-- Landing on a space counts as passing it too (landing on Start still pays), unless sent back onto it
                (passed on the way there this turn, it's still owed). -->
           {@const passOn = last.back && !last.passed.includes(landed.id) ? [] : (landed.onPass ?? [])}
           <span class="muted small"
-            >Landed on <b>{landed.name}</b>{passOn.length ? ' (counts as passing)' : ''}{landed.onLand?.length || passOn.length ? ':' : '.'}</span
+            >Landed on <b>{shown(landed.id)}</b>{!dual && unrevealed(bs, landed) ? ' (secret)' : ''}{passOn.length ? ' (counts as passing)' : ''}{landed.onLand?.length || passOn.length ? ':' : '.'}</span
           >
-          {#each passOn as a (a.id)}<button class="small" onclick={() => run(a, last.playerId, 'pass')}>{describeAction(game, a, 'pass', ctx.teams)}</button>{/each}
-          {#each landed.onLand ?? [] as a (a.id)}<button class="small" onclick={() => run(a, last.playerId, 'land')}>{describeAction(game, a, 'land', ctx.teams)}</button>{/each}
-          {#if landed.secret && !bs.revealed?.includes(landed.id)}<button class="small ghost" onclick={() => reveal(landed)}>👁 Reveal space</button>{/if}
+          {#each passOn as a (a.id)}<button class="small" onclick={() => run(landed, a, last.playerId, 'pass')}>{describeAction(game, a, 'pass', ctx.teams)}</button>{/each}
+          {#each landed.onLand ?? [] as a (a.id)}<button class="small" onclick={() => run(landed, a, last.playerId, 'land')}>{describeAction(game, a, 'land', ctx.teams)}</button>{/each}
+          {#if unrevealed(bs, landed)}<button class="small ghost" onclick={() => reveal(landed)}>👁 Reveal space</button>{/if}
           {#if landed.hostNotes && !dual}<span class="notes">📝 {landed.hostNotes}</span>{/if}
         {/if}
       </div>

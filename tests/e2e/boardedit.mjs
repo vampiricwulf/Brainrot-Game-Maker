@@ -20,7 +20,8 @@ function assert(cond, msg) {
 }
 const shots = process.env.SHOTS;
 
-const sp = (id, name, x, y, next) => ({ id, name, x, y, color: '#4363d8', next });
+const sp = (id, name, x, y, next, more = {}) => ({ id, name, x, y, color: '#4363d8', next, ...more });
+const words = (text) => ({ background: {}, elements: [{ id: `t_${text}`, kind: 'text', text, x: 160, y: 200, w: 1600, h: 600, rotation: 0, opacity: 1, zIndex: 1, font: 'Arial', size: 90, weight: 700, italic: false, underline: false, uppercase: false, color: '#ffffff', align: 'center', vAlign: 'middle', lineHeight: 1.2, letterSpacing: 0, autoFit: true }] });
 const board = {
   id: 'r_bg',
   name: 'Board game',
@@ -31,8 +32,9 @@ const board = {
     sp('b2', 'Space 2', 650, 300, ['b3']),
     sp('b3', 'Space 3', 1000, 300, ['b4']),
     sp('b4', 'Nap time', 1400, 300, ['b5']),
-    sp('b5', 'Space 5', 1400, 700, ['b6']),
-    sp('b6', 'Space 6', 650, 700, ['b1']),
+    // A question worth 100, and a secret space with a button.
+    sp('b5', 'Space 5', 1400, 700, ['b6'], { onLand: [{ id: 'q1', do: 'question', question: words('Capital of France?'), answer: words('Paris'), value: 100 }] }),
+    sp('b6', 'Trap Door', 650, 700, ['b1'], { secret: true, onLand: [{ id: 'a1', do: 'score', amount: 100, who: 'party' }] }),
   ],
   mover: { kind: 'dice', dice: 'd6' },
   zones: [],
@@ -183,6 +185,55 @@ try {
   assert((await toast()).includes('Ann already moved this turn'), `and D after it doesn’t roll again on stream (${await toast()})`);
   await page.keyboard.press('Escape');
   await page.getByLabel('Steps').fill('');
+  await page.getByLabel('Steps').blur();
+
+  // ---------- Points left in the Amount box, a space's question, a secret space ----------
+  // Points given on one turn stay for the next player picked then (100, 1 Enter, 2 Enter), but not into the next turn:
+  // there Enter with a player picked and a count waiting moves them, as the main button says.
+  const amountBox = page.locator('.panel .award').getByLabel('Amount');
+  const card = (name) => page.locator('.bh .pc', { hasText: name }).innerText();
+  await page.keyboard.press('n');
+  await amountBox.fill('200');
+  await amountBox.blur();
+  await page.keyboard.press('2');
+  await page.keyboard.press('Enter');
+  assert((await card('Bob')).includes('$200') && (await amountBox.inputValue()) === '200', `Amount 200, 2, Enter: Bob gets it, and it stays for another (${await amountBox.inputValue()})`);
+  await page.keyboard.press('n');
+  assert((await amountBox.inputValue()) === '', `the next turn starts with an empty Amount box (${await amountBox.inputValue()})`);
+  await page.getByLabel('Send to').selectOption({ label: 'Nap time' });
+  await page.keyboard.press('1');
+  await page.getByLabel('Steps').fill('1');
+  await page.getByLabel('Steps').blur();
+  await page.keyboard.press('Enter');
+  await page.locator('.acts', { hasText: 'Landed on Space 5' }).waitFor();
+  assert(!(await card('Ann')).includes('$200') && (await last(page)).includes('Ann moves 1'), `Ann picked, Enter moves her 1 (not the last turn's $200: ${await last(page)})`);
+  // The question on Space 5: its 100 goes in the Amount box, and Enter judges it (who answered is picked first).
+  await page.keyboard.press('Escape');
+  await page.locator('.acts').getByRole('button', { name: 'Ask the question' }).click();
+  await page.locator('.stage-box .ov').waitFor();
+  await page.evaluate(() => document.activeElement?.blur?.());
+  assert((await amountBox.inputValue()) === '100', 'Ask the question: its 100 is in the Amount box');
+  await page.keyboard.press('Enter');
+  assert((await toast()).startsWith('Select a player first'), `Enter with nobody picked asks who answered, not "Moved this turn" (${await toast()})`);
+  await page.keyboard.press('1');
+  await page.keyboard.press('Enter');
+  assert((await card('Ann')).includes('$100'), 'then 1, Enter: Ann gets the 100');
+  await page.keyboard.press('Escape');
+  // A secret space, in one window (the panel is on stream): the panel and the toast say “?” until it's revealed, and its
+  // buttons are logged with its name (as from its card) once it is.
+  await page.keyboard.press('n');
+  await page.getByLabel('Steps').fill('5');
+  await page.getByLabel('Steps').press('Enter');
+  const acts = page.locator('.acts');
+  await acts.waitFor();
+  assert((await toast()) === 'Bob: Landed on ? (secret)' && (await acts.innerText()).includes('Landed on ? (secret):') && !(await acts.innerText()).includes('Trap Door'), `landing on the secret space: “? (secret)” in the toast and the panel (${(await acts.innerText()).replace(/\s+/g, ' ')})`);
+  await acts.getByRole('button', { name: '+$100' }).click();
+  assert((await toast()) === '? (secret): +$100: Bob', `its button, still secret: “${await toast()}”`);
+  await acts.getByRole('button', { name: '👁 Reveal space' }).click();
+  assert((await acts.innerText()).includes('Landed on Trap Door:'), 'revealed: the panel names it');
+  await acts.getByRole('button', { name: '+$100' }).click();
+  assert((await toast()) === 'Trap Door: +$100: Bob', `and its button says whose it is: “${await toast()}”`);
+  await page.keyboard.press('n');
   await page.getByLabel('Send to').selectOption({ label: 'Nap time' });
 
   // ---------- ✎ Edit board ----------
@@ -352,7 +403,8 @@ try {
   await aud.waitForFunction(() => document.querySelectorAll('.space .label').length === 1);
   assert((await aud.locator('.space .label').allInnerTexts()).join() === 'Start' && (await names(host)).join() === 'Start', 'right-click ▸ Show name: the audience sees that one name');
   await host.locator('[data-board-editing] [data-names-all="show"]').click();
-  await aud.waitForFunction((n) => document.querySelectorAll('.space .label').length === n, audN + 1);
+  // (All but the secret space: viewers see “?” there, no name.)
+  await aud.waitForFunction((n) => document.querySelectorAll('.space .label').length === n, audN);
   assert((await last(host)).includes('Showed all space names'), 'Names: Show all shows every name, one step');
   await host.keyboard.press('Control+z');
   await aud.waitForFunction(() => document.querySelectorAll('.space .label').length === 1);

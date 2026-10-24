@@ -9,7 +9,7 @@ import { forgetGameParts, redoAction, undoAction } from '../../lib/toolset';
 import { runAction } from '../../lib/actions';
 import { PLAYER_WHEEL, type Action } from '../../lib/model';
 import { prefs } from '../../lib/prefs.svelte';
-import { moveCounts, moveNow, moverResult, moverSliceNoNumber, reorderTurns, rollMover, runSpace, sendNow, setTurn, turnNow } from './bgops';
+import { moveCounts, moveNow, moverResult, moverSliceNoNumber, reorderTurns, rollMover, runSpace, sendNow, setTurn, stepWaysHint, turnNow } from './bgops';
 import { openPlayerWheel, quickDice, rollDice, toggleScoreboard } from '../../lib/overlay';
 
 // (What screen readers are told.)
@@ -169,6 +169,20 @@ describe('board game: the host’s moves on the stage', () => {
     const sent = session.actionLog!.at(-1)!.id;
     moveNow(game, session, 2, undefined, 'b');
     expect([session.actionLog!.at(-1)!.id, moveCounts.has(sent)]).toEqual([sent, false]);
+  });
+
+  it('one window: a secret space not revealed yet is “?” in the move’s line and the way to pick (the name with an audience window)', () => {
+    const { game, session, round, bs } = playing();
+    Object.assign(round.spaces[2], { name: 'Trap Door', secret: true });
+    expect(moveNow(game, session, 2, undefined, 'a', true)).toBe('Ann: Landed on ? (secret)');
+    expect(moveNow(game, session, 2, undefined, 'b')).toBe('Bob: Landed on Trap Door');
+    // A one-space board's fork, the way to Trap Door being one of them.
+    const ways = [round.spaces[2].id, round.spaces[5].id];
+    expect(stepWaysHint(round, bs(), ways, false)).toBe('Which way? → ? or → Space 6 (or click the space)');
+    expect(stepWaysHint(round, bs(), ways, true)).toBe('Which way? → Trap Door or → Space 6 (or click a marked space)');
+    // Revealed: named everywhere.
+    bs().revealed = [round.spaces[2].id];
+    expect(moveNow(game, session, 2, undefined, 'c', true)).toBe('Cat: Landed on Trap Door');
   });
 
   it('says whose turn it is in the history, going on or back', () => {
