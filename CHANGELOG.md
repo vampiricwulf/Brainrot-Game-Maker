@@ -40,7 +40,7 @@ in plain words for the people who make and host games. Anything committed but no
 - On a short window under the stage (a 1366×768 laptop at 150% zoom), the ✍ Everyone answers box keeps its answers and their ✔ / ✘ in sight, as do the Final's wager and reveal rows, the end screen's box and an RPG or board-game round's controls; the stage gives way first, then the panel scrolls. The answers box was squeezed to 2 px.
 - A roll in an RPG or board-game round no longer shrinks the round's own controls to nothing under the dice's result (at 125% zoom on a laptop): they keep a few rows, and the column scrolls.
 - Under about 940 px wide (a laptop at 150% zoom or more), the host panel's fixed bar shows ↶ ↷ 🔊 📜 👥 ⚖ 🙈 📺 as their signs (still read out by name), so it stays one line with 🚪 Exit at the right and the stage keeps its height. 🚪 Exit dropped under ↶ Undo, and at 200% the bar was below the window.
-- A touch screen with the controls hidden: a tap shows Show controls, and does nothing else (it turned the slide on stream); the first-time note says to tap. 📜 Log's ↶ Back to here, 🕘 History's Go there › and the RPG map's ⛔ show on a screen without hover, so a tap never presses one unseen.
+- A touch screen with the controls hidden: a tap shows Show controls, and does nothing else (it turned the slide on stream); the first-time note says to tap. 📜 Log's ↶ Back to here, 🕘 History's Go there › and the ⛔ between screens on an RPG world's map in the editor show on a screen without hover, so a tap never presses one unseen.
 
 ## 2026-10-24
 

@@ -181,7 +181,7 @@ changes said once, with a window open too). The host's board is one Tab
 stop: the arrow keys go from tile to tile. The Stage and the Host controls are named regions, to jump between. In
 Windows High Contrast, the selected players and pressed buttons are outlined, while the stage viewers see (and the
 editor's previews and theme cards) keeps the game's own colors. On a touch screen, the buttons a row shows when pointed
-at (📜 Log's ↶ Back to here, 🕘 History's Go there ›, the RPG map's ⛔) show anyway.
+at (📜 Log's ↶ Back to here, 🕘 History's Go there ›, the ⛔ between screens on an RPG world's map) show anyway.
 
 ![A clue on screen](docs/screenshots/play-clue.png)
 
