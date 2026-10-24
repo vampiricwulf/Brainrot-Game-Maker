@@ -16,7 +16,7 @@ in plain words for the people who make and host games. Anything committed but no
 ### Added
 
 - ⋯ › 📖 How to host (guide) ↗, and a Guide line in ℹ About: the README's guide to hosting (phone buzzers, 🤫 cards, 🎭 deals, teams, the audience window) on GitHub, opened in your browser.
-- `?` on the ▶ Play screen before the game lists the keys, that screen's own first (Ctrl+Enter starts the game, Ctrl+Z / Ctrl+Y, Enter in a name adds the next player). It did nothing there.
+- `?` on the ▶ Play screen before the game lists the keys, that screen's own first (Ctrl+Enter starts the game, Ctrl+Z / Ctrl+Y, Enter in a name adds the next player), from a box just ticked too, as in the game. It did nothing there.
 - The audience and ▭ scores windows opened on their own (as when the address is pasted into an OBS Browser source) say to capture them with OBS's Window Capture instead: a Browser source can't reach the host page.
 
 ### Changed

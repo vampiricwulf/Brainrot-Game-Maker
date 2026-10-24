@@ -3481,9 +3481,10 @@
    */
   function pregameKey(e: KeyboardEvent): void {
     // ? lists the keys, this screen's first (typed in a field it's a question mark; a window over the screen has its own).
+    // A ticked box keeps no text: ? there lists them too, as in the game.
     if (e.key === '?' && !e.ctrlKey && !e.metaKey && !e.altKey && !e.defaultPrevented) {
       const t = e.target instanceof Element ? e.target : null;
-      if (showSound || showSettings || shrinkDialog.open || t?.closest('input, textarea, select, [contenteditable], [role="dialog"], [role="menu"]')) return;
+      if (showSound || showSettings || shrinkDialog.open || t?.closest('input:not([type="checkbox"]):not([type="radio"]), textarea, select, [contenteditable], [role="dialog"], [role="menu"]')) return;
       e.preventDefault();
       showKeys = true;
       return;

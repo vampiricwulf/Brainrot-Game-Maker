@@ -176,12 +176,15 @@ try {
   await cy.press('?');
   assert((await cy.inputValue()) === 'Cy?' && (await page.getByRole('dialog', { name: 'Keyboard shortcuts' }).count()) === 0, "'?' typed in a name is just a question mark");
   await cy.press('Backspace');
-  await page.locator('.pregame h1').click();
+  // (From a box just ticked, and ticked back: it keeps no text, so ? lists the keys there too, as in the game.)
+  const caption = page.getByLabel(/Show the category and value on clue screens/);
+  await caption.check();
+  await caption.uncheck();
   await page.keyboard.press('?');
   const keyList = page.getByRole('dialog', { name: 'Keyboard shortcuts' });
   await keyList.waitFor();
   const firstKeys = await keyList.locator('section').first().textContent();
-  assert(firstKeys.startsWith('Before the game') && firstKeys.includes('Ctrl+Enter'), `? on the pre-game screen lists the keys, its own first (${firstKeys.slice(0, 40)})`);
+  assert(firstKeys.startsWith('Before the game') && firstKeys.includes('Ctrl+Enter'), `? on the pre-game screen (the focus on a box just ticked) lists the keys, its own first (${firstKeys.slice(0, 40)})`);
   await page.keyboard.press('?');
   await keyList.waitFor({ state: 'detached' });
   // ---------- Ctrl+Enter starts the game, from a name being typed in (which keeps the typing) ----------
