@@ -11,45 +11,45 @@ the day it's pushed (Pacific time; start the heading on the day's first push) an
 in plain words for the people who make and host games. Anything committed but not pushed yet goes under
 **Unreleased** at the top, and moves under its day when it's pushed.
 
-## Unreleased
+## 2026-10-24
 
 ### Added
 
-- The game screen's stage and host controls are named regions (Stage, Host controls), so a screen reader can jump from the board to ＋ Award or 🚪 Exit instead of tabbing through every tile.
+- The game screen's stage and host controls are named regions (Stage, Host controls), so a screen reader can jump from the board to ＋ Award or 🚪 Exit instead of tabbing through every tile. (1a57022)
 
 ### Changed
 
-- In the editor the tiebreaker is ❓ (its button in the round list and its empty page), as it is in play, where 🤝 means a partner clue or 🤝 Declare co-winners.
-- The asks on the 📱 Phone buzzers card (✕ Close the room, ticking Teams) and 👥 Players' − put the safe answer first (Keep it open, Keep teams…, Keep) and the red one after it, as every other ask does.
-- ＋ Add round's sample game is ✨ The sample game, as on the first screen (it was 🎁). Undo steps for a board's rows, categories, random partner clues and imported clues name it as round “Jeopardy!”, as other steps do. Open… says “its undo history” when one recent game is listed.
-- README and the spec say players can answer on their phones too; the spec's lines on going online, where players are set (and that a game takes up to 20) and the host panel's bar match the app.
-- The accent blue (links, focus rings, blue labels) is a touch lighter, so small text in it reads at 4.5:1 on the panels, and Start game ▶'s Ctrl+⏎ is no longer faded.
+- In the editor the tiebreaker is ❓ (its button in the round list and its empty page), as it is in play, where 🤝 means a partner clue or 🤝 Declare co-winners. (c6629b1)
+- The asks on the 📱 Phone buzzers card (✕ Close the room, ticking Teams) and 👥 Players' − put the safe answer first (Keep it open, Keep teams…, Keep) and the red one after it, as every other ask does. (c6629b1)
+- ＋ Add round's sample game is ✨ The sample game, as on the first screen (it was 🎁). Undo steps for a board's rows, categories, random partner clues and imported clues name it as round “Jeopardy!”, as other steps do. Open… says “its undo history” when one recent game is listed. (c6629b1)
+- README and the spec say players can answer on their phones too; the spec's lines on going online, where players are set (and that a game takes up to 20) and the host panel's bar match the app. (c6629b1, 61568ba)
+- The accent blue (links, focus rings, blue labels) is a touch lighter, so small text in it reads at 4.5:1 on the panels, and Start game ▶'s Ctrl+⏎ is no longer faded. (1a57022)
 
 ### Fixed
 
-- On the board, the join code at the end of the score bar keeps clear of the last score plate when it reads “📱 Players’ buzzers” (seats locked or all taken), whatever the theme's font. With 4 or more players it ran under that plate.
-- Phones on a played-out board say “Jeopardy! is done” (the round's name) instead of who picks the next clue, and the picker's phone no longer asks them to choose one.
-- `N` on a played-out board says to click the main button (Final Jeopardy! ▶, Next round ▶…) to go on, instead of doing nothing.
-- One window: the stage on stream keeps its size when a ✍ Everyone answers clue's answer is shown, however long the answers. Until then the host panel lists each player in the row their answer goes in (✔ once it's in), with room kept for a multiple choice's counts and ✔ Judge all; then the answers take that room, and long ones scroll in it.
-- The answers box says “no answer” for a phone that sent none once the answers are locked (one window: “—”, not “…”), instead of “waiting…”.
-- A phone sitting out the Final says “You’re not in this one” under the question and through the reveals, instead of the Final's name a second time. A buzzer server you run yourself needs deploying again for this.
-- 📜 Log › History's times are on one line and written as the editor's 🕘 History writes them (“5:34 AM”, not “05:34” over “AM”), as is the time in “Undid 3 steps (back to …)”.
-- ⋯'s tooltip and screen-reader name list 📖 How to host (guide) with the rest of its menu.
-- What a screen reader or voice control calls ✕ Kick and Free seat starts with their words (“Kick Ann: …”, “Free seat: Ann’s …”), so “click Kick” finds it.
-- 🎨 Theme › Share: a button that wraps lines up under the row's first button, not under its label.
-- After a reload mid-game, the ▶ Play screen says the game in progress's phones wait in its buzzer room and that ▶ Resume it goes back to them (not once that room has ended); Going live and Start game no longer say no phone can join. A room started there that no phone joined closes on ▶ Resume it or ◀ Back to editor (then Resume game goes back to the phones), instead of taking the game and telling the phones in its own room that the game is over.
-- Screen readers hear what's said while a window is open: the tile when you go to another clue in the clue editor, toasts, ↶ Undo and ↷ Redo, a player moved in 👥 Players, buzzes and scores. Until the window closed, none of it was read.
-- 🔍 Find gives the focus back to what had it (a tile, a round tab, the 🔍 Find button) when it closes with Esc, ✕ or a click beside it, and after a Go there that has nothing to take the focus. It was lost to the page, and the next Tab started at the top.
-- Tab from a window's last control goes round to its first when the window ends in a list picked with the arrows (🔍 Find's results, the RPG's ⤢ Full map). It lost the focus for one press.
-- A screen reader hears when a phone's wager comes in, for a Daily Double and in the Final (“Player 1’s wager is in (from their phone)”, then “All wagers are in”), never how much.
-- At 200% zoom on a laptop (a 683×384 or 640×400 page), the host panel keeps a row of ＋ Award and the main button in sight: the row shrank to a sliver and the main button sat over a player's chip. What doesn't fit scrolls instead.
-- With the computer set to reduce motion, your own copy of the stage beside the audience window comes up still (a Daily Double, a clue, the Final's spotlight no longer zoom in there). What viewers see still follows Reduce motion on stream.
-- On a narrow window (under 700 px wide, as at 200% zoom) the editor's round list takes at most 30% of the height and scrolls in its box, leaving the rest for editing.
-- A game file made by hand or by a chatbot where ids repeat (a round or category pasted twice, “q1” in every category) opens as if they were unique: each tile plays once (playing one no longer takes another off the board), the editor shows every round, clue and tab, and ▶ Play and 📂 Import rounds… work. Of two files with one id, the first is kept.
-- A text item written with just its words gets a new text box's font, size and color (and an item without a place, one): its clue opens on stream and in the editor. It did nothing on stream and broke the editor.
-- A game's theme is checked as a theme file is: a color or font that isn't one (a number, CSS text that would load a picture from another site) is its preset's, or goes when the theme can do without it. Such a game broke the editor, left an exported page on “Loading the game…”, and passed it on through 📂 Use a theme from another game….
-- Open… repairs more small slips in a hand-edited game instead of showing a bare error: a stray entry in its list of files, a file or round named with a number, a currency symbol that isn't text.
-- Open… opens a game with an RPG round whose world is gone (that round says what to fix, as after Import rounds…), instead of refusing the whole file.
+- On the board, the join code at the end of the score bar keeps clear of the last score plate when it reads “📱 Players’ buzzers” (seats locked or all taken), whatever the theme's font. With 4 or more players it ran under that plate. (9e8d49e)
+- Phones on a played-out board say “Jeopardy! is done” (the round's name) instead of who picks the next clue, and the picker's phone no longer asks them to choose one. (9e8d49e)
+- `N` on a played-out board says to click the main button (Final Jeopardy! ▶, Next round ▶…) to go on, instead of doing nothing. (9e8d49e)
+- One window: the stage on stream keeps its size when a ✍ Everyone answers clue's answer is shown, however long the answers. Until then the host panel lists each player in the row their answer goes in (✔ once it's in), with room kept for a multiple choice's counts and ✔ Judge all; then the answers take that room, and long ones scroll in it. (c0deca7, 69017ed)
+- The answers box says “no answer” for a phone that sent none once the answers are locked (one window: “—”, not “…”), instead of “waiting…”. (c0deca7)
+- A phone sitting out the Final says “You’re not in this one” under the question and through the reveals, instead of the Final's name a second time. A buzzer server you run yourself needs deploying again for this. (c0deca7)
+- 📜 Log › History's times are on one line and written as the editor's 🕘 History writes them (“5:34 AM”, not “05:34” over “AM”), as is the time in “Undid 3 steps (back to …)”. (c6629b1)
+- ⋯'s tooltip and screen-reader name list 📖 How to host (guide) with the rest of its menu. (c6629b1)
+- What a screen reader or voice control calls ✕ Kick and Free seat starts with their words (“Kick Ann: …”, “Free seat: Ann’s …”), so “click Kick” finds it. (c6629b1)
+- 🎨 Theme › Share: a button that wraps lines up under the row's first button, not under its label. (c6629b1)
+- After a reload mid-game, the ▶ Play screen says the game in progress's phones wait in its buzzer room and that ▶ Resume it goes back to them (not once that room has ended); Going live and Start game no longer say no phone can join. A room started there that no phone joined closes on ▶ Resume it or ◀ Back to editor (then Resume game goes back to the phones), instead of taking the game and telling the phones in its own room that the game is over. (17743fe, f8aea0f)
+- Screen readers hear what's said while a window is open: the tile when you go to another clue in the clue editor, toasts, ↶ Undo and ↷ Redo, a player moved in 👥 Players, buzzes and scores. Until the window closed, none of it was read. (b40789c)
+- 🔍 Find gives the focus back to what had it (a tile, a round tab, the 🔍 Find button) when it closes with Esc, ✕ or a click beside it, and after a Go there that has nothing to take the focus. It was lost to the page, and the next Tab started at the top. (b40789c)
+- Tab from a window's last control goes round to its first when the window ends in a list picked with the arrows (🔍 Find's results, the RPG's ⤢ Full map). It lost the focus for one press. (b40789c)
+- A screen reader hears when a phone's wager comes in, for a Daily Double and in the Final (“Player 1’s wager is in (from their phone)”, then “All wagers are in”), never how much. (b40789c)
+- At 200% zoom on a laptop (a 683×384 or 640×400 page), the host panel keeps a row of ＋ Award and the main button in sight: the row shrank to a sliver and the main button sat over a player's chip. What doesn't fit scrolls instead. (1a57022)
+- With the computer set to reduce motion, your own copy of the stage beside the audience window comes up still (a Daily Double, a clue, the Final's spotlight no longer zoom in there). What viewers see still follows Reduce motion on stream. (1a57022)
+- On a narrow window (under 700 px wide, as at 200% zoom) the editor's round list takes at most 30% of the height and scrolls in its box, leaving the rest for editing. (1a57022)
+- A game file made by hand or by a chatbot where ids repeat (a round or category pasted twice, “q1” in every category) opens as if they were unique: each tile plays once (playing one no longer takes another off the board), the editor shows every round, clue and tab, and ▶ Play and 📂 Import rounds… work. Of two files with one id, the first is kept. (96ecb92)
+- A text item written with just its words gets a new text box's font, size and color (and an item without a place, one): its clue opens on stream and in the editor. It did nothing on stream and broke the editor. (96ecb92)
+- A game's theme is checked as a theme file is: a color or font that isn't one (a number, CSS text that would load a picture from another site) is its preset's, or goes when the theme can do without it. Such a game broke the editor, left an exported page on “Loading the game…”, and passed it on through 📂 Use a theme from another game…. (96ecb92)
+- Open… repairs more small slips in a hand-edited game instead of showing a bare error: a stray entry in its list of files, a file or round named with a number, a currency symbol that isn't text. (96ecb92)
+- Open… opens a game with an RPG round whose world is gone (that round says what to fix, as after Import rounds…), instead of refusing the whole file. (96ecb92)
 
 ## 2026-10-23
 
