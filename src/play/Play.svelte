@@ -9,7 +9,7 @@
   import {
     applyScore, awardOpen, backToBoard, backToLastRound, currentFinal, clueName, clueReason, clueScored, currentClueInfo, ddShowQuestion, describeStep,
     finalAdvance, finalBack, finalJudge, finalShow, finalShowAnswer, finalTag, finalUnjudged, findClueRef, hasWager, typedAnswer, goToRound, introNext, nameList, newSession, openClue, playerName,
-    randomizeDailyDoubles, redo, forgetRedo, removePlayer, restorePlayer, answerShowing, rosterChange, score, skipIntro, startIntro, toggleUsed, undo,
+    randomizeDailyDoubles, redo, forgetRedo, removePlayer, restorePlayer, answerShowing, rosterChange, roundComplete, score, skipIntro, startIntro, toggleUsed, undo,
     blankSlide, toolOnlyClue, stepSlide, finalWagerProblems, finalWagersOk, finalStepFix, startTiebreaker, stepOf, logZero, tiebreakHolds, tiedForFirst, tiedLeaders, winnerKnown,
     finalSetWager, finalTakeNewcomers, forViewers, wagerFromPhone, coWinnersHold, ownPlayers, clueMarks, judgePartner, partnerSteal, stealersLeft,
   } from '../lib/session';
@@ -4137,6 +4137,9 @@
           if (e.shiftKey) slideStep(-1);
           else if (hostNext) !hostNext.disabled && hostNext.run();
           else slideStep(1);
+        } else if (session.phase === 'board' && !e.shiftKey && hostNext && !hostNext.key && roundComplete(session, game)) {
+          // A played-out board goes on only from its button (N mashed after the last clue mustn't jump on stream).
+          hint(`Round complete: click ${hostNext.label} to go on`);
         } else if (e.shiftKey) break;
         else if (session.phase === 'final' && session.finalStep === 'wagers' && !finalWagersOk(session, wagerLimitsOff)) wagersWaiting();
         // The question up: the answer, as the main button shows it (its reveal sound too).

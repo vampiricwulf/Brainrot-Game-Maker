@@ -413,8 +413,22 @@
   });
   /** Under a wheel, dice or roll-off the code goes (its room on the score bar stays: the plates don't move). */
   const codeShown = $derived(!!codeSpot && !live.overlay && (codeSpot !== 'corner' || !!spot));
-  /** Room kept free at the score bar's right end on the board: the join code's, the countdown's. */
-  const barReserve = $derived((codeSpot === 'bar' ? JOIN_ROOM : 0) + (timerBar ? TIMER_ROOM : 0));
+  /**
+   * The join code's width at the end of the score bar, as last measured there (stage px): its words are wider in some
+   * fonts. Kept while a wheel or dice hides it, so the plates don't move.
+   */
+  let barJoinW = $state(0);
+  function joinWidth(node: HTMLElement, onBar: boolean) {
+    const measure = () => {
+      if (onBar && node.offsetWidth) barJoinW = node.offsetWidth;
+    };
+    const ro = new ResizeObserver(measure);
+    ro.observe(node);
+    measure();
+    return { update: (b: boolean) => ((onBar = b), measure()), destroy: () => ro.disconnect() };
+  }
+  /** Room kept free at the score bar's right end on the board: the join code's (and a gap), the countdown's. */
+  const barReserve = $derived((codeSpot === 'bar' ? Math.max(JOIN_ROOM, barJoinW + 16) : 0) + (timerBar ? TIMER_ROOM : 0));
   const ties = $derived(tiedLeaders(session));
   /** A tie for first the host hasn't settled yet (roll-off, tiebreaker clue or co-winners): nobody has won so far. */
   const tieOpen = $derived(!!ties.length && !coWinnersHold(session));
@@ -842,6 +856,7 @@
   <div
     class="join-badge"
     class:on-bar={codeSpot === 'bar'}
+    use:joinWidth={codeSpot === 'bar'}
     class:small={spot?.small}
     data-corner={spot?.corner}
     style:top={codeSpot === 'bar' && layout.score ? `${layout.score.top + layout.score.height / 2}px` : spot?.corner.startsWith('t') ? '24px' : undefined}

@@ -2,14 +2,14 @@
 // decides all of it (keys, the host panel, a phone's buzz that the buzzer room let through); it lives in Live, so the
 // audience window shows "🔔 Ann is answering", and the phones get it through hostState().
 import { CARD_HINT_MAX, CARD_ROLE_MAX, CARD_TEXT_MAX, CARDS_BYTES, CARDS_MAX, clip, clipUnits, CLUE_TEXT_MAX, WAGER_MAX, type BuzzPhase, type HostCard, type HostState, type WagerAsk, type AnswerAsk } from './buzzproto';
-import { categoryLabel, finalName, formatPoints, PARTNER_GAMES, roundName, type CardSend, type CardTo, type Game, type Id, type PartnerState, type Session, type Slide, type SlideElement, type TextEl } from './model';
+import { categoryLabel, finalName, formatPoints, isBoard, PARTNER_GAMES, roundName, type CardSend, type CardTo, type Game, type Id, type PartnerState, type Session, type Slide, type SlideElement, type TextEl } from './model';
 import {
   cardHash, cardId, cardLines, cardSlides, describer, giverLine, partnerRoles, partnerRules, partnerVerdict, partOfTo, partsLine, partWords, resultLine, type CardPart,
 } from './partner';
 import { ANY_SERVER, cardWords, clipWords, phoneCard, type PhoneCan } from './phonecard';
 import { cardsOut, sentCardId, sentSlide, sentState } from './sentcards';
 import { usableChoices } from './choices';
-import { clueMarks, currentClueInfo, currentFinal, ddCap, finalTag, finalWagerCap, nameList, partnerSteal, score, shownQuestionSlide, tiebreakHolds, tiedForFirst, wagerFromPhone } from './session';
+import { clueMarks, currentClueInfo, currentFinal, ddCap, finalTag, finalWagerCap, nameList, partnerSteal, roundComplete, score, shownQuestionSlide, tiebreakHolds, tiedForFirst, wagerFromPhone } from './session';
 
 export interface BuzzState {
   phase: BuzzPhase;
@@ -163,6 +163,8 @@ export function phoneStatus(game: Game, session: Session, pregame = false, room:
   if (session.intro?.stage === 'title' && round) return { text: `${roundName(round, session.currentRound)} is starting` };
   switch (session.phase) {
     case 'board': {
+      // Played out: nothing left to pick (the host's main button goes on).
+      if (isBoard(round) && roundComplete(session, game)) return { text: `${roundName(round, session.currentRound)} is done` };
       const id = session.currentPickerId;
       const who = nameOf(id);
       return who && id ? { text: `${who} picks the next clue`, seats: [id], seatsText: 'Your pick! Tell the host which clue' } : null;

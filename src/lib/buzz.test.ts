@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { jeopardyGame } from './testgame';
-import { finalName, newImageEl, newTextEl, setSlideText, textSlide, PARTNER_GAMES, type BoardRound, type FinalRound, type PartnerGame, type SavedCard } from './model';
+import { finalName, newImageEl, newTextEl, playableClues, setSlideText, textSlide, PARTNER_GAMES, type BoardRound, type FinalRound, type PartnerGame, type SavedCard } from './model';
 import { applyScore, ddShowQuestion, finalChoose, finalNext, finalSetWager, goToRound, judgePartner, newSession, openClue, places, rebaseSession, removePlayer, undo } from './session';
 import { addCard, setPartner, setPartnerGame, swapParts } from './partner';
 import {
@@ -247,6 +247,11 @@ describe('hostState (what the buzzer room is told)', () => {
     session.intro = null;
     session.currentPickerId = 'a';
     expect(phoneStatus(game, session)).toEqual({ text: 'Ann picks the next clue', seats: ['a'], seatsText: 'Your pick! Tell the host which clue' });
+    // Played out: nobody picks (no seat told to).
+    const board = game.rounds[0] as BoardRound;
+    for (const c of playableClues(board)) session.used[c.id] = true;
+    expect(phoneStatus(game, session)).toEqual({ text: `${board.name} is done` });
+    session.used = {};
     session.phase = 'clue';
     session.dd = { stage: 'splash', playerId: 'b' };
     expect(phoneStatus(game, session)).toEqual({ text: 'Daily Double: Bo', seats: ['b'], seatsText: 'Daily Double — you’re up!' });

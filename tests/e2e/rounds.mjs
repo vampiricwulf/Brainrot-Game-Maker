@@ -279,6 +279,16 @@ try {
   assert(oldRounds.join('|') === 'Classic|Old Final', `an old game's Final becomes its last round (${oldRounds.join(', ')})`);
   await p2.getByRole('button', { name: 'Old Final' }).click();
   assert((await p2.getByLabel('Category').inputValue()) === 'History' && (await p2.getByLabel('Think time (seconds)').inputValue()) === '40', 'with its category and think time');
+  // Its board played out (its one tile marked played): N says how to go on, and doesn't jump to the Final on stream.
+  await playWithPlayers(p2, 2);
+  await p2.getByRole('button', { name: 'Start game ▶' }).click();
+  await p2.getByRole('button', { name: 'Skip intro' }).click();
+  await p2.locator('.stage-box .board .tile').first().click({ button: 'right' });
+  await p2.getByRole('menuitem', { name: /Mark as played/ }).click();
+  await p2.locator('.panel', { hasText: 'Round complete!' }).waitFor();
+  await p2.keyboard.press('n');
+  await p2.locator('.toast', { hasText: 'Round complete: click Old Final ▶ to go on' }).waitFor();
+  assert((await p2.locator('.stage-box .board').count()) === 1, 'N on a played-out board says to click Old Final ▶ to go on (the board stays)');
   await fresh.close();
 
   assert(!errors.length, 'no page errors' + (errors.length ? ': ' + errors.join(' | ') : ''));

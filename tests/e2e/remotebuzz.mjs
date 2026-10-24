@@ -449,6 +449,25 @@ try {
   await page.keyboard.press('Escape');
   await stateIs((s) => s.phase === 'lobby' && !s.clue && s.lockedOut.length === 0);
   assert(true, 'back to the board: the phones go back to the lobby');
+  // Seats locked on the board: the code at the end of the score bar says “📱 Players’ buzzers” (wider than “📱 Buzz in”
+  // in most fonts), and the plates still keep clear of it.
+  await chip.click();
+  await pop.getByLabel(/Lock seats/).check();
+  await aud.locator('.join-badge.on-bar', { hasText: '📱 Players’ buzzers' }).waitFor();
+  const barClear = await aud
+    .waitForFunction(() => {
+      const b = document.querySelector('.join-badge.on-bar')?.getBoundingClientRect();
+      const plates = [...document.querySelectorAll('.plate')].map((el) => el.getBoundingClientRect());
+      return !!b && plates.length === 5 && !plates.some((r) => r.left < b.right && b.left < r.right && r.top < b.bottom && b.top < r.bottom);
+    })
+    .then(
+      () => true,
+      () => false,
+    );
+  assert(barClear, 'with the seats locked, the code on the board’s score bar reads “📱 Players’ buzzers”, and no score plate runs under it');
+  await pop.getByLabel(/Lock seats/).uncheck();
+  await aud.locator('.join-badge', { hasText: '📱 Buzz in' }).waitFor();
+  await page.keyboard.press('Escape');
   // The answer shown before anyone opened the buzzers: ▦ Done ▶ board is next, not a 🔔 Open the buzzers that refuses.
   await page.locator('.stage-box .board .tile:not(.used)').first().click();
   await stateIs((s) => s.phase === 'closed' && !!s.clue);
