@@ -200,9 +200,10 @@ RollEvent  { id, ts, source: 'wheel' | 'dice', presetName?, result: string /* la
 
 ### 5.1 Game setup
 - **Values**: edit per round (row defaults), with per-clue overrides. A "×2 for this round" helper. Any integer is allowed, including negatives and 0.
-- **Players**: set on the ▶ Play pre-game screen (§6.1), kept with the game: add/remove (1–8 players), name, unique
-  color, a picture (an RPG round's avatar and player sheet). The color picker prevents duplicates and suggests a
-  distinct palette. The score bar shows name plates in each player's color.
+- **Players**: set on the ▶ Play pre-game screen (§6.1), kept with the game: add/remove (1–20 players; 8 at most by
+  default, ⚖ Game rules › Most players), name, unique color, a picture (an RPG round's avatar and player sheet). The
+  color picker prevents duplicates and suggests a distinct palette. The score bar shows name plates in each player's
+  color.
 - Toggles: Final Jeopardy on/off, negative scores, deduct-on-wrong, default timer.
 
 ### 5.2 Board editor
@@ -402,7 +403,7 @@ The mode isn't saved with the game: it's dual while the audience window is open.
 0. **Round intro** (each step can be turned off in settings): the round title card ("DOUBLE JEOPARDY!") → tiles fill in
    randomly with a cascading animation → categories are revealed one at a time on each host click (or automatically).
 1. **Board**: category headers + tiles (value or custom face). Used tiles are dimmed or blank. The score bar shows each
-   player's name, color, and score (up to 8 players, one row).
+   player's name, color, and score (one row, up to 20 players).
 2. Host clicks a tile. It zoom-transitions to the **Question slide**. A clue can have several question slides (a
    lead-in, then more): `N` / **Next slide ▶** goes through them before the answer, and viewers see small dots for
    where they are.

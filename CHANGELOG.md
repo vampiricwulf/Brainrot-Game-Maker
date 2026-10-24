@@ -22,7 +22,7 @@ in plain words for the people who make and host games. Anything committed but no
 - In the editor the tiebreaker is ❓ (its button in the round list and its empty page), as it is in play, where 🤝 means a partner clue or 🤝 Declare co-winners.
 - The asks on the 📱 Phone buzzers card (✕ Close the room, ticking Teams) and 👥 Players' − put the safe answer first (Keep it open, Keep teams…, Keep) and the red one after it, as every other ask does.
 - ＋ Add round's sample game is ✨ The sample game, as on the first screen (it was 🎁). Undo steps for a board's rows, categories, random partner clues and imported clues name it as round “Jeopardy!”, as other steps do. Open… says “its undo history” when one recent game is listed.
-- README and the spec say players can answer on their phones too; the spec's lines on going online, where players are set and the host panel's bar match the app.
+- README and the spec say players can answer on their phones too; the spec's lines on going online, where players are set (and that a game takes up to 20) and the host panel's bar match the app.
 - The accent blue (links, focus rings, blue labels) is a touch lighter, so small text in it reads at 4.5:1 on the panels, and Start game ▶'s Ctrl+⏎ is no longer faded.
 
 ### Fixed
