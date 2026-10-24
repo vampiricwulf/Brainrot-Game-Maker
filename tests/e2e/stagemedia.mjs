@@ -64,6 +64,8 @@ const paused = (p, sel) => p.locator(sel).evaluate((m) => m.paused);
 const waitPaused = (p, sel, v) => p.waitForFunction(([s, want]) => document.querySelector(s)?.paused === want, [sel, v], { timeout: 5000 });
 const answer = (p) => p.getByText('The answer text').count();
 const guard = () => page.waitForTimeout(500); // past the stage's double-click guard
+/** The slide editor's panel shows the sound just added (its speaker icon box is a sound's only). */
+const soundPanel = () => page.locator('.insp').getByLabel('Show a speaker icon on the slide').waitFor();
 // A stand-in YouTube player (tests have no internet): it answers the app, and notes how it was asked to start.
 const YT = `<!doctype html><script>
   const auto = new URLSearchParams(location.search).get('autoplay');
@@ -102,6 +104,8 @@ try {
   await page.getByRole('button', { name: '🔊 Audio' }).click();
   [fc] = await Promise.all([page.waitForEvent('filechooser'), page.getByRole('button', { name: '⬆ Upload audio file…' }).click()]);
   await fc.setFiles({ name: 'beep.wav', mimeType: 'audio/wav', buffer: wav(4) });
+  // (The sound's own panel first: until the file is in, the video's is up, and the box there is the video's.)
+  await soundPanel();
   await page.locator('.insp').getByLabel('Autoplay when the slide appears').uncheck();
   await page.locator('.insp').getByLabel('Show a speaker icon on the slide').check();
   await page.getByRole('tab', { name: /Answer/ }).click();
@@ -154,6 +158,7 @@ try {
   await page.getByRole('button', { name: '🔊 Audio' }).click();
   [fc] = await Promise.all([page.waitForEvent('filechooser'), page.getByRole('button', { name: '⬆ Upload audio file…' }).click()]);
   await fc.setFiles({ name: 'cut.wav', mimeType: 'audio/wav', buffer: wav(4) });
+  await soundPanel();
   await page.locator('.insp').getByLabel('Autoplay when the slide appears').uncheck();
   await page.locator('.insp').getByLabel('Stop at (s)').fill('1.5');
   await page.getByRole('button', { name: 'Done' }).click();
