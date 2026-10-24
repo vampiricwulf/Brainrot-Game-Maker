@@ -414,7 +414,8 @@
           {#each passOn as a (a.id)}<button class="small" onclick={() => run(landed, a, last.playerId, 'pass')}>{actText(a, 'pass')}</button>{/each}
           {#each landed.onLand ?? [] as a (a.id)}<button class="small" onclick={() => run(landed, a, last.playerId, 'land')}>{actText(a, 'land')}</button>{/each}
           {#if unrevealed(bs, landed)}<button class="small ghost" onclick={() => reveal(landed)}>👁 Reveal space</button>{/if}
-          {#if landed.hostNotes && !dual}<span class="notes">📝 {landed.hostNotes}</span>{/if}
+          <!-- (One window: a secret space's note waits for 👁 Reveal space, as its name does.) -->
+          {#if landed.hostNotes && !dual && !unrevealed(bs, landed)}<span class="notes">📝 {landed.hostNotes}</span>{/if}
         {/if}
       </div>
     {/if}

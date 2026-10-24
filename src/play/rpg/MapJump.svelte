@@ -6,7 +6,7 @@
 -->
 <script lang="ts">
   import { modal } from '../../lib/modal';
-  import { untrack } from 'svelte';
+  import { getContext, untrack } from 'svelte';
   import { hint, toast } from '../../lib/app.svelte';
   import { showMenu } from '../../lib/menustate.svelte';
   import type { Game, Screen, ScreenRef, Session, World, WorldState } from '../../lib/model';
@@ -16,6 +16,7 @@
   import { logged } from '../../lib/toolset';
   import { moveChoices, sendPartiesOn, START_FIRST } from './hostops';
   import MapView from './MapView.svelte';
+  import { PANEL_AREA, type PanelPlace } from '../host/panelarea';
 
   let {
     game,
@@ -35,6 +36,12 @@
     send?: { players: string[]; label: string } | null;
     onclose: () => void;
   } = $props();
+
+  // One window: over the host panel only (it waits for the panel's box), never the stage viewers see: the host's map
+  // names screens nobody has found yet.
+  const place = getContext<PanelPlace | undefined>(PANEL_AREA);
+  const at = $derived(place?.() ?? { dual: true, box: null });
+  const area = $derived(at.dual ? null : at.box);
 
   const here = $derived(focusRef(st));
   // Opens on the party's map; the tabs change it from there.
@@ -99,64 +106,75 @@
   }}
 />
 
-<div class="backdrop" role="presentation" onclick={(e) => e.target === e.currentTarget && onclose()}>
-  <div class="modal" role="dialog" aria-label="Full map" use:modal>
-    <div class="row head">
-      <b class="modal-title">🗺 Jump to a screen</b>
-      <div class="tabs" role="tablist" aria-label="Maps">
-        {#each world.maps as m (m.id)}
-          <button role="tab" aria-selected={m.id === mapId} class:on={m.id === mapId} onclick={() => (mapId = m.id)}>
-            {m.name}{m.id === here?.map ? ' •' : ''}
-          </button>
-        {/each}
+{#if at.dual || area}
+  <div
+    class="backdrop"
+    class:in-panel={!!area}
+    style:top={area ? `${area.top}px` : undefined}
+    style:left={area ? `${area.left}px` : undefined}
+    style:width={area ? `${area.width}px` : undefined}
+    style:height={area ? `${area.height}px` : undefined}
+    role="presentation"
+    onclick={(e) => e.target === e.currentTarget && onclose()}
+  >
+    <div class="modal" role="dialog" aria-label="Full map" use:modal>
+      <div class="row head">
+        <b class="modal-title">🗺 Jump to a screen</b>
+        <div class="tabs" role="tablist" aria-label="Maps">
+          {#each world.maps as m (m.id)}
+            <button role="tab" aria-selected={m.id === mapId} class:on={m.id === mapId} onclick={() => (mapId = m.id)}>
+              {m.name}{m.id === here?.map ? ' •' : ''}
+            </button>
+          {/each}
+        </div>
+        <span class="spacer"></span>
+        <span class="muted small">
+          {send ? `Sending ${send.label}: click a screen, then Move.` : 'Click a screen, then choose who goes.'} Double-click to move {who} there.
+        </span>
+        <button class="ghost modal-x" onclick={onclose} aria-label="Close" title="Close (Esc / J)">✕</button>
       </div>
-      <span class="spacer"></span>
-      <span class="muted small">
-        {send ? `Sending ${send.label}: click a screen, then Move.` : 'Click a screen, then choose who goes.'} Double-click to move {who} there.
-      </span>
-      <button class="ghost modal-x" onclick={onclose} aria-label="Close" title="Close (Esc / J)">✕</button>
-    </div>
-    <div class="body">
-      <div class="grid">
-        <MapView {world} {st} players={session.players} audience={false} focus={here} only={mapId} big {picked} onpick={pick} onmenu={menu} onmove={moveDots} />
-      </div>
-      <aside class="side">
-        {#if found && picked}
-          <div class="preview" bind:clientWidth={boxW} style:height="{1080 * scale}px">
-            <div class="slide" style:transform="scale({scale})">
-              <SlideView slide={{ ...screenSlide(st, found.screen), elements: screenElements(st, found.screen, false) }} mode="edit" fallbackBg="#2f6b3a" />
+      <div class="body">
+        <div class="grid">
+          <MapView {world} {st} players={session.players} audience={false} focus={here} only={mapId} big {picked} onpick={pick} onmenu={menu} onmove={moveDots} />
+        </div>
+        <aside class="side">
+          {#if found && picked}
+            <div class="preview" bind:clientWidth={boxW} style:height="{1080 * scale}px">
+              <div class="slide" style:transform="scale({scale})">
+                <SlideView slide={{ ...screenSlide(st, found.screen), elements: screenElements(st, found.screen, false) }} mode="edit" fallbackBg="#2f6b3a" />
+              </div>
             </div>
-          </div>
-          <b>{found.map.name} · {found.screen.name}</b>
-          <span class="muted small">
-            {st.knowledge[found.screen.id] === 'visited' ? 'Visited' : st.knowledge[found.screen.id] === 'discovered' ? 'Discovered, not visited' : 'Not discovered yet'}
-            {#if there.length}· here: {nameList(there.map((p) => p.name))}{/if}
-          </span>
-          {#if found.screen.hostNotes}<span class="notes">📝 {found.screen.hostNotes}</span>{/if}
-          {#if send}
-            <button class="primary" onclick={() => go(send.players, send.label)}>▶ Move {send.label} here</button>
+            <b>{found.map.name} · {found.screen.name}</b>
+            <span class="muted small">
+              {st.knowledge[found.screen.id] === 'visited' ? 'Visited' : st.knowledge[found.screen.id] === 'discovered' ? 'Discovered, not visited' : 'Not discovered yet'}
+              {#if there.length}· here: {nameList(there.map((p) => p.name))}{/if}
+            </span>
+            {#if found.screen.hostNotes}<span class="notes">📝 {found.screen.hostNotes}</span>{/if}
+            {#if send}
+              <button class="primary" onclick={() => go(send.players, send.label)}>▶ Move {send.label} here</button>
+            {:else}
+              <button class="primary" onclick={() => go()}>▶ Move {party?.name ?? 'party'} here</button>
+              {#if selected.length}
+                <button onclick={() => go(selected, `${selected.length} selected`)}>Only the selected ({selected.length})</button>
+              {/if}
+              {#each st.parties.filter((pt) => pt.id !== party?.id) as pt (pt.id)}
+                <button onclick={() => go(pt.members, pt.name)}>Move {pt.name} here</button>
+              {/each}
+              {#if st.parties.length > 1}
+                <button onclick={() => go(session.players.map((p) => p.id), 'Everyone')}>Everyone here</button>
+              {/if}
+            {/if}
           {:else}
-            <button class="primary" onclick={() => go()}>▶ Move {party?.name ?? 'party'} here</button>
-            {#if selected.length}
-              <button onclick={() => go(selected, `${selected.length} selected`)}>Only the selected ({selected.length})</button>
-            {/if}
-            {#each st.parties.filter((pt) => pt.id !== party?.id) as pt (pt.id)}
-              <button onclick={() => go(pt.members, pt.name)}>Move {pt.name} here</button>
-            {/each}
-            {#if st.parties.length > 1}
-              <button onclick={() => go(session.players.map((p) => p.id), 'Everyone')}>Everyone here</button>
-            {/if}
+            <p class="muted small">
+              Pick a screen on the map{send ? ` to send ${send.label} there` : ''}. The yellow outline is where {party?.name ?? 'the party'} is now; faded screens aren’t
+              discovered yet.
+            </p>
           {/if}
-        {:else}
-          <p class="muted small">
-            Pick a screen on the map{send ? ` to send ${send.label} there` : ''}. The yellow outline is where {party?.name ?? 'the party'} is now; faded screens aren’t
-            discovered yet.
-          </p>
-        {/if}
-      </aside>
+        </aside>
+      </div>
     </div>
   </div>
-</div>
+{/if}
 
 <style>
   .backdrop {
@@ -169,6 +187,24 @@
     grid-template: minmax(0, 1fr) / minmax(0, 1fr);
     place-items: center;
     padding: 16px;
+  }
+  /* Over the host panel: the screen's card goes under the map (beside the stage the panel is narrow). */
+  .backdrop.in-panel {
+    inset: auto;
+    padding: 8px;
+  }
+  .in-panel .body {
+    flex-direction: column;
+    overflow: auto;
+  }
+  .in-panel .grid {
+    flex: none;
+    max-height: 70%;
+  }
+  .in-panel .side {
+    width: auto;
+    flex-shrink: 0;
+    overflow: visible;
   }
   .modal {
     width: min(1500px, 100%);

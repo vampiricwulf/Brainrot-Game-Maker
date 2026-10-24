@@ -11,13 +11,17 @@ import { boardNow } from './bgops';
 
 export type LinkRef = { from: string; to: string };
 
-/** Edit mode, and what's picked in it: a space or a link; ＋ Space waits for a click; Connect to… waits for the other space. */
-export const boardEdit = $state<{ on: boolean; sel: string | null; link: LinkRef | null; adding: boolean; connecting: boolean }>({
+/**
+ * Edit mode, and what's picked in it: a space or a link; ＋ Space waits for a click; Connect to… waits for the other space;
+ * the space whose ⚙ Buttons… window is open (in one window it goes over the host panel).
+ */
+export const boardEdit = $state<{ on: boolean; sel: string | null; link: LinkRef | null; adding: boolean; connecting: boolean; buttons: string | null }>({
   on: false,
   sel: null,
   link: null,
   adding: false,
   connecting: false,
+  buttons: null,
 });
 
 /** Clear what's picked and waiting (edit mode stays as it is). */
@@ -28,9 +32,10 @@ export function editIdle(): void {
   boardEdit.connecting = false;
 }
 
-/** Edit mode on or off (off: nothing stays picked). */
+/** Edit mode on or off (off: nothing stays picked, nor a ⚙ Buttons… window open). */
 export function setEditing(on: boolean): void {
   editIdle();
+  if (!on) boardEdit.buttons = null;
   boardEdit.on = on;
 }
 

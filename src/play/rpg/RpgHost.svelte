@@ -637,7 +637,7 @@
     <MapJump {game} {session} {world} {st} {selected} send={mapSend} onclose={() => ((mapOpen = false), (mapSend = null))} />
   {/if}
   {#if live}
-    <LiveScreenEditor {world} {st} screen={live.screen} slide={live.slide} title={live.title} onclose={() => (live = null)} />
+    <LiveScreenEditor {world} {st} {dual} screen={live.screen} slide={live.slide} title={live.title} onclose={() => (live = null)} />
   {/if}
 {:else if world}
   <div class="muted">{world.name} has no screen to start on: add one to its map in the editor.</div>

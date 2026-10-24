@@ -24,7 +24,6 @@
   const into = $derived(sel ? round.spaces.filter((s) => s.next.includes(sel.id) && !sel.next.includes(s.id)) : []);
   const isStart = $derived(!!sel && (round.start ?? round.spaces[0]?.id) === sel.id);
   const here = $derived(sel ? session.players.filter((p) => bs.positions[p.id]?.space === sel.id) : []);
-  let buttonsFor = $state<string | null>(null);
   const name = (id: string) => spaceById(round, id)?.name ?? '?';
 </script>
 
@@ -128,7 +127,7 @@
           <option value={k.kind} disabled={k.kind === 'shop' && !game.shops?.length} title={k.kind === 'shop' && !game.shops?.length ? 'The game has no shop yet (make one in 📊 Stats & Items)' : k.hint}>{k.label}</option>
         {/each}
       </select>
-      <button class="small" onclick={() => (buttonsFor = s.id)} title="What it does when passed or landed on, and its host notes">⚙ Buttons ({(s.onPass?.length ?? 0) + (s.onLand?.length ?? 0)})…</button>
+      <button class="small" onclick={() => (boardEdit.buttons = s.id)} title="What it does when passed or landed on, and its host notes">⚙ Buttons ({(s.onPass?.length ?? 0) + (s.onLand?.length ?? 0)})…</button>
       <button class="small" disabled={isStart} onclick={() => editStart(game, session, s.id)}>🏁 Make it Start</button>
       <span class="spacer"></span>
       <button class="ghost small danger" onclick={() => editDelete(game, session, s.id)} title="Delete (Ctrl+Z brings it back){here.length ? `: ${here.map((p) => p.name).join(', ')} move to the space before it` : ''}">🗑 Delete space</button>
@@ -179,10 +178,10 @@
   {/if}
 </div>
 
-{#if buttonsFor}
-  {@const s = spaceById(round, buttonsFor)}
+{#if boardEdit.buttons}
+  {@const s = spaceById(round, boardEdit.buttons)}
   {#if s}
-    <BoardSpaceButtons {round} space={s} onclose={() => (buttonsFor = null)} />
+    <BoardSpaceButtons {round} space={s} onclose={() => (boardEdit.buttons = null)} />
   {/if}
 {/if}
 

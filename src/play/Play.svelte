@@ -113,6 +113,7 @@
   import { inTauri, popupBlocked, toggleFullscreen } from '../lib/platform';
   import { onMount, setContext, tick, untrack } from 'svelte';
   import { NEXT_GAME } from './host/nextgame';
+  import { PANEL_AREA, type PanelPlace } from './host/panelarea';
   import { MediaQuery } from 'svelte/reactivity';
   import { watchPhonesAway } from './host/phoneaway.svelte';
   import { knownVerdict } from '../lib/shrink/checks.svelte';
@@ -274,8 +275,11 @@
   const sym = $derived(game.settings.currencySymbol);
   // (▶ Test this round never goes on stream: an audience window left open keeps its card, and the test plays here.)
   const dual = $derived(audience.open && !app.test);
-  /** Single window: a list or window open in the host panel (?, L, 👥 Players, ⚖ Rules, 🔊 Sound, 🗜 Make smaller). */
-  const panelWindow = $derived(!dual && (showKeys || showPlayers || showRules || showLog || showSound || !!shrinkDialog.open));
+  /**
+   * Single window: a list or window open in the host panel (?, L, 👥 Players, ⚖ Rules, 🔊 Sound, 🗜 Make smaller, the
+   * RPG's ⤢ Full map, ✎ Edit board's ⚙ Buttons).
+   */
+  const panelWindow = $derived(!dual && (showKeys || showPlayers || showRules || showLog || showSound || !!shrinkDialog.open || rpgMap || !!boardEdit.buttons));
   /** The pre-game screen's "things to check" box (the bar at the foot brings it into view). */
   let checksEl = $state<HTMLDetailsElement>();
   /** A window wide for its height (1280×720, 1920×1080), where a tall host panel fits better beside the stage. */
@@ -1766,6 +1770,8 @@
     onnextgame?.();
   }
   if (untrack(() => !!onnextgame) && !app.playerOnly) setContext(NEXT_GAME, nextGame);
+  // (⤢ Full map, ⚙ Buttons…: in one window, over the host panel too.)
+  setContext<PanelPlace>(PANEL_AREA, () => ({ dual, box: panelBox }));
 
   /**
    * 🎭 Who was who off the screen, as a step (Ctrl+Z puts it back): it's drawn over everything, in any phase, so a tile,

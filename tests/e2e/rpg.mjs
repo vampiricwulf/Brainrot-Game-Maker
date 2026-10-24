@@ -609,6 +609,9 @@ try {
   await page.keyboard.press('j');
   const full = page.getByRole('dialog', { name: 'Full map' });
   await full.waitFor();
+  // (One window: over the host panel beside the stage, never the stage: the host's map names screens not found yet.)
+  const [fb, sb] = [await full.boundingBox(), await page.locator('.stage-box').boundingBox()];
+  assert(fb.x >= sb.x + sb.width - 1, `one window: the full map opens over the host panel, not the stage (map at x ${Math.round(fb.x)}, the stage ends at ${Math.round(sb.x + sb.width)})`);
   await full.getByRole('button', { name: 'Overworld · Screen B1' }).click();
   await full.getByRole('button', { name: /^▶ Move Party here$/ }).click();
   await page.waitForTimeout(200);
@@ -700,6 +703,7 @@ try {
   const liveEd = page.getByRole('dialog', { name: /Edit Start.* live/ });
   await liveEd.waitFor();
   assert((await liveEd.getByRole('button', { name: /Lava/ }).count()) > 0 || (await liveEd.innerText()).includes('Lava'), 'the live editor has the drawn object');
+  assert((await liveEd.innerText()).includes('One window: viewers see this editor, hidden things too.'), 'one window: the live editor says viewers see it (not “viewers see changes as you make them”)');
   // Esc is Done, after the editor's own Esc (the object it opened with is selected: that comes off first).
   for (let i = 0; i < 3 && (await liveEd.count()); i++) {
     await page.keyboard.press('Escape');

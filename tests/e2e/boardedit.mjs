@@ -35,7 +35,7 @@ const board = {
     sp('b4', 'Nap time', 1400, 300, ['b5']),
     // A question worth 100, and a secret space with a button.
     sp('b5', 'Space 5', 1400, 700, ['b6'], { onLand: [{ id: 'q1', do: 'question', question: words('Capital of France?'), answer: words('Paris'), value: 100 }] }),
-    sp('b6', 'Trap Door', 650, 700, ['b1'], { secret: true, onLand: [{ id: 'a1', do: 'score', amount: 100, who: 'party' }] }),
+    sp('b6', 'Trap Door', 650, 700, ['b1'], { secret: true, hostNotes: 'lava pit, they lose 100', onLand: [{ id: 'a1', do: 'score', amount: 100, who: 'party' }] }),
   ],
   mover: { kind: 'dice', dice: 'd6' },
   zones: [],
@@ -229,7 +229,10 @@ try {
   const acts = page.locator('.acts');
   const moved = await acts.filter({ hasText: 'Landed on ?' }).waitFor({ timeout: 5000 }).then(() => true, () => false);
   assert(moved, `Bob's turn, Ann's question still up: Enter moves him (${(await page.locator('.toast').allInnerTexts()).join(' | ') || 'nothing moved'})`);
-  assert((await toast()) === 'Bob: Landed on ? (secret)' && (await acts.innerText()).includes('Landed on ? (secret):') && !(await acts.innerText()).includes('Trap Door'), `landing on the secret space: “? (secret)” in the toast and the panel (${(await acts.innerText()).replace(/\s+/g, ' ')})`);
+  assert(
+    (await toast()) === 'Bob: Landed on ? (secret)' && (await acts.innerText()).includes('Landed on ? (secret):') && !(await acts.innerText()).includes('Trap Door') && !(await acts.innerText()).includes('lava pit'),
+    `landing on the secret space: “? (secret)” in the toast and the panel, and not its note (${(await acts.innerText()).replace(/\s+/g, ' ')})`,
+  );
   await page.locator('.stage-box .ov').waitFor({ state: 'detached' });
   await acts.getByRole('button', { name: '+$100' }).click();
   assert((await toast()) === '? (secret): +$100: Bob', `its button, still secret: “${await toast()}”`);
@@ -242,7 +245,7 @@ try {
   await acts.filter({ hasText: 'Landed on ? (secret)' }).waitFor();
   assert((await toast()) === 'Space 3: Back 3 spaces: Ann · Landed on ? (secret)' && !(await acts.innerText()).includes('Trap Door'), `a space's Back 3 spaces onto it: “? (secret)” too (${await toast()})`);
   await acts.getByRole('button', { name: '👁 Reveal space' }).click();
-  assert((await acts.innerText()).includes('Landed on Trap Door:'), 'revealed: the panel names it');
+  assert((await acts.innerText()).includes('Landed on Trap Door:') && (await acts.innerText()).includes('📝 lava pit'), 'revealed: the panel names it, and shows its note');
   await acts.getByRole('button', { name: '+$100' }).click();
   assert((await toast()) === 'Trap Door: +$100: Ann', `and its button says whose it is: “${await toast()}”`);
   await page.keyboard.press('n');
@@ -343,6 +346,14 @@ try {
   await kinds.blur();
   await page.keyboard.press('Control+z');
   assert(!(await stageSpaces(page).allInnerTexts()).some((t) => t.includes('⭐')), 'and Ctrl+Z takes it back');
+  // Its ⚙ Buttons… (one window: the panel is on stream) open over the host panel, never the stage.
+  await page.locator('[data-board-editing]').getByRole('button', { name: /⚙ Buttons/ }).click();
+  const btns = page.getByRole('dialog', { name: 'Buttons on Nap time' });
+  await btns.waitFor();
+  const [bb, sb] = [await btns.boundingBox(), await page.locator('.stage-box').boundingBox()];
+  assert(bb.y >= sb.y + sb.height - 1, `one window: a space's ⚙ Buttons… open over the host panel, not the stage (at y ${Math.round(bb.y)}, the stage ends at ${Math.round(sb.y + sb.height)})`);
+  await page.keyboard.press('Escape');
+  await btns.waitFor({ state: 'detached' });
   await page.locator('[data-board-editing] [data-show-name]').blur();
   // Esc lets go of what's picked, then ends editing.
   await page.keyboard.press('Escape');

@@ -18,8 +18,18 @@
     slide,
     title,
     st,
+    dual = true,
     onclose,
-  }: { world: World; screen: Screen; slide: Slide; title: string; st?: WorldState; onclose: () => void } = $props();
+  }: {
+    world: World;
+    screen: Screen;
+    slide: Slide;
+    title: string;
+    st?: WorldState;
+    /** An audience window is open (else viewers see this window: the editor itself). */
+    dual?: boolean;
+    onclose: () => void;
+  } = $props();
   // One step for the whole edit, objects moving into the look included (so an undo puts them back where they were).
   const done = untrack(() => app.session && startStep(app.session, app.playGame ?? undefined));
   // Objects added during play become part of this look, so they can be moved and edited here too.
@@ -54,8 +64,11 @@
     <div class="row">
       <b class="modal-title">✎ {title}</b>
       <span class="muted small">
-        {onAir ? 'Live: viewers see changes as you make them.' : 'Off air: viewers see it when the party gets here.'} They stay in this game unless you press
-        💾 Keep in game.
+        {!dual
+          ? 'One window: viewers see this editor, hidden things too. Open 📺 Audience to edit off stream.'
+          : onAir
+            ? 'Live: viewers see changes as you make them.'
+            : 'Off air: viewers see it when the party gets here.'} They stay in this game unless you press 💾 Keep in game.
       </span>
       <span class="spacer"></span>
       <button class="primary" onclick={onclose} title="Esc">Done</button>

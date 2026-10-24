@@ -4,12 +4,13 @@
   this game only unless the host presses 💾 Keep in game.
 -->
 <script lang="ts">
-  import { onDestroy, untrack } from 'svelte';
+  import { getContext, onDestroy, untrack } from 'svelte';
   import { app } from '../../lib/app.svelte';
   import { modal } from '../../lib/modal';
   import type { BoardGameRound, BoardSpace } from '../../lib/model';
   import { startStep } from '../../lib/toolset';
   import ActionListEditor from '../../editor/rpg/ActionListEditor.svelte';
+  import { PANEL_AREA, type PanelPlace } from '../host/panelarea';
 
   let { round, space, onclose }: { round: BoardGameRound; space: BoardSpace; onclose: () => void } = $props();
   // One step for the whole edit (with the board's spaces, so Undo puts the buttons back).
@@ -21,6 +22,11 @@
     app.editGame = null;
     done?.(`Changed the buttons on “${title}”`);
   });
+
+  // One window: over the host panel only (it waits for the panel's box), never the stage viewers see.
+  const place = getContext<PanelPlace | undefined>(PANEL_AREA);
+  const at = $derived(place?.() ?? { dual: true, box: null });
+  const area = $derived(at.dual ? null : at.box);
 
   let box = $state<HTMLElement>();
   /** Esc closes it (not while a field, a picker or another dialog over it has the key). */
@@ -35,24 +41,34 @@
 
 <svelte:window onkeydown={key} />
 
-<div class="backdrop" role="presentation">
-  <div class="modal" role="dialog" aria-modal="true" aria-label="Buttons on {space.name}" bind:this={box} use:modal>
-    <div class="row">
-      <b class="modal-title">⚙ {space.name}</b>
-      <span class="muted small">For this game only, unless you press 💾 Keep in game.</span>
-      <span class="spacer"></span>
-      <button class="primary" onclick={onclose} title="Esc">Done</button>
-      <button class="ghost modal-x" onclick={onclose} aria-label="Close" title="Close (Esc)">✕</button>
-    </div>
-    <div class="body">
-      <h5>When passed <span class="muted small">(landing on it counts too · e.g. Start: +2 gold)</span></h5>
-      <ActionListEditor bind:actions={space.onPass} board={round} passing addLabel="＋ Add button (when passed)" />
-      <h5>When landed on</h5>
-      <ActionListEditor bind:actions={space.onLand} board={round} addLabel="＋ Add button (when landed on)" />
-      <label class="field">Host notes (off stream, except in a single window)<textarea rows="2" bind:value={space.hostNotes}></textarea></label>
+{#if at.dual || area}
+  <div
+    class="backdrop"
+    class:in-panel={!!area}
+    style:top={area ? `${area.top}px` : undefined}
+    style:left={area ? `${area.left}px` : undefined}
+    style:width={area ? `${area.width}px` : undefined}
+    style:height={area ? `${area.height}px` : undefined}
+    role="presentation"
+  >
+    <div class="modal" role="dialog" aria-modal="true" aria-label="Buttons on {space.name}" bind:this={box} use:modal>
+      <div class="row">
+        <b class="modal-title">⚙ {space.name}</b>
+        <span class="muted small">For this game only, unless you press 💾 Keep in game.</span>
+        <span class="spacer"></span>
+        <button class="primary" onclick={onclose} title="Esc">Done</button>
+        <button class="ghost modal-x" onclick={onclose} aria-label="Close" title="Close (Esc)">✕</button>
+      </div>
+      <div class="body">
+        <h5>When passed <span class="muted small">(landing on it counts too · e.g. Start: +2 gold)</span></h5>
+        <ActionListEditor bind:actions={space.onPass} board={round} passing addLabel="＋ Add button (when passed)" />
+        <h5>When landed on</h5>
+        <ActionListEditor bind:actions={space.onLand} board={round} addLabel="＋ Add button (when landed on)" />
+        <label class="field">Host notes (off stream, except in a single window)<textarea rows="2" bind:value={space.hostNotes}></textarea></label>
+      </div>
     </div>
   </div>
-</div>
+{/if}
 
 <style>
   .backdrop {
@@ -63,6 +79,10 @@
     display: grid;
     place-items: center;
     padding: 16px;
+  }
+  .backdrop.in-panel {
+    inset: auto;
+    padding: 8px;
   }
   .modal {
     width: min(720px, 100%);

@@ -390,7 +390,10 @@ The mode isn't saved with the game: it's dual while the audience window is open.
     nothing on the stage shows a focus ring until the host moves the keys: Tab, or the board's arrow keys). The
     panel's status line shows the 📝 host notes of the clue, the slides round, the tiebreaker or the Final (once its
     answer is up), with a title saying viewers can see them; with the audience window open they're in the host column
-    instead. The editor's notes fields say so ("off stream, except in a single window"). The stage keeps one size
+    instead. The editor's notes fields say so ("off stream, except in a single window"); a secret board-game space's
+    notes wait for 👁 Reveal space, as its name does. Windows opened mid-game (?, 📜 Log, 👥 Players, ⚖ Rules, 🔊
+    Sound, the RPG's ⤢ Full map, ✎ Edit board's ⚙ Buttons…) open over the host panel, never the stage; the RPG's ✎
+    Edit screen is too big for it and says viewers see it (📺 Audience edits off stream). The stage keeps one size
     from the board through a clue's steps (a Daily Double's splash, its question slides, a clue's media controls),
     so viewers don't see it zoom down and up.
 - **The host panel** has one layout in every round: the status line (📱 phones and ⏱ timer chips), the players' score
