@@ -233,9 +233,11 @@
     if (!d) return;
     retryFiles(game, session, out.flatMap((c) => sentSlide(game, c) ?? []));
     const n = sendDealAgain(game, session);
-    if (!n) return;
+    // (In one window it goes the same whoever was taken out: none going, with the only part holder out, would say who.)
+    if (!n && dual) return;
     d.phonesAt = dealPhones(d, remote.phones);
-    announce(`${d.name}: ${n} card${n === 1 ? '' : 's'} sent again`);
+    const of = dual ? n : d.hands.length;
+    announce(`${d.name}: ${of} card${of === 1 ? '' : 's'} sent again`);
   }
   function takeBack(): void {
     if (!d) return;
@@ -487,8 +489,8 @@
     {:else}
       {#if status.head}<div class="small" role="status" data-deal-status>{status.head}{#if status.pct}<span aria-hidden="true">{status.pct}</span>{/if}{status.tail}</div>{/if}
       {@render fillsLine()}
-      {#if left && out.length}<div class="small warn"><span>{left}</span><ShrinkButton {game} items={handItems} which="big" /></div>{/if}
-      {#if slow && out.length}<div class="small muted"><span data-card-slow>{slow}</span><ShrinkButton {game} items={handItems} which="slow" /></div>{/if}
+      {#if left && held.length}<div class="small warn"><span>{left}</span><ShrinkButton {game} items={handItems} which="big" /></div>{/if}
+      {#if slow && held.length}<div class="small muted"><span data-card-slow>{slow}</span><ShrinkButton {game} items={handItems} which="slow" /></div>{/if}
       <div class="row wrap">
         {#if held.length}
           {#if cardsOn && !over}<button class="small" onclick={again} title="Every card of the deal goes again under a new id: a phone that came late (a player on a new phone), or a player put back, gets theirs">↻ Send again</button>{/if}
@@ -505,7 +507,7 @@
         <button class="ghost small" onclick={() => putAway()}>✖ Put it away</button>
       </div>
       {@render askLine('away')}
-      {#if out.length && (!cardsOn || dual || over || noPhone.length)}
+      {#if held.length && (!cardsOn || dual || over || noPhone.length)}
         <!-- Each player dealt in, to copy their card (a DM) or show it in the 🪟 card window: by name only, the same
              buttons for everyone, those with no part included (listing only the others would say who got one). In one
              window with the phones getting the cards, only those with no phone here (picked out by phone, never by

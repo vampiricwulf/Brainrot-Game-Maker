@@ -4,9 +4,10 @@
 // stays in view at the foot of the menu, however long the parts are. Dealt and handed out, the panel lists all five
 // dealt in, each with the same 📋 Copy and 🪟 buttons, and counts "Dealt to 5: Captain ×1"; the captain's 📋 copies their
 // brief, everyone else's "no part for you this time". Dealt again until someone else is captain, the deal's window, the
-// tools row, the stage, and everything the page showed or said on the way read the same, word for word. 🎭 Who was who
-// goes on the stage; a click on it takes it off (Ctrl+Z puts it back), and so does Esc; a tile opened with the keyboard
-// under it takes it off (it would cover the question); and the board under it takes clicks again.
+// tools row, the stage, and everything the page showed or said on the way read the same, word for word. The captain
+// taken out, the list still names the other four and the status reads as before. 🎭 Who was who goes on the stage; a
+// click on it takes it off (Ctrl+Z puts it back), and so does Esc; a tile opened with the keyboard under it takes it off
+// (it would cover the question); and the board under it takes clicks again.
 import { chromium } from 'playwright-core';
 import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
@@ -167,6 +168,32 @@ try {
   assert(next.page === first.page, `the deal’s window, the tools row and the stage read the same whoever is captain${next.page === first.page ? '' : `:\n${first.page}\n---\n${next.page}`}`);
   assert(next.said === first.said, `and so did everything the page showed or said on the way${next.said === first.said ? '' : `:\n${first.said}\n---\n${next.said}`}`);
   assert(!/\b(Ann|Bob|Cat|Dan|Eve)\b[^\n]*Captain|Captain[^\n]*\b(Ann|Bob|Cat|Dan|Eve)\b/.test(`${next.page}\n${next.said}`), 'no line names anyone with “Captain”');
+
+  // ---------- The captain taken out: the panel reads as it would for anyone else ----------
+  console.log('The captain taken out:');
+  const status = dialog.locator('[data-deal-status]');
+  const statusWas = await flat(status);
+  const handRows = () => dialog.locator('.hands .row').evaluateAll((els) => els.map((e) => e.innerText.replace(/\s+/g, ' ').trim()));
+  const players = host.getByRole('dialog', { name: 'Players' });
+  /** 👥 Players, `act` in it, Done, and 🎭 Deal… again. */
+  const inPlayers = async (act) => {
+    await host.keyboard.press('Escape');
+    await dialog.waitFor({ state: 'detached' });
+    await host.getByRole('button', { name: '👥 Players' }).click();
+    await act();
+    await players.getByRole('button', { name: 'Done', exact: true }).click();
+    await players.waitFor({ state: 'detached' });
+    await openDeal();
+  };
+  await inPlayers(async () => {
+    await players.getByRole('button', { name: `Remove ${next.captain}` }).click();
+    await players.locator('.ask').getByRole('button', { name: 'Remove', exact: true }).click();
+  });
+  const others = NAMES.filter((n) => n !== next.captain).map((n) => `${n} 📋 Copy 🪟`);
+  assert(await until(async () => JSON.stringify(await handRows()) === JSON.stringify(others)), `the list still names the other four, each with 📋 Copy and 🪟 (${(await handRows()).join(' | ')})`);
+  assert((await flat(status)) === statusWas && (await dialog.getByRole('button', { name: '✖ Take back' }).isVisible()), `“${statusWas}” as before, with ✖ Take back`);
+  await inPlayers(() => players.getByRole('button', { name: '↩ Restore' }).click());
+  assert(await until(async () => (await handRows()).length === 5), '↩ Restore: the captain is back on the list');
 
   // ---------- 🎭 Who was who: a click on the stage takes it off ----------
   console.log('Who was who:');

@@ -21,7 +21,7 @@
   import { phoneCan, syncUploads } from '../lib/cardfiles.svelte';
   import { askServerFiles, fileLimitsNow } from '../lib/serverlimits.svelte';
   import { cardsOut, listedCards, sentCardId, sentSlide, takeBackCard } from '../lib/sentcards';
-  import { dealOut, dealtIn, dropGonePhones } from '../lib/deals';
+  import { dealHeld, dealtIn, dropGonePhones } from '../lib/deals';
   import { windowCards } from '../lib/cardwindow';
   import { cardWindow, closeCardWindow, feedCardWindow } from '../lib/cardwindow.svelte';
   import { dropOffersBut } from './host/offered.svelte';
@@ -1620,9 +1620,9 @@
       const out = s && info && phoneCards ? cardSlides(info.clue).flatMap((c, i) => (sentSeats(session, s, c.id).includes(seatId) ? [clueCardWords(c, i)] : [])) : [];
       // (And the cards out with 🤫 Send a card… or from a tile's panel, by their labels: "Card 3".)
       if (phoneCards) out.push(...listedCards(game, session).flatMap((c) => (c.to.some((t) => t.seat === seatId) ? [c.label] : [])));
-      // (A 🎭 deal's: for everyone dealt in, a part or not, the same words. Only those with a part have a card, so
-      // naming it only for them would say who got one.)
-      if (phoneCards && dealOut(game, session).length && dealtIn(session.deal!).some((t) => t.seat === seatId)) out.push('🎭 the deal (in 🎭 Deal…)');
+      // (A 🎭 deal's: for everyone dealt in, a part or not, the same words, while any of its cards is held, whoever was
+      // taken out. Only those with a part have a card, so naming it only for them would say who got one.)
+      if (phoneCards && dealHeld(game, session).length && dealtIn(session.deal!).some((t) => t.seat === seatId)) out.push('🎭 the deal (in 🎭 Deal…)');
       if (out.length) toast(`${playerName(session, seatId)}'s seat is free: once they're on the new phone, ↻ Send again ${nameList(out)}`, 6000);
       else toast(`${playerName(session, seatId)}'s seat is free: they can tap their name on their new phone`, 4000);
     }
