@@ -1135,6 +1135,28 @@
    * back with the time it had left.
    */
   const timerSteps = new Map<string, { clue: string | undefined; timer: TimerState; at: number }>();
+  /**
+   * The partner clue's countdown, stopped when its picker or partner was taken out (back to PARTNER UP!): an Undo of that
+   * puts it back with the time it had left, and a Redo stops it again.
+   */
+  let pairClock: { clue: string; at?: number; timer: TimerState; stopped: number } | null = null;
+  function stopPairClock(): void {
+    const s = session.partner;
+    const t = app.live.timer;
+    pairClock = s && t && !t.expired && timerRemaining(t) > 0 ? { clue: s.clue, at: s.at, timer: $state.snapshot(t) as TimerState, stopped: Date.now() } : null;
+    app.live.timer = null;
+  }
+  /** After an Undo or Redo of a step: the open partner clue's countdown follows its stage (`was`: before the step). */
+  function pairClockFollow(was: string | undefined): void {
+    const s = session.phase === 'clue' ? session.partner : null;
+    if (!s || !was || s.stage === was) return;
+    if (s.stage === 'pick') return stopPairClock();
+    if (was !== 'pick') return;
+    const c = pairClock;
+    pairClock = null;
+    // (Not over a countdown the host started meanwhile, nor once the answer is up.)
+    if (c?.clue === s.clue && c.at === s.at && !app.live.timer && !session.revealed) app.live.timer = timerResumed(c.timer, c.stopped);
+  }
   /** One of those undone or redone while its clue is still open (the answer not up): its countdown comes back, or stops again. */
   function timerFollow(events: { batchId?: string; id: string }[], undone: boolean): void {
     const key = events.length ? (events[0].batchId ?? events[0].id) : '';
@@ -2844,8 +2866,10 @@
     undoIntoFinal();
     const next = nextUndo(session);
     if (next?.log === 'action') {
+      const was = session.partner?.stage;
       const a = undoAction(session, game)!;
       undone.push({ log: 'action', id: a.id });
+      pairClockFollow(was);
       // A Daily Double's player back (taken out, then the Undo): picked again, for its ✔ / ✘ and Enter.
       const dd = session.phase === 'clue' ? session.dd : null;
       if (dd?.stage === 'question' && dd.playerId && !selected.length) selected = [dd.playerId];
@@ -2875,7 +2899,9 @@
       return t;
     };
     if (redoFrom(session, undone) === 'action') {
+      const was = session.partner?.stage;
       const a = redoAction(session, game);
+      pairClockFollow(was);
       if (a) return after(`${a.text}${inRound(a)}`);
     }
     const events = redo(session);
@@ -3830,7 +3856,7 @@
     removePlayer(session, id);
     selected = selected.filter((x) => x !== id);
     if (pt) {
-      if (pt.stage !== 'pick') app.live.timer = null;
+      if (pt.stage !== 'pick') stopPairClock();
       const now = session.partner;
       toast(
         pt.picker

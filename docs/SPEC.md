@@ -493,7 +493,8 @@ The mode isn't saved with the game: it's dual while the audience window is open.
 ### 6.5 Scores & players
 - Edit any player's score directly at any time (click the score, then type).
 - Add, remove, rename, and recolor players mid-game. Each is an undo step: undoing a removal mid-clue gives the player
-  back their part in it (a Daily Double's player, a partner clue's picker or partner).
+  back their part in it (a Daily Double's player, a partner clue's picker or partner, with the countdown the removal
+  stopped and the time it had left; a redo stops it again).
 - **Score log**: chronological list of every change (player, delta, reason/clue, time). Each entry can be **undone** or redone.
   Global **Undo (Ctrl+Z)** reverts the last score change.
 - Session state (scores, used tiles, round, log) is autosaved to IndexedDB after every change for **crash recovery**.

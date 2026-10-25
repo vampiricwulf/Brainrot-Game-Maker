@@ -205,6 +205,28 @@ try {
   const catColor = await stage('[data-partner-card] .pc-cat').evaluate((e) => getComputedStyle(e).color);
   assert(catColor === 'rgb(255, 224, 102)', `its category is in the theme's text color, as a slide's text is (it was always white, faint on a light theme) (${catColor})`);
   assert((await mainLabel(page)) === '👁 Reveal answer', 'with no cards to hand out, the question is all: the answer is next');
+  // Dan taken out mid-question (👥 Players), then Ctrl+Z: the pair and its question come back with their countdown.
+  await page.keyboard.press('t');
+  // (A second or two in, so a countdown started afresh would show.)
+  await page.waitForFunction(() => Number(document.querySelector('.stage-box .timer .num')?.textContent) <= 43);
+  const left = Number(await stage('.timer .num').innerText());
+  await page.getByRole('button', { name: '👥 Players' }).click();
+  await page.getByRole('button', { name: 'Remove Dan' }).click();
+  await page.locator('.modal .ask').getByRole('button', { name: 'Remove', exact: true }).click();
+  await page.getByRole('button', { name: 'Done', exact: true }).click();
+  await page.getByRole('dialog', { name: 'Players' }).waitFor({ state: 'detached' });
+  await stage('[data-partner-up]').waitFor();
+  assert((await stage('.timer').count()) === 0, 'the partner taken out mid-question: back to PARTNER UP!, its countdown gone');
+  await page.keyboard.press('Control+z');
+  await stage('[data-partner-card]').waitFor();
+  await stage('.timer .num').waitFor();
+  const back = Number(await stage('.timer .num').innerText());
+  assert(back > 0 && back <= left && !(await stage('.timer.paused').count()), `Ctrl+Z: the question is back with its countdown going, with the time it had left (${left} → ${back} s)`);
+  await page.keyboard.press('Control+Shift+z');
+  await stage('[data-partner-up]').waitFor();
+  assert((await stage('.timer').count()) === 0, 'Ctrl+Shift+Z takes Dan out again, and the countdown with him');
+  await page.keyboard.press('Control+z');
+  await stage('.timer .num').waitFor();
   await page.keyboard.press('Escape');
 
   // ---------- Esc before the question keeps the tile ----------

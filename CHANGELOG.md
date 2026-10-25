@@ -35,7 +35,7 @@ in plain words for the people who make and host games. Anything committed but no
 - Esc while a wheel spins or dice roll says to wait for them to land, as W and D do, instead of closing them before viewers see the result and without offering its score effect.
 - After a reload with a wheel or dice tile's own wheel or dice on stream, closing it finishes the tile as before (it left an empty slide, still in the clue).
 - After a wheel lands, dice come up or a score effect is confirmed or skipped, the keys are on the main button (Close, Close ▶ board, 👁 Reveal answer) instead of a side button such as ↩ Cancel (keep tile).
-- Ctrl+Z after taking a player out mid-clue gives them back their part: the Daily Double is theirs again (its badge, ✔ / ✘ and Enter), and a partner clue goes back to its pair and its question instead of PARTNER UP! with someone else.
+- Ctrl+Z after taking a player out mid-clue gives them back their part: the Daily Double is theirs again (its badge, ✔ / ✘ and Enter), and a partner clue goes back to its pair and its question, with its countdown and the time it had left, instead of PARTNER UP! with someone else.
 - N (▦ Done ▶ board) on a ✍ Everyone answers clue with answers in and none judged says so first (“2 answers not judged yet…”), as it does with a player picked; N again closes it.
 - The Final's reveals show each row's number key (1–9 spotlight a player by their number, which isn't the row's place), so two players with the same name can be told apart.
 - ＋ Add round is a step of its own, so the name and fields typed right after it are steps too: one Ctrl+Z takes back the last one, not the whole new round.
