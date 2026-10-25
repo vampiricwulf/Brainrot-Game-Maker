@@ -38,6 +38,7 @@ in plain words for the people who make and host games. Anything committed but no
 - On the ▶ Play screen, ◀ Back to editor opens the tab you pressed ▶ Play on (🎨 Theme, the Final…) instead of the first round, and ◀ Fix in editor goes to the first thing to check, as its line in the editor's checklist does (a Final with no answer: its Answer box).
 - Ticking Include a tiebreaker clue puts the keys in its question box, ready to type.
 - An empty game's “No rounds yet” line in the checklist puts the keys on ✨ Try a sample game, the first card that adds a round (it did nothing).
+- A second picture, or a video, added to a slide that has its question and a picture goes beside what's there, clear of the question (smaller if it must), instead of on the first picture or over the question's words. This is so on clues, Slides rounds, the Final and the tiebreaker.
 
 ## 2026-10-24
 

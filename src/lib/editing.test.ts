@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { aspectCrop, freeOffset, freeSpot, isMediaLink, knobPlacement, officeTextPaste, placeNewPicture, placePicture, playRange, SnapshotHistory } from './editing';
-import { newTextEl } from './model';
+import { newImageEl, newTextEl, newVideoEl } from './model';
 
 describe('slide undo history', () => {
   it('undoes a change made a moment ago (before its debounce committed it)', () => {
@@ -183,6 +183,27 @@ describe('placing a new picture', () => {
     expect(placePicture([], 960, 540).box).toEqual({ x: 480, y: 270, w: 960, h: 540 });
     const full = { id: 't', kind: 'text', x: 0, y: 0, w: 1920, h: 1080 };
     expect(placePicture([full, { id: 's', kind: 'shape', x: 0, y: 0, w: 10, h: 10 }], 960, 540).box).toEqual({ x: 480, y: 270, w: 960, h: 540 });
+  });
+
+  it('puts a second picture, then a video, clear of the question and the pictures already there', () => {
+    const q = newTextEl('Who is Pepe?');
+    const first = { ...newImageEl('m1', 1100, 700) };
+    placeNewPicture([q], first);
+    const second = { ...newImageEl('m2', 800, 800) };
+    placeNewPicture([q, first], second);
+    expect(overlaps(second, q)).toBe(false);
+    expect(overlaps(second, first)).toBe(false);
+    // (Beside the first one, in the band above the question, as big as fits.)
+    expect(second.h).toBeGreaterThanOrEqual(250);
+    const video = newVideoEl('m3');
+    placeNewPicture([q, first, second], video);
+    expect([video, q, first, second].some((a, i, all) => all.some((b, j) => j > i && overlaps(a, b)))).toBe(false);
+    expect(video.w / video.h).toBeCloseTo(16 / 9, 1);
+    expect(Math.min(video.w, video.h)).toBeGreaterThanOrEqual(120);
+    // A backdrop picture covering the slide doesn't count: the next one still goes above the question.
+    const backdrop = { id: 'b', kind: 'image', x: 0, y: 0, w: 1920, h: 1080 };
+    const title = { id: 't', kind: 'text', x: 120, y: 500, w: 1680, h: 400 };
+    expect(placePicture([backdrop, title], 960, 540).box).toMatchObject({ y: 40, h: 430 });
   });
 
   it("puts the picture beside a screen's lone RPG object and leaves the object where it is", () => {

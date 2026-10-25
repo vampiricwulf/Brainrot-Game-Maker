@@ -116,8 +116,9 @@ export interface PlacedItem extends Box {
  * Where a new picture (w × h, already sized for the slide) goes, so it doesn't land on the question's text. A slide
  * with nothing on it but its main text box (a clue's question, as new): the picture takes the upper part and the text
  * box moves into a band below it (`text`, its new box). Otherwise the picture goes beside, above or below the text,
- * where it can be biggest (shrunk to fit, never grown), or in the middle when there's no text or no room.
- * Audio items don't count (they're hidden in play or a small icon).
+ * clear of the pictures and videos already there, where it can be biggest (shrunk to fit, never grown), or in the
+ * middle when there's no text, or no room that isn't over the text either. Audio items don't count (they're hidden in
+ * play or a small icon), nor shapes, nor a picture covering most of the slide (a backdrop).
  */
 export function placePicture(items: PlacedItem[], w: number, h: number, W = SLIDE_W, H = SLIDE_H): { box: Box; text?: { id: string; box: Box } } {
   const centred = { x: Math.round((W - w) / 2), y: Math.round((H - h) / 2), w, h };
@@ -154,14 +155,31 @@ export function placePicture(items: PlacedItem[], w: number, h: number, W = SLID
     { x: M, y: M, w: x0 - GAP - M, h: H - 2 * M },
     { x: x1 + GAP, y: M, w: W - M - x1 - GAP, h: H - 2 * M },
   ];
+  // The pictures and videos already there: each strip loses their spans along it (a second picture goes beside the
+  // first one in the band above the text).
+  const media = shown.filter((e) => (e.kind === 'image' || e.kind === 'video' || e.kind === 'embed') && e.w * e.h < (W * H) / 2);
+  const across = (a: number, aw: number, b: number, bw: number) => a < b + bw && b < a + aw;
+  const pieces = (s: Box, wide: boolean): Box[] => {
+    let free: [number, number][] = [wide ? [s.x, s.x + s.w] : [s.y, s.y + s.h]];
+    for (const o of media) {
+      if (!across(o.x, o.w, s.x, s.w) || !across(o.y, o.h, s.y, s.h)) continue;
+      const [a, b] = wide ? [o.x - GAP, o.x + o.w + GAP] : [o.y - GAP, o.y + o.h + GAP];
+      free = free.flatMap(([c, d]): [number, number][] => [[c, Math.min(d, a)], [Math.max(c, b), d]]).filter(([c, d]) => d > c);
+    }
+    return free.map(([c, d]) => (wide ? { x: c, y: s.y, w: d - c, h: s.h } : { x: s.x, y: c, w: s.w, h: d - c }));
+  };
   let best: Box | null = null;
-  for (const s of strips) {
+  for (const [i, s] of strips.entries()) {
     if (s.w <= 0 || s.h <= 0) continue;
-    const b = fit(s);
-    if (b && (!best || b.w * b.h > best.w * best.h)) best = b;
+    // (Along x above and below the text, along y beside it.)
+    for (const piece of pieces(s, i < 2)) {
+      const b = fit(piece);
+      if (b && (!best || b.w * b.h > best.w * best.h)) best = b;
+    }
   }
-  // Too small to see (under a sixth of its size, or a sliver): the middle, as before.
-  return { box: best && best.w * best.h >= (w * h) / 6 && Math.min(best.w, best.h) >= 120 ? best : centred };
+  // Too small to see (a sliver): the middle, as before. Under a sixth of its size too, unless the middle is over the text.
+  const overText = texts.some((t) => across(t.x, t.w, centred.x, w) && across(t.y, t.h, centred.y, h));
+  return { box: best && Math.min(best.w, best.h) >= 120 && (best.w * best.h >= (w * h) / 6 || overText) ? best : centred };
 }
 
 /**
