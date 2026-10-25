@@ -30,7 +30,6 @@ in plain words for the people who make and host games. Anything committed but no
 - Teams: someone you move to another team (📱 › Move to another team) during the wagers or the typed answers no longer sees that team's wager or answer on their phone: they're told one is in, as someone who joins late is. A buzzer server you run yourself needs deploying again for this.
 - A team or player taken out mid-clue leaves the buzz order (the rest move up) instead of staying as “Al (?)”.
 - The pre-game 👥 Players and 👥 Teams rows keep ▲ ▼ 🗑 together in a narrow window (about 600 px wide), wrapping them as one instead of splitting them.
-
 - A wheel or dice tile: ▦ Done ▶ board and ↩ Cancel (keep tile) or Shift+Esc take its own wheel or dice off the stage with it (it stayed on stream over the board, and Shift+Esc only closed it), though not while it's still spinning or rolling; with its score effect not given yet, the first Done says so. ↩ Cancel waits for an Undo once that score effect or a slice's points were given, as it does after an award, even with the wheel or dice closed.
 - Esc while a wheel spins or dice roll says to wait for them to land, as W and D do, instead of closing them before viewers see the result and without offering its score effect.
 - After a reload with a wheel or dice tile's own wheel or dice on stream, closing it finishes the tile as before (it left an empty slide, still in the clue).
