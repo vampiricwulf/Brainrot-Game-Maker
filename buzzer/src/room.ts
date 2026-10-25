@@ -106,6 +106,7 @@ import {
   clipUnits,
   cleanName,
   CLUE_TEXT_MAX,
+  KICK_BLOCK_MS,
   type BuzzPhase,
   type CardMedia,
   type CardTo,
@@ -133,8 +134,8 @@ import { FILE_IDLE_MS, FILE_MAKE_ROOM_MS, FILE_MAX_AGE_MS } from './limits';
 export const MAX_SOCKETS = 40;
 /** A phone without a seat that hasn't joined, asked, buzzed or left for this long can be turned away when full. */
 export const IDLE_MS = 10_000;
-/** A kicked phone can't take that seat again for this long. */
-export const KICK_BLOCK_MS = 2 * 60_000;
+// (A kicked phone can't take that seat again for KICK_BLOCK_MS: the protocol's.)
+export { KICK_BLOCK_MS };
 /** Messages bigger than this (bytes) are dropped unread (the host is told when its state is too big). */
 export const HOST_MSG_MAX = 32 * 1024;
 export const TOO_BIG = 'The game is too big for the buzzer room to pass on (too many players or very long names)';
@@ -220,6 +221,8 @@ export interface Race {
   tie?: string[];
   /** The order a tie was rolled in. */
   rolled?: string[];
+  /** The seats of a tie the host settled (by a pick or a roll). */
+  settled?: string[];
 }
 
 /** What the room keeps in storage (saved whole after every change). */
@@ -943,6 +946,7 @@ export class Room {
     race.head = head.length;
     race.winner = seatId;
     race.decided = true;
+    if (race.tie) race.settled = race.tie;
     delete race.tie;
     if (rolled) race.rolled = rolled;
     else delete race.rolled;
@@ -977,7 +981,10 @@ export class Room {
     if (one && this.s.members?.[member]?.seatId !== seatId) return;
     const holders = [...this.phones.values()].filter((p) => (one ? p.member === member : p.seatId === seatId));
     const members = Object.entries(this.s.members ?? {}).filter(([id, x]) => (one ? id === member : x.seatId === seatId));
-    if (!this.s.tokens[seatId] && !holders.length && !members.length) return;
+    // Freed (block: false): a phone a kick keeps off it may take it again (the host's ↩ Let back).
+    const unblocked = !block && !one && !!this.s.blocks?.[seatId];
+    if (unblocked) delete this.s.blocks![seatId];
+    if (!this.s.tokens[seatId] && !holders.length && !members.length) return void (unblocked && this.save());
     if (!block) {
       if (one) this.dropMember(member, 'freed');
       else this.freeSeat(seatId, 'freed');
@@ -1743,6 +1750,9 @@ export class Room {
         const fastest = i === 0 && !!next && race.queue[1].key > race.queue[0].key;
         r = { t: 'result', armId: race.armId, outcome: 'first', rank, afterMs: 0, ...(fastest ? { byMs: next.afterMs } : {}), ...rolled };
       } else if (shift) r = { t: 'result', armId: race.armId, outcome: 'late', rank, behind: name(race.winner!), ...rolled };
+      // A tie the host settled by picking: no time behind the one picked (it was a tie).
+      else if (!q.rolled && race.winner && race.queue[0]?.seatId === race.winner && race.settled?.includes(q.seatId) && race.settled.includes(race.winner))
+        r = { t: 'result', armId: race.armId, outcome: 'late', rank, behind: name(race.winner), tied: true };
       else r = { t: 'result', armId: race.armId, outcome: 'late', rank, afterMs: Math.max(0, race.queue[i].key - aheadKey), behind: name(ahead ?? ''), ...rolled, ...(q.arrivedLate ? { arrivedLate: true } : {}) };
       const member = race.queue[i].member;
       for (const p of this.phones.values()) {

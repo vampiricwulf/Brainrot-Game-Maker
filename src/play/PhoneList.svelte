@@ -6,7 +6,7 @@
   import { onMount } from 'svelte';
   import type { Session } from '../lib/model';
   import { FULL_SHOWN_MS, remote, roomCanFree } from '../lib/remote.svelte';
-  import { MAX_PHONES } from '../lib/buzzproto';
+  import { KICK_BLOCK_MS, MAX_PHONES } from '../lib/buzzproto';
   import { awayFor, phoneAwaySince } from './host/phoneaway.svelte';
 
   let {
@@ -50,6 +50,7 @@
   });
   const roomFull = $derived(!!remote.fullAt && now - remote.fullAt < FULL_SHOWN_MS);
   const locked = $derived(!!session.remote?.locked);
+  const LOCKED_OUT = 'Lock seats keeps new phones out: untick 🔒 Lock seats to let their phone in';
 
   const phoneOf = (id: string) => remote.phones.find((p) => p.seatId === id);
   /** Teams: the people on a team (connected ones first), by the name they joined with. */
@@ -75,7 +76,11 @@
       <li style:--c={p.color} class="team">
         <span class="dot" aria-hidden="true"></span>
         <span class="name" dir="auto">{p.name}</span>
-        <span class="muted">{down ? 'room out of reach' : ms.length ? `${ms.length} on it` : 'nobody yet'}</span>
+        {#if !down && !ms.length && locked}
+          <span class="muted" title={LOCKED_OUT}>🔒 locked out</span>
+        {:else}
+          <span class="muted">{down ? 'room out of reach' : ms.length ? `${ms.length} on it` : 'nobody yet'}</span>
+        {/if}
         {#if phoneAwaySince(p.id) !== null}
           {@const at = phoneAwaySince(p.id) ?? now}
           <span class="away" data-phone-offline={p.id}>📵 offline {awayFor(at, now)}</span>
@@ -123,8 +128,15 @@
       {:else if ph}
         {@const at = phoneAwaySince(p.id)}
         <span class="away" data-phone-offline={p.id}>📵 offline{at !== null ? ` ${awayFor(at, now)}` : ''}</span>
+      {:else if locked}
+        <!-- (No phone has its seat: Lock seats keeps any new one out, so they couldn't take it.) -->
+        <span class="muted" title={LOCKED_OUT}>🔒 locked out</span>
       {:else}
         <span class="muted">waiting</span>
+      {/if}
+      {#if !ph && roomCanFree() && now - (remote.kicked[p.id] ?? -Infinity) < KICK_BLOCK_MS}
+        <!-- Kicked a moment ago (by mistake, the wrong row): that phone can be let back before its 2 minutes are up. -->
+        <button class="small ghost" onclick={() => onkick(p.id, true)} disabled={down} aria-label="Let back: {p.name}’s phone" title={down ? downTitle : 'Let the phone you kicked take this seat again now'}>↩ Let back</button>
       {/if}
       {#if ph}
         {#if roomCanFree()}

@@ -549,6 +549,8 @@ try {
   await editorReady(host);
   const roomBar = host.locator('.status-bar .room-bar');
   await roomBar.getByRole('button', { name: '✕ Close the room' }).click();
+  // (Bob's phone is in it: asked first.)
+  await host.locator('.status-bar').getByRole('alertdialog', { name: 'Close the room?' }).getByRole('button', { name: 'Close the room' }).click();
   await roomBar.waitFor({ state: 'detached' });
   await host.evaluate(() => (window.__seen.length = 0));
   await host.locator('.status-bar .kept').getByRole('button', { name: 'Resume game' }).click();

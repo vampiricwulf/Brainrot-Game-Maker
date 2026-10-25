@@ -13,6 +13,10 @@ in plain words for the people who make and host games. Anything committed but no
 
 ## Unreleased
 
+### Added
+
+- Phone buzzers: for the 2 minutes after ✕ Kick, the player's row offers ↩ Let back, which lets that phone take the seat again (a kick by mistake, the wrong row), and the kick's toast says “Took Player 2's seat back from their phone…”. A buzzer server you run yourself needs deploying again for ↩ Let back.
+
 ### Changed
 
 - Teams: the bar by Start game and ✅ Going live? count people on teams as the 📱 card does (“3 people on 2 of 3 teams”), not “2 of 3 joined”.
@@ -39,6 +43,12 @@ in plain words for the people who make and host games. Anything committed but no
 - Ticking Include a tiebreaker clue puts the keys in its question box, ready to type.
 - An empty game's “No rounds yet” line in the checklist puts the keys on ✨ Try a sample game, the first card that adds a round (it did nothing).
 - A second picture, or a video, added to a slide that has its question and a picture goes beside what's there, clear of the question (smaller if it must), instead of on the first picture or over the question's words. This is so on clues, Slides rounds, the Final and the tiebreaker.
+- A phone you turned away (✕) that asks to join again shows on the 📱 card and chip again, with its “wants to join” note, so you can ✔ Add it (it stayed hidden, and the phone waited for good).
+- With 🔒 Lock seats on, a player no phone can get into (put back with Ctrl+Z or ↩ Restore, or added while locked) reads “🔒 locked out” on the 📱 card and chip instead of “waiting”, and a phone whose player was put back says the seats are locked and to ask you to unlock them, instead of “Tap your name” over a greyed name. A buzzer server you run yourself needs deploying again for the phone's words.
+- The tiebreaker clue greys the phones' buttons and says the tied players answer out loud, instead of showing a button that looked live and did nothing.
+- ✕ Close the room in the bar over the editor asks first when phones are in the room, Keep it open first, as the 📱 card does (it closed at once).
+- A phone that opens the link when every seat is taken says so once (“Every seat is taken. If one is yours on a new phone, ask the host to free it.”), and each name just “Taken”. A buzzer server you run yourself needs deploying again for this.
+- After you settle a tie by picking who answers, the other tied phone says “Tie: the host picked Player 2” instead of “0.00 s behind Player 2”. A buzzer server you run yourself needs deploying again for this.
 
 ## 2026-10-24
 

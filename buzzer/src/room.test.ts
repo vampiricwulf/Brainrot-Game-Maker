@@ -383,6 +383,20 @@ describe('seats', () => {
     expect(g.pb.last('joined')?.seatId).toBe('b');
   });
 
+  it('the host can let a kicked phone back before its 2 minutes are up (a kick by mistake)', () => {
+    const g = game();
+    g.pb.send({ t: 'join', seatId: 'b', device: 'dev-b' });
+    g.send({ t: 'kick', seatId: 'b' });
+    g.pb.send({ t: 'join', seatId: 'b' });
+    expect(g.pb.last('denied')?.reason).toBe('blocked');
+    // ↩ Let back: a free with nothing to take (no phone holds the seat now) lifts the block.
+    g.send({ t: 'kick', seatId: 'b', block: false });
+    g.pb.clear();
+    g.pb.send({ t: 'join', seatId: 'b', device: 'dev-b' });
+    expect(g.pb.msgs().map((m) => m.t)).not.toContain('denied');
+    expect(g.pb.last('joined')?.seatId).toBe('b');
+  });
+
   it('a phone kicked while it is away (asleep, its tab closed) is still kept off that seat when it comes back', () => {
     const g = setup();
     g.room.hostOpen();
@@ -965,7 +979,10 @@ describe('the race', () => {
       ],
     });
     expect(g.pc.last('result')).toMatchObject({ outcome: 'first', rank: 1 });
-    expect(g.pb.last('result')).toMatchObject({ outcome: 'late', rank: 2, behind: 'Cat' });
+    // (It was a tie the host settled: no “0.00 s behind Cat”.)
+    expect(g.pb.last('result')).toEqual({ t: 'result', armId: 1, outcome: 'late', rank: 2, behind: 'Cat', tied: true });
+    expect(g.pa.last('result')).toMatchObject({ outcome: 'late', rank: 3, afterMs: 75, behind: 'Cat' });
+    expect(g.pa.last('result')).not.toHaveProperty('tied');
   });
 
   it('a tie the host rolled for: the tied seats go first in roll order', () => {

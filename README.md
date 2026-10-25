@@ -271,7 +271,7 @@ and **▶ Next game…** (▶ Play asks to keep it for another game, which then 
 ▶ Next game…, with **✕ Close the room**, or when Buzzer mode is turned off (not by undoing, in the editor, the step ▶ Play
 made to turn it on for the room). The join code shows small in a corner of the stream
 during the game (at the end of the score bar on the board) and on the cover card; the On stream options can hide it.
-**🔒 Lock seats** keeps new phones out, and a player whose seat you take back (✕) can't take it again for 2 minutes.
+**🔒 Lock seats** keeps new phones out (a player with no phone then reads "🔒 locked out"), and a player whose seat you take back (✕ Kick) can't take it again for 2 minutes, unless you press **↩ Let back** on their row meanwhile.
 The rooms run on a small buzzer server
 (`buzzer/`, a Cloudflare Worker); the release builds come with one, and ⚙ Settings › Buzzer server can point at your
 own ([Set up your own buzzer server](#set-up-your-own-buzzer-server): free, about 10 minutes). Copies built without one say "Phone buzzers aren't set up in this copy", and play a game saved with Buzzer mode

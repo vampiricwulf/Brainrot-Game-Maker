@@ -289,6 +289,24 @@ describe('hostState (what the buzzer room is told)', () => {
     expect(hostState(game, session, newBuzz(), 0).over).toBeUndefined();
   });
 
+  it('phoneStatus: the tiebreaker clue greys the buttons (the tied players answer out loud)', () => {
+    const { game, session } = setup();
+    // Ann and Bo tied for first (0 each). Nobody buzzes: a room that takes cards greys the phones' button.
+    session.phase = 'tiebreaker';
+    expect(phoneStatus(game, session, false, { cards: true })).toEqual({
+      text: 'Tiebreaker!',
+      off: true,
+      sub: 'The tied players answer out loud',
+      seats: ['a', 'b'],
+      seatsText: 'Tiebreaker!',
+      seatsSub: 'Answer out loud: the host picks the winner',
+    });
+    game.settings.buzzTeams = true;
+    expect(phoneStatus(game, session, false, { cards: true })?.sub).toBe('The tied teams answer out loud');
+    // (A room that takes no cards drops those lines: just the words.)
+    expect(phoneStatus(game, session)).toEqual({ text: 'Tiebreaker!' });
+  });
+
   it('game over after a tiebreaker: the room is told who won it, so the phones rank as the end screen does', () => {
     const { game, session } = setup();
     session.phase = 'end';

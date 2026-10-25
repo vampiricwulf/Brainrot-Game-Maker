@@ -188,8 +188,17 @@ export function phoneStatus(game: Game, session: Session, pregame = false, room:
     case 'boardgame':
     case 'slides':
       return round ? { text: roundName(round, session.currentRound) } : null;
-    case 'tiebreaker':
-      return { text: 'Tiebreaker!' };
+    case 'tiebreaker': {
+      // Nobody buzzes on it (the host picks the winner): the phones grey their button and say so.
+      if (!room.cards) return { text: 'Tiebreaker!' };
+      const tied = tiedForFirst(session).map((p) => p.id);
+      return {
+        text: 'Tiebreaker!',
+        off: true,
+        sub: `The tied ${teamsOn(game.settings) ? 'teams' : 'players'} answer out loud`,
+        ...(tied.length ? { seats: tied, seatsText: 'Tiebreaker!', seatsSub: 'Answer out loud: the host picks the winner' } : {}),
+      };
+    }
     case 'end':
       return { text: 'Game over: thanks for playing!' };
   }

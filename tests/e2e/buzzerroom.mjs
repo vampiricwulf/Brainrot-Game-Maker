@@ -313,6 +313,18 @@ try {
   await big(ann).getByText("You're 2nd").waitFor();
   assert((await small(ann).innerText()) === 'Tie — you rolled 2nd', 'the roll sets the order: Dee answers, Ann "Tie — you rolled 2nd"');
   hs = { ...hs, rollOrder: undefined };
+  // A tie the host settles by picking (no roll): the other one says so, not “0.00 s behind Dee”.
+  setState({ phase: 'armed', armId: 5, answering: null, lockedOut: [] });
+  await big(ann).getByText('BUZZ!').waitFor();
+  await big(dee).getByText('BUZZ!').waitFor();
+  tieThem([taps.get(ann), taps.get(dee)]);
+  await press(ann);
+  await press(dee);
+  await host.wait((m) => m.t === 'queue' && m.armId === 5 && m.tie, 'the second tie');
+  setState({ phase: 'answering', armId: 5, answering: 'd' });
+  await big(dee).getByText("You're answering!").waitFor();
+  await small(ann).getByText('Tie: the host picked Dee').waitFor();
+  assert((await big(ann).innerText()) === "You're 2nd", 'a tie the host settles by picking: Ann "You\'re 2nd — Tie: the host picked Dee"');
 
   // Back to the board; Ann reloads and gets her seat back without picking.
   setState({ phase: 'lobby', clue: null, answering: null, lockedOut: [], scores: { a: 200, b: 400 } });
@@ -683,6 +695,19 @@ try {
   setState({ locked: false });
   await bob.locator('#seats-status').getByText('The host has locked the seats').waitFor({ state: 'hidden' });
   assert(await deeWarned(false), 'unlocked: it asks plainly again');
+  // Locked, a player taken out and put back (the host's Ctrl+Z, ↩ Restore) can't tap their name: their phone says why.
+  setState({ locked: true });
+  const withDee = hs.seats;
+  setState({ seats: withDee.filter((x) => x.id !== 'd') });
+  await dee.locator('#seats-note').getByText('The host took you out of the game.').waitFor();
+  setState({ seats: withDee });
+  await dee.locator('#seats-note').getByText('The host put you back in the game, but the seats are locked: ask the host to unlock them.').waitFor();
+  assert(true, 'put back while the seats are locked: Dee’s phone says to ask the host to unlock them (not “Tap your name” over a greyed name)');
+  setState({ locked: false });
+  await dee.locator('#seats-note').getByText('The host put you back in the game. Tap your name.').waitFor();
+  await dee.getByRole('button', { name: 'Dee', exact: true }).click();
+  await big(dee).getByText('Dee').waitFor();
+  assert(true, 'unlocked: it says to tap her name, and she does');
 
   // A status line when nobody buzzes: the Daily Double's player sees their own words.
   setState({ status: { text: 'Daily Double: Ann', seats: ['a'], seatsText: "Daily Double — you're up!" } });
@@ -1001,6 +1026,14 @@ try {
     const ann = await phoneOn('a');
     const bob = await phoneOn('b');
     await sleep(50);
+    // A viewer with the link while every seat is taken (and nobody new can ask): one line says so, each name just
+    // “Taken”, not “ask the host to free it” on every one.
+    const viewer = await phone('viewer');
+    await viewer.goto(`${base}/${made.code}`);
+    await viewer.locator('#seats-status').getByText('Every seat is taken. If one is yours on a new phone, ask the host to free it.').waitFor();
+    assert((await viewer.getByRole('button', { name: 'Ann: Taken', exact: true }).count()) === 1, 'a viewer when every seat is taken: one line says so, and each name is just “Taken”');
+    await viewer.context().close();
+    pages.splice(pages.findIndex(([, p]) => p === viewer), 1);
     const filesUrl = (code, id) => `${base}/api/rooms/${code}/files${id ? `/${id}` : ''}`;
     const up = (body, type, token = made.hostToken, code = made.code) =>
       fetch(filesUrl(code), { method: 'POST', headers: { Origin: 'null', 'Content-Type': type, ...(token ? { Authorization: `Bearer ${token}` } : {}) }, body });

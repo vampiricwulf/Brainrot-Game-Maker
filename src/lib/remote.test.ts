@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { BUZZ_PROTOCOL, OLD_FILE_LIMITS, UPLOADS_BUSY } from './buzzproto';
-import { buzzerBase, closeRoom, rejoinRoom, remote, roomStillOpen, setRemoteDeps, UPLOAD_STALL_MS, uploadCardFile } from './remote.svelte';
+import { buzzerBase, closeRoom, rejectPhone, rejoinRoom, remote, roomStillOpen, setRemoteDeps, UPLOAD_STALL_MS, uploadCardFile } from './remote.svelte';
 import { prefs } from './prefs.svelte';
 import { fileLimitsNow, forgetServerFiles } from './serverlimits.svelte';
 import { retryDelay, type LinkDeps, type SocketLike } from './roomlink';
@@ -139,6 +139,32 @@ describe('closeRoom', () => {
     t.advance(120_000);
     expect(sockets.length).toBe(4);
     expect(remote.status).toBe('off');
+  });
+});
+
+describe('phones asking to join', () => {
+  it('a phone turned away that asks again is listed again', () => {
+    sockets = [];
+    setRemoteDeps(fakeDeps().deps);
+    rejoinRoom(room);
+    sockets[0].welcome();
+    const list = (phones: object[]) => sockets[0].onmessage?.({ data: JSON.stringify({ t: 'phones', phones }) });
+    const asking = (name: string) => ({ conn: 'c1', seatId: null, pendingName: name, connected: true });
+    try {
+      list([asking('Smaa')]);
+      expect(rejectPhone('c1')).toBe(true);
+      // (Hidden at once: a list the room sent before it took the ✕ still has the request.)
+      list([asking('Smaa')]);
+      expect(remote.answered).toEqual(['c1']);
+      // The room took it: the phone is back on the seats…
+      list([{ conn: 'c1', seatId: null, connected: true }]);
+      expect(remote.answered).toEqual([]);
+      // …and asks again, as “Sam”: the host sees it.
+      list([asking('Sam')]);
+      expect(remote.answered).toEqual([]);
+    } finally {
+      closeRoom();
+    }
   });
 });
 

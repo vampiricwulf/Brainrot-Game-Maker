@@ -56,7 +56,9 @@ export const remote = $state<{
   answered: string[];
   /** When the room last turned a phone away because it was full (0: not lately). */
   fullAt: number;
-}>({ status: 'off', code: null, base: '', phones: [], listed: false, features: [], welcomed: false, files: null, limits: null, cardsLate: [], error: '', closedCode: 0, attempts: 0, answered: [], fullAt: 0 });
+  /** Seats kicked from here (seat id → when): for the 2 minutes their phone is kept off, the host can ↩ Let it back. */
+  kicked: Record<string, number>;
+}>({ status: 'off', code: null, base: '', phones: [], listed: false, features: [], welcomed: false, files: null, limits: null, cardsLate: [], error: '', closedCode: 0, attempts: 0, answered: [], fullAt: 0, kicked: {} });
 
 /** How long "Room full" shows after the room last turned a phone away. */
 export const FULL_SHOWN_MS = 2 * 60_000;
@@ -85,7 +87,8 @@ function sync(): void {
   if (!link) return;
   remote.status = link.status;
   remote.code = link.code;
-  if (remote.phones !== link.phones) remote.answered = remote.answered.filter((c) => link!.phones.some((p) => p.conn === c && !p.seatId));
+  // (Answered until the room's list no longer has it asking: a phone turned away that asks again shows again.)
+  if (remote.phones !== link.phones) remote.answered = remote.answered.filter((c) => link!.phones.some((p) => p.conn === c && !p.seatId && p.pendingName !== undefined));
   remote.phones = link.phones;
   remote.listed = link.listed;
   if (remote.features.join() !== link.features.join()) remote.features = link.features;
@@ -204,7 +207,15 @@ export function rejectPhone(conn: string): boolean {
  * Take a seat back from its phone (it can't take it again for 2 minutes). free: only let go of it, blocking nobody (the
  * player is back on another phone); a room without 'free' blocks anyway.
  */
-export const kickSeat = (seatId: string, free = false) => !!link?.send(free ? { t: 'kick', seatId, block: false } : { t: 'kick', seatId });
+export function kickSeat(seatId: string, free = false): boolean {
+  const ok = !!link?.send(free ? { t: 'kick', seatId, block: false } : { t: 'kick', seatId });
+  if (!ok) return false;
+  // (Freed: a kick's block is lifted too, so ↩ Let back is done.)
+  const { [seatId]: _was, ...rest } = remote.kicked;
+  remote.kicked = free ? rest : { ...rest, [seatId]: Date.now() };
+  return true;
+}
+
 /** The room can free a seat without blocking anyone (an older buzzer server can only kick). */
 export const roomCanFree = (): boolean => remote.features.includes('free');
 /** Teams: take one person (their phone) off their team; they can't join it again for 2 minutes. */
@@ -347,7 +358,7 @@ export function closeRoom(): boolean {
   l?.stop();
   // (8 tries: 0.5 s, 1 s, 2 s… 15 s, about a minute in all; see retryDelay.)
   if (l && room) new RoomLink(l.base, {}, deps).end(room, 8);
-  Object.assign(remote, { status: 'off', code: null, phones: [], listed: false, features: [], welcomed: false, files: null, limits: null, cardsLate: [], error: '', closedCode: 0, attempts: 0, answered: [], fullAt: 0 });
+  Object.assign(remote, { status: 'off', code: null, phones: [], listed: false, features: [], welcomed: false, files: null, limits: null, cardsLate: [], error: '', closedCode: 0, attempts: 0, answered: [], fullAt: 0, kicked: {} });
   return told || !room;
 }
 
@@ -358,7 +369,7 @@ export function closeRoom(): boolean {
 export function leaveRoom(): void {
   link?.stop();
   link = null;
-  Object.assign(remote, { status: 'off', code: null, phones: [], listed: false, features: [], welcomed: false, files: null, limits: null, cardsLate: [], error: '', closedCode: 0, attempts: 0, answered: [], fullAt: 0 });
+  Object.assign(remote, { status: 'off', code: null, phones: [], listed: false, features: [], welcomed: false, files: null, limits: null, cardsLate: [], error: '', closedCode: 0, attempts: 0, answered: [], fullAt: 0, kicked: {} });
 }
 
 /** Close a room this window isn't in (one an earlier page left open), without touching the one it is in. */

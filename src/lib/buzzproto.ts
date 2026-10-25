@@ -155,6 +155,9 @@ export const MEMBER_NAME_MAX = 24;
 /** Phones a buzzer room holds at once, not counting idle ones without a seat (see Full rooms in buzzer/src/room.ts). */
 export const MAX_PHONES = 24;
 
+/** A kicked phone can't take that seat again for this long (the host can ↩ Let it back sooner). */
+export const KICK_BLOCK_MS = 2 * 60_000;
+
 /** Room codes: consonants only (no words, no 0/O or 1/I mix-ups). */
 export const ROOM_ALPHABET = 'BCDFGHJKLMNPQRSTVWXZ';
 export const ROOM_CODE_LENGTH = 4;
@@ -869,6 +872,8 @@ export type RoomToPhone =
       /** Teams: the team member whose buzz holds the team's place (by), and whether that's this phone (byYou). */
       by?: string;
       byYou?: boolean;
+      /** Added later: a tie the host settled by picking `behind` (not by a roll): no time behind to say. */
+      tied?: boolean;
     }
   /** freed (added later): the host freed the seat (its player moved to another phone), rather than taking it back. */
   | { t: 'kicked'; freed?: boolean }

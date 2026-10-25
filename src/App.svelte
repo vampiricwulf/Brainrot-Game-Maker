@@ -295,6 +295,14 @@
   });
 
   /** ✕ Close the room (the bar over the editor): phones are told the game is over. */
+  /** The status bar's ✕ Close the room is asking first (phones are in the room). */
+  let closingRoom = $state(false);
+  // (Asked about that room only: another one, or none, isn't asked about.)
+  const keptCode = $derived(kept.room?.remote.code);
+  $effect(() => {
+    void keptCode;
+    closingRoom = false;
+  });
   async function closeKeptRoom(quiet = false): Promise<void> {
     const r = kept.room;
     kept.room = null;
@@ -1179,6 +1187,8 @@
       {#if room}
         {@const n = Array.isArray(room.players) ? room.players.length : 0}
         {@const other = room.gameId !== app.game.id}
+        <!-- (The phones with a seat in it, while this window is in it.) -->
+        {@const seated = remote.code === room.remote.code ? remote.phones.filter((p) => p.seatId).length : 0}
         <!-- (The player-only start screen has no ▶ Play while a game is kept: Resume game goes into the room; a finished
              game's View results doesn't, its New game then ▶ Play does. In the builder, a game kept mid-play in this
              room goes back into it with Resume game: ▶ Play would start it again, the phones at 0. Its line hidden
@@ -1190,8 +1200,19 @@
             📱 Buzzer room <b>{room.remote.code}</b> is still open{n ? ` (${n} ${roomTeams(room, app.game.settings) ? 'team' : 'player'}${n === 1 ? '' : 's'})` : ''}.
             <span class="muted small">{other ? '▶ Play asks to keep it for this game.' : `${via} goes back into it.`}</span>
           </span>
-          <button class="small ghost" onclick={() => closeKeptRoom()}>✕ Close the room</button>
+          {#if !(closingRoom && seated)}
+            <button class="small ghost" onclick={() => (seated ? (closingRoom = true) : closeKeptRoom())}>✕ Close the room</button>
+          {/if}
         </span>
+        {#if closingRoom && seated}
+          <!-- Phones are in it: asked first, as on the 📱 card, the safe answer first. -->
+          <span class="item ask" role="alertdialog" aria-label="Close the room?">
+            <span class="what">{seated} {seated === 1 ? 'phone is' : 'phones are'} in the room: closing it tells them the game is over, and they’d join again with a new code.</span>
+            <!-- svelte-ignore a11y_autofocus -->
+            <button class="small" autofocus onclick={() => (closingRoom = false)}>Keep it open</button>
+            <button class="small danger" onclick={() => ((closingRoom = false), void closeKeptRoom())}>Close the room</button>
+          </span>
+        {/if}
       {/if}
       {#if saved}
         {@const ended = saved.session.phase === 'end'}
@@ -1316,6 +1337,10 @@
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
+  }
+  /* (A question wraps: it's read in full.) */
+  .status-bar .ask .what {
+    white-space: normal;
   }
   .status-bar .lost .what {
     color: var(--bad);

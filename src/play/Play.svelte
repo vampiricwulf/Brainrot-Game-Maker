@@ -1614,7 +1614,10 @@
   }
 
   function kickPhone(seatId: string, free = false): void {
+    // ↩ Let back: the phone kicked off this seat a moment ago may take it again.
+    const letBack = free && seatId in remote.kicked && !remote.phones.some((p) => p.seatId === seatId);
     if (!kickSeat(seatId, free)) return roomOffline();
+    if (letBack) return toast(`${playerName(session, seatId)}'s phone can take the seat again`, 4000);
     // 🔒 Locked seats take no tap on a name, a freed one's too: the lock has to come off for them to get back in.
     if (free && session.remote?.locked)
       toast(`${playerName(session, seatId)}'s seat is free, but 🔒 seats are locked: untick Lock seats so they can tap their name on their new phone (lock them again once they're in)`, 6000);
@@ -1631,7 +1634,7 @@
       else toast(`${playerName(session, seatId)}'s seat is free: they can tap their name on their new phone`, 4000);
     }
     else if (game.settings.buzzTeams) toast(`Everyone's phone is off ${playerName(session, seatId)} (they can't join it again for 2 minutes)`, 4000);
-    else toast(`${playerName(session, seatId)}'s phone let go of the seat (that phone can't take it again for 2 minutes)`, 4000);
+    else toast(`Took ${playerName(session, seatId)}'s seat back from their phone (it can't take it again for 2 minutes)`, 4000);
   }
 
   /** Teams: one person off their team (their phone can't join it again for 2 minutes; another team it can). */

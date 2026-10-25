@@ -24,10 +24,11 @@ room, plus the phone page it serves. It is not part of the app's single-file bui
 - **The room owns the race**: while armed, the seat that reacted fastest wins (see Fair timing). It moves to
   "answering" itself (so a second buzz can never also win), tells the host (rank 1), and keeps every later buzz of
   that opening in a queue, fastest first, which it sends the host whenever it changes (for "→ Next in line"). Each
-  phone is told its place ("You're 2nd — 0.12 s behind Ann"). Buzzes within `TIE_MS` (10 ms) of the fastest are a
-  tie: the room picks nobody and the host decides, by hand or by a roll (`rollOrder` in its state sets the tied
-  players' order). To open the buzzers again (after a wrong answer too) the host sends a new `armId`; the host's own
-  pick (`answering`) always wins over the room's.
+  phone is told its place ("You're 2nd — 0.12 s behind Ann"). Buzzes within `TIE_MS` (10 ms) of the fastest are a tie:
+  the room picks nobody and the host decides, by hand or by a roll (`rollOrder` in its state sets the tied players'
+  order). Settled by hand, the other tied phones' `result` has `tied` (added later): no time behind to say. To open
+  the buzzers again (after a wrong answer too) the host sends a new `armId`; the host's own pick (`answering`) always
+  wins over the room's.
 - **Phones only see their own view**: phase, clue text (up to 1,000 characters, cut with “…”), who is answering, their
   own name, colour and score, and (added later, all optional) who got the clue right (`done`), a status line from the
   host (`status`, with other words for some seats: the Daily Double's player), the points symbol and whether the host
@@ -36,12 +37,13 @@ room, plus the phone page it serves. It is not part of the app's single-file bui
 - **Seats**: tapping a free name gives the phone a token (kept in its localStorage), so a reload or a dropped
   connection gets the same seat back. Only the host frees a held seat (kick, or removing the player), or the phone
   itself ("Not you? Change player"). A buzz before the buzzers open locks that seat out for the host's `earlyLockMs`.
-- **Kicks and 🔒 locked seats**: a kick revokes the seat's token, and the kicked phone (its socket, the random
-  `device` id its browser sends with a join, and its address, `CF-Connecting-IP`) can't take that seat again for 2
-  minutes; it can take another free seat. (So another phone on the same Wi-Fi can't take that one seat for those 2
-  minutes either.) **Freeing** a seat (`kick` with `block: false`, for a player back on another phone) revokes the
-  token the same way but blocks nobody. The seat list marks a taken seat `away` when no connected phone holds it.
-  With `locked` in the host's state, only a seat's token gets a seat and nobody can ask to join.
+- **Kicks and 🔒 locked seats**: a kick revokes the seat's token, and the kicked phone (its socket, the random `device`
+  id its browser sends with a join, and its address, `CF-Connecting-IP`) can't take that seat again for 2 minutes; it
+  can take another free seat. (So another phone on the same Wi-Fi can't take that one seat for those 2 minutes
+  either.) **Freeing** a seat (`kick` with `block: false`, for a player back on another phone) revokes the token the
+  same way but blocks nobody, and lifts a kick's block on that seat (the app's ↩ Let back). The seat list marks a
+  taken seat `away` when no connected phone holds it. With `locked` in the host's state, only a seat's token gets a
+  seat and nobody can ask to join.
 - **Teams** (`teams` in the host's state): each seat is a team. A phone joins one with its own name (`join` with
   `name`; 24 characters at most, cleaned as below, unique among people connected, and not a team's name; a name only
   a phone gone quiet has is taken over) and becomes a member with its own token, so a reload brings it back on whichever team the host has put

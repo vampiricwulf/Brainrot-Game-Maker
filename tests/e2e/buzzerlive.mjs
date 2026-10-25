@@ -365,6 +365,16 @@ try {
   hostTap.blocked = true;
   hostTap.stall();
   await host.locator('.room-bar').getByRole('button', { name: '✕ Close the room' }).click();
+  // Phones are in it: the bar asks first, as the 📱 card does, the safe answer first (with the keys).
+  const closeAsk = host.locator('.status-bar').getByRole('alertdialog', { name: 'Close the room?' });
+  await closeAsk.waitFor();
+  assert(
+    (await closeAsk.getByRole('button').allInnerTexts()).join(' | ') === 'Keep it open | Close the room' &&
+      (await closeAsk.getByRole('button', { name: 'Keep it open' }).evaluate((el) => el === document.activeElement)) &&
+      /2 phones are in the room: closing it tells them the game is over/.test(await closeAsk.innerText()),
+    `✕ Close the room in the bar over the editor asks first with a phone in the room, Keep it open first (${(await closeAsk.innerText()).replace(/\s+/g, ' ')})`,
+  );
+  await closeAsk.getByRole('button', { name: 'Close the room' }).click();
   await host.locator('.room-bar').waitFor({ state: 'detached' });
   assert((await fetch(`${base}/api/rooms/${code}`)).status !== 404, 'pressed while the host’s line is dead: the room can’t be told yet');
   hostTap.blocked = false;

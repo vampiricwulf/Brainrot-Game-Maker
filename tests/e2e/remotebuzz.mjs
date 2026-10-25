@@ -446,10 +446,24 @@ try {
   assert(true, 'Free seat tells the room to free it without a block, and says they can tap their name on the new phone');
   // With 🔒 seats locked a freed seat takes no tap either: the toast says to untick the lock (not that they can tap now).
   await pop.getByLabel(/Lock seats/).check();
+  // (A player with no phone can't get one in while locked: the row says so, not “waiting”.)
+  await pop.locator('li', { hasText: 'Player 3' }).getByText('🔒 locked out').waitFor();
+  assert(true, 'with the seats locked, a player with no phone reads “🔒 locked out”');
   await free.click();
   await page.locator('.toast', { hasText: 'untick Lock seats' }).waitFor();
   assert(true, 'Free seat with the seats locked says to untick Lock seats so they can tap their name');
   await pop.getByLabel(/Lock seats/).uncheck();
+  // ✕ Kick by mistake: for its 2 minutes the row offers ↩ Let back, which lets that phone take the seat again.
+  await pop.getByRole('button', { name: 'Kick Player 2: take their seat back from their phone' }).click();
+  await page.waitForFunction((id) => window.__room.sent.some((m) => m.t === 'kick' && m.seatId === id && m.block === undefined), seats[1].id);
+  await page.locator('.toast', { hasText: "Took Player 2's seat back from their phone (it can't take it again for 2 minutes)" }).waitFor();
+  await say({ t: 'phones', phones: [] });
+  const letBack = pop.getByRole('button', { name: 'Let back: Player 2’s phone' });
+  const frees = () => page.evaluate((id) => window.__room.sent.filter((m) => m.t === 'kick' && m.seatId === id && m.block === false).length, seats[1].id);
+  const freed = await frees();
+  await letBack.click();
+  await page.locator('.toast', { hasText: "Player 2's phone can take the seat again" }).waitFor();
+  assert((await frees()) === freed + 1 && (await letBack.count()) === 0, '↩ Let back frees the seat for the kicked phone (no block), and goes');
   await page.keyboard.press('Escape');
 
   // Back to the board: the lobby, nobody locked out.
@@ -671,8 +685,9 @@ try {
   await stateIs((s) => s.status?.text === 'The host is setting up — hang on' && !s.over);
   assert(true, 'game over › ▶ Next game…: the phones are told the host is setting up (no longer where they came)');
 
-  // ---------- ✕ Close the room ----------
+  // ---------- ✕ Close the room (a phone is in it: asked first) ----------
   await roomBar.getByRole('button', { name: '✕ Close the room' }).click();
+  await page.locator('.status-bar').getByRole('alertdialog', { name: 'Close the room?' }).getByRole('button', { name: 'Close the room' }).click();
   await page.waitForFunction(() => window.__room.sent.some((m) => m.t === 'close'));
   await roomBar.waitFor({ state: 'detached' });
   assert(true, '✕ Close the room closes it (phones are told the game is over)');

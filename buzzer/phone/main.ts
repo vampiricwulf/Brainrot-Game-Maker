@@ -92,7 +92,7 @@ let awayFocus: HTMLElement | null = null;
 /** Another tab or phone took this seat back (the token is kept, so a tap takes it back here): a reconnect doesn't. */
 let seatMoved = false;
 /** The seat (a team) the host took this phone out of, and whether a later list has it back: the note says which. */
-let outOf: { id: string; back: boolean } | null = null;
+let outOf: { id: string; back: boolean; locked?: boolean } | null = null;
 let result: ResultMsg | null = null;
 /** Server time this seat's early-buzz lock ends. */
 let lockedUntil = 0;
@@ -390,8 +390,10 @@ function ended(): void {
   render();
 }
 
-/** The host took this phone's player (its team) out of the game, or put them back. */
-function outNote(teams: boolean, back: boolean): string {
+/** The host took this phone's player (its team) out of the game, or put them back (with the seats locked: no way in yet). */
+function outNote(teams: boolean, back: boolean, locked = false): string {
+  if (back && locked)
+    return `${teams ? 'Your team is back in the game' : 'The host put you back in the game'}, but the seats are locked: ask the host to unlock them.`;
   if (back) return teams ? 'Your team is back in the game. Tap it to rejoin.' : 'The host put you back in the game. Tap your name.';
   return teams ? 'Your team left the game. Pick another one.' : 'The host took you out of the game.';
 }
@@ -423,10 +425,11 @@ function onMessage(m: RoomToPhone): void {
         seatMoved = kept;
         seatId = null;
         view = null;
-      } else if (outOf && !seatId && m.seats.some((x) => x.id === outOf!.id) !== outOf.back) {
-        // Put back (the host's Ctrl+Z, ↩ Restore), or out again.
-        outOf.back = !outOf.back;
-        seatsNote = tap(outNote(!!m.teams, outOf.back));
+      } else if (outOf && !seatId && (m.seats.some((x) => x.id === outOf!.id) !== outOf.back || (outOf.back && !!m.locked !== !!outOf.locked))) {
+        // Put back (the host's Ctrl+Z, ↩ Restore), or out again; or the seats locked or unlocked since it was put back.
+        outOf.back = m.seats.some((x) => x.id === outOf!.id);
+        outOf.locked = !!m.locked;
+        seatsNote = tap(outNote(!!m.teams, outOf.back, outOf.locked));
       }
       // Teams turned off while this phone was giving its name, or its team left the game.
       if (teamPick && (!m.teams || !m.seats.some((x) => x.id === teamPick!.id))) teamPick = null;
@@ -1109,16 +1112,26 @@ function renderTeam(t: SeatsMsg['seats'][number]): void {
   if (wasHidden) inp.focus();
 }
 
+/**
+ * Every name is taken, none of them this phone's, and there's no ＋ I'm new: a viewer with the link. One line says so
+ * (each name just “Taken”), not “ask the host to free it” on every name.
+ */
+const everyTaken = (s: SeatsMsg): boolean => {
+  const saved = loadSeat();
+  return !s.teams && !s.allowNew && !s.locked && s.seats.length > 0 && s.seats.every((x) => x.taken && x.id !== saved?.seatId);
+};
+
 function renderSeats(s: SeatsMsg): void {
   if (s.title) $('title').textContent = s.title;
   const teams = !!s.teams;
+  const allTaken = everyTaken(s);
   $('seats-title').textContent = teams ? 'Pick your team' : tap('Tap your name');
   const list = $('seat-list');
   // The seat this phone still holds a claim to (another tab or phone took it back): tapping it takes it back here.
   const saved = loadSeat();
   // Redrawn only when what it shows changed (a tap on a name mid-redraw would be lost, and the keys' place too); the
   // name the keys were on keeps them.
-  const key = JSON.stringify([s.seats, s.teams, s.locked, saved?.seatId ?? null]);
+  const key = JSON.stringify([s.seats, s.teams, s.locked, s.allowNew, saved?.seatId ?? null]);
   if (key === seatsKey && list.childElementCount) return renderSeatsRest(s);
   seatsKey = key;
   const had = document.activeElement instanceof HTMLElement && list.contains(document.activeElement) ? document.activeElement.dataset.seat : undefined;
@@ -1160,7 +1173,7 @@ function renderSeats(s: SeatsMsg): void {
         who.className = 'who';
         const hint = document.createElement('span');
         hint.className = 'members hint';
-        hint.textContent = `${x.away ? 'Taken (its phone is away)' : 'Taken'} · is this you on a new phone? Ask the host to free it`;
+        hint.textContent = `${x.away ? 'Taken (its phone is away)' : 'Taken'}${allTaken ? '' : ' · is this you on a new phone? Ask the host to free it'}`;
         who.append(name, hint);
         b.append(dot, who);
         b.setAttribute('aria-label', `${x.name}: ${hint.textContent}`);
@@ -1214,9 +1227,11 @@ function renderSeatsRest(s: SeatsMsg): void {
   const teams = !!s.teams;
   $('new-btn').hidden = !s.allowNew || !!s.locked;
   $('host-away').hidden = s.hostHere;
-  $('seats-status').textContent = s.locked ? '🔒 The host has locked the seats.' : (s.note ?? '');
+  // (What's on screen first, then that every seat is taken.)
+  const status = [s.note ?? '', everyTaken(s) ? 'Every seat is taken. If one is yours on a new phone, ask the host to free it.' : ''].filter(Boolean).join(' · ');
+  $('seats-status').textContent = s.locked ? '🔒 The host has locked the seats.' : status;
   $('seats-note').textContent = seatsNote;
-  say([teams ? 'Pick your team.' : tap('Tap your name.'), seatsNote, s.locked ? 'The host has locked the seats.' : s.note ?? '', s.hostHere ? '' : "The host isn't connected right now."].filter(Boolean).join(' '));
+  say([teams ? 'Pick your team.' : tap('Tap your name.'), seatsNote, s.locked ? 'The host has locked the seats.' : status, s.hostHere ? '' : "The host isn't connected right now."].filter(Boolean).join(' '));
   show('s-seats');
 }
 
@@ -1403,7 +1418,13 @@ function renderBuzz(v: PhoneView): void {
     else if (mine?.outcome === 'tie') [cls, big, small] = ['off', 'Tie!', 'The host decides who goes first'];
     else if (mine?.outcome === 'late' && mine.rank) {
       // (Teams: the whole team rolled as one, whoever on it buzzed.)
-      const how = mine.rolled ? `Tie — ${team ? 'your team' : 'you'} rolled ${ordinal(mine.rolled)}` : mine.afterMs !== undefined && mine.behind ? `${secs(mine.afterMs)} behind ${mine.behind}` : who;
+      const how = mine.rolled
+        ? `Tie — ${team ? 'your team' : 'you'} rolled ${ordinal(mine.rolled)}`
+        : mine.tied && mine.behind
+          ? `Tie: the host picked ${mine.behind}`
+          : mine.afterMs !== undefined && mine.behind
+            ? `${secs(mine.afterMs)} behind ${mine.behind}`
+            : who;
       [cls, big, small] = ['off', team ? `Your team is ${ordinal(mine.rank)}` : `You're ${ordinal(mine.rank)}`, mate ? `${mate} buzzed for your team · ${how}` : how];
     } else if (v.canQueue && !mine) [cls, big, small] = ['queue', 'You can still buzz', `${who}. Buzz to be next in line if they miss`];
     else [cls, big, small] = ['off', mine?.outcome === 'late' ? 'Too late' : 'Wait', who];
