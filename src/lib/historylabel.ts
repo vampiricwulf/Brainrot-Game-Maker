@@ -295,6 +295,9 @@ export function placeAt(game: Game, path: readonly Seg[]): At {
     const w = byId<NonNullable<Game['worlds']>[number]>(game.worlds, path[1]);
     if (!w) return;
     reached(2, 'world', w.name, '🗺');
+    // Where it is starts with the round that plays the world, when one does (its name is the one on the page).
+    const plays = game.rounds.flatMap((r, i) => (r.mode === 'rpg' && r.world === w.id ? [roundName(r, i)] : []));
+    if (plays.length === 1) at.crumbs[at.crumbs.length - 1] = plays[0];
     go({ tab: 'world', world: w.id });
     const m = path[2] === 'maps' ? byId<(typeof w.maps)[number]>(w.maps, path[3]) : undefined;
     if (!m) return;
@@ -554,6 +557,8 @@ const RULES: Record<string, string> = {
   earlyBuzzLock: 'Early buzz wait',
   buzzTeams: 'Teams',
 };
+/** Reveal categories' choices, in the words on the control. */
+const REVEALS: Record<string, string> = { click: 'one at a time when I click', auto: 'one at a time automatically', off: 'all at once' };
 /** Settings on the pre-game screen's 📱 Phone buzzers card (the rest are in ⚖ Game rules). */
 const BUZZ_SETTINGS = new Set<unknown>(['buzzer', 'buzzArm', 'phoneJoin', 'earlyBuzzLock', 'buzzTeams']);
 const FIELDS: Record<string, string> = {
@@ -896,6 +901,7 @@ function labelOf(ops: readonly Op[], op: Op, at: At, moved: string[], alike: num
   const top = opPath(op)[0];
 
   if (top === 'settings') {
+    if (k === 'categoryReveal') return `Reveal categories: ${REVEALS[v as string] ?? v}`;
     const rule = RULES[k] ?? fieldName(k);
     return typeof v === 'boolean' ? `Rule: ${rule} ${v ? 'on' : 'off'}` : `Rule: ${rule} = ${v ?? 'off'}`;
   }
@@ -973,7 +979,7 @@ function labelOf(ops: readonly Op[], op: Op, at: At, moved: string[], alike: num
     return TOGGLES[k](!!v, who);
   }
   if (k === 'dailyDoubleCount' && typeof v === 'number') return `Set ${what(at)} to ${v} Daily Double${v === 1 ? '' : 's'}`;
-  // (Only a Final round has its own: a clue's countdown and a wheel slice's stay "timer".)
+  // (A Final round's; a clue's is its countdown, below, and a wheel slice's stays "timer".)
   if (k === 'timerSeconds' && at.noun === 'round' && typeof v === 'number') return `Set the think time of ${what(at)} to ${v} s`;
   if (k === 'partnerCount' && at.noun === 'round')
     return typeof v === 'number' ? `Set ${what(at)} to ${v} partner clue${v === 1 ? '' : 's'}` : `Set ${what(at)} to no partner clues placed at random`;
@@ -1001,6 +1007,9 @@ function labelOf(ops: readonly Op[], op: Op, at: At, moved: string[], alike: num
   }
   if (own && at.noun === 'clue' && k === 'type')return TILE_TYPES[v as string]?.(tile) ?? `Changed the type of ${tile}`;
   if (own && at.noun === 'clue' && k === 'empty') return v ? `Left ${tile} empty` : `Made ${tile} playable again`;
+  if (own && at.noun === 'clue' && k === 'timerSeconds') return typeof v === 'number' ? `Changed the countdown of ${tile} to ${v} s` : `Took the countdown off ${tile}`;
+  // (Its words or its picture, or the whole of it.)
+  if (at.noun === 'clue' && (own ? k === 'tileFace' : op.p.length === at.depth + 1 && op.p[at.depth] === 'tileFace')) return `Changed the tile face of ${tile}`;
   if (own && at.noun === 'clue' && k === 'everyone') return v ? `Made ${tile} ✍ Everyone answers` : `Took ✍ Everyone answers off ${tile}`;
   if (own && at.noun === 'clue' && k === 'value') {
     const sym = after.settings.currencySymbol;

@@ -225,6 +225,21 @@
     if (mode !== 'final') while (at > 0 && isFinal(game.rounds[at - 1])) at--;
     const intro = mode === 'slides' && !game.rounds.some(isSlides);
     if (intro) at = 0;
+    // A step of its own, so its name and fields typed right after are steps too: Ctrl+Z never takes the round with them.
+    const round = step(null, () => {
+      const round = newRoundOf(mode, at, intro);
+      game.rounds.splice(at, 0, round);
+      return round;
+    });
+    tab = at;
+    // (Said, as it isn't where new rounds usually go.)
+    if (intro && game.rounds.length > 1) toast('Added “Introduction” at the start of the game: drag its tab to move it');
+    // The menu (or the card) that added it is gone: the focus goes to the new round's name, ready to type over.
+    focusRoundName(round.id);
+  }
+
+  /** A blank round of `mode`, to go in at `at`. */
+  function newRoundOf(mode: RoundMode, at: number, intro: boolean): Round {
     let round: Round;
     if (mode === 'slides') round = newSlidesRound(intro ? 'Introduction' : `Slides ${game.rounds.filter(isSlides).length + 1}`);
     else if (mode === 'rpg') round = newRpgRound(game, game.rounds.some(isRpg) ? `Adventure ${game.rounds.filter(isRpg).length + 1}` : 'Adventure');
@@ -241,12 +256,7 @@
     if (isBoard(round)) followClueText(game, round.categories.flatMap((c) => c.clues.flatMap(slidesOfClue)));
     else if (isFinal(round)) followClueText(game, [round.questionSlide, round.answerSlide]);
     else if (isSlides(round)) followClueText(game, [round.questionSlide]);
-    game.rounds.splice(at, 0, round);
-    tab = at;
-    // (Said, as it isn't where new rounds usually go.)
-    if (intro && game.rounds.length > 1) toast('Added “Introduction” at the start of the game: drag its tab to move it');
-    // The menu (or the card) that added it is gone: the focus goes to the new round's name, ready to type over.
-    focusRoundName(round.id);
+    return round;
   }
 
   /** The round modes, templates and rounds from elsewhere, under the button. The menu keeps every key: Delete or an arrow never reaches what's selected behind it. */

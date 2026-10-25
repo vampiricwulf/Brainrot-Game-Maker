@@ -144,7 +144,15 @@ describe('step labels', () => {
 
   it('names screens moved on the map, swapped, deleted and edited', () => {
     const moved = step((g) => (screens(g)[1].col = 3));
-    expect(moved).toMatchObject({ label: 'Moved screen “Town” to D1', icon: '🗺', where: 'World 1 › Overworld' });
+    // Where it is starts with the round that plays the world (its name is on the page); a world two rounds play is
+    // named itself.
+    expect(moved).toMatchObject({ label: 'Moved screen “Town” to D1', icon: '🗺', where: 'Adventure › Overworld' });
+    const shared = sample();
+    shared.rounds.push(newRpgRound(shared, 'Adventure 2'));
+    const movedShared = structuredClone(shared);
+    screens(movedShared)[1].col = 3;
+    expect(describeStep(diff(shared, movedShared), shared, movedShared)).toMatchObject({ label: 'Moved screen “Town” to D1', where: 'World 1 › Overworld' });
+    expect(step((g) => (g.worlds![0].name = 'Island')).label).toBe('Renamed world “Island”');
     const swapped = step((g) => {
       const [a, b] = [screens(g)[1], screens(g)[2]];
       [a.col, b.col] = [b.col, a.col];
@@ -165,7 +173,7 @@ describe('step labels', () => {
     const r = step((g) => ((screens(g)[1].slide.elements[1].role!.dialogue!.elements[0] as TextEl).text = 'Hello there'));
     const npc = r.before.worlds![0].maps[0].screens[1].slide.elements[1];
     expect(r.label).toBe('Edited text “Hello there”');
-    expect(r.where).toBe('World 1 › Overworld › Town › Old Man › dialogue');
+    expect(r.where).toBe('Adventure › Overworld › Town › Old Man › dialogue');
     expect(r.place).toMatchObject({ inSlide: true, element: npc.id });
   });
 
@@ -233,6 +241,9 @@ describe('step labels', () => {
     expect(step((g) => (g.settings.stream = { soonText: 'Soon!' }))).toMatchObject({ where: 'Play › On stream', icon: '📺', place: { tab: 'play', part: 'stream' } });
     expect(step((g) => (g.settings.currencySymbol = 'pts')).label).toBe('Rule: Points symbol = pts');
     expect(step((g) => (g.settings.roundIntro.titleCard = false)).label).toBe('Rule: Round title card off');
+    // A choice in the words on the control.
+    expect(step((g) => (g.settings.roundIntro.categoryReveal = 'off')).label).toBe('Reveal categories: all at once');
+    expect(step((g) => (g.settings.roundIntro.categoryReveal = 'auto')).label).toBe('Reveal categories: one at a time automatically');
     expect(step((g) => (g.audio.dailyDouble = 'm1')).label).toBe('Changed the Daily Double sound');
     expect(step((g) => (g.audio.wheelTick = '')).label).toBe('Turned off the wheel tick sound');
     expect(step((g) => (g.soundsOff = { wheelTick: true })).label).toBe('Turned off the wheel tick sound');
@@ -301,7 +312,18 @@ describe('step labels', () => {
     expect(step((g) => (board(g).categories[0].clues[0].hostNotes = 'Say it slowly')).label).toBe('Edited host notes “Say it slowly”');
     expect(step((g) => (final(g).category = 'Memes')).label).toBe('Edited category “Memes”');
     expect(step((g) => (final(g).hostNotes = '')).label).toBe('Cleared the host notes');
-    expect(step((g) => (board(g).categories[0].clues[0].timerSeconds = 20)).label).toBe('Changed timer of clue “$200”');
+    // A clue's countdown and tile face name the tile, as other clue steps do, and where it is keeps its value.
+    expect(step((g) => (board(g).categories[0].clues[0].timerSeconds = 20))).toMatchObject({ label: 'Changed the countdown of Category 1 $200 to 20 s', where: 'Jeopardy! › Category 1 › $200' });
+    const timed = sample();
+    board(timed).categories[0].clues[0].timerSeconds = 20;
+    const untimed = structuredClone(timed);
+    delete board(untimed).categories[0].clues[0].timerSeconds;
+    expect(describeStep(diff(timed, untimed), timed, untimed).label).toBe('Took the countdown off Category 1 $200');
+    expect(step((g) => (board(g).categories[0].clues[0].tileFace = { text: '???' }))).toMatchObject({ label: 'Changed the tile face of Category 1 $200', where: 'Jeopardy! › Category 1 › $200' });
+    board(timed).categories[0].clues[0].tileFace = { text: '???' };
+    const retyped = structuredClone(timed);
+    board(retyped).categories[0].clues[0].tileFace!.text = '!!!';
+    expect(describeStep(diff(timed, retyped), timed, retyped).label).toBe('Changed the tile face of Category 1 $200');
     expect(step((g) => ((g.title = 'X'), (g.rounds[0].name = 'Y'))).label).toBe('2 changes');
   });
 
@@ -364,7 +386,7 @@ describe('step labels', () => {
       (screens(g)[1].slide.elements[1] as ImageEl).editedMedia = 'm2';
     }, 'Edited image');
     const npc = screens(edited.after)[1].slide.elements[1];
-    expect(edited).toMatchObject({ where: 'World 1 › Overworld › Town › Old Man', undoPlace: { element: npc.id } });
+    expect(edited).toMatchObject({ where: 'Adventure › Overworld › Town › Old Man', undoPlace: { element: npc.id } });
     const put = step((g) => {
       g.media.push(file);
       board(g).categories[0].clues[0].questionSlide.elements.push({ ...newImageEl('m2'), id: 'img' });
@@ -385,7 +407,7 @@ describe('step labels', () => {
       screens(g).push(newScreen(3, 0, 'Forest'));
     }, 'Pasted screen “Forest”');
     const forest = screens(pasted.after)[3];
-    expect(pasted).toMatchObject({ where: 'World 1 › Overworld', place: { tab: 'world', screen: forest.id }, undoPlace: { tab: 'world' } });
+    expect(pasted).toMatchObject({ where: 'Adventure › Overworld', place: { tab: 'world', screen: forest.id }, undoPlace: { tab: 'world' } });
     // (A game with stats already: the new one is an insert into them.)
     const before = structuredClone(pasted.after);
     screens(before).pop();

@@ -209,6 +209,22 @@ try {
     .catch(() => {});
   assert(await page.evaluate(() => !!document.activeElement && document.activeElement !== document.body && !!document.activeElement.closest('main, nav')), 'and the focus is there, not on the page');
 
+  // ＋ Add round is a step of its own: a name and a field typed right after it are steps too, so one Ctrl+Z never
+  // takes the whole new round.
+  const roundCount = await page.locator('nav button.round-tab').count();
+  await page.getByRole('button', { name: '＋ Add round' }).click();
+  await page.getByRole('menuitem', { name: /Final Jeopardy/ }).click();
+  await page.locator('[data-round-name]:focus').waitFor();
+  await page.keyboard.type('The Big Finish');
+  await page.keyboard.press('Tab');
+  await page.keyboard.type('Cats');
+  await clickAway();
+  await key('Control+z');
+  assert(
+    (await page.locator('nav button.round-tab').count()) === roundCount + 1 && (await page.getByLabel('Round name').inputValue()) === 'The Big Finish' && !(await page.locator('[data-field="final-category"]').inputValue()),
+    `one Ctrl+Z right after adding a Final and typing its name and category takes back only the category (${await notice.innerText()})`,
+  );
+
   // ---------- RPG screens ----------
   await page.getByRole('button', { name: '＋ Add round' }).click();
   await page.getByRole('menuitem', { name: /RPG/ }).click();

@@ -18,6 +18,7 @@ in plain words for the people who make and host games. Anything committed but no
 - Teams: the bar by Start game and ✅ Going live? count people on teams as the 📱 card does (“3 people on 2 of 3 teams”), not “2 of 3 joined”.
 - Teams: phones say “Your team’s pick! Tell the host which clue” and “Daily Double — your team’s up!”, and a wager the host typed reads “The host has your team’s wager as $100”. A buzzer server you run yourself needs deploying again for that last one.
 - Teams: the Daily Double panel says “A phone on the team can send its wager”, 🤫 Send a card…'s 🪟 Card window is “for a team with no phone”, and the editor's checklist says “No teams yet” and “Two teams share a color”.
+- Undo, 🕘 History and the undo notes say game rules, clue countdowns and adventure screens as the page does: “Reveal categories: all at once” (not “Category reveal = off”), “Changed the countdown of Streamers $800 to 15 s” and “Changed the tile face of Streamers $800”, and an RPG screen's step is under its round's name (“Adventure › Overworld”), not “World 1”, unless several rounds play that world.
 
 ### Fixed
 
@@ -32,6 +33,7 @@ in plain words for the people who make and host games. Anything committed but no
 - Ctrl+Z after taking a player out mid-clue gives them back their part: the Daily Double is theirs again (its badge, ✔ / ✘ and Enter), and a partner clue goes back to its pair and its question instead of PARTNER UP! with someone else.
 - N (▦ Done ▶ board) on a ✍ Everyone answers clue with answers in and none judged says so first (“2 answers not judged yet…”), as it does with a player picked; N again closes it.
 - The Final's reveals show each row's number key (1–9 spotlight a player by their number, which isn't the row's place), so two players with the same name can be told apart.
+- ＋ Add round is a step of its own, so the name and fields typed right after it are steps too: one Ctrl+Z takes back the last one, not the whole new round.
 
 ## 2026-10-24
 
