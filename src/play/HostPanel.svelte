@@ -701,9 +701,15 @@
     }
     return null;
   });
+  /** The open ✍ clue's answers in from phones (for its players). */
+  const answersIn = $derived.by(() => {
+    const a = everyone && info && session.remote?.answers?.id === answerRoundId(session, info.clue.id) ? session.remote.answers.seats : {};
+    return session.players.filter((p) => a[p.id]).length;
+  });
   /**
-   * ▦ Done ▶ board as the main button (N): with someone still picked and nothing given on this clue, the first press says
-   * so (their points would be lost), the second closes it. (Esc and the plain Done button close at once.)
+   * ▦ Done ▶ board as the main button (N): with someone still picked and nothing given on this clue, or a ✍ clue's
+   * answers in and none judged, the first press says so (their points would be lost), the second closes it. (Esc and the
+   * plain Done button close at once.)
    */
   let warnedFor = $state<string | null>(null);
   function doneUnscored(): void {
@@ -712,6 +718,12 @@
       warnedFor = id;
       const who = session.players.filter((p) => selected.includes(p.id)).map((p) => p.name).join(', ');
       hint(`${who || 'A player'} is picked with no points given: Enter awards, Shift+Enter marks wrong, or N again closes without points`, 5000);
+      return;
+    }
+    if (answersIn && id && warnedFor !== id && !Object.keys(marks).length) {
+      warnedFor = id;
+      const all = info && usableChoices(info.clue.choices).length ? ' (or ✔ Judge all)' : '';
+      hint(`${answersIn} answer${answersIn === 1 ? '' : 's'} not judged yet: ✔ / ✘ them${all}, or N again closes without points`, 5000);
       return;
     }
     onback();

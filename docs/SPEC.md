@@ -482,6 +482,7 @@ The mode isn't saved with the game: it's dual while the audience window is open.
 4. **Per-player reveal**, one at a time in an order the host chooses: a typed answer first (show it, then mark ✔ / ✘,
    and the wager goes up with the mark; judging first puts it up too), otherwise show the wager, then mark ✔ / ✘; the
    score animates. With multiple choice and one marked ✔ Right, a pick that isn't it makes ✘ the main button's offer.
+   `1`–`9` spotlight a player by their number (in the players' order), shown on each row.
 5. **Tie check**: if two or more players are tied for first, the host is offered:
    - **Tiebreaker roll-off** between only the tied players (§6.6), or
    - **Tiebreaker clue** (the pre-written `Game.tiebreaker`, if authored). Scored with the normal scoring panel, or
@@ -491,7 +492,8 @@ The mode isn't saved with the game: it's dual while the audience window is open.
 
 ### 6.5 Scores & players
 - Edit any player's score directly at any time (click the score, then type).
-- Add, remove, rename, and recolor players mid-game.
+- Add, remove, rename, and recolor players mid-game. Each is an undo step: undoing a removal mid-clue gives the player
+  back their part in it (a Daily Double's player, a partner clue's picker or partner).
 - **Score log**: chronological list of every change (player, delta, reason/clue, time). Each entry can be **undone** or redone.
   Global **Undo (Ctrl+Z)** reverts the last score change.
 - Session state (scores, used tiles, round, log) is autosaved to IndexedDB after every change for **crash recovery**.

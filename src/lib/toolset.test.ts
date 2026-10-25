@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { newGame, newId, newTextEl, type BoardRound, type FinalRound, type Game, type Session, type Shop } from './model';
 import {
-  applyScore, backToBoard, finalJudge, finalNext, finalSetWager, finalTakeNewcomers, finalWagersOk, goToRound, wagerFromPhone, wagerSentBy, newSession, openClue, redo, removePlayer,
+  applyScore, backToBoard, ddShowQuestion, finalJudge, finalNext, finalSetWager, finalTakeNewcomers, finalWagersOk, goToRound, wagerFromPhone, wagerSentBy, newSession, openClue, redo, removePlayer,
   restorePlayer, score, setScore, stepOf, toggleEvent, toggleStep, toggleUsed, undo,
 } from './session';
 import { jeopardyGame } from './testgame';
@@ -649,6 +649,41 @@ describe('the host’s own choices', () => {
     expect(score(session, 'a')).toBe(300);
     redoAction(session);
     expect(session.players[0].name).toBe('Alice');
+  });
+
+  it('gives a player taken out mid-clue their part back on Undo: the Daily Double’s player, the partner clue’s pair', () => {
+    const { game, session } = show();
+    session.players.push({ id: 'c', name: 'Cat', color: '#4363d8', startScore: 0 });
+    const board = game.rounds[0] as BoardRound;
+    board.categories[0].clues[0].type = 'dailyDouble';
+    openClue(session, { round: 0, cat: 0, row: 0 }, game);
+    ddShowQuestion(session, 'b', 300);
+    logged(session, 'Removed Bob', () => removePlayer(session, 'b'));
+    expect(session.dd?.playerId).toBeUndefined();
+    undoAction(session, game);
+    expect([session.dd?.playerId, session.dd?.wager, session.dd?.stage]).toEqual(['b', 300, 'question']);
+    redoAction(session, game);
+    expect(session.dd?.playerId).toBeUndefined();
+    undoAction(session, game);
+    // A partner clue, Ann's, with Bob chosen and its question up: Bob out sends it back to PARTNER UP! with Cat.
+    backToBoard(session, game);
+    board.categories[0].clues[1].type = 'partner';
+    session.currentPickerId = 'a';
+    openClue(session, { round: 0, cat: 0, row: 1 }, game);
+    const pt = session.partner!;
+    Object.assign(pt, { partnerId: 'b', how: 'host', stage: 'live' });
+    logged(session, 'Removed Bob', () => removePlayer(session, 'b'));
+    expect([pt.pickerId, pt.partnerId, pt.how, pt.stage]).toEqual(['a', 'c', 'only', 'pick']);
+    undoAction(session, game);
+    expect([pt.pickerId, pt.partnerId, pt.how, pt.stage]).toEqual(['a', 'b', 'host', 'live']);
+    // (Never onto another clue opened since.)
+    logged(session, 'Removed Bob', () => removePlayer(session, 'b'));
+    backToBoard(session, game);
+    board.categories[0].clues[2].type = 'partner';
+    openClue(session, { round: 0, cat: 0, row: 2 }, game);
+    const other = { ...session.partner! };
+    undoAction(session, game);
+    expect(session.partner).toEqual(other);
   });
 });
 

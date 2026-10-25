@@ -1036,6 +1036,16 @@ assert(!(await page.locator('.dd-badge').innerText()).includes('500'), 'viewers 
 await page.getByRole('button', { name: 'Show wager' }).click();
 assert((await page.locator('.dd-badge').innerText()).includes('$500'), 'Show wager puts it on screen');
 assert((await page.locator('.award input').inputValue()) === '500', 'wager prefilled as the amount');
+// Player 2 taken out by mistake (👥 Players), then Ctrl+Z: the Daily Double is theirs again (the badge, Enter).
+await page.getByRole('button', { name: '👥 Players' }).click();
+await page.getByRole('button', { name: 'Remove Player 2' }).click();
+await page.locator('.modal .ask').getByRole('button', { name: 'Remove', exact: true }).click();
+await page.getByRole('button', { name: 'Done', exact: true }).click();
+await page.getByRole('dialog', { name: 'Players' }).waitFor({ state: 'detached' });
+await page.locator('.dd-badge').waitFor({ state: 'detached' });
+await page.keyboard.press('Control+z');
+await page.locator('.dd-badge', { hasText: 'Player 2' }).waitFor();
+assert((await page.locator('.panel .p .sel[aria-pressed="true"]').allInnerTexts()).join().includes('Player 2'), 'the Daily Double’s player taken out and Ctrl+Z: theirs again, its badge on stream and them picked');
 // (Past the second in which an Enter right after the question went up doesn't judge yet.)
 await page.waitForTimeout(1100);
 await page.keyboard.press('Enter');
@@ -1111,6 +1121,9 @@ const revealed = await revealOrder();
 const topRow = await rows.nth(0).boundingBox();
 await dragBy(page, rows.nth(1).locator('.grip'), { x: topRow.x + 40, y: topRow.y + 3 });
 assert((await revealOrder()).join() === [...revealed].reverse().join(), 'a reveal row dragged above another moves up');
+// Each row shows the key that spotlights it: the player's number, as on the chips (not the row's place).
+const keyed = await rows.evaluateAll((els) => els.map((e) => [e.querySelector('.key')?.textContent, e.querySelector('.name')?.textContent]));
+assert(keyed.length === 2 && keyed.every(([k, name]) => name === `Player ${k}`) && keyed[0][0] === '2', `each reveal row shows its spotlight key, the player's number (${keyed.map((x) => x.join(' ')).join(', ')})`);
 await page.locator('.fj .pl .name').first().focus();
 await page.keyboard.press('Alt+ArrowDown');
 assert((await revealOrder()).join() === revealed.join(), 'Alt+↓ on its name moves it back down');

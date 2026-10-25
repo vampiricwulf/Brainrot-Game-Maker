@@ -2839,6 +2839,9 @@
     if (next?.log === 'action') {
       const a = undoAction(session, game)!;
       undone.push({ log: 'action', id: a.id });
+      // A Daily Double's player back (taken out, then the Undo): picked again, for its ✔ / ✘ and Enter.
+      const dd = session.phase === 'clue' ? session.dd : null;
+      if (dd?.stage === 'question' && dd.playerId && !selected.length) selected = [dd.playerId];
       return `${a.text}${inRound(a)}`;
     }
     const events = undo(session);

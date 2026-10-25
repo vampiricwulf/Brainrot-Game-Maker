@@ -2,8 +2,8 @@
 // action log that makes all of it undoable. Pure functions over Game + Session, like session.ts.
 import { answerShowing, applyScore, finalNext, score, stepOf, toggleReveal } from './session';
 import {
-  formatPoints, newId, type ActionEvent, type BoardSpace, type FinalState, type Game, type InventoryEntry, type ItemDef, type Screen, type Session, type Shop, type StatField,
-  type StatValue, type Wearable, type WorldMap,
+  formatPoints, newId, type ActionEvent, type BoardSpace, type FinalState, type Game, type InventoryEntry, type ItemDef, type PartnerState, type Screen, type Session, type Shop,
+  type StatField, type StatValue, type Wearable, type WorldMap,
 } from './model';
 import type { Problem } from './validate';
 
@@ -418,6 +418,12 @@ function capture(session: Session, game?: Game): Record<string, string> {
   if (session.phase === 'final' && session.final?.roundId) out[`step:${session.final.roundId}`] = JSON.stringify(session.finalStep ?? null);
   // 🎭 The deal on the table: whether Who was who is on stream (only that: dealing and sending aren't steps).
   if (session.deal) out[`deal:${session.deal.id}`] = JSON.stringify(!!session.deal.shown);
+  // The open clue's Daily Double player and partner clue's pair (a player taken out loses their part: undoing it gives
+  // it back). Only who: the wagers, the deal and the sends change outside any step.
+  const c = session.phase === 'clue' ? session.currentClue : null;
+  if (c && session.dd) out[`dd:${c.round}.${c.cat}.${c.row}`] = JSON.stringify(session.dd.playerId ?? null);
+  const pt = session.phase === 'clue' ? session.partner : null;
+  if (pt) out[`pair:${pt.clue}`] = JSON.stringify({ pickerId: pt.pickerId ?? null, partnerId: pt.partnerId ?? null, how: pt.how ?? null, member: pt.member ?? null, stage: pt.stage });
   for (const w of game?.worlds ?? [])
     for (const m of w.maps) {
       out[`map:${w.id}/${m.id}`] = JSON.stringify({ cols: m.cols, rows: m.rows });
@@ -451,6 +457,8 @@ function restore(session: Session, json: string, game?: Game): void {
     else if (k.startsWith('final:')) putFinal(session, k.slice(6), v as Pick<FinalState, 'players' | 'order' | 'wagers' | 'wagerFrom' | 'wagerBy'> | null);
     else if (k.startsWith('step:')) putStep(session, k.slice(5), v as Session['finalStep'] | null);
     else if (k.startsWith('deal:')) putDeal(session, k.slice(5), v === true);
+    else if (k.startsWith('dd:')) putDd(session, k.slice(3), v as string | null);
+    else if (k.startsWith('pair:')) putPair(session, k.slice(5), v as Pair | null);
     else if (k.startsWith('map:') || k.startsWith('screen:')) putBack(game, k, v as WorldMap | Screen | null);
     else if (k.startsWith('board:')) putBoard(game, k.slice(6), v as { spaces: BoardSpace[]; start: string | null } | null);
   }
@@ -501,6 +509,26 @@ function putDeal(session: Session, id: string, shown: boolean): void {
   if (d?.id !== id) return;
   if (shown && d.stage === 'sent') d.shown = true;
   else delete d.shown;
+}
+
+/** The Daily Double's player again: only while that clue is still the one open. */
+function putDd(session: Session, ref: string, playerId: string | null): void {
+  const c = session.phase === 'clue' ? session.currentClue : null;
+  if (!session.dd || !c || `${c.round}.${c.cat}.${c.row}` !== ref) return;
+  if (playerId) session.dd.playerId = playerId;
+  else delete session.dd.playerId;
+}
+
+type Pair = { pickerId: string | null; partnerId: string | null; how: PartnerState['how'] | null; member: PartnerState['member'] | null; stage: PartnerState['stage'] };
+/** A partner clue's picker, partner and stage again: only while that clue is still the one open. */
+function putPair(session: Session, clue: string, v: Pair | null): void {
+  const pt = session.phase === 'clue' ? session.partner : null;
+  if (!v || pt?.clue !== clue) return;
+  for (const k of ['pickerId', 'partnerId', 'how', 'member'] as const) {
+    if (v[k]) Object.assign(pt, { [k]: v[k] });
+    else delete pt[k];
+  }
+  pt.stage = v.stage;
 }
 
 /** Put a map's size or a screen back into the game being played (a screen that wasn't there is taken out). */

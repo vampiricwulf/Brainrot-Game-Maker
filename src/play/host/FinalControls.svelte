@@ -90,6 +90,11 @@
   const problems = $derived(finalWagerProblems(session, override));
   const wagersOk = $derived(finalWagersOk(session, override));
   const names = (ids: string[]) => nameList(ids.map((id) => byId[id]?.name ?? '?'));
+  /** The number key that spotlights them in the reveals (1–9, in the players' order), if they have one. */
+  const keyOf = (id: string): number | null => {
+    const i = session.players.findIndex((p) => p.id === id);
+    return i >= 0 && i < 9 ? i + 1 : null;
+  };
   /** The Final being played. */
   const round = $derived(currentFinal(session, game));
   const title = $derived(round ? finalName(round) : 'the Final');
@@ -544,13 +549,13 @@
           <span class="muted small">
             Click a name here or on the stage to spotlight it. Reorder by dragging ⋮⋮ (or ▲▼, Alt+↑/↓). Keys: N shows their typed
             answer (or their wager, for a {noun} who answered out loud), C / X judge them (their answer and wager go up with it), then N
-            goes to the next {noun} · Shift+N back · 1–9 spotlight · C right · X wrong.
+            goes to the next {noun} · Shift+N back · 1–9 spotlight (the number on each row) · C right · X wrong.
           </span>
         {:else}
           <summary class="muted">One by one: spotlight → show wager → right or wrong (N, C, X)</summary>
           <span class="muted small">
             Click a name here or on the stage to spotlight it. Reorder by dragging ⋮⋮ (or ▲▼, Alt+↑/↓). Keys: N shows the wager,
-            C / X judge them, then N goes to the next {noun} · Shift+N back · 1–9 spotlight · C right · X wrong.
+            C / X judge them, then N goes to the next {noun} · Shift+N back · 1–9 spotlight (the number on each row) · C right · X wrong.
           </span>
         {/if}
       </details>
@@ -559,6 +564,7 @@
           {@const p = byId[id]}
           {@const res = f.results[id]}
           {@const line = rows.lineAt(id)}
+          {@const k = keyOf(id)}
           <div
             class="pl"
             class:cur={f.current === id}
@@ -585,6 +591,8 @@
             >
             <button class="ghost small up" onclick={() => nudge(id, -1, '.up')} disabled={i === 0} aria-label="Earlier: {p?.name ?? '?'}">▲</button>
             <button class="ghost small down" onclick={() => nudge(id, 1, '.down')} disabled={i === f.order.length - 1} aria-label="Later: {p?.name ?? '?'}">▼</button>
+            <!-- The key that spotlights them (1–9: their place in the players, as on the chips and plates). -->
+            {#if k}<span class="key" aria-hidden="true">{k}</span>{/if}
             <button
               class="name"
               style:background={p?.color}
@@ -601,7 +609,7 @@
                 e.stopPropagation();
                 nudge(id, e.key === 'ArrowUp' ? -1 : 1);
               }}
-              title="Spotlight on screen · drag the row (or Alt+↑/↓) to change the order"
+              title="Spotlight on screen{k ? ` (key ${k})` : ''} · drag the row (or Alt+↑/↓) to change the order"
             >{p?.name}</button>
             {#if f.answers}
               <!-- What they typed on their phone: in one window (viewers see this panel) only once it's on screen. -->
@@ -855,6 +863,11 @@
   .name {
     font-weight: 700;
     border: none;
+  }
+  .key {
+    font-size: 12px;
+    opacity: 0.7;
+    margin-right: -2px;
   }
   .small {
     font-size: 12px;

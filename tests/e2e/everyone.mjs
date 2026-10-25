@@ -380,6 +380,10 @@ try {
     'with the answer, the stage’s choices light the one marked ✔ Right (B), the others dimmed',
   );
   if (process.env.SCREENSHOTS) await host.screenshot({ path: `${process.env.SCREENSHOTS}/everyone-choices-locked.png` });
+  // N (▦ Done ▶ board) with the answers in and none judged: the first one says so, the tile stays open.
+  await host.keyboard.press('n');
+  await host.locator('.toast', { hasText: '2 answers not judged yet: ✔ / ✘ them (or ✔ Judge all), or N again closes without points' }).waitFor();
+  assert((await host.locator('.stage-box .board').count()) === 0, 'N with the answers in and none judged says so first, and the clue stays open');
   const before = await p2.locator('#me').innerText();
   const picker = (name) => host.locator('.panel .p.picker', { hasText: name });
   await picker('Player 1').waitFor();
