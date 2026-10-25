@@ -19,6 +19,7 @@ in plain words for the people who make and host games. Anything committed but no
 - Teams: phones say “Your team’s pick! Tell the host which clue” and “Daily Double — your team’s up!”, and a wager the host typed reads “The host has your team’s wager as $100”. A buzzer server you run yourself needs deploying again for that last one.
 - Teams: the Daily Double panel says “A phone on the team can send its wager”, 🤫 Send a card…'s 🪟 Card window is “for a team with no phone”, and the editor's checklist says “No teams yet” and “Two teams share a color”.
 - Undo, 🕘 History and the undo notes say game rules, clue countdowns and adventure screens as the page does: “Reveal categories: all at once” (not “Category reveal = off”), “Changed the countdown of Streamers $800 to 15 s” and “Changed the tile face of Streamers $800”, and an RPG screen's step is under its round's name (“Adventure › Overworld”), not “World 1”, unless several rounds play that world.
+- The ▶ Play screen's “⚠ N things to check” counts only warnings: a Daily Double or partner clue that Start places is an ℹ note there, as in the editor's checklist (“ℹ 1 note” when that's all there is), and the bar by Start no longer says it twice.
 
 ### Fixed
 
@@ -34,6 +35,9 @@ in plain words for the people who make and host games. Anything committed but no
 - N (▦ Done ▶ board) on a ✍ Everyone answers clue with answers in and none judged says so first (“2 answers not judged yet…”), as it does with a player picked; N again closes it.
 - The Final's reveals show each row's number key (1–9 spotlight a player by their number, which isn't the row's place), so two players with the same name can be told apart.
 - ＋ Add round is a step of its own, so the name and fields typed right after it are steps too: one Ctrl+Z takes back the last one, not the whole new round.
+- On the ▶ Play screen, ◀ Back to editor opens the tab you pressed ▶ Play on (🎨 Theme, the Final…) instead of the first round, and ◀ Fix in editor goes to the first thing to check, as its line in the editor's checklist does (a Final with no answer: its Answer box).
+- Ticking Include a tiebreaker clue puts the keys in its question box, ready to type.
+- An empty game's “No rounds yet” line in the checklist puts the keys on ✨ Try a sample game, the first card that adds a round (it did nothing).
 
 ## 2026-10-24
 

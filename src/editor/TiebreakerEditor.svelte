@@ -61,6 +61,8 @@
         },
         { notify: lost },
       );
+      // Ticked: the keys go to its question, ready to type (the checkbox's page has gone).
+      if (on) void tick().then(() => qField?.focus());
     }}
   /> Include a tiebreaker clue
 </label>

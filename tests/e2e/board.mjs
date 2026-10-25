@@ -292,10 +292,14 @@ try {
   await key('Control+z');
   await page.getByRole('button', { name: /^Tiebreaker/ }).click();
   assert((await page.locator('.empty .ic').innerText()) === '❓', 'the tiebreaker’s empty page shows ❓, as in play (🤝 is a partner clue)');
-  await page.getByLabel('Include a tiebreaker clue').check();
+  // Ticking it puts the keys in its question box, ready to type.
+  await page.getByLabel('Include a tiebreaker clue').focus();
+  await page.keyboard.press('Space');
   const tbTab = (await page.getByRole('button', { name: /^Tiebreaker/ }).innerText()).trim();
   assert(tbTab === '❓ Tiebreaker', `and so does its button in the round list once it’s on (${tbTab})`);
-  await page.getByPlaceholder('Type the tiebreaker question…').fill('How many rizz?');
+  await page.waitForFunction(() => document.activeElement?.matches('main [data-field="q"]'), null, { timeout: 3000 }).catch(() => {});
+  await page.keyboard.type('How many rizz?');
+  assert((await page.getByPlaceholder('Type the tiebreaker question…').inputValue()) === 'How many rizz?', 'ticking Include a tiebreaker clue puts the keys in its question box');
   assert(await slideShows('How many rizz?'), "the Tiebreaker's quick field writes on its slide");
   // Like a clue, the tiebreaker can have more question slides: ＋ Add slide opens a second one, its quick field types on it.
   await page.getByRole('button', { name: '＋ Add slide' }).click();

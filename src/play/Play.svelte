@@ -139,8 +139,11 @@
      * `withEdits`), shown as picked here. The pre-game's buzzer room, if one is open, goes with it.
      */
     onresume?: (withEdits: boolean, room: SavedRoom['remote'] | null) => void;
-    /** Pre-game "Back to editor" ("Back" to the start screen in a player-only file): nothing was played, so nothing is saved or cleared. */
-    oncancel: () => void;
+    /**
+     * Pre-game "Back to editor" ("Back" to the start screen in a player-only file): nothing was played, so nothing is
+     * saved or cleared. ◀ Fix in editor's `fix`: the editor tab of the first thing to check (a round's id, 'media'…).
+     */
+    oncancel: (fix?: string) => void;
     /**
      * Game over › ▶ Next game…: back to the editor to open the stream's next game (Open… / Recent games). The buzzer
      * room (and its players) and the audience window stay up for it.
@@ -1686,7 +1689,7 @@
    * ◀ Back to editor (pre-game): the room stays open, its phones told the host is setting up; ▶ Play goes back into it.
    * Only Exit / End game, ✕ Close the room or turning Buzzer mode off close it.
    */
-  function backToEditor(): void {
+  function backToEditor(fix?: string): void {
     // (A room started here that no phone is in, while the kept game's phones wait in its own: it closes, as with
     // ▶ Resume it, so Resume game goes back to theirs. Nobody is in it to be told.)
     if (app.pregame && keptRoom && session.remote) {
@@ -1696,7 +1699,7 @@
       void clearRoom();
       toast(`📱 Room ${code} closed (no phone had joined it): Resume game goes back to room ${keptRoom}`, 5000);
     } else if (app.pregame) keepRoomInEditor();
-    oncancel();
+    oncancel(fix);
   }
 
   /**
@@ -3358,6 +3361,10 @@
    * its proxies on every key of a player's name made typing lag in big games, and held up ▶ Play itself.
    */
   let checks = $state.raw<ReturnType<typeof gameChecks>>([]);
+  /** Of the checks, the warnings (the rest are notes Start takes care of, such as Daily Doubles not placed yet). */
+  const warnings = $derived(checks.filter((c) => c.level === 'warn').length);
+  /** Where ◀ Fix in editor goes: the first warning's tab (else the first note's). */
+  const fixAt = $derived((checks.find((c) => c.level === 'warn' && c.fix) ?? checks.find((c) => c.fix))?.fix);
   const recheck = debounce(() => {
     if (!left && app.pregame) checks = gameChecks(gameCopy?.() ?? $state.snapshot(game));
   }, 300);
@@ -3392,6 +3399,8 @@
         return {
           text: app.playerOnly && p.player ? p.player : p.text,
           level: p.level,
+          // Where ◀ Fix in editor goes (not this screen's own things).
+          fix: typeof p.tab === 'number' ? g.rounds[p.tab]?.id : p.tab === 'play' ? undefined : p.tab,
           ddRound: dd ? (p.tab as number) : undefined,
           ptRound: pt ? (p.tab as number) : undefined,
           shrink: p.shrink,
@@ -4684,11 +4693,13 @@
 
         {#if checks.length}
           <details class="checks" bind:this={checksEl}>
-            <summary>⚠ {checks.length} thing{checks.length === 1 ? '' : 's'} to check</summary>
+            <summary
+              >{#if warnings}⚠ {warnings} thing{warnings === 1 ? '' : 's'} to check{:else}ℹ {checks.length} note{checks.length === 1 ? '' : 's'}{/if}</summary
+            >
             <ul>
               {#each checks as c}
                 <li>
-                  {c.text}
+                  {c.level === 'warn' ? '' : 'ℹ '}{c.text}
                   {#if c.ddRound !== undefined}
                     {@const ri = c.ddRound}
                     <button
@@ -4722,8 +4733,8 @@
               {/each}
             </ul>
             <div class="row">
-              {#if !app.playerOnly}<button class="small" onclick={backToEditor}>◀ Fix in editor</button>{/if}
-              <span class="muted small">These are only warnings: you can still start.</span>
+              {#if !app.playerOnly}<button class="small" onclick={() => backToEditor(fixAt)}>◀ Fix in editor</button>{/if}
+              <span class="muted small">{warnings ? 'These are only warnings: you can still start.' : 'Start takes care of these.'}</span>
             </div>
           </details>
         {/if}
@@ -4732,7 +4743,7 @@
 
     <!-- Always in view at the foot of the window, however long the page above gets. -->
     <div class="actions">
-      <button class="ghost" onclick={backToEditor}>{app.playerOnly ? '◀ Back' : '◀ Back to editor'}</button>
+      <button class="ghost" onclick={() => backToEditor()}>{app.playerOnly ? '◀ Back' : '◀ Back to editor'}</button>
       <!-- The notes wrap in their own room: Start stays at the right end of the bar, on its line. -->
       <span class="notes">
         {#if askNoRoom}
@@ -4756,15 +4767,16 @@
           </span>
         {/if}
         {#if !session.players.length}<span class="muted small">Add {pregameTeams ? 'teams' : 'players'} to start</span>{/if}
-        {#if checks.length}
-          <!-- The checks can be below the fold (a 720-high window): this brings them up, open. -->
+        {#if warnings}
+          <!-- The checks can be below the fold (a 720-high window): this brings them up, open. (Not for notes alone: the
+               ⭐ and 🤝 lines beside it say those.) -->
           <button
             class="ghost small"
             onclick={() => {
               if (!checksEl) return;
               checksEl.open = true;
               checksEl.scrollIntoView({ block: 'center', behavior: 'smooth' });
-            }}>⚠ {checks.length} thing{checks.length === 1 ? '' : 's'} to check</button
+            }}>⚠ {warnings} thing{warnings === 1 ? '' : 's'} to check</button
           >
         {/if}
         {#if unplacedDDs}

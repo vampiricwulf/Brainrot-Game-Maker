@@ -99,24 +99,32 @@
     ontest,
     checklist,
     startRound = null,
+    startFix = false,
+    onfixed,
     startOpen = false,
     onopened,
   }: {
-    onplay: () => void;
+    /** ▶ Play, from the tab shown (a round's id, or 'theme', 'media'…: ◀ Back to editor opens it again). */
+    onplay: (from?: string) => void;
     /** ▶ Test this round (its index). */
     ontest?: (index: number) => void;
     checklist: ChecklistLine[];
-    /** The round to open on (back from testing it). */
+    /** The tab to open on: a round's id (back from testing it), or a tab such as 'theme' (back from ▶ Play). */
     startRound?: string | null;
+    /** Go on to the first thing to fix on that tab, as its checklist line does (◀ Fix in editor); `onfixed` says it did. */
+    startFix?: boolean;
+    onfixed?: () => void;
     /** Open… right away (Game over › ▶ Next game…); `onopened` says it was. */
     startOpen?: boolean;
     onopened?: () => void;
   } = $props();
 
   // 'sounds' | 'tiebreaker' | 'media' | 'tools' | 'cards' | 'theme' | 'stats' | 'history' | round index
-  let tab = $state<'sounds' | 'tiebreaker' | 'media' | 'tools' | 'cards' | 'theme' | 'stats' | 'history' | number>(
-    untrack(() => Math.max(0, app.game.rounds.findIndex((r) => r.id === startRound))),
-  );
+  type Tab = 'sounds' | 'tiebreaker' | 'media' | 'tools' | 'cards' | 'theme' | 'stats' | 'history' | number;
+  const NAMED_TABS: readonly unknown[] = ['sounds', 'tiebreaker', 'media', 'tools', 'cards', 'theme', 'stats', 'history'];
+  let tab = $state<Tab>(untrack(() => (NAMED_TABS.includes(startRound) ? (startRound as Tab) : Math.max(0, app.game.rounds.findIndex((r) => r.id === startRound)))));
+  /** ▶ Play, saying the tab it was pressed on. */
+  const play = () => onplay(typeof tab === 'number' ? game.rounds[tab]?.id : tab);
   const game = $derived(app.game);
   /** 📊 Stats & Items in the sidebar: once an RPG or board game round uses it, or it has anything in it (or it's open). */
   const showStats = $derived(
@@ -183,7 +191,7 @@
       // The players, the rules… are on the ▶ Play screen: Go there opens it, at that part.
       if (!game.rounds.length) return void toast('That’s on the ▶ Play screen: add a round first (＋ Add round)');
       app.pregameAt = place.part;
-      onplay();
+      play();
     } else if (place.tab !== 'title') tab = place.tab;
   }
 
@@ -405,7 +413,10 @@
     // The game's name: its box at the top, selected to type over.
     if (line.place?.tab === 'title') return void document.querySelector<HTMLInputElement>('[data-place="title"]')?.select();
     // Players are set on the ▶ Play screen.
-    if (line.tab === 'play') return onplay();
+    if (line.tab === 'play') return play();
+    // No rounds yet: the keys go to the first card of the page that adds one (✨ Try a sample game).
+    if (!game.rounds.length && typeof line.tab === 'number')
+      return void tick().then(() => document.querySelector<HTMLElement>('.first-round .sample, .first-round .mode')?.focus());
     // (The line is worked out a moment after changes stop: its round is found by id, as rounds may have moved or gone
     // since, and a board's first tile to finish is looked up now.)
     const at = line.round ? game.rounds.findIndex((r) => r.id === line.round) : -1;
@@ -450,6 +461,15 @@
         (el?.matches('button, [tabindex]') ? el : el?.querySelector<HTMLElement>('textarea'))?.focus();
       });
   }
+
+  // ◀ Fix in editor on the ▶ Play screen: on to the first thing to fix on the tab it opened, as its checklist line goes.
+  onMount(() => {
+    if (!untrack(() => startFix)) return;
+    onfixed?.();
+    const id = untrack(() => startRound);
+    const line = untrack(() => checklist).find((l) => (typeof tab === 'number' ? l.round === id : !l.round && l.tab === tab));
+    if (line) goFix(line);
+  });
 
   // ---------- New, Open… and recent games ----------
   // The browser keeps one game at a time, so a game that New, Open… or a recent game replaces is kept in Recent games
@@ -946,7 +966,7 @@
     {/if}
     <button class="ghost" onclick={() => (finding = true)} aria-label="Find" title="Find clues, screens, spaces, items… anywhere in the game (Ctrl+F)"><span aria-hidden="true">🔍</span><span class="word">Find</span></button>
     <button class="ghost more" onclick={moreMenu} aria-haspopup="menu" aria-label="More: Export as a web page, Export JSON, Settings, Keyboard shortcuts, How to host (guide), About" title={'⬇ Export as a web page, { } Export JSON, ⚙ Settings, ⌨ Keyboard shortcuts, 📖 How to host (guide), ℹ About'}>⋯</button>
-    <button class="primary play" onclick={onplay} disabled={!game.rounds.length || !!opening} title={game.rounds.length ? '' : 'Add a round first'}>▶ Play</button>
+    <button class="primary play" onclick={play} disabled={!game.rounds.length || !!opening} title={game.rounds.length ? '' : 'Add a round first'}>▶ Play</button>
   </header>
   {#if movedNotice}
     <div class="data-notice" role="status">
@@ -1179,7 +1199,7 @@
            (another save of the same game has the same round ids). -->
       {#key game}
         {#if tab === 'sounds'}
-          <SoundsPanel {onplay} canPlay={game.rounds.length > 0} />
+          <SoundsPanel onplay={play} canPlay={game.rounds.length > 0} />
         {:else if tab === 'stats'}
           <StatsItemsEditor />
         {:else if tab === 'tiebreaker'}

@@ -321,7 +321,8 @@ try {
   await audOpen.getByRole('button', { name: 'Close the audience window' }).click();
   await page.getByRole('alertdialog').getByRole('button', { name: 'Close it' }).click();
   if (!aud1.isClosed()) await aud1.waitForEvent('close', { timeout: 3000 });
-  await page.getByRole('button', { name: /▶ Test this round/ }).waitFor();
+  // (Back on the tab ▶ Play was pressed on, 🕘 History.)
+  await play.waitFor();
   await page.waitForTimeout(400);
   await play.click();
   const openAndStart = page.getByRole('button', { name: '📺 Open audience window & start' });
@@ -525,6 +526,45 @@ try {
   assert((await (await openRules(player)).getByLabel('Most players').inputValue()) === mostSet, `…and the rules (Most players ${mostSet})`);
   assert((await player.locator('.pregame h1').innerText()) === 'Friday Quiz', '…and the name');
   await player.close();
+
+  // ---------- Back to the editor where the host was, and notes that Start takes care of aren't ⚠ ----------
+  // (A browser of its own: an empty game, then the sample game.)
+  const own = await browser.newContext({ viewport: { width: 1280, height: 720 } });
+  const p2 = await own.newPage();
+  p2.on('pageerror', (e) => errors.push('[sample] ' + e.message));
+  await p2.goto(pathToFileURL(file).href);
+  const onSample = () => p2.evaluate(() => !!document.activeElement?.matches('.first-round .sample'));
+  await p2.locator('nav .problem', { hasText: 'No rounds yet' }).click();
+  await p2.waitForFunction(() => document.activeElement?.matches('.first-round .sample'), null, { timeout: 3000 }).catch(() => {});
+  assert(await onSample(), '“No rounds yet” in the checklist puts the keys on ✨ Try a sample game');
+  await p2.keyboard.press('Enter');
+  await p2.getByRole('button', { name: 'Jeopardy!', exact: true }).first().click();
+  await p2.getByLabel('How many Daily Doubles').fill('2');
+  await p2.getByLabel('How many Daily Doubles').press('Tab');
+  const tabShown = () => p2.locator('nav button[aria-current="page"]').innerText();
+  await p2.getByRole('button', { name: '🎨 Theme' }).click();
+  await p2.getByRole('button', { name: '▶ Play', exact: true }).click();
+  const summary = p2.locator('details.checks summary');
+  await summary.getByText('ℹ 1 note').waitFor();
+  assert((await p2.getByRole('button', { name: /thing.* to check/ }).count()) === 0, 'a Daily Double Start places is a note (ℹ 1 note), not “⚠ 1 thing to check” at the foot');
+  await summary.click();
+  assert((await p2.locator('details.checks li').first().innerText()).startsWith('ℹ Jeopardy!: 1 Daily Double not placed yet'), 'its line says ℹ, as the editor does');
+  await p2.getByRole('button', { name: '◀ Back to editor' }).click();
+  await p2.getByRole('button', { name: '▶ Play', exact: true }).waitFor();
+  assert((await tabShown()).includes('Theme'), '◀ Back to editor opens the tab ▶ Play was pressed on (🎨 Theme)');
+  await p2.getByRole('button', { name: 'Final Jeopardy!', exact: true }).first().click();
+  await p2.getByRole('tab', { name: /^Answer slide/ }).click();
+  await p2.locator('main [data-field="a"]').fill('');
+  await p2.getByRole('button', { name: '🎨 Theme' }).click();
+  await p2.getByRole('button', { name: '▶ Play', exact: true }).click();
+  await p2.getByRole('button', { name: '⚠ 1 thing to check' }).click();
+  await p2.getByRole('button', { name: '◀ Fix in editor' }).click();
+  await p2.waitForFunction(() => document.activeElement?.matches('main [data-field="a"]'), null, { timeout: 3000 }).catch(() => {});
+  assert(
+    (await tabShown()).includes('Final Jeopardy!') && (await p2.evaluate(() => !!document.activeElement?.matches('main [data-field="a"]'))),
+    `◀ Fix in editor goes where the checklist line goes: the Final, the keys in its Answer box (${await tabShown()})`,
+  );
+  await own.close();
 
   assert(errors.length === 0, `no page errors (${errors.join('; ')})`);
   console.log('pregame: all passed');

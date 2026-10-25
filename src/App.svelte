@@ -652,7 +652,8 @@
     return true;
   }
 
-  async function startPlay(): Promise<void> {
+  /** `from`: the editor's tab (a round's id, or 'theme', 'media'…), which ◀ Back to editor opens again. */
+  async function startPlay(from?: string): Promise<void> {
     // (A player-only file has no ＋ Add round: one with no rounds can only be exported again from the builder.)
     if (!app.game.rounds.length)
       return toast(playerOnly ? 'This game has no rounds to play: ask whoever made it for a new copy.' : 'Add a round first (＋ Add round)', 5000);
@@ -660,6 +661,7 @@
     // (A game kept to resume isn't asked about here: the pre-game screen offers ▶ Resume it, and Start replaces it.)
     app.test = null;
     backTo = null;
+    playFrom = from ?? null;
     // The room left open in the editor belongs to the stream: another game asks first whether to keep it (and its
     // players), the safe answer (Enter, Esc) keeping it.
     const open = kept.room;
@@ -775,8 +777,19 @@
     app.screen = 'play';
   }
 
-  /** The round the editor opens on when it's back (the one just tested). */
+  /** The tab the editor opens on when it's back (the round just tested, the tab ▶ Play was pressed on). */
   let backTo = $state<string | null>(null);
+  /** The editor's tab when ▶ Play was pressed. */
+  let playFrom: string | null = null;
+  /** ◀ Fix in editor: the editor goes on to the first thing to fix on that tab, as its checklist line does. */
+  let fixOnArrival = $state(false);
+
+  /** The pre-game's ◀ Back to editor: the tab the host left. ◀ Fix in editor (`fix`: the tab of the first warning) goes there. */
+  function cancelPlay(fix?: string): void {
+    backTo = app.test ?? fix ?? playFrom;
+    fixOnArrival = !app.test && !!fix;
+    leavePlay();
+  }
 
   /**
    * Resume game was pressed: a game in progress asks how it's shown first (one window, or the audience window to
@@ -1114,7 +1127,7 @@
   <div class="player-screen">
     {@render statusBar(false)}
     <div class="player-slot">
-      <PlayerHome onplay={startPlay} resumable={app.resumable} onresume={() => askResume()} ondiscard={discardResume} ask={resuming ? modeAsk : undefined} />
+      <PlayerHome onplay={() => void startPlay()} resumable={app.resumable} onresume={() => askResume()} ondiscard={discardResume} ask={resuming ? modeAsk : undefined} />
     </div>
   </div>
 {:else if app.screen === 'editor'}
@@ -1122,12 +1135,21 @@
   <div class="editor-screen">
     {@render statusBar(true)}
     <div class="editor-slot">
-      <Editor onplay={startPlay} ontest={testRound} startRound={backTo} {checklist} startOpen={openOnArrival} onopened={() => (openOnArrival = false)} />
+      <Editor
+        onplay={startPlay}
+        ontest={testRound}
+        startRound={backTo}
+        startFix={fixOnArrival}
+        onfixed={() => (fixOnArrival = false)}
+        {checklist}
+        startOpen={openOnArrival}
+        onopened={() => (openOnArrival = false)}
+      />
     </div>
   </div>
 {:else}
   {#key playKey}
-    <Play onexit={exitPlay} oncancel={leavePlay} onresume={(withEdits, room) => void resume(withEdits, room)} onnextgame={nextGame} gameRev={playRev} gameCopy={playCopy} {editsDiffer} />
+    <Play onexit={exitPlay} oncancel={cancelPlay} onresume={(withEdits, room) => void resume(withEdits, room)} onnextgame={nextGame} gameRev={playRev} gameCopy={playCopy} {editsDiffer} />
   {/key}
 {/if}
 
