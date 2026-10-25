@@ -397,6 +397,27 @@ describe('seats', () => {
     expect(g.pb.last('joined')?.seatId).toBe('b');
   });
 
+  it('Free seat on a seat another phone took since a kick keeps the kicked phone off it (only ↩ Let back lifts it)', () => {
+    const g = setup();
+    g.room.hostOpen();
+    g.send({ t: 'state', state: state() });
+    const troll = g.phone('t1', '203.0.113.5');
+    troll.send({ t: 'join', seatId: 'b', device: 'dev-t' });
+    g.send({ t: 'kick', seatId: 'b' });
+    // The real Bob takes his seat, then his phone dies: the host frees it for his new one.
+    const bob = g.phone('b1', '198.51.100.9');
+    bob.send({ t: 'join', seatId: 'b', device: 'dev-b' });
+    expect(bob.last('joined')?.seatId).toBe('b');
+    g.send({ t: 'kick', seatId: 'b', block: false });
+    troll.clear();
+    troll.send({ t: 'join', seatId: 'b', device: 'dev-t' });
+    expect(troll.last('denied')?.reason).toBe('blocked');
+    expect(troll.msgs().map((m) => m.t)).not.toContain('joined');
+    const again = g.phone('b2', '198.51.100.10');
+    again.send({ t: 'join', seatId: 'b', device: 'dev-b2' });
+    expect(again.last('joined')?.seatId).toBe('b');
+  });
+
   it('a phone kicked while it is away (asleep, its tab closed) is still kept off that seat when it comes back', () => {
     const g = setup();
     g.room.hostOpen();

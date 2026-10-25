@@ -210,7 +210,7 @@ export function rejectPhone(conn: string): boolean {
 export function kickSeat(seatId: string, free = false): boolean {
   const ok = !!link?.send(free ? { t: 'kick', seatId, block: false } : { t: 'kick', seatId });
   if (!ok) return false;
-  // (Freed: a kick's block is lifted too, so ↩ Let back is done.)
+  // (Freed: ↩ Let back is done, or Free seat let go of a seat another phone took since, which keeps the kick's block.)
   const { [seatId]: _was, ...rest } = remote.kicked;
   remote.kicked = free ? rest : { ...rest, [seatId]: Date.now() };
   return true;

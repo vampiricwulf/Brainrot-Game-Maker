@@ -41,7 +41,8 @@ room, plus the phone page it serves. It is not part of the app's single-file bui
   id its browser sends with a join, and its address, `CF-Connecting-IP`) can't take that seat again for 2 minutes; it
   can take another free seat. (So another phone on the same Wi-Fi can't take that one seat for those 2 minutes
   either.) **Freeing** a seat (`kick` with `block: false`, for a player back on another phone) revokes the token the
-  same way but blocks nobody, and lifts a kick's block on that seat (the app's ↩ Let back). The seat list marks a
+  same way but blocks nobody. Freeing a seat nobody holds lifts a kick's block on it (the app's ↩ Let back); freeing
+  one a phone holds keeps that block, so the kicked phone stays off. The seat list marks a
   taken seat `away` when no connected phone holds it. With `locked` in the host's state, only a seat's token gets a
   seat and nobody can ask to join.
 - **Teams** (`teams` in the host's state): each seat is a team. A phone joins one with its own name (`join` with

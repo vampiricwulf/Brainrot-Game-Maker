@@ -30,7 +30,8 @@
  * Kicks: the kicked phone (its socket, its browser's device id and its address) can't take that seat again for
  * KICK_BLOCK_MS (it can take another free one); the other phones already in the room at its address (the same house's
  * Wi-Fi) are spared. Freeing a seat (kick with block: false, for a player back on another
- * phone, maybe on the same Wi-Fi) keeps nobody off it. The seat list tells phones which taken seats are away (no
+ * phone, maybe on the same Wi-Fi) keeps nobody off it. Freeing one nobody holds lifts a kick's block on it (↩ Let
+ * back); freeing one a phone holds keeps it. The seat list tells phones which taken seats are away (no
  * connected phone has them). 🔒 Seats locked (HostState.locked): only phones with a seat's token get a seat.
  *
  * Full rooms: phones without a seat that have done nothing for IDLE_MS (viewers who opened the link, extra tabs) don't
@@ -981,10 +982,15 @@ export class Room {
     if (one && this.s.members?.[member]?.seatId !== seatId) return;
     const holders = [...this.phones.values()].filter((p) => (one ? p.member === member : p.seatId === seatId));
     const members = Object.entries(this.s.members ?? {}).filter(([id, x]) => (one ? id === member : x.seatId === seatId));
-    // Freed (block: false): a phone a kick keeps off it may take it again (the host's ↩ Let back).
-    const unblocked = !block && !one && !!this.s.blocks?.[seatId];
-    if (unblocked) delete this.s.blocks![seatId];
-    if (!this.s.tokens[seatId] && !holders.length && !members.length) return void (unblocked && this.save());
+    if (!this.s.tokens[seatId] && !holders.length && !members.length) {
+      // Freed with nothing to take (the host's ↩ Let back): the phone a kick keeps off it may take it again. (Free seat
+      // on a seat a phone holds lets go of it but keeps the kick's block: the kicked phone stays off.)
+      if (!block && !one && this.s.blocks?.[seatId]) {
+        delete this.s.blocks[seatId];
+        this.save();
+      }
+      return;
+    }
     if (!block) {
       if (one) this.dropMember(member, 'freed');
       else this.freeSeat(seatId, 'freed');

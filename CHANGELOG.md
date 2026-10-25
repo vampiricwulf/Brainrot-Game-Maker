@@ -15,7 +15,7 @@ in plain words for the people who make and host games. Anything committed but no
 
 ### Added
 
-- Phone buzzers: for the 2 minutes after ✕ Kick, the player's row offers ↩ Let back, which lets that phone take the seat again (a kick by mistake, the wrong row), and the kick's toast says “Took Player 2's seat back from their phone…”. A buzzer server you run yourself needs deploying again for ↩ Let back.
+- Phone buzzers: for the 2 minutes after ✕ Kick, the player's row offers ↩ Let back, which lets that phone take the seat again (a kick by mistake, the wrong row; Free seat, once another phone has taken the seat, keeps the kicked one off), and the kick's toast says “Took Player 2's seat back from their phone…”. A buzzer server you run yourself needs deploying again for ↩ Let back.
 
 ### Changed
 
