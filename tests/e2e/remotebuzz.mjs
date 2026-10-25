@@ -356,10 +356,11 @@ try {
   await queue.getByText('🎲 2nd').waitFor();
   assert((await pressed())[0].includes(rolled[0] === seats[0].id ? 'Player 1' : 'Player 2'), 'the first in the roll answers; the queue shows 🎲 1st, 🎲 2nd');
   // (Its title says “Re-roll!” once a tied roll was rolled again.)
-  assert(await aud.getByText(/Tie! Roll for it|Re-roll!/).isVisible(), 'the roll stays up while the host announces it');
+  const rollTitle = aud.getByText(/Tie! Roll for it|Re-roll!/);
+  assert(await rollTitle.isVisible(), 'the roll stays up while the host announces it');
   // Wrong (Shift+Enter): the roll goes off the stage, and the second in it answers.
   await page.keyboard.press('Shift+Enter');
-  await aud.getByText('Tie! Roll for it').waitFor({ state: 'detached' });
+  await rollTitle.waitFor({ state: 'detached' });
   await stateIs((s, id) => s.answering === id, rolled[1]);
   assert(true, 'judged wrong: the roll goes off the stage (it would cover the question and who answers now), and the second in it answers');
 
