@@ -517,8 +517,9 @@ The mode isn't saved with the game: it's dual while the audience window is open.
   or rolling, then show the result. Dismissing the overlay returns to whatever was underneath (board or clue); not
   while it's still spinning or rolling (it lands first, as `W` and `D` wait). A wheel or dice tile with no question
   closed before it spun or rolled stays on the board. A wheel or dice tile's own tool goes with the tile (▦ Done ▶
-  board, ↩ Cancel (keep tile)) and is still its tile's after a reload; ↩ Cancel waits for an Undo once its score effect
-  was given, as after an award.
+  board, ↩ Cancel (keep tile) or `Shift+Esc`) and is still its tile's after a reload. The points it gives (its score
+  effect, a slice's points) are its tile's (`toolTile` on their score events, not `clueId`: no award on the clue), so
+  ↩ Cancel waits for an Undo of them, as after an award, even once the tool is closed.
 - **Reveal**: the outcome is shown on the audience view (label, plus details/media/custom slide if set), with an
   optional countdown. The host can dismiss it, re-spin/re-roll, or tag it with a player
   ("this punishment is for Alex"). Every spin/roll goes into the **roll log** (separate from the score log, no score impact),

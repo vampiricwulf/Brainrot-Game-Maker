@@ -469,9 +469,9 @@ export function toolOnlyClue(clue: Clue): boolean {
   return (clue.type === 'wheel' || clue.type === 'dice') && questionSlides(clue).every(blankSlide) && blankSlide(clue.answerSlide);
 }
 
-/** Points were given (and not undone) for this clue. */
+/** Points were given (and not undone) for this clue: an award, or what its tile's own wheel or dice gave. */
 export function clueScored(session: Session, clueId: string): boolean {
-  return session.scoreLog.some((e) => !e.undone && e.clueId === clueId);
+  return session.scoreLog.some((e) => !e.undone && (e.clueId === clueId || e.toolTile === clueId));
 }
 
 /**

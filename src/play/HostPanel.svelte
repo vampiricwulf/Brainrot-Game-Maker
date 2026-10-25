@@ -30,8 +30,6 @@
   import BoardHost from './boardgame/BoardHost.svelte';
   import type { LogTab } from './ScoreLog.svelte';
   import { app, hint, toast } from '../lib/app.svelte';
-  import { tileToolUp } from '../lib/live';
-  import { cardsScored } from '../lib/overlay';
   import { dropMenu } from '../lib/menustate.svelte';
   import { buzzerOn, remote, roomHasCards, roomMembers } from '../lib/remote.svelte';
   import { answerRoundId, teamsOn } from '../lib/buzz';
@@ -405,16 +403,11 @@
     reveal: teams ? 'Team reveals' : 'Player reveals',
   });
   /**
-   * Points were given for the open clue, so "Cancel (keep tile)" would let it be scored twice. (Before its question
-   * shows they're an earlier play's, unless it's a partner clue sent back to PARTNER UP! after it was scored.)
+   * Points were given for the open clue (what its own wheel or dice gave too), so "Cancel (keep tile)" would let it be
+   * scored twice. (Before its question shows they're an earlier play's, unless it's a partner clue sent back to PARTNER
+   * UP! after it was scored.)
    */
-  const cancelBlocked = $derived.by(
-    () =>
-      (!setup || (!!partner && Object.keys(marks).length > 0)) &&
-      !!info &&
-      // (Its own wheel's or dice's score effect given counts too.)
-      (clueScored(session, info.clue.id) || (tileToolUp(app.live, info.clue) && cardsScored(app.live.overlay, session))),
-  );
+  const cancelBlocked = $derived.by(() => (!setup || (!!partner && Object.keys(marks).length > 0)) && !!info && clueScored(session, info.clue.id));
   const quickValue = $derived(session.dd?.stage === 'question' ? (session.dd.wager ?? 0) : (info?.value ?? 0));
   /**
    * One window: a Daily Double wager its player sent from their phone stays hidden in this panel (viewers see it) until

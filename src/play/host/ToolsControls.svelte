@@ -6,8 +6,8 @@
   import { onDestroy, onMount, tick, untrack } from 'svelte';
   import { app } from '../../lib/app.svelte';
   import { textOn } from '../../lib/colors';
-  import { overlayDoneAt, startTimer } from '../../lib/live';
-  import type { Game, Outcome, Session } from '../../lib/model';
+  import { overlayDoneAt, startTimer, tileToolUp } from '../../lib/live';
+  import type { Game, Outcome, ScoreEvent, Session } from '../../lib/model';
   import { addWheel, cardDone as isCardDone, cardsKey, removeWheel, rollDice, scoreCardsLeft, spinSegments, spinWheel, wheelEdited, wheelSpentUp } from '../../lib/overlay';
   import { rescued } from '../../lib/focusrescue';
   import { faceText, isRespin, outcomeText, rollOutcome, rollResult, sliceLabel } from '../../lib/tools';
@@ -40,8 +40,18 @@
   const busy = $derived(!!o && now < overlayDoneAt(o));
   /** A score card dealt with (see overlay.ts: closing the tool asks first while one isn't). */
   const cardDone = (key: string): boolean => isCardDone(o, session, key);
+  /** A wheel or dice tile's own wheel or dice: its clue id. */
+  const ownTile = $derived.by(() => {
+    const info = session.phase === 'clue' ? currentClueInfo(session, game) : undefined;
+    return info && tileToolUp(app.live, info.clue) ? info.clue.id : undefined;
+  });
+  /** The points it gave (`given`) go down as its tile's: ↩ Cancel (keep tile) then waits for an Undo, as after an award. */
+  function tileGave(tile: string | undefined, given: (e: ScoreEvent) => boolean): void {
+    if (tile) for (const e of session.scoreLog) if (!e.clueId && given(e)) e.toolTile = tile;
+  }
   const finish = (key: string) => (applied: boolean, batch?: string) => {
     if (o?.kind === 'wheel' || o?.kind === 'dice') o.cardsDone = { ...o.cardsDone, [key]: applied && batch ? batch : true };
+    if (applied && batch) tileGave(ownTile, (e) => e.batchId === batch);
   };
   /** The added wheel whose edit box is open (by its key). */
   let editExtra = $state<string | null>(null);
@@ -106,7 +116,11 @@
   function runOutcome(a: Action, from: string): void {
     if (needsPlayers(a) && !chosen.length && !selected.length) return void toast('Tag who it was for first');
     const { world, st } = rpgNow(game, session);
+    // (Its tile and the score log before it ran: the action can put something else up in the wheel's place.)
+    const tile = ownTile;
+    const before = new Set(session.scoreLog.map((e) => e.id));
     toast(runAction({ game, session, live: app.live, world, st, selected, chosen, teams, offerCard: offerIn(session) }, a, `${from}: ${describeAction(game, a, undefined, teams)}`), 3000);
+    tileGave(tile, (e) => !before.has(e.id));
     // The button can go with what it did (a question pop-up replaces the wheel): the keys go to the main button, not to
     // the Amount box, where R, Esc and N mean nothing.
     void tick().then(() => {

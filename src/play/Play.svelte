@@ -43,7 +43,7 @@
   import PhoneRoom from './PhoneRoom.svelte';
   import type { SetBuzzSetting } from './BuzzerOptions.svelte';
   import PhoneChip from './host/PhoneChip.svelte';
-  import { cardsScored, openDice, openMemberWheel, openPartnerWheel, openPlayerWheel, openWheel, quickDice, rollDice, scoreCardsLeft, spinningRolls, spinWheel, startRollOff, toggleScoreboard, wheelSpentUp } from '../lib/overlay';
+  import { openDice, openMemberWheel, openPartnerWheel, openPlayerWheel, openWheel, quickDice, rollDice, scoreCardsLeft, spinningRolls, spinWheel, startRollOff, toggleScoreboard, wheelSpentUp } from '../lib/overlay';
   import type { DicePreset } from '../lib/model';
   import { tileDice } from '../lib/tools';
   import { dailyDoublesShort, partnerTilesShort, validate } from '../lib/validate';
@@ -2502,7 +2502,7 @@
    * dice's score effect too).
    */
   function cancelClue(): void {
-    if (!notPlayedYet() && info && (clueScored(session, info.clue.id) || (tileToolUp(app.live, info.clue) && cardsScored(app.live.overlay, session))))
+    if (!notPlayedYet() && info && clueScored(session, info.clue.id))
       return toast('Points were given for this clue: undo them first (Ctrl+Z), or use ▦ Done ▶ board', 4000);
     // A 🤫 card sent to a phone can't be unsent: putting the tile back is the host's call. Said per player, as it is:
     // who saw it (their phone showed it), who got it and hasn't opened it; a player with no phone here got nothing.
@@ -4232,6 +4232,9 @@
         break;
       case 'escape':
         if (showLog) showLog = false;
+        // (Shift+Esc on a wheel or dice tile with its own wheel or dice up cancels, as ↩ Cancel does: the tool goes with
+        // the tile, not once its score effect was given.)
+        else if (app.live.overlay && e.shiftKey && session.phase === 'clue' && info && tileToolUp(app.live, info.clue)) cancelClue();
         else if (app.live.overlay) closeOverlay();
         else if (session.deal?.shown) whoWasWhoOff();
         else if (rpgObject) rpgObject = null;

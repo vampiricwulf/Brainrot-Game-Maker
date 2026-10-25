@@ -454,6 +454,14 @@ describe('host panel rules', () => {
     expect(clueScored(session, id)).toBe(true);
     undo(session);
     expect(clueScored(session, id)).toBe(false);
+    // What a wheel or dice tile's own wheel or dice gave counts for that tile too (not for another).
+    const [e] = applyScore(session, game, [a], 100, 'Wheel: Points → +$100');
+    expect(clueScored(session, id)).toBe(false);
+    e.toolTile = id;
+    expect(clueScored(session, id)).toBe(true);
+    expect(clueScored(session, board(game, 0).categories[0].clues[1].id)).toBe(false);
+    undo(session);
+    expect(clueScored(session, id)).toBe(false);
   });
 
   it('gives tied players the same place', () => {

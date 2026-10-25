@@ -488,7 +488,7 @@ async function tileTools() {
           { id: 'c0', title: 'Spin', clues: [clue('qw', 'wheel', 'Wheel question', { wheelId: 'w1' }), clue('qd', 'dice', 'Dice question', { diceId: 'std:d6' }), clue('qc', 'standard', 'Covered question')] },
           { id: 'c1', title: 'Plain', clues: [clue('qn', 'standard', 'Noted question', { hostNotes: NOTE }), clue('qp', 'standard', 'Plain question'), clue('qe', 'standard', 'Spare question')] },
           { id: 'c2', title: 'More', clues: [clue('qx', 'wheel', 'Second wheel question', { wheelId: 'w1' }), clue('qdd', 'dailyDouble', 'Double question'), { ...clue('qo', 'wheel', '', { wheelId: 'w1' }), questionSlide: { background: {}, elements: [] }, answerSlide: { background: {}, elements: [] } }] },
-          { id: 'c3', title: 'Extra', clues: [clue('qy', 'wheel', 'Third wheel question', { wheelId: 'w1' }), { ...clue('qs', 'wheel', '', { wheelId: 'w2' }), questionSlide: { background: {}, elements: [] }, answerSlide: { background: {}, elements: [] } }, { ...clue('qz', 'dice', '', { diceId: 'std:d6' }), questionSlide: { background: {}, elements: [] }, answerSlide: { background: {}, elements: [] } }] },
+          { id: 'c3', title: 'Extra', clues: [clue('qy', 'wheel', 'Third wheel question', { wheelId: 'w2' }), { ...clue('qs', 'wheel', '', { wheelId: 'w2' }), questionSlide: { background: {}, elements: [] }, answerSlide: { background: {}, elements: [] } }, { ...clue('qz', 'dice', '', { diceId: 'std:d6' }), questionSlide: { background: {}, elements: [] }, answerSlide: { background: {}, elements: [] } }] },
         ],
       },
     ],
@@ -760,8 +760,36 @@ async function tileTools() {
   await host.keyboard.press('Escape');
   await tileOf('qy').waitFor();
 
-  // ▦ Done ▶ board while a wheel tile's own wheel waits to spin: the wheel goes with the tile.
+  // Shift+Esc (↩ Cancel's key) while a wheel tile's own wheel waits to spin: the wheel goes with the tile, which stays
+  // playable, and its question never shows.
   const used = (id) => tileOf(id).evaluate((e) => e.classList.contains('used'));
+  await tileOf('qy').click();
+  await stage('.ov .wheel').waitFor();
+  await host.keyboard.press('Shift+Escape');
+  await tileOf('qy').waitFor();
+  await stage('.ov').waitFor({ state: 'detached' });
+  const question = host.locator('.stage-box').getByText('Third wheel question').first();
+  assert((await used('qy')) === false && (await question.count()) === 0, 'Shift+Esc with a wheel tile’s wheel up puts the tile back and takes the wheel down, without its question');
+  // Its score effect given and the wheel closed (the question up): ↩ Cancel waits for an Undo all the same.
+  await tileOf('qy').click();
+  await stage('.ov .wheel').waitFor();
+  await host.keyboard.press('w');
+  await host.locator('.ac').waitFor({ timeout: 8000 });
+  await host.locator('.tc > .row .chip', { hasText: 'Cy' }).click();
+  await host.locator('.ac .delta', { hasText: 'Cy: +$100' }).waitFor();
+  await host.locator('.ac').getByRole('button', { name: 'Confirm' }).click();
+  await host.locator('.ac').waitFor({ state: 'detached' });
+  await host.keyboard.press('Escape');
+  await stage('.ov').waitFor({ state: 'detached' });
+  await question.waitFor();
+  const cancel = host.getByRole('button', { name: '↩ Cancel (keep tile)' });
+  assert(await cancel.isDisabled(), 'its points given and its wheel closed: ↩ Cancel (keep tile) still waits for an Undo');
+  await host.keyboard.press('Control+z');
+  await host.locator('button:enabled', { hasText: '↩ Cancel (keep tile)' }).waitFor();
+  await cancel.click();
+  await tileOf('qy').waitFor();
+  assert((await used('qy')) === false, 'undone, it puts the tile back');
+  // ▦ Done ▶ board while a wheel tile's own wheel waits to spin: the wheel goes with the tile.
   await tileOf('qy').click();
   await stage('.ov .wheel').waitFor();
   await host.locator('.panel button.done-board').click();
@@ -786,8 +814,10 @@ async function tileTools() {
   await host.locator('.ac').getByRole('button', { name: 'Confirm' }).click();
   await host.locator('.ac').waitFor({ state: 'detached' });
   await host.waitForFunction(() => document.activeElement?.matches('.panel [data-next]'));
-  const cancel = host.getByRole('button', { name: '↩ Cancel (keep tile)' });
   assert(await cancel.isDisabled(), 'its score effect given: the keys go back to Close ▶ board, and ↩ Cancel (keep tile) waits for an Undo');
+  await host.keyboard.press('Shift+Escape');
+  await host.locator('.toast', { hasText: 'Points were given for this clue' }).waitFor();
+  assert((await stage('.ov .wheel').count()) === 1 && (await stage('.board').count()) === 0, 'and so does Shift+Esc (the wheel stays, the tile open)');
   await host.keyboard.press('Control+z');
   await host.locator('.ac').waitFor();
   await cancel.click();

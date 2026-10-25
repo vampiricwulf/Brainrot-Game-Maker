@@ -896,6 +896,11 @@ export interface ScoreEvent {
   delta: number;
   reason: string;
   clueId?: Id;
+  /**
+   * Given by a wheel or dice tile's own wheel or dice (a score card, a slice's points): that tile's clue id. (Not clueId:
+   * it's no award on the clue, but ↩ Cancel (keep tile) waits for an Undo of it too.)
+   */
+  toolTile?: Id;
   undone?: boolean;
   /** Shared by every event of one award/effect (e.g. "Award (3)"), so Undo/Redo treat it as one step. */
   batchId?: Id;
