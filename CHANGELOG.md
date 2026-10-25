@@ -11,42 +11,6 @@ the day it's pushed (Pacific time; start the heading on the day's first push) an
 in plain words for the people who make and host games. Anything committed but not pushed yet goes under
 **Unreleased** at the top, and moves under its day when it's pushed.
 
-## Unreleased
-
-### Fixed
-
-- Exported game files: Ctrl+S on the ▶ Play screen says the game is kept in this browser once it starts (a refresh before that starts the setup again), instead of saying the file keeps its progress by itself.
-- Exported game files: ✎ Edit screen, ✎ Edit board and a space's ⚙ Buttons… say the changes last for this game only, instead of pointing to a 💾 Keep in game the file doesn't have.
-- ⬇ Export as a web page with media files missing: one message says where the file went, that it needs internet (when it does) and which files it plays without. The result was cut to one line under the missing files' window. In the exported file, the check for a missing file says where the first one was used.
-- Exported game files: the chroma-key notes on the ▶ Play screen ask for a copy with other colors instead of pointing to 🎨 Theme, and Reduce motion's tooltip no longer points to ⚙ Settings.
-- An exported file's ⬇ Download as .brainrot says “1 file wasn’t in this copy” (it said “weren’t”).
-- An exported file's first screen shows its logo in the game's own values font from the start (it did only after ▶ Play and ◀ Back), and a screen reader can jump to it as the page's main region.
-- An exported file's ? list before the game no longer lists Ctrl+Z / Ctrl+Y, which do nothing there.
-- 📺 Audience opened mid-clue: its window picks the clue's video or sound up where the host had it in one window (at its time, playing or paused, muted and at its volume), instead of from 0:00 with sound at full volume. Closed again, the host's copy goes on muted if it was muted there.
-- A clue's video or sound keeps the volume and 🔁 Loop the host set when its slide comes back (the answer shown and hidden again) and when the audience window reloads, as it already kept its place and mute.
-- The Final's think music: 🔇 Stop sounds is on the tools row while it plays (over the question's own video or sound, say), as it is for a round intro's music.
-- A wheel slice's or die face's video or sound gets a media row like any clip on stage: Space, M, the volume and 🔁 reach it, the host's copy stays silent beside an audience window, and the cover (K) holds it. A video with sound looped on out of the host's reach.
-- The 🪟 card window plays a card's video or sound from its Start at to its Stop at, then goes back to its start, as phones do (it played on past Stop at).
-- One window: the stage keeps one size when a slide with two clips comes up (a video and a sound, say), in a board round and now in a slides round too: the host panel keeps room for as many media rows as the round's busiest slide has.
-- RPG screen music waits under ⏸ Cover (K) and goes on after (viewers heard it under “Be right back”).
-- Screen readers: each of the host's media rows is named (Video, Audio; numbered when two share a name), its sliders read “30%” and “0:01 of 0:08”, and −5 / +5 read “Back 5 seconds” / “Forward 5 seconds”.
-- A sound deleted in 🖼 Media while 🔊 Sounds and slides still use it: the checklist says where it's still used (“1 deleted file still used on … Undo the delete in History”) besides the 🔊 Sounds line, and its 🔊 Sounds row says its file was deleted (Undo in 🕘 History, or Change…) instead of missing. A file missing on opening that's used both in 🔊 Sounds and on a slide gets both lines too.
-- ✎ Edit: a slide item the trim cuts short (it played from before the new start, or on past the new end) is named with what it will play, instead of being said to play the same moments, and the toast after Apply counts them.
-- A video or sound added in the clue editor that won't play here (or plays without its sound): the toast points to its panel's 🔄 Convert…, not to the note at the top that the clue editor covers. Added in a window with no such panel (a wheel slice's, say), the toast says to see the note at the top once the windows are closed.
-- Board games: ◀ Previous turn (Shift+N) then Next turn ▶ (N) comes back to the turn as it was. A player who had moved has moved, with their landing buttons (“+$100”) back, instead of their turn starting afresh with 🎲 Roll and the buttons gone.
-- Boards that move one space a turn: once the player whose turn it is has moved, a click on a space opens its card instead of moving them one more space, and the host's copy stops marking the ways on (the panel's → buttons still give an extra step).
-- A movement wheel that lands on a slice with no number (“Lose a turn”): Enter says “No number on “Lose a turn”: N for the next turn, or type the steps”. Before a spin it says “Spin first (D)” on a wheel board, not “Roll first (D)”.
-- A player in a zone (the Shadow Realm, say): ▶ Move or Enter with a count says “Ann is in Shadow Realm: 📍 Send them to a space first” and keeps the roll for the zone's escape, instead of moving nobody and throwing the count away. With a count in, the main button is Next turn ▶, not ▶ Move.
-- Board-game words: a move back reads “Ann goes back 3” in 🕘 History, the 📜 Log and Undo (it said “moves -3”); the move buttons read “▶ Move Player 2: 2”; the editor's ✨ Make it a… says “↩ Go back” (it said “Back 3 spaces” for a space whose button goes back 2).
-- One window: right-clicking a secret space on the stage before it's revealed shows “? (secret)” as its menu's heading. It showed the space's name, on stream.
-- Board games: 7 or 8 players on one space (Start on the 20-space loop, say) stand round its rim as smaller tokens, instead of reaching over the space next to it, where viewers read the end ones as standing there.
-- ✎ Edit board: a space or a link picked on the stage brings its settings into view in the host panel. In one window at 1024×768 they were below what the panel showed, so a pick seemed to do nothing.
-- 📍 Send … to…, 🗂 Spaces… and Connect to a space… tell spaces with the same name apart: “Bonus (after Space 6)”, or “Go back (2nd)” when that's the same too. The 20-space loop has three “Go back” and two “Bonus”.
-- One window: taking out the only player holding a 🎭 deal's part (the spy, say) no longer turns the deal panel, on stream, to “Its cards went when that round ended” with 📤 Send, nor empties its 📋 Copy list, which told viewers who held it. It keeps “Sent to 1”, the list of the others, ↻ Send again and ✖ Take back, which takes back the card held for that player too, and 🎭 Deal a new one and ✖ Put it away ask first as before. A seat freed for a new phone still says to ↻ Send again the deal. The two-window host column no longer says the cards went either.
-- The ▭ scores window on a chroma green: a Final wager's ✔ is blue, as in the audience window (OBS keyed the green out), and the countdown's box is solid black over the key, paused too, when only its digits dim (see-through, it came out dark green, and OBS took it out too: paused, the whole clock).
-- One window, a Final with phones sending the wagers: the keys stay on the wager list as the wager screen comes up, so the host panel no longer scrolls to the next button, cutting its “⚠ Viewers can see this” line in half on stream.
-- Audience window: “🔊 Click to enable sound” sits in the top-left corner, no longer over the join code in the bottom right while players join.
-
 ## 2026-10-24
 
 ### Added
@@ -140,6 +104,37 @@ in plain words for the people who make and host games. Anything committed but no
 - A roll in an RPG or board-game round no longer shrinks the round's own controls to nothing under the dice's result (at 125% zoom on a laptop): they keep a few rows, and the column scrolls. (4a2b7fa)
 - Under about 940 px wide (a laptop at 150% zoom or more), the host panel's fixed bar shows ↶ ↷ 🔊 📜 👥 ⚖ 🙈 📺 as their signs (still read out by name), so it stays one line with 🚪 Exit at the right and the stage keeps its height. 🚪 Exit dropped under ↶ Undo, and at 200% the bar was below the window. (4a2b7fa)
 - A touch screen with the controls hidden: a tap shows Show controls, and does nothing else (it turned the slide on stream); the first-time note says to tap. 📜 Log's ↶ Back to here, 🕘 History's Go there › and the ⛔ between screens on an RPG world's map in the editor show on a screen without hover, so a tap never presses one unseen. (4a2b7fa, f03172c)
+- Exported game files: Ctrl+S on the ▶ Play screen says the game is kept in this browser once it starts (a refresh before that starts the setup again), instead of saying the file keeps its progress by itself. (2d00f86)
+- Exported game files: ✎ Edit screen, ✎ Edit board and a space's ⚙ Buttons… say the changes last for this game only, instead of pointing to a 💾 Keep in game the file doesn't have. (2d00f86)
+- ⬇ Export as a web page with media files missing: one message says where the file went, that it needs internet (when it does) and which files it plays without. The result was cut to one line under the missing files' window. In the exported file, the check for a missing file says where the first one was used. (2d00f86)
+- Exported game files: the chroma-key notes on the ▶ Play screen ask for a copy with other colors instead of pointing to 🎨 Theme, and Reduce motion's tooltip no longer points to ⚙ Settings. (2d00f86)
+- An exported file's ⬇ Download as .brainrot says “1 file wasn’t in this copy” (it said “weren’t”). (2d00f86)
+- An exported file's first screen shows its logo in the game's own values font from the start (it did only after ▶ Play and ◀ Back), and a screen reader can jump to it as the page's main region. (2d00f86)
+- An exported file's ? list before the game no longer lists Ctrl+Z / Ctrl+Y, which do nothing there. (2d00f86)
+- 📺 Audience opened mid-clue: its window picks the clue's video or sound up where the host had it in one window (at its time, playing or paused, muted and at its volume), instead of from 0:00 with sound at full volume. Closed again, the host's copy goes on muted if it was muted there. (8290b2d)
+- A clue's video or sound keeps the volume and 🔁 Loop the host set when its slide comes back (the answer shown and hidden again) and when the audience window reloads, as it already kept its place and mute. (8290b2d)
+- The Final's think music: 🔇 Stop sounds is on the tools row while it plays (over the question's own video or sound, say), as it is for a round intro's music. (748128a)
+- A wheel slice's or die face's video or sound gets a media row like any clip on stage: Space, M, the volume and 🔁 reach it, the host's copy stays silent beside an audience window, and the cover (K) holds it. A video with sound looped on out of the host's reach. (748128a)
+- The 🪟 card window plays a card's video or sound from its Start at to its Stop at, then goes back to its start, as phones do (it played on past Stop at). (748128a)
+- One window: the stage keeps one size when a slide with two clips comes up (a video and a sound, say), in a board round and now in a slides round too: the host panel keeps room for as many media rows as the round's busiest slide has. (748128a)
+- RPG screen music waits under ⏸ Cover (K) and goes on after (viewers heard it under “Be right back”). (748128a)
+- Screen readers: each of the host's media rows is named (Video, Audio; numbered when two share a name), its sliders read “30%” and “0:01 of 0:08”, and −5 / +5 read “Back 5 seconds” / “Forward 5 seconds”. (748128a)
+- A sound deleted in 🖼 Media while 🔊 Sounds and slides still use it: the checklist says where it's still used (“1 deleted file still used on … Undo the delete in History”) besides the 🔊 Sounds line, and its 🔊 Sounds row says its file was deleted (Undo in 🕘 History, or Change…) instead of missing. A file missing on opening that's used both in 🔊 Sounds and on a slide gets both lines too. (044a399)
+- ✎ Edit: a slide item the trim cuts short (it played from before the new start, or on past the new end) is named with what it will play, instead of being said to play the same moments, and the toast after Apply counts them. (044a399)
+- A video or sound added in the clue editor that won't play here (or plays without its sound): the toast points to its panel's 🔄 Convert…, not to the note at the top that the clue editor covers. Added in a window with no such panel (a wheel slice's, say), the toast says to see the note at the top once the windows are closed. (044a399, a059bea)
+- Board games: ◀ Previous turn (Shift+N) then Next turn ▶ (N) comes back to the turn as it was. A player who had moved has moved, with their landing buttons (“+$100”) back, instead of their turn starting afresh with 🎲 Roll and the buttons gone. (8bb6d3d)
+- Boards that move one space a turn: once the player whose turn it is has moved, a click on a space opens its card instead of moving them one more space, and the host's copy stops marking the ways on (the panel's → buttons still give an extra step). (8bb6d3d)
+- A movement wheel that lands on a slice with no number (“Lose a turn”): Enter says “No number on “Lose a turn”: N for the next turn, or type the steps”. Before a spin it says “Spin first (D)” on a wheel board, not “Roll first (D)”. (8bb6d3d)
+- A player in a zone (the Shadow Realm, say): ▶ Move or Enter with a count says “Ann is in Shadow Realm: 📍 Send them to a space first” and keeps the roll for the zone's escape, instead of moving nobody and throwing the count away. With a count in, the main button is Next turn ▶, not ▶ Move. (8bb6d3d)
+- Board-game words: a move back reads “Ann goes back 3” in 🕘 History, the 📜 Log and Undo (it said “moves -3”); the move buttons read “▶ Move Player 2: 2”; the editor's ✨ Make it a… says “↩ Go back” (it said “Back 3 spaces” for a space whose button goes back 2). (8bb6d3d)
+- One window: right-clicking a secret space on the stage before it's revealed shows “? (secret)” as its menu's heading. It showed the space's name, on stream. (f8ed123)
+- Board games: 7 or 8 players on one space (Start on the 20-space loop, say) stand round its rim as smaller tokens, instead of reaching over the space next to it, where viewers read the end ones as standing there. (f8ed123)
+- ✎ Edit board: a space or a link picked on the stage brings its settings into view in the host panel. In one window at 1024×768 they were below what the panel showed, so a pick seemed to do nothing. (f8ed123)
+- 📍 Send … to…, 🗂 Spaces… and Connect to a space… tell spaces with the same name apart: “Bonus (after Space 6)”, or “Go back (2nd)” when that's the same too. The 20-space loop has three “Go back” and two “Bonus”. (f8ed123)
+- One window: taking out the only player holding a 🎭 deal's part (the spy, say) no longer turns the deal panel, on stream, to “Its cards went when that round ended” with 📤 Send, nor empties its 📋 Copy list, which told viewers who held it. It keeps “Sent to 1”, the list of the others, ↻ Send again and ✖ Take back, which takes back the card held for that player too, and 🎭 Deal a new one and ✖ Put it away ask first as before. A seat freed for a new phone still says to ↻ Send again the deal. The two-window host column no longer says the cards went either. (495a699, e9e7bdc)
+- The ▭ scores window on a chroma green: a Final wager's ✔ is blue, as in the audience window (OBS keyed the green out), and the countdown's box is solid black over the key, paused too, when only its digits dim (see-through, it came out dark green, and OBS took it out too: paused, the whole clock). (495a699, 192aabe)
+- One window, a Final with phones sending the wagers: the keys stay on the wager list as the wager screen comes up, so the host panel no longer scrolls to the next button, cutting its “⚠ Viewers can see this” line in half on stream. (495a699)
+- Audience window: “🔊 Click to enable sound” sits in the top-left corner, no longer over the join code in the bottom right while players join. (495a699)
 
 ## 2026-10-23
 
