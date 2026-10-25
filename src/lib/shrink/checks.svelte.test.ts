@@ -169,13 +169,38 @@ describe('a file just added: 🔄 offered when it won’t play here', () => {
     await vi.waitFor(() => expect(toasts()).toEqual(['⚠ 2 files you just added won’t play in this browser: see the note at the top.']));
   });
 
+  /** The page with these windows open, top one last: true for one whose item panel shows its 🔄 Convert…. */
+  const windows = (...panels: boolean[]) =>
+    vi.stubGlobal('document', {
+      hidden: false,
+      addEventListener: () => {},
+      createElement: () => ({ canPlayType: () => cpt.says }),
+      querySelectorAll: (s: string) => (s === '[aria-modal="true"]' ? panels.map((p) => ({ querySelector: (q: string) => (p && q === '[data-plays-note] button' ? {} : null) })) : []),
+    });
+
   it('added in the clue editor (a window over the note at the top): the toast points to its panel’s 🔄 Convert…', async () => {
-    vi.stubGlobal('document', { hidden: false, addEventListener: () => {}, createElement: () => ({ canPlayType: () => cpt.says }), querySelector: (s: string) => (s === '[aria-modal="true"]' ? {} : null) });
+    windows(true);
     app.game.media.push(ref('m1'));
     registerBlob('m1', new Blob([new Uint8Array([3, 7])]));
     checkAdded(app.game.media.find((m) => m.id === 'm1')!);
     await settled(['m1']);
     await vi.waitFor(() => expect(toasts()).toEqual(['⚠ A video you just added plays without its sound in this browser: 🔄 Convert… is in its panel.']));
+  });
+
+  it('added in a window with no such panel (a wheel’s, over the clue editor): the note at the top, once the windows are closed', async () => {
+    windows(true, false);
+    app.game.media.push(ref('w1'));
+    registerBlob('w1', new Blob([new Uint8Array([3, 8])]));
+    checkAdded(app.game.media.find((m) => m.id === 'w1')!);
+    await settled(['w1']);
+    await vi.waitFor(() => expect(toasts()).toEqual(['⚠ A video you just added plays without its sound in this browser: see the note at the top once these windows are closed.']));
+    vi.mocked(toast).mockClear();
+    windows(false);
+    app.game.media.push(ref('w2'));
+    registerBlob('w2', new Blob([new Uint8Array([3, 9])]));
+    checkAdded(app.game.media.find((m) => m.id === 'w2')!);
+    await settled(['w2']);
+    await vi.waitFor(() => expect(toasts()).toEqual(['⚠ A video you just added plays without its sound in this browser: see the note at the top once this window is closed.']));
   });
 
   it('one dismissed before its toast isn’t counted; one added after it landed isn’t waited for', async () => {

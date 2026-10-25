@@ -254,7 +254,8 @@ RollEvent  { id, ts, source: 'wheel' | 'dice', presetName?, result: string /* la
   as does one not checked yet.
 - **🔄 Convert** (editor only): a video or sound added in the editor that won't play here (or plays without its sound)
   gets a note at the top of the editor and a toast (naming nothing; added in the clue editor, which covers that
-  note, the toast points to the item's own panel and its 🔄 Convert…). The fix puts a file that plays in its place,
+  note, the toast points to the item's own panel and its 🔄 Convert…; added in a window with no such panel, a wheel
+  slice's say, to the note once the windows are closed). The fix puts a file that plays in its place,
   everywhere it's used (on stream too), as one undo step: its tracks copied into a type this browser opens when only
   the file type is the trouble (quick, nothing lost: an MKV into a WebM or an MP4, an .mts's MP3 sound into an MP4), a
   track made again in this browser's own codecs otherwise (🔄 Convert's window says what it costs first), or a sound

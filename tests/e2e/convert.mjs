@@ -6,11 +6,11 @@
 // or today's "may not play" and toast, word for word, for the one the app can't read. So does the checklist, counting
 // and naming nothing. A reload checks the files again.
 // Part 2: a camcorder-like .mts (an MP3 sound in MPEG-TS, which the test Chromium doesn't open) added in 🖼 Media gets the note at
-// the top, and 🔄 repackages it as an MP4 in its place (Ctrl+Z and Ctrl+Y); the AC-3 MKV dropped on a slide becomes a
-// WebM without its sound, on that item; the AC-3 sound alone gets only OK; two .mts at once go through 🔄 Convert's
-// window, one step each; the VP9 MKV on a 🤫 card gets ↻ from the 📱 preview. No toast, History row or pill names a
-// file. (H.264, AAC, HEVC and AC-3 don't play in the test Chromium, so what plays in Chrome or Edge on Windows or Mac,
-// and converting to MP4 (H.264) or M4A (AAC), are checked by hand.)
+// the top, and 🔄 repackages it as an MP4 in its place (Ctrl+Z and Ctrl+Y); the AC-3 MKV dropped on a slide in the clue
+// editor (its toast points to the item's panel) becomes a WebM without its sound, on that item; the AC-3 sound alone
+// gets only OK; two .mts at once go through 🔄 Convert's window, one step each; the VP9 MKV on a 🤫 card gets ↻ from the
+// 📱 preview. No toast, History row or pill names a file. (H.264, AAC, HEVC and AC-3 don't play in the test Chromium,
+// so what plays in Chrome or Edge on Windows or Mac, and converting to MP4 (H.264) or M4A (AAC), are checked by hand.)
 import { chromium } from 'playwright-core';
 import { existsSync, mkdirSync } from 'node:fs';
 import { resolve } from 'node:path';
@@ -218,6 +218,9 @@ try {
   await playsNote.waitFor({ timeout: 60_000 });
   const noteSays = (await playsNote.innerText()).replace(/\s+/g, ' ').trim();
   assert(noteSays === '⚠ It plays without its sound here (AC-3 (Dolby Digital)). 🔄 Convert…', `the item’s panel: “${noteSays}”`);
+  // (The clue editor covers the note at the top: the toast points to the panel.)
+  await toasted('⚠ A video you just added plays without its sound in this browser: 🔄 Convert… is in its panel.');
+  assert(true, 'and the toast points to its panel’s 🔄 Convert…');
   const itemMedia = (g) => g.rounds?.[0]?.categories?.[0]?.clues?.[0]?.questionSlide?.elements.find((e) => e.kind === 'video')?.media;
   const talkId = refNamed(await draftWhen((g) => !!itemMedia(g), 'the video item'), 'talk.mkv').id;
   await page.keyboard.press('Escape');

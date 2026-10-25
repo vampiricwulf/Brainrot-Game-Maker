@@ -126,9 +126,15 @@ function sayFresh(): void {
   fresh = [];
   if (!said.length) return;
   const one = said[0];
-  // (A window over the editor, the clue editor's say, hides the note at the top: the item's own panel beside it says so.)
-  const over = !!document.querySelector?.('[aria-modal="true"]');
-  const see = over ? `🔄 Convert… is in ${said.length > 1 ? 'their panels' : 'its panel'}` : 'see the note at the top';
+  // (A window over the editor hides the note at the top. In the clue editor's, the item's own panel beside it has 🔄
+  // Convert… too; one with no such panel, a wheel's say, has none, so the note it is, once the windows are closed.)
+  const over = Array.from(document.querySelectorAll?.('[aria-modal="true"]') ?? []);
+  const panel = !!over.at(-1)?.querySelector('[data-plays-note] button');
+  const see = panel
+    ? `🔄 Convert… is in ${said.length > 1 ? 'their panels' : 'its panel'}`
+    : over.length
+      ? `see the note at the top once ${over.length > 1 ? 'these windows are' : 'this window is'} closed`
+      : 'see the note at the top';
   if (said.length > 1) toast(`⚠ ${severalText(said.map((f) => f.is))}: ${see}.`);
   else toast(`⚠ A ${one.kind === 'audio' ? 'sound' : 'video'} you just added ${one.is === 'silent' ? 'plays without its sound' : 'won’t play'} in this browser: ${see}.`);
 }
