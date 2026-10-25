@@ -11,49 +11,12 @@ the day it's pushed (Pacific time; start the heading on the day's first push) an
 in plain words for the people who make and host games. Anything committed but not pushed yet goes under
 **Unreleased** at the top, and moves under its day when it's pushed.
 
-## Unreleased
-
-### Added
-
-- Phone buzzers: for the 2 minutes after ✕ Kick, the player's row offers ↩ Let back, which lets that phone take the seat again (a kick by mistake, the wrong row; Free seat, once another phone has taken the seat, keeps the kicked one off), and the kick's toast says “Took Player 2's seat back from their phone…”. A buzzer server you run yourself needs deploying again for ↩ Let back.
-
-### Changed
-
-- Teams: the bar by Start game and ✅ Going live? count people on teams as the 📱 card does (“3 people on 2 of 3 teams”), not “2 of 3 joined”.
-- Teams: phones say “Your team’s pick! Tell the host which clue” and “Daily Double — your team’s up!”, and a wager the host typed reads “The host has your team’s wager as $100”. A buzzer server you run yourself needs deploying again for that last one.
-- Teams: the Daily Double panel says “A phone on the team can send its wager”, 🤫 Send a card…'s 🪟 Card window is “for a team with no phone”, and the editor's checklist says “No teams yet” and “Two teams share a color”.
-- Undo, 🕘 History and the undo notes say game rules, clue countdowns and adventure screens as the page does: “Reveal categories: all at once” (not “Category reveal = off”), “Changed the countdown of Streamers $800 to 15 s” and “Changed the tile face of Streamers $800”, and an RPG screen's step is under its round's name (“Adventure › Overworld”), not “World 1”, unless several rounds play that world.
-- The ▶ Play screen's “⚠ N things to check” counts only warnings: a Daily Double or partner clue that Start places is an ℹ note there, as in the editor's checklist (“ℹ 1 note” when that's all there is), and the bar by Start no longer says it twice.
-
-### Fixed
-
-- Teams: someone you move to another team (📱 › Move to another team) during the wagers or the typed answers no longer sees that team's wager or answer on their phone: they're told one is in, as someone who joins late is. A buzzer server you run yourself needs deploying again for this.
-- A team or player taken out mid-clue leaves the buzz order (the rest move up) instead of staying as “Al (?)”.
-- The pre-game 👥 Players and 👥 Teams rows keep ▲ ▼ 🗑 together in a narrow window (about 600 px wide), wrapping them as one instead of splitting them.
-- A wheel or dice tile: ▦ Done ▶ board and ↩ Cancel (keep tile) or Shift+Esc take its own wheel or dice off the stage with it (it stayed on stream over the board, and Shift+Esc only closed it), though not while it's still spinning or rolling; with its score effect not given yet, the first Done says so. ↩ Cancel waits for an Undo once that score effect or a slice's points were given, as it does after an award, even with the wheel or dice closed.
-- Esc while a wheel spins or dice roll says to wait for them to land, as W and D do, instead of closing them before viewers see the result and without offering its score effect.
-- After a reload with a wheel or dice tile's own wheel or dice on stream, closing it finishes the tile as before (it left an empty slide, still in the clue).
-- After a wheel lands, dice come up or a score effect is confirmed or skipped, the keys are on the main button (Close, Close ▶ board, 👁 Reveal answer) instead of a side button such as ↩ Cancel (keep tile).
-- Ctrl+Z after taking a player out mid-clue gives them back their part: the Daily Double is theirs again (its badge, ✔ / ✘ and Enter), and a partner clue goes back to its pair and its question, with its countdown and the time it had left, instead of PARTNER UP! with someone else.
-- N (▦ Done ▶ board) on a ✍ Everyone answers clue with answers in and none judged says so first (“2 answers not judged yet…”), as it does with a player picked; N again closes it.
-- The Final's reveals show each row's number key (1–9 spotlight a player by their number, which isn't the row's place), so two players with the same name can be told apart.
-- ＋ Add round is a step of its own, so the name and fields typed right after it are steps too: one Ctrl+Z takes back the last one, not the whole new round.
-- On the ▶ Play screen, ◀ Back to editor opens the tab you pressed ▶ Play on (🎨 Theme, the Final…) instead of the first round, and ◀ Fix in editor goes to the first thing to check, as its line in the editor's checklist does (a Final with no answer: its Answer box).
-- Ticking Include a tiebreaker clue puts the keys in its question box, ready to type.
-- An empty game's “No rounds yet” line in the checklist puts the keys on ✨ Try a sample game, the first card that adds a round (it did nothing).
-- A second picture, or a video, added to a slide that has its question and a picture goes beside what's there, clear of the question (smaller if it must), instead of on the first picture or over the question's words. This is so on clues, Slides rounds, the Final and the tiebreaker.
-- A phone you turned away (✕) that asks to join again shows on the 📱 card and chip again, with its “wants to join” note, so you can ✔ Add it (it stayed hidden, and the phone waited for good).
-- With 🔒 Lock seats on, a player no phone can get into (put back with Ctrl+Z or ↩ Restore, or added while locked) reads “🔒 locked out” on the 📱 card and chip instead of “waiting”, and a phone whose player was put back says the seats are locked and to ask you to unlock them, instead of “Tap your name” over a greyed name. A buzzer server you run yourself needs deploying again for the phone's words.
-- The tiebreaker clue greys the phones' buttons and says the tied players answer out loud, instead of showing a button that looked live and did nothing.
-- ✕ Close the room in the bar over the editor asks first when phones are in the room, Keep it open first, as the 📱 card does (it closed at once).
-- A phone that opens the link when every seat is taken says so once (“Every seat is taken. If one is yours on a new phone, ask the host to free it.”), and each name just “Taken”. A buzzer server you run yourself needs deploying again for this.
-- After you settle a tie by picking who answers, the other tied phone says “Tie: the host picked Player 2” instead of “0.00 s behind Player 2”. A buzzer server you run yourself needs deploying again for this.
-
 ## 2026-10-24
 
 ### Added
 
 - The game screen's stage and host controls are named regions (Stage, Host controls), so a screen reader can jump from the board to ＋ Award or 🚪 Exit instead of tabbing through every tile. (1a57022)
+- Phone buzzers: for the 2 minutes after ✕ Kick, the player's row offers ↩ Let back, which lets that phone take the seat again (a kick by mistake, the wrong row; Free seat, once another phone has taken the seat, keeps the kicked one off), and the kick's toast says “Took Player 2's seat back from their phone…”. A buzzer server you run yourself needs deploying again for ↩ Let back. (101eb53, c2a5ce4)
 
 ### Changed
 
@@ -62,6 +25,11 @@ in plain words for the people who make and host games. Anything committed but no
 - ＋ Add round's sample game is ✨ The sample game, as on the first screen (it was 🎁). Undo steps for a board's rows, categories, random partner clues and imported clues name it as round “Jeopardy!”, as other steps do. Open… says “its undo history” when one recent game is listed. (c6629b1)
 - README and the spec say players can answer on their phones too; the spec's lines on going online, where players are set (and that a game takes up to 20) and the host panel's bar match the app. (c6629b1, 61568ba)
 - The accent blue (links, focus rings, blue labels) is a touch lighter, so small text in it reads at 4.5:1 on the panels, and Start game ▶'s Ctrl+⏎ is no longer faded. (1a57022)
+- Teams: the bar by Start game and ✅ Going live? count people on teams as the 📱 card does (“3 people on 2 of 3 teams”), not “2 of 3 joined”. (6327489)
+- Teams: phones say “Your team’s pick! Tell the host which clue” and “Daily Double — your team’s up!”, and a wager the host typed reads “The host has your team’s wager as $100”. A buzzer server you run yourself needs deploying again for that last one. (6327489)
+- Teams: the Daily Double panel says “A phone on the team can send its wager”, 🤫 Send a card…'s 🪟 Card window is “for a team with no phone”, and the editor's checklist says “No teams yet” and “Two teams share a color”. (6327489)
+- Undo, 🕘 History and the undo notes say game rules, clue countdowns and adventure screens as the page does: “Reveal categories: all at once” (not “Category reveal = off”), “Changed the countdown of Streamers $800 to 15 s” and “Changed the tile face of Streamers $800”, and an RPG screen's step is under its round's name (“Adventure › Overworld”), not “World 1”, unless several rounds play that world. (f9c76ea)
+- The ▶ Play screen's “⚠ N things to check” counts only warnings: a Daily Double or partner clue that Start places is an ℹ note there, as in the editor's checklist (“ℹ 1 note” when that's all there is), and the bar by Start no longer says it twice. (f33b417)
 
 ### Fixed
 
@@ -173,6 +141,27 @@ in plain words for the people who make and host games. Anything committed but no
 - The ▭ scores window on a chroma green: a Final wager's ✔ is blue, as in the audience window (OBS keyed the green out), and the countdown's box is solid black over the key, paused too, when only its digits dim (see-through, it came out dark green, and OBS took it out too: paused, the whole clock). (495a699, 192aabe)
 - One window, a Final with phones sending the wagers: the keys stay on the wager list as the wager screen comes up, so the host panel no longer scrolls to the next button, cutting its “⚠ Viewers can see this” line in half on stream. (495a699)
 - Audience window: “🔊 Click to enable sound” sits in the top-left corner, no longer over the join code in the bottom right while players join. (495a699)
+- Teams: someone you move to another team (📱 › Move to another team) during the wagers or the typed answers no longer sees that team's wager or answer on their phone: they're told one is in, as someone who joins late is. A buzzer server you run yourself needs deploying again for this. (6327489)
+- A team or player taken out mid-clue leaves the buzz order (the rest move up) instead of staying as “Al (?)”. (6327489)
+- The pre-game 👥 Players and 👥 Teams rows keep ▲ ▼ 🗑 together in a narrow window (about 600 px wide), wrapping them as one instead of splitting them. (6327489)
+- A wheel or dice tile: ▦ Done ▶ board and ↩ Cancel (keep tile) or Shift+Esc take its own wheel or dice off the stage with it (it stayed on stream over the board, and Shift+Esc only closed it), though not while it's still spinning or rolling; with its score effect not given yet, the first Done says so. ↩ Cancel waits for an Undo once that score effect or a slice's points were given, as it does after an award, even with the wheel or dice closed. (dca2753, 36390e7)
+- Esc while a wheel spins or dice roll says to wait for them to land, as W and D do, instead of closing them before viewers see the result and without offering its score effect. (dca2753)
+- After a reload with a wheel or dice tile's own wheel or dice on stream, closing it finishes the tile as before (it left an empty slide, still in the clue). (dca2753)
+- After a wheel lands, dice come up or a score effect is confirmed or skipped, the keys are on the main button (Close, Close ▶ board, 👁 Reveal answer) instead of a side button such as ↩ Cancel (keep tile). (dca2753)
+- Ctrl+Z after taking a player out mid-clue gives them back their part: the Daily Double is theirs again (its badge, ✔ / ✘ and Enter), and a partner clue goes back to its pair and its question, with its countdown and the time it had left, instead of PARTNER UP! with someone else. (cd88228, 989f746)
+- N (▦ Done ▶ board) on a ✍ Everyone answers clue with answers in and none judged says so first (“2 answers not judged yet…”), as it does with a player picked; N again closes it. (cd88228)
+- The Final's reveals show each row's number key (1–9 spotlight a player by their number, which isn't the row's place), so two players with the same name can be told apart. (cd88228)
+- ＋ Add round is a step of its own, so the name and fields typed right after it are steps too: one Ctrl+Z takes back the last one, not the whole new round. (f9c76ea)
+- On the ▶ Play screen, ◀ Back to editor opens the tab you pressed ▶ Play on (🎨 Theme, the Final…) instead of the first round, and ◀ Fix in editor goes to the first thing to check, as its line in the editor's checklist does (a Final with no answer: its Answer box). (f33b417)
+- Ticking Include a tiebreaker clue puts the keys in its question box, ready to type. (f33b417)
+- An empty game's “No rounds yet” line in the checklist puts the keys on ✨ Try a sample game, the first card that adds a round (it did nothing). (f33b417)
+- A second picture, or a video, added to a slide that has its question and a picture goes beside what's there, clear of the question (smaller if it must), instead of on the first picture or over the question's words. This is so on clues, Slides rounds, the Final and the tiebreaker. (afe550e)
+- A phone you turned away (✕) that asks to join again shows on the 📱 card and chip again, with its “wants to join” note, so you can ✔ Add it (it stayed hidden, and the phone waited for good). (101eb53)
+- With 🔒 Lock seats on, a player no phone can get into (put back with Ctrl+Z or ↩ Restore, or added while locked) reads “🔒 locked out” on the 📱 card and chip instead of “waiting”, and a phone whose player was put back says the seats are locked and to ask you to unlock them, instead of “Tap your name” over a greyed name. A buzzer server you run yourself needs deploying again for the phone's words. (101eb53)
+- The tiebreaker clue greys the phones' buttons and says the tied players answer out loud, instead of showing a button that looked live and did nothing. (101eb53)
+- ✕ Close the room in the bar over the editor asks first when phones are in the room, Keep it open first, as the 📱 card does (it closed at once). (101eb53)
+- A phone that opens the link when every seat is taken says so once (“Every seat is taken. If one is yours on a new phone, ask the host to free it.”), and each name just “Taken”. A buzzer server you run yourself needs deploying again for this. (101eb53)
+- After you settle a tie by picking who answers, the other tied phone says “Tie: the host picked Player 2” instead of “0.00 s behind Player 2”. A buzzer server you run yourself needs deploying again for this. (101eb53)
 
 ## 2026-10-23
 
