@@ -259,6 +259,11 @@ try {
   // over the key it would come out dark green, and go too).
   const [tick, clockBg] = [await scores.locator('.strip').evaluate((e) => getComputedStyle(e).getPropertyValue('--right').trim()), await scores.locator('.clock .timer').evaluate((e) => getComputedStyle(e).backgroundColor)];
   assert(tick === '#1f6fd1' && clockBg === 'rgb(0, 0, 0)', `on chroma green, the scores window's ✔ is blue and its countdown box solid (${tick}, ${clockBg})`);
+  // Paused, only what's in the box dims (the whole clock at 0.6 would be see-through, and go too).
+  await page.keyboard.press('t');
+  await scores.locator('.clock .timer.paused').waitFor();
+  const dims = await scores.locator('.clock .timer.paused').evaluate((e) => [getComputedStyle(e).opacity, getComputedStyle(e.querySelector('.num')).opacity, getComputedStyle(e).backgroundColor]);
+  assert(dims.join() === '1,0.6,rgb(0, 0, 0)', `T pauses it: the box stays solid, its digits dim (${dims.join(', ')})`);
   assert(await page.locator('.panel button[aria-label="Close the scores window"]').isVisible(), 'the host panel’s ▭ button says it closes it');
   await shot('pf-3-scores', scores);
   await shot('pf-4-host');

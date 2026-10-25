@@ -93,9 +93,16 @@
     width: 280px;
     height: 230px;
   }
-  /* Over the key, the countdown's box is solid: see-through, it would blend with the key's color, and OBS take it out. */
+  /* Over the key, the countdown's box is solid: see-through, it would blend with the key's color, and OBS take it out.
+     Paused, only what's in it dims (the whole clock dimmed would be see-through too). */
   .strip.keyed .clock :global(.timer) {
     background: #000;
+  }
+  .strip.keyed .clock :global(.timer.paused) {
+    opacity: 1;
+  }
+  .strip.keyed .clock :global(.timer.paused > *) {
+    opacity: 0.6;
   }
   .clock :global(.timesup) {
     font-size: 64px;
