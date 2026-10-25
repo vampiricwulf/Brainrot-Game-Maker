@@ -435,6 +435,7 @@ try {
   const dd2 = host2.locator('.panel .dd', { hasText: 'Who found it?' });
   await dd2.locator('.chip', { hasText: 'Player 1' }).click();
   await form(al).waitFor();
+  assert((await dd2.locator('[data-dd-phones]').innerText()).includes('A phone on the team can send its wager'), 'teams: the phones’ line says a phone on the team can send its wager');
   await sendWager(al, 345);
   await dd2.getByText('📱 from phone · sent by Al').waitFor();
   const ddIn = dd2.locator('input[type=number]');
@@ -449,7 +450,7 @@ try {
   assert((await ddIn.inputValue()) === '400', 'the host types over it: it’s the host’s, shown as typed');
   // The phone sends it again, and the question shows with it: still hidden in the panel (the tag, the Amount box, the
   // award buttons and their tooltips) until Show wager.
-  await al.locator('#wager-state').getByText('The host has your wager as $400').waitFor();
+  await al.locator('#wager-state').getByText('The host has your team’s wager as $400').waitFor();
   await sendWager(al, 345);
   await dd2.getByText('📱 from phone · sent by Al').waitFor();
   await host2.locator('.panel [data-next]').click();
@@ -507,7 +508,7 @@ try {
   // hidden again.
   const box1 = team1.locator('input[data-wager]');
   await box1.fill('500');
-  await al.locator('#wager-state').getByText('The host has your wager as $500').waitFor();
+  await al.locator('#wager-state').getByText('The host has your team’s wager as $500').waitFor();
   await box1.blur();
   await host2.waitForFunction(() => document.querySelector('button[title^="Undo:"]')?.getAttribute('title')?.includes('→'));
   const undo3 = await host2.getByRole('button', { name: '↶ Undo' }).getAttribute('title');

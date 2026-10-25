@@ -147,6 +147,22 @@ describe('the checklist', () => {
     ];
     expect(validate(game).find((p) => p.text === 'Two players share a color')).toMatchObject({ tab: 'play', level: 'warn' });
   });
+
+  it('says teams for a game with phone buzzer teams', () => {
+    const game = jeopardyGame();
+    game.settings.buzzer = true;
+    game.settings.buzzTeams = true;
+    game.players = [];
+    expect(validate(game).find((p) => p.text.startsWith('No teams yet'))?.text).toBe('No teams yet: add them when you press Play');
+    game.players = [
+      { id: 'a', name: 'Red', color: '#ff0000' },
+      { id: 'b', name: 'Blue', color: '#FF0000' },
+    ];
+    expect(validate(game).some((p) => p.text === 'Two teams share a color')).toBe(true);
+    // (Teams ticked with buzzer mode off: players, as the game plays.)
+    game.settings.buzzer = false;
+    expect(validate(game).some((p) => p.text === 'Two players share a color')).toBe(true);
+  });
 });
 
 describe('✍ multiple choice', () => {

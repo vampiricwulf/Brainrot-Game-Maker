@@ -153,7 +153,7 @@
 <!-- 🪟 The card window: open it for a player (or switch it to another), or close it. -->
 {#snippet winPick()}
   <div class="muted small">
-    <b>🪟 Card window</b>: a window with only one player’s 🤫 cards (pictures and videos too), for a player with no phone. Share just it with them (a Discord DM call), turn the laptop round, or put it on a second screen. Never share it with viewers.
+    <b>🪟 Card window</b>: a window with only one {teams ? 'team’s' : 'player’s'} 🤫 cards (pictures and videos too), for a {teams ? 'team' : 'player'} with no phone. Share just it with them (a Discord DM call), turn the laptop round, or put it on a second screen. Never share it with viewers.
   </div>
   <div class="row wins">
     {#each session.players as p (p.id)}

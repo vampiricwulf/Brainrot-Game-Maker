@@ -247,6 +247,15 @@ describe('hostState (what the buzzer room is told)', () => {
     session.intro = null;
     session.currentPickerId = 'a';
     expect(phoneStatus(game, session)).toEqual({ text: 'Ann picks the next clue', seats: ['a'], seatsText: 'Your pick! Tell the host which clue' });
+    // Teams: each phone on the team is told it's the team's pick (not each one's to call), and its Daily Double.
+    game.settings.buzzTeams = true;
+    expect(phoneStatus(game, session)?.seatsText).toBe('Your team’s pick! Tell the host which clue');
+    session.phase = 'clue';
+    session.dd = { stage: 'splash', playerId: 'b' };
+    expect(phoneStatus(game, session)?.seatsText).toBe('Daily Double — your team’s up!');
+    game.settings.buzzTeams = false;
+    session.phase = 'board';
+    session.dd = null;
     // Played out: nobody picks (no seat told to).
     const board = game.rounds[0] as BoardRound;
     for (const c of playableClues(board)) session.used[c.id] = true;

@@ -338,6 +338,8 @@ try {
   // ---------- 🤫 Send a card… to one person, then ⇄ Everyone else: the rest of their team too ----------
   await host.locator('.panel .toolsrow').getByRole('button', { name: '🤫 Send a card…' }).click();
   const sendBox = host.getByRole('dialog', { name: 'Send a card' });
+  const winLine = await sendBox.locator('.winpick').innerText();
+  assert(winLine.includes('only one team’s 🤫 cards') && winLine.includes('for a team with no phone'), `its 🪟 Card window is for a team (${winLine.split('.')[0]})`);
   await sendBox.getByRole('button', { name: 'Gus on Green', exact: true }).click();
   await sendBox.getByRole('button', { name: '⇄ Everyone else' }).click();
   const chipOn = async (name) => (await sendBox.getByRole('button', { name, exact: typeof name === 'string' }).getAttribute('aria-pressed')) === 'true';

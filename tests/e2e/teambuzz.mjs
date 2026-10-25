@@ -161,6 +161,8 @@ try {
   const al = await phone('Al', 'Player 1');
   const bea = await phone('Bea', 'Player 2');
   await card.getByText('3 people on 2 of 2 teams').waitFor();
+  const bar = (await host.locator('.actions .room-note').innerText()).replace(/\s+/g, ' ');
+  assert(bar.includes(`Room ${code} · 3 people on 2 of 2 teams`), `the bar by Start game counts them as the card does (${bar})`);
   const list = card.locator('ul.phones');
   const listed = (await list.innerText()).replace(/\s+/g, ' ');
   assert(/Player 1 2 on it.*Ann ✔ joined.*Al ✔ joined.*Player 2 1 on it.*Bea ✔ joined/.test(listed), `two phones on one team, one on the other: the host sees who is on which team (${listed})`);
@@ -413,6 +415,16 @@ try {
   await host.keyboard.press('Escape');
 
   // ---------- 👥 Teams mid-game (not Players): a new row is a team, and removing one says its phones go ----------
+  // (In a clue Bea, then Al, buzzed in: a team taken out leaves the buzz order, the rest move up.)
+  await host.locator('.stage-box .board .tile:not(.used)').first().click();
+  await big(bea).getByText('Get ready…').waitFor();
+  await host.keyboard.press('u');
+  await big(bea).getByText('BUZZ!').waitFor();
+  await press(bea);
+  await big(bea).getByText("You're answering!").waitFor();
+  await press(al);
+  const order = host.getByRole('list', { name: 'Buzz order' });
+  await order.locator('li', { hasText: 'Al' }).waitFor();
   await host.getByRole('button', { name: '👥 Teams' }).click();
   const teamsDialog = host.getByRole('dialog', { name: 'Teams' });
   await teamsDialog.waitFor();
@@ -425,6 +437,9 @@ try {
   // Removed, then ↩ Restore (a mistake): its phone says it left, then that it's back, and its person rejoins it.
   await teamsDialog.locator('.ask').getByRole('button', { name: 'Remove', exact: true }).click();
   await bea.locator('#seats-note').getByText('Your team left the game. Pick another one.').waitFor();
+  await order.locator('li', { hasText: 'Bea' }).waitFor({ state: 'detached' });
+  const left = (await order.locator('li').allInnerTexts()).map((t) => t.replace(/\s+/g, ' ').replace(/ \+.*$/, ''));
+  assert(left.join() === '1. Al (Player 1)', `a team taken out mid-clue leaves the buzz order, the rest move up (${left.join(' / ')})`);
   await teamsDialog.getByRole('button', { name: '↩ Restore' }).click();
   await bea.locator('#seats-note').getByText('Your team is back in the game. Tap it to rejoin.').waitFor();
   assert(true, 'a team removed and restored: its phone says it left the game, then that it’s back (tap it to rejoin)');
@@ -435,6 +450,8 @@ try {
   await teamsDialog.getByRole('button', { name: 'Remove Team 3' }).click();
   await teamsDialog.getByRole('button', { name: 'Remove', exact: true }).click();
   await teamsDialog.getByRole('button', { name: 'Done' }).click();
+  await host.keyboard.press('Escape');
+  await host.locator('.stage-box .board').waitFor();
 
   // ---------- 🎡 Wheel › 🎯 Pick a team: viewers see "Pick a team" over the teams ----------
   await host.getByRole('button', { name: '🎡 Wheel' }).click();

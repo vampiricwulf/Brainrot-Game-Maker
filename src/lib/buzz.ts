@@ -159,7 +159,7 @@ export function phoneStatus(game: Game, session: Session, pregame = false, room:
     const right = ddMark(game, session);
     if (right !== undefined)
       return { text: `${who} ${right ? 'got' : 'missed'} the Daily Double`, seats: [id], seatsText: right ? (teamsOn(game.settings) ? 'Your team got it!' : 'You got it!') : 'Not this time' };
-    return { text: `Daily Double: ${who}`, seats: [id], seatsText: 'Daily Double — you’re up!' };
+    return { text: `Daily Double: ${who}`, seats: [id], seatsText: teamsOn(game.settings) ? 'Daily Double — your team’s up!' : 'Daily Double — you’re up!' };
   }
   // A partner clue's miss let the others steal it: they buzz in as on any clue (nothing greyed), the two locked out.
   const steal = session.phase === 'clue' && session.partner && !session.revealed ? partnerSteal(session) : null;
@@ -172,7 +172,8 @@ export function phoneStatus(game: Game, session: Session, pregame = false, room:
       if (isBoard(round) && roundComplete(session, game)) return { text: `${roundName(round, session.currentRound)} is done` };
       const id = session.currentPickerId;
       const who = nameOf(id);
-      return who && id ? { text: `${who} picks the next clue`, seats: [id], seatsText: 'Your pick! Tell the host which clue' } : null;
+      const pick = teamsOn(game.settings) ? 'Your team’s pick! Tell the host which clue' : 'Your pick! Tell the host which clue';
+      return who && id ? { text: `${who} picks the next clue`, seats: [id], seatsText: pick } : null;
     }
     case 'final': {
       const f = currentFinal(session, game);

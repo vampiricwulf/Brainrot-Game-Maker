@@ -13,7 +13,17 @@ in plain words for the people who make and host games. Anything committed but no
 
 ## Unreleased
 
+### Changed
+
+- Teams: the bar by Start game and ✅ Going live? count people on teams as the 📱 card does (“3 people on 2 of 3 teams”), not “2 of 3 joined”.
+- Teams: phones say “Your team’s pick! Tell the host which clue” and “Daily Double — your team’s up!”, and a wager the host typed reads “The host has your team’s wager as $100”. A buzzer server you run yourself needs deploying again for that last one.
+- Teams: the Daily Double panel says “A phone on the team can send its wager”, 🤫 Send a card…'s 🪟 Card window is “for a team with no phone”, and the editor's checklist says “No teams yet” and “Two teams share a color”.
+
 ### Fixed
+
+- Teams: someone you move to another team (📱 › Move to another team) during the wagers or the typed answers no longer sees that team's wager or answer on their phone: they're told one is in, as someone who joins late is. A buzzer server you run yourself needs deploying again for this.
+- A team or player taken out mid-clue leaves the buzz order (the rest move up) instead of staying as “Al (?)”.
+- The pre-game 👥 Players and 👥 Teams rows keep ▲ ▼ 🗑 together in a narrow window (about 600 px wide), wrapping them as one instead of splitting them.
 
 - A wheel or dice tile: ▦ Done ▶ board and ↩ Cancel (keep tile) take its own wheel or dice off the stage with it (it stayed on stream over the board), though not while it's still spinning or rolling; with its score effect not given yet, the first Done says so. ↩ Cancel waits for an Undo once that score effect was given, as it does after an award.
 - Esc while a wheel spins or dice roll says to wait for them to land, as W and D do, instead of closing them before viewers see the result and without offering its score effect.

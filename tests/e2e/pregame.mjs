@@ -81,6 +81,14 @@ try {
     const display = await page.locator('section[aria-labelledby="pregame-display"]').boundingBox();
     assert(display.x > players.x + players.width && display.y + display.height <= height - 60, `at ${width}×${height} 🖥 Display is beside 👥 Players, in view`);
   }
+  // A narrow window (a laptop at 225%, beside OBS): ▲ ▼ 🗑 may wrap under the row, but together, never split up.
+  await page.setViewportSize({ width: 600, height: 720 });
+  const mid = async (name) => {
+    const b = await page.getByRole('button', { name }).boundingBox();
+    return Math.round(b.y + b.height / 2);
+  };
+  const moves = [await mid('Move Bo up'), await mid('Move Bo down'), await mid('Delete Bo')];
+  assert(moves.every((y) => y === moves[0]), `at 600px a player's ▲ ▼ 🗑 stay together on one line (${moves.join(' / ')})`);
   await page.setViewportSize({ width: 1280, height: 720 });
 
   // ---------- The sticky Start bar, with ⚖ Game rules open, at 1280×720 ----------

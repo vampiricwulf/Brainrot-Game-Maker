@@ -2376,6 +2376,45 @@ describe('wagers', () => {
     expect(spy.last('view')!.view.wager).toEqual({ id: 'final:r10', kind: 'final', open: true, mine: true, max: 100 });
   });
 
+  it('teams: someone the host moves onto a team after its wager or answer came in is told one is in, never the amount or the words', () => {
+    const g = setup();
+    g.room.hostOpen();
+    const st = (x: Partial<HostState> = {}) => state({ teams: true, seats: [{ id: 'a', name: 'Red', color: '#ff0000' }, { id: 'b', name: 'Blue', color: '#0000ff' }], ...x });
+    g.send({ t: 'state', state: st() });
+    const join = (conn: string, seatId: string, name: string) => {
+      const p = g.phone(conn);
+      p.send({ t: 'join', seatId, name });
+      return p;
+    };
+    const al = join('al', 'a', 'Al');
+    const ann = join('ann', 'a', 'Ann');
+    const bea = join('bea', 'b', 'Bea');
+    const memberOf = (conn: string) => g.hostLast('phones')!.phones.find((p) => p.conn === conn)?.member;
+    g.t.now += 1000;
+    g.send({ t: 'state', state: st({ wager: final() }) });
+    bea.send({ t: 'wager', id: 'final:r9', amount: 999 });
+    const taken = final({ seats: [{ id: 'a', max: 100 }, { id: 'b', max: 50, amount: 999, got: 1 }] });
+    g.send({ t: 'state', state: st({ wager: taken }) });
+    expect(bea.last('view')!.view.wager).toMatchObject({ amount: 999 });
+    // Al (Red) moved to Blue during the wagers: told Blue's is in, never how much.
+    g.t.now += 1000;
+    g.send({ t: 'move', member: memberOf('al')!, seatId: 'b' });
+    expect(al.last('view')!.view.wager).toMatchObject({ mine: true, hidden: true });
+    expect(said(al.msgs())).not.toContain('999');
+    // Bea's typed answer in, then Ann moved to Blue: neither the words nor Blue's wager.
+    g.t.now += 1000;
+    const answers = { id: 'clue1', open: true, seats: [{ id: 'a' }, { id: 'b' }] };
+    g.send({ t: 'state', state: st({ wager: { ...taken!, open: false }, answers }) });
+    bea.send({ t: 'answer', id: 'clue1', text: 'IRL secret' });
+    expect(bea.last('view')!.view.answer).toMatchObject({ text: 'IRL secret' });
+    g.t.now += 1000;
+    g.send({ t: 'move', member: memberOf('ann')!, seatId: 'b' });
+    expect(ann.last('view')!.view.answer).toMatchObject({ mine: true, hidden: true });
+    expect(ann.last('view')!.view.wager).toMatchObject({ mine: true, hidden: true });
+    expect(said(ann.msgs())).not.toContain('IRL secret');
+    expect(said(ann.msgs())).not.toContain('999');
+  });
+
   it("a seat taken after the wagers began doesn't show the host's amount for it", () => {
     const g = game();
     g.send({ t: 'state', state: state({ wager: final({ seats: [{ id: 'a', max: 100, amount: 6565, fromHost: true }] }) }) });

@@ -62,8 +62,10 @@ room, plus the phone page it serves. It is not part of the app's single-file bui
   per phone, and answers the phone (`wagered`, with why not: `closed`, `over` and the max, `bad`, `slow`). It keeps it
   per seat and tells the host (`wager` with a count `n` and, teams, `by`); one sent while the host is away comes when it
   is back, unless the host's `got` says it took it. The amount goes to the host and to that seat's own phones (their
-  view's `wager`) only: never to another phone or in the seat list. Other phones only hear who is wagering (a Daily
-  Double) or that they sit it out (a Final). A new round id forgets what was sent.
+  view's `wager`) only: never to another phone or in the seat list, and a phone seated (or on the team: joined it or
+  moved onto it by the host, `Member.teamAt`) after the round began sees only what it sent itself (`hidden`: one is
+  in). Other phones only hear who is wagering (a Daily Double) or that they sit it out (a Final). A new round id
+  forgets what was sent.
 - **Answers** (`answers` in the host's state: a round id of 100 characters at most, `open`, its seats with `got` and
   `closed` (the host has judged that seat's answer), and, with `'choices'`, 2 to 6 `choices`, each an `id` of 64
   characters at most and its words, 80 at most, never which is right): each seat in it sends its own answer from its
@@ -73,8 +75,8 @@ room, plus the phone page it serves. It is not part of the app's single-file bui
   `open: false` then), at most 10 in 10 seconds per phone, and answers the phone (`answered`, with why not: `closed`,
   `bad`, `slow`). It keeps it per seat and tells the host (`answer` with a count `n`, teams `by`, and the `pick`); one sent
   while the host is away comes when it is back, unless the host's `got` says it took it. The words go to the host and
-  to that seat's own phones (their view's `answer`) only, and a phone seated (or on the team) after the round began
-  sees only what it sent itself (`hidden`: one is in). The choices go only to the phones of seats in it. With the round
+  to that seat's own phones (their view's `answer`) only, and a phone seated (or on the team: joined or moved onto it)
+  after the round began sees only what it sent itself (`hidden`: one is in). The choices go only to the phones of seats in it. With the round
   closed the room keeps what was sent: the same id again shows each phone its own; a new id forgets it.
 - **Private cards** (`cards` in the host's state, at most 8): a card is shown only on the phones the host sends it to,
   and only when the host sends it (a partner clue's 📤 Send): nothing goes out by itself. Each has an `id`, who it's

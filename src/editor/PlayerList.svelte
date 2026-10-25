@@ -213,9 +213,7 @@
       <span class="name"></span>
       <span class="chip"></span>
       <span class="score">Start score</span>
-      <span class="btn">▲</span>
-      <span class="btn">▼</span>
-      <span class="btn">🗑</span>
+      <span class="moves"><span class="btn">▲</span><span class="btn">▼</span><span class="btn">🗑</span></span>
     </div>
   {/if}
   <div class="rows" role="list" aria-label="{noun}s">
@@ -292,16 +290,19 @@
           aria-label="{p.name || `${noun} ${i + 1}`}'s start score"
         />
       {/if}
-      <button class="ghost tiny up" onclick={() => nudge(i, -1)} disabled={i === 0} aria-label="Move {p.name || `${lower} ${i + 1}`} up">▲</button>
-      <button class="ghost tiny down" onclick={() => nudge(i, 1)} disabled={i === players.length - 1} aria-label="Move {p.name || `${lower} ${i + 1}`} down">▼</button>
-      <button
-        class="ghost tiny del"
-        class:danger={!inGame}
-        onclick={() => remove(p)}
-        disabled={lastOne}
-        aria-label="{removeWord} {p.name}"
-        title={lastOne ? `The game needs at least one ${lower}: add another first` : `${removeWord} ${p.name}`}
-      >{inGame ? '−' : '🗑'}</button>
+      <!-- ▲ ▼ 🗑 together: a narrow row wraps them as one, never splits them. -->
+      <span class="moves">
+        <button class="ghost tiny up" onclick={() => nudge(i, -1)} disabled={i === 0} aria-label="Move {p.name || `${lower} ${i + 1}`} up">▲</button>
+        <button class="ghost tiny down" onclick={() => nudge(i, 1)} disabled={i === players.length - 1} aria-label="Move {p.name || `${lower} ${i + 1}`} down">▼</button>
+        <button
+          class="ghost tiny del"
+          class:danger={!inGame}
+          onclick={() => remove(p)}
+          disabled={lastOne}
+          aria-label="{removeWord} {p.name}"
+          title={lastOne ? `The game needs at least one ${lower}: add another first` : `${removeWord} ${p.name}`}
+        >{inGame ? '−' : '🗑'}</button>
+      </span>
       {#if members}
         {@const on = members(p.id)}
         <span class="on-team muted small" dir="auto">{on.length ? `On it: ${on.join(', ')}` : 'Nobody on it yet'}</span>
@@ -433,6 +434,11 @@
     padding: 0 4px;
     border-radius: 999px;
     line-height: 1.3;
+  }
+  .moves {
+    display: flex;
+    gap: 8px;
+    flex: none;
   }
   .score {
     /* Room for 7 digits and the spinner (12400 reads whole). */

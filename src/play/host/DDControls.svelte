@@ -186,7 +186,7 @@
         <span class="muted">{dual ? '· you can still type over it (only you see it).' : '· its amount stays hidden (viewers see this window) · you can type over it.'}</span>
       {:else if hasPhone}
         <span class="muted"
-          >{#if wager === null}<span data-dd-phone>📱 waiting…</span>{' '}{/if}Their phone can send the wager: {dual
+          >{#if wager === null}<span data-dd-phone>📱 waiting…</span>{' '}{/if}{noun === 'team' ? 'A phone on the team can send its wager' : 'Their phone can send the wager'}: {dual
             ? 'it fills in here (only you see it).'
             : 'it comes in hidden (viewers see this window).'}</span
         >

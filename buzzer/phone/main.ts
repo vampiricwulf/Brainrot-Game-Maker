@@ -1587,7 +1587,7 @@ function wagerState(w: PhoneWager, team: boolean, sym: string): string {
   const amt = money(w.amount, sym);
   // (As numbers: "00" typed after the 0 the host put in for a player with nothing to wager is the same wager.)
   if (typed && Number(typed) !== w.amount) return `${tap(`Not sent yet: tap ${w.host ? 'Send' : 'Change'} wager to send it.`)} What the host has: ${amt}`;
-  const what = w.host ? `The host has your wager as ${amt}` : team && w.by ? `✔ ${w.byYou ? 'You' : w.by} sent ${amt} for your team` : w.sent ? `✔ Sent: ${amt}` : '';
+  const what = w.host ? `The host has ${team ? 'your team’s' : 'your'} wager as ${amt}` : team && w.by ? `✔ ${w.byYou ? 'You' : w.by} sent ${amt} for your team` : w.sent ? `✔ Sent: ${amt}` : '';
   return `${what}. You can change it until the question shows.`;
 }
 

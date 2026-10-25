@@ -1288,7 +1288,8 @@
   /** Openings at or below this belong to earlier clues. */
   let clueArmFloor = 0;
   const queueRows = $derived(
-    (roomQueue?.queue ?? []).map((q, i) => ({
+    // (Not a seat taken out since: its row goes, the ranks close up. An Undo bringing it back brings its row back.)
+    (roomQueue?.queue ?? []).filter((q) => session.players.some((p) => p.id === q.seatId)).map((q, i) => ({
       id: q.seatId,
       rank: i + 1,
       // Teams: who on the team buzzed, "Ann (Red team)".
@@ -3237,10 +3238,17 @@
   /** Buzzer mode is on and the room is up: its code, and the players whose phones are in. */
   const roomUp = $derived(phonesOn && !!remote.code && remote.status !== 'off' && remote.status !== 'error');
   const phonesIn = $derived(session.players.filter((p) => remote.phones.some((ph) => ph.seatId === p.id && ph.connected)).length);
-  /** Who has joined, as the Start bar and the checklist say it: no count while the room is out of reach (its list is stale). */
-  const joinedText = $derived(
-    remote.status === 'online' ? `${phonesIn} of ${session.players.length} joined` : remote.status === 'connecting' ? 'connecting…' : '⚠ reconnecting to the buzzer room…',
-  );
+  /** Teams: the people (phones) on a team, as the 📱 card counts them. */
+  const people = $derived(remote.phones.filter((ph) => ph.member && ph.connected && session.players.some((p) => p.id === ph.seatId)).length);
+  /**
+   * Who has joined, as the Start bar and the checklist say it (teams: as the 📱 card does): no count while the room is
+   * out of reach (its list is stale).
+   */
+  const joinedText = $derived.by(() => {
+    if (remote.status === 'connecting') return 'connecting…';
+    if (remote.status !== 'online') return '⚠ reconnecting to the buzzer room…';
+    return pregameTeams ? `${people} ${people === 1 ? 'person' : 'people'} on ${phonesIn} of ${session.players.length} teams` : `${phonesIn} of ${session.players.length} joined`;
+  });
   /** Start was pressed with Buzzer mode on but no room: the bar asks (start it first, or play without phones). */
   let askNoRoom = $state(false);
   $effect(() => {

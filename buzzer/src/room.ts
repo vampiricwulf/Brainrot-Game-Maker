@@ -50,10 +50,10 @@
  * open, over the seat's max only when the host doesn't hold to it, WAGER_RATE sends at most), keeps it per seat, and
  * passes the amount to the host and to that seat's own phones only: never to another phone, never in the seat list.
  * One sent while the host is away reaches it when it is back (unless it already took it: WagerSeat.got). A phone that
- * took its seat (teams: joined its team) after the round began sees no amount it didn't send itself: not the host's,
- * not a teammate's (whoever has the code could otherwise tap a free seat or join a rival team to read theirs). It is
- * told one is in, and can still send its own. The same for the words sent on a ✍ clue (HostState.answers): a phone
- * seated (teams: on the team) after the answers began sees only what it sent itself.
+ * took its seat (teams: joined its team or was moved onto it, Member.teamAt) after the round began sees no amount it
+ * didn't send itself: not the host's, not a teammate's (whoever has the code could otherwise tap a free seat or join a
+ * rival team to read theirs). It is told one is in, and can still send its own. The same for the words sent on a ✍ clue
+ * (HostState.answers): a phone seated (teams: on the team) after the answers began sees only what it sent itself.
  *
  * Floods: a phone socket over PHONE_RATE messages a second for FLOOD_STRIKES seconds in a row, over FLOOD_BURST in one
  * second, or over PHONE_BYTES in one second, is closed (4008) before its messages are read, and for FLOOD_BLOCK_MS a
@@ -1794,8 +1794,9 @@ export class Room {
         const me: MemberRef | null = m && p.member ? { id: p.member, name: m.name } : null;
         const round = st.wager && this.s.wagers?.id === st.wager.id ? this.s.wagers : undefined;
         let sent = round?.seats[p.seatId];
-        // Seated (teams: on the team) since the round began: only what it sent itself (see Wagers above).
-        const since = m ? m.at : this.s.seatedAt?.[p.seatId];
+        // Seated (teams: joined its team or was moved onto it, Member.teamAt) since the round began: only what it sent
+        // itself (see Wagers above).
+        const since = this.since(p);
         const late = round?.at !== undefined && since !== undefined && since > round.at;
         // (Teams: by who sent it, not when: a teammate's wager changed after they joined stays hidden from them too.)
         const own = m ? sent?.member === p.member : sent?.at !== undefined && sent.at >= (since ?? 0);
