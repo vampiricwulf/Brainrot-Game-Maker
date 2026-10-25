@@ -14,12 +14,16 @@ const landing = (el: HTMLElement) => usable(el) && !el.hasAttribute('data-no-res
 let moving = false;
 /** True while the rescue itself moves the focus (in that focusin): a guess at the nearest control, not one chosen. */
 export const rescuing = (): boolean => moving;
+let placed: Element | null = null;
+/** The keys are where the rescue last put them (its guess, not moved since): a better place may take them. */
+export const rescued = (): boolean => !!placed && document.activeElement === placed;
 
 export function focusRescue(root: HTMLElement) {
   /** What had the keys last, and the elements around it (nearest first). */
   let last: HTMLElement | null = null;
   let around: HTMLElement[] = [];
   const onin = (e: FocusEvent) => {
+    if (!moving) placed = null;
     last = e.target as HTMLElement;
     around = [];
     for (let p = last.parentElement; p && p !== root.parentElement; p = p.parentElement) around.push(p);
@@ -39,6 +43,7 @@ export function focusRescue(root: HTMLElement) {
       moving = true;
       to.focus();
       moving = false;
+      placed = to;
       return;
     }
   };

@@ -3,12 +3,13 @@
   one, in the main cell: the card keeps the result, the actions and spinning or rolling again.
 -->
 <script lang="ts">
-  import { onMount, tick } from 'svelte';
+  import { onDestroy, onMount, tick, untrack } from 'svelte';
   import { app } from '../../lib/app.svelte';
   import { textOn } from '../../lib/colors';
   import { overlayDoneAt, startTimer } from '../../lib/live';
   import type { Game, Outcome, Session } from '../../lib/model';
-  import { addWheel, cardDone as isCardDone, cardsKey, removeWheel, rollDice, spinSegments, spinWheel, wheelEdited, wheelSpentUp } from '../../lib/overlay';
+  import { addWheel, cardDone as isCardDone, cardsKey, removeWheel, rollDice, scoreCardsLeft, spinSegments, spinWheel, wheelEdited, wheelSpentUp } from '../../lib/overlay';
+  import { rescued } from '../../lib/focusrescue';
   import { faceText, isRespin, outcomeText, rollOutcome, rollResult, sliceLabel } from '../../lib/tools';
   import ActionCard from './ActionCard.svelte';
   import WheelEdit from './WheelEdit.svelte';
@@ -131,6 +132,30 @@
   const again = $derived(o?.kind === 'wheel' && !!o.spin && o.result !== null && isRespin(o.segments[o.result]));
   /** The wheel landed or the dice came up: Close is the main button now, and spinning or rolling again is secondary. */
   const landed = $derived(!busy && ((o?.kind === 'wheel' && !!o.spin) || (o?.kind === 'dice' && !!o.roll)));
+  /**
+   * It landed, a score card went (confirmed or skipped), or it closed: the keys go on to the main button (Close, Close ▶
+   * board, 👁 Reveal answer), not stay on the side button they fell to while Spin! was off or the card's button went.
+   * (Never from a button or box the host chose.)
+   */
+  function keysToMain(): void {
+    void tick().then(() => {
+      const a = document.activeElement;
+      if (a && a !== document.body && !(rescued() && a.closest('.panel'))) return;
+      document.querySelector<HTMLElement>('.panel [data-next]:not(:disabled)')?.focus({ preventScroll: true });
+    });
+  }
+  $effect(() => {
+    if (landed) untrack(keysToMain);
+  });
+  const cardsLeft = $derived(scoreCardsLeft(o, session, now).length);
+  let cardsBefore = 0;
+  $effect(() => {
+    const n = cardsLeft;
+    if (n < cardsBefore) untrack(keysToMain);
+    cardsBefore = n;
+  });
+  onDestroy(keysToMain);
+
   /** A wheel/dice tile with nothing to ask, showing its own tool: closing it goes back to the board (the tile is done). */
   const tileDone = $derived.by(() => {
     const info = session.phase === 'clue' ? currentClueInfo(session, game) : undefined;

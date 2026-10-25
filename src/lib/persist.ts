@@ -29,6 +29,8 @@ export interface SavedPlay {
   cover?: boolean;
   /** A wheel or dice on screen (a board game's roll to move by, a wheel's points not yet confirmed): resuming brings it back. */
   overlay?: Overlay;
+  /** That wheel or dice is its wheel/dice tile's own (this clue's): closing it finishes the tile, as before the reload. */
+  toolTile?: string;
 }
 
 async function safe<T>(fn: () => Promise<T>): Promise<T | undefined> {
@@ -262,8 +264,8 @@ function dropPlayRescue(stores = rescueStores()): void {
  * The page is going away: a copy of the game in progress that's written at once (call it before starting the last
  * IndexedDB write, see rescueDraft). Too big for the storage with its game: the session alone (the stored game is used).
  */
-export function rescuePlay(game: Game, session: Session, cover = false, overlay?: Overlay): void {
-  const base = { session, savedAt: (playRescuedAt = Date.now()), ...(cover ? { cover } : {}), ...(overlay ? { overlay } : {}) };
+export function rescuePlay(game: Game, session: Session, cover = false, overlay?: Overlay, toolTile?: string): void {
+  const base = { session, savedAt: (playRescuedAt = Date.now()), ...(cover ? { cover } : {}), ...(overlay ? { overlay } : {}), ...(overlay && toolTile ? { toolTile } : {}) };
   for (const s of rescueStores())
     try {
       s.setItem(playRescueKey(), JSON.stringify({ ...base, game } satisfies SavedPlay));
@@ -288,7 +290,15 @@ export async function loadPlay(): Promise<SavedPlay | undefined> {
         // (Only its session fitted: its game is the stored one, when that's the same game.)
         const game = r.game && typeof r.game === 'object' ? r.game : stored?.game?.id === session.gameId ? stored.game : undefined;
         if (game) {
-          if (!best || r.savedAt > best.savedAt) best = { game, session, savedAt: r.savedAt, ...(r.cover ? { cover: true } : {}), ...(r.overlay ? { overlay: r.overlay } : {}) };
+          if (!best || r.savedAt > best.savedAt)
+            best = {
+              game,
+              session,
+              savedAt: r.savedAt,
+              ...(r.cover ? { cover: true } : {}),
+              ...(r.overlay ? { overlay: r.overlay } : {}),
+              ...(r.overlay && typeof r.toolTile === 'string' ? { toolTile: r.toolTile } : {}),
+            };
           continue;
         }
       }
@@ -307,7 +317,7 @@ let playGen = 0;
 let playWrites = 0;
 /** The game in progress may not be stored as it stands: a write of it is under way, or failed and waits to be tried again. */
 export const playUnsure = (): boolean => playWrites > 0 || failed.has('play');
-export const savePlay = (game: Game, session: Session, cover = false, overlay?: Overlay) => {
+export const savePlay = (game: Game, session: Session, cover = false, overlay?: Overlay, toolTile?: string) => {
   const gen = playGen;
   return write('play', async () => {
     // (Discarded or over since: it isn't written back.)
@@ -315,7 +325,7 @@ export const savePlay = (game: Game, session: Session, cover = false, overlay?: 
     const savedAt = Date.now();
     playWrites++;
     try {
-      await set(playKey, { game, session, savedAt, ...(cover ? { cover } : {}), ...(overlay ? { overlay } : {}) } satisfies SavedPlay);
+      await set(playKey, { game, session, savedAt, ...(cover ? { cover } : {}), ...(overlay ? { overlay } : {}), ...(overlay && toolTile ? { toolTile } : {}) } satisfies SavedPlay);
     } catch (err) {
       // (Failed once it was cleared: there's nothing left to keep, so nothing to try again.)
       if (gen === playGen) throw err;

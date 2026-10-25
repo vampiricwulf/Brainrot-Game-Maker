@@ -201,6 +201,8 @@ try {
   await page.keyboard.press('d');
   await aud.waitForFunction(() => window.__plays.some((s) => s.endsWith('#dice')));
   assert(true, 'rolling dice rattles in the audience window');
+  // (Esc waits for them to land.)
+  await page.locator('[data-tool-controls] .result').waitFor();
   await page.keyboard.press('Escape');
   // A wheel ticks as its slices pass the pointer, then lands.
   await page.getByRole('button', { name: '🎡 Wheel' }).click();

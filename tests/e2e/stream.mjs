@@ -3,14 +3,15 @@
 // soon with a countdown, the cover), the clue caption, the Final's scores and wager ticks, and 📋 Copy standings; a
 // crowded 720p game; 12 players with phone buzzers (the join code only where people can buzz, a roll-off for 12,
 // the ✔ marks, a long tie heading on the end screen); and wheel and dice tiles in buzzer mode (the question, the buzzers
-// and the countdown wait for the tile's own tool, and only for it), a countdown started under the cover, Undo bringing
+// and the countdown wait for the tile's own tool, and only for it; Done and Cancel take it down, Esc waits for its spin,
+// the keys go back to its main button, a reload keeps it the tile's own), a countdown started under the cover, Undo bringing
 // back a countdown, everyone missing, and the stage's size with a long host note, the buzzers' row and a Daily Double;
 // TIME'S UP joined partway in a window reloaded during it, and not shown again in one reloaded after it.
 import { chromium } from 'playwright-core';
 import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { addClassicRounds, mainLabel, openGameFile, playWithPlayers } from './helpers.mjs';
+import { addClassicRounds, mainLabel, openGameFile, playWithPlayers, stored } from './helpers.mjs';
 
 const file = resolve(process.env.APP_FILE || 'dist/index.html');
 if (!existsSync(file)) throw new Error('Run `npm run build` first');
@@ -466,7 +467,10 @@ async function viewers() {
  * leave it on stream and its countdown going; a wheel closed over the answer starts no countdown; once dice replace a
  * wheel tile's wheel, a wheel opened later isn't taken for it. Also: the stage keeps its size with a long host note and
  * the buzzers' row, and on a Daily Double's question; Undo of a right answer brings back its countdown, everyone missing
- * makes 👁 Reveal answer the main button, and a tile opened under the cover keeps its countdown paused.
+ * makes 👁 Reveal answer the main button, and a tile opened under the cover keeps its countdown paused. Then: ▦ Done ▶ board
+ * and ↩ Cancel (keep tile) take the tile's own wheel or dice down with it (Cancel waits for an Undo of its score effect),
+ * Esc while it spins waits for it, the keys go back to its main button once it lands, and after a reload closing a dice
+ * tile's dice still finishes the tile.
  */
 async function tileTools() {
   console.log('Wheel and dice tiles, the countdown and the buzzers (single window, buzzer mode):');
@@ -484,11 +488,16 @@ async function tileTools() {
           { id: 'c0', title: 'Spin', clues: [clue('qw', 'wheel', 'Wheel question', { wheelId: 'w1' }), clue('qd', 'dice', 'Dice question', { diceId: 'std:d6' }), clue('qc', 'standard', 'Covered question')] },
           { id: 'c1', title: 'Plain', clues: [clue('qn', 'standard', 'Noted question', { hostNotes: NOTE }), clue('qp', 'standard', 'Plain question'), clue('qe', 'standard', 'Spare question')] },
           { id: 'c2', title: 'More', clues: [clue('qx', 'wheel', 'Second wheel question', { wheelId: 'w1' }), clue('qdd', 'dailyDouble', 'Double question'), { ...clue('qo', 'wheel', '', { wheelId: 'w1' }), questionSlide: { background: {}, elements: [] }, answerSlide: { background: {}, elements: [] } }] },
+          { id: 'c3', title: 'Extra', clues: [clue('qy', 'wheel', 'Third wheel question', { wheelId: 'w1' }), { ...clue('qs', 'wheel', '', { wheelId: 'w2' }), questionSlide: { background: {}, elements: [] }, answerSlide: { background: {}, elements: [] } }, { ...clue('qz', 'dice', '', { diceId: 'std:d6' }), questionSlide: { background: {}, elements: [] }, answerSlide: { background: {}, elements: [] } }] },
         ],
       },
     ],
     media: [], audio: {}, dice: [], theme: {},
-    wheels: [{ id: 'w1', name: 'Spinner', spinDurationMs: 500, removeAfterLanding: false, segments: [{ id: 's1', label: 'Go', color: '#e6194b', weight: 1 }, { id: 's2', label: 'Stop', color: '#3cb44b', weight: 1 }] }],
+    wheels: [
+      { id: 'w1', name: 'Spinner', spinDurationMs: 500, removeAfterLanding: false, segments: [{ id: 's1', label: 'Go', color: '#e6194b', weight: 1 }, { id: 's2', label: 'Stop', color: '#3cb44b', weight: 1 }] },
+      // (Slow enough to press Esc while it spins.)
+      { id: 'w2', name: 'Points', spinDurationMs: 3000, removeAfterLanding: false, segments: ['Plus', 'Bonus'].map((label, i) => ({ id: `ps${i}`, label, color: i ? '#3cb44b' : '#e6194b', weight: 1, scoreAction: { kind: 'addPoints', amount: 100 } })) },
+    ],
   };
   const gameFile = resolve('test-results/stream-tools.json');
   writeFileSync(gameFile, JSON.stringify(game));
@@ -748,6 +757,69 @@ async function tileTools() {
   await stage('.cover').waitFor({ state: 'detached' });
   await timerAtMost(19);
   assert(true, 'uncovered, it runs');
+  await host.keyboard.press('Escape');
+  await tileOf('qy').waitFor();
+
+  // ▦ Done ▶ board while a wheel tile's own wheel waits to spin: the wheel goes with the tile.
+  const used = (id) => tileOf(id).evaluate((e) => e.classList.contains('used'));
+  await tileOf('qy').click();
+  await stage('.ov .wheel').waitFor();
+  await host.locator('.panel button.done-board').click();
+  await tileOf('qy').waitFor();
+  await stage('.ov').waitFor({ state: 'detached' });
+  assert(await used('qy'), '▦ Done ▶ board with a wheel tile’s wheel still up takes the wheel off the stage with the tile');
+  // Esc while its wheel spins: it lands first, and offers its score effect (as W, D and a click wait for it).
+  await tileOf('qs').click();
+  await stage('.ov .wheel').waitFor();
+  await host.keyboard.press('w');
+  await host.locator('.panel [data-next]:disabled').waitFor();
+  await host.keyboard.press('Escape');
+  await host.locator('.toast', { hasText: 'Still spinning: wait for it to land' }).waitFor();
+  assert((await stage('.ov .wheel').count()) === 1 && (await stage('.board').count()) === 0, 'Esc while a wheel tile’s wheel spins says to wait for it to land, and the wheel stays');
+  await host.locator('.ac').waitFor({ timeout: 8000 });
+  // Landed: the keys go back to its main button (not to the side button they fell to while Spin! was off).
+  await host.waitForFunction(() => document.activeElement?.matches('.panel [data-next]'));
+  assert((await mainLabel(host)) === 'Close ▶ board', 'it lands with its score effect to give, and the keys on its Close ▶ board');
+  // Its points given: ↩ Cancel (keep tile) waits for an Undo, as after an award; then it takes the wheel down with it.
+  await host.locator('.tc > .row .chip', { hasText: 'Cy' }).click();
+  await host.locator('.ac .delta', { hasText: 'Cy: +$100' }).waitFor();
+  await host.locator('.ac').getByRole('button', { name: 'Confirm' }).click();
+  await host.locator('.ac').waitFor({ state: 'detached' });
+  await host.waitForFunction(() => document.activeElement?.matches('.panel [data-next]'));
+  const cancel = host.getByRole('button', { name: '↩ Cancel (keep tile)' });
+  assert(await cancel.isDisabled(), 'its score effect given: the keys go back to Close ▶ board, and ↩ Cancel (keep tile) waits for an Undo');
+  await host.keyboard.press('Control+z');
+  await host.locator('.ac').waitFor();
+  await cancel.click();
+  await tileOf('qs').waitFor();
+  await stage('.ov').waitFor({ state: 'detached' });
+  assert((await used('qs')) === false, 'undone, ↩ Cancel (keep tile) puts the tile back and takes its wheel off the stage');
+  // A dice tile with nothing to ask: rolled, the keys are on Close ▶ board; ↩ Cancel takes the dice down too.
+  await tileOf('qz').click();
+  await stage('.ov').waitFor();
+  await host.waitForFunction(() => document.activeElement?.matches('.panel [data-next]'));
+  await host.keyboard.press('d');
+  await host.locator('.tc .result').waitFor();
+  await host.waitForFunction(() => document.activeElement?.matches('.panel [data-next]'));
+  assert((await mainLabel(host)) === 'Close ▶ board', 'a dice tile rolled: the keys are on its Close ▶ board');
+  await cancel.click();
+  await tileOf('qz').waitFor();
+  await stage('.ov').waitFor({ state: 'detached' });
+  assert((await used('qz')) === false, '↩ Cancel (keep tile) on a rolled dice tile takes the dice off the stage');
+  // Rolled, then a reload: closing the dice still finishes the tile (no empty slide left in the clue).
+  await tileOf('qz').click();
+  await stage('.ov').waitFor();
+  await host.keyboard.press('d');
+  await host.locator('.tc .result').waitFor();
+  for (let i = 0; i < 100 && (await stored(host))?.toolTile !== 'qz'; i++) await host.waitForTimeout(100);
+  await host.reload();
+  await host.getByRole('button', { name: 'Resume game' }).click();
+  await host.locator('.mode-ask .mode', { hasText: 'Single window' }).click();
+  await host.locator('.tc .result').waitFor();
+  assert((await mainLabel(host)) === 'Close ▶ board', 'after a reload the rolled dice are back, with Close ▶ board');
+  await host.keyboard.press('Escape');
+  await tileOf('qz').waitFor();
+  assert((await used('qz')) && (await host.locator('.panel .status', { hasText: 'No question on this tile' }).count()) === 0, 'and closing them finishes the tile, as before the reload');
   await ctx.close();
 }
 

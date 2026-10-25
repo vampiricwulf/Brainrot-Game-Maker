@@ -266,6 +266,17 @@ describe('the game in progress as the page goes away', () => {
     vi.setSystemTime(2000);
     rescuePlay(game, session, false, { ...dice, nonce: 'n2' });
     expect((await loadPlay())?.overlay).toEqual({ ...dice, nonce: 'n2' });
+    // A dice tile's own dice: which tile it is goes with it (closing it after a reload finishes that tile).
+    vi.setSystemTime(3000);
+    await savePlay(game, session, false, dice, 'q1');
+    expect((await loadPlay())?.toolTile).toBe('q1');
+    vi.setSystemTime(4000);
+    rescuePlay(game, session, false, dice, 'q2');
+    expect((await loadPlay())?.toolTile).toBe('q2');
+    // (Never without its tool.)
+    vi.setSystemTime(5000);
+    await savePlay(game, session, false, undefined, 'q1');
+    expect((await loadPlay())?.toolTile).toBeUndefined();
     await clearPlay();
   });
 

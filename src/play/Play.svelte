@@ -43,7 +43,7 @@
   import PhoneRoom from './PhoneRoom.svelte';
   import type { SetBuzzSetting } from './BuzzerOptions.svelte';
   import PhoneChip from './host/PhoneChip.svelte';
-  import { openDice, openMemberWheel, openPartnerWheel, openPlayerWheel, openWheel, quickDice, rollDice, scoreCardsLeft, spinningRolls, spinWheel, startRollOff, toggleScoreboard, wheelSpentUp } from '../lib/overlay';
+  import { cardsScored, openDice, openMemberWheel, openPartnerWheel, openPlayerWheel, openWheel, quickDice, rollDice, scoreCardsLeft, spinningRolls, spinWheel, startRollOff, toggleScoreboard, wheelSpentUp } from '../lib/overlay';
   import type { DicePreset } from '../lib/model';
   import { tileDice } from '../lib/tools';
   import { dailyDoublesShort, partnerTilesShort, validate } from '../lib/validate';
@@ -2045,6 +2045,9 @@
     const o = app.live.overlay;
     // The scores over a wheel, dice or a pop-up: closing them shows it again (its result and score card are still to come).
     if (o?.kind === 'scoreboard' && o.under) return void (app.live.overlay = o.under);
+    // Still spinning or rolling: it lands first (on stream, then its score effect), as W, D and a click wait. (Not the
+    // roll-off or the partner wheel: closed early, they apply their result below.)
+    if (((o?.kind === 'wheel' && !o.partnerFor) || o?.kind === 'dice') && toolBusy()) return;
     // A score effect that landed on stream, neither confirmed nor skipped: the first close says so (Esc, Close, a click on
     // the stage), a second one closes without it.
     const left = scoreCardsLeft(o, session).join();
@@ -2462,6 +2465,18 @@
    * question never showed.
    */
   function back(keep = false): void {
+    // The tile's own wheel or dice goes with it (the scores over it too), as Esc closes it: not while it's still going,
+    // and with a score effect not given yet the first Done says so. (↩ Cancel takes it down without asking.)
+    if (info && tileToolUp(app.live, info.clue)) {
+      if (toolBusy()) return;
+      const left = keep ? '' : scoreCardsLeft(toolOverlay(app.live), session).join();
+      if (left && left !== cardsAsked) {
+        cardsAsked = left;
+        return hint('Score effect not given yet: Confirm or Skip it (Done again goes back without it)');
+      }
+      cardsAsked = '';
+      app.live.overlay = null;
+    }
     const clueId = info?.clue.id;
     keepAsk = null;
     // The host panel's status row then offers "↶ Reopen <tile>" (no toast: it would cover the round buttons).
@@ -2475,9 +2490,12 @@
     if (clueId) void tick().then(() => document.querySelector<HTMLElement>(`.play .stage-box .tile[data-clue="${clueId}"]`)?.focus({ preventScroll: true }));
   }
 
-  /** Back to the board without using up the tile (a misclick), unless points were already given for it. */
+  /**
+   * Back to the board without using up the tile (a misclick), unless points were already given for it (its own wheel's or
+   * dice's score effect too).
+   */
   function cancelClue(): void {
-    if (!notPlayedYet() && info && clueScored(session, info.clue.id))
+    if (!notPlayedYet() && info && (clueScored(session, info.clue.id) || (tileToolUp(app.live, info.clue) && cardsScored(app.live.overlay, session))))
       return toast('Points were given for this clue: undo them first (Ctrl+Z), or use ▦ Done ▶ board', 4000);
     // A 🤫 card sent to a phone can't be unsent: putting the tile back is the host's call. Said per player, as it is:
     // who saw it (their phone showed it), who got it and hasn't opened it; a player with no phone here got nothing.

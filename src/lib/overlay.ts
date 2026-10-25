@@ -139,6 +139,16 @@ export function cardDone(o: Overlay | null | undefined, session: Session, key: s
 }
 
 /**
+ * A score card of the wheel or dice on screen (under the scores too) was confirmed, its points not undone: ↩ Cancel
+ * (keep tile) on its tile waits for an Undo, as it does for an award.
+ */
+export function cardsScored(o: Overlay | null | undefined, session: Session): boolean {
+  const w = o?.kind === 'scoreboard' ? o.under : o;
+  if (w?.kind !== 'wheel' && w?.kind !== 'dice') return false;
+  return Object.values(w.cardsDone ?? {}).some((d) => typeof d === 'string' && session.scoreLog.some((e) => e.batchId === d && !e.undone));
+}
+
+/**
  * The score cards of the wheel or dice on screen still waiting once it has landed (neither confirmed nor skipped): its
  * result's (not a 🎯 player wheel's), the other dice's faces' and the other wheels'. Closing it with one left asks first.
  */

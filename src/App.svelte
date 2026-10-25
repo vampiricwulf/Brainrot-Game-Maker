@@ -332,7 +332,7 @@
     if (watch) commit();
     const { playGame, session } = app;
     const playing = app.screen === 'play' && !app.pregame && !app.test && playGame && session && playWatch && playWatched === playGame;
-    await Promise.all([editing && saveEditorNow(), playing && savePlay(playWatch!.value(), $state.snapshot(session), !!app.live.cover, keptOverlay())]);
+    await Promise.all([editing && saveEditorNow(), playing && savePlay(playWatch!.value(), $state.snapshot(session), !!app.live.cover, keptOverlay(), keptTile())]);
     editing = false;
     playsHere = false;
     paused = true;
@@ -444,7 +444,7 @@
   // The game in play too: a burst of host clicks is one write (flushed when leaving, like the draft), a second at most
   // after the first (phones sending wagers one after another don't put it off).
   const savePlaySoon = debounce(
-    (session: Session, cover?: boolean, overlay?: Overlay) => playWatch && mayPlay() && savePlay(playWatch.value(), session, cover, overlay),
+    (session: Session, cover?: boolean, overlay?: Overlay, toolTile?: string) => playWatch && mayPlay() && savePlay(playWatch.value(), session, cover, overlay, toolTile),
     300,
     1000,
   );
@@ -458,6 +458,8 @@
     const o = top?.kind === 'scoreboard' ? top.under : top;
     return o && (o.kind === 'wheel' || o.kind === 'dice') && !(o.kind === 'wheel' && o.editing) ? $state.snapshot(o) : undefined;
   }
+  /** The tile whose own wheel or dice that is (Play forgets it once another tool replaces it): closing it finishes the tile. */
+  const keptTile = (): string | undefined => (keptOverlay() ? app.live.toolTile : undefined);
   // ⚙ Settings → Autosave (desktop app): a copy of the game in the editor every few minutes, only when it changed.
   let autosaving = false;
   let lastAutosaveAt = Date.now();
@@ -585,7 +587,7 @@
       const { playGame, session } = app;
       const inPlay = loaded && mayPlay() && app.screen === 'play' && !app.pregame && !app.test;
       if (inPlay && session && playWatch && playWatched === playGame && (savePlaySoon.pending() || playUnsure()))
-        rescuePlay(playWatch.value(), $state.snapshot(session), !!app.live.cover, keptOverlay());
+        rescuePlay(playWatch.value(), $state.snapshot(session), !!app.live.cover, keptOverlay(), keptTile());
       saveEditorSoon.flush();
       savePlaySoon.flush();
     };
@@ -632,9 +634,10 @@
     const cover = !!app.live.cover;
     // (And a wheel or dice on screen.)
     const overlay = keptOverlay();
+    const toolTile = keptTile();
     // Nothing is written during pre-game, so an older saved game stays intact until "Start game".
     // (A ▶ Test this round is never written: the game kept to resume stays as it is.)
-    if (loaded && !app.pregame && !app.test && session && untrack(() => playWatched && playWatched === app.playGame)) savePlaySoon(session, cover, overlay);
+    if (loaded && !app.pregame && !app.test && session && untrack(() => playWatched && playWatched === app.playGame)) savePlaySoon(session, cover, overlay, toolTile);
   });
 
   const savedTime = (ts: number) => new Date(ts).toLocaleString();
@@ -886,7 +889,11 @@
     // Left with the screen covered: it comes back covered (viewers never see the host's screen meanwhile).
     if (saved.cover) app.live.cover = true;
     // A roll or spin that had landed comes back landed (its start is long past): not rolled again on stream.
-    if (saved.overlay?.kind === 'wheel' || saved.overlay?.kind === 'dice') app.live.overlay = saved.overlay;
+    // (A wheel/dice tile's own: closing it finishes the tile, as before.)
+    if (saved.overlay?.kind === 'wheel' || saved.overlay?.kind === 'dice') {
+      app.live.overlay = saved.overlay;
+      if (saved.toolTile) app.live.toolTile = saved.toolTile;
+    }
     app.pregame = false;
     app.toast = '';
     app.screen = 'play';
@@ -974,6 +981,7 @@
           savedAt: Date.now(),
           ...(app.live.cover ? { cover: true } : {}),
           ...(keptOverlay() ? { overlay: keptOverlay() } : {}),
+          ...(keptTile() ? { toolTile: keptTile() } : {}),
         };
     }
     leavePlay();

@@ -5,11 +5,11 @@ import { PLAYER_WHEEL, type BoardRound, type Game } from './model';
 
 const board = (g: Game, i: number = 0) => g.rounds[i] as BoardRound;
 import {
-  addWheel, editWheel, openCategories, openCategoryWheel, openDice, openPartnerWheel, openPlayerWheel, openQuickWheel, quickDice, removeWheel, openWheel, resetWheelEdits,
+  addWheel, cardsScored, editWheel, openCategories, openCategoryWheel, openDice, openPartnerWheel, openPlayerWheel, openQuickWheel, quickDice, removeWheel, openWheel, resetWheelEdits,
   rollDice, spinningRolls, spinSegments, spinWheel, startRollOff, toggleScoreboard, wheelEdited, wheelPool, wheelSpentUp,
 } from './overlay';
 import { newWheel, parseQuickWheel } from './tools';
-import { newSession } from './session';
+import { applyScore, newSession } from './session';
 import { validate } from './validate';
 
 function withPlayers() {
@@ -212,6 +212,26 @@ describe('the scores over a tool', () => {
     toggleScoreboard(live);
     toggleScoreboard(live);
     expect(live.overlay).toBeNull();
+  });
+});
+
+describe('a score card given', () => {
+  it('counts while its points stand (under the scores too), not once skipped or undone', () => {
+    const { game, session, live } = withPlayers();
+    openDice(live, quickDice(6, 1, 'd6'));
+    rollDice(live, session, quickDice(6, 1, 'd6'));
+    const o = live.overlay!;
+    if (o.kind !== 'dice') throw new Error('dice');
+    expect(cardsScored(o, session)).toBe(false);
+    o.cardsDone = { skipped: true };
+    expect(cardsScored(o, session)).toBe(false);
+    const [e] = applyScore(session, game, ['a'], 100, 'Dice: d6 → 6');
+    o.cardsDone = { ...o.cardsDone, given: e.batchId! };
+    expect(cardsScored(o, session)).toBe(true);
+    toggleScoreboard(live);
+    expect(cardsScored(live.overlay, session)).toBe(true);
+    e.undone = true;
+    expect(cardsScored(live.overlay, session)).toBe(false);
   });
 });
 

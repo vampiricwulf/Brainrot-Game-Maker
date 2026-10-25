@@ -512,8 +512,11 @@ The mode isn't saved with the game: it's dual while the audience window is open.
 - **Wheel**: any saved preset, or a quick ad-hoc wheel from a text list. Weighted random.
   Uses `crypto.getRandomValues`, and the spin animation lands on the pre-selected result.
 - **Placement**: the wheel and dice always appear as a **full-screen overlay** on the audience view while spinning
-  or rolling, then show the result. Dismissing the overlay returns to whatever was underneath (board or clue). A wheel
-  or dice tile with no question closed before it spun or rolled stays on the board.
+  or rolling, then show the result. Dismissing the overlay returns to whatever was underneath (board or clue); not
+  while it's still spinning or rolling (it lands first, as `W` and `D` wait). A wheel or dice tile with no question
+  closed before it spun or rolled stays on the board. A wheel or dice tile's own tool goes with the tile (▦ Done ▶
+  board, ↩ Cancel (keep tile)) and is still its tile's after a reload; ↩ Cancel waits for an Undo once its score effect
+  was given, as after an award.
 - **Reveal**: the outcome is shown on the audience view (label, plus details/media/custom slide if set), with an
   optional countdown. The host can dismiss it, re-spin/re-roll, or tag it with a player
   ("this punishment is for Alex"). Every spin/roll goes into the **roll log** (separate from the score log, no score impact),
