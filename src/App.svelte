@@ -294,7 +294,6 @@
     });
   });
 
-  /** ✕ Close the room (the bar over the editor): phones are told the game is over. */
   /** The status bar's ✕ Close the room is asking first (phones are in the room). */
   let closingRoom = $state(false);
   // (Asked about that room only: another one, or none, isn't asked about.)
@@ -303,6 +302,7 @@
     void keptCode;
     closingRoom = false;
   });
+  /** ✕ Close the room (the bar over the editor): phones are told the game is over. */
   async function closeKeptRoom(quiet = false): Promise<void> {
     const r = kept.room;
     kept.room = null;

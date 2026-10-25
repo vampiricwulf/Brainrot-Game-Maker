@@ -355,7 +355,8 @@ try {
   await say({ t: 'queue', armId: tieArm, queue: rolled.map((id, i) => ({ seatId: id, afterMs: 0, rolled: i + 1 })) });
   await queue.getByText('🎲 2nd').waitFor();
   assert((await pressed())[0].includes(rolled[0] === seats[0].id ? 'Player 1' : 'Player 2'), 'the first in the roll answers; the queue shows 🎲 1st, 🎲 2nd');
-  assert(await aud.getByText('Tie! Roll for it').isVisible(), 'the roll stays up while the host announces it');
+  // (Its title says “Re-roll!” once a tied roll was rolled again.)
+  assert(await aud.getByText(/Tie! Roll for it|Re-roll!/).isVisible(), 'the roll stays up while the host announces it');
   // Wrong (Shift+Enter): the roll goes off the stage, and the second in it answers.
   await page.keyboard.press('Shift+Enter');
   await aud.getByText('Tie! Roll for it').waitFor({ state: 'detached' });
