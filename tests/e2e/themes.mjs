@@ -59,6 +59,11 @@ try {
   await themePage();
   await preview.locator('.board .tile').first().waitFor();
   assert((await preview.locator('.board .tile.host-mark').count()) === 0, 'the Theme page’s preview has no host-only tile badges (a Daily Double is placed)');
+  // (Only the desktop app has a 💧 beside each color box: a browser's color popup has an eyedropper that works.)
+  assert(
+    (await page.locator('[data-k="value"] input[type=color]').count()) === 1 && (await page.getByRole('button', { name: /from the screen$/ }).count()) === 0,
+    'in a browser the color boxes have no 💧 beside them',
+  );
 
   // ---------- A plain game looks as it always did ----------
   // (Row 1: the preview plays every other category's first tile.)

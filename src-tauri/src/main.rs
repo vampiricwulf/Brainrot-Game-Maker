@@ -37,6 +37,7 @@ use std::time::Duration;
 
 mod migrate;
 mod saves;
+mod screencolor;
 mod update;
 
 use tauri::webview::{NewWindowFeatures, NewWindowResponse};
@@ -1091,7 +1092,8 @@ fn main() {
             hold_close,
             close_audience,
             can_self_update,
-            install_update
+            install_update,
+            screencolor::pick_screen_color
         ])
         .setup(|app| {
             update::clean_up_after_update();

@@ -35,6 +35,7 @@
     type Theme,
   } from '../lib/theme';
   import Stage from '../lib/Stage.svelte';
+  import ColorBox from '../lib/ColorBox.svelte';
   import AudienceView from '../play/AudienceView.svelte';
   import MediaPicker from './slide/MediaPicker.svelte';
   import { mediaDrop } from '../lib/mediadrop';
@@ -185,7 +186,10 @@
     const items: MenuEntry[] = [];
     if (field) {
       const k = field.dataset.k as keyof Theme;
-      const title = field.dataset.name ?? field.innerText.split('\n')[0].replace(/\s*\(.*\)\s*$/, '').trim();
+      // (Its first line of words: in the desktop app a color box's 💧 comes before them.)
+      const drop = field.querySelector<HTMLElement>('.colorbox button')?.innerText.trim();
+      const line = field.innerText.split('\n').find((l) => l.trim() && l.trim() !== drop) ?? '';
+      const title = field.dataset.name ?? line.replace(/\s*\(.*\)\s*$/, '').trim();
       const box = field.querySelector<HTMLInputElement>('input[type=color]');
       const changed = shownValue(t, k) !== shownValue(look, k);
       items.push(
@@ -256,14 +260,14 @@
               ? ['Stage background', 'Board', `Chroma ${t.stageBg}`]
               : null}
         <label class="check" data-k={key} data-color title={unused ? `Not shown while ${unused[0]} (in ${unused[1]}) is ${unused[2]}` : undefined}>
-          <input type="color" value={hex(key === 'stageText' ? stageText(t) : (t[key] as string), '#000000')} oninput={(e) => ((t as unknown as Record<string, string>)[key] = e.currentTarget.value)} />
+          <ColorBox value={hex(key === 'stageText' ? stageText(t) : (t[key] as string), '#000000')} oninput={(e) => ((t as unknown as Record<string, string>)[key] = e.currentTarget.value)} />
           {#if unused}<span>{label} <span class="hint">(not shown: {unused[0]} is {unused[2]})</span></span>{:else}{label}{/if}
         </label>
       {/each}
       <label class="check" data-k="glow" data-color>
         <input type="checkbox" checked={t.glow !== 'none'} onchange={(e) => switchColor('glow', e.currentTarget.checked, '#ff00e6', 'none')} />
         Tile glow
-        {#if t.glow !== 'none'}<input type="color" value={hex(t.glow, '#ff00e6')} oninput={(e) => (t.glow = e.currentTarget.value)} aria-label="Tile glow color" />{/if}
+        {#if t.glow !== 'none'}<ColorBox value={hex(t.glow, '#ff00e6')} oninput={(e) => (t.glow = e.currentTarget.value)} aria-label="Tile glow color" />{/if}
       </label>
     </div>
     {@render valuesNote()}
@@ -315,8 +319,7 @@
       </label>
       <label class="check clue-color" data-k="clueColor" data-name="Clue text color" data-color>
         <!-- (The color the clues are drawn in: plain white is drawn in the slides' text color.) -->
-        <input
-          type="color"
+        <ColorBox
           value={hex(clueTextColor(t) ?? stageText(t), FACTORY_COLOR)}
           onchange={(e) => clueText('color', e.currentTarget.value)}
           aria-label="Clue text color"
@@ -410,7 +413,7 @@
         <input type="checkbox" checked={!!t.bgGradient} onchange={(e) => switchColor('bgGradient', e.currentTarget.checked, near(t.boardGap), undefined)} />
         Background gradient
         {#if keyedStage}<span class="hint">(not shown: Stage background is Chroma {t.stageBg})</span>{/if}
-        {#if t.bgGradient}<input type="color" value={hex(t.bgGradient, '#000000')} oninput={(e) => set('bgGradient', e.currentTarget.value)} aria-label="Background gradient color" />{/if}
+        {#if t.bgGradient}<ColorBox value={hex(t.bgGradient, '#000000')} oninput={(e) => set('bgGradient', e.currentTarget.value)} aria-label="Background gradient color" />{/if}
       </label>
       {#if t.bgGradient}
         <label class="field" data-k="bgAngle">
@@ -454,14 +457,14 @@
       </label>
       {#if t.tilePattern}
         <label class="check" data-k="tile2" data-color>
-          <input type="color" value={hex(t.tile2, near(t.tile))} oninput={(e) => set('tile2', e.currentTarget.value)} />
+          <ColorBox value={hex(t.tile2, near(t.tile))} oninput={(e) => set('tile2', e.currentTarget.value)} />
           Second tile color
         </label>
       {:else}<span></span>{/if}
       <label class="check" data-k="tileGradient" data-name="Tile gradient" data-color>
         <input type="checkbox" checked={!!t.tileGradient} onchange={(e) => switchColor('tileGradient', e.currentTarget.checked, near(t.tile), undefined)} />
         Gradient
-        {#if t.tileGradient}<input type="color" value={hex(t.tileGradient, '#000000')} oninput={(e) => set('tileGradient', e.currentTarget.value)} aria-label="Tile gradient color" />{/if}
+        {#if t.tileGradient}<ColorBox value={hex(t.tileGradient, '#000000')} oninput={(e) => set('tileGradient', e.currentTarget.value)} aria-label="Tile gradient color" />{/if}
       </label>
       {#if t.tileGradient || t.headerGradient}
         <label class="field" data-k="tileAngle">
@@ -470,7 +473,7 @@
         </label>
       {:else}<span></span>{/if}
       <label class="check" data-k="tileBorder" data-color>
-        <input type="color" value={hex(t.tileBorder, '#000000')} oninput={(e) => set('tileBorder', e.currentTarget.value)} />
+        <ColorBox value={hex(t.tileBorder, '#000000')} oninput={(e) => set('tileBorder', e.currentTarget.value)} />
         Border color
         {#if t.tileBorder}<button class="small ghost" onclick={() => set('tileBorder', undefined)} title="Back to the plain dark edge" aria-label="Border color back to the plain one">↺</button>{/if}
       </label>
@@ -519,24 +522,24 @@
     <summary>Categories{#if set2(HEADER_LOOKS)}<span class="changed">· changed</span>{/if}</summary>
     <div class="grid">
       <label class="check" data-k="headerBg" data-color>
-        <input type="color" value={hex(t.headerBg, hex(t.tile, '#000000'))} oninput={(e) => set('headerBg', e.currentTarget.value)} />
+        <ColorBox value={hex(t.headerBg, hex(t.tile, '#000000'))} oninput={(e) => set('headerBg', e.currentTarget.value)} />
         Category color
         {#if t.headerBg}<button class="small ghost" onclick={() => set('headerBg', undefined)} title="Back to the tile color" aria-label="Category color back to the tile color">↺</button>{/if}
       </label>
       <label class="check" data-k="header2" data-name="Second category color" data-color>
         <input type="checkbox" checked={!!t.header2} onchange={(e) => switchColor('header2', e.currentTarget.checked, near(t.headerBg ?? t.tile), undefined)} />
         Alternate colors
-        {#if t.header2}<input type="color" value={hex(t.header2, '#000000')} oninput={(e) => set('header2', e.currentTarget.value)} aria-label="Second category color" />{/if}
+        {#if t.header2}<ColorBox value={hex(t.header2, '#000000')} oninput={(e) => set('header2', e.currentTarget.value)} aria-label="Second category color" />{/if}
       </label>
       <label class="check" data-k="headerGradient" data-name="Category gradient" data-color>
         <input type="checkbox" checked={!!t.headerGradient} onchange={(e) => switchColor('headerGradient', e.currentTarget.checked, near(t.headerBg ?? t.tile), undefined)} />
         Gradient
-        {#if t.headerGradient}<input type="color" value={hex(t.headerGradient, '#000000')} oninput={(e) => set('headerGradient', e.currentTarget.value)} aria-label="Category gradient color" />{/if}
+        {#if t.headerGradient}<ColorBox value={hex(t.headerGradient, '#000000')} oninput={(e) => set('headerGradient', e.currentTarget.value)} aria-label="Category gradient color" />{/if}
       </label>
       <label class="check" data-k="headerLine" data-color>
         <input type="checkbox" checked={t.headerLine !== 'none'} onchange={(e) => switchColor('headerLine', e.currentTarget.checked, undefined, 'none')} />
         Line under them
-        {#if t.headerLine !== 'none'}<input type="color" value={hex(t.headerLine, '#000000')} oninput={(e) => set('headerLine', e.currentTarget.value)} aria-label="Line under the categories color" />{/if}
+        {#if t.headerLine !== 'none'}<ColorBox value={hex(t.headerLine, '#000000')} oninput={(e) => set('headerLine', e.currentTarget.value)} aria-label="Line under the categories color" />{/if}
       </label>
     </div>
     {#if opened.headers}{@render namesNote()}{/if}

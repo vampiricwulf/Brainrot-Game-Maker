@@ -7,6 +7,7 @@
   import { onMount, type Snippet } from 'svelte';
   import { SLIDE_H, SLIDE_W } from '../../lib/model';
   import InlineAsk from '../../play/host/InlineAsk.svelte';
+  import ColorBox from '../../lib/ColorBox.svelte';
 
   type Tool = 'pen' | 'fill' | 'erase';
   interface Stroke {
@@ -230,7 +231,7 @@
       {#each COLORS as c (c)}
         <button class="swatch" class:on={color === c} aria-pressed={color === c} style:background={c} onclick={() => (color = c)} aria-label="Color {c}"></button>
       {/each}
-      <input type="color" bind:value={color} aria-label="Pen color" />
+      <ColorBox bind:value={color} aria-label="Pen color" />
       <span class="sep"></span>
       <label class="small">Size <input type="range" min="2" max="80" bind:value={size} aria-label="Brush size" /> {size}</label>
       <span class="sep"></span>

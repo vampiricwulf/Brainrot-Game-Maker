@@ -9,6 +9,7 @@
   import { numberStat } from '../../lib/rpgpresets';
   import type { BoardGameRound, BoardGameState, Game, Session } from '../../lib/model';
   import BoardSpaceButtons from './BoardSpaceButtons.svelte';
+  import ColorBox from '../../lib/ColorBox.svelte';
   import { boardEdit, editAllNames, editBothWays, editConnect, editDelete, editDisconnect, editKeep, editReverse, editShowName, editSpace, editStart } from './boardedit.svelte';
 
   let { game, session, round, bs, dual }: { game: Game; session: Session; round: BoardGameRound; bs: BoardGameState; dual: boolean } = $props();
@@ -97,7 +98,7 @@
       </label>
       <label class="small">
         Color
-        <input type="color" value={s.color} aria-label="Space color" onchange={(e) => editSpace(game, session, s.id, `Color of “${s.name}”`, (x) => (x.color = e.currentTarget.value))} />
+        <ColorBox value={s.color} aria-label="Space color" onchange={(e) => editSpace(game, session, s.id, `Color of “${s.name}”`, (x) => (x.color = e.currentTarget.value))} />
       </label>
       <label class="check small">
         <input

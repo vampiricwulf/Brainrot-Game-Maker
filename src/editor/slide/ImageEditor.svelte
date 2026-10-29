@@ -14,6 +14,7 @@
   import { linkHost } from '../../lib/links';
   import { isTextField } from '../../lib/undokeys';
   import SaveCopyButton from '../SaveCopyButton.svelte';
+  import ColorBox from '../../lib/ColorBox.svelte';
   import InlineAsk from '../../play/host/InlineAsk.svelte';
   import {
     angleToOutput, angleToSource, defaultEdits, fitCrop, itemAt, loadImage, migrateEdits, orientedSize, outputSize, placedOverlays,
@@ -556,7 +557,7 @@
         {#if tool === 'draw'}
           <h4>Brush</h4>
           <div class="row">
-            <input type="color" bind:value={brush.color} aria-label="Brush color" />
+            <ColorBox bind:value={brush.color} aria-label="Brush color" />
             <label class="check small"><input type="checkbox" bind:checked={brush.erase} /> Eraser</label>
             <button class="small" onclick={() => (commit(), edits.strokes.pop())} disabled={!edits.strokes.length}>Undo stroke</button>
             <button class="small" onclick={() => (commit(), (edits.strokes = []))} disabled={!edits.strokes.length}>Clear</button>
@@ -586,8 +587,8 @@
           </select>
           <label class="field">Size<input type="range" min="0.02" max="0.3" step="0.005" value={selText.size * sizeK} oninput={(e) => (selText!.size = +e.currentTarget.value / sizeK)} /></label>
           <div class="row">
-            <label class="check small">Fill <input type="color" bind:value={selText.color} /></label>
-            <label class="check small">Outline <input type="color" bind:value={selText.stroke} /></label>
+            <label class="check small">Fill <ColorBox bind:value={selText.color} /></label>
+            <label class="check small">Outline <ColorBox bind:value={selText.stroke} /></label>
           </div>
           <label class="field">Outline width<input type="range" min="0" max="0.3" step="0.01" bind:value={selText.strokeWidth} /></label>
           {@const turn = Math.round(angleToOutput(selText.rotation, edits))}

@@ -51,6 +51,7 @@
     type EmbedKind, type ImageEl, type MediaKind, type MediaRef, type ShapeType, type Slide, type SlideElement, type TextEl,
   } from '../../lib/model';
   import Stage from '../../lib/Stage.svelte';
+  import ColorBox from '../../lib/ColorBox.svelte';
   import SlideView from '../../lib/slide/SlideView.svelte';
   import EditLayer from './EditLayer.svelte';
   import DrawLayer from './DrawLayer.svelte';
@@ -1100,8 +1101,7 @@
             }}
           >
             <label class="check">
-              <input
-                type="color"
+              <ColorBox
                 aria-label="Slide background color"
                 value={slide.background.color ?? plainBg}
                 oninput={(e) => (slide.background.color = e.currentTarget.value)}

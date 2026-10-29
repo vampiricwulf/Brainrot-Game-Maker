@@ -18,6 +18,7 @@
   import { addFork, allNamesLabel, applySpaceKind, clampToBoard, closeUpOver, spaceKindOf, linkName, SPACE_KINDS, type SpaceKind, moverDiceGone, moverDiceUnknown, moverWheelNoNumbers, nameShown, nameShownLabel, setAllNamesShown, setNameShown, moverPreset, nextSpaceName, spaceById, spaceToward } from '../../lib/boardgame';
   import { addLiveSpace, connectSpaces, linkAfter, disconnectSpaces, reverseLink, toggleBothWays } from '../../lib/boardedit';
   import BoardSpaces from '../../lib/boardgame/BoardSpaces.svelte';
+  import ColorBox from '../../lib/ColorBox.svelte';
   import { mediaUrls } from '../../lib/media.svelte';
   import { newId, SLIDE_H, SLIDE_W, textSlide, type BoardGameRound, type BoardSpace, type BoardZone } from '../../lib/model';
   import { clone } from '../../lib/ops';
@@ -885,8 +886,7 @@
           <p class="muted small">Drag one to move them all, or nudge them with Alt+arrows. Shift+click a space to add or leave it out.</p>
           <label class="check small">
             Color
-            <input
-              type="color"
+            <ColorBox
               value={colors.size === 1 ? picked[0].color : '#888888'}
               onchange={(e) => {
                 const c = e.currentTarget.value;
@@ -935,7 +935,7 @@
             Show name on the board
           </label>
           <div class="row">
-            <label class="check small">Color <input type="color" bind:value={sel.color} aria-label="Space color" /></label>
+            <label class="check small">Color <ColorBox bind:value={sel.color} aria-label="Space color" /></label>
             <div class="pop">
               <button class="small" onclick={() => (pickingIcon = !pickingIcon)} use:mediaDrop={{ kind: 'image', onpick: (id) => sel && (sel.icon = id) }}>
                 {#if sel.icon && mediaUrls[sel.icon]}<img class="ic" src={mediaUrls[sel.icon]} alt="" />{:else}🖼{/if} Icon

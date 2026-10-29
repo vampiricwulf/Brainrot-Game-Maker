@@ -4,6 +4,7 @@
   import { tick, untrack } from 'svelte';
   import { app, toast } from '../../lib/app.svelte';
   import { step } from '../../lib/history.svelte';
+  import ColorBox from '../../lib/ColorBox.svelte';
   import { newId, type Game, type Session, type WheelPreset } from '../../lib/model';
   import { editWheel, resetWheelEdits, wheelPool, type WheelLike } from '../../lib/overlay';
   import { newSegment, onSlices, type PoolSlice } from '../../lib/tools';
@@ -111,7 +112,7 @@
               {#if o.players}
                 <span class="dot" style:background={s.color}></span>
               {:else}
-                <input type="color" bind:value={s.color} onchange={apply} aria-label={`Color of ${s.label}`} />
+                <ColorBox bind:value={s.color} onchange={apply} aria-label={`Color of ${s.label}`} />
               {/if}
             </td>
             <td>
@@ -224,7 +225,8 @@
     text-align: right;
     font-variant-numeric: tabular-nums;
   }
-  input[type='color'] {
+  /* (The slices' color boxes, in ColorBox.) */
+  .slices :global(input[type='color']) {
     width: 28px;
     height: 24px;
     padding: 0;

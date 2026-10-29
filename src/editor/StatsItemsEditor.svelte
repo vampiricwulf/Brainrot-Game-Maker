@@ -21,6 +21,7 @@
   import { currencyFields, newStatField, STAT_PRESETS, shopCurrency, shopCurrencyGone, SCORE_CURRENCY, statColor, statRangeProblem } from '../lib/toolset';
   import { mediaUrls } from '../lib/media.svelte';
   import MediaPicker from './slide/MediaPicker.svelte';
+  import ColorBox from '../lib/ColorBox.svelte';
   import { mediaDrop } from '../lib/mediadrop';
   import ActionListEditor from './rpg/ActionListEditor.svelte';
   import WornLookEditor from './WornLookEditor.svelte';
@@ -409,7 +410,7 @@
           <option value="sheet">Only on the player sheet</option>
           <option value="hidden">Host only</option>
         </select>
-        <input type="color" value={statColor(f)} oninput={(e) => (f.color = e.currentTarget.value)} aria-label="{f.name} color" />
+        <ColorBox value={statColor(f)} oninput={(e) => (f.color = e.currentTarget.value)} aria-label="{f.name} color" />
         <button class="ghost tiny" onclick={() => duplicate('stat', f)} aria-label="Duplicate {f.name}" title="Duplicate (Ctrl+D)">⧉</button>
         <button class="ghost tiny danger" onclick={() => removeField(f)} aria-label="Delete {f.name}" title="Delete (Undo brings it back)">🗑</button>
       </div>

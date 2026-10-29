@@ -3,8 +3,9 @@
 // can't be read says why), a game file the app is opened with (at start or by a second launch) opens, and closing the
 // window writes the last edits first; closing while a 🗜 copy for phones is made, Wait closes once it's done, with the
 // copy written; closing while autosave can't write (or read) asks first. ⬆ Update: a failure stays until it's read
-// (one during a game waits for the editor), and one that finishes once a game has started waits for ⟳ Restart. Also in
-// a browser: Open… takes an exported .html.
+// (one during a game waits for the editor), and one that finishes once a game has started waits for ⟳ Restart. The 💧
+// beside a color box (a theme color, a slide's text color) puts the color picked on the screen in it, one undo step,
+// and Esc there changes nothing. Also in a browser: Open… takes an exported .html.
 import { chromium } from 'playwright-core';
 import { existsSync, readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
@@ -79,6 +80,9 @@ function fakeDesktop() {
           // (The app's own message, as a string: a save moved since the list was made, or locked by another program.)
           if (window.__readFail?.[args.name]) throw window.__readFail[args.name];
           return saves.get(args.name).bytes.buffer;
+        case 'pick_screen_color':
+          // (The color the host picks on the screen: window.__pick, or null for Esc.)
+          return window.__pick ?? null;
         case 'can_self_update':
           return true;
         case 'install_update':
@@ -328,6 +332,74 @@ try {
   const typedAt = rows.findIndex((t) => t.includes('Typed while saving'));
   assert(typedAt >= 0 && savedAt === typedAt + 1, 'the history shows the save where the game was when it started, with the change typed meanwhile after it');
   await d.locator('nav > button.round-tab').first().click();
+
+  // ---------- 💧 beside color boxes: a color picked on the screen (the color popup's own eyedropper does nothing in
+  // the app on some PCs) ----------
+  console.log('💧 Pick a color from the screen:');
+  const undoTitle = () => d.evaluate(() => document.querySelector('.editor > header button[aria-label="Undo (Ctrl+Z)"]').title);
+  /** Press 💧 (the host picks window.__pick on the screen) and wait for the keys to come back to it. */
+  const pickWith = (drop, color) =>
+    drop.evaluate((b, c) => {
+      window.__pick = c;
+      // (Off it first: the page puts the keys back on it once the picker is closed.)
+      b.blur();
+      const back = new Promise((done) => b.addEventListener('focus', done, { once: true }));
+      b.click();
+      return back;
+    }, color);
+  await d.getByRole('button', { name: '🎨 Theme' }).click();
+  const valuesBox = d.locator('[data-k="value"] input[type=color]');
+  const valuesDrop = d.locator('[data-k="value"]').getByRole('button', { name: 'Pick a color from the screen' });
+  await valuesDrop.waitFor();
+  // (The box is still named by its label, not "Pick a color from the screen Values".)
+  const ax = await desk.newCDPSession(d);
+  const { root } = await ax.send('DOM.getDocument');
+  const { nodeId } = await ax.send('DOM.querySelector', { nodeId: root.nodeId, selector: '[data-k="value"] input[type=color]' });
+  const { nodes } = await ax.send('Accessibility.getPartialAXTree', { nodeId, fetchRelatives: false });
+  await ax.detach();
+  assert(nodes[0]?.name?.value === 'Values', `a theme color has a 💧 beside it, and the box keeps its own name (${nodes[0]?.name?.value})`);
+  await d.locator('label[data-k="value"]').click({ button: 'right', position: { x: 5, y: 5 } });
+  const settingMenu = d.getByRole('menu');
+  await settingMenu.waitFor();
+  assert((await settingMenu.innerText()).startsWith('Values\n'), 'its right-click menu is still called Values');
+  await d.keyboard.press('Escape');
+  await settingMenu.waitFor({ state: 'detached' });
+  const valueBefore = await valuesBox.inputValue();
+  const stepBefore = await undoTitle();
+  await calls(d);
+  await pickWith(valuesDrop, null);
+  assert(
+    (await calls(d)).includes('pick_screen_color') && (await valuesBox.inputValue()) === valueBefore && (await undoTitle()) === stepBefore,
+    'Esc in the picker changes nothing (no step either), and the keys are back on the 💧',
+  );
+  await pickWith(valuesDrop, '#12ab34');
+  assert((await valuesBox.inputValue()) === '#12ab34', 'a color picked on the screen goes in the box');
+  await d.waitForFunction((before) => {
+    const title = document.querySelector('.editor > header button[aria-label="Undo (Ctrl+Z)"]').title;
+    return title !== before && !title.includes('your latest changes');
+  }, stepBefore);
+  const picked = await undoTitle();
+  await d.keyboard.press('Control+z');
+  await d.waitForFunction((v) => document.querySelector('[data-k="value"] input[type=color]').value === v, valueBefore);
+  assert((await undoTitle()) === stepBefore, `…as one step (${picked}), which Ctrl+Z takes back`);
+  // A slide's text color.
+  await d.locator('nav > button.round-tab').first().click();
+  await d.locator('.grid .tile').first().click();
+  const clueDlg = d.getByRole('dialog', { name: 'Edit clue' });
+  await clueDlg.waitFor();
+  const canvasBox = await d.locator('.canvas').first().boundingBox();
+  await d.mouse.click(canvasBox.x + canvasBox.width / 2, canvasBox.y + canvasBox.height / 2);
+  const textColor = d.locator('.insp .color input[type=color]');
+  const textDrop = d.locator('.insp .color').getByRole('button', { name: 'Pick a color from the screen' });
+  await textDrop.waitFor();
+  const textBefore = await textColor.inputValue();
+  await pickWith(textDrop, '#12ab34');
+  assert((await textColor.inputValue()) === '#12ab34', `💧 by a slide's text color puts the color picked in it (it was ${textBefore})`);
+  await d.keyboard.press('Control+z');
+  await d.waitForFunction((v) => document.querySelector('.insp .color input[type=color]').value === v, textBefore);
+  assert(true, '…and Ctrl+Z takes it back');
+  await clueDlg.getByRole('button', { name: 'Done' }).click();
+  await clueDlg.waitFor({ state: 'detached' });
 
   // ---------- ℹ About's folders; ⬆ Update ----------
   console.log('ℹ About and ⬆ Update:');

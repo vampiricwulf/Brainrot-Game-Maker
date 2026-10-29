@@ -14,6 +14,7 @@
   import { isTextField } from '../lib/undokeys';
   import { commit, joinTyping } from '../lib/history.svelte';
   import Avatar from '../lib/rpg/Avatar.svelte';
+  import ColorBox from '../lib/ColorBox.svelte';
   import MediaPicker from './slide/MediaPicker.svelte';
   import { mediaDrop } from '../lib/mediadrop';
 
@@ -208,7 +209,7 @@
     <div class="cols" aria-hidden="true" inert>
       <span class="grip">⋮⋮</span>
       <span class="num"></span>
-      <input type="color" tabindex="-1" />
+      <ColorBox tabindex={-1} />
       {#if avatars}<span class="av-btn"><Avatar player={players[0]} size={30} /></span>{/if}
       <span class="name"></span>
       <span class="chip"></span>
@@ -244,8 +245,7 @@
         title="Drag to reorder (or Alt+↑/↓){inGame ? ' (the number keys follow the order)' : ''}">⋮⋮</span
       >
       <span class="num muted">{i + 1}</span>
-      <input
-        type="color"
+      <ColorBox
         value={p.color}
         onchange={(e) => setColor(p, e.currentTarget.value, e.currentTarget)}
         aria-label="Color for {p.name}"
@@ -449,10 +449,12 @@
   .cols {
     margin-bottom: -4px;
   }
-  .cols > :not(.score) {
+  .cols > :global(:not(.score)) {
     visibility: hidden;
   }
-  .cols input {
+  /* (The color box, in ColorBox, with its 💧 in the desktop app.) */
+  .cols :global(input),
+  .cols :global(.colorbox button) {
     height: 0;
     padding-block: 0;
     border-block-width: 0;

@@ -17,6 +17,7 @@
   import { announce } from '../../lib/announce';
   import { isTextField } from '../../lib/undokeys';
   import Stage from '../../lib/Stage.svelte';
+  import ColorBox from '../../lib/ColorBox.svelte';
   import WheelView from '../../play/tools/WheelView.svelte';
   import OutcomeEditor from './OutcomeEditor.svelte';
 
@@ -179,7 +180,7 @@
             aria-hidden="true"
             title="Drag to reorder (or Alt+↑/↓)">⋮⋮</span
           >
-          <input type="color" bind:value={seg.color} aria-label="Slice color" />
+          <ColorBox bind:value={seg.color} aria-label="Slice color" />
           <OutcomeEditor outcome={seg} placeholder="Slice label" labelkey={(e) => labelKey(e, i)} />
           <label class="w" title="Weight: how big the slice is, and how likely (at least {MIN_WEIGHT}; delete a slice to take it off)">
             ×<input

@@ -11,6 +11,12 @@ the day it's pushed (Pacific time; start the heading on the day's first push) an
 in plain words for the people who make and host games. Anything committed but not pushed yet goes under
 **Unreleased** at the top, and moves under its day when it's pushed.
 
+## Unreleased
+
+### Fixed
+
+- Desktop app: the eyedropper in a color box's picker does nothing on some PCs, so every color box has a 💧 beside it now that picks a color from anywhere on the screen, with a magnifier to aim: click the pixel (or press Enter; the arrow keys move one pixel, ten with Shift), and Esc or a right-click cancels. The color goes in the box as if you'd picked it there, and Ctrl+Z takes it back. The HTML file in a browser is unchanged (Chrome's and Edge's own eyedropper works there).
+
 ## 2026-10-24
 
 ### Added
