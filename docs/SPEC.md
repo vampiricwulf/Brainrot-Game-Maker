@@ -33,7 +33,7 @@ runs the board, decides who gets points, and controls media.
 | `brainrot-game-maker.html` | Single self-contained file (editor + player). Built with Vite + `vite-plugin-singlefile`. | **P0** |
 | Game pack `*.brainrot` (zip) | Main save format: `game.json` plus a `media/` folder. | **P0** |
 | Standalone game `*.html` | Export: player-only HTML with the game and media base64-embedded. Expected games are small (< 100 MB of mostly images + short clips), so this is a first-class sharing option. Soft warning at 100 MB, strong warning at 250 MB; each says how much is files nothing in the game uses (over 10 MB of them). | **P1** |
-| Desktop `.exe` / `.app` | Tauri wrapper around the same build. Saves into a `BrainrotSaves` folder next to the exe (Open… lists it), writes big files natively, opens a game it's opened with, and updates itself in place from signed releases. A 💧 beside every color box picks a color from anywhere on the screen (Windows), since the color popup's own eyedropper doesn't work in WebView2 on some PCs: a still picture of every screen with a magnifier; a click or `Enter` picks, the arrow keys move one pixel (ten with `Shift`), `Esc`, a right-click or switching away cancels. The color goes in the box as if picked there (one undo step). Browsers keep their own eyedropper and get no 💧. | **P2** |
+| Desktop `.exe` / `.app` | Tauri wrapper around the same build. Saves into a `BrainrotSaves` folder next to the exe (Open… lists it), writes big files natively, opens a game it's opened with, and updates itself in place from signed releases. The color picker's 💧 Pick from the screen is the app's own there (Windows), since WebView2's eyedropper doesn't work on some PCs: a still picture of every screen with a magnifier; a click or `Enter` picks, the arrow keys move one pixel (ten with `Shift`), `Esc`, a right-click or switching away cancels. | **P2** |
 
 **Browser targets:** latest Chrome, Edge, and Firefox. Safari is best-effort.
 Everything must work from a `file://` URL with no server. Fonts and libraries are bundled; the app goes online only for
@@ -669,6 +669,13 @@ There is no built-in SFX library in v1, but audio can be attached anywhere:
   its own autosave slot.
 - **Image edits** are stored as parameters, and the result is saved as a separate media file (PNG if transparency is
   possible, otherwise JPEG), so the original is always kept.
+- **Color boxes** open the app's own color picker, not the browser's (whose way of typing a color can't be set): a
+  saturation/brightness square and a hue bar (dragged, or the arrow keys, ten times as far with `Shift`), **Hex | RGB**
+  side by side to type the color in (Hex at first, then whichever was used last on this computer), 💧 Pick from the
+  screen (the desktop app's own picker; a browser's eyedropper where it has one, none in the others), and the color it
+  was beside the new one. Under its box or over it, kept in the window and over windows; in a single window, in the host
+  panel, off the stage. The box gets an input event as the color changes and one change event when the picker closes
+  with another color: a picker's changes are one undo step, and `Esc` puts everything back as it was, with no step.
 
 ---
 

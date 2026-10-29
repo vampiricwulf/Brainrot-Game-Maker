@@ -1470,10 +1470,11 @@
        floor, and the panel's tall parts scroll. */
     min-height: 0;
   }
-  /* Single window: an open 🎲 / 🎡 / 🏁 menu or the 📱 phones list may not cover the stage, so the panel grows to make
-     room for it (the stage shrinks, down to its floor) and the bottom rows move to its foot. The pop-up stays inside
-     the panel, scrolling if it must (or, on a window too short for even that, goes where there's room). */
-  .panel:not(.dual):has(:global(:is(.tl .menu, #phone-pop))) {
+  /* Single window: an open 🎲 / 🎡 / 🏁 menu, the 📱 phones list or a color box's picker may not cover the stage, so the
+     panel grows to make room for it (the stage shrinks, down to its floor) and the bottom rows move to its foot. The
+     pop-up stays inside the panel, scrolling if it must (or, on a window too short for even that, goes where there's
+     room). */
+  .panel:not(.dual):has(:global(:is(.tl .menu, #phone-pop, input[data-picking]))) {
     min-height: min(62vh, 420px);
   }
   .panel:not(.dual):has(:global(.tl .menu)) > .toolsrow {

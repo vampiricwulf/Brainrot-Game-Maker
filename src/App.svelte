@@ -56,6 +56,7 @@
   import { sameContent } from './lib/roundcopy';
   import Editor from './editor/Editor.svelte';
   import ContextMenu from './lib/ContextMenu.svelte';
+  import ColorPicker from './lib/ColorPicker.svelte';
   import AskDialog from './lib/AskDialog.svelte';
   import { ask } from './lib/ask.svelte';
   import { autosave } from './lib/autosave';
@@ -1257,6 +1258,7 @@
 {/snippet}
 
 <ContextMenu />
+<ColorPicker />
 <AskDialog />
 {#if app.toast && !app.onAir}
   <!-- (Screen readers hear it from the live region: announce.ts.) -->

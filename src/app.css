@@ -109,7 +109,7 @@ label.field { display: flex; flex-direction: column; gap: 4px; color: var(--mute
 label.field > input, label.field > textarea, label.field > select { color: var(--text); font-size: 14px; }
 label.check { display: flex; align-items: center; gap: 8px; cursor: pointer; }
 /* A box that can’t be ticked now looks it, as a disabled button does (its own box, not one further in). */
-label.check:has(> input:disabled, > .colorbox > input:disabled) { opacity: 0.55; cursor: default; }
+label.check:has(> input:disabled) { opacity: 0.55; cursor: default; }
 
 .muted { color: var(--muted); }
 /* Help and status lines: 12px, muted for a hint, orange for a warning. */

@@ -15,6 +15,7 @@
   import { isTextField } from '../../lib/undokeys';
   import SaveCopyButton from '../SaveCopyButton.svelte';
   import ColorBox from '../../lib/ColorBox.svelte';
+  import { colorPicker } from '../../lib/pickerstate.svelte';
   import InlineAsk from '../../play/host/InlineAsk.svelte';
   import {
     angleToOutput, angleToSource, defaultEdits, fitCrop, itemAt, loadImage, migrateEdits, orientedSize, outputSize, placedOverlays,
@@ -171,23 +172,36 @@
   let burstTimer: ReturnType<typeof setTimeout> | undefined;
   /** Before a press or key in the panel: what the edits were, in case it changes something. */
   function beforeInput(e: Event): void {
-    // (A color box's 💧 counts as its box: the color it picks comes in later, from the box.)
-    const target = (e.target as Element | null)?.closest?.('.colorbox')?.querySelector('input') ?? e.target;
+    // (A press on a label's words counts as its box, whose change it makes: Fill opens its color picker.)
+    const el = e.target instanceof Element ? e.target : null;
+    const target = (el && !el.closest('input, select, textarea, button') && el.closest('label')?.control) || e.target;
     if (e.type === 'keydown' && burst && burst.target === target) return;
     burst = { target, before: JSON.stringify(edits), done: false };
   }
-  /** After a change in the panel: its burst's first change records the step (later ones join it). */
+  /**
+   * After a change in the panel: its burst's first change records the step (later ones join it, and one back to where
+   * it started takes it away). A color box's burst lasts while its color picker is open (the colors it tries, and Esc).
+   */
   function afterInput(e: Event): void {
     if (!burst || burst.target !== e.target) beforeInput(e);
     const b = burst!;
-    if (!b.done && b.before !== JSON.stringify(edits)) {
+    const now = JSON.stringify(edits);
+    if (!b.done && b.before !== now) {
       history.push(b.before);
       if (history.length > 60) history.shift();
       future = [];
       b.done = true;
+    } else if (b.done && b.before === now && history.at(-1) === b.before) {
+      history.pop();
+      b.done = false;
     }
     clearTimeout(burstTimer);
-    burstTimer = setTimeout(() => burst === b && (burst = null), 1000);
+    const end = () => {
+      if (burst !== b) return;
+      if (colorPicker.open?.box === b.target) burstTimer = setTimeout(end, 1000);
+      else burst = null;
+    };
+    burstTimer = setTimeout(end, 1000);
   }
 
   /** Cancel (Esc, the Cancel button): ask before throwing edits away. */

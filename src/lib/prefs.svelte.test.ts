@@ -25,4 +25,14 @@ describe('settings', () => {
     expect(serverAddress('HTTPS://Buzz.example.workers.dev//')).toBe('https://Buzz.example.workers.dev');
     expect(serverAddress('  ')).toBe('');
   });
+
+  it('the color picker shows Hex unless RGB was chosen', () => {
+    expect(prefs.colorFormat).toBe('hex');
+    prefs.colorFormat = 'rgb';
+    savePrefs();
+    expect(prefs.colorFormat).toBe('rgb');
+    (prefs as unknown as Record<string, unknown>).colorFormat = 'hsl';
+    savePrefs();
+    expect(prefs.colorFormat).toBe('hex');
+  });
 });

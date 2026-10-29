@@ -341,6 +341,34 @@ describe('undo history: named steps', () => {
     expect(history.entries.map((e) => e.label)).toEqual(['Pasted two screens', 'Renamed round “Waited for”']);
   });
 
+  it("puts back a group's changes exactly, with no step, when it ends with 'put back' (Esc in the color picker)", async () => {
+    g.title = 'Before';
+    commit();
+    const steps = history.entries.length;
+    const end = begin();
+    // (A theme color never set, set by its box to the color it showed, then back to that color.)
+    g.theme.tileBorder = '#123456';
+    await seen();
+    g.theme.tileBorder = '#000000';
+    g.title = 'During';
+    await seen();
+    vi.advanceTimersByTime(5000);
+    end('put back');
+    expect(g.theme.tileBorder).toBeUndefined();
+    expect(g.title).toBe('Before');
+    expect(history.pending).toBe(false);
+    expect(history.entries).toHaveLength(steps);
+    // A nested group can't put back what the outer one changed before it.
+    const outer = begin();
+    g.title = 'Outer';
+    const inner = begin();
+    g.title = 'Inner';
+    inner('put back');
+    expect(g.title).toBe('Inner');
+    outer();
+    expect(history.entries.at(-1)?.label).toBe('Renamed the game “Inner”');
+  });
+
   it('says when no step is being made by hand: no group open (a drag, a file being stored), no pointer held', async () => {
     let settled = 0;
     const end = begin();

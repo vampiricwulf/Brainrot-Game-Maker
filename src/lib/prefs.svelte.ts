@@ -23,11 +23,13 @@ export interface Prefs {
   display: 'single' | 'audience';
   /** The pre-game screen's short "Going live?" checklist shows (✕ hides it). */
   liveChecklist: boolean;
+  /** How the color picker shows a color to type: one Hex box (#rrggbb) or three RGB boxes (ColorPicker.svelte). */
+  colorFormat: 'hex' | 'rgb';
   /** Which defaults the stored settings were made with (2: Save replaces by default). */
   v?: number;
 }
 
-export const DEFAULT_PREFS: Prefs = { autosaveMinutes: 5, autosaveKeep: 3, overwriteSave: true, undoSteps: 300, reduceMotion: false, buzzerServer: '', checkUpdates: true, display: 'single', liveChecklist: true, v: 2 };
+export const DEFAULT_PREFS: Prefs = { autosaveMinutes: 5, autosaveKeep: 3, overwriteSave: true, undoSteps: 300, reduceMotion: false, buzzerServer: '', checkUpdates: true, display: 'single', liveChecklist: true, colorFormat: 'hex', v: 2 };
 /** The range ⚙ Settings allows for undoSteps. */
 export const UNDO_STEPS = { min: 20, max: 2000 };
 
@@ -68,6 +70,7 @@ export function savePrefs(): void {
   prefs.autosaveMinutes = Math.max(0, Math.min(240, Math.round(numberOr(prefs.autosaveMinutes, kept.autosaveMinutes))));
   prefs.autosaveKeep = Math.max(1, Math.min(50, Math.round(numberOr(prefs.autosaveKeep, kept.autosaveKeep))));
   if (prefs.display !== 'audience') prefs.display = 'single';
+  if (prefs.colorFormat !== 'rgb') prefs.colorFormat = 'hex';
   prefs.buzzerServer = serverAddress(String(prefs.buzzerServer ?? ''));
   prefs.undoSteps = Math.max(UNDO_STEPS.min, Math.min(UNDO_STEPS.max, Math.round(numberOr(prefs.undoSteps, kept.undoSteps) || DEFAULT_PREFS.undoSteps)));
   kept = { autosaveMinutes: prefs.autosaveMinutes, autosaveKeep: prefs.autosaveKeep, undoSteps: prefs.undoSteps };

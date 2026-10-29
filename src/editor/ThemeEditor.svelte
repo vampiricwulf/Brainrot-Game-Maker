@@ -186,10 +186,7 @@
     const items: MenuEntry[] = [];
     if (field) {
       const k = field.dataset.k as keyof Theme;
-      // (Its first line of words: in the desktop app a color box's 💧 comes before them.)
-      const drop = field.querySelector<HTMLElement>('.colorbox button')?.innerText.trim();
-      const line = field.innerText.split('\n').find((l) => l.trim() && l.trim() !== drop) ?? '';
-      const title = field.dataset.name ?? line.replace(/\s*\(.*\)\s*$/, '').trim();
+      const title = field.dataset.name ?? field.innerText.split('\n')[0].replace(/\s*\(.*\)\s*$/, '').trim();
       const box = field.querySelector<HTMLInputElement>('input[type=color]');
       const changed = shownValue(t, k) !== shownValue(look, k);
       items.push(

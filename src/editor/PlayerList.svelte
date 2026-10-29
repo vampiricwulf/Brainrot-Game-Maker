@@ -452,9 +452,8 @@
   .cols > :global(:not(.score)) {
     visibility: hidden;
   }
-  /* (The color box, in ColorBox, with its 💧 in the desktop app.) */
-  .cols :global(input),
-  .cols :global(.colorbox button) {
+  /* (The color box is ColorBox's.) */
+  .cols :global(input) {
     height: 0;
     padding-block: 0;
     border-block-width: 0;

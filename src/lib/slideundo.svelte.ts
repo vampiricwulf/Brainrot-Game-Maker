@@ -5,6 +5,7 @@
 import { untrack } from 'svelte';
 import { SnapshotHistory } from './editing';
 import { begin, history, redo, step, stepAsync, undo, type StepOptions } from './history.svelte';
+import { colorPicker } from './pickerstate.svelte';
 import type { Slide } from './model';
 
 export interface SlideUndo {
@@ -84,7 +85,8 @@ export function slideHistory(slide: Slide): SlideUndo {
   $effect(() => {
     const now = JSON.stringify(slide);
     pending = now !== hist.last;
-    if (!pending) return;
+    // (A color picker open: all it tries is one step once it closes, and none after Esc.)
+    if (!pending || colorPicker.open) return;
     const t = setTimeout(() => !dragging && !holding && commit(), 400);
     return () => clearTimeout(t);
   });

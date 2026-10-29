@@ -4,9 +4,9 @@
 // window writes the last edits first; closing while a 🗜 copy for phones is made, Wait closes once it's done, with the
 // copy written; closing while autosave can't write (or read) asks first. ⬆ Update: a failure stays until it's read
 // (one during a game waits for the editor), and one that finishes once a game has started waits for ⟳ Restart. The 💧
-// beside a color box (a theme color, a slide's text color, a caption's in the image editor) puts the color picked on the
-// screen in it, one undo step, and Esc there changes nothing; a player's color another player has is turned down. Also
-// in a browser: Open… takes an exported .html.
+// in a color box's picker (a theme color, a slide's text color, a caption's in the image editor) puts the color picked
+// on the screen in it, one undo step, and Esc there changes nothing; a player's color another player has is turned
+// down. Also in a browser: Open… takes an exported .html.
 import { chromium } from 'playwright-core';
 import { existsSync, readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
@@ -334,49 +334,37 @@ try {
   assert(typedAt >= 0 && savedAt === typedAt + 1, 'the history shows the save where the game was when it started, with the change typed meanwhile after it');
   await d.locator('nav > button.round-tab').first().click();
 
-  // ---------- 💧 beside color boxes: a color picked on the screen (the color popup's own eyedropper does nothing in
-  // the app on some PCs) ----------
-  console.log('💧 Pick a color from the screen:');
+  // ---------- 💧 Pick from the screen, in the app's color picker (the browser's eyedropper does nothing in the app on
+  // some PCs) ----------
+  console.log('💧 Pick from the screen:');
   const undoTitle = () => d.evaluate(() => document.querySelector('.editor > header button[aria-label="Undo (Ctrl+Z)"]').title);
-  /** Press 💧 (the host picks window.__pick on the screen) and wait for the keys to come back to it. */
-  const pickWith = async (drop, color) => {
-    await drop.evaluate((b, c) => {
-      window.__pick = c;
-      // (Off it first: the page puts the keys back on it once the picker is closed.)
-      b.blur();
-      b.click();
-    }, color);
-    await d.waitForFunction((b) => document.activeElement === b, await drop.elementHandle(), { timeout: 5000 }).catch(() => {
-      throw new Error(`Assertion failed: after a pick, the keys come back to the 💧 (${color})`);
-    });
+  const colorPicker = d.locator('[data-color-picker]');
+  const drop = colorPicker.getByRole('button', { name: '💧 Pick from the screen' });
+  /** In the open color picker, press 💧 (the host picks window.__pick on the screen, null for Esc) and wait for it. */
+  const pickWith = async (color) => {
+    await d.evaluate((c) => (window.__pick = c), color);
+    await calls(d);
+    await drop.click();
+    await d.waitForFunction(() => window.__calls.includes('pick_screen_color'));
+    await d.waitForFunction(() => !document.querySelector('[data-color-picker] [aria-busy="true"]'));
   };
   await d.getByRole('button', { name: '🎨 Theme' }).click();
   const valuesBox = d.locator('[data-k="value"] input[type=color]');
-  const valuesDrop = d.locator('[data-k="value"]').getByRole('button', { name: 'Pick a color from the screen' });
-  await valuesDrop.waitFor();
-  // (The box is still named by its label, not "Pick a color from the screen Values".)
-  const ax = await desk.newCDPSession(d);
-  const { root } = await ax.send('DOM.getDocument');
-  const { nodeId } = await ax.send('DOM.querySelector', { nodeId: root.nodeId, selector: '[data-k="value"] input[type=color]' });
-  const { nodes } = await ax.send('Accessibility.getPartialAXTree', { nodeId, fetchRelatives: false });
-  await ax.detach();
-  assert(nodes[0]?.name?.value === 'Values', `a theme color has a 💧 beside it, and the box keeps its own name (${nodes[0]?.name?.value})`);
-  await d.locator('label[data-k="value"]').click({ button: 'right', position: { x: 5, y: 5 } });
-  const settingMenu = d.getByRole('menu');
-  await settingMenu.waitFor();
-  assert((await settingMenu.innerText()).startsWith('Values\n'), 'its right-click menu is still called Values');
-  await d.keyboard.press('Escape');
-  await settingMenu.waitFor({ state: 'detached' });
+  await valuesBox.waitFor();
+  assert((await d.getByRole('button', { name: /from the screen/ }).count()) === 0, 'no 💧 beside the color boxes any more: it is in their color picker');
   const valueBefore = await valuesBox.inputValue();
   const stepBefore = await undoTitle();
-  await calls(d);
-  await pickWith(valuesDrop, null);
-  assert(
-    (await calls(d)).includes('pick_screen_color') && (await valuesBox.inputValue()) === valueBefore && (await undoTitle()) === stepBefore,
-    'Esc in the picker changes nothing (no step either), and the keys are back on the 💧',
-  );
-  await pickWith(valuesDrop, '#12ab34');
-  assert((await valuesBox.inputValue()) === '#12ab34', 'a color picked on the screen goes in the box');
+  await valuesBox.click();
+  await pickWith(null);
+  assert((await valuesBox.inputValue()) === valueBefore && (await drop.evaluate((b) => document.activeElement === b)), 'Esc on the screen changes nothing, and the keys are back on the 💧');
+  await d.keyboard.press('Escape');
+  await colorPicker.waitFor({ state: 'detached' });
+  assert((await undoTitle()) === stepBefore, '…and Esc in the color picker makes no step either');
+  await valuesBox.click();
+  await pickWith('#12ab34');
+  assert((await valuesBox.inputValue()) === '#12ab34' && (await colorPicker.getByLabel('Hex color').inputValue()) === '#12ab34', 'a color picked on the screen goes in the box (and the picker shows it)');
+  await colorPicker.getByRole('button', { name: '✓ Done' }).click();
+  await colorPicker.waitFor({ state: 'detached' });
   await d.waitForFunction((before) => {
     const title = document.querySelector('.editor > header button[aria-label="Undo (Ctrl+Z)"]').title;
     return title !== before && !title.includes('your latest changes');
@@ -393,13 +381,15 @@ try {
   const canvasBox = await d.locator('.canvas').first().boundingBox();
   await d.mouse.click(canvasBox.x + canvasBox.width / 2, canvasBox.y + canvasBox.height / 2);
   const textColor = d.locator('.insp .color input[type=color]');
-  const textDrop = d.locator('.insp .color').getByRole('button', { name: 'Pick a color from the screen' });
-  await textDrop.waitFor();
+  await textColor.waitFor();
   const textBefore = await textColor.inputValue();
   const clueUndo = clueDlg.getByRole('button', { name: 'Undo (Ctrl+Z)' });
   const clueStep = await clueUndo.getAttribute('title');
-  await pickWith(textDrop, '#12ab34');
-  assert((await textColor.inputValue()) === '#12ab34', `💧 by a slide's text color puts the color picked in it (it was ${textBefore})`);
+  await textColor.click();
+  await pickWith('#12ab34');
+  await colorPicker.getByLabel('Hex color').press('Enter');
+  await colorPicker.waitFor({ state: 'detached' });
+  assert((await textColor.inputValue()) === '#12ab34', `💧 in a slide's text color's picker puts the color picked in it (it was ${textBefore})`);
   await d.waitForFunction(([b, before]) => b.title !== before && !b.title.includes('your latest changes'), [await clueUndo.elementHandle(), clueStep]);
   await d.keyboard.press('Control+z');
   await d.waitForFunction((v) => document.querySelector('.insp .color input[type=color]').value === v, textBefore);
@@ -427,14 +417,23 @@ try {
   const fill = ie.getByLabel('Fill', { exact: true });
   await fill.waitFor();
   const fillBefore = await fill.inputValue();
-  await d.evaluate(() => (window.__pick = '#12ab34'));
-  // (Pressed as a host does: the press is where the editor's undo step starts.)
-  await ie.locator('label', { hasText: 'Fill' }).getByRole('button', { name: 'Pick a color from the screen' }).click();
-  await d.waitForFunction(() => document.querySelector('[aria-label="Edit image"] input[aria-label="Fill"]')?.value === '#12ab34');
+  // (Opened with a press, as a host does: the press is where the editor's undo step starts.)
+  await fill.click();
+  await pickWith('#12ab34');
+  // (Esc closes the picker only, not the image editor under it; then a second try, kept.)
+  await d.keyboard.press('Escape');
+  await colorPicker.waitFor({ state: 'detached' });
+  assert((await fill.inputValue()) === fillBefore && (await ie.isVisible()), 'Esc in the color picker over the image editor puts the Fill back, and leaves the editor open');
+  // (This time from the word Fill: a press on a label's words starts the step of its box.)
+  await ie.locator('label', { hasText: 'Fill' }).click({ position: { x: 4, y: 8 } });
+  await pickWith('#12ab34');
+  await colorPicker.getByRole('button', { name: '✓ Done' }).click();
+  await colorPicker.waitFor({ state: 'detached' });
+  assert((await fill.inputValue()) === '#12ab34', 'a caption’s Fill picked with 💧 goes in the box');
   await ie.getByRole('button', { name: '↶ Undo' }).click();
   assert(
     (await ie.getByLabel('Caption text').count()) === 1 && (await fill.inputValue()) === fillBefore,
-    `in the image editor, one ↶ Undo takes back just a caption's Fill picked with 💧 (${await fill.count() ? await fill.inputValue() : 'the caption went'})`,
+    `in the image editor, one ↶ Undo takes back just that Fill (${(await fill.count()) ? await fill.inputValue() : 'the caption went'})`,
   );
   // (The next one takes back the caption: with nothing left to throw away, Cancel closes without asking.)
   await ie.getByRole('button', { name: '↶ Undo' }).click();
@@ -450,10 +449,12 @@ try {
   const taken = await d.getByLabel('Color for Player 1', { exact: true }).inputValue();
   const second = d.getByLabel('Color for Player 2', { exact: true });
   const own = await second.inputValue();
-  await pickWith(d.getByRole('button', { name: 'Pick the color for Player 2 from the screen' }), taken);
+  await second.click();
+  await pickWith(taken);
+  await colorPicker.getByRole('button', { name: '✓ Done' }).click();
   await d.locator('.toast', { hasText: 'Another player already has that color' }).waitFor();
   const shows = await second.inputValue();
-  assert(shows === own, `💧 by a player's color: one another player has is turned down, and the box keeps theirs (${own}; it shows ${shows})`);
+  assert(shows === own, `💧 for a player's color: one another player has is turned down, and the box keeps theirs (${own}; it shows ${shows})`);
   await d.getByRole('button', { name: '◀ Back to editor' }).click();
   await editorReady(d);
 

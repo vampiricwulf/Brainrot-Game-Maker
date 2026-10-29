@@ -1,35 +1,19 @@
-// The 💧 beside a color box (ColorBox.svelte) in the desktop app: pick a color from anywhere on the screen (see
-// src-tauri/src/screencolor.rs). The color popup's own eyedropper does nothing in the app on some PCs. In a browser
-// (Chrome, Edge) it works, so there's no 💧 there.
+// 💧 Pick from the screen, in the app's color picker (ColorPicker.svelte). The desktop app has its own (see
+// src-tauri/src/screencolor.rs), as WebView2's eyedropper does nothing there on some PCs; a browser with an eyedropper
+// (Chrome, Edge) uses that one, and the others (Firefox, Safari) have no 💧.
 import { inTauri } from './platform';
 import { toast } from './app.svelte';
+import { toHex } from './colors';
 
-/** Color boxes get a 💧: only in the desktop app. */
+interface EyeDropperLike {
+  open(): Promise<{ sRGBHex: string }>;
+}
+const browserDropper = (): (new () => EyeDropperLike) | undefined =>
+  typeof window === 'undefined' ? undefined : (window as unknown as { EyeDropper?: new () => EyeDropperLike }).EyeDropper;
+
+/** The color picker has a 💧: in the desktop app, and in a browser with an eyedropper. */
 export function canPickFromScreen(): boolean {
-  return inTauri();
-}
-
-/** The 💧's name: which color it picks, when the box has a name ("Tile glow color", "Color for Ann"). */
-export function pickLabel(boxLabel?: string | null): string {
-  const what = boxLabel?.trim().replace(/^Color\b/, 'color');
-  return what ? `Pick the ${what} from the screen` : 'Pick a color from the screen';
-}
-
-/**
- * The words of the <label> around a color box, as its name, leaving out `skip` (the box with its 💧): the text, and
- * what has a name of its own (a ↺ button) by that name, as browsers read a label.
- */
-export function labelWords(label: Node, skip: Node): string {
-  const words = (node: Node): string => {
-    if (node === skip) return '';
-    // (Node.TEXT_NODE, Node.ELEMENT_NODE.)
-    if (node.nodeType === 3) return node.textContent ?? '';
-    if (node.nodeType !== 1) return '';
-    const el = node as Element;
-    if (el.getAttribute('aria-hidden') === 'true') return '';
-    return el.getAttribute('aria-label') ?? [...el.childNodes].map(words).join(' ');
-  };
-  return words(label).replace(/\s+/g, ' ').trim();
+  return inTauri() || !!browserDropper();
 }
 
 let picking = false;
@@ -43,6 +27,12 @@ export async function pickScreenColor(): Promise<string | null> {
   if (picking) return null;
   picking = true;
   try {
+    if (!inTauri()) {
+      const Dropper = browserDropper();
+      // (Esc there turns it down: nothing picked.)
+      const picked = Dropper ? await new Dropper().open().catch(() => null) : null;
+      return toHex(picked?.sRGBHex);
+    }
     const { invoke } = await import('@tauri-apps/api/core');
     const color = await invoke<string | null>('pick_screen_color');
     return typeof color === 'string' && /^#[0-9a-f]{6}$/i.test(color) ? color.toLowerCase() : null;

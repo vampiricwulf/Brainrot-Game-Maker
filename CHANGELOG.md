@@ -13,9 +13,13 @@ in plain words for the people who make and host games. Anything committed but no
 
 ## Unreleased
 
+### Changed
+
+- Color boxes open the app's own color picker instead of the browser's: drag in the square and along the color bar, or type the color as Hex (#ff00e6) or RGB (three numbers, 0–255). Both show side by side, the one in use filled in: Hex at first, then whichever you used last (HSL is gone). The color it was sits beside the new one, and a click on it puts it back. Enter or ✓ Done keeps the color as one undo step, and Esc puts back the one it had with nothing to undo. In a single window it stays in the host panel, off the stage viewers see.
+
 ### Fixed
 
-- Desktop app: the eyedropper in a color box's picker does nothing on some PCs, so every color box has a 💧 beside it now that picks a color from anywhere on the screen, with a magnifier to aim: click the pixel (or press Enter; the arrow keys move one pixel, ten with Shift), and Esc, a right-click or switching to another window cancels. The color goes in the box as if you'd picked it there, and Ctrl+Z takes it back. The HTML file in a browser is unchanged (Chrome's and Edge's own eyedropper works there).
+- Desktop app: the eyedropper in the color picker did nothing on some PCs. The app's own color picker has 💧 Pick from the screen, which works there: it picks a color from anywhere on the screen, with a magnifier to aim (click the pixel, or press Enter; the arrow keys move one pixel, ten with Shift), and Esc, a right-click or switching to another window cancels. In Chrome and Edge, 💧 is the browser's own eyedropper. (e5b5d0b, b2a162d)
 
 ## 2026-10-24
 

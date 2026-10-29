@@ -1,69 +1,34 @@
 <!--
-  A color box (<input type="color">). In the desktop app a 💧 beside it picks a color from anywhere on the screen, as
-  the color popup's own eyedropper does nothing there on some PCs (screencolor.ts). In a browser it's only the box, as
-  it always was. Everything but the value goes onto the box itself (its handlers, name, title, data-*, disabled).
+  A color box (<input type="color">) that opens the app's own color picker (ColorPicker.svelte) instead of the
+  browser's: Hex or RGB to type it in, and a 💧 that works in the desktop app too. Everything but the value goes onto
+  the box itself (its handlers, name, title, data-*, disabled), and the picker sends it the input and change events the
+  browser's would.
 -->
 <script lang="ts">
   import type { HTMLInputAttributes } from 'svelte/elements';
-  import { canPickFromScreen, labelWords, pickLabel, pickScreenColor } from './screencolor';
+  import { closeColorPicker, colorPicker, openColorPicker } from './pickerstate.svelte';
 
-  let { value = $bindable(), onchange, ...rest }: Omit<HTMLInputAttributes, 'type' | 'value'> & { value?: string } = $props();
+  let { value = $bindable(), onchange, onclick, ...rest }: Omit<HTMLInputAttributes, 'type' | 'value'> & { value?: string } = $props();
   /** Its own change handler, then the box keeps what that left in it (a color it turned down goes back). */
   const changed: HTMLInputAttributes['onchange'] = (e) => {
     onchange?.(e);
     value = e.currentTarget.value;
   };
+  /** A click, or Enter or Space on it, or a click on its label: the app's picker, never the browser's (a second one closes it). */
+  const clicked: HTMLInputAttributes['onclick'] = (e) => {
+    onclick?.(e);
+    e.preventDefault();
+    const box = e.currentTarget;
+    if (colorPicker.open?.box === box) closeColorPicker();
+    else if (!box.disabled) openColorPicker(box);
+  };
 
-  const fromScreen = canPickFromScreen();
   let box = $state<HTMLInputElement>();
-  let drop = $state<HTMLButtonElement>();
-  const name = $derived(pickLabel(rest['aria-label']));
-
-  // A box named by the <label> around it would have the 💧's name read as part of its own ("Pick a color from the
-  // screen Values"): it's named with the label's other words instead (kept up as they change).
+  // Taken away with its picker open (its look switched off, its row deleted): the picker goes too (once it's gone).
   $effect(() => {
-    const label = box?.closest('label');
-    const own = box?.parentElement;
-    if (!box || !label || !own || rest['aria-label'] || rest['aria-labelledby']) return;
-    const named = box;
-    const rename = () => {
-      const words = labelWords(label, own);
-      if (words) named.setAttribute('aria-label', words);
-      else named.removeAttribute('aria-label');
-    };
-    rename();
-    const watch = new MutationObserver(rename);
-    watch.observe(label, { childList: true, characterData: true, subtree: true });
-    return () => watch.disconnect();
+    const el = box;
+    return () => queueMicrotask(() => el && !el.isConnected && colorPicker.open?.box === el && closeColorPicker('gone'));
   });
-
-  async function pick() {
-    const color = await pickScreenColor();
-    if (color && box && !box.disabled) {
-      box.value = color;
-      // As if picked in the box: its own handlers (and their undo steps) run as they always do.
-      box.dispatchEvent(new Event('input', { bubbles: true }));
-      box.dispatchEvent(new Event('change', { bubbles: true }));
-    }
-    drop?.focus();
-  }
 </script>
 
-{#if fromScreen}
-  <span class="colorbox">
-    <input type="color" bind:this={box} bind:value {...rest} onchange={changed} />
-    <button class="tiny ghost" bind:this={drop} onclick={pick} disabled={rest.disabled} title={name} aria-label={name}>💧</button>
-  </span>
-{:else}
-  <input type="color" bind:value {...rest} onchange={changed} />
-{/if}
-
-<style>
-  /* (One box with its 💧, so a row or a grid cell keeps the shape it had.) */
-  .colorbox {
-    display: inline-flex;
-    align-items: center;
-    gap: 2px;
-    flex: none;
-  }
-</style>
+<input type="color" bind:this={box} bind:value {...rest} onchange={changed} onclick={clicked} data-picking={(box && colorPicker.open?.box === box) || undefined} />

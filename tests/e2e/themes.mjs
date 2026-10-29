@@ -2,7 +2,9 @@
 // HTML file; my themes saved on this computer (kept after a reload, used in another game, renamed, deleted); a theme
 // exported as a .brainrot-theme file and imported again; a theme code copied and pasted; and bad files and codes refused.
 // Which card is chosen (the saved theme put on, not the preset it was made from), Save changes to a saved theme (never
-// to a preset), and the right-click menus (and Shift+F10) on the cards and the settings.
+// to a preset), and the right-click menus (and Shift+F10) on the cards and the settings. A color box opens the app's own
+// color picker (by a click, Enter or its label; never Chromium's): Hex first and RGB beside it (kept after a reload),
+// the box changing live, a hex typed then Enter as one undo step, a bad one turned down, and Esc leaving no step.
 import { chromium } from 'playwright-core';
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
@@ -59,10 +61,68 @@ try {
   await themePage();
   await preview.locator('.board .tile').first().waitFor();
   assert((await preview.locator('.board .tile.host-mark').count()) === 0, 'the Theme page’s preview has no host-only tile badges (a Daily Double is placed)');
-  // (Only the desktop app has a 💧 beside each color box: a browser's color popup has an eyedropper that works.)
+
+  // ---------- The app's own color picker (never Chromium's): Hex or RGB, live, one undo step, Esc ----------
+  const values = valuesBox();
+  const picker = page.getByRole('dialog', { name: 'Color picker: Values' });
+  const formats = picker.getByRole('group', { name: 'Type it as' }).getByRole('button');
+  const hexBox = picker.getByLabel('Hex color');
+  const undoTitle = () => page.locator('.editor > header button[aria-label="Undo (Ctrl+Z)"]').getAttribute('title');
+  const chromiums = () => values.evaluate((e) => e.matches(':open'));
+  const onValues = () => values.evaluate((e) => document.activeElement === e);
+  const valueBefore = await values.inputValue();
+  const stepBefore = await undoTitle();
+  await values.click();
+  await picker.waitFor();
+  assert(!(await chromiums()), "a click on a color box opens the app's picker, not Chromium's");
   assert(
-    (await page.locator('[data-k="value"] input[type=color]').count()) === 1 && (await page.getByRole('button', { name: /from the screen$/ }).count()) === 0,
-    'in a browser the color boxes have no 💧 beside them',
+    (await picker.locator('h3').innerText()) === 'Values' && (await formats.allInnerTexts()).join('|') === 'Hex|RGB' && (await formats.first().getAttribute('aria-pressed')) === 'true',
+    'it is headed with the box’s name, and shows Hex and RGB side by side, Hex chosen',
+  );
+  const square = await picker.getByRole('slider', { name: 'Saturation and brightness' }).boundingBox();
+  await page.mouse.move(square.x + square.width * 0.5, square.y + square.height * 0.5);
+  await page.mouse.down();
+  await page.mouse.move(square.x + square.width * 0.9, square.y + square.height * 0.1, { steps: 4 });
+  const dragged = await values.inputValue();
+  assert(dragged !== valueBefore && (await hexBox.inputValue()) === dragged, `dragging the square changes the box as it goes (${dragged})`);
+  await page.mouse.up();
+  await page.keyboard.press('Escape');
+  await picker.waitFor({ state: 'detached' });
+  assert((await values.inputValue()) === valueBefore && (await undoTitle()) === stepBefore && (await onValues()), 'Esc puts back the color it had, with no undo step, and the keys are on the box again');
+  await page.keyboard.press('Enter');
+  await picker.waitFor();
+  assert(!(await chromiums()) && (await hexBox.evaluate((e) => document.activeElement === e)), 'Enter on the box opens it too (not Chromium’s), with the keys in its Hex box');
+  await page.keyboard.type('12AB3G');
+  await page.keyboard.press('Enter');
+  assert((await hexBox.getAttribute('aria-invalid')) === 'true' && (await picker.isVisible()) && (await values.inputValue()) === valueBefore, 'a hex that isn’t one is shown as such, and isn’t used (Enter keeps the picker open)');
+  await hexBox.fill('12AB34');
+  await page.keyboard.press('Enter');
+  await picker.waitFor({ state: 'detached' });
+  await page.waitForFunction((before) => {
+    const title = document.querySelector('.editor > header button[aria-label="Undo (Ctrl+Z)"]').title;
+    return title !== before && !title.includes('your latest changes');
+  }, stepBefore);
+  assert((await values.inputValue()) === '#12ab34', `a hex typed without # in capitals, then Enter: the box takes it (${await undoTitle()})`);
+  await page.keyboard.press('Control+z');
+  await page.waitForFunction((v) => document.querySelector('[data-k="value"] input[type=color]').value === v, valueBefore);
+  assert((await undoTitle()) === stepBefore, '…as one undo step, which Ctrl+Z takes back');
+  // (A click on the words of its label opens it too.)
+  await page.locator('label[data-k="value"]').click({ position: { x: 60, y: 12 } });
+  await picker.waitFor();
+  await formats.last().click();
+  const rgbBoxes = picker.getByRole('spinbutton');
+  assert(
+    (await formats.last().getAttribute('aria-pressed')) === 'true' && (await rgbBoxes.evaluateAll((bs) => bs.map((b) => `${b.ariaLabel} ${b.value}`).join(', '))) === 'Red 255, Green 204, Blue 0',
+    'a click on its label opens it; RGB shows the color’s three numbers',
+  );
+  await rgbBoxes.nth(2).fill('255');
+  assert((await values.inputValue()) === '#ffccff', 'a number typed there changes the box');
+  await picker.getByRole('button', { name: 'Put back the color it was, #ffcc00' }).click();
+  await picker.getByRole('button', { name: '✓ Done' }).click();
+  await picker.waitFor({ state: 'detached' });
+  assert(
+    (await values.inputValue()) === valueBefore && (await undoTitle()) === stepBefore && JSON.parse(await page.evaluate(() => localStorage.getItem('jb.prefs'))).colorFormat === 'rgb',
+    '↺ puts back the color it was (✓ Done then makes no step), and RGB is remembered',
   );
 
   // ---------- A plain game looks as it always did ----------
@@ -208,6 +268,12 @@ try {
   await card('Checker party').waitFor();
   assert(true, 'the saved theme is still there after a reload, in a new game');
   assert((await bg(preview, 1, 0)) === CLASSIC_TILE, 'the new game starts plain');
+  await values.click();
+  await picker.waitFor();
+  assert((await formats.last().getAttribute('aria-pressed')) === 'true' && (await rgbBoxes.count()) === 3, 'the color picker opens with RGB after a reload, as it was last left');
+  await formats.first().click();
+  await page.keyboard.press('Escape');
+  await picker.waitFor({ state: 'detached' });
   await card('Checker party').locator('.use').click();
   assert((await bg(preview, 1, 0)) === RED && (await headerBg(preview, 1)) === 'rgb(0, 255, 0)', 'using it puts its alternating tiles and categories on this game');
   await page.keyboard.press('Control+z');

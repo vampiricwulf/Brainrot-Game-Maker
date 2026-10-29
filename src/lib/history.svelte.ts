@@ -451,9 +451,11 @@ export function jumpTo(n: number): number {
 
 /**
  * Open a group of changes that stays one step until the returned end() (nested groups count; the outermost name
- * wins, `null`: named from what changed). Always call end(), even when the changes fail.
+ * wins, `null`: named from what changed). Always call end(), even when the changes fail. end('put back') on the
+ * outermost group puts back what changed in it, exactly as it was, and makes no step (Esc in the color picker: a
+ * theme color that was never set is unset again, not set to the color its box showed).
  */
-export function begin(label: string | null = null, opts: StepOptions = {}): () => void {
+export function begin(label: string | null = null, opts: StepOptions = {}): (how?: 'put back') => void {
   if (!groups) {
     commit();
     group = { label, opts };
@@ -461,12 +463,21 @@ export function begin(label: string | null = null, opts: StepOptions = {}): () =
   groups++;
   const gen = generation;
   let open = true;
-  return () => {
+  return (how) => {
     if (!open || gen !== generation) return;
     open = false;
+    if (how === 'put back' && groups === 1) putBack();
     if (--groups) return;
     finish(group);
   };
+}
+
+/** What changed since the last step goes back as it was, as an undo of it would (but it was never a step). */
+function putBack(): void {
+  if (!watch || !base) return;
+  const now = watch.value();
+  const ops = now === base ? [] : diff(base, now).filter((o) => !fillIn(o));
+  if (ops.length) apply([{ ops } as Pick<HistoryEntry, 'ops'> as HistoryEntry], -1);
 }
 
 /**

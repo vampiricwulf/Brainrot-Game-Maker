@@ -1,5 +1,6 @@
 // Accessibility and consistency: windows keep the focus (Tab stays inside, the rest is inert, the focus goes back on
-// close), the app asks in its own windows, the header fits at 150% zoom, readable colors, reduced motion, names.
+// close), the app asks in its own windows, the header fits at 150% zoom, readable colors, reduced motion, names, and
+// with forced colors what's chosen still shows (the color picker's Hex or RGB too).
 import { chromium } from 'playwright-core';
 import { existsSync } from 'node:fs';
 import { resolve } from 'node:path';
@@ -498,6 +499,18 @@ try {
   assert((await outlined(chosen)) && !(await outlined(other)), 'with forced colors, the chosen theme preset is outlined (the others aren’t)');
   const swatches = await hc.locator('.preset .sw').evaluateAll((els) => els.map((e) => getComputedStyle(e).backgroundColor));
   assert(new Set(swatches).size > 1, `and the preset cards keep their own colors (${swatches.join(' | ')})`);
+  await hc.getByLabel('Values', { exact: true }).click();
+  const hcPicker = hc.getByRole('dialog', { name: 'Color picker: Values' });
+  const hcSquare = hcPicker.getByRole('slider', { name: 'Saturation and brightness' });
+  await hcSquare.waitFor();
+  assert(
+    (await outlined(hcPicker.getByRole('button', { name: 'Hex', exact: true }))) &&
+      !(await outlined(hcPicker.getByRole('button', { name: 'RGB', exact: true }))) &&
+      (await hcSquare.evaluate((e) => getComputedStyle(e).backgroundColor === 'rgb(255, 204, 0)')),
+    'and the color picker outlines Hex, the one in use (not RGB), and its square keeps its colors',
+  );
+  await hc.keyboard.press('Escape');
+  await hcPicker.waitFor({ state: 'detached' });
   await hc.getByRole('button', { name: '▶ Play' }).click();
   await hc.getByRole('button', { name: 'Start game ▶' }).waitFor();
   await hc.getByRole('button', { name: '＋ Add player' }).click();
