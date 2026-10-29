@@ -289,6 +289,10 @@
     align-items: flex-start;
     gap: 6px;
   }
+  /* With a 💧 by the color box (desktop app), the label gives up its width, so the row wraps where it does without. */
+  .seg:has(:global(.colorbox)) :global(.label) {
+    min-width: 51px;
+  }
   .seg .drag-grip {
     padding-top: 7px;
   }

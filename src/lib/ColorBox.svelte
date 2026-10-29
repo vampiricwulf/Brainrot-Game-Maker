@@ -7,7 +7,12 @@
   import type { HTMLInputAttributes } from 'svelte/elements';
   import { canPickFromScreen, labelWords, pickLabel, pickScreenColor } from './screencolor';
 
-  let { value = $bindable(), ...rest }: Omit<HTMLInputAttributes, 'type' | 'value'> & { value?: string } = $props();
+  let { value = $bindable(), onchange, ...rest }: Omit<HTMLInputAttributes, 'type' | 'value'> & { value?: string } = $props();
+  /** Its own change handler, then the box keeps what that left in it (a color it turned down goes back). */
+  const changed: HTMLInputAttributes['onchange'] = (e) => {
+    onchange?.(e);
+    value = e.currentTarget.value;
+  };
 
   const fromScreen = canPickFromScreen();
   let box = $state<HTMLInputElement>();
@@ -46,11 +51,11 @@
 
 {#if fromScreen}
   <span class="colorbox">
-    <input type="color" bind:this={box} bind:value {...rest} />
+    <input type="color" bind:this={box} bind:value {...rest} onchange={changed} />
     <button class="tiny ghost" bind:this={drop} onclick={pick} disabled={rest.disabled} title={name} aria-label={name}>💧</button>
   </span>
 {:else}
-  <input type="color" bind:value {...rest} />
+  <input type="color" bind:value {...rest} onchange={changed} />
 {/if}
 
 <style>

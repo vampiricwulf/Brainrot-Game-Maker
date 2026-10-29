@@ -122,21 +122,24 @@ fn nudge(at: (i32, i32), by: (i32, i32), desktop: Rect) -> (i32, i32) {
 }
 
 /// Pick a color from the screen (the 💧 beside a color box): "#rrggbb", or nothing if the host cancelled. Afterwards
-/// the window that asked gets the keys back (Windows would give them to whatever window was under the picker).
+/// the window that asked gets the keys back (Windows would give them to whatever window was under the picker), unless
+/// the host switched to another window, which keeps them.
 #[tauri::command]
 pub async fn pick_screen_color(window: tauri::WebviewWindow) -> Result<Option<String>, String> {
-    let picked = pick().await;
-    let _ = window.set_focus();
-    picked
+    let (color, had_keys) = pick().await?;
+    if had_keys {
+        let _ = window.set_focus();
+    }
+    Ok(color)
 }
 
 #[cfg(not(windows))]
-async fn pick() -> Result<Option<String>, String> {
+async fn pick() -> Result<(Option<String>, bool), String> {
     Err("Picking a color from the screen only works in the Windows app.".into())
 }
 
 #[cfg(windows)]
-async fn pick() -> Result<Option<String>, String> {
+async fn pick() -> Result<(Option<String>, bool), String> {
     let picking = win::Picking::start()?;
     tauri::async_runtime::spawn_blocking(move || {
         let _picking = picking;
@@ -178,12 +181,12 @@ mod win {
         GetKeyState, VK_DOWN, VK_ESCAPE, VK_LEFT, VK_RETURN, VK_RIGHT, VK_SHIFT, VK_SPACE, VK_UP,
     };
     use windows_sys::Win32::UI::WindowsAndMessaging::{
-        CreateWindowExW, DefWindowProcW, DestroyWindow, DispatchMessageW, GetCursorPos, GetMessageW,
-        GetSystemMetrics, GetWindowLongPtrW, LoadCursorW, RegisterClassExW, SetCursor, SetCursorPos,
-        SetForegroundWindow, SetWindowLongPtrW, ShowWindow, TranslateMessage, CREATESTRUCTW, GWLP_USERDATA,
-        IDC_CROSS, MSG, SM_CXVIRTUALSCREEN, SM_CYVIRTUALSCREEN, SM_XVIRTUALSCREEN, SM_YVIRTUALSCREEN, SW_SHOW,
-        WA_INACTIVE, WM_ACTIVATE, WM_CLOSE, WM_DISPLAYCHANGE, WM_ERASEBKGND, WM_KEYDOWN, WM_LBUTTONDOWN,
-        WM_LBUTTONUP, WM_MOUSEMOVE, WM_NCCREATE, WM_NCDESTROY, WM_PAINT, WM_RBUTTONUP, WNDCLASSEXW,
+        CreateWindowExW, DefWindowProcW, DestroyWindow, DispatchMessageW, GetCursorPos, GetForegroundWindow,
+        GetMessageW, GetSystemMetrics, GetWindowLongPtrW, LoadCursorW, PostMessageW, RegisterClassExW, SetCursor,
+        SetCursorPos, SetForegroundWindow, SetWindowLongPtrW, ShowWindow, TranslateMessage, CREATESTRUCTW,
+        GWLP_USERDATA, IDC_CROSS, MSG, SM_CXVIRTUALSCREEN, SM_CYVIRTUALSCREEN, SM_XVIRTUALSCREEN, SM_YVIRTUALSCREEN,
+        SW_SHOW, WA_INACTIVE, WM_ACTIVATE, WM_CLOSE, WM_DISPLAYCHANGE, WM_ERASEBKGND, WM_KEYDOWN, WM_LBUTTONDOWN,
+        WM_LBUTTONUP, WM_MOUSEMOVE, WM_NCCREATE, WM_NCDESTROY, WM_NULL, WM_PAINT, WM_RBUTTONUP, WNDCLASSEXW,
         WS_EX_TOOLWINDOW, WS_EX_TOPMOST, WS_POPUP,
     };
 
@@ -636,14 +639,20 @@ mod win {
             // SAFETY: the Picker outlives the window (run() closes it first), and is only ever shared.
             let picker = GetWindowLongPtrW(hwnd, GWLP_USERDATA) as *const Picker;
             if let Some(p) = picker.as_ref() {
+                let open = p.outcome.get().is_none();
                 // A panic must not reach Windows (it would end the app): it cancels the pick instead.
-                match catch_unwind(AssertUnwindSafe(|| handle(p, hwnd, msg, wparam, lparam))) {
-                    Ok(Some(result)) => return result,
-                    Ok(None) => {}
-                    Err(_) => {
+                let result = catch_unwind(AssertUnwindSafe(|| handle(p, hwnd, msg, wparam, lparam)))
+                    .unwrap_or_else(|_| {
                         p.cancel();
-                        return 0;
-                    }
+                        Some(0)
+                    });
+                // Ended by a message Windows sent (losing activation, the screens changing): GetMessageW only returns
+                // for a posted one, so wake the loop.
+                if open && p.outcome.get().is_some() {
+                    PostMessageW(hwnd, WM_NULL, 0, 0);
+                }
+                if let Some(result) = result {
+                    return result;
                 }
             }
         }
@@ -667,10 +676,11 @@ mod win {
         registered
     }
 
-    /// Open the picker and wait for the host: the color picked, or None if they cancelled.
+    /// Open the picker and wait for the host: the color picked (None if they cancelled), and whether the picker still
+    /// had the keys at the end (not when the host switched to another window).
     ///
     /// SAFETY: on a thread with no windows of its own (the picker runs its own message loop on it), holding Picking.
-    pub unsafe fn run() -> Result<Option<String>, String> {
+    pub unsafe fn run() -> Result<(Option<String>, bool), String> {
         let cant_open = || "Couldn't open the color picker. Try again.".to_string();
         let instance = GetModuleHandleW(null());
         if !register(instance) {
@@ -720,7 +730,9 @@ mod win {
             TranslateMessage(&msg);
             DispatchMessageW(&msg);
         }
-        Ok(picker.outcome.get().flatten().map(hex))
+        // (Asked before the window closes, which gives the keys to some other window.)
+        let had_keys = GetForegroundWindow() == hwnd;
+        Ok((picker.outcome.get().flatten().map(hex), had_keys))
     }
 }
 

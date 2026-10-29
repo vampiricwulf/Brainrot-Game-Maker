@@ -15,7 +15,7 @@ in plain words for the people who make and host games. Anything committed but no
 
 ### Fixed
 
-- Desktop app: the eyedropper in a color box's picker does nothing on some PCs, so every color box has a 💧 beside it now that picks a color from anywhere on the screen, with a magnifier to aim: click the pixel (or press Enter; the arrow keys move one pixel, ten with Shift), and Esc or a right-click cancels. The color goes in the box as if you'd picked it there, and Ctrl+Z takes it back. The HTML file in a browser is unchanged (Chrome's and Edge's own eyedropper works there).
+- Desktop app: the eyedropper in a color box's picker does nothing on some PCs, so every color box has a 💧 beside it now that picks a color from anywhere on the screen, with a magnifier to aim: click the pixel (or press Enter; the arrow keys move one pixel, ten with Shift), and Esc, a right-click or switching to another window cancels. The color goes in the box as if you'd picked it there, and Ctrl+Z takes it back. The HTML file in a browser is unchanged (Chrome's and Edge's own eyedropper works there).
 
 ## 2026-10-24
 

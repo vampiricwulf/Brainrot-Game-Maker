@@ -171,8 +171,10 @@
   let burstTimer: ReturnType<typeof setTimeout> | undefined;
   /** Before a press or key in the panel: what the edits were, in case it changes something. */
   function beforeInput(e: Event): void {
-    if (e.type === 'keydown' && burst && burst.target === e.target) return;
-    burst = { target: e.target, before: JSON.stringify(edits), done: false };
+    // (A color box's 💧 counts as its box: the color it picks comes in later, from the box.)
+    const target = (e.target as Element | null)?.closest?.('.colorbox')?.querySelector('input') ?? e.target;
+    if (e.type === 'keydown' && burst && burst.target === target) return;
+    burst = { target, before: JSON.stringify(edits), done: false };
   }
   /** After a change in the panel: its burst's first change records the step (later ones join it). */
   function afterInput(e: Event): void {

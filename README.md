@@ -126,8 +126,8 @@ along.
 **Right-click** almost anything for a quick menu. This works on rounds, tiles, map screens, spaces, avatars and items.
 
 **Colors:** in the desktop app, the **💧** beside a color box picks a color from anywhere on the screen, since the color
-picker's own eyedropper doesn't work there. Click the pixel you want (or press `Enter`; the arrow keys move one pixel,
-ten with `Shift`). `Esc` or a right-click cancels.
+picker's own eyedropper doesn't work there on some PCs. Click the pixel you want (or press `Enter`; the arrow keys move
+one pixel, ten with `Shift`). `Esc`, a right-click or switching to another window cancels.
 
 **Undo** (`Ctrl+Z`, `Ctrl+Y` to redo) covers every change in the editor and takes you to where it happened. Deleting
 doesn't ask first: a "Deleted … · Undo" note brings it back. The **🕘 History** tab lists every change and jumps back to
