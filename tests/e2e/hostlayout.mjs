@@ -121,6 +121,23 @@ try {
 
   console.log('The fixed bar stays put, one main button at most:');
   states.board = await look();
+  // A right-click on a gap in the host panel shows nothing: never the browser's menu (on stream, with its Reload). A box
+  // to type in keeps it (cut, copy, paste).
+  const rightClick = async (x, y) => {
+    await page.evaluate(() => window.addEventListener('contextmenu', (e) => (window.__menuTaken = e.defaultPrevented), { once: true }));
+    await page.mouse.click(x, y, { button: 'right' });
+    return page.evaluate(() => window.__menuTaken);
+  };
+  const gap = await page.evaluate(() => {
+    const r = document.querySelector('.panel .fixed').getBoundingClientRect();
+    for (let x = r.left + 2; x < r.right; x += 3) {
+      const hit = document.elementFromPoint(x, r.top + r.height / 2);
+      if (hit?.closest('.panel') && !hit.closest('button, a, input, select, textarea, [data-player-id]')) return { x, y: r.top + r.height / 2 };
+    }
+  });
+  assert(gap && (await rightClick(gap.x, gap.y)) === true, 'a right-click on a gap in the host panel gets no browser menu');
+  const timerBox = await page.getByLabel('Timer seconds').boundingBox();
+  assert((await rightClick(timerBox.x + 8, timerBox.y + timerBox.height / 2)) === false, 'a box to type in keeps the browser’s menu (cut, copy, paste)');
   // A double-click on the tile in the stage's middle: it opens, and its second click, on the question's words now, turns
   // nothing blue on stream (nor does Ctrl+A).
   const stageMid = await page.locator('.stage-box .stage').boundingBox().then((s) => ({ x: s.x + s.width / 2, y: s.y + s.height / 2 }));
@@ -852,6 +869,7 @@ try {
       { m_intro: intro },
     ),
   );
+  let cardMenuSeen = false;
   for (const [w, h] of [
     [1920, 1080],
     [1366, 768],
@@ -888,10 +906,20 @@ try {
       // A card out: no phones here, so to Annabelle's 🪟 card window (from 🤫 Send a card…), then that window closed.
       await tools.getByRole('button', { name: '🤫 Send a card…', exact: true }).click();
       const send = p5.getByRole('dialog', { name: 'Send a card' });
-      await Promise.all([p5.waitForEvent('popup'), send.getByRole('button', { name: 'Card window for Annabelle' }).click()]);
+      const [cardWin] = await Promise.all([p5.waitForEvent('popup'), send.getByRole('button', { name: 'Card window for Annabelle' }).click()]);
       await send.getByRole('button', { name: 'Annabelle', exact: true }).click();
       await send.getByRole('textbox', { name: 'The card’s words' }).fill('A secret');
       await send.getByRole('button', { name: '🪟 Show Annabelle' }).click();
+      if (!cardMenuSeen) {
+        // The card window gets no browser menu either.
+        await cardWin.waitForLoadState('domcontentloaded');
+        const words = cardWin.getByText('A secret');
+        await words.waitFor();
+        await cardWin.evaluate(() => window.addEventListener('contextmenu', (e) => (window.__menuTaken = e.defaultPrevented), { once: true }));
+        await words.click({ button: 'right' });
+        assert((await cardWin.evaluate(() => window.__menuTaken)) === true, 'a right-click in the 🪟 card window gets no browser menu');
+        cardMenuSeen = true;
+      }
       await tools.locator('[data-cards-out-count="1"]').waitFor();
       await p5.keyboard.press('Escape');
       await send.waitFor({ state: 'detached' });

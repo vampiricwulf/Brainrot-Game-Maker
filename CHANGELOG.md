@@ -16,6 +16,7 @@ in plain words for the people who make and host games. Anything committed but no
 ### Changed
 
 - Nothing turns blue any more when you click, double-click or drag, nor with Ctrl+A on the game screen (in one window a highlighted word showed on stream, a double-click on the audience window for full screen too). Only the boxes you type in, links, the room code (one click takes it whole), error lines and ℹ About's version and folders select, and with the audience window open the host's own column, typed answers and the 📜 Log, to copy into chat; what's selected there is let go of when that window closes. On the phone page only its boxes select.
+- A right-click where the app has no menu of its own (a gap in the host panel, a button, a picture) shows nothing, in every window: the editor, the game screen, the audience and scores windows and the 🪟 card windows. The browser's own menu showed there, on stream in one window, and in the desktop app it offered Reload. Boxes you type in, links and selected words keep it, for cut, copy and paste.
 
 ### Fixed
 

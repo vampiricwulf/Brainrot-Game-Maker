@@ -160,6 +160,8 @@ the page gets (on a wide screen the page is two columns). A **🔁 Rematch** kee
 Nothing turns blue when you click, double-click or drag, nor with `Ctrl+A`, so nothing shows selected on stream: only
 the boxes you type in, links, the room code (one click takes all of it), error lines and ℹ About's version and folders
 select. With the audience window open, the host's own column, typed answers and the 📜 Log select too, to copy into chat.
+A right-click where the app has no menu of its own shows nothing, in every window (the browser's menu, with its Reload,
+would be on stream): boxes you type in, links and selected words keep it.
 
 Click a tile to open its clue, then reveal the answer with `R` or a click (a double-click is one step: it never also
 shows the answer, or goes back to the board and opens another tile; on a 🤝 partner clue a click waits until the pair has

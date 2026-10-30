@@ -428,6 +428,9 @@ The mode isn't saved with the game: it's dual while the audience window is open.
   column, typed answers (✍, the Final's, a partner's guess) and the 📜 Log's rows too, to copy into chat, let go of when
   the window closes. `Ctrl+A` on the host screen selects nothing outside a field (the live screen editor keeps its
   select-all). Pictures and videos don't drag off as files: a drag on one moves what it's in.
+- **No browser menu**: in every window (the editor and host screen, the audience and scores windows, a 🪟 card window) a
+  right-click the app has no menu for shows nothing, so the browser's menu (Back, Reload, Print) never shows on stream.
+  Fields, links and selected copyable words keep it (cut, copy, paste, open link).
 
 ### 6.3 Game flow
 0. **Round intro** (each step can be turned off in settings): the round title card ("DOUBLE JEOPARDY!") → tiles fill in
