@@ -20,7 +20,7 @@ describe('the stage’s menu', () => {
       {
         heading: 'Movies · $400',
         steps: [item('Next slide ▶', { id: 'slide+', keys: 'N' }), item('👁 Reveal answer', { id: 'reveal', keys: 'R' }), item('⏱ Start the countdown', { id: 'clock', keys: 'T' })],
-        exits: [item('▦ Done ▶ board', { id: 'done', keys: 'Esc' }), item('↩ Cancel (keep tile)', { id: 'putback', keys: 'Shift+Esc', disabled: true })],
+        exits: [item('▦ Done ▶ board', { id: 'done', keys: 'Esc' }), item('↩ Put back (keep tile)', { id: 'putback', keys: 'Shift+Esc', disabled: true })],
       },
       [],
       [item('↶ Undo', { keys: 'Ctrl+Z' }), item('⏸ Cover the screen', { keys: 'K' })],
@@ -32,7 +32,7 @@ describe('the stage’s menu', () => {
       '⏱ Start the countdown · T',
       '—',
       '▦ Done ▶ board · Esc',
-      '↩ Cancel (keep tile) · Shift+Esc (off)',
+      '↩ Put back (keep tile) · Shift+Esc (off)',
       '—',
       '↶ Undo · Ctrl+Z',
       '⏸ Cover the screen · K',
@@ -45,7 +45,7 @@ describe('the stage’s menu', () => {
       {
         heading: '⭐ Daily Double',
         steps: [item('Show question ▶', { id: 'show', keys: 'Enter', disabled: true })],
-        exits: [item('↩ Cancel (keep tile)', { id: 'putback', keys: 'Esc' })],
+        exits: [item('↩ Put back (keep tile)', { id: 'putback', keys: 'Esc' })],
       },
       [
         item('⭐ Ann found it', { lead: true, disabled: true }),
@@ -65,7 +65,7 @@ describe('the stage’s menu', () => {
       '—',
       'True Daily Double',
       '—',
-      '↩ Cancel (keep tile) · Esc',
+      '↩ Put back (keep tile) · Esc',
       '—',
       '⏸ Cover the screen · K',
     ]);

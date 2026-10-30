@@ -446,7 +446,7 @@ try {
   assert(!(await shownOf(solo, SECRETS)).length && sockets === 0, 'the host page holds none of its words, and nothing went anywhere else');
   await win2.getByText('You’re the Describer').waitFor();
   assert(await win2.getByText('Describe it to Ann: don’t say what’s on it!').isVisible(), 'the card window says Cat’s part and what to do, as a phone does');
-  // Cat saw it: ↩ Cancel (keep tile) asks first, as with phones, in the panel (nothing goes over the stage).
+  // Cat saw it: ↩ Put back (keep tile) asks first, as with phones, in the panel (nothing goes over the stage).
   await solo.keyboard.press('Shift+Escape');
   const keepAsk = confirmStrip(solo);
   await keepAsk.waitFor();

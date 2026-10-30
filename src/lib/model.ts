@@ -898,7 +898,7 @@ export interface ScoreEvent {
   clueId?: Id;
   /**
    * Given by a wheel or dice tile's own wheel or dice (a score card, a slice's points): that tile's clue id. (Not clueId:
-   * it's no award on the clue, but ↩ Cancel (keep tile) waits for an Undo of it too.)
+   * it's no award on the clue, but ↩ Put back (keep tile) waits for an Undo of it too.)
    */
   toolTile?: Id;
   undone?: boolean;

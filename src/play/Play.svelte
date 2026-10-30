@@ -2113,7 +2113,7 @@
     // The result was decided up front, so closing early (skipping the animation) still sets the picker.
     if (o?.kind === 'rolloff') rollOffResult(session, o);
     // (The partner wheel's too: its landing is the partner. The keys go to the main button, ▶ Show question, not to the
-    // nearest button the wheel's controls leave, like ↩ Cancel.)
+    // nearest button the wheel's controls leave, like ↩ Put back.)
     if (o?.kind === 'wheel') {
       partnerLanded(o);
       if (o.partnerFor && partner?.stage === 'pick') void tick().then(focusMain);
@@ -2581,7 +2581,7 @@
    */
   function back(keep = false): void {
     // The tile's own wheel or dice goes with it (the scores over it too), as Esc closes it: not while it's still going,
-    // and with a score effect not given yet the first Done says so. (↩ Cancel takes it down without asking.)
+    // and with a score effect not given yet the first Done says so. (↩ Put back takes it down without asking.)
     if (info && tileToolUp(app.live, info.clue)) {
       if (toolBusy()) return;
       const left = keep ? '' : scoreCardsLeft(toolOverlay(app.live), session).join();
@@ -2643,7 +2643,7 @@
     back(true);
   }
   /**
-   * ↩ Cancel (keep tile) asking first, for the tile it was pressed on: in the panel's strip, never over the stage. It
+   * ↩ Put back (keep tile) asking first, for the tile it was pressed on: in the panel's strip, never over the stage. It
    * goes with the tile (never asked again by itself when the tile opens again), and a part's newer question in the
    * strip puts it away (see HostPanel).
    */
@@ -3217,7 +3217,7 @@
     return { id: 'clock', label, keys: 'T', onclick: () => clockKey(false) };
   }
 
-  /** ↩ Cancel (keep tile): greyed once points were given for the clue (Undo them first). */
+  /** ↩ Put back (keep tile): greyed once points were given for the clue (Undo them first). */
   function putBackItem(keys: string): StageItem {
     const blocked = !!info && (!ownPlayers(session)?.setup || (!!partner && Object.keys(partnerMarks).length > 0)) && clueScored(session, info.clue.id);
     return {
@@ -4767,7 +4767,7 @@
         break;
       case 'escape':
         if (showLog) showLog = false;
-        // (Shift+Esc on a wheel or dice tile with its own wheel or dice up cancels, as ↩ Cancel does: the tool goes with
+        // (Shift+Esc on a wheel or dice tile with its own wheel or dice up cancels, as ↩ Put back does: the tool goes with
         // the tile, not once its score effect was given.)
         else if (app.live.overlay && e.shiftKey && session.phase === 'clue' && info && tileToolUp(app.live, info.clue)) cancelClue();
         else if (app.live.overlay) closeOverlay();

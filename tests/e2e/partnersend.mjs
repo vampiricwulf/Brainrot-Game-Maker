@@ -493,7 +493,7 @@ try {
   assert((await fetchAs(ann, pic1)) === 404 && (await fetchAs(ann, pic2)) === 404 && (await fetchAs(dan, vid1)) === 404 && (await fetchAs(cat, pic2, catToken)) === 404, 'Ann, Dan and Cat’s old phone (with the token it had) can fetch none');
 
   // ---------- ⇄ Swap with card 1 out asks first, in the panel (never a box over the stage); Don't swap keeps it ----------
-  // (Over ↩ Cancel (keep tile)'s question, left unanswered: the newer question shows, and the older one goes.)
+  // (Over ↩ Put back (keep tile)'s question, left unanswered: the newer question shows, and the older one goes.)
   await host.keyboard.press('Shift+Escape');
   const swapAsk = confirmStrip(host);
   await swapAsk.getByText('Put the tile back anyway?').waitFor();

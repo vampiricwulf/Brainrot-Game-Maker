@@ -15,7 +15,7 @@ import type { Verb } from './verbs';
 
 /**
  * The fixed places in a clue's row of buttons (its data-flow mark): the slides' pager (◀ Slide, Next slide ▶), 👁 Reveal
- * answer / 🙈 Hide answer, ↩ Cancel (keep tile), and ▦ Done ▶ board (the tiebreaker's 🏁 Back to results).
+ * answer / 🙈 Hide answer, ↩ Put back (keep tile), and ▦ Done ▶ board (the tiebreaker's 🏁 Back to results).
  */
 export type FlowPlace = 'pager' | 'reveal' | 'putback' | 'done';
 

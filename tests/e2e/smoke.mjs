@@ -848,7 +848,7 @@ assert(
   'the toast has no buttons and lets clicks through to the host nav row under it',
 );
 // Points were given for this clue, so it can't be cancelled back onto the board (it could be scored twice).
-assert(await flowButton(page, 'putback').isDisabled(), 'Cancel (keep tile) is off once points were given');
+assert(await flowButton(page, 'putback').isDisabled(), 'Put back (keep tile) is off once points were given');
 await page.keyboard.press('Shift+Escape');
 await page.getByText('Points were given for this clue').waitFor();
 assert((await page.locator('.stage-box .full').count()) === 1, 'Shift+Esc keeps a scored clue open and says why');

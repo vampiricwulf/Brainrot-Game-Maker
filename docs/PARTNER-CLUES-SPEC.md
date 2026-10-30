@@ -679,7 +679,7 @@ its place, is dropped.
 |---|---|---|
 | The wheel is up | Closes the wheel (a landed result applies). | — |
 | Partner up or paired | Back to the board with the tile kept, like Esc on a Daily Double splash (`markUsed` false, Play.svelte:1615-1625). Files got ready with ⇡ are cleaned up by the room 10 minutes later (§13.5). | The same. |
-| Question up or playing, nothing scored | ▦ Done (marks it used). | ↩ Cancel (keep tile). If a card was sent, it asks: "Bob has already seen card 1. Put the tile back anyway?" |
+| Question up or playing, nothing scored | ▦ Done (marks it used). | ↩ Put back (keep tile). If a card was sent, it asks: "Bob has already seen card 1. Put the tile back anyway?" |
 | Playing, scored | ▦ Done. | Refused, as today (HostPanel.svelte:301). |
 
 ### 6.9 Moment by moment
@@ -1610,7 +1610,7 @@ get nothing the host doesn't want them to get. In plain words:
   (index.ts:185, `storage.put('room', s)`), so a card is stored, not only passed on. `RoomSaved.cards` adds only card
   ids, times and who saw them. Files go under their own keys.
 - **How long:** until the next state without that send, which overwrites it: the tile closing (▦ Done, Esc,
-  ↩ Cancel), the host's ✖ Take back, or ↻ Send again (a new id). So normally minutes. The app sends no `cards` once the
+  ↩ Put back), the host's ✖ Take back, or ↻ Send again (a new id). So normally minutes. The app sends no `cards` once the
   tile closes, and the room drops a card's ids then too (§19.2). Files are deleted 10 minutes after no card uses them,
   counted from the upload for a file that was got ready and never sent. Everything goes when the room ends: the host
   closes it, 6 hours after the host's last message, or 30 minutes after it was made if the host never came
@@ -1642,7 +1642,7 @@ because a host can put the answer there:
 | The tile opens, PARTNER UP! | No | As for a Daily Double: `session.partner` is not in the toolset's snapshot (toolset.ts:387). |
 | Spin | No; it's in 📜 Log › Rolls | Spins are never steps (tools.ts:396-402). |
 | Choosing or changing the partner, ⇄ Swap, the picker tick | No | The chips stay there until judging. Making these steps would let an Undo after the tile closed bring back a stale partner state on the board. |
-| ▶ Show question | No | Like Show question on a Daily Double. ↩ Cancel (keep tile) still works before anything is scored. |
+| ▶ Show question | No | Like Show question on a Daily Double. ↩ Put back (keep tile) still works before anything is scored. |
 | Changing a card's recipients | No | The chips stay there until judging. |
 | 📤 Send, ↻ Send again, 📤 Send changes, ✖ Take back | No | A card can't be un-seen. The panel says "Bob already saw it". |
 | ⇡ Get it ready | No | No phone gets anything. |

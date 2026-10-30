@@ -4,7 +4,7 @@
  * the host panel is up, its boxes add their own items (✎ Edit wheel, ⇄ Swap…), and a box's item for one of those steps
  * takes that step's place (it knows its box: its words, its greyed state). One order everywhere:
  *   the heading ("🤝 Partner clue · Movies $400"), a box's leading items (who found a Daily Double), the moment's steps in
- *   the main button's order, the boxes' other items, the ways out (✕ Close, ▦ Done ▶ board, ↩ Cancel (keep tile)), then
+ *   the main button's order, the boxes' other items, the ways out (✕ Close, ▦ Done ▶ board, ↩ Put back (keep tile)), then
  *   the standing ones (↶ Undo, ⏸ Cover the screen).
  * Within one moment the items keep their places: one that can't be used now is greyed, not left out.
  */
@@ -24,7 +24,7 @@ export type Moment = {
   heading?: string;
   /** The moment's steps, in the main button's order. */
   steps: StageItem[];
-  /** The ways out of it (✕ Close, ▦ Done ▶ board, ↩ Cancel (keep tile)). */
+  /** The ways out of it (✕ Close, ▦ Done ▶ board, ↩ Put back (keep tile)). */
   exits?: StageItem[];
 };
 

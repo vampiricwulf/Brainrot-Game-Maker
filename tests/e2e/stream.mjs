@@ -484,7 +484,7 @@ async function viewers() {
  * wheel tile's wheel, a wheel opened later isn't taken for it. Also: the stage keeps its size with a long host note and
  * the buzzers' row, and on a Daily Double's question; Undo of a right answer brings back its countdown, everyone missing
  * makes 👁 Reveal answer the main button, and a tile opened under the cover keeps its countdown paused. Then: ▦ Done ▶ board
- * and ↩ Cancel (keep tile) take the tile's own wheel or dice down with it (Cancel waits for an Undo of its score effect),
+ * and ↩ Put back (keep tile) take the tile's own wheel or dice down with it (Put back waits for an Undo of its score effect),
  * Esc while it spins waits for it, the keys go back to its main button once it lands, and after a reload closing a dice
  * tile's dice still finishes the tile.
  */
@@ -824,7 +824,7 @@ async function tileTools() {
   await stage('.ov').waitFor({ state: 'detached' });
   const question = host.locator('.stage-box').getByText('Third wheel question').first();
   assert((await used('qy')) === false && (await question.count()) === 0, 'Shift+Esc with a wheel tile’s wheel up puts the tile back and takes the wheel down, without its question');
-  // Its score effect given and the wheel closed (the question up): ↩ Cancel waits for an Undo all the same.
+  // Its score effect given and the wheel closed (the question up): ↩ Put back waits for an Undo all the same.
   await tileOf('qy').click();
   await stage('.ov .wheel').waitFor();
   await host.keyboard.press('w');
@@ -837,7 +837,7 @@ async function tileTools() {
   await stage('.ov').waitFor({ state: 'detached' });
   await question.waitFor();
   const cancel = flowButton(host, 'putback');
-  assert(await cancel.isDisabled(), 'its points given and its wheel closed: ↩ Cancel (keep tile) still waits for an Undo');
+  assert(await cancel.isDisabled(), 'its points given and its wheel closed: ↩ Put back (keep tile) still waits for an Undo');
   await host.keyboard.press('Control+z');
   await host.locator('.panel [data-flow="putback"]:enabled').waitFor();
   await cancel.click();
@@ -873,13 +873,13 @@ async function tileTools() {
   // Landed: the keys go back to its main button (not to the side button they fell to while Spin! was off).
   await host.waitForFunction(() => document.activeElement?.matches('.panel [data-next]'));
   assert((await mainLabel(host)) === 'Close ▶ board', 'it lands with its score effect to give, and the keys on its Close ▶ board');
-  // Its points given: ↩ Cancel (keep tile) waits for an Undo, as after an award; then it takes the wheel down with it.
+  // Its points given: ↩ Put back (keep tile) waits for an Undo, as after an award; then it takes the wheel down with it.
   await host.locator('.tc > .row .chip', { hasText: 'Cy' }).click();
   await host.locator('.ac .delta', { hasText: 'Cy: +$100' }).waitFor();
   await host.locator('.ac').getByRole('button', { name: 'Confirm' }).click();
   await host.locator('.ac').waitFor({ state: 'detached' });
   await host.waitForFunction(() => document.activeElement?.matches('.panel [data-next]'));
-  assert(await cancel.isDisabled(), 'its score effect given: the keys go back to Close ▶ board, and ↩ Cancel (keep tile) waits for an Undo');
+  assert(await cancel.isDisabled(), 'its score effect given: the keys go back to Close ▶ board, and ↩ Put back (keep tile) waits for an Undo');
   await host.keyboard.press('Shift+Escape');
   await host.locator('.toast', { hasText: 'Points were given for this clue' }).waitFor();
   assert((await stage('.ov .wheel').count()) === 1 && (await stage('.board').count()) === 0, 'and so does Shift+Esc (the wheel stays, the tile open)');
@@ -888,7 +888,7 @@ async function tileTools() {
   await cancel.click();
   await tileOf('qs').waitFor();
   await stage('.ov').waitFor({ state: 'detached' });
-  assert((await used('qs')) === false, 'undone, ↩ Cancel (keep tile) puts the tile back and takes its wheel off the stage');
+  assert((await used('qs')) === false, 'undone, ↩ Put back (keep tile) puts the tile back and takes its wheel off the stage');
   // A dice tile with nothing to ask: rolled, the keys are on Close ▶ board; ↩ Cancel takes the dice down too.
   await tileOf('qz').click();
   await stage('.ov').waitFor();
@@ -900,7 +900,7 @@ async function tileTools() {
   await cancel.click();
   await tileOf('qz').waitFor();
   await stage('.ov').waitFor({ state: 'detached' });
-  assert((await used('qz')) === false, '↩ Cancel (keep tile) on a rolled dice tile takes the dice off the stage');
+  assert((await used('qz')) === false, '↩ Put back (keep tile) on a rolled dice tile takes the dice off the stage');
   // Rolled, then a reload: closing the dice still finishes the tile (no empty slide left in the clue).
   await tileOf('qz').click();
   await stage('.ov').waitFor();

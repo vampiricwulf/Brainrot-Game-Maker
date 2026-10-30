@@ -455,7 +455,7 @@ The mode isn't saved with the game: it's dual while the audience window is open.
   space, which have their own), `Shift+F10` or the menu key on the main button (or a box's step button, or with nothing
   focused), and a long press open the moment's menu: a heading naming the moment ("🤝 Partner clue · Movies $400"), the
   moment's steps in the main button's order with their keys, the box's own items, the ways out (✕ Close, ▦ Done ▶ board,
-  ↩ Cancel (keep tile)), then ↶ Undo `Ctrl+Z` and ⏸ Cover the screen `K`. The play screen builds it from the steps its
+  ↩ Put back (keep tile)), then ↶ Undo `Ctrl+Z` and ⏸ Cover the screen `K`. The play screen builds it from the steps its
   keys do (dKey, wKey, nKey, clockKey, partnerSpin…), so it works with the controls hidden; while the panel is up, each
   box adds its own (offerMenu, in the main button's order: the tool, the clue's row, the Daily Double, the 🤝 box, the
   Final, the end screen, the board game's turn, the round's ◀ / ▶), and a box's item for one of the steps takes that
@@ -618,9 +618,9 @@ The mode isn't saved with the game: it's dual while the audience window is open.
   or rolling, then show the result. Dismissing the overlay returns to whatever was underneath (board or clue); not
   while it's still spinning or rolling (it lands first, as `W` and `D` wait). A wheel or dice tile with no question
   closed before it spun or rolled stays on the board. A wheel or dice tile's own tool goes with the tile (▦ Done ▶
-  board, ↩ Cancel (keep tile) or `Shift+Esc`) and is still its tile's after a reload. The points it gives (its score
+  board, ↩ Put back (keep tile) or `Shift+Esc`) and is still its tile's after a reload. The points it gives (its score
   effect, a slice's points) are its tile's (`toolTile` on their score events, not `clueId`: no award on the clue), so
-  ↩ Cancel waits for an Undo of them, as after an award, even once the tool is closed. A wheel or dice tile with a
+  ↩ Put back waits for an Undo of them, as after an award, even once the tool is closed. A wheel or dice tile with a
   question offers 👁 Reveal answer only once its tool is closed and the question up: before that, `R` says to spin or
   roll first (`W` / `D`), or once it has landed to close it (`Esc`), and `R` again shows the answer anyway (a wheel that
   won't spin, one only for show). With the controls hidden, `N` there does what a click on the tool does: spin or roll

@@ -51,7 +51,7 @@
     const info = session.phase === 'clue' ? currentClueInfo(session, game) : undefined;
     return info && tileToolUp(app.live, info.clue) ? info.clue.id : undefined;
   });
-  /** The points it gave (`given`) go down as its tile's: ↩ Cancel (keep tile) then waits for an Undo, as after an award. */
+  /** The points it gave (`given`) go down as its tile's: ↩ Put back (keep tile) then waits for an Undo, as after an award. */
   function tileGave(tile: string | undefined, given: (e: ScoreEvent) => boolean): void {
     if (tile) for (const e of session.scoreLog) if (!e.clueId && given(e)) e.toolTile = tile;
   }

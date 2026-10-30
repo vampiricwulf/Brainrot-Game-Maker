@@ -173,7 +173,7 @@ A right-click on the stage (or `Shift+F10` on the main button, or a long press) 
 the main button's order, each with its key (on PARTNER UP!, 🎡 Spin for a partner `W`, Make Bob the partner `2`…, ▶ Show
 question; in a clue, 👁 Reveal answer `R`, ⏱ Start the countdown `T`; a wheel's Spin! `W`, ✎ Edit wheel; a Daily
 Double's who found it and Show question ▶; the Final's next step `N` and ✔ Right `C` / ✘ Wrong `X`; a tie's ways to
-settle it), then what its box adds (⇄ Swap, ± Adjust score…), the way out (▦ Done ▶ board `Esc`, ↩ Cancel (keep tile)),
+settle it), then what its box adds (⇄ Swap, ± Adjust score…), the way out (▦ Done ▶ board `Esc`, ↩ Put back (keep tile)),
 ↶ Undo and ⏸ Cover the screen `K`. It works with the controls hidden too (an item that needs them brings them back). An
 item that can't be used now is greyed, not left out, so each stays in its place. In one window it shows only what the
 panel shows, and ↶ Undo doesn't name its step.
@@ -191,7 +191,7 @@ selected (pick them with `1`–`9`, then `Enter` takes the keys to the Amount bo
 keys are back on the tile). In a 🤝 partner clue, where ✔ Got it / ✘ Missed give the points, it folds behind **± Other
 points…**, and opens by itself once you pick a player (`1`–`9`) or give points by hand on the clue.
 
-The host panel keeps one layout in every round: the status line (with the 📱 phones and ⏱ timer chips and **↩ Cancel
+The host panel keeps one layout in every round: the status line (with the 📱 phones and ⏱ timer chips and **↩ Put back
 (keep tile)** on the right), the players' score chips, the row of what this moment needs, and at its right the one
 main button with its key (**👁 Reveal answer** `R`, **▦ Done ▶ board** `Esc`, **Show question ▶**, **Spin!** `W`,
 **Next turn ▶** `N`, the Final's next step `N`…). Under it come the tools (🎲 Dice, 🎡 Wheel, 🏁 Who goes first, 🤫

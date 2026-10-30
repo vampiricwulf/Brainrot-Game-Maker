@@ -187,7 +187,7 @@
     onback: () => void;
     /** Back to the board without using up the tile. */
     oncancelclue: () => void;
-    /** What ↩ Cancel (keep tile) asks first when a card went (Play asks it): in the strip. */
+    /** What ↩ Put back (keep tile) asks first when a card went (Play asks it): in the strip. */
     askcancel?: HostAsk | null;
     /** Put a used tile back on the board. */
     onreopen: (clueId: string) => void;
@@ -454,7 +454,7 @@
     reveal: teams ? 'Team reveals' : 'Player reveals',
   });
   /**
-   * Points were given for the open clue (what its own wheel or dice gave too), so "Cancel (keep tile)" would let it be
+   * Points were given for the open clue (what its own wheel or dice gave too), so "Put back (keep tile)" would let it be
    * scored twice. (Before its question shows they're an earlier play's, unless it's a partner clue sent back to PARTNER
    * UP! after it was scored.)
    */
@@ -549,7 +549,7 @@
       };
     return askcancel ?? slots.ask;
   });
-  // ↩ Cancel (keep tile)'s question and a part's (a partner card's) share the strip: the newer one shows, the older one
+  // ↩ Put back (keep tile)'s question and a part's (a partner card's) share the strip: the newer one shows, the older one
   // is put away (answered no), so a press never seems to do nothing behind an old question.
   $effect(() => {
     if (askcancel) untrack(() => slots.ask?.oncancel());
@@ -838,7 +838,7 @@
     else adjust = true;
     void tick().then(() => amountBox?.focus());
   }
-  // The intro's steps, ↩ Cancel (keep tile) as it is here (greyed once points were given), the Amount row folded, and the
+  // The intro's steps, ↩ Put back (keep tile) as it is here (greyed once points were given), the Amount row folded, and the
   // last tile closed to put back.
   offerMenu('flow', () => {
     const out: StageItem[] = [];

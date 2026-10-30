@@ -16,7 +16,7 @@ describe('the host screen’s words for each step', () => {
       reveal: '👁 Reveal answer [R]',
       hide: '🙈 Hide answer [R]',
       done: '▦ Done ▶ board [Esc]',
-      putBack: '↩ Cancel (keep tile) [⇧Esc]',
+      putBack: '↩ Put back (keep tile) [⇧Esc]',
       openBuzzers: '🔔 Open the buzzers [U]',
       rollForIt: '🎲 Roll for it',
       spin: 'Spin! [W]',

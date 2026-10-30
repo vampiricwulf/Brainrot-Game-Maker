@@ -184,7 +184,7 @@ try {
   const pairedMenu = await menuLines(page);
   assert(
     JSON.stringify(pairedMenu.slice(0, 6)) === JSON.stringify(['# 🤝 Partner clue · Movies $400', '↻ Spin again · W', 'Make Bob the partner · 2 (off)', 'Make Cat the partner · 3', 'Make Dan the partner · 4', '▶ Show question · Enter']) &&
-      pairedMenu.includes('⇄ Swap') && pairedMenu.includes('↩ Cancel (keep tile) · Esc') && pairedMenu.at(-1) === '⏸ Cover the screen · K',
+      pairedMenu.includes('⇄ Swap') && pairedMenu.includes('↩ Put back (keep tile) · Esc') && pairedMenu.at(-1) === '⏸ Cover the screen · K',
     `a right-click on PARTNER UP! gives the moment’s menu (${pairedMenu.join(' | ')})`,
   );
   await noCards(page, 'the stage’s menu on PARTNER UP!');

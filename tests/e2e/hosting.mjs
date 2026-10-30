@@ -122,7 +122,7 @@ try {
   const clueMenu = await menuLines(page);
   assert(
     JSON.stringify(clueMenu) ===
-      JSON.stringify(['# Category 2 $200', '👁 Reveal answer · R', '⏱ Start the countdown · T', '—', '▦ Done ▶ board · Esc', '↩ Cancel (keep tile) · Shift+Esc', '—', '↶ Undo · Ctrl+Z (off)', '⏸ Cover the screen · K']),
+      JSON.stringify(['# Category 2 $200', '👁 Reveal answer · R', '⏱ Start the countdown · T', '—', '▦ Done ▶ board · Esc', '↩ Put back (keep tile) · Shift+Esc', '—', '↶ Undo · Ctrl+Z (off)', '⏸ Cover the screen · K']),
     `a right-click on a clue’s stage gives its menu (${clueMenu.join(' | ')})`,
   );
   await openMenu(page).getByRole('menuitem', { name: '⏱ Start the countdown' }).click();
@@ -254,7 +254,7 @@ try {
   const ddMenu = await stageMenu();
   assert(
     ddMenu[0] === '# ⭐ Daily Double · Category 4 $200' && ddMenu.filter((l) => / found it/.test(l)).length === 3 && ddMenu.filter((l) => l.endsWith('found it (off)')).length === 1 &&
-      ddMenu.includes('Show question ▶ · Enter (off)') && ddMenu.indexOf('Show question ▶ · Enter (off)') > ddMenu.findIndex((l) => l.endsWith('found it')) && ddMenu.includes('↩ Cancel (keep tile) · Esc'),
+      ddMenu.includes('Show question ▶ · Enter (off)') && ddMenu.indexOf('Show question ▶ · Enter (off)') > ddMenu.findIndex((l) => l.endsWith('found it')) && ddMenu.includes('↩ Put back (keep tile) · Esc'),
     `the stage’s menu on a Daily Double: who found it, then Show question ▶ (${ddMenu.join(' | ')})`,
   );
   await page.locator('.dd input[type=number]').focus();

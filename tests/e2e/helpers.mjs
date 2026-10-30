@@ -162,7 +162,7 @@ export const mainButton = (page, name) => {
 
 /**
  * The button in one of a clue's fixed places in the host panel (data-flow): 'pager' (◀ Slide, Next slide ▶), 'reveal'
- * (👁 Reveal answer / 🙈 Hide answer), 'putback' (↩ Cancel (keep tile)) or 'done' (▦ Done ▶ board, the tiebreaker's
+ * (👁 Reveal answer / 🙈 Hide answer), 'putback' (↩ Put back (keep tile)) or 'done' (▦ Done ▶ board, the tiebreaker's
  * 🏁 Back to results); with `name`, the one that says that. The main button carries the mark of the place whose step it
  * does: the row's own button comes first, else the main button, so the step is found wherever it is now.
  */

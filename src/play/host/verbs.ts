@@ -34,7 +34,7 @@ export const VERBS = {
   reveal: { label: '👁 Reveal answer', key: 'R', title: 'R (press again to hide)' },
   hide: { label: '🙈 Hide answer', key: 'R', title: 'R (press again to hide)' },
   done: { label: '▦ Done ▶ board', key: 'Esc', title: 'Esc: back to the board (marks the tile used)' },
-  putBack: { label: '↩ Cancel (keep tile)', key: '⇧Esc', title: 'Shift+Esc: back to the board without using up this tile' },
+  putBack: { label: '↩ Put back (keep tile)', key: '⇧Esc', title: 'Shift+Esc: back to the board without using up this tile' },
 
   // ---------- Phone buzzers ----------
   openBuzzers: { label: '🔔 Open the buzzers', key: 'U', title: "U: buzzers open for everyone who hasn't missed this clue" },

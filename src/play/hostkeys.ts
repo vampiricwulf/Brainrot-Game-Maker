@@ -66,7 +66,7 @@ export const hostKeys = (playerOnly: boolean): KeyGroup[] => [
       ['R', 'Reveal the answer (again: hide it); the countdown stops. On a wheel or dice tile while its wheel or dice is up, the first R says to spin, roll or close it first'],
       ['← ↑ → ↓ on a tile', 'Move across the board (Enter or Space opens the tile); after a clue the keys go on from its tile'],
       ['1 – 9, then Enter on a tile', 'The keys go to the Amount box: type the points, then Enter gives them'],
-      ['Shift+Esc', 'Cancel the clue: back to the board, the tile stays playable (not once points were given)'],
+      ['Shift+Esc', '↩ Put back (keep tile): back to the board, the tile stays playable (not once points were given)'],
       ['Enter in the Daily Double wager', 'Show the question (its player answers it)'],
       ['Esc on a Daily Double splash', 'Back to the board: the tile stays playable (no wager was taken)'],
       ['Enter on a ✍ multiple-choice clue', 'With nobody selected, once the answers are locked: ✔ Judge all, by the choice marked right (one Ctrl+Z takes it back). With players selected, Enter awards them'],
