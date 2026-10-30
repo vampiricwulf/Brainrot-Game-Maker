@@ -375,7 +375,7 @@ try {
   assert(
     (await closeAsk.getByRole('button').allInnerTexts()).join(' | ') === 'Keep it open | Close the room' &&
       (await closeAsk.getByRole('button', { name: 'Keep it open' }).evaluate((el) => el === document.activeElement)) &&
-      /2 phones are in the room: closing it tells them the game is over/.test(await closeAsk.innerText()),
+      /2 phones are in the room: closing it sends them out, and they’d join again with a new code/.test(await closeAsk.innerText()),
     `✕ Close the room in the bar over the editor asks first with a phone in the room, Keep it open first (${(await closeAsk.innerText()).replace(/\s+/g, ' ')})`,
   );
   await closeAsk.getByRole('button', { name: 'Close the room' }).click();

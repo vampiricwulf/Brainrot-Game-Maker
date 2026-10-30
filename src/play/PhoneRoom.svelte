@@ -35,7 +35,7 @@
     onadd: (conn: string, name: string) => void;
     onreject: (conn: string) => void;
     onkick: (seatId: string, free?: boolean) => void;
-    /** ✕ Close the room: the phones are told the game is over. */
+    /** ✕ Close the room: the phones are sent out (told the game is over, or before it, that the host closed the room). */
     onclose: () => void;
     onlock: (on: boolean) => void;
     /** Teams: take one person off their team / put them on another. */
@@ -157,7 +157,7 @@
           <button
             class="small ghost"
             onclick={() => (seatedPhones ? (closing = 'close') : onclose())}
-            title="Phones are told the game is over. ({app.playerOnly ? '◀ Back' : '◀ Back to editor'} keeps the room open.)">✕ Close the room</button
+            title="Sends the phones out of the room. ({app.playerOnly ? '◀ Back' : '◀ Back to editor'} keeps the room open.)">✕ Close the room</button
           >
         </div>
         {#if remote.status === 'online'}
@@ -182,8 +182,8 @@
     <div class="ask" role="alertdialog" aria-label="Close the room?">
       <span>
         {seatedPhones}
-        {seatedPhones === 1 ? 'phone is' : 'phones are'} in the room: {closing === 'off' ? 'turning Buzzer mode off closes it' : 'closing it'} tells them the game is over, and
-        they’d join again with a new code.
+        {seatedPhones === 1 ? 'phone is' : 'phones are'} in the room: {closing === 'off' ? 'turning Buzzer mode off closes it, which sends them out' : 'closing it sends them out'},
+        and they’d join again with a new code.
       </span>
       <div class="row">
         <!-- svelte-ignore a11y_autofocus -->

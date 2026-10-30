@@ -594,8 +594,8 @@ on the pre-game screen its own keys first); the main ones:
 A held key counts once: only the arrows (and the numpad in an RPG round) repeat. A button the app put the keys on
 (the one that had them went away, or at the start) doesn't take `Enter` or `Space` for itself until it's chosen (with
 `Tab`, or as the next row of the list the keys were in): the keys keep their shortcuts. Even then only a plain `Enter`
-or `Space` presses it: `Shift+Enter` is always ✘ Missed or − Deduct, never a press of the ✔ Got it or ＋ Award the
-keys are on. `Enter` on the main button in
+or `Space` presses it: `Shift+Enter` is always ✘ Missed or − Deduct, never a press of the button or tile the keys are on
+(✔ Got it, ＋ Award, ▦ Done ▶ board; a tile opens with `Enter` or `Space`, not `Shift+Enter`). `Enter` on the main button in
 a slides round, on a round's title card or its category reveals, does what the button says, as `N`; in the Final's
 steps and on the end screen it says which key (or click) goes on, and on a wheel or dice tile's Spin! / Roll! the key
 that spins or rolls (not with the controls hidden: the hidden panel's button may be out of date). With players

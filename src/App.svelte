@@ -303,7 +303,7 @@
     void keptCode;
     closingRoom = false;
   });
-  /** ✕ Close the room (the bar over the editor): phones are told the game is over. */
+  /** ✕ Close the room (the bar over the editor): the phones are sent out (told the game is over, or that the host closed the room). */
   async function closeKeptRoom(quiet = false): Promise<void> {
     const r = kept.room;
     kept.room = null;
@@ -1208,7 +1208,7 @@
         {#if closingRoom && seated}
           <!-- Phones are in it: asked first, as on the 📱 card, the safe answer first. -->
           <span class="item ask" role="alertdialog" aria-label="Close the room?">
-            <span class="what">{seated} {seated === 1 ? 'phone is' : 'phones are'} in the room: closing it tells them the game is over, and they’d join again with a new code.</span>
+            <span class="what">{seated} {seated === 1 ? 'phone is' : 'phones are'} in the room: closing it sends them out, and they’d join again with a new code.</span>
             <!-- svelte-ignore a11y_autofocus -->
             <button class="small" autofocus onclick={() => (closingRoom = false)}>Keep it open</button>
             <button class="small danger" onclick={() => ((closingRoom = false), void closeKeptRoom())}>Close the room</button>
