@@ -447,6 +447,7 @@ you're on):
 | `I` (RPG, board game) | Player sheet |
 | Arrows, numpad or `Alt`+arrows (RPG) | Move the party |
 | `E` (board game) | ✎ Edit board while you play |
+| Right-click, `Shift+F10` or the menu key | The menu of what you point at, or what has the keys: a player (anywhere), a tile, a board-game space, or the moment's own on the stage and the main button |
 | `?` | Every key |
 
 A key held down counts once (only the arrows repeat). With the keys on the main button in a slides round, or on a

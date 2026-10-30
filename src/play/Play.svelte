@@ -3550,7 +3550,7 @@
   }
 
   function stageMenu(e: MouseEvent): void {
-    if (e.defaultPrevented) return;
+    if (e.defaultPrevented || browserMenuFits(e.target, getSelection())) return;
     const t = e.target as HTMLElement;
     const objId = t.closest<HTMLElement>('[data-object]')?.dataset.object;
     const playerId = t.closest<HTMLElement>('[data-player-id]')?.dataset.playerId;
