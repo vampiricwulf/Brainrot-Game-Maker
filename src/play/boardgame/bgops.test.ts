@@ -95,6 +95,7 @@ describe('board game: the round’s mover', () => {
     expect(rollMover(game, session, live)).toBeNull();
     const opened = live.overlay;
     expect(opened?.kind === 'wheel' && !!opened.spin).toBe(true);
+    expect(session.rollLog?.at(-1)?.playerIds).toEqual(['a']);
     // Its slice is the count to move.
     expect(moverResult(game, round, live.overlay)).toBe(opened?.kind === 'wheel' ? Number(opened.segments[opened.result!].label) : null);
     const spin = live.overlay?.kind === 'wheel' ? live.overlay.spin : undefined;
@@ -119,6 +120,8 @@ describe('board game: the round’s mover', () => {
     rollMover(game, session, live);
     const rolled = live.overlay;
     expect(rolled?.kind === 'dice' && !!rolled.roll).toBe(true);
+    // (The turn player's roll: the log says so, as "This was for" would.)
+    expect(session.rollLog?.[0].playerIds).toEqual(['a']);
     rollMover(game, session, live);
     expect(live.overlay).toBe(rolled);
     expect(session.rollLog).toHaveLength(1);

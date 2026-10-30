@@ -562,6 +562,18 @@ The mode isn't saved with the game: it's dual while the audience window is open.
   roll first (`W` / `D`), or once it has landed to close it (`Esc`), and `R` again shows the answer anyway (a wheel that
   won't spin, one only for show). With the controls hidden, `N` there does what a click on the tool does: spin or roll
   it, then close it.
+- **The tool's box** in the host panel keeps its places in every state: on its first row the tool's name, its spin or
+  roll (**Spin!** `W`, greyed while it turns, then **Spin again**; ↻ Spin again where the main button says so, on a
+  "Spin again" slice; **Roll!** `D`, then **Roll again**), ✎ Edit wheel and ＋ Spin another wheel too…, the result, and
+  the way to close it last: **✕ Close** `Esc`, or the main button's **Close** / **Close ▶ board** once that's the next
+  step. The main button copies the box's next step with the same words, key, tooltip and greyed state, and a click on
+  the box's gives the keys back to the main button. The scoreboard, a player's sheet, a roll-off and a pop-up (its 👁
+  Reveal answer too) have the same Close at the right of their row; a shop keeps 🚪 Leave shop. The partner wheel and a
+  board game's own roll leave spinning again to their own box (the 🤝 box's ↻ Spin again, the turn's 🎲 Roll), and a
+  board game's own roll goes in the roll log as the turn player's (no "This was for" to tick). While an outcome's score
+  card waits, it's what's in view there; the first row comes back once it's confirmed or skipped. A box's step button
+  (a tool's, a 🤝 partner clue's) drops the rest of its own double-click wherever it lands, so the second click never
+  acts on what took the box's place.
 - **Reveal**: the outcome is shown on the audience view (label, plus details/media/custom slide if set), with an
   optional countdown. The host can dismiss it, re-spin/re-roll, or tag it with a player
   ("this punishment is for Alex"). Every spin/roll goes into the **roll log** (separate from the score log, no score impact),

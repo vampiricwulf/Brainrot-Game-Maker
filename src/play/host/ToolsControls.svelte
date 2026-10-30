@@ -1,6 +1,8 @@
 <!--
-  Host controls for whatever tool overlay is on screen. Its main button (Spin!, Roll!, then Close) is the panel's main
-  one, in the main cell: the card keeps the result, the actions and spinning or rolling again.
+  Host controls for whatever tool overlay is on screen, in fixed places on its first row: its name, the spin or roll
+  (Spin!, greyed while it turns, then Spin again; Roll!, then Roll again), ✎ Edit wheel and ＋ Spin another wheel too…,
+  the result, and a way to close it last, in every state. The panel's main button copies the next step (Spin!, then
+  Close): the box shows that same step, with the same words and key. Then the result's actions and score cards.
 -->
 <script lang="ts">
   import { onDestroy, onMount, tick, untrack } from 'svelte';
@@ -24,8 +26,10 @@
   import { copyText, standingsText } from '../standings';
   import { currentClueInfo, toolOnlyClue } from '../../lib/session';
   import { boardNow, moverResult } from '../boardgame/bgops';
-  import { offerNext, step } from './slots.svelte';
+  import { offerNext, step, type NextAction } from './slots.svelte';
   import { VERBS } from './verbs';
+  import StepButton from './StepButton.svelte';
+  import { oneShot } from '../../lib/oneshot';
   import { offerIn } from './offered.svelte';
   import { announce } from '../../lib/announce';
 
@@ -177,19 +181,58 @@
     return !!info && !!o && toolOnlyClue(info.clue) && o.kind === info.clue.type;
   });
 
+  /**
+   * A board game's own roll (or its movement wheel): its turn box rolls again (🎲 Roll), and it's the turn player's, so
+   * the box here has no Roll again nor "This was for".
+   */
+  const boardMover = $derived.by(() => {
+    const { round } = boardNow(game, session);
+    return !!round && ((o?.kind === 'dice' && !!o.mover) || (o?.kind === 'wheel' && round.mover.kind === 'wheel' && o.wheelId === round.mover.wheel));
+  });
+  const spin = () => spinWheel(app.live, session, game);
+  const roll = () => o?.kind === 'dice' && rollDice(app.live, session, o.preset, o.mover);
+
+  const closeStep = $derived(step(tileDone ? VERBS.closeToolBoard : VERBS.closeTool, onclose));
   // The main button: spin or roll until it's done, then close (a question pop-up reveals its answer first). A shop has its
   // own 🚪 Leave shop.
-  offerNext('tool', () => {
+  const next = $derived.by((): NextAction | null => {
     if (!o || o.kind === 'shop') return null;
     // (A spent wheel can't spin: Close it, or Restore its slices in the card.)
-    if (o.kind === 'wheel' && !landed && !spent) return step(o.spin ? VERBS.spinning : VERBS.spin, () => spinWheel(app.live, session, game), { disabled: busy });
-    if (o.kind === 'wheel' && landed && again && !spent) return step(VERBS.spinAgain, () => spinWheel(app.live, session, game));
-    if (o.kind === 'dice' && !landed) return step(o.roll ? VERBS.rollAgain : VERBS.roll, () => rollDice(app.live, session, o.preset, o.mover), { disabled: busy });
+    if (o.kind === 'wheel' && !landed && !spent) return step(o.spin ? VERBS.spinning : VERBS.spin, spin, { disabled: busy });
+    if (o.kind === 'wheel' && landed && again && !spent) return step(VERBS.spinAgain, spin);
+    if (o.kind === 'dice' && !landed) return step(o.roll ? VERBS.rollAgain : VERBS.roll, roll, { disabled: busy });
     if (o.kind === 'popup' && o.answer && !o.revealed) return step(VERBS.reveal, () => (o.revealed = true), { title: undefined });
     // A board game's own roll (or spin) that came up: moving is next (▶ Move, Enter, which closes it), not Close.
     const { round } = boardNow(game, session);
     if (round && moverResult(game, round, o) !== null) return null;
-    return step(tileDone ? VERBS.closeToolBoard : VERBS.closeTool, onclose);
+    return closeStep;
+  });
+  offerNext('tool', () => next);
+
+  /**
+   * The spin or roll's place in the box, after its name: the main button's step while that's the spin (Spin!, greyed
+   * while it turns; ↻ Spin again on a "Spin again" slice), else spinning or rolling again (W, D). None for the partner's
+   * wheel (the 🤝 box spins it again) or a board game's own roll.
+   */
+  const spinPlace = $derived.by((): NextAction | null => {
+    if (o?.kind === 'wheel' && !o.partnerFor && !boardMover) {
+      if (next && next !== closeStep) return next;
+      const why = spent ? { disabled: true, title: 'Every slice has landed: Restore them to spin again' } : {};
+      return step(!o.spin ? VERBS.spin : again ? VERBS.spinAgain : VERBS.spinning, spin, why);
+    }
+    if (o?.kind === 'dice' && !boardMover) return next && next !== closeStep ? next : step(VERBS.rollAgain, roll);
+    return null;
+  });
+  /** A wheel or dice still turning waits for it to land to close (Esc says so); the roll-off and the partner's wheel don't. */
+  const closeWaits = $derived(busy && ((o?.kind === 'wheel' && !o.partnerFor) || o?.kind === 'dice'));
+  /** ✕ Close's tooltip, while closing isn't the main button's step. */
+  const closeTitle = $derived.by(() => {
+    if (closeWaits) return `Still ${o?.kind === 'wheel' ? 'spinning' : 'rolling'}: wait for it to land`;
+    if ((o?.kind === 'wheel' && !o.spin) || (o?.kind === 'dice' && !o.roll))
+      return `Close it without ${o.kind === 'wheel' ? 'spinning' : 'rolling'}${tileDone && !spent ? ' (the tile stays on the board)' : ''}`;
+    if (o?.kind === 'popup' && o.answer && !o.revealed) return 'Close it without showing the answer';
+    if (boardMover && !next) return 'Close it without moving';
+    return 'Esc';
   });
 
   function tag(id: string): void {
@@ -207,8 +250,7 @@
     <div class="row">
       {#if o.kind === 'wheel'}
         <b>🎡 {o.name}</b>
-        <!-- (Spin! is the main button until it lands, then Close is.) -->
-        {#if landed && !again}<button onclick={() => spinWheel(app.live, session, game)} disabled={spent} title={spent ? 'Every slice has landed: Restore them to spin again' : 'W'}>Spin again</button>{/if}
+        {#if spinPlace}<StepButton step={spinPlace} />{/if}
         <button class="small" class:on={o.editing} aria-pressed={!!o.editing} onclick={() => ((o.editing = !o.editing), o.editing && (editExtra = null))} title="Turn slices off or change their chances for this spin">
           ✎ Edit wheel{wheelEdited(o, session) ? ' (edited)' : ''}
         </button>
@@ -258,7 +300,7 @@
         {/if}
       {:else if o.kind === 'dice'}
         <b>🎲 {o.name}</b>
-        {#if landed}<button onclick={() => rollDice(app.live, session, o.preset, o.mover)} title="D">Roll again</button>{/if}
+        {#if spinPlace}<StepButton step={spinPlace} />{/if}
       {:else if o.kind === 'rolloff'}
         <b>{o.purpose === 'tiebreak' ? '🏆 Tiebreaker roll-off' : o.purpose === 'buzz' ? '🎲 Buzzer tie' : '🏁 Who goes first'}</b>
         {#if !busy && o.purpose === 'buzz'}
@@ -272,6 +314,9 @@
         {#if o.value}<span class="muted small">worth {o.value}</span>{/if}
         {#if o.answer && o.revealed}
           <button onclick={() => (o.revealed = false)} title="R">🙈 Hide answer</button>
+        {:else if next && next !== closeStep}
+          <!-- (Its answer next: 👁 Reveal answer, as the main button.) -->
+          <StepButton step={next} />
         {/if}
       {:else if o.kind === 'sheet'}
         {@const i = session.players.findIndex((p) => p.id === o.playerId)}
@@ -291,11 +336,14 @@
       {/if}
       <span class="spacer"></span>
       {#if resultText && !busy}<span class="result" title={resultText}>Result: <b>{resultText}</b></span>{/if}
-      <!-- Before it's spun or rolled: a way out without (Spin! / Roll! is the main button; Esc can't, from a box). -->
-      {#if (o.kind === 'wheel' || o.kind === 'dice') && !landed && !busy}
-        <button class="small ghost" onclick={onclose} title="Close it without {o.kind === 'wheel' ? 'spinning' : 'rolling'}{tileDone && !spent ? ' (the tile stays on the board)' : ''}"
-          >✕ Close</button
-        >
+      <!-- The way out, last, in every state (a shop has its 🚪 Leave shop): the main button's Close when that's next, else
+           ✕ Close (before it's spun, say). -->
+      {#if o.kind !== 'shop'}
+        {#if next === closeStep}
+          <StepButton step={closeStep} />
+        {:else}
+          <button use:oneShot onclick={onclose} disabled={closeWaits} title={closeTitle}>✕ Close <kbd aria-hidden="true">Esc</kbd></button>
+        {/if}
       {/if}
     </div>
     {#if outcome?.actions?.length && !busy && (o.kind === 'wheel' || o.kind === 'dice')}
@@ -373,22 +421,27 @@
         {/if}
       </div>
     {:else if (o.kind === 'wheel' || o.kind === 'dice') && resultText && !busy && !(o.kind === 'wheel' && (o.players || o.members))}
-      <div class="row">
-        <span class="muted small">This was for (optional, goes in the roll log):</span>
-        {#each session.players as p (p.id)}
-          {@const on = tagRoll?.playerIds?.includes(p.id)}
-          <button
-            class="chip"
-            style:border-color={p.color}
-            style:background={on ? p.color : undefined}
-            style:color={on ? textOn(p.color) : undefined}
-            aria-pressed={!!on}
-            onclick={() => tag(p.id)}>{p.name}</button>
-        {/each}
-        {#if outcome?.timerSeconds}
-          <button class="small" onclick={() => startTimer(app.live, outcome!.timerSeconds!)}>⏱ Start {outcome.timerSeconds}s</button>
-        {/if}
-      </div>
+      <!-- (A board game's own roll is the turn player's: the log says so already.) -->
+      {#if !boardMover || outcome?.timerSeconds}
+        <div class="row">
+          {#if !boardMover}
+            <span class="muted small">This was for (optional, goes in the roll log):</span>
+            {#each session.players as p (p.id)}
+              {@const on = tagRoll?.playerIds?.includes(p.id)}
+              <button
+                class="chip"
+                style:border-color={p.color}
+                style:background={on ? p.color : undefined}
+                style:color={on ? textOn(p.color) : undefined}
+                aria-pressed={!!on}
+                onclick={() => tag(p.id)}>{p.name}</button>
+            {/each}
+          {/if}
+          {#if outcome?.timerSeconds}
+            <button class="small" onclick={() => startTimer(app.live, outcome!.timerSeconds!)}>⏱ Start {outcome.timerSeconds}s</button>
+          {/if}
+        </div>
+      {/if}
       {#if outcome?.scoreAction && !cardDone(actionKey)}
         {#key actionKey}
           <ActionCard
@@ -445,6 +498,14 @@
   }
   select.small {
     padding: 2px 6px;
+  }
+  kbd {
+    font: 11px/1 ui-monospace, monospace;
+    padding: 1px 4px;
+    margin-left: 4px;
+    border: 1px solid currentColor;
+    border-radius: 4px;
+    opacity: 0.75;
   }
   .result {
     max-width: 50%;

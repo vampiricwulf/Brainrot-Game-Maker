@@ -18,7 +18,8 @@
 // board's size through a Daily Double's splash and slides, a clue with two sounds on its slide and one with two slides,
 // and at 1110 and 1184px through the two-slide clue (◀ Slide and ▦ Done ▶ board in words, its hint cut short). With 4
 // and 8 players at 1280×720 and 1366×768, a 🤝 partner clue's box holds each step the main button does, in sight (its
-// foot, 👁 Reveal answer and ▦ Done ▶ board too), the stage one size from PARTNER UP! to ✔ Got it.
+// foot, 👁 Reveal answer and ▦ Done ▶ board too), the stage one size from PARTNER UP! to ✔ Got it; with 8, a 🎯 Pick a
+// player wheel's bar is one row and in sight, Spin! first and its Close last, landed too.
 import { chromium } from 'playwright-core';
 import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
@@ -819,6 +820,33 @@ try {
             .map((el) => el.textContent.trim()),
         sel,
       );
+    // With 8 at 1280×720, a 🎯 Pick a player wheel from the board's 🎡 Wheel: its bar is one row and in sight, Spin! first
+    // (the main button's step) and its Close last, then landed (★ Make … the picker under it) Spin again and Close.
+    if (count === 8) {
+      const tools = pb.locator('.panel [data-tool-controls]');
+      const bar = () =>
+        tools.locator('> .row').first().evaluate((r) => {
+          const kids = [...r.children].filter((c) => c.getBoundingClientRect().width);
+          const mids = kids.map((c) => c.getBoundingClientRect()).map((b) => b.top + b.height / 2);
+          const words = [...r.querySelectorAll('button')].map((b) => [...b.childNodes].filter((n) => n.nodeName !== 'KBD').map((n) => n.textContent).join('').trim());
+          return { line: Math.max(...mids) - Math.min(...mids) <= 4, first: words[0], last: words.at(-1) };
+        });
+      await pb.getByRole('button', { name: '🎡 Wheel' }).click();
+      await pb.getByRole('button', { name: '🎯 Pick a player', exact: true }).click();
+      await stepButton(tools, 'Spin!').waitFor();
+      let b = await bar();
+      assert(b.line && b.first === 'Spin!' && b.last === '✕ Close' && (await situationHasMain(pb, tools)) === '', `8 players at 1280×720: a wheel's bar is one row, Spin! first (in sight) and ✕ Close last (${JSON.stringify(b)})`);
+      await stepButton(tools, 'Spin!').click();
+      await tools.getByRole('button', { name: /^★ Make .+ the picker$/ }).waitFor({ timeout: 10000 });
+      b = await bar();
+      const out = await hidden('.panel [data-tool-controls] > .row:first-child :is(button, select)');
+      assert(
+        b.line && b.first === 'Spin again' && b.last === 'Close' && out.length === 0 && (await situationHasMain(pb, tools)) === '',
+        `8 players at 1280×720: landed, the bar is still one row and in sight, Spin again first and Close last (the main button's step), ★ Make … the picker under it (${JSON.stringify(b)}${out.length ? `; not in sight: ${out.join(', ')}` : ''})`,
+      );
+      await stepButton(tools, 'Close').click();
+      await tools.waitFor({ state: 'detached' });
+    }
     for (const [w, h, id] of [
       [1280, 720, 'c_box0'],
       [1366, 768, 'c_box1'],

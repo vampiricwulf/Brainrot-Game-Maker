@@ -11,6 +11,12 @@ the day it's pushed (Pacific time; start the heading on the day's first push) an
 in plain words for the people who make and host games. Anything committed but not pushed yet goes under
 **Unreleased** at the top, and moves under its day when it's pushed.
 
+## Unreleased
+
+### Changed
+
+- 🎡 Wheels and 🎲 dice on the game screen: their box keeps its buttons in the same places every time. **Spin!** (or **Roll!**) comes first, as on the main button with the same key (greyed while it turns, then **Spin again** / **Roll again** in its place), then ✎ Edit wheel and ＋ Spin another wheel too…, the result, and the way to close it last: **✕ Close**, or **Close** (**Close ▶ board**) once that's the main button's step too. Spin! was only on the main button, and the box's ✕ Close went away once it was spun. The scoreboard, a player's sheet, a roll-off and a pop-up (its 👁 Reveal answer too) have that Close in their box as well. A click on the box's button leaves Enter, W and Esc with the main button, and the rest of a double-click on a box's button (a 🤝 partner clue's too) is dropped wherever it lands. A board game's own roll goes in the roll log as the turn player's, with no "This was for" to tick (its turn box's 🎲 Roll rolls again).
+
 ## 2026-10-30
 
 ### Added

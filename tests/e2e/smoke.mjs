@@ -94,7 +94,7 @@ function assert(cond, msg) {
 }
 // Test media generated in memory.
 import { deflateSync } from 'node:zlib';
-import { addClassicRounds, answerReplace, dragBy, flowButton, mainButton, nameGame, noSelection, openGameFile, exportHtml, selectedWords } from './helpers.mjs';
+import { addClassicRounds, answerReplace, dragBy, flowButton, mainButton, mainLabel, nameGame, noSelection, openGameFile, exportHtml, selectedWords, situationHasMain, stepButton } from './helpers.mjs';
 /** Solid-ish RGB PNG of the given size (a horizontal gradient). */
 function bigPng(w, h) {
   const crcTable = Array.from({ length: 256 }, (_, n) => {
@@ -981,6 +981,18 @@ assert(aud.isClosed(), 'audience window closes from the host');
 await page.locator('.board .tile').nth(4).click();
 await page.locator('.ov .wheel').waitFor();
 assert(true, 'wheel tile opens the wheel overlay');
+// Its box: the wheel's name, Spin! (the main button's step, its words and key), …, ✕ Close last.
+const toolBox = page.locator('.panel [data-tool-controls]');
+// (Each button's words, then its key cap.)
+const toolBar = () =>
+  toolBox.locator('> .row').first().locator('button').evaluateAll((bs) =>
+    bs.map((b) => [[...b.childNodes].filter((n) => n.nodeName !== 'KBD').map((n) => n.textContent).join('').trim(), b.querySelector('kbd')?.textContent].filter(Boolean).join(' ')),
+  );
+let bar = await toolBar();
+assert(
+  (await situationHasMain(page, toolBox)) === '' && bar[0] === 'Spin! W' && bar.at(-1) === '✕ Close Esc',
+  `a wheel tile's box: Spin! first (as the main button), ✕ Close last (${bar.join(' | ')})`,
+);
 // Closed before it's spun (opened by mistake): the tile stays on the board.
 assert((await page.getByRole('button', { name: '✕ Close' }).getAttribute('title')) === 'Close it without spinning (the tile stays on the board)', '✕ Close on a wheel tile says the tile stays');
 await page.keyboard.press('Escape');
@@ -989,9 +1001,16 @@ assert(!(await isUsed(4)), 'Esc on a wheel tile before it spins keeps the tile o
 await page.locator('.board .tile').nth(4).click();
 await page.locator('.ov .wheel').waitFor();
 await page.waitForTimeout(500); // past the double-click guard (a double-click on the tile doesn't spin it too)
-await page.locator('.stage-box .ov').click();
+// The box's Spin!: landed, the keys are on the main button (Close), as after W.
+await stepButton(toolBox, 'Spin!').click();
 await page.locator('.tc .result').waitFor({ timeout: 8000 });
 assert((await page.locator('.tc .result').innerText()).includes('Bankrupt'), 'weighted spin lands on the heavy slice');
+await page.waitForFunction(() => document.activeElement?.matches('.panel [data-next]'));
+bar = await toolBar();
+assert(
+  (await mainLabel(page)) === 'Close ▶ board' && bar[0] === 'Spin again W' && bar.at(-1) === 'Close ▶ board Esc',
+  `the box's Spin! spins it; landed, Spin again in its place, Close ▶ board last as the main button, the keys on it (${bar.join(' | ')})`,
+);
 await page.locator('.ov .card').waitFor();
 assert((await page.locator('.ov .card .label').innerText()) === 'Bankrupt', 'result card revealed on screen');
 // Esc with its score effect neither confirmed nor skipped: it says so first, and the wheel stays.
@@ -1002,6 +1021,9 @@ await page.locator('.tc .chip', { hasText: 'Player 3' }).first().click();
 await page.locator('.ac').waitFor();
 await page.locator('.ac').getByRole('button', { name: 'Skip' }).click();
 assert((await scoreOf(0)) === '$550', 'skipping the score effect changes nothing');
+// (While it waited, the score card was in sight, the box's first row scrolled up.)
+await page.locator('.ac').waitFor({ state: 'detached' });
+assert((await situationHasMain(page, toolBox)) === '', `then the box's Close ▶ board is in sight (${await situationHasMain(page, toolBox)})`);
 await shot('10-wheel');
 await page.waitForTimeout(500);
 await page.locator('.stage-box .ov').click();

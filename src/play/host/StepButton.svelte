@@ -2,11 +2,13 @@
   A step button: a moment's own button, in its box, for a step the main button may do too (🎡 Spin for a partner beside
   the names), with the same words, key, tooltip and greyed state (one NextAction, given to both). Never the main one:
   never blue, never data-next, so the app and the tests still find the main button by its mark. Its clicks go through
-  the panel's click guard (the rest of a double-click that redrew the box is dropped), and after a click the keys go
-  back to the main button, so Enter, N, W and Shift+Enter keep their meanings.
+  the panel's click guard (the rest of a double-click that redrew the box is dropped), the rest of its own double-click
+  is dropped wherever it lands (its box can go with it: the Daily Double's once its question shows), and after a click
+  the keys go back to the main button, so Enter, N, W and Shift+Enter keep their meanings.
 -->
 <script lang="ts">
   import { hint } from '../../lib/app.svelte';
+  import { oneShot } from '../../lib/oneshot';
   import { focusMain } from './focus';
   import { panelGuard, type NextAction } from './slots.svelte';
 
@@ -24,7 +26,7 @@
   }
 </script>
 
-<button data-step disabled={step.disabled} title={step.title ?? step.key} onclick={click}>
+<button data-step disabled={step.disabled} title={step.title ?? step.key} use:oneShot onclick={click}>
   {step.label}{#if step.key} <kbd aria-hidden="true">{step.key}</kbd>{/if}
 </button>
 

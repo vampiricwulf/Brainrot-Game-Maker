@@ -230,13 +230,25 @@ export function rollMover(game: Game, session: Session, live: Live): string | nu
     const on = live.overlay;
     if (on?.kind === 'wheel' && wheelSpentUp(on, session, game)) return 'Every slice of the movement wheel has landed: Restore them to spin again';
     spinWheel(live, session, game);
-    return null;
+    return forTurn(session, live, bs);
   }
   const preset = moverPreset(game, round);
   if (preset) rollDice(live, session, preset, true);
   else {
     const d = parseDice(m.dice) ?? { sides: 6, count: 1 };
     rollDice(live, session, quickDice(d.sides, d.count, moverDiceName(game, round)), true);
+  }
+  return forTurn(session, live, bs);
+}
+
+/** The move's roll (or spin) is the turn player's: the roll log says so, as "This was for" would (null, for rollMover). */
+function forTurn(session: Session, live: Live, bs: BoardGameState | undefined): null {
+  const o = live.overlay;
+  const turn = bs && currentPlayer(bs);
+  const e = o && 'rollId' in o ? session.rollLog?.find((r) => r.id === o.rollId) : undefined;
+  if (turn && e && (o?.kind === 'dice' || o?.kind === 'wheel')) {
+    e.playerIds = [turn];
+    o.tagged = [turn];
   }
   return null;
 }
