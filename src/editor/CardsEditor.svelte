@@ -131,11 +131,21 @@
     ]);
   }
 
-  /** On a card in the list: F2 renames, Ctrl+D duplicates, Delete / Backspace deletes, Alt+↑/↓ moves it. */
+  /**
+   * On a card in the list: Enter goes into it (its name, selected), F2 renames, Ctrl+D duplicates, Delete / Backspace
+   * deletes, Alt+↑/↓ moves it.
+   */
   function itemKey(e: KeyboardEvent, c: SavedCard, i: number): void {
     if (e.repeat && e.key !== 'ArrowUp' && e.key !== 'ArrowDown') return;
     const mod = e.ctrlKey || e.metaKey;
-    if ((e.key === 'Delete' || e.key === 'Backspace') && !mod && !e.altKey) remove(c, true);
+    if (e.key === 'Enter' && !mod && !e.altKey && !e.shiftKey) {
+      sel = c.id;
+      void tick().then(() => {
+        const el = document.querySelector<HTMLInputElement>('main [data-field="card-name"]');
+        el?.focus();
+        el?.select();
+      });
+    } else if ((e.key === 'Delete' || e.key === 'Backspace') && !mod && !e.altKey) remove(c, true);
     else if (e.key === 'F2') renaming = c.id;
     else if (mod && !e.altKey && e.key.toLowerCase() === 'd') dup(c, true);
     else if (e.altKey && !mod && (e.key === 'ArrowUp' || e.key === 'ArrowDown')) move(i, i + (e.key === 'ArrowUp' ? -1 : 1));
@@ -197,7 +207,7 @@
                 data-place="card:{c.id}"
                 data-saved-card={c.id}
                 draggable="true"
-                title="Drag to reorder · double-click or F2 to rename · right-click for more"
+                title="Enter to open · drag to reorder · double-click or F2 to rename · right-click for more"
                 onclick={(e) => {
                   sel = c.id;
                   // (Safari and Firefox on a Mac don't focus a clicked button: it takes the keys, not a card renamed.)

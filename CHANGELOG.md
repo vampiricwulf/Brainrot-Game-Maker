@@ -13,6 +13,10 @@ in plain words for the people who make and host games. Anything committed but no
 
 ## Unreleased
 
+### Changed
+
+- 🎡 Wheels, Dice & Deals: ＋ Add wheel, ＋ Add dice, ＋ Add deal and the 📋 Ready-made ones open the new one with the typing in its name, all of it selected, so you can name it straight away. Enter on a wheel, dice, deal or 🤫 card in its list goes into it, at its name (it took a dozen Tabs).
+
 ### Fixed
 
 - 🤝 Partner clues: a click on the stage while the cards were handed out, or while the pair was still describing, put the answer on stream. Until the clue is judged or its clock runs out, a click now leaves the answer hidden and says what to do (✔ Got it / ✘ Missed, or 👁 Reveal answer with R to show it anyway); after that a click shows it, as before.

@@ -113,7 +113,8 @@ Other editor tabs:
   game; **⬇ Export theme** (a `.brainrot-theme` file) or **📋 Copy theme code** shares it, and **📂 Import theme…** /
   **⌨ Paste theme code…** show someone else's on your board before you use or keep it.
 - 🎡 **Wheels, Dice & Deals**: weighted wheels, custom dice and 🎭 deals (a secret part for everyone). Each wheel or
-  dice outcome can carry a score effect or action buttons.
+  dice outcome can carry a score effect or action buttons. A new one (＋ Add, or 📋 Ready-made) opens with its name
+  selected, to type over; `Enter` on one in the list (or on a 🤫 card) goes into it, at its name.
 - 🤫 **Cards**: private cards made before the show (words, pictures, GIFs, videos, sounds or a link on each), each with
   a name you pick it by. During the show **🤫 Send a card…** sends one to the players you choose: only they see it, on
   their phones. In one window viewers can read a card's name in that dialog (never what's on it), so keep the secret

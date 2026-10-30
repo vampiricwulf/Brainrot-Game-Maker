@@ -382,7 +382,7 @@ try {
   await sheet.locator('section', { hasText: 'Map (RPG)' }).getByText('Select every screen on the map').waitFor();
   await page.getByLabel('Filter shortcuts').fill('deal in focus');
   await sheet.locator('tr', { hasText: 'deal in focus' }).first().waitFor();
-  assert((await sheet.locator('tr').count()) === 2, 'F2 and Delete say they rename and delete a deal in focus too');
+  assert((await sheet.locator('tr').count()) === 3, 'Enter, F2 and Delete say they go into, rename and delete a deal in focus too');
   await page.getByLabel('Filter shortcuts').press('Escape');
   assert((await page.getByRole('dialog', { name: 'Editor keyboard shortcuts' }).count()) === 1, 'Esc in the filter clears it first');
   await page.keyboard.press('Escape');

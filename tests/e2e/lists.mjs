@@ -132,8 +132,22 @@ try {
   assert((await values(page.getByLabel('Shop name')))[0].endsWith('(copy)'), 'shops reorder with Alt+↑');
 
   // ---------- Wheels ----------
+  /** Until the typing is in the box labelled `label`, holding `value`, all of it selected (false after 3 s). */
+  const typingIn = (label, value) =>
+    page
+      .waitForFunction(
+        ([l, v]) => {
+          const e = document.activeElement;
+          const named = e?.getAttribute('aria-label') ?? e?.closest('label')?.childNodes[0]?.textContent?.trim();
+          return e instanceof HTMLInputElement && named === l && e.value === v && e.selectionStart === 0 && e.selectionEnd === v.length;
+        },
+        [label, value],
+        { timeout: 3000 },
+      )
+      .then(() => true, () => false);
   await page.getByRole('button', { name: '🎡 Wheels, Dice & Deals' }).click();
   await page.getByRole('button', { name: '＋ Add wheel' }).click();
+  assert(await typingIn('Wheel name', 'Wheel 1'), '＋ Add wheel types in its name (all of it selected)');
   const labels = page.locator('.seg input.label');
   await labels.nth(3).focus();
   await page.keyboard.press('Enter');
@@ -228,9 +242,15 @@ try {
   await page.getByRole('menuitem', { name: /Point wheel/ }).click();
   assert((await texts(wheelList)).join() === 'Wheel 1,Dares,Point wheel', `📋 Ready-made wheel… adds one (${await texts(wheelList)})`);
   assert((await values(labels)).join() === '+$100,+$200,+$300,+$500,+$1,000,Double!,Bankrupt,Lose a turn', `with its slices (${await values(labels)})`);
+  assert(await typingIn('Wheel name', 'Point wheel'), 'and the typing in its name (all of it selected)');
+  // Enter on a wheel in the list goes into it: its name, selected (not 12 Tabs).
+  await wheelList.first().focus();
+  await page.keyboard.press('Enter');
+  assert((await typingIn('Wheel name', 'Wheel 1')) && (await wheelList.first().getAttribute('aria-current')) === 'true', 'Enter on a wheel in the list opens it, the typing in its name');
 
   // Dice faces from a list.
   await page.getByRole('button', { name: '＋ Add dice' }).click();
+  assert(await typingIn('Dice name', 'Dice 1'), '＋ Add dice types in its name too');
   await page.getByLabel(/Custom faces/).first().check();
   await page.locator('details.fill summary').click();
   await page.getByLabel('Face labels, one per line').fill('Sip\nDare\n\nSing\nDance');

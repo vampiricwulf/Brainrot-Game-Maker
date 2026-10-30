@@ -43,6 +43,14 @@
   function focusItem(id: string): void {
     void tick().then(() => document.querySelector<HTMLElement>(`[data-tool="${id}"]`)?.focus());
   }
+  /** The open wheel, dice or deal's name box takes the typing, its name selected (just added, or Enter on its row). */
+  function focusName(): void {
+    void tick().then(() => {
+      const el = document.querySelector<HTMLInputElement>('main [data-tool-editor] input');
+      el?.focus();
+      el?.select();
+    });
+  }
 
   /** A copy right after it, with its own slices (and their buttons) or dice. */
   function dup(kind: Kind, item: Tool): void {
@@ -127,11 +135,17 @@
     ]);
   }
 
-  /** On a wheel or dice in the list: F2 renames, Ctrl+D duplicates, Delete / Backspace deletes, Alt+↑/↓ moves it. */
+  /**
+   * On a wheel or dice in the list: Enter goes into it (its name), F2 renames, Ctrl+D duplicates, Delete / Backspace
+   * deletes, Alt+↑/↓ moves it.
+   */
   function itemKey(e: KeyboardEvent, kind: Kind, item: Tool, i: number): void {
     if (e.repeat && e.key !== 'ArrowUp' && e.key !== 'ArrowDown') return;
     const mod = e.ctrlKey || e.metaKey;
-    if ((e.key === 'Delete' || e.key === 'Backspace') && !mod && !e.altKey) remove(kind, item, true);
+    if (e.key === 'Enter' && !mod && !e.altKey && !e.shiftKey) {
+      sel = item.id;
+      focusName();
+    } else if ((e.key === 'Delete' || e.key === 'Backspace') && !mod && !e.altKey) remove(kind, item, true);
     else if (e.key === 'F2') renaming = item.id;
     else if (mod && !e.altKey && e.key.toLowerCase() === 'd') dup(kind, item);
     else if (e.altKey && !mod && (e.key === 'ArrowUp' || e.key === 'ArrowDown')) move(kind, i, i + (e.key === 'ArrowUp' ? -1 : 1));
@@ -152,12 +166,14 @@
       const d = newDeal(freeName('Deal', game.deals ?? []));
       step(`Added deal “${d.name}”`, () => pushDeal(d));
       sel = d.id;
+      focusName();
       return;
     }
     const item = kind === 'wheel' ? newWheel(freeName('Wheel', game.wheels)) : newDice(freeName('Dice', game.dice));
     if (kind === 'wheel') game.wheels.push(item as WheelPreset);
     else game.dice.push(item as DicePreset);
     sel = item.id;
+    focusName();
   }
 
   /**
@@ -174,7 +190,7 @@
       pushDeal(d);
     });
     sel = d.id;
-    focusItem(d.id);
+    focusName();
   }
   function dealTemplateMenu(e: MouseEvent): void {
     dropMenu(e, [{ heading: 'Ready-made deals (change anything after)' }, ...DEAL_TEMPLATES.map((t) => ({ label: `${t.icon} ${t.name}`, hint: t.hint, onclick: () => addDealTemplate(t) }))]);
@@ -191,7 +207,7 @@
     const w = wheelFromTemplate(t, game.settings.currencySymbol, uniqueName(game.wheels.map((x) => x.name), t.name, false));
     step(`Added wheel “${w.name}”`, () => game.wheels.push(w));
     sel = w.id;
-    focusItem(w.id);
+    focusName();
   }
   function templateMenu(e: MouseEvent): void {
     dropMenu(e, [
@@ -240,7 +256,7 @@
             data-place="{kind}:{item.id}"
             data-tool={item.id}
             draggable="true"
-            title="Drag to reorder · double-click or F2 to rename · right-click for more"
+            title="Enter to open · drag to reorder · double-click or F2 to rename · right-click for more"
             onclick={(e) => {
               sel = item.id;
               // (Safari and Firefox on a Mac don't focus a clicked button: it takes the keys, not a row renamed.)
@@ -292,7 +308,7 @@
     <button class="ghost" onclick={dealTemplateMenu} aria-haspopup="menu" title="Odd one out, Secret roles, Team captain, Everyone’s own prompt">📋 Ready-made deal…</button>
   </section>
 
-  <section aria-label="Wheel, dice or deal">
+  <section aria-label="Wheel, dice or deal" data-tool-editor>
     {#if wheel}
       <div class="row top">
         <span class="spacer"></span>

@@ -152,6 +152,15 @@ try {
   assert((await names()) === 'Wild card, Tip A', `the list: Wild card, Tip A (${await names()})`);
   assert((await row('Wild card').getAttribute('aria-current')) === 'true', 'the first is open');
   assert((await editor.getByLabel('Card name').inputValue()) === 'Wild card' && (await editor.getByLabel('Stays until you take it back').isChecked()), 'its name, and Stays until you take it back');
+  // Enter on a card in the list goes into it: its name, selected.
+  await row('Tip A').focus();
+  await host.keyboard.press('Enter');
+  await host.waitForFunction(() => {
+    const e = document.activeElement;
+    return e instanceof HTMLInputElement && e.matches('main [data-field="card-name"]') && e.value === 'Tip A' && e.selectionStart === 0 && e.selectionEnd === e.value.length;
+  });
+  assert((await row('Tip A').getAttribute('aria-current')) === 'true', 'Enter on a card in the list opens it, the typing in its name (all of it selected)');
+  await row('Wild card').click();
 
   // ---------- ＋ Add card ----------
   const header = host.locator('.editor > header');
