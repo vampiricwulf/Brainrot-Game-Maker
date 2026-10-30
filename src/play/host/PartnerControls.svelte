@@ -456,6 +456,51 @@
   });
 
   /**
+   * PARTNER UP!'s cards, folded to one line: how many, and how they'll reach their players (names only, never what's on
+   * them). `problem`: something to see before the question (a player a card goes to with no phone here, an older buzzer
+   * server, files that won't reach the phones): the fold opens by itself then.
+   */
+  const cardsGist = $derived.by((): { text: string; problem: boolean } => {
+    if (!room || (!cardsOn && !older)) return { text: '📋 you’ll copy them', problem: false };
+    if (older) return { text: '📋 you’ll copy them (an older buzzer server)', problem: true };
+    const to = s.partnerId ? session.players.map((p) => p.id).filter((id) => cards.some((c) => cardRecipients(session, s, c).some((t) => t.seat === id))) : [];
+    const none = to.filter((id) => !hasPhone(id));
+    if (none.length) return { text: `📵 ${nameList(none.map(name))} ${none.length === 1 ? 'has' : 'have'} no phone here: you’ll copy theirs`, problem: true };
+    if (filesLine && !filesOn) return { text: '📱 phones get them, not all their files', problem: true };
+    return { text: '📱 phones get them when you send', problem: false };
+  });
+  const CARDS_KEY = 'jb.partnerCardsOpen';
+  /**
+   * Whether the host last left the fold open (this computer remembers), and on this clue (null: not yet), opened by itself
+   * once there was something to see, and left so until the host closes it.
+   */
+  let cardsKept = $state(readCardsKept());
+  let cardsHere = $state<boolean | null>(null);
+  function readCardsKept(): boolean {
+    try {
+      return localStorage.getItem(CARDS_KEY) === '1';
+    } catch {
+      return false;
+    }
+  }
+  $effect(() => {
+    if (cardsGist.problem) untrack(() => (cardsHere ??= true));
+  });
+  const cardsOpen = $derived(cardsHere ?? cardsKept);
+  function setCardsOpen(open: boolean): void {
+    if (open === cardsOpen) return;
+    cardsHere = open;
+    // (Closed over something to see: this clue only.)
+    if (cardsGist.problem && !open) return;
+    cardsKept = open;
+    try {
+      localStorage.setItem(CARDS_KEY, open ? '1' : '0');
+    } catch {
+      // Storage may be off (private mode): it starts closed next time.
+    }
+  }
+
+  /**
    * A card's row, after the chips: how it stands on the phones (sent, seen, uploading), and a recipient whose phone now
    * is late for it (a new phone for the seat: "Bob's new phone hasn't got it: ↻ Send again").
    */
@@ -737,16 +782,21 @@
       {/if}
     {/if}
     <div class="row">{@render parts()}</div>
-    <div class="row small" data-partner-cards>
-      {#if cards.length}
-        🤫 {cards.length} card{cards.length === 1 ? '' : 's'}: {#each cards as card, i (card.id)}{i ? ' · ' : ''}{clueCardName(card, i)} → {recipientsText(session, s, rules, card)}{/each}
-      {:else}
-        <span class="muted">🤫 No cards on this clue: {autoClock ? 'the question starts the clock' : 'start the clock yourself (T) once the question is up'}.</span>
-      {/if}
-    </div>
     {#if cards.length}
-      <span class="muted small" data-partner-readiness>{readiness}</span>
-      {@render filesRow()}
+      <!-- The cards, who each goes to, how they reach them and their files: one quiet line, open on a click (or by itself
+           when there's something to see first), remembered on this computer. -->
+      <details class="cardsfold" bind:open={() => cardsOpen, setCardsOpen} data-partner-cards-fold>
+        <summary class="muted small" class:warn={cardsGist.problem}>🤫 {cards.length} card{cards.length === 1 ? '' : 's'} · {cardsGist.text}</summary>
+        <div class="row small" data-partner-cards>
+          {#each cards as card, i (card.id)}{i ? ' · ' : ''}{clueCardName(card, i)} → {recipientsText(session, s, rules, card)}{/each}
+        </div>
+        <span class="muted small" data-partner-readiness>{readiness}</span>
+        {@render filesRow()}
+      </details>
+    {:else}
+      <div class="row small" data-partner-cards>
+        <span class="muted">🤫 No cards on this clue: {autoClock ? 'the question starts the clock' : 'start the clock yourself (T) once the question is up'}.</span>
+      </div>
     {/if}
     <!-- The pair chosen: the question next, at the box's foot (in view, as the rows above scroll), at its right end, where
          the next step comes after it. -->
@@ -1072,6 +1122,16 @@
   }
   .steal {
     padding-top: 4px;
+  }
+  /* PARTNER UP!'s cards, folded: one quiet line, its rows under it when open. */
+  .cardsfold > summary {
+    cursor: pointer;
+    width: fit-content;
+  }
+  .cardsfold[open] {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
   }
   .shares {
     margin-right: 8px;

@@ -187,11 +187,23 @@ try {
   assert(last()?.status?.off === true && last().status.sub === 'Player 1 needs a partner…' && last().status.seatsSub === 'Spinning for your partner…', 'every phone greyed (off), with the small lines under them');
   assert((await host.locator('.stage-box .join-badge').count()) === 0, 'no join code over PARTNER UP! (nobody buzzes)');
   const panel = host.locator('[data-partner-panel]');
-  assert((await panel.locator('[data-partner-files]').innerText()).includes('1 picture goes up when you send its card'), 'the panel counts the card’s picture that goes up when its card is sent (never names it)');
+  // The card's details fold into one quiet line; it opens by itself when there's something to see first (the partner
+  // has no phone here), and on a click.
+  const fold = panel.locator('[data-partner-cards-fold]');
+  const folded = async () => ({ open: await fold.evaluate((d) => d.open), says: (await fold.locator('summary').innerText()).trim() });
+  let f = await folded();
+  assert(!f.open && f.says === '🤫 1 card · 📱 phones get them when you send', `PARTNER UP!: the card's details fold into one line (${f.says})`);
+  await host.keyboard.press('3');
+  await host.waitForFunction(() => document.querySelector('[data-partner-cards-fold]')?.open);
+  f = await folded();
+  assert(f.says === '🤫 1 card · 📵 Player 3 has no phone here: you’ll copy theirs', `Player 3 the partner, with no phone here: it opens by itself and says so (${f.says})`);
   await host.screenshot({ path: 'test-results/partner-phones-up.png' });
   nothingSent('the tile open');
   await host.keyboard.press('2');
   assert(await says(ann, '🤝 You two play this one!') && (await says(bob, '🤝 You two play this one!')), 'paired: both phones say “🤝 You two play this one!”');
+  f = await folded();
+  assert(f.open && f.says === '🤫 1 card · 📱 phones get them when you send', `Player 2 instead: it stays open, its line back to how the card goes (${f.says})`);
+  assert((await panel.locator('[data-partner-files]').innerText()).includes('1 picture goes up when you send its card'), 'it counts the card’s picture that goes up when its card is sent (never names it)');
   assert((await panel.locator('[data-partner-readiness]').innerText()).includes('📱 Player 2: phone here'), 'the readiness line: “📱 Player 2: phone here”');
   nothingSent('paired');
   // Before the question shows, no phone gets its words (nor a ✍ box), though the guesser types their guess later.

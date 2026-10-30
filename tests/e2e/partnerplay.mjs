@@ -158,6 +158,17 @@ try {
   assert((await stepButton(panel, '↻ Spin again').count()) === 1, 'and ↻ Spin again stays in its place');
   await page.keyboard.press('1');
   assert(await toast('Ann picked it: tick'), 'Ann’s own number says how to make it Solo');
+  // PARTNER UP!'s cards fold into one quiet line (copied by hand: no phone buzzers here); a click on it, or Enter with
+  // the keys on it, opens it (and shows no question).
+  const fold = panel.locator('[data-partner-cards-fold]');
+  const foldSays = (await fold.locator('summary').innerText()).trim();
+  assert(foldSays === '🤫 2 cards · 📋 you’ll copy them' && !(await fold.evaluate((d) => d.open)), `PARTNER UP!'s cards fold into one line (${foldSays})`);
+  await fold.locator('summary').focus();
+  await page.keyboard.press('Enter');
+  await panel.locator('[data-partner-readiness]').waitFor();
+  assert((await stage('[data-partner-up]').count()) === 1, 'Enter on its line opens it, and the question stays put');
+  // (The keys off it again, onto the panel: Enter is the main button's.)
+  await page.locator('.panel .status').click();
   const panelText = await panel.innerText();
   assert(panelText.includes('🗣 Bob describes · 🎯 Ann guesses') && panelText.includes('Card 1 → Bob (describer) · Card 2 → nobody yet'), `the panel says who plays which part and where the cards go (${panelText.replace(/\n/g, ' | ')})`);
   const viewers = page.locator('.panel .status [data-viewers]');

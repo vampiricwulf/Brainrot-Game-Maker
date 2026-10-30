@@ -4186,10 +4186,10 @@
         return hint('Type the points, then Enter');
       }
     }
-    // Enter or Space on a button reached with the keyboard (see tabbedTo) presses it (a tile opens). On a button clicked
-    // with the mouse, Enter still awards. (Not Shift+Enter: it's ✘ Missed or − Deduct wherever the keys are, never a
-    // press of the ✔ Got it or ＋ Award they're on.)
-    if ((e.key === ' ' || (e.key === 'Enter' && !e.shiftKey)) && t && t.matches('button, [role="button"]') && (t === tabbedTo || t.matches('.tile[data-clue]:not(.used)'))) return;
+    // Enter or Space on a button reached with the keyboard (see tabbedTo) presses it (a tile opens), and on a fold's line
+    // opens or closes it (PARTNER UP!'s cards). On a button clicked with the mouse, Enter still awards. (Not Shift+Enter:
+    // it's ✘ Missed or − Deduct wherever the keys are, never a press of the ✔ Got it or ＋ Award they're on.)
+    if ((e.key === ' ' || (e.key === 'Enter' && !e.shiftKey)) && t && t.matches('button, [role="button"], summary') && (t === tabbedTo || t.matches('.tile[data-clue]:not(.used)'))) return;
     if (e.key === '?') {
       showKeys = true;
       return;

@@ -503,7 +503,7 @@ When the wheel lands (or the host closes it early), Bob is Ann's partner.
   🤝 Partner clue!  Ann picked it.  [change ▾]  Next: show the question
   Partner: [↻ Spin again  W] or choose: [Ann ⊘] [2 Bob ✓] [3 Cat] [4 Dan]   ☐ Ann can be on the wheel (alone if it lands on them)
   🗣 Bob describes · 🎯 Ann guesses                                           ⇄ Swap
-  🤫 1 card: Card 1 → Bob (describer) · 📱 Bob: phone here
+  ▸ 🤫 1 card · 📱 phones get them when you send
                                    the cards come next  [▶ Show question  ⏎]   NEXT ▸ [▶ Show question  ⏎]
   ```
 
@@ -514,8 +514,13 @@ When the wheel lands (or the host closes it early), Bob is Ann's partner.
     While the wheel is still up its ⏎ isn't shown: Enter closes the wheel first (a click does both).
   - **⇄ Swap** turns the parts round: Ann describes and Bob guesses. The cards that follow a part ("the describer")
     and the points follow with it. It is in P1, because the parts decide the points.
-  - **The cards line** gives how many cards there are and who each one is set to go to. It never says what's on them:
-    the panel is on stream in one window.
+  - **The cards fold.** One quiet line says how many cards there are and how they'll reach their players ("🤫 2 cards ·
+    📋 you'll copy them"); a click opens the cards line, the readiness line and the files line under it. This computer
+    remembers whether it was left open. It opens by itself when there's something to see before the question (a player
+    a card goes to has no phone here, an older buzzer server, files that won't reach the phones), saying so on its line
+    ("📵 Cat has no phone here: you'll copy theirs"), and stays open for the clue until the host closes it.
+  - **The cards line** gives who each card is set to go to. It never says what's on them: the panel is on stream in one
+    window.
   - **The readiness line** says how the cards will reach their players. Like the cards line, it never names a card's
     items, because a picture's file name is often the answer. Item names are only in the two-window host column (§6.10)
     and the editor.

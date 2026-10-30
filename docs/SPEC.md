@@ -468,7 +468,10 @@ The mode isn't saved with the game: it's dual while the audience window is open.
      does, beside the choices it's an alternative to: its first line says what's next ("Next: spin for a partner, or
      choose one"), **🎡 Spin for a partner** comes first in the partner row, in front of the players to choose from by
      hand (**↻ Spin again** in its place after; a team's **🎡 Spin for the describer** likewise, in front of its
-     people; greyed in the partner row while the team plays it), and its foot, in view as the rest scrolls, has ✔ Got it
+     people; greyed in the partner row while the team plays it), PARTNER UP!'s cards fold into one quiet line ("🤫 2
+     cards · 📋 you'll copy them": who each goes to, how they reach them and their files open on a click, this computer
+     remembering it; it opens by itself, and stays open for the clue, when there's something to see first: a player a
+     card goes to with no phone here, an older buzzer server, files that won't reach the phones), and its foot, in view as the rest scrolls, has ✔ Got it
      / ✘ Missed, quiet until the clock runs, and at its right end **▶ Show question**, then a 📋 for each card copied by
      hand and **📤 Send and start** (or ⏱ Start the clock); when that step goes nothing moves into its place. A click
      there gives the keys back to the main button; the rest of a double-click that redrew the box is dropped, and 📤 Send
