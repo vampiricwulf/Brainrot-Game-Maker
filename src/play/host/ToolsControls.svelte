@@ -415,7 +415,7 @@
         {#if session.currentPickerId === picked.id}
           <span class="muted small">★ {picked.name} picks the next clue.</span>
         {:else}
-          <button class="small" onclick={() => setPicker(session, picked.id)} title="Mark them as the player who picks the next clue">
+          <button class="small" onclick={() => setPicker(session, picked.id)} title="Mark them as the player who picks the next clue" data-player-id={picked.id}>
             ★ Make {picked.name} the picker
           </button>
         {/if}
@@ -434,6 +434,7 @@
                 style:background={on ? p.color : undefined}
                 style:color={on ? textOn(p.color) : undefined}
                 aria-pressed={!!on}
+                data-player-id={p.id}
                 onclick={() => tag(p.id)}>{p.name}</button>
             {/each}
           {/if}

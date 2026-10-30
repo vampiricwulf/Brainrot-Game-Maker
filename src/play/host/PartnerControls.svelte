@@ -653,6 +653,7 @@
     aria-label={label}
     {disabled}
     title={title || undefined}
+    data-player-id={id}
     {onclick}
   >
     {#if key && key <= 9}<span class="key">{key}</span>{/if}{p?.name}{#if on}&nbsp;✓{/if}{#if partOf(id)}<span class="part">{partOf(id)}</span>{/if}{#if nophone}<span class="part" aria-hidden="true">📵</span>{/if}
@@ -671,6 +672,7 @@
     aria-label={label}
     {disabled}
     title={title || undefined}
+    data-player-id={s.pickerId}
     {onclick}
   >
     {text}{#if on}&nbsp;✓{/if}{#if part}<span class="part">{part}</span>{/if}

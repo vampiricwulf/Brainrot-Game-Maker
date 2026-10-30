@@ -435,6 +435,7 @@
     aria-pressed={on}
     aria-label="{p?.name}{nophone ? ' (no phone here)' : ''}"
     title={teams ? `Every phone on ${p?.name} gets it` : undefined}
+    data-player-id={id}
     onclick={() => toggleSeat(id)}>{p?.name}{#if on}&nbsp;✓{/if}{#if nophone}<span class="part" aria-hidden="true">📵</span>{/if}</button
   >
 {/snippet}
@@ -454,6 +455,7 @@
           aria-pressed={on}
           aria-label="{m.name} on {p.name}"
           title="Only {m.name}’s phone gets it"
+          data-player-id={p.id}
           onclick={() => toggleMember(p.id, m)}>{m.name}{#if on}&nbsp;✓{/if}</button
         >
       {/each}

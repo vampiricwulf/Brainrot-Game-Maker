@@ -13,6 +13,10 @@ in plain words for the people who make and host games. Anything committed but no
 
 ## Unreleased
 
+### Added
+
+- On the game screen, every button that stands for a player opens that player's menu, as their score chip does: who picked a 🤝 partner clue (and the people on a team), who found a Daily Double, who gets a 🤫 card or a 🎭 part and who's dealt in, the Final's wager and reveal rows, the ✍ answers' rows, a wheel's “This was for”, a score card's players and a shop's buyer. Right-click it, press Shift+F10 (or the menu key) with the keys on it, or hold a finger on it on a touch screen. The menu is headed by their name only, and shows each item's key (Select 2, ★ Make the picker P, 2, the Final's ✔ Right C). These gave the browser's own menu (or nothing) before.
+
 ### Changed
 
 - 🎡 Wheels and 🎲 dice on the game screen: their box keeps its buttons in the same places every time. **Spin!** (or **Roll!**) comes first, as on the main button with the same key (greyed while it turns, then **Spin again** / **Roll again** in its place), then ✎ Edit wheel and ＋ Spin another wheel too…, the result, and the way to close it last: **✕ Close**, or **Close** (**Close ▶ board**) once that's the main button's step too. Spin! was only on the main button, and the box's ✕ Close went away once it was spun. The scoreboard, a player's sheet, a roll-off and a pop-up (its 👁 Reveal answer too) have that Close in their box as well. A click on the box's button leaves Enter, W and Esc with the main button, and the rest of a double-click on a box's button (a 🤝 partner clue's too) is dropped wherever it lands. A board game's own roll goes in the roll log as the turn player's, with no "This was for" to tick (its turn box's 🎲 Roll rolls again).

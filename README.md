@@ -163,6 +163,11 @@ the boxes you type in, links, the room code (one click takes all of it), error l
 🔊 Sound help's switch and folder select. With the audience window open, the host's own column, typed answers and the 📜 Log select too, to copy into chat.
 A right-click where the app has no menu of its own shows nothing, in every window (the browser's menu, with its Reload,
 would be on stream): boxes you type in, links and selected words keep it.
+A player's menu (Select, ★ Make the picker, ✎ Set the score…, their round's extras) opens with a right-click on them
+anywhere on the host screen: their score chip or plate, and their button in any box (who picked a 🤝 partner clue, who
+found a Daily Double, who gets a 🤫 card or a 🎭 part, the Final's rows, a shop's buyer…), headed by their name only.
+`Shift+F10` or the menu key on their button, or a long press on a touch screen, opens it too, and each item shows its
+key.
 A double-click on a button that changes the screen (▶ Play, Start game ▶, Resume game, a card on the first screen, a tile
 in the board editor) counts once: its second click does nothing on the new screen, and one on a score plate makes them
 the picker once. On ▶ Play, a double-click on the game's title (or `F2`) renames it.

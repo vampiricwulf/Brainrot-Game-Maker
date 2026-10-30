@@ -204,6 +204,38 @@ export async function situationHasMain(page, box) {
   return seen ? '' : `the box's “${label}” is out of sight`;
 }
 
+/** The app's own right-click menu, while it's open. */
+export const openMenu = (page) => page.locator('.cm[role="menu"]');
+
+/**
+ * What the open right-click menu says, in order: "# heading", each item's words with its key ("👁 Reveal answer · R"),
+ * " (off)" on a greyed one, "—" for a line.
+ */
+export async function menuLines(page) {
+  const m = openMenu(page);
+  await m.waitFor();
+  return m.evaluate((el) =>
+    [...el.children].map((c) => {
+      if (c.classList.contains('sep')) return '—';
+      if (c.classList.contains('heading')) return `# ${c.textContent.trim()}`;
+      const key = c.querySelector('kbd')?.textContent.trim();
+      return `${c.querySelector('.label')?.textContent.trim()}${key ? ` · ${key}` : ''}${c.disabled ? ' (off)' : ''}`;
+    }),
+  );
+}
+
+/** A finger held still on `target` (a locator) for `ms`, then lifted: a long press on a touch screen, sent from the page. */
+export async function longPress(target, ms = 800) {
+  await target.evaluate(async (el, wait) => {
+    const r = el.getBoundingClientRect();
+    const at = { bubbles: true, cancelable: true, composed: true, pointerType: 'touch', pointerId: 7, isPrimary: true, clientX: r.x + r.width / 2, clientY: r.y + r.height / 2 };
+    el.dispatchEvent(new PointerEvent('pointerdown', at));
+    await new Promise((ok) => setTimeout(ok, wait));
+    el.dispatchEvent(new PointerEvent('pointerup', at));
+    el.dispatchEvent(new MouseEvent('click', at));
+  }, ms);
+}
+
 /** The confirmation strip above the fixed bar (Leave this game?, End the game now? 7 clues are left.…). */
 export const confirmStrip = (page) => page.locator('.panel .confirm');
 

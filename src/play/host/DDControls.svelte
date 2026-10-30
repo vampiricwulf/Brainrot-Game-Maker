@@ -151,6 +151,7 @@
         style:background={playerId === p.id ? p.color : undefined}
         style:color={playerId === p.id ? textOn(p.color) : undefined}
         aria-pressed={playerId === p.id}
+        data-player-id={p.id}
         onclick={() => pick(p.id)}
         title={i < 9 ? (playerId ? 'Click to change who found it (number keys pick only while nobody is picked)' : `Key ${i + 1}`) : undefined}
       >

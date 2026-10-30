@@ -70,6 +70,7 @@
         aria-pressed={targets.includes(p.id)}
         disabled={source === p.id}
         title={source === p.id ? `${action.kind === 'steal' ? 'Stolen from' : 'Swapped with'}: pick someone else` : undefined}
+        data-player-id={p.id}
         onclick={() => toggle(p.id)}>{p.name}</button>
     {/each}
   </div>
@@ -77,7 +78,7 @@
     <div class="row">
       <span class="muted small">{action.kind === 'steal' ? 'Steal from:' : 'Swap with:'}</span>
       {#each session.players as p (p.id)}
-        <button class="chip" class:src={source === p.id} style:border-color={p.color} aria-pressed={source === p.id} onclick={() => pickSource(p.id)}>{p.name}</button>
+        <button class="chip" class:src={source === p.id} style:border-color={p.color} aria-pressed={source === p.id} data-player-id={p.id} onclick={() => pickSource(p.id)}>{p.name}</button>
       {/each}
     </div>
   {/if}

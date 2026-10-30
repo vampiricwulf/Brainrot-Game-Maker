@@ -439,6 +439,15 @@ The mode isn't saved with the game: it's dual while the audience window is open.
 - **No browser menu**: in every window (the editor and host screen, the audience and scores windows, a 🪟 card window) a
   right-click the app has no menu for shows nothing, so the browser's menu (Back, Reload, Print) never shows on stream.
   Fields, links and selected copyable words keep it (cut, copy, paste, open link).
+- **A player's menu wherever they show** (playermenu.ts): a right-click on a player anywhere on the host screen (their
+  avatar or token, their plate or card on the stats strip, their score chip, their chip in the turn order, and their
+  button in every box: who picked a 🤝 partner clue and the people on a team, who found a Daily Double, who gets a 🤫
+  card or a 🎭 part and who's dealt in, the Final's wager and reveal rows, ✍ answers' rows, a wheel's "This was for", a
+  score card's players, a shop's buyer) opens the same menu (`data-player-id`), headed by the name only (never a card's
+  or a part's). `Shift+F10` or the menu key on the button opens it under it, and `Esc` gives the button the keys back;
+  a long press on a touch screen opens it too, and the tap that ends the press is dropped (longpress.ts). In a box over
+  the panel (🤫 Send a card…, 🎭 Deal…) the menu opens over the box, which stays open. A box to type in keeps the
+  browser's menu. Its items show their keys (Select `2`, ★ Make the picker `P, 2`, the Final's ✔ Right `C`).
 - **A double-click counts once** on a button that changes the screen (the first screen's cards and ✨ Try a sample game,
   ▶ Play, Start game ▶ and ▶ Resume it, the exported file's ▶ Play, Resume game and View results, the status bar's Resume
   game and View results, Open…'s Recent games, a tile opening its clue editor): the rest of that press (its second

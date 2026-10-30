@@ -452,7 +452,7 @@
           {@const hide = !dual && phone}
           <!-- One window: viewers see this panel, so a phone's amount stays hidden here (as ✍ answers and 🤫 card words
                do) until it's shown in the reveals. Typing a wager over it makes it the host's. -->
-          <div class="wrow chip" class:out={!plays} style:border-color={p.color} role="listitem" data-player={p.id}>
+          <div class="wrow chip" class:out={!plays} style:border-color={p.color} role="listitem" data-player={p.id} data-player-id={p.id}>
             <label class="check" title={plays ? 'Untick: sits out this Final' : 'Tick: plays this Final'}>
               <input type="checkbox" checked={plays} onchange={() => toggleIn(p.id)} data-plays={p.id} />
               <b>{p.name}</b>
@@ -574,6 +574,7 @@
             class:dragging={rows.dragging === id}
             style:--c={p?.color}
             data-row={id}
+            data-player-id={id}
             role="listitem"
             ondragover={(e) => rows.over(e, id)}
             ondrop={(e) => {

@@ -44,6 +44,12 @@ describe('a player’s right-click menu', () => {
     expect(labels(playerMenu(host, 'b'))).toContain('★ No picker');
   });
 
+  it('shows the keys that do the same: their number to select them, P then it for the picker', () => {
+    const { host } = playing(() => newRound('Jeopardy!'));
+    const keys = (items: MenuEntry[]) => items.map((i) => ('label' in i ? (i.keys ?? '') : ''));
+    expect(keys(playerMenu(host, 'c'))).toEqual(['', '3', 'P, 3', '']);
+  });
+
   it('in an RPG round: their avatar, their party, sending them, their card; several selected move together', () => {
     const { host, session, asked } = playing((game) => newRpgRound(game), ['a', 'b']);
     const st = Object.values(session.worlds!)[0];

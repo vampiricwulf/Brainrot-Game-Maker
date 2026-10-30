@@ -79,7 +79,9 @@
     addLive, droppedFile, dropEntry, giveEntry, joinPartyNow, moveGroup, objectAt, objectMenu, pickUp, regroupAll, removeObject, rpgNow, sendPlayers, START_FIRST, stepParty, toggleMap,
     type AvatarDrop, type RpgAsk, type StagePoint,
   } from './rpg/hostops';
-  import { showMenu, type MenuEntry } from '../lib/menustate.svelte';
+  import { isMenuKey, showMenu, type MenuEntry } from '../lib/menustate.svelte';
+  import { browserMenuFits } from '../lib/nomenu';
+  import { longPress } from '../lib/longpress';
   import { currentPlayer, ensureBoard, spaceSaid, waysNow, waysOn } from '../lib/boardgame';
   import { ensureWorld, focusRef, override, refindPositions } from '../lib/rpg';
   import { boardNow, moveCounts, moveNow, moverResult, moverSliceNoNumber, moverSliceWords, offBoard, rollMover, runSpace, sendNow, setTurn, stepWaysHint, turnNow } from './boardgame/bgops';
@@ -3118,9 +3120,12 @@
 
   const toggleSelect = (id: string) => (selected = selected.includes(id) ? selected.filter((x) => x !== id) : [...selected, id]);
 
-  /** Right-click a player anywhere in the host's window (the stage, the host panel): their menu. */
+  /**
+   * Right-click a player anywhere in the host's window (the stage, the host panel: their score chip, their button in any
+   * box): their menu. (A box to type in, and words selected to copy, keep the browser's own.)
+   */
   function playerMenuAt(e: MouseEvent): void {
-    if (e.defaultPrevented) return;
+    if (e.defaultPrevented || browserMenuFits(e.target, getSelection())) return;
     const id = (e.target as HTMLElement).closest<HTMLElement>('[data-player-id]')?.dataset.playerId;
     if (!id || !session.players.some((p) => p.id === id)) return;
     // What it asks of the host panel brings the controls back when they're hidden.
@@ -3141,15 +3146,31 @@
     const reveal: MenuEntry[] =
       session.phase === 'final' && session.finalStep === 'reveal' && f?.order.includes(id)
         ? [
-            { label: '🔦 Spotlight', disabled: f.current === id, onclick: () => spotlight(id) },
+            { label: '🔦 Spotlight', disabled: f.current === id, keys: spot(id), onclick: () => spotlight(id) },
             ...(f.answers ? [{ label: 'Show answer', disabled: !typedAnswer(f, id) || !!f.answerShown?.[id], onclick: () => showAnswer(id) }] : []),
             { label: 'Show wager', disabled: !!f.shown[id], onclick: () => finalShow(session, id) },
-            { label: `✔ Right${f.current === id ? ' (C)' : ''}`, onclick: () => judge(id, true) },
-            { label: `✘ Wrong${f.current === id ? ' (X)' : ''}`, onclick: () => judge(id, false) },
+            { label: '✔ Right', keys: f.current === id ? 'C' : undefined, onclick: () => judge(id, true) },
+            { label: '✘ Wrong', keys: f.current === id ? 'X' : undefined, onclick: () => judge(id, false) },
             { sep: true },
           ]
         : [];
     showMenu(e, heading ? [heading, ...reveal, ...rest] : []);
+  }
+  /** The number that spotlights a player in the Final's reveals (the first nine). */
+  const spot = (id: string): string | undefined => {
+    const n = session.players.findIndex((p) => p.id === id) + 1;
+    return n && n <= 9 ? String(n) : undefined;
+  };
+
+  /**
+   * Shift+F10 or the menu key: the menu of what has the keys (a player's button anywhere here, a tile on the board),
+   * under it, as a right-click on it opens. True when there was one.
+   */
+  function menuKey(t: HTMLElement | null): boolean {
+    if (!t?.closest('.play') || !t.closest('[data-player-id], .tile[data-clue]')) return false;
+    const r = t.getBoundingClientRect();
+    t.dispatchEvent(new MouseEvent('contextmenu', { bubbles: true, cancelable: true, clientX: r.left + 8, clientY: r.bottom + 2 }));
+    return true;
   }
 
   function stageMenu(e: MouseEvent): void {
@@ -4172,6 +4193,11 @@
     // Typing in a field (a quick-wheel list, a wager…) is never a shortcut, not even '?'. A ticked checkbox isn't a field,
     // but Space still ticks it (not the media), and Enter is its own (the wager boxes' Enter, next to "Ignore the limits").
     if (t?.closest('input:not([type="checkbox"]), textarea, select, [contenteditable]') || ((e.key === ' ' || e.key === 'Enter') && t?.matches('input'))) return;
+    // Shift+F10 or the menu key: the menu of what has the keys, as a right-click on it.
+    if (isMenuKey(e)) {
+      if (menuKey(t)) e.preventDefault();
+      return;
+    }
     // A held key is one press, as a partner clue's Enter (N would run through every slide on stream, R flash the answer):
     // only the arrows repeat (seeking, the party's moves, the numpad's too), and Tab and the page keys keep their own.
     if (e.repeat && (e.key.length === 1 || e.key === 'Enter' || e.key === 'Escape') && !(session.phase === 'rpg' && NUMPAD[e.code])) return void e.preventDefault();
@@ -4949,8 +4975,8 @@
     </div>
   </main>
 {:else}
-  <!-- Right-clicking a player anywhere here (the stage, the host panel) gives their menu. The page's main part, named
-       by the game's title (for screen readers). -->
+  <!-- Right-clicking a player anywhere here (the stage, the host panel) gives their menu, as do Shift+F10 on their button
+       and a long press on a touch screen. The page's main part, named by the game's title (for screen readers). -->
   <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
   <main
     class="play"
@@ -4963,6 +4989,7 @@
     class:roomy={panelWindow}
     oncontextmenu={playerMenuAt}
     use:focusRescue
+    use:longPress
   >
     <h1 class="sr-only">{game.title}</h1>
     <!-- The stage keeps a floor: the host panel's tall parts (tools, Final, results, RPG and board game rounds) scroll. -->

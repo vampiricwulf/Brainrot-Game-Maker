@@ -1,6 +1,7 @@
 // The one right-click menu for a player, wherever they show up in the host's window: their avatar or token, their card
-// on the stats strip, their score plate, their chip or card in the host panel, their chip in the turn order. Every
-// change is one undoable step.
+// on the stats strip, their score plate, their chip or card in the host panel, their button in any box there (who picked
+// a partner clue, who found a Daily Double, who gets a 🤫 card or a 🎭 part, the Final's rows…), their chip in the turn
+// order. Its heading is their name only (never a card's or a part's). Every change is one undoable step.
 import { app, toast } from '../lib/app.svelte';
 import type { MenuEntry } from '../lib/menustate.svelte';
 import { newId, type Game, type Session } from '../lib/model';
@@ -29,11 +30,20 @@ export function playerMenu(h: PlayerMenuHost, id: string): MenuEntry[] {
   const p = session.players.find((x) => x.id === id);
   if (!p) return [];
   const phase = session.phase;
+  // (Their number key, as on their chip: the first nine.)
+  const n = session.players.indexOf(p) + 1;
+  const key = n <= 9 ? String(n) : undefined;
   return [
     { heading: p.name },
-    { label: h.selected.includes(id) ? 'Deselect' : 'Select', disabled: !awardOpen(session), onclick: () => h.toggle(id) },
+    { label: h.selected.includes(id) ? 'Deselect' : 'Select', disabled: !awardOpen(session), keys: key, onclick: () => h.toggle(id) },
     ...(phase === 'board' || phase === 'clue'
-      ? [{ label: session.currentPickerId === id ? '★ No picker' : '★ Make the picker', onclick: () => setPicker(session, session.currentPickerId === id ? undefined : id) }]
+      ? [
+          {
+            label: session.currentPickerId === id ? '★ No picker' : '★ Make the picker',
+            keys: key && session.currentPickerId !== id ? `P, ${key}` : undefined,
+            onclick: () => setPicker(session, session.currentPickerId === id ? undefined : id),
+          },
+        ]
       : []),
     { label: '✎ Set the score…', onclick: () => h.setScore(id) },
     ...(phase === 'rpg' || phase === 'boardgame' ? [{ label: '📺 Show their sheet', onclick: () => (app.live.overlay = { kind: 'sheet', nonce: newId(), playerId: id }) }] : []),

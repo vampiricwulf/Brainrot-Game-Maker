@@ -94,6 +94,7 @@
         style:background={on ? p.color : undefined}
         style:color={on ? textOn(p.color) : undefined}
         aria-pressed={on}
+        data-player-id={p.id}
         onclick={() => ((o.buyer = p.id), (o.short = undefined))}
       >
         {p.name} {formatPrice(game, shop, balance(game, session, shop, p.id))}

@@ -408,7 +408,7 @@
                 {#each pool as t (toKey(t))}
                   {@const p = session.players.find((x) => x.id === t.seat)}
                   {@const on = pickedFor(part, t)}
-                  <button class="chip" style:border-color={p?.color} style:background={on ? p?.color : undefined} style:color={on ? textOn(p?.color ?? '#888') : undefined} aria-pressed={on} aria-label="{who(t)} gets {partName(part, i)}" onclick={() => togglePick(part, t)}>{who(t)}{#if on}&nbsp;✓{/if}</button>
+                  <button class="chip" style:border-color={p?.color} style:background={on ? p?.color : undefined} style:color={on ? textOn(p?.color ?? '#888') : undefined} aria-pressed={on} aria-label="{who(t)} gets {partName(part, i)}" data-player-id={t.seat} onclick={() => togglePick(part, t)}>{who(t)}{#if on}&nbsp;✓{/if}</button>
                 {/each}
               </div>
             </details>
@@ -440,7 +440,7 @@
         {#each everyone as t (toKey(t))}
           {@const p = session.players.find((x) => x.id === t.seat)}
           {@const on = !dealDraft.skip.includes(toKey(t))}
-          <button class="chip" style:border-color={p?.color} style:background={on ? p?.color : undefined} style:color={on ? textOn(p?.color ?? '#888') : undefined} aria-pressed={on} aria-label="Deal {who(t)} in" onclick={() => toggleIn(t)}>{who(t)}{#if on}&nbsp;✓{/if}</button>
+          <button class="chip" style:border-color={p?.color} style:background={on ? p?.color : undefined} style:color={on ? textOn(p?.color ?? '#888') : undefined} aria-pressed={on} aria-label="Deal {who(t)} in" data-player-id={t.seat} onclick={() => toggleIn(t)}>{who(t)}{#if on}&nbsp;✓{/if}</button>
         {:else}
           <span class="muted small">{perTeam ? 'Nobody’s phone is on a team yet.' : 'No players.'}</span>
         {/each}

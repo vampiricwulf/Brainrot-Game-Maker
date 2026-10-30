@@ -6,7 +6,7 @@ import { chromium } from 'playwright-core';
 import { existsSync, mkdirSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { addClassicRounds, confirmStrip, flowButton, mainButton, mainLabel, playWithPlayers, leaveAnswer } from './helpers.mjs';
+import { addClassicRounds, confirmStrip, flowButton, longPress, mainButton, mainLabel, menuLines, openMenu, playWithPlayers, leaveAnswer } from './helpers.mjs';
 
 const file = resolve(process.env.APP_FILE || 'dist/index.html');
 if (!existsSync(file)) throw new Error('Run `npm run build` first');
@@ -213,6 +213,25 @@ try {
       (await page.locator('.panel .dd').innerText()).includes('Who found it? Click another to change.'),
     'a Daily Double with a player picked already: the chips show no number keys (those type the wager now), “Click another to change.”',
   );
+  // Every player button in a box opens the player's menu, as their score chip does: a right-click, Shift+F10 (the focus
+  // back on it after), a long press on a touch screen (its tap doesn't pick them). Headed by the name only.
+  const ddChip = page.locator('.panel .dd .chip[data-player-id]').nth(1);
+  const ddName = await ddChip.evaluate((el) => [...el.childNodes].filter((n) => n.nodeType === 3).map((n) => n.textContent).join('').trim());
+  await ddChip.click({ button: 'right' });
+  const chipMenu = await menuLines(page);
+  assert(chipMenu[0] === `# ${ddName}` && chipMenu.includes('✎ Set the score…') && chipMenu.some((l) => /^(Select|Deselect) · 2/.test(l)), `a right-click on a Daily Double chip opens ${ddName}’s menu, keys shown (${chipMenu.join(' | ')})`);
+  await page.keyboard.press('Escape');
+  await ddChip.focus();
+  await page.keyboard.press('Shift+F10');
+  assert((await menuLines(page))[0] === `# ${ddName}`, 'Shift+F10 on it opens the same menu');
+  await page.keyboard.press('Escape');
+  await openMenu(page).waitFor({ state: 'detached' });
+  assert((await page.evaluate(() => document.activeElement?.dataset.playerId)) === (await ddChip.getAttribute('data-player-id')), 'Esc gives the chip the keys back');
+  const pickedBefore = await page.locator('.panel .dd .chip[aria-pressed="true"]').innerText();
+  await longPress(ddChip);
+  assert((await menuLines(page))[0] === `# ${ddName}`, 'a long press on it opens it too');
+  await page.keyboard.press('Escape');
+  assert((await page.locator('.panel .dd .chip[aria-pressed="true"]').innerText()) === pickedBefore, 'and the tap that ends the press doesn’t pick them');
   // A wager below 0 (the box's min doesn't stop a typed minus) says so, not "over the max" with the limit ignored.
   await page.locator('.dd input[type=number]').fill('-500');
   await page.keyboard.press('Enter');

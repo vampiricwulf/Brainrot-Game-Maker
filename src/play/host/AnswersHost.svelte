@@ -130,7 +130,7 @@
       {#each listed as p (p.id)}
         {#if !words}
           <!-- Single window, the words not to be seen yet: who has answered (✔), never the words. -->
-          <li data-answer-in={p.id} title={inTitle(p.id)}>
+          <li data-answer-in={p.id} data-player-id={p.id} title={inTitle(p.id)}>
             <span class="who" style:background={p.color} style:color={textOn(p.color)}>{p.name}</span>
             <span class="text muted">{inMark(p.id)}</span>
           </li>
@@ -140,7 +140,7 @@
           <!-- Multiple choice: a pick by its letter ("B · Stockholm"); typed words with the choice they name ("= B"), if any. -->
           {@const picked = a && choices.length ? pickLabel(choices, a.pick) : undefined}
           {@const named = a && choices.length && !picked ? matchChoice(a.text, choices) : null}
-          <li data-answer-row={p.id}>
+          <li data-answer-row={p.id} data-player-id={p.id}>
             <span class="who" style:background={p.color} style:color={textOn(p.color)}>{p.name}</span>
             <!-- (Each answer keeps its own direction in a <bdi>: a right-to-left one sits by the name, not at the row's far end.
                  The spaces go before the spans: one inside a span's start would be dropped.) -->
@@ -168,6 +168,7 @@
           style:background={p.color}
           style:color={textOn(p.color)}
           data-answer-in={p.id}
+          data-player-id={p.id}
           title={inTitle(p.id)}>{p.name} {inMark(p.id)}</span
         >
       {/each}
