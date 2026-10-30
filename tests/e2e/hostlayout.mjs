@@ -636,7 +636,7 @@ try {
     partnerSizes.push(await stageH());
     await partner.locator('button.chip[aria-pressed="true"]').waitFor({ timeout: 10000 });
     partnerSizes.push(await stageH());
-    // (The wheel's own bar keeps its height above the partner box: Spin again, ✎ Edit wheel and ＋ Spin another wheel too….)
+    // (The wheel's own bar keeps its height above the partner box: ✎ Edit wheel, ＋ Spin another wheel too… and Close.)
     const wheelOut = await outOfSight('.panel .mode-host.tools :is(button, select)');
     assert(wheelOut.length === 0, `${w}×${h}, a partner clue's wheel landed: its bar's buttons are in sight${wheelOut.length ? ` (not: ${wheelOut.join(', ')})` : ''}`);
     await p4.keyboard.press('Escape');

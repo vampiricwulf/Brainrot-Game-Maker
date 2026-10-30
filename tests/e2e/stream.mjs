@@ -697,7 +697,8 @@ async function tileTools() {
   await host.keyboard.press('w');
   await host.locator('.tc .result').waitFor();
   await host.keyboard.press('d');
-  await host.locator('.tc').getByRole('button', { name: 'Roll again' }).waitFor();
+  // (Landed: the box's Roll again, greyed while they roll, can be pressed.)
+  await host.locator('.tc [data-step]:not(:disabled)', { hasText: 'Roll again' }).waitFor();
   await host.keyboard.press('Escape');
   await stage('.ov').waitFor({ state: 'detached' });
   await stage('.slide-area').waitFor();
