@@ -175,7 +175,7 @@
         </label>
         <!-- (↺ outside the label: a click on it, gone as it's done, would open the colour picker.) -->
         <div class="color">
-          <label class="field">Color<ColorBox value={themedText ? themeText : el.color} oninput={(e) => setTextColor(el as TextEl, e.currentTarget.value)} /></label>
+          <label class="field">Color<ColorBox value={themedText ? themeText : el.color} oninput={(e) => setTextColor(el as TextEl, e.currentTarget.value)} aria-label="Text color" /></label>
           {#if ownOnTile}
             <button class="small" onclick={() => ((el as TextEl).color = '#ffffff')} title="Back to the theme's text color (it follows the theme when that changes)">↺ Theme color</button>
           {/if}
@@ -219,7 +219,7 @@
       </label>
       {#if el.stroke}
         <div class="grid2 sub">
-          <label class="field">Color<ColorBox bind:value={el.stroke.color} /></label>
+          <label class="field">Color<ColorBox bind:value={el.stroke.color} aria-label="Outline color" /></label>
           <label class="field">Width<NumField min={0} max={60} bind:value={el.stroke.width} fallback={6} /></label>
         </div>
       {/if}
@@ -228,7 +228,7 @@
       </label>
       {#if el.shadow}
         <div class="grid4 sub">
-          <label class="field">Color<ColorBox bind:value={el.shadow.color} /></label>
+          <label class="field">Color<ColorBox bind:value={el.shadow.color} aria-label="Shadow color" /></label>
           <label class="field">X<NumField bind:value={el.shadow.x} /></label>
           <label class="field">Y<NumField bind:value={el.shadow.y} /></label>
           <label class="field">Blur<NumField min={0} bind:value={el.shadow.blur} /></label>
@@ -239,7 +239,7 @@
       </label>
       {#if el.glow}
         <div class="grid2 sub">
-          <label class="field">Color<ColorBox bind:value={el.glow.color} /></label>
+          <label class="field">Color<ColorBox bind:value={el.glow.color} aria-label="Glow color" /></label>
           <label class="field">Size<NumField min={0} max={200} bind:value={el.glow.blur} fallback={20} /></label>
         </div>
       {/if}
@@ -252,7 +252,7 @@
       </label>
       {#if el.background}
         <div class="grid3 sub">
-          <label class="field">Color<ColorBox bind:value={el.background.color} /></label>
+          <label class="field">Color<ColorBox bind:value={el.background.color} aria-label="Background box color" /></label>
           <label class="field">Padding<NumField min={0} bind:value={el.background.padding} fallback={24} /></label>
           <label class="field">Corners<NumField min={0} bind:value={el.background.radius} fallback={16} /></label>
         </div>
@@ -326,7 +326,7 @@
           <label class="field">
             Fill
             <div class="row">
-              <ColorBox value={el.fill === 'transparent' ? '#000000' : el.fill} oninput={(e) => (el.fill = e.currentTarget.value)} />
+              <ColorBox value={el.fill === 'transparent' ? '#000000' : el.fill} oninput={(e) => (el.fill = e.currentTarget.value)} aria-label="Fill color" />
               <label class="check small"><input type="checkbox" checked={el.fill === 'transparent'} onchange={(e) => (el.fill = e.currentTarget.checked ? 'transparent' : '#ffcc00')} />none</label>
             </div>
           </label>
@@ -334,8 +334,9 @@
         </div>
       {/if}
       {#if !el.hotspot}
+        {@const line = el.shape === 'line' || el.shape === 'arrow' || el.shape === 'path'}
         <div class="grid2">
-          <label class="field">{el.shape === 'line' || el.shape === 'arrow' || el.shape === 'path' ? 'Color' : 'Border'}<ColorBox bind:value={el.stroke} /></label>
+          <label class="field">{line ? 'Color' : 'Border'}<ColorBox bind:value={el.stroke} aria-label={line ? 'Line color' : 'Border color'} /></label>
           <label class="field">Thickness<NumField min={0} max={100} bind:value={el.strokeWidth} /></label>
         </div>
       {/if}

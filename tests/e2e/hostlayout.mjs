@@ -694,6 +694,15 @@ try {
       await roster.waitFor();
       // (It moves into the panel once the panel is measured, a frame later: a slow machine is still before that.)
       await p4.locator('.in-panel [aria-modal="true"]').first().waitFor();
+      // A player's color picker stays in the host panel too, off the stage.
+      const colorPicker = p4.locator('[data-color-picker]');
+      await roster.getByLabel('Color for Cyrus').click();
+      await colorPicker.waitFor();
+      const pb = await colorPicker.boundingBox();
+      const stageAt = await p4.locator('.stage-box').boundingBox();
+      assert(pb.y >= stageAt.y + stageAt.height - 1, `${w}×${h}: a player's color picker in 👥 Players stays in the host panel, not over the stage (it starts at ${Math.round(pb.y)}, the stage ends at ${Math.round(stageAt.y + stageAt.height)})`);
+      await p4.keyboard.press('Escape');
+      await colorPicker.waitFor({ state: 'detached' });
       await roster.getByLabel('Color for Cyrus').fill(crowdColors[1]);
       const clash = p4.locator('.toast', { hasText: 'Another player already has that color' });
       await clash.waitFor();

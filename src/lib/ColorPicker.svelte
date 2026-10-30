@@ -4,9 +4,9 @@
   PCs). Top to bottom: a square (more color to the right, darker down) and the hue bar, both dragged or moved with the
   arrow keys; Hex or RGB, both always showing, to type it in (the last one used comes back); 💧 to pick it from the
   screen; and the color it was beside the new one. Under its box (or over it), kept in the window and over windows (in a
-  single window, in the host panel: not over the stage viewers see).
-  ✓ Done (top right, as in the app's big editors), Enter, a click elsewhere or Tab past its end keep the color; Esc
-  puts back the one it had.
+  single window, in the host panel or a window over it, beside its box if need be: not over the stage viewers see).
+  ✓ Done (top right, as in the app's big editors), Enter, a click elsewhere, Tab past its end or its box scrolled out of
+  sight keep the color; Esc puts back the one it had.
 -->
 <script lang="ts">
   import { tick, untrack } from 'svelte';
@@ -36,9 +36,10 @@
   /** How the last press or key came: a box opened from the keyboard puts the keys in its Hex (or R) box. */
   let byKeys = false;
 
-  // Opened for a box: from its color.
+  // Opened for a box: from its color, before it's first drawn (so nothing starts from the last box's color and slides
+  // to this one, as it would with the PC's animations off).
   let shown = 0;
-  $effect(() => {
+  $effect.pre(() => {
     const now = s;
     if (!now || now.id === shown) return;
     shown = now.id;
@@ -54,6 +55,44 @@
         else square?.focus({ preventScroll: true });
       });
     });
+  });
+
+  /**
+   * Where it stays in a single window: the host panel, or a window over it (👥 Players…), not the stage viewers see. Not
+   * for a box in a window over the whole page (a slide editor), nor with an audience window (.dual).
+   */
+  function hostArea(box: HTMLElement): HTMLElement | null {
+    const at = box.closest<HTMLElement>('.panel:not(.dual), .in-panel, .modal-backdrop, .backdrop');
+    return at?.matches('.panel, .in-panel') ? at : null;
+  }
+
+  /** Can any of it be seen: in the window, and not scrolled out of a part of the page that scrolls or cuts it off? */
+  function inSight(el: HTMLElement): boolean {
+    const r = el.getBoundingClientRect();
+    let [top, right, bottom, left] = [Math.max(r.top, 0), Math.min(r.right, innerWidth), Math.min(r.bottom, innerHeight), Math.max(r.left, 0)];
+    for (let p = el.parentElement; p && bottom > top && right > left; p = p.parentElement) {
+      const cs = getComputedStyle(p);
+      if (cs.overflowX !== 'visible' || cs.overflowY !== 'visible') {
+        const q = p.getBoundingClientRect();
+        [top, right, bottom, left] = [Math.max(top, q.top), Math.min(right, q.right), Math.min(bottom, q.bottom), Math.max(left, q.left)];
+      }
+      // (A window fixed to the screen isn't cut off by what's around it.)
+      if (cs.position === 'fixed') break;
+    }
+    return bottom > top && right > left;
+  }
+
+  // Its box scrolled out of sight (out of its panel, off the window): closed, keeping the color (as a touch on the page
+  // does), not left changing a box nobody can see. (Only by scrolling: a note its color brings up may push it down.)
+  $effect(() => {
+    const now = s;
+    if (!now) return;
+    const scrolled = (e: Event) => {
+      if (colorPicker.open !== now || (e.target instanceof Node && panel?.contains(e.target))) return;
+      if (now.box.isConnected && !inSight(now.box)) closeColorPicker();
+    };
+    addEventListener('scroll', scrolled, true);
+    return () => removeEventListener('scroll', scrolled, true);
   });
 
   function typedOff(): void {
@@ -159,6 +198,9 @@
       }
       return;
     }
+    // Ctrl+S, Ctrl+F and the like are the app's: it closes, keeping the color, and lets them by (not the browser's Save
+    // page as…). Select all, copy, cut, paste and undo stay its own, as does AltGr (Ctrl+Alt: a # on some keyboards).
+    if ((e.ctrlKey || e.metaKey) && !e.altKey && e.key.length === 1 && !/^[acvxyz]$/i.test(e.key)) return closeColorPicker();
     e.stopImmediatePropagation();
     if (e.key === 'Escape') {
       e.preventDefault();
@@ -172,6 +214,13 @@
         e.preventDefault();
         closeColorPicker();
       }
+      return;
+    }
+    if ((t === square || t === bar) && /^[#0-9a-f]$/i.test(e.key) && !e.ctrlKey && !e.metaKey && !e.altKey && prefs.colorFormat !== 'rgb') {
+      // A hex typed on the square or the bar: the keys go to the Hex box (its text selected), and this one goes in.
+      const field = panel.querySelector<HTMLInputElement>('.hexbox');
+      field?.focus({ preventScroll: true });
+      field?.select();
       return;
     }
     if (t === square || t === bar) {
@@ -194,16 +243,31 @@
   function own(e: Event): void {
     if (colorPicker.open && panel?.contains(e.target as Node)) e.stopImmediatePropagation();
   }
-  /** A color pasted where there's no box to type in (the square): it's put in, if it's one. */
+  /**
+   * A color pasted anywhere in it is put in whole, if it's one: on the square, in the Hex box wherever its cursor is (not
+   * added to what's there), or as #rrggbb in an R, G or B box.
+   */
   function paste(e: ClipboardEvent): void {
     own(e);
     const t = e.target as HTMLElement;
-    if (!colorPicker.open || !panel?.contains(t) || t instanceof HTMLInputElement) return;
-    const h = readHex(e.clipboardData?.getData('text') ?? '');
+    if (!colorPicker.open || !panel?.contains(t)) return;
+    const text = e.clipboardData?.getData('text') ?? '';
+    if (t instanceof HTMLInputElement && !t.classList.contains('hexbox') && !/^\s*#/.test(text)) return;
+    const h = readHex(text);
     if (h) {
       e.preventDefault();
       setHex(h);
     }
+  }
+
+  // A box clicked into has its text selected (as Tab does), so what's typed or pasted takes its place.
+  let fresh: EventTarget | null = null;
+  const pressBox = (e: PointerEvent) => (fresh = document.activeElement === e.currentTarget ? null : e.currentTarget);
+  const selectBox = (e: FocusEvent) => (e.currentTarget as HTMLInputElement).select();
+  function keepSelected(e: MouseEvent): void {
+    // (The click's own mouseup would put the cursor where it was pressed.)
+    if (fresh === e.currentTarget) e.preventDefault();
+    fresh = null;
   }
 
   /** Is this press on the picker's own box, or the words of its label? Then the box's click closes it (or opens it). */
@@ -214,8 +278,9 @@
   function press(e: PointerEvent): void {
     byKeys = false;
     const now = colorPicker.open;
-    if (!now || panel?.contains(e.target as Node) || (e.target instanceof Element && onItsBox(now, e.target))) return;
-    // A press anywhere else keeps the color, as the browser's picker does.
+    if (!now || panel?.contains(e.target as Node) || (e.button === 0 && e.target instanceof Element && onItsBox(now, e.target))) return;
+    // A press anywhere else keeps the color, as the browser's picker does: a right-click on its box too (its menu shows
+    // over the page, not under the picker).
     closeColorPicker();
   }
   function focusOut(e: FocusEvent): void {
@@ -238,7 +303,7 @@
     data-over-modal
     data-color-picker
     bind:this={panel}
-    use:anchored={{ anchor: s.box, gap: 4, within: s.box.closest<HTMLElement>('.panel:not(.dual)') }}
+    use:anchored={{ anchor: s.box, gap: 4, within: hostArea(s.box), beside: true }}
     onfocusout={focusOut}
     style:--hue="hsl({hsv.h} 100% 50%)"
   >
@@ -305,11 +370,13 @@
               value={rgbText[i] ?? String(rgb[i])}
               oninput={(e) => typeChannel(i, e.currentTarget.value)}
               onblur={() => colorPicker.open && typedOk()}
+              onpointerdown={pressBox}
+              onfocus={selectBox}
+              onmouseup={keepSelected}
             />
           </label>
         {/each}
       </div>
-      {#if rgbBad.some(Boolean)}<p class="bad-note" role="alert">Each one is a number from 0 to 255.</p>{/if}
     {:else}
       <input
         class="hexbox"
@@ -322,15 +389,29 @@
         value={hexText ?? hex}
         oninput={(e) => typeHex(e.currentTarget.value, e instanceof InputEvent && e.inputType === 'insertFromPaste')}
         onblur={() => colorPicker.open && typedOk()}
+        onpointerdown={pressBox}
+        onfocus={selectBox}
+        onmouseup={keepSelected}
       />
-      {#if hexBad}<p class="bad-note" role="alert">Not a color: 6 characters from 0–9 and a–f, like #ff00e6.</p>{/if}
     {/if}
+    <!-- (Its line is there while the entry is fine too, so nothing moves as a mistake comes and goes.) -->
+    <p class="bad-note" role="alert">
+      {#if rgbOn ? rgbBad.some(Boolean) : hexBad}{rgbOn ? 'Each one is 0 to 255' : 'Not a color (like #ff00e6)'}{/if}
+    </p>
     <div class="foot">
       {#if fromScreen}
         <button class="small" onclick={fromTheScreen} aria-busy={picking} title="Then click anywhere on the screen to take its color">💧 Pick from the screen</button>
       {/if}
       <span class="was-now">
-        <button class="was" style:background={s.start} style:color={textOn(s.start)} onclick={() => setHex(s.start)} aria-label="Put back the color it was, {s.start}" title="Put back the color it was ({s.start})">↺</button>
+        <button
+          class="was"
+          style:background={s.start}
+          style:color={textOn(s.start)}
+          aria-disabled={hex === s.start}
+          onclick={() => setHex(s.start)}
+          aria-label="Put back the color it was, {s.start}"
+          title="Put back the color it was ({s.start})"><span aria-hidden="true">↺</span></button
+        >
         <span class="now" style:background={hex} role="img" aria-label="New color, {hex}" title="New color ({hex})"></span>
       </span>
     </div>
@@ -349,7 +430,7 @@
     padding: 9px 10px 10px;
     background: var(--panel);
     border: 1px solid var(--border);
-    border-radius: 10px;
+    border-radius: 8px;
     box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
     font-size: 13px;
   }
@@ -455,6 +536,11 @@
     width: 100%;
     font-family: ui-monospace, 'Cascadia Mono', Consolas, monospace;
   }
+  /* (The Hex box and the R, G, B boxes the same height, whatever their fonts: switching moves nothing.) */
+  .hexbox,
+  .chan input {
+    line-height: 16px;
+  }
   .rgb {
     display: grid;
     grid-template-columns: repeat(3, 1fr);
@@ -470,24 +556,35 @@
   .chan input {
     width: 100%;
     min-width: 0;
-    padding: 5px 4px 5px 6px;
+    padding: 6px 4px 6px 6px;
+    font-size: 13px;
     color: var(--text);
   }
-  input.bad {
-    border-color: var(--bad);
+  /* A mistake: a red edge the focus ring doesn't cover (as the Final's wagers do), and one line under it that's always
+     kept (empty while it's fine). */
+  input.bad,
+  input.bad:focus-visible {
+    outline: 2px solid var(--bad);
+    outline-offset: -1px;
   }
   .bad-note {
-    margin: -2px 0 0;
+    height: 16px;
+    margin: -4px 0 -3px;
     font-size: 12px;
-    color: var(--warn);
+    line-height: 16px;
+    color: var(--bad);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
   .foot {
     display: flex;
-    align-items: center;
+    align-items: stretch;
     gap: 8px;
   }
-  /* The color it was (a click puts it back) beside the new one. */
+  /* The color it was (a click puts it back) beside the new one: two halves even while they're the same. */
   .was-now {
+    flex: none;
     display: flex;
     margin-left: auto;
     border: 1px solid var(--control-border);
@@ -499,14 +596,24 @@
     width: 34px;
     height: 26px;
   }
+  .now {
+    border-left: 1px solid var(--control-border);
+  }
   .was {
     padding: 0;
     border: none;
     border-radius: 0;
     font-size: 13px;
   }
-  .was:hover:not(:disabled) {
+  .was:hover:not([aria-disabled='true']) {
     filter: brightness(1.15);
+  }
+  /* (Nothing to put back yet.) */
+  .was[aria-disabled='true'] {
+    cursor: default;
+  }
+  .was[aria-disabled='true'] > span {
+    opacity: 0.35;
   }
   .was:focus-visible {
     outline-offset: -3px;
@@ -520,8 +627,9 @@
       border-color: Canvas;
       outline: 1px solid CanvasText;
     }
-    input.bad {
-      border-color: Mark;
+    input.bad,
+    input.bad:focus-visible {
+      outline-color: Mark;
     }
   }
 </style>

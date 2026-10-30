@@ -106,6 +106,52 @@ try {
   await page.keyboard.press('Control+z');
   await page.waitForFunction((v) => document.querySelector('[data-k="value"] input[type=color]').value === v, valueBefore);
   assert((await undoTitle()) === stepBefore, '…as one undo step, which Ctrl+Z takes back');
+  // Opened by a click (the keys on its square): a click in the Hex box selects the color there, and one pasted takes its
+  // place wherever the cursor is.
+  await values.click();
+  await picker.waitFor();
+  await hexBox.click();
+  assert((await hexBox.evaluate((e) => e.selectionEnd - e.selectionStart)) === 7, 'opened by a click, a click in its Hex box selects the color there');
+  await hexBox.click({ position: { x: 30, y: 10 } });
+  await page.evaluate(() => navigator.clipboard.writeText('#00FF00'));
+  await page.keyboard.press('Control+v');
+  assert((await values.inputValue()) === '#00ff00' && (await hexBox.inputValue()) === '#00ff00', 'a color pasted there takes the old one’s place, wherever the cursor was');
+  await page.keyboard.press('Escape');
+  await picker.waitFor({ state: 'detached' });
+  // A right-click on its box closes it (keeping the color): the box's menu shows over the page, not under the picker.
+  await values.click();
+  await picker.waitFor();
+  await values.click({ button: 'right' });
+  await menu.waitFor();
+  const firstItem = await menu.getByRole('menuitem').first().evaluate((e) => {
+    const r = e.getBoundingClientRect();
+    return e.contains(document.elementFromPoint(r.x + r.width / 2, r.y + r.height / 2));
+  });
+  assert((await picker.count()) === 0 && firstItem, 'a right-click on its box closes it, and the box’s menu can be used');
+  await page.keyboard.press('Escape');
+  await menu.waitFor({ state: 'detached' });
+  // Ctrl+S with it open is the app's save (not the browser's Save page as…).
+  await values.click();
+  await picker.waitFor();
+  await page.keyboard.press('Control+s');
+  const nameGame = page.getByRole('dialog', { name: /Name your game/ });
+  await nameGame.waitFor();
+  assert((await picker.count()) === 0 && (await values.inputValue()) === valueBefore, 'Ctrl+S with it open closes it and saves the game (it asks for a name)');
+  await page.keyboard.press('Escape');
+  await nameGame.waitFor({ state: 'detached' });
+  // Its box scrolled out of sight closes it (keeping the color), rather than leaving it over the page. (A short window,
+  // with room to scroll it away.)
+  await page.setViewportSize({ width: 1500, height: 600 });
+  await values.click();
+  await picker.waitFor();
+  await values.evaluate((e) => {
+    let p = e.parentElement;
+    while (p && !/auto|scroll/.test(getComputedStyle(p).overflowY)) p = p.parentElement;
+    p.scrollTop += 3000;
+  });
+  await picker.waitFor({ state: 'detached' });
+  assert((await values.inputValue()) === valueBefore, 'scrolling its box out of sight closes it');
+  await page.setViewportSize({ width: 1500, height: 1000 });
   // (A click on the words of its label opens it too.)
   await page.locator('label[data-k="value"]').click({ position: { x: 60, y: 12 } });
   await picker.waitFor();

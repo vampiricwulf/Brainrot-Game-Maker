@@ -51,6 +51,21 @@ describe('placePopup', () => {
     expect(placePopup({ anchor: btn(985, 70, 117), width: 300, height: 380, view, within: col, align: 'end' }).left).toBeGreaterThanOrEqual(860);
   });
 
+  it('goes beside its button in its box when it fits there whole, but not under or over it', () => {
+    // The host panel from y 290 to the foot; the button in its middle, with too little room under it or over it.
+    const within = { left: 0, top: 290, right: 1024, bottom: 768 };
+    const v = { width: 1024, height: 768 };
+    const p = placePopup({ anchor: btn(58, 500, 28, 24), width: 252, height: 330, view: v, within, beside: true });
+    expect(p).toMatchObject({ side: 'beside', left: 58 + 28 + 4 });
+    expect(p.top).toBeGreaterThanOrEqual(294);
+    expect(p.top + 330).toBeLessThanOrEqual(760);
+    // Near the box's right edge: on its left.
+    expect(placePopup({ anchor: btn(900, 500, 28, 24), width: 252, height: 330, view: v, within, beside: true }).left).toBe(900 - 4 - 252);
+    // Without it, or when it fits under its button: as before.
+    expect(placePopup({ anchor: btn(58, 500, 28, 24), width: 252, height: 330, view: v, within }).side).not.toBe('beside');
+    expect(placePopup({ anchor: btn(58, 300, 28, 24), width: 252, height: 330, view: v, within, beside: true }).side).toBe('below');
+  });
+
   it('leaves its box when there is too little room in it', () => {
     const within = { left: 0, top: 500, right: 1280, bottom: 600 };
     const p = placePopup({ anchor: btn(100, 510), width: 300, height: 300, view, within });

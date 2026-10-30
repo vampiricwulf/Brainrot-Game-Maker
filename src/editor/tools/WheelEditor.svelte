@@ -180,7 +180,7 @@
             aria-hidden="true"
             title="Drag to reorder (or Alt+↑/↓)">⋮⋮</span
           >
-          <ColorBox bind:value={seg.color} aria-label="Slice color" />
+          <ColorBox bind:value={seg.color} aria-label="Color of {seg.label.trim() || `slice ${i + 1}`}" />
           <OutcomeEditor outcome={seg} placeholder="Slice label" labelkey={(e) => labelKey(e, i)} />
           <label class="w" title="Weight: how big the slice is, and how likely (at least {MIN_WEIGHT}; delete a slice to take it off)">
             ×<input

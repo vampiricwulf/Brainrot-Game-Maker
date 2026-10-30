@@ -31,6 +31,11 @@ export interface PlaceInput {
   margin?: number;
   /** The least height worth scrolling in `within` rather than going outside it. */
   minHeight?: number;
+  /**
+   * Beside the button (to its right, else its left) when it fits whole there in `within` but not under or over it, before
+   * it would have to scroll there.
+   */
+  beside?: boolean;
 }
 
 export interface Placement {
@@ -39,7 +44,7 @@ export interface Placement {
   /** Its height may not exceed this: it scrolls inside instead. */
   maxHeight: number;
   maxWidth: number;
-  side: Side;
+  side: Side | 'beside';
 }
 
 const clamp = (n: number, lo: number, hi: number) => Math.max(lo, Math.min(n, hi));
@@ -63,7 +68,8 @@ export function placePopup(p: PlaceInput): Placement {
   const best = (b: Rect) => (room(b, sides[0]) >= room(b, sides[1]) ? sides[0] : sides[1]);
   const minHeight = Math.min(p.minHeight ?? 160, p.height);
 
-  // In `within` whole, then scrolling there; in the window whole, then where it has the most room.
+  // In `within` whole (under or over the button, else beside it), then scrolling there; in the window whole, then where
+  // it has the most room.
   let bounds = view;
   let side: Side | undefined;
   for (const b of inner ? [inner, view] : [view]) {
@@ -71,6 +77,19 @@ export function placePopup(p: PlaceInput): Placement {
     if (side) {
       bounds = b;
       break;
+    }
+    if (b === inner && p.beside && b.bottom - b.top >= p.height) {
+      const right = b.right - (p.anchor.right + gap) >= p.width;
+      if (right || p.anchor.left - gap - b.left >= p.width) {
+        return {
+          left: Math.round(right ? p.anchor.right + gap : p.anchor.left - gap - p.width),
+          // (Level with the button, moved up as far as it must be to fit.)
+          top: Math.round(clamp(p.anchor.top, b.top, b.bottom - p.height)),
+          maxHeight: Math.floor(b.bottom - b.top),
+          maxWidth: Math.max(0, view.right - view.left),
+          side: 'beside',
+        };
+      }
     }
     if (b === inner && room(b, best(b)) >= minHeight) {
       bounds = b;
@@ -102,6 +121,7 @@ export interface AnchoredOptions {
   gap?: number;
   margin?: number;
   minHeight?: number;
+  beside?: boolean;
   /** Its stacking level (by default var(--z-menu): over the stage, the panels and windows). */
   z?: string;
 }
@@ -121,6 +141,9 @@ export function anchored(node: HTMLElement, options: AnchoredOptions = {}): { up
   s.position = 'fixed';
   s.right = s.bottom = 'auto';
   s.margin = '0';
+  // Never sliding into place: with the PC's animations off (app.css gives every transition 1ms), a move would still be
+  // under way as it's measured below, and taken for a parent's offset.
+  s.transition = 'none';
 
   function within(): HTMLElement | null {
     if (!o.within) return null;
@@ -148,10 +171,10 @@ export function anchored(node: HTMLElement, options: AnchoredOptions = {}): { up
     // Its height uncut: what it holds, plus its borders.
     const height = Math.min(cssMax, node.scrollHeight + node.offsetHeight - node.clientHeight);
     const width = node.offsetWidth;
-    const k = [a.left, a.top, a.right, a.bottom, vk, height, width, box?.left, box?.top, box?.right, box?.bottom, o.side, o.align].join();
+    const k = [a.left, a.top, a.right, a.bottom, vk, height, width, box?.left, box?.top, box?.right, box?.bottom, o.side, o.align, o.beside].join();
     if (k === key) return;
     key = k;
-    const p = placePopup({ anchor: a, width, height, view, within: box, side: o.side, align: o.align, gap: o.gap, margin: o.margin, minHeight: o.minHeight });
+    const p = placePopup({ anchor: a, width, height, view, within: box, side: o.side, align: o.align, gap: o.gap, margin: o.margin, minHeight: o.minHeight, beside: o.beside });
     s.maxHeight = `${p.maxHeight}px`;
     s.maxWidth = `${p.maxWidth}px`;
     s.left = `${p.left}px`;

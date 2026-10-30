@@ -674,8 +674,11 @@ There is no built-in SFX library in v1, but audio can be attached anywhere:
   side by side to type the color in (Hex at first, then whichever was used last on this computer), 💧 Pick from the
   screen (the desktop app's own picker; a browser's eyedropper where it has one, none in the others), and the color it
   was beside the new one. Under its box or over it, kept in the window and over windows; in a single window, in the host
-  panel, off the stage. The box gets an input event as the color changes and one change event when the picker closes
-  with another color: a picker's changes are one undo step, and `Esc` puts everything back as it was, with no step.
+  panel or a window over it (beside its box when neither has room), off the stage. It closes, keeping the color, on a
+  press elsewhere (a right-click on its box too, whose menu then shows), once its box scrolls out of sight, and on
+  `Ctrl+S`, `Ctrl+F` and the like, which then do what they always do. The box gets an input event as the color changes
+  and one change event when the picker closes with another color: a picker's changes are one undo step, and `Esc` puts
+  everything back as it was, with no step.
 
 ---
 

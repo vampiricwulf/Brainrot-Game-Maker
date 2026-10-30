@@ -499,7 +499,10 @@ try {
   assert((await outlined(chosen)) && !(await outlined(other)), 'with forced colors, the chosen theme preset is outlined (the others aren’t)');
   const swatches = await hc.locator('.preset .sw').evaluateAll((els) => els.map((e) => getComputedStyle(e).backgroundColor));
   assert(new Set(swatches).size > 1, `and the preset cards keep their own colors (${swatches.join(' | ')})`);
-  await hc.getByLabel('Values', { exact: true }).click();
+  // (The PC's animations off too: app.css then gives every move 1ms, which a pop-up being placed must not take.)
+  await hc.emulateMedia({ reducedMotion: 'reduce' });
+  const hcValues = hc.getByLabel('Values', { exact: true });
+  await hcValues.click();
   const hcPicker = hc.getByRole('dialog', { name: 'Color picker: Values' });
   const hcSquare = hcPicker.getByRole('slider', { name: 'Saturation and brightness' });
   await hcSquare.waitFor();
@@ -509,8 +512,11 @@ try {
       (await hcSquare.evaluate((e) => getComputedStyle(e).backgroundColor === 'rgb(255, 204, 0)')),
     'and the color picker outlines Hex, the one in use (not RGB), and its square keeps its colors',
   );
+  const [pickerX, boxX] = [(await hcPicker.boundingBox()).x, (await hcValues.boundingBox()).x];
+  assert(Math.abs(pickerX - boxX) < 1, `with the PC's animations off, the picker opens lined up with its box (at ${pickerX}, the box at ${boxX})`);
   await hc.keyboard.press('Escape');
   await hcPicker.waitFor({ state: 'detached' });
+  await hc.emulateMedia({ reducedMotion: null });
   await hc.getByRole('button', { name: '▶ Play' }).click();
   await hc.getByRole('button', { name: 'Start game ▶' }).waitFor();
   await hc.getByRole('button', { name: '＋ Add player' }).click();

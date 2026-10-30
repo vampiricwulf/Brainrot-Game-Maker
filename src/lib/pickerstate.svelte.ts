@@ -18,6 +18,17 @@ export const colorPicker = $state<{ open: PickerSession | null }>({ open: null }
 let opened = 0;
 /** Ends the undo step the open picker makes. */
 let endStep: ((how?: 'put back') => void) | null = null;
+/** What else puts back what a picker changed (a slide edited during play, which isn't in the game's history). */
+const backs = new Set<() => void>();
+
+/**
+ * Run `fn` as a picker closes back where it started (Esc, or the same color kept), after its box has its color back
+ * (returns the way to stop).
+ */
+export function onPickerBack(fn: () => void): () => void {
+  backs.add(fn);
+  return () => void backs.delete(fn);
+}
 
 /** What a color box is called: its aria-label, else the words of its <label> (not its buttons or hints). */
 export function boxName(box: HTMLInputElement): string {
@@ -30,10 +41,11 @@ export function boxName(box: HTMLInputElement): string {
     .join(' ');
   const words = (node: Node): string => {
     if (node.nodeType === Node.TEXT_NODE) return node.textContent ?? '';
-    if (!(node instanceof Element) || node.matches('button, input, select, textarea, .hint, [aria-hidden="true"]')) return '';
+    // (Not a label inside it, a checkbox's: Fill's "none".)
+    if (!(node instanceof Element) || node.matches('button, input, select, textarea, label, .hint, [aria-hidden="true"]')) return '';
     return [...node.childNodes].map(words).join(' ');
   };
-  const label = by || [...(box.labels ?? [])].map(words).join(' ');
+  const label = by || [...(box.labels ?? [])].map((l) => [...l.childNodes].map(words).join(' ')).join(' ');
   return label.replace(/\s+/g, ' ').replace(/:$/, '').trim() || box.title || 'Color';
 }
 
@@ -80,7 +92,9 @@ export function closeColorPicker(how: 'keep' | 'back' | 'gone' = 'keep', focus =
   } finally {
     // Back where it started (Esc, or the same color kept): no step, not even for a color the box showed but the game
     // didn't hold.
-    end?.(how === 'back' || (how === 'keep' && box.value === start) ? 'put back' : undefined);
+    const back = how === 'back' || (how === 'keep' && box.value === start);
+    if (back) backs.forEach((fn) => fn());
+    end?.(back ? 'put back' : undefined);
   }
   if (focus && how !== 'gone' && box.isConnected) box.focus({ preventScroll: true });
 }
