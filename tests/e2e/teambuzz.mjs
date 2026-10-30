@@ -13,7 +13,7 @@ import { existsSync, mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { addClassicRounds, addPlayers, answerReplace, openRules, startRoomOn, stored, tap, tieThem } from './helpers.mjs';
+import { addClassicRounds, addPlayers, answerReplace, mainButton, openRules, startRoomOn, stored, tap, tieThem } from './helpers.mjs';
 
 const file = resolve(process.env.APP_FILE || 'dist/index.html');
 if (!existsSync(file)) throw new Error('Run `npm run build` first');
@@ -355,7 +355,7 @@ try {
   tieThem([taps.get(ann), taps.get(bea)]);
   await press(ann);
   await press(bea);
-  await host.getByRole('button', { name: '🎲 Roll for it' }).click();
+  await mainButton(host, '🎲 Roll for it').click();
   const won = await Promise.race([ann, bea].map((p, i) => big(p).getByText("You're answering!").waitFor({ timeout: 30_000 }).then(() => i)));
   const rolledSecond = won === 0 ? bea : ann;
   await small(rolledSecond).getByText('Tie — your team rolled 2nd').waitFor();

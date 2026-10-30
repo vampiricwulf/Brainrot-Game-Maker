@@ -7,7 +7,8 @@
 // board's Next round ▶, a slides round, a board-game turn and leaving that round, a three-player Final (the wagers typed
 // by the host, or sent from the phones) and a tie at the end settled by the tiebreaker clue. Each step waits for what it
 // should do (never a timer), and goes at a host's pace where the app holds a quick second press back (KEY_GUARD,
-// STAGE_GAP). Needs `npm ci` in buzzer/.
+// STAGE_GAP). With SCREENSHOTS set to a folder, it saves the host's window as each part starts. Needs `npm ci` in
+// buzzer/.
 import { chromium } from 'playwright-core';
 import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
@@ -18,6 +19,9 @@ const file = resolve(process.env.APP_FILE || 'dist/index.html');
 if (!existsSync(file)) throw new Error('Run `npm run build` first');
 mkdirSync('test-results', { recursive: true });
 const executablePath = process.env.CHROMIUM_PATH || (existsSync('/opt/pw-browsers/chromium') ? '/opt/pw-browsers/chromium' : undefined);
+/** A folder for a screenshot of the host's window as each part of the show starts (left out: none). */
+const shots = process.env.SCREENSHOTS;
+if (shots) mkdirSync(shots, { recursive: true });
 function assert(cond, msg) {
   if (!cond) throw new Error('Assertion failed: ' + msg);
   console.log('  ✓ ' + msg);
@@ -25,8 +29,8 @@ function assert(cond, msg) {
 
 /**
  * Today's counts, recorded on the app before the usability plan's changes (17e8dbe): each part of the show, by keys and
- * by clicks, the keys pressed, the clicks and the numbers typed. (By keys, a played-out board's Next round ▶ and leaving a
- * board game have no key: they're clicks.) A change that takes a host one more step changes its line here, naming the
+ * by clicks, the keys pressed, the clicks and the numbers typed. (By keys, a played-out board's Next round ▶ and leaving
+ * a board game have no key: they're clicks.) A change that takes a host one more step changes its line here, naming the
  * plan's change that allows it (U2's last slide, U12's question, U26's first Enter after T, U7a's second R); one that
  * saves a step changes it too.
  */
@@ -59,11 +63,11 @@ const TODAY = {
   },
 };
 
-/** The app holds back an Enter (or N) within a second of a step (a Daily Double's or a partner clue's question, a clock started). */
+/** The app holds back an Enter (or N) a second after a step (a Daily Double's or partner clue's question, the clock). */
 const KEY_GUARD = 1100;
 /** …and a click on the stage within 450 ms of the one before (one double-click is one step). */
 const STAGE_GAP = 500;
-/** …and the round's Next round ▶ (a click, or N on a slides round's last slide) and its question's Yes, as they appear. */
+/** …and the round's Next round ▶ (a click, or N on a slides round's last slide) and its question's Yes as they come. */
 const NEW_ROW = 500;
 
 // ---------- The game ----------
@@ -155,9 +159,10 @@ async function show(how) {
   // ---------- Counting ----------
   const took = {};
   let part = null;
-  const begin = (name) => {
+  const begin = async (name) => {
     part = name;
     took[name] = { keys: 0, clicks: 0, typed: 0 };
+    if (shots) await host.screenshot({ path: `${shots}/fullshow-${how}-${String(Object.keys(took).length).padStart(2, '0')}.png` });
   };
   /** Where it got to (when a wait runs out). */
   const where = async () => {
@@ -197,7 +202,7 @@ async function show(how) {
     if (check) await until(`a click: ${what}`, check);
   };
   let lastStage = 0;
-  /** A click in the middle of the stage (or on `loc` there: a tile), a moment after the one before, then the state it brings. */
+  /** A click mid-stage (or on `loc` there: a tile), a moment after the one before, then the state it brings. */
   const stageClick = async (what, check, loc = host.locator('.stage-box')) => {
     const wait = lastStage + STAGE_GAP - Date.now();
     if (wait > 0) await sleep(wait);
@@ -227,7 +232,7 @@ async function show(how) {
     const t = (await plate.count()) ? await plate.first().innerText() : await host.locator(`.panel .p[aria-label="${name}"] .score`).innerText();
     return Number(t.replace(/[^\d-]/g, '') || 0);
   };
-  /** The answer (R, or a click on the stage), then back to the board (Esc, or a click), or what `check` says comes next. */
+  /** The answer (R, or a click on the stage), then the board (Esc, or a click), or what `check` says comes next. */
   const answerThenBoard = async (check = noMain) => {
     if (byKeys) {
       await key('r', 'the answer', mainIs('▦ Done ▶ board'));
@@ -239,7 +244,7 @@ async function show(how) {
   };
 
   // ---------- Start, and the round intro ----------
-  begin('Start and the round intro');
+  await begin('Start and the round intro');
   if (byKeys) {
     await key('Control+Enter', 'the round’s title card', mainIs('Show board ▶'));
     await key('n', 'the categories’ reveal', mainIs('Reveal category 1 of 2 ▶'));
@@ -254,7 +259,7 @@ async function show(how) {
   assert(true, 'started, and the round intro played');
 
   // ---------- A clue a phone buzzes in on ----------
-  begin('A clue a phone buzzes in on');
+  await begin('A clue a phone buzzes in on');
   if (byKeys) {
     await until('the keys on the first tile', keysOn('Memes for $200'));
     await key('Enter', 'the clue', mainIs('👁 Reveal answer'));
@@ -269,7 +274,7 @@ async function show(how) {
   assert((await scoreOf('Ann')) === 200, 'Ann buzzed in and got it ($200)');
 
   // ---------- A Daily Double: Ann (who picks now) wagers $300 ----------
-  begin('A Daily Double');
+  await begin('A Daily Double');
   if (byKeys) {
     await key('ArrowDown', 'the keys on the Daily Double', keysOn('Memes for $400'));
     await key('Enter', 'its wager box', () => host.evaluate(() => !!document.activeElement?.closest('.panel .dd')));
@@ -291,7 +296,7 @@ async function show(how) {
   assert((await scoreOf('Ann')) === 500, 'Ann wagered $300 on the Daily Double and got it ($500)');
 
   // ---------- A wheel tile: its wheel, then its question (Bob buzzes in) ----------
-  begin('A wheel tile');
+  await begin('A wheel tile');
   if (byKeys) {
     await key('ArrowDown', 'the keys on the wheel tile', keysOn('Memes for $600'));
     await key('Enter', 'its wheel', mainIs('Spin!'));
@@ -311,7 +316,7 @@ async function show(how) {
   assert((await scoreOf('Bob')) === 600, 'the wheel spun, then Bob buzzed in on its question and got it ($600)');
 
   // ---------- A partner clue: Bob picked it, the wheel picks his partner, the card goes to their phone ----------
-  begin('A partner clue, its card to a phone');
+  await begin('A partner clue, its card to a phone');
   const partnerUp = async () => (await stageHas('[data-partner-up]')()) && (await mainIs('🎡 Spin for a partner')());
   if (byKeys) {
     await key('ArrowRight', 'the keys across the board', keysOn('Movies for $600'));
@@ -339,7 +344,7 @@ async function show(how) {
   assert((await scoreOf('Bob')) === 700 && (await scoreOf(partner)) === (partner === 'Ann' ? 700 : 200), `Bob and his partner (${partner}, the wheel’s pick, the card on their phone) got it`);
 
   // ---------- A partner clue with no cards: Bob picked it, Cat is his partner (picked by hand) ----------
-  begin('A partner clue with no cards, the partner picked by hand');
+  await begin('A partner clue with no cards, the partner picked by hand');
   if (byKeys) {
     await key('ArrowDown', 'the keys on the partner clue', keysOn('Movies for $400'));
     await key('Enter', 'PARTNER UP!', partnerUp);
@@ -358,12 +363,12 @@ async function show(how) {
   const scores = Object.fromEntries(await Promise.all(NAMES.map(async (p) => [p, await scoreOf(p)])));
 
   // ---------- The played-out board: Next round ▶ (only its button goes on) ----------
-  begin('The played-out board');
+  await begin('The played-out board');
   await sleep(NEW_ROW);
   await main('Next round ▶', 'the slides round', mainIs('Next slide ▶'));
 
   // ---------- A slides round: three slides, then on ----------
-  begin('A slides round');
+  await begin('A slides round');
   const pips = (t) => async () => (await host.locator('.stage-box [data-slide-pips]').getAttribute('aria-label').catch(() => '')) === t;
   const titleCard = stageHas('.title-card');
   // (A host looks at the first slide: the round's ▶ takes no press within a moment of it.)
@@ -379,7 +384,7 @@ async function show(how) {
   }
 
   // ---------- A board-game turn (roll, move, next turn), then on to the Final ----------
-  begin('A board-game turn, then leaving the round');
+  await begin('A board-game turn, then leaving the round');
   const rolled = async () => (await label()).startsWith('▶ Move');
   if (byKeys) {
     await key('n', 'the board', mainIs('🎲 Roll'));
@@ -399,7 +404,7 @@ async function show(how) {
   await click(confirmStrip(host).getByRole('button', { name: 'Yes', exact: true }), 'the Final’s title card', mainIs('Start the round ▶'));
 
   // ---------- The Final: the leader wagers what makes a tie and misses it, the others wager nothing ----------
-  begin('The Final');
+  await begin('The Final');
   const [lead, second] = [...NAMES].sort((a, b) => scores[b] - scores[a]);
   const wagers = Object.fromEntries(NAMES.map((p) => [p, p === lead ? scores[lead] - scores[second] : 0]));
   const wagerScreen = async () => (await host.locator('.fj .wagers').count()) > 0;
@@ -451,7 +456,7 @@ async function show(how) {
   assert((await scoreOf(lead)) === scores[second], `the Final played: ${lead} missed it, and ${tied.join(' and ')} tie for first`);
 
   // ---------- A tie at the end: the tiebreaker clue ----------
-  begin('A tie at the end: the tiebreaker clue');
+  await begin('A tie at the end: the tiebreaker clue');
   const winner = tied[0];
   const settled = statusHas(`${winner} won the tiebreaker`);
   await main('❓ Tiebreaker clue', 'the tiebreaker clue', mainIs('👁 Reveal answer'));
