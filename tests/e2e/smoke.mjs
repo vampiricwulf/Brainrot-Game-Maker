@@ -94,7 +94,7 @@ function assert(cond, msg) {
 }
 // Test media generated in memory.
 import { deflateSync } from 'node:zlib';
-import { addClassicRounds, answerReplace, dragBy, nameGame, openGameFile, exportHtml } from './helpers.mjs';
+import { addClassicRounds, answerReplace, dragBy, flowButton, mainButton, nameGame, openGameFile, exportHtml } from './helpers.mjs';
 /** Solid-ish RGB PNG of the given size (a horizontal gradient). */
 function bigPng(w, h) {
   const crcTable = Array.from({ length: 256 }, (_, n) => {
@@ -848,7 +848,7 @@ assert(
   'the toast has no buttons and lets clicks through to the host nav row under it',
 );
 // Points were given for this clue, so it can't be cancelled back onto the board (it could be scored twice).
-assert(await page.getByRole('button', { name: '↩ Cancel (keep tile)' }).isDisabled(), 'Cancel (keep tile) is off once points were given');
+assert(await flowButton(page, 'putback').isDisabled(), 'Cancel (keep tile) is off once points were given');
 await page.keyboard.press('Shift+Escape');
 await page.getByText('Points were given for this clue').waitFor();
 assert((await page.locator('.stage-box .full').count()) === 1, 'Shift+Esc keeps a scored clue open and says why');
@@ -861,9 +861,9 @@ await page.waitForTimeout(500); // past the double-click guard
 await page.keyboard.press('r');
 await page.getByText('This frog became a meme').waitFor();
 assert((await page.getByText('Who is Pepe?').count()) === 0, 'R hides an accidentally revealed answer again');
-await page.getByRole('button', { name: '👁 Reveal answer' }).click();
+await flowButton(page, 'reveal', '👁 Reveal answer').click();
 await page.getByText('Who is Pepe?').waitFor();
-assert(await page.getByRole('button', { name: '🙈 Hide answer' }).isVisible(), 'reveal button turns into Hide answer');
+assert(await flowButton(page, 'reveal', '🙈 Hide answer').isVisible(), 'reveal button turns into Hide answer');
 await page.keyboard.press('Escape');
 await page.locator('.board').waitFor();
 assert(await isUsed(0), 'tile marked used after returning to board');
@@ -1026,11 +1026,11 @@ await page.locator('.dd-text').waitFor();
 await page.locator('.dd .chip', { hasText: 'Player 2' }).click();
 await page.locator('.dd input[type=number]').fill('99999');
 const ddLimit = page.locator('.dd').getByLabel('Ignore the limit');
-assert((await ddLimit.isChecked()) && (await page.getByRole('button', { name: 'Show question ▶' }).isEnabled()), 'the limit is ignored by default: a wager over the cap goes');
+assert((await ddLimit.isChecked()) && (await mainButton(page, 'Show question ▶').isEnabled()), 'the limit is ignored by default: a wager over the cap goes');
 await ddLimit.uncheck();
-assert(await page.getByRole('button', { name: 'Show question ▶' }).isDisabled(), 'with the limit on, a wager over the cap is blocked');
+assert(await mainButton(page, 'Show question ▶').isDisabled(), 'with the limit on, a wager over the cap is blocked');
 await page.locator('.dd input[type=number]').fill('500');
-await page.getByRole('button', { name: 'Show question ▶' }).click();
+await mainButton(page, 'Show question ▶').click();
 await page.locator('.dd-badge').waitFor();
 assert(!(await page.locator('.dd-badge').innerText()).includes('500'), 'viewers don\'t see the Daily Double wager until the host shows it');
 await page.getByRole('button', { name: 'Show wager' }).click();
@@ -1058,7 +1058,7 @@ await page.locator('.timer').waitFor();
 await page.getByText("TIME'S UP!").waitFor({ timeout: 5000 });
 assert(true, "countdown runs out and shows TIME'S UP");
 // A double-click on "Done ▶ board" never reaches the round navigation (it sits elsewhere, and is guarded).
-await page.getByRole('button', { name: '▦ Done ▶ board' }).dblclick();
+await flowButton(page, 'done', '▦ Done ▶ board').dblclick();
 await page.locator('.board').waitFor();
 await page.waitForTimeout(300);
 assert((await page.locator('.final-label').count()) === 0 && (await page.locator('.round-name').count()) === 0, 'double-clicking Done stays on this round');
@@ -1100,18 +1100,18 @@ await page.getByText('Make your wagers…').waitFor();
 const wagers = page.locator('.fj .wagers input[data-wager]');
 await wagers.nth(0).fill('300');
 await wagers.nth(1).fill('0');
-await page.getByRole('button', { name: 'Show question ▶' }).click();
+await mainButton(page, 'Show question ▶').click();
 await page.locator('.timer').waitFor();
 assert(true, 'Final question starts the think timer');
-await page.getByRole('button', { name: 'Reveal answer ▶' }).click();
-await page.locator('.fj').getByRole('button', { name: '🙈 Hide answer' }).click();
-await page.getByRole('button', { name: 'Reveal answer ▶' }).waitFor();
+await mainButton(page, 'Reveal answer ▶').click();
+await flowButton(page, 'reveal', '🙈 Hide answer').click();
+await mainButton(page, 'Reveal answer ▶').waitFor();
 assert(true, 'final answer can be hidden again');
 await page.waitForTimeout(500);
 await page.locator('.stage-box .full').click();
-await page.getByRole('button', { name: 'Start player reveals ▶' }).waitFor();
+await mainButton(page, 'Start player reveals ▶').waitFor();
 assert(true, 'clicking the final question reveals its answer');
-await page.getByRole('button', { name: 'Start player reveals ▶' }).click();
+await mainButton(page, 'Start player reveals ▶').click();
 await page.locator('.spot').waitFor();
 assert((await page.locator('.spot-wager').innerText()).includes('???'), 'wager hidden until shown');
 const rows = page.locator('.fj .pl');
@@ -1213,7 +1213,7 @@ await page.keyboard.type('Who is next?');
 assert((await page.getByRole('dialog', { name: 'Keyboard shortcuts' }).count()) === 0, "typing '?' in the quick-wheel box doesn't open the shortcuts");
 await page.locator('.tl textarea').fill('');
 await page.getByRole('button', { name: 'Punishment Wheel', exact: true }).click();
-await page.getByRole('button', { name: 'Spin!' }).click();
+await mainButton(page, 'Spin!').click();
 await page.locator('.ac').waitFor({ timeout: 8000 });
 const deltaText = await page.locator('.ac .delta').first().innerText();
 const allScores = async () => (await page.locator('.panel .p .score').allInnerTexts()).join();
@@ -1261,7 +1261,7 @@ await page.getByRole('button', { name: '🎡 Wheel' }).click();
 await page.getByRole('button', { name: '🎯 Pick a player' }).click();
 const slices = await page.locator('.stage-box svg text').allTextContents();
 assert(slices.join() === 'Player 1,Player 2,Player 3', `the player wheel has a slice per player (${slices.join(', ')})`);
-await page.getByRole('button', { name: 'Spin!' }).click();
+await mainButton(page, 'Spin!').click();
 const makePicker = page.getByRole('button', { name: /^★ Make .+ the picker$/ });
 const pickedWheel = page.getByText(/^★ .+ picks the next clue\.$/);
 await makePicker.or(pickedWheel).waitFor({ timeout: 10000 });
@@ -1283,7 +1283,7 @@ const editBox = page.getByRole('group', { name: 'Edit this wheel' });
 await editBox.getByLabel('Include Player 1').uncheck();
 await editBox.getByLabel('Include Player 3').uncheck();
 assert((await sliceTexts()).join() === 'Player 2' && (await editBox.locator('.pct').allInnerTexts()).join() === '—,100%,—', 'unticking players takes them off the wheel, and the chances follow');
-await page.getByRole('button', { name: 'Spin!' }).click();
+await mainButton(page, 'Spin!').click();
 await page.getByText('★ Player 2 picks the next clue.').or(page.getByRole('button', { name: '★ Make Player 2 the picker' })).waitFor({ timeout: 10000 });
 assert(true, 'the edited player wheel can only land on the players left on it');
 await page.keyboard.press('Escape');

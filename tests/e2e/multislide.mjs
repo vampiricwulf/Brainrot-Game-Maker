@@ -7,7 +7,7 @@ import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import JSZip from 'jszip';
-import { addClassicRounds, mainButton, mainLabel, nameGame, openGameFile, answerReplace } from './helpers.mjs';
+import { addClassicRounds, flowButton, mainButton, mainLabel, nameGame, openGameFile, answerReplace } from './helpers.mjs';
 
 const file = resolve(process.env.APP_FILE || 'dist/index.html');
 if (!existsSync(file)) throw new Error('Run `npm run build` first');
@@ -213,7 +213,7 @@ try {
   assert(await audSays(1, 'Lead-in: a meme from 2023'), 'the audience window shows slide 1');
   assert((await page.locator('.panel [data-slidepos]').innerText()) === 'Slide 1 of 3', 'the host sees “Slide 1 of 3”');
   assert((await mainLabel(page)) === 'Next slide ▶' && (await mainButton(page).locator('kbd').innerText()) === 'N', 'the main button is Next slide ▶ (N)');
-  assert(await page.locator('.panel').getByRole('button', { name: '◀ Slide' }).isDisabled(), '◀ Slide is off on the first slide');
+  assert(await flowButton(page, 'pager', '◀ Slide').isDisabled(), '◀ Slide is off on the first slide');
   assert((await page.locator('.info .q').innerText()) === 'Lead-in: a meme from 2023' && (await page.locator('.info .notes').first().innerText()) === 'It is a YouTube series', 'the host info shows the slide on screen and the next one');
 
   await mainButton(page).click();
@@ -233,7 +233,7 @@ try {
 
   await page.keyboard.press('Shift+N');
   assert(await audSays(2, 'It is a YouTube series'), 'Shift+N goes back a slide');
-  await page.locator('.panel').getByRole('button', { name: '◀ Slide' }).click();
+  await flowButton(page, 'pager', '◀ Slide').click();
   assert(await audSays(1, 'Lead-in: a meme from 2023'), '◀ Slide goes back too');
   // Clicking the slide goes on to the next one, then the answer.
   await page.locator('.stage-box .full').click();

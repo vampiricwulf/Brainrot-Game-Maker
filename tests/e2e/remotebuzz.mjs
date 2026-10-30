@@ -10,7 +10,7 @@ import { chromium } from 'playwright-core';
 import { existsSync, mkdirSync, readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { addClassicRounds, addPlayers, answerReplace, exportHtml, openRules, playWithPlayers } from './helpers.mjs';
+import { addClassicRounds, addPlayers, answerReplace, exportHtml, mainButton, openRules, playWithPlayers } from './helpers.mjs';
 
 const file = resolve(process.env.APP_FILE || 'dist/index.html');
 if (!existsSync(file)) throw new Error('Run `npm run build` first');
@@ -346,7 +346,7 @@ try {
   heights.tie = await panelH();
   assert(new Set(Object.values(heights)).size === 1, `the host panel keeps its height through the buzzes (${JSON.stringify(heights)})`);
   await shot('rb-3b-tie');
-  await page.getByRole('button', { name: '🎲 Roll for it' }).click();
+  await mainButton(page, '🎲 Roll for it').click();
   await aud.getByText('Tie! Roll for it').waitFor();
   assert(true, 'Roll for it rolls on stream for the tied players');
   await stateIs((s, a) => s.phase === 'answering' && s.armId === a && s.rollOrder?.length === 2 && s.rollOrder[0] === s.answering, tieArm);
@@ -654,9 +654,9 @@ try {
   for (let i = 1; i < (await plays.count()); i++) await plays.nth(i).uncheck();
   await say({ t: 'phones', phones: [{ conn: 'c1', seatId: (await state()).seats[0].id, connected: true }] });
   const outLoud = page.locator('.fj').getByText('This buzzer server can’t take answers from phones (it’s an older one): players answer out loud.');
-  await page.getByRole('button', { name: 'Show question ▶' }).click();
+  await mainButton(page, 'Show question ▶').click();
   await outLoud.waitFor();
-  await page.getByRole('button', { name: 'Reveal answer ▶' }).click();
+  await mainButton(page, 'Reveal answer ▶').click();
   await page.locator('.panel .status', { hasText: 'Answer on screen' }).waitFor();
   assert(await outLoud.isVisible(), 'a Final with a room too old for answers: the panel says players answer out loud');
   // The room back after the question, saying now it takes them (as one started then would): the answers never began,
@@ -674,7 +674,7 @@ try {
     'the room back with answers after the question: no answers block for a Final whose phones were never asked',
   );
   await page.evaluate(() => (window.__room.features = window.__room.older));
-  await page.getByRole('button', { name: 'Start player reveals ▶' }).click();
+  await mainButton(page, 'Start player reveals ▶').click();
   await page.locator('.fj .pl.cur').waitFor();
   await page.keyboard.press('c');
   await page.waitForFunction(() => document.querySelector('.panel [data-next]')?.textContent?.startsWith('Finish game'));

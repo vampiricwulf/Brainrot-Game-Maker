@@ -9,7 +9,7 @@ import { chromium } from 'playwright-core';
 import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { mainLabel, openGameFile } from './helpers.mjs';
+import { flowButton, mainLabel, openGameFile } from './helpers.mjs';
 
 const file = resolve(process.env.APP_FILE || 'dist/index.html');
 if (!existsSync(file)) throw new Error('Run `npm run build` first');
@@ -259,7 +259,7 @@ try {
   await stage('[data-partner-up]').waitFor();
   await page.keyboard.press('w');
   await stage('.wheel').waitFor();
-  await page.locator('.panel').getByRole('button', { name: '↩ Cancel (keep tile)' }).click();
+  await flowButton(page, 'putback').click();
   await tile(2, 3).waitFor();
   const gone = await stage('.wheel').waitFor({ state: 'detached', timeout: 3000 }).then(() => true, () => false);
   assert(gone && !(await tile(2, 3).getAttribute('class')).includes('used'), '↩ Cancel with the partner wheel up: back to the board, the wheel gone, the tile kept');

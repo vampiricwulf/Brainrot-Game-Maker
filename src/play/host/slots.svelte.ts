@@ -8,6 +8,12 @@
 import { getContext, onDestroy, setContext, untrack } from 'svelte';
 import { ask as askDialog } from '../../lib/ask.svelte';
 
+/**
+ * The fixed places in a clue's row of buttons (its data-flow mark): the slides' pager (◀ Slide, Next slide ▶), 👁 Reveal
+ * answer / 🙈 Hide answer, ↩ Cancel (keep tile), and ▦ Done ▶ board (the tiebreaker's 🏁 Back to results).
+ */
+export type FlowPlace = 'pager' | 'reveal' | 'putback' | 'done';
+
 /** The main button: what it says, its key (shown as a small key cap), and what it does. */
 export type NextAction = {
   label: string;
@@ -17,6 +23,8 @@ export type NextAction = {
   disabled?: boolean;
   /** Quiet buttons right beside it, on its left, in the same cell (◀ Previous turn beside Next turn ▶). */
   also?: NextAction[];
+  /** It does the step of this place in the row (Next slide ▶, 👁 Reveal answer…): it carries the same mark. */
+  flow?: FlowPlace;
 };
 
 /** A question for the confirmation strip (as InlineAsk takes it). */

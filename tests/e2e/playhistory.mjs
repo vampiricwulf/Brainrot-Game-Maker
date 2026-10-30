@@ -5,7 +5,7 @@ import { chromium } from 'playwright-core';
 import { existsSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { addClassicRounds, playWithPlayers } from './helpers.mjs';
+import { addClassicRounds, mainButton, playWithPlayers } from './helpers.mjs';
 
 const file = resolve(process.env.APP_FILE || 'dist/index.html');
 if (!existsSync(file)) throw new Error('Run `npm run build` first');
@@ -284,9 +284,9 @@ try {
     `a wager typed is a step, a change says from what to what (${wagerSteps.slice(0, 2).join(' | ')})`,
   );
   await page.keyboard.press('Escape');
-  await page.getByRole('button', { name: 'Show question ▶' }).click();
-  await page.getByRole('button', { name: 'Reveal answer ▶' }).click();
-  await page.getByRole('button', { name: 'Start player reveals ▶' }).click();
+  await mainButton(page, 'Show question ▶').click();
+  await mainButton(page, 'Reveal answer ▶').click();
+  await mainButton(page, 'Start player reveals ▶').click();
   await page.locator('.spot').waitFor();
   const spot = () => page.locator('.spot-name').innerText();
   const order = await page.locator('.fj .pl .name').allInnerTexts();
@@ -403,7 +403,7 @@ try {
   await p2.waitForFunction(() => document.querySelectorAll('.fj .wagers .wrow').length === 2);
   // (Players 1 and 2 at $0 wager 0, filled in: every wager is in.)
   assert(
-    (await p2.getByRole('button', { name: 'Show question ▶' }).isEnabled()) && (await wagerBoxes.count()) === 2,
+    (await mainButton(p2, 'Show question ▶').isEnabled()) && (await wagerBoxes.count()) === 2,
     '↷ Redo takes them out again, and Show question ▶ is there to press (nothing waits on Player 3)',
   );
   await ctx2.close();

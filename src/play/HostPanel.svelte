@@ -686,17 +686,17 @@
       if (tieNames && onrolltie) return { label: '🎲 Roll for it', title: 'The tied players roll: the order they roll in is the order they answer in', run: onrolltie };
       // A clue's question slides come first (the host opens the buzzers whenever they like: 🔔 next to it, or U).
       if (moreSlides && slidePos)
-        return { label: 'Next slide ▶', key: 'N', title: `N: slide ${slidePos.at + 1} of ${slidePos.of} (Shift+N: the slide before) · or click the slide`, run: nextSlide };
+        return { label: 'Next slide ▶', key: 'N', title: `N: slide ${slidePos.at + 1} of ${slidePos.of} (Shift+N: the slide before) · or click the slide`, run: nextSlide, flow: 'pager' };
       if (buzzClosed && !gotIt && !allMissed && !answerUp) return { label: '🔔 Open the buzzers', key: 'U', title: "U: buzzers open for everyone who hasn't missed this clue", run: openBuzzers };
-      if (!toolOnly && !session.revealed) return { label: '👁 Reveal answer', key: 'R', title: 'R (press again to hide) · or click the slide', run: onreveal };
-      return { label: '▦ Done ▶ board', key: 'Esc', title: 'Esc: back to the board (marks the tile used)', run: doneUnscored };
+      if (!toolOnly && !session.revealed) return { label: '👁 Reveal answer', key: 'R', title: 'R (press again to hide) · or click the slide', run: onreveal, flow: 'reveal' };
+      return { label: '▦ Done ▶ board', key: 'Esc', title: 'Esc: back to the board (marks the tile used)', run: doneUnscored, flow: 'done' };
     }
     if (session.phase === 'tiebreaker') {
       if (moreSlides && slidePos)
-        return { label: 'Next slide ▶', key: 'N', title: `N: slide ${slidePos.at + 1} of ${slidePos.of} (Shift+N: the slide before) · or click the slide`, run: nextSlide };
+        return { label: 'Next slide ▶', key: 'N', title: `N: slide ${slidePos.at + 1} of ${slidePos.of} (Shift+N: the slide before) · or click the slide`, run: nextSlide, flow: 'pager' };
       return answerShowing(session)
-        ? { label: '🏁 Back to results', key: 'N', title: 'N: back to the results', run: tiebreakerDone }
-        : { label: '👁 Reveal answer', key: 'R', title: 'R (press again to hide)', run: onreveal };
+        ? { label: '🏁 Back to results', key: 'N', title: 'N: back to the results', run: tiebreakerDone, flow: 'done' }
+        : { label: '👁 Reveal answer', key: 'R', title: 'R (press again to hide)', run: onreveal, flow: 'reveal' };
     }
     return null;
   });
@@ -924,6 +924,7 @@
       <!-- Up here, away from the main cell and the fixed bar, so it's never hit by a double-click meant for something else. -->
       <button
         class="small ghost"
+        data-flow="putback"
         onclick={oncancelclue}
         disabled={cancelBlocked}
         title={cancelBlocked
@@ -1194,33 +1195,33 @@
         {#if session.phase === 'clue' && !setup}
           {#if slidePos && !session.revealed}
             <!-- A clue's question slides: back one (quiet), and on when something else is the main button. -->
-            <button class="ghost back-slide" onclick={() => onslide(-1)} disabled={slidePos.at <= 1} title="Shift+N: the slide before">◀ <span class="word">Slide</span></button>
-            {#if moreSlides && next?.run !== nextSlide}<button onclick={nextSlide} title="N: the next slide">Next slide ▶</button>{/if}
+            <button class="ghost back-slide" data-flow="pager" onclick={() => onslide(-1)} disabled={slidePos.at <= 1} title="Shift+N: the slide before">◀ <span class="word">Slide</span></button>
+            {#if moreSlides && next?.run !== nextSlide}<button data-flow="pager" onclick={nextSlide} title="N: the next slide">Next slide ▶</button>{/if}
           {/if}
           {#if buzzClosed && !answerUp && next?.run !== openBuzzers && !tieNames && !allMissed}
             <button onclick={openBuzzers} title="U: buzzers open for everyone who hasn't missed this clue">🔔 Open the buzzers</button>
           {/if}
           {#if !toolOnly && !toolFirst && next?.run !== onreveal}
-            <button onclick={onreveal} title="R (press again to hide)">
+            <button data-flow="reveal" onclick={onreveal} title="R (press again to hide)">
               {session.revealed ? '🙈 Hide answer' : '👁 Reveal answer'}
             </button>
           {/if}
           <!-- A wheel/dice tile with nothing to ask has one way out: its tool's Close ▶ board. -->
           {#if !(toolOnly && app.live.overlay) && next?.run !== doneUnscored}
-            <button class="done-board" onclick={onback} title="Esc: back to the board (marks the tile used)">▦ <span class="word">Done ▶ board</span></button>
+            <button class="done-board" data-flow="done" onclick={onback} title="Esc: back to the board (marks the tile used)">▦ <span class="word">Done ▶ board</span></button>
           {/if}
         {:else if session.phase === 'slides'}
-          {#if slidePos}<button class="ghost" onclick={() => onslide(-1)} disabled={slidePos.at <= 1} title="Shift+N: the slide before">◀ Slide</button>{/if}
+          {#if slidePos}<button class="ghost" data-flow="pager" onclick={() => onslide(-1)} disabled={slidePos.at <= 1} title="Shift+N: the slide before">◀ Slide</button>{/if}
         {:else if session.phase === 'tiebreaker'}
           {#if slidePos && !answerShowing(session)}
-            <button class="ghost" onclick={() => onslide(-1)} disabled={slidePos.at <= 1} title="Shift+N: the slide before">◀ Slide</button>
-            {#if moreSlides && next?.run !== nextSlide}<button onclick={nextSlide} title="N: the next slide">Next slide ▶</button>{/if}
-            {#if next?.run !== onreveal}<button onclick={onreveal} title="R (press again to hide)">👁 Reveal answer</button>{/if}
+            <button class="ghost" data-flow="pager" onclick={() => onslide(-1)} disabled={slidePos.at <= 1} title="Shift+N: the slide before">◀ Slide</button>
+            {#if moreSlides && next?.run !== nextSlide}<button data-flow="pager" onclick={nextSlide} title="N: the next slide">Next slide ▶</button>{/if}
+            {#if next?.run !== onreveal}<button data-flow="reveal" onclick={onreveal} title="R (press again to hide)">👁 Reveal answer</button>{/if}
           {/if}
           {#if answerShowing(session)}
-            <button onclick={onreveal} title="R (press again to hide)">🙈 Hide answer</button>
+            <button data-flow="reveal" onclick={onreveal} title="R (press again to hide)">🙈 Hide answer</button>
           {:else}
-            <button onclick={ontiebreakerdone}>🏁 Back to results</button>
+            <button data-flow="done" onclick={ontiebreakerdone}>🏁 Back to results</button>
           {/if}
         {/if}
         {#if scoring && !showAward}
@@ -1368,7 +1369,7 @@
             {a.label}{#if a.key} <kbd aria-hidden="true">{a.key}</kbd>{/if}
           </button>
         {/each}
-        <button class:primary={!answering && !ask} data-next disabled={n.disabled} onclick={(e) => clickNext(e, n)} title={n.title ?? n.key}>
+        <button class:primary={!answering && !ask} data-next data-flow={n.flow} disabled={n.disabled} onclick={(e) => clickNext(e, n)} title={n.title ?? n.key}>
           {n.label}{#if n.key} <kbd aria-hidden="true">{n.key}</kbd>{/if}
         </button>
       </div>

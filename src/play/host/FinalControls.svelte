@@ -423,13 +423,14 @@
     const step = session.finalStep ?? 'wagers';
     // Its question slides first, then the answer.
     if (step === 'question' && moreSlides && slidePos && onslide)
-      return { label: 'Next slide ▶', key: 'N', title: `N: slide ${slidePos.at + 1} of ${slidePos.of} (Shift+N: the slide before) · or click the slide`, run: () => onslide(1) };
+      return { label: 'Next slide ▶', key: 'N', title: `N: slide ${slidePos.at + 1} of ${slidePos.of} (Shift+N: the slide before) · or click the slide`, run: () => onslide(1), flow: 'pager' };
     return {
       label: labels[step],
       key: 'N',
       disabled: step === 'wagers' && !wagersOk,
       title: step === 'wagers' && !wagersOk ? 'Every wager in first' : 'N',
       run: step === 'question' ? onreveal : next,
+      ...(step === 'question' ? { flow: 'reveal' as const } : {}),
     };
   });
 </script>
@@ -703,12 +704,12 @@
         {#if lastRound}<button class="ghost" onclick={onback} title="Who plays and the wagers entered so far are kept">◀ Previous round ({roundName(lastRound, session.currentRound - 1)})</button>{/if}
       {/if}
       {#if session.finalStep === 'answer'}
-        <button onclick={onreveal} title="R">🙈 Hide answer</button>
+        <button data-flow="reveal" onclick={onreveal} title="R">🙈 Hide answer</button>
       {:else if session.finalStep === 'question'}
         {#if slidePos}
           <span class="slidepos" data-slidepos>Slide {slidePos.at} of {slidePos.of}</span>
-          <button class="ghost" onclick={() => onslide?.(-1)} disabled={slidePos.at <= 1} title="Shift+N: the slide before">◀ Slide</button>
-          {#if moreSlides}<button onclick={onreveal} title="R">👁 Reveal answer</button>{/if}
+          <button class="ghost" data-flow="pager" onclick={() => onslide?.(-1)} disabled={slidePos.at <= 1} title="Shift+N: the slide before">◀ Slide</button>
+          {#if moreSlides}<button data-flow="reveal" onclick={onreveal} title="R">👁 Reveal answer</button>{/if}
         {/if}
         <span class="muted small">Tip: click the screen to continue</span>
       {:else if session.finalStep === 'wagers' && !wagersOk}

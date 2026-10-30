@@ -6,7 +6,7 @@ import { chromium } from 'playwright-core';
 import { existsSync, mkdirSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { addClassicRounds, confirmStrip, mainButton, mainLabel, playWithPlayers } from './helpers.mjs';
+import { addClassicRounds, confirmStrip, flowButton, mainButton, mainLabel, playWithPlayers } from './helpers.mjs';
 
 const file = resolve(process.env.APP_FILE || 'dist/index.html');
 if (!existsSync(file)) throw new Error('Run `npm run build` first');
@@ -226,7 +226,7 @@ try {
   await page.locator('.toast', { hasText: 'The question just went up: press Enter again to judge' }).waitFor();
   assert((await page.locator('.panel .p .mark:not(.empty)').count()) === 0, 'a second Enter right after it doesn’t judge the Daily Double’s player (it says to press it again)');
   await page.waitForTimeout(400);
-  assert((await status()).includes('Answer hidden') && (await page.getByRole('button', { name: '👁 Reveal answer' }).count()) === 1, 'Enter in the Daily Double wager box shows the question, the answer stays hidden');
+  assert((await status()).includes('Answer hidden') && (await flowButton(page, 'reveal', '👁 Reveal answer').count()) === 1, 'Enter in the Daily Double wager box shows the question, the answer stays hidden');
   // ✘ on its player (nobody else answers a Daily Double): its countdown stops, with no TIME'S UP after; Ctrl+Z brings it back.
   await page.keyboard.press('t');
   await stage('.timer').waitFor();

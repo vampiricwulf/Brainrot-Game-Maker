@@ -11,7 +11,7 @@ import { chromium } from 'playwright-core';
 import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { addClassicRounds, mainLabel, openGameFile, playWithPlayers, stored } from './helpers.mjs';
+import { addClassicRounds, flowButton, mainButton, mainLabel, openGameFile, playWithPlayers, stored } from './helpers.mjs';
 
 const file = resolve(process.env.APP_FILE || 'dist/index.html');
 if (!existsSync(file)) throw new Error('Run `npm run build` first');
@@ -425,15 +425,15 @@ async function viewers() {
     }).observe(document.body, { subtree: true, childList: true, attributes: true, attributeFilter: ['style'] });
   });
   const sizes = () => aud.evaluate(() => [...new Set(window.__scales.splice(0))].join(' → '));
-  await host.getByRole('button', { name: 'Show question ▶' }).click();
+  await mainButton(host, 'Show question ▶').click();
   await aud.locator('.slide-area').waitFor();
   await aud.locator('.timer').waitFor();
   const asked = await sizes();
-  await host.getByRole('button', { name: 'Reveal answer ▶' }).click();
+  await mainButton(host, 'Reveal answer ▶').click();
   await aud.locator('.timer').waitFor({ state: 'detached' });
   const answered = await sizes();
   assert(!asked.includes('→') && asked !== '1' && answered === '1', `the Final's question comes in at its size beside the countdown, its answer at full size (${asked} | ${answered})`);
-  await host.getByRole('button', { name: 'Start player reveals ▶' }).click();
+  await mainButton(host, 'Start player reveals ▶').click();
   const wrongs = await host.getByRole('button', { name: '✘ Wrong' }).count();
   for (let k = 0; k < wrongs; k++) {
     const main = host.locator('.panel [data-next]');
@@ -608,7 +608,7 @@ async function tileTools() {
   await host.locator('.toast', { hasText: 'Spin the wheel first: W (or N)' }).waitFor();
   assert(!(await host.locator('.tc .result').count()), 'Enter on a wheel tile’s Spin! says to spin it first (W, or N), not “Select a player first”');
   // Before the spin there's no 👁 Reveal answer (it would skip the question), and R says to spin first.
-  const revealBtn = host.locator('.panel button', { hasText: '👁 Reveal answer' });
+  const revealBtn = flowButton(host, 'reveal', '👁 Reveal answer');
   assert((await revealBtn.count()) === 0, 'a wheel tile’s wheel not spun yet: no 👁 Reveal answer in the panel');
   await host.keyboard.press('r');
   await host.locator('.toast', { hasText: 'Spin first (W), or press R again to show the answer anyway' }).waitFor();
@@ -808,10 +808,10 @@ async function tileTools() {
   await host.keyboard.press('Escape');
   await stage('.ov').waitFor({ state: 'detached' });
   await question.waitFor();
-  const cancel = host.getByRole('button', { name: '↩ Cancel (keep tile)' });
+  const cancel = flowButton(host, 'putback');
   assert(await cancel.isDisabled(), 'its points given and its wheel closed: ↩ Cancel (keep tile) still waits for an Undo');
   await host.keyboard.press('Control+z');
-  await host.locator('button:enabled', { hasText: '↩ Cancel (keep tile)' }).waitFor();
+  await host.locator('.panel [data-flow="putback"]:enabled').waitFor();
   await cancel.click();
   await tileOf('qy').waitFor();
   assert((await used('qy')) === false, 'undone, it puts the tile back');
@@ -1060,14 +1060,14 @@ try {
   await sc.locator('.plate .tick').nth(2).waitFor();
   const scPlates = () => sc.locator('.plate').evaluateAll((els) => els.map((e) => Math.round(e.getBoundingClientRect().left)).join());
   const scBefore = await scPlates();
-  await page.getByRole('button', { name: 'Show question ▶' }).click();
+  await mainButton(page, 'Show question ▶').click();
   await sc.locator('.clock .timer').waitFor();
   await sc.locator('.plate .tick').first().waitFor({ state: 'detached' });
   const scAfter = await scPlates();
   assert(scAfter === scBefore, `the scores window: a ✔ for each wager in, and 3 plates that stay put when the countdown comes (${scBefore} / ${scAfter})`);
   assert((await stageSize()) === finalSize, 'the question keeps it');
-  await page.getByRole('button', { name: 'Reveal answer ▶' }).click();
-  await page.getByRole('button', { name: 'Start player reveals ▶' }).click();
+  await mainButton(page, 'Reveal answer ▶').click();
+  await mainButton(page, 'Start player reveals ▶').click();
   assert((await stageSize()) === finalSize, 'and so do the reveals');
   const spot = await page.locator('.stage .spot-name').innerText();
   assert((await page.locator('.stage .score-area .plate.picker').innerText()).includes(spot), 'the score bar lights up the spotlit player');

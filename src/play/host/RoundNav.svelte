@@ -54,7 +54,7 @@
   // A played-out board: going on is the moment's main button.
   // A slides round: the next slide, then (on the last) the next round.
   offerNext('board', () =>
-    slides && !lastSlide && onslide ? { label: 'Next slide ▶', key: 'N', run: () => onslide(1) } : done ? { label: nextLabel, ...(slides ? { key: 'N' } : {}), run: next } : null,
+    slides && !lastSlide && onslide ? { label: 'Next slide ▶', key: 'N', run: () => onslide(1), flow: 'pager' } : done ? { label: nextLabel, ...(slides ? { key: 'N' } : {}), run: next } : null,
   );
 
   function next(): void {

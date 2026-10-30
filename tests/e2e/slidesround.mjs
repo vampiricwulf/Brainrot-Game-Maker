@@ -11,7 +11,7 @@ import { chromium } from 'playwright-core';
 import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { addClassicRounds, mainButton, mainLabel, openGameFile, playWithPlayers } from './helpers.mjs';
+import { addClassicRounds, flowButton, mainButton, mainLabel, openGameFile, playWithPlayers } from './helpers.mjs';
 
 const file = resolve(process.env.APP_FILE || 'dist/index.html');
 if (!existsSync(file)) throw new Error('Run `npm run build` first');
@@ -109,7 +109,7 @@ try {
   await stage.locator('[data-slide="1"]').getByText('Welcome to the show').waitFor();
   await page.locator('[data-slidepos]').getByText('Slide 1 of 2').waitFor();
   assert(true, 'the game starts on its first slide (no title card), and the panel says "Slide 1 of 2"');
-  await page.getByRole('button', { name: 'Next slide ▶' }).waitFor();
+  await flowButton(page, 'pager', 'Next slide ▶').waitFor();
   assert((await page.locator('.panel .status .notes').innerText()) === '📝 Say hi to chat', 'one window: the round’s host notes show in the panel');
   // The keys are on Next slide ▶: Enter there does what it says, as N does.
   await page.waitForFunction(() => document.activeElement?.matches('.panel [data-next]'));
@@ -135,7 +135,7 @@ try {
   await page.keyboard.press('n');
   await stage.locator('[data-slide="2"]').waitFor();
   assert(true, 'N the next, Shift+N the one before');
-  await page.getByRole('button', { name: '◀ Slide' }).click();
+  await flowButton(page, 'pager', '◀ Slide').click();
   await stage.locator('[data-slide="1"]').waitFor();
   await stage.locator('[data-slide="1"]').click();
   await stage.locator('[data-slide="2"]').waitFor();

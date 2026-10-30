@@ -11,7 +11,7 @@ import { chromium } from 'playwright-core';
 import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { confirmStrip, mainButton, openGameFile, packGame, png, recordSeen, shownOf, startBuzzer, startRoomOn } from './helpers.mjs';
+import { confirmStrip, flowButton, mainButton, openGameFile, packGame, png, recordSeen, shownOf, startBuzzer, startRoomOn } from './helpers.mjs';
 import { wav } from './mediafixtures.mjs';
 
 const file = resolve(process.env.APP_FILE || 'dist/index.html');
@@ -192,7 +192,7 @@ try {
   // ---------- A wheel slice's: Skip sends nothing; 📤 Send to everyone else ----------
   await tools.getByRole('button', { name: '🎡 Wheel' }).click();
   await host.getByRole('button', { name: 'Whisper wheel', exact: true }).click();
-  await host.locator('.panel [data-next]', { hasText: 'Spin!' }).click();
+  await mainButton(host, 'Spin!').click();
   const tc = host.locator('[data-tool-controls]');
   await tc.getByText('This was for').waitFor({ timeout: 10000 });
   await tc.getByRole('button', { name: 'Bob', exact: true }).click();
@@ -419,7 +419,7 @@ try {
   // Shift+Esc asks first (Cat saw the tile's card); left unanswered, ▦ Done ▶ board closes the tile.
   await solo.keyboard.press('Shift+Escape');
   await confirmStrip(solo).getByText('Put the tile back anyway?').waitFor();
-  await solo.getByRole('button', { name: '▦ Done ▶ board' }).click();
+  await flowButton(solo, 'done', '▦ Done ▶ board').click();
   await win2.getByText(TIP).waitFor({ state: 'detached' });
   assert(await win2.getByText('Extra card 9').isVisible(), 'the tile closed: its card goes from the card window (the round’s stay)');
   assert(!(await confirmStrip(solo).count()), 'and the question left unanswered goes with the tile');

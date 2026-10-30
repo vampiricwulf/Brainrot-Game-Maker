@@ -4,7 +4,7 @@ import { chromium } from 'playwright-core';
 import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { macClicks, noDailyDoubles, playWithPlayers } from './helpers.mjs';
+import { macClicks, mainButton, noDailyDoubles, playWithPlayers } from './helpers.mjs';
 
 const file = resolve(process.env.APP_FILE || 'dist/index.html');
 if (!existsSync(file)) throw new Error('Run `npm run build` first');
@@ -146,9 +146,9 @@ try {
   assert(true, 'its Back button goes to the round before it');
   // Through the Final: wagers, question, answer, then judge the one player who can play.
   await page.locator('.fj .wagers input[data-wager]').first().fill('200');
-  await page.getByRole('button', { name: 'Show question ▶' }).click();
-  await page.getByRole('button', { name: 'Reveal answer ▶' }).click();
-  await page.getByRole('button', { name: 'Start player reveals ▶' }).click();
+  await mainButton(page, 'Show question ▶').click();
+  await mainButton(page, 'Reveal answer ▶').click();
+  await mainButton(page, 'Start player reveals ▶').click();
   await page.locator('.spot').waitFor();
   await page.keyboard.press('c');
   const finish = page.getByRole('button', { name: /^Next: Double Jeopardy! ▶$/ });
@@ -193,7 +193,7 @@ try {
   // This Final lets players with $0 play: a wager of $0 is filled in for them, and Show question waits on no one else.
   const wagerBoxes = page.locator('.fj .wagers input[data-wager]');
   const plays = page.locator('.fj .wagers input[data-plays]');
-  const showQuestion = page.getByRole('button', { name: 'Show question ▶' });
+  const showQuestion = mainButton(page, 'Show question ▶');
   const limits = page.getByLabel('Ignore the limits');
   const zeroes = page.locator('.fj .wagers .chip').filter({ hasText: 'can only wager $0' });
   assert(await limits.isChecked(), 'the limits are ignored by default');

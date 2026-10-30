@@ -145,8 +145,33 @@ export async function openRules(page) {
 
 // ---------- The host panel ----------
 
-/** The host panel's main button (its NEXT cell: Reveal answer, Show question ▶, Spin!…). */
-export const mainButton = (page) => page.locator('.panel [data-next]');
+/** The host panel's main button (its NEXT cell: Reveal answer, Show question ▶, Spin!…); with `name`, while it says that. */
+export const mainButton = (page, name) => {
+  const b = page.locator('.panel [data-next]');
+  return name === undefined ? b : b.and(page.getByRole('button', { name, exact: true }));
+};
+
+/**
+ * The button in one of a clue's fixed places in the host panel (data-flow): 'pager' (◀ Slide, Next slide ▶), 'reveal'
+ * (👁 Reveal answer / 🙈 Hide answer), 'putback' (↩ Cancel (keep tile)) or 'done' (▦ Done ▶ board, the tiebreaker's
+ * 🏁 Back to results); with `name`, the one that says that. The main button carries the mark of the place whose step it
+ * does: the row's own button comes first, else the main button, so the step is found wherever it is now.
+ */
+export const flowButton = (page, place, name) => {
+  const b = page.locator(`.panel [data-flow="${place}"]`);
+  return (name === undefined ? b : b.and(page.getByRole('button', { name, exact: true }))).first();
+};
+
+/**
+ * A step button (data-step) in a moment's box (the 🤝 box's 🎡 Spin for a partner…): the box's own button for a step the
+ * main button may do too, never the main button. `box`: the box (a locator), or a page for any in its host panel; with
+ * `name`, the one that says that.
+ */
+export const stepButton = (box, name) => {
+  const root = typeof box.mainFrame === 'function' ? box.locator('.panel') : box;
+  const b = root.locator('[data-step]');
+  return name === undefined ? b : b.and(root.getByRole('button', { name, exact: true }));
+};
 
 /** What the main button says, without its key cap (R, N, Esc…). */
 export const mainLabel = (page) =>
