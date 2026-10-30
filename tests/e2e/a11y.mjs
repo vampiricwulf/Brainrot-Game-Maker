@@ -106,13 +106,31 @@ try {
   );
   await page.keyboard.press('Escape');
   assert((await page.getByRole('dialog').count()) === 0 && (await more.evaluate((b) => b === document.activeElement)), 'Esc on ℹ About gives the focus back too');
+  // A window only for reading closes on Enter too, as its Done does (not from a link or a button in it).
+  await more.click();
+  await page.getByRole('menuitem', { name: 'ℹ About' }).click();
+  await about.waitFor();
+  await about.getByRole('link', { name: /How to host/ }).focus();
+  await about.getByRole('link', { name: /How to host/ }).evaluate((a) => a.addEventListener('click', (e) => e.preventDefault(), { once: true }));
+  await page.keyboard.press('Enter');
+  assert((await about.count()) === 1, 'Enter on a link in ℹ About is the link’s');
+  await about.getByText(/^Build game shows/).click();
+  await page.keyboard.press('Enter');
+  await about.waitFor({ state: 'detached' });
+  assert(await more.evaluate((b) => b === document.activeElement), 'Enter on ℹ About’s words closes it, the focus back on ⋯');
 
   // Every window has the same ✕ named Close.
   await more.click();
   await page.getByRole('menuitem', { name: /Keyboard shortcuts/ }).click();
   const sheet = page.getByRole('dialog', { name: 'Editor keyboard shortcuts' });
   assert((await sheet.getByRole('button', { name: 'Close' }).count()) === 1 && (await sheet.getByRole('button', { name: 'Done' }).count()) === 1, '⌨ Keyboard shortcuts: a ✕ named Close and a Done');
-  await sheet.getByRole('button', { name: 'Done' }).click();
+  // Enter in its filter is the filter's; Enter on the window closes it.
+  await sheet.getByLabel('Filter shortcuts').press('Enter');
+  assert((await sheet.count()) === 1, 'Enter in the keys window’s filter leaves it open');
+  await sheet.getByRole('heading', { name: '⌨ Keyboard shortcuts' }).click();
+  await page.keyboard.press('Enter');
+  await sheet.waitFor({ state: 'detached' });
+  assert(true, 'Enter on the keys window closes it');
 
   // ---------- Windows' buttons: Cancel (the safe answer) first, the main one last ----------
   /** A window's footer buttons, in the order they show (left to right), with their DOM order alongside. */

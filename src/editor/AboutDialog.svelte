@@ -53,7 +53,7 @@
 />
 
 <div class="modal-backdrop" onclick={(e) => e.target === e.currentTarget && onclose()} role="presentation">
-  <div class="modal" role="dialog" aria-modal="true" aria-label="About Brainrot Games Maker" use:modal data-undo="off">
+  <div class="modal" role="dialog" aria-modal="true" aria-label="About Brainrot Games Maker" use:modal={{ enter: onclose }} data-undo="off">
     <div class="modal-head">
       <h2 class="modal-title">ℹ Brainrot Games Maker</h2>
       <button class="ghost modal-x" onclick={onclose} aria-label="Close" title="Close (Esc)">✕</button>

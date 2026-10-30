@@ -40,7 +40,7 @@ export const hostKeys = (playerOnly: boolean): KeyGroup[] => [
       ['Shift+A', 'Open / focus the scores window: only the score plates and the countdown, for a lower third in OBS'],
       ['H', 'Hide / show the host controls'],
       ['F', 'Full-screen'],
-      ['?', 'This list (❔ Help at the bar’s end opens it too)'],
+      ['?', 'This list (❔ Help at the bar’s end opens it too). Esc, ? or Enter closes it, and Enter closes 🔊 Sound help and ⚖ Rules too (not from a box or a button in them)'],
     ],
   },
   {

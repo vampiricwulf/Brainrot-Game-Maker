@@ -436,6 +436,9 @@ The mode isn't saved with the game: it's dual while the audience window is open.
   the audience window open, the host column, typed answers (✍, the Final's, a partner's guess) and the 📜 Log's rows
   too, to copy into chat, let go of when the window closes. `Ctrl+A` on the host screen selects nothing outside a field (the live screen editor keeps its
   select-all). Pictures and videos don't drag off as files: a drag on one moves what it's in.
+- **Windows only for reading** (ℹ About, the keys window, 🔊 Sound help, ⚖ Rules in play) close on `Enter` too, as their
+  Done does (modal.ts `enter`): `Enter` on the window or its words, never from a field, a list, a link or a button in it,
+  which keep their own `Enter`; a held `Enter` doesn't close one. Settings and 👥 Players, with fields, don't.
 - **No browser menu**: in every window (the editor and host screen, the audience and scores windows, a 🪟 card window) a
   right-click the app has no menu for shows nothing, so the browser's menu (Back, Reload, Print) never shows on stream.
   Fields, links and selected copyable words keep it (cut, copy, paste, open link).

@@ -223,8 +223,12 @@ try {
   await playersDialog.getByRole('button', { name: 'Done' }).click();
   await page.getByRole('button', { name: '⚖ Rules' }).click();
   assert((await most.inputValue()) === '3', 'the rules show the new Most players');
+  await page.keyboard.press('Enter');
+  await rulesDialog.waitFor({ state: 'detached' });
+  await page.getByRole('button', { name: '⚖ Rules' }).click();
+  await rulesDialog.waitFor();
   await page.keyboard.press('Escape');
-  assert((await rulesDialog.count()) === 0, 'Esc closes the rules');
+  assert((await rulesDialog.count()) === 0, 'Enter on the rules window closes it, as Esc does');
 
   // ---------- Rematch keeps Bo's picture, and a roster edit then doesn't take it off the game ----------
   await page.waitForTimeout(450);

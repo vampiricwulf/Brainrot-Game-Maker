@@ -162,7 +162,8 @@ Nothing turns blue when you click, double-click or drag, nor with `Ctrl+A`, so n
 the boxes you type in, links, the room code (one click takes all of it), error lines, ℹ About's version and folders and
 🔊 Sound help's switch and folder select. With the audience window open, the host's own column, typed answers and the 📜 Log select too, to copy into chat.
 A right-click where the app has no menu of its own shows nothing, in every window (the browser's menu, with its Reload,
-would be on stream): boxes you type in, links and selected words keep it.
+would be on stream): boxes you type in, links and selected words keep it. Windows only for reading (ℹ About, the keys,
+🔊 Sound help, ⚖ Rules in the game) close on `Enter` as well as `Esc`, unless the keys are in a box or on a button there.
 A player's menu (Select, ★ Make the picker, ✎ Set the score…, their round's extras) opens with a right-click on them
 anywhere on the host screen: their score chip or plate, and their button in any box (who picked a 🤝 partner clue, who
 found a Daily Double, who gets a 🤫 card or a 🎭 part, the Final's rows, a shop's buyer…), headed by their name only.

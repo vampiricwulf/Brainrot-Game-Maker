@@ -78,7 +78,7 @@
   onclick={(e) => e.target === e.currentTarget && onclose()}
   role="presentation"
 >
-  <div class="modal lg" role="dialog" aria-modal="true" aria-label={from === 'editor' ? 'Editor keyboard shortcuts' : 'Keyboard shortcuts'} use:modal data-undo="off">
+  <div class="modal lg" role="dialog" aria-modal="true" aria-label={from === 'editor' ? 'Editor keyboard shortcuts' : 'Keyboard shortcuts'} use:modal={{ enter: onclose }} data-undo="off">
     <div class="modal-head">
       <h2 class="modal-title">⌨ Keyboard shortcuts</h2>
       <button class="ghost modal-x" onclick={onclose} aria-label="Close" title="Close (Esc)">✕</button>

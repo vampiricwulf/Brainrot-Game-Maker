@@ -1,12 +1,22 @@
 // What every modal window does, as an action on its role="dialog" box (use:modal): it takes the focus when it opens
 // (its [data-autofocus] field, or the box itself), keeps Tab and Shift+Tab inside, makes the rest of the page inert,
 // and gives the focus back to what opened it when it closes. Optional: Esc closes it (`esc`) when nothing inside
-// used the key first. Windows open on top of one another (a picker in a clue editor): only the top one acts.
+// used the key first, and in a window only for reading, Enter does (`enter`). Windows open on top of one another (a
+// picker in a clue editor): only the top one acts.
 
 export interface ModalOptions {
   /** Esc closes the window (leave it out when the window handles Esc itself). */
   esc?: () => void;
+  /**
+   * A window only for reading (ℹ About, the keys, Sound help, the rules in play): Enter on the window or its words
+   * closes it, as its Done does. Enter in a field, a list or on a button keeps its own meaning.
+   */
+  enter?: () => void;
 }
+
+/** What Enter means something to by itself (a press, a pick, a new line), so it doesn't close a reading window there. */
+const OWN_ENTER =
+  'a[href], button, input, select, textarea, summary, label, [contenteditable]:not([contenteditable="false"]), [role="button"], [role="link"], [role="listbox"], [role="option"], [role="menu"], [role="menuitem"], [role="tab"], [role="radio"], [role="checkbox"], [role="switch"], [role="slider"], [role="spinbutton"], [role="combobox"], [role="grid"], [role="tree"], [role="textbox"]';
 
 const stack: HTMLElement[] = [];
 
@@ -103,6 +113,17 @@ export function modal(node: HTMLElement, opts: ModalOptions = {}) {
       e.stopImmediatePropagation();
       options.esc();
       return;
+    }
+    // (A plain Enter, not held down: the press that opened the window doesn't close it.)
+    if (e.key === 'Enter' && options.enter && !e.repeat && !e.isComposing && !e.shiftKey && !e.ctrlKey && !e.metaKey && !e.altKey) {
+      const t = e.target instanceof Element ? e.target : null;
+      const own = t?.closest(OWN_ENTER);
+      if (t && (t === node || (node.contains(t) && !(own && node.contains(own)))) || t === document.body) {
+        e.preventDefault();
+        e.stopImmediatePropagation();
+        options.enter();
+        return;
+      }
     }
     if (e.key !== 'Tab') return;
     const list = tabbables(node);

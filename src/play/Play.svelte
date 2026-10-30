@@ -5649,7 +5649,7 @@
     role="presentation"
     onclick={(e) => e.target === e.currentTarget && (showRules = false)}
   >
-    <div class="modal rules-modal" role="dialog" aria-label="Game rules" use:modal={{ esc: () => (showRules = false) }}>
+    <div class="modal rules-modal" role="dialog" aria-label="Game rules" use:modal={{ esc: () => (showRules = false), enter: () => (showRules = false) }}>
       <div class="row">
         <h2 class="modal-title">⚖ Game rules</h2>
         <span class="spacer"></span>

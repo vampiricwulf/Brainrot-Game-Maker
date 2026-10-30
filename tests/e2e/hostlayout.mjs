@@ -756,7 +756,8 @@ try {
       const hb = await help.boundingBox();
       const sb = await p4.locator('.stage-box').boundingBox();
       assert(hb.y >= sb.y + sb.height - 1, `🔊 Sound mid-game opens its help in the host panel, not over the stage (it starts at ${Math.round(hb.y)}, the stage ends at ${Math.round(sb.y + sb.height)})`);
-      await p4.keyboard.press('Escape');
+      // (A window only for reading: Enter closes it, as its Done does.)
+      await p4.keyboard.press('Enter');
       await help.waitFor({ state: 'detached' });
     } else if (w === 1200) {
       // 👥 Players opens in the host panel: a toast said meanwhile stays off the stage too (at the panel's foot).
