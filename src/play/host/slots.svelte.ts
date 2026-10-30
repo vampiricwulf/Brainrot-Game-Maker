@@ -5,10 +5,12 @@
  * - The confirmation strip: a question (Leave this game? Next round with clues left?) as one full-width strip above the
  *   panel's fixed bar, never squeezed into a row of buttons.
  * - The status line's "⚠ Viewers see this" chip, in one window: what each box on screen says viewers can read of it.
+ * - The stage's menu: what each box on screen adds to it (see stagemenu.ts), in the main button's order.
  */
 import { getContext, onDestroy, setContext, untrack } from 'svelte';
 import { ask as askDialog } from '../../lib/ask.svelte';
 import { clickGuard, type ClickGuard } from './guard';
+import type { StageItem } from './stagemenu';
 import type { Verb } from './verbs';
 
 /**
@@ -60,9 +62,14 @@ export type HostAsk = {
 /** Who offers the main button: the first one with something to offer wins, in this order. */
 export type NextFrom = 'tool' | 'dd' | 'partner' | 'final' | 'end' | 'turn' | 'board';
 const ORDER: NextFrom[] = ['tool', 'dd', 'partner', 'final', 'end', 'turn', 'board'];
+/** Who adds to the stage's menu: the boxes, and the panel's own row (its flow: the clue's buttons), in the main button's order. */
+export type MenuFrom = NextFrom | 'flow';
+const MENU_ORDER: MenuFrom[] = ['tool', 'flow', 'dd', 'partner', 'final', 'end', 'turn', 'board'];
 
 type Slots = {
   offers: Partial<Record<NextFrom, () => NextAction | null>>;
+  /** What each box adds to the stage's menu (see offerMenu). */
+  menus: Partial<Record<MenuFrom, () => StageItem[]>>;
   ask: HostAsk | null;
   /** What the boxes on screen say viewers can read of them (see offerExposed). */
   exposed: (() => string | null)[];
@@ -75,13 +82,15 @@ const GUARD = Symbol('host-guard');
  * The host panel: make the places (its parts find them), and its one click guard (see guard.ts: panelGuard), for the
  * main button, the boxes' step buttons and their player buttons.
  */
-export function hostSlots(): Slots & { next: () => NextAction | null; viewersSee: () => string[] } {
-  const s = $state<Slots>({ offers: {}, ask: null, exposed: [] });
+export function hostSlots(): Slots & { next: () => NextAction | null; viewersSee: () => string[]; menu: () => StageItem[] } {
+  const s = $state<Slots>({ offers: {}, menus: {}, ask: null, exposed: [] });
   setContext(KEY, s);
   setContext(GUARD, clickGuard());
   return Object.assign(s, {
     /** What the boxes on screen say viewers can read of them, once each. */
     viewersSee: () => [...new Set(s.exposed.map((get) => get()).filter((x): x is string => !!x))],
+    /** What the boxes on screen add to the stage's menu, in the main button's order. */
+    menu: () => MENU_ORDER.flatMap((k) => s.menus[k]?.() ?? []),
     next: () => {
       for (const k of ORDER) {
         const a = s.offers[k]?.();
@@ -112,6 +121,20 @@ export function offerNext(from: NextFrom, get: () => NextAction | null): void {
   $effect(() => {
     untrack(() => (s.offers[from] = get));
     return () => untrack(() => s.offers[from] === get && delete s.offers[from]);
+  });
+}
+
+/**
+ * A box's own items for the stage's menu (✎ Edit wheel, ⇄ Swap, its steps as they are in the box), offered while the
+ * box is on screen (see stagemenu.ts). They show only what the box shows: in one window, never a card's words, a part,
+ * a wager or a typed answer.
+ */
+export function offerMenu(from: MenuFrom, get: () => StageItem[]): void {
+  const s = getContext<Slots | undefined>(KEY);
+  if (!s) return;
+  $effect(() => {
+    untrack(() => (s.menus[from] = get));
+    return () => untrack(() => s.menus[from] === get && delete s.menus[from]);
   });
 }
 

@@ -168,6 +168,14 @@ anywhere on the host screen: their score chip or plate, and their button in any 
 found a Daily Double, who gets a 🤫 card or a 🎭 part, the Final's rows, a shop's buyer…), headed by their name only.
 `Shift+F10` or the menu key on their button, or a long press on a touch screen, opens it too, and each item shows its
 key.
+A right-click on the stage (or `Shift+F10` on the main button, or a long press) gives the moment's own menu: its steps in
+the main button's order, each with its key (on PARTNER UP!, 🎡 Spin for a partner `W`, Make Bob the partner `2`…, ▶ Show
+question; in a clue, 👁 Reveal answer `R`, ⏱ Start the countdown `T`; a wheel's Spin! `W`, ✎ Edit wheel; a Daily
+Double's who found it and Show question ▶; the Final's next step `N` and ✔ Right `C` / ✘ Wrong `X`; a tie's ways to
+settle it), then what its box adds (⇄ Swap, ± Adjust score…), the way out (▦ Done ▶ board `Esc`, ↩ Cancel (keep tile)),
+↶ Undo and ⏸ Cover the screen `K`. It works with the controls hidden too (an item that needs them brings them back). An
+item that can't be used now is greyed, not left out, so each stays in its place. In one window it shows only what the
+panel shows, and ↶ Undo doesn't name its step.
 A double-click on a button that changes the screen (▶ Play, Start game ▶, Resume game, a card on the first screen, a tile
 in the board editor) counts once: its second click does nothing on the new screen, and one on a score plate makes them
 the picker once. On ▶ Play, a double-click on the game's title (or `F2`) renames it.

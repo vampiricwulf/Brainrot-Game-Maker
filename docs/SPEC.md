@@ -448,6 +448,26 @@ The mode isn't saved with the game: it's dual while the audience window is open.
   a long press on a touch screen opens it too, and the tap that ends the press is dropped (longpress.ts). In a box over
   the panel (🤫 Send a card…, 🎭 Deal…) the menu opens over the box, which stays open. A box to type in keeps the
   browser's menu. Its items show their keys (Select `2`, ★ Make the picker `P, 2`, the Final's ✔ Right `C`).
+- **The stage's menu** (host/stagemenu.ts): a right-click on the host's stage (not on a player, a tile or a board-game
+  space, which have their own), `Shift+F10` or the menu key on the main button (or a box's step button, or with nothing
+  focused), and a long press open the moment's menu: a heading naming the moment ("🤝 Partner clue · Movies $400"), the
+  moment's steps in the main button's order with their keys, the box's own items, the ways out (✕ Close, ▦ Done ▶ board,
+  ↩ Cancel (keep tile)), then ↶ Undo `Ctrl+Z` and ⏸ Cover the screen `K`. The play screen builds it from the steps its
+  keys do (dKey, wKey, nKey, clockKey, partnerSpin…), so it works with the controls hidden; while the panel is up, each
+  box adds its own (offerMenu, in the main button's order: the tool, the clue's row, the Daily Double, the 🤝 box, the
+  Final, the end screen, the board game's turn, the round's ◀ / ▶), and a box's item for one of the steps takes that
+  step's place (its words and greyed state are the box's). Within a moment an item that can't be used is greyed, never
+  left out. Moments: a round's intro; the board (its Next round ▶ once played out); a clue (Next slide ▶ / ◀ Slide, 👁
+  Reveal answer, 🔔 Open the buzzers, ⏱ the countdown; a buzzer tie's 🎲 Roll for it first); a Daily Double (who found it,
+  then Show question ▶, which with the controls hidden brings them back until there's a wager); a 🤝 partner clue (who
+  picked it; the wheel, each partner by their number, ▶ Show question, ⇄ Swap; then the cards' step, ✔ Got it / ✘ Missed
+  and the clue's); a wheel, dice, pop-up, the scores or a shop (the spin or roll, ✎ Edit wheel, ＋ Spin another wheel
+  too…, the way out); the Final (each step, the reveals' ✔ Right `C` / ✘ Wrong `X`, finishing early); the tiebreaker; a
+  tie at the end (❓ Tiebreaker clue, 🎲 Tiebreaker roll-off `O`, 🤝 Declare co-winners, then the end screen's buttons); a
+  board game's turn (🎲 Roll `D`, ▶ Move `Enter`, Next turn ▶ `N`, ◀ Previous turn, ✎ Edit board `E`); an RPG round (＋
+  Text here…, 🗺 Full map `J`, the map for viewers `V`, 🤝 Regroup `G`). In one window (on stream) it shows only words the
+  panel shows: names and steps, never a card's words, a part, a wager or a typed answer, and ↶ Undo without its step's
+  name. A tile's menu shows its keys too (▶ Open `Enter`, ⏸ Cover the screen `K`).
 - **A double-click counts once** on a button that changes the screen (the first screen's cards and ✨ Try a sample game,
   ▶ Play, Start game ▶ and ▶ Resume it, the exported file's ▶ Play, Resume game and View results, the status bar's Resume
   game and View results, Open…'s Recent games, a tile opening its clue editor): the rest of that press (its second

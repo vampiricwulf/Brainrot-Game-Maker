@@ -9,7 +9,8 @@
   import { slideHasContent } from '../../lib/usage';
   import { logged } from '../../lib/toolset';
   import { copyText, standingsText } from '../standings';
-  import { hostAsk, offerNext, step } from './slots.svelte';
+  import { hostAsk, offerMenu, offerNext, step } from './slots.svelte';
+  import { stepItem, type StageItem } from './stagemenu';
   import { VERBS } from './verbs';
 
   let {
@@ -82,6 +83,21 @@
 
   /** ▶ Next game… (a stream of several games): the editor's Open… / Recent games, the room and audience window kept. */
   const nextGame = getContext<(() => void) | undefined>(NEXT_GAME);
+
+  // The stage's menu: the ways to settle a tie, then the end screen's own buttons in their order.
+  offerMenu('end', () => {
+    const out: StageItem[] = [];
+    if (ties.length) {
+      out.push(tbReady ? stepItem(step(VERBS.tiebreakerClue, ontiebreaker), 'tbclue') : { id: 'tbclue', label: VERBS.tiebreakerClue.label, disabled: true, onclick: () => {} });
+      if (onrolloff) out.push(stepItem(step(VERBS.rollOff, rollOff), 'rolloff'));
+      out.push({ id: 'cowinners', label: VERBS.coWinners.label, onclick: () => (logged(session, 'Co-winners declared', () => (session.coWinners = ties.map((p) => p.id))), oncowinners?.()) });
+    }
+    if (last) out.push({ label: isFinal(last) ? '◀ Back to final reveals' : `◀ Back to ${roundName(last, lastIndex)}`, onclick: onback });
+    out.push({ label: '📋 Copy standings', onclick: copyStandings });
+    if (!asking && !app.test) out.push({ label: '🔁 Rematch', onclick: askRematch });
+    if (nextGame && !asking && !app.test) out.push({ label: '▶ Next game…', onclick: nextGame });
+    return out;
+  });
 </script>
 
 <!-- (One column, spaced as the rest of the panel: the tie box and the line under it never sit on the buttons.) -->

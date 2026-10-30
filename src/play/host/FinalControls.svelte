@@ -19,7 +19,8 @@
   } from '../../lib/session';
   import { finalNextStep, logged, startStep } from '../../lib/toolset';
   import { letter, pickLabel, pickOf, rightChoice, usableChoices } from '../../lib/choices';
-  import { hostAsk, offerNext, step as nextStep } from './slots.svelte';
+  import { hostAsk, offerMenu, offerNext, step as nextStep, type NextAction } from './slots.svelte';
+  import { stepItem, type StageItem } from './stagemenu';
   import { VERBS } from './verbs';
   import AnswersHost from './AnswersHost.svelte';
   import TileCards from './TileCards.svelte';
@@ -407,7 +408,8 @@
 
   // The step's main button, in the panel's main cell (N does it too). In the reveals, until everyone is judged, it's N's
   // next step (show the wager, the next player); finishing early is the quiet button beside it, and asks first.
-  offerNext('final', () => {
+  /** The step's main button (as offered to the panel's main cell): the stage's menu has it too. */
+  const finalStepNow = (): NextAction | null => {
     if (!f) return null;
     const judge = revealStep.judge;
     if (session.finalStep === 'reveal' && unjudged && judge) {
@@ -431,6 +433,17 @@
       run: step === 'question' ? onreveal : next,
       ...(step === 'question' ? { flow: 'reveal' as const } : {}),
     };
+  };
+  offerNext('final', finalStepNow);
+  // The stage's menu: the step (a verdict's pair as ✔ Right / ✘ Wrong), and the box's own way back or finishing early.
+  offerMenu('final', () => {
+    const n = finalStepNow();
+    if (!n || !f) return [];
+    const out: StageItem[] = n.pair ? [stepItem(n, 'right'), stepItem(n.pair, 'wrong')] : [stepItem(n, 'next')];
+    if (session.finalStep === 'wagers' && lastRound) out.push({ label: `◀ Previous round (${roundName(lastRound, session.currentRound - 1)})`, onclick: onback });
+    if (session.finalStep === 'answer') out.push({ id: 'reveal', label: '🙈 Hide answer', keys: 'R', onclick: onreveal });
+    if (session.finalStep === 'reveal' && unjudged && !askFinish) out.push({ label: goOn, hint: `Asks first: ${unjudged} not judged yet`, onclick: next });
+    return out;
   });
 </script>
 

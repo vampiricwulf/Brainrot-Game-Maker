@@ -13,7 +13,7 @@ import { chromium } from 'playwright-core';
 import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { mainButton, mainLabel, openGameFile, situationHasMain, stepButton } from './helpers.mjs';
+import { mainButton, mainLabel, menuLines, openGameFile, openMenu, situationHasMain, stepButton } from './helpers.mjs';
 
 const file = resolve(process.env.APP_FILE || 'dist/index.html');
 if (!existsSync(file)) throw new Error('Run `npm run build` first');
@@ -178,6 +178,18 @@ try {
   );
   await noCards(page, 'paired');
   await page.screenshot({ path: 'test-results/partner-play-paired.png' });
+  // A right-click on the stage: the moment's menu, its steps as the 🤝 box has them, each with its key (the partner
+  // there greyed, not left out), then the box's own, the way out, ↶ Undo and ⏸ Cover. Names only: no card's words.
+  await stage('[data-partner-up]').click({ button: 'right' });
+  const pairedMenu = await menuLines(page);
+  assert(
+    JSON.stringify(pairedMenu.slice(0, 6)) === JSON.stringify(['# 🤝 Partner clue · Movies $400', '↻ Spin again · W', 'Make Bob the partner · 2 (off)', 'Make Cat the partner · 3', 'Make Dan the partner · 4', '▶ Show question · Enter']) &&
+      pairedMenu.includes('⇄ Swap') && pairedMenu.includes('↩ Cancel (keep tile) · Esc') && pairedMenu.at(-1) === '⏸ Cover the screen · K',
+    `a right-click on PARTNER UP! gives the moment’s menu (${pairedMenu.join(' | ')})`,
+  );
+  await noCards(page, 'the stage’s menu on PARTNER UP!');
+  await page.keyboard.press('Escape');
+  await openMenu(page).waitFor({ state: 'detached' });
 
   // ---------- ▶ Show question, and a second Enter ----------
   assert((await mainLabel(page)) === '▶ Show question', 'paired: ▶ Show question is the main button');
@@ -223,6 +235,15 @@ try {
   assert((await panel.locator('[data-card="2"]').getByRole('button', { name: '📋 Copy picture' }).count()) === 1, 'a card with a picture offers 📋 Copy picture');
   await noCards(page, 'handing out the cards');
   await page.screenshot({ path: 'test-results/partner-play-distribute.png' });
+  await stage('[data-slide="1"]').click({ button: 'right' });
+  const handMenu = await menuLines(page);
+  assert(
+    JSON.stringify(handMenu.slice(0, 6)) === JSON.stringify(['# 🤝 Partner clue · Movies $400', '⏱ Start the clock (45 s) · Enter', '✔ Got it', '✘ Missed', '👁 Reveal answer · R', '⏱ Start the countdown · T']),
+    `handing out the cards, its menu has the clock first, then ✔ / ✘ (their keys wait for the clock) (${handMenu.join(' | ')})`,
+  );
+  await noCards(page, 'the stage’s menu handing out the cards');
+  await page.keyboard.press('Escape');
+  await openMenu(page).waitFor({ state: 'detached' });
   // A click on the question while the cards are handed out never puts the answer on stream: it says so.
   await stage('[data-slide="1"]').click();
   assert(
@@ -337,6 +358,19 @@ try {
   // ---------- Esc before the question keeps the tile ----------
   await tile(0, 3).click();
   await stage('[data-partner-up]').waitFor();
+  // With the controls hidden, the stage's menu still has the step: 🎡 Spin for a partner spins the wheel.
+  await page.keyboard.press('h');
+  await page.locator('.panel').waitFor({ state: 'detached' });
+  await stage('[data-partner-up]').click({ button: 'right' });
+  const hiddenMenu = await menuLines(page);
+  assert(hiddenMenu[0] === '# 🤝 Partner clue · Movies $800' && hiddenMenu[1] === '🎡 Spin for a partner · W', `with the controls hidden, a right-click on the stage offers 🎡 Spin for a partner (${hiddenMenu.join(' | ')})`);
+  await noCards(page, 'the stage’s menu with the controls hidden');
+  await openMenu(page).getByRole('menuitem', { name: '🎡 Spin for a partner' }).click();
+  await stage('.wheel').waitFor();
+  assert((await page.locator('.panel').count()) === 0, 'and spins the wheel from there, the controls still hidden');
+  await page.keyboard.press('h');
+  await page.keyboard.press('Escape');
+  await stage('.wheel').waitFor({ state: 'detached' });
   await page.keyboard.press('Escape');
   await tile(0, 3).waitFor();
   assert(!(await tile(0, 3).getAttribute('class')).includes('used'), 'Esc on PARTNER UP!: back to the board, the tile still playable');

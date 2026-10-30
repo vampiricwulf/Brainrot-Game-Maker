@@ -20,7 +20,8 @@
   import { boardNow, busyZones, moveNow, moverDiceName, offBoard, playerName, reorderTurns, rollMover, sendNow, setTurn, stepWaysHint, turnNow, turnOrder } from './bgops';
   import SpaceCard from './SpaceCard.svelte';
   import { START_FIRST } from '../rpg/hostops';
-  import { offerNext, step as nextStep } from '../host/slots.svelte';
+  import { offerMenu, offerNext, step as nextStep, type NextAction } from '../host/slots.svelte';
+  import { stepItem, type StageItem } from '../host/stagemenu';
   import { VERBS } from '../host/verbs';
   import { offerIn } from '../host/offered.svelte';
   import { boardEdit, setEditing } from './boardedit.svelte';
@@ -83,7 +84,8 @@
    * ◀ Previous turn (Shift+N) right beside it (and Next turn ▶ too while the main button rolls or moves). A one-space
    * board starts with its way on (→ Space 2, Enter) or 🔀 Pick a way. While the board is being edited: ✓ Done editing (Esc).
    */
-  offerNext('turn', () => {
+  /** The turn's step now (the panel's main button's, and the stage's menu's). */
+  const turnStep = (): NextAction | null => {
     if (!bs || !round) return null;
     if (boardEdit.on) return nextStep(VERBS.doneEditing, () => setEditing(false));
     const prev = nextStep(VERBS.prevTurn, () => turnTold(-1));
@@ -113,6 +115,19 @@
     if (steps) return nextStep(VERBS.move(steps), () => move(steps), { title: `Enter: move ${turnName} ${steps < 0 ? 'back ' : ''}${Math.abs(steps)} space${Math.abs(steps) === 1 ? '' : 's'}`, also });
     const wheel = round.mover.kind === 'wheel';
     return nextStep(wheel ? VERBS.boardSpin : VERBS.boardRoll, roll, { title: `D: ${wheel ? 'spin the movement wheel' : `roll ${moverDiceName(game, round)}`}`, also });
+  };
+  offerNext('turn', turnStep);
+  // The stage's menu: the turn's step as the main button has it (the roll, the move, the way on), Next turn ▶ and
+  // ◀ Previous turn, then ✎ Edit board and 🔀 Shuffle.
+  offerMenu('turn', () => {
+    const n = turnStep();
+    if (!n || !bs || !round) return [];
+    if (boardEdit.on) return [stepItem(n, 'edit')];
+    const kind = n.label === VERBS.nextTurn.label ? 'turn+' : n.key === 'D' ? 'roll' : 'move';
+    const out: StageItem[] = [stepItem(n, kind)];
+    for (const a of n.also ?? []) out.push(stepItem(a, a.label === VERBS.nextTurn.label ? 'turn+' : 'turn-'));
+    out.push({ id: 'edit', label: '✎ Edit board', keys: 'E', onclick: () => setEditing(true) }, { label: '🔀 Shuffle', hint: 'The turn order, shuffled (whose turn it is stays theirs)', onclick: shuffle });
+    return out;
   });
 
   const card = $derived(round && space ? spaceById(round, space) : undefined);

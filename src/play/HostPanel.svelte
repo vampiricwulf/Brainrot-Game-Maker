@@ -7,7 +7,8 @@
 <script lang="ts">
   import { announce, announceChanges } from '../lib/announce';
   import { textOn } from '../lib/colors';
-  import { hostSlots, panelGuard, step, type HostAsk, type NextAction } from './host/slots.svelte';
+  import { hostSlots, offerMenu, panelGuard, step, type HostAsk, type NextAction } from './host/slots.svelte';
+  import { stepItem, type StageItem } from './host/stagemenu';
   import { VERBS } from './host/verbs';
   import { justShown } from './host/guard';
   import { focusMain } from './host/focus';
@@ -125,6 +126,7 @@
     buzzExtra,
     phoneChip,
     nextAction = $bindable(null),
+    boxMenu = $bindable(null),
   }: {
     game: Game;
     session: Session;
@@ -265,6 +267,8 @@
     phoneChip?: Snippet;
     /** The NEXT cell's main button now (read back: N on a clue does what it shows). */
     nextAction?: NextAction | null;
+    /** What the boxes open here add to the stage's menu (read back by the play screen: see stagemenu.ts). */
+    boxMenu?: (() => StageItem[]) | null;
   } = $props();
 
   const info = $derived(currentClueInfo(session, game));
@@ -826,6 +830,37 @@
   $effect(() => {
     nextAction = next;
   });
+
+  // ---------- The stage's menu: what the panel's own rows add ----------
+  /** ± Adjust score / ± Other points…: the Amount row, opened, the keys in it. */
+  function openAmount(): void {
+    if (partnerFold) otherFor = partnerPlay;
+    else adjust = true;
+    void tick().then(() => amountBox?.focus());
+  }
+  // The intro's steps, ↩ Cancel (keep tile) as it is here (greyed once points were given), the Amount row folded, and the
+  // last tile closed to put back.
+  offerMenu('flow', () => {
+    const out: StageItem[] = [];
+    if (session.intro) out.push(stepItem(step(introStep, onintronext), 'next'), { id: 'skipintro', label: VERBS.skipIntro.label, onclick: onskipintro });
+    if (session.phase === 'clue' && info)
+      out.push({
+        id: 'putback',
+        label: VERBS.putBack.label,
+        disabled: cancelBlocked,
+        ...(cancelBlocked ? { hint: 'Points were given for this clue: undo them first, or use Done ▶ board' } : {}),
+        onclick: oncancelclue,
+      });
+    if (scoring && !showAward) out.push({ label: partnerFold ? '± Other points…' : '± Adjust score', onclick: openAmount });
+    if (session.phase === 'board' && !session.intro && lastClosedRef && session.lastClosed) {
+      const id = session.lastClosed;
+      out.push({ label: `↶ Reopen ${clueName(game, lastClosedRef)}`, onclick: () => onreopen(id) });
+    }
+    return out;
+  });
+  $effect(() => {
+    boxMenu = slots.menu;
+  });
 </script>
 
 <div
@@ -1297,11 +1332,7 @@
           <button
             class="ghost"
             aria-expanded="false"
-            onclick={() => {
-              if (partnerFold) otherFor = partnerPlay;
-              else adjust = true;
-              void tick().then(() => amountBox?.focus());
-            }}
+            onclick={openAmount}
             title={partnerFold
               ? 'Give or take points by hand, as on any clue (or press a player’s number): ✔ Got it / ✘ Missed give the pair theirs'
               : "Give or take points (or press a player's number)"}>{partnerFold ? '± Other points…' : '± Adjust score'}</button

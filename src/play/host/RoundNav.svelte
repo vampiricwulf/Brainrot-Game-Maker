@@ -10,7 +10,7 @@
   import { isBoard, isFinal, isSlides, playableClues, roundName, type Game, type Session } from '../../lib/model';
   import { slidePosition } from '../../lib/session';
   import { ROUND_MODES } from '../../lib/modes';
-  import { hostAsk, offerNext } from './slots.svelte';
+  import { hostAsk, offerMenu, offerNext } from './slots.svelte';
   import { justShown } from './guard';
   import { secondClick } from '../../lib/oneshot';
   import { VERBS } from './verbs';
@@ -63,6 +63,12 @@
         ? { label: nextLabel, ...(slides ? { key: 'N' } : {}), run: next }
         : null,
   );
+
+  // The stage's menu: back, and going on (asking first unless the round is played out), as in this row.
+  offerMenu('board', () => [
+    ...(app.test ? [] : [{ label: '◀ Prev round', disabled: session.currentRound === 0, onclick: onprev }]),
+    { id: 'nextround', label: nextLabel, ...(done && slides ? { keys: 'N' } : {}), ...(done ? {} : { hint: 'Asks first' }), onclick: next },
+  ]);
 
   function next(): void {
     if (justShown(shownAt, Date.now(), 1)) return;

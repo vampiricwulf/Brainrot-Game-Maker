@@ -5,7 +5,7 @@ import { chromium } from 'playwright-core';
 import { existsSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { addClassicRounds, mainButton, playWithPlayers, leaveAnswer, confirmStrip } from './helpers.mjs';
+import { addClassicRounds, mainButton, menuLines, openMenu, playWithPlayers, leaveAnswer, confirmStrip } from './helpers.mjs';
 
 const file = resolve(process.env.APP_FILE || 'dist/index.html');
 if (!existsSync(file)) throw new Error('Run `npm run build` first');
@@ -96,6 +96,17 @@ try {
   await page.keyboard.press('1');
   const undoTitle = await page.getByRole('button', { name: '↶ Undo' }).getAttribute('title');
   assert(undoTitle.startsWith('Undo: Player 1 picks next'), `↶ Undo names the step (${undoTitle})`);
+  // The stage's menu has ↶ Undo too (Ctrl+Z): in one window, where viewers see it, it doesn't name the step.
+  await page.locator('.stage-box').click({ button: 'right', position: { x: 12, y: 12 } });
+  const boardMenu = await menuLines(page);
+  const undoItem = openMenu(page).getByRole('menuitem', { name: '↶ Undo' });
+  assert(boardMenu.includes('↶ Undo · Ctrl+Z') && (await undoItem.getAttribute('title')) === null && !boardMenu.join().includes('picks next'), `the stage’s menu has ↶ Undo, not naming the step in one window (${boardMenu.join(' | ')})`);
+  await undoItem.click();
+  await page.waitForFunction((was) => document.querySelector('.panel .fixed button[title^="Undo"]')?.getAttribute('title') !== was, undoTitle);
+  await page.locator('.panel .status').click();
+  await page.keyboard.press('Control+Shift+z');
+  await page.waitForFunction((was) => document.querySelector('.panel .fixed button[title^="Undo"]')?.getAttribute('title') === was, undoTitle);
+  assert(true, 'its ↶ Undo takes the step back (Ctrl+Shift+Z brings it back)');
 
   // 👥 Players: each change is a step; Esc leaves the name box, then closes.
   await page.getByRole('button', { name: '👥 Players' }).click();

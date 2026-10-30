@@ -26,7 +26,8 @@
   import { copyText, standingsText } from '../standings';
   import { currentClueInfo, toolOnlyClue } from '../../lib/session';
   import { boardNow, moverResult } from '../boardgame/bgops';
-  import { offerNext, step, type NextAction } from './slots.svelte';
+  import { offerMenu, offerNext, step, type NextAction } from './slots.svelte';
+  import { stepItem, type StageItem } from './stagemenu';
   import { VERBS } from './verbs';
   import StepButton from './StepButton.svelte';
   import { oneShot } from '../../lib/oneshot';
@@ -235,6 +236,48 @@
     return 'Esc';
   });
 
+  /** ＋ Spin another wheel too…: its list (the stage's menu opens it). */
+  let another = $state<HTMLSelectElement>();
+  function pickAnother(): void {
+    another?.focus();
+    try {
+      another?.showPicker();
+    } catch {
+      // (Where a page can't open it: the list has the keys, and ↓ or Space opens it.)
+    }
+  }
+  // The stage's menu: the box's buttons in their order, the spin or roll first and the way out last.
+  offerMenu('tool', () => {
+    if (!o) return [];
+    const out: StageItem[] = [];
+    if (spinPlace) out.push(stepItem(spinPlace, o.kind === 'dice' ? 'roll' : 'spin'));
+    if (o.kind === 'popup' && o.answer) out.push(o.revealed ? { id: 'reveal', label: VERBS.hide.label, keys: 'R', onclick: () => (o.revealed = false) } : stepItem(step(VERBS.reveal, () => (o.revealed = true)), 'reveal'));
+    if (o.kind === 'wheel') {
+      out.push({ label: '✎ Edit wheel', disabled: !!o.editing, hint: 'Turn slices off or change their chances for this spin', onclick: () => ((o.editing = true), (editExtra = null)) });
+      out.push({ label: '＋ Spin another wheel too…', disabled: busy, onclick: pickAnother });
+      if (removed && o.wheelId) {
+        const id = o.wheelId;
+        out.push({
+          label: `Restore ${removed} used slice${removed === 1 ? '' : 's'}`,
+          onclick: () => {
+            if (!session.removedSegments) return;
+            session.removedSegments[id] = [];
+            for (const w of [o, ...(o.extra ?? [])]) if (w.wheelId === id && !w.spin) w.segments = spinSegments(w, session, game);
+          },
+        });
+      }
+    }
+    if (picked && !busy && !(o.kind === 'wheel' && o.partnerFor) && session.currentPickerId !== picked.id) {
+      const who = picked;
+      out.push({ label: `★ Make ${who.name} the picker`, onclick: () => setPicker(session, who.id) });
+    }
+    if (o.kind === 'scoreboard') out.push({ label: '📋 Copy standings', onclick: () => copyText(standingsText(game, session), 'Standings copied: paste them in chat') });
+    if (o.kind === 'shop') out.push({ id: 'close', label: '🚪 Leave shop', keys: 'Esc', onclick: () => (app.live.overlay = null) });
+    else if (next === closeStep) out.push(stepItem(closeStep, 'close'));
+    else out.push({ id: 'close', label: VERBS.closeToolBox.label, keys: 'Esc', disabled: closeWaits, hint: closeTitle, onclick: onclose });
+    return out;
+  });
+
   function tag(id: string): void {
     if (!o || (o.kind !== 'wheel' && o.kind !== 'dice') || !tagRoll) return;
     const cur = tagRoll.playerIds ?? [];
@@ -269,6 +312,7 @@
         {/each}
         <select
           class="small"
+          bind:this={another}
           aria-label="Spin another wheel too"
           disabled={busy}
           title="Spin several wheels at once"

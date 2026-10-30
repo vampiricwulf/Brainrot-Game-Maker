@@ -38,7 +38,8 @@
   import { leftLine, pctText, slowKinds, slowLine } from './cardrow';
   import ShrinkButton from './ShrinkButton.svelte';
   import StepButton from './StepButton.svelte';
-  import { hostConfirm, offerExposed, offerNext, panelGuard, step as nextStep, type NextAction } from './slots.svelte';
+  import { hostConfirm, offerExposed, offerMenu, offerNext, panelGuard, step as nextStep, type NextAction } from './slots.svelte';
+  import { stepItem, type StageItem } from './stagemenu';
   import { VERBS } from './verbs';
 
   let {
@@ -640,6 +641,42 @@
   // The main button, in the panel's main cell: spin, then show the question, then start the clock (then the clue's own:
   // judged meanwhile by a click, the answer; the answer shown meanwhile (R), no countdown over it, ▦ Done).
   offerNext('partner', () => (session.partner ? (pickStep ?? handStep) : null));
+
+  // The stage's menu: the box's steps as they are here (who picked it, the wheel, the partner, the question; the cards'
+  // step and the verdict), then ⇄ Swap. Names and parts only: never a card's words.
+  offerMenu('partner', () => {
+    if (!session.partner) return [];
+    const out: StageItem[] = [];
+    const swapItem: StageItem = { label: '⇄ Swap', disabled: roles.solo || verdict.judged, onclick: () => void swap() };
+    if (s.stage === 'pick') {
+      if (!picker) return session.players.map((p, i) => ({ id: `picker:${p.id}`, label: `★ ${p.name} picked it`, keys: i < 9 ? String(i + 1) : undefined, onclick: () => choosePicker(p.id) }));
+      // (As in the box: the wheel first, then the people on the team to describe, while the team plays it.)
+      if (!s.partnerId && pickStep) out.push(stepItem(pickStep, 'spin'));
+      else if (candidates.length) out.push(stepItem(againStep, 'spin'));
+      if (sameTeamOn && people.length > 1) out.push(stepItem(member || !pickStep ? memberAgain : pickStep, 'describer'));
+      for (const p of candidates) {
+        const n = session.players.indexOf(p) + 1;
+        out.push({
+          id: `partner:${p.id}`,
+          label: p.id === s.pickerId ? `${p.name} plays it alone (Solo)` : `Make ${p.name} the partner`,
+          keys: n && n <= 9 ? String(n) : undefined,
+          disabled: spinning || s.partnerId === p.id,
+          onclick: () => choosePartner(p.id),
+        });
+      }
+      if (pickStepIs === 'show' && pickStep) out.push(stepItem(pickStep, 'show'));
+      out.push(swapItem);
+      return out;
+    }
+    if (handStep) out.push(stepItem(handStep, 'hand'));
+    const off = verdict.judged || !!steal;
+    out.push(
+      { id: 'got', label: VERBS.gotIt.label, keys: judgeKeys ? 'Enter' : undefined, disabled: off, onclick: () => onjudge(true) },
+      { id: 'missed', label: VERBS.missed.label, keys: judgeKeys ? 'Shift+Enter' : undefined, disabled: off, onclick: () => onjudge(false) },
+      swapItem,
+    );
+    return out;
+  });
 </script>
 
 {#snippet chip(id: Id, on: boolean, label: string, onclick: (e: MouseEvent) => void, disabled = false, title = '', key = 0, nophone = false)}

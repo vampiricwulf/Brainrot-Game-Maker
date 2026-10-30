@@ -6,13 +6,13 @@
   import { commit, history, redo as redoStep, step, undo as undoStep } from '../lib/history.svelte';
   import { createFieldTracker, isTextField, undoKeyOf } from '../lib/undokeys';
   import { oneShot } from '../lib/oneshot';
-  import { blankName, clueCardWords, finalName, formatPoints, getClue, isBoard, isBoardGame, isFinal, isRpg, isSlides, MAX_PLAYERS, newId, PLAYER_WHEEL, questionSlides, wholePoints, type BoardRound, type ClueRef } from '../lib/model';
+  import { blankName, clueCardWords, finalName, formatPoints, getClue, isBoard, isBoardGame, isFinal, isRpg, isSlides, MAX_PLAYERS, newId, PLAYER_WHEEL, questionSlides, roundName, wholePoints, type BoardRound, type ClueRef } from '../lib/model';
   import {
     applyScore, awardOpen, backToBoard, backToLastRound, currentFinal, clueName, clueReason, clueScored, currentClueInfo, ddShowQuestion, describeStep,
     finalAdvance, finalBack, finalJudge, finalShow, finalShowAnswer, finalTag, finalUnjudged, findClueRef, hasWager, typedAnswer, goToRound, introNext, nameList, newSession, openClue, playerName,
     randomizeDailyDoubles, redo, forgetRedo, removePlayer, restorePlayer, answerShowing, rosterChange, roundComplete, score, skipIntro, startIntro, toggleUsed, undo,
     blankSlide, toolOnlyClue, stepSlide, finalWagerProblems, finalWagersOk, finalStepFix, startTiebreaker, stepOf, logZero, tiebreakHolds, tiedForFirst, tiedLeaders, winnerKnown,
-    finalSetWager, finalTakeNewcomers, forViewers, wagerFromPhone, coWinnersHold, ownPlayers, clueMarks, judgePartner, partnerSteal, stealersLeft,
+    finalSetWager, finalTakeNewcomers, forViewers, wagerFromPhone, coWinnersHold, ownPlayers, clueMarks, judgePartner, partnerSteal, stealersLeft, slidePosition, ddCap,
   } from '../lib/session';
   import {
     cardId, cardRecipients, cardSends, cardSlides, lowerWord, marksText, sentSeats, partnerCandidates, partnerRoles, partnerRules, partnerShares, partnerVerdict, partWords, recipientsText, sendCards,
@@ -46,7 +46,7 @@
   import PhoneChip from './host/PhoneChip.svelte';
   import { openDice, openMemberWheel, openPartnerWheel, openPlayerWheel, openWheel, quickDice, rollDice, scoreCardsLeft, spinningRolls, spinWheel, startRollOff, toggleScoreboard, wheelSpentUp } from '../lib/overlay';
   import type { DicePreset } from '../lib/model';
-  import { tileDice } from '../lib/tools';
+  import { isRespin, tileDice } from '../lib/tools';
   import { dailyDoublesShort, partnerTilesShort, validate } from '../lib/validate';
   import { isColorTaken, nextFreeColor, obsKeyed, PLAYER_PALETTE } from '../lib/colors';
   import { announce } from '../lib/announce';
@@ -61,6 +61,8 @@
   import { keptRoster, type RosterRow } from './roster';
   import AudienceView from './AudienceView.svelte';
   import type { HostAsk, NextAction } from './host/slots.svelte';
+  import { stageMenuOf, type Moment, type StageItem } from './host/stagemenu';
+  import { VERBS } from './host/verbs';
   import { KEY_GUARD_MS } from './host/guard';
   import { focusedQuietly, focusMain } from './host/focus';
   import HostPanel from './HostPanel.svelte';
@@ -2439,7 +2441,7 @@
    * Never on a key repeat, and not within a second of the question going up, so a held or double Enter can't start the
    * clock before the host has looked at who gets which card.
    */
-  function partnerMain(e: KeyboardEvent): void {
+  function partnerMain(e: { repeat: boolean }): void {
     const s = partner;
     if (!s || e.repeat) return;
     if (s.stage === 'distribute' && !partnerJudged && !toolOverlay(app.live)) {
@@ -2662,11 +2664,11 @@
   function tileMenu(e: MouseEvent, ref: ClueRef): void {
     const clue = getClue(game, ref)?.clue;
     if (!clue) return;
-    const cover = { label: app.live.cover ? '▶ Uncover the screen' : '⏸ Cover the screen', onclick: () => (app.live.cover = !app.live.cover) };
+    const cover = { label: app.live.cover ? '▶ Uncover the screen' : '⏸ Cover the screen', keys: 'K', onclick: () => (app.live.cover = !app.live.cover) };
     if (!session.used[clue.id])
       return showMenu(e, [
         { heading: clueName(game, ref) },
-        { label: '▶ Open', onclick: () => pick(ref) },
+        { label: '▶ Open', keys: 'Enter', onclick: () => pick(ref) },
         { label: '✓ Mark as played (skip it)', onclick: () => toggleTile(clue.id) },
         { sep: true },
         cover,
@@ -3163,14 +3165,376 @@
   };
 
   /**
-   * Shift+F10 or the menu key: the menu of what has the keys (a player's button anywhere here, a tile on the board),
-   * under it, as a right-click on it opens. True when there was one.
+   * Shift+F10 or the menu key: the menu of what has the keys, under it, as a right-click on it opens: a player's button
+   * anywhere here, a tile on the board; on the main button (a box's step, the clue's row of buttons), the stage or
+   * nothing in particular, the moment's. True when there was one.
    */
   function menuKey(t: HTMLElement | null): boolean {
-    if (!t?.closest('.play') || !t.closest('[data-player-id], .tile[data-clue]')) return false;
-    const r = t.getBoundingClientRect();
-    t.dispatchEvent(new MouseEvent('contextmenu', { bubbles: true, cancelable: true, clientX: r.left + 8, clientY: r.bottom + 2 }));
+    const main = document.querySelector<HTMLElement>('.play .panel [data-next]');
+    const at = !t || t === document.body ? (main ?? document.querySelector<HTMLElement>('.play .stage-box')) : t;
+    if (!at?.closest('.play') || !at.closest('[data-player-id], .tile[data-clue], .stage-box, .panel :is([data-next], [data-next-pair], [data-next-also], [data-step], [data-flow])')) return false;
+    const r = at.getBoundingClientRect();
+    at.dispatchEvent(new MouseEvent('contextmenu', { bubbles: true, cancelable: true, clientX: r.left + 8, clientY: r.bottom + 2 }));
     return true;
+  }
+
+  // ---------- The stage's menu: the moment's own (see host/stagemenu.ts) ----------
+
+  /** What the host panel's boxes add to the stage's menu (its own items there; not while the controls are hidden). */
+  let boxMenu = $state<(() => StageItem[]) | null>(null);
+
+  /** ↶ Undo and ⏸ Cover the screen, in every moment. (One window: Undo doesn't name its step, as it's on stream.) */
+  function standingItems(): StageItem[] {
+    return [
+      { id: 'undo', label: '↶ Undo', keys: 'Ctrl+Z', disabled: !undoText, ...(dual && undoText ? { hint: `Undo: ${undoText}` } : {}), onclick: doUndo },
+      { id: 'cover', label: app.live.cover ? '▶ Uncover the screen' : '⏸ Cover the screen', keys: 'K', onclick: () => (app.live.cover = !app.live.cover) },
+    ];
+  }
+
+  /** The countdown, as T does it: start it, or pause or go on with the one up. */
+  function clockItem(): StageItem {
+    const t = app.live.timer;
+    const label = t && !t.expired ? (t.startedAt === null ? '▶ Go on with the countdown' : '⏸ Pause the countdown') : '⏱ Start the countdown';
+    return { id: 'clock', label, keys: 'T', onclick: () => clockKey(false) };
+  }
+
+  /** ↩ Cancel (keep tile): greyed once points were given for the clue (Undo them first). */
+  function putBackItem(keys: string): StageItem {
+    const blocked = !!info && (!ownPlayers(session)?.setup || (!!partner && Object.keys(partnerMarks).length > 0)) && clueScored(session, info.clue.id);
+    return {
+      id: 'putback',
+      label: VERBS.putBack.label,
+      keys,
+      disabled: blocked,
+      ...(blocked ? { hint: 'Points were given for this clue: undo them first, or use Done ▶ board' } : {}),
+      onclick: cancelClue,
+    };
+  }
+
+  /** An open clue's steps once its question is up: its slides, the answer, the buzzers, the countdown. */
+  function clueSteps(): StageItem[] {
+    if (!info) return [];
+    const out: StageItem[] = [];
+    if (tie.length && buzzing) out.push({ id: 'rolltie', label: VERBS.rollForIt.label, hint: VERBS.rollForIt.title, onclick: rollTie });
+    const pos = slidePosition(session, game);
+    if (pos) {
+      const shown = answerShowing(session);
+      out.push(
+        { id: 'slide+', label: VERBS.nextSlide.label, keys: 'N', disabled: shown || pos.at >= pos.of, onclick: () => slideStep(1) },
+        { id: 'slide-', label: VERBS.prevSlide.label, keys: 'Shift+N', disabled: shown || pos.at <= 1, onclick: () => slideStep(-1) },
+      );
+    }
+    if (!toolOnlyClue(info.clue)) {
+      const first = toolFirst ? `Close the ${info.clue.type === 'dice' ? 'dice' : 'wheel'} first: the question’s next` : undefined;
+      out.push({ id: 'reveal', label: session.revealed ? VERBS.hide.label : VERBS.reveal.label, keys: 'R', disabled: !!first, ...(first ? { hint: first } : {}), onclick: revealToggle });
+    }
+    if (buzzing) out.push({ id: 'buzzers', label: VERBS.openBuzzers.label, keys: 'U', hint: VERBS.openBuzzers.title, disabled: buzz.phase !== 'closed' || session.revealed, onclick: () => openBuzzers() });
+    out.push(clockItem());
+    return out;
+  }
+
+  /** A wheel, dice, a pop-up or the scores on screen (not a partner clue's wheel: its box has it). */
+  function toolMoment(o: NonNullable<Live['overlay']>): Moment {
+    const busy = toolGoing();
+    const tile = !!info && tileToolUp(app.live, info.clue);
+    const steps: StageItem[] = [];
+    let heading = '';
+    if (o.kind === 'wheel') {
+      heading = `🎡 ${o.name}`;
+      const spent = wheelSpentUp(o, session, game);
+      const again = !busy && !!o.spin && o.result !== null && isRespin(o.segments[o.result]);
+      steps.push({
+        id: 'spin',
+        label: (!o.spin ? VERBS.spin : again ? VERBS.spinAgain : VERBS.spinning).label,
+        keys: 'W',
+        disabled: busy || spent,
+        ...(spent ? { hint: 'Every slice has landed: Restore them to spin again' } : {}),
+        onclick: wKey,
+      });
+    } else if (o.kind === 'dice') {
+      heading = `🎲 ${o.name}`;
+      steps.push({ id: 'roll', label: (o.roll ? VERBS.rollAgain : VERBS.roll).label, keys: 'D', disabled: busy, onclick: () => rollDice(app.live, session, o.preset, o.mover) });
+    } else if (o.kind === 'popup') {
+      heading = `🖼 ${o.title ?? (o.answer ? 'Question' : 'Pop-up slide')}`;
+      if (o.answer) steps.push({ id: 'reveal', label: o.revealed ? VERBS.hide.label : VERBS.reveal.label, keys: 'R', onclick: revealToggle });
+    } else if (o.kind === 'rolloff') heading = o.purpose === 'tiebreak' ? '🏆 Tiebreaker roll-off' : o.purpose === 'buzz' ? '🎲 Buzzer tie' : '🏁 Who goes first';
+    else if (o.kind === 'scoreboard') heading = '📊 Scoreboard on screen';
+    else if (o.kind === 'sheet') heading = `📺 ${playerName(session, o.playerId)}’s sheet`;
+    else if (o.kind === 'shop') heading = `🛒 ${game.shops?.find((s) => s.id === o.shopId)?.name ?? 'Shop'}`;
+    // A wheel or dice tile with nothing to ask ends with its tool.
+    const done = tile && !!info && toolOnlyClue(info.clue) && o.kind === info.clue.type;
+    const close: StageItem =
+      o.kind === 'shop'
+        ? { id: 'close', label: '🚪 Leave shop', keys: 'Esc', onclick: () => (app.live.overlay = null) }
+        : { id: 'close', label: (done ? VERBS.closeToolBoard : VERBS.closeToolBox).label, keys: 'Esc', disabled: busy && (o.kind === 'dice' || (o.kind === 'wheel' && !o.partnerFor)), onclick: closeOverlay };
+    return { heading, steps, exits: tile ? [close, putBackItem('Shift+Esc')] : [close] };
+  }
+
+  /** A 🤝 partner clue: PARTNER UP!'s choices, then its question's steps. */
+  function partnerMoment(s: NonNullable<typeof partner>): Moment {
+    const heading = `🤝 Partner clue · ${info ? clueName(game, session.currentClue!) : ''}`;
+    const wheelUp = toolOverlay(app.live)?.kind === 'wheel';
+    if (s.stage === 'pick') {
+      const exits = wheelUp ? [{ id: 'close', label: VERBS.closeToolBox.label, keys: 'Esc', onclick: closeOverlay }, putBackItem('Shift+Esc')] : [putBackItem('Esc')];
+      // Who picked it, by their number.
+      if (!s.pickerId)
+        return {
+          heading,
+          steps: session.players.map((p, i) => ({ id: `picker:${p.id}`, label: `★ ${p.name} picked it`, keys: i < 9 ? String(i + 1) : undefined, onclick: () => partnerNumber(i + 1) })),
+          exits,
+        };
+      const going = toolGoing();
+      const up = toolOverlay(app.live);
+      const member = describerWanted() || (up?.kind === 'wheel' && !!up.members);
+      const candidates = partnerCandidates(session, s);
+      const spin: StageItem = member
+        ? { id: 'describer', label: VERBS.describerSpin.label, keys: 'W', disabled: going, onclick: memberSpin }
+        : {
+            id: 'spin',
+            label: (s.partnerId ? (s.how === 'only' ? VERBS.spinAnyway : VERBS.spinAgain) : VERBS.partnerSpin).label,
+            keys: 'W',
+            disabled: going || !candidates.length,
+            onclick: partnerSpin,
+          };
+      const picks = candidates.map((p): StageItem => {
+        const n = session.players.indexOf(p) + 1;
+        return {
+          id: `partner:${p.id}`,
+          label: p.id === s.pickerId ? `${p.name} plays it alone (Solo)` : `Make ${p.name} the partner`,
+          keys: n && n <= 9 ? String(n) : undefined,
+          disabled: going || s.partnerId === p.id,
+          onclick: () => partnerNumber(n),
+        };
+      });
+      const show: StageItem = { id: 'show', label: VERBS.partnerShow.label, keys: 'Enter', disabled: !s.partnerId || describerWanted(), onclick: partnerShow };
+      return { heading, steps: [spin, ...picks, show], exits };
+    }
+    // The question up: the cards, the verdict, then the clue's own.
+    const steps: StageItem[] = [];
+    const judged = partnerJudged;
+    if (s.stage === 'distribute' && !judged && !session.revealed) {
+      const unsent = unsentCards();
+      const go = (t: Session) => sendCards(t, t.partner!, unsent);
+      const full = unsent.length > 0 && roomCardsFull(game, session, go);
+      const running = !!app.live.timer && app.live.timer.startedAt !== null && !app.live.timer.expired;
+      const t = app.live.timer;
+      const secs = t && !t.expired && t.startedAt === null ? Math.max(1, Math.ceil(timerRemaining(t))) : timerSeconds || clueTimer() || game.settings.defaultTimerSeconds || 30;
+      const verb = unsent.length ? (running ? VERBS.sendCards : VERBS.sendAndStart) : VERBS.startClock(secs);
+      steps.push({ id: 'hand', label: verb.label, keys: 'Enter', disabled: full, ...(full ? { hint: cardsFullText(game, session, go) } : {}), onclick: partnerClock });
+    }
+    const live = s.stage === 'live' && !judged;
+    const steal = !!partnerSteal(session);
+    steps.push(
+      { id: 'got', label: VERBS.gotIt.label, keys: live ? 'Enter' : undefined, disabled: judged || steal, onclick: () => partnerJudge(true) },
+      { id: 'missed', label: VERBS.missed.label, keys: live ? 'Shift+Enter' : undefined, disabled: judged || steal, onclick: () => partnerJudge(false) },
+      ...clueSteps(),
+    );
+    return { heading, steps, exits: [{ id: 'done', label: VERBS.done.label, keys: 'Esc', onclick: () => back() }, putBackItem('Shift+Esc')] };
+  }
+
+  /** The Final, from its wagers to its reveals. */
+  function finalMoment(): Moment {
+    const round = finalRound;
+    const f = session.final;
+    const heading = round ? finalName(round) : 'Final';
+    if (!f) return { heading, steps: [] };
+    const noun = pregameTeams ? 'team' : 'player';
+    const after = game.rounds[session.currentRound + 1];
+    const goOn = (after ? VERBS.nextNamed(roundName(after, session.currentRound + 1)) : VERBS.finishGame).label;
+    const step = session.finalStep ?? 'wagers';
+    if (step === 'wagers') {
+      const ok = finalWagersOk(session, wagerLimitsOff);
+      return { heading, steps: [{ id: 'next', label: f.players.length ? VERBS.showQuestion.label : goOn, keys: 'N', disabled: !ok, ...(ok ? {} : { hint: 'Every wager in first' }), onclick: () => nKey(false) }] };
+    }
+    if (step === 'question') {
+      const pos = slidePosition(session, game);
+      const more = !!pos && pos.at < pos.of;
+      return {
+        heading,
+        steps: [
+          ...(pos
+            ? [
+                { id: 'slide+', label: VERBS.nextSlide.label, keys: 'N', disabled: !more, onclick: () => slideStep(1) },
+                { id: 'slide-', label: VERBS.prevSlide.label, keys: 'Shift+N', disabled: pos.at <= 1, onclick: () => slideStep(-1) },
+              ]
+            : []),
+          { id: 'next', label: VERBS.finalReveal.label, keys: more ? undefined : 'N', onclick: revealToggle },
+          clockItem(),
+        ],
+      };
+    }
+    if (step === 'answer') return { heading, steps: [{ id: 'next', label: VERBS.startReveals(noun).label, keys: 'N', onclick: () => nKey(false) }] };
+    // The reveals: N shows the spotlit one's answer, then their wager; C / X judge them; then the next one.
+    const cur = f.current && f.order.includes(f.current) ? f.current : undefined;
+    const left = finalUnjudged(session).length;
+    let label = left ? VERBS.nextPlayer(noun).label : goOn;
+    let wait = '';
+    if (cur && !f.results[cur]) {
+      if (typedAnswer(f, cur) && !f.answerShown?.[cur]) label = VERBS.showAnswer.label;
+      else if (hasWager(f, cur) && (f.shown[cur] || f.answerShown?.[cur])) wait = `Mark ${playerName(session, cur)} right (C) or wrong (X) first`;
+      else if (!f.shown[cur]) label = VERBS.showWager.label;
+    }
+    const judge = !!cur && !f.results[cur] && hasWager(f, cur);
+    return {
+      heading,
+      steps: [
+        { id: 'next', label, keys: 'N', disabled: !!wait, ...(wait ? { hint: wait } : {}), onclick: () => nKey(false) },
+        { id: 'prev', label: `◀ ${noun === 'team' ? 'Team' : 'Player'} before`, keys: 'Shift+N', onclick: () => nKey(true) },
+        { id: 'right', label: '✔ Right', keys: 'C', disabled: !judge, onclick: () => finalJudgeKey(true) },
+        { id: 'wrong', label: '✘ Wrong', keys: 'X', disabled: !judge, onclick: () => finalJudgeKey(false) },
+      ],
+    };
+  }
+
+  /** A board game's turn, as its keys go: D, Enter, N, Shift+N, E. */
+  function boardMoment(): Moment {
+    const { round } = boardNow(game, session);
+    const heading = round?.name ?? '';
+    if (boardEdit.on) return { heading, steps: [{ id: 'edit', label: VERBS.doneEditing.label, keys: 'Esc', onclick: () => setEditing(false) }] };
+    const wheel = round?.mode === 'boardgame' && round.mover.kind === 'wheel';
+    return {
+      heading,
+      steps: [
+        ...(round?.mode === 'boardgame' && round.mover.kind !== 'step' ? [{ id: 'roll', label: (wheel ? VERBS.boardSpin : VERBS.boardRoll).label, keys: 'D', onclick: dKey }] : []),
+        {
+          id: 'move',
+          label: bgSteps ? VERBS.move(bgSteps).label : '▶ Move',
+          keys: 'Enter',
+          // (One space a turn: Enter takes the way on, or says which ways there are.)
+          ...(!bgSteps && round?.mode === 'boardgame' && round.mover.kind !== 'step' ? { disabled: true, hint: `${wheel ? 'Spin' : 'Roll'} first (D), or type the steps` } : {}),
+          onclick: () => void boardEnter(),
+        },
+        { id: 'turn+', label: VERBS.nextTurn.label, keys: 'N', onclick: () => nKey(false) },
+        { id: 'turn-', label: VERBS.prevTurn.label, keys: 'Shift+N', onclick: () => nKey(true) },
+        { id: 'edit', label: '✎ Edit board', keys: 'E', onclick: () => ((hideControls = false), setEditing(true)) },
+      ],
+    };
+  }
+
+  /** An RPG round's own items (`at`: where on the stage it was right-clicked, for text put there). */
+  function rpgItems(at?: StagePoint): StageItem[] {
+    const { st } = rpgNow(game, session);
+    if (!st) return [];
+    return [
+      // The host panel asks for the text (with the controls hidden, they come back for it).
+      ...(at ? [{ label: '＋ Text here…', onclick: () => ((hideControls = false), (rpgAsk = { what: 'text', at })) }] : []),
+      { label: '🗺 Full map (jump anywhere)', keys: 'J', onclick: () => (rpgMap = true) },
+      { label: st.mapShown ? '🗺 Hide the map from viewers' : '🗺 Show the map to viewers', keys: 'V', onclick: () => toggleMap(game, session) },
+      { label: '🤝 Regroup', keys: 'G', onclick: regroupKey },
+    ];
+  }
+
+  /** The moment on screen: its heading, its steps as the keys do them, its ways out. */
+  function momentMenu(at?: StagePoint): Moment {
+    const round = game.rounds[session.currentRound];
+    const here = round ? (isFinal(round) ? finalName(round) : roundName(round, session.currentRound)) : '';
+    if (session.intro) {
+      const i = session.intro;
+      const cats = round && isBoard(round) ? round.categories.length : 0;
+      const verb = i.stage === 'title' ? (round && isBoard(round) ? VERBS.showBoard : VERBS.startRound) : i.stage === 'fill' ? VERBS.revealCategories : VERBS.revealCategory(i.revealed + 1, cats);
+      return { heading: here, steps: [{ id: 'next', label: verb.label, keys: 'N', onclick: intro }, { id: 'skipintro', label: VERBS.skipIntro.label, onclick: () => skipIntro(session) }] };
+    }
+    const o = app.live.overlay;
+    const { round: bg, bs } = boardNow(game, session);
+    const mover = !!bg && !!bs && !!o && moverResult(game, bg, o) !== null;
+    if (o && !(o.kind === 'wheel' && o.partnerFor) && !mover && !(o.kind === 'dice' && o.mover)) return toolMoment(o);
+    if (partner) return partnerMoment(partner);
+    if (session.phase === 'clue' && info && session.dd?.stage === 'splash') {
+      // Who found it is the box's (its wager's too): with the controls hidden, Show question ▶ brings them back if the
+      // wager isn't in yet.
+      const dd = session.dd;
+      const ok = !!dd.playerId && typeof dd.draft === 'number' && dd.draft >= 0 && (wagerLimitsOff || dd.draft <= ddCap(session, game, dd.playerId));
+      return {
+        heading: `⭐ Daily Double · ${clueName(game, session.currentClue!)}`,
+        steps: [{ id: 'show', label: VERBS.showQuestion.label, keys: 'Enter', disabled: !ok && !hideControls, onclick: () => (ok ? ddShow(dd.playerId!, dd.draft!) : (hideControls = false)) }],
+        exits: [putBackItem('Esc')],
+      };
+    }
+    if (session.phase === 'clue' && info)
+      return {
+        heading: `${session.dd ? '⭐ Daily Double · ' : ''}${clueName(game, session.currentClue!)}`,
+        steps: clueSteps(),
+        exits: [{ id: 'done', label: VERBS.done.label, keys: 'Esc', onclick: () => back() }, putBackItem('Shift+Esc')],
+      };
+    const nextName = (() => {
+      const n = game.rounds[session.currentRound + 1];
+      return `${!n ? 'End game' : isFinal(n) ? roundName(n, session.currentRound + 1) : 'Next round'} ▶`;
+    })();
+    if (session.phase === 'board')
+      return { heading: here, steps: roundComplete(session, game) ? [{ id: 'nextround', label: nextName, onclick: () => nextRound(1) }] : [] };
+    if (session.phase === 'slides') {
+      const pos = slidePosition(session, game);
+      const last = !pos || pos.at >= pos.of;
+      return {
+        heading: here,
+        steps: [
+          { id: 'slide+', label: VERBS.nextSlide.label, keys: 'N', disabled: last, onclick: () => slideStep(1) },
+          { id: 'slide-', label: VERBS.prevSlide.label, keys: 'Shift+N', disabled: !pos || pos.at <= 1, onclick: () => slideStep(-1) },
+          { id: 'nextround', label: nextName, ...(last ? { keys: 'N' } : {}), disabled: !last, onclick: () => nextRound(1) },
+        ],
+      };
+    }
+    if (session.phase === 'final') return finalMoment();
+    if (session.phase === 'tiebreaker') {
+      const pos = slidePosition(session, game);
+      const shown = answerShowing(session);
+      return {
+        heading: 'Tiebreaker',
+        steps: [
+          ...(pos
+            ? [
+                { id: 'slide+', label: VERBS.nextSlide.label, keys: 'N', disabled: shown || pos.at >= pos.of, onclick: () => slideStep(1) },
+                { id: 'slide-', label: VERBS.prevSlide.label, keys: 'Shift+N', disabled: shown || pos.at <= 1, onclick: () => slideStep(-1) },
+              ]
+            : []),
+          { id: 'reveal', label: shown ? VERBS.hide.label : VERBS.reveal.label, keys: 'R', onclick: revealToggle },
+          clockItem(),
+        ],
+        exits: [{ id: 'done', label: VERBS.backToResults.label, keys: shown ? 'N' : undefined, onclick: tiebreakerDone }],
+      };
+    }
+    if (session.phase === 'end') {
+      const ties = coWinnersHold(session) ? [] : tiedLeaders(session);
+      if (!ties.length) return { heading: 'Game over', steps: [] };
+      const ready = !!game.tiebreaker && !questionSlides(game.tiebreaker).every(blankSlide);
+      return {
+        heading: 'Game over · tie for first',
+        steps: [
+          { id: 'tbclue', label: VERBS.tiebreakerClue.label, disabled: !ready, onclick: tiebreaker },
+          { id: 'rolloff', label: VERBS.rollOff.label, keys: 'O', onclick: () => rolloff(ties.map((p) => p.id), game.settings.rollOffDie || 20, 'tiebreak') },
+          {
+            id: 'cowinners',
+            label: VERBS.coWinners.label,
+            onclick: () => {
+              logged(session, 'Co-winners declared', () => (session.coWinners = ties.map((p) => p.id)));
+              winnerCue();
+            },
+          },
+        ],
+      };
+    }
+    if (session.phase === 'boardgame') return boardMoment();
+    if (session.phase === 'rpg') return { heading: here, steps: rpgItems(at) };
+    return { heading: here, steps: [] };
+  }
+
+  /**
+   * The moment's menu (a right-click on the stage, Shift+F10 on the main button or the stage, a long press): built from
+   * the steps the keys do, with what the boxes open add, then ↶ Undo and ⏸ Cover the screen.
+   */
+  function momentMenuAt(e: MouseEvent, at?: StagePoint): void {
+    showMenu(e, stageMenuOf(momentMenu(at), hideControls ? [] : (boxMenu?.() ?? []), standingItems()));
+  }
+
+  /**
+   * A right-click anywhere in the host's window: on a player, their menu; on the main button, a box's step button or a
+   * clue's row of buttons, the moment's (the stage's own come first: see stageMenu).
+   */
+  function hostMenu(e: MouseEvent): void {
+    if (e.defaultPrevented || browserMenuFits(e.target, getSelection())) return;
+    const t = e.target instanceof Element ? e.target : null;
+    if (t?.closest('[data-player-id]')) return playerMenuAt(e);
+    if (t?.closest('.panel :is([data-next], [data-next-pair], [data-next-also], [data-step], [data-flow])')) momentMenuAt(e);
   }
 
   function stageMenu(e: MouseEvent): void {
@@ -3188,14 +3552,7 @@
         const removed = (text: string) => (toast(text, 3000), rpgObject === objId && (rpgObject = null));
         return showMenu(e, objectMenu(game, session, objId, { open: () => ((hideControls = false), (rpgObject = objId)), removed }));
       }
-      const at = stagePoint(e);
-      return showMenu(e, [
-        // The host panel asks for the text (with the controls hidden, they come back for it).
-        { label: '＋ Text here…', onclick: () => ((hideControls = false), (rpgAsk = { what: 'text', at })) },
-        { label: '🗺 Full map (jump anywhere)', onclick: () => (rpgMap = true) },
-        { label: st.mapShown ? '🗺 Hide the map from viewers' : '🗺 Show the map to viewers', onclick: () => toggleMap(game, session) },
-        { label: app.live.cover ? '▶ Uncover the screen' : '⏸ Cover the screen', onclick: () => (app.live.cover = !app.live.cover) },
-      ]);
+      return momentMenuAt(e, stagePoint(e));
     }
     if (session.phase === 'boardgame') {
       const { round, bs } = boardNow(game, session);
@@ -3228,8 +3585,8 @@
         ]);
       }
     }
-    // Anywhere else on the host's stage: never the browser's own menu (it may be on stream).
-    return showMenu(e, [{ label: app.live.cover ? '▶ Uncover the screen' : '⏸ Cover the screen', onclick: () => (app.live.cover = !app.live.cover) }]);
+    // Anywhere else on the host's stage: the moment's own menu (never the browser's: it may be on stream).
+    momentMenuAt(e);
   }
 
   /**
@@ -4398,37 +4755,11 @@
         else if (selected.length) selected = [];
         break;
       case 'd':
-        // Board games: roll (or spin) the round's own mover (not under the round's title card: nobody would see it).
-        if (session.phase === 'boardgame' && session.intro) {
-          hint('Start the round first (N, or click the title card)');
-          break;
-        }
-        if (session.phase === 'boardgame') {
-          const why = rollMover(game, session, app.live);
-          // (Each says what to do first, as Enter's do: it goes once the way is picked, N is pressed…)
-          if (why) hint(why);
-          break;
-        }
-        if (!toolBusy()) rollDice(app.live, session, lastDice);
+        dKey();
         break;
-      case 'w': {
-        // A partner clue's PARTNER UP!: the partner wheel (W again: spin it again); teams, the picker's own team playing
-        // it: the member wheel, for who describes.
-        if (partner?.stage === 'pick') {
-          const up = toolOverlay(app.live);
-          if (describerWanted() || (up?.kind === 'wheel' && up.members)) memberSpin();
-          else partnerSpin();
-          break;
-        }
-        const o = app.live.overlay;
-        if (toolBusy()) break;
-        if (o?.kind === 'wheel') {
-          if (wheelSpentUp(o, session, game)) toast('Every slice has landed: Restore them to spin again');
-          else spinWheel(app.live, session, game);
-        } else if (game.wheels[0]) openWheel(app.live, session, game.wheels[0]);
-        else toast('No saved wheels: use the 🎡 Wheel button for a quick one');
+      case 'w':
+        wKey();
         break;
-      }
       case 'o': {
         if (toolBusy()) break;
         // On a tie for first at the end: the tied leaders roll for the win (not "Who goes first?").
@@ -4442,80 +4773,15 @@
         announce(app.live.overlay?.kind === 'scoreboard' ? 'Scores on screen' : 'Scores off screen');
         break;
       case 'n':
-        // Shift+N goes the other way: the turn before, the player before in the reveals, or a clue's slide before.
-        if (session.intro) {
-          // The round's intro first (its title card, then a board's tiles and categories).
-          if (!e.shiftKey) intro();
-        } else if (session.phase === 'boardgame') {
-          // At a fork, N doesn't drop the steps left (the host panel's Next turn ▶ does, on purpose).
-          const fork = session.boardgames?.[game.rounds[session.currentRound]?.id ?? '']?.fork;
-          if (fork && !e.shiftKey) hint(`Pick which way first (${Math.abs(fork.stepsLeft)} to go), or click Next turn ▶ to drop the steps left`);
-          else {
-            const t = turnNow(game, session, e.shiftKey ? -1 : 1);
-            if (t) toast(t, 4000);
-          }
-        }
-        else if (session.phase === 'final' && session.finalStep === 'reveal') {
-          if (e.shiftKey) {
-            if (finalBack(session) && session.final?.current) announce(`Spotlight: ${playerName(session, session.final.current)}`);
-          } else finalRevealNext();
-        } else if (session.phase === 'final' && session.finalStep === 'question' && (e.shiftKey ? (slideStep(-1), true) : slideStep(1))) {
-          // The Final's question slides: N the next (after the last, the answer as before), Shift+N the one before.
-        } else if (session.phase === 'clue') {
-          // Shift+N: a clue's question slide before. N: whatever the host panel's main button shows (the next slide,
-          // 🔔 Open the buzzers, 👁 Reveal answer, ▦ Done ▶ board…). With the controls hidden the panel is gone and its
-          // last button out of date: as a click on the stage, the next slide, then the answer (never hidden again).
-          if (e.shiftKey) slideStep(-1);
-          // (A partner clue before its clock: its own main button, as Enter, with the same guard. N never judges.)
-          else if (partnerFirst) partnerMain(e);
-          else if (!hideControls && hostNext && !hostNext.disabled) hostNext.run();
-          // (A wheel or dice tile's own tool still up: as a click on it, spin or roll, then close it for the question.)
-          else if (info && tileToolUp(app.live, info.clue) && !session.revealed) overlayPrimary();
-          else if (!slideStep(1) && !answerShowing(session)) revealToggle();
-        } else if (session.phase === 'tiebreaker') {
-          // The tiebreaker: N whatever the main button shows (the next slide, 👁 Reveal answer, 🏁 Back to results);
-          // Shift+N the slide before. With the controls hidden, as a click on the stage (above).
-          if (e.shiftKey) slideStep(-1);
-          else if (!hideControls && hostNext && !hostNext.disabled) hostNext.run();
-          else if (!slideStep(1) && !answerShowing(session)) revealToggle();
-        } else if (session.phase === 'slides') {
-          // A slides round: N the next slide, then (after the last) the next round, as the main button says.
-          if (e.shiftKey) slideStep(-1);
-          else if (hostNext) !hostNext.disabled && hostNext.run();
-          else slideStep(1);
-        } else if (session.phase === 'board' && !e.shiftKey && hostNext && !hostNext.key && roundComplete(session, game)) {
-          // A played-out board goes on only from its button (N mashed after the last clue mustn't jump on stream).
-          hint(`Round complete: click ${hostNext.label} to go on`);
-        } else if (session.phase === 'end' && !e.shiftKey && !hideControls && hostNext && !hostNext.disabled) {
-          // A tie at the end is settled from its button, or O (N mashed after the Final mustn't start one on stream).
-          goOnHint();
-        } else if (e.shiftKey) break;
-        else if (session.phase === 'final' && session.finalStep === 'wagers' && !finalWagersOk(session, wagerLimitsOff)) wagersWaiting();
-        // The question up: the answer, as the main button shows it (its reveal sound too).
-        else if (session.phase === 'final' && session.finalStep === 'question') revealToggle();
-        else if (session.phase === 'final') {
-          finalNextStep(session, game);
-          finalStep();
-        }
+        nKey(e.shiftKey, e.repeat);
         break;
       case 'c':
       case 'x':
         finalJudgeKey(k === 'c');
         break;
-      case 't': {
-        // Shift+T: 10 more seconds on the countdown that's up (none up: one starts, as with T).
-        const added = e.shiftKey && !!app.live.timer;
-        if (added) addTime(app.live, 10);
-        else if (app.live.timer && !app.live.timer.expired) toggleTimer(app.live);
-        else startTimer(app.live, timerSeconds || clueTimer() || game.settings.defaultTimerSeconds || 30);
-        // (A partner clue handing out its cards with none waiting for a phone goes live with it.)
-        if (!added) partnerTimerStarted();
-        // (Said once here: the running countdown stays quiet.)
-        const tm = app.live.timer;
-        const left = tm ? Math.ceil(timerRemaining(tm)) : 0;
-        if (tm) announce(added ? `+10 s: ${left} s left` : tm.startedAt === null ? `Countdown paused at ${left} s` : `Countdown: ${left} s`);
+      case 't':
+        clockKey(e.shiftKey);
         break;
-      }
       // The cover, in every round (B as well, the key many stream tools use for "be right back").
       case 'k':
       case 'b':
@@ -4584,6 +4850,113 @@
         return;
     }
     e.preventDefault();
+  }
+
+  /** D (and the stage's menu): a board game's own roll, else the dice again. */
+  function dKey(): void {
+    // Board games: roll (or spin) the round's own mover (not under the round's title card: nobody would see it).
+    if (session.phase === 'boardgame' && session.intro) return hint('Start the round first (N, or click the title card)');
+    if (session.phase === 'boardgame') {
+      const why = rollMover(game, session, app.live);
+      // (Each says what to do first, as Enter's do: it goes once the way is picked, N is pressed…)
+      if (why) hint(why);
+      return;
+    }
+    if (!toolBusy()) rollDice(app.live, session, lastDice);
+  }
+
+  /** W (and the stage's menu): spin the wheel on screen (a partner clue's on PARTNER UP!), else the first saved one. */
+  function wKey(): void {
+    // A partner clue's PARTNER UP!: the partner wheel (W again: spin it again); teams, the picker's own team playing
+    // it: the member wheel, for who describes.
+    if (partner?.stage === 'pick') {
+      const up = toolOverlay(app.live);
+      if (describerWanted() || (up?.kind === 'wheel' && up.members)) memberSpin();
+      else partnerSpin();
+      return;
+    }
+    const o = app.live.overlay;
+    if (toolBusy()) return;
+    if (o?.kind === 'wheel') {
+      if (wheelSpentUp(o, session, game)) toast('Every slice has landed: Restore them to spin again');
+      else spinWheel(app.live, session, game);
+    } else if (game.wheels[0]) openWheel(app.live, session, game.wheels[0]);
+    else toast('No saved wheels: use the 🎡 Wheel button for a quick one');
+  }
+
+  /** T (and the stage's menu): start, pause or go on with the countdown; Shift+T (`more`): 10 more seconds. */
+  function clockKey(more: boolean): void {
+    // Shift+T: 10 more seconds on the countdown that's up (none up: one starts, as with T).
+    const added = more && !!app.live.timer;
+    if (added) addTime(app.live, 10);
+    else if (app.live.timer && !app.live.timer.expired) toggleTimer(app.live);
+    else startTimer(app.live, timerSeconds || clueTimer() || game.settings.defaultTimerSeconds || 30);
+    // (A partner clue handing out its cards with none waiting for a phone goes live with it.)
+    if (!added) partnerTimerStarted();
+    // (Said once here: the running countdown stays quiet.)
+    const tm = app.live.timer;
+    const left = tm ? Math.ceil(timerRemaining(tm)) : 0;
+    if (tm) announce(added ? `+10 s: ${left} s left` : tm.startedAt === null ? `Countdown paused at ${left} s` : `Countdown: ${left} s`);
+  }
+
+  /** N (and the stage's menu), Shift+N (`back`): the moment's next step, or the other way. */
+  function nKey(back: boolean, repeat = false): void {
+    const e = { shiftKey: back, repeat };
+    // Shift+N goes the other way: the turn before, the player before in the reveals, or a clue's slide before.
+    if (session.intro) {
+      // The round's intro first (its title card, then a board's tiles and categories).
+      if (!e.shiftKey) intro();
+    } else if (session.phase === 'boardgame') {
+      // At a fork, N doesn't drop the steps left (the host panel's Next turn ▶ does, on purpose).
+      const fork = session.boardgames?.[game.rounds[session.currentRound]?.id ?? '']?.fork;
+      if (fork && !e.shiftKey) hint(`Pick which way first (${Math.abs(fork.stepsLeft)} to go), or click Next turn ▶ to drop the steps left`);
+      else {
+        const t = turnNow(game, session, e.shiftKey ? -1 : 1);
+        if (t) toast(t, 4000);
+      }
+    }
+    else if (session.phase === 'final' && session.finalStep === 'reveal') {
+      if (e.shiftKey) {
+        if (finalBack(session) && session.final?.current) announce(`Spotlight: ${playerName(session, session.final.current)}`);
+      } else finalRevealNext();
+    } else if (session.phase === 'final' && session.finalStep === 'question' && (e.shiftKey ? (slideStep(-1), true) : slideStep(1))) {
+      // The Final's question slides: N the next (after the last, the answer as before), Shift+N the one before.
+    } else if (session.phase === 'clue') {
+      // Shift+N: a clue's question slide before. N: whatever the host panel's main button shows (the next slide,
+      // 🔔 Open the buzzers, 👁 Reveal answer, ▦ Done ▶ board…). With the controls hidden the panel is gone and its
+      // last button out of date: as a click on the stage, the next slide, then the answer (never hidden again).
+      if (e.shiftKey) slideStep(-1);
+      // (A partner clue before its clock: its own main button, as Enter, with the same guard. N never judges.)
+      else if (partnerFirst) partnerMain(e);
+      else if (!hideControls && hostNext && !hostNext.disabled) hostNext.run();
+      // (A wheel or dice tile's own tool still up: as a click on it, spin or roll, then close it for the question.)
+      else if (info && tileToolUp(app.live, info.clue) && !session.revealed) overlayPrimary();
+      else if (!slideStep(1) && !answerShowing(session)) revealToggle();
+    } else if (session.phase === 'tiebreaker') {
+      // The tiebreaker: N whatever the main button shows (the next slide, 👁 Reveal answer, 🏁 Back to results);
+      // Shift+N the slide before. With the controls hidden, as a click on the stage (above).
+      if (e.shiftKey) slideStep(-1);
+      else if (!hideControls && hostNext && !hostNext.disabled) hostNext.run();
+      else if (!slideStep(1) && !answerShowing(session)) revealToggle();
+    } else if (session.phase === 'slides') {
+      // A slides round: N the next slide, then (after the last) the next round, as the main button says.
+      if (e.shiftKey) slideStep(-1);
+      else if (hostNext) !hostNext.disabled && hostNext.run();
+      else slideStep(1);
+    } else if (session.phase === 'board' && !e.shiftKey && hostNext && !hostNext.key && roundComplete(session, game)) {
+      // A played-out board goes on only from its button (N mashed after the last clue mustn't jump on stream).
+      hint(`Round complete: click ${hostNext.label} to go on`);
+    } else if (session.phase === 'end' && !e.shiftKey && !hideControls && hostNext && !hostNext.disabled) {
+      // A tie at the end is settled from its button, or O (N mashed after the Final mustn't start one on stream).
+      goOnHint();
+    } else if (e.shiftKey) return;
+    else if (session.phase === 'final' && session.finalStep === 'wagers' && !finalWagersOk(session, wagerLimitsOff)) wagersWaiting();
+    // The question up: the answer, as the main button shows it (its reveal sound too).
+    else if (session.phase === 'final' && session.finalStep === 'question') revealToggle();
+    else if (session.phase === 'final') {
+      finalNextStep(session, game);
+      finalStep();
+    }
   }
 </script>
 
@@ -4975,8 +5348,9 @@
     </div>
   </main>
 {:else}
-  <!-- Right-clicking a player anywhere here (the stage, the host panel) gives their menu, as do Shift+F10 on their button
-       and a long press on a touch screen. The page's main part, named by the game's title (for screen readers). -->
+  <!-- Right-clicking a player anywhere here (the stage, the host panel) gives their menu, and the stage or the main button
+       the moment's, as do Shift+F10 on it and a long press on a touch screen. The page's main part, named by the game's
+       title (for screen readers). -->
   <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
   <main
     class="play"
@@ -4987,7 +5361,7 @@
     class:dual
     class:logged={dual && showLog}
     class:roomy={panelWindow}
-    oncontextmenu={playerMenuAt}
+    oncontextmenu={hostMenu}
     use:focusRescue
     use:longPress
   >
@@ -5125,6 +5499,7 @@
         oncloseoverlay={closeOverlay}
         onopenbuzzers={openBuzzers}
         bind:nextAction={hostNext}
+        bind:boxMenu
         tieNames={tie.length ? nameList(tie.map((id) => playerName(session, id))) : ''}
         onrolltie={rollTie}
         {phonesDown}
