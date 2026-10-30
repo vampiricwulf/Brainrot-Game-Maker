@@ -463,8 +463,9 @@ async function viewers() {
 
 /**
  * Wheel and dice tiles with questions, in a single window with buzzer mode on (a fake room that keeps what it's sent):
- * while the tile's own wheel is up nobody can buzz and the phones get no question, and 👁 Reveal answer waits for it to
- * land (R says to spin first, R again shows it anyway); dice rolled over a dice tile's question
+ * while the tile's own wheel is up nobody can buzz, the phones get no question, and 👁 Reveal answer waits for its
+ * question (R says to spin or close it first, R again shows it anyway; N with the controls hidden spins it, never shows
+ * the answer); dice rolled over a dice tile's question
  * leave it on stream and its countdown going; a wheel closed over the answer starts no countdown; once dice replace a
  * wheel tile's wheel, a wheel opened later isn't taken for it. Also: the stage keeps its size with a long host note and
  * the buzzers' row, and on a Daily Double's question; Undo of a right answer brings back its countdown, everyone missing
@@ -613,10 +614,24 @@ async function tileTools() {
   await host.locator('.toast', { hasText: 'Spin first (W), or press R again to show the answer anyway' }).waitFor();
   assert((await stage('[data-slide="answer"]').count()) === 0, 'and R says to spin first, the answer still hidden');
   const toolSizes = [await stageH()];
-  await host.keyboard.press('w');
+  // With the controls hidden, N does what a click on the wheel does: it spins it (not the answer, behind the wheel).
+  await host.keyboard.press('h');
+  await host.locator('.play > .panel').waitFor({ state: 'detached' });
+  await host.keyboard.press('n');
+  await host.waitForFunction(() => {
+    const ov = document.querySelector('.stage-box .ov');
+    return !!ov?.querySelector('.wheel') && !ov.textContent.includes('Get ready to spin');
+  });
+  assert((await stage('[data-slide="answer"]').count()) === 0, 'controls hidden, N before the spin spins the wheel, the answer still hidden');
+  await host.keyboard.press('h');
   await host.locator('.tc .result').waitFor();
-  await revealBtn.waitFor();
-  assert(true, 'landed, 👁 Reveal answer is offered');
+  // Landed, the wheel still up: no 👁 Reveal answer yet (its question is next), and R says to close it first.
+  await host.keyboard.press('r');
+  await host.locator('.toast', { hasText: 'Close the wheel first (Esc): the question’s next, or press R again to show the answer anyway' }).waitFor();
+  assert(
+    (await revealBtn.count()) === 0 && (await stage('[data-slide="answer"]').count()) === 0,
+    'landed with the wheel still up: no 👁 Reveal answer, and R says to close the wheel first, the answer still hidden',
+  );
   toolSizes.push(await stageH());
   assert(
     (await stage('.slide-area').count()) === 0 && (await host.evaluate((n) => window.__states.slice(n).filter((s) => s.clue || s.phase !== 'lobby').length, sentBefore)) === 0,
@@ -624,6 +639,8 @@ async function tileTools() {
   );
   await host.keyboard.press('Escape');
   await stage('.slide-area').waitFor();
+  await revealBtn.waitFor();
+  assert(true, 'closed, its question is up and 👁 Reveal answer with it');
   toolSizes.push(await stageH());
   assert(toolSizes.every((x) => x === toolSizes[0]), `a wheel tile keeps one stage size from its wheel to its landing to its question (${toolSizes.join(' / ')})`);
   await host.waitForFunction(() => {
@@ -798,8 +815,7 @@ async function tileTools() {
   await cancel.click();
   await tileOf('qy').waitFor();
   assert((await used('qy')) === false, 'undone, it puts the tile back');
-  // ▦ Done ▶ board while a wheel tile's own wheel waits to spin: the wheel goes with the tile. (R twice first: the
-  // second shows the answer anyway, for a wheel that won't spin.)
+  // R twice before the spin: the second shows the answer anyway (a wheel that won't spin). Shift+Esc puts the tile back.
   await tileOf('qy').click();
   await stage('.ov .wheel').waitFor();
   await host.keyboard.press('r');
@@ -807,6 +823,12 @@ async function tileTools() {
   await host.keyboard.press('r');
   await stage('[data-slide="answer"]').waitFor();
   assert(true, 'R again before the spin shows the answer anyway');
+  await host.keyboard.press('Shift+Escape');
+  await stage('.ov').waitFor({ state: 'detached' });
+  await tileOf('qy').waitFor();
+  // ▦ Done ▶ board while a wheel tile's own wheel waits to spin: the wheel goes with the tile.
+  await tileOf('qy').click();
+  await stage('.ov .wheel').waitFor();
   await host.locator('.panel button.done-board').click();
   await tileOf('qy').waitFor();
   await stage('.ov').waitFor({ state: 'detached' });

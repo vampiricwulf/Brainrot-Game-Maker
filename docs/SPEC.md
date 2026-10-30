@@ -524,8 +524,10 @@ The mode isn't saved with the game: it's dual while the audience window is open.
   board, ↩ Cancel (keep tile) or `Shift+Esc`) and is still its tile's after a reload. The points it gives (its score
   effect, a slice's points) are its tile's (`toolTile` on their score events, not `clueId`: no award on the clue), so
   ↩ Cancel waits for an Undo of them, as after an award, even once the tool is closed. A wheel or dice tile with a
-  question offers 👁 Reveal answer only once its tool has landed: before that, `R` says to spin or roll first (`W` /
-  `D`), and `R` again shows the answer anyway (a wheel that won't spin, one only for show).
+  question offers 👁 Reveal answer only once its tool is closed and the question up: before that, `R` says to spin or
+  roll first (`W` / `D`), or once it has landed to close it (`Esc`), and `R` again shows the answer anyway (a wheel that
+  won't spin, one only for show). With the controls hidden, `N` there does what a click on the tool does: spin or roll
+  it, then close it.
 - **Reveal**: the outcome is shown on the audience view (label, plus details/media/custom slide if set), with an
   optional countdown. The host can dismiss it, re-spin/re-roll, or tag it with a player
   ("this punishment is for Alex"). Every spin/roll goes into the **roll log** (separate from the score log, no score impact),

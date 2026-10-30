@@ -256,17 +256,6 @@ export function tileToolUp(live: Live, clue: { id: string; type: string }): bool
   return live.toolTile === clue.id && toolOverlay(live)?.kind === clue.type;
 }
 
-/**
- * A wheel or dice tile's own wheel or dice not spun or rolled yet, or still going: its question comes first, so its
- * answer waits (👁 Reveal answer is offered once it lands; R before that asks first).
- */
-export function tileToolWaits(live: Live, clue: { id: string; type: string }, now = Date.now()): boolean {
-  const o = tileToolUp(live, clue) ? toolOverlay(live) : null;
-  if (o?.kind === 'wheel') return !o.spin || now < overlayDoneAt(o);
-  if (o?.kind === 'dice') return !o.roll || now < overlayDoneAt(o);
-  return false;
-}
-
 export function timerRemaining(t: TimerState, now = Date.now()): number {
   const run = t.startedAt === null ? 0 : (now - t.startedAt) / 1000;
   return Math.max(0, t.total - t.elapsed - run);

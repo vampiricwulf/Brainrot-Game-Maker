@@ -25,7 +25,7 @@
   import { windowCards } from '../lib/cardwindow';
   import { cardWindow, closeCardWindow, feedCardWindow } from '../lib/cardwindow.svelte';
   import { dropOffersBut } from './host/offered.svelte';
-  import { addTime, newLive, overlayDoneAt, startTimer, tileToolUp, tileToolWaits, timerRemaining, timerResumed, toggleTimer, toolOverlay, type Live, type StageAction, type TimerState } from '../lib/live';
+  import { addTime, newLive, overlayDoneAt, startTimer, tileToolUp, timerRemaining, timerResumed, toggleTimer, toolOverlay, type Live, type StageAction, type TimerState } from '../lib/live';
   import {
     answerRoundId, buzzArm, buzzClueOpened, buzzDone, buzzIdle, buzzMissed, buzzReset, buzzTake, cardsFullText, everyoneAnswerAsk, finalAnswerAsk, hostState, newBuzz, partnerAnswerAsk, partnerAnswerId, hostCards, phoneStatus, roomCardsFull, SEAT_NAME_MAX, sendOf, SETTING_UP,
     teamsOn, wagerAsk, whoBuzzed,
@@ -4087,7 +4087,7 @@
     hint(hostNext.key ? `Press ${hostNext.key} for ${hostNext.label}` : `Click ${hostNext.label} to go on${rolloff}`);
   }
 
-  /** The wheel or dice tile's tool (its overlay) the first R asked about: R again shows the answer anyway. */
+  /** The wheel or dice tile's tool (its overlay, and how far it got) the first R asked about: R again shows the answer anyway. */
   let revealAsked = '';
 
   /** A number key changed who's selected: screen readers hear who is now (before Enter awards them). */
@@ -4275,13 +4275,19 @@
         if (awardOpen(session)) award(e.shiftKey ? -1 : 1);
         break;
       case 'r':
-        if (session.phase === 'clue' && info && !session.revealed && !toolOnlyClue(info.clue) && tileToolWaits(app.live, info.clue) && revealAsked !== toolOverlay(app.live)?.nonce) {
-          // A wheel or dice tile's question comes after its wheel or dice: the first R says so, a second shows the
-          // answer anyway (a wheel that won't spin, or one only for show).
-          revealAsked = toolOverlay(app.live)?.nonce ?? '';
+        if (session.phase === 'clue' && info && !session.revealed && !toolOnlyClue(info.clue) && tileToolUp(app.live, info.clue)) {
+          // A wheel or dice tile's question comes once its wheel or dice is closed: the first R says what's next, a
+          // second shows the answer anyway (a wheel that won't spin, or one only for show).
+          const o = toolOverlay(app.live);
           const dice = info.clue.type === 'dice';
-          hint(`${toolGoing() ? `Still ${dice ? 'rolling' : 'spinning'}: wait for it to land` : dice ? 'Roll first (D)' : 'Spin first (W)'}, or press R again to show the answer anyway`);
-          break;
+          const step = !(o?.kind === 'wheel' ? o.spin : o?.kind === 'dice' && o.roll) ? 'first' : toolGoing() ? 'going' : 'landed';
+          if (revealAsked !== `${o?.nonce}:${step}`) {
+            revealAsked = `${o?.nonce}:${step}`;
+            const first =
+              step === 'going' ? `Still ${dice ? 'rolling' : 'spinning'}: wait for it to land` : step === 'landed' ? `Close the ${dice ? 'dice' : 'wheel'} first (Esc): the question’s next` : dice ? 'Roll first (D)' : 'Spin first (W)';
+            hint(`${first}, or press R again to show the answer anyway`);
+            break;
+          }
         }
         revealToggle();
         break;
@@ -4372,6 +4378,8 @@
           // (A partner clue before its clock: its own main button, as Enter, with the same guard. N never judges.)
           else if (partnerFirst) partnerMain(e);
           else if (!hideControls && hostNext && !hostNext.disabled) hostNext.run();
+          // (A wheel or dice tile's own tool still up: as a click on it, spin or roll, then close it for the question.)
+          else if (info && tileToolUp(app.live, info.clue) && !session.revealed) overlayPrimary();
           else if (!slideStep(1) && !answerShowing(session)) revealToggle();
         } else if (session.phase === 'tiebreaker') {
           // The tiebreaker: N whatever the main button shows (the next slide, 👁 Reveal answer, 🏁 Back to results);

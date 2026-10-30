@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { addTime, newLive, startTimer, tileToolUp, tileToolWaits, timerRemaining, timerResumed, toggleTimer, type Overlay } from './live';
+import { addTime, newLive, startTimer, tileToolUp, timerRemaining, timerResumed, toggleTimer, type Overlay } from './live';
 
 beforeEach(() => {
   vi.useFakeTimers();
@@ -79,6 +79,9 @@ describe('a wheel or dice tile', () => {
     expect(tileToolUp(live, clue)).toBe(false);
     live.toolTile = 'q1';
     expect(tileToolUp(live, clue)).toBe(true);
+    // Spun and landed, it's still up: its question comes once it's closed.
+    if (live.overlay?.kind === 'wheel') live.overlay.spin = { from: 0, to: 1, startedAt: 0, duration: 500 };
+    expect(tileToolUp(live, clue)).toBe(true);
     live.overlay = { kind: 'scoreboard', nonce: 's', under: live.overlay };
     expect(tileToolUp(live, clue)).toBe(true);
     // Dice rolled over the wheel: the question no longer waits on a wheel.
@@ -86,29 +89,5 @@ describe('a wheel or dice tile', () => {
     expect(tileToolUp(live, clue)).toBe(false);
     live.overlay = null;
     expect(tileToolUp(live, clue)).toBe(false);
-  });
-
-  it('keeps its answer waiting until its own tool has landed', () => {
-    const live = newLive();
-    const w = wheel('a');
-    live.overlay = w;
-    live.toolTile = 'q1';
-    expect(tileToolWaits(live, clue)).toBe(true);
-    // Spinning: still waiting; landed: not.
-    if (w.kind === 'wheel') w.spin = { from: 0, to: 1, startedAt: 1000, duration: 500 };
-    expect(tileToolWaits(live, clue, 1200)).toBe(true);
-    expect(tileToolWaits(live, clue, 1600)).toBe(false);
-    // Another clue's wheel, or none: nothing waits.
-    expect(tileToolWaits(live, { id: 'q2', type: 'wheel' })).toBe(false);
-    live.overlay = null;
-    expect(tileToolWaits(live, clue)).toBe(false);
-    // A dice tile: until its dice are rolled and settle.
-    const dice = { id: 'q3', type: 'dice' };
-    live.toolTile = 'q3';
-    live.overlay = { kind: 'dice', nonce: 'd', name: 'd6', preset: { id: 'd6', name: 'd6', showTotal: false, dice: [] }, roll: null, startedAt: 0, duration: 0 };
-    expect(tileToolWaits(live, dice)).toBe(true);
-    live.overlay = { ...live.overlay, roll: { dice: [], total: 3 }, startedAt: 1000, duration: 1300 } as Overlay;
-    expect(tileToolWaits(live, dice, 2000)).toBe(true);
-    expect(tileToolWaits(live, dice, 2400)).toBe(false);
   });
 });
