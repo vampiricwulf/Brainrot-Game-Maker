@@ -175,7 +175,10 @@ try {
   await page.screenshot({ path: 'test-results/partner-play-distribute.png' });
   // A click on the question while the cards are handed out never puts the answer on stream: it says so.
   await stage('[data-slide="1"]').click();
-  assert(await toast('The answer stays hidden until they’ve had their go: 👁 Reveal answer (R) shows it anyway'), 'a click on the stage while handing out the cards says the answer stays hidden');
+  assert(
+    await toast('The answer stays hidden until they’ve had their go: copy the cards to their players, then ⏱ Start the clock (Enter) · R shows it anyway'),
+    'a click on the stage while handing out the cards says the answer stays hidden, and what’s next',
+  );
   assert((await stage('[data-slide="answer"]').count()) === 0 && (await mainLabel(page)) === '⏱ Start the clock', 'and the question stays up, the clock next');
 
   // ---------- ⏱ Start the clock ----------

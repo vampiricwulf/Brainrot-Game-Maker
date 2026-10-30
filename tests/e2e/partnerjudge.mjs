@@ -1,5 +1,6 @@
 // 🤝 Judging a partner clue (docs/PARTNER-CLUES-SPEC.md §6.6, §9, §15): ✔ Got it and ✘ Missed score both players in one
-// step with the clue's points (a second Enter right after the clock starts gives nothing), ⇄ Swap moving the points and
+// step with the clue's points (a second Enter right after the clock starts gives nothing; with no clock, a click on the
+// stage waits for them), ⇄ Swap moving the points and
 // the board with the parts, one Ctrl+Z taking it all back (scores, the board, the countdown, the 📤 list) and Ctrl+Y
 // bringing it again, a player scored by hand first left as they are, ✘ Missed with negative scores off still marking
 // both, the quick ✔/✘ chips worth each one's share, ↩ Cancel with the partner wheel up, and a reload mid-spin, while
@@ -183,6 +184,12 @@ try {
   await page.keyboard.press('Shift+Enter');
   sc = await scores();
   assert(sc.Cat === '$0' && sc.Ann === '−$400', 'nor does Shift+Enter');
+  // No clock running: a click on the stage waits for a verdict, and names T and R as the ways on.
+  await stage('[data-slide="1"]').click();
+  assert(
+    (await toast('Right or wrong? ✔ Got it / ✘ Missed in the 🤝 box (Enter / Shift+Enter) · T starts the clock, R shows the answer anyway')) && (await stage('[data-slide="answer"]').count()) === 0,
+    'no clock: a click on the stage leaves the answer hidden, and says T starts the clock and R shows the answer',
+  );
   await wait(1100);
   await page.keyboard.press('Enter');
   await panel.locator('[data-judged]').waitFor();

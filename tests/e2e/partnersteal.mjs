@@ -2,11 +2,12 @@
 // random. In the editor, a partner clue's "After a miss" lets the others steal it; the board's 🤝 Partner clues box with
 // 🔀 Randomize scatters them over written tiles (one undo step), and the pre-game's 🎲 Place now puts the missing one on
 // the board, in the editor's copy too. Then, against the real buzzer room (buzzer/ under `wrangler dev`, local) with four
-// phones: ✘ Missed opens the buzzers for the two others only (the stream says "Steal!"), Cat buzzes in and steals it,
+// phones: ✘ Missed opens the buzzers for the two others only (the stream says "Steal!"; a click on the stage leaves
+// the answer hidden and says how the steal goes on), Cat buzzes in and steals it,
 // Ctrl+Z takes the steal back (Cat answering again), Ctrl+Z again takes the miss back and closes the steal (the phones
 // greyed again), Ctrl+Y opens it again, Dan (chosen by the host) answers it through a host reload, misses, and the
 // buzzers open for Cat alone; Cat misses too, and the panel, the status line and Enter say nobody is left to steal it
-// (👁 Reveal answer); showing the answer ends it. Needs `npm ci` in buzzer/.
+// (👁 Reveal answer); a click on the stage shows the answer then, and that ends it. Needs `npm ci` in buzzer/.
 import { chromium } from 'playwright-core';
 import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
@@ -188,6 +189,11 @@ try {
   assert(await until(async () => (await big('Cat')) === 'BUZZ!' && (await big('Dan')) === 'BUZZ!'), 'Cat’s and Dan’s phones light up: BUZZ!');
   assert((await small('Ann')).includes('had your go') && (await small('Bob')).includes('had your go'), 'Ann’s and Bob’s phones say they’ve had their go on this one');
   await host.screenshot({ path: 'test-results/partner-steal-open.png' });
+  // A click on the stage while the steal is on leaves the answer hidden (and the steal open): it says how it goes on.
+  const answerUp = host.locator('.stage-box [data-slide="answer"]');
+  await host.locator('.stage-box [data-slide="1"]').click();
+  assert(await toast('🔔 A steal: whoever buzzes in first answers'), 'a click on the stage during the steal says how the steal goes on');
+  assert((await answerUp.count()) === 0 && (await stealRow.innerText()).includes('🔔 Steal!'), 'and the answer stays hidden, the steal still open');
 
   // ---------- Cat buzzes in and steals it ----------
   await phones.Cat.locator('#buzz').dispatchEvent('pointerdown');
@@ -248,8 +254,10 @@ try {
   assert((await host.locator('.panel .status').innerText()).includes('Answer hidden · nobody stole it: reveal the answer'), 'the status line says nobody stole it, not that the others can answer');
   await host.keyboard.press('Enter');
   assert(await toast('Everyone missed the steal: R reveals the answer'), 'Enter says everyone missed: R reveals the answer');
-  await host.keyboard.press('r');
-  assert(await until(async () => (await stealRow.innerText()).includes('🔔 Nobody stole it')), 'the answer up: “🔔 Nobody stole it”');
+  // Nobody left to steal it: a click on the stage shows the answer now.
+  await host.locator('.stage-box [data-slide="1"]').click();
+  await answerUp.waitFor();
+  assert(await until(async () => (await stealRow.innerText()).includes('🔔 Nobody stole it')), 'a click on the stage shows the answer now: “🔔 Nobody stole it”');
   assert(await until(() => last()?.phase === 'closed'), 'and the buzzers close');
   await host.keyboard.press('Escape');
   assert(await until(() => last()?.phase === 'lobby' && !last().lockedOut.length), 'back on the board: nobody locked out');

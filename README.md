@@ -159,7 +159,7 @@ the page gets (on a wide screen the page is two columns). A **🔁 Rematch** kee
 
 Click a tile to open its clue, then reveal the answer with `R` or a click (a double-click is one step: it never also
 shows the answer, or goes back to the board and opens another tile; on a 🤝 partner clue a click waits until the pair has
-had their go, judged or out of time, and says so, while `R` shows it any time). A clue can have several question slides (a
+had their go, judged (a steal too) or out of time, and says what's next, while `R` shows it any time). A clue can have several question slides (a
 lead-in, then more: **＋ Add slide** in the clue editor): the main button goes **Next slide ▶** (`N`, `Shift+N` back)
 through them first, and the audience window shows the slide you're on. Select players and **＋ Award** (`Enter`) or
 **− Deduct** (`Shift+Enter`); on the board the Amount row stays folded behind **± Adjust score** until a player is

@@ -2370,16 +2370,36 @@
 
   /**
    * A click on the stage never shows a partner clue's answer before the pair has had their go (the cards being handed
-   * out, or the clock not run out, and not judged): what it says instead (null: the answer can show). R and 👁 Reveal
-   * answer show it any time.
+   * out, or the clock not run out, and not judged), nor while a steal is on: what it says instead, the next step first
+   * (null: the answer can show). R and 👁 Reveal answer show it any time.
    */
   function partnerAnswerWaits(): string | null {
     const s = partner;
-    if (!s || partnerJudged || session.revealed) return null;
-    if (s.stage === 'distribute') return 'The answer stays hidden until they’ve had their go: 👁 Reveal answer (R) shows it anyway';
-    if (s.stage === 'live' && !app.live.timer?.expired) return 'Right or wrong? ✔ Got it / ✘ Missed in the 🤝 box (Enter / Shift+Enter)';
+    if (!s || session.revealed) return null;
+    if (partnerJudged) return stealOpen() && !app.live.timer?.expired ? `${stealHint()} · R shows the answer anyway` : null;
+    if (s.stage === 'distribute') {
+      const next = unsentCards().length
+        ? '📤 Send and start (Enter)'
+        : !phoneCards && info && cardSlides(info.clue).length
+          ? 'copy the cards to their players, then ⏱ Start the clock (Enter)'
+          : '⏱ Start the clock (Enter)';
+      return `The answer stays hidden until they’ve had their go: ${next} · R shows it anyway`;
+    }
+    if (s.stage === 'live' && !app.live.timer?.expired) {
+      // (No clock running: none started, or one that ran out before a reload. Nothing ends the wait by itself then.)
+      const judge = 'Right or wrong? ✔ Got it / ✘ Missed in the 🤝 box (Enter / Shift+Enter)';
+      return app.live.timer ? judge : `${judge} · T starts the clock, R shows the answer anyway`;
+    }
     return null;
   }
+
+  /** The partner clue was missed with steals on, and someone can still steal it. */
+  function stealOpen(): boolean {
+    const steal = partnerSteal(session);
+    return !!steal && !steal.by && stealersLeft(session.players, steal, partnerMarks).length > 0;
+  }
+  /** How a steal goes on. */
+  const stealHint = (): string => `🔔 A steal: ${phonesOn ? 'whoever buzzes in first answers, or press' : 'press'} the number of who steals it, then Enter (right) or Shift+Enter (wrong)`;
 
   /**
    * Enter or N on a partner clue before its clock starts: the main button (spin, show the question, start the clock).
@@ -2478,7 +2498,7 @@
       const steal = partnerSteal(session);
       if (steal && !steal.by && !session.revealed) {
         // (Everyone who could steal it missed: nothing more to judge.)
-        hint(stealersLeft(session.players, steal, partnerMarks).length ? `🔔 A steal: ${phonesOn ? 'whoever buzzes in first answers, or press' : 'press'} the number of who steals it, then Enter (right) or Shift+Enter (wrong)` : 'Everyone missed the steal: R reveals the answer');
+        hint(stealOpen() ? stealHint() : 'Everyone missed the steal: R reveals the answer');
       } else hint(`${judgedText()} (Ctrl+Z takes it back)`);
       return true;
     }

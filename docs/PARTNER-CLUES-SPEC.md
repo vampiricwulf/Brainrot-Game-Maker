@@ -617,10 +617,13 @@ Card 2 · 1 line of words
   press shows "The cards just went out: press Enter again to give ✔ Got it" (after ⏱ Start the clock, or on a clue
   with no cards: "The clock just started: press Enter again to give ✔ Got it"). Clicking ✔ Got it or ✘ Missed has no
   delay.
-- **A click on the stage** never shows the answer before the pair has had their go. In the Distribute step it hints
-  "The answer stays hidden until they've had their go: 👁 Reveal answer (R) shows it anyway"; once the cards are out,
-  until the clock runs out or the clue is judged, "Right or wrong? ✔ Got it / ✘ Missed in the 🤝 box (Enter /
-  Shift+Enter)". After that a click shows the answer, as on any clue. R and 👁 Reveal answer show it at any time.
+- **A click on the stage** never shows the answer before the pair has had their go, and says what's next instead. In
+  the Distribute step: "The answer stays hidden until they've had their go: 📤 Send and start (Enter) · R shows it
+  anyway" (with no phones, "copy the cards to their players, then ⏱ Start the clock (Enter)"). Once the cards are out,
+  until the clock runs out or the clue is judged: "Right or wrong? ✔ Got it / ✘ Missed in the 🤝 box (Enter /
+  Shift+Enter)", with "· T starts the clock, R shows the answer anyway" after it when no clock is running. While a steal
+  is on (§8.3), until it's stolen, everyone has missed it or the clock runs out: how the steal goes on, as Enter says
+  it. After that a click shows the answer, as on any clue. R and 👁 Reveal answer show it at any time.
 - **The quick ✔/✘ on a score chip** follows ⚖ Deduct on wrong, as today (`quickFor`, HostPanel.svelte:459-460). With it
   on, the chips show only for Ann and Bob, and each is worth that player's share. With it off there are no chips;
   ✔ Got it, ✘ Missed and the award row do the job.
