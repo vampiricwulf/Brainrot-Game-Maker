@@ -2,6 +2,7 @@
 // played, the picker, Players and Final changes) and rolls in one list, newest first, and the order Undo goes through
 // them. Pure functions over the session, like session.ts.
 import { describeStep, findClueRef, stepOf } from './session';
+import { stepText } from './toolset';
 import type { Game, ScoreEvent, Session } from './model';
 
 /** done: counts now · redo: undone, Redo brings it back · off: undone in the Scores tab (only its Restore brings it back). */
@@ -84,9 +85,10 @@ function roundOf(game: Game, e: ScoreEvent): number | undefined {
 
 /**
  * Every score step, step and roll, newest first, with the steps that were undone (and can be redone) on top: Undo
- * always takes the newest, so they are the newest there are. `sym` is the game's currency symbol.
+ * always takes the newest, so they are the newest there are. `sym` is the game's currency symbol. `hide`: a single
+ * window, where the steps say their quiet text (a secret board-game space not revealed yet as “? (secret)”).
  */
-export function timelineRows(session: Session, game: Game, sym: string): TimelineRow[] {
+export function timelineRows(session: Session, game: Game, sym: string, hide = false): TimelineRow[] {
   const folded = inSteps(session);
   const redoIds = new Set(session.redoStack);
   const byStep = new Map<string, ScoreEvent[]>();
@@ -102,8 +104,8 @@ export function timelineRows(session: Session, game: Game, sym: string): Timelin
     const ts = Math.max(...events.map((e) => e.ts));
     rows.push({ kind: 'score', id, ts, text: describeStep(session, events, sym) + judged(events[0]), events, state, clueId: events[0].clueId, round: roundOf(game, events[0]) });
   }
-  for (const a of session.actionLog ?? []) rows.push({ kind: 'action', id: a.id, ts: a.ts, text: a.text, round: a.round, state: 'done' });
-  for (const a of session.actionRedo ?? []) rows.push({ kind: 'action', id: a.id, ts: a.ts, text: a.text, round: a.round, state: 'redo' });
+  for (const a of session.actionLog ?? []) rows.push({ kind: 'action', id: a.id, ts: a.ts, text: stepText(a, hide), round: a.round, state: 'done' });
+  for (const a of session.actionRedo ?? []) rows.push({ kind: 'action', id: a.id, ts: a.ts, text: stepText(a, hide), round: a.round, state: 'redo' });
   for (const r of session.rollLog ?? []) rows.push({ kind: 'roll', id: r.id, ts: r.ts, text: `${r.name}: ${r.result}`, source: r.source });
   const redo = rows.filter((r) => r.kind !== 'roll' && r.state === 'redo').sort((a, b) => b.ts - a.ts);
   const rest = rows.filter((r) => !redo.includes(r)).sort((a, b) => b.ts - a.ts);

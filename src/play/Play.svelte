@@ -69,7 +69,7 @@
   import { cueHere, playCue } from './cues';
   import { BUILTIN } from '../lib/sounds';
   import { watchSinks } from '../lib/audioout.svelte';
-  import { finalNextStep, logged, redoAction, redoFrom, revealStep, setPicker, startStep, undoAction, whoWasWhoStep, type Undone } from '../lib/toolset';
+  import { finalNextStep, logged, redoAction, redoFrom, revealStep, setPicker, startStep, stepText, undoAction, whoWasWhoStep, type Undone } from '../lib/toolset';
   import { groupPops, stopsTimer } from './flow';
   import { nextUndo, stillUndone, type TimelineRow } from '../lib/timeline';
   import {
@@ -2855,7 +2855,7 @@
     const next = nextUndo(session);
     if (next?.log === 'action') {
       const a = session.actionLog!.at(-1)!;
-      return `${a.text}${inRound(a)}`;
+      return `${stepText(a, !dual)}${inRound(a)}`;
     }
     const here = (e: ScoreEvent) => !e.undone && stepOf(e) === next?.id && session.players.some((p) => p.id === e.playerId);
     return next ? describeStep(session, session.scoreLog.filter(here), sym) : null;
@@ -2863,7 +2863,7 @@
   const redoText = $derived.by(() => {
     const from = redoFrom(session, [...undone]);
     const a = session.actionRedo?.at(-1);
-    if (from === 'action' && a) return `${a.text}${inRound(a)}`;
+    if (from === 'action' && a) return `${stepText(a, !dual)}${inRound(a)}`;
     const top = session.scoreLog.find((e) => e.id === session.redoStack.at(-1));
     return top ? describeStep(session, session.scoreLog.filter((e) => e.undone && stepOf(e) === stepOf(top) && session.redoStack.includes(e.id)), sym) : null;
   });
@@ -2910,7 +2910,7 @@
       // A Daily Double's player back (taken out, then the Undo): picked again, for its ✔ / ✘ and Enter.
       const dd = session.phase === 'clue' ? session.dd : null;
       if (dd?.stage === 'question' && dd.playerId && !selected.length) selected = [dd.playerId];
-      return `${a.text}${inRound(a)}`;
+      return `${stepText(a, !dual)}${inRound(a)}`;
     }
     const events = undo(session);
     if (!events.length) return null;
@@ -2939,7 +2939,7 @@
       const was = session.partner?.stage;
       const a = redoAction(session, game);
       pairClockFollow(was);
-      if (a) return after(`${a.text}${inRound(a)}`);
+      if (a) return after(`${stepText(a, !dual)}${inRound(a)}`);
     }
     const events = redo(session);
     stealFollow(events);
@@ -4072,7 +4072,7 @@
       } else setEditing(false);
     } else if (k === 'delete' || k === 'backspace') {
       if (boardEdit.sel) editDelete(game, session, boardEdit.sel, !dual);
-      else if (boardEdit.link) editDisconnect(game, session, boardEdit.link, !dual);
+      else if (boardEdit.link) editDisconnect(game, session, boardEdit.link);
     } else if (k === 'f2') {
       hideControls = false;
       void tick().then(() => document.querySelector<HTMLInputElement>('[data-edit-name]')?.select());
@@ -5099,7 +5099,7 @@
   </main>
   {#if showLog && (dual || panelBox)}
     <!-- Single window: in the host panel (it grows for it), never over the stage viewers see. -->
-    <ScoreLog {game} {session} {sym} bind:tab={logTab} area={panelBox} spinning={spinningIds} onreopen={toggleTile} onback={undoBackTo} onredoto={redoUpTo} onclose={() => (showLog = false)} />
+    <ScoreLog {game} {session} {sym} hide={!dual} bind:tab={logTab} area={panelBox} spinning={spinningIds} onreopen={toggleTile} onback={undoBackTo} onredoto={redoUpTo} onclose={() => (showLog = false)} />
   {/if}
   {#if showPlayers}
     <!-- Every click, change or dropped row (a player dragged to a new place) in here ends a step (see commitRoster). -->

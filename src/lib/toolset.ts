@@ -561,7 +561,7 @@ let depth = 0;
  * Run `change` as one undoable step called `text`. Pass the game being played when the step changes its screens
  * (improvising), so the undo puts them back too.
  */
-export function logged(session: Session, text: string, change: () => void, game?: Game): void {
+export function logged(session: Session, text: string, change: () => void, game?: Game, quiet?: string): void {
   if (depth) return change();
   const done = startStep(session, game);
   depth++;
@@ -570,22 +570,26 @@ export function logged(session: Session, text: string, change: () => void, game?
   } finally {
     depth--;
   }
-  done(text);
+  done(text, quiet);
 }
+
+/** What a step says: in a single window (`hide`), its quiet text (a secret space not revealed yet as “? (secret)”). */
+export const stepText = (a: Pick<ActionEvent, 'text' | 'quiet'>, hide: boolean): string => (hide && a.quiet) || a.text;
 
 /** The `before` of each step under way, by session (see startStep). */
 const openSteps = new WeakMap<Session, Set<Record<string, string>>>();
 
 /**
  * Start a step that takes a while (the live screen editor): everything changed until `done(text)` is one undoable
- * step. Nothing is logged if nothing changed. Only the parts that changed are kept.
+ * step. Nothing is logged if nothing changed. Only the parts that changed are kept. `quiet`: its text for a single
+ * window, when that differs (see ActionEvent).
  */
-export function startStep(session: Session, game?: Game): (text: string) => void {
+export function startStep(session: Session, game?: Game): (text: string, quiet?: string) => void {
   const before = capture(session, game);
   const scored = session.scoreLog.length;
   const open = openSteps.get(session) ?? openSteps.set(session, new Set()).get(session)!;
   open.add(before);
-  return (text) => {
+  return (text, quiet) => {
     open.delete(before);
     const now = capture(session, game);
     const keys = [...new Set([...Object.keys(before), ...Object.keys(now)])].filter((k) => before[k] !== now[k]);
@@ -596,7 +600,15 @@ export function startStep(session: Session, game?: Game): (text: string) => void
     const score = session.scoreLog.slice(scored).map((e) => ({ ...e }));
     if (!keys.length && !score.length) return;
     session.actionLog ??= [];
-    session.actionLog.push({ id: newId(), ts: Date.now(), text, round: session.currentRound, before: partsOf(before, keys), ...(score.length ? { score } : {}) });
+    session.actionLog.push({
+      id: newId(),
+      ts: Date.now(),
+      text,
+      ...(quiet && quiet !== text ? { quiet } : {}),
+      round: session.currentRound,
+      before: partsOf(before, keys),
+      ...(score.length ? { score } : {}),
+    });
     if (session.actionLog.length > LOG_LIMIT) session.actionLog.splice(0, session.actionLog.length - LOG_LIMIT);
     session.actionRedo = [];
   };

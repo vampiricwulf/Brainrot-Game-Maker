@@ -399,7 +399,9 @@ The mode isn't saved with the game: it's dual while the audience window is open.
     answer is up), with a title saying viewers can see them; with the audience window open they're in the host column
     instead. The editor's notes fields say so ("off stream, except in a single window"); a secret board-game space's
     notes wait for 👁 Reveal space, as its name does (its card says “?” until then too, and so does ✎ Edit board: its
-    menu, hints and undo steps say “? (secret)”, its Name box behind 👁 Show). Windows opened mid-game (?,
+    menu, hints and undo steps say “? (secret)”, a step taken with the audience window open too once it closes (each step
+    keeps a quiet text for one window), its Name box behind 👁 Show while it stays picked, and its ⚙ Buttons… window's
+    buttons and notes behind 👁 Show its buttons). Windows opened mid-game (?,
     📜 Log, 👥 Players, ⚖ Rules, 🔊 Sound, the RPG's ⤢ Full map, ✎ Edit board's ⚙ Buttons…) open over the host panel,
     never the stage (the full map's screen card beside the map where the panel is wide enough); the RPG's ✎
     Edit screen is too big for it and says viewers see it (📺 Audience edits off stream). The stage keeps one size

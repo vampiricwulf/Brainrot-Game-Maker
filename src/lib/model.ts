@@ -1356,6 +1356,11 @@ export interface ActionEvent {
   id: Id;
   ts: number;
   text: string;
+  /**
+   * The text with a secret board-game space not revealed yet as “? (secret)”, where that differs: what a single window
+   * shows (the host panel is on stream there), whichever window the step was taken in.
+   */
+  quiet?: string;
   /** The round it was taken in (Ctrl+Z can reach back into an earlier round). */
   round?: number;
   before: string;

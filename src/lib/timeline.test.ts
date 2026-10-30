@@ -122,6 +122,16 @@ describe('the play history', () => {
     ]);
   });
 
+  it('a single window says a step’s quiet text (a secret space as “? (secret)”), with an audience window its words', () => {
+    const { game, session } = setup();
+    logged(session, 'Connected Trap door → Start', () => (session.currentPickerId = 'a'), game, 'Connected ? (secret) → Start');
+    const said = (hide: boolean) => timelineRows(session, game, '$', hide).find((r) => r.kind === 'action')?.text;
+    expect([said(false), said(true)]).toEqual(['Connected Trap door → Start', 'Connected ? (secret) → Start']);
+    // Undone, it waits to be redone with both.
+    undoAction(session, game);
+    expect(said(true)).toBe('Connected ? (secret) → Start');
+  });
+
   it('orders Undo the way Ctrl+Z goes, and leaves out removed players’ changes', () => {
     const { game, session } = play();
     const order = undoOrder(session);

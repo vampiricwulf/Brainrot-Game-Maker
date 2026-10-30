@@ -5,6 +5,7 @@
   window (viewers see this panel) a secret space not revealed yet is “? (secret)” here, its name box behind 👁 Show.
 -->
 <script lang="ts">
+  import { untrack } from 'svelte';
   import { app } from '../../lib/app.svelte';
   import { applySpaceKind, nameShown, SPACE_KINDS, spaceById, spaceListNames, spaceSaid, unrevealed } from '../../lib/boardgame';
   import { numberStat } from '../../lib/rpgpresets';
@@ -32,8 +33,14 @@
   const name = (id: string) => said(spaceById(round, id));
   /** A secret space not revealed yet whose name would be on stream (one window). */
   const quiet = (s: BoardSpace) => hide && unrevealed(bs, s);
-  /** The secret space whose name box shows its name (👁 Show): only that one, until another is picked. */
+  /** The secret space whose name box shows its name (👁 Show): only that one, while it stays picked. */
   let shownFor = $state<string | null>(null);
+  $effect(() => {
+    const id = boardEdit.sel;
+    untrack(() => {
+      if (shownFor !== id) shownFor = null;
+    });
+  });
   const masked = $derived(!!sel && quiet(sel) && shownFor !== sel.id);
   /** The spaces' names in Connect to… (a name that repeats says where it is: “Bonus (after Space 6)”). */
   const listNames = $derived(spaceListNames(hide ? { ...round, spaces: round.spaces.map((x) => (unrevealed(bs, x) ? { ...x, name: '? (secret)' } : x)) } : round));
@@ -98,7 +105,8 @@
           style:-webkit-text-security={masked ? 'disc' : undefined}
           onchange={(e) => {
             const v = e.currentTarget.value.trim();
-            if (v && v !== s.name) editSpace(game, session, s.id, quiet(s) ? 'Renamed space “? (secret)”' : `Renamed space “${s.name}” to “${v}”`, (x) => (x.name = v));
+            const was = s.name;
+            if (v && v !== was) editSpace(game, session, s.id, (h) => (h && unrevealed(bs, s) ? 'Renamed space “? (secret)”' : `Renamed space “${was}” to “${v}”`), (x) => (x.name = v));
             else e.currentTarget.value = s.name;
           }}
           onkeydown={(e) => {
@@ -113,7 +121,7 @@
       {/if}
       <label class="small">
         Color
-        <ColorBox value={s.color} aria-label="Space color" onchange={(e) => editSpace(game, session, s.id, `Color of “${said(s)}”`, (x) => (x.color = e.currentTarget.value))} />
+        <ColorBox value={s.color} aria-label="Space color" onchange={(e) => editSpace(game, session, s.id, (h) => `Color of “${spaceSaid(bs, s, h)}”`, (x) => (x.color = e.currentTarget.value))} />
       </label>
       <label class="check small">
         <input
@@ -121,15 +129,15 @@
           checked={!!s.secret}
           onchange={(e) => {
             const on = e.currentTarget.checked;
-            // (Its name stays out of the step either way in one window: it's, or it was, a secret not revealed yet.)
-            const named = hide && !bs.revealed?.includes(s.id) ? '? (secret)' : s.name;
-            editSpace(game, session, s.id, `${on ? 'Secret' : 'Not secret'}: “${named}”`, (x) => (x.secret = on || undefined));
+            // (Its name stays out of a single window's step either way: it's, or it was, a secret not revealed yet.)
+            const named = (h: boolean) => (h && !bs.revealed?.includes(s.id) ? '? (secret)' : s.name);
+            editSpace(game, session, s.id, (h) => `${on ? 'Secret' : 'Not secret'}: “${named(h)}”`, (x) => (x.secret = on || undefined));
           }}
         />
         Secret
       </label>
       <label class="check small" title="Viewers see its name under it (you always see it while editing)">
-        <input type="checkbox" data-show-name checked={nameShown(s)} onchange={(e) => editShowName(game, session, s.id, e.currentTarget.checked, hide)} />
+        <input type="checkbox" data-show-name checked={nameShown(s)} onchange={(e) => editShowName(game, session, s.id, e.currentTarget.checked)} />
         Show name on the board
       </label>
       <select
@@ -140,7 +148,7 @@
         onchange={(e) => {
           const k = SPACE_KINDS.find((x) => x.kind === e.currentTarget.value);
           e.currentTarget.value = '';
-          if (k) editSpace(game, session, s.id, `Made “${said(s)}” a ${k.label.replace(/^\S+\s/, '')} space`, (x) => applySpaceKind(x, k.kind, { shop: game.shops?.[0]?.id, hp: numberStat(game, 'HP')?.id }));
+          if (k) editSpace(game, session, s.id, (h) => `Made “${spaceSaid(bs, s, h)}” a ${k.label.replace(/^\S+\s/, '')} space`, (x) => applySpaceKind(x, k.kind, { shop: game.shops?.[0]?.id, hp: numberStat(game, 'HP')?.id }));
         }}
       >
         <option value="">✨ Make it a…</option>
@@ -149,7 +157,7 @@
         {/each}
       </select>
       <button class="small" onclick={() => (boardEdit.buttons = s.id)} title="What it does when passed or landed on, and its host notes">⚙ Buttons ({(s.onPass?.length ?? 0) + (s.onLand?.length ?? 0)})…</button>
-      <button class="small" disabled={isStart} onclick={() => editStart(game, session, s.id, hide)}>🏁 Make it Start</button>
+      <button class="small" disabled={isStart} onclick={() => editStart(game, session, s.id)}>🏁 Make it Start</button>
       <span class="spacer"></span>
       <button class="ghost small danger" onclick={() => editDelete(game, session, s.id, hide)} title="Delete (Ctrl+Z brings it back){here.length ? `: ${here.map((p) => p.name).join(', ')} move to the space before it` : ''}">🗑 Delete space</button>
     </div>
@@ -158,7 +166,7 @@
       {#each s.next as n (n)}
         <span class="chip">
           {spaceById(round, n)?.next.includes(s.id) ? '↔' : '→'} {name(n)}
-          <button class="ghost tiny" onclick={() => editDisconnect(game, session, { from: s.id, to: n }, hide)} aria-label="Disconnect {said(s)} from {name(n)}" title="Disconnect">✂</button>
+          <button class="ghost tiny" onclick={() => editDisconnect(game, session, { from: s.id, to: n })} aria-label="Disconnect {said(s)} from {name(n)}" title="Disconnect">✂</button>
         </span>
       {:else}
         <span class="muted small">nothing (the path ends)</span>
@@ -168,7 +176,7 @@
         {#each into as f (f.id)}
           <span class="chip">
             ← {said(f)}
-            <button class="ghost tiny" onclick={() => editDisconnect(game, session, { from: f.id, to: s.id }, hide)} aria-label="Disconnect {said(f)} from {said(s)}" title="Disconnect">✂</button>
+            <button class="ghost tiny" onclick={() => editDisconnect(game, session, { from: f.id, to: s.id })} aria-label="Disconnect {said(f)} from {said(s)}" title="Disconnect">✂</button>
           </span>
         {/each}
       {/if}
@@ -191,10 +199,10 @@
     {@const k = link}
     <div class="row pick" data-edit-link {@attach (el) => (void boardEdit.link, el.scrollIntoView({ block: 'nearest' }))}>
       <b class="small">{said(k.a)} {k.both ? '↔' : '→'} {said(k.b)}</b>
-      <button class="small" onclick={() => editBothWays(game, session, k.l, hide)}>{k.both ? '→ One way only' : '⇄ Both ways'}</button>
-      <button class="small" disabled={k.both} onclick={() => editReverse(game, session, k.l, hide)}>↺ Reverse</button>
+      <button class="small" onclick={() => editBothWays(game, session, k.l)}>{k.both ? '→ One way only' : '⇄ Both ways'}</button>
+      <button class="small" disabled={k.both} onclick={() => editReverse(game, session, k.l)}>↺ Reverse</button>
       <span class="spacer"></span>
-      <button class="ghost small danger" onclick={() => editDisconnect(game, session, k.l, hide)} title="Delete">✂ Disconnect</button>
+      <button class="ghost small danger" onclick={() => editDisconnect(game, session, k.l)} title="Delete">✂ Disconnect</button>
     </div>
   {/if}
 </div>
@@ -202,7 +210,7 @@
 {#if boardEdit.buttons}
   {@const s = spaceById(round, boardEdit.buttons)}
   {#if s}
-    <BoardSpaceButtons {round} space={s} name={said(s)} onclose={() => (boardEdit.buttons = null)} />
+    <BoardSpaceButtons {round} space={s} name={said(s)} quietName={spaceSaid(bs, s, true)} hidden={quiet(s)} onclose={() => (boardEdit.buttons = null)} />
   {/if}
 {/if}
 

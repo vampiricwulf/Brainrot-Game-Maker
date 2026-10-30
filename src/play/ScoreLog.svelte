@@ -22,6 +22,7 @@
     onclose,
     area = null,
     spinning = [],
+    hide = false,
   }: {
     game: Game;
     session: Session;
@@ -38,6 +39,8 @@
     area?: { top: number; left: number; width: number; height: number } | null;
     /** Rolls whose wheel, dice or roll-off is still going: their result waits for the landing (this log can be on stream). */
     spinning?: string[];
+    /** Single window (this log is on stream): steps say their quiet text, a secret board-game space as “? (secret)”. */
+    hide?: boolean;
   } = $props();
   const byId = $derived(Object.fromEntries([...(session.removedPlayers ?? []), ...session.players].map((p) => [p.id, p])));
   const removed = $derived(new Set((session.removedPlayers ?? []).map((p) => p.id)));
@@ -75,7 +78,7 @@
 
   // ---------- 🕘 History ----------
 
-  const rows = $derived(timelineRows(session, game, sym));
+  const rows = $derived(timelineRows(session, game, sym, hide));
   const undone = (r: TimelineRow) => r.kind !== 'roll' && r.state === 'redo';
   /** The list as shown: the undone steps, "● Now", then the rest, with a heading where the round changes. */
   const items = $derived.by(() => {

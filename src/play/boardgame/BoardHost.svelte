@@ -14,7 +14,7 @@
   import { clampSteps, currentPlayer, MAX_STEPS, spaceById, spaceListNames, spaceSaid, spaceShown, unrevealed, waysOn } from '../../lib/boardgame';
   import { DragOrder } from '../../lib/dragorder.svelte';
   import { newId, type Action, type BoardSpace, type Game, type Session } from '../../lib/model';
-  import { lastAction, logged } from '../../lib/toolset';
+  import { lastAction, logged, stepText } from '../../lib/toolset';
   import { overlayDoneAt, toolOverlay } from '../../lib/live';
   import PlayerCard, { cardsShown, playerCards } from '../rpg/PlayerCard.svelte';
   import { boardNow, busyZones, moveNow, moverDiceName, offBoard, playerName, reorderTurns, rollMover, sendNow, setTurn, stepWaysHint, turnNow, turnOrder } from './bgops';
@@ -437,7 +437,7 @@
         {#each zones.filter((z) => z.hostNotes) as z (z.id)}<span class="notes">🌀 {z.name}: 📝 {z.hostNotes}</span>{/each}
       {/if}
       <span class="spacer"></span>
-      {#if recent}<button class="muted small last" onclick={onhistory} title="Ctrl+Z undoes it · click for the whole history">Last: {recent.text}</button>{/if}
+      {#if recent}<button class="muted small last" onclick={onhistory} title="Ctrl+Z undoes it · click for the whole history">Last: {stepText(recent, !dual)}</button>{/if}
       <button class="ghost small" onclick={() => (playerCards.open = !showPlayers)} aria-expanded={showPlayers}>{showPlayers ? '▾' : '▸'} {ctx.teams ? 'Teams' : 'Players'}</button>
     </div>
     {#if showPlayers}

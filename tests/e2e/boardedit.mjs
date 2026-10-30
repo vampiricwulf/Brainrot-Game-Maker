@@ -1,7 +1,9 @@
 // Board games in play: the main button goes 🎲 Roll → ▶ Move → Next turn ▶, with ◀ Previous turn right beside it (under
 // the stage and in the side column), and ✎ Edit board changes the board while the game runs: add, move, connect,
 // disconnect and delete spaces (players on a deleted space move to the one before it), each an undo step (in one window
-// a secret space is “? (secret)” in all of it, its name nowhere on the page); the audience window follows; 💾 Keep in game writes the board back into the game in the editor, and without it the editor's game
+// a secret space is “? (secret)” in all of it, its name nowhere on the page, its ⚙ Buttons… behind 👁 Show its buttons,
+// and a step taken on it with the audience window open says “? (secret)” once that window closes); the audience window
+// follows; 💾 Keep in game writes the board back into the game in the editor, and without it the editor's game
 // stays as it was.
 import { chromium } from 'playwright-core';
 import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
@@ -390,17 +392,42 @@ try {
   // (Undo's tooltip, the last step), its name box behind 👁 Show. Ctrl+Z takes it all back after.
   const editPanel = page.locator('[data-board-editing]');
   const undoTip = () => page.locator('.panel button[title^="Undo:"]').getAttribute('title');
-  /** Everything the page shows or says (its text, labels and tooltips) has no “Space 7”. */
-  const noSpace7 = async (when) => {
-    const words = await page.evaluate(() => [document.body.innerText, ...[...document.querySelectorAll('[aria-label], [title]')].flatMap((e) => [e.getAttribute('aria-label') ?? '', e.getAttribute('title') ?? ''])].join('\n'));
-    assert(!words.includes('Space 7'), `one window, ${when}: the secret space’s name is nowhere on the page`);
+  /** Everything the page shows or says (its text, labels, tooltips and the fields' words, but a masked box) has no `word`. */
+  const nowhere = async (when, word = 'Space 7') => {
+    const words = await page.evaluate(() =>
+      [
+        document.body.innerText,
+        ...[...document.querySelectorAll('[aria-label], [title]')].flatMap((e) => [e.getAttribute('aria-label') ?? '', e.getAttribute('title') ?? '']),
+        ...[...document.querySelectorAll('input, textarea')].filter((e) => getComputedStyle(e).webkitTextSecurity !== 'disc').map((e) => e.value),
+      ].join('\n'),
+    );
+    assert(!words.includes(word), `one window, ${when}: the secret space’s ${word === 'Space 7' ? 'name' : `“${word}”`} is nowhere on the page`);
   };
+  const noSpace7 = (when) => nowhere(when);
   const s7At = await at(750, 560);
   await page.mouse.click(s7At.x, s7At.y);
   await editPanel.getByLabel('Secret', { exact: true }).check();
   assert((await last(page)).includes('Secret: “? (secret)”') && !(await undoTip()).includes('Space 7'), `ticking Secret is a step that doesn’t name it (${await last(page)})`);
   const nameBox = page.getByLabel('Space name');
   assert((await nameBox.evaluate((e) => getComputedStyle(e).webkitTextSecurity)) === 'disc', 'its name box hides its name');
+  // ⚙ Buttons… over the panel: its buttons and host notes wait for 👁 Show its buttons (they'd be on stream).
+  const buttonsWin = page.getByRole('dialog', { name: 'Buttons on ? (secret)' });
+  const openButtons = async () => {
+    await editPanel.getByRole('button', { name: /⚙ Buttons/ }).click();
+    await buttonsWin.waitFor();
+  };
+  await openButtons();
+  assert((await buttonsWin.locator('textarea').count()) === 0 && (await buttonsWin.locator('[data-buttons-hidden]').count()) === 1, '⚙ Buttons… on it: its buttons and notes wait behind 👁 Show its buttons');
+  await noSpace7('⚙ Buttons… open');
+  await buttonsWin.getByRole('button', { name: '👁 Show its buttons' }).click();
+  await buttonsWin.locator('textarea').fill('quicksand');
+  await buttonsWin.getByRole('button', { name: 'Done' }).click();
+  await buttonsWin.waitFor({ state: 'detached' });
+  assert((await last(page)).includes('Changed the buttons on “? (secret)”'), `👁 Show its buttons, a note typed: a step that doesn’t name it (${await last(page)})`);
+  await openButtons();
+  await nowhere('⚙ Buttons… opened again', 'quicksand');
+  await page.keyboard.press('Escape');
+  await buttonsWin.waitFor({ state: 'detached' });
   await editPanel.getByRole('button', { name: '🔗 Connect to…' }).click();
   assert((await editPanel.innerText()).includes('Click the space ? (secret) should lead to…'), 'the Connect to… hint says “? (secret)”');
   await noSpace7('connecting');
@@ -423,10 +450,19 @@ try {
   if (shots) await page.screenshot({ path: `${shots}/editing-secret.png` });
   await page.keyboard.press('Control+z');
   await page.mouse.click(s7At.x, s7At.y);
+  const masked = () => nameBox.evaluate((e) => getComputedStyle(e).webkitTextSecurity === 'disc');
   await editPanel.getByRole('button', { name: '👁 Show' }).click();
-  assert((await nameBox.evaluate((e) => getComputedStyle(e).webkitTextSecurity)) !== 'disc' && (await nameBox.inputValue()) === 'Space 7', '👁 Show shows its name in the box');
+  assert(!(await masked()) && (await nameBox.inputValue()) === 'Space 7', '👁 Show shows its name in the box');
   await editPanel.getByRole('button', { name: '🙈 Hide' }).click();
-  assert((await nameBox.evaluate((e) => getComputedStyle(e).webkitTextSecurity)) === 'disc', 'and 🙈 Hide hides it again');
+  assert(await masked(), 'and 🙈 Hide hides it again');
+  // 👁 Show lasts while it stays picked: another space picked and it again, its name is hidden again.
+  await editPanel.getByRole('button', { name: '👁 Show' }).click();
+  await page.mouse.click(s3c.x, s3c.y);
+  await page.getByLabel('Connect Space 3 to').waitFor();
+  await page.mouse.click(s7At.x, s7At.y);
+  await page.getByLabel('Connect ? (secret) to').waitFor();
+  assert(await masked(), 'another space picked, then it again: its name box hides its name again');
+  await page.keyboard.press('Control+z');
   await page.keyboard.press('Control+z');
   await page.keyboard.press('Control+z');
   await editPanel.locator('label.check', { hasText: 'Secret' }).locator('input:not(:checked)').waitFor();
@@ -625,6 +661,24 @@ try {
     await host.screenshot({ path: `${shots}/names-host-dual.png` });
     await aud.screenshot({ path: `${shots}/names-audience.png` });
   }
+  // A step on the secret space with the audience window open names it. Once that window closes (one window now, the
+  // panel on stream), the step's line and Undo's tooltip say “? (secret)”.
+  await host.keyboard.press('e');
+  await host.locator('[data-board-editing]').waitFor();
+  const b2 = await box(hl);
+  await host.mouse.click(b2.x + (650 * b2.width) / 1920, b2.y + (700 * b2.height) / 1080);
+  await host.getByLabel('Connect Trap Door to').selectOption({ label: 'Space 3' });
+  assert((await last(host)).includes('Connected Trap Door → Space 3'), 'with an audience window, a step on the secret space names it');
+  await aud.close();
+  await host.locator('[data-board-editing]', { hasText: 'Viewers see this' }).waitFor();
+  const tip = await host.locator('.panel button[title^="Undo:"]').getAttribute('title');
+  assert(
+    (await last(host)).includes('Connected ? (secret) → Space 3') && tip.includes('Connected ? (secret) → Space 3') && !tip.includes('Trap Door'),
+    `the audience window closed: the step's line and Undo's tooltip say “? (secret)” (${tip})`,
+  );
+  await host.keyboard.press('Control+z');
+  await host.keyboard.press('e');
+  await host.locator('[data-board-editing]').waitFor({ state: 'detached' });
   await host.getByRole('button', { name: 'Exit' }).click();
   await host.waitForTimeout(450);
   await host.getByRole('button', { name: 'Keep & leave', exact: true }).click();

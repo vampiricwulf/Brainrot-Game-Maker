@@ -1,7 +1,8 @@
 <!--
   ✎ Edit board › ⚙ Buttons…: a space's buttons (when passed, when landed on) and its host notes, with the editor's own
   fields, on the game being played. Everything done here is one undoable step (Ctrl+Z once it's closed), and it lasts for
-  this game only unless the host presses 💾 Keep in game.
+  this game only unless the host presses 💾 Keep in game. In a single window (viewers see it) a secret space not revealed
+  yet keeps its buttons and notes behind 👁 Show its buttons.
 -->
 <script lang="ts">
   import { getContext, onDestroy, untrack } from 'svelte';
@@ -16,23 +17,31 @@
     round,
     space,
     name,
+    quietName,
+    hidden = false,
     onclose,
   }: {
     round: BoardGameRound;
     space: BoardSpace;
     /** Its name as the panel says it (one window, a secret space not revealed yet: “? (secret)”). */
     name?: string;
+    /** Its name as a single window's step says it (a secret space not revealed yet: “? (secret)”). */
+    quietName?: string;
+    /** One window, a secret space not revealed yet: its buttons and notes wait for 👁 Show its buttons. */
+    hidden?: boolean;
     onclose: () => void;
   } = $props();
   // One step for the whole edit (with the board's spaces, so Undo puts the buttons back).
   const done = untrack(() => app.session && startStep(app.session, app.playGame ?? undefined));
-  const title = untrack(() => name ?? space.name);
+  const [title, quietTitle] = untrack(() => [space.name, quietName ?? space.name]);
   // The editor's fields work on the game being played while this is open (and the host's shortcuts stay off).
   app.editGame = app.playGame;
   onDestroy(() => {
     app.editGame = null;
-    done?.(`Changed the buttons on “${title}”`);
+    done?.(`Changed the buttons on “${title}”`, `Changed the buttons on “${quietTitle}”`);
   });
+  /** 👁 Show its buttons pressed (a secret space's, in one window). */
+  let shown = $state(false);
 
   // One window: over the host panel only (it waits for the panel's box), never the stage viewers see.
   const place = getContext<PanelPlace | undefined>(PANEL_AREA);
@@ -70,13 +79,20 @@
         <button class="primary" onclick={onclose} title="Esc">Done</button>
         <button class="ghost modal-x" onclick={onclose} aria-label="Close" title="Close (Esc)">✕</button>
       </div>
-      <div class="body">
-        <h5>When passed <span class="muted small">(landing on it counts too · e.g. Start: +2 gold)</span></h5>
-        <ActionListEditor bind:actions={space.onPass} board={round} passing addLabel="＋ Add button (when passed)" />
-        <h5>When landed on</h5>
-        <ActionListEditor bind:actions={space.onLand} board={round} addLabel="＋ Add button (when landed on)" />
-        <label class="field">Host notes (off stream, except in a single window)<textarea rows="2" bind:value={space.hostNotes}></textarea></label>
-      </div>
+      {#if hidden && !shown}
+        <p class="small" data-buttons-hidden>
+          Viewers see this window, and this space is still a secret: its buttons and host notes stay hidden here.
+          <button class="small" onclick={() => (shown = true)} title="Shows them here (viewers see them too)">👁 Show its buttons</button>
+        </p>
+      {:else}
+        <div class="body">
+          <h5>When passed <span class="muted small">(landing on it counts too · e.g. Start: +2 gold)</span></h5>
+          <ActionListEditor bind:actions={space.onPass} board={round} passing addLabel="＋ Add button (when passed)" />
+          <h5>When landed on</h5>
+          <ActionListEditor bind:actions={space.onLand} board={round} addLabel="＋ Add button (when landed on)" />
+          <label class="field">Host notes (off stream, except in a single window)<textarea rows="2" bind:value={space.hostNotes}></textarea></label>
+        </div>
+      {/if}
     </div>
   </div>
 {/if}

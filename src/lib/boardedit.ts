@@ -102,20 +102,22 @@ export type Deleted = {
   bridged: boolean;
   /** For the log: Deleted space “Nap time” (Ann moved to Space 7). */
   text: string;
+  /** The same, its spaces named as `quiet` names them (a single window's: a secret one not revealed yet is “? (secret)”). */
+  quiet: string;
 };
 
 /**
  * Delete a space during play: the path closes up over it (as in the editor: see closeUpOver), the players on it
  * go to the space before it (see refuge), the round's state forgets it (a fork, the last move's buttons…), Start moves
  * to the first space if it was Start, and buttons that sent players there point nowhere. Null when it isn't there.
- * `said`: a space's name in the log line (in one window, a secret one not revealed yet is “? (secret)”).
+ * `quiet`: a space's name in the log line's quiet text (a single window's: a secret one not revealed yet is “? (secret)”).
  */
 export function deleteLiveSpace(
   session: Session,
   round: BoardGameRound,
   bs: BoardGameState | undefined,
   id: Id,
-  said: (s: BoardSpace) => string = (s) => s.name,
+  quiet: (s: BoardSpace) => string = (s) => s.name,
 ): Deleted | null {
   const s = spaceById(round, id);
   if (!s) return null;
@@ -137,8 +139,9 @@ export function deleteLiveSpace(
   const who = (pid: Id) => session.players.find((p) => p.id === pid)?.name ?? '?';
   // (A player taken out keeps their place, moved too, for if they come back; the log names only those still playing.)
   const named = moved.filter((m) => session.players.some((p) => p.id === m.playerId));
-  const went = named.length && to ? ` (${nameList(named.map((m) => who(m.playerId)))} moved to ${said(to)})` : '';
-  return { moved, bridged, text: `Deleted space “${said(s)}”${went}` };
+  const line = (said: (s: BoardSpace) => string) =>
+    `Deleted space “${said(s)}”${named.length && to ? ` (${nameList(named.map((m) => who(m.playerId)))} moved to ${said(to)})` : ''}`;
+  return { moved, bridged, text: line((x) => x.name), quiet: line(quiet) };
 }
 
 /**
