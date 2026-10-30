@@ -429,9 +429,9 @@ The mode isn't saved with the game: it's dual while the audience window is open.
   stage.
 - **Nothing selects by accident**, in every window and on the phone page: a click, a double-click, a drag or `Ctrl+A`
   turns no words blue (in a single window they'd be on stream). Text selects only in fields, links, the room code (one
-  click takes it whole), error lines and ℹ About's version, build and folders; with the audience window open, the host
-  column, typed answers (✍, the Final's, a partner's guess) and the 📜 Log's rows too, to copy into chat, let go of when
-  the window closes. `Ctrl+A` on the host screen selects nothing outside a field (the live screen editor keeps its
+  click takes it whole), error lines, ℹ About's version, build and folders and 🔊 Sound help's switch and folder; with
+  the audience window open, the host column, typed answers (✍, the Final's, a partner's guess) and the 📜 Log's rows
+  too, to copy into chat, let go of when the window closes. `Ctrl+A` on the host screen selects nothing outside a field (the live screen editor keeps its
   select-all). Pictures and videos don't drag off as files: a drag on one moves what it's in.
 - **No browser menu**: in every window (the editor and host screen, the audience and scores windows, a 🪟 card window) a
   right-click the app has no menu for shows nothing, so the browser's menu (Back, Reload, Print) never shows on stream.

@@ -159,8 +159,8 @@ the page gets (on a wide screen the page is two columns). A **🔁 Rematch** kee
   notes and controls, and its board marks the Daily Doubles (⭐), 🤝 partner and ✍ tiles still to play.
 
 Nothing turns blue when you click, double-click or drag, nor with `Ctrl+A`, so nothing shows selected on stream: only
-the boxes you type in, links, the room code (one click takes all of it), error lines and ℹ About's version and folders
-select. With the audience window open, the host's own column, typed answers and the 📜 Log select too, to copy into chat.
+the boxes you type in, links, the room code (one click takes all of it), error lines, ℹ About's version and folders and
+🔊 Sound help's switch and folder select. With the audience window open, the host's own column, typed answers and the 📜 Log select too, to copy into chat.
 A right-click where the app has no menu of its own shows nothing, in every window (the browser's menu, with its Reload,
 would be on stream): boxes you type in, links and selected words keep it.
 A double-click on a button that changes the screen (▶ Play, Start game ▶, Resume game, a card on the first screen, a tile
