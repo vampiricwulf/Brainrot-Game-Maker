@@ -454,6 +454,10 @@ The mode isn't saved with the game: it's dual while the audience window is open.
    lead-in, then more): `N` / **Next slide ▶** goes through them before the answer, and viewers see small dots for
    where they are.
    - *Daily Double*: DD splash, then a wager input for the chosen player (not limited by default; the host can turn on the max(score, highest round value) limit), then the question.
+     The ⭐ box's first row is “Daily Double! Who found it?” and the players; its Wager row ends with **Show question ▶**
+     (the main button's step too, greyed with why until the wager can go), the max's words cut short where the row is
+     narrow. It opens at its top, the keys in the Wager box: in one window on a laptop the heading, the players and
+     the Wager row are in view while the panel keeps the board's height.
    - *Partner clue* (🤝, PARTNER-CLUES-SPEC.md §6): a PARTNER UP! splash with the picker, a wheel of the other players
      (`W`) or the host's choice (`1–9`) for their partner, then the question with who describes and who guesses, the
      📤 list of who gets each 🤫 card (copied to them with 📋), ⏱ Start the clock, and ✔ Got it / ✘ Missed, which
@@ -572,8 +576,8 @@ The mode isn't saved with the game: it's dual while the audience window is open.
   board game's own roll leave spinning again to their own box (the 🤝 box's ↻ Spin again, the turn's 🎲 Roll), and a
   board game's own roll goes in the roll log as the turn player's (no "This was for" to tick). While an outcome's score
   card waits, it's what's in view there; the first row comes back once it's confirmed or skipped. A box's step button
-  (a tool's, a 🤝 partner clue's) drops the rest of its own double-click wherever it lands, so the second click never
-  acts on what took the box's place.
+  (a tool's, a 🤝 partner clue's, a Daily Double's) drops the rest of its own double-click wherever it lands, so the
+  second click never acts on what took the box's place.
 - **Reveal**: the outcome is shown on the audience view (label, plus details/media/custom slide if set), with an
   optional countdown. The host can dismiss it, re-spin/re-roll, or tag it with a player
   ("this punishment is for Alex"). Every spin/roll goes into the **roll log** (separate from the score log, no score impact),

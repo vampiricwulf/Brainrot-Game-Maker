@@ -1048,9 +1048,11 @@ await page.locator('.dd-text').waitFor();
 await page.locator('.dd .chip', { hasText: 'Player 2' }).click();
 await page.locator('.dd input[type=number]').fill('99999');
 const ddLimit = page.locator('.dd').getByLabel('Ignore the limit');
-assert((await ddLimit.isChecked()) && (await mainButton(page, 'Show question ▶').isEnabled()), 'the limit is ignored by default: a wager over the cap goes');
+// (Show question ▶ is at the end of the box's Wager row too, greyed when the main button is.)
+const ddShow = stepButton(page.locator('.panel .dd'), 'Show question ▶');
+assert((await ddLimit.isChecked()) && (await mainButton(page, 'Show question ▶').isEnabled()) && (await ddShow.isEnabled()), 'the limit is ignored by default: a wager over the cap goes');
 await ddLimit.uncheck();
-assert(await mainButton(page, 'Show question ▶').isDisabled(), 'with the limit on, a wager over the cap is blocked');
+assert((await mainButton(page, 'Show question ▶').isDisabled()) && (await ddShow.isDisabled()), 'with the limit on, a wager over the cap is blocked (the box’s Show question ▶ too)');
 await page.locator('.dd input[type=number]').fill('500');
 await mainButton(page, 'Show question ▶').click();
 await page.locator('.dd-badge').waitFor();

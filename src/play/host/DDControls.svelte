@@ -1,11 +1,15 @@
-<!-- Daily Double: pick the player and wager before the clue is shown. -->
+<!--
+  Daily Double: who found it, their wager, then Show question ▶ at the Wager row's end (the main button's step too). It
+  opens at its top, the keys in the Wager box.
+-->
 <script lang="ts">
-  import { untrack } from 'svelte';
+  import { onMount, untrack } from 'svelte';
   import { textOn } from '../../lib/colors';
   import { formatPoints, wholePoints, type Game, type Session } from '../../lib/model';
   import { ddCap, score } from '../../lib/session';
-  import { offerExposed, offerNext } from './slots.svelte';
+  import { offerExposed, offerNext, type NextAction } from './slots.svelte';
   import { VERBS } from './verbs';
+  import StepButton from './StepButton.svelte';
   import { toast } from '../../lib/app.svelte';
   import { teamsOn } from '../../lib/buzz';
   import { buzzerOn } from '../../lib/remote.svelte';
@@ -111,8 +115,11 @@
   // One window: the status line's ⚠ Viewers see this chip says what viewers can read here.
   offerExposed(() => '⚠ Viewers can see this: they see this window, the wager as you type it too.');
 
-  // The main button, in the panel's main cell (Enter in the wager box does it too).
-  offerNext('dd', () => ({
+  /**
+   * Show question ▶: the main button's step, and the box's at the Wager row's end (Enter in the wager box does it too),
+   * greyed with why until there's a wager to show it with.
+   */
+  const showStep = $derived<NextAction>({
     label: VERBS.showQuestion.label,
     key: '⏎',
     title: valid
@@ -124,14 +131,19 @@
           : 'Type a wager within the max (or tick Ignore the limit)',
     disabled: !valid,
     run: () => valid && onshow(playerId, wager!),
-  }));
+  });
+  offerNext('dd', () => showStep);
+
+  // The keys in the Wager box, the box at its top: the heading and the names stay in view (focus would scroll it down to
+  // the box, in one window where the panel keeps the board's height).
+  onMount(() => wagerBox?.focus({ preventScroll: true }));
 </script>
 
 <div class="dd">
-  <!-- (One line, so the chips and the Wager box are near the top: in one window the panel keeps the board's height while
-       this is up, and the rest scrolls. See HostPanel's ddHold.) -->
-  <span><b>Daily Double!</b> <span class="muted">Who found it?{#if !playerId}{' '}<span class="warn">Pick a {noun}.</span>{:else}{' '}Click another to change.{/if}</span></span>
+  <!-- (The heading leads the names' row, so the names and the Wager row are in view with it: in one window the panel keeps
+       the board's height while this is up, and the rest scrolls. See HostPanel's ddHold.) -->
   <div class="row">
+    <span><b>Daily Double!</b> <span class="muted">Who found it?{#if !playerId}{' '}<span class="warn">Pick a {noun}.</span>{:else}{' '}Click another to change.{/if}</span></span>
     {#each session.players as p, i (p.id)}
       <button
         class="chip"
@@ -146,10 +158,10 @@
       </button>
     {/each}
   </div>
-  <div class="row">
+  <!-- (One line: what's left of the max's words is cut short, its tooltip whole.) -->
+  <div class="row wager">
     <label class="check">
       Wager
-      <!-- svelte-ignore a11y_autofocus -->
       <input
         type="number"
         min="0"
@@ -157,7 +169,6 @@
         placeholder={hideAmount ? 'hidden' : undefined}
         bind:this={wagerBox}
         oninput={(e) => typed(e.currentTarget.value === '' ? null : wholePoints(+e.currentTarget.value))}
-        autofocus
         onkeydown={(e) => {
           if (e.key === 'Enter') enter(e);
           else if (e.key === 'Escape') oncancel();
@@ -177,8 +188,12 @@
       >True Daily Double{playerId ? ` (${formatPoints(cap, sym)})` : ''}</button
     >
     {#if playerId}
-      <span class="muted small">{override ? 'TV max' : 'Max'} {formatPoints(cap, sym)} (their score or the round's top value){override ? ': not enforced' : ''}</span>
+      {@const max = `${override ? 'TV max' : 'Max'} ${formatPoints(cap, sym)} (their score or the round's top value)${override ? ': not enforced' : ''}`}
+      <span class="muted small max" title={max}>{max}</span>
+    {:else}
+      <span class="spacer"></span>
     {/if}
+    <StepButton step={showStep} />
   </div>
   <!-- The phones' line: there from the start when anyone has one (the box doesn't grow as a wager comes in). -->
   {#if phones.length}
@@ -219,7 +234,7 @@
     display: flex;
     flex-direction: column;
     gap: 6px;
-    padding: 8px;
+    padding: 6px 8px;
     border: 1px solid #b54cff;
     border-radius: 8px;
     background: rgba(122, 0, 255, 0.12);
@@ -248,5 +263,13 @@
   }
   input[type='number'] {
     width: 110px;
+  }
+  /* The max's words take the room left (cut short), so Show question ▶ stays at the row's end, on its line. */
+  .max {
+    flex: 1 1 0;
+    min-width: 0;
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
   }
 </style>

@@ -191,7 +191,8 @@ Send and start** or **⏱ Start the clock**); clicking there leaves `Enter`, `N`
 dice's box keeps its buttons in their places: **Spin!** `W` (or **Roll!** `D`) first, **Spin again** there once it
 lands, then ✎ Edit wheel and ＋ Spin another wheel too…, the result, and the way to close it last (**✕ Close** `Esc`, or
 **Close** as on the main button once that's next); the scoreboard, a player's sheet, a roll-off and a pop-up have that
-Close too.
+Close too. A Daily Double's box opens at its top, the keys in its Wager box, and its Wager row ends with **Show question
+▶**, greyed until there's a wager.
 Anything that asks first (Exit, closing the audience window, leaving a round, 🔁 Rematch) asks in one strip right
 above that bar: Cancel on the left, the answer on the right. Leaving a round always asks, unless a board is played out
 (then **Next round ▶** is the main button). In RPG and board-game rounds on a wide window the panel is a column beside

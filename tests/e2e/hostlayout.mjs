@@ -18,8 +18,10 @@
 // board's size through a Daily Double's splash and slides, a clue with two sounds on its slide and one with two slides,
 // and at 1110 and 1184px through the two-slide clue (◀ Slide and ▦ Done ▶ board in words, its hint cut short). With 4
 // and 8 players at 1280×720 and 1366×768, a 🤝 partner clue's box holds each step the main button does, in sight (its
-// foot, 👁 Reveal answer and ▦ Done ▶ board too), the stage one size from PARTNER UP! to ✔ Got it; with 8, a 🎯 Pick a
-// player wheel's bar is one row and in sight, Spin! first and its Close last, landed too.
+// foot, 👁 Reveal answer and ▦ Done ▶ board too), the stage one size from PARTNER UP! to ✔ Got it; at 1280×720 a Daily
+// Double's box opens at its top, its Wager row one line ending with Show question ▶ (a double-click on it shows the
+// question once); with 8, a 🎯 Pick a player wheel's bar is one row and in sight, Spin! first and its Close last,
+// landed too.
 import { chromium } from 'playwright-core';
 import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
@@ -820,6 +822,39 @@ try {
             .map((el) => el.textContent.trim()),
         sel,
       );
+    // At 1280×720 the Daily Double's box opens at its top, the keys in its Wager box: its heading and names in sight (with
+    // 4, its Wager row too), the Wager row on one line, Show question ▶ (the main button's step) at its end, and the stage
+    // the board's size. A double-click on that Show question ▶ shows the question once: its second click, where the box
+    // was, does nothing (no slide skipped, no answer, the tile still open).
+    {
+      const at = `${count} players at 1280×720`;
+      const onBoard = await stageH();
+      await pb.locator('.stage-box .board .tile[data-cat="4"][data-row="0"]').click();
+      await pb.locator('.stage-box .dd-text').waitFor();
+      const dd = pb.locator('.panel .dd');
+      const ddOut = await hidden(`.panel .dd > .row:first-child > span:first-child, .panel .dd .chip${count === 4 ? ', .panel .dd .wager > :not(.spacer)' : ''}`);
+      const wagerRow = await dd.locator('.wager').evaluate((r) => {
+        const mids = [...r.children].map((c) => c.getBoundingClientRect()).map((b) => b.top + b.height / 2);
+        return { line: Math.max(...mids) - Math.min(...mids) <= 4, last: r.lastElementChild?.matches('[data-step]') ? r.lastElementChild.textContent.trim() : '' };
+      });
+      const ddSeen = count !== 4 || (await situationHasMain(pb, dd)) === '';
+      const keys = await pb.evaluate(() => document.activeElement?.matches('.panel .dd input[type=number]'));
+      const ddH = await stageH();
+      assert(
+        ddOut.length === 0 && wagerRow.line && wagerRow.last.startsWith('Show question ▶') && ddSeen && keys && ddH === onBoard,
+        `${at}: a Daily Double's box opens at its top (heading, names${count === 4 ? ', Wager row' : ''} in sight), the keys in its Wager box, its Wager row one line ending with Show question ▶, the stage the board's size (${JSON.stringify({ ddOut, wagerRow, ddSeen, keys, ddH, onBoard })})`,
+      );
+      await pb.keyboard.type('100');
+      await stepButton(dd, 'Show question ▶').dblclick();
+      await pb.waitForFunction(() => document.querySelector('.panel .status')?.textContent?.includes('DD'));
+      await pb.waitForTimeout(700);
+      assert(
+        (await pb.locator('.panel [data-slidepos]').innerText()) === 'Slide 1 of 3' && (await pb.locator('.stage-box [data-slide="answer"]').count()) === 0 && (await pb.locator('.stage-box .board').count()) === 0,
+        `${at}: a double-click on the box's Show question ▶ shows the question once (slide 1 of 3, no answer, the tile still open)`,
+      );
+      await pb.keyboard.press('Escape');
+      await pb.locator('.stage-box .board').waitFor();
+    }
     // With 8 at 1280×720, a 🎯 Pick a player wheel from the board's 🎡 Wheel: its bar is one row and in sight, Spin! first
     // (the main button's step) and its Close last, then landed (★ Make … the picker under it) Spin again and Close.
     if (count === 8) {
