@@ -401,7 +401,12 @@ The mode isn't saved with the game: it's dual while the audience window is open.
     notes wait for 👁 Reveal space, as its name does (its card says “?” until then too, and so does ✎ Edit board: its
     menu, hints and undo steps say “? (secret)”, a step taken with the audience window open too once it closes (each step
     keeps a quiet text for one window), its Name box behind 👁 Show while it stays picked, and its ⚙ Buttons… window's
-    buttons and notes behind 👁 Show its buttons). Windows opened mid-game (?,
+    buttons and notes behind 👁 Show its buttons). While a box viewers can read is up (a 🤝 partner clue's, a tile's or
+    the Final's 🤫 cards, a Daily Double's wager, a ✍ clue's answers), the status line carries one ⚠ Viewers see this
+    chip, always in view, saying in its tooltip (and to screen readers) what they can read there; the line keeps one
+    line, a clue's or the Final's words cut short (…) on a narrow window, the whole of them in their tooltip. In a
+    partner clue's question, 👁 Reveal answer and ▦ Done ▶ board sit above the main button, in view while the 🤝 box
+    scrolls (on a laptop it fills the action part). Windows opened mid-game (?,
     📜 Log, 👥 Players, ⚖ Rules, 🔊 Sound, the RPG's ⤢ Full map, ✎ Edit board's ⚙ Buttons…) open over the host panel,
     never the stage (the full map's screen card beside the map where the panel is wide enough); the RPG's ✎
     Edit screen is too big for it and says viewers see it (📺 Audience edits off stream). The stage keeps one size

@@ -28,13 +28,13 @@
   import { canCopyPicture, copyCardPicture, hasPicture } from './cardcopy';
   import { leftLine, sentLine, slowKinds, slowLine } from './cardrow';
   import ShrinkButton from './ShrinkButton.svelte';
+  import { offerExposed } from './slots.svelte';
 
   let {
     game,
     session,
     clue,
     final,
-    dual = false,
     ontakeback,
   }: {
     game: Game;
@@ -43,8 +43,6 @@
     clue?: Clue;
     /** The Final being played: its cards (FinalControls, from the wagers to the last reveal). */
     final?: FinalRound;
-    /** An audience window is open: viewers don't see this window. */
-    dual?: boolean;
     /** ✖ Take back: the card goes from every phone it was sent to. */
     ontakeback: (id: Id) => void;
   } = $props();
@@ -123,6 +121,9 @@
     const names = to.map((t) => sentToText(session, [t], teams));
     void copyText(cardCopyText(game, card, i + 1, where, names), `${clueCardWords(card, i, true)}’s words copied: paste them to ${names.join(', ') || 'them'}`);
   }
+
+  // One window: the status line's ⚠ Viewers see this chip says what viewers can read here.
+  offerExposed(() => `⚠ Viewers can see this window: they can read a card’s name here, never what’s on it${app.playerOnly ? '' : ' (check the cards in the editor’s 🤫 Card tabs)'}.`);
 </script>
 
 {#snippet chip(card: ClueCard, i: number, id: Id, on: boolean)}
@@ -211,11 +212,6 @@
   {/each}
   {#if full && cards.some((c) => !sentOf(c))}<div class="small warn" data-cards-full>{cardsFullText(game, session)}</div>{/if}
   {#if older}<span class="muted small">This buzzer server is older: copy the cards to them (📋).</span>{/if}
-  {#if !dual}
-    <span class="exposed"
-      >⚠ Viewers can see this window: they can read a card’s name here, never what’s on it{app.playerOnly ? '' : ' (check the cards in the editor’s 🤫 Card tabs)'}.</span
-    >
-  {/if}
 </div>
 
 <style>
@@ -254,9 +250,5 @@
   }
   .warn {
     color: var(--warn);
-  }
-  .exposed {
-    color: var(--warn);
-    font-size: 12px;
   }
 </style>

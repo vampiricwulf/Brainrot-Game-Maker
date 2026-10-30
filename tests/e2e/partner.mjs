@@ -578,7 +578,7 @@ try {
   await stage('[data-partner-up]').waitFor();
   await page.keyboard.press('1');
   await panel.getByText('Ann picked it.').waitFor();
-  assert((await panel.innerText()).includes('⚠ Viewers can see this window'), 'the panel says viewers can see this window');
+  assert((await page.locator('.panel .status [data-viewers]').getAttribute('title')).includes('⚠ Viewers can see this window'), 'the status line’s ⚠ Viewers see this chip says viewers can see this window');
   await never(host, CARD_ONLY, 'PARTNER UP!');
   /** Reload the page and resume the game in one window (the editor shows first, with Resume game: on stream too). */
   const resume = async () => {

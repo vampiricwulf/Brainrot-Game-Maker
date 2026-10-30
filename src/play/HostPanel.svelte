@@ -334,6 +334,17 @@
   const describers = $derived(
     partner?.pickerId && teams && !!remote.code && remote.status !== 'off' && remote.status !== 'error' && roomHasCards() ? roomMembers(partner.pickerId).length : 0,
   );
+  /** What the status line says of the open clue: where it is. */
+  const clueSay = $derived.by((): string => {
+    if (toolOnly) return 'No question on this tile';
+    if (session.revealed) return 'Answer is showing';
+    if (ddWager) return 'Daily Double: who found it, and their wager';
+    if (partner?.stage === 'pick') return pickLine;
+    if (steal && !steal.by) return stealersLeft(session.players, steal, marks).length ? 'Answer hidden · 🔔 a steal: the others can answer' : 'Answer hidden · nobody stole it: reveal the answer';
+    if (partnerJudged) return 'Answer hidden · judged';
+    const sent = sentNote ? ` · ${sentNote}` : '';
+    return partner?.stage === 'distribute' ? `Answer hidden · hand out the cards${sent}` : `Answer hidden${sent}`;
+  });
   /** PARTNER UP!'s status line: what it waits on, in the main button's order (partnerPickStep), so the two agree. */
   const pickLine = $derived.by(() => {
     if (partner?.stage !== 'pick') return '';
@@ -383,6 +394,12 @@
     const ref = session.lastClosed && session.used[session.lastClosed] ? findClueRef(game, session.lastClosed) : null;
     return ref?.round === session.currentRound ? ref : null;
   });
+  /**
+   * One window, a 🤝 partner clue's question: its box takes the action part's room (its bottom row in view, and a row
+   * more at 1280×720 with the players' chips above it), so 👁 Reveal answer and ▦ Done ▶ board sit beside the main
+   * button, quiet and always in view, instead of on the Amount row under the box, where they'd scroll out of sight.
+   */
+  const flowBeside = $derived(!!partner && !dual && !side && session.phase === 'clue' && !setup);
   /** A wheel/dice tile with nothing to ask: no answer to reveal (closing the tool goes back to the board). */
   const toolOnly = $derived(session.phase === 'clue' && !!info && toolOnlyClue(info.clue));
   /** A wheel or dice tile's tool, in words. */
@@ -448,6 +465,8 @@
   const scoreFor = $derived(session.players.find((p) => p.id === editingScore));
   // The NEXT cell and the confirmation strip, filled by the parts in here too (see slots).
   const slots = hostSlots();
+  /** One window: what the boxes open say viewers can read of them (the status line's ⚠ Viewers see this chip). */
+  const viewersSee = $derived(dual ? [] : slots.viewersSee());
   /**
    * The main button stays one button while its job changes: the second click of a double-click on "Show question ▶" (or
    * 🔔 Open the buzzers) must not land on the 👁 Reveal answer it just became, and put the answer on stream. (The panel's
@@ -844,25 +863,8 @@
       {/if}
       {#if slidePos && !session.revealed}<span class="slidepos" data-slidepos>Slide {slidePos.at} of {slidePos.of}</span>{/if}
       <span class="muted">·</span>
-      {#if toolOnly}
-        <span class="muted">No question on this tile</span>
-      {:else if session.revealed}
-        <span class="revealed">Answer is showing</span>
-      {:else if ddWager}
-        <span class="muted">Daily Double: who found it, and their wager</span>
-      {:else if partner?.stage === 'pick'}
-        <span class="muted">{pickLine}</span>
-      {:else if steal && !steal.by && stealersLeft(session.players, steal, marks).length}
-        <span class="muted">Answer hidden · 🔔 a steal: the others can answer</span>
-      {:else if steal && !steal.by}
-        <span class="muted">Answer hidden · nobody stole it: reveal the answer</span>
-      {:else if partnerJudged}
-        <span class="muted">Answer hidden · judged</span>
-      {:else if partner?.stage === 'distribute'}
-        <span class="muted">Answer hidden · hand out the cards{sentNote ? ` · ${sentNote}` : ''}</span>
-      {:else}
-        <span class="muted">Answer hidden{sentNote ? ` · ${sentNote}` : ''}</span>
-      {/if}
+      <!-- (Cut short on a narrow window, never wrapping the line: its tooltip has it whole.) -->
+      <span class="say" class:muted={!session.revealed || toolOnly} class:revealed={session.revealed && !toolOnly} title={clueSay}>{clueSay}</span>
       {#if info.clue.hostNotes && !dual}<span class="notes" title="Host notes (viewers can see them in this window): {info.clue.hostNotes}">📝 {info.clue.hostNotes}</span>{/if}
     {:else if session.phase === 'final'}
       <b>{finalRound ? finalName(finalRound) : 'Final'}</b>
@@ -870,7 +872,8 @@
         <!-- Its title card is up: viewers don't see the category yet. -->
         <span class="muted">Title card <span class="hint">· click the screen (or N) to go on</span></span>
       {:else}
-        <span class="muted">{finalStepText[session.finalStep ?? 'wagers']}</span>
+        <!-- (Cut short on a narrow window, with the Final's own 🤫 cards' ⚠ chip: its tooltip has it whole.) -->
+        <span class="muted say" title={finalStepText[session.finalStep ?? 'wagers']}>{finalStepText[session.finalStep ?? 'wagers']}</span>
       {/if}
       <!-- (Once its answer is up: the notes may give it away while the players are still writing theirs.) -->
       {#if finalRound?.hostNotes?.trim() && !dual && !session.intro && (session.finalStep === 'answer' || session.finalStep === 'reveal')}<span class="notes" title="Host notes (viewers can see them in this window): {finalRound.hostNotes}">📝 {finalRound.hostNotes}</span>{/if}
@@ -909,6 +912,13 @@
     {:else}
       <b>Game over</b>
       <span class="muted hint">Click a score to fix it.</span>
+    {/if}
+    {#if viewersSee.length}
+      <!-- One window: the boxes open say viewers can read them (a card's name, never what's on it; the wager as it's
+           typed): one chip, always in view, its whole sentence in its tooltip and for screen readers. -->
+      <span class="viewers" data-viewers data-quiet title={viewersSee.join(' ')}
+        ><span aria-hidden="true">⚠ Viewers see this</span><span class="sr-only">{viewersSee.join(' ')}</span></span
+      >
     {/if}
     {#if app.live.cover}<span class="covered">⏸ Viewers see the cover</span>{/if}
     {#if app.playUnstored && !app.test}
@@ -1060,6 +1070,19 @@
     </div>
   {/if}
 
+  <!-- 👁 Reveal answer and ▦ Done ▶ board (whichever isn't the main one): in the clue's row, or beside the main button. -->
+  {#snippet revealDone()}
+    {#if !toolOnly && !toolFirst && next?.run !== onreveal}
+      <button data-flow="reveal" onclick={onreveal} title={VERBS.reveal.title}>
+        {session.revealed ? VERBS.hide.label : VERBS.reveal.label}
+      </button>
+    {/if}
+    <!-- A wheel/dice tile with nothing to ask has one way out: its tool's Close ▶ board. -->
+    {#if !(toolOnly && app.live.overlay) && next?.run !== doneUnscored}
+      <button class="done-board" data-flow="done" onclick={onback} title={VERBS.done.title}>{@render iconWord(VERBS.done.label)}</button>
+    {/if}
+  {/snippet}
+
   <!-- A button's sign, then its words (the words go on a narrow window: see .word). -->
   {#snippet iconWord(label: string)}{label.slice(0, label.indexOf(' '))} <span class="word">{label.slice(label.indexOf(' ') + 1)}</span>{/snippet}
 
@@ -1110,7 +1133,7 @@
       <!-- A tile's own 🤫 cards (any tile but a partner clue, whose Distribute list has them): sent only by a press. -->
       {#if session.phase === 'clue' && info && !partner && cardSlides(info.clue).length}
         {#key info.clue.id}
-          <TileCards {game} {session} clue={info.clue} {dual} ontakeback={oncardtakeback} />
+          <TileCards {game} {session} clue={info.clue} ontakeback={oncardtakeback} />
         {/key}
       {/if}
 
@@ -1200,15 +1223,7 @@
           {#if buzzClosed && !answerUp && next?.run !== openBuzzers && !tieNames && !allMissed}
             <button onclick={openBuzzers} title={VERBS.openBuzzers.title}>{VERBS.openBuzzers.label}</button>
           {/if}
-          {#if !toolOnly && !toolFirst && next?.run !== onreveal}
-            <button data-flow="reveal" onclick={onreveal} title={VERBS.reveal.title}>
-              {session.revealed ? VERBS.hide.label : VERBS.reveal.label}
-            </button>
-          {/if}
-          <!-- A wheel/dice tile with nothing to ask has one way out: its tool's Close ▶ board. -->
-          {#if !(toolOnly && app.live.overlay) && next?.run !== doneUnscored}
-            <button class="done-board" data-flow="done" onclick={onback} title={VERBS.done.title}>{@render iconWord(VERBS.done.label)}</button>
-          {/if}
+          {#if !flowBeside}{@render revealDone()}{/if}
         {:else if session.phase === 'slides'}
           {#if slidePos}<button class="ghost" data-flow="pager" onclick={() => onslide(-1)} disabled={slidePos.at <= 1} title={VERBS.prevSlide.title}>{VERBS.prevSlide.label}</button>{/if}
         {:else if session.phase === 'tiebreaker'}
@@ -1360,7 +1375,10 @@
 
     {#if next}
       {@const n = next}
-      <div class="next">
+      <div class="next" class:beside={flowBeside}>
+        <!-- One window, a partner clue's question: 👁 Reveal answer and ▦ Done ▶ board here, quiet, above it (see
+             flowBeside). -->
+        {#if flowBeside}<span class="flowbeside">{@render revealDone()}</span>{/if}
         <!-- Its quiet companions first (◀ Previous turn), then the one main button (quiet while someone answers: ＋ Award is
              the main one then; and while the strip asks). -->
         {#each n.also ?? [] as a (a.label)}
@@ -1540,6 +1558,16 @@
     justify-content: flex-end;
     align-items: stretch;
     flex-wrap: wrap;
+    gap: 6px;
+  }
+  /* 👁 Reveal answer and ▦ Done ▶ board beside the main button: on a line of their own above it, so the cell stays narrow
+     (the box beside it keeps its width) and two buttons high. */
+  .next.beside {
+    flex-direction: column;
+    align-items: flex-end;
+  }
+  .flowbeside {
+    display: flex;
     gap: 6px;
   }
   kbd {
@@ -1854,6 +1882,16 @@
     font-weight: 700;
     color: var(--warn);
   }
+  /* The open clue's words: cut short (…) rather than wrapping the line, which would shrink the stage viewers see (its
+     tooltip has them whole). They take the room they need first; the host notes and the spacer get the rest. */
+  .say {
+    flex: 1000 1 0;
+    min-width: 0;
+    max-width: max-content;
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+  }
   /* One line, cut short (the whole note is in its tooltip): a long one doesn't push the row onto more lines, shrinking
      the stage viewers see. (It takes the row's room, not the spacer's.) */
   .notes {
@@ -1865,6 +1903,17 @@
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
+  }
+  /* (A chip, never wrapping: the status line keeps one line.) */
+  .viewers {
+    color: var(--warn);
+    font-size: 12px;
+    font-weight: 600;
+    padding: 1px 7px;
+    border: 1px solid var(--warn);
+    border-radius: 999px;
+    white-space: nowrap;
+    flex-shrink: 0;
   }
   .covered,
   .unsaved {

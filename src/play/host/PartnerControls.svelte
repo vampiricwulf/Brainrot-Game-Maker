@@ -32,7 +32,7 @@
   import { canCopyPicture, copyCardPicture } from './cardcopy';
   import { leftLine, pctText, slowKinds, slowLine } from './cardrow';
   import ShrinkButton from './ShrinkButton.svelte';
-  import { hostConfirm, offerNext, step as nextStep } from './slots.svelte';
+  import { hostConfirm, offerExposed, offerNext, step as nextStep } from './slots.svelte';
   import { VERBS } from './verbs';
 
   let {
@@ -476,6 +476,9 @@
     return copyCardPicture(game, card, clueCardWords(card, n - 1, true), recipients(card).map((t) => toName(session, t)).join(', ') || 'them');
   }
 
+  // One window: the status line's ⚠ Viewers see this chip says what viewers can read here.
+  offerExposed(() => `⚠ Viewers can see this window: they can read a card’s name here, never what’s on it${app.playerOnly ? '' : ' (check the cards in the editor’s 🤫 Card tabs)'}.`);
+
   // The main button, in the panel's main cell: spin, then show the question, then start the clock (then the clue's own).
   offerNext('partner', () => {
     const st = session.partner;
@@ -840,11 +843,6 @@
       </div>
     {/if}
   {/if}
-  {#if !dual}
-    <span class="exposed"
-      >⚠ Viewers can see this window: they can read a card’s name here, never what’s on it{app.playerOnly ? '' : ' (check the cards in the editor’s 🤫 Card tabs)'}.</span
-    >
-  {/if}
 </div>
 
 <style>
@@ -899,10 +897,6 @@
   }
   .warn {
     color: var(--warn);
-  }
-  .exposed {
-    color: var(--warn);
-    font-size: 12px;
   }
   .judge {
     padding-top: 4px;

@@ -4,7 +4,7 @@
   import { textOn } from '../../lib/colors';
   import { formatPoints, wholePoints, type Game, type Session } from '../../lib/model';
   import { ddCap, score } from '../../lib/session';
-  import { offerNext } from './slots.svelte';
+  import { offerExposed, offerNext } from './slots.svelte';
   import { VERBS } from './verbs';
   import { toast } from '../../lib/app.svelte';
   import { teamsOn } from '../../lib/buzz';
@@ -108,6 +108,9 @@
       );
   }
 
+  // One window: the status line's ⚠ Viewers see this chip says what viewers can read here.
+  offerExposed(() => '⚠ Viewers can see this: they see this window, the wager as you type it too.');
+
   // The main button, in the panel's main cell (Enter in the wager box does it too).
   offerNext('dd', () => ({
     label: VERBS.showQuestion.label,
@@ -200,9 +203,6 @@
   {:else if phoneNote}
     <span class="muted small">{phoneNote}</span>
   {/if}
-  {#if !dual}
-    <span class="exposed">⚠ Viewers can see this: they see this window, the wager as you type it too.</span>
-  {/if}
 </div>
 
 <style>
@@ -241,10 +241,6 @@
   }
   .warn {
     color: var(--warn);
-  }
-  .exposed {
-    color: var(--warn);
-    font-size: 12px;
   }
   .phone {
     color: var(--accent);

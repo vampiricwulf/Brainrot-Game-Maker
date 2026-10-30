@@ -562,7 +562,6 @@ Card 1 · 1 line of words, 1 picture
 Card 2 · 1 line of words
    → nobody yet                                                               [📤 Send]
 🖼 1 picture goes up when you send its card   [⇡ Get it ready now]
-⚠ Viewers can see this window: what's on a card is never shown here.                   (one window only)
 [✔ Got it]  Bob +$400 · Ann +$200        [✘ Missed]  Ann −$200
                                                         NEXT ▸ [📤 Send and start  ⏎]
 ```
@@ -687,11 +686,12 @@ Partner up:
 Partner: spin the wheel, or choose →  [Ann ⊘] [2 Bob] [3 Cat] [4 Dan]     ☐ Ann can be on the wheel
 🗣 The partner describes · 🎯 Ann guesses                                    ⇄ Swap
 🤫 1 card: Card 1 → the describer          🖼 1 picture goes up when you send it  [⇡ Get it ready now]
-⚠ Viewers can see this window: what's on a card is never shown here.                (one window only)
                                                            NEXT ▸ [🎡 Spin for a partner  W]
 ```
 
-The Distribute step is sketched in §6.5. Playing, after the send:
+In one window the status line above the panel carries a ⚠ Viewers see this chip while the box is up: its tooltip (and
+what screen readers hear) says viewers can read a card's name there, never what's on it. The Distribute step is
+sketched in §6.5. Playing, after the send:
 
 ```
 🗣 Bob → 🎯 Ann   ⏱ 0:31     Card 1 → Bob · ✓ seen 0:04 ago   [↻ Send again] [✖ Take back]

@@ -721,16 +721,29 @@ async function tileTools() {
   await tileOf('qd').waitFor();
 
   // A Daily Double's question has no buzzers: their row keeps its room, so the stage keeps the board's size there too.
+  // (Its wager box: the status line's ⚠ Viewers see this chip says viewers see the wager as it's typed, its sentence for
+  // screen readers and in its tooltip, and the line stays one line.)
   const boardH = await stageH();
+  const statusH = async () => Math.round((await host.locator('.panel .status').boundingBox()).height);
+  const boardStatus = await statusH();
   await tileOf('qdd').click();
   const wager = host.locator('.dd input[type=number]');
   await wager.waitFor();
+  const viewers = host.locator('.panel .status [data-viewers]');
+  assert(
+    (await viewers.locator('.sr-only').textContent()) === '⚠ Viewers can see this: they see this window, the wager as you type it too.' &&
+      (await viewers.getAttribute('title')).includes('the wager as you type it too') &&
+      !(await host.locator('.panel .dd').innerText()).includes('Viewers can see') &&
+      (await statusH()) === boardStatus,
+    'single window, a Daily Double’s wager: the status line’s ⚠ Viewers see this chip says viewers see the wager as it’s typed (for screen readers and in its tooltip), on the line’s one line',
+  );
   await host.locator('.dd .chip', { hasText: 'Ann' }).click();
   await wager.fill('100');
   await wager.press('Enter');
   await clueOpen();
   const ddH = await stageH();
   assert(ddH === boardH, `single window in buzzer mode, a Daily Double's question keeps the stage's size too (${boardH} / ${ddH} px)`);
+  assert((await viewers.count()) === 0, 'its question up, the wager box and its chip are gone');
   await host.keyboard.press('Escape');
   await tileOf('qd').waitFor();
 

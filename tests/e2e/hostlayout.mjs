@@ -563,6 +563,7 @@ try {
     await p4.locator('.stage-box .board .tile:not([disabled])').first().waitFor();
     const stageH = async () => Math.round((await p4.locator('.stage-box').boundingBox()).height);
     const onBoard = await stageH();
+    const boardStatus = Math.round((await p4.locator('.panel .status').boundingBox()).height);
     assert((await p4.locator('.panel .p button.quick:visible').count()) === 0, `${w}×${h}: on the board the chips keep ✔ / ✘'s place, unseen`);
     if (w <= 1240) {
       const widths = await Promise.all(['🤫 Send a card…', '🎭 Deal…'].map(async (name) => Math.round((await p4.locator('.panel').getByRole('button', { name, exact: true }).boundingBox()).width)));
@@ -640,8 +641,14 @@ try {
     await p4.locator('.stage-box [data-partner-badge]').waitFor();
     await partner.locator('[data-card="2"]').waitFor();
     partnerSizes.push(await stageH());
-    const judgeOut = await outOfSight('.panel [data-partner-judge] button, .panel [data-next]');
-    assert(judgeOut.length === 0, `${w}×${h}, a partner clue's 📤 Distribute: ✔ Got it, ✘ Missed and the main button are in sight${judgeOut.length ? ` (not: ${judgeOut.join(', ')})` : ''}`);
+    const judgeOut = await outOfSight('.panel [data-partner-judge] button, .panel [data-next], .panel [data-flow="reveal"], .panel [data-flow="done"]');
+    assert(
+      judgeOut.length === 0 && (await p4.locator('.panel [data-flow="reveal"]').count()) === 1 && (await p4.locator('.panel [data-flow="done"]').count()) === 1,
+      `${w}×${h}, a partner clue's 📤 Distribute: ✔ Got it, ✘ Missed, the main button, 👁 Reveal answer and ▦ Done ▶ board (one of each) are in sight${judgeOut.length ? ` (not: ${judgeOut.join(', ')})` : ''}`,
+    );
+    // (The status line's ⚠ Viewers see this chip keeps it one line: as tall as on the board.)
+    const statusH = Math.round((await p4.locator('.panel .status').boundingBox()).height);
+    assert((await p4.locator('.panel .status [data-viewers]').count()) === 1 && statusH === boardStatus, `${w}×${h}, a partner clue: the status line's ⚠ Viewers see this chip keeps it one line (${boardStatus} / ${statusH}px)`);
     // (The players' chips above it keep their rows, scores and quick buttons and all; at 1024×768 their three rows don't
     // fit with it, and the last scrolls.)
     if (w !== 1024) {

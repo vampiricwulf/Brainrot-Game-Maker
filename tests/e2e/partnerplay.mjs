@@ -136,7 +136,11 @@ try {
   assert(await toast('Ann picked it: tick'), 'Ann’s own number says how to make it Solo');
   const panelText = await panel.innerText();
   assert(panelText.includes('🗣 Bob describes · 🎯 Ann guesses') && panelText.includes('Card 1 → Bob (describer) · Card 2 → nobody yet'), `the panel says who plays which part and where the cards go (${panelText.replace(/\n/g, ' | ')})`);
-  assert(panelText.includes('⚠ Viewers can see this window'), 'and that viewers can see it');
+  const viewers = page.locator('.panel .status [data-viewers]');
+  assert(
+    (await viewers.innerText()).startsWith('⚠ Viewers see this') && (await viewers.textContent()).includes('⚠ Viewers can see this window: they can read a card’s name here') && !panelText.includes('Viewers can see'),
+    'and the status line’s ⚠ Viewers see this chip says viewers can see it (its sentence for screen readers), not a line in the box',
+  );
   await noCards(page, 'paired');
   await page.screenshot({ path: 'test-results/partner-play-paired.png' });
 

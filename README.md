@@ -153,7 +153,8 @@ the page gets (on a wide screen the page is two columns). A **🔁 Rematch** kee
 - **Single window**: viewers see this window. Press `H` (or **🙈 Hide**) to hide the host controls; **Show controls**
   waits, out of sight, in the top-right corner until the mouse moves (on a touch screen, until a tap, which does
   nothing else). With them hidden, nothing on the stage shows a focus ring until you move the keys yourself (Tab, or the
-  board's arrow keys).
+  board's arrow keys). While a box they can read is up (a partner clue's, a tile's 🤫 cards, a Daily Double's wager, a
+  ✍ clue's answers), the status line says so with a **⚠ Viewers see this** chip: point at it for what they can see.
 - **📺 Separate audience window**: a clean window to capture in OBS or Discord. The host window keeps the answers,
   notes and controls, and its board marks the Daily Doubles (⭐), 🤝 partner and ✍ tiles still to play.
 

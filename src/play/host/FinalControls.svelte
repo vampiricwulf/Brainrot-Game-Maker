@@ -686,7 +686,7 @@
     <!-- The Final's own 🤫 cards: under the wager or reveal rows (every wager box comes first), above the step's buttons. -->
     {#if round && cardCount}
       {#key round.id}
-        <div class="cards-box" bind:this={cardsBox}><TileCards {game} {session} final={round} {dual} ontakeback={oncardtakeback} /></div>
+        <div class="cards-box" bind:this={cardsBox}><TileCards {game} {session} final={round} ontakeback={oncardtakeback} /></div>
       {/key}
     {/if}
     <div class="row">

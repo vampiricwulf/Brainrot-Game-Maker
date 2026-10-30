@@ -417,7 +417,7 @@ try {
   await host.keyboard.press('Control+z');
   assert(await until(async () => (await host.locator('[data-plays="p3"]').isChecked()) && (await allOn())), 'Ctrl+Z: Cat plays again, and she’s back on it');
   await offStream(host, 'the host page in one window', 'the Final’s cards listed');
-  assert((await words(panel.locator('.exposed'))).includes('never what’s on it'), 'the ⚠ line says viewers can read a card’s name here, never what’s on it');
+  assert((await host.locator('.panel .status [data-viewers]').textContent()).includes('never what’s on it'), 'the status line’s ⚠ Viewers see this chip says viewers can read a card’s name here, never what’s on it');
 
   // ---------- 📤 Send: to everyone playing, beside the wager box ----------
   assert(!cards().length, 'nothing went by itself');

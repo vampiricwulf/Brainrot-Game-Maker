@@ -1,9 +1,10 @@
 /**
- * The host panel's two shared places, filled by the parts inside it:
+ * The host panel's shared places, filled by the parts inside it:
  * - NEXT: the one main button of the moment (Show question ▶, Spin!, Next turn ▶…), always in the same cell at the
  *   right of the action row, with its key. A part offers it; the panel shows the first one by priority.
  * - The confirmation strip: a question (Leave this game? Next round with clues left?) as one full-width strip above the
  *   panel's fixed bar, never squeezed into a row of buttons.
+ * - The status line's "⚠ Viewers see this" chip, in one window: what each box on screen says viewers can read of it.
  */
 import { getContext, onDestroy, setContext, untrack } from 'svelte';
 import { ask as askDialog } from '../../lib/ask.svelte';
@@ -49,6 +50,8 @@ const ORDER: NextFrom[] = ['tool', 'dd', 'partner', 'final', 'end', 'turn', 'boa
 type Slots = {
   offers: Partial<Record<NextFrom, () => NextAction | null>>;
   ask: HostAsk | null;
+  /** What the boxes on screen say viewers can read of them (see offerExposed). */
+  exposed: (() => string | null)[];
 };
 
 const KEY = Symbol('host-slots');
@@ -58,11 +61,13 @@ const GUARD = Symbol('host-guard');
  * The host panel: make the places (its parts find them), and its one click guard (see guard.ts: panelGuard), for the
  * main button, the boxes' step buttons and their player buttons.
  */
-export function hostSlots(): Slots & { next: () => NextAction | null } {
-  const s = $state<Slots>({ offers: {}, ask: null });
+export function hostSlots(): Slots & { next: () => NextAction | null; viewersSee: () => string[] } {
+  const s = $state<Slots>({ offers: {}, ask: null, exposed: [] });
   setContext(KEY, s);
   setContext(GUARD, clickGuard());
   return Object.assign(s, {
+    /** What the boxes on screen say viewers can read of them, once each. */
+    viewersSee: () => [...new Set(s.exposed.map((get) => get()).filter((x): x is string => !!x))],
     next: () => {
       for (const k of ORDER) {
         const a = s.offers[k]?.();
@@ -93,6 +98,24 @@ export function offerNext(from: NextFrom, get: () => NextAction | null): void {
   $effect(() => {
     untrack(() => (s.offers[from] = get));
     return () => untrack(() => s.offers[from] === get && delete s.offers[from]);
+  });
+}
+
+/**
+ * One window: what a box says viewers can read of it while it's on screen ("⚠ Viewers can see this window: they can
+ * read a card's name here, never what's on it."), null for nothing. The status line shows one "⚠ Viewers see this"
+ * chip for all of them, always in view, their sentences in its tooltip and for screen readers.
+ */
+export function offerExposed(get: () => string | null): void {
+  const s = getContext<Slots | undefined>(KEY);
+  if (!s) return;
+  $effect(() => {
+    untrack(() => s.exposed.push(get));
+    return () =>
+      untrack(() => {
+        const i = s.exposed.indexOf(get);
+        if (i >= 0) s.exposed.splice(i, 1);
+      });
   });
 }
 

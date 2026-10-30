@@ -183,8 +183,8 @@ try {
   await answersBox.locator('[data-answer-in]', { hasText: 'Player 2 ✔' }).waitFor();
   const panelText = await host.locator('.panel').innerText();
   assert(
-    !panelText.includes('Shiba') && !panelText.includes('Corgi') && (await answersBox.getByRole('status').innerText()).includes('viewers see this window'),
-    'in a single window the host panel shows who has answered (✔), not the words, and says viewers see it',
+    !panelText.includes('Shiba') && !panelText.includes('Corgi') && (await host.locator('.panel .status [data-viewers]').textContent()).includes('Viewers can see this window: it says who has answered'),
+    'in a single window the host panel shows who has answered (✔), not the words, and its ⚠ Viewers see this chip says viewers see it',
   );
   if (process.env.SCREENSHOTS) {
     await host.screenshot({ path: `${process.env.SCREENSHOTS}/everyone-host.png` });
