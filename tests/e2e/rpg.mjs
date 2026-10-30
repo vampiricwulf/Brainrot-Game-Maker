@@ -5,7 +5,7 @@ import { chromium } from 'playwright-core';
 import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { addClassicRounds, dragBy, exportHtml, openGameFile, playWithPlayers, leaveAnswer } from './helpers.mjs';
+import { addClassicRounds, dragBy, exportHtml, menuLines, openGameFile, openMenu, playWithPlayers, leaveAnswer } from './helpers.mjs';
 
 const file = resolve(process.env.APP_FILE || 'dist/index.html');
 if (!existsSync(file)) throw new Error('Run `npm run build` first');
@@ -586,6 +586,18 @@ try {
   await spot.waitFor();
   assert(true, 'right-click ＋ Text here… asks in the host panel, then adds the text and opens its card');
   await spot.getByRole('button', { name: '🗑 Remove' }).click();
+  // The stage is a Tab stop: Shift+F10 there opens the round's own menu, or the selected player's.
+  await page.locator('.stage-box .rpg[tabindex="0"]').focus();
+  await page.keyboard.press('Shift+F10');
+  const rpgMenu = await menuLines(page);
+  assert(rpgMenu.includes('🗺 Full map (jump anywhere) · J') && rpgMenu.includes('🤝 Regroup · G'), `Shift+F10 on the stage: the round’s menu (${rpgMenu.join(' | ')})`);
+  await page.keyboard.press('Escape');
+  await openMenu(page).waitFor({ state: 'detached' });
+  await page.keyboard.press('1');
+  await page.keyboard.press('Shift+F10');
+  assert((await menuLines(page))[0] === '# Player 1', 'with Player 1 selected, theirs');
+  await page.keyboard.press('Escape');
+  await page.keyboard.press('1');
 
   // Viewers (single window) never get the secret Potion or the arrival point drawn, nor a click target for them.
   assert((await page.locator('.rpg .hit').count()) === 0, 'secret objects and arrival points get no click target on the viewers’ stage');

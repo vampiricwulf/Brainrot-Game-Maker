@@ -468,6 +468,14 @@ The mode isn't saved with the game: it's dual while the audience window is open.
   Text here…, 🗺 Full map `J`, the map for viewers `V`, 🤝 Regroup `G`). In one window (on stream) it shows only words the
   panel shows: names and steps, never a card's words, a part, a wager or a typed answer, and ↶ Undo without its step's
   name. A tile's menu shows its keys too (▶ Open `Enter`, ⏸ Cover the screen `K`).
+- **The board-game and RPG stage by keyboard**: the host's board-game board is one Tab stop (a roving tabindex: the space
+  the keys were last on, else the turn player's, else Start), the arrows go to the nearest space that way (spaceToward,
+  as in the editor), `Enter` or `Space` opens its card (the controls come back for it) and `Shift+F10` its menu. A space
+  never takes the keys from a click (its mousedown keeps them where they were), and a press of the pointer anywhere lets
+  a space with the keys go, so `Enter` acts on the board only after `Tab` or the arrows: `D`, a click, then `Enter` still
+  moves the token. In one window a secret space not revealed yet is named "? (secret)" there too. The host's RPG stage
+  is a Tab stop as well: `Shift+F10` there opens the first selected player's menu, else the selected object's, else the
+  round's own. `Shift+F10` on a name in the turn order or a player button in the RPG panel opens their menu.
 - **A double-click counts once** on a button that changes the screen (the first screen's cards and ✨ Try a sample game,
   ▶ Play, Start game ▶ and ▶ Resume it, the exported file's ▶ Play, Resume game and View results, the status bar's Resume
   game and View results, Open…'s Recent games, a tile opening its clue editor): the rest of that press (its second

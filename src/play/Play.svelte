@@ -3171,12 +3171,24 @@
    */
   function menuKey(t: HTMLElement | null): boolean {
     const main = document.querySelector<HTMLElement>('.play .panel [data-next]');
-    const at = !t || t === document.body ? (main ?? document.querySelector<HTMLElement>('.play .stage-box')) : t;
+    let at = !t || t === document.body ? (main ?? document.querySelector<HTMLElement>('.play .stage-box')) : t;
+    // The RPG stage itself: the selected player's menu (their avatar on screen), else the selected object's, else its own.
+    if (at?.matches('.stage-box .rpg')) {
+      const pick = selected[0] ? `[data-player-id="${selected[0]}"]` : (rpgSelObjects[0] ?? rpgObject) ? `[data-object="${rpgSelObjects[0] ?? rpgObject}"]` : null;
+      at = (pick && at.querySelector<HTMLElement>(pick)) || at;
+    }
     if (!at?.closest('.play') || !at.closest('[data-player-id], .tile[data-clue], .stage-box, .panel :is([data-next], [data-next-pair], [data-next-also], [data-step], [data-flow])')) return false;
     const r = at.getBoundingClientRect();
-    at.dispatchEvent(new MouseEvent('contextmenu', { bubbles: true, cancelable: true, clientX: r.left + 8, clientY: r.bottom + 2 }));
+    byMenuKey = true;
+    try {
+      at.dispatchEvent(new MouseEvent('contextmenu', { bubbles: true, cancelable: true, clientX: r.left + 8, clientY: r.bottom + 2 }));
+    } finally {
+      byMenuKey = false;
+    }
     return true;
   }
+  /** The menu being opened came from Shift+F10 (no spot on the stage was pointed at). */
+  let byMenuKey = false;
 
   // ---------- The stage's menu: the moment's own (see host/stagemenu.ts) ----------
 
@@ -3552,7 +3564,7 @@
         const removed = (text: string) => (toast(text, 3000), rpgObject === objId && (rpgObject = null));
         return showMenu(e, objectMenu(game, session, objId, { open: () => ((hideControls = false), (rpgObject = objId)), removed }));
       }
-      return momentMenuAt(e, stagePoint(e));
+      return momentMenuAt(e, byMenuKey ? undefined : stagePoint(e));
     }
     if (session.phase === 'boardgame') {
       const { round, bs } = boardNow(game, session);
@@ -4966,7 +4978,7 @@
   onkeydowncapture={(e) => {
     tabbing = e.key === 'Tab';
     viaKeys = true;
-    if (tabbing || (e.key.startsWith('Arrow') && e.target instanceof Element && e.target.closest('.board'))) ringOff = false;
+    if (tabbing || (e.key.startsWith('Arrow') && e.target instanceof Element && e.target.closest('.board, [data-space]'))) ringOff = false;
   }}
   onclickcapture={(e) => {
     if (!swallowTap) return;
@@ -5397,6 +5409,7 @@
             selectedObjects={rpgSelObjects}
             ontoken={tokenAct}
             onspace={spaceAct}
+            onspacecard={(id) => ((hideControls = false), (bgSpace = id))}
             {selected}
             onshopbuy={(item) => app.live.overlay?.kind === 'shop' && shopBuy(game, session, app.live.overlay, selected, item)}
           />

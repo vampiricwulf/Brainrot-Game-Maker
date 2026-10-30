@@ -19,6 +19,7 @@
     lit = null,
     ondown,
     tabStop = null,
+    keys = false,
     allNames = false,
   }: {
     round: BoardGameRound;
@@ -33,8 +34,13 @@
     lit?: string | null;
     /** Editor: a space was pressed (to select or drag it). */
     ondown?: (e: PointerEvent, space: BoardSpace) => void;
-    /** Editor: the space Tab goes to (the others take the focus by the arrow keys: the board is one tab stop). */
+    /** The space Tab goes to (the others take the focus by the arrow keys: the board is one tab stop). */
     tabStop?: string | null;
+    /**
+     * Play, the host's copy: the spaces take the keys (Tab, the arrows), never a click (a click on the board leaves the
+     * keys where they were, so Enter still moves the token).
+     */
+    keys?: boolean;
     /** The host editing the board: every space's name shows, the ones viewers don't see dimmed. */
     allNames?: boolean;
   } = $props();
@@ -102,10 +108,13 @@
 {#each round.spaces as s (s.id)}
   {@const h = hidden(s)}
   {@const bg = h ? '#555' : s.color}
-  <!-- (In the editor it's a button: role and tabindex are only set there.) -->
+  <!-- (In the editor, and the host's copy in play, it's a button: role and tabindex are only set there. In one window a
+       secret one not revealed yet is "?" by name too.) -->
   <!-- svelte-ignore a11y_no_noninteractive_tabindex -->
+  <!-- svelte-ignore a11y_no_static_element_interactions -->
   <div
     class="space"
+    class:keys
     class:sel={selected.includes(s.id)}
     class:marked={marked.includes(s.id)}
     class:lit={lit === s.id}
@@ -117,11 +126,12 @@
     style:background={bg}
     style:color={textOn(bg)}
     onpointerdown={ondown ? (e) => ondown(e, s) : undefined}
-    role={ondown ? 'button' : undefined}
-    aria-roledescription={ondown ? 'space' : undefined}
-    aria-label={ondown ? s.name : undefined}
+    onmousedown={keys ? (e) => e.preventDefault() : undefined}
+    role={ondown || keys ? 'button' : undefined}
+    aria-roledescription={ondown || keys ? 'space' : undefined}
+    aria-label={ondown ? s.name : keys ? (h ? '? (secret)' : s.name) : undefined}
     aria-pressed={ondown ? selected.includes(s.id) : undefined}
-    tabindex={ondown ? (s.id === tabStop ? 0 : -1) : undefined}
+    tabindex={ondown || keys ? (s.id === tabStop ? 0 : -1) : undefined}
     data-space={s.id}
     data-place="space:{s.id}"
   >
@@ -181,8 +191,12 @@
   .space.grab:focus {
     outline: none;
   }
-  .space.grab:focus-visible {
+  .space.grab:focus-visible,
+  .space.keys:focus-visible {
     box-shadow: 0 0 0 10px #fff, 0 0 0 18px #000, 0 6px 12px rgba(0, 0, 0, 0.5);
+  }
+  .space.keys:focus {
+    outline: none;
   }
   .space.start {
     border-color: #fff;

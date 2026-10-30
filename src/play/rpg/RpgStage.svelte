@@ -60,6 +60,26 @@
   const st = $derived(world ? session.worlds?.[world.id] : undefined);
   /** The host's copy (dual mode) sees secret objects faded; everyone else (viewers, single window) never sees them. */
   const hostCopy = $derived(role === 'mirror');
+  /**
+   * The host's stage takes the keys only from Tab: a press on the screen gives them back to what had them (so no ring
+   * goes round the stage on stream once a key is pressed after a click).
+   */
+  let pressing = false;
+  /** What had the keys before a press on the screen took them (null: nothing did). */
+  let giveBack: HTMLElement | null | undefined;
+  function stageFocus(e: FocusEvent): void {
+    if (pressing && e.target === e.currentTarget) giveBack = e.relatedTarget instanceof HTMLElement ? e.relatedTarget : null;
+  }
+  /** The press is over (a drag too): the keys go back. (Not during it: that would end a drag that just began.) */
+  function pressDone(): void {
+    pressing = false;
+    if (giveBack === undefined) return;
+    const to = giveBack;
+    giveBack = undefined;
+    if (document.activeElement !== rpgEl) return;
+    if (to?.isConnected) to.focus({ preventScroll: true });
+    else rpgEl?.blur();
+  }
   const panes = $derived.by((): ScreenRef[] => {
     if (!st) return [];
     if (st.split) return occupiedScreens(st).slice(0, 4);
@@ -376,7 +396,22 @@
   {/each}
 {/snippet}
 
-<div class="rpg" class:split bind:this={rpgEl}>
+<!-- The host's copy is one Tab stop (its objects each another): Shift+F10 on it opens the selected player's or object's
+     menu, or the round's own. A click on the screen itself leaves the keys where they were. -->
+<!-- svelte-ignore a11y_no_noninteractive_tabindex -->
+<!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
+<div
+  class="rpg"
+  class:split
+  bind:this={rpgEl}
+  tabindex={onavatar ? 0 : undefined}
+  role={onavatar ? 'group' : undefined}
+  aria-label={onavatar ? 'Stage (Shift+F10: its menu)' : undefined}
+  onpointerdowncapture={onavatar ? () => (pressing = true) : undefined}
+  onpointerup={onavatar ? pressDone : undefined}
+  ondragend={onavatar ? pressDone : undefined}
+  onfocus={onavatar ? stageFocus : undefined}
+>
   {#if world && st}
     <div class="play-area" style:transform="translate({area.x}px, {area.y}px) scale({area.scale})">
     {#each panes as ref, i (ref.screen)}

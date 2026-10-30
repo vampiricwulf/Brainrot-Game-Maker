@@ -2,13 +2,15 @@
   What a board-game round shows (games-maker spec §7.13): the board with its spaces, the players' tokens stepping
   along them, whose turn it is, who is stuck in an off-board zone, and the stats strip. Or a zone's own screen. The
   host's copy takes clicks (a token selects its player, a space opens its card or, at a fork, is the way to go) and
-  drags (a token onto a space or a zone sends its player there).
+  drags (a token onto a space or a zone sends its player there), and the keys: the board is one Tab stop, the arrows go
+  to the nearest space that way, and Enter (or Space) opens its card, only once the keys took it there (a click on the
+  board leaves the keys where they were: D, a click, then Enter still moves the token). Shift+F10 opens its menu.
 -->
 <script lang="ts">
-  import { getContext, onDestroy } from 'svelte';
+  import { getContext, onDestroy, tick } from 'svelte';
   import { fade } from '../../lib/motion.svelte';
   import { textOn } from '../../lib/colors';
-  import { currentPlayer, HOP_MS, placeTokens, shownSpace, spaceById, waysNow } from '../../lib/boardgame';
+  import { currentPlayer, HOP_MS, placeTokens, shownSpace, spaceById, spaceToward, waysNow } from '../../lib/boardgame';
   import BoardSpaces from '../../lib/boardgame/BoardSpaces.svelte';
   import type { MediaRole } from '../../lib/mediactl.svelte';
   import { SLIDE_H, type Game, type Session } from '../../lib/model';
@@ -30,6 +32,7 @@
     selected = [],
     ontoken,
     onspace,
+    onspacecard,
   }: {
     game: Game;
     session: Session;
@@ -40,6 +43,8 @@
     ontoken?: (playerId: string, to?: { space?: string; zone?: string }) => void;
     /** Host: a space was clicked. */
     onspace?: (spaceId: string) => void;
+    /** Host: Enter (or Space) on a space the keys went to: its card. */
+    onspacecard?: (spaceId: string) => void;
   } = $props();
   const now_ = $derived(boardNow(game, session));
   const round = $derived(now_.round);
@@ -157,8 +162,61 @@
   /** ✎ Edit board: the host's copy takes the edits (the audience window's never does). */
   const editing = $derived(boardEdit.on && !!onspace);
 
+  // ---------- The keys (the host's copy) ----------
+  /** The spaces take the keys: the host's copy, while playing (✎ Edit board has its own). */
+  const keyed = $derived(!!onspacecard && !editing && !zone);
+  /** The space the keys were last on (Tab comes back to it), else where the turn player stands, else Start. */
+  let rover = $state<string | null>(null);
+  const tabStop = $derived.by(() => {
+    if (!round) return null;
+    if (rover && spaceById(round, rover)) return rover;
+    const at = turnId ? bs?.positions[turnId]?.space : undefined;
+    return at ?? round.start ?? round.spaces[0]?.id ?? null;
+  });
+  /** The space with the keys got there by the keys (Tab, the arrows), not left there before a click on the board. */
+  let byKeys = false;
+  let layerEl = $state<HTMLElement>();
+  const ARROWS: Record<string, [number, number]> = { ArrowLeft: [-1, 0], ArrowRight: [1, 0], ArrowUp: [0, -1], ArrowDown: [0, 1] };
+
+  function spaceKey(e: KeyboardEvent): void {
+    const el = (e.target as HTMLElement).closest<HTMLElement>('[data-space]');
+    if (!keyed || !el || !round || e.ctrlKey || e.metaKey || e.altKey) return;
+    const d = ARROWS[e.key];
+    if (d && !e.shiftKey) {
+      // The arrows are the board's here (not the media's ← → seek).
+      e.preventDefault();
+      e.stopPropagation();
+      const from = spaceById(round, el.dataset.space);
+      const to = from && spaceToward(round, from, ...d);
+      if (!to) return;
+      rover = to.id;
+      byKeys = true;
+      void tick().then(() => layerEl?.querySelector<HTMLElement>(`[data-space="${to.id}"]`)?.focus());
+    } else if ((e.key === 'Enter' || e.key === ' ') && !e.shiftKey && byKeys) {
+      e.preventDefault();
+      e.stopPropagation();
+      onspacecard?.(el.dataset.space!);
+    }
+  }
+  /** Tab (or the arrows) brought the keys to a space: Enter opens its card. */
+  function spaceFocus(e: FocusEvent): void {
+    const id = (e.target as HTMLElement).closest<HTMLElement>('[data-space]')?.dataset.space;
+    if (id) rover = id;
+  }
+  // A Tab onto the board counts as the keys taking it there; any press of the pointer doesn't, and lets the space go.
+  function keyDownAnywhere(e: KeyboardEvent): void {
+    if (e.key === 'Tab') byKeys = true;
+  }
+  function pointerDownAnywhere(): void {
+    byKeys = false;
+    const a = document.activeElement;
+    if (a instanceof HTMLElement && a.matches('[data-space]') && layerEl?.contains(a)) a.blur();
+  }
+
   const lit = $derived(dropHover.at?.startsWith('space:') ? dropHover.at.slice(6) : null);
 </script>
+
+<svelte:window onkeydowncapture={keyed ? keyDownAnywhere : undefined} onpointerdowncapture={keyed ? pointerDownAnywhere : undefined} />
 
 <div class="bg">
   {#if round && bs}
@@ -175,9 +233,17 @@
         </div>
       {/key}
     {:else}
-      <div class="layer" class:clickable={!!onspace} onclick={onspace ? boardClick : undefined} role="presentation">
+      <div
+        class="layer"
+        class:clickable={!!onspace}
+        bind:this={layerEl}
+        onclick={onspace ? boardClick : undefined}
+        onkeydown={keyed ? spaceKey : undefined}
+        onfocusin={keyed ? spaceFocus : undefined}
+        role="presentation"
+      >
         <SlideView slide={round.slide} mode="play" {role} fallbackBg="#1d5e3a" />
-        <BoardSpaces {round} {audience} revealed={bs.revealed ?? []} marked={ways} {lit} allNames={editing} />
+        <BoardSpaces {round} {audience} revealed={bs.revealed ?? []} marked={ways} {lit} allNames={editing} keys={keyed} {tabStop} />
         {#each tokens as t (t.id)}
           {@const p = session.players.find((x) => x.id === t.id)}
           {@const d = drag?.id === t.id ? drag : null}

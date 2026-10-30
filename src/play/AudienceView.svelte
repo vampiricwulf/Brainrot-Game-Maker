@@ -57,6 +57,7 @@
     ongroupmove,
     ontoken,
     onspace,
+    onspacecard,
     onshopbuy,
     selected = [],
     selectedObjects = [],
@@ -93,6 +94,8 @@
     ontoken?: (playerId: string, to?: { space?: string; zone?: string }) => void;
     /** Board-game rounds, host only: a space was clicked. */
     onspace?: (spaceId: string) => void;
+    /** Board-game rounds, host only: Enter on a space the keys went to (its card). */
+    onspacecard?: (spaceId: string) => void;
     /** Host only: a ware in the shop on screen was clicked. */
     onshopbuy?: (itemId: string) => void;
     /** Host only: the selected players (the host's copy in dual mode rings them). */
@@ -720,7 +723,7 @@
 {:else if session.phase === 'rpg'}
   <RpgStage {game} {session} {role} {selected} {selectedObjects} {onobject} {onavatar} {onobjectmove} {onpickup} {ongroupmove} />
 {:else if session.phase === 'boardgame'}
-  <BoardGameStage {game} {session} {role} {selected} {ontoken} {onspace} />
+  <BoardGameStage {game} {session} {role} {selected} {ontoken} {onspace} {onspacecard} />
 {:else if session.phase === 'slides' && slidesRound(session, game)}
   {@const sr = slidesRound(session, game)!}
   {@const srAt = clueSlideIndex(session, sr)}

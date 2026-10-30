@@ -374,6 +374,8 @@ hidden objects. Use the separate audience window when that matters.
 - Live improvising: edit the screen, add text, or draw objects on a drawpad.
 - Select several players and objects (click avatars, `Shift`+click objects) and drag them together: the group keeps
   its shape, and one drag is one undo step.
+- The stage is a `Tab` stop: `Shift+F10` there opens the selected player's menu (their first, with several), else the
+  selected object's, else the round's own (🗺 Full map, the map for viewers, 🤝 Regroup).
 
 **Board game rounds** have these controls (as in RPG rounds, the board is scaled into the room above the stats
 strip, so no space is ever under it; the turn banner does go over the board's top edge, and the editor's checklist
@@ -384,6 +386,11 @@ notes a space up there):
   way the player came.
 - Send players to any space.
 - Each space's actions, for the player they're for (the one who landed there, or the ones picked on its card).
+- The board from the keyboard: it's one `Tab` stop (the space the keys were last on, else where the turn player
+  stands), the arrows go to the nearest space that way, `Enter` (or `Space`) opens its card and `Shift+F10` its menu
+  (📍 Put them here, ▶ Run its landing actions…). Only once the keys took them there: a click on the board lets the
+  space go, so `D`, a click, then `Enter` still moves the token. `Shift+F10` on a name in the turn order opens their
+  menu (🎲 Make it their turn…).
 - **✎ Edit board** (`E`) while you play: add, move, connect, rename and delete spaces (players on a deleted space go to
   the one before it); `E` or `Esc` again goes back to playing. In a single window a secret space not revealed yet is
   “? (secret)” there too (its Name box shows its name only after 👁 Show, and its ⚙ Buttons… its buttons and notes only

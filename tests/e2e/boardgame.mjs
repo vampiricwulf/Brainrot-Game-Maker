@@ -5,7 +5,7 @@ import { chromium } from 'playwright-core';
 import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { addClassicRounds, answerReplace, dragBy, mainButton, mainLabel, openGameFile, playWithPlayers, png, leaveAnswer } from './helpers.mjs';
+import { addClassicRounds, answerReplace, dragBy, mainButton, mainLabel, menuLines, openGameFile, openMenu, playWithPlayers, png, leaveAnswer } from './helpers.mjs';
 
 const file = resolve(process.env.APP_FILE || 'dist/index.html');
 if (!existsSync(file)) throw new Error('Run `npm run build` first');
@@ -487,6 +487,38 @@ try {
   assert(await card.evaluate((c) => c.contains(document.activeElement)), 'the Spaces… list opens a space’s card, focus inside');
   await page.keyboard.press('Escape');
   assert(!(await card.count()), 'Esc closes it');
+  // …and on the board itself: one Tab stop (Shift+Tab from the panel's first button lands on it), the arrows go to the
+  // nearest space that way, Enter opens its card, Shift+F10 its menu.
+  const focusedSpace = () => page.evaluate(() => document.activeElement?.closest('.stage [data-space]')?.getAttribute('aria-label') ?? null);
+  // (Player 1's turn: Player 2 is in the Shadow Realm.)
+  await page.locator('.bh .ord .nm', { hasText: 'Player 1' }).click();
+  await page.locator('.panel button:visible').first().focus();
+  await page.keyboard.press('Shift+Tab');
+  const firstStop = await focusedSpace();
+  assert(!!firstStop && (await page.locator('.stage [data-space][tabindex="0"]').count()) === 1, `the board is one Tab stop: a space (${firstStop})`);
+  await page.keyboard.press('ArrowRight');
+  const arrowed = await focusedSpace();
+  assert(!!arrowed && arrowed !== firstStop, `→ goes to the nearest space that way (${firstStop} → ${arrowed})`);
+  await page.keyboard.press('Enter');
+  await page.getByRole('dialog', { name: `Space: ${arrowed}` }).waitFor();
+  assert(true, 'Enter on it opens its card');
+  await page.keyboard.press('Escape');
+  await page.locator(`.stage [data-space][aria-label="${arrowed}"]`).focus();
+  await page.keyboard.press('Shift+F10');
+  const spaceMenu = await menuLines(page);
+  assert(spaceMenu[0] === `# ${arrowed}` && spaceMenu.some((l) => l.startsWith('📍 Put ')), `Shift+F10 on it opens its menu (${spaceMenu.join(' | ')})`);
+  await page.keyboard.press('Escape');
+  await openMenu(page).waitFor({ state: 'detached' });
+  // A click on the board lets the space go: D, a click, then Enter still moves the token (it never opens a card).
+  const moved = await page.locator('.last').innerText();
+  await page.keyboard.press('d');
+  await page.waitForFunction(() => document.querySelector('[aria-label="Steps"]')?.value !== '');
+  await page.locator('.stage-box').click({ position: { x: 12, y: 12 } });
+  assert(!(await focusedSpace()), 'a click on the board takes the keys off the space');
+  await page.keyboard.press('Enter');
+  await page.waitForFunction((was) => document.querySelector('.last')?.textContent !== was, moved);
+  assert((await page.getByRole('dialog', { name: /^Space: / }).count()) === 0, `D, a click on the board, then Enter moves the token, and opens no card (${await page.locator('.last').innerText()})`);
+  await page.keyboard.press('Control+z');
   // The turn order: a click on a name makes it their turn; a chip dragged before another moves it there (one undo step).
   await page.locator('.bh .ord .nm', { hasText: 'Player 1' }).click();
   assert((await page.locator('.stage .turn-banner').innerText()).includes('Player 1'), 'clicking a name in the turn order makes it their turn');
