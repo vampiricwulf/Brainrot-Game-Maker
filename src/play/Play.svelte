@@ -60,6 +60,8 @@
   import { keptRoster, type RosterRow } from './roster';
   import AudienceView from './AudienceView.svelte';
   import type { HostAsk, NextAction } from './host/slots.svelte';
+  import { KEY_GUARD_MS } from './host/guard';
+  import { focusedQuietly, focusMain } from './host/focus';
   import HostPanel from './HostPanel.svelte';
   import ModeCards from './ModeCards.svelte';
   import ScoreLog, { type LogTab } from './ScoreLog.svelte';
@@ -1027,7 +1029,7 @@
     void tick().then(() => {
       const a = document.activeElement;
       if (document.querySelector('.play .panel [data-answer-row] button') || (a && a !== document.body && !(a as HTMLButtonElement).disabled)) return;
-      document.querySelector<HTMLElement>('.play .panel [data-next]')?.focus({ preventScroll: true });
+      focusMain();
     });
   }
 
@@ -2095,7 +2097,7 @@
     // nearest button the wheel's controls leave, like ↩ Cancel.)
     if (o?.kind === 'wheel') {
       partnerLanded(o);
-      if (o.partnerFor && partner?.stage === 'pick') void tick().then(() => document.querySelector<HTMLElement>('.play .panel [data-next]')?.focus({ preventScroll: true }));
+      if (o.partnerFor && partner?.stage === 'pick') void tick().then(focusMain);
     }
     app.live.overlay = null;
     // Only the tile's own wheel or dice: closing the scores, or a roll or a wheel opened mid-clue (the same kind too),
@@ -2142,8 +2144,6 @@
 
   /** The partner clue that's open (its state, for the clue on screen). */
   const partner = $derived(session.phase === 'clue' && info && session.partner?.clue === info.clue.id ? session.partner : null);
-  /** A key (Enter, N) right after a step doesn't do the next one: a held or double Enter can't run through them. */
-  const KEY_GUARD_MS = 1000;
   /**
    * When the partner clue's question went up, when its clock started, and whether the cards went out with it (here only,
    * not saved: a reload acts at once).
@@ -2306,7 +2306,7 @@
     if (!app.live.timer || app.live.timer.expired) startTimer(app.live, timerSeconds || clueTimer() || game.settings.defaultTimerSeconds || 30);
     else if (app.live.timer.startedAt === null) toggleTimer(app.live);
     // The main button takes the keys again (Next slide, or the answer).
-    void tick().then(() => document.querySelector<HTMLElement>('.play .panel [data-next]')?.focus({ preventScroll: true }));
+    void tick().then(focusMain);
   }
 
   /**
@@ -2463,7 +2463,7 @@
     // to the nearest button left (▦ Done ▶ board, where a later Enter would close the clue).
     void tick().then(() => {
       const a = document.activeElement;
-      if (!a || a === document.body || (a as HTMLButtonElement).disabled) document.querySelector<HTMLElement>('.play .panel [data-next]')?.focus({ preventScroll: true });
+      if (!a || a === document.body || (a as HTMLButtonElement).disabled) focusMain();
     });
   }
 
@@ -4082,9 +4082,9 @@
   }
 
   // What the keyboard moved the focus to: with Tab (or Shift+Tab), or the app after a key (a window closed, ▲▼, a
-  // strip's Cancel), never the main button nor one clicked with the mouse (see onfocusin). (Not :focus-visible: browsers
-  // show a clicked button's focus too, once any key is pressed.) A Tab that moved nothing here (out to the browser's
-  // address bar) doesn't count for the next click.
+  // strip's Cancel), never the main button, one clicked with the mouse, nor one the app gave the keys to after a step
+  // (focusQuiet) (see onfocusin). (Not :focus-visible: browsers show a clicked button's focus too, once any key is
+  // pressed.) A Tab that moved nothing here (out to the browser's address bar) doesn't count for the next click.
   let tabbing = false;
   /** The last thing the host used was the keyboard (not the mouse). */
   let viaKeys = false;
@@ -4546,7 +4546,10 @@
     const nextRow = !!el && !!tabbedList?.isConnected && tabbedList.contains(el);
     const guess = (rescuing() || placing) && !nextRow;
     if (tabbing && el) pointed.delete(el);
-    tabbedTo = el && (tabbing || (viaKeys && !guess && !pointed.has(el) && !el.matches('[data-next]'))) ? el : null;
+    // (The keys the app gave a button after a step (focusQuiet): Enter there still goes through the checks below, as
+    // partnerEnter's second-Enter guard, never a press of that button.)
+    const quiet = focusedQuietly(el);
+    tabbedTo = el && !quiet && (tabbing || (viaKeys && !guess && !pointed.has(el) && !el.matches('[data-next]'))) ? el : null;
     // (Noted while the button is still in the page: a removed one's closest() finds nothing.)
     tabbedList = tabbedTo instanceof Element ? tabbedTo.closest('ul, ol, [role="list"]') : null;
     tabbing = false;

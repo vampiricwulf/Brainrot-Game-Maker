@@ -32,7 +32,8 @@
   import { canCopyPicture, copyCardPicture } from './cardcopy';
   import { leftLine, pctText, slowKinds, slowLine } from './cardrow';
   import ShrinkButton from './ShrinkButton.svelte';
-  import { hostConfirm, offerNext } from './slots.svelte';
+  import { hostConfirm, offerNext, step as nextStep } from './slots.svelte';
+  import { VERBS } from './verbs';
 
   let {
     game,
@@ -484,8 +485,8 @@
       // The status line goes by the same step.)
       const step = partnerPickStep(session, st, people.length);
       if (step === 'describer')
-        return { label: '🎡 Spin for the describer', key: 'W', title: `W, Enter or N: the wheel spins over the people on ${name(st.pickerId)} with a phone here`, disabled: spinning, run: onmemberspin };
-      if (step === 'show') return { label: '▶ Show question', key: '⏎', title: 'Enter or N: the question goes on screen (nothing is sent to anyone)', run: onshow };
+        return nextStep(VERBS.describerSpin, onmemberspin, { title: `W, Enter or N: the wheel spins over the people on ${name(st.pickerId)} with a phone here`, disabled: spinning });
+      if (step === 'show') return nextStep(VERBS.partnerShow, onshow);
       const who = st.pickerId ? (session.players.find((p) => p.id === st.pickerId)?.name ?? '') : '';
       const why =
         step === 'picker'
@@ -493,16 +494,16 @@
           : step === 'nobody'
             ? `Nobody to partner with: tick “${who} can be on the wheel” to play it Solo, or press Esc`
             : '';
-      return { label: '🎡 Spin for a partner', key: 'W', title: why || 'W, Enter or N: the wheel spins over the other players', disabled: !!why, run: onspin };
+      return nextStep(VERBS.partnerSpin, onspin, why ? { title: why, disabled: true } : { disabled: false });
     }
     // (Judged meanwhile, by a click: the clue's own next, the answer. The answer shown meanwhile (R): no countdown over
     // it, the clue's own next, ▦ Done.)
     if (st.stage === 'distribute' && !verdict.judged && !session.revealed) {
       if (unsentToGo.length) {
         // (Never more cards than the buzzer room takes: ✖ Take one back first.)
-        return { label: '📤 Send and start', key: '⏎', title: allFull ? cardsFullText(game, session, sendAll) : 'Enter or N: the cards not sent yet go to their phones, and the countdown starts', disabled: allFull, run: onclock };
+        return nextStep(VERBS.sendAndStart, onclock, allFull ? { title: cardsFullText(game, session, sendAll), disabled: true } : { disabled: false });
       }
-      return { label: '⏱ Start the clock', key: '⏎', title: cardsOn ? 'Enter or N: the countdown starts' : 'Enter or N: the countdown starts (copy the cards to their players first)', run: onclock };
+      return nextStep(VERBS.startClock, onclock, { title: cardsOn ? 'Enter or N: the countdown starts' : 'Enter or N: the countdown starts (copy the cards to their players first)' });
     }
     return null;
   });

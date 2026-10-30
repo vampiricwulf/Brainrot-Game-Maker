@@ -10,6 +10,8 @@
   import { slidePosition } from '../../lib/session';
   import { ROUND_MODES } from '../../lib/modes';
   import { hostAsk, offerNext } from './slots.svelte';
+  import { justShown } from './guard';
+  import { VERBS } from './verbs';
   import { app } from '../../lib/app.svelte';
 
   let {
@@ -39,7 +41,6 @@
   const nextLabel = $derived(`${nextName} ▶`);
 
   // Clicks right after this row appears (e.g. the second half of a double-click on "Done ▶ board") are ignored.
-  const GUARD_MS = 400;
   const shownAt = Date.now();
   /** Asking before moving on: to the next round (`'next'`), or to the round picked in Go to round (its index). */
   let asking = $state<'next' | number | null>(null);
@@ -54,18 +55,22 @@
   // A played-out board: going on is the moment's main button.
   // A slides round: the next slide, then (on the last) the next round.
   offerNext('board', () =>
-    slides && !lastSlide && onslide ? { label: 'Next slide ▶', key: 'N', run: () => onslide(1), flow: 'pager' } : done ? { label: nextLabel, ...(slides ? { key: 'N' } : {}), run: next } : null,
+    slides && !lastSlide && onslide
+      ? { label: VERBS.nextSlide.label, key: VERBS.nextSlide.key, run: () => onslide(1), flow: 'pager' }
+      : done
+        ? { label: nextLabel, ...(slides ? { key: 'N' } : {}), run: next }
+        : null,
   );
 
   function next(): void {
-    if (Date.now() - shownAt < GUARD_MS) return;
+    if (justShown(shownAt, Date.now(), 1)) return;
     if (done) return onnext();
     ask('next');
   }
 
   /** ◀ Prev round goes at once: the second click of a double-click (on the new round's ◀ Prev round) isn't a second step. */
   function prev(e: MouseEvent): void {
-    if (e.detail >= 2 || Date.now() - shownAt < GUARD_MS) return;
+    if (e.detail >= 2 || justShown(shownAt, Date.now(), e.detail)) return;
     onprev();
   }
 

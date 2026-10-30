@@ -5,6 +5,7 @@
   import { formatPoints, wholePoints, type Game, type Session } from '../../lib/model';
   import { ddCap, score } from '../../lib/session';
   import { offerNext } from './slots.svelte';
+  import { VERBS } from './verbs';
   import { toast } from '../../lib/app.svelte';
   import { teamsOn } from '../../lib/buzz';
   import { buzzerOn } from '../../lib/remote.svelte';
@@ -109,7 +110,7 @@
 
   // The main button, in the panel's main cell (Enter in the wager box does it too).
   offerNext('dd', () => ({
-    label: 'Show question ▶',
+    label: VERBS.showQuestion.label,
     key: '⏎',
     title: valid
       ? 'Enter in the wager box'

@@ -7,6 +7,8 @@
  */
 import { getContext, onDestroy, setContext, untrack } from 'svelte';
 import { ask as askDialog } from '../../lib/ask.svelte';
+import { clickGuard, type ClickGuard } from './guard';
+import type { Verb } from './verbs';
 
 /**
  * The fixed places in a clue's row of buttons (its data-flow mark): the slides' pager (◀ Slide, Next slide ▶), 👁 Reveal
@@ -50,11 +52,16 @@ type Slots = {
 };
 
 const KEY = Symbol('host-slots');
+const GUARD = Symbol('host-guard');
 
-/** The host panel: make the places (its parts find them). */
+/**
+ * The host panel: make the places (its parts find them), and its one click guard (see guard.ts: panelGuard), for the
+ * main button, the boxes' step buttons and their player buttons.
+ */
 export function hostSlots(): Slots & { next: () => NextAction | null } {
   const s = $state<Slots>({ offers: {}, ask: null });
   setContext(KEY, s);
+  setContext(GUARD, clickGuard());
   return Object.assign(s, {
     next: () => {
       for (const k of ORDER) {
@@ -64,6 +71,19 @@ export function hostSlots(): Slots & { next: () => NextAction | null } {
       return null;
     },
   });
+}
+
+/**
+ * A step: its words (VERBS), what it does, and what's particular to it now (greyed, a tooltip, its place in the row),
+ * the same for the main button and the box's own step button.
+ */
+export function step(v: Verb, run: () => void, more: Partial<NextAction> = {}): NextAction {
+  return { label: v.label, ...(v.key ? { key: v.key } : {}), ...(v.title ? { title: v.title } : {}), run, ...more };
+}
+
+/** The host panel's click guard, for the panel and its parts (outside a panel, one of its own). */
+export function panelGuard(): ClickGuard {
+  return getContext<ClickGuard | undefined>(GUARD) ?? clickGuard();
 }
 
 /** A part's main button (what `get` returns, null for none), offered while the part is on screen. */

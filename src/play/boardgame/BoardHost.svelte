@@ -20,7 +20,8 @@
   import { boardNow, busyZones, moveNow, moverDiceName, offBoard, playerName, reorderTurns, rollMover, sendNow, setTurn, stepWaysHint, turnNow, turnOrder } from './bgops';
   import SpaceCard from './SpaceCard.svelte';
   import { START_FIRST } from '../rpg/hostops';
-  import { offerNext } from '../host/slots.svelte';
+  import { offerNext, step as nextStep } from '../host/slots.svelte';
+  import { VERBS } from '../host/verbs';
   import { offerIn } from '../host/offered.svelte';
   import { boardEdit, setEditing } from './boardedit.svelte';
   import BoardEditPanel from './BoardEditPanel.svelte';
@@ -84,13 +85,13 @@
    */
   offerNext('turn', () => {
     if (!bs || !round) return null;
-    if (boardEdit.on) return { label: '✓ Done editing', key: 'Esc', title: 'Esc: back to playing (the changes stay in this game)', run: () => setEditing(false) };
-    const prev = { label: '◀ Previous turn', key: '⇧N', title: 'Shift+N: back to the turn before', run: () => turnTold(-1) };
-    const next = { label: 'Next turn ▶', key: 'N', title: 'N: the next player’s turn', run: () => turnTold(1) };
+    if (boardEdit.on) return nextStep(VERBS.doneEditing, () => setEditing(false));
+    const prev = nextStep(VERBS.prevTurn, () => turnTold(-1));
+    const next = nextStep(VERBS.nextTurn, () => turnTold(1));
     // At a fork the way is picked first (Next turn ▶ beside it drops the steps left).
     if (bs.fork)
       return {
-        label: '🔀 Pick a way',
+        label: VERBS.pickWay.label,
         title: `Pick which way ${turnName} goes: the buttons under “which way?”, or ${dual ? 'a marked space' : 'the space'} on the stage`,
         run: () => {
           forkEl?.scrollIntoView({ block: 'nearest' });
@@ -103,15 +104,15 @@
     // One space a turn: the way on is the move (Enter); at a fork, the way is picked first; nowhere to go, the next turn.
     if (round.mover.kind === 'step') {
       const [w] = stepWays;
-      if (stepWays.length === 1) return { label: `→ ${shown(w)}`, key: '⏎', title: `Enter: ${turnName} moves to ${shown(w)}`, run: () => move(1, w, turnId), also };
-      if (stepWays.length) return { label: '🔀 Pick a way', title: stepWaysHint(round, bs, stepWays, dual), run: () => hint(stepWaysHint(round, bs, stepWays, dual)), also };
+      if (stepWays.length === 1) return nextStep(VERBS.stepTo(shown(w)), () => move(1, w, turnId), { title: `Enter: ${turnName} moves to ${shown(w)}`, also });
+      if (stepWays.length) return nextStep(VERBS.pickWay, () => hint(stepWaysHint(round, bs, stepWays, dual)), { title: stepWaysHint(round, bs, stepWays, dual), also });
       return { ...next, also: [prev] };
     }
     // (In a zone, a count is no move: the next turn, unless the host sends them out first.)
     if (steps && turnId && !bs.positions[turnId]?.space) return { ...next, also: [prev] };
-    if (steps) return { label: `${steps < 0 ? '◀ Back' : '▶ Move'} ${Math.abs(steps)}`, key: '⏎', title: `Enter: move ${turnName} ${steps < 0 ? 'back ' : ''}${Math.abs(steps)} space${Math.abs(steps) === 1 ? '' : 's'}`, run: () => move(steps), also };
+    if (steps) return nextStep(VERBS.move(steps), () => move(steps), { title: `Enter: move ${turnName} ${steps < 0 ? 'back ' : ''}${Math.abs(steps)} space${Math.abs(steps) === 1 ? '' : 's'}`, also });
     const wheel = round.mover.kind === 'wheel';
-    return { label: wheel ? '🎡 Spin' : '🎲 Roll', key: 'D', title: `D: ${wheel ? 'spin the movement wheel' : `roll ${moverDiceName(game, round)}`}`, run: roll, also };
+    return nextStep(wheel ? VERBS.boardSpin : VERBS.boardRoll, roll, { title: `D: ${wheel ? 'spin the movement wheel' : `roll ${moverDiceName(game, round)}`}`, also });
   });
 
   const card = $derived(round && space ? spaceById(round, space) : undefined);

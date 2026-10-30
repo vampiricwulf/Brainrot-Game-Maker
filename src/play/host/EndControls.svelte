@@ -9,7 +9,8 @@
   import { slideHasContent } from '../../lib/usage';
   import { logged } from '../../lib/toolset';
   import { copyText, standingsText } from '../standings';
-  import { hostAsk, offerNext } from './slots.svelte';
+  import { hostAsk, offerNext, step } from './slots.svelte';
+  import { VERBS } from './verbs';
 
   let {
     game,
@@ -60,7 +61,7 @@
 
   // A tie for first: settling it is the main button (the tiebreaker clue when the game has one, else a roll-off).
   offerNext('end', () =>
-    !ties.length ? null : tbReady ? { label: '❓ Tiebreaker clue', run: ontiebreaker } : onrolloff ? { label: '🎲 Tiebreaker roll-off', key: 'O', run: rollOff } : null,
+    !ties.length ? null : tbReady ? step(VERBS.tiebreakerClue, ontiebreaker) : onrolloff ? step(VERBS.rollOff, rollOff) : null,
   );
 
   /** 🔁 Rematch asks first, in the panel's confirmation strip: the results go. */
@@ -90,16 +91,16 @@
       <b>Tie for first:</b> {nameList(ties.map((p) => p.name))}
       <div class="row">
         <!-- The main one is in the panel's main cell; these are the other ways to settle it. -->
-        {#if tbReady && onrolloff}<button onclick={rollOff} title="O">🎲 Tiebreaker roll-off</button>{/if}
+        {#if tbReady && onrolloff}<button onclick={rollOff} title={VERBS.rollOff.key}>{VERBS.rollOff.label}</button>{/if}
         {#if !tbReady}
-          <button disabled title={app.playerOnly ? 'This game has no tiebreaker clue' : "Write one on the editor's Tiebreaker tab"}>❓ Tiebreaker clue</button>
+          <button disabled title={app.playerOnly ? 'This game has no tiebreaker clue' : "Write one on the editor's Tiebreaker tab"}>{VERBS.tiebreakerClue.label}</button>
         {/if}
         <button
           onclick={() => {
             // (Who they are: a different tie later, after a score is fixed, is still to settle.)
             logged(session, 'Co-winners declared', () => (session.coWinners = ties.map((p) => p.id)));
             oncowinners?.();
-          }}>🤝 Declare co-winners</button
+          }}>{VERBS.coWinners.label}</button
         >
       </div>
     </div>

@@ -24,7 +24,8 @@
   import { copyText, standingsText } from '../standings';
   import { currentClueInfo, toolOnlyClue } from '../../lib/session';
   import { boardNow, moverResult } from '../boardgame/bgops';
-  import { offerNext } from './slots.svelte';
+  import { offerNext, step } from './slots.svelte';
+  import { VERBS } from './verbs';
   import { offerIn } from './offered.svelte';
   import { announce } from '../../lib/announce';
 
@@ -181,20 +182,14 @@
   offerNext('tool', () => {
     if (!o || o.kind === 'shop') return null;
     // (A spent wheel can't spin: Close it, or Restore its slices in the card.)
-    if (o.kind === 'wheel' && !landed && !spent)
-      return {
-        label: o.spin ? 'Spin again' : 'Spin!',
-        key: 'W',
-        disabled: busy,
-        run: () => spinWheel(app.live, session, game),
-      };
-    if (o.kind === 'wheel' && landed && again && !spent) return { label: '↻ Spin again', key: 'W', run: () => spinWheel(app.live, session, game) };
-    if (o.kind === 'dice' && !landed) return { label: o.roll ? 'Roll again' : 'Roll!', key: 'D', disabled: busy, run: () => rollDice(app.live, session, o.preset, o.mover) };
-    if (o.kind === 'popup' && o.answer && !o.revealed) return { label: '👁 Reveal answer', key: 'R', run: () => (o.revealed = true) };
+    if (o.kind === 'wheel' && !landed && !spent) return step(o.spin ? VERBS.spinning : VERBS.spin, () => spinWheel(app.live, session, game), { disabled: busy });
+    if (o.kind === 'wheel' && landed && again && !spent) return step(VERBS.spinAgain, () => spinWheel(app.live, session, game));
+    if (o.kind === 'dice' && !landed) return step(o.roll ? VERBS.rollAgain : VERBS.roll, () => rollDice(app.live, session, o.preset, o.mover), { disabled: busy });
+    if (o.kind === 'popup' && o.answer && !o.revealed) return step(VERBS.reveal, () => (o.revealed = true), { title: undefined });
     // A board game's own roll (or spin) that came up: moving is next (▶ Move, Enter, which closes it), not Close.
     const { round } = boardNow(game, session);
     if (round && moverResult(game, round, o) !== null) return null;
-    return { label: tileDone ? 'Close ▶ board' : 'Close', key: 'Esc', run: onclose };
+    return step(tileDone ? VERBS.closeToolBoard : VERBS.closeTool, onclose);
   });
 
   function tag(id: string): void {

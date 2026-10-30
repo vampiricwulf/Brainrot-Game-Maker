@@ -7,7 +7,10 @@
 <script lang="ts">
   import { announce, announceChanges } from '../lib/announce';
   import { textOn } from '../lib/colors';
-  import { hostSlots, type HostAsk, type NextAction } from './host/slots.svelte';
+  import { hostSlots, panelGuard, step, type HostAsk, type NextAction } from './host/slots.svelte';
+  import { VERBS } from './host/verbs';
+  import { justShown } from './host/guard';
+  import { focusMain } from './host/focus';
   import { phoneAwaySince } from './host/phoneaway.svelte';
   import { categoryLabel, clueCardWords, clueValue, finalName, formatPoints, isBoard, isSlides, questionSlides, typedPoints, wholePoints, type Game, type Session } from '../lib/model';
   import { answerShowing, awardOpen, clueMarks, clueName, clueScored, currentClueInfo, currentFinal, findClueRef, nameList, ownPlayers, partnerSteal, roundComplete, score, setScore, slidePosition, stealersLeft, tiebreakHolds, tiedForFirst, toolOnlyClue, usedTiles } from '../lib/session';
@@ -349,14 +352,14 @@
   );
   // At the end the chips stay (scores can still be fixed) but there's nothing to award.
   const showPlayers = $derived((scoring || session.phase === 'end') && session.phase !== 'rpg' && session.phase !== 'boardgame');
-  const introLabel = $derived(
+  const introStep = $derived(
     session.intro?.stage === 'title'
       ? isBoard(round)
-        ? 'Show board ▶'
-        : 'Start the round ▶'
+        ? VERBS.showBoard
+        : VERBS.startRound
       : session.intro?.stage === 'fill'
-        ? 'Reveal categories ▶'
-        : `Reveal category ${(session.intro?.revealed ?? 0) + 1} of ${isBoard(round) ? round.categories.length : 0} ▶`,
+        ? VERBS.revealCategories
+        : VERBS.revealCategory((session.intro?.revealed ?? 0) + 1, isBoard(round) ? round.categories.length : 0),
   );
   // (A clue's own time from an older game can be anything typed: only whole seconds of at least 1 count.)
   const clueSecs = $derived(Math.round(info?.clue.timerSeconds ?? 0));
@@ -447,14 +450,12 @@
   const slots = hostSlots();
   /**
    * The main button stays one button while its job changes: the second click of a double-click on "Show question ▶" (or
-   * 🔔 Open the buzzers) must not land on the 👁 Reveal answer it just became, and put the answer on stream.
+   * 🔔 Open the buzzers) must not land on the 👁 Reveal answer it just became, and put the answer on stream. (The panel's
+   * one click guard: a box's own buttons go through it too.)
    */
-  let lastNext = { label: '', at: 0 };
-  function clickNext(e: MouseEvent, n: { label: string; run: () => void }): void {
-    const now = Date.now();
-    if (e.detail >= 2 && now - lastNext.at < 600 && lastNext.label !== n.label) return;
-    lastNext = { label: n.label, at: now };
-    n.run();
+  const guard = panelGuard();
+  function clickNext(e: MouseEvent, n: NextAction): void {
+    if (guard.press(`main:${n.label}`, e.detail, { step: true }) === 'go') n.run();
   }
 
   /** Exit was pressed: it asks in the strip (a browser dialog would show on stream). */
@@ -512,7 +513,6 @@
   // The fixed bar ignores the second click of a double-click for a moment after the screen changes (the game starting,
   // a new round or phase): a double-click on Start game ▶ or Done ▶ board never lands on 📺 Audience or 🚪 Exit under
   // it. (A single click, or the keyboard, always goes through.)
-  const GUARD_MS = 400;
   let shownAt = Date.now();
   onMount(() => (shownAt = Date.now()));
   $effect(() => {
@@ -520,8 +520,8 @@
     void session.currentRound;
     shownAt = Date.now();
   });
-  function guard(e: MouseEvent): void {
-    if (e.detail < 2 || Date.now() - shownAt >= GUARD_MS) return;
+  function barGuard(e: MouseEvent): void {
+    if (!justShown(shownAt, Date.now(), e.detail, true)) return;
     e.stopPropagation();
     e.preventDefault();
   }
@@ -591,7 +591,7 @@
     void session.partner?.stage;
     void session.partner?.pickerId;
     if (!clueKey() || ddWager) return;
-    queueMicrotask(() => document.querySelector<HTMLElement>('.panel [data-next]')?.focus({ preventScroll: true }));
+    queueMicrotask(focusMain);
   });
   // (A partner clue knows when it opened, a reload too.)
   const marks = $derived(session.phase === 'clue' && info ? clueMarks(session, info.clue.id, partner?.at ?? markSince) : {});
@@ -628,7 +628,7 @@
   function judged(): void {
     void tick().then(() => {
       const a = document.activeElement;
-      if (!a || a === document.body || (a as HTMLButtonElement).disabled) document.querySelector<HTMLElement>('.panel [data-next]')?.focus({ preventScroll: true });
+      if (!a || a === document.body || (a as HTMLButtonElement).disabled) focusMain();
     });
   }
 
@@ -681,22 +681,18 @@
    * answer, then ▦ Done ▶ board. (A part's offer comes first: a tool on screen, the Daily Double's wager, the Final…)
    */
   const flow = $derived.by((): NextAction | null => {
-    if (session.intro) return { label: introLabel, key: 'N', title: 'N (or click the screen)', run: onintronext };
+    if (session.intro) return step(introStep, onintronext);
     if (session.phase === 'clue' && info && !setup && !partnerFirst) {
-      if (tieNames && onrolltie) return { label: '🎲 Roll for it', title: 'The tied players roll: the order they roll in is the order they answer in', run: onrolltie };
+      if (tieNames && onrolltie) return step(VERBS.rollForIt, onrolltie);
       // A clue's question slides come first (the host opens the buzzers whenever they like: 🔔 next to it, or U).
-      if (moreSlides && slidePos)
-        return { label: 'Next slide ▶', key: 'N', title: `N: slide ${slidePos.at + 1} of ${slidePos.of} (Shift+N: the slide before) · or click the slide`, run: nextSlide, flow: 'pager' };
-      if (buzzClosed && !gotIt && !allMissed && !answerUp) return { label: '🔔 Open the buzzers', key: 'U', title: "U: buzzers open for everyone who hasn't missed this clue", run: openBuzzers };
-      if (!toolOnly && !session.revealed) return { label: '👁 Reveal answer', key: 'R', title: 'R (press again to hide) · or click the slide', run: onreveal, flow: 'reveal' };
-      return { label: '▦ Done ▶ board', key: 'Esc', title: 'Esc: back to the board (marks the tile used)', run: doneUnscored, flow: 'done' };
+      if (moreSlides && slidePos) return step(VERBS.nextSlideOf(slidePos.at, slidePos.of), nextSlide, { flow: 'pager' });
+      if (buzzClosed && !gotIt && !allMissed && !answerUp) return step(VERBS.openBuzzers, openBuzzers);
+      if (!toolOnly && !session.revealed) return step(VERBS.reveal, onreveal, { title: `${VERBS.reveal.title} · or click the slide`, flow: 'reveal' });
+      return step(VERBS.done, doneUnscored, { flow: 'done' });
     }
     if (session.phase === 'tiebreaker') {
-      if (moreSlides && slidePos)
-        return { label: 'Next slide ▶', key: 'N', title: `N: slide ${slidePos.at + 1} of ${slidePos.of} (Shift+N: the slide before) · or click the slide`, run: nextSlide, flow: 'pager' };
-      return answerShowing(session)
-        ? { label: '🏁 Back to results', key: 'N', title: 'N: back to the results', run: tiebreakerDone, flow: 'done' }
-        : { label: '👁 Reveal answer', key: 'R', title: 'R (press again to hide)', run: onreveal, flow: 'reveal' };
+      if (moreSlides && slidePos) return step(VERBS.nextSlideOf(slidePos.at, slidePos.of), nextSlide, { flow: 'pager' });
+      return answerShowing(session) ? step(VERBS.backToResults, tiebreakerDone, { flow: 'done' }) : step(VERBS.reveal, onreveal, { flow: 'reveal' });
     }
     return null;
   });
@@ -931,8 +927,8 @@
           ? 'Points were given for this clue: undo them first, or use Done ▶ board'
           : setup
             ? 'Esc: the question never showed, so the tile stays on the board'
-            : 'Shift+Esc: back to the board without using up this tile'}
-      >↩ Cancel (keep tile)</button>
+            : VERBS.putBack.title}
+      >{VERBS.putBack.label}</button>
     {/if}
     {@render phoneChip?.()}
     <TimerControls defaultSeconds={timerDefault} bind:custom={timerSeconds} />
@@ -1064,6 +1060,9 @@
     </div>
   {/if}
 
+  <!-- A button's sign, then its words (the words go on a narrow window: see .word). -->
+  {#snippet iconWord(label: string)}{label.slice(0, label.indexOf(' '))} <span class="word">{label.slice(label.indexOf(' ') + 1)}</span>{/snippet}
+
   {#snippet away(id: string, name: string)}
     {#if phoneAwaySince(id) !== null}
       <span class="away" data-phone-away={id} role="img" aria-label="{name}’s phone is offline" title="{name}’s phone is offline (the 📱 chip lists the phones)">📵</span>
@@ -1190,38 +1189,38 @@
       <!-- The moment's other buttons (whichever isn't the main one): at the end of the Amount row, else a row of their own. -->
       {#snippet others()}
         {#if session.intro}
-          <button class="ghost" onclick={onskipintro}>Skip intro</button>
+          <button class="ghost" onclick={onskipintro}>{VERBS.skipIntro.label}</button>
         {/if}
         {#if session.phase === 'clue' && !setup}
           {#if slidePos && !session.revealed}
             <!-- A clue's question slides: back one (quiet), and on when something else is the main button. -->
-            <button class="ghost back-slide" data-flow="pager" onclick={() => onslide(-1)} disabled={slidePos.at <= 1} title="Shift+N: the slide before">◀ <span class="word">Slide</span></button>
-            {#if moreSlides && next?.run !== nextSlide}<button data-flow="pager" onclick={nextSlide} title="N: the next slide">Next slide ▶</button>{/if}
+            <button class="ghost back-slide" data-flow="pager" onclick={() => onslide(-1)} disabled={slidePos.at <= 1} title={VERBS.prevSlide.title}>{@render iconWord(VERBS.prevSlide.label)}</button>
+            {#if moreSlides && next?.run !== nextSlide}<button data-flow="pager" onclick={nextSlide} title={VERBS.nextSlide.title}>{VERBS.nextSlide.label}</button>{/if}
           {/if}
           {#if buzzClosed && !answerUp && next?.run !== openBuzzers && !tieNames && !allMissed}
-            <button onclick={openBuzzers} title="U: buzzers open for everyone who hasn't missed this clue">🔔 Open the buzzers</button>
+            <button onclick={openBuzzers} title={VERBS.openBuzzers.title}>{VERBS.openBuzzers.label}</button>
           {/if}
           {#if !toolOnly && !toolFirst && next?.run !== onreveal}
-            <button data-flow="reveal" onclick={onreveal} title="R (press again to hide)">
-              {session.revealed ? '🙈 Hide answer' : '👁 Reveal answer'}
+            <button data-flow="reveal" onclick={onreveal} title={VERBS.reveal.title}>
+              {session.revealed ? VERBS.hide.label : VERBS.reveal.label}
             </button>
           {/if}
           <!-- A wheel/dice tile with nothing to ask has one way out: its tool's Close ▶ board. -->
           {#if !(toolOnly && app.live.overlay) && next?.run !== doneUnscored}
-            <button class="done-board" data-flow="done" onclick={onback} title="Esc: back to the board (marks the tile used)">▦ <span class="word">Done ▶ board</span></button>
+            <button class="done-board" data-flow="done" onclick={onback} title={VERBS.done.title}>{@render iconWord(VERBS.done.label)}</button>
           {/if}
         {:else if session.phase === 'slides'}
-          {#if slidePos}<button class="ghost" data-flow="pager" onclick={() => onslide(-1)} disabled={slidePos.at <= 1} title="Shift+N: the slide before">◀ Slide</button>{/if}
+          {#if slidePos}<button class="ghost" data-flow="pager" onclick={() => onslide(-1)} disabled={slidePos.at <= 1} title={VERBS.prevSlide.title}>{VERBS.prevSlide.label}</button>{/if}
         {:else if session.phase === 'tiebreaker'}
           {#if slidePos && !answerShowing(session)}
-            <button class="ghost" data-flow="pager" onclick={() => onslide(-1)} disabled={slidePos.at <= 1} title="Shift+N: the slide before">◀ Slide</button>
-            {#if moreSlides && next?.run !== nextSlide}<button data-flow="pager" onclick={nextSlide} title="N: the next slide">Next slide ▶</button>{/if}
-            {#if next?.run !== onreveal}<button data-flow="reveal" onclick={onreveal} title="R (press again to hide)">👁 Reveal answer</button>{/if}
+            <button class="ghost" data-flow="pager" onclick={() => onslide(-1)} disabled={slidePos.at <= 1} title={VERBS.prevSlide.title}>{VERBS.prevSlide.label}</button>
+            {#if moreSlides && next?.run !== nextSlide}<button data-flow="pager" onclick={nextSlide} title={VERBS.nextSlide.title}>{VERBS.nextSlide.label}</button>{/if}
+            {#if next?.run !== onreveal}<button data-flow="reveal" onclick={onreveal} title={VERBS.reveal.title}>{VERBS.reveal.label}</button>{/if}
           {/if}
           {#if answerShowing(session)}
-            <button data-flow="reveal" onclick={onreveal} title="R (press again to hide)">🙈 Hide answer</button>
+            <button data-flow="reveal" onclick={onreveal} title={VERBS.hide.title}>{VERBS.hide.label}</button>
           {:else}
-            <button data-flow="done" onclick={ontiebreakerdone}>🏁 Back to results</button>
+            <button data-flow="done" onclick={ontiebreakerdone}>{VERBS.backToResults.label}</button>
           {/if}
         {/if}
         {#if scoring && !showAward}
@@ -1281,7 +1280,7 @@
             <span class="spacer"></span>
             <!-- (Not while they're put away for the tile's own tool: nobody can buzz yet. Nor with the answer on screen.) -->
             {#if buzz?.phase !== 'lobby' && !answerUp}
-              <button class="ghost small" onclick={() => onopenbuzzers?.(true)} title="0: nobody is locked out any more, and the buzzers open for everyone">↺ Reset buzzers</button>
+              <button class="ghost small" onclick={() => onopenbuzzers?.(true)} title={VERBS.resetBuzzers.title}>{VERBS.resetBuzzers.label}</button>
             {/if}
           </div>
         {:else if roomForBuzzers && session.phase === 'clue' && own && !own.setup}
@@ -1399,7 +1398,7 @@
   {/if}
 
   <!-- The fixed bar: the same buttons in the same places in every state and round, 🚪 Exit at the far end. -->
-  <div class="fixed" onclickcapture={guard}>
+  <div class="fixed" onclickcapture={barGuard}>
     <span class="group g-edit">
       <!-- Right-click either one for the whole history. -->
       <button

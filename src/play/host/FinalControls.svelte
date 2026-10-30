@@ -19,7 +19,8 @@
   } from '../../lib/session';
   import { finalNextStep, logged, startStep } from '../../lib/toolset';
   import { letter, pickLabel, pickOf, rightChoice, usableChoices } from '../../lib/choices';
-  import { hostAsk, offerNext } from './slots.svelte';
+  import { hostAsk, offerNext, step as nextStep } from './slots.svelte';
+  import { VERBS } from './verbs';
   import AnswersHost from './AnswersHost.svelte';
   import TileCards from './TileCards.svelte';
 
@@ -352,14 +353,14 @@
     const fs = f;
     const cur = fs?.current && fs.order.includes(fs.current) ? fs.current : undefined;
     if (fs && cur && !fs.results[cur]) {
-      if (typedAnswer(fs, cur) && !fs.answerShown?.[cur]) return { label: 'Show answer ▶' };
+      if (typedAnswer(fs, cur) && !fs.answerShown?.[cur]) return { label: VERBS.showAnswer.label };
       // Their answer or wager is up: judging them is next (N waits for it; the wager goes up with it).
       if (hasWager(fs, cur) && (fs.shown[cur] || fs.answerShown?.[cur])) return { label: '✔ Right', judge: cur };
-      if (!fs.shown[cur]) return { label: 'Show wager ▶' };
+      if (!fs.shown[cur]) return { label: VERBS.showWager.label };
     }
     if (fs && cur && fs.order.every((id) => id === cur || fs.results[id]))
-      return { label: `Next ${noun} ▶`, disabled: `Mark ${byId[cur]?.name ?? '?'} right (C) or wrong (X) first` };
-    return { label: `Next ${noun} ▶` };
+      return { label: VERBS.nextPlayer(noun).label, disabled: `Mark ${byId[cur]?.name ?? '?'} right (C) or wrong (X) first` };
+    return { label: VERBS.nextPlayer(noun).label };
   });
 
   // The how-to in the reveals is open the first time on this computer, folded after that (the rows keep the room). In a
@@ -383,12 +384,12 @@
   });
 
   const after = $derived(game.rounds[session.currentRound + 1]);
-  const goOn = $derived(after ? `Next: ${roundName(after, session.currentRound + 1)} ▶` : 'Finish game ▶');
+  const goOn = $derived((after ? VERBS.nextNamed(roundName(after, session.currentRound + 1)) : VERBS.finishGame).label);
   const labels = $derived({
     // Everyone sat out: straight on (finalNext skips the question and the reveals).
-    wagers: f && !f.players.length ? goOn : 'Show question ▶',
-    question: 'Reveal answer ▶',
-    answer: `Start ${noun} reveals ▶`,
+    wagers: f && !f.players.length ? goOn : VERBS.showQuestion.label,
+    question: VERBS.finalReveal.label,
+    answer: VERBS.startReveals(noun).label,
     reveal: goOn,
   });
 
@@ -402,28 +403,17 @@
       // Multiple choice with one marked ✔ Right: a pick that isn't it offers ✘ Wrong first (C still marks it right).
       const a = rightOne ? typedAnswer(f, judge) : undefined;
       const named = a ? pickOf(a, choices) : null;
-      if (rightOne && named && named !== rightOne.id)
-        return {
-          label: `✘ ${who} wrong`,
-          key: 'X',
-          title: `X: ${who} is wrong`,
-          run: () => onjudge(judge, false),
-          also: [{ label: '✔ Right', key: 'C', title: `C: ${who} is right`, run: () => onjudge(judge, true) }],
-        };
-      return {
-        label: `✔ ${who} right`,
-        key: 'C',
-        title: `C: ${who} is right`,
-        run: () => onjudge(judge, true),
-        also: [{ label: '✘ Wrong', key: 'X', title: `X: ${who} is wrong`, run: () => onjudge(judge, false) }],
-      };
+      const right = () => onjudge(judge, true);
+      const wrong = () => onjudge(judge, false);
+      if (rightOne && named && named !== rightOne.id) return nextStep(VERBS.wrong(who), wrong, { also: [nextStep(VERBS.rightBeside(who), right)] });
+      return nextStep(VERBS.right(who), right, { also: [nextStep(VERBS.wrongBeside(who), wrong)] });
     }
     if (session.finalStep === 'reveal' && unjudged)
       return { label: revealStep.label, key: 'N', title: revealStep.disabled ?? 'N', disabled: !!revealStep.disabled, run: onrevealnext };
     const step = session.finalStep ?? 'wagers';
     // Its question slides first, then the answer.
     if (step === 'question' && moreSlides && slidePos && onslide)
-      return { label: 'Next slide ▶', key: 'N', title: `N: slide ${slidePos.at + 1} of ${slidePos.of} (Shift+N: the slide before) · or click the slide`, run: () => onslide(1), flow: 'pager' };
+      return nextStep(VERBS.nextSlideOf(slidePos.at, slidePos.of), () => onslide(1), { flow: 'pager' });
     return {
       label: labels[step],
       key: 'N',
