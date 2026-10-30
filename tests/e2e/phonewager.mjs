@@ -16,7 +16,7 @@ import { existsSync, mkdirSync, mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { addClassicRounds, mainButton, mainLabel, noSelection, playWithPlayers, recordSeen, seenWhere, selectedWords, shownOf, startRoomOn, leaveAnswer } from './helpers.mjs';
+import { addClassicRounds, mainButton, noSelection, playWithPlayers, recordSeen, seenWhere, selectedWords, shownOf, startRoomOn, leaveAnswer } from './helpers.mjs';
 
 const file = resolve(process.env.APP_FILE || 'dist/index.html');
 if (!existsSync(file)) throw new Error('Run `npm run build` first');
@@ -638,6 +638,7 @@ try {
     (await rev1.locator('[data-typed]').innerText()) === '✍ hidden' && !(await rev1.locator('[data-pick-hint]').count()),
     'the row’s answer: “✍ hidden” (one window) until it’s on screen, and nothing yet of whether it’s right',
   );
+  assert((await host2.locator('.panel button.ring').count()) === 0, 'nor a ring on the verdict its pick points to (viewers see this panel)');
   await typedHidden('the reveals, before Show answer');
   // C before N showed it: judging puts the answer up too, with the wager (never a blank line under ✔ CORRECT).
   await host2.keyboard.press('c');
@@ -652,14 +653,21 @@ try {
     `and the row: “${PICKED}”, “✔ right choice”`,
   );
   await shot('pw-12-pick-reveal-one-window', host2);
-  // N, N: Player 2's pick (C) goes up; the row says it isn't B, and the main button offers ✘ Wrong first (C still works).
+  // N, N: Player 2's pick (C) goes up; the row says it isn't B, and the main cell's ✔ Right / ✘ Wrong (in that order,
+  // neither blue) rings ✘ Wrong, as the row does (C still works).
   await host2.keyboard.press('n');
   await mainButton(host2).filter({ hasText: 'Show answer ▶' }).waitFor();
   await host2.keyboard.press('n');
-  await host2.locator('.fj .pl', { hasText: 'Player 2' }).locator('[data-pick-hint]', { hasText: '✘ not B' }).waitFor();
-  const main2 = await mainLabel(host2);
-  const also2 = await host2.locator('.panel [data-next-also]').allInnerTexts();
-  assert(main2 === '✘ Player 2 wrong' && also2.some((t) => t.startsWith('✔ Right')), `a pick that isn't the ✔ Right one: the main button is “${main2}”, ✔ Right beside it`);
+  const rev2 = host2.locator('.fj .pl', { hasText: 'Player 2' });
+  await rev2.locator('[data-pick-hint]', { hasText: '✘ not B' }).waitFor();
+  const pair2 = await host2.locator('.panel :is([data-next], [data-next-pair])').evaluateAll((bs) =>
+    bs.map((b) => `${[...b.childNodes].filter((n) => n.nodeName !== 'KBD').map((n) => n.textContent).join('').trim()}${b.classList.contains('ring') ? ' (ring)' : ''}${b.classList.contains('primary') ? ' (blue)' : ''}`),
+  );
+  const rowRings = await rev2.locator('button.ring').allInnerTexts();
+  assert(
+    pair2.join(' | ') === '✔ Right | ✘ Wrong (ring)' && rowRings.join() === '✘ Wrong',
+    `a pick that isn't the ✔ Right one: ✔ Right and ✘ Wrong stay in their places, neither blue, ✘ Wrong ringed, in the main cell and the row (${pair2.join(' | ')}; the row: ${rowRings.join()})`,
+  );
 
   // ---------- A team sitting the Final out (a 🔁 Rematch in the same room): its phones name the Final once ----------
   await host2.keyboard.press('x');

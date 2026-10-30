@@ -19,7 +19,7 @@ import { chromium } from 'playwright-core';
 import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { confirmStrip, editorReady, forgetSeen, mainButton, openGameFile, packGame, png, recordSeen, roomStored, seenWhere, shownOf, startBuzzer, startRoomOn, stored, leaveAnswer } from './helpers.mjs';
+import { confirmStrip, editorReady, forgetSeen, mainButton, mainLabel, openGameFile, packGame, png, recordSeen, roomStored, seenWhere, shownOf, startBuzzer, startRoomOn, stored, leaveAnswer } from './helpers.mjs';
 
 const file = resolve(process.env.APP_FILE || 'dist/index.html');
 if (!existsSync(file)) throw new Error('Run `npm run build` first');
@@ -552,8 +552,22 @@ try {
   assert(!marked.length && !(await bob.locator('body').innerText()).includes('answer’s on screen'), 'never marked “the answer’s on screen”: not to the room, not on Bob’s phone');
   await panel.waitFor();
   assert(/listed as Card 1/.test(await words(row1)), 'the reveals: the Final’s panel is still there, under the rows');
-  // (Judged without Show answer, as a rude one may be: it ends all the same.)
-  for (const who of ['Ann', 'Bob', 'Cat']) await host.getByRole('button', { name: `✔ Right: ${who}` }).click();
+  // The first one's answer or wager up (N): the main cell holds ✔ Right and ✘ Wrong, in that order, neither blue. A
+  // double-click on ✔ Right judges them once: its second click, on the Next player ▶ there now, does nothing.
+  await host.keyboard.press('n');
+  await host.locator('.panel [data-next-pair]').waitFor();
+  const pair = await host.locator('.panel :is([data-next], [data-next-pair])').evaluateAll((bs) => bs.map((b) => `${b.firstChild.textContent.trim()}${b.classList.contains('primary') ? ' (blue)' : ''}`));
+  assert(pair.join(' | ') === '✔ Right | ✘ Wrong', `the reveals, a verdict due: ✔ Right and ✘ Wrong in the main cell, in that order, neither blue (${pair.join(' | ')})`);
+  await mainButton(host).dblclick();
+  await host.locator('.panel [data-next-pair]').waitFor({ state: 'detached' });
+  await host.waitForTimeout(400);
+  const judgedNow = await host.locator('.fj .pl button[aria-pressed="true"]').count();
+  assert(judgedNow === 1 && (await mainLabel(host)) === 'Next player ▶', `a double-click on ✔ Right judges one player, once (${judgedNow} judged; the main button: ${await mainLabel(host)})`);
+  // (The others judged without Show answer, as a rude one may be: it ends all the same.)
+  for (const who of ['Ann', 'Bob', 'Cat']) {
+    const right = host.getByRole('button', { name: `✔ Right: ${who}` });
+    if ((await right.getAttribute('aria-pressed')) !== 'true') await right.click();
+  }
   await mainButton(host).click();
   const ended = host.locator('.panel .status', { hasText: 'Game over' });
   await ended.waitFor();

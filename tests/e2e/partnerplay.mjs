@@ -237,7 +237,14 @@ try {
   await page.mouse.click(startAt.x + startAt.width / 2, startAt.y + startAt.height / 2);
   await page.waitForTimeout(300);
   assert((await panel.locator('[data-judged]').count()) === 0 && (await gotIt.boundingBox()).x === gotAt, 'a second click where ⏱ Start the clock was judges nothing: ✔ Got it kept its place');
-  assert((await panel.locator('[data-partner-next]').innerText()) === 'Did they get it?', 'the box’s first line asks if they got it');
+  assert((await panel.locator('[data-partner-next]').innerText()) === 'Did they get it? ✔ Got it (Enter) or ✘ Missed (Shift+Enter)', 'the box’s first line asks if they got it, and how');
+  // The verdict due: ✔ Got it and ✘ Missed an equal pair in the box, and nothing blue (👁 Reveal answer quiet in the main
+  // cell), so clicking “the blue button” over and over never shows the answer mid-turn.
+  const verdicts = await panel.locator('[data-partner-judge] button').evaluateAll((bs) => bs.slice(0, 2).map((b) => (b.classList.contains('good') ? 'good' : b.classList.contains('bad') ? 'bad' : b.className)));
+  assert(
+    verdicts.join() === 'good,bad' && (await page.locator('.panel button.primary:visible').count()) === 0 && (await mainLabel(page)) === '👁 Reveal answer',
+    `the clock running: ✔ Got it and ✘ Missed an equal pair, nothing blue, 👁 Reveal answer quiet in the main cell (${verdicts.join(', ')})`,
+  );
   assert((await page.locator('.panel .players').count()) === 1, 'the award row is there, as on any clue');
   // With the clock running they're still describing: a click on the stage says how to judge, not the answer.
   await stage('[data-slide="1"]').click();

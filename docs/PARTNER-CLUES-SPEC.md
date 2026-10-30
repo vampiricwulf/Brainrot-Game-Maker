@@ -630,6 +630,11 @@ its place, is dropped.
   press shows "The cards just went out: press Enter again to give ✔ Got it" (after ⏱ Start the clock, or on a clue
   with no cards: "The clock just started: press Enter again to give ✔ Got it"). Clicking ✔ Got it or ✘ Missed has no
   delay.
+- **An equal pair.** Once the clock runs (not judged, no steal) ✔ Got it ⏎ and ✘ Missed ⇧⏎ look alike in weight and
+  nothing is blue: 👁 Reveal answer stays in the main cell, quiet, so clicking "the blue button" over and over never
+  shows the answer mid-turn. Nothing is focused by the app: Enter and Shift+Enter go through the clue's own handling,
+  with its guard. The first line reads "Did they get it? ✔ Got it (Enter) or ✘ Missed (Shift+Enter)", and "Time's up:
+  did they get it?" when the clock ends.
 - **A click on the stage** never shows the answer before the pair has had their go, and says what's next instead. In
   the Distribute step: "The answer stays hidden until they've had their go: 📤 Send and start (Enter) · R shows it
   anyway" (with no phones, "copy the cards to their players, then ⏱ Start the clock (Enter)"). Once the cards are out,

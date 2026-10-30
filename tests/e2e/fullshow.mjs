@@ -434,15 +434,16 @@ async function show(how) {
     await stageClick('the answer', mainIs('Start player reveals ▶'));
     await stageClick('the reveals', mainIs('Show wager ▶'));
   }
-  const judging = async () => /^✔ \w+ right$/.test(await label());
+  // (Their wager up: ✔ Right and ✘ Wrong, an equal pair in the main cell.)
+  const judging = async () => (await label()) === '✔ Right' && (await host.locator('.panel [data-next-pair]').count()) === 1;
   for (let i = 0; i < NAMES.length; i++) {
     if (byKeys) await key('n', 'their wager', judging);
     else await main('Show wager ▶', 'their wager', judging);
-    const who = (await label()).split(' ')[1];
+    const who = (await host.locator('.fj .pl.cur .name').innerText()).trim();
     const last = i === NAMES.length - 1;
     const next = mainIs(last ? 'Finish game ▶' : 'Next player ▶');
     if (byKeys) await key(who === lead ? 'x' : 'c', `${who} judged`, next);
-    else await click(who === lead ? host.locator('.panel [data-next-also]', { hasText: '✘ Wrong' }) : mainButton(host), `${who} judged`, next);
+    else await click(who === lead ? host.locator('.panel [data-next-pair]') : mainButton(host), `${who} judged`, next);
     if (last) break;
     if (byKeys) await key('n', 'the next player', mainIs('Show wager ▶'));
     else await main('Next player ▶', 'the next player', mainIs('Show wager ▶'));

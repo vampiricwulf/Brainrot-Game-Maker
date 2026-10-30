@@ -473,7 +473,9 @@ The mode isn't saved with the game: it's dual while the audience window is open.
      hand and **📤 Send and start** (or ⏱ Start the clock); when that step goes nothing moves into its place. A click
      there gives the keys back to the main button; the rest of a double-click that redrew the box is dropped, and 📤 Send
      and start (or ⏱ Start the clock), in the box or on the main button, waits a second after the question, as Enter
-     does. Nobody buzzes. With **steal on a miss**
+     does. Once the clock runs a verdict is due: ✔ Got it / ✘ Missed are an equal pair, nothing is blue (the main
+     cell's 👁 Reveal answer is quiet), and the first line says "Did they get it? ✔ Got it (Enter) or ✘ Missed
+     (Shift+Enter)" ("Time's up: did they get it?" once it runs out). Nobody buzzes. With **steal on a miss**
      (⚖ Game rules' `partnerSteal`, or the clue's own `PartnerRules.steal`), ✘ Missed lets everyone else answer it as
      any clue for the tile's value: the buzzers open for them with the two locked out, or the host picks who steals
      (`1–9`), then Enter / Shift+Enter. Each steal is its own undo step, and undoing the miss closes the steal. A click
@@ -525,7 +527,10 @@ The mode isn't saved with the game: it's dual while the audience window is open.
 3. Answer reveal.
 4. **Per-player reveal**, one at a time in an order the host chooses: a typed answer first (show it, then mark ✔ / ✘,
    and the wager goes up with the mark; judging first puts it up too), otherwise show the wager, then mark ✔ / ✘; the
-   score animates. With multiple choice and one marked ✔ Right, a pick that isn't it makes ✘ the main button's offer.
+   score animates. While the spotlit player waits on a verdict, the main cell holds **✔ Right** (`C`) and **✘ Wrong**
+   (`X`), always in that order and neither blue (clicking the main button over and over never judges anyone); with
+   multiple choice and one marked ✔ Right, the verdict their pick points to is ringed there and in their row (in one
+   window once their answer is on screen). Next player ▶ is the main button again once they're judged.
    `1`–`9` spotlight a player by their number (in the players' order), shown on each row.
 5. **Tie check**: if two or more players are tied for first, the host is offered:
    - **Tiebreaker roll-off** between only the tied players (§6.6), or

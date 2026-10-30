@@ -192,7 +192,11 @@ dice's box keeps its buttons in their places: **Spin!** `W` (or **Roll!** `D`) f
 lands, then ✎ Edit wheel and ＋ Spin another wheel too…, the result, and the way to close it last (**✕ Close** `Esc`, or
 **Close** as on the main button once that's next); the scoreboard, a player's sheet, a roll-off and a pop-up have that
 Close too. A Daily Double's box opens at its top, the keys in its Wager box, and its Wager row ends with **Show question
-▶**, greyed until there's a wager.
+▶**, greyed until there's a wager. When a verdict is due nothing is blue, so clicking the main button over and over
+never judges anyone or shows an answer mid-turn: in a 🤝 partner clue with its clock running, ✔ Got it and ✘ Missed are
+an equal pair in its box and 👁 Reveal answer is quiet; in the Final's reveals the main cell holds **✔ Right** `C` and
+**✘ Wrong** `X`, always in that order, the one a multiple-choice pick points to ringed (in its row too). `Enter`,
+`Shift+Enter`, `C` and `X` do what they did.
 Anything that asks first (Exit, closing the audience window, leaving a round, 🔁 Rematch) asks in one strip right
 above that bar: Cancel on the left, the answer on the right. Leaving a round always asks, unless a board is played out
 (then **Next round ▶** is the main button), and says what leaving does, its answers too: “7 clues are left in

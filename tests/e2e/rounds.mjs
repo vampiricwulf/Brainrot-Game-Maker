@@ -236,11 +236,14 @@ try {
   assert((await revealMain()).startsWith('Show wager ▶'), `the reveals start on Show wager (${await revealMain()})`);
   const first = await spot();
   await page.keyboard.press('n');
-  await page.waitForFunction(() => document.querySelector('.panel [data-next]')?.textContent?.includes('right'));
-  assert((await revealMain()).startsWith(`✔ ${first} right`) && (await page.locator('.panel [data-next-also]').innerText()).startsWith('✘ Wrong'), `after Show wager, judging is the main step: ✔ ${first} right (C), ✘ Wrong (X) beside it (${await revealMain()})`);
+  await page.locator('.panel [data-next-pair]').waitFor();
+  assert(
+    (await revealMain()).startsWith('✔ Right') && (await page.locator('.panel [data-next-pair]').innerText()).startsWith('✘ Wrong') && (await mainButton(page).getAttribute('title')) === `C: ${first} is right`,
+    `after Show wager, judging is the main step: ✔ Right (C) and ✘ Wrong (X) for ${first} (${await revealMain()})`,
+  );
   await page.keyboard.press('n');
   await page.waitForTimeout(150);
-  assert((await spot()) === first && (await revealMain()).startsWith(`✔ ${first} right`), 'N doesn’t go on past a player whose wager is up until they’re judged');
+  assert((await spot()) === first && (await revealMain()).startsWith('✔ Right'), 'N doesn’t go on past a player whose wager is up until they’re judged');
   await page.keyboard.press('c');
   await page.waitForFunction(() => document.querySelector('.panel [data-next]')?.textContent?.startsWith('Next player'));
   await page.keyboard.press('n');

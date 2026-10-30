@@ -581,7 +581,8 @@
       if (unsentToGo.length) return { text: toCopy.length ? `Next: 📋 copy cards for ${noun}s without a phone, then 📤 Send and start` : 'Next: send the cards and start the clock' };
       return { text: toCopy.length ? `Next: 📋 copy each card to its ${noun}, then ⏱ Start the clock` : 'Next: start the clock' };
     }
-    return { text: app.live.timer?.expired ? 'Time’s up: did they get it?' : 'Did they get it?' };
+    // (The verdict due: ✔ Got it and ✘ Missed an equal pair at the foot, nothing blue, the keys where they were.)
+    return { text: app.live.timer?.expired ? 'Time’s up: did they get it?' : 'Did they get it? ✔ Got it (Enter) or ✘ Missed (Shift+Enter)' };
   });
 
   // The main button, in the panel's main cell: spin, then show the question, then start the clock (then the clue's own:

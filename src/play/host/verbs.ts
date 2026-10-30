@@ -82,11 +82,9 @@ export const VERBS = {
   showAnswer: { label: 'Show answer ▶', key: 'N' },
   showWager: { label: 'Show wager ▶', key: 'N' },
   nextPlayer: (noun: string): Verb => ({ label: `Next ${noun} ▶`, key: 'N' }),
-  /** The spotlit player's verdicts: the likely one on the main button, the other beside it. */
-  right: (who: string): Verb => ({ label: `✔ ${who} right`, key: 'C', title: `C: ${who} is right` }),
-  wrong: (who: string): Verb => ({ label: `✘ ${who} wrong`, key: 'X', title: `X: ${who} is wrong` }),
-  rightBeside: (who: string): Verb => ({ label: '✔ Right', key: 'C', title: `C: ${who} is right` }),
-  wrongBeside: (who: string): Verb => ({ label: '✘ Wrong', key: 'X', title: `X: ${who} is wrong` }),
+  /** The spotlit player's verdicts: an equal pair in the main cell, ✔ then ✘, whichever is likely. */
+  right: (who: string): Verb => ({ label: '✔ Right', key: 'C', title: `C: ${who} is right` }),
+  wrong: (who: string): Verb => ({ label: '✘ Wrong', key: 'X', title: `X: ${who} is wrong` }),
   finishGame: { label: 'Finish game ▶' },
   /** The Final over, a round after it. */
   nextNamed: (round: string): Verb => ({ label: `Next: ${round} ▶` }),

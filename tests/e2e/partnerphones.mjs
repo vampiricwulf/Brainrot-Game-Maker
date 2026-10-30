@@ -234,10 +234,13 @@ try {
   await sleep(300);
   assert(!JSON.stringify(states).includes('"cards"') && !JSON.stringify(heard).includes('Card-only-zz'), 'got ready: still no card in the room’s state, nor on a phone');
 
-  // ---------- 📤 Send and start (Enter, a moment after the question) ----------
+  // ---------- 📤 Send and start (Enter, a moment after the question), and a double Enter that judges nothing ----------
   await sleep(1100);
   await host.keyboard.press('Enter');
+  await host.keyboard.press('Enter');
   await host.locator('.stage-box .timer').waitFor();
+  await host.locator('.toast', { hasText: 'The cards just went out: press Enter again to give ✔ Got it' }).waitFor();
+  assert((await panel.locator('[data-judged]').count()) === 0, 'a double Enter on 📤 Send and start sends the cards and starts the clock, and its second Enter judges nothing (it says so)');
   assert(await until(() => last()?.cards?.length === 1 && last().cards[0].media?.[0]?.file), 'the room’s state now holds the card, its picture as the room’s file');
   const sent = last().cards[0];
   assert(

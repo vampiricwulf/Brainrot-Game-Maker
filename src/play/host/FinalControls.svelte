@@ -393,6 +393,18 @@
     reveal: goOn,
   });
 
+  /**
+   * Multiple choice with one marked ✔ Right: the verdict a player's pick points to, for a ring on it in the main cell's
+   * pair and the spotlit row (C and X judge either way). Only once their answer is on screen in one window: viewers see
+   * this panel. Null otherwise.
+   */
+  function likely(id: string): 'right' | 'wrong' | null {
+    if (!f || !rightOne || (!dual && !f.answerShown?.[id])) return null;
+    const a = typedAnswer(f, id);
+    const named = a ? pickOf(a, choices) : null;
+    return named ? (named === rightOne.id ? 'right' : 'wrong') : null;
+  }
+
   // The step's main button, in the panel's main cell (N does it too). In the reveals, until everyone is judged, it's N's
   // next step (show the wager, the next player); finishing early is the quiet button beside it, and asks first.
   offerNext('final', () => {
@@ -400,13 +412,10 @@
     const judge = revealStep.judge;
     if (session.finalStep === 'reveal' && unjudged && judge) {
       const who = byId[judge]?.name ?? '?';
-      // Multiple choice with one marked ✔ Right: a pick that isn't it offers ✘ Wrong first (C still marks it right).
-      const a = rightOne ? typedAnswer(f, judge) : undefined;
-      const named = a ? pickOf(a, choices) : null;
-      const right = () => onjudge(judge, true);
-      const wrong = () => onjudge(judge, false);
-      if (rightOne && named && named !== rightOne.id) return nextStep(VERBS.wrong(who), wrong, { also: [nextStep(VERBS.rightBeside(who), right)] });
-      return nextStep(VERBS.right(who), right, { also: [nextStep(VERBS.wrongBeside(who), wrong)] });
+      // ✔ Right and ✘ Wrong, an equal pair in that order, neither blue: the one their pick points to gets a ring.
+      const ring = likely(judge);
+      const wrong = nextStep(VERBS.wrong(who), () => onjudge(judge, false), ring === 'wrong' ? { ring: true } : {});
+      return nextStep(VERBS.right(who), () => onjudge(judge, true), { pair: wrong, ...(ring === 'right' ? { ring: true } : {}) });
     }
     if (session.finalStep === 'reveal' && unjudged)
       return { label: revealStep.label, key: 'N', title: revealStep.disabled ?? 'N', disabled: !!revealStep.disabled, run: onrevealnext };
@@ -556,6 +565,7 @@
           {@const res = f.results[id]}
           {@const line = rows.lineAt(id)}
           {@const k = keyOf(id)}
+          {@const ring = f.current === id && !res ? likely(id) : null}
           <div
             class="pl"
             class:cur={f.current === id}
@@ -659,8 +669,8 @@
               <span class="muted small">wager {formatPoints(f.wagers[id], sym)}</span>
               <button class="small" onclick={() => finalShow(session, id)} disabled={f.shown[id]} aria-label="Show wager: {p?.name ?? '?'}">Show wager</button>
             {/if}
-            <button class="small good" class:on={res === 'right'} aria-pressed={res === 'right'} disabled={!hasWager(f, id)} onclick={() => onjudge(id, true)} aria-label="✔ Right: {p?.name ?? '?'}">✔ Right</button>
-            <button class="small bad" class:on={res === 'wrong'} aria-pressed={res === 'wrong'} disabled={!hasWager(f, id)} onclick={() => onjudge(id, false)} aria-label="✘ Wrong: {p?.name ?? '?'}">✘ Wrong</button>
+            <button class="small good" class:on={res === 'right'} class:ring={ring === 'right'} aria-pressed={res === 'right'} disabled={!hasWager(f, id)} onclick={() => onjudge(id, true)} aria-label="✔ Right: {p?.name ?? '?'}">✔ Right</button>
+            <button class="small bad" class:on={res === 'wrong'} class:ring={ring === 'wrong'} aria-pressed={res === 'wrong'} disabled={!hasWager(f, id)} onclick={() => onjudge(id, false)} aria-label="✘ Wrong: {p?.name ?? '?'}">✘ Wrong</button>
           </div>
         {/each}
       </div>

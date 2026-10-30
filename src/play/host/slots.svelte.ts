@@ -33,6 +33,15 @@ export type NextAction = {
    * button and the box's alike, and this says why ("The question just went up: click again to send the cards").
    */
   final?: string;
+  /**
+   * A verdict is due (the Final's spotlit player): this is ✔, and `pair` the ✘ right after it, always in that order, an
+   * equal pair, neither blue, so clicking the main button over and over never judges anyone.
+   */
+  pair?: NextAction;
+  /** The likely verdict of a pair (a multiple-choice pick that is, or isn't, the right one): ringed, never moved. */
+  ring?: boolean;
+  /** Nothing is blue: a verdict is due in the moment's box (a live 🤝 partner clue's ✔ Got it / ✘ Missed). */
+  quiet?: boolean;
 };
 
 /** A question for the confirmation strip (as InlineAsk takes it). */

@@ -48,7 +48,7 @@ describe('the host screen’s words for each step', () => {
     });
     expect(VERBS.revealCategory(2, 5).label).toBe('Reveal category 2 of 5 ▶');
     expect(VERBS.nextSlideOf(1, 3).title).toBe('N: slide 2 of 3 (Shift+N: the slide before) · or click the slide');
-    expect([VERBS.right('Ann').label, VERBS.wrong('Ann').label, VERBS.rightBeside('Ann').label]).toEqual(['✔ Ann right', '✘ Ann wrong', '✔ Right']);
+    expect([VERBS.right('Ann').label, VERBS.wrong('Ann').label, VERBS.wrong('Ann').title]).toEqual(['✔ Right', '✘ Wrong', 'X: Ann is wrong']);
     expect([VERBS.move(3).label, VERBS.move(-2).label, VERBS.stepTo('Bonus').label]).toEqual(['▶ Move 3', '◀ Back 2', '→ Bonus']);
     expect(VERBS.goToRound('Double Jeopardy!').label).toBe('Go to Double Jeopardy! ▶');
   });

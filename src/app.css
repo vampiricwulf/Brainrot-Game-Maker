@@ -92,6 +92,9 @@ button.good:hover:not(:disabled) { background: var(--good-fill-hover); border-co
 /* Only the answer that confirms a delete (never the first button). */
 button.bad { background: var(--bad-fill); border-color: var(--bad-fill); color: #fff; }
 button.bad:hover:not(:disabled) { background: var(--bad-fill-hover); border-color: var(--bad-fill-hover); }
+/* The likely one of a ✔ / ✘ pair (the verdict a multiple-choice pick points to): ringed, never moved. */
+button.good.ring { outline: 2px solid var(--good); outline-offset: 2px; }
+button.bad.ring { outline: 2px solid var(--bad); outline-offset: 2px; }
 /* Low emphasis: icons, Cancel, the ✕. */
 button.ghost { background: transparent; }
 button.ghost:hover:not(:disabled) { background: var(--hover); }

@@ -4111,6 +4111,9 @@
    */
   function goOnHint(): void {
     if (!hostNext || hideControls) return;
+    // (A verdict due: the pair, ✔ then ✘.)
+    const w = hostNext.pair;
+    if (w) return hint(`Press ${hostNext.key} for ${hostNext.label} or ${w.key} for ${w.label}`);
     const rolloff = session.phase === 'end' && hostNext.key !== 'O' ? ' (O: a roll-off)' : '';
     hint(hostNext.key ? `Press ${hostNext.key} for ${hostNext.label}` : `Click ${hostNext.label} to go on${rolloff}`);
   }

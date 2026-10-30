@@ -301,6 +301,11 @@ try {
   await page.keyboard.press('Control+Shift+z');
   await page.keyboard.press('Control+Shift+z');
   await page.locator('.panel .status', { hasText: 'Player reveals' }).waitFor();
+  // The first one's wager up (N): a verdict due, ✔ Right and ✘ Wrong an equal pair in the main cell, nothing blue.
+  await page.keyboard.press('n');
+  await page.locator('.panel [data-next-pair]').waitFor();
+  states.verdict = await look();
+  assert((await mainLabel(page)) === '✔ Right' && (await page.locator('.panel [data-next-pair]').innerText()).startsWith('✘ Wrong'), 'the Final’s verdict due: ✔ Right then ✘ Wrong in the main cell');
   for (let i = 0; i < 3; i++) await page.locator('.fj .pl').nth(i).getByRole('button', { name: '✔ Right' }).click();
   await mainButton(page).click();
   await page.locator('.panel .status', { hasText: 'Game over' }).waitFor();
@@ -367,6 +372,8 @@ try {
   const counts = Object.fromEntries(Object.entries(states).map(([k, v]) => [k, v.primaries]));
   assert(Object.values(counts).every((c) => c <= 1), `never more than one main button (${JSON.stringify(counts)})`);
   assert(['clue', 'answering', 'ddWager', 'ddQuestion', 'boardgame', 'wagers', 'reveals', 'end'].every((k) => counts[k] === 1), 'and exactly one where there’s a next step');
+  // (The moments with none: a verdict due, the Final's ✔ Right / ✘ Wrong; a live partner clue's is below.)
+  assert(['verdict'].every((k) => counts[k] === 0), 'and none where a verdict is due (the Final’s ✔ Right / ✘ Wrong)');
 
   // Beside the stage (a wide window, RPG and board-game rounds): 🚪 Exit in the fixed bar's bottom-right cell, in both.
   console.log('Beside the stage:');
@@ -933,6 +940,8 @@ try {
       sizes.push(await stageH());
       const live = await hidden('.panel [data-partner-foot] button, .panel [data-next], .panel [data-flow="done"]');
       assert(live.length === 0, `${at}: the clock running, ✔ Got it, ✘ Missed, 👁 Reveal answer and ▦ Done ▶ board are in sight${live.length ? ` (not: ${live.join(', ')})` : ''}`);
+      // (A verdict due in the box: nothing blue, the main cell's 👁 Reveal answer quiet.)
+      assert((await pb.locator('.panel button.primary:visible').count()) === 0, `${at}: the clock running, a verdict is due: nothing is blue`);
       const there = await pb.evaluate(([x, y]) => document.elementFromPoint(x, y)?.closest('button')?.textContent.trim() ?? '', [startAt.x + startAt.width / 2, startAt.y + startAt.height / 2]);
       assert((await gotAt()) === got0 && there === '', `${at}: the clock running, ✔ Got it keeps its place, and no button took the box's ⏱ Start the clock's (${there})`);
       await box.getByRole('button', { name: /✔ Got it/ }).click();

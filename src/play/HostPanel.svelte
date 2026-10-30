@@ -474,8 +474,9 @@
    * panel's one click guard: a box's own buttons go through it too.)
    */
   const guard = panelGuard();
-  function clickNext(e: MouseEvent, n: NextAction): void {
-    const v = guard.press(`main:${n.label}`, e.detail, { step: true, final: !!n.final, x: e.clientX, y: e.clientY });
+  function clickNext(e: MouseEvent, n: NextAction, verdict = false): void {
+    // (A verdict of a pair puts the next step where it was: a click there again within a second waits too.)
+    const v = guard.press(`main:${n.label}`, e.detail, { step: true, final: !!n.final, x: e.clientX, y: e.clientY, redraw: verdict });
     if (v === 'soon' && n.final) hint(n.final);
     if (v === 'go') n.run();
   }
@@ -709,7 +710,10 @@
       // A clue's question slides come first (the host opens the buzzers whenever they like: 🔔 next to it, or U).
       if (moreSlides && slidePos) return step(VERBS.nextSlideOf(slidePos.at, slidePos.of), nextSlide, { flow: 'pager' });
       if (buzzClosed && !gotIt && !allMissed && !answerUp) return step(VERBS.openBuzzers, openBuzzers);
-      if (!toolOnly && !session.revealed) return step(VERBS.reveal, onreveal, { title: `${VERBS.reveal.title} · or click the slide`, flow: 'reveal' });
+      // (A live partner clue: its verdict is due in the 🤝 box, ✔ Got it / ✘ Missed, so the answer here is quiet.)
+      const due = !!partner && partner.stage === 'live' && !partnerJudged && !steal;
+      // (Its stage click waits for the verdict too: R only.)
+      if (!toolOnly && !session.revealed) return step(VERBS.reveal, onreveal, due ? { flow: 'reveal', quiet: true } : { title: `${VERBS.reveal.title} · or click the slide`, flow: 'reveal' });
       return step(VERBS.done, doneUnscored, { flow: 'done' });
     }
     if (session.phase === 'tiebreaker') {
@@ -1390,9 +1394,26 @@
             {a.label}{#if a.key} <kbd aria-hidden="true">{a.key}</kbd>{/if}
           </button>
         {/each}
-        <button class:primary={!answering && !ask} data-next data-flow={n.flow} disabled={n.disabled} onclick={(e) => clickNext(e, n)} title={n.title ?? n.key}>
+        <!-- (A verdict due: an equal pair, ✔ then ✘, neither blue; nothing blue either while a live partner clue's
+             verdict is due in its box.) -->
+        <button
+          class:primary={!answering && !ask && !n.pair && !n.quiet}
+          class:good={!!n.pair}
+          class:ring={n.ring}
+          data-next
+          data-flow={n.flow}
+          disabled={n.disabled}
+          onclick={(e) => clickNext(e, n, !!n.pair)}
+          title={n.title ?? n.key}
+        >
           {n.label}{#if n.key} <kbd aria-hidden="true">{n.key}</kbd>{/if}
         </button>
+        {#if n.pair}
+          {@const w = n.pair}
+          <button class="bad" class:ring={w.ring} data-next-pair disabled={w.disabled} onclick={(e) => clickNext(e, w, true)} title={w.title ?? w.key}>
+            {w.label}{#if w.key} <kbd aria-hidden="true">{w.key}</kbd>{/if}
+          </button>
+        {/if}
       </div>
     {/if}
   </div>
