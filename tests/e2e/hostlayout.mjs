@@ -785,16 +785,18 @@ try {
   }
   // The 🤝 box on a laptop, one window, with 4 and 8 players, at 1280×720 and 1366×768: each step the main button does is
   // in the box too and in sight there (🎡 Spin for a partner in front of the names, ▶ Show question, ⏱ Start the clock),
-  // the box's foot (✔ Got it / ✘ Missed) and 👁 Reveal answer / ▦ Done ▶ board stay in sight, and the stage keeps one
-  // size from PARTNER UP! to ✔ Got it. (With 8 at 1280×720, the wheel spun from the box's own button.)
+  // the box's foot (✔ Got it / ✘ Missed, each card's 📋) and 👁 Reveal answer / ▦ Done ▶ board stay in sight, and the
+  // stage keeps one size from PARTNER UP! to ✔ Got it. (With 8 at 1280×720, the wheel spun from the box's own button.)
+  // The 4 have short names and no − Deduct on their scores (one row of them), the 8 long names.
   console.log('The 🤝 box on a laptop, 4 and 8 players:');
   for (const count of [4, 8]) {
     const boxFile = resolve(`test-results/hostlayout-box${count}.json`);
-    const eight = [...crowd, 'Gwendolyn', 'Hal'];
+    const names = count === 4 ? ['Ann', 'Bob', 'Cat', 'Dan'] : [...crowd, 'Gwendolyn', 'Hal'];
     // (Its Memes and Skibidi Lore $400 are partner clues, a card for each part.)
     const boxClue = (q, k) => ({ ...q, id: `c_box${k}`, type: 'partner', partner: partnerRules, timerSeconds: 45, cards: ['giver', 'guesser'].map((to, j) => ({ id: `pb${k}${j}`, to, ...slide(`pbs${k}${j}`, `Card ${j + 1}`) })) });
     const boxBoard = { ...board, id: 'r_box', categories: board.categories.map((c, ci) => ({ ...c, clues: c.clues.map((q, ri) => (ri === 1 && ci < 2 ? boxClue(q, ci) : q)) })) };
-    writeFileSync(boxFile, JSON.stringify({ ...game, id: `g_layout_box${count}`, players: eight.slice(0, count).map((name, i) => ({ id: `p${i + 1}`, name, color: [...crowdColors, '#bfef45', '#f032e6'][i], startScore: 0 })), rounds: [boxBoard] }));
+    const settings = count === 4 ? { ...game.settings, deductOnWrong: false } : game.settings;
+    writeFileSync(boxFile, JSON.stringify({ ...game, id: `g_layout_box${count}`, settings, players: names.map((name, i) => ({ id: `p${i + 1}`, name, color: [...crowdColors, '#bfef45', '#f032e6'][i], startScore: 0 })), rounds: [boxBoard] }));
     const ctx = await browser.newContext({ viewport: { width: 1280, height: 720 } });
     const pb = await ctx.newPage();
     pb.on('pageerror', (e) => errors.push(e.message));
@@ -826,7 +828,7 @@ try {
       await pb.locator(`.stage-box .tile[data-clue="${id}"]`).click();
       await pb.locator('.stage-box [data-partner-up]').waitFor();
       await pb.keyboard.press('1');
-      await box.getByText('Annabelle picked it.').waitFor();
+      await box.getByText(`${names[0]} picked it.`).waitFor();
       const sizes = [await stageH()];
       assert((await situationHasMain(pb, box)) === '', `${at}: PARTNER UP!'s 🎡 Spin for a partner is in the box, in sight (${await situationHasMain(pb, box)})`);
       if (count === 8 && w === 1280) {
@@ -844,15 +846,32 @@ try {
       sizes.push(await stageH());
       const out = await hidden('.panel [data-partner-foot] button, .panel [data-next], .panel [data-flow="reveal"], .panel [data-flow="done"], .panel [data-partner-next]');
       assert(
-        (await situationHasMain(pb, box)) === '' && out.length === 0,
-        `${at}: handing out the cards, ⏱ Start the clock, ✔ Got it and ✘ Missed (the box's foot), its first line, the main button, 👁 Reveal answer and ▦ Done ▶ board are in sight${out.length ? ` (not: ${out.join(', ')})` : ''}`,
+        (await situationHasMain(pb, box)) === '' && out.length === 0 && (await box.locator('[data-partner-foot]').getByRole('button', { name: /^Copy Card \d’s words$/ }).count()) === 2,
+        `${at}: handing out the cards, ⏱ Start the clock and each card's 📋 Copy words, ✔ Got it and ✘ Missed (the box's foot), its first line, the main button, 👁 Reveal answer and ▦ Done ▶ board are in sight${out.length ? ` (not: ${out.join(', ')})` : ''}`,
       );
+      // (On a laptop with 4 players, Card 1's row too, as before the box had its foot: its first line stays one line.)
+      if (count === 4 && w === 1280) {
+        const row = await hidden('.panel [data-card="1"] button, .panel [data-partner-panel] [aria-haspopup="menu"]');
+        assert(row.length === 0, `${at}: Card 1's row (who gets it, 📋 Copy words) and change partner ▾ are in sight too${row.length ? ` (not: ${row.join(', ')})` : ''}`);
+      }
+      // 👁 Reveal answer and ▦ Done ▶ board beside the main button: quiet, and apart from it.
+      const beside = await pb.evaluate(() => {
+        const main = document.querySelector('.panel [data-next]').getBoundingClientRect();
+        const by = [...document.querySelectorAll('.panel .flowbeside button')];
+        return { n: by.length, ghost: by.every((b) => b.classList.contains('ghost')), gap: Math.min(...by.map((b) => main.top - b.getBoundingClientRect().bottom)) };
+      });
+      assert(beside.n === 2 && beside.ghost && beside.gap >= 12, `${at}: 👁 Reveal answer and ▦ Done ▶ board beside the main button are quiet, 12 px or more above it (${JSON.stringify(beside)})`);
+      const startAt = await stepButton(box, '⏱ Start the clock').boundingBox();
+      const gotAt = async () => (await box.getByRole('button', { name: /✔ Got it/ }).boundingBox()).x;
+      const got0 = await gotAt();
       await pb.waitForTimeout(1100);
       await pb.keyboard.press('Enter');
       await pb.locator('.stage-box .timer').waitFor();
       sizes.push(await stageH());
       const live = await hidden('.panel [data-partner-foot] button, .panel [data-next], .panel [data-flow="done"]');
       assert(live.length === 0, `${at}: the clock running, ✔ Got it, ✘ Missed, 👁 Reveal answer and ▦ Done ▶ board are in sight${live.length ? ` (not: ${live.join(', ')})` : ''}`);
+      const there = await pb.evaluate(([x, y]) => document.elementFromPoint(x, y)?.closest('button')?.textContent.trim() ?? '', [startAt.x + startAt.width / 2, startAt.y + startAt.height / 2]);
+      assert((await gotAt()) === got0 && there === '', `${at}: the clock running, ✔ Got it keeps its place, and no button took the box's ⏱ Start the clock's (${there})`);
       await box.getByRole('button', { name: /✔ Got it/ }).click();
       await box.locator('[data-judged]').waitFor();
       sizes.push(await stageH());

@@ -504,13 +504,14 @@ When the wheel lands (or the host closes it early), Bob is Ann's partner.
   Partner: [↻ Spin again  W] or choose: [Ann ⊘] [2 Bob ✓] [3 Cat] [4 Dan]   ☐ Ann can be on the wheel (alone if it lands on them)
   🗣 Bob describes · 🎯 Ann guesses                                           ⇄ Swap
   🤫 1 card: Card 1 → Bob (describer) · 📱 Bob: phone here
-  [▶ Show question  ⏎]  the cards come next                 NEXT ▸ [▶ Show question  ⏎]
+                                   the cards come next  [▶ Show question  ⏎]   NEXT ▸ [▶ Show question  ⏎]
   ```
 
   - A chip overrules the wheel at once (`how: 'host'`). The roll log keeps the spin; the host's choice is not a roll.
   - **↻ Spin again** takes 🎡 Spin for a partner's place, in front of the chips (🎡 Spin anyway when the partner was the
-    only one there could be). **▶ Show question** is at the box's foot, which stays in view as the rows above it
-    scroll, and is the main button too: the box holds every step, beside the choices it's an alternative to.
+    only one there could be). **▶ Show question** is at the right end of the box's foot, which stays in view as the rows
+    above it scroll, and is the main button too: the box holds every step, beside the choices it's an alternative to.
+    While the wheel is still up its ⏎ isn't shown: Enter closes the wheel first (a click does both).
   - **⇄ Swap** turns the parts round: Ann describes and Bob guesses. The cards that follow a part ("the describer")
     and the points follow with it. It is in P1, because the parts decide the points.
   - **The cards line** gives how many cards there are and who each one is set to go to. It never says what's on them:
@@ -566,14 +567,18 @@ Card 1 · 1 line of words, 1 picture
 Card 2 · 1 line of words
    → nobody yet                                                               [📤 Send]
 🖼 1 picture goes up when you send its card   [⇡ Get it ready now]
-[📤 Send and start  ⏎]  [✔ Got it]  Bob +$400 · Ann +$200   [✘ Missed]  Ann −$200   NEXT ▸ [📤 Send and start  ⏎]
+[✔ Got it]  Bob +$400 · Ann +$200   [✘ Missed]  Ann −$200          [📤 Send and start  ⏎]   NEXT ▸ [📤 Send and start  ⏎]
 ```
 
-The last row is the box's foot, in view as the list scrolls: the step the main button does too (📤 Send and start, or
-⏱ Start the clock when no card goes to a phone), then ✔ Got it / ✘ Missed, quiet until the clock runs. The first line
-says what's next ("Next: copy each card to its player (📋 Copy words), then ⏱ Start the clock" when the host copies
-them). A click on that 📤 Send and start within a second of the question going up sends nothing and says why, as Enter
-does; the rest of a double-click on ▶ Show question, landing on what took its place, is dropped.
+The last row is the box's foot, in view as the list scrolls: ✔ Got it / ✘ Missed, quiet until the clock runs, and at
+its right end the step the main button does too (📤 Send and start, or ⏱ Start the clock when no card goes to a phone),
+after a 📋 for each card the host copies by hand (📋 Copy words, or 📋 Card 1, 📋 Card 2… for several), so the card to
+copy is in view even when its row has scrolled under the foot. When the step goes, nothing moves into its place: a click
+there again never judges. The first line says what's next ("Next: 📋 copy each card to its player, then ⏱ Start the
+clock" when the host copies them), on one line, cut short (…) when the row is full, the whole of it in its tooltip. A
+click on 📤 Send and start (or ⏱ Start the clock), in the box or on the main button, within a second of the question
+going up sends nothing and says why, as Enter does; the rest of a double-click on ▶ Show question, landing on what took
+its place, is dropped.
 
 - **Each card starts with its default recipients,** worked out from the parts now: "the describer" is Bob, "everyone
   else" is Cat and Dan. A card set to nobody reads "→ nobody yet", and nothing sends it until the host picks someone.
@@ -1111,6 +1116,9 @@ This needs the room to address one person (`member` in §19).
   (not "Solo!": the team plays it among itself).
 - With one connected person on the team: "Red Team has one phone here: nobody to describe to". The host can switch this
   tile to team against team.
+- While the team plays it, the partner row's ↻ Spin again is greyed ("Untick “Partner from the same team” to spin for a
+  partner team"): the describer's row has its own ↻ Spin again, and the partner wheel's landing would give the clue to
+  another team. Unticking brings it back.
 - Without phones there is no member wheel: the host says who describes, and copies the card.
 
 ## 11. Other games it makes possible

@@ -209,6 +209,8 @@ try {
   await offStream('the question up');
 
   // ---------- 📤 Send and start ----------
+  // (A click within a second of the question going up sends nothing.)
+  await sleep(1100);
   await mainButton(host).click();
   await host.locator('.stage-box .timer').waitFor();
   assert(await until(() => sendOf('c1')[0]?.media?.[0]?.file && sendOf('c2').length === 1), 'sent: the room’s state holds both cards, card 1’s picture up');
@@ -306,6 +308,12 @@ try {
   const picked = panel.locator('[data-partner-same] button[aria-pressed="true"]');
   assert(await until(async () => (await picked.count()) === 1, 20000), 'it lands: one of Green’s people is the describer');
   assert((await stepButton(sameRow, '↻ Spin again').count()) === 1, 'and the box’s button in the same place reads ↻ Spin again');
+  // (The partner row's spin would give the clue to another team: off while Green plays it, its tooltip says how.)
+  const partnerSpin = stepButton(panel.locator('[data-partner-row]'));
+  assert(
+    (await partnerSpin.isDisabled()) && (await partnerSpin.getAttribute('title')) === 'Untick “Partner from the same team” to spin for a partner team' && !(await partnerSpin.locator('kbd').count()),
+    'the partner row’s ↻ Spin again is off while Green plays it, and says to untick “Partner from the same team” first',
+  );
   const describerName = (await picked.innerText()).replace(/\s*✓.*$/s, '').trim();
   assert(['Gus', 'Bo', 'Gwen', 'Bea'].includes(describerName), `the describer is someone on Green (${describerName})`);
   assert(!(last()?.seats ?? []).some((x) => x.name === describerName) && !JSON.stringify(last()?.status ?? {}).includes('Solo'), 'never a player, nor Solo on the phones');
@@ -318,6 +326,7 @@ try {
   await host.locator('.stage-box [data-partner-badge]').waitFor();
   assert((await host.locator('.stage-box [data-partner-badge]').innerText()).includes(`${describerName} describes → 🎯 Green guesses`), 'the badge: who describes, the team guesses');
   assert((await panel.getByRole('button', { name: `Card 1 to ${describerName}`, exact: true }).getAttribute('aria-pressed')) === 'true', 'card 1 goes to the describer (their own chip)');
+  await sleep(1100);
   await mainButton(host).click();
   await host.locator('.stage-box .timer').waitFor();
   assert(await until(() => sendOf('d1').length === 2), 'sent: the describer’s card, and a line for the rest of the team');

@@ -28,6 +28,11 @@ export type NextAction = {
   also?: NextAction[];
   /** It does the step of this place in the row (Next slide ▶, 👁 Reveal answer…): it carries the same mark. */
   flow?: FlowPlace;
+  /**
+   * A step that can't be undone (cards sent to phones): a click within a second of the step before it waits, on the main
+   * button and the box's alike, and this says why ("The question just went up: click again to send the cards").
+   */
+  final?: string;
 };
 
 /** A question for the confirmation strip (as InlineAsk takes it). */

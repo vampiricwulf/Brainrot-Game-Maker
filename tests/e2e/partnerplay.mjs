@@ -178,8 +178,13 @@ try {
   assert((await mainLabel(page)) === '⏱ Start the clock' && (await stage('.timer').count()) === 0, 'the main button is ⏱ Start the clock, and no countdown runs');
   assert((await situationHasMain(page, panel)) === '', 'and the box has ⏱ Start the clock at its foot');
   assert(
-    (await panel.locator('[data-partner-next]').innerText()) === 'Next: copy each card to its player (📋 Copy words), then ⏱ Start the clock',
+    (await panel.locator('[data-partner-next]').innerText()) === 'Next: 📋 copy each card to its player, then ⏱ Start the clock',
     'its first line says to copy the cards first (no phones here), then start the clock',
+  );
+  const foot = panel.locator('[data-partner-foot]');
+  assert(
+    JSON.stringify(await foot.getByRole('button').evaluateAll((bs) => bs.map((b) => b.textContent.replace(/\s+/g, ' ').trim()))) === JSON.stringify(['✔ Got it', '✘ Missed', '📋 Copy words', '⏱ Start the clock⏎']),
+    `the foot: ✔ Got it and ✘ Missed, then at its right end Card 1’s 📋 Copy words (the card to copy, in view) and ⏱ Start the clock (${await foot.getByRole('button').evaluateAll((bs) => bs.map((b) => b.textContent.replace(/\s+/g, ' ').trim()).join(' | '))})`,
   );
   assert((await stage('[data-partner-badge]').innerText()).replace(/\s+/g, ' ').trim() === '🗣 Bob describes → 🎯 Ann guesses', 'the stream shows who plays which part');
   assert((await stage('.caption').innerText()).trim().endsWith('· 🤝'), `and the caption marks it (${await stage('.caption').innerText()})`);
@@ -219,10 +224,19 @@ try {
   await page.keyboard.press('u');
   assert(await toast('Nobody buzzes on a partner clue'), 'U: nobody buzzes on a partner clue');
   await page.waitForTimeout(1100);
-  await stepButton(panel, '⏱ Start the clock').click();
+  const startAt = await stepButton(panel, '⏱ Start the clock').boundingBox();
+  const gotIt = panel.locator('[data-partner-judge]').getByRole('button', { name: /✔ Got it/ });
+  const gotAt = (await gotIt.boundingBox()).x;
+  await page.mouse.click(startAt.x + startAt.width / 2, startAt.y + startAt.height / 2);
   await stage('.timer').waitFor();
   assert((await mainLabel(page)) === '👁 Reveal answer', 'the box’s ⏱ Start the clock, a moment later, starts the clock; the answer is next');
   assert(await mainButton(page).evaluate((b) => b === document.activeElement), 'and the keys are the main button’s again');
+  // The same spot clicked again a moment later (a fresh click, not a double-click's): nothing took its place, so it
+  // judges nothing, and ✔ Got it is where it was.
+  await page.waitForTimeout(700);
+  await page.mouse.click(startAt.x + startAt.width / 2, startAt.y + startAt.height / 2);
+  await page.waitForTimeout(300);
+  assert((await panel.locator('[data-judged]').count()) === 0 && (await gotIt.boundingBox()).x === gotAt, 'a second click where ⏱ Start the clock was judges nothing: ✔ Got it kept its place');
   assert((await panel.locator('[data-partner-next]').innerText()) === 'Did they get it?', 'the box’s first line asks if they got it');
   assert((await page.locator('.panel .players').count()) === 1, 'the award row is there, as on any clue');
   // With the clock running they're still describing: a click on the stage says how to judge, not the answer.
@@ -259,7 +273,7 @@ try {
   assert((await panel.innerText()).includes('No cards on this clue: start the clock yourself (T) once the question is up.'), 'and, the countdown not starting by itself, to start the clock with T');
   await page.keyboard.press('4');
   // A double-click on the box's ▶ Show question: the question goes up (no cards: straight to the judging), and the rest
-  // of the double-click, landing on the ✔ Got it now in its place, is dropped. (Its two clicks sent from the page.)
+  // of the double-click, landing on ✔ Got it, is dropped. (Its two clicks sent from the page.)
   await page.evaluate(async () => {
     const at = (sel) => document.querySelector(`.panel [data-partner-panel] ${sel}`);
     at('[data-partner-foot] [data-step]').dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true, detail: 1 }));

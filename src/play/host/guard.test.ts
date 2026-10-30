@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { clickGuard, DOUBLE_CLICK_MS, judgeClick, justShown, KEY_GUARD_MS, NEW_CONTROLS_MS } from './guard';
+import { clickGuard, DOUBLE_CLICK_MS, judgeClick, justShown, KEY_GUARD_MS, NEW_CONTROLS_MS, SAME_SPOT_MS } from './guard';
 
 /** A guard on a clock the test moves (`at.t`). */
 function guarded() {
@@ -10,6 +10,26 @@ function guarded() {
 describe('the host panel’s click guard', () => {
   it('keeps today’s timings', () => {
     expect([DOUBLE_CLICK_MS, KEY_GUARD_MS, NEW_CONTROLS_MS]).toEqual([600, 1000, 400]);
+  });
+
+  it('drops a slow double-click on a name: what took its place waits a second, on that spot only', () => {
+    const { at, guard } = guarded();
+    expect(guard.press('partner:pick:p2', 1, { x: 100, y: 500, redraw: true })).toBe('go');
+    // A fresh click to the browser (slower than its double-click time), on the wheel's button now there.
+    at.t += 900;
+    expect(guard.press('step:🎡 Spin for a partner', 1, { step: true, x: 102, y: 501 })).toBe('double');
+    // Elsewhere it goes at once.
+    expect(guard.press('partner:partner:p3', 1, { x: 400, y: 500 })).toBe('go');
+    // And on that spot once the second is over.
+    const { at: at2, guard: g2 } = guarded();
+    g2.press('partner:pick:p2', 1, { x: 100, y: 500, redraw: true });
+    at2.t += SAME_SPOT_MS;
+    expect(g2.press('step:🎡 Spin for a partner', 1, { step: true, x: 100, y: 500 })).toBe('go');
+    // (Not after a click that leaves the same thing there: the main button, clicked again, goes on.)
+    const { at: at3, guard: g3 } = guarded();
+    g3.press('main:▶ Show question', 1, { step: true, x: 1200, y: 600 });
+    at3.t += 700;
+    expect(g3.press('main:⏱ Start the clock', 1, { step: true, x: 1200, y: 600 })).toBe('go');
   });
 
   it('lets a fresh click through, whatever came just before', () => {

@@ -405,8 +405,8 @@ The mode isn't saved with the game: it's dual while the audience window is open.
     the Final's 🤫 cards, a Daily Double's wager, a ✍ clue's answers), the status line carries one ⚠ Viewers see this
     chip, always in view, saying in its tooltip (and to screen readers) what they can read there; the line keeps one
     line, a clue's or the Final's words cut short (…) on a narrow window, the whole of them in their tooltip. In a
-    partner clue's question, 👁 Reveal answer and ▦ Done ▶ board sit above the main button, in view while the 🤝 box
-    scrolls (on a laptop it fills the action part). Windows opened mid-game (?,
+    partner clue's question, 👁 Reveal answer and ▦ Done ▶ board sit quietly at the top of the main button's cell, apart
+    from it, in view while the 🤝 box scrolls (on a laptop it fills the action part). Windows opened mid-game (?,
     📜 Log, 👥 Players, ⚖ Rules, 🔊 Sound, the RPG's ⤢ Full map, ✎ Edit board's ⚙ Buttons…) open over the host panel,
     never the stage (the full map's screen card beside the map where the panel is wide enough); the RPG's ✎
     Edit screen is too big for it and says viewers see it (📺 Audience edits off stream). The stage keeps one size
@@ -441,7 +441,9 @@ The mode isn't saved with the game: it's dual while the audience window is open.
   game and View results, Open…'s Recent games, a tile opening its clue editor): the rest of that press (its second
   click, a triple-click's third), wherever it lands, is dropped (oneshot.ts), never a fresh click. A score plate's second
   click doesn't take the picker away again. The host panel's guard (the main button, the boxes, the round buttons, the
-  fixed bar) is the same test with its own timings. On ▶ Play the game's title renames on a double-click or `F2`.
+  fixed bar) is the same test with its own timings; after a click on who picked a 🤝 partner clue, a click on that same
+  spot within a second is dropped too (a slow double-click, landing on 🎡 Spin for a partner). On ▶ Play the game's
+  title renames on a double-click or `F2`.
 
 ### 6.3 Game flow
 0. **Round intro** (each step can be turned off in settings): the round title card ("DOUBLE JEOPARDY!") → tiles fill in
@@ -459,10 +461,12 @@ The mode isn't saved with the game: it's dual while the audience window is open.
      does, beside the choices it's an alternative to: its first line says what's next ("Next: spin for a partner, or
      choose one"), **🎡 Spin for a partner** comes first in the partner row, in front of the players to choose from by
      hand (**↻ Spin again** in its place after; a team's **🎡 Spin for the describer** likewise, in front of its
-     people), and its foot, in view as the rest scrolls, has **▶ Show question**, then **📤 Send and start** (or ⏱ Start
-     the clock) with ✔ Got it / ✘ Missed beside it, quiet until the clock runs. A click there gives the keys back to the
-     main button; the rest of a double-click that redrew the box is dropped, and its 📤 Send and start waits a second
-     after the question, as Enter does. Nobody buzzes. With **steal on a miss**
+     people; greyed in the partner row while the team plays it), and its foot, in view as the rest scrolls, has ✔ Got it
+     / ✘ Missed, quiet until the clock runs, and at its right end **▶ Show question**, then a 📋 for each card copied by
+     hand and **📤 Send and start** (or ⏱ Start the clock); when that step goes nothing moves into its place. A click
+     there gives the keys back to the main button; the rest of a double-click that redrew the box is dropped, and 📤 Send
+     and start (or ⏱ Start the clock), in the box or on the main button, waits a second after the question, as Enter
+     does. Nobody buzzes. With **steal on a miss**
      (⚖ Game rules' `partnerSteal`, or the clue's own `PartnerRules.steal`), ✘ Missed lets everyone else answer it as
      any clue for the tile's value: the buzzers open for them with the two locked out, or the host picks who steals
      (`1–9`), then Enter / Shift+Enter. Each steal is its own undo step, and undoing the miss closes the steal. A click

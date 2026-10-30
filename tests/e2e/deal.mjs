@@ -352,6 +352,8 @@ try {
   await host.keyboard.press('Escape');
   await outList.waitFor({ state: 'detached' });
   assert(await until(async () => !(await pFull.count()) && (await mainButton(host).isEnabled())), 'then 📤 Send and start can go, and the line goes');
+  // (A click within a second of the question going up sends nothing.)
+  await host.waitForTimeout(1100);
   await mainButton(host).click();
   assert(await until(() => cards().length === 8), '📤 Send and start: both cards go (8 out)');
   // Both back, and one more quick card (7 out): each row's 📤 Send fits, though both together wouldn't.

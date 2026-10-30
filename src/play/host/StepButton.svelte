@@ -10,23 +10,14 @@
   import { focusMain } from './focus';
   import { panelGuard, type NextAction } from './slots.svelte';
 
-  let {
-    step,
-    final,
-  }: {
-    step: NextAction;
-    /**
-     * A step that can't be undone (cards sent to phones): a click within a second of the step before it waits, and this
-     * says why ("The question just went up: click again to send the cards").
-     */
-    final?: string;
-  } = $props();
+  let { step }: { step: NextAction } = $props();
 
   const guard = panelGuard();
 
   function click(e: MouseEvent): void {
-    const v = guard.press(`step:${step.label}`, e.detail, { step: true, final: !!final });
-    if (v === 'soon' && final) hint(final);
+    // (A step that can't be undone waits a second after the step before it, as on the main button: its `final` says why.)
+    const v = guard.press(`step:${step.label}`, e.detail, { step: true, final: !!step.final, x: e.clientX, y: e.clientY });
+    if (v === 'soon' && step.final) hint(step.final);
     if (v !== 'go') return;
     step.run();
     focusMain();

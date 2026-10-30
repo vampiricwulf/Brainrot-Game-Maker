@@ -185,9 +185,9 @@ then a fixed bar that never moves: **↶ Undo ↷ Redo 🔊 Sound · 📜 Log �
 Audience ▭ · ⌨ 🚪 Exit** (on a narrow window, as their signs only). On a short window (a laptop zoomed in) the round's
 own box (✍ answers, the Final's wagers, an RPG round…) keeps a few rows in sight, and the panel scrolls. A moment's own
 box holds its steps too: in a 🤝 partner clue, **🎡 Spin for a partner** comes first in the box, in front of the
-players to choose from by hand (**↻ Spin again** in its place after), and the box's foot, always in view, has the next
-step (**▶ Show question**, then **📤 Send and start** or **⏱ Start the clock**) beside ✔ Got it / ✘ Missed; clicking
-there leaves `Enter`, `N` and `W` with the main button.
+players to choose from by hand (**↻ Spin again** in its place after), and the box's foot, always in view, has ✔ Got it
+/ ✘ Missed and at its right end the next step (**▶ Show question**, then a 📋 for each card you copy by hand and **📤
+Send and start** or **⏱ Start the clock**); clicking there leaves `Enter`, `N` and `W` with the main button.
 Anything that asks first (Exit, closing the audience window, leaving a round, 🔁 Rematch) asks in one strip right
 above that bar: Cancel on the left, the answer on the right. Leaving a round always asks, unless a board is played out
 (then **Next round ▶** is the main button). In RPG and board-game rounds on a wide window the panel is a column beside

@@ -605,6 +605,8 @@ try {
   assert((await left2.innerText()) === '🖼 1 GIF won’t reach the phones (too big for the buzzer server)', 'the GIF over 3 MB, counted: “🖼 1 GIF won’t reach the phones (too big for the buzzer server)”');
   assert(await row(2).getByRole('button', { name: '📋 Copy picture' }).isVisible(), 'and its row offers 📋 Copy picture');
   const upBefore = uploads.length;
+  // (A click within a second of the question going up sends nothing.)
+  await sleep(1100);
   await mainButton(host).click();
   // (About 11 MB going up, one file at a time.)
   assert(await until(() => answers.some((a) => a.status === 409 && a.read), 120000), 'sent: the room turns an upload down once it holds 10 MB');

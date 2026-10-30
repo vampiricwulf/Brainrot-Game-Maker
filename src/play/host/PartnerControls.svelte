@@ -9,8 +9,9 @@
   card's pictures (a file name is often the answer), uploads included. The cards themselves are in the editor's 🤫 Card tabs, and the two-window host column.
   The box holds every step of it, beside the choices it's an alternative to: its first line says what's next, 🎡 Spin for
   a partner comes in front of the players to choose from by hand (↻ Spin again in its place after), and its bottom row,
-  always in view, has the next step (▶ Show question, 📤 Send and start or ⏱ Start the clock), then ✔ Got it / ✘ Missed.
-  Those steps are the main button's too (one NextAction for both): the keys stay with the main button.
+  always in view, has ✔ Got it / ✘ Missed, then at its right end the next step (▶ Show question; 📋 for the cards copied
+  by hand, then 📤 Send and start or ⏱ Start the clock), where nothing takes its place when it goes. Those steps are the
+  main button's too (one NextAction for both): the keys stay with the main button.
 -->
 <script lang="ts">
   import { onMount, untrack } from 'svelte';
@@ -122,11 +123,12 @@
   /**
    * The panel's one click guard, for the box's buttons too: the rest of a double-click that redrew the box (who picked it,
    * the partner chosen, the question going up) is dropped, so it never lands on what appeared under the pointer (the
-   * wheel's button where the names were).
+   * wheel's button where the names were). `redraw`: the click puts something else in its place (who picked it: the
+   * partner row comes where the names were), so a click on that spot waits a second too (a slow double-click).
    */
   const guard = panelGuard();
-  const guarded = (control: string, run: () => void) => (e: MouseEvent) => {
-    if (guard.press(`partner:${control}`, e.detail) === 'go') run();
+  const guarded = (control: string, run: () => void, redraw = false) => (e: MouseEvent) => {
+    if (guard.press(`partner:${control}`, e.detail, { x: e.clientX, y: e.clientY, redraw }) === 'go') run();
   };
   // The question going up (a key, the main button, the stage): the box's 📤 Send and start waits a second after it too.
   let stageWas = untrack(() => s.stage);
@@ -515,34 +517,40 @@
     if (!step) return null;
     if (step === 'describer')
       return nextStep(VERBS.describerSpin, onmemberspin, { title: spinning ? 'Still spinning' : `W, Enter or N: the wheel spins over the people on ${name(s.pickerId)} with a phone here`, disabled: spinning });
-    if (step === 'show') return nextStep(VERBS.partnerShow, onshow);
+    // (While the wheel is up, Enter closes it first: the main button is its Close then.)
+    if (step === 'show') return nextStep(VERBS.partnerShow, onshow, wheel ? { key: undefined, title: 'The wheel closes and the question goes on screen (nothing is sent to anyone)' } : {});
     const why =
       step === 'picker' ? `${noun === 'team' ? 'Which team' : 'Who'} picked it? Press their number first (1–${Math.min(9, session.players.length) || 9})` : step === 'nobody' ? nobodyText : spinning ? 'Still spinning' : '';
     return nextStep(VERBS.partnerSpin, onspin, why ? { title: why, disabled: true } : { disabled: false });
   });
+  /** What a click on 📤 Send and start (or ⏱ Start the clock) says within a second of the question going up. */
+  const handSoon = $derived(`The question just went up: click again to ${unsentToGo.length ? 'send the cards' : 'start the clock'}`);
   /**
    * The cards handed out (until the clock runs, it's judged, or the answer shows): 📤 Send and start when phones get cards
-   * not sent yet, else ⏱ Start the clock.
+   * not sent yet, else ⏱ Start the clock. A click within a second of the question waits, in the box and on the main
+   * button, as Enter does.
    */
   const handStep = $derived.by((): NextAction | null => {
     if (s.stage !== 'distribute' || verdict.judged || session.revealed) return null;
     // (Never more cards than the buzzer room takes: ✖ Take one back first.)
-    if (unsentToGo.length) return nextStep(VERBS.sendAndStart, onclock, allFull ? { title: cardsFullText(game, session, sendAll), disabled: true } : { disabled: false });
-    return nextStep(VERBS.startClock, onclock, { title: cardsOn ? 'Enter or N: the countdown starts' : 'Enter or N: the countdown starts (copy the cards to their players first)' });
+    if (unsentToGo.length) return nextStep(VERBS.sendAndStart, onclock, allFull ? { title: cardsFullText(game, session, sendAll), disabled: true } : { disabled: false, final: handSoon });
+    return nextStep(VERBS.startClock, onclock, { title: cardsOn ? 'Enter or N: the countdown starts' : 'Enter or N: the countdown starts (copy the cards to their players first)', final: handSoon });
   });
-  /** What a click on the box's 📤 Send and start (or ⏱ Start the clock) says within a second of the question going up. */
-  const handSoon = $derived(`The question just went up: click again to ${unsentToGo.length ? 'send the cards' : 'start the clock'}`);
   /**
    * The partner's wheel again, in 🎡 Spin for a partner's place once the partner is chosen (by it or by hand): its landing
-   * replaces the choice. W spins it, unless W is for who describes now.
+   * replaces the choice. W spins it, unless W is for who describes now. Off while the picker's own team plays it: the
+   * describer's row has its own ↻ Spin again, and this one would give the clue to another team.
    */
-  const againStep = $derived(
-    nextStep(s.how === 'only' ? VERBS.spinAnyway : VERBS.spinAgain, onspin, {
-      title: spinning ? 'Still spinning' : 'W: the wheel spins again (its landing replaces your choice)',
+  const againStep = $derived.by((): NextAction => {
+    const verb = s.how === 'only' ? VERBS.spinAnyway : VERBS.spinAgain;
+    if (sameTeamOn) return nextStep(verb, onspin, { title: `Untick “Partner from the same team” to spin for a partner team`, disabled: true, key: undefined });
+    const w = !(pickStepIs === 'describer' || wheel?.members);
+    return nextStep(verb, onspin, {
+      title: spinning ? 'Still spinning' : `${w ? 'W: the' : 'The'} wheel spins again (its landing replaces your choice)`,
       disabled: spinning,
-      ...(pickStepIs === 'describer' || wheel?.members ? { key: undefined } : {}),
-    }),
-  );
+      ...(w ? {} : { key: undefined }),
+    });
+  });
   /** The describer's wheel again (teams), in 🎡 Spin for the describer's place: W spins it while it's up. */
   const memberAgain = $derived(
     nextStep(VERBS.spinAgain, onmemberspin, {
@@ -551,8 +559,13 @@
       ...(wheel?.members ? {} : { key: undefined }),
     }),
   );
-  /** Cards to copy by hand (no phone gets cards, or one goes to a player without a phone here), not sent yet. */
-  const handCopy = $derived(cards.length > 0 && (!cardsOn || unsent.some((c) => recipients(c).some((t) => !hasPhone(t.seat)))));
+  /**
+   * While the cards are handed out, those to copy by hand (no phone gets cards, or one goes to a player without a phone
+   * here): their 📋 is at the box's foot too, beside the step, in view.
+   */
+  const toCopy = $derived(
+    handStep ? cards.flatMap((card, i) => (recipients(card).length && (!cardsOn || recipients(card).some((t) => !hasPhone(t.seat))) ? [{ card, i }] : [])) : [],
+  );
   /** The box's first line: what to do next, in plain words, as the moment goes on. */
   const nextLine = $derived.by((): { text: string; warn?: boolean } | null => {
     if (s.stage === 'pick') {
@@ -565,8 +578,8 @@
     if (steal && !steal.by && stealLeft.length && !session.revealed) return { text: 'Next: who steals it?' };
     if (verdict.judged || steal) return { text: `Next: ${session.revealed ? VERBS.done.label : VERBS.reveal.label}` };
     if (handStep) {
-      if (unsentToGo.length) return { text: handCopy ? 'Next: copy the cards for players without a phone (📋 Copy words), then 📤 Send and start' : 'Next: send the cards and start the clock' };
-      return { text: handCopy ? 'Next: copy each card to its player (📋 Copy words), then ⏱ Start the clock' : 'Next: start the clock' };
+      if (unsentToGo.length) return { text: toCopy.length ? `Next: 📋 copy cards for ${noun}s without a phone, then 📤 Send and start` : 'Next: send the cards and start the clock' };
+      return { text: toCopy.length ? `Next: 📋 copy each card to its ${noun}, then ⏱ Start the clock` : 'Next: start the clock' };
     }
     return { text: app.live.timer?.expired ? 'Time’s up: did they get it?' : 'Did they get it?' };
   });
@@ -624,7 +637,7 @@
 
 <!-- The box's first line: what to do next, in plain words. -->
 {#snippet firstLine()}
-  {#if nextLine}<span class="next-line" class:warn={nextLine.warn} data-partner-next>{nextLine.text}</span>{/if}
+  {#if nextLine}<span class="next-line" class:warn={nextLine.warn} title={nextLine.text} data-partner-next>{nextLine.text}</span>{/if}
 {/snippet}
 
 {#snippet parts()}
@@ -654,7 +667,7 @@
     {#if !picker}
       <div class="row">
         {#each session.players as p, i (p.id)}
-          {@render chip(p.id, false, `${p.name} picked it`, guarded(`pick:${p.id}`, () => choosePicker(p.id)), false, i < 9 ? `Key ${i + 1}` : '', i + 1)}
+          {@render chip(p.id, false, `${p.name} picked it`, guarded(`pick:${p.id}`, () => choosePicker(p.id), true), false, i < 9 ? `Key ${i + 1}` : '', i + 1)}
         {/each}
       </div>
     {:else}
@@ -727,11 +740,14 @@
       <span class="muted small" data-partner-readiness>{readiness}</span>
       {@render filesRow()}
     {/if}
-    <!-- The pair chosen: the question next, at the box's foot (in view, as the rows above scroll). -->
+    <!-- The pair chosen: the question next, at the box's foot (in view, as the rows above scroll), at its right end, where
+         the next step comes after it. -->
     {#if pickStepIs === 'show' && pickStep}
       <div class="row foot" data-partner-foot>
-        <StepButton step={pickStep} />
-        {#if cards.length}<span class="muted small">the cards come next</span>{/if}
+        <span class="end">
+          {#if cards.length}<span class="muted small">the cards come next</span>{/if}
+          <StepButton step={pickStep} />
+        </span>
       </div>
     {/if}
   {:else}
@@ -874,14 +890,15 @@
         {#if dual || session.revealed}guessed: <b dir="auto" class:selectable={dual}>“{guess.text}”</b>{:else}sent a guess (viewers can see this window: it shows here once the answer is up){/if}
       </div>
     {/if}
-    <!-- The box's foot, in view as the rows above scroll: while the cards are handed out, its next step (📤 Send and start,
-         or ⏱ Start the clock), then ✔ Got it / ✘ Missed, quiet until the clock runs, with what each gives (a click judges
-         while handing out the cards too; the keys wait for the clock). Judged, the line reads the marks; an Undo brings
-         the buttons back. (Clicked, they go off: Play's partnerJudge gives the keys to the main button.) A steal's row
-         takes its place, its marks first: the players list above keeps its room, the stealers' quick buttons in view. -->
+    <!-- The box's foot, in view as the rows above scroll: ✔ Got it / ✘ Missed, quiet until the clock runs, with what each
+         gives (a click judges while handing out the cards too; the keys wait for the clock), and while the cards are
+         handed out, the next step at its right end (📋 for the cards to copy by hand, then 📤 Send and start or ⏱ Start
+         the clock): when it goes, nothing moves into its place, so a second click there never judges. Judged, the line
+         reads the marks; an Undo brings the buttons back. (Clicked, they go off: Play's partnerJudge gives the keys to the
+         main button.) A steal's row takes its place, its marks first: the players list above keeps its room, the
+         stealers' quick buttons in view. -->
     {#if !steal}
       <div class="row judge foot" data-partner-judge data-partner-foot>
-        {#if handStep}<StepButton step={handStep} final={handSoon} />{/if}
         <button
           class:good={!handStep}
           class:ghost={!!handStep}
@@ -903,6 +920,23 @@
           <span class="small" data-judged>Judged: {marksText(s, marks, name, sym)}</span>
         {:else}
           <span class="small shares" data-judge-missed>{sharesText(missShares, name, sym)}{already}</span>
+        {/if}
+        {#if handStep}
+          <span class="end">
+            {#each toCopy as { card, i } (card.id)}
+              {@const W = clueCardWords(card, i, true)}
+              {#if cardWords(card) || cardLinks(game, card).length}
+                <button class="small" onclick={() => copyWords(card, i + 1)} aria-label="Copy {W}’s words" title="Copies “For {recipients(card).map((t) => toName(session, t)).join(', ')} only…” with the card’s words and links, to paste in a DM"
+                  >📋 {toCopy.length > 1 ? clueCardName(card, i) : 'Copy words'}</button
+                >
+              {:else if canCopyPicture && cardItems(game, card).some((it) => it.kind === 'picture' || it.kind === 'gif')}
+                <button class="small" onclick={() => copyPicture(card, i + 1)} aria-label="Copy {W}’s picture" title="Copies the card’s picture, to paste in a DM"
+                  >📋 {toCopy.length > 1 ? clueCardName(card, i) : 'Copy picture'}</button
+                >
+              {/if}
+            {/each}
+            <StepButton step={handStep} />
+          </span>
         {/if}
       </div>
     {:else}
@@ -997,9 +1031,36 @@
     padding-top: 4px;
     border-top: 1px solid rgba(255, 255, 255, 0.08);
   }
-  /* What to do next: the box's first line. */
+  /* What to do next: the box's first line. One line, cut short (the whole line is in its tooltip), taking the row's room
+     left: its row stays one line, so in one window on a laptop the card rows stay in view under it. */
   .next-line {
     font-weight: 600;
+    flex: 1000 1 0;
+    min-width: 0;
+    max-width: max-content;
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+  }
+  /* (A warning wraps instead: it says how to go on.) */
+  .next-line.warn {
+    flex: 1 1 auto;
+    white-space: normal;
+  }
+  /* The foot's next step, at its right end: when it goes, nothing takes its place. */
+  .end {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px;
+    margin-left: auto;
+  }
+  /* (A card's name on its 📋, cut short.) */
+  .end button {
+    max-width: 22ch;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
   .steal {
     padding-top: 4px;

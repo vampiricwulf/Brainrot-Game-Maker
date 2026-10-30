@@ -469,12 +469,15 @@
   const viewersSee = $derived(dual ? [] : slots.viewersSee());
   /**
    * The main button stays one button while its job changes: the second click of a double-click on "Show question ▶" (or
-   * 🔔 Open the buzzers) must not land on the 👁 Reveal answer it just became, and put the answer on stream. (The panel's
-   * one click guard: a box's own buttons go through it too.)
+   * 🔔 Open the buzzers) must not land on the 👁 Reveal answer it just became, and put the answer on stream. A step that
+   * can't be undone (📤 Send and start) waits a second after the step before it, as in its box and by the keys. (The
+   * panel's one click guard: a box's own buttons go through it too.)
    */
   const guard = panelGuard();
   function clickNext(e: MouseEvent, n: NextAction): void {
-    if (guard.press(`main:${n.label}`, e.detail, { step: true }) === 'go') n.run();
+    const v = guard.press(`main:${n.label}`, e.detail, { step: true, final: !!n.final, x: e.clientX, y: e.clientY });
+    if (v === 'soon' && n.final) hint(n.final);
+    if (v === 'go') n.run();
   }
 
   /** Exit was pressed: it asks in the strip (a browser dialog would show on stream). */
@@ -1070,16 +1073,17 @@
     </div>
   {/if}
 
-  <!-- 👁 Reveal answer and ▦ Done ▶ board (whichever isn't the main one): in the clue's row, or beside the main button. -->
-  {#snippet revealDone()}
+  <!-- 👁 Reveal answer and ▦ Done ▶ board (whichever isn't the main one): in the clue's row, or beside the main button
+       (`quiet`: there they're ghost buttons, the main button the one blue). -->
+  {#snippet revealDone(quiet = false)}
     {#if !toolOnly && !toolFirst && next?.run !== onreveal}
-      <button data-flow="reveal" onclick={onreveal} title={VERBS.reveal.title}>
+      <button class:ghost={quiet} data-flow="reveal" onclick={onreveal} title={VERBS.reveal.title}>
         {session.revealed ? VERBS.hide.label : VERBS.reveal.label}
       </button>
     {/if}
     <!-- A wheel/dice tile with nothing to ask has one way out: its tool's Close ▶ board. -->
     {#if !(toolOnly && app.live.overlay) && next?.run !== doneUnscored}
-      <button class="done-board" data-flow="done" onclick={onback} title={VERBS.done.title}>{@render iconWord(VERBS.done.label)}</button>
+      <button class="done-board" class:ghost={quiet} data-flow="done" onclick={onback} title={VERBS.done.title}>{@render iconWord(VERBS.done.label)}</button>
     {/if}
   {/snippet}
 
@@ -1376,9 +1380,9 @@
     {#if next}
       {@const n = next}
       <div class="next" class:beside={flowBeside}>
-        <!-- One window, a partner clue's question: 👁 Reveal answer and ▦ Done ▶ board here, quiet, above it (see
-             flowBeside). -->
-        {#if flowBeside}<span class="flowbeside">{@render revealDone()}</span>{/if}
+        <!-- One window, a partner clue's question: 👁 Reveal answer and ▦ Done ▶ board here, quiet, at the top of the cell,
+             apart from the main button at its foot (see flowBeside). -->
+        {#if flowBeside}<span class="flowbeside">{@render revealDone(true)}</span>{/if}
         <!-- Its quiet companions first (◀ Previous turn), then the one main button (quiet while someone answers: ＋ Award is
              the main one then; and while the strip asks). -->
         {#each n.also ?? [] as a (a.label)}
@@ -1560,11 +1564,16 @@
     flex-wrap: wrap;
     gap: 6px;
   }
-  /* 👁 Reveal answer and ▦ Done ▶ board beside the main button: on a line of their own above it, so the cell stays narrow
-     (the box beside it keeps its width) and two buttons high. */
+  /* 👁 Reveal answer and ▦ Done ▶ board beside the main button: on a line of their own at the top of the cell, as far
+     from the main button at its foot as the row's height allows (a click a little above it never lands on them), so the
+     cell stays two buttons high. */
   .next.beside {
     flex-direction: column;
+    flex-wrap: nowrap;
     align-items: flex-end;
+    justify-content: space-between;
+    align-self: stretch;
+    gap: 12px;
   }
   .flowbeside {
     display: flex;

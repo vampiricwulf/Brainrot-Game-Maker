@@ -22,7 +22,7 @@ export const secondClick = (e: MouseEvent): boolean => e.detail >= 2;
  * press. (Pointer events carry no count, some parts of the app act on them, as the slide editor's items do, and those
  * can cancel the mousedown that would say so.)
  */
-const NEAR_PX = 6;
+export const NEAR_PX = 6;
 
 /** The click whose press is being dropped: when (moved on with each part dropped), and where. */
 type Shot = { at: number; x: number; y: number };

@@ -336,6 +336,8 @@ async function show(how) {
     await until('the partner wheel landing', mainIs('Close'));
     await stageClick('the wheel closed onto the pair', mainIs('▶ Show question'));
     await main('▶ Show question', 'its question', mainIs('📤 Send and start'));
+    // (A click within a second of the question sends nothing, as Enter does.)
+    await sleep(KEY_GUARD);
     await main('📤 Send and start', 'the card sent and the clock started', mainIs('👁 Reveal answer'));
     await click(gotIt, '✔ Got it', statusHas('judged'));
   }
