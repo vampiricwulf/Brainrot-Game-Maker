@@ -29,8 +29,9 @@ const within = (p, what, ms = 20_000) => Promise.race([p, sleep(ms).then(() => P
 /** The card file pieces stored now, in every room. */
 const pieces = async () => (await roomKeys(buzzer.persist)).filter((k) => /^(p|file):/.test(k));
 
-// (16 MB a file and 64 MB a room, what older servers took, whatever wrangler.jsonc says: a full room is four 16 MB files.)
-const buzzer = await startBuzzer('buzzer-files-', { vars: { FILE_MB: 16, ROOM_FILES_MB: 64 } });
+// (64 MB a room, what older servers took, whatever wrangler.jsonc says: a full room is four 16 MB files. A file may be
+// as big as the room here, for a download bigger than any network's buffers take in.)
+const buzzer = await startBuzzer('buzzer-files-', { vars: { FILE_MB: 64, ROOM_FILES_MB: 64 } });
 const { base } = buzzer;
 const ws = base.replace(/^http/, 'ws');
 /** The server with limits of its own (started once the first is done). */
@@ -122,9 +123,13 @@ async function newRoom(ip, at = base) {
         const rest = () =>
           new Promise((done) => {
             let got = 0;
-            res.on('data', (b) => (got += b.length));
+            const head = [];
+            res.on('data', (b) => {
+              if (got < 64 * 1024) head.push(b);
+              got += b.length;
+            });
             res.on('error', () => {});
-            res.on('close', () => done({ got, whole: res.complete }));
+            res.on('close', () => done({ got, whole: res.complete, text: Buffer.concat(head).toString() }));
             res.resume();
           });
         ok({ res, rest });
@@ -240,30 +245,40 @@ try {
     const after = await Promise.race([turn(id).then((x) => x.arrayBuffer()), sleep(20_000).then(() => null)]);
     assert(after?.byteLength === bytes.length, 'downloads stopped partway free their place: the next one comes whole');
 
-    // One phone can't hold the room's places: 4 of its downloads held unread, its 5th gets 429 at once.
-    const heldTurn = async (id) => {
-      for (const end = Date.now() + 20_000; ; await sleep(200)) {
-        const g = await r.heldGet(id);
-        if (g.res.statusCode !== 429 || Date.now() > end) return g;
-        await g.rest();
-      }
-    };
-    const four = [];
-    for (let i = 0; i < 4; i++) four.push(await heldTurn(id));
-    assert(four.every((g) => g.res.statusCode === 200), 'a phone has 4 downloads going, none of them read');
-    const fifth = await Promise.race([r.get(id), sleep(10_000).then(() => null)]);
-    const fifthSaid = await fifth?.json().catch(() => null);
-    // (When it isn't, what the 4 were doing then: one ended or cut off, or bytes read, says why the room let it through.)
-    const heldNow = four.map((g) => `${g.res.complete ? 'ended' : g.res.destroyed ? 'cut off' : 'held'} ${g.res.socket?.bytesRead ?? '?'} B`).join(', ');
-    assert(fifth?.status === 429 && fifthSaid?.error === 'Too many files — wait a minute', `its 5th is turned away at once, to try again (${fifth?.status} ${JSON.stringify(fifthSaid)}; the 4: ${heldNow})`);
-    const read = await Promise.all(four.map((g) => g.rest()));
+    // One phone can't hold the room's places: with 4 of its downloads going, its 5th gets 429 at once. (Asked for all at
+    // once: the room counts a download from the moment it's asked for until it has handed the line its last piece, and
+    // how much of a 16 MB file the network's buffers take in while nothing is read differs from one machine to another;
+    // held one after the other, a machine taking in whole files let the room finish each before the next was asked.)
+    let five;
+    for (const end = Date.now() + 20_000; ; await sleep(200)) {
+      five = await Promise.all(Array.from({ length: 5 }, () => r.heldGet(id)));
+      // (Fewer than 4 let through: some of the 26 stopped above weren't let go yet. Read them all and ask again.)
+      if (five.filter((g) => g.res.statusCode === 200).length === 4 || Date.now() > end) break;
+      await Promise.all(five.map((g) => g.rest()));
+    }
+    const going4 = five.filter((g) => g.res.statusCode === 200);
+    const away = five.filter((g) => g.res.statusCode === 429);
+    const awaySaid = away.length ? JSON.parse((await away[0].rest()).text || 'null') : null;
+    assert(going4.length === 4 && away.length === 1 && awaySaid?.error === 'Too many files — wait a minute', `a phone asking for 5 at once: 4 go, its 5th is turned away at once, to try again (${five.map((g) => g.res.statusCode).join(',')} ${JSON.stringify(awaySaid)})`);
+    const read = await Promise.all(going4.map((g) => g.rest()));
     assert(read.every((x) => x.whole && x.got === bytes.length), 'the 4 come whole once read');
     const again = await r.get(id);
     assert(again.status === 200 && (await again.arrayBuffer()).byteLength === bytes.length, 'and once they’re done, the next one comes');
+    r.host.send({ t: 'close' });
+    await until(async () => !(await pieces()).length, 'the room’s files gone with it');
+  }
 
-    // Deleted partway: the host takes the card back and is done with its file while a phone is still reading it. (The
-    // room reads a piece as the line takes it: here the line holds about 10 MB with nothing read, so 16 MB is enough.)
-    const going = await heldTurn(id);
+  // ---------- A file deleted while a phone fetches it ----------
+  {
+    // The host takes the card back and is done with its file while a phone is still reading it. (The room reads a piece
+    // as the line takes it, so the file must be bigger than the line holds with nothing read: about 10 MB here, more on
+    // some machines, so 64 MB, the room's whole room.)
+    const r = await newRoom('198.51.100.64');
+    const bytes = randomBytes(64 * MB);
+    const id = (await (await r.upload(bytes)).json()).id;
+    r.state({ cards: [{ id: 'pc:c1:1:1', to: [{ seat: 'a' }], open: true, text: 'SHREK', media: [{ kind: 'video', file: id, mime: 'video/mp4' }] }] });
+    await until(() => r.phone.last('view')?.view.cards?.list[0]?.media?.[0]?.file === id, 'the phone gets the card');
+    const going = await r.heldGet(id);
     const total = Number(going.res.headers['content-length']);
     r.state({ cards: null });
     r.host.send({ t: 'forget', files: [id] });
