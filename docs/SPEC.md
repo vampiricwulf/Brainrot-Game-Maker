@@ -481,7 +481,9 @@ The mode isn't saved with the game: it's dual while the audience window is open.
      Enter after it only says "Clock is running: Enter again for ✔ Got it"; with phone cards still to send it starts
      the clock only, the main button reads **📤 Send the cards (clock running)** and the status line "Clock running:
      Enter sends the 2 cards", and Enter sends them (a card goes to a phone only by Enter on that step or a 📤 press).
-     Nobody buzzes. With **steal on a miss**
+     Under the box the Amount row folds behind **± Other points…** (✔ Got it / ✘ Missed give the points): it opens by
+     itself once a player is picked (`1–9`, then Enter awards them as on any clue) or points were given by hand on the
+     clue, and stays open for it; a steal's row is the Amount row, open. Nobody buzzes. With **steal on a miss**
      (⚖ Game rules' `partnerSteal`, or the clue's own `PartnerRules.steal`), ✘ Missed lets everyone else answer it as
      any clue for the tile's value: the buzzers open for them with the two locked out, or the host picks who steals
      (`1–9`), then Enter / Shift+Enter. Each steal is its own undo step, and undoing the miss closes the steal. A click

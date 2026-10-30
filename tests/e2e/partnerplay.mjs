@@ -245,7 +245,11 @@ try {
     verdicts.join() === 'good,bad' && (await page.locator('.panel button.primary:visible').count()) === 0 && (await mainLabel(page)) === '👁 Reveal answer',
     `the clock running: ✔ Got it and ✘ Missed an equal pair, nothing blue, 👁 Reveal answer quiet in the main cell (${verdicts.join(', ')})`,
   );
-  assert((await page.locator('.panel .players').count()) === 1, 'the award row is there, as on any clue');
+  assert((await page.locator('.panel .players').count()) === 1, 'the players’ chips are there, as on any clue');
+  assert(
+    (await page.locator('.panel .award').count()) === 0 && (await page.getByRole('button', { name: '± Other points…' }).isVisible()),
+    'the Amount row folds behind ± Other points… (✔ Got it / ✘ Missed give the points)',
+  );
   // With the clock running they're still describing: a click on the stage says how to judge, not the answer.
   await stage('[data-slide="1"]').click();
   assert(await toast('Right or wrong? ✔ Got it / ✘ Missed in the 🤝 box (Enter / Shift+Enter)'), 'a click on the stage with the clock running says how to judge');

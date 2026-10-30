@@ -204,10 +204,14 @@ try {
   await page.keyboard.press('Shift+Enter');
   assert(await toast('Start the clock first (Enter), or click ✘ Missed'), 'Shift+Enter while handing out the cards judges nothing');
   assert((await scoreOf('Bob')) === '$0', 'and gives nothing');
+  const amountRow = page.locator('.panel .award');
+  assert((await amountRow.count()) === 0 && (await page.getByRole('button', { name: '± Other points…' }).count()) === 1, 'the Amount row is folded behind ± Other points…');
   await page.keyboard.press('2');
+  await amountRow.waitFor();
   await page.keyboard.press('Enter');
   await page.waitForFunction(() => document.querySelector('.panel .players [data-player-id="p2"] .score')?.textContent.trim() === '$400');
   assert((await flat(judgeRow.locator('[data-judge-got]'))) === 'Ann +$200 · Bob already scored', '2, then Enter awards Bob by hand; ✔ Got it would give only Ann her share');
+  assert((await amountRow.count()) === 1, 'picking him opened the Amount row, and it stays open once points were given by hand');
   await gotBtn.click();
   await panel.locator('[data-judged]').waitFor();
   sc = await scores();

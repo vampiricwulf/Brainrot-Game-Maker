@@ -695,7 +695,12 @@ try {
     await stateIs((st) => st.status?.text === '🤝 Bob describes → Ann guesses');
     st = await state();
     assert(st.phase === 'lobby' && !st.clue && st.status.seats.join() === 'p2' && st.status.seatsText === '🗣 You’re describing!', 'the question up: still no buzzers and no question words; the describer’s phone says so');
-    assert((await p.locator('.panel .row.buzzrow').count()) === 1 && (await p.locator('.panel [data-buzzrow]').count()) === 0, 'the buzzers’ row is kept empty (the stage keeps its size), with nothing to open');
+    // (The partner clue's panel keeps one height: the buzzers' row isn't kept for the stage's size, and the Amount row
+    // is folded behind ± Other points….)
+    assert(
+      (await p.locator('.panel [data-buzzrow]').count()) === 0 && (await p.locator('.panel .award').count()) === 0 && (await p.getByRole('button', { name: '± Other points…' }).count()) === 1,
+      'no buzzers’ row, nothing to open: the Amount row folded behind ± Other points…',
+    );
     await p.keyboard.press('u');
     assert(await rtoast('Nobody buzzes on a partner clue'), 'U: nobody buzzes on a partner clue');
     // A phone buzzing anyway (an older phone page, say): nobody is picked to answer.

@@ -589,11 +589,6 @@
   $effect(() => {
     if (session.phase !== 'board') adjust = false;
   });
-  const showAward = $derived(scoring && (session.phase !== 'board' || !!selected.length || adjust));
-  // (A box taken away with the keys in it says no blur.)
-  $effect(() => {
-    if (!showAward) amountKeys = false;
-  });
 
   function toggle(id: string): void {
     selected = selected.includes(id) ? selected.filter((x) => x !== id) : [...selected, id];
@@ -641,6 +636,34 @@
   const marks = $derived(session.phase === 'clue' && info ? clueMarks(session, info.clue.id, partner?.at ?? markSince) : {});
   /** The open partner clue is judged: each of the two has a mark on it (an Undo takes that away again). */
   const partnerJudged = $derived(!!partner && partnerVerdict(partner, marks).judged);
+  /**
+   * A 🤝 partner clue's question (not a steal): ✔ Got it / ✘ Missed give the points, so the Amount row folds behind
+   * ± Other points…. It opens by itself once a player is picked (1–9) or points were given by hand on this clue (someone
+   * but the two marked, or one of the two before the verdict), and stays open for the clue.
+   */
+  const partnerFold = $derived(!!partner && partner.stage !== 'pick' && !steal);
+  const handGiven = $derived.by(() => {
+    if (!partnerFold || !partner) return false;
+    const two = [partner.pickerId, partner.partnerId];
+    const ids = Object.keys(marks);
+    return ids.some((id) => !two.includes(id)) || (!partnerJudged && ids.length > 0);
+  });
+  /** This play of the partner clue (a tile played again is another). */
+  const partnerPlay = $derived(partner ? `${partner.clue}:${partner.at ?? 0}` : null);
+  /** The play of a partner clue whose Amount row was opened. */
+  let otherFor = $state<string | null>(null);
+  const otherPoints = $derived(!!partnerPlay && otherFor === partnerPlay);
+  $effect(() => {
+    if (partnerFold && (selected.length || handGiven)) untrack(() => (otherFor = partnerPlay));
+  });
+  /** The Amount row is open: on the board once a player is picked (or ± Adjust score), in a partner clue as above. */
+  const showAward = $derived(
+    scoring && (session.phase === 'board' ? !!selected.length || adjust : partnerFold ? otherPoints || !!selected.length || handGiven : true),
+  );
+  // (A box taken away with the keys in it says no blur.)
+  $effect(() => {
+    if (!showAward) amountKeys = false;
+  });
   /**
    * What went to phones, for the status row: "🤫 card 1 sent to Bob" (card “Clue tip” for a named one), "🤫 2 cards
    * sent" (who, never what).
@@ -1269,15 +1292,19 @@
           {/if}
         {/if}
         {#if scoring && !showAward}
-          <!-- (The keys go to the Amount box: the points are typed first, then who gets them.) -->
+          <!-- (The keys go to the Amount box: the points are typed first, then who gets them. In a partner clue ✔ Got it /
+               ✘ Missed give them: this is for anyone else.) -->
           <button
             class="ghost"
             aria-expanded="false"
             onclick={() => {
-              adjust = true;
+              if (partnerFold) otherFor = partnerPlay;
+              else adjust = true;
               void tick().then(() => amountBox?.focus());
             }}
-            title="Give or take points (or press a player's number)">± Adjust score</button
+            title={partnerFold
+              ? 'Give or take points by hand, as on any clue (or press a player’s number): ✔ Got it / ✘ Missed give the pair theirs'
+              : "Give or take points (or press a player's number)"}>{partnerFold ? '± Other points…' : '± Adjust score'}</button
           >
         {/if}
       {/snippet}
