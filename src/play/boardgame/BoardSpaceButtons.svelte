@@ -12,10 +12,21 @@
   import ActionListEditor from '../../editor/rpg/ActionListEditor.svelte';
   import { PANEL_AREA, type PanelPlace } from '../host/panelarea';
 
-  let { round, space, onclose }: { round: BoardGameRound; space: BoardSpace; onclose: () => void } = $props();
+  let {
+    round,
+    space,
+    name,
+    onclose,
+  }: {
+    round: BoardGameRound;
+    space: BoardSpace;
+    /** Its name as the panel says it (one window, a secret space not revealed yet: “? (secret)”). */
+    name?: string;
+    onclose: () => void;
+  } = $props();
   // One step for the whole edit (with the board's spaces, so Undo puts the buttons back).
   const done = untrack(() => app.session && startStep(app.session, app.playGame ?? undefined));
-  const title = untrack(() => space.name);
+  const title = untrack(() => name ?? space.name);
   // The editor's fields work on the game being played while this is open (and the host's shortcuts stay off).
   app.editGame = app.playGame;
   onDestroy(() => {
@@ -51,9 +62,9 @@
     style:height={area ? `${area.height}px` : undefined}
     role="presentation"
   >
-    <div class="modal" role="dialog" aria-modal="true" aria-label="Buttons on {space.name}" bind:this={box} use:modal>
+    <div class="modal" role="dialog" aria-modal="true" aria-label="Buttons on {name ?? space.name}" bind:this={box} use:modal>
       <div class="row">
-        <b class="modal-title">⚙ {space.name}</b>
+        <b class="modal-title">⚙ {name ?? space.name}</b>
         <span class="muted small">For this game only{app.playerOnly ? '' : ', unless you press 💾 Keep in game'}.</span>
         <span class="spacer"></span>
         <button class="primary" onclick={onclose} title="Esc">Done</button>

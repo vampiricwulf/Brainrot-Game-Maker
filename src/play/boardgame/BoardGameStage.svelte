@@ -203,7 +203,7 @@
             </div>
           {/if}
         {/each}
-        {#if editing}<BoardEditLayer {game} {session} {round} />{/if}
+        {#if editing}<BoardEditLayer {game} {session} {round} hide={audience} />{/if}
       </div>
     {/if}
     </div>

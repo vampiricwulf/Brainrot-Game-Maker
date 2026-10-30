@@ -1,13 +1,14 @@
 <!--
   ✎ Edit board, in the host panel: what's picked on the stage (a space: its name, color, secret, buttons, Start,
   connections; a link: its direction) and the edits that need no click on the board (＋ Space, 💾 Keep in game).
-  The changes are made to the game being played: they last for this game only, unless the host keeps them.
+  The changes are made to the game being played: they last for this game only, unless the host keeps them. In one
+  window (viewers see this panel) a secret space not revealed yet is “? (secret)” here, its name box behind 👁 Show.
 -->
 <script lang="ts">
   import { app } from '../../lib/app.svelte';
-  import { applySpaceKind, nameShown, SPACE_KINDS, spaceById, spaceListNames } from '../../lib/boardgame';
+  import { applySpaceKind, nameShown, SPACE_KINDS, spaceById, spaceListNames, spaceSaid, unrevealed } from '../../lib/boardgame';
   import { numberStat } from '../../lib/rpgpresets';
-  import type { BoardGameRound, BoardGameState, Game, Session } from '../../lib/model';
+  import type { BoardGameRound, BoardGameState, BoardSpace, Game, Session } from '../../lib/model';
   import BoardSpaceButtons from './BoardSpaceButtons.svelte';
   import ColorBox from '../../lib/ColorBox.svelte';
   import { boardEdit, editAllNames, editBothWays, editConnect, editDelete, editDisconnect, editKeep, editReverse, editShowName, editSpace, editStart } from './boardedit.svelte';
@@ -25,9 +26,17 @@
   const into = $derived(sel ? round.spaces.filter((s) => s.next.includes(sel.id) && !sel.next.includes(s.id)) : []);
   const isStart = $derived(!!sel && (round.start ?? round.spaces[0]?.id) === sel.id);
   const here = $derived(sel ? session.players.filter((p) => bs.positions[p.id]?.space === sel.id) : []);
-  const name = (id: string) => spaceById(round, id)?.name ?? '?';
+  /** One window: the panel is on stream, so a secret space not revealed yet is “? (secret)” in it. */
+  const hide = $derived(!dual);
+  const said = (s: BoardSpace | undefined) => spaceSaid(bs, s, hide);
+  const name = (id: string) => said(spaceById(round, id));
+  /** A secret space not revealed yet whose name would be on stream (one window). */
+  const quiet = (s: BoardSpace) => hide && unrevealed(bs, s);
+  /** The secret space whose name box shows its name (👁 Show): only that one, until another is picked. */
+  let shownFor = $state<string | null>(null);
+  const masked = $derived(!!sel && quiet(sel) && shownFor !== sel.id);
   /** The spaces' names in Connect to… (a name that repeats says where it is: “Bonus (after Space 6)”). */
-  const listNames = $derived(spaceListNames(round));
+  const listNames = $derived(spaceListNames(hide ? { ...round, spaces: round.spaces.map((x) => (unrevealed(bs, x) ? { ...x, name: '? (secret)' } : x)) } : round));
 </script>
 
 <div class="be" data-board-editing>
@@ -66,9 +75,9 @@
   <div class="row">
     <span class="muted small">
       {#if boardEdit.adding}
-        Click the board where the new space goes{sel ? ` (after ${sel.name})` : ''}…
+        Click the board where the new space goes{sel ? ` (after ${said(sel)})` : ''}…
       {:else if boardEdit.connecting && sel}
-        Click the space {sel.name} should lead to…
+        Click the space {said(sel)} should lead to…
       {:else}
         Click a space or a link to pick it · drag a space to move it · Shift+click a space to connect the picked one to it · Ctrl+click or double-click the board to add one · right-click for more
       {/if}
@@ -86,9 +95,10 @@
           value={s.name}
           data-edit-name
           aria-label="Space name"
+          style:-webkit-text-security={masked ? 'disc' : undefined}
           onchange={(e) => {
             const v = e.currentTarget.value.trim();
-            if (v && v !== s.name) editSpace(game, session, s.id, `Renamed space “${s.name}” to “${v}”`, (x) => (x.name = v));
+            if (v && v !== s.name) editSpace(game, session, s.id, quiet(s) ? 'Renamed space “? (secret)”' : `Renamed space “${s.name}” to “${v}”`, (x) => (x.name = v));
             else e.currentTarget.value = s.name;
           }}
           onkeydown={(e) => {
@@ -96,9 +106,14 @@
           }}
         />
       </label>
+      {#if quiet(s)}
+        <button class="ghost tiny" aria-pressed={!masked} onclick={() => (shownFor = masked ? s.id : null)} title={masked ? 'Shows its name here (viewers see it too)' : 'Hide its name again'}
+          >{masked ? '👁 Show' : '🙈 Hide'}</button
+        >
+      {/if}
       <label class="small">
         Color
-        <ColorBox value={s.color} aria-label="Space color" onchange={(e) => editSpace(game, session, s.id, `Color of “${s.name}”`, (x) => (x.color = e.currentTarget.value))} />
+        <ColorBox value={s.color} aria-label="Space color" onchange={(e) => editSpace(game, session, s.id, `Color of “${said(s)}”`, (x) => (x.color = e.currentTarget.value))} />
       </label>
       <label class="check small">
         <input
@@ -106,13 +121,15 @@
           checked={!!s.secret}
           onchange={(e) => {
             const on = e.currentTarget.checked;
-            editSpace(game, session, s.id, `${on ? 'Secret' : 'Not secret'}: “${s.name}”`, (x) => (x.secret = on || undefined));
+            // (Its name stays out of the step either way in one window: it's, or it was, a secret not revealed yet.)
+            const named = hide && !bs.revealed?.includes(s.id) ? '? (secret)' : s.name;
+            editSpace(game, session, s.id, `${on ? 'Secret' : 'Not secret'}: “${named}”`, (x) => (x.secret = on || undefined));
           }}
         />
         Secret
       </label>
       <label class="check small" title="Viewers see its name under it (you always see it while editing)">
-        <input type="checkbox" data-show-name checked={nameShown(s)} onchange={(e) => editShowName(game, session, s.id, e.currentTarget.checked)} />
+        <input type="checkbox" data-show-name checked={nameShown(s)} onchange={(e) => editShowName(game, session, s.id, e.currentTarget.checked, hide)} />
         Show name on the board
       </label>
       <select
@@ -123,7 +140,7 @@
         onchange={(e) => {
           const k = SPACE_KINDS.find((x) => x.kind === e.currentTarget.value);
           e.currentTarget.value = '';
-          if (k) editSpace(game, session, s.id, `Made “${s.name}” a ${k.label.replace(/^\S+\s/, '')} space`, (x) => applySpaceKind(x, k.kind, { shop: game.shops?.[0]?.id, hp: numberStat(game, 'HP')?.id }));
+          if (k) editSpace(game, session, s.id, `Made “${said(s)}” a ${k.label.replace(/^\S+\s/, '')} space`, (x) => applySpaceKind(x, k.kind, { shop: game.shops?.[0]?.id, hp: numberStat(game, 'HP')?.id }));
         }}
       >
         <option value="">✨ Make it a…</option>
@@ -132,16 +149,16 @@
         {/each}
       </select>
       <button class="small" onclick={() => (boardEdit.buttons = s.id)} title="What it does when passed or landed on, and its host notes">⚙ Buttons ({(s.onPass?.length ?? 0) + (s.onLand?.length ?? 0)})…</button>
-      <button class="small" disabled={isStart} onclick={() => editStart(game, session, s.id)}>🏁 Make it Start</button>
+      <button class="small" disabled={isStart} onclick={() => editStart(game, session, s.id, hide)}>🏁 Make it Start</button>
       <span class="spacer"></span>
-      <button class="ghost small danger" onclick={() => editDelete(game, session, s.id)} title="Delete (Ctrl+Z brings it back){here.length ? `: ${here.map((p) => p.name).join(', ')} move to the space before it` : ''}">🗑 Delete space</button>
+      <button class="ghost small danger" onclick={() => editDelete(game, session, s.id, hide)} title="Delete (Ctrl+Z brings it back){here.length ? `: ${here.map((p) => p.name).join(', ')} move to the space before it` : ''}">🗑 Delete space</button>
     </div>
     <div class="row">
       <span class="muted small">Leads to:</span>
       {#each s.next as n (n)}
         <span class="chip">
           {spaceById(round, n)?.next.includes(s.id) ? '↔' : '→'} {name(n)}
-          <button class="ghost tiny" onclick={() => editDisconnect(game, session, { from: s.id, to: n })} aria-label="Disconnect {s.name} from {name(n)}" title="Disconnect">✂</button>
+          <button class="ghost tiny" onclick={() => editDisconnect(game, session, { from: s.id, to: n }, hide)} aria-label="Disconnect {said(s)} from {name(n)}" title="Disconnect">✂</button>
         </span>
       {:else}
         <span class="muted small">nothing (the path ends)</span>
@@ -150,20 +167,20 @@
         <span class="muted small">· From:</span>
         {#each into as f (f.id)}
           <span class="chip">
-            ← {f.name}
-            <button class="ghost tiny" onclick={() => editDisconnect(game, session, { from: f.id, to: s.id })} aria-label="Disconnect {f.name} from {s.name}" title="Disconnect">✂</button>
+            ← {said(f)}
+            <button class="ghost tiny" onclick={() => editDisconnect(game, session, { from: f.id, to: s.id }, hide)} aria-label="Disconnect {said(f)} from {said(s)}" title="Disconnect">✂</button>
           </span>
         {/each}
       {/if}
       <button class="small" class:on={boardEdit.connecting} aria-pressed={boardEdit.connecting} onclick={() => (boardEdit.connecting = !boardEdit.connecting)} title="Then click the space it should lead to (or Shift+click it on the stage)">🔗 Connect to…</button>
       <select
         class="small"
-        aria-label="Connect {s.name} to"
+        aria-label="Connect {said(s)} to"
         onchange={(e) => {
           const v = e.currentTarget.value;
           e.currentTarget.value = '';
           e.currentTarget.blur();
-          if (v) editConnect(game, session, s.id, v);
+          if (v) editConnect(game, session, s.id, v, hide);
         }}
       >
         <option value="">→ Connect to a space…</option>
@@ -173,11 +190,11 @@
   {:else if link}
     {@const k = link}
     <div class="row pick" data-edit-link {@attach (el) => (void boardEdit.link, el.scrollIntoView({ block: 'nearest' }))}>
-      <b class="small">{k.a.name} {k.both ? '↔' : '→'} {k.b.name}</b>
-      <button class="small" onclick={() => editBothWays(game, session, k.l)}>{k.both ? '→ One way only' : '⇄ Both ways'}</button>
-      <button class="small" disabled={k.both} onclick={() => editReverse(game, session, k.l)}>↺ Reverse</button>
+      <b class="small">{said(k.a)} {k.both ? '↔' : '→'} {said(k.b)}</b>
+      <button class="small" onclick={() => editBothWays(game, session, k.l, hide)}>{k.both ? '→ One way only' : '⇄ Both ways'}</button>
+      <button class="small" disabled={k.both} onclick={() => editReverse(game, session, k.l, hide)}>↺ Reverse</button>
       <span class="spacer"></span>
-      <button class="ghost small danger" onclick={() => editDisconnect(game, session, k.l)} title="Delete">✂ Disconnect</button>
+      <button class="ghost small danger" onclick={() => editDisconnect(game, session, k.l, hide)} title="Delete">✂ Disconnect</button>
     </div>
   {/if}
 </div>
@@ -185,7 +202,7 @@
 {#if boardEdit.buttons}
   {@const s = spaceById(round, boardEdit.buttons)}
   {#if s}
-    <BoardSpaceButtons {round} space={s} onclose={() => (boardEdit.buttons = null)} />
+    <BoardSpaceButtons {round} space={s} name={said(s)} onclose={() => (boardEdit.buttons = null)} />
   {/if}
 {/if}
 

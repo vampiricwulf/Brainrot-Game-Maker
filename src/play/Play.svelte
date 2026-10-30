@@ -4051,8 +4051,8 @@
         else editIdle();
       } else setEditing(false);
     } else if (k === 'delete' || k === 'backspace') {
-      if (boardEdit.sel) editDelete(game, session, boardEdit.sel);
-      else if (boardEdit.link) editDisconnect(game, session, boardEdit.link);
+      if (boardEdit.sel) editDelete(game, session, boardEdit.sel, !dual);
+      else if (boardEdit.link) editDisconnect(game, session, boardEdit.link, !dual);
     } else if (k === 'f2') {
       hideControls = false;
       void tick().then(() => document.querySelector<HTMLInputElement>('[data-edit-name]')?.select());

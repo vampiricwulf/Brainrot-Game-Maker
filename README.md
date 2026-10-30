@@ -339,7 +339,8 @@ notes a space up there):
 - Send players to any space.
 - Each space's actions, for the player they're for (the one who landed there, or the ones picked on its card).
 - **✎ Edit board** (`E`) while you play: add, move, connect, rename and delete spaces (players on a deleted space go to
-  the one before it); `E` or `Esc` again goes back to playing.
+  the one before it); `E` or `Esc` again goes back to playing. In a single window a secret space not revealed yet is
+  “? (secret)” there too (its Name box shows its name only after 👁 Show).
 
 <table>
 <tr>

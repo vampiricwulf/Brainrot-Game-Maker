@@ -1,7 +1,7 @@
 // Board games in play: the main button goes 🎲 Roll → ▶ Move → Next turn ▶, with ◀ Previous turn right beside it (under
 // the stage and in the side column), and ✎ Edit board changes the board while the game runs: add, move, connect,
-// disconnect and delete spaces (players on a deleted space move to the one before it), each an undo step; the audience
-// window follows; 💾 Keep in game writes the board back into the game in the editor, and without it the editor's game
+// disconnect and delete spaces (players on a deleted space move to the one before it), each an undo step (in one window
+// a secret space is “? (secret)” in all of it, its name nowhere on the page); the audience window follows; 💾 Keep in game writes the board back into the game in the editor, and without it the editor's game
 // stays as it was.
 import { chromium } from 'playwright-core';
 import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
@@ -386,6 +386,51 @@ try {
   await page.mouse.click(pt.x, pt.y);
   await page.getByLabel('Connect Space 7 to').selectOption({ label: 'Space 5' });
   assert((await last(page)).includes('Connected Space 7 → Space 5'), 'or the picked space’s “Connect to a space…” list');
+  // Space 7 made secret (one window: viewers see the panel): “? (secret)” in the panel, its hints, its menu and the steps
+  // (Undo's tooltip, the last step), its name box behind 👁 Show. Ctrl+Z takes it all back after.
+  const editPanel = page.locator('[data-board-editing]');
+  const undoTip = () => page.locator('.panel button[title^="Undo:"]').getAttribute('title');
+  /** Everything the page shows or says (its text, labels and tooltips) has no “Space 7”. */
+  const noSpace7 = async (when) => {
+    const words = await page.evaluate(() => [document.body.innerText, ...[...document.querySelectorAll('[aria-label], [title]')].flatMap((e) => [e.getAttribute('aria-label') ?? '', e.getAttribute('title') ?? ''])].join('\n'));
+    assert(!words.includes('Space 7'), `one window, ${when}: the secret space’s name is nowhere on the page`);
+  };
+  const s7At = await at(750, 560);
+  await page.mouse.click(s7At.x, s7At.y);
+  await editPanel.getByLabel('Secret', { exact: true }).check();
+  assert((await last(page)).includes('Secret: “? (secret)”') && !(await undoTip()).includes('Space 7'), `ticking Secret is a step that doesn’t name it (${await last(page)})`);
+  const nameBox = page.getByLabel('Space name');
+  assert((await nameBox.evaluate((e) => getComputedStyle(e).webkitTextSecurity)) === 'disc', 'its name box hides its name');
+  await editPanel.getByRole('button', { name: '🔗 Connect to…' }).click();
+  assert((await editPanel.innerText()).includes('Click the space ? (secret) should lead to…'), 'the Connect to… hint says “? (secret)”');
+  await noSpace7('connecting');
+  const s3c = await at(1000, 300);
+  await page.mouse.click(s3c.x, s3c.y);
+  assert((await last(page)).includes('Connected ? (secret) → Space 3') && (await undoTip()).includes('Connected ? (secret) → Space 3'), `connecting it: the step and Undo’s tooltip say “? (secret)” (${await undoTip()})`);
+  await page.mouse.click(s7At.x, s7At.y, { button: 'right' });
+  const s7Menu = page.getByRole('menu');
+  await s7Menu.waitFor();
+  assert((await s7Menu.locator('.heading').innerText()) === '? (secret)', 'its right-click menu’s heading says “? (secret)”');
+  await noSpace7('its menu open');
+  await page.keyboard.press('Escape');
+  await s7Menu.waitFor({ state: 'detached' });
+  await editPanel.getByRole('button', { name: '＋ Space' }).click();
+  assert((await editPanel.innerText()).includes('(after ? (secret))'), 'the ＋ Space hint says “after ? (secret)”');
+  const free = await at(1700, 950);
+  await page.mouse.click(free.x, free.y);
+  assert((await last(page)).includes('Added space “Space 8” after “? (secret)”'), `a space added after it (${await last(page)})`);
+  await noSpace7('after those steps');
+  if (shots) await page.screenshot({ path: `${shots}/editing-secret.png` });
+  await page.keyboard.press('Control+z');
+  await page.mouse.click(s7At.x, s7At.y);
+  await editPanel.getByRole('button', { name: '👁 Show' }).click();
+  assert((await nameBox.evaluate((e) => getComputedStyle(e).webkitTextSecurity)) !== 'disc' && (await nameBox.inputValue()) === 'Space 7', '👁 Show shows its name in the box');
+  await editPanel.getByRole('button', { name: '🙈 Hide' }).click();
+  assert((await nameBox.evaluate((e) => getComputedStyle(e).webkitTextSecurity)) === 'disc', 'and 🙈 Hide hides it again');
+  await page.keyboard.press('Control+z');
+  await page.keyboard.press('Control+z');
+  await editPanel.locator('label.check', { hasText: 'Secret' }).locator('input:not(:checked)').waitFor();
+  assert(!(await page.locator('.bh .last').innerText()).includes('? (secret)'), 'Ctrl+Z takes back the connection and the secret');
   // Delete a space with Ann on it: she goes to the space before it, and the path closes up over it.
   const nap = await at(1400, 300);
   await page.mouse.click(nap.x, nap.y);

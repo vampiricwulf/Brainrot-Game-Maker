@@ -4,7 +4,7 @@ import { newBoardGameRound } from '../../lib/boardgame';
 import { addLiveSpace, connectSpaces, deleteLiveSpace, disconnectSpaces, keepBoard, linkAt, refuge, reverseLink, toggleBothWays } from '../../lib/boardedit';
 import { goToRound, newSession } from '../../lib/session';
 import { undoAction, redoAction } from '../../lib/toolset';
-import { boardEdit, editAdd, editAllNames, editConnect, editDelete, editDisconnect, editShowName, editSpace, setEditing } from './boardedit.svelte';
+import { boardEdit, editAdd, editAllNames, editConnect, editDelete, editDisconnect, editDrag, editShowName, editSpace, editStart, setEditing } from './boardedit.svelte';
 
 /** A game with a 12-space loop (Start, Space 2…Space 12) and two players, playing it. */
 function setup() {
@@ -218,5 +218,42 @@ describe('editing a board during play: space names', () => {
     expect(shown()).toEqual(['Bonus']);
     undoAction(session, game);
     expect(shown()).toEqual([]);
+  });
+});
+
+describe('editing a board during play: one window', () => {
+  it('a secret space not revealed yet is “? (secret)” in what the edits say (two windows, or revealed: its name)', () => {
+    const { game, round, session, bs, id } = setup();
+    const trap = round.spaces.find((s) => s.name === 'Space 5')!;
+    trap.name = 'Trap door';
+    trap.secret = true;
+    const log = () => session.actionLog?.at(-1)?.text;
+    boardEdit.sel = trap.id;
+    editAdd(game, session, { x: 900, y: 600 }, true);
+    expect(log()).toBe('Added space “Space 13” after “? (secret)”');
+    editConnect(game, session, trap.id, id('Space 9'), true);
+    expect(log()).toBe('Connected ? (secret) → Space 9');
+    editDisconnect(game, session, { from: trap.id, to: id('Space 9') }, true);
+    expect(log()).toBe('Disconnected ? (secret) → Space 9');
+    editShowName(game, session, trap.id, true, true);
+    expect(log()).toBe('Showed the name of “? (secret)”');
+    editStart(game, session, trap.id, true);
+    expect(log()).toBe('Made “? (secret)” Start');
+    editDrag(game, session, trap.id, true)();
+    // (Nothing moved: no step.)
+    expect(log()).toBe('Made “? (secret)” Start');
+    // Two windows: its name.
+    editConnect(game, session, trap.id, id('Space 9'));
+    expect(log()).toBe('Connected Trap door → Space 9');
+    // Revealed: its name in one window too.
+    bs.revealed = [trap.id];
+    editDisconnect(game, session, { from: trap.id, to: id('Space 9') }, true);
+    expect(log()).toBe('Disconnected Trap door → Space 9');
+    // Deleted with Ann on it, unrevealed again: the step and its toast don't name it.
+    bs.revealed = [];
+    bs.positions.a = { space: trap.id };
+    editDelete(game, session, trap.id, true);
+    expect(log()).toBe('Deleted space “? (secret)” (Ann moved to Space 4)');
+    expect(log()).not.toContain('Trap');
   });
 });

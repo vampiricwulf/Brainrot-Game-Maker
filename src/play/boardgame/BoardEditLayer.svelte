@@ -2,16 +2,22 @@
   ✎ Edit board, on the host's stage: over the board, it takes the clicks and drags. Click a space or a link to pick it,
   drag a space to move it, Shift+click another space to connect the picked one to it, Ctrl+click or double-click an empty
   spot to add a space (or ＋ Space, then click), right-click for more. Its marks are quiet (a dashed ring, a dashed
-  link): in a single window, viewers see them.
+  link): in a single window, viewers see them, so there (`hide`) a secret space not revealed yet is “? (secret)” in its
+  menu and in what the edits say.
 -->
 <script lang="ts">
-  import { clampToBoard, nameShown, spaceById } from '../../lib/boardgame';
+  import { clampToBoard, nameShown, spaceById, spaceSaid } from '../../lib/boardgame';
   import { linkAt } from '../../lib/boardedit';
   import { showMenu } from '../../lib/menustate.svelte';
-  import { SLIDE_H, SLIDE_W, type BoardGameRound, type Game, type Session } from '../../lib/model';
+  import { SLIDE_H, SLIDE_W, type BoardGameRound, type BoardSpace, type Game, type Session } from '../../lib/model';
   import { boardEdit, editAdd, editAllNames, editBothWays, editConnect, editDelete, editDisconnect, editDrag, editIdle, editReverse, editShowName, editStart } from './boardedit.svelte';
+  import { boardNow } from './bgops';
 
-  let { game, session, round }: { game: Game; session: Session; round: BoardGameRound } = $props();
+  let { game, session, round, hide = false }: { game: Game; session: Session; round: BoardGameRound; hide?: boolean } = $props();
+  const said = (s: BoardSpace | undefined) => {
+    const { bs } = boardNow(game, session);
+    return bs ? spaceSaid(bs, s, hide) : (s?.name ?? '?');
+  };
 
   const R = 58;
   let el = $state<HTMLDivElement>();
@@ -33,7 +39,7 @@
     const s = spaceAt(p);
     if (s) {
       const from = boardEdit.sel;
-      if (from && from !== s.id && (boardEdit.connecting || e.shiftKey)) return editConnect(game, session, from, s.id);
+      if (from && from !== s.id && (boardEdit.connecting || e.shiftKey)) return editConnect(game, session, from, s.id, hide);
       boardEdit.sel = s.id;
       boardEdit.link = null;
       boardEdit.adding = false;
@@ -45,7 +51,7 @@
       }
       return;
     }
-    if (boardEdit.adding || e.ctrlKey || e.metaKey) return editAdd(game, session, p);
+    if (boardEdit.adding || e.ctrlKey || e.metaKey) return editAdd(game, session, p, hide);
     const l = linkAt(round, p);
     if (l) {
       boardEdit.link = l;
@@ -63,7 +69,7 @@
     const s = spaceById(round, drag.id);
     if (!s) return;
     if (!drag.end && Math.abs(p.x - drag.sx) + Math.abs(p.y - drag.sy) < 6) return;
-    drag.end ??= editDrag(game, session, drag.id);
+    drag.end ??= editDrag(game, session, drag.id, hide);
     const at = clampToBoard(drag.ox + p.x - drag.sx, drag.oy + p.y - drag.sy);
     s.x = at.x;
     s.y = at.y;
@@ -78,7 +84,7 @@
     // (Two quick Ctrl+clicks, or clicks while ＋ adding, already added a space each: no third.)
     if (boardEdit.adding || e.ctrlKey || e.metaKey) return;
     const p = toBoard(e);
-    if (!spaceAt(p) && !linkAt(round, p)) editAdd(game, session, p);
+    if (!spaceAt(p) && !linkAt(round, p)) editAdd(game, session, p, hide);
   }
 
   /** Right-click: a space's, a link's or the board's edits. */
@@ -92,16 +98,16 @@
       boardEdit.sel = s.id;
       boardEdit.link = null;
       return showMenu(e, [
-        { heading: s.name },
+        { heading: said(s) },
         { label: '✎ Rename', keys: 'F2', onclick: () => document.querySelector<HTMLInputElement>('[data-edit-name]')?.select() },
         { label: '🔗 Connect to…', hint: 'Then click the space it leads to (or Shift+click it)', onclick: () => (boardEdit.connecting = true) },
-        { label: '🏁 Make it Start', disabled: (round.start ?? round.spaces[0]?.id) === s.id, onclick: () => editStart(game, session, s.id) },
+        { label: '🏁 Make it Start', disabled: (round.start ?? round.spaces[0]?.id) === s.id, onclick: () => editStart(game, session, s.id, hide) },
         nameShown(s)
-          ? { label: '⊘ Hide name', hint: 'Viewers don’t see its name', onclick: () => editShowName(game, session, s.id, false) }
-          : { label: '👁 Show name', hint: 'Viewers see its name under it', onclick: () => editShowName(game, session, s.id, true) },
-        { label: '＋ Add a space after it', onclick: () => editAdd(game, session, { x: s.x + 160, y: s.y }) },
+          ? { label: '⊘ Hide name', hint: 'Viewers don’t see its name', onclick: () => editShowName(game, session, s.id, false, hide) }
+          : { label: '👁 Show name', hint: 'Viewers see its name under it', onclick: () => editShowName(game, session, s.id, true, hide) },
+        { label: '＋ Add a space after it', onclick: () => editAdd(game, session, { x: s.x + 160, y: s.y }, hide) },
         { sep: true },
-        { label: '🗑 Delete space', danger: true, keys: 'Delete', onclick: () => editDelete(game, session, s.id) },
+        { label: '🗑 Delete space', danger: true, keys: 'Delete', onclick: () => editDelete(game, session, s.id, hide) },
       ]);
     }
     if (l) {
@@ -109,15 +115,15 @@
       boardEdit.sel = null;
       const both = !!spaceById(round, l.to)?.next.includes(l.from);
       return showMenu(e, [
-        { label: both ? '→ One way only' : '⇄ Both ways', onclick: () => editBothWays(game, session, l) },
-        { label: '↺ Reverse', disabled: both, onclick: () => editReverse(game, session, l) },
+        { label: both ? '→ One way only' : '⇄ Both ways', onclick: () => editBothWays(game, session, l, hide) },
+        { label: '↺ Reverse', disabled: both, onclick: () => editReverse(game, session, l, hide) },
         { sep: true },
-        { label: '✂ Disconnect', danger: true, keys: 'Delete', onclick: () => editDisconnect(game, session, l) },
+        { label: '✂ Disconnect', danger: true, keys: 'Delete', onclick: () => editDisconnect(game, session, l, hide) },
       ]);
     }
     const sel = spaceById(round, boardEdit.sel ?? undefined);
     showMenu(e, [
-      { label: sel ? `＋ Add a space here (after ${sel.name})` : '＋ Add a space here', onclick: () => editAdd(game, session, p) },
+      { label: sel ? `＋ Add a space here (after ${said(sel)})` : '＋ Add a space here', onclick: () => editAdd(game, session, p, hide) },
       { sep: true },
       { label: '👁 Show all space names', disabled: round.spaces.every(nameShown), onclick: () => editAllNames(game, session, true) },
       { label: '⊘ Hide all space names', disabled: !round.spaces.some(nameShown), onclick: () => editAllNames(game, session, false) },
