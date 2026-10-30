@@ -4,7 +4,7 @@ import { finalName, newImageEl, newTextEl, playableClues, setSlideText, textSlid
 import { applyScore, ddShowQuestion, finalChoose, finalNext, finalSetWager, goToRound, judgePartner, newSession, openClue, places, rebaseSession, removePlayer, undo } from './session';
 import { addCard, setPartner, setPartnerGame, swapParts } from './partner';
 import {
-  answerRoundId, buzzArm, buzzClueOpened, buzzDone, buzzIdle, buzzMissed, buzzOrder, buzzReset, buzzTake, cardsLeftOff, everyoneAnswerAsk, finalAnswerAsk, hostCards, hostState, newBuzz, phoneStatus, questionText, roomCardCount,
+  answerRoundId, buzzArm, buzzClueOpened, buzzDone, buzzIdle, buzzMissed, buzzNeverOpened, buzzOrder, buzzReset, buzzTake, cardsLeftOff, everyoneAnswerAsk, finalAnswerAsk, hostCards, hostState, newBuzz, phoneStatus, questionText, roomCardCount,
   roomCardsFull, seenAtOnce, sessionCards, setupState, teamsOn, wagerAsk, whoBuzzed,
 } from './buzz';
 import { CARDS_MAX, phoneView, OLD_FILE_LIMITS } from './buzzproto';
@@ -20,7 +20,25 @@ describe('buzzer rules', () => {
   it('a clue opens armed (a new armId) or closed, and nobody is locked out', () => {
     const b = { ...newBuzz(4), lockedOut: ['a'] };
     expect(buzzClueOpened(b, true)).toEqual({ phase: 'armed', armId: 5, answering: null, lockedOut: [] });
-    expect(buzzClueOpened(b, false)).toEqual({ phase: 'closed', armId: 4, answering: null, lockedOut: [] });
+    expect(buzzClueOpened(b, false)).toEqual({ phase: 'closed', armId: 4, answering: null, lockedOut: [], armAt: 4 });
+  });
+
+  it('tells buzzers never opened on this clue from ones opened and closed again (armAt)', () => {
+    const closed = buzzClueOpened(newBuzz(4), false);
+    expect(buzzNeverOpened(closed)).toBe(true);
+    // (Saved with the clue and read back after a reload: the same.)
+    expect(buzzNeverOpened(JSON.parse(JSON.stringify(closed)))).toBe(true);
+    // Opened (U), then closed by a right answer, or by the answer going up: not "never".
+    const opened = buzzArm(closed, P);
+    expect(buzzNeverOpened(opened)).toBe(false);
+    expect(buzzNeverOpened(buzzDone(buzzTake(opened, 'a')!))).toBe(false);
+    expect(buzzNeverOpened({ ...opened, phase: 'closed' })).toBe(false);
+    // Picked by hand, then let go: someone answered.
+    expect(buzzNeverOpened(buzzTake(closed, 'b', true))).toBe(false);
+    // Armed at once (the buzzers open by themselves), or no clue at all.
+    expect(buzzNeverOpened(buzzClueOpened(newBuzz(4), true))).toBe(false);
+    expect(buzzNeverOpened(buzzIdle(closed))).toBe(false);
+    expect(buzzNeverOpened(null)).toBe(false);
   });
 
   it('the first buzz answers; a second one, or one from the lobby, does not count', () => {

@@ -29,6 +29,7 @@
   import { leftLine, sentLine, slowKinds, slowLine } from './cardrow';
   import ShrinkButton from './ShrinkButton.svelte';
   import { offerExposed } from './slots.svelte';
+  import { recipientsOf, toggleRecipient } from './tilecards.svelte';
 
   let {
     game,
@@ -76,16 +77,12 @@
   const starts = (card: ClueCard): CardTo[] => (final ? finalRecipients(session, card) : tileRecipients(session, card));
   /** Its Goes to in words. */
   const startsWith = (to: CardGoesTo): string => (final ? finalGoesToLabel(to) : tileGoesToLabel(clue!.type, to));
-  /** Who the host chose for a card (players' ids), by card id; a card not chosen for goes by its Goes to. */
-  let chosen = $state<Record<Id, Id[]>>({});
-  const recipients = (card: ClueCard): CardTo[] => {
-    const ids = chosen[card.id];
-    return ids ? session.players.filter((p) => ids.includes(p.id)).map((p) => ({ seat: p.id })) : starts(card);
-  };
-  function toggle(card: ClueCard, id: Id): void {
-    const now = recipients(card).map((t) => t.seat);
-    chosen[card.id] = now.includes(id) ? now.filter((x) => x !== id) : [...now, id];
-  }
+  /**
+   * Who a card goes to: who the host chose (the chips), else its Goes to. Kept in tilecards.svelte.ts, so the check before
+   * going on knows it with the controls hidden too.
+   */
+  const recipients = (card: ClueCard): CardTo[] => recipientsOf(session, holder.id, card, () => starts(card));
+  const toggle = (card: ClueCard, id: Id): void => toggleRecipient(holder.id, card, recipients(card), id);
   /** The card's latest send that's out now (from here, or 🤫 Send a card…). */
   const sentOf = (card: ClueCard): SentCard | undefined =>
     [...cardsOut(game, session)].reverse().find((c) => 'clue' in c.content && c.content.clue === holder.id && c.content.card === card.id);

@@ -127,6 +127,7 @@
     phoneChip,
     nextAction = $bindable(null),
     boxMenu = $bindable(null),
+    markSince = 0,
   }: {
     game: Game;
     session: Session;
@@ -269,6 +270,8 @@
     nextAction?: NextAction | null;
     /** What the boxes open here add to the stage's menu (read back by the play screen: see stagemenu.ts). */
     boxMenu?: (() => StageItem[]) | null;
+    /** When the open clue opened (Play's: 0 after a reload): its players' marks count from then (a reopened tile starts afresh). */
+    markSince?: number;
   } = $props();
 
   const info = $derived(currentClueInfo(session, game));
@@ -610,22 +613,11 @@
     editingScore = null;
   }
 
-  // How each player was marked on the open clue (✔ / ✘, or Award / Deduct): on their chip, and the same quick button
-  // again isn't taken twice. Only since the clue opened (a reopened tile starts afresh; after a reload, all of it).
-  let markSince = $state(0);
-  let markClue: string | null = untrack(() => clueKey());
+  /** The open clue (round.cat.row), null for none. */
   function clueKey(): string | null {
     const c = session.phase === 'clue' ? session.currentClue : null;
     return c ? `${c.round}.${c.cat}.${c.row}` : null;
   }
-  $effect(() => {
-    const k = clueKey();
-    untrack(() => {
-      if (k === markClue) return;
-      markClue = k;
-      markSince = Date.now();
-    });
-  });
   // A clue just opened, or a Daily Double's question showed: the focus goes to the main button (not lost on the tile
   // that went away; and not left in the wager box, where the Enter that showed it would go on to reveal the answer).
   // A partner clue's each step too (who picked it chosen: 🎡 Spin for a partner is on now; its question showing, the
@@ -636,7 +628,9 @@
     if (!clueKey() || ddWager) return;
     queueMicrotask(focusMain);
   });
-  // (A partner clue knows when it opened, a reload too.)
+  // How each player was marked on the open clue (✔ / ✘, or Award / Deduct): on their chip, and the same quick button
+  // again isn't taken twice. Only since the clue opened (Play's markSince). (A partner clue knows when it opened, a
+  // reload too.)
   const marks = $derived(session.phase === 'clue' && info ? clueMarks(session, info.clue.id, partner?.at ?? markSince) : {});
   /** The open partner clue is judged: each of the two has a mark on it (an Undo takes that away again). */
   const partnerJudged = $derived(!!partner && partnerVerdict(partner, marks).judged);

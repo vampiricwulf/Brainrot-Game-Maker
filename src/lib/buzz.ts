@@ -29,6 +29,11 @@ export interface BuzzState {
    * viewers see "Ann (Red team)". Left out when nobody did (the host picked the team) or teams are off.
    */
   by?: string;
+  /**
+   * The opening the clue started on (its armId then), while the buzzers wait for the host (U): they were never opened on
+   * this clue while armId is still this (see buzzNeverOpened). Dropped by any other change.
+   */
+  armAt?: number;
 }
 
 /** A place in the buzz order: a player (team) id, or (teams) with the name of the team member who buzzed. */
@@ -65,10 +70,19 @@ export function buzzIdle(b: BuzzState): BuzzState {
   return { phase: 'lobby', armId: b.armId, answering: null, lockedOut: [] };
 }
 
-/** A tile opened: nobody is locked out; the buzzers open now, or (`armNow` false) once the host opens them. */
+/**
+ * A tile opened: nobody is locked out; the buzzers open now, or (`armNow` false) once the host opens them (`armAt`
+ * notes the opening it started on).
+ */
 export function buzzClueOpened(b: BuzzState, armNow: boolean): BuzzState {
-  return armNow ? { phase: 'armed', armId: b.armId + 1, answering: null, lockedOut: [] } : { phase: 'closed', armId: b.armId, answering: null, lockedOut: [] };
+  return armNow ? { phase: 'armed', armId: b.armId + 1, answering: null, lockedOut: [] } : { phase: 'closed', armId: b.armId, answering: null, lockedOut: [], armAt: b.armId };
 }
+
+/**
+ * The host opens the buzzers (U) and hasn't on this clue: closed since it opened, never armed, nobody answered (a pick by
+ * hand, a right answer or a miss changes it). Not once they were opened and closed again, after a reload too.
+ */
+export const buzzNeverOpened = (b: BuzzState | null | undefined): boolean => !!b && b.phase === 'closed' && b.armAt === b.armId && !b.done && !b.lockedOut.length;
 
 /** Open the buzzers (for everyone not locked out). With everyone locked out they stay closed. */
 export function buzzArm(b: BuzzState, players: Id[]): BuzzState {

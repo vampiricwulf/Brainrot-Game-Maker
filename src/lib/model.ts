@@ -1199,6 +1199,12 @@ export interface Session {
    */
   answerKey?: string;
   /**
+   * What the game screen's check before going on (pressing the blue button with something left) doesn't ask about any
+   * more in this game: "Don't ask about … again this game", by kind. Kept through a reload; a new game or a 🔁 Rematch
+   * starts with none. Host only.
+   */
+  goonQuiet?: ('landing' | 'roll' | 'buzzers' | 'tool' | 'answers')[];
+  /**
    * Phone buzzers: the buzzer room this game uses, so a reload (or a crash) gets back into the same room. Never sent to the
    * audience window. `armId`: the last time the buzzers opened there (it only goes up). `locked`: 🔒 seats locked (no
    * new phones take a seat; players already in come back). `buzz`: the buzzers during the open clue (`clue`: its

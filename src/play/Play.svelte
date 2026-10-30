@@ -26,6 +26,7 @@
   import { windowCards } from '../lib/cardwindow';
   import { cardWindow, closeCardWindow, feedCardWindow } from '../lib/cardwindow.svelte';
   import { dropOffersBut } from './host/offered.svelte';
+  import { forgetRecipients } from './host/tilecards.svelte';
   import { addTime, newLive, overlayDoneAt, startTimer, tileToolUp, timerRemaining, timerResumed, toggleTimer, toolOverlay, type Live, type StageAction, type TimerState } from '../lib/live';
   import {
     answerRoundId, buzzArm, buzzClueOpened, buzzDone, buzzIdle, buzzMissed, buzzReset, buzzTake, cardsFullText, everyoneAnswerAsk, finalAnswerAsk, hostState, newBuzz, partnerAnswerAsk, partnerAnswerId, hostCards, phoneStatus, roomCardsFull, SEAT_NAME_MAX, sendOf, SETTING_UP,
@@ -366,8 +367,9 @@
     else sendSoon();
   });
   $effect(() => {
-    // The action log (the host's undo history) and the buzzer room's key stay here: viewers never need them.
-    const { actionLog, actionRedo, remote, ...s } = session;
+    // The action log (the host's undo history), the buzzer room's key and what the check before going on doesn't ask
+    // about stay here: viewers never need them.
+    const { actionLog, actionRedo, remote, goonQuiet, ...s } = session;
     if (viewers && !app.pregame) {
       // Nor wagers that aren't on screen yet (typed by the host or sent from a phone).
       outSession = forViewers($state.snapshot(s));
@@ -1125,6 +1127,27 @@
   const toolFirst = $derived(!!info && tileToolUp(app.live, info.clue) && !session.revealed);
   /** The buzzers' state (see buzz.ts). */
   const buzz = $derived(app.live.buzz ?? newBuzz(session.remote?.armId ?? 0));
+  /**
+   * When the open clue opened: how each player was marked on it (✔ / ✘, or Award / Deduct) counts only since then, on
+   * their chip and in the check before going on (a reopened tile starts afresh; after a reload, all of it).
+   */
+  let markSince = $state(0);
+  const openClueKey = $derived(session.phase === 'clue' ? clueKey(session.currentClue) : null);
+  let markClue: string | null = untrack(() => openClueKey);
+  $effect(() => {
+    const k = openClueKey;
+    untrack(() => {
+      if (k === markClue) return;
+      markClue = k;
+      markSince = Date.now();
+    });
+  });
+  // A tile's (or the Final's) 🤫 cards' chosen players are for it only: another one starts from its Goes to.
+  const cardsHolder = $derived(openClueKey ?? (session.phase === 'final' ? `final:${session.currentRound}` : null));
+  $effect(() => {
+    void cardsHolder;
+    untrack(forgetRecipients);
+  });
   /** A partner clue's steal: the buzzers open for everyone but `out` (the two who missed it), nobody answering. */
   const stealArm = (b: BuzzState, out: string[]): BuzzState => buzzArm({ ...b, answering: null, lockedOut: out }, playerIds());
   const playerIds = () => session.players.map((p) => p.id);
@@ -1201,7 +1224,11 @@
     const floor = session.remote?.armId ?? 0;
     // The answer is on screen: nobody buzzes any more (a wrong answer then doesn't open them for the rest).
     if (b.phase === 'armed' && session.phase === 'clue' && session.revealed) b = { phase: 'closed', armId: Math.max(floor, b.armId - 1), answering: null, lockedOut: [...b.lockedOut], done: true };
-    if (b.armId < floor) b = { ...b, armId: b.phase === 'armed' ? floor + 1 : floor };
+    // (A clue's first opening moves up with it: they're still never opened.)
+    if (b.armId < floor) {
+      const armId = b.phase === 'armed' ? floor + 1 : floor;
+      b = { ...b, armId, ...(b.armAt === b.armId ? { armAt: armId } : {}) };
+    }
     app.live.buzz = b;
     // The room's openings only go up, also after a reload (see Session.remote).
     if (session.remote && (session.remote.armId ?? 0) < b.armId) session.remote.armId = b.armId;
@@ -5527,6 +5554,7 @@
         onopenbuzzers={openBuzzers}
         bind:nextAction={hostNext}
         bind:boxMenu
+        {markSince}
         tieNames={tie.length ? nameList(tie.map((id) => playerName(session, id))) : ''}
         onrolltie={rollTie}
         {phonesDown}
