@@ -735,6 +735,36 @@ try {
   );
   assert(replaced.numFrames() === 2 && replaced.width === 30 && replaced.height === 40, `Replace with another moving GIF redoes the turn on each of its frames (${replaced.numFrames()} frames, ${replaced.width}×${replaced.height})`);
 
+  // ---------- 🖌 Drawpad on a laptop (1280×720): the whole slide fits, its bottom edge in reach ----------
+  await page.setViewportSize({ width: 1280, height: 720 });
+  await page.getByRole('button', { name: /◼ Shape/ }).click();
+  await page.getByRole('button', { name: '🖌 Drawpad…' }).click();
+  const pad = page.getByRole('dialog', { name: 'Drawpad' });
+  const padArea = pad.getByLabel('Drawing area');
+  await padArea.waitFor();
+  const fits = await padArea.evaluate((c) => {
+    const r = c.getBoundingClientRect();
+    const w = c.closest('.pad-wrap');
+    const b = w.getBoundingClientRect();
+    return { bottom: Math.round(r.bottom), wrapBottom: Math.round(b.bottom), window: innerHeight, scrolls: w.scrollHeight > w.clientHeight + 1, ratio: +(r.width / r.height).toFixed(3) };
+  });
+  assert(
+    fits.bottom <= fits.wrapBottom && fits.bottom <= fits.window && !fits.scrolls && Math.abs(fits.ratio - 16 / 9) < 0.01,
+    `at 1280×720 the whole Drawpad is in view, none of it under a scroll (${JSON.stringify(fits)})`,
+  );
+  // A stroke along its bottom edge: the drawing goes in at the slide's bottom.
+  const pb = await padArea.boundingBox();
+  await page.mouse.move(pb.x + pb.width * 0.3, pb.y + pb.height - 2);
+  await page.mouse.down();
+  await page.mouse.move(pb.x + pb.width * 0.6, pb.y + pb.height - 2, { steps: 6 });
+  await page.mouse.up();
+  const idsBefore = new Set((await drawn()).map((e) => e.id));
+  await pad.getByRole('button', { name: 'Insert drawing' }).click();
+  await pad.waitFor({ state: 'detached' });
+  const drawing = (await drawn()).find((e) => !idsBefore.has(e.id));
+  assert(!!drawing && drawing.y + drawing.h >= 1070, `drawn along the pad's bottom edge, it sits at the slide's bottom (${drawing?.y} + ${drawing?.h})`);
+  await page.setViewportSize({ width: 1400, height: 900 });
+
   assert(!errors.length, 'no page errors' + (errors.length ? ': ' + errors.join(' | ') : ''));
   console.log('\nSlide editor E2E passed.');
 } finally {

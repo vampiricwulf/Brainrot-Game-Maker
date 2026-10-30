@@ -86,6 +86,29 @@
     redraw();
   });
 
+  let dialog = $state<HTMLElement>();
+  let wrap = $state<HTMLElement>();
+  /**
+   * The pad's width: as big as fits both ways, its window's height less the rows above it (they wrap on a narrow
+   * window), so the whole slide is in reach, its bottom edge too. Measured, not guessed.
+   */
+  let padW = $state<number | null>(null);
+  function fit(): void {
+    const back = dialog?.parentElement;
+    if (!dialog || !wrap || !back) return;
+    const cs = getComputedStyle(back);
+    // (What isn't the pad: the rows, the gaps, the window's padding. It doesn't change with the pad's size.)
+    const room = back.clientHeight - parseFloat(cs.paddingTop) - parseFloat(cs.paddingBottom) - (dialog.offsetHeight - wrap.offsetHeight);
+    padW = Math.max(160, Math.floor((room * 16) / 9));
+  }
+  onMount(() => {
+    fit();
+    const ro = new ResizeObserver(fit);
+    if (dialog?.parentElement) ro.observe(dialog.parentElement);
+    for (const row of dialog?.children ?? []) if (row !== wrap) ro.observe(row);
+    return () => ro.disconnect();
+  });
+
   function down(e: PointerEvent): void {
     if (e.button !== 0) return;
     e.preventDefault();
@@ -208,7 +231,7 @@
 <svelte:window onkeydowncapture={key} />
 
 <div class="modal-backdrop draw-backdrop" role="presentation">
-  <div class="modal draw" role="dialog" aria-modal="true" aria-label={title} use:modal>
+  <div class="modal draw" role="dialog" aria-modal="true" aria-label={title} use:modal bind:this={dialog}>
     <div class="row head">
       <h2 class="modal-title">🖌 {title}</h2>
       {#if discarding}
@@ -239,8 +262,8 @@
       <button class="ghost" onclick={redo} disabled={!redoList.length} aria-label="Redo (Ctrl+Shift+Z)" title="Redo (Ctrl+Shift+Z)">↷</button>
       <button class="ghost" onclick={clear} disabled={!strokes.length} title="Clear (Undo brings it back)">Clear</button>
     </div>
-    <div class="pad-wrap">
-      <div class="pad">
+    <div class="pad-wrap" bind:this={wrap}>
+      <div class="pad" style:--pad-w={padW ? `${padW}px` : undefined}>
         {#if backdrop}<div class="ref" aria-hidden="true">{@render backdrop()}</div>{/if}
         <canvas
           bind:this={canvas}
@@ -294,8 +317,8 @@
   }
   .pad {
     position: relative;
-    /* As big as fits both ways: the window's height less the rows above it. */
-    width: min(100%, calc((100dvh - 150px) * 16 / 9));
+    /* As big as fits both ways (fit() measures the room it has; a guess until then). */
+    width: min(100%, var(--pad-w, calc((100dvh - 150px) * 16 / 9)));
     margin-inline: auto;
     aspect-ratio: 16 / 9;
     border-radius: 6px;

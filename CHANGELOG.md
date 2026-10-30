@@ -19,6 +19,7 @@ in plain words for the people who make and host games. Anything committed but no
 - On the game screen, Shift+Enter with the keys on a button reached with Tab (✔ Got it, a player's ✔, ＋ Award) pressed that button, giving the opposite of the ✘ Missed or − Deduct you meant. Shift+Enter always means ✘ Missed or − Deduct now; Enter and Space still press the button.
 - Wheel and dice tiles with a question: 👁 Reveal answer (and R) showed the answer before the wheel had spun, skipping the question. 👁 Reveal answer comes once the wheel or dice land; before that, R says to spin or roll first, and R again shows the answer anyway (for a wheel that won't spin).
 - Board games in a single window: picking a secret space (not revealed yet) in ✎ Edit board showed its real name to viewers, in its right-click menu, the edit panel and its hints, the undo steps (Undo's tooltip, the last step's line, 📜 Log) and its toasts. They all say “? (secret)” now, and its Name box shows the name only after 👁 Show. With an audience window nothing changes.
+- 🖌 Drawpad: on a laptop screen its bottom strip sat under a scroll, so the slide's bottom edge couldn't be drawn on. The pad takes its size from the window now, and the whole slide fits.
 
 ## 2026-10-29
 
