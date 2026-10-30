@@ -172,6 +172,10 @@ try {
   assert((await panel.locator('[data-card="2"]').getByRole('button', { name: '📋 Copy picture' }).count()) === 1, 'a card with a picture offers 📋 Copy picture');
   await noCards(page, 'handing out the cards');
   await page.screenshot({ path: 'test-results/partner-play-distribute.png' });
+  // A click on the question while the cards are handed out never puts the answer on stream: it says so.
+  await stage('[data-slide="1"]').click();
+  assert(await toast('The answer stays hidden until they’ve had their go: 👁 Reveal answer (R) shows it anyway'), 'a click on the stage while handing out the cards says the answer stays hidden');
+  assert((await stage('[data-slide="answer"]').count()) === 0 && (await mainLabel(page)) === '⏱ Start the clock', 'and the question stays up, the clock next');
 
   // ---------- ⏱ Start the clock ----------
   await page.keyboard.press('u');
@@ -181,6 +185,10 @@ try {
   await stage('.timer').waitFor();
   assert((await mainLabel(page)) === '👁 Reveal answer', 'Enter a moment later starts the clock; the answer is next');
   assert((await page.locator('.panel .players').count()) === 1, 'the award row is there, as on any clue');
+  // With the clock running they're still describing: a click on the stage says how to judge, not the answer.
+  await stage('[data-slide="1"]').click();
+  assert(await toast('Right or wrong? ✔ Got it / ✘ Missed in the 🤝 box (Enter / Shift+Enter)'), 'a click on the stage with the clock running says how to judge');
+  assert((await stage('[data-slide="answer"]').count()) === 0, 'and leaves the answer hidden');
   await page.keyboard.press('r');
   await stage('[data-slide="answer"]').waitFor();
   await noCards(page, 'the answer');

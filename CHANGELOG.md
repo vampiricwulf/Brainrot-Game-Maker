@@ -11,6 +11,12 @@ the day it's pushed (Pacific time; start the heading on the day's first push) an
 in plain words for the people who make and host games. Anything committed but not pushed yet goes under
 **Unreleased** at the top, and moves under its day when it's pushed.
 
+## Unreleased
+
+### Fixed
+
+- 🤝 Partner clues: a click on the stage while the cards were handed out, or while the pair was still describing, put the answer on stream. Until the clue is judged or its clock runs out, a click now leaves the answer hidden and says what to do (✔ Got it / ✘ Missed, or 👁 Reveal answer with R to show it anyway); after that a click shows it, as before.
+
 ## 2026-10-29
 
 ### Changed

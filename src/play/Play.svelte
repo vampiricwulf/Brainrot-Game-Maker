@@ -2017,7 +2017,11 @@
         // Next round ▶.)
         if (session.phase === 'slides') {
           if (!slideStep(1) && hostNext && !hostNext.disabled) hostNext.run();
-        } else if (!answerShowing(session) && !slideStep(1)) revealToggle();
+        } else if (!answerShowing(session) && !slideStep(1)) {
+          const wait = partnerAnswerWaits();
+          if (wait) hint(wait);
+          else revealToggle();
+        }
         break;
       case 'back':
         if (session.phase === 'clue') back();
@@ -2363,6 +2367,19 @@
    * the answer shows: the clue's own then, ▦ Done).
    */
   const partnerFirst = $derived(!!partner && partner.stage !== 'live' && !partnerJudged && !session.revealed);
+
+  /**
+   * A click on the stage never shows a partner clue's answer before the pair has had their go (the cards being handed
+   * out, or the clock not run out, and not judged): what it says instead (null: the answer can show). R and 👁 Reveal
+   * answer show it any time.
+   */
+  function partnerAnswerWaits(): string | null {
+    const s = partner;
+    if (!s || partnerJudged || session.revealed) return null;
+    if (s.stage === 'distribute') return 'The answer stays hidden until they’ve had their go: 👁 Reveal answer (R) shows it anyway';
+    if (s.stage === 'live' && !app.live.timer?.expired) return 'Right or wrong? ✔ Got it / ✘ Missed in the 🤝 box (Enter / Shift+Enter)';
+    return null;
+  }
 
   /**
    * Enter or N on a partner clue before its clock starts: the main button (spin, show the question, start the clock).

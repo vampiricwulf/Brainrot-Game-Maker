@@ -435,7 +435,9 @@ The mode isn't saved with the game: it's dual while the audience window is open.
      scores both in one step with the clue's points (the guesser picks next). Nobody buzzes. With **steal on a miss**
      (⚖ Game rules' `partnerSteal`, or the clue's own `PartnerRules.steal`), ✘ Missed lets everyone else answer it as
      any clue for the tile's value: the buzzers open for them with the two locked out, or the host picks who steals
-     (`1–9`), then Enter / Shift+Enter. Each steal is its own undo step, and undoing the miss closes the steal.
+     (`1–9`), then Enter / Shift+Enter. Each steal is its own undo step, and undoing the miss closes the steal. A click
+     on the stage never shows its answer before the pair has had their go: while the cards are handed out, or until the
+     clock runs out or it's judged, it says what to do instead (`R` and 👁 Reveal answer show it any time).
    - *✍ Everyone answers* (a standard tile with the box ticked, with phone buzzers): nobody buzzes; every player types
      an answer on their phone (a team: anyone on it) until the answer is shown, or until the host judges theirs (then
      it's locked on their phone; undoing the mark opens it again, and once they change it, redo doesn't bring that mark
