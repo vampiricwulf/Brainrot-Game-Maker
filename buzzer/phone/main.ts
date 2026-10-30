@@ -21,7 +21,7 @@
  * in or another button Tab took the keys to, the number keys pick a seat, Esc goes back, and the page shows those keys
  * (and says when another window has them). A phone works as it always has.
  */
-import { isRoomCode, MAX_PHONES, ROOM_ALPHABET, type DenyReason, type PhoneView, type PhoneWager, type RoomToPhone } from '../../src/lib/buzzproto';
+import { isRoomCode, MAX_PHONES, ROOM_ALPHABET, SETTING_UP, STARTS_SOON, type DenyReason, type PhoneView, type PhoneWager, type RoomToPhone } from '../../src/lib/buzzproto';
 import { PLAYER_COLOR_NAMES, PLAYER_PALETTE, textOn } from '../../src/lib/colors';
 import { cardFocus, clearCards, coverCards, drawCards, initCards, retapCards, retryCardFiles } from './cardpanel';
 import { cardsLine, lateLine } from './cards';
@@ -72,6 +72,8 @@ let fullTries = 0;
 let seats: SeatsMsg | null = null;
 let seatId: string | null = null;
 let view: PhoneView | null = null;
+/** This phone has seen the game going (a view past the pre-game's "The game starts soon"), since it opened. */
+let gameSeen = false;
 /** Waiting for the answer to a join with a saved token: don't flash the seat list. */
 let rejoining = false;
 /** The name this phone asked to join as, while waiting for the host (asked again after a dropped connection). */
@@ -379,13 +381,18 @@ function dropped(s: WebSocket, wait?: number, closeCode?: number): void {
 }
 
 function ended(): void {
-  // The game's end was on screen: where you came stays up ("You came 1st with $700 🎉").
+  // The game's end was on screen: where you came stays up ("You came 1st with $700 🎉"). Closed before this phone saw
+  // the game start (on the seat list, or waiting for it): the host closed the room, maybe to start another one.
   const came = view?.final && view.you ? placeLine(view) : null;
   saveSeat(null);
   seatId = null;
   outOf = null;
   view = null;
-  notice = { title: came ? `${came.big} ${came.small}` : 'The game is over', text: 'Thanks for playing!', final: true, button: { label: 'Join another game', run: () => location.assign('/') } };
+  const button = { label: 'Join another game', run: () => location.assign('/') };
+  notice =
+    came || gameSeen
+      ? { title: came ? `${came.big} ${came.small}` : 'The game is over', text: 'Thanks for playing!', final: true, button }
+      : { title: 'The host closed this room', text: 'If the game is still on, ask for the new code.', final: true, button };
   ws?.close();
   render();
 }
@@ -462,6 +469,7 @@ function onMessage(m: RoomToPhone): void {
       break;
     case 'view':
       view = m.view;
+      if (view.status !== STARTS_SOON && view.status !== SETTING_UP) gameSeen = true;
       if (answerTapTaken) answerTap = '';
       answerTapTaken = false;
       if (result && result.armId !== view.armId) result = null;

@@ -655,9 +655,10 @@ try {
   assert(await roomBar.isVisible(), 'Ctrl+Z of ▶ Play’s step for the room’s Teams leaves the room open');
   await host.keyboard.press('Control+z');
   await editorSaid('Undid Buzzer mode');
-  await ann.locator('main').getByText('The game is over').waitFor();
+  // (This room never had its game start: the phone is told the host closed it, not that the game is over.)
+  await ann.locator('main').getByText('The host closed this room').waitFor();
   await roomBar.waitFor({ state: 'detached' });
-  assert(true, 'then Ctrl+Z of the host’s own Buzzer mode step closes the room: the phone is told the game is over');
+  assert(true, 'then Ctrl+Z of the host’s own Buzzer mode step closes the room: the phone is told the host closed it');
 
   assert(errors.length === 0, `no page errors (${errors.join(' | ')})`);
   console.log('Team buzzers E2E passed.');

@@ -355,6 +355,10 @@ try {
   await host.getByRole('button', { name: 'Keep & leave', exact: true }).click();
   await small(p1).getByText('The host is setting up — hang on').waitFor();
   assert((await fetch(`${base}/api/rooms/${code}`)).status !== 404 && (await p1.locator('main').getByText('The game is over').count()) === 0, 'Keep & leave keeps the room: phones say the host is setting up (not that the game is over)');
+  // A phone that comes in now and waits on the seat list never saw the game start: when the room closes it's told so.
+  const late = watch(await (await browser.newContext({ viewport: { width: 390, height: 760 }, hasTouch: true })).newPage(), 'late phone');
+  await late.goto(`${base}/${code}`);
+  await late.getByRole('heading', { name: 'Tap your name' }).waitFor();
   // Player 2's phone is asleep (its connection gone) when the room closes: it misses being told.
   const p2Tap = taps.get(p2);
   p2Tap.blocked = true;
@@ -380,6 +384,11 @@ try {
   hostTap.blocked = false;
   await p1.locator('main').getByText('The game is over').waitFor({ timeout: 30_000 });
   assert((await fetch(`${base}/api/rooms/${code}`)).status === 404, '✕ Close the room closes it once the host’s line is back: phones say the game is over');
+  await late.locator('main').getByText('The host closed this room').waitFor();
+  assert(
+    (await late.locator('main').innerText()).includes('If the game is still on, ask for the new code') && (await late.locator('main').getByText('The game is over').count()) === 0,
+    'a phone that never saw the game start is told the host closed the room (ask for the new code), not that the game is over',
+  );
   // Woken up, it finds the room gone at once: "The game is over", not "Reconnecting…" over and over.
   const p2Routes = p2Tap.routes.length;
   p2Tap.blocked = false;

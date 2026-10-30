@@ -34,6 +34,13 @@ export const BUZZ_PROTOCOL = 1;
 export const ROOM_FEATURES = ['teams', 'wagers', 'free', 'color', 'answers', 'cards', 'files', 'gifs', 'choices'] as const;
 export type RoomFeature = (typeof ROOM_FEATURES)[number];
 
+/**
+ * The phones' status line before the game: ▶ Play's pre-game, and the room kept open in the editor. A phone that has
+ * only seen these when the room closes never saw the game start (it's told the room closed, not that the game is over).
+ */
+export const STARTS_SOON = 'The game starts soon';
+export const SETTING_UP = 'The host is setting up — hang on';
+
 /** Cards in the host's state at most, and how big they may be together (JSON bytes; over it, media go first, then cards). */
 export const CARDS_MAX = 8;
 export const CARDS_BYTES = 12 * 1024;

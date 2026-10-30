@@ -1,7 +1,7 @@
 // Buzzer mode's state during a clue: whether the buzzers are open, who is answering, who already missed it. The host
 // decides all of it (keys, the host panel, a phone's buzz that the buzzer room let through); it lives in Live, so the
 // audience window shows "🔔 Ann is answering", and the phones get it through hostState().
-import { CARD_HINT_MAX, CARD_ROLE_MAX, CARD_TEXT_MAX, CARDS_BYTES, CARDS_MAX, clip, clipUnits, CLUE_TEXT_MAX, WAGER_MAX, type BuzzPhase, type HostCard, type HostState, type WagerAsk, type AnswerAsk } from './buzzproto';
+import { CARD_HINT_MAX, CARD_ROLE_MAX, CARD_TEXT_MAX, CARDS_BYTES, CARDS_MAX, clip, clipUnits, CLUE_TEXT_MAX, SETTING_UP, STARTS_SOON, WAGER_MAX, type BuzzPhase, type HostCard, type HostState, type WagerAsk, type AnswerAsk } from './buzzproto';
 import { categoryLabel, finalName, formatPoints, isBoard, PARTNER_GAMES, roundName, type CardSend, type CardTo, type Game, type Id, type PartnerState, type Session, type Slide, type SlideElement, type TextEl } from './model';
 import {
   cardHash, cardId, cardLines, cardSlides, describer, giverLine, partnerRoles, partnerRules, partnerVerdict, partOfTo, partsLine, partWords, resultLine, type CardPart,
@@ -139,7 +139,7 @@ export function cardText(s: Slide): string {
 }
 
 /** The phones' status line while the host is back in the editor with the room kept open. */
-export const SETTING_UP = 'The host is setting up — hang on';
+export { SETTING_UP };
 
 /**
  * A short line for the phones about what's on screen when nobody buzzes: the round starting, who picks, a Daily Double
@@ -148,7 +148,7 @@ export const SETTING_UP = 'The host is setting up — hang on';
  * show a small line under the big one (status.off, sub, seatsSub) on a partner clue.
  */
 export function phoneStatus(game: Game, session: Session, pregame = false, room: { cards: boolean } = { cards: false }): HostState['status'] {
-  if (pregame) return { text: 'The game starts soon' };
+  if (pregame) return { text: STARTS_SOON };
   const nameOf = (id?: Id | null) => (id ? session.players.find((p) => p.id === id)?.name : undefined);
   const round = game.rounds[session.currentRound];
   if (session.phase === 'clue' && session.dd) {

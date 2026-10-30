@@ -279,7 +279,8 @@ A player on a computer opens the same link: `Space` (or `Enter`) buzzes, `1`–`
 through the pre-game screen, a reload of it or of the game (▶ Resume it on the pre-game screen, or Resume game, goes back into it unless a phone joined a room started there: one nobody joined closes on ▶ Resume it or ◀ Back to editor), **◀ Back to editor**, **Exit › Keep & leave** (Resume goes back into it)
 and **▶ Next game…** (▶ Play asks to keep it for another game, which then has its players, and Teams on if it was); it closes with **Exit › Discard & leave**, when you leave the results screen any other way than
 ▶ Next game…, with **✕ Close the room**, or when Buzzer mode is turned off (not by undoing, in the editor, the step ▶ Play
-made to turn it on for the room). The join code shows small in a corner of the stream
+made to turn it on for the room). Its phones are told the game is over, or, on a phone that never saw the game
+start, that the host closed the room (ask for the new code if the game goes on). The join code shows small in a corner of the stream
 during the game (at the end of the score bar on the board) and on the cover card; the On stream options can hide it.
 **🔒 Lock seats** keeps new phones out (a player with no phone then reads "🔒 locked out"), and a player whose seat you take back (✕ Kick) can't take it again for 2 minutes, unless you press **↩ Let back** on their row meanwhile.
 The rooms run on a small buzzer server
