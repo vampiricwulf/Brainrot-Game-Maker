@@ -6,7 +6,7 @@
   words, to judge, in that room (long ones scroll). The Final's stay hidden there until each is revealed (hideUntilShown), on one line.
   Multiple choice: each pick by its letter, how many picked each (where the words show, never in the head's status, so
   a screen reader doesn't read a tally after every pick), and once the answers are locked ✔ Judge all, by the choice
-  marked ✔ Right.
+  marked ✔ Right (Enter too, with nobody selected: its ⏎ shows then).
 -->
 <script lang="ts">
   import { textOn } from '../../lib/colors';
@@ -28,6 +28,7 @@
     choices = [],
     note = '',
     onjudgeall,
+    enterJudges = false,
   }: {
     session: Session;
     /** Who answers (ids), in the players' order. */
@@ -53,6 +54,8 @@
     note?: string;
     /** ✔ Judge all (once the answers are locked, with a choice marked ✔ Right). */
     onjudgeall?: () => void;
+    /** Nobody is selected: Enter is ✔ Judge all (its button shows ⏎). */
+    enterJudges?: boolean;
   } = $props();
 
   const listed = $derived(session.players.filter((p) => players.includes(p.id)));
@@ -118,8 +121,9 @@
       <button
         class="good small"
         onclick={onjudgeall}
-        title="Right (+ the clue's value) for every {rightLetter}, wrong for every other choice (− the value, if the rules take points). Players with no answer, or words that match no choice, are left for you. One Ctrl+Z takes it all back."
-        >✔ Judge all: {rightLetter} is right</button
+        title="Right (+ the clue's value) for every {rightLetter}, wrong for every other choice (− the value, if the rules take points). Players with no answer, or words that match no choice, are left for you. One Ctrl+Z takes it all back.{enterJudges
+          ? ' (Enter, with nobody selected)'
+          : ''}">✔ Judge all: {rightLetter} is right{#if enterJudges}{' '}<kbd aria-hidden="true">⏎</kbd>{/if}</button
       >
     </p>
   {:else if keepRoom && onjudgeall && right}
@@ -197,6 +201,14 @@
   }
   .room {
     visibility: hidden;
+  }
+  kbd {
+    font: 11px/1 ui-monospace, monospace;
+    padding: 1px 4px;
+    margin-left: 4px;
+    border: 1px solid currentColor;
+    border-radius: 4px;
+    opacity: 0.75;
   }
   ul {
     list-style: none;

@@ -364,6 +364,9 @@ try {
   );
   // (The stage on stream keeps its size as the answer goes up: the answers box keeps the words' room till then.)
   const hiddenH = await stageH();
+  // While the picks can still change, Enter with nobody picked judges nobody (as before).
+  await host.keyboard.press('Enter');
+  await host.locator('.toast', { hasText: 'Select a player first' }).waitFor();
   await host.keyboard.press('r');
   await p1.locator('#buzz-big').getByText('Answers locked').waitFor();
   await p2.locator('#buzz-big').getByText('Answers locked').waitFor();
@@ -387,7 +390,24 @@ try {
   const before = await p2.locator('#me').innerText();
   const picker = (name) => host.locator('.panel .p.picker', { hasText: name });
   await picker('Player 1').waitFor();
-  await answersBox.getByRole('button', { name: '✔ Judge all: B is right' }).click();
+  // Locked, with nobody picked: Enter is ✔ Judge all (its button shows ⏎, gone while a player is picked, when Enter
+  // awards them), and one Ctrl+Z takes it all back.
+  const judgeAll = answersBox.getByRole('button', { name: '✔ Judge all: B is right' });
+  assert((await judgeAll.locator('kbd').innerText()) === '⏎', '✔ Judge all shows ⏎ with nobody picked');
+  await host.keyboard.press('1');
+  await judgeAll.locator('kbd').waitFor({ state: 'detached' });
+  await host.keyboard.press('1');
+  await judgeAll.locator('kbd').waitFor();
+  await host.keyboard.press('Enter');
+  await row('Player 1').getByText('✘ Wrong').waitFor();
+  await row('Player 2').getByText('✔ Right').waitFor();
+  await picker('Player 2').waitFor();
+  await host.keyboard.press('Control+z');
+  await row('Player 1').getByRole('button', { name: 'Player 1 is wrong' }).waitFor();
+  await row('Player 2').getByRole('button', { name: 'Player 2 is right' }).waitFor();
+  await picker('Player 1').waitFor();
+  assert(true, 'Enter with nobody picked does ✔ Judge all (Player 2 right, Player 1 wrong), and one Ctrl+Z un-judges both');
+  await judgeAll.click();
   await row('Player 1').getByText('✘ Wrong').waitFor();
   await row('Player 2').getByText('✔ Right').waitFor();
   await picker('Player 2').waitFor();

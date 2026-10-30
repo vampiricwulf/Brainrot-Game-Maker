@@ -1239,6 +1239,7 @@
             choices={usableChoices(info.clue.choices)}
             note={choicesNote}
             onjudgeall={onanswerjudgeall}
+            enterJudges={!selected.length}
           />
         </div>
       {/if}

@@ -994,15 +994,10 @@
     return events;
   }
 
-  /**
-   * ✔ Judge all on a ✍ multiple-choice clue, once its answers are locked: everyone not judged yet who picked the choice
-   * marked ✔ Right is right, everyone who picked another is wrong (the clue's value, as ✔ / ✘ on each), in one step.
-   * Players with no answer, or words that name no choice, are left to the host. With no ✔ given on the clue yet, the
-   * first right player (in the players' order) picks next, as judging the rows top to bottom would have it.
-   */
-  function judgeAll(): void {
+  /** Who ✔ Judge all would mark now: a ✍ multiple-choice clue's answers locked, someone left to judge (else null). */
+  function judgeAllNow(): { right: string[]; wrong: string[] } | null {
     const ans = everyone && info ? session.remote?.answers : undefined;
-    if (!info || !ans || ans.id !== answerRoundId(session, info.clue.id) || !(session.revealed || ans.locked)) return;
+    if (!info || !ans || ans.id !== answerRoundId(session, info.clue.id) || !(session.revealed || ans.locked)) return null;
     const clueId = info.clue.id;
     const judged = Object.fromEntries(session.scoreLog.filter((e) => !e.undone && e.clueId === clueId).map((e) => [e.playerId, true]));
     const plan = judgeAllPlan(
@@ -1011,7 +1006,19 @@
       usableChoices(info.clue.choices),
       judged,
     );
-    if (!plan.right.length && !plan.wrong.length) return;
+    return plan.right.length || plan.wrong.length ? plan : null;
+  }
+
+  /**
+   * ✔ Judge all on a ✍ multiple-choice clue, once its answers are locked: everyone not judged yet who picked the choice
+   * marked ✔ Right is right, everyone who picked another is wrong (the clue's value, as ✔ / ✘ on each), in one step.
+   * Players with no answer, or words that name no choice, are left to the host. With no ✔ given on the clue yet, the
+   * first right player (in the players' order) picks next, as judging the rows top to bottom would have it.
+   */
+  function judgeAll(): void {
+    const plan = judgeAllNow();
+    if (!info || !plan) return;
+    const clueId = info.clue.id;
     const amt = amount ?? info.value;
     const zero = amt === 0 && info.value === 0 && !toolOnlyClue(info.clue);
     if (!amt && !zero) return hint('Enter an amount first');
@@ -4722,6 +4729,13 @@
           // (With the controls hidden the panel's last main button is out of date: as on any clue then.)
           if (!hideControls && app.live.toolTile === info.clue.id && (hostNext?.key === 'W' || hostNext?.key === 'D') && !hostNext.disabled) {
             hint(`${hostNext.key === 'W' ? 'Spin the wheel' : 'Roll the dice'} first: ${hostNext.key} (or N)`);
+            break;
+          }
+          // A ✍ multiple-choice clue, its answers locked: Enter with nobody selected is ✔ Judge all (one step: one Ctrl+Z
+          // takes it back). With players selected it awards them, below.
+          if (judgeAllNow()) {
+            judgeAll();
+            answersJudged();
             break;
           }
           // A ✍ clue with everyone judged: nobody is left to award.

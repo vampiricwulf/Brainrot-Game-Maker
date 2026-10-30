@@ -427,7 +427,7 @@ switch shows the editor's keys too):
 |---|---|
 | `1`–`9` | Select player N |
 | `P` then `1`–`9` | Make player N the current picker |
-| `Enter` / `Shift+Enter` | Award / deduct |
+| `Enter` / `Shift+Enter` | Award / deduct (on a ✍ multiple-choice clue with its answers locked and nobody selected, `Enter` is ✔ Judge all) |
 | `R` | Reveal / hide the answer (the countdown stops; on a wheel or dice tile, `R` while its wheel or dice is up says to spin, roll or close it first, and `R` again shows it anyway) |
 | `←` `↑` `→` `↓` on a tile | Move across the board (`Enter` opens the tile; after a clue the keys go on from its tile) |
 | `Esc` / `Shift+Esc` | Back to the board / cancel the clue (the tile stays playable) |

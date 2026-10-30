@@ -540,7 +540,7 @@ The mode isn't saved with the game: it's dual while the audience window is open.
      theirs is in, in the room the words then take, long ones scrolling in it, so the stage keeps its size); the stream shows ✍ and who has answered
      while answers are open; the host marks each ✔ / ✘ for the tile's value. With **multiple choice** (2–6 choices
      under ✍ in the editor, one marked ✔ Right), players tap one instead, and ✔ Judge all marks everyone by the right
-     choice in one step. The stream shows the choices under the question (the slide drawn smaller over them, the right
+     choice in one step (`Enter` too, with nobody selected; its button shows ⏎ then). The stream shows the choices under the question (the slide drawn smaller over them, the right
      one lit with the answer). Without phone buzzers it plays as a normal clue, the choices still on stream.
    - *Any tile with 🤫 cards* (PARTNER-CLUES-SPEC.md §12.2): its panel lists them for whoever picked it (a Daily
      Double's player; a right answer moving the picker on doesn't change it) with 📤 Send (or 📋 to copy them, or 🪟 to show one in the card window); they go when the tile closes, and
@@ -690,7 +690,7 @@ screen's first-time notes show again). The main keys:
 |---|---|
 | `1`–`9` | Toggle player N in the scoring panel (buzzer mode, during a clue: player N answers) |
 | `0` | Everyone or no one (buzzer mode, during a clue: reset the buzzers) |
-| `Enter` / `Shift+Enter` | Award / deduct the current amount to the selected players |
+| `Enter` / `Shift+Enter` | Award / deduct the current amount to the selected players (a ✍ multiple-choice clue, its answers locked, nobody selected: `Enter` is ✔ Judge all, one undo step) |
 | `R` | Reveal (or hide) the answer |
 | `N` / `Shift+N` | Next step: the round intro, a clue's next slide, the Final, the next turn / the one before |
 | `Esc` / `Shift+Esc` | Back to board (marks the tile used) / cancel the clue (the tile stays playable) |
