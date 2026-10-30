@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { VERBS, type Verb } from './verbs';
+import { CHECK, FLOW, VERBS, type Verb } from './verbs';
 
 /** What the moment-dependent words are filled in with here (else a name). */
 const SAMPLE: Record<string, unknown[]> = { revealCategory: [2, 5], nextSlideOf: [1, 3], move: [3], startClock: [45] };
@@ -63,5 +63,43 @@ describe('the host screen’s words for each step', () => {
       expect(v.label.length, name).toBeGreaterThan(0);
       if (v.key) expect(v.key.length, name).toBeLessThanOrEqual(4);
     }
+  });
+
+  it('the blue button’s words (FLOW) are a Next, a Reveal or the next screen, never a box’s action', () => {
+    const fill: Record<string, unknown[]> = { revealCategory: [2, 5], nextSlide: [1, 3], toRound: ['Final Jeopardy!'], startReveals: ['player'], nextPlayer: ['team'], nextNamed: ['Double Jeopardy!'] };
+    const flow = Object.entries(FLOW).map(([name, v]) => (typeof v === 'function' ? (v as (...a: unknown[]) => Verb)(...fill[name]) : v).label);
+    expect(flow).toEqual([
+      'Next ▶',
+      'Show board ▶',
+      'Start the round ▶',
+      'Reveal categories ▶',
+      'Reveal category 2 of 5 ▶',
+      'Next slide ▶',
+      '👁 Reveal answer',
+      '▦ Done ▶ board',
+      'Next round ▶',
+      'Final Jeopardy! ▶',
+      'End game ▶',
+      'Show question ▶',
+      'Start player reveals ▶',
+      'Reveal answer ▶',
+      'Show answer ▶',
+      'Show wager ▶',
+      'Next team ▶',
+      'Finish game ▶',
+      'Next: Double Jeopardy! ▶',
+      '🏁 Back to results',
+      'Next turn ▶',
+    ]);
+    // (Spec 1.2: never on the main button.)
+    const never = /Spin|Roll|Move|Pick a way|Send|Start the clock|Open the buzzers|Award|Deduct|✔|✘|Close|Tiebreaker|co-winners|Done editing|→/;
+    for (const l of flow) expect(l, l).not.toMatch(never);
+    // The blue button's key cap is the step's (N where N presses it), never a box's key.
+    for (const v of Object.values(FLOW)) if (typeof v !== 'function') expect('key' in v, v.label).toBe(false);
+  });
+
+  it('the check names what it asks about plainly', () => {
+    expect([CHECK.first, CHECK.loss, CHECK.nothing, CHECK.notYet]).toEqual(['First:', 'Before you go on', '✓ Nothing left', 'Not yet']);
+    expect(CHECK.dontAsk(CHECK.quiet.buzzers)).toBe('Don’t ask about opening the buzzers again this game');
   });
 });

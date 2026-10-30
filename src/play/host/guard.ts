@@ -45,6 +45,18 @@ export function judgeClick(last: Press | null, stepAt: number, p: Press, final =
   return 'go';
 }
 
+/**
+ * The check before going on (goon.ts) takes no key or click this long after it opens: a key pressed twice is slower
+ * than a double-click, so it's longer than a question strip's NEW_CONTROLS_MS.
+ */
+export const CHECK_GUARD_MS = 600;
+
+/**
+ * A click on the check (or on its step, come in place of "… anyway") at `at`, with `detail` its count in a row: held
+ * back while it's new (`since`), and the rest of the press that opened it (a triple-click's third) a while longer.
+ */
+export const checkHeld = (since: number, at: number, detail: number): boolean => at - since < CHECK_GUARD_MS || restOfPress(since, at, detail, 2 * CHECK_GUARD_MS);
+
 /** Controls shown at `shownAt` take no click yet (`doubleOnly`: only the rest of a double-click is dropped). */
 export function justShown(shownAt: number, at: number, detail: number, doubleOnly = false): boolean {
   return doubleOnly ? restOfPress(shownAt, at, detail, NEW_CONTROLS_MS) : at - shownAt < NEW_CONTROLS_MS;

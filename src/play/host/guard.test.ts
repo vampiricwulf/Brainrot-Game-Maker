@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { clickGuard, DOUBLE_CLICK_MS, judgeClick, justShown, KEY_GUARD_MS, NEW_CONTROLS_MS, SAME_SPOT_MS } from './guard';
+import { CHECK_GUARD_MS, checkHeld, clickGuard, DOUBLE_CLICK_MS, judgeClick, justShown, KEY_GUARD_MS, NEW_CONTROLS_MS, SAME_SPOT_MS } from './guard';
 
 /** A guard on a clock the test moves (`at.t`). */
 function guarded() {
@@ -102,5 +102,16 @@ describe('the host panel’s click guard', () => {
     // The fixed bar: only the rest of a double-click.
     expect(justShown(1000, 1100, 1, true)).toBe(false);
     expect(justShown(1000, 1100, 2, true)).toBe(true);
+  });
+
+  it('the check before going on takes no click while it’s new, nor the rest of the press that opened it', () => {
+    expect(CHECK_GUARD_MS).toBeGreaterThan(NEW_CONTROLS_MS);
+    // The second click of the double-click that opened it, a fast click, then one after the hold.
+    expect(checkHeld(1000, 1250, 2)).toBe(true);
+    expect(checkHeld(1000, 1000 + CHECK_GUARD_MS - 1, 1)).toBe(true);
+    expect(checkHeld(1000, 1000 + CHECK_GUARD_MS, 1)).toBe(false);
+    // A triple-click's third, a while later, is held back too; a fresh click then isn't.
+    expect(checkHeld(1000, 1000 + CHECK_GUARD_MS + 200, 3)).toBe(true);
+    expect(checkHeld(1000, 1000 + CHECK_GUARD_MS + 200, 1)).toBe(false);
   });
 });
