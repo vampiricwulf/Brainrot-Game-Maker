@@ -196,7 +196,10 @@ Close too. A Daily Double's box opens at its top, the keys in its Wager box, and
 never judges anyone or shows an answer mid-turn: in a 🤝 partner clue with its clock running, ✔ Got it and ✘ Missed are
 an equal pair in its box and 👁 Reveal answer is quiet; in the Final's reveals the main cell holds **✔ Right** `C` and
 **✘ Wrong** `X`, always in that order, the one a multiple-choice pick points to ringed (in its row too). `Enter`,
-`Shift+Enter`, `C` and `X` do what they did.
+`Shift+Enter`, `C` and `X` do what they did. While a partner clue's cards are handed out, `T` (or the status line's ⏱
+Start) starts the clock: with no card waiting for a phone the clue goes live, as **⏱ Start the clock (45 s)** does, and the
+first `Enter` after it only says so; with phone cards still to send it's the clock only, and **📤 Send the cards (clock
+running)** (`Enter`) sends them.
 Anything that asks first (Exit, closing the audience window, leaving a round, 🔁 Rematch) asks in one strip right
 above that bar: Cancel on the left, the answer on the right. Leaving a round always asks, unless a board is played out
 (then **Next round ▶** is the main button), and says what leaving does, its answers too: “7 clues are left in

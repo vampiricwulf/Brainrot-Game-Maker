@@ -762,6 +762,7 @@ In one window there is no card preview anywhere, ever: only the counts.
 | Distributing | **Shift+Enter**, nobody selected | Nothing; hint "Send the cards first, or click ✘ Missed" (P1: "Start the clock first, or click ✘ Missed"). |
 | Playing | **Enter** / **Shift+Enter**, nobody selected | ✔ Got it / ✘ Missed. Not on a key repeat, and not within 1 second of the send, of ⏱ Start the clock, or of Show question when the clue has no cards. |
 | Distributing or playing | **1–9**, then Enter / Shift+Enter | Award / deduct the Amount to the selected players, as today (with the same guard). |
+| Distributing | **T** (or the status line's ⏱ Start) | Starts the clock. No card waiting for a phone: the clue goes live, as ⏱ Start the clock (45 s) does, sending nothing, and the first Enter after it only says "Clock is running: Enter again for ✔ Got it". Phone cards still to send: the clock only; the main button reads 📤 Send the cards (clock running), the status line "Clock running: Enter sends the 2 cards", and Enter sends them. |
 | Playing | **N**, **R**, **T**, **Esc**, **Shift+Esc** | As for any clue. N never scores. |
 | Distributing or playing | **U** | Hint: "Nobody buzzes on a partner clue". |
 

@@ -21,7 +21,7 @@
   import PartnerControls from './host/PartnerControls.svelte';
   import TileCards from './host/TileCards.svelte';
   import CardOffers from './host/CardOffers.svelte';
-  import { cardSlides, partnerPickStep, partnerRules, partnerShares, partnerVerdict, sentTo, toName } from '../lib/partner';
+  import { cardRecipients, cardSends, cardSlides, partnerPickStep, partnerRules, partnerShares, partnerVerdict, sentTo, toName } from '../lib/partner';
   import FinalControls from './host/FinalControls.svelte';
   import EndControls from './host/EndControls.svelte';
   import ToolsControls from './host/ToolsControls.svelte';
@@ -38,7 +38,7 @@
   import { answerRoundId, teamsOn } from '../lib/buzz';
   import { usableChoices } from '../lib/choices';
   import { scoresWindow } from '../lib/sync.svelte';
-  import { tileToolUp } from '../lib/live';
+  import { tileToolUp, timerRemaining } from '../lib/live';
   import { onMount, tick, untrack, type Snippet } from 'svelte';
 
   let {
@@ -60,6 +60,7 @@
     answersNote = '',
     onshowanswer = () => {},
     timerSeconds = $bindable(null),
+    ontimerstart = () => {},
     bgSteps = $bindable(null),
     undoText = null,
     redoText = null,
@@ -157,6 +158,8 @@
     onshowanswer?: (playerId: string) => void;
     /** Seconds typed in the timer box (T uses them too). */
     timerSeconds?: number | null;
+    /** The status line's ⏱ Start (or ▶) started the countdown: a partner clue handing out its cards goes on with it, as with T. */
+    ontimerstart?: () => void;
     /** Board-game rounds: the steps to move (Enter moves them too). */
     bgSteps?: number | null;
     /** What ↶ Undo would take back next (null: nothing), and ↷ Redo bring back. */
@@ -342,6 +345,8 @@
     if (partner?.stage === 'pick') return pickLine;
     if (steal && !steal.by) return stealersLeft(session.players, steal, marks).length ? 'Answer hidden · 🔔 a steal: the others can answer' : 'Answer hidden · nobody stole it: reveal the answer';
     if (partnerJudged) return 'Answer hidden · judged';
+    // (T started the clock with phone cards still to send: Enter sends them.)
+    if (partner?.stage === 'distribute' && partnerUnsent && clockRuns) return `Clock running: Enter sends the ${partnerUnsent === 1 ? 'card' : `${partnerUnsent} cards`}`;
     const sent = sentNote ? ` · ${sentNote}` : '';
     return partner?.stage === 'distribute' ? `Answer hidden · hand out the cards${sent}` : `Answer hidden${sent}`;
   });
@@ -379,6 +384,22 @@
       ? currentFinal(session, game)?.timerSeconds || game.settings.finalTimerSeconds || 30
       : (clueSecs >= 1 ? clueSecs : 0) || game.settings.defaultTimerSeconds || 30,
   );
+  /** The countdown is running. */
+  const clockRuns = $derived(!!app.live.timer && app.live.timer.startedAt !== null && !app.live.timer.expired);
+  /**
+   * What a partner clue's ⏱ Start the clock counts down from: a paused countdown's time left, else the seconds typed in
+   * the ⏱ box (as T takes them), else the clue's or the game's.
+   */
+  const clockSecs = $derived.by(() => {
+    const t = app.live.timer;
+    if (t && !t.expired && t.startedAt === null) return Math.max(1, Math.ceil(timerRemaining(t)));
+    return timerSeconds != null && timerSeconds >= 1 ? Math.min(3600, Math.round(timerSeconds)) : timerDefault;
+  });
+  /** A partner clue's cards still to send to phones (not sent, someone to go to), when the room takes cards. */
+  const partnerUnsent = $derived.by(() => {
+    if (!partner || !info || !buzzerOn(game.settings) || !remote.code || remote.status === 'off' || remote.status === 'error' || !roomHasCards()) return 0;
+    return cardSlides(info.clue).filter((c) => !cardSends(partner, c.id).length && cardRecipients(session, partner, c).length > 0).length;
+  });
   const used = $derived(session.phase === 'board' ? usedTiles(session, game) : []);
   /** Picked from ↶ Reopen a tile…: back on the board. With the last one back that button goes, so the keys go to the tile. */
   function reopenPicked(id: string): void {
@@ -948,7 +969,7 @@
       >{VERBS.putBack.label}</button>
     {/if}
     {@render phoneChip?.()}
-    <TimerControls defaultSeconds={timerDefault} bind:custom={timerSeconds} />
+    <TimerControls defaultSeconds={timerDefault} bind:custom={timerSeconds} onstart={ontimerstart} />
   </div>
 
   <!-- A score asked for from the player's menu, where there are no score chips to type it into (RPG and board games). -->
@@ -1132,6 +1153,7 @@
             oncardtakeback={oncardtakeback}
             onmemberspin={onpartnermemberspin}
             onjudge={onpartnerjudge}
+            {clockSecs}
             {selected}
             onpick={(id) => (selected = [id])}
           />

@@ -175,7 +175,7 @@ try {
   await stage('[data-partner-badge]').waitFor();
   await page.keyboard.press('Enter');
   assert(await toast('The question just went up'), 'a second Enter at once doesn’t start the clock');
-  assert((await mainLabel(page)) === '⏱ Start the clock' && (await stage('.timer').count()) === 0, 'the main button is ⏱ Start the clock, and no countdown runs');
+  assert((await mainLabel(page)) === '⏱ Start the clock (45 s)' && (await stage('.timer').count()) === 0, 'the main button is ⏱ Start the clock, and no countdown runs');
   assert((await situationHasMain(page, panel)) === '', 'and the box has ⏱ Start the clock at its foot');
   assert(
     (await panel.locator('[data-partner-next]').innerText()) === 'Next: 📋 copy each card to its player, then ⏱ Start the clock',
@@ -183,7 +183,7 @@ try {
   );
   const foot = panel.locator('[data-partner-foot]');
   assert(
-    JSON.stringify(await foot.getByRole('button').evaluateAll((bs) => bs.map((b) => b.textContent.replace(/\s+/g, ' ').trim()))) === JSON.stringify(['✔ Got it', '✘ Missed', '📋 Copy words', '⏱ Start the clock⏎']),
+    JSON.stringify(await foot.getByRole('button').evaluateAll((bs) => bs.map((b) => b.textContent.replace(/\s+/g, ' ').trim()))) === JSON.stringify(['✔ Got it', '✘ Missed', '📋 Copy words', '⏱ Start the clock (45 s)⏎']),
     `the foot: ✔ Got it and ✘ Missed, then at its right end Card 1’s 📋 Copy words (the card to copy, in view) and ⏱ Start the clock (${await foot.getByRole('button').evaluateAll((bs) => bs.map((b) => b.textContent.replace(/\s+/g, ' ').trim()).join(' | '))})`,
   );
   assert((await stage('[data-partner-badge]').innerText()).replace(/\s+/g, ' ').trim() === '🗣 Bob describes → 🎯 Ann guesses', 'the stream shows who plays which part');
@@ -218,13 +218,13 @@ try {
     await toast('The answer stays hidden until they’ve had their go: copy the cards to their players, then ⏱ Start the clock (Enter) · R shows it anyway'),
     'a click on the stage while handing out the cards says the answer stays hidden, and what’s next',
   );
-  assert((await stage('[data-slide="answer"]').count()) === 0 && (await mainLabel(page)) === '⏱ Start the clock', 'and the question stays up, the clock next');
+  assert((await stage('[data-slide="answer"]').count()) === 0 && (await mainLabel(page)) === '⏱ Start the clock (45 s)', 'and the question stays up, the clock next');
 
   // ---------- ⏱ Start the clock ----------
   await page.keyboard.press('u');
   assert(await toast('Nobody buzzes on a partner clue'), 'U: nobody buzzes on a partner clue');
   await page.waitForTimeout(1100);
-  const startAt = await stepButton(panel, '⏱ Start the clock').boundingBox();
+  const startAt = await stepButton(panel, '⏱ Start the clock (45 s)').boundingBox();
   const gotIt = panel.locator('[data-partner-judge]').getByRole('button', { name: /✔ Got it/ });
   const gotAt = (await gotIt.boundingBox()).x;
   await page.mouse.click(startAt.x + startAt.width / 2, startAt.y + startAt.height / 2);
@@ -351,8 +351,16 @@ try {
   assert((await info.innerText()).includes('Card 1 → Cat (describer)'), 'the host column says who gets each card');
   await noCards(aud, 'audience: the question');
   await page.waitForTimeout(1100);
-  await page.keyboard.press('Enter');
+  // T, with no card waiting for a phone (they're copied by hand), makes it live as ⏱ Start the clock does, and the first
+  // Enter after it only says so: "T, then Enter" never judges by habit.
+  await page.keyboard.press('t');
   await aud.locator('.timer').waitFor();
+  await panel.locator('[data-partner-next]', { hasText: 'Did they get it?' }).waitFor();
+  await page.keyboard.press('Enter');
+  assert(
+    (await toast('Clock is running: Enter again for ✔ Got it')) && (await panel.locator('[data-judged]').count()) === 0,
+    'T makes it live (no card waits for a phone), and the first Enter after it judges nothing, saying so',
+  );
   await page.keyboard.press('r');
   await aud.locator('[data-slide="answer"]').waitFor();
   await noCards(aud, 'audience: the answer');

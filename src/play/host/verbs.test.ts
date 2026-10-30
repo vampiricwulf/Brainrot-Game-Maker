@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { VERBS, type Verb } from './verbs';
 
 /** What the moment-dependent words are filled in with here (else a name). */
-const SAMPLE: Record<string, unknown[]> = { revealCategory: [2, 5], nextSlideOf: [1, 3], move: [3] };
+const SAMPLE: Record<string, unknown[]> = { revealCategory: [2, 5], nextSlideOf: [1, 3], move: [3], startClock: [45] };
 /** Every step's words, the moment-dependent ones filled in. */
 const all = (): [string, Verb][] =>
   Object.entries(VERBS).map(([name, v]) => [name, typeof v === 'function' ? (v as (...a: unknown[]) => Verb)(...(SAMPLE[name] ?? ['Ann'])) : v]);
@@ -36,7 +36,8 @@ describe('the host screen’s words for each step', () => {
       partnerShow: '▶ Show question [⏎]',
       handOut: '📤 Distribute',
       sendAndStart: '📤 Send and start [⏎]',
-      startClock: '⏱ Start the clock [⏎]',
+      sendCards: '📤 Send the cards (clock running) [⏎]',
+      startClock: '⏱ Start the clock (45 s) [⏎]',
       finalReveal: 'Reveal answer ▶ [N]',
       tiebreakerClue: '❓ Tiebreaker clue',
       rollOff: '🎲 Tiebreaker roll-off [O]',

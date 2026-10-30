@@ -605,6 +605,19 @@ try {
   assert((await left2.innerText()) === '🖼 1 GIF won’t reach the phones (too big for the buzzer server)', 'the GIF over 3 MB, counted: “🖼 1 GIF won’t reach the phones (too big for the buzzer server)”');
   assert(await row(2).getByRole('button', { name: '📋 Copy picture' }).isVisible(), 'and its row offers 📋 Copy picture');
   const upBefore = uploads.length;
+  // The status line's ⏱ Start (as T) with cards still to send: the clock only. The main button and the box's foot read
+  // 📤 Send the cards (clock running), the status line that Enter sends them, and nothing goes until then.
+  await host.locator('.panel .status').getByRole('button', { name: /^Start \d+s$/ }).click();
+  await host.locator('.stage-box .timer').waitFor();
+  await sleep(300);
+  assert(
+    (await mainLabel(host)) === '📤 Send the cards (clock running)' &&
+      (await situationHasMain(host, panel)) === '' &&
+      /Clock running: Enter sends the \d+ cards/.test(await textOf(host.locator('.panel .status'))) &&
+      !sends().length &&
+      uploads.length === upBefore,
+    `the clock started with cards to send: 📤 Send the cards (clock running), in the box too, and nothing sent (“${await textOf(host.locator('.panel .status'))}”)`,
+  );
   // (A click within a second of the question going up sends nothing.)
   await sleep(1100);
   await mainButton(host).click();

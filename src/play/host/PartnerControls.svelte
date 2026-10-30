@@ -57,6 +57,7 @@
     onmemberspin,
     selected = [],
     onpick = () => {},
+    clockSecs = 30,
   }: {
     game: Game;
     session: Session;
@@ -86,6 +87,8 @@
     selected?: Id[];
     /** A steal's chip: that player answers it (picked, as with their number). */
     onpick?: (id: Id) => void;
+    /** What ⏱ Start the clock counts down from (its words say it): a paused countdown's time left, else its seconds. */
+    clockSecs?: number;
   } = $props();
 
   // (Mounted only while there's one; a stand-in for the moment it goes, before this part does.)
@@ -523,6 +526,8 @@
       step === 'picker' ? `${noun === 'team' ? 'Which team' : 'Who'} picked it? Press their number first (1–${Math.min(9, session.players.length) || 9})` : step === 'nobody' ? nobodyText : spinning ? 'Still spinning' : '';
     return nextStep(VERBS.partnerSpin, onspin, why ? { title: why, disabled: true } : { disabled: false });
   });
+  /** The countdown is running (T, or the status line's ⏱ Start): with cards still to send, only they're left to go. */
+  const clockRuns = $derived(!!app.live.timer && app.live.timer.startedAt !== null && !app.live.timer.expired);
   /** What a click on 📤 Send and start (or ⏱ Start the clock) says within a second of the question going up. */
   const handSoon = $derived(`The question just went up: click again to ${unsentToGo.length ? 'send the cards' : 'start the clock'}`);
   /**
@@ -532,9 +537,10 @@
    */
   const handStep = $derived.by((): NextAction | null => {
     if (s.stage !== 'distribute' || verdict.judged || session.revealed) return null;
-    // (Never more cards than the buzzer room takes: ✖ Take one back first.)
-    if (unsentToGo.length) return nextStep(VERBS.sendAndStart, onclock, allFull ? { title: cardsFullText(game, session, sendAll), disabled: true } : { disabled: false, final: handSoon });
-    return nextStep(VERBS.startClock, onclock, { title: cardsOn ? 'Enter or N: the countdown starts' : 'Enter or N: the countdown starts (copy the cards to their players first)', final: handSoon });
+    // (Never more cards than the buzzer room takes: ✖ Take one back first. The clock started by T: the cards only.)
+    if (unsentToGo.length)
+      return nextStep(clockRuns ? VERBS.sendCards : VERBS.sendAndStart, onclock, allFull ? { title: cardsFullText(game, session, sendAll), disabled: true } : { disabled: false, final: handSoon });
+    return nextStep(VERBS.startClock(clockSecs), onclock, { title: cardsOn ? 'Enter or N: the countdown starts' : 'Enter or N: the countdown starts (copy the cards to their players first)', final: handSoon });
   });
   /**
    * The partner's wheel again, in 🎡 Spin for a partner's place once the partner is chosen (by it or by hand): its landing
@@ -578,6 +584,7 @@
     if (steal && !steal.by && stealLeft.length && !session.revealed) return { text: 'Next: who steals it?' };
     if (verdict.judged || steal) return { text: `Next: ${session.revealed ? VERBS.done.label : VERBS.reveal.label}` };
     if (handStep) {
+      if (unsentToGo.length && clockRuns) return { text: toCopy.length ? `Clock running: 📋 copy cards for ${noun}s without a phone, then 📤 Send the cards` : 'Clock running: send the cards' };
       if (unsentToGo.length) return { text: toCopy.length ? `Next: 📋 copy cards for ${noun}s without a phone, then 📤 Send and start` : 'Next: send the cards and start the clock' };
       return { text: toCopy.length ? `Next: 📋 copy each card to its ${noun}, then ⏱ Start the clock` : 'Next: start the clock' };
     }

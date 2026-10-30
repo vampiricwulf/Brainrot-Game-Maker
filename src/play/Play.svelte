@@ -2159,6 +2159,8 @@
   let partnerShownAt = 0;
   let partnerClockAt = 0;
   let partnerSentWithClock = false;
+  /** T (or the status line's ⏱ Start) made it live, with nothing to send: its first Enter only says so. */
+  let partnerLiveByT = false;
   /**
    * The open partner clue's cards go to phones (a room that takes them), not only by 📋 copying. Not while the room has
    * turned this window away (it ended, or another window took it): a send then would reach no phone.
@@ -2285,13 +2287,14 @@
     const hasCards = cardSlides(info.clue).length > 0;
     s.stage = hasCards ? 'distribute' : 'live';
     partnerShownAt = Date.now();
+    partnerLiveByT = false;
     selected = [];
     amount = info.value;
     if (!hasCards) {
       autoTimer();
       partnerClockAt = partnerShownAt;
       partnerSentWithClock = false;
-    }
+    } else partnerTimerStarted();
   }
 
   /**
@@ -2311,10 +2314,27 @@
     s.stage = 'live';
     partnerClockAt = Date.now();
     partnerSentWithClock = went.length > 0;
+    partnerLiveByT = false;
     if (!app.live.timer || app.live.timer.expired) startTimer(app.live, timerSeconds || clueTimer() || game.settings.defaultTimerSeconds || 30);
     else if (app.live.timer.startedAt === null) toggleTimer(app.live);
     // The main button takes the keys again (Next slide, or the answer).
     void tick().then(focusMain);
+  }
+
+  /**
+   * T or the status line's ⏱ Start started the countdown (or let it go on), or it was running as the question went up:
+   * a partner clue handing out its cards with none waiting for a phone goes live with it, as ⏱ Start the clock does,
+   * sending nothing, and its first Enter only says the clock is running (so "T, then Enter" never judges by habit).
+   * With phone cards waiting it's the clock only: Enter still sends them (📤 Send the cards).
+   */
+  function partnerTimerStarted(): void {
+    const s = partner;
+    const t = app.live.timer;
+    if (!s || s.stage !== 'distribute' || partnerJudged || session.revealed || !t || t.startedAt === null || t.expired || unsentCards().length) return;
+    s.stage = 'live';
+    partnerClockAt = Date.now();
+    partnerSentWithClock = false;
+    partnerLiveByT = true;
   }
 
   /**
@@ -2386,8 +2406,11 @@
     if (!s || session.revealed) return null;
     if (partnerJudged) return stealOpen() && !app.live.timer?.expired ? `${stealHint()} · R shows the answer anyway` : null;
     if (s.stage === 'distribute') {
+      const running = !!app.live.timer && app.live.timer.startedAt !== null && !app.live.timer.expired;
       const next = unsentCards().length
-        ? '📤 Send and start (Enter)'
+        ? running
+          ? '📤 Send the cards (Enter)'
+          : '📤 Send and start (Enter)'
         : !phoneCards && info && cardSlides(info.clue).length
           ? 'copy the cards to their players, then ⏱ Start the clock (Enter)'
           : '⏱ Start the clock (Enter)';
@@ -2454,6 +2477,7 @@
     const batch = newId();
     const events = judgePartner(session, game, got, partnerValue(), batch);
     if (!events.length) return hint(`${judgedText()} (Ctrl+Z takes it back)`);
+    partnerLiveByT = false;
     playCue(app.live, game, got ? 'right' : 'wrong');
     if (got) {
       const t = app.live.timer;
@@ -2514,6 +2538,12 @@
       if (e.shiftKey)
         hint(session.revealed ? 'The answer is showing: click ✔ Got it or ✘ Missed, or Esc goes back to the board' : unsentCards().length ? 'Send the cards first (Enter), or click ✘ Missed' : 'Start the clock first (Enter), or click ✘ Missed');
       else partnerMain(e);
+      return true;
+    }
+    // (T made it live: its first Enter says so, and judges nothing.)
+    if (partnerLiveByT && !e.shiftKey) {
+      partnerLiveByT = false;
+      hint('Clock is running: Enter again for ✔ Got it');
       return true;
     }
     if (!partnerTooSoon(e)) partnerJudge(!e.shiftKey);
@@ -4452,6 +4482,8 @@
         if (added) addTime(app.live, 10);
         else if (app.live.timer && !app.live.timer.expired) toggleTimer(app.live);
         else startTimer(app.live, timerSeconds || clueTimer() || game.settings.defaultTimerSeconds || 30);
+        // (A partner clue handing out its cards with none waiting for a phone goes live with it.)
+        if (!added) partnerTimerStarted();
         // (Said once here: the running countdown stays quiet.)
         const tm = app.live.timer;
         const left = tm ? Math.ceil(timerRemaining(tm)) : 0;
@@ -5003,6 +5035,7 @@
         {answersNote}
         onshowanswer={showAnswer}
         bind:timerSeconds
+        ontimerstart={partnerTimerStarted}
         bind:bgSteps
         {undoText}
         {redoText}

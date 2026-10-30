@@ -931,7 +931,7 @@ try {
         return { n: by.length, ghost: by.every((b) => b.classList.contains('ghost')), gap: Math.min(...by.map((b) => main.top - b.getBoundingClientRect().bottom)) };
       });
       assert(beside.n === 2 && beside.ghost && beside.gap >= 12, `${at}: 👁 Reveal answer and ▦ Done ▶ board beside the main button are quiet, 12 px or more above it (${JSON.stringify(beside)})`);
-      const startAt = await stepButton(box, '⏱ Start the clock').boundingBox();
+      const startAt = await stepButton(box, '⏱ Start the clock (45 s)').boundingBox();
       const gotAt = async () => (await box.getByRole('button', { name: /✔ Got it/ }).boundingBox()).x;
       const got0 = await gotAt();
       await pb.waitForTimeout(1100);

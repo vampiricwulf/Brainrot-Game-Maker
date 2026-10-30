@@ -4,8 +4,11 @@
   import { app } from '../../lib/app.svelte';
   import { addTime, startTimer, timerRemaining, toggleTimer } from '../../lib/live';
 
-  /** custom: the seconds typed in the box (bound, so T uses them too). */
-  let { defaultSeconds, custom = $bindable(null) }: { defaultSeconds: number; custom?: number | null } = $props();
+  /**
+   * custom: the seconds typed in the box (bound, so T uses them too). onstart: a countdown was started or went on from
+   * here (Start, ▶, ↺, Enter in the box), as T does: a 🤝 partner clue handing out its cards goes on with it.
+   */
+  let { defaultSeconds, custom = $bindable(null), onstart = () => {} }: { defaultSeconds: number; custom?: number | null; onstart?: () => void } = $props();
   /** The countdown it starts: the seconds typed when they make one (1 to 3600), else the default. */
   const secs = $derived(custom != null && custom >= 1 ? Math.min(3600, Math.round(custom)) : defaultSeconds);
   let now = $state(Date.now());
@@ -15,6 +18,17 @@
   });
   const t = $derived(app.live.timer);
   const left = $derived(t ? Math.ceil(timerRemaining(t, now)) : 0);
+
+  /** Start (or restart) the countdown here, as T does. */
+  function start(seconds: number): void {
+    startTimer(app.live, seconds);
+    onstart();
+  }
+  /** ▶ / ⏸: a countdown going on again counts as started. */
+  function toggle(): void {
+    toggleTimer(app.live);
+    if (app.live.timer && app.live.timer.startedAt !== null) onstart();
+  }
 
   let box = $state<HTMLElement>();
   /** Hide it: the keys go on from its Start button (the ✕ that had them is gone). */
@@ -29,14 +43,14 @@
   {#if t}
     <!-- A running countdown isn't read out every second by the status line; "Time's up" is, once. -->
     <b class="left" class:done={t.expired} data-quiet={t.expired ? undefined : ''}>{t.expired ? "Time's up" : `${left}s`}</b>
-    <button class="small" onclick={() => toggleTimer(app.live)} disabled={t.expired} title="T" aria-label={t.startedAt === null ? 'Start timer' : 'Pause timer'}>{t.startedAt === null ? '▶' : '⏸'}</button>
+    <button class="small" onclick={toggle} disabled={t.expired} title="T" aria-label={t.startedAt === null ? 'Start timer' : 'Pause timer'}>{t.startedAt === null ? '▶' : '⏸'}</button>
     <!-- Change the time left without starting over. -->
     <button class="small ghost" onclick={() => addTime(app.live, -10)} disabled={t.expired} title="10 seconds less" aria-label="10 seconds less">−10</button>
     <button class="small ghost" onclick={() => addTime(app.live, 10)} title="10 seconds more (Shift+T)" aria-label="10 seconds more">+10</button>
-    <button class="small ghost" onclick={() => startTimer(app.live, t.start ?? t.total)} title="Restart" aria-label="Restart timer">↺</button>
+    <button class="small ghost" onclick={() => start(t.start ?? t.total)} title="Restart" aria-label="Restart timer">↺</button>
     <button class="small ghost" onclick={hide} title="Hide timer" aria-label="Hide timer">✕</button>
   {:else}
-    <button class="small" onclick={() => startTimer(app.live, secs)} title="T">Start {secs}s</button>
+    <button class="small" onclick={() => start(secs)} title="T">Start {secs}s</button>
   {/if}
   <!-- Enter starts that countdown; Enter and Esc give the keys back to the shortcuts, as the Amount box does. -->
   <input
@@ -47,7 +61,7 @@
     bind:value={custom}
     aria-label="Timer seconds"
     onkeydown={(e) => {
-      if (e.key === 'Enter') startTimer(app.live, secs);
+      if (e.key === 'Enter') start(secs);
       if (e.key === 'Enter' || e.key === 'Escape') e.currentTarget.blur();
     }}
   />

@@ -493,7 +493,7 @@ try {
   await page.waitForTimeout(1100);
   await page.keyboard.down('Enter');
   await page.keyboard.up('Enter');
-  assert((await mainLabel(page)) === '⏱ Start the clock' && (await aud.locator('.timer').count()) === 0, 'Enter held down shows the question once, and its repeats (even a second later) don’t start the clock');
+  assert((await mainLabel(page)) === '⏱ Start the clock (45 s)' && (await aud.locator('.timer').count()) === 0, 'Enter held down shows the question once, and its repeats (even a second later) don’t start the clock');
   assert((await flat(aud.locator('[data-partner-badge]'))) === '🗣 Bob describes → 🎯 Ann guesses', 'the stream shows who plays which part');
   await never(viewers, hidden, 'the question');
 
@@ -616,7 +616,7 @@ try {
   await stage('[data-partner-badge]').waitFor();
   const shownAt = Date.now();
   assert(await toast('The question just went up: press Enter again to start the clock'), 'Enter shows the question; Enter again at once doesn’t start the clock');
-  assert((await mainLabel(page)) === '⏱ Start the clock' && (await stage('.timer').count()) === 0 && (await situationHasMain(page, panel)) === '', 'no countdown runs (⏱ Start the clock next, at the box’s foot too)');
+  assert((await mainLabel(page)) === '⏱ Start the clock (45 s)' && (await stage('.timer').count()) === 0 && (await situationHasMain(page, panel)) === '', 'no countdown runs (⏱ Start the clock next, at the box’s foot too)');
   const row = panel.locator('[data-card="1"]');
   assert((await flat(row)).includes('Card 1 · 1 line of words, 1 picture'), `the list counts what’s on the card, and never says it (${await flat(row)})`);
   assert((await pressed('Card 1 to Bob')) === 'true', 'Card 1 goes to the describer, Bob');

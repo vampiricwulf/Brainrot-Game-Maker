@@ -217,7 +217,7 @@ try {
   await page.keyboard.press('Control+z');
   await gotBtn.and(page.locator(':enabled')).waitFor();
   assert(
-    (await flat(judgeRow.locator('[data-judge-got]'))) === 'Ann +$200 · Bob already scored' && (await mainLabel(page)) === '⏱ Start the clock' && (await situationHasMain(page, panel)) === '',
+    (await flat(judgeRow.locator('[data-judge-got]'))) === 'Ann +$200 · Bob already scored' && (await mainLabel(page)) === '⏱ Start the clock (45 s)' && (await situationHasMain(page, panel)) === '',
     'Ctrl+Z brings the buttons back (Bob still scored), and the clock to start (in the box’s foot too)',
   );
   await page.keyboard.press('Control+z');
@@ -292,7 +292,7 @@ try {
   await resume();
   await panel.waitFor();
   assert(
-    (await mainLabel(page)) === '⏱ Start the clock' && (await situationHasMain(page, panel)) === '' && (await chip('Card 1 to Cat').getAttribute('aria-pressed')) === 'true' && (await panel.locator('[data-card="1"]').innerText()).includes('(changed)'),
+    (await mainLabel(page)) === '⏱ Start the clock (45 s)' && (await situationHasMain(page, panel)) === '' && (await chip('Card 1 to Cat').getAttribute('aria-pressed')) === 'true' && (await panel.locator('[data-card="1"]').innerText()).includes('(changed)'),
     'a reload while handing out the cards: the list as it was, the change kept, ⏱ Start the clock next (in the box too)',
   );
   await page.keyboard.press('Enter');
@@ -353,7 +353,7 @@ try {
   await aud.keyboard.up('Enter');
   await wait(300);
   assert(
-    (await mainLabel(page)) === '⏱ Start the clock' && (await situationHasMain(page, panel)) === '' && (await aud.locator('.timer').count()) === 0 && JSON.stringify(await scores()) === held && (await panel.locator('[data-judged]').count()) === 0,
+    (await mainLabel(page)) === '⏱ Start the clock (45 s)' && (await situationHasMain(page, panel)) === '' && (await aud.locator('.timer').count()) === 0 && JSON.stringify(await scores()) === held && (await panel.locator('[data-judged]').count()) === 0,
     'Enter held down in the audience window shows the question once: its repeats don’t start the clock or score',
   );
   await page.keyboard.press('Escape');

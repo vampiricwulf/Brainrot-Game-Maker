@@ -475,7 +475,13 @@ The mode isn't saved with the game: it's dual while the audience window is open.
      and start (or ⏱ Start the clock), in the box or on the main button, waits a second after the question, as Enter
      does. Once the clock runs a verdict is due: ✔ Got it / ✘ Missed are an equal pair, nothing is blue (the main
      cell's 👁 Reveal answer is quiet), and the first line says "Did they get it? ✔ Got it (Enter) or ✘ Missed
-     (Shift+Enter)" ("Time's up: did they get it?" once it runs out). Nobody buzzes. With **steal on a miss**
+     (Shift+Enter)" ("Time's up: did they get it?" once it runs out). ⏱ Start the clock says what it counts down from
+     ("⏱ Start the clock (45 s)"). `T` or the status line's ⏱ Start while the cards are handed out: with no card waiting
+     for a phone (copied by hand, or all sent) it goes live as ⏱ Start the clock does, sending nothing, and the first
+     Enter after it only says "Clock is running: Enter again for ✔ Got it"; with phone cards still to send it starts
+     the clock only, the main button reads **📤 Send the cards (clock running)** and the status line "Clock running:
+     Enter sends the 2 cards", and Enter sends them (a card goes to a phone only by Enter on that step or a 📤 press).
+     Nobody buzzes. With **steal on a miss**
      (⚖ Game rules' `partnerSteal`, or the clue's own `PartnerRules.steal`), ✘ Missed lets everyone else answer it as
      any clue for the tile's value: the buzzers open for them with the two locked out, or the host picks who steals
      (`1–9`), then Enter / Shift+Enter. Each steal is its own undo step, and undoing the miss closes the steal. A click
