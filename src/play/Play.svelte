@@ -25,7 +25,7 @@
   import { windowCards } from '../lib/cardwindow';
   import { cardWindow, closeCardWindow, feedCardWindow } from '../lib/cardwindow.svelte';
   import { dropOffersBut } from './host/offered.svelte';
-  import { addTime, newLive, overlayDoneAt, startTimer, tileToolUp, timerRemaining, timerResumed, toggleTimer, toolOverlay, type Live, type StageAction, type TimerState } from '../lib/live';
+  import { addTime, newLive, overlayDoneAt, startTimer, tileToolUp, tileToolWaits, timerRemaining, timerResumed, toggleTimer, toolOverlay, type Live, type StageAction, type TimerState } from '../lib/live';
   import {
     answerRoundId, buzzArm, buzzClueOpened, buzzDone, buzzIdle, buzzMissed, buzzReset, buzzTake, cardsFullText, everyoneAnswerAsk, finalAnswerAsk, hostState, newBuzz, partnerAnswerAsk, partnerAnswerId, hostCards, phoneStatus, roomCardsFull, SEAT_NAME_MAX, sendOf, SETTING_UP,
     teamsOn, wagerAsk, whoBuzzed,
@@ -4087,6 +4087,9 @@
     hint(hostNext.key ? `Press ${hostNext.key} for ${hostNext.label}` : `Click ${hostNext.label} to go on${rolloff}`);
   }
 
+  /** The wheel or dice tile's tool (its overlay) the first R asked about: R again shows the answer anyway. */
+  let revealAsked = '';
+
   /** A number key changed who's selected: screen readers hear who is now (before Enter awards them). */
   function saySelected(): void {
     announce(selected.length ? `Selected: ${nameList(selected.map((id) => playerName(session, id)))}` : 'No one selected');
@@ -4272,6 +4275,14 @@
         if (awardOpen(session)) award(e.shiftKey ? -1 : 1);
         break;
       case 'r':
+        if (session.phase === 'clue' && info && !session.revealed && !toolOnlyClue(info.clue) && tileToolWaits(app.live, info.clue) && revealAsked !== toolOverlay(app.live)?.nonce) {
+          // A wheel or dice tile's question comes after its wheel or dice: the first R says so, a second shows the
+          // answer anyway (a wheel that won't spin, or one only for show).
+          revealAsked = toolOverlay(app.live)?.nonce ?? '';
+          const dice = info.clue.type === 'dice';
+          hint(`${toolGoing() ? `Still ${dice ? 'rolling' : 'spinning'}: wait for it to land` : dice ? 'Roll first (D)' : 'Spin first (W)'}, or press R again to show the answer anyway`);
+          break;
+        }
         revealToggle();
         break;
       case 'escape':

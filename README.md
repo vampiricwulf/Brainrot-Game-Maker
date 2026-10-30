@@ -371,7 +371,7 @@ you're on):
 | `1`–`9` | Select player N |
 | `P` then `1`–`9` | Make player N the current picker |
 | `Enter` / `Shift+Enter` | Award / deduct |
-| `R` | Reveal / hide the answer (the countdown stops) |
+| `R` | Reveal / hide the answer (the countdown stops; on a wheel or dice tile, `R` before it lands says to spin or roll first, and `R` again shows it anyway) |
 | `←` `↑` `→` `↓` on a tile | Move across the board (`Enter` opens the tile; after a clue the keys go on from its tile) |
 | `Esc` / `Shift+Esc` | Back to the board / cancel the clue (the tile stays playable) |
 | `N` / `Shift+N` | Next step (intro, a clue's next slide, Final, next turn) / the one before |

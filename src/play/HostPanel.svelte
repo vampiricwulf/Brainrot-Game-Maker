@@ -35,6 +35,7 @@
   import { answerRoundId, teamsOn } from '../lib/buzz';
   import { usableChoices } from '../lib/choices';
   import { scoresWindow } from '../lib/sync.svelte';
+  import { overlayDoneAt, tileToolWaits, toolOverlay } from '../lib/live';
   import { onMount, tick, untrack, type Snippet } from 'svelte';
 
   let {
@@ -383,6 +384,19 @@
   const toolOnly = $derived(session.phase === 'clue' && !!info && toolOnlyClue(info.clue));
   /** A wheel or dice tile's tool, in words. */
   const toolName = $derived(info?.clue.type === 'dice' ? 'dice' : 'wheel');
+  /**
+   * A wheel or dice tile's own wheel or dice not spun or rolled yet, or still going: its question comes first, so 👁
+   * Reveal answer waits until it lands (R asks first, then shows it anyway). `landed` ticks when it lands.
+   */
+  let landed = $state(0);
+  const toolFirst = $derived(session.phase === 'clue' && !!info && !session.revealed && (void landed, tileToolWaits(app.live, info.clue)));
+  $effect(() => {
+    const o = toolOverlay(app.live);
+    const wait = toolFirst && o ? overlayDoneAt(o) - Date.now() : 0;
+    if (wait <= 0) return;
+    const t = setTimeout(() => (landed = Date.now()), wait + 20);
+    return () => clearTimeout(t);
+  });
   /** A clue (or the tiebreaker) with several question slides: which one is on screen ("Slide 2 of 3"); null for one slide. */
   const slidePos = $derived(setup ? null : slidePosition(session, game));
   /** The tiebreaker clue's winner, picked (while they're still tied for first: an older roll-off's doesn't count). */
@@ -1194,7 +1208,7 @@
           {#if buzzClosed && !answerUp && next?.run !== openBuzzers && !tieNames && !allMissed}
             <button onclick={openBuzzers} title="U: buzzers open for everyone who hasn't missed this clue">🔔 Open the buzzers</button>
           {/if}
-          {#if !toolOnly && next?.run !== onreveal}
+          {#if !toolOnly && !toolFirst && next?.run !== onreveal}
             <button onclick={onreveal} title="R (press again to hide)">
               {session.revealed ? '🙈 Hide answer' : '👁 Reveal answer'}
             </button>

@@ -68,7 +68,7 @@
         ['N', 'Round intro: the next step (the title card, then the tiles and categories)'],
         ['N during a clue', 'The main button (bottom right): the next slide, open the buzzers, reveal the answer, then back to the board'],
         ['Shift+N during a clue', 'A clue with several slides: the slide before'],
-        ['R', 'Reveal the answer (again: hide it); the countdown stops'],
+        ['R', 'Reveal the answer (again: hide it); the countdown stops. On a wheel or dice tile before it lands, the first R says to spin or roll first'],
         ['← ↑ → ↓ on a tile', 'Move across the board (Enter or Space opens the tile); after a clue the keys go on from its tile'],
         ['1 – 9, then Enter on a tile', 'The keys go to the Amount box: type the points, then Enter gives them'],
         ['Shift+Esc', 'Cancel the clue: back to the board, the tile stays playable (not once points were given)'],

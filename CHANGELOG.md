@@ -17,6 +17,7 @@ in plain words for the people who make and host games. Anything committed but no
 
 - 🤝 Partner clues: a click on the stage while the cards were handed out, or while the pair was still describing, put the answer on stream. Until the clue is judged or its clock runs out, a click now leaves the answer hidden and says what to do (✔ Got it / ✘ Missed, or 👁 Reveal answer with R to show it anyway); after that a click shows it, as before.
 - On the game screen, Shift+Enter with the keys on a button reached with Tab (✔ Got it, a player's ✔, ＋ Award) pressed that button, giving the opposite of the ✘ Missed or − Deduct you meant. Shift+Enter always means ✘ Missed or − Deduct now; Enter and Space still press the button.
+- Wheel and dice tiles with a question: 👁 Reveal answer (and R) showed the answer before the wheel had spun, skipping the question. 👁 Reveal answer comes once the wheel or dice land; before that, R says to spin or roll first, and R again shows the answer anyway (for a wheel that won't spin).
 
 ## 2026-10-29
 
