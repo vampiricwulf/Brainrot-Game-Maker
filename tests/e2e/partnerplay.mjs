@@ -1,8 +1,9 @@
 // 🤝 Playing a partner clue (docs/PARTNER-CLUES-SPEC.md §6–§8): PARTNER UP! on stream, "Who picked it?", the partner
 // wheel (the picker never on it, the log hiding the spin until it lands, its landing the partner), overruling it with
 // 1–9, ▶ Show question with the parts badge and caption, a second Enter that doesn't start the clock, the 📤 list's
-// chips (a change stays through ⇄ Swap, ↺ follows the parts again), 📋 Copy words, ⏱ Start the clock, a blank
-// question's own card, Esc before the question keeping the tile, U and the ? list. In one window the host page never
+// chips (a change stays through ⇄ Swap, ↺ follows the parts again), 📋 Copy words, ⏱ Start the clock, a click on the
+// stage that leaves the answer hidden until it's judged, Shift+Enter on ✔ Got it giving ✘ Missed, a blank question's
+// own card, Esc before the question keeping the tile, U and the ? list. In one window the host page never
 // holds a card's words or its picture's name; in two windows the audience window never does, and the host column lists
 // the cards as text.
 import { chromium } from 'playwright-core';
@@ -189,8 +190,21 @@ try {
   await stage('[data-slide="1"]').click();
   assert(await toast('Right or wrong? ✔ Got it / ✘ Missed in the 🤝 box (Enter / Shift+Enter)'), 'a click on the stage with the clock running says how to judge');
   assert((await stage('[data-slide="answer"]').count()) === 0, 'and leaves the answer hidden');
-  await page.keyboard.press('r');
+  // Shift+Tab to ✔ Got it, then Shift+Enter: ✘ Missed, as Shift+Enter is anywhere (not a press of the button the keys
+  // are on). (Past the second after the clock starts in which the keys don't judge.)
+  await page.waitForTimeout(1100);
+  const judgeRow = panel.locator('[data-partner-judge]');
+  await judgeRow.getByRole('button', { name: /✘ Missed/ }).focus();
+  await page.keyboard.press('Shift+Tab');
+  assert(await judgeRow.getByRole('button', { name: /✔ Got it/ }).evaluate((e) => e === document.activeElement), 'Shift+Tab takes the keys to ✔ Got it');
+  await page.keyboard.press('Shift+Enter');
+  await judgeRow.locator('[data-judged]').waitFor();
+  const judgedLine = await judgeRow.locator('[data-judged]').innerText();
+  assert(judgedLine.includes('✘') && !judgedLine.includes('✔'), `Shift+Enter with the keys on ✔ Got it gives ✘ Missed (${judgedLine})`);
+  // Judged: a click on the stage shows the answer now, as on any clue.
+  await stage('[data-slide="1"]').click();
   await stage('[data-slide="answer"]').waitFor();
+  assert(true, 'judged, a click on the stage shows the answer');
   await noCards(page, 'the answer');
   await page.keyboard.press('Escape');
   await tile(0, 2).waitFor();

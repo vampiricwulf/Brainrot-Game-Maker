@@ -224,6 +224,17 @@ try {
   await big(bo).getByText('Player 1 is answering').waitFor();
   assert((await small(bo).innerText()) === 'Daily Double', 'and the other phones say “Player 1 is answering · Daily Double” (no longer “wagering…”)');
   assert(await noneOf(aud, [700, 777]), 'the audience window still has no amount (until the host shows the wager)');
+  // Shift+Tab to the ✔ on her chip, then Shift+Enter: wrong (− Deduct), as Shift+Enter is anywhere, not a press of the
+  // ✔ the keys are on. Ctrl+Z takes it back. (Past the second after the question in which the keys don't judge.)
+  await host.waitForTimeout(1100);
+  await host.getByRole('button', { name: 'Wrong: Player 1 −$700' }).focus();
+  await host.keyboard.press('Shift+Tab');
+  assert(await host.getByRole('button', { name: 'Right: Player 1 +$700' }).evaluate((e) => e === document.activeElement), 'Shift+Tab takes the keys to her ✔');
+  await host.keyboard.press('Shift+Enter');
+  await host.locator('.panel .mark.wrong').waitFor();
+  assert((await host.locator('.panel .mark.right').count()) === 0, 'Shift+Enter there marks her wrong (− Deduct), not right');
+  await host.keyboard.press('Control+z');
+  await host.locator('.panel .mark.wrong').waitFor({ state: 'detached' });
   // Right: Player 1 has 700 to wager in the Final.
   await host.getByRole('button', { name: 'Right: Player 1 +$700' }).click();
   await ann.locator('#me').getByText('Player 1 · $700').waitFor();
