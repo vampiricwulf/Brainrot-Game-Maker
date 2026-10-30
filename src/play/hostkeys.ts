@@ -1,0 +1,145 @@
+// The host's keys on the game screen, by where they apply (a key can mean another thing in another round, like N or
+// D): the keys window's During the game part (spec §6.8; the editor's are in editor/editorkeys.ts).
+import type { KeyGroup } from '../lib/keylist';
+
+/** The pre-game screen's group: listed only there, first. */
+export const BEFORE = 'Before the game';
+
+/** The group the list starts with in each kind of round (a Jeopardy board's come right after Everywhere and Tools). */
+export const KEYS_FIRST: Partial<Record<string, string>> = { rpg: 'RPG', boardgame: 'Board game', final: 'Final', tiebreaker: 'Tiebreaker clue', slides: 'Slides round' };
+
+/** The keys (a player-only file keeps no undo history before the game: `playerOnly` leaves its Ctrl+Z out). */
+export const hostKeys = (playerOnly: boolean): KeyGroup[] => [
+  {
+    title: BEFORE,
+    keys: [
+      ['Ctrl+Enter', 'Start the game (from anywhere on this screen)'],
+      // (A player-only file keeps no undo history here.)
+      ...(playerOnly ? [] : [['Ctrl+Z / Ctrl+Y', 'Undo / redo the changes made here (players, rules, buzzers, On stream)'] as [string, string]]),
+      ['Enter in a player’s name', 'Add the next player (as ＋ Add player does), typing in their name'],
+      ['F2 on the game’s title', 'Rename the game, as ✎ Rename or a double-click on it does (its name shows on stream)'],
+    ],
+  },
+  {
+    title: 'Everywhere',
+    keys: [
+      ['1 – 9', 'Select / deselect player N (for scoring)'],
+      ['0', 'Select everyone, or no one (buzzer mode, during a clue: reset the buzzers)'],
+      ['Enter / Shift+Enter', 'Award / deduct the amount to the selected players'],
+      ['P then 1 – 9', 'Make player N the current picker'],
+      ['Esc', 'Close the log, a tool, Who was who or a card; on a clue: back to the board (the tile is used up); else clear the selection'],
+      ['K or B', 'Cover: viewers see only a “Be right back” card, and the countdown and the clue’s video wait (again: uncover)'],
+      ['T', 'Start / pause the countdown (the seconds typed in the ⏱ box, if any)'],
+      ['Shift+T', '10 more seconds on the countdown (none up: start one, as T)'],
+      ['Ctrl+Z', 'Undo the last change: a score, a move, a stat or item, a tile, the picker, the turn order, Players or the Final'],
+      ['Ctrl+Shift+Z / Ctrl+Y', 'Redo'],
+      ['Right-click a player', 'Their menu: on the stage (avatar, token, strip, score plate) or in the host panel (their score chip, their button in any box). Shift+F10 on their button, or a long press, opens it too'],
+      ['Right-click the stage', 'The moment’s menu: its steps with their keys, what its box adds, the way out, Undo and Cover. Shift+F10 on the main button (or a long press) opens it too'],
+      ['L', 'Log: the history (go back to any point), scores and rolls'],
+      ['A', 'Open / focus the audience window (never closes it)'],
+      ['Shift+A', 'Open / focus the scores window: only the score plates and the countdown, for a lower third in OBS'],
+      ['H', 'Hide / show the host controls'],
+      ['F', 'Full-screen'],
+      ['?', 'This list (❔ Help at the bar’s end opens it too)'],
+    ],
+  },
+  {
+    title: 'Tools and media',
+    keys: [
+      ['D', 'Roll the last dice again (board games: the round’s own dice)'],
+      ['W', 'Spin the wheel on screen, or open the first saved wheel (none saved: 🎡 Wheel makes a quick one)'],
+      ['O', 'Roll-off: who goes first (on a tie for first at the end: the tied players roll for the win)'],
+      ['S', 'Scoreboard on screen'],
+      ['Space', 'Play / pause the slide’s video or audio'],
+      ['← / →', 'Seek the media back / forward 5 s'],
+      ['M', 'Mute / unmute the media'],
+      ['Shift+M', 'Stop the game’s sounds on stream (a round intro’s music that goes on, say)'],
+      ['Y', 'Open YouTube / online media in its own window'],
+    ],
+  },
+  {
+    title: 'Jeopardy board',
+    keys: [
+      ['N', 'Round intro: the next step (the title card, then the tiles and categories)'],
+      ['N during a clue', 'The main button (bottom right): the next slide, open the buzzers, reveal the answer, then back to the board'],
+      ['Shift+N during a clue', 'A clue with several slides: the slide before'],
+      ['R', 'Reveal the answer (again: hide it); the countdown stops. On a wheel or dice tile while its wheel or dice is up, the first R says to spin, roll or close it first'],
+      ['← ↑ → ↓ on a tile', 'Move across the board (Enter or Space opens the tile); after a clue the keys go on from its tile'],
+      ['1 – 9, then Enter on a tile', 'The keys go to the Amount box: type the points, then Enter gives them'],
+      ['Shift+Esc', 'Cancel the clue: back to the board, the tile stays playable (not once points were given)'],
+      ['Enter in the Daily Double wager', 'Show the question (its player answers it)'],
+      ['Esc on a Daily Double splash', 'Back to the board: the tile stays playable (no wager was taken)'],
+      ['W on a partner clue', 'Spin for a partner (1–9: choose one yourself). With nobody marked as its picker yet, the status line asks who picked it: their number first'],
+      ['Enter on a partner clue', 'Show the question, send the cards to their phones and start the clock (📤 Send and start; copy them to anyone without a phone), then ✔ Got it (Shift+Enter: ✘ Missed)'],
+      ['T while a partner clue’s cards are handed out', 'Start the clock: with no card waiting for a phone the clue goes live (the first Enter after it only says so); with cards to send, Enter still sends them'],
+      ['Esc on a partner clue before the question', 'Back to the board: the tile stays playable'],
+      ['1–9, then Enter, in a partner clue’s steal', 'After ✘ Missed with steals on: who steals it, then right (Shift+Enter: wrong), as on any clue'],
+      ['Right-click a tile', 'Open it, mark it as played without opening it, or put a used one back'],
+    ],
+  },
+  {
+    title: 'Slides round',
+    keys: [
+      ['N (or click the stage)', 'The next slide; after the last one, N goes on to the next round'],
+      ['Shift+N', 'The slide before'],
+    ],
+  },
+  {
+    title: 'Buzzer mode (phone buzzers, set on the pre-game screen)',
+    keys: [
+      ['1 – 9', 'During a clue: player N answers, picked by hand (over a phone’s buzz). With someone answering it picks N as well (to judge both); press the one answering’s number to let them go'],
+      ['0', 'During a clue: reset the buzzers (↺): nobody is locked out any more, and they open for everyone'],
+      ['U', 'Open the buzzers (when they open on your key, after reading the clue; after a right answer, for the rest)'],
+      ['Shift+Enter on the one answering', 'Wrong: they’re locked out of this clue and the next one who buzzed answers at once (⏭ Skip: the same, with no points taken); once nobody who buzzed is left, the buzzers open for the rest'],
+    ],
+  },
+  {
+    title: 'Final',
+    keys: [
+      ['N', 'Title card: start the round; then the next step (Show question once every wager is in); in the reveals: show their typed answer (or their wager), then (once they’re judged, C or X) the next player'],
+      ['Enter in a wager box', 'The next wager still to type in; with every wager in, show the question'],
+      ['Shift+N', 'Reveals: back to the player before'],
+      ['R', 'The question: reveal the answer (again: hide it); the countdown stops'],
+      ['1 – 9', 'Reveals: spotlight player N (as numbered in the player list)'],
+      ['C / X', 'Reveals: the spotlit player is right / wrong (or right-click their score plate)'],
+      ['Alt+↑ / ↓ on a name', 'Reveals: move them up / down the order (or drag the row)'],
+    ],
+  },
+  {
+    title: 'Tiebreaker clue',
+    keys: [
+      ['N', 'The main button: the next question slide, the answer, then back to the results'],
+      ['Shift+N', 'The question slide before'],
+      ['R', 'Reveal the answer (again: hide it)'],
+      ['1 – 9, then Enter', 'The winner (Amount 0: no points)'],
+    ],
+  },
+  {
+    title: 'RPG',
+    keys: [
+      ['N', 'Title card: start the round'],
+      ['← ↑ → ↓', 'Move the party one screen that way (not while a video or sound is on screen: ← / → seek it then, so use the numpad or Alt+arrows)'],
+      ['Numpad 1–9 (not 5)', 'Move the party one screen that way (numpad 5 regroups)'],
+      ['Alt+Q W E A D Z X C / Alt+arrows', 'Move the party (laptop keys)'],
+      ['J', 'The full map: jump the party (or some players) to any screen'],
+      ['G', 'Regroup everyone here'],
+      ['V', 'Show / hide the map on screen'],
+      ['I', 'The selected player’s sheet on screen (again: the next selected, then close)'],
+      ['Delete / Backspace', 'Take the object whose card is open off the screen (Ctrl+Z brings it back)'],
+      ['Shift+F10 on the stage', 'Tab to the stage first: the selected player’s menu, else the selected object’s, else the round’s'],
+    ],
+  },
+  {
+    title: 'Board game',
+    keys: [
+      ['D', 'Roll the round’s dice (or spin its wheel): the result fills in the steps'],
+      ['Enter', 'With nobody selected: move the steps (on a one-space board, the only way on)'],
+      ['N / Shift+N', 'Title card: start the round (N); then the next / previous player’s turn'],
+      ['I', 'The selected player’s sheet on screen'],
+      ['Alt+← / → on a name', 'Move them earlier / later in the turn order (or drag the chip)'],
+      ['← ↑ → ↓ on the board', 'Tab to the board, then go from space to space; Enter or Space opens its card, Shift+F10 its menu (a click on the board lets the space go: Enter moves the steps again)'],
+      ['E', '✎ Edit board: add, move, delete and connect spaces while you play (E or Esc again: back to playing)'],
+      ['Delete / F2 while editing', 'Delete the picked space or link / rename the picked space'],
+    ],
+  },
+];

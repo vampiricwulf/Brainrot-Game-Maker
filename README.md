@@ -77,7 +77,7 @@ Every clue or screen is a **slide**: text, images, GIFs, video, audio or YouTube
 **Keyboard and drag:** round tabs, clue tiles, categories, rows, list items and map screens can be dragged and have
 right-click menus; `Delete`, `F2`, `Ctrl+D` and `Ctrl+C` / `Ctrl+V` work on what's selected. Files drop onto the slot
 they belong in (a picture dropped on a tile asks: in the question, or as the tile's face). Press `?` (or ⌨ in the ⋯
-menu) for every editor shortcut. The longer help on the board, a slide, the RPG map and the board game page sits in a
+menu) for every editor shortcut, and beside them, one click away, the host's during the game, with a filter for both. The longer help on the board, a slide, the RPG map and the board game page sits in a
 **💡 Tips** fold that stays as you left it.
 
 **Slide editor:** drag a box on an empty spot to select several items. Beside a text box's words counts as empty (until
@@ -196,7 +196,7 @@ main button with its key (**👁 Reveal answer** `R`, **▦ Done ▶ board** `Es
 **Next turn ▶** `N`, the Final's next step `N`…). Under it come the tools (🎲 Dice, 🎡 Wheel, 🏁 Who goes first, 🤫
 Send a card…, 🎭 Deal…, 📊 Scores) with the round navigation (◀ Prev round, the round list, Next round ▶) at the right,
 then a fixed bar that never moves: **↶ Undo ↷ Redo 🔊 Sound · 📜 Log 👥 Players ⚖ Rules · ⏸ Cover 🙈 Hide · 📺
-Audience ▭ · ⌨ 🚪 Exit** (on a narrow window, as their signs only). On a short window (a laptop zoomed in) the round's
+Audience ▭ · ❔ Help 🚪 Exit** (on a narrow window, as their signs only). On a short window (a laptop zoomed in) the round's
 own box (✍ answers, the Final's wagers, an RPG round…) keeps a few rows in sight, and the panel scrolls. A moment's own
 box holds its steps too: in a 🤝 partner clue, **🎡 Spin for a partner** comes first in the box, in front of the
 players to choose from by hand (**↻ Spin again** in its place after), the cards' details fold into one quiet line
@@ -418,8 +418,9 @@ left with the screen covered comes back covered.
 
 ### Keyboard shortcuts
 
-The main ones (press `?` before or during the game for all of them, starting with the ones for the round or screen
-you're on):
+The main ones (press `?`, or **❔ Help** at the end of the host panel's bar, before or during the game for all of them,
+starting with the ones for the round or screen you're on; the window has a filter, and its **[ Editor | During the game ]**
+switch shows the editor's keys too):
 
 | Key | Action |
 |---|---|
@@ -448,7 +449,7 @@ you're on):
 | Arrows, numpad or `Alt`+arrows (RPG) | Move the party |
 | `E` (board game) | ✎ Edit board while you play |
 | Right-click, `Shift+F10` or the menu key | The menu of what you point at, or what has the keys: a player (anywhere), a tile, a board-game space, or the moment's own on the stage and the main button |
-| `?` | Every key |
+| `?` | Every key, with a filter (❔ Help does the same) |
 
 A key held down counts once (only the arrows repeat). With the keys on the main button in a slides round, or on a
 round's title card, `Enter` does what the button says, as `N` does. An `Enter` right after a Daily Double's question

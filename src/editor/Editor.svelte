@@ -60,7 +60,7 @@
   import UpdateControls from './UpdateControls.svelte';
   import { update } from '../lib/update.svelte';
   import AboutDialog from './AboutDialog.svelte';
-  import ShortcutsDialog from './ShortcutsDialog.svelte';
+  import KeysHelp from '../play/KeysHelp.svelte';
   import { inTauri, keptHere } from '../lib/platform';
   import { dataFolders } from '../lib/desktop.svelte';
   import { registerGameFonts } from '../lib/fonts';
@@ -880,7 +880,7 @@
         hint: `${inTauri() ? 'Autosaves, how Save names files, how much undo to remember' : 'How much undo to remember'}, motion on stream, update checks, the phone buzzer server`,
         onclick: () => (settings = true),
       },
-      { label: '⌨ Keyboard shortcuts', hint: "The editor's keys and mouse moves", keys: '?', onclick: () => (shortcuts = true) },
+      { label: '⌨ Keyboard shortcuts', hint: "The editor's keys and mouse moves, and the host's during the game", keys: '?', onclick: () => (shortcuts = true) },
       { label: '📖 How to host (guide) ↗', hint: 'The guide on GitHub: hosting, phone buzzers, 🤫 cards, 🎭 deals, teams', onclick: () => openSite(HOSTING_GUIDE) },
       { label: 'ℹ About', hint: 'Version, links, and where your data is saved', onclick: () => (about = true) },
     ]);
@@ -991,7 +991,7 @@
   {/if}
   <ConvertNotice onshow={() => (tab = 'media')} />
   {#if about}<AboutDialog onclose={() => (about = false)} />{/if}
-  {#if shortcuts}<ShortcutsDialog onclose={() => (shortcuts = false)} />{/if}
+  {#if shortcuts}<KeysHelp from="editor" onclose={() => (shortcuts = false)} />{/if}
   {#if finding}<FindDialog onclose={() => (finding = false)} />{/if}
   {#if shrinkDialog.open}
     {#key shrinkDialog.open}<ShrinkDialog ids={shrinkDialog.open} onclose={() => (shrinkDialog.open = null)} />{/key}

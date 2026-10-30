@@ -421,8 +421,8 @@ The mode isn't saved with the game: it's dual while the audience window is open.
     them scrolls.
 - **The host panel** has one layout in every round: the status line (📱 phones and ⏱ timer chips), the players' score
   chips, the row of what this moment needs with the one main button (and its key) at its right, the tools with the
-  round navigation, then a fixed bar (Undo, Redo, Sound · Log, Players, Rules · Cover, Hide · Audience, ▭ · ⌨, Exit;
-  under about 940 px wide, the first eight as their signs only, so it stays one line). On a short window the round's own
+  round navigation, then a fixed bar (Undo, Redo, Sound · Log, Players, Rules · Cover, Hide · Audience, ▭ · ❔ Help,
+  Exit; ❔ Help as its sign only up to 1040 px wide, and under about 940 px the first eight too, so it stays one line). On a short window the round's own
   box keeps a few rows in sight (the panel scrolls), a roll's box above it too. The stage (and the editor's previews)
   keeps the game's colors under a Windows contrast theme; the host's controls take the contrast colors.
   Questions for the host (Exit, leaving a round, a locked door…) appear in one strip above that bar, never over the
@@ -674,8 +674,14 @@ The mode isn't saved with the game: it's dual while the audience window is open.
   instead of revealing the answer. The host sees ⏸ on a playing sound's icon; the audience sees the plain icon.
 
 ### 6.8 Host keyboard shortcuts
-The full list, by round, is the in-game `?` sheet (`src/play/KeysHelp.svelte`; the round being played's keys first, and
-on the pre-game screen its own keys first); the main ones:
+The full list, by round, is the keys window (`src/play/KeysHelp.svelte`; the lists are `src/play/hostkeys.ts` and
+`src/editor/editorkeys.ts`): one window for the editor's keys and the host's, a switch at its top, **[ Editor | During
+the game ]**, and a filter for both (a key looked up in the other part is a click away; a renamed button is found by its
+old name too, for a release or two: `RENAMED` in `src/lib/keylist.ts`). `?` in the editor opens it on Editor; `?` and
+❔ Help on the game screen on During the game, the round being played's keys first (on the pre-game screen its own keys
+first), over the host panel in a single window. In its filter `?` types; `Esc` clears the filter, then closes it. Its
+foot has 📖 How to host ↗ and 💡 Show all tips again (the editor's 💡 Tips open again the next time, and the game
+screen's first-time notes show again). The main keys:
 
 | Key | Action |
 |---|---|

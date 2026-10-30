@@ -250,7 +250,7 @@
     onscores: () => void;
     /** Open the streaming-sound help (Test sound, output device). */
     onsound: () => void;
-    /** ⌨ The keyboard shortcuts. */
+    /** ❔ Help: the keys window, on the game's keys. */
     onkeys?: () => void;
     oncloseoverlay: () => void;
     /** Buzzer mode: open the buzzers (U), or for everyone (`all`, 0). */
@@ -1578,9 +1578,10 @@
       >
     </span>
     <span class="spacer"></span>
-    <!-- ⌨ beside 🚪 Exit: in the side column, Undo, Redo and Sound fill their cell (⌨ there would wrap to a row alone). -->
+    <!-- ❔ Help beside 🚪 Exit: in the side column, Undo, Redo and Sound fill their cell (Help there would wrap to a row
+         alone). -->
     <span class="group g-exit">
-      {#if onkeys}<button class="ghost" onclick={onkeys} title="Keyboard shortcuts (?)" aria-label="Keyboard shortcuts">⌨</button>{/if}
+      {#if onkeys}<button class="ghost" onclick={onkeys} title="Every key for this round (?), 📖 How to host and 💡 the tips">❔ <span class="txt">Help</span></button>{/if}
       <button class="ghost exit" onclick={() => (askExit = true)}>🚪 Exit</button>
     </span>
   </div>
@@ -1854,7 +1855,7 @@
       display: inline;
     }
   }
-  /* "Pick who answered" takes only the room the row has left (its keys are in the tooltips and ⌨): on a crowded row it's
+  /* "Pick who answered" takes only the room the row has left (its keys are in the tooltips and ❔ Help): on a crowded row it's
      cut short (…), or not there, instead of wrapping the row, which would shrink the stage. */
   .award .pick-hint {
     flex: 1 1 0;
@@ -1908,7 +1909,19 @@
       padding-right: 9px;
     }
   }
-  /* Narrower still under the stage (a laptop zoomed in): ↶ ↷ 🔊 📜 👥 ⚖ 🙈 📺 as their signs only (still read out by
+  /* Under the stage up to 1040px wide, ❔ Help as its sign (still read out by name), before the others: its word would
+     wrap the bar to two lines (with ▶ Uncover and 📺 Audience ●, up to 1008px), where it fitted on one before. */
+  @media (max-width: 1040px) {
+    .panel:not(.side) > .fixed .g-exit .txt {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      overflow: hidden;
+      clip-path: inset(50%);
+      white-space: nowrap;
+    }
+  }
+  /* Narrower still under the stage (a laptop zoomed in): ↶ ↷ 🔊 📜 👥 ⚖ 🙈 📺 ❔ as their signs only (still read out by
      name, their tooltips say what they do), so the fixed bar stays one line, 🚪 Exit at its right, and the stage keeps
      its height. */
   @media (max-width: 940px) {

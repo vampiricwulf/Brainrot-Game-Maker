@@ -383,6 +383,16 @@ try {
   await page.getByLabel('Filter shortcuts').fill('deal in focus');
   await sheet.locator('tr', { hasText: 'deal in focus' }).first().waitFor();
   assert((await sheet.locator('tr').count()) === 3, 'Enter, F2 and Delete say they go into, rename and delete a deal in focus too');
+  // One window for both: a key of the game's found from the editor's part is a click away, and ? types in the filter.
+  await page.getByLabel('Filter shortcuts').fill('partner clue');
+  await sheet.getByText('Nothing matches “partner clue” here.').waitFor();
+  await sheet.getByRole('button', { name: /^\d+ in During the game ▸$/ }).click();
+  await sheet.locator('tr', { hasText: 'W on a partner clue' }).waitFor();
+  assert((await sheet.getByRole('button', { name: 'During the game', exact: true }).getAttribute('aria-pressed')) === 'true', 'a filter with no match in the Editor part offers the During the game part’s, a click away');
+  await page.getByLabel('Filter shortcuts').press('End');
+  await page.keyboard.press('?');
+  assert((await page.getByLabel('Filter shortcuts').inputValue()) === 'partner clue?' && (await sheet.count()) === 1, '? typed in the filter is a question mark');
+  await sheet.getByRole('button', { name: 'Editor', exact: true }).click();
   await page.getByLabel('Filter shortcuts').press('Escape');
   assert((await page.getByRole('dialog', { name: 'Editor keyboard shortcuts' }).count()) === 1, 'Esc in the filter clears it first');
   await page.keyboard.press('Escape');

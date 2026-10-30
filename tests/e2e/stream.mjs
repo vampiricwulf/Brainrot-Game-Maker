@@ -1028,7 +1028,7 @@ try {
   assert(stillCursor === 'none' && movedCursor === 'pointer', `one window with the controls hidden: no cursor over the stage while the mouse is still (${stillCursor}), until it moves (${movedCursor})`);
   await page.keyboard.press('?');
   // (It moves there once the host panel's box is measured, a frame after it opens.)
-  await page.locator('.backdrop.in-panel [role="dialog"]').waitFor({ timeout: 3000 }).catch(() => {});
+  await page.locator('.in-panel [role="dialog"]').waitFor({ timeout: 3000 }).catch(() => {});
   const keys = await page.getByRole('dialog', { name: 'Keyboard shortcuts' }).boundingBox();
   const stage = await page.locator('.stage-box').boundingBox();
   assert(keys.y >= stage.y + stage.height - 1, 'the keyboard shortcuts show under the stage, not over it');

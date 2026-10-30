@@ -5,7 +5,9 @@
 // fixed bar is a grid with 🚪 Exit in its bottom-right cell. A Daily Double with three question slides keeps Next slide ▶
 // the main button until its last slide (viewers see where it is: ● ● ○), a board game's own roll doesn't take the main
 // button from the round, a confirmation leaves one main button (its own), ✔ / ✘ hand the focus to the main button, and
-// on a narrow window the fixed bar stays on one line (🚪 Exit at the right). With six players in a single window (at
+// on a narrow window the fixed bar stays on one line (🚪 Exit at the right; ❔ Help as its sign up to 1040px, its word
+// above, which opens the keys on During the game, where 💡 Show all tips again brings 🙈 Hide's note back). With six
+// players in a single window (at
 // 1366×768, 1200×720, 1024×768 and 960×900, and a long Final name) the stage keeps one size from the board to a clue and
 // with a player picked (on a $1,000 clue too: a long name is cut short on ＋ Award and − Deduct, never the amount), and
 // through a 🤝 partner clue from PARTNER UP! (the wheel, 📤 Distribute) to ✔ Got it, its ✔ / ✘ in sight (the wheel's own
@@ -99,6 +101,26 @@ try {
   await page.keyboard.press('h');
   await page.getByRole('button', { name: '🙈 Hide', exact: true }).waitFor();
   assert(true, '🙈 Hide says “Press H to bring the controls back” the first time, and H does');
+  // ❔ Help at the bar's end: the keys window, on During the game, its foot with the guide and 💡 Show all tips again
+  // (🙈 Hide's note shows again: its once-only mark is gone, and set again by the next 🙈 Hide).
+  await page.locator('.panel .fixed').getByRole('button', { name: '❔ Help' }).click();
+  const help = page.getByRole('dialog', { name: 'Keyboard shortcuts' });
+  await help.waitFor();
+  assert(
+    (await help.getByRole('button', { name: 'During the game', exact: true }).getAttribute('aria-pressed')) === 'true' && (await help.getByRole('button', { name: '📖 How to host ↗' }).count()) === 1,
+    '❔ Help opens the keys window on During the game, 📖 How to host ↗ at its foot',
+  );
+  const hideSeen = () => page.evaluate(() => localStorage.getItem('jb.hideHintSeen'));
+  const seenBefore = await hideSeen();
+  await help.getByRole('button', { name: '💡 Show all tips again' }).click();
+  await help.getByRole('button', { name: '✓ Tips will show again' }).waitFor();
+  const seenAfter = await hideSeen();
+  await help.getByRole('button', { name: 'Done' }).click();
+  await help.waitFor({ state: 'detached' });
+  await page.getByRole('button', { name: '🙈 Hide', exact: true }).click();
+  await page.keyboard.press('h');
+  await page.getByRole('button', { name: '🙈 Hide', exact: true }).waitFor();
+  assert(seenBefore === '1' && seenAfter === null && (await hideSeen()) === '1', '💡 Show all tips again: the next 🙈 Hide says how to get the controls back again');
 
   const btn =(name) => page.locator('.panel .fixed').getByRole('button', { name, exact: true });
   const box = async (l) => {
@@ -459,6 +481,14 @@ try {
     assert(Math.abs(u.y - e.y) < 2 && f.x + f.width - (e.x + e.width) < 2, `${where}: ↶ Undo and 🚪 Exit on one line, Exit at the right`);
   };
   await oneLine('on the board');
+  // ❔ Help has its word above 1040px wide, and is its sign only up to there, so the bar keeps one line where it had one.
+  const helpW = async () => Math.round((await p3.locator('.panel .fixed').getByRole('button', { name: '❔ Help' }).boundingBox()).width);
+  const at1024 = await helpW();
+  await p3.setViewportSize({ width: 1041, height: 600 });
+  await oneLine('at 1041px wide, on the board');
+  const at1041 = await helpW();
+  assert(at1024 < 45 && at1041 > 55, `❔ Help is its sign only at 1024px wide (${at1024}px), with its word at 1041px (${at1041}px)`);
+  await p3.setViewportSize({ width: 1024, height: 600 });
   // Narrower (a 1366×768 or 1280×720 laptop at 150% zoom): the bar's buttons as their signs, still one line.
   for (const width of [911, 853]) {
     await p3.setViewportSize({ width, height: 600 });

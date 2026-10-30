@@ -53,6 +53,7 @@
   import { keyedRoundColors, keyedThemeColors, otherStageKey, roundStageColors, STAGE_KEYS } from '../lib/theme';
   import ToolLauncher from './host/ToolLauncher.svelte';
   import KeysHelp from './KeysHelp.svelte';
+  import { BEFORE, KEYS_FIRST } from './hostkeys';
   import Stage from '../lib/Stage.svelte';
   import PlayerList from '../editor/PlayerList.svelte';
   import GameRules from './GameRules.svelte';
@@ -190,9 +191,8 @@
   let showRules = $state(false);
   let hideControls = $state(false);
   let showKeys = $state(false);
-  /** The ⌨ list opens on the keys of what's being played (a Jeopardy board's come right after Everywhere and Tools). */
-  const KEYS_FIRST: Partial<Record<string, string>> = { rpg: 'RPG', boardgame: 'Board game', final: 'Final', tiebreaker: 'Tiebreaker clue', slides: 'Slides round' };
-  const keysFirst = $derived(app.pregame ? 'Before the game' : KEYS_FIRST[session.phase]);
+  /** The keys window opens on the keys of what's being played (the pre-game screen's own there). */
+  const keysFirst = $derived(app.pregame ? BEFORE : KEYS_FIRST[session.phase]);
   /** The streaming-sound help (Test sound, output device, Discord/OBS steps). */
   let showSound = $state(false);
   /** P was pressed: the next 1–9 sets the picker. */
@@ -283,7 +283,7 @@
   /** The player whose score the host panel is asking for (✎ Set the score… in their menu). */
   let editingScore = $state<string | null>(null);
   /**
-   * Single window: the host panel's box while the ⌨ keys or 👥 Players are open. They show in there, never over the stage
+   * Single window: the host panel's box while the keys (❔ Help) or 👥 Players are open. They show in there, never over the stage
    * viewers see (the panel grows for them, as for a tool menu).
    */
   let panelBox = $state<{ top: number; left: number; width: number; height: number } | null>(null);
