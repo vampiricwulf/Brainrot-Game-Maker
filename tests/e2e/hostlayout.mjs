@@ -16,12 +16,14 @@
 // the board's tools row, in both its board rounds (the second's ▶ is a long Final name, cut short and named in full),
 // from 960 to 1366px wide; at 1920 they keep their words. At 1366 and 1024px wide the crowded game's stage keeps the
 // board's size through a Daily Double's splash and slides, a clue with two sounds on its slide and one with two slides,
-// and at 1110 and 1184px through the two-slide clue (◀ Slide and ▦ Done ▶ board in words, its hint cut short).
+// and at 1110 and 1184px through the two-slide clue (◀ Slide and ▦ Done ▶ board in words, its hint cut short). With 4
+// and 8 players at 1280×720 and 1366×768, a 🤝 partner clue's box holds each step the main button does, in sight (its
+// foot, 👁 Reveal answer and ▦ Done ▶ board too), the stage one size from PARTNER UP! to ✔ Got it.
 import { chromium } from 'playwright-core';
 import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { confirmStrip, mainButton, mainLabel, noSelection, openGameFile, packGame, selectedWords } from './helpers.mjs';
+import { confirmStrip, mainButton, mainLabel, noSelection, openGameFile, packGame, selectedWords, situationHasMain, stepButton } from './helpers.mjs';
 
 const file = resolve(process.env.APP_FILE || 'dist/index.html');
 if (!existsSync(file)) throw new Error('Run `npm run build` first');
@@ -778,6 +780,87 @@ try {
       assert(true, 'pressed: the keys are on the box’s first button, and the chip goes once the box is in sight');
       const notInSight = await outOfSight('[data-final-cards] > .row, .fj > .row:last-child');
       assert(notInSight.length === 0, `${w}×${h}: gone to, the Final's 🤫 cards and the step's sticky row are in sight${notInSight.length ? ` (not: ${notInSight.join(', ')})` : ''}`);
+    }
+    await ctx.close();
+  }
+  // The 🤝 box on a laptop, one window, with 4 and 8 players, at 1280×720 and 1366×768: each step the main button does is
+  // in the box too and in sight there (🎡 Spin for a partner in front of the names, ▶ Show question, ⏱ Start the clock),
+  // the box's foot (✔ Got it / ✘ Missed) and 👁 Reveal answer / ▦ Done ▶ board stay in sight, and the stage keeps one
+  // size from PARTNER UP! to ✔ Got it. (With 8 at 1280×720, the wheel spun from the box's own button.)
+  console.log('The 🤝 box on a laptop, 4 and 8 players:');
+  for (const count of [4, 8]) {
+    const boxFile = resolve(`test-results/hostlayout-box${count}.json`);
+    const eight = [...crowd, 'Gwendolyn', 'Hal'];
+    // (Its Memes and Skibidi Lore $400 are partner clues, a card for each part.)
+    const boxClue = (q, k) => ({ ...q, id: `c_box${k}`, type: 'partner', partner: partnerRules, timerSeconds: 45, cards: ['giver', 'guesser'].map((to, j) => ({ id: `pb${k}${j}`, to, ...slide(`pbs${k}${j}`, `Card ${j + 1}`) })) });
+    const boxBoard = { ...board, id: 'r_box', categories: board.categories.map((c, ci) => ({ ...c, clues: c.clues.map((q, ri) => (ri === 1 && ci < 2 ? boxClue(q, ci) : q)) })) };
+    writeFileSync(boxFile, JSON.stringify({ ...game, id: `g_layout_box${count}`, players: eight.slice(0, count).map((name, i) => ({ id: `p${i + 1}`, name, color: [...crowdColors, '#bfef45', '#f032e6'][i], startScore: 0 })), rounds: [boxBoard] }));
+    const ctx = await browser.newContext({ viewport: { width: 1280, height: 720 } });
+    const pb = await ctx.newPage();
+    pb.on('pageerror', (e) => errors.push(e.message));
+    await pb.goto(pathToFileURL(file).href);
+    await openGameFile(pb, boxFile);
+    await pb.getByText(/^Opened “/).waitFor();
+    await pb.getByRole('button', { name: '▶ Play' }).click();
+    await pb.getByRole('button', { name: 'Start game ▶' }).click();
+    await pb.getByRole('button', { name: 'Skip intro' }).click();
+    const box = pb.locator('.panel [data-partner-panel]');
+    const stageH = async () => Math.round((await pb.locator('.stage-box').boundingBox()).height);
+    const hidden = (sel) =>
+      pb.evaluate(
+        (sel) =>
+          [...document.querySelectorAll(sel)]
+            .filter((el) => {
+              const r = el.getBoundingClientRect();
+              return !el.contains(document.elementFromPoint(r.x + r.width / 2, r.y + r.height / 2));
+            })
+            .map((el) => el.textContent.trim()),
+        sel,
+      );
+    for (const [w, h, id] of [
+      [1280, 720, 'c_box0'],
+      [1366, 768, 'c_box1'],
+    ]) {
+      const at = `${count} players at ${w}×${h}`;
+      await pb.setViewportSize({ width: w, height: h });
+      await pb.locator(`.stage-box .tile[data-clue="${id}"]`).click();
+      await pb.locator('.stage-box [data-partner-up]').waitFor();
+      await pb.keyboard.press('1');
+      await box.getByText('Annabelle picked it.').waitFor();
+      const sizes = [await stageH()];
+      assert((await situationHasMain(pb, box)) === '', `${at}: PARTNER UP!'s 🎡 Spin for a partner is in the box, in sight (${await situationHasMain(pb, box)})`);
+      if (count === 8 && w === 1280) {
+        await stepButton(box, '🎡 Spin for a partner').click();
+        await box.locator('button.chip[aria-pressed="true"]').waitFor({ timeout: 10000 });
+        await pb.keyboard.press('Escape');
+        await pb.locator('.stage-box .wheel').waitFor({ state: 'detached' });
+      } else await pb.keyboard.press('2');
+      await box.locator('[data-partner-foot]').waitFor();
+      sizes.push(await stageH());
+      assert((await situationHasMain(pb, box)) === '', `${at}: paired, ▶ Show question is at the box's foot, in sight`);
+      await pb.keyboard.press('Enter');
+      await pb.locator('.stage-box [data-partner-badge]').waitFor();
+      await box.locator('[data-card="2"]').waitFor();
+      sizes.push(await stageH());
+      const out = await hidden('.panel [data-partner-foot] button, .panel [data-next], .panel [data-flow="reveal"], .panel [data-flow="done"], .panel [data-partner-next]');
+      assert(
+        (await situationHasMain(pb, box)) === '' && out.length === 0,
+        `${at}: handing out the cards, ⏱ Start the clock, ✔ Got it and ✘ Missed (the box's foot), its first line, the main button, 👁 Reveal answer and ▦ Done ▶ board are in sight${out.length ? ` (not: ${out.join(', ')})` : ''}`,
+      );
+      await pb.waitForTimeout(1100);
+      await pb.keyboard.press('Enter');
+      await pb.locator('.stage-box .timer').waitFor();
+      sizes.push(await stageH());
+      const live = await hidden('.panel [data-partner-foot] button, .panel [data-next], .panel [data-flow="done"]');
+      assert(live.length === 0, `${at}: the clock running, ✔ Got it, ✘ Missed, 👁 Reveal answer and ▦ Done ▶ board are in sight${live.length ? ` (not: ${live.join(', ')})` : ''}`);
+      await box.getByRole('button', { name: /✔ Got it/ }).click();
+      await box.locator('[data-judged]').waitFor();
+      sizes.push(await stageH());
+      assert(sizes.every((x) => x === sizes[0]), `${at}: the stage keeps one size from PARTNER UP! to ✔ Got it (${sizes.join(' / ')})`);
+      await pb.keyboard.press('r');
+      await pb.locator('.stage-box [data-slide="answer"]').waitFor();
+      await pb.keyboard.press('Escape');
+      await pb.locator('.stage-box .board').waitFor();
     }
     await ctx.close();
   }

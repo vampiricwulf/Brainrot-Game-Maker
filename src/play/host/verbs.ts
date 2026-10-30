@@ -60,7 +60,15 @@ export const VERBS = {
   // ---------- A 🤝 partner clue ----------
   partnerSpin: { label: '🎡 Spin for a partner', key: 'W', title: 'W, Enter or N: the wheel spins over the other players' },
   describerSpin: { label: '🎡 Spin for the describer', key: 'W' },
+  /** The partner was the only one there could be: the wheel can spin all the same. */
+  spinAnyway: { label: '🎡 Spin anyway', key: 'W' },
+  /** Who picked it, another player (a menu). */
+  pickerChange: { label: 'change ▾', title: 'Someone else picked it (click: the number keys choose the partner)' },
+  /** The partner, another player (a menu), once the question is up. */
+  partnerChange: { label: 'change partner ▾', title: 'Choose another partner (the cards that follow a part go with it)' },
   partnerShow: { label: '▶ Show question', key: '⏎', title: 'Enter or N: the question goes on screen (nothing is sent to anyone)' },
+  /** The step after the question, its box's heading: who gets each card. */
+  handOut: { label: '📤 Distribute' },
   sendAndStart: { label: '📤 Send and start', key: '⏎', title: 'Enter or N: the cards not sent yet go to their phones, and the countdown starts' },
   startClock: { label: '⏱ Start the clock', key: '⏎' },
   gotIt: { label: '✔ Got it', key: '⏎' },

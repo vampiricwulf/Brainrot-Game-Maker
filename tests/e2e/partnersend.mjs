@@ -2,7 +2,8 @@
 // the built app hosts a game (opened from a pack, with its pictures and video) against the real buzzer room (buzzer/
 // under `wrangler dev`, local), with four phones on the real phone page.
 // Nothing of a card reaches the room (its state, what it saves to disk), a phone or an upload until the host sends it:
-// from the tile opening through the question and a card given to someone else. 📤 Send and start gives the describer
+// from the tile opening through the question, a click on the 🤝 box's 📤 Send and start within a second of the question,
+// and a card given to someone else. The box's 📤 Send and start (a moment later) gives the describer
 // the card behind Tap to see (its words at once, then its picture shrunk on this computer, its video file and its
 // YouTube clip), and the card given to someone else to them only; the guesser's and the other phones grey out with who
 // plays which part. A host reload mid-upload finishes the uploads of the cards that were sent, and never touches a card
@@ -16,7 +17,7 @@ import { chromium } from 'playwright-core';
 import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { confirmStrip, mainButton, mainLabel, openGameFile, packGame, png, recordSeen, roomStored, shownOf, startBuzzer, startRoomOn, stored } from './helpers.mjs';
+import { confirmStrip, mainButton, mainLabel, openGameFile, packGame, png, recordSeen, roomStored, shownOf, situationHasMain, startBuzzer, startRoomOn, stepButton, stored } from './helpers.mjs';
 
 const file = resolve(process.env.APP_FILE || 'dist/index.html');
 if (!existsSync(file)) throw new Error('Run `npm run build` first');
@@ -333,9 +334,17 @@ try {
   assert((await says(ann, '🤝 You two play this one!')) && (await says(dan, '🤝 Ann + Bob')), 'paired: Ann and Bob “🤝 You two play this one!”, the others “🤝 Ann + Bob”');
   await nothingSent('paired');
   await offStream(aud, 'the audience window', 'PARTNER UP!');
-  await mainButton(host).click();
+  // ▶ Show question, then the 🤝 box's 📤 Send and start within a second of it: nothing goes, and it says why. (Both
+  // clicks sent from the page, so a slow machine can't put a second between them.)
+  await host.evaluate(async () => {
+    document.querySelector('.panel [data-next]').click();
+    await new Promise((r) => requestAnimationFrame(() => r()));
+    document.querySelector('.panel [data-partner-foot] [data-step]').click();
+  });
   await host.locator('.stage-box [data-partner-badge]').waitFor();
   assert((await mainLabel(host)) === '📤 Send and start', 'the question up: the main button is 📤 Send and start');
+  await host.locator('.toast', { hasText: 'The question just went up: click again to send the cards' }).waitFor();
+  assert((await situationHasMain(host, panel)) === '', 'a click on the box’s own 📤 Send and start (in sight at its foot) within a second of the question sends nothing, and says so');
   for (const [p, name] of [[bob, 'Bob, the describer'], [dan, 'Dan']]) assert(await says(p, '🤝 Bob describes → Ann guesses'), `${name}: “🤝 Bob describes → Ann guesses”`);
   assert((await says(ann, '🎯 You’re guessing!')) && (await small(ann)) === 'Bob is describing: say it out loud', 'Ann, the guesser: “🎯 You’re guessing!” · “Bob is describing: say it out loud”');
   assert((await chip('Card 2 to Ann').getAttribute('aria-pressed')) === 'true', 'Card 2 starts with Ann (the guesser)');
@@ -375,7 +384,8 @@ try {
   const held = [];
   let holding = true;
   await host.route('**/api/rooms/*/files', (r) => (holding && r.request().method() === 'POST' ? void held.push(r) : r.continue()));
-  await mainButton(host).click();
+  // (The 🤝 box's own 📤 Send and start, well over a second after the question: it sends.)
+  await stepButton(panel, '📤 Send and start').click();
   await host.locator('.stage-box .timer').waitFor();
   assert(await until(() => sendOf('c1').length === 1 && sendOf('c2').length === 1), 'sent: the room’s state holds card 1 and card 2');
   const s1 = sendOf('c1')[0];

@@ -455,7 +455,14 @@ The mode isn't saved with the game: it's dual while the audience window is open.
    - *Partner clue* (🤝, PARTNER-CLUES-SPEC.md §6): a PARTNER UP! splash with the picker, a wheel of the other players
      (`W`) or the host's choice (`1–9`) for their partner, then the question with who describes and who guesses, the
      📤 list of who gets each 🤫 card (copied to them with 📋), ⏱ Start the clock, and ✔ Got it / ✘ Missed, which
-     scores both in one step with the clue's points (the guesser picks next). Nobody buzzes. With **steal on a miss**
+     scores both in one step with the clue's points (the guesser picks next). The 🤝 box holds each step the main button
+     does, beside the choices it's an alternative to: its first line says what's next ("Next: spin for a partner, or
+     choose one"), **🎡 Spin for a partner** comes first in the partner row, in front of the players to choose from by
+     hand (**↻ Spin again** in its place after; a team's **🎡 Spin for the describer** likewise, in front of its
+     people), and its foot, in view as the rest scrolls, has **▶ Show question**, then **📤 Send and start** (or ⏱ Start
+     the clock) with ✔ Got it / ✘ Missed beside it, quiet until the clock runs. A click there gives the keys back to the
+     main button; the rest of a double-click that redrew the box is dropped, and its 📤 Send and start waits a second
+     after the question, as Enter does. Nobody buzzes. With **steal on a miss**
      (⚖ Game rules' `partnerSteal`, or the clue's own `PartnerRules.steal`), ✘ Missed lets everyone else answer it as
      any clue for the tile's value: the buzzers open for them with the two locked out, or the host picks who steals
      (`1–9`), then Enter / Shift+Enter. Each steal is its own undo step, and undoing the miss closes the steal. A click

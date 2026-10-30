@@ -186,6 +186,24 @@ export const stepButton = (box, name) => {
 export const mainLabel = (page) =>
   mainButton(page).evaluate((b) => [...b.childNodes].filter((n) => n.nodeName !== 'KBD').map((n) => n.textContent).join('').trim());
 
+/**
+ * The moment's box holds the main button's step too (the plan's rule 1): one step button in `box` says what the main
+ * button says, and it's in sight there, not scrolled away inside the box nor under its foot (what's at its middle is
+ * it). Resolves to '' when it holds, else what's wrong, for the assertion's message.
+ */
+export async function situationHasMain(page, box) {
+  const label = await mainLabel(page);
+  const step = stepButton(box, label);
+  const n = await step.count();
+  if (n !== 1) return `${n} step buttons say “${label}” in the box`;
+  const seen = await step.evaluate((el) => {
+    const r = el.getBoundingClientRect();
+    const at = document.elementFromPoint(r.x + r.width / 2, r.y + r.height / 2);
+    return !!at && el.contains(at);
+  });
+  return seen ? '' : `the box's “${label}” is out of sight`;
+}
+
 /** The confirmation strip above the fixed bar (Leave this game?, N clues left · go on?…). */
 export const confirmStrip = (page) => page.locator('.panel .confirm');
 

@@ -19,7 +19,7 @@ import { chromium } from 'playwright-core';
 import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { addClassicRounds, mainButton, mainLabel, openGameFile, playWithPlayers, png } from './helpers.mjs';
+import { addClassicRounds, mainButton, mainLabel, openGameFile, playWithPlayers, png, situationHasMain } from './helpers.mjs';
 
 const file = resolve(process.env.APP_FILE || 'dist/index.html');
 if (!existsSync(file)) throw new Error('Run `npm run build` first');
@@ -588,7 +588,10 @@ try {
     await panel.getByText('Ann picked it.').waitFor();
   };
   await resume();
-  assert((await mainLabel(page)) === '🎡 Spin for a partner' && (await stage('[data-partner-up]').count()) === 1, 'a reload before the spin: PARTNER UP!, Ann picked it, 🎡 Spin for a partner next');
+  assert(
+    (await mainLabel(page)) === '🎡 Spin for a partner' && (await stage('[data-partner-up]').count()) === 1 && (await situationHasMain(page, panel)) === '',
+    'a reload before the spin: PARTNER UP!, Ann picked it, 🎡 Spin for a partner next (in the 🤝 box too)',
+  );
   await never(host, CARD_ONLY, 'reloaded before the spin');
   await page.keyboard.press('w');
   await stage('.wheel').waitFor();
@@ -601,7 +604,10 @@ try {
   await never(host, CARD_ONLY, 'paired');
 
   await resume();
-  assert((await pressed('Bob is the partner')) === 'true' && (await mainLabel(page)) === '▶ Show question' && (await stage('[data-partner-up]').count()) === 1, 'a reload once paired: PARTNER UP!, Ann and Bob, ▶ Show question next');
+  assert(
+    (await pressed('Bob is the partner')) === 'true' && (await mainLabel(page)) === '▶ Show question' && (await stage('[data-partner-up]').count()) === 1 && (await situationHasMain(page, panel)) === '',
+    'a reload once paired: PARTNER UP!, Ann and Bob, ▶ Show question next (at the box’s foot too)',
+  );
   await never(host, CARD_ONLY, 'reloaded, paired');
 
   // (Back to back: the guard is the second after the question goes up.)
@@ -610,7 +616,7 @@ try {
   await stage('[data-partner-badge]').waitFor();
   const shownAt = Date.now();
   assert(await toast('The question just went up: press Enter again to start the clock'), 'Enter shows the question; Enter again at once doesn’t start the clock');
-  assert((await mainLabel(page)) === '⏱ Start the clock' && (await stage('.timer').count()) === 0, 'no countdown runs');
+  assert((await mainLabel(page)) === '⏱ Start the clock' && (await stage('.timer').count()) === 0 && (await situationHasMain(page, panel)) === '', 'no countdown runs (⏱ Start the clock next, at the box’s foot too)');
   const row = panel.locator('[data-card="1"]');
   assert((await flat(row)).includes('Card 1 · 1 line of words, 1 picture'), `the list counts what’s on the card, and never says it (${await flat(row)})`);
   assert((await pressed('Card 1 to Bob')) === 'true', 'Card 1 goes to the describer, Bob');

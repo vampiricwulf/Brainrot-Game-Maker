@@ -500,13 +500,17 @@ When the wheel lands (or the host closes it early), Bob is Ann's partner.
 - **Host:**
 
   ```
-  🤝 Ann + Bob (the wheel)        Partner: [Ann ⊘] [2 Bob ✓] [3 Cat] [4 Dan]    ↻ Spin again (W)
+  🤝 Partner clue!  Ann picked it.  [change ▾]  Next: show the question
+  Partner: [↻ Spin again  W] or choose: [Ann ⊘] [2 Bob ✓] [3 Cat] [4 Dan]   ☐ Ann can be on the wheel (alone if it lands on them)
   🗣 Bob describes · 🎯 Ann guesses                                           ⇄ Swap
   🤫 1 card: Card 1 → Bob (describer) · 📱 Bob: phone here
-                                                    NEXT ▸ [▶ Show question  ⏎]
+  [▶ Show question  ⏎]  the cards come next                 NEXT ▸ [▶ Show question  ⏎]
   ```
 
   - A chip overrules the wheel at once (`how: 'host'`). The roll log keeps the spin; the host's choice is not a roll.
+  - **↻ Spin again** takes 🎡 Spin for a partner's place, in front of the chips (🎡 Spin anyway when the partner was the
+    only one there could be). **▶ Show question** is at the box's foot, which stays in view as the rows above it
+    scroll, and is the main button too: the box holds every step, beside the choices it's an alternative to.
   - **⇄ Swap** turns the parts round: Ann describes and Bob guesses. The cards that follow a part ("the describer")
     and the points follow with it. It is in P1, because the parts decide the points.
   - **The cards line** gives how many cards there are and who each one is set to go to. It never says what's on them:
@@ -556,15 +560,20 @@ double-Enter guard (§6.5, §6.6). A key repeat (`e.repeat`) never shows the que
 The 📤 Distribute list is the partner panel while the question is up and the cards are being handed out:
 
 ```
-📤 Distribute        🗣 Bob describes · 🎯 Ann guesses                                        ⇄ Swap
+📤 Distribute  Next: send the cards and start the clock   🗣 Bob describes · 🎯 Ann guesses      ⇄ Swap
 Card 1 · 1 line of words, 1 picture
    → [1 Ann] [2 Bob ✓ describer] [3 Cat] [4 Dan]  [Everyone else] [Nobody]     [📤 Send] [📋 Copy words] [📋 Copy picture]
 Card 2 · 1 line of words
    → nobody yet                                                               [📤 Send]
 🖼 1 picture goes up when you send its card   [⇡ Get it ready now]
-[✔ Got it]  Bob +$400 · Ann +$200        [✘ Missed]  Ann −$200
-                                                        NEXT ▸ [📤 Send and start  ⏎]
+[📤 Send and start  ⏎]  [✔ Got it]  Bob +$400 · Ann +$200   [✘ Missed]  Ann −$200   NEXT ▸ [📤 Send and start  ⏎]
 ```
+
+The last row is the box's foot, in view as the list scrolls: the step the main button does too (📤 Send and start, or
+⏱ Start the clock when no card goes to a phone), then ✔ Got it / ✘ Missed, quiet until the clock runs. The first line
+says what's next ("Next: copy each card to its player (📋 Copy words), then ⏱ Start the clock" when the host copies
+them). A click on that 📤 Send and start within a second of the question going up sends nothing and says why, as Enter
+does; the rest of a double-click on ▶ Show question, landing on what took its place, is dropped.
 
 - **Each card starts with its default recipients,** worked out from the parts now: "the describer" is Bob, "everyone
   else" is Cat and Dan. A card set to nobody reads "→ nobody yet", and nothing sends it until the host picks someone.
@@ -682,8 +691,8 @@ in `ORDER` (slots.svelte.ts:35-36). While the wheel is up, the wheel's own Spin!
 Partner up:
 
 ```
-🤝 Partner clue!  Ann picked it.                                [change: Ann  Bob  Cat  Dan]
-Partner: spin the wheel, or choose →  [Ann ⊘] [2 Bob] [3 Cat] [4 Dan]     ☐ Ann can be on the wheel
+🤝 Partner clue!  Ann picked it.  [change ▾]  Next: spin for a partner, or choose one
+Partner: [🎡 Spin for a partner  W] or choose: [Ann ⊘] [2 Bob] [3 Cat] [4 Dan]   ☐ Ann can be on the wheel (alone if it lands on them)
 🗣 The partner describes · 🎯 Ann guesses                                    ⇄ Swap
 🤫 1 card: Card 1 → the describer          🖼 1 picture goes up when you send it  [⇡ Get it ready now]
                                                            NEXT ▸ [🎡 Spin for a partner  W]
@@ -818,7 +827,8 @@ So:
 ### 7.4 Overruling
 
 - A chip or 1–9 sets the partner (`how: 'host'`) at any time before Show question, except while a spin is animating.
-- ↻ Spin again (W) spins again. The new landing replaces any earlier choice. Every spin stays in the roll log.
+- ↻ Spin again (W), in 🎡 Spin for a partner's place in front of the chips, spins again. The new landing replaces any
+  earlier choice. Every spin stays in the roll log. While the wheel turns that button is greyed ("Still spinning").
 - The picker's chip is disabled unless they're allowed on the wheel. Pressing their number says "Ann picked it: tick
   'Ann can be on the wheel' to make it Solo".
 - "change" on the picker row changes the picker (click only: 1–9 choose the partner). If the new picker was the

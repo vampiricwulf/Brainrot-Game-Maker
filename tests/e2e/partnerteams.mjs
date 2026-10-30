@@ -4,14 +4,15 @@
 // other: the guessing team's phones and the others' grey out with who plays which part. Someone the host moved onto the
 // team before the send gets it; someone who joins the team mid-clue, or whom the host moves onto it afterwards, gets
 // nothing of it (nor its picture) and is told they missed one, until ↻ Send again. The team's ✓ seen. Then one person
-// describes to their own team (§10.2): ☑ Partner from the same team, the member wheel over the team's people, the card
+// describes to their own team (§10.2): ☑ Partner from the same team, the member wheel over the team's people (the 🤝
+// box's 🎡 Spin for the describer, in front of them, then ↻ Spin again in its place), the card
 // to the describer only and a line for the rest of the team, one award to the team. All through, the host page holds no
 // card's words and no file name: not in its text, labels, titles or announcements.
 import { chromium } from 'playwright-core';
 import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { mainButton, mainLabel, openGameFile, packGame, png, recordSeen, shownOf, startBuzzer, startRoomOn } from './helpers.mjs';
+import { mainButton, mainLabel, openGameFile, packGame, png, recordSeen, shownOf, situationHasMain, startBuzzer, startRoomOn, stepButton } from './helpers.mjs';
 
 const file = resolve(process.env.APP_FILE || 'dist/index.html');
 if (!existsSync(file)) throw new Error('Run `npm run build` first');
@@ -198,7 +199,7 @@ try {
   await offStream('PARTNER UP!');
   await mainButton(host).click();
   await host.locator('.stage-box [data-partner-badge]').waitFor();
-  assert((await mainLabel(host)) === '📤 Send and start', 'the question up: 📤 Send and start');
+  assert((await mainLabel(host)) === '📤 Send and start' && (await situationHasMain(host, panel)) === '', 'the question up: 📤 Send and start, in the box’s foot too');
   assert(
     (await panel.getByRole('button', { name: 'Card 1 to Green', exact: true }).getAttribute('aria-pressed')) === 'true' && (await panel.getByRole('button', { name: 'Card 2 to Blue', exact: true }).getAttribute('aria-pressed')) === 'true',
     'card 1 goes to Green (the describing team), card 2 to Blue (everyone else)',
@@ -287,17 +288,24 @@ try {
   await panel.getByText('Green picked it.').waitFor();
   await panel.getByLabel('Partner from the same team').check();
   assert((await mainLabel(host)) === '🎡 Spin for the describer', 'Green plays it, its own team: the main button is 🎡 Spin for the describer');
+  const sameRow = panel.locator('[data-partner-same]');
+  const sameButtons = await sameRow.locator('button').evaluateAll((bs) => bs.map((b) => (b.matches('[data-step]') ? 'step' : 'chip')));
+  assert(
+    (await situationHasMain(host, panel)) === '' && (await textOf(sameRow)).includes('Who describes:') && sameButtons[0] === 'step' && sameButtons.length === 5,
+    `and the 🤝 box's “Who describes:” row has it too, in sight, in front of Green's four people (${sameButtons.join(', ')})`,
+  );
   // (Not “Solo!”: Green has four people, one of them to describe.)
   const pairLine = await textOf(host.locator('.stage-box [data-partner-up] .pu-and'));
   const tag = await textOf(host.locator('.panel [data-partner-tag]'));
   assert(pairLine === '· its own team!' && tag === '🤝 Green · its own team', `PARTNER UP! says “Green · its own team!”, as the host's tag does (“${pairLine}”, “${tag}”)`);
   assert((await textOf(host.locator('.panel .status'))).includes('Partner clue: spin for the describer'), 'and the status row says so too (not to show the question yet)');
-  await mainButton(host).click();
+  await stepButton(panel, '🎡 Spin for the describer').click();
   const wheelName = host.locator('.stage-box').getByText('Describer for Green');
   await wheelName.first().waitFor();
   assert(true, 'the member wheel is up: “Describer for Green”');
   const picked = panel.locator('[data-partner-same] button[aria-pressed="true"]');
   assert(await until(async () => (await picked.count()) === 1, 20000), 'it lands: one of Green’s people is the describer');
+  assert((await stepButton(sameRow, '↻ Spin again').count()) === 1, 'and the box’s button in the same place reads ↻ Spin again');
   const describerName = (await picked.innerText()).replace(/\s*✓.*$/s, '').trim();
   assert(['Gus', 'Bo', 'Gwen', 'Bea'].includes(describerName), `the describer is someone on Green (${describerName})`);
   assert(!(last()?.seats ?? []).some((x) => x.name === describerName) && !JSON.stringify(last()?.status ?? {}).includes('Solo'), 'never a player, nor Solo on the phones');

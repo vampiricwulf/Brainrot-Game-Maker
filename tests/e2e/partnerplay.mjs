@@ -3,14 +3,17 @@
 // 1–9, ▶ Show question with the parts badge and caption, a second Enter that doesn't start the clock, the 📤 list's
 // chips (a change stays through ⇄ Swap, ↺ follows the parts again), 📋 Copy words, ⏱ Start the clock, a click on the
 // stage that leaves the answer hidden until it's judged, Shift+Enter on ✔ Got it giving ✘ Missed, a blank question's
-// own card, Esc before the question keeping the tile, U and the ? list. In one window the host page never
+// own card, Esc before the question keeping the tile, U and the ? list. The 🤝 box holds each step the main button does
+// (🎡 Spin for a partner in front of the names, ↻ Spin again in its place after, ▶ Show question and ⏱ Start the clock
+// at its foot), a click there gives the keys back to the main button, and the rest of a double-click that redrew the
+// box (who picked it, the question) is dropped: it never spins or judges. In one window the host page never
 // holds a card's words or its picture's name; in two windows the audience window never does, and the host column lists
 // the cards as text.
 import { chromium } from 'playwright-core';
 import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { mainLabel, openGameFile } from './helpers.mjs';
+import { mainButton, mainLabel, openGameFile, situationHasMain, stepButton } from './helpers.mjs';
 
 const file = resolve(process.env.APP_FILE || 'dist/index.html');
 if (!existsSync(file)) throw new Error('Run `npm run build` first');
@@ -98,20 +101,36 @@ try {
   assert((await panel.innerText()).includes('Who picked it?'), 'nobody was marked to pick: the panel asks who picked it');
   assert((await mainButtonState()).disabled, 'and 🎡 Spin for a partner waits for that');
   assert((await page.locator('.panel .status').innerText()).includes('Partner clue: who picked it? (1–4)'), 'the status row asks who picked it too (not to spin yet)');
-  await page.keyboard.press('1');
+  // A double-click on a name: its first click says who picked it, and the rest of it, landing on the 🎡 Spin for a partner
+  // that took the names' place, is dropped: nothing spins. (Its two clicks sent from the page.)
+  await page.evaluate(async () => {
+    const at = (sel) => document.querySelector(`.panel [data-partner-panel] ${sel}`);
+    at('button[aria-label="Ann picked it"]').dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true, detail: 1 }));
+    await new Promise((r) => requestAnimationFrame(() => r()));
+    at('[data-partner-row] [data-step]').dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true, detail: 2 }));
+  });
   await panel.getByText('Ann picked it.').waitFor();
+  await page.waitForTimeout(300);
+  assert((await stage('.wheel').count()) === 0 && (await mainLabel(page)) === '🎡 Spin for a partner', 'a double-click on a name says who picked it and never spins the wheel');
   assert((await page.locator('.panel .status').innerText()).includes('Partner clue: spin for a partner'), 'Ann picked it: the status row says to spin for a partner');
-  assert((await stage('[data-partner-up]').innerText()).includes('Ann') && (await stage('.pu-plate.waiting').count()) === 1, '1: Ann picked it; the stage shows her plate and a pulsing “?”');
+  assert((await stage('[data-partner-up]').innerText()).includes('Ann') && (await stage('.pu-plate.waiting').count()) === 1, 'Ann picked it; the stage shows her plate and a pulsing “?”');
   assert((await page.locator('.panel [data-partner-tag]').innerText()).trim() === '🤝 Ann', 'the status row’s tag says whose partner clue it is');
   assert((await page.locator('.panel .players').count()) === 0, 'no award row before the question');
   await noCards(page, 'PARTNER UP!');
 
   // ---------- The partner wheel ----------
   assert((await mainLabel(page)) === '🎡 Spin for a partner', `the main button spins for a partner (${await mainLabel(page)})`);
-  await page.keyboard.press('w');
+  // (The friend's case: the wheel is in the 🤝 box, in front of the names it's an alternative to.)
+  assert((await situationHasMain(page, panel)) === '', `and the 🤝 box has 🎡 Spin for a partner too, in sight (${await situationHasMain(page, panel)})`);
+  const row = await panel.locator('[data-partner-row] button').evaluateAll((bs) => bs.map((b) => (b.matches('[data-step]') ? 'step' : b.getAttribute('aria-label'))));
+  assert(row[0] === 'step' && row.slice(1).join() === 'Ann is the partner,Bob is the partner,Cat is the partner,Dan is the partner', `in front of the players to choose from by hand (${row.join(', ')})`);
+  const spinAt = await stepButton(panel, '🎡 Spin for a partner').boundingBox();
+  await stepButton(panel, '🎡 Spin for a partner').click();
   await stage('.wheel').waitFor();
+  assert(await page.evaluate(() => !document.activeElement?.closest('[data-partner-panel]')), 'a click on it spins the wheel, and the keys aren’t left on it (Enter, N and W are the main button’s still)');
+  assert((await stepButton(panel, '🎡 Spin for a partner').isDisabled()) && (await stepButton(panel, '🎡 Spin for a partner').getAttribute('title')) === 'Still spinning', 'greyed while the wheel turns: “Still spinning”');
   const slices = await stage('.wheel text').evaluateAll((els) => els.map((e) => e.textContent.trim()));
-  assert(slices.length === 3 && !slices.includes('Ann') && slices.includes('Bob'), `W spins a wheel of the others: Ann isn’t on it (${slices.join(', ')})`);
+  assert(slices.length === 3 && !slices.includes('Ann') && slices.includes('Bob'), `the wheel is of the others: Ann isn’t on it (${slices.join(', ')})`);
   assert((await page.locator('.panel [data-tool-controls]').innerText()).includes('Partner for Ann'), 'its name says who it’s for');
   assert((await chip('Bob is the partner').isDisabled()) && !(await chip('Bob is the partner').getAttribute('aria-pressed')).includes('true'), 'the partner chips wait while it spins');
   await page.keyboard.press('l');
@@ -121,6 +140,10 @@ try {
   await panel.locator('button.chip[aria-pressed="true"]').waitFor({ timeout: 8000 });
   const landed = (await panel.locator('button.chip[aria-pressed="true"]').getAttribute('aria-label')).replace(' is the partner', '');
   assert(['Bob', 'Cat', 'Dan'].includes(landed), `its landing is the partner (${landed})`);
+  // (The wheel's own bar is over the box now: the same place in the row, at the same left edge.)
+  const againAt = await stepButton(panel, '↻ Spin again').boundingBox();
+  const firstInRow = await panel.locator('[data-partner-row] button').first().evaluate((b) => b.matches('[data-step]') && b.textContent.includes('↻ Spin again'));
+  assert(firstInRow && Math.abs(againAt.x - spinAt.x) < 1, 'landed: the same button in the same place reads ↻ Spin again');
   assert((await page.locator('.panel [data-partner-tag]').innerText()).includes(`Ann + ${landed}`), 'the tag says the pair');
   await page.keyboard.press('l');
   const shown = await page.waitForFunction((who) => document.querySelector('aside .roll')?.textContent.includes(who), landed, { timeout: 2000 }).then(() => true, () => false);
@@ -132,6 +155,7 @@ try {
   await page.keyboard.press('3');
   await page.keyboard.press('2');
   assert((await chip('Bob is the partner').getAttribute('aria-pressed')) === 'true', '1–9 overrule the wheel (2: Bob)');
+  assert((await stepButton(panel, '↻ Spin again').count()) === 1, 'and ↻ Spin again stays in its place');
   await page.keyboard.press('1');
   assert(await toast('Ann picked it: tick'), 'Ann’s own number says how to make it Solo');
   const panelText = await panel.innerText();
@@ -146,11 +170,17 @@ try {
 
   // ---------- ▶ Show question, and a second Enter ----------
   assert((await mainLabel(page)) === '▶ Show question', 'paired: ▶ Show question is the main button');
+  assert((await situationHasMain(page, panel)) === '' && (await panel.locator('[data-partner-next]').innerText()) === 'Next: show the question', 'and the box’s too, at its foot, its first line saying so');
   await page.keyboard.press('Enter');
   await stage('[data-partner-badge]').waitFor();
   await page.keyboard.press('Enter');
   assert(await toast('The question just went up'), 'a second Enter at once doesn’t start the clock');
   assert((await mainLabel(page)) === '⏱ Start the clock' && (await stage('.timer').count()) === 0, 'the main button is ⏱ Start the clock, and no countdown runs');
+  assert((await situationHasMain(page, panel)) === '', 'and the box has ⏱ Start the clock at its foot');
+  assert(
+    (await panel.locator('[data-partner-next]').innerText()) === 'Next: copy each card to its player (📋 Copy words), then ⏱ Start the clock',
+    'its first line says to copy the cards first (no phones here), then start the clock',
+  );
   assert((await stage('[data-partner-badge]').innerText()).replace(/\s+/g, ' ').trim() === '🗣 Bob describes → 🎯 Ann guesses', 'the stream shows who plays which part');
   assert((await stage('.caption').innerText()).trim().endsWith('· 🤝'), `and the caption marks it (${await stage('.caption').innerText()})`);
   assert((await stage('[data-slide="1"]').innerText()).includes('Describe this movie'), 'the question is on stream');
@@ -189,9 +219,11 @@ try {
   await page.keyboard.press('u');
   assert(await toast('Nobody buzzes on a partner clue'), 'U: nobody buzzes on a partner clue');
   await page.waitForTimeout(1100);
-  await page.keyboard.press('Enter');
+  await stepButton(panel, '⏱ Start the clock').click();
   await stage('.timer').waitFor();
-  assert((await mainLabel(page)) === '👁 Reveal answer', 'Enter a moment later starts the clock; the answer is next');
+  assert((await mainLabel(page)) === '👁 Reveal answer', 'the box’s ⏱ Start the clock, a moment later, starts the clock; the answer is next');
+  assert(await mainButton(page).evaluate((b) => b === document.activeElement), 'and the keys are the main button’s again');
+  assert((await panel.locator('[data-partner-next]').innerText()) === 'Did they get it?', 'the box’s first line asks if they got it');
   assert((await page.locator('.panel .players').count()) === 1, 'the award row is there, as on any clue');
   // With the clock running they're still describing: a click on the stage says how to judge, not the answer.
   await stage('[data-slide="1"]').click();
@@ -226,8 +258,16 @@ try {
   // (The countdown doesn't start by itself in this game: the question doesn't start it either.)
   assert((await panel.innerText()).includes('No cards on this clue: start the clock yourself (T) once the question is up.'), 'and, the countdown not starting by itself, to start the clock with T');
   await page.keyboard.press('4');
-  await page.keyboard.press('Enter');
+  // A double-click on the box's ▶ Show question: the question goes up (no cards: straight to the judging), and the rest
+  // of the double-click, landing on the ✔ Got it now in its place, is dropped. (Its two clicks sent from the page.)
+  await page.evaluate(async () => {
+    const at = (sel) => document.querySelector(`.panel [data-partner-panel] ${sel}`);
+    at('[data-partner-foot] [data-step]').dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true, detail: 1 }));
+    await new Promise((r) => requestAnimationFrame(() => r()));
+    at('[data-partner-judge] button:not([data-step])').dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true, detail: 2 }));
+  });
   await stage('[data-partner-card]').waitFor();
+  assert((await panel.locator('[data-judged]').count()) === 0, 'a double-click on the box’s ▶ Show question puts the question up and judges nothing');
   assert(!(await stage('.timer').count()), 'the question is up, and no countdown runs');
   const card = (await stage('[data-partner-card]').innerText()).replace(/\s+/g, ' ');
   assert(card.includes('Describe it!') && card.includes('Ann') && card.includes('Dan') && card.includes('MOVIES'), `a blank question shows a card of its own: the game, the two, the category (${card})`);

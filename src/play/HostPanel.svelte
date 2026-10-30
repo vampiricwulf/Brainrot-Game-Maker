@@ -1623,15 +1623,16 @@
      scroll in there instead. A board-game round's under the stage too, through its turns (the landing row comes and
      goes). A 🤝 partner clue's too, from PARTNER UP! (the wheel, the question and 📤 Distribute, a steal) to the answer,
      and a wheel or dice tile's (its tool, then its question): the stage changes size only as the tile opens and closes.
-     A partner clue's box scrolls, with ✔ Got it / ✘ Missed (or the steal's row) kept in sight at its foot; a tile's
-     tool keeps its height at the top (an outcome's score buttons in sight), what's under it scrolls. */
+     A partner clue's box scrolls, its foot kept in sight (▶ Show question; 📤 Send and start and ✔ Got it / ✘ Missed;
+     the steal's row); a tile's tool keeps its height at the top (an outcome's score buttons in sight), what's under it
+     scrolls. */
   .panel:is(.final, .partnerclue, .held):not(.dual) {
     height: clamp(280px, 44vh, 440px);
   }
   .panel.held:not(.dual) > .act > .action > .tools {
     flex-shrink: 0;
   }
-  .panel.partnerclue:not(.dual) :global(:is([data-partner-judge], [data-partner-steal])) {
+  .panel.partnerclue:not(.dual) :global([data-partner-foot]) {
     position: sticky;
     bottom: 0;
     z-index: 1;

@@ -9,7 +9,7 @@ import { chromium } from 'playwright-core';
 import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { flowButton, mainLabel, openGameFile } from './helpers.mjs';
+import { flowButton, mainLabel, openGameFile, situationHasMain } from './helpers.mjs';
 
 const file = resolve(process.env.APP_FILE || 'dist/index.html');
 if (!existsSync(file)) throw new Error('Run `npm run build` first');
@@ -216,7 +216,10 @@ try {
   assert((await mainLabel(page)) === '👁 Reveal answer' && (await page.evaluate(() => document.activeElement?.matches('[data-next]'))), 'judged by a click: the answer is next, and the keys are on it');
   await page.keyboard.press('Control+z');
   await gotBtn.and(page.locator(':enabled')).waitFor();
-  assert((await flat(judgeRow.locator('[data-judge-got]'))) === 'Ann +$200 · Bob already scored' && (await mainLabel(page)) === '⏱ Start the clock', 'Ctrl+Z brings the buttons back (Bob still scored), and the clock to start');
+  assert(
+    (await flat(judgeRow.locator('[data-judge-got]'))) === 'Ann +$200 · Bob already scored' && (await mainLabel(page)) === '⏱ Start the clock' && (await situationHasMain(page, panel)) === '',
+    'Ctrl+Z brings the buttons back (Bob still scored), and the clock to start (in the box’s foot too)',
+  );
   await page.keyboard.press('Control+z');
   await page.waitForFunction(() => document.querySelector('.panel .players [data-player-id="p2"] .score')?.textContent.trim() === '$0');
   assert((await flat(judgeRow.locator('[data-judge-got]'))) === 'Bob +$400 · Ann +$200', 'another Ctrl+Z takes Bob’s back');
@@ -288,7 +291,10 @@ try {
   await chip('Card 1 to Cat').click();
   await resume();
   await panel.waitFor();
-  assert((await mainLabel(page)) === '⏱ Start the clock' && (await chip('Card 1 to Cat').getAttribute('aria-pressed')) === 'true' && (await panel.locator('[data-card="1"]').innerText()).includes('(changed)'), 'a reload while handing out the cards: the list as it was, the change kept');
+  assert(
+    (await mainLabel(page)) === '⏱ Start the clock' && (await situationHasMain(page, panel)) === '' && (await chip('Card 1 to Cat').getAttribute('aria-pressed')) === 'true' && (await panel.locator('[data-card="1"]').innerText()).includes('(changed)'),
+    'a reload while handing out the cards: the list as it was, the change kept, ⏱ Start the clock next (in the box too)',
+  );
   await page.keyboard.press('Enter');
   await stage('.timer').waitFor();
   assert((await mainLabel(page)) === '👁 Reveal answer', 'and Enter starts the clock at once (the guard’s times aren’t kept)');
@@ -347,7 +353,7 @@ try {
   await aud.keyboard.up('Enter');
   await wait(300);
   assert(
-    (await mainLabel(page)) === '⏱ Start the clock' && (await aud.locator('.timer').count()) === 0 && JSON.stringify(await scores()) === held && (await panel.locator('[data-judged]').count()) === 0,
+    (await mainLabel(page)) === '⏱ Start the clock' && (await situationHasMain(page, panel)) === '' && (await aud.locator('.timer').count()) === 0 && JSON.stringify(await scores()) === held && (await panel.locator('[data-judged]').count()) === 0,
     'Enter held down in the audience window shows the question once: its repeats don’t start the clock or score',
   );
   await page.keyboard.press('Escape');

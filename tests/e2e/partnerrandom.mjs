@@ -14,7 +14,7 @@ import { chromium } from 'playwright-core';
 import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { openGameFile, openRules, recordSeen, shownOf, startBuzzer, startRoomOn, stored } from './helpers.mjs';
+import { openGameFile, openRules, recordSeen, shownOf, situationHasMain, startBuzzer, startRoomOn, stored } from './helpers.mjs';
 
 const file = resolve(process.env.APP_FILE || 'dist/index.html');
 if (!existsSync(file)) throw new Error('Run `npm run build` first');
@@ -204,6 +204,8 @@ try {
     await host.locator(`.stage-box .tile[data-clue="${id}"]`).click();
     await host.locator('.stage-box [data-partner-up]').waitFor();
     await host.keyboard.press('2');
+    await panel.locator('[data-partner-foot]').waitFor();
+    assert((await situationHasMain(host, panel)) === '', 'paired: ▶ Show question is in the 🤝 box’s foot too, in sight');
     await host.keyboard.press('Enter');
     await host.locator('.stage-box [data-partner-badge]').waitFor();
     // (A second Enter at once is held back: the double-Enter guard.)
@@ -239,6 +241,11 @@ try {
   // ---------- Ann misses: the buzzers open for Cat and Dan ----------
   await host.keyboard.press('Shift+Enter');
   await stealRow.waitFor();
+  const stealSeen = await stealRow.evaluate((el) => {
+    const r = el.getBoundingClientRect();
+    return el.contains(document.elementFromPoint(r.x + 20, r.y + r.height / 2));
+  });
+  assert(stealSeen, 'the steal’s row takes the 🤝 box’s foot, in sight');
   assert(await until(async () => (await scoreOf('Ann')) === money(-100 - value / 2)), `✘ Missed: Ann −$${value / 2} more, ${money(-100 - value / 2)}`);
   assert((await stealRow.innerText()).includes('🔔 Steal!') && (await stealRow.innerText()).includes(`Enter: right +$${value}`), `the steal row: 🔔 Steal!, a right steal worth the tile’s $${value} (the game’s rule)`);
   assert(await until(() => last()?.phase === 'armed' && lockedOut() === 'p1,p2'), 'the buzzers open at once for the others (no U needed): Ann and Bob locked out');
