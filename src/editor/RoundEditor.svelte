@@ -64,6 +64,7 @@
   import MediaPicker from './slide/MediaPicker.svelte';
   import ClueImport from './ClueImport.svelte';
   import { isWholeSheet, pasteColumn } from '../lib/clueimport';
+  import { oneShot } from '../lib/oneshot';
 
   let { round }: { round: BoardRound } = $props();
   /** The clue open in the clue editor, by ids (an undo that puts a category back moves the others along). */
@@ -1032,6 +1033,7 @@
           data-tile="{ci},{row}"
           tabindex={cur.cat === ci && cur.row === row ? 0 : -1}
           draggable="true"
+          use:oneShot
           onclick={() => openAt(ci, row)}
           onfocus={() => (cursor = p)}
           onkeydown={(e) => tileKey(e, p)}

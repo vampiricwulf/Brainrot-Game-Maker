@@ -162,6 +162,9 @@ the boxes you type in, links, the room code (one click takes all of it), error l
 select. With the audience window open, the host's own column, typed answers and the 📜 Log select too, to copy into chat.
 A right-click where the app has no menu of its own shows nothing, in every window (the browser's menu, with its Reload,
 would be on stream): boxes you type in, links and selected words keep it.
+A double-click on a button that changes the screen (▶ Play, Start game ▶, Resume game, a card on the first screen, a tile
+in the board editor) counts once: its second click does nothing on the new screen, and one on a score plate makes them
+the picker once. On ▶ Play, a double-click on the game's title (or `F2`) renames it.
 
 Click a tile to open its clue, then reveal the answer with `R` or a click (a double-click is one step: it never also
 shows the answer, or goes back to the board and opens another tile; on a 🤝 partner clue a click waits until the pair has

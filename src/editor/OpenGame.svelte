@@ -7,6 +7,7 @@
   import { modal } from '../lib/modal';
   import type { RecentEntry } from '../lib/recent';
   import { keptHere } from '../lib/platform';
+  import { oneShot } from '../lib/oneshot';
 
   let {
     recent,
@@ -48,7 +49,7 @@
     <div class="list" role="group" aria-labelledby="open-recent" bind:this={list}>
       {#each recent as e (e.key)}
         <div class="game">
-          <button class="pick" onclick={() => onreopen(e)}>
+          <button class="pick" use:oneShot onclick={() => onreopen(e)}>
             <b>{e.title}</b>
             <span class="hint"
               >{earlier(e) ? 'earlier version · ' : ''}{e.rounds} round{e.rounds === 1 ? '' : 's'} · kept {when(e.closedAt)}</span

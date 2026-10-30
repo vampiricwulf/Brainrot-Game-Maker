@@ -147,6 +147,11 @@ try {
   const spot = await (async (s, t) => [(t.x + t.width / 2 - s.x) / s.width, (t.y + t.height / 2 - s.y) / s.height])(await stageBox(), await page.locator('.stage-box .board .tile').nth(8).boundingBox());
   // (One window: the board is on stream, so it marks no tile.)
   assert((await page.locator('.stage-box .board .tile.host-mark').count()) === 0, 'one window: the board marks no Daily Double');
+  // A double-click on a score plate makes that player the picker once (it doesn't take it away again).
+  const plate2 = page.locator('.stage-box .bar .plate').nth(1);
+  await plate2.dblclick();
+  await page.waitForTimeout(300);
+  assert(await plate2.evaluate((e) => e.classList.contains('picker')), 'a double-click on a score plate makes them the picker, once');
   await page.locator('.stage-box .board .tile').first().dblclick();
   await page.waitForTimeout(300);
   assert((await status()).includes('Answer hidden'), `a double-click on a tile opens it, the answer stays hidden (${await status()})`);

@@ -92,6 +92,7 @@
   import { bundleName, sameContent } from '../lib/roundcopy';
   import { addRoundItems, addSample, copyRoundOf, pasteRound, pickOtherGame } from './roundtools';
   import { HOSTING_GUIDE, openSite } from '../lib/sitelinks';
+  import { oneShot } from '../lib/oneshot';
 
   /** `checklist`: worked out by the app a moment after changes stop (one line a round). */
   let {
@@ -966,7 +967,7 @@
     {/if}
     <button class="ghost" onclick={() => (finding = true)} aria-label="Find" title="Find clues, screens, spaces, items… anywhere in the game (Ctrl+F)"><span aria-hidden="true">🔍</span><span class="word">Find</span></button>
     <button class="ghost more" onclick={moreMenu} aria-haspopup="menu" aria-label="More: Export as a web page, Export JSON, Settings, Keyboard shortcuts, How to host (guide), About" title={'⬇ Export as a web page, { } Export JSON, ⚙ Settings, ⌨ Keyboard shortcuts, 📖 How to host (guide), ℹ About'}>⋯</button>
-    <button class="primary play" onclick={play} disabled={!game.rounds.length || !!opening} title={game.rounds.length ? '' : 'Add a round first'}>▶ Play</button>
+    <button class="primary play" use:oneShot onclick={play} disabled={!game.rounds.length || !!opening} title={game.rounds.length ? '' : 'Add a round first'}>▶ Play</button>
   </header>
   {#if movedNotice}
     <div class="data-notice" role="status">
@@ -1254,14 +1255,14 @@
                 <p class="small warn">⚠ This browser isn't keeping your game (its storage is blocked or full): <b>💾 Save</b> it to a file before you close the tab.</p>
               {/if}
             {/if}
-            <button class="sample" onclick={showSample}>
+            <button class="sample" use:oneShot onclick={showSample}>
               <span class="icon" aria-hidden="true">✨</span>
               <b>Try a sample game</b>
               <span class="muted small">An introduction, a small board, an adventure, a board game and a Final, all filled in and ready to play</span>
             </button>
             <div class="modes">
               {#each Object.entries(ROUND_MODES) as [mode, m] (mode)}
-                <button class="mode" onclick={() => addRound(mode as RoundMode)}>
+                <button class="mode" use:oneShot onclick={() => addRound(mode as RoundMode)}>
                   <span class="icon" aria-hidden="true">{m.icon}</span>
                   <b>{m.label}</b>
                   <span class="muted small">{m.hint}</span>

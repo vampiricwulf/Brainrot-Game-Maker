@@ -11,6 +11,7 @@
   import { ROUND_MODES } from '../../lib/modes';
   import { hostAsk, offerNext } from './slots.svelte';
   import { justShown } from './guard';
+  import { secondClick } from '../../lib/oneshot';
   import { VERBS } from './verbs';
   import { app } from '../../lib/app.svelte';
 
@@ -70,7 +71,7 @@
 
   /** ◀ Prev round goes at once: the second click of a double-click (on the new round's ◀ Prev round) isn't a second step. */
   function prev(e: MouseEvent): void {
-    if (e.detail >= 2 || justShown(shownAt, Date.now(), e.detail)) return;
+    if (secondClick(e) || justShown(shownAt, Date.now(), e.detail)) return;
     onprev();
   }
 

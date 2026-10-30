@@ -5,7 +5,7 @@ import { chromium } from 'playwright-core';
 import { existsSync, mkdirSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { exportHtml, noDailyDoubles, openRules } from './helpers.mjs';
+import { exportHtml, noDailyDoubles, noSelection, openRules, selectedWords } from './helpers.mjs';
 
 const file = resolve(process.env.APP_FILE || 'dist/index.html');
 if (!existsSync(file)) throw new Error('Run `npm run build` first');
@@ -53,8 +53,10 @@ try {
   assert((await page.getByRole('button', { name: /^Back to the built-in .* sound$/ }).count()) === 0, '(no ↺ until a sound has a file of its own)');
 
   // ---------- Enter adds the next player: each one named is one step, called by their name ----------
-  await play.click();
+  // (A double-click on ▶ Play is one: its second click does nothing on this screen, nor turns a word blue.)
+  await play.dblclick();
   await start.waitFor();
+  assert(await noSelection(page), `a double-click on ▶ Play selects nothing on the screen it opens (${await selectedWords(page)})`);
   await page.getByRole('button', { name: '＋ Add player' }).click();
   await page.keyboard.type('Bo');
   await page.keyboard.press('Enter');
@@ -290,6 +292,15 @@ try {
   await page.waitForFunction(() => document.activeElement?.getAttribute('aria-label') === 'Player 1 name' && document.activeElement.value === 'Bob');
   await page.keyboard.press('Backspace');
   assert((await page.locator('.pregame h1').innerText()) === 'Meme Night 2' && (await bo.inputValue()) === 'Bo', 'renamed, then a player’s name box clicked: the typing goes there');
+  // A double-click on the title renames it too, and so does F2 with the keys on it (where ▶ Play puts them).
+  const titleBox = page.getByLabel('Game title');
+  await page.locator('.pregame h1').dblclick();
+  await titleBox.waitFor();
+  await titleBox.press('Escape');
+  await page.locator('.pregame h1').focus();
+  await page.keyboard.press('F2');
+  assert(await titleBox.waitFor({ timeout: 3000 }).then(() => true, () => false), 'a double-click on the game’s title, or F2 with the keys on it, renames it');
+  await titleBox.press('Escape');
   await page.screenshot({ path: 'test-results/pregame-golive.png' });
 
   // ---------- Going live? A short checklist, hidden with ✕ (and shown again from 🖥 Display) ----------

@@ -3,8 +3,10 @@
  * buttons), so one double-click is one step. A click can redraw what's under the pointer (a name picked, and the wheel's
  * button where the names were; Show question ▶ turning into 👁 Reveal answer): the rest of that double-click is dropped,
  * never a fresh click. A step that can't be undone (cards sent to phones) also waits a moment after the step before it,
- * as the keys do.
+ * as the keys do. (Its test for the rest of a double-click is the app's one, oneshot.ts.)
  */
+
+import { restOfPress } from '../../lib/oneshot';
 
 /** The rest of a double-click: its next click within this long, on another control than the first. */
 export const DOUBLE_CLICK_MS = 600;
@@ -27,14 +29,14 @@ export type Verdict = 'go' | 'double' | 'soon';
  * a step that can't be undone.
  */
 export function judgeClick(last: Press | null, stepAt: number, p: Press, final = false): Verdict {
-  if (p.detail >= 2 && last && p.at - last.at < DOUBLE_CLICK_MS && last.control !== p.control) return 'double';
+  if (last && last.control !== p.control && restOfPress(last.at, p.at, p.detail, DOUBLE_CLICK_MS)) return 'double';
   if (final && p.at - stepAt < KEY_GUARD_MS) return 'soon';
   return 'go';
 }
 
 /** Controls shown at `shownAt` take no click yet (`doubleOnly`: only the rest of a double-click is dropped). */
 export function justShown(shownAt: number, at: number, detail: number, doubleOnly = false): boolean {
-  return at - shownAt < NEW_CONTROLS_MS && (!doubleOnly || detail >= 2);
+  return doubleOnly ? restOfPress(shownAt, at, detail, NEW_CONTROLS_MS) : at - shownAt < NEW_CONTROLS_MS;
 }
 
 export type ClickGuard = {

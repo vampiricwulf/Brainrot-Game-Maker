@@ -431,6 +431,12 @@ The mode isn't saved with the game: it's dual while the audience window is open.
 - **No browser menu**: in every window (the editor and host screen, the audience and scores windows, a 🪟 card window) a
   right-click the app has no menu for shows nothing, so the browser's menu (Back, Reload, Print) never shows on stream.
   Fields, links and selected copyable words keep it (cut, copy, paste, open link).
+- **A double-click counts once** on a button that changes the screen (the first screen's cards and ✨ Try a sample game,
+  ▶ Play, Start game ▶ and ▶ Resume it, the exported file's ▶ Play, Resume game and View results, the status bar's Resume
+  game and View results, Open…'s Recent games, a tile opening its clue editor): the rest of that press (its second
+  click, a triple-click's third), wherever it lands, is dropped (oneshot.ts), never a fresh click. A score plate's second
+  click doesn't take the picker away again. The host panel's guard (the main button, the boxes, the round buttons, the
+  fixed bar) is the same test with its own timings. On ▶ Play the game's title renames on a double-click or `F2`.
 
 ### 6.3 Game flow
 0. **Round intro** (each step can be turned off in settings): the round title card ("DOUBLE JEOPARDY!") → tiles fill in

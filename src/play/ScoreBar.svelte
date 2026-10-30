@@ -5,6 +5,7 @@
   import { formatPoints, type Game, type Session } from '../lib/model';
   import { score } from '../lib/session';
   import { plateScores } from './flow';
+  import { secondClick } from '../lib/oneshot';
 
   let {
     game,
@@ -61,6 +62,7 @@
 </script>
 
 <div class="bar" style:padding-right={reserve ? `${24 + reserve}px` : undefined}>
+  <!-- (A double-click on a plate is one click: it never makes them the picker and takes it away again.) -->
   {#each session.players as p, i (p.id)}
     {@const s = score(session, p.id)}
     <button
@@ -71,7 +73,7 @@
       style:--c={p.color}
       data-player-id={host ? p.id : undefined}
       disabled={!onpicker}
-      onclick={() => onpicker?.(p.id)}
+      onclick={(e) => !secondClick(e) && onpicker?.(p.id)}
       title={onpicker ? hint : undefined}
     >
       <span class="name" style:background={p.color} style:color={textOn(p.color)} title={p.name}>

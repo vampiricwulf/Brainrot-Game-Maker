@@ -9,6 +9,7 @@
   import { themeStyle } from './lib/theme';
   import { onlineCount } from './lib/usage';
   import { externalLink, REPO } from './lib/sitelinks';
+  import { oneShot } from './lib/oneshot';
   import type { Snippet } from 'svelte';
 
   let {
@@ -85,14 +86,14 @@
           {@render ask()}
         {:else}
           <div class="row">
-            <button class="primary" onclick={onresume}>{ended ? 'View results' : 'Resume game'}</button>
+            <button class="primary" use:oneShot onclick={onresume}>{ended ? 'View results' : 'Resume game'}</button>
             <!-- App asks before deleting a game in progress. -->
             <button class="ghost" onclick={ondiscard}>{ended ? 'New game' : 'Start over'}</button>
           </div>
         {/if}
       </div>
     {:else}
-      <button class="primary big" onclick={onplay}>▶ Play</button>
+      <button class="primary big" use:oneShot onclick={onplay}>▶ Play</button>
     {/if}
     <ul class="notes small">
       <li class="warn">This is the host's copy: it shows every answer and note. Don't share it with players.</li>

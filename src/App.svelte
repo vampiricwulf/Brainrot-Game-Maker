@@ -82,6 +82,7 @@
   import { keptRoster } from './play/roster';
   import type { Game, MediaRef, Session } from './lib/model';
   import Play from './play/Play.svelte';
+  import { oneShot } from './lib/oneshot';
 
   /**
    * Base64 game pack when this file is an exported, player-only game. `packError`: it's one, but its pack can't be read
@@ -1222,9 +1223,9 @@
             {ended ? '🏁 Finished game:' : '⏸ Kept to resume:'} <b>{saved.game.title}</b>
           </span>
           {#if !resuming}
-            <button class="small primary" onclick={() => askResume()}>{ended ? 'View results' : 'Resume game'}</button>
+            <button class="small primary" use:oneShot onclick={() => askResume()}>{ended ? 'View results' : 'Resume game'}</button>
             {#if !ended && saved.game.id === app.game.id && editsDiffer}
-              <button class="small" onclick={() => askResume(true)} title="Play on with the editor's current version of this game (fixed typos, new slides…). Scores and used tiles are kept.">
+              <button class="small" use:oneShot onclick={() => askResume(true)} title="Play on with the editor's current version of this game (fixed typos, new slides…). Scores and used tiles are kept.">
                 Resume with my edits
               </button>
             {/if}

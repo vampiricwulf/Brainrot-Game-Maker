@@ -13,6 +13,10 @@ in plain words for the people who make and host games. Anything committed but no
 
 ## Unreleased
 
+### Added
+
+- ▶ Play: a double-click on the game's title, or F2 with the keys on it, renames it, as ✎ Rename does.
+
 ### Changed
 
 - Nothing turns blue any more when you click, double-click or drag, nor with Ctrl+A on the game screen (in one window a highlighted word showed on stream, a double-click on the audience window for full screen too). Only the boxes you type in, links, the room code (one click takes it whole), error lines and ℹ About's version and folders select, and with the audience window open the host's own column, typed answers and the 📜 Log, to copy into chat; what's selected there is let go of when that window closes. On the phone page only its boxes select.
@@ -21,6 +25,7 @@ in plain words for the people who make and host games. Anything committed but no
 ### Fixed
 
 - Board-game editor: a space with a picture couldn't be dragged by its picture (the picture dragged off on its own). Pictures never drag off as files now.
+- A double-click counts once on a button that changes the screen (the first screen's cards and ✨ Try a sample game, ▶ Play, Start game ▶, Resume game and View results, a game in Open…'s Recent games, a tile in the board editor): its second click did something on the new screen. Double-clicking the Final or Board game card added a 🤫 card or a space too, and double-clicking a tile opened the clue with that click in the slide's text box, where Esc no longer closed it. A double-click on a player's score plate made them the picker and took it away again; it makes them the picker now. A fresh click always goes through.
 
 ## 2026-10-30
 

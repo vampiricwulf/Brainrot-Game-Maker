@@ -5,6 +5,7 @@
   import { prefs, savePrefs } from '../lib/prefs.svelte';
   import { commit, history, redo as redoStep, step, undo as undoStep } from '../lib/history.svelte';
   import { createFieldTracker, isTextField, undoKeyOf } from '../lib/undokeys';
+  import { oneShot } from '../lib/oneshot';
   import { blankName, clueCardWords, finalName, formatPoints, getClue, isBoard, isBoardGame, isFinal, isRpg, isSlides, MAX_PLAYERS, newId, PLAYER_WHEEL, questionSlides, wholePoints, type BoardRound, type ClueRef } from '../lib/model';
   import {
     applyScore, awardOpen, backToBoard, backToLastRound, currentFinal, clueName, clueReason, clueScored, currentClueInfo, ddShowQuestion, describeStep,
@@ -4593,8 +4594,10 @@
             onblur={(e) => renaming && rename(e.currentTarget.value, !e.relatedTarget)}
           />
         {:else}
-          <h1 tabindex="-1" use:titleFocus>{game.title}</h1>
-          <button class="ghost small" onclick={() => (renaming = true)} title="The game's name shows on stream (the title card, the audience window)">✎ Rename</button>
+          <!-- (A double-click on it, or F2 while it has the keys, renames it too.) -->
+          <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
+          <h1 tabindex="-1" use:titleFocus ondblclick={() => (renaming = true)} onkeydown={(e) => e.key === 'F2' && (e.preventDefault(), (renaming = true))}>{game.title}</h1>
+          <button class="ghost small" onclick={() => (renaming = true)} title="The game's name shows on stream (the title card, the audience window) · F2 or a double-click on it">✎ Rename</button>
           {#if untitled}<span class="warn small" data-warn="untitled">Name your game: its title shows on stream.</span>{/if}
         {/if}
       </div>
@@ -4607,9 +4610,9 @@
             <span class="muted small">(saved {new Date(kept.savedAt).toLocaleString()})</span>
             {#if keptRoom}<span class="small">· 📱 Its phones wait in room <b>{keptRoom}</b>: ▶ Resume it goes back to them.</span>{/if}
           </span>
-          <button class="primary" onclick={() => void resumeKept(false)}>▶ Resume it</button>
+          <button class="primary" use:oneShot onclick={() => void resumeKept(false)}>▶ Resume it</button>
           {#if !app.playerOnly && kept.game.id === app.game.id && editsDiffer}
-            <button onclick={() => void resumeKept(true)} title="Play on with the editor's current version of this game (fixed typos, new slides…). Scores and used tiles are kept.">
+            <button use:oneShot onclick={() => void resumeKept(true)} title="Play on with the editor's current version of this game (fixed typos, new slides…). Scores and used tiles are kept.">
               Resume with my edits
             </button>
           {/if}
@@ -4899,6 +4902,7 @@
       </span>
       <button
         class="primary big"
+        use:oneShot
         onclick={() => void startClicked()}
         disabled={!session.players.length}
         aria-keyshortcuts="Control+Enter"

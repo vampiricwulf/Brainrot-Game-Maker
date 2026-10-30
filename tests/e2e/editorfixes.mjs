@@ -60,6 +60,14 @@ try {
 
   // ---------- Board values and focus ----------
   assert((await page.locator('.first-round .mode', { hasText: 'Jeopardy board' }).innerText()).includes('📥 Import clues'), 'the Jeopardy board card mentions 📥 Import clues…');
+  // A double-click on a card adds its round, and its second click does nothing on the new page (it added a 🤫 card to a
+  // Final, a space to a board game).
+  const undoTitle = () => page.locator('.editor > header').getByRole('button', { name: 'Undo (Ctrl+Z)' }).getAttribute('title');
+  await page.locator('.first-round .mode', { hasText: 'Final Jeopardy' }).dblclick();
+  await page.waitForTimeout(300);
+  assert((await tabs.count()) === 1 && (await undoTitle()).startsWith('Undo: Added round'), `a double-click on a first-screen card adds that round, and nothing else (${await undoTitle()})`);
+  await page.keyboard.press('Control+z');
+  await page.locator('.first-round').waitFor();
   await page.locator('.first-round .mode', { hasText: 'Jeopardy board' }).click();
   // The board's 💡 Tips are open the first time it's seen (and closed after that).
   assert(await page.locator('details.tips').first().evaluate((d) => d.open), "the board's 💡 Tips open the first time");
@@ -93,6 +101,14 @@ try {
   await page.getByPlaceholder('Type the question…').fill('Q1');
   await page.getByPlaceholder('Type the answer…').fill('A1');
   await page.getByRole('button', { name: 'Done' }).click();
+  // A double-click on a tile opens its clue, and its second click doesn't land in there (in the slide's text box
+  // settings, where Esc didn't close it): one Esc closes it.
+  await page.locator('.tile').first().dblclick();
+  const clueWin = page.getByRole('dialog', { name: 'Edit clue' });
+  await clueWin.waitFor();
+  await page.waitForTimeout(200);
+  await page.keyboard.press('Escape');
+  assert(await clueWin.waitFor({ state: 'detached', timeout: 3000 }).then(() => true, () => false), 'a double-click on a tile opens its clue, and one Esc closes it (the second click picked nothing in it)');
   await tabs.nth(2).click();
   await page.locator('nav .problem', { hasText: /^⚠ Jeopardy!:/ }).click();
   await page.waitForTimeout(300);
