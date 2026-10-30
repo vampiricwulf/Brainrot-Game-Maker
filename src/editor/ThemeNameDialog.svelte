@@ -46,7 +46,8 @@
       </div>
       <label class="field">
         Theme name
-        <input bind:value={name} maxlength="60" data-autofocus />
+        <!-- (Its name selected, so what's typed takes its place: "My show", not "Untitled Game themeMy show".) -->
+        <input bind:value={name} maxlength="60" data-autofocus {@attach (el) => queueMicrotask(() => el.isConnected && (el.focus(), el.select()))} />
       </label>
       {#if note}<p class="hint">{note}</p>{/if}
       <div class="modal-foot">

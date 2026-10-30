@@ -288,8 +288,16 @@ try {
   await page.getByRole('button', { name: '💾 Save as new theme…' }).click();
   const naming = page.getByRole('dialog', { name: '💾 Save as new theme' });
   assert((await naming.innerText()).includes('Kept in this browser, for any game'), 'the name window says where it’s kept: in this browser (it said “on this computer”)');
+  // Its name is filled in and selected, so what's typed takes its place (it went on the end: "Untitled Game themeMy show").
+  const nameBox = naming.getByLabel('Theme name');
+  await page.waitForFunction(() => {
+    const e = document.activeElement;
+    return e instanceof HTMLInputElement && e.value.length > 0 && e.selectionStart === 0 && e.selectionEnd === e.value.length;
+  });
+  await page.keyboard.type('My show');
+  assert((await nameBox.inputValue()) === 'My show', `typing in the name window replaces the name filled in (${await nameBox.inputValue()})`);
   // (A name as long as names go: the bar's button cuts it short with …, inside the bar.)
-  await naming.getByLabel('Theme name').fill('Checker party with a really long name that keeps going on and on');
+  await nameBox.fill('Checker party with a really long name that keeps going on and on');
   await naming.getByRole('button', { name: 'Save', exact: true }).click();
   await card('Checker party').waitFor();
   const barFit = await savebar.evaluate((bar) => {
@@ -331,7 +339,9 @@ try {
   await card('Checker party').getByRole('button', { name: /More for/ }).click();
   await page.getByRole('menuitem', { name: '✏ Rename…' }).click();
   const renaming = page.getByRole('dialog', { name: '✏ Rename theme' });
-  await renaming.getByLabel('Theme name').fill('Checkers');
+  await page.waitForFunction(() => document.activeElement instanceof HTMLInputElement && document.activeElement.selectionEnd === document.activeElement.value.length && document.activeElement.selectionStart === 0);
+  await page.keyboard.type('Checkers');
+  assert((await renaming.getByLabel('Theme name').inputValue()) === 'Checkers', 'and so does Rename… (its old name selected)');
   await renaming.getByRole('button', { name: 'Rename' }).click();
   await card('Checkers').waitFor();
   assert((await page.locator('.mine .card').count()) === 1, 'rename keeps one theme, with its new name');
