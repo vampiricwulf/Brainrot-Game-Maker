@@ -53,6 +53,8 @@ export const VERBS = {
   closeTool: { label: 'Close', key: 'Esc' },
   /** A wheel or dice tile with nothing to ask: closing it ends the tile. */
   closeToolBoard: { label: 'Close ▶ board', key: 'Esc' },
+  /** A tool's own way out in its box while the main button does something else (Spin!, a pop-up's 👁 Reveal answer). */
+  closeToolBox: { label: '✕ Close', key: 'Esc' },
 
   // ---------- A Daily Double, the Final ----------
   showQuestion: { label: 'Show question ▶' },
@@ -94,6 +96,11 @@ export const VERBS = {
   rollOff: { label: '🎲 Tiebreaker roll-off', key: 'O' },
   coWinners: { label: '🤝 Declare co-winners' },
   backToResults: { label: '🏁 Back to results', key: 'N', title: 'N: back to the results' },
+
+  // ---------- Leaving a round: its question's answers ----------
+  keepPlaying: { label: 'Keep playing' },
+  goToRound: (round: string): Verb => ({ label: `Go to ${round} ▶` }),
+  endGame: { label: 'End game ▶' },
 
   // ---------- A board game's turn ----------
   boardRoll: { label: '🎲 Roll', key: 'D' },

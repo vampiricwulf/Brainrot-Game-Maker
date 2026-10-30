@@ -26,6 +26,7 @@ describe('the host screen’s words for each step', () => {
       rollAgain: 'Roll again [D]',
       closeTool: 'Close [Esc]',
       closeToolBoard: 'Close ▶ board [Esc]',
+      closeToolBox: '✕ Close [Esc]',
       showQuestion: 'Show question ▶',
       partnerSpin: '🎡 Spin for a partner [W]',
       describerSpin: '🎡 Spin for the describer [W]',
@@ -40,6 +41,8 @@ describe('the host screen’s words for each step', () => {
       tiebreakerClue: '❓ Tiebreaker clue',
       rollOff: '🎲 Tiebreaker roll-off [O]',
       backToResults: '🏁 Back to results [N]',
+      keepPlaying: 'Keep playing',
+      endGame: 'End game ▶',
       boardRoll: '🎲 Roll [D]',
       nextTurn: 'Next turn ▶ [N]',
     });
@@ -47,6 +50,7 @@ describe('the host screen’s words for each step', () => {
     expect(VERBS.nextSlideOf(1, 3).title).toBe('N: slide 2 of 3 (Shift+N: the slide before) · or click the slide');
     expect([VERBS.right('Ann').label, VERBS.wrong('Ann').label, VERBS.rightBeside('Ann').label]).toEqual(['✔ Ann right', '✘ Ann wrong', '✔ Right']);
     expect([VERBS.move(3).label, VERBS.move(-2).label, VERBS.stepTo('Bonus').label]).toEqual(['▶ Move 3', '◀ Back 2', '→ Bonus']);
+    expect(VERBS.goToRound('Double Jeopardy!').label).toBe('Go to Double Jeopardy! ▶');
   });
 
   it('gives each step its own words, and a key cap a few signs long', () => {

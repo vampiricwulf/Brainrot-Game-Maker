@@ -124,7 +124,7 @@
       : end
         ? `Leave ${here} and end the game?`
         : `Leave ${here} for ${name}?`;
-    setAsk({ text, ok: end ? `${nextName} ▶` : `Go to ${name} ▶`, cancel: board && !left ? 'Stay' : 'Keep playing', onok: yes, oncancel: stop });
+    setAsk({ text, ok: (end ? VERBS.endGame : VERBS.goToRound(name)).label, cancel: board && !left ? 'Stay' : VERBS.keepPlaying.label, onok: yes, oncancel: stop });
   }
 
   function yes(): void {

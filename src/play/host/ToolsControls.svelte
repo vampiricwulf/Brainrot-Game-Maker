@@ -342,7 +342,7 @@
         {#if next === closeStep}
           <StepButton step={closeStep} />
         {:else}
-          <button use:oneShot onclick={onclose} disabled={closeWaits} title={closeTitle}>✕ Close <kbd aria-hidden="true">Esc</kbd></button>
+          <button use:oneShot onclick={onclose} disabled={closeWaits} title={closeTitle}>{VERBS.closeToolBox.label} <kbd aria-hidden="true">{VERBS.closeToolBox.key}</kbd></button>
         {/if}
       {/if}
     </div>
