@@ -16,7 +16,7 @@ import { existsSync, mkdirSync, mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { addClassicRounds, mainButton, mainLabel, noSelection, playWithPlayers, recordSeen, seenWhere, selectedWords, shownOf, startRoomOn } from './helpers.mjs';
+import { addClassicRounds, mainButton, mainLabel, noSelection, playWithPlayers, recordSeen, seenWhere, selectedWords, shownOf, startRoomOn, leaveAnswer } from './helpers.mjs';
 
 const file = resolve(process.env.APP_FILE || 'dist/index.html');
 if (!existsSync(file)) throw new Error('Run `npm run build` first');
@@ -247,7 +247,7 @@ try {
   await host.waitForTimeout(450);
   await host.locator('.rn > button').last().click();
   await host.waitForTimeout(450);
-  await host.getByRole('button', { name: 'Yes', exact: true }).click();
+  await leaveAnswer(host).click();
   await host.waitForFunction(() => document.querySelector('.panel .status')?.textContent?.includes('Final'));
   if ((await host.locator('.panel .status').innerText()).includes('Title card')) await host.keyboard.press('n');
   const rows = host.locator('.fj .wagers');
@@ -363,7 +363,7 @@ try {
   await host.waitForTimeout(450);
   await host.locator('.rn > button').last().click();
   await host.waitForTimeout(450);
-  await host.getByRole('button', { name: 'Yes', exact: true }).click();
+  await leaveAnswer(host).click();
   await host.locator('.fj').getByText('📱 The question was on screen: phones can’t send wagers any more').waitFor();
   await big(ann).getByText('Wager locked').waitFor();
   assert((await small(ann).innerText()) === 'Your wager: $1,300' && (await form(ann).isHidden()), 'back at the wagers after a trip to the round before, the phones stay locked (the question was seen)');
@@ -490,7 +490,7 @@ try {
   await host2.waitForTimeout(450);
   await host2.locator('.rn > button').last().click();
   await host2.waitForTimeout(450);
-  await host2.getByRole('button', { name: 'Yes', exact: true }).click();
+  await leaveAnswer(host2).click();
   await host2.waitForFunction(() => document.querySelector('.panel .status')?.textContent?.includes('Final'));
   if ((await host2.locator('.panel .status').innerText()).includes('Title card')) await host2.keyboard.press('n');
   const rows2 = host2.locator('.fj .wagers');
@@ -675,7 +675,7 @@ try {
   await host2.waitForTimeout(450);
   await host2.locator('.rn > button').last().click();
   await host2.waitForTimeout(450);
-  await host2.getByRole('button', { name: 'Yes', exact: true }).click();
+  await leaveAnswer(host2).click();
   await host2.waitForFunction(() => document.querySelector('.panel .status')?.textContent?.includes('Final'));
   if ((await host2.locator('.panel .status').innerText()).includes('Title card')) await host2.keyboard.press('n');
   await rows2.locator('.wrow', { hasText: 'Player 2' }).locator('input[data-plays]').uncheck();

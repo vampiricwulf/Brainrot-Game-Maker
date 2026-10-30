@@ -5,7 +5,7 @@ import { chromium } from 'playwright-core';
 import { existsSync, mkdirSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { exportHtml, noDailyDoubles, noSelection, openRules, selectedWords } from './helpers.mjs';
+import { exportHtml, noDailyDoubles, noSelection, openRules, selectedWords, leaveAnswer } from './helpers.mjs';
 
 const file = resolve(process.env.APP_FILE || 'dist/index.html');
 if (!existsSync(file)) throw new Error('Run `npm run build` first');
@@ -230,7 +230,7 @@ try {
   await page.waitForTimeout(450);
   await page.getByRole('button', { name: 'End game ▶' }).click();
   await page.waitForTimeout(450);
-  await page.getByRole('button', { name: 'Yes', exact: true }).click();
+  await leaveAnswer(page).click();
   // ---------- ▶ Next game… (a stream of several games): the editor's Open…, the results kept ----------
   {
     const chooser = page.waitForEvent('filechooser', { timeout: 5000 }).catch(() => null);
@@ -412,7 +412,7 @@ try {
   await page.waitForTimeout(450);
   await page.getByRole('button', { name: 'End game ▶' }).click();
   await page.waitForTimeout(450);
-  await page.locator('.panel .confirm').getByRole('button', { name: 'Yes' }).click();
+  await leaveAnswer(page).click();
   await page.getByRole('button', { name: '📋 Copy standings' }).waitFor();
   assert(
     (await page.getByRole('button', { name: '▶ Next game…' }).count()) === 0 && (await page.getByRole('button', { name: '🔁 Rematch' }).count()) === 0,

@@ -5,7 +5,7 @@ import { chromium } from 'playwright-core';
 import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { addClassicRounds, dragBy, exportHtml, openGameFile, playWithPlayers } from './helpers.mjs';
+import { addClassicRounds, dragBy, exportHtml, openGameFile, playWithPlayers, leaveAnswer } from './helpers.mjs';
 
 const file = resolve(process.env.APP_FILE || 'dist/index.html');
 if (!existsSync(file)) throw new Error('Run `npm run build` first');
@@ -546,7 +546,7 @@ try {
   await page.waitForTimeout(450);
   await page.getByRole('button', { name: 'Next round ▶' }).click();
   await page.waitForTimeout(450);
-  const yes = page.getByRole('button', { name: 'Yes', exact: true });
+  const yes = leaveAnswer(page);
   if (await yes.isVisible()) await yes.click();
   // The round opens on its title card. The pad and the minimap don't move the party under it (nobody would see it).
   await page.locator('.stage-box .title-card').waitFor();

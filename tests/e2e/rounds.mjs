@@ -4,7 +4,7 @@ import { chromium } from 'playwright-core';
 import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { macClicks, mainButton, noDailyDoubles, playWithPlayers } from './helpers.mjs';
+import { macClicks, mainButton, noDailyDoubles, playWithPlayers, leaveAnswer, confirmStrip } from './helpers.mjs';
 
 const file = resolve(process.env.APP_FILE || 'dist/index.html');
 if (!existsSync(file)) throw new Error('Run `npm run build` first');
@@ -135,7 +135,7 @@ try {
   await page.waitForTimeout(450); // the round buttons ignore clicks right after they appear
   await page.getByRole('button', { name: 'Midgame Wager ▶' }).click();
   await page.waitForTimeout(450);
-  await page.getByRole('button', { name: 'Yes', exact: true }).click();
+  await confirmStrip(page).getByRole('button', { name: 'Go to Midgame Wager ▶' }).click();
   // Its title card first, as for a board round.
   await page.locator('.title-card .round-name').filter({ hasText: 'Midgame Wager' }).waitFor();
   await page.getByRole('button', { name: 'Start the round ▶' }).click();
@@ -160,20 +160,20 @@ try {
   // The round picker jumps anywhere (rounds can be played out of order).
   await page.getByRole('button', { name: 'Skip intro' }).click().catch(() => {});
   const picker = page.getByRole('combobox', { name: 'Go to round' });
-  // With clues left on this board it asks first, like Next round; Cancel puts the list back on this round.
+  // With clues left on this board it asks first, like Next round; Keep playing puts the list back on this round.
   await picker.selectOption({ label: '🏆 Final Jeopardy!' });
-  const goTo = page.getByText(/clues? left · go to Final Jeopardy!\?/);
+  const goTo = page.getByText(/clues? (is|are) left in Double Jeopardy!\. Go to Final Jeopardy!\?/);
   await goTo.waitFor();
   await page.waitForTimeout(450);
   // (It asks in the strip above the fixed bar.)
-  await page.locator('.panel .confirm').getByRole('button', { name: 'Cancel' }).click();
+  await page.locator('.panel .confirm').getByRole('button', { name: 'Keep playing' }).click();
   assert(
     (await goTo.count()) === 0 && (await picker.locator('option:checked').innerText()).includes('Double Jeopardy!'),
-    'Cancel on “N clues left · go to …?” stays on this round, and the round list shows it again',
+    'Keep playing on “N clues are left in Double Jeopardy!. Go to Final Jeopardy!?” stays on this round, and the round list shows it again',
   );
   await picker.selectOption({ label: '🏆 Final Jeopardy!' });
   await page.waitForTimeout(450);
-  await page.locator('.panel .confirm').getByRole('button', { name: 'Yes' }).click();
+  await leaveAnswer(page).click();
   // Its title card, by mistake: ◀ Prev round goes back without starting it (its category never on stream).
   await page.locator('.title-card .round-name').filter({ hasText: 'Final Jeopardy!' }).waitFor();
   await page.waitForTimeout(450); // the round buttons ignore clicks right after they appear
@@ -183,7 +183,7 @@ try {
   await page.waitForTimeout(450);
   await picker.selectOption({ label: '🏆 Final Jeopardy!' });
   await page.waitForTimeout(450);
-  await page.locator('.panel .confirm').getByRole('button', { name: 'Yes' }).click();
+  await leaveAnswer(page).click();
   // (Its title card was shown already: it opens on the round.)
   await page.locator('.fj').waitFor();
   assert((await page.locator('.stage-box .full').innerText()).toUpperCase().includes('FINAL JEOPARDY!'), 'the round picker jumps straight to any round');

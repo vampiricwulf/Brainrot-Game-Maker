@@ -8,7 +8,7 @@ import { chromium } from 'playwright-core';
 import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { openGameFile } from './helpers.mjs';
+import { openGameFile, leaveAnswer } from './helpers.mjs';
 
 const file = resolve(process.env.APP_FILE || 'dist/index.html');
 if (!existsSync(file)) throw new Error('Run `npm run build` first');
@@ -170,7 +170,7 @@ async function nextRound(page) {
   await page.locator('.rn button', { hasText: '▶' }).click();
   await page.locator('.panel .confirm').waitFor();
   await page.waitForTimeout(450);
-  await page.locator('.panel .confirm').getByRole('button', { name: 'Yes', exact: true }).click();
+  await leaveAnswer(page).click();
   await page.waitForTimeout(450);
   if (await page.getByRole('button', { name: 'Skip intro' }).count()) await page.getByRole('button', { name: 'Skip intro' }).click();
 }

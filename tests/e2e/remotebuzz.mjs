@@ -10,7 +10,7 @@ import { chromium } from 'playwright-core';
 import { existsSync, mkdirSync, readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { addClassicRounds, addPlayers, answerReplace, exportHtml, mainButton, openRules, playWithPlayers } from './helpers.mjs';
+import { addClassicRounds, addPlayers, answerReplace, exportHtml, mainButton, openRules, playWithPlayers, leaveAnswer } from './helpers.mjs';
 
 const file = resolve(process.env.APP_FILE || 'dist/index.html');
 if (!existsSync(file)) throw new Error('Run `npm run build` first');
@@ -645,7 +645,7 @@ try {
   await page.waitForTimeout(450);
   await page.locator('.rn > button').last().click();
   await page.waitForTimeout(450);
-  await page.getByRole('button', { name: 'Yes', exact: true }).click();
+  await leaveAnswer(page).click();
   await page.waitForFunction(() => document.querySelector('.panel .status')?.textContent?.includes('Final'));
   if ((await page.locator('.panel .status').innerText()).includes('Title card')) await page.keyboard.press('n');
   const plays = page.locator('.fj .wagers input[data-plays]');

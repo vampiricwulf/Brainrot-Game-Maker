@@ -19,7 +19,7 @@ import { chromium } from 'playwright-core';
 import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { confirmStrip, editorReady, forgetSeen, mainButton, openGameFile, packGame, png, recordSeen, roomStored, seenWhere, shownOf, startBuzzer, startRoomOn, stored } from './helpers.mjs';
+import { confirmStrip, editorReady, forgetSeen, mainButton, openGameFile, packGame, png, recordSeen, roomStored, seenWhere, shownOf, startBuzzer, startRoomOn, stored, leaveAnswer } from './helpers.mjs';
 
 const file = resolve(process.env.APP_FILE || 'dist/index.html');
 if (!existsSync(file)) throw new Error('Run `npm run build` first');
@@ -370,7 +370,7 @@ try {
     await host.locator('.rn button', { hasText: '▶' }).click();
     await confirmStrip(host).waitFor();
     await sleep(450);
-    await confirmStrip(host).getByRole('button', { name: 'Yes', exact: true }).click();
+    await leaveAnswer(host).click();
   };
   /** 🤫 Send a card… has nothing made in the editor to pick: none of the Final's cards (and no tile played). */
   const noneFromEditor = async (when) => {

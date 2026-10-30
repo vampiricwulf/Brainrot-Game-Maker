@@ -195,7 +195,9 @@ Close too. A Daily Double's box opens at its top, the keys in its Wager box, and
 ▶**, greyed until there's a wager.
 Anything that asks first (Exit, closing the audience window, leaving a round, 🔁 Rematch) asks in one strip right
 above that bar: Cancel on the left, the answer on the right. Leaving a round always asks, unless a board is played out
-(then **Next round ▶** is the main button). In RPG and board-game rounds on a wide window the panel is a column beside
+(then **Next round ▶** is the main button), and says what leaving does, its answers too: “7 clues are left in
+Jeopardy!. Go to Double Jeopardy!?” **Keep playing** / **Go to Double Jeopardy! ▶**, or “End the game now? 7 clues are
+left.” **Keep playing** / **End game ▶**. It stays while you read it (the pointer on it or the keys in it). In RPG and board-game rounds on a wide window the panel is a column beside
 the stage, with the same parts and 🚪 Exit in the bottom-right corner.
 The rules can change mid-game too: **⚖ Rules** next to 👥 Players in the host panel opens ⚖ Game rules (they count at once
 and are kept with the game), and at the most players 👥 Players offers **Raise Most players**.

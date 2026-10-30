@@ -204,8 +204,11 @@ export async function situationHasMain(page, box) {
   return seen ? '' : `the box's “${label}” is out of sight`;
 }
 
-/** The confirmation strip above the fixed bar (Leave this game?, N clues left · go on?…). */
+/** The confirmation strip above the fixed bar (Leave this game?, End the game now? 7 clues are left.…). */
 export const confirmStrip = (page) => page.locator('.panel .confirm');
+
+/** Leaving a round's question, its answer that goes: Go to Double Jeopardy! ▶, End game ▶ (Keep playing stays). */
+export const leaveAnswer = (page) => confirmStrip(page).getByRole('button', { name: /^(Go to .+|End game) ▶$/ });
 
 // ---------- Phone buzzers ----------
 

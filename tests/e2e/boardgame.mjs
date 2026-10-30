@@ -5,7 +5,7 @@ import { chromium } from 'playwright-core';
 import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { addClassicRounds, answerReplace, dragBy, mainButton, mainLabel, openGameFile, playWithPlayers, png } from './helpers.mjs';
+import { addClassicRounds, answerReplace, dragBy, mainButton, mainLabel, openGameFile, playWithPlayers, png, leaveAnswer } from './helpers.mjs';
 
 const file = resolve(process.env.APP_FILE || 'dist/index.html');
 if (!existsSync(file)) throw new Error('Run `npm run build` first');
@@ -310,7 +310,7 @@ try {
   await page.waitForTimeout(450);
   await page.getByRole('button', { name: 'Next round ▶' }).click();
   await page.waitForTimeout(450);
-  const yes = page.getByRole('button', { name: 'Yes', exact: true });
+  const yes = leaveAnswer(page);
   if (await yes.isVisible()) await yes.click();
   // The round opens on its title card (the host's status line says so): clicking it goes on.
   await page.locator('.stage-box .title-card').waitFor();
@@ -787,16 +787,16 @@ try {
     .waitForFunction(() => document.querySelector('.bh input[aria-label="Steps"]')?.value === '3', null, { timeout: 5000 })
     .then(() => true, () => false);
   assert(countBack && !(await one.locator('.fork').count()), `Ctrl+Z of the move to the fork puts its count back (${await stepsBox.inputValue()})`);
-  // (Next round ▶ and its Yes each ignore a click in their first moment: the second half of a double-click.)
+  // (Next round ▶ and its answer each ignore a click in their first moment: the second half of a double-click.)
   const leave = one.locator('.panel .confirm');
   for (let i = 0; !(await leave.count()); i++) {
-    if (i === 10) throw new Error('Assertion failed: Next round ▶ asks “Leave Board game?”');
+    if (i === 10) throw new Error('Assertion failed: Next round ▶ asks “Leave Board game for …?”');
     await one.getByRole('button', { name: 'Next round ▶' }).click();
     await leave.waitFor({ timeout: 1000 }).catch(() => {});
   }
   for (let i = 0; await leave.count(); i++) {
-    if (i === 10) throw new Error('Assertion failed: Yes on “Leave Board game?” goes on to the next board');
-    await leave.getByRole('button', { name: 'Yes', exact: true }).click();
+    if (i === 10) throw new Error('Assertion failed: Go to … ▶ on “Leave Board game for …?” goes on to the next board');
+    await leaveAnswer(one).click();
     await leave.waitFor({ state: 'detached', timeout: 1000 }).catch(() => {});
   }
   await one.waitForFunction(() => [...document.querySelectorAll('button')].some((b) => b.textContent.trim() === '◀ Prev round' && !b.disabled));

@@ -13,7 +13,7 @@ import { chromium } from 'playwright-core';
 import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { confirmStrip, mainButton, mainLabel, openGameFile, startBuzzer, startRoomOn } from './helpers.mjs';
+import { confirmStrip, mainButton, mainLabel, openGameFile, startBuzzer, startRoomOn, leaveAnswer } from './helpers.mjs';
 
 const file = resolve(process.env.APP_FILE || 'dist/index.html');
 if (!existsSync(file)) throw new Error('Run `npm run build` first');
@@ -403,7 +403,7 @@ async function show(how) {
   await sleep(NEW_ROW);
   await click(host.locator('.rn button.next'), 'leaving asks first', async () => (await confirmStrip(host).count()) > 0);
   await sleep(NEW_ROW);
-  await click(confirmStrip(host).getByRole('button', { name: 'Yes', exact: true }), 'the Final’s title card', mainIs('Start the round ▶'));
+  await click(leaveAnswer(host), 'the Final’s title card', mainIs('Start the round ▶'));
 
   // ---------- The Final: the leader wagers what makes a tie and misses it, the others wager nothing ----------
   await begin('The Final');

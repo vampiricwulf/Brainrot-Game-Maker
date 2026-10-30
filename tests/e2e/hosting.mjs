@@ -6,7 +6,7 @@ import { chromium } from 'playwright-core';
 import { existsSync, mkdirSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { addClassicRounds, confirmStrip, flowButton, mainButton, mainLabel, playWithPlayers } from './helpers.mjs';
+import { addClassicRounds, confirmStrip, flowButton, mainButton, mainLabel, playWithPlayers, leaveAnswer } from './helpers.mjs';
 
 const file = resolve(process.env.APP_FILE || 'dist/index.html');
 if (!existsSync(file)) throw new Error('Run `npm run build` first');
@@ -372,19 +372,33 @@ try {
   await page.keyboard.press('Escape');
   await page.keyboard.press('h');
 
-  // ---------- Next round from the keyboard: the "go on?" stays while the focus is in it ----------
+  // ---------- Next round from the keyboard: its question stays while the focus is in it, or the pointer on it ----------
   await page.waitForTimeout(450);
   const nextBtn = page.locator('.rn > button').last();
   await nextBtn.focus();
   await page.keyboard.press('Shift+Tab');
   await page.keyboard.press('Tab');
   await page.keyboard.press('Enter');
-  // It asks in the strip above the fixed bar, the focus on its Cancel (Yes is to its right).
+  // It asks in the strip above the fixed bar, its answers saying what they do, the focus on Keep playing (Go to … ▶ is
+  // to its right).
   const goOn = confirmStrip(page);
   await goOn.waitFor();
-  assert((await goOn.innerText()).includes('clues left · go on?'), 'Next round with clues left asks in the confirmation strip');
+  const asked = (await goOn.innerText()).replace(/\s+/g, ' ');
+  assert(
+    /\d+ clues are left in Jeopardy!\. Go to Final Jeopardy!\? Keep playing Go to Final Jeopardy! ▶/.test(asked) && (await page.evaluate(() => document.activeElement?.textContent)) === 'Keep playing',
+    `Next round with clues left asks in the confirmation strip, naming its answers (${asked})`,
+  );
   await page.waitForTimeout(4400);
-  assert(await goOn.isVisible(), '“N clues left · go on?” stays up while the keyboard focus is in it');
+  assert(await goOn.isVisible(), 'the question stays up while the keyboard focus is in it');
+  // The focus out of it, the pointer on it: it stays (someone reading it); the pointer gone, it goes.
+  await page.evaluate(() => document.activeElement?.blur());
+  await goOn.locator('.ask').hover();
+  await page.waitForTimeout(4400);
+  assert(await goOn.isVisible(), 'and while the pointer is on it');
+  await page.mouse.move(5, 5);
+  await goOn.waitFor({ state: 'detached', timeout: 6000 });
+  await page.waitForTimeout(450);
+  await page.locator('.rn > button').last().click();
   await page.waitForTimeout(450);
   await page.keyboard.press('Tab');
   await page.keyboard.press('Enter');
@@ -409,7 +423,7 @@ try {
   await page.waitForTimeout(450);
   await page.locator('.rn > button').last().click();
   await page.waitForTimeout(450);
-  await page.getByRole('button', { name: 'Yes', exact: true }).click();
+  await leaveAnswer(page).click();
   await page.waitForFunction(() => document.querySelector('.panel .status')?.textContent?.includes('Final'));
   if ((await status()).includes('Title card')) await page.keyboard.press('n');
   await page.waitForFunction(() => document.querySelector('.panel .status')?.textContent?.includes('Category on screen · taking wagers'));

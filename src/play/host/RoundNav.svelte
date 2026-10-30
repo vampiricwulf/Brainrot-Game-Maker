@@ -1,8 +1,9 @@
 <!--
   Prev / Next round (or the final round / End game), and Go to round: quiet buttons at the end of the tools row.
-  Leaving a round always asks first, in the panel's confirmation strip ("12 clues left · go on? Cancel / Yes"; an RPG
-  or board-game round: "Leave Adventure?"), so a stray click or a double-click never jumps ahead on stream. Only a
-  board played out goes on at once: then its Next round ▶ is the panel's main button.
+  Leaving a round always asks first, in the panel's confirmation strip, its answers saying what they do ("12 clues are
+  left in Jeopardy!. Go to Double Jeopardy!? Keep playing / Go to Double Jeopardy! ▶"; an RPG or board-game round:
+  "Leave Adventure for Board game?"), so a stray click or a double-click never jumps ahead on stream. Only a board
+  played out goes on at once: then its Next round ▶ is the panel's main button.
 -->
 <script lang="ts">
   import { onDestroy } from 'svelte';
@@ -95,9 +96,12 @@
     if (picker) picker.value = String(session.currentRound);
   }
 
-  /** It goes after 4 s, unless the keyboard focus is in it (someone reading it): then once the focus leaves. */
+  /**
+   * It goes after 4 s, unless someone is reading it, the pointer on it or the keyboard focus in it: then once they've
+   * left it.
+   */
   function lapse(): void {
-    timer = setTimeout(() => (document.activeElement?.closest('.confirm') ? lapse() : stop()), 4000);
+    timer = setTimeout(() => (document.activeElement?.closest('.confirm') || document.querySelector('.confirm:hover') ? lapse() : stop()), 4000);
   }
 
   function ask(what: 'next' | number): void {
@@ -105,15 +109,22 @@
     clearTimeout(timer);
     lapse();
     const name = typeof what === 'number' ? roundName(game.rounds[what], what) : target;
-    const r = round;
-    // Short, so it reads at a glance. A round picked in Go to round is named (it may not be the next one). (A board
-    // played out only asks for a round picked with the arrow keys.)
+    const here = round ? roundName(round, session.currentRound) : 'this round';
+    // (The end screen, after the last round.)
+    const end = what === 'next' && (isLast || !nextRound);
+    // The question says what leaving does, and its answers name it. A round picked in Go to round is named (it may not
+    // be the next one). (A board played out only asks for a round picked with the arrow keys.)
+    const lefts = `${left} clue${left === 1 ? ' is' : 's are'} left`;
     const text = board
       ? left
-        ? `${left} clue${left === 1 ? '' : 's'} left · ${what === 'next' ? 'go on?' : `go to ${name}?`}`
+        ? end
+          ? `End the game now? ${lefts}.`
+          : `${lefts} in ${here}. Go to ${name}?`
         : `Go to ${name}?`
-      : `Leave ${r ? roundName(r, session.currentRound) : 'this round'}${what === 'next' ? '' : ` for ${name}`}?`;
-    setAsk({ text, ok: 'Yes', onok: yes, oncancel: stop });
+      : end
+        ? `Leave ${here} and end the game?`
+        : `Leave ${here} for ${name}?`;
+    setAsk({ text, ok: end ? `${nextName} ▶` : `Go to ${name} ▶`, cancel: board && !left ? 'Stay' : 'Keep playing', onok: yes, oncancel: stop });
   }
 
   function yes(): void {

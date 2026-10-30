@@ -12,7 +12,7 @@ import { chromium } from 'playwright-core';
 import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { mainButton, mainLabel, openGameFile, packGame, png, recordSeen, shownOf, situationHasMain, startBuzzer, startRoomOn, stepButton } from './helpers.mjs';
+import { mainButton, mainLabel, openGameFile, packGame, png, recordSeen, shownOf, situationHasMain, startBuzzer, startRoomOn, stepButton, leaveAnswer } from './helpers.mjs';
 
 const file = resolve(process.env.APP_FILE || 'dist/index.html');
 if (!existsSync(file)) throw new Error('Run `npm run build` first');
@@ -369,9 +369,9 @@ try {
   // ---------- The quest next: its players' cards fold says Teams, as the rest of the panel does ----------
   await sleep(450);
   await host.locator('.rn .next').click();
-  await host.locator('.panel .confirm').getByRole('button', { name: 'Yes' }).waitFor();
+  await leaveAnswer(host).waitFor();
   await sleep(450); // (an ask's buttons ignore clicks right after they appear)
-  await host.locator('.panel .confirm').getByRole('button', { name: 'Yes' }).click();
+  await leaveAnswer(host).click();
   const fold = host.locator('.rh .who > button').first();
   await fold.waitFor();
   assert((await fold.innerText()).includes('Teams: stats & inventory'), `a quest's cards fold says Teams (${await fold.innerText()})`);

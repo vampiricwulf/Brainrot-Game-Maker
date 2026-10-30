@@ -15,7 +15,7 @@ import { existsSync, mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { addClassicRounds, playWithPlayers, startRoomOn } from './helpers.mjs';
+import { addClassicRounds, playWithPlayers, startRoomOn, leaveAnswer } from './helpers.mjs';
 
 const file = resolve(process.env.APP_FILE || 'dist/index.html');
 if (!existsSync(file)) throw new Error('Run `npm run build` first');
@@ -431,7 +431,7 @@ try {
     await host.waitForTimeout(450);
     await go.click();
     await host.waitForTimeout(450);
-    await host.locator('.panel .confirm').getByRole('button', { name: 'Yes' }).click();
+    await leaveAnswer(host).click();
   }
   await host.getByRole('button', { name: '🔁 Rematch' }).click();
   await host.getByText('Start a rematch? Scores go back to 0.').waitFor();

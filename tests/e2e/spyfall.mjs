@@ -21,7 +21,7 @@ import { chromium } from 'playwright-core';
 import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { confirmStrip, openGameFile, recordSeen, startBuzzer, startRoomOn, stored } from './helpers.mjs';
+import { confirmStrip, openGameFile, recordSeen, startBuzzer, startRoomOn, stored, leaveAnswer } from './helpers.mjs';
 
 const file = resolve(process.env.APP_FILE || 'dist/index.html');
 if (!existsSync(file)) throw new Error('Run `npm run build` first');
@@ -454,9 +454,9 @@ try {
   assert((await reveal.count()) === 1, 'Who was who is up, the deal’s window closed');
   await sleep(500);
   await tools.getByRole('button', { name: 'Next round ▶' }).click();
-  await confirmStrip(host).getByRole('button', { name: 'Yes' }).waitFor();
+  await leaveAnswer(host).waitFor();
   await sleep(500);
-  await confirmStrip(host).getByRole('button', { name: 'Yes' }).click();
+  await leaveAnswer(host).click();
   assert(await until(() => !cards().length), 'the next round: the cards (until the round ends) go from the room');
   assert(await until(async () => !(await cardsOn(phones[spy])) && !(await cardsOn(eve))), 'and from the phones');
   assert(await until(async () => !(await reveal.count())), 'and Who was who goes off the screen (it would cover the next round)');

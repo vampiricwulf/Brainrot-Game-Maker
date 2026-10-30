@@ -8,7 +8,7 @@ import { createServer } from 'node:http';
 import { readFileSync, existsSync, mkdirSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { addClassicRounds, mainButton, nameGame, openGameFile, playWithPlayers } from './helpers.mjs';
+import { addClassicRounds, mainButton, nameGame, openGameFile, playWithPlayers, confirmStrip } from './helpers.mjs';
 
 const file = resolve(process.env.APP_FILE || 'dist/index.html');
 if (!existsSync(file)) throw new Error('Run `npm run build` first');
@@ -881,7 +881,7 @@ try {
     await page.waitForTimeout(450); // the round buttons ignore clicks right after they appear
     await page.getByRole('button', { name: 'Final Jeopardy! ▶' }).click();
     await page.waitForTimeout(450);
-    await page.getByRole('button', { name: 'Yes', exact: true }).click();
+    await confirmStrip(page).getByRole('button', { name: 'Go to Final Jeopardy! ▶' }).click();
     await page.getByRole('button', { name: 'Start the round ▶' }).click();
     const wagers = page.locator('.fj .wagers input[data-wager]');
     await wagers.first().waitFor();
@@ -1009,7 +1009,7 @@ try {
     await page.waitForTimeout(450); // the round buttons ignore clicks right after they appear
     await page.getByRole('button', { name: 'Final Jeopardy! ▶' }).click();
     await page.waitForTimeout(450);
-    await page.getByRole('button', { name: 'Yes', exact: true }).click();
+    await confirmStrip(page).getByRole('button', { name: 'Go to Final Jeopardy! ▶' }).click();
     await page.locator('.title-card .round-name').filter({ hasText: 'Final Jeopardy!' }).waitFor();
     await page.waitForFunction(introPlayed);
     await page.getByRole('button', { name: 'Start the round ▶' }).click();

@@ -1092,13 +1092,13 @@ if (await page.locator('.panel .backdrop').count()) await page.locator('.panel .
 // Moving on with tiles left takes an inline second click.
 await page.waitForTimeout(450); // round buttons ignore clicks right after they appear
 await page.getByRole('button', { name: 'Final Brainrot ▶' }).click();
-await page.getByText('25 clues left · go on?').waitFor();
-assert((await page.locator('.final-label').count()) === 0, 'Final Brainrot ▶ with tiles left asks before moving on');
-assert((await page.evaluate(() => document.activeElement?.textContent)) === 'Cancel', 'keyboard focus moves to Cancel while it asks');
-await page.getByRole('button', { name: 'Cancel', exact: true }).click();
+await page.getByText('25 clues are left in Jeopardy!. Go to Final Brainrot?').waitFor();
+assert((await page.locator('.final-label').count()) === 0, 'Final Brainrot ▶ with tiles left asks before moving on, naming what it does');
+assert((await page.evaluate(() => document.activeElement?.textContent)) === 'Keep playing', 'keyboard focus moves to Keep playing while it asks');
+await page.getByRole('button', { name: 'Keep playing', exact: true }).click();
 await page.getByRole('button', { name: 'Final Brainrot ▶' }).click();
 await page.waitForTimeout(450);
-await page.getByRole('button', { name: 'Yes', exact: true }).click();
+await page.getByRole('button', { name: 'Go to Final Brainrot ▶', exact: true }).click();
 // Like a board round, the Final opens on its title card; N (or a click) goes on.
 await page.locator('.title-card .round-name').waitFor();
 assert(/final brainrot/i.test(await page.locator('.title-card .round-name').innerText()), 'the Final opens on its title card');
@@ -1112,7 +1112,7 @@ assert((await page.locator('.round-name').count()) === 0 && (await page.locator(
 await page.waitForTimeout(450);
 await page.getByRole('button', { name: 'Final Brainrot ▶' }).click();
 await page.waitForTimeout(450);
-await page.getByRole('button', { name: 'Yes', exact: true }).click();
+await page.getByRole('button', { name: 'Go to Final Brainrot ▶', exact: true }).click();
 
 // Final Jeopardy: eligible players, private wagers, one-by-one reveal.
 await page.locator('.fj').waitFor();

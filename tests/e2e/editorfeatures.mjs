@@ -7,7 +7,7 @@ import { copyFileSync, existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { openRules } from './helpers.mjs';
+import { openRules, leaveAnswer } from './helpers.mjs';
 
 const file = resolve(process.env.APP_FILE || 'dist/index.html');
 if (!existsSync(file)) throw new Error('Run `npm run build` first');
@@ -453,7 +453,7 @@ try {
     await page.waitForTimeout(450);
     await page.getByRole('button', { name: 'Next round ▶' }).click();
     await page.waitForTimeout(450);
-    const yes = page.getByRole('button', { name: 'Yes', exact: true });
+    const yes = leaveAnswer(page);
     if (await yes.isVisible()) await yes.click();
   }
   await page.locator('.bh').waitFor();

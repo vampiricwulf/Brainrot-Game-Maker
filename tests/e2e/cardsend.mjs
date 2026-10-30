@@ -16,7 +16,7 @@ import { chromium } from 'playwright-core';
 import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { confirmStrip, openGameFile, packGame, png, recordSeen, roomStored, shownOf, startBuzzer, startRoomOn, stored } from './helpers.mjs';
+import { confirmStrip, openGameFile, packGame, png, recordSeen, roomStored, shownOf, startBuzzer, startRoomOn, stored, leaveAnswer } from './helpers.mjs';
 
 const file = resolve(process.env.APP_FILE || 'dist/index.html');
 if (!existsSync(file)) throw new Error('Run `npm run build` first');
@@ -406,9 +406,9 @@ try {
   // (Its button ignores a click in its first moments on screen: the second half of a double-click.)
   await sleep(500);
   await tools.getByRole('button', { name: 'Next round ▶' }).click();
-  await confirmStrip(host).getByRole('button', { name: 'Yes' }).waitFor();
+  await leaveAnswer(host).waitFor();
   await sleep(500);
-  await confirmStrip(host).getByRole('button', { name: 'Yes' }).click();
+  await leaveAnswer(host).click();
   assert(await until(() => !cards().length), 'the next round: Card 1 (until the round ends) goes');
   assert(await until(async () => !(await cardsOn(bob))), 'Bob’s phone drops it');
   assert(!(await tools.locator('[data-cards-out-count]').count()), 'no cards out: the tools row says nothing of them');

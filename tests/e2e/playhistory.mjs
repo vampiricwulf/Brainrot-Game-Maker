@@ -5,7 +5,7 @@ import { chromium } from 'playwright-core';
 import { existsSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { addClassicRounds, mainButton, playWithPlayers } from './helpers.mjs';
+import { addClassicRounds, mainButton, playWithPlayers, leaveAnswer, confirmStrip } from './helpers.mjs';
 
 const file = resolve(process.env.APP_FILE || 'dist/index.html');
 if (!existsSync(file)) throw new Error('Run `npm run build` first');
@@ -33,7 +33,7 @@ const nextRound = async () => {
   await page.waitForTimeout(450);
   await page.locator('.rn button').last().click();
   await page.waitForTimeout(450);
-  const yes = page.getByRole('button', { name: 'Yes', exact: true });
+  const yes = leaveAnswer(page);
   if (await yes.isVisible()) await yes.click();
   // The round's title card (these are RPG and board-game rounds): N goes on.
   await page.locator('.stage-box .title-card').waitFor();
@@ -170,10 +170,10 @@ try {
   await page.keyboard.press('2');
   await page.waitForTimeout(450);
   await page.getByRole('button', { name: 'Next round ▶' }).click();
-  await page.getByText('clues left · go on?').waitFor();
+  await leaveAnswer(page).waitFor();
   await page.keyboard.press('Enter');
   assert(
-    (await page.getByText('clues left · go on?').count()) === 0 && (await scores()) === '$300 $400 $400',
+    (await confirmStrip(page).count()) === 0 && (await scores()) === '$300 $400 $400',
     'while Next round asks, Enter presses the focused Cancel (not Award)',
   );
   await page.keyboard.press('Escape');
@@ -224,7 +224,7 @@ try {
   await page.waitForTimeout(450);
   await page.locator('.rn button').last().click();
   await page.waitForTimeout(450);
-  await page.getByRole('button', { name: 'Yes', exact: true }).click().catch(() => {});
+  await leaveAnswer(page).click().catch(() => {});
   await page.getByRole('button', { name: 'Start the round ▶' }).click();
   await page.locator('.title-card .round-name').waitFor({ state: 'detached' });
   await page.locator('.fj').waitFor();
@@ -387,10 +387,10 @@ try {
   await p2.getByRole('dialog', { name: 'Players' }).waitFor({ state: 'detached' });
   await p2.waitForTimeout(450);
   await p2.locator('.rn button').last().click();
-  // (Its Yes takes no click in its first 400 ms.)
-  await p2.getByRole('button', { name: 'Yes', exact: true }).waitFor();
+  // (Its answer takes no click in its first 400 ms.)
+  await leaveAnswer(p2).waitFor();
   await p2.waitForTimeout(450);
-  await p2.getByRole('button', { name: 'Yes', exact: true }).click();
+  await leaveAnswer(p2).click();
   await p2.getByRole('button', { name: 'Start the round ▶' }).click();
   await p2.locator('.fj .wagers').waitFor();
   const wrows = p2.locator('.fj .wagers .wrow');

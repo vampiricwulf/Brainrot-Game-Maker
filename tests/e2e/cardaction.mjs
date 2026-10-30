@@ -11,7 +11,7 @@ import { chromium } from 'playwright-core';
 import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { confirmStrip, flowButton, mainButton, openGameFile, packGame, png, recordSeen, shownOf, startBuzzer, startRoomOn } from './helpers.mjs';
+import { confirmStrip, flowButton, mainButton, openGameFile, packGame, png, recordSeen, shownOf, startBuzzer, startRoomOn, leaveAnswer } from './helpers.mjs';
 import { wav } from './mediafixtures.mjs';
 
 const file = resolve(process.env.APP_FILE || 'dist/index.html');
@@ -337,9 +337,9 @@ try {
   await solo.keyboard.press('Escape');
   await sleep(600);
   await tools2.getByRole('button', { name: 'Next round ▶' }).click();
-  await confirmStrip(solo).getByRole('button', { name: 'Yes' }).waitFor();
+  await leaveAnswer(solo).waitFor();
   await sleep(600);
-  await confirmStrip(solo).getByRole('button', { name: 'Yes' }).click();
+  await leaveAnswer(solo).click();
   await solo.locator('.stage-box .tile').first().waitFor();
   await win2.getByText('Nothing private right now').waitFor();
   assert(true, 'the next round: the offered card (until the round ends) goes from the card window');

@@ -26,7 +26,7 @@ import { chromium } from 'playwright-core';
 import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { confirmStrip, mainButton, mainLabel, noSelection, openGameFile, packGame, selectedWords, situationHasMain, stepButton } from './helpers.mjs';
+import { confirmStrip, mainButton, mainLabel, noSelection, openGameFile, packGame, selectedWords, situationHasMain, stepButton, leaveAnswer } from './helpers.mjs';
 
 const file = resolve(process.env.APP_FILE || 'dist/index.html');
 if (!existsSync(file)) throw new Error('Run `npm run build` first');
@@ -121,7 +121,7 @@ try {
     await page.locator('.rn button', { hasText: '▶' }).click();
     await confirmStrip(page).waitFor();
     await page.waitForTimeout(450);
-    await confirmStrip(page).getByRole('button', { name: 'Yes', exact: true }).click();
+    await leaveAnswer(page).click();
   };
 
   console.log('The fixed bar stays put, one main button at most:');
@@ -261,13 +261,13 @@ try {
   const leave = page.locator('.rn button', { hasText: '▶' });
   assert(!(await leave.evaluate((b) => b.classList.contains('primary'))), 'its Next round ▶ is a quiet button');
   await leave.click();
-  assert((await confirmStrip(page).innerText()).includes('Leave Board game?'), 'and leaving it asks first (“Leave Board game?”)');
+  assert((await confirmStrip(page).innerText()).includes('Leave Board game for Final Jeopardy!?'), 'and leaving it asks first (“Leave Board game for Final Jeopardy!?”)');
   assert(
     (await page.locator('.panel button.primary:visible').count()) === 1 && (await confirmStrip(page).locator('button.primary').count()) === 1,
     'while it asks, its answer is the one main button (the round’s goes quiet)',
   );
   await page.waitForTimeout(450);
-  await confirmStrip(page).getByRole('button', { name: 'Yes', exact: true }).click();
+  await leaveAnswer(page).click();
   await page.locator('.fj').waitFor();
   await page.locator('.fj .wagers input[data-wager]').first().waitFor();
   states.wagers = await look();
@@ -393,7 +393,7 @@ try {
     await p2.waitForTimeout(450);
     await p2.locator('.rn button', { hasText: '▶' }).click();
     await p2.waitForTimeout(450);
-    await p2.locator('.panel .confirm').getByRole('button', { name: 'Yes', exact: true }).click();
+    await leaveAnswer(p2).click();
     await p2.locator('.panel .status', { hasText: name }).waitFor();
   };
   await p2Next('Adventure');
@@ -750,7 +750,7 @@ try {
       await p4.locator('.rn button', { hasText: '▶' }).click();
       await confirmStrip(p4).waitFor();
       await p4.waitForTimeout(450);
-      await confirmStrip(p4).getByRole('button', { name: 'Yes', exact: true }).click();
+      await leaveAnswer(p4).click();
       await p4.locator('.fj .wagers input[data-wager]').first().waitFor();
       // (In sight: what's at the middle of each box is the box, not clipped by the panel's scrolling part.)
       const hidden = await p4.evaluate(() =>
@@ -1135,10 +1135,10 @@ try {
         await picker.selectOption({ label: '🟦 Double Jeopardy!' });
         const ask = confirmStrip(p5);
         await ask.waitFor();
-        // (Its Yes ignores a click in its first moment: the second half of a double-click.)
+        // (Its answer ignores a click in its first moment: the second half of a double-click.)
         for (let i = 0; await ask.count(); i++) {
-          if (i === 10) throw new Error('Assertion failed: Yes on “… go to Double Jeopardy!?” goes there');
-          await ask.getByRole('button', { name: 'Yes', exact: true }).click();
+          if (i === 10) throw new Error('Assertion failed: Go to Double Jeopardy! ▶ on “… Go to Double Jeopardy!?” goes there');
+          await ask.getByRole('button', { name: 'Go to Double Jeopardy! ▶', exact: true }).click();
           await ask.waitFor({ state: 'detached', timeout: 1000 }).catch(() => {});
         }
         await p5.getByRole('button', { name: 'Skip intro' }).click();

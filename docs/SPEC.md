@@ -426,7 +426,10 @@ The mode isn't saved with the game: it's dual while the audience window is open.
   box keeps a few rows in sight (the panel scrolls), a roll's box above it too. The stage (and the editor's previews)
   keeps the game's colors under a Windows contrast theme; the host's controls take the contrast colors.
   Questions for the host (Exit, leaving a round, a locked door…) appear in one strip above that bar, never over the
-  stage.
+  stage. Leaving a round says what it does and its answers name it (“7 clues are left in Jeopardy!. Go to Double
+  Jeopardy!?” Keep playing / Go to Double Jeopardy! ▶; “End the game now? 7 clues are left.” Keep playing / End game ▶;
+  an RPG or board-game round: “Leave Adventure for Board game?”); it goes after a few seconds, but not while the
+  pointer is on it or the keys are in it.
 - **Nothing selects by accident**, in every window and on the phone page: a click, a double-click, a drag or `Ctrl+A`
   turns no words blue (in a single window they'd be on stream). Text selects only in fields, links, the room code (one
   click takes it whole), error lines, ℹ About's version, build and folders and 🔊 Sound help's switch and folder; with
