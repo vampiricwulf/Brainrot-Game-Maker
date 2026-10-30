@@ -34,7 +34,7 @@
         {#each items as e (e.id)}
           {@const def = itemDef(game, e.item)}
           <div class="it">
-            {#if def?.icon && mediaUrls[def.icon]}<img src={mediaUrls[def.icon]} alt="" />{:else}<span class="ic">📦</span>{/if}
+            {#if def?.icon && mediaUrls[def.icon]}<img src={mediaUrls[def.icon]} alt="" draggable="false" />{:else}<span class="ic">📦</span>{/if}
             <span>{entryName(game, e)}{e.qty > 1 ? ` ×${e.qty}` : ''}{e.equipped ? ' (equipped)' : ''}</span>
           </div>
         {:else}

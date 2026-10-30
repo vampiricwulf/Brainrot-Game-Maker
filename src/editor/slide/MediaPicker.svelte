@@ -101,7 +101,7 @@
       {#each items as m (m.id)}
         <button class="item" onclick={() => onpick(m.id)} title={m.name}>
           {#if kind === 'image' && mediaUrls[m.id]}
-            <img src={mediaUrls[m.id]} alt="" onerror={imgFallback} />
+            <img src={mediaUrls[m.id]} alt="" onerror={imgFallback} draggable="false" />
           {:else}
             <span class="ic">{kind === 'video' ? '🎬' : kind === 'audio' ? '🔊' : '🔤'}</span>
           {/if}

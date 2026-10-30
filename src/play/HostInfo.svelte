@@ -1,4 +1,5 @@
-<!-- Host-only view of what's going on, including the answer before it's revealed (dual-window mode). -->
+<!-- Host-only view of what's going on, including the answer before it's revealed (dual-window mode). Its words select, to
+     copy into chat: this column is never on stream. -->
 <script lang="ts">
   import { categoryLabel, clueCardName, finalName, formatPoints, questionSlides, slideText, type ClueCard, type Game, type Id, type Session } from '../lib/model';
   import { clueSlideIndex, coWinnersHold, currentClueInfo, currentFinal, nameList, ownPlayers, places, playerName, slidesRound, tiedLeaders, toolOnlyClue } from '../lib/session';
@@ -129,7 +130,7 @@
     {#each phoneCard(game, card, can).items as it (it.el)}
       {@const src = thumb(it)}
       <div class="small item">
-        {#if src}<img class="thumb" {src} alt="" referrerpolicy="no-referrer" />{/if}
+        {#if src}<img class="thumb" {src} alt="" referrerpolicy="no-referrer" draggable="false" />{/if}
         <span
           >{ITEM[it.kind][0]} {it.name} · {ITEM[it.kind][1]} · <span class:muted={!it.why}>{reach(it)}</span
           >{#if phones}<ShrinkButton {game} items={[it]} which={it.slow ? 'slow' : 'big'} title="Make a smaller copy of this file for phones" />{/if}</span
@@ -151,7 +152,7 @@
   </div>
 {/snippet}
 
-<div class="info">
+<div class="info selectable">
   {#if ask}
     <div class="label">Pop-up question{ask.value ? ` · worth ${formatPoints(ask.value, sym)}` : ''}</div>
     <div class="q">{slideText(ask.q) || '—'}</div>

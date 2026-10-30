@@ -938,7 +938,7 @@
             <label class="check small">Color <ColorBox bind:value={sel.color} aria-label="Space color" /></label>
             <div class="pop">
               <button class="small" onclick={() => (pickingIcon = !pickingIcon)} use:mediaDrop={{ kind: 'image', onpick: (id) => sel && (sel.icon = id) }}>
-                {#if sel.icon && mediaUrls[sel.icon]}<img class="ic" src={mediaUrls[sel.icon]} alt="" />{:else}🖼{/if} Icon
+                {#if sel.icon && mediaUrls[sel.icon]}<img class="ic" src={mediaUrls[sel.icon]} alt="" draggable="false" />{:else}🖼{/if} Icon
               </button>
               {#if pickingIcon}
                 <MediaPicker kind="image" onpick={(id) => ((sel.icon = id), (pickingIcon = false))} onclose={() => (pickingIcon = false)} />
@@ -1170,8 +1170,6 @@
     height: 1080px;
     transform-origin: 0 0;
     cursor: crosshair;
-    /* (Shift+click picks spaces: it mustn't select their names' text, which would then drag as text.) */
-    user-select: none;
   }
   .canvas:focus-visible {
     outline: 6px solid var(--accent);
@@ -1197,7 +1195,6 @@
     line-height: 1;
     cursor: crosshair;
     touch-action: none;
-    user-select: none;
   }
   .overlay {
     position: absolute;

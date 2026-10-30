@@ -112,7 +112,7 @@
         <div class="row">
           <!-- (Not the code or link of a room that turned this window away: it has ended, or is another window's.) -->
           {#if remote.status !== 'error'}
-            <b class="code">{remote.code}</b>
+            <b class="code selectable whole">{remote.code}</b>
             <button class="small" onclick={() => copyText(roomLink(), 'Join link copied')}>📋 Copy link</button>
           {/if}
           <span class="spacer"></span>
@@ -121,7 +121,7 @@
         {#if remote.status === 'reconnecting'}
           <p class="warn small" role="status">⚠ Reconnecting to the buzzer room… phones can’t buzz until it’s back.</p>
         {:else if remote.status === 'error'}
-          <p class="warn small" role="alert">⚠ {remote.error || 'Lost the buzzer room'}</p>
+          <p class="warn small selectable" role="alert">⚠ {remote.error || 'Lost the buzzer room'}</p>
           <button class="small" onclick={onstart}>Start a new room</button>
         {/if}
         <PhoneList {session} {max} {onadd} {onreject} {onkick} {onlock} teams={!!settings.buzzTeams} {onkickmember} {onmove} />

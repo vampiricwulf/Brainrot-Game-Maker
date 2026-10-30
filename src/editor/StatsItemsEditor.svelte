@@ -538,7 +538,7 @@
               }}
               ondragend={() => (iconDrag = null)}
             >
-              {#if it.icon && mediaUrls[it.icon]}<img src={mediaUrls[it.icon]} alt="" />{:else}📦{/if}
+              {#if it.icon && mediaUrls[it.icon]}<img src={mediaUrls[it.icon]} alt="" draggable="false" />{:else}📦{/if}
             </button>
             {#if iconFor === it.id}<MediaPicker kind="image" onpick={(id) => ((it.icon = id), (iconFor = null))} onclose={() => (iconFor = null)} />{/if}
           </div>

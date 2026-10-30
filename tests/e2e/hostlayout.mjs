@@ -21,7 +21,7 @@ import { chromium } from 'playwright-core';
 import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { confirmStrip, mainButton, mainLabel, openGameFile, packGame } from './helpers.mjs';
+import { confirmStrip, mainButton, mainLabel, noSelection, openGameFile, packGame, selectedWords } from './helpers.mjs';
 
 const file = resolve(process.env.APP_FILE || 'dist/index.html');
 if (!existsSync(file)) throw new Error('Run `npm run build` first');
@@ -121,8 +121,13 @@ try {
 
   console.log('The fixed bar stays put, one main button at most:');
   states.board = await look();
-  await page.locator('.stage-box .board .tile').first().click();
+  // A double-click on the tile in the stage's middle: it opens, and its second click, on the question's words now, turns
+  // nothing blue on stream (nor does Ctrl+A).
+  const stageMid = await page.locator('.stage-box .stage').boundingBox().then((s) => ({ x: s.x + s.width / 2, y: s.y + s.height / 2 }));
+  await page.mouse.dblclick(stageMid.x, stageMid.y);
   await page.waitForFunction(() => document.querySelector('.panel .status')?.textContent?.includes('Answer hidden'));
+  await page.keyboard.press('Control+a');
+  assert(await noSelection(page), `a double-click on a tile, the second click on the question, and Ctrl+A select nothing (${await selectedWords(page)})`);
   states.clue = await look();
   assert((await mainLabel(page)) === '👁 Reveal answer', 'in a clue the main button is 👁 Reveal answer');
   // ✔ greys out once pressed: the focus goes on to the main button, not lost to the page.

@@ -449,7 +449,6 @@
     inset: 0;
     z-index: 1000;
     touch-action: none;
-    user-select: none;
   }
   .hit {
     position: absolute;

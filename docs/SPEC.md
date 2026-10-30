@@ -422,6 +422,12 @@ The mode isn't saved with the game: it's dual while the audience window is open.
   keeps the game's colors under a Windows contrast theme; the host's controls take the contrast colors.
   Questions for the host (Exit, leaving a round, a locked door…) appear in one strip above that bar, never over the
   stage.
+- **Nothing selects by accident**, in every window and on the phone page: a click, a double-click, a drag or `Ctrl+A`
+  turns no words blue (in a single window they'd be on stream). Text selects only in fields, links, the room code (one
+  click takes it whole), error lines and ℹ About's version, build and folders; with the audience window open, the host
+  column, typed answers (✍, the Final's, a partner's guess) and the 📜 Log's rows too, to copy into chat, let go of when
+  the window closes. `Ctrl+A` on the host screen selects nothing outside a field (the live screen editor keeps its
+  select-all). Pictures and videos don't drag off as files: a drag on one moves what it's in.
 
 ### 6.3 Game flow
 0. **Round intro** (each step can be turned off in settings): the round title card ("DOUBLE JEOPARDY!") → tiles fill in

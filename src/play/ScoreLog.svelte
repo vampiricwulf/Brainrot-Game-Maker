@@ -185,7 +185,7 @@
               {:else if row.kind === 'roll'}{icon[row.source]}
               {:else}•{/if}
             </span>
-            <span class="text">{rowText(row)}</span>
+            <span class="text" class:selectable={!hide}>{rowText(row)}</span>
             {#if reopen || undone(row) || back}
               <span class="acts">
                 {#if reopen}
@@ -224,7 +224,7 @@
       {#each rolls as r (r.id)}
         <div class="roll">
           <div><span>{icon[r.source]}</span> <b>{r.name}</b> <span class="muted small">{time(r.ts)}</span></div>
-          <div>{stillSpinning(r.id) ? going(r) : r.result}</div>
+          <div class:selectable={!hide}>{stillSpinning(r.id) ? going(r) : r.result}</div>
           {#if r.playerIds?.length && !stillSpinning(r.id)}
             <div class="small">For: {nameList(r.playerIds.map((id) => byId[id]?.name ?? '?'))}</div>
           {/if}
@@ -246,7 +246,7 @@
             <span class="dot" style:background={p?.color ?? '#666'}></span>
             <span class="who">{name(first.playerId)}</span>
             <span class="delta" class:neg={first.delta < 0}>{amount(first.delta)}</span>
-            <span class="why muted">{first.reason}{judged(first)} · {time(first.ts)}</span>
+            <span class="why muted" class:selectable={!hide}>{first.reason}{judged(first)} · {time(first.ts)}</span>
             {#if inStep.has(first.id)}
               <span class="muted small" title="Undo it in 🕘 History (the item and the stock go back with it)">in a step</span>
             {:else}
@@ -262,7 +262,7 @@
               {expanded[step.key] ? '▾' : '▸'} {step.events.length} players
             </button>
             <span class="delta" class:neg={first.delta < 0}>{stepAmount(step.events, sym)}</span>
-            <span class="why muted">{nameList(step.events.map((e) => name(e.playerId)))} · {first.reason} · {time(first.ts)}</span>
+            <span class="why muted" class:selectable={!hide}>{nameList(step.events.map((e) => name(e.playerId)))} · {first.reason} · {time(first.ts)}</span>
             {#if step.events.some((e) => inStep.has(e.id))}
               <span class="muted small" title="Undo it in 🕘 History (the item and the stock go back with it)">in a step</span>
             {:else}

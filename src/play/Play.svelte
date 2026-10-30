@@ -4,7 +4,7 @@
   import { app, hint, sceneFrom, toast } from '../lib/app.svelte';
   import { prefs, savePrefs } from '../lib/prefs.svelte';
   import { commit, history, redo as redoStep, step, undo as undoStep } from '../lib/history.svelte';
-  import { createFieldTracker, undoKeyOf } from '../lib/undokeys';
+  import { createFieldTracker, isTextField, undoKeyOf } from '../lib/undokeys';
   import { blankName, clueCardWords, finalName, formatPoints, getClue, isBoard, isBoardGame, isFinal, isRpg, isSlides, MAX_PLAYERS, newId, PLAYER_WHEEL, questionSlides, wholePoints, type BoardRound, type ClueRef } from '../lib/model';
   import {
     applyScore, awardOpen, backToBoard, backToLastRound, currentFinal, clueName, clueReason, clueScored, currentClueInfo, ddShowQuestion, describeStep,
@@ -288,6 +288,13 @@
   const sym = $derived(game.settings.currencySymbol);
   // (▶ Test this round never goes on stream: an audience window left open keeps its card, and the test plays here.)
   const dual = $derived(audience.open && !app.test);
+  // One window (the audience window closed): words selected in the host's own text (copied into chat) don't stay blue
+  // on stream. (A field keeps what's selected in it.)
+  $effect(() => {
+    if (dual) return;
+    const s = getSelection();
+    if (s && !s.isCollapsed && !isTextField(document.activeElement)) s.removeAllRanges();
+  });
   /**
    * Single window: a list or window open in the host panel (?, L, 👥 Players, ⚖ Rules, 🔊 Sound, 🗜 Make smaller, the
    * RPG's ⤢ Full map, ✎ Edit board's ⚙ Buttons).
@@ -4116,6 +4123,10 @@
   }
 
   function onkey(e: KeyboardEvent): void {
+    // Ctrl+A selects nothing here, not even the room code (in one window it would show on stream): only in a field, and
+    // the live screen editor's items. (By its letter, or its place on a keyboard of other letters: Ctrl+Ф.)
+    const selectAll = e.key.toLowerCase() === 'a' || (e.code === 'KeyA' && !/^[a-z]$/i.test(e.key));
+    if ((e.ctrlKey || e.metaKey) && !e.altKey && selectAll && !app.editGame && !isTextField(e.target)) return void e.preventDefault();
     // The ? list hears this window's keys itself; Esc or ? from the audience window (no target here) closes it too.
     if (showKeys && !e.target && (e.key === 'Escape' || e.key === '?')) return void (showKeys = false);
     if (showPlayers && e.key === 'Escape' && e.target) return playersEsc(e);

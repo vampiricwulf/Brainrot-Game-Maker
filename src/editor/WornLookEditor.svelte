@@ -83,7 +83,7 @@
     <div class="row">
       <div class="pop">
         <button class="small" onclick={() => (picking = !picking)} use:mediaDrop={{ kind: 'image', onpick: (id) => (w.image = id) }}>
-          {#if w.image && mediaUrls[w.image]}<img class="thumb" src={mediaUrls[w.image]} alt="" />{/if} 🖼 Picture…
+          {#if w.image && mediaUrls[w.image]}<img class="thumb" src={mediaUrls[w.image]} alt="" draggable="false" />{/if} 🖼 Picture…
         </button>
         {#if picking}<MediaPicker kind="image" onpick={(id) => ((w.image = id), (picking = false))} onclose={() => (picking = false)} />{/if}
       </div>

@@ -94,7 +94,7 @@ function assert(cond, msg) {
 }
 // Test media generated in memory.
 import { deflateSync } from 'node:zlib';
-import { addClassicRounds, answerReplace, dragBy, flowButton, mainButton, nameGame, openGameFile, exportHtml } from './helpers.mjs';
+import { addClassicRounds, answerReplace, dragBy, flowButton, mainButton, nameGame, noSelection, openGameFile, exportHtml, selectedWords } from './helpers.mjs';
 /** Solid-ish RGB PNG of the given size (a horizontal gradient). */
 function bigPng(w, h) {
   const crcTable = Array.from({ length: 256 }, (_, n) => {
@@ -1062,6 +1062,7 @@ await flowButton(page, 'done', '▦ Done ▶ board').dblclick();
 await page.locator('.board').waitFor();
 await page.waitForTimeout(300);
 assert((await page.locator('.final-label').count()) === 0 && (await page.locator('.round-name').count()) === 0, 'double-clicking Done stays on this round');
+assert(await noSelection(page), `and selects no words (${await selectedWords(page)})`);
 if (await page.locator('.panel .backdrop').count()) await page.locator('.panel .backdrop').click();
 
 // Moving on with tiles left takes an inline second click.
@@ -1368,6 +1369,14 @@ assert(
   copied?.startsWith('🏆 Untitled Game (co-winners): 🥇 Player') && copied.match(/🥇 Player \d \$850/g)?.length === 2,
   `Copy standings puts the standings on the clipboard, co-winners sharing 🥇 (${copied})`,
 );
+// Without the browser's clipboard (some file:// pages), it still copies: by a box of its own, which selects (nothing else does).
+await page.evaluate(() => {
+  Object.defineProperty(navigator, 'clipboard', { configurable: true, value: { writeText: async () => Promise.reject(new Error('no clipboard')) } });
+  document.addEventListener('copy', (e) => (window.__copiedBox = e.target.value?.slice(e.target.selectionStart, e.target.selectionEnd)), { once: true });
+});
+await page.getByRole('button', { name: '📋 Copy standings' }).click();
+const boxCopied = await (await page.waitForFunction(() => window.__copiedBox)).jsonValue();
+assert(boxCopied === copied, `without the browser’s clipboard, 📋 Copy standings still copies them (${boxCopied})`);
 await page.keyboard.press('Enter');
 await page.waitForTimeout(200);
 assert((await page.getByText('Select a player first').count()) === 0, 'Enter on the end screen (no award row) does nothing');

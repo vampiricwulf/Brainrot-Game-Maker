@@ -11,7 +11,7 @@ import { chromium } from 'playwright-core';
 import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { addClassicRounds, flowButton, mainButton, mainLabel, openGameFile, playWithPlayers, stored } from './helpers.mjs';
+import { addClassicRounds, flowButton, mainButton, mainLabel, noSelection, openGameFile, playWithPlayers, selectedWords, stored } from './helpers.mjs';
 
 const file = resolve(process.env.APP_FILE || 'dist/index.html');
 if (!existsSync(file)) throw new Error('Run `npm run build` first');
@@ -159,6 +159,14 @@ async function crowd() {
   const caption = await aud.locator('.caption').evaluate((e) => parseFloat(getComputedStyle(e).fontSize));
   assert(caption >= 44, `the clue caption is big enough to read on a scaled-down stream (${caption}px)`);
   await host.keyboard.press('t');
+  // Two windows: the host's own column selects, to copy into chat, and Ctrl+A doesn't take in the rest of the page. A
+  // double-click on the audience window (full screen) turns nothing blue there.
+  await host.locator('.info .a').dblclick({ position: { x: 4, y: 8 } });
+  await host.keyboard.press('Control+a');
+  assert((await selectedWords(host)) === 'Answer', `two windows: a word of the answer in the host's column selects, and Ctrl+A selects nothing more (${await selectedWords(host)})`);
+  await aud.locator('.slide-area .inner').dblclick();
+  assert(await noSelection(aud), `a double-click on the audience window selects nothing (${await selectedWords(aud)})`);
+  await aud.locator('.slide-area .inner').dblclick();
 
   // A pop for the last player (a long name): it stays on the stage, above the caption, and its points always show.
   await host.locator('.panel .p').nth(11).locator('.sel').click();
@@ -214,6 +222,12 @@ async function crowd() {
   );
   await other.close();
   assert(!aud.isClosed() && (await host.locator('.panel .p').count()) === 12, 'closing that tab leaves the game and its audience window as they were');
+  // Words selected in the host's column don't stay blue once the audience window closes (this window is the stream then).
+  await host.locator('.info .q').dblclick({ position: { x: 4, y: 8 } });
+  assert(!(await noSelection(host)), 'two windows: a word in the host’s column selects');
+  await aud.close();
+  await host.locator('.play:not(.dual)').waitFor();
+  assert(await noSelection(host), `the audience window closed: nothing is left selected on the host's screen (${await selectedWords(host)})`);
   await ctx.close();
 }
 

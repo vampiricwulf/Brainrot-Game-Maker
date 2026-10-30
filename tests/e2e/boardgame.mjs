@@ -5,7 +5,7 @@ import { chromium } from 'playwright-core';
 import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { addClassicRounds, answerReplace, dragBy, mainButton, mainLabel, openGameFile, playWithPlayers } from './helpers.mjs';
+import { addClassicRounds, answerReplace, dragBy, mainButton, mainLabel, openGameFile, playWithPlayers, png } from './helpers.mjs';
 
 const file = resolve(process.env.APP_FILE || 'dist/index.html');
 if (!existsSync(file)) throw new Error('Run `npm run build` first');
@@ -96,6 +96,21 @@ try {
   await space('Detour').click({ button: 'right' });
   await page.getByRole('menu').getByRole('menuitem', { name: '🗑 Delete space' }).click();
   assert((await spaces.count()) === 12, 'and it can go again');
+  // A space with a picture moves when dragged by its picture (the picture never drags off on its own).
+  await space('Space 4').click();
+  const iconFile = page.waitForEvent('filechooser');
+  await page.locator('.side').getByRole('button', { name: /Icon$/ }).click();
+  await page.getByRole('button', { name: '⬆ Upload image file…' }).click();
+  await (await iconFile).setFiles({ name: 'icon.png', mimeType: 'image/png', buffer: png(200, 40, 40) });
+  const iconImg = space('Space 4').locator('img');
+  await iconImg.waitFor();
+  const iconAt = await space('Space 4').boundingBox();
+  await dragBy(page, iconImg, { x: iconAt.x + iconAt.width / 2 + 80, y: iconAt.y + iconAt.height / 2 + 60 });
+  const iconTo = await space('Space 4').boundingBox();
+  assert(iconTo.x - iconAt.x > 40 && iconTo.y - iconAt.y > 30, `a space is dragged by its picture (${Math.round(iconAt.x)},${Math.round(iconAt.y)} → ${Math.round(iconTo.x)},${Math.round(iconTo.y)})`);
+  await page.keyboard.press('Control+z');
+  await page.keyboard.press('Control+z');
+  await space('Space 4').locator('img').waitFor({ state: 'detached' });
 
   // Every arrowhead clears the name under the space it points at (11 → 12 and 12 → Start came in from below, under it).
   const hiddenHeads = () =>

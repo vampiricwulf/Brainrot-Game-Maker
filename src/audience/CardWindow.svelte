@@ -149,7 +149,7 @@
             {#if !s}
               <div class="box">{ICON[m.kind]} {WORD[m.kind].charAt(0).toUpperCase() + WORD[m.kind].slice(1)} coming…</div>
             {:else if m.kind === 'image'}
-              <img src={s} alt={m.name ?? 'Picture'} referrerpolicy="no-referrer" />
+              <img src={s} alt={m.name ?? 'Picture'} referrerpolicy="no-referrer" draggable="false" />
             {:else if m.kind === 'video'}
               <!-- svelte-ignore a11y_media_has_caption -->
               <video src={s} controls playsinline aria-label={m.name ?? 'Video'} use:playPart={m}></video>

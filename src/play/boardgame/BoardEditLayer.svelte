@@ -174,7 +174,6 @@
     z-index: 15;
     cursor: default;
     touch-action: none;
-    user-select: none;
   }
   .edit-layer.adding {
     cursor: crosshair;

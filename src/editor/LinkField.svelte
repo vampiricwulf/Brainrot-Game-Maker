@@ -198,7 +198,7 @@
           <button class="small" onclick={() => drive && (drive = { ...drive, step: 'video' })}>🎬 Video or sound</button>
         </div>
       {:else}
-        <p class="small">
+        <p class="small" class:selectable={!!error}>
           {#if error}{error}{:else if onembed}Drive videos and sounds can't play directly inside the browser version.{:else}{linkMessages.driveBrowser}{/if}
         </p>
         <div class="row">
@@ -216,7 +216,7 @@
       <p class="hint">{DRIVE_SHARE_HINT}</p>
     </div>
   {:else if error}
-    <p class="error small" role="alert">⚠ {error}</p>
+    <p class="error small selectable" role="alert">⚠ {error}</p>
   {:else}
     <p class="hint">{hint}</p>
   {/if}

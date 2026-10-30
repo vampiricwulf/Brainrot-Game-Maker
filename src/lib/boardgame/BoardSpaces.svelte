@@ -128,7 +128,7 @@
     {#if h}
       <span class="q">?</span>
     {:else if s.icon && mediaUrls[s.icon]}
-      <img src={mediaUrls[s.icon]} alt="" />
+      <img src={mediaUrls[s.icon]} alt="" draggable="false" />
     {:else if s.mark}
       <span class="mark">{s.mark}</span>
     {/if}

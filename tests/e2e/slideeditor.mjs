@@ -15,7 +15,7 @@ import { existsSync, mkdirSync, readFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { addClassicRounds, answerReplace } from './helpers.mjs';
+import { addClassicRounds, answerReplace, noSelection, selectedWords } from './helpers.mjs';
 import { gif } from './mediafixtures.mjs';
 
 const { GifReader } = createRequire(import.meta.url)('omggif');
@@ -459,8 +459,13 @@ try {
   await page.keyboard.press('Control+d');
   assert((await undoTitle()).startsWith('Undo: Duplicated shape “Rectangle”'), `Ctrl+D is “Duplicated shape “Rectangle”” (${await undoTitle()})`);
   await page.keyboard.press('Control+z');
-  // With the item selected, a word selected with the mouse (in the clue's header) is what Ctrl+C copies.
+  // A double-click on the clue's header selects no word (nothing outside a field or copyable text does)…
   await click(1750, 550);
+  await clue.locator('header .hint.keys').dblclick({ position: { x: 4, y: 6 } });
+  assert(await noSelection(page), `a double-click on the clue's header selects no word (${await selectedWords(page)})`);
+  // …but with the item selected, a word selected with the mouse in copyable text (an error line, say) is what Ctrl+C
+  // copies.
+  await clue.locator('header .hint.keys').evaluate((e) => e.classList.add('selectable'));
   await clue.locator('header .hint.keys').dblclick({ position: { x: 4, y: 6 } });
   await page.evaluate(() => {
     window.addEventListener('copy', (e) => (window.__copied = { taken: e.defaultPrevented, words: String(window.getSelection()).trim() }), { once: true });

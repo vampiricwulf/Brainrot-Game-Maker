@@ -78,6 +78,15 @@ export async function editorReady(page) {
   await page.waitForFunction(() => !document.querySelector('.editor > header')?.inert && !document.querySelector('.editor > .body')?.inert);
 }
 
+/**
+ * The words selected (blue) on the page outside a field, '' for none (a text box's own selection doesn't count). A click,
+ * a double-click, a drag or Ctrl+A selects nothing but fields and the few words marked to copy (.selectable).
+ */
+export const selectedWords = (page) =>
+  page.evaluate(() => (document.activeElement?.matches?.('input, textarea') ? '' : String(getSelection()).replace(/\s+/g, ' ').trim()));
+/** Nothing on the page is selected (outside a field). */
+export const noSelection = async (page) => (await selectedWords(page)) === '';
+
 /** Open… a game file (`files` as for setFiles), through Browse… when Open… lists recent games first. */
 export async function openGameFile(page, files) {
   const chooser = page.waitForEvent('filechooser');

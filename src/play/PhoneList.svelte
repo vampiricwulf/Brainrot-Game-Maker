@@ -173,7 +173,7 @@
   </p>
 {/if}
 {#if remote.status === 'online' && remote.error}
-  <p class="warn small" role="alert">⚠ {remote.error}</p>
+  <p class="warn small selectable" role="alert">⚠ {remote.error}</p>
 {/if}
 {#if onlock && session.remote}
   <label class="check small lock">

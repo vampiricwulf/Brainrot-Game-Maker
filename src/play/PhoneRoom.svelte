@@ -143,14 +143,14 @@
       <button class="primary" onclick={onstart} disabled={remote.status === 'connecting'}>
         {remote.status === 'connecting' ? 'Starting the room…' : '▶ Start the room'}
       </button>
-      {#if remote.status === 'error' && remote.error}<span class="warn small" role="alert">{remote.error}</span>{/if}
+      {#if remote.status === 'error' && remote.error}<span class="warn small selectable" role="alert">{remote.error}</span>{/if}
     </div>
   {:else}
     <div class="room">
       {#if link}<QrCode text={link} size={148} label="QR code for the join link {link}" />{/if}
       <div class="info">
         <div class="muted small">Room code</div>
-        <div class="code" aria-label="Room code {remote.code}">{remote.code}</div>
+        <div class="code selectable whole" aria-label="Room code {remote.code}">{remote.code}</div>
         <div class="row">
           <a href={link} target="_blank" rel="noreferrer" class="link">{link}</a>
           <button class="small" onclick={() => copyText(link, 'Join link copied: paste it in the Discord chat')}>📋 Copy link</button>

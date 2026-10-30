@@ -339,7 +339,7 @@
     <div class="pics">
       <div class="row pop">
         <span>Background image</span>
-        {#if t.boardImage && mediaUrls[t.boardImage]}<img src={mediaUrls[t.boardImage]} alt="" onerror={imgFallback} />{/if}
+        {#if t.boardImage && mediaUrls[t.boardImage]}<img src={mediaUrls[t.boardImage]} alt="" onerror={imgFallback} draggable="false" />{/if}
         <button
           class="small"
           aria-label={t.boardImage ? 'Change the board background image' : 'Choose a board background image'}
@@ -350,7 +350,7 @@
       </div>
       <div class="row pop">
         <span title="A logo or show title across the top of the board">Banner above the board</span>
-        {#if t.banner && mediaUrls[t.banner]}<img src={mediaUrls[t.banner]} alt="" onerror={imgFallback} />{/if}
+        {#if t.banner && mediaUrls[t.banner]}<img src={mediaUrls[t.banner]} alt="" onerror={imgFallback} draggable="false" />{/if}
         <button
           class="small"
           aria-label={t.banner ? 'Change the banner above the board' : 'Choose a banner above the board'}

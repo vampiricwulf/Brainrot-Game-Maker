@@ -35,7 +35,7 @@
   <div class="label">{outcome.label.trim() || fallback}</div>
   {#if url && ref}
     {#if ref.kind === 'image'}
-      <img src={url} alt="" />
+      <img src={url} alt="" draggable="false" />
     {:else if clip?.kind === 'video'}
       <div class="clip"><MediaPlayer el={clip} src={url} mode="play" {role} label="Video" /></div>
     {:else if clip}

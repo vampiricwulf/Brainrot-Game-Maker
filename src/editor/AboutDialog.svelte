@@ -61,16 +61,16 @@
     <p class="muted">Build game shows (Jeopardy boards, RPG maps and more) with rich slides, then host them for a livestream.</p>
     <dl>
       <dt>Version</dt>
-      <dd>{__APP_VERSION__} ({desktopApp ? 'Windows desktop app' : 'single HTML file'})</dd>
+      <dd class="selectable">{__APP_VERSION__} ({desktopApp ? 'Windows desktop app' : 'single HTML file'})</dd>
       <dt>Build</dt>
-      <dd>{__BUILD_COMMIT__ ? `${__BUILD_COMMIT__}, ` : ''}{__BUILD_DATE__}</dd>
+      <dd class="selectable">{__BUILD_COMMIT__ ? `${__BUILD_COMMIT__}, ` : ''}{__BUILD_DATE__}</dd>
       <dt>Guide</dt>
       <dd><a href={HOSTING_GUIDE} target="_blank" rel="noreferrer" onclick={link} title="The README on GitHub: hosting, phone buzzers, 🤫 cards, 🎭 deals, teams">📖 How to host (the guide)</a></dd>
       <dt>Source</dt>
       <dd><a href={REPO} target="_blank" rel="noreferrer" onclick={link}>GitHub: vampiricwulf/Brainrot-Game-Maker</a></dd>
       <dt>Updates</dt>
       <dd class="updates">
-        <span role="status">
+        <span role="status" class:selectable={!!update.error}>
           {#if update.status === 'checking'}Checking…{:else if update.status === 'available' && update.latest}Version {update.latest.version} is out.{:else if update.status === 'current'}✓ This is the newest version.{:else if update.status === 'failed'}{update.error}.{:else if update.status === 'idle' && !prefs.checkUpdates}Not checked at start-up (⚙ Settings).{/if}
           {#if update.error && (update.status === 'available' || update.status === 'current')}<span class="muted">{update.error}.</span>{/if}
           {#if update.checkedAt && update.status !== 'checking'}<span class="muted checked">(checked {checkedWhen(update.checkedAt)})</span>{/if}
@@ -121,11 +121,11 @@
         <div class="folder">
           <div>
             <div class="what">Your saves (Save, Export as a web page, Export JSON, autosaves)</div>
-            <code>{folders.saves?.path ?? 'unknown'}</code>
+            <code class="selectable">{folders.saves?.path ?? 'unknown'}</code>
             {#if !folders.saves?.exists}<div class="hint">Made the first time you save.</div>{/if}
             {#if folders.savesDocuments?.exists}
               <div class="hint">
-                Also in <code>{folders.savesDocuments.path}</code> (saves made when the app’s folder couldn’t be written).
+                Also in <code class="selectable">{folders.savesDocuments.path}</code> (saves made when the app’s folder couldn’t be written).
                 <button class="small ghost" onclick={() => show('saves-documents')} aria-label="Open folder: saves in Documents">📂 Open</button>
               </div>
             {/if}
@@ -136,14 +136,14 @@
         <div class="folder">
           <div>
             <div class="what">The game you’re editing, Recent games, a game in progress and media</div>
-            <code>{folders.data.path ?? 'unknown'}</code>
+            <code class="selectable">{folders.data.path ?? 'unknown'}</code>
           </div>
           <button class="small" disabled={!folders.data.exists} onclick={() => show('data')} aria-label="Open folder: game data and media">📂 Open folder</button>
         </div>
         <div class="folder">
           <div>
             <div class="what">Settings (Discord audio fix)</div>
-            <code>{folders.settings.path ?? 'unknown'}</code>
+            <code class="selectable">{folders.settings.path ?? 'unknown'}</code>
             {#if !folders.settings.exists}<div class="hint">Not made yet: it’s only made if you switch the Discord audio fix off.</div>{/if}
           </div>
           {#if folders.settings.exists}<button class="small" onclick={() => show('settings')} aria-label="Open folder: settings">📂 Open folder</button>{/if}
@@ -158,7 +158,7 @@
             </p>
             {#each leftovers as [which, f] (which)}
               <div class="folder">
-                <code>{f!.path}</code>
+                <code class="selectable">{f!.path}</code>
                 <button class="small" onclick={() => show(which)} aria-label="Open folder: old {which === 'old-data' ? 'game data' : 'settings'}">📂 Open folder</button>
               </div>
             {/each}
@@ -250,6 +250,5 @@
     display: block;
     word-break: break-all;
     font-size: 12px;
-    user-select: text;
   }
 </style>

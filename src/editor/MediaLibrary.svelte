@@ -443,7 +443,7 @@
               <video src={mediaUrls[copy.id]} autoplay controls playsinline aria-label="Its smaller copy for phones"></video>
             {/if}
           {:else if m.kind === 'image' && mediaUrls[m.id]}
-            <img src={mediaUrls[m.id]} alt="" onerror={imgFallback} />
+            <img src={mediaUrls[m.id]} alt="" onerror={imgFallback} draggable="false" />
           {:else if m.kind === 'video' && mediaUrls[m.id]}
             <!-- svelte-ignore a11y_media_has_caption -->
             <video src={mediaUrls[m.id]} preload="metadata" controls></video>

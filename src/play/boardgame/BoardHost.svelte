@@ -510,7 +510,6 @@
     font-size: 12px;
     letter-spacing: -2px;
     padding: 0 2px 0 3px;
-    user-select: none;
   }
   .ord .nm {
     padding: 1px 6px;

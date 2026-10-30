@@ -942,7 +942,7 @@
         {#if cat.image}
           <div class="cat-img">
             {#if mediaUrls[cat.image]}
-              <img src={mediaUrls[cat.image]} alt="" style:object-fit={cat.imageFit ?? 'contain'} onerror={imgFallback} />
+              <img src={mediaUrls[cat.image]} alt="" style:object-fit={cat.imageFit ?? 'contain'} onerror={imgFallback} draggable="false" />
             {:else}
               <span class="missing small">Missing image</span>
             {/if}
@@ -1049,7 +1049,7 @@
           {#if target && tileDrag}<span class="swap">{dropCopy ? '⧉ Copy here' : '⇄ Swap'}</span>{/if}
           <span class="val">
             <!-- (In the value's line, so the value and its badges go beside it or under it, never under the picture.) -->
-            {#if face}<img class="face" src={face} alt="" title="Tile image (shown instead of the value)" onerror={imgFallback} />{/if}
+            {#if face}<img class="face" src={face} alt="" title="Tile image (shown instead of the value)" onerror={imgFallback} draggable="false" />{/if}
             {clue.empty ? 'EMPTY' : formatPoints(clueValue(round, row, clue), sym)}
             {#if clue.value !== null && !clue.empty}<span class="badge" title="Custom value">✎</span>{/if}
             {#if clue.type === 'dailyDouble' && !clue.empty}<span class="dd" title="Daily Double">⭐ DD</span>{/if}

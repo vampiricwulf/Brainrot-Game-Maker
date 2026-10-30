@@ -613,7 +613,7 @@
                      with one marked ✔ Right, whether it's that one. -->
                 {@const picked = choices.length ? pickLabel(choices, a.pick) : undefined}
                 {@const named = choices.length ? pickOf(a, choices) : null}
-                <span class="typed" class:muted={!!a.pick && !picked} dir="auto" title="{picked ?? a.text}{dual && a.by ? ` · sent by ${a.by}` : ''}" data-typed={id}
+                <span class="typed" class:muted={!!a.pick && !picked} class:selectable={dual} dir="auto" title="{picked ?? a.text}{dual && a.by ? ` · sent by ${a.by}` : ''}" data-typed={id}
                   >{#if picked}<b>{picked}</b>{:else}“{a.text}”{#if named}{' '}<span class="muted">= {letter(choices.findIndex((c) => c.id === named))}</span>{/if}{/if}</span
                 >
                 {#if rightOne && named}
@@ -846,7 +846,6 @@
     color: var(--muted);
     font-size: 12px;
     letter-spacing: -2px;
-    user-select: none;
   }
   .pl.cur {
     border-color: var(--c);

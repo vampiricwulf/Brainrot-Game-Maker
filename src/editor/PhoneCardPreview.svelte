@@ -130,7 +130,7 @@
         <div class="box missing">{ICON[it.kind]} The host will show you this {KIND[it.kind]}</div>
       {:else if it.kind === 'picture' || it.kind === 'gif'}
         {@const s = src(it)}
-        {#if s}<img src={s} alt={it.name} referrerpolicy="no-referrer" />{:else}<div class="box">🖼 {it.name}</div>{/if}
+        {#if s}<img src={s} alt={it.name} referrerpolicy="no-referrer" draggable="false" />{:else}<div class="box">🖼 {it.name}</div>{/if}
       {:else if it.kind === 'embed'}
         <div class="box">▶ {it.name} (plays in its own player when tapped)</div>
       {:else}

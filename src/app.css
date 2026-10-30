@@ -47,6 +47,21 @@
 
 * { box-sizing: border-box; }
 
+/* Nothing turns blue from a click, a double-click or a drag (in one window it would show on stream): text selects only
+   where people type or copy it. Fields and links, and .selectable: the room code (.whole: one click takes all of it),
+   error lines, ℹ About's version and folders, and in two windows the host's own column, typed answers and the 📜 Log. */
+:root { -webkit-user-select: none; user-select: none; }
+input:not([type='checkbox'], [type='radio'], [type='range'], [type='color'], [type='file']),
+textarea,
+[contenteditable]:not([contenteditable='false']),
+a[href],
+.selectable { -webkit-user-select: text; user-select: text; }
+.selectable.whole { -webkit-user-select: all; user-select: all; }
+/* (A button's words never select, in copyable text too.) */
+.selectable :is(button, summary) { -webkit-user-select: none; user-select: none; }
+/* Pictures and videos don't drag off as files (a drag on one moves what it's in: a board-game space, a tile). */
+img:not([draggable='true']), video:not([draggable='true']) { -webkit-user-drag: none; }
+
 html, body, #app {
   margin: 0;
   height: 100%;
@@ -134,7 +149,7 @@ label.check:has(> input:disabled) { opacity: 0.55; cursor: default; }
 }
 .drag-row.drop-before::before { top: -3px; }
 .drag-row.drop-after::after { bottom: -3px; }
-.drag-grip { cursor: grab; color: var(--muted); font-size: 12px; letter-spacing: -2px; user-select: none; }
+.drag-grip { cursor: grab; color: var(--muted); font-size: 12px; letter-spacing: -2px; }
 
 /* A short message (toast) and the editor's "Deleted … · Undo" note (HistoryNotice): one pill at the bottom middle. */
 .note-pill {

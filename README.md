@@ -157,6 +157,10 @@ the page gets (on a wide screen the page is two columns). A **🔁 Rematch** kee
 - **📺 Separate audience window**: a clean window to capture in OBS or Discord. The host window keeps the answers,
   notes and controls, and its board marks the Daily Doubles (⭐), 🤝 partner and ✍ tiles still to play.
 
+Nothing turns blue when you click, double-click or drag, nor with `Ctrl+A`, so nothing shows selected on stream: only
+the boxes you type in, links, the room code (one click takes all of it), error lines and ℹ About's version and folders
+select. With the audience window open, the host's own column, typed answers and the 📜 Log select too, to copy into chat.
+
 Click a tile to open its clue, then reveal the answer with `R` or a click (a double-click is one step: it never also
 shows the answer, or goes back to the board and opens another tile; on a 🤝 partner clue a click waits until the pair has
 had their go, judged (a steal too) or out of time, and says what's next, while `R` shows it any time). A clue can have several question slides (a

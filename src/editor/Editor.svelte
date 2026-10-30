@@ -1279,7 +1279,7 @@
          half-drawn screen. -->
     <div class="body broken" role="alert">
       <h2>This game can't be shown</h2>
-      <p class="muted">{error instanceof Error ? error.message : String(error)}</p>
+      <p class="muted selectable">{error instanceof Error ? error.message : String(error)}</p>
       <div class="row">
         {#if previous}
           {@const prev = previous}

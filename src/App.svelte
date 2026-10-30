@@ -1097,7 +1097,7 @@
   <div class="loading">
     <div class="card" role="alert">
       <h1>Couldn't open this game</h1>
-      <p>{loadError}</p>
+      <p class="selectable">{loadError}</p>
     </div>
   </div>
 {:else if paused && app.screen === 'editor'}

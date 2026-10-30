@@ -16,7 +16,7 @@ import { existsSync, mkdirSync, mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { addClassicRounds, mainButton, mainLabel, playWithPlayers, recordSeen, seenWhere, shownOf, startRoomOn } from './helpers.mjs';
+import { addClassicRounds, mainButton, mainLabel, noSelection, playWithPlayers, recordSeen, seenWhere, selectedWords, shownOf, startRoomOn } from './helpers.mjs';
 
 const file = resolve(process.env.APP_FILE || 'dist/index.html');
 if (!existsSync(file)) throw new Error('Run `npm run build` first');
@@ -338,10 +338,20 @@ try {
     (await pill.innerText()).includes('✍ Answers on phones') && (await pill.getByRole('img').getAttribute('aria-label')) === '0 of 3 answers in',
     'the audience window shows “✍ Answers on phones”, 0 of 3 in',
   );
+  // On the phone only its boxes select: a double-click on the question turns nothing blue, one in the answer box takes
+  // the word typed.
+  await ann.locator('#clue').dblclick();
+  assert(await noSelection(ann), `a double-click on the phone's question selects nothing (${await selectedWords(ann)})`);
+  await ann.locator('#answer-in').fill('Fleming');
+  await ann.locator('#answer-in').dblclick();
+  assert((await ann.locator('#answer-in').evaluate((e) => e.value.slice(e.selectionStart, e.selectionEnd))) === 'Fleming', 'its answer box still selects what’s typed');
   await sendAnswer(ann, 'Fleming');
   await ann.locator('#answer-state').getByText('✔ Sent: “Fleming”').waitFor();
   const answers = host.locator('.fj [aria-label="Answers from phones"]');
   await answers.locator('[data-answer-row]', { hasText: '“Fleming”' }).waitFor();
+  // Two windows: the host can select the typed answer, to paste it in chat.
+  await answers.locator('[data-answer-row] .text', { hasText: 'Fleming' }).dblclick({ position: { x: 12, y: 8 } });
+  assert((await selectedWords(host)) === 'Fleming', `two windows: the host's copy of a typed answer selects (${await selectedWords(host)})`);
   assert((await answers.getByRole('status').innerText()).startsWith('1 of 3 in · only you see them'), 'Player 1 types “Fleming” and sends it: the host’s panel has it (only the host sees it)');
   await aud.waitForFunction(() => document.querySelector('[data-everyone] [role="img"]')?.getAttribute('aria-label') === '1 of 3 answers in');
   assert(!(await text(aud)).includes('Fleming') && !(await text(bo)).includes('Fleming'), 'the stream says 1 of 3 in, never the words; nor does the other phone have them');

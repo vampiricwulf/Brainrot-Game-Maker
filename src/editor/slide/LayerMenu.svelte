@@ -94,7 +94,7 @@
         onpointerenter={() => (hovered = el.id)}
         onpointerleave={() => hovered === el.id && (hovered = null)}
       >
-        {#if thumb}<img src={thumb} alt="" />{:else}<span class="ic">{LAYER_ICON[el.kind]}</span>{/if}
+        {#if thumb}<img src={thumb} alt="" draggable="false" />{:else}<span class="ic">{LAYER_ICON[el.kind]}</span>{/if}
         <span class="txt">{layerLabel(el, game)}</span>
         {#if el.locked}<span class="muted">🔒</span>{/if}
       </button>

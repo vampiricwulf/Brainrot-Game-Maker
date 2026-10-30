@@ -68,7 +68,7 @@
       <div class="row">
         <span class="muted small">Media:</span>
         {#if media}
-          {#if media.kind === 'image' && mediaUrls[media.id]}<img src={mediaUrls[media.id]} alt="" onerror={imgFallback} />{/if}
+          {#if media.kind === 'image' && mediaUrls[media.id]}<img src={mediaUrls[media.id]} alt="" onerror={imgFallback} draggable="false" />{/if}
           <span class="small">{media.name}</span>
           <button class="ghost small" onclick={() => (outcome.media = undefined)} aria-label="Remove {media.name}" title="Remove">−</button>
         {/if}

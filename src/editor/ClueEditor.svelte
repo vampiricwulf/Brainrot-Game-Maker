@@ -525,7 +525,7 @@
         </label>
         <div class="pop">
           {#if clue.tileFace?.image}
-            <img class="thumb" src={mediaUrls[clue.tileFace.image]} alt="Tile" onerror={imgFallback} />
+            <img class="thumb" src={mediaUrls[clue.tileFace.image]} alt="Tile" onerror={imgFallback} draggable="false" />
             <button class="ghost tiny" onclick={() => (clue.tileFace = { ...clue.tileFace, image: undefined })} title="Remove tile image" aria-label="Remove tile image">✕</button>
           {:else}
             <button

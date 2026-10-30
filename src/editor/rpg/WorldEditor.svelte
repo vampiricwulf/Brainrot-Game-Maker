@@ -1510,7 +1510,6 @@
   }
   .grid-wrap {
     position: relative;
-    user-select: none;
   }
   .grid-map {
     display: grid;

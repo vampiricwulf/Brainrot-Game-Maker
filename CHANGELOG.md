@@ -11,6 +11,16 @@ the day it's pushed (Pacific time; start the heading on the day's first push) an
 in plain words for the people who make and host games. Anything committed but not pushed yet goes under
 **Unreleased** at the top, and moves under its day when it's pushed.
 
+## Unreleased
+
+### Changed
+
+- Nothing turns blue any more when you click, double-click or drag, nor with Ctrl+A on the game screen (in one window a highlighted word showed on stream, a double-click on the audience window for full screen too). Only the boxes you type in, links, the room code (one click takes it whole), error lines and ℹ About's version and folders select, and with the audience window open the host's own column, typed answers and the 📜 Log, to copy into chat; what's selected there is let go of when that window closes. On the phone page only its boxes select.
+
+### Fixed
+
+- Board-game editor: a space with a picture couldn't be dragged by its picture (the picture dragged off on its own). Pictures never drag off as files now.
+
 ## 2026-10-30
 
 ### Changed

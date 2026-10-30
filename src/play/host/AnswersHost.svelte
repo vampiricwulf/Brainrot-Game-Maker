@@ -140,7 +140,7 @@
             <span class="who" style:background={p.color} style:color={textOn(p.color)}>{p.name}</span>
             <!-- (Each answer keeps its own direction in a <bdi>: a right-to-left one sits by the name, not at the row's far end.
                  The spaces go before the spans: one inside a span's start would be dropped.) -->
-            <span class="text" class:muted={!a || (!!a.pick && !picked)}
+            <span class="text" class:muted={!a || (!!a.pick && !picked)} class:selectable={dual}
               >{#if a}{#if picked}<b><bdi>{picked}</bdi></b>{:else}“<bdi>{a.text}</bdi>”{#if named}{' '}<span class="muted">= {letter(choices.findIndex((c) => c.id === named))}</span>{/if}{/if}{#if a.by}{' '}<span
                     class="muted small">· {a.by}</span
                   >{/if}{:else if phones.includes(p.id)}{open ? 'waiting…' : 'no answer'}{:else}no phone connected{/if}</span

@@ -786,7 +786,7 @@
     {#if guess}
       <div class="row small" data-partner-guess>
         ✍ {name(guess.seat)}{guess.by ? ` (${guess.by})` : ''}
-        {#if dual || session.revealed}guessed: <b dir="auto">“{guess.text}”</b>{:else}sent a guess (viewers can see this window: it shows here once the answer is up){/if}
+        {#if dual || session.revealed}guessed: <b dir="auto" class:selectable={dual}>“{guess.text}”</b>{:else}sent a guess (viewers can see this window: it shows here once the answer is up){/if}
       </div>
     {/if}
     <!-- ✔ Got it / ✘ Missed: what each gives, from the question on (a click judges while handing out the cards too; the

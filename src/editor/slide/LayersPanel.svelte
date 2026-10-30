@@ -189,7 +189,7 @@
       <span class="grip" aria-hidden="true">⋮⋮</span>
       {#if renaming === el.id}
         <span class="name">
-          {#if thumb}<img src={thumb} alt="" />{:else}<span class="ic">{layerIcon(el)}</span>{/if}
+          {#if thumb}<img src={thumb} alt="" draggable="false" />{:else}<span class="ic">{layerIcon(el)}</span>{/if}
           <input
             value={el.name ?? layerLabel(el, game)}
             aria-label="Layer name"
@@ -216,7 +216,7 @@
           aria-pressed={isSel}
           title="Click to select (Shift/Ctrl adds). Double-click or F2 to rename. Drag to restack; Alt+↑/↓ moves it up or down."
         >
-          {#if thumb}<img src={thumb} alt="" />{:else}<span class="ic">{layerIcon(el)}</span>{/if}
+          {#if thumb}<img src={thumb} alt="" draggable="false" />{:else}<span class="ic">{layerIcon(el)}</span>{/if}
           <span class="txt">{layerLabel(el, game)}</span>
           <!-- (Nowhere on the slide: this list is the only way to find it.) -->
           {#if offStage(el)}<span class="off-slide" title="Off the slide: players won't see it. Move it back with the X and Y fields.">⚠ off the slide</span>{/if}
@@ -295,7 +295,6 @@
     font-size: 12px;
     letter-spacing: -2px;
     padding: 0 3px 0 0;
-    user-select: none;
   }
   .name {
     flex: 1;

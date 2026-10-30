@@ -117,7 +117,7 @@
           Theme code (it starts with BRT1:)
           <textarea bind:value={code} rows="4" placeholder="BRT1:…" spellcheck="false" data-autofocus></textarea>
         </label>
-        {#if problem}<p class="warn small" role="alert">⚠ {problem}</p>{/if}
+        {#if problem}<p class="warn small selectable" role="alert">⚠ {problem}</p>{/if}
         <p class="hint">A theme code has the colors, fonts and layout, not pictures or uploaded fonts (a theme file carries those).</p>
         <div class="modal-foot">
           <button class="ghost" type="button" onclick={onclose}>Cancel</button>

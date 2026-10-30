@@ -527,11 +527,9 @@
       top 0.25s ease;
     filter: drop-shadow(0 6px 8px rgba(0, 0, 0, 0.6));
   }
-  /* No text selection from a drag: a selected name would be dragged off as text next time. */
   .avatar.draggable {
     cursor: grab;
     touch-action: none;
-    user-select: none;
   }
   /* Following the pointer (no easing behind it). */
   .avatar.dragging {

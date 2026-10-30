@@ -45,7 +45,7 @@
             aria-label={onbuy ? `Buy ${def.name}` : undefined}
             role={onbuy ? undefined : 'listitem'}
           >
-            {#if def.icon && mediaUrls[def.icon]}<img src={mediaUrls[def.icon]} alt="" />{:else}<span class="ic">📦</span>{/if}
+            {#if def.icon && mediaUrls[def.icon]}<img src={mediaUrls[def.icon]} alt="" draggable="false" />{:else}<span class="ic">📦</span>{/if}
             <div class="nm">{def.name}</div>
             {#if def.description}<div class="desc">{def.description}</div>{/if}
             <div class="price">{formatPrice(game, shop, shopPrice(game, shop, s.item))}</div>

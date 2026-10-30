@@ -16,6 +16,12 @@
 * { box-sizing: border-box; }
 [hidden] { display: none !important; }
 
+/* Nothing turns blue from a tap, a long press or a drag (a name, the clue): only the boxes to type in select, and
+   links. (Set on them by name: an iPhone may not type in a box that doesn't select.) */
+:root { -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
+input, textarea, a[href] { -webkit-user-select: text; user-select: text; -webkit-touch-callout: default; }
+img, video { -webkit-user-drag: none; }
+
 html, body {
   margin: 0;
   height: 100%;

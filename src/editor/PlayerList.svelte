@@ -398,7 +398,6 @@
     color: var(--muted);
     font-size: 12px;
     letter-spacing: -2px;
-    user-select: none;
   }
   .num {
     width: 16px;

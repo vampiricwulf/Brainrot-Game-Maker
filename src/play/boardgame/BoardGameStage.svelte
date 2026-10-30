@@ -265,11 +265,9 @@
     z-index: 11;
     filter: drop-shadow(0 0 12px #ffcc00);
   }
-  /* No text selection from a drag: a selected name would be dragged off as text next time. */
   .on-board.grab {
     cursor: grab;
     touch-action: none;
-    user-select: none;
   }
   /* Following the pointer (no easing behind it). */
   .on-board.dragging {
