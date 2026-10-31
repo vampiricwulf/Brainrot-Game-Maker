@@ -402,7 +402,7 @@ RollEvent  { id, ts, source: 'wheel' | 'dice', presetName?, result: string /* la
 1. Open a game (`.brainrot` or the embedded game in a standalone HTML).
 2. **Pre-game screen**: confirm or edit players (names, colors, pictures, starting scores, behind ± Start scores by
    ＋ Add player, shown whenever one isn't 0; a row's menu, from a
-   right-click or Shift+F10 on it or on the player's 📱 row: ✎ Rename F2 · 🎨 Color… · 🖼 Picture… · ± Start score… ·
+   right-click or Shift+F10 on it or on the player's 📱 row: 🎨 Color… · 🖼 Picture… · ± Start score… · ✎ Rename F2 ·
    ▲ Move up · ▼ Move down · 🗑 Delete player), ⚖ Game rules, 📱 Phone
    buzzers (with Teams) and On stream options (folded: "📺 On stream · “Starting soon” card · cover card · captions on",
    remembered, open by itself while its countdown runs), all saved with the game, and choose **Single window** or **📺 Separate

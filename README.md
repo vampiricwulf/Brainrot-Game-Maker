@@ -166,7 +166,7 @@ own words.
 
 Press **▶ Play** (or **👥 Players & rules ▶** in the editor's list) to get to the pre-game screen. Add the players there (rename, recolor, pick a picture, drag ⋮⋮ or
 `Alt`+arrows to reorder; type a name and press `Enter` for the next one; `F2` in a row renames it; a right-click on a
-row, or `Shift+F10`, gives its menu: ✎ Rename, 🎨 Color…, 🖼 Picture…, ± Start score…, ▲ ▼ Move and 🗑 Delete player,
+row, or `Shift+F10`, gives its menu: 🎨 Color…, 🖼 Picture…, ± Start score…, ✎ Rename, ▲ ▼ Move and 🗑 Delete player,
 from the player's 📱 Phone buzzers row too; while the buzzer room is up each row says how its phone is, where the name's
 chip was: 📱 in, 📱 waiting, 📵 lost 0:12, ⛔ kicked 1:40; they're kept with the game for next time; a start score, the
 points a player has before the first clue, is behind **± Start scores** by ＋ Add player, which this computer remembers

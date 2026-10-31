@@ -281,8 +281,8 @@ try {
   const playerNames = () => values(page.getByLabel(/^Player \d name$/));
   await page.locator('[data-place^="player:"] .num').first().click({ button: 'right' });
   const playerMenu = (await texts(page.getByRole('menu').getByRole('menuitem'))).map((t) => t.split('\n')[0]);
-  const order = ['✎ Rename', '🎨 Color…', '🖼 Picture…', '± Start score…', '▲ Move up', '▼ Move down', '🗑 Delete player'];
-  assert(playerMenu.length === order.length && order.every((x, i) => playerMenu[i].startsWith(x)), `right-click a player: rename, color, picture, start score, move, delete (${playerMenu.join(', ')})`);
+  const order = ['🎨 Color…', '🖼 Picture…', '± Start score…', '✎ Rename', '▲ Move up', '▼ Move down', '🗑 Delete player'];
+  assert(playerMenu.length === order.length && order.every((x, i) => playerMenu[i].startsWith(x)), `right-click a player: color, picture, start score, rename, move, delete: the editors’ one order (${playerMenu.join(', ')})`);
   await page.getByRole('menu').getByRole('menuitem', { name: '± Start score…' }).click();
   await page.waitForFunction(() => document.activeElement?.matches('input.score') && document.activeElement.getAttribute('aria-label') === 'Zed\'s start score');
   assert(true, 'its ± Start score… puts the keys in their start score');

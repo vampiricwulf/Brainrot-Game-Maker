@@ -7,7 +7,7 @@
 // Select · ★ Make the picker · ✎ Set the score…, the round's extras and 🗂 Open their card, their phone's seat while the
 // room is up, and last, in red, ⛔ Kick from phone and 🗑 Delete player (both ask first).
 import { app, toast } from '../lib/app.svelte';
-import type { MenuEntry } from '../lib/menustate.svelte';
+import { menuItem, menuOf, type MenuEntry } from '../lib/menustate.svelte';
 import { newId, type Game, type Session } from '../lib/model';
 import { awardOpen, playerName, typedAnswer } from '../lib/session';
 import { logged, setPicker } from '../lib/toolset';
@@ -252,19 +252,20 @@ export interface RosterActs {
 }
 
 /**
- * A ▶ Play row's menu (its 👥 row or its 📱 row): the plan's order, with their keys. `at`: the row's place in `count`;
- * `noun`: "player", or "team" with Teams on.
+ * A ▶ Play row's menu (its 👥 row or its 📱 row), in the editors' one order: what it's set to (its color, picture and
+ * start score), ✎ Rename, the moves, then 🗑 Delete. `at`: the row's place in `count`; `noun`: "player", or "team"
+ * with Teams on.
  */
 export function rosterMenu(name: string, at: number, count: number, noun: 'player' | 'team', acts: RosterActs): MenuEntry[] {
-  return [
-    { heading: name },
-    { label: '✎ Rename', keys: 'F2', onclick: acts.rename },
-    { label: '🎨 Color…', onclick: acts.color },
-    ...(acts.picture ? [{ label: '🖼 Picture…', onclick: acts.picture }] : []),
-    ...(acts.startScore ? [{ label: '± Start score…', onclick: acts.startScore }] : []),
-    { label: '▲ Move up', keys: 'Alt+↑', disabled: at === 0, onclick: () => acts.move(-1) },
-    { label: '▼ Move down', keys: 'Alt+↓', disabled: at === count - 1, onclick: () => acts.move(1) },
-    { sep: true },
-    { label: `🗑 Delete ${noun}`, danger: true, onclick: acts.remove },
-  ];
+  return menuOf({
+    heading: name,
+    verbs: [
+      { label: '🎨 Color…', onclick: acts.color },
+      ...(acts.picture ? [{ label: '🖼 Picture…', onclick: acts.picture }] : []),
+      ...(acts.startScore ? [{ label: '± Start score…', onclick: acts.startScore }] : []),
+    ],
+    rename: menuItem.rename(acts.rename),
+    move: [menuItem.up(() => acts.move(-1), { disabled: at === 0 }), menuItem.down(() => acts.move(1), { disabled: at === count - 1 })],
+    delete: menuItem.delete(noun, acts.remove, { keys: false }),
+  });
 }
