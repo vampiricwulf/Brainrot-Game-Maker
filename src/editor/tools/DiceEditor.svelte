@@ -5,7 +5,11 @@
   import type { Overlay } from '../../lib/live';
   import { diceCount, rollPreset } from '../../lib/tools';
   import { step } from '../../lib/history.svelte';
-  import { faceLines } from '../../lib/listedit';
+  import { copyDie, copyTotal, faceLines } from '../../lib/listedit';
+  import { menuItem, menuOf, showMenu, type MenuEntry } from '../../lib/menustate.svelte';
+  import { rowKeys } from '../../lib/dragorder.svelte';
+  import { isTextField } from '../../lib/undokeys';
+  import RowTools from '../RowTools.svelte';
   import { app, toast } from '../../lib/app.svelte';
   import { liveNumber } from '../../lib/numfield';
   import Stage from '../../lib/Stage.svelte';
@@ -50,6 +54,33 @@
     pasted[d.id] = '';
   }
 
+  // A die's and a range's menus: their ⋯, a right-click on them (not in a box, which keeps the browser's own), Shift+F10.
+  function dieItems(d: Die, i: number): MenuEntry[] {
+    return menuOf({
+      heading: `Die ${i + 1} · ${d.count}d${d.sides}`,
+      duplicate: menuItem.duplicate(() => step(`Duplicated a die of “${preset.name}”`, () => preset.dice.splice(i + 1, 0, copyDie(d))), { label: '⧉ Duplicate die' }),
+      delete: menuItem.delete('die', () => removeDie(i), { disabled: preset.dice.length <= 1, keys: false, hint: preset.dice.length <= 1 ? 'Dice need a die' : undefined }),
+    });
+  }
+  // Done at once: the note at the bottom offers Undo.
+  function removeDie(i: number): void {
+    if (preset.dice.length > 1) step(`Deleted a die of “${preset.name}”`, () => preset.dice.splice(i, 1), { notify: true });
+  }
+  type Total = NonNullable<DicePreset['totalOutcomes']>[number];
+  const rangeName = (t: Total) => (t.min === t.max ? `Total ${t.min}` : `Totals ${t.min}–${t.max}`);
+  function totalItems(t: Total, i: number): MenuEntry[] {
+    const list = preset.totalOutcomes ?? [];
+    return menuOf({
+      heading: rangeName(t),
+      duplicate: menuItem.duplicate(() => step(`Duplicated ${rangeName(t).toLowerCase()} of “${preset.name}”`, () => list.splice(i + 1, 0, copyTotal(t))), { label: '⧉ Duplicate range' }),
+      delete: menuItem.delete('range', () => removeTotal(t, i), { keys: false }),
+    });
+  }
+  function removeTotal(t: Total, i: number): void {
+    step(`Deleted ${rangeName(t).toLowerCase()} of “${preset.name}”`, () => preset.totalOutcomes?.splice(i, 1), { notify: true });
+  }
+  const menuOn = (e: MouseEvent, items: () => MenuEntry[]) => !isTextField(e.target) && showMenu(e, items());
+
   function testRoll(): void {
     const p = JSON.parse(JSON.stringify(preset)) as DicePreset;
     test = { kind: 'dice', nonce: newId(), name: p.name, preset: p, roll: rollPreset(p), startedAt: Date.now(), duration: 1300 };
@@ -60,11 +91,11 @@
   <div class="left">
     <label class="field">Dice name<input bind:value={preset.name} /></label>
     {#each preset.dice as d, i (d.id)}
-      <div class="die">
+      <div class="die" role="group" aria-label="Die {i + 1}" oncontextmenu={(e) => menuOn(e, () => dieItems(d, i))} use:rowKeys={{ duplicate: () => preset.dice.splice(i + 1, 0, copyDie(d)), menu: () => dieItems(d, i) }}>
         <div class="row">
           <!-- Kept to what a die can be (1–20 of them, d2–d1000), and the box shows what was kept. -->
           <label class="check"
-            >Count<input
+            >How many<input
               type="number"
               min="1"
               max="20"
@@ -81,7 +112,7 @@
             /></label
           >
           <label class="check"
-            >Sides d<input
+            >Sides<input
               type="number"
               min="2"
               max={d.customFaces ? 100 : 1000}
@@ -93,11 +124,13 @@
               class="n"
             /></label
           >
+          <!-- (What it rolls, as players see it written.) -->
+          <span class="muted roll" aria-hidden="true">{d.count}d{d.sides}</span>
           <label class="check" title="Give each side its own label, details or effect (up to 100 sides)">
             <input type="checkbox" checked={!!d.customFaces} disabled={d.sides > 100 && !d.customFaces} onchange={(e) => setCustom(d, e.currentTarget.checked)} /> Custom faces
           </label>
           <span class="spacer"></span>
-          <button class="ghost small danger" onclick={() => preset.dice.splice(i, 1)} disabled={preset.dice.length <= 1}>🗑 Delete die</button>
+          <RowTools menu={() => dieItems(d, i)} name="die {i + 1}" remove={() => removeDie(i)} deleteLabel="Delete die {i + 1}" deleteWords="Delete die" off={preset.dice.length <= 1 ? 'Dice need a die' : undefined} />
         </div>
         {#if d.customFaces}
           <div class="faces">
@@ -131,7 +164,7 @@
     <h4>Outcomes by total (optional)</h4>
     <p class="muted small">e.g. 2–4 → "Take a sip", 12 → "Pick a victim". Anything, not just points.</p>
     {#each preset.totalOutcomes ?? [] as t, i (t.id)}
-      <div class="face">
+      <div class="face" role="group" aria-label={rangeName(t)} oncontextmenu={(e) => menuOn(e, () => totalItems(t, i))} use:rowKeys={{ duplicate: () => preset.totalOutcomes?.splice(i + 1, 0, copyTotal(t)), menu: () => totalItems(t, i) }}>
         <!-- From above To: they swap round (a range 9–4 is 4–9). -->
         <!-- (Emptied, a box keeps its number: a blank From would catch every total, a blank To none.) -->
         <input
@@ -148,7 +181,7 @@
           onchange={(e) => (t.min > t.max && ([t.min, t.max] = [t.max, t.min]), shown(e, t.max))}
         />
         <OutcomeEditor outcome={t.outcome} placeholder="What happens" dice />
-        <button class="ghost small" onclick={() => preset.totalOutcomes?.splice(i, 1)} aria-label="Delete this total" title="Delete">🗑</button>
+        <RowTools menu={() => totalItems(t, i)} name={rangeName(t)} remove={() => removeTotal(t, i)} deleteLabel="Delete this total" />
       </div>
     {/each}
     <div>
@@ -204,6 +237,10 @@
   }
   .n {
     width: 70px;
+  }
+  .roll {
+    font-size: 12px;
+    min-width: 3.5em;
   }
   .n0 {
     width: 24px;

@@ -356,16 +356,17 @@ try {
   assert((await page.getByText('No label on slice 1: it lands as “Slice 1”.').count()) === 1, 'a slice left without a label is pointed out');
   await page.keyboard.press('Control+z');
   await page.getByRole('button', { name: '＋ Add dice' }).click();
-  const count = page.getByLabel('Count');
+  const count = page.getByLabel('How many', { exact: true });
   await count.fill('500');
   await count.press('Tab');
   assert((await count.inputValue()) === '20', 'a dice count of 500 is kept as 20');
-  const sides = page.getByLabel('Sides d');
+  const sides = page.getByLabel('Sides', { exact: true });
   await sides.fill('0');
   await sides.press('Tab');
   await sides.fill('1');
   await sides.press('Tab');
   assert((await sides.inputValue()) === '2', 'sides typed 0 then 1 show the d2 it is');
+  assert((await page.locator('.die .roll').first().innerText()) === '20d2', 'and the row says what it rolls (20d2)');
 
   // ---------- Shortcuts filter ----------
   await page.getByRole('button', { name: /^More:/ }).click();
