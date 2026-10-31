@@ -703,14 +703,18 @@ The mode isn't saved with the game: it's dual while the audience window is open.
   out”; never a phone's wager in one window). Each item has its quick buttons (＋ Award Ann $200 ▶ board `Enter`, − Deduct
   `Shift+Enter`, 🔔 Open the buzzers `U`, 🎲 Roll for it `O`, ⏱ Start the countdown `T`, ✔ Judge all ▶ board, ✍ Judge
   them, ✘ The rest are wrong, 📤 Send it; a partner clue's 🎡 Spin for a partner `W`, the players by number, Solo, ↩ Put
-  back `Shift+Esc`, 📤 Send and start `Enter` (never within a second of the question), ⏱ Start the clock, 📋 Copy, ✔ Got
+  back `Shift+Esc`, 📤 Send and start `Enter` (never within a second of the question), ⏱ Start the clock (`Enter`, or
+  `T` as outside), 📋 Copy, ✔ Got
   it ▶ reveal `Enter` / ✘ Missed `Shift+Enter`, who steals it; a tile's 🎡 Spin! `W` / 🎲 Roll! `D` / ↻ Spin again `W`, ✔ Give
   Ann +$100 ▶ question, or Choose in the box for a steal, a swap or nobody chosen (who a score effect is for is the game
   screen's, `Live.scoreDrafts`, given by `applyScoreCard` there and in its box alike), ＋ Award Ann $200 and close it),
   then the foot's Not yet (`Esc`) and a quiet “… anyway” (▦ Done anyway: no
   points, `N`; 👁 Reveal anyway, `R`: `N` at a reveal only says so). It takes no key or click for 600 ms (`Esc`
-  excepted), lighting up what the press would have done; an `Esc` within 600 ms of Not yet does nothing; digits keep
-  their meaning (an item done meanwhile stays in its place, ticked, and “✓ Nothing left” then offers the step); `K`,
+  excepted), lighting up what the press would have done; an `Esc` within 600 ms of Not yet does nothing; the rest of a
+  double-click on one of its buttons presses nothing more (`guard.checkPressHeld`), and once a press closes it, lands on
+  nothing where it was; digits keep their meaning (an item done meanwhile stays in its place, ticked, and “✓ Nothing
+  left” then offers the step, but `Enter` there with players selected where it awards closes it as Not yet and awards
+  them, as outside), and a digit a closing fix shows as its key (a tie's “Ann answers”, a steal's) presses it; `K`,
   `B`, `M`, `Space`, `←`/`→` and `F` pass through. Shift+click on the blue button goes on asking only what must be done;
   the keys go back to what opened it. What's left also rings its own button in the panel (one ring at a time), and
   “Don't ask about … again this game” silences a kind (`session.goonQuiet`). With the controls hidden in one window a
