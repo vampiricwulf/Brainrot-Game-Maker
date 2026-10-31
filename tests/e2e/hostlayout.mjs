@@ -484,7 +484,8 @@ try {
   await page.keyboard.press('r');
   await tbPips.waitFor({ state: 'detached' });
   assert((await page.locator('.stage-box').innerText()).includes('Tiebreaker answer'), 'R reveals its answer (the dots go)');
-  // The winner selected and ＋ Award at Amount 0: the panel says who won. Selecting the other tied player instead changes it.
+  // The winner selected and Enter (＋ Award at Amount 0, its Amount row folded): the panel says who won. The other tied
+  // player's 🏆 in the Who won? row changes it.
   const pts = (await page.locator('.panel .p .score').allInnerTexts()).map((t) => Number(t.replace('−', '-').replace(/[^\d-]/g, '')));
   const tiedAt = pts.flatMap((v, i) => (v === Math.max(...pts) ? [i] : []));
   const chipName = async (i) => (await page.locator('.panel .p .sel').nth(i).innerText()).replace(/^\d+\s*/, '').trim();
@@ -492,20 +493,23 @@ try {
   await page.locator('.panel .status').click();
   await page.keyboard.press(String(tiedAt[0] + 1));
   await page.keyboard.press('Enter');
-  await page.locator('.panel .status', { hasText: `${first} won the tiebreaker: 🏁 Back to results` }).waitFor();
-  assert(true, `once ${first} is picked (Amount 0), the panel says so and to go back to the results`);
-  await page.keyboard.press(String(tiedAt[1] + 1));
-  await page.keyboard.press('Enter');
-  await page.locator('.panel .status', { hasText: `${other} won the tiebreaker` }).waitFor();
-  assert(!(await page.locator('.toast').allInnerTexts()).some((t) => t.includes('isn’t tied for first')), `selecting ${other} (tied too) and ＋ Award changes the winner (not "isn’t tied for first")`);
+  await page.locator('.panel .status', { hasText: `🏆 ${first} won · 🏁 Back to results (N)` }).waitFor();
+  assert(true, `once ${first} is picked (a number, then Enter), the panel says so and to go back to the results`);
+  const tbWho = page.locator('.panel [data-tb-who]');
+  await tbWho.getByRole('button', { name: `🏆 ${other}` }).click();
+  await page.locator('.panel .status', { hasText: `🏆 ${other} won` }).waitFor();
+  assert(
+    !(await page.locator('.toast').allInnerTexts()).some((t) => t.includes('isn’t tied for first')) && (await tbWho.locator('button[aria-pressed="true"]').innerText()) === `🏆 ${other}`,
+    `${other}'s 🏆 (tied too) changes the winner, pressed in the Who won? row (not "isn’t tied for first")`,
+  );
   // Ctrl+Z on the tiebreaker clue: its picks undo there, one at a time. Then the last Final judgment goes back to the
   // reveals (not out of sight), that player unjudged, the tiebreaker's countdown stopped.
   await page.keyboard.press('t');
   await page.locator('.stage-box .timer').waitFor();
   await page.keyboard.press('Control+z');
-  await page.locator('.panel .status', { hasText: `${first} won the tiebreaker` }).waitFor();
+  await page.locator('.panel .status', { hasText: `🏆 ${first} won` }).waitFor();
   await page.keyboard.press('Control+z');
-  await page.locator('.panel .status', { hasText: 'Select the winner' }).waitFor();
+  await page.locator('.panel .status', { hasText: 'Who won the tiebreaker?' }).waitFor();
   assert((await page.locator('.panel .status').innerText()).includes('Tiebreaker'), 'Ctrl+Z on the tiebreaker clue takes its picks back there, one at a time');
   await page.keyboard.press('Control+z');
   await page.locator('.panel .status', { hasText: 'Player reveals' }).waitFor();

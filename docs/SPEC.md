@@ -800,8 +800,10 @@ The mode isn't saved with the game: it's dual while the audience window is open.
    order), shown on each row.
 5. **Tie check**: if two or more players are tied for first, the results screen's tie box offers every way to settle it
    (it has no blue button; `N` says to settle the tie there):
-   - **Tiebreaker clue** (the pre-written `Game.tiebreaker`, if authored; greyed with why otherwise). Scored with the
-     normal scoring panel (the winner and ＋ Award with 0), or 🏆 their name when its 🏁 Back to results asks, or
+   - **Tiebreaker clue** (the pre-written `Game.tiebreaker`, if authored; greyed with why otherwise). Its box asks
+     "Who won? 🏆 Ann 🏆 Bob", the tied players only: one click settles the tie with no points (as the winner, a number
+     then `Enter`, and ＋ Award with 0 do; another 🏆 changes it), and the Amount row folds behind ± Also give points…
+     for points as on any clue; its 🏁 Back to results asks with the same 🏆 while nobody has won it, or
    - **Tiebreaker roll-off** between only the tied players (§6.6, `O`), or
    - **Declare co-winners**.
    The same tie check runs at the end of the game when Final Jeopardy is off.

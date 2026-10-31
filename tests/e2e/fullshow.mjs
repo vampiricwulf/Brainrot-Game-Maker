@@ -61,7 +61,8 @@ const TODAY = {
     'A slides round': { keys: 0, clicks: 4, typed: 0 },
     'A board-game turn, then leaving the round': { keys: 0, clicks: 6, typed: 0 },
     'The Final': { keys: 0, clicks: 13, typed: 0 },
-    'A tie at the end: the tiebreaker clue': { keys: 0, clicks: 5, typed: 0 },
+    // (U8's Who won? row: one click on the winner's 🏆, where it was their chip, then ＋ Award.)
+    'A tie at the end: the tiebreaker clue': { keys: 0, clicks: 4, typed: 0 },
   },
 };
 
@@ -503,7 +504,7 @@ async function show(how) {
   // ---------- A tie at the end: the tiebreaker clue ----------
   await begin('A tie at the end: the tiebreaker clue');
   const winner = tied[0];
-  const settled = statusHas(`${winner} won the tiebreaker`);
+  const settled = statusHas(`🏆 ${winner} won`);
   // (No blue button on the end screen: every way to settle the tie is in its box.)
   await until('the end screen, no blue button', noMain);
   await click(host.locator('.panel [data-tie]').getByRole('button', { name: '❓ Tiebreaker clue' }), 'the tiebreaker clue', mainIs('👁 Reveal answer'));
@@ -514,8 +515,7 @@ async function show(how) {
     await key('n', 'the results', over);
   } else {
     await stageClick('its answer', mainIs('🏁 Back to results'));
-    await click(host.locator('.panel .p', { hasText: winner }).locator('.sel'), `${winner} picked`, async () => (await host.locator('.panel .p .sel[aria-pressed="true"]').count()) === 1);
-    await click(award, `${winner} the winner`, settled);
+    await click(host.locator('.panel [data-tb-who]').getByRole('button', { name: `🏆 ${winner}` }), `${winner} the winner`, settled);
     await main('🏁 Back to results', 'the results', over);
   }
   assert(true, `${winner} won the tiebreaker, and the show is over`);

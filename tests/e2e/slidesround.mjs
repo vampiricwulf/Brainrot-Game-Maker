@@ -251,8 +251,13 @@ try {
   const tbClue = p2.locator('.panel [data-tie]').getByRole('button', { name: '❓ Tiebreaker clue' });
   assert((await mainButton(p2).count()) === 0 && (await tbClue.isEnabled()), 'a tie for first: no blue button; ❓ Tiebreaker clue is in the tie box');
   await tbClue.click();
-  await p2.locator('.panel .status', { hasText: 'Select the winner (Ann & Bob)' }).waitFor();
-  assert((await p2.locator('.panel .hint', { hasText: 'Pick the winner' }).innerText()) === 'Pick the winner (1–2)', 'the tiebreaker names who’s tied, and asks for the winner (not "0 for everyone")');
+  await p2.locator('.panel .status', { hasText: 'Who won the tiebreaker? Click their 🏆, or press their number then Enter' }).waitFor();
+  // Who won? the tied players only, one 🏆 each; the Amount row folded behind ± Also give points….
+  const tbWho = await p2.locator('.panel [data-tb-who] button').allInnerTexts();
+  assert(
+    tbWho.join() === '🏆 Ann,🏆 Bob' && (await p2.locator('.panel .award').count()) === 0 && (await p2.getByRole('button', { name: '± Also give points…' }).count()) === 1,
+    `the tiebreaker asks who won, the tied players only (${tbWho.join(' | ')}), its Amount row folded behind ± Also give points…`,
+  );
   assert((await p2.locator('.info .notes').innerText()) === 'Closest without going over wins', 'the tiebreaker’s host notes show in the info column');
   // N: the answer, then 🏁 Back to results (its key on it).
   assert((await mainLabel(p2)) === '👁 Reveal answer', 'its one question slide up: 👁 Reveal answer is the main button');
@@ -276,10 +281,11 @@ try {
   await p2.locator('.panel .status', { hasText: 'Game over' }).waitFor();
   assert((await goOnCheck(p2).count()) === 0, 'and N again goes back to the results, still tied');
   await tbClue.click();
-  await p2.locator('.panel .status', { hasText: 'Select the winner' }).waitFor();
-  // Points given in the tiebreaker settle it: the panel says so (not "Select the winner").
+  await p2.locator('.panel .status', { hasText: 'Who won the tiebreaker?' }).waitFor();
+  // Points given in the tiebreaker settle it (± Also give points…, then the amount): the panel says so.
   await p2.locator('.panel .status').click();
   await p2.keyboard.press('1');
+  await p2.getByRole('button', { name: '± Also give points…' }).click();
   await p2.locator('.panel .award').getByLabel('Amount').fill('100');
   await p2.locator('.panel .award').getByLabel('Amount').press('Enter');
   await p2.locator('.panel .status', { hasText: 'Nobody is tied for first any more: 🏁 Back to results' }).waitFor();
@@ -288,7 +294,7 @@ try {
   // past the outro after it.
   await p2.locator('.panel .status').click();
   await p2.keyboard.press('Control+z');
-  await p2.locator('.panel .status', { hasText: 'Select the winner (Ann & Bob)' }).waitFor();
+  await p2.locator('.panel .status', { hasText: 'Who won the tiebreaker?' }).waitFor();
   assert((await aud.locator('[data-slide="1"]').innerText()).includes('How many toilets?'), 'Ctrl+Z takes back the tiebreaker’s points there (it stays on stream)');
   await p2.keyboard.press('Control+z');
   await p2.locator('.panel .status', { hasText: 'Player reveals' }).waitFor();

@@ -1074,13 +1074,16 @@
     });
   }
 
-  /** The tiebreaker clue's winner with no points (Amount 0): the tie is settled, the scores stay as they are. */
+  /**
+   * The tiebreaker clue's winner with no points (its 🏆, or Amount 0 and ＋ Award): the tie is settled, the scores stay
+   * as they are.
+   */
   function tiebreakWin(sign: 1 | -1, ids: string[]): void {
     const id = ids[0];
-    if (sign < 0) return hint('Nothing to deduct: type an amount, or select the winner and ＋ Award');
+    if (sign < 0) return hint('Nothing to deduct: click the winner’s 🏆 (± Also give points… to give or take some)');
     // (Points given here settled it.)
     if (!tiedForFirst(session).length) return hint('Nobody is tied for first any more: 🏁 Back to results');
-    if (ids.length > 1) return hint(`Select the one ${pregameTeams ? 'team' : 'player'} who won the tiebreaker`);
+    if (ids.length > 1) return hint(`Who won? Click their 🏆, or select the one ${pregameTeams ? 'team' : 'player'} who did, then Enter`);
     // (Tied, settled or not: picking the other one replaces a wrong pick, as a step of its own.)
     if (!tiedForFirst(session).some((p) => p.id === id)) return hint(`${playerName(session, id)} isn’t tied for first`);
     const tied = tiedForFirst(session).map((p) => p.id);
@@ -3534,8 +3537,8 @@
   }
 
   /**
-   * The tiebreaker clue: select the winner and ＋ Award. Its Amount starts at 0 (settling the tie adds no points; the
-   * host can still type some).
+   * The tiebreaker clue: the winner's 🏆 (or their number, then Enter) settles the tie. Its Amount starts at 0 (settling
+   * the tie adds no points; ± Also give points… lets the host type some).
    */
   function tiebreaker(): void {
     whoWasWhoOff();
@@ -4336,11 +4339,14 @@
     if (session.phase === 'tiebreaker') {
       const pos = slidePosition(session, game);
       const shown = answerShowing(session);
+      // (Who won, as the panel's 🏆 row: the tied players only.)
+      const tied = tiedForFirst(session);
       return {
         heading: 'Tiebreaker',
         steps: [
           ...(pos ? [{ id: 'slide-', label: VERBS.prevSlide.label, keys: 'Shift+N', disabled: shown || pos.at <= 1, onclick: () => slideStep(-1) }] : []),
           { id: 'reveal', label: shown ? VERBS.hide.label : VERBS.reveal.label, keys: 'R', onclick: revealToggle },
+          ...(tied.length >= 2 ? tied.map((p): StageItem => ({ id: `tbwin:${p.id}`, label: `🏆 ${p.name} won`, onclick: () => tiebreakWin(1, [p.id]) })) : []),
           clockItem(),
         ],
         // (Before the answer, a skip; through the check: nobody has won it yet, it asks first.)
@@ -6525,6 +6531,7 @@
         onfinalstep={finalStep}
         ontiebreaker={tiebreaker}
         ontiebreakerdone={tiebreakerDone}
+        ontiebreakwin={(id) => tiebreakWin(1, [id])}
         oncowinners={winnerCue}
         onjudge={judge}
         onlog={(tab) => {

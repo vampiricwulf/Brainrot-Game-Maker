@@ -321,7 +321,10 @@ says to settle the tie there, and the box flashes, as the status line does). Und
 one place, tie or not: ◀ Back to final reveals, 📋 Copy standings, **▶ Next game…**, then **🔁 Rematch** last and set
 apart (it asks first); once there's a winner the status line says so, “🏆 Bob wins · the show is over: 📋 Copy standings
 for chat, or 🚪 Exit”. The tiebreaker clue's blue button is its slides, 👁 Reveal answer,
-then **🏁 Back to results**. In a board game the blue button is **Next turn ▶** (`N`), ◀ Previous turn (`Shift+N`)
+then **🏁 Back to results**; its box asks **Who won? 🏆 Ann 🏆 Bob**, the tied players only: one click settles the tie with no
+points (their number then `Enter` does the same, and another 🏆 changes it), and the Amount row folds behind
+**± Also give points…**. The status line says “Who won the tiebreaker? Click their 🏆, or press their number then
+Enter”, then “🏆 Bob won · 🏁 Back to results (N)”. In a board game the blue button is **Next turn ▶** (`N`), ◀ Previous turn (`Shift+N`)
 quiet beside it; the roll and the move are the turn box's, in one slot under a first line saying what to do (“Ann's
 turn: 🎲 Roll (D), then ▶ Move (Enter, or click the dice once they land)”): **🎲 Roll** (`D`), then **▶ Move Ann: 3**
 (`Enter`) in the same place once the dice land (greyed while they roll, ringed while it's what's next), the Steps box and

@@ -169,7 +169,7 @@ export const hostKeys = (playerOnly: boolean): KeyGroup[] => [
       ['N', 'The blue button: the next question slide, the answer, then back to the results (nobody its winner yet: it asks first, 🏆 who won)'],
       ['Shift+N', 'The question slide before'],
       ['R', 'Reveal the answer (again: hide it)'],
-      ['1 – 9, then Enter', 'The winner (Amount 0: no points)'],
+      ['1 – 9, then Enter', 'The winner, as their 🏆 in the Who won? row does (no points; ± Also give points… gives some too)'],
     ],
   },
   {

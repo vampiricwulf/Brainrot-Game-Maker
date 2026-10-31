@@ -18,10 +18,10 @@
   import { mayAsk, type GoPanel } from './host/goon';
   import { CHECK, FLOW } from './host/verbs';
   import { phoneAwaySince } from './host/phoneaway.svelte';
-  import { endLine } from './host/endlines';
+  import { endLine, tiebreakLine } from './host/endlines';
   import { movedNew } from './whatmoved.svelte';
   import { categoryLabel, clueCardWords, clueValue, finalName, formatPoints, isBoard, isSlides, questionSlides, typedPoints, wholePoints, type Game, type Session } from '../lib/model';
-  import { answerShowing, awardOpen, clueMarks, clueName, clueScored, currentClueInfo, currentFinal, findClueRef, nameList, ownPlayers, partnerSteal, roundComplete, score, setScore, slidePosition, stealersLeft, tiebreakHolds, tiedForFirst, toolOnlyClue, usedTiles } from '../lib/session';
+  import { answerShowing, awardOpen, clueMarks, clueName, clueScored, currentClueInfo, currentFinal, findClueRef, ownPlayers, partnerSteal, roundComplete, score, setScore, slidePosition, stealersLeft, tiebreakHolds, tiedForFirst, toolOnlyClue, usedTiles } from '../lib/session';
   import MediaControls from './MediaControls.svelte';
   import SoundWarnings from './host/SoundWarnings.svelte';
   import TimerControls from './host/TimerControls.svelte';
@@ -111,6 +111,7 @@
     onfinalstep,
     ontiebreaker,
     ontiebreakerdone,
+    ontiebreakwin,
     oncowinners,
     onjudge,
     onrolloff,
@@ -237,6 +238,8 @@
     /** Play the tiebreaker clue (from the end screen's tie). */
     ontiebreaker: () => void;
     ontiebreakerdone: () => void;
+    /** 🏆 This tied player won the tiebreaker clue (no points: as ＋ Award with 0; another 🏆 changes it). */
+    ontiebreakwin: (id: string) => void;
     /** The tied leaders were declared co-winners (the winner fanfare). */
     oncowinners?: () => void;
     /** The Final reveals: a player marked right or wrong (with its sound). */
@@ -449,6 +452,8 @@
       ? session.players.find((p) => p.id === session.rollOffWinner)
       : undefined,
   );
+  /** The tiebreaker clue's "Who won?" row: the players tied for first (none once points given there settled it). */
+  const tbTied = $derived(session.phase === 'tiebreaker' ? tiedForFirst(session) : []);
   /** ↩ Put back (keep tile)'s words in their three widths: its sign, then " Put back", then " (keep tile)". */
   const putBackWords = (() => {
     const l = VERBS.putBack.label;
@@ -607,6 +612,14 @@
   $effect(() => {
     if (session.phase !== 'board') adjust = false;
   });
+  /**
+   * The tiebreaker clue: its 🏆 row settles the tie, so the Amount row folds behind ± Also give points… (opened, it
+   * stays open for this tiebreaker).
+   */
+  let tbPoints = $state(false);
+  $effect(() => {
+    if (session.phase !== 'tiebreaker') tbPoints = false;
+  });
 
   function toggle(id: string): void {
     selected = selected.includes(id) ? selected.filter((x) => x !== id) : [...selected, id];
@@ -667,8 +680,17 @@
   });
   /** The Amount row is open: on the board once a player is picked (or ± Adjust score), in a partner clue as above. */
   const showAward = $derived(
-    scoring && (session.phase === 'board' ? !!selected.length || adjust : partnerFold ? otherPoints || !!selected.length || handGiven : true),
+    scoring &&
+      (session.phase === 'board'
+        ? !!selected.length || adjust
+        : partnerFold
+          ? otherPoints || !!selected.length || handGiven
+          : session.phase === 'tiebreaker'
+            ? tbPoints
+            : true),
   );
+  /** The folded Amount row's button: ± Adjust score, a partner clue's ± Other points…, the tiebreaker's ± Also give points…. */
+  const amountFold = $derived(partnerFold ? '± Other points…' : session.phase === 'tiebreaker' ? '± Also give points…' : '± Adjust score');
   // (A box taken away with the keys in it says no blur.)
   $effect(() => {
     if (!showAward) amountKeys = false;
@@ -763,6 +785,7 @@
   /** ± Adjust score / ± Other points…: the Amount row, opened, the keys in it. */
   function openAmount(): void {
     if (partnerFold) otherFor = partnerPlay;
+    else if (session.phase === 'tiebreaker') tbPoints = true;
     else adjust = true;
     void tick().then(() => amountBox?.focus());
   }
@@ -779,7 +802,7 @@
         ...(cancelBlocked ? { hint: 'Points were given for this clue: undo them first, or use ▦ Done ▶ board' } : {}),
         onclick: oncancelclue,
       });
-    if (scoring && !showAward) out.push({ label: partnerFold ? '± Other points…' : '± Adjust score', onclick: openAmount });
+    if (scoring && !showAward) out.push({ label: amountFold, onclick: openAmount });
     if (session.phase === 'board' && !session.intro && lastClosedRef && session.lastClosed) {
       const id = session.lastClosed;
       out.push({ label: `↶ Reopen ${clueName(game, lastClosedRef)}`, onclick: () => onreopen(id) });
@@ -922,14 +945,9 @@
     {:else if session.phase === 'tiebreaker'}
       <b>Tiebreaker</b>
       {#if slidePos && !answerShowing(session)}<span class="slidepos" data-slidepos>Slide {slidePos.at} of {slidePos.of}</span>{/if}
-      {#if tbWinner}
-        <span class="muted">{tbWinner.name} won the tiebreaker: 🏁 Back to results (or select someone else and ＋ Award to change it).</span>
-      {:else if !tiedForFirst(session).length}
-        <!-- (Points given here settled it.) -->
-        <span class="muted">Nobody is tied for first any more: 🏁 Back to results.</span>
-      {:else}
-        <span class="muted">Select the winner ({nameList(tiedForFirst(session).map((p) => p.name))}) and press ＋ Award (Amount 0 settles the tie without points), then go back to the results.</span>
-      {/if}
+      <!-- (Who won, by the 🏆 row, then back to the results; points given there may settle it too.) -->
+      {@const tbSay = tiebreakLine(session)}
+      <span class="muted say" title={tbSay}>{tbSay}</span>
       {#if game.tiebreaker?.hostNotes?.trim() && !dual}<span class="notes" title="Host notes (viewers can see them in this window): {game.tiebreaker.hostNotes}">📝 {game.tiebreaker.hostNotes}</span>{/if}
     {:else}
       <!-- (Who won and that the show is over, or the tie to settle; cut short on a narrow window, whole in its tooltip.) -->
@@ -1299,10 +1317,32 @@
             onclick={openAmount}
             title={partnerFold
               ? 'Give or take points by hand, as on any clue (or press a player’s number): ✔ Got it / ✘ Missed give the pair theirs'
-              : "Give or take points (or press a player's number)"}>{partnerFold ? '± Other points…' : '± Adjust score'}</button
+              : session.phase === 'tiebreaker'
+                ? 'Give or take points too, as on any clue: the 🏆 row settles the tie without any'
+                : "Give or take points (or press a player's number)"}>{amountFold}</button
           >
         {/if}
       {/snippet}
+      <!-- The tiebreaker clue: who won it, the tied players only. One click settles the tie with no points, as ＋ Award
+           with 0 does (another 🏆 changes it; Ctrl+Z takes it back). With one of them selected (their number), theirs takes
+           Enter while the Amount row is folded. -->
+      {#if tbTied.length >= 2}
+        <div class="row tbwho" data-tb-who role="group" aria-label="Who won the tiebreaker?">
+          <span class="muted">Who won?</span>
+          {#each tbTied as p (p.id)}
+            {@const won = tbWinner?.id === p.id}
+            {@const k = session.players.findIndex((x) => x.id === p.id) + 1}
+            {@const enter = !showAward && !won && selected.length === 1 && selected[0] === p.id}
+            <button
+              aria-pressed={won}
+              data-player-id={p.id}
+              onclick={() => ontiebreakwin(p.id)}
+              title={won ? `${p.name} won the tiebreaker (another 🏆 changes it)` : `${p.name} won the tiebreaker: no points, the tie is settled${k <= 9 ? ` (or press ${k}, then Enter)` : ''}`}
+              >🏆 {p.name}{#if enter}{' '}<kbd aria-hidden="true">⏎</kbd>{/if}</button
+            >
+          {/each}
+        </div>
+      {/if}
       <!-- The flow row, level with the blue button: in a clue ↩ Put back (keep tile) at its far left, the clue's other flow
            steps at its right end (see flowEnd); the Amount row is it while that's open (below). On PARTNER UP! ↩ Put back
            alone (a Daily Double's splash has its own row for it: the ⭐ box's Wager row, its whole room). -->
@@ -1440,7 +1480,7 @@
             <!-- (The tiebreaker takes one of the tied players.) -->
             {@const pickHint =
               session.phase === 'tiebreaker'
-                ? `Pick the winner (1–${Math.min(9, session.players.length) || 9})`
+                ? `Pick who gets them (1–${Math.min(9, session.players.length) || 9})`
                 : `Pick who answered (1–${Math.min(9, session.players.length) || 9}, 0 for everyone)`}
             <span class="muted hint pick-hint" title={pickHint}>{pickHint}</span>
           {/if}
@@ -2138,6 +2178,12 @@
   .tie {
     font-weight: 700;
     color: var(--warn);
+  }
+  /* The tiebreaker's winner, picked: green, as a right answer is. */
+  .tbwho button[aria-pressed='true'] {
+    background: var(--good-fill);
+    border-color: var(--good-fill);
+    color: var(--good-ink);
   }
   /* The open clue's words: cut short (…) rather than wrapping the line, which would shrink the stage viewers see (its
      tooltip has them whole). They take the room they need first; the host notes and the spacer get the rest. */
