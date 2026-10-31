@@ -1385,7 +1385,7 @@ await (await wheelMenu()).getByRole('button', { name: 'Edit Punishment lite, the
 await editBox.getByRole('button', { name: '＋ Add slice' }).click();
 await editBox.getByLabel('Slice 2 label').fill('Dance');
 await editBox.getByLabel('Slice 2 label').press('Enter');
-const replaceAsk = editBox.getByRole('group', { name: 'Replace the slices of “Punishment lite” with these 2?' });
+const replaceAsk = editBox.getByRole('group', { name: `Replace the slices of “Punishment lite” with these ${punishment.length}?` });
 const overwriteMsg = await answerDialog(async () => {
   await editBox.getByRole('button', { name: '💾 Replace “Punishment lite”…' }).click();
   // Cancel first, with the keys (Enter there never replaces); Replace last, in red.
