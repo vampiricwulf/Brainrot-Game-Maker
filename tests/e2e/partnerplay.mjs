@@ -237,6 +237,7 @@ try {
   assert((await page.locator('.panel [data-flow="putback"] kbd').innerText()) === '⇧Esc', 'PARTNER UP!’s ↩ Put back (keep tile) shows its key, ⇧Esc');
   await page.keyboard.press('Enter');
   await stage('[data-partner-badge]').waitFor();
+  const questionUpAt = Date.now();
   await page.keyboard.press('Enter');
   assert(await toast('The question just went up'), 'a second Enter at once doesn’t start the clock');
   assert((await flowIs(page, '👁 Reveal answer')) && (await stage('.timer').count()) === 0, 'the blue button is 👁 Reveal answer, and no countdown runs');
@@ -293,7 +294,11 @@ try {
   // flash, and the clock doesn't start.
   assert((await panel.locator('[data-card="1"] [data-copied]').count()) === 1 && (await panel.locator('[data-card="2"] [data-copied]').count()) === 0, '📋 copied: Card 1’s 📋 shows ✓, Card 2’s not');
   const note = page.locator('.panel .status [data-click-note]');
+  // (Past the second after the question went up, in which a click is the rest of the one that put it up: it says
+  // “The question just went up”, as a second Enter does.)
+  await page.waitForTimeout(Math.max(0, 1100 - (Date.now() - questionUpAt)));
   await stage('[data-slide="1"]').click();
+  const clickedAt = Date.now();
   await note.filter({ hasText: 'Copy the card to Cat first (📋 in the 🤝 box), then click again to start the clock' }).waitFor();
   assert(
     (await stage('[data-slide="answer"]').count()) === 0 && (await stage('.timer').count()) === 0 && (await goOnCheck(page).count()) === 0 && !(await page.locator('.toast', { hasText: 'Copy the card' }).count()),
@@ -318,6 +323,8 @@ try {
   // status line saying so with ↶ Undo, which takes it back.
   await panel.locator('[data-partner-foot]').getByRole('button', { name: 'Copy Card 2’s words' }).click();
   await panel.locator('[data-partner-next]', { hasText: 'Next: ⏱ Start the clock (the cards are copied)' }).waitFor();
+  // (Past the stage's double-click guard: a click on it under half a second after the last one is that one's rest.)
+  await page.waitForTimeout(Math.max(0, 500 - (Date.now() - clickedAt)));
   await stage('[data-slide="1"]').click();
   await stage('.timer').waitFor();
   await note.filter({ hasText: 'Clock started' }).waitFor();
