@@ -40,6 +40,9 @@ const shot = (name) => shots && page.screenshot({ path: `${shots}/${name}.png` }
 
 const canvas = page.locator('.canvas');
 const insp = page.locator('.insp');
+/** The selected item's bar at the top of the side panel: its edit, ⧉ Duplicate, 🔒 Lock, ⋯ and 🗑 Delete. */
+const bar = page.locator('.itembar');
+const lockBtn = bar.getByRole('button', { name: '🔒 Lock' });
 const toast = page.locator('.toast');
 /** The clue's ↶ tooltip: "Undo: ‹the newest step› (Ctrl+Z)". */
 const undoTitle = async () => (await page.getByRole('dialog', { name: 'Edit clue' }).getByRole('button', { name: 'Undo (Ctrl+Z)' }).getAttribute('title')) ?? '';
@@ -195,15 +198,34 @@ try {
   assert((await posField('W').inputValue()) === '1680', 'an emptied W keeps the width');
 
   // Esc on an Inspector checkbox leaves it, it doesn't close the clue.
-  const lock = insp.getByLabel('Lock', { exact: true });
-  await lock.check();
-  await lock.press('Escape');
+  const fitBox = insp.getByLabel('Shrink text to fit the box');
+  await fitBox.uncheck();
+  await fitBox.press('Escape');
   await page.waitForTimeout(100);
-  assert(await clue.isVisible(), 'Esc on the Inspector’s Lock checkbox leaves the clue open');
-  await lock.uncheck();
+  assert(await clue.isVisible(), 'Esc on an Inspector checkbox (Shrink text to fit) leaves the clue open');
+  await fitBox.check();
+  // The selected item's bar, pinned at the top of the panel: its name, its edit, ⧉ Duplicate, 🔒 Lock, then 🗑 Delete apart.
+  {
+    const names = (await bar.getByRole('button').allInnerTexts()).map((t) => t.trim());
+    assert(JSON.stringify(names) === JSON.stringify(['⋯', '✎ Edit text', '⧉ Duplicate', '🔒 Lock', '🗑 Delete']), `the bar has the text box's buttons (${names.join(' | ')})`);
+    const [b, p] = await Promise.all([bar.boundingBox(), page.locator('.side').boundingBox()]);
+    assert(!!b && !!p && Math.abs(b.y - p.y) < 2, 'it is at the top of the side panel');
+  }
 
   // ---------- A box drawn beside the text's words, and Alt+drag ----------
   await addRect(1400, 700, 300, 200);
+  // The ⋯ by the selection: just outside its top-right corner, the same menu as a right-click on it.
+  {
+    const more = canvas.getByRole('button', { name: 'More for the selection' });
+    const [m, corner] = [await more.boundingBox(), await at(1700, 700)];
+    assert(!!m && m.x > corner.x && m.y + m.height < corner.y, `a ⋯ sits just outside the selection's top-right corner (${Math.round(m?.x ?? 0)},${Math.round(m?.y ?? 0)} by ${Math.round(corner.x)},${Math.round(corner.y)})`);
+    await more.click();
+    const menu = page.getByRole('menu', { name: 'Slide item menu' });
+    await menu.waitFor();
+    assert((await menu.locator('.head').innerText()).trim() === 'Rectangle' && (await insp.locator('h4', { hasText: 'Shape' }).count()) === 1, 'it opens the rectangle’s menu, the rectangle still selected');
+    await page.keyboard.press('Escape');
+    await menu.waitFor({ state: 'detached' });
+  }
   await page.keyboard.press('Escape');
   const text0 = (await drawn())[0];
   await drag([200, 150], [1500, 800]);
@@ -235,11 +257,11 @@ try {
   await addRect(1000, 50, 300, 50);
   // The text box is locked, so Ctrl+A takes the four rectangles.
   await click(960, 540);
-  await lock.check();
-  // (The first Esc leaves the checkbox, the second deselects.)
+  await lockBtn.click();
+  assert((await lockBtn.getAttribute('aria-pressed')) === 'true' && (await bar.getByRole('button', { name: '🗑 Delete' }).isDisabled()), "the bar's 🔒 Lock locks it (pressed), and its 🗑 Delete is greyed");
+  // (Esc deselects, the keys on the bar.)
   await page.keyboard.press('Escape');
   await page.waitForTimeout(100);
-  await page.keyboard.press('Escape');
   await page.keyboard.press('Control+a');
   const side = await page.locator('.side').innerText();
   assert(side.includes('4 items selected'), 'Ctrl+A selects the four rectangles' + (side.includes('4 items') ? '' : ` (${side.slice(0, 80)})`));
@@ -254,14 +276,15 @@ try {
   await page.keyboard.press('Delete');
   assert((await rects()).length === 4, 'Delete on a focused side-panel button leaves the selected items alone');
   assert((await undoTitle()).startsWith('Undo: Spaced 4 shapes evenly across'), `the History names it “Spaced 4 shapes evenly across” (${await undoTitle()})`);
-  // Several selected: the same Front / Back and Lock as one item has.
+  // Several selected: the same Front / Back as one item has, and the bar's 🔒 Lock.
   const multi = page.locator('.side .multi');
   await multi.getByRole('button', { name: '⤓ Back' }).click();
   assert((await undoTitle()).startsWith('Undo: Sent 4 shapes to the back'), `⤓ Back sends the four to the back, named so (${await undoTitle()})`);
-  await multi.getByLabel('Lock', { exact: true }).check();
+  assert((await bar.innerText()).includes('4 items selected'), 'the bar says how many are selected');
+  await lockBtn.click();
   assert((await page.locator('.layers .row').getByRole('button', { name: /^Unlock: / }).count()) === 5, 'Lock locks all four (and the text box stays locked)');
-  await multi.getByLabel('Lock', { exact: true }).uncheck();
-  assert((await page.locator('.layers .row').getByRole('button', { name: /^Unlock: / }).count()) === 1, 'unticking it unlocks them again');
+  await lockBtn.click();
+  assert((await page.locator('.layers .row').getByRole('button', { name: /^Unlock: / }).count()) === 1, 'pressed again it unlocks them');
   await canvas.focus();
   await page.keyboard.press('Delete');
   // (Clicks go through the locked text box: the Layers list unlocks it.)
@@ -343,7 +366,7 @@ try {
   // ---------- 🎨 Edit image › Apply after a turn keeps the picture in its box ----------
   const editPic = (await drawn()).find((e) => e.img);
   await click(editPic.x + editPic.w / 2, editPic.y + editPic.h / 2);
-  await insp.getByRole('button', { name: '✎ Edit image…' }).click();
+  await bar.getByRole('button', { name: '✎ Edit image…' }).click();
   // The chosen tool's options are in sight (they were below Rotate and eight Adjust sliders).
   const ie = page.getByRole('dialog', { name: 'Edit image' });
   await ie.getByRole('button', { name: '🖌 Draw' }).click();
@@ -418,13 +441,13 @@ try {
     `the turned picture swaps its width and height, centred where it was (${editPic.w}×${editPic.h} → ${turned.w}×${turned.h})`,
   );
   // Apply again (nothing changed): it doesn't shrink.
-  await insp.getByRole('button', { name: '✎ Edit image…' }).click();
+  await bar.getByRole('button', { name: '✎ Edit image…' }).click();
   await page.getByRole('button', { name: 'Apply', exact: true }).click();
   await page.waitForTimeout(500);
   const again = (await drawn()).find((e) => e.id === editPic.id);
   assert(Math.abs(again.w - turned.w) <= 1 && Math.abs(again.h - turned.h) <= 1, `applying again keeps its size (${again.w}×${again.h})`);
   // Use original goes back to the box it had before it was edited.
-  await insp.getByRole('button', { name: '✎ Edit image…' }).click();
+  await bar.getByRole('button', { name: '✎ Edit image…' }).click();
   await page.getByRole('button', { name: 'Use original' }).click();
   await page.waitForTimeout(300);
   const orig = (await drawn()).find((e) => e.id === editPic.id);
@@ -761,7 +784,7 @@ try {
   await canvas.locator('.slide .el img').waitFor();
   const gifPic = (await drawn()).find((e) => e.img);
   await click(gifPic.x + gifPic.w / 2, gifPic.y + gifPic.h / 2);
-  await insp.getByRole('button', { name: '✎ Edit image…' }).click();
+  await bar.getByRole('button', { name: '✎ Edit image…' }).click();
   const gifEditor = page.getByRole('dialog', { name: 'Edit image' });
   await gifEditor.getByText('A moving GIF: the edits go on every frame, so it keeps moving.').waitFor();
   assert(true, 'the image editor says a moving GIF keeps moving');
@@ -773,7 +796,7 @@ try {
     d.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
   });
   await gifEditor.waitFor({ state: 'detached' });
-  await insp.getByRole('button', { name: '✎ Edit image…' }).click();
+  await bar.getByRole('button', { name: '✎ Edit image…' }).click();
   await gifEditor.getByText('A moving GIF: the edits go on every frame, so it keeps moving.').waitFor();
   await gifEditor.getByRole('button', { name: '⟳ 90°' }).click();
   await gifEditor.getByText('output 30×40px').waitFor();

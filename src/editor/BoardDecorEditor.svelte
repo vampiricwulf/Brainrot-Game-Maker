@@ -27,6 +27,7 @@
   import MediaPicker from './slide/MediaPicker.svelte';
   import ImageEditor from './slide/ImageEditor.svelte';
   import LayerMenu from './slide/LayerMenu.svelte';
+  import ItemBar from './slide/ItemBar.svelte';
   import { layerLabel, lockedNote, type Align, type LayerAction } from '../lib/layerlabel';
   import { nextFreeColor } from '../lib/colors';
   import { itemsFor, placeElement, take } from '../lib/nav.svelte';
@@ -356,6 +357,14 @@
     else canvasEl?.focus({ preventScroll: true });
   }
 
+  /** ⋯ in the side panel's bar: the selection's menu (none selected: the board's), the keys back on the ⋯ after. */
+  function menuFrom(from: HTMLElement): void {
+    const r = from.getBoundingClientRect();
+    const last = decor.find((d) => d.id === selected[selected.length - 1]);
+    const at = last ? { x: last.x + last.w / 2, y: last.y + last.h / 2 } : { x: SLIDE_W / 2, y: SLIDE_H / 2 };
+    menu = { x: r.left, y: r.bottom + 2, at, stack: [], from };
+  }
+
   function keyMenu(): void {
     const stageEl = canvasEl?.querySelector('.stage');
     if (!stageEl) return;
@@ -530,6 +539,17 @@
       </div>
 
       <aside class="side">
+        <!-- The selected image's buttons, pinned at the top (there, greyed, with nothing selected). -->
+        <ItemBar
+          items={decor.filter((d) => selected.includes(d.id))}
+          {game}
+          every={false}
+          onedit={(el) => (editingImage = el.id)}
+          onduplicate={duplicate}
+          onlock={(on) => menuAction(on ? 'lock' : 'unlock')}
+          ondelete={() => remove()}
+          onmenu={menuFrom}
+        />
         <section>
           <label class="row small">
             Preview with
@@ -581,23 +601,15 @@
             el={single}
             {game}
             onorder={order}
-            onduplicate={duplicate}
-            ondelete={() => remove()}
             onreplace={(from) => ((picking = 'replace'), (replaceFrom = from))}
             onapplystyle={() => {}}
             onuploadfont={() => {}}
-            oneditimage={() => (editingImage = single!.id)}
-            onedit={edit}
           />
           {#if picking === 'replace'}
             <MediaPicker kind="image" anchor={replaceFrom} onpick={picked} onclose={() => (picking = null)} />
           {/if}
         {:else if selected.length > 1}
-          <p class="muted">{selected.length} images selected.</p>
-          <div class="row">
-            <button class="small" onclick={duplicate} title="Ctrl+D">⧉ Duplicate</button>
-            <button class="ghost small danger" onclick={() => remove()} title="Delete them (Del)">🗑 Delete</button>
-          </div>
+          <!-- (Several: ⧉, 🔒 and 🗑 are in the bar at the top.) -->
         {:else}
           <Tips id="board-images" hint="Add logos, stickers or GIFs anywhere on this round's board: drop image files onto the preview, or paste them.">
             <ul>

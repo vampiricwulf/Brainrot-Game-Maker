@@ -3,17 +3,15 @@
   import type { Snippet } from 'svelte';
   import type { FitResult } from '../../lib/autofit';
   import { fontChoices } from '../../lib/fonts';
-  import type { AudioEl, EntranceType, Fit, Game, SlideElement, TextEl, VideoEl } from '../../lib/model';
-  import { openMediaPopup } from '../../lib/mediactl.svelte';
-  import { DRIVE_SHARE_HINT, embedName, embedOpenUrl, formatWhen, linkHost } from '../../lib/links';
+  import type { EntranceType, Fit, Game, SlideElement, TextEl } from '../../lib/model';
+  import { DRIVE_SHARE_HINT, embedName, formatWhen, linkHost } from '../../lib/links';
   import { stageText } from '../../lib/theme';
   import { toHex } from '../../lib/colors';
   import SaveCopyButton from '../SaveCopyButton.svelte';
   import NumField from './NumField.svelte';
   import ColorBox from '../../lib/ColorBox.svelte';
   import { app } from '../../lib/app.svelte';
-  import { convertNow, editOffer } from '../../lib/shrink/apply';
-  import { openMediaDialog } from '../../lib/shrink/dialog.svelte';
+  import { convertNow } from '../../lib/shrink/apply';
   import { verdictOf } from '../../lib/shrink/checks.svelte';
   import { jobFor } from '../../lib/shrink/jobs.svelte';
   import { shortWhy } from '../../lib/shrink/words';
@@ -25,16 +23,12 @@
     fit,
     textArea = $bindable(),
     onorder,
-    onduplicate,
-    ondelete,
     onreplace,
     onapplystyle,
     stylecategory = false,
     styleslides = false,
     stylescope,
     onuploadfont,
-    oneditimage,
-    onedit,
     objectsection,
     aligns,
   }: {
@@ -46,8 +40,6 @@
     fit?: FitResult;
     textArea?: HTMLTextAreaElement;
     onorder: (dir: 'front' | 'back' | 'up' | 'down') => void;
-    onduplicate: () => void;
-    ondelete: () => void;
     /** Replace the file: a picker drops from `from`, the button that asked. */
     onreplace: (from: HTMLElement) => void;
     /** "Use this style elsewhere" (not offered when missing). */
@@ -60,22 +52,17 @@
     stylescope?: string;
     /** Upload a font: a picker drops from `from`, the ＋ button. */
     onuploadfont: (from: HTMLElement) => void;
-    oneditimage?: () => void;
-    /** Makes a discrete change (locking) by calling `change`, so an undo history can record it as one step. */
-    onedit?: (change: () => void) => void;
     /** Extra settings for the item (RPG screens: its class, secret, host notes). */
     objectsection?: Snippet<[SlideElement]>;
     /** Move it to the slide's edges or middle: shown with X and Y. */
     aligns?: Snippet;
   } = $props();
-  const edit = (change: () => void) => (onedit ? onedit(change) : change());
   /** The selected image/video/audio file, when it plays from the internet (a live link). */
   const liveRef = $derived('media' in el ? game.media.find((m) => m.id === el.media && m.url) : undefined);
   /** Google Drive's or Streamable's own player: no playback options apply. */
   const sitePlayer = $derived(el.kind === 'embed' && (el.embedKind === 'drive' || el.embedKind === 'streamable'));
   /** Start at / Stop at: empty is none, and never before 0. */
   const seconds = (v: string) => (v === '' || !Number.isFinite(+v) ? undefined : Math.max(0, +v));
-  const lock = (on: boolean) => edit(() => (el.locked = on || undefined));
 
   const WHITE = /^#?(fff|ffffff)$/i;
   const themeText = $derived(toHex(stageText(game.theme)) ?? '#ffffff');
@@ -297,8 +284,8 @@
         </select>
       </label>
       <label class="field">Rounded corners<NumField min={0} bind:value={() => el.radius ?? 0, (v) => (el.radius = v)} /></label>
+      <!-- (✎ Edit image… is the bar's at the top of the panel.) -->
       <div class="row">
-        {#if oneditimage}<button onclick={oneditimage}>✎ Edit image…</button>{/if}
         <button onclick={(e) => onreplace(e.currentTarget)} data-replace>Replace…</button>
       </div>
       {@render liveNote()}
@@ -359,7 +346,7 @@
         {:else}
           <p class="hint">🌐 Needs internet during the game. The host can always open the link in its own window if it won't play.</p>
         {/if}
-        <button class="small" onclick={() => openMediaPopup(embedOpenUrl(el.embedKind, el.url, el.startAt))}>Test link ↗</button>
+        <!-- (Test link ↗ is the bar's at the top of the panel.) -->
         {#if el.embedKind === 'remoteImage'}
           <!-- An online picture fits and rounds like a picture of the game's own. -->
           <label class="field">
@@ -373,25 +360,9 @@
           <label class="field">Rounded corners<NumField min={0} bind:value={() => el.radius ?? 0, (v) => (el.radius = v)} /></label>
         {/if}
       {:else}
+        <!-- (✎ Edit video… / sound… is the bar's at the top of the panel.) -->
         <div class="row">
           <button class="small" onclick={(e) => onreplace(e.currentTarget)} data-replace>Replace file…</button>
-          {#if el.kind === 'video' || el.kind === 'audio'}
-            {@const offer = editOffer(game.media.find((m) => m.id === el.media))}
-            {#if offer}
-              <button
-                class="small"
-                data-edit-media
-                onclick={() => openMediaDialog({ mode: 'edit', id: el.media, item: el as VideoEl | AudioEl })}
-                disabled={offer === 'busy'}
-                title={offer === 'busy'
-                  ? 'Wait for it to finish (the header shows how far it got)'
-                  : el.kind === 'video'
-                    ? 'Trim, crop or resize this video: every place that uses it gets the edited one, on stream too (Ctrl+Z puts the old one back)'
-                    : 'Trim this sound: every place that uses it gets the trimmed one (Ctrl+Z puts the old one back)'}
-                >{el.kind === 'video' ? '✎ Edit video…' : '✎ Edit sound…'}</button
-              >
-            {/if}
-          {/if}
         </div>
         {@render liveNote()}
         {@render playsNote(el.media)}
@@ -449,23 +420,12 @@
       <label class="field">Rotation°<NumField min={-180} max={180} bind:value={el.rotation} /></label>
       <label class="field">Opacity {Math.round(el.opacity * 100)}%<input type="range" min="0" max="1" step="0.05" bind:value={el.opacity} /></label>
     </div>
+    <!-- (🔒 Lock, ⧉ Duplicate and 🗑 Delete are the bar's at the top of the panel.) -->
     <div class="row">
       <button class="small" onclick={() => onorder('front')} title="Bring to front">⤒ Front</button>
       <button class="small" onclick={() => onorder('up')} aria-label="Bring forward" title="Bring forward">↑</button>
       <button class="small" onclick={() => onorder('down')} aria-label="Send backward" title="Send backward">↓</button>
       <button class="small" onclick={() => onorder('back')} title="Send to back">⤓ Back</button>
-    </div>
-    <div class="row">
-      <label class="check" title="A locked item can't be moved, resized, nudged or deleted, and clicks on the slide go through it">
-        <input type="checkbox" checked={!!el.locked} onchange={(e) => lock(e.currentTarget.checked)} /> Lock
-      </label>
-      <span class="spacer"></span>
-      <button class="small" onclick={onduplicate} title="Ctrl+D">⧉ Duplicate</button>
-      {#if el.locked}
-        <span class="hint">🔒 Locked — unlock to delete</span>
-      {:else}
-        <button class="ghost small danger" onclick={ondelete} title="Delete (Del)">🗑 Delete</button>
-      {/if}
     </div>
   </section>
 </div>

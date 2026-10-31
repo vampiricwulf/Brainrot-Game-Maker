@@ -89,7 +89,10 @@ they belong in (a picture dropped on a tile asks: in the question, or as the til
 ⌨ Keyboard shortcuts) for every editor shortcut, and beside them, one click away, the host's during the game, with a filter for both. The longer help on the board, a slide, the RPG map and the board game page sits in a
 **💡 Tips** fold that stays as you left it.
 
-**Slide editor:** a double-click on an item (or Enter, with it selected) opens its editor: a text box's text, a
+**Slide editor:** the selected item's buttons are in a bar pinned at the top of the side panel, its name, ⋯ (its
+menu), its edit (✎ Edit text, ✎ Edit image…, ✎ Edit video… / sound…, Test link ↗…), ⧉ Duplicate, 🔒 Lock and, apart,
+🗑 Delete (several selected: the same buttons, for them all), and a ⋯ just outside the selection's top-right corner on
+the slide opens the same menu. A double-click on an item (or Enter, with it selected) opens its editor: a text box's text, a
 picture's ✎ Edit image, a video's or sound's ✎ Edit video / sound (or its Start at), a link's Link box, a shape's
 Fill. F2 renames an item in the Layers list (on a text box it edits the text), and after you add a picture, video,
 sound or link the keys stay on the slide. In ✎ Edit image, ✋ Select (`M`) picks captions and stickers, a right-click on

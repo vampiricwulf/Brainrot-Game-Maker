@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { aspectCrop, freeOffset, freeSpot, isMediaLink, knobPlacement, officeTextPaste, placeNewPicture, placePicture, playRange, SnapshotHistory } from './editing';
+import { aspectCrop, freeOffset, freeSpot, isMediaLink, knobPlacement, knobPoint, moreSpot, officeTextPaste, placeNewPicture, placePicture, playRange, SnapshotHistory } from './editing';
 import { newImageEl, newTextEl, newVideoEl } from './model';
 
 describe('slide undo history', () => {
@@ -56,6 +56,32 @@ describe('placement', () => {
     expect(knobPlacement({ x: 0, y: 0, w: 1920, h: 1080, rotation: 0 }, 44)).toBe('inside');
     // Upside down near the bottom edge: "above" (its own top) points down, off the slide.
     expect(knobPlacement({ x: 500, y: 860, w: 400, h: 200, rotation: 180 }, 44)).toBe('below');
+  });
+});
+
+describe('the ⋯ beside a selection', () => {
+  // (Slide px for a slide drawn at half size: a 24 px button, 16 px from the box, 14 px of pasteboard.)
+  const [size, gap, pb] = [48, 32, 28];
+  it('sits just outside the top-right corner', () => {
+    expect(moreSpot({ x: 500, y: 300, w: 400, h: 200 }, size, gap, pb)).toEqual({ x: 932, y: 220 });
+  });
+  it('goes beside the corner when the top is off the canvas, inside it for a slide-sized item', () => {
+    expect(moreSpot({ x: 100, y: 0, w: 200, h: 100 }, size, gap, pb)).toEqual({ x: 332, y: 0 });
+    // (At the slide's top-right corner, nowhere outside it is on the canvas.)
+    expect(moreSpot({ x: 1700, y: 0, w: 220, h: 100 }, size, gap, pb)).toEqual({ x: 1840, y: 32 });
+    expect(moreSpot({ x: 0, y: 0, w: 1920, h: 1080 }, size, gap, pb)).toEqual({ x: 1840, y: 32 });
+  });
+  it('keeps off the rotate knob', () => {
+    const box = { x: 500, y: 300, w: 100, h: 100 };
+    // A knob turned to sit over the top-right corner: the ⋯ goes beside the corner instead.
+    expect(moreSpot(box, size, gap, pb, { x: 650, y: 250, r: 24 })).toEqual({ x: 632, y: 300 });
+  });
+  it('finds where the knob is drawn, turned with the item', () => {
+    const el = { x: 500, y: 300, w: 400, h: 200, rotation: 0 };
+    expect(knobPoint(el, 44, 'above')).toEqual({ x: 700, y: 256 });
+    expect(knobPoint(el, 44, 'below')).toEqual({ x: 700, y: 544 });
+    const turned = knobPoint({ ...el, rotation: 90 }, 44, 'above');
+    expect([Math.round(turned.x), Math.round(turned.y)]).toEqual([844, 400]);
   });
 });
 

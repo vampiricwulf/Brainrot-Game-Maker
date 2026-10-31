@@ -277,7 +277,7 @@ try {
   // Select all from an empty spot.
   await rightClick(1800, 1000);
   await menu.getByRole('menuitem', { name: /Select all/ }).click();
-  assert((await page.getByText('2 items selected.').count()) === 1, 'Select all selects everything');
+  assert((await page.locator('.itembar').innerText()).includes('2 items selected'), 'Select all selects everything');
   await page.keyboard.press('Escape');
 
   // ---------- Layers: double-click or F2 renames ----------

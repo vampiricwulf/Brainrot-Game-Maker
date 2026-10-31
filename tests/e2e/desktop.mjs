@@ -410,7 +410,7 @@ try {
   await pic.waitFor();
   const picBox = await pic.boundingBox();
   await d.mouse.click(picBox.x + picBox.width / 2, picBox.y + picBox.height / 2);
-  await d.locator('.insp').getByRole('button', { name: '✎ Edit image…' }).click();
+  await d.locator('.itembar').getByRole('button', { name: '✎ Edit image…' }).click();
   const ie = d.getByRole('dialog', { name: 'Edit image' });
   await ie.getByRole('button', { name: '🅣 Text' }).click();
   await ie.getByRole('button', { name: '＋ Add text in the middle' }).click();

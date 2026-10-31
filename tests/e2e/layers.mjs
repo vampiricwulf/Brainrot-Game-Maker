@@ -198,7 +198,7 @@ try {
   await page.mouse.move(b.x, b.y, { steps: 4 });
   await shot('layers-2-marquee');
   await page.mouse.up();
-  assert((await page.getByText('2 items selected.').count()) === 1, 'dragging a box selects the two shapes (not the locked picture)');
+  assert((await page.locator('.itembar').innerText()).includes('2 items selected'), 'dragging a box selects the two shapes (not the locked picture)');
 
   // The Layers list keeps the keyboard: arrow keys move through it (they never nudge the item), and
   // Alt+↑/↓ or ▲▼ restack the row and keep focus on it, so they can be pressed again.
@@ -233,15 +233,16 @@ try {
   await page.keyboard.press('ArrowUp');
   assert((await focusedRow()) === topId, 'and ↑ twice back to the top row');
 
-  // The inspector's Lock box is one undo step each time, like the list's 🔒.
-  const lockBox = page.locator('.insp').getByLabel('Lock', { exact: true });
-  await lockBox.check();
-  await lockBox.uncheck();
+  // The bar's 🔒 Lock is one undo step each time, like the list's 🔒.
+  const lockBox = page.locator('.itembar').getByRole('button', { name: '🔒 Lock' });
+  const lockedNow = async () => (await lockBox.getAttribute('aria-pressed')) === 'true';
+  await lockBox.click();
+  await lockBox.click();
   await topRow.locator('.name').focus();
   await page.keyboard.press('Control+z');
-  assert(await lockBox.isChecked(), 'Ctrl+Z undoes unticking Lock in the inspector');
+  assert(await lockedNow(), "Ctrl+Z undoes unlocking it with the bar's 🔒 Lock");
   await page.keyboard.press('Control+z');
-  assert(!(await lockBox.isChecked()) && (await rowIndex()) === 0, 'a second Ctrl+Z undoes ticking it (and nothing before it)');
+  assert(!(await lockedNow()) && (await rowIndex()) === 0, 'a second Ctrl+Z undoes locking it (and nothing before it)');
 
   // "Use this style elsewhere" copies the text look to the other questions in the category, the default
   // (it used to crash on text without an outline or glow).
@@ -315,10 +316,10 @@ try {
       (await only.getByRole('button', { name: `Bring forward: ${label}`, exact: true }).count()) === 1,
     `its buttons say which item they're for ("Lock: ${label}")`,
   );
-  await page.locator('.insp').getByLabel('Lock', { exact: true }).check();
+  await page.locator('.itembar').getByRole('button', { name: '🔒 Lock' }).click();
   assert((await layers.count()) === 1, 'it stays listed once that item is locked');
   await layers.first().getByRole('button', { name: /^Unlock: / }).click();
-  assert(!(await page.locator('.insp').getByLabel('Lock', { exact: true }).isChecked()), 'and unlocks it from there');
+  assert((await page.locator('.itembar').getByRole('button', { name: '🔒 Lock' }).getAttribute('aria-pressed')) === 'false', 'and unlocks it from there');
 
   // A Layers row has the item's menu too: a right-click on it, or Shift+F10 with the keys on it (Esc gives them back).
   await layers.first().locator('.name').click({ button: 'right' });

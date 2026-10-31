@@ -415,7 +415,7 @@ try {
   await foot().getByRole('button', { name: 'Cancel' }).click();
   await dialog.waitFor({ state: 'detached' });
   await page.mouse.click(at7.x + at7.width / 2, at7.y + at7.height / 2);
-  await clueEditor.locator('.insp [data-edit-media]').click();
+  await clueEditor.locator('.itembar [data-edit-media]').click();
   await dialog.waitFor();
   await dialog.locator('[data-trimbar]').waitFor({ timeout: 30_000 });
   assert((await foot().getByRole('button').allInnerTexts()).join(' | ') === 'Cancel | Only this item | Apply to all 2', 'its panel’s ✎ Edit video…, from an item whose file another item uses: Cancel, Only this item, Apply to all 2');
@@ -514,7 +514,7 @@ try {
   await clueEditor.waitFor();
   const at11 = await clueEditor.locator(`.slide .el[data-el="${items.p1.id}"]`).boundingBox();
   await page.mouse.click(at11.x + at11.width / 2, at11.y + at11.height / 2);
-  await clueEditor.locator('.insp [data-edit-media]').click();
+  await clueEditor.locator('.itembar [data-edit-media]').click();
   await dialog.locator('[data-trimbar]').waitFor({ timeout: 30_000 });
   const focused = () => page.evaluate(() => (document.activeElement === document.body ? 'the page' : (document.activeElement?.textContent?.trim().slice(0, 40) ?? 'nothing')));
   await dialog.getByRole('button', { name: '✂ Crop' }).click();

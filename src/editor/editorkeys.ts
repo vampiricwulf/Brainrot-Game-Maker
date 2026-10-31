@@ -76,6 +76,7 @@ export const EDITOR_KEYS: KeyGroup[] = [
       ['Double-click or Enter', 'Open the item’s editor: a text box’s text, a picture’s ✎ Edit image, a video’s or sound’s ✎ Edit video / sound (or its Start at), a link’s Link box, a shape’s Fill (a line’s Color)'],
       ['Type, or F2', 'Edit the selected text box’s text'],
       ['F2 on another item', 'Rename it, in the Layers list'],
+      ['⋯ by the selection, or in the bar at the top of the panel', 'The same menu as a right-click (the bar’s, with nothing selected: the slide’s)'],
       ['Right-click or Shift+F10', 'The item’s menu: ✎ Edit, use another file, rename, duplicate, cut, copy, paste, restack, align, lock, hide or delete. On an empty spot (or beside a text box’s words): the slide’s, to add text or paste there, copy the slide or paste over it, its 🎨 Background… and Select all'],
       ['Arrows / Shift+arrows', 'Nudge the selection 1 / 10 pixels'],
       ['Ctrl+arrows / Ctrl+Shift+arrows', 'Resize the selection 1 / 10 pixels (→ ↓ bigger, ← ↑ smaller; pictures keep their shape)'],

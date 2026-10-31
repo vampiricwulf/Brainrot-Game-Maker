@@ -8,7 +8,7 @@
 -->
 <script lang="ts">
   import { getContext } from 'svelte';
-  import { knobPlacement } from '../../lib/editing';
+  import { knobPlacement, knobPoint, moreSpot } from '../../lib/editing';
   import { bounds, elementsAt, nextBelow, nearestSnap, touchedBy, type Pt } from '../../lib/layers';
   import { SLIDE_H, SLIDE_W, type Slide, type SlideElement } from '../../lib/model';
 
@@ -21,6 +21,7 @@
     onchange,
     ondblclick,
     onmenu,
+    pb = 0,
   }: {
     slide: Slide;
     selected: string[];
@@ -33,9 +34,10 @@
     /** Called when a drag/resize/rotate finishes (for undo history). */
     onchange: () => void;
     ondblclick?: (el: SlideElement) => void;
-    /** Right-click: everything under the pointer (top-most first), at viewport position x/y. */
-    /** Right-click: where (in the window, and on the slide) and what's under the pointer. */
+    /** Right-click: where (in the window, and on the slide) and what's under the pointer. The ⋯ by the selection too. */
     onmenu?: (m: { x: number; y: number; at: Pt; stack: SlideElement[] }) => void;
+    /** The pasteboard round the slide (screen px) that shows, where the ⋯ by the selection can sit. */
+    pb?: number;
   } = $props();
 
   const stage = getContext<{ scale: number }>('stage');
@@ -367,6 +369,27 @@
   const inv = $derived(1 / (stage.scale || 1));
   // The rotate handle sits 44 screen px out; flip it below (or inside) when that would be off the slide.
   const knob = $derived(single ? knobPlacement(single, 52 * inv) : 'above');
+
+  /**
+   * The ⋯ by the selection (its menu, the same as a right-click), just outside its top-right corner, clear of the
+   * handles and the rotate knob. Not while a box is being drawn.
+   */
+  const MORE_PX = 24;
+  const more = $derived.by(() => {
+    if (!sel.length || !onmenu || marquee) return null;
+    const boxes = sel.map(bounds);
+    const x = Math.min(...boxes.map((b) => b.x));
+    const y = Math.min(...boxes.map((b) => b.y));
+    const box = { x, y, w: Math.max(...boxes.map((b) => b.x + b.w)) - x, h: Math.max(...boxes.map((b) => b.y + b.h)) - y };
+    const turn = single && !single.locked ? { ...knobPoint(single, 44 * inv, knob), r: 12 * inv } : undefined;
+    return moreSpot(box, MORE_PX * inv, 16 * inv, pb * inv, turn);
+  });
+  function openMore(e: MouseEvent): void {
+    const last = sel[sel.length - 1];
+    if (!last || !onmenu) return;
+    const r = (e.currentTarget as HTMLElement).getBoundingClientRect();
+    onmenu({ x: r.left, y: r.bottom + 2, at: { x: last.x + last.w / 2, y: last.y + last.h / 2 }, stack: [] });
+  }
 </script>
 
 <div
@@ -431,6 +454,23 @@
       {#if el.locked}<div class="lock">🔒</div>{/if}
     </div>
   {/each}
+
+  {#if more}
+    <!-- (Not a Tab stop: Shift+F10 on the slide opens the same menu. A press here keeps the keys where they are.) -->
+    <button
+      class="more"
+      style:left="{more.x}px"
+      style:top="{more.y}px"
+      style:--inv={inv}
+      style:z-index={frameZ + 1}
+      tabindex="-1"
+      aria-label="More for the selection"
+      title="Its menu: the same as a right-click on it (Shift+F10)"
+      onpointerdown={(e) => (e.stopPropagation(), e.preventDefault())}
+      ondblclick={(e) => e.stopPropagation()}
+      onclick={openMore}>⋯</button
+    >
+  {/if}
 
   {#if marquee}
     <div
@@ -530,6 +570,22 @@
     right: 0;
     top: 0;
     font-size: calc(22px * var(--inv));
+  }
+  .more {
+    position: absolute;
+    width: calc(24px * var(--inv));
+    height: calc(24px * var(--inv));
+    padding: 0;
+    display: grid;
+    place-items: center;
+    font-size: calc(16px * var(--inv));
+    line-height: 1;
+    color: #fff;
+    background: #4f7cff;
+    border: calc(1.5px * var(--inv)) solid #fff;
+    border-radius: calc(6px * var(--inv));
+    box-shadow: 0 calc(2px * var(--inv)) calc(6px * var(--inv)) rgba(0, 0, 0, 0.4);
+    cursor: pointer;
   }
   .guide {
     position: absolute;

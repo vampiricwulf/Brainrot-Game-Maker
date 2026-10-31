@@ -104,6 +104,40 @@ export function knobPlacement(el: Box & { rotation: number }, dist: number): 'ab
   return 'inside';
 }
 
+/** The middle of an element's rotate handle, drawn `dist` slide pixels from its edge where knobPlacement puts it. */
+export function knobPoint(el: Box & { rotation: number }, dist: number, place: 'above' | 'below' | 'inside'): { x: number; y: number } {
+  const th = (el.rotation * Math.PI) / 180;
+  // Along the element's own vertical axis from its middle (negative: towards its top).
+  const d = place === 'above' ? -(el.h / 2 + dist) : place === 'below' ? el.h / 2 + dist : -(el.h / 2 - dist);
+  return { x: el.x + el.w / 2 - d * Math.sin(th), y: el.y + el.h / 2 + d * Math.cos(th) };
+}
+
+/**
+ * Where the ⋯ beside a selection goes (its top-left, slide px; `box`: the selection as drawn): just outside its
+ * top-right corner, `gap` from it (clear of the handles), clear of the rotate knob (`knob`: its middle and how far round
+ * it to keep off), and wholly on what the canvas shows (the slide and `pb` of pasteboard round it). Else beside the
+ * top-right corner, under the bottom-right one, over the top edge at the right, over the top-left corner, and last just
+ * inside the top-right corner (an item as big as the slide). `size`, `gap`, `pb` and the knob's reach in slide px.
+ */
+export function moreSpot(box: Box, size: number, gap: number, pb: number, knob?: { x: number; y: number; r: number }): { x: number; y: number } {
+  const right = box.x + box.w;
+  const bottom = box.y + box.h;
+  const tries = [
+    { x: right + gap, y: box.y - gap - size },
+    { x: right + gap, y: box.y },
+    { x: right + gap, y: bottom + gap },
+    { x: right - size, y: box.y - gap - size },
+    { x: box.x - gap - size, y: box.y - gap - size },
+  ];
+  const shown = (p: { x: number; y: number }) => p.x >= -pb && p.y >= -pb && p.x + size <= SLIDE_W + pb && p.y + size <= SLIDE_H + pb;
+  const offKnob = (p: { x: number; y: number }) =>
+    !knob || p.x > knob.x + knob.r || p.x + size < knob.x - knob.r || p.y > knob.y + knob.r || p.y + size < knob.y - knob.r;
+  const spot = tries.find((p) => shown(p) && offKnob(p));
+  if (spot) return spot;
+  const clamp = (n: number, hi: number) => Math.min(Math.max(-pb, n), hi + pb - size);
+  return { x: clamp(right - gap - size, SLIDE_W), y: clamp(box.y + gap, SLIDE_H) };
+}
+
 /** A slide item as far as placing a new picture goes. */
 export interface PlacedItem extends Box {
   id: string;

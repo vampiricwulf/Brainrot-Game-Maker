@@ -63,6 +63,7 @@
   import ImageEditor from './ImageEditor.svelte';
   import LayersPanel from './LayersPanel.svelte';
   import LayerMenu from './LayerMenu.svelte';
+  import ItemBar from './ItemBar.svelte';
   import { itemsNamed, layerLabel, lockedNote, type Align, type LayerAction } from '../../lib/layerlabel';
   import { themeStyle } from '../../lib/theme';
   import { itemsFor, placeElement, take } from '../../lib/nav.svelte';
@@ -637,6 +638,14 @@
     const at = last ? { x: last.x + last.w / 2, y: last.y + last.h / 2 } : { x: SLIDE_W / 2, y: SLIDE_H / 2 };
     const stack = last ? elementsAt(slide.elements.filter((e) => !hidden.includes(e.id)), at) : [];
     menu = { x: r.left + (at.x / SLIDE_W) * r.width, y: r.top + (at.y / SLIDE_H) * r.height, at, stack };
+  }
+
+  /** ⋯ in the side panel's bar: the selection's menu (none selected: the slide's), the keys back on the ⋯ after. */
+  function menuFrom(from: HTMLElement): void {
+    const r = from.getBoundingClientRect();
+    const last = slide.elements.find((e) => e.id === selected[selected.length - 1]);
+    const at = last ? { x: last.x + last.w / 2, y: last.y + last.h / 2 } : { x: SLIDE_W / 2, y: SLIDE_H / 2 };
+    menu = { x: r.left, y: r.bottom + 2, at, stack: [], from };
   }
 
   /** How the History names Align (# is the items): several line up with each other, one goes to the slide's edge or middle. */
@@ -1250,6 +1259,7 @@
               bind:selected
               {hidden}
               bind:hovered
+              pb={14}
               onmenu={(m) => (menu = m)}
               onstart={() => {
                 endDrag?.();
@@ -1292,6 +1302,18 @@
     </div>
 
     <aside class="side">
+      <!-- The selected item's buttons, pinned at the top whatever's below (there, greyed, with nothing selected). -->
+      {#if !previewing}
+        <ItemBar
+          items={slide.elements.filter((e) => selected.includes(e.id))}
+          {game}
+          onedit={openEditor}
+          onduplicate={duplicate}
+          onlock={(on) => menuAction(on ? 'lock' : 'unlock')}
+          ondelete={() => remove()}
+          onmenu={menuFrom}
+        />
+      {/if}
       <!-- Whenever the slide has anything: the keyboard way to every item (and a lone locked one, which clicks go through). -->
       {#if !previewing && slide.elements.length}
         <details class="layers-box" open>
@@ -1321,8 +1343,6 @@
           fit={fits[single.id]}
           bind:textArea
           onorder={order}
-          onduplicate={duplicate}
-          ondelete={() => remove()}
           onreplace={(from) => {
             if (single && (single.kind === 'image' || single.kind === 'video' || single.kind === 'audio')) {
               replacing = single.id;
@@ -1339,8 +1359,6 @@
             picker = 'font';
             pickerFrom = from;
           }}
-          oneditimage={single.kind === 'image' ? () => (editingImage = single!.id) : undefined}
-          onedit={edit}
           {objectsection}
           aligns={lineUp}
         />
@@ -1348,30 +1366,15 @@
           <MediaPicker kind={picker} anchor={pickerFrom} onpick={picked} onclose={() => ((picker = null), (replacing = null))} />
         {/if}
       {:else if selected.length > 1}
-        {@const els = slide.elements.filter((e) => selected.includes(e.id))}
-        {@const lockedN = els.filter((e) => e.locked).length}
-        <!-- The same controls, in the same places, as the Inspector's Position for one item. -->
+        <!-- The same controls, in the same places, as the Inspector's Position for one item (⧉, 🔒 and 🗑 are in the bar
+             at the top). -->
         <section class="multi">
-          <p class="muted">{selected.length} items selected.</p>
           {@render lineUp()}
           <div class="row">
             <button class="small" onclick={() => order('front')} title="Bring them to the front (Ctrl+Shift+])">⤒ Front</button>
             <button class="small" onclick={() => order('up')} aria-label="Bring forward" title="Bring forward (Ctrl+])">↑</button>
             <button class="small" onclick={() => order('down')} aria-label="Send backward" title="Send backward (Ctrl+[)">↓</button>
             <button class="small" onclick={() => order('back')} title="Send them to the back (Ctrl+Shift+[)">⤓ Back</button>
-          </div>
-          <div class="row">
-            <label class="check" title="Locked items can't be moved, resized, nudged or deleted, and clicks on the slide go through them">
-              <input
-                type="checkbox"
-                checked={lockedN === els.length}
-                indeterminate={lockedN > 0 && lockedN < els.length}
-                onchange={(e) => menuAction(e.currentTarget.checked ? 'lock' : 'unlock')}
-              /> Lock
-            </label>
-            <span class="spacer"></span>
-            <button class="small" onclick={duplicate} title="Ctrl+D">⧉ Duplicate</button>
-            <button class="ghost small danger" onclick={() => remove()} title="Delete them (Del)">🗑 Delete</button>
           </div>
         </section>
       {:else}
@@ -1596,9 +1599,6 @@
     display: flex;
     flex-direction: column;
     gap: 8px;
-  }
-  .multi p {
-    margin: 0;
   }
   .agrid.two {
     grid-template-columns: 1fr 1fr;

@@ -264,6 +264,14 @@ RollEvent  { id, ts, source: 'wheel' | 'dice', presetName?, result: string /* la
   there), a link its Link box, a shape its Fill (a line its Color); the item menu's ✎ Edit shows the keys for every
   kind. F2 edits a text box's text, and renames any other item in the Layers list. After an item is added (🖼 Image,
   🎬 Video, 🔊 Audio, 🌐 Link, a drop or a paste) the keys are on the slide.
+- **The selected item's bar** (ItemBar), pinned at the top of the side panel, there in every state so the panel never
+  moves as things are selected: the item's icon and name (several: "3 items selected"; none: "Nothing selected", its
+  buttons greyed) and ⋯ for its menu (none selected: the slide's), then its edit (as its menu names it: ✎ Edit text, ✎
+  Edit image…, ✎ Edit video… / sound…, ✎ Edit fill…; a link's Test link ↗), ⧉ Duplicate, 🔒 Lock (pressed when locked,
+  half for a mix) and 🗑 Delete apart at the right (greyed while all of it is locked). The Inspector below has the
+  item's settings only. On the slide, a ⋯ just outside the selection's top-right corner (clear of its handles and the
+  rotate knob, inside the corner when the selection fills the slide; never drawn in a preview or a thumbnail) opens the
+  same menu. 🖼 Board images has the same bar.
 - **Right-click menus** (LayerMenu, its own component, in the editors' one order; Shift+F10 on the canvas or a Layers
   row too, and 🖼 Board images the same): an item's is headed by its name, then the items stacked there to pick from,
   ✎ Edit… (Double-click / Enter) · 🔁 Use another file… (a picture, video or sound: only this item) · ✎ Rename (F2 where
