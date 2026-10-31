@@ -269,8 +269,11 @@ view at the panel's foot as the rows above it scroll (in a 🤝 partner clue in 
 place). The tiebreaker's row is the same, with 🏁 Back to results. On a played-out board, Next round ▶ is the blue
 button and its place in the round navigation stays empty, so ◀ Prev round keeps its. Under the row come the tools
 (🎲 Dice, 🎡 Wheel, 🏁 Who goes first, 🤫 Send a card…, 🎭 Deal…, 📊 Scores) with the round navigation (◀ Prev round, the round list, Next round ▶) at the right,
-then a fixed bar that never moves: **↶ Undo ↷ Redo 🔊 Sound · 📜 Log 👥 Players ⚖ Rules · ⏸ Cover 🙈 Hide · 📺
-Audience ▭ · ❔ Help 🚪 Exit** (on a narrow window, as their signs only). On a short window (a laptop zoomed in) the round's
+then a fixed bar that never moves, in groups by what they're for: **↶ Undo ↷ Redo · 📜 Log 👥 Players ⚖ Rules · ⏸
+Cover 🙈 Hide · 🔊 Sound 📺 Audience ▭ Scores window · ❔ Help 🚪 Exit** (on a narrow window, as their signs only: ▭
+Scores window as ▭ up to 1340 px wide; beside the stage in RPG and board-game rounds ↶ Undo and ↷ Redo keep their
+words, and 🔊 Sound, 📺 Audience and ▭ Scores window have a line of their own). ▭ Scores window shows ● while it's
+open, as 📺 Audience does. On a short window (a laptop zoomed in) the round's
 own box (✍ answers, the Final's wagers, an RPG round…) keeps a few rows in sight, and the panel scrolls. A moment's own
 box holds its actions, each in one place: in a 🤝 partner clue, **🎡 Spin for a partner** (`W`) comes first in the box,
 in front of the players to choose from by hand (**↻ Spin again** in its place after; with “Partner from the same team”

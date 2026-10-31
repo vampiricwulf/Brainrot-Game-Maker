@@ -2,7 +2,8 @@
 // clue, a Daily Double, the Final, an RPG and a board-game round and the end screen; there's never more than one main
 // (.primary) button, and one where the moment has a next step; a confirmation is one strip above the fixed bar (the
 // panel grows by that strip, nothing overlaps); and beside the stage (RPG and board-game rounds on a wide window) the
-// fixed bar is a grid with 🚪 Exit in its bottom-right cell. A Daily Double with three question slides keeps Next slide ▶
+// fixed bar is a grid with 🚪 Exit in its bottom-right cell, ↶ Undo and ↷ Redo in words and each group on one line (🔊
+// Sound with 📺 Audience and ▭ Scores window ●, at 1280×720 and 1093×526). A Daily Double with three question slides keeps Next slide ▶
 // the main button until its last slide (viewers see where it is: ● ● ○) and its flow row keeps its places (↩ Put back
 // (keep tile) first, ▦ Done ▶ board last, 🙈 Hide answer in Done's place once the answer is up), a board game's own
 // roll makes its turn box's slot ▶ Move while the blue button stays Next turn ▶ (and its check sits in the panel), a box
@@ -553,6 +554,36 @@ try {
   const inBg = await exitIn();
   assert(inRpg.x === inBg.x && inRpg.y === inBg.y, `🚪 Exit is in the same place in RPG and board-game rounds (${inRpg.x},${inRpg.y})`);
   assert(inBg.right - inBg.x < 4 && inBg.bottom - inBg.y < 4, 'in the fixed bar’s bottom-right cell');
+  // The bar beside the stage, the scores window open (its ●), at 1280×720 and 1093×526: ↶ Undo and ↷ Redo keep their
+  // words, each group is one line, and the stream's (🔊 Sound, 📺 Audience, ▭ Scores window ●) go together.
+  const [scoresWin] = await Promise.all([p2.waitForEvent('popup'), p2.keyboard.press('Shift+A')]);
+  await scoresWin.waitForLoadState('domcontentloaded');
+  await p2.locator('.panel .fixed .sw', { hasText: '●' }).waitFor();
+  for (const [w, h] of [
+    [1280, 720],
+    [1093, 526],
+  ]) {
+    await p2.setViewportSize({ width: w, height: h });
+    await p2.waitForTimeout(100);
+    const bar = await p2.locator('.panel .fixed').evaluate((f) => {
+      const words = (b) => b.textContent.replace(/\s+/g, ' ').trim();
+      const groups = [...f.querySelectorAll(':scope > .group')].map((g) => {
+        const tops = [...g.querySelectorAll(':scope > button')].map((b) => Math.round(b.getBoundingClientRect().top));
+        return Math.max(...tops) - Math.min(...tops) <= 2;
+      });
+      return {
+        oneLine: groups.every(Boolean),
+        undoWords: [...f.querySelectorAll('.g-edit .word')].every((x) => x.getBoundingClientRect().width > 15),
+        stream: [...f.querySelectorAll('.g-windows > button')].map(words),
+      };
+    });
+    assert(
+      bar.oneLine && bar.undoWords && bar.stream.join() === '🔊 Sound,📺 Audience,▭ Scores window ●',
+      `${w}×${h} beside the stage: ↶ Undo and ↷ Redo in words, each of the bar's groups on one line, 🔊 Sound with 📺 Audience and ▭ Scores window (${JSON.stringify(bar)})`,
+    );
+  }
+  await p2.setViewportSize({ width: 1280, height: 720 });
+  await Promise.all([scoresWin.waitForEvent('close'), p2.locator('.panel button[aria-label="Close the scores window"]').click()]);
   // A toast beside the stage shows under the status line (its 📱 chip and ⏱ countdown stay in sight), over the panel.
   await p2.keyboard.press('Enter');
   const bgToast = p2.locator('.toast', { hasText: 'Roll first (D), or type the steps' });

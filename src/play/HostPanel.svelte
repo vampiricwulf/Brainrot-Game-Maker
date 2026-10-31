@@ -1491,10 +1491,11 @@
     </div>
   {/if}
 
-  <!-- The fixed bar: the same buttons in the same places in every state and round, 🚪 Exit at the far end. -->
+  <!-- The fixed bar: the same buttons in the same places in every state and round, in groups by what they're for (the
+       safety net, the lists, what viewers see, the windows and sound for the stream), 🚪 Exit at the far end. -->
   <div class="fixed" onclickcapture={barGuard}>
     <span class="group g-edit">
-      <!-- Right-click either one for the whole history. -->
+      <!-- Right-click either one for the whole history. Their words stay, in the column beside the stage too. -->
       <button
         onclick={onundo}
         oncontextmenu={(e) => (e.preventDefault(), onlog('history'))}
@@ -1505,9 +1506,8 @@
         onclick={onredo}
         oncontextmenu={(e) => (e.preventDefault(), onlog('history'))}
         disabled={!redoText}
-        title={redoText ? `Redo: ${redoText} (Ctrl+Shift+Z · right-click: history)` : 'Nothing to redo'}>↷ <span class="word">Redo</span></button
+        title={redoText ? `Redo: ${redoText} (Ctrl+Y or Ctrl+Shift+Z · right-click: history)` : 'Nothing to redo'}>↷ <span class="word">Redo</span></button
       >
-      <button onclick={onsound} title="Test sound, sound output, and how to stream the sound (Discord, OBS)">🔊 <span class="txt">Sound</span></button>
     </span>
     <span class="divider" aria-hidden="true"></span>
     <span class="group g-lists">
@@ -1530,27 +1530,30 @@
       <button onclick={onhide} title="H: hide the controls (in a single window, viewers see only the stage)">🙈 <span class="txt">Hide</span></button>
     </span>
     <span class="divider" aria-hidden="true"></span>
-    <!-- The audience window and the scores-only window (a lower third for OBS). Closing the audience window blacks out
-         the stream capture, so it asks first. -->
+    <!-- What goes to the stream: its sound, the audience window and the scores-only window (a lower third for OBS).
+         Closing the audience window blacks out the stream capture, so it asks first. -->
     <span class="group g-windows">
+      <button onclick={onsound} title="Test sound, sound output, and how to stream the sound (Discord, OBS)">🔊 <span class="txt">Sound</span></button>
       <button
         onclick={() => (dual ? (askCloseAudience = true) : onaudience())}
         class:on={dual}
         aria-pressed={dual}
         title={dual ? 'The audience window is open: click to close it (A brings it to the front)' : 'A opens or focuses it'}
       >📺 <span class="txt">Audience</span>{dual ? ' ●' : ''}</button>
+      <!-- (Its word goes where the bar has no room for it: see .sw.) -->
       <button
+        class="sw"
         onclick={onscores}
         class:on={scoresWindow.open}
         aria-label={scoresWindow.open ? 'Close the scores window' : 'Scores window'}
         title={scoresWindow.open
-          ? 'Close the scores window'
-          : 'Scores window: only the score plates and the countdown, for a lower-third capture in OBS (Shift+A)'}>▭</button
+          ? 'The scores window is open: click to close it (Shift+A brings it to the front)'
+          : 'A window with only the scores, for OBS: the score plates and the countdown, for a lower third (Shift+A)'}
+        >▭ <span class="txt">Scores window</span>{scoresWindow.open ? ' ●' : ''}</button
       >
     </span>
     <span class="spacer"></span>
-    <!-- ❔ Help beside 🚪 Exit: in the side column, Undo, Redo and Sound fill their cell (Help there would wrap to a row
-         alone). -->
+    <!-- ❔ Help beside 🚪 Exit, at the far end. -->
     <span class="group g-exit">
       {#if onkeys}<button class="ghost" onclick={onkeys} title="Every key for this round (?), 📖 How to host and 💡 the tips">❔ <span class="txt">Help</span></button>{/if}
       <button class="ghost exit" onclick={() => (askExit = true)}>🚪 Exit</button>
@@ -1885,12 +1888,13 @@
     padding: 4px 8px;
     font-size: 12px;
   }
-  /* The fixed bar as a two-column grid of its groups, 🚪 Exit in the bottom-right cell. */
+  /* The fixed bar as a two-column grid of its groups, 🚪 Exit in the bottom-right cell: ↶ Undo ↷ Redo and the lists,
+     then the stream's (🔊 Sound, 📺 Audience, ▭ Scores window) across both, then ⏸ Cover 🙈 Hide and ❔ Help 🚪 Exit. */
   .side > .fixed {
     display: grid;
     /* (The left groups as wide as they need, the right ones the rest: Log, Players and Rules stay on one line.) */
     grid-template-columns: auto minmax(0, 1fr);
-    grid-template-areas: 'edit lists' 'screen windows' '. exit';
+    grid-template-areas: 'edit lists' 'windows windows' 'screen exit';
     align-items: start;
   }
   .side .g-edit {
@@ -1911,15 +1915,6 @@
   }
   .side > .fixed > :is(.divider, .spacer) {
     display: none;
-  }
-  /* (In the column: ↶ and ↷ alone, so Undo, Redo and Sound fit their cell; their tooltips say what they'd undo.) */
-  .side .g-edit .word {
-    position: absolute;
-    width: 1px;
-    height: 1px;
-    overflow: hidden;
-    clip-path: inset(50%);
-    white-space: nowrap;
   }
   .side .award .hint {
     display: none;
@@ -1994,6 +1989,18 @@
     .panel:not(.side) > .toolsrow :global(:is(.tl > button, .tl > .pop > button, .rn > button, .rn > .room)) {
       padding-left: 9px;
       padding-right: 9px;
+    }
+  }
+  /* Under the stage up to 1340px wide, ▭ Scores window as ▭ (still read out by name, its ● when open), first: with its
+     word the bar would wrap to two lines there, shrinking the stage. */
+  @media (max-width: 1340px) {
+    .panel:not(.side) > .fixed .sw .txt {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      overflow: hidden;
+      clip-path: inset(50%);
+      white-space: nowrap;
     }
   }
   /* Under the stage up to 1040px wide, ❔ Help as its sign (still read out by name), before the others: its word would

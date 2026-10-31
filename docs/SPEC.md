@@ -505,8 +505,10 @@ The mode isn't saved with the game: it's dual while the audience window is open.
 - **The host panel** has one layout in every round: the status line (📱 phones and ⏱ timer chips), the players' score
   chips, the row of what this moment needs with the one main button (and its key) at its right, the tools with the
   round navigation (a played-out board keeps Next round ▶'s room there, unseen: the blue button is it), then a fixed
-  bar (Undo, Redo, Sound · Log, Players, Rules · Cover, Hide · Audience, ▭ · ❔ Help,
-  Exit; ❔ Help as its sign only up to 1040 px wide, and under about 940 px the first eight too, so it stays one line). On a short window the round's own
+  bar in groups by purpose (Undo, Redo · Log, Players, Rules · Cover, Hide · Sound, Audience, ▭ Scores window, ● while
+  open · ❔ Help, Exit; ▭ Scores window as ▭ up to 1340 px wide, ❔ Help as its sign only up to 1040 px, and under about
+  940 px the others too, so it stays one line; beside the stage a grid: Undo Redo and the lists, then Sound, Audience
+  and Scores window across both columns, then Cover Hide and Help Exit, every word kept). On a short window the round's own
   box keeps a few rows in sight (the panel scrolls), a roll's box above it too. **A clue's flow row** (the row level with
   the main button: the Amount row, or the folded one with ± Other points…) keeps fixed places: ↩ Put back (keep tile)
   at its far left (on a Daily Double's splash it leads the ⭐ box's Wager row, the box filling the row's room; on
