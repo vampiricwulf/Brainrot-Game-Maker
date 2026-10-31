@@ -83,7 +83,7 @@ try {
   await q.fill('It is a YouTube series');
   await addSlide.click();
   await q.fill('Toilets with heads');
-  assert((await dialog.locator('label.field', { has: q }).innerText()).includes('slide 3 of 3'), 'the Question field says Slide 3 of 3');
+  assert((await dialog.locator('label.field', { has: page.locator('[data-field="q"]') }).innerText()).includes('slide 3 of 3'), 'the Question field says Slide 3 of 3');
 
   await page.screenshot({ path: 'test-results/multislide-editor.png' });
   // The first slide still has its own text.
