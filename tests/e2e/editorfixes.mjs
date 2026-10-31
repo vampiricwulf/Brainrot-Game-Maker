@@ -255,7 +255,7 @@ try {
   await dd.fill('50');
   await dd.press('Tab');
   const ddHint = await ddGroup.locator('.hint').innerText();
-  assert(ddHint === '0 placed (Start places 6 at random: one a category, 6 at most)', `the hint says what Start places, one a category (${ddHint})`);
+  assert(ddHint === '0 on the board · Start places 6 at random (one a category, 6 at most)', `the hint says what Start places, one a category (${ddHint})`);
   await ddGroup.getByRole('button', { name: '🔀 Randomize' }).click();
   const placed = await page.locator('.tile .dd', { hasText: 'DD' }).count();
   assert(placed === 6 && (await dd.inputValue()) === '6', `Daily Doubles are clamped and the box says how many were placed (${placed}, ${await dd.inputValue()})`);

@@ -368,11 +368,11 @@ try {
     await menu.getByRole('menuitem', { name: /Make it a Daily Double/ }).click();
   }
   assert((await undoTitle()).startsWith('Undo: Made Category 6 $800 a Daily Double'), `making a Daily Double names the tile (${await undoTitle()})`);
-  assert((await ddBox.inputValue()) === '2' && (await page.getByText('2 placed').count()) === 1, 'placing more Daily Doubles than ⭐ says raises the count');
+  assert((await ddBox.inputValue()) === '2' && (await page.getByText('2 on the board · all placed').count()) === 1, 'placing more Daily Doubles than ⭐ says raises the count');
   await page.locator('main').click({ position: { x: 4, y: 4 } });
   await key('Control+z');
   await key('Control+z');
-  assert((await ddBox.inputValue()) === '1' && (await page.getByText('0 placed').count()) === 1, 'Ctrl+Z takes both back, count and all');
+  assert((await ddBox.inputValue()) === '1' && (await page.getByText('0 on the board · Start places 1 at random').count()) === 1, 'Ctrl+Z takes both back, count and all');
   // A clue's own countdown is whole seconds (0: none), its own value never below 0.
   await tile(2, 2).click();
   const clueDlg = page.getByRole('dialog', { name: 'Edit clue' });

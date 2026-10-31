@@ -102,7 +102,7 @@ PlayerTemplate { id, name, color /* hex, unique */, avatar? /* a picture: the RP
 Round {
   id, name,
   dailyDoubleCount?: number,        // used by the "Randomize Daily Doubles" button                         // "Jeopardy!", "Double Jeopardy", "Brainrot Round"
-  partnerCount?: number,            // 🤝 partner clues placed at random (🔀 Randomize, Start game); left out: none
+  partnerCount?: number,            // 🤝 partner clues in all (🔀 Randomize, Start game places the rest); left out: none
   partnerGame?: PartnerGame, partnerCardFrom?: 'answer' | 'empty',  // what one placed at random plays, and its first card
   categories: Category[],           // columns: 1..10
   rowCount: number,                 // questions per category: 1..10
@@ -214,13 +214,16 @@ RollEvent  { id, ts, source: 'wheel' | 'dice', presetName?, result: string /* la
 - **Daily Doubles**: toggle any tile as a DD by hand, or press **Randomize Daily Doubles** to place `dailyDoubleCount`
   of them at random, one a category (asked for more, it places what fits, says “Placed 6 of 8 Daily Doubles: one a
   category”, and the box then says 6; at 0 it's greyed). Placement is weighted toward the lower (higher-value) rows like
-  on TV, and it never picks empty or wheel/dice tiles. The hint beside it says how many are placed and how many Start
-  game places, by the checklist's rule. Pressing it again re-rolls the placement. The DD positions are visible only in the editor and the host view.
+  on TV, and it never picks empty or wheel/dice tiles. The hint beside it says how many are on the board and how many
+  Start game places, by the checklist's rule. Pressing it again re-rolls the placement. The DD positions are visible only in the editor and the host view.
 - **🤝 Partner clues** (PARTNER-CLUES-SPEC.md §21, P4): make any tile one by hand, or set how many next to ⭐ Daily
   Doubles and press **🔀 Randomize** to place `partnerCount` of them at random, spread over the categories, only on
   tiles with a written question and answer and never on a Daily Double. A tile that was a partner clue keeps its own
   rules and cards; any other plays the round's game (`partnerGame`, Describe it by default) with a first 🤫 card that
-  copies the tile's answer (or an empty one, `partnerCardFrom`). Start game places the ones still missing.
+  copies the tile's answer (or an empty one, `partnerCardFrom`). Start game places the ones still missing. One made or
+  pasted by hand raises the box to the number on the board, as a Daily Double does, and the Plays and 🤫 Card choices
+  show once any partner clue is on the board. Both hints read alike: "2 on the board · Start places 1 at random", or
+  "· all placed".
 - **Tile face**: by default a tile shows its value. Optionally, show custom text or an image instead ("???", an emoji,
   a meme face). The value still drives the prefilled score.
 - Validation panel: empty clues, missing answers, broken media, and duplicate player colors.

@@ -1,5 +1,5 @@
 // Structural edits to a Game that must keep rounds/categories/clues consistent.
-import { boardRounds, cardSlides, dailyDoublesPlaced, gameRules, isBoard, isBoardGame, isFinal, isSlides, newCategory, newClue, newId, newTextEl, questionSlides, textSlide, type Category, type Clue, type ClueCard, type ExtraSlide, type Game, type BoardRound, type ClueType, type Round, type Slide, type SlidesRound, type TextEl } from './model';
+import { boardRounds, cardSlides, dailyDoublesPlaced, gameRules, partnerTilesPlaced, isBoard, isBoardGame, isFinal, isSlides, newCategory, newClue, newId, newTextEl, questionSlides, textSlide, type Category, type Clue, type ClueCard, type ExtraSlide, type Game, type BoardRound, type ClueType, type Round, type Slide, type SlidesRound, type TextEl } from './model';
 import { cardKept, newCard, partnerSpot, sameAsAnswer, startingCards } from './partner';
 import { slideHasContent } from './usage';
 
@@ -196,8 +196,8 @@ export function insertRow(round: BoardRound, at: number): boolean {
 }
 
 /**
- * Make a tile a Daily Double (or a standard, wheel, dice or partner tile). The board's ⭐ Daily Doubles box goes up with
- * the ones placed by hand, so it never says fewer than the board has. A partner clue starts as Describe it (a 45 s
+ * Make a tile a Daily Double (or a standard, wheel, dice or partner tile). The board's ⭐ Daily Doubles and 🤝 Partner
+ * clues boxes go up with the ones placed by hand, so they never say fewer than the board has. A partner clue starts as Describe it (a 45 s
  * countdown when it has none) with its starting card; one made a partner clue before gets its rules and cards back. One
  * only tried (its cards all empty, none named) loses them when it stops being one, and with them rules that are a
  * game's own and the 45 s countdown it started with (whichever game it was moved to after): a card the host wrote or
@@ -327,10 +327,20 @@ export function randomizePartnerTiles(
   return placed;
 }
 
-/** More Daily Doubles on the board than ⭐ Daily Doubles says (one copied, pasted, used again): the box follows. */
+/**
+ * More Daily Doubles or 🤝 partner clues on the board than ⭐ Daily Doubles or 🤝 Partner clues says (one made by hand,
+ * copied, pasted, used again): the box follows.
+ */
 export function followDailyDoubles(round: BoardRound): void {
   const placed = dailyDoublesPlaced(round);
   if (placed > (round.dailyDoubleCount ?? 1)) round.dailyDoubleCount = placed;
+  followPartners(round);
+}
+
+/** More 🤝 partner clues on the board than 🤝 Partner clues says (made by hand, pasted): the box follows. */
+export function followPartners(round: BoardRound): void {
+  const placed = partnerTilesPlaced(round);
+  if (placed > (round.partnerCount ?? 0)) round.partnerCount = placed;
 }
 
 /** Delete a row of clues: the ones below move up, and the bottom row value goes. At least 1 row stays. */

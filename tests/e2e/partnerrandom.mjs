@@ -127,7 +127,7 @@ try {
   await count.fill('2');
   await count.press('Tab');
   const group = host.locator('[data-partner-count]');
-  assert((await group.innerText()).includes('1 placed (Start places 1 at random)'), 'the box asks for 2: one placed, Start places 1');
+  assert((await group.innerText()).includes('1 on the board · Start places 1 at random'), 'the box asks for 2: one placed, Start places 1');
   await group.getByRole('button', { name: 'Randomize partner clues' }).click();
   assert(await toast('Placed 2 partner clues at random'), '🔀 Randomize places 2');
   const placed = await partnerTiles();
@@ -141,7 +141,7 @@ try {
   await host.keyboard.press('Control+z');
   assert(await until(async () => same(await partnerTiles(), ['0,0'])), 'Ctrl+Z again: one placed, for Start to place the other');
   await shut();
-  assert((await group.innerText()).includes('1 placed (Start places 1 at random)'), 'the box says so');
+  assert((await group.innerText()).includes('1 on the board · Start places 1 at random'), 'the box says so');
 
   // ---------- The pre-game: steals on, as a game rule; the room; four phones ----------
   await host.getByRole('button', { name: '▶ Play' }).click();

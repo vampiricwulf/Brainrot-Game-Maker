@@ -11,7 +11,6 @@
     categoryLabel,
     clueValue,
     clueValueTyped,
-    dailyDoublesPlaced,
     formatPoints,
     newImageEl,
     PARTNER_COUNT_MAX,
@@ -29,8 +28,8 @@
   import { nameStep, step, stepAsync } from '../lib/history.svelte';
   import { slideHasContent } from '../lib/usage';
   import { toolChosen } from '../lib/tools';
-  import { choiceFaults, dailyDoublesMost, dailyDoublesShort } from '../lib/validate';
-  import { cardsToFinish, partnerSpot } from '../lib/partner';
+  import { choiceFaults, dailyDoublesLine, partnersLine } from '../lib/validate';
+  import { cardsToFinish } from '../lib/partner';
   import {
     addCategory,
     categoryHasContent,
@@ -102,9 +101,6 @@
   /** At most one 🤝 partner clue a playable tile. */
   const ptMax = $derived(Math.min(PARTNER_COUNT_MAX, playableClues(round).length));
   const ptPlaced = $derived(partnerTilesPlaced(round));
-  /** The tiles one could go on now (a written question and answer, a standard tile), and the ones placed. */
-  const ptRoom = $derived(ptPlaced + round.categories.reduce((n, c) => n + c.clues.filter(partnerSpot).length, 0));
-  const ptWanted = $derived(Math.min(round.partnerCount ?? 0, ptRoom));
   const PT_GAMES = Object.keys(PARTNER_GAMES) as PartnerGame[];
 
   /** 🔀 Randomize partner clues: the ones on the board move, the box's number go on tiles with a written question and answer. */
@@ -359,17 +355,8 @@
   const ARROWS: Record<string, [number, number]> = { ArrowLeft: [-1, 0], ArrowRight: [1, 0], ArrowUp: [0, -1], ArrowDown: [0, 1] };
   /** The tile Enter in a category's name just went down to (until the next key there). */
   let cameFromName: string | null = null;
-  const ddPlaced = $derived(dailyDoublesPlaced(round));
-  /** "1 placed (Start places 3 at random: one a category, 4 at most)", by the checklist's rule. */
-  const ddHint = $derived.by(() => {
-    const short = dailyDoublesShort(round);
-    const most = dailyDoublesMost(round);
-    const notes = [
-      short ? `Start places ${short.want - short.placed} at random` : '',
-      (round.dailyDoubleCount ?? 1) > most ? `one a category, ${most} at most` : '',
-    ].filter(Boolean);
-    return `${ddPlaced} placed${notes.length ? ` (${notes.join(': ')})` : ''}`;
-  });
+  /** "1 on the board · Start places 3 at random (one a category, 4 at most)", by the checklist's rule. */
+  const ddHint = $derived(dailyDoublesLine(round));
   const catNameField = (ci: number) => gridEl?.querySelector<HTMLTextAreaElement>(`[data-cat-name="${ci}"]`);
 
   /**
@@ -831,7 +818,7 @@
     disabled={(round.dailyDoubleCount ?? 1) === 0}
     title={(round.dailyDoubleCount ?? 1) === 0
       ? 'Say how many first'
-      : 'Scatter Daily Doubles at random, one a category. To set one by hand, right-click a tile → ⭐ Make it a Daily Double (or pick ⭐ Daily Double as its Type).'}>🔀 Randomize</button
+      : 'Scatter Daily Doubles at random, one a category (more often in the bottom rows). The ones on the board move. To make one by hand, right-click a tile → ⭐ Make it a Daily Double (or pick it as the clue’s Type).'}>🔀 Randomize</button
   >
   <span class="hint">{ddHint}</span>
     </div>
@@ -839,7 +826,7 @@
   <div class="group" role="group" aria-labelledby="pt-{round.id}" data-partner-count>
     <span class="lbl" id="pt-{round.id}">🤝 Partner clues</span>
     <div class="inputs">
-  <!-- 0 (left out): none placed at random; any made by hand play all the same. -->
+  <!-- 0 (left out): none placed at random. One made by hand raises it (followPartners). -->
   <input
     type="number"
     min="0"
@@ -854,7 +841,7 @@
     }}
     onchange={(e) => (e.currentTarget.value = String(round.partnerCount ?? 0))}
     aria-label="How many partner clues"
-    title="How many 🤝 partner clues to place at random (0: none; any you make by hand play anyway)"
+    title="How many 🤝 partner clues: Start places the ones not on the board yet at random (one you make by hand counts, and the box goes up with it)"
     class="ddn"
   />
   <!-- (Named apart from the Daily Doubles' 🔀 Randomize beside it.) -->
@@ -863,10 +850,11 @@
     disabled={!round.partnerCount}
     aria-label="Randomize partner clues"
     title={round.partnerCount
-      ? 'Scatter partner clues at random over tiles with a written question and answer (never on a Daily Double). The ones on the board move. To make one by hand, right-click a tile → 🤝 Make it a partner clue.'
+      ? 'Scatter partner clues at random, on tiles with a written question and answer (never a Daily Double). The ones on the board move. To make one by hand, right-click a tile → 🤝 Make it a partner clue (or pick it as the clue’s Type).'
       : 'Say how many first'}>🔀 Randomize</button
   >
-  {#if round.partnerCount}
+  <!-- (Once any partner clue is on the board: made by hand, the box follows it.) -->
+  {#if round.partnerCount || ptPlaced}
     <select value={round.partnerGame ?? 'describe'} onchange={(e) => setPartnerGame(e.currentTarget.value as PartnerGame)} aria-label="The game partner clues placed at random play" title="The game a partner clue placed at random plays (a tile that was a partner clue before keeps its own)">
       {#each PT_GAMES as g (g)}<option value={g}>Plays: {PARTNER_GAMES[g].icon} {PARTNER_GAMES[g].label}</option>{/each}
     </select>
@@ -881,7 +869,7 @@
     </select>
   {/if}
   {#if round.partnerCount || ptPlaced}
-    <span class="hint">{ptPlaced} placed{ptPlaced < ptWanted ? ` (Start places ${ptWanted - ptPlaced} at random${round.partnerCardFrom === 'empty' ? ', each with a copy of its answer as its card' : ''})` : ''}</span>
+    <span class="hint">{partnersLine(round)}</span>
   {/if}
     </div>
   </div>

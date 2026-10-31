@@ -121,6 +121,36 @@ export function partnerTilesOver(round: BoardRound): { want: number; placed: num
 }
 
 /**
+ * The line beside ⭐ Daily Doubles and 🤝 Partner clues, one shape for both: "2 on the board · Start places 1 at random",
+ * or "· all placed" once the board has what the box asks for (nothing after it when the box asks for none), with the
+ * notes in brackets.
+ */
+export function placedLine(placed: number, toPlace: number, asked: number, notes: readonly string[] = []): string {
+  const more = toPlace > 0 ? ` · Start places ${toPlace} at random` : asked > 0 ? ' · all placed' : '';
+  const said = notes.filter(Boolean);
+  return `${placed} on the board${more}${said.length ? ` (${said.join('; ')})` : ''}`;
+}
+
+/** ⭐ Daily Doubles' line: how many are on the board, what Start places, and its rule when the box asks for more than fit. */
+export function dailyDoublesLine(round: BoardRound): string {
+  const short = dailyDoublesShort(round);
+  const most = dailyDoublesMost(round);
+  const asked = round.dailyDoubleCount ?? 1;
+  return placedLine(dailyDoublesPlaced(round), short ? short.want - short.placed : 0, asked, [asked > most ? `one a category, ${most} at most` : '']);
+}
+
+/** 🤝 Partner clues' line, as ⭐ Daily Doubles' (the ones Start places get a copy of their answer as their card). */
+export function partnersLine(round: BoardRound): string {
+  const short = partnerTilesShort(round);
+  const left = short ? short.want - short.placed : 0;
+  const asked = round.partnerCount ?? 0;
+  return placedLine(partnerTilesPlaced(round), left, asked, [
+    short && asked > short.most ? `on written tiles, ${short.most} at most` : '',
+    left && round.partnerCardFrom === 'empty' ? 'each with a copy of its answer as its card' : '',
+  ]);
+}
+
+/**
  * What the buzzer server in use takes, for what of a 🤫 card won't reach a phone. `filesOff`: the room open now puts
  * cards on phones but takes no files (its server is off them, or out of budget for now), or the server said it takes
  * none: a card's file from this computer won't reach a phone. `fileBytes`: the biggest file it takes

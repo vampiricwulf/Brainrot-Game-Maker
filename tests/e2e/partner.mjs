@@ -375,6 +375,12 @@ try {
   await page.getByRole('menuitem', { name: '🤝 Make it a partner clue' }).click();
   // (The page keeps the last changes as it goes away, so the reload can come at once.)
   await tile.locator('.dd[title^="Partner clue"]').waitFor();
+  // Made by hand, it counts: the 🤝 box went up to 1, with its Plays and Card choices, and Start has none to place.
+  const ptGroup = page.locator('[data-partner-count]');
+  assert(
+    (await page.getByLabel('How many partner clues').inputValue()) === '1' && (await ptGroup.locator('.hint').innerText()) === '1 on the board · all placed' && (await ptGroup.getByRole('combobox').count()) === 2,
+    `a partner clue made by hand raises the 🤝 box (${await ptGroup.innerText()})`,
+  );
   await page.reload();
   await page.getByRole('button', { name: 'Open…' }).waitFor();
   await tile.click();

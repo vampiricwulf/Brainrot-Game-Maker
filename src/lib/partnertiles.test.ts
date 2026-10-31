@@ -5,9 +5,9 @@ import { describe, expect, it } from 'vitest';
 import { jeopardyGame } from './testgame';
 import { cardSlides, migrateGame, newImageEl, partnerTilesPlaced, setSlideText, slideText, type BoardRound, type Game } from './model';
 import { partnerSpot, setPartnerGame } from './partner';
-import { placePartner, randomizePartnerTiles } from './ops';
+import { copyClue, followDailyDoubles, placePartner, randomizePartnerTiles, setClueType } from './ops';
 import { randomizeDailyDoubles } from './session';
-import { partnerTilesOver, partnerTilesShort, validate } from './validate';
+import { dailyDoublesLine, partnersLine, partnerTilesOver, partnerTilesShort, placedLine, validate } from './validate';
 import { checklistLines } from './checklist';
 
 /** A seeded random: the same picks every run. */
@@ -326,5 +326,60 @@ describe('the checks', () => {
     const none = JSON.parse(JSON.stringify(g));
     none.rounds[0].partnerCount = 0;
     expect((migrateGame(none).rounds[0] as BoardRound).partnerCount).toBeUndefined();
+  });
+});
+
+describe('made by hand, the 🤝 count follows (as ⭐ Daily Doubles does)', () => {
+  it('making one raises the box to the number on the board; making it a standard tile again leaves the box', () => {
+    const { r } = board();
+    expect(r.partnerCount).toBeUndefined();
+    setClueType(r, r.categories[0].clues[0], 'partner');
+    expect(r.partnerCount).toBe(1);
+    setClueType(r, r.categories[1].clues[0], 'partner');
+    expect(r.partnerCount).toBe(2);
+    setClueType(r, r.categories[1].clues[0], 'standard');
+    expect(r.partnerCount).toBe(2);
+    // A bigger box stays: Start places the rest.
+    r.partnerCount = 5;
+    setClueType(r, r.categories[2].clues[0], 'partner');
+    expect(r.partnerCount).toBe(5);
+  });
+
+  it('a pasted one counts, and an empty tile doesn’t', () => {
+    const { r } = board();
+    const c = r.categories[0].clues[0];
+    setClueType(r, c, 'partner');
+    r.categories[3].clues[2] = copyClue(c);
+    followDailyDoubles(r);
+    expect(r.partnerCount).toBe(2);
+    r.categories[4].clues[2] = { ...copyClue(c), empty: true };
+    followDailyDoubles(r);
+    expect(r.partnerCount).toBe(2);
+  });
+});
+
+describe('the lines beside the boxes, one shape', () => {
+  it('placedLine: on the board, what Start places, or all placed (nothing for a box of 0), and notes', () => {
+    expect(placedLine(1, 2, 3)).toBe('1 on the board · Start places 2 at random');
+    expect(placedLine(3, 0, 3)).toBe('3 on the board · all placed');
+    expect(placedLine(0, 0, 0)).toBe('0 on the board');
+    expect(placedLine(0, 6, 6, ['one a category, 6 at most', ''])).toBe('0 on the board · Start places 6 at random (one a category, 6 at most)');
+  });
+
+  it('⭐ Daily Doubles and 🤝 Partner clues say it alike', () => {
+    const { r } = board();
+    r.dailyDoubleCount = 2;
+    expect(dailyDoublesLine(r)).toBe('0 on the board · Start places 2 at random');
+    r.dailyDoubleCount = 8;
+    expect(dailyDoublesLine(r)).toBe('0 on the board · Start places 6 at random (one a category, 6 at most)');
+    r.partnerCount = 2;
+    setClueType(r, r.categories[0].clues[0], 'partner');
+    expect(partnersLine(r)).toBe('1 on the board · Start places 1 at random');
+    r.partnerCardFrom = 'empty';
+    expect(partnersLine(r)).toBe('1 on the board · Start places 1 at random (each with a copy of its answer as its card)');
+    setClueType(r, r.categories[1].clues[0], 'partner');
+    expect(partnersLine(r)).toBe('2 on the board · all placed');
+    r.partnerCount = 40;
+    expect(partnersLine(r)).toBe('2 on the board · Start places 28 at random (on written tiles, 30 at most; each with a copy of its answer as its card)');
   });
 });

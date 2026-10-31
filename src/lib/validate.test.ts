@@ -295,7 +295,8 @@ describe('🤝 partner clues', () => {
     expect(mine(game)).toEqual([]);
     clue.partner!.game = 'describe';
     clue.type = 'standard';
-    expect(mine(game)).toEqual([]);
+    // (Its cards aren't checked. The 🤝 box went up with the one made by hand, so Start would place one.)
+    expect(mine(game).map((p) => p.text)).toEqual(['Jeopardy!: 1 partner clue not placed yet (Start game puts it on the board at random)']);
   });
 
   it('says a named card by its name; notes a name that repeats what’s on it, the question or the answer, and two cards called alike', () => {
