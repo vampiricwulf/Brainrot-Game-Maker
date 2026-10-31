@@ -7,7 +7,7 @@ import { newSession, openClue } from '../../lib/session';
 import { buzzArm, buzzClueOpened, buzzDone, buzzTake, newBuzz } from '../../lib/buzz';
 import {
   anywayLabel, CHECK_GUARD_MS, doneStep, enterQuick, escBounce, goOnDecision, headingOf, inside, leftNow, mainQuick, mainStep, mergeItems, quietKinds, ringOf, swallowSay, teachLine,
-  todo, type Check, type GoActs, type GoCtx, type LeftItem, type Step,
+  todo, type Check, type GoActs, type GoCtx, type LeftItem, type PartnerNow, type Step,
 } from './goon';
 import { FLOW } from './verbs';
 
@@ -30,6 +30,22 @@ const act: GoActs = {
   wrongRest: (ids) => did.push(`wrong ${ids.join()}`),
   toRow: (id) => did.push(`row ${id}`),
   sendCard: (id) => did.push(`send ${id}`),
+  partnerPicker: (id) => did.push(`picker ${id}`),
+  partnerSpin: () => did.push('spin'),
+  partnerChoose: (id) => did.push(`partner ${id}`),
+  memberSpin: () => did.push('memberspin'),
+  describer: (id) => did.push(`describer ${id}`),
+  partnerSolo: () => did.push('solo'),
+  putBack: () => did.push('putback'),
+  partnerShow: () => did.push('show'),
+  closeWheel: () => did.push('closewheel'),
+  partnerClock: () => {
+    did.push('handout');
+  },
+  copyCard: (id) => did.push(`copy ${id}`),
+  partnerJudge: (got) => {
+    did.push(got ? 'got' : 'missed');
+  },
 };
 
 /** Ann, Bob and Cat; a board, then the Final. */
@@ -62,6 +78,7 @@ function ctx(g: Game, s: Session, over: Partial<GoCtx> = {}): GoCtx {
     clockUp: false,
     cards: [],
     ddHidden: false,
+    partner: null,
     act,
     ...over,
   };
@@ -139,10 +156,6 @@ describe('the blue button in every moment (1.3)', () => {
   it('moments whose part hasn’t moved yet keep their own main button: no step', () => {
     const { g, s } = setup();
     const cats = board(g).categories;
-    cats[0].clues[1].type = 'partner';
-    openClue(s, REF, g);
-    expect(mainStep(ctx(g, s))).toBeNull();
-    expect(doneStep(ctx(g, s))).toBeNull();
     cats[0].clues[1].type = 'dailyDouble';
     openClue(s, REF, g);
     expect(s.dd?.stage).toBe('splash');
@@ -384,5 +397,204 @@ describe('the check (3.1–3.10)', () => {
     const reveal: Step = { id: 'reveal', verb: FLOW.reveal, run: () => {}, reveals: true };
     const buzz: LeftItem[] = [{ id: 'buzzers', kind: 'first', text: '', quick: [{ label: '🔔 Open the buzzers', key: 'U', enter: true, then: 'close', run: () => {} }] }];
     expect([goOnDecision('n', reveal, buzz, false, false), inside({ key: 'Enter' }, open(reveal, buzz), after).do]).toEqual(['open', 'quick']);
+  });
+});
+
+describe('a 🤝 partner clue (3.4 H)', () => {
+  /** What Play says of the open partner clue, Bob describing to Ann. */
+  const pnow = (over: Partial<PartnerNow> = {}): PartnerNow => ({
+    wheel: null,
+    teams: false,
+    people: [],
+    giverVerb: 'describes',
+    cards: 1,
+    send: [],
+    copy: [],
+    secs: 45,
+    clock: null,
+    judged: false,
+    got: 'Bob +$400 · Ann +$200',
+    missed: 'no points',
+    stealOn: false,
+    stealers: [],
+    pair: ['b', 'a'],
+    ...over,
+  });
+  /** A partner tile open on PARTNER UP!, nobody marked. */
+  function partnerUp() {
+    const { g, s } = setup();
+    board(g).categories[0].clues[1].type = 'partner';
+    openClue(s, REF, g);
+    delete s.partner!.pickerId;
+    return { g, s };
+  }
+
+  it('PARTNER UP!: the blue button is Show question ▶ (Enter too); with the partner wheel up, Next ▶ (greyed while it turns)', () => {
+    const { g, s } = partnerUp();
+    // (Play gives no partner state: the old main button still, as before S2.)
+    expect(mainStep(ctx(g, s))).toBeNull();
+    const st = mainStep(ctx(g, s, { partner: pnow() }))!;
+    expect([said(st), st.id]).toEqual(['Show question ▶ · N · enterIsNext', 'question']);
+    st.run();
+    const up = mainStep(ctx(g, s, { partner: pnow({ wheel: 'landed' }) }))!;
+    expect([said(up), up.busy]).toEqual(['Next ▶ · N · enterIsNext', undefined]);
+    up.run();
+    expect(did).toEqual(['show', 'closewheel']);
+    expect(leftNow(ctx(g, s, { partner: pnow({ wheel: 'landed' }) }), up)).toEqual([]);
+    expect(mainStep(ctx(g, s, { partner: pnow({ wheel: 'turning' }) }))!.busy).toBe('Still spinning: wait for it to land');
+    // (No ▦ Done ▶ board as a skip before the question.)
+    expect(doneStep(ctx(g, s, { partner: pnow() }))).toBeNull();
+  });
+
+  it('PARTNER UP!: who picked it, then the partner, are must items (no anyway); 1–9 pick, W spins, the spin ringed', () => {
+    const { g, s } = partnerUp();
+    const c = ctx(g, s, { partner: pnow() });
+    const st = mainStep(c)!;
+    const who = leftNow(c, st);
+    expect(lines(who)).toEqual([['first must: Who picked it?', 'Ann [1] · keep', 'Bob [2] · keep', 'Cat [3] · keep']]);
+    const ck = open(st, who);
+    expect([anywayLabel(ck), teachLine(ck), enterQuick(who)]).toEqual(['Show question anyway', '', null]);
+    expect(inside({ key: 'Enter' }, ck, after)).toEqual({ do: 'flash', say: 'Who picked it? Press their number, or click their name' });
+    expect(inside({ key: 'n' }, ck, after)).toMatchObject({ do: 'flash' });
+    expect(inside({ key: '2' }, ck, after)).toEqual({ do: 'pass' });
+    expect(goOnDecision('shift', st, who, false, false)).toBe('open');
+    expect(lines(leftNow(ctx(g, s, { partner: pnow({ teams: true }) }), st))[0][0]).toBe('first must: Which team picked it?');
+    // Ann picked it: her partner next, the wheel first and ringed, then the others by hand.
+    s.partner!.pickerId = 'a';
+    const need = leftNow(c, st);
+    expect(lines(need)).toEqual([['first must: Ann needs a partner first.', '🎡 Spin for a partner [W] ⏎ · close', 'Bob [2] · close', 'Cat [3] · close']]);
+    expect([ringOf(need), need[0].quick[0].after, need[0].quick[2].after]).toEqual(['partnerspin', 'Spinning… then Next ▶ shows the pair', 'Cat partners Ann · Show question ▶ (N) next']);
+    expect(inside({ key: 'w' }, open(st, need), after)).toMatchObject({ do: 'quick', quick: { label: '🎡 Spin for a partner' } });
+    expect(inside({ key: 'Enter' }, open(st, need), after)).toMatchObject({ do: 'quick', quick: { label: '🎡 Spin for a partner' } });
+    need[0].quick[0].run();
+    need[0].quick[2].run();
+    expect(did).toEqual(['spin', 'partner c']);
+    // On the wheel too: Solo.
+    s.partner!.includePicker = true;
+    expect(lines(leftNow(c, st))[0][2]).toBe('Ann (Solo) [1] · close');
+    // The pair set: nothing left, it goes on.
+    s.partner!.partnerId = 'b';
+    expect(leftNow(c, st)).toEqual([]);
+    expect(goOnDecision('n', st, [], false, false)).toBe('run');
+  });
+
+  it('PARTNER UP!: teams, the picker’s own team plays it: who describes; nobody to partner with: Solo or ↩ Put back (⇧Esc)', () => {
+    const { g, s } = partnerUp();
+    s.partner!.pickerId = 'a';
+    s.partner!.partnerId = 'a';
+    const people = [
+      { id: 'm1', name: 'Zoe' },
+      { id: 'm2', name: 'Max' },
+    ];
+    const c = ctx(g, s, { partner: pnow({ teams: true, people }) });
+    const st = mainStep(c)!;
+    const items = leftNow(c, st);
+    expect(lines(items)).toEqual([['first must: Who describes for Ann?', '🎡 Spin for the describer [W] ⏎ · close', 'Zoe · close', 'Max · close']]);
+    expect(ringOf(items)).toBe('describerspin');
+    items[0].quick[2].run();
+    expect(did).toEqual(['describer m2']);
+    s.partner!.member = { id: 'm2', name: 'Max' };
+    expect(leftNow(c, st)).toEqual([]);
+    // Ann alone in the game, not on the wheel.
+    delete s.partner!.partnerId;
+    delete s.partner!.member;
+    s.players = s.players.slice(0, 1);
+    const none = leftNow(ctx(g, s, { partner: pnow() }), st);
+    expect(lines(none)).toEqual([['first must: Nobody else can be Ann’s partner.', 'Ann plays it alone (Solo) ⏎ · close', '↩ Put back (keep tile) [⇧Esc] · close']]);
+    expect(inside({ key: 'Escape', shift: true }, open(st, none), after)).toMatchObject({ do: 'quick', quick: { label: '↩ Put back (keep tile)' } });
+    expect(ringOf(none)).toBeNull();
+  });
+
+  /** The question up, Bob describing to Ann, at 👁 Reveal answer. */
+  function question(stage: 'distribute' | 'live') {
+    const { g, s } = partnerUp();
+    Object.assign(s.partner!, { pickerId: 'a', partnerId: 'b', stage });
+    return { g, s };
+  }
+
+  it('the hand-out at 👁 Reveal answer: 📤 Send and start (⏎), ringed; N never reveals (R does); card names, never words', () => {
+    const { g, s } = question('distribute');
+    const c = ctx(g, s, { partner: pnow({ send: [{ name: 'Card 1', to: ['c'] }] }) });
+    const st = mainStep(c)!;
+    expect(said(st)).toBe('👁 Reveal answer · N · reveals');
+    const items = leftNow(c, st);
+    expect(lines(items)).toEqual([['first: Card 1 hasn’t gone to Cat’s phone, and the clock hasn’t started: they haven’t played yet.', '📤 Send and start ⏎ · close']]);
+    const ck = open(st, items);
+    expect([ringOf(items), anywayLabel(ck), items[0].quick[0].after]).toEqual(['handout', '👁 Reveal anyway: they haven’t played', 'Card sent, clock running: ✔ Got it (Enter) or ✘ Missed (Shift+Enter) once they’ve played']);
+    // N, N, N: never the answer. Enter sends; R reveals anyway.
+    for (let i = 0; i < 3; i++) expect(inside({ key: 'n' }, ck, after + i * 700)).toEqual({ do: 'flash', say: 'Enter: 📤 Send and start · R: 👁 Reveal anyway: they haven’t played' });
+    expect(inside({ key: 'Enter' }, ck, after)).toMatchObject({ do: 'quick', quick: { label: '📤 Send and start' } });
+    expect(inside({ key: 'r' }, ck, after)).toEqual({ do: 'anyway' });
+    // With the controls hidden in one window: it holds (nothing on stream changes).
+    expect(goOnDecision('n', st, items, true, false)).toBe('hold');
+    // The room full: greyed with why. The clock running (T): 📤 Send the cards (clock running).
+    expect(leftNow(ctx(g, s, { partner: pnow({ send: [{ name: 'Card 1', to: ['c'] }], full: 'The room takes 8 cards' }) }), st)[0].quick[0].why).toBe('The room takes 8 cards');
+    const t = leftNow(ctx(g, s, { partner: pnow({ send: [{ name: 'Card 1', to: ['c'] }], clock: { left: 40, running: true } }) }), st);
+    expect(lines(t)).toEqual([['first: Card 1 hasn’t gone to Cat’s phone yet, though the clock is running.', '📤 Send the cards (clock running) ⏎ · close']]);
+    expect(JSON.stringify(items)).not.toMatch(/words|clue text/i);
+  });
+
+  it('the hand-out copied by hand: ⏱ Start the clock (⏎) and 📋 Copy; no cards to hand out: the clock', () => {
+    const { g, s } = question('distribute');
+    const copy = [{ id: 'k1', name: 'Card 1', to: ['c'], phoneless: true, what: 'words' as const }];
+    const c = ctx(g, s, { partner: pnow({ copy }) });
+    const items = leftNow(c, mainStep(c)!);
+    expect(lines(items)).toEqual([['first: Card 1 is for Cat (no phone here): copy it to them, then start the clock.', '⏱ Start the clock (45 s) ⏎ · close', '📋 Copy Card 1’s words · keep']]);
+    items[0].quick[1].run();
+    expect(did).toEqual(['copy k1']);
+    // A card to a phone and one copied: both said, 📤 first.
+    const both = leftNow(ctx(g, s, { partner: pnow({ send: [{ name: 'Card 2', to: ['a'] }], copy }) }), mainStep(c)!);
+    expect(lines(both)).toEqual([
+      ['first: Card 2 hasn’t gone to Ann’s phone, and the clock hasn’t started: they haven’t played yet. Card 1 is to copy by hand for Cat (no phone here).', '📤 Send and start ⏎ · close', '📋 Copy Card 1’s words · keep'],
+    ]);
+    expect(lines(leftNow(ctx(g, s, { partner: pnow() }), mainStep(c)!))).toEqual([['first: The clock hasn’t started: they haven’t played yet.', '⏱ Start the clock (45 s) ⏎ · close']]);
+  });
+
+  it('live: still playing (✔ Got it ⏎ / ✘ Missed ⇧⏎ then the answer); time up, revealing doesn’t ask; a steal', () => {
+    const { g, s } = question('live');
+    const c = ctx(g, s, { partner: pnow({ clock: { left: 23, running: true } }) });
+    const st = mainStep(c)!;
+    const items = leftNow(c, st);
+    expect(lines(items)).toEqual([['first: Bob & Ann are still playing (23 s left).', '✔ Got it (Bob +$400 · Ann +$200) ▶ reveal ⏎ · go', '✘ Missed (no points) ▶ reveal [⇧⏎] · go']]);
+    expect([ringOf(items), anywayLabel(open(st, items))]).toEqual([null, '👁 Reveal anyway']);
+    expect(inside({ key: 'Enter', shift: true }, open(st, items), after)).toMatchObject({ do: 'quick', quick: { label: '✘ Missed (no points) ▶ reveal' } });
+    expect(lines(leftNow(ctx(g, s, { partner: pnow({ clock: { left: 23, running: true }, stealOn: true }) }), st))[0][2]).toBe('✘ Missed: a steal opens [⇧⏎] · close');
+    expect(leftNow(ctx(g, s, { partner: pnow({ clock: 'out' }) }), st)).toEqual([]);
+    expect(lines(leftNow(ctx(g, s, { partner: pnow() }), st))[0][0]).toBe('first: Not judged yet: did Bob & Ann get it?');
+    expect(lines(leftNow(ctx(g, s, { partner: pnow({ cards: 0 }) }), st))).toEqual([['first: The clock hasn’t started: they haven’t played yet.', '⏱ Start the clock (45 s) ⏎ · close']]);
+    // Judged, a steal open: who steals it (their number); one picked: right or wrong.
+    const steal = leftNow(ctx(g, s, { partner: pnow({ judged: true, stealers: ['c'] }) }), st);
+    expect([lines(steal), anywayLabel(open(st, steal))]).toEqual([[['first: A steal is open: Cat can still steal it.', 'Cat steals it [3] · close']], '👁 Reveal anyway: nobody steals it']);
+    const on = leftNow(ctx(g, s, { partner: pnow({ judged: true, stealers: ['c'] }), selected: ['c'], amount: 400 }), st);
+    expect(lines(on)).toEqual([['first: Cat is stealing it: right or wrong?', '＋ Award Cat $400 ▶ reveal ⏎ · go', '− Deduct Cat $400 [⇧⏎] · keep']]);
+    expect(leftNow(ctx(g, s, { partner: pnow({ judged: true }) }), st)).toEqual([]);
+  });
+
+  it('at ▦ Done ▶ board: not judged loses their points (✔ / ✘ ▶ board); judged, nothing', () => {
+    const { g, s } = question('live');
+    s.revealed = true;
+    const c = ctx(g, s, { partner: pnow() });
+    const st = mainStep(c)!;
+    expect(said(st)).toBe('▦ Done ▶ board · N');
+    const items = leftNow(c, st);
+    expect(lines(items)).toEqual([['loss: Not judged yet: did Bob & Ann get it?', '✔ Got it ▶ board ⏎ · go', '✘ Missed ▶ board [⇧⏎] · go']]);
+    expect([headingOf(items), anywayLabel(open(st, items))]).toEqual(['loss', '▦ Done anyway: no points']);
+    items[0].quick[0].run();
+    expect(did).toEqual(['got']);
+    expect(leftNow(ctx(g, s, { partner: pnow({ judged: true }) }), st)).toEqual([]);
+  });
+
+  it('presses it takes (6.2): W spins at once, or N then W or Enter; Enter sends at once, or N then Enter', () => {
+    const { g, s } = partnerUp();
+    s.partner!.pickerId = 'a';
+    const c = ctx(g, s, { partner: pnow() });
+    const st = mainStep(c)!;
+    const items = leftNow(c, st);
+    expect([goOnDecision('n', st, items, false, false), inside({ key: 'Enter' }, open(st, items), after).do, inside({ key: 'w' }, open(st, items), after).do]).toEqual(['open', 'quick', 'quick']);
+    Object.assign(s.partner!, { partnerId: 'b', stage: 'distribute' });
+    const d = ctx(g, s, { partner: pnow({ send: [{ name: 'Card 1', to: ['c'] }] }) });
+    const reveal = mainStep(d)!;
+    const hand = leftNow(d, reveal);
+    expect([goOnDecision('n', reveal, hand, false, false), inside({ key: 'Enter' }, open(reveal, hand), after).do]).toEqual(['open', 'quick']);
   });
 });

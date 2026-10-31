@@ -7,15 +7,16 @@
  * never a box's, so it works with the host panel hidden too.
  *
  * Moments whose part hasn't moved over yet give no step here (null): the panel's old main button does them, as before,
- * with no check (a 🤝 partner clue, a Daily Double's splash, a tool or pop-up over the stage, the Final, the tiebreaker,
- * the end screen, board games).
+ * with no check (a Daily Double's splash, a tool or pop-up over the stage, the Final, the tiebreaker, the end screen,
+ * board games).
  */
 import { buzzNeverOpened, type BuzzState } from '../../lib/buzz';
 import { formatPoints, isBoard, isFinal, roundName, type Game, type Id, type Session } from '../../lib/model';
+import { partnerCandidates, partnerPickStep } from '../../lib/partner';
 import { answerShowing, currentClueInfo, nameList, playerName, roundComplete, slidePosition, toolOnlyClue } from '../../lib/session';
 import { CHECK_GUARD_MS } from './guard';
 import type { FlowPlace } from './slots.svelte';
-import { CHECK, FLOW, type FlowVerb } from './verbs';
+import { CHECK, FLOW, VERBS, type FlowVerb } from './verbs';
 
 /** Keys and clicks on the check are ignored this long after it opens (Esc isn't): a fast N, N or a double-click can't skip it. */
 export { CHECK_GUARD_MS };
@@ -33,8 +34,8 @@ export type Quick = {
   enter?: boolean;
   then: 'go' | 'close' | 'keep';
   tone?: 'good' | 'bad';
-  /** A Play function (never a box's). */
-  run: () => void;
+  /** A Play function (never a box's). False: it waited, and said why (the check stays as it is). */
+  run: () => void | false;
   /** What the status line says after a `close`: "Buzzers open… then 👁 Reveal answer (N)". */
   after?: string;
   /** Greyed, with why. */
@@ -55,7 +56,10 @@ export type LeftItem = {
   must?: boolean;
   text: string;
   quick: Quick[];
-  /** The box button that does it (it wears the ring while it's due): 'buzzers', 'rolltie', 'judgeall', 'card:<id>'. */
+  /**
+   * The box button that does it (it wears the ring while it's due): 'buzzers', 'rolltie', 'judgeall', 'card:<id>', the
+   * 🤝 box's 'partnerspin', 'describerspin' and 'handout'.
+   */
   box?: string;
   /** It can be silenced for the game. */
   quiet?: QuietKind;
@@ -69,7 +73,7 @@ export type LeftItem = {
   done?: string;
 };
 
-export type StepId = 'intro' | 'slide' | 'nextround' | 'reveal' | 'done';
+export type StepId = 'intro' | 'slide' | 'nextround' | 'reveal' | 'done' | 'question' | 'close';
 
 /** The blue button's step: its words (FLOW only), what it does, and how its keys go. */
 export type Step = {
@@ -111,6 +115,67 @@ export type GoActs = {
   /** The keys to this player's answer row, flashed. */
   toRow: (id: Id) => void;
   sendCard: (cardId: Id) => void;
+  // A 🤝 partner clue: PARTNER UP!'s choices, then its question's.
+  /** Who picked it (their number does the same). */
+  partnerPicker: (id: Id) => void;
+  /** 🎡 Spin for a partner (W). */
+  partnerSpin: () => void;
+  /** This player is the partner (their number does the same). */
+  partnerChoose: (id: Id) => void;
+  /** 🎡 Spin for the describer (W), and one of the team chosen to describe. */
+  memberSpin: () => void;
+  describer: (id: string) => void;
+  /** Nobody else to partner with: the picker plays it alone (Solo). */
+  partnerSolo: () => void;
+  /** ↩ Put back (keep tile). */
+  putBack: () => void;
+  /** Show question ▶ on PARTNER UP!, and the partner wheel put away (its landing is the partner). */
+  partnerShow: () => void;
+  closeWheel: () => void;
+  /** 📤 Send and start or ⏱ Start the clock (false: a moment after the question it waits, saying so). */
+  partnerClock: () => void | false;
+  /** 📋 Copy a card's words (or picture), to paste to its players: never on screen. */
+  copyCard: (cardId: Id) => void;
+  /** ✔ Got it or ✘ Missed (false: the keys' guards held it, saying so). */
+  partnerJudge: (got: boolean) => void | false;
+};
+
+/**
+ * A 🤝 partner clue that's open, as the check reads it: Play's and lib's state, never the 🤝 box's (H hides the box).
+ * The rest (who picked it, the partner, the stage) is the session's.
+ */
+export type PartnerNow = {
+  /** The partner (or describer) wheel over the stage: 'turning' until it lands. */
+  wheel: 'turning' | 'landed' | null;
+  /** Phone buzzer teams: "Which team picked it?". */
+  teams: boolean;
+  /** Teams, the picker's own team playing it: the people on it with a phone here, one of them to describe. */
+  people: { id: string; name: string }[];
+  /** What the giver does, in the clue's game's words ("describes"). */
+  giverVerb: string;
+  /** How many 🤫 cards the clue has. */
+  cards: number;
+  /** Handing them out: those still to send to phones, with who they go to ("Card 1", never what's on it). */
+  send: { name: string; to: Id[] }[];
+  /** Those to copy by hand (no phone gets cards, or one of their players has none here: `phoneless`), and what of them copies. */
+  copy: { id: Id; name: string; to: Id[]; phoneless: boolean; what: 'words' | 'picture' | null }[];
+  /** 📤 Send and start won't fit in the buzzer room: why. */
+  full?: string;
+  /** What ⏱ Start the clock counts down from. */
+  secs: number;
+  /** The countdown: up (running or paused, its seconds left), run out, or none. */
+  clock: { left: number; running: boolean } | 'out' | null;
+  /** Both of the two have their mark. */
+  judged: boolean;
+  /** What ✔ Got it and ✘ Missed give, in words ("Cat +$200 · Ann +$100"). */
+  got: string;
+  missed: string;
+  /** ✘ Missed lets the others steal it. */
+  stealOn: boolean;
+  /** A steal open, the answer hidden and the clock not run out: who can still steal it. */
+  stealers: Id[];
+  /** Who plays it, the giver first (Solo: the one). */
+  pair: Id[];
 };
 
 /** What the check reads: Play's state and lib's, never a box's. */
@@ -119,7 +184,10 @@ export type GoCtx = {
   game: Game;
   /** An audience window is open (this panel is off stream). */
   dual: boolean;
-  /** Something is over the stage (a tool, the scores, a sheet, a pop-up): its part has its own main button still. */
+  /**
+   * Something is over the stage (a tool, the scores, a sheet, a pop-up): its part has its own main button still. Not
+   * the 🤝 partner wheel: its Next ▶ is the blue button's (PartnerNow.wheel).
+   */
   toolUp: boolean;
   selected: Id[];
   amount: number | null;
@@ -142,6 +210,8 @@ export type GoCtx = {
   cards: { id: Id; name: string; to: Id[]; full?: string }[];
   /** One window: a Daily Double wager sent from a phone, not on screen yet. */
   ddHidden: boolean;
+  /** The open 🤝 partner clue (null: none). */
+  partner: PartnerNow | null;
   act: GoActs;
 };
 
@@ -200,11 +270,20 @@ export function mainStep(c: GoCtx): Step | null {
   return null;
 }
 
-/** An open clue's step: its question slides, the answer, then back to the board. */
+/** An open clue's step: PARTNER UP!'s, its question slides, the answer, then back to the board. */
 function clueStep(c: GoCtx, done = false): Step | null {
   const s = c.session;
   const info = currentClueInfo(s, c.game);
-  if (!info || c.toolUp || (s.partner && s.partner.clue === info.clue.id) || s.dd?.stage === 'splash') return null;
+  if (!info || c.toolUp || s.dd?.stage === 'splash') return null;
+  const pt = s.partner?.clue === info.clue.id ? s.partner : null;
+  if (pt && !c.partner) return null;
+  // PARTNER UP!: the question (Enter too), or, while the partner wheel is up, Next ▶: it goes and the pair shows.
+  if (pt?.stage === 'pick') {
+    if (done) return null;
+    const w = c.partner?.wheel;
+    if (w) return n({ ...FLOW.next, title: 'The wheel goes, and the pair shows on PARTNER UP!' }, 'close', c.act.closeWheel, { enterIsNext: true, ...(w === 'turning' ? { busy: 'Still spinning: wait for it to land' } : {}) });
+    return n({ ...FLOW.showQuestion, title: 'The question goes on screen (nothing is sent to anyone)' }, 'question', c.act.partnerShow, { enterIsNext: true });
+  }
   const doneStep = n(FLOW.done, 'done', c.act.back, { flow: 'done' });
   if (done) return doneStep;
   const pos = slidePosition(s, c.game);
@@ -407,9 +486,231 @@ function cardItems(c: GoCtx): LeftItem[] {
   }));
 }
 
+/** A player's number key, as a key cap (1–9 only). */
+function numKey(c: GoCtx, id: Id): { key?: string } {
+  const at = c.session.players.findIndex((p) => p.id === id) + 1;
+  return at && at <= 9 ? { key: String(at) } : {};
+}
+
+/** "Cat’s phone", "Cat & Dan’s phones". */
+const phonesOf = (c: GoCtx, ids: Id[]) => `${named(c, ids)}’s phone${ids.length === 1 ? '' : 's'}`;
+
+/** The open partner clue (its state, and Play's for it), if any. */
+function partnerOf(c: GoCtx) {
+  const s = c.session.partner;
+  const info = currentClueInfo(c.session, c.game);
+  return s && c.partner && info && s.clue === info.clue.id ? { s, p: c.partner } : null;
+}
+
+/** What follows a send or the clock, said in the status line. */
+const PLAYING = '✔ Got it (Enter) or ✘ Missed (Shift+Enter) once they’ve played';
+
+/**
+ * PARTNER UP!, at Show question ▶ (3.4 H): who picked it, the partner (or who describes), and with nobody to partner
+ * with, Solo or ↩ Put back. Each must be done first: no "anyway". Names and parts only.
+ */
+function pickItems(c: GoCtx): LeftItem[] {
+  const x = partnerOf(c);
+  if (!x || x.s.stage !== 'pick') return [];
+  const { s, p } = x;
+  const step = partnerPickStep(c.session, s, p.people.length);
+  if (step === 'picker') {
+    const who = p.teams ? 'Which team' : 'Who';
+    return [
+      {
+        id: 'picker',
+        kind: 'first',
+        must: true,
+        text: `${who} picked it?`,
+        enterSay: `${who} picked it? Press their number, or click their name`,
+        quick: c.session.players.map((pl): Quick => ({ label: pl.name, ...numKey(c, pl.id), then: 'keep', run: () => c.act.partnerPicker(pl.id), aria: `${pl.name} picked it` })),
+      },
+    ];
+  }
+  const picker = name(c, s.pickerId ?? '');
+  const next = `${FLOW.showQuestion.label} (N) next`;
+  if (step === 'spin')
+    return [
+      {
+        id: 'partner',
+        kind: 'first',
+        must: true,
+        box: 'partnerspin',
+        text: `${picker} needs a partner first.`,
+        quick: [
+          { label: VERBS.partnerSpin.label, key: 'W', enter: true, then: 'close', run: c.act.partnerSpin, after: `Spinning… then ${FLOW.next.label} shows the pair`, aria: 'Spin for a partner: the wheel spins over the other players' },
+          ...partnerCandidates(c.session, s).map((pl): Quick => {
+            const solo = pl.id === s.pickerId;
+            return {
+              label: solo ? `${pl.name} (Solo)` : pl.name,
+              ...numKey(c, pl.id),
+              then: 'close',
+              run: () => c.act.partnerChoose(pl.id),
+              after: solo ? `${pl.name} plays it alone · ${next}` : `${pl.name} partners ${picker} · ${next}`,
+              aria: solo ? `${pl.name} plays it alone` : `${pl.name} is ${picker}’s partner`,
+            };
+          }),
+        ],
+      },
+    ];
+  if (step === 'describer')
+    return [
+      {
+        id: 'describer',
+        kind: 'first',
+        must: true,
+        box: 'describerspin',
+        text: `Who ${p.giverVerb} for ${picker}?`,
+        quick: [
+          { label: VERBS.describerSpin.label, key: 'W', enter: true, then: 'close', run: c.act.memberSpin, after: `Spinning… then ${FLOW.next.label} shows who ${p.giverVerb}`, aria: `Spin for who ${p.giverVerb}: the wheel spins over the people on ${picker}` },
+          ...p.people.map((m): Quick => ({ label: m.name, then: 'close', run: () => c.act.describer(m.id), after: `${m.name} ${p.giverVerb} for ${picker} · ${next}`, aria: `${m.name} ${p.giverVerb} for ${picker}` })),
+        ],
+      },
+    ];
+  if (step === 'nobody')
+    return [
+      {
+        id: 'nobody',
+        kind: 'first',
+        must: true,
+        text: `Nobody else can be ${picker}’s partner.`,
+        quick: [
+          { label: `${picker} plays it alone (Solo)`, enter: true, then: 'close', run: c.act.partnerSolo, after: `${picker} plays it alone · ${next}` },
+          { label: VERBS.putBack.label, key: '⇧Esc', then: 'close', run: c.act.putBack, aria: 'Put back: the tile goes back on the board, unused' },
+        ],
+      },
+    ];
+  return [];
+}
+
+/**
+ * A partner clue's question up, at 👁 Reveal answer (3.4 H): the cards not handed out or the clock not started, the
+ * pair still playing, or a steal open. They haven't had their go: R or a click reveals anyway, never N. Card names and
+ * who they're for, never their words.
+ */
+function partnerPlayItems(c: GoCtx): LeftItem[] {
+  const x = partnerOf(c);
+  if (!x || x.s.stage === 'pick' || c.session.revealed) return [];
+  const { s, p } = x;
+  const pair = named(c, p.pair);
+  if (p.judged) {
+    if (!p.stealers.length) return [];
+    const info = currentClueInfo(c.session, c.game);
+    const a = c.amount != null && Number.isFinite(c.amount) ? Math.abs(c.amount) : (info?.value ?? 0);
+    const on = c.selected.find((id) => p.stealers.includes(id));
+    // (One picked to steal it, with their number: right or wrong next.)
+    if (on) {
+      const who = name(c, on);
+      const pts = formatPoints(a, sym(c));
+      return [
+        {
+          id: 'steal',
+          kind: 'first',
+          text: `${who} is stealing it: right or wrong?`,
+          lost: 'nobody steals it',
+          quick: [
+            { label: `＋ Award ${who} ${pts} ▶ reveal`, enter: true, then: 'go', tone: 'good', run: () => c.act.award(1, [on], a), aria: `Award ${who} ${pts}, then the answer` },
+            { label: `− Deduct ${who} ${pts}`, key: '⇧⏎', then: 'keep', tone: 'bad', run: () => c.act.award(-1, [on], a), aria: `Deduct ${pts} from ${who}` },
+          ],
+        },
+      ];
+    }
+    return [
+      {
+        id: 'steal',
+        kind: 'first',
+        text: `A steal is open: ${named(c, p.stealers)} can still steal it.`,
+        lost: 'nobody steals it',
+        quick: p.stealers.map((id): Quick => ({ label: `${name(c, id)} steals it`, ...numKey(c, id), then: 'close', run: () => c.act.pick(id), after: `${name(c, id)} steals it: Enter if right, Shift+Enter if wrong` })),
+      },
+    ];
+  }
+  const clockQ = (): Quick => ({ label: VERBS.startClock(p.secs).label, enter: true, then: 'close', run: c.act.partnerClock, after: `Clock running: ${PLAYING}` });
+  const copyQ = p.copy.flatMap((k): Quick[] => (k.what ? [{ label: `📋 Copy ${k.name}’s ${k.what}`, then: 'keep', run: () => c.act.copyCard(k.id), aria: `Copy ${k.name}’s ${k.what}, to paste to ${named(c, k.to)}` }] : []));
+  const hand = { id: 'handout', kind: 'first', box: 'handout', lost: 'they haven’t played' } as const;
+  if (s.stage === 'distribute') {
+    const running = typeof p.clock === 'object' && !!p.clock?.running;
+    if (p.send.length) {
+      const to = [...new Set(p.send.flatMap((k) => k.to))];
+      const many = p.send.length > 1;
+      const cards = nameList(p.send.map((k) => k.name));
+      const copied = p.copy.length ? ` ${nameList(p.copy.map((k) => k.name))} ${p.copy.length > 1 ? 'are' : 'is'} to copy by hand for ${named(c, [...new Set(p.copy.flatMap((k) => k.to))])} (no phone here).` : '';
+      const verb = running ? VERBS.sendCards : VERBS.sendAndStart;
+      return [
+        {
+          ...hand,
+          text: `${cards} ${many ? 'haven’t' : 'hasn’t'} gone to ${phonesOf(c, to)}${running ? ' yet, though the clock is running' : ', and the clock hasn’t started: they haven’t played yet'}.${copied}`,
+          quick: [
+            {
+              label: verb.label,
+              enter: true,
+              then: 'close',
+              run: c.act.partnerClock,
+              after: `${many ? 'Cards' : 'Card'} sent, clock running: ${PLAYING}`,
+              ...(p.full ? { why: p.full } : {}),
+              aria: running ? `Send ${cards} to their phones (the clock goes on)` : `Send ${cards} to their phones and start the clock`,
+            },
+            ...copyQ,
+          ],
+        },
+      ];
+    }
+    if (p.copy.length) {
+      const many = p.copy.length > 1;
+      const to = [...new Set(p.copy.flatMap((k) => k.to))];
+      const none = p.copy.some((k) => k.phoneless) ? ' (no phone here)' : '';
+      return [{ ...hand, text: `${nameList(p.copy.map((k) => k.name))} ${many ? 'are' : 'is'} for ${named(c, to)}${none}: copy ${many ? 'them' : 'it'} to them, then start the clock.`, quick: [clockQ(), ...copyQ] }];
+    }
+    return [{ ...hand, text: 'The clock hasn’t started: they haven’t played yet.', quick: [clockQ()] }];
+  }
+  // Live: the pair still playing. (Time's up: revealing doesn't ask, they can still be judged after.)
+  if (p.clock === 'out') return [];
+  if (!p.clock && !p.cards) return [{ ...hand, text: 'The clock hasn’t started: they haven’t played yet.', quick: [clockQ()] }];
+  const one = p.pair.length === 1;
+  return [
+    {
+      id: 'playing',
+      kind: 'first',
+      text: p.clock ? `${pair} ${one ? 'is' : 'are'} still playing (${p.clock.left} s left).` : `Not judged yet: did ${pair} get it?`,
+      quick: [
+        { label: `✔ Got it (${p.got}) ▶ reveal`, enter: true, then: 'go', tone: 'good', run: () => c.act.partnerJudge(true), aria: `Got it: ${p.got}, then the answer` },
+        p.stealOn
+          ? { label: '✘ Missed: a steal opens', key: '⇧⏎', then: 'close', tone: 'bad', run: () => c.act.partnerJudge(false), after: 'A steal: the others can answer it', aria: `Missed: ${p.missed}, and the others can steal it` }
+          : { label: `✘ Missed (${p.missed}) ▶ reveal`, key: '⇧⏎', then: 'go', tone: 'bad', run: () => c.act.partnerJudge(false), aria: `Missed: ${p.missed}, then the answer` },
+      ],
+    },
+  ];
+}
+
+/** A partner clue not judged, at ▦ Done ▶ board (3.4 H): going on gives the pair no points. */
+function partnerJudgeItems(c: GoCtx): LeftItem[] {
+  const x = partnerOf(c);
+  if (!x || x.s.stage === 'pick' || x.p.judged) return [];
+  const { p } = x;
+  return [
+    {
+      id: 'judged',
+      kind: 'loss',
+      text: `Not judged yet: did ${named(c, p.pair)} get it?`,
+      lost: 'no points',
+      quick: [
+        { label: '✔ Got it ▶ board', enter: true, then: 'go', tone: 'good', run: () => c.act.partnerJudge(true), aria: `Got it: ${p.got}, then back to the board` },
+        { label: '✘ Missed ▶ board', key: '⇧⏎', then: 'go', tone: 'bad', run: () => c.act.partnerJudge(false), aria: `Missed: ${p.missed}, then back to the board` },
+      ],
+    },
+  ];
+}
+
 /** What going on by `step` would skip or lose now, but the kinds silenced this game. */
 export function leftNow(c: GoCtx, step: Step): LeftItem[] {
-  const all = step.id === 'reveal' ? [...buzzItems(c), ...answersItems(c), ...cardItems(c)] : step.id === 'done' ? [...scoreItems(c), ...judgeItems(c)] : [];
+  const all =
+    step.id === 'reveal'
+      ? [...partnerPlayItems(c), ...buzzItems(c), ...answersItems(c), ...cardItems(c)]
+      : step.id === 'done'
+        ? [...partnerJudgeItems(c), ...scoreItems(c), ...judgeItems(c)]
+        : step.id === 'question'
+          ? pickItems(c)
+          : [];
   const quiet = c.session.goonQuiet ?? [];
   return all.filter((i) => !i.quiet || !quiet.includes(i.quiet));
 }

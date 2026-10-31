@@ -15,10 +15,12 @@
     finalSetWager, finalTakeNewcomers, forViewers, wagerFromPhone, coWinnersHold, ownPlayers, clueMarks, judgePartner, partnerSteal, stealersLeft, slidePosition, ddCap,
   } from '../lib/session';
   import {
-    cardId, cardRecipients, cardSends, cardSlides, lowerWord, marksText, sentSeats, partnerCandidates, partnerRoles, partnerRules, partnerShares, partnerVerdict, partWords, recipientsText, sendCards,
-    setDescriber, setPartner, setPartnerPicker, takeBack,
+    cardCopyText, cardId, cardRecipients, cardSends, cardSlides, lowerWord, marksText, sentSeats, partnerCandidates, partnerRoles, partnerRules, partnerShares, partnerVerdict, partWords, recipientsText, sendCards,
+    setDescriber, setPartner, setPartnerPicker, takeBack, toName,
   } from '../lib/partner';
-  import { phoneCard } from '../lib/phonecard';
+  import { cardLinks, cardWords, phoneCard } from '../lib/phonecard';
+  import { copyCardPicture } from './host/cardcopy';
+  import { copyText } from './standings';
   import { phoneCan, syncUploads } from '../lib/cardfiles.svelte';
   import { askServerFiles, fileLimitsNow } from '../lib/serverlimits.svelte';
   import { cardsOut, listedCards, sentCardId, sentSlide, sendCard, sentToText, takeBackCard, tileRecipients } from '../lib/sentcards';
@@ -2314,16 +2316,43 @@
 
   /** 1–9 on PARTNER UP!: who picked it (nobody marked yet), else the partner, overruling the wheel. */
   function partnerNumber(n: number): void {
-    const s = partner;
     const p = session.players[n - 1];
-    if (!s || !p) return;
-    if (!s.pickerId) {
-      setPartnerPicker(session, s, p.id);
-      return announce(`${p.name} picked it`);
-    }
+    if (!partner || !p) return;
+    if (!partner.pickerId) partnerPicker(p.id);
+    else partnerChoose(p.id);
+  }
+  /** Who picked it, on PARTNER UP! (their number, or the check before going on). */
+  function partnerPicker(id: string): void {
+    const s = partner;
+    if (!s || s.stage !== 'pick') return;
+    setPartnerPicker(session, s, id);
+    announce(`${playerName(session, id)} picked it`);
+  }
+  /** The partner by hand, overruling the wheel (their number, or the check). */
+  function partnerChoose(id: string): void {
+    const s = partner;
+    if (!s || s.stage !== 'pick' || !s.pickerId) return;
+    const name = playerName(session, id);
     if (toolGoing()) return hint('Still spinning: wait for it to land');
-    if (!setPartner(session, s, p.id, 'host')) return hint(`${p.name} picked it: tick “${p.name} can be on the wheel” to make it Solo`);
-    announce(p.id === s.pickerId ? `${p.name} plays it alone` : `${p.name} is ${playerName(session, s.pickerId)}’s partner`);
+    if (!setPartner(session, s, id, 'host')) return hint(`${name} picked it: tick “${name} can be on the wheel” to make it Solo`);
+    announce(id === s.pickerId ? `${name} plays it alone` : `${name} is ${playerName(session, s.pickerId)}’s partner`);
+  }
+  /** Teams, the picker's own team playing it: who on it describes (the check's choice; the 🤝 box has its own). */
+  function partnerDescriber(id: string): void {
+    const s = partner;
+    if (!s?.pickerId || s.stage !== 'pick' || !info) return;
+    if (toolGoing()) return hint('Still spinning: wait for it to land');
+    const m = roomMembers(s.pickerId).find((x) => x.id === id);
+    if (!m) return;
+    setDescriber(s, m);
+    announce(`${m.name} is the ${lowerWord(partWords(partnerRules(info.clue)).giver)} for ${playerName(session, s.pickerId)}`);
+  }
+  /** Nobody else to partner with: the picker plays it alone (Solo), as ticking them onto the wheel and choosing them. */
+  function partnerSolo(): void {
+    const s = partner;
+    if (!s?.pickerId || s.stage !== 'pick') return;
+    s.includePicker = true;
+    if (setPartner(session, s, s.pickerId, 'host')) announce(`${playerName(session, s.pickerId)} plays it alone`);
   }
 
   /**
@@ -2500,6 +2529,51 @@
     }
     if (hostNext && !hostNext.disabled) hostNext.run();
     else if (hostNext?.title) hint(hostNext.title);
+  }
+
+  /**
+   * 📤 Send and start (or ⏱ Start the clock) by Enter or the check: never within a second of the question going up, so a
+   * held or double press can't send before the host has looked at who gets which card. Live with no cards and no clock
+   * yet: the clock, as T starts it. False: it waited, and said so.
+   */
+  function partnerHandOut(byKey: boolean): false | void {
+    const s = partner;
+    if (!s || s.stage === 'pick') return false;
+    if (s.stage === 'live') return void clockKey(false);
+    if (Date.now() - partnerShownAt < KEY_GUARD_MS) {
+      hint(`The question just went up: ${byKey ? 'press Enter' : 'click'} again to ${unsentCards().length ? 'send the cards' : 'start the clock'}`);
+      return false;
+    }
+    partnerClock();
+  }
+
+  /** 📋 Copy a partner card's words (or its picture, with none), to paste to its players in a DM: none of it on screen. */
+  function partnerCopy(cardId: string): void {
+    const s = partner;
+    const cards = info ? cardSlides(info.clue) : [];
+    const i = cards.findIndex((c) => c.id === cardId);
+    if (!s || !info || !session.currentClue || i < 0) return;
+    const card = cards[i];
+    const to = cardRecipients(session, s, card).map((t) => toName(session, t));
+    const W = clueCardWords(card, i, true);
+    if (cardWords(card) || cardLinks(game, card).length) void copyText(cardCopyText(game, card, i + 1, clueName(game, session.currentClue), to), `${W}’s words copied: paste them to ${to.join(', ') || 'them'}`);
+    else void copyCardPicture(game, card, W, to.join(', ') || 'them');
+  }
+
+  /**
+   * ✔ Got it / ✘ Missed from the check before going on: pressed by a key, the keys' own guards first (a moment after the
+   * clock started, the first Enter after T). False: it waited, and said so.
+   */
+  function checkJudge(got: boolean): false | void {
+    if (quickKey) {
+      if (partnerLiveByT && got) {
+        partnerLiveByT = false;
+        hint('Clock is running: Enter again for ✔ Got it');
+        return false;
+      }
+      if (partnerTooSoon(quickKey)) return false;
+    }
+    partnerJudge(got);
   }
 
   /**
@@ -2783,6 +2857,18 @@
     wrongRest,
     toRow: (id) => flashTo(answerRow(id)),
     sendCard: sendTileCard,
+    partnerPicker,
+    partnerSpin: () => partnerSpin(),
+    partnerChoose,
+    memberSpin: () => memberSpin(),
+    describer: partnerDescriber,
+    partnerSolo,
+    putBack: () => cancelClue(),
+    partnerShow: () => partnerShow(),
+    closeWheel: () => closeOverlay(),
+    partnerClock: () => partnerHandOut(!!quickKey),
+    copyCard: partnerCopy,
+    partnerJudge: checkJudge,
   };
 
   /** What the blue button and the check read now: this screen's state and lib's (never a box's: H hides the boxes). */
@@ -2806,6 +2892,7 @@
       clockUp: !!app.live.timer && !app.live.timer.expired,
       cards: tileCardsLeft(),
       ddHidden: !dual && session.dd?.stage === 'question' && session.dd.draftFrom === 'phone' && !session.dd.shown,
+      partner: null,
       act: goActs,
     };
   });
@@ -2823,6 +2910,8 @@
   let checkLit = $state<string | null>(null);
   /** When Not yet closed it: an Esc right after does nothing (a bounced Esc never closes the clue). */
   let notYetAt = 0;
+  /** The key pressing one of its fixes, while it runs (a click: null): the keys' own guards apply to it (checkJudge). */
+  let quickKey: KeyboardEvent | null = null;
   /** Where the check was when it went by itself (its moment went): a click there waits a moment, not landing on a box. */
   let checkGone: { r: DOMRect; at: number } | null = null;
   /** The moment on screen, as the check knows it: it closes by itself when this changes (Ctrl+Z out of the clue…). */
@@ -2909,7 +2998,8 @@
     const item = ck?.items.find((i) => i.quick.includes(q));
     if (!ck || !item || item.done) return;
     if (q.why) return flashCheck(q.why);
-    q.run();
+    // (It waited, saying why: a moment after the question, the cards aren't sent yet.)
+    if (q.run() === false) return;
     if (q.then === 'close') {
       closeCheck('quick');
       if (q.after) hint(q.after);
@@ -2990,8 +3080,14 @@
     if (r.do === 'notyet') closeCheck('notyet');
     else if (r.do === 'flash') flashCheck(r.say);
     else if (r.do === 'swallow') lightUp(r.then, swallowSay(k, r.then, ck));
-    else if (r.do === 'quick') runQuick(r.quick);
-    else if (r.do === 'anyway' || r.do === 'step') takeStep();
+    else if (r.do === 'quick') {
+      quickKey = e;
+      try {
+        runQuick(r.quick);
+      } finally {
+        quickKey = null;
+      }
+    } else if (r.do === 'anyway' || r.do === 'step') takeStep();
     return true;
   }
 
