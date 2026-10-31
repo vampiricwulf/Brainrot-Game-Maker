@@ -108,12 +108,12 @@ try {
   // What a shop sells has a right-click menu: move it, or take it out of the shop.
   await shop.locator('tbody tr .drag-grip').nth(1).click({ button: 'right' });
   const wareMenu = (await texts(page.getByRole('menu').getByRole('menuitem'))).map((t) => t.split('\n')[0]);
-  assert(wareMenu.join('|').startsWith('▲ Move up') && wareMenu.some((t) => t.startsWith('− Remove from shop')), `right-click a row a shop sells: move it, remove it (${wareMenu.join(', ')})`);
+  assert(wareMenu.join('|').startsWith('▲ Move up') && wareMenu.some((t) => t.startsWith('🗑 Remove from shop')), `right-click a row a shop sells: move it, remove it (${wareMenu.join(', ')})`);
   await page.getByRole('menu').getByRole('menuitem', { name: /▼ Move down/ }).click();
   assert((await sold()) === 'Potion (copy),Hat,Potion', 'its ▼ Move down moves it');
   await shop.locator('tbody tr .drag-grip').nth(2).click({ button: 'right' });
-  await page.getByRole('menu').getByRole('menuitem', { name: '− Remove from shop' }).click();
-  assert((await sold()) === 'Potion (copy),Hat' && (await notice.innerText()).startsWith('Stopped selling “Potion”'), 'its − Remove from shop stops selling it, with a note');
+  await page.getByRole('menu').getByRole('menuitem', { name: '🗑 Remove from shop' }).click();
+  assert((await sold()) === 'Potion (copy),Hat' && (await notice.innerText()).startsWith('Stopped selling “Potion”'), 'its 🗑 Remove from shop stops selling it, with a note');
   await notice.getByRole('button', { name: '↶ Undo' }).click();
   await page.keyboard.press('Control+z');
   assert((await sold()) === 'Potion (copy),Potion,Hat', 'both undo');

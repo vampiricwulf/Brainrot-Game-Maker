@@ -12,7 +12,7 @@
   import { step } from '../lib/history.svelte';
   import { DragOrder, rowKeys } from '../lib/dragorder.svelte';
   import { copyItem, copyShop, copyStat, moveTo } from '../lib/listedit';
-  import { dropMenu, showMenu } from '../lib/menustate.svelte';
+  import { dropMenu, menuItem, menuOf, showMenu } from '../lib/menustate.svelte';
   import { isTextField } from '../lib/undokeys';
   import { pickFile, readTextFile, safeFilename, saveFile, savedWhere } from '../lib/fileio';
   import { newId, type ItemDef, type Shop, type StatField, type Wearable } from '../lib/model';
@@ -160,14 +160,15 @@
   function rowMenu(e: MouseEvent, kind: Kind, x: Row, i: number): void {
     if (isTextField(e.target)) return;
     const n = listOf(kind).length;
-    showMenu(e, [
-      { heading: x.name },
-      { label: '⧉ Duplicate', onclick: () => duplicate(kind, x), keys: 'Ctrl+D' },
-      { label: '▲ Move up', onclick: () => move(kind, i, i - 1), disabled: i === 0, keys: 'Alt+↑' },
-      { label: '▼ Move down', onclick: () => move(kind, i, i + 1), disabled: i === n - 1, keys: 'Alt+↓' },
-      { sep: true },
-      { label: `🗑 Delete ${kind}`, danger: true, onclick: () => remove(kind, x) },
-    ]);
+    showMenu(
+      e,
+      menuOf({
+        heading: x.name,
+        duplicate: menuItem.duplicate(() => duplicate(kind, x)),
+        move: [menuItem.up(() => move(kind, i, i - 1), { disabled: i === 0 }), menuItem.down(() => move(kind, i, i + 1), { disabled: i === n - 1 })],
+        delete: menuItem.delete(kind, () => remove(kind, x), { keys: false }),
+      }),
+    );
   }
 
   const drags = { stat: new DragOrder(), item: new DragOrder(), shop: new DragOrder() };
@@ -199,13 +200,15 @@
   /** Right-click a row a shop sells (not in its boxes): move it, or stop selling it. Each item is sold once, so no copy. */
   function wareMenu(e: MouseEvent, s: Shop, i: number): void {
     if (isTextField(e.target)) return;
-    showMenu(e, [
-      { heading: wareName(s, i) },
-      { label: '▲ Move up', onclick: () => moveWare(s, i, i - 1), disabled: i === 0, keys: 'Alt+↑' },
-      { label: '▼ Move down', onclick: () => moveWare(s, i, i + 1), disabled: i === s.stock.length - 1, keys: 'Alt+↓' },
-      { sep: true },
-      { label: '− Remove from shop', danger: true, onclick: () => unstock(s, i) },
-    ]);
+    showMenu(
+      e,
+      menuOf({
+        heading: wareName(s, i),
+        move: [menuItem.up(() => moveWare(s, i, i - 1), { disabled: i === 0 }), menuItem.down(() => moveWare(s, i, i + 1), { disabled: i === s.stock.length - 1 })],
+        // (Off this shop: the item stays in the game.)
+        delete: { label: '🗑 Remove from shop', onclick: () => unstock(s, i) },
+      }),
+    );
   }
 
   // CSV: name, price, stackable, slot, description (the columns a spreadsheet of items usually has).
