@@ -4,7 +4,7 @@ import { chromium } from 'playwright-core';
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { answerReplace, exportHtml, nameGame, noDailyDoubles, openGameFile, png } from './helpers.mjs';
+import { answerReplace, editorReady, exportHtml, nameGame, noDailyDoubles, openGameFile, png } from './helpers.mjs';
 
 const file = resolve(process.env.APP_FILE || 'dist/index.html');
 if (!existsSync(file)) throw new Error('Run `npm run build` first');
@@ -34,7 +34,11 @@ function assert(cond, msg) {
 const shot = async (name) => process.env.SHOTS && (await page.screenshot({ path: `${process.env.SHOTS}/${name}.png` }));
 
 const header = page.locator('header');
-const autosaved = header.getByText('✓ Autosaved');
+// (In a browser the note says the game is kept there, and that 💾 Save makes a file.)
+const autosaved = header.getByText('✓ Kept in this browser');
+/** 💾 Save: its name stays Save; a dot (data-changed) while the game has changes no file has yet. */
+const saveBtn = header.getByRole('button', { name: 'Save', exact: true });
+const saveDot = () => saveBtn.getAttribute('data-changed').then((d) => d !== null);
 const historyCount = async () => Number((await page.getByRole('button', { name: /🕘 History/ }).innerText()).match(/\((\d+)\)/)?.[1] ?? 0);
 const mediaWidth = () =>
   page.locator('.card img').first().evaluate((i) => new Promise((r) => (i.complete && i.naturalWidth ? r(i.naturalWidth) : (i.onload = () => r(i.naturalWidth)))));
@@ -145,6 +149,8 @@ try {
   assert(pack.suggestedFilename() === 'Safe-Game.brainrot' && (await page.locator('input.title').inputValue()) === 'Safe Game', 'the first Save of an untitled game asks for its name, and names the file after it');
   const packPath = resolve('test-results/datasafety.brainrot');
   await pack.saveAs(packPath);
+  await page.waitForFunction(() => !document.querySelector('header button.save[data-changed]'));
+  assert(/^Last saved as a file at \d/.test(await saveBtn.getAttribute('title')), `saved: 💾 Save has no dot, and its tooltip says when (${await saveBtn.getAttribute('title')})`);
 
   // ---------- New keeps the game it replaces ----------
   // Just saved: New asks nothing.
@@ -163,6 +169,8 @@ try {
   // A change not saved to a file: New asks, and Cancel keeps the game.
   await page.locator('.cat textarea').first().fill('Unsaved');
   await page.locator('.cat textarea').nth(1).click();
+  await page.waitForFunction(() => !!document.querySelector('header button.save[data-changed]'));
+  assert((await saveBtn.innerText()).includes('•') && (await saveBtn.getAttribute('title')).includes(', changed since'), 'a change no file has yet: 💾 Save •');
   await page.getByRole('button', { name: 'New', exact: true }).click();
   await page.getByRole('dialog', { name: 'Start a new game?' }).waitFor();
   await shot('datasafety-ask');
@@ -171,6 +179,25 @@ try {
   const [first] = await Promise.all([page.waitForEvent('download'), page.getByRole('button', { name: 'New', exact: true }).click().then(() => answerReplace(page, 'Save first'))]);
   await reopenBtn.waitFor();
   assert(first.suggestedFilename() === 'Safe-Game.brainrot' && (await page.locator('nav button.round-tab').count()) === 0, 'Save first saves, then starts the new game');
+
+  // ---------- The sample as it came: New asks nothing (it's kept in Recent games); once changed, it asks ----------
+  await page.getByRole('button', { name: /Try a sample game/ }).click();
+  await page.locator('nav button.round-tab').first().waitFor();
+  assert(!(await saveDot()), 'the sample as it came: 💾 Save has no dot');
+  await page.getByRole('button', { name: 'New', exact: true }).click();
+  await page.locator('.data-notice', { hasText: '“Sample game” was replaced.' }).waitFor();
+  await editorReady(page);
+  assert((await page.locator('nav button.round-tab').count()) === 0, 'New over the untouched sample asks nothing, and keeps it in Recent games (↶ Reopen previous game)');
+  await reopenBtn.click();
+  await page.getByText('Reopened “Sample game”').waitFor();
+  await editorReady(page);
+  await page.locator('nav button.round-tab', { hasText: 'Jeopardy!' }).click();
+  await page.locator('.cat textarea').first().fill('Changed');
+  await page.locator('.cat textarea').nth(1).click();
+  await page.getByRole('button', { name: 'New', exact: true }).click();
+  await page.getByRole('dialog', { name: 'Start a new game?' }).waitFor();
+  assert(true, 'a changed sample asks before New');
+  await answerReplace(page, 'Discard');
 
   // ---------- Open… lists recent games ----------
   await page.getByRole('button', { name: '＋ Add round' }).click();

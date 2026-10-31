@@ -97,6 +97,7 @@
   import { showTipsAgain } from '../lib/tips';
   import { oneShot } from '../lib/oneshot';
   import { movedNew } from '../play/whatmoved.svelte';
+  import { lastFileSave, saveState, untouchedSample } from '../lib/savestate';
 
   /** `checklist`: worked out by the app a moment after changes stop (one line a round). */
   let {
@@ -623,7 +624,9 @@
     if (job && !(await ask(job, { ok: 'Stop it', cancel: 'Keep working' }))) return false;
     // (A game New made has nothing in it: anything in it now is a change, even one made before its history started
     // a moment after it arrived.)
-    if (!hasWork(game) || (savedSinceChange() && !(history.origin.kind === 'new' && !history.entries.length && !history.marks.length))) return true;
+    // (Nor the sample just as it came: it's kept in Recent games, and ↶ Reopen previous game brings it back.)
+    if (!hasWork(game) || untouchedSample(history) || (savedSinceChange() && !(history.origin.kind === 'new' && !history.entries.length && !history.marks.length)))
+      return true;
     // A question already up (a file the desktop app was given arrived meanwhile) is answered Cancel: this one replaces it.
     asking?.answer('cancel');
     const mine = ++asked;
@@ -865,6 +868,22 @@
   }
 
   let saving = $state(false);
+  /**
+   * 💾 Save's state: a dot when the game has work a file doesn't have yet (what New and Open… ask about), and its
+   * tooltip says when it was last saved as a file (Save, or the desktop app's autosave file).
+   */
+  const clock = (ms: number) => new Date(ms).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+  const fileState = $derived(
+    saveState(
+      {
+        work: hasWork(game),
+        saved: savedSinceChange(),
+        sample: untouchedSample(history),
+        lastAt: lastFileSave(history.marks),
+      },
+      clock,
+    ),
+  );
   /** Percent done while a pack is built (big games take a few seconds). */
   let packPct = $state<number | null>(null);
   const packProgress = (done: number, total: number) => (packPct = total ? Math.floor((done / total) * 100) : null);
@@ -1090,12 +1109,15 @@
     <button class="ghost" onclick={() => redo()} oncontextmenu={historyMenu} disabled={!history.canRedo} title={history.redoTitle} aria-label="Redo (Ctrl+Y)"><span aria-hidden="true">↷</span><span class="word">Redo</span></button>
     <button class="group" onclick={newFile} disabled={!!opening}><span aria-hidden="true">📄</span> New</button>
     <button onclick={open} disabled={!!opening} bind:this={openBtn}><span aria-hidden="true">📂</span> Open…</button>
+    <!-- (Its name stays Save; the dot and its words say how the file stands, as its tooltip does.) -->
     <button
+      class="save"
       onclick={save}
       disabled={saving}
-      title={`${inTauri() ? 'Save a .brainrot game pack (the game and all its media) into BrainrotSaves' : 'Download a .brainrot game pack (the game and all its media)'} · Ctrl+S`}
+      data-changed={fileState.changed || undefined}
+      title={`${fileState.said ? `${fileState.said} · Ctrl+S\n` : ''}${inTauri() ? 'Save a .brainrot game pack (the game and all its media) into BrainrotSaves' : 'Download a .brainrot game pack (the game and all its media)'}${fileState.said ? '' : ' · Ctrl+S'}`}
     >
-      <span aria-hidden="true">💾</span> {saving ? `Saving…${packPct !== null ? ` ${packPct}%` : ''}` : 'Save'}
+      <span aria-hidden="true">💾</span> {saving ? `Saving…${packPct !== null ? ` ${packPct}%` : ''}` : 'Save'}{#if fileState.changed && !saving}<span class="dot" aria-hidden="true"> •<span class="unsaved"> not saved as a file</span></span>{/if}
     </button>
     <span class="spacer"></span>
     {#if exporting}
@@ -1106,11 +1128,12 @@
       <span class="muted autosave" role="status">📂 Opening “{opening}”…</span>
     {/if}
     {#if app.storageOk}
+      <!-- (In a browser it says it isn't a file: the game is kept in the browser until 💾 Save makes one.) -->
       <span
         class="muted autosave saved"
-        title={`Every change is autosaved ${keptHere()}.${app.fileAutosave ? ` Last autosave file: ${app.fileAutosave.path}` : ''}`}
+        title={`Every change is autosaved ${keptHere()}.${app.fileAutosave ? ` Last autosave file: ${app.fileAutosave.path}` : inTauri() ? '' : ' 💾 Save makes a file of it, to keep, move or share.'}`}
       >
-        ✓ Autosaved{app.fileAutosave ? ` · file ${new Date(app.fileAutosave.at).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}` : ''}
+        {#if inTauri()}✓ Autosaved{app.fileAutosave ? ` · file ${clock(app.fileAutosave.at)}` : ''}{:else}✓ Kept in this browser<span class="wide"> (💾 Save makes a file)</span>{/if}
       </span>
     {:else}
       <span class="autosave warn" title={`Changes can't be kept ${keptHere()} right now (storage is blocked or full). Use Save often.`}>
@@ -1645,6 +1668,26 @@
   /* Short, so it stays on one line (the details are in its tooltip). */
   .saved {
     white-space: nowrap;
+  }
+  /* 💾 Save •: changed since its last save as a file. Its words only where the header has room. */
+  .save .dot {
+    color: var(--accent);
+    font-weight: 700;
+  }
+  .save .unsaved {
+    font-weight: 400;
+    color: var(--muted);
+  }
+  @media (max-width: 1499px) {
+    .save .unsaved {
+      display: none;
+    }
+  }
+  /* (The browser's note says what 💾 Save is for where the header has room; its tooltip always does.) */
+  @media (max-width: 1399px) {
+    .autosave .wide {
+      display: none;
+    }
   }
   .autosave.warn {
     color: var(--warn);

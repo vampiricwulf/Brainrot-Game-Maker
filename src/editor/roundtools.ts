@@ -11,6 +11,7 @@ import { roundName, type Game } from '../lib/model';
 import { readGameFile, storeFiles } from '../lib/pack';
 import { addBundledRound, bundleName, copiesMessage, copyRound, mergedMessage, placeFor, uniqueName } from '../lib/roundcopy';
 import { addSampleGame, TEMPLATES, type Template } from '../lib/samples';
+import { SAMPLE_STEP } from '../lib/savestate';
 import { validate } from '../lib/validate';
 import type { MenuEntry } from '../lib/menustate.svelte';
 
@@ -38,7 +39,7 @@ export function addTemplate(game: Game, t: Template): number {
 }
 
 export function addSample(game: Game): number {
-  const at = step('Added the sample game', () => {
+  const at = step(SAMPLE_STEP, () => {
     const at = addSampleGame(game);
     // Its clues take the theme's clue text (only the new rounds': a clue already here keeps the look it has).
     followClueText(game, clueSlides({ ...game, rounds: game.rounds.slice(at), tiebreaker: undefined }));

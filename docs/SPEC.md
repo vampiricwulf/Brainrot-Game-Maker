@@ -482,7 +482,12 @@ RollEvent  { id, ts, source: 'wheel' | 'dice', presetName?, result: string /* la
   Done, Keep it as it is, OK, Got it, Hide). The show's own state (the buzzer room, a kept game, the audience window)
   stays the warm status bar above the editor.
 - **Save** → download `.brainrot` (zip); in the desktop app, into `BrainrotSaves` next to the exe (Documents when that
-  can't be written), replacing the game's last save and keeping two `.bak` backups. **Open** → Recent games (the last 8
+  can't be written), replacing the game's last save and keeping two `.bak` backups. The button reads **💾 Save •** while
+  the game has work no file has yet (what New and Open… ask about; its name stays Save), with "not saved as a file"
+  beside it at 1500 px and up, and its tooltip says "Last saved as a file at 2:05 PM" (a desktop autosave file counts)
+  or "Not saved as a file yet". The header's note beside it: in a browser "✓ Kept in this browser (💾 Save makes a
+  file)" (the brackets at 1400 px and up), in the desktop app "✓ Autosaved · file 2:05". New and Open… replace the sample game as it came (its one step,
+  on a new game) without asking; it's kept in Recent games. **Open** → Recent games (the last 8
   games replaced, kept in the browser), the desktop app's BrainrotSaves, a file picker, or drag-drop.
 - **Export standalone HTML** (player only, embedded media) with a size warning: ⋯ › *Save a copy as* › ⬇ Export as a web
   page… (play-only), "Plays without this app. Shows the answers: keep it to yourself." It has one name everywhere, the

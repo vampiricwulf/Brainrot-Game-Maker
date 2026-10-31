@@ -735,7 +735,10 @@ spun yet, `Enter` says to spin first (`W`, or `D` for dice).
 
 ## Saving
 
-- **Save** (`Ctrl+S`) writes a `.brainrot` pack: the game plus all its media.
+- **Save** (`Ctrl+S`) writes a `.brainrot` pack: the game plus all its media. It reads **💾 Save •** while the game has
+  changes no file has yet (“not saved as a file” beside it where the header has room), and its tooltip says when it was
+  last saved as a file. The editor keeps your game as you go anyway: in a browser the header says **✓ Kept in this
+  browser** (💾 Save makes a file), in the desktop app **✓ Autosaved** (with the time of its last autosave file).
   - In the desktop app, saves go in a **BrainrotSaves** folder next to the `.exe` (in Documents\BrainrotSaves when the
     app may not write there, e.g. in Program Files). Closing the window while a save is being written asks whether to
     wait for it. While autosave can't write (a full disk), closing the window asks first too, as a browser tab does.
@@ -753,7 +756,8 @@ spun yet, `Enter` says to spin first (`W`, or `D` for dice).
   - Opening an older copy of a game never changes the pictures and sounds of the game you have open: a file that
     differs is opened as a file of its own.
 - New and Open… ask **Cancel / Open anyway / Save first** (or **Start new anyway**) when the game has unsaved changes
-  (Open… checks the file is a game first); going on anyway keeps the old game in Open… → Recent games. Only one browser tab edits at a time: another tab waits, paused, and offers **Edit here** once the
+  (Open… checks the file is a game first); going on anyway keeps the old game in Open… → Recent games. The sample game
+  as it came asks nothing (it's kept in Recent games too, and ↶ Reopen previous game brings it back); once changed, it asks. Only one browser tab edits at a time: another tab waits, paused, and offers **Edit here** once the
   editing tab closes.
 - **⋯ → Save a copy as: ⬇ Export as a web page… (play-only)** (Export HTML) makes a **play-only web page**: a single file
   to play the game from, without this app, with everything inside. It shows the answers, so keep it to yourself. (**{ }

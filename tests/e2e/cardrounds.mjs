@@ -762,7 +762,7 @@ try {
   assert(await until(async () => !(await cardsOn(dan))), 'Dan’s phone drops it');
   // (Stored as a plain copy: a reload doesn't send the discarded game's card again, and autosave keeps working.)
   assert(await until(async () => { const r = await stored(host, 'playSession:room'); return !!r && !r.cards; }), 'the room is saved without the discarded game’s cards');
-  assert(await host.locator('.editor > header').getByText('✓ Autosaved').isVisible(), 'autosave still works');
+  assert(await host.locator('.editor > header').getByText('✓ Kept in this browser').isVisible(), 'autosave still works');
 
   assert(!errors.length, `no page errors (${errors.join('; ')})`);
   console.log('Card rounds tests passed');

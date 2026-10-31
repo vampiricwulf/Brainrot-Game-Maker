@@ -8,7 +8,7 @@ import { chromium } from 'playwright-core';
 import { existsSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { answerReplace, clickExportHtml, openRules } from './helpers.mjs';
+import { answerReplace, clickExportHtml, editorReady, openRules } from './helpers.mjs';
 
 const file = resolve(process.env.APP_FILE || 'dist/index.html');
 if (!existsSync(file)) throw new Error('Run `npm run build` first');
@@ -504,8 +504,10 @@ try {
   await page.getByRole('button', { name: 'Screen Forest' }).click();
   await page.keyboard.press('Control+c');
   await page.locator('.toast', { hasText: 'Copied Forest' }).waitFor();
+  // (The sample as it came, a screen only selected and copied: New asks nothing, and keeps it in Recent games.)
   await page.getByRole('button', { name: 'New', exact: true }).click();
-  await answerReplace(page, 'Discard');
+  await page.locator('.data-notice', { hasText: '“Sample game” was replaced.' }).waitFor();
+  await editorReady(page);
   await page.locator('.first-round .mode', { hasText: 'RPG' }).click();
   // (A game with a stat already: the ones the screen brings are added to it.)
   await page.getByRole('button', { name: '📊 Stats & Items' }).click();
