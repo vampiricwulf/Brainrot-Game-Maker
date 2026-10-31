@@ -96,11 +96,13 @@ try {
   await page.keyboard.press('1');
   const undoTitle = await page.getByRole('button', { name: '↶ Undo' }).getAttribute('title');
   assert(undoTitle.startsWith('Undo: Player 1 picks next'), `↶ Undo names the step (${undoTitle})`);
-  // The stage's menu has ↶ Undo too (Ctrl+Z): in one window, where viewers see it, it doesn't name the step.
+  // The stage's menu has ↶ Undo too (Ctrl+Z): in one window, where viewers see it, it doesn't name the step. (A board
+  // with tiles left has no blue button: no N step first.)
   await page.locator('.stage-box').click({ button: 'right', position: { x: 12, y: 12 } });
   const boardMenu = await menuLines(page);
   const undoItem = openMenu(page).getByRole('menuitem', { name: '↶ Undo' });
   assert(boardMenu.includes('↶ Undo · Ctrl+Z') && (await undoItem.getAttribute('title')) === null && !boardMenu.join().includes('picks next'), `the stage’s menu has ↶ Undo, not naming the step in one window (${boardMenu.join(' | ')})`);
+  assert(!boardMenu.some((l) => l.endsWith(' · N')), `a board with tiles left: no blue button's step in its menu (${boardMenu.join(' | ')})`);
   await undoItem.click();
   await page.waitForFunction((was) => document.querySelector('.panel .fixed button[title^="Undo"]')?.getAttribute('title') !== was, undoTitle);
   await page.locator('.panel .status').click();

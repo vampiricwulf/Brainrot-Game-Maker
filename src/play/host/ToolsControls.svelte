@@ -272,8 +272,8 @@
     }
     if (o.kind === 'scoreboard') out.push({ label: '📋 Copy standings', onclick: () => copyText(standingsText(game, session), 'Standings copied: paste them in chat') });
     if (o.kind === 'shop') out.push({ id: 'close', label: '🚪 Leave shop', keys: 'Esc', onclick: () => (app.live.overlay = null) });
-    // (As Esc: a tile with nothing to ask ends with it.)
-    else out.push({ id: 'close', label: (tileDone ? FLOW.done : VERBS.closeToolBox).label, keys: 'Esc', disabled: closeWaits, hint: closeTitle, onclick: () => onclose() });
+    // (Putting it away is the blue button's, first in the menu: only a question pop-up before its answer has its own ✕ Close.)
+    else if (o.kind === 'popup' && o.answer && !o.revealed) out.push({ id: 'close', label: VERBS.closeToolBox.label, keys: 'Esc', hint: closeTitle, onclick: () => onclose() });
     return out;
   });
 

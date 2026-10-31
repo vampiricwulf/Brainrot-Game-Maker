@@ -38,10 +38,16 @@ function assert(cond, msg) {
 }
 const cues = (p, cue) => p.evaluate((c) => window.__plays.filter((s) => s.startsWith('blob:') && s.endsWith('#' + c)).length, cue);
 const shot = async (name, p = page) => shots && (await p.screenshot({ path: `${shots}/${name}.png` }));
-/** The stage's menu now (a right-click near the stage's top left corner), as menuLines reads it; then closed. */
-async function stageMenu() {
+/**
+ * The stage's menu now (a right-click near the stage's top left corner), as menuLines reads it; then closed. In one
+ * window it's on stream: its words and tooltips never hold what the panel hides (the video clue's answer, not shown yet).
+ */
+async function stageMenu({ close = true } = {}) {
   await page.locator('.stage-box').click({ button: 'right', position: { x: 12, y: 12 } });
   const lines = await menuLines(page);
+  const said = await openMenu(page).evaluate((m) => [m.innerText, ...[...m.querySelectorAll('[title]')].map((e) => e.title)].join(' '));
+  assert(!said.includes('The answer text'), `the stage’s menu (${lines[0]}) shows nothing the panel hides`);
+  if (!close) return lines;
   await page.keyboard.press('Escape');
   await openMenu(page).waitFor({ state: 'detached' });
   return lines;
@@ -116,14 +122,14 @@ try {
 
   // ---------- The countdown stops for a right answer ----------
   await tile(1).click();
-  // A right-click on the stage: the moment's menu, the clue's steps in the main button's order with their keys, the
-  // ways out, then ↶ Undo and ⏸ Cover. Its ⏱ Start the countdown does what T does.
-  await page.locator('.stage-box').click({ button: 'right', position: { x: 12, y: 12 } });
-  const clueMenu = await menuLines(page);
+  // A right-click on the stage: the moment's menu, the blue button's step first, on its own (N: it asks first when
+  // something's left, as the blue button does), then the clue's own actions with their keys (no second 👁 Reveal
+  // answer), the ways out, then ↶ Undo and ⏸ Cover. Its ⏱ Start the countdown does what T does.
+  const clueMenu = await stageMenu({ close: false });
   assert(
     JSON.stringify(clueMenu) ===
-      JSON.stringify(['# Category 2 $200', '👁 Reveal answer · R', '⏱ Start the countdown · T', '—', '▦ Done ▶ board · Esc', '↩ Put back (keep tile) · Shift+Esc', '—', '↶ Undo · Ctrl+Z (off)', '⏸ Cover the screen · K']),
-    `a right-click on a clue’s stage gives its menu (${clueMenu.join(' | ')})`,
+      JSON.stringify(['# Category 2 $200', '👁 Reveal answer · N', '—', '⏱ Start the countdown · T', '—', '▦ Done ▶ board · Esc', '↩ Put back (keep tile) · Shift+Esc', '—', '↶ Undo · Ctrl+Z (off)', '⏸ Cover the screen · K']),
+    `a right-click on a clue’s stage gives its menu, the blue button’s step first (${clueMenu.join(' | ')})`,
   );
   await openMenu(page).getByRole('menuitem', { name: '⏱ Start the countdown' }).click();
   await stage('.timer').waitFor();
@@ -249,13 +255,13 @@ try {
   assert((await menuLines(page))[0] === `# ${ddName}`, 'a long press on it opens it too');
   await page.keyboard.press('Escape');
   assert((await page.locator('.panel .dd .chip[aria-pressed="true"]').innerText()) === pickedBefore, 'and the tap that ends the press doesn’t pick them');
-  // The stage's menu on the Daily Double: who found it first (the one picked greyed), then Show question ▶ (the blue
-  // button's, never greyed: with no wager it keeps the keys in the Wager box), the way out.
+  // The stage's menu on the Daily Double: Show question ▶ first (the blue button's, never greyed: with no wager it keeps
+  // the keys in the Wager box), once only, then who found it (the one picked greyed), the way out.
   const ddMenu = await stageMenu();
   assert(
-    ddMenu[0] === '# ⭐ Daily Double · Category 4 $200' && ddMenu.filter((l) => / found it/.test(l)).length === 3 && ddMenu.filter((l) => l.endsWith('found it (off)')).length === 1 &&
-      ddMenu.includes('Show question ▶ · N') && ddMenu.indexOf('Show question ▶ · N') > ddMenu.findIndex((l) => l.endsWith('found it')) && ddMenu.includes('↩ Put back (keep tile) · Esc'),
-    `the stage’s menu on a Daily Double: who found it, then Show question ▶ (${ddMenu.join(' | ')})`,
+    ddMenu[0] === '# ⭐ Daily Double · Category 4 $200' && ddMenu[1] === 'Show question ▶ · N' && ddMenu.filter((l) => l.startsWith('Show question ▶')).length === 1 &&
+      ddMenu.filter((l) => / found it/.test(l)).length === 3 && ddMenu.filter((l) => l.endsWith('found it (off)')).length === 1 && ddMenu.includes('↩ Put back (keep tile) · Esc'),
+    `the stage’s menu on a Daily Double: Show question ▶ first, then who found it (${ddMenu.join(' | ')})`,
   );
   await page.locator('.dd input[type=number]').focus();
   // A wager below 0 (the box's min doesn't stop a typed minus) says so, not "over the max" with the limit ignored.
@@ -292,16 +298,19 @@ try {
   await page.waitForFunction(() => document.querySelector('.panel .status')?.textContent?.includes('Answer hidden'));
   const inClue = await exitAt();
   assert(Math.abs(onBoard.x - inClue.x) < 1 && Math.abs(onBoard.y - inClue.y) < 1, `🚪 Exit stays in the same place on the board and in a clue (${onBoard.x},${onBoard.y} → ${inClue.x},${inClue.y})`);
-  // A player picked, the answer shown, nothing given: N (▦ Done ▶ board) asks first (the check), rather than losing their
-  // points; the clue stays open. A number keeps its meaning there (who's picked): letting Player 2 go ticks the item off
-  // in its place, "✓ Nothing left", and the check waits (it never goes on by itself).
+  // A player picked, the answer shown, nothing given: ▦ Done ▶ board (the stage menu's first item, as N) asks first (the
+  // check), rather than losing their points; the clue stays open. A number keeps its meaning there (who's picked):
+  // letting Player 2 go ticks the item off in its place, "✓ Nothing left", and the check waits (it never goes on by
+  // itself).
   await page.keyboard.press('2');
   await page.keyboard.press('r');
-  await page.keyboard.press('n');
+  const doneMenu = await stageMenu({ close: false });
+  assert(doneMenu[1] === '▦ Done ▶ board · N' && doneMenu.filter((l) => l.startsWith('▦ Done ▶ board')).length === 1, `the answer up: the menu's first item is ▦ Done ▶ board, once (${doneMenu.join(' | ')})`);
+  await openMenu(page).getByRole('menuitem', { name: '▦ Done ▶ board' }).click();
   await checkItem(page, 'picked').waitFor();
   assert(
     (await checkItem(page, 'picked').innerText()).includes('Player 2 is answering and has no points for this clue yet') && (await status()).includes('Answer is showing'),
-    'N with a player picked and no points given asks first; the clue stays open',
+    'it, with a player picked and no points given, asks first, as N does; the clue stays open',
   );
   await goOnCheck(page, { ready: true }).waitFor();
   await page.keyboard.press('2');
@@ -337,6 +346,8 @@ try {
   // ---------- ⏸ Cover pauses the clue's video and the countdown, and they go on after ----------
   await tile(0).click();
   await stage('.full video').waitFor();
+  // (In one window the stage's menu is on stream: its first item is 👁 Reveal answer, and nowhere the answer's words.)
+  assert((await stageMenu())[1] === '👁 Reveal answer · N', 'the video clue’s menu: 👁 Reveal answer first');
   await page.waitForFunction(() => {
     const v = document.querySelector('.stage-box .full video');
     return v && !v.paused && v.currentTime > 0.5;
@@ -494,8 +505,8 @@ try {
   assert((await boxes.count()) === playing.length, 'each player ticked in has their wager box on the same screen');
   const wagersMenu = await stageMenu();
   assert(
-    wagersMenu.includes('Show question ▶ · N') && wagersMenu.some((l) => l.startsWith('◀ Previous round')),
-    `the Final’s wagers: its menu has Show question ▶, never greyed (a wager missing, N puts the keys in its box) (${wagersMenu.join(' | ')})`,
+    wagersMenu[1] === 'Show question ▶ · N' && wagersMenu.some((l) => l.startsWith('◀ Previous round')),
+    `the Final’s wagers: its menu’s first item is Show question ▶, never greyed (a wager missing, N puts the keys in its box) (${wagersMenu.join(' | ')})`,
   );
   await page.locator('.panel .status').click();
   await page.keyboard.press('n');
@@ -544,8 +555,8 @@ try {
   assert(await page.locator('.fj details.how').evaluate((d) => d.open), 'the reveals’ how-to is open the first time');
   const revealsMenu = await stageMenu();
   assert(
-    revealsMenu.some((l) => /^(Show wager|Next player) ▶ · N$/.test(l)) && revealsMenu.some((l) => l.startsWith('✔ Right · C')) && revealsMenu.some((l) => l.startsWith('✘ Wrong · X')) && revealsMenu.includes('Finish game ▶'),
-    `the reveals: its menu has N’s step, ✔ Right C and ✘ Wrong X, and finishing early (${revealsMenu.join(' | ')})`,
+    /^(Show wager|Next player) ▶ · N$/.test(revealsMenu[1]) && revealsMenu.some((l) => l.startsWith('✔ Right · C')) && revealsMenu.some((l) => l.startsWith('✘ Wrong · X')) && revealsMenu.includes('Finish game ▶'),
+    `the reveals: its menu’s first item is N’s step, then ✔ Right C and ✘ Wrong X, and finishing early (${revealsMenu.join(' | ')})`,
   );
   // Not chosen yet: outlined at full strength (dimmed, they read too faintly).
   const unchosen = await page.locator('.fj .pl').first().getByRole('button', { name: '✘ Wrong' }).evaluate((b) => [getComputedStyle(b).opacity, getComputedStyle(b).backgroundColor]);

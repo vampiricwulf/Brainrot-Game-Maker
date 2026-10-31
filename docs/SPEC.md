@@ -520,23 +520,29 @@ The mode isn't saved with the game: it's dual while the audience window is open.
 - **The stage's menu** (host/stagemenu.ts): a right-click on the host's stage (not on a player, a tile or a board-game
   space, which have their own), `Shift+F10` or the menu key on the main button (or a box's step button, or with nothing
   focused), and a long press open the moment's menu: a heading naming the moment ("🤝 Partner clue · Movies $400"), the
-  moment's steps in the main button's order with their keys, the box's own items, the ways out (✕ Close, ▦ Done ▶ board,
-  ↩ Put back (keep tile)), then ↶ Undo `Ctrl+Z` and ⏸ Cover the screen `K`. The play screen builds it from the steps its
-  keys do (dKey, wKey, nKey, clockKey, partnerSpin…), so it works with the controls hidden; while the panel is up, each
-  box adds its own (offerMenu, in the main button's order: the tool, the clue's row, the Daily Double, the 🤝 box, the
-  Final, the end screen, the board game's turn, the round's ◀ / ▶), and a box's item for one of the steps takes that
-  step's place (its words and greyed state are the box's). Within a moment an item that can't be used is greyed, never
-  left out. Moments: a round's intro; the board (its Next round ▶ once played out); a clue (Next slide ▶ / ◀ Slide, 👁
-  Reveal answer, 🔔 Open the buzzers, ⏱ the countdown; a buzzer tie's 🎲 Roll for it first); a Daily Double (who found it,
-  then Show question ▶, which with the controls hidden brings them back until there's a wager); a 🤝 partner clue (who
-  picked it; the wheel, each partner by their number, Show question ▶, ⇄ Swap; then the cards' step, ✔ Got it / ✘ Missed
-  and the clue's); a wheel, dice, pop-up, the scores or a shop (the spin or roll, ✎ Edit wheel, ＋ Spin another wheel
-  too…, the way out); the Final (each step, the reveals' ✔ Right `C` / ✘ Wrong `X`, finishing early); the tiebreaker; a
-  tie at the end (❓ Tiebreaker clue, 🎲 Tiebreaker roll-off `O`, 🤝 Declare co-winners, then the end screen's buttons); a
-  board game's turn (🎲 Roll `D`, ▶ Move `Enter`, Next turn ▶ `N`, ◀ Previous turn, ✎ Edit board `E`); an RPG round (＋
-  Text here…, 🗺 Full map `J`, the map for viewers `V`, 🤝 Regroup `G`). In one window (on stream) it shows only words the
-  panel shows: names and steps, never a card's words, a part, a wager or a typed answer, and ↶ Undo without its step's
-  name. A tile's menu shows its keys too (▶ Open `Enter`, ⏸ Cover the screen `K`).
+  blue button's step on its own (goon.ts `mainStep`, key `N`, through `goOn('menu')`: it asks first when something's
+  left, as the blue button does; none where there's no blue button), the moment's own actions with their keys, the
+  box's own items, the ways out (▦ Done ▶ board before the answer, a skip that asks first as the clue row's does; ↩ Put
+  back (keep tile); a question pop-up's ✕ Close before its answer; a shop's 🚪 Leave shop), then ↶ Undo `Ctrl+Z` and ⏸
+  Cover the screen `K`. Each step shows once: an item with the blue button's words is that step, and is left out
+  (stagemenu.ts `stageMenuOf`), so 👁 Reveal answer `R` shows only while the blue button is still on a slide, and no
+  box offers the blue button's step (Show question ▶, Next ▶, a tool's Close). The play screen builds it from the steps
+  its keys do (dKey, wKey, clockKey, partnerSpin…), so it works with the controls hidden; while the panel is up, each
+  box adds its own actions (offerMenu, in this order: the tool, the clue's row, the Daily Double, the 🤝 box, the Final,
+  the end screen, the board game's turn, the round's ◀ / ▶, its Next round ▶ only while going on early asks), and a
+  box's item for one of the moment's actions takes its place (its words and greyed state are the box's). Within a
+  moment an item that can't be used is greyed, never left out. Moments: a round's intro (Skip intro); the board (its
+  Next round ▶ once played out, the blue button's); a clue (◀ Slide, 👁 Reveal answer `R`, 🔔 Open the buzzers, ⏱ the
+  countdown; a buzzer tie's 🎲 Roll for it first); a Daily Double (who found it); a 🤝 partner clue (who picked it; the
+  wheel, each partner by their number, ⇄ Swap; then the cards' step, ✔ Got it / ✘ Missed and the clue's); a wheel,
+  dice, pop-up, the scores or a shop (the spin or roll, ✎ Edit wheel, ＋ Spin another wheel too…); the Final (its slide
+  before, Reveal answer ▶ `R`, the reveals' player before, ✔ Right `C` / ✘ Wrong `X`, finishing early); the tiebreaker;
+  a tie at the end (❓ Tiebreaker clue, 🎲 Tiebreaker roll-off `O`, 🤝 Declare co-winners, then the end screen's
+  buttons); a board game's turn (🎲 Roll `D`, ▶ Move `Enter`, ◀ Previous turn, ✎ Edit board `E`); an RPG round (＋ Text
+  here…, 🗺 Full map `J`, the map for viewers `V`, 🤝 Regroup `G`). While the check is open, a right-click on the stage
+  doesn't open it: the check flashes, as a click does. In one window (on stream) it shows only words the panel shows:
+  names and steps, never a card's words, a part, a wager or a typed answer, and ↶ Undo without its step's name. A
+  tile's menu shows its keys too (▶ Open `Enter`, ⏸ Cover the screen `K`).
 - **The board-game and RPG stage by keyboard**: the host's board-game board is one Tab stop (a roving tabindex: the space
   the keys were last on, else the turn player's, else Start), the arrows go to the nearest space that way (spaceToward,
   as in the editor), `Enter` or `Space` opens its card (the controls come back for it) and `Shift+F10` its menu. A space

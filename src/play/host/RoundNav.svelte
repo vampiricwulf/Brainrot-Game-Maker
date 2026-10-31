@@ -53,10 +53,11 @@
     if (asking !== null) setAsk(null);
   });
 
-  // The stage's menu: back, and going on (asking first unless the round is played out), as in this row.
+  // The stage's menu: back, and going on early (it asks first), as in this row. Played out, going on is the blue
+  // button's step, first in the menu.
   offerMenu('board', () => [
     ...(app.test ? [] : [{ label: '◀ Prev round', disabled: session.currentRound === 0, onclick: onprev }]),
-    { id: 'nextround', label: nextLabel, ...(done && slides ? { keys: 'N' } : {}), ...(done ? {} : { hint: 'Asks first' }), onclick: next },
+    ...(done ? [] : [{ id: 'nextround', label: nextLabel, hint: 'Asks first', onclick: next }]),
   ]);
 
   function next(): void {

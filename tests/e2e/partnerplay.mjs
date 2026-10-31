@@ -194,14 +194,16 @@ try {
   );
   await noCards(page, 'paired');
   await page.screenshot({ path: 'test-results/partner-play-paired.png' });
-  // A right-click on the stage: the moment's menu, its steps as the 🤝 box has them, each with its key (the partner
-  // there greyed, not left out), then the box's own, the way out, ↶ Undo and ⏸ Cover. Names only: no card's words.
+  // A right-click on the stage: the moment's menu, the blue button's Show question ▶ first (N, once only), then the 🤝
+  // box's actions, each with its key (the partner there greyed, not left out), then the box's own, the way out, ↶ Undo
+  // and ⏸ Cover. Names only: no card's words.
   await stage('[data-partner-up]').click({ button: 'right' });
   const pairedMenu = await menuLines(page);
   assert(
-    JSON.stringify(pairedMenu.slice(0, 6)) === JSON.stringify(['# 🤝 Partner clue · Movies $400', '↻ Spin again · W', 'Make Bob the partner · 2 (off)', 'Make Cat the partner · 3', 'Make Dan the partner · 4', 'Show question ▶ · N']) &&
-      pairedMenu.includes('⇄ Swap') && pairedMenu.includes('↩ Put back (keep tile) · Esc') && pairedMenu.at(-1) === '⏸ Cover the screen · K',
-    `a right-click on PARTNER UP! gives the moment’s menu (${pairedMenu.join(' | ')})`,
+    JSON.stringify(pairedMenu.slice(0, 7)) ===
+      JSON.stringify(['# 🤝 Partner clue · Movies $400', 'Show question ▶ · N', '—', '↻ Spin again · W', 'Make Bob the partner · 2 (off)', 'Make Cat the partner · 3', 'Make Dan the partner · 4']) &&
+      pairedMenu.filter((l) => l.startsWith('Show question ▶')).length === 1 && pairedMenu.includes('⇄ Swap') && pairedMenu.includes('↩ Put back (keep tile) · Esc') && pairedMenu.at(-1) === '⏸ Cover the screen · K',
+    `a right-click on PARTNER UP! gives the moment’s menu, the blue button’s step first (${pairedMenu.join(' | ')})`,
   );
   await noCards(page, 'the stage’s menu on PARTNER UP!');
   await page.keyboard.press('Escape');
@@ -260,8 +262,10 @@ try {
   await stage('[data-slide="1"]').click({ button: 'right' });
   const handMenu = await menuLines(page);
   assert(
-    JSON.stringify(handMenu.slice(0, 6)) === JSON.stringify(['# 🤝 Partner clue · Movies $400', '⏱ Start the clock (45 s) · Enter', '✔ Got it', '✘ Missed', '👁 Reveal answer · R', '⏱ Start the countdown · T']),
-    `handing out the cards, its menu has the clock first, then ✔ / ✘ (their keys wait for the clock) (${handMenu.join(' | ')})`,
+    JSON.stringify(handMenu.slice(0, 7)) ===
+      JSON.stringify(['# 🤝 Partner clue · Movies $400', '👁 Reveal answer · N', '—', '⏱ Start the clock (45 s) · Enter', '✔ Got it', '✘ Missed', '⏱ Start the countdown · T']) &&
+      handMenu.filter((l) => l.startsWith('👁 Reveal answer')).length === 1,
+    `handing out the cards, its menu has the blue button’s 👁 Reveal answer first (it asks first), then the box's clock, then ✔ / ✘ (their keys wait for the clock) (${handMenu.join(' | ')})`,
   );
   await noCards(page, 'the stage’s menu handing out the cards');
   await page.keyboard.press('Escape');
@@ -394,12 +398,16 @@ try {
   // ---------- Esc before the question keeps the tile ----------
   await tile(0, 3).click();
   await stage('[data-partner-up]').waitFor();
-  // With the controls hidden, the stage's menu still has the step: 🎡 Spin for a partner spins the wheel.
+  // With the controls hidden, the stage's menu still has the blue button's step first, then the box's: 🎡 Spin for a
+  // partner spins the wheel.
   await page.keyboard.press('h');
   await page.locator('.panel').waitFor({ state: 'detached' });
   await stage('[data-partner-up]').click({ button: 'right' });
   const hiddenMenu = await menuLines(page);
-  assert(hiddenMenu[0] === '# 🤝 Partner clue · Movies $800' && hiddenMenu[1] === '🎡 Spin for a partner · W', `with the controls hidden, a right-click on the stage offers 🎡 Spin for a partner (${hiddenMenu.join(' | ')})`);
+  assert(
+    hiddenMenu[0] === '# 🤝 Partner clue · Movies $800' && hiddenMenu[1] === 'Show question ▶ · N' && hiddenMenu[3] === '🎡 Spin for a partner · W',
+    `with the controls hidden, a right-click on the stage offers Show question ▶, then 🎡 Spin for a partner (${hiddenMenu.join(' | ')})`,
+  );
   await noCards(page, 'the stage’s menu with the controls hidden');
   await openMenu(page).getByRole('menuitem', { name: '🎡 Spin for a partner' }).click();
   await stage('.wheel').waitFor();

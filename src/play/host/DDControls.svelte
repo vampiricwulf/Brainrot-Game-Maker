@@ -9,7 +9,6 @@
   import { formatPoints, wholePoints, type Game, type Session } from '../../lib/model';
   import { ddCap, score } from '../../lib/session';
   import { offerExposed, offerMenu } from './slots.svelte';
-  import { FLOW } from './verbs';
   import { teamsOn } from '../../lib/buzz';
   import { buzzerOn } from '../../lib/remote.svelte';
 
@@ -104,17 +103,17 @@
   // One window: the status line's ⚠ Viewers see this chip says what viewers can read here.
   offerExposed(() => '⚠ Viewers can see this: they see this window, the wager as you type it too.');
 
-  // The stage's menu: who found it first (by name, the one picked greyed), then Show question ▶. Never the wager.
-  offerMenu('dd', () => [
-    ...session.players.map((p, i) => ({
+  // The stage's menu: who found it (by name, the one picked greyed), after the blue button's Show question ▶. Never the
+  // wager.
+  offerMenu('dd', () =>
+    session.players.map((p, i) => ({
       lead: true,
       label: `⭐ ${p.name} found it`,
       disabled: playerId === p.id,
       keys: !playerId && i < 9 ? String(i + 1) : undefined,
       onclick: () => pick(p.id),
     })),
-    { id: 'show', label: FLOW.showQuestion.label, keys: 'N', onclick: onshow },
-  ]);
+  );
 
   // The keys in the Wager box, the box at its top: the heading and the names stay in view (focus would scroll it down to
   // the box, in one window where the panel keeps the board's height).

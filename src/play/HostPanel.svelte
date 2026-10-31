@@ -9,8 +9,8 @@
 <script lang="ts">
   import { announce, announceChanges } from '../lib/announce';
   import { textOn } from '../lib/colors';
-  import { hostSlots, offerMenu, panelGuard, step, type HostAsk, type NextAction } from './host/slots.svelte';
-  import { stepItem, type StageItem } from './host/stagemenu';
+  import { hostSlots, offerMenu, panelGuard, type HostAsk, type NextAction } from './host/slots.svelte';
+  import type { StageItem } from './host/stagemenu';
   import { VERBS } from './host/verbs';
   import { justShown } from './host/guard';
   import { focusMain } from './host/focus';
@@ -97,7 +97,6 @@
     onanswerjudgeall = () => {},
     onbackfromend,
     onrematch,
-    onintronext,
     onskipintro,
     onpartnerspin = () => {},
     onpartnerclock = () => {},
@@ -214,7 +213,6 @@
     onanswerjudgeall?: () => void;
     onbackfromend: () => void;
     onrematch: () => void;
-    onintronext: () => void;
     onskipintro: () => void;
     /** A 🤝 partner clue: 🎡 Spin for a partner, 📤 Send and start or ⏱ Start the clock (Show question ▶ is the blue button's). */
     onpartnerspin?: () => void;
@@ -376,15 +374,6 @@
   );
   // At the end the chips stay (scores can still be fixed) but there's nothing to award.
   const showPlayers = $derived((scoring || session.phase === 'end') && session.phase !== 'rpg' && session.phase !== 'boardgame');
-  const introStep = $derived(
-    session.intro?.stage === 'title'
-      ? isBoard(round)
-        ? VERBS.showBoard
-        : VERBS.startRound
-      : session.intro?.stage === 'fill'
-        ? VERBS.revealCategories
-        : VERBS.revealCategory((session.intro?.revealed ?? 0) + 1, isBoard(round) ? round.categories.length : 0),
-  );
   // (A clue's own time from an older game can be anything typed: only whole seconds of at least 1 count.)
   const clueSecs = $derived(Math.round(info?.clue.timerSeconds ?? 0));
   const timerDefault = $derived(
@@ -763,7 +752,7 @@
   // last tile closed to put back.
   offerMenu('flow', () => {
     const out: StageItem[] = [];
-    if (session.intro) out.push(stepItem(step(introStep, onintronext), 'next'), { id: 'skipintro', label: VERBS.skipIntro.label, onclick: onskipintro });
+    if (session.intro) out.push({ id: 'skipintro', label: VERBS.skipIntro.label, onclick: onskipintro });
     if (session.phase === 'clue' && info)
       out.push({
         id: 'putback',
