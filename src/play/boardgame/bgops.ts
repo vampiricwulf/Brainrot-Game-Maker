@@ -7,7 +7,7 @@ import { nameList, stepOf } from '../../lib/session';
 import { logged } from '../../lib/toolset';
 import { openWheel, quickDice, rollDice, spinWheel, wheelSpentUp } from '../../lib/overlay';
 import { isRespin, parseDice, sliceLabel } from '../../lib/tools';
-import { overlayDoneAt, toolOverlay, type Live } from '../../lib/live';
+import { overlayDoneAt, toolOverlay, type Live, type Overlay } from '../../lib/live';
 import { announce } from '../../lib/announce';
 import { offerIn } from '../host/offered.svelte';
 import { teamsOn } from '../../lib/buzz';
@@ -199,6 +199,11 @@ export function moverDiceName(game: Game, round: BoardGameRound): string | undef
   const m = round.mover;
   if (m.kind !== 'dice') return undefined;
   return moverPreset(game, round)?.name ?? (parseDice(m.dice) ? m.dice.trim() : 'd6');
+}
+
+/** The round's own dice or movement wheel (not a space's roll, the Pick-a-player wheel nor the 🎲 tool's). */
+export function isMover(round: BoardGameRound, o: Overlay | null | undefined): boolean {
+  return !!o && ((o.kind === 'dice' && !!o.mover) || (o.kind === 'wheel' && round.mover.kind === 'wheel' && o.wheelId === round.mover.wheel));
 }
 
 /**

@@ -2883,6 +2883,11 @@
     judge: (id, right) => judge(id, right),
     tbBack: () => tiebreakerDone(),
     tbWin: (id) => tiebreakWin(1, [id]),
+    nextTurn: () => boardTurn(1),
+    prevTurn: () => boardTurn(-1),
+    boardRoll: () => dKey(),
+    boardMove: (steps, way) => boardMoveBy(steps, way),
+    boardLanding: () => boardLanding(),
   };
 
   /**
@@ -2992,6 +2997,8 @@
       ddPhone: !!session.dd?.playerId && wagerPhones.includes(session.dd.playerId),
       partner: partnerNow,
       final: { teams: pregameTeams, wagerPhones },
+      // (Not yet: the turn box still offers its own main button.)
+      board: null,
       act: goActs,
     };
   });
@@ -5079,6 +5086,35 @@
     app.live.overlay = null;
     bgSteps = null;
     return true;
+  }
+
+  /** Next turn ▶ (◀ Previous turn: -1): a skip or a Roll again is said, it isn't simply the next player's turn. */
+  function boardTurn(delta: 1 | -1): void {
+    const t = turnNow(game, session, delta);
+    if (t) toast(t, 4000);
+  }
+
+  /** The check's ▶ Move (or a way): whoever's turn it is (the one at a fork) `steps` spaces, the way `way` first. */
+  function boardMoveBy(steps: number, way?: string): void {
+    const { round, bs } = boardNow(game, session);
+    if (!round || !bs) return;
+    // (As Enter: the dice still going on screen, and a player in a zone, wait.)
+    const o = toolOverlay(app.live);
+    if ((o?.kind === 'dice' || o?.kind === 'wheel') && Date.now() < overlayDoneAt(o)) return hint(`Still ${o.kind === 'dice' ? 'rolling' : 'spinning'}: wait for it to land`);
+    const who = bs.fork?.playerId ?? currentPlayer(bs);
+    const off = who ? offBoard(session, round, bs, who) : null;
+    if (off) return hint(off);
+    toast(moveNow(game, session, steps, way, undefined, !dual), 3000);
+    app.live.overlay = null;
+    bgSteps = null;
+  }
+
+  /** The check's ▶ Run (or ▶ Start): the turn's landing actions, for whoever landed, as the space's ▶ Run all does. */
+  function boardLanding(): void {
+    const { round, bs } = boardNow(game, session);
+    const last = bs?.last;
+    const sp = round && last?.landed ? round.spaces.find((x) => x.id === last.landed) : undefined;
+    if (sp && last) toast(runSpace(game, session, app.live, sp, [last.playerId], 'onLand', !dual), 3000);
   }
 
   /**

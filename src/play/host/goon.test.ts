@@ -3,14 +3,18 @@
 import { describe, expect, it } from 'vitest';
 import { jeopardyGame } from '../../lib/testgame';
 import { newSlidesRound, setSlideText, textSlide, type BoardRound, type FinalRound, type Game, type Session, type WheelSegment } from '../../lib/model';
-import { applyScore, goToRound, newSession, openClue, startTiebreaker } from '../../lib/session';
+import { applyScore, goToRound, newSession, openClue, startTiebreaker, undo } from '../../lib/session';
 import { buzzArm, buzzClueOpened, buzzDone, buzzTake, newBuzz } from '../../lib/buzz';
 import { newLive } from '../../lib/live';
 import { draftPick, openDice, openWheel, quickDice, scoreCards, spinWheel, toggleScoreboard } from '../../lib/overlay';
 import { newWheel } from '../../lib/tools';
+import { newBoardGameRound } from '../../lib/boardgame';
+import { HOP_MS } from '../../lib/boardgame';
+import { moveNow, rollMover, runLanding, runSpace, sendNow } from '../boardgame/bgops';
+import { undoAction } from '../../lib/toolset';
 import {
-  anywayLabel, CHECK_GUARD_MS, ddWaits, doneStep, enterQuick, escBounce, finalWaits, goOnDecision, headingOf, inside, leftNow, likelyVerdict, mainQuick, mainStep, mergeItems,
-  quietKinds, ringOf, swallowSay, teachLine, todo, type Check, type FinalNow, type GoActs, type GoCtx, type LeftItem, type PartnerNow, type Step,
+  anywayLabel, CHECK_GUARD_MS, ddWaits, doneSay, doneStep, enterQuick, escBounce, finalWaits, goOnDecision, headingOf, inside, leftNow, likelyVerdict, mainQuick, mainStep, mergeItems,
+  quietKinds, ringOf, swallowSay, teachLine, todo, type BoardNow, type Check, type FinalNow, type GoActs, type GoCtx, type LeftItem, type PartnerNow, type Step,
 } from './goon';
 import { FLOW } from './verbs';
 
@@ -62,6 +66,11 @@ const act: GoActs = {
   judge: (id, right) => did.push(`judge ${id} ${right ? 'right' : 'wrong'}`),
   tbBack: () => did.push('tbback'),
   tbWin: (id) => did.push(`tbwin ${id}`),
+  nextTurn: () => did.push('nextturn'),
+  prevTurn: () => did.push('prevturn'),
+  boardRoll: () => did.push('boardroll'),
+  boardMove: (steps, way) => did.push(`move ${steps}${way ? ` ${way}` : ''}`),
+  boardLanding: () => did.push('landing'),
 };
 
 /** Ann, Bob and Cat; a board, then the Final. */
@@ -99,6 +108,7 @@ function ctx(g: Game, s: Session, over: Partial<GoCtx> = {}): GoCtx {
     ddPhone: false,
     partner: null,
     final: null,
+    board: null,
     act,
     ...over,
   };
@@ -173,18 +183,13 @@ describe('the blue button in every moment (1.3)', () => {
     expect(said(doneStep(ctx(g, s)))).toBe('▦ Done ▶ board · N');
   });
 
-  it('moments whose part hasn’t moved yet keep their own main button: no step', () => {
+  it('moments with no blue button, and the ones whose state isn’t given: no step', () => {
     const { g, s } = setup();
-    // (The Final and the tiebreaker without their part's state given: their old main button, as a stop-gap.)
+    // (The Final and the tiebreaker without their part's state, a board game without its turn's: none.)
     for (const phase of ['final', 'tiebreaker', 'end', 'rpg', 'boardgame'] as const) {
       s.phase = phase;
       expect(mainStep(ctx(g, s)), phase).toBeNull();
     }
-    // (Nor over a board game's own roll: its turn box's, until board games move over.)
-    const live = newLive();
-    openDice(live, quickDice(6, 1, 'd6'));
-    if (live.overlay?.kind === 'dice') live.overlay.mover = true;
-    expect(mainStep(ctx(g, s, { live }))).toBeNull();
   });
 
   it('a Daily Double’s splash: Show question ▶, never greyed, Enter in the Wager box is Next; its question is a clue', () => {
@@ -1025,5 +1030,261 @@ describe('the Final, the tiebreaker and the end screen (3.4 I, J, K)', () => {
     applyScore(s, g, ['a', 'b'], 500, 'x');
     s.phase = 'end';
     expect(mainStep(ctx(g, s, { final: FIN }))).toBeNull();
+  });
+});
+
+describe('a board game’s turn (3.4 L)', () => {
+  /** Ann, Bob and Cat on a looped board of 12 (Start, Space 2…), playing: Ann's turn. */
+  function playing(mover: 'dice' | 'step' = 'dice') {
+    const { g, s } = setup();
+    const round = newBoardGameRound('Board');
+    if (mover === 'step') round.mover = { kind: 'step' };
+    round.zones.push({ id: 'shadow', name: 'Shadow Realm', slide: { background: {}, elements: [] } });
+    g.rounds.push(round);
+    goToRound(s, g, g.rounds.length - 1);
+    s.intro = null;
+    const bs = () => s.boardgames![round.id];
+    const live = newLive();
+    let steps: number | null = null;
+    let question: BoardNow['question'] = null;
+    const board = (over: Partial<BoardNow> = {}): BoardNow => ({ editing: false, steps, noNumber: null, question, ...over });
+    /** The context at `now` (default: long after anything on stream has played out). */
+    const at = (over: Partial<GoCtx> = {}, b: Partial<BoardNow> = {}) => ctx(g, s, { live, now: Date.now() + 60_000, board: board(b), ...over });
+    return { g, s, round, bs, live, at, setSteps: (n: number | null) => (steps = n), setQuestion: (q: BoardNow['question']) => (question = q) };
+  }
+  const turn = (c: GoCtx) => {
+    const st = mainStep(c)!;
+    return { st, items: leftNow(c, st) };
+  };
+
+  it('the blue button is Next turn ▶, ◀ Previous turn quiet beside it, greyed while the dice roll; none while ✎ Edit board is open or under the title card', () => {
+    const { g, s, live, at } = playing();
+    const { st } = turn(at());
+    expect([said(st), st.id, st.also?.map((a) => `${a.verb.label} [${a.verb.key}]`), st.nothing]).toEqual(['Next turn ▶ · N', 'turn', ['◀ Previous turn [⇧N]'], '✓ Ann’s turn is played']);
+    st.run();
+    st.also![0].run();
+    expect(did).toEqual(['nextturn', 'prevturn']);
+    // The round's own dice rolling: greyed (the dice aren't a tool over the moment: they're the turn's).
+    rollMover(g, s, live);
+    expect(mainStep(at({ now: 0 }))!.busy).toBe('Still rolling: wait for it to land');
+    expect(mainStep(at())!.busy).toBeUndefined();
+    expect(mainStep(at({}, { editing: true }))).toBeNull();
+    s.intro = { stage: 'title', revealed: 0 };
+    expect(said(mainStep(at()))).toBe('Start the round ▶ · N · enterIsNext');
+  });
+
+  it('one check walks the turn: 🎲 Roll (D ⏎), Rolling…, ▶ Move (⏎), the landing, then ✓ Ann’s turn is played', () => {
+    const { g, s, round, bs, live, at, setSteps } = playing();
+    const lucky = Object.assign(round.spaces[3], { name: 'Lucky' });
+    lucky.onLand = [{ id: 'x', do: 'score', amount: 100, who: 'ask' }];
+    let { st, items } = turn(at());
+    expect(lines(items)).toEqual([['first: Ann’s turn: 🎲 roll, then ▶ move.', '🎲 Roll d6 [D] ⏎ · keep']]);
+    expect([ringOf(items), items[0].quiet, anywayLabel(open(st, items)), teachLine(open(st, items))]).toEqual([
+      'turnslot',
+      'roll',
+      'Next turn anyway: Ann stops here',
+      'Next time: D rolls and Enter moves at once · Shift+click on the blue button skips this',
+    ]);
+    const ck = open(st, items);
+    expect([inside({ key: 'Enter' }, ck, after), inside({ key: 'd' }, ck, after), inside({ key: 'n' }, ck, after)]).toMatchObject([
+      { do: 'quick', quick: { label: '🎲 Roll d6', then: 'keep' } },
+      { do: 'quick', quick: { label: '🎲 Roll d6' } },
+      { do: 'anyway' },
+    ]);
+    // D: rolling. The line says so (never the number before the dice land on stream), its button greyed.
+    rollMover(g, s, live);
+    const o = live.overlay!;
+    if (o.kind !== 'dice' || !o.roll) throw new Error('no roll');
+    o.roll.dice[0].value = 3;
+    let shown = mergeItems(items, leftNow(at({ now: 0 }), st));
+    expect([lines(shown), enterQuick(shown)]).toEqual([[['first: Rolling…', '🎲 Roll d6 [D] ⏎ · keep']], null]);
+    // Landed (the Steps box filled): that line ticks, saying the roll, and the move joins.
+    setSteps(3);
+    const c = at();
+    shown = mergeItems(shown, leftNow(c, st), (id) => doneSay(c, id));
+    expect(shown.map((i) => `${i.done ?? ''}${i.done ? ' ' : ''}${i.text}`)).toEqual(['✓ Ann rolled 3', 'Ann rolled 3: ▶ move them.']);
+    expect(lines(todo(shown))).toEqual([['first: Ann rolled 3: ▶ move them.', '▶ Move Ann: 3 ⏎ · keep']]);
+    expect(ringOf(todo(shown))).toBe('turnslot');
+    // ▶ Move: the token on its way, the landing waits (“Moving…”), then says what's left.
+    moveNow(g, s, 3);
+    live.overlay = null;
+    setSteps(null);
+    const hop = bs().hop!;
+    ({ items } = turn(at({ now: hop.at })));
+    expect(lines(items)).toEqual([['first: Moving…', '▶ Run Lucky’s actions ▶ next turn ⏎ · go']]);
+    expect(items[0].quick[0].why).toBe('Still moving');
+    const later = at({ now: hop.at + HOP_MS * hop.path.length });
+    shown = mergeItems(shown, leftNow(later, st), (id) => doneSay(later, id));
+    expect(shown.map((i) => `${i.done ?? ''}${i.done ? ' ' : ''}${i.text}`)).toEqual([
+      '✓ Ann rolled 3',
+      '✓ Ann moved',
+      'Ann landed on Lucky: its actions haven’t run (+$100 to Ann).',
+    ]);
+    expect([items[0].quiet, anywayLabel(open(st, todo(shown)))]).toEqual(['landing', 'Next turn anyway: Lucky’s actions don’t run']);
+    // Run: they ran (one step, the mark with it), so nothing's left: ✓ Ann's turn is played, Next turn ▶ (N or Enter).
+    runSpace(g, s, live, lucky, ['a']);
+    shown = mergeItems(shown, leftNow(at(), st), (id) => doneSay(at(), id));
+    expect([headingOf(shown), shown.at(-1)?.text, st.nothing]).toEqual(['nothing', 'Lucky’s actions ran', '✓ Ann’s turn is played']);
+    expect([inside({ key: 'n' }, open(st, shown), after), inside({ key: 'Enter' }, open(st, shown), after)]).toEqual([{ do: 'step' }, { do: 'step' }]);
+    // An Undo of them: they're left again.
+    undoAction(s, g);
+    expect(turn(at()).items.map((i) => i.id)).toEqual(['landing']);
+  });
+
+  it('landings: all instant run and go on (▶ next turn); a deciding one starts; one that puts something up or asks who runs and closes', () => {
+    const { g, s, round, bs, at } = playing();
+    const sp = Object.assign(round.spaces[2], { name: 'Lucky' });
+    const land = (onLand: NonNullable<typeof sp.onLand>) => {
+      sp.onLand = onLand;
+      bs().positions.a = { space: round.spaces[0].id };
+      bs().last = undefined;
+      moveNow(g, s, 2);
+      return turn(at()).items;
+    };
+    let items = land([
+      { id: '1', do: 'score', amount: 100, who: 'ask' },
+      { id: '2', do: 'skip', who: 'ask' },
+      { id: '3', do: 'note', text: 'Ask them a riddle' },
+    ]);
+    expect(lines(items)).toEqual([['first: Ann landed on Lucky: its actions haven’t run (+$100 to Ann, Skip next turn).', '▶ Run Lucky’s actions ▶ next turn ⏎ · go']]);
+    items[0].quick[0].run();
+    expect(did).toEqual(['landing']);
+    // A roll first, its outcomes after: ▶ Start, closing (the host presses the outcome).
+    items = land([
+      { id: 'd', do: 'dice', dice: '1d6' },
+      { id: 'w', do: 'score', amount: 200, who: 'ask' },
+    ]);
+    expect(lines(items)).toEqual([['first: Ann landed on Lucky: its roll hasn’t happened.', '▶ Start Lucky ⏎ · close']]);
+    expect(items[0].quick[0].after).toBe('Lucky’s roll… press the outcome, then Next turn ▶ (N)');
+    items = land([
+      { id: 'q', do: 'question', question: textSlide('Q'), answer: textSlide('A'), value: 200 },
+      { id: 'w', do: 'score', amount: 200, who: 'ask' },
+    ]);
+    expect(items[0].text).toBe('Ann landed on Lucky: its question hasn’t been asked.');
+    // A wheel on its own, a 🤫 card, a points action for the selected: they put something up or ask who.
+    for (const a of [{ id: 'w', do: 'wheel', wheel: 'x' }, { id: 'k', do: 'card', slide: textSlide('Tip') }, { id: 's', do: 'score', amount: 50, who: 'selected' }] as const) {
+      items = land([a]);
+      expect(lines(items), a.do).toEqual([['first: Ann landed on Lucky: its actions haven’t run.', '▶ Run Lucky’s actions ⏎ · close']]);
+    }
+    expect(items[0].quick[0].after).toBe('Lucky’s actions are on… then Next turn ▶ (N) when it’s played out');
+    // (For the players picked, with nobody picked: greyed, and Enter says to pick first.)
+    expect([items[0].quick[0].why, items[0].enterSay, turn(at({ selected: ['b'] })).items[0].quick[0].why]).toEqual(['Pick who it’s for first (1–9)', 'Pick who it’s for first: their number, then Enter', undefined]);
+    // One window: a secret space not revealed yet is “?”, its actions said without its name.
+    Object.assign(sp, { secret: true });
+    items = land([{ id: '1', do: 'score', amount: 100, who: 'ask' }]);
+    expect(lines(items)).toEqual([['first: Ann landed on ?: its actions haven’t run (+$100 to Ann).', '▶ Run its actions ▶ next turn ⏎ · go']]);
+    expect(lines(turn(at({ dual: true })).items)[0][0]).toBe('first: Ann landed on Lucky: its actions haven’t run (+$100 to Ann).');
+    // Silenced for the game: it doesn't ask.
+    s.goonQuiet = ['landing'];
+    expect(turn(at()).items).toEqual([]);
+  });
+
+  it('every way of running the landing counts: its row’s button, its card’s, ▶ Run all, the stage’s menu', () => {
+    const { g, s, round, at, live } = playing();
+    const sp = round.spaces[2];
+    sp.onLand = [{ id: '1', do: 'score', amount: 100, who: 'ask' }];
+    moveNow(g, s, 2);
+    expect(turn(at()).items.map((i) => i.id)).toEqual(['landing']);
+    // (Its row's button and its card's: one action, by runLanding; ▶ Run all and the menu's: runSpace.)
+    runLanding(g, s, sp, () => applyScore(s, g, ['a'], 100, 'Space 3: +$100'));
+    expect(turn(at()).items).toEqual([]);
+    // (Undoing its points: left again.)
+    undo(s);
+    expect(turn(at()).items.map((i) => i.id)).toEqual(['landing']);
+    runSpace(g, s, live, sp, ['a']);
+    expect(turn(at()).items).toEqual([]);
+  });
+
+  it('a one-space board: its ways (the only one ⏎, ringed); at a fork the ways, no keys, and it holds with the controls hidden', () => {
+    const { g, s, round, bs, at } = playing('step');
+    let { st, items } = turn(at());
+    expect(lines(items)).toEqual([['first: Ann hasn’t moved: → Space 2.', '→ Space 2 ⏎ · keep']]);
+    expect(ringOf(items)).toBe('turnslot');
+    items[0].quick[0].run();
+    expect(did).toEqual([`move 1 ${round.spaces[1].id}`]);
+    // Two ways on: which way? (no ⏎: click or Tab; the numbers still pick players).
+    round.spaces[0].next.push(round.spaces[5].id);
+    items = turn(at()).items;
+    expect([lines(items), ringOf(items), enterQuick(items)]).toEqual([[['first: Ann hasn’t moved: which way?', '→ Space 2 · keep', '→ Space 6 · keep']], null, null]);
+    // A dice board's fork: the steps left.
+    round.mover = { kind: 'dice', dice: 'd6' };
+    round.spaces[2].next.push(round.spaces[7].id);
+    round.spaces[0].next = [round.spaces[1].id];
+    moveNow(g, s, 5);
+    ({ st, items } = turn(at()));
+    expect(lines(items)).toEqual([['first: Ann has 3 steps left: which way?', '→ Space 4 · keep', '→ Space 8 · keep']]);
+    expect(inside({ key: 'Enter' }, open(st, items), after)).toEqual({ do: 'flash', say: 'Which way? Click it (or Tab to it): the numbers still pick players' });
+    expect([goOnDecision('n', st, items, true, false), goOnDecision('n', st, items, false, false)]).toEqual(['hold', 'open']);
+    // A secret way, in one window: “?”.
+    Object.assign(round.spaces[7], { name: 'Trap', secret: true });
+    expect(lines(turn(at()).items)[0][2]).toBe('→ ? · keep');
+    expect(bs().fork?.stepsLeft).toBe(3);
+  });
+
+  it('no item for a turn that ends without a move: off the board or in a zone, a slice with no number, nowhere to go; nor silenced rolling', () => {
+    const { g, s, round, bs, at, setSteps } = playing();
+    sendNow(g, s, ['a'], { zone: 'shadow' });
+    expect(turn(at()).items).toEqual([]);
+    setSteps(4);
+    expect(turn(at()).items).toEqual([]);
+    setSteps(null);
+    sendNow(g, s, ['a'], { space: round.spaces[0].id });
+    expect(turn(at({}, { noNumber: 'Lose a turn' })).items).toEqual([]);
+    expect(doneSay(at({}, { noNumber: 'Lose a turn' }), 'roll')).toBe('Ann’s spin landed on “Lose a turn”');
+    round.spaces[0].next = [];
+    expect(turn(at()).items).toEqual([]);
+    round.spaces[0].next = [round.spaces[1].id];
+    // A count typed, not rolled; going back.
+    setSteps(-2);
+    expect(lines(turn(at()).items)).toEqual([['first: Ann goes back 2: ◀ move them back.', '◀ Back Ann: 2 ⏎ · keep']]);
+    setSteps(2);
+    expect(turn(at()).items[0].text).toBe('Ann has 2 to go: ▶ move them.');
+    setSteps(null);
+    s.goonQuiet = ['roll'];
+    expect(turn(at()).items).toEqual([]);
+    // Moved, landing on a space with no actions: nothing left.
+    s.goonQuiet = [];
+    moveNow(g, s, 1);
+    expect([bs().last?.landed, turn(at()).items]).toEqual([round.spaces[1].id, []]);
+  });
+
+  it('a question worth points that came up this turn, nobody given any: ＋ Award Ann $200 ▶ next turn (several picked: a line each)', () => {
+    const { g, s, round, at, setQuestion } = playing();
+    const sp = Object.assign(round.spaces[2], { name: 'Quiz' });
+    sp.onLand = [{ id: 'q', do: 'question', question: textSlide('Q'), answer: textSlide('A'), value: 200 }];
+    moveNow(g, s, 2);
+    runSpace(g, s, newLive(), sp, ['a']);
+    const t0 = Date.now();
+    setQuestion({ value: 200, at: t0 });
+    let { st, items } = turn(at());
+    expect(lines(items)).toEqual([['loss: The question on Quiz is worth $200, and nobody got points.', '＋ Award Ann $200 ▶ next turn ⏎ · go', '− Deduct Ann $200 ▶ next turn [⇧⏎] · go']]);
+    expect([headingOf(items), anywayLabel(open(st, items))]).toEqual(['loss', 'Next turn anyway: no points']);
+    items[0].quick[0].run();
+    expect(did).toEqual(['+200 a']);
+    items = turn(at({ selected: ['b', 'c'] })).items;
+    expect(lines(items)[0].slice(1)).toEqual(['Bob: ＋ Award $200 · keep', 'Bob: − Deduct · keep', 'Cat: ＋ Award $200 · keep', 'Cat: − Deduct · keep']);
+    // Points given since: nothing left. (Not while the question's still up: its own Next ▶ asks then.)
+    applyScore(s, g, ['b'], 200, 'Quiz');
+    expect(turn(at()).items).toEqual([]);
+    ({ st } = turn(at()));
+    expect(st.id).toBe('turn');
+  });
+
+  it('presses it takes (6.2): D, Enter, N as before; following the blue button N, Enter, Enter, N; N, N skips the turn; Shift+click once', () => {
+    const { g, s, live, at, setSteps } = playing();
+    const { st, items } = turn(at());
+    // D and Enter never go through the check; with the turn played, N goes on (3).
+    expect(goOnDecision('n', st, [], false, false)).toBe('run');
+    // Following the blue button: N opens it, Enter rolls, Enter moves, N (or Enter) takes the step (4).
+    expect(goOnDecision('n', st, items, false, false)).toBe('open');
+    expect(inside({ key: 'Enter' }, open(st, items), after)).toMatchObject({ do: 'quick', quick: { then: 'keep' } });
+    rollMover(g, s, live);
+    setSteps(3);
+    expect(inside({ key: 'Enter' }, open(st, leftNow(at(), st)), after)).toMatchObject({ do: 'quick', quick: { label: '▶ Move Ann: 3' } });
+    // Skipping on purpose: N, N (after the guard), or Shift+click at once, or the tick.
+    expect(inside({ key: 'n' }, open(st, leftNow(at(), st)), after)).toEqual({ do: 'anyway' });
+    expect(goOnDecision('shift', st, leftNow(at(), st), false, false)).toBe('run');
+    // With the controls hidden in one window, a turn not rolled goes on, as N did.
+    expect(goOnDecision('n', st, items, true, false)).toBe('run');
   });
 });

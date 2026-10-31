@@ -6,13 +6,15 @@
  * quiet "… anyway" and Not yet. Pure: Play owns the check's state and gives this its own state and functions (GoCtx),
  * never a box's, so it works with the host panel hidden too.
  *
- * Moments whose part hasn't moved over yet give no step here (null): the panel's old main button does them, as before,
- * with no check (board games and a board game's own roll). The end screen has no blue button: a tie is settled in its box.
+ * No blue button (null): a board with tiles left, an RPG round, ✎ Edit board, and the end screen (a tie is settled in its
+ * box). A board game's turn is Next turn ▶, and one check walks it: the roll, the move, the landing.
  */
+import { describeAction as actionWords } from '../../lib/actions';
+import { currentPlayer, HOP_MS, spaceById, spaceShown, waysOn } from '../../lib/boardgame';
 import { buzzNeverOpened, type BuzzState } from '../../lib/buzz';
-import { overlayDoneAt, tileToolUp, type Live, type Overlay } from '../../lib/live';
+import { overlayDoneAt, tileToolUp, toolOverlay, type Live, type Overlay } from '../../lib/live';
 import { pickOf, rightChoice, usableChoices } from '../../lib/choices';
-import { formatPoints, isBoard, isBoardGame, isFinal, roundName, type Game, type Id, type Session } from '../../lib/model';
+import { formatPoints, isBoard, isBoardGame, isFinal, roundName, type Action, type Game, type Id, type Session } from '../../lib/model';
 import { cardDone, draftDeltas, scoreCards, scoreDraft, wheelSpentUp, type ScoreCard } from '../../lib/overlay';
 import { partnerCandidates, partnerPickStep } from '../../lib/partner';
 import {
@@ -20,9 +22,10 @@ import {
   tiebreakHolds, tiedForFirst, toolOnlyClue, typedAnswer,
 } from '../../lib/session';
 import { describeAction, isRespin, needsSource, sliceLabel } from '../../lib/tools';
+import { boardNow, decidingAction, isMover, landingRan, moverDiceName, moverResult } from '../boardgame/bgops';
 import { CHECK_GUARD_MS } from './guard';
 import type { FlowPlace } from './slots.svelte';
-import { CHECK, FLOW, VERBS, type FlowVerb } from './verbs';
+import { CHECK, FLOW, VERBS, type FlowVerb, type Verb } from './verbs';
 
 /** Keys and clicks on the check are ignored this long after it opens (Esc isn't): a fast N, N or a double-click can't skip it. */
 export { CHECK_GUARD_MS };
@@ -90,7 +93,8 @@ export type LeftItem = {
  * 'close': the 🤝 partner wheel's Next ▶; 'tool': what's over the stage goes (a tile's own wheel or dice: its question,
  * or the board); 'popreveal': a question pop-up's answer; 'ddshow': a Daily Double's question. The Final: 'finalshow',
  * its question (from the wagers); 'finalreveal', its answer; 'reveals', the reveals start; 'spot', the spotlit player's
- * answer or wager, or the next player; 'finish', on past the Final. The tiebreaker's 'results': back to them.
+ * answer or wager, or the next player; 'finish', on past the Final. The tiebreaker's 'results': back to them. A board
+ * game's 'turn': the next player's.
  */
 export type StepId =
   | 'intro'
@@ -108,7 +112,8 @@ export type StepId =
   | 'reveals'
   | 'spot'
   | 'finish'
-  | 'results';
+  | 'results'
+  | 'turn';
 
 /** The blue button's step: its words (FLOW only), what it does, and how its keys go. */
 export type Step = {
@@ -129,6 +134,10 @@ export type Step = {
   flow?: FlowPlace;
   /** A tile's own wheel or dice not spun or rolled yet (Enter says so: "Spin the wheel first: W"). */
   tool?: 'spin' | 'roll';
+  /** Quiet buttons beside it, another flow step and not a copy: ◀ Previous turn beside Next turn ▶. */
+  also?: { verb: Verb; run: () => void }[];
+  /** The check's heading once nothing's left, where it isn't "✓ Nothing left": "✓ Ann’s turn is played". */
+  nothing?: string;
 };
 
 /** What the host's own functions do, for the steps and the fixes. */
@@ -202,6 +211,28 @@ export type GoActs = {
   tbBack: () => void;
   /** 🏆 This player won the tiebreaker (no points: as ＋ Award with 0). */
   tbWin: (id: Id) => void;
+  // A board game's turn.
+  /** Next turn ▶, ◀ Previous turn. */
+  nextTurn: () => void;
+  prevTurn: () => void;
+  /** 🎲 Roll (D): the round's own dice, or its movement wheel. */
+  boardRoll: () => void;
+  /** ▶ Move: whoever's turn it is (at a fork, the one there) this many spaces, the way `way` first. */
+  boardMove: (steps: number, way?: Id) => void;
+  /** The turn's landing actions, for whoever landed (as its ▶ Run all or ▶ Start does). */
+  boardLanding: () => void;
+};
+
+/** A board game's turn as the check reads it: this screen's state (the host panel's turn box is H's to hide). */
+export type BoardNow = {
+  /** ✎ Edit board is open: no blue button (✓ Done editing is in its panel). */
+  editing: boolean;
+  /** The Steps box: rolled or typed (null: empty). */
+  steps: number | null;
+  /** The movement wheel landed on a slice that names no number (“Lose a turn”): no move this turn. */
+  noNumber: string | null;
+  /** A question worth points that came up this turn (a space's, a slice's), and when. */
+  question: { value: number; at: number } | null;
 };
 
 /** The Final, the tiebreaker: what they read beyond the session (their parts' state, never a box's). */
@@ -288,6 +319,8 @@ export type GoCtx = {
   partner: PartnerNow | null;
   /** The Final's and the tiebreaker's (null: not given, their parts have their own main button). */
   final: FinalNow | null;
+  /** A board game's turn (null outside one). */
+  board: BoardNow | null;
   act: GoActs;
 };
 
@@ -321,7 +354,7 @@ function nextRoundVerb(game: Game, at: number): FlowVerb {
 /**
  * What's over the stage as the blue button sees it: the overlay up (the scores, if they're over a wheel), and whether
  * it's the open tile's own wheel or dice. None for a shop (its 🚪 Leave shop), the open 🤝 partner clue's wheel (its
- * own Next ▶) or a board game's own roll (its turn box's, until board games move over).
+ * own Next ▶) or a board game's own roll (part of the turn: Next turn ▶).
  */
 export function toolOf(c: GoCtx): { o: Overlay; own: boolean; question: boolean; busy: boolean } | null {
   const o = c.live.overlay;
@@ -379,6 +412,7 @@ export function mainStep(c: GoCtx): Step | null {
     if (pos && pos.at < pos.of) return n(FLOW.nextSlide(pos.at, pos.of), 'slide', c.act.slide, { enterIsNext: true, flow: 'pager' });
     return n(nextRoundVerb(c.game, s.currentRound), 'nextround', c.act.nextRound, { enterIsNext: true });
   }
+  if (s.phase === 'boardgame') return turnStep(c);
   // A board played out goes on only from a click (N mashed after the last clue mustn't jump on stream).
   if (s.phase === 'board') return roundComplete(s, c.game) ? { id: 'nextround', verb: nextRoundVerb(c.game, s.currentRound), run: c.act.nextRound, clickOnly: true } : null;
   if (s.phase === 'clue') return clueStep(c);
@@ -434,6 +468,21 @@ function tiebreakerStep(c: GoCtx): Step | null {
   return n(FLOW.backToResults, 'results', c.act.tbBack, { flow: 'done' });
 }
 
+/**
+ * A board game's turn: Next turn ▶ (◀ Previous turn quiet beside it), greyed while its dice roll or its wheel turns. None
+ * while ✎ Edit board is open (✓ Done editing is in its panel), nor under the round's title card (its intro's step).
+ */
+function turnStep(c: GoCtx): Step | null {
+  const t = turnOf(c);
+  if (!t || c.board?.editing) return null;
+  const who = t.id ? name(c, t.id) : null;
+  return n(FLOW.nextTurn, 'turn', c.act.nextTurn, {
+    also: [{ verb: VERBS.prevTurn, run: c.act.prevTurn }],
+    ...(who ? { nothing: `✓ ${who}’s turn is played` } : {}),
+    ...(t.rolling ? { busy: `Still ${t.wheel ? 'spinning' : 'rolling'}: wait for it to land` } : {}),
+  });
+}
+
 /** An open clue's step: PARTNER UP!'s, its question slides, the answer, then back to the board. */
 function clueStep(c: GoCtx, done = false): Step | null {
   const s = c.session;
@@ -461,7 +510,7 @@ function clueStep(c: GoCtx, done = false): Step | null {
  * A step the check can ask before (the others never do: an intro, a slide, the next round, a Daily Double's question,
  * the Final's reveals starting).
  */
-export const mayAsk = (st: Step): boolean => ['reveal', 'done', 'tool', 'finalshow', 'finalreveal', 'spot', 'finish', 'results'].includes(st.id);
+export const mayAsk = (st: Step): boolean => ['reveal', 'done', 'tool', 'finalshow', 'finalreveal', 'spot', 'finish', 'results', 'turn'].includes(st.id);
 
 /**
  * ▦ Done ▶ board as a skip (the clue's row, while the blue button is 👁 Reveal answer), or the tiebreaker's 🏁 Back to
@@ -1127,6 +1176,244 @@ function tieItems(c: GoCtx): LeftItem[] {
   ];
 }
 
+// ---------- A board game's turn (3.4 L) ----------
+
+/**
+ * The board game's turn now, as the check reads it: whose, where they are, their roll (on screen, rolling, or the Steps
+ * box's count), whether they moved this turn and their token is still on its way. Null outside one, or under its title card.
+ */
+function turnOf(c: GoCtx) {
+  const s = c.session;
+  if (s.phase !== 'boardgame' || s.intro || !c.board) return null;
+  const { round, bs } = boardNow(c.game, s);
+  if (!round || !bs) return null;
+  const id = currentPlayer(bs);
+  const o = toolOverlay(c.live);
+  const up = o && isMover(round, o) && (o.kind === 'dice' ? !!o.roll : o.kind === 'wheel' && !!o.spin) ? o : null;
+  const rolling = !!up && c.now < overlayDoneAt(up);
+  const result = up && !rolling ? moverResult(c.game, round, up) : null;
+  const last = bs.last;
+  const hop = bs.hop;
+  return {
+    round,
+    bs,
+    id,
+    wheel: round.mover.kind === 'wheel',
+    /** Where they stand (none: in a zone, or off the board). */
+    at: id ? bs.positions[id]?.space : undefined,
+    rolling,
+    /** The count to move: the Steps box's, or the roll that landed. */
+    count: c.board.steps ?? result,
+    /** It's the roll that landed (not typed). */
+    rolled: result !== null && (c.board.steps ?? result) === result,
+    moved: !!id && !!last && last.playerId === id && (last.turn ?? 0) === (bs.turns ?? 0),
+    last,
+    /** Their token still stepping along on stream. */
+    moving: !!hop && hop.playerId === id && c.now - hop.at < HOP_MS * (hop.path.length - 1),
+  };
+}
+type Turn = NonNullable<ReturnType<typeof turnOf>>;
+
+/** A space's name as the panel may say it (one window: a secret one not revealed yet is “?”). */
+const spaceSay = (c: GoCtx, t: Turn, id: Id) => spaceShown(t.round, t.bs, id, !c.dual);
+
+/** Actions that do their all at once, with nobody to choose: they run, and the turn goes on, in one click. */
+const INSTANT = new Set<Action['do']>(['score', 'stat', 'item', 'sound', 'note', 'reveal', 'hide', 'skip', 'again']);
+const instant = (a: Action): boolean => INSTANT.has(a.do) && !('who' in a && a.who === 'selected');
+
+/** What a landing action gives, for its line: “+$100 to Ann”. (Never a 📝 note: host notes stay off the check.) */
+function actSay(c: GoCtx, t: Turn, a: Action, who: string): string {
+  const what = actionWords(c.game, a, 'land', false, c.dual ? undefined : t.bs);
+  if (a.do !== 'score' && a.do !== 'stat' && a.do !== 'item') return what;
+  return a.who === 'all' ? `${what} to everyone` : a.who === 'picker' ? `${what} to the picker` : `${what} to ${who}`;
+}
+
+/**
+ * A board game's turn, at Next turn ▶ (3.4 L): in the turn's order, the roll, then the move (or the way at a fork), then
+ * the landing's actions, then a question nobody got points for. The roll, the move and a way stay in the check (keep):
+ * it walks the turn. None for a turn that legitimately ends without a move: off the board or in a zone, a slice with no
+ * number (“Lose a turn”), nowhere to go.
+ */
+function turnItems(c: GoCtx): LeftItem[] {
+  const t = turnOf(c);
+  if (!t || !t.id) return [];
+  const { round, bs } = t;
+  const who = name(c, t.id);
+  const stops = `${who} stops here`;
+  const fork = bs.fork;
+  if (fork) {
+    const at = name(c, fork.playerId);
+    const ways = waysOn(round, fork.at, fork.came ?? bs.prev?.[fork.playerId], fork.stepsLeft < 0);
+    const left = Math.abs(fork.stepsLeft);
+    return [
+      {
+        id: 'way',
+        kind: 'first',
+        // (With the controls hidden, N doesn't drop the steps left: the way is picked on the stage.)
+        hold: true,
+        text: `${at} has ${left} step${left === 1 ? '' : 's'} left: which way?`,
+        lost: `${at} stops here`,
+        enterSay: 'Which way? Click it (or Tab to it): the numbers still pick players',
+        quick: ways.map((w): Quick => ({ label: `→ ${spaceSay(c, t, w)}`, then: 'keep', run: () => c.act.boardMove(fork.stepsLeft, w), aria: `${at} goes on toward ${spaceSay(c, t, w)}` })),
+      },
+    ];
+  }
+  if (!t.moved) {
+    // (Off the board or in a zone, a count is no move; nowhere to go from here, nothing to do.)
+    if (!t.at || !waysOn(round, t.at, bs.prev?.[t.id]).length) return [];
+    if (round.mover.kind === 'step') {
+      const ways = waysOn(round, t.at, bs.prev?.[t.id]);
+      const one = ways.length === 1;
+      return [
+        {
+          id: 'move',
+          kind: 'first',
+          ...(one ? { box: 'turnslot' } : {}),
+          text: one ? `${who} hasn’t moved: → ${spaceSay(c, t, ways[0])}.` : `${who} hasn’t moved: which way?`,
+          lost: stops,
+          ...(one ? {} : { enterSay: 'Which way? Click it (or Tab to it): the numbers still pick players' }),
+          quick: ways.map((w): Quick => ({ label: `→ ${spaceSay(c, t, w)}`, ...(one ? { enter: true } : {}), then: 'keep', run: () => c.act.boardMove(1, w), aria: `${who} moves to ${spaceSay(c, t, w)}` })),
+        },
+      ];
+    }
+    const rollQ = (why?: string): Quick => ({
+      label: t.wheel ? '🎡 Spin to move' : `🎲 Roll ${moverDiceName(c.game, round) ?? ''}`.trim(),
+      key: 'D',
+      enter: true,
+      then: 'keep',
+      run: c.act.boardRoll,
+      ...(why ? { why } : {}),
+      aria: t.wheel ? `Spin the movement wheel for ${who}` : `Roll for ${who}`,
+    });
+    if (t.rolling) return [{ id: 'roll', kind: 'first', quiet: 'roll', box: 'turnslot', text: t.wheel ? 'Spinning…' : 'Rolling…', lost: stops, quick: [rollQ(`Still ${t.wheel ? 'spinning' : 'rolling'}`)] }];
+    const n = t.count;
+    if (n) {
+      const back = n < 0;
+      const text = back ? `${who} goes back ${-n}: ◀ move them back.` : t.rolled ? `${who} ${t.wheel ? 'spun' : 'rolled'} ${n}: ▶ move them.` : `${who} has ${n} to go: ▶ move them.`;
+      return [
+        {
+          id: 'move',
+          kind: 'first',
+          box: 'turnslot',
+          text,
+          lost: stops,
+          quick: [{ label: `${back ? '◀ Back' : '▶ Move'} ${who}: ${Math.abs(n)}`, enter: true, then: 'keep', run: () => c.act.boardMove(n), aria: `Move ${who} ${back ? 'back ' : ''}${Math.abs(n)} space${Math.abs(n) === 1 ? '' : 's'}` }],
+        },
+      ];
+    }
+    // (The wheel landed on a slice that names no number: that's their turn.)
+    if (c.board?.noNumber !== null && c.board?.noNumber !== undefined) return [];
+    return [{ id: 'roll', kind: 'first', quiet: 'roll', box: 'turnslot', text: `${who}’s turn: ${t.wheel ? '🎡 spin' : '🎲 roll'}, then ▶ move.`, lost: stops, quick: [rollQ()] }];
+  }
+  return [...landingItems(c, t), ...questionItems(c, t)];
+}
+
+/**
+ * The turn's landing, its actions not run: every one instant, they run and the turn goes on in one click; one deciding
+ * (a roll, a spin or a question whose outcome the host presses next), it's started; anything that puts something up or
+ * asks who, they're run and left to play out. “Moving…” while the token is still on its way.
+ */
+function landingItems(c: GoCtx, t: Turn): LeftItem[] {
+  const last = t.last;
+  const sp = last?.landed ? spaceById(t.round, last.landed) : undefined;
+  const list = sp?.onLand ?? [];
+  if (!last || !sp || !list.length || landingRan(c.session, last)) return [];
+  const who = name(c, last.playerId);
+  const shown = spaceSay(c, t, sp.id);
+  const secret = shown === '?';
+  const whose = secret ? 'its' : `${shown}’s`;
+  const Whose = secret ? 'Its' : whose;
+  const decides = list.length > 1 ? list.find(decidingAction) : undefined;
+  const all = list.every(instant);
+  // (An action for the players picked, with nobody picked: their number first, then Enter.)
+  const pick = list.some((a) => 'who' in a && a.who === 'selected') && !c.selected.length ? 'Pick who it’s for first (1–9)' : undefined;
+  const base = {
+    id: 'landing',
+    kind: 'first' as const,
+    quiet: 'landing' as const,
+    anyway: `${FLOW.nextTurn.anyway}: ${whose} actions don’t run`,
+    ...(pick ? { enterSay: 'Pick who it’s for first: their number, then Enter' } : {}),
+  };
+  const label = decides ? `▶ Start ${secret ? 'the space' : shown}` : all ? `▶ Run ${whose} actions ▶ next turn` : `▶ Run ${whose} actions`;
+  const quick = (why = pick): Quick =>
+    decides
+      ? { label, enter: true, then: 'close', run: c.act.boardLanding, after: `${Whose} ${decideWord(decides)}… press the outcome, then ${FLOW.nextTurn.label} (N)`, ...(why ? { why } : {}), aria: `Start ${secret ? 'the space' : shown}: its ${decideWord(decides)}` }
+      : all
+        ? { label, enter: true, then: 'go', run: c.act.boardLanding, ...(why ? { why } : {}), aria: `Run ${whose} actions, then the next turn` }
+        : { label, enter: true, then: 'close', run: c.act.boardLanding, after: `${Whose} actions are on… then ${FLOW.nextTurn.label} (N) when it’s played out`, ...(why ? { why } : {}), aria: `Run ${whose} actions` };
+  if (t.moving) return [{ ...base, text: 'Moving…', quick: [quick('Still moving')] }];
+  const gives = all ? list.filter((a) => a.do !== 'note').map((a) => actSay(c, t, a, who)) : [];
+  const text = decides
+    ? `${who} landed on ${shown}: its ${decideWord(decides)} ${decides.do === 'question' ? 'hasn’t been asked' : 'hasn’t happened'}.`
+    : `${who} landed on ${shown}: its actions haven’t run${gives.length ? ` (${gives.join(', ')})` : ''}.`;
+  return [{ ...base, text, quick: [quick()] }];
+}
+const decideWord = (a: Action) => (a.do === 'dice' ? 'roll' : a.do === 'wheel' ? 'spin' : 'question');
+
+/** A question worth points that came up this turn and is put away, nobody given any since (as 3.4 A). */
+function questionItems(c: GoCtx, t: Turn): LeftItem[] {
+  const q = c.board?.question;
+  if (!q || q.value <= 0 || toolOverlay(c.live)?.kind === 'popup' || c.session.scoreLog.some((e) => !e.undone && e.ts >= q.at)) return [];
+  const sp = t.last?.landed ? spaceById(t.round, t.last.landed) : undefined;
+  const on = sp?.onLand?.some((a) => a.do === 'question') ? ` on ${spaceSay(c, t, sp.id)}` : '';
+  const a = c.amount != null && Number.isFinite(c.amount) && c.amount ? Math.abs(c.amount) : q.value;
+  const pts = formatPoints(a, sym(c));
+  const picked = c.selected.filter((id) => c.session.players.some((p) => p.id === id));
+  const ids = picked.length ? picked : t.last ? [t.last.playerId] : t.id ? [t.id] : [];
+  if (!ids.length) return [];
+  const base = { id: 'question', kind: 'loss' as const, text: `The question${on} is worth ${pts}, and nobody got points.`, lost: 'no points' };
+  if (ids.length === 1) {
+    const id = ids[0];
+    const who = name(c, id);
+    return [
+      {
+        ...base,
+        quick: [
+          { label: `＋ Award ${who} ${pts} ▶ next turn`, enter: true, then: 'go', tone: 'good', run: () => c.act.award(1, [id], a), aria: `Award ${who} ${pts}, then the next turn` },
+          { label: `− Deduct ${who} ${pts} ▶ next turn`, key: '⇧⏎', then: 'go', tone: 'bad', run: () => c.act.award(-1, [id], a), aria: `Deduct ${pts} from ${who}, then the next turn` },
+        ],
+      },
+    ];
+  }
+  return [
+    {
+      ...base,
+      enterSay: 'Several are picked: ＋ or − on each line (1–9 changes who)',
+      quick: ids.flatMap((id): Quick[] => {
+        const who = name(c, id);
+        return [
+          { line: who, label: `＋ Award ${pts}`, then: 'keep', tone: 'good', run: () => c.act.award(1, [id], a, true), aria: `Award ${who} ${pts}` },
+          { line: who, label: '− Deduct', then: 'keep', tone: 'bad', run: () => c.act.award(-1, [id], a, true), aria: `Deduct ${pts} from ${who}` },
+        ];
+      }),
+    },
+  ];
+}
+
+/**
+ * What a line of the check says once it's done, where that says more than “✓ Done”: a board game's turn, walked
+ * (“✓ Ann rolled 4”). Undefined: the plain tick.
+ */
+export function doneSay(c: GoCtx, id: string): string | undefined {
+  const t = turnOf(c);
+  if (!t?.id) return undefined;
+  const who = name(c, t.id);
+  if (id === 'roll') {
+    const n = t.count;
+    if (n) return n < 0 ? `${who} goes back ${-n}` : `${who} ${t.wheel ? 'spun' : 'rolled'} ${n}`;
+    const none = c.board?.noNumber;
+    return none ? `${who}’s spin landed on “${none}”` : undefined;
+  }
+  if (id === 'move' || id === 'way') return `${t.last ? name(c, t.last.playerId) : who} moved`;
+  if (id === 'landing') {
+    const sp = t.last?.landed;
+    const shown = sp ? spaceSay(c, t, sp) : '?';
+    return shown === '?' ? 'Its actions ran' : `${shown}’s actions ran`;
+  }
+  if (id === 'question') return 'Points given';
+  return undefined;
+}
+
 /** What going on by `step` would skip or lose now, but the kinds silenced this game. */
 export function leftNow(c: GoCtx, step: Step): LeftItem[] {
   const all =
@@ -1148,7 +1435,9 @@ export function leftNow(c: GoCtx, step: Step): LeftItem[] {
                   ? verdictItems(c, step)
                   : step.id === 'results'
                     ? tieItems(c)
-                    : [];
+                    : step.id === 'turn'
+                      ? turnItems(c)
+                      : [];
   const quiet = c.session.goonQuiet ?? [];
   return all.filter((i) => !i.quiet || !quiet.includes(i.quiet));
 }
@@ -1178,9 +1467,14 @@ export const asked = (source: GoSource, items: LeftItem[]): LeftItem[] => (sourc
  * The check's items as they are now: the shown ones keep their places (one done elsewhere stays, ticked, its buttons
  * inert), changed ones are redrawn in place, new ones join at the end.
  */
-export function mergeItems(shown: LeftItem[], now: LeftItem[]): LeftItem[] {
+export function mergeItems(shown: LeftItem[], now: LeftItem[], say?: (id: string) => string | undefined): LeftItem[] {
   const fresh = new Map(now.map((i) => [i.id, i]));
-  const out = shown.map((i) => fresh.get(i.id) ?? (i.done ? i : { ...i, done: CHECK.done }));
+  // (A line that says what was done: “✓ Ann rolled 4”, see doneSay.)
+  const done = (i: LeftItem): LeftItem => {
+    const t = say?.(i.id);
+    return t ? { ...i, done: '✓', text: t } : { ...i, done: CHECK.done };
+  };
+  const out = shown.map((i) => fresh.get(i.id) ?? (i.done ? i : done(i)));
   for (const i of now) if (!shown.some((x) => x.id === i.id)) out.push(i);
   return out;
 }
@@ -1222,6 +1516,7 @@ export function teachLine(check: Pick<Check, 'step' | 'items'>): string {
   if (check.step.reveals) parts.push('R reveals at once');
   // (Not with a score effect left: Esc asks once about it too.)
   if (check.step.id === 'done' || (check.step.id === 'tool' && !todo(check.items).some((i) => i.hold))) parts.push('Esc closes at once');
+  if (check.step.id === 'turn') parts.push('D rolls and Enter moves at once');
   if (!todo(check.items).every((i) => i.must)) parts.push('Shift+click on the blue button skips this');
   return parts.length ? `Next time: ${parts.join(' · ')}` : '';
 }
