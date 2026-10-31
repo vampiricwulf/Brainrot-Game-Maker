@@ -254,7 +254,12 @@ RollEvent  { id, ts, source: 'wheel' | 'dice', presetName?, result: string /* la
   (`partnerCardFrom` 'empty' keeps it empty): one step, "Made Movies $400 a partner clue (card: a copy of the answer)",
   and a toast. **⧉ Same as the answer** is in the corner of an empty card's words box (the clue and Final editors), and
   a checklist line about an empty card on a tile or Final with an answer has a ⧉ beside it (and in its menu) for the
-  first such card. Both hints read alike: "2 on the board · Start places 1 at random", or
+  first such card. In the clue editor a partner clue's rules are one line, always in view: 🤝 Game [▾] · Who describes:
+  (•) the partner ( ) the picker · what it comes to on this tile in money · **▸ More rules** (folded at first, then as
+  this computer left it; folded, it lists what's set that isn't the usual). Under it: the picker on the wheel, the typed
+  guess, After a miss, Points ("As in Describe it", No penalty, The guesser loses it all, Custom) with its table, ☑ The
+  partner never loses points, and the part words. Under them, one sentence says how it plays; what the buzzer server
+  keeps of a card is in 📱 On their phone's tooltip. Both hints read alike: "2 on the board · Start places 1 at random", or
   "· all placed".
 - **Tile face**: by default a tile shows its value. Optionally, show custom text or an image instead ("???", an emoji,
   a meme face). The value still drives the prefilled score.

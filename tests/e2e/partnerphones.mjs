@@ -126,6 +126,8 @@ try {
   await dialog.locator('[data-field="q"]').fill('Describe this movie quietly-qq');
   await dialog.locator('[data-field="a"]').fill('Shrek');
   await dialog.locator('[data-field="card"]').fill('Card-only-zz words');
+  // (Under ▸ More rules, folded at first.)
+  await dialog.locator('[data-more-rules]').click();
   await dialog.getByLabel('The guesser types their guess on their phone').check();
   // A picture from this computer on the card.
   await dialog.getByRole('tab', { name: '🤫 Card 1' }).click();

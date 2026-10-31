@@ -206,8 +206,14 @@ try {
   const redo = () => page.keyboard.press('Control+y');
   const card = dialog.locator('[data-field="card"]');
   const settings = dialog.getByRole('group', { name: 'Partner clue' });
-  // (The points in money: on the rules' own line, which stays when they're folded.)
-  const summary = () => settings.locator('summary .money').innerText();
+  // (The points in money: on the rules' one line, beside the game and who describes, in view with ▸ More rules folded.)
+  const summary = () => settings.locator('.money').innerText();
+  const moreRules = settings.locator('[data-more-rules]');
+  /** ▸ More rules open (it's folded at first, then as left on this computer). */
+  const openMore = async () => {
+    if ((await moreRules.getAttribute('aria-expanded')) !== 'true') await moreRules.click();
+    await settings.getByRole('combobox', { name: /^Points/ }).waitFor();
+  };
 
   assert((await dialog.getByRole('option', { name: '🤝 Partner clue' }).count()) === 1, 'the Type box offers 🤝 Partner clue');
   await dialog.locator('select').first().selectOption('partner');
@@ -215,7 +221,12 @@ try {
   assert(JSON.stringify(await tabNames()) === JSON.stringify(['Question slide', '🤫 Card 1', 'Answer']), `a partner clue's tabs: Question · 🤫 Card 1 · Answer (${await tabNames()})`);
   assert((await settings.locator('select').first().inputValue()) === 'describe', 'it starts as 🗣 Describe it');
   assert((await dialog.getByLabel('⏱ Countdown (s)').inputValue()) === '45', 'with a 45 s countdown');
-  assert((await summary()) === 'On this $400 tile: got → describer +$400, guesser +$200 · missed → guesser −$200', `the points in money on this tile (${await summary()})`);
+  assert((await summary()) === 'got → describer +$400, guesser +$200 · missed → guesser −$200', `the points in money on this tile (${await summary()})`);
+  // The game and who describes are in view on that line; the rest is under ▸ More rules, folded at first.
+  assert(
+    (await settings.getByRole('radio', { name: 'the partner' }).isChecked()) && (await moreRules.getAttribute('aria-expanded')) === 'false' && (await settings.getByRole('combobox', { name: /^Points/ }).count()) === 0,
+    'Who describes is in view, the rest folded under ▸ More rules',
+  );
   await dialog.locator('[data-field="q"]').fill('Describe this movie without saying its name!');
   await dialog.locator('[data-field="a"]').fill('Shrek');
 
@@ -273,6 +284,7 @@ try {
   assert((await opens('Card 2')) && (await card.inputValue()) === 'Ogres are like onions', 'Ctrl+Z brings it back, open');
 
   // ---------- Points ----------
+  await openMore();
   const points = settings.getByRole('combobox', { name: /^Points/ });
   // ☑ The partner never loses points shows in the table: it holds the partner's "If it's missed" box, greyed, at what
   // they get (a share below 0 is 0), whichever column is theirs. Unticked, the box is theirs to type in again. Held in
@@ -294,7 +306,7 @@ try {
   assert((await summary()).endsWith('missed → guesser −$300'), `and the money follows (${await summary()})`);
   await points.selectOption('game');
   await settings.getByRole('radio', { name: 'the picker' }).check();
-  assert((await summary()) === 'On this $400 tile: got → describer +$400, guesser +$200 · missed → nobody loses points', `the picker describing: the partner guesses, and never loses points (${await summary()})`);
+  assert((await summary()) === 'got → describer +$400, guesser +$200 · missed → nobody loses points', `the picker describing: the partner guesses, and never loses points (${await summary()})`);
   const guesserMissed = settings.getByLabel(/^Guesser’s share if it’s missed/);
   await settings.locator('.shares input:disabled[aria-label^="Guesser’s share if it’s missed"]').waitFor();
   assert(await heldIs('Guesser', '0', SOLO_TIP), 'and the table says so: the partner’s (now the guesser’s) −50% box shows 0, greyed, its tooltip saying Solo still costs 50%');
@@ -317,26 +329,34 @@ try {
   await points.selectOption('game');
   await settings.getByRole('radio', { name: 'the partner' }).check();
   await settings.getByRole('combobox', { name: /^Game/ }).selectOption('help');
-  assert((await summary()) === 'On this $400 tile: got → helper +$200, answerer +$400 · missed → answerer −$200', `🙋 Help a friend: its own words and points (${await summary()})`);
+  assert((await summary()) === 'got → helper +$200, answerer +$400 · missed → answerer −$200', `🙋 Help a friend: its own words and points (${await summary()})`);
   assert(JSON.stringify(await tabNames()) === JSON.stringify(['Question slide', '🤫 Card 1', '🤫 Card 2', 'Answer']), 'a game chosen keeps the cards the clue has');
   await settings.getByRole('combobox', { name: /^Game/ }).selectOption('describe');
   await page.screenshot({ path: 'test-results/partner-editor.png' });
-  // Folded (as they start on a short screen, so the slide fits), the rules are one line, with the points in money.
-  await settings.locator(':scope > summary').click();
-  const line = (await settings.locator(':scope > summary').innerText()).replace(/\s+/g, ' ').trim();
+  // ▸ More rules folded: the one line keeps the game, who describes and the points in money, and the fold says what it
+  // holds that isn't the usual.
+  await settings.getByRole('checkbox', { name: 'The picker can be on the wheel' }).check();
+  await moreRules.click();
+  const line = (await settings.locator('.top').innerText()).replace(/\s+/g, ' ').trim();
   assert(
-    !(await settings.getByRole('combobox', { name: /^Game/ }).isVisible()) && line === '🗣 Describe it · The partner describes · On this $400 tile: got → describer +$400, guesser +$200 · missed → guesser −$200',
-    `the rules fold to one line that says the game, who describes and the points in money (${line})`,
+    (await points.count()) === 0 &&
+      (await settings.getByRole('combobox', { name: /^Game/ }).isVisible()) &&
+      line.includes('Who describes: the partner the picker') &&
+      line.includes('got → describer +$400, guesser +$200 · missed → guesser −$200') &&
+      line.endsWith('▸ More rules · the picker can be on the wheel'),
+    `folded, the rules' line keeps the game, who describes and the money, and ▸ More rules says what's set (${line})`,
   );
+  await away();
+  await undo();
   // Left folded, they start folded next time. Opened again, they stay open through each change, and a share typed key by
   // key gets every key.
   await page.keyboard.press('Escape');
   await dialog.waitFor({ state: 'detached' });
   await page.locator('[data-tile="0,1"]').click();
   await dialog.waitFor();
-  const gameBox = settings.getByRole('combobox', { name: /^Game/ });
-  assert(!(await gameBox.isVisible()), 'left folded, the rules start folded next time');
-  await settings.locator(':scope > summary').click();
+  const gameBox = points;
+  assert((await moreRules.getAttribute('aria-expanded')) === 'false' && !(await gameBox.isVisible()), 'left folded, ▸ More rules starts folded next time');
+  await moreRules.click();
   await gameBox.waitFor();
   await points.selectOption('none');
   assert(await gameBox.isVisible(), 'a Points choice leaves them open');
@@ -345,11 +365,11 @@ try {
   await page.keyboard.press('Control+a');
   await page.keyboard.type('75');
   assert(
-    (await gameBox.isVisible()) && (await guesserGot.inputValue()) === '75' && (await summary()).startsWith('On this $400 tile: got → describer +$400, guesser +$300'),
+    (await gameBox.isVisible()) && (await guesserGot.inputValue()) === '75' && (await summary()).startsWith('got → describer +$400, guesser +$300'),
     `typing 75 in a share leaves them open and takes both keys (${await guesserGot.inputValue()}: ${await summary()})`,
   );
   await points.selectOption('game');
-  assert((await summary()) === 'On this $400 tile: got → describer +$400, guesser +$200 · missed → guesser −$200', `Describe it’s points again (${await summary()})`);
+  assert((await summary()) === 'got → describer +$400, guesser +$200 · missed → guesser −$200', `As in Describe it: its points again (${await summary()})`);
 
   // ---------- The board, Find and the history ----------
   await page.keyboard.press('Escape');

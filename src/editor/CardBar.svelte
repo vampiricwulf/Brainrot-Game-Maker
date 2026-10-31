@@ -100,7 +100,8 @@
       class:on={phoneView}
       aria-pressed={phoneView}
       onclick={() => (phoneView = !phoneView)}
-      title="The card exactly as a player’s phone gets it: its words, then its pictures and videos one under another, and what won’t reach a phone">📱 On their phone</button
+      title="The card exactly as a player’s phone gets it: its words, then its pictures and videos one under another, and what won’t reach a phone. It goes only to the phones you send it to, never on stream, and nothing goes until you send it. The buzzer server keeps it until the tile closes (a Final’s: until the Final ends) or you take it back, its pictures and videos up to 10 minutes longer; a partner clue’s ⇡ Get it ready puts them there before you send, where no phone can get them. Without a phone, you copy it to them (📋)."
+      >📱 On their phone</button
     >
   </span>
 </div>

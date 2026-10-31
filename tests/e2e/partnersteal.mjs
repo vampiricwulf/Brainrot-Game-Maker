@@ -100,9 +100,11 @@ try {
   console.log('Editor:');
   await host.locator('[data-tile="0,1"]').click();
   const dialog = host.getByRole('dialog', { name: 'Edit clue' });
-  const settings = dialog.locator('details.partner-opts');
+  const settings = dialog.getByRole('group', { name: 'Partner clue' });
   const after = settings.getByRole('combobox', { name: /^After a miss/ });
-  const summary = async () => (await settings.locator(':scope > summary .money').innerText()).replace(/\s+/g, ' ').trim();
+  const summary = async () => (await settings.locator('.money').innerText()).replace(/\s+/g, ' ').trim();
+  // (After a miss is under ▸ More rules, folded at first.)
+  await settings.locator('[data-more-rules]').click();
   assert((await after.inputValue()) === 'game' && (await after.locator('option:checked').innerText()).includes('(no steal)'), 'a partner clue’s “After a miss” starts as ⚖ Game rules say (no steal)');
   await after.selectOption('on');
   assert((await summary()).endsWith('missed → guesser −$200, then a steal: $400'), `“The others can steal it”: the summary says what a steal is worth (${await summary()})`);

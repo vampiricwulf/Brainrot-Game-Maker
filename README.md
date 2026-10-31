@@ -86,7 +86,10 @@ A tile's menu has **Make it a…** (Standard, ⭐ Daily Double, 🤝 Partner clu
 Everyone answers and ⬚ Empty tile), the kind it is ticked; a wheel or dice tile opens the clue at its Which wheel or
 Which dice box. A tile with an answer made a 🤝 partner clue by hand (its Type, Make it a…, or a paste) starts with 🤫
 Card 1 a copy of the answer, as 🔀 Randomize's do (the round's 🤫 Card choice “empty, to fill in” keeps it empty); an
-empty card's words box has **⧉ Same as the answer** in its corner, and so does the checklist's line about it. Files drop onto the slot
+empty card's words box has **⧉ Same as the answer** in its corner, and so does the checklist's line about it. A partner
+clue's rules show its game, who describes and what it comes to in money on one line; the picker on the wheel, a typed
+guess, a steal after a miss, the points and the part words are under **▸ More rules** (this computer remembers it open
+or folded). Files drop onto the slot
 they belong in (a picture dropped on a tile asks: in the question, or as the tile's face). Press `?` (or **❔ Help** ›
 ⌨ Keyboard shortcuts) for every editor shortcut, and beside them, one click away, the host's during the game, with a filter for both. The longer help on the board, a slide, the RPG map and the board game page sits in a
 **💡 Tips** fold that stays as you left it.

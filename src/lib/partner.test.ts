@@ -212,7 +212,7 @@ describe('changing a partner clue’s rules', () => {
     expect(pointsChoice({ ...bare, missed: { giver: 0, guesser: -100 } })).toBe('all');
     expect(pointsChoice({ ...bare, missed: { giver: 0, guesser: -30 } })).toBe('custom');
     expect(pointsChoices('custom').map((c) => c.value)).toEqual(['none', 'all', 'custom']);
-    expect(pointsChoices('describe')[0].label).toBe('Describe it’s');
+    expect(pointsChoices('describe')[0].label).toBe('As in Describe it');
     // In the clue's own part words.
     expect(pointsChoices('describe').find((c) => c.value === 'all')?.label).toBe('The guesser loses it all');
     expect(pointsChoices('help', partWords(gameRules('help')).guesser).find((c) => c.value === 'all')?.label).toBe('The answerer loses it all');

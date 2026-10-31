@@ -81,11 +81,11 @@ export function pointsChoice(rules: PartnerRules): PartnerPoints {
 }
 
 /**
- * The Points choices for the clue's game, with their names ("Describe it's", "No penalty"…), in its part words
+ * The Points choices for the clue's game, with their names ("As in Describe it", "No penalty"…), in its part words
  * (`guesser`: "The answerer loses it all").
  */
 export function pointsChoices(game: PartnerGame, guesser = 'guesser'): { value: PartnerPoints; label: string }[] {
-  const own = game === 'custom' ? [] : [{ value: 'game' as const, label: `${PARTNER_GAMES[game].label}’s` }];
+  const own = game === 'custom' ? [] : [{ value: 'game' as const, label: `As in ${PARTNER_GAMES[game].label}` }];
   return [...own, { value: 'none', label: 'No penalty' }, { value: 'all', label: `The ${lowerWord(guesser)} loses it all` }, { value: 'custom', label: 'Custom' }];
 }
 
