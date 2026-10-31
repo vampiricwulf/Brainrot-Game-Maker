@@ -901,7 +901,11 @@ old name too, for a release or two: `RENAMED` in `src/lib/keylist.ts`). `?` in t
 ❔ Help on the game screen on During the game, the round being played's keys first (on the pre-game screen its own keys
 first), over the host panel in a single window. In its filter `?` types; `Esc` clears the filter, then closes it. Its
 foot has 📖 How to host ↗ and 💡 Show all tips again (the editor's 💡 Tips open again the next time, and the game
-screen's first-time notes show again). The main keys:
+screen's first-time notes show again). Each part starts with **🆕 What moved in this version** (`src/play/whatmoved.svelte.ts`:
+`WHAT_MOVED` by part, one line per change that moved something, since `MOVED_SINCE`, then the renames from `RENAMED`),
+a fold open while it's new on this computer (`jb.whatMovedSeen.<part>`), folded after; it's hidden while the filter has
+words. ❔ Help on the game screen has a dot while the During the game part's list is new. Each change that moves
+something adds its line there. The main keys:
 
 | Key | Action |
 |---|---|

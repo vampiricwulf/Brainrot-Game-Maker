@@ -18,6 +18,7 @@
   import { mayAsk, type GoPanel } from './host/goon';
   import { CHECK, FLOW } from './host/verbs';
   import { phoneAwaySince } from './host/phoneaway.svelte';
+  import { movedNew } from './whatmoved.svelte';
   import { categoryLabel, clueCardWords, clueValue, finalName, formatPoints, isBoard, isSlides, questionSlides, typedPoints, wholePoints, type Game, type Session } from '../lib/model';
   import { answerShowing, awardOpen, clueMarks, clueName, clueScored, currentClueInfo, currentFinal, findClueRef, nameList, ownPlayers, partnerSteal, roundComplete, score, setScore, slidePosition, stealersLeft, tiebreakHolds, tiedForFirst, toolOnlyClue, usedTiles } from '../lib/session';
   import MediaControls from './MediaControls.svelte';
@@ -1558,7 +1559,13 @@
     <span class="spacer"></span>
     <!-- ❔ Help beside 🚪 Exit, at the far end. -->
     <span class="group g-exit">
-      {#if onkeys}<button class="ghost" onclick={onkeys} title="Every key for this round (?), 📖 How to host and 💡 the tips">❔ <span class="txt">Help</span></button>{/if}
+      <!-- (A dot while what moved in this version hasn't been shown on this computer: the keys window opens on it.) -->
+      {#if onkeys}<button
+          class="ghost help"
+          onclick={onkeys}
+          title={`Every key for this round (?), 📖 How to host and 💡 the tips${movedNew('game') ? ' · 🆕 What moved in this version' : ''}`}
+          >❔ <span class="txt">Help</span>{#if movedNew('game')}<span class="newdot" data-moved-dot aria-hidden="true"></span>{/if}</button
+        >{/if}
       <button class="ghost exit" onclick={() => (askExit = true)}>🚪 Exit</button>
     </span>
   </div>
@@ -2334,6 +2341,19 @@
   .award > .spacer {
     flex: none;
     margin-left: auto;
+  }
+  /* ❔ Help's dot: what moved in this version, not shown yet (on its corner, taking no room). */
+  .help {
+    position: relative;
+  }
+  .newdot {
+    position: absolute;
+    top: 3px;
+    right: 3px;
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: var(--accent);
   }
   /* ▶ Uncover while viewers see the card: filled, so it's plain the stream is covered. */
   .cover-toggle.on {

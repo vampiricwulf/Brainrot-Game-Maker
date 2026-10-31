@@ -2,9 +2,10 @@
   ⌨ Keyboard shortcuts: one window for the editor's keys and the host's during the game (spec §6.8), a switch at its
   top between the two, and a filter for both (it also finds a renamed button by its old name). The editor's ? opens it
   on Editor; ? and ❔ Help on the game screen open it on During the game, the round's keys first (in a single window,
-  over the host panel: viewers see that window, so the stage stays clear). There, what the check before going on was
-  told not to ask about this game is listed first, each with Ask again. Its foot has the hosting guide and 💡 Show all
-  tips again.
+  over the host panel: viewers see that window, so the stage stays clear). Each part starts with what moved in this
+  version (open while it's new on this computer, folded after: see whatmoved.svelte.ts). There, what the check before
+  going on was told not to ask about this game is listed first, each with Ask again. Its foot has the hosting guide and
+  💡 Show all tips again.
 -->
 <script lang="ts">
   import { modal } from '../lib/modal';
@@ -15,6 +16,8 @@
   import { showTipsAgain } from '../lib/tips';
   import { EDITOR_KEYS } from '../editor/editorkeys';
   import { BEFORE, hostKeys, silencedRows, type Silenced } from './hostkeys';
+  import { markMovedSeen, movedNew, renames, WHAT_MOVED, type MovedPart } from './whatmoved.svelte';
+  import { untrack } from 'svelte';
 
   type Part = 'editor' | 'game';
   let {
@@ -58,6 +61,14 @@
   const other: Part = $derived(part === 'editor' ? 'game' : 'editor');
   /** Filtering: how many rows match in the other part (a key looked up in the wrong one is a click away). */
   const elsewhere = $derived(filter.trim() ? rowCount(lists[other]) : 0);
+
+  /** What moved in this version, in the part shown: open while it's new on this computer (as the window opened). */
+  const moved = $derived(WHAT_MOVED[part]);
+  const movedOpen = $state<Record<MovedPart, boolean>>(untrack(() => ({ game: movedNew('game'), editor: movedNew('editor') })));
+  // (Shown: ❔ Help's dot goes.)
+  $effect(() => {
+    if (moved.length) markMovedSeen(part);
+  });
 
   let tipsShown = $state(false);
   // In a browser in one window, the guide's new tab would be what the capture shows.
@@ -114,6 +125,16 @@
         {#if elsewhere}<button class="small ghost" onclick={() => (part = other)}>{elsewhere} in {PARTS[other]} ▸</button>{/if}
       </p>
     {/if}
+    {#if moved.length && !filter.trim()}
+      <!-- For a host who knows the old places: where things went, and the new names (the filter finds the old ones). -->
+      <details class="moved" data-what-moved bind:open={movedOpen[part]}>
+        <summary>🆕 What moved in this version <span class="muted">· {moved.length} changes, and new names</span></summary>
+        <ul>
+          {#each moved as line (line)}<li>{line}</li>{/each}
+        </ul>
+        {#if part === 'game'}<p class="muted renamed"><b>Renamed:</b> {renames().join(' · ')}</p>{/if}
+      </details>
+    {/if}
     {#if part === 'game' && quiet.length}
       <!-- What's ticked off this game (the check's "Don't ask about … again this game"), each a click from asking again. -->
       <section class="quiet" data-quiet aria-labelledby="keys-quiet">
@@ -161,6 +182,27 @@
 </div>
 
 <style>
+  /* What moved in this version: a quiet fold above the keys. */
+  .moved {
+    margin: 4px 0 8px;
+    padding: 6px 10px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+  }
+  .moved > summary {
+    cursor: pointer;
+    font-weight: 600;
+  }
+  .moved ul {
+    margin: 6px 0;
+    padding-left: 20px;
+  }
+  .moved li + li {
+    margin-top: 3px;
+  }
+  .renamed {
+    margin: 4px 0 0;
+  }
   /* Single window: over the host panel only, never the stage viewers see. */
   .modal-backdrop.in-panel {
     inset: auto;

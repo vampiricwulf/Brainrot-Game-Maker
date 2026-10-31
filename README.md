@@ -592,7 +592,9 @@ left with the screen covered comes back covered.
 
 The main ones (press `?`, or **❔ Help** at the end of the host panel's bar, before or during the game for all of them,
 starting with the ones for the round or screen you're on; the window has a filter, and its **[ Editor | During the game ]**
-switch shows the editor's keys too):
+switch shows the editor's keys too). After an update, the window starts with **🆕 What moved in this version**: where
+buttons went and their new names, for a host who knows the old places (open the first time, folded after; ❔ Help has a
+dot until you've seen it). The filter finds a renamed button by its old name too:
 
 | Key | Action |
 |---|---|
