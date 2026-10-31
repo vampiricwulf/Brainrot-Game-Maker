@@ -157,6 +157,10 @@
     border-radius: 8px;
     box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
   }
+  /* (Here 📱 Free seat goes without its "(new phone)", so each row stays on one line in the narrow list.) */
+  .pop :global(.free .why) {
+    display: none;
+  }
   /* (Here a long name gives way, so each row's status and buttons stay on one line inside it.) */
   .pop :global(.phones .name) {
     min-width: 0;

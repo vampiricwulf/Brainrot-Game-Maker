@@ -6,7 +6,7 @@ import { newBoardGameRound } from './boardgame';
 import { newRpgRound, newVariant } from './rpg';
 import { addClueSlide, setClueType } from './ops';
 import { addCard } from './partner';
-import { nameGivesAway, savedCardProblems, validate } from './validate';
+import { nameGivesAway, phoneUses, phoneUsesLine, savedCardProblems, validate } from './validate';
 import { OLD_FILE_LIMITS } from './buzzproto';
 import type { Verdict } from './shrink/playable';
 
@@ -779,5 +779,40 @@ describe('videos and sounds this browser won’t play', () => {
     const fails: Verdict = { is: 'fails', fix: null, why: { kind: 'video', video: 'hevc' } };
     expect(playLines(game, (m) => (m.id === 'a' ? { is: 'plays', repack: null } : fails))).toEqual([]);
     vi.unstubAllGlobals();
+  });
+});
+
+describe('what a game uses phones for (▶ Play’s 📱 card, with phone buzzers off)', () => {
+  it('nothing for a plain game', () => {
+    const game = jeopardyGame();
+    expect(phoneUses(game)).toEqual({ partner: 0, cards: false, deals: false, choices: false });
+    expect(phoneUsesLine(phoneUses(game))).toBe('');
+  });
+
+  it('partner clues with cards (how many) and multiple choice, with what the host does without phones', () => {
+    const game = jeopardyGame();
+    const round = game.rounds[0] as BoardRound;
+    for (const cl of [round.categories[0].clues[0], round.categories[1].clues[0], round.categories[2].clues[0]]) setClueType(round, cl, 'partner');
+    // (A partner clue with no card left: nothing for phones.)
+    round.categories[2].clues[0].cards = [];
+    const mc = round.categories[3].clues[0];
+    mc.everyone = true;
+    mc.choices = [{ id: '1', text: 'Paris' }, { id: '2', text: 'Oslo' }];
+    expect(phoneUses(game)).toEqual({ partner: 2, cards: false, deals: false, choices: true });
+    expect(phoneUsesLine(phoneUses(game))).toBe(
+      'This game uses phones for 🤝 partner cards (2 clues) and ✍ multiple choice. Without phone buzzers you copy the cards to the players yourself, and they say the letter.',
+    );
+  });
+
+  it('a tile’s or a Final’s 🤫 cards and 🎭 deals; multiple choice on its own', () => {
+    const game = jeopardyGame();
+    const fin = game.rounds.find((r) => r.mode === 'final') as FinalRound;
+    addCard(fin, 'playing');
+    game.deals = [{ id: 'd', name: 'Spy', parts: [] }] as never;
+    expect(phoneUsesLine(phoneUses(game))).toBe('This game uses phones for 🤫 secret cards and 🎭 deals. Without phone buzzers you copy the cards and the parts to the players yourself.');
+    expect(phoneUsesLine({ partner: 1, cards: false, deals: false, choices: false })).toBe('This game uses phones for 🤝 partner cards (1 clue). Without phone buzzers you copy the cards to the players yourself.');
+    expect(phoneUsesLine({ partner: 0, cards: false, deals: false, choices: true })).toBe(
+      'This game uses phones for ✍ multiple choice. Without phone buzzers the choices show on stream and players say the letter.',
+    );
   });
 });

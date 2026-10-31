@@ -8,7 +8,7 @@ import { existsSync, mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { addClassicRounds, checkItem, goOnCheck, openRules, playWithPlayers, quick, startRoomOn, tap, tieThem } from './helpers.mjs';
+import { addClassicRounds, checkItem, goOnCheck, openBuzzerOptions, openRules, playWithPlayers, quick, startRoomOn, tap, tieThem } from './helpers.mjs';
 
 const file = resolve(process.env.APP_FILE || 'dist/index.html');
 if (!existsSync(file)) throw new Error('Run `npm run build` first');
@@ -89,6 +89,8 @@ try {
   await playWithPlayers(host, 2);
   const card = host.getByRole('region', { name: 'Phone buzzers' });
   await card.getByLabel(/Buzzer mode/).check();
+  // (The options are folded under ▸ Buzzer options.)
+  await openBuzzerOptions(card);
   await card.getByLabel('Open the buzzers').selectOption('host');
   // No negative scores: a wrong answer from a player on $0 takes nothing, but still locks them out (below).
   const neg = (await openRules(host)).getByLabel('Allow negative scores');
@@ -355,7 +357,7 @@ try {
   assert(true, 'back online, the host picks the player who buzzed while it was away');
   await host.keyboard.press('Escape');
 
-  // ---------- Exit › Keep & leave keeps the room; ✕ Close the room ends it ----------
+  // ---------- Exit › Keep & leave keeps the room; ⏹ Close the room… ends it ----------
   await host.getByRole('button', { name: 'Exit' }).click();
   await host.waitForTimeout(450);
   await host.getByRole('button', { name: 'Keep & leave', exact: true }).click();
@@ -369,12 +371,12 @@ try {
   const p2Tap = taps.get(p2);
   p2Tap.blocked = true;
   p2Tap.drop();
-  // The host's line died a moment ago without a word (the Wi-Fi dropped: nothing has noticed yet) as ✕ Close the room is
+  // The host's line died a moment ago without a word (the Wi-Fi dropped: nothing has noticed yet) as ⏹ Close the room… is
   // pressed, so the close goes out, and nowhere; and it stays down a while. The room closes once it's back (not hours
   // later). (A line known to be down is unit-tested: remote.test.ts.)
   hostTap.blocked = true;
   hostTap.stall();
-  await host.locator('.room-bar').getByRole('button', { name: '✕ Close the room' }).click();
+  await host.locator('.room-bar').getByRole('button', { name: '⏹ Close the room…' }).click();
   // Phones are in it: the bar asks first, as the 📱 card does, the safe answer first (with the keys).
   const closeAsk = host.locator('.status-bar').getByRole('alertdialog', { name: 'Close the room?' });
   await closeAsk.waitFor();
@@ -382,14 +384,14 @@ try {
     (await closeAsk.getByRole('button').allInnerTexts()).join(' | ') === 'Keep it open | Close the room' &&
       (await closeAsk.getByRole('button', { name: 'Keep it open' }).evaluate((el) => el === document.activeElement)) &&
       /2 phones are in the room: closing it sends them out, and they’d join again with a new code/.test(await closeAsk.innerText()),
-    `✕ Close the room in the bar over the editor asks first with a phone in the room, Keep it open first (${(await closeAsk.innerText()).replace(/\s+/g, ' ')})`,
+    `⏹ Close the room… in the bar over the editor asks first with a phone in the room, Keep it open first (${(await closeAsk.innerText()).replace(/\s+/g, ' ')})`,
   );
   await closeAsk.getByRole('button', { name: 'Close the room' }).click();
   await host.locator('.room-bar').waitFor({ state: 'detached' });
   assert((await fetch(`${base}/api/rooms/${code}`)).status !== 404, 'pressed while the host’s line is dead: the room can’t be told yet');
   hostTap.blocked = false;
   await p1.locator('main').getByText('The game is over').waitFor({ timeout: 30_000 });
-  assert((await fetch(`${base}/api/rooms/${code}`)).status === 404, '✕ Close the room closes it once the host’s line is back: phones say the game is over');
+  assert((await fetch(`${base}/api/rooms/${code}`)).status === 404, '⏹ Close the room… closes it once the host’s line is back: phones say the game is over');
   await late.locator('main').getByText('The host closed this room').waitFor();
   assert(
     (await late.locator('main').innerText()).includes('If the game is still on, ask for the new code') && (await late.locator('main').getByText('The game is over').count()) === 0,

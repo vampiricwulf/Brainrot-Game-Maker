@@ -1,6 +1,8 @@
 // What the ▶ Play screen says about the players' phones while the buzzer room is up: the Start bar's line (who's in, who
-// it's waiting for) and each 👥 row's phone in words. Pure: unit-tested in phonewords.test.ts.
+// it's waiting for), each 👥 row's phone in words, and the 📱 card's folded buzzer options. Pure: unit-tested in
+// phonewords.test.ts.
 import { KICK_BLOCK_MS } from '../lib/buzzproto';
+import type { GameSettings } from '../lib/model';
 
 /** A player (a team, with Teams on) as the room line needs them. */
 export interface LinePlayer {
@@ -78,4 +80,17 @@ export function phoneWord(s: SeatSeen, now: number): PhoneWord {
   }
   if (s.locked) return { text: '🔒 locked out', tone: 'plain', title: 'Lock seats keeps new phones out: untick 🔒 Lock seats to let their phone in' };
   return { text: '📱 waiting', tone: 'plain', title: 'No phone has their seat yet: they open the link and tap their name' };
+}
+
+/**
+ * The 📱 card's ▸ Buzzer options fold, closed: each option as it's set ("Buzzers open with the clue · new players: no ·
+ * colors on phones · 1 s early wait"). With Teams on, the two options teams leave out aren't named.
+ */
+export function buzzerGist(s: Pick<GameSettings, 'buzzArm' | 'phoneJoin' | 'phoneColorsOff' | 'earlyBuzzLock' | 'buzzTeams'>): string {
+  const wait = s.earlyBuzzLock ?? 1;
+  return [
+    s.buzzArm === 'host' ? 'Buzzers open on U' : 'Buzzers open with the clue',
+    ...(s.buzzTeams ? [] : [s.phoneJoin ? 'new players: yes' : 'new players: no', s.phoneColorsOff ? 'no colors on phones' : 'colors on phones']),
+    wait ? `${wait} s early wait` : 'no early wait',
+  ].join(' · ');
 }

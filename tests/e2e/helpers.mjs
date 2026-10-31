@@ -160,6 +160,18 @@ export async function startNewGame(page) {
   await page.locator('main.play').waitFor();
 }
 
+/**
+ * The 📱 Phone buzzers card's ▸ Buzzer options fold (when the buzzers open, new players, colors, the early wait), opened
+ * (this computer remembers it). `where`: the card, or the page.
+ */
+export async function openBuzzerOptions(where) {
+  const fold = where.locator('[data-buzzer-options]');
+  await fold.waitFor();
+  if (!(await fold.evaluate((d) => d.open))) await fold.locator('summary').click();
+  await fold.evaluate((d) => new Promise((ok) => (d.open ? ok() : d.addEventListener('toggle', () => ok(), { once: true }))));
+  return fold;
+}
+
 /** The pre-game screen's ⚖ Game rules, opened (rules, timers, the round intro). */
 export async function openRules(page) {
   const rules = page.locator('details.rules');

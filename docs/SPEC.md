@@ -416,7 +416,14 @@ RollEvent  { id, ts, source: 'wheel' | 'dice', presetName?, result: string /* la
    up, each 👥 row says how its phone is in words where the name's chip was (📱 in, 📱 waiting, 📵 lost 0:12, ⛔ kicked
    1:40, 🔒 locked out), and the sticky Start bar has the room's live line, one line high: who's asking to join with ✔ Add / ✕ No (two or
    more: how many, and Show ↓ to the 📱 card's list), else the code, who's in and who it's waiting for, plain until
-   everyone is in, then green.
+   everyone is in, then green. The 📱 Phone buzzers card goes in the order it's used: ☐ Phone buzzers on (Buzzer
+   mode, ☐ Teams beside it); ▶ Start the room right under it, then the QR code, the code, the link and 📋 Copy link; who's
+   asking to join (✔ Add / ✕ No), then each player's phone (📱 Free seat (new phone) first, ⛔ Kick apart at the end, red);
+   "▸ Buzzer options · Buzzers open with the clue · new players: no · colors on phones · 1 s early wait" folded (the
+   line says each as set; remembered on this computer; it opens by itself only for an option this buzzer server can't
+   do); and a foot row, 🔒 Lock seats left and ⏹ Close the room… right, which asks while any phone is in. With phone
+   buzzers off it says what the game uses phones for (🤝 partner cards, 🤫 cards, 🎭 deals, ✍ multiple choice) and what
+   the host does without them.
 3. Start. The board is shown. The host can immediately run a **roll-off** (§6.6) to decide who picks first, or
    set the current picker by hand.
 

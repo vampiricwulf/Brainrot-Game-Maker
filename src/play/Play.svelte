@@ -54,7 +54,7 @@
   import { applyScoreCard, openDice, openMemberWheel, openPartnerWheel, openPlayerWheel, openWheel, quickDice, rollDice, scoreCardsLeft, spinningRolls, spinWheel, startRollOff, toggleScoreboard, wheelSpentUp } from '../lib/overlay';
   import type { DicePreset } from '../lib/model';
   import { isRespin, tileDice } from '../lib/tools';
-  import { dailyDoublesShort, partnerTilesShort, validate } from '../lib/validate';
+  import { dailyDoublesShort, partnerTilesShort, phoneUses, phoneUsesLine, validate } from '../lib/validate';
   import { isColorTaken, nextFreeColor, obsKeyed, PLAYER_PALETTE } from '../lib/colors';
   import { announce } from '../lib/announce';
   import { keyedRoundColors, keyedThemeColors, otherStageKey, roundStageColors, STAGE_KEYS } from '../lib/theme';
@@ -1776,7 +1776,7 @@
   let keepRoomOpen = false;
   /**
    * ◀ Back to editor (pre-game): the room stays open, its phones told the host is setting up; ▶ Play goes back into it.
-   * Only Exit / End game, ✕ Close the room or turning Buzzer mode off close it.
+   * Only Exit / End game, ⏹ Close the room… or turning Buzzer mode off close it.
    */
   function backToEditor(fix?: string): void {
     // (A room started here that no phone is in, while the kept game's phones wait in its own: it closes, as with
@@ -1821,7 +1821,7 @@
     return true;
   }
 
-  /** ✕ Close the room (the 📱 card): the phones are told the game is over; Start the room makes a new one. */
+  /** ⏹ Close the room… (the 📱 card): the phones are told the game is over; Start the room makes a new one. */
   function closePhoneRoom(): void {
     const told = closeRoom();
     session.remote = null;
@@ -4585,6 +4585,8 @@
     if (!dual) askCloseAud = false;
   });
 
+  /** What the game uses phones for (the 📱 card says it while phone buzzers are off): its partner cards, choices… */
+  const phoneUsesNow = $derived(phonesOn ? '' : phoneUsesLine(phoneUses(game)));
   /** Buzzer mode is on and the room is up: its code, and the players whose phones are in. */
   const roomUp = $derived(phonesOn && !!remote.code && remote.status !== 'off' && remote.status !== 'error');
   const phonesIn = $derived(session.players.filter((p) => remote.phones.some((ph) => ph.seatId === p.id && ph.connected)).length);
@@ -6143,6 +6145,7 @@
             onsetup={app.playerOnly ? undefined : () => (showSettings = true)}
             onmenu={(e, id) => roster?.openMenu(e, id)}
             onrename={(id) => roster?.rename(id)}
+            uses={phoneUsesNow}
           />
         </div>
         {#if prefs.liveChecklist}

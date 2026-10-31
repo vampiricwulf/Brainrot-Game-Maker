@@ -19,7 +19,7 @@ import { chromium } from 'playwright-core';
 import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { anyway, checkItem, editorReady, flowIs, goOnCheck, mainButton, notYet, openGameFile, quick, startBuzzer, startRoomOn, stepButton } from './helpers.mjs';
+import { anyway, checkItem, editorReady, flowIs, goOnCheck, mainButton, notYet, openBuzzerOptions, openGameFile, quick, startBuzzer, startRoomOn, stepButton } from './helpers.mjs';
 
 const file = resolve(process.env.APP_FILE || 'dist/index.html');
 if (!existsSync(file)) throw new Error('Run `npm run build` first');
@@ -337,6 +337,8 @@ try {
     const { ctx, page } = await host('hidden, one window', buzzer.base);
     const card = page.getByRole('region', { name: 'Phone buzzers' });
     await card.getByLabel(/Buzzer mode/).check();
+    // (The options are folded under ▸ Buzzer options.)
+    await openBuzzerOptions(card);
     await card.getByLabel('Open the buzzers').selectOption('host');
     await startRoomOn(card);
     await start(page);

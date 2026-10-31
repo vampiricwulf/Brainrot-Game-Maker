@@ -67,6 +67,43 @@ export interface Problem {
   convert?: Id[];
 }
 
+/**
+ * What a game uses phones for (▶ Play's 📱 Phone buzzers card says it while they're off): 🤝 partner clues with cards
+ * (how many), tiles' and Finals' 🤫 cards and the ones made before the show, 🎭 deals, and ✍ multiple choice.
+ */
+export function phoneUses(game: Game): { partner: number; cards: boolean; deals: boolean; choices: boolean } {
+  const clues = boardRounds(game).flatMap((r) => playableClues(r));
+  return {
+    partner: clues.filter((c) => c.type === 'partner' && cardSlides(c).length).length,
+    cards: clues.some((c) => c.type !== 'partner' && cardSlides(c).length) || game.rounds.some((r) => isFinal(r) && cardSlides(r).length) || !!game.cards?.length,
+    deals: !!game.deals?.length,
+    choices:
+      clues.some((c) => c.type === 'standard' && c.everyone && usableChoices(c.choices).length) ||
+      game.rounds.some((r) => isFinal(r) && !r.phoneAnswersOff && usableChoices(r.choices).length),
+  };
+}
+
+/**
+ * The line that says it, with what the host does without phones ("This game uses phones for 🤝 partner cards (3 clues)
+ * and ✍ multiple choice. Without phone buzzers you copy the cards to the players yourself, and they say the letter.");
+ * nothing when it uses none.
+ */
+export function phoneUsesLine(u: ReturnType<typeof phoneUses>): string {
+  const what = [
+    u.partner ? `🤝 partner cards (${plural(u.partner, 'clue')})` : '',
+    u.cards ? '🤫 secret cards' : '',
+    u.deals ? '🎭 deals' : '',
+    u.choices ? '✍ multiple choice' : '',
+  ].filter(Boolean);
+  if (!what.length) return '';
+  const copy = [u.partner || u.cards ? 'the cards' : '', u.deals ? 'the parts' : ''].filter(Boolean).join(' and ');
+  const without = copy
+    ? `you copy ${copy} to the players yourself${u.choices ? ', and they say the letter' : ''}`
+    : 'the choices show on stream and players say the letter';
+  const list = what.length > 1 ? `${what.slice(0, -1).join(', ')} and ${what.at(-1)}` : what[0];
+  return `This game uses phones for ${list}. Without phone buzzers ${without}.`;
+}
+
 /** "1 clue", "3 clues" ("category" → "categories"). */
 function plural(n: number, word: string): string {
   return `${n} ${n === 1 ? word : word.endsWith('y') ? `${word.slice(0, -1)}ies` : `${word}s`}`;

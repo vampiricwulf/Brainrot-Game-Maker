@@ -1,5 +1,6 @@
 <!--
-  Phone buzzers: each player and their phone (joined, gone quiet, or not yet), and people asking to join from theirs.
+  Phone buzzers: people asking to join from their phone first, then each player and their phone (joined, gone quiet, or
+  not yet), with 📱 Free seat (new phone) and, apart at the row's end, ⛔ Kick.
   Teams: each team and the people on it (move one to another team, or take them off). A player's row opens their menu
   (a right-click, Shift+F10; before the game the 👥 list's, in the game the host's) and F2 renames them before the game.
 -->
@@ -36,7 +37,7 @@
      * it, blocking nobody (they're back on a new phone, maybe on the same Wi-Fi).
      */
     onkick: (seatId: string, free?: boolean) => void;
-    /** 🔒 Lock seats on or off. */
+    /** 🔒 Lock seats on or off (the list's own box, at its foot; ▶ Play's 📱 card has its own, beside ⏹ Close the room…). */
     onlock?: (on: boolean) => void;
     /** Teams: each player is a team that several phones join. */
     teams?: boolean;
@@ -92,6 +93,14 @@
   const picking = $derived(remote.phones.filter((p) => !p.seatId && !p.pendingName && p.connected).length);
 </script>
 
+{#if waiting.length}
+  <!-- Who's asking to join, first. (The ▶ Play bar's Show ↓ brings this into sight, with the keys on it.) -->
+  <div class="asks" role="status" data-join-asks tabindex="-1" aria-label="Asking to join">
+    {#each waiting as w (w.conn)}
+      <div class="ask"><JoinAsk phone={w} {full} {down} {onadd} {onreject} /></div>
+    {/each}
+  </div>
+{/if}
 <ul class="phones">
   {#each session.players as p (p.id)}
     {@const ph = phoneOf(p.id)}
@@ -165,6 +174,7 @@
         <button class="small ghost" onclick={() => onkick(p.id, true)} disabled={down} aria-label="Let back: {p.name}’s phone" title={down ? downTitle : 'Let the phone you kicked take this seat again now'}>↩ Let back</button>
       {/if}
       {#if ph}
+        <!-- The harmless one first; ⛔ Kick (it blocks that phone for 2 minutes) apart at the end, in red. -->
         {#if roomCanFree()}
           <button
             class="small free"
@@ -173,9 +183,9 @@
             disabled={down}
             aria-label="Free seat: {p.name}’s (moved phone)"
             title={down ? downTitle : "They're on a new phone or browser: free the seat so they can tap their name there. Blocks nobody."}
-          >Free seat</button>
+          >📱 Free seat<span class="why"> (new phone)</span></button>
         {/if}
-        <button class="ghost small kick" onclick={() => onkick(p.id)} disabled={down} aria-label="Kick {p.name}: take their seat back from their phone" title={down ? downTitle : "Kick: take the seat back. That phone, and any on the same Wi-Fi, can't take it again for 2 minutes (they can pick another free name)"}>✕ Kick</button>
+        <button class="ghost small kick danger" onclick={() => onkick(p.id)} disabled={down} aria-label="Kick {p.name}: take their seat back from their phone" title={down ? downTitle : "Kick: take the seat back. That phone, and any on the same Wi-Fi, can't take it again for 2 minutes (they can pick another free name)"}>⛔ Kick</button>
       {/if}
     </li>
     {/if}
@@ -206,14 +216,6 @@
     <input type="checkbox" checked={locked} onchange={(e) => onlock(e.currentTarget.checked)} />
     🔒 Lock seats: no new phones ({teams ? 'people already on a team' : 'players already in'} can come back)
   </label>
-{/if}
-{#if waiting.length}
-  <!-- (The ▶ Play bar's Show ↓ brings this into sight, with the keys on it.) -->
-  <div class="asks" role="status" data-join-asks tabindex="-1" aria-label="Asking to join">
-    {#each waiting as w (w.conn)}
-      <div class="ask"><JoinAsk phone={w} {full} {down} {onadd} {onreject} /></div>
-    {/each}
-  </div>
 {/if}
 
 <style>
@@ -259,8 +261,9 @@
   .kick:first-of-type {
     margin-left: auto;
   }
+  /* (A gap between the harmless 📱 Free seat and ⛔ Kick.) */
   .free + .kick {
-    margin-left: 0;
+    margin-left: 12px;
   }
   .member {
     padding-left: 18px;
@@ -284,7 +287,7 @@
     display: flex;
     flex-direction: column;
     gap: 4px;
-    margin-top: 6px;
+    margin-bottom: 6px;
   }
   .warn {
     color: var(--warn);

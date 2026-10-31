@@ -551,13 +551,13 @@ try {
   // E. Changed in the editor, with no phones (the 🪟 card window)
   // =====================================================================================================================
   console.log('Changed in the editor, no phones:');
-  // Keep & leave, then ✕ Close the room in the bar over the editor: Resume game plays on with no phones getting cards.
+  // Keep & leave, then ⏹ Close the room… in the bar over the editor: Resume game plays on with no phones getting cards.
   await host.getByRole('button', { name: 'Exit' }).click();
   await host.waitForTimeout(450);
   await host.getByRole('button', { name: 'Keep & leave', exact: true }).click();
   await editorReady(host);
   const roomBar = host.locator('.status-bar .room-bar');
-  await roomBar.getByRole('button', { name: '✕ Close the room' }).click();
+  await roomBar.getByRole('button', { name: '⏹ Close the room…' }).click();
   // (Bob's phone is in it: asked first.)
   await host.locator('.status-bar').getByRole('alertdialog', { name: 'Close the room?' }).getByRole('button', { name: 'Close the room' }).click();
   await roomBar.waitFor({ state: 'detached' });

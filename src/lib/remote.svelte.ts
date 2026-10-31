@@ -218,6 +218,8 @@ export function kickSeat(seatId: string, free = false): boolean {
 
 /** The room can free a seat without blocking anyone (an older buzzer server can only kick). */
 export const roomCanFree = (): boolean => remote.features.includes('free');
+/** The room passes a phone's ask for another color on to the host (an older buzzer server's phones can't ask). */
+export const roomCanColor = (): boolean => remote.features.includes('color');
 /** Teams: take one person (their phone) off their team; they can't join it again for 2 minutes. */
 export const kickMember = (seatId: string, member: string) => !!link?.send({ t: 'kick', seatId, member });
 /** Teams: put one person (their phone) on another team. */

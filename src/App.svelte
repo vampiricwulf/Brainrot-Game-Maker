@@ -296,7 +296,7 @@
     });
   });
 
-  /** The status bar's ✕ Close the room is asking first (phones are in the room). */
+  /** The status bar's ⏹ Close the room… is asking first (phones are in the room). */
   let closingRoom = $state(false);
   // (Asked about that room only: another one, or none, isn't asked about.)
   const keptCode = $derived(kept.room?.remote.code);
@@ -304,7 +304,7 @@
     void keptCode;
     closingRoom = false;
   });
-  /** ✕ Close the room (the bar over the editor): the phones are sent out (told the game is over, or that the host closed the room). */
+  /** ⏹ Close the room… (the bar over the editor): the phones are sent out (told the game is over, or that the host closed the room). */
   async function closeKeptRoom(quiet = false): Promise<void> {
     const r = kept.room;
     kept.room = null;
@@ -935,7 +935,7 @@
     if (saved && saved.session.phase !== 'end' && !(await ask(`Discard the saved game "${saved.game.title}"? Its scores and used tiles are deleted.`, { ok: 'Discard', cancel: 'Keep', danger: true })))
       return;
     // Its own room goes with it (the phones are told the game is over), as with Exit › Discard & leave. A room kept open
-    // in the editor belongs to the stream and stays (its bar has ✕ Close the room).
+    // in the editor belongs to the stream and stays (its bar has ⏹ Close the room…).
     const room = saved?.session.remote;
     app.resumable = null;
     if (room && kept.room?.remote.code !== room.code) endRoom(room);
@@ -1203,7 +1203,7 @@
             <span class="muted small">{other ? '▶ Play asks to keep it for this game.' : `${via} goes back into it.`}</span>
           </span>
           {#if !(closingRoom && seated)}
-            <button class="small ghost" onclick={() => (seated ? (closingRoom = true) : closeKeptRoom())}>✕ Close the room</button>
+            <button class="small ghost" onclick={() => (seated ? (closingRoom = true) : closeKeptRoom())}>⏹ Close the room…</button>
           {/if}
         </span>
         {#if closingRoom && seated}

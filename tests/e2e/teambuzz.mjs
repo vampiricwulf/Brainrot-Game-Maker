@@ -13,7 +13,7 @@ import { existsSync, mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { addClassicRounds, addPlayers, answerReplace, openRules, startRoomOn, stored, tap, tieThem } from './helpers.mjs';
+import { addClassicRounds, addPlayers, answerReplace, openBuzzerOptions, openRules, startRoomOn, stored, tap, tieThem } from './helpers.mjs';
 
 const file = resolve(process.env.APP_FILE || 'dist/index.html');
 if (!existsSync(file)) throw new Error('Run `npm run build` first');
@@ -125,6 +125,8 @@ try {
   await card.getByLabel(/Teams: people join a team/).uncheck();
   await addPlayers(host, 2);
   await card.getByLabel(/Buzzer mode/).check();
+  // (The options are folded under ▸ Buzzer options.)
+  await openBuzzerOptions(card);
   await card.getByLabel('Open the buzzers').selectOption('host');
   const teamsBox = card.getByLabel(/Teams: people join a team/);
   await teamsBox.check();
@@ -254,8 +256,8 @@ try {
   await ask.waitFor();
   const asked = (await ask.innerText()).replace(/\s+/g, ' ');
   assert(asked.startsWith('3 phones are in the room: turning teams off sends them all back to tap their name.') && (await teamsBox.isChecked()), `Teams off with people on teams asks first, and the box stays ticked meanwhile (${asked})`);
-  // ✕ Close the room meanwhile: that's the question now (one at a time), and the Teams one is gone for good.
-  await card.getByRole('button', { name: '✕ Close the room' }).click();
+  // ⏹ Close the room… meanwhile: that's the question now (one at a time), and the Teams one is gone for good.
+  await card.getByRole('button', { name: '⏹ Close the room…' }).click();
   const closeAsk = card.getByRole('alertdialog', { name: 'Close the room?' });
   await closeAsk.waitFor();
   const closeButtons = await closeAsk.getByRole('button').allInnerTexts();

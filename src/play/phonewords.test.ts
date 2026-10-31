@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { KICK_BLOCK_MS } from '../lib/buzzproto';
-import { phoneWord, waitingFor, whoJoined } from './phonewords';
+import { buzzerGist, phoneWord, waitingFor, whoJoined } from './phonewords';
 
 const players = [
   { id: 'a', name: 'Ann' },
@@ -64,5 +64,16 @@ describe('a 👥 row’s phone, in words', () => {
     expect(word({ online: true, phone: null, locked: true })).toBe('🔒 locked out');
     expect(word({ online: true, phone: 'in', locked: true })).toBe('📱 in');
     expect(word({ online: false, phone: 'in' })).toBe('📱 out of reach');
+  });
+});
+
+describe('the 📱 card’s folded buzzer options', () => {
+  it('says each option as it’s set', () => {
+    expect(buzzerGist({})).toBe('Buzzers open with the clue · new players: no · colors on phones · 1 s early wait');
+    expect(buzzerGist({ buzzArm: 'host', phoneJoin: true, phoneColorsOff: true, earlyBuzzLock: 0 })).toBe('Buzzers open on U · new players: yes · no colors on phones · no early wait');
+    expect(buzzerGist({ earlyBuzzLock: 0.5 })).toContain('0.5 s early wait');
+  });
+  it('with Teams on, leaves out the two options teams don’t use', () => {
+    expect(buzzerGist({ buzzTeams: true, phoneJoin: true })).toBe('Buzzers open with the clue · 1 s early wait');
   });
 });

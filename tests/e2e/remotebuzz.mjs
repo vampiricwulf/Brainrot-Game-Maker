@@ -5,12 +5,12 @@
 // buzzers, a tie and 🎲 Roll for it, a kick, a reconnect, the room ending mid-game (the panel says so, Start a new
 // room), the audience window closed by accident (the host is told), Exit › Keep & leave keeping the room for Resume,
 // another game keeping the room and its players, its Final with a room too old for answers (then back with them after
-// the question: no answers block), and ✕ Close the room.
+// the question: no answers block), and ⏹ Close the room….
 import { chromium } from 'playwright-core';
 import { existsSync, mkdirSync, readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { addClassicRounds, addPlayers, answerReplace, checkItem, exportHtml, flowIs, goOnCheck, mainButton, openRules, playWithPlayers, quick, leaveAnswer, stored } from './helpers.mjs';
+import { addClassicRounds, addPlayers, answerReplace, checkItem, exportHtml, flowIs, goOnCheck, mainButton, openBuzzerOptions, openRules, playWithPlayers, quick, leaveAnswer, stored } from './helpers.mjs';
 
 const file = resolve(process.env.APP_FILE || 'dist/index.html');
 if (!existsSync(file)) throw new Error('Run `npm run build` first');
@@ -154,19 +154,31 @@ try {
   await card.waitFor();
   assert((await card.getByLabel('Open the buzzers').count()) === 0 && (await card.getByRole('button', { name: '▶ Start the room' }).count()) === 0, 'with Buzzer mode off the card only offers to turn it on');
   await card.getByLabel(/Buzzer mode/).check();
+  // In the order it's used: the tick box, ▶ Start the room right under it, then the options folded, what's set on its line.
+  const optionsFold = card.locator('[data-buzzer-options]');
+  await optionsFold.waitFor();
+  assert(
+    (await optionsFold.evaluate((d) => !d.open)) &&
+      (await optionsFold.locator('summary').innerText()).includes('Buzzers open with the clue · new players: no · colors on phones · 1 s early wait') &&
+      (await card.getByRole('button', { name: '▶ Start the room' }).boundingBox()).y < (await optionsFold.boundingBox()).y,
+    'the 📱 card in the order it’s used: ▶ Start the room under the tick box, then ▸ Buzzer options folded, each option as set on its line',
+  );
+  await openBuzzerOptions(card);
   await card.getByLabel('Open the buzzers').selectOption('host');
   await card.getByLabel(/Let new players join/).check();
+  await optionsFold.locator('summary', { hasText: 'Buzzers open on U · new players: yes' }).waitFor();
+  assert(true, 'the fold’s line follows what’s set');
   await shot('rb-0-setup');
   // A laptop's window: what the room shows once it's started must be in sight, not under the Start bar.
   await page.setViewportSize({ width: 1280, height: 720 });
-  // Start game with Buzzer mode on and no room asks first; Start the room first starts it (the server turns the
+  // Start game with Buzzer mode on and no room asks first; 📱 Start the room starts it (the server turns the
   // first room down: its words show).
   await page.evaluate(() => (window.__room.refuse = 'Too many new rooms — wait a minute'));
   await page.getByRole('button', { name: 'Start game ▶' }).click();
   await page.waitForTimeout(450);
-  await page.locator('.actions .ia').getByRole('button', { name: '📱 Start the room first' }).click();
+  await page.locator('.actions .ia').getByRole('button', { name: '📱 Start the room' }).click();
   await card.getByRole('alert').getByText('Too many new rooms — wait a minute').waitFor();
-  assert(true, 'Start the room first (from Start game) starts it; a refused room shows the server’s reason (Too many new rooms — wait a minute)');
+  assert(true, '📱 Start the room (from Start game) starts it; a refused room shows the server’s reason (Too many new rooms — wait a minute)');
   await page.evaluate(() => (window.__room.refuse = ''));
   await card.getByRole('button', { name: '▶ Start the room' }).click();
   await card.getByLabel('Room code BCDF').waitFor();
@@ -492,8 +504,8 @@ try {
   const free = pop.getByRole('button', { name: 'Free seat: Player 2’s (moved phone)' });
   await free.waitFor();
   assert(
-    (await pop.getByRole('button', { name: 'Kick Player 2: take their seat back from their phone' }).innerText()).includes('Kick') && (await free.innerText()) === 'Free seat',
-    'a seat whose phone is gone offers Free seat (moved phone) beside ✕ Kick',
+    (await pop.getByRole('button', { name: 'Kick Player 2: take their seat back from their phone' }).innerText()) === '⛔ Kick' && (await free.innerText()) === '📱 Free seat',
+    'a seat whose phone is gone offers 📱 Free seat (its “new phone” left out in the narrow list) before ⛔ Kick',
   );
   await free.click();
   await page.waitForFunction((id) => window.__room.sent.some((m) => m.t === 'kick' && m.seatId === id && m.block === false), seats[1].id);
@@ -740,12 +752,12 @@ try {
   await stateIs((s) => s.status?.text === 'The host is setting up — hang on' && !s.over);
   assert(true, 'game over › ▶ Next game…: the phones are told the host is setting up (no longer where they came)');
 
-  // ---------- ✕ Close the room (a phone is in it: asked first) ----------
-  await roomBar.getByRole('button', { name: '✕ Close the room' }).click();
+  // ---------- ⏹ Close the room… (a phone is in it: asked first) ----------
+  await roomBar.getByRole('button', { name: '⏹ Close the room…' }).click();
   await page.locator('.status-bar').getByRole('alertdialog', { name: 'Close the room?' }).getByRole('button', { name: 'Close the room' }).click();
   await page.waitForFunction(() => window.__room.sent.some((m) => m.t === 'close'));
   await roomBar.waitFor({ state: 'detached' });
-  assert(true, '✕ Close the room closes it (phones are told the game is over)');
+  assert(true, '⏹ Close the room… closes it (phones are told the game is over)');
 
   // ---------- A room kept in the editor that ended meanwhile is forgotten (not "still open", no dead code to share) ----------
   await page.getByRole('button', { name: '▶ Play' }).click();

@@ -367,8 +367,16 @@ at (📜 Log's ↶ Back to here, 🕘 History's Go there ›, the ⛔ between sc
 - 🏁 Who goes first
 - 📊 Scores (with 📋 Copy standings for chat)
 
-**Phone buzzers** (Buzzer mode, on the pre-game screen's 📱 Phone buzzers card, saved with the game): start the room
-and share the code, link or QR code (it's on the viewers' Starting soon card too). Players open the link on their
+**Phone buzzers** (Buzzer mode, on the pre-game screen's 📱 Phone buzzers card, saved with the game): tick **Phone
+buzzers on** (with **Teams** beside it), press **▶ Start the room** right under it and share the code, link or QR code
+(it's on the viewers' Starting soon card too). The card goes in the order you use it: who's asking to join first, then
+each player's phone (**📱 Free seat (new phone)** first, **⛔ Kick** apart at the end, in red), then the options folded
+under **▸ Buzzer options**, whose line says how they're set ("Buzzers open with the clue · new players: no · colors on
+phones · 1 s early wait"; it opens by itself only when this buzzer server can't do one of them, and this computer
+remembers whether you left it open), and at the foot **🔒 Lock seats** and, apart, **⏹ Close the room…**, which asks
+first while any phone is in. While phone buzzers are off, the card says what the game uses phones for ("This game uses
+phones for 🤝 partner cards (3 clues) and ✍ multiple choice. Without phone buzzers you copy the cards to the players
+yourself, and they say the letter."). Players open the link on their
 phone, tap their name and get a big BUZZ button, Jackbox-style; new players can ask to join from their phone if you
 allow it (until the game has its most players). Before the game, the bar by **Start game ▶** says who's in and who it's
 waiting for ("📱 Room CPQL · 1 of 3 joined · waiting for Bob, Cat", green once everyone is), and who's asking to join,
@@ -447,11 +455,11 @@ the tiebreaker, going to another round, or the Final going on).
 A player on a computer opens the same link: `Space` (or `Enter`) buzzes, `1`–`9` pick their seat or team, `Esc` goes back, and the page says when another window (the stream, say) has the keyboard. The room stays open
 through the pre-game screen, a reload of it or of the game (▶ Resume it on the pre-game screen, or Resume game, goes back into it unless a phone joined a room started there: one nobody joined closes on ▶ Resume it or ◀ Back to editor), **◀ Back to editor**, **Exit › Keep & leave** (Resume goes back into it)
 and **▶ Next game…** (▶ Play asks to keep it for another game, which then has its players, and Teams on if it was); it closes with **Exit › Discard & leave**, when you leave the results screen any other way than
-▶ Next game…, with **✕ Close the room**, or when Buzzer mode is turned off (not by undoing, in the editor, the step ▶ Play
+▶ Next game…, with **⏹ Close the room…**, or when Buzzer mode is turned off (not by undoing, in the editor, the step ▶ Play
 made to turn it on for the room). Its phones are told the game is over, or, on a phone that never saw the game
 start, that the host closed the room (ask for the new code if the game goes on). The join code shows small in a corner of the stream
 during the game (at the end of the score bar on the board) and on the cover card; the On stream options can hide it.
-**🔒 Lock seats** keeps new phones out (a player with no phone then reads "🔒 locked out"), and a player whose seat you take back (✕ Kick) can't take it again for 2 minutes, unless you press **↩ Let back** on their row meanwhile.
+**🔒 Lock seats** keeps new phones out (a player with no phone then reads "🔒 locked out"), and a player whose seat you take back (⛔ Kick) can't take it again for 2 minutes, unless you press **↩ Let back** on their row meanwhile.
 The rooms run on a small buzzer server
 (`buzzer/`, a Cloudflare Worker); the release builds come with one, and ⚙ Settings › Buzzer server can point at your
 own ([Set up your own buzzer server](#set-up-your-own-buzzer-server): free, about 10 minutes). Copies built without one say "Phone buzzers aren't set up in this copy", and play a game saved with Buzzer mode

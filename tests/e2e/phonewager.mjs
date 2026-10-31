@@ -16,7 +16,7 @@ import { existsSync, mkdirSync, mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { addClassicRounds, anyway, checkItem, flowIs, goOnCheck, mainButton, noSelection, quick, playWithPlayers, recordSeen, seenWhere, selectedWords, shownOf, startRoomOn, leaveAnswer } from './helpers.mjs';
+import { addClassicRounds, anyway, checkItem, flowIs, goOnCheck, mainButton, noSelection, openBuzzerOptions, quick, playWithPlayers, recordSeen, seenWhere, selectedWords, shownOf, startRoomOn, leaveAnswer } from './helpers.mjs';
 
 const file = resolve(process.env.APP_FILE || 'dist/index.html');
 if (!existsSync(file)) throw new Error('Run `npm run build` first');
@@ -93,6 +93,8 @@ async function newHost(viewport = { width: 1400, height: 900 }, seen = false) {
 async function startRoom(host, teams = false) {
   const card = host.getByRole('region', { name: 'Phone buzzers' });
   await card.getByLabel(/Buzzer mode/).check();
+  // (The options are folded under ▸ Buzzer options.)
+  await openBuzzerOptions(card);
   await card.getByLabel('Open the buzzers').selectOption('host');
   if (teams) await card.getByLabel(/Teams: people join a team/).check();
   return await startRoomOn(card);
