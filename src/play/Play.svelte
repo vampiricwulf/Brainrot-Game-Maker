@@ -75,6 +75,8 @@
   import { focusedQuietly, focusMain, focusQuiet } from './host/focus';
   import HostPanel from './HostPanel.svelte';
   import ModeCards from './ModeCards.svelte';
+  import JoinAsk, { joinAsks } from './JoinAsk.svelte';
+  import { waitingFor, whoJoined } from './phonewords';
   import ScoreLog, { type LogTab } from './ScoreLog.svelte';
   import HostInfo from './HostInfo.svelte';
   import AudioHelp from './AudioHelp.svelte';
@@ -1864,9 +1866,11 @@
       const fresh = asking.filter((p) => !askSeen.has(p.conn));
       askSeen = new Set(asking.map((p) => p.conn));
       if (!fresh.length) return;
-      const names = nameList(fresh.map((p) => p.pendingName ?? ''));
-      toast(`📱 ${names} ${fresh.length === 1 ? 'wants' : 'want'} to join: ${app.pregame ? 'see 📱 Phone buzzers below' : 'click the 📱 chip'}`, 5000);
       if (dual) chime();
+      // (Before the game the Start bar's room line says it, with ✔ Add and ✕ No: a toast would sit over it.)
+      if (app.pregame) return;
+      const names = nameList(fresh.map((p) => p.pendingName ?? ''));
+      toast(`📱 ${names} ${fresh.length === 1 ? 'wants' : 'want'} to join: click the 📱 chip`, 5000);
     });
   });
   // Viewers' "Starting soon" card shows the room's code, link and QR code.
@@ -4466,8 +4470,8 @@
   /** Buzzer mode is on and the room is up: its code, and the players whose phones are in. */
   const roomUp = $derived(phonesOn && !!remote.code && remote.status !== 'off' && remote.status !== 'error');
   const phonesIn = $derived(session.players.filter((p) => remote.phones.some((ph) => ph.seatId === p.id && ph.connected)).length);
-  /** Teams: the people (phones) on a team, as the 📱 card counts them. */
-  const people = $derived(remote.phones.filter((ph) => ph.member && ph.connected && session.players.some((p) => p.id === ph.seatId)).length);
+  /** Who's in and who isn't yet, as the 📱 card counts them (teams: the people on teams). */
+  const joined = $derived.by(() => whoJoined(session.players, remote.phones, pregameTeams));
   /**
    * Who has joined, as the Start bar and the checklist say it (teams: as the 📱 card does): no count while the room is
    * out of reach (its list is stale).
@@ -4475,8 +4479,25 @@
   const joinedText = $derived.by(() => {
     if (remote.status === 'connecting') return 'connecting…';
     if (remote.status !== 'online') return '⚠ reconnecting to the buzzer room…';
-    return pregameTeams ? `${people} ${people === 1 ? 'person' : 'people'} on ${phonesIn} of ${session.players.length} teams` : `${phonesIn} of ${session.players.length} joined`;
+    return joined.joined;
   });
+  /** Everyone's phone is in (the bar's room line goes green). */
+  const allIn = $derived(remote.status === 'online' && !!session.players.length && !joined.waiting.length);
+  /** Phones asking to join now (the bar says so, with ✔ Add and ✕ No, while the room can hear the answer). */
+  const asksNow = $derived(roomUp && remote.status === 'online' ? joinAsks() : []);
+  /** The bar's room line (the keys come back to it after its ✔ Add or ✕ No, never to the next one asking). */
+  let roomLine = $state<HTMLElement>();
+  function lineAnswer(fn: () => void): void {
+    const inside = !!roomLine?.contains(document.activeElement);
+    fn();
+    if (inside) void tick().then(() => roomLine?.focus({ preventScroll: true }));
+  }
+  /** The bar's Show ↓: the 📱 card's list of who's asking, in sight with the keys on it. */
+  function showAsks(): void {
+    const list = document.querySelector<HTMLElement>('[data-place="play:buzzers"] [data-join-asks]');
+    list?.scrollIntoView({ block: 'center', behavior: 'smooth' });
+    list?.focus({ preventScroll: true });
+  }
   /** Start was pressed with Buzzer mode on but no room: the bar asks (start it first, or play without phones). */
   let askNoRoom = $state(false);
   $effect(() => {
@@ -6115,9 +6136,35 @@
             oncancel={() => (askNoRoom = false)}
           />
         {:else if roomUp}
-          <!-- The code stays in sight above the fold, however far the 📱 card is scrolled. -->
-          <span class="small room-note" class:warn={remote.status !== 'online'} role="status">
-            📱 Room <b>{remote.code}</b> · {joinedText}
+          <!-- The room's live line, in sight however far the 📱 card is scrolled: who's asking to join, with the card's
+               ✔ Add and ✕ No, else the code, who's in and who it's waiting for. One height whatever it says, so the
+               bar never jumps. -->
+          <span
+            class="small room-note"
+            class:warn={remote.status !== 'online'}
+            class:ok={allIn && !asksNow.length}
+            role="status"
+            tabindex="-1"
+            bind:this={roomLine}
+            data-room-line
+          >
+            {#if asksNow.length === 1}
+              <JoinAsk
+                phone={asksNow[0]}
+                full={session.players.length >= game.settings.maxPlayers}
+                line
+                onadd={(conn, name) => lineAnswer(() => addPhonePlayer(conn, name))}
+                onreject={(conn) => lineAnswer(() => rejectPhone(conn))}
+              />
+            {:else if asksNow.length}
+              <span class="txt">📱 <b>{asksNow.length}</b> want to join</span>
+              <button class="small" onclick={showAsks} title="Show them in 📱 Phone buzzers, each with ✔ Add and ✕ No">Show ↓</button>
+            {:else}
+              {@const more = remote.status === 'online' ? waitingFor(joined.waiting) : ''}
+              <span class="txt" title={more ? `${joinedText} · waiting for ${joined.waiting.join(', ')}` : undefined}
+                >📱 Room <b>{remote.code}</b> · {joinedText}{more ? ` · ${more}` : ''}</span
+              >
+            {/if}
           </span>
         {/if}
         {#if !session.players.length}<span class="muted small">Add {pregameTeams ? 'teams' : 'players'} to start</span>{/if}
@@ -6586,7 +6633,22 @@
     border: 1px solid var(--warn);
     border-radius: 8px;
   }
+  /* The Start bar's room line: one line, one height (with buttons or without), plain until everyone's in. */
   .room-note {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    min-height: 26px;
+    max-width: 100%;
+    min-width: 0;
+    white-space: nowrap;
+  }
+  .room-note > .txt {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .room-note.ok {
     color: var(--good, var(--text));
   }
   .room-note.warn {

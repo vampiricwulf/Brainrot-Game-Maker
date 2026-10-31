@@ -324,7 +324,9 @@ at (📜 Log's ↶ Back to here, 🕘 History's Go there ›, the ⛔ between sc
 **Phone buzzers** (Buzzer mode, on the pre-game screen's 📱 Phone buzzers card, saved with the game): start the room
 and share the code, link or QR code (it's on the viewers' Starting soon card too). Players open the link on their
 phone, tap their name and get a big BUZZ button, Jackbox-style; new players can ask to join from their phone if you
-allow it (until the game has its most players). With **Teams** on, each player is a team: people pick their team on their phone and type their own name, and
+allow it (until the game has its most players). Before the game, the bar by **Start game ▶** says who's in and who it's
+waiting for ("📱 Room CPQL · 1 of 3 joined · waiting for Bob, Cat", green once everyone is), and who's asking to join,
+with the card's **✔ Add** and **✕ No** right there (two or more: **Show ↓** takes you to them on the card). With **Teams** on, each player is a team: people pick their team on their phone and type their own name, and
 whoever on it buzzes first answers for the team ("Ann (Red team)" in the buzz order); a wrong answer locks out the
 whole team. A room holds up to 24 phones at once: once 24 people are on teams, the next phone is told the game is full
 until someone leaves. On a Daily Double or a Final, players type their wager on their phone and send it: it fills in your

@@ -196,6 +196,23 @@ try {
     ],
   });
   await card.getByText('1 of 3 players joined').waitFor();
+  // The Start bar says it too, with the card's ✔ Add and ✕ No (the lookups below keep to the card: there are two now).
+  const barLine = page.locator('.actions [data-room-line]');
+  await barLine.getByText('Zed wants to join').waitFor();
+  assert(
+    (await barLine.getByRole('button', { name: '✔ Add' }).count()) === 1 && (await barLine.getByRole('button', { name: 'Turn Zed away' }).innerText()) === '✕ No',
+    'the Start bar says “📱 Zed wants to join [✔ Add] [✕ No]”',
+  );
+  // Two asking: the bar says how many, and Show ↓ takes the keys to the card's list of them.
+  const c1 = { conn: 'c1', seatId: seats[0].id, connected: true };
+  const zedAsks = { conn: 'c9', seatId: null, pendingName: 'Zed', connected: true };
+  await say({ t: 'phones', phones: [c1, zedAsks, { conn: 'c8', seatId: null, pendingName: 'Yan', connected: true }] });
+  await barLine.getByText('2 want to join').waitFor();
+  await barLine.getByRole('button', { name: 'Show ↓' }).click();
+  await page.waitForFunction(() => document.activeElement?.matches('[data-join-asks]'));
+  assert(true, 'two asking: the bar says “📱 2 want to join [Show ↓]”, and Show ↓ takes the keys to the card’s list');
+  await say({ t: 'phones', phones: [c1, zedAsks] });
+  await barLine.getByText('Zed wants to join').waitFor();
   assert((await page.locator('.live-check li.done', { hasText: 'Room BCDF open: 1 of 3 joined' }).count()) === 1, '“Going live?” ticks the room off once a phone has joined');
   assert((await card.locator('li', { hasText: 'Player 1' }).innerText()).includes('✔ joined'), 'a joined player shows ✔ joined');
   assert((await card.locator('li', { hasText: 'Player 2' }).innerText()).includes('waiting'), 'the others are waiting');
@@ -228,6 +245,12 @@ try {
   const zed = before.seats.find((s) => s.name === 'Zed');
   assert(zed && accept.conn === 'c9' && accept.seatId === zed.id, 'Add makes Zed a player, tells the room the seat, then accepts the phone');
   assert((await page.locator('.pregame input.name').count()) === 4, 'Zed is in the player list');
+  await barLine.getByText('Room BCDF').waitFor();
+  const lineNow = (await barLine.innerText()).replace(/\s+/g, ' ');
+  assert(
+    lineNow.includes('Room BCDF · 1 of 4 joined · waiting for Player 2, Player 3, Zed') && !(await barLine.evaluate((e) => e.classList.contains('ok'))),
+    `answered, the bar is the room's line again, plain until everyone's in (${lineNow})`,
+  );
   await shot('rb-1-pregame');
 
   // The audience window's Starting soon card shows the code and the QR code.

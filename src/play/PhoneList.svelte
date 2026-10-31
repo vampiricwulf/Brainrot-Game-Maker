@@ -8,6 +8,7 @@
   import { FULL_SHOWN_MS, remote, roomCanFree } from '../lib/remote.svelte';
   import { KICK_BLOCK_MS, MAX_PHONES } from '../lib/buzzproto';
   import { awayFor, phoneAwaySince } from './host/phoneaway.svelte';
+  import JoinAsk, { joinAsks } from './JoinAsk.svelte';
 
   let {
     session,
@@ -56,7 +57,7 @@
   /** Teams: the people on a team (connected ones first), by the name they joined with. */
   const membersOf = (id: string) =>
     remote.phones.filter((p) => p.seatId === id && p.member).sort((a, b) => Number(b.connected) - Number(a.connected));
-  const waiting = $derived(remote.phones.filter((p) => !p.seatId && p.pendingName && p.connected && !remote.answered.includes(p.conn)));
+  const waiting = $derived(joinAsks());
   const full = $derived(session.players.length >= max);
   /**
    * The room can't be reached right now: nothing these buttons say would get to it (they're greyed out), and its last
@@ -182,13 +183,10 @@
   </label>
 {/if}
 {#if waiting.length}
-  <div class="asks" role="status">
+  <!-- (The ▶ Play bar's Show ↓ brings this into sight, with the keys on it.) -->
+  <div class="asks" role="status" data-join-asks tabindex="-1" aria-label="Asking to join">
     {#each waiting as w (w.conn)}
-      <div class="ask">
-        <span>📱 <b>{w.pendingName}</b> wants to join</span>
-        <button class="good small" disabled={full || down} title={down ? downTitle : full ? 'The game is full (⚖ Game rules › Most players)' : 'Add them as a new player'} onclick={() => onadd(w.conn, w.pendingName ?? '')}>✔ Add</button>
-        <button class="small" onclick={() => onreject(w.conn)} disabled={down} aria-label="Turn {w.pendingName} away" title={down ? downTitle : 'Turn them away'}>✕</button>
-      </div>
+      <div class="ask"><JoinAsk phone={w} {full} {down} {onadd} {onreject} /></div>
     {/each}
   </div>
 {/if}
@@ -277,8 +275,5 @@
   }
   .ask {
     display: flex;
-    align-items: center;
-    gap: 6px;
-    flex-wrap: wrap;
   }
 </style>
