@@ -279,7 +279,16 @@ try {
   await page.mouse.click(cbox.x + cbox.width * 0.45, cbox.y + cbox.height * 0.55, { button: 'right' });
   await page.getByRole('menu').getByRole('menuitem', { name: '📋 Paste 2 spaces here' }).click();
   assert((await spaces.count()) === 14 && (await picked()).length === 2, 'the board’s menu pastes the copied spaces there');
-  await page.locator('.side').getByRole('button', { name: /Delete 2 spaces/ }).click();
+  // The several-selected bar: ⧉ Duplicate · 📋 Copy · Clear selection, then 🗑 Delete 2 spaces last, red, apart.
+  const bar = page.locator('.side [data-space-actions] button');
+  const barWords = await bar.allInnerTexts();
+  const del = page.locator('.side').getByRole('button', { name: '🗑 Delete 2 spaces' });
+  const [delColor, gap] = await del.evaluate((b) => [getComputedStyle(b).color, b.getBoundingClientRect().left - b.previousElementSibling.getBoundingClientRect().right]);
+  assert(
+    barWords.join('|') === '⧉ Duplicate|📋 Copy|Clear selection|🗑 Delete 2 spaces' && delColor === 'rgb(255, 107, 107)' && gap >= 12,
+    `several selected: ${barWords.join(' · ')}, 🗑 last in red, apart (${gap}px)`,
+  );
+  await del.click();
   assert((await spaces.count()) === 12, 'and they go again');
   await space('Start').click();
 

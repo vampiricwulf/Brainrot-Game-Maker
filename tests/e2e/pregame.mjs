@@ -5,7 +5,7 @@ import { chromium } from 'playwright-core';
 import { existsSync, mkdirSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { exportHtml, noDailyDoubles, noSelection, openOnStream, openRules, openStartScores, selectedWords, leaveAnswer } from './helpers.mjs';
+import { answerAsk, exportHtml, noDailyDoubles, noSelection, openOnStream, openRules, openStartScores, selectedWords, leaveAnswer } from './helpers.mjs';
 
 const file = resolve(process.env.APP_FILE || 'dist/index.html');
 if (!existsSync(file)) throw new Error('Run `npm run build` first');
@@ -421,8 +421,11 @@ try {
   await page.locator('.board').waitFor();
   assert((await page.locator('.board .tile.used').count()) === 0 && (await page.locator('.panel').count()) === 1, '▶ Resume it plays on with the kept game');
   await page.getByRole('button', { name: /Exit/ }).first().click();
-  await page.waitForTimeout(450);
-  await page.getByRole('button', { name: 'Discard & leave', exact: true }).click();
+  // Exit asks Stay · Discard & leave · Keep & leave: the one that throws the game away in red, set apart from Keep.
+  const discardLeave = page.getByRole('button', { name: 'Discard & leave', exact: true });
+  const [discardColor, discardGap] = await discardLeave.evaluate((b) => [getComputedStyle(b).color, b.nextElementSibling.getBoundingClientRect().left - b.getBoundingClientRect().right]);
+  assert(discardColor === 'rgb(255, 107, 107)' && discardGap >= 14, `Exit's Discard & leave is red and set apart from Keep & leave (${discardColor}, ${discardGap}px)`);
+  await answerAsk(discardLeave);
   await page.getByRole('button', { name: /▶ Test this round/ }).waitFor();
   assert((await kept.count()) === 0, 'Discard & leave keeps nothing to resume');
 
