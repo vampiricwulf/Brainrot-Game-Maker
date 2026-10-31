@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { jeopardyGame } from './testgame';
-import { newRound, PLAYER_WHEEL, setSlideText, type BoardRound } from './model';
+import { newRound, PLAYER_WHEEL, setSlideText, type BoardRound, type FinalRound } from './model';
 import { validate } from './validate';
-import { checklistLines } from './checklist';
+import { answerCardAt, checklistLines } from './checklist';
 import { newRpgRound, newScreen } from './rpg';
 import { raceRound } from './samples';
 import { STD_DICE, tileDice, toolChosen } from './tools';
@@ -217,12 +217,16 @@ describe('🤝 partner clues in the checklist', () => {
     board.dailyDoubleCount = 0;
     fill(board);
     const clue = board.categories[1].clues[2];
+    // (Its card left empty, to fill in: else one made by hand starts with a copy of its answer.)
+    board.partnerCardFrom = 'empty';
     setClueType(board, clue, 'partner');
     addCard(clue);
     const line = () => checklistLines(game, validate(game)).find((l) => l.tab === 0)!;
     expect(line().text).toBe('Jeopardy!: 1 clue to finish');
     expect(line().details).toHaveLength(2);
     expect(line().place).toEqual({ tab: 'round', round: board.id, part: { kind: 'clue', category: board.categories[1].id, clue: clue.id, onBoard: true } });
+    // Its ⧉ is for the first empty card, the tile having an answer.
+    expect(line().answerCard).toEqual({ tab: 'round', round: board.id, part: { kind: 'clue', category: board.categories[1].id, clue: clue.id, side: 'card', slide: clue.cards![0].id } });
     // A named empty card is still a clue to finish, not a thing to fix.
     clue.cards![1].name = 'Clue tip';
     expect(line().details).toContain(`${board.categories[1].title} $600: card “Clue tip” is empty: there's nothing on it to send`);
@@ -237,5 +241,18 @@ describe('🤝 partner clues in the checklist', () => {
     delete clue.cards;
     expect(line().text).toMatch(/is a Describe it partner clue with no card/);
     expect(line().place).toMatchObject({ part: { clue: clue.id } });
+  });
+
+  it('a Final’s empty card gets ⧉ too, once its answer is written', () => {
+    const game = jeopardyGame();
+    game.settings.buzzer = true;
+    const final = game.rounds[1] as FinalRound;
+    setSlideText(final.questionSlide, 'Q?');
+    const card = addCard(final, 'playing')!;
+    const line = () => checklistLines(game, validate(game)).find((l) => l.round === final.id);
+    expect(line()?.answerCard).toBeUndefined();
+    setSlideText(final.answerSlide, 'Shrek');
+    expect(line()!.answerCard).toEqual({ tab: 'round', round: final.id, part: { kind: 'final', side: 'card', slide: card.id } });
+    expect(answerCardAt(game, line()!.answerCard!)?.name).toBe(`card 1 of ${final.name || 'Final Jeopardy!'}`);
   });
 });

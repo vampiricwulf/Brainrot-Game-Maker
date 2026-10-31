@@ -234,6 +234,13 @@ try {
   assert(await until(async () => (await card3.getAttribute('aria-selected')) === 'true'), 'its line opens the Final at 🤫 Card 3');
   await focused('main [data-field="card"]');
   assert(true, 'with its words box in focus');
+  // The Final has an answer: the line has ⧉ beside it, a copy of the answer on that card in one undo step.
+  const cardWords = () => main.locator('[data-field="card"]').inputValue();
+  await host.locator('nav [data-checklist-same]').click();
+  assert(await until(async () => (await cardWords()) === 'The final answer'), 'the line’s ⧉ puts a copy of the Final’s answer on card 3');
+  await undoSays('Undo: Copied the answer onto card 3 of Final Jeopardy!');
+  await host.keyboard.press('Control+z');
+  assert(await until(async () => (await cardWords()) === ''), 'Ctrl+Z takes the copy back');
 
   // 🗑 Delete card, with ↶ Undo in the note.
   await main.getByRole('button', { name: '🗑 Delete card' }).click();

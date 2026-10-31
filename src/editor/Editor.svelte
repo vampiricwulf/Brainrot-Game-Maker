@@ -32,7 +32,7 @@
   import NameDialog from './NameDialog.svelte';
   import OpenGame from './OpenGame.svelte';
   import { ask, tell } from '../lib/ask.svelte';
-  import { clone, reidRound } from '../lib/ops';
+  import { cardFromAnswer, clone, reidRound } from '../lib/ops';
   import { copyName } from '../lib/listedit';
   import { newRpgRound } from '../lib/rpg';
   import { ROUND_MODES } from '../lib/modes';
@@ -65,7 +65,7 @@
   import { dataFolders } from '../lib/desktop.svelte';
   import { registerGameFonts } from '../lib/fonts';
   import { validate } from '../lib/validate';
-  import { boardPlace, type ChecklistLine } from '../lib/checklist';
+  import { answerCardAt, boardPlace, type ChecklistLine } from '../lib/checklist';
   import { followClueText } from '../lib/cluetext';
   import { arriving, commit, heldMedia, history, historyStarted, mark, onApplied, onApplying, redo, savedSinceChange, savePoint, step, undo, wholeHistory, type Origin } from '../lib/history.svelte';
   import { whileWriting } from '../lib/desktop.svelte';
@@ -408,13 +408,15 @@
     });
   }
 
-  /** A checklist line's menu: go and fix it, or the fix it offers beside it (🗜 a smaller copy, 🔄 convert). */
+  /** A checklist line's menu: go and fix it, or the fix it offers beside it (⧉ the answer on a card, 🗜 a smaller copy, 🔄 convert). */
   function checkMenu(line: ChecklistLine): MenuEntry[] {
     const repack = !!line.convert?.length && line.convert.every((id) => ((v) => typeof v === 'object' && v.is === 'plays')(verdictOf(id)));
+    const same = line.answerCard && answerCardAt(game, line.answerCard);
     return menuOf({
       heading: line.text,
       open: [{ label: '◀ Fix it', onclick: () => goFix(line) }],
       verbs: [
+        ...(same ? [{ label: '⧉ Same as the answer', hint: `A copy of the answer on ${same.name}`, onclick: () => sameAsAnswer(line) }] : []),
         ...(line.shrink?.length ? [{ label: '🗜 Make a smaller copy for phones…', onclick: () => openShrinkDialog(line.shrink![0]) }] : []),
         ...(line.convert?.length ? [{ label: repack ? '↻ Repackage it so phones can open it…' : '🔄 Convert them so they play here…', onclick: () => openMediaDialog({ mode: 'convert', ids: line.convert! }) }] : []),
       ],
@@ -500,6 +502,17 @@
   }
 
   // ---------- Checklist ----------
+
+  /**
+   * A checklist line's ⧉: the answer copied onto the first empty 🤫 card it's about (a tile's or a Final's), one step
+   * named as the card's own ⧉ names it. The keys stay on the checklist (the line goes there with its own click).
+   */
+  function sameAsAnswer(line: ChecklistLine): void {
+    const at = line.answerCard;
+    const hit = at && answerCardAt(game, at);
+    if (!at || !hit) return;
+    step(`Copied the answer onto ${hit.name}`, () => cardFromAnswer(hit.holder, hit.card), { place: at });
+  }
 
   /**
    * A checklist line: its tab, at the first thing to finish there (a board's first unfinished tile, an RPG's screen, a
@@ -1309,13 +1322,24 @@
         <div class="problems" class:warn={checklist.some((l) => l.level === 'warn')}>
           <div class="navlabel">Checklist</div>
           {#each checklist as line}
-            {#if line.convert?.length}
-              <!-- (🔄 beside it, or ↻ for files phones can't open: never naming a file, as the line doesn't.) -->
-              {@const repack = line.convert.every((id) => (v => typeof v === 'object' && v.is === 'plays')(verdictOf(id)))}
-              <div class="problem-row">
-                <button class="problem {line.level}" onclick={() => goFix(line)} oncontextmenu={(e) => showMenu(e, checkMenu(line))} title={line.details.length > 1 ? line.details.join('\n') : undefined}>
-                  {line.level === 'warn' ? '⚠' : 'ℹ'} {line.text}
-                </button>
+            <!-- (The fix it offers beside it: ⧉ for an empty card, 🔄 or ↻ to convert, 🗜 a smaller copy; never naming a
+                 file, as the line doesn't.) -->
+            {@const repack = !!line.convert?.length && line.convert.every((id) => (v => typeof v === 'object' && v.is === 'plays')(verdictOf(id)))}
+            {@const same = line.answerCard && answerCardAt(game, line.answerCard)}
+            <div class="problem-row">
+              <button class="problem {line.level}" onclick={() => goFix(line)} oncontextmenu={(e) => showMenu(e, checkMenu(line))} title={line.details.length > 1 ? line.details.join('\n') : undefined}>
+                {line.level === 'warn' ? '⚠' : 'ℹ'} {line.text}
+              </button>
+              {#if same}
+                <button
+                  class="small ghost"
+                  data-checklist-same
+                  onclick={() => sameAsAnswer(line)}
+                  title="⧉ Same as the answer: a copy of the answer on {same.name}"
+                  aria-label="Same as the answer: a copy of the answer on {same.name}">⧉</button
+                >
+              {/if}
+              {#if line.convert?.length}
                 <button
                   class="small ghost"
                   data-checklist-convert
@@ -1323,20 +1347,10 @@
                   title={repack ? 'Repackage it so phones can open it (nothing lost)' : 'Convert them so they play in this browser'}
                   aria-label={repack ? 'Repackage it so phones can open it' : 'Convert them so they play in this browser'}>{repack ? '↻' : '🔄'}</button
                 >
-              </div>
-            {:else if line.shrink?.length}
-              <!-- (🗜 beside it: never naming the file, as the line doesn't.) -->
-              <div class="problem-row">
-                <button class="problem {line.level}" onclick={() => goFix(line)} oncontextmenu={(e) => showMenu(e, checkMenu(line))} title={line.details.length > 1 ? line.details.join('\n') : undefined}>
-                  {line.level === 'warn' ? '⚠' : 'ℹ'} {line.text}
-                </button>
+              {:else if line.shrink?.length}
                 <button class="small ghost" data-checklist-shrink onclick={() => openShrinkDialog(line.shrink![0])} title="Make a smaller copy for phones" aria-label="Make a smaller copy for phones">🗜</button>
-              </div>
-            {:else}
-              <button class="problem {line.level}" onclick={() => goFix(line)} oncontextmenu={(e) => showMenu(e, checkMenu(line))} title={line.details.length > 1 ? line.details.join('\n') : undefined}>
-                {line.level === 'warn' ? '⚠' : 'ℹ'} {line.text}
-              </button>
-            {/if}
+              {/if}
+            </div>
           {/each}
         </div>
       {:else}

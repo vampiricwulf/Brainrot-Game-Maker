@@ -65,6 +65,8 @@ export interface Problem {
   shrink?: Id;
   /** 🔄: the files to convert, so they play here (or ↻: so phones can open them); the editor's line gets a button. */
   convert?: Id[];
+  /** ⧉: an empty 🤫 card (its place) on a tile or Final with an answer: the editor's line gets ⧉ Same as the answer. */
+  sameAsAnswer?: boolean;
 }
 
 /**
@@ -500,7 +502,7 @@ export function partnerProblems(game: Game, round: BoardRound, tab: number, room
         round: round.id,
         part: { kind: 'clue', category: c.id, clue: cl.id, ...(card ? { side: 'card' as const, slide: card.id } : {}) },
       });
-      const warn = (text: string, card?: ClueCard) => out.push({ text, tab, level: 'warn', place: at(card) });
+      const warn = (text: string, card?: ClueCard, same = false) => out.push({ text, tab, level: 'warn', place: at(card), ...(same ? { sameAsAnswer: true } : {}) });
       const rules = partnerRules(cl);
       const cards = cardSlides(cl);
       // (A Custom game's cards are up to the host.)
@@ -510,7 +512,7 @@ export function partnerProblems(game: Game, round: BoardRound, tab: number, room
       }
       if (cards.length > MAX_CARDS) warn(`${tile} has ${cards.length} cards: a clue holds ${MAX_CARDS} (＋ Card adds no more)`, cards[MAX_CARDS]);
       cards.forEach((card, n) => {
-        if (!slideHasContent(card)) warn(`${tile}: ${clueCardWords(card, n)} is empty: there's nothing on it to send`, card);
+        if (!slideHasContent(card)) warn(`${tile}: ${clueCardWords(card, n)} is empty: there's nothing on it to send`, card, slideHasContent(cl.answerSlide));
         out.push(...cardLines(game, [card], `${tile}: ${clueCardWords(card, n)}`, tab, at(card)!, room));
       });
       out.push(...cardNameProblems(game, cards, slidesOfClue(cl), tile, tab, (card) => at(card)!));
@@ -575,10 +577,10 @@ export function finalCardProblems(game: Game, round: FinalRound, name: string, t
   const out: Problem[] = [];
   const cards = cardSlides(round);
   const at = (card: ClueCard): Place => ({ tab: 'round', round: round.id, part: { kind: 'final', side: 'card', slide: card.id } });
-  const warn = (text: string, card: ClueCard) => out.push({ text, tab, level: 'warn', place: at(card) });
+  const warn = (text: string, card: ClueCard, same = false) => out.push({ text, tab, level: 'warn', place: at(card), ...(same ? { sameAsAnswer: true } : {}) });
   if (cards.length > MAX_CARDS) warn(`${name} has ${cards.length} cards: a Final holds ${MAX_CARDS} (＋ Card adds no more)`, cards[MAX_CARDS]);
   cards.forEach((card, n) => {
-    if (!slideHasContent(card)) warn(`${name}: ${clueCardWords(card, n)} is empty: there's nothing on it to send`, card);
+    if (!slideHasContent(card)) warn(`${name}: ${clueCardWords(card, n)} is empty: there's nothing on it to send`, card, slideHasContent(round.answerSlide));
     out.push(...cardLines(game, [card], `${name}: ${clueCardWords(card, n)}`, tab, at(card), room));
   });
   out.push(...cardNameProblems(game, cards, slidesOfClue(round), name, tab, at));

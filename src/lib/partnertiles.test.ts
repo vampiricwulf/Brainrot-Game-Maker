@@ -4,11 +4,11 @@
 import { describe, expect, it } from 'vitest';
 import { jeopardyGame } from './testgame';
 import { cardSlides, migrateGame, newImageEl, partnerTilesPlaced, setSlideText, slideText, type BoardRound, type Game } from './model';
-import { partnerSpot, setPartnerGame } from './partner';
-import { copyClue, followDailyDoubles, placePartner, randomizePartnerTiles, setClueType } from './ops';
+import { addCard, partnerSpot, setPartnerGame } from './partner';
+import { answerCardDue, copyClue, followDailyDoubles, pastedPartnerCard, placePartner, randomizePartnerTiles, setClueType } from './ops';
 import { randomizeDailyDoubles } from './session';
 import { dailyDoublesLine, partnersLine, partnerTilesOver, partnerTilesShort, placedLine, validate } from './validate';
-import { checklistLines } from './checklist';
+import { answerCardAt, checklistLines } from './checklist';
 
 /** A seeded random: the same picks every run. */
 function seeded(seed = 7): () => number {
@@ -355,6 +355,86 @@ describe('made by hand, the 🤝 count follows (as ⭐ Daily Doubles does)', () 
     r.categories[4].clues[2] = { ...copyClue(c), empty: true };
     followDailyDoubles(r);
     expect(r.partnerCount).toBe(2);
+  });
+});
+
+describe('made by hand, Card 1 is a copy of the answer (as one placed at random)', () => {
+  it('a tile with an answer: its card copies it, once; the round’s “empty, to fill in” keeps it empty', () => {
+    const { r } = board();
+    const c = r.categories[0].clues[1];
+    expect(answerCardDue(r, c)).toBe(true);
+    expect(setClueType(r, c, 'partner')).toBe(true);
+    expect(cardSlides(c).map((k) => [slideText(k), k.to])).toEqual([['A 0.1', 'giver']]);
+    // (A copy, not a link: its own ids.)
+    expect(c.cards![0].elements[0].id).not.toBe(c.answerSlide.elements[0].id);
+    setSlideText(c.answerSlide, 'Shrek');
+    expect(slideText(c.cards![0])).toBe('A 0.1');
+    const e = r.categories[1].clues[1];
+    r.partnerCardFrom = 'empty';
+    expect(answerCardDue(r, e)).toBe(false);
+    expect(setClueType(r, e, 'partner')).toBe(false);
+    expect(cardSlides(e).map(slideText)).toEqual(['']);
+  });
+
+  it('no answer yet, a card written on or named, or a partner clue already: nothing copied', () => {
+    const { r } = board();
+    const [a, b, c] = r.categories[2].clues;
+    setSlideText(a.answerSlide, '');
+    expect(setClueType(r, a, 'partner')).toBe(false);
+    expect(cardSlides(a).map(slideText)).toEqual(['']);
+    // A card of its own (made on the standard tile) stays as it was.
+    setSlideText(addCard(b)!, 'Tip');
+    expect(setClueType(r, b, 'partner')).toBe(false);
+    expect(cardSlides(b).map(slideText)).toEqual(['Tip']);
+    addCard(c)!.name = 'Hint';
+    expect(setClueType(r, c, 'partner')).toBe(false);
+    expect(cardSlides(c).map((k) => k.name)).toEqual(['Hint']);
+    // Made a partner clue again: its own card, as it was.
+    const d = r.categories[2].clues[3];
+    setClueType(r, d, 'partner');
+    setSlideText(d.cards![0], 'Mine');
+    setClueType(r, d, 'standard');
+    expect(setClueType(r, d, 'partner')).toBe(false);
+    expect(cardSlides(d).map(slideText)).toEqual(['Mine']);
+  });
+
+  it('an empty card the host added on a standard tile gives way to the copy, as the starting cards do', () => {
+    const { r } = board();
+    const c = r.categories[3].clues[0];
+    addCard(c);
+    expect(setClueType(r, c, 'partner')).toBe(true);
+    expect(cardSlides(c).map((k) => [slideText(k), k.to])).toEqual([['A 3.0', 'giver']]);
+  });
+
+  it('pasted or copied: a partner clue with an empty card gets the copy; one with its card written keeps it', () => {
+    const { r } = board();
+    const c = r.categories[0].clues[0];
+    r.partnerCardFrom = 'empty';
+    setClueType(r, c, 'partner');
+    r.partnerCardFrom = 'answer';
+    const pasted = copyClue(c);
+    expect(pastedPartnerCard(r, pasted)).toBe(true);
+    expect(cardSlides(pasted).map(slideText)).toEqual(['A 0.0']);
+    expect(pastedPartnerCard(r, pasted)).toBe(false);
+    // A standard tile, an empty one, or a round that keeps cards empty: nothing.
+    expect(pastedPartnerCard(r, copyClue(r.categories[1].clues[0]))).toBe(false);
+    expect(pastedPartnerCard(r, { ...copyClue(c), empty: true })).toBe(false);
+    r.partnerCardFrom = 'empty';
+    expect(pastedPartnerCard(r, copyClue(c))).toBe(false);
+  });
+
+  it('the checklist’s ⧉ finds the empty card, with its name for the history; gone once it has something', () => {
+    const { g, r } = board();
+    g.settings.buzzer = true;
+    r.partnerCardFrom = 'empty';
+    const c = r.categories[0].clues[1];
+    setClueType(r, c, 'partner');
+    const line = checklistLines(g, validate(g)).find((l) => l.round === r.id)!;
+    expect(line.answerCard).toEqual({ tab: 'round', round: r.id, part: { kind: 'clue', category: r.categories[0].id, clue: c.id, side: 'card', slide: c.cards![0].id } });
+    const hit = answerCardAt(g, line.answerCard!)!;
+    expect([hit.card, hit.name]).toEqual([c.cards![0], `card 1 of ${r.categories[0].title} $${r.values[1]}`]);
+    setSlideText(c.cards![0], 'Ogre');
+    expect(answerCardAt(g, line.answerCard!)).toBeNull();
   });
 });
 

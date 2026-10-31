@@ -1,6 +1,6 @@
 // Structural edits to a Game that must keep rounds/categories/clues consistent.
 import { boardRounds, cardSlides, dailyDoublesPlaced, gameRules, partnerTilesPlaced, isBoard, isBoardGame, isFinal, isSlides, newCategory, newClue, newId, newTextEl, questionSlides, textSlide, type Category, type Clue, type ClueCard, type ExtraSlide, type Game, type BoardRound, type ClueType, type Round, type Slide, type SlidesRound, type TextEl } from './model';
-import { cardKept, newCard, partnerSpot, sameAsAnswer, startingCards } from './partner';
+import { cardKept, newCard, partnerRules, partnerSpot, sameAsAnswer, startingCards } from './partner';
 import { slideHasContent } from './usage';
 
 /** Something was written or added to this clue (a new clue has none of it): its 🤫 cards' too (a card's name counts). */
@@ -209,22 +209,50 @@ export function insertRow(round: BoardRound, at: number): boolean {
 }
 
 /**
- * Make a tile a Daily Double (or a standard, wheel, dice or partner tile). The board's ⭐ Daily Doubles and 🤝 Partner
- * clues boxes go up with the ones placed by hand, so they never say fewer than the board has. A partner clue starts as Describe it (a 45 s
- * countdown when it has none) with its starting card; one made a partner clue before gets its rules and cards back. One
- * only tried (its cards all empty, none named) loses them when it stops being one, and with them rules that are a
- * game's own and the 45 s countdown it started with (whichever game it was moved to after): a card the host wrote or
- * named, or rules they changed, stay.
+ * Making this tile a 🤝 partner clue by hand (its Type, the tile menu, a paste) puts a copy of its answer on Card 1, as
+ * 🔀 Randomize does: a tile with an answer and no card written on or named, in a round whose 🤫 Card choice is a copy
+ * of the answer (not "empty, to fill in").
  */
-export function setClueType(round: BoardRound, clue: Clue, type: ClueType): void {
+export function answerCardDue(round: BoardRound, clue: Clue): boolean {
+  return (round.partnerCardFrom ?? 'answer') === 'answer' && slideHasContent(clue.answerSlide) && !cardSlides(clue).some(cardKept);
+}
+
+/** What a toast says when it did (one Ctrl+Z takes the copy back with the type). */
+export const CARD_COPIED = 'Card 1 is a copy of the answer · ↶ Undo takes it back';
+
+/** A partner clue's game's starting cards, the first one a copy of its answer (`cardFrom` 'answer') or all empty. */
+function partnerStartCards(clue: Clue, cardFrom: 'answer' | 'empty'): void {
+  const cards = startingCards(partnerRules(clue).game);
+  if (cardFrom === 'answer') {
+    // (Custom has no starting card: the copy goes to its giver.)
+    const first = cards[0] ?? newCard('giver');
+    cardFromAnswer(clue, first);
+    cards[0] = first;
+  }
+  if (cards.length) clue.cards = cards;
+  else delete clue.cards;
+}
+
+/**
+ * Make a tile a Daily Double (or a standard, wheel, dice or partner tile). The board's ⭐ Daily Doubles and 🤝 Partner
+ * clues boxes go up with the ones placed by hand, so they never say fewer than the board has. A partner clue starts as
+ * Describe it (a 45 s countdown when it has none) with its starting card, a copy of its answer when answerCardDue; one
+ * made a partner clue before gets its rules and cards back. One only tried (its cards all empty, none named) loses them
+ * when it stops being one, and with them rules that are a game's own and the 45 s countdown it started with (whichever
+ * game it was moved to after): a card the host wrote or named, or rules they changed, stay. Returns whether Card 1 is a
+ * copy of the answer now.
+ */
+export function setClueType(round: BoardRound, clue: Clue, type: ClueType): boolean {
   const was = clue.type;
+  const copy = type === 'partner' && was !== 'partner' && answerCardDue(round, clue);
   clue.type = type;
   if (type === 'partner') {
     if (!clue.partner) {
       clue.partner = gameRules('describe');
       clue.timerSeconds ??= 45;
     }
-    if (!clue.cards?.length) {
+    if (copy) partnerStartCards(clue, 'answer');
+    else if (!clue.cards?.length) {
       const cards = startingCards(clue.partner.game);
       if (cards.length) clue.cards = cards;
     }
@@ -239,6 +267,17 @@ export function setClueType(round: BoardRound, clue: Clue, type: ClueType): void
     }
   }
   followDailyDoubles(round);
+  return copy;
+}
+
+/**
+ * A 🤝 partner clue pasted or copied onto a tile of this round gets a copy of its answer on Card 1, as one made by hand
+ * does (answerCardDue). Returns whether it did.
+ */
+export function pastedPartnerCard(round: BoardRound, clue: Clue): boolean {
+  if (clue.type !== 'partner' || clue.empty || !answerCardDue(round, clue)) return false;
+  partnerStartCards(clue, 'answer');
+  return true;
 }
 
 /** The partner games a tile placed at random gets a 45 s countdown for (when it has none of its own). */
@@ -257,15 +296,7 @@ export function placePartner(round: BoardRound, clue: Clue, cardFrom: 'answer' |
     if (TIMED_GAMES.has(clue.partner.game)) clue.timerSeconds ??= 45;
   }
   if (cardSlides(clue).some(cardKept)) return;
-  const cards = startingCards(clue.partner.game);
-  if (cardFrom === 'answer') {
-    // (Custom has no starting card: the copy goes to its giver.)
-    const first = cards[0] ?? newCard('giver');
-    cardFromAnswer(clue, first);
-    cards[0] = first;
-  }
-  if (cards.length) clue.cards = cards;
-  else delete clue.cards;
+  partnerStartCards(clue, cardFrom);
 }
 
 /** Plain data with its keys in one order (left-out keys dropped), to compare two of them whatever order they were made in. */

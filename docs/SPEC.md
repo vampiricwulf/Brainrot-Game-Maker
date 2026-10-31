@@ -249,7 +249,12 @@ RollEvent  { id, ts, source: 'wheel' | 'dice', presetName?, result: string /* la
   rules and cards; any other plays the round's game (`partnerGame`, Describe it by default) with a first 🤫 card that
   copies the tile's answer (or an empty one, `partnerCardFrom`). Start game places the ones still missing. One made or
   pasted by hand raises the box to the number on the board, as a Daily Double does, and the Plays and 🤫 Card choices
-  show once any partner clue is on the board. Both hints read alike: "2 on the board · Start places 1 at random", or
+  show once any partner clue is on the board. One made by hand (the Type box, Make it a…, a paste or a copy-drop) on a
+  tile with an answer and no card written on or named starts as a placed one does, its Card 1 a copy of the answer
+  (`partnerCardFrom` 'empty' keeps it empty): one step, "Made Movies $400 a partner clue (card: a copy of the answer)",
+  and a toast. **⧉ Same as the answer** is in the corner of an empty card's words box (the clue and Final editors), and
+  a checklist line about an empty card on a tile or Final with an answer has a ⧉ beside it (and in its menu) for the
+  first such card. Both hints read alike: "2 on the board · Start places 1 at random", or
   "· all placed".
 - **Tile face**: by default a tile shows its value. Optionally, show custom text or an image instead ("???", an emoji,
   a meme face). The value still drives the prefilled score.

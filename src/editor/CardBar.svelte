@@ -1,8 +1,8 @@
 <!--
   A 🤫 card's bar (a tile's, in the clue editor; a Final's, in its editor): its Card name (the host's own: phones never
-  get it), who it starts with, ⧉ Same as the answer on an empty one and 📱 On their phone (🗑 Delete card is with the
-  card's other buttons, right after the tabs). Typing the name is one undo step (the watcher names it "Renamed card
-  “…”"); Enter in it goes back to the card's tab.
+  get it), who it starts with, a note when it shows the answer, and 📱 On their phone (🗑 Delete card is with the card's
+  other buttons, right after the tabs; ⧉ Same as the answer is in an empty card's words box). Typing the name is one
+  undo step (the watcher names it "Renamed card “…”"); Enter in it goes back to the card's tab.
 -->
 <script lang="ts">
   import { app } from '../lib/app.svelte';
@@ -21,7 +21,6 @@
     answer,
     phoneView = $bindable(false),
     ongoes,
-    oncopy,
     ondone,
   }: {
     card: ClueCard;
@@ -36,11 +35,10 @@
      * are in the host panel before its question is shown).
      */
     question: Slide[];
-    /** Its tile's or Final's answer slide (⧉, and what the name mustn't repeat). */
+    /** Its tile's or Final's answer slide (whether the card shows it, and what the name mustn't repeat). */
     answer: Slide;
     phoneView: boolean;
     ongoes: (to: CardGoesTo) => void;
-    oncopy: () => void;
     /** Enter in the Card name box: done naming it (the focus goes back to its tab). */
     ondone: () => void;
   } = $props();
@@ -59,7 +57,7 @@
   );
 </script>
 
-<!-- Its name, who it starts with (it can go to anyone when it's handed out), and ⧉ Same as the answer. -->
+<!-- Its name, who it starts with (it can go to anyone when it's handed out), and whether it shows the answer. -->
 <div class="cardbar row" role="group" aria-label={clueCardWords(card, index, true)}>
   <label class="check name" title={note}>
     Card name
@@ -86,15 +84,7 @@
       {#each goesList as to (to)}<option value={to}>{goesTo(to)}</option>{/each}
     </select>
   </label>
-  {#if !slideHasContent(card)}
-    <button
-      class="small"
-      onclick={oncopy}
-      disabled={!slideHasContent(answer)}
-      title={slideHasContent(answer) ? 'Put a copy of the answer slide on this card, once: changing the answer afterwards doesn’t change the card' : 'The answer slide is empty'}
-      >⧉ Same as the answer</button
-    >
-  {:else if sameAsAnswer({ answerSlide: answer }, card)}
+  {#if slideHasContent(card) && sameAsAnswer({ answerSlide: answer }, card)}
     <span class="hint">This card shows the answer: whoever you send it to sees it</span>
   {/if}
   <!-- (Always there, so a screen reader hears the line when it shows; on a line of its own under the rest.) -->

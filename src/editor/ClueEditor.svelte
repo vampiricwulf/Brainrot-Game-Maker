@@ -6,7 +6,7 @@
   import { announce } from '../lib/announce';
   import { take, type ClueSide, type Place, type RoundPart } from '../lib/nav.svelte';
   import { imgFallback, mediaUrls } from '../lib/media.svelte';
-  import { addClueSlide, cardFromAnswer, deleteClueSlide, duplicateClueSlide, followDailyDoubles, insertClueSlide, moveClueSlide, neighbourClue, setClueType, stepClue, textStyleTargets } from '../lib/ops';
+  import { addClueSlide, answerCardDue, CARD_COPIED, cardFromAnswer, deleteClueSlide, duplicateClueSlide, followDailyDoubles, insertClueSlide, moveClueSlide, neighbourClue, setClueType, stepClue, textStyleTargets } from '../lib/ops';
   import { clipboard, copySlide, takeCopiedSlide } from '../lib/clipboard.svelte';
   import { isMenuKey, keyMenu, showMenu } from '../lib/menustate.svelte';
   import { slideTabMenu, slideTabTitle } from '../lib/slidetabs';
@@ -37,6 +37,7 @@
   import { addCard, deleteCard, duplicateCard, GOES_TO, goesToLabel, moveCard, partnerRules, TILE_GOES_TO, tileGoesToLabel } from '../lib/partner';
   import { clip } from '../lib/buzzproto';
   import CardBar from './CardBar.svelte';
+  import SameAsAnswer from './SameAsAnswer.svelte';
   import PartnerSettings from './PartnerSettings.svelte';
   import ChoicesEditor from './ChoicesEditor.svelte';
   import PhoneCardPreview from './PhoneCardPreview.svelte';
@@ -70,13 +71,18 @@
   const TYPE_WORDS: Record<ClueType, string> = { standard: 'a standard tile', dailyDouble: 'a Daily Double', wheel: 'a wheel tile', dice: 'a dice tile', partner: 'a partner clue' };
   /** The tile as the board shows it ("Memes $400"), for the history. */
   const tileName = () => `${categoryLabel(cat)} ${formatPoints(clue.value ?? round.values[pos.row] ?? 0, sym)}`;
-  /** The tile's type (one step, with the ⭐ Daily Doubles count it raises). */
+  /**
+   * The tile's type (one step, with the ⭐ Daily Doubles count it raises). A partner clue made from a tile with an answer
+   * gets a copy of it on Card 1, as 🔀 Randomize gives one (the round's 🤫 Card choice), and a toast says so.
+   */
   function setType(type: ClueType): void {
-    record(`Made ${tileName()} ${TYPE_WORDS[type]}`, () => {
+    const copy = type === 'partner' && clue.type !== 'partner' && answerCardDue(round, clue);
+    record(`Made ${tileName()} ${TYPE_WORDS[type]}${copy ? ' (card: a copy of the answer)' : ''}`, () => {
       setClueType(round, clue, type);
       // (A partner clue's starting cards take the theme's clue text, as new clues do.)
       if (type === 'partner') followClueText(app.game, cardSlides(clue));
     });
+    if (copy) toast(CARD_COPIED);
   }
   /** The tab open: a question slide, the answer, or one of a partner clue's 🤫 cards. */
   let side = $state<ClueSide>('q');
@@ -705,19 +711,22 @@
           </label>
           {#if card}
             <!-- (The card open, else the last one opened: Card 1 at first. A long name is cut: the modal's height is
-                 fixed.) -->
-            <label class="field">
-              🤫 {clip(clueCardName(card, cardAt), 24)} words (only who you send it to sees them)
-              <textarea
-                bind:this={cardField}
-                dir="auto"
-                data-field="card"
-                rows="2"
-                placeholder="Type what they’ll see…"
-                value={slideText(card)}
-                oninput={(e) => setSlideText(card, e.currentTarget.value) && followClueText(app.game, [card])}
-              ></textarea>
-            </label>
+                 fixed. While it's empty, ⧉ Same as the answer sits in its box's corner.) -->
+            <div class="cardq" class:empty={!slideHasContent(card)}>
+              <label class="field">
+                🤫 {clip(clueCardName(card, cardAt), 24)} words (only who you send it to sees them)
+                <textarea
+                  bind:this={cardField}
+                  dir="auto"
+                  data-field="card"
+                  rows="2"
+                  placeholder="Type what they’ll see…"
+                  value={slideText(card)}
+                  oninput={(e) => setSlideText(card, e.currentTarget.value) && followClueText(app.game, [card])}
+                ></textarea>
+              </label>
+              {#if !slideHasContent(card)}<SameAsAnswer answer={clue.answerSlide} oncopy={copyAnswer} />{/if}
+            </div>
           {/if}
           <label class="field">
             Host notes (off stream, except in a single window)
@@ -818,7 +827,6 @@
             answer={clue.answerSlide}
             bind:phoneView
             ongoes={setGoesTo}
-            oncopy={copyAnswer}
             ondone={focusTab}
           />
         {/if}
@@ -926,6 +934,15 @@
   }
   .card-edit > :global(.se) {
     min-width: 0;
+  }
+  /* An empty card's box holds ⧉ Same as the answer in its corner (SameAsAnswer). */
+  .cardq {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+  }
+  .cardq.empty textarea {
+    padding-bottom: 32px;
   }
   .quick textarea {
     resize: none;

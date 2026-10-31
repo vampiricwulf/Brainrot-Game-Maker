@@ -704,8 +704,9 @@ export interface BoardRound {
   /** The game a partner clue placed at random plays when its tile has no rules of its own (left out: Describe it). */
   partnerGame?: PartnerGame;
   /**
-   * Where a partner clue placed at random gets its first 🤫 card when its tile has none of its own: a copy of the tile's
-   * answer ('answer', the default: the giver gets what to describe) or an empty card to fill in ('empty').
+   * Where a new partner clue (placed at random, or made by hand on a tile with an answer) gets its first 🤫 card when
+   * its tile has none of its own: a copy of the tile's answer ('answer', the default: the giver gets what to describe) or
+   * an empty card to fill in ('empty').
    */
   partnerCardFrom?: 'answer' | 'empty';
   /** Free-placed images on this round's board screen (1920×1080 stage coordinates). */

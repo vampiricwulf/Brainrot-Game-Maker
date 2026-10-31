@@ -37,6 +37,8 @@
     clone,
     clueClearable,
     clueHasContent,
+    answerCardDue,
+    CARD_COPIED,
     copyClue,
     deleteRow,
     duplicateCategory,
@@ -44,6 +46,7 @@
     madeUpCategoryName,
     moveCategory,
     moveRow,
+    pastedPartnerCard,
     randomizePartnerTiles,
     removeCategory,
     scaleValues,
@@ -301,14 +304,18 @@
     if (copy) {
       const c = copyClue(clue);
       const notify = clueHasContent(round.categories[to.cat].clues[to.row]);
+      // (A partner clue with its card empty gets a copy of its answer there, as one made by hand does.)
+      const card = c.type === 'partner' && answerCardDue(round, c);
       step(
-        `Copied ${a} to ${b}`,
+        `Copied ${a} to ${b}${card ? ' (card: a copy of the answer)' : ''}`,
         () => {
+          pastedPartnerCard(round, c);
           round.categories[to.cat].clues[to.row] = c;
           followDailyDoubles(round);
         },
         { notify, place: tilePlace(to.cat, c.id) },
       );
+      if (card) toast(CARD_COPIED);
     } else step(`Swapped ${a} and ${b}`, () => swapClues(round, from, to), { place: tilePlace(to.cat, clue.id) });
     // (The focus goes with it when it was on the board.)
     focusTile(to.cat, to.row);
@@ -338,15 +345,19 @@
     const c = copyClue(clipboard.clue);
     const game = app.game;
     const notify = clueHasContent(round.categories[p.cat].clues[p.row]);
+    // (A partner clue with its card empty gets a copy of its answer there, as one made by hand does.)
+    const card = c.type === 'partner' && !c.empty && answerCardDue(round, c);
     step(
-      `Pasted a clue on ${tileName(p)}`,
+      `Pasted a clue on ${tileName(p)}${card ? ' (card: a copy of the answer)' : ''}`,
       () => {
         adoptUsedBy(game, c);
+        pastedPartnerCard(round, c);
         round.categories[p.cat].clues[p.row] = c;
         followDailyDoubles(round);
       },
       { notify, place: tilePlace(p.cat, c.id) },
     );
+    if (card) toast(CARD_COPIED);
   }
 
   const ARROWS: Record<string, [number, number]> = { ArrowLeft: [-1, 0], ArrowRight: [1, 0], ArrowUp: [0, -1], ArrowDown: [0, 1] };
@@ -526,9 +537,14 @@
   function makeKind(p: TilePos, type: ClueType): void {
     const clue = round.categories[p.cat].clues[p.row];
     const words = KINDS.find((k) => k.type === type)!.words;
-    // (Undone, it shows on the board, where it was made: the clue doesn't open.)
+    // (Undone, it shows on the board, where it was made: the clue doesn't open. A partner clue made from a tile with an
+    // answer gets a copy of it on Card 1, as 🔀 Randomize gives one.)
+    const card = type === 'partner' && clue.type !== 'partner' && answerCardDue(round, clue);
     if (clue.type !== type)
-      step(`Made ${tileName(p)} ${words}`, () => (setClueType(round, clue, type), type === 'partner' && followTheme()), { place: tilePlace(p.cat, clue.id) });
+      step(`Made ${tileName(p)} ${words}${card ? ' (card: a copy of the answer)' : ''}`, () => (setClueType(round, clue, type), type === 'partner' && followTheme()), {
+        place: tilePlace(p.cat, clue.id),
+      });
+    if (card) toast(CARD_COPIED);
     if (type === 'wheel' || type === 'dice') openAt(p.cat, p.row, true);
   }
 
@@ -919,8 +935,8 @@
     <select
       value={round.partnerCardFrom ?? 'answer'}
       onchange={(e) => setPartnerCardFrom(e.currentTarget.value as 'answer' | 'empty')}
-      aria-label="The card a partner clue placed at random gets"
-      title="The 🤫 card a partner clue placed by 🔀 Randomize starts with (a tile with a card of its own keeps it): a copy of the tile's answer, for the describer, or an empty card to fill in. The ones Start game places get a copy of the answer."
+      aria-label="The card a new partner clue gets"
+      title="The 🤫 card a new partner clue starts with, placed by 🔀 Randomize or made by hand (a tile with a card of its own keeps it): a copy of the tile's answer, for the describer, or an empty card to fill in. The ones Start game places get a copy of the answer."
     >
       <option value="answer">🤫 Card: ⧉ the tile’s answer</option>
       <option value="empty">🤫 Card: empty, to fill in</option>

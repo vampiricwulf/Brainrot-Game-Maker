@@ -1,8 +1,8 @@
 // The editor's checklist in the sidebar: the problems validate() finds, one line a round, and where a click on it goes.
-import { isBoard, roundName, type BoardRound, type Game, type Id } from './model';
+import { categoryLabel, clueCardWords, clueValue, finalName, formatPoints, isBoard, isFinal, roundName, type BoardRound, type ClueCard, type Game, type Id, type Slide } from './model';
 import type { Place } from './historylabel';
 import { toolChosen } from './tools';
-import { cardsToFinish } from './partner';
+import { cardSlides, cardsToFinish } from './partner';
 import { slideHasContent } from './usage';
 import type { Problem } from './validate';
 
@@ -20,6 +20,32 @@ export interface ChecklistLine {
   shrink?: Id[];
   /** 🔄: files to convert (Problem.convert): the line gets a button for them all. */
   convert?: Id[];
+  /** ⧉: an empty 🤫 card on a tile or Final with an answer (Problem.sameAsAnswer): the line gets ⧉ Same as the answer for the first. */
+  answerCard?: Place;
+}
+
+/**
+ * The 🤫 card a checklist line's ⧉ Same as the answer copies the answer onto (its place: a tile's card or a Final's),
+ * with its tile's or Final's answer and its name for the history ("Card 1 of Memes $400"). Null: it's gone, or not empty
+ * any more.
+ */
+export function answerCardAt(game: Game, place: Place): { holder: { answerSlide: Slide }; card: ClueCard; name: string } | null {
+  if (place.tab !== 'round' || !place.part) return null;
+  const round = game.rounds.find((r) => r.id === place.round);
+  const part = place.part;
+  const sym = game.settings.currencySymbol;
+  const found = (holder: { answerSlide: Slide; cards?: ClueCard[] }, where: string) => {
+    const cards = cardSlides(holder);
+    const i = cards.findIndex((c) => c.id === (part as { slide?: string }).slide);
+    if (i < 0 || slideHasContent(cards[i]) || !slideHasContent(holder.answerSlide)) return null;
+    return { holder, card: cards[i], name: `${clueCardWords(cards[i], i)} of ${where}` };
+  };
+  if (round && isFinal(round) && part.kind === 'final' && part.side === 'card') return found(round, finalName(round));
+  if (!round || !isBoard(round) || part.kind !== 'clue' || part.side !== 'card') return null;
+  const cat = round.categories.find((c) => c.id === part.category);
+  const row = cat?.clues.findIndex((c) => c.id === part.clue) ?? -1;
+  if (!cat || row < 0) return null;
+  return found(cat.clues[row], `${categoryLabel(cat)} ${formatPoints(clueValue(round, row, cat.clues[row]), sym)}`);
 }
 
 /**
@@ -59,7 +85,11 @@ export function checklistLines(game: Game, problems: Problem[]): ChecklistLine[]
   const byRound = new Map<number, ChecklistLine>();
   for (const p of problems) {
     const round = typeof p.tab === 'number' ? game.rounds[p.tab] : undefined;
-    const shrink = { ...(p.shrink ? { shrink: [p.shrink] } : {}), ...(p.convert?.length ? { convert: [...p.convert] } : {}) };
+    const shrink = {
+      ...(p.shrink ? { shrink: [p.shrink] } : {}),
+      ...(p.convert?.length ? { convert: [...p.convert] } : {}),
+      ...(p.sameAsAnswer && p.place ? { answerCard: p.place } : {}),
+    };
     if (!round) {
       lines.push({ text: p.text, level: p.level, tab: p.tab, details: [p.text], place: p.place, ...shrink });
       continue;
@@ -69,6 +99,7 @@ export function checklistLines(game: Game, problems: Problem[]): ChecklistLine[]
       line.details.push(p.text);
       if (p.shrink && !line.shrink?.includes(p.shrink)) line.shrink = [...(line.shrink ?? []), p.shrink];
       for (const id of p.convert ?? []) if (!line.convert?.includes(id)) line.convert = [...(line.convert ?? []), id];
+      if (p.sameAsAnswer && p.place && !line.answerCard) line.answerCard = p.place;
       // (The first warning's place: the first thing worth fixing.)
       if (p.level === 'warn' && line.level !== 'warn' && p.place) line.place = p.place;
       if (p.level === 'warn') line.level = 'warn';

@@ -265,6 +265,8 @@ describe('🤝 partner clues', () => {
     for (const c of round.categories) for (const cl of c.clues) (setSlideText(cl.questionSlide, 'Q?'), setSlideText(cl.answerSlide, 'A'));
     round.categories[0].title = 'Movies';
     const clue = round.categories[0].clues[1];
+    // (Its card empty, to fill in: else one made by hand starts with a copy of its answer.)
+    round.partnerCardFrom = 'empty';
     setClueType(round, clue, 'partner');
     return { game, round, clue };
   }
@@ -279,6 +281,8 @@ describe('🤝 partner clues', () => {
         tab: 0,
         level: 'warn',
         place: { tab: 'round', round: round.id, part: { kind: 'clue', category: round.categories[0].id, clue: clue.id, side: 'card', slide: card.id } },
+        // (Its tile has an answer: the checklist offers ⧉ Same as the answer.)
+        sameAsAnswer: true,
       },
       { text: 'Partner clues: without phone buzzers you copy the cards to the players yourself', tab: 'play', level: 'info' },
     ]);
@@ -492,7 +496,11 @@ describe('a Final’s 🤫 cards', () => {
   it('warns of an empty one by its name or its place, going to that card', () => {
     const { game, final, card } = finalGame();
     const empty = addCard(final, 'playing')!;
-    expect(mine(game)).toEqual([{ text: "Final Jeopardy!: card 2 is empty: there's nothing on it to send", tab: 1, level: 'warn', place: at(final, empty.id) }]);
+    expect(mine(game)).toEqual([{ text: "Final Jeopardy!: card 2 is empty: there's nothing on it to send", tab: 1, level: 'warn', place: at(final, empty.id), sameAsAnswer: true }]);
+    // (With no answer, nothing to copy.)
+    setSlideText(final.answerSlide, '');
+    expect(mine(game).find((p) => p.text.includes('card 2 is empty'))?.sameAsAnswer).toBeUndefined();
+    setSlideText(final.answerSlide, 'Shrek');
     setSlideText(card, '');
     expect(mine(game).map((p) => p.text)).toEqual(["Final Jeopardy!: card “Leader hint” is empty: there's nothing on it to send", "Final Jeopardy!: card 2 is empty: there's nothing on it to send"]);
   });

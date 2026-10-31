@@ -414,10 +414,18 @@ try {
   await dialog.waitFor({ state: 'detached' });
   await page.locator('[data-tile="0,2"]').click();
   await dialog.waitFor();
-  await dialog.locator('select').first().selectOption('partner');
-  await settings.waitFor();
+  // Written first, then made a partner clue: its Card 1 starts as a copy of the answer (as 🔀 Randomize's do), and a
+  // toast says so; one undo step, named for it.
   await dialog.locator('[data-field="q"]').fill('Describe this animal without saying its name!');
   await dialog.locator('[data-field="a"]').fill('Leopard');
+  await dialog.locator('select').first().selectOption('partner');
+  await settings.waitFor();
+  await page.locator('.toast', { hasText: 'Card 1 is a copy of the answer' }).waitFor();
+  const madeUndo = await page.locator('.editor > header button[aria-label="Undo (Ctrl+Z)"]').getAttribute('title');
+  assert(
+    (await card.inputValue()) === 'Leopard' && (await dialog.getByRole('button', { name: '⧉ Same as the answer' }).count()) === 0 && /^Undo: Made Movies \$\d+ a partner clue \(card: a copy of the answer\)/.test(madeUndo),
+    `a written tile made a partner clue by hand starts with Card 1 a copy of its answer, one step named for it (${madeUndo})`,
+  );
   await tabs.getByRole('tab', { name: '🤫 Card 1' }).click();
   await card.fill(SECRET);
   await addPicture(PIC, 200, 60, 20);

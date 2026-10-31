@@ -27,7 +27,9 @@
   import { addCard, deleteCard, duplicateCard, FINAL_GOES_TO, finalGoesToLabel, moveCard } from '../lib/partner';
   import { clip } from '../lib/buzzproto';
   import { followClueText } from '../lib/cluetext';
+  import { slideHasContent } from '../lib/usage';
   import CardBar from './CardBar.svelte';
+  import SameAsAnswer from './SameAsAnswer.svelte';
   import ChoicesEditor from './ChoicesEditor.svelte';
   import PhoneCardPreview from './PhoneCardPreview.svelte';
   import SlideEditor from './slide/SlideEditor.svelte';
@@ -218,19 +220,23 @@
     <textarea rows="2" data-field="a" placeholder="Type the answer…" value={slideText(round.answerSlide)} oninput={(e) => setSlideText(round.answerSlide, e.currentTarget.value) && followClueText(app.game, [round.answerSlide])}></textarea>
   </label>
   {#if card}
-    <!-- (The card open, else the last one opened: Card 1 at first. A long name is cut.) -->
-    <label class="field">
-      🤫 {clip(clueCardName(card, cardAt), 24)} words (only who you send it to sees them)
-      <textarea
-        bind:this={cardField}
-        rows="2"
-        dir="auto"
-        data-field="card"
-        placeholder="Type what they’ll see…"
-        value={slideText(card)}
-        oninput={(e) => setSlideText(card, e.currentTarget.value) && followClueText(app.game, [card])}
-      ></textarea>
-    </label>
+    <!-- (The card open, else the last one opened: Card 1 at first. A long name is cut. While it's empty, ⧉ Same as the
+         answer sits in its box's corner.) -->
+    <div class="cardq" class:empty={!slideHasContent(card)}>
+      <label class="field">
+        🤫 {clip(clueCardName(card, cardAt), 24)} words (only who you send it to sees them)
+        <textarea
+          bind:this={cardField}
+          rows="2"
+          dir="auto"
+          data-field="card"
+          placeholder="Type what they’ll see…"
+          value={slideText(card)}
+          oninput={(e) => setSlideText(card, e.currentTarget.value) && followClueText(app.game, [card])}
+        ></textarea>
+      </label>
+      {#if !slideHasContent(card)}<SameAsAnswer answer={round.answerSlide} oncopy={copyAnswer} />{/if}
+    </div>
   {/if}
   <label class="field">
     Host notes (off stream, except in a single window)
@@ -273,7 +279,6 @@
     answer={round.answerSlide}
     bind:phoneView
     ongoes={setGoesTo}
-    oncopy={copyAnswer}
     ondone={() => void tabs?.focusTab()}
   />
 {/if}
@@ -304,6 +309,15 @@
   }
   .quick.four {
     grid-template-columns: 1.2fr 1fr 1fr 1fr;
+  }
+  /* An empty card's box holds ⧉ Same as the answer in its corner (SameAsAnswer). */
+  .cardq {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+  }
+  .cardq.empty textarea {
+    padding-bottom: 32px;
   }
   .quick textarea {
     resize: none;
