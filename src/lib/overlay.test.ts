@@ -1,12 +1,13 @@
 import { describe, expect, it } from 'vitest';
 import { jeopardyGame } from './testgame';
 import { newLive, overlayDoneAt } from './live';
-import { PLAYER_WHEEL, type BoardRound, type Game } from './model';
+import { PLAYER_WHEEL, type BoardRound, type Game, type ScoreAction } from './model';
 
 const board = (g: Game, i: number = 0) => g.rounds[i] as BoardRound;
 import {
-  addWheel, editWheel, openCategories, openCategoryWheel, openDice, openPartnerWheel, openPlayerWheel, openQuickWheel, quickDice, removeWheel, openWheel, resetWheelEdits,
-  rollDice, spinningRolls, spinSegments, spinWheel, startRollOff, toggleScoreboard, wheelEdited, wheelPool, wheelSpentUp,
+  addWheel, applyScoreCard, draftDeltas, draftPick, editWheel, openCategories, openCategoryWheel, openDice, openPartnerWheel, openPlayerWheel, openQuickWheel, quickDice, removeWheel,
+  openWheel, resetWheelEdits, rollDice, scoreCards, scoreCardsLeft, scoreDraft, spinFor, spinningRolls, spinSegments, spinWheel, startRollOff, toggleScoreboard, wheelEdited, wheelPool,
+  wheelSpentUp,
 } from './overlay';
 import { newWheel, parseQuickWheel } from './tools';
 import { newSession } from './session';
@@ -427,5 +428,76 @@ describe('🤝 the partner wheel, and the rolls 📜 Log hides while they spin',
     expect(ro.rollId).toBe(session.rollLog!.at(-1)!.id);
     expect(spinningRolls(ro, ro.startedAt + 200)).toEqual([ro.rollId]);
     expect(spinningRolls(ro, overlayDoneAt(ro))).toEqual([]);
+  });
+});
+
+describe('a score card: who it’s for is the game screen’s, and one function gives it', () => {
+  /** A wheel whose every slice gives +$100, spun and landed, for Ann (the picker). */
+  function landed(kind: ScoreAction = { kind: 'addPoints', amount: 100 }) {
+    const { game, session, live } = withPlayers();
+    const w = newWheel('Bonus', ['A', 'B']);
+    for (const s of w.segments) s.scoreAction = kind;
+    game.wheels = [w];
+    session.currentPickerId = 'a';
+    openWheel(live, session, w);
+    spinWheel(live, session, game);
+    const o = live.overlay!;
+    if (o.kind !== 'wheel') throw new Error('no wheel');
+    o.spin!.startedAt -= o.spin!.duration + 1;
+    return { game, session, live, o, card: scoreCards(o)[0] };
+  }
+
+  it('lists the landed tool’s cards (none while it turns) and which are still left', () => {
+    const { session, o, card } = landed();
+    expect([card.reason, card.rollTotal, card.kind]).toEqual([`Wheel: Bonus → ${o.segments[o.result!].label}`, 0, 'wheel']);
+    expect(scoreCardsLeft(o, session)).toEqual([card.key]);
+    expect(scoreCards(o, o.spin!.startedAt)).toEqual([]);
+  });
+
+  it('is for the picker until the spin is tagged for someone, then for them, until the host picks', () => {
+    const { session, live, card } = landed();
+    expect(scoreDraft(live, session, card)).toEqual({ targets: ['a'] });
+    session.rollLog!.at(-1)!.playerIds = ['b', 'c'];
+    expect(scoreDraft(live, session, card).targets).toEqual(['b', 'c']);
+    draftPick(live, session, card, 'c');
+    expect(scoreDraft(live, session, card).targets).toEqual(['b']);
+    // (Tagged again: it stays as the host picked.)
+    session.rollLog!.at(-1)!.playerIds = ['a'];
+    expect([scoreDraft(live, session, card).targets, draftDeltas(live, session, card)]).toEqual([['b'], { deltas: { b: 100 }, ready: true }]);
+  });
+
+  it('gives it in one step, for the tile its tool is, and an Undo of it brings the card back; Skip sets it aside', () => {
+    const { game, session, live, o, card } = landed();
+    const batch = applyScoreCard(game, session, live, card.key, { tile: 'clue1' });
+    expect(batch).toBeTruthy();
+    expect(session.scoreLog.map((e) => [e.playerId, e.delta, e.batchId === batch, e.toolTile])).toEqual([['a', 100, true, 'clue1']]);
+    expect([scoreCardsLeft(o, session), applyScoreCard(game, session, live, card.key)]).toEqual([[], null]);
+    session.scoreLog[0].undone = true;
+    expect(scoreCardsLeft(o, session)).toEqual([card.key]);
+    applyScoreCard(game, session, live, card.key, { skip: true });
+    expect([scoreCardsLeft(o, session), session.scoreLog.filter((e) => !e.undone)]).toEqual([[], []]);
+  });
+
+  it('a steal waits for who it’s from (that player is never one it’s for); a swap is with one player', () => {
+    const { game, session, live, card } = landed({ kind: 'steal', amount: 50 });
+    for (const p of session.players) session.scoreLog.push({ id: `s${p.id}`, playerId: p.id, delta: 200, reason: 'x', ts: 1 });
+    expect(draftDeltas(live, session, card).ready).toBe(false);
+    expect(applyScoreCard(game, session, live, card.key)).toBeNull();
+    draftPick(live, session, card, 'a', true);
+    expect(scoreDraft(live, session, card)).toEqual({ targets: [], source: 'a' });
+    draftPick(live, session, card, 'b');
+    expect(draftDeltas(live, session, card)).toEqual({ deltas: { a: -50, b: 50 }, ready: true });
+    const swap = landed({ kind: 'swapScores' });
+    draftPick(swap.live, swap.session, swap.card, 'b');
+    expect(scoreDraft(swap.live, swap.session, swap.card).targets).toEqual(['b']);
+  });
+
+  it('a 🎯 Pick a player wheel spun with it says who it’s for', () => {
+    const { game, session, live, o } = landed();
+    addWheel(live, session, game, PLAYER_WHEEL);
+    spinWheel(live, session, game);
+    for (const w of [o, ...o.extra!]) w.spin!.startedAt -= w.spin!.duration + 1;
+    const picked = o.extra![0].segments[o.extra![0].result!].id;
+    expect(spinFor(o, session)).toEqual([picked]);
   });
 });

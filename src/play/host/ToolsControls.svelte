@@ -10,7 +10,7 @@
   import { textOn } from '../../lib/colors';
   import { overlayDoneAt, startTimer, tileToolUp } from '../../lib/live';
   import type { Game, Outcome, ScoreEvent, Session } from '../../lib/model';
-  import { addWheel, cardDone as isCardDone, cardsKey, removeWheel, rollDice, scoreCardsLeft, spinSegments, spinWheel, wheelEdited, wheelSpentUp } from '../../lib/overlay';
+  import { addWheel, cardDone as isCardDone, cardsKey, removeWheel, rollDice, scoreCards, scoreCardsLeft, spinFor, spinSegments, spinWheel, wheelEdited, wheelSpentUp } from '../../lib/overlay';
   import { rescued } from '../../lib/focusrescue';
   import { faceText, isRespin, outcomeText, rollOutcome, rollResult, sliceLabel } from '../../lib/tools';
   import ActionCard from './ActionCard.svelte';
@@ -55,10 +55,8 @@
   function tileGave(tile: string | undefined, given: (e: ScoreEvent) => boolean): void {
     if (tile) for (const e of session.scoreLog) if (!e.clueId && given(e)) e.toolTile = tile;
   }
-  const finish = (key: string) => (applied: boolean, batch?: string) => {
-    if (o?.kind === 'wheel' || o?.kind === 'dice') o.cardsDone = { ...o.cardsDone, [key]: applied && batch ? batch : true };
-    if (applied && batch) tileGave(ownTile, (e) => e.batchId === batch);
-  };
+  /** Its score cards, by card (the game screen keeps who each is for: see overlay.ts scoreDraft). */
+  const cards = $derived(new Map(scoreCards(o, now).map((c) => [c.key, c])));
   /** The added wheel whose edit box is open (by its key). */
   let editExtra = $state<string | null>(null);
   const editedExtra = $derived(o?.kind === 'wheel' ? o.extra?.find((w) => w.key === editExtra) : undefined);
@@ -113,10 +111,7 @@
    * Who this spin was for: the player the player wheel picked, else the players tagged, else the player a 🎯 wheel
    * spun with it landed on. Every effect of the spin (slice actions, score cards) starts with them.
    */
-  const chosen = $derived.by(() => {
-    const fromWheel = extraResults.find((r) => r.w.players)?.seg.id;
-    return picked ? [picked.id] : tagRoll?.playerIds?.length ? tagRoll.playerIds : fromWheel ? [fromWheel] : [];
-  });
+  const chosen = $derived(o ? spinFor(o, session) : []);
 
   /** A slice's action button: for the players it was for (see `chosen`), else the selected. `from` names it in the log. */
   function runOutcome(a: Action, from: string): void {
@@ -408,18 +403,9 @@
           {#each f.face.actions ?? [] as a (a.id)}<button class="small" onclick={() => runOutcome(a, `${diceName} → ${label}`)}>{describeAction(game, a, undefined, teams)}</button>{/each}
           {#if f.face.timerSeconds}<button class="small" onclick={() => startTimer(app.live, f.face.timerSeconds!)}>⏱ Start {f.face.timerSeconds}s</button>{/if}
         </div>
-        {#if f.face.scoreAction && !cardDone(`${actionKey}-die${f.i}`)}
-          {#key `${actionKey}-die${f.i}`}
-            <ActionCard
-              action={f.face.scoreAction}
-              {game}
-              {session}
-              reason={`Dice: ${diceName} → ${label}`}
-              rollTotal={o.kind === 'dice' ? (o.roll?.total ?? 0) : 0}
-              defaultTargets={chosen}
-              ondone={finish(`${actionKey}-die${f.i}`)}
-            />
-          {/key}
+        {@const card = cards.get(`${actionKey}-die${f.i}`)}
+        {#if card && !cardDone(card.key)}
+          {#key card.key}<ActionCard {card} {game} {session} tile={ownTile} />{/key}
         {/if}
       {/each}
       {#each extraResults as r (r.w.key)}
@@ -430,18 +416,9 @@
             {#each r.seg.actions ?? [] as a (a.id)}<button class="small" onclick={() => runOutcome(a, `${r.w.name} → ${label}`)}>{describeAction(game, a, undefined, teams)}</button>{/each}
             {#if r.seg.timerSeconds}<button class="small" onclick={() => startTimer(app.live, r.seg.timerSeconds!)}>⏱ Start {r.seg.timerSeconds}s</button>{/if}
           </div>
-          {#if r.seg.scoreAction && !cardDone(`${actionKey}-${r.w.key}`)}
-            {#key `${actionKey}-${r.w.key}`}
-              <ActionCard
-                action={r.seg.scoreAction}
-                {game}
-                {session}
-                reason={`Wheel: ${r.w.name} → ${label}`}
-                rollTotal={0}
-                defaultTargets={chosen}
-                ondone={finish(`${actionKey}-${r.w.key}`)}
-              />
-            {/key}
+          {@const card = cards.get(`${actionKey}-${r.w.key}`)}
+          {#if card && !cardDone(card.key)}
+            {#key card.key}<ActionCard {card} {game} {session} tile={ownTile} />{/key}
           {/if}
         {/if}
       {/each}
@@ -490,18 +467,9 @@
           {/if}
         </div>
       {/if}
-      {#if outcome?.scoreAction && !cardDone(actionKey)}
-        {#key actionKey}
-          <ActionCard
-            action={outcome.scoreAction}
-            {game}
-            {session}
-            reason={`${o.kind === 'wheel' ? 'Wheel' : 'Dice'}: ${o.name} → ${outcomeName}`}
-            rollTotal={o.kind === 'dice' ? (o.roll?.total ?? 0) : 0}
-            defaultTargets={chosen}
-            ondone={finish(actionKey)}
-          />
-        {/key}
+      {@const card = cards.get(actionKey)}
+      {#if card && !cardDone(card.key)}
+        {#key card.key}<ActionCard {card} {game} {session} tile={ownTile} />{/key}
       {/if}
     {/if}
   </div>

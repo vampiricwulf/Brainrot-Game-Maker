@@ -159,6 +159,12 @@ export type Overlay =
       short?: { item: Id; price?: number };
     };
 
+/**
+ * Who a score card is for, as the host chose in its box (Live.scoreDrafts): `source`, who it steals from or swaps with;
+ * `touched`, the host chose (until then it's for whoever the spin was for: see overlay.ts spinFor).
+ */
+export type ScoreDraft = { targets: Id[]; source?: Id; touched?: boolean };
+
 /** A wheel spun alongside the main one: its own slices, spin and result. */
 export interface ExtraWheel {
   key: string;
@@ -186,6 +192,11 @@ export interface Live {
    * (Not set for a wheel or dice opened later over the clue.)
    */
   toolTile?: string;
+  /**
+   * Who each score card of the wheel or dice on screen is for, as the host chose in its box (by card: see cardsKey, host
+   * only): the game screen keeps it, so the check before going on can give it with the host panel hidden.
+   */
+  scoreDrafts?: Record<string, ScoreDraft>;
   /** Panic button: the audience sees only the cover card. */
   cover?: boolean;
   /** The host is still on the pre-game screen: viewers see a "Starting soon" card (the board would give it away). */

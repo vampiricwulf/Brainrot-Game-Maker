@@ -1,64 +1,41 @@
-<!-- Optional score effect of a wheel/dice outcome: pick who it applies to, preview, then confirm or skip. -->
+<!--
+  Optional score effect of a wheel/dice outcome: pick who it applies to, preview, then confirm or skip. Who it's for is
+  the game screen's (app.live: see overlay.ts scoreDraft), so the check before going on can give it the same way.
+-->
 <script lang="ts">
-  import { untrack } from 'svelte';
+  import { app } from '../../lib/app.svelte';
   import { textOn } from '../../lib/colors';
-  import { formatPoints, type Game, type ScoreAction, type Session } from '../../lib/model';
-  import { actionDeltas, applyAction, describeAction, needsSource } from '../../lib/tools';
+  import { formatPoints, type Game, type Id, type Session } from '../../lib/model';
+  import { applyScoreCard, draftDeltas, draftPick, scoreDraft, type ScoreCard } from '../../lib/overlay';
+  import { describeAction, needsSource } from '../../lib/tools';
 
   let {
-    action,
+    card,
     game,
     session,
-    reason,
-    rollTotal = 0,
-    defaultTargets = [],
-    ondone,
+    tile,
   }: {
-    action: ScoreAction;
+    card: ScoreCard;
     game: Game;
     session: Session;
-    reason: string;
-    rollTotal?: number;
-    defaultTargets?: string[];
-    /** `batch`: the score step it applied (an Undo of it brings the card back). */
-    ondone: (applied: boolean, batch?: string) => void;
+    /** A wheel or dice tile's own tool: the points go down as that tile's. */
+    tile?: Id;
   } = $props();
 
+  const action = $derived(card.action);
   const sym = $derived(game.settings.currencySymbol);
-  /** A swap is with one player: the "For:" row picks one (a second would be left out without a word). */
-  const one = untrack(() => action.kind === 'swapScores');
-  let targets = $state<string[]>(
-    untrack(() => (defaultTargets.length ? [...defaultTargets] : session.currentPickerId ? [session.currentPickerId] : []).slice(0, one ? 1 : undefined)),
-  );
-  let source = $state<string | undefined>(undefined);
-  // Until the host picks here, it's for whoever the spin is tagged for ("This was for" can change after it lands).
-  let touched = false;
-  $effect(() => {
-    const d = defaultTargets;
-    if (!touched && d.length) untrack(() => (targets = [...d].filter((x) => x !== source).slice(0, one ? 1 : undefined)));
-  });
-  const deltas = $derived(actionDeltas(session, action, targets, source, rollTotal));
+  const draft = $derived(scoreDraft(app.live, session, card));
+  const targets = $derived(draft.targets);
+  const source = $derived(draft.source);
+  const now = $derived(draftDeltas(app.live, session, card));
   const byId = $derived(Object.fromEntries(session.players.map((p) => [p.id, p])));
-  const ready = $derived(targets.length > 0 && (!needsSource(action) || !!source) && Object.keys(deltas).length > 0);
-
-  function toggle(id: string): void {
-    touched = true;
-    targets = targets.includes(id) ? targets.filter((x) => x !== id) : one ? [id] : [...targets, id];
-  }
-
-  /** The player stolen from (or swapped with) isn't one it's for. */
-  function pickSource(id: string): void {
-    touched = true;
-    source = id;
-    targets = targets.filter((x) => x !== id);
-  }
 </script>
 
 <!-- (In sight as it comes, its confirm too: in one window the host panel can keep one height, and it scrolls.) -->
-<div class="ac" {@attach (el) => el.scrollIntoView({ block: 'nearest' })}>
+<div class="ac" data-score-card={card.key} {@attach (el) => el.scrollIntoView({ block: 'nearest' })}>
   <div><b>Score effect:</b> {describeAction(action, sym)} <span class="muted small">(only if you confirm)</span></div>
   <!-- (A wheel slice saved with it: say why Confirm never lights up.) -->
-  {#if action.kind === 'addRollTimes' && !rollTotal}<div class="warn small" role="status">No dice were rolled: this gives no points (Skip it).</div>{/if}
+  {#if action.kind === 'addRollTimes' && !card.rollTotal}<div class="warn small" role="status">No dice were rolled: this gives no points (Skip it).</div>{/if}
   <div class="row">
     <span class="muted small">For:</span>
     {#each session.players as p (p.id)}
@@ -71,27 +48,26 @@
         disabled={source === p.id}
         title={source === p.id ? `${action.kind === 'steal' ? 'Stolen from' : 'Swapped with'}: pick someone else` : undefined}
         data-player-id={p.id}
-        onclick={() => toggle(p.id)}>{p.name}</button>
+        onclick={() => draftPick(app.live, session, card, p.id)}>{p.name}</button>
     {/each}
   </div>
   {#if needsSource(action)}
     <div class="row">
       <span class="muted small">{action.kind === 'steal' ? 'Steal from:' : 'Swap with:'}</span>
       {#each session.players as p (p.id)}
-        <button class="chip" class:src={source === p.id} style:border-color={p.color} aria-pressed={source === p.id} data-player-id={p.id} onclick={() => pickSource(p.id)}>{p.name}</button>
+        <button class="chip" class:src={source === p.id} style:border-color={p.color} aria-pressed={source === p.id} data-player-id={p.id} onclick={() => draftPick(app.live, session, card, p.id, true)}
+          >{p.name}</button
+        >
       {/each}
     </div>
   {/if}
   <div class="row">
-    {#each Object.entries(deltas) as [id, d]}
+    {#each Object.entries(now.deltas) as [id, d]}
       <span class="delta" class:neg={d < 0}>{byId[id]?.name}: {d > 0 ? '+' : '−'}{formatPoints(Math.abs(d), sym)}</span>
     {/each}
     <span class="spacer"></span>
-    <button class="ghost small" onclick={() => ondone(false)}>Skip</button>
-    <button
-      class="good small"
-      disabled={!ready}
-      onclick={() => ondone(true, applyAction(session, game, action, targets, source, reason, rollTotal))}>Confirm</button>
+    <button class="ghost small" onclick={() => applyScoreCard(game, session, app.live, card.key, { skip: true })}>Skip</button>
+    <button class="good small" disabled={!now.ready} onclick={() => applyScoreCard(game, session, app.live, card.key, { tile })}>Confirm</button>
   </div>
 </div>
 

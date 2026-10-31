@@ -1,10 +1,10 @@
 // Host actions that open / drive the tool overlays (wheel, dice, roll-off, scoreboard).
-import { categoryLabel, isBoard, newId, PLAYER_WHEEL, type DicePreset, type Game, type Id, type PartnerState, type Session, type TeamMember, type WheelPreset, type WheelSegment } from './model';
+import { categoryLabel, isBoard, newId, PLAYER_WHEEL, type DicePreset, type Game, type Id, type PartnerState, type ScoreAction, type Session, type TeamMember, type WheelPreset, type WheelSegment } from './model';
 import { mixHex } from './colors';
-import { overlayDoneAt, type ExtraWheel, type Live, type Overlay } from './live';
+import { overlayDoneAt, toolOverlay, type ExtraWheel, type Live, type Overlay, type ScoreDraft } from './live';
 import {
-  activeSegments, describeRoll, isRespin, logRoll, newSegment, onSlices, planRollOff, rollOutcome, rollPreset, sliceLabel, spinTarget, weightedIndex, wheelUsedUp,
-  type PoolSlice,
+  actionDeltas, activeSegments, applyAction, describeRoll, faceText, isRespin, logRoll, needsSource, newSegment, onSlices, outcomeText, planRollOff, rollOutcome, rollPreset, sliceLabel,
+  spinTarget, weightedIndex, wheelUsedUp, type PoolSlice,
 } from './tools';
 import { templateSegments, type WheelTemplate } from './wheeltemplates';
 
@@ -138,25 +138,127 @@ export function cardDone(o: Overlay | null | undefined, session: Session, key: s
   return d === true || (!!d && session.scoreLog.some((e) => e.batchId === d && !e.undone));
 }
 
+/** A score card of the wheel or dice on screen: its effect, what the score log calls it, and the dice total it counts. */
+export type ScoreCard = { key: string; action: ScoreAction; reason: string; rollTotal: number; kind: 'wheel' | 'dice' };
+
 /**
- * The score cards of the wheel or dice on screen still waiting once it has landed (neither confirmed nor skipped): its
- * result's (not a 🎯 player wheel's), the other dice's faces' and the other wheels'. Closing it with one left asks first.
+ * The score cards of the wheel or dice on screen once it has landed, dealt with or not: its result's (not a 🎯 player
+ * wheel's), the other dice's faces' and the other wheels'.
  */
-export function scoreCardsLeft(o: Overlay | null | undefined, session: Session, now = Date.now()): string[] {
+export function scoreCards(o: Overlay | null | undefined, now = Date.now()): ScoreCard[] {
   if ((o?.kind !== 'wheel' && o?.kind !== 'dice') || now < overlayDoneAt(o)) return [];
   const key = cardsKey(o);
-  const keys: string[] = [];
   if (o.kind === 'dice') {
     if (!o.roll) return [];
-    const { main, others } = rollOutcome(o.roll);
-    if (main?.scoreAction) keys.push(key);
-    for (const f of others) if (f.face.scoreAction) keys.push(`${key}-die${f.i}`);
-  } else {
-    if (!o.spin) return [];
-    if (!o.players && !o.members && o.result !== null && o.segments[o.result]?.scoreAction) keys.push(key);
-    for (const w of o.extra ?? []) if (w.spin && w.result !== null && w.segments[w.result]?.scoreAction) keys.push(`${key}-${w.key}`);
+    const r = o.roll;
+    const { main, others } = rollOutcome(r);
+    const card = (k: string, action: ScoreAction, reason: string): ScoreCard => ({ key: k, action, reason, rollTotal: r.total ?? 0, kind: 'dice' });
+    return [
+      ...(main?.scoreAction ? [card(key, main.scoreAction, `Dice: ${o.name} → ${outcomeText(r)}`)] : []),
+      ...others.flatMap((f) => {
+        const label = f.face.label.trim() || (r.dice[f.i] ? faceText(r.dice[f.i]) : `Die ${f.i + 1}`);
+        return f.face.scoreAction ? [card(`${key}-die${f.i}`, f.face.scoreAction, `Dice: ${o.name} → ${label}`)] : [];
+      }),
+    ];
   }
-  return keys.filter((k) => !cardDone(o, session, k));
+  if (!o.spin) return [];
+  const out: ScoreCard[] = [];
+  const main = o.result !== null ? o.segments[o.result] : undefined;
+  if (!o.players && !o.members && main?.scoreAction) out.push({ key, action: main.scoreAction, reason: `Wheel: ${o.name} → ${sliceLabel(main, o.result!)}`, rollTotal: 0, kind: 'wheel' });
+  for (const w of o.extra ?? []) {
+    const seg = w.spin && w.result !== null ? w.segments[w.result] : undefined;
+    if (seg?.scoreAction) out.push({ key: `${key}-${w.key}`, action: seg.scoreAction, reason: `Wheel: ${w.name} → ${sliceLabel(seg, w.result!)}`, rollTotal: 0, kind: 'wheel' });
+  }
+  return out;
+}
+
+/**
+ * The score cards of the wheel or dice on screen still waiting once it has landed (neither confirmed nor skipped).
+ * Going on with one left asks first.
+ */
+export function scoreCardsLeft(o: Overlay | null | undefined, session: Session, now = Date.now()): string[] {
+  return scoreCards(o, now)
+    .map((c) => c.key)
+    .filter((k) => !cardDone(o, session, k));
+}
+
+/**
+ * Who this spin or roll was for: the player a 🎯 Pick a player wheel landed on, else the players tagged in "This was
+ * for", else the one a 🎯 wheel spun with it landed on. Its score cards are for them until the host picks there.
+ */
+export function spinFor(o: Overlay | null | undefined, session: Session): Id[] {
+  if (o?.kind !== 'wheel' && o?.kind !== 'dice') return [];
+  const has = (id: Id | undefined) => !!id && session.players.some((p) => p.id === id);
+  if (o.kind === 'wheel' && o.players && o.spin && o.result !== null) {
+    const id = o.segments[o.result]?.id;
+    return has(id) ? [id] : [];
+  }
+  // This spin's roll-log entries (one per wheel spun together: a spent one, or one added since, didn't spin).
+  const log = session.rollLog ?? [];
+  const extras = o.kind === 'wheel' && o.spin ? (o.extra ?? []).filter((w) => w.spin && w.spin.startedAt >= o.spin!.startedAt).length : 0;
+  const rolls = extras ? log.slice(-(1 + extras)) : log.slice(-1);
+  const tagged = ([...rolls].reverse().find((r) => !r.picked) ?? log.at(-1))?.playerIds ?? [];
+  if (tagged.length) return tagged;
+  const w = o.kind === 'wheel' ? o.extra?.find((x) => x.players && x.spin && x.result !== null) : undefined;
+  const id = w && w.result !== null ? w.segments[w.result]?.id : undefined;
+  return has(id) ? [id!] : [];
+}
+
+/**
+ * Who a score card is for now: the host's choice once they made one, else who the spin was for, else the picker. A swap
+ * is with one player.
+ */
+export function scoreDraft(live: Live, session: Session, card: ScoreCard): { targets: Id[]; source?: Id } {
+  const one = card.action.kind === 'swapScores';
+  const d = live.scoreDrafts?.[card.key];
+  if (d?.touched) return { targets: d.targets, ...(d.source ? { source: d.source } : {}) };
+  const by = spinFor(toolOverlay(live), session);
+  const base = by.length ? by : session.currentPickerId ? [session.currentPickerId] : [];
+  return { targets: base.slice(0, one ? 1 : undefined) };
+}
+
+/** The host picks who a score card is for (`id` on or off), or who it steals from or swaps with (`source`). */
+export function draftPick(live: Live, session: Session, card: ScoreCard, id: Id, source = false): void {
+  const one = card.action.kind === 'swapScores';
+  const d = scoreDraft(live, session, card);
+  const next: ScoreDraft = source
+    ? // (The player stolen from, or swapped with, isn't one it's for.)
+      { targets: d.targets.filter((x) => x !== id), source: id, touched: true }
+    : { targets: d.targets.includes(id) ? d.targets.filter((x) => x !== id) : one ? [id] : [...d.targets, id], ...(d.source ? { source: d.source } : {}), touched: true };
+  // (Only this spin's cards are kept: an older spin's go.)
+  const o = toolOverlay(live);
+  const keep = o ? cardsKey(o) : '';
+  live.scoreDrafts = { ...Object.fromEntries(Object.entries(live.scoreDrafts ?? {}).filter(([k]) => keep && k.startsWith(keep))), [card.key]: next };
+}
+
+/** What a score card would change now (player → points), and whether it can be given (who it's for, and from whom). */
+export function draftDeltas(live: Live, session: Session, card: ScoreCard): { deltas: Record<Id, number>; ready: boolean } {
+  const d = scoreDraft(live, session, card);
+  const deltas = actionDeltas(session, card.action, d.targets, d.source, card.rollTotal);
+  return { deltas, ready: d.targets.length > 0 && (!needsSource(card.action) || !!d.source) && Object.keys(deltas).length > 0 };
+}
+
+/**
+ * Give a score card of the wheel or dice on screen, to whom its draft says (one undo step: an Undo of it brings the
+ * card back), or (`skip`) set it aside. The points of a wheel or dice tile's own tool go down as its tile's (`tile`):
+ * ↩ Put back (keep tile) then waits for an Undo, as after an award. Returns the score step, or null (not ready, or
+ * gone).
+ */
+export function applyScoreCard(game: Game, session: Session, live: Live, key: string, opts: { skip?: boolean; tile?: Id } = {}): string | null {
+  const o = toolOverlay(live);
+  const card = scoreCards(o).find((c) => c.key === key);
+  if ((o?.kind !== 'wheel' && o?.kind !== 'dice') || !card || cardDone(o, session, key)) return null;
+  const d = scoreDraft(live, session, card);
+  if (!opts.skip && !draftDeltas(live, session, card).ready) return null;
+  if (live.scoreDrafts?.[key]) live.scoreDrafts = Object.fromEntries(Object.entries(live.scoreDrafts).filter(([k]) => k !== key));
+  if (opts.skip) {
+    o.cardsDone = { ...o.cardsDone, [key]: true };
+    return null;
+  }
+  const batch = applyAction(session, game, card.action, d.targets, d.source, card.reason, card.rollTotal);
+  o.cardsDone = { ...o.cardsDone, [key]: batch };
+  if (opts.tile) for (const e of session.scoreLog) if (!e.clueId && e.batchId === batch) e.toolTile = opts.tile;
+  return batch;
 }
 
 /** A throwaway wheel from a plain list of options (with optional weights). */
