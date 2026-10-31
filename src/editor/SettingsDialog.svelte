@@ -76,8 +76,8 @@
         Save replaces the game’s last save
       </label>
       <p class="hint">
-        On: Save writes Game.brainrot again and keeps the two before it as Game.brainrot.bak and .bak2 (Open… › Browse… opens
-        them). Another game with the same name never gets replaced: it saves as Game (2).brainrot. Off: every Save makes a new
+        On: Save writes Game.brainrot again and keeps the two before it as Game.brainrot.bak and .bak2 (Open… › Browse for a
+        game file… opens them). Another game with the same name never gets replaced: it saves as Game (2).brainrot. Off: every Save makes a new
         file (Game (2).brainrot, Game (3).brainrot…).
       </p>
     {:else}

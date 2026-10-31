@@ -487,8 +487,13 @@ RollEvent  { id, ts, source: 'wheel' | 'dice', presetName?, result: string /* la
   beside it at 1500 px and up, and its tooltip says "Last saved as a file at 2:05 PM" (a desktop autosave file counts)
   or "Not saved as a file yet". The header's note beside it: in a browser "✓ Kept in this browser (💾 Save makes a
   file)" (the brackets at 1400 px and up), in the desktop app "✓ Autosaved · file 2:05". New and Open… replace the sample game as it came (its one step,
-  on a new game) without asking; it's kept in Recent games. **Open** → Recent games (the last 8
-  games replaced, kept in the browser), the desktop app's BrainrotSaves, a file picker, or drag-drop.
+  on a new game) without asking; it's kept in Recent games. **Open…** (Ctrl+O, the first screen's 📂 Open a game…, Game over › ▶ Next game…) is always one window,
+  "📂 Open a game": Recent games (the last 8 games replaced, kept in the browser or on this PC with their undo history),
+  in the desktop app "Your saves (BrainrotSaves)" newest first with date and size and 📂 Saves folder, then the foot's
+  Cancel … Browse for a game file… (blue when both lists are empty) "or drop a game file anywhere on the editor". Its
+  rows: ↑ / ↓ (Home / End) across both lists, Enter opens, Delete on a recent game asks to delete it, a right-click or
+  Shift+F10 its menu (▶ Open, 📁 Show in folder for a save, 🗑 Delete from Recent games… for a recent game, red), 🗑 at a
+  recent game's far end. A file dropped on the editor opens as before.
 - **Export standalone HTML** (player only, embedded media) with a size warning: ⋯ › *Save a copy as* › ⬇ Export as a web
   page… (play-only), "Plays without this app. Shows the answers: keep it to yourself." It has one name everywhere, the
   **play-only web page**: the export's message, 🕘 History, the desktop app's list of saves and the header while it's made.

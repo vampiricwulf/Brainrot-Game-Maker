@@ -176,10 +176,10 @@ try {
   await answerReplace(w, 'Discard');
   await w.locator('nav > button.round-tab').first().waitFor({ state: 'detached' });
   await w.locator('input.title').fill('Something else');
-  // Open… lists Recent games first (New kept the exported game there); Browse… picks a file.
+  // Open… lists Recent games (New kept the exported game there); Browse for a game file… picks a file.
   const chooser = w.waitForEvent('filechooser');
   await w.getByRole('button', { name: 'Open…' }).click();
-  await w.getByRole('dialog', { name: 'Open a game' }).getByRole('button', { name: 'Browse…' }).click();
+  await w.getByRole('dialog', { name: 'Open a game' }).getByRole('button', { name: 'Browse for a game file…' }).click();
   assert((await (await chooser).element().getAttribute('accept')).includes('.html'), 'Open… offers .html files');
   await (await chooser).setFiles(htmlPath);
   // (A game with a title of its own counts as work: Open… asks before replacing it.)
@@ -255,13 +255,27 @@ try {
     window.__saves.set(name, { ...window.__saves.get('Quiz.brainrot'), modified: new Date(2026, 9, 23, 11, 33, 12).getTime() });
     window.__readFail = { [name]: why };
   }, LOCKED);
-  // Open… shows Recent games first (New kept the first Quiz there): BrainrotSaves… lists the saves.
-  await d.getByRole('button', { name: 'Open…' }).click();
+  // Open… is one window, Ctrl+O too: Recent games (New kept the first Quiz there), then Your saves (BrainrotSaves).
+  await d.keyboard.press('Control+o');
   const list = d.getByRole('dialog', { name: 'Open a game' });
-  await list.getByRole('button', { name: 'BrainrotSaves…' }).waitFor();
-  assert((await list.innerText()).includes('kept on this PC only'), 'Recent games say they’re kept on this PC (not “in this browser”)');
-  await list.getByRole('button', { name: 'BrainrotSaves…' }).click();
   await list.locator('button.save').first().waitFor();
+  assert(
+    (await list.innerText()).includes('Kept on this PC only') &&
+      (await list.getByRole('heading', { name: 'Recent games' }).count()) === 1 &&
+      (await list.getByRole('heading', { name: 'Your saves (BrainrotSaves)' }).count()) === 1 &&
+      (await list.getByRole('button', { name: 'BrainrotSaves…' }).count()) === 0,
+    'Ctrl+O opens Open…, one window: Recent games (kept on this PC, not “in this browser”), then Your saves (BrainrotSaves)',
+  );
+  // The arrows go from the recent games on to the saves.
+  await d.waitForFunction(() => document.activeElement?.matches('[role="dialog"] [data-row]'));
+  for (let i = 0; i < 12 && !(await d.evaluate(() => document.activeElement?.matches('button.save'))); i++) await d.keyboard.press('ArrowDown');
+  assert(await d.evaluate(() => document.activeElement?.matches('button.save')), '↓ goes from the recent games on to the saves');
+  // A save's menu: ▶ Open, 📁 Show in folder.
+  await calls(d);
+  await d.keyboard.press('Shift+F10');
+  await d.getByRole('menu').getByRole('menuitem', { name: /📁 Show in folder/ }).click();
+  await d.waitForFunction(() => window.__calls.includes('open_data_folder'));
+  assert(true, 'Shift+F10 on a save gives its menu; 📁 Show in folder shows BrainrotSaves');
   const listed = await list.locator('button.save b').allInnerTexts();
   assert(listed.includes('Exported Quiz.html') && !listed.some((n) => n.endsWith('.bak')), `Open… lists the exported game, not the backups (${listed.join(', ')})`);
   await d.screenshot({ path: 'test-results/desktop-open.png' });
@@ -284,7 +298,6 @@ try {
   assert(true, 'a save that can’t be read says why');
   await locked.getByRole('button', { name: 'OK' }).click();
   await d.getByRole('button', { name: 'Open…' }).click();
-  await list.getByRole('button', { name: 'BrainrotSaves…' }).click();
   await list.getByRole('button', { name: /Exported Quiz\.html/ }).click();
   await d.waitForFunction(() => document.querySelector('input.title')?.value === 'Exported Quiz');
   assert(true, 'an exported game in the list opens');

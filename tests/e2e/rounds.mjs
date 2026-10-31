@@ -4,7 +4,7 @@ import { chromium } from 'playwright-core';
 import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { anyway, checkItem, goOnCheck, macClicks, mainButton, noDailyDoubles, playWithPlayers, leaveAnswer, confirmStrip } from './helpers.mjs';
+import { anyway, checkItem, goOnCheck, macClicks, mainButton, noDailyDoubles, openGameFile, playWithPlayers, leaveAnswer, confirmStrip } from './helpers.mjs';
 
 const file = resolve(process.env.APP_FILE || 'dist/index.html');
 if (!existsSync(file)) throw new Error('Run `npm run build` first');
@@ -313,8 +313,7 @@ try {
   mkdirSync('test-results', { recursive: true });
   writeFileSync('test-results/v1-game.json', JSON.stringify(v1));
   await p2.goto(pathToFileURL(file).href);
-  const [chooser] = await Promise.all([p2.waitForEvent('filechooser'), p2.getByRole('button', { name: 'Open…' }).click()]);
-  await chooser.setFiles(resolve('test-results/v1-game.json'));
+  await openGameFile(p2, resolve('test-results/v1-game.json'));
   await p2.waitForFunction(() => document.querySelector('input.title')?.value === 'Old Game', null, { timeout: 5000 }).catch(() => {
     throw new Error('the old game did not open: ' + alerts.join(' | '));
   });

@@ -10,6 +10,8 @@ export const EDITOR_KEYS: KeyGroup[] = [
       ['Ctrl+Y / Ctrl+Shift+Z', 'Redo'],
       ['Right-click ↶ Undo or ↷ Redo', '🕘 History: every step, to go back to any of them'],
       ['Ctrl+S', 'Save the game'],
+      ['Ctrl+O', 'Open a game: Recent games, your saves (desktop app) or a game file, in one window'],
+      ['↑ / ↓, Enter, Delete in Open…', 'Go from game to game, open one, take a recent game off the list (it asks first). Right-click or Shift+F10: its menu'],
       ['Ctrl+F', 'Find: clues, screens, spaces, items, wheels… anywhere in the game (↑ / ↓ and Enter go there)'],
       ['Esc', 'Close the window, picker or menu that’s open'],
       ['Enter in ℹ About or this list', 'Close it, as Done does (not in its filter or on one of its buttons)'],

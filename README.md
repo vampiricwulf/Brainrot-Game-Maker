@@ -745,8 +745,11 @@ spun yet, `Enter` says to spin first (`W`, or `D` for dice).
   - In a browser, they're downloads. A file over 100 MB asks where to save it instead (Chrome, Edge), so a big download
     can't fail unnoticed.
   - Changes made while a save is being written aren't in it, so they still count as unsaved.
-- **Open…** lists your **Recent games** and, in the desktop app, BrainrotSaves. It also opens `.json` games, exported
-  HTML files and the desktop app's `.bak` backups. Dropping a game file (`.brainrot`, `.zip`, `.json`, `.html`) on the
+- **Open…** (`Ctrl+O`) is one window: your **Recent games** and, in the desktop app, **Your saves (BrainrotSaves)**
+  newest first with their date and size (📂 Saves folder shows the folder), then **Browse for a game file…** at its foot.
+  `↑` / `↓` go from game to game and `Enter` opens one; `Delete` takes a recent game off the list (it asks first), and a
+  right-click or `Shift+F10` gives a game's menu (▶ Open, 📁 Show in folder, 🗑 Delete from Recent games…). Browse also
+  opens `.json` games, exported HTML files and the desktop app's `.bak` backups. Dropping a game file (`.brainrot`, `.zip`, `.json`, `.html`) on the
   editor opens it (a `.brainrot-theme` file opens on the 🎨 Theme page), and the desktop app opens a game, a `.bak` or
   a theme file you open it with ("Open with", or dropped on the `.exe`). One given during a game opens when you're
   back in the editor.

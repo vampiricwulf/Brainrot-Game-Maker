@@ -206,11 +206,33 @@ try {
   const openDialog = page.getByRole('dialog', { name: 'Open a game' });
   await openDialog.waitFor();
   assert((await openDialog.getByRole('button', { name: /^Safe Game/ }).count()) === 1, 'Open… lists the recent games');
+  const browseBtn = openDialog.getByRole('button', { name: 'Browse for a game file…' });
   assert(
     (await openDialog.getByRole('heading', { name: 'Recent games' }).count()) === 1 &&
-      (await openDialog.getByRole('group', { name: 'Saved files' }).getByRole('button', { name: 'Browse…' }).count()) === 1,
-    'Open… keeps Recent games (kept in this browser) apart from Saved files: Browse…',
+      (await openDialog.innerText()).includes('Kept in this browser only: 💾 Save makes a file that lasts.') &&
+      (await browseBtn.count()) === 1 &&
+      !(await browseBtn.evaluate((b) => b.classList.contains('primary'))),
+    'Open… is one window: Recent games (kept in this browser only), then Browse for a game file… at its foot, not blue while games are listed',
   );
+  // The keys: on the first game, ↓ to the next, Delete on one asks first.
+  await page.waitForFunction(() => document.activeElement?.matches('[role="dialog"] button.pick'));
+  const firstPick = await page.evaluate(() => document.activeElement.querySelector('b').textContent);
+  await page.keyboard.press('ArrowDown');
+  assert(await page.evaluate((t) => document.activeElement?.matches('button.pick') && document.activeElement.querySelector('b').textContent !== t, firstPick), 'Open…: the keys on the first game, ↓ goes to the next');
+  await page.keyboard.press('Delete');
+  const deleteAsk = page.getByRole('alertdialog').filter({ hasText: 'from Recent games?' });
+  await deleteAsk.waitFor();
+  await deleteAsk.getByRole('button', { name: 'Cancel' }).click();
+  assert((await openDialog.locator('button.pick').count()) >= 2, 'Delete on a game asks first (Cancel keeps it)');
+  // Right-click on a game: its menu (▶ Open, 🗑 Delete from Recent games…).
+  await openDialog.getByRole('button', { name: /^Safe Game/ }).click({ button: 'right' });
+  const rowMenu = page.getByRole('menu');
+  assert(
+    (await rowMenu.getByRole('menuitem', { name: /▶ Open/ }).count()) === 1 && (await rowMenu.getByRole('menuitem', { name: /🗑 Delete from Recent games…/ }).count()) === 1,
+    'a right-click on a recent game gives its menu: ▶ Open, 🗑 Delete from Recent games…',
+  );
+  await page.keyboard.press('Escape');
+  await rowMenu.waitFor({ state: 'detached' });
   await shot('datasafety-open');
   await openDialog.getByRole('button', { name: /^Safe Game/ }).click();
   // Going on without saving keeps the game (in Recent games): the question says so, and its button isn't "Discard".
@@ -278,7 +300,7 @@ try {
   await page.locator('.body').dispatchEvent('drop', { dataTransfer: zipped });
   await answerReplace(page, 'Discard');
   await showsPack();
-  assert((await page.locator('input.title').inputValue()) === 'Safe Game', 'a game pack dropped on the editor as .zip opens, as Browse… takes it');
+  assert((await page.locator('input.title').inputValue()) === 'Safe Game', 'a game pack dropped on the editor as .zip opens, as Browse for a game file… takes it');
   // On a tile of the board (where a picture dropped goes on the clue), a game file opens too.
   await page.locator('.cat textarea').first().fill('Changed');
   await page.locator('.cat textarea').nth(1).click();

@@ -3,7 +3,6 @@
   import { inertWhile } from '../lib/modal';
   import { dropMenu, menuItem, menuOf, showMenu, type MenuEntry } from '../lib/menustate.svelte';
   import SettingsDialog from './SettingsDialog.svelte';
-  import OpenSaves from './OpenSaves.svelte';
   import { listSaves, onOpenedFile, readSave, type SaveEntry } from '../lib/desktop.svelte';
   import { onDestroy, onMount, tick, untrack } from 'svelte';
   import { app, toast } from '../lib/app.svelte';
@@ -706,7 +705,7 @@
 
   /** Bring back a game from Recent games, with its undo history (this game takes its place there). */
   async function reopen(entry: { key: string; title: string }): Promise<void> {
-    recentList = null;
+    openList = null;
     const kept = await readRecent(entry.key);
     if (!kept) {
       previous = null;
@@ -727,31 +726,24 @@
     toast(`Reopened “${g.title}”`);
   }
 
-  /** Desktop app: the saves in BrainrotSaves, listed by Open… (null: the list is closed). */
-  let saveList = $state<SaveEntry[] | null>(null);
-  /** Open…'s Recent games (null: closed), and how many saves BrainrotSaves holds (desktop app). */
-  let recentList = $state<RecentEntry[] | null>(null);
-  let desktopSaves = $state<SaveEntry[]>([]);
-
-  /** The recent games Open… found, for OpenSaves' way back to them. */
-  let recentKept = $state<RecentEntry[]>([]);
+  /**
+   * Open…'s one window (null: closed): Recent games, and in the desktop app the saves in BrainrotSaves. The header's
+   * 📂 Open…, Ctrl+O, the first screen's 📂 Open a game… and Game over › ▶ Next game… all open it.
+   */
+  let openList = $state<{ recent: RecentEntry[]; saves: SaveEntry[] } | null>(null);
 
   /** The first screen's Recent games: the newest three (Open… lists them all), read again as games come and go. */
   let recentFirst = $state<RecentEntry[]>([]);
   let recentSeq = $state(0);
   $effect(() => {
     if (game.rounds.length) return;
-    void recentKept;
     void recentSeq;
     void listRecent().then((l) => (recentFirst = l.slice(0, 3)));
   });
 
   async function open(): Promise<void> {
-    const recent = (recentKept = await listRecent());
-    desktopSaves = inTauri() ? await listSaves() : [];
-    if (recent.length) recentList = recent;
-    else if (desktopSaves.length) saveList = desktopSaves;
-    else await browse();
+    const [recent, saves] = await Promise.all([listRecent(), inTauri() ? listSaves() : Promise.resolve([])]);
+    openList = { recent, saves };
   }
 
   async function forget(e: RecentEntry): Promise<void> {
@@ -762,23 +754,22 @@
     if (!sure) return;
     await forgetRecent(e.key);
     if (previous?.key === e.key) previous = null;
-    const left = (recentKept = await listRecent());
-    recentList = left.length ? left : null;
-    // The last one gone: the saves in BrainrotSaves are still there to open.
-    if (!left.length && desktopSaves.length) saveList = desktopSaves;
+    recentSeq++;
+    // (The window stays: the other games, the saves and Browse for a game file… are still there.)
+    const recent = await listRecent();
+    if (openList) openList = { ...openList, recent };
     // (Not the files this game's own undo history can bring back.)
     pruneMedia([app.game, app.playGame, app.resumable?.game], heldMedia());
   }
 
   async function browse(): Promise<void> {
-    saveList = null;
-    recentList = null;
+    openList = null;
     const file = await pickFile(GAME_FILES);
     if (file) await openFile(file);
   }
 
   async function openSave(s: SaveEntry): Promise<void> {
-    saveList = null;
+    openList = null;
     // (Read into memory in one piece, like any game file: one too big for that fails, after a long wait.)
     if (s.size >= MAX_PACK_READ)
       return void tell(`“${s.name}” is ${(s.size / 1e9).toFixed(1)} GB: a pack over about 2 GB can't be opened (the file itself is likely fine). Open an older save or autosave of it instead.`);
@@ -893,6 +884,15 @@
    * (a picker, or the 🌐 Link box that stays open beside the slide, isn't one). Ctrl+Z / Ctrl+Y undo and redo.
    */
   function onkeydown(e: KeyboardEvent): void {
+    // Ctrl+O: Open… (never the browser's own Open, which would leave the app), as the header's 📂 Open… does.
+    if ((e.ctrlKey || e.metaKey) && !e.altKey && !e.shiftKey && e.key.toLowerCase() === 'o' && !e.defaultPrevented) {
+      e.preventDefault();
+      if (replacing || e.repeat || openList) return;
+      if (opening) return void toast(`Still opening “${opening}”…`);
+      if (document.querySelector('[role="dialog"][aria-modal="true"]')) return void toast('Close this window first, then open a game (Ctrl+O)');
+      void open();
+      return;
+    }
     if (replacing) return;
     const key = undoKeyOf(e);
     if (key) return undoKey(e, key);
@@ -912,15 +912,15 @@
     }
     if (!(e.ctrlKey || e.metaKey) || e.altKey || e.key.toLowerCase() !== 's') return;
     e.preventDefault();
-    const open = [...document.querySelectorAll<HTMLElement>('[role="dialog"][aria-modal="true"]')];
+    const windows = [...document.querySelectorAll<HTMLElement>('[role="dialog"][aria-modal="true"]')];
     // The clue being edited is the game itself (not a question waiting on an answer): it saves from there too, what's
     // being typed first (a field commits as it's left), and the keys come back to it.
-    if (open.length === 1 && open[0].matches('.modal.clue')) {
+    if (windows.length === 1 && windows[0].matches('.modal.clue')) {
       if (saving || e.repeat) return;
-      const at = document.activeElement instanceof HTMLElement && open[0].contains(document.activeElement) ? document.activeElement : null;
+      const at = document.activeElement instanceof HTMLElement && windows[0].contains(document.activeElement) ? document.activeElement : null;
       at?.blur();
       void save().finally(() => at?.isConnected && at.focus({ preventScroll: true }));
-    } else if (open.length) toast('Close this window first, then save (Ctrl+S)');
+    } else if (windows.length) toast('Close this window first, then save (Ctrl+S)');
     else if (!saving && !e.repeat) save();
   }
 
@@ -1108,7 +1108,7 @@
     <button class="ghost group" onclick={() => undo()} oncontextmenu={historyMenu} disabled={!history.canUndo} title={history.undoTitle} aria-label="Undo (Ctrl+Z)"><span aria-hidden="true">↶</span><span class="word">Undo</span></button>
     <button class="ghost" onclick={() => redo()} oncontextmenu={historyMenu} disabled={!history.canRedo} title={history.redoTitle} aria-label="Redo (Ctrl+Y)"><span aria-hidden="true">↷</span><span class="word">Redo</span></button>
     <button class="group" onclick={newFile} disabled={!!opening}><span aria-hidden="true">📄</span> New</button>
-    <button onclick={open} disabled={!!opening} bind:this={openBtn}><span aria-hidden="true">📂</span> Open…</button>
+    <button onclick={open} disabled={!!opening} bind:this={openBtn} title="Recent games{inTauri() ? ', your saves' : ''} or a game file · Ctrl+O"><span aria-hidden="true">📂</span> Open…</button>
     <!-- (Its name stays Save; the dot and its words say how the file stands, as its tooltip does.) -->
     <button
       class="save"
@@ -1183,24 +1183,16 @@
   {/if}
   {#if importFrom}<RoundImport source={importFrom} onclose={() => (importFrom = null)} onadded={showNew} />{/if}
   {#if settings}<SettingsDialog onclose={() => (settings = false)} />{/if}
-  {#if saveList}
-    <OpenSaves
-      saves={saveList}
-      onpick={openSave}
-      onbrowse={browse}
-      onrecent={recentKept.length ? () => ((saveList = null), (recentList = recentKept)) : undefined}
-      onclose={() => (saveList = null)}
-    />
-  {/if}
-  {#if recentList}
+  {#if openList}
     <OpenGame
-      recent={recentList}
-      saves={desktopSaves.length}
+      recent={openList.recent}
+      saves={openList.saves}
+      desktop={inTauri()}
       onreopen={reopen}
       onforget={forget}
+      onpick={openSave}
       onbrowse={browse}
-      onsaves={() => ((recentList = null), (saveList = desktopSaves))}
-      onclose={() => (recentList = null)}
+      onclose={() => (openList = null)}
     />
   {/if}
   {#if asking}<ReplaceDialog heading={asking.heading} title={asking.title} go={asking.go} full={!app.storageOk} onchoice={asking.answer} />{/if}

@@ -12,7 +12,7 @@ import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { deflateSync } from 'node:zlib';
 import JSZip from 'jszip';
-import { addClassicRounds, nameGame, exportHtml } from './helpers.mjs';
+import { addClassicRounds, nameGame, exportHtml, openGameFile } from './helpers.mjs';
 
 const file = resolve(process.env.APP_FILE || 'dist/index.html');
 if (!existsSync(file)) throw new Error('Run `npm run build` first');
@@ -442,8 +442,7 @@ assert(usercontent.fromPage === 0, 'Drive files were never loaded by the page');
 await page.getByRole('button', { name: 'Exit' }).click();
 await page.waitForTimeout(450);
 await page.getByRole('button', { name: 'Keep & leave', exact: true }).click();
-const [chooser] = await Promise.all([page.waitForEvent('filechooser'), page.getByRole('button', { name: 'Open…' }).click()]);
-await chooser.setFiles({ name: 'links.jbr', mimeType: 'application/zip', buffer: readFileSync(await download.path()) });
+await openGameFile(page, { name: 'links.jbr', mimeType: 'application/zip', buffer: readFileSync(await download.path()) });
 // (The game open is the one saved, so it isn't asked about; the same game opens in its place.)
 await page.getByText(/^Opened “/).waitFor();
 await page.waitForFunction(() => document.querySelector('.cat textarea')?.value === 'Links');

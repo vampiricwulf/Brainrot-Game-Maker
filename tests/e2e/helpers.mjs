@@ -90,13 +90,11 @@ export const selectedWords = (page) =>
 /** Nothing on the page is selected (outside a field). */
 export const noSelection = async (page) => (await selectedWords(page)) === '';
 
-/** Open… a game file (`files` as for setFiles), through Browse… when Open… lists recent games first. */
+/** Open… a game file (`files` as for setFiles): Open… is one window, whose Browse for a game file… picks it. */
 export async function openGameFile(page, files) {
   const chooser = page.waitForEvent('filechooser');
   await page.getByRole('button', { name: 'Open…' }).click();
-  const list = page.getByRole('dialog', { name: 'Open a game' });
-  const first = await Promise.race([chooser.then(() => 'picker'), list.waitFor().then(() => 'list')]);
-  if (first === 'list') await list.getByRole('button', { name: 'Browse…' }).click();
+  await page.getByRole('dialog', { name: 'Open a game' }).getByRole('button', { name: 'Browse for a game file…' }).click();
   await (await chooser).setFiles(files);
 }
 

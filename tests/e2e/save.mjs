@@ -288,8 +288,7 @@ try {
   c.on('pageerror', (e) => errors.push(`[fresh] ${e.message}`));
   c.on('dialog', (d) => d.accept());
   await c.goto(url);
-  const [pickJson] = await Promise.all([c.waitForEvent('filechooser'), c.getByRole('button', { name: 'Open…' }).click()]);
-  await pickJson.setFiles(jsonPath);
+  await openGameFile(c, jsonPath);
   await c.getByRole('button', { name: 'Media (2)' }).click();
   await c.getByText('2 files are missing from this browser').waitFor();
   assert((await c.getByRole('button', { name: '🔗 Replace file…' }).count()) === 2, 'each missing file offers 🔗 Replace file…');
