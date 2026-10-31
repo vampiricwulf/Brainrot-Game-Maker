@@ -762,7 +762,8 @@
   /* (The panel's own background, so the card scrolls out of sight under it.) */
   .nav.pinned {
     position: sticky;
-    top: 0;
+    /* (Under the selection line.) */
+    top: 24px;
     z-index: 2;
     background: var(--panel);
     padding-bottom: 6px;
@@ -849,8 +850,13 @@
     font-size: inherit;
     text-decoration: underline;
   }
-  /* One line whatever it says (a long selection is cut short; its tooltip has it all), one height with or without ✕. */
+  /* One line whatever it says (a long selection is cut short; its tooltip has it all), one height with or without ✕.
+     In sight as the panel scrolls (to an object's card, say), above the pinned pad and map. */
   .sel {
+    position: sticky;
+    top: 0;
+    z-index: 3;
+    background: var(--panel);
     flex-wrap: nowrap;
     height: 24px;
     font-size: 12px;

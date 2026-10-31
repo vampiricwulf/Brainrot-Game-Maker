@@ -309,11 +309,13 @@ async function bigWorld() {
       const v = b ? b.getBoundingClientRect() : { top: 0, bottom: innerHeight };
       const r = p.getBoundingClientRect();
       const m = document.querySelector('.rh .mapbox').getBoundingClientRect();
-      return r.top >= v.top - 1 && r.bottom <= v.bottom + 1 && m.top >= v.top - 1;
+      // (The selection line too, above them.)
+      const sel = document.querySelector('.rh [data-rpg-sel]').getBoundingClientRect();
+      return r.top >= v.top - 1 && r.bottom <= v.bottom + 1 && m.top >= v.top - 1 && sel.top >= v.top - 1 && sel.bottom <= r.top + 1;
     });
   assert(await padSeen(), 'an object’s card opens with the pad and the minimap in sight');
   await host.getByRole('dialog', { name: 'Object: Trap' }).getByRole('button', { name: '🗑 Remove' }).scrollIntoViewIfNeeded();
-  assert(await padSeen(), 'scrolled to the card’s foot, the pad and the minimap stay pinned in sight');
+  assert(await padSeen(), 'scrolled to the card’s foot, the pad and the minimap stay pinned in sight, the selection line above them');
   await host.getByRole('dialog', { name: 'Object: Trap' }).getByRole('button', { name: 'HP −3' }).click();
   assert((await said()) === 'Trap: HP −3: Ann & Bob', `the Trap’s party button hurts the party at the Trap, not the one viewers follow (${await said()})`);
   await host.waitForTimeout(300);
