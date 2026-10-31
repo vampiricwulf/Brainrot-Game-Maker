@@ -126,8 +126,15 @@ try {
   assert(playerNote.includes('OBS would key it out on stream. Pick another color.') && !(await themeKeyNote.innerText()).includes('magenta'), `a green player gets a note, and neither note offers the magenta key the tiles would go on (${playerNote})`);
   await p1Color.fill(p1Was);
   await playerKeyNote.waitFor({ state: 'detached' });
-  const ddNote = page.locator('.actions', { hasText: '⭐ 1 Daily Double not placed' });
-  assert((await ddNote.count()) === 1, 'the pre-game screen says, next to Start game, that a Daily Double isn’t placed yet');
+  // (The bar by Start game keeps one pointer to ✅ Before you start, counting its warnings, the clues left empty; the
+  // card's note says the Daily Double isn't placed yet, with 🎲 Place now.)
+  const ddPointer = page.locator('.actions [data-checks-pointer]');
+  await ddPointer.getByText('⚠ 4 to check', { exact: true }).waitFor();
+  const ddLine = page.locator('[data-checks] li', { hasText: 'Daily Double not placed yet' });
+  assert(
+    (await ddPointer.count()) === 1 && (await ddLine.count()) === 1 && (await ddLine.innerText()).startsWith('ℹ Jeopardy!: 1 Daily Double not placed yet') && (await ddLine.getByRole('button', { name: '🎲 Place now' }).count()) === 1,
+    'the pre-game screen points, next to Start game, to ✅ Before you start (⚠ 4 to check), whose note says a Daily Double isn’t placed yet',
+  );
   // (Its random pick is the last tile it could take, so the first tile clicked below is an ordinary clue.)
   await page.evaluate(() => {
     window.__random = Math.random;
