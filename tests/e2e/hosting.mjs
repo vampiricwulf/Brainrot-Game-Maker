@@ -604,6 +604,17 @@ try {
     JSON.stringify(tieBox) === JSON.stringify(['❓ Tiebreaker clue (off)', '🎲 Tiebreaker roll-off', '🤝 Declare co-winners']) && (await mainButton(page).count()) === 0,
     `the tie box holds every way to settle it, and the end screen has no blue button (${tieBox.join(' | ')})`,
   );
+  // After the show, all on the left, in one place tie or not: the way back, 📋 Copy standings, ▶ Next game…, then
+  // 🔁 Rematch last and set apart; nothing takes the empty main cell's place. The status line says to settle the tie.
+  const endRow = await page.locator('.panel .end > .row').last().evaluate((row) => {
+    const bs = [...row.querySelectorAll('button')];
+    const r = bs.map((b) => b.getBoundingClientRect());
+    return { words: bs.map((b) => b.textContent.trim()), gap: Math.round(r.at(-1).left - r.at(-2).right), right: Math.round(r.at(-1).right), panel: Math.round(row.closest('.panel').getBoundingClientRect().right) };
+  });
+  assert(
+    endRow.words.join(' | ') === '◀ Back to final reveals | 📋 Copy standings | ▶ Next game… | 🔁 Rematch' && endRow.gap >= 16 && endRow.right < endRow.panel - 200 && (await status()).includes('Tie for first: settle it in the tie box below'),
+    `the end screen: ◀ Back, 📋 Copy standings, ▶ Next game…, then 🔁 Rematch set apart, all on the left; the status line says to settle the tie (${JSON.stringify(endRow)})`,
+  );
   const winner = await cues(page, 'winner');
   // Back to the reveals and finish again, tied this time: "Tie for first" gets no fanfare.
   await page.getByRole('button', { name: '◀ Back to final reveals' }).click();
@@ -641,6 +652,7 @@ try {
   await stage('.wrap .title').waitFor();
   assert((await stage('.wrap .title').innerText()).includes('Tiebreaker roll-off'), 'O on a tie for first rolls off the tied leaders (not "Who goes first?")');
   await page.locator('.panel .muted', { hasText: 'won the tiebreaker roll-off' }).waitFor({ timeout: 15000 });
+  assert(/🏆 Player \d wins · the show is over: 📋 Copy standings for chat, or 🚪 Exit/.test(await status()), `settled, the status line says who won and that the show is over (${await status()})`);
   endSizes.push(await stageH());
   await page.waitForTimeout(300);
   assert((await cues(page, 'winner')) === winner + 1, 'the winner fanfare plays once the roll-off settles the tie');

@@ -92,8 +92,8 @@
     }
     if (last) out.push({ label: isFinal(last) ? '◀ Back to final reveals' : `◀ Back to ${roundName(last, lastIndex)}`, onclick: onback });
     out.push({ label: '📋 Copy standings', onclick: copyStandings });
-    if (!asking && !app.test) out.push({ label: '🔁 Rematch', onclick: askRematch });
     if (nextGame && !asking && !app.test) out.push({ label: '▶ Next game…', onclick: nextGame });
+    if (!asking && !app.test) out.push({ label: '🔁 Rematch', hint: 'Asks first: the scores go back to 0', onclick: askRematch });
     return out;
   });
 </script>
@@ -129,22 +129,22 @@
   {:else if coWinnersHold(session) && level.length}
     <div class="muted">🤝 Co-winners declared.</div>
   {/if}
-  <!-- The way back quiet on the left, the rematch (it clears the results) at the far end. -->
+  <!-- After the show, all on the left (the main cell stays empty: nothing slides into its place): the way back quiet,
+       📋 Copy standings, ▶ Next game…, then 🔁 Rematch last and set apart (it clears the results, and asks first). -->
   <div class="row">
     {#if last}
       <button class="ghost" onclick={onback}>{isFinal(last) ? '◀ Back to final reveals' : `◀ Back to ${roundName(last, lastIndex)}`}</button>
     {/if}
     <button onclick={copyStandings} title="Copy the standings as one line of text">📋 Copy standings</button>
-    <span class="spacer"></span>
-    <!-- (While it asks, the strip's own 🔁 Rematch answers.) -->
-    <!-- (Not after ▶ Test this round either: a rematch would keep the throwaway test as the game to resume.) -->
-    {#if !asking && !app.test}<button onclick={askRematch} title="Same players, scores back to 0, fresh board">🔁 Rematch</button>{/if}
     <!-- (Not after ▶ Test this round: nothing of a test is kept, and 🚪 Exit goes back to the tested round.) -->
     {#if nextGame && !asking && !app.test}
       <button onclick={nextGame} title="Open the stream's next game (Open… / Recent games). The buzzer room, its players and the audience window stay up; these results stay viewable from the editor.">
         ▶ Next game…
       </button>
     {/if}
+    <!-- (While it asks, the strip's own 🔁 Rematch answers.) -->
+    <!-- (Not after ▶ Test this round either: a rematch would keep the throwaway test as the game to resume.) -->
+    {#if !asking && !app.test}<button class="apart" onclick={askRematch} title="Same players, scores back to 0, fresh board (it asks first)">🔁 Rematch</button>{/if}
   </div>
 </div>
 
@@ -161,5 +161,9 @@
     padding: 8px;
     border: 1px solid var(--warn);
     border-radius: 8px;
+  }
+  /* 🔁 Rematch, last and set apart from the rest. */
+  .apart {
+    margin-left: 16px;
   }
 </style>

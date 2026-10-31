@@ -1234,7 +1234,7 @@ await page.getByRole('button', { name: 'Finish game ▶' }).click();
 await page.locator('.end h1').waitFor();
 assert((await page.locator('.panel .p').count()) === 3, 'score chips stay on the end screen so scores can be fixed');
 // P1 550+300 = 850 ties P2 850-0 = 850.
-assert(await page.locator('.panel').getByText('Tie for first:').isVisible(), 'tie for first is detected');
+assert(await page.locator('.panel [data-tie]').getByText('Tie for first:').isVisible(), 'tie for first is detected');
 assert(
   (await page.locator('.end h1').innerText()).startsWith('Tie for first: Player') && (await page.locator('.end canvas').count()) === 0,
   'the stream shows the tie, not a winner, and no confetti until it is settled',
@@ -1250,7 +1250,7 @@ const rollWinner = (await page.locator('.end h1').innerText()).replace(/ wins!.*
 assert((await page.locator('.panel').innerText()).includes(`${rollWinner} won the tiebreaker roll-off`), `the roll-off's winner (${rollWinner}) wins the game`);
 assert((await page.locator('.end li').first().innerText()).includes(rollWinner), 'and is first in the standings');
 await page.getByRole('button', { name: 'Undo' }).click();
-await page.locator('.panel').getByText('Tie for first:').waitFor();
+await page.locator('.panel [data-tie]').getByText('Tie for first:').waitFor();
 await page.getByRole('button', { name: '🤝 Declare co-winners' }).click();
 await page.waitForFunction(() => document.querySelector('.end h1')?.textContent?.includes("It's a tie"));
 assert(true, 'co-winners declared on the winner screen');
@@ -1264,7 +1264,7 @@ const fixScore = async (i, to) => {
 await fixScore(1, '0');
 await page.waitForFunction(() => document.querySelector('.end h1')?.textContent?.includes('Player 1 wins'));
 await fixScore(2, '850');
-await page.locator('.panel').getByText('Tie for first:').waitFor();
+await page.locator('.panel [data-tie]').getByText('Tie for first:').waitFor();
 assert(
   (await page.locator('.end h1').innerText()).startsWith('Tie for first: Player 1 & Player 3') && !(await page.locator('.panel').innerText()).includes('Co-winners declared'),
   'co-winners declared for one tie don’t settle a different one (a score fixed since): it is open again',

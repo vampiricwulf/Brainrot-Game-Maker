@@ -28,6 +28,7 @@ export const WHAT_MOVED: Record<MovedPart, readonly string[]> = {
     '↩ Put back (keep tile) (Shift+Esc) is at the far left of the clue’s row beside the blue button (it was in the status line), ▦ Done ▶ board a quiet skip at that row’s right end, and 🙈 Hide answer in its place once the answer is up.',
     'The bar: 🔊 Sound is beside 📺 Audience now, with ▭ Scores window (↶ Undo ↷ Redo · 📜 Log 👥 Players ⚖ Rules · ⏸ Cover 🙈 Hide · 🔊 Sound 📺 Audience ▭ Scores window · ❔ Help 🚪 Exit).',
     'The Final: finishing early is Finish now… at the left of the box’s foot, beside “2 still to judge” (it was a second Finish game ▶ at the right, by the verdicts). The reveal rows are in straight columns, ✔ Right and ✘ Wrong at the right end; the wager screen’s first line says whose wager it waits on.',
+    'The results screen: ▶ Next game… and 🔁 Rematch are on the left now, after 📋 Copy standings (they were at the far right), 🔁 Rematch last and set apart.',
   ],
   editor: [],
 };

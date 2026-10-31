@@ -805,7 +805,11 @@ The mode isn't saved with the game: it's dual while the audience window is open.
    - **Tiebreaker roll-off** between only the tied players (§6.6, `O`), or
    - **Declare co-winners**.
    The same tie check runs at the end of the game when Final Jeopardy is off.
-6. Winner screen: final standings with player colors. Confetti.
+6. Winner screen: final standings with player colors. Confetti. The host panel has no blue button there: under the tie
+   box, after the show, all on the left whether or not there was a tie, ◀ Back to final reveals (or the last round),
+   📋 Copy standings, ▶ Next game…, then 🔁 Rematch last and set apart (it asks first); the status line says the tie to
+   settle, or who won and that the show is over ("🏆 Bob wins · the show is over: 📋 Copy standings for chat, or 🚪
+   Exit").
 
 ### 6.5 Scores & players
 - Edit any player's score directly at any time (click the score, then type).

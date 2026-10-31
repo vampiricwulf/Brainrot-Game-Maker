@@ -317,7 +317,10 @@ with …), Show answer, the score and wager, Show wager, then ✔ Right and ✘ 
 every row. Finishing early is the quiet **Finish now…** at the left of the box's foot, beside “2 still to judge”, away
 from the verdicts (it asks first); it hides while the blue button is Finish game ▶ itself. A tie for first on the results screen is settled in its box, which holds every way:
 **❓ Tiebreaker clue**, **🎲 Tiebreaker roll-off** `O`, **🤝 Declare co-winners**; that screen has no blue button (`N`
-says to settle the tie there, and the box flashes). The tiebreaker clue's blue button is its slides, 👁 Reveal answer,
+says to settle the tie there, and the box flashes, as the status line does). Under it, after the show, all on the left in
+one place, tie or not: ◀ Back to final reveals, 📋 Copy standings, **▶ Next game…**, then **🔁 Rematch** last and set
+apart (it asks first); once there's a winner the status line says so, “🏆 Bob wins · the show is over: 📋 Copy standings
+for chat, or 🚪 Exit”. The tiebreaker clue's blue button is its slides, 👁 Reveal answer,
 then **🏁 Back to results**. In a board game the blue button is **Next turn ▶** (`N`), ◀ Previous turn (`Shift+N`)
 quiet beside it; the roll and the move are the turn box's, in one slot under a first line saying what to do (“Ann's
 turn: 🎲 Roll (D), then ▶ Move (Enter, or click the dice once they land)”): **🎲 Roll** (`D`), then **▶ Move Ann: 3**

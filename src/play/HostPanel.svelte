@@ -18,6 +18,7 @@
   import { mayAsk, type GoPanel } from './host/goon';
   import { CHECK, FLOW } from './host/verbs';
   import { phoneAwaySince } from './host/phoneaway.svelte';
+  import { endLine } from './host/endlines';
   import { movedNew } from './whatmoved.svelte';
   import { categoryLabel, clueCardWords, clueValue, finalName, formatPoints, isBoard, isSlides, questionSlides, typedPoints, wholePoints, type Game, type Session } from '../lib/model';
   import { answerShowing, awardOpen, clueMarks, clueName, clueScored, currentClueInfo, currentFinal, findClueRef, nameList, ownPlayers, partnerSteal, roundComplete, score, setScore, slidePosition, stealersLeft, tiebreakHolds, tiedForFirst, toolOnlyClue, usedTiles } from '../lib/session';
@@ -931,8 +932,11 @@
       {/if}
       {#if game.tiebreaker?.hostNotes?.trim() && !dual}<span class="notes" title="Host notes (viewers can see them in this window): {game.tiebreaker.hostNotes}">📝 {game.tiebreaker.hostNotes}</span>{/if}
     {:else}
+      <!-- (Who won and that the show is over, or the tie to settle; cut short on a narrow window, whole in its tooltip.) -->
+      {@const said = endLine(session)}
       <b>Game over</b>
-      <span class="muted hint">Click a score to fix it.</span>
+      <span class="muted say" title={said}>{said}</span>
+      <span class="muted hint">· click a score to fix it</span>
     {/if}
     {#if viewersSee.length}
       <!-- One window: the boxes open say viewers can read them (a card's name, never what's on it; the wager as it's
