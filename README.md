@@ -27,6 +27,9 @@ Get it from the **[Latest release](../../releases/latest)** (every push to `main
   carry over: they're kept in the browser, not in the file. Once **⬇ Download** has opened it in a new tab, the editor's
   notice and ℹ About say these steps on the page.
 
+The notice's **✕** at its right end is Not now: it hides the notice until a newer version is out. Every notice under the
+editor's header ends the same way, with a ✕ whose tooltip says what it does.
+
 ℹ About shows which version you have.
 
 Old Jeopardy Builder games (`.jbr` packs and exported HTML files) still open.
@@ -905,7 +908,8 @@ into OBS), and step-by-step help.
 
 The desktop app keeps its data in `%LOCALAPPDATA%\com.brainrotgames.maker`: the game you're editing, Recent games, a
 game in progress and media. Settings go in `%APPDATA%\com.brainrotgames.maker`. Your saves, exports and autosaves are in
-**BrainrotSaves** next to the `.exe`. **ℹ About** shows and opens all three. To uninstall, delete the `.exe` and the two
+**BrainrotSaves** next to the `.exe`. **ℹ About** shows and opens all three (the editor's first screen says so, with **ℹ
+See where**). To uninstall, delete the `.exe` and the two
 `com.brainrotgames.maker` folders; keep BrainrotSaves (or move it) if you want your saved games.
 
 ## Third-party code

@@ -680,14 +680,15 @@ try {
   }
 
   {
-    // Where the desktop app keeps its data: said once up front, and in ℹ About with buttons to open the folders.
+    // Where the desktop app keeps its data: a line on the first screen (not a notice under the header), and ℹ About
+    // with buttons to open the folders.
     const context = await desktopContext({ fix: true, active: true });
     const page = watch(await context.newPage(), 'desktop (data folders)');
     await page.goto(httpUrl);
-    const notice = page.getByRole('status').filter({ hasText: 'saves your autosave and media in a folder on this PC' });
-    await notice.waitFor();
-    assert(true, 'first start: a notice says the app saves data in a folder on this PC');
-    await notice.getByRole('button', { name: 'ℹ See where' }).click();
+    const line = page.locator('.first-round p', { hasText: 'saves your autosave and media in a folder on this PC' });
+    await line.waitFor();
+    assert((await page.locator('.data-notice').count()) === 0, 'first start: the first screen says the app saves data in a folder on this PC, and no notice does');
+    await line.getByRole('button', { name: 'ℹ See where' }).click();
     const about = page.getByRole('dialog', { name: 'About Brainrot Games Maker' });
     await about.getByText('C:\\Users\\Host\\AppData\\Local\\com.brainrotgames.maker').waitFor();
     assert((await about.getByText('Windows desktop app').count()) === 1, 'About shows the version and that this is the desktop app');
@@ -707,7 +708,7 @@ try {
     await called(page, 'open_data_folder');
     assert(JSON.stringify(await calls(page, 'open_data_folder')) === JSON.stringify([{ which: 'data' }]), 'Open folder asks the app to show the data folder');
     await page.keyboard.press('Escape');
-    assert((await about.count()) === 0 && (await notice.count()) === 0, 'Esc closes About, and the notice is gone');
+    assert((await about.count()) === 0 && (await line.count()) === 1, 'Esc closes About; the first screen keeps its line');
     // Save goes to BrainrotSaves next to the app (not a download), as raw bytes with the file name.
     await page.getByRole('button', { name: 'Save', exact: true }).click();
     await nameGame(page);
@@ -728,7 +729,7 @@ try {
     assert((await calls(page, 'save_file'))[1].mode === 'new', 'with the setting off, Save makes a new file');
     await page.reload();
     await page.getByRole('button', { name: '▶ Play' }).waitFor();
-    assert((await page.getByRole('status').filter({ hasText: 'folder on this PC' }).count()) === 0, 'the notice only shows once');
+    assert((await page.locator('.data-notice').filter({ hasText: 'folder on this PC' }).count()) === 0, 'nor after a reload: it was never a notice');
     await context.close();
   }
 
@@ -739,7 +740,11 @@ try {
     await page.goto(httpUrl);
     const notice = page.getByRole('status').filter({ hasText: 'Jeopardy Builder is now Brainrot Games Maker' });
     await notice.waitFor();
-    assert(true, 'after the move, a notice says the data was moved to the new folder');
+    const gotIt = notice.getByRole('button', { name: 'Got it' });
+    assert(
+      (await gotIt.innerText()) === '✕' && (await gotIt.getAttribute('title')) === "Got it: don't show this again",
+      'after the move, a notice says the data was moved to the new folder, its ✕ (Got it) at the end',
+    );
     await notice.getByRole('button', { name: 'ℹ See where' }).click();
     const about = page.getByRole('dialog', { name: 'About Brainrot Games Maker' });
     const leftover = about.getByRole('note');

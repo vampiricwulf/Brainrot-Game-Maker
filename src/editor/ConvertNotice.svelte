@@ -62,6 +62,7 @@
   {@const job = jobFor(m.id)}
   <div class="data-notice" role="status" data-convert-notice bind:this={note} onfocusin={focusIn} onfocusout={focusOut}>
     <span>⚠ “{m.name}” {v.is === 'silent' ? 'plays without its sound' : 'won’t play'} in this browser: {whyText(v)}.{advice(v)}</span>
+    <!-- (Its ✕ at the far right, as every notice's, named for what it does.) -->
     {#if job}
       <span class="muted">🔄 {job.copying ? 'Repackaging' : 'Converting'}… <span aria-hidden="true">{progressText(job)}</span></span>
       <button class="small ghost" onclick={() => stopJob(job.id)} title="Stop it: nothing is changed" data-stop>Stop</button>
@@ -73,9 +74,9 @@
       {:else}
         <button class="small primary" onclick={() => openMediaDialog({ mode: 'convert', ids: [m.id] })} title="See what converting it takes first">🔄 Convert it…</button>
       {/if}
-      <button class="small ghost" onclick={() => dismissOffer(m.id)}>Keep it as it is</button>
+      <button class="small ghost notice-x" onclick={() => dismissOffer(m.id)} aria-label="Keep it as it is" title="Keep it as it is: this note goes (🖼 Media can still convert it)">✕</button>
     {:else}
-      <button class="small ghost" onclick={() => dismissOffer(m.id)}>OK</button>
+      <button class="small ghost notice-x" onclick={() => dismissOffer(m.id)} aria-label="OK" title="OK: this note goes (🖼 Media still says it)">✕</button>
     {/if}
   </div>
 {:else if list.length > 1}
@@ -85,6 +86,11 @@
       <button class="small primary" onclick={() => openMediaDialog({ mode: 'convert', ids: list.map((x) => x.m.id) })}>🔄 Convert them…</button>
     {/if}
     <button class="small" onclick={() => show(list.map((x) => x.m))}>Show them in 🖼 Media</button>
-    <button class="small ghost" onclick={() => list.forEach((x) => dismissOffer(x.m.id))} aria-label="Dismiss">✕</button>
+    <button
+      class="small ghost notice-x"
+      onclick={() => list.forEach((x) => dismissOffer(x.m.id))}
+      aria-label="Keep them as they are"
+      title="Keep them as they are: this note goes (🖼 Media can still convert them)">✕</button
+    >
   </div>
 {/if}

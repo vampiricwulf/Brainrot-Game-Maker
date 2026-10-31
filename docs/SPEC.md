@@ -475,6 +475,12 @@ RollEvent  { id, ts, source: 'wheel' | 'dice', presetName?, result: string /* la
   templates in it to start from (＋ Add round has them all), the arrow keys moving between the cards, and a line for a
   game file, "Have a game file? 📂 Open a game… or drop it here", with the three newest Recent games as buttons on it
   (title · rounds · when). ▶ Play isn't greyed there: a click says "Add a round first" and puts the keys on the sample.
+  In the desktop app it also says the autosave and media are kept in a folder on this PC, with ℹ See where (ℹ About).
+- **Notices under the header** (a new version and its steps, a file just added that won't play, the game New or Open…
+  just replaced, the folders moved from Jeopardy Builder) look and close alike: an icon and words, the actions (the main
+  one first), then a ✕ at the far right whose tooltip says what it does, named for the word it stands for (Not now,
+  Done, Keep it as it is, OK, Got it, Hide). The show's own state (the buzzer room, a kept game, the audience window)
+  stays the warm status bar above the editor.
 - **Save** → download `.brainrot` (zip); in the desktop app, into `BrainrotSaves` next to the exe (Documents when that
   can't be written), replacing the game's last save and keeping two `.bak` backups. **Open** → Recent games (the last 8
   games replaced, kept in the browser), the desktop app's BrainrotSaves, a file picker, or drag-drop.

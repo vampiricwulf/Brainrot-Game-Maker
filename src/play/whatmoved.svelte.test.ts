@@ -22,7 +22,7 @@ describe('what moved in this version', () => {
     expect(renames([['↻ Spin again', 'Spin again']])).toEqual(['Spin again → ↻ Spin again']);
     // The editor's part: its menus' one order, the lists' ⋯, and its new names.
     const editor = WHAT_MOVED.editor.join('\n');
-    for (const w of ['one order', 'Row 2 · $400', '⋯', '🏁 Make it the start', '↺ Built-in', '📋 Paste over this slide', '✓ Done cropping', 'Replace everywhere…', 'Plays from', '🔊 Sound', '⧉ Same as the answer', '▸ More rules', '＋ Add tiebreaker', '＋ Add space', 'Ways out'])
+    for (const w of ['one order', 'Row 2 · $400', '⋯', '🏁 Make it the start', '↺ Built-in', '📋 Paste over this slide', '✓ Done cropping', 'Replace everywhere…', 'Plays from', '🔊 Sound', '⧉ Same as the answer', '▸ More rules', '＋ Add tiebreaker', '＋ Add space', 'Ways out', 'ℹ See where'])
       expect(editor).toContain(w);
     expect(movedNew('editor', null)).toBe(true);
   });

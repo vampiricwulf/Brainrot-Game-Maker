@@ -276,7 +276,10 @@ try {
     (await noticeText()) === '⚠ “ac3.mka” won’t play in this browser: it’s AC-3 (Dolby Digital), which this browser can’t play or convert. Convert it to MP3 or M4A with an audio or video app first.',
     `the note says why and what to do (${await noticeText()})`,
   );
-  assert((await notice.getByRole('button').allInnerTexts()).join() === 'OK', 'with only OK');
+  assert(
+    (await notice.getByRole('button').count()) === 1 && (await notice.getByRole('button', { name: 'OK' }).innerText()) === '✕',
+    'with only OK, its ✕ at the far right',
+  );
   assert(!(await card('ac3.mka').locator('[data-convert]').count()), 'and its card has no 🔄');
   await notice.getByRole('button', { name: 'OK' }).click();
   await notice.waitFor({ state: 'detached' });

@@ -1063,17 +1063,8 @@
       if (!isCancel(e)) void tell('Export failed: ' + (e as Error).message);
     }
   }
-  // The desktop app says once, up front, that it keeps data in folders on this PC (ℹ About shows which).
-  const NOTICE_KEY = 'jb.dataNoticeSeen';
-  let dataNotice = $state(inTauri() && !seen());
-  function seen(): boolean {
-    try {
-      return localStorage.getItem(NOTICE_KEY) === '1';
-    } catch {
-      return false;
-    }
-  }
-  // The first start after the rename moved Jeopardy Builder's folders over: say so once.
+  // The first start after the rename moved Jeopardy Builder's folders over: say so once. (That the desktop app keeps
+  // its data in folders on this PC is a line on the first screen, and ℹ About shows which.)
   let movedNotice = $state(false);
   onMount(() => {
     if (inTauri()) dataFolders().then((f) => (movedNotice = !!f?.moved));
@@ -1085,15 +1076,6 @@
     update.failed = '';
     void tell(why);
   });
-  function dismissNotice(): void {
-    dataNotice = false;
-    movedNotice = false;
-    try {
-      localStorage.setItem(NOTICE_KEY, '1');
-    } catch {
-      /* ignore */
-    }
-  }
 </script>
 
 <svelte:window {onkeydown} onfocusincapture={fields.focusin} oninputcapture={fields.input} />
@@ -1147,17 +1129,13 @@
     <button class="ghost more" onclick={moreMenu} aria-haspopup="menu" aria-label="More: Export as a web page, Export JSON, Settings, Keyboard shortcuts, How to host (guide), About" title={'⬇ Export as a web page, { } Export JSON, ⚙ Settings, ⌨ Keyboard shortcuts, 📖 How to host (guide), ℹ About'}>⋯</button>
     <button class="primary play" use:oneShot onclick={playClicked} disabled={!!opening} title={game.rounds.length ? '' : 'Add a round first'}>▶ Play</button>
   </header>
+  <!-- The notices under the header look and close alike: an icon and words, the actions (the main one first), then ✕
+       at the far right, its tooltip saying what it does (its name is the word it replaced: Got it, Not now…). -->
   {#if movedNotice}
     <div class="data-notice" role="status">
-      <span>Jeopardy Builder is now <b>Brainrot Games Maker</b>. Your games and media were moved to its new folder.</span>
-      <button class="small" onclick={() => ((about = true), dismissNotice())}>ℹ See where</button>
-      <button class="small ghost" onclick={dismissNotice}>Got it</button>
-    </div>
-  {:else if dataNotice}
-    <div class="data-notice" role="status">
-      <span>Brainrot Games Maker saves your autosave and media in a folder on this PC.</span>
-      <button class="small" onclick={() => ((about = true), dismissNotice())}>ℹ See where</button>
-      <button class="small ghost" onclick={dismissNotice}>Got it</button>
+      <span>📁 Jeopardy Builder is now <b>Brainrot Games Maker</b>. Your games and media were moved to its new folder.</span>
+      <button class="small" onclick={() => ((about = true), (movedNotice = false))}>ℹ See where</button>
+      <button class="small ghost notice-x" onclick={() => (movedNotice = false)} aria-label="Got it" title="Got it: don't show this again">✕</button>
     </div>
   {/if}
   {#if (update.status === 'available' || update.status === 'installing') && update.latest && update.latest.version !== update.skipped}
@@ -1208,17 +1186,18 @@
     {@const prev = previous}
     <div class="data-notice" role="status">
       <span
-        >“{prev.title}” was replaced. It's kept in Open… → Recent games.{#if prev.dropped?.length}{' '}{prev.dropped.length === 1 ? 'Removed the oldest kept game' : 'Removed the oldest kept games'}: {prev.dropped.map((t) => `“${t}”`).join(', ')}.{/if}</span
+        >📂 “{prev.title}” was replaced. It's kept in Open… → Recent games.{#if prev.dropped?.length}{' '}{prev.dropped.length === 1 ? 'Removed the oldest kept game' : 'Removed the oldest kept games'}: {prev.dropped.map((t) => `“${t}”`).join(', ')}.{/if}</span
       >
       <button class="small" onclick={() => reopen(prev)}>↶ Reopen previous game</button>
       <button
-        class="small ghost"
+        class="small ghost notice-x"
         onclick={() => {
           // (The focus goes on from here to Open…, where the game is kept, instead of dropping to the page.)
           previous = null;
           openBtn?.focus();
         }}
-        aria-label="Dismiss">✕</button
+        aria-label="Hide"
+        title="Hide (it stays in Open… → Recent games)">✕</button
       >
     </div>
   {/if}
@@ -1434,6 +1413,13 @@
               {:else}
                 <p class="small warn">⚠ This browser isn't keeping your game (its storage is blocked or full): <b>💾 Save</b> it to a file before you close the tab.</p>
               {/if}
+            {:else}
+              <!-- (Where the desktop app keeps things: ℹ About shows the folders, with a button to open each.) -->
+              <p class="muted small data-line">
+                Brainrot Games Maker saves your autosave and media in a folder on this PC as you work.
+                <button class="small" onclick={() => (about = true)}>ℹ See where</button>
+                <b>💾 Save</b> makes a game file to move or share.
+              </p>
             {/if}
             <button class="sample" use:oneShot onclick={showSample} onkeydown={cardKey}>
               <span class="icon" aria-hidden="true">✨</span>
@@ -1591,7 +1577,8 @@
   }
   /* (Their words in full color: only the words around them are muted.) */
   .first-round .from button,
-  .first-round .open-line button {
+  .first-round .open-line button,
+  .first-round .data-line button {
     color: var(--text);
   }
   .first-round .sample {
@@ -1658,15 +1645,6 @@
   /* Short, so it stays on one line (the details are in its tooltip). */
   .saved {
     white-space: nowrap;
-  }
-  .data-notice {
-    display: flex;
-    gap: 10px;
-    align-items: center;
-    padding: 6px 16px;
-    font-size: 13px;
-    background: rgba(79, 124, 255, 0.12);
-    border-bottom: 1px solid var(--accent);
   }
   .autosave.warn {
     color: var(--warn);

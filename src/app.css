@@ -157,6 +157,20 @@ label.check:has(> input:disabled) { opacity: 0.55; cursor: default; }
 .drag-row.drop-after::after { bottom: -3px; }
 .drag-grip { cursor: grab; color: var(--muted); font-size: 12px; letter-spacing: -2px; }
 
+/* A notice under the editor's header (a new version, a file that won't play, a game just replaced): an icon and its
+   words, its actions (the main one first), then a ✕ at the far right whose tooltip says what it does. */
+.data-notice {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 10px;
+  align-items: center;
+  padding: 6px 16px;
+  font-size: 13px;
+  background: rgba(79, 124, 255, 0.12);
+  border-bottom: 1px solid var(--accent);
+}
+.data-notice > .notice-x { margin-left: auto; }
+
 /* A short message (toast) and the editor's "Deleted … · Undo" note (HistoryNotice): one pill at the bottom middle. */
 .note-pill {
   position: fixed;

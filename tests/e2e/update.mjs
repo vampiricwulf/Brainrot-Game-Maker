@@ -70,8 +70,16 @@ try {
   await notice.waitFor();
   assert(true, 'Done puts the steps away: the notice is back, with Not now');
 
-  // Not now: put away for this version, also after a reload (which uses what it heard, without asking again).
-  await notice.getByRole('button', { name: 'Not now' }).click();
+  // Not now: put away for this version, also after a reload (which uses what it heard, without asking again). It's the
+  // notice's ✕, its last button, its tooltip saying what it does (every notice under the header ends so).
+  const notNow = notice.getByRole('button', { name: 'Not now' });
+  assert(
+    (await notNow.innerText()) === '✕' &&
+      (await notNow.getAttribute('title')) === 'Hide until a newer version is out' &&
+      (await notice.getByRole('button').last().evaluate((b) => b.getAttribute('aria-label'))) === 'Not now',
+    'Not now is the notice’s ✕ at its far right, its tooltip saying what it does',
+  );
+  await notNow.click();
   await notice.waitFor({ state: 'detached' });
   assert((await page.evaluate(() => localStorage.getItem('jb.updateSkip'))) === '99.0.0', 'Not now puts it away for that version (kept on this computer)');
   // After a reload: still put away, and no new question to GitHub. (This browser sometimes comes back from a reload

@@ -88,7 +88,7 @@
 {:else if desktopApp}
   <button class="small primary" onclick={() => open(exe ?? release.page)} title="Put the downloaded .exe in place of this one">⬇ Download {release.version}</button>
 {:else if notice && update.downloading === release.version}
-  <!-- The notice: the steps, then What's new and Done (back to the notice). -->
+  <!-- The notice: the steps, then What's new and ✕ Done (back to the notice). -->
   <span class="steps">{steps}</span>
 {:else}
   <button class="small primary" onclick={download} title="Save it in place of this file (same name and folder) and open that: your games carry over">
@@ -96,10 +96,11 @@
   </button>
 {/if}
 <button class="small ghost" onclick={() => open(release.page)}>What’s new</button>
+<!-- The notice's ✕, at its far right (named for what it does: Done puts the steps away, Not now hides the notice). -->
 {#if notice && !desktopApp && update.downloading === release.version}
-  <button class="small" bind:this={doneBtn} onclick={() => (update.downloading = '')} title="Put these steps away">Done</button>
+  <button class="small ghost notice-x" bind:this={doneBtn} onclick={() => (update.downloading = '')} aria-label="Done" title="Done: put these steps away">✕</button>
 {:else if notice}
-  <button class="small ghost" onclick={() => skipVersion(release.version)} title="Hide this until a newer version is out">Not now</button>
+  <button class="small ghost notice-x" onclick={() => skipVersion(release.version)} aria-label="Not now" title="Hide until a newer version is out">✕</button>
 {/if}
 {#if !notice && !desktopApp && update.downloading === release.version}
   <!-- ℹ About: the steps on a line of their own, under its buttons (its own Done closes it). -->
