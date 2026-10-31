@@ -1197,8 +1197,8 @@ There is no built-in SFX library in v1, but audio can be attached anywhere:
   there's one) · Clear selection (Esc) · 🗑 Delete N things", and menus say Clear selection. The signs: 🗑 removes a
   thing (from the game, or Remove: off something, kept in the game); ⌫ empties a slot (⌫ Clear, the picture staying
   in 🖼 Media); ✕ only closes (✕ Close); ✘ is Wrong; − is only for numbers; ↩ takes back (↩ Take back, ↩ Put back);
-  ⛔ kicks a phone. Every ✕, ✘ and ⌫ button carries its word, but for a window's or notice's corner ✕, the green and
-  red ✔ / ✘ pair on a player's chip and an answer's row, and ⌫ on a player's picture corner.
+  ⛔ kicks a phone. Every ✕, ✘ and ⌫ button carries its word, but for a window's, a notice's or the timer box's corner ✕, the
+  green and red ✔ / ✘ pair on a player's chip and an answer's row, and ⌫ on a player's picture corner.
 - **Security**: all content is local. Uploaded SVG is sanitized, and rich text is escaped/sanitized.
 
 ---
