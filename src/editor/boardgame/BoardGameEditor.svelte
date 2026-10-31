@@ -16,7 +16,7 @@
   import { menuItem, menuOf, showMenu, type MenuEntry } from '../../lib/menustate.svelte';
   import RowTools from '../RowTools.svelte';
   import { copyIsTheBrowsers, isTextField } from '../../lib/undokeys';
-  import { addFork, allNamesLabel, applySpaceKind, clampToBoard, closeUpOver, spaceKindOf, linkName, SPACE_KINDS, type SpaceKind, moverDiceGone, moverDiceUnknown, moverWheelNoNumbers, nameShown, nameShownLabel, setAllNamesShown, setNameShown, moverPreset, nextSpaceName, spaceById, spaceToward } from '../../lib/boardgame';
+  import { addFork, allNamesLabel, applySpaceKind, clampToBoard, closeUpOver, spaceKindOf, linkName, SPACE_KINDS, type SpaceKind, moverDiceGone, moverDiceUnknown, moverWheelNoNumbers, nameShown, newSpaceSpot, nameShownLabel, setAllNamesShown, setNameShown, moverPreset, nextSpaceName, spaceById, spaceToward } from '../../lib/boardgame';
   import { addLiveSpace, connectSpaces, linkAfter, disconnectSpaces, reverseLink, toggleBothWays } from '../../lib/boardedit';
   import BoardSpaces from '../../lib/boardgame/BoardSpaces.svelte';
   import ColorBox from '../../lib/ColorBox.svelte';
@@ -340,13 +340,20 @@
   }
 
   /** A new space (one step), after the selected one: it takes over where that one led (so a loop stays a loop). */
-  function addSpaceAt(at: { x: number; y: number }): void {
-    const after = sel;
+  function addSpaceAt(at: { x: number; y: number }, after = sel): void {
     const name = nextSpaceName(round);
     const s = step(`Added space “${name}”${after ? ` after “${after.name}”` : ''}`, () => addLiveSpace(round, at, after));
     linkPick = null;
     selectOnly(s.id);
     refocus(s.id);
+  }
+
+  /**
+   * ＋ Add space (the board's tools row) and a space's ＋ Add a space after it: after the selected space (none: after
+   * the last one, so the path grows), beside it where there's room, and selected.
+   */
+  function addSpaceAfter(after: BoardSpace | undefined = sel ?? round.spaces.at(-1)): void {
+    addSpaceAt(newSpaceSpot(round, after), after);
   }
 
   /** A copy of a space (its look, buttons, secret and notes), next to it and after it on the path. */
@@ -489,7 +496,7 @@
           copy: menuItem.copy(() => copySpacesToClipboard([s]), { label: '📋 Copy space' }),
           paste: pasteItem,
           insert: [
-            { label: '＋ Add a space after it', onclick: () => addSpaceAt({ x: s.x + 160, y: s.y }) },
+            { label: '＋ Add a space after it', onclick: () => addSpaceAfter(s) },
             { label: '⑂ Add a fork here', onclick: () => fork(s), hint: 'A second way on from it: the host picks the way in play' },
           ],
           delete: menuItem.delete('space', () => removeSpace(s)),
@@ -824,6 +831,13 @@
         </span>
       {/if}
       <span class="spacer"></span>
+      <button
+        class="small"
+        data-add-space
+        onclick={() => addSpaceAfter()}
+        title="A new space after the selected one ({sel ? `“${sel.name}”` : round.spaces.length ? 'none selected: after the last one' : 'the first one'}), selected to set up (Ctrl+click on the board adds one where you click)"
+        >＋ Add space</button
+      >
       <span class="names small" title="Viewers see a space's name only when it's shown (here you always see it, dimmed when they don't)">
         Names on the board:
         <button class="small" data-names-all="show" disabled={!round.spaces.length || round.spaces.every(nameShown)} onclick={() => allNames(true)}>Show all</button>
@@ -898,6 +912,13 @@
           {@const colors = new Set(picked.map((x) => x.color))}
           {@const secret = picked.filter((x) => x.secret).length}
           <h4>{picked.length} spaces selected</h4>
+          <!-- (Their actions first, as one space's are under its name.) -->
+          <div class="row" data-space-actions>
+            <button class="small" onclick={() => duplicateSpaces(picked)} title="Ctrl+D">⧉ Duplicate</button>
+            <button class="small" onclick={() => copySpacesToClipboard(picked)} title="Ctrl+C">📋 Copy</button>
+            <span class="spacer"></span>
+            <button class="ghost small danger" onclick={() => removeSpaces(picked)} title="Delete them (Delete key; Undo brings them back)">🗑 Delete {picked.length} spaces</button>
+          </div>
           <p class="muted small">Drag one to move them all, or nudge them with Alt+arrows. Shift+click a space to add or leave it out.</p>
           <label class="check small">
             Color
@@ -936,15 +957,17 @@
             />
             Show names on the board
           </label>
-          <div class="row">
-            <span class="spacer"></span>
-            <button class="small" onclick={() => duplicateSpaces(picked)} title="Ctrl+D">⧉ Duplicate</button>
-            <button class="small" onclick={() => copySpacesToClipboard(picked)} title="Ctrl+C">📋 Copy</button>
-            <button class="ghost small" onclick={() => removeSpaces(picked)}>Delete {picked.length} spaces</button>
-          </div>
         {:else if sel}
           <h4>Space</h4>
           <label class="field">Name<input bind:value={sel.name} bind:this={nameField} aria-label="Space name" /></label>
+          <!-- (Its actions right under its name, in view without scrolling; 🗑 apart at the end.) -->
+          <div class="row" data-space-actions>
+            <button class="small" onclick={() => makeStart(sel)} disabled={(round.start ?? round.spaces[0]?.id) === sel.id}>🏁 Make it the start</button>
+            <button class="small" onclick={() => addSpaceAfter(sel)} title="A new space after this one on the path, selected to set up">＋ Add a space after it</button>
+            <button class="small" onclick={() => duplicateSpace(sel)} title="A copy of this space after it on the path (Ctrl+D)">⧉ Duplicate</button>
+            <span class="spacer"></span>
+            <button class="ghost small danger" onclick={() => removeSpace(sel)} title="Delete this space (Delete key; Undo brings it back)">🗑 Delete space</button>
+          </div>
           <label class="check small" title="Viewers see its name under it (here you always see it, dimmed when they don't)">
             <input type="checkbox" data-show-name checked={nameShown(sel)} onchange={(e) => showName(sel, e.currentTarget.checked)} />
             Show name on the board
@@ -1038,12 +1061,6 @@
           <ActionListEditor bind:actions={sel.onLand} board={round} addLabel="＋ Add button (when landed on)" />
           <label class="check small"><input type="checkbox" bind:checked={sel.secret} /> Secret (viewers see “?” until you reveal it)</label>
           <label class="field">Host notes (off stream, except in a single window)<textarea rows="2" data-field="space-notes" bind:value={sel.hostNotes}></textarea></label>
-          <div class="row">
-            <button class="small" onclick={() => makeStart(sel)} disabled={(round.start ?? round.spaces[0]?.id) === sel.id}>🏁 Make it the start</button>
-            <button class="small" onclick={() => duplicateSpace(sel)} title="A copy of this space after it on the path (Ctrl+D)">⧉ Duplicate</button>
-            <span class="spacer"></span>
-            <button class="ghost small danger" onclick={() => removeSpace(sel)} title="Delete this space (Undo brings it back)">🗑 Delete space</button>
-          </div>
         {:else if link}
           {@const k = link}
           <h4>Link</h4>

@@ -63,6 +63,26 @@ try {
   }
   await page.getByRole('menu').getByRole('menuitem', { name: '🗑 Delete space' }).click();
   assert((await spaces.count()) === 12, 'and delete it');
+  // ＋ Add space on the board's tools row: a space after the selected one, selected to set up; its actions are right
+  // under its name, 🗑 Delete space apart at the row's end.
+  await space('Space 5').click();
+  await page.locator('[data-add-space]').click();
+  const acts = page.locator('.side [data-space-actions]');
+  await acts.waitFor();
+  const actNames = (await acts.getByRole('button').allInnerTexts()).map((t) => t.trim());
+  const [nameAt, actsAt, kindAt] = await Promise.all([page.getByLabel('Space name').boundingBox(), acts.boundingBox(), page.locator('.side [data-space-kind]').boundingBox()]);
+  assert(
+    (await spaces.count()) === 13 &&
+      (await page.getByLabel('Space name').inputValue()) === 'Space 13' &&
+      (await page.locator('.side [data-leads]').innerText()).includes('← Space 5') &&
+      JSON.stringify(actNames) === JSON.stringify(['🏁 Make it the start', '＋ Add a space after it', '⧉ Duplicate', '🗑 Delete space']) &&
+      actsAt.y > nameAt.y &&
+      actsAt.y < kindAt.y,
+    `＋ Add space adds one after the selected space, selected, its actions under its name (${actNames.join(' | ')})`,
+  );
+  await page.locator('.editor > header').getByRole('button', { name: 'Undo (Ctrl+Z)' }).click();
+  await page.waitForFunction(() => document.querySelectorAll('.canvas [data-space]').length === 12, null, { timeout: 3000 }).catch(() => {});
+  assert((await spaces.count()) === 12, 'and Undo takes it back');
   // A fork: Space 3 can also go straight to Space 7.
   await space('Space 3').click();
   await page.getByRole('button', { name: '🔗 Connect to…' }).click();

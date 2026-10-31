@@ -4,7 +4,7 @@ import { goToRound, newSession, rebaseSession } from './session';
 import { newWheel } from './tools';
 import {
   waysOn, ensureBoard, movePlayer, moveInOrder, newBoardGameRound, newBoardSpace, nextSpaceName, nextTurn, skipTurns, sendTo, shownSpace, HOP_MS, walk, waysNow, currentPlayer,
-  boardGameProblems, closeUpOver, moverPreset, moverWheelNoNumbers, nameShown, setNameShown, nameShownLabel, setAllNamesShown, allNamesLabel, rimSpots, spaceNumber, spaceToward, clampSteps, stepsIn, MAX_STEPS, placeTokens, tokenRadius, spaceListShown,
+  boardGameProblems, closeUpOver, moverPreset, moverWheelNoNumbers, nameShown, setNameShown, nameShownLabel, setAllNamesShown, allNamesLabel, rimSpots, spaceNumber, spaceToward, clampSteps, stepsIn, MAX_STEPS, placeTokens, tokenRadius, spaceListShown, newSpaceSpot,
 } from './boardgame';
 
 /** A loop of 12 plus a fork: space 3 can also go to a shortcut that rejoins at space 6. */
@@ -621,5 +621,22 @@ describe('the host’s lists of spaces', () => {
     bs.revealed = [round.spaces[2].id];
     expect(spaceListShown(round, bs, true).get(round.spaces[2].id)).toBe('Trap Door');
     expect(spaceListShown(round, bs, true).get(round.spaces[7].id)).toBe('? (secret)');
+  });
+});
+
+describe('board game editor: where ＋ Add space puts one', () => {
+  it('beside the space it goes after, where there is room and on the board; in the middle with none', () => {
+    const round = newBoardGameRound('Board');
+    round.spaces = [];
+    expect(newSpaceSpot(round)).toEqual({ x: 960, y: 540 });
+    const a = newBoardSpace(400, 300, 'A');
+    round.spaces.push(a);
+    expect(newSpaceSpot(round, a)).toEqual({ x: 560, y: 300 });
+    // Taken to the right: below; at the right edge, not off the board.
+    round.spaces.push(newBoardSpace(560, 300, 'B'));
+    expect(newSpaceSpot(round, a)).toEqual({ x: 400, y: 460 });
+    const edge = newBoardSpace(1860, 1020, 'Edge');
+    round.spaces = [edge];
+    expect(newSpaceSpot(round, edge)).toEqual({ x: 1700, y: 1020 });
   });
 });

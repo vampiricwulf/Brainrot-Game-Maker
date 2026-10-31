@@ -1301,6 +1301,7 @@
             <div class="row">
               <button class="small primary" onclick={() => ((lookId = null), (editing = true))} title="Enter">✎ Edit screen</button>
               <button class="small" onclick={() => duplicateScreens([sel])} title="Ctrl+D">⧉ Duplicate</button>
+              <span class="spacer"></span>
               <button class="ghost small danger" onclick={() => removeScreens([sel])} title="Delete key; Undo brings it back">🗑 Delete</button>
             </div>
             {#if onstart}
@@ -1403,6 +1404,7 @@
             <p class="muted small">Drag one of them to move them all (Alt+arrows too). Shift/Ctrl+click adds or takes one away; Alt+drag draws a box.</p>
             <div class="row">
               <button class="small" onclick={() => duplicateScreens(picked)} title="Ctrl+D">⧉ Duplicate</button>
+              <span class="spacer"></span>
               <button class="ghost small danger" onclick={() => removeScreens(picked)} title="Delete them (Delete key; Undo brings them back)">🗑 Delete</button>
             </div>
           {:else}

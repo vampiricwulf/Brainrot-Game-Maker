@@ -143,7 +143,10 @@ the way.
 **Board game editor:** the board keys the same way. It's one `Tab` stop: the arrows go to the nearest space that way
 (`Shift` adds it to the selection), `Enter` opens its settings and `Tab` goes on to them. `Alt`+arrows move the selected
 spaces (`Shift`+`Alt` further), `F2` renames, `Ctrl+D` duplicates, `Ctrl+C` / `Ctrl+V` copy and paste spaces with their
-buttons (onto any board, in any game), `Delete` deletes. `Ctrl`+click adds a space, `Alt`+drag links two. The
+buttons (onto any board, in any game), `Delete` deletes. `Ctrl`+click adds a space, `Alt`+drag links two, and
+**＋ Add space** on the board's tools row adds one after the selected space. A space's own buttons are right under its
+name: 🏁 Make it the start, ＋ Add a space after it, ⧉ Duplicate and, apart at the end, 🗑 Delete space (several
+selected: ⧉ Duplicate, 📋 Copy, 🗑 Delete 3 spaces). The
 movement dice are kept by the dice themselves, so renaming them in 🎡 Wheels, Dice & Deals keeps them.
 
 Other editor tabs:

@@ -723,3 +723,23 @@ export function addFork(round: BoardGameRound, from: BoardSpace): BoardSpace {
 export function clampToBoard(x: number, y: number): { x: number; y: number } {
   return { x: Math.round(Math.max(40, Math.min(SLIDE_W - 40, x))), y: Math.round(Math.max(40, Math.min(SLIDE_H - 40, y))) };
 }
+
+/**
+ * Where ＋ Add space puts a new space: beside `after` (to its right, else below, left or above, the first spot with no
+ * space near it and on the board), or the board's middle when there's no space to go after.
+ */
+export function newSpaceSpot(round: BoardGameRound, after?: Pick<BoardSpace, 'x' | 'y'>): { x: number; y: number } {
+  if (!after) return clampToBoard(SLIDE_W / 2, SLIDE_H / 2);
+  const onBoard = (p: { x: number; y: number }) => p.x >= 40 && p.x <= SLIDE_W - 40 && p.y >= 40 && p.y <= SLIDE_H - 40;
+  const free = (p: { x: number; y: number }) => round.spaces.every((s) => Math.hypot(s.x - p.x, s.y - p.y) >= 100);
+  const tries = [
+    [160, 0],
+    [0, 160],
+    [-160, 0],
+    [0, -160],
+  ]
+    .map(([dx, dy]) => ({ x: after.x + dx, y: after.y + dy }))
+    .filter(onBoard);
+  const p = tries.find(free) ?? tries[0] ?? { x: after.x + 160, y: after.y };
+  return clampToBoard(p.x, p.y);
+}
