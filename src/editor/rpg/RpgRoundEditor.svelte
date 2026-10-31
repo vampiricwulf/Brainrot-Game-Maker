@@ -2,7 +2,7 @@
 <script lang="ts">
   import { app } from '../../lib/app.svelte';
   import { step } from '../../lib/history.svelte';
-  import { dropMenu } from '../../lib/menustate.svelte';
+  import { dropMenu, menuItem, menuOf } from '../../lib/menustate.svelte';
   import type { RpgRound, World } from '../../lib/model';
   import { newWorld, rpgRounds, startRef, worldById } from '../../lib/rpg';
   import ScreenPicker from './ScreenPicker.svelte';
@@ -110,16 +110,17 @@
             aria-label="More for this world"
             title="More for this world"
             onclick={(e) =>
-              dropMenu(e, [
-                { heading: world.name },
-                {
-                  label: '🗑 Delete world',
-                  danger: true,
-                  disabled: sharing > 0,
-                  hint: sharing ? 'Another round plays this world' : 'With all its maps and screens',
-                  onclick: () => deleteWorld(world),
-                },
-              ])}>⋯</button
+              dropMenu(
+                e,
+                menuOf({
+                  heading: world.name,
+                  delete: menuItem.delete('world', () => deleteWorld(world), {
+                    disabled: sharing > 0,
+                    hint: sharing ? 'Another round plays this world' : 'With all its maps and screens',
+                    keys: false,
+                  }),
+                }),
+              )}>⋯</button
           >
         {/if}
       </div>
