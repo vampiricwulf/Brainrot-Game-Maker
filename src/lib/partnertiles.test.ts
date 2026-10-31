@@ -4,8 +4,8 @@
 import { describe, expect, it } from 'vitest';
 import { jeopardyGame } from './testgame';
 import { cardSlides, migrateGame, newImageEl, partnerTilesPlaced, setSlideText, slideText, type BoardRound, type Game } from './model';
-import { addCard, partnerSpot, setPartnerGame } from './partner';
-import { answerCardDue, copyClue, followDailyDoubles, pastedPartnerCard, placePartner, randomizePartnerTiles, setClueType } from './ops';
+import { addCard, newCard, partnerSpot, setPartnerGame } from './partner';
+import { answerCardDue, copyClue, followDailyDoubles, pastedCardDue, pastedPartnerCard, placePartner, randomizePartnerTiles, setClueType } from './ops';
 import { randomizeDailyDoubles } from './session';
 import { dailyDoublesLine, partnersLine, partnerTilesOver, partnerTilesShort, placedLine, validate } from './validate';
 import { answerCardAt, checklistLines } from './checklist';
@@ -421,6 +421,40 @@ describe('made by hand, Card 1 is a copy of the answer (as one placed at random)
     expect(pastedPartnerCard(r, { ...copyClue(c), empty: true })).toBe(false);
     r.partnerCardFrom = 'empty';
     expect(pastedPartnerCard(r, copyClue(c))).toBe(false);
+  });
+
+  it('pasted: the cards a partner clue was set up with stay, the copy on Card 1 only when it goes to the giver', () => {
+    const { r } = board();
+    const c = r.categories[0].clues[0];
+    r.partnerCardFrom = 'empty';
+    setClueType(r, c, 'partner');
+    r.partnerCardFrom = 'answer';
+    const cards = () => cardSlides(pasted).map((k) => [slideText(k), k.to, k.hint ?? '']);
+    // Card 1 to the giver with its own phone line, Card 2 to the guesser with one: the copy goes on Card 1, all else stays.
+    c.cards = [{ ...newCard('giver'), hint: 'Read it to {guesser}' }, { ...newCard('guesser'), hint: 'Listen' }];
+    let pasted = copyClue(c);
+    expect(pastedCardDue(r, pasted)).toBe(true);
+    expect(pastedPartnerCard(r, pasted)).toBe(true);
+    expect(cards()).toEqual([
+      ['A 0.0', 'giver', 'Read it to {guesser}'],
+      ['', 'guesser', 'Listen'],
+    ]);
+    // Card 1 set up for the guesser (a ⚙ Custom clue): no copy there, and every card stays as it was.
+    c.cards = [{ ...newCard('guesser'), hint: 'Read this aloud to {giver}' }, { ...newCard('others'), hint: 'Everyone else: buzz in' }, newCard('giver')];
+    pasted = copyClue(c);
+    expect(pastedCardDue(r, pasted)).toBe(false);
+    expect(pastedPartnerCard(r, pasted)).toBe(false);
+    expect(cards()).toEqual([
+      ['', 'guesser', 'Read this aloud to {giver}'],
+      ['', 'others', 'Everyone else: buzz in'],
+      ['', 'giver', ''],
+    ]);
+    // No cards at all: its game's starting cards, the first a copy of the answer.
+    delete c.cards;
+    pasted = copyClue(c);
+    expect(pastedPartnerCard(r, pasted)).toBe(true);
+    expect(cardSlides(pasted)[0].to).toBe('giver');
+    expect(slideText(cardSlides(pasted)[0])).toBe('A 0.0');
   });
 
   it('the checklist’s ⧉ finds the empty card, with its name for the history; gone once it has something', () => {

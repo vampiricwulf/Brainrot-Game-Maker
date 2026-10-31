@@ -255,7 +255,8 @@ RollEvent  { id, ts, source: 'wheel' | 'dice', presetName?, result: string /* la
   show once any partner clue is on the board. One made by hand (the Type box, Make it a…, a paste or a copy-drop) on a
   tile with an answer and no card written on or named starts as a placed one does, its Card 1 a copy of the answer
   (`partnerCardFrom` 'empty' keeps it empty): one step, "Made Movies $400 a partner clue (card: a copy of the answer)",
-  and a toast. **⧉ Same as the answer** is in the corner of an empty card's words box (the clue and Final editors), and
+  and a toast. A pasted or copy-dropped one keeps the cards it was set up with (who each goes to, their phone lines):
+  the copy goes on its Card 1 when that one goes to the giver, and none at all when it goes to anyone else. **⧉ Same as the answer** is in the corner of an empty card's words box (the clue and Final editors), and
   a checklist line about an empty card on a tile or Final with an answer has a ⧉ beside it (and in its menu) for the
   first such card. In the clue editor a partner clue's rules are one line, always in view: 🤝 Game [▾] · Who describes:
   (•) the partner ( ) the picker · what it comes to on this tile in money · **▸ More rules** (folded at first, then as

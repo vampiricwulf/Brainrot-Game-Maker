@@ -271,12 +271,25 @@ export function setClueType(round: BoardRound, clue: Clue, type: ClueType): bool
 }
 
 /**
- * A 🤝 partner clue pasted or copied onto a tile of this round gets a copy of its answer on Card 1, as one made by hand
- * does (answerCardDue). Returns whether it did.
+ * Whether a 🤝 partner clue pasted or copied onto a tile of this round gets a copy of its answer on Card 1, as one made
+ * by hand does (answerCardDue): one with no cards yet, or whose Card 1 goes to the giver (on a card set up for the
+ * guesser or the others, the answer would show to them).
+ */
+export function pastedCardDue(round: BoardRound, clue: Clue): boolean {
+  if (clue.type !== 'partner' || clue.empty || !answerCardDue(round, clue)) return false;
+  const first = cardSlides(clue)[0];
+  return !first || first.to === 'giver';
+}
+
+/**
+ * Put that copy on (pastedCardDue): on its Card 1, the cards it was set up with staying as they are (who each goes to,
+ * their phone lines), or on its game's starting cards when it has none. Returns whether it did.
  */
 export function pastedPartnerCard(round: BoardRound, clue: Clue): boolean {
-  if (clue.type !== 'partner' || clue.empty || !answerCardDue(round, clue)) return false;
-  partnerStartCards(clue, 'answer');
+  if (!pastedCardDue(round, clue)) return false;
+  const first = cardSlides(clue)[0];
+  if (first) cardFromAnswer(clue, first);
+  else partnerStartCards(clue, 'answer');
   return true;
 }
 
