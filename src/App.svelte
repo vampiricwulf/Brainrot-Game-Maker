@@ -805,6 +805,9 @@
   function cancelPlay(fix?: string, at?: Place): void {
     backTo = app.test ?? fix ?? playFrom;
     fixOnArrival = !app.test && !!fix && (at ?? true);
+    // (The editor goes by its checklist, worked out a moment after changes stop: an edit made just before ▶ Play is in
+    // it by the time the editor is back, or ◀ Fix in editor would stop on the tab.)
+    if (fixOnArrival) checkSoon.flush();
     leavePlay();
   }
 
