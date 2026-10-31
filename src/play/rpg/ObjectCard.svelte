@@ -240,19 +240,19 @@
     </div>
     <div class="row btns">
       {#if role?.class === 'doorway'}
-        <button class="primary" onclick={() => goThrough()}>🚪 Go through (party)</button>
+        <button onclick={() => goThrough()}>🚪 Go through (party)</button>
         {#if picked?.length}<button onclick={() => goThrough(who)}>🚪 Only {whoNames}</button>{/if}
         <button class="small" onclick={() => logged(session, `${locked ? 'Unlock' : 'Lock'} ${title}`, () => (override(st, el.id).locked = !locked))}>
           {locked ? '🔓 Unlock' : '🔒 Lock'}
         </button>
       {:else if role?.class === 'item'}
-        <button class="primary" onclick={pickUp}>✋ {pickerName} picks up {count(role.qty ?? 1, itemDef(game, role.item)?.name ?? title)}</button>
+        <button onclick={pickUp}>✋ {pickerName} picks up {count(role.qty ?? 1, itemDef(game, role.item)?.name ?? title)}</button>
       {:else if role?.class === 'currency'}
         {@const f = statFields(game).find((x) => x.id === role.field) ?? currencyFields(game)[0]}
         {@const left = pileAmount(st, el)}
         <!-- Only what fits under their max ("🪙15 of 🪙30"); the rest stays on the screen. -->
         {@const fits = f && picker ? Math.min(left, statRoom(game, session, picker, f)) : left}
-        <button class="primary" onclick={pickUp} disabled={!f} title={f ? undefined : 'Add a currency in 📊 Stats & Items first'}
+        <button onclick={pickUp} disabled={!f} title={f ? undefined : 'Add a currency in 📊 Stats & Items first'}
           >✋ {pickerName} picks up {f ? (fits > 0 && fits < left ? `${formatStat(f, fits)} of ${formatStat(f, left)}` : formatStat(f, left)) : left}</button
         >
       {/if}

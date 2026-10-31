@@ -681,6 +681,12 @@ The mode isn't saved with the game: it's dual while the audience window is open.
   offers keeps where it was made (OpenOffer.at: 'land', 'space:<id>', 'object:<id>', 'tool'), and shows under that
   place (its own CardOffers with `at`) while the place is on screen, else at the panel's top with the rest; only a
   new offer takes the keys.
+- **An RPG round's box** (RpgHost), the pad first at every height: the top row (where, notes, the parties, ✂ Split off,
+  🤝 Regroup, ▦ Split view, 🛒 Shop…, 🗺 Map on stream), the selection line, a party's rename question, then the pad and
+  the minimap beside the `tools` snippet (HostPanel's ToolsControls: in an RPG round a tool's box goes here, never at
+  the panel's top) and the object's card or Objects here, then **✎ Improvise** (a RememberedFold, `jb.improviseOpen`,
+  open until first folded; its questions show under it either way), then the players. It has no `.primary` button:
+  an object's card, the minimap's Move … here and the full map's are plain.
 - **An RPG stage's box select** (RpgStage, `caughtBy` in layers.ts): a left-button press that moves 4 px (a finger 10,
   `STILL_PX`, which also stops the long press's menu) draws a box: on an empty part of a screen, on a 🔒 locked object or
   one as big as its screen (a click there still opens its card), anywhere with `Alt` (its keyup kept in the page, for

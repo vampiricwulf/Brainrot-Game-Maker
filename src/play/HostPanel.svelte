@@ -1226,12 +1226,12 @@
 
   <!-- What this moment needs (it changes) on the left; the one main button in the NEXT cell on the right. -->
   <!-- The tool on the stage's box (its spin or roll, what it came to, its score cards): on top, but a board game's own
-       dice or wheel under its turn box. -->
+       dice or wheel under its turn box, and in an RPG round beside the pad, with the object's card. -->
   {#snippet toolBox()}<ToolsControls {game} {session} {selected} {dual} onclose={oncloseoverlay} ring={goon?.ring === 'toolslot'} />{/snippet}
 
   <div class="act">
     <div class="action">
-      {#if app.live.overlay && !moverUp}
+      {#if app.live.overlay && !moverUp && session.phase !== 'rpg'}
         <div class="mode-host tools">{@render toolBox()}</div>
       {/if}
 
@@ -1344,6 +1344,7 @@
             bind:mapSend={rpgMapSend}
             bind:ask={rpgAsk}
             {dual}
+            tools={app.live.overlay ? toolBox : undefined}
             onhistory={() => onlog('history')}
           />
         </div>

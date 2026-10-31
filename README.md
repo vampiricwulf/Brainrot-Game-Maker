@@ -538,7 +538,10 @@ hidden objects. Use the separate audience window when that matters.
 
 ![Two wheels spinning together](docs/screenshots/wheels.png)
 
-**RPG rounds** have these controls:
+**RPG rounds** have these controls, in the host panel's RPG box from the top: the parties, 🛒 Shop… and 🗺 Map on
+stream; the selection line; the movement pad and the minimap at every height, with the box of a tool on the stage (a
+shop, a wheel or dice, a question) and the card of an object beside them; **▸ ✎ Improvise**; then the players. The RPG
+box has no blue button of its own (an object's card and the full map's buttons are plain).
 
 - The stats strip along the bottom never covers the screen: the screen is scaled into the room above it (past 6
   players the strip is one row of compact cards). The map on stream is solid, and the players' dots on it carry their
@@ -550,7 +553,9 @@ hidden objects. Use the separate audience window when that matters.
 - Split and regroup parties. An object's "the party" buttons act on the party standing at that object.
 - Player cards with stats and inventory.
 - Shops.
-- Live improvising: edit the screen, add text, or draw objects on a drawpad.
+- Live improvising, under **✎ Improvise** (open until you fold it; this computer remembers): ✎ Edit screen, ＋ Screen…,
+  another look for the screen, ＋ Text, ✏ Draw objects on a drawpad, 💾 Keep in game. Dropping a picture on the stage
+  and the stage menu's ＋ Text here… work with it folded too.
 - Select several players and objects and drag them together: the group keeps its shape, and one drag is one undo
   step. **Drag a box** on an empty part of the stage: the players, and the things they can pick up or use (items,
   money, characters, things to use), inside it are selected. A box replaces what's selected; `Shift`, `Ctrl` or `⌘`

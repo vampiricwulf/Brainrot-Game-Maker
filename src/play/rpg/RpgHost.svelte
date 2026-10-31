@@ -1,9 +1,11 @@
 <!--
-  The host's controls for an RPG round (games-maker spec §10.2): the movement pad, parties, the host map, the card of
-  the object clicked on the stage (or every object here), and each player's stats and inventory.
+  The host's controls for an RPG round (games-maker spec §10.2), the pad first at every height: the parties, a shop and
+  the map on stream; the selection line; the movement pad and the minimap; the tool on the stage (a shop, a wheel, a
+  question) and the card of the object clicked on the stage (or every object here); ✎ Improvise (editing the screen,
+  new screens and looks, text, drawing), folded once the host folds it; then each player's stats and inventory.
 -->
 <script lang="ts">
-  import { tick, untrack } from 'svelte';
+  import { tick, untrack, type Snippet } from 'svelte';
   import { showMenu } from '../../lib/menustate.svelte';
   import { app, hint, toast } from '../../lib/app.svelte';
   import { announce } from '../../lib/announce';
@@ -38,6 +40,7 @@
     staysWords, stepParty, toggleMap, type RpgAsk, type StagePoint,
   } from './hostops';
   import { dropHover } from '../dragdrop.svelte';
+  import { RememberedFold } from '../../lib/fold.svelte';
 
   let {
     game,
@@ -51,6 +54,7 @@
     mapSend = $bindable(null),
     ask = $bindable(null),
     dual,
+    tools,
     onhistory,
   }: {
     game: Game;
@@ -69,9 +73,16 @@
     /** A name or text being asked for (＋ Screen, a new look, ＋ Text, or text right-clicked onto the stage). */
     ask?: RpgAsk | null;
     dual: boolean;
+    /** The box of the tool on the stage (a shop, a wheel or dice, a question): it goes beside the pad, with the object's card. */
+    tools?: Snippet;
     /** Open the 📜 Log's history. */
     onhistory?: () => void;
   } = $props();
+  /**
+   * ✎ Improvise: open until the host first folds it, then as they left it (this computer remembers). Its questions
+   * (a name for a new screen or look, text: a stage right-click's ＋ Text here… too) show under it either way.
+   */
+  const improvise = new RememberedFold('jb.improviseOpen', true);
   /** The drawpad is open (drawing an object for the screen on air). */
   let drawpad = $state(false);
 
@@ -107,6 +118,8 @@
   /** The screen (and which of its looks) open in the live editor. */
   let live = $state<{ screen: Screen; slide: Slide; title: string } | null>(null);
   const variantId = $derived(here && st?.variant?.[here.screen.id]);
+  /** The look on now when it isn't the screen's own (✎ Improvise's folded line says it). */
+  const variantName = $derived(here?.screen.variants?.find((v) => v.id === variantId)?.name);
   /**
    * Directions with room for a new screen next to this one that the party could then go: not a side that's blocked
    * or leads elsewhere, nor a diagonal on a map without diagonal moves.
@@ -423,96 +436,21 @@
       {/if}
     </div>
 
-    <!-- (On a short window it goes under the pad and the map: see the style.) -->
-    <div class="improv-box">
-    <div class="row improv">
-      <span class="muted small">Improvise:</span>
-      <button class="small" onclick={editLive} title="Change this screen while the game runs">✎ Edit screen</button>
-      <select
-        class="small"
-        aria-label="Add a screen"
-        disabled={!freeDirs.length}
-        title={freeDirs.length ? 'An empty screen next to this one' : 'No open side here without a screen'}
-        onchange={(e) => {
-          const d = e.currentTarget.value as Dir8;
-          e.currentTarget.value = '';
-          e.currentTarget.blur();
-          if (d) ask = { what: 'screen', dir: d };
-        }}
-      >
-        <option value="">＋ Screen…</option>
-        {#each freeDirs as d (d)}<option value={d}>{DIR_ARROW[d]} {DIR_NAME[d]}</option>{/each}
-      </select>
-      <select
-        class="small"
-        aria-label="Look"
-        value={variantId ?? ''}
-        onchange={(e) => {
-          const v = e.currentTarget.value;
-          e.currentTarget.value = variantId ?? '';
-          e.currentTarget.blur();
-          setLook(v);
-        }}
-        title="Other looks for this screen (the village, on fire): a new one starts as a copy of this one"
-      >
-        <option value="">🎭 Original look</option>
-        {#each here?.screen.variants ?? [] as v (v.id)}<option value={v.id}>🎭 {v.name}</option>{/each}
-        <option value="+">＋ New look…</option>
-      </select>
-      <button class="small" onclick={() => (ask = { what: 'text' })} title="Type text onto the screen">＋ Text</button>
-      <button
-        class="small"
-        onclick={() => (drawpad = true)}
-        title="Draw an object over this screen (as many strokes as it takes), then insert it: make it an item, a zone, a hazard… (or drop a picture on the stage)"
-      >
-        ✏ Draw
-      </button>
-      <span class="muted small drop-hint">or drop a picture on the stage</span>
-      <span class="spacer"></span>
-      <!-- (An exported player-only file has no editor to keep it in.) -->
-      {#if !app.playerOnly}
-        <button class="small" onclick={() => keep()} title="Copy this screen as it is now (its looks and added objects) into the game in the editor, so it's there next time">
-          💾 Keep in game
-        </button>
-      {/if}
-    </div>
-    {#if ask && here}
+    <!-- A party's new name, asked by its chip's menu: here, by the chips. -->
+    {#if ask?.what === 'party'}
       {@const a = ask}
-      <!-- Fresh for every question, so a new one starts with its own text. -->
+      {@const pt = st.parties.find((p) => p.id === a.party)}
       {#key a}
-        {#if a.what === 'screen'}
-          <InlineAsk
-            text="Name of the new screen {DIR_ARROW[a.dir]} (viewers see it on the map once visited):"
-            field="Screen name"
-            value="New {DIR_NAME[a.dir].toLowerCase()} of {here.screen.name}"
-            ok="＋ Add screen"
-            onok={(name) => addScreen(a.dir, name)}
-            oncancel={() => (ask = null)}
-          />
-        {:else if a.what === 'look'}
-          <InlineAsk text="Name of the new look (a copy of this one to change, e.g. On fire):" field="Look name" value="New look" ok="＋ Add look" onok={newLook} oncancel={() => (ask = null)} />
-        {:else if a.what === 'party'}
-          {@const pt = st.parties.find((p) => p.id === a.party)}
-          <InlineAsk
-            text="New name for {pt?.name ?? 'the party'}:"
-            field="Party name"
-            value={pt?.name ?? ''}
-            ok="✎ Rename"
-            onok={(name) => renameParty(a.party, name)}
-            oncancel={() => (ask = null)}
-          />
-        {:else}
-          <InlineAsk
-            text="Text to put {a.at ? 'here' : 'on the screen'} (hidden until you reveal it):"
-            field="Text"
-            ok="＋ Add text"
-            onok={(text) => addText(text, a.at)}
-            oncancel={() => (ask = null)}
-          />
-        {/if}
+        <InlineAsk
+          text="New name for {pt?.name ?? 'the party'}:"
+          field="Party name"
+          value={pt?.name ?? ''}
+          ok="✎ Rename"
+          onok={(name) => renameParty(a.party, name)}
+          oncancel={() => (ask = null)}
+        />
       {/key}
     {/if}
-    </div>
 
     <div class="main" bind:this={mainEl}>
       <!-- With a card open, the pad and the map stay in sight (pinned at the top) while the panel scrolls to the card's foot. -->
@@ -544,7 +482,7 @@
         <div class="row mini-head" class:pick={!!(picked && pickedFound)}>
           {#if picked && pickedFound}
             <span class="shrink name" title={pickedFound.screen.name}>→ <b>{pickedFound.screen.name}</b></span>
-            <button class="small primary shrink" onclick={() => moveHere()} title="Move {party?.name ?? 'the party'} to {pickedFound.screen.name}">Move {party?.name ?? 'party'} here</button>
+            <button class="small shrink" onclick={() => moveHere()} title="Move {party?.name ?? 'the party'} to {pickedFound.screen.name}">Move {party?.name ?? 'party'} here</button>
             {#if selected.length}<button class="small shrink" onclick={() => moveHere(selected, `${selected.length} selected`)} title="Move only the {selected.length} selected to {pickedFound.screen.name}">Only selected ({selected.length})</button>{/if}
             <button class="small ghost" onclick={() => (picked = null)} aria-label="Cancel">✕</button>
           {/if}
@@ -557,6 +495,8 @@
       </div>
 
       <div class="side">
+        <!-- The tool on the stage (a shop, a wheel, a question): beside the pad, over the object's card it came from. -->
+        {@render tools?.()}
         {#if obj}
           {#key obj.el.id}
             <div bind:this={cardEl}>
@@ -615,6 +555,91 @@
           {#if last}<button class="muted small last" onclick={onhistory} title="Ctrl+Z undoes it · click for the whole history">Last: {stepText(last, !dual)}</button>{/if}
         {/if}
       </div>
+    </div>
+
+    <!-- ✎ Improvise, after the pad and the map (they're what moves the party): one line folded, its toggle in one place. -->
+    <div class="improv-box" data-improvise>
+    <div class="row improv">
+      <button class="ghost small fold" aria-expanded={improvise.open} onclick={() => improvise.set(!improvise.open)} title={improvise.open ? 'Fold the improvising tools away (this computer remembers)' : 'Change this screen while the game runs: edit it, add a screen or a look, text, a drawing'}
+        >{improvise.open ? '▾' : '▸'} ✎ Improvise{#if !improvise.open && variantName}<span class="muted"> · 🎭 {variantName}</span>{/if}</button
+      >
+      {#if improvise.open}
+      <button class="small" onclick={editLive} title="Change this screen while the game runs">✎ Edit screen</button>
+      <select
+        class="small"
+        aria-label="Add a screen"
+        disabled={!freeDirs.length}
+        title={freeDirs.length ? 'An empty screen next to this one' : 'No open side here without a screen'}
+        onchange={(e) => {
+          const d = e.currentTarget.value as Dir8;
+          e.currentTarget.value = '';
+          e.currentTarget.blur();
+          if (d) ask = { what: 'screen', dir: d };
+        }}
+      >
+        <option value="">＋ Screen…</option>
+        {#each freeDirs as d (d)}<option value={d}>{DIR_ARROW[d]} {DIR_NAME[d]}</option>{/each}
+      </select>
+      <select
+        class="small"
+        aria-label="Look"
+        value={variantId ?? ''}
+        onchange={(e) => {
+          const v = e.currentTarget.value;
+          e.currentTarget.value = variantId ?? '';
+          e.currentTarget.blur();
+          setLook(v);
+        }}
+        title="Other looks for this screen (the village, on fire): a new one starts as a copy of this one"
+      >
+        <option value="">🎭 Original look</option>
+        {#each here?.screen.variants ?? [] as v (v.id)}<option value={v.id}>🎭 {v.name}</option>{/each}
+        <option value="+">＋ New look…</option>
+      </select>
+      <button class="small" onclick={() => (ask = { what: 'text' })} title="Type text onto the screen">＋ Text</button>
+      <button
+        class="small"
+        onclick={() => (drawpad = true)}
+        title="Draw an object over this screen (as many strokes as it takes), then insert it: make it an item, a zone, a hazard… (or drop a picture on the stage)"
+      >
+        ✏ Draw
+      </button>
+      <span class="muted small drop-hint">or drop a picture on the stage</span>
+      <span class="spacer"></span>
+      <!-- (An exported player-only file has no editor to keep it in.) -->
+      {#if !app.playerOnly}
+        <button class="small" onclick={() => keep()} title="Copy this screen as it is now (its looks and added objects) into the game in the editor, so it's there next time">
+          💾 Keep in game
+        </button>
+      {/if}
+      {/if}
+    </div>
+    {#if ask && here && ask.what !== 'party'}
+      {@const a = ask}
+      <!-- Fresh for every question, so a new one starts with its own text. -->
+      {#key a}
+        {#if a.what === 'screen'}
+          <InlineAsk
+            text="Name of the new screen {DIR_ARROW[a.dir]} (viewers see it on the map once visited):"
+            field="Screen name"
+            value="New {DIR_NAME[a.dir].toLowerCase()} of {here.screen.name}"
+            ok="＋ Add screen"
+            onok={(name) => addScreen(a.dir, name)}
+            oncancel={() => (ask = null)}
+          />
+        {:else if a.what === 'look'}
+          <InlineAsk text="Name of the new look (a copy of this one to change, e.g. On fire):" field="Look name" value="New look" ok="＋ Add look" onok={newLook} oncancel={() => (ask = null)} />
+        {:else}
+          <InlineAsk
+            text="Text to put {a.at ? 'here' : 'on the screen'} (hidden until you reveal it):"
+            field="Text"
+            ok="＋ Add text"
+            onok={(text) => addText(text, a.at)}
+            oncancel={() => (ask = null)}
+          />
+        {/if}
+      {/key}
+    {/if}
     </div>
 
     <div class="row who">
@@ -696,19 +721,8 @@
     flex-direction: column;
     gap: 8px;
   }
-  /* A short window (a small laptop at 125%): the pad and the map come first, right under the parties, so the host
-     moves the party without scrolling; the improvising tools follow them. */
-  @media (max-height: 720px) {
-    .main {
-      order: 1;
-    }
-    .improv-box {
-      order: 2;
-    }
-    .who,
-    .cards {
-      order: 3;
-    }
+  .fold {
+    flex-shrink: 0;
   }
   /* In a narrow panel the hint gives its line back (✏ Draw's tooltip says it too): the pad and the map stay higher up. */
   @container (width < 560px) {

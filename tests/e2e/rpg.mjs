@@ -174,6 +174,22 @@ async function bigWorld() {
   await host.keyboard.press('ArrowUp');
   await host.waitForTimeout(800);
   assert(!southOf.includes('Village') && (await there()).includes('Village'), `the arrow keys move the party (↓ to ${southOf}, ↑ back)`);
+  // The RPG box, the pad first: the selection line, the pad and the minimap (with the object's card), then ✎ Improvise
+  // (open until the host folds it, so its ✎ Edit screen is in sight), then the players.
+  const rhParts = await host
+    .locator('.rh')
+    .evaluate((r) => [...r.children].flatMap((c) => ('rpgSel' in c.dataset ? ['sel'] : c.classList.contains('main') ? ['pad'] : 'improvise' in c.dataset ? ['improvise'] : c.classList.contains('who') ? ['players'] : [])));
+  const improv = host.locator('.rh [data-improvise]');
+  const improvToggle = improv.getByRole('button', { name: /✎ Improvise/ });
+  assert(rhParts.join() === 'sel,pad,improvise,players' && (await improvToggle.getAttribute('aria-expanded')) === 'true', `the RPG box: the pad first, then ✎ Improvise, open (${rhParts.join()})`);
+  // Folded, one line (its ✎ Edit screen gone); a click opens it again, in the same place.
+  const toggleAt = await improvToggle.boundingBox();
+  await improvToggle.click();
+  assert(
+    !(await host.getByRole('button', { name: '✎ Edit screen' }).count()) && (await improvToggle.innerText()).startsWith('▸ ✎ Improvise') && (await improvToggle.boundingBox()).x === toggleAt.x,
+    '▾ ✎ Improvise folds the improvising tools into one line, its button where it was',
+  );
+  await improvToggle.click();
   // ✎ Edit screen with the four standing here: a character added starts clear of them (avatars are drawn over objects).
   await host.getByRole('button', { name: '✎ Edit screen' }).click();
   const liveEd = host.getByRole('dialog', { name: / live$/ });
@@ -256,8 +272,10 @@ async function bigWorld() {
   const hostInfo = host.locator('.stage-area > .info');
   await hostInfo.locator('.a', { hasText: 'A piano' }).waitFor();
   assert(/answer \(hidden from viewers\)/i.test(await hostInfo.innerText()) && !(await aud.locator('body').innerText()).includes('A piano'), 'a question pop-up shows the host its answer before it’s revealed, and not viewers');
-  // Its blue button is 👁 Reveal answer (no copy in its box), and its box keeps ✕ Close to put it away unseen.
+  // Its blue button is 👁 Reveal answer (no copy in its box), and its box keeps ✕ Close to put it away unseen. The box is
+  // beside the pad, right over the card of the object it came from.
   const popBox = host.locator('.panel [data-tool-controls]');
+  assert((await host.locator('.rh .side > [data-tool-controls] + div [role="dialog"][aria-label="Object: Riddle cat"]').count()) === 1, 'the pop-up’s box is beside the pad, over the Riddle cat’s card');
   assert(
     (await flowIs(host, '👁 Reveal answer')) && (await popBox.getByRole('button', { name: '✕ Close', exact: true }).count()) === 1 && (await popBox.getByRole('button', { name: '👁 Reveal answer' }).count()) === 0,
     'a question pop-up: the blue button is 👁 Reveal answer, and its box has ✕ Close but no copy of the reveal',

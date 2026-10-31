@@ -154,9 +154,9 @@
             </span>
             {#if found.screen.hostNotes}<span class="notes">📝 {found.screen.hostNotes}</span>{/if}
             {#if send}
-              <button class="primary" onclick={() => go(send.players, send.label)}>▶ Move {send.label} here</button>
+              <button onclick={() => go(send.players, send.label)}>▶ Move {send.label} here</button>
             {:else}
-              <button class="primary" onclick={() => go()}>▶ Move {party?.name ?? 'party'} here</button>
+              <button onclick={() => go()}>▶ Move {party?.name ?? 'party'} here</button>
               {#if selected.length}
                 <button onclick={() => go(selected, `${selected.length} selected`)}>Only the selected ({selected.length})</button>
               {/if}
