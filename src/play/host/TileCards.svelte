@@ -29,7 +29,7 @@
   import { leftLine, sentLine, slowKinds, slowLine } from './cardrow';
   import ShrinkButton from './ShrinkButton.svelte';
   import { offerExposed } from './slots.svelte';
-  import { recipientsOf, toggleRecipient } from './tilecards.svelte';
+  import { recipientsOf, toggleRecipient } from './tilecardpicks.svelte';
 
   let {
     game,
@@ -78,8 +78,8 @@
   /** Its Goes to in words. */
   const startsWith = (to: CardGoesTo): string => (final ? finalGoesToLabel(to) : tileGoesToLabel(clue!.type, to));
   /**
-   * Who a card goes to: who the host chose (the chips), else its Goes to. Kept in tilecards.svelte.ts, so the check before
-   * going on knows it with the controls hidden too.
+   * Who a card goes to: who the host chose (the chips), else its Goes to. Kept in tilecardpicks.svelte.ts, so the
+   * check before going on knows it with the controls hidden too.
    */
   const recipients = (card: ClueCard): CardTo[] => recipientsOf(session, holder.id, card, () => starts(card));
   const toggle = (card: ClueCard, id: Id): void => toggleRecipient(holder.id, card, recipients(card), id);
