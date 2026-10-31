@@ -219,7 +219,7 @@ question ▶** (**▦ Done ▶ board** on a tile with no question), greyed while
 spun; over anything else (a wheel or dice from the tools row, 📊 Scores, a player's sheet, a roll-off) it's **Next ▶**,
 which only puts it away (the moment's own step is the next press). A question pop-up's blue button is **👁 Reveal
 answer**, then **Next ▶**; its box keeps **✕ Close** until the answer is up, to put it away unseen. `Esc` closes any of
-them at once. Pressed with something left, the blue button (or a click on the stage) asks first in the check below: a
+them at once (with a score effect not given, it says so first: `Esc` again closes without it). Pressed with something left, the blue button (or a click on the stage) asks first in the check below: a
 wheel or dice tile not spun or rolled yet (**First:** Spin! `W`, `Enter`; a tile with no question can close without it,
 staying on the board), landed on "Spin again" (↻ Spin again), a score effect not given (**✔ Give Ann +$100 ▶
 question**, or **Choose in the box** for a steal, a swap or nobody chosen), or a question pop-up's player picked with no
