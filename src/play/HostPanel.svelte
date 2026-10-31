@@ -1832,8 +1832,8 @@
   }
   /* Under the stage, with 🔇 Stop sounds or cards out in the tools row (they come and go on the board), ◀ Previous round
      as ◀ (still read out by name, its tooltip says it): the board's tools and the round's ◀ / picker / ▶ stay on one
-     line, as in a clue, so the stage keeps one size. (Up to 1520px wide: on a wider window it fits in full.) Up to 1100px
-     wide, and beside the stage, it's ◀ anyway. */
+     line, as in a clue, so the stage keeps one size. (Up to 1520px wide: on a wider window it fits in full.) Up to 1440px
+     wide, and beside the stage, it's ◀ anyway (with 📊 Scoreboard and a long Final's name the row would wrap). */
   .side > .toolsrow :global(.rn .word) {
     position: absolute;
     width: 1px;
@@ -1842,7 +1842,7 @@
     clip-path: inset(50%);
     white-space: nowrap;
   }
-  @media (max-width: 1100px) {
+  @media (max-width: 1440px) {
     .panel:not(.side) > .toolsrow :global(.rn .word) {
       position: absolute;
       width: 1px;

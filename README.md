@@ -271,7 +271,7 @@ view at the panel's foot as the rows above it scroll (in a 🤝 partner clue in 
 place). The tiebreaker's row is the same, with 🏁 Back to results. On a played-out board, Next round ▶ is the blue
 button and its place in the round navigation stays empty, so ◀ Previous round keeps its. Under the row come the tools
 (🎲 Dice, 🎡 Wheel, 🏁 Who goes first, 🤫 Send a card…, 🎭 Deal…, 📊 Scoreboard, pressed while it's on screen) with
-the round navigation (◀ Previous round, as ◀ on a narrow window, the round list, Next round ▶) at the right,
+the round navigation (◀ Previous round, as ◀ up to 1440 px wide, the round list, Next round ▶) at the right,
 then a fixed bar that never moves, in groups by what they're for: **↶ Undo ↷ Redo · 📜 Log 👥 Players ⚖ Rules · ⏸
 Cover 🙈 Hide · 🔊 Sound 📺 Audience ▭ Scores window · ❔ Help 🚪 Exit** (on a narrow window, as their signs only: ▭
 Scores window as ▭ up to 1340 px wide; beside the stage in RPG and board-game rounds ↶ Undo and ↷ Redo keep their
