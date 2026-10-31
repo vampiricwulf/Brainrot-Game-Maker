@@ -48,8 +48,15 @@ try {
   assert((await values(statNames)).join() === 'Gold,HP,Power', 'each move is its own undo step');
   await dragBy(page, page.locator('[data-place^="stat:"] .drag-grip').nth(2), page.locator('[data-place^="stat:"]').first().locator('input.name'));
   assert((await values(statNames)).join() === 'Power,Gold,HP', 'dragging a stat’s ⋮⋮ reorders it');
-  await page.getByRole('button', { name: 'Duplicate Gold' }).click();
-  assert((await values(statNames)).join() === 'Power,Gold,Gold (copy),HP', '⧉ puts a copy right after it');
+  // A row: ⋮⋮, its fields with their names in sight (Kind, Shown as, Who sees it), then ⋯ (its menu) and, apart, 🗑.
+  const goldRow = page.locator('[data-place^="stat:"]').nth(1);
+  const rowText = await goldRow.innerText();
+  assert(['Kind', 'Shown as', 'Who sees it'].every((w) => rowText.includes(w)), `a stat's dropdowns say what they are (${rowText.replace(/\s+/g, ' ')})`);
+  const [moreAt, binAt] = [await goldRow.getByRole('button', { name: 'More for Gold', exact: true }).boundingBox(), await goldRow.getByRole('button', { name: 'Delete Gold' }).boundingBox()];
+  assert(binAt.x - (moreAt.x + moreAt.width) >= 8, `🗑 sits apart from ⋯, at the row's end (${Math.round(binAt.x - moreAt.x - moreAt.width)} px)`);
+  await goldRow.getByRole('button', { name: 'More for Gold', exact: true }).click();
+  await page.getByRole('menu').getByRole('menuitem', { name: /⧉ Duplicate/ }).click();
+  assert((await values(statNames)).join() === 'Power,Gold,Gold (copy),HP', '⋯ → ⧉ Duplicate puts a copy right after it');
   await statNames.first().focus();
   await page.keyboard.press('Control+d');
   assert((await values(statNames))[1] === 'Power (copy)', 'Ctrl+D in a row duplicates it');
@@ -80,8 +87,9 @@ try {
   await dragBy(page, use.locator('.act .drag-grip').nth(2), use.locator('.act').first().locator('.head b'));
   assert((await heads())[0] === '📝 Host note', 'dragging a button’s ⋮⋮ reorders it');
   await use.getByRole('button', { name: '📋 Copy buttons' }).click();
-  await page.getByRole('button', { name: 'Duplicate Potion' }).click();
-  assert((await values(page.getByLabel('Item name'))).join() === 'Potion,Potion (copy)', 'an item duplicates, right after it');
+  await page.getByRole('button', { name: 'More for Potion', exact: true }).click();
+  await page.getByRole('menu').getByRole('menuitem', { name: /⧉ Duplicate/ }).click();
+  assert((await values(page.getByLabel('Item name'))).join() === 'Potion,Potion (copy)', 'an item duplicates (its ⋯), right after it');
   await page.getByRole('button', { name: '＋ Add item', exact: true }).click();
   await page.getByLabel('Item name').nth(2).fill('Hat');
   const hatUse = items.nth(2).locator('.actions');
@@ -118,14 +126,15 @@ try {
   await page.keyboard.press('Control+z');
   assert((await sold()) === 'Potion (copy),Potion,Hat', 'both undo');
   await shop.getByRole('button', { name: 'Remove Hat from shop' }).click();
-  assert((await sold()) === 'Potion (copy),Potion' && (await notice.innerText()).startsWith('Stopped selling “Hat”'), '− stops selling it, with a note');
+  assert((await sold()) === 'Potion (copy),Potion' && (await notice.innerText()).startsWith('Stopped selling “Hat”'), 'its 🗑 stops selling it, with a note');
   // An item's 📦 dropped on a shop sells it there.
   // (Both on screen at once.)
   await page.setViewportSize({ width: 1500, height: 2400 });
   await dragBy(page, page.getByRole('button', { name: 'Icon for Hat' }), shop.getByLabel('Shop name'));
   await page.setViewportSize({ width: 1500, height: 1000 });
   assert((await sold()) === 'Potion (copy),Potion,Hat', 'dragging an item’s icon onto a shop sells it there');
-  await page.getByRole('button', { name: 'Duplicate Shop 1' }).or(page.getByRole('button', { name: /^Duplicate Shop/ })).first().click();
+  await page.locator('.shop').first().getByRole('button', { name: /^More for / }).first().click();
+  await page.getByRole('menu').getByRole('menuitem', { name: /⧉ Duplicate/ }).click();
   assert((await page.locator('.shop').count()) === 2 && (await page.locator('.shop').nth(1).getByLabel('Item for sale').count()) === 3, 'a shop duplicates with its stock');
   await page.getByLabel('Shop name').nth(1).focus();
   await page.keyboard.press('Alt+ArrowUp');

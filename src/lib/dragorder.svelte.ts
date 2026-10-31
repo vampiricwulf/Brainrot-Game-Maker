@@ -1,6 +1,7 @@
 // Drag to reorder a list (rows or chips), the way the layers panel restacks: a line shows where the dragged one will
 // go, before or after the one under the pointer. The list's own ▲▼ (or ◀▶) buttons and Alt+arrows stay.
 import { tick } from 'svelte';
+import { isMenuKey, keyMenu, type MenuEntry } from './menustate.svelte';
 
 /** Where a dragged item goes when dropped before or after another: its index now and its new index (null: no move). */
 export function dropMove(ids: string[], dragged: string, target: string, after: boolean): { from: number; to: number } | null {
@@ -64,12 +65,14 @@ export interface RowKeys {
   move?: (d: -1 | 1) => void;
   /** Ctrl+D (⌘+D). */
   duplicate?: () => void;
+  /** Shift+F10 or the menu key: the row's menu (its ⋯'s), in a name box too. */
+  menu?: () => MenuEntry[];
 }
 
 /**
- * `use:rowKeys={{ move, duplicate }}` on a list's row: Alt+↑/↓ from any field in it moves the row (the field keeps
- * the focus, so they repeat), Ctrl+D duplicates it. A row inside another row (a button in an item's Use list) keeps
- * the keys for itself.
+ * `use:rowKeys={{ move, duplicate, menu }}` on a list's row: Alt+↑/↓ from any field in it moves the row (the field
+ * keeps the focus, so they repeat), Ctrl+D duplicates it, Shift+F10 opens its menu under what has the keys. A row
+ * inside another row (a button in an item's Use list) keeps the keys for itself.
  */
 export function rowKeys(node: HTMLElement, keys: RowKeys): { update: (k: RowKeys) => void; destroy: () => void } {
   let k = keys;
@@ -93,6 +96,9 @@ export function rowKeys(node: HTMLElement, keys: RowKeys): { update: (k: RowKeys
       e.preventDefault();
       e.stopPropagation();
       k.duplicate();
+    } else if (k.menu && isMenuKey(e)) {
+      e.stopPropagation();
+      keyMenu(e, k.menu(), e.target instanceof HTMLElement ? e.target : node);
     }
   }
   node.addEventListener('keydown', key);

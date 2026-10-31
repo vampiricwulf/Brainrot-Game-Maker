@@ -12,7 +12,8 @@
   import { step } from '../lib/history.svelte';
   import { DragOrder, rowKeys } from '../lib/dragorder.svelte';
   import { copyItem, copyShop, copyStat, moveTo } from '../lib/listedit';
-  import { dropMenu, menuItem, menuOf, showMenu } from '../lib/menustate.svelte';
+  import { dropMenu, menuItem, menuOf, showMenu, type MenuEntry } from '../lib/menustate.svelte';
+  import RowTools from './RowTools.svelte';
   import { isTextField } from '../lib/undokeys';
   import { pickFile, readTextFile, safeFilename, saveFile, savedWhere } from '../lib/fileio';
   import { newId, type ItemDef, type Shop, type StatField, type Wearable } from '../lib/model';
@@ -156,19 +157,18 @@
     else removeShop(x as Shop);
   }
 
-  /** Right-click a row (not in a text box, which keeps the browser's own menu). */
-  function rowMenu(e: MouseEvent, kind: Kind, x: Row, i: number): void {
-    if (isTextField(e.target)) return;
+  /** A row's menu: its ⋯, a right-click on it (not in a text box, which keeps the browser's own) or Shift+F10 in it. */
+  function rowItems(kind: Kind, x: Row, i: number): MenuEntry[] {
     const n = listOf(kind).length;
-    showMenu(
-      e,
-      menuOf({
-        heading: x.name,
-        duplicate: menuItem.duplicate(() => duplicate(kind, x)),
-        move: [menuItem.up(() => move(kind, i, i - 1), { disabled: i === 0 }), menuItem.down(() => move(kind, i, i + 1), { disabled: i === n - 1 })],
-        delete: menuItem.delete(kind, () => remove(kind, x), { keys: false }),
-      }),
-    );
+    return menuOf({
+      heading: x.name,
+      duplicate: menuItem.duplicate(() => duplicate(kind, x)),
+      move: [menuItem.up(() => move(kind, i, i - 1), { disabled: i === 0 }), menuItem.down(() => move(kind, i, i + 1), { disabled: i === n - 1 })],
+      delete: menuItem.delete(kind, () => remove(kind, x), { keys: false }),
+    });
+  }
+  function rowMenu(e: MouseEvent, kind: Kind, x: Row, i: number): void {
+    if (!isTextField(e.target)) showMenu(e, rowItems(kind, x, i));
   }
 
   const drags = { stat: new DragOrder(), item: new DragOrder(), shop: new DragOrder() };
@@ -197,18 +197,17 @@
     step(`Stopped selling “${wareName(s, i)}” in shop “${s.name}”`, () => s.stock.splice(i, 1), { notify: true });
   }
 
-  /** Right-click a row a shop sells (not in its boxes): move it, or stop selling it. Each item is sold once, so no copy. */
+  /** A row a shop sells: move it, or stop selling it (its ⋯, a right-click not in its boxes). Each item is sold once, so no copy. */
+  function wareItems(s: Shop, i: number): MenuEntry[] {
+    return menuOf({
+      heading: wareName(s, i),
+      move: [menuItem.up(() => moveWare(s, i, i - 1), { disabled: i === 0 }), menuItem.down(() => moveWare(s, i, i + 1), { disabled: i === s.stock.length - 1 })],
+      // (Off this shop: the item stays in the game.)
+      delete: { label: '🗑 Remove from shop', onclick: () => unstock(s, i) },
+    });
+  }
   function wareMenu(e: MouseEvent, s: Shop, i: number): void {
-    if (isTextField(e.target)) return;
-    showMenu(
-      e,
-      menuOf({
-        heading: wareName(s, i),
-        move: [menuItem.up(() => moveWare(s, i, i - 1), { disabled: i === 0 }), menuItem.down(() => moveWare(s, i, i + 1), { disabled: i === s.stock.length - 1 })],
-        // (Off this shop: the item stays in the game.)
-        delete: { label: '🗑 Remove from shop', onclick: () => unstock(s, i) },
-      }),
-    );
+    if (!isTextField(e.target)) showMenu(e, wareItems(s, i));
   }
 
   // CSV: name, price, stackable, slot, description (the columns a spreadsheet of items usually has).
@@ -346,16 +345,18 @@
           if (m) move('stat', m.from, m.to);
         }}
         oncontextmenu={(e) => rowMenu(e, 'stat', f, i)}
-        use:rowKeys={{ move: (d) => move('stat', i, i + d), duplicate: () => duplicate('stat', f) }}
+        use:rowKeys={{ move: (d) => move('stat', i, i + d), duplicate: () => duplicate('stat', f), menu: () => rowItems('stat', f, i) }}
       >
         {@render grip('stat', f.id, 'stats')}
         <input class="name" bind:value={f.name} aria-label="Stat name" />
-        <select bind:value={() => f.type, (v) => setStatType(f, v)} aria-label="{f.name} type">
-          <option value="number">Number</option>
-          <option value="text">Text</option>
-          <option value="checkbox">Yes/no</option>
-          <option value="tags">Tags</option>
-        </select>
+        <label class="field"
+          >Kind<select bind:value={() => f.type, (v) => setStatType(f, v)} aria-label="{f.name} kind">
+            <option value="number">Number</option>
+            <option value="text">Text</option>
+            <option value="checkbox">Yes/no</option>
+            <option value="tags">Tags</option>
+          </select></label
+        >
         <!-- What the type needs goes on a line of its own (see .field-row), so every row's audience, color and 🗑 line up. -->
         <div class="by-type">
           {#if f.type === 'number'}
@@ -389,11 +390,13 @@
               /></label
             >
             <!-- (A stat without a display shows as a number: showing the field doesn't fill it in.) -->
-            <select bind:value={() => f.display ?? 'counter', (v) => (f.display = v)} aria-label="{f.name} shown as">
-              <option value="counter">Number</option>
-              <option value="bar">Bar</option>
-              <option value="hearts">Hearts</option>
-            </select>
+            <label class="field"
+              >Shown as<select bind:value={() => f.display ?? 'counter', (v) => (f.display = v)} aria-label="{f.name} shown as">
+                <option value="counter">Number</option>
+                <option value="bar">Bar</option>
+                <option value="hearts">Hearts</option>
+              </select></label
+            >
             <label class="check small"><input type="checkbox" bind:checked={f.currency} /> Currency</label>
             <input class="sym" bind:value={f.symbol} placeholder={f.currency ? '🪙' : 'Symbol'} aria-label="{f.name} symbol" title="Shown before the number, e.g. 🪙 or $" />
             {#if statRangeProblem(f)}<span class="warn small" data-warn="range">⚠ {statRangeProblem(f)}</span>{/if}
@@ -408,14 +411,15 @@
             </label>
           {/if}
         </div>
-        <select bind:value={f.audience} aria-label="{f.name} audience">
-          <option value="hud">On the stats strip</option>
-          <option value="sheet">Only on the player sheet</option>
-          <option value="hidden">Host only</option>
-        </select>
+        <label class="field who"
+          >Who sees it<select bind:value={f.audience} aria-label="{f.name}: who sees it">
+            <option value="hud">On the stats strip</option>
+            <option value="sheet">Only on the player sheet</option>
+            <option value="hidden">Host only</option>
+          </select></label
+        >
         <ColorBox value={statColor(f)} oninput={(e) => (f.color = e.currentTarget.value)} aria-label="{f.name} color" />
-        <button class="ghost tiny" onclick={() => duplicate('stat', f)} aria-label="Duplicate {f.name}" title="Duplicate (Ctrl+D)">⧉</button>
-        <button class="ghost tiny danger" onclick={() => removeField(f)} aria-label="Delete {f.name}" title="Delete (Undo brings it back)">🗑</button>
+        <RowTools menu={() => rowItems('stat', f, i)} name={f.name} remove={() => removeField(f)} deleteLabel="Delete {f.name}" size="tiny" />
       </div>
     {/each}
   </div>
@@ -522,7 +526,7 @@
           if (m) move('item', m.from, m.to);
         }}
         oncontextmenu={(e) => rowMenu(e, 'item', it, i)}
-        use:rowKeys={{ move: (d) => move('item', i, i + d), duplicate: () => duplicate('item', it) }}
+        use:rowKeys={{ move: (d) => move('item', i, i + d), duplicate: () => duplicate('item', it), menu: () => rowItems('item', it, i) }}
       >
         <div class="item-row">
           {@render grip('item', it.id, 'items')}
@@ -566,8 +570,7 @@
           </select>
           <label class="check small" title="Only the host sees it in inventories"><input type="checkbox" bind:checked={it.secret} /> Secret</label>
           <button class="ghost small" onclick={() => (openItem = openItem === it.id ? null : it.id)} aria-expanded={openItem === it.id}>More</button>
-          <button class="ghost small" onclick={() => duplicate('item', it)} aria-label="Duplicate {it.name}" title="Duplicate, with its buttons and look (Ctrl+D)">⧉</button>
-          <button class="ghost small danger" onclick={() => removeItem(it)} aria-label="Delete {it.name}" title="Delete (Undo brings it back)">🗑</button>
+          <RowTools menu={() => rowItems('item', it, i)} name={it.name} remove={() => removeItem(it)} deleteLabel="Delete {it.name}" />
         </div>
         {#if openItem === it.id}
           <div class="more">
@@ -619,7 +622,7 @@
           if (m) move('shop', m.from, m.to);
         }}
         oncontextmenu={(e) => rowMenu(e, 'shop', s, si)}
-        use:rowKeys={{ move: (d) => move('shop', si, si + d), duplicate: () => duplicate('shop', s) }}
+        use:rowKeys={{ move: (d) => move('shop', si, si + d), duplicate: () => duplicate('shop', s), menu: () => rowItems('shop', s, si) }}
       >
         <div class="row">
           {@render grip('shop', s.id, 'shops')}
@@ -657,8 +660,7 @@
             />
           </label>
           <span class="spacer"></span>
-          <button class="ghost small" onclick={() => duplicate('shop', s)} aria-label="Duplicate {s.name}" title="Duplicate, with its stock (Ctrl+D)">⧉</button>
-          <button class="ghost small danger" onclick={() => removeShop(s)} title="Delete this shop (Undo brings it back)">🗑 Delete shop</button>
+          <RowTools menu={() => rowItems('shop', s, si)} name={s.name} remove={() => removeShop(s)} deleteLabel="Delete shop {s.name}" deleteWords="Delete shop" />
         </div>
         <table>
           {#if s.stock.length}
@@ -684,7 +686,7 @@
                   if (m) moveWare(s, m.from, m.to);
                 }}
                 oncontextmenu={(e) => wareMenu(e, s, i)}
-                use:rowKeys={{ move: (d) => moveWare(s, i, i + d) }}
+                use:rowKeys={{ move: (d) => moveWare(s, i, i + d), menu: () => wareItems(s, i) }}
               >
                 <td>
                   <span
@@ -708,7 +710,7 @@
                   <input type="number" class="n" min="0" value={st.qty ?? ''} placeholder="∞" step="1" oninput={(e) => (st.qty = e.currentTarget.value === '' ? null : Math.max(0, Math.floor(+e.currentTarget.value || 0)))} aria-label="In stock" />
                 </td>
                 <td>
-                  <button class="ghost tiny" onclick={() => unstock(s, i)} aria-label="Remove {wname} from shop" title="Stop selling it here (it stays in the game)">✕</button>
+                  <RowTools menu={() => wareItems(s, i)} name={wname} remove={() => unstock(s, i)} deleteLabel="Remove {wname} from shop" size="tiny" />
                 </td>
               </tr>
             {/each}
@@ -757,23 +759,23 @@
     border-bottom: 1px solid var(--border);
   }
   /* Ticks, grips and small buttons sit on the fields' line (under the labels above them). */
-  .field-row :is(.check, .drag-grip, button.small, button.tiny),
-  .item-row :is(.check, .drag-grip, button.small, button.tiny),
-  .shop .row :is(.drag-grip, button.small) {
+  .field-row :is(.check, .drag-grip, button.small, :global(.row-tools)),
+  .item-row :is(.check, .drag-grip, button.small, :global(.row-tools)),
+  .shop .row :is(.drag-grip, button.small, :global(.row-tools)) {
     margin-bottom: 5px;
   }
-  /* Name, type, audience, color, ⧉ 🗑 on the first line, in the same columns on every row; what the type needs (its
-     fields labelled above) on a line of its own under them. */
+  /* Name, kind, who sees it, color, ⋯ 🗑 on the first line, in the same columns on every row; what the kind needs
+     (its fields labelled above) on a line of its own under them. */
   .field-row {
     display: grid;
-    grid-template-columns: auto auto auto minmax(0, 1fr) auto auto auto;
+    grid-template-columns: auto auto auto minmax(0, 1fr) auto auto;
     row-gap: 8px;
   }
   .field-row > .by-type {
     grid-row: 2;
     grid-column: 2 / -1;
   }
-  .field-row > select:last-of-type {
+  .field-row > .who {
     justify-self: start;
   }
   .list {
@@ -790,7 +792,7 @@
   .name {
     width: 170px;
   }
-  /* On a narrow window an item's name gives way first, so ⧉ and 🗑 stay on its line. */
+  /* On a narrow window an item's name gives way first, so ⋯ and 🗑 stay on its line. */
   .item-row .name {
     flex: 1 1 110px;
     max-width: 170px;
