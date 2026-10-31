@@ -820,11 +820,12 @@ export function rpgProblems(game: Game, round: RpgRound, name: string, tab: numb
   if (nowhere.length) {
     const first = nowhere[0];
     const what = first.el.name?.trim() ? `“${first.el.name.trim()}”` : 'an object';
+    const one = (what: string) => `${name}: ${what} on “${first.screen.name}” has a button or setting that points nowhere`;
     const text =
-      nowhere.length === 1
-        ? `${what} on “${first.screen.name}” has a button or setting that points nowhere`
-        : `${nowhere.length} objects have a button or setting that points nowhere (on ${nameList(nowhere.map((o) => o.screen.name))})`;
-    out.push({ text: `${name}: ${text}`, tab, level: 'warn', place: place(first) });
+      nowhere.length === 1 ? one(what) : `${name}: ${nowhere.length} objects have a button or setting that points nowhere (on ${nameList(nowhere.map((o) => o.screen.name))})`;
+    // (Where viewers read it, a secret object isn't named: "a hidden object", as the host panel says it.)
+    const quiet = nowhere.length === 1 && first.el.secret && !neverShown(first.el) ? { quiet: { text: one('a hidden object') } } : {};
+    out.push({ text, tab, level: 'warn', place: place(first), ...quiet });
   }
   return out;
 }

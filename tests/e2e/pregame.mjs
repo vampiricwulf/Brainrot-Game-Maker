@@ -629,6 +629,22 @@ try {
     (await tabShown()).includes('Final Jeopardy!') && (await p2.evaluate(() => !!document.activeElement?.matches('main [data-field="a"]'))),
     `◀ Fix in editor goes where the checklist line goes: the Final, the keys in its Answer box (${await tabShown()})`,
   );
+  // In one window this page is on stream: a line about a tile's 🤫 card doesn't say which tile (it may be a partner
+  // clue or a Daily Double, which the board keeps from viewers), and its Fix › still goes to it.
+  await p2.getByRole('button', { name: 'Jeopardy!', exact: true }).first().click();
+  const partners = p2.getByLabel('How many partner clues');
+  await partners.fill('1');
+  await partners.press('Tab');
+  await p2.getByLabel('The card a new partner clue gets').selectOption('empty');
+  await p2.getByRole('button', { name: 'Randomize partner clues' }).click();
+  await p2.getByRole('button', { name: '▶ Play', exact: true }).click();
+  const tileLine = p2.locator('[data-checks] li', { hasText: 'card 1 is empty' });
+  await tileLine.waitFor();
+  const said = await tileLine.innerText();
+  assert(said.startsWith("A tile in Jeopardy!: card 1 is empty: there's nothing on it to send") && !/\$\d/.test(said), `in one window the line about the partner clue's empty card names no tile (${said})`);
+  await tileLine.getByRole('button', { name: 'Fix ›' }).click();
+  await p2.getByRole('dialog', { name: 'Edit clue' }).waitFor();
+  assert(true, 'its Fix › opens that tile in the editor');
   await own.close();
 
   assert(errors.length === 0, `no page errors (${errors.join('; ')})`);

@@ -37,7 +37,7 @@ import { lowerWord, partnerRules, partnerSpot, partWords, stealOn } from './part
 import { ANY_SERVER, cardItems, cardWords, phoneCard, sendsOf } from './phonecard';
 import { CARD_TEXT_MAX, CHOICE_MAX, cleanName, DEFAULT_FILE_LIMITS } from './buzzproto';
 import { rightChoice, usableChoices } from './choices';
-import { rpgProblems, worldById } from './rpg';
+import { neverShown, rpgProblems, worldById } from './rpg';
 import { boardGameProblems } from './boardgame';
 import { mediaPath, mediaUsage, onlineCount, slideHasContent, slideMediaIds } from './usage';
 import { toolChosen } from './tools';
@@ -67,6 +67,37 @@ export interface Problem {
   convert?: Id[];
   /** ⧉: an empty 🤫 card (its place) on a tile or Final with an answer: the editor's line gets ⧉ Same as the answer. */
   sameAsAnswer?: boolean;
+  /**
+   * Its words where viewers read them (▶ Play in one window), when they name a place the game keeps from them: a tile
+   * (it may be a Daily Double or a partner clue), a secret board-game space, a secret RPG object (`player`: as `player`).
+   */
+  quiet?: { text: string; player?: string };
+}
+
+/**
+ * Whether a place's name says what viewers mustn't know yet: a tile's 🤫 card (which tile has one: a partner clue, a
+ * Daily Double's), a secret board-game space, a secret RPG object. A line naming it gets other words for them
+ * (Problem.quiet).
+ */
+function namesSecret(game: Game, place: Place | null | undefined): boolean {
+  if (place?.tab === 'world') {
+    const el = place.element ? game.worlds?.flatMap(objectsWhere).find((o) => o.el.id === place.element)?.el : undefined;
+    return !!el?.secret && !neverShown(el);
+  }
+  if (place?.tab !== 'round') return false;
+  const part = place.part;
+  if (part?.kind === 'clue') return part.side === 'card';
+  const round = game.rounds.find((r) => r.id === place.round);
+  return part?.kind === 'space' && isBoardGame(round) && !!round.spaces.find((x) => x.id === part.space)?.secret;
+}
+
+/**
+ * Lines that start with a secret place's name (`said`), with their words for viewers (Problem.quiet), `as` in its
+ * place. (Fix › still goes to it.)
+ */
+export function hushed(list: Problem[], said: string, as: string): Problem[] {
+  const swap = (t: string) => (t.startsWith(said) ? as + t.slice(said.length) : t);
+  return list.map((p) => (p.text.startsWith(said) ? { ...p, quiet: { text: swap(p.text), ...(p.player ? { player: swap(p.player) } : {}) } } : p));
 }
 
 /**
@@ -256,7 +287,10 @@ export function validate(game: Game, room: Checking = {}): Problem[] {
         for (const { el, map, screen, look } of objectsWhere(world)) {
           const what = el.name?.trim() ? `“${el.name.trim()}”` : 'an object';
           const place: Place = { tab: 'world', world: world.id, map: map.id, screen: screen.id, look, inSlide: true, element: el.id };
-          for (const p of cardLines(game, cardsIn(el.role?.actions), `${name}: a 🤫 card on ${what} on “${screen.name}”`, i, place, room)) {
+          const says = `${name}: a 🤫 card on ${what} on “${screen.name}”`;
+          const lines = cardLines(game, cardsIn(el.role?.actions), says, i, place, room);
+          // (A secret object's name, in one window: "a hidden object", as the host panel says it.)
+          for (const p of el.secret && !neverShown(el) ? hushed(lines, says, `${name}: a 🤫 card on a hidden object on “${screen.name}”`) : lines) {
             if (said.has(p.text)) continue;
             said.add(p.text);
             out.push(p);
@@ -266,8 +300,11 @@ export function validate(game: Game, room: Checking = {}): Problem[] {
     }
     if (isBoardGame(round)) {
       out.push(...boardGameProblems(game, round, name, i));
-      for (const s of round.spaces)
-        out.push(...cardLines(game, cardsIn(s.onLand, s.onPass), `${name}: a 🤫 card on “${s.name}”`, i, { tab: 'round', round: round.id, part: { kind: 'space', space: s.id } }, room));
+      for (const s of round.spaces) {
+        const says = `${name}: a 🤫 card on “${s.name}”`;
+        const lines = cardLines(game, cardsIn(s.onLand, s.onPass), says, i, { tab: 'round', round: round.id, part: { kind: 'space', space: s.id } }, room);
+        out.push(...(s.secret ? hushed(lines, says, `${name}: a 🤫 card on a secret space`) : lines));
+      }
       return;
     }
     if (isSlides(round)) {
@@ -403,12 +440,16 @@ export function validate(game: Game, room: Checking = {}): Problem[] {
     const at = path ? placeAt(game, path) : null;
     const uses = deleted.reduce((n, id) => n + otherUses(id), 0);
     const where = at?.crumbs.length ? ` on ${at.crumbs.join(' › ')}${uses > 1 ? ` and ${plural(uses - 1, 'more place')}` : ''}` : ` (${plural(uses, 'place')})`;
+    const says = (where: string) =>
+      `${plural(deleted.length, 'deleted file')} still used${where}: not saved with the game. Undo the delete in History, or take ${deleted.length === 1 ? 'it' : 'them'} off ${uses === 1 ? 'there' : 'those slides'}`;
+    const player = `${plural(deleted.length, 'file')} used on slides but missing from this game: ask whoever made it for a new copy`;
     out.push({
-      text: `${plural(deleted.length, 'deleted file')} still used${where}: not saved with the game. Undo the delete in History, or take ${deleted.length === 1 ? 'it' : 'them'} off ${uses === 1 ? 'there' : 'those slides'}`,
+      text: says(where),
       tab: 'media',
       level: 'warn',
       ...(at?.place ? { place: at.place } : {}),
-      player: `${plural(deleted.length, 'file')} used on slides but missing from this game: ask whoever made it for a new copy`,
+      player,
+      ...(namesSecret(game, at?.place) ? { quiet: { text: says(` (${plural(uses, 'place')})`), player } } : {}),
     });
   }
   // (A 🗜 copy for phones whose bytes are missing isn't: phones get its file.)
@@ -427,14 +468,12 @@ export function validate(game: Game, room: Checking = {}): Problem[] {
   if (others.length) {
     // (A player-only file has no 🖼 Media: it names where the first one used was, which shows nothing now.)
     const path = others.map((id) => mediaPath(game, id)).find((p) => !!p);
-    const crumbs = path ? placeAt(game, path).crumbs : [];
+    const at = path ? placeAt(game, path) : null;
+    const crumbs = at?.crumbs ?? [];
     const on = crumbs.length ? ` (${others.length === 1 ? 'on' : 'one on'} ${crumbs.join(' › ')})` : '';
-    out.push({
-      text: `${plural(others.length, 'media file')} missing`,
-      tab: 'media',
-      level: 'warn',
-      player: `${plural(others.length, 'media file')} missing from this game${on}: ask whoever made it for a new copy`,
-    });
+    const text = `${plural(others.length, 'media file')} missing`;
+    const player = (on: string) => `${plural(others.length, 'media file')} missing from this game${on}: ask whoever made it for a new copy`;
+    out.push({ text, tab: 'media', level: 'warn', player: player(on), ...(on && namesSecret(game, at?.place) ? { quiet: { text, player: player('') } } : {}) });
   }
   // Videos and sounds this browser won't play, or plays without their sound: as worked out from what's inside them
   // (`room.plays`), else as their type says. (A live link already played when it was added; its type is often unknown
@@ -492,6 +531,8 @@ export function validate(game: Game, room: Checking = {}): Problem[] {
 export function partnerProblems(game: Game, round: BoardRound, tab: number, room: CardRoom = {}): Problem[] {
   const out: Problem[] = [];
   const sym = game.settings.currencySymbol;
+  // (Where viewers read them, a tile isn't named: it may be a Daily Double or a partner clue, which the board keeps from them.)
+  const quietTile = `A tile in ${roundName(round, tab)}`;
   for (const c of round.categories)
     c.clues.forEach((cl, row) => {
       // (Any tile's cards: a partner clue's, or a standard or Daily Double tile's own.)
@@ -502,7 +543,8 @@ export function partnerProblems(game: Game, round: BoardRound, tab: number, room
         round: round.id,
         part: { kind: 'clue', category: c.id, clue: cl.id, ...(card ? { side: 'card' as const, slide: card.id } : {}) },
       });
-      const warn = (text: string, card?: ClueCard, same = false) => out.push({ text, tab, level: 'warn', place: at(card), ...(same ? { sameAsAnswer: true } : {}) });
+      const mine: Problem[] = [];
+      const warn = (text: string, card?: ClueCard, same = false) => mine.push({ text, tab, level: 'warn', place: at(card), ...(same ? { sameAsAnswer: true } : {}) });
       const rules = partnerRules(cl);
       const cards = cardSlides(cl);
       // (A Custom game's cards are up to the host.)
@@ -513,9 +555,10 @@ export function partnerProblems(game: Game, round: BoardRound, tab: number, room
       if (cards.length > MAX_CARDS) warn(`${tile} has ${cards.length} cards: a clue holds ${MAX_CARDS} (＋ 🤫 Card adds no more)`, cards[MAX_CARDS]);
       cards.forEach((card, n) => {
         if (!slideHasContent(card)) warn(`${tile}: ${clueCardWords(card, n)} is empty: there's nothing on it to send`, card, slideHasContent(cl.answerSlide));
-        out.push(...cardLines(game, [card], `${tile}: ${clueCardWords(card, n)}`, tab, at(card)!, room));
+        mine.push(...cardLines(game, [card], `${tile}: ${clueCardWords(card, n)}`, tab, at(card)!, room));
       });
-      out.push(...cardNameProblems(game, cards, slidesOfClue(cl), tile, tab, (card) => at(card)!));
+      mine.push(...cardNameProblems(game, cards, slidesOfClue(cl), tile, tab, (card) => at(card)!));
+      out.push(...hushed(mine, tile, quietTile));
     });
   return out;
 }

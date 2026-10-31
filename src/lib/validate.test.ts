@@ -137,6 +137,20 @@ describe('the checklist', () => {
     expect(validate(game).find((p) => p.text.includes('deleted file'))?.text).toMatch(/^1 deleted file still used on Introduction › Slide 1 › Image and 1 more place: .* off those slides$/);
   });
 
+  it('where viewers read it (▶ Play in one window), a deleted or missing file on a tile’s 🤫 card doesn’t say which tile', () => {
+    const game = jeopardyGame();
+    const clue = (game.rounds[0] as BoardRound).categories[0].clues[0];
+    clue.cards = [{ ...textSlide('Hint'), id: 'c1', to: 'giver' }];
+    clue.cards[0].elements.push(newImageEl('gone1', 100, 100));
+    const line = validate(game).find((p) => p.text.includes('deleted file'))!;
+    expect(line.text).toMatch(/^1 deleted file still used on Jeopardy! › Category 1 › \$200 › Card 1 › /);
+    expect(line.quiet?.text).toBe('1 deleted file still used (1 place): not saved with the game. Undo the delete in History, or take it off there');
+    // (One on a question says nothing a tile keeps from viewers.)
+    clue.cards = [];
+    clue.questionSlide.elements.push(newImageEl('gone1', 100, 100));
+    expect(validate(game).find((p) => p.text.includes('deleted file'))?.quiet).toBeUndefined();
+  });
+
   it('sends player problems to the Play screen, where players are set', () => {
     const game = jeopardyGame();
     game.players = [];
@@ -283,6 +297,8 @@ describe('🤝 partner clues', () => {
         place: { tab: 'round', round: round.id, part: { kind: 'clue', category: round.categories[0].id, clue: clue.id, side: 'card', slide: card.id } },
         // (Its tile has an answer: the checklist offers ⧉ Same as the answer.)
         sameAsAnswer: true,
+        // (Where viewers read it, ▶ Play in one window, it doesn't say which tile: it may be a partner clue.)
+        quiet: { text: "A tile in Jeopardy!: card 1 is empty: there's nothing on it to send" },
       },
       { text: 'Partner clues: without phone buzzers you copy the cards to the players yourself', tab: 'play', level: 'info' },
     ]);
@@ -323,6 +339,7 @@ describe('🤝 partner clues', () => {
         tab: 0,
         level: 'info',
         place: at(card.id),
+        quiet: { text: 'A tile in Jeopardy!: the name of card “Shrek tip” repeats what’s on it, the question or the answer, and in one window viewers can read a card’s name in the host panel' },
       },
     ]);
     // (Its own words too.)
@@ -338,7 +355,15 @@ describe('🤝 partner clues', () => {
     card.name = 'card 2';
     const second = addCard(clue)!;
     setSlideText(second, 'More');
-    expect(mine(game)).toEqual([{ text: 'Movies $400 has two cards called “Card 2”: in the host panel you can’t tell them apart', tab: 0, level: 'info', place: at(second.id) }]);
+    expect(mine(game)).toEqual([
+      {
+        text: 'Movies $400 has two cards called “Card 2”: in the host panel you can’t tell them apart',
+        tab: 0,
+        level: 'info',
+        place: at(second.id),
+        quiet: { text: 'A tile in Jeopardy! has two cards called “Card 2”: in the host panel you can’t tell them apart' },
+      },
+    ]);
   });
 
   it('warns of a card’s online link that has expired or soon will', () => {
@@ -446,6 +471,38 @@ describe('🤝 partner clues', () => {
       { text: `Wheel “Prizes”: a slice’s 🤫 card ${too}`, tab: 'tools', level: 'warn', place: { tab: 'tools', wheel: 'w1' }, player: `Wheel “Prizes”: a slice’s 🤫 card ${shown}` },
       { text: `Deal “Mafia”: Boss’s card ${too}`, tab: 'tools', level: 'warn', place: { tab: 'tools', deal: 'd1' }, player: `Deal “Mafia”: Boss’s card ${shown}` },
     ]);
+    vi.unstubAllGlobals();
+  });
+
+  it('where viewers read the lines (▶ Play in one window), says no tile, secret space or secret object by name (Fix › still goes there)', () => {
+    vi.stubGlobal('document', { createElement: () => ({ canPlayType: () => 'maybe' }) });
+    const { game, round, clue } = partnerGame();
+    delete clue.cards;
+    game.media.push({ id: 'big', name: 'huge-clip.mp4', mime: 'video/mp4', size: 40 * 1024 * 1024, kind: 'video' });
+    const send = (id: string): Action => ({ id, do: 'card', slide: { background: {}, elements: [{ ...newVideoEl('big'), y: 10 }] } });
+    const board = newBoardGameRound('Race');
+    board.spaces[1] = { ...board.spaces[1], name: 'Dragon Lair', secret: true, onLand: [send('b1'), { id: 'g', do: 'goto', space: 'gone' }] };
+    board.spaces[2].onLand = [send('b2')];
+    game.rounds.push(board);
+    const rpg = newRpgRound(game, 'Quest');
+    const idol = { ...newImageEl('m0'), name: 'Golden Idol', secret: true, role: { class: 'interactable' as const, actions: [send('b3'), { id: 's', do: 'shop' as const, shop: 'gone' }] } };
+    game.worlds![0].maps[0].screens[0].slide.elements.push(idol);
+    game.rounds.push(rpg);
+    const lines = validate(game, OLD).filter((p) => p.level === 'warn' && /card|points nowhere/.test(p.text));
+    const big = 'has a video too big to send to phones (40.0 MB; this buzzer server takes files up to 16.0 MB)';
+    expect(lines.map((p) => [p.text, p.quiet?.text])).toEqual([
+      ['Movies $400 is a Describe it partner clue with no card: the describer has nothing to describe', 'A tile in Jeopardy! is a Describe it partner clue with no card: the describer has nothing to describe'],
+      ['Race: a button on “Dragon Lair” points nowhere', 'Race: a button on a secret space points nowhere'],
+      [`Race: a 🤫 card on “Dragon Lair” ${big}: add it from a link instead`, `Race: a 🤫 card on a secret space ${big}: add it from a link instead`],
+      // (A space that isn't secret is named, as before.)
+      [`Race: a 🤫 card on “${board.spaces[2].name}” ${big}: add it from a link instead`, undefined],
+      ['Quest: “Golden Idol” on “Start” has a button or setting that points nowhere', 'Quest: a hidden object on “Start” has a button or setting that points nowhere'],
+      [`Quest: a 🤫 card on “Golden Idol” on “Start” ${big}: add it from a link instead`, `Quest: a 🤫 card on a hidden object on “Start” ${big}: add it from a link instead`],
+    ]);
+    // A player-only file's words too.
+    expect(lines[2].quiet?.player).toBe(`Race: a 🤫 card on a secret space ${big}: the host shows it on stream instead`);
+    // Fix › still goes to the place.
+    expect(lines[0].place).toMatchObject({ tab: 'round', round: round.id, part: { kind: 'clue', clue: clue.id } });
     vi.unstubAllGlobals();
   });
 

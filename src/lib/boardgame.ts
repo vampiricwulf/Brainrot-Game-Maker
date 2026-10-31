@@ -597,9 +597,12 @@ export function boardGameProblems(game: Game, round: BoardGameRound, name: strin
   // A deleted space, zone, item… (or nothing chosen).
   const nowhere = round.spaces.flatMap((s) => [...(s.onPass ?? []), ...(s.onLand ?? [])].filter((a) => actionProblem(game, a, { board: round })).map(() => s));
   if (nowhere.length) {
-    const on = nameList(nowhere.map((s) => s.name));
-    const text = nowhere.length === 1 ? `a button on ${on} points nowhere` : `${nowhere.length} buttons on spaces point nowhere (on ${on})`;
-    out.push({ text: `${name}: ${text}`, tab, level: 'warn', place: at(nowhere[0]) });
+    const said = (on: string) => `${name}: ${nowhere.length === 1 ? `a button on ${on} points nowhere` : `${nowhere.length} buttons on spaces point nowhere (on ${on})`}`;
+    // (Where viewers read it, a secret space isn't named.)
+    const hid = new Set(nowhere.filter((s) => s.secret).map((s) => s.id)).size;
+    const hidOn = [nameList(nowhere.filter((s) => !s.secret).map((s) => s.name)), hid === 1 ? 'a secret space' : `${hid} secret spaces`].filter(Boolean).join(' and ');
+    const quiet = hid ? { quiet: { text: said(hidOn) } } : {};
+    out.push({ text: said(nameList(nowhere.map((s) => s.name))), tab, level: 'warn', place: at(nowhere[0]), ...quiet });
   }
   return out;
 }

@@ -4883,8 +4883,11 @@
         const dd = isBoard(r) && !!dailyDoublesShort(r) && p.text.includes('Daily Double') && p.text.includes(' not placed yet');
         const pt = isBoard(r) && partnerShort(r) && p.text.includes('partner clue') && p.text.includes(' not placed yet');
         // (A player-only file can't add or swap files: its own words for those.)
+        const said = (t: { text: string; player?: string }) => (app.playerOnly && t.player ? t.player : t.text);
         return {
-          text: app.playerOnly && p.player ? p.player : p.text,
+          text: said(p),
+          // (In one window this page is on stream: a line about a tile, a secret space or object doesn't say which.)
+          quiet: p.quiet && said({ text: p.quiet.text, player: p.quiet.player ?? p.player }),
           level: p.level,
           // Where ◀ Fix in editor goes (not this screen's own things).
           fix: typeof p.tab === 'number' ? g.rounds[p.tab]?.id : p.tab === 'play' ? undefined : p.tab,
@@ -6818,7 +6821,7 @@
         <ul>
           {#each checks as c}
             <li class:warn-line={c.level === 'warn'}>
-              <span>{c.level === 'warn' ? '' : 'ℹ '}{c.text}</span>
+              <span>{c.level === 'warn' ? '' : 'ℹ '}{!wantAudience && c.quiet ? c.quiet : c.text}</span>
               {#if c.ddRound !== undefined}
                 {@const ri = c.ddRound}
                 <button
