@@ -12,7 +12,7 @@
   import { DragOrder, rowKeys } from '../../lib/dragorder.svelte';
   import { step } from '../../lib/history.svelte';
   import { copySegment, moveTo } from '../../lib/listedit';
-  import { showMenu } from '../../lib/menustate.svelte';
+  import { menuItem, menuOf, showMenu } from '../../lib/menustate.svelte';
   import { flash } from '../../lib/nav.svelte';
   import { announce } from '../../lib/announce';
   import { isTextField } from '../../lib/undokeys';
@@ -97,14 +97,15 @@
   function rowMenu(e: MouseEvent, i: number): void {
     if (isTextField(e.target)) return;
     const n = wheel.segments.length;
-    showMenu(e, [
-      { heading: name(wheel.segments[i]) },
-      { label: '⧉ Duplicate', onclick: () => duplicate(i), keys: 'Ctrl+D' },
-      { label: '▲ Move up', onclick: () => move(i, i - 1), disabled: i === 0, keys: 'Alt+↑' },
-      { label: '▼ Move down', onclick: () => move(i, i + 1), disabled: i === n - 1, keys: 'Alt+↓' },
-      { sep: true },
-      { label: '🗑 Delete slice', danger: true, onclick: () => remove(i), disabled: n <= 2 },
-    ]);
+    showMenu(
+      e,
+      menuOf({
+        heading: name(wheel.segments[i]),
+        duplicate: menuItem.duplicate(() => duplicate(i)),
+        move: [menuItem.up(() => move(i, i - 1), { disabled: i === 0 }), menuItem.down(() => move(i, i + 1), { disabled: i === n - 1 })],
+        delete: menuItem.delete('slice', () => remove(i), { disabled: n <= 2, keys: false }),
+      }),
+    );
   }
 
   /** ↻: landing on this slice spins again (left unset when that's what its name already says). */
