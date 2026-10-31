@@ -101,7 +101,7 @@ they belong in (a picture dropped on a tile asks: in the question, or as the til
 **Slide editor:** the selected item's buttons are in a bar pinned at the top of the side panel, its name, ⋯ (its
 menu), its edit (✎ Edit text, ✎ Edit image…, ✎ Edit video… / sound…, Test link ↗…), ⧉ Duplicate, 🔒 Lock and, apart,
 🗑 Delete (several selected: the same buttons, for them all), and a ⋯ just outside the selection's top-right corner on
-the slide opens the same menu. Right after the slide tabs (a clue's, a Final's, the tiebreaker's, a slides round's)
+the slide (beside a corner item's left edge, never over it) opens the same menu. Right after the slide tabs (a clue's, a Final's, the tiebreaker's, a slides round's)
 is the open slide's group: ＋ Add slide, ⧉ Duplicate slide, 📋 Copy slide, 📋 Paste slide (as a new slide after this
 one; its ▾ pastes over this one), ◀ ▶ and, apart, 🗑 Delete slide, the card's own on a 🤫 card's tab; a right-click on a
 tab (or Shift+F10 on it) gives its menu, and Ctrl+C / Ctrl+V on a tab copy the slide and paste it as a new one.

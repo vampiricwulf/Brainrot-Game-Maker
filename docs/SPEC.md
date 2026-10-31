@@ -306,8 +306,9 @@ RollEvent  { id, ts, source: 'wheel' | 'dice', presetName?, result: string /* la
   Edit image…, ✎ Edit video… / sound…, ✎ Edit fill…; a link's Test link ↗), ⧉ Duplicate, 🔒 Lock (pressed when locked,
   half for a mix) and 🗑 Delete apart at the right (greyed while all of it is locked). The Inspector below has the
   item's settings only. On the slide, a ⋯ just outside the selection's top-right corner (clear of its handles and the
-  rotate knob, inside the corner when the selection fills the slide; never drawn in a preview or a thumbnail) opens the
-  same menu. 🖼 Board images has the same bar.
+  rotate knob; beside its left edge for an item in the slide's top-right corner, under it for one along the whole top;
+  inside the corner only when the selection fills the slide; never drawn in a preview or a thumbnail) opens the same
+  menu. 🖼 Board images has the same bar.
 - **Right-click menus** (LayerMenu, its own component, in the editors' one order; Shift+F10 on the canvas or a Layers
   row too, and 🖼 Board images the same): an item's is headed by its name, then the items stacked there to pick from,
   ✎ Edit… (Double-click / Enter) · 🔁 Use another picture… / video… / sound… (only this item) · ✎ Rename (F2 where

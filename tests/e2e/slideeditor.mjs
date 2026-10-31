@@ -240,6 +240,14 @@ try {
     assert((await menu.locator('.head').innerText()).trim() === 'Rectangle' && (await insp.locator('h4', { hasText: 'Shape' }).count()) === 1, 'it opens the rectangle’s menu, the rectangle still selected');
     await page.keyboard.press('Escape');
     await menu.waitFor({ state: 'detached' });
+    // A small item in the slide's top-right corner (a logo): the ⋯ goes beside its left edge, not over its middle.
+    const n0 = (await drawn()).length;
+    await addRect(1820, 0, 100, 100);
+    const [m2, logo] = [await more.boundingBox(), await at(1820, 0)];
+    assert(!!m2 && m2.x + m2.width <= logo.x + 1, `a corner item's ⋯ sits beside its left edge (${Math.round(m2?.x ?? 0)}+${Math.round(m2?.width ?? 0)} by ${Math.round(logo.x)})`);
+    await bar.getByRole('button', { name: '🗑 Delete' }).click();
+    await click(1550, 800);
+    assert((await insp.locator('h4', { hasText: 'Shape' }).count()) === 1 && (await drawn()).length === n0, 'and with it deleted, the first rectangle is selected again');
   }
   await page.keyboard.press('Escape');
   const text0 = (await drawn())[0];

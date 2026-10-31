@@ -67,9 +67,17 @@ describe('the ⋯ beside a selection', () => {
   });
   it('goes beside the corner when the top is off the canvas, inside it for a slide-sized item', () => {
     expect(moreSpot({ x: 100, y: 0, w: 200, h: 100 }, size, gap, pb)).toEqual({ x: 332, y: 0 });
-    // (At the slide's top-right corner, nowhere outside it is on the canvas.)
-    expect(moreSpot({ x: 1700, y: 0, w: 220, h: 100 }, size, gap, pb)).toEqual({ x: 1840, y: 32 });
+    // (Nowhere round it is on the canvas.)
     expect(moreSpot({ x: 0, y: 0, w: 1920, h: 1080 }, size, gap, pb)).toEqual({ x: 1840, y: 32 });
+  });
+  it('goes beside the left edge of an item in the slide’s top-right corner, never over its middle', () => {
+    // A logo in the corner: off the canvas above it and to its right, so beside its top-left corner.
+    expect(moreSpot({ x: 1700, y: 0, w: 220, h: 100 }, size, gap, pb)).toEqual({ x: 1620, y: 0 });
+    const logo = { x: 1820, y: 0, w: 100, h: 100 };
+    const at = moreSpot(logo, size, gap, pb);
+    expect(at.x + size <= logo.x || at.y >= logo.y + logo.h).toBe(true);
+    // As wide as the slide along its top: under its bottom edge, at the right.
+    expect(moreSpot({ x: 0, y: 0, w: 1920, h: 100 }, size, gap, pb)).toEqual({ x: 1872, y: 132 });
   });
   it('keeps off the rotate knob', () => {
     const box = { x: 500, y: 300, w: 100, h: 100 };
