@@ -407,14 +407,15 @@ try {
   await sheet.locator('tr', { hasText: 'deal in focus' }).first().waitFor();
   assert((await sheet.locator('tr').count()) === 3, 'Enter, F2 and Delete say they go into, rename and delete a deal in focus too');
   // One window for both: a key of the game's found from the editor's part is a click away, and ? types in the filter.
-  await page.getByLabel('Filter shortcuts').fill('partner clue');
-  await sheet.getByText('Nothing matches “partner clue” here.').waitFor();
+  // (Not “partner clue”: a tile's right-click names 🤝 partner clue among its Make it a… kinds.)
+  await page.getByLabel('Filter shortcuts').fill('spin for a partner');
+  await sheet.getByText('Nothing matches “spin for a partner” here.').waitFor();
   await sheet.getByRole('button', { name: /^\d+ in During the game ▸$/ }).click();
   await sheet.locator('tr', { hasText: 'W on a partner clue' }).waitFor();
   assert((await sheet.getByRole('button', { name: 'During the game', exact: true }).getAttribute('aria-pressed')) === 'true', 'a filter with no match in the Editor part offers the During the game part’s, a click away');
   await page.getByLabel('Filter shortcuts').press('End');
   await page.keyboard.press('?');
-  assert((await page.getByLabel('Filter shortcuts').inputValue()) === 'partner clue?' && (await sheet.count()) === 1, '? typed in the filter is a question mark');
+  assert((await page.getByLabel('Filter shortcuts').inputValue()) === 'spin for a partner?' && (await sheet.count()) === 1, '? typed in the filter is a question mark');
   // During the game: the blue button's keys and the check's, in their own group (found whole by its name), and O in a
   // buzzer tie.
   await page.getByLabel('Filter shortcuts').fill('blue button and the check');
@@ -516,8 +517,10 @@ try {
   assert((await page.locator('.bh .acts').innerText()).includes('Landed on Go back'), 'Ctrl+Z undoes the move back');
   // Its button undone, Go back's landing is left again: N asks first, and N again (once it takes keys) goes on anyway.
   await page.keyboard.press('n');
-  await checkItem(page, 'landing').waitFor();
-  assert((await checkItem(page, 'landing').innerText()).includes('Ann landed on Go back: its actions haven’t run.'), 'N after its button was undone asks first: Go back’s actions haven’t run');
+  // (Ctrl+Z put back her walk onto Go back, its 5 spaces still being stepped: the check's line says Moving… until her
+  // token is there, then what's left.)
+  await checkItem(page, 'landing').filter({ hasText: 'Ann landed on Go back' }).waitFor({ timeout: 3000 });
+  assert((await checkItem(page, 'landing').innerText()).includes('Ann landed on Go back: its actions haven’t run.'), `N after its button was undone asks first: Go back’s actions haven’t run (${await checkItem(page, 'landing').innerText()})`);
   await goOnCheck(page, { ready: true }).waitFor();
   await page.keyboard.press('n');
   await goOnCheck(page).waitFor({ state: 'detached' });
@@ -534,7 +537,9 @@ try {
   await page.locator('.stage .turn-banner', { hasText: 'Cat' }).waitFor();
   await page.keyboard.press('n');
   await goOnCheck(page, { ready: true }).waitFor();
-  await goOnCheck(page).getByLabel('Don’t ask about rolling again this game').check();
+  // (Ticked, the rolling line goes from the check, and the tick with it: a click, not Playwright's check(), which waits
+  // to see it ticked.)
+  await goOnCheck(page).getByLabel('Don’t ask about rolling again this game').click();
   await page.locator('.panel [data-goon="nothing"]').waitFor();
   await page.keyboard.press('n');
   await page.locator('.stage .turn-banner', { hasText: 'Ann' }).waitFor();
