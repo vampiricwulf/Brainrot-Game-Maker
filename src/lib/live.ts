@@ -4,8 +4,12 @@ import type { DiceRoll, PoolSlice, RollOffRound } from './tools';
 import type { BuzzState } from './buzz';
 import type { CueKey } from './sounds';
 
-/** What a host click on the stage asks for (the host's view decides what it means right now). */
-export type StageAction = 'intro' | 'reveal' | 'back' | 'final-next' | 'overlay' | 'whowaswho';
+/**
+ * What a host click on the stage was on (the host's view decides what it means right now: stageclick.ts): a title card,
+ * the question or the answer, the Final's answer, what's over the stage, 🎭 Who was who, PARTNER UP!, a Daily Double's
+ * splash, the Final's wagers or its spotlit player's card.
+ */
+export type StageAction = 'intro' | 'reveal' | 'back' | 'final-next' | 'overlay' | 'whowaswho' | 'partnerup' | 'dd' | 'wagers' | 'spotlight';
 
 /** A short "+400 Alex" badge that floats up on the audience view after a score change. */
 export interface Pop {
