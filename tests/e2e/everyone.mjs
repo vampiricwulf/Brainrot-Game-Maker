@@ -115,7 +115,9 @@ try {
     (await tile3.locator('.missing', { hasText: 'Empty choice' }).count()) === 1 && (await tile3.getAttribute('aria-label')).endsWith(', empty choice'),
     'with a choice still empty, its tile on the board says “Empty choice”',
   );
-  for (const [l, words] of [['A', 'Paris'], ['B', 'Stockholm'], ['C', 'Oslo'], ['D', 'Bern']]) await editor.getByLabel(`Choice ${l}`, { exact: true }).fill(words);
+  // (A choice's words box, not its row: the row is a group of the same name, for its keys and menu.)
+  const choiceBox = (l) => editor.getByRole('textbox', { name: `Choice ${l}`, exact: true });
+  for (const [l, words] of [['A', 'Paris'], ['B', 'Stockholm'], ['C', 'Oslo'], ['D', 'Bern']]) await choiceBox(l).fill(words);
   await tile3.getByText('Empty choice').waitFor({ state: 'detached' });
   // Take the choices off by keyboard: the keys go to ＋ Multiple choice (not the header's Next ▶), with words gone a
   // note says so (as deleting a card does), and Ctrl+Z puts them back.
@@ -124,8 +126,8 @@ try {
   await host.waitForFunction(() => document.activeElement?.textContent?.trim() === '＋ Multiple choice');
   await host.locator('.toast', { hasText: /^Took the choices off .+ \$200/ }).waitFor();
   await host.keyboard.press('Control+z');
-  await editor.getByLabel('Choice D', { exact: true }).waitFor();
-  assert((await editor.getByLabel('Choice D', { exact: true }).inputValue()) === 'Bern', 'Take the choices off: the keys land on ＋ Multiple choice, a note says so, and Ctrl+Z puts them back');
+  await choiceBox('D').waitFor();
+  assert((await choiceBox('D').inputValue()) === 'Bern', 'Take the choices off: the keys land on ＋ Multiple choice, a note says so, and Ctrl+Z puts them back');
   await editor.locator('[data-choice-row]').nth(1).getByRole('button', { name: 'Mark right' }).click();
   await editor.locator('[data-choice-row]').nth(1).locator('button[aria-pressed="true"]').waitFor();
   const choiceUndo = await host.locator('.editor > header button[aria-label="Undo (Ctrl+Z)"]').getAttribute('title');
