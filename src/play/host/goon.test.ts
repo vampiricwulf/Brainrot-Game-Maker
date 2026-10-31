@@ -13,7 +13,7 @@ import { HOP_MS } from '../../lib/boardgame';
 import { moveNow, rollMover, runLanding, runSpace, sendNow } from '../boardgame/bgops';
 import { undoAction } from '../../lib/toolset';
 import {
-  anywayLabel, CHECK_GUARD_MS, ddWaits, doneSay, doneStep, enterQuick, escBounce, finalWaits, goOnDecision, headingOf, inside, leftNow, likelyVerdict, mainQuick, mainStep, mergeItems,
+  anywayLabel, asked, CHECK_GUARD_MS, ddWaits, doneSay, doneStep, enterQuick, escBounce, finalWaits, goOnDecision, headingOf, inside, leftNow, likelyVerdict, mainQuick, mainStep, mergeItems,
   quietKinds, ringOf, swallowSay, teachLine, todo, type BoardNow, type Check, type FinalNow, type GoActs, type GoCtx, type LeftItem, type PartnerNow, type Step,
 } from './goon';
 import { FLOW } from './verbs';
@@ -344,6 +344,17 @@ describe('the check (3.1–3.10)', () => {
     expect(goOnDecision('n', reveal, items, true, false)).toBe('hold');
     expect(goOnDecision('n', step, [{ ...items[0], must: true }], true, false)).toBe('hold');
     expect(goOnDecision('n', reveal, items, true, true)).toBe('open');
+  });
+
+  it('the stage menu’s first item, a click on the blue button, a stage click and the clue row’s Done ask as N does', () => {
+    const { step, items } = picked();
+    for (const src of ['menu', 'main', 'stage', 'flow', 'enter'] as const) {
+      expect([src, goOnDecision(src, step, items, false, false)]).toEqual([src, 'open']);
+      expect(asked(src, items)).toEqual(items);
+    }
+    // (Only Shift+click on the blue button skips: what must be done first still asks.)
+    expect(asked('shift', items)).toEqual([]);
+    expect(asked('shift', [{ ...items[0], must: true }])).toHaveLength(1);
   });
 
   it('its words: the heading, "… anyway", the teach line, the ticks', () => {
