@@ -767,12 +767,6 @@
   .hide {
     visibility: hidden;
   }
-  .tools button.on,
-  button.on {
-    background: var(--accent-fill);
-    border-color: var(--accent-fill);
-    color: #fff;
-  }
   .body {
     flex: 1;
     min-height: 0;

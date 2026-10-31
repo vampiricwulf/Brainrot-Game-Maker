@@ -583,11 +583,6 @@
     padding: 4px 8px;
     min-width: 30px;
   }
-  .toggles button.on {
-    background: var(--accent-fill);
-    border-color: var(--accent-fill);
-    color: #fff;
-  }
   /* (The space between groups is as wide as the spacers it had.) */
   .toggles {
     column-gap: 22px;
@@ -619,11 +614,6 @@
   .plays .clock {
     width: 72px;
     min-width: 0;
-  }
-  .plays button.on {
-    background: var(--accent-fill);
-    border-color: var(--accent-fill);
-    color: #fff;
   }
   .try {
     width: 100%;

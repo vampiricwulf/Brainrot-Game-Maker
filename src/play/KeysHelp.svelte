@@ -230,11 +230,6 @@
     margin-left: -1px;
     border-radius: 0 6px 6px 0;
   }
-  .parts button.on {
-    background: var(--accent-fill);
-    border-color: var(--accent-fill);
-    color: #fff;
-  }
   .parts button:focus-visible {
     position: relative;
   }

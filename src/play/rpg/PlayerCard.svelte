@@ -510,6 +510,8 @@
     min-width: 0;
     font-weight: 700;
     padding: 2px 8px 2px 2px;
+    /* (Selected, it's filled with their color, as a player's chip is.) */
+    border-color: var(--control-border);
   }
   .name {
     overflow: hidden;
@@ -567,10 +569,6 @@
   .tiny {
     font-size: 12px;
     padding: 1px 6px;
-  }
-  .tiny.on {
-    border-color: var(--accent);
-    background: rgba(79, 124, 255, 0.25);
   }
   .inv {
     display: flex;

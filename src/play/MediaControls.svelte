@@ -85,7 +85,7 @@
             aria-label="Volume"
             aria-valuetext="{Math.round(m.volume * 100)}%"
           />
-          <button class="small ghost" class:on={m.loop} onclick={() => mediaCommand({ el: id, op: 'loop', value: !m.loop })} title="Loop" aria-label="Loop" aria-pressed={m.loop}>🔁</button>
+          <button class="small ghost" onclick={() => mediaCommand({ el: id, op: 'loop', value: !m.loop })} title="Loop" aria-label="Loop" aria-pressed={m.loop}>🔁</button>
           {#if m.openUrl}
             <button class="small ghost" onclick={() => open(m.openUrl)} title="Open in its own window (Y)" aria-label="Open in its own window">↗</button>
           {/if}
@@ -139,10 +139,6 @@
     font-variant-numeric: tabular-nums;
     font-size: 12px;
     color: var(--muted);
-  }
-  .on {
-    background: var(--accent-fill) !important;
-    color: #fff;
   }
   .msg,
   .blocked {

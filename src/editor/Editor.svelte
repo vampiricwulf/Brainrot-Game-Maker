@@ -1721,11 +1721,6 @@
   nav > button.wrap {
     white-space: normal;
   }
-  nav > button.active {
-    background: var(--accent-fill);
-    border-color: var(--accent-fill);
-    color: #fff;
-  }
   /* The Tiebreaker before it's turned on: an optional extra, not a round. */
   nav > button.optional:not(.active) {
     background: transparent;

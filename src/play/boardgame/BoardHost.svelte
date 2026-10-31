@@ -736,7 +736,12 @@
     border-radius: 4px;
     opacity: 0.7;
   }
-  button.on {
+  /* (The turn order unfolded. ✎ Edit board pressed has the one selected look.) */
+  .change.on {
     outline: 2px solid var(--accent);
+  }
+  /* Whose turn: their color, as the player's chips are. */
+  .nm {
+    border-color: var(--control-border);
   }
 </style>

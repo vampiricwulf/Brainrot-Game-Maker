@@ -1170,15 +1170,6 @@
   .tabs button {
     border-radius: 6px 6px 0 0;
   }
-  .tabs button.on {
-    background: var(--accent-fill);
-    border-color: var(--accent-fill);
-    color: #fff;
-  }
-  .on {
-    border-color: var(--accent);
-    background: rgba(79, 124, 255, 0.2);
-  }
   .main {
     display: flex;
     gap: 12px;

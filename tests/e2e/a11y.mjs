@@ -260,6 +260,15 @@ try {
   // ---------- Readable colors ----------
   const play = page.getByRole('button', { name: '▶ Play' });
   assert((await contrastOf(play)) >= 4.5, `▶ Play (white on the accent) reads at ${(await contrastOf(play)).toFixed(2)}:1`);
+  // "Selected" looks different from "press me": the tab on screen is the one selected look (a tint, an accent edge, the
+  // usual text), not ▶ Play's solid blue, and its words read at 4.5:1.
+  const onTab = page.locator('nav > button[aria-current="page"]');
+  const fill = (loc) => loc.evaluate((e) => getComputedStyle(e).backgroundColor);
+  const [tabFill, playFill] = [await fill(onTab), await fill(play)];
+  assert(
+    tabFill !== playFill && (await onTab.evaluate((e) => getComputedStyle(e).borderTopColor)) === 'rgb(80, 128, 255)' && (await contrastOf(onTab)) >= 4.5,
+    `the tab on screen is tinted with an accent edge (${tabFill}, ▶ Play ${playFill}) and reads at ${(await contrastOf(onTab)).toFixed(2)}:1`,
+  );
   await page.getByRole('button', { name: '🎨 Theme' }).click();
   const pastel = page.getByRole('button', { name: 'Pastel', exact: true });
   assert((await pastel.getAttribute('aria-pressed')) === 'false', 'theme presets are named by their label and say which is on');

@@ -125,9 +125,4 @@
   .info {
     color: var(--muted);
   }
-  .cardbar button.on {
-    background: var(--accent-fill);
-    border-color: var(--accent-fill);
-    color: #fff;
-  }
 </style>

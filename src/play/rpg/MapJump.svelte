@@ -245,10 +245,6 @@
   .head .hint {
     flex-basis: 100%;
   }
-  .tabs .on {
-    border-color: var(--accent);
-    background: rgba(79, 124, 255, 0.2);
-  }
   .body {
     flex: 1;
     min-height: 0;

@@ -145,11 +145,6 @@
     font-size: 16px;
     line-height: 1.2;
   }
-  .row button.on {
-    background: var(--accent-fill);
-    border-color: var(--accent-fill);
-    color: #fff;
-  }
   /* 🗑 apart from the rest, as in the editor's lists. */
   .danger {
     margin-left: 8px;

@@ -417,14 +417,14 @@
     font-style: italic;
   }
   .hr.current {
-    background: rgba(79, 124, 255, 0.15);
+    background: var(--sel-bg);
     border-color: var(--accent);
   }
+  /* (A mark, not a button: outlined.) */
   .pill {
     padding: 0 8px;
     border-radius: 10px;
-    background: var(--accent-fill);
-    color: #fff;
+    border: 1px solid var(--accent);
     font-size: 12px;
   }
   .now {

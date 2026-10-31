@@ -188,7 +188,7 @@
     padding: 4px 6px;
   }
   .hit.on {
-    background: var(--panel-2);
+    background: var(--sel-bg);
     border-color: var(--accent);
   }
   .txt {

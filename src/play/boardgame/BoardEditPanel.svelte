@@ -257,9 +257,6 @@
   select.small {
     padding: 2px 6px;
   }
-  button.on {
-    outline: 2px solid var(--accent);
-  }
   .warn {
     color: var(--warn);
   }

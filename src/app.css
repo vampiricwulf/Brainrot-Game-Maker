@@ -34,6 +34,11 @@
   --accent-fill-hover: #2c55cf;
   --good-fill-hover: #27a462;
   --bad-fill-hover: #b52f35;
+  /* Selected or pressed (the tab on screen, a toggle that's on): the accent mixed into --panel-2, under the mouse a
+     little more. --text reads at 4.5:1 or more on both, and so does --sel-muted (muted words inside one). */
+  --sel-bg: #2f3c63;
+  --sel-bg-hover: #334373;
+  --sel-muted: #b8bbcc;
 
   /* What sits on top of what, lowest first: the "Deleted … · Undo" note and banners, windows (a window opened from
      another adds 1–20), menus and pickers (they open from windows too), questions (AskDialog), then toasts. */
@@ -82,7 +87,8 @@ button {
   white-space: nowrap;
 }
 /* Under the mouse the background changes (selected things show the accent instead, so the two never look alike). */
-button:hover:not(:disabled) { background: var(--hover); }
+button:hover:not(:disabled):where(:not([aria-pressed='true'], [aria-selected='true'], [aria-current]:not([aria-current='false'])))
+  { background: var(--hover); }
 button:disabled { opacity: 0.45; cursor: default; }
 /* One per view: the main thing to do there. */
 button.primary { background: var(--accent-fill); border-color: var(--accent-fill); color: #fff; }
@@ -98,11 +104,29 @@ button.bad.ring { outline: 2px solid var(--bad); outline-offset: 2px; }
 /* A box's next action while it's due (🔔 Open the buzzers, 📤 Send), and the check's strongest fix: ringed, never moved,
    a still outline (it never pulses). One at a time on the game screen. */
 button.ring:not(.good, .bad) { outline: 2px solid var(--accent); outline-offset: 2px; }
-/* Low emphasis: icons, Cancel, the ✕. */
-button.ghost { background: transparent; }
-button.ghost:hover:not(:disabled) { background: var(--hover); }
+/* Low emphasis: icons, Cancel, the ✕ (pressed, it shows it as any button does). */
+button.ghost:where(:not([aria-pressed='true'], [aria-selected='true'], [aria-current]:not([aria-current='false'])))
+  { background: transparent; }
+button.ghost:hover:not(:disabled):where(:not([aria-pressed='true'], [aria-selected='true'], [aria-current]:not([aria-current='false'])))
+  { background: var(--hover); }
 /* What deletes something (🗑 Delete round): red words, asked or undoable. */
 button.danger { color: var(--bad); }
+/* Selected or pressed, one look everywhere: the round or slide on screen, a tab, a tool or a toggle that's on
+   (aria-pressed, aria-selected or aria-current). An accent tint with an accent edge and the usual text, so it never
+   looks like the blue button: that's only ever the one thing to press. Low priority (a class's weight): what has its
+   own pressed look keeps it (a player's colored chip, the color picker's Hex | RGB, a green ✔ or red ✘). */
+:where(button):is([aria-pressed='true'], [aria-selected='true'], [aria-current]:where(:not([aria-current='false']))) {
+  background: var(--sel-bg);
+  border-color: var(--accent);
+  color: var(--text);
+}
+:where(button):is([aria-pressed='true'], [aria-selected='true'], [aria-current]:where(:not([aria-current='false']))):where(:hover:not(:disabled)) {
+  background: var(--sel-bg-hover);
+}
+/* (Muted words inside one stay readable: over .muted's own weight.) */
+:where(button):is([aria-pressed='true'], [aria-selected='true'], [aria-current]:where(:not([aria-current='false']))) :is(.muted, .hint) {
+  color: var(--sel-muted);
+}
 /* Sizes: normal for a page's or window's actions, .small in dense rows, .tiny for the icons in a row. */
 button.small { padding: 2px 8px; font-size: 12px; }
 button.tiny { padding: 1px 5px; font-size: 12px; line-height: 1.25; min-width: 22px; }

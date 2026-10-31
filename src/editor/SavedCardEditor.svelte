@@ -133,11 +133,6 @@
   .cardbar {
     padding: 4px 0;
   }
-  .cardbar button.on {
-    background: var(--accent-fill);
-    border-color: var(--accent-fill);
-    color: #fff;
-  }
   .card-edit {
     display: flex;
     gap: 8px;

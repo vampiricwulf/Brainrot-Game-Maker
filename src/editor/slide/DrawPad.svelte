@@ -297,11 +297,6 @@
     width: min(1400px, 100%);
     overflow: hidden;
   }
-  .tools .on {
-    background: var(--accent-fill);
-    border-color: var(--accent-fill);
-    color: #fff;
-  }
   .swatch {
     width: 22px;
     height: 22px;

@@ -1524,11 +1524,6 @@
     position: relative;
     border-radius: 6px 6px 0 0;
   }
-  .tabs button.on {
-    background: var(--accent-fill);
-    border-color: var(--accent-fill);
-    color: #fff;
-  }
   .tabs button.drop-on {
     outline: 2px dashed var(--accent);
     outline-offset: 2px;
@@ -1811,9 +1806,6 @@
   .note {
     width: 200px;
     margin-top: 2px;
-  }
-  .on {
-    border-color: var(--accent);
   }
   .pop {
     position: relative;

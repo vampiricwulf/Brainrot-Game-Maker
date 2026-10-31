@@ -1181,6 +1181,12 @@ There is no built-in SFX library in v1, but audio can be attached anywhere:
   works fully offline (links saved as copies are ordinary files).
 - **Accessibility**: keyboard-operable host controls, adequate contrast in default themes, and player colors
   paired with names (never color alone).
+- **One look for each kind of button** (app.css): solid blue (`.primary`) is only ever the one thing to press in its
+  area: the editor's ▶ Play, a window's main answer, the host panel's blue button (a pop-up the host opened is its own
+  area). Selected or pressed (the round or slide on screen, a tab, a tool or toggle that's on: `aria-pressed`,
+  `aria-selected`, `aria-current`) is one look everywhere, a light accent tint (`--sel-bg`) with an accent edge and the
+  usual text (4.5:1 or more), so it never reads as "press me". It's low priority (a class's weight): a player's colored
+  chip, the color picker's Hex | RGB, a green ✔ or red ✘ and the RPG stage's yellow selection keep their own.
 - **Security**: all content is local. Uploaded SVG is sanitized, and rich text is escaped/sanitized.
 
 ---

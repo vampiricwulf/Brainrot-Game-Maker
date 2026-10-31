@@ -203,8 +203,8 @@
     border-radius: 50%;
     display: grid;
     place-items: center;
-    background: var(--accent-fill);
-    color: #fff;
+    border: 1.5px solid var(--accent);
+    color: var(--text);
     font-size: 12px;
     font-weight: 800;
   }

@@ -335,6 +335,16 @@ try {
   });
   assert(barFit.length === 2 && barFit.every((gap) => gap >= 0), `a long theme name's Save changes button stays inside the bar (room left: ${barFit.join(', ')} px)`);
   assert(await card('Checker party').locator('.use').evaluate((b) => b.getAttribute('aria-pressed') === 'true'), 'a saved theme shows in My themes, marked as the one this game looks like');
+  // (Chosen: the one selected look, its name still readable on the tint: 4.5:1.)
+  const chosenInk = await card('Checker party').locator('.use .nm').evaluate((e) => {
+    const lum = (c) => {
+      const [r, g, b] = c.match(/\d+(\.\d+)?/g).slice(0, 3).map((v) => ((v /= 255) <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4));
+      return 0.2126 * r + 0.7152 * g + 0.0722 * b;
+    };
+    const [a, b] = [lum(getComputedStyle(e).color), lum(getComputedStyle(e.closest('.use')).backgroundColor)].sort((x, y) => y - x);
+    return (a + 0.05) / (b + 0.05);
+  });
+  assert(chosenInk >= 4.5, `the chosen theme's name reads at ${chosenInk.toFixed(2)}:1 on its tint`);
   assert((await card('Checker party').locator('.tag').innerText()) === '★', 'marked as yours');
   assert((await classic.getAttribute('aria-pressed')) === 'false' && !(await classic.innerText()).includes('edited'), 'and the game’s theme is that one now, not an edited Classic');
 

@@ -762,10 +762,6 @@
     outline: 2px dashed var(--accent);
     outline-offset: 2px;
   }
-  .on {
-    border-color: var(--accent);
-    background: rgba(79, 124, 255, 0.25);
-  }
   .top select,
   .improv select {
     padding: 2px 6px;
@@ -863,10 +859,12 @@
     opacity: 0.6;
     border-style: dashed;
   }
-  /* Selected (as on the stage, where the host's copy rings it in yellow). */
+  /* Selected: the one selected look in the stage's yellow (the host's copy rings it so, and a box drawn there is
+     filled so). */
   .obj.picked {
     border-color: #ffcc00;
     box-shadow: 0 0 0 1px #ffcc00;
+    background: rgba(255, 204, 0, 0.12);
   }
   .link {
     padding: 0;

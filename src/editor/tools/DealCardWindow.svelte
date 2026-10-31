@@ -81,11 +81,6 @@
     min-height: calc(2lh + 14px);
     max-height: calc(4lh + 14px);
   }
-  .cardbar button.on {
-    background: var(--accent-fill);
-    border-color: var(--accent-fill);
-    color: #fff;
-  }
   .small {
     font-size: 12px;
   }

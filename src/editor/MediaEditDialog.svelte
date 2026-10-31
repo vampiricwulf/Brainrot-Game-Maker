@@ -830,11 +830,6 @@
   .hide {
     visibility: hidden;
   }
-  button.on {
-    background: var(--accent-fill);
-    border-color: var(--accent-fill);
-    color: #fff;
-  }
   .accent {
     color: var(--accent);
   }

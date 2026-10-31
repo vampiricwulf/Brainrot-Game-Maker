@@ -340,11 +340,6 @@
     border-top: 1px solid var(--border);
     box-shadow: none;
   }
-  .tab.on {
-    background: var(--accent-fill);
-    border-color: var(--accent-fill);
-    color: #fff;
-  }
   .roll {
     padding: 6px 8px;
     background: var(--panel-2);

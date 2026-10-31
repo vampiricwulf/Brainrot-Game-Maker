@@ -986,11 +986,6 @@
     font-size: 12px;
     opacity: 0.8;
   }
-  .tabs button.on {
-    background: var(--accent-fill);
-    border-color: var(--accent-fill);
-    color: #fff;
-  }
   @media (max-width: 900px) {
     .tabs {
       flex-wrap: wrap;

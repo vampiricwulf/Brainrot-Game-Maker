@@ -291,7 +291,7 @@
   }
   .row.sel {
     border-color: var(--accent);
-    background: color-mix(in srgb, var(--accent) 22%, var(--panel-2));
+    background: var(--sel-bg);
   }
   .row.off .txt,
   .row.off img,

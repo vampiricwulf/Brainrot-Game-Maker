@@ -284,11 +284,6 @@
     overflow: hidden;
     text-overflow: ellipsis;
   }
-  .list button.active {
-    background: var(--accent-fill);
-    border-color: var(--accent-fill);
-    color: #fff;
-  }
   .rename {
     min-width: 0;
   }

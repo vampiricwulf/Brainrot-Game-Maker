@@ -288,12 +288,14 @@
     <button
       class="builtin"
       class:active={builtin === 'players'}
+      aria-current={builtin === 'players' ? 'true' : undefined}
       onclick={() => ((sel = null), (builtin = 'players'))}
       title="Built in: a slice for each player, in their colors (nothing to set up)">🎯 Pick a player <span class="muted small">built in</span></button
     >
     <button
       class="builtin"
       class:active={builtin === 'categories'}
+      aria-current={builtin === 'categories' ? 'true' : undefined}
       onclick={() => ((sel = null), (builtin = 'categories'))}
       title="Built in: a slice for each category on the board with clues left (nothing to set up)">🗂 Pick a category <span class="muted small">built in</span></button
     >
@@ -380,16 +382,8 @@
     overflow: hidden;
     text-overflow: ellipsis;
   }
-  .list button.active {
-    background: var(--accent-fill);
-    border-color: var(--accent-fill);
-    color: #fff;
-  }
   .rename {
     min-width: 0;
-  }
-  .list button.active .muted {
-    color: inherit;
   }
   .head {
     margin-top: 8px;
