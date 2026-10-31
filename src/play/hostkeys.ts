@@ -61,7 +61,7 @@ export const hostKeys = (playerOnly: boolean): KeyGroup[] => [
     title: 'Jeopardy board',
     keys: [
       ['N', 'Round intro: the next step (the title card, then the tiles and categories)'],
-      ['N during a clue', 'The main button (bottom right): the next slide, open the buzzers, reveal the answer, then back to the board'],
+      ['N during a clue', 'The blue button (bottom right): the next slide, reveal the answer, then back to the board. With something left (no points given, the buzzers never opened, answers still coming, a card not sent) it asks first: N again goes on (into an answer, R does), Enter does the first fix, Esc is Not yet'],
       ['Shift+N during a clue', 'A clue with several slides: the slide before'],
       ['R', 'Reveal the answer (again: hide it); the countdown stops. On a wheel or dice tile while its wheel or dice is up, the first R says to spin, roll or close it first'],
       ['← ↑ → ↓ on a tile', 'Move across the board (Enter or Space opens the tile); after a clue the keys go on from its tile'],
@@ -90,7 +90,8 @@ export const hostKeys = (playerOnly: boolean): KeyGroup[] => [
     keys: [
       ['1 – 9', 'During a clue: player N answers, picked by hand (over a phone’s buzz). With someone answering it picks N as well (to judge both); press the one answering’s number to let them go'],
       ['0', 'During a clue: reset the buzzers (↺): nobody is locked out any more, and they open for everyone'],
-      ['U', 'Open the buzzers (when they open on your key, after reading the clue; after a right answer, for the rest)'],
+      ['U', 'Open the buzzers (🔔 in the buzzers’ row: when they open on your key, after reading the clue; after a right answer, for the rest)'],
+      ['O in a buzzer tie', '🎲 Roll for it (in the buzzers’ row): the tied players roll, and the order they roll in is the order they answer in'],
       ['Shift+Enter on the one answering', 'Wrong: they’re locked out of this clue and the next one who buzzed answers at once (⏭ Skip: the same, with no points taken); once nobody who buzzed is left, the buzzers open for the rest'],
     ],
   },

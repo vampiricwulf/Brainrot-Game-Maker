@@ -110,7 +110,7 @@ export const VERBS = {
   // ---------- Phone buzzers ----------
   openBuzzers: { label: '🔔 Open the buzzers', key: 'U', title: "U: buzzers open for everyone who hasn't missed this clue" },
   resetBuzzers: { label: '↺ Reset buzzers', key: '0', title: '0: nobody is locked out any more, and the buzzers open for everyone' },
-  rollForIt: { label: '🎲 Roll for it', title: 'The tied players roll: the order they roll in is the order they answer in' },
+  rollForIt: { label: '🎲 Roll for it', key: 'O', title: 'The tied players roll: the order they roll in is the order they answer in' },
 
   // ---------- Wheels and dice ----------
   spin: { label: 'Spin!', key: 'W' },

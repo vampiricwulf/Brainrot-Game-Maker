@@ -18,7 +18,7 @@ describe('the host screen’s words for each step', () => {
       done: '▦ Done ▶ board [Esc]',
       putBack: '↩ Put back (keep tile) [⇧Esc]',
       openBuzzers: '🔔 Open the buzzers [U]',
-      rollForIt: '🎲 Roll for it',
+      rollForIt: '🎲 Roll for it [O]',
       spin: 'Spin! [W]',
       spinning: 'Spin again [W]',
       spinAgain: '↻ Spin again [W]',

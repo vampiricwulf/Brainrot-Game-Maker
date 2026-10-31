@@ -213,6 +213,9 @@ function clueStep(c: GoCtx, done = false): Step | null {
   return doneStep;
 }
 
+/** A step the check can ask before (the others never do: an intro, a slide, the next round). */
+export const mayAsk = (st: Step): boolean => st.id === 'reveal' || st.id === 'done';
+
 /** ▦ Done ▶ board as a skip (the clue's row, while the blue button is 👁 Reveal answer): it asks as the blue one would. */
 export const doneStep = (c: GoCtx): Step | null => clueStep(c, true);
 
@@ -576,3 +579,32 @@ export function swallowSay(k: KeyIn, then: Inside, check: Pick<Check, 'step' | '
   const key = k.key === 'Enter' ? (k.shift ? 'Shift+Enter' : 'Enter') : k.key.length === 1 ? k.key.toUpperCase() : k.key;
   return `${key} again: ${what}`;
 }
+
+/** What the host panel gets from Play: the blue button's step, the open check, and what its buttons do. */
+export type GoPanel = {
+  /** The blue button's step (null: its moment's part has its own main button still). */
+  step: Step | null;
+  check: Check | null;
+  /** What's left first, for the blue button's tooltip ("first: Ann has no points…"). */
+  first: string | null;
+  /** The box button that wears the ring (none while the check is open: its strongest button has it). */
+  ring: string | null;
+  /** A press the guard held back: the words of what it will press. */
+  lit: string | null;
+  /** Goes up to flash the check. */
+  flash: number;
+  /** The blue button clicked (`shift`: with Shift, going on without asking). */
+  main: (source: 'main' | 'shift') => void;
+  /** The clue's row's ▦ Done ▶ board (a skip, while the blue button is 👁 Reveal answer). */
+  flowDone: () => void;
+  quick: (q: Quick) => void;
+  anyway: () => void;
+  /** "✓ Nothing left": its step. */
+  takeStep: () => void;
+  notYet: () => void;
+  quiet: (kind: QuietKind) => void;
+  /** A press in the panel outside the check: it closes as Not yet first. */
+  away: () => void;
+  /** A click on its empty parts: it only flashes. */
+  flashIt: () => void;
+};

@@ -16,7 +16,7 @@ import { chromium } from 'playwright-core';
 import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { confirmStrip, openGameFile, packGame, png, recordSeen, roomStored, shownOf, startBuzzer, startRoomOn, stored, leaveAnswer } from './helpers.mjs';
+import { confirmStrip, goOnCheck, openGameFile, packGame, png, recordSeen, roomStored, shownOf, startBuzzer, startRoomOn, stored, leaveAnswer } from './helpers.mjs';
 
 const file = resolve(process.env.APP_FILE || 'dist/index.html');
 if (!existsSync(file)) throw new Error('Run `npm run build` first');
@@ -370,6 +370,17 @@ try {
   assert((await tileRow.getByRole('button', { name: 'Card 1 to Ann' }).getAttribute('aria-pressed')) === 'true', 'it starts with the picker, Ann');
   assert(await until(() => last().phase === plainPhase && !(last().cards ?? []).some((c) => c.text === TIP)), `nothing goes by itself, and the tile plays as any tile does (the buzzers: ${plainPhase})`);
   await offStream(host, 'the host page in one window', 'a tile with a card open');
+  // A click on the question (a host who drives from the stage) with the card not sent: the check opens in the panel,
+  // “Card 1 hasn't gone to Ann yet.”, the answer still hidden; it names the card, never what's on it. Esc: Not yet.
+  await host.locator('.stage-box .full').click();
+  await goOnCheck(host).waitFor();
+  assert(
+    (await goOnCheck(host).innerText()).includes('Card 1 hasn’t gone to Ann yet.') && (await host.locator('.stage-box [data-slide="answer"]').count()) === 0,
+    'a click on the question with the tile’s card not sent asks first, in the panel; the answer stays hidden',
+  );
+  await offStream(host, 'the host page in one window', 'the check asking about a tile’s card');
+  await host.keyboard.press('Escape');
+  await goOnCheck(host).waitFor({ state: 'detached' });
   await tileRow.getByRole('button', { name: 'Send card 1' }).click();
   assert(await until(() => cards().length === 2 && cards()[1].text === TIP), 'sent: the room holds it too');
   assert(JSON.stringify(cards()[1].to) === JSON.stringify([{ seat: seat.Ann }]) && last().phase === plainPhase, 'to Ann only, and the buzzers are as they were');

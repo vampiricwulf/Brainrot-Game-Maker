@@ -10,7 +10,7 @@ import { chromium } from 'playwright-core';
 import { existsSync, mkdirSync, readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { addClassicRounds, addPlayers, answerReplace, exportHtml, mainButton, openRules, playWithPlayers, leaveAnswer } from './helpers.mjs';
+import { addClassicRounds, addPlayers, answerReplace, checkItem, exportHtml, flowIs, goOnCheck, mainButton, openRules, playWithPlayers, quick, leaveAnswer } from './helpers.mjs';
 
 const file = resolve(process.env.APP_FILE || 'dist/index.html');
 if (!existsSync(file)) throw new Error('Run `npm run build` first');
@@ -252,15 +252,28 @@ try {
   await stateIs((s) => s.phase === 'closed' && !!s.clue);
   const closed = await state();
   assert(closed.clue.caption.includes('$200'), `the room gets the clue's caption (${closed.clue.caption})`);
-  assert(await page.locator('.panel button.primary', { hasText: '🔔 Open the buzzers' }).isVisible(), 'the buzzers start closed: the host panel offers to open them');
+  assert(
+    (await page.locator('.panel [data-buzzrow] button.ring[data-box="buzzers"]', { hasText: '🔔 Open the buzzers' }).isVisible()) && (await flowIs(page, '👁 Reveal answer')),
+    'the buzzers start closed: 🔔 Open the buzzers (U) is in the buzzers’ row, ringed, and the blue button is 👁 Reveal answer',
+  );
   // The buzzers' things are on a row of their own, one height whatever it says: the panel (and the stage over it) keeps
   // its height as people buzz, miss and tie.
   const panelH = () => page.locator('.panel').evaluate((e) => Math.round(e.getBoundingClientRect().height));
   const heights = { closed: await panelH() };
-  await page.keyboard.press('u');
+  // N (👁 Reveal answer) with the buzzers never opened asks first: "First:", 🔔 Open the buzzers U ⏎ in it; Enter opens
+  // them and closes it (U alone does it at once, never asking).
+  await page.keyboard.press('n');
+  await checkItem(page, 'buzzers').waitFor();
+  assert(
+    (await goOnCheck(page).getAttribute('data-goon')) === 'first' && (await quick(page, '🔔 Open the buzzers').innerText()).includes('⏎') && (await panelH()) === heights.closed,
+    'N with the buzzers never opened asks first (“First:”, 🔔 Open the buzzers U ⏎), over the panel: its height the same',
+  );
+  await goOnCheck(page, { ready: true }).waitFor();
+  await page.keyboard.press('Enter');
+  await goOnCheck(page).waitFor({ state: 'detached' });
   await stateIs((s, a) => s.phase === 'armed' && s.armId > a, closed.armId);
   const armed = await state();
-  assert(true, `U opens the buzzers (a new armId ${armed.armId})`);
+  assert(true, `Enter in the check (🔔 Open the buzzers) opens the buzzers and closes it (a new armId ${armed.armId})`);
   await aud.locator('[data-buzz-now]').getByText('🔔 Buzz now!').waitFor();
   assert(true, 'viewers see the buzzers open: “🔔 Buzz now!” and a light around the stage');
   assert((await aud.locator('.join-badge .jb-link').innerText()) === 'buzz.test', 'the corner’s join badge says where to go too (buzz.test), with the code');
@@ -346,7 +359,11 @@ try {
   heights.tie = await panelH();
   assert(new Set(Object.values(heights)).size === 1, `the host panel keeps its height through the buzzes (${JSON.stringify(heights)})`);
   await shot('rb-3b-tie');
-  await mainButton(page, '🎲 Roll for it').click();
+  assert(
+    (await page.locator('.panel [data-buzzrow] button.ring[data-box="rolltie"]').isVisible()) && (await flowIs(page, '👁 Reveal answer')),
+    'a tie: 🎲 Roll for it (O) is in the buzzers’ row, ringed; the blue button stays 👁 Reveal answer',
+  );
+  await page.keyboard.press('o');
   await aud.getByText('Tie! Roll for it').waitFor();
   assert(true, 'Roll for it rolls on stream for the tied players');
   await stateIs((s, a) => s.phase === 'answering' && s.armId === a && s.rollOrder?.length === 2 && s.rollOrder[0] === s.answering, tieArm);
@@ -409,8 +426,8 @@ try {
   const mainNow = await page.locator('.panel [data-next]').innerText();
   assert(mainNow.startsWith('👁 Reveal answer'), `after a right answer the main button is 👁 Reveal answer (${mainNow})`);
   assert(
-    (await page.locator('.panel .act button:not(.primary)', { hasText: '🔔 Open the buzzers' }).count()) === 1 && (await page.getByText(/Next in line/).count()) === 0,
-    '🔔 Open the buzzers is a quiet button beside it, and nobody is “→ Next in line”',
+    (await page.locator('.panel [data-buzzrow] button[data-box="buzzers"]:not(.ring)', { hasText: '🔔 Open the buzzers' }).count()) === 1 && (await page.getByText(/Next in line/).count()) === 0,
+    '🔔 Open the buzzers stays in the buzzers’ row (to open them again for the rest), no ring, and nobody is “→ Next in line”',
   );
   await page.keyboard.press('n');
   await page.waitForFunction(() => document.querySelector('.panel .status')?.textContent?.includes('Answer is showing'));

@@ -16,7 +16,7 @@ import { chromium } from 'playwright-core';
 import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { confirmStrip, mainButton, mainLabel, openGameFile, packGame, png, recordSeen, shownOf, startBuzzer, startRoomOn, stored, leaveAnswer } from './helpers.mjs';
+import { confirmStrip, goOnCheck, mainButton, mainLabel, openGameFile, packGame, png, quick, recordSeen, shownOf, startBuzzer, startRoomOn, stored, leaveAnswer } from './helpers.mjs';
 
 const file = resolve(process.env.APP_FILE || 'dist/index.html');
 if (!existsSync(file)) throw new Error('Run `npm run build` first');
@@ -359,8 +359,20 @@ try {
   assert((await tileRow.getByRole('button', { name: 'Card 1 to Ann' }).getAttribute('aria-pressed')) === 'true', 'it starts with the picker, Ann');
   await sleep(600);
   assert(!cards().length && uploads === 0, 'opening the tile sends nothing, and uploads nothing');
-  await tileRow.getByRole('button', { name: 'Send card 1' }).click();
-  assert(await until(() => cards().length === 1 && cards()[0].text === JUST), 'sent: the room holds the tile’s card');
+  // Not sent yet: its 📤 Send wears the ring (what's next before the answer), and N (👁 Reveal answer) asks first,
+  // "First: Card 1 hasn't gone to Ann yet." (its name and who it's for, never its words), 📤 Send it ⏎ there.
+  assert(await tileRow.getByRole('button', { name: 'Send card 1' }).evaluate((b) => b.classList.contains('ring')), 'the card not sent yet: its 📤 Send wears the ring');
+  await host.keyboard.press('n');
+  await goOnCheck(host).waitFor();
+  assert(
+    (await goOnCheck(host).getAttribute('data-goon')) === 'first' && (await goOnCheck(host).innerText()).includes('Card 1 hasn’t gone to Ann yet.') && (await quick(host, '📤 Send it').innerText()).includes('⏎'),
+    'N with the tile’s card not sent asks first: “First: Card 1 hasn’t gone to Ann yet.”, 📤 Send it ⏎',
+  );
+  await offStream(host, 'the host page in one window', 'the check asking about a tile’s card');
+  await goOnCheck(host, { ready: true }).waitFor();
+  await host.keyboard.press('Enter');
+  await goOnCheck(host).waitFor({ state: 'detached' });
+  assert(await until(() => cards().length === 1 && cards()[0].text === JUST), 'sent from the check (Enter, as the box’s 📤 Send): the room holds the tile’s card');
   assert(JSON.stringify(cards()[0].to) === to('Ann') && cards()[0].open, 'to Ann only, open');
   assert(await until(() => !!cards()[0]?.media?.[0]?.file && uploads === 1), 'its picture from this computer goes up once');
   await tapOpen(ann, JUST);

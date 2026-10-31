@@ -16,7 +16,7 @@ import { existsSync, mkdirSync, mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { addClassicRounds, mainButton, noSelection, playWithPlayers, recordSeen, seenWhere, selectedWords, shownOf, startRoomOn, leaveAnswer } from './helpers.mjs';
+import { addClassicRounds, checkItem, goOnCheck, mainButton, noSelection, quick, playWithPlayers, recordSeen, seenWhere, selectedWords, shownOf, startRoomOn, leaveAnswer } from './helpers.mjs';
 
 const file = resolve(process.env.APP_FILE || 'dist/index.html');
 if (!existsSync(file)) throw new Error('Run `npm run build` first');
@@ -482,9 +482,21 @@ try {
     (await panelHides([345])) && (await host2.locator('.panel .ddtag').innerText()) === 'DD 📱' && (await amountIn.inputValue()) === '' && (await amountIn.getAttribute('placeholder')) === 'hidden' && (await named345()) === 0,
     'one window: once its question shows, the phone’s wager stays hidden in the panel (“DD 📱”, the Amount box “hidden”, no amount on the buttons)',
   );
+  // The answer up, the blue button (▦ Done ▶ board) asks first, its player not judged: the check names no amount either.
+  await host2.keyboard.press('r');
+  await host2.locator('.stage-box [data-slide="answer"]').waitFor();
+  await host2.keyboard.press('n');
+  await checkItem(host2, 'dd').waitFor();
+  assert(
+    (await quick(host2, '＋ Award').innerText()).includes('(wager hidden)') && (await panelHides([345])) && (await named345()) === 0,
+    'one window: ▦ Done ▶ board with the Daily Double not judged asks first, “＋ Award … (wager hidden) ▶ board”, never the amount',
+  );
+  await host2.keyboard.press('Escape');
+  await goOnCheck(host2).waitFor({ state: 'detached' });
   await host2.getByRole('button', { name: 'Show wager' }).click();
   await host2.locator('.panel .ddtag', { hasText: '$345' }).waitFor();
   assert((await amountIn.inputValue()) === '345', 'Show wager shows it in the panel too');
+  await host2.waitForTimeout(700); // past Not yet's bounce guard: an Esc right after it does nothing
   await host2.keyboard.press('Escape');
   await form(al).waitFor({ state: 'hidden' });
   await host2.waitForTimeout(450);

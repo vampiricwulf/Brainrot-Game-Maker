@@ -28,7 +28,7 @@ import { chromium } from 'playwright-core';
 import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { confirmStrip, mainButton, mainLabel, noSelection, openGameFile, packGame, selectedWords, situationHasMain, stepButton, leaveAnswer } from './helpers.mjs';
+import { confirmStrip, flowIs, goOnCheck, mainButton, mainLabel, noSelection, notYet, openGameFile, packGame, selectedWords, situationHasMain, stepButton, leaveAnswer } from './helpers.mjs';
 
 const file = resolve(process.env.APP_FILE || 'dist/index.html');
 if (!existsSync(file)) throw new Error('Run `npm run build` first');
@@ -183,8 +183,11 @@ try {
   await page.waitForFunction(() => document.querySelector('.panel .fixed button')?.title === 'Nothing to undo');
   await page.keyboard.press('1');
   states.answering = await look();
-  // (Its whole label is its name: on the button the player's name is apart, to be cut short on a crowded row.)
-  assert((await page.locator('.panel .award button.primary').getAttribute('aria-label')).includes('Award Ann'), 'someone answering: ＋ Award is the main button (the NEXT cell goes quiet)');
+  // (＋ Award names who: on the button the player's name is apart, to be cut short on a crowded row. Green, never blue.)
+  assert(
+    (await page.locator('.panel .award button.good', { hasText: 'Ann' }).count()) === 1 && (await page.locator('.panel .award button.primary').count()) === 0 && (await flowIs(page, '👁 Reveal answer')),
+    'someone answering: ＋ Award Ann is green, never blue; the blue button is still 👁 Reveal answer',
+  );
   await page.keyboard.press('Escape');
   await page.keyboard.press('Escape');
   await page.locator('.stage-box .board').waitFor();
@@ -237,7 +240,7 @@ try {
   await page.keyboard.press('n');
   await page.waitForFunction(() => document.querySelector('.panel .status')?.textContent?.includes('Slide 3 of 3'));
   assert((await pips.getAttribute('aria-label')) === 'Slide 3 of 3', 'the dots follow the slides');
-  assert((await page.locator('.panel .award button.primary').getAttribute('aria-label')).includes('Award Bob'), 'on its last slide ＋ Award is the main button');
+  assert((await page.locator('.panel .award button.primary').count()) === 0 && (await flowIs(page, '👁 Reveal answer')), 'on its last slide the blue button is 👁 Reveal answer (＋ Award Bob is green)');
   await page.keyboard.press('r');
   await pips.waitFor({ state: 'detached' });
   assert(true, 'the dots go when the answer shows');
@@ -892,6 +895,76 @@ try {
       );
       await pb.keyboard.press('Escape');
       await pb.locator('.stage-box .board').waitFor();
+    }
+    // The check before going on (one window): ▦ Done ▶ board with a player picked and no points (with 8, a second one
+    // picked too: two lines) opens it inside the panel, over its buttons: never over the stage, the status line or the
+    // fixed bar, no button of it where the blue button was (what's there is its text), the stage its size, one blue, at
+    // most one ring, its foot in view (it scrolls inside). At 1280×720 and, with 4, at 1920×1080 too.
+    for (const [w, h] of count === 4 ? [[1280, 720], [1920, 1080]] : [[1280, 720]]) {
+      const at = `${count} players at ${w}×${h}, the check`;
+      await pb.setViewportSize({ width: w, height: h });
+      await pb.locator('.stage-box .board .tile[data-cat="2"]:not([disabled])').first().click();
+      await pb.locator('.panel .status', { hasText: 'Answer hidden' }).waitFor();
+      await pb.keyboard.press('1');
+      if (count === 8) await pb.keyboard.press('2');
+      await pb.keyboard.press('r');
+      await pb.locator('.stage-box [data-slide="answer"]').waitFor();
+      const stageWas = await stageH();
+      const mainWas = await mainButton(pb).evaluate((b) => {
+        const r = b.getBoundingClientRect();
+        return { left: r.left, right: r.right, top: r.top, bottom: r.bottom };
+      });
+      await pb.keyboard.press('n');
+      await goOnCheck(pb).waitFor();
+      const c = await pb.evaluate((m) => {
+        const rect = (el) => el.getBoundingClientRect();
+        const meets = (a, b) => a.left < b.right && b.left < a.right && a.top < b.bottom && b.top < a.bottom;
+        const card = rect(document.querySelector('.panel [data-goon]'));
+        const panel = rect(document.querySelector('.play > .panel'));
+        const foot = rect(document.querySelector('.panel [data-goon] .foot'));
+        const mid = document.elementFromPoint((m.left + m.right) / 2, (m.top + m.bottom) / 2);
+        return {
+          inside: card.left >= panel.left - 1 && card.right <= panel.right + 1 && card.top >= panel.top - 1 && card.bottom <= panel.bottom + 1,
+          offStage: !meets(card, rect(document.querySelector('.stage-box'))),
+          offBar: !meets(card, rect(document.querySelector('.panel .fixed'))),
+          offStatus: !meets(card, rect(document.querySelector('.panel .status'))),
+          onMain: [...document.querySelectorAll('.panel [data-goon] :is(button, input, label)')].filter((b) => meets(rect(b), m)).map((b) => b.textContent.trim()),
+          midText: !!mid?.closest('[data-goon]') && !mid.closest('button, input, label'),
+          footSeen: foot.top >= card.top - 1 && foot.bottom <= card.bottom + 1,
+          lines: document.querySelectorAll('.panel [data-goon] [data-quick]').length,
+          checkBlue: document.querySelectorAll('.panel [data-goon] button.primary').length,
+          blue: [...document.querySelectorAll('.panel button.primary')].length,
+          rings: [...document.querySelectorAll('.play button.ring')].filter((b) => b.offsetParent).length,
+        };
+      }, mainWas);
+      assert(
+        c.inside && c.offStage && c.offBar && c.offStatus && !c.onMain.length && c.midText && c.footSeen && c.checkBlue === 0 && c.blue === 1 && c.rings <= 1 && (await stageH()) === stageWas,
+        `${at}: inside the panel, off the stage, the status line and the fixed bar, nothing of it on the blue button's spot, its foot in view, one blue, at most one ring, the stage its size (${JSON.stringify({ ...c, stageWas, stage: await stageH() })})`,
+      );
+      if (count === 8) assert(c.lines === 4, `${at}: two picked, a line each (＋ / − for each: ${c.lines} buttons)`);
+      await notYet(pb).click();
+      await goOnCheck(pb).waitFor({ state: 'detached' });
+      // (Esc closes at once, as before: the expert's way.)
+      await pb.keyboard.press('Escape');
+      await pb.locator('.stage-box .board').waitFor();
+    }
+    await pb.setViewportSize({ width: 1280, height: 720 });
+    // With the controls hidden in one window (kept apart from the above): N at ▦ Done ▶ board with points not given goes on,
+    // as a click on the stage does (↶ Reopen brings it back), the stage its size, the panel still hidden.
+    if (count === 4) {
+      await pb.locator('.stage-box .board .tile[data-cat="3"]:not([disabled])').first().click();
+      await pb.locator('.panel .status', { hasText: 'Answer hidden' }).waitFor();
+      await pb.keyboard.press('1');
+      await pb.keyboard.press('r');
+      await pb.locator('.stage-box [data-slide="answer"]').waitFor();
+      await pb.keyboard.press('h');
+      await pb.locator('.play > .panel').waitFor({ state: 'detached' });
+      const hiddenH = await stageH();
+      await pb.keyboard.press('n');
+      await pb.locator('.stage-box .board').waitFor();
+      assert((await pb.locator('.play > .panel').count()) === 0 && (await stageH()) === hiddenH, `${count} players, the controls hidden: N with no points given goes on to the board, the panel still hidden, the stage its size`);
+      await pb.keyboard.press('h');
+      await pb.locator('.play > .panel').waitFor();
     }
     // With 8 at 1280×720, a 🎯 Pick a player wheel from the board's 🎡 Wheel: its bar is one row and in sight, Spin! first
     // (the main button's step) and its Close last, then landed (★ Make … the picker under it) Spin again and Close.

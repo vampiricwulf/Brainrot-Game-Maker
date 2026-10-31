@@ -6,7 +6,7 @@ import { chromium } from 'playwright-core';
 import { existsSync, mkdirSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { addClassicRounds, confirmStrip, flowButton, longPress, mainButton, mainLabel, menuLines, openMenu, playWithPlayers, leaveAnswer } from './helpers.mjs';
+import { addClassicRounds, checkItem, confirmStrip, flowButton, goOnCheck, longPress, mainButton, mainLabel, menuLines, openMenu, playWithPlayers, leaveAnswer } from './helpers.mjs';
 
 const file = resolve(process.env.APP_FILE || 'dist/index.html');
 if (!existsSync(file)) throw new Error('Run `npm run build` first');
@@ -289,28 +289,33 @@ try {
   await page.waitForFunction(() => document.querySelector('.panel .status')?.textContent?.includes('Answer hidden'));
   const inClue = await exitAt();
   assert(Math.abs(onBoard.x - inClue.x) < 1 && Math.abs(onBoard.y - inClue.y) < 1, `🚪 Exit stays in the same place on the board and in a clue (${onBoard.x},${onBoard.y} → ${inClue.x},${inClue.y})`);
-  // A player picked, the answer shown, nothing given: N (▦ Done ▶ board) says so first, rather than losing their points.
+  // A player picked, the answer shown, nothing given: N (▦ Done ▶ board) asks first (the check), rather than losing their
+  // points; the clue stays open. A number keeps its meaning there (who's picked): letting Player 2 go ticks the item off
+  // in its place, "✓ Nothing left", and the check waits (it never goes on by itself).
   await page.keyboard.press('2');
   await page.keyboard.press('r');
   await page.keyboard.press('n');
-  await page.waitForTimeout(200);
+  await checkItem(page, 'picked').waitFor();
   assert(
-    (await page.locator('.toast').innerText()).includes('is picked with no points given') && (await status()).includes('Answer is showing'),
-    'N with a player picked and no points given warns first; the clue stays open',
+    (await checkItem(page, 'picked').innerText()).includes('Player 2 is answering and has no points for this clue yet') && (await status()).includes('Answer is showing'),
+    'N with a player picked and no points given asks first; the clue stays open',
   );
+  await goOnCheck(page, { ready: true }).waitFor();
   await page.keyboard.press('2');
+  await page.locator('.panel [data-goon="nothing"]').waitFor();
+  assert((await checkItem(page, 'picked').innerText()).startsWith('✓') && (await status()).includes('Answer is showing'), 'in the check 2 still picks (lets Player 2 go): the item ticks off in its place, ✓ Nothing left, and it waits');
+  await page.keyboard.press('Escape');
+  await goOnCheck(page).waitFor({ state: 'detached' });
   const chip = page.locator('.panel .p').first();
   await chip.getByRole('button', { name: /^Wrong:/ }).click();
   await chip.locator('.mark').waitFor();
-  // (Well within the warning's own 5 s.)
-  await page.locator('.toast', { hasText: 'is picked with no points given' }).waitFor({ state: 'detached', timeout: 2000 });
-  assert(true, 'points given put that warning away (it doesn’t stay saying nobody got any)');
   assert(
     (await chip.locator('.mark').innerText()).startsWith('✘ −$400') &&
       (await chip.getByRole('button', { name: /^Wrong:/ }).isDisabled()) &&
       (await chip.getByRole('button', { name: /^Right:/ }).isEnabled()),
     'a player marked ✘ shows it on their chip (✘ −$400), and ✘ is off for them on this clue (✔ still on)',
   );
+  await page.waitForTimeout(700); // past Not yet's bounce guard: an Esc right after it does nothing
   await page.keyboard.press('Escape');
   // A $0 tile is still judged: ✔ marks the player (a 0 result), rather than "Enter an amount first".
   await tile(2).click();

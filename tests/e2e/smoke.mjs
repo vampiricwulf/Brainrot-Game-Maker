@@ -94,7 +94,7 @@ function assert(cond, msg) {
 }
 // Test media generated in memory.
 import { deflateSync } from 'node:zlib';
-import { addClassicRounds, answerReplace, dragBy, flowButton, mainButton, mainLabel, nameGame, noSelection, openGameFile, exportHtml, selectedWords, situationHasMain, stepButton } from './helpers.mjs';
+import { addClassicRounds, answerReplace, checkItem, dragBy, flowButton, flowIs, goOnCheck, mainButton, mainLabel, nameGame, noSelection, notYet, openGameFile, exportHtml, quick, selectedWords, situationHasMain, stepButton } from './helpers.mjs';
 /** Solid-ish RGB PNG of the given size (a horizontal gradient). */
 function bigPng(w, h) {
   const crcTable = Array.from({ length: 256 }, (_, n) => {
@@ -875,9 +875,26 @@ assert(!(await isUsed(0)), 'its menu puts a used tile back on the board');
 assert((await page.locator('.toast').innerText()).includes('Memes $200 is back on the board'), 'reopening says which tile came back');
 await tile(0).click();
 await page.locator('.full').waitFor();
+// Player 3 picked with no points (on this play of it): ＋ Award is green, never blue, and ▦ Done ▶ board (the blue button
+// once the answer shows) asks first, offering the points there; Not yet leaves the clue as it was.
+await page.keyboard.press('3');
+assert((await page.locator('.panel .award button.primary').count()) === 0 && (await flowIs(page, '👁 Reveal answer')), 'someone picked: ＋ Award is green, the blue button is still 👁 Reveal answer');
+await page.keyboard.press('r');
+await page.getByText('Who is Pepe?').waitFor();
+await mainButton(page, '▦ Done ▶ board').click();
+await checkItem(page, 'picked').waitFor();
+assert(
+  (await goOnCheck(page).getAttribute('data-goon')) === 'loss' && (await quick(page, '＋ Award Player 3 $200 ▶ board').isVisible()) && (await quick(page, '＋ Award').evaluate((b) => !b.classList.contains('primary'))),
+  '▦ Done ▶ board with Player 3 picked and no points asks first: “Before you go on”, with ＋ Award Player 3 $200 ▶ board (green, not blue)',
+);
+await goOnCheck(page, { ready: true }).waitFor();
+await notYet(page).click();
+await goOnCheck(page).waitFor({ state: 'detached' });
+assert((await page.locator('.stage-box .full').count()) === 1, 'Not yet leaves the clue open');
+await page.waitForTimeout(700); // past Not yet's bounce guard: an Esc right after it does nothing
 await page.keyboard.press('Escape');
 await page.locator('.board').waitFor();
-assert(await isUsed(0), 'the reopened tile is used again after playing it');
+assert(await isUsed(0), 'the reopened tile is used again after playing it (Esc closes at once, asking nothing)');
 await tile(0).click({ force: true });
 assert((await page.locator('.full').count()) === 0, 'clicking a used tile does nothing');
 

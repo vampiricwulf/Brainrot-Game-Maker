@@ -423,7 +423,30 @@ The mode isn't saved with the game: it's dual while the audience window is open.
   chips, the row of what this moment needs with the one main button (and its key) at its right, the tools with the
   round navigation, then a fixed bar (Undo, Redo, Sound · Log, Players, Rules · Cover, Hide · Audience, ▭ · ❔ Help,
   Exit; ❔ Help as its sign only up to 1040 px wide, and under about 940 px the first eight too, so it stays one line). On a short window the round's own
-  box keeps a few rows in sight (the panel scrolls), a roll's box above it too. The stage (and the editor's previews)
+  box keeps a few rows in sight (the panel scrolls), a roll's box above it too. The main button is blue only for the
+  show's next step, in FLOW's words (`src/play/host/verbs.ts`: the round's intro steps, Next slide ▶, 👁 Reveal answer,
+  ▦ Done ▶ board, Next round ▶…), `N` its key (`Enter` too where it's Next: an intro, a slides round); a played-out
+  board's Next round ▶ goes on only from a click. ＋ Award is green, never blue; 🔔 Open the buzzers (`U`) and a tie's 🎲
+  Roll for it (`O`) are in the buzzers' row. A part that hasn't moved to this yet keeps its own main button (a tool's
+  Spin!, the 🤝 box's steps, the Final, the end). **The check before going on** (`src/play/host/goon.ts`,
+  `GoOnCheck.svelte`): the blue button pressed (a click, `N`, `Enter` where it's Next, a click on the stage, the clue
+  row's ▦ Done) with something left opens a card in the panel instead, anchored at its bottom right over the panel's
+  buttons (never the stage, the status line or the fixed bar), with a button-free spot over the blue button. Its
+  heading is “First:” (a step to take first: phone buzzers never opened, a buzzer tie, ✍ answers still coming in, a
+  tile's 🤫 card not sent) or “Before you go on” (a loss: a player picked or a Daily Double's player with no points, ✍
+  answers not judged at ▦ Done); each item has its quick buttons (＋ Award Ann $200 ▶ board `Enter`, − Deduct
+  `Shift+Enter`, 🔔 Open the buzzers `U`, 🎲 Roll for it `O`, ⏱ Start the countdown `T`, ✔ Judge all ▶ board, ✍ Judge
+  them, ✘ The rest are wrong, 📤 Send it), then the foot's Not yet (`Esc`) and a quiet “… anyway” (▦ Done anyway: no
+  points, `N`; 👁 Reveal anyway, `R`: `N` at a reveal only says so). It takes no key or click for 600 ms (`Esc`
+  excepted), lighting up what the press would have done; an `Esc` within 600 ms of Not yet does nothing; digits keep
+  their meaning (an item done meanwhile stays in its place, ticked, and “✓ Nothing left” then offers the step); `K`,
+  `B`, `M`, `Space`, `←`/`→` and `F` pass through. Shift+click on the blue button goes on asking only what must be done;
+  the keys go back to what opened it. What's left also rings its own button in the panel (one ring at a time), and
+  “Don't ask about … again this game” silences a kind (`session.goonQuiet`). With the controls hidden in one window a
+  loss that can wait goes on, and a reveal with something left is held (nothing changes on stream, the stage keeps its
+  size, the Show controls pill pulses, `H` shows the panel with it open); in two windows the controls come back while
+  it's open and hide again after, and a click on the stage that opened it says “See the panel ↘ first” there. Its
+  words never carry what players typed, picked or wagered, nor a 🤫 card's words. The stage (and the editor's previews)
   keeps the game's colors under a Windows contrast theme; the host's controls take the contrast colors.
   Questions for the host (Exit, leaving a round, a locked door…) appear in one strip above that bar, never over the
   stage. Leaving a round says what it does and its answers name it (“7 clues are left in Jeopardy!. Go to Double
@@ -557,8 +580,10 @@ The mode isn't saved with the game: it's dual while the audience window is open.
    - Amount field, prefilled with the clue value (or the DD wager). Editable to any number.
    - Buttons: **Award +**, **Deduct −**, and quick "Wrong (−value)" per player when deduct-on-wrong is on.
    - Awarding does not auto-close the clue, so multiple awards/deductions per clue are possible.
-5. **Reveal answer**: shows the answer slide in the audience view.
-6. **Back to board**: marks the tile used. "Unmark" is available by right-clicking the tile.
+5. **Reveal answer**: shows the answer slide in the audience view (by the blue button, `N` or a click: with the buzzers
+   never opened, ✍ answers still coming in or a 🤫 card not sent, it asks first; `R` shows it at once).
+6. **Back to board**: marks the tile used. "Unmark" is available by right-clicking the tile. By the blue button, `N` or
+   a click, with points not given it asks first (＋ Award … ▶ board, or ▦ Done anyway); `Esc` goes at once.
 7. When all tiles in a round are used (or the host clicks "Next round"), move to the next round, then Final.
 
 ### 6.4 Final Jeopardy (optional)
@@ -692,11 +717,11 @@ screen's first-time notes show again). The main keys:
 | `0` | Everyone or no one (buzzer mode, during a clue: reset the buzzers) |
 | `Enter` / `Shift+Enter` | Award / deduct the current amount to the selected players (a ✍ multiple-choice clue, its answers locked, nobody selected: `Enter` is ✔ Judge all, one undo step) |
 | `R` | Reveal (or hide) the answer |
-| `N` / `Shift+N` | Next step: the round intro, a clue's next slide, the Final, the next turn / the one before |
+| `N` / `Shift+N` | Next step, as the blue button: the round intro, a clue's next slide, 👁 Reveal answer, ▦ Done ▶ board (asking first when something's left), the Final, the next turn / the one before |
 | `Esc` / `Shift+Esc` | Back to board (marks the tile used) / cancel the clue (the tile stays playable) |
 | `K` or `B` | "Be right back" cover |
 | `T` / `Shift+T` | Start/pause the countdown / 10 more seconds |
-| `D` dice · `W` wheel · `O` roll-off · `S` scoreboard overlay | Tools |
+| `D` dice · `W` wheel · `O` roll-off (a buzzer tie: 🎲 Roll for it) · `S` scoreboard overlay | Tools |
 | `U` | Buzzer mode: open the buzzers |
 | `P`, then `1`–`9` | Set current picker to player N |
 | `Ctrl+Z` / `Ctrl+Shift+Z` (`Ctrl+Y`) | Undo / redo (scores, moves, tiles, the Final…) |

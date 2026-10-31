@@ -8,7 +8,7 @@ import { existsSync, mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { addClassicRounds, mainButton, openRules, playWithPlayers, startRoomOn, tap, tieThem } from './helpers.mjs';
+import { addClassicRounds, checkItem, goOnCheck, openRules, playWithPlayers, quick, startRoomOn, tap, tieThem } from './helpers.mjs';
 
 const file = resolve(process.env.APP_FILE || 'dist/index.html');
 if (!existsSync(file)) throw new Error('Run `npm run build` first');
@@ -288,10 +288,16 @@ try {
   await press(p1);
   await press(p2);
   // The tied names come in the order their buzzes reached the room, which varies.
-  await host.locator('.panel .tie', { hasText: /^Tie: Player [12] & Player [12] ·/ }).waitFor();
+  await host.locator('.panel .tie', { hasText: /^Tie: Player [12] & Player [12]$/ }).waitFor();
   await big(p1).getByText('Tie!').waitFor();
   assert((await small(p2).innerText()) === 'The host decides who goes first', 'the same reaction time is a tie: the host panel says so, both phones say "Tie! The host decides who goes first"');
-  await mainButton(host, '🎲 Roll for it').click();
+  // N (👁 Reveal answer) in a tie asks first: 🎲 Roll for it O ⏎, or who answers by their number; Enter rolls for it.
+  await host.keyboard.press('n');
+  await checkItem(host, 'tie').waitFor();
+  assert((await quick(host, '🎲 Roll for it').innerText()).includes('⏎'), 'N in a tie asks first, 🎲 Roll for it (O, ⏎) its first fix');
+  await goOnCheck(host, { ready: true }).waitFor();
+  await host.keyboard.press('Enter');
+  await goOnCheck(host).waitFor({ state: 'detached' });
   const won = await Promise.race([p1, p2].map((p, i) => big(p).getByText("You're answering!").waitFor({ timeout: 30_000 }).then(() => i)));
   const [rollWin, rollSecond] = won === 0 ? [p1, p2] : [p2, p1];
   await small(rollWin).getByText('You won the roll').waitFor();

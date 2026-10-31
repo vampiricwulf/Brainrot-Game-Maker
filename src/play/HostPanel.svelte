@@ -2,7 +2,9 @@
   Host-only controls (scoring, reveal, navigation). Never part of the audience view. One layout in every state, top to
   bottom: what's going on (with the 📱 and ⏱ chips on the right), the players, the action row (what this moment needs)
   with the one main button in the NEXT cell at its right (its key on it), the tools and round navigation, a confirmation
-  strip when something asks, and the fixed bar (↶ Undo … 🚪 Exit), the same in every state and round.
+  strip when something asks, and the fixed bar (↶ Undo … 🚪 Exit), the same in every state and round. The main button
+  (the blue one) is the show's next step, from Play (goon.ts); with something left, it opens the check before going
+  on, drawn over the panel's buttons here (GoOnCheck).
 -->
 <script lang="ts">
   import { announce, announceChanges } from '../lib/announce';
@@ -12,6 +14,9 @@
   import { VERBS } from './host/verbs';
   import { justShown } from './host/guard';
   import { focusMain } from './host/focus';
+  import GoOnCheck from './host/GoOnCheck.svelte';
+  import { mayAsk, type GoPanel } from './host/goon';
+  import { CHECK } from './host/verbs';
   import { phoneAwaySince } from './host/phoneaway.svelte';
   import { categoryLabel, clueCardWords, clueValue, finalName, formatPoints, isBoard, isSlides, questionSlides, typedPoints, wholePoints, type Game, type Session } from '../lib/model';
   import { answerShowing, awardOpen, clueMarks, clueName, clueScored, currentClueInfo, currentFinal, findClueRef, nameList, ownPlayers, partnerSteal, roundComplete, score, setScore, slidePosition, stealersLeft, tiebreakHolds, tiedForFirst, toolOnlyClue, usedTiles } from '../lib/session';
@@ -128,6 +133,7 @@
     nextAction = $bindable(null),
     boxMenu = $bindable(null),
     markSince = 0,
+    goon = null,
   }: {
     game: Game;
     session: Session;
@@ -272,6 +278,8 @@
     boxMenu?: (() => StageItem[]) | null;
     /** When the open clue opened (Play's: 0 after a reload): its players' marks count from then (a reopened tile starts afresh). */
     markSince?: number;
+    /** The blue button's step and the check before going on (Play's: see goon.ts). */
+    goon?: GoPanel | null;
   } = $props();
 
   const info = $derived(currentClueInfo(session, game));
@@ -506,7 +514,10 @@
     // (A verdict of a pair puts the next step where it was: a click there again within a second waits too.)
     const v = guard.press(`main:${n.label}`, e.detail, { step: true, final: !!n.final, x: e.clientX, y: e.clientY, redraw: verdict });
     if (v === 'soon' && n.final) hint(n.final);
-    if (v === 'go') n.run();
+    if (v !== 'go') return;
+    // (The blue button's step: Shift+click goes on without asking.)
+    if (n.goes && goon) goon.main(e.shiftKey ? 'shift' : 'main');
+    else n.run();
   }
 
   /** Exit was pressed: it asks in the strip (a browser dialog would show on stream). */
@@ -559,6 +570,10 @@
   });
   $effect(() => {
     if (slots.ask) untrack(() => askcancel?.oncancel());
+  });
+  // The check opening answers the strip's question as its cancel (Stay, Keep playing): the two never show together.
+  $effect(() => {
+    if (goon?.check) untrack(() => ask?.oncancel());
   });
 
   // The fixed bar ignores the second click of a double-click for a moment after the screen changes (the game starting,
@@ -731,32 +746,25 @@
   const buzzClosed = $derived(buzzing && buzz?.phase === 'closed' && !selected.length);
   /**
    * Someone got the open clue right (the buzzers closed on it, or a ✔ / ＋ Award on it, after a reload too): the answer
-   * comes next, not the buzzers again (🔔 Open the buzzers stays a quiet button beside it).
+   * comes next (🔔 Open the buzzers in the buzzers' row opens them again for the rest).
    */
   const gotIt = $derived(session.phase === 'clue' && (!!buzz?.done || Object.values(marks).some((m) => m.right)));
   /** Buzzer mode: every player has missed this clue (only ↺ Reset lets them buzz again): the answer comes next. */
   const allMissed = $derived(buzzing && session.players.length > 0 && session.players.every((p) => buzz?.lockedOut.includes(p.id)));
   /** The answer is on screen: the buzzers stay closed (🙈 Hide answer lets them open again). */
   const answerUp = $derived(session.phase === 'clue' && session.revealed);
-  /** Someone is answering (picked, or the buzz): ＋ Award is the main button then, and the NEXT cell goes quiet. */
-  // (Not while a Daily Double has question slides still to show: its player hasn't heard it all, Next slide ▶ is next.)
-  const answering = $derived(session.phase === 'clue' && !setup && !!selected.length && canAward && !(own && moreSlides));
   /**
-   * This moment's own main button, by priority: a buzzer tie's 🎲 Roll for it, 🔔 Open the buzzers, then 👁 Reveal
-   * answer, then ▦ Done ▶ board. (A part's offer comes first: a tool on screen, the Daily Double's wager, the Final…)
+   * The old main button, for the moments whose part hasn't moved to the blue button's step yet (goon.ts gives no step
+   * for them): a 🤝 partner clue once its question is up and its own steps are done (its 👁 Reveal answer quiet while
+   * its verdict is due), and the tiebreaker clue. No check before going on there yet.
    */
-  const flow = $derived.by((): NextAction | null => {
-    if (session.intro) return step(introStep, onintronext);
-    if (session.phase === 'clue' && info && !setup && !partnerFirst) {
-      if (tieNames && onrolltie) return step(VERBS.rollForIt, onrolltie);
-      // A clue's question slides come first (the host opens the buzzers whenever they like: 🔔 next to it, or U).
+  const oldFlow = $derived.by((): NextAction | null => {
+    if (session.phase === 'clue' && info && partner && !setup && !partnerFirst) {
       if (moreSlides && slidePos) return step(VERBS.nextSlideOf(slidePos.at, slidePos.of), nextSlide, { flow: 'pager' });
-      if (buzzClosed && !gotIt && !allMissed && !answerUp) return step(VERBS.openBuzzers, openBuzzers);
       // (A live partner clue: its verdict is due in the 🤝 box, ✔ Got it / ✘ Missed, so the answer here is quiet.)
-      const due = !!partner && partner.stage === 'live' && !partnerJudged && !steal;
-      // (Its stage click waits for the verdict too: R only.)
-      if (!toolOnly && !session.revealed) return step(VERBS.reveal, onreveal, due ? { flow: 'reveal', quiet: true } : { title: `${VERBS.reveal.title} · or click the slide`, flow: 'reveal' });
-      return step(VERBS.done, doneUnscored, { flow: 'done' });
+      const due = partner.stage === 'live' && !partnerJudged && !steal;
+      if (!session.revealed) return step(VERBS.reveal, onreveal, due ? { flow: 'reveal', quiet: true } : { title: `${VERBS.reveal.title} · or click the slide`, flow: 'reveal' });
+      return step(VERBS.done, onback, { flow: 'done' });
     }
     if (session.phase === 'tiebreaker') {
       if (moreSlides && slidePos) return step(VERBS.nextSlideOf(slidePos.at, slidePos.of), nextSlide, { flow: 'pager' });
@@ -764,33 +772,19 @@
     }
     return null;
   });
-  /** The open ✍ clue's answers in from phones (for its players). */
-  const answersIn = $derived.by(() => {
-    const a = everyone && info && session.remote?.answers?.id === answerRoundId(session, info.clue.id) ? session.remote.answers.seats : {};
-    return session.players.filter((p) => a[p.id]).length;
-  });
   /**
-   * ▦ Done ▶ board as the main button (N): with someone still picked and nothing given on this clue, or a ✍ clue's
-   * answers in and none judged, the first press says so (their points would be lost), the second closes it. (Esc and the
-   * plain Done button close at once.)
+   * The blue button's step (goon.ts), as the main button: its words and key, its tooltip (what it puts on screen, its
+   * keys, how to go on without asking, and what's left first). A click goes through the check.
    */
+  const blue = $derived.by((): NextAction | null => {
+    const st = goon?.step;
+    if (!st) return null;
+    const keys = st.key ? `N${st.enterIsNext ? ' or Enter' : ''}` : 'Click it (N says so)';
+    const title = [st.verb.title, keys, mayAsk(st) ? CHECK.shiftClick : '', goon?.first ? `first: ${goon.first}` : ''].filter(Boolean).join(' · ');
+    return { label: st.verb.label, ...(st.key ? { key: st.key } : {}), title, disabled: !!st.busy, ...(st.flow ? { flow: st.flow } : {}), goes: true, run: () => goon?.main('main') };
+  });
+  /** The tiebreaker's 🏁 Back to results asked once already, by N (see tiebreakerDone). */
   let warnedFor = $state<string | null>(null);
-  function doneUnscored(): void {
-    const id = info?.clue.id ?? null;
-    if (answering && id && warnedFor !== id && !Object.keys(marks).length) {
-      warnedFor = id;
-      const who = session.players.filter((p) => selected.includes(p.id)).map((p) => p.name).join(', ');
-      hint(`${who || 'A player'} is picked with no points given: Enter awards, Shift+Enter marks wrong, or N again closes without points`, 5000);
-      return;
-    }
-    if (answersIn && id && warnedFor !== id && !Object.keys(marks).length) {
-      warnedFor = id;
-      const all = info && usableChoices(info.clue.choices).length ? ' (or ✔ Judge all)' : '';
-      hint(`${answersIn} answer${answersIn === 1 ? '' : 's'} not judged yet: ✔ / ✘ them${all}, or N again closes without points`, 5000);
-      return;
-    }
-    onback();
-  }
   /**
    * 🏁 Back to results as the tiebreaker's main button (N): with a tied player picked and no winner given, the first press
    * says so (the tie would stay unsettled), the second goes back. (The plain button goes back at once.)
@@ -820,7 +814,9 @@
       if (warnedFor === 'tiebreaker') warnedFor = null;
     });
   });
-  const next = $derived(slots.offers.tool?.() ?? flow ?? slots.next());
+  // A tool over the stage keeps its own main button until its part moves too; then the blue button's step; then the old
+  // main buttons of the moments not moved yet (the boxes' offers).
+  const next = $derived(slots.offers.tool?.() ?? blue ?? oldFlow ?? slots.next());
   $effect(() => {
     nextAction = next;
   });
@@ -870,6 +866,7 @@
   class:ddhold={ddHold}
   bind:offsetHeight={panelH}
   style:height={ddHold ? `${boardH}px` : undefined}
+  onpointerdowncapture={(e) => goon?.check && e.target instanceof Element && !e.target.closest('[data-goon], .cover-toggle') && goon.away()}
 >
   <!-- What's going on, read out to screen readers as it changes (buttons and hints left out). Its chips on the right. -->
   <div class="status row" use:announceChanges>
@@ -1150,17 +1147,18 @@
     </div>
   {/if}
 
-  <!-- 👁 Reveal answer and ▦ Done ▶ board (whichever isn't the main one): in the clue's row, or beside the main button
-       (`quiet`: there they're ghost buttons, the main button the one blue). -->
+  <!-- 👁 Reveal answer and ▦ Done ▶ board (whichever isn't the main one's step: the row never shows it twice): in the
+       clue's row, or beside the main button (`quiet`: there they're ghost buttons, the main button the one blue). Done
+       here, while the main button is 👁 Reveal answer, is a skip: it asks first as the blue button would (goon.flowDone). -->
   {#snippet revealDone(quiet = false)}
-    {#if !toolOnly && !toolFirst && next?.run !== onreveal}
+    {#if !toolOnly && !toolFirst && next?.flow !== 'reveal'}
       <button class:ghost={quiet} data-flow="reveal" onclick={onreveal} title={VERBS.reveal.title}>
         {session.revealed ? VERBS.hide.label : VERBS.reveal.label}
       </button>
     {/if}
     <!-- A wheel/dice tile with nothing to ask has one way out: its tool's Close ▶ board. -->
-    {#if !(toolOnly && app.live.overlay) && next?.run !== doneUnscored}
-      <button class="done-board" class:ghost={quiet} data-flow="done" onclick={onback} title={VERBS.done.title}>{@render iconWord(VERBS.done.label)}</button>
+    {#if !(toolOnly && app.live.overlay) && next?.flow !== 'done'}
+      <button class="done-board" class:ghost={quiet} data-flow="done" onclick={() => (goon ? goon.flowDone() : onback())} title={VERBS.done.title}>{@render iconWord(VERBS.done.label)}</button>
     {/if}
   {/snippet}
 
@@ -1215,7 +1213,7 @@
       <!-- A tile's own 🤫 cards (any tile but a partner clue, whose Distribute list has them): sent only by a press. -->
       {#if session.phase === 'clue' && info && !partner && cardSlides(info.clue).length}
         {#key info.clue.id}
-          <TileCards {game} {session} clue={info.clue} ontakeback={oncardtakeback} />
+          <TileCards {game} {session} clue={info.clue} ontakeback={oncardtakeback} ring={goon?.ring} />
         {/key}
       {/if}
 
@@ -1234,6 +1232,7 @@
             note={choicesNote}
             onjudgeall={onanswerjudgeall}
             enterJudges={!selected.length}
+            ring={goon?.ring === 'judgeall'}
           />
         </div>
       {/if}
@@ -1301,10 +1300,7 @@
           {#if slidePos && !session.revealed}
             <!-- A clue's question slides: back one (quiet), and on when something else is the main button. -->
             <button class="ghost back-slide" data-flow="pager" onclick={() => onslide(-1)} disabled={slidePos.at <= 1} title={VERBS.prevSlide.title}>{@render iconWord(VERBS.prevSlide.label)}</button>
-            {#if moreSlides && next?.run !== nextSlide}<button data-flow="pager" onclick={nextSlide} title={VERBS.nextSlide.title}>{VERBS.nextSlide.label}</button>{/if}
-          {/if}
-          {#if buzzClosed && !answerUp && next?.run !== openBuzzers && !tieNames && !allMissed}
-            <button onclick={openBuzzers} title={VERBS.openBuzzers.title}>{VERBS.openBuzzers.label}</button>
+            {#if moreSlides && next?.flow !== 'pager'}<button data-flow="pager" onclick={nextSlide} title={VERBS.nextSlide.title}>{VERBS.nextSlide.label}</button>{/if}
           {/if}
           {#if !flowBeside}{@render revealDone()}{/if}
         {:else if session.phase === 'slides'}
@@ -1312,8 +1308,8 @@
         {:else if session.phase === 'tiebreaker'}
           {#if slidePos && !answerShowing(session)}
             <button class="ghost" data-flow="pager" onclick={() => onslide(-1)} disabled={slidePos.at <= 1} title={VERBS.prevSlide.title}>{VERBS.prevSlide.label}</button>
-            {#if moreSlides && next?.run !== nextSlide}<button data-flow="pager" onclick={nextSlide} title={VERBS.nextSlide.title}>{VERBS.nextSlide.label}</button>{/if}
-            {#if next?.run !== onreveal}<button data-flow="reveal" onclick={onreveal} title={VERBS.reveal.title}>{VERBS.reveal.label}</button>{/if}
+            {#if moreSlides && next?.flow !== 'pager'}<button data-flow="pager" onclick={nextSlide} title={VERBS.nextSlide.title}>{VERBS.nextSlide.label}</button>{/if}
+            {#if next?.flow !== 'reveal'}<button data-flow="reveal" onclick={onreveal} title={VERBS.reveal.title}>{VERBS.reveal.label}</button>{/if}
           {/if}
           {#if answerShowing(session)}
             <button data-flow="reveal" onclick={onreveal} title={VERBS.hide.title}>{VERBS.hide.label}</button>
@@ -1354,7 +1350,13 @@
               <span class="phones-down" role="status">{phonesDown}</span>
             {/if}
             {#if tieNames}
-              <span class="tie" role="status">Tie: {tieNames} <span class="muted hint">· 🎲 Roll for it, or pick one (1–{Math.min(9, session.players.length) || 9})</span></span>
+              <span class="tie" role="status">Tie: {tieNames}</span>
+              {#if onrolltie}
+                <button class:ring={goon?.ring === 'rolltie'} data-box="rolltie" onclick={onrolltie} title="{VERBS.rollForIt.key}: {VERBS.rollForIt.title}"
+                  >{VERBS.rollForIt.label} <kbd aria-hidden="true">{VERBS.rollForIt.key}</kbd></button
+                >
+              {/if}
+              <span class="muted hint">or pick one (1–{Math.min(9, session.players.length) || 9})</span>
             {:else if answerUp && !selected.length}
               <span class="muted hint">Answer on screen: the buzzers stay closed (🙈 Hide answer to open them again)</span>
             {:else if buzz?.phase === 'armed' && !selected.length}
@@ -1376,6 +1378,12 @@
             {#if lockedNames}<span class="muted hint">Missed: {lockedNames}</span>{/if}
             {@render buzzExtra?.()}
             <span class="spacer"></span>
+            <!-- Closed: they open on U, here (after a right answer, for the rest). -->
+            {#if buzzClosed && !answerUp && !tieNames && !allMissed}
+              <button class:ring={goon?.ring === 'buzzers'} data-box="buzzers" onclick={openBuzzers} title={VERBS.openBuzzers.title}
+                >{VERBS.openBuzzers.label} <kbd aria-hidden="true">U</kbd></button
+              >
+            {/if}
             <!-- (Not while they're put away for the tile's own tool: nobody can buzz yet. Nor with the answer on screen.) -->
             {#if buzz?.phase !== 'lobby' && !answerUp}
               <button class="ghost small" onclick={() => onopenbuzzers?.(true)} title={VERBS.resetBuzzers.title}>{VERBS.resetBuzzers.label}</button>
@@ -1421,8 +1429,8 @@
             {l.head}{#if pickedName}<span class="who" dir="auto" title={pickedName}>{pickedName}</span>{/if}{l.tail}
             <kbd aria-hidden="true">{key}</kbd>
           {/snippet}
-          <!-- Someone answering: ＋ Award is the main button (green). -->
-          <button class="good named" class:primary={answering} disabled={!canAward} onclick={() => onaward(1)} title={canAward ? 'Enter' : awardWhyNot} aria-label={awardLabel.text}>
+          <!-- (Green, never blue: the main button is the panel's one blue.) -->
+          <button class="good named" disabled={!canAward} onclick={() => onaward(1)} title={canAward ? 'Enter' : awardWhyNot} aria-label={awardLabel.text}>
             {@render scoreText(awardLabel, '⏎')}
           </button>
           <button
@@ -1462,8 +1470,8 @@
         <!-- One window, a partner clue's question: 👁 Reveal answer and ▦ Done ▶ board here, quiet, at the top of the cell,
              apart from the main button at its foot (see flowBeside). -->
         {#if flowBeside}<span class="flowbeside">{@render revealDone(true)}</span>{/if}
-        <!-- Its quiet companions first (◀ Previous turn), then the one main button (quiet while someone answers: ＋ Award is
-             the main one then; and while the strip asks). -->
+        <!-- Its quiet companions first (◀ Previous turn), then the one main button (quiet while the strip asks). With the
+             check open over it, it says so to screen readers: the check is what it opened. -->
         {#each n.also ?? [] as a (a.label)}
           <button class="also" data-next-also disabled={a.disabled} onclick={() => a.run()} title={a.title ?? a.key}>
             {a.label}{#if a.key} <kbd aria-hidden="true">{a.key}</kbd>{/if}
@@ -1472,12 +1480,14 @@
         <!-- (A verdict due: an equal pair, ✔ then ✘, neither blue; nothing blue either while a live partner clue's
              verdict is due in its box.) -->
         <button
-          class:primary={!answering && !ask && !n.pair && !n.quiet}
+          class:primary={!ask && !n.pair && !n.quiet}
           class:good={!!n.pair}
           class:ring={n.ring}
           data-next
           data-flow={n.flow}
           disabled={n.disabled}
+          aria-expanded={n.goes && goon?.check ? 'true' : undefined}
+          aria-controls={n.goes && goon?.check ? 'goon-check' : undefined}
           onclick={(e) => clickNext(e, n, !!n.pair)}
           title={n.title ?? n.key}
         >
@@ -1580,10 +1590,16 @@
       <button class="ghost exit" onclick={() => (askExit = true)}>🚪 Exit</button>
     </span>
   </div>
+  {#if goon?.check && !goon.check.held}
+    {@const g = goon}
+    <GoOnCheck check={g.check!} {side} lit={g.lit} flash={g.flash} onquick={g.quick} onanyway={g.anyway} onstep={g.takeStep} onnotyet={g.notYet} onquiet={g.quiet} onflash={g.flashIt} />
+  {/if}
 </div>
 
 <style>
   .panel {
+    /* (The check before going on is placed in it: GoOnCheck.) */
+    position: relative;
     background: var(--panel);
     border-top: 1px solid var(--border);
     padding: 10px 14px;
@@ -2185,10 +2201,6 @@
   .award > .spacer {
     flex: none;
     margin-left: auto;
-  }
-  /* ＋ Award as the main button: green, with a ring. */
-  .award .good.primary:not(:disabled) {
-    box-shadow: 0 0 0 2px var(--good);
   }
   /* ▶ Uncover while viewers see the card: filled, so it's plain the stream is covered. */
   .cover-toggle.on {

@@ -11,7 +11,7 @@ import { chromium } from 'playwright-core';
 import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { addClassicRounds, flowButton, mainButton, mainLabel, noSelection, openGameFile, playWithPlayers, selectedWords, stored, leaveAnswer } from './helpers.mjs';
+import { addClassicRounds, flowButton, flowIs, mainButton, mainLabel, noSelection, openGameFile, playWithPlayers, selectedWords, stored, leaveAnswer } from './helpers.mjs';
 
 const file = resolve(process.env.APP_FILE || 'dist/index.html');
 if (!existsSync(file)) throw new Error('Run `npm run build` first');
@@ -678,14 +678,15 @@ async function tileTools() {
   await host.keyboard.press('Escape');
   await stage('.ov').waitFor({ state: 'detached' });
   assert((await stage('.timer').count()) === 0 && (await stage('[data-slide="answer"]').count()) === 1, 'a wheel opened over the answer and closed starts no countdown over it');
-  // 🙈 Hide answer (R): the buzzers are just closed again, not "answered" (🔔 Open the buzzers is next; phones: not Clue over).
+  // 🙈 Hide answer (R): the buzzers are just closed again, not "answered" (🔔 Open the buzzers is back in their row; phones:
+  // not Clue over).
   await host.keyboard.press('r');
   await stage('[data-slide="answer"]').waitFor({ state: 'detached' });
-  await host.locator('.panel [data-next]', { hasText: '🔔 Open the buzzers' }).waitFor();
+  await host.locator('.panel [data-buzzrow] button[data-box="buzzers"]', { hasText: '🔔 Open the buzzers' }).waitFor();
   await host.waitForFunction(() => { const s = window.__states.at(-1); return s && !s.answerShown && !s.done; });
   assert(
-    !(await host.locator('.panel [data-buzzrow]').innerText()).includes('Answered'),
-    'the answer hidden again: 🔔 Open the buzzers is the main button, and the phones aren’t told the clue is over',
+    !(await host.locator('.panel [data-buzzrow]').innerText()).includes('Answered') && (await flowIs(host, '👁 Reveal answer')),
+    'the answer hidden again: 🔔 Open the buzzers is back in the buzzers’ row (the blue button 👁 Reveal answer), and the phones aren’t told the clue is over',
   );
   await host.keyboard.press('Escape');
   await tileOf('qd').waitFor();

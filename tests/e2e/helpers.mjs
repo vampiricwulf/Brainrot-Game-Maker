@@ -204,6 +204,28 @@ export async function situationHasMain(page, box) {
   return seen ? '' : `the box's “${label}” is out of sight`;
 }
 
+/** The blue button is this step of the show (its words without the key cap), and blue (the panel's one .primary). */
+export async function flowIs(page, label) {
+  const b = mainButton(page);
+  return (await b.count()) === 1 && (await mainLabel(page)) === label && (await b.evaluate((el) => el.classList.contains('primary')));
+}
+
+// ---------- The check before going on (host/goon.ts: the blue button pressed with something left) ----------
+
+/**
+ * The check, while it's open (its data-goon says its heading: 'first', 'loss' or 'nothing'). `ready`: once its guard
+ * is over (600 ms after it opens: keys and clicks on it count from then), a state to wait on, never a timer.
+ */
+export const goOnCheck = (page, { ready = false } = {}) => page.locator(ready ? '.panel [data-goon][data-ready]' : '.panel [data-goon]');
+/** One thing left in it, by its id: 'picked', 'dd', 'buzzers', 'tie', 'answers', 'judge', 'card:<card id>'. */
+export const checkItem = (page, id) => goOnCheck(page).locator(`[data-goon-item="${id}"]`);
+/** A fix in it, by the words it starts with ("＋ Award Ann $200 ▶ board", "🔔 Open the buzzers"). */
+export const quick = (page, words) => goOnCheck(page).locator('[data-quick]').filter({ hasText: words }).first();
+/** Its quiet "… anyway" (▦ Done anyway: no points, 👁 Reveal anyway). */
+export const anyway = (page) => goOnCheck(page).locator('[data-anyway]');
+/** Its Not yet (Esc). */
+export const notYet = (page) => goOnCheck(page).locator('[data-notyet]');
+
 /** The app's own right-click menu, while it's open. */
 export const openMenu = (page) => page.locator('.cm[role="menu"]');
 

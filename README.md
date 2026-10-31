@@ -185,16 +185,18 @@ Click a tile to open its clue, then reveal the answer with `R` or a click (a dou
 shows the answer, or goes back to the board and opens another tile; on a 🤝 partner clue a click waits until the pair has
 had their go, judged (a steal too) or out of time, and says what's next, while `R` shows it any time). A clue can have several question slides (a
 lead-in, then more: **＋ Add slide** in the clue editor): the main button goes **Next slide ▶** (`N`, `Shift+N` back)
-through them first, and the audience window shows the slide you're on. Select players and **＋ Award** (`Enter`) or
-**− Deduct** (`Shift+Enter`); on the board the Amount row stays folded behind **± Adjust score** until a player is
+through them first, and the audience window shows the slide you're on. Select players and **＋ Award** (`Enter`, green,
+never the blue button) or **− Deduct** (`Shift+Enter`); on the board the Amount row stays folded behind **± Adjust score** until a player is
 selected (pick them with `1`–`9`, then `Enter` takes the keys to the Amount box: type the points, then `Enter`, and the
 keys are back on the tile). In a 🤝 partner clue, where ✔ Got it / ✘ Missed give the points, it folds behind **± Other
 points…**, and opens by itself once you pick a player (`1`–`9`) or give points by hand on the clue.
 
 The host panel keeps one layout in every round: the status line (with the 📱 phones and ⏱ timer chips and **↩ Put back
 (keep tile)** on the right), the players' score chips, the row of what this moment needs, and at its right the one
-main button with its key (**👁 Reveal answer** `R`, **▦ Done ▶ board** `Esc`, **Show question ▶**, **Spin!** `W`,
-**Next turn ▶** `N`, the Final's next step `N`…). Under it come the tools (🎲 Dice, 🎡 Wheel, 🏁 Who goes first, 🤫
+main button with its key (**👁 Reveal answer** and **▦ Done ▶ board**, both `N`, **Show question ▶**, **Spin!** `W`,
+**Next turn ▶** `N`, the Final's next step `N`…). When it's blue it's only ever the show's next step (Next slide ▶,
+👁 Reveal answer, ▦ Done ▶ board, the round's intro, Next round ▶): what gives points, opens the buzzers or rolls is in
+its own row. Under it come the tools (🎲 Dice, 🎡 Wheel, 🏁 Who goes first, 🤫
 Send a card…, 🎭 Deal…, 📊 Scores) with the round navigation (◀ Prev round, the round list, Next round ▶) at the right,
 then a fixed bar that never moves: **↶ Undo ↷ Redo 🔊 Sound · 📜 Log 👥 Players ⚖ Rules · ⏸ Cover 🙈 Hide · 📺
 Audience ▭ · ❔ Help 🚪 Exit** (on a narrow window, as their signs only). On a short window (a laptop zoomed in) the round's
@@ -217,6 +219,21 @@ an equal pair in its box and 👁 Reveal answer is quiet; in the Final's reveals
 Start) starts the clock: with no card waiting for a phone the clue goes live, as **⏱ Start the clock (45 s)** does, and the
 first `Enter` after it only says so; with phone cards still to send it's the clock only, and **📤 Send the cards (clock
 running)** (`Enter`) sends them.
+**The check before going on.** The blue button pressed (a click, `N`, or a click on the stage) while something is still
+left doesn't go on: a small card opens inside the panel, over its right part (never the stage, the status line or the
+fixed bar, and never a button where the blue button is), saying what's left: **First:** the buzzers never opened (🔔
+Open the buzzers `U`), a buzzer tie (🎲 Roll for it `O`, or who answers), ✍ answers still coming in (⏱ Start the
+countdown `T`), a tile's 🤫 card not sent yet (📤 Send it); **Before you go on**: a player picked with no points yet
+(**＋ Award Ann $200 ▶ board** `Enter` / **− Deduct** `Shift+Enter`), ✍ answers not judged (✔ Judge all ▶ board, ✍
+Judge them, ✘ The rest are wrong). A quiet **▦ Done anyway: no points** (or **👁 Reveal anyway**, `R`) and **Not yet**
+(`Esc`) are at its foot; `N` again is "anyway" (not at a reveal, where `N` only says to press `R`). For its first 0.6 s
+it takes no key or click (a double press never goes on by mistake: what it would have pressed lights up), an `Esc`
+right after Not yet does nothing, and the keys go back to what opened it. `Shift+click` on the blue button goes on
+without asking; `Esc` still closes a clue at once. What's left gets a ring on its own button in the panel too, and
+"Don't ask about … again this game" turns a kind off. With the controls hidden in one window, what can wait goes on
+(points not given at ▦ Done) and a reveal with something left changes nothing on stream: the **Show controls** pill
+pulses and `H` shows the panel with the check open; in two windows the controls come back while it's open and hide
+again after.
 Anything that asks first (Exit, closing the audience window, leaving a round, 🔁 Rematch) asks in one strip right
 above that bar: Cancel on the left, the answer on the right. Leaving a round always asks, unless a board is played out
 (then **Next round ▶** is the main button), and says what leaving does, its answers too: “7 clues are left in
@@ -258,12 +275,13 @@ wager box (marked 📱, and you can still change it), they can change it until y
 how much (in one window, where viewers see your panel, a Daily Double's stays hidden there until **Show wager**). In a Final they then type their answer on their phone too (or tap one of its multiple choices), and you
 reveal each one on stream. On a ✍ Everyone answers clue nobody buzzes: everyone types an answer on their phone, or
 taps one of its multiple choices (shown on stream under the question too), and only you see what they sent (once you
-judge one, that player can't change it). The buzzers open when the clue does, or when you press `U` after reading it.
+judge one, that player can't change it). The buzzers open when the clue does, or when you press `U` (or **🔔 Open the
+buzzers** in the buzzers' row) after reading it.
 The fastest reaction wins, timed on each player's own phone, so a slow connection doesn't cost anyone the buzz. Every
 buzz is listed in the host panel, fastest first: a wrong answer locks that player out (struck out where they are in the
 list) and the next one who buzzed answers at once, in bold (**⏭ Skip** passes them on with no points taken); once nobody
 who buzzed is left, the buzzers open for the rest, and **↺ Reset buzzers** (`0`) lets everyone buzz again. Buzzes
-within 0.01 s are a tie: **🎲 Roll for it** sets who answers first (the roll leaves the stage once you judge, skip or
+within 0.01 s are a tie: **🎲 Roll for it** (`O`, in the buzzers' row) sets who answers first (the roll leaves the stage once you judge, skip or
 take the next in line), or pick one yourself (`1`–`9` or a click always picks by hand). Viewers
 see "🔔 Ann is answering" whenever one player is picked during a clue. Phones also say who got a clue right (a Daily
 Double too) and what's on (a Daily Double's player sees "you're up"; on a 🤝 partner clue every phone's button greys
@@ -431,10 +449,10 @@ switch shows the editor's keys too):
 | `R` | Reveal / hide the answer (the countdown stops; on a wheel or dice tile, `R` while its wheel or dice is up says to spin, roll or close it first, and `R` again shows it anyway) |
 | `←` `↑` `→` `↓` on a tile | Move across the board (`Enter` opens the tile; after a clue the keys go on from its tile) |
 | `Esc` / `Shift+Esc` | Back to the board / cancel the clue (the tile stays playable) |
-| `N` / `Shift+N` | Next step (intro, a clue's next slide, Final, next turn) / the one before |
+| `N` / `Shift+N` | Next step, as the blue button (intro, a clue's next slide, 👁 Reveal answer, ▦ Done ▶ board, Final, next turn; with something left it asks first, and in the check `N` again goes on anyway) / the one before |
 | `C` / `X` | Final reveal: right / wrong |
 | `T` / `Shift+T` | Start/pause the timer / 10 more seconds |
-| `D` / `W` / `O` / `S` | Roll the last dice again (a board game's own dice) / wheel / roll-off (on a tie for first: the tied players) / scoreboard |
+| `D` / `W` / `O` / `S` | Roll the last dice again (a board game's own dice) / wheel / roll-off (on a tie for first: the tied players; in a buzzer tie, 🎲 Roll for it) / scoreboard |
 | `K` or `B` | "Be right back" cover (every round): the countdown and the clue's video wait under it |
 | `0` | Select everyone or no one (in buzzer mode, during a clue: reset the buzzers) |
 | `U` | Buzzer mode: open the buzzers (when they open on your key) |

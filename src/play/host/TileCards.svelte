@@ -37,6 +37,7 @@
     clue,
     final,
     ontakeback,
+    ring = null,
   }: {
     game: Game;
     session: Session;
@@ -46,6 +47,8 @@
     final?: FinalRound;
     /** ✖ Take back: the card goes from every phone it was sent to. */
     ontakeback: (id: Id) => void;
+    /** The box button that wears the ring ('card:<id>': that card's 📤 Send is due before 👁 Reveal answer). */
+    ring?: string | null;
   } = $props();
 
   /** Whose cards: the tile's or the Final's (exactly one is given). */
@@ -183,7 +186,7 @@
           {#if !off}<button class="small" onclick={() => again(out, card, i)} aria-label="Send {w} again" title="Sends it again under a new id: a phone that came late (a player on a new phone) gets it too, with what’s on the card now">↻ Send again</button>{/if}
           <button class="ghost small" onclick={() => ontakeback(out.id)} aria-label="Take {w} back" title="Takes it off every phone it went to">✖ Take back</button>
         {:else}
-          <button class="small" onclick={() => send(card, i)} disabled={!to.length || full} aria-label="Send {w}" title={full ? cardsFullText(game, session) : to.length ? `Sends it to ${sentToText(session, to, teams)} now, ${lasts}${aside}` : 'Choose who gets it first'}>📤 Send</button>
+          <button class="small" class:ring={ring === `card:${card.id}`} data-box="card:{card.id}" onclick={() => send(card, i)} disabled={!to.length || full} aria-label="Send {w}" title={full ? cardsFullText(game, session) : to.length ? `Sends it to ${sentToText(session, to, teams)} now, ${lasts}${aside}` : 'Choose who gets it first'}>📤 Send</button>
         {/if}
       {:else if out}
         <button class="ghost small" onclick={() => ontakeback(out.id)} aria-label="Take {w} back" title="Takes it out of the 🪟 card window">✖ Take back</button>

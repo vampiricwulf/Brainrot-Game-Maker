@@ -1,7 +1,9 @@
 /**
  * The host panel's shared places, filled by the parts inside it:
- * - NEXT: the one main button of the moment (Show question ▶, Spin!, Next turn ▶…), always in the same cell at the
- *   right of the action row, with its key. A part offers it; the panel shows the first one by priority.
+ * - NEXT: the one main button of the moment, always in the same cell at the right of the action row, with its key: the
+ *   blue button, the show's next step from Play (goon.ts: Show board ▶, 👁 Reveal answer, ▦ Done ▶ board…). While the
+ *   parts move over to it, a part not moved yet still offers its own main button (offerNext, a stop-gap): a tool on
+ *   screen first, then the blue button's step, then the parts' offers by priority.
  * - The confirmation strip: a question (Leave this game? Next round with clues left?) as one full-width strip above the
  *   panel's fixed bar, never squeezed into a row of buttons.
  * - The status line's "⚠ Viewers see this" chip, in one window: what each box on screen says viewers can read of it.
@@ -44,6 +46,8 @@ export type NextAction = {
   ring?: boolean;
   /** Nothing is blue: a verdict is due in the moment's box (a live 🤝 partner clue's ✔ Got it / ✘ Missed). */
   quiet?: boolean;
+  /** It's the blue button's step (goon.ts): a click goes through the check before going on, Shift+click past it. */
+  goes?: boolean;
 };
 
 /** A question for the confirmation strip (as InlineAsk takes it). */
@@ -114,7 +118,10 @@ export function panelGuard(): ClickGuard {
   return getContext<ClickGuard | undefined>(GUARD) ?? clickGuard();
 }
 
-/** A part's main button (what `get` returns, null for none), offered while the part is on screen. */
+/**
+ * A part's main button (what `get` returns, null for none), offered while the part is on screen: a stop-gap for the
+ * moments whose part hasn't moved to the blue button's step yet (goon.ts mainStep), which comes first.
+ */
 export function offerNext(from: NextFrom, get: () => NextAction | null): void {
   const s = getContext<Slots | undefined>(KEY);
   if (!s) return;

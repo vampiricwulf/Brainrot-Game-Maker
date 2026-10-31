@@ -7,7 +7,8 @@
 // board's Next round ▶, a slides round, a board-game turn and leaving that round, a three-player Final (the wagers typed
 // by the host, or sent from the phones) and a tie at the end settled by the tiebreaker clue. Each step waits for what it
 // should do (never a timer), and goes at a host's pace where the app holds a quick second press back (KEY_GUARD,
-// STAGE_GAP). With SCREENSHOTS set to a folder, it saves the host's window as each part starts. Needs `npm ci` in
+// STAGE_GAP). The check before going on (the blue button pressed with something left) never opens in either run. With
+// SCREENSHOTS set to a folder, it saves the host's window as each part starts. Needs `npm ci` in
 // buzzer/.
 import { chromium } from 'playwright-core';
 import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
@@ -141,6 +142,13 @@ async function show(how) {
       if (!p.buzzerServer) localStorage.setItem('jb.prefs', JSON.stringify({ ...p, v: 2, buzzerServer: server }));
     } catch {}
   }, base);
+  // (The check before going on, should it ever open: an expert's path, by keys or by clicks, never meets it.)
+  await ctx.addInitScript(() => {
+    window.__goonSeen = 0;
+    new MutationObserver(() => {
+      if (document.querySelector('[data-goon]')) window.__goonSeen++;
+    }).observe(document, { subtree: true, childList: true });
+  });
   const host = watch(await ctx.newPage(), `host (${how})`);
   await host.goto(pathToFileURL(file).href);
   await openGameFile(host, gameFile);
@@ -475,6 +483,7 @@ async function show(how) {
     await main('🏁 Back to results', 'the results', over);
   }
   assert(true, `${winner} won the tiebreaker, and the show is over`);
+  assert((await host.evaluate(() => window.__goonSeen)) === 0, `by ${how}, the check before going on never opened: nothing an expert does is left behind`);
   await ctx.close();
   return took;
 }

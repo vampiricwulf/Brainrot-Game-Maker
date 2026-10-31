@@ -12,6 +12,7 @@
   import { textOn } from '../../lib/colors';
   import type { Session } from '../../lib/model';
   import { choiceCounts, countsLine, judgeAllPlan, letter, matchChoice, pickLabel, rightChoice, type UsableChoice } from '../../lib/choices';
+  import { judgedOn } from './goon';
   import { offerExposed } from './slots.svelte';
 
   let {
@@ -29,6 +30,7 @@
     note = '',
     onjudgeall,
     enterJudges = false,
+    ring = false,
   }: {
     session: Session;
     /** Who answers (ids), in the players' order. */
@@ -56,18 +58,19 @@
     onjudgeall?: () => void;
     /** Nobody is selected: Enter is ✔ Judge all (its button shows ⏎). */
     enterJudges?: boolean;
+    /** ✔ Judge all is the next thing to do before ▦ Done ▶ board: it wears the ring. */
+    ring?: boolean;
   } = $props();
 
   const listed = $derived(session.players.filter((p) => players.includes(p.id)));
   const inCount = $derived(listed.filter((p) => answers[p.id]).length);
   /** The words are on this panel: off stream, or (a ✍ clue) once the answer is up. */
   const words = $derived(dual || (!open && !hideUntilShown));
-  /** How each player was judged on this clue (from the score log): 1 right, -1 wrong. */
-  const judged = $derived.by(() => {
-    const out: Record<string, 1 | -1> = {};
-    if (clueId) for (const e of session.scoreLog) if (!e.undone && e.clueId === clueId) out[e.playerId] = (e.right ?? e.delta > 0) ? 1 : -1;
-    return out;
-  });
+  /**
+   * How each player was judged on this clue (from the score log): 1 right, -1 wrong. The check before going on reads
+   * the same (judgedOn), and puts the keys on the first row not judged (its ✔).
+   */
+  const judged = $derived(clueId ? judgedOn(session, clueId) : {});
   /**
    * One window: what viewers see here. The Final's says it on its own line (each answer shows as it's revealed); a ✍
    * clue's is the status line's ⚠ Viewers see this chip.
@@ -120,6 +123,8 @@
     <p class="judge-all">
       <button
         class="good small"
+        class:ring
+        data-box="judgeall"
         onclick={onjudgeall}
         title="Right (+ the clue's value) for every {rightLetter}, wrong for every other choice (− the value, if the rules take points). Players with no answer, or words that match no choice, are left for you. One Ctrl+Z takes it all back.{enterJudges
           ? ' (Enter, with nobody selected)'

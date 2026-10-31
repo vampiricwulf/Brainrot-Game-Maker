@@ -15,7 +15,7 @@ import { existsSync, mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { addClassicRounds, playWithPlayers, startRoomOn, leaveAnswer } from './helpers.mjs';
+import { addClassicRounds, checkItem, goOnCheck, playWithPlayers, quick, startRoomOn, leaveAnswer } from './helpers.mjs';
 
 const file = resolve(process.env.APP_FILE || 'dist/index.html');
 if (!existsSync(file)) throw new Error('Run `npm run build` first');
@@ -383,10 +383,18 @@ try {
     'with the answer, the stage’s choices light the one marked ✔ Right (B), the others dimmed',
   );
   if (process.env.SCREENSHOTS) await host.screenshot({ path: `${process.env.SCREENSHOTS}/everyone-choices-locked.png` });
-  // N (▦ Done ▶ board) with the answers in and none judged: the first one says so, the tile stays open.
+  // N (▦ Done ▶ board) with the answers in and none judged asks first ("Before you go on", names and counts, never
+  // the words), ✔ Judge all ▶ board in it; Esc (Not yet) leaves the tile open.
   await host.keyboard.press('n');
-  await host.locator('.toast', { hasText: '2 answers not judged yet: ✔ / ✘ them (or ✔ Judge all), or N again closes without points' }).waitFor();
-  assert((await host.locator('.stage-box .board').count()) === 0, 'N with the answers in and none judged says so first, and the clue stays open');
+  await checkItem(host, 'judge').waitFor();
+  const asked = await goOnCheck(host).innerText();
+  assert(
+    (await goOnCheck(host).getAttribute('data-goon')) === 'loss' && asked.includes('Nobody’s answer is judged yet (2 are in)') && (await quick(host, '✔ Judge all ▶ board').isVisible()) && !/Paris|Stockholm/.test(asked),
+    `N with the answers in and none judged asks first, with ✔ Judge all ▶ board (names and counts only: ${asked.replace(/\s+/g, ' ')})`,
+  );
+  await host.keyboard.press('Escape');
+  await goOnCheck(host).waitFor({ state: 'detached' });
+  assert((await host.locator('.stage-box .board').count()) === 0, 'Not yet (Esc) leaves the clue open');
   const before = await p2.locator('#me').innerText();
   const picker = (name) => host.locator('.panel .p.picker', { hasText: name });
   await picker('Player 1').waitFor();

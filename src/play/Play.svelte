@@ -21,12 +21,16 @@
   import { phoneCard } from '../lib/phonecard';
   import { phoneCan, syncUploads } from '../lib/cardfiles.svelte';
   import { askServerFiles, fileLimitsNow } from '../lib/serverlimits.svelte';
-  import { cardsOut, listedCards, sentCardId, sentSlide, takeBackCard } from '../lib/sentcards';
+  import { cardsOut, listedCards, sentCardId, sentSlide, sendCard, sentToText, takeBackCard, tileRecipients } from '../lib/sentcards';
   import { dealHeld, dealtIn, dropGonePhones } from '../lib/deals';
   import { windowCards } from '../lib/cardwindow';
   import { cardWindow, closeCardWindow, feedCardWindow } from '../lib/cardwindow.svelte';
   import { dropOffersBut } from './host/offered.svelte';
-  import { forgetRecipients } from './host/tilecardpicks.svelte';
+  import { forgetRecipients, recipientsOf } from './host/tilecardpicks.svelte';
+  import {
+    anywayLabel, answerRow, asked, doneStep, escBounce, goOnDecision, inside, leftNow, mainStep, mergeItems, ringOf, swallowSay, todo, type Check, type GoActs, type GoCtx, type GoPanel,
+    type GoSource, type Inside, type LeftItem, type QuietKind, type Quick, type Step,
+  } from './host/goon';
   import { addTime, newLive, overlayDoneAt, startTimer, tileToolUp, timerRemaining, timerResumed, toggleTimer, toolOverlay, type Live, type StageAction, type TimerState } from '../lib/live';
   import {
     answerRoundId, buzzArm, buzzClueOpened, buzzDone, buzzIdle, buzzMissed, buzzReset, buzzTake, cardsFullText, everyoneAnswerAsk, finalAnswerAsk, hostState, newBuzz, partnerAnswerAsk, partnerAnswerId, hostCards, phoneStatus, roomCardsFull, SEAT_NAME_MAX, sendOf, SETTING_UP,
@@ -64,9 +68,9 @@
   import AudienceView from './AudienceView.svelte';
   import type { HostAsk, NextAction } from './host/slots.svelte';
   import { stageMenuOf, type Moment, type StageItem } from './host/stagemenu';
-  import { VERBS } from './host/verbs';
-  import { KEY_GUARD_MS } from './host/guard';
-  import { focusedQuietly, focusMain } from './host/focus';
+  import { CHECK, FLOW, VERBS } from './host/verbs';
+  import { CHECK_GUARD_MS, KEY_GUARD_MS } from './host/guard';
+  import { focusedQuietly, focusMain, focusQuiet } from './host/focus';
   import HostPanel from './HostPanel.svelte';
   import ModeCards from './ModeCards.svelte';
   import ScoreLog, { type LogTab } from './ScoreLog.svelte';
@@ -2056,27 +2060,39 @@
     const now = Date.now();
     if (now - lastStageAct < 450) return;
     lastStageAct = now;
+    // (Where the blue button has the step the click does, it goes through the check: a click never loses anything.)
     switch (a) {
       case 'intro':
-        intro();
+        if (mainNow?.id === 'intro') goOn('stage', mainNow);
+        else intro();
         break;
       case 'reveal':
         // (A clue's next question slide first, then its answer. A slides round's last slide: what the main button says,
         // Next round ▶.)
         if (session.phase === 'slides') {
-          if (!slideStep(1) && hostNext && !hostNext.disabled) hostNext.run();
-        } else if (!answerShowing(session) && !slideStep(1)) {
-          const wait = partnerAnswerWaits();
-          if (wait) hint(wait);
-          else revealToggle();
+          if (mainNow) goOn('stage', mainNow);
+          else if (!slideStep(1) && hostNext && !hostNext.disabled) hostNext.run();
+        } else if (!answerShowing(session)) {
+          if (mainNow?.id === 'slide' || mainNow?.id === 'reveal') goOn('stage', mainNow);
+          else if (!slideStep(1)) {
+            // (A partner clue: never its answer before the pair has had their go.)
+            const wait = partnerAnswerWaits();
+            if (wait) hint(wait);
+            else revealToggle();
+          }
         }
         break;
       case 'back':
-        if (session.phase === 'clue') back();
+        if (session.phase !== 'clue') break;
+        if (mainNow?.id === 'done') goOn('stage', mainNow);
+        else back();
         break;
       case 'final-next':
-        finalNextStep(session, game);
-        finalStep();
+        if (mainNow) goOn('stage', mainNow);
+        else {
+          finalNextStep(session, game);
+          finalStep();
+        }
         break;
       case 'overlay':
         overlayPrimary();
@@ -2685,6 +2701,363 @@
       : null,
   );
 
+  // ---------- The blue button and the check before going on (host/goon.ts, docs/SPEC.md §6.6) ----------
+
+  /** The open tile's 🤫 cards not sent yet, to phones that get cards, with who each goes to (the check asks before the answer). */
+  function tileCardsLeft(): GoCtx['cards'] {
+    const clue = session.phase === 'clue' && info && !partner ? info.clue : null;
+    if (!clue || !phoneCards) return [];
+    const out = cardsOut(game, session);
+    const full = roomCardsFull(game, session) ? cardsFullText(game, session) : undefined;
+    return cardSlides(clue).flatMap((card, i) => {
+      if (out.some((c) => 'clue' in c.content && c.content.clue === clue.id && c.content.card === card.id)) return [];
+      const to = recipientsOf(session, clue.id, card, () => tileRecipients(session, card)).map((t) => t.seat);
+      return to.length ? [{ id: card.id, name: clueCardWords(card, i, true), to, ...(full ? { full } : {}) }] : [];
+    });
+  }
+
+  /** 📤 Send it, in the check: an open tile's card to who it's chosen for in its box (as its 📤 Send does). */
+  function sendTileCard(cardId: string): void {
+    const clue = info?.clue;
+    const cards = clue ? cardSlides(clue) : [];
+    const i = cards.findIndex((c) => c.id === cardId);
+    if (!clue || i < 0) return;
+    const card = cards[i];
+    const over = phoneCards && roomCardsFull(game, session);
+    if (over) return toast(cardsFullText(game, session), 4000);
+    const to = recipientsOf(session, clue.id, card, () => tileRecipients(session, card));
+    const c = sendCard(game, session, { to, content: { clue: clue.id, card: card.id }, until: 'tile' }, Date.now(), over);
+    if (!c) return toast(`Choose who gets ${clueCardWords(card, i)} first`);
+    announce(`${clueCardWords(card, i, true)} sent to ${sentToText(session, c.to, pregameTeams)}`);
+  }
+
+  /** ✘ The rest are wrong, in the check: each of these ✍ answers wrong, as each row's ✘ does, in one step. */
+  function wrongRest(ids: string[]): void {
+    if (!info) return;
+    const amt = amount ?? info.value;
+    const zero = amt === 0 && info.value === 0 && !toolOnlyClue(info.clue);
+    if (!amt && !zero) return hint('Enter an amount first');
+    const events = scoreInto(-1, ids, zero ? 0 : Math.abs(amt), newId());
+    if (!events.length) return;
+    playCue(app.live, game, 'wrong');
+    for (const p of groupPops(events, session.players, sym, game.theme?.value || '#ffcc00')) pop(p);
+    for (const e of events) announce(`${playerName(session, e.playerId)} ${e.delta > 0 ? '+' : ''}${formatPoints(e.delta, sym)}, now ${formatPoints(score(session, e.playerId), sym)}`);
+    selected = [];
+    answersJudged();
+  }
+
+  /** The keys to what `sel` finds (a ✍ answer's row to judge), flashed once. */
+  function flashTo(sel: string): void {
+    void tick().then(() => {
+      const el = document.querySelector<HTMLElement>(sel);
+      if (!el) return;
+      el.focus();
+      const row = el.closest<HTMLElement>('[data-answer-row]') ?? el;
+      row.classList.remove('goon-flash');
+      void row.offsetWidth;
+      row.classList.add('goon-flash');
+    });
+  }
+
+  /** What the blue button's step and the check's fixes do: this screen's own functions. */
+  const goActs: GoActs = {
+    intro: () => intro(),
+    slide: () => void slideStep(1),
+    nextRound: () => nextRound(1),
+    reveal: () => revealToggle(),
+    back: () => back(),
+    award: (sign, ids, amt, keep) => {
+      // (One of several picked: the others stay picked, for their own line.)
+      const rest = keep ? selected.filter((id) => !ids.includes(id)) : null;
+      award(sign, ids, amt);
+      if (rest) selected = rest.filter((id) => session.players.some((p) => p.id === id));
+    },
+    openBuzzers: () => openBuzzers(),
+    rollTie: () => rollTie(),
+    pick: (id) => {
+      selected = [id];
+      saySelected();
+    },
+    clock: (more) => clockKey(more),
+    judgeAll: () => (judgeAll(), answersJudged()),
+    wrongRest,
+    toRow: (id) => flashTo(answerRow(id)),
+    sendCard: sendTileCard,
+  };
+
+  /** What the blue button and the check read now: this screen's state and lib's (never a box's: H hides the boxes). */
+  const go = $derived.by((): GoCtx => {
+    const ans = everyone && info && session.remote?.answers?.id === answerRoundId(session, info.clue.id) ? session.remote.answers : undefined;
+    return {
+      session,
+      game,
+      dual,
+      toolUp: !!app.live.overlay && app.live.overlay.kind !== 'shop',
+      selected,
+      amount,
+      marks: session.phase === 'clue' && info ? clueMarks(session, info.clue.id, partner?.at ?? markSince) : {},
+      buzzing: buzzing && !phonesDown,
+      buzz: app.live.buzz ?? null,
+      tie,
+      everyone,
+      answers: everyone ? { seats: ans?.seats ?? {}, locked: !!ans?.locked } : null,
+      phones: app.live.phones ?? [],
+      judgeAll: judgeAllNow(),
+      clockUp: !!app.live.timer && !app.live.timer.expired,
+      cards: tileCardsLeft(),
+      ddHidden: !dual && session.dd?.stage === 'question' && session.dd.draftFrom === 'phone' && !session.dd.shown,
+      act: goActs,
+    };
+  });
+  /** The blue button's step now (null: no blue button, or its moment's part has its own still: see goon.ts). */
+  const mainNow = $derived(mainStep(go));
+  /** What going on by it would skip or lose now: its tooltip's "first: …", and the ring on the box's next action. */
+  const leftMain = $derived(mainNow ? leftNow(go, mainNow) : []);
+
+  /** The open check: Play's, so it holds with the controls hidden too. `moment`: what it's for (it goes with it). */
+  type OpenCheck = Check & { opener: HTMLElement | null; moment: string; unhid?: boolean };
+  let check = $state.raw<OpenCheck | null>(null);
+  /** Goes up to flash the check (a stage click while it's open, a key with nothing to do there). */
+  let checkFlash = $state(0);
+  /** A press the guard held back: the words of what it will press, lit up a moment. */
+  let checkLit = $state<string | null>(null);
+  /** When Not yet closed it: an Esc right after does nothing (a bounced Esc never closes the clue). */
+  let notYetAt = 0;
+  /** Where the check was when it went by itself (its moment went): a click there waits a moment, not landing on a box. */
+  let checkGone: { r: DOMRect; at: number } | null = null;
+  /** The moment on screen, as the check knows it: it closes by itself when this changes (Ctrl+Z out of the clue…). */
+  const momentNow = $derived(`${session.phase}|${session.currentRound}|${openClueKey ?? ''}|${session.revealed}|${session.slide ?? 0}|${session.intro?.stage ?? ''}|${session.dd?.stage ?? ''}`);
+  /** What the check's items say (to redraw it only when that changes). */
+  const itemsSaid = (items: LeftItem[]) => JSON.stringify(items.map((i) => [i.id, i.done ?? '', i.text, i.quick.map((q) => [q.label, q.why ?? ''])]));
+  // What's left follows what happens meanwhile: an item done elsewhere keeps its line, ticked; new ones join at the end.
+  $effect(() => {
+    const ck = check;
+    if (!ck) return;
+    const now = asked(ck.openedBy, leftNow(go, ck.step));
+    untrack(() => {
+      if (check !== ck) return;
+      const items = mergeItems(ck.items, now);
+      if (itemsSaid(items) === itemsSaid(ck.items)) return;
+      check = { ...ck, items, ...(!todo(items).length && todo(ck.items).length ? { nothingAt: Date.now() } : {}) };
+    });
+  });
+  $effect(() => {
+    const m = momentNow;
+    untrack(() => {
+      if (check && check.moment !== m) closeCheck('gone');
+    });
+  });
+
+  /**
+   * The blue button pressed (`source`: a click, Shift+click, N, Enter where it's Next, a stage click, the flow row's
+   * Done as a skip): with nothing left its step, else the check. With the controls hidden in one window, what can be
+   * done later goes on, the rest changes nothing on stream (the pill pulses: H shows the check); in two windows the
+   * controls come back while it's open.
+   */
+  function goOn(source: GoSource, st: Step | null = mainNow): void {
+    if (!st) return;
+    if (check) return flashCheck();
+    if (st.busy) return hint(st.busy);
+    const items = asked(source, leftNow(go, st));
+    const d = goOnDecision(source, st, items, hideControls, dual);
+    if (d === 'run') return void st.run();
+    // (The strip's question, if one asks, goes as its cancel: the strip and the check never show together.)
+    keepAsk = null;
+    const a = document.activeElement;
+    check = { step: st, items, openedBy: source, at: Date.now(), held: d === 'hold', opener: a instanceof HTMLElement && a !== document.body ? a : null, moment: momentNow };
+    if (d === 'hold') return holdNote();
+    if (hideControls) {
+      hideAgain = false;
+      hideControls = false;
+      check = { ...check, unhid: true };
+    }
+    if (source === 'stage') {
+      if (dual) noteAtPointer(items);
+      else flashCheck();
+    }
+  }
+
+  /** The check closes: Not yet, a fix that closes it, its step taken, or its moment gone. */
+  function closeCheck(how: 'notyet' | 'quick' | 'step' | 'gone'): void {
+    const ck = check;
+    if (!ck) return;
+    if (how === 'gone') {
+      const r = document.querySelector('.play .panel [data-goon]')?.getBoundingClientRect();
+      if (r) checkGone = { r, at: Date.now() };
+    }
+    if (how === 'notyet') notYetAt = Date.now();
+    check = null;
+    checkLit = null;
+    // (Two windows: the controls it brought back hide again.)
+    if (ck.unhid) hideControls = true;
+    if (how === 'gone' || ck.unhid) return;
+    // The keys go back where they were (the blue button, a box, the tile); Not yet on an answer to judge: to its row.
+    const to = how === 'notyet' ? todo(ck.items)[0]?.focus : undefined;
+    void tick().then(() => {
+      if (to) return flashTo(to);
+      const a = document.activeElement;
+      if (a && a !== document.body && a.isConnected) return;
+      const o = ck.opener;
+      if (o?.isConnected && !(o as HTMLButtonElement).disabled) focusQuiet(o);
+      else focusMain();
+    });
+  }
+
+  /** A fix pressed in the check (its button or its key). */
+  function runQuick(q: Quick): void {
+    const ck = check;
+    const item = ck?.items.find((i) => i.quick.includes(q));
+    if (!ck || !item || item.done) return;
+    if (q.why) return flashCheck(q.why);
+    q.run();
+    if (q.then === 'close') {
+      closeCheck('quick');
+      if (q.after) hint(q.after);
+      return;
+    }
+    if (q.then !== 'go') return;
+    // Then the step, once nothing's left: a fix that couldn't (it said why), or another item still to do, keeps it open.
+    const now = mergeItems(ck.items, asked(ck.openedBy, leftNow(go, ck.step)));
+    if (todo(now).length) return void (check = { ...(check ?? ck), items: now });
+    takeStep();
+  }
+
+  /** The check's step: "… anyway", or with nothing left, the step itself. */
+  function takeStep(): void {
+    const ck = check;
+    if (!ck) return;
+    closeCheck('step');
+    ck.step.run();
+  }
+
+  /** "Don't ask about … again this game": that kind goes from the check, and won't ask again until a new game. */
+  function quietKind(kind: QuietKind): void {
+    session.goonQuiet = [...new Set([...(session.goonQuiet ?? []), kind])];
+    if (check) check = { ...check, items: check.items.filter((i) => i.quiet !== kind) };
+    announce(`Won’t ask about ${CHECK.quiet[kind]} again this game`);
+  }
+
+  /** The check flashes (none with Reduce motion), the status line saying why; held with the controls hidden, the pill pulses. */
+  function flashCheck(say?: string): void {
+    if (check?.held) return holdNote();
+    checkFlash++;
+    if (say) hint(say);
+  }
+
+  /** A press the guard held back: what it will press lights up, and the status line says it. */
+  function lightUp(then: Inside, say: string): void {
+    const ck = check;
+    if (!ck) return;
+    const lit = then.do === 'quick' ? then.quick.label : then.do === 'anyway' ? anywayLabel(ck) : ck.step.verb.label;
+    checkLit = lit;
+    hint(say);
+    setTimeout(() => {
+      if (checkLit === lit) checkLit = null;
+    }, 800);
+  }
+
+  /** What Esc does outside the check, said when a second one bounces off Not yet. */
+  function escWould(): string {
+    const d = doneStep(go);
+    return d ? `${FLOW.done.label}${leftNow(go, d).length ? ' without points' : ''}` : 'it closes what’s up';
+  }
+
+  /**
+   * A key while the check is open (inside it, 3.6): true when it's dealt with, false to go on as outside (1–9, the
+   * cover, the media; or after closing it, ?, L, H, Ctrl+Z).
+   */
+  function checkKey(e: KeyboardEvent, t: HTMLElement | null): boolean {
+    const ck = check!;
+    // Held with the controls hidden in one window: H brings the panel back with the check open in it.
+    if (ck.held && e.key.toLowerCase() === 'h' && !e.shiftKey && !e.ctrlKey && !e.metaKey) {
+      e.preventDefault();
+      hideAgain = false;
+      hideControls = false;
+      check = { ...ck, held: false, at: Date.now() };
+      return true;
+    }
+    // Enter or Space on one of its buttons reached with Tab presses that button.
+    if ((e.key === ' ' || e.key === 'Enter') && !e.shiftKey && t && t === tabbedTo && t.closest('[data-goon] :is(button, input)')) return true;
+    const k = { key: e.key, shift: e.shiftKey, ctrl: e.ctrlKey || e.metaKey, repeat: e.repeat };
+    const r = inside(k, ck, Date.now());
+    if (r.do === 'pass') return false;
+    if (r.do === 'native') return true;
+    if (r.do === 'leave') {
+      closeCheck('notyet');
+      return false;
+    }
+    e.preventDefault();
+    if (r.do === 'notyet') closeCheck('notyet');
+    else if (r.do === 'flash') flashCheck(r.say);
+    else if (r.do === 'swallow') lightUp(r.then, swallowSay(k, r.then, ck));
+    else if (r.do === 'quick') runQuick(r.quick);
+    else if (r.do === 'anyway' || r.do === 'step') takeStep();
+    return true;
+  }
+
+  /** Held with the controls hidden in one window: the pill pulses, with one note that never says what's left. */
+  let heldNote = $state(false);
+  let heldNoteTimer: ReturnType<typeof setTimeout> | undefined;
+  function holdNote(): void {
+    heldNote = true;
+    clearTimeout(heldNoteTimer);
+    heldNoteTimer = setTimeout(() => (heldNote = false), 3000);
+  }
+
+  /** Two windows: a click on the stage that opened the check shows a note there a moment, the first time for each kind. */
+  let stageNote = $state<{ x: number; y: number; n: number } | null>(null);
+  /** Where the last press on the stage was. */
+  let stagePt: { x: number; y: number } | null = null;
+  /** The kinds of item the note was shown for in this game. */
+  const notedKinds = new Set<string>();
+  $effect(() => {
+    void app.session;
+    notedKinds.clear();
+  });
+  function noteAtPointer(items: LeftItem[], always = false): void {
+    if (!dual || !stagePt) return;
+    const kinds = items.map((i) => i.id.split(':')[0]);
+    if (!always && kinds.every((k) => notedKinds.has(k))) return;
+    for (const k of kinds) notedKinds.add(k);
+    const n = (stageNote?.n ?? 0) + 1;
+    stageNote = { ...stagePt, n };
+    setTimeout(() => {
+      if (stageNote?.n === n) stageNote = null;
+    }, 2000);
+  }
+  /** A click on the stage while the check is open answers nothing: it flashes the check (and in two windows says where). */
+  function stageWhileCheck(e: MouseEvent): void {
+    if (!check) return;
+    e.preventDefault();
+    e.stopPropagation();
+    flashCheck(CHECK.answerFirst);
+    noteAtPointer(check.items, true);
+  }
+
+  /** What the host panel gets of all this. */
+  const goPanel = $derived<GoPanel>({
+    step: mainNow,
+    check,
+    first: leftMain[0]?.text ?? null,
+    // (While the check is open, its strongest button has the ring: one at a time.)
+    ring: check ? null : ringOf(leftMain),
+    lit: checkLit,
+    flash: checkFlash,
+    main: (src) => goOn(src),
+    flowDone: () => {
+      const d = doneStep(go);
+      if (d) goOn('flow', d);
+      else back();
+    },
+    quick: runQuick,
+    anyway: takeStep,
+    takeStep,
+    notYet: () => closeCheck('notyet'),
+    quiet: quietKind,
+    away: () => closeCheck('notyet'),
+    flashIt: () => flashCheck(),
+  });
+
   /** Put a used tile back on the board, or mark one as played (an undoable step, unlike closing a clue). */
   function toggleTile(clueId: string): void {
     const ref = findClueRef(game, clueId);
@@ -3261,7 +3634,7 @@
   function clueSteps(): StageItem[] {
     if (!info) return [];
     const out: StageItem[] = [];
-    if (tie.length && buzzing) out.push({ id: 'rolltie', label: VERBS.rollForIt.label, hint: VERBS.rollForIt.title, onclick: rollTie });
+    if (tie.length && buzzing) out.push({ id: 'rolltie', label: VERBS.rollForIt.label, keys: VERBS.rollForIt.key, hint: VERBS.rollForIt.title, onclick: rollTie });
     const pos = slidePosition(session, game);
     if (pos) {
       const shown = answerShowing(session);
@@ -4596,6 +4969,13 @@
     // Typing in a field (a quick-wheel list, a wager…) is never a shortcut, not even '?'. A ticked checkbox isn't a field,
     // but Space still ticks it (not the media), and Enter is its own (the wager boxes' Enter, next to "Ignore the limits").
     if (t?.closest('input:not([type="checkbox"]), textarea, select, [contenteditable]') || ((e.key === ' ' || e.key === 'Enter') && t?.matches('input'))) return;
+    // An Esc right after Not yet (a bounce) does nothing: it never closes the clue.
+    if (!check && e.key === 'Escape' && !e.shiftKey && escBounce(notYetAt, Date.now())) {
+      e.preventDefault();
+      return hint(`Esc again: ${escWould()}`);
+    }
+    // The check before going on is open: its keys first (3.6).
+    if (check && checkKey(e, t)) return;
     // Shift+F10 or the menu key: the menu of what has the keys, as a right-click on it.
     if (isMenuKey(e)) {
       if (menuKey(t)) e.preventDefault();
@@ -4729,10 +5109,10 @@
 
     switch (k) {
       case 'enter':
-        // Enter on the main button where Enter awards nothing (a slides round, a round's title card or its categories
+        // Enter on the blue button where Enter awards nothing (a slides round, a round's title card or its categories
         // coming up): as N. (In clues "1, Enter" awards with the keys on it.)
-        if (!selected.length && !e.shiftKey && t?.matches('[data-next]') && (session.intro || session.phase === 'slides') && hostNext?.key === 'N') {
-          if (!hostNext.disabled) hostNext.run();
+        if (!selected.length && !e.shiftKey && t?.matches('[data-next]') && mainNow?.enterIsNext) {
+          goOn('enter', mainNow);
           break;
         }
         // The Final's steps go on with their own keys (N, C / X), the end screen's with a click (or O): Enter says which.
@@ -4815,6 +5195,11 @@
         break;
       case 'o': {
         if (toolBusy()) break;
+        // A buzzer tie: 🎲 Roll for it (the tied players roll for who answers).
+        if (buzzing && tie.length >= 2) {
+          rollTie();
+          break;
+        }
         // On a tie for first at the end: the tied leaders roll for the win (not "Who goes first?").
         const ties = session.phase === 'end' && !coWinnersHold(session) ? tiedLeaders(session) : [];
         if (ties.length) rolloff(ties.map((p) => p.id), game.settings.rollOffDie || 20, 'tiebreak');
@@ -4958,7 +5343,10 @@
     // Shift+N goes the other way: the turn before, the player before in the reveals, or a clue's slide before.
     if (session.intro) {
       // The round's intro first (its title card, then a board's tiles and categories).
-      if (!e.shiftKey) intro();
+      if (!e.shiftKey) {
+        if (mainNow) goOn('n', mainNow);
+        else intro();
+      }
     } else if (session.phase === 'boardgame') {
       // At a fork, N doesn't drop the steps left (the host panel's Next turn ▶ does, on purpose).
       const fork = session.boardgames?.[game.rounds[session.currentRound]?.id ?? '']?.fork;
@@ -4975,12 +5363,14 @@
     } else if (session.phase === 'final' && session.finalStep === 'question' && (e.shiftKey ? (slideStep(-1), true) : slideStep(1))) {
       // The Final's question slides: N the next (after the last, the answer as before), Shift+N the one before.
     } else if (session.phase === 'clue') {
-      // Shift+N: a clue's question slide before. N: whatever the host panel's main button shows (the next slide,
-      // 🔔 Open the buzzers, 👁 Reveal answer, ▦ Done ▶ board…). With the controls hidden the panel is gone and its
-      // last button out of date: as a click on the stage, the next slide, then the answer (never hidden again).
+      // Shift+N: a clue's question slide before. N: the blue button (the next slide, 👁 Reveal answer, ▦ Done ▶ board),
+      // asking first when something's left (goOn), with the controls hidden too. A moment whose part has its own main
+      // button still: that one (with the controls hidden its last one is out of date: as a click on the stage, the next
+      // slide, then the answer, never hidden again).
       if (e.shiftKey) slideStep(-1);
       // (A partner clue before its clock: its own main button, as Enter, with the same guard. N never judges.)
       else if (partnerFirst) partnerMain(e);
+      else if (mainNow) goOn('n', mainNow);
       else if (!hideControls && hostNext && !hostNext.disabled) hostNext.run();
       // (A wheel or dice tile's own tool still up: as a click on it, spin or roll, then close it for the question.)
       else if (info && tileToolUp(app.live, info.clue) && !session.revealed) overlayPrimary();
@@ -4992,13 +5382,14 @@
       else if (!hideControls && hostNext && !hostNext.disabled) hostNext.run();
       else if (!slideStep(1) && !answerShowing(session)) revealToggle();
     } else if (session.phase === 'slides') {
-      // A slides round: N the next slide, then (after the last) the next round, as the main button says.
+      // A slides round: N the next slide, then (after the last) the next round, as the blue button says.
       if (e.shiftKey) slideStep(-1);
+      else if (mainNow) goOn('n', mainNow);
       else if (hostNext) !hostNext.disabled && hostNext.run();
       else slideStep(1);
-    } else if (session.phase === 'board' && !e.shiftKey && hostNext && !hostNext.key && roundComplete(session, game)) {
+    } else if (session.phase === 'board' && !e.shiftKey && mainNow?.clickOnly) {
       // A played-out board goes on only from its button (N mashed after the last clue mustn't jump on stream).
-      hint(`Round complete: click ${hostNext.label} to go on`);
+      hint(`Round complete: click ${mainNow.verb.label} to go on`);
     } else if (session.phase === 'end' && !e.shiftKey && !hideControls && hostNext && !hostNext.disabled) {
       // A tie at the end is settled from its button, or O (N mashed after the Final mustn't start one on stream).
       goOnHint();
@@ -5022,6 +5413,12 @@
     if (tabbing || (e.key.startsWith('Arrow') && e.target instanceof Element && e.target.closest('.board, [data-space]'))) ringOff = false;
   }}
   onclickcapture={(e) => {
+    const gone = checkGone && Date.now() - checkGone.at < CHECK_GUARD_MS ? checkGone.r : null;
+    if (gone && e.clientX >= gone.left && e.clientX <= gone.right && e.clientY >= gone.top && e.clientY <= gone.bottom) {
+      e.preventDefault();
+      e.stopPropagation();
+      return;
+    }
     if (!swallowTap) return;
     swallowTap = false;
     e.preventDefault();
@@ -5430,6 +5827,8 @@
         ondrop={(e) => (itemDrag.now ? itemDrop(e) : dropOnStage(e))}
         ondragleave={() => itemDrag.now && (dropHover.at = null)}
         oncontextmenu={stageMenu}
+        onpointerdowncapture={(e) => (stagePt = { x: e.clientX, y: e.clientY })}
+        onclickcapture={stageWhileCheck}
       >
         <Stage hostOnly={dual}>
           <AudienceView
@@ -5460,6 +5859,10 @@
         <HostInfo {game} {session} />
       {/if}
     </div>
+    {#if stageNote}
+      <!-- Two windows: a click on the stage that opened the check says where it is, there, a moment. -->
+      <div class="stage-note" style:left="{stageNote.x}px" style:top="{stageNote.y}px" role="status">{CHECK.seePanel}</div>
+    {/if}
     {#if dragGhost.now}
       <!-- An avatar dragged off the stage (over the host panel), by the pointer. -->
       <div class="drag-ghost" style:left="{dragGhost.now.x}px" style:top="{dragGhost.now.y}px" aria-hidden="true">
@@ -5468,8 +5871,16 @@
     {/if}
     {#if hideControls}
       <!-- (Never where the focus rescue puts the keys: then it would show, on stream. Tab reaches it.) -->
-      <button class="show-controls" class:shown={pointerMoved} onclick={() => ((hideAgain = false), (hideControls = false))} title="H" data-no-rescue>Show controls</button>
-      {#if hideNote}<div class="toast note-pill" role="status">{coarse ? 'Tap the screen, then Show controls (top right), to bring the controls back' : 'Press H to bring the controls back'}</div>{/if}
+      <button
+        class="show-controls"
+        class:shown={pointerMoved || !!check?.held}
+        class:pulse={heldNote}
+        onclick={() => ((hideAgain = false), (hideControls = false), check?.held && (check = { ...check, held: false, at: Date.now() }))}
+        title="H"
+        data-no-rescue>Show controls</button
+      >
+      {#if heldNote}<div class="toast note-pill" role="status" data-goon-held>{CHECK.hiddenNote}</div>
+      {:else if hideNote}<div class="toast note-pill" role="status">{coarse ? 'Tap the screen, then Show controls (top right), to bring the controls back' : 'Press H to bring the controls back'}</div>{/if}
     {:else}
       <HostPanel
         {game}
@@ -5555,6 +5966,7 @@
         bind:nextAction={hostNext}
         bind:boxMenu
         {markSince}
+        goon={goPanel}
         tieNames={tie.length ? nameList(tie.map((id) => playerName(session, id))) : ''}
         onrolltie={rollTie}
         {phonesDown}
@@ -6083,6 +6495,28 @@
   }
   .show-controls.shown {
     opacity: 0.7;
+  }
+  /* The check before going on is waiting, the controls hidden in one window: the pill pulses (H shows it). */
+  .show-controls.pulse {
+    opacity: 1;
+    animation: pill-pulse 1s ease-in-out infinite;
+  }
+  @keyframes pill-pulse {
+    50% {
+      box-shadow: 0 0 0 4px var(--accent);
+    }
+  }
+  /* Beside the pointer that clicked the stage (two windows: the host's own stage copy). */
+  .stage-note {
+    position: fixed;
+    z-index: 300;
+    transform: translate(10px, 10px);
+    padding: 4px 10px;
+    border-radius: 6px;
+    background: var(--panel-2);
+    border: 1px solid var(--accent);
+    font-size: 13px;
+    pointer-events: none;
   }
   .show-controls:hover,
   .show-controls:focus-visible {
