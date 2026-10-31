@@ -528,7 +528,8 @@ describe('a 🤝 partner clue (3.4 H)', () => {
     // With the controls hidden in one window: it holds (nothing on stream changes).
     expect(goOnDecision('n', st, items, true, false)).toBe('hold');
     // The room full: greyed with why. The clock running (T): 📤 Send the cards (clock running).
-    expect(leftNow(ctx(g, s, { partner: pnow({ send: [{ name: 'Card 1', to: ['c'] }], full: 'The room takes 8 cards' }) }), st)[0].quick[0].why).toBe('The room takes 8 cards');
+    const full = leftNow(ctx(g, s, { partner: pnow({ send: [{ name: 'Card 1', to: ['c'] }], full: 'The room takes 8 cards' }) }), st);
+    expect([full[0].quick[0].why, inside({ key: 'Enter' }, open(st, full), after)]).toEqual(['The room takes 8 cards', { do: 'flash', say: 'The room takes 8 cards' }]);
     const t = leftNow(ctx(g, s, { partner: pnow({ send: [{ name: 'Card 1', to: ['c'] }], clock: { left: 40, running: true } }) }), st);
     expect(lines(t)).toEqual([['first: Card 1 hasn’t gone to Cat’s phone yet, though the clock is running.', '📤 Send the cards (clock running) ⏎ · close']]);
     expect(JSON.stringify(items)).not.toMatch(/words|clue text/i);

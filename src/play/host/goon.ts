@@ -639,6 +639,8 @@ function partnerPlayItems(c: GoCtx): LeftItem[] {
       return [
         {
           ...hand,
+          // (The room full: Enter says why, as the greyed 📤 does.)
+          ...(p.full ? { enterSay: p.full } : {}),
           text: `${cards} ${many ? 'haven’t' : 'hasn’t'} gone to ${phonesOf(c, to)}${running ? ' yet, though the clock is running' : ', and the clock hasn’t started: they haven’t played yet'}.${copied}`,
           quick: [
             {
