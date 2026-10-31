@@ -357,8 +357,9 @@ them at once (with a score effect not given, it says so first: `Esc` again close
 wheel or dice tile not spun or rolled yet (**First:** 🎡 Spin! `W`, `Enter`; a tile with no question can close without it,
 staying on the board), landed on "Spin again" (↻ Spin again), a score effect not given (**✔ Give Ann +$100 ▶
 question**, or **Choose in the box** for a steal, a swap or nobody chosen), or a question pop-up's player picked with no
-points (＋ Award Ann $200 and close it). A tool from the tools row never asks about spinning. A Daily Double's box opens
-at its top, the keys in its Wager box, its Wager row ending with True Daily Double; **Show question ▶** is the blue
+points (＋ Award Ann $200 and close it). A tool from the tools row never asks about spinning. While a box is open (a
+🤝 partner clue's, a Daily Double's wager, a tile's own wheel or dice, the Final's), the tools row steps back, drawn
+without its fill, so the box is what you see first; every tool still works. A Daily Double's box opens at its top, the keys in its Wager box, its Wager row ending with True Daily Double; **Show question ▶** is the blue
 button (never greyed), and `Enter` in the Wager box is that too: with who found it or the wager missing (or over the
 max) the keys stay in the box, the names or the box flash, and the status line says what to do ("Type a wager (Ann can
 wager up to $1,000), or True Daily Double"). In a 🤝 partner clue with its clock running, ✔ Got it and ✘ Missed are an equal pair

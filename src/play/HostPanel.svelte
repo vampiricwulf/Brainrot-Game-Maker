@@ -451,6 +451,11 @@
    * answer waits until then (R asks first, then shows it anyway).
    */
   const toolFirst = $derived(session.phase === 'clue' && !!info && !session.revealed && tileToolUp(app.live, info.clue));
+  /**
+   * A situation's box is open (a 🤝 partner clue's, a Daily Double's wager, a tile's own 🎡 / 🎲, the Final's): the tools
+   * row steps back (the ghost look, at full contrast), so the box is what the eye finds. Nothing moves, every tool works.
+   */
+  const quietTools = $derived(!!partner || ddWager || toolFirst || session.phase === 'final');
   /** A clue (or the tiebreaker) with several question slides: which one is on screen ("Slide 2 of 3"); null for one slide. */
   const slidePos = $derived(setup ? null : slidePosition(session, game));
   /** The tiebreaker clue's winner, picked (while they're still tied for first: an older roll-off's doesn't count). */
@@ -871,6 +876,7 @@
   class:held
   class:keepchips={held && (session.phase === 'end' || session.phase === 'tiebreaker')}
   class:ddhold={ddHold}
+  class:quiettools={quietTools}
   bind:offsetHeight={panelH}
   style:height={ddHold ? `${boardH}px` : undefined}
   onpointerdowncapture={(e) => goon?.check && e.target instanceof Element && !e.target.closest('[data-goon], .cover-toggle') && goon.away()}
@@ -1996,6 +2002,12 @@
   .panel.ddhold > .toolsrow {
     margin-top: auto;
   }
+  /* A situation's box open: the tools row in the ghost look (its words and edges as they are). What's on keeps its
+     look (📊 Scoreboard pressed, a deal out, a warning), and under the mouse it's a button as ever. */
+  .panel.quiettools > .toolsrow
+    :global(:is(.tl > button, .tl > .pop > button, .rn > button):not([aria-pressed='true'], .on, .warn, :hover, :disabled)) {
+    background: transparent;
+  }
   .side > .act {
     flex: 1 1 auto;
     grid-template-columns: minmax(0, 1fr);
@@ -2237,12 +2249,6 @@
   .tie {
     font-weight: 700;
     color: var(--warn);
-  }
-  /* The tiebreaker's winner, picked: green, as a right answer is. */
-  .tbwho button[aria-pressed='true'] {
-    background: var(--good-fill);
-    border-color: var(--good-fill);
-    color: var(--good-ink);
   }
   /* The open clue's words: cut short (…) rather than wrapping the line, which would shrink the stage viewers see (its
      tooltip has them whole). They take the room they need first; the host notes and the spacer get the rest. */

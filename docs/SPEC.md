@@ -632,7 +632,10 @@ The mode isn't saved with the game: it's dual while the audience window is open.
   Set; blank is unlimited).
 - **The host panel** has one layout in every round: the status line (📱 phones and ⏱ timer chips), the players' score
   chips, the row of what this moment needs with the one main button (and its key) at its right, the tools with the
-  round navigation (a played-out board keeps Next round ▶'s room there, unseen: the blue button is it), then a fixed
+  round navigation (a played-out board keeps Next round ▶'s room there, unseen: the blue button is it; while a
+  situation's box is open, a 🤝 partner clue's, a Daily Double's wager, a tile's own 🎡 / 🎲 or the Final's, the tools
+  row is drawn in the ghost look, `.quiettools`, its words, edges and places as they are, so the box is what the eye
+  finds), then a fixed
   bar in groups by purpose (Undo, Redo · Log, Players, Rules · Cover, Hide · Sound, Audience, ▭ Scores window, ● while
   open · ❔ Help, Exit; ▭ Scores window as ▭ up to 1340 px wide, ❔ Help as its sign only up to 1040 px, and under about
   940 px the others too, so it stays one line; beside the stage a grid: Undo Redo and the lists, then Sound, Audience

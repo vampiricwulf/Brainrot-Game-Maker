@@ -98,8 +98,17 @@ try {
 
   // ---------- PARTNER UP!, and who picked it ----------
   console.log('One window:');
+  // (The tools row steps back while the 🤝 box is open: the ghost look, the same words, the same place.)
+  const diceTool = page.locator('.panel .toolsrow .tl .pop > button', { hasText: '🎲 Dice' });
+  const toolLook = () => diceTool.evaluate((b) => [getComputedStyle(b).backgroundColor, Math.round(b.getBoundingClientRect().x)].join());
+  const onBoard = await toolLook();
   await tile(0, 1).click();
   await stage('[data-partner-up]').waitFor();
+  const inBox = await toolLook();
+  assert(
+    !onBoard.startsWith('rgba(0, 0, 0, 0)') && inBox.startsWith('rgba(0, 0, 0, 0)') && onBoard.split(',').at(-1) === inBox.split(',').at(-1),
+    `the tools row steps back while the 🤝 box is open: 🎲 Dice in the ghost look, in its place (${onBoard} → ${inBox})`,
+  );
   assert((await stage('[data-partner-up]').innerText()).replace(/\s+/g, ' ').includes('PARTNER UP!'), 'the tile opens on PARTNER UP! on stream');
   assert((await panel.innerText()).includes('Who picked it?'), 'nobody was marked to pick: the panel asks who picked it');
   assert((await flowIs(page, 'Show question ▶')) && !(await mainButton(page).isDisabled()), 'the blue button is Show question ▶, never greyed');

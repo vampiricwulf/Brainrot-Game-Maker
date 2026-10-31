@@ -316,11 +316,11 @@
     color: var(--bad);
     border-color: var(--bad);
   }
-  /* A press the guard held back: what it will do lights up. */
+  /* A press the guard held back: what it will do lights up (the selected look: solid blue is the blue button's). */
   .lit kbd {
     opacity: 1;
-    background: var(--accent);
-    color: #fff;
+    background: var(--sel-bg);
+    color: var(--text);
     border-color: var(--accent);
   }
   /* The blue button's place: its step's name, muted, no button. */

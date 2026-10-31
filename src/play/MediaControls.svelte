@@ -39,7 +39,8 @@
         <span class="ic" title={m.label}>{icon[m.kind]}</span>
         {#if m.failed}
           <span class="msg">{m.kind === 'youtube' ? "YouTube won't play embedded here." : "Couldn't load this media."}</span>
-          <button class="primary small" onclick={() => open(m.openUrl)} title="Y">▶ Open {m.kind === 'youtube' ? 'on YouTube' : 'link'} ↗</button>
+          <!-- (Plain: the panel's one blue is its blue button.) -->
+          <button class="small" onclick={() => open(m.openUrl)} title="Y">▶ Open {m.kind === 'youtube' ? 'on YouTube' : 'link'} ↗</button>
         {:else if m.kind === 'external'}
           <!-- A site's own player (Google Drive, Streamable): only showing, restarting and stopping it work from here. -->
           <span class="msg">
