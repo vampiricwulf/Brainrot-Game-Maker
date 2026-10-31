@@ -3,12 +3,25 @@
 import { formatPoints, roundName, type Game, type Session } from '../lib/model';
 import { score } from '../lib/session';
 
-type Kept = Pick<Session, 'scoreLog' | 'used' | 'currentClue' | 'currentRound' | 'phase' | 'rollLog'>;
+type Kept = Pick<Session, 'scoreLog' | 'used' | 'currentClue' | 'currentRound' | 'phase' | 'rollLog'> & Partial<Pick<Session, 'actionLog'>>;
+
+/** What a step changes when it only changes the players (reordered, renamed or removed in 👥 Players, the picker). */
+const ROSTER = new Set(['players', 'removedPlayers', 'currentPickerId']);
+
+/** A step (not undone) that changed more than the players: an RPG's moves, stats or items, a board game's tokens. */
+function playedStep(e: { before: string }): boolean {
+  try {
+    return Object.keys(JSON.parse(e.before) as object).some((k) => !ROSTER.has(k));
+  } catch {
+    return false;
+  }
+}
 
 /**
  * Something Start game would lose by replacing the kept game: points given, a tile played (or open), a spin or a roll (a
- * board game's turns), or a round past the first. A game only started (its intro, the board, the players changed) has
- * none: it's replaced without a question.
+ * board game's turns), a round past the first, or a step of play (an RPG's party moved, a player knocked out, stats or
+ * items changed; a token moved by hand). A game only started (its intro, the board, the players changed) has none: it's
+ * replaced without a question.
  */
 export function keptProgress(session: Kept): boolean {
   return (
@@ -18,7 +31,8 @@ export function keptProgress(session: Kept): boolean {
     session.currentRound > 0 ||
     session.phase === 'final' ||
     session.phase === 'tiebreaker' ||
-    !!session.rollLog?.length
+    !!session.rollLog?.length ||
+    !!session.actionLog?.some(playedStep)
   );
 }
 

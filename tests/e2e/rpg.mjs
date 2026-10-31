@@ -634,6 +634,16 @@ async function boxSelect() {
       drawn === 1 && (await undoSays(host)) === step && JSON.stringify(await hitBox(host, 'el_bg')) === JSON.stringify(pic) && !(await host.getByRole('dialog', { name: 'Object: Meadow picture' }).count()),
       `a drag on a picture as big as its screen draws a box and records no step (${step})`,
     );
+    // Kept to resume: an RPG game's progress is its steps (the party went east; no points, tiles or rolls), and Start
+    // game ▶ asks before throwing it away.
+    await host.getByRole('button', { name: /Exit/ }).first().click();
+    await host.waitForTimeout(450);
+    await host.getByRole('button', { name: 'Keep & leave', exact: true }).click();
+    await host.getByRole('button', { name: '▶ Play' }).click();
+    await host.getByRole('button', { name: 'Start game ▶' }).click();
+    const keptAsk = host.locator('.actions [data-start-ask]');
+    await keptAsk.waitFor();
+    assert((await keptAsk.innerText()).includes('Start a new game? The game in progress (Adventure) is discarded.'), `Start asks before throwing away an RPG game kept with its party moved (${await keptAsk.innerText()})`);
     await host.close();
   } finally {
     await ctx.close();

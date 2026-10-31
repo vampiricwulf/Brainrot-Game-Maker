@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { newFinalRound, newGame, newRound, type Game } from '../lib/model';
-import { applyScore, newSession, undo } from '../lib/session';
+import { applyScore, newSession, removePlayer, undo } from '../lib/session';
+import { logged, undoAction } from '../lib/toolset';
 import { keptProgress, keptRound, keptScores, savedWhen } from './keptgame';
 
 function kept(rounds = 1) {
@@ -31,6 +32,25 @@ describe('the game kept to resume', () => {
     expect(keptProgress({ ...session, currentRound: 1 })).toBe(true);
     expect(keptProgress({ ...session, phase: 'tiebreaker' })).toBe(true);
     expect(keptProgress({ ...session, rollLog: [{ id: 'x', ts: 0, kind: 'dice', label: 'd6', result: '4' }] as never })).toBe(true);
+  });
+
+  it('a step of play (an RPG’s moves, stats or items, a token moved by hand) asks first; one that only changed the players doesn’t', () => {
+    const { game, session } = kept();
+    // 👥 Players: a player renamed, reordered or taken out, or the picker set: nothing played yet.
+    logged(session, 'Players changed', () => {
+      session.players = [...session.players].reverse();
+      session.currentPickerId = 'b';
+    });
+    logged(session, 'Cat removed', () => removePlayer(session, 'c'));
+    expect([session.actionLog?.length, keptProgress(session)]).toEqual([2, false]);
+    // An RPG's stat changed (or its party moved, an avatar hidden: its worlds; a board game's token moved by hand).
+    logged(session, 'Ann: HP 2', () => (session.stats = { a: { hp: 2 } } as never));
+    expect(keptProgress(session)).toBe(true);
+    // Undone, it's no progress either.
+    undoAction(session, game);
+    expect(keptProgress(session)).toBe(false);
+    // (A step from an older save whose words don't read: no progress.)
+    expect(keptProgress({ ...session, actionLog: [{ id: 'x', ts: 0, text: 'x', before: '{' }] })).toBe(false);
   });
 
   it('names where it is: the round, "round 2 of 3" (not with one round), or the tiebreaker', () => {
