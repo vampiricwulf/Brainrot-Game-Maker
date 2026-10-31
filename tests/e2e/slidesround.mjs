@@ -11,7 +11,7 @@ import { chromium } from 'playwright-core';
 import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { addClassicRounds, flowButton, mainButton, mainLabel, openGameFile, playWithPlayers } from './helpers.mjs';
+import { addClassicRounds, checkItem, flowButton, goOnCheck, mainButton, mainLabel, openGameFile, playWithPlayers } from './helpers.mjs';
 
 const file = resolve(process.env.APP_FILE || 'dist/index.html');
 if (!existsSync(file)) throw new Error('Run `npm run build` first');
@@ -240,8 +240,10 @@ try {
   await p2.waitForTimeout(450);
   await p2.keyboard.press('n');
   await p2.locator('.panel .status', { hasText: 'Game over' }).waitFor();
-  assert((await mainLabel(p2)) === '❓ Tiebreaker clue', `a tie for first: the tiebreaker clue is the main button (${await mainLabel(p2)})`);
-  await mainButton(p2).click();
+  // A tie for first: no blue button, every way to settle it in the tie box, ❓ Tiebreaker clue first.
+  const tbClue = p2.locator('.panel [data-tie]').getByRole('button', { name: '❓ Tiebreaker clue' });
+  assert((await mainButton(p2).count()) === 0 && (await tbClue.isEnabled()), 'a tie for first: no blue button; ❓ Tiebreaker clue is in the tie box');
+  await tbClue.click();
   await p2.locator('.panel .status', { hasText: 'Select the winner (Ann & Bob)' }).waitFor();
   assert((await p2.locator('.panel .hint', { hasText: 'Pick the winner' }).innerText()) === 'Pick the winner (1–2)', 'the tiebreaker names who’s tied, and asks for the winner (not "0 for everyone")');
   assert((await p2.locator('.info .notes').innerText()) === 'Closest without going over wins', 'the tiebreaker’s host notes show in the info column');
@@ -251,17 +253,22 @@ try {
   await s2.locator('[data-slide="answer"]').getByText('Forty-two').waitFor();
   await p2.waitForFunction(() => document.querySelector('.panel [data-next]')?.textContent?.startsWith('🏁 Back to results'));
   assert((await mainButton(p2).locator('kbd').innerText()) === 'N', 'N reveals the answer, then 🏁 Back to results is the main button, with N on it');
-  // A tied player picked (1) and no winner given: the first N says so, and the tiebreaker stays up.
+  // A tied player picked (1) and no winner given: N asks first, in the check (🏆 each tied player, Ann's taking Enter
+  // since she's picked), and the tiebreaker stays up; N again (after its first moment) goes back to the results, tied.
   await p2.keyboard.press('1');
   await p2.locator('.panel .p.on[data-player-id="p1"]').waitFor();
   await p2.keyboard.press('n');
-  await p2.locator('.toast', { hasText: 'Ann is picked but hasn’t won yet' }).waitFor();
-  assert((await p2.locator('.panel .status b').innerText()) === 'Tiebreaker', 'N with a tied player picked and no winner given warns first; the tiebreaker stays up');
+  await checkItem(p2, 'tie').waitFor();
+  const tieQuick = await goOnCheck(p2).locator('[data-quick]').evaluateAll((bs) => bs.map((b) => b.textContent.replace(/\s+/g, ' ').trim()));
+  assert(
+    JSON.stringify(tieQuick) === JSON.stringify(['🏆 Ann won ▶ results ⏎', '🏆 Bob won ▶ results']) && (await p2.locator('.panel .status b').innerText()) === 'Tiebreaker',
+    `N with nobody its winner asks first: 🏆 each tied player, Ann's (picked) taking Enter; the tiebreaker stays up (${tieQuick.join(' | ')})`,
+  );
+  await goOnCheck(p2, { ready: true }).waitFor();
   await p2.keyboard.press('n');
   await p2.locator('.panel .status', { hasText: 'Game over' }).waitFor();
-  await p2.locator('.toast', { hasText: 'hasn’t won yet' }).waitFor({ state: 'detached', timeout: 1000 });
-  assert(true, 'and N again goes back to the results, the warning put away (Enter there would do nothing)');
-  await mainButton(p2).click();
+  assert((await goOnCheck(p2).count()) === 0, 'and N again goes back to the results, still tied');
+  await tbClue.click();
   await p2.locator('.panel .status', { hasText: 'Select the winner' }).waitFor();
   // Points given in the tiebreaker settle it: the panel says so (not "Select the winner").
   await p2.locator('.panel .status').click();

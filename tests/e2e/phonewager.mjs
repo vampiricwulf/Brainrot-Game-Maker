@@ -16,7 +16,7 @@ import { existsSync, mkdirSync, mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { addClassicRounds, checkItem, goOnCheck, mainButton, noSelection, quick, playWithPlayers, recordSeen, seenWhere, selectedWords, shownOf, startRoomOn, leaveAnswer } from './helpers.mjs';
+import { addClassicRounds, anyway, checkItem, flowIs, goOnCheck, mainButton, noSelection, quick, playWithPlayers, recordSeen, seenWhere, selectedWords, shownOf, startRoomOn, leaveAnswer } from './helpers.mjs';
 
 const file = resolve(process.env.APP_FILE || 'dist/index.html');
 if (!existsSync(file)) throw new Error('Run `npm run build` first');
@@ -273,6 +273,15 @@ try {
   );
   await row('Player 1').getByText('📱 waiting…').waitFor();
   assert(!(await host.evaluate(() => !!document.activeElement?.matches('input[data-wager]'))), 'phones send the wagers: no wager box takes the focus (the keys stay the host’s)');
+  // The blue Show question ▶ is never greyed: N with wagers still to come puts the keys in the first box to fill (no
+  // check opens: they're typed), and the status line says whose, a phone's on its way.
+  assert(await mainButton(host, 'Show question ▶').isEnabled(), 'the Final’s wagers: the blue Show question ▶ is not greyed while some are missing');
+  await host.keyboard.press('n');
+  await host.locator('.toast', { hasText: 'Waiting on Player 1’s phone & Player 3: type their wagers, or Sits out' }).waitFor();
+  await host.waitForFunction(() => document.activeElement?.closest('.wrow')?.textContent?.includes('Player 1'));
+  assert((await goOnCheck(host).count()) === 0 && (await host.locator('.panel .status').innerText()).includes('taking wagers'), 'N there: the keys in Player 1’s wager box, no check, the question not up');
+  // (The keys back to the host, as phones send.)
+  await host.locator('.panel .status').click();
   assert(
     (await row('Player 2').getByText('📱 can still send').count()) === 1 && (await row('Player 3').getByText('📱').count()) === 0,
     'the host sees whose phone can send one (“📱 waiting…”, or “📱 can still send” over the 0 filled in for nothing to wager); a player without a phone has no 📱',
@@ -382,8 +391,13 @@ try {
   await ann.locator('#answer-state').getByText('✔ Sent: “Fleming”').waitFor();
   await answers.locator('[data-answer-row]', { hasText: '“Fleming”' }).waitFor();
   assert(true, 'Show question again: Player 1’s phone still says “✔ Sent: “Fleming””, and the host still has it');
-  // The answer on screen: answers lock, each phone keeping its own (after the wager it was locked with).
+  // The answer on screen: answers lock, each phone keeping its own (after the wager it was locked with). Player 2's
+  // phone sent none: Reveal answer ▶ asks first (⏱ 10 more seconds), and R reveals anyway.
   await mainButton(host).filter({ hasText: 'Reveal answer ▶' }).click();
+  await checkItem(host, 'answers').waitFor();
+  assert((await checkItem(host, 'answers').innerText()).includes('1 of 2 answers are in (Player 2’s isn’t)'), 'Reveal answer ▶ with an answer still to come: “1 of 2 answers are in (Player 2’s isn’t)”');
+  await goOnCheck(host, { ready: true }).waitFor();
+  await host.keyboard.press('r');
   await big(ann).getByText('Answers locked').waitFor();
   assert((await small(ann).innerText()) === 'Your wager: $1,300 · Yours: “Fleming”', `the answer shows: “Answers locked”, with her wager and her answer (${await small(ann).innerText()})`);
   await big(bo).getByText('Answers locked').waitFor();
@@ -404,11 +418,17 @@ try {
   await host.keyboard.press('n');
   await aud.locator('.spot-answer', { hasText: '“Fleming”' }).waitFor();
   assert((await aud.locator('.spot-wager').innerText()).includes('???'), 'N on Player 1: her answer goes on the audience window (“Fleming”), her wager not yet');
+  // N again: her verdict first (the check, with no “anyway”); C there judges her and closes it, the spotlight staying.
   await host.keyboard.press('n');
-  await host.getByText('Mark Player 1 right (C) or wrong (X) first').first().waitFor();
-  assert(true, 'N again: “Mark Player 1 right (C) or wrong (X) first”');
+  await checkItem(host, 'verdict').waitFor();
+  assert(
+    (await checkItem(host, 'verdict').innerText()).includes('Player 1 isn’t judged yet') && (await anyway(host).count()) === 0,
+    'N again: the check asks for Player 1’s verdict first (✔ Right C / ✘ Wrong X), with no “anyway”',
+  );
+  await goOnCheck(host, { ready: true }).waitFor();
   const scoreWas = await ann.locator('#me').innerText();
   await host.keyboard.press('c');
+  await goOnCheck(host).waitFor({ state: 'detached' });
   await aud.locator('.spot-result', { hasText: '✔ CORRECT' }).waitFor();
   assert((await aud.locator('.spot-wager').innerText()).includes('$1,300'), 'C: CORRECT, and her wager ($1,300) goes up with it');
   await ann.waitForFunction((was) => document.getElementById('me').innerText !== was, scoreWas);
@@ -675,20 +695,19 @@ try {
     `and the row: “${PICKED}”, “✔ right choice”`,
   );
   await shot('pw-12-pick-reveal-one-window', host2);
-  // N, N: Player 2's pick (C) goes up; the row says it isn't B, and the main cell's ✔ Right / ✘ Wrong (in that order,
-  // neither blue) rings ✘ Wrong, as the row does (C still works).
+  // N, N: Player 2's pick (C) goes up; the row says it isn't B, and its ✔ Right / ✘ Wrong (in that order, neither
+  // blue) ring ✘ Wrong; the blue button is Finish game ▶ (theirs is the last verdict), nothing in it ✔ or ✘. Its
+  // Show answer was empty while the blue button did it.
   await host2.keyboard.press('n');
   await mainButton(host2).filter({ hasText: 'Show answer ▶' }).waitFor();
-  await host2.keyboard.press('n');
   const rev2 = host2.locator('.fj .pl', { hasText: 'Player 2' });
+  assert(await rev2.locator('button[aria-label="Show answer: Player 2"]').evaluate((b) => getComputedStyle(b).visibility === 'hidden'), 'the spotlit row’s Show answer is empty while the blue button is Show answer ▶');
+  await host2.keyboard.press('n');
   await rev2.locator('[data-pick-hint]', { hasText: '✘ not B' }).waitFor();
-  const pair2 = await host2.locator('.panel :is([data-next], [data-next-pair])').evaluateAll((bs) =>
-    bs.map((b) => `${[...b.childNodes].filter((n) => n.nodeName !== 'KBD').map((n) => n.textContent).join('').trim()}${b.classList.contains('ring') ? ' (ring)' : ''}${b.classList.contains('primary') ? ' (blue)' : ''}`),
-  );
   const rowRings = await rev2.locator('button.ring').allInnerTexts();
   assert(
-    pair2.join(' | ') === '✔ Right | ✘ Wrong (ring)' && rowRings.join() === '✘ Wrong',
-    `a pick that isn't the ✔ Right one: ✔ Right and ✘ Wrong stay in their places, neither blue, ✘ Wrong ringed, in the main cell and the row (${pair2.join(' | ')}; the row: ${rowRings.join()})`,
+    (await flowIs(host2, 'Finish game ▶')) && rowRings.join() === '✘ Wrong' && (await host2.locator('.panel button.ring').count()) === 1,
+    `a pick that isn't the ✔ Right one: the row's ✔ Right and ✘ Wrong stay in their places, neither blue, ✘ Wrong ringed (one ring), and the blue button Finish game ▶ (the row: ${rowRings.join()})`,
   );
 
   // ---------- A team sitting the Final out (a 🔁 Rematch in the same room): its phones name the Final once ----------
@@ -710,6 +729,8 @@ try {
   if ((await host2.locator('.panel .status').innerText()).includes('Title card')) await host2.keyboard.press('n');
   await rows2.locator('.wrow', { hasText: 'Player 2' }).locator('input[data-plays]').uncheck();
   await big(cy).getByText('You sit this one out').waitFor();
+  // (Every wager in first: the blue button is never greyed, so wait for that.)
+  await host2.waitForFunction(() => ![...document.querySelectorAll('.fj .row .muted')].some((e) => /^(Waiting on|Not a whole number|Over the max)/.test(e.textContent ?? '')));
   await mainButton(host2).filter({ hasText: 'Show question ▶' }).click();
   await cy.locator('#clue-cap').getByText('Final Jeopardy!').waitFor();
   await small(cy).getByText('Your team isn’t in this one').waitFor();

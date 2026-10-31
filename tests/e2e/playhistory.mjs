@@ -322,7 +322,9 @@ try {
   assert((await rowBox.inputValue()) === '1000000000000', `in the reveals too, a wager past the most shows the most in its box (${await rowBox.inputValue()})`);
   await rowBox.fill('120');
   await rowBox.press('Enter');
-  await firstRow.getByRole('button', { name: 'Show wager' }).click();
+  // (They're spotlit: their Show wager is the blue button's, the row's own slot left empty meanwhile.)
+  assert(await firstRow.locator('button[aria-label^="Show wager"]').evaluate((b) => getComputedStyle(b).visibility === 'hidden'), 'the spotlit row’s Show wager is empty while the blue button does it');
+  await mainButton(page, 'Show wager ▶').click();
   await page.waitForFunction(() => document.querySelector('.spot-wager')?.textContent?.includes('120'));
   assert((await rowBox.count()) === 0, 'Show wager puts the changed wager on screen, and the field goes');
   await page.keyboard.press('3');
@@ -412,9 +414,10 @@ try {
   assert((await wagerBoxes.count()) === 2 && (await wrows.filter({ hasText: 'Player 3' }).locator('input[data-wager]').count()) === 0, '↶ Undo on the wager screen brings Player 3 back into the game, not into the Final');
   await p2.getByRole('button', { name: '↷ Redo' }).click();
   await p2.waitForFunction(() => document.querySelectorAll('.fj .wagers .wrow').length === 2);
-  // (Players 1 and 2 at $0 wager 0, filled in: every wager is in.)
+  // (Players 1 and 2 at $0 wager 0, filled in: every wager is in. The blue Show question ▶ is never greyed: what would
+  // wait is the wager screen's own “Waiting on …” line.)
   assert(
-    (await mainButton(p2, 'Show question ▶').isEnabled()) && (await wagerBoxes.count()) === 2,
+    (await mainButton(p2, 'Show question ▶').isEnabled()) && (await wagerBoxes.count()) === 2 && (await p2.locator('.fj .row .muted', { hasText: /^Waiting on/ }).count()) === 0,
     '↷ Redo takes them out again, and Show question ▶ is there to press (nothing waits on Player 3)',
   );
   await ctx2.close();

@@ -19,7 +19,10 @@ import { chromium } from 'playwright-core';
 import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { confirmStrip, editorReady, forgetSeen, mainButton, mainLabel, openGameFile, packGame, png, recordSeen, roomStored, seenWhere, shownOf, startBuzzer, startRoomOn, stored, leaveAnswer } from './helpers.mjs';
+import {
+  checkItem, confirmStrip, editorReady, flowIs, forgetSeen, goOnCheck, mainButton, mainLabel, openGameFile, packGame, png, recordSeen, roomStored, seenWhere, shownOf, startBuzzer, startRoomOn, stored,
+  leaveAnswer,
+} from './helpers.mjs';
 
 const file = resolve(process.env.APP_FILE || 'dist/index.html');
 if (!existsSync(file)) throw new Error('Run `npm run build` first');
@@ -542,7 +545,13 @@ try {
   await bob.locator('#answer-in').fill('Bob-answer');
   await bob.locator('#answer-send').click();
   assert(await until(() => last()?.answers?.seats?.find((x) => x.id === seat.Bob)?.got === 1), 'Bob sends his answer: the host took it (the room is told it has it)');
+  // Ann's and Cat's answers aren't in: Reveal answer ▶ asks first (⏱ 10 more seconds), and R reveals anyway.
   await next('Reveal answer ▶');
+  await checkItem(host, 'answers').waitFor();
+  const coming = await checkItem(host, 'answers').innerText();
+  assert(coming.includes('1 of 3 answers are in') && !coming.includes('Bob-answer'), `Reveal answer ▶ with answers still coming asks first, names and counts only (${coming})`);
+  await goOnCheck(host, { ready: true }).waitFor();
+  await host.keyboard.press('r');
   await host.locator('.panel .status', { hasText: 'Answer on screen' }).waitFor();
   await next('Start player reveals ▶');
   await host.locator('.fj .pl').first().waitFor();
@@ -552,22 +561,27 @@ try {
   assert(!marked.length && !(await bob.locator('body').innerText()).includes('answer’s on screen'), 'never marked “the answer’s on screen”: not to the room, not on Bob’s phone');
   await panel.waitFor();
   assert(/listed as Card 1/.test(await words(row1)), 'the reveals: the Final’s panel is still there, under the rows');
-  // The first one's answer or wager up (N): the main cell holds ✔ Right and ✘ Wrong, in that order, neither blue. A
-  // double-click on ✔ Right judges them once: its second click, on the Next player ▶ there now, does nothing.
+  // The first one's answer or wager up (N): their verdict is due, in their row only (✔ Right then ✘ Wrong, neither
+  // blue); the blue button is Next player ▶, and nothing in the main cell is ✔ or ✘.
   await host.keyboard.press('n');
-  await host.locator('.panel [data-next-pair]').waitFor();
-  const pair = await host.locator('.panel :is([data-next], [data-next-pair])').evaluateAll((bs) => bs.map((b) => `${b.firstChild.textContent.trim()}${b.classList.contains('primary') ? ' (blue)' : ''}`));
-  assert(pair.join(' | ') === '✔ Right | ✘ Wrong', `the reveals, a verdict due: ✔ Right and ✘ Wrong in the main cell, in that order, neither blue (${pair.join(' | ')})`);
-  await mainButton(host).dblclick();
-  await host.locator('.panel [data-next-pair]').waitFor({ state: 'detached' });
-  await host.waitForTimeout(400);
+  const spot = host.locator('.fj .pl.cur');
+  await host.waitForFunction(() => document.querySelector('.fj .pl.cur [aria-label^="✔ Right"]') && !document.querySelector('.fj .pl.cur [aria-pressed="true"]') && document.querySelector('.panel [data-next]')?.textContent?.startsWith('Next player ▶'));
+  const verdicts = await spot.locator('button.good, button.bad').evaluateAll((bs) => bs.map((b) => `${b.textContent.trim()}${b.classList.contains('primary') ? ' (blue)' : ''}`));
+  assert(
+    (await flowIs(host, 'Next player ▶')) && verdicts.join(' | ') === '✔ Right | ✘ Wrong' && !/[✔✘]/.test(await mainLabel(host)),
+    `the reveals, a verdict due: ✔ Right and ✘ Wrong in the spotlit row, in that order, neither blue, and the blue button Next player ▶ (${verdicts.join(' | ')}; ${await mainLabel(host)})`,
+  );
+  await spot.locator('button.good').click();
+  await host.locator('.fj .pl button[aria-pressed="true"]').first().waitFor();
   const judgedNow = await host.locator('.fj .pl button[aria-pressed="true"]').count();
-  assert(judgedNow === 1 && (await mainLabel(host)) === 'Next player ▶', `a double-click on ✔ Right judges one player, once (${judgedNow} judged; the main button: ${await mainLabel(host)})`);
+  assert(judgedNow === 1 && (await mainLabel(host)) === 'Next player ▶', `the row's ✔ Right judges one player (${judgedNow} judged; the main button: ${await mainLabel(host)})`);
   // (The others judged without Show answer, as a rude one may be: it ends all the same.)
   for (const who of ['Ann', 'Bob', 'Cat']) {
     const right = host.getByRole('button', { name: `✔ Right: ${who}` });
     if ((await right.getAttribute('aria-pressed')) !== 'true') await right.click();
   }
+  // (Everyone judged: the blue button finishes, at a click.)
+  await host.waitForFunction(() => document.querySelector('.panel [data-next]')?.textContent?.startsWith('Finish game ▶'));
   await mainButton(host).click();
   const ended = host.locator('.panel .status', { hasText: 'Game over' });
   await ended.waitFor();

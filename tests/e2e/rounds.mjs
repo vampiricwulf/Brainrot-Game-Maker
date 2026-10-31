@@ -4,7 +4,7 @@ import { chromium } from 'playwright-core';
 import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { macClicks, mainButton, noDailyDoubles, playWithPlayers, leaveAnswer, confirmStrip } from './helpers.mjs';
+import { anyway, checkItem, goOnCheck, macClicks, mainButton, noDailyDoubles, playWithPlayers, leaveAnswer, confirmStrip } from './helpers.mjs';
 
 const file = resolve(process.env.APP_FILE || 'dist/index.html');
 if (!existsSync(file)) throw new Error('Run `npm run build` first');
@@ -196,24 +196,33 @@ try {
   const showQuestion = mainButton(page, 'Show question ▶');
   const limits = page.getByLabel('Ignore the limits');
   const zeroes = page.locator('.fj .wagers .chip').filter({ hasText: 'can only wager $0' });
+  /** The wager screen's own line saying whose wager it waits on (none: every wager is fine). */
+  const waiting = page.locator('.fj .row .muted', { hasText: /^(Waiting on|Not a whole number|Over the max)/ });
   assert(await limits.isChecked(), 'the limits are ignored by default');
   assert(
     (await plays.count()) === 2 && (await Promise.all([0, 1].map((i) => wagerBoxes.nth(i).inputValue()))).join('|') === '|0',
     'each player’s row has its plays tick and its wager box; a player at $0 gets $0 filled in',
   );
-  assert(await showQuestion.isDisabled(), 'Show question still waits for the player who can wager more');
+  // Show question ▶ is never greyed: pressed with a wager missing, the keys go to its box and the status line says whose.
+  assert((await showQuestion.isEnabled()) && (await waiting.count()) === 1, 'Show question still waits for the player who can wager more, never greyed');
+  await showQuestion.click();
+  await page.locator('.toast', { hasText: /Waiting on .+: type their wager, or Sits out/ }).waitFor();
+  assert(
+    (await wagerBoxes.first().evaluate((b) => b === document.activeElement)) && (await page.locator('.panel .status').innerText()).includes('taking wagers') && (await goOnCheck(page).count()) === 0,
+    'pressed with a wager missing: the keys go to its box, no check, the question not up',
+  );
   await wagerBoxes.first().fill('100');
-  assert(await showQuestion.isEnabled(), 'and nobody at $0 holds it up');
+  assert((await waiting.count()) === 0, 'and nobody at $0 holds it up');
   await wagerBoxes.nth(1).fill('50');
-  assert(await showQuestion.isEnabled(), 'more than a player’s score is fine while the limits are ignored (the default)');
+  assert((await waiting.count()) === 0, 'more than a player’s score is fine while the limits are ignored (the default)');
   await limits.uncheck();
-  assert((await zeroes.count()) === 1 && (await showQuestion.isDisabled()), 'with the limits on, a player at $0 can only wager $0 and $50 is over their max');
+  assert((await zeroes.count()) === 1 && (await waiting.count()) === 1, 'with the limits on, a player at $0 can only wager $0 and $50 is over their max');
   await limits.check();
-  assert(await showQuestion.isEnabled(), 'and ignored again, it goes');
+  assert((await waiting.count()) === 0, 'and ignored again, it goes');
   // Ticking a player out on the wager screen drops their box (they sit out); ticked back in, their wager is still there.
   await plays.nth(1).uncheck();
   assert((await wagerBoxes.count()) === 1 && (await page.locator('.fj .wagers .wrow.out').innerText()).includes('sits out'), 'a player ticked out sits out: no wager box');
-  assert(await showQuestion.isEnabled(), 'and Show question doesn’t wait on them');
+  assert((await waiting.count()) === 0, 'and Show question doesn’t wait on them');
   await plays.nth(1).check();
   assert((await wagerBoxes.nth(1).inputValue()) === '50', 'ticked back in, their wager is kept');
   // Nobody ticked in: the main button goes on to the end instead.
@@ -230,22 +239,25 @@ try {
   await page.waitForFunction(() => document.querySelector('.panel .status')?.textContent?.includes('Answer on screen'));
   await page.keyboard.press('n');
   await page.waitForFunction(() => document.querySelector('.panel .status')?.textContent?.includes('Player reveals'));
-  // The reveals: N shows the wager, then judging (C / X) is the main step; N waits for it, then the next player.
+  // The reveals: N shows the wager; then their verdict is due, in their row only (C / X), the blue button Next player ▶;
+  // N asks for the verdict first (a must: no “anyway”), C there judges them and closes it, then N the next player.
   const revealMain = () => page.locator('.panel [data-next]').innerText();
   const spot = () => page.locator('.fj .pl.cur .name').innerText();
   assert((await revealMain()).startsWith('Show wager ▶'), `the reveals start on Show wager (${await revealMain()})`);
   const first = await spot();
   await page.keyboard.press('n');
-  await page.locator('.panel [data-next-pair]').waitFor();
+  await page.waitForFunction(() => document.querySelector('.panel [data-next]')?.textContent?.startsWith('Next player'));
   assert(
-    (await revealMain()).startsWith('✔ Right') && (await page.locator('.panel [data-next-pair]').innerText()).startsWith('✘ Wrong') && (await mainButton(page).getAttribute('title')) === `C: ${first} is right`,
-    `after Show wager, judging is the main step: ✔ Right (C) and ✘ Wrong (X) for ${first} (${await revealMain()})`,
+    !/[✔✘]/.test(await revealMain()) && (await page.locator('.fj .pl.cur').getByRole('button', { name: `✔ Right: ${first}` }).isEnabled()),
+    `after Show wager the blue button is Next player ▶, the verdict ✔ Right (C) / ✘ Wrong (X) in ${first}'s row (${await revealMain()})`,
   );
   await page.keyboard.press('n');
-  await page.waitForTimeout(150);
-  assert((await spot()) === first && (await revealMain()).startsWith('✔ Right'), 'N doesn’t go on past a player whose wager is up until they’re judged');
+  await checkItem(page, 'verdict').waitFor();
+  assert((await spot()) === first && (await anyway(page).count()) === 0, 'N doesn’t go on past a player whose wager is up until they’re judged: it asks for the verdict (no “anyway”)');
+  await goOnCheck(page, { ready: true }).waitFor();
   await page.keyboard.press('c');
-  await page.waitForFunction(() => document.querySelector('.panel [data-next]')?.textContent?.startsWith('Next player'));
+  await goOnCheck(page).waitFor({ state: 'detached' });
+  assert((await spot()) === first && (await revealMain()).startsWith('Next player'), 'C in the check judges them and closes it, the spotlight staying on them');
   await page.keyboard.press('n');
   await page.waitForFunction((f) => document.querySelector('.fj .pl.cur .name')?.textContent !== f, first);
   await page.keyboard.press('n');

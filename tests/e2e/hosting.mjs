@@ -493,10 +493,13 @@ try {
   const boxes = page.locator('.fj .wagers input[data-wager]');
   assert((await boxes.count()) === playing.length, 'each player ticked in has their wager box on the same screen');
   const wagersMenu = await stageMenu();
-  assert(wagersMenu.includes('Show question ▶ · N (off)') && wagersMenu.some((l) => l.startsWith('◀ Previous round')), `the Final’s wagers: its menu has Show question ▶, greyed until every wager is in (${wagersMenu.join(' | ')})`);
+  assert(
+    wagersMenu.includes('Show question ▶ · N') && wagersMenu.some((l) => l.startsWith('◀ Previous round')),
+    `the Final’s wagers: its menu has Show question ▶, never greyed (a wager missing, N puts the keys in its box) (${wagersMenu.join(' | ')})`,
+  );
   await page.locator('.panel .status').click();
   await page.keyboard.press('n');
-  await page.locator('.toast', { hasText: 'Waiting on:' }).waitFor();
+  await page.locator('.toast', { hasText: /Waiting on .+: type their wagers?, or Sits out/ }).waitFor();
   assert(
     await page.evaluate(() => document.activeElement?.matches('.fj .wagers input[data-wager]') && document.activeElement.value === ''),
     'N with a wager missing says whose (a toast) and goes to that box',
@@ -573,6 +576,14 @@ try {
     JSON.stringify(tieMenu.slice(0, 4)) === JSON.stringify(['# Game over · tie for first', '❓ Tiebreaker clue (off)', '🎲 Tiebreaker roll-off · O', '🤝 Declare co-winners']) && tieMenu.includes('🔁 Rematch'),
     `a tie at the end: its menu has every way to settle it, then the end screen’s buttons (${tieMenu.join(' | ')})`,
   );
+  // The tie box has every way too, in the menu's order (❓ greyed: this game has no tiebreaker clue); no blue button.
+  const tieBox = await page.locator('.panel [data-tie] button').evaluateAll((bs) =>
+    bs.map((b) => `${[...b.childNodes].filter((n) => n.nodeName !== 'KBD').map((n) => n.textContent).join('').trim()}${b.disabled ? ' (off)' : ''}`),
+  );
+  assert(
+    JSON.stringify(tieBox) === JSON.stringify(['❓ Tiebreaker clue (off)', '🎲 Tiebreaker roll-off', '🤝 Declare co-winners']) && (await mainButton(page).count()) === 0,
+    `the tie box holds every way to settle it, and the end screen has no blue button (${tieBox.join(' | ')})`,
+  );
   const winner = await cues(page, 'winner');
   // Back to the reveals and finish again, tied this time: "Tie for first" gets no fanfare.
   await page.getByRole('button', { name: '◀ Back to final reveals' }).click();
@@ -598,14 +609,13 @@ try {
   const gapUnder = (sel) => page.locator(sel).evaluate((e) => e.nextElementSibling.getBoundingClientRect().top - e.getBoundingClientRect().bottom);
   const tieGap = await gapUnder('.panel .tie');
   assert(tieGap >= 5, `the tie box doesn't sit on the buttons under it (${tieGap}px apart)`);
-  // The keys go on from the main button (not the tie box's first); Enter and N there say how to go on, starting nothing.
-  await page.waitForFunction(() => document.activeElement?.matches('.panel [data-next]'));
+  // No blue button: the keys go on from the tie box's first way (here the roll-off, ❓ being off), and Enter there starts
+  // nothing (it wasn't reached with Tab); N says to settle the tie in the box, which flashes, starting nothing.
+  await page.waitForFunction(() => document.activeElement?.closest('.panel [data-tie]') && !document.querySelector('.panel [data-next]'));
   await page.keyboard.press('Enter');
-  await page.locator('.toast', { hasText: 'Press O for 🎲 Tiebreaker roll-off' }).waitFor();
-  await page.locator('.toast').waitFor({ state: 'detached' });
   await page.keyboard.press('n');
-  await page.locator('.toast', { hasText: 'Press O for 🎲 Tiebreaker roll-off' }).waitFor();
-  assert((await status()).includes('Game over') && !(await stage('.wrap .title').count()), 'a tie at the end: the keys on its main button, Enter and N say to press O (nothing starts)');
+  await page.locator('.toast', { hasText: 'Tie for first: settle it in the tie box (O: a roll-off)' }).waitFor();
+  assert((await status()).includes('Game over') && !(await stage('.wrap .title').count()), 'a tie at the end: Enter starts nothing, N says to settle it in the tie box (O: a roll-off), nothing starts');
   await page.locator('.panel .status').click();
   await page.keyboard.press('o');
   await stage('.wrap .title').waitFor();

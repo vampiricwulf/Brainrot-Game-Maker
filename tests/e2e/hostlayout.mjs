@@ -328,23 +328,29 @@ try {
   await page.keyboard.press('Control+Shift+z');
   await page.keyboard.press('Control+Shift+z');
   await page.locator('.panel .status', { hasText: 'Player reveals' }).waitFor();
-  // The first one's wager up (N): a verdict due, ✔ Right and ✘ Wrong an equal pair in the main cell, nothing blue.
+  // The first one's wager up (N): their verdict is due, in their row only (✔ Right then ✘ Wrong); the blue button is
+  // Next player ▶, the one blue, nothing in the main cell ✔ or ✘.
   await page.keyboard.press('n');
-  await page.locator('.panel [data-next-pair]').waitFor();
+  await page.waitForFunction(() => document.querySelector('.panel [data-next]')?.textContent?.startsWith('Next player ▶'));
   states.verdict = await look();
-  assert((await mainLabel(page)) === '✔ Right' && (await page.locator('.panel [data-next-pair]').innerText()).startsWith('✘ Wrong'), 'the Final’s verdict due: ✔ Right then ✘ Wrong in the main cell');
+  assert(
+    !/[✔✘]/.test(await mainLabel(page)) && (await page.locator('.panel [data-next-pair]').count()) === 0 && (await page.locator('.fj .pl.cur').getByRole('button', { name: /^✔ Right/ }).isVisible()),
+    'the Final’s verdict due: ✔ Right / ✘ Wrong in the spotlit row only, the blue button Next player ▶',
+  );
   for (let i = 0; i < 3; i++) await page.locator('.fj .pl').nth(i).getByRole('button', { name: '✔ Right' }).click();
   await mainButton(page).click();
   await page.locator('.panel .status', { hasText: 'Game over' }).waitFor();
   states.end = await look();
-  assert((await mainLabel(page)) === '❓ Tiebreaker clue', `a tie for first: settling it is the main button (${await mainLabel(page)})`);
-  // The keys on it; N there (mashed after the Final) starts nothing on stream: it says to click it, or O.
-  await page.waitForFunction(() => document.activeElement?.matches('.panel [data-next]'));
+  const tbClue = page.locator('.panel [data-tie]').getByRole('button', { name: '❓ Tiebreaker clue' });
+  assert((await mainButton(page).count()) === 0 && (await tbClue.isEnabled()), 'a tie for first: no blue button, ❓ Tiebreaker clue in the tie box');
+  // The keys on the tie box's first way; N there (mashed after the Final) starts nothing on stream: it says to settle
+  // the tie in the box (or O), which flashes.
+  await page.waitForFunction(() => document.activeElement?.closest('.panel [data-tie]'));
   await page.keyboard.press('n');
-  await page.locator('.toast', { hasText: 'Click ❓ Tiebreaker clue to go on (O: a roll-off)' }).waitFor();
-  assert((await page.locator('.panel .status').innerText()).includes('Game over'), 'the keys go on from it, and N says to click it (or O for a roll-off) without starting it');
+  await page.locator('.toast', { hasText: 'Tie for first: settle it in the tie box (O: a roll-off)' }).waitFor();
+  assert((await page.locator('.panel .status').innerText()).includes('Game over'), 'the keys go on from the tie box, and N says to settle the tie there (or O for a roll-off) without starting anything');
   // The tiebreaker's question slides come one at a time (N), as on a clue, then the answer.
-  await mainButton(page).click();
+  await tbClue.click();
   const tbPips = page.locator('.stage-box [data-slide-pips]');
   await tbPips.waitFor();
   assert(
@@ -398,9 +404,12 @@ try {
   }
   const counts = Object.fromEntries(Object.entries(states).map(([k, v]) => [k, v.primaries]));
   assert(Object.values(counts).every((c) => c <= 1), `never more than one main button (${JSON.stringify(counts)})`);
-  assert(['clue', 'answering', 'ddWager', 'ddQuestion', 'boardgame', 'wagers', 'reveals', 'end'].every((k) => counts[k] === 1), 'and exactly one where there’s a next step');
-  // (The moment with none: a verdict due, the Final's ✔ Right / ✘ Wrong.)
-  assert(['verdict'].every((k) => counts[k] === 0), 'and none where a verdict is due (the Final’s ✔ Right / ✘ Wrong; a live partner clue’s blue 👁 Reveal answer is below)');
+  assert(
+    ['clue', 'answering', 'ddWager', 'ddQuestion', 'boardgame', 'wagers', 'reveals', 'verdict'].every((k) => counts[k] === 1),
+    'and exactly one where there’s a next step (a verdict due too: the Final’s blue button is Next player ▶, its ✔ / ✘ in the row)',
+  );
+  // (The moment with none: the end screen, a tie settled in its tie box.)
+  assert(['end'].every((k) => counts[k] === 0), 'and none on the end screen (a tie for first is settled in its box)');
 
   // Beside the stage (a wide window, RPG and board-game rounds): 🚪 Exit in the fixed bar's bottom-right cell, in both.
   console.log('Beside the stage:');

@@ -7,6 +7,8 @@
 //    the clock not started), N, N, N there never shows the answer, a click on the stage with the card waiting opens it
 //    too, Enter in it sends the card and starts the clock, then R in it reveals anyway; the page never holds the
 //    card's words while it's open;
+// 3. the Final's reveals, one window: N with the spotlit player not judged yet opens the check (a must: no “anyway”), C
+//    in it judges them and closes it, the spotlight staying on them with their verdict on stage, then N goes on;
 // 4. with the controls hidden: in one window N with something left changes nothing on stream (the stage its size, the
 //    pill pulses) and H shows the panel with the check open; in two windows the controls come back while it's open and
 //    hide again after;
@@ -57,16 +59,25 @@ const game = {
   ],
   media: [], audio: {}, theme: {}, wheels: [], dice: [], statFields: [], items: [],
 };
+/** The same players, a Final only (both on $0 play it, their $0 wagers filled in): flow 3. */
+const finalGame = {
+  ...game,
+  id: 'g_goon_final',
+  title: 'Go On Final',
+  rounds: [{ id: 'r_final', name: 'Final Jeopardy!', mode: 'final', category: 'Lore', questionSlide: slide('fq', 'The final question'), answerSlide: slide('fa', 'The final answer'), timerSeconds: 30, allowNonPositive: true }],
+};
 mkdirSync(resolve('test-results'), { recursive: true });
 const gameFile = resolve('test-results/goon.json');
 writeFileSync(gameFile, JSON.stringify(game));
+const finalFile = resolve('test-results/goon-final.json');
+writeFileSync(finalFile, JSON.stringify(finalGame));
 
 const buzzer = await startBuzzer('buzzer-goon-');
 const browser = await chromium.launch({ executablePath });
 const errors = [];
 
-/** A window at 1280×720 on the game's pre-game screen (`server`: the buzzer server in its settings). */
-async function host(name, server) {
+/** A window at 1280×720 on the game's pre-game screen (`server`: the buzzer server in its settings; `from`: its file). */
+async function host(name, server, from = gameFile) {
   const ctx = await browser.newContext({ viewport: { width: 1280, height: 720 } });
   if (server)
     await ctx.addInitScript((s) => {
@@ -86,7 +97,7 @@ async function host(name, server) {
   page.on('pageerror', (e) => errors.push(`[${name}] ${e.message}`));
   page.on('dialog', (d) => (errors.push(`[${name}] dialog: ${d.message()}`), d.accept()));
   await page.goto(pathToFileURL(file).href);
-  await openGameFile(page, gameFile);
+  await openGameFile(page, from);
   await page.getByText(/^Opened “/).waitFor();
   await editorReady(page);
   await page.getByRole('button', { name: '▶ Play' }).click();
@@ -273,6 +284,48 @@ try {
     await page.keyboard.press('r');
     await page.locator('.stage-box [data-slide="answer"]').waitFor();
     assert((await goOnCheck(page).count()) === 0 && (await noCard()), 'with the pair playing N asks again, and R in it reveals anyway');
+    await ctx.close();
+  }
+
+  // ---------- 3: the Final's spotlit player's verdict, a must ----------
+  console.log('The Final’s reveals, one window:');
+  {
+    const { ctx, page } = await host('final', undefined, finalFile);
+    await page.getByRole('button', { name: 'Start game ▶' }).click();
+    // (Its title card, if it has one: N starts the round.)
+    await page.locator('.fj .wagers, .stage-box .title-card').first().waitFor();
+    if (await page.locator('.stage-box .title-card').count()) await page.keyboard.press('n');
+    await page.locator('.fj .wagers').waitFor();
+    const status = (t) => page.locator('.panel .status', { hasText: t }).waitFor();
+    // (Their $0 wagers are in: N shows the question, the answer, the reveals, then the first one's wager.)
+    await page.keyboard.press('n');
+    await status('Question on screen');
+    await page.keyboard.press('n');
+    await status('Answer on screen');
+    await page.keyboard.press('n');
+    await status('Player reveals');
+    const spot = () => page.locator('.fj .pl.cur .name').innerText();
+    const who = await spot();
+    await page.keyboard.press('n');
+    await page.waitForFunction(() => document.querySelector('.panel [data-next]')?.textContent?.startsWith('Next player ▶'));
+    assert((await page.locator('.stage-box .spot-wager').innerText()).includes('$0'), `N shows ${who}’s wager; the blue button is Next player ▶ (their verdict due, in their row)`);
+    // N with them not judged yet: the check (“First:”, a must: no anyway), the spotlight staying on them.
+    await page.keyboard.press('n');
+    await checkItem(page, 'verdict').waitFor();
+    assert(
+      (await goOnCheck(page).getAttribute('data-goon')) === 'first' && (await anyway(page).count()) === 0 && (await quick(page, '✔ Right').count()) === 1 && (await quick(page, '✘ Wrong').count()) === 1 && (await spot()) === who,
+      `N with ${who} not judged yet opens the check: ✔ Right / ✘ Wrong, no “anyway”, the spotlight still on them`,
+    );
+    // C in it: judged, the check closed, the spotlight still on them with their verdict on stage.
+    await goOnCheck(page, { ready: true }).waitFor();
+    await page.keyboard.press('c');
+    await goOnCheck(page).waitFor({ state: 'detached' });
+    await page.locator('.stage-box .spot-result', { hasText: 'CORRECT' }).waitFor();
+    assert((await spot()) === who && (await page.locator('.stage-box .spot-name').textContent()) === who, `C judges ${who} and closes it: their verdict on stage, the spotlight still on them`);
+    // N then goes on, to the next player.
+    await page.keyboard.press('n');
+    await page.waitForFunction((w) => document.querySelector('.fj .pl.cur .name')?.textContent !== w, who);
+    assert((await goOnCheck(page).count()) === 0, 'then N goes on to the next player (N, C, N)');
     await ctx.close();
   }
 

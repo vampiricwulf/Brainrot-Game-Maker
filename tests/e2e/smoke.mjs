@@ -1202,6 +1202,12 @@ const finishMsg = await answerDialog(async () => {
 assert(finishMsg === '' && (await page.locator('.end h1').count()) === 0, 'Finish with a player unjudged asks first, inline (no browser dialog on stream)');
 await page.getByRole('button', { name: 'Keep judging' }).click();
 assert((await page.locator('.spot').count()) === 1 && (await page.getByRole('button', { name: 'Finish game ▶' }).isVisible()), 'Keep judging keeps the reveals going');
+// The spotlit row's Show wager is the blue button's now: its slot is left empty (the other rows keep theirs, out of turn).
+const spotWager = page.locator('.fj .pl.cur button[aria-label^="Show wager"]');
+assert(
+  (await flowIs(page, 'Show wager ▶')) && (await spotWager.evaluate((b) => getComputedStyle(b).visibility)) === 'hidden',
+  'the reveals: the blue button is Show wager ▶, and the spotlit row’s own Show wager is empty meanwhile',
+);
 await page.keyboard.press('n');
 await page.waitForFunction(() => document.querySelector('.spot-wager')?.textContent?.includes('Wagered'));
 assert(true, 'N shows the spotlit player’s wager');

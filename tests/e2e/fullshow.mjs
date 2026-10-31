@@ -456,20 +456,24 @@ async function show(how) {
       await ph.locator('#wager-send').click();
       await ph.locator('#wager-state', { hasText: '✔ Sent' }).waitFor();
     }
+    // (The host has them all: the blue button is never greyed, so its wager screen's own line says so.)
+    await until('every wager in on the host', async () => (await host.locator('.fj .row .muted', { hasText: /^Waiting on/ }).count()) === 0);
     await main('Show question ▶', 'the question', mainIs('Reveal answer ▶'));
     await stageClick('the answer', mainIs('Start player reveals ▶'));
     await stageClick('the reveals', mainIs('Show wager ▶'));
   }
-  // (Their wager up: ✔ Right and ✘ Wrong, an equal pair in the main cell.)
-  const judging = async () => (await label()) === '✔ Right' && (await host.locator('.panel [data-next-pair]').count()) === 1;
+  // (Their wager up: their verdict due, ✔ Right / ✘ Wrong in their row only; the blue button is what follows it.)
+  const spotRow = host.locator('.fj .pl.cur');
+  const due = async () => (await spotRow.locator('button.good:not(:disabled):not([aria-pressed="true"])').count()) === 1 && (await spotRow.locator('[aria-pressed="true"]').count()) === 0;
   for (let i = 0; i < NAMES.length; i++) {
+    const last = i === NAMES.length - 1;
+    const judging = async () => (await due()) && (await mainIs(last ? 'Finish game ▶' : 'Next player ▶')());
     if (byKeys) await key('n', 'their wager', judging);
     else await main('Show wager ▶', 'their wager', judging);
     const who = (await host.locator('.fj .pl.cur .name').innerText()).trim();
-    const last = i === NAMES.length - 1;
-    const next = mainIs(last ? 'Finish game ▶' : 'Next player ▶');
+    const next = async () => (await spotRow.locator('[aria-pressed="true"]').count()) === 1 && (await mainIs(last ? 'Finish game ▶' : 'Next player ▶')());
     if (byKeys) await key(who === lead ? 'x' : 'c', `${who} judged`, next);
-    else await click(who === lead ? host.locator('.panel [data-next-pair]') : mainButton(host), `${who} judged`, next);
+    else await click(spotRow.locator(who === lead ? 'button.bad' : 'button.good'), `${who} judged`, next);
     if (last) break;
     if (byKeys) await key('n', 'the next player', mainIs('Show wager ▶'));
     else await main('Next player ▶', 'the next player', mainIs('Show wager ▶'));
@@ -488,7 +492,9 @@ async function show(how) {
   await begin('A tie at the end: the tiebreaker clue');
   const winner = tied[0];
   const settled = statusHas(`${winner} won the tiebreaker`);
-  await main('❓ Tiebreaker clue', 'the tiebreaker clue', mainIs('👁 Reveal answer'));
+  // (No blue button on the end screen: every way to settle the tie is in its box.)
+  await until('the end screen, no blue button', noMain);
+  await click(host.locator('.panel [data-tie]').getByRole('button', { name: '❓ Tiebreaker clue' }), 'the tiebreaker clue', mainIs('👁 Reveal answer'));
   if (byKeys) {
     await key('r', 'its answer', mainIs('🏁 Back to results'));
     await key(String(NAMES.indexOf(winner) + 1), `${winner} picked`, async () => (await host.locator('.panel .p .sel[aria-pressed="true"]').count()) === 1);
