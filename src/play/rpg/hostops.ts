@@ -570,7 +570,8 @@ export function goThrough(game: Game, session: Session, elId: string, players: s
  * and order (one that asks something first opens the card), then 🗂 Open its card, ✎ Edit, reveal or hide it, then
  * remove it (`removed` gets what to tell the host; `closed` closes its card once a button says so). `oneWindow`: viewers
  * see the menu, so a secret object with an `alias` (see hiddenNames: "🙈 Hidden object 1") is headed by that, never its
- * name, and its buttons wait on its card (behind 👁 Show, as there); nor does a button name a secret object it reveals.
+ * name, and its buttons and ✎ Edit wait on its card (behind 👁 Show, as there); nor does a button name a secret object it
+ * reveals.
  */
 export function objectMenu(
   game: Game,
@@ -604,7 +605,8 @@ export function objectMenu(
     now: acts.map((a) => ({ label: a.label, disabled: a.disabled, hint: a.asks === 'who' ? 'Pick who it’s for on its card' : a.asks === 'locked' ? 'It’s locked: its card asks first' : a.title, onclick: press(a) })),
     open: [
       { label: '🗂 Open its card', onclick: open },
-      ...(edit ? [{ label: '✎ Edit', hint: 'Its screen in the live editor: move, resize, restyle, or give it actions and dialogue', onclick: edit }] : []),
+      // (Not while it's masked: the live editor lists it by name, on stream. Its card's ✎ Edit waits behind 👁 Show too.)
+      ...(edit && !masked ? [{ label: '✎ Edit', hint: 'Its screen in the live editor: move, resize, restyle, or give it actions and dialogue', onclick: edit }] : []),
     ],
     // (Not for hotspots, arrival points and no-go areas: viewers never see them, so a Reveal would do nothing.)
     verbs: neverShown(el) ? [] : [{ label: shown ? '🙈 Hide from viewers' : '👁 Reveal to viewers', onclick: () => setObjectShown(game, session, elId, !shown) }],

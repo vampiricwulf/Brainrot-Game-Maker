@@ -319,8 +319,11 @@ describe('objects and items on the RPG stage', () => {
     setObjectShown(game, session, trap.id, false);
     expect(stepText(session.actionLog!.at(-1)!, true)).toBe('Hide Trap');
     // One window, its card masked: its menu has no buttons of its card's (they're behind its card's 👁 Show).
-    const menu = objectMenu(game, session, trap.id, { run: { live: newLive(), selected: [] }, oneWindow: true, alias: '🙈 Hidden object 1', open: () => {}, removed: () => {} });
+    // Nor ✎ Edit: the live editor lists it by name, on stream (as on its card, it waits behind 👁 Show).
+    const menu = objectMenu(game, session, trap.id, { run: { live: newLive(), selected: [] }, oneWindow: true, alias: '🙈 Hidden object 1', edit: () => {}, open: () => {}, removed: () => {} });
     expect(lines(menu)).toEqual(['🙈 Hidden object 1', '🗂 Open its card', '—', '👁 Reveal to viewers', '—', '🗑 Remove']);
+    // (Two windows: viewers don't see the menu.)
+    expect(lines(objectMenu(game, session, trap.id, { oneWindow: false, alias: '🙈 Hidden object 1', edit: () => {}, open: () => {}, removed: () => {} }))).toContain('✎ Edit');
   });
 
   it('in one window, a visible object’s Reveal of a secret one never names it: its card, its menu, the toast, the Log and Redo', () => {

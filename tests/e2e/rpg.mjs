@@ -558,6 +558,11 @@ async function boxSelect() {
     await again(host).waitFor();
     const objs = await host.locator('.rh .objs').innerText();
     assert(!(await line(host).innerText()).includes('Selected:') && !objs.includes('Chest') && objs.includes('🙈 Hidden object 1'), `one window: a box over the secret Chest catches nothing, and Objects here doesn’t name it (${objs.replace(/\s+/g, ' ')})`);
+    // Its menu there offers no ✎ Edit (the live editor would list the Chest by name, on stream), as its card keeps it behind 👁 Show.
+    await host.locator('.rh .objs').getByRole('button', { name: '🙈 Hidden object 1', exact: true }).click({ button: 'right' });
+    const hiddenMenu = (await host.getByRole('menu').getByRole('menuitem').allInnerTexts()).map((t) => t.split('\n')[0]);
+    await host.keyboard.press('Escape');
+    assert(hiddenMenu.includes('🗂 Open its card') && !hiddenMenu.includes('✎ Edit'), `one window: the secret object's menu has no ✎ Edit (${hiddenMenu.join(' | ')})`);
     // Pressing one of a selected group outlines it all before it moves; one Ctrl+Z puts the whole move back.
     await again(host).click();
     await says(host, 'Selected: Ann, Bob —');
