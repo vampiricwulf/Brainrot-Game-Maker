@@ -805,6 +805,8 @@
   let opening = $state<string | null>(null);
 
   async function openFile(file: File): Promise<void> {
+    // (A file dropped on the Open… window, or the desktop app's Open with…: the window goes, as for Browse….)
+    openList = null;
     if (isThemeFile(file.name)) return openThemeFile(file);
     // A theme file whose name ends in .json (renamed, or saved so by a browser): its "format" comes first in it.
     if (/\.json$/i.test(file.name)) {

@@ -324,6 +324,23 @@ try {
   await answerReplace(page, 'Discard');
   await showsPack();
   assert((await page.getByRole('dialog', { name: /Where the dropped picture goes/ }).count()) === 0, 'a game file dropped on a board tile opens, and isn’t taken for a picture');
+  // Dropped on the Open… window (its foot says to drop one anywhere), a game file opens and the window goes, as after
+  // Browse… (it stayed up over the game, with its lists from before).
+  await page.locator('.cat textarea').first().fill('Changed');
+  await page.locator('.cat textarea').nth(1).click();
+  await page.getByRole('button', { name: 'Open…' }).click();
+  const openWin = page.getByRole('dialog', { name: 'Open a game' });
+  await openWin.waitFor();
+  const onOpen = await page.evaluateHandle((b64) => {
+    const dt = new DataTransfer();
+    dt.items.add(new File([Uint8Array.from(atob(b64), (c) => c.charCodeAt(0))], 'Safe Game.brainrot', { type: 'application/octet-stream' }));
+    return dt;
+  }, readFileSync(packPath).toString('base64'));
+  await openWin.dispatchEvent('drop', { dataTransfer: onOpen });
+  await openWin.waitFor({ state: 'detached', timeout: 5000 });
+  await answerReplace(page, 'Discard');
+  await showsPack();
+  assert((await openWin.count()) === 0, 'a game file dropped on the Open… window opens, and the window goes');
 
   // ---------- Hand-edited games ----------
   const game = JSON.parse(await (await import('jszip')).default.loadAsync(readFileSync(packPath)).then((z) => z.file('game.json').async('text')));
