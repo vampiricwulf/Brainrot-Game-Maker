@@ -17,7 +17,7 @@
   import { lastAction, logged, stepText } from '../../lib/toolset';
   import { overlayDoneAt, toolOverlay } from '../../lib/live';
   import PlayerCard, { cardsShown, playerCards } from '../rpg/PlayerCard.svelte';
-  import { boardNow, busyZones, moveNow, moverDiceName, offBoard, playerName, reorderTurns, rollMover, sendNow, setTurn, stepWaysHint, turnNow, turnOrder } from './bgops';
+  import { boardNow, busyZones, moveNow, moverDiceName, offBoard, playerName, reorderTurns, rollMover, runLanding, sendNow, setTurn, stepWaysHint, turnNow, turnOrder } from './bgops';
   import SpaceCard from './SpaceCard.svelte';
   import { START_FIRST } from '../rpg/hostops';
   import { offerMenu, offerNext, step as nextStep, type NextAction } from '../host/slots.svelte';
@@ -171,7 +171,9 @@
   function run(s: BoardSpace, a: Action, who: string, on: 'land' | 'pass'): void {
     if (needsPlayers(a) && !who) return void hint('Pick who it’s for first');
     const where = bs ? spaceSaid(bs, s, !dual) : s.name;
-    toast(runAction({ ...ctx, chosen: [who] }, a, `${where}: ${actText(a, on)}`), 3000);
+    const go = () => runAction({ ...ctx, chosen: [who] }, a, `${where}: ${actText(a, on)}`);
+    // (The landing's own: it counts as run, for the check before Next turn ▶.)
+    toast(on === 'land' ? runLanding(game, session, s, go) : go(), 3000);
   }
 
   function send(to: string): void {

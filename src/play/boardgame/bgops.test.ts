@@ -9,7 +9,8 @@ import { forgetGameParts, redoAction, undoAction } from '../../lib/toolset';
 import { runAction } from '../../lib/actions';
 import { PLAYER_WHEEL, type Action } from '../../lib/model';
 import { prefs } from '../../lib/prefs.svelte';
-import { moveCounts, moveNow, moverResult, moverSliceNoNumber, moverSliceWords, offBoard, reorderTurns, rollMover, runSpace, sendNow, setTurn, stepWaysHint, turnNow } from './bgops';
+import { landingRan, moveCounts, moveNow, moverResult, moverSliceNoNumber, moverSliceWords, offBoard, reorderTurns, rollMover, runLanding, runSpace, sendNow, setTurn, stepWaysHint, turnNow } from './bgops';
+import { undo } from '../../lib/session';
 import { openPlayerWheel, quickDice, rollDice, toggleScoreboard } from '../../lib/overlay';
 
 // (What screen readers are told.)
@@ -390,6 +391,62 @@ describe('board game: the host’s moves on the stage', () => {
     expect(turnNow(game, session)).toBeNull();
     expect(bs().order[bs().turn]).toBe('a');
     expect(announce).toHaveBeenLastCalledWith('Ann’s turn');
+  });
+
+  it('marks the turn’s landing run, whichever way it ran, and an Undo of what ran it takes the mark back', () => {
+    const { game, session, round, bs } = playing();
+    const sp = round.spaces[2];
+    sp.onLand = [
+      { id: 'x', do: 'score', amount: 100, who: 'ask' },
+      { id: 'y', do: 'skip', who: 'ask' },
+    ];
+    moveNow(game, session, 2);
+    const ran = () => landingRan(session, bs().last);
+    expect([bs().last?.landed, ran()]).toEqual([sp.id, false]);
+    // ▶ Run all on its card, or the stage's menu (runSpace): one step, the mark with it.
+    runSpace(game, session, newLive(), sp, ['a']);
+    expect(ran()).toBe(true);
+    undoAction(session, game);
+    expect([session.scoreLog.length, ran()]).toEqual([0, false]);
+    redoAction(session, game);
+    expect(ran()).toBe(true);
+    undoAction(session, game);
+    // One of its buttons on the landing row (or its card): points only, no step. Undoing the points takes the mark back.
+    const ctx = { game, session, live: newLive(), board: round, bs: bs(), selected: [], chosen: ['a'] };
+    runLanding(game, session, sp, () => runAction(ctx, sp.onLand![0], 'Space 3: +$100'));
+    expect(ran()).toBe(true);
+    undo(session);
+    expect(ran()).toBe(false);
+    // A step of its own (Skip next turn): its Undo takes the mark back, a Redo puts it back.
+    runLanding(game, session, sp, () => runAction(ctx, sp.onLand![1], 'Space 3: Skip next turn'));
+    expect(ran()).toBe(true);
+    undoAction(session, game);
+    expect(ran()).toBe(false);
+    redoAction(session, game);
+    expect(ran()).toBe(true);
+    // Nothing to undo (a wheel put up): it stays run.
+    undoAction(session, game);
+    runLanding(game, session, sp, () => runAction(ctx, { id: 'w', do: 'wheel', wheel: PLAYER_WHEEL }, 'Space 3: Spin'));
+    expect([bs().last?.ran, ran()]).toEqual([true, true]);
+    // Another space's actions, or a landing that's gone (the next turn), mark nothing.
+    bs().last = { ...bs().last!, ran: undefined };
+    runSpace(game, session, newLive(), round.spaces[5], ['a']);
+    expect(ran()).toBe(false);
+    turnNow(game, session);
+    runSpace(game, session, newLive(), sp, ['b']);
+    expect(bs().last).toBeUndefined();
+  });
+
+  it('a landing action that moves them on leaves the new landing still to run (and its Undo the old one)', () => {
+    const { game, session, round, bs } = playing();
+    const sp = round.spaces[2];
+    sp.onLand = [{ id: 'k', do: 'steps', steps: -1, who: 'ask' }];
+    round.spaces[1].onLand = [{ id: 'p', do: 'score', amount: 50, who: 'ask' }];
+    moveNow(game, session, 2);
+    runSpace(game, session, newLive(), sp, ['a']);
+    expect([bs().last?.landed, landingRan(session, bs().last)]).toEqual([round.spaces[1].id, false]);
+    undoAction(session, game);
+    expect([bs().last?.landed, landingRan(session, bs().last)]).toEqual([sp.id, false]);
   });
 
   it('only runs the board-game actions in a board-game round', () => {

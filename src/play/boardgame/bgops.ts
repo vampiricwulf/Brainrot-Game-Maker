@@ -3,7 +3,7 @@
 import { describeAction, runAction } from '../../lib/actions';
 import { clampSteps, currentPlayer, moveInOrder, movePlayer, moverPreset, moverWheelNoNumbers, nextTurn, sendTo, spaceById, spaceSaid, spaceShown, stepsIn } from '../../lib/boardgame';
 import { isBoardGame, type Action, type BoardGameRound, type BoardGameState, type BoardSpace, type BoardZone, type Game, type Session } from '../../lib/model';
-import { nameList } from '../../lib/session';
+import { nameList, stepOf } from '../../lib/session';
 import { logged } from '../../lib/toolset';
 import { openWheel, quickDice, rollDice, spinWheel, wheelSpentUp } from '../../lib/overlay';
 import { isRespin, parseDice, sliceLabel } from '../../lib/tools';
@@ -131,10 +131,42 @@ export function runSpace(game: Game, session: Session, live: Live, space: BoardS
   const on = which === 'onPass' ? 'pass' : 'land';
   const where = spaceSaid(bs, space, hide);
   const what = (a: Action) => describeAction(game, a, on, ctx.teams, hide ? bs : undefined);
-  logged(session, `${where}: ${run.map(what).join(', ')}`, () => {
-    said = run.map((a) => runAction(ctx, a, `${where}: ${what(a)}`));
-  });
+  const go = () =>
+    logged(session, `${where}: ${run.map(what).join(', ')}`, () => {
+      said = run.map((a) => runAction(ctx, a, `${where}: ${what(a)}`));
+    });
+  if (which === 'onLand') runLanding(game, session, space, go);
+  else go();
   return decides ? `${said.join(' · ')}: then press the outcome` : said.join(' · ');
+}
+
+/**
+ * Run a space's landing actions with `run`, whichever way: its landing row's buttons in the host panel, its card's (▶ Run
+ * all, ▶ Start), the stage's menu (▶ Run its landing actions), the check before Next turn ▶. When it's where the turn's
+ * move landed, that landing is marked run (`last.ran`), so the check doesn't ask about it. The mark goes with what the run
+ * did, its undo step or its points, so an Undo of that takes it back too. (Not when the run moved them on: that landing
+ * is still to run.)
+ */
+export function runLanding<T>(game: Game, session: Session, space: BoardSpace, run: () => T): T {
+  const { bs } = boardNow(game, session);
+  const last = bs?.last;
+  const top = session.actionLog?.at(-1)?.id;
+  const scored = session.scoreLog.length;
+  const out = run();
+  if (!bs || !last || last.landed !== space.id || bs.last !== last) return out;
+  const step = session.actionLog?.at(-1);
+  const points = session.scoreLog.slice(scored).find((e) => !e.undone);
+  last.ran = step && step.id !== top ? `step:${step.id}` : points ? `score:${stepOf(points)}` : true;
+  return out;
+}
+
+/** The turn's landing actions were run, and what ran them isn't undone (see runLanding). */
+export function landingRan(session: Session, last: BoardGameState['last']): boolean {
+  const r = last?.ran;
+  if (!r) return false;
+  if (r === true) return true;
+  const id = r.slice(r.indexOf(':') + 1);
+  return r.startsWith('score:') ? session.scoreLog.some((e) => !e.undone && stepOf(e) === id) : !!session.actionLog?.some((a) => a.id === id);
 }
 
 /** A roll, a spin or a question: what follows depends on how it comes out. */

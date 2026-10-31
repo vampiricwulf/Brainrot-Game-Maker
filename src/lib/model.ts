@@ -2425,9 +2425,11 @@ export interface BoardGameState {
   fork?: { playerId: Id; at: Id; stepsLeft: number; came?: Id };
   /**
    * Spaces passed and landed on in the last move, for their action buttons; `turn`: the turn (`turns`) it was made in;
-   * `back`: it went back, so landing passes nothing (no Start bonus for being sent back onto it).
+   * `back`: it went back, so landing passes nothing (no Start bonus for being sent back onto it). `ran`: the landing's
+   * actions were run (bgops runLanding): by the undo step (`step:<id>`) or the points (`score:<id>`) that ran them, so an
+   * Undo of those takes it back too; true when they made neither (a wheel put up, a sound).
    */
-  last?: { playerId: Id; passed: Id[]; landed?: Id; turn?: number; back?: boolean };
+  last?: { playerId: Id; passed: Id[]; landed?: Id; turn?: number; back?: boolean; ran?: true | string };
   /** How many times the turn has changed (Next turn, Previous turn): a move counts for the turn it was made in. */
   turns?: number;
   /** The zone on screen instead of the board (null: the board). */

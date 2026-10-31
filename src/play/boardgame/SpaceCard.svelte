@@ -13,7 +13,7 @@
   import { spaceSaid, spaceShown } from '../../lib/boardgame';
   import { nameList } from '../../lib/session';
   import { logged } from '../../lib/toolset';
-  import { decidingAction, playerName, runSpace, sendNow } from './bgops';
+  import { decidingAction, playerName, runLanding, runSpace, sendNow } from './bgops';
   import { offerIn } from '../host/offered.svelte';
 
   let {
@@ -56,7 +56,9 @@
   function run(a: Action, on: 'land' | 'pass'): void {
     if (needsPlayers(a) && !who.length) return void toast('Pick who it’s for first');
     const label = `${spaceSaid(bs, space, !dual)}: ${actText(a, on)}`;
-    toast(runAction({ game, session, live: app.live, board: round, bs, hide: !dual, selected, chosen: who, teams, offerCard: offerIn(session) }, a, label), 3000);
+    const go = () => runAction({ game, session, live: app.live, board: round, bs, hide: !dual, selected, chosen: who, teams, offerCard: offerIn(session) }, a, label);
+    // (Where the turn's move landed: its landing counts as run.)
+    toast(on === 'land' ? runLanding(game, session, space, go) : go(), 3000);
   }
 
   function reveal(): void {

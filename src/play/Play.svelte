@@ -231,11 +231,11 @@
   // last player's roll isn't theirs), and a move uses it up; an Undo of a move puts its count back, so Enter moves it again.
   /**
    * The round, whose turn it is and their move so far, as text: a shuffle, an award or any other step leaves it (and the
-   * count) alone. (The round too: the next board's first turn can look just like this one's.)
+   * count) alone, and so does running the landing. (The round too: the next board's first turn can look just like this one's.)
    */
   const bgTurnKey = $derived.by(() => {
     const { bs } = boardNow(game, session);
-    return bs ? JSON.stringify([session.currentRound, currentPlayer(bs) ?? null, bs.turns ?? 0, bs.last ?? null]) : '';
+    return bs ? JSON.stringify([session.currentRound, currentPlayer(bs) ?? null, bs.turns ?? 0, bs.last ? { ...bs.last, ran: undefined } : null]) : '';
   });
   $effect(() => {
     void bgTurnKey;
