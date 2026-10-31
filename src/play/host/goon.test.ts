@@ -427,6 +427,9 @@ describe('the check (3.1–3.10)', () => {
     expect(inside({ key: 'Escape' }, ck, 1001)).toEqual({ do: 'notyet' });
     expect(inside({ key: '1' }, ck, 1001)).toEqual({ do: 'ignore' });
     expect([escBounce(5000, 5000 + CHECK_GUARD_MS - 1), escBounce(5000, 5000 + CHECK_GUARD_MS)]).toEqual([true, false]);
+    // Another key or click since Not yet: the next Esc is the host's own, not a bounce (a click-away that was the Not yet
+    // itself still counts as one).
+    expect([escBounce(5000, 5100, 5050), escBounce(5000, 5100, 4990), escBounce(5000, 5100, 5000)]).toEqual([false, true, true]);
   });
 
   it('presses it takes (6.2): N, N closes a clue with no points as before; Shift+click once; U, O and Enter do the boxes’ jobs at once', () => {

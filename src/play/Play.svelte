@@ -3162,6 +3162,8 @@
   let checkLit = $state<string | null>(null);
   /** When Not yet closed it: an Esc right after does nothing (a bounced Esc never closes the clue). */
   let notYetAt = 0;
+  /** When the host last pressed a key other than Esc, or clicked: an Esc after that is no bounce of Not yet. */
+  let otherInputAt = 0;
   /** The key pressing one of its fixes, while it runs (a click: null): the keys' own guards apply to it (checkJudge). */
   let quickKey: KeyboardEvent | null = null;
   /** Where the check was when it went by itself (its moment went): a click there waits a moment, not landing on a box. */
@@ -5600,7 +5602,7 @@
     // but Space still ticks it (not the media), and Enter is its own (the wager boxes' Enter, next to "Ignore the limits").
     if (t?.closest('input:not([type="checkbox"]), textarea, select, [contenteditable]') || ((e.key === ' ' || e.key === 'Enter') && t?.matches('input'))) return;
     // An Esc right after Not yet (a bounce) does nothing: it never closes the clue.
-    if (!check && e.key === 'Escape' && !e.shiftKey && escBounce(notYetAt, Date.now())) {
+    if (!check && e.key === 'Escape' && !e.shiftKey && escBounce(notYetAt, Date.now(), otherInputAt)) {
       e.preventDefault();
       return hint(`Esc again: ${escWould()}`);
     }
@@ -6048,6 +6050,7 @@
     menuShift = e.shiftKey;
     tabbing = e.key === 'Tab';
     viaKeys = true;
+    if (e.key !== 'Escape' && !['Shift', 'Control', 'Alt', 'Meta'].includes(e.key)) otherInputAt = Date.now();
     if (tabbing || (e.key.startsWith('Arrow') && e.target instanceof Element && e.target.closest('.board, [data-space]'))) ringOff = false;
   }}
   onclickcapture={(e) => {
@@ -6064,6 +6067,7 @@
   }}
   onpointerdowncapture={(e) => {
     menuShift = e.shiftKey;
+    otherInputAt = Date.now();
     touchDown(e);
     tabbing = false;
     viaKeys = false;

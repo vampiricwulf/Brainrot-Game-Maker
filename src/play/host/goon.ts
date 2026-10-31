@@ -1640,8 +1640,12 @@ export function inside(k: KeyIn, check: Pick<Check, 'step' | 'items' | 'at'>, no
 /** A fix to press, if any. */
 const pressed = (q: Quick | null): Inside | null => (q ? { do: 'quick', quick: q } : null);
 
-/** Esc right after Not yet (or another Esc) does nothing: a bounced Esc never closes the clue. */
-export const escBounce = (notYetAt: number, now: number): boolean => now - notYetAt < CHECK_GUARD_MS;
+/**
+ * Esc right after Not yet (or another Esc) does nothing: a bounced Esc never closes the clue. `otherAt`: when the host
+ * last pressed another key or clicked; once they have since Not yet, the Esc is theirs (Esc, Enter for ✔ Judge all,
+ * then Esc back to the board is no bounce, however quick).
+ */
+export const escBounce = (notYetAt: number, now: number, otherAt = 0): boolean => now - notYetAt < CHECK_GUARD_MS && otherAt <= notYetAt;
 
 /** What the swallowed press would have done, in the status line's words ("N again: ▦ Done anyway: no points"). */
 export function swallowSay(k: KeyIn, then: Inside, check: Pick<Check, 'step' | 'items'>): string {
