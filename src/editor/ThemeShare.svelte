@@ -36,6 +36,7 @@
   import ThemeSwatch from './ThemeSwatch.svelte';
   import ThemeNameDialog from './ThemeNameDialog.svelte';
   import ThemeImportDialog from './ThemeImportDialog.svelte';
+  import { RememberedFold } from '../lib/fold.svelte';
 
   let {
     incoming = $bindable(null),
@@ -49,10 +50,14 @@
     /** Where the game's theme came from (themesource.ts). */
     origin: ThemeOrigin | null;
   } = $props();
+  /** ▸ Share or bring in a theme: folded until opened (this computer remembers). */
+  const share = new RememberedFold('jb.themeShareOpen');
   $effect(() => {
     if (!incoming) return;
     importing = incoming;
     incoming = null;
+    // (A theme file dropped or opened: the fold opens too, this time, beside the import it starts.)
+    if (!share.open) share.here = true;
   });
 
   const game = $derived(app.game);
@@ -396,16 +401,23 @@
       {/each}
     </div>
   {:else}
-    <p class="empty">
-      No saved themes yet. <strong>💾 Save as new theme…</strong> keeps this game’s look here, to use in any game {here}. To bring one
-      in, use <strong>📂 Import theme…</strong> (a theme file someone sent) or <strong>📂 Use a theme from another game…</strong>
-      under Share below.
-    </p>
+    <p class="empty">None yet: <strong>💾 Save as new theme…</strong> keeps this look for any game.</p>
   {/if}
 </section>
 
-<section class="share" aria-labelledby="share-heading">
-  <h3 id="share-heading">Share</h3>
+<!-- Sharing, folded: a theme file, a code, another game's theme (this computer remembers it open or folded). -->
+<section class="share" aria-label="Share or bring in a theme">
+  <button
+    class="small ghost fold"
+    aria-expanded={share.open}
+    aria-controls="theme-share"
+    data-share-fold
+    onclick={() => share.set(!share.open)}
+    title="⬇ Export theme, 📋 Copy theme code, 📂 Import theme…, ⌨ Paste theme code…, 📂 Use a theme from another game…"
+    >{share.open ? '▾' : '▸'} Share or bring in a theme <span class="muted">· file, code, another game</span></button
+  >
+  {#if share.open}
+  <div id="theme-share">
   <!-- (Buttons that wrap go on under the first one, not under the label.) -->
   <div class="row">
     <span class="lbl">This theme</span>
@@ -423,6 +435,8 @@
     </span>
   </div>
   <p class="hint">A theme file carries its pictures and uploaded fonts; a code and My themes keep the colors, fonts and layout.</p>
+  </div>
+  {/if}
 </section>
 
 {#if naming}
@@ -559,11 +573,13 @@
   }
   .empty {
     margin: 0;
-    padding: 12px;
-    border: 1px dashed var(--border);
-    border-radius: 8px;
     font-size: 13px;
     color: var(--muted);
+  }
+  /* The share fold's line: plain words, like the page's other folds. */
+  .fold {
+    padding-left: 0;
+    text-align: left;
   }
   .share .row {
     display: flex;

@@ -164,8 +164,11 @@ Other editor tabs:
 - 🔊 **Sounds**: the sounds played on stream (right, wrong, dice, wheel, buzz…): preview, replace or switch each off.
 - 🎨 **Theme**: presets, colors, fonts (your own font file too: Fonts › Your own font file) and background images.
   **💾 Save as new theme…** keeps a look in My themes (in this browser, or on this computer in the desktop app) for any
-  game; **⬇ Export theme** (a `.brainrot-theme` file) or **📋 Copy theme code** shares it, and **📂 Import theme…** /
-  **⌨ Paste theme code…** show someone else's on your board before you use or keep it.
+  game. Under **▸ Share or bring in a theme** (folded until you open it; a theme file dropped on the editor opens it),
+  **⬇ Export theme** (a `.brainrot-theme` file) or **📋 Copy theme code** shares it, and **📂 Import theme…** /
+  **⌨ Paste theme code…** show someone else's on your board before you use or keep it. A click on the preview finds
+  the setting of what you clicked (a tile, a value, a category, a score plate, the score bar or the board): it opens
+  and flashes. Tile glow's size is beside its tick, in Colors.
 - 🎡 **Wheels, Dice & Deals**: weighted wheels, custom dice and 🎭 deals (a secret part for everyone). Each wheel or
   dice outcome can carry a score effect or action buttons. A new one (＋ Add, or 📋 Ready-made) opens with its name
   selected, to type over; `Enter` on one in the list (or on a 🤫 card) goes into it, at its name.

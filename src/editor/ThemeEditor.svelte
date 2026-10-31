@@ -42,6 +42,8 @@
   import ThemeShare from './ThemeShare.svelte';
   import type { SharedTheme } from '../lib/themefile';
   import { themeDemo } from './themedemo';
+  import { partAt, PREVIEW_PARTS, PREVIEW_SETTING } from './themepick';
+  import { flash } from '../lib/nav.svelte';
 
   /**
    * `round`: the round last open in the editor, which the preview starts on when it's a board or a Final (else the first
@@ -139,7 +141,8 @@
   function plain(keys: (keyof Theme)[]): void {
     for (const k of keys) if (t[k] !== undefined) set(k, undefined);
   }
-  const TILE_LOOKS: (keyof Theme)[] = ['tilePattern', 'tile2', 'tileGradient', 'tileAngle', 'tileBorder', 'tileBorderWidth', 'tileRadius', 'glowSize', 'tileShadow', 'valueShadow', 'usedLook'];
+  // (The tile glow's size is in Colors, by its tick.)
+  const TILE_LOOKS: (keyof Theme)[] = ['tilePattern', 'tile2', 'tileGradient', 'tileAngle', 'tileBorder', 'tileBorderWidth', 'tileRadius', 'tileShadow', 'valueShadow', 'usedLook'];
   const HEADER_LOOKS: (keyof Theme)[] = ['headerBg', 'header2', 'headerGradient', 'headerLine'];
   const PLATE_LOOKS: (keyof Theme)[] = ['plateShape', 'leaderGlow'];
   /** Sections with looks of their own start open (then they open and close as the host likes). */
@@ -149,7 +152,7 @@
 
   /** Each section's settings (what "Reset section" puts back), by its data-sec. */
   const SECTIONS: Record<string, { name: string; keys: (keyof Theme)[]; plain?: string }> = {
-    colors: { name: 'Colors', keys: ['tile', 'tileUsed', 'boardGap', 'value', 'boardText', 'stageText', 'scoreBarBg', 'glow'] },
+    colors: { name: 'Colors', keys: ['tile', 'tileUsed', 'boardGap', 'value', 'boardText', 'stageText', 'scoreBarBg', 'glow', 'glowSize'] },
     fonts: { name: 'Fonts', keys: ['boardFont', 'valueFont'] },
     clue: { name: 'Clue text', keys: ['clueFont', 'clueColor'] },
     board: { name: 'Board', keys: ['bannerHeight', 'bannerFit', 'scoreBar', 'stageBg', 'bgGradient', 'bgAngle', 'tileGap'] },
@@ -212,6 +215,17 @@
     return items;
   }
 
+  /**
+   * A click on the preview: the setting that colors what's under the pointer (a tile, a value, a category, a score
+   * plate or the bar, else the board) opens and flashes. (The preview is a picture only: its parts are found by where
+   * they are.)
+   */
+  function previewClick(e: MouseEvent): void {
+    const box = e.currentTarget as HTMLElement;
+    const boxes = PREVIEW_PARTS.flatMap(({ part, sel }) => [...box.querySelectorAll(sel)].map((el) => ({ part, box: el.getBoundingClientRect() })));
+    flash(PREVIEW_SETTING[partAt(e.clientX, e.clientY, boxes)].place, { unfold: true });
+  }
+
   /** A right-click (or Shift+F10) on the settings: the menu of the setting or section under it. The cards have their own. */
   function settingsMenu(e: MouseEvent | KeyboardEvent): void {
     if (e.defaultPrevented) return;
@@ -256,16 +270,23 @@
             : key === 'boardGap' && keyedStage
               ? ['Stage background', 'Board', `Chroma ${t.stageBg}`]
               : null}
-        <label class="check" data-k={key} data-color title={unused ? `Not shown while ${unused[0]} (in ${unused[1]}) is ${unused[2]}` : undefined}>
+        <label class="check" data-k={key} data-place="theme:{key}" data-color title={unused ? `Not shown while ${unused[0]} (in ${unused[1]}) is ${unused[2]}` : undefined}>
           <ColorBox value={hex(key === 'stageText' ? stageText(t) : (t[key] as string), '#000000')} oninput={(e) => ((t as unknown as Record<string, string>)[key] = e.currentTarget.value)} />
           {#if unused}<span>{label} <span class="hint">(not shown: {unused[0]} is {unused[2]})</span></span>{:else}{label}{/if}
         </label>
       {/each}
-      <label class="check" data-k="glow" data-color>
+      <!-- (On a row of its own, its size beside it once it's on.) -->
+      <label class="check glow" data-k="glow" data-place="theme:glow" data-color>
         <input type="checkbox" checked={t.glow !== 'none'} onchange={(e) => switchColor('glow', e.currentTarget.checked, '#ff00e6', 'none')} />
         Tile glow
         {#if t.glow !== 'none'}<ColorBox value={hex(t.glow, '#ff00e6')} oninput={(e) => (t.glow = e.currentTarget.value)} aria-label="Tile glow color" />{/if}
       </label>
+      {#if t.glow !== 'none'}
+        <label class="field" data-k="glowSize" data-place="theme:glowSize">
+          Glow size ({lookNumber(t, 'glowSize')})
+          <input type="range" min="0" max={LOOK_RANGES.glowSize.max} step="2" value={lookNumber(t, 'glowSize')} oninput={(e) => setNumber('glowSize', +e.currentTarget.value)} />
+        </label>
+      {/if}
     </div>
     {@render valuesNote()}
     {@render namesNote()}
@@ -483,14 +504,6 @@
         Rounded corners ({lookNumber(t, 'tileRadius')})
         <input type="range" min="0" max={LOOK_RANGES.tileRadius.max} step="2" value={lookNumber(t, 'tileRadius')} oninput={(e) => setNumber('tileRadius', +e.currentTarget.value)} />
       </label>
-      {#if t.glow !== 'none'}
-        <label class="field" data-k="glowSize">
-          Glow size ({lookNumber(t, 'glowSize')})
-          <input type="range" min="0" max={LOOK_RANGES.glowSize.max} step="2" value={lookNumber(t, 'glowSize')} oninput={(e) => setNumber('glowSize', +e.currentTarget.value)} />
-        </label>
-      {:else}
-        <span class="hint glow-hint">Glow size: turn on Tile glow (in Colors) first</span>
-      {/if}
       <label class="check" data-k="tileShadow">
         <input type="checkbox" checked={!!t.tileShadow} onchange={(e) => set('tileShadow', e.currentTarget.checked || undefined)} />
         Drop shadow
@@ -548,7 +561,7 @@
     <details class="sec" bind:open={opened.plates} data-sec="plates">
     <summary>Score plates{#if set2(PLATE_LOOKS)}<span class="changed">· changed</span>{/if}</summary>
     <div class="grid">
-      <label class="field" data-k="plateShape">
+      <label class="field" data-k="plateShape" data-place="theme:plateShape">
         Plate corners
         <select value={t.plateShape ?? ''} onchange={(e) => set('plateShape', (e.currentTarget.value || undefined) as Theme['plateShape'])}>
           <option value="">Rounded</option>
@@ -567,18 +580,25 @@
   </div>
 
   <div class="side">
-    <label class="check preview-pick">
-      Preview
-      <select bind:value={previewing} aria-label="Preview">
-        {#each shown.rounds as r, i (r.id)}<option value={i}>{ROUND_MODES[r.mode].icon} {roundName(r, i)}</option>{/each}
-        {#if firstBoard >= 0}<option value="clue">❓ A clue</option>{/if}
-      </select>
-    </label>
-    <!-- Only a picture of the result: its tiles and players aren't the page's (screen readers skip it). -->
-    <div class="preview" aria-hidden="true" inert>
-      <Stage hostOnly>
-        <AudienceView game={shown} session={demo} {live} role="mirror" demo />
-      </Stage>
+    <div class="preview-head">
+      <span class="hint">Click the board to find its setting</span>
+      <label class="check preview-pick">
+        Preview
+        <select bind:value={previewing} aria-label="Preview">
+          {#each shown.rounds as r, i (r.id)}<option value={i}>{ROUND_MODES[r.mode].icon} {roundName(r, i)}</option>{/each}
+          {#if firstBoard >= 0}<option value="clue">❓ A clue</option>{/if}
+        </select>
+      </label>
+    </div>
+    <!-- Only a picture of the result: its tiles and players aren't the page's (screen readers skip it, and the keys
+         don't reach it). A click on it finds the setting of what's under the pointer; every setting is in the column. -->
+    <!-- svelte-ignore a11y_click_events_have_key_events, a11y_no_static_element_interactions -->
+    <div class="preview-click" onclick={previewClick} title="Click a tile, a value, a category or a score plate to find its setting">
+      <div class="preview" aria-hidden="true" inert>
+        <Stage hostOnly>
+          <AudienceView game={shown} session={demo} {live} role="mirror" demo />
+        </Stage>
+      </div>
     </div>
   </div>
 </div>
@@ -670,9 +690,20 @@
     flex-direction: column;
     gap: 6px;
   }
+  .preview-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+  }
+  .preview-head .hint {
+    margin: 0;
+  }
   .preview-pick {
-    align-self: flex-end;
     font-size: 13px;
+  }
+  .preview-click {
+    cursor: pointer;
   }
   .preview {
     aspect-ratio: 16 / 9;
@@ -680,8 +711,9 @@
     overflow: hidden;
     border: 1px solid var(--border);
   }
-  .glow-hint {
-    align-self: center;
+  /* Tile glow starts a row, its size beside it. */
+  .grid > .glow {
+    grid-column: 1;
   }
   .clue-color {
     align-self: end;

@@ -469,6 +469,12 @@ RollEvent  { id, ts, source: 'wheel' | 'dice', presetName?, result: string /* la
 - **My themes and sharing**: a theme can be saved in this browser (on this computer in the desktop app) under a name
   (colors, fonts and layout; not the pictures) and put on any game, exported as a small `.brainrot-theme` file (with its pictures and uploaded fonts) or
   copied as a short text code (`BRT1:…`). An imported theme is shown on the game's own board before it's used or kept.
+  The sharing buttons fold under "▸ Share or bring in a theme · file, code, another game" (this computer remembers it
+  open or folded; a theme file dropped or opened on the editor opens it); My themes with none saved is one line.
+- **The Theme page's preview** takes clicks (it stays a picture to screen readers and the keys): a value finds Colors ›
+  Values, a tile Tiles & slide background, a category Category names, a score plate Score plates, the score bar Score
+  bar, anything else Board; its section opens and the setting flashes. The hint above it says "Click the board to find
+  its setting". Tile glow's Glow size sits beside its tick in Colors (it was in Tiles).
 
 ### 5.8 Save / load / export
 - **The first screen** (a game with no rounds): ✨ Try a sample game, then a card a mode (a blank round) with at most two

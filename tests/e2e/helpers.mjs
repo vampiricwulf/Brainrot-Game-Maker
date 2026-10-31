@@ -90,6 +90,13 @@ export const selectedWords = (page) =>
 /** Nothing on the page is selected (outside a field). */
 export const noSelection = async (page) => (await selectedWords(page)) === '';
 
+/** 🎨 Theme › ▸ Share or bring in a theme: open its fold (it starts folded; this computer remembers it). */
+export async function openThemeShare(page) {
+  const fold = page.locator('[data-share-fold]');
+  if ((await fold.getAttribute('aria-expanded')) !== 'true') await fold.click();
+  await page.locator('#theme-share').waitFor();
+}
+
 /** Open… a game file (`files` as for setFiles): Open… is one window, whose Browse for a game file… picks it. */
 export async function openGameFile(page, files) {
   const chooser = page.waitForEvent('filechooser');

@@ -9,7 +9,7 @@ import { chromium } from 'playwright-core';
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { addClassicRounds, answerReplace, exportHtml, openGameFile, playWithPlayers, png } from './helpers.mjs';
+import { addClassicRounds, answerReplace, exportHtml, openGameFile, openThemeShare, playWithPlayers, png } from './helpers.mjs';
 
 const file = resolve(process.env.APP_FILE || 'dist/index.html');
 if (!existsSync(file)) throw new Error('Run `npm run build` first');
@@ -61,6 +61,27 @@ try {
   await themePage();
   await preview.locator('.board .tile').first().waitFor();
   assert((await preview.locator('.board .tile.host-mark').count()) === 0, 'the Theme page’s preview has no host-only tile badges (a Daily Double is placed)');
+  // Sharing folds into one line, and My themes with none is one line: the settings start higher up.
+  assert(
+    (await page.locator('[data-share-fold]').getAttribute('aria-expanded')) === 'false' &&
+      (await page.getByRole('button', { name: '⬇ Export theme' }).count()) === 0 &&
+      (await page.locator('[data-share-fold]').innerText()).includes('Share or bring in a theme · file, code, another game'),
+    'Share is one folded line: “▸ Share or bring in a theme · file, code, another game”',
+  );
+  assert((await page.locator('.mine .empty').innerText()) === 'None yet: 💾 Save as new theme… keeps this look for any game.', 'My themes with none saved is one line');
+  // A click on the preview finds the setting of what's under it: it opens and flashes.
+  const clickOn = async (sel) => {
+    const r = await preview.locator(sel).first().boundingBox();
+    await page.mouse.click(r.x + r.width / 2, r.y + r.height / 2);
+  };
+  await clickOn('.board .tile .v');
+  await page.waitForFunction(() => document.querySelector('[data-place="theme:value"]')?.classList.contains('flash'));
+  await clickOn('.board .header');
+  await page.waitForFunction(() => document.querySelector('[data-place="theme:boardText"]')?.classList.contains('flash'));
+  assert(!(await page.locator('details.sec[data-sec="plates"]').evaluate((d) => d.open)), 'Score plates starts folded');
+  await clickOn('.score-area .plate');
+  await page.waitForFunction(() => document.querySelector('details.sec[data-sec="plates"]')?.open);
+  assert(true, 'a click on a value, a category or a score plate on the preview opens and flashes its setting (Values, Category names, Score plates)');
 
   // ---------- The app's own color picker (never Chromium's): Hex or RGB, live, one undo step, Esc ----------
   const values = valuesBox();
@@ -263,6 +284,14 @@ try {
   await page.getByLabel('Line under them').check();
   assert((await page.getByLabel('Line under the categories color').inputValue()) === '#000000', 'one back to its default black, unticked and ticked again, is black');
   await page.getByLabel('Tile glow', { exact: true }).check();
+  // (Its size is beside it, in Colors: not in Tiles.)
+  const glowRow = await page.evaluate(() => {
+    const top = (el) => Math.round(el.getBoundingClientRect().top);
+    const glow = document.querySelector('details.sec[data-sec="colors"] [data-k="glow"]');
+    const size = document.querySelector('details.sec[data-sec="colors"] [data-k="glowSize"]');
+    return { beside: !!size && glow.nextElementSibling === size && Math.abs(top(size) - top(glow)) < 40, inTiles: !!document.querySelector('details.sec[data-sec="tiles"] [data-k="glowSize"]') };
+  });
+  assert(glowRow.beside && !glowRow.inTiles, `Glow size sits beside the Tile glow tick, in Colors (${JSON.stringify(glowRow)})`);
   await page.getByLabel('Tile glow color').fill('#ffd700');
   await page.getByLabel('Tile glow', { exact: true }).uncheck();
   await page.getByLabel('Tile glow', { exact: true }).check();
@@ -426,6 +455,7 @@ try {
   await shot('1b-menus');
 
   // ---------- ⬇ Export theme / 📂 Import theme… ----------
+  await openThemeShare(page);
   const [download] = await Promise.all([page.waitForEvent('download'), page.getByRole('button', { name: '⬇ Export theme' }).click()]);
   assert(download.suggestedFilename() === 'Checkers.brainrot-theme', `Export theme writes a .brainrot-theme file named after the theme (${download.suggestedFilename()})`);
   const themePath = resolve('test-results/themes-checkers.brainrot-theme');
@@ -585,6 +615,7 @@ try {
   await soonTitle.waitFor();
   await host.getByRole('button', { name: '◀ Back to editor' }).click();
   await host.getByRole('button', { name: '🎨 Theme' }).click();
+  await openThemeShare(host);
   // Share's buttons that wrap (a 1280-wide window) go on under the first one, not under the row's label.
   const share = await host.locator('.share .row', { hasText: 'Bring one in' }).evaluate((row) => {
     const b = [...row.querySelectorAll('button')].map((x) => x.getBoundingClientRect());

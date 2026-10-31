@@ -7,7 +7,7 @@ import { copyFileSync, existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { checkItem, goOnCheck, openRules, leaveAnswer } from './helpers.mjs';
+import { checkItem, goOnCheck, openRules, openThemeShare, leaveAnswer } from './helpers.mjs';
 
 const file = resolve(process.env.APP_FILE || 'dist/index.html');
 if (!existsSync(file)) throw new Error('Run `npm run build` first');
@@ -469,6 +469,7 @@ try {
   await page.keyboard.press('Control+z');
   await page.getByRole('button', { name: '🎨 Theme' }).click();
   await page.getByRole('button', { name: 'Pastel', exact: true }).click();
+  await openThemeShare(page);
   const [chooser2] = await Promise.all([page.waitForEvent('filechooser'), page.getByRole('button', { name: /Use a theme from another game/ }).click()]);
   await chooser2.setFiles(other);
   await page.waitForTimeout(300);
