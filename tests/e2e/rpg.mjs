@@ -277,8 +277,9 @@ async function bigWorld() {
   await openMenu(host).waitFor({ state: 'detached' });
   // A question pop-up (the Riddle cat's): the host sees its answer before it's revealed, viewers don't.
   await host.locator('.rh .objs button', { hasText: 'Riddle cat' }).click();
-  // With its card open, its menu's 🗑 Remove shows the Delete key (the key takes off the object whose card is open).
-  await host.locator('.rh .objs button', { hasText: 'Riddle cat' }).click({ button: 'right' });
+  // With its card open, its menu (here from the stage: the list gives way to the card) shows the Delete key on 🗑 Remove
+  // (the key takes off the object whose card is open).
+  await host.locator('.stage-box .rpg .hit[data-object="el_cat"]').click({ button: 'right' });
   const catOpenMenu = await menuLines(host);
   await host.keyboard.press('Escape');
   await openMenu(host).waitFor({ state: 'detached' });
