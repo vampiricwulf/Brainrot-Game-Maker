@@ -916,9 +916,12 @@
           <div class="row" data-space-actions>
             <button class="small" onclick={() => duplicateSpaces(picked)} title="Ctrl+D">⧉ Duplicate</button>
             <button class="small" onclick={() => copySpacesToClipboard(picked)} title="Ctrl+C">📋 Copy</button>
-            <span class="spacer"></span>
-            <button class="ghost small" onclick={() => (selIds = [])} title="Esc">Clear selection</button>
-            <button class="ghost small danger del" onclick={() => removeSpaces(picked)} title="Delete them (Delete key; Undo brings them back)">🗑 Delete {picked.length} spaces</button>
+            <!-- (Clear selection and 🗑 go to the next line together when the panel is too narrow, so 🗑 stays last at the
+              right end, never alone under ⧉ Duplicate.) -->
+            <span class="row end">
+              <button class="ghost small" onclick={() => (selIds = [])} title="Esc">Clear selection</button>
+              <button class="ghost small danger del" onclick={() => removeSpaces(picked)} title="Delete them (Delete key; Undo brings them back)">🗑 Delete {picked.length} spaces</button>
+            </span>
           </div>
           <p class="muted small">Drag one to move them all, or nudge them with Alt+arrows. Shift+click a space to add or leave it out.</p>
           <label class="check small">
@@ -1288,5 +1291,9 @@
   /* 🗑 last, a little apart from the rest, so a slip doesn't delete. */
   .del {
     margin-left: 8px;
+  }
+  .end {
+    flex-wrap: nowrap;
+    margin-left: auto;
   }
 </style>
