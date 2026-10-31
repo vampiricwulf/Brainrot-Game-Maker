@@ -444,9 +444,22 @@ try {
   await ann.locator('#wager-in').fill('300');
   await ann.locator('#wager-send').click();
   await host.locator('[data-phone-wager="p1"]', { hasText: 'from phone' }).waitFor();
+  // A click on the stage never shows the Final's question: the status line says who it waits on (names only).
+  const note = host.locator('.panel .status [data-click-note]');
+  await host.locator('.stage-box').click();
+  await note.filter({ hasText: /^Waiting on Bob.*Cat/ }).waitFor();
+  assert(!(await note.innerText()).includes('300') && (await host.locator('.panel .status', { hasText: 'Question on screen' }).count()) === 0, `a click on the wagers says who they wait on, never Ann’s amount, and the question stays off (${await note.innerText()})`);
   await host.locator('.fj input[data-wager="p2"]').fill('200');
   await host.locator('.fj input[data-wager="p3"]').fill('100');
   assert(true, 'Ann wagers from her phone, the host types Bob’s and Cat’s');
+  // All in: the box's line says so, and a click on the stage says the blue button is next (the keys stay in Cat's box).
+  await host.locator('.fj [data-wagers-in]', { hasText: '✓ All 3 wagers in' }).waitFor();
+  await host.locator('.stage-box').click();
+  await note.filter({ hasText: 'All wagers in: Show question ▶ (N)' }).waitFor();
+  assert(
+    (await host.evaluate(() => document.activeElement?.matches('.fj input[data-wager="p3"]'))) && (await host.locator('.panel .status', { hasText: 'Question on screen' }).count()) === 0,
+    'all in: the wagers box says “✓ All 3 wagers in”, a click on the stage “All wagers in: Show question ▶ (N)”, the question still off and the keys still in Cat’s box',
+  );
 
   // ---------- Card 2: nobody at first, to Bob by his chip ----------
   await row2.getByRole('button', { name: 'Card 2 to Bob', exact: true }).click();
@@ -561,9 +574,9 @@ try {
   assert(!marked.length && !(await bob.locator('body').innerText()).includes('answer’s on screen'), 'never marked “the answer’s on screen”: not to the room, not on Bob’s phone');
   await panel.waitFor();
   assert(/listed as Card 1/.test(await words(row1)), 'the reveals: the Final’s panel is still there, under the rows');
-  // The first one's answer or wager up (N): their verdict is due, in their row only (✔ Right then ✘ Wrong, neither
-  // blue); the blue button is Next player ▶, and nothing in the main cell is ✔ or ✘.
-  await host.keyboard.press('n');
+  // The first one's answer or wager up (a click on the spotlit card, as N): their verdict is due, in their row only
+  // (✔ Right then ✘ Wrong, neither blue); the blue button is Next player ▶, and nothing in the main cell is ✔ or ✘.
+  await host.locator('.stage-box .spot').click();
   const spot = host.locator('.fj .pl.cur');
   await host.waitForFunction(() => document.querySelector('.fj .pl.cur [aria-label^="✔ Right"]') && !document.querySelector('.fj .pl.cur [aria-pressed="true"]') && document.querySelector('.panel [data-next]')?.textContent?.startsWith('Next player ▶'));
   const verdicts = await spot.locator('button.good, button.bad').evaluateAll((bs) => bs.map((b) => `${b.textContent.trim()}${b.classList.contains('primary') ? ' (blue)' : ''}`));
@@ -571,6 +584,13 @@ try {
     (await flowIs(host, 'Next player ▶')) && verdicts.join(' | ') === '✔ Right | ✘ Wrong' && !/[✔✘]/.test(await mainLabel(host)),
     `the reveals, a verdict due: ✔ Right and ✘ Wrong in the spotlit row, in that order, neither blue, and the blue button Next player ▶ (${verdicts.join(' | ')}; ${await mainLabel(host)})`,
   );
+  // A click on the card again never judges: the check asks for the verdict (a must, no “anyway”).
+  await host.waitForTimeout(500);
+  await host.locator('.stage-box .spot').click();
+  await checkItem(host, 'verdict').waitFor();
+  assert((await host.locator('.fj .pl button[aria-pressed="true"]').count()) === 0, 'a click on the spotlit card with their verdict due asks for it, and judges nobody');
+  await host.keyboard.press('Escape');
+  await goOnCheck(host).waitFor({ state: 'detached' });
   await spot.locator('button.good').click();
   await host.locator('.fj .pl button[aria-pressed="true"]').first().waitFor();
   const judgedNow = await host.locator('.fj .pl button[aria-pressed="true"]').count();

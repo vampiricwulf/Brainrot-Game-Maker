@@ -263,7 +263,15 @@ try {
       ddMenu.filter((l) => / found it/.test(l)).length === 3 && ddMenu.filter((l) => l.endsWith('found it (off)')).length === 1 && ddMenu.includes('↩ Put back (keep tile) · Esc'),
     `the stage’s menu on a Daily Double: Show question ▶ first, then who found it (${ddMenu.join(' | ')})`,
   );
+  // A click on the splash is its Show question ▶: with no wager typed it says so in the status line, and the keys stay in
+  // the Wager box (the click never takes them, so the next digits type the wager, not who found it).
   await page.locator('.dd input[type=number]').focus();
+  await stage('.dd-text').click();
+  await page.locator('.panel .status [data-click-note]', { hasText: 'Type a wager' }).waitFor();
+  assert(
+    (await page.evaluate(() => document.activeElement?.matches('.dd input[type=number]'))) && (await stage('.dd-text').count()) === 1 && !(await page.locator('.toast', { hasText: 'Type a wager' }).count()),
+    'a click on the Daily Double’s splash with no wager says so in the status line (not a message at the foot), the splash stays, and the keys stay in the Wager box',
+  );
   // A wager below 0 (the box's min doesn't stop a typed minus) says so, not "over the max" with the limit ignored.
   await page.locator('.dd input[type=number]').fill('-500');
   await page.keyboard.press('Enter');

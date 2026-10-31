@@ -371,6 +371,16 @@ async function viewers() {
   await host.emulateMedia({ reducedMotion: 'reduce' });
   await host.evaluate(() => (window.__entrances = []));
   await host.locator('.board .tile').first().click();
+  // (Two windows: a click on the host's copy of the splash with no wager typed says what's missing in the status line,
+  // the keys stay in the Wager box, and nothing changes on stream. Past the double-click guard of the tile's click.)
+  await host.locator('.stage-box .dd-text').waitFor();
+  await host.waitForTimeout(500);
+  await host.locator('.stage-box .dd-text').click();
+  await host.locator('.panel .status [data-click-note]').waitFor();
+  assert(
+    (await host.evaluate(() => !!document.activeElement?.matches('.dd input[type=number]'))) && (await aud.locator('.dd-text').count()) === 1 && (await aud.locator('.dd-badge').count()) === 0,
+    `two windows: a click on the host’s copy of the Daily Double splash says what’s missing (${await host.locator('.panel .status [data-click-note]').innerText()}), the keys stay in the Wager box, the splash stays on stream`,
+  );
   await host.locator('.dd .chip').nth(2).click();
   await host.locator('.dd input[type=number]').fill('0');
   await host.locator('.dd input[type=number]').press('Enter');

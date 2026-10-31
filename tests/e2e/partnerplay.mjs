@@ -1,8 +1,9 @@
 // 🤝 Playing a partner clue (docs/PARTNER-CLUES-SPEC.md §6–§8): PARTNER UP! on stream, "Who picked it?", the partner
 // wheel (the picker never on it, the log hiding the spin until it lands, its landing the partner), overruling it with
 // 1–9, Show question ▶ with the parts badge and caption, a second Enter that doesn't start the clock, the 📤 list's
-// chips (a change stays through ⇄ Swap, ↺ follows the parts again), 📋 Copy words, ⏱ Start the clock, a click on the
-// stage that leaves the answer hidden until it's judged, Shift+Enter on ✔ Got it giving ✘ Missed, a blank question's
+// chips (a change stays through ⇄ Swap, ↺ follows the parts again), 📋 Copy words (ticked once pressed), ⏱ Start the
+// clock, clicks on the stage (PARTNER UP! asks or shows the question, a card to copy first says so in the status line, then
+// a click starts the clock with ↶ Undo there) that leave the answer hidden until it's judged, Shift+Enter on ✔ Got it giving ✘ Missed, a blank question's
 // own card, Esc before the question keeping the tile, U and the ? list. The 🤝 box holds each action once (🎡 Spin for a
 // partner in front of the names, ↻ Spin again in its place after, ⏱ Start the clock at its foot, ringed while due); the
 // blue button is the show's next step only (Show question ▶, Next ▶ with the wheel up, 👁 Reveal answer), asking first
@@ -111,6 +112,14 @@ try {
     'N with nobody marked asks “First:” who picked it, with no “anyway”, the players by their number',
   );
   assert((await stage('[data-slide="1"]').count()) === 0, 'and the question stays off stream');
+  await notYet(page).click();
+  await goOnCheck(page).waitFor({ state: 'detached' });
+  // A click on PARTNER UP! is Show question ▶ too: it asks the same, never the question. (Past the double-click guard
+  // of the click that opened the tile.)
+  await page.waitForTimeout(500);
+  await stage('[data-partner-up]').click();
+  await checkItem(page, 'picker').waitFor();
+  assert((await stage('[data-slide="1"]').count()) === 0 && (await anyway(page).count()) === 0, 'a click on PARTNER UP! asks who picked it too (no “anyway”), the question still off');
   await notYet(page).click();
   await goOnCheck(page).waitFor({ state: 'detached' });
   // A double-click on a name: its first click says who picked it, and the rest of it, landing on the 🎡 Spin for a partner
@@ -270,18 +279,43 @@ try {
   await noCards(page, 'the stage’s menu handing out the cards');
   await page.keyboard.press('Escape');
   await openMenu(page).waitFor({ state: 'detached' });
-  // A click on the question while the cards are handed out never puts the answer on stream: it asks first, as the blue
-  // button does (copied by hand here: ⏱ Start the clock first, and 📋 for each card). Card names only.
+  // Card 1 was 📋 copied (for Bob, who gets it): its 📋 shows ✓. A click on the question while a card to copy by hand
+  // isn't copied yet never puts the answer on stream: the status line says to copy it first (names only), the box's 📋
+  // flash, and the clock doesn't start.
+  assert((await panel.locator('[data-card="1"] [data-copied]').count()) === 1 && (await panel.locator('[data-card="2"] [data-copied]').count()) === 0, '📋 copied: Card 1’s 📋 shows ✓, Card 2’s not');
+  const note = page.locator('.panel .status [data-click-note]');
   await stage('[data-slide="1"]').click();
+  await note.filter({ hasText: 'Copy the card to Cat first (📋 in the 🤝 box), then click again to start the clock' }).waitFor();
+  assert(
+    (await stage('[data-slide="answer"]').count()) === 0 && (await stage('.timer').count()) === 0 && (await goOnCheck(page).count()) === 0 && !(await page.locator('.toast', { hasText: 'Copy the card' }).count()),
+    'a click on the stage with a card to copy by hand says, in the status line, to copy it to Cat first: the answer stays hidden, no clock starts',
+  );
+  await noCards(page, 'the status line’s note while handing out the cards');
+  // N asks first, as the blue button does: ⏱ Start the clock, and 📋 for each card (Card 1’s ticked). Card names only.
+  await page.keyboard.press('n');
   await checkItem(page, 'handout').waitFor();
   assert(
-    (await checkItem(page, 'handout').innerText()).includes('copy each to its player, then start the clock') && (await quick(page, '⏱ Start the clock (45 s)').count()) === 1 && (await quick(page, '📋 Copy Card 1’s words').count()) === 1,
-    `a click on the stage while handing out the cards asks first: copy them, then ⏱ Start the clock (${(await checkItem(page, 'handout').innerText()).replace(/\s+/g, ' ')})`,
+    (await checkItem(page, 'handout').innerText()).includes('copy each to its player, then start the clock') &&
+      (await quick(page, '⏱ Start the clock (45 s)').count()) === 1 &&
+      (await quick(page, '📋 Copy Card 1’s words ✓').count()) === 1 &&
+      (await quick(page, '📋 Copy Card 2’s words').count()) === 1,
+    `N while handing out the cards asks first: copy them (Card 1’s ticked), then ⏱ Start the clock (${(await checkItem(page, 'handout').innerText()).replace(/\s+/g, ' ')})`,
   );
   await noCards(page, 'the check while handing out the cards');
   assert((await stage('[data-slide="answer"]').count()) === 0 && (await flowIs(page, '👁 Reveal answer')), 'and the question stays up');
   await page.keyboard.press('Escape');
   await goOnCheck(page).waitFor({ state: 'detached' });
+  // Card 2 copied at the box's foot: the first line says the clock is next, and a click on the stage starts it, the
+  // status line saying so with ↶ Undo, which takes it back.
+  await panel.locator('[data-partner-foot]').getByRole('button', { name: 'Copy Card 2’s words' }).click();
+  await panel.locator('[data-partner-next]', { hasText: 'Next: ⏱ Start the clock (the cards are copied)' }).waitFor();
+  await stage('[data-slide="1"]').click();
+  await stage('.timer').waitFor();
+  await note.filter({ hasText: 'Clock started' }).waitFor();
+  assert((await stage('[data-slide="answer"]').count()) === 0 && (await flowIs(page, '👁 Reveal answer')), 'each card copied: a click on the stage starts the clock (“Clock started” in the status line), the answer still hidden');
+  await note.getByRole('button', { name: '↶ Undo' }).click();
+  await stage('.timer').waitFor({ state: 'detached' });
+  assert((await stepButton(panel, '⏱ Start the clock (45 s)').count()) === 1, 'its ↶ Undo takes the clock back: the cards are handed out again');
 
   // ---------- ⏱ Start the clock ----------
   await page.keyboard.press('u');
@@ -454,7 +488,9 @@ try {
   await page.keyboard.press('Enter');
   await aud.locator('.wheel').waitFor({ state: 'detached' });
   await page.waitForFunction(() => document.querySelector('.panel [data-next]')?.textContent.includes('Show question ▶'));
-  await page.keyboard.press('Enter');
+  // (The pair set, a click on the host's copy of PARTNER UP! is Show question ▶: the question goes up on stream.)
+  await page.waitForTimeout(500);
+  await page.locator('.stage-box [data-partner-up]').click();
   await aud.locator('[data-partner-badge]').waitFor();
   assert((await info.innerText()).includes('Card 1 → Cat (describer)'), 'the host column says who gets each card');
   await noCards(aud, 'audience: the question');

@@ -972,6 +972,22 @@ try {
         ddOut.length === 0 && wagerRow.line && wagerRow.last.startsWith('True Daily Double') && !wagerRow.steps && ddSeen && keys && ddH === onBoard,
         `${at}: a Daily Double's box opens at its top (heading, names${count === 4 ? ', Wager row' : ''} in sight), the keys in its Wager box, its Wager row one line ending with True Daily Double, the blue Show question ▶ in sight and not greyed, the stage the board's size (${JSON.stringify({ ddOut, wagerRow, ddSeen, keys, ddH, onBoard })})`,
       );
+      // A click on the splash with no wager typed: the status line says so over its own start (nothing in the line moves),
+      // the stage keeps its size, and the keys stay in the Wager box. (Past the double-click guard of the tile's click.)
+      const lineH = async () => Math.round((await pb.locator('.panel .status').boundingBox()).height);
+      const lineWas = await lineH();
+      await pb.waitForTimeout(500);
+      await pb.locator('.stage-box .dd-text').click();
+      const note = pb.locator('.panel .status [data-click-note]');
+      await note.waitFor();
+      const noteIn = await note.evaluate((n) => {
+        const [r, s] = [n.getBoundingClientRect(), n.parentElement.getBoundingClientRect()];
+        return r.top >= s.top - 1 && r.bottom <= s.bottom + 1 && r.left >= s.left - 1 && r.right <= s.right + 1;
+      });
+      assert(
+        (await stageH()) === onBoard && (await lineH()) === lineWas && noteIn && (await pb.evaluate(() => document.activeElement?.matches('.panel .dd input[type=number]'))),
+        `${at}: a click on the Daily Double's splash says what's missing in the status line, inside it, its height and the stage's size kept, the keys still in the Wager box (${await note.innerText()})`,
+      );
       await pb.keyboard.type('100');
       await mainButton(pb, 'Show question ▶').dblclick();
       await pb.waitForFunction(() => document.querySelector('.panel .status')?.textContent?.includes('DD'));

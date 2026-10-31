@@ -189,10 +189,12 @@ try {
   assert(await until(async () => (await big('Cat')) === 'BUZZ!' && (await big('Dan')) === 'BUZZ!'), 'Cat’s and Dan’s phones light up: BUZZ!');
   assert((await small('Ann')).includes('had your go') && (await small('Bob')).includes('had your go'), 'Ann’s and Bob’s phones say they’ve had their go on this one');
   await host.screenshot({ path: 'test-results/partner-steal-open.png' });
-  // A click on the stage while the steal is on leaves the answer hidden (and the steal open): it says how it goes on.
+  // A click on the stage while the steal is on leaves the answer hidden (and the steal open): it says how it goes on, in
+  // the status line.
   const answerUp = host.locator('.stage-box [data-slide="answer"]');
   await host.locator('.stage-box [data-slide="1"]').click();
-  assert(await toast('🔔 A steal: whoever buzzes in first answers'), 'a click on the stage during the steal says how the steal goes on');
+  await host.locator('.panel .status [data-click-note]', { hasText: '🔔 A steal: whoever buzzes in first answers' }).waitFor();
+  assert(true, 'a click on the stage during the steal says how the steal goes on, in the status line');
   assert((await answerUp.count()) === 0 && (await stealRow.innerText()).includes('🔔 Steal!'), 'and the answer stays hidden, the steal still open');
 
   // ---------- Cat buzzes in and steals it ----------

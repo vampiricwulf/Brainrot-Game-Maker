@@ -184,15 +184,21 @@ try {
   await page.keyboard.press('Shift+Enter');
   sc = await scores();
   assert(sc.Cat === '$0' && sc.Ann === '−$400', 'nor does Shift+Enter');
-  // No clock running (no cards): a click on the stage asks first, ⏱ Start the clock its fix, and leaves the answer hidden.
-  await stage('[data-slide="1"]').click();
+  // No clock running (no cards): N asks first, ⏱ Start the clock its fix; a click on the stage starts it, as ⏱ Start the
+  // clock does (the status line says so), and leaves the answer hidden.
+  await page.keyboard.press('n');
   await checkItem(page, 'handout').waitFor();
   assert(
     (await checkItem(page, 'handout').innerText()).includes('The clock hasn’t started: they haven’t played yet.') && (await stage('[data-slide="answer"]').count()) === 0,
-    'no clock: a click on the stage asks first (the clock hasn’t started), and leaves the answer hidden',
+    'no clock: N asks first (the clock hasn’t started), and leaves the answer hidden',
   );
   await page.keyboard.press('Escape');
   await goOnCheck(page).waitFor({ state: 'detached' });
+  await wait(1100);
+  await stage('[data-slide="1"]').click();
+  await stage('.timer').waitFor();
+  await page.locator('.panel .status [data-click-note]', { hasText: 'Clock started' }).waitFor();
+  assert((await stage('[data-slide="answer"]').count()) === 0 && (await panel.locator('[data-judged]').count()) === 0, 'no clock: a click on the stage starts it (“Clock started” in the status line), and leaves the answer hidden');
   await wait(1100);
   await page.keyboard.press('Enter');
   await panel.locator('[data-judged]').waitFor();

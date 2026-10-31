@@ -57,7 +57,8 @@ const TODAY = {
     'A partner clue, its card to a phone': { keys: 0, clicks: 8, typed: 0 },
     'A partner clue with no cards, the partner picked by hand': { keys: 0, clicks: 6, typed: 0 },
     'The played-out board': { keys: 0, clicks: 1, typed: 0 },
-    'A slides round': { keys: 0, clicks: 3, typed: 0 },
+    // (U2's last slide: a click on the stage there says “click again”, and the second goes on.)
+    'A slides round': { keys: 0, clicks: 4, typed: 0 },
     'A board-game turn, then leaving the round': { keys: 0, clicks: 6, typed: 0 },
     'The Final': { keys: 0, clicks: 13, typed: 0 },
     'A tie at the end: the tiebreaker clue': { keys: 0, clicks: 5, typed: 0 },
@@ -70,6 +71,8 @@ const KEY_GUARD = 1100;
 const STAGE_GAP = 500;
 /** …and the round's Next round ▶ (a click, or N on a slides round's last slide) and its question's Yes as they come. */
 const NEW_ROW = 500;
+/** …and a "click again" on the stage (a slides round's last slide) a moment after the click that asked for it. */
+const CLICK_AGAIN = 700;
 
 // ---------- The game ----------
 let n = 0;
@@ -408,6 +411,9 @@ async function show(how) {
   } else {
     await stageClick('its second slide', pips('Slide 2 of 3'));
     await stageClick('its last slide', pips('Slide 3 of 3'));
+    // (On the last slide a click says so first, in the status line; the next one goes on.)
+    await stageClick('“Last slide: click again”', async () => (await host.locator('.panel .status [data-click-note]', { hasText: 'Last slide: click again' }).count()) === 1);
+    await sleep(CLICK_AGAIN);
     await stageClick('the board game’s title card', titleCard);
   }
 

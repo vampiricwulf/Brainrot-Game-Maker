@@ -158,10 +158,17 @@ try {
   assert((await goTo.locator('option:checked').innerText()).includes('Introduction'), 'Keep playing puts the keys back on Go to round, on this round');
   // (Not in the first moments of a round: a double-click's second half doesn't jump ahead.)
   await page.waitForTimeout(500);
-  // A click on the stage does what it says too.
+  // A click on the stage on the last slide says so first (leaving the round is on stream), in the status line; the next
+  // click goes on.
+  await stage.locator('[data-slide="2"]').click();
+  const note = page.locator('.panel .status [data-click-note]');
+  await note.filter({ hasText: 'Last slide: click again (or Next round ▶) to go on' }).waitFor();
+  assert((await stage.locator('[data-slide="2"]').count()) === 1, 'on the last slide a click on the stage says “Last slide: click again (or Next round ▶) to go on”, and the slide stays');
+  // (A double-click is one click: the second click counts a moment after the first.)
+  await page.waitForTimeout(700);
   await stage.locator('[data-slide="2"]').click();
   await stage.locator('.board, .round-name').first().waitFor();
-  assert(true, 'and then (a click on the stage, as N) goes on to the board');
+  assert(true, 'and the next click goes on to the board');
 
   // ---------- A Final, then a slides outro, then the tiebreaker ----------
   console.log('A Final with a slides outro after it, and the tiebreaker:');
