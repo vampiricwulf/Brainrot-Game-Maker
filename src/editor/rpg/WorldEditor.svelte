@@ -18,7 +18,7 @@
 <script lang="ts">
   import Tips from '../Tips.svelte';
   import { tick, untrack } from 'svelte';
-  import { showMenu, type MenuEntry } from '../../lib/menustate.svelte';
+  import { menuItem, menuOf, showMenu, type MenuItem, type MenuLine } from '../../lib/menustate.svelte';
   import { take } from '../../lib/nav.svelte';
   import Stage from '../../lib/Stage.svelte';
   import SlideView from '../../lib/slide/SlideView.svelte';
@@ -194,15 +194,16 @@
   };
 
   function mapMenu(e: MouseEvent, m: WorldMap, i: number): void {
-    showMenu(e, [
-      { heading: m.name },
-      { label: '✎ Rename', onclick: () => (renaming = m.id), keys: 'F2 or double-click' },
-      { label: '⧉ Duplicate map', onclick: () => copyMap(m), keys: 'Ctrl+D' },
-      { label: '◀ Move earlier', onclick: () => moveMap(i, i - 1), disabled: i === 0, keys: 'Alt+←' },
-      { label: '▶ Move later', onclick: () => moveMap(i, i + 1), disabled: i === world.maps.length - 1, keys: 'Alt+→' },
-      { sep: true },
-      { label: '🗑 Delete map', danger: true, onclick: () => removeMap(m), disabled: world.maps.length <= 1, keys: 'Delete' },
-    ]);
+    showMenu(
+      e,
+      menuOf({
+        heading: m.name,
+        rename: menuItem.rename(() => (renaming = m.id), { keys: 'F2 or double-click' }),
+        duplicate: menuItem.duplicate(() => copyMap(m), { label: '⧉ Duplicate map' }),
+        move: [menuItem.left(() => moveMap(i, i - 1), { disabled: i === 0 }), menuItem.right(() => moveMap(i, i + 1), { disabled: i === world.maps.length - 1 })],
+        delete: menuItem.delete('map', () => removeMap(m), { disabled: world.maps.length <= 1 }),
+      }),
+    );
   }
 
   const focusMapTab = (id: string | undefined) => void tick().then(() => id && document.querySelector<HTMLElement>(`[data-map-tab="${id}"]`)?.focus());
@@ -436,50 +437,89 @@
     selIds = selIds.filter((id) => map.screens.some((s) => s.id === id));
   }
 
-  function lineItems(c: number, r: number): MenuEntry[] {
+  /** The column's and the row's own groups in a cell's menu: insert beside them, or delete them (and what's in them). */
+  function lineGroups(c: number, r: number): MenuLine[] {
     return [
-      { sep: true },
-      { label: '＋ Insert column left', onclick: () => insert('col', c), disabled: map.cols >= MAX_GRID },
-      { label: '＋ Insert column right', onclick: () => insert('col', c + 1), disabled: map.cols >= MAX_GRID },
-      { label: '＋ Insert row above', onclick: () => insert('row', r), disabled: map.rows >= MAX_GRID },
-      { label: '＋ Insert row below', onclick: () => insert('row', r + 1), disabled: map.rows >= MAX_GRID },
-      { label: `🗑 Delete column ${colName(c)}`, onclick: () => removeLine('col', c), disabled: map.cols <= 1 },
-      { label: `🗑 Delete row ${r + 1}`, onclick: () => removeLine('row', r), disabled: map.rows <= 1 },
+      {
+        heading: `Column ${colName(c)}`,
+        insert: [
+          { label: '＋ Insert left', onclick: () => insert('col', c), disabled: map.cols >= MAX_GRID },
+          { label: '＋ Insert right', onclick: () => insert('col', c + 1), disabled: map.cols >= MAX_GRID },
+        ],
+        delete: menuItem.delete(`column ${colName(c)}`, () => removeLine('col', c), { disabled: map.cols <= 1, keys: false }),
+      },
+      {
+        heading: `Row ${r + 1}`,
+        insert: [
+          { label: '＋ Insert above', onclick: () => insert('row', r), disabled: map.rows >= MAX_GRID },
+          { label: '＋ Insert below', onclick: () => insert('row', r + 1), disabled: map.rows >= MAX_GRID },
+        ],
+        delete: menuItem.delete(`row ${r + 1}`, () => removeLine('row', r), { disabled: map.rows <= 1, keys: false }),
+      },
+    ];
+  }
+
+  /** ◀ ▶ ▲ ▼ a cell on the grid (Alt+arrows): greyed where one of them would go off the map. */
+  function nudgeItems(list: Screen[]): MenuItem[] {
+    const can = (dc: number, dr: number) => list.every((x) => x.col + dc >= 0 && x.col + dc < map.cols && x.row + dr >= 0 && x.row + dr < map.rows);
+    const go = (dc: number, dr: number) => () => nudge(list, dc, dr);
+    return [
+      menuItem.left(go(-1, 0), { disabled: !can(-1, 0) }),
+      menuItem.right(go(1, 0), { disabled: !can(1, 0) }),
+      menuItem.up(go(0, -1), { disabled: !can(0, -1) }),
+      menuItem.down(go(0, 1), { disabled: !can(0, 1) }),
     ];
   }
 
   function screenMenu(e: MouseEvent, s: Screen): void {
     if (!selIds.includes(s.id)) selectOnly(s);
     const several = picked.length > 1 ? picked : null;
+    const list = several ?? [s];
     const others = world.maps.filter((m) => m.id !== map.id);
-    showMenu(e, [
-      { heading: several ? `${several.length} screens` : s.name },
-      ...(several
-        ? [{ label: '⧉ Duplicate them', onclick: () => duplicateScreens(several), keys: 'Ctrl+D' }]
-        : [
-            { label: '✎ Edit screen', onclick: () => ((lookId = null), (editing = true)), keys: 'Enter' },
-            { label: '⧉ Duplicate', onclick: () => duplicateScreens([s]), keys: 'Ctrl+D' },
-            { label: '📋 Copy screen', onclick: () => copyToClipboard(s), keys: 'Ctrl+C' },
-            ...(onstart ? [{ label: '🏁 Make it the start', onclick: () => onstart({ map: map.id, screen: s.id }), disabled: isStart(s) }] : []),
-            { label: '＋ Add look (a copy)', onclick: () => addLook(s) },
-          ]),
-      ...(others.length ? [{ sep: true } as const] : []),
-      ...others.map((m) => ({ label: `→ Move to ${m.name}`, onclick: () => moveAcross(several ?? [s], map, m) })),
-      ...(several ? [] : others.map((m) => ({ label: `⧉ Copy to ${m.name}`, onclick: () => copyAcross(s, m) }))),
-      ...lineItems(s.col, s.row),
-      { sep: true },
-      { label: several ? `🗑 Delete ${several.length} screens` : '🗑 Delete screen', danger: true, onclick: () => removeScreens(several ?? [s]), keys: 'Delete' },
-    ]);
+    const pasteItem = menuItem.paste(() => paste(), { label: clipboard.screen ? `📋 Paste “${clipboard.screen.name}”` : '📋 Paste screen', disabled: !clipboard.screen });
+    showMenu(
+      e,
+      menuOf(
+        several
+          ? {
+              heading: `${several.length} screens`,
+              duplicate: menuItem.duplicate(() => duplicateScreens(several), { label: '⧉ Duplicate them' }),
+              paste: pasteItem,
+              move: [...nudgeItems(several), ...others.map((m) => ({ label: `→ Move to ${m.name}`, onclick: () => moveAcross(several, map, m) }))],
+              lines: lineGroups(s.col, s.row),
+              delete: menuItem.delete(`${several.length} screens`, () => removeScreens(several)),
+            }
+          : {
+              heading: s.name,
+              open: [menuItem.edit(() => ((lookId = null), (editing = true)), { label: '✎ Edit screen' })],
+              verbs: onstart ? [{ label: '🏁 Make it the start', onclick: () => onstart({ map: map.id, screen: s.id }), disabled: isStart(s) }] : [],
+              rename: menuItem.rename(() => {
+                nameField?.focus();
+                nameField?.select();
+              }),
+              duplicate: menuItem.duplicate(() => duplicateScreens(list)),
+              copy: menuItem.copy(() => copyToClipboard(s), { label: '📋 Copy screen' }),
+              paste: pasteItem,
+              move: [...nudgeItems(list), ...others.map((m) => ({ label: `→ Move to ${m.name}`, onclick: () => moveAcross(list, map, m) }))],
+              extras: [{ label: '＋ Add look (a copy)', onclick: () => addLook(s) }, ...others.map((m) => ({ label: `⧉ Copy to ${m.name}`, onclick: () => copyAcross(s, m) }))],
+              lines: lineGroups(s.col, s.row),
+              delete: menuItem.delete('screen', () => removeScreens(list)),
+            },
+      ),
+    );
   }
 
   function emptyMenu(e: MouseEvent, c: number, r: number): void {
     cursor = [c, r];
-    showMenu(e, [
-      { label: '＋ Add a screen here', onclick: () => addScreen(c, r) },
-      { label: clipboard.screen ? `📋 Paste “${clipboard.screen.name}” here` : '📋 Paste screen here', onclick: () => paste([c, r]), disabled: !clipboard.screen, keys: 'Ctrl+V' },
-      ...(sel ? [{ label: `⇄ Move ${sel.name} here`, onclick: () => moveOnGrid([sel], c - sel.col, r - sel.row) }] : []),
-      ...lineItems(c, r),
-    ]);
+    showMenu(
+      e,
+      menuOf({
+        verbs: [{ label: '＋ Add a screen here', onclick: () => addScreen(c, r) }],
+        paste: menuItem.paste(() => paste([c, r]), { label: clipboard.screen ? `📋 Paste “${clipboard.screen.name}” here` : '📋 Paste screen here', disabled: !clipboard.screen }),
+        extras: sel ? [{ label: `⇄ Move ${sel.name} here`, onclick: () => moveOnGrid([sel], c - sel.col, r - sel.row) }] : [],
+        lines: lineGroups(c, r),
+      }),
+    );
   }
 
   // ---------- Walls and warps ----------
@@ -547,16 +587,20 @@
 
   function lookMenu(e: MouseEvent, s: Screen, v: ScreenVariant, i: number): void {
     const n = s.variants?.length ?? 0;
-    showMenu(e, [
-      { heading: v.name },
-      { label: '✎ Edit this look', onclick: () => ((lookId = v.id), (editing = true)) },
-      { label: '⧉ Duplicate this look', onclick: () => step(`Duplicated look “${v.name}” of ${s.name}`, () => duplicateLook(s, v)) },
-      { label: '⇄ Make it the main look', onclick: () => step(`Made “${v.name}” the main look of ${s.name}`, () => makeMainLook(s, v, world)), hint: 'Its own picture takes its place' },
-      { label: '◀ Move earlier', onclick: () => step(`Moved look “${v.name}” earlier`, () => moveLook(s, i, i - 1)), disabled: i === 0 },
-      { label: '▶ Move later', onclick: () => step(`Moved look “${v.name}” later`, () => moveLook(s, i, i + 1)), disabled: i === n - 1 },
-      { sep: true },
-      { label: '🗑 Delete', danger: true, onclick: () => removeLook(s, v) },
-    ]);
+    showMenu(
+      e,
+      menuOf({
+        heading: v.name,
+        open: [{ label: '✎ Edit this look', onclick: () => ((lookId = v.id), (editing = true)) }],
+        verbs: [{ label: '⇄ Make it the main look', onclick: () => step(`Made “${v.name}” the main look of ${s.name}`, () => makeMainLook(s, v, world)), hint: 'Its own picture takes its place' }],
+        duplicate: menuItem.duplicate(() => step(`Duplicated look “${v.name}” of ${s.name}`, () => duplicateLook(s, v)), { label: '⧉ Duplicate this look', keys: false }),
+        move: [
+          menuItem.left(() => step(`Moved look “${v.name}” earlier`, () => moveLook(s, i, i - 1)), { disabled: i === 0, keys: false }),
+          menuItem.right(() => step(`Moved look “${v.name}” later`, () => moveLook(s, i, i + 1)), { disabled: i === n - 1, keys: false }),
+        ],
+        delete: menuItem.delete('look', () => removeLook(s, v), { keys: false }),
+      }),
+    );
   }
 
   // Looks drag to reorder by their grip.
