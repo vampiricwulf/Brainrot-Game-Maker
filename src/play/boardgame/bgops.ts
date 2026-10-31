@@ -1,7 +1,7 @@
 // The board-game host's moves, shared by the host panel, the stage and the keyboard shortcuts. Every change is one
 // undoable step.
 import { describeAction, runAction } from '../../lib/actions';
-import { clampSteps, currentPlayer, moveInOrder, movePlayer, moverPreset, moverWheelNoNumbers, nextTurn, sendTo, spaceById, spaceSaid, spaceShown, stepsIn } from '../../lib/boardgame';
+import { clampSteps, currentPlayer, moveInOrder, movePlayer, moverPreset, moverWheelNoNumbers, nextTurn, sendTo, spaceById, spaceSaid, spaceShown, stepsIn, unrevealed } from '../../lib/boardgame';
 import { isBoardGame, type Action, type BoardGameRound, type BoardGameState, type BoardSpace, type BoardZone, type Game, type Session } from '../../lib/model';
 import { nameList, stepOf } from '../../lib/session';
 import { logged } from '../../lib/toolset';
@@ -98,6 +98,15 @@ export function spaceActText(game: Game, bs: BoardGameState, s: BoardSpace, a: A
   return [`${s.name}: ${describeAction(game, a, on, teams)}`, `${spaceSaid(bs, s, true)}: ${describeAction(game, a, on, teams, bs)}`];
 }
 
+/**
+ * A space's landing or passing buttons the host panel shows: in one window (`hide`: viewers see the panel), a secret
+ * space not revealed yet keeps its 📝 notes back until 👁 Reveal space, as its name and its notes field (they're the
+ * host's own words).
+ */
+export function actsShown(bs: BoardGameState, s: BoardSpace, list: Action[] | undefined, hide: boolean): Action[] {
+  return hide && unrevealed(bs, s) ? (list ?? []).filter((a) => a.do !== 'note') : (list ?? []);
+}
+
 /** Reveal a secret space to viewers, as one step (its quiet text doesn't name it: an Undo hides it again). */
 export function revealSpace(session: Session, bs: BoardGameState, s: BoardSpace): void {
   if (bs.revealed?.includes(s.id)) return;
@@ -146,14 +155,19 @@ export function runSpace(game: Game, session: Session, live: Live, space: BoardS
   let said: string[] = [];
   const ctx = { game, session, live, board: round, bs, hide, selected: who, chosen: who, teams: buzzerOn(game.settings) && teamsOn(game.settings), offerCard: offerIn(session, at) };
   const on = which === 'onPass' ? 'pass' : 'land';
-  // (Its step says it both ways: one window shows the quiet one, whichever window ran it.)
-  const [text, quiet] = [false, true].map((h) => `${spaceSaid(bs, space, h)}: ${run.map((a) => describeAction(game, a, on, ctx.teams, h ? bs : undefined)).join(', ')}`);
+  // (Its step says it both ways: one window shows the quiet one, whichever window ran it. Neither that nor what one
+  // window tells the host says a 📝 note of a secret space not revealed yet: see actsShown.)
+  const [text, quiet] = [false, true].map((h) => `${spaceSaid(bs, space, h)}: ${actsShown(bs, space, run, h).map((a) => describeAction(game, a, on, ctx.teams, h ? bs : undefined)).join(', ')}`);
   const go = () =>
     logged(
       session,
       text,
       () => {
-        said = run.map((a) => runAction(ctx, a, ...spaceActText(game, bs, space, a, on, ctx.teams)));
+        const shown = actsShown(bs, space, run, hide);
+        said = run.flatMap((a) => {
+          const r = runAction(ctx, a, ...spaceActText(game, bs, space, a, on, ctx.teams));
+          return shown.includes(a) ? [r] : [];
+        });
       },
       undefined,
       quiet,

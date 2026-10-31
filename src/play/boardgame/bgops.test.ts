@@ -9,7 +9,7 @@ import { forgetGameParts, redoAction, stepText, undoAction } from '../../lib/too
 import { runAction, type CardOffer } from '../../lib/actions';
 import { PLAYER_WHEEL, textSlide, type Action } from '../../lib/model';
 import { prefs } from '../../lib/prefs.svelte';
-import { landingRan, moveCounts, moveNow, moverResult, moverSliceNoNumber, moverSliceWords, offBoard, reorderTurns, revealSpace, rollMover, runLanding, runSpace, sendNow, setTurn, spaceActText, stepWaysHint, turnNow } from './bgops';
+import { actsShown, landingRan, moveCounts, moveNow, moverResult, moverSliceNoNumber, moverSliceWords, offBoard, reorderTurns, revealSpace, rollMover, runLanding, runSpace, sendNow, setTurn, spaceActText, stepWaysHint, turnNow } from './bgops';
 import { describeStep, undo } from '../../lib/session';
 import { openPlayerWheel, quickDice, rollDice, toggleScoreboard } from '../../lib/overlay';
 
@@ -244,6 +244,29 @@ describe('board game: the host’s moves on the stage', () => {
     sendNow(game, session, ['a', 'b', 'c'], { space: s5.id });
     expect(runSpace(game, session, newLive(), s5, ['c'])).toBe('Space 5: Send to Trap Door: Cat');
     expect(sendNow(game, session, ['a'], { space: trap.id })).toBe('Ann → Trap Door');
+  });
+
+  it('one window: a secret space’s 📝 note waits for 👁 Reveal space, on its buttons, in the toast of ▶ Run (the check’s too) and in the log', () => {
+    const { game, session, round, bs } = playing();
+    const trap = Object.assign(round.spaces[2], {
+      name: 'Trap Door',
+      secret: true,
+      onLand: [{ id: 'p', do: 'score', amount: -100, who: 'party' }, { id: 'n', do: 'note', text: 'Trap door! They fall to the Dungeon' }] as Action[],
+    });
+    expect(actsShown(bs(), trap, trap.onLand, true).map((a) => a.do)).toEqual(['score']);
+    // (Two windows: viewers don't see the panel.)
+    expect(actsShown(bs(), trap, trap.onLand, false).map((a) => a.do)).toEqual(['score', 'note']);
+    sendNow(game, session, ['a'], { space: trap.id });
+    expect(runSpace(game, session, newLive(), trap, ['a'], 'onLand', true)).toBe('? (secret): −$100: Ann');
+    const ran = session.actionLog!.at(-1)!;
+    expect([stepText(ran, false), stepText(ran, true)]).toEqual(['Trap Door: −$100, 📝 Trap door! They fall to the Dungeon', '? (secret): −$100']);
+    // Two windows: the host reads it.
+    expect(runSpace(game, session, newLive(), trap, ['a'])).toBe('Trap Door: −$100: Ann · Trap door! They fall to the Dungeon');
+    expect(stepText(session.actionLog!.at(-1)!, true)).toBe('? (secret): −$100');
+    // Revealed: its note shows, as its name does.
+    revealSpace(session, bs(), trap);
+    expect(actsShown(bs(), trap, trap.onLand, true).map((a) => a.do)).toEqual(['score', 'note']);
+    expect(runSpace(game, session, newLive(), trap, ['a'], 'onLand', true)).toBe('Trap Door: −$100: Ann · Trap door! They fall to the Dungeon');
   });
 
   it('a step, points or a card offer made with the audience window open still say “? (secret)” once one window is left', () => {

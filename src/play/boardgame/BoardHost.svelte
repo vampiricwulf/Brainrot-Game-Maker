@@ -20,7 +20,7 @@
   import { lastAction, logged, stepText } from '../../lib/toolset';
   import { overlayDoneAt, toolOverlay } from '../../lib/live';
   import PlayerCard, { cardsShown, playerCards } from '../rpg/PlayerCard.svelte';
-  import { boardNow, busyZones, isMover, landingRan, moveNow, moverDiceName, offBoard, playerName, reorderTurns, revealSpace, rollMover, runLanding, sendNow, setTurn, spaceActText, turnOrder } from './bgops';
+  import { actsShown, boardNow, busyZones, isMover, landingRan, moveNow, moverDiceName, offBoard, playerName, reorderTurns, revealSpace, rollMover, runLanding, sendNow, setTurn, spaceActText, turnOrder } from './bgops';
   import SpaceCard from './SpaceCard.svelte';
   import { START_FIRST } from '../rpg/hostops';
   import { offerMenu, step as nextStep, type NextAction } from '../host/slots.svelte';
@@ -534,17 +534,19 @@
         <div class="row acts" data-landing {@attach (el) => (void last, el.scrollIntoView({ block: 'nearest' }))}>
           {#each passed as s (s.id)}
             <span class="muted small">Passed {shown(s.id)}:</span>
-            {#each s.onPass ?? [] as a (a.id)}<button class="small" onclick={() => run(s, a, last.playerId, 'pass')}>{actText(a, 'pass')}</button>{/each}
+            {#each actsShown(bs, s, s.onPass, !dual) as a (a.id)}<button class="small" onclick={() => run(s, a, last.playerId, 'pass')}>{actText(a, 'pass')}</button>{/each}
           {/each}
           {#if landed}
             <!-- Landing on a space counts as passing it too (landing on Start still pays), unless sent back onto it
                  (passed on the way there this turn, it's still owed). -->
-            {@const passOn = last.back && !last.passed.includes(landed.id) ? [] : (landed.onPass ?? [])}
+            {@const passOn = last.back && !last.passed.includes(landed.id) ? [] : actsShown(bs, landed, landed.onPass, !dual)}
+            <!-- (One window: a secret space's 📝 notes wait for 👁 Reveal space, as its name does: actsShown.) -->
+            {@const landOn = actsShown(bs, landed, landed.onLand, !dual)}
             <span class="small"
-              >Landed on <b>{shown(landed.id)}</b>{!dual && unrevealed(bs, landed) ? ' (secret)' : ''}{passOn.length ? ' (counts as passing)' : ''}{landed.onLand?.length || passOn.length ? ':' : '.'}</span
+              >Landed on <b>{shown(landed.id)}</b>{!dual && unrevealed(bs, landed) ? ' (secret)' : ''}{passOn.length ? ' (counts as passing)' : ''}{landOn.length || passOn.length ? ':' : '.'}</span
             >
             {#each passOn as a (a.id)}<button class="small" onclick={() => run(landed, a, last.playerId, 'pass')}>{actText(a, 'pass')}</button>{/each}
-            {#each landed.onLand ?? [] as a (a.id)}<button class="small" onclick={() => run(landed, a, last.playerId, 'land')}>{actText(a, 'land')}</button>{/each}
+            {#each landOn as a (a.id)}<button class="small" onclick={() => run(landed, a, last.playerId, 'land')}>{actText(a, 'land')}</button>{/each}
             {#if unrevealed(bs, landed)}<button class="small ghost" onclick={() => reveal(landed)}>👁 Reveal space</button>{/if}
             <!-- (One window: a secret space's note waits for 👁 Reveal space, as its name does.) -->
             {#if landed.hostNotes && !dual && !unrevealed(bs, landed)}<span class="notes">📝 {landed.hostNotes}</span>{/if}

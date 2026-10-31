@@ -37,7 +37,8 @@ const board = {
     sp('b4', 'Nap time', 1400, 300, ['b5']),
     // A question worth 100, and a secret space with a button.
     sp('b5', 'Space 5', 1400, 700, ['b6'], { onLand: [{ id: 'q1', do: 'question', question: words('Capital of France?'), answer: words('Paris'), value: 100 }] }),
-    sp('b6', 'Trap Door', 650, 700, ['b1'], { secret: true, hostNotes: 'lava pit, they lose 100', onLand: [{ id: 'a1', do: 'score', amount: 100, who: 'party' }] }),
+    // (Its 📝 Host note button is the host's own words too: in one window it waits for 👁 Reveal space, as its notes do.)
+    sp('b6', 'Trap Door', 650, 700, ['b1'], { secret: true, hostNotes: 'lava pit, they lose 100', onLand: [{ id: 'a1', do: 'score', amount: 100, who: 'party' }, { id: 'n1', do: 'note', text: 'they fall to the Dungeon' }] }),
   ],
   mover: { kind: 'dice', dice: 'd6' },
   zones: [],
@@ -319,8 +320,12 @@ try {
   const moved = await acts.filter({ hasText: 'Landed on ?' }).waitFor({ timeout: 5000 }).then(() => true, () => false);
   assert(moved, `Bob's turn: Enter moves him (${(await page.locator('.toast').allInnerTexts()).join(' | ') || 'nothing moved'})`);
   assert(
-    (await toast()) === 'Bob: Landed on ? (secret)' && (await acts.innerText()).includes('Landed on ? (secret):') && !(await acts.innerText()).includes('Trap Door') && !(await acts.innerText()).includes('lava pit'),
-    `landing on the secret space: “? (secret)” in the toast and the panel, and not its note (${(await acts.innerText()).replace(/\s+/g, ' ')})`,
+    (await toast()) === 'Bob: Landed on ? (secret)' &&
+      (await acts.innerText()).includes('Landed on ? (secret):') &&
+      !(await acts.innerText()).includes('Trap Door') &&
+      !(await acts.innerText()).includes('lava pit') &&
+      !(await acts.innerText()).includes('Dungeon'),
+    `landing on the secret space: “? (secret)” in the toast and the panel, and neither its note nor its 📝 button (${(await acts.innerText()).replace(/\s+/g, ' ')})`,
   );
   await page.locator('.stage-box .ov').waitFor({ state: 'detached' });
   // N with its button not pressed: the check asks first, saying “?” too, never its name or note (one window: on stream).
@@ -328,7 +333,7 @@ try {
   await landed(page);
   const asked = await goOnCheck(page).innerText();
   assert(
-    asked.includes('Bob landed on ?: its actions haven’t run (+$100 to Bob).') && asked.includes('▶ Run its actions ▶ next turn') && !asked.includes('Trap Door') && !asked.includes('lava pit'),
+    asked.includes('Bob landed on ?: its actions haven’t run (+$100 to Bob).') && asked.includes('▶ Run its actions ▶ next turn') && !asked.includes('Trap Door') && !asked.includes('lava pit') && !asked.includes('Dungeon'),
     `one window: the check before Next turn ▶ says “?” for the secret space, never its name or note (${asked.replace(/\s+/g, ' ')})`,
   );
   await page.keyboard.press('Escape');
@@ -349,8 +354,8 @@ try {
   await secretCard.waitFor();
   const cardText = await secretCard.innerText();
   assert(
-    (await secretCard.getAttribute('aria-label')) === 'Space: ? (secret)' && !cardText.includes('Trap Door') && !cardText.includes('lava pit'),
-    `its card says “?” too, without its name or note (${cardText.replace(/\s+/g, ' ')})`,
+    (await secretCard.getAttribute('aria-label')) === 'Space: ? (secret)' && !cardText.includes('Trap Door') && !cardText.includes('lava pit') && !cardText.includes('Dungeon'),
+    `its card says “?” too, without its name, its note or its 📝 button (${cardText.replace(/\s+/g, ' ')})`,
   );
   await secretCard.getByRole('button', { name: 'Close' }).click();
   await secretCard.waitFor({ state: 'detached' });
@@ -363,7 +368,10 @@ try {
   await page.keyboard.press('Escape');
   await spaceMenu.waitFor({ state: 'detached' });
   await acts.getByRole('button', { name: '👁 Reveal space' }).click();
-  assert((await acts.innerText()).includes('Landed on Trap Door:') && (await acts.innerText()).includes('📝 lava pit'), 'revealed: the panel names it, and shows its note');
+  assert(
+    (await acts.innerText()).includes('Landed on Trap Door:') && (await acts.innerText()).includes('📝 lava pit') && (await acts.getByRole('button', { name: '📝 they fall to the Dungeon' }).count()) === 1,
+    'revealed: the panel names it, and shows its note and its 📝 button',
+  );
   await acts.getByRole('button', { name: '+$100' }).click();
   assert((await toast()) === 'Trap Door: +$100: Ann', `and its button says whose it is: “${await toast()}”`);
   // Its landing run (its button): N goes on, asking nothing. Bob's turn not played: Shift+click, back to Ann.

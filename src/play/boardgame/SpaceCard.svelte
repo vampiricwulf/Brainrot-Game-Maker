@@ -12,7 +12,7 @@
   import type { Action, BoardGameRound, BoardGameState, BoardSpace, Game, Session } from '../../lib/model';
   import { spaceSaid, spaceShown } from '../../lib/boardgame';
   import { nameList } from '../../lib/session';
-  import { decidingAction, playerName, revealSpace, runLanding, runSpace, sendNow, spaceActText } from './bgops';
+  import { actsShown, decidingAction, playerName, revealSpace, runLanding, runSpace, sendNow, spaceActText } from './bgops';
   import { offerIn } from '../host/offered.svelte';
 
   let {
@@ -49,6 +49,9 @@
   const isStart = $derived((round.start ?? round.spaces[0]?.id) === space.id);
   /** Each player is a team (phone buzzers with Teams): the 🎯 wheel is "Pick a team". */
   const teams = $derived(buzzerOn(game.settings) && teamsOn(game.settings));
+  /** Its buttons (one window: a secret space's 📝 notes wait for 👁 Reveal to viewers, as its notes field does). */
+  const land = $derived(actsShown(bs, space, space.onLand, !dual));
+  const pass = $derived(actsShown(bs, space, space.onPass, !dual));
   /** A button's words (a Send to a secret space says “?” in one window, as on the landing row). */
   const actText = (a: Action, on: 'land' | 'pass') => describeAction(game, a, on, teams, dual ? undefined : bs);
 
@@ -84,21 +87,21 @@
       <span class="muted small">nobody</span>
     {/each}
   </div>
-  {#if space.onLand?.length}
+  {#if land.length}
     <div class="row">
       <span class="muted small">Landing on it{who.length ? ` (${whoNames})` : ''}:</span>
-      {#each space.onLand as a (a.id)}<button class="small" onclick={() => run(a, 'land')}>{actText(a, 'land')}</button>{/each}
-      {#if space.onLand.length > 1}
-        <button class="small" onclick={() => toast(runSpace(game, session, app.live, space, who, 'onLand', !dual), 3000)} title={space.onLand.some(decidingAction) ? 'Its roll (or spin, or question) first: then press the outcome it comes to' : 'Every landing action, in order'}
-          >▶ {space.onLand.some(decidingAction) ? 'Start' : 'Run all'}</button
+      {#each land as a (a.id)}<button class="small" onclick={() => run(a, 'land')}>{actText(a, 'land')}</button>{/each}
+      {#if land.length > 1}
+        <button class="small" onclick={() => toast(runSpace(game, session, app.live, space, who, 'onLand', !dual), 3000)} title={land.some(decidingAction) ? 'Its roll (or spin, or question) first: then press the outcome it comes to' : 'Every landing action, in order'}
+          >▶ {land.some(decidingAction) ? 'Start' : 'Run all'}</button
         >
       {/if}
     </div>
   {/if}
-  {#if space.onPass?.length}
+  {#if pass.length}
     <div class="row">
       <span class="muted small">Passing it:</span>
-      {#each space.onPass as a (a.id)}<button class="small" onclick={() => run(a, 'pass')}>{actText(a, 'pass')}</button>{/each}
+      {#each pass as a (a.id)}<button class="small" onclick={() => run(a, 'pass')}>{actText(a, 'pass')}</button>{/each}
     </div>
   {/if}
   {#if !space.onLand?.length && !space.onPass?.length}<span class="muted small">No buttons on this space.</span>{/if}

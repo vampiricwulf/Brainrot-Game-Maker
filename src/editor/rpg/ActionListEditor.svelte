@@ -468,7 +468,7 @@
           <span class="small muted">Next turn comes back to them</span>
           {@render who(a, 'party')}
         {:else if a.do === 'note'}
-          <input bind:value={a.text} placeholder="A reminder for you (never on stream)" aria-label="Note" />
+          <input bind:value={a.text} placeholder="A reminder for you (off stream, except in a single window)" aria-label="Note" />
         {/if}
       </div>
     </div>
