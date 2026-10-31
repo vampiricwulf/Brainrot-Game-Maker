@@ -947,6 +947,8 @@
   }
 
   function award(sign: 1 | -1, ids = selected, amt = amount, picker = true): void {
+    // (The tiebreaker: its Who won? row says who to pick.)
+    if (!ids.length && session.phase === 'tiebreaker' && !amt) return hint('Who won? Click their 🏆, or press their number then Enter');
     if (!ids.length) return hint(`Select a ${pregameTeams ? 'team' : 'player'} first (press 1–${Math.min(9, session.players.length) || 9} or click a name)`);
     // The tiebreaker settles the tie, with or without points (its Amount starts at 0).
     if (!amt && session.phase === 'tiebreaker') return tiebreakWin(sign, ids);

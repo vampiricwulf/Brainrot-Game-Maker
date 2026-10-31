@@ -1477,7 +1477,7 @@
             <!-- (It folds the row back: ± Adjust score.) -->
             <button class="ghost" onclick={() => (adjust = false)} title="Fold the Amount row back (± Adjust score opens it)">✕ Close</button>
           {:else if !toolOnly && !buzzing}
-            <!-- (The tiebreaker takes one of the tied players.) -->
+            <!-- (In the tiebreaker this row is for points: its 🏆 row settles the tie.) -->
             {@const pickHint =
               session.phase === 'tiebreaker'
                 ? `Pick who gets them (1–${Math.min(9, session.players.length) || 9})`
