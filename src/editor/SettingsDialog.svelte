@@ -6,7 +6,9 @@
   import { DEFAULT_PREFS, prefs, savePrefs, UNDO_STEPS } from '../lib/prefs.svelte';
   import { DEFAULT_BUZZER_URL, testServer } from '../lib/remote.svelte';
   import { BUZZER_GUIDE, externalLink } from '../lib/sitelinks';
-  import { onMount } from 'svelte';
+  import { toast } from '../lib/app.svelte';
+  import InlineAsk from '../play/host/InlineAsk.svelte';
+  import { onMount, tick } from 'svelte';
 
   /** `at`: the section it opens at (the pre-game screen's ⚙ Set up phone buzzers… opens it at the phone buzzers). */
   let { onclose, at }: { onclose: () => void; at?: 'buzzer' } = $props();
@@ -29,6 +31,25 @@
     // (As kept: with its https://.)
     server = prefs.buzzerServer;
   }
+  /** Back to the defaults asks first, in the foot (it can't be undone, and it forgets a typed buzzer server). */
+  let resetting = $state(false);
+  let resetBtn = $state<HTMLButtonElement>();
+  function resetAll(): void {
+    // Only what this dialog shows: how games are shown on ▶ Play and the ✅ Before you start card's On stream tips are chosen there.
+    Object.assign(prefs, { ...DEFAULT_PREFS, display: prefs.display, liveChecklist: prefs.liveChecklist });
+    // (A Test of the address before is about another server now.)
+    tested = '';
+    savePrefs();
+    server = prefs.buzzerServer;
+    keepLimits();
+    toast('Every setting here is back to its default');
+    askDone();
+  }
+  /** The question goes, and the keys go back to Back to the defaults. */
+  function askDone(): void {
+    resetting = false;
+    void tick().then(() => resetBtn?.focus());
+  }
   /** Esc closes it with a box still focused (no change event then), so whatever was typed is kept here too. */
   function close(): void {
     prefs.buzzerServer = server;
@@ -38,7 +59,8 @@
   }
 </script>
 
-<svelte:window onkeydown={(e) => e.key === 'Escape' && close()} />
+<!-- (Esc while Back to the defaults asks: Not now, the window stays.) -->
+<svelte:window onkeydown={(e) => e.key === 'Escape' && (resetting ? askDone() : close())} />
 
 <div class="modal-backdrop" role="presentation" onclick={(e) => e.target === e.currentTarget && close()}>
   <div class="modal" role="dialog" aria-modal="true" aria-label="Settings" use:modal data-undo="off">
@@ -151,18 +173,21 @@
     </p>
 
     <div class="modal-foot">
-      <button
-        class="ghost"
-        onclick={() => {
-          // Only what this dialog shows: how games are shown on ▶ Play and the ✅ Before you start card's On stream tips are chosen there.
-          Object.assign(prefs, { ...DEFAULT_PREFS, display: prefs.display, liveChecklist: prefs.liveChecklist });
-          // (A Test of the address before is about another server now.)
-          tested = '';
-          savePrefs();
-          server = prefs.buzzerServer;
-          keepLimits();
-        }}>Back to the defaults</button
-      >
+      <!-- At the far left, apart from Done; it asks in its place first (Cancel has the keys). -->
+      {#if resetting}
+        <div class="reset-ask">
+          <InlineAsk
+            text="Put every setting here back? The buzzer server goes back to the built-in one."
+            ok="Put them back"
+            danger
+            focusCancel
+            onok={resetAll}
+            oncancel={askDone}
+          />
+        </div>
+      {:else}
+        <button class="ghost" bind:this={resetBtn} onclick={() => (resetting = true)} title="Asks first">Back to the defaults…</button>
+      {/if}
       <span class="spacer"></span>
       <button class="primary" onclick={close}>Done</button>
     </div>
@@ -184,6 +209,11 @@
     width: 70px;
   }
   .url {
+    flex: 1;
+    min-width: 0;
+  }
+  /* (The question takes the foot's free room, and wraps there.) */
+  .reset-ask {
     flex: 1;
     min-width: 0;
   }

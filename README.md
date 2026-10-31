@@ -779,6 +779,8 @@ spun yet, `Enter` says to spin first (`W`, or `D` for dice).
   - **Buzzer server**: where phone buzzer rooms are made, with a **Test** button (the release builds come with one).
     An exported HTML file keeps the server it was exported with. Its **How to set up your own** link opens
     [Set up your own buzzer server](#set-up-your-own-buzzer-server).
+  - **Back to the defaults…**, at the window's foot, asks first ("Put every setting here back? The buzzer server goes
+    back to the built-in one."), with Cancel first and **Put them back**: it can't be undone.
 
 ## Set up your own buzzer server
 
