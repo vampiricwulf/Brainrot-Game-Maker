@@ -677,6 +677,8 @@
         <span class="muted small">Tip: click the screen to continue</span>
       {:else if session.finalStep === 'wagers' && !wagersOk}
         <span class="muted small">{waitingOn}</span>
+      {:else if session.finalStep === 'wagers' && f?.players.length}
+        <span class="muted small" data-wagers-in>✓ {f.players.length === 1 ? 'The wager is in' : `All ${f.players.length} wagers in`}</span>
       {:else if session.finalStep === 'reveal'}
         {#if armed}
           <span class="armed">Everyone is judged: press N again (or the button) to {after ? 'go on' : 'finish'}.</span>

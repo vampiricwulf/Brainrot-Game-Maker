@@ -214,15 +214,30 @@ in the board editor) counts once: its second click does nothing on the new scree
 the picker once. On ▶ Play, a double-click on the game's title (or `F2`) renames it.
 
 Click a tile to open its clue, then reveal the answer with `R` or a click (a double-click is one step: it never also
-shows the answer, or goes back to the board and opens another tile; on a 🤝 partner clue a click before the pair has
-had their go, judged or out of time asks first, in the check below, and during a steal says how it goes on, while `R`
-shows it any time). A clue can have several question slides (a
+shows the answer, or goes back to the board and opens another tile; on a 🤝 partner clue a click never shows the answer
+before the pair has had their go, judged or out of time, and during a steal says how it goes on, while `R` shows it any
+time). A clue can have several question slides (a
 lead-in, then more: **＋ Add slide** in the clue editor): the main button goes **Next slide ▶** (`N`, `Shift+N` back)
 through them first, and the audience window shows the slide you're on. Select players and **＋ Award** (`Enter`, green,
 never the blue button) or **− Deduct** (`Shift+Enter`); on the board the Amount row stays folded behind **± Adjust score** until a player is
 selected (pick them with `1`–`9`, then `Enter` takes the keys to the Amount box: type the points, then `Enter`, and the
 keys are back on the tile). In a 🤝 partner clue, where ✔ Got it / ✘ Missed give the points, it folds behind **± Other
 points…**, and opens by itself once you pick a player (`1`–`9`) or give points by hand on the clue.
+
+**A click on the stage** runs the show for a host who drives from it. Where it's the blue button's step (the round's
+intro, the next slide, the answer, back to the board), it asks first when something's left, as the blue button does;
+where it's what the stage shows, it does it (a wheel spins, dice roll, a board game's landed dice move the token, a
+pop-up shows its answer). On PARTNER UP! (its "?" too) it's Show question ▶, asking first for who picked it and the
+partner. On a Daily Double's splash it's its Show question ▶ for the wager typed; with who found it or the wager missing
+the status line says so, and the keys stay in the Wager box. On the Final's wagers it never shows the question: it says
+who it waits on (“Waiting on Bob's phone & Cat…”), or “All wagers in: Show question ▶ (N)”, and the box says “✓ All 3
+wagers in”. On the spotlit player's card it's Show answer ▶, Show wager ▶, then Next player ▶ (never a verdict: with
+one due it asks for it). While a 🤝 partner clue's cards are handed out it starts the clock when there's nothing to send
+to phones (the status line says “Clock started” with **↶ Undo** for a few seconds), asks first while cards wait for a
+phone, and with a card to copy by hand not 📋 copied yet says “Copy the card to Bob first (📋 in the 🤝 box), then click
+again to start the clock”. A slides round's last slide and finishing the Final take a second click (“Last slide: click
+again (or Next round ▶) to go on”); `N` and the blue button go at once. What a click says shows in the status line at
+the top of the panel; with the controls hidden, the moment's menu opens where you clicked, under it.
 
 The host panel keeps one layout in every round: the status line (with the 📱 phones and ⏱ timer chips and **↩ Put back
 (keep tile)** on the right), the players' score chips, the row of what this moment needs, and at its right the one

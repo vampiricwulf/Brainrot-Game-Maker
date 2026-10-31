@@ -78,6 +78,7 @@ describe('a click on the stage', () => {
     ['the Final’s question: its answer, through the check', { phase: 'final', step: step('finalreveal', 'Reveal answer ▶', true) }, { do: 'go' }],
     ['the Final’s answer: Start player reveals ▶', { on: 'final-next', phase: 'final', step: step('reveals', 'Start player reveals ▶') }, { do: 'go' }],
     ['the spotlit player’s card: Show answer ▶ / Show wager ▶ / Next player ▶', { on: 'spotlight', phase: 'final', step: step('spot', 'Show wager ▶') }, { do: 'go' }],
+    ['the spotlit player’s wager not typed: the keys go to it', { on: 'spotlight', phase: 'final', step: step('spot', 'Show wager ▶'), wagerWait: 'Bob has no wager yet' }, { do: 'say', say: 'Bob has no wager yet', flash: 'wagers' }],
     ['their verdict due: the check asks for it (a click never judges)', { on: 'spotlight', phase: 'final', step: step('spot', 'Next player ▶', true) }, { do: 'go' }],
     ['the last one’s verdict due: the check too', { on: 'spotlight', phase: 'final', step: step('finish', 'Finish game ▶', true) }, { do: 'go' }],
     ['everyone judged: finishing takes a second click', { on: 'spotlight', phase: 'final', step: step('finish', 'Finish game ▶') }, { do: 'say', say: CLICK.finish('Finish game ▶'), arm: true }],

@@ -561,8 +561,18 @@
   {/if}
 {:else if session.phase === 'clue' && info}
   {#if session.dd?.stage === 'splash'}
-    <!-- The background fills the stage at once; only what's on it spins in (no black corners). -->
-    <div class="full dd" style:--splash-1={splash.dd[0]} style:--splash-2={splash.dd[1]}>
+    <!-- The background fills the stage at once; only what's on it spins in (no black corners). The host's click on it is
+         its Show question ▶ (who found it and the wager missing: the status line says so), and never takes the keys out of
+         the Wager box. -->
+    <div
+      class="full dd"
+      class:clickable={!!onact}
+      style:--splash-1={splash.dd[0]}
+      style:--splash-2={splash.dd[1]}
+      onmousedown={(e) => onact && e.preventDefault()}
+      onclick={() => act('dd')}
+      role="presentation"
+    >
       <div class="dd-in" in:scale|global={{ start: 0.05, duration: 700 }}>
         <div class="dd-text">DAILY<br />DOUBLE!</div>
         {#if ddPlayer}
@@ -573,7 +583,16 @@
   {:else if pt?.stage === 'pick'}
     <!-- 🤝 PARTNER UP!: who picked it, and a "?" until the wheel (or the host) chooses their partner; then the two
          plates come together. -->
-    <div class="full partner-up" data-partner-up style:--splash-1={splash.partner[0]} style:--splash-2={splash.partner[1]}>
+    <!-- (The host's click on it, its "?" too: Show question ▶, asking first for who picked it and the partner.) -->
+    <div
+      class="full partner-up"
+      class:clickable={!!onact}
+      data-partner-up
+      style:--splash-1={splash.partner[0]}
+      style:--splash-2={splash.partner[1]}
+      onclick={() => act('partnerup')}
+      role="presentation"
+    >
       <div class="pu-in" in:scale|global={{ start: 0.05, duration: 700 }}>
         <div class="pu-text">PARTNER<br />UP!</div>
         {@render pairPlates(true)}
@@ -650,11 +669,14 @@
   {/if}
 {:else if session.phase === 'final'}
   {#key session.finalStep}
+    <!-- The host's clicks: on the wagers, who they wait on (never the question; the keys stay in the wager box); the
+         question's next slide or answer; the reveals starting; the spotlit player's card, their next step. -->
     <div
       class="full"
-      class:clickable={!!onact && session.finalStep !== 'wagers' && session.finalStep !== 'reveal'}
+      class:clickable={!!onact && session.finalStep !== 'reveal'}
+      onmousedown={(e) => onact && session.finalStep === 'wagers' && e.preventDefault()}
       onclick={() =>
-        session.finalStep === 'question' ? act('reveal') : session.finalStep === 'answer' ? act('final-next') : undefined}
+        session.finalStep === 'wagers' ? act('wagers') : session.finalStep === 'question' ? act('reveal') : session.finalStep === 'answer' ? act('final-next') : undefined}
       role="presentation"
       in:fade|global={{ duration: 400 }}
     >
@@ -677,7 +699,7 @@
       {:else if session.finalStep === 'answer'}
         {#if finalRound}<div class="slide-area" style:scale={fit?.scale} style:transform-origin={fit && `50% ${fit.originY}px`}><SlideView slide={finalRound.answerSlide} {role} /></div>{/if}
       {:else if session.finalStep === 'reveal'}
-        <div class="reveal">
+        <div class="reveal" class:clickable={!!onact && !!spotlight} onclick={() => spotlight && act('spotlight')} role="presentation">
           <div class="final-label small">{finalLabel}</div>
           {#if spotlight && session.final}
             {@const f = session.final}

@@ -71,7 +71,7 @@ export type ClickNow = {
   partner: PartnerClick | null;
   /** A Daily Double's splash: what's still to type before its question (goon.ts ddWaits), null: it can go. */
   ddWait: string | null;
-  /** The Final's wagers: what's still to type (goon.ts finalWaits), null: all in. */
+  /** The Final's wagers (or the spotlit player's, at Show wager ▶): what's still to type (goon.ts finalWaits), null: all in. */
   wagerWait: string | null;
   over: OverClick | null;
 };
@@ -127,6 +127,8 @@ export function stageClick(c: ClickNow): Click {
       // The spotlit player's card: Show answer ▶, Show wager ▶, Next player ▶ (a verdict due: the check asks for it).
       // Never judges. With everyone judged, finishing takes a second click, as N takes a second N.
       if (st?.id === 'finish' && !st.left && !c.armed) return { do: 'say', say: CLICK.finish(st.label), arm: true };
+      // (Their wager not typed yet, at Show wager ▶: the keys go to it, as N's do.)
+      if (st?.id === 'spot' && c.wagerWait) return { do: 'say', say: c.wagerWait, flash: 'wagers' };
       return st?.id === 'spot' || st?.id === 'finish' ? GO : NONE;
     case 'reveal':
       return revealClick(c);

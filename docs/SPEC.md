@@ -469,9 +469,19 @@ The mode isn't saved with the game: it's dual while the audience window is open.
      left, an RPG round, the end screen, ✎ Edit board), except for **Next ▶** while something is over the stage. Nothing
      else in the panel is blue but a pop-up the host opened (🎲 Dice…, 🤫 Send a card…, 🎭 Deal…) and a question asked
      in the strip.
-  3. **A click on the stage does the moment's safe step.** Where that's the blue button's step it goes through the check
-     (`goOn('stage')`), so a click never loses anything; where it's what the stage itself shows, the click does it (a
-     wheel spins, landed dice move the token). While the check is open a click on the stage only flashes it.
+  3. **A click on the stage does the moment's safe step** (`src/lib/stageclick.ts`, a table of unit tests). Where
+     that's the blue button's step it goes through the check (`goOn('stage')`), so a click never loses anything:
+     PARTNER UP! (Show question ▶), a Daily Double's splash (its question; who found it or the wager missing, the status
+     line says so and the keys stay in the Wager box: the click never takes them), the spotlit Final player's card
+     (Show answer ▶, Show wager ▶, Next player ▶; never a verdict). Where it's what the stage itself shows, the click
+     does it: a title card, a wheel spins, dice roll, landed board-game dice move the token, a pop-up's answer, and a
+     partner clue's clock while its cards are handed out with none for a phone (the status line: “Clock started” with
+     ↶ Undo a few seconds, which takes it back while nothing has happened since). Where no Next is involved it only
+     says what to do: the Final's wagers (who it waits on, never the question), a card to copy by hand not 📋 copied
+     yet, a click within a second of a partner clue's question. A slides round's last slide and finishing the Final
+     take a second click (“click again”, counted from 0.6 s on); a double-click is one click. The words show in the
+     status line's start, over it (nothing in the line moves); with the controls hidden they head the moment's menu at
+     the pointer. While the check is open a click on the stage only flashes it.
 - **The host panel** has one layout in every round: the status line (📱 phones and ⏱ timer chips), the players' score
   chips, the row of what this moment needs with the one main button (and its key) at its right, the tools with the
   round navigation, then a fixed bar (Undo, Redo, Sound · Log, Players, Rules · Cover, Hide · Audience, ▭ · ❔ Help,

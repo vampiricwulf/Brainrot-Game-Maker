@@ -1,7 +1,7 @@
 <script lang="ts">
   import { focusRescue, rescuing } from '../lib/focusrescue';
   import { modal, takeFocus } from '../lib/modal';
-  import { app, hint, sceneFrom, toast } from '../lib/app.svelte';
+  import { app, hint, sceneFrom, toast, toastMs } from '../lib/app.svelte';
   import { prefs, savePrefs } from '../lib/prefs.svelte';
   import { commit, history, redo as redoStep, step, undo as undoStep } from '../lib/history.svelte';
   import { createFieldTracker, isTextField, undoKeyOf } from '../lib/undokeys';
@@ -108,6 +108,7 @@
   import { clone, randomizePartnerTiles } from '../lib/ops';
   import type { ActionEvent, Clue, ClueCard, Dir8, FinalRound, Game, GameSettings, MediaRef, Player, ScoreEvent, SentCard, Session } from '../lib/model';
   import type { Pop } from '../lib/live';
+  import { CLICK, CLICK_AGAIN_MS, stageClick, type Click, type ClickAct, type ClickNow } from '../lib/stageclick';
   import {
     audience,
     audienceTitle,
@@ -2068,49 +2069,175 @@
     lastStageAct = now;
     pick(ref);
   }
+  /**
+   * A click on the stage (the host's copy of it): what it does now is stageclick.ts's to say, from the moment: the blue
+   * button's step through the check, the stage's own job at once (a wheel spins, landed dice move the token, a partner
+   * clue's clock starts), or words for the status line ("Last slide: click again…").
+   */
   function stageAct(a: StageAction): void {
     const now = Date.now();
     if (now - lastStageAct < 450) return;
     lastStageAct = now;
-    // (Where the blue button has the step the click does, it goes through the check: a click never loses anything.)
+    doClick(a, stageClick(clickNow(a)));
+    if (session.phase === 'board' && !session.intro) boardBackAt = now;
+  }
+
+  /** A click that said "click again": the moment it's for (that click goes on), and when. */
+  let clickAgain: { key: string; at: number } | null = null;
+  const againKey = (on: StageAction): string => `${on}|${momentNow}|${partner?.stage ?? ''}`;
+
+  /** What a click on the stage reads of the moment (names and counts only: see stageclick.ts). */
+  function clickNow(on: StageAction): ClickNow {
+    const st = mainNow;
+    const p = partner;
+    const t = app.live.timer;
+    const o = app.live.overlay;
+    const left = partnerNow?.copy.filter((k) => k.what && !k.copied) ?? [];
+    return {
+      on,
+      phase: session.phase,
+      step: st ? { id: st.id, label: st.verb.label, left: leftMain.length > 0 } : null,
+      armed: !!clickAgain && clickAgain.key === againKey(on) && Date.now() - clickAgain.at >= CLICK_AGAIN_MS,
+      revealed: answerShowing(session),
+      partner:
+        p && p.stage !== 'pick'
+          ? {
+              stage: p.stage,
+              judged: partnerJudged,
+              steal: partnerJudged && stealOpen() && !t?.expired ? stealHint() : null,
+              soon: Date.now() - partnerShownAt < KEY_GUARD_MS,
+              send: unsentCards().length > 0,
+              copyFor: [...new Set(left.flatMap((k) => k.to))].map((id) => playerName(session, id)),
+              copyCards: left.length,
+              clock: !t ? 'none' : t.expired ? 'out' : 'up',
+              cards: !!info && cardSlides(info.clue).length > 0,
+            }
+          : null,
+      ddWait: session.phase === 'clue' && session.dd?.stage === 'splash' ? (ddWaits(go)?.say ?? null) : null,
+      wagerWait: session.phase === 'final' ? (finalWaits(go)?.say ?? null) : null,
+      over: o
+        ? {
+            busy: Date.now() < overlayDoneAt(o),
+            shop: o.kind === 'shop',
+            popupHidden: o.kind === 'popup' && !!o.answer && !o.revealed,
+            wheel: o.kind === 'wheel' && !o.spin ? (wheelSpentUp(o, session, game) ? 'spent' : 'fresh') : null,
+            diceFresh: o.kind === 'dice' && !o.roll,
+            mover: session.phase === 'boardgame' && boardMover(o),
+          }
+        : null,
+    };
+  }
+
+  /** What a click on the stage does (`byKey`: N with the controls hidden, as a click: its words go in a toast). */
+  function doClick(on: StageAction, r: Click, byKey = false): void {
+    if (r.do !== 'say' || !r.arm) clickAgain = null;
+    if (r.do === 'go') return void goOn('stage', mainNow);
+    if (r.do === 'act') return clickAct(r.act);
+    if (r.do !== 'say') return;
+    if (r.arm) clickAgain = { key: againKey(on), at: Date.now() };
+    // (What it points at flashes once; a Daily Double's keys go to its Wager box, as N's do: the click doesn't take them.)
+    if (r.flash === 'dd') {
+      const w = ddWaits(go);
+      flashTo('.play .panel [data-dd] input[type=number]', w?.at === 'names' ? '.play .panel [data-dd-names]' : undefined);
+    } else if (r.flash === 'wagers') {
+      // (The wagers: the keys stay in the box they're in. The reveals: they go to the spotlit one's wager, as N's do.)
+      const w = finalWaits(go);
+      if (w && session.finalStep === 'reveal') flashTo(w.at, w.row);
+      else if (w) flashBox(w.row);
+    } else if (r.flash === 'copy') flashBox('.play .panel [data-partner-foot] .end');
+    if (byKey) hint(r.say);
+    else clickSay(r.say);
+  }
+
+  /** The stage's own job, done by a click. */
+  function clickAct(a: ClickAct): void {
+    const o = app.live.overlay;
     switch (a) {
       case 'intro':
-        if (mainNow?.id === 'intro') goOn('stage', mainNow);
-        else intro();
-        break;
+        return intro();
       case 'reveal':
-        // (A clue's next question slide first, then its answer. A slides round's last slide: what the main button says,
-        // Next round ▶.)
-        if (session.phase === 'slides') {
-          if (mainNow) goOn('stage', mainNow);
-        } else if (!answerShowing(session)) {
-          // (A 🤝 partner clue's steal goes by the buzzers, or the stealer's number then Enter: a click says how, as now.)
-          if (partnerJudged && stealOpen() && !app.live.timer?.expired) hint(`${stealHint()} · R shows the answer anyway`);
-          // (A 🤝 partner clue too: the cards not handed out or the pair still playing, it asks first. The Final's question
-          // and the tiebreaker's too: their next slide, then the answer.)
-          else if (mainNow?.id === 'slide' || mainNow?.id === 'reveal' || mainNow?.id === 'finalreveal') goOn('stage', mainNow);
-          // (A partner clue's answer only ever by the check: never before the pair has had their go.)
-          else if (!slideStep(1) && !partner) revealToggle();
-        }
-        break;
+        // (No blue button here: the next question slide, or the answer, as R does.)
+        if (!slideStep(1)) revealToggle();
+        return;
       case 'back':
-        if (session.phase !== 'clue') break;
-        if (mainNow?.id === 'done') goOn('stage', mainNow);
-        else back();
-        break;
-      case 'final-next':
-        // (The Final's answer up: Start player reveals ▶.)
-        if (mainNow) goOn('stage', mainNow);
-        break;
-      case 'overlay':
-        overlayPrimary();
-        break;
+        return back();
       case 'whowaswho':
         // (🎭 Who was who over the stage: a click takes it off, as 🙈 Hide does in 🎭 Deal…. Ctrl+Z puts it back.)
-        whoWasWhoOff();
-        break;
+        return whoWasWhoOff();
+      case 'clock':
+        return clockByClick();
+      case 'popreveal':
+        if (o?.kind === 'popup') {
+          o.revealed = true;
+          playCue(app.live, game, 'reveal');
+        }
+        return;
+      case 'spin':
+        return spinWheel(app.live, session, game);
+      case 'roll':
+        if (o?.kind === 'dice') rollDice(app.live, session, o.preset);
+        return;
+      case 'move':
+        // A board game's own dice (or movement wheel), landed: the token moves, with Enter's checks (a fork, a zone, the
+        // count typed over it). Esc still only puts them away.
+        if (!boardEnter()) closeOverlay();
+        return;
+      case 'close':
+        return closeOverlay();
     }
-    if (session.phase === 'board' && !session.intro) boardBackAt = now;
+  }
+
+  /**
+   * A click on the stage during a partner clue's hand-out with nothing to send (or a clue with no cards, its clock not
+   * started): the clock starts, as ⏱ Start the clock does, and the status line says so with ↶ Undo a few seconds, since a
+   * host who drives from the stage may not see it happen. That ↶ Undo takes the clock back while nothing has happened
+   * since (it isn't a step of the game's Undo).
+   */
+  function clockByClick(): void {
+    const s = partner;
+    if (!s) return;
+    const was = app.live.timer ? ($state.snapshot(app.live.timer) as TimerState) : null;
+    const stage = s.stage;
+    if (stage === 'live') clockKey(false);
+    else partnerClock();
+    const at = app.live.timer?.startedAt;
+    if (s.stage !== 'live' || !at) return;
+    clickSay(CLICK.clockOn, () => {
+      if (partner !== s || s.stage !== 'live' || partnerJudged || app.live.timer?.startedAt !== at) return;
+      app.live.timer = was;
+      s.stage = stage;
+      partnerClockAt = 0;
+      partnerLiveByT = false;
+      announce('Clock taken back: the cards are handed out again');
+    });
+  }
+
+  /**
+   * The status line's note for a click on the stage: what to do ("Copy the card to Bob first…"), or what it did with
+   * ↶ Undo. It goes after a few seconds, or once the moment changes. With the controls hidden there's no status line:
+   * a click that did nothing opens the moment's menu at the pointer, the note at its top.
+   */
+  let clickNote = $state<{ text: string; undo?: () => void; key: string; n: number } | null>(null);
+  let clickNotes = 0;
+  const noteKey = (): string => `${momentNow}|${partner?.stage ?? ''}`;
+  function clickSay(text: string, undo?: () => void): void {
+    if (hideControls) {
+      if (!undo) clickMenu(text);
+      return;
+    }
+    const n = ++clickNotes;
+    clickNote = { text, ...(undo ? { undo } : {}), key: noteKey(), n };
+    announce(text);
+    setTimeout(() => clickNote?.n === n && (clickNote = null), undo ? 6000 : toastMs(text));
+  }
+  $effect(() => {
+    const k = noteKey();
+    untrack(() => clickNote && clickNote.key !== k && (clickNote = null));
+  });
+  /** The controls hidden: the moment's menu where the stage was clicked, under what the click would have said. */
+  function clickMenu(text: string): void {
+    if (!stagePt) return hint(text);
+    showMenu(new MouseEvent('contextmenu', { clientX: stagePt.x, clientY: stagePt.y }), [{ heading: text }, ...stageMenuOf({ ...momentMenu(), main: mainItem() }, [], standingItems())]);
   }
 
   /**
@@ -2126,31 +2253,12 @@
   }
 
   /**
-   * Clicking a tool overlay: spin/roll if it hasn't happened yet, a pop-up's answer, otherwise close it once it's
-   * finished, as the blue button's step (through the check: a score effect not given, a wheel on "Spin again").
+   * A click on what's over the stage (or N with the controls hidden, as a click): spin or roll it if that hasn't happened
+   * yet, a pop-up's answer, otherwise the blue button's step that puts it away (through the check: a score effect not
+   * given, a wheel on "Spin again"); a board game's landed dice move the token.
    */
-  function overlayPrimary(): void {
-    const o = app.live.overlay;
-    if (!o) return;
-    const busy = Date.now() < overlayDoneAt(o);
-    if (busy) return;
-    // A shop stays open until 🚪 Leave shop (its wares are clicked to buy).
-    if (o.kind === 'shop') return;
-    if (o.kind === 'popup' && o.answer && !o.revealed) {
-      o.revealed = true;
-      playCue(app.live, game, 'reveal');
-    }
-    else if (o.kind === 'wheel' && !o.spin) {
-      if (wheelSpentUp(o, session, game)) toast('Every slice has landed: Restore them to spin again');
-      else spinWheel(app.live, session, game);
-    } else if (o.kind === 'dice' && !o.roll) rollDice(app.live, session, o.preset);
-    // (The blue button's step: Next ▶, Show question ▶ or ▦ Done ▶ board, through the check.)
-    else if (mainNow?.id === 'close' || mainNow?.id === 'tool') goOn('stage', mainNow);
-    // A board game's own dice (or movement wheel), landed: the token moves, with Enter's checks (a fork, a zone, the
-    // count typed over it). Esc still only puts them away.
-    else if (session.phase === 'boardgame' && boardMover(o)) {
-      if (!boardEnter()) closeOverlay();
-    } else closeOverlay();
+  function overlayPrimary(byKey = false): void {
+    doClick('overlay', stageClick(clickNow('overlay')), byKey);
   }
 
   /**
@@ -5768,7 +5876,7 @@
     // button (a tile's own tool: Show question ▶ or ▦ Done ▶ board; a pop-up: 👁 Reveal answer, then Next ▶; else Next ▶),
     // through the check. With the controls hidden, as a click on it: spin or roll first, then that step.
     if (!e.shiftKey && (mainNow?.id === 'tool' || mainNow?.id === 'popreveal')) {
-      if (hideControls) overlayPrimary();
+      if (hideControls) overlayPrimary(true);
       else goOn('n', mainNow);
       return;
     }
@@ -6443,6 +6551,7 @@
         bind:boxMenu
         {markSince}
         goon={goPanel}
+        clicknote={clickNote}
         tieNames={tie.length ? nameList(tie.map((id) => playerName(session, id))) : ''}
         onrolltie={rollTie}
         {phonesDown}

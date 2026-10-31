@@ -73,6 +73,10 @@ export const hostKeys = (playerOnly: boolean): KeyGroup[] => [
       ['Shift+N', 'One step back: the slide before, the turn before, the player before (never asks)'],
       ['Shift+click on the blue button', 'Its step at once, without asking (what must be done first still asks: who picked a partner clue, the partner, the spotlit Final player’s verdict)'],
       [
+        'Click the stage',
+        'The blue button’s step, asking first as N does (PARTNER UP!, a Daily Double’s splash, the spotlit Final player’s card too), or what the stage shows: a title card, a wheel spins, dice roll (a board game’s landed dice move the token), a pop-up’s answer, a partner clue’s clock with no card for a phone. Where it can’t, the status line says what to do: the Final’s wagers, a card to copy first, and the last slide or finishing the Final take a second click',
+      ],
+      [
         'Enter',
         'Next only on a round’s title card and categories, in a slides round (with the keys on the blue button), on PARTNER UP! before the question, and in a Daily Double’s or the Final’s wager box. Elsewhere it does its box’s job: ＋ Award, ✔ Got it, 📤 Send and start, ✔ Judge all, ▶ Move',
       ],
@@ -133,7 +137,7 @@ export const hostKeys = (playerOnly: boolean): KeyGroup[] => [
   {
     title: 'Slides round',
     keys: [
-      ['N (or click the stage)', 'The next slide; after the last one, N goes on to the next round'],
+      ['N (or click the stage)', 'The next slide; after the last one, N goes on to the next round (a click on the stage there takes a second click)'],
       ['Shift+N', 'The slide before'],
     ],
   },

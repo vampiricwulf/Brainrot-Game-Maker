@@ -131,6 +131,7 @@
     boxMenu = $bindable(null),
     markSince = 0,
     goon = null,
+    clicknote = null,
   }: {
     game: Game;
     session: Session;
@@ -274,7 +275,21 @@
     markSince?: number;
     /** The blue button's step and the check before going on (Play's: see goon.ts). */
     goon?: GoPanel | null;
+    /**
+     * What a click on the stage says (what to do, or what it did, with ↶ Undo): the status line shows it a few seconds,
+     * over where it says where you are (Play's: see stageclick.ts).
+     */
+    clicknote?: { text: string; undo?: () => void } | null;
   } = $props();
+
+  /** The status line, and how much of it a click's note covers: its start, up to the spacer before its chips. */
+  let statusEl = $state<HTMLElement>();
+  let noteW = $state(0);
+  $effect(() => {
+    if (!clicknote || !statusEl) return;
+    const sp = statusEl.querySelector<HTMLElement>(':scope > .spacer');
+    noteW = sp ? Math.max(0, sp.offsetLeft + sp.offsetWidth) : 0;
+  });
 
   const info = $derived(currentClueInfo(session, game));
   const sym = $derived(game.settings.currencySymbol);
@@ -786,7 +801,14 @@
   onpointerdowncapture={(e) => goon?.check && e.target instanceof Element && !e.target.closest('[data-goon], .cover-toggle') && goon.away()}
 >
   <!-- What's going on, read out to screen readers as it changes (buttons and hints left out). Its chips on the right. -->
-  <div class="status row" use:announceChanges>
+  <div class="status row" use:announceChanges bind:this={statusEl}>
+    {#if clicknote}
+      <!-- Over the line's start, up to its chips and buttons, so nothing in the line moves and the one-window stage keeps
+           its size. (Read out by Play when it's said.) -->
+      <span class="clicknote" data-click-note data-quiet style:width={noteW ? `${noteW}px` : undefined} title={clicknote.text}
+        ><span class="nt">{clicknote.text}</span>{#if clicknote.undo}<button class="small ghost" onclick={clicknote.undo} title="Takes it back">↶ Undo</button>{/if}</span
+      >
+    {/if}
     {#if session.phase === 'board'}
       <b>{round?.name}</b>
       <!-- (Says where the intro is, and nothing about picking tiles once none are left.) -->
@@ -888,7 +910,7 @@
       <b>{round?.name}</b>
       {#if slidePos}<span class="slidepos" data-slidepos>Slide {slidePos.at} of {slidePos.of}</span>{/if}
       <span class="muted hint"
-        >{slidePos && slidePos.at < slidePos.of ? 'N (or a click on the stage) shows the next slide' : 'The last slide: N (or a click on the stage) goes on'} · Shift+N the one before</span
+        >{slidePos && slidePos.at < slidePos.of ? 'N (or a click on the stage) shows the next slide' : 'The last slide: N goes on (or two clicks on the stage)'} · Shift+N the one before</span
       >
       {#if round?.mode === 'slides' && round.hostNotes?.trim() && !dual}<span class="notes" title="Host notes (viewers can see them in this window): {round.hostNotes}">📝 {round.hostNotes}</span>{/if}
     {:else if session.phase === 'tiebreaker'}
@@ -1934,6 +1956,33 @@
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
+  }
+  /* What a click on the stage says: over the status line's start, up to its chips (measured as it shows), the line's own
+     words under it, so nothing in the line moves and the one-window stage keeps its size. */
+  .status {
+    position: relative;
+  }
+  .clicknote {
+    position: absolute;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    max-width: 100%;
+    z-index: 1;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: var(--panel);
+    font-weight: 600;
+  }
+  .clicknote .nt {
+    min-width: 0;
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+  }
+  .clicknote button {
+    flex-shrink: 0;
   }
   /* (A chip, never wrapping: the status line keeps one line.) */
   .viewers {

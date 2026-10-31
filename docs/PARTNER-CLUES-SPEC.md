@@ -649,10 +649,16 @@ place, is dropped. The blue button, 👁 Reveal answer, asks first while the car
   judged asks again. Nothing is focused by the app: Enter and Shift+Enter go through the clue's own handling,
   with its guard. The first line reads "Did they get it? ✔ Got it (Enter) or ✘ Missed (Shift+Enter)", and "Time's up:
   did they get it?" when the clock ends.
-- **A click on the stage** never shows the answer before the pair has had their go: it's the blue button's step, so it
-  opens the same check. In the Distribute step: "Card 1 hasn't gone to Cat's phone, and the clock hasn't started: they
-  haven't played yet" with 📤 Send and start ⏎ (copied by hand: ⏱ Start the clock and 📋 Copy). Once the cards are out,
-  until the clock runs out or the clue is judged: ✔ Got it / ✘ Missed ▶ reveal. While a steal is on (§8.3), until it's
+- **A click on the stage** never shows the answer before the pair has had their go. On PARTNER UP! it's the blue
+  button's Show question ▶, asking first for who picked it and the partner. In the Distribute step, with cards still
+  to go to phones it opens the check ("Card 1 hasn't gone to Cat's phone, and the clock hasn't started: they haven't
+  played yet" with 📤 Send and start ⏎): only 📤 or Enter sends a card. With a card to copy by hand not 📋 copied yet
+  (for who gets it now) the status line says "Copy the card to Bob first (📋 in the 🤝 box), then click again to start
+  the clock", and the box's 📋 flash; the next click (or once each is copied, the first) starts the clock, as ⏱ Start
+  the clock does, and the status line says "Clock started" with ↶ Undo for a few seconds (it takes the clock back
+  while nothing has happened since). A click within a second of the question says to click again. A clue with no
+  cards, its clock not started, starts it the same way. Once the cards are out, until the clock runs out or the clue
+  is judged: the check, ✔ Got it / ✘ Missed ▶ reveal. While a steal is on (§8.3), until it's
   stolen, everyone has missed it or the clock runs out, a click says how the steal goes on, as Enter does (the blue
   button asks first, offering who steals it). After that a click shows the answer, as on any clue. R shows it at any
   time, and in the check R or 👁 Reveal anyway.
