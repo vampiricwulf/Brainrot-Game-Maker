@@ -58,10 +58,11 @@
   function dieItems(d: Die, i: number): MenuEntry[] {
     return menuOf({
       heading: `Die ${i + 1} · ${d.count}d${d.sides}`,
-      duplicate: menuItem.duplicate(() => step(`Duplicated a die of “${preset.name}”`, () => preset.dice.splice(i + 1, 0, copyDie(d))), { label: '⧉ Duplicate die' }),
+      duplicate: menuItem.duplicate(() => dupDie(d, i), { label: '⧉ Duplicate die' }),
       delete: menuItem.delete('die', () => removeDie(i), { disabled: preset.dice.length <= 1, keys: false, hint: preset.dice.length <= 1 ? 'Dice need a die' : undefined }),
     });
   }
+  const dupDie = (d: Die, i: number) => step(`Duplicated a die of “${preset.name}”`, () => preset.dice.splice(i + 1, 0, copyDie(d)));
   // Done at once: the note at the bottom offers Undo.
   function removeDie(i: number): void {
     if (preset.dice.length > 1) step(`Deleted a die of “${preset.name}”`, () => preset.dice.splice(i, 1), { notify: true });
@@ -72,10 +73,11 @@
     const list = preset.totalOutcomes ?? [];
     return menuOf({
       heading: rangeName(t),
-      duplicate: menuItem.duplicate(() => step(`Duplicated ${rangeName(t).toLowerCase()} of “${preset.name}”`, () => list.splice(i + 1, 0, copyTotal(t))), { label: '⧉ Duplicate range' }),
+      duplicate: menuItem.duplicate(() => dupTotal(t, i), { label: '⧉ Duplicate range' }),
       delete: menuItem.delete('range', () => removeTotal(t, i), { keys: false }),
     });
   }
+  const dupTotal = (t: Total, i: number) => step(`Duplicated ${rangeName(t).toLowerCase()} of “${preset.name}”`, () => preset.totalOutcomes?.splice(i + 1, 0, copyTotal(t)));
   function removeTotal(t: Total, i: number): void {
     step(`Deleted ${rangeName(t).toLowerCase()} of “${preset.name}”`, () => preset.totalOutcomes?.splice(i, 1), { notify: true });
   }
@@ -91,7 +93,7 @@
   <div class="left">
     <label class="field">Dice name<input bind:value={preset.name} /></label>
     {#each preset.dice as d, i (d.id)}
-      <div class="die" role="group" aria-label="Die {i + 1}" oncontextmenu={(e) => menuOn(e, () => dieItems(d, i))} use:rowKeys={{ duplicate: () => preset.dice.splice(i + 1, 0, copyDie(d)), menu: () => dieItems(d, i) }}>
+      <div class="die" role="group" aria-label="Die {i + 1}" oncontextmenu={(e) => menuOn(e, () => dieItems(d, i))} use:rowKeys={{ duplicate: () => dupDie(d, i), menu: () => dieItems(d, i) }}>
         <div class="row">
           <!-- Kept to what a die can be (1–20 of them, d2–d1000), and the box shows what was kept. -->
           <label class="check"
@@ -164,7 +166,7 @@
     <h4>Outcomes by total (optional)</h4>
     <p class="muted small">e.g. 2–4 → "Take a sip", 12 → "Pick a victim". Anything, not just points.</p>
     {#each preset.totalOutcomes ?? [] as t, i (t.id)}
-      <div class="face" role="group" aria-label={rangeName(t)} oncontextmenu={(e) => menuOn(e, () => totalItems(t, i))} use:rowKeys={{ duplicate: () => preset.totalOutcomes?.splice(i + 1, 0, copyTotal(t)), menu: () => totalItems(t, i) }}>
+      <div class="face" role="group" aria-label={rangeName(t)} oncontextmenu={(e) => menuOn(e, () => totalItems(t, i))} use:rowKeys={{ duplicate: () => dupTotal(t, i), menu: () => totalItems(t, i) }}>
         <!-- From above To: they swap round (a range 9–4 is 4–9). -->
         <!-- (Emptied, a box keeps its number: a blank From would catch every total, a blank To none.) -->
         <input
