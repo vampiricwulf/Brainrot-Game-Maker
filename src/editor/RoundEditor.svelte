@@ -759,8 +759,8 @@
       heading: `Row ${row + 1} · ${formatPoints(round.values[row], sym)}`,
       move: [menuItem.up(() => shiftRow(row, row - 1), { disabled: row === 0, ...k }), menuItem.down(() => shiftRow(row, row + 1), { disabled: row === n - 1, ...k })],
       insert: [
-        { label: '＋ Insert row above', onclick: () => addRow(row), disabled: n >= 10 },
-        { label: '＋ Insert row below', onclick: () => addRow(row + 1), disabled: n >= 10 },
+        { label: '＋ Insert above', onclick: () => addRow(row), disabled: n >= 10 },
+        { label: '＋ Insert below', onclick: () => addRow(row + 1), disabled: n >= 10 },
       ],
       delete: menuItem.delete(`row ${row + 1}`, () => removeRow(row), { disabled: n <= 1, keys: false }),
     };

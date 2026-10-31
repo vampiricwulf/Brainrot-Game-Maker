@@ -74,7 +74,7 @@ describe('a thing’s menu (menuOf)', () => {
       kinds: { heading: 'Make it a…', items: [{ label: '✓ Standard', onclick: go }] },
       verbs: [{ label: '▶ Test it', onclick: go }],
       open: [menuItem.edit(go)],
-      lines: [{ heading: 'Row 2 · $400', delete: menuItem.delete('row 2', go), insert: [{ label: '＋ Insert row below', onclick: go }], move: [menuItem.up(go)] }],
+      lines: [{ heading: 'Row 2 · $400', delete: menuItem.delete('row 2', go), insert: [{ label: '＋ Insert below', onclick: go }], move: [menuItem.up(go)] }],
       heading: 'Memes',
     });
     expect(names(m)).toEqual([
@@ -99,7 +99,7 @@ describe('a thing’s menu (menuOf)', () => {
       '—',
       '[Row 2 · $400]',
       '▲ Move up',
-      '＋ Insert row below',
+      '＋ Insert below',
       '🗑 Delete row 2',
       '—',
       '⌫ Clear its clues',
