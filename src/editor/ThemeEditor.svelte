@@ -217,8 +217,8 @@
 
   /**
    * A click on the preview: the setting that colors what's under the pointer (a tile, a value, a category, a score
-   * plate or the bar, else the board) opens and flashes. (The preview is a picture only: its parts are found by where
-   * they are.)
+   * plate or the bar, a clue's text or its slide, else the board) opens and flashes. (The preview is a picture only:
+   * its parts are found by where they are.)
    */
   function previewClick(e: MouseEvent): void {
     const box = e.currentTarget as HTMLElement;
@@ -335,7 +335,7 @@
           {#if t.clueFont && !fonts.some((f) => f.css === t.clueFont)}<option value={t.clueFont}>{t.clueFont.split(',')[0]}</option>{/if}
         </select>
       </label>
-      <label class="check clue-color" data-k="clueColor" data-name="Clue text color" data-color>
+      <label class="check clue-color" data-k="clueColor" data-place="theme:clueColor" data-name="Clue text color" data-color>
         <!-- (The color the clues are drawn in: plain white is drawn in the slides' text color.) -->
         <ColorBox
           value={hex(clueTextColor(t) ?? stageText(t), FACTORY_COLOR)}
@@ -593,7 +593,7 @@
     <!-- Only a picture of the result: its tiles and players aren't the page's (screen readers skip it, and the keys
          don't reach it). A click on it finds the setting of what's under the pointer; every setting is in the column. -->
     <!-- svelte-ignore a11y_click_events_have_key_events, a11y_no_static_element_interactions -->
-    <div class="preview-click" onclick={previewClick} title="Click a tile, a value, a category or a score plate to find its setting">
+    <div class="preview-click" onclick={previewClick} title="Click a tile, a value, a category, a score plate, or a clue’s text or background to find its setting">
       <div class="preview" aria-hidden="true" inert>
         <Stage hostOnly>
           <AudienceView game={shown} session={demo} {live} role="mirror" demo />

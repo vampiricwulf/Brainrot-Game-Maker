@@ -476,7 +476,8 @@ RollEvent  { id, ts, source: 'wheel' | 'dice', presetName?, result: string /* la
   open or folded; a theme file dropped or opened on the editor opens it); My themes with none saved is one line.
 - **The Theme page's preview** takes clicks (it stays a picture to screen readers and the keys): a value finds Colors ›
   Values, a tile Tiles & slide background, a category Category names, a score plate Score plates, the score bar Score
-  bar, anything else Board; its section opens and the setting flashes. The hint above it says "Click the board to find
+  bar, anything else Board; on a full-screen slide (a clue, the Final's question, a slides round) its text finds Clue
+  text and the rest of the slide Tiles & slide background; its section opens and the setting flashes. The hint above it says "Click the board to find
   its setting". Tile glow's Glow size sits beside its tick in Colors (it was in Tiles).
 
 ### 5.8 Save / load / export

@@ -82,6 +82,26 @@ try {
   await clickOn('.score-area .plate');
   await page.waitForFunction(() => document.querySelector('details.sec[data-sec="plates"]')?.open);
   assert(true, 'a click on a value, a category or a score plate on the preview opens and flashes its setting (Values, Category names, Score plates)');
+  // On a clue its text finds Clue text and the rest of the slide the tile color it's drawn in (not Board › Background image).
+  {
+    const pick = page.getByRole('combobox', { name: 'Preview' });
+    const was = await pick.inputValue();
+    await pick.selectOption({ label: '❓ A clue' });
+    await preview.locator('.full .slide .text').first().waitFor();
+    const flashed = () => page.evaluate(() => [...document.querySelectorAll('[data-place].flash')].map((e) => e.dataset.place));
+    await page.waitForFunction(() => !document.querySelector('[data-place].flash'));
+    await clickOn('.full .slide .text');
+    await page.waitForFunction(() => document.querySelector('[data-place="theme:clueColor"]')?.classList.contains('flash'));
+    const onText = await flashed();
+    await page.waitForFunction(() => !document.querySelector('[data-place].flash'));
+    const r = await preview.locator('.full').first().boundingBox();
+    await page.mouse.click(r.x + 4, r.y + r.height / 2);
+    await page.waitForFunction(() => document.querySelector('[data-place="theme:tile"]')?.classList.contains('flash'));
+    const onSlide = await flashed();
+    assert(onText.join() === 'theme:clueColor' && onSlide.join() === 'theme:tile', `on ❓ A clue the clue's text finds Clue text and the slide's edge Tiles & slide background (${onText} | ${onSlide})`);
+    await pick.selectOption(was);
+    await preview.locator('.board .tile').first().waitFor();
+  }
 
   // ---------- The app's own color picker (never Chromium's): Hex or RGB, live, one undo step, Esc ----------
   const values = valuesBox();

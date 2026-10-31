@@ -22,6 +22,18 @@ describe('🎨 Theme: a click on the preview finds its setting', () => {
     expect(partAt(300, 100, boxes)).toBe('board');
     expect(partAt(300, 100, [])).toBe('board');
   });
+  it('on a clue (or the Final, a slides round): its text is Clue text, the rest of the slide the tile color', () => {
+    const clue = [
+      { part: 'slide' as const, box: box(0, 0, 1920, 1080) },
+      { part: 'clueText' as const, box: box(200, 400, 1720, 680) },
+    ];
+    expect(partAt(960, 540, clue)).toBe('clueText');
+    expect(partAt(20, 540, clue)).toBe('slide');
+    expect(PREVIEW_SETTING.clueText).toEqual({ place: 'theme:clueColor', name: 'Clue text' });
+    expect(PREVIEW_SETTING.slide.place).toBe(PREVIEW_SETTING.tile.place);
+    // (A score plate over the slide is still a plate: the Final's wagers.)
+    expect(partAt(50, 220, [...clue, ...boxes])).toBe('plate');
+  });
   it('names a setting on the Theme page for each part', () => {
     expect(Object.values(PREVIEW_SETTING).every((s) => s.place.startsWith('theme:') && s.name)).toBe(true);
   });
