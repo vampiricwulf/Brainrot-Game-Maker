@@ -34,7 +34,7 @@
     if (deal.parts.length >= DEAL_PARTS_MAX) return;
     // (From Enter in a name, as a wheel's next slice: no name yet, its place's shows until one's typed.)
     const p = { ...newDealPart(deal.parts.length + 1), ...(blank ? { name: '' } : {}) };
-    step(`Added part “${p.name}”`, () => deal.parts.splice(at + 1, 0, p));
+    step(`Added part “${partName(p, at + 1)}”`, () => deal.parts.splice(at + 1, 0, p));
     focusName(p.id);
   }
   /** A copy right after it, its card too. */

@@ -159,6 +159,7 @@ try {
   await host.keyboard.press('Enter');
   assert(await until(async () => (await partNames()) === 'Wolf,,Seer,Villager'), `Enter in a part's name adds the next part (${await partNames()})`);
   assert(await editor.getByLabel('Part 2’s name').evaluate((e) => e === document.activeElement), 'and types in it');
+  assert(await until(async () => (await undoTitle()).startsWith('Undo: Added part “Part 2”')), `its step is named by its place, not “” (${await undoTitle()})`);
   await host.keyboard.press('Backspace');
   assert(await until(async () => (await partNames()) === 'Wolf,Seer,Villager'), 'Backspace in an empty one takes it out again');
   await headerUndo();
