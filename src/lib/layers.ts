@@ -60,6 +60,40 @@ export function touchedBy<T extends Box>(els: T[], a: Pt, b: Pt): T[] {
 }
 
 /**
+ * Something a box drawn on an RPG stage might catch, as drawn (its rectangle, in any one set of coordinates): a player's
+ * avatar (its token), or an object with its class, 🔒 lock, and whether viewers never see it (a hotspot, an arrival
+ * point, a no-go area).
+ */
+export type Catchable = { rect: { x: number; y: number; w: number; h: number }; avatar?: boolean; class?: string; locked?: boolean; neverShown?: boolean };
+
+/** The objects a box on an RPG stage catches: the things that move in play (items, money, characters, things to use). */
+export const BOX_CLASSES: readonly string[] = ['item', 'currency', 'npc', 'interactable'];
+
+/** Can a box catch it at all? Players, and unlocked objects of those classes that viewers can be shown. */
+export const catchable = (t: Omit<Catchable, 'rect'>): boolean => !!t.avatar || (!t.locked && !t.neverShown && BOX_CLASSES.includes(t.class ?? ''));
+
+/**
+ * What a box (any two corners) on an RPG stage catches: players whose token's middle is inside it, and the objects that
+ * move in play whose middle is inside it, unless one is bigger than the box all round (the box was drawn on it). Never
+ * doorways, shops, zones, hazards, scenery, anything locked, or what viewers never see: Shift+click adds one of them.
+ */
+export function caughtBy<T extends Catchable>(targets: T[], a: Pt, b: Pt): T[] {
+  const x0 = Math.min(a.x, b.x);
+  const x1 = Math.max(a.x, b.x);
+  const y0 = Math.min(a.y, b.y);
+  const y1 = Math.max(a.y, b.y);
+  return targets.filter((t) => {
+    if (!catchable(t)) return false;
+    const r = t.rect;
+    const cx = r.x + r.w / 2;
+    const cy = r.y + r.h / 2;
+    const inside = cx >= x0 && cx <= x1 && cy >= y0 && cy <= y1;
+    const around = !t.avatar && r.x <= x0 && r.x + r.w >= x1 && r.y <= y0 && r.y + r.h >= y1;
+    return inside && !around;
+  });
+}
+
+/**
  * The next element down the stack under a point, after `current` (wrapping to the top), so repeated
  * Alt+clicks walk through everything stacked there.
  */

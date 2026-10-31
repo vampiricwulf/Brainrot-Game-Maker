@@ -80,3 +80,21 @@ export function stageMenuOf(m: Moment, boxes: StageItem[], standing: StageItem[]
     ...joined([main ? [main] : [], ...[extra.filter((b) => b.lead), m.steps.map(over), extra.filter((b) => !b.lead), (m.exits ?? []).map(over), standing].map(notMain)]),
   ];
 }
+
+/**
+ * An RPG stage's ways to select several, for its menu (no key to hold): ▭ Select in a box (the next drag on a screen draws
+ * one, even from a player or an object; Alt+drag does it at once), and Select everything here (`here`: the players and
+ * the things a box would catch on that screen; with Shift held, added to what's selected).
+ */
+export function selectItems(here: { players: number; objects: number }, box: () => void, all: () => void): StageItem[] {
+  const said = [here.players && `${here.players} player${here.players === 1 ? '' : 's'}`, here.objects && `${here.objects} thing${here.objects === 1 ? '' : 's'}`].filter(Boolean).join(' and ');
+  return [
+    { id: 'box', label: '▭ Select in a box', keys: 'Alt+drag', hint: 'Your next drag on the stage draws a box, even from a player or an object (Esc: no box)', onclick: box },
+    {
+      id: 'all',
+      label: 'Select everything here',
+      ...(said ? { hint: `${said} on this screen (with Shift held, added to what’s selected)` } : { disabled: true, hint: 'Nobody here, and nothing a box would catch' }),
+      onclick: all,
+    },
+  ];
+}

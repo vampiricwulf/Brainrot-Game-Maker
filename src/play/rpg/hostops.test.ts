@@ -5,9 +5,10 @@ import { addScreenBeside, ensureWorld, newRpgRound, splitParty } from '../../lib
 import { goToRound, newSession, score } from '../../lib/session';
 import { currencyFields, inventory, newStatField, statNumber, undoAction } from '../../lib/toolset';
 import {
-  addLive, avatarRange, avatarSpot, centredOn, droppedObject, dropEntry, giveEntry, groupDelta, joinPartyNow, liveText, moveChoices, moveGroup, objectMenu,
-  objectRange, partyOn, pickUp, regroupAll, removeObject, sendPartiesOn, sendPlayers, splitOff, START_FIRST, stepParty, wayOffEdge,
+  addLive, avatarRange, avatarSpot, bigObject, centredOn, droppedObject, dropEntry, everythingOn, fillsScreen, giveEntry, groupDelta, hiddenNames, joinPartyNow, liveText, moveChoices, moveGroup,
+  moveObject, objectMenu, objectRange, partyOn, pickUp, regroupAll, removeObject, selectionWords, sendPartiesOn, sendPlayers, shortList, splitOff, START_FIRST, stepParty, wayOffEdge,
 } from './hostops';
+import { stepText } from '../../lib/toolset';
 
 // (What screen readers are told.)
 vi.mock('../../lib/announce', async (real) => ({ ...(await real<typeof import('../../lib/announce')>()), announce: vi.fn() }));
@@ -340,5 +341,56 @@ describe('dragging a selection together on the RPG stage', () => {
     expect(back.objects[chest.id]?.x).toBeUndefined();
     // Nothing that's there: no step.
     expect(moveGroup(game, session, { nobody: { x: 1, y: 1 } }, {})).toBeNull();
+  });
+
+  it('keeps a long label short', () => {
+    expect(shortList(['Ann', 'Bob', 'Cy', 'Dee'])).toBe('Ann, Bob, Cy & Dee');
+    expect(shortList(['Ann', 'Bob', 'Cy', 'Dee', 'Eve', 'Fay', 'Gus', 'Hal'])).toBe('Ann, Bob, Cy & 5 more');
+  });
+
+  it('moves an object on its own as one step, and records none when it was dropped where it was', () => {
+    const { game, session, st } = setup();
+    const chest = { ...newShapeEl('rect'), name: 'Chest', x: 800, y: 300 };
+    addLive(game, session, chest, 'Chest');
+    const steps = session.actionLog?.length ?? 0;
+    expect(moveObject(game, session, chest.id, { x: 800, y: 300 })).toBe(false);
+    expect(session.actionLog).toHaveLength(steps);
+    expect(st.objects[chest.id]).toBeUndefined();
+    expect(moveObject(game, session, chest.id, { x: 860, y: 300 })).toBe(true);
+    expect(session.actionLog?.at(-1)?.text).toBe('Move Chest');
+    // (Added live: hidden from viewers, so one window's words don't name it.)
+    expect(stepText(session.actionLog!.at(-1)!, true)).toBe('Move a hidden object');
+  });
+
+  it('says what is selected, one window counting the hidden ones, and numbers the hidden ones for its list', () => {
+    const { game, session, st } = setup();
+    const screen = game.worlds![0].maps[0].screens[0];
+    const chest = { ...newShapeEl('rect'), name: 'Chest', role: { class: 'item' as const } };
+    const gold = { ...newShapeEl('rect'), name: 'Gold pile', role: { class: 'currency' as const } };
+    const arrival = { ...newShapeEl('rect'), name: 'Arrival point', role: { class: 'spawn' as const } };
+    addLive(game, session, chest, 'Chest');
+    screen.slide.elements.push(gold, arrival);
+    expect(selectionWords(game, session, ['p0', 'p1'], [gold.id, chest.id], false)).toBe('Ann, Bob · Gold pile, Chest');
+    expect(selectionWords(game, session, ['p0'], [gold.id, chest.id], true)).toBe('Ann · Gold pile, 1 hidden object');
+    expect(selectionWords(game, session, [], [], true)).toBe('');
+    // The secret ones are numbered; what viewers never see anyway keeps its name.
+    expect([...hiddenNames(st, screen).entries()]).toEqual([[chest.id, '🙈 Hidden object 1']]);
+  });
+
+  it('selects everything here a box would catch, and knows the objects a press draws a box on', () => {
+    const { game, session } = setup();
+    const screen = game.worlds![0].maps[0].screens[0];
+    const ref = { map: game.worlds![0].maps[0].id, screen: screen.id };
+    const sword = { ...newShapeEl('rect'), name: 'Sword', role: { class: 'item' as const } };
+    const rug = { ...newShapeEl('rect'), name: 'Rug', locked: true, role: { class: 'item' as const } };
+    const door = { ...newShapeEl('rect'), name: 'Door', role: { class: 'doorway' as const } };
+    const chest = { ...newShapeEl('rect'), name: 'Chest', secret: true, role: { class: 'item' as const } };
+    screen.slide.elements.push(sword, rug, door, chest);
+    expect(everythingOn(game, session, ref, false)).toEqual({ players: ['p0', 'p1', 'p2'], objects: [sword.id, chest.id] });
+    // One window: the secret Chest isn't on the stage.
+    expect(everythingOn(game, session, ref, true).objects).toEqual([sword.id]);
+    expect(fillsScreen({ x: 0, y: 0, w: 1920, h: 1080, rotation: 0 })).toBe(true);
+    expect(fillsScreen({ x: 10, y: 0, w: 1920, h: 1080, rotation: 0 })).toBe(false);
+    expect([bigObject({ w: 960, h: 540 }), bigObject({ w: 900, h: 300 })]).toEqual([true, false]);
   });
 });

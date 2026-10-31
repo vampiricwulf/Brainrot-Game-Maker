@@ -1,12 +1,13 @@
 // The RPG host's moves, shared by the host panel and the keyboard shortcuts. Every change is one undoable step.
 import {
-  isRpg, newImageEl, newTextEl, SLIDE_H, SLIDE_W, type Dir8, type Game, type InventoryEntry, type Position, type ScreenRef, type Session,
+  isRpg, newImageEl, newTextEl, SLIDE_H, SLIDE_W, type Dir8, type Game, type InventoryEntry, type Position, type Screen, type ScreenRef, type Session,
   type SlideElement, type World, type WorldState,
 } from '../../lib/model';
 import {
-  activeParty, allElements, audienceSees, avatarBoxes, classLabel, DIR_NAME, DIR_VEC, DIRS, exitOf, findIn, focusRef, joinParty, moveTo, neverShown, overlaps, override, partyOn, partyScreen, regroup, splitParty,
-  step, worldById,
+  activeParty, allElements, audienceSees, avatarBoxes, classLabel, DIR_NAME, DIR_VEC, DIRS, exitOf, findIn, focusRef, joinParty, moveTo, neverShown, overlaps, override, partyOn, partyScreen, regroup,
+  screenElements, splitParty, step, worldById,
 } from '../../lib/rpg';
+import { bounds, catchable, type Box } from '../../lib/layers';
 import { nameList } from '../../lib/session';
 import { addStat, currencyFields, entryName, formatStat, giveItem, inventory, itemDef, logged, statFields, statRoom, transferEntry } from '../../lib/toolset';
 import { addMediaFile } from '../../lib/media.svelte';
@@ -214,6 +215,14 @@ export function groupDelta(items: GroupItem[], dx: number, dy: number): { dx: nu
   return { dx: axis(dx, (i) => i.x, (i) => i.minX, (i) => i.maxX), dy: axis(dy, (i) => i.y, (i) => i.minY, (i) => i.maxY) };
 }
 
+/** Names in a step's label, kept short: "Ann, Bob & Cy", or past four "Ann, Bob, Cy & 5 more". */
+export function shortList(names: string[], max = 4): string {
+  return names.length <= max ? nameList(names) : `${names.slice(0, max - 1).join(', ')} & ${names.length - max + 1} more`;
+}
+
+/** What a step says for objects viewers don't see, in place of their names ("a hidden object", "2 hidden objects"). */
+const hiddenCount = (n: number) => (n === 1 ? 'a hidden object' : `${n} hidden objects`);
+
 /**
  * Players and objects on the stage dragged together to new spots (by id), as one undo step named after them all
  * ("Move Ann, Bob & Chest"). Returns that name.
@@ -233,6 +242,73 @@ export function moveGroup(game: Game, session: Session, players: Record<string, 
     for (const o of what) Object.assign(override(st, o.id), objects[o.id]);
   });
   return text;
+}
+
+/**
+ * An object dragged on its own to a new spot on its screen, as one step ("Move Lava"; one viewers don't see is "Move a
+ * hidden object" in one window). Dropped where it was: no step. True when it moved.
+ */
+export function moveObject(game: Game, session: Session, elId: string, at: { x: number; y: number }): boolean {
+  const found = objectAt(game, session, elId);
+  const o = found?.st.objects[elId];
+  if (!found || ((o?.x ?? found.el.x) === at.x && (o?.y ?? found.el.y) === at.y)) return false;
+  logged(session, `Move ${objectName(found.el)}`, () => Object.assign(override(found.st, elId), at), undefined, audienceSees(found.el, o) ? undefined : `Move ${hiddenCount(1)}`);
+  return true;
+}
+
+/** An object as big as its screen (a picture behind everything): a press on it draws a box, as on an empty spot. */
+export function fillsScreen(el: Box): boolean {
+  const b = bounds(el);
+  return b.x <= 0 && b.y <= 0 && b.x + b.w >= SLIDE_W && b.y + b.h >= SLIDE_H;
+}
+
+/** A quarter of its screen or more: dragged on its own, the first time in a game, a hint says how to box over it. */
+export const bigObject = (el: { w: number; h: number }): boolean => el.w * el.h >= (SLIDE_W * SLIDE_H) / 4;
+
+/** Can a box on the stage catch this object (the things that move in play, unlocked, that viewers can be shown)? */
+export const boxCatches = (el: SlideElement): boolean => catchable({ class: el.role?.class, locked: el.locked, neverShown: neverShown(el) });
+
+/**
+ * Select everything here (the stage's menu): the players standing on a screen (not hidden) and the objects on it a box
+ * would catch (in one window, only those viewers see: the others aren't on the stage).
+ */
+export function everythingOn(game: Game, session: Session, ref: ScreenRef, oneWindow: boolean): { players: string[]; objects: string[] } {
+  const { world, st } = rpgNow(game, session);
+  const found = world && findIn(world, ref);
+  if (!st || !found) return { players: [], objects: [] };
+  return {
+    players: session.players.filter((p) => st.positions[p.id]?.screen === ref.screen && !st.positions[p.id].hidden).map((p) => p.id),
+    objects: screenElements(st, found.screen, oneWindow).filter(boxCatches).map((el) => el.id),
+  };
+}
+
+/**
+ * One window (viewers see the host panel): what it calls each secret object on a screen, in place of its name ("🙈
+ * Hidden object 1"…). Not what viewers never see anyway (an arrival point): that keeps its name.
+ */
+export function hiddenNames(st: WorldState | undefined, screen: Screen): Map<string, string> {
+  const out = new Map<string, string>();
+  for (const el of screenElements(st, screen, false)) if (el.secret && !neverShown(el) && (el.role || el.name)) out.set(el.id, `🙈 Hidden object ${out.size + 1}`);
+  return out;
+}
+
+/**
+ * The RPG box's selection line: who and what is selected ("Ann, Bob · Sword, Gold pile"). In one window an object
+ * viewers don't see is counted, never named ("Ann · 1 hidden object"). Empty: nothing is.
+ */
+export function selectionWords(game: Game, session: Session, players: string[], objects: string[], oneWindow: boolean): string {
+  const { st } = rpgNow(game, session);
+  const who = players.flatMap((id) => session.players.find((p) => p.id === id)?.name ?? []);
+  const shown: string[] = [];
+  let hidden = 0;
+  for (const id of objects) {
+    const found = objectAt(game, session, id);
+    if (!found) continue;
+    if (oneWindow && !audienceSees(found.el, st?.objects[id])) hidden++;
+    else shown.push(objectName(found.el));
+  }
+  const things = [...shown, ...(hidden ? [`${hidden} hidden object${hidden === 1 ? '' : 's'}`] : [])];
+  return [who.join(', '), things.join(', ')].filter(Boolean).join(' · ');
 }
 
 /** What an object is called on its card, in menus and in the log. */

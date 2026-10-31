@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { MenuEntry } from '../../lib/menustate.svelte';
-import { menuKeys, stageMenuOf, stepItem, type StageItem } from './stagemenu';
+import { menuKeys, selectItems, stageMenuOf, stepItem, type StageItem } from './stagemenu';
 import { step } from './slots.svelte';
 import { VERBS } from './verbs';
 
@@ -110,5 +110,24 @@ describe('the stage’s menu', () => {
       [],
     );
     expect(lines(m)).toEqual(['🎡 Spin for a partner · W', '—', '⇄ Swap']);
+  });
+
+  it('an RPG stage: ▭ Select in a box and Select everything here, first among the round’s own items', () => {
+    let ran = '';
+    const sel = selectItems({ players: 2, objects: 1 }, () => (ran = 'box'), () => (ran = 'all'));
+    const m = stageMenuOf(
+      { heading: 'Adventure', steps: [...sel, item('＋ Text here…'), item('🗺 Full map (jump anywhere)', { keys: 'J' }), item('🤝 Regroup', { keys: 'G' })] },
+      [],
+      [item('↶ Undo', { keys: 'Ctrl+Z' })],
+    );
+    expect(lines(m)).toEqual(['# Adventure', '▭ Select in a box · Alt+drag', 'Select everything here', '＋ Text here…', '🗺 Full map (jump anywhere) · J', '🤝 Regroup · G', '—', '↶ Undo · Ctrl+Z']);
+    expect(sel[1].hint).toBe('2 players and 1 thing on this screen (with Shift held, added to what’s selected)');
+    sel[0].onclick();
+    expect(ran).toBe('box');
+    sel[1].onclick();
+    expect(ran).toBe('all');
+    // Nobody and nothing here: greyed, in its place.
+    const none = selectItems({ players: 0, objects: 0 }, () => {}, () => {});
+    expect(none.map((i) => [i.label, !!i.disabled])).toEqual([['▭ Select in a box', false], ['Select everything here', true]]);
   });
 });
