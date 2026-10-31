@@ -134,7 +134,7 @@
   }
 </script>
 
-<SlideEditor slide={slide ?? screen.slide} placeholder="Click to type" fill fallbackBg="#2f6b3a" {menuextras}>
+<SlideEditor slide={slide ?? screen.slide} placeholder="Click to type" fill fallbackBg="#2f6b3a" hotspots {menuextras}>
   {#snippet objectsection(el: SlideElement)}
     <ObjectPanel {el} {world} slide={slide ?? screen.slide} />
   {/snippet}

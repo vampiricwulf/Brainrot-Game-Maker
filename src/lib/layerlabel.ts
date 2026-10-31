@@ -25,7 +25,7 @@ export const LAYER_ICON: Record<SlideElement['kind'], string> = { text: '🅣', 
 export function layerIcon(el: SlideElement): string {
   return classIcon(el.role?.class) ?? LAYER_ICON[el.kind];
 }
-const SHAPES = { rect: 'Rectangle', ellipse: 'Ellipse', line: 'Line', arrow: 'Arrow', path: 'Drawing' };
+const SHAPES = { rect: 'Rectangle', ellipse: 'Ellipse', line: 'Line', arrow: 'Arrow' };
 
 /** Text as a label shows it: its first line, 40 characters at most. */
 export const short = (s: string) => {
@@ -61,7 +61,8 @@ export function layerLabel(el: SlideElement, game: Game): string {
     case 'audio':
       return game.media.find((m) => m.id === el.media)?.name ?? (el.kind === 'image' ? 'Image' : el.kind === 'video' ? 'Video' : 'Audio');
     case 'shape':
-      return el.hotspot ? 'Hotspot' : SHAPES[el.shape];
+      // (A line drawn by hand with ✏ Freehand line; closed with Shift, a shape. A 🖌 Drawpad drawing is a picture.)
+      return el.hotspot ? 'Hotspot' : el.shape === 'path' ? (el.closed ? 'Freehand shape' : 'Freehand line') : SHAPES[el.shape];
     case 'embed':
       return embedName(el.embedKind, el.url);
   }

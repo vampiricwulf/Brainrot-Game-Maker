@@ -95,8 +95,10 @@ menu), its edit (✎ Edit text, ✎ Edit image…, ✎ Edit video… / sound…,
 the slide opens the same menu. Right after the slide tabs (a clue's, a Final's, the tiebreaker's, a slides round's)
 is the open slide's group: ＋ Add slide, ⧉ Duplicate slide, 📋 Copy slide, 📋 Paste slide (as a new slide after this
 one; its ▾ pastes over this one), ◀ ▶ and, apart, 🗑 Delete slide, the card's own on a 🤫 card's tab; a right-click on a
-tab (or Shift+F10 on it) gives its menu, and Ctrl+C / Ctrl+V on a tab copy the slide and paste it as a new one. A
-double-click on an item (or Enter, with it selected) opens its editor: a text box's text, a
+tab (or Shift+F10 on it) gives its menu, and Ctrl+C / Ctrl+V on a tab copy the slide and paste it as a new one.
+Shape ▾ is in sections (Shapes, then Draw: ✏ Freehand line…, 🖌 Drawpad…; ⬚ Hotspot on an RPG screen only), and
+**Background ▾** shows the picture as a thumbnail, with Change… and ⌫ Clear picture (the color stays) beside the Color
+and ↺ Theme color, and ↺ Reset background apart. A double-click on an item (or Enter, with it selected) opens its editor: a text box's text, a
 picture's ✎ Edit image, a video's or sound's ✎ Edit video / sound (or its Start at), a link's Link box, a shape's
 Fill. F2 renames an item in the Layers list (on a text box it edits the text), and after you add a picture, video,
 sound or link the keys stay on the slide. In ✎ Edit image, ✋ Select (`M`) picks captions and stickers, a right-click on

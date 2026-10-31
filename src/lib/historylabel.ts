@@ -90,7 +90,8 @@ const byId = <T>(list: unknown, id: Seg | undefined): T | undefined =>
 
 function elementNoun(el: SlideElement): string {
   if (el.role) return 'object';
-  if (el.kind === 'shape') return el.hotspot ? 'hotspot' : el.shape === 'path' ? 'drawing' : 'shape';
+  // (A freehand line is a shape too, named “Freehand line”: not a “drawing”, which a 🖌 Drawpad picture is called.)
+  if (el.kind === 'shape') return el.hotspot ? 'hotspot' : 'shape';
   return { text: 'text box', image: 'image', video: 'video', audio: 'audio clip', embed: 'link' }[el.kind] ?? 'item';
 }
 
@@ -837,7 +838,7 @@ function textBoxChange(op: Op & { t: 'set' }, at: At): string | null {
   return `Changed ${name}${part} of ${what(at)}`;
 }
 
-/** Other slide items' settings as the Inspector calls them (a line's, an arrow's or a drawing's `stroke` is its color). */
+/** Other slide items' settings as the Inspector calls them (a line's, an arrow's or a freehand line's `stroke` is its color). */
 const ITEM_FIELDS: Record<string, string> = {
   startAt: 'start at',
   endAt: 'stop at',
@@ -849,7 +850,7 @@ const ITEM_FIELDS: Record<string, string> = {
   radius: 'corners',
   shape: 'type',
 };
-const ITEM_NOUNS = new Set(['shape', 'drawing', 'hotspot', 'video', 'audio clip', 'image', 'link']);
+const ITEM_NOUNS = new Set(['shape', 'hotspot', 'video', 'audio clip', 'image', 'link']);
 
 /** A change to a slide item's setting, other than a text box's ("Changed stop at of video “clip.webm”"). */
 function itemChange(op: Op & { t: 'set' }, at: At, game: Game): string | null {

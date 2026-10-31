@@ -739,6 +739,10 @@ try {
     tabs++;
   }
   assert(!(await onCanvas()) && (await page.evaluate(() => document.activeElement !== document.body)), `Tab goes through the screen's items and on to the next control (${tabs} tabs)`);
+  // An RPG screen's Shape ▾ has ⬚ Hotspot (a clue's doesn't), in a section of its own.
+  await page.getByRole('button', { name: /◼ Shape/ }).click();
+  assert((await page.locator('.shape-menu').getByRole('button', { name: '⬚ Hotspot' }).count()) === 1, 'an RPG screen’s Shape ▾ offers ⬚ Hotspot');
+  await page.keyboard.press('Escape');
   // ↺ Reset background: the editor shows the screen's green, as viewers will see it, not the theme's tile color.
   await page.getByRole('button', { name: /Background ▾/ }).click();
   await page.getByRole('button', { name: '↺ Reset background' }).click();

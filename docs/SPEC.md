@@ -257,7 +257,15 @@ RollEvent  { id, ts, source: 'wheel' | 'dice', presetName?, result: string /* la
 
 ### 5.3 Slide editor (question / answer / category header / Final)
 - 16:9 canvas with snapping guides, grid, and alignment tools (left/center/right, distribute).
-- Insert: Text, Image, Video, Audio, Shape. Drag-drop files onto the canvas.
+- Insert: Text, Image, Video, Audio, Shape. Drag-drop files onto the canvas. Shape ▾ is in sections: Shapes (▭ ◯ ― ➝),
+  Draw (✏ Freehand line…, one stroke, named "Freehand line" in Layers and the History, "Freehand shape" closed with
+  Shift; 🖌 Drawpad…, a whole drawing inserted as a picture named "Drawing"), and on an RPG screen only ⬚ Hotspot (one
+  already on another slide keeps showing).
+- **Background ▾** (on the toolbar, its swatch the background as it is: the picture's thumbnail when it has one): Color
+  with ↺ Theme color (↺ Default color on a board game's or RPG screen's slide); the picture as a thumbnail with Change…
+  and ⌫ Clear picture (the color stays), or 🖼 Add a picture…; then ↺ Reset background apart, for both. Every button is
+  always there, greyed when it can't act, so the box keeps its size while the color changes. Each change is one undo
+  step.
 - Transform: move, resize, rotate, z-order, lock, duplicate, delete, multi-select, and copy/paste between slides.
 - **Opening an item**: a double-click, or Enter with one item selected, opens its editor: a text box its Text field, a
   picture ✎ Edit image, a video or sound ✎ Edit video / sound (or its Start at box when its file can't be edited

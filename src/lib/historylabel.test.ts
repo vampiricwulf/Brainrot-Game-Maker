@@ -201,7 +201,7 @@ describe('step labels', () => {
   it("names slide items' settings as the Inspector does", () => {
     const q = (g: Game) => board(g).categories[0].clues[1].questionSlide;
     const base = sample();
-    q(base).elements.push(newShapeEl('line'), newShapeEl('rect'), newVideoEl('v1'), newAudioEl('a1'));
+    q(base).elements.push(newShapeEl('line'), newShapeEl('rect'), newVideoEl('v1'), newAudioEl('a1'), { ...newShapeEl('path'), points: [[0, 0], [1, 1]] });
     base.media.push({ id: 'v1', name: 'clip.webm', mime: 'video/webm', size: 10, kind: 'video' }, { id: 'a1', name: 'beep.wav', mime: 'audio/wav', size: 10, kind: 'audio' });
     const label = (edit: (els: SlideElement[]) => void) => {
       const after = structuredClone(base);
@@ -217,6 +217,9 @@ describe('step labels', () => {
     expect(label((e) => ((e[1] as ShapeEl).stroke = '#ff0000'))).toBe('Changed color of shape “Line”');
     expect(label((e) => ((e[2] as ShapeEl).radius = 20))).toBe('Changed corners of shape “Rectangle”');
     expect(label((e) => ((e[2] as ShapeEl).shape = 'ellipse'))).toBe('Changed type of shape “Ellipse”');
+    // A freehand line (✏ Freehand line) is called so, not a “drawing” (a 🖌 Drawpad picture is “Drawing”).
+    expect(label((e) => ((e[5] as ShapeEl).stroke = '#ff0000'))).toBe('Changed color of shape “Freehand line”');
+    expect(label((e) => ((e[5] as ShapeEl).strokeWidth = 9))).toBe('Changed thickness of shape “Freehand line”');
     expect(label((e) => ((e[0] as TextEl).uppercase = false))).toMatch(/^Changed all caps of text box/);
   });
 

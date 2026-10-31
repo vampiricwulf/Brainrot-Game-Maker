@@ -212,6 +212,17 @@ try {
     assert(!!b && !!p && Math.abs(b.y - p.y) < 2, 'it is at the top of the side panel');
   }
 
+  // ---------- Shape ▾ in sections: Shapes, then Draw (⬚ Hotspot is an RPG screen's) ----------
+  await page.getByRole('button', { name: /◼ Shape/ }).click();
+  const shapeMenu = page.locator('.shape-menu');
+  assert(
+    JSON.stringify(await shapeMenu.locator('.head').allInnerTexts()) === JSON.stringify(['Shapes', 'Draw']) &&
+      (await shapeMenu.getByRole('button', { name: '✏ Freehand line…' }).count()) === 1 &&
+      (await shapeMenu.getByRole('button', { name: '⬚ Hotspot' }).count()) === 0,
+    'Shape ▾ has its Shapes and Draw sections (✏ Freehand line…, 🖌 Drawpad…), and no ⬚ Hotspot on a clue',
+  );
+  await page.keyboard.press('Escape');
+
   // ---------- A box drawn beside the text's words, and Alt+drag ----------
   await addRect(1400, 700, 300, 200);
   // The ⋯ by the selection: just outside its top-right corner, the same menu as a right-click on it.
@@ -479,6 +490,25 @@ try {
   });
   await page.getByLabel('Slide background color').press('Escape');
   await page.waitForTimeout(900);
+  // The Background box: a picture added shows as a thumbnail (on the toolbar's swatch too), and ⌫ Clear picture takes
+  // off only the picture, the color staying (one undo step).
+  await clue.getByRole('button', { name: /Background ▾/ }).click();
+  await page.getByRole('button', { name: '🖼 Add a picture…' }).click();
+  await page.locator('.picker .item', { hasText: 'big.png' }).first().click();
+  const swatchPic = await clue.locator('.toolbar .swatch').evaluate((e) => getComputedStyle(e).backgroundImage);
+  assert(swatchPic.startsWith('url('), `the Background button's swatch shows the picture (${swatchPic.slice(0, 24)})`);
+  await clue.getByRole('button', { name: /Background ▾/ }).click();
+  const bgBox = page.getByRole('group', { name: 'Background' });
+  assert((await bgBox.locator('img.bg-thumb').count()) === 1 && (await bgBox.getByRole('button', { name: 'Change…' }).count()) === 1, 'the Background box shows the picture, with Change…');
+  await bgBox.getByRole('button', { name: '⌫ Clear picture' }).click();
+  assert(
+    (await undoTitle()).startsWith('Undo: Removed the slide background picture') &&
+      (await page.getByLabel('Slide background color').inputValue()) === '#333333' &&
+      (await bgBox.getByRole('button', { name: '🖼 Add a picture…' }).count()) === 1,
+    `⌫ Clear picture takes off only the picture, the color staying (${await undoTitle()})`,
+  );
+  await page.getByLabel('Slide background color').press('Escape');
+  await page.keyboard.press('Control+z');
   // ↺ Reset background says so (with a color and a picture it said “Removed the slide background color”).
   await clue.getByRole('button', { name: /Background ▾/ }).click();
   await page.getByRole('button', { name: '↺ Reset background' }).click();

@@ -292,7 +292,7 @@
     </section>
   {:else if el.kind === 'shape'}
     <section>
-      <h4>{el.hotspot ? 'Hotspot' : el.shape === 'path' ? 'Drawing' : 'Shape'}</h4>
+      <h4>{el.hotspot ? 'Hotspot' : el.shape === 'path' ? (el.closed ? 'Freehand shape' : 'Freehand line') : 'Shape'}</h4>
       {#if el.hotspot}
         <p class="hint">Invisible to viewers (you see its outline). Give it a class below to make this part of the picture a doorway, a shop, a trap…</p>
       {:else if el.shape === 'path'}

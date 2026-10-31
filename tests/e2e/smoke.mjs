@@ -468,7 +468,7 @@ assert(
 );
 const shapeWidth = (await shapeBtn.boundingBox()).width;
 await shapeBtn.click();
-await page.getByRole('button', { name: '✏ Draw a line' }).click();
+await page.getByRole('button', { name: '✏ Freehand line…' }).click();
 assert(
   (await page.locator('.ribbon', { hasText: 'DRAWING' }).count()) === 1 && (await page.getByRole('button', { name: '■ Stop' }).boundingBox()).width === shapeWidth,
   "draw mode says so on the slide, and ■ Stop takes the Shape button's place at the same width (the toolbar doesn't move)",

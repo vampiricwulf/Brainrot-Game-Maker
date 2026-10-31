@@ -37,7 +37,7 @@
   import { announce } from '../../lib/announce';
   import { copyIsTheBrowsers } from '../../lib/undokeys';
   import { dropdown } from '../../lib/menustate.svelte';
-  import { addMediaFile, slideImageSize, type LinkAdded } from '../../lib/media.svelte';
+  import { addMediaFile, mediaUrls, slideImageSize, type LinkAdded } from '../../lib/media.svelte';
   import { previewMediaScope } from '../../lib/mediactl.svelte';
   import { isGameDrop } from '../../lib/mediadrop';
   import { checkAdded } from '../../lib/shrink/checks.svelte';
@@ -83,6 +83,7 @@
     objectsection,
     tools,
     menuextras,
+    hotspots = false,
     fallbackBg = 'var(--tile)',
   }: {
     slide: Slide;
@@ -109,6 +110,8 @@
     objectsection?: Snippet<[SlideElement]>;
     /** Extra toolbar buttons (RPG screens: spawn point, items). `add` puts an element on the slide. */
     tools?: Snippet<[(el: SlideElement) => void]>;
+    /** ⬚ Hotspot in Shape ▾ (RPG screens, where a hotspot's class makes it a doorway, a shop…; it does nothing elsewhere). */
+    hotspots?: boolean;
     /** The selected item's own extras in its right-click menu (an RPG object's 🤫 Secret and ＋ Add button…). */
     menuextras?: (el: SlideElement) => { label: string; title?: string; onclick: () => void }[];
     /** What shows with no background set: the theme's tile color, or the color a board game or RPG screen has on stage. */
@@ -1094,15 +1097,21 @@
         </button>
         {#if shapeMenu}
           <div class="backdrop" onclick={() => (shapeMenu = false)} role="presentation"></div>
-          <div class="menu" use:anchored use:dropdown={() => (shapeMenu = false)}>
+          <!-- In sections: the shapes, the two ways to draw, and on an RPG screen the hotspot. -->
+          <div class="menu shape-menu" use:anchored use:dropdown={() => (shapeMenu = false)}>
+            <div class="head">Shapes</div>
             <button onclick={() => addShape('rect')}>▭ Rectangle</button>
             <button onclick={() => addShape('ellipse')}>◯ Ellipse</button>
             <button onclick={() => addShape('line')}>― Line</button>
             <button onclick={() => addShape('arrow')}>➝ Arrow</button>
-            <button onclick={() => ((shapeMenu = false), (drawing = true))} title="Drag on the slide to draw one line; hold Shift when letting go to close the shape">✏ Draw a line</button>
+            <div class="head">Draw</div>
+            <button onclick={() => ((shapeMenu = false), (drawing = true))} title="Drag on the slide to draw one line; hold Shift when letting go to close the shape">✏ Freehand line…</button>
             <!-- Nothing stays selected behind the drawpad. -->
             <button onclick={() => ((shapeMenu = false), (selected = []), (drawpad = true))} title="Draw a whole picture (as many strokes as it takes) over the slide, then insert it">🖌 Drawpad…</button>
-            <button onclick={addHotspot} title="An invisible area (viewers never see it): give it a class to make part of a picture a doorway, shop…">⬚ Hotspot</button>
+            {#if hotspots}
+              <div class="head">On this screen</div>
+              <button onclick={addHotspot} title="An invisible area (viewers never see it): give it a class to make part of a picture a doorway, shop…">⬚ Hotspot</button>
+            {/if}
           </div>
         {/if}
       </div>
@@ -1148,8 +1157,14 @@
       {#if tools}{@render tools((el: SlideElement) => add(el))}{/if}
       <span class="sep"></span>
       <div class="pop">
+        <!-- (Its swatch shows the background as it is: the picture's thumbnail when it has one.) -->
         <button onclick={() => ((bgAt = null), (bgMenu = !bgMenu))} aria-expanded={bgMenu} title="The slide's background: a color or a picture">
-          <span class="swatch" aria-hidden="true" style:background={slide.background.color ?? plainBg}></span> Background ▾
+          <span
+            class="swatch"
+            aria-hidden="true"
+            style:background-color={slide.background.color ?? plainBg}
+            style:background-image={slide.background.image && mediaUrls[slide.background.image] ? `url("${mediaUrls[slide.background.image]}")` : undefined}
+          ></span> Background ▾
         </button>
         {#if bgMenu}
           <div class="backdrop" onclick={() => (bgMenu = false)} role="presentation"></div>
@@ -1166,16 +1181,34 @@
               bgMenu = false;
             }}
           >
-            <label class="check">
-              <ColorBox
-                aria-label="Slide background color"
-                value={slide.background.color ?? plainBg}
-                oninput={(e) => (slide.background.color = e.currentTarget.value)}
-              />
-              Color
-            </label>
-            <button onclick={() => ((bgMenu = false), (picker = 'image'), (replacing = 'bg'))} title="A picture behind everything on the slide">🖼 Picture…</button>
-            <!-- Always there (disabled when there's nothing to reset), so the box keeps its size while the color changes. -->
+            <!-- (Every button is always there, greyed when there's nothing to do, so the box keeps its size while the
+                 color changes: a button coming in closed the color picker mid-typing.) -->
+            <div class="bg-row">
+              <label class="check">
+                <ColorBox
+                  aria-label="Slide background color"
+                  value={slide.background.color ?? plainBg}
+                  oninput={(e) => (slide.background.color = e.currentTarget.value)}
+                />
+                Color
+              </label>
+              <button
+                class="small"
+                onclick={() => edit(() => delete slide.background.color)}
+                disabled={!slide.background.color}
+                title={themedBg ? "Back to the theme's color (it follows the theme when that changes)" : 'Back to the default color'}>↺ {themedBg ? 'Theme color' : 'Default color'}</button
+              >
+            </div>
+            <div class="bg-row">
+              {#if slide.background.image}
+                <img class="bg-thumb" src={mediaUrls[slide.background.image]} alt="The slide’s background" draggable="false" />
+                <button class="small" onclick={() => ((bgMenu = false), (picker = 'image'), (replacing = 'bg'))} title="Another picture behind everything on the slide">Change…</button>
+                <button class="small" onclick={() => edit(() => delete slide.background.image)} title="Take the picture off (the color stays; the file stays in 🖼 Media)">⌫ Clear picture</button>
+              {:else}
+                <button onclick={() => ((bgMenu = false), (picker = 'image'), (replacing = 'bg'))} title="A picture behind everything on the slide">🖼 Add a picture…</button>
+              {/if}
+            </div>
+            <hr />
             <button
               onclick={() => ((bgMenu = false), edit(() => (slide.background = {}), 'Reset the slide background'))}
               disabled={!slide.background.image && !slide.background.color}
@@ -1517,6 +1550,8 @@
     vertical-align: -1px;
     border-radius: 3px;
     border: 1px solid var(--control-border);
+    background-size: cover;
+    background-position: center;
   }
   .bg-menu {
     min-width: 200px;
@@ -1530,6 +1565,31 @@
   }
   .bg-menu .check {
     padding: 2px 4px;
+  }
+  .bg-row {
+    display: flex;
+    gap: 6px;
+    align-items: center;
+  }
+  .bg-thumb {
+    width: 48px;
+    height: 27px;
+    object-fit: cover;
+    border-radius: 4px;
+    border: 1px solid var(--control-border);
+  }
+  .bg-menu hr {
+    width: 100%;
+    border: none;
+    border-top: 1px solid var(--border);
+    margin: 2px 0;
+  }
+  /* The Shape ▾ menu's section headings. */
+  .shape-menu .head {
+    padding: 4px 6px 0;
+    font-size: 12px;
+    font-weight: 700;
+    opacity: 0.7;
   }
   .body {
     display: grid;

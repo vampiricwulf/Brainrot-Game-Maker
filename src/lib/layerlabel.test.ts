@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { editWords, itemsNamed } from './layerlabel';
-import { newAudioEl, newEmbedEl, newGame, newImageEl, newShapeEl, newTextEl, newVideoEl } from './model';
+import { editWords, itemsNamed, layerLabel } from './layerlabel';
+import { newAudioEl, newEmbedEl, newGame, newImageEl, newShapeEl, newTextEl, newVideoEl, type ShapeEl } from './model';
 
 describe('itemsNamed', () => {
   const game = newGame();
@@ -11,6 +11,17 @@ describe('itemsNamed', () => {
   it('counts several of a kind, and calls a mix items', () => {
     expect(itemsNamed([newShapeEl('rect'), newShapeEl('line')], game)).toBe('2 shapes');
     expect(itemsNamed([newTextEl('A'), newShapeEl('rect'), newShapeEl('line')], game)).toBe('3 items');
+  });
+});
+
+describe('a freehand line', () => {
+  const game = newGame();
+  it('is “Freehand line” (closed, “Freehand shape”), never “Drawing”, which a Drawpad picture is', () => {
+    const line: ShapeEl = { ...newShapeEl('path'), points: [[0, 0], [1, 1]] };
+    expect(layerLabel(line, game)).toBe('Freehand line');
+    expect(layerLabel({ ...line, closed: true }, game)).toBe('Freehand shape');
+    expect(itemsNamed([line], game)).toBe('shape “Freehand line”');
+    expect(layerLabel({ ...newImageEl('m1', 100, 100), name: 'Drawing' }, game)).toBe('Drawing');
   });
 });
 
