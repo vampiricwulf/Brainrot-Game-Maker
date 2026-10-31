@@ -730,7 +730,7 @@ the fix that shows that key. `1`–`9`, `K`, `B`, `M`, `Space`, `←` `→` and 
 (a number a fix shows, a tie's "Ann answers `1`" or a steal's, presses that fix); `?`, `L`, `A`, `H` and `Ctrl+Z` close
 it as Not yet first. For its first 0.6 s it takes no key or click (`Esc` aside),
 so a double press never skips it. Its "Don't ask about … again this game" turns one kind off for the game (landings,
-rolling, opening the buzzers, spinning a tile's wheel, typed answers still coming); the keys window lists what's turned
+rolling, opening the buzzers, a tile's wheel or dice, typed answers still coming); the keys window lists what's turned
 off, each with **Ask again**.
 
 A key held down counts once (only the arrows repeat). With the keys on the main button in a slides round, or on a

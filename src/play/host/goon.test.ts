@@ -1219,6 +1219,8 @@ describe('a board game’s turn (3.4 L)', () => {
       'Ann landed on Lucky: its actions haven’t run (+$100 to Ann).',
     ]);
     expect([items[0].quiet, anywayLabel(open(st, todo(shown)))]).toEqual(['landing', 'Next turn anyway: Lucky’s actions don’t run']);
+    // (Its teach line says only what applies: D and Enter run no landing.)
+    expect(teachLine(open(st, shown))).toBe('Next time: Shift+click on the blue button skips this');
     // Run: they ran (one step, the mark with it), so nothing's left: ✓ Ann's turn is played, Next turn ▶ (N or Enter).
     runSpace(g, s, live, lucky, ['a']);
     shown = mergeItems(shown, leftNow(at(), st), (id) => doneSay(at(), id));

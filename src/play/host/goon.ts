@@ -1560,7 +1560,8 @@ export function teachLine(check: Pick<Check, 'step' | 'items'>): string {
   if (check.step.reveals) parts.push('R reveals at once');
   // (Not with a score effect left: Esc asks once about it too.)
   if (check.step.id === 'done' || (check.step.id === 'tool' && !todo(check.items).some((i) => i.hold))) parts.push('Esc closes at once');
-  if (check.step.id === 'turn') parts.push('D rolls and Enter moves at once');
+  // (Only with a roll or a move left: neither key runs a landing.)
+  if (check.step.id === 'turn' && todo(check.items).some((i) => i.id === 'roll' || i.id === 'move')) parts.push('D rolls and Enter moves at once');
   if (!todo(check.items).every((i) => i.must)) parts.push('Shift+click on the blue button skips this');
   return parts.length ? `Next time: ${parts.join(' · ')}` : '';
 }

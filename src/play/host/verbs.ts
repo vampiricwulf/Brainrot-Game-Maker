@@ -71,7 +71,7 @@ export const CHECK = {
     landing: 'landings',
     roll: 'rolling',
     buzzers: 'opening the buzzers',
-    tool: 'spinning a tile’s wheel',
+    tool: 'a tile’s wheel or dice',
     answers: 'typed answers still coming',
   },
   dontAsk: (what: string) => `Don’t ask about ${what} again this game`,
