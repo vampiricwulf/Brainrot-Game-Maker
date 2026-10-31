@@ -551,7 +551,9 @@ try {
   await chip('Card 2 to Bob').click();
   assert((await pressed('Card 2 to Cat')) === 'true' && (await pressed('Card 2 to Bob')) === 'false' && (await panel.locator('[data-card="2"]').innerText()).includes('(changed)'), 'Card 2 given to Cat instead: the row says it changed');
   assert((await flat(info)).includes('Card 2 → Cat'), 'and the host column says who gets it');
-  await panel.locator('[data-card="2"]').getByRole('button', { name: '📋 Copy words' }).click();
+  // (Its 📋 is at the box's foot while the cards are handed out, its row leaving it out.)
+  assert(!(await panel.locator('[data-card="2"]').getByRole('button', { name: '📋 Copy words' }).count()), 'Card 2’s row leaves 📋 Copy words to the box’s foot');
+  await panel.locator('[data-partner-foot]').getByRole('button', { name: 'Copy Card 2’s words' }).click();
   assert(await toast('Card 2’s words copied: paste them to Cat'), '📋 Copy words says who to paste it to');
   assert((await page.evaluate(() => navigator.clipboard.readText())) === `🤫 For Cat only (Movies $400, card 2): ${ONIONS}`, 'and copies the card for Cat');
   await never(viewers, hidden, 'handing out the cards');
@@ -675,7 +677,9 @@ try {
   assert((await pressed('Card 1 to Ann')) === 'true' && (await pressed('Card 1 to Bob')) === 'false', '⇄ Swap: a card that follows the describer goes to Ann');
   await panel.getByRole('button', { name: '⇄ Swap' }).first().click();
   await stage('[data-partner-badge]', { hasText: 'Bob describes' }).waitFor();
-  await row.getByRole('button', { name: '📋 Copy words' }).click();
+  // (Its words at the box's foot, its picture in its row: one 📋 each.)
+  assert(!(await row.getByRole('button', { name: '📋 Copy words' }).count()), 'the row leaves 📋 Copy words to the box’s foot');
+  await panel.locator('[data-partner-foot]').getByRole('button', { name: 'Copy Card 1’s words' }).click();
   assert(await toast('Card 1’s words copied: paste them to Bob'), '📋 Copy words says who to paste it to, never what');
   assert((await page.evaluate(() => navigator.clipboard.readText())) === `🤫 For Bob only (Movies $600, card 1): ${SECRET}`, 'and the words go on the clipboard only');
   await row.getByRole('button', { name: '📋 Copy picture' }).click();

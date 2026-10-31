@@ -623,7 +623,7 @@
   );
   /**
    * While the cards are handed out, those to copy by hand (no phone gets cards, or one goes to a player without a phone
-   * here): their 📋 is at the box's foot too, beside the step, in view.
+   * here): their 📋 is at the box's foot, beside the step, in view (their rows leave it out until the clock runs).
    */
   const toCopy = $derived(
     handStep ? cards.flatMap((card, i) => (recipients(card).length && (!cardsOn || recipients(card).some((t) => !hasPhone(t.seat))) ? [{ card, i }] : [])) : [],
@@ -894,6 +894,9 @@
           {@const slow = slowOf(card)}
           <!-- (📋 when a player it goes to has no phone here, or the room can't put cards on phones.) -->
           {@const copying = !cardsOn || to.some((t) => !hasPhone(t.seat))}
+          <!-- (While the cards are handed out, its 📋 at the box's foot is the one: the row leaves it out, so no card has
+               two. Its words there, else its picture.) -->
+          {@const atFoot = !toCopy.some((x) => x.card.id === card.id) ? null : copyable ? 'words' : pics && canCopyPicture ? 'picture' : null}
           {@const sentNow = st === 'unsent' ? [] : sentSeats(session, s, card.id)}
           {@const seenNow = st === 'unsent' ? [] : seenBy(card)}
           <!-- One row a card: what's on it (counted), who gets it, how it stands on their phones, and its buttons. Its
@@ -958,14 +961,14 @@
               {@const seat = windowSeat(to)!}
               <button class="small" onclick={() => showInWindow(card, n, seat)} aria-label="Show {w} to {name(seat)}" title="Shows it in the 🪟 card window, to {name(seat)} alone, until the tile closes">🪟 Show {name(seat)}</button>
             {/if}
-            {#if copying}
+            {#if copying && !atFoot}
               {@const done = !!to.length && copyable && copied(card)}
               <button class="small" class:copied={done} data-copied={done || undefined} onclick={() => copyWords(card, n)} disabled={!to.length || !copyable}
                 title={!to.length ? 'Choose who gets it first' : copyable ? copyTip(card, `Copies “For ${to.map((t) => toName(session, t)).join(', ')} only…” with the card’s words and links, to paste in a DM`) : 'This card has no words or links: 📋 Copy picture'}
                 >📋 Copy words</button
               >
             {/if}
-            {#if pics && canCopyPicture && (copying || !!left)}
+            {#if pics && canCopyPicture && (copying || !!left) && atFoot !== 'picture'}
               {@const done = !!to.length && !copyable && copied(card)}
               <button class="small" class:copied={done} data-copied={done || undefined} onclick={() => copyPicture(card, n)} disabled={!to.length} title={to.length ? copyTip(card, 'Copies the card’s picture, to paste in a DM') : 'Choose who gets it first'}>📋 Copy picture</button>
             {/if}

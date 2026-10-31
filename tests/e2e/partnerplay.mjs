@@ -270,12 +270,17 @@ try {
   await panel.getByRole('button', { name: '⇄ Swap' }).first().click();
   assert((await chip('Card 1 to Bob').getAttribute('aria-pressed')) === 'true', 'swapped back, it’s Bob’s again');
   assert(await panel.locator('[data-card="2"]').getByRole('button', { name: '📋 Copy words' }).isDisabled(), 'a card for nobody yet has nothing to copy');
-  await panel.locator('[data-card="1"]').getByRole('button', { name: '📋 Copy words' }).click();
+  // (Card 1's 📋 is at the box's foot while the cards are handed out: its row leaves it out, so there's one.)
+  assert(!(await panel.locator('[data-card="1"]').getByRole('button', { name: '📋 Copy words' }).count()), 'Card 1’s row leaves its 📋 Copy words to the box’s foot');
+  await foot.getByRole('button', { name: 'Copy Card 1’s words' }).click();
   assert(await toast('Card 1’s words copied: paste them to Bob'), '📋 Copy words says who to paste it to (not what)');
   const copied = await page.evaluate(() => navigator.clipboard.readText());
   assert(copied === '🤫 For Bob only (Movies $400, card 1): Shrek', `and copies the card for Bob (${copied})`);
   await chip('Card 2 to Cat').click();
-  assert((await panel.locator('[data-card="2"]').getByRole('button', { name: '📋 Copy picture' }).count()) === 1, 'a card with a picture offers 📋 Copy picture');
+  assert(
+    (await panel.locator('[data-card="2"]').getByRole('button', { name: '📋 Copy picture' }).count()) === 1 && !(await panel.locator('[data-card="2"]').getByRole('button', { name: '📋 Copy words' }).count()),
+    'a card with a picture offers 📋 Copy picture in its row (its words at the foot)',
+  );
   await noCards(page, 'handing out the cards');
   await page.screenshot({ path: 'test-results/partner-play-distribute.png' });
   await stage('[data-slide="1"]').click({ button: 'right' });
@@ -292,7 +297,10 @@ try {
   // Card 1 was 📋 copied (for Bob, who gets it): its 📋 shows ✓. A click on the question while a card to copy by hand
   // isn't copied yet never puts the answer on stream: the status line says to copy it first (names only), the box's 📋
   // flash, and the clock doesn't start.
-  assert((await panel.locator('[data-card="1"] [data-copied]').count()) === 1 && (await panel.locator('[data-card="2"] [data-copied]').count()) === 0, '📋 copied: Card 1’s 📋 shows ✓, Card 2’s not');
+  assert(
+    (await foot.getByRole('button', { name: 'Copy Card 1’s words (copied)' }).count()) === 1 && (await foot.locator('[data-copied]').count()) === 1 && (await panel.locator('[data-card] [data-copied]').count()) === 0,
+    '📋 copied: Card 1’s 📋 at the foot shows ✓, Card 2’s not',
+  );
   const note = page.locator('.panel .status [data-click-note]');
   // (Past the second after the question went up, in which a click is the rest of the one that put it up: it says
   // “The question just went up”, as a second Enter does.)
