@@ -1,6 +1,7 @@
 <!--
   A ✍ clue's (or a Final's) multiple choices in its editor: ＋ Multiple choice starts A to D, then each choice's words,
-  ✔ Right (at most one, and it can be taken off), ▲ / ▼ and ✕, ＋ Choice up to CHOICES_MAX, and Take the choices off.
+  ✔ Right (at most one, and it can be taken off), ⋯ (its menu: ▲ / ▼, drag ⋮⋮ or Alt+↑/↓) and 🗑, ＋ Choice up to
+  CHOICES_MAX, and Take the choices off.
   Each change is a step named by the letters as they were ("Deleted choice C of Memes $400"); typing goes to the history
   watcher ("Edited choice B of Memes $400"). Lettered by place, as the host types them (in play, those with no words are
   left out: the checklist warns about them).
@@ -12,6 +13,10 @@
   import { newId, type Choice } from '../lib/model';
   import { CHOICE_MAX, CHOICES_MAX } from '../lib/buzzproto';
   import { letter } from '../lib/choices';
+  import { DragOrder, rowKeys } from '../lib/dragorder.svelte';
+  import { menuItem, menuOf, showMenu, type MenuEntry } from '../lib/menustate.svelte';
+  import { isTextField } from '../lib/undokeys';
+  import RowTools from './RowTools.svelte';
 
   let {
     owner,
@@ -59,15 +64,21 @@
     );
     if (list.length) void focusBox(Math.min(i, list.length - 1));
   }
-  function move(i: number, d: 1 | -1): void {
-    change(`Moved choice ${letter(i)} of ${where()} ${d < 0 ? 'up' : 'down'}`, () => moveTo(owner.choices!, i, i + d));
-    // (The keys stay on the same button of the row it moved to, or the other one at an end.)
-    void tick().then(() => {
-      const row = box?.querySelectorAll<HTMLElement>('[data-choice-row]')[i + d];
-      const btn = row?.querySelector<HTMLButtonElement>(d < 0 ? '[data-up]' : '[data-down]');
-      (btn && !btn.disabled ? btn : row?.querySelector<HTMLButtonElement>(d < 0 ? '[data-down]' : '[data-up]'))?.focus();
+  function move(i: number, to: number): void {
+    if (to < 0 || to >= list.length || to === i) return;
+    change(`Moved choice ${letter(i)} of ${where()} ${to < i ? 'up' : 'down'}`, () => moveTo(owner.choices!, i, to));
+  }
+  /** A choice's menu: its ⋯, a right-click on its row (not in its box, which keeps the browser's own), Shift+F10 in it. */
+  function items(i: number): MenuEntry[] {
+    const c = list[i];
+    return menuOf({
+      heading: `Choice ${letter(i)}`,
+      verbs: [{ label: c.right ? 'Take off ✔ Right' : '✔ Mark right', onclick: () => markRight(i) }],
+      move: [menuItem.up(() => move(i, i - 1), { disabled: i === 0 }), menuItem.down(() => move(i, i + 1), { disabled: i === list.length - 1 })],
+      delete: menuItem.delete('choice', () => remove(i), { keys: false }),
     });
   }
+  const rows = new DragOrder();
   function markRight(i: number): void {
     const c = list[i];
     change(c.right ? `Took the ✔ off ${letter(i)} on ${where()}` : `Marked ${letter(i)} right on ${where()}`, () => {
@@ -96,7 +107,31 @@
     <legend>Multiple choice <span class="muted">(players pick one on their phone)</span></legend>
     <div class="rows">
       {#each list as c, i (c.id)}
-        <div class="row" data-choice-row>
+        {@const line = rows.lineAt(c.id)}
+        <div
+          class="row drag-row"
+          class:drop-before={line === 'before'}
+          class:drop-after={line === 'after'}
+          class:dragging={rows.dragging === c.id}
+          data-choice-row
+          role="group"
+          aria-label="Choice {letter(i)}"
+          ondragover={(e) => rows.over(e, c.id)}
+          ondrop={(e) => {
+            const m = rows.drop(e, list.map((x) => x.id));
+            if (m) move(m.from, m.to);
+          }}
+          oncontextmenu={(e) => !isTextField(e.target) && showMenu(e, items(i))}
+          use:rowKeys={{ move: (d) => move(i, i + d), menu: () => items(i) }}
+        >
+          <span
+            class="drag-grip"
+            draggable="true"
+            ondragstart={(e) => rows.start(e, c.id, (e.currentTarget as HTMLElement).parentElement)}
+            ondragend={() => rows.end()}
+            aria-hidden="true"
+            title="Drag to reorder (or Alt+↑/↓) · right-click for more">⋮⋮</span
+          >
           <span class="letter" aria-hidden="true">{letter(i)}</span>
           <input
             dir="auto"
@@ -116,9 +151,7 @@
             onclick={() => markRight(i)}
             title={rightTitle}>✔ Right</button
           >
-          <button class="ghost tiny" data-up onclick={() => move(i, -1)} disabled={i === 0} aria-label="Move choice {letter(i)} up">▲</button>
-          <button class="ghost tiny" data-down onclick={() => move(i, 1)} disabled={i === list.length - 1} aria-label="Move choice {letter(i)} down">▼</button>
-          <button class="ghost tiny" onclick={() => remove(i)} aria-label="Delete choice {letter(i)}">✕</button>
+          <RowTools menu={() => items(i)} name="choice {letter(i)}" remove={() => remove(i)} deleteLabel="Delete choice {letter(i)}" size="tiny" />
         </div>
       {/each}
     </div>
