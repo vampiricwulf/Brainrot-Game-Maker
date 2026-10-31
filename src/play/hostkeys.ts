@@ -102,7 +102,7 @@ export const hostKeys = (playerOnly: boolean): KeyGroup[] => [
   {
     title: 'Final',
     keys: [
-      ['N', 'Title card: start the round; then the next step (Show question once every wager is in); in the reveals: show their typed answer (or their wager), then (once they’re judged, C or X) the next player'],
+      ['N', 'The blue button: start the round, Show question (a wager still missing: the keys go to its box), the answer, then in the reveals their typed answer (or their wager) and the next player. The spotlit one not judged yet, it asks first: C or X judges them, then N goes on. Everyone judged: N twice finishes'],
       ['Enter in a wager box', 'The next wager still to type in; with every wager in, show the question'],
       ['Shift+N', 'Reveals: back to the player before'],
       ['R', 'The question: reveal the answer (again: hide it); the countdown stops'],
@@ -114,7 +114,7 @@ export const hostKeys = (playerOnly: boolean): KeyGroup[] => [
   {
     title: 'Tiebreaker clue',
     keys: [
-      ['N', 'The main button: the next question slide, the answer, then back to the results'],
+      ['N', 'The blue button: the next question slide, the answer, then back to the results (nobody its winner yet: it asks first, 🏆 who won)'],
       ['Shift+N', 'The question slide before'],
       ['R', 'Reveal the answer (again: hide it)'],
       ['1 – 9, then Enter', 'The winner (Amount 0: no points)'],

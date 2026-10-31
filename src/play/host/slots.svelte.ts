@@ -37,13 +37,6 @@ export type NextAction = {
    * button and the box's alike, and this says why ("The question just went up: click again to send the cards").
    */
   final?: string;
-  /**
-   * A verdict is due (the Final's spotlit player): this is ✔, and `pair` the ✘ right after it, always in that order, an
-   * equal pair, neither blue, so clicking the main button over and over never judges anyone.
-   */
-  pair?: NextAction;
-  /** The likely verdict of a pair (a multiple-choice pick that is, or isn't, the right one): ringed, never moved. */
-  ring?: boolean;
   /** It's the blue button's step (goon.ts): a click goes through the check before going on, Shift+click past it. */
   goes?: boolean;
 };
@@ -62,13 +55,13 @@ export type HostAsk = {
 };
 
 /** Who offers the main button (the parts not moved to the blue button's step yet): the first with an offer wins, in this order. */
-export type NextFrom = 'final' | 'end' | 'turn' | 'board';
-const ORDER: NextFrom[] = ['final', 'end', 'turn', 'board'];
+export type NextFrom = 'turn' | 'board';
+const ORDER: NextFrom[] = ['turn', 'board'];
 /**
- * Who adds to the stage's menu: the boxes (a tool's, a Daily Double's, a 🤝 partner clue's too), and the panel's own row
- * (its flow: the clue's buttons), in the main button's order.
+ * Who adds to the stage's menu: the boxes (a tool's, a Daily Double's, a 🤝 partner clue's, the Final's, the end
+ * screen's too), and the panel's own row (its flow: the clue's buttons), in the main button's order.
  */
-export type MenuFrom = NextFrom | 'tool' | 'dd' | 'partner' | 'flow';
+export type MenuFrom = NextFrom | 'tool' | 'dd' | 'partner' | 'final' | 'end' | 'flow';
 const MENU_ORDER: MenuFrom[] = ['tool', 'flow', 'dd', 'partner', 'final', 'end', 'turn', 'board'];
 
 type Slots = {

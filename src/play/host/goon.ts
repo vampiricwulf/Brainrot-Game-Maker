@@ -1337,8 +1337,8 @@ export type GoPanel = {
   lit: string | null;
   /** Goes up to flash the check. */
   flash: number;
-  /** The blue button clicked (`shift`: with Shift, going on without asking), or Enter where it's Next (a wager box). */
-  main: (source: 'main' | 'shift' | 'enter') => void;
+  /** The blue button clicked (`shift`: with Shift, going on without asking), or Enter (or N) where it's Next (a wager box). */
+  main: (source: 'main' | 'shift' | 'enter' | 'n') => void;
   /** The clue's row's ▦ Done ▶ board (a skip, while the blue button is 👁 Reveal answer). */
   flowDone: () => void;
   quick: (q: Quick) => void;

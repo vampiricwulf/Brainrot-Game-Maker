@@ -16,7 +16,7 @@
   import { focusMain } from './host/focus';
   import GoOnCheck from './host/GoOnCheck.svelte';
   import { mayAsk, type GoPanel } from './host/goon';
-  import { CHECK } from './host/verbs';
+  import { CHECK, FLOW } from './host/verbs';
   import { phoneAwaySince } from './host/phoneaway.svelte';
   import { categoryLabel, clueCardWords, clueValue, finalName, formatPoints, isBoard, isSlides, questionSlides, typedPoints, wholePoints, type Game, type Session } from '../lib/model';
   import { answerShowing, awardOpen, clueMarks, clueName, clueScored, currentClueInfo, currentFinal, findClueRef, nameList, ownPlayers, partnerSteal, roundComplete, score, setScore, slidePosition, stealersLeft, tiebreakHolds, tiedForFirst, toolOnlyClue, usedTiles } from '../lib/session';
@@ -110,7 +110,6 @@
     ontiebreakerdone,
     oncowinners,
     onjudge,
-    onrevealnext,
     onrolloff,
     onlog,
     onplayers,
@@ -236,8 +235,6 @@
     oncowinners?: () => void;
     /** The Final reveals: a player marked right or wrong (with its sound). */
     onjudge: (playerId: string, right: boolean) => void;
-    /** The Final reveals' next step (N): show the spotlit wager, then the next player. */
-    onrevealnext: () => void;
     onrolloff?: (ids: string[]) => void;
     /** Open or close the 📜 Log (with a tab: open it on that tab). */
     onlog: (tab?: LogTab) => void;
@@ -500,9 +497,8 @@
    * panel's one click guard: a box's own buttons go through it too.)
    */
   const guard = panelGuard();
-  function clickNext(e: MouseEvent, n: NextAction, verdict = false): void {
-    // (A verdict of a pair puts the next step where it was: a click there again within a second waits too.)
-    const v = guard.press(`main:${n.label}`, e.detail, { step: true, final: !!n.final, x: e.clientX, y: e.clientY, redraw: verdict });
+  function clickNext(e: MouseEvent, n: NextAction): void {
+    const v = guard.press(`main:${n.label}`, e.detail, { step: true, final: !!n.final, x: e.clientX, y: e.clientY });
     if (v === 'soon' && n.final) hint(n.final);
     if (v !== 'go') return;
     // (The blue button's step: Shift+click goes on without asking.)
@@ -739,17 +735,6 @@
   /** The answer is on screen: the buzzers stay closed (🙈 Hide answer lets them open again). */
   const answerUp = $derived(session.phase === 'clue' && session.revealed);
   /**
-   * The old main button, for the moments whose part hasn't moved to the blue button's step yet (goon.ts gives no step
-   * for them): the tiebreaker clue. No check before going on there yet.
-   */
-  const oldFlow = $derived.by((): NextAction | null => {
-    if (session.phase === 'tiebreaker') {
-      if (moreSlides && slidePos) return step(VERBS.nextSlideOf(slidePos.at, slidePos.of), nextSlide, { flow: 'pager' });
-      return answerShowing(session) ? step(VERBS.backToResults, tiebreakerDone, { flow: 'done' }) : step(VERBS.reveal, onreveal, { flow: 'reveal' });
-    }
-    return null;
-  });
-  /**
    * The blue button's step (goon.ts), as the main button: its words and key, its tooltip (what it puts on screen, its
    * keys, how to go on without asking, and what's left first). A click goes through the check.
    */
@@ -760,39 +745,8 @@
     const title = st.busy ?? [st.verb.title, keys, mayAsk(st) ? CHECK.shiftClick : '', goon?.first ? `first: ${goon.first}` : ''].filter(Boolean).join(' · ');
     return { label: st.verb.label, ...(st.key ? { key: st.key } : {}), title, disabled: !!st.busy, ...(st.flow ? { flow: st.flow } : {}), goes: true, run: () => goon?.main('main') };
   });
-  /** The tiebreaker's 🏁 Back to results asked once already, by N (see tiebreakerDone). */
-  let warnedFor = $state<string | null>(null);
-  /**
-   * 🏁 Back to results as the tiebreaker's main button (N): with a tied player picked and no winner given, the first press
-   * says so (the tie would stay unsettled), the second goes back. (The plain button goes back at once.)
-   */
-  function tiebreakerDone(): void {
-    const tied = tiedForFirst(session);
-    if (!tbWinner && warnedFor !== 'tiebreaker' && tied.some((p) => selected.includes(p.id))) {
-      warnedFor = 'tiebreaker';
-      const noun = teams ? 'team' : 'player';
-      // (Enter takes exactly one: with more picked it asks for the one who won, so say that here.)
-      const what =
-        selected.length === 1
-          ? `${pickedName || `A tied ${noun}`} is picked but hasn’t won yet: Enter makes them the winner`
-          : `${selected.length} ${noun}s are picked and no winner given: pick just the ${noun} who won and press Enter`;
-      hint(`${what}, or N again goes back without one`, 5000);
-      return;
-    }
-    warnedFor = null;
-    ontiebreakerdone();
-  }
-  // The warning holds for this visit to the tiebreaker and this winner. Leaving it (Ctrl+Z into the Final, the plain
-  // 🏁 Back to results), or a winner given or taken back, makes the next N warn again.
-  const tbVisit = $derived(session.phase === 'tiebreaker' ? `tb:${tbWinner?.id ?? ''}` : session.phase);
-  $effect(() => {
-    void tbVisit;
-    untrack(() => {
-      if (warnedFor === 'tiebreaker') warnedFor = null;
-    });
-  });
   // The blue button's step; then the old main buttons of the moments not moved yet (the boxes' offers).
-  const next = $derived(blue ?? oldFlow ?? slots.next());
+  const next = $derived(blue ?? slots.next());
   $effect(() => {
     nextAction = next;
   });
@@ -1233,7 +1187,8 @@
             onstep={onfinalstep}
             {onreveal}
             {onjudge}
-            {onrevealnext}
+            ongo={(by) => goon?.main(by)}
+            ring={goon?.ring}
             onback={onbackfromfinal}
             {onslide}
             {oncardtakeback}
@@ -1291,7 +1246,8 @@
           {#if answerShowing(session)}
             <button data-flow="reveal" onclick={onreveal} title={VERBS.hide.title}>{VERBS.hide.label}</button>
           {:else}
-            <button data-flow="done" onclick={ontiebreakerdone}>{VERBS.backToResults.label}</button>
+            <!-- (A skip, while the blue button reveals: it asks first while nobody has won it, as the blue one would.) -->
+            <button data-flow="done" onclick={() => (goon ? goon.flowDone() : ontiebreakerdone())}>{FLOW.backToResults.label}</button>
           {/if}
         {/if}
         {#if scoring && !showAward}
@@ -1451,27 +1407,18 @@
             {a.label}{#if a.key} <kbd aria-hidden="true">{a.key}</kbd>{/if}
           </button>
         {/each}
-        <!-- (A verdict due in the Final: an equal pair, ✔ then ✘, neither blue.) -->
         <button
-          class:primary={!ask && !n.pair}
-          class:good={!!n.pair}
-          class:ring={n.ring}
+          class:primary={!ask}
           data-next
           data-flow={n.flow}
           disabled={n.disabled}
           aria-expanded={n.goes && goon?.check ? 'true' : undefined}
           aria-controls={n.goes && goon?.check ? 'goon-check' : undefined}
-          onclick={(e) => clickNext(e, n, !!n.pair)}
+          onclick={(e) => clickNext(e, n)}
           title={n.title ?? n.key}
         >
           {n.label}{#if n.key} <kbd aria-hidden="true">{n.key}</kbd>{/if}
         </button>
-        {#if n.pair}
-          {@const w = n.pair}
-          <button class="bad" class:ring={w.ring} data-next-pair disabled={w.disabled} onclick={(e) => clickNext(e, w, true)} title={w.title ?? w.key}>
-            {w.label}{#if w.key} <kbd aria-hidden="true">{w.key}</kbd>{/if}
-          </button>
-        {/if}
       </div>
     {/if}
   </div>

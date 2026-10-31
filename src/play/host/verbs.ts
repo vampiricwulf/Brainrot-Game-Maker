@@ -148,24 +148,15 @@ export const VERBS = {
   gotIt: { label: '✔ Got it', key: '⏎' },
   missed: { label: '✘ Missed', key: '⇧⏎' },
 
-  // ---------- The Final's question and reveals ----------
-  finalReveal: { label: 'Reveal answer ▶', key: 'N' },
-  startReveals: (noun: string): Verb => ({ label: `Start ${noun} reveals ▶`, key: 'N' }),
-  showAnswer: { label: 'Show answer ▶', key: 'N' },
-  showWager: { label: 'Show wager ▶', key: 'N' },
-  nextPlayer: (noun: string): Verb => ({ label: `Next ${noun} ▶`, key: 'N' }),
-  /** The spotlit player's verdicts: an equal pair in the main cell, ✔ then ✘, whichever is likely. */
+  // ---------- The Final's reveals (its steps are the blue button's: FLOW) ----------
+  /** The spotlit player's verdicts, in their row (and in the check), ✔ then ✘: the likely one ringed, never moved. */
   right: (who: string): Verb => ({ label: '✔ Right', key: 'C', title: `C: ${who} is right` }),
   wrong: (who: string): Verb => ({ label: '✘ Wrong', key: 'X', title: `X: ${who} is wrong` }),
-  finishGame: { label: 'Finish game ▶' },
-  /** The Final over, a round after it. */
-  nextNamed: (round: string): Verb => ({ label: `Next: ${round} ▶` }),
 
-  // ---------- A tie at the end ----------
+  // ---------- A tie at the end (its box; 🏁 Back to results from the tiebreaker is FLOW's) ----------
   tiebreakerClue: { label: '❓ Tiebreaker clue' },
   rollOff: { label: '🎲 Tiebreaker roll-off', key: 'O' },
   coWinners: { label: '🤝 Declare co-winners' },
-  backToResults: { label: '🏁 Back to results', key: 'N', title: 'N: back to the results' },
 
   // ---------- Leaving a round: its question's answers ----------
   keepPlaying: { label: 'Keep playing' },

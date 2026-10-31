@@ -180,7 +180,7 @@
                 <button
                   class:good={q.tone === 'good'}
                   class:bad={q.tone === 'bad'}
-                  class:ring={q === strong && q.tone !== 'good' && !item.done}
+                  class:ring={((q === strong && q.tone !== 'good') || !!q.ring) && !item.done}
                   class:strong={q === strong}
                   class:lit={lit === q.label}
                   disabled={!!item.done || !!q.why}

@@ -9,9 +9,9 @@
   import { blankName, clueCardWords, finalName, formatPoints, getClue, isBoard, isBoardGame, isFinal, isRpg, isSlides, MAX_PLAYERS, newId, PARTNER_GAMES, PLAYER_WHEEL, questionSlides, roundName, wholePoints, type BoardRound, type ClueRef } from '../lib/model';
   import {
     applyScore, awardOpen, backToBoard, backToLastRound, currentFinal, clueName, clueReason, clueScored, currentClueInfo, ddShowQuestion, describeStep,
-    finalAdvance, finalBack, finalJudge, finalShow, finalShowAnswer, finalTag, finalUnjudged, findClueRef, hasWager, typedAnswer, goToRound, introNext, nameList, newSession, openClue, playerName,
+    finalAdvance, finalBack, finalJudge, finalRevealNow, finalShow, finalShowAnswer, finalTag, finalUnjudged, findClueRef, hasWager, typedAnswer, goToRound, introNext, nameList, newSession, openClue, playerName,
     randomizeDailyDoubles, redo, forgetRedo, removePlayer, restorePlayer, answerShowing, rosterChange, roundComplete, score, skipIntro, startIntro, toggleUsed, undo,
-    blankSlide, toolOnlyClue, stepSlide, finalWagerProblems, finalWagersOk, finalStepFix, startTiebreaker, stepOf, logZero, tiebreakHolds, tiedForFirst, tiedLeaders, winnerKnown,
+    blankSlide, toolOnlyClue, stepSlide, finalWagerProblems, finalStepFix, startTiebreaker, stepOf, logZero, tiebreakHolds, tiedForFirst, tiedLeaders, winnerKnown,
     finalSetWager, finalTakeNewcomers, forViewers, wagerFromPhone, coWinnersHold, ownPlayers, clueMarks, judgePartner, partnerSteal, stealersLeft, slidePosition,
   } from '../lib/session';
   import {
@@ -23,7 +23,7 @@
   import { copyText } from './standings';
   import { phoneCan, syncUploads } from '../lib/cardfiles.svelte';
   import { askServerFiles, fileLimitsNow } from '../lib/serverlimits.svelte';
-  import { cardsOut, listedCards, sentCardId, sentSlide, sendCard, sentToText, takeBackCard, tileRecipients } from '../lib/sentcards';
+  import { cardsOut, finalRecipients, listedCards, sentCardId, sentSlide, sendCard, sentToText, takeBackCard, tileRecipients } from '../lib/sentcards';
   import { dealHeld, dealtIn, dropGonePhones } from '../lib/deals';
   import { windowCards } from '../lib/cardwindow';
   import { cardWindow, closeCardWindow, feedCardWindow } from '../lib/cardwindow.svelte';
@@ -103,7 +103,7 @@
   import { shopBuy } from './host/shopops';
   import { SLIDE_H, SLIDE_W } from '../lib/model';
   import { clone, randomizePartnerTiles } from '../lib/ops';
-  import type { ActionEvent, Dir8, Game, GameSettings, MediaRef, Player, ScoreEvent, SentCard, Session } from '../lib/model';
+  import type { ActionEvent, Clue, ClueCard, Dir8, FinalRound, Game, GameSettings, MediaRef, Player, ScoreEvent, SentCard, Session } from '../lib/model';
   import type { Pop } from '../lib/live';
   import {
     audience,
@@ -2077,8 +2077,9 @@
         } else if (!answerShowing(session)) {
           // (A 🤝 partner clue's steal goes by the buzzers, or the stealer's number then Enter: a click says how, as now.)
           if (partnerJudged && stealOpen() && !app.live.timer?.expired) hint(`${stealHint()} · R shows the answer anyway`);
-          // (A 🤝 partner clue too: the cards not handed out or the pair still playing, it asks first.)
-          else if (mainNow?.id === 'slide' || mainNow?.id === 'reveal') goOn('stage', mainNow);
+          // (A 🤝 partner clue too: the cards not handed out or the pair still playing, it asks first. The Final's question
+          // and the tiebreaker's too: their next slide, then the answer.)
+          else if (mainNow?.id === 'slide' || mainNow?.id === 'reveal' || mainNow?.id === 'finalreveal') goOn('stage', mainNow);
           // (A partner clue's answer only ever by the check: never before the pair has had their go.)
           else if (!slideStep(1) && !partner) revealToggle();
         }
@@ -2089,11 +2090,8 @@
         else back();
         break;
       case 'final-next':
+        // (The Final's answer up: Start player reveals ▶.)
         if (mainNow) goOn('stage', mainNow);
-        else {
-          finalNextStep(session, game);
-          finalStep();
-        }
         break;
       case 'overlay':
         overlayPrimary();
@@ -2753,30 +2751,42 @@
 
   // ---------- The blue button and the check before going on (host/goon.ts, docs/SPEC.md §6.6) ----------
 
-  /** The open tile's 🤫 cards not sent yet, to phones that get cards, with who each goes to (the check asks before the answer). */
+  /**
+   * Whose 🤫 cards the check asks about: the open tile's (not a partner clue's), before its answer; the Final's, at its
+   * wagers, before its question.
+   */
+  function cardHolder(): { holder: Clue | FinalRound; final: boolean } | null {
+    if (session.phase === 'clue' && info && !partner) return { holder: info.clue, final: false };
+    if (session.phase === 'final' && (session.finalStep ?? 'wagers') === 'wagers' && finalRound) return { holder: finalRound, final: true };
+    return null;
+  }
+  /** Who a card of `h` goes to: who the host chose in its box, else its Goes to (the Final's: everyone playing it). */
+  const cardTo = (h: NonNullable<ReturnType<typeof cardHolder>>, card: ClueCard) =>
+    recipientsOf(session, h.holder.id, card, () => (h.final ? finalRecipients(session, card) : tileRecipients(session, card)));
+
+  /** The open tile's (or the Final's) 🤫 cards not sent yet, to phones that get cards, with who each goes to (the check asks first). */
   function tileCardsLeft(): GoCtx['cards'] {
-    const clue = session.phase === 'clue' && info && !partner ? info.clue : null;
-    if (!clue || !phoneCards) return [];
+    const h = cardHolder();
+    if (!h || !phoneCards) return [];
     const out = cardsOut(game, session);
     const full = roomCardsFull(game, session) ? cardsFullText(game, session) : undefined;
-    return cardSlides(clue).flatMap((card, i) => {
-      if (out.some((c) => 'clue' in c.content && c.content.clue === clue.id && c.content.card === card.id)) return [];
-      const to = recipientsOf(session, clue.id, card, () => tileRecipients(session, card)).map((t) => t.seat);
+    return cardSlides(h.holder).flatMap((card, i) => {
+      if (out.some((c) => 'clue' in c.content && c.content.clue === h.holder.id && c.content.card === card.id)) return [];
+      const to = cardTo(h, card).map((t) => t.seat);
       return to.length ? [{ id: card.id, name: clueCardWords(card, i, true), to, ...(full ? { full } : {}) }] : [];
     });
   }
 
-  /** 📤 Send it, in the check: an open tile's card to who it's chosen for in its box (as its 📤 Send does). */
+  /** 📤 Send it, in the check: an open tile's (or the Final's) card to who it's chosen for in its box (as its 📤 Send does). */
   function sendTileCard(cardId: string): void {
-    const clue = info?.clue;
-    const cards = clue ? cardSlides(clue) : [];
+    const h = cardHolder();
+    const cards = h ? cardSlides(h.holder) : [];
     const i = cards.findIndex((c) => c.id === cardId);
-    if (!clue || i < 0) return;
+    if (!h || i < 0) return;
     const card = cards[i];
     const over = phoneCards && roomCardsFull(game, session);
     if (over) return toast(cardsFullText(game, session), 4000);
-    const to = recipientsOf(session, clue.id, card, () => tileRecipients(session, card));
-    const c = sendCard(game, session, { to, content: { clue: clue.id, card: card.id }, until: 'tile' }, Date.now(), over);
+    const c = sendCard(game, session, { to: cardTo(h, card), content: { clue: h.holder.id, card: card.id }, until: h.final ? 'round' : 'tile' }, Date.now(), over);
     if (!c) return toast(`Choose who gets ${clueCardWords(card, i)} first`);
     announce(`${clueCardWords(card, i, true)} sent to ${sentToText(session, c.to, pregameTeams)}`);
   }
@@ -2806,11 +2816,17 @@
       const el = document.querySelector<HTMLElement>(sel);
       if (!el) return;
       el.focus({ preventScroll: !!el.closest('[data-dd]') });
-      const row = (flash ? document.querySelector<HTMLElement>(flash) : null) ?? el.closest<HTMLElement>('[data-answer-row], [data-score-card]') ?? el;
-      row.classList.remove('goon-flash');
-      void row.offsetWidth;
-      row.classList.add('goon-flash');
+      flashEl((flash ? document.querySelector<HTMLElement>(flash) : null) ?? el.closest<HTMLElement>('[data-answer-row], [data-score-card]') ?? el);
     });
+  }
+  /** What `sel` finds flashed once, the keys left where they are (the end screen's tie box). */
+  const flashBox = (sel: string): void => void tick().then(() => flashEl(document.querySelector<HTMLElement>(sel)));
+  /** One flash of its outline (none with Reduce motion: app.css). */
+  function flashEl(el: HTMLElement | null): void {
+    if (!el) return;
+    el.classList.remove('goon-flash');
+    void el.offsetWidth;
+    el.classList.add('goon-flash');
   }
 
   /** What the blue button's step and the check's fixes do: this screen's own functions. */
@@ -2862,7 +2878,7 @@
       finalStep();
     },
     finalNext: () => {
-      if (!finalWaiting()) finalRevealNext();
+      if (!wagersWaiting()) finalRevealNext();
     },
     judge: (id, right) => judge(id, right),
     tbBack: () => tiebreakerDone(),
@@ -2975,7 +2991,7 @@
       wagerLimitsOff,
       ddPhone: !!session.dd?.playerId && wagerPhones.includes(session.dd.playerId),
       partner: partnerNow,
-      final: null,
+      final: { teams: pregameTeams, wagerPhones },
       act: goActs,
     };
   });
@@ -2999,10 +3015,10 @@
   let checkGone: { r: DOMRect; at: number } | null = null;
   /** The moment on screen, as the check knows it: it closes by itself when this changes (Ctrl+Z out of the clue…). */
   const momentNow = $derived(
-    `${session.phase}|${session.currentRound}|${openClueKey ?? ''}|${session.revealed}|${session.slide ?? 0}|${session.intro?.stage ?? ''}|${session.dd?.stage ?? ''}|${app.live.overlay?.nonce ?? ''}`,
+    `${session.phase}|${session.currentRound}|${openClueKey ?? ''}|${session.revealed}|${session.slide ?? 0}|${session.intro?.stage ?? ''}|${session.dd?.stage ?? ''}|${app.live.overlay?.nonce ?? ''}|${session.finalStep ?? ''}|${session.final?.current ?? ''}|${!!session.tiebreakerRevealed}`,
   );
-  /** What the check's items say (to redraw it only when that changes). */
-  const itemsSaid = (items: LeftItem[]) => JSON.stringify(items.map((i) => [i.id, i.done ?? '', i.text, i.quick.map((q) => [q.label, q.why ?? ''])]));
+  /** What the check's items say (to redraw it only when that changes: a number key moving its ⏎ too). */
+  const itemsSaid = (items: LeftItem[]) => JSON.stringify(items.map((i) => [i.id, i.done ?? '', i.text, i.quick.map((q) => [q.label, q.why ?? '', !!q.enter, !!q.ring])]));
   // What's left follows what happens meanwhile: an item done elsewhere keeps its line, ticked; new ones join at the end.
   $effect(() => {
     const ck = check;
@@ -3133,7 +3149,7 @@
 
   /** What Esc does outside the check, said when a second one bounces off Not yet. */
   function escWould(): string {
-    const d = doneStep(go);
+    const d = session.phase === 'clue' ? doneStep(go) : null;
     return d ? `${FLOW.done.label}${leftNow(go, d).length ? ' without points' : ''}` : 'it closes what’s up';
   }
 
@@ -3306,19 +3322,19 @@
   }
 
   // The board becomes pickable (the game starts on it, its intro ends): the keys go on from its first open tile (arrows
-  // + Enter), unless the focus is somewhere already. The end screen: from its main button (a tie's ❓ Tiebreaker clue),
-  // not the tie box's first one.
+  // + Enter), unless the focus is somewhere already. The end screen (no blue button): from its first button, a tie box's
+  // ❓ Tiebreaker clue.
   $effect(() => {
     if (app.pregame || (session.phase !== 'board' && session.phase !== 'end') || session.intro) return;
     untrack(boardFocus);
   });
 
   /**
-   * The Final's typed values (goon.ts finalWaits): a wager missing, not a whole number or over the max (or, in the
-   * reveals, the spotlit player's): the keys go to the first box to fill, its row flashes, and the status line says
-   * whose and what to do. True: it waits.
+   * The Final's wagers with some still to type, not whole or over the max (or, in the reveals, the spotlit player's
+   * missing): typed values, so no check opens (goon.ts finalWaits). The keys go to the first box to fill, its row
+   * flashes, and the status line says whose and what to do ("Waiting on Bob's phone & Cat…"). True: it waits.
    */
-  function finalWaiting(): boolean {
+  function wagersWaiting(): boolean {
     const w = finalWaits(go);
     if (!w) return false;
     flashTo(w.at, w.row);
@@ -3328,21 +3344,12 @@
 
   /** Show question ▶ from the Final's wagers (one missing: the keys go to its box). Ctrl+Z goes back to the wagers. */
   function finalShowQuestion(): void {
-    if (finalWaiting()) return;
+    if (wagersWaiting()) return;
     // (The wager being typed is a step of its own first: its box's blur takes it.)
     const a = document.activeElement;
     if (a instanceof HTMLInputElement && a.matches('[data-wager]')) a.blur();
     finalNextStep(session, game);
     finalStep();
-  }
-
-  /** N in the Final's wagers with some still to type (or over the max): say whose, and go to the first of them. */
-  function wagersWaiting(): void {
-    const { missing, over, whole } = finalWagerProblems(session, wagerLimitsOff);
-    const names = (ids: string[]) => nameList(ids.map((id) => playerName(session, id)));
-    toast(missing.length ? `Waiting on: ${names(missing)}` : whole.length ? `Not a whole number: ${names(whole)}` : `Over the max: ${names(over)}`, 3000);
-    const first = session.final?.players.find((id) => missing.includes(id) || whole.includes(id) || over.includes(id));
-    if (first) document.querySelector<HTMLElement>(`.play [data-wager="${first}"]`)?.focus();
   }
 
   /** Final round started by mistake (or a tile was skipped): back to the round before it, wagers kept. */
@@ -3441,18 +3448,13 @@
   }
 
   /**
-   * N in the final reveal: show their typed answer (if they sent one from their phone) or else their wager, then (once
-   * they're judged, C or X: the wager goes up with it) the next player still to judge; finishing takes a second N once
-   * all are judged.
+   * The reveals' blue button (and N): show their typed answer (if they sent one from their phone) or else their wager,
+   * then (once they're judged, C or X: the wager goes up with it) the next player still to judge; finishing takes a
+   * second N once all are judged. (The spotlit one's verdict due, the blue button asks for it first, in the check.)
    */
   function finalRevealNext(): void {
-    const f = session.final;
-    const cur = f?.current && f.order.includes(f.current) ? f.current : undefined;
-    const answerNext = !!f && !!cur && !!typedAnswer(f, cur) && !f.answerShown?.[cur] && !f.results[cur];
     // Their answer or wager is up: they're judged before anyone else is spotlit (N never skips past them).
-    // (One with no wager in yet can't be judged: N goes on, as the main button says.)
-    if (f && cur && !answerNext && (f.shown[cur] || f.answerShown?.[cur]) && !f.results[cur] && hasWager(f, cur))
-      return hint(`Mark ${playerName(session, cur)} right (C) or wrong (X) first`);
+    if (finalRevealNow(session).at === 'judge') return void goOn('n');
     const r = finalAdvance(session);
     // (Screen readers hear who is spotlit and their wager: they're on the stage and in the rows, not the status line.
     // Never the words of an answer.)
@@ -3962,13 +3964,10 @@
     const heading = round ? finalName(round) : 'Final';
     if (!f) return { heading, steps: [] };
     const noun = pregameTeams ? 'team' : 'player';
-    const after = game.rounds[session.currentRound + 1];
-    const goOn = (after ? VERBS.nextNamed(roundName(after, session.currentRound + 1)) : VERBS.finishGame).label;
     const step = session.finalStep ?? 'wagers';
-    if (step === 'wagers') {
-      const ok = finalWagersOk(session, wagerLimitsOff);
-      return { heading, steps: [{ id: 'next', label: f.players.length ? VERBS.showQuestion.label : goOn, keys: 'N', disabled: !ok, ...(ok ? {} : { hint: 'Every wager in first' }), onclick: () => nKey(false) }] };
-    }
+    // (The blue button's step, by N: a wager missing puts the keys in its box, a verdict due asks first.)
+    const blue = mainNow?.verb.label ?? FLOW.showQuestion.label;
+    if (step === 'wagers') return { heading, steps: [{ id: 'next', label: blue, keys: 'N', onclick: () => nKey(false) }] };
     if (step === 'question') {
       const pos = slidePosition(session, game);
       const more = !!pos && pos.at < pos.of;
@@ -3981,27 +3980,19 @@
                 { id: 'slide-', label: VERBS.prevSlide.label, keys: 'Shift+N', disabled: pos.at <= 1, onclick: () => slideStep(-1) },
               ]
             : []),
-          { id: 'next', label: VERBS.finalReveal.label, keys: more ? undefined : 'N', onclick: revealToggle },
+          { id: 'next', label: FLOW.finalReveal.label, keys: more ? undefined : 'N', onclick: () => (more ? revealToggle() : nKey(false)) },
           clockItem(),
         ],
       };
     }
-    if (step === 'answer') return { heading, steps: [{ id: 'next', label: VERBS.startReveals(noun).label, keys: 'N', onclick: () => nKey(false) }] };
+    if (step === 'answer') return { heading, steps: [{ id: 'next', label: FLOW.startReveals(noun).label, keys: 'N', onclick: () => nKey(false) }] };
     // The reveals: N shows the spotlit one's answer, then their wager; C / X judge them; then the next one.
     const cur = f.current && f.order.includes(f.current) ? f.current : undefined;
-    const left = finalUnjudged(session).length;
-    let label = left ? VERBS.nextPlayer(noun).label : goOn;
-    let wait = '';
-    if (cur && !f.results[cur]) {
-      if (typedAnswer(f, cur) && !f.answerShown?.[cur]) label = VERBS.showAnswer.label;
-      else if (hasWager(f, cur) && (f.shown[cur] || f.answerShown?.[cur])) wait = `Mark ${playerName(session, cur)} right (C) or wrong (X) first`;
-      else if (!f.shown[cur]) label = VERBS.showWager.label;
-    }
     const judge = !!cur && !f.results[cur] && hasWager(f, cur);
     return {
       heading,
       steps: [
-        { id: 'next', label, keys: 'N', disabled: !!wait, ...(wait ? { hint: wait } : {}), onclick: () => nKey(false) },
+        { id: 'next', label: blue, keys: 'N', onclick: () => nKey(false) },
         { id: 'prev', label: `◀ ${noun === 'team' ? 'Team' : 'Player'} before`, keys: 'Shift+N', onclick: () => nKey(true) },
         { id: 'right', label: '✔ Right', keys: 'C', disabled: !judge, onclick: () => finalJudgeKey(true) },
         { id: 'wrong', label: '✘ Wrong', keys: 'X', disabled: !judge, onclick: () => finalJudgeKey(false) },
@@ -4111,7 +4102,8 @@
           { id: 'reveal', label: shown ? VERBS.hide.label : VERBS.reveal.label, keys: 'R', onclick: revealToggle },
           clockItem(),
         ],
-        exits: [{ id: 'done', label: VERBS.backToResults.label, keys: shown ? 'N' : undefined, onclick: tiebreakerDone }],
+        // (Through the check: nobody has won it yet, it asks first.)
+        exits: [{ id: 'done', label: FLOW.backToResults.label, keys: shown ? 'N' : undefined, onclick: () => goPanel.flowDone() }],
       };
     }
     if (session.phase === 'end') {
@@ -5135,16 +5127,14 @@
   let tabbedList: Element | null = null;
 
   /**
-   * The Final's steps and the end screen go on with their own keys (N, C / X, O) or a click, never Enter: which. (Not
+   * The Final's steps go on with their own keys (N, C / X) or a click, never Enter (but in its wager boxes): which. (Not
    * with the controls hidden: the panel's gone, and its last main button with it.)
    */
   function goOnHint(): void {
     if (!hostNext || hideControls) return;
-    // (A verdict due: the pair, ✔ then ✘.)
-    const w = hostNext.pair;
-    if (w) return hint(`Press ${hostNext.key} for ${hostNext.label} or ${w.key} for ${w.label}`);
-    const rolloff = session.phase === 'end' && hostNext.key !== 'O' ? ' (O: a roll-off)' : '';
-    hint(hostNext.key ? `Press ${hostNext.key} for ${hostNext.label}` : `Click ${hostNext.label} to go on${rolloff}`);
+    // (The spotlit one's verdict first: C or X.)
+    const say = leftMain.find((i) => i.must)?.enterSay;
+    hint(say ?? (hostNext.key ? `Press ${hostNext.key} for ${hostNext.label}` : `Click ${hostNext.label} to go on`));
   }
 
   /** The wheel or dice tile's tool (its overlay, and how far it got) the first R asked about: R again shows the answer anyway. */
@@ -5317,8 +5307,8 @@
           goOn('enter', mainNow);
           break;
         }
-        // The Final's steps go on with their own keys (N, C / X), the end screen's with a click (or O): Enter says which.
-        if (!selected.length && !e.shiftKey && t?.matches('[data-next]') && (session.phase === 'final' || session.phase === 'end') && hostNext) {
+        // The Final's steps go on with their own keys (N, C / X): Enter says which.
+        if (!selected.length && !e.shiftKey && t?.matches('[data-next]') && session.phase === 'final' && hostNext) {
           goOnHint();
           break;
         }
@@ -5566,11 +5556,18 @@
       }
     }
     else if (session.phase === 'final' && session.finalStep === 'reveal') {
+      // The reveals: N the blue button (the spotlit one's answer or wager, the next player), asking for the spotlit one's
+      // verdict first; with everyone judged, N twice finishes (finishArmed). Shift+N: the player before.
       if (e.shiftKey) {
         if (finalBack(session) && session.final?.current) announce(`Spotlight: ${playerName(session, session.final.current)}`);
-      } else finalRevealNext();
-    } else if (session.phase === 'final' && session.finalStep === 'question' && (e.shiftKey ? (slideStep(-1), true) : slideStep(1))) {
-      // The Final's question slides: N the next (after the last, the answer as before), Shift+N the one before.
+      } else if (mainNow?.id === 'finish' && !leftMain.length) finalRevealNext();
+      else if (mainNow) goOn('n', mainNow);
+    } else if (session.phase === 'final') {
+      // The Final's wagers (one missing: the keys go to its box), its question slides (Shift+N the one before), its
+      // answer, the reveals starting: the blue button, asking first when something's left.
+      if (e.shiftKey) {
+        if (session.finalStep === 'question') slideStep(-1);
+      } else if (mainNow) goOn('n', mainNow);
     } else if (session.phase === 'clue') {
       // Shift+N: a clue's question slide before. N: the blue button (the next slide, 👁 Reveal answer, ▦ Done ▶ board),
       // asking first when something's left (goOn), with the controls hidden too. A moment whose part has its own main
@@ -5583,11 +5580,10 @@
       else if (!hideControls && hostNext && !hostNext.disabled) hostNext.run();
       else if (!slideStep(1) && !answerShowing(session)) revealToggle();
     } else if (session.phase === 'tiebreaker') {
-      // The tiebreaker: N whatever the main button shows (the next slide, 👁 Reveal answer, 🏁 Back to results);
-      // Shift+N the slide before. With the controls hidden, as a click on the stage (above).
+      // The tiebreaker: N the blue button (the next slide, 👁 Reveal answer, 🏁 Back to results, asking first while
+      // nobody has won it); Shift+N the slide before.
       if (e.shiftKey) slideStep(-1);
-      else if (!hideControls && hostNext && !hostNext.disabled) hostNext.run();
-      else if (!slideStep(1) && !answerShowing(session)) revealToggle();
+      else if (mainNow) goOn('n', mainNow);
     } else if (session.phase === 'slides') {
       // A slides round: N the next slide, then (after the last) the next round, as the blue button says.
       if (e.shiftKey) slideStep(-1);
@@ -5597,16 +5593,11 @@
     } else if (session.phase === 'board' && !e.shiftKey && mainNow?.clickOnly) {
       // A played-out board goes on only from its button (N mashed after the last clue mustn't jump on stream).
       hint(`Round complete: click ${mainNow.verb.label} to go on`);
-    } else if (session.phase === 'end' && !e.shiftKey && !hideControls && hostNext && !hostNext.disabled) {
-      // A tie at the end is settled from its button, or O (N mashed after the Final mustn't start one on stream).
-      goOnHint();
-    } else if (e.shiftKey) return;
-    else if (session.phase === 'final' && session.finalStep === 'wagers' && !finalWagersOk(session, wagerLimitsOff)) wagersWaiting();
-    // The question up: the answer, as the main button shows it (its reveal sound too).
-    else if (session.phase === 'final' && session.finalStep === 'question') revealToggle();
-    else if (session.phase === 'final') {
-      finalNextStep(session, game);
-      finalStep();
+    } else if (session.phase === 'end' && !e.shiftKey && !coWinnersHold(session) && tiedLeaders(session).length) {
+      // The end screen has no blue button: a tie is settled in its box (N mashed after the Final mustn't start one on
+      // stream). N says so, and the box flashes.
+      hint('Tie for first: settle it in the tie box (O: a roll-off)');
+      if (!hideControls) flashBox('.play .panel [data-tie]');
     }
   }
 </script>
@@ -6153,7 +6144,6 @@
         ontiebreakerdone={tiebreakerDone}
         oncowinners={winnerCue}
         onjudge={judge}
-        onrevealnext={finalRevealNext}
         onlog={(tab) => {
           if (tab) logTab = tab;
           showLog = !!tab || !showLog;

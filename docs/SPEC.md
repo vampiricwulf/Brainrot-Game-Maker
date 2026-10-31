@@ -429,25 +429,35 @@ The mode isn't saved with the game: it's dual while the audience window is open.
   ▦ Done ▶ board, Next round ▶, a 🤝 partner clue's Show question ▶ on PARTNER UP! and Next ▶ while its wheel is up, a
   Daily Double's Show question ▶, never greyed; over a wheel or dice tile's own tool, Show question ▶ (▦ Done ▶ board on
   a tile with no question), over a question pop-up 👁 Reveal answer then Next ▶, over any other tool, the scores, a sheet
-  or a roll-off Next ▶, which only puts it away; greyed only while a wheel turns or dice roll), `N` its key in every
-  round (`Enter` too where it's Next: an intro, a slides round, PARTNER UP!, a Daily Double's Wager box); a played-out
-  board's Next round ▶ goes on only from a click. ＋ Award is green, never blue; 🔔 Open the buzzers (`U`) and a tie's
+  or a roll-off Next ▶, which only puts it away; the Final's Show question ▶, Reveal answer ▶, Start player reveals ▶,
+  Show answer ▶ / Show wager ▶ / Next player ▶ and Finish game ▶ (or the next round's name), never greyed; the
+  tiebreaker clue's slides, 👁 Reveal answer and 🏁 Back to results; greyed only while a wheel turns or dice roll), `N`
+  its key in every round (`Enter` too where it's Next: an intro, a slides round, PARTNER UP!, a Daily Double's Wager box,
+  the Final's wager boxes); a played-out board's Next round ▶ goes on only from a click. The end screen has none: a tie
+  for first is settled in its tie box (❓ Tiebreaker clue, 🎲 Tiebreaker roll-off `O`, 🤝 Declare co-winners), and `N`
+  there says so and flashes it. ＋ Award is green, never blue; 🔔 Open the buzzers (`U`) and a tie's
   🎲 Roll for it (`O`) are in the buzzers' row, a partner clue's 🎡 Spin for a partner (`W`) and 📤 Send and start
   (`Enter`) in its 🤝 box, and a wheel's Spin! (`W`) or dice's Roll! (`D`) in the tool's box. A part that hasn't moved to
-  this yet keeps its own main button (the Final, the end, a board game's turn and its own roll). **The check before going on** (`src/play/host/goon.ts`,
+  this yet keeps its own main button (a board game's turn and its own roll). **The check before going on** (`src/play/host/goon.ts`,
   `GoOnCheck.svelte`): the blue button pressed (a click, `N`, `Enter` where it's Next, a click on the stage, the clue
   row's ▦ Done) with something left opens a card in the panel instead, anchored at its bottom right over the panel's
   buttons (never the stage, the status line or the fixed bar), with a button-free spot over the blue button. Its
   heading is “First:” (a step to take first: phone buzzers never opened, a buzzer tie, ✍ answers still coming in, a
   tile's 🤫 card not sent; a 🤝 partner clue's who picked it, the partner, who describes or nobody to partner with on
   PARTNER UP!, all musts with no “anyway”, then at the reveal its cards not handed out or the clock not started, the pair
-  still playing, a steal open; a wheel or dice tile's own tool not spun or rolled, or landed on “Spin again”) or
-  “Before you go on” (a loss: a player picked or a Daily Double's player with no points, ✍ answers not judged, a partner
-  clue not judged, at ▦ Done; a wheel's or dice's score effect not given, before it goes; a question pop-up's player
-  picked with no points, at its Next ▶). A tool from the tools row never asks whether it spun. A Daily Double's who
-  found it and wager are typed, so they never open it: `N`, `Enter` in the Wager box or a click on Show question ▶ with
-  one missing (or over the max) keeps the keys in the Wager box, flashes the names or the box and says what's missing
-  in the status line (never a phone's wager in one window). Each item has its quick buttons (＋ Award Ann $200 ▶ board `Enter`, − Deduct
+  still playing, a steal open; a wheel or dice tile's own tool not spun or rolled, or landed on “Spin again”; the
+  Final's own 🤫 card not sent at Show question ▶, its typed answers still coming at Reveal answer ▶, and the spotlit
+  player not judged yet at Next player ▶ or Finish game ▶, a must whose ✔ Right `C` / ✘ Wrong `X` close the check, so
+  the verdict lands on stream before `N` goes on, with no `Enter` and the likely one ringed) or “Before you go on” (a
+  loss: a player picked or a Daily Double's player with no points, ✍ answers not judged, a partner clue not judged, at ▦
+  Done; a wheel's or dice's score effect not given, before it goes; a question pop-up's player picked with no points, at
+  its Next ▶; the tiebreaker clue with nobody its winner while they're still tied, at 🏁 Back to results or its row's
+  skip: 🏆 Ann won ▶ results for each tied player, `Enter` on the one picked). A tool from the tools row never asks
+  whether it spun. A Daily Double's who found it and wager, and the Final's wagers, are typed, so they never open it:
+  `N`, `Enter` in the wager box or a click on Show question ▶ with one missing (or over the max) keeps the keys in the
+  box (the Final's: the first to fill; in its reveals, Show wager ▶ with none in goes to that player's row), flashes the
+  names or the box and says what's missing in the status line (“Waiting on Bob's phone & Cat: type their wagers, or Sits
+  out”; never a phone's wager in one window). Each item has its quick buttons (＋ Award Ann $200 ▶ board `Enter`, − Deduct
   `Shift+Enter`, 🔔 Open the buzzers `U`, 🎲 Roll for it `O`, ⏱ Start the countdown `T`, ✔ Judge all ▶ board, ✍ Judge
   them, ✘ The rest are wrong, 📤 Send it; a partner clue's 🎡 Spin for a partner `W`, the players by number, Solo, ↩ Put
   back `Shift+Esc`, 📤 Send and start `Enter` (never within a second of the question), ⏱ Start the clock, 📋 Copy, ✔ Got
@@ -633,14 +643,20 @@ The mode isn't saved with the game: it's dual while the audience window is open.
 3. Answer reveal.
 4. **Per-player reveal**, one at a time in an order the host chooses: a typed answer first (show it, then mark ✔ / ✘,
    and the wager goes up with the mark; judging first puts it up too), otherwise show the wager, then mark ✔ / ✘; the
-   score animates. While the spotlit player waits on a verdict, the main cell holds **✔ Right** (`C`) and **✘ Wrong**
-   (`X`), always in that order and neither blue (clicking the main button over and over never judges anyone); with
-   multiple choice and one marked ✔ Right, the verdict their pick points to is ringed there and in their row (in one
-   window once their answer is on screen). Next player ▶ is the main button again once they're judged.
-   `1`–`9` spotlight a player by their number (in the players' order), shown on each row.
-5. **Tie check**: if two or more players are tied for first, the host is offered:
-   - **Tiebreaker roll-off** between only the tied players (§6.6), or
-   - **Tiebreaker clue** (the pre-written `Game.tiebreaker`, if authored). Scored with the normal scoring panel, or
+   score animates. The blue button (`N`) does Show answer ▶, Show wager ▶ and Next player ▶ (Finish game ▶ after the
+   last one); the spotlit row's own Show answer or Show wager is left empty meanwhile (the other rows keep theirs, to
+   show a player out of turn). The verdicts are only in the rows, **✔ Right** (`C`) then **✘ Wrong** (`X`), neither
+   blue; with multiple choice and one marked ✔ Right, the verdict their pick points to is ringed there (in one window
+   once their answer is on screen). With the spotlit player not judged yet, Next player ▶ (or Finish game ▶) asks for
+   the verdict first, in the check: ✔ Right / ✘ Wrong there judge them and close it (`N`, `C`, `N`, as before).
+   Finishing early is a quiet Finish game ▶ at the box's foot, asking first in the strip; it isn't there while the blue
+   button is Finish game ▶ itself. With everyone judged, `N` twice finishes. `1`–`9` spotlight a player by their number
+   (in the players' order), shown on each row.
+5. **Tie check**: if two or more players are tied for first, the results screen's tie box offers every way to settle it
+   (it has no blue button; `N` says to settle the tie there):
+   - **Tiebreaker clue** (the pre-written `Game.tiebreaker`, if authored; greyed with why otherwise). Scored with the
+     normal scoring panel (the winner and ＋ Award with 0), or 🏆 their name when its 🏁 Back to results asks, or
+   - **Tiebreaker roll-off** between only the tied players (§6.6, `O`), or
    - **Declare co-winners**.
    The same tie check runs at the end of the game when Final Jeopardy is off.
 6. Winner screen: final standings with player colors. Confetti.
@@ -768,7 +784,8 @@ or `Space` presses it: `Shift+Enter` is always ✘ Missed or − Deduct, never a
 a slides round, on a round's title card or its category reveals, does what the button says, as `N`; on a 🤝 partner
 clue's PARTNER UP! `Enter` is the blue button wherever the keys are, then the 🤝 box's 📤 Send and start (or ⏱ Start the
 clock), then ✔ Got it; in the Final's
-steps and on the end screen it says which key (or click) goes on, and on a wheel or dice tile not spun or rolled yet
+steps it says which key (or click) goes on (with the spotlit player's verdict due, “C: right · X: wrong”; in its wager
+boxes `Enter` is the next box to fill, then Show question ▶), and on a wheel or dice tile not spun or rolled yet
 the key that does it (“Spin the wheel first: W”). `Enter` in a Daily Double's Wager box is its Show question ▶. With players
 selected on the board, `Enter` on a tile takes the keys to the Amount box (type the points, then `Enter`, and they're
 back on the tile) instead of opening it; while the keys are there, number keys type and the chips hide theirs.

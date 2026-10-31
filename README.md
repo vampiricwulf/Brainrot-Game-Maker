@@ -228,10 +228,18 @@ at its top, the keys in its Wager box, its Wager row ending with True Daily Doub
 button (never greyed), and `Enter` in the Wager box is that too: with who found it or the wager missing (or over the
 max) the keys stay in the box, the names or the box flash, and the status line says what to do ("Type a wager (Ann can
 wager up to $1,000), or True Daily Double"). In a 🤝 partner clue with its clock running, ✔ Got it and ✘ Missed are an equal pair
-in its box (neither blue), and the blue 👁 Reveal answer asks first while they play. When the Final's verdict is due
-nothing is blue, so clicking the main button over and over never judges anyone: the main cell holds **✔ Right** `C` and
-**✘ Wrong** `X`, always in that order, the one a multiple-choice pick points to ringed (in its row too). `Enter`,
-`Shift+Enter`, `C` and `X` do what they did. While a partner clue's cards are handed out, `T` (or the status line's ⏱
+in its box (neither blue), and the blue 👁 Reveal answer asks first while they play. In the Final the blue button is its
+next step: **Show question ▶** (`N`, or `Enter` in its last wager box; never greyed: with a wager missing, not a whole
+number or over the max, the keys go to the first box to fill, its row flashes, and the status line says whose: “Waiting
+on Bob's phone & Cat: type their wagers, or Sits out”), **Reveal answer ▶**, **Start player reveals ▶**, then one by one
+**Show answer ▶** / **Show wager ▶** / **Next player ▶**, and **Finish game ▶** (by `N` twice once everyone is judged,
+as before). The verdicts are only in the rows, **✔ Right** `C` then **✘ Wrong** `X`, the one a multiple-choice pick
+points to ringed; the spotlit row's Show answer or Show wager is empty while the blue button does it (the other rows keep
+theirs, to show a player out of turn), and the quiet Finish game ▶ for finishing early (it asks first) hides while the
+blue button is Finish game ▶ itself. A tie for first on the results screen is settled in its box, which holds every way:
+**❓ Tiebreaker clue**, **🎲 Tiebreaker roll-off** `O`, **🤝 Declare co-winners**; that screen has no blue button (`N`
+says to settle the tie there, and the box flashes). The tiebreaker clue's blue button is its slides, 👁 Reveal answer,
+then **🏁 Back to results**. While a partner clue's cards are handed out, `T` (or the status line's ⏱
 Start) starts the clock: with no card waiting for a phone the clue goes live, as **⏱ Start the clock (45 s)** does, and the
 first `Enter` after it only says so; with phone cards still to send it's the clock only, and **📤 Send the cards (clock
 running)** (`Enter`) sends them.
@@ -246,7 +254,12 @@ Spin for a partner `W`, or a player's number: it closes, so the pair shows first
 partner with Solo or ↩ Put back `Shift+Esc`, each to be done first (no "anyway"); at 👁 Reveal answer, the cards not
 handed out or the clock not started (📤 Send and start `Enter`, ⏱ Start the clock, 📋 Copy Card 1's words), the pair
 still playing (✔ Got it ▶ reveal `Enter` / ✘ Missed `Shift+Enter`) or a steal open (who steals it); at ▦ Done ▶ board,
-not judged (✔ Got it ▶ board / ✘ Missed ▶ board). Card names and who they're for, never their words. A quiet **▦ Done anyway: no points** (or **👁 Reveal anyway**, `R`) and **Not yet**
+not judged (✔ Got it ▶ board / ✘ Missed ▶ board). In the Final: its own 🤫 card not sent at Show question ▶ (📤 Send it),
+typed answers still coming at Reveal answer ▶ (⏱ 10 more seconds `Shift+T`), and at Next player ▶ or Finish game ▶ the
+spotlit player not judged yet (**✔ Right** `C` / **✘ Wrong** `X`, to be done first: each closes the check, so the verdict,
+the wager and the new score land on stream, then `N` goes on). At the tiebreaker's 🏁 Back to results with nobody its
+winner yet, **Before you go on**: **🏆 Ann won ▶ results** for each tied player (the one picked with their number takes
+`Enter`), or 🏁 Back to results, still tied. Card names and who they're for, never their words. A quiet **▦ Done anyway: no points** (or **👁 Reveal anyway**, `R`) and **Not yet**
 (`Esc`) are at its foot; `N` again is "anyway" (not at a reveal, where `N` only says to press `R`). For its first 0.6 s
 it takes no key or click (a double press never goes on by mistake: what it would have pressed lights up), an `Esc`
 right after Not yet does nothing, and the keys go back to what opened it. `Shift+click` on the blue button goes on
@@ -445,9 +458,10 @@ notes a space up there):
 
 **Ties** for first aren't called a win on stream until they're settled, in one of three ways:
 
-- A roll-off, whose winner wins the game (`O` on the results screen).
-- A tiebreaker clue: select the winner and ＋ Award. Its Amount starts at 0, so settling the tie adds no points.
-- Co-winners.
+- A roll-off, whose winner wins the game (🎲 Tiebreaker roll-off in the tie box, or `O` on the results screen).
+- A tiebreaker clue (❓ Tiebreaker clue in the tie box): select the winner and ＋ Award (its Amount starts at 0, so
+  settling the tie adds no points), or 🏆 their name when 🏁 Back to results asks.
+- Co-winners (🤝 Declare co-winners in the tie box).
 
 The winner fanfare plays once the tie is settled. Each way settles only the tie it was used for: a score fixed later
 into a tie with someone else opens it again.

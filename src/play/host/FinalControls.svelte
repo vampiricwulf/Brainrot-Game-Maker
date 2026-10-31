@@ -2,7 +2,8 @@
   Final round host flow (spec §6.4): one wager screen while the category is up (who plays, and each one's wager), then
   the question, the answer and a one-by-one reveal (a typed answer, a multiple choice's pick by its letter and whether
   it's the one marked ✔ Right); and its own 🤫 cards (TileCards), from the wagers to the last reveal (below the panel's
-  foot, 🤫 N cards ↓ in the step's row goes to them).
+  foot, 🤫 N cards ↓ in the step's row goes to them). The blue button is the Final's next step (goon.ts: Show question ▶,
+  Reveal answer ▶, Show answer ▶, Next player ▶, Finish game ▶): this box has the rest, the verdicts in the rows.
 -->
 <script lang="ts">
   import { onDestroy, tick, untrack } from 'svelte';
@@ -14,14 +15,14 @@
   import { DragOrder } from '../../lib/dragorder.svelte';
   import { cardSlides, finalName, formatPoints, MAX_POINTS, roundName, type Game, type Id, type Session, type WagerSource } from '../../lib/model';
   import {
-    currentFinal, finalChoose, finalSetWager, finalShow, finalUnjudged, finalWagerCap, finalWagerEditable, finalWagerProblems, finalWagerRefused, finalWagersOk,
-    hasWager, nameList, score, slidePosition, typedAnswer, wagerFromPhone, wagerSentBy,
+    currentFinal, finalChoose, finalRevealNow, finalSetWager, finalShow, finalUnjudged, finalWagerCap, finalWagerEditable, finalWagerProblems, finalWagerRefused,
+    finalWagersOk, hasWager, nameList, score, slidePosition, typedAnswer, wagerFromPhone, wagerSentBy,
   } from '../../lib/session';
-  import { finalNextStep, logged, startStep } from '../../lib/toolset';
+  import { finalNextStep, logged } from '../../lib/toolset';
   import { letter, pickLabel, pickOf, rightChoice, usableChoices } from '../../lib/choices';
-  import { hostAsk, offerMenu, offerNext, step as nextStep, type NextAction } from './slots.svelte';
-  import { stepItem, type StageItem } from './stagemenu';
-  import { VERBS } from './verbs';
+  import { hostAsk, offerMenu } from './slots.svelte';
+  import type { StageItem } from './stagemenu';
+  import { FLOW } from './verbs';
   import AnswersHost from './AnswersHost.svelte';
   import TileCards from './TileCards.svelte';
 
@@ -40,11 +41,12 @@
     onshowanswer = () => {},
     onstep,
     onreveal,
-    onrevealnext,
     onjudge,
     onback,
     onslide,
     oncardtakeback = () => {},
+    ongo = () => {},
+    ring = null,
   }: {
     game: Game;
     session: Session;
@@ -68,10 +70,9 @@
     choicesNote?: string;
     /** Put a player's typed answer on screen (and spotlight them). */
     onshowanswer?: (id: string) => void;
+    /** The Final went on (finished early, from Finish game ▶ here). */
     onstep: () => void;
     onreveal: () => void;
-    /** N in the reveals: show the spotlit player's typed answer or wager, then go on to the next player. */
-    onrevealnext: () => void;
     /** Mark a player right or wrong in the reveals (with its sound, as C / X). */
     onjudge: (id: string, right: boolean) => void;
     /** Back to the round before this Final (who plays and the wagers entered so far are kept). */
@@ -80,6 +81,10 @@
     onslide?: (d: 1 | -1) => void;
     /** ✖ Take back on one of the Final's 🤫 cards. */
     oncardtakeback?: (id: Id) => void;
+    /** Enter in the last wager box (or N in one): the blue button's Show question ▶, through the check before going on. */
+    ongo?: (by: 'enter' | 'n') => void;
+    /** The box button that wears the ring (goon.ts): the spotlit row's likely verdict ('verdict:right'), a card's 📤. */
+    ring?: string | null;
   } = $props();
   /** A question with several slides, while it's up: which one is on screen ("Slide 2 of 3"). */
   const slidePos = $derived(slidePosition(session, game));
@@ -123,7 +128,7 @@
   /** Enter in a wager box: show the question once every wager is fine, else go to the next box that needs one. */
   function wagerEnter(id: string): void {
     if (!f) return;
-    if (wagersOk) return next();
+    if (wagersOk) return ongo('enter');
     const rows = rowOrder();
     const i = rows.indexOf(id);
     const after = [...rows.slice(i + 1), ...rows.slice(0, i + 1)];
@@ -140,8 +145,8 @@
       const fs = f;
       if (!fs || session.finalStep !== 'wagers') return;
       // Phones send the wagers: the keys stay the host's (N goes on once they're all in), no box to type in. (The list
-      // takes the focus, where it is: else the main button going disabled sends it to the next button, scrolling the
-      // panel's box and cutting its top line, on stream in one window.)
+      // takes the focus, where it is: else it would go to the next button, scrolling the panel's box and cutting its top
+      // line, on stream in one window.)
       if (phones.some((id) => fs.players.includes(id))) return void wagersEl?.focus({ preventScroll: true });
       const todo = rowOrder().find(needsWager);
       if (todo) wagerBox(todo)?.focus();
@@ -257,6 +262,7 @@
   });
   onDestroy(stopAsking);
 
+  /** Finish game ▶ here, while players are still to judge (the blue button finishes once they're all judged). */
   function next(): void {
     // Finishing shows the winner and confetti on stream, so ask first if some players were never judged. (The strip's
     // own guard keeps the second half of a double-click on "Finish game" from answering it.)
@@ -272,8 +278,6 @@
       return;
     }
     stopAsking();
-    wagerDone();
-    // From the wagers to the question is a step: Ctrl+Z goes back to the wagers, as they were.
     finalNextStep(session, game);
     onstep();
   }
@@ -346,23 +350,12 @@
   });
 
   /**
-   * What N does next in the reveals, for the main button until everyone is judged: show the spotlit player's typed
-   * answer, else their wager, or go on to the next player still to judge (none: the spotlit one is waiting on Right or
-   * Wrong).
+   * What the blue button does next in the reveals (lib's finalRevealNow, as goon.ts reads it): the spotlit row's Show
+   * answer or Show wager is that button's, so its slot stays empty meanwhile (other rows keep theirs, out of turn); and
+   * with the last one's verdict due, the blue button is Finish game ▶, so finishing early isn't offered twice.
    */
-  const revealStep = $derived.by((): { label: string; disabled?: string; judge?: string } => {
-    const fs = f;
-    const cur = fs?.current && fs.order.includes(fs.current) ? fs.current : undefined;
-    if (fs && cur && !fs.results[cur]) {
-      if (typedAnswer(fs, cur) && !fs.answerShown?.[cur]) return { label: VERBS.showAnswer.label };
-      // Their answer or wager is up: judging them is next (N waits for it; the wager goes up with it).
-      if (hasWager(fs, cur) && (fs.shown[cur] || fs.answerShown?.[cur])) return { label: '✔ Right', judge: cur };
-      if (!fs.shown[cur]) return { label: VERBS.showWager.label };
-    }
-    if (fs && cur && fs.order.every((id) => id === cur || fs.results[id]))
-      return { label: VERBS.nextPlayer(noun).label, disabled: `Mark ${byId[cur]?.name ?? '?'} right (C) or wrong (X) first` };
-    return { label: VERBS.nextPlayer(noun).label };
-  });
+  const blueDoes = $derived(session.finalStep === 'reveal' ? finalRevealNow(session) : null);
+  const blueFinishes = $derived(blueDoes?.at === 'judge' && !!blueDoes.last);
 
   // The how-to in the reveals is open the first time on this computer, folded after that (the rows keep the room). In a
   // short window it starts folded: open, it pushed the third player's row out of sight at 1280×720.
@@ -385,64 +378,18 @@
   });
 
   const after = $derived(game.rounds[session.currentRound + 1]);
-  const goOn = $derived((after ? VERBS.nextNamed(roundName(after, session.currentRound + 1)) : VERBS.finishGame).label);
-  const labels = $derived({
-    // Everyone sat out: straight on (finalNext skips the question and the reveals).
-    wagers: f && !f.players.length ? goOn : VERBS.showQuestion.label,
-    question: VERBS.finalReveal.label,
-    answer: VERBS.startReveals(noun).label,
-    reveal: goOn,
-  });
+  /** On past the Final: the next round by its name, or Finish game ▶. */
+  const goOn = $derived((after ? FLOW.nextNamed(roundName(after, session.currentRound + 1)) : FLOW.finishGame).label);
+  /** Finishing early, while some are still to judge (it asks first): not while the blue button is Finish game ▶ itself. */
+  const finishEarly = $derived(session.finalStep === 'reveal' && !!unjudged && !askFinish && !blueFinishes);
 
-  /**
-   * Multiple choice with one marked ✔ Right: the verdict a player's pick points to, for a ring on it in the main cell's
-   * pair and the spotlit row (C and X judge either way). Only once their answer is on screen in one window: viewers see
-   * this panel. Null otherwise.
-   */
-  function likely(id: string): 'right' | 'wrong' | null {
-    if (!f || !rightOne || (!dual && !f.answerShown?.[id])) return null;
-    const a = typedAnswer(f, id);
-    const named = a ? pickOf(a, choices) : null;
-    return named ? (named === rightOne.id ? 'right' : 'wrong') : null;
-  }
-
-  // The step's main button, in the panel's main cell (N does it too). In the reveals, until everyone is judged, it's N's
-  // next step (show the wager, the next player); finishing early is the quiet button beside it, and asks first.
-  /** The step's main button (as offered to the panel's main cell): the stage's menu has it too. */
-  const finalStepNow = (): NextAction | null => {
-    if (!f) return null;
-    const judge = revealStep.judge;
-    if (session.finalStep === 'reveal' && unjudged && judge) {
-      const who = byId[judge]?.name ?? '?';
-      // ✔ Right and ✘ Wrong, an equal pair in that order, neither blue: the one their pick points to gets a ring.
-      const ring = likely(judge);
-      const wrong = nextStep(VERBS.wrong(who), () => onjudge(judge, false), ring === 'wrong' ? { ring: true } : {});
-      return nextStep(VERBS.right(who), () => onjudge(judge, true), { pair: wrong, ...(ring === 'right' ? { ring: true } : {}) });
-    }
-    if (session.finalStep === 'reveal' && unjudged)
-      return { label: revealStep.label, key: 'N', title: revealStep.disabled ?? 'N', disabled: !!revealStep.disabled, run: onrevealnext };
-    const step = session.finalStep ?? 'wagers';
-    // Its question slides first, then the answer.
-    if (step === 'question' && moreSlides && slidePos && onslide)
-      return nextStep(VERBS.nextSlideOf(slidePos.at, slidePos.of), () => onslide(1), { flow: 'pager' });
-    return {
-      label: labels[step],
-      key: 'N',
-      disabled: step === 'wagers' && !wagersOk,
-      title: step === 'wagers' && !wagersOk ? 'Every wager in first' : 'N',
-      run: step === 'question' ? onreveal : next,
-      ...(step === 'question' ? { flow: 'reveal' as const } : {}),
-    };
-  };
-  offerNext('final', finalStepNow);
-  // The stage's menu: the step (a verdict's pair as ✔ Right / ✘ Wrong), and the box's own way back or finishing early.
+  // The stage's menu: the box's own way back, 🙈 Hide answer, or finishing early (the steps are the blue button's).
   offerMenu('final', () => {
-    const n = finalStepNow();
-    if (!n || !f) return [];
-    const out: StageItem[] = n.pair ? [stepItem(n, 'right'), stepItem(n.pair, 'wrong')] : [stepItem(n, 'next')];
+    if (!f) return [];
+    const out: StageItem[] = [];
     if (session.finalStep === 'wagers' && lastRound) out.push({ label: `◀ Previous round (${roundName(lastRound, session.currentRound - 1)})`, onclick: onback });
     if (session.finalStep === 'answer') out.push({ id: 'reveal', label: '🙈 Hide answer', keys: 'R', onclick: onreveal });
-    if (session.finalStep === 'reveal' && unjudged && !askFinish) out.push({ label: goOn, hint: `Asks first: ${unjudged} not judged yet`, onclick: next });
+    if (finishEarly) out.push({ label: goOn, hint: `Asks first: ${unjudged} not judged yet`, onclick: next });
     return out;
   });
 </script>
@@ -499,16 +446,11 @@
                 onblur={wagerDone}
                 onkeydown={(e) => {
                   if (e.key === 'Enter') wagerEnter(p.id);
-                  // N (no number has one) goes on as anywhere else, once every wager is in.
+                  // N (no number has one) is the blue button, as anywhere else: a wager still missing, the keys go to its
+                  // box, saying whose.
                   else if (e.key.toLowerCase() === 'n' && !e.shiftKey && !e.ctrlKey && !e.metaKey && !e.altKey) {
                     e.preventDefault();
-                    if (wagersOk) next();
-                    else {
-                      // (Why not, rather than nothing: as N says outside the box.)
-                      const { missing, over, whole } = finalWagerProblems(session, override);
-                      const names = (ids: string[]) => nameList(ids.map((id) => byId[id]?.name ?? '?'));
-                      toast(missing.length ? `Waiting on: ${names(missing)}` : whole.length ? `Not a whole number: ${names(whole)}` : `Over the max: ${names(over)}`, 3000);
-                    }
+                    ongo('n');
                   }
                 }}
                 data-wager={p.id}
@@ -552,7 +494,7 @@
         <span class="nobody" role="status">Nobody is playing this Final: tick a {noun} to play it, or go on.</span>
       {/if}
       <label class="check small" title="Ticked, a wager can be more than the {noun}'s score. Untick to hold wagers to it (max: their score).">
-        <input type="checkbox" bind:checked={override} onkeydown={(e) => e.key === 'Enter' && wagersOk && next()} data-limits /> Ignore the limits
+        <input type="checkbox" bind:checked={override} onkeydown={(e) => e.key === 'Enter' && wagersOk && ongo('enter')} data-limits /> Ignore the limits
       </label>
     {:else if session.finalStep === 'reveal'}
       <!-- The how-to folds away: the rows (and the stage) keep the room. -->
@@ -578,7 +520,9 @@
           {@const res = f.results[id]}
           {@const line = rows.lineAt(id)}
           {@const k = keyOf(id)}
-          {@const ring = f.current === id && !res ? likely(id) : null}
+          <!-- (The spotlit one's likely verdict, as goon.ts rings it; their Show answer or Show wager is the blue button's.) -->
+          {@const lit = f.current === id && !res ? ring : null}
+          {@const blue = blueDoes?.id === id ? blueDoes.at : null}
           <div
             class="pl"
             class:cur={f.current === id}
@@ -648,8 +592,13 @@
                 <span class="muted small typed" title="Shown here once you put it on screen" data-typed={id}>✍ hidden</span>
               {/if}
               {#if a}
-                <button class="small" onclick={() => onshowanswer(id)} disabled={shownA} aria-label="Show answer: {p?.name ?? '?'}" title="Puts their answer on screen (N)"
-                  >Show answer</button
+                <button
+                  class="small"
+                  class:slot={blue === 'answer'}
+                  onclick={() => onshowanswer(id)}
+                  disabled={shownA}
+                  aria-label="Show answer: {p?.name ?? '?'}"
+                  title="Puts their answer on screen (the spotlit one's: the blue button, or N)">Show answer</button
                 >
               {/if}
             {/if}
@@ -677,14 +626,14 @@
                 {#if wagerFromPhone(f, id)}<span class="phone" title="Sent from their phone. You can still change it until it's shown.">📱</span>{/if}
                 {#if !override}<span class="muted">max {formatPoints(cap, sym)}</span>{/if}
               </label>
-              {#if hasWager(f, id)}<button class="small" onclick={() => finalShow(session, id)} aria-label="Show wager: {p?.name ?? '?'}">Show wager</button>{/if}
+              {#if hasWager(f, id)}<button class="small" class:slot={blue === 'wager'} onclick={() => finalShow(session, id)} aria-label="Show wager: {p?.name ?? '?'}">Show wager</button>{/if}
             {:else}
               <span class="muted small pscore">{formatPoints(score(session, id), sym)}</span>
               <span class="muted small">wager {formatPoints(f.wagers[id], sym)}</span>
-              <button class="small" onclick={() => finalShow(session, id)} disabled={f.shown[id]} aria-label="Show wager: {p?.name ?? '?'}">Show wager</button>
+              <button class="small" class:slot={blue === 'wager'} onclick={() => finalShow(session, id)} disabled={f.shown[id]} aria-label="Show wager: {p?.name ?? '?'}">Show wager</button>
             {/if}
-            <button class="small good" class:on={res === 'right'} class:ring={ring === 'right'} aria-pressed={res === 'right'} disabled={!hasWager(f, id)} onclick={() => onjudge(id, true)} aria-label="✔ Right: {p?.name ?? '?'}">✔ Right</button>
-            <button class="small bad" class:on={res === 'wrong'} class:ring={ring === 'wrong'} aria-pressed={res === 'wrong'} disabled={!hasWager(f, id)} onclick={() => onjudge(id, false)} aria-label="✘ Wrong: {p?.name ?? '?'}">✘ Wrong</button>
+            <button class="small good" class:on={res === 'right'} class:ring={lit === 'verdict:right'} aria-pressed={res === 'right'} disabled={!hasWager(f, id)} onclick={() => onjudge(id, true)} aria-label="✔ Right: {p?.name ?? '?'}">✔ Right</button>
+            <button class="small bad" class:on={res === 'wrong'} class:ring={lit === 'verdict:wrong'} aria-pressed={res === 'wrong'} disabled={!hasWager(f, id)} onclick={() => onjudge(id, false)} aria-label="✘ Wrong: {p?.name ?? '?'}">✘ Wrong</button>
           </div>
         {/each}
       </div>
@@ -710,7 +659,7 @@
     <!-- The Final's own 🤫 cards: under the wager or reveal rows (every wager box comes first), above the step's buttons. -->
     {#if round && cardCount}
       {#key round.id}
-        <div class="cards-box" bind:this={cardsBox}><TileCards {game} {session} final={round} ontakeback={oncardtakeback} /></div>
+        <div class="cards-box" bind:this={cardsBox}><TileCards {game} {session} final={round} ontakeback={oncardtakeback} {ring} /></div>
       {/key}
     {/if}
     <div class="row">
@@ -741,9 +690,9 @@
         >
       {/if}
       <span class="spacer"></span>
-      {#if session.finalStep === 'reveal' && unjudged && !askFinish}
-        <!-- Until everyone is judged the main button is N's next step; finishing early asks first. -->
-        <button class="ghost" onclick={next}>{goOn}</button>
+      {#if finishEarly}
+        <!-- Finishing early, set apart, asks first (not while the blue button is Finish game ▶ itself: one way to finish). -->
+        <button class="ghost" data-finish-early onclick={next} title="Finish now: {unjudged} still to judge (it asks first)">{goOn}</button>
       {/if}
     </div>
   </div>
@@ -777,6 +726,10 @@
   }
   .no-wager {
     color: var(--warn);
+  }
+  /* The spotlit row's Show answer or Show wager while the blue button does it: its place kept, empty. */
+  .slot {
+    visibility: hidden;
   }
   /* A typed answer: one line, cut with … (all of it in its tooltip). */
   .typed {

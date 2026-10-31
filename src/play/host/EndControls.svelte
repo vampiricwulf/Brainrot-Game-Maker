@@ -1,4 +1,7 @@
-<!-- End of game: tie handling (spec §6.4 step 6), a way back, rematch and shareable results. -->
+<!--
+  End of game: tie handling (spec §6.4 step 6), a way back, rematch and shareable results. No blue button here: a tie is
+  settled in its box (❓ Tiebreaker clue, 🎲 Tiebreaker roll-off, 🤝 Declare co-winners), and N says so.
+-->
 <script lang="ts">
   import { app } from '../../lib/app.svelte';
   import { getContext, onDestroy } from 'svelte';
@@ -9,7 +12,7 @@
   import { slideHasContent } from '../../lib/usage';
   import { logged } from '../../lib/toolset';
   import { copyText, standingsText } from '../standings';
-  import { hostAsk, offerMenu, offerNext, step } from './slots.svelte';
+  import { hostAsk, offerMenu, step } from './slots.svelte';
   import { stepItem, type StageItem } from './stagemenu';
   import { VERBS } from './verbs';
 
@@ -60,11 +63,6 @@
   const copyStandings = () => copyText(standingsText(game, session), 'Standings copied: paste them in chat');
   const rollOff = () => onrolloff?.(ties.map((p) => p.id));
 
-  // A tie for first: settling it is the main button (the tiebreaker clue when the game has one, else a roll-off).
-  offerNext('end', () =>
-    !ties.length ? null : tbReady ? step(VERBS.tiebreakerClue, ontiebreaker) : onrolloff ? step(VERBS.rollOff, rollOff) : null,
-  );
-
   /** 🔁 Rematch asks first, in the panel's confirmation strip: the results go. */
   const setAsk = hostAsk();
   let asking = $state(false);
@@ -103,14 +101,16 @@
 <!-- (One column, spaced as the rest of the panel: the tie box and the line under it never sit on the buttons.) -->
 <div class="end">
   {#if ties.length}
-    <div class="tie">
+    <div class="tie" data-tie>
       <b>Tie for first:</b> {nameList(ties.map((p) => p.name))}
       <div class="row">
-        <!-- The main one is in the panel's main cell; these are the other ways to settle it. -->
-        {#if tbReady && onrolloff}<button onclick={rollOff} title={VERBS.rollOff.key}>{VERBS.rollOff.label}</button>{/if}
-        {#if !tbReady}
+        <!-- Every way to settle it, here only (no blue button on the end screen). -->
+        {#if tbReady}
+          <button onclick={ontiebreaker} title="The tiebreaker clue: its question on screen, then pick who won">{VERBS.tiebreakerClue.label}</button>
+        {:else}
           <button disabled title={app.playerOnly ? 'This game has no tiebreaker clue' : "Write one on the editor's Tiebreaker tab"}>{VERBS.tiebreakerClue.label}</button>
         {/if}
+        {#if onrolloff}<button onclick={rollOff} title="{VERBS.rollOff.key}: the tied players roll for first">{VERBS.rollOff.label} <kbd aria-hidden="true">{VERBS.rollOff.key}</kbd></button>{/if}
         <button
           onclick={() => {
             // (Who they are: a different tie later, after a score is fixed, is still to settle.)
