@@ -337,11 +337,11 @@ try {
 
   // ---------- Rename ----------
   await card('Checker party').getByRole('button', { name: /More for/ }).click();
-  await page.getByRole('menuitem', { name: '✏ Rename…' }).click();
-  const renaming = page.getByRole('dialog', { name: '✏ Rename theme' });
+  await page.getByRole('menuitem', { name: '✎ Rename' }).click();
+  const renaming = page.getByRole('dialog', { name: '✎ Rename theme' });
   await page.waitForFunction(() => document.activeElement instanceof HTMLInputElement && document.activeElement.selectionEnd === document.activeElement.value.length && document.activeElement.selectionStart === 0);
   await page.keyboard.type('Checkers');
-  assert((await renaming.getByLabel('Theme name').inputValue()) === 'Checkers', 'and so does Rename… (its old name selected)');
+  assert((await renaming.getByLabel('Theme name').inputValue()) === 'Checkers', 'and so does ✎ Rename (its old name selected)');
   await renaming.getByRole('button', { name: 'Rename' }).click();
   await card('Checkers').waitFor();
   assert((await page.locator('.mine .card').count()) === 1, 'rename keeps one theme, with its new name');
@@ -386,7 +386,7 @@ try {
   await checkers.click({ button: 'right' });
   await menu.waitFor();
   const mineMenu = (await menu.innerText()).split('\n').map((l) => l.trim());
-  assert(['🎨 Use in this game', '💾 Save changes to it…', '✏ Rename…', '⧉ Duplicate', '⬇ Export theme file', '🗑 Delete…'].every((l) => mineMenu.includes(l)), `right-click on one of My themes: its ⋯ menu (${mineMenu.join(' / ')})`);
+  assert(['🎨 Use in this game', '💾 Save changes to it…', '✎ Rename', '⧉ Duplicate', '⬇ Export theme file', '🗑 Delete theme…'].every((l) => mineMenu.includes(l)), `right-click on one of My themes: its ⋯ menu (${mineMenu.join(' / ')})`);
   assert(await menu.getByRole('menuitem', { name: '💾 Save changes to it…' }).isDisabled(), 'Save changes to it… waits for a change there too');
   await page.keyboard.press('Escape');
   // Shift+F10 on a focused card opens the same menu, and Esc gives the card the focus back.
@@ -508,11 +508,11 @@ try {
 
   // ---------- Delete ----------
   await card('Checkers 2').getByRole('button', { name: /More for/ }).click();
-  await page.getByRole('menuitem', { name: '🗑 Delete…' }).click();
+  await page.getByRole('menuitem', { name: '🗑 Delete theme…' }).click();
   const ask = page.getByRole('alertdialog').filter({ hasText: 'Delete “Checkers 2”' });
   await ask.getByRole('button', { name: 'Delete' }).click();
   await card('Checkers 2').waitFor({ state: 'detached' });
-  assert((await page.locator('.mine .card').count()) === 1, 'Delete… asks, then takes it off the list');
+  assert((await page.locator('.mine .card').count()) === 1, '🗑 Delete theme… asks, then takes it off the list');
   // A file with a picture, saved to My themes: the note says how to bring the picture in (using the saved theme doesn't).
   const withBanner = { ...JSON.parse(themeText), name: 'Banner show' };
   withBanner.media = [{ id: 'm_banner1', name: 'banner.png', mime: 'image/png', kind: 'image', data: png(255, 140, 0, 160, 16).toString('base64') }];

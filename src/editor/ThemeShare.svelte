@@ -10,7 +10,7 @@
   import { safeFilename, pickFile, saveFile, savedWhere } from '../lib/fileio';
   import { step } from '../lib/history.svelte';
   import { storedBlob } from '../lib/media.svelte';
-  import { dropMenu, keyMenu, showMenu, type MenuEntry } from '../lib/menustate.svelte';
+  import { dropMenu, keyMenu, menuItem, menuOf, showMenu, type MenuEntry } from '../lib/menustate.svelte';
   import { PRESETS, presetTheme, type Theme, type ThemePreset } from '../lib/theme';
   import { sameLook, withPreset, type ThemeOrigin } from '../lib/themesource';
   import {
@@ -152,7 +152,7 @@
 
   function rename(m: MyTheme): void {
     naming = {
-      title: '✏ Rename theme',
+      title: '✎ Rename theme',
       value: m.name,
       ok: 'Rename',
       note: '',
@@ -213,37 +213,42 @@
 
   function presetItems(p: ThemePreset): MenuEntry[] {
     const label = PRESETS[p].label;
-    return [
-      { heading: `${label} (built-in)` },
-      { label: '🎨 Use in this game', onclick: () => applyPreset(p) },
-      { label: '💾 Save a copy as my theme…', onclick: () => savePresetCopy(p), hint: 'Built-in themes can’t be changed: a copy in My themes can' },
-      { sep: true },
-      { label: '⬇ Export theme file', onclick: () => void exportTheme(label, withPreset(now(), p), false) },
-      { label: '📋 Copy theme code', onclick: () => void copyCode(label, presetTheme(p)) },
-    ];
+    return menuOf({
+      heading: `${label} (built-in)`,
+      verbs: [
+        { label: '🎨 Use in this game', onclick: () => applyPreset(p) },
+        { label: '💾 Save a copy as my theme…', onclick: () => savePresetCopy(p), hint: 'Built-in themes can’t be changed: a copy in My themes can' },
+      ],
+      extras: [
+        { label: '⬇ Export theme file', onclick: () => void exportTheme(label, withPreset(now(), p), false) },
+        { label: '📋 Copy theme code', onclick: () => void copyCode(label, presetTheme(p)) },
+      ],
+    });
   }
 
   function mineItems(m: MyTheme): MenuEntry[] {
     const fromIt = origin?.kind === 'mine' && origin.id === m.id;
     const same = sameLook(game.theme, withMyTheme(game.theme, m.theme, game.media));
-    return [
-      { heading: `★ ${m.name}` },
-      { label: '🎨 Use in this game', onclick: () => use(m) },
-      {
-        label: fromIt ? '💾 Save changes to it…' : '💾 Overwrite with this game’s look…',
-        disabled: same,
-        hint: same ? 'This game already looks like it' : 'Asks first',
-        onclick: () => void saveTo(m),
-      },
-      { label: '✏ Rename…', onclick: () => rename(m) },
-      { label: '⧉ Duplicate', onclick: () => duplicate(m) },
-      { sep: true },
+    return menuOf({
+      heading: `★ ${m.name}`,
+      verbs: [
+        { label: '🎨 Use in this game', onclick: () => use(m) },
+        {
+          label: fromIt ? '💾 Save changes to it…' : '💾 Overwrite with this game’s look…',
+          disabled: same,
+          hint: same ? 'This game already looks like it' : 'Asks first',
+          onclick: () => void saveTo(m),
+        },
+      ],
+      rename: menuItem.rename(() => rename(m), { keys: false }),
+      duplicate: menuItem.duplicate(() => duplicate(m), { keys: false }),
       // (A saved theme has no pictures: the uploaded fonts it uses that this game has go in the file.)
-      { label: '⬇ Export theme file', onclick: () => void exportTheme(m.name, m.theme, true, true) },
-      { label: '📋 Copy theme code', onclick: () => void copyCode(m.name, m.theme) },
-      { sep: true },
-      { label: '🗑 Delete…', danger: true, onclick: () => void remove(m) },
-    ];
+      extras: [
+        { label: '⬇ Export theme file', onclick: () => void exportTheme(m.name, m.theme, true, true) },
+        { label: '📋 Copy theme code', onclick: () => void copyCode(m.name, m.theme) },
+      ],
+      delete: menuItem.delete('theme…', () => void remove(m), { keys: false }),
+    });
   }
 
   // ---------- Bringing a theme in ----------
