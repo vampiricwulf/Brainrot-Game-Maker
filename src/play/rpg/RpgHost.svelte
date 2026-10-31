@@ -850,7 +850,7 @@
   /* One line whatever it says (a long selection is cut short; its tooltip has it all), one height with or without ✕. */
   .sel {
     flex-wrap: nowrap;
-    min-height: 24px;
+    height: 24px;
     font-size: 12px;
     white-space: nowrap;
   }
