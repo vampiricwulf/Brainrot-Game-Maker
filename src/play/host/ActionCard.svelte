@@ -31,8 +31,9 @@
   const byId = $derived(Object.fromEntries(session.players.map((p) => [p.id, p])));
 </script>
 
-<!-- (In sight as it comes, its confirm too: in one window the host panel can keep one height, and it scrolls.) -->
-<div class="ac" data-score-card={card.key} {@attach (el) => el.scrollIntoView({ block: 'nearest' })}>
+<!-- (In sight as it comes, its Skip and Confirm above all: in one window the host panel can keep one height, and it
+     scrolls. Its last row, not the card: a card taller than the room would show its top and hide its foot.) -->
+<div class="ac" data-score-card={card.key} {@attach (el) => el.lastElementChild?.scrollIntoView({ block: 'nearest' })}>
   <div><b>Score effect:</b> {describeAction(action, sym)} <span class="muted small">(only if you confirm)</span></div>
   <!-- (A wheel slice saved with it: say why Confirm never lights up.) -->
   {#if action.kind === 'addRollTimes' && !card.rollTotal}<div class="warn small" role="status">No dice were rolled: this gives no points (Skip it).</div>{/if}

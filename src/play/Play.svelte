@@ -2951,6 +2951,8 @@
       const el = document.querySelector<HTMLElement>(sel);
       if (!el) return;
       el.focus({ preventScroll: !!el.closest('[data-dd]') });
+      // (A score effect's Skip and Confirm come into view with who it's for: the keys on its first player.)
+      el.closest('[data-score-card]')?.lastElementChild?.scrollIntoView({ block: 'nearest' });
       flashEl((flash ? document.querySelector<HTMLElement>(flash) : null) ?? el.closest<HTMLElement>('[data-answer-row], [data-score-card]') ?? el);
     });
   }

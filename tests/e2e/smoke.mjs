@@ -94,7 +94,7 @@ function assert(cond, msg) {
 }
 // Test media generated in memory.
 import { deflateSync } from 'node:zlib';
-import { addClassicRounds, answerAsk, answerReplace, anyway, checkItem, dragBy, flowButton, flowIs, goOnCheck, mainButton, mainLabel, nameGame, noSelection, notYet, openGameFile, exportHtml, quick, selectedWords, stepButton } from './helpers.mjs';
+import { addClassicRounds, answerAsk, answerReplace, anyway, boxHasAction, checkItem, dragBy, flowButton, flowIs, goOnCheck, mainButton, mainLabel, nameGame, noSelection, notYet, openGameFile, exportHtml, quick, selectedWords, stepButton } from './helpers.mjs';
 /** Solid-ish RGB PNG of the given size (a horizontal gradient). */
 function bigPng(w, h) {
   const crcTable = Array.from({ length: 256 }, (_, n) => {
@@ -1023,6 +1023,8 @@ await goOnCheck(page, { ready: true }).waitFor();
 await anyway(page).click();
 await page.getByText('Never spun: the tile stays on the board').waitFor();
 assert(!(await isUsed(4)), 'closing a wheel tile before it spins keeps the tile on the board');
+// (Spun at a laptop's 1280×720, where the one-window panel keeps one height and its action part scrolls.)
+await page.setViewportSize({ width: 1280, height: 720 });
 await page.locator('.board .tile').nth(4).click();
 await page.locator('.ov .wheel').waitFor();
 await page.waitForTimeout(500); // past the double-click guard (a double-click on the tile doesn't spin it too)
@@ -1038,6 +1040,13 @@ assert(
 );
 await page.locator('.ov .card').waitFor();
 assert((await page.locator('.ov .card .label').innerText()) === 'Bankrupt', 'result card revealed on screen');
+// Its score effect comes with its Skip and Confirm in sight: above the clue's flow row, kept at the foot of the box's
+// scrolling part, not under it.
+await page.locator('.ac').waitFor();
+for (const name of ['Skip', 'Confirm']) {
+  const why = await boxHasAction(page.locator('.ac'), name);
+  assert(!why, `at 1280×720 the score effect's ${name} is in sight as it comes, not under the flow row (${why})`);
+}
 // Esc with its score effect neither confirmed nor skipped: it says so first, and the wheel stays.
 await page.keyboard.press('Escape');
 await page.getByText('Score effect not given yet: Confirm or Skip it (Esc again closes without it)').waitFor();
@@ -1055,6 +1064,7 @@ assert(
   }),
   'then the blue ▦ Done ▶ board is in sight',
 );
+await page.setViewportSize({ width: 1400, height: 900 });
 await shot('10-wheel');
 await page.waitForTimeout(500);
 await page.locator('.stage-box .ov').click();

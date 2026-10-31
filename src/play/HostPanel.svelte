@@ -1779,6 +1779,14 @@
   .panel.partnerclue:not(.dual) > .act > .action:has(:global([data-partner-foot])) > .flowrow {
     position: static;
   }
+  /* (What's brought into view in the scrolling part, a score effect's Skip / Confirm as it comes, stops above that row,
+     not under it: its 32px and the gap.) */
+  .action:has(> .flowrow) {
+    scroll-padding-bottom: 40px;
+  }
+  .panel.partnerclue:not(.dual) > .act > .action:has(:global([data-partner-foot])) {
+    scroll-padding-bottom: 0;
+  }
   /* ↩ Put back (keep tile)'s place: the room the row has left once ＋ Award and − Deduct have theirs, up to its whole
      label, a gap after it. As that runs out its words go, "(keep tile)" first, then "Put back" (still named in full), so
      it never wraps the row (the one-window stage keeps its size). */
