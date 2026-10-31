@@ -24,8 +24,6 @@ describe('the host screen’s words for each step', () => {
       spinAgain: '↻ Spin again [W]',
       roll: 'Roll! [D]',
       rollAgain: 'Roll again [D]',
-      closeTool: 'Close [Esc]',
-      closeToolBoard: 'Close ▶ board [Esc]',
       closeToolBox: '✕ Close [Esc]',
       showQuestion: 'Show question ▶',
       partnerSpin: '🎡 Spin for a partner [W]',
@@ -51,6 +49,8 @@ describe('the host screen’s words for each step', () => {
     expect([VERBS.right('Ann').label, VERBS.wrong('Ann').label, VERBS.wrong('Ann').title]).toEqual(['✔ Right', '✘ Wrong', 'X: Ann is wrong']);
     expect([VERBS.move(3).label, VERBS.move(-2).label, VERBS.stepTo('Bonus').label]).toEqual(['▶ Move 3', '◀ Back 2', '→ Bonus']);
     expect(VERBS.goToRound('Double Jeopardy!').label).toBe('Go to Double Jeopardy! ▶');
+    // (Putting a tool away is the blue button's step: no Close of its own.)
+    expect(['closeTool', 'closeToolBoard'].filter((k) => k in VERBS)).toEqual([]);
     // (A box's button says only its own key: N is the blue button's.)
     expect(all().filter(([, v]) => /\bor N\b/.test(v.title ?? '')).map(([name]) => name)).toEqual([]);
     expect([VERBS.partnerSpin.title, VERBS.sendAndStart.title]).toEqual(['W: the wheel spins over the other players', 'Enter: the cards not sent yet go to their phones, and the countdown starts']);

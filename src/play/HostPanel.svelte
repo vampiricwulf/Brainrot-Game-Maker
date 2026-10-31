@@ -99,7 +99,6 @@
     onrematch,
     onintronext,
     onskipintro,
-    onddshow,
     onpartnerspin = () => {},
     onpartnerclock = () => {},
     onpartnertakeback = () => {},
@@ -218,7 +217,6 @@
     onrematch: () => void;
     onintronext: () => void;
     onskipintro: () => void;
-    onddshow: (playerId: string, wager: number) => void;
     /** A 🤝 partner clue: 🎡 Spin for a partner, 📤 Send and start or ⏱ Start the clock (Show question ▶ is the blue button's). */
     onpartnerspin?: () => void;
     onpartnerclock?: () => void;
@@ -793,9 +791,8 @@
       if (warnedFor === 'tiebreaker') warnedFor = null;
     });
   });
-  // A tool over the stage keeps its own main button until its part moves too; then the blue button's step; then the old
-  // main buttons of the moments not moved yet (the boxes' offers).
-  const next = $derived(slots.offers.tool?.() ?? blue ?? oldFlow ?? slots.next());
+  // The blue button's step; then the old main buttons of the moments not moved yet (the boxes' offers).
+  const next = $derived(blue ?? oldFlow ?? slots.next());
   $effect(() => {
     nextAction = next;
   });
@@ -1136,7 +1133,7 @@
         {session.revealed ? VERBS.hide.label : VERBS.reveal.label}
       </button>
     {/if}
-    <!-- A wheel/dice tile with nothing to ask has one way out: its tool's Close ▶ board. -->
+    <!-- A wheel/dice tile with nothing to ask has one way out: the blue ▦ Done ▶ board. -->
     {#if !(toolOnly && app.live.overlay) && next?.flow !== 'done'}
       <button class="done-board" data-flow="done" onclick={() => (goon ? goon.flowDone() : onback())} title={VERBS.done.title}>{@render iconWord(VERBS.done.label)}</button>
     {/if}
@@ -1155,7 +1152,7 @@
   <div class="act">
     <div class="action">
       {#if app.live.overlay}
-        <div class="mode-host tools"><ToolsControls {game} {session} {selected} onclose={oncloseoverlay} /></div>
+        <div class="mode-host tools"><ToolsControls {game} {session} {selected} onclose={oncloseoverlay} ring={goon?.ring === 'toolslot'} /></div>
       {/if}
 
       <!-- 🤫 Cards an action's button offered: each goes only when you press its 📤 Send. -->
@@ -1163,7 +1160,7 @@
 
       {#if ddWager}
         {#key info?.clue.id}
-          <DDControls {game} {session} {dual} bind:override={wagerLimitsOff} phones={wagerPhones} phoneNote={wagerNote} onshow={onddshow} oncancel={oncancelclue} />
+          <DDControls {game} {session} {dual} bind:override={wagerLimitsOff} phones={wagerPhones} phoneNote={wagerNote} onshow={() => goon?.main('enter')} oncancel={oncancelclue} />
         {/key}
       {/if}
 

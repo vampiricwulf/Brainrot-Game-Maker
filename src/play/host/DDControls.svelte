@@ -1,17 +1,15 @@
 <!--
-  Daily Double: who found it, their wager, then Show question ▶ at the Wager row's end (the main button's step too). It
-  opens at its top, the keys in the Wager box.
+  Daily Double: who found it and their wager. Show question ▶ is the blue button's (Enter in the Wager box too): with
+  who found it or the wager missing, it keeps the keys here and says what's missing. It opens at its top, the keys in
+  the Wager box.
 -->
 <script lang="ts">
   import { onMount, untrack } from 'svelte';
   import { textOn } from '../../lib/colors';
   import { formatPoints, wholePoints, type Game, type Session } from '../../lib/model';
   import { ddCap, score } from '../../lib/session';
-  import { offerExposed, offerMenu, offerNext, type NextAction } from './slots.svelte';
-  import { stepItem } from './stagemenu';
-  import { VERBS } from './verbs';
-  import StepButton from './StepButton.svelte';
-  import { toast } from '../../lib/app.svelte';
+  import { offerExposed, offerMenu } from './slots.svelte';
+  import { FLOW } from './verbs';
   import { teamsOn } from '../../lib/buzz';
   import { buzzerOn } from '../../lib/remote.svelte';
 
@@ -35,7 +33,8 @@
     phones?: string[];
     /** Why phones can't send wagers here (an older buzzer server), or ''. */
     phoneNote?: string;
-    onshow: (playerId: string, wager: number) => void;
+    /** Show question ▶: the blue button's step (Enter in the Wager box, the stage's menu). */
+    onshow: () => void;
     /** Back to the board, the tile kept (Esc, even in the wager box). */
     oncancel: () => void;
   } = $props();
@@ -90,50 +89,21 @@
   const noun = $derived(buzzerOn(game.settings) && teamsOn(game.settings) ? 'team' : 'player');
   const sym = $derived(game.settings.currencySymbol);
   const cap = $derived(playerId ? ddCap(session, game, playerId) : 0);
-  const valid = $derived(!!playerId && wager !== null && wager >= 0 && (override || wager <= cap));
 
   /**
-   * Enter in the wager box (or on "Ignore the limit"): show the question. The key goes no further: the 👁 Reveal answer
-   * button that takes the focus next must not get this same Enter (the answer would be on stream at once).
+   * Enter in the wager box (or on "Ignore the limit"): Next, the blue button's Show question ▶ (with something missing,
+   * the keys stay here and the status line says what). The key goes no further: the 👁 Reveal answer button that takes
+   * the focus next must not get this same Enter (the answer would be on stream at once).
    */
   function enter(e: KeyboardEvent): void {
     e.preventDefault();
     e.stopPropagation();
-    if (valid) onshow(playerId, wager!);
-    // (Why not, rather than nothing.)
-    else
-      toast(
-        !playerId
-          ? 'Pick who found it first'
-          : wager === null
-            ? 'Type a wager first'
-            : wager < 0
-              ? 'A wager can’t be below 0'
-              : `That’s over the max (${formatPoints(cap, sym)}): type less, or tick Ignore the limit`,
-      );
+    onshow();
   }
 
   // One window: the status line's ⚠ Viewers see this chip says what viewers can read here.
   offerExposed(() => '⚠ Viewers can see this: they see this window, the wager as you type it too.');
 
-  /**
-   * Show question ▶: the main button's step, and the box's at the Wager row's end (Enter in the wager box does it too),
-   * greyed with why until there's a wager to show it with.
-   */
-  const showStep = $derived<NextAction>({
-    label: VERBS.showQuestion.label,
-    key: '⏎',
-    title: valid
-      ? 'Enter in the wager box'
-      : !playerId
-        ? 'Pick who found it first'
-        : wager !== null && wager < 0
-          ? 'A wager can’t be below 0'
-          : 'Type a wager within the max (or tick Ignore the limit)',
-    disabled: !valid,
-    run: () => valid && onshow(playerId, wager!),
-  });
-  offerNext('dd', () => showStep);
   // The stage's menu: who found it first (by name, the one picked greyed), then Show question ▶. Never the wager.
   offerMenu('dd', () => [
     ...session.players.map((p, i) => ({
@@ -143,7 +113,7 @@
       keys: !playerId && i < 9 ? String(i + 1) : undefined,
       onclick: () => pick(p.id),
     })),
-    stepItem(showStep, 'show'),
+    { id: 'show', label: FLOW.showQuestion.label, keys: 'N', onclick: onshow },
   ]);
 
   // The keys in the Wager box, the box at its top: the heading and the names stay in view (focus would scroll it down to
@@ -151,10 +121,10 @@
   onMount(() => wagerBox?.focus({ preventScroll: true }));
 </script>
 
-<div class="dd">
+<div class="dd" data-dd>
   <!-- (The heading leads the names' row, so the names and the Wager row are in view with it: in one window the panel keeps
        the board's height while this is up, and the rest scrolls. See HostPanel's ddHold.) -->
-  <div class="row">
+  <div class="row" data-dd-names>
     <span><b>Daily Double!</b> <span class="muted">Who found it?{#if !playerId}{' '}<span class="warn">Pick a {noun}.</span>{:else}{' '}Click another to change.{/if}</span></span>
     {#each session.players as p, i (p.id)}
       <button
@@ -171,7 +141,8 @@
       </button>
     {/each}
   </div>
-  <!-- (One line: what's left of the max's words is cut short, its tooltip whole.) -->
+  <!-- (One line ending with True Daily Double and the max's words, cut short, their tooltip whole. Show question ▶ is the
+       blue button's: Enter here.) -->
   <div class="row wager">
     <label class="check">
       Wager
@@ -203,10 +174,7 @@
     {#if playerId}
       {@const max = `${override ? 'TV max' : 'Max'} ${formatPoints(cap, sym)} (their score or the round's top value)${override ? ': not enforced' : ''}`}
       <span class="muted small max" title={max}>{max}</span>
-    {:else}
-      <span class="spacer"></span>
     {/if}
-    <StepButton step={showStep} />
   </div>
   <!-- The phones' line: there from the start when anyone has one (the box doesn't grow as a wager comes in). -->
   {#if phones.length}
@@ -277,7 +245,7 @@
   input[type='number'] {
     width: 110px;
   }
-  /* The max's words take the room left (cut short), so Show question ▶ stays at the row's end, on its line. */
+  /* The max's words take the room left (cut short), so the row stays on its line. */
   .max {
     flex: 1 1 0;
     min-width: 0;

@@ -194,8 +194,8 @@ points…**, and opens by itself once you pick a player (`1`–`9`) or give poin
 
 The host panel keeps one layout in every round: the status line (with the 📱 phones and ⏱ timer chips and **↩ Put back
 (keep tile)** on the right), the players' score chips, the row of what this moment needs, and at its right the one
-main button with its key (**👁 Reveal answer** and **▦ Done ▶ board**, both `N`, **Show question ▶**, **Spin!** `W`,
-**Next turn ▶** `N`, the Final's next step `N`…). When it's blue it's only ever the show's next step (Next slide ▶,
+main button with its key (**👁 Reveal answer** and **▦ Done ▶ board**, both `N`, **Show question ▶** `N`, **Next ▶**
+`N` over a tool, **Next turn ▶** `N`, the Final's next step `N`…). When it's blue it's only ever the show's next step (Next slide ▶,
 👁 Reveal answer, ▦ Done ▶ board, the round's intro, Next round ▶): what gives points, opens the buzzers or rolls is in
 its own row. Under it come the tools (🎲 Dice, 🎡 Wheel, 🏁 Who goes first, 🤫
 Send a card…, 🎭 Deal…, 📊 Scores) with the round navigation (◀ Prev round, the round list, Next round ▶) at the right,
@@ -212,11 +212,22 @@ wears a ring. The blue button there is the show's next step only: **Show questio
 **Next ▶** while the partner wheel is up, which puts it away and shows the pair, as `Esc` does: the wheel's own box has
 no ✕ Close then), then 👁 Reveal answer and ▦ Done ▶ board; PARTNER UP!'s ↩ Put back (keep tile) shows its key, `Shift+Esc` (`Esc` there does it too). A click on a box's
 button leaves `Enter` and `W` where they were. A wheel's or
-dice's box keeps its buttons in their places: **Spin!** `W` (or **Roll!** `D`) first, **Spin again** there once it
-lands, then ✎ Edit wheel and ＋ Spin another wheel too…, the result, and the way to close it last (**✕ Close** `Esc`, or
-**Close** as on the main button once that's next); the scoreboard, a player's sheet, a roll-off and a pop-up have that
-Close too. A Daily Double's box opens at its top, the keys in its Wager box, and its Wager row ends with **Show question
-▶**, greyed until there's a wager. In a 🤝 partner clue with its clock running, ✔ Got it and ✘ Missed are an equal pair
+dice's box keeps its buttons in their places: **Spin!** `W` (or **Roll!** `D`) first, greyed while it turns, **Spin
+again** there once it lands (**↻ Spin again** on a "Spin again" slice), then ✎ Edit wheel and ＋ Spin another wheel
+too…, and the result; it has no Close: putting it away is the blue button's. On a wheel or dice tile that's **Show
+question ▶** (**▦ Done ▶ board** on a tile with no question), greyed while it turns, and Spin! wears a ring until it's
+spun; over anything else (a wheel or dice from the tools row, 📊 Scores, a player's sheet, a roll-off) it's **Next ▶**,
+which only puts it away (the moment's own step is the next press). A question pop-up's blue button is **👁 Reveal
+answer**, then **Next ▶**; its box keeps **✕ Close** until the answer is up, to put it away unseen. `Esc` closes any of
+them at once. Pressed with something left, the blue button (or a click on the stage) asks first in the check below: a
+wheel or dice tile not spun or rolled yet (**First:** Spin! `W`, `Enter`; a tile with no question can close without it,
+staying on the board), landed on "Spin again" (↻ Spin again), a score effect not given (**✔ Give Ann +$100 ▶
+question**, or **Choose in the box** for a steal, a swap or nobody chosen), or a question pop-up's player picked with no
+points (＋ Award Ann $200 and close it). A tool from the tools row never asks about spinning. A Daily Double's box opens
+at its top, the keys in its Wager box, its Wager row ending with True Daily Double; **Show question ▶** is the blue
+button (never greyed), and `Enter` in the Wager box is that too: with who found it or the wager missing (or over the
+max) the keys stay in the box, the names or the box flash, and the status line says what to do ("Type a wager (Ann can
+wager up to $1,000), or True Daily Double"). In a 🤝 partner clue with its clock running, ✔ Got it and ✘ Missed are an equal pair
 in its box (neither blue), and the blue 👁 Reveal answer asks first while they play. When the Final's verdict is due
 nothing is blue, so clicking the main button over and over never judges anyone: the main cell holds **✔ Right** `C` and
 **✘ Wrong** `X`, always in that order, the one a multiple-choice pick points to ringed (in its row too). `Enter`,
@@ -459,7 +470,7 @@ switch shows the editor's keys too):
 | `R` | Reveal / hide the answer (the countdown stops; on a wheel or dice tile, `R` while its wheel or dice is up says to spin, roll or close it first, and `R` again shows it anyway) |
 | `←` `↑` `→` `↓` on a tile | Move across the board (`Enter` opens the tile; after a clue the keys go on from its tile) |
 | `Esc` / `Shift+Esc` | Back to the board / cancel the clue (the tile stays playable) |
-| `N` / `Shift+N` | Next step, as the blue button (intro, a clue's next slide, 👁 Reveal answer, ▦ Done ▶ board, Final, next turn; with something left it asks first, and in the check `N` again goes on anyway) / the one before |
+| `N` / `Shift+N` | Next step, as the blue button (intro, a clue's next slide, 👁 Reveal answer, ▦ Done ▶ board, a Daily Double's Show question ▶, a tool's Show question ▶ or Next ▶, Final, next turn; with something left it asks first, and in the check `N` again goes on anyway) / the one before |
 | `C` / `X` | Final reveal: right / wrong |
 | `T` / `Shift+T` | Start/pause the timer / 10 more seconds |
 | `D` / `W` / `O` / `S` | Roll the last dice again (a board game's own dice) / wheel / roll-off (on a tie for first: the tied players; in a buzzer tie, 🎲 Roll for it) / scoreboard |
@@ -483,8 +494,9 @@ switch shows the editor's keys too):
 A key held down counts once (only the arrows repeat). With the keys on the main button in a slides round, or on a
 round's title card, `Enter` does what the button says, as `N` does; on a 🤝 partner clue's PARTNER UP! it's Show
 question ▶ wherever the keys are, and once the question is up it's 📤 Send and start (or ⏱ Start the clock), then ✔ Got
-it. `W` spins for a partner; `N` never spins, sends or judges. An `Enter` right after a Daily Double's question
-goes up doesn't judge its player yet: press it again.
+it. `W` spins for a partner; `N` never spins, sends or judges. `Enter` in a Daily Double's Wager box is Show question
+▶; an `Enter` right after its question goes up doesn't judge its player yet: press it again. On a wheel or dice tile not
+spun yet, `Enter` says to spin first (`W`, or `D` for dice).
 
 ## Saving
 

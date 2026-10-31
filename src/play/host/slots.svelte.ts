@@ -2,8 +2,8 @@
  * The host panel's shared places, filled by the parts inside it:
  * - NEXT: the one main button of the moment, always in the same cell at the right of the action row, with its key: the
  *   blue button, the show's next step from Play (goon.ts: Show board ▶, 👁 Reveal answer, ▦ Done ▶ board…). While the
- *   parts move over to it, a part not moved yet still offers its own main button (offerNext, a stop-gap): a tool on
- *   screen first, then the blue button's step, then the parts' offers by priority.
+ *   parts move over to it, a part not moved yet still offers its own main button (offerNext, a stop-gap): the blue
+ *   button's step first, then the parts' offers by priority.
  * - The confirmation strip: a question (Leave this game? Next round with clues left?) as one full-width strip above the
  *   panel's fixed bar, never squeezed into a row of buttons.
  * - The status line's "⚠ Viewers see this" chip, in one window: what each box on screen says viewers can read of it.
@@ -62,10 +62,13 @@ export type HostAsk = {
 };
 
 /** Who offers the main button (the parts not moved to the blue button's step yet): the first with an offer wins, in this order. */
-export type NextFrom = 'tool' | 'dd' | 'final' | 'end' | 'turn' | 'board';
-const ORDER: NextFrom[] = ['tool', 'dd', 'final', 'end', 'turn', 'board'];
-/** Who adds to the stage's menu: the boxes (a 🤝 partner clue's too), and the panel's own row (its flow: the clue's buttons), in the main button's order. */
-export type MenuFrom = NextFrom | 'partner' | 'flow';
+export type NextFrom = 'final' | 'end' | 'turn' | 'board';
+const ORDER: NextFrom[] = ['final', 'end', 'turn', 'board'];
+/**
+ * Who adds to the stage's menu: the boxes (a tool's, a Daily Double's, a 🤝 partner clue's too), and the panel's own row
+ * (its flow: the clue's buttons), in the main button's order.
+ */
+export type MenuFrom = NextFrom | 'tool' | 'dd' | 'partner' | 'flow';
 const MENU_ORDER: MenuFrom[] = ['tool', 'flow', 'dd', 'partner', 'final', 'end', 'turn', 'board'];
 
 type Slots = {

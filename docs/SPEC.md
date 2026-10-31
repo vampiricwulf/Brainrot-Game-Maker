@@ -426,30 +426,42 @@ The mode isn't saved with the game: it's dual while the audience window is open.
   Exit; ❔ Help as its sign only up to 1040 px wide, and under about 940 px the first eight too, so it stays one line). On a short window the round's own
   box keeps a few rows in sight (the panel scrolls), a roll's box above it too. The main button is blue only for the
   show's next step, in FLOW's words (`src/play/host/verbs.ts`: the round's intro steps, Next slide ▶, 👁 Reveal answer,
-  ▦ Done ▶ board, Next round ▶, a 🤝 partner clue's Show question ▶ on PARTNER UP! and Next ▶ while its wheel is up…),
-  `N` its key (`Enter` too where it's Next: an intro, a slides round, PARTNER UP!); a played-out board's Next round ▶
-  goes on only from a click. ＋ Award is green, never blue; 🔔 Open the buzzers (`U`) and a tie's 🎲 Roll for it (`O`)
-  are in the buzzers' row, and a partner clue's 🎡 Spin for a partner (`W`) and 📤 Send and start (`Enter`) in its 🤝 box.
-  A part that hasn't moved to this yet keeps its own main button (a tool's Spin!, the Final, the end). **The check before going on** (`src/play/host/goon.ts`,
+  ▦ Done ▶ board, Next round ▶, a 🤝 partner clue's Show question ▶ on PARTNER UP! and Next ▶ while its wheel is up, a
+  Daily Double's Show question ▶, never greyed; over a wheel or dice tile's own tool, Show question ▶ (▦ Done ▶ board on
+  a tile with no question), over a question pop-up 👁 Reveal answer then Next ▶, over any other tool, the scores, a sheet
+  or a roll-off Next ▶, which only puts it away; greyed only while a wheel turns or dice roll), `N` its key in every
+  round (`Enter` too where it's Next: an intro, a slides round, PARTNER UP!, a Daily Double's Wager box); a played-out
+  board's Next round ▶ goes on only from a click. ＋ Award is green, never blue; 🔔 Open the buzzers (`U`) and a tie's
+  🎲 Roll for it (`O`) are in the buzzers' row, a partner clue's 🎡 Spin for a partner (`W`) and 📤 Send and start
+  (`Enter`) in its 🤝 box, and a wheel's Spin! (`W`) or dice's Roll! (`D`) in the tool's box. A part that hasn't moved to
+  this yet keeps its own main button (the Final, the end, a board game's turn and its own roll). **The check before going on** (`src/play/host/goon.ts`,
   `GoOnCheck.svelte`): the blue button pressed (a click, `N`, `Enter` where it's Next, a click on the stage, the clue
   row's ▦ Done) with something left opens a card in the panel instead, anchored at its bottom right over the panel's
   buttons (never the stage, the status line or the fixed bar), with a button-free spot over the blue button. Its
   heading is “First:” (a step to take first: phone buzzers never opened, a buzzer tie, ✍ answers still coming in, a
   tile's 🤫 card not sent; a 🤝 partner clue's who picked it, the partner, who describes or nobody to partner with on
   PARTNER UP!, all musts with no “anyway”, then at the reveal its cards not handed out or the clock not started, the pair
-  still playing, a steal open) or “Before you go on” (a loss: a player picked or a Daily Double's player with no
-  points, ✍ answers not judged, a partner clue not judged, at ▦ Done); each item has its quick buttons (＋ Award Ann $200 ▶ board `Enter`, − Deduct
+  still playing, a steal open; a wheel or dice tile's own tool not spun or rolled, or landed on “Spin again”) or
+  “Before you go on” (a loss: a player picked or a Daily Double's player with no points, ✍ answers not judged, a partner
+  clue not judged, at ▦ Done; a wheel's or dice's score effect not given, before it goes; a question pop-up's player
+  picked with no points, at its Next ▶). A tool from the tools row never asks whether it spun. A Daily Double's who
+  found it and wager are typed, so they never open it: `N`, `Enter` in the Wager box or a click on Show question ▶ with
+  one missing (or over the max) keeps the keys in the Wager box, flashes the names or the box and says what's missing
+  in the status line (never a phone's wager in one window). Each item has its quick buttons (＋ Award Ann $200 ▶ board `Enter`, − Deduct
   `Shift+Enter`, 🔔 Open the buzzers `U`, 🎲 Roll for it `O`, ⏱ Start the countdown `T`, ✔ Judge all ▶ board, ✍ Judge
   them, ✘ The rest are wrong, 📤 Send it; a partner clue's 🎡 Spin for a partner `W`, the players by number, Solo, ↩ Put
   back `Shift+Esc`, 📤 Send and start `Enter` (never within a second of the question), ⏱ Start the clock, 📋 Copy, ✔ Got
-  it ▶ reveal `Enter` / ✘ Missed `Shift+Enter`, who steals it), then the foot's Not yet (`Esc`) and a quiet “… anyway” (▦ Done anyway: no
+  it ▶ reveal `Enter` / ✘ Missed `Shift+Enter`, who steals it; a tile's Spin! `W` / Roll! `D` / ↻ Spin again `W`, ✔ Give
+  Ann +$100 ▶ question, or Choose in the box for a steal, a swap or nobody chosen (who a score effect is for is the game
+  screen's, `Live.scoreDrafts`, given by `applyScoreCard` there and in its box alike), ＋ Award Ann $200 and close it),
+  then the foot's Not yet (`Esc`) and a quiet “… anyway” (▦ Done anyway: no
   points, `N`; 👁 Reveal anyway, `R`: `N` at a reveal only says so). It takes no key or click for 600 ms (`Esc`
   excepted), lighting up what the press would have done; an `Esc` within 600 ms of Not yet does nothing; digits keep
   their meaning (an item done meanwhile stays in its place, ticked, and “✓ Nothing left” then offers the step); `K`,
   `B`, `M`, `Space`, `←`/`→` and `F` pass through. Shift+click on the blue button goes on asking only what must be done;
   the keys go back to what opened it. What's left also rings its own button in the panel (one ring at a time), and
   “Don't ask about … again this game” silences a kind (`session.goonQuiet`). With the controls hidden in one window a
-  loss that can wait goes on, and a reveal with something left is held (nothing changes on stream, the stage keeps its
+  loss that can wait goes on (a tile's tool not spun too), and a reveal, a must or a score effect left is held (nothing changes on stream, the stage keeps its
   size, the Show controls pill pulses, `H` shows the panel with it open); in two windows the controls come back while
   it's open and hide again after, and a click on the stage that opened it says “See the panel ↘ first” there. Its
   words never carry what players typed, picked or wagered, nor a 🤫 card's words. The stage (and the editor's previews)
@@ -526,10 +538,13 @@ The mode isn't saved with the game: it's dual while the audience window is open.
    lead-in, then more): `N` / **Next slide ▶** goes through them before the answer, and viewers see small dots for
    where they are.
    - *Daily Double*: DD splash, then a wager input for the chosen player (not limited by default; the host can turn on the max(score, highest round value) limit), then the question.
-     The ⭐ box's first row is “Daily Double! Who found it?” and the players; its Wager row ends with **Show question ▶**
-     (the main button's step too, greyed with why until the wager can go), the max's words cut short where the row is
-     narrow. It opens at its top, the keys in the Wager box: in one window on a laptop the heading, the players and
-     the Wager row are in view while the panel keeps the board's height.
+     The ⭐ box's first row is “Daily Double! Who found it?” and the players; its Wager row holds the Wager box, Ignore the
+     limit and True Daily Double, then the max's words, cut short where the row is narrow. **Show question ▶** is the
+     blue button's (`N`, or `Enter` in the Wager box), never greyed: with who found it or the wager missing, below 0 or
+     over the max, it keeps the keys in the Wager box and says what to do (“Type a wager (Ann can wager up to $1,000), or
+     True Daily Double”; “Waiting on Ann's phone: type their wager here if it doesn't come”). It opens at its top, the
+     keys in the Wager box: in one window on a laptop the heading, the players and the Wager row are in view while the
+     panel keeps the board's height.
    - *Partner clue* (🤝, PARTNER-CLUES-SPEC.md §6): a PARTNER UP! splash with the picker, a wheel of the other players
      (`W`) or the host's choice (`1–9`) for their partner, then the question with who describes and who guesses, the
      📤 list of who gets each 🤫 card (copied to them with 📋), ⏱ Start the clock, and ✔ Got it / ✘ Missed, which
@@ -664,16 +679,18 @@ The mode isn't saved with the game: it's dual while the audience window is open.
   question offers 👁 Reveal answer only once its tool is closed and the question up: before that, `R` says to spin or
   roll first (`W` / `D`), or once it has landed to close it (`Esc`), and `R` again shows the answer anyway (a wheel that
   won't spin, one only for show). With the controls hidden, `N` there does what a click on the tool does: spin or roll
-  it, then close it.
+  it, then close it (through the check, as a click does).
 - **The tool's box** in the host panel keeps its places in every state: on its first row the tool's name, its spin or
-  roll (**Spin!** `W`, greyed while it turns, then **Spin again**; ↻ Spin again where the main button says so, on a
-  "Spin again" slice; **Roll!** `D`, then **Roll again**), ✎ Edit wheel and ＋ Spin another wheel too…, the result, and
-  the way to close it last: **✕ Close** `Esc`, or the main button's **Close** / **Close ▶ board** once that's the next
-  step. The main button copies the box's next step with the same words, key, tooltip and greyed state, and a click on
-  the box's gives the keys back to the main button. The scoreboard, a player's sheet, a roll-off and a pop-up (its 👁
-  Reveal answer too) have the same Close at the right of their row; a shop keeps 🚪 Leave shop. The partner wheel and a
-  board game's own roll leave spinning again to their own box (the 🤝 box's ↻ Spin again, the turn's 🎲 Roll), and a
-  board game's own roll goes in the roll log as the turn player's (no "This was for" to tick). While an outcome's score
+  roll in one slot (**Spin!** `W`, greyed while it turns, then **Spin again**; ↻ Spin again on a "Spin again" slice;
+  **Roll!** `D`, then **Roll again**; ringed while it's what's left first, a tile's own tool not spun yet), ✎ Edit wheel
+  and ＋ Spin another wheel too…, and the result. It has no Close: putting it away is the blue button's step (a wheel or
+  dice tile's own: Show question ▶, or ▦ Done ▶ board with no question; anything else: Next ▶), or `Esc`. A question
+  pop-up keeps **✕ Close** `Esc` until its answer is up (it puts the question away unseen; the blue button reveals
+  it); a shop keeps 🚪 Leave shop. A click on the box's slot gives the keys back to the blue button. The partner wheel
+  and a board game's own roll leave spinning again to their own box (the 🤝 box's ↻ Spin again, the turn's 🎲 Roll), and
+  a board game's own roll goes in the roll log as the turn player's (no "This was for" to tick). `Esc` with a score
+  effect not given says so first (`Esc` again closes without it); the blue button and a click on the stage ask in the
+  check. While an outcome's score
   card waits, it's what's in view there; the first row comes back once it's confirmed or skipped. A box's step button
   (a tool's, a 🤝 partner clue's, a Daily Double's) drops the rest of its own double-click wherever it lands, so the
   second click never acts on what took the box's place.
@@ -751,8 +768,8 @@ or `Space` presses it: `Shift+Enter` is always ✘ Missed or − Deduct, never a
 a slides round, on a round's title card or its category reveals, does what the button says, as `N`; on a 🤝 partner
 clue's PARTNER UP! `Enter` is the blue button wherever the keys are, then the 🤝 box's 📤 Send and start (or ⏱ Start the
 clock), then ✔ Got it; in the Final's
-steps and on the end screen it says which key (or click) goes on, and on a wheel or dice tile's Spin! / Roll! the key
-that spins or rolls (not with the controls hidden: the hidden panel's button may be out of date). With players
+steps and on the end screen it says which key (or click) goes on, and on a wheel or dice tile not spun or rolled yet
+the key that does it (“Spin the wheel first: W”). `Enter` in a Daily Double's Wager box is its Show question ▶. With players
 selected on the board, `Enter` on a tile takes the keys to the Amount box (type the points, then `Enter`, and they're
 back on the tile) instead of opening it; while the keys are there, number keys type and the chips hide theirs.
 

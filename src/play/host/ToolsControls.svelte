@@ -1,8 +1,9 @@
 <!--
-  Host controls for whatever tool overlay is on screen, in fixed places on its first row: its name, the spin or roll
-  (Spin!, greyed while it turns, then Spin again; Roll!, then Roll again), ✎ Edit wheel and ＋ Spin another wheel too…,
-  the result, and a way to close it last, in every state. The panel's main button copies the next step (Spin!, then
-  Close): the box shows that same step, with the same words and key. Then the result's actions and score cards.
+  Host controls for whatever tool overlay is on screen, in fixed places on its first row: its name, the spin or roll in
+  one slot (Spin!, greyed while it turns, then Spin again; Roll!, then Roll again), ✎ Edit wheel and ＋ Spin another
+  wheel too…, the result. Putting it away is the blue button's step (a tile's own: Show question ▶ or ▦ Done ▶ board;
+  any other: Next ▶), or Esc, so there's no Close here; a question pop-up keeps ✕ Close until its answer is up. Then the
+  result's actions and score cards.
 -->
 <script lang="ts">
   import { onDestroy, onMount, tick, untrack } from 'svelte';
@@ -25,16 +26,30 @@
   import { setPicker } from '../../lib/toolset';
   import { copyText, standingsText } from '../standings';
   import { currentClueInfo, toolOnlyClue } from '../../lib/session';
-  import { boardNow, moverResult } from '../boardgame/bgops';
-  import { offerMenu, offerNext, step, type NextAction } from './slots.svelte';
+  import { boardNow } from '../boardgame/bgops';
+  import { offerMenu, step, type NextAction } from './slots.svelte';
   import { stepItem, type StageItem } from './stagemenu';
-  import { VERBS } from './verbs';
+  import { FLOW, VERBS } from './verbs';
   import StepButton from './StepButton.svelte';
   import { oneShot } from '../../lib/oneshot';
   import { offerIn } from './offered.svelte';
   import { announce } from '../../lib/announce';
 
-  let { game, session, selected = [], onclose }: { game: Game; session: Session; selected?: string[]; onclose: () => void } = $props();
+  let {
+    game,
+    session,
+    selected = [],
+    ring = false,
+    onclose,
+  }: {
+    game: Game;
+    session: Session;
+    selected?: string[];
+    /** The spin or roll is what's left first (the check's ring: a tile's own tool not spun yet). */
+    ring?: boolean;
+    /** Esc's close (a score effect not given: the first one says so). */
+    onclose: () => void;
+  } = $props();
   /** Each player is a team: the 🎯 wheel picks a team. */
   const teams = $derived(buzzerOn(game.settings) && teamsOn(game.settings));
   const o = $derived(app.live.overlay);
@@ -143,13 +158,13 @@
     if (landedSaid) announce(landedSaid);
   });
 
-  /** The wheel landed on a "Spin again" slice: spinning again is the main button. */
+  /** The wheel landed on a "Spin again" slice: its slot reads ↻ Spin again. */
   const again = $derived(o?.kind === 'wheel' && !!o.spin && o.result !== null && isRespin(o.segments[o.result]));
-  /** The wheel landed or the dice came up: Close is the main button now, and spinning or rolling again is secondary. */
+  /** The wheel landed or the dice came up. */
   const landed = $derived(!busy && ((o?.kind === 'wheel' && !!o.spin) || (o?.kind === 'dice' && !!o.roll)));
   /**
-   * It landed, a score card went (confirmed or skipped), or it closed: the keys go on to the main button (Close, Close ▶
-   * board, 👁 Reveal answer), not stay on the side button they fell to while Spin! was off or the card's button went.
+   * It landed, a score card went (confirmed or skipped), or it closed: the keys go on to the blue button (Show question ▶,
+   * ▦ Done ▶ board, Next ▶), not stay on the side button they fell to while Spin! was off or the card's button went.
    * (Never from a button or box the host chose.)
    */
   function keysToMain(): void {
@@ -188,49 +203,29 @@
   const spin = () => spinWheel(app.live, session, game);
   const roll = () => o?.kind === 'dice' && rollDice(app.live, session, o.preset, o.mover);
 
-  const closeStep = $derived(step(tileDone ? VERBS.closeToolBoard : VERBS.closeTool, onclose));
-  /** A 🤝 partner clue's wheel (or its describer wheel): the 🤝 box spins it again, the blue button's Next ▶ closes it. */
-  const partnerWheel = $derived(o?.kind === 'wheel' && !!o.partnerFor);
-  // The main button: spin or roll until it's done, then close (a question pop-up reveals its answer first). A shop has its
-  // own 🚪 Leave shop.
-  const next = $derived.by((): NextAction | null => {
-    // (A shop has its 🚪 Leave shop; the partner wheel is the blue button's: Next ▶ puts it away, the pair on PARTNER UP!.)
-    if (!o || o.kind === 'shop' || partnerWheel) return null;
-    // (A spent wheel can't spin: Close it, or Restore its slices in the card.)
-    if (o.kind === 'wheel' && !landed && !spent) return step(o.spin ? VERBS.spinning : VERBS.spin, spin, { disabled: busy });
-    if (o.kind === 'wheel' && landed && again && !spent) return step(VERBS.spinAgain, spin);
-    if (o.kind === 'dice' && !landed) return step(o.roll ? VERBS.rollAgain : VERBS.roll, roll, { disabled: busy });
-    if (o.kind === 'popup' && o.answer && !o.revealed) return step(VERBS.reveal, () => (o.revealed = true), { title: undefined });
-    // A board game's own roll (or spin) that came up: moving is next (▶ Move, Enter, which closes it), not Close.
-    const { round } = boardNow(game, session);
-    if (round && moverResult(game, round, o) !== null) return null;
-    return closeStep;
-  });
-  offerNext('tool', () => next);
-
   /**
-   * The spin or roll's place in the box, after its name: the main button's step while that's the spin (Spin!, greyed
-   * while it turns; ↻ Spin again on a "Spin again" slice), else spinning or rolling again (W, D). None for the partner's
-   * wheel (the 🤝 box spins it again) or a board game's own roll.
+   * The spin or roll's place in the box, after its name, its one slot: Spin! (greyed while it turns, then Spin again in
+   * its place; ↻ Spin again on a "Spin again" slice), Roll! then Roll again (W, D). It wears the ring while it's what's
+   * left first (a tile's own tool not spun yet). None for the partner's wheel (the 🤝 box spins it again) or a board
+   * game's own roll. Closing it is the blue button's (Show question ▶, ▦ Done ▶ board, Next ▶), or Esc.
    */
   const spinPlace = $derived.by((): NextAction | null => {
     if (o?.kind === 'wheel' && !o.partnerFor && !boardMover) {
-      if (next && next !== closeStep) return next;
-      const why = spent ? { disabled: true, title: 'Every slice has landed: Restore them to spin again' } : {};
-      return step(!o.spin ? VERBS.spin : again ? VERBS.spinAgain : VERBS.spinning, spin, why);
+      const why = spent && !busy ? { title: 'Every slice has landed: Restore them to spin again' } : {};
+      return step(!o.spin ? VERBS.spin : again && !busy ? VERBS.spinAgain : VERBS.spinning, spin, { disabled: busy || spent, ...why });
     }
-    if (o?.kind === 'dice' && !boardMover) return next && next !== closeStep ? next : step(VERBS.rollAgain, roll);
+    if (o?.kind === 'dice' && !boardMover) return step(o.roll ? VERBS.rollAgain : VERBS.roll, roll, { disabled: busy });
     return null;
   });
   /** A wheel or dice still turning waits for it to land to close (Esc says so); the roll-off and the partner's wheel don't. */
   const closeWaits = $derived(busy && ((o?.kind === 'wheel' && !o.partnerFor) || o?.kind === 'dice'));
-  /** ✕ Close's tooltip, while closing isn't the main button's step. */
+  /** What Esc (and the stage's menu's ✕ Close) does now, in its tooltip. */
   const closeTitle = $derived.by(() => {
     if (closeWaits) return `Still ${o?.kind === 'wheel' ? 'spinning' : 'rolling'}: wait for it to land`;
     if ((o?.kind === 'wheel' && !o.spin) || (o?.kind === 'dice' && !o.roll))
       return `Close it without ${o.kind === 'wheel' ? 'spinning' : 'rolling'}${tileDone && !spent ? ' (the tile stays on the board)' : ''}`;
     if (o?.kind === 'popup' && o.answer && !o.revealed) return 'Close it without showing the answer';
-    if (boardMover && !next) return 'Close it without moving';
+    if (boardMover && landed) return 'Close it without moving';
     return 'Esc';
   });
 
@@ -249,7 +244,7 @@
     if (!o) return [];
     const out: StageItem[] = [];
     if (spinPlace) out.push(stepItem(spinPlace, o.kind === 'dice' ? 'roll' : 'spin'));
-    if (o.kind === 'popup' && o.answer) out.push(o.revealed ? { id: 'reveal', label: VERBS.hide.label, keys: 'R', onclick: () => (o.revealed = false) } : stepItem(step(VERBS.reveal, () => (o.revealed = true)), 'reveal'));
+    if (o.kind === 'popup' && o.answer) out.push({ id: 'reveal', label: o.revealed ? VERBS.hide.label : VERBS.reveal.label, keys: 'R', onclick: () => (o.revealed = !o.revealed) });
     if (o.kind === 'wheel') {
       out.push({ label: '✎ Edit wheel', disabled: !!o.editing, hint: 'Turn slices off or change their chances for this spin', onclick: () => ((o.editing = true), (editExtra = null)) });
       out.push({ label: '＋ Spin another wheel too…', disabled: busy, onclick: pickAnother });
@@ -271,8 +266,8 @@
     }
     if (o.kind === 'scoreboard') out.push({ label: '📋 Copy standings', onclick: () => copyText(standingsText(game, session), 'Standings copied: paste them in chat') });
     if (o.kind === 'shop') out.push({ id: 'close', label: '🚪 Leave shop', keys: 'Esc', onclick: () => (app.live.overlay = null) });
-    else if (next === closeStep) out.push(stepItem(closeStep, 'close'));
-    else out.push({ id: 'close', label: VERBS.closeToolBox.label, keys: 'Esc', disabled: closeWaits, hint: closeTitle, onclick: onclose });
+    // (As Esc: a tile with nothing to ask ends with it.)
+    else out.push({ id: 'close', label: (tileDone ? FLOW.done : VERBS.closeToolBox).label, keys: 'Esc', disabled: closeWaits, hint: closeTitle, onclick: () => onclose() });
     return out;
   });
 
@@ -291,7 +286,7 @@
     <div class="row">
       {#if o.kind === 'wheel'}
         <b>🎡 {o.name}</b>
-        {#if spinPlace}<StepButton step={spinPlace} />{/if}
+        {#if spinPlace}<StepButton step={spinPlace} {ring} />{/if}
         <button class="small" class:on={o.editing} aria-pressed={!!o.editing} onclick={() => ((o.editing = !o.editing), o.editing && (editExtra = null))} title="Turn slices off or change their chances for this spin">
           ✎ Edit wheel{wheelEdited(o, session) ? ' (edited)' : ''}
         </button>
@@ -342,7 +337,7 @@
         {/if}
       {:else if o.kind === 'dice'}
         <b>🎲 {o.name}</b>
-        {#if spinPlace}<StepButton step={spinPlace} />{/if}
+        {#if spinPlace}<StepButton step={spinPlace} {ring} />{/if}
       {:else if o.kind === 'rolloff'}
         <b>{o.purpose === 'tiebreak' ? '🏆 Tiebreaker roll-off' : o.purpose === 'buzz' ? '🎲 Buzzer tie' : '🏁 Who goes first'}</b>
         {#if !busy && o.purpose === 'buzz'}
@@ -354,12 +349,8 @@
       {:else if o.kind === 'popup'}
         <b>🖼 {o.title ?? (o.answer ? 'Question' : 'Pop-up slide')}</b>
         {#if o.value}<span class="muted small">worth {o.value}</span>{/if}
-        {#if o.answer && o.revealed}
-          <button onclick={() => (o.revealed = false)} title="R">🙈 Hide answer</button>
-        {:else if next && next !== closeStep}
-          <!-- (Its answer next: 👁 Reveal answer, as the main button.) -->
-          <StepButton step={next} />
-        {/if}
+        <!-- (Its 👁 Reveal answer is the blue button's.) -->
+        {#if o.answer && o.revealed}<button onclick={() => (o.revealed = false)} title="R">🙈 Hide answer</button>{/if}
       {:else if o.kind === 'sheet'}
         {@const i = session.players.findIndex((p) => p.id === o.playerId)}
         <b>📺 {session.players[i]?.name ?? 'Player'}'s sheet</b>
@@ -370,7 +361,7 @@
       {:else}
         <b>📊 Scoreboard on screen</b>
         {#if o.kind === 'scoreboard' && o.under}
-          <span class="muted small">Close (or S) puts the {o.under.kind === 'rolloff' ? 'roll-off' : o.under.kind === 'popup' ? 'pop-up' : o.under.kind} back</span>
+          <span class="muted small">{FLOW.next.label} (or S) puts the {o.under.kind === 'rolloff' ? 'roll-off' : o.under.kind === 'popup' ? 'pop-up' : o.under.kind} back</span>
         {/if}
         <button class="small" onclick={() => copyText(standingsText(game, session), 'Standings copied: paste them in chat')} title="The standings as one line of text, for chat">
           📋 Copy standings
@@ -378,14 +369,10 @@
       {/if}
       <span class="spacer"></span>
       {#if resultText && !busy}<span class="result" title={resultText}>Result: <b>{resultText}</b></span>{/if}
-      <!-- The way out, last, in every state (a shop has its 🚪 Leave shop, the partner wheel the blue button's Next ▶):
-           the main button's Close when that's next, else ✕ Close (before it's spun, say). -->
-      {#if o.kind !== 'shop' && !partnerWheel}
-        {#if next === closeStep}
-          <StepButton step={closeStep} />
-        {:else}
-          <button use:oneShot onclick={onclose} disabled={closeWaits} title={closeTitle}>{VERBS.closeToolBox.label} <kbd aria-hidden="true">{VERBS.closeToolBox.key}</kbd></button>
-        {/if}
+      <!-- No Close here: putting it away is the blue button's (Show question ▶, ▦ Done ▶ board, Next ▶), or Esc. A question
+           pop-up before its answer keeps ✕ Close, last: it puts the question away unseen (the blue button reveals it). -->
+      {#if o.kind === 'popup' && o.answer && !o.revealed}
+        <button use:oneShot onclick={() => onclose()} title={closeTitle}>{VERBS.closeToolBox.label} <kbd aria-hidden="true">{VERBS.closeToolBox.key}</kbd></button>
       {/if}
     </div>
     {#if outcome?.actions?.length && !busy && (o.kind === 'wheel' || o.kind === 'dice')}

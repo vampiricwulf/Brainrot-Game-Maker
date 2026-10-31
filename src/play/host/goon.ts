@@ -7,13 +7,15 @@
  * never a box's, so it works with the host panel hidden too.
  *
  * Moments whose part hasn't moved over yet give no step here (null): the panel's old main button does them, as before,
- * with no check (a Daily Double's splash, a tool or pop-up over the stage, the Final, the tiebreaker, the end screen,
- * board games).
+ * with no check (the Final, the tiebreaker, the end screen, board games and a board game's own roll).
  */
 import { buzzNeverOpened, type BuzzState } from '../../lib/buzz';
-import { formatPoints, isBoard, isFinal, roundName, type Game, type Id, type Session } from '../../lib/model';
+import { overlayDoneAt, tileToolUp, type Live, type Overlay } from '../../lib/live';
+import { formatPoints, isBoard, isBoardGame, isFinal, roundName, type Game, type Id, type Session } from '../../lib/model';
+import { cardDone, draftDeltas, scoreCards, scoreDraft, wheelSpentUp, type ScoreCard } from '../../lib/overlay';
 import { partnerCandidates, partnerPickStep } from '../../lib/partner';
-import { answerShowing, currentClueInfo, nameList, playerName, roundComplete, slidePosition, toolOnlyClue } from '../../lib/session';
+import { answerShowing, currentClueInfo, ddCap, nameList, playerName, roundComplete, slidePosition, toolOnlyClue } from '../../lib/session';
+import { describeAction, isRespin, needsSource, sliceLabel } from '../../lib/tools';
 import { CHECK_GUARD_MS } from './guard';
 import type { FlowPlace } from './slots.svelte';
 import { CHECK, FLOW, VERBS, type FlowVerb } from './verbs';
@@ -58,7 +60,7 @@ export type LeftItem = {
   quick: Quick[];
   /**
    * The box button that does it (it wears the ring while it's due): 'buzzers', 'rolltie', 'judgeall', 'card:<id>', the
-   * 🤝 box's 'partnerspin', 'describerspin' and 'handout'.
+   * 🤝 box's 'partnerspin', 'describerspin' and 'handout', a wheel's or dice's 'toolslot' (Spin! / Roll!).
    */
   box?: string;
   /** It can be silenced for the game. */
@@ -67,13 +69,21 @@ export type LeftItem = {
   focus?: string;
   /** What "… anyway" loses: "no points". */
   lost?: string;
+  /** "… anyway"'s whole words, where they aren't the step's ("Show question without it"). */
+  anyway?: string;
+  /** It can't be done once the step is taken (a score effect): with the controls hidden in one window it holds too. */
+  hold?: boolean;
   /** What Enter says when this item has no ⏎ button. */
   enterSay?: string;
   /** Set by mergeItems once it's done elsewhere: its ticked line. */
   done?: string;
 };
 
-export type StepId = 'intro' | 'slide' | 'nextround' | 'reveal' | 'done' | 'question' | 'close';
+/**
+ * 'close': the 🤝 partner wheel's Next ▶; 'tool': what's over the stage goes (a tile's own wheel or dice: its question,
+ * or the board); 'popreveal': a question pop-up's answer; 'ddshow': a Daily Double's question.
+ */
+export type StepId = 'intro' | 'slide' | 'nextround' | 'reveal' | 'done' | 'question' | 'close' | 'tool' | 'popreveal' | 'ddshow';
 
 /** The blue button's step: its words (FLOW only), what it does, and how its keys go. */
 export type Step = {
@@ -92,6 +102,8 @@ export type Step = {
   busy?: string;
   /** Its place in the clue's row of buttons (that row doesn't show it twice). */
   flow?: FlowPlace;
+  /** A tile's own wheel or dice not spun or rolled yet (Enter says so: "Spin the wheel first: W"). */
+  tool?: 'spin' | 'roll';
 };
 
 /** What the host's own functions do, for the steps and the fixes. */
@@ -138,6 +150,20 @@ export type GoActs = {
   copyCard: (cardId: Id) => void;
   /** ✔ Got it or ✘ Missed (false: the keys' guards held it, saying so). */
   partnerJudge: (got: boolean) => void | false;
+  // What's over the stage: a wheel, dice, the scores, a sheet, a roll-off, a pop-up.
+  /** It goes, as the blue button's step (a tile's own wheel or dice: its question, or the board). */
+  closeTool: () => void;
+  /** Spin! / ↻ Spin again (W), Roll! / Roll again (D). */
+  spin: () => void;
+  roll: () => void;
+  /** A question pop-up's answer goes on screen. */
+  revealPopup: () => void;
+  /** A score effect given, to whom its box says. */
+  scoreCard: (key: string) => void;
+  /** The keys to this (a selector), flashed: a score effect's row. */
+  focusOn: (sel: string) => void;
+  /** A Daily Double's question, with its wager; typed values missing, the keys stay in the Wager box (ddWaits). */
+  ddShow: () => void;
 };
 
 /**
@@ -184,11 +210,9 @@ export type GoCtx = {
   game: Game;
   /** An audience window is open (this panel is off stream). */
   dual: boolean;
-  /**
-   * Something is over the stage (a tool, the scores, a sheet, a pop-up): its part has its own main button still. Not
-   * the 🤝 partner wheel: its Next ▶ is the blue button's (PartnerNow.wheel).
-   */
-  toolUp: boolean;
+  /** What's on stage over the moment (a tool, the scores, a sheet, a pop-up), and the time it's read at (a spin landing). */
+  live: Live;
+  now: number;
   selected: Id[];
   amount: number | null;
   /** The open clue's marks since it opened. */
@@ -210,6 +234,10 @@ export type GoCtx = {
   cards: { id: Id; name: string; to: Id[]; full?: string }[];
   /** One window: a Daily Double wager sent from a phone, not on screen yet. */
   ddHidden: boolean;
+  /** "Ignore the limit" is ticked: a Daily Double's wager may be over the max. */
+  wagerLimitsOff: boolean;
+  /** Who found the Daily Double has a phone here that can send their wager. */
+  ddPhone: boolean;
   /** The open 🤝 partner clue (null: none). */
   partner: PartnerNow | null;
   act: GoActs;
@@ -242,10 +270,49 @@ function nextRoundVerb(game: Game, at: number): FlowVerb {
   return !r ? FLOW.endGame : isFinal(r) ? FLOW.toRound(roundName(r, at + 1)) : FLOW.nextRound;
 }
 
+/**
+ * What's over the stage as the blue button sees it: the overlay up (the scores, if they're over a wheel), and whether
+ * it's the open tile's own wheel or dice. None for a shop (its 🚪 Leave shop), the open 🤝 partner clue's wheel (its
+ * own Next ▶) or a board game's own roll (its turn box's, until board games move over).
+ */
+export function toolOf(c: GoCtx): { o: Overlay; own: boolean; question: boolean; busy: boolean } | null {
+  const o = c.live.overlay;
+  const s = c.session;
+  if (!o || o.kind === 'shop') return null;
+  if (o.kind === 'wheel' && o.partnerFor && s.partner?.clue === o.partnerFor) return null;
+  const round = c.game.rounds[s.currentRound];
+  if ((o.kind === 'dice' && o.mover) || (o.kind === 'wheel' && s.phase === 'boardgame' && isBoardGame(round) && round.mover.kind === 'wheel' && o.wheelId === round.mover.wheel)) return null;
+  const info = s.phase === 'clue' ? currentClueInfo(s, c.game) : undefined;
+  const own = o.kind !== 'scoreboard' && !!info && tileToolUp(c.live, info.clue);
+  const turns = o.kind === 'wheel' || o.kind === 'dice' || o.kind === 'rolloff';
+  return { o, own, question: own && !!info && !toolOnlyClue(info.clue), busy: turns && c.now < overlayDoneAt(o) };
+}
+
+/**
+ * The blue button over what's over the stage: a tile's own wheel or dice, Show question ▶ (a tile with no question:
+ * ▦ Done ▶ board); a question pop-up, 👁 Reveal answer, then Next ▶; anything else (a tool from the tools row, the
+ * scores, a sheet, a roll-off), Next ▶, which only puts it away. Greyed while it turns.
+ */
+function toolStep(c: GoCtx, t: NonNullable<ReturnType<typeof toolOf>>): Step {
+  const { o } = t;
+  if (o.kind === 'popup' && o.answer && !o.revealed) return n({ ...FLOW.reveal, title: 'Its answer goes on screen (R shows or hides it at once) · or click it' }, 'popreveal', c.act.revealPopup, { reveals: true });
+  const dice = o.kind === 'dice';
+  const busy = t.busy ? { busy: `Still ${dice || o.kind === 'rolloff' ? 'rolling' : 'spinning'}: wait for it to land` } : {};
+  if (!t.own) return n(FLOW.next, 'tool', c.act.closeTool, busy);
+  const fresh = (o.kind === 'wheel' && !o.spin && !wheelSpentUp(o, c.session, c.game)) || (o.kind === 'dice' && !o.roll);
+  const word = dice ? 'dice go' : 'wheel goes';
+  const verb = t.question ? { ...FLOW.showQuestion, title: `The ${word}, and the question goes on screen` } : { ...FLOW.done, title: `The ${word}: back to the board, the tile used` };
+  return n(verb, 'tool', c.act.closeTool, { ...busy, ...(t.question ? {} : { flow: 'done' as const }), ...(fresh && !t.busy ? { tool: dice ? ('roll' as const) : ('spin' as const) } : {}) });
+}
+
+/** A Daily Double's splash: Show question ▶, never greyed (who found it and the wager are typed: see ddWaits). */
+const ddStep = (c: GoCtx): Step => n({ ...FLOW.showQuestion, title: 'The question goes on screen, for their wager' }, 'ddshow', c.act.ddShow, { enterIsNext: true });
+
 /** The blue button's step now (null: no blue button, or its moment's part still has its own). */
 export function mainStep(c: GoCtx): Step | null {
   const s = c.session;
-  if (c.toolUp) return null;
+  const tool = toolOf(c);
+  if (tool) return toolStep(c, tool);
   if (s.intro) {
     const round = c.game.rounds[s.currentRound];
     const i = s.intro;
@@ -274,7 +341,8 @@ export function mainStep(c: GoCtx): Step | null {
 function clueStep(c: GoCtx, done = false): Step | null {
   const s = c.session;
   const info = currentClueInfo(s, c.game);
-  if (!info || c.toolUp || s.dd?.stage === 'splash') return null;
+  if (!info || toolOf(c)) return null;
+  if (s.dd?.stage === 'splash') return done ? null : ddStep(c);
   const pt = s.partner?.clue === info.clue.id ? s.partner : null;
   if (pt && !c.partner) return null;
   // PARTNER UP!: the question (Enter too), or, while the partner wheel is up, Next ▶: it goes and the pair shows.
@@ -292,8 +360,8 @@ function clueStep(c: GoCtx, done = false): Step | null {
   return doneStep;
 }
 
-/** A step the check can ask before (the others never do: an intro, a slide, the next round). */
-export const mayAsk = (st: Step): boolean => st.id === 'reveal' || st.id === 'done';
+/** A step the check can ask before (the others never do: an intro, a slide, the next round, a Daily Double's question). */
+export const mayAsk = (st: Step): boolean => st.id === 'reveal' || st.id === 'done' || st.id === 'tool';
 
 /** ▦ Done ▶ board as a skip (the clue's row, while the blue button is 👁 Reveal answer): it asks as the blue one would. */
 export const doneStep = (c: GoCtx): Step | null => clueStep(c, true);
@@ -703,6 +771,139 @@ function partnerJudgeItems(c: GoCtx): LeftItem[] {
   ];
 }
 
+/**
+ * What's over the stage, at the blue button's step that puts it away (3.4 F, G, M): a tile's own wheel or dice not spun
+ * or rolled, or landed on "Spin again"; a score effect not given; a question pop-up's player picked with no points.
+ * Whether a tool from the tools row spun never asks: a host who opened one to look just wants it gone.
+ */
+function toolItems(c: GoCtx): LeftItem[] {
+  const t = toolOf(c);
+  if (!t || t.busy) return [];
+  const { o } = t;
+  if (o.kind === 'popup') return popupItems(c, o);
+  const out: LeftItem[] = [];
+  const then = t.own ? (t.question ? `then ${FLOW.showQuestion.label} (N)` : `then ${FLOW.done.label} (N)`) : `then ${FLOW.next.label} (N)`;
+  if (t.own && o.kind === 'wheel' && !wheelSpentUp(o, c.session, c.game)) {
+    const spin = (label: string): Quick => ({ label, key: 'W', enter: true, then: 'close', run: c.act.spin, after: `Spinning… ${then}` });
+    if (!o.spin)
+      out.push({
+        id: 'tool',
+        kind: 'first',
+        quiet: 'tool',
+        box: 'toolslot',
+        text: t.question ? 'The wheel hasn’t spun yet: its question comes after.' : 'The wheel hasn’t spun yet.',
+        ...(t.question ? {} : { anyway: 'Close without spinning (the tile stays on the board)' }),
+        quick: [spin(VERBS.spin.label)],
+      });
+    else if (o.result !== null && isRespin(o.segments[o.result]))
+      out.push({ id: 'again', kind: 'first', box: 'toolslot', text: `It landed on “${sliceLabel(o.segments[o.result], o.result)}”.`, quick: [spin(VERBS.spinAgain.label)] });
+  }
+  if (t.own && o.kind === 'dice' && !o.roll)
+    out.push({
+      id: 'tool',
+      kind: 'first',
+      quiet: 'tool',
+      box: 'toolslot',
+      text: t.question ? 'The dice haven’t been rolled yet: the question comes after.' : 'The dice haven’t been rolled yet.',
+      ...(t.question ? {} : { anyway: 'Close without rolling (the tile stays on the board)' }),
+      quick: [{ label: VERBS.roll.label, key: 'D', enter: true, then: 'close', run: c.act.roll, after: `Rolling… ${then}` }],
+    });
+  // A score effect that landed, neither given nor skipped (its box's Confirm and Skip): lost once it goes.
+  const to = t.own ? (t.question ? '▶ question' : '▶ board') : 'and put it away';
+  const without = t.own ? (t.question ? `${FLOW.showQuestion.label.replace(/ ▶$/, '')} without it` : `${FLOW.done.label.replace(/ ▶ board$/, '')} without it`) : `${FLOW.next.label} without it`;
+  for (const card of scoreCards(o, c.now)) if (!cardDone(o, c.session, card.key)) out.push(scoreItem(c, card, to, without));
+  return out;
+}
+
+/** A score effect not given: give it to whom its box says (a steal, a swap or nobody chosen yet: choose in the box). */
+function scoreItem(c: GoCtx, card: ScoreCard, to: string, without: string): LeftItem {
+  const noun = card.kind === 'dice' ? 'roll' : 'wheel';
+  const what = `“${describeAction(card.action, sym(c))}”`;
+  const d = scoreDraft(c.live, c.session, card);
+  const { deltas, ready } = draftDeltas(c.live, c.session, card);
+  const sel = `.play .panel [data-score-card="${card.key}"] button:not(:disabled)`;
+  const base = { id: `score:${card.key}`, kind: 'loss' as const, hold: true, anyway: without, focus: sel };
+  const box = `the ${card.kind === 'dice' ? 'dice' : 'wheel'}’s box`;
+  if (needsSource(card.action) || !ready)
+    return {
+      ...base,
+      text: d.targets.length ? `The ${noun}’s ${what} for ${named(c, d.targets)} isn’t given yet: choose who in ${box}.` : `The ${noun}’s ${what} isn’t given yet: choose who in ${box}.`,
+      quick: [{ label: 'Choose in the box', enter: true, then: 'close', run: () => c.act.focusOn(sel), aria: `Choose who in ${box}: the keys go to its score effect` }],
+    };
+  const gives = Object.entries(deltas)
+    .map(([id, v]) => `${name(c, id)} ${v > 0 ? '+' : '−'}${formatPoints(Math.abs(v), sym(c))}`)
+    .join(' · ');
+  return {
+    ...base,
+    text: `The ${noun}’s ${what} for ${named(c, d.targets)} isn’t given yet.`,
+    quick: [{ label: `✔ Give ${gives} ${to}`, enter: true, then: 'go', tone: 'good', run: () => c.act.scoreCard(card.key), aria: `Give ${gives}, then ${t2(to)}` }],
+  };
+}
+/** "▶ question" → "the question", for screen readers. */
+const t2 = (to: string) => (to === '▶ question' ? 'the question' : to === '▶ board' ? 'back to the board' : 'put it away');
+
+/** A question pop-up's answer up, at Next ▶ (3.4 M): who's picked and has no points for it since it came up. */
+function popupItems(c: GoCtx, o: Extract<Overlay, { kind: 'popup' }>): LeftItem[] {
+  if (!o.answer || !o.revealed || o.at === undefined) return [];
+  const since = o.at;
+  const has = (id: Id) => c.session.scoreLog.some((e) => !e.undone && e.playerId === id && e.ts >= since);
+  const picked = c.selected.filter((id) => !has(id) && c.session.players.some((p) => p.id === id));
+  const a = c.amount != null && Number.isFinite(c.amount) ? Math.abs(c.amount) : (o.value ?? 0);
+  if (!picked.length || !a) return [];
+  const pts = formatPoints(a, sym(c));
+  if (picked.length === 1) {
+    const id = picked[0];
+    const who = name(c, id);
+    return [
+      {
+        id: 'popup',
+        kind: 'loss',
+        text: `${who} is picked and has no points for this question.`,
+        lost: 'no points',
+        quick: [
+          { label: `＋ Award ${who} ${pts} and close it`, enter: true, then: 'go', tone: 'good', run: () => c.act.award(1, [id], a), aria: `Award ${who} ${pts}, then the question goes` },
+          { label: `− Deduct ${who} ${pts} and close it`, key: '⇧⏎', then: 'go', tone: 'bad', run: () => c.act.award(-1, [id], a), aria: `Deduct ${pts} from ${who}, then the question goes` },
+        ],
+      },
+    ];
+  }
+  return [
+    {
+      id: 'popup',
+      kind: 'loss',
+      text: `${named(c, picked)} are picked, with no points for this question yet.`,
+      lost: 'no points',
+      enterSay: 'Several are picked: ＋ or − on each line (1–9 changes who)',
+      quick: picked.flatMap((id): Quick[] => {
+        const who = name(c, id);
+        return [
+          { line: who, label: `＋ Award ${pts}`, then: 'keep', tone: 'good', run: () => c.act.award(1, [id], a, true), aria: `Award ${who} ${pts}` },
+          { line: who, label: '− Deduct', then: 'keep', tone: 'bad', run: () => c.act.award(-1, [id], a, true), aria: `Deduct ${pts} from ${who}` },
+        ];
+      }),
+    },
+  ];
+}
+
+/**
+ * A Daily Double's splash, at Show question ▶ (3.4 E): who found it and their wager are typed, so no check opens: the
+ * keys stay in the Wager box, the names (or the box) flash, and the status line says what's missing. Null: it can go.
+ * In one window a wager sent from a phone is never said.
+ */
+export function ddWaits(c: GoCtx): { say: string; at: 'names' | 'wager' } | null {
+  const dd = c.session.dd;
+  if (dd?.stage !== 'splash') return null;
+  const id = dd.playerId && c.session.players.some((p) => p.id === dd.playerId) ? dd.playerId : undefined;
+  if (!id) return { say: 'Who found it? Click their name (the keys stay in the Wager box)', at: 'names' };
+  const who = name(c, id);
+  const cap = formatPoints(ddCap(c.session, c.game, id), sym(c));
+  const w = dd.draft;
+  if (typeof w !== 'number') return { say: c.ddPhone ? `Waiting on ${who}’s phone: type their wager here if it doesn’t come` : `Type a wager (${who} can wager up to ${cap}), or True Daily Double`, at: 'wager' };
+  if (w < 0) return { say: 'A wager can’t be below 0: type 0 or more', at: 'wager' };
+  if (!c.wagerLimitsOff && w > ddCap(c.session, c.game, id)) return { say: `Over ${who}’s max (${cap}): type less, or tick Ignore the limit`, at: 'wager' };
+  return null;
+}
+
 /** What going on by `step` would skip or lose now, but the kinds silenced this game. */
 export function leftNow(c: GoCtx, step: Step): LeftItem[] {
   const all =
@@ -712,7 +913,9 @@ export function leftNow(c: GoCtx, step: Step): LeftItem[] {
         ? [...partnerJudgeItems(c), ...scoreItems(c), ...judgeItems(c)]
         : step.id === 'question'
           ? pickItems(c)
-          : [];
+          : step.id === 'tool'
+            ? toolItems(c)
+            : [];
   const quiet = c.session.goonQuiet ?? [];
   return all.filter((i) => !i.quiet || !quiet.includes(i.quiet));
 }
@@ -725,12 +928,13 @@ export const ringOf = (items: LeftItem[]): string | null => items.find((i) => !i
 /**
  * What pressing the blue button does: `run` the step, `open` the check, or `hold` (the controls hidden in one window:
  * nothing on stream changes, the pill pulses). Shift+click skips all but must items. With the controls hidden in one
- * window, what can be done later goes on (points not given: ↶ Reopen); an answer shown early or a must item holds.
+ * window, what can be done later goes on (points not given: ↶ Reopen; a tile's wheel not spun); an answer shown early, a
+ * must item or one lost for good (a score effect) holds.
  */
 export function goOnDecision(source: GoSource, step: Step, items: LeftItem[], hidden: boolean, dual: boolean): 'run' | 'open' | 'hold' {
   const ask = asked(source, items);
   if (!ask.length) return 'run';
-  if (hidden && !dual) return step.reveals || ask.some((i) => i.must) ? 'hold' : 'run';
+  if (hidden && !dual) return step.reveals || ask.some((i) => i.must || i.hold) ? 'hold' : 'run';
   return 'open';
 }
 
@@ -768,6 +972,9 @@ export const mainQuick = (items: LeftItem[]): Quick | null => todo(items)[0]?.qu
 
 /** "… anyway": the step's words and what it loses ("▦ Done anyway: no points"). */
 export function anywayLabel(check: Pick<Check, 'step' | 'items'>): string {
+  // (The first item's own words, where it has them: "Show question without it".)
+  const own = todo(check.items).find((i) => !i.must)?.anyway;
+  if (own) return own;
   const lost = todo(check.items).find((i) => !i.must && i.lost)?.lost;
   const word = check.step.verb.anyway ?? `${check.step.verb.label.replace(/ ▶$/, '')} anyway`;
   return lost ? `${word}: ${lost}` : word;
@@ -780,7 +987,8 @@ export const quietKinds = (items: LeftItem[]): QuietKind[] => [...new Set(todo(i
 export function teachLine(check: Pick<Check, 'step' | 'items'>): string {
   const parts: string[] = [];
   if (check.step.reveals) parts.push('R reveals at once');
-  if (check.step.id === 'done') parts.push('Esc closes at once');
+  // (Not with a score effect left: Esc asks once about it too.)
+  if (check.step.id === 'done' || (check.step.id === 'tool' && !todo(check.items).some((i) => i.hold))) parts.push('Esc closes at once');
   if (!todo(check.items).every((i) => i.must)) parts.push('Shift+click on the blue button skips this');
   return parts.length ? `Next time: ${parts.join(' · ')}` : '';
 }
@@ -896,8 +1104,8 @@ export type GoPanel = {
   lit: string | null;
   /** Goes up to flash the check. */
   flash: number;
-  /** The blue button clicked (`shift`: with Shift, going on without asking). */
-  main: (source: 'main' | 'shift') => void;
+  /** The blue button clicked (`shift`: with Shift, going on without asking), or Enter where it's Next (a wager box). */
+  main: (source: 'main' | 'shift' | 'enter') => void;
   /** The clue's row's ▦ Done ▶ board (a skip, while the blue button is 👁 Reveal answer). */
   flowDone: () => void;
   quick: (q: Quick) => void;

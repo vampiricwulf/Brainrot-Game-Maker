@@ -12,7 +12,7 @@
     finalAdvance, finalBack, finalJudge, finalShow, finalShowAnswer, finalTag, finalUnjudged, findClueRef, hasWager, typedAnswer, goToRound, introNext, nameList, newSession, openClue, playerName,
     randomizeDailyDoubles, redo, forgetRedo, removePlayer, restorePlayer, answerShowing, rosterChange, roundComplete, score, skipIntro, startIntro, toggleUsed, undo,
     blankSlide, toolOnlyClue, stepSlide, finalWagerProblems, finalWagersOk, finalStepFix, startTiebreaker, stepOf, logZero, tiebreakHolds, tiedForFirst, tiedLeaders, winnerKnown,
-    finalSetWager, finalTakeNewcomers, forViewers, wagerFromPhone, coWinnersHold, ownPlayers, clueMarks, judgePartner, partnerSteal, stealersLeft, slidePosition, ddCap,
+    finalSetWager, finalTakeNewcomers, forViewers, wagerFromPhone, coWinnersHold, ownPlayers, clueMarks, judgePartner, partnerSteal, stealersLeft, slidePosition,
   } from '../lib/session';
   import {
     cardCopyText, cardId, cardRecipients, cardSends, cardSlides, lowerWord, marksText, sentSeats, partnerCandidates, partnerPlayers, partnerRoles, partnerRules, partnerShares, partnerVerdict, partWords, recipientsText, sendCards,
@@ -30,8 +30,8 @@
   import { dropOffersBut } from './host/offered.svelte';
   import { forgetRecipients, recipientsOf } from './host/tilecardpicks.svelte';
   import {
-    anywayLabel, answerRow, asked, doneStep, escBounce, goOnDecision, inside, leftNow, mainStep, mergeItems, ringOf, swallowSay, todo, type Check, type GoActs, type GoCtx, type GoPanel, type PartnerNow,
-    type GoSource, type Inside, type LeftItem, type QuietKind, type Quick, type Step,
+    anywayLabel, answerRow, asked, ddWaits, doneStep, escBounce, goOnDecision, inside, leftNow, mainStep, mergeItems, ringOf, swallowSay, todo, type Check, type GoActs, type GoCtx,
+    type GoPanel, type PartnerNow, type GoSource, type Inside, type LeftItem, type QuietKind, type Quick, type Step,
   } from './host/goon';
   import { addTime, newLive, overlayDoneAt, startTimer, tileToolUp, timerRemaining, timerResumed, toggleTimer, toolOverlay, type Live, type StageAction, type TimerState } from '../lib/live';
   import {
@@ -51,7 +51,7 @@
   import PhoneRoom from './PhoneRoom.svelte';
   import type { SetBuzzSetting } from './BuzzerOptions.svelte';
   import PhoneChip from './host/PhoneChip.svelte';
-  import { openDice, openMemberWheel, openPartnerWheel, openPlayerWheel, openWheel, quickDice, rollDice, scoreCardsLeft, spinningRolls, spinWheel, startRollOff, toggleScoreboard, wheelSpentUp } from '../lib/overlay';
+  import { applyScoreCard, openDice, openMemberWheel, openPartnerWheel, openPlayerWheel, openWheel, quickDice, rollDice, scoreCardsLeft, spinningRolls, spinWheel, startRollOff, toggleScoreboard, wheelSpentUp } from '../lib/overlay';
   import type { DicePreset } from '../lib/model';
   import { isRespin, tileDice } from '../lib/tools';
   import { dailyDoublesShort, partnerTilesShort, validate } from '../lib/validate';
@@ -2118,7 +2118,10 @@
     return true;
   }
 
-  /** Clicking a tool overlay: spin/roll if it hasn't happened yet, otherwise close it once it's finished. */
+  /**
+   * Clicking a tool overlay: spin/roll if it hasn't happened yet, a pop-up's answer, otherwise close it once it's
+   * finished, as the blue button's step (through the check: a score effect not given, a wheel on "Spin again").
+   */
   function overlayPrimary(): void {
     const o = app.live.overlay;
     if (!o) return;
@@ -2134,23 +2137,27 @@
       if (wheelSpentUp(o, session, game)) toast('Every slice has landed: Restore them to spin again');
       else spinWheel(app.live, session, game);
     } else if (o.kind === 'dice' && !o.roll) rollDice(app.live, session, o.preset);
-    // (The partner wheel landed: the blue button's Next ▶, through the check.)
-    else if (mainNow?.id === 'close') goOn('stage', mainNow);
+    // (The blue button's step: Next ▶, Show question ▶ or ▦ Done ▶ board, through the check.)
+    else if (mainNow?.id === 'close' || mainNow?.id === 'tool') goOn('stage', mainNow);
     else closeOverlay();
   }
 
-  /** The score cards a close was held back for (the next close goes ahead without them). */
+  /**
+   * The score cards a close was held back for (the next close goes ahead without them). Esc's and the menu's: the blue
+   * button's step (`asked`) went through the check already.
+   */
   let cardsAsked = '';
-  function closeOverlay(): void {
+  function closeOverlay(asked = false): void {
     const o = app.live.overlay;
     // The scores over a wheel, dice or a pop-up: closing them shows it again (its result and score card are still to come).
     if (o?.kind === 'scoreboard' && o.under) return void (app.live.overlay = o.under);
     // Still spinning or rolling: it lands first (on stream, then its score effect), as W, D and a click wait. (Not the
     // roll-off or the partner wheel: closed early, they apply their result below.)
     if (((o?.kind === 'wheel' && !o.partnerFor) || o?.kind === 'dice') && toolBusy()) return;
-    // A score effect that landed on stream, neither confirmed nor skipped: the first close says so (Esc, Close, a click on
-    // the stage), a second one closes without it.
-    const left = scoreCardsLeft(o, session).join();
+    // A score effect that landed on stream, neither confirmed nor skipped: the first Esc says so, a second one closes
+    // without it. (The blue button and a click on the stage ask in the check.)
+    // (Strictly true: a click handler passes its event.)
+    const left = asked === true ? '' : scoreCardsLeft(o, session).join();
     if (left && left !== cardsAsked) {
       cardsAsked = left;
       return hint('Score effect not given yet: Confirm or Skip it (Esc again closes without it)');
@@ -2197,6 +2204,19 @@
 
   /** When the Daily Double's question went up (here only, not saved): an Enter right after it doesn't judge its player. */
   let ddShownAt = 0;
+  /**
+   * The Daily Double's Show question ▶ (the blue button, N, Enter in the Wager box): its question, for the wager typed.
+   * Who found it and the wager are typed, so nothing asks: with one missing (or over the max) the keys stay in the Wager
+   * box, the names or the box flash, and the status line says what's missing. (Never a phone's wager in one window.)
+   */
+  function ddGo(): void {
+    const dd = session.dd;
+    if (dd?.stage !== 'splash') return;
+    const wait = ddWaits(go);
+    if (!wait && dd.playerId && typeof dd.draft === 'number') return ddShow(dd.playerId, dd.draft);
+    flashTo('.play .panel [data-dd] input[type=number]', wait?.at === 'names' ? '.play .panel [data-dd-names]' : undefined);
+    if (wait) hint(wait.say);
+  }
   function ddShow(playerId: string, wager: number): void {
     ddShowQuestion(session, playerId, wager);
     ddShownAt = Date.now();
@@ -2619,8 +2639,8 @@
       if (e.shiftKey)
         hint(session.revealed ? 'The answer is showing: click ✔ Got it or ✘ Missed, or Esc goes back to the board' : unsentCards().length ? 'Send the cards first (Enter), or click ✘ Missed' : 'Start the clock first (Enter), or click ✘ Missed');
       else if (session.revealed) hint('The answer is showing: Esc goes back to the board');
-      // (A tool over it, from the tools row: its own main button still.)
-      else if (toolOverlay(app.live)) hostNext && !hostNext.disabled && hostNext.run();
+      // (A tool over it, from the tools row: Enter puts it away, as its blue Next ▶ does.)
+      else if (mainNow?.id === 'tool' || mainNow?.id === 'popreveal') goOn('enter', mainNow);
       else partnerHandOut(true);
       return true;
     }
@@ -2776,13 +2796,17 @@
     answersJudged();
   }
 
-  /** The keys to what `sel` finds (a ✍ answer's row to judge), flashed once. */
-  function flashTo(sel: string): void {
+  /**
+   * The keys to what `sel` finds (a ✍ answer's row to judge, a wheel's score effect, the Daily Double's Wager box), and
+   * its row (`flash`: another one, the Daily Double's names) flashed once. (The Daily Double's box doesn't scroll: it
+   * keeps its top in view.)
+   */
+  function flashTo(sel: string, flash?: string): void {
     void tick().then(() => {
       const el = document.querySelector<HTMLElement>(sel);
       if (!el) return;
-      el.focus();
-      const row = el.closest<HTMLElement>('[data-answer-row]') ?? el;
+      el.focus({ preventScroll: !!el.closest('[data-dd]') });
+      const row = (flash ? document.querySelector<HTMLElement>(flash) : null) ?? el.closest<HTMLElement>('[data-answer-row], [data-score-card]') ?? el;
       row.classList.remove('goon-flash');
       void row.offsetWidth;
       row.classList.add('goon-flash');
@@ -2825,7 +2849,28 @@
     partnerClock: () => partnerHandOut(!!quickKey),
     copyCard: partnerCopy,
     partnerJudge: checkJudge,
+    closeTool: () => closeOverlay(true),
+    spin: () => wKey(),
+    roll: () => dKey(),
+    revealPopup: () => revealToggle(),
+    scoreCard: (key) => void applyScoreCard(game, session, app.live, key, { tile: info && tileToolUp(app.live, info.clue) ? info.clue.id : undefined }),
+    focusOn: (sel) => flashTo(sel),
+    ddShow: () => ddGo(),
   };
+
+  /**
+   * Goes up once a wheel, dice or a roll-off on stage lands (under the scores too): the blue button (greyed while it
+   * turns) and the check follow.
+   */
+  let toolTick = $state(0);
+  $effect(() => {
+    const o = toolOverlay(app.live);
+    if (o?.kind !== 'wheel' && o?.kind !== 'dice' && o?.kind !== 'rolloff') return;
+    const wait = overlayDoneAt(o) - Date.now();
+    if (wait <= 0) return;
+    const t = setTimeout(() => toolTick++, wait + 20);
+    return () => clearTimeout(t);
+  });
 
   /** Goes up while a partner clue's check counts its seconds down, or its wheel turns: the check and the blue button follow. */
   let partnerTick = $state(0);
@@ -2900,8 +2945,9 @@
       session,
       game,
       dual,
-      // (Not the partner wheel: its Next ▶ is the blue button's.)
-      toolUp: !!app.live.overlay && app.live.overlay.kind !== 'shop' && !(app.live.overlay.kind === 'wheel' && !!partner && app.live.overlay.partnerFor === partner.clue),
+      live: app.live,
+      // (Read again once a spin or a roll lands, or what's over the stage changes: the blue button wakes.)
+      now: (void toolTick, void partnerTick, void app.live.overlay, Date.now()),
       selected,
       amount,
       marks: session.phase === 'clue' && info ? clueMarks(session, info.clue.id, partner?.at ?? markSince) : {},
@@ -2915,6 +2961,8 @@
       clockUp: !!app.live.timer && !app.live.timer.expired,
       cards: tileCardsLeft(),
       ddHidden: !dual && session.dd?.stage === 'question' && session.dd.draftFrom === 'phone' && !session.dd.shown,
+      wagerLimitsOff,
+      ddPhone: !!session.dd?.playerId && wagerPhones.includes(session.dd.playerId),
       partner: partnerNow,
       act: goActs,
     };
@@ -2938,7 +2986,9 @@
   /** Where the check was when it went by itself (its moment went): a click there waits a moment, not landing on a box. */
   let checkGone: { r: DOMRect; at: number } | null = null;
   /** The moment on screen, as the check knows it: it closes by itself when this changes (Ctrl+Z out of the clue…). */
-  const momentNow = $derived(`${session.phase}|${session.currentRound}|${openClueKey ?? ''}|${session.revealed}|${session.slide ?? 0}|${session.intro?.stage ?? ''}|${session.dd?.stage ?? ''}`);
+  const momentNow = $derived(
+    `${session.phase}|${session.currentRound}|${openClueKey ?? ''}|${session.revealed}|${session.slide ?? 0}|${session.intro?.stage ?? ''}|${session.dd?.stage ?? ''}|${app.live.overlay?.nonce ?? ''}`,
+  );
   /** What the check's items say (to redraw it only when that changes). */
   const itemsSaid = (items: LeftItem[]) => JSON.stringify(items.map((i) => [i.id, i.done ?? '', i.text, i.quick.map((q) => [q.label, q.why ?? ''])]));
   // What's left follows what happens meanwhile: an item done elsewhere keeps its line, ticked; new ones join at the end.
@@ -3804,7 +3854,7 @@
     const close: StageItem =
       o.kind === 'shop'
         ? { id: 'close', label: '🚪 Leave shop', keys: 'Esc', onclick: () => (app.live.overlay = null) }
-        : { id: 'close', label: (done ? VERBS.closeToolBoard : VERBS.closeToolBox).label, keys: 'Esc', disabled: busy && (o.kind === 'dice' || (o.kind === 'wheel' && !o.partnerFor)), onclick: closeOverlay };
+        : { id: 'close', label: (done ? FLOW.done : VERBS.closeToolBox).label, keys: 'Esc', disabled: busy && (o.kind === 'dice' || (o.kind === 'wheel' && !o.partnerFor)), onclick: () => closeOverlay() };
     return { heading, steps, exits: tile ? [close, putBackItem('Shift+Esc')] : [close] };
   }
 
@@ -3813,7 +3863,7 @@
     const heading = `🤝 Partner clue · ${info ? clueName(game, session.currentClue!) : ''}`;
     const wheelUp = toolOverlay(app.live)?.kind === 'wheel';
     if (s.stage === 'pick') {
-      const exits = wheelUp ? [{ id: 'close', label: VERBS.closeToolBox.label, keys: 'Esc', onclick: closeOverlay }, putBackItem('Shift+Esc')] : [putBackItem('Esc')];
+      const exits = wheelUp ? [{ id: 'close', label: VERBS.closeToolBox.label, keys: 'Esc', onclick: () => closeOverlay() }, putBackItem('Shift+Esc')] : [putBackItem('Esc')];
       // Who picked it, by their number.
       if (!s.pickerId)
         return {
@@ -3978,13 +4028,11 @@
     if (o && !(o.kind === 'wheel' && o.partnerFor) && !mover && !(o.kind === 'dice' && o.mover)) return toolMoment(o);
     if (partner) return partnerMoment(partner);
     if (session.phase === 'clue' && info && session.dd?.stage === 'splash') {
-      // Who found it is the box's (its wager's too): with the controls hidden, Show question ▶ brings them back if the
-      // wager isn't in yet.
-      const dd = session.dd;
-      const ok = !!dd.playerId && typeof dd.draft === 'number' && dd.draft >= 0 && (wagerLimitsOff || dd.draft <= ddCap(session, game, dd.playerId));
+      // Who found it and the wager are typed in its box: Show question ▶ as the blue button (with one missing, the keys go
+      // to the Wager box).
       return {
         heading: `⭐ Daily Double · ${clueName(game, session.currentClue!)}`,
-        steps: [{ id: 'show', label: VERBS.showQuestion.label, keys: 'Enter', disabled: !ok && !hideControls, onclick: () => (ok ? ddShow(dd.playerId!, dd.draft!) : (hideControls = false)) }],
+        steps: [{ id: 'show', label: FLOW.showQuestion.label, keys: 'N', onclick: ddGo }],
         exits: [putBackItem('Esc')],
       };
     }
@@ -5251,10 +5299,9 @@
           break;
         }
         if (!selected.length && !e.shiftKey && session.phase === 'clue' && info) {
-          // A wheel or dice tile's own tool, not spun yet: Enter on its Spin! / Roll! judges nobody. Its key spins it.
-          // (With the controls hidden the panel's last main button is out of date: as on any clue then.)
-          if (!hideControls && app.live.toolTile === info.clue.id && (hostNext?.key === 'W' || hostNext?.key === 'D') && !hostNext.disabled) {
-            hint(`${hostNext.key === 'W' ? 'Spin the wheel' : 'Roll the dice'} first: ${hostNext.key} (or N)`);
+          // A wheel or dice tile's own tool, not spun yet: Enter judges nobody. Its key spins it.
+          if (mainNow?.tool) {
+            hint(mainNow.tool === 'spin' ? 'Spin the wheel first: W' : 'Roll the dice first: D');
             break;
           }
           // A ✍ multiple-choice clue, its answers locked: Enter with nobody selected is ✔ Judge all (one step: one Ctrl+Z
@@ -5459,6 +5506,14 @@
   /** N (and the stage's menu), Shift+N (`back`): the moment's next step, or the other way. */
   function nKey(back: boolean, repeat = false): void {
     const e = { shiftKey: back, repeat };
+    // Something over the stage (a wheel, dice, the scores, a sheet, a roll-off, a pop-up), in any round: N is its blue
+    // button (a tile's own tool: Show question ▶ or ▦ Done ▶ board; a pop-up: 👁 Reveal answer, then Next ▶; else Next ▶),
+    // through the check. With the controls hidden, as a click on it: spin or roll first, then that step.
+    if (!e.shiftKey && (mainNow?.id === 'tool' || mainNow?.id === 'popreveal')) {
+      if (hideControls) overlayPrimary();
+      else goOn('n', mainNow);
+      return;
+    }
     // Shift+N goes the other way: the turn before, the player before in the reveals, or a clue's slide before.
     if (session.intro) {
       // The round's intro first (its title card, then a board's tiles and categories).
@@ -5487,11 +5542,10 @@
       // button still: that one (with the controls hidden its last one is out of date: as a click on the stage, the next
       // slide, then the answer, never hidden again).
       if (e.shiftKey) slideStep(-1);
-      // (A 🤝 partner clue too: N never spins, sends or judges; the check offers those.)
+      // (A 🤝 partner clue too: N never spins, sends or judges; the check offers those. A Daily Double's splash: its
+      // question, or with no wager the keys to its Wager box.)
       else if (mainNow) goOn('n', mainNow);
       else if (!hideControls && hostNext && !hostNext.disabled) hostNext.run();
-      // (A wheel or dice tile's own tool still up: as a click on it, spin or roll, then close it for the question.)
-      else if (info && tileToolUp(app.live, info.clue) && !session.revealed) overlayPrimary();
       else if (!slideStep(1) && !answerShowing(session)) revealToggle();
     } else if (session.phase === 'tiebreaker') {
       // The tiebreaker: N whatever the main button shows (the next slide, 👁 Reveal answer, 🏁 Back to results);
@@ -6053,7 +6107,6 @@
         onrematch={rematch}
         onintronext={intro}
         onskipintro={() => skipIntro(session)}
-        onddshow={ddShow}
         onpartnerspin={partnerSpin}
         onpartnerclock={partnerClock}
         onpartnertakeback={partnerTakeBack}
@@ -6078,7 +6131,7 @@
         onscores={toggleScores}
         onsound={() => (showSound = true)}
         onkeys={() => (showKeys = true)}
-        oncloseoverlay={closeOverlay}
+        oncloseoverlay={() => closeOverlay()}
         onopenbuzzers={openBuzzers}
         bind:nextAction={hostNext}
         bind:boxMenu

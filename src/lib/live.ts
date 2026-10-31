@@ -145,7 +145,17 @@ export type Overlay =
       under?: Overlay;
     }
   /** A slide shown over whatever is on air (a sign, dialogue, a jump-scare); with `answer`, a question to reveal. */
-  | { kind: 'popup'; nonce: string; slide: Slide; answer?: Slide; revealed?: boolean; value?: number; title?: string }
+  | {
+      kind: 'popup';
+      nonce: string;
+      slide: Slide;
+      answer?: Slide;
+      revealed?: boolean;
+      value?: number;
+      title?: string;
+      /** A question's: when it came up (points given since are for it: the check asks before it goes with none given). */
+      at?: number;
+    }
   /** One player's full sheet: avatar, stats, inventory. */
   | { kind: 'sheet'; nonce: string; playerId: Id }
   /** A shop's wares and prices. */

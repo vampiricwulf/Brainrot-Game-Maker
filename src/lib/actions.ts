@@ -270,6 +270,7 @@ export function runAction(ctx: RunContext, a: Action, label?: string): string {
         answer: JSON.parse(JSON.stringify(a.answer)),
         revealed: false,
         value: a.value,
+        at: Date.now(),
       };
       return text;
     case 'sound':

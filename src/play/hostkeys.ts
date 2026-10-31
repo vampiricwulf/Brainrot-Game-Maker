@@ -48,6 +48,10 @@ export const hostKeys = (playerOnly: boolean): KeyGroup[] => [
     keys: [
       ['D', 'Roll the last dice again (board games: the round’s own dice)'],
       ['W', 'Spin the wheel on screen, or open the first saved wheel (none saved: 🎡 Wheel makes a quick one)'],
+      [
+        'N with a tool on screen',
+        'Its blue button: on a wheel or dice tile, Show question ▶ (▦ Done ▶ board with no question; not spun yet, it asks first: W spins); a question pop-up, 👁 Reveal answer, then Next ▶; any other tool, the scores or a sheet, Next ▶ puts it away. A score effect not given asks first',
+      ],
       ['O', 'Roll-off: who goes first (on a tie for first at the end: the tied players roll for the win)'],
       ['S', 'Scoreboard on screen'],
       ['Space', 'Play / pause the slide’s video or audio'],
@@ -67,7 +71,7 @@ export const hostKeys = (playerOnly: boolean): KeyGroup[] => [
       ['← ↑ → ↓ on a tile', 'Move across the board (Enter or Space opens the tile); after a clue the keys go on from its tile'],
       ['1 – 9, then Enter on a tile', 'The keys go to the Amount box: type the points, then Enter gives them'],
       ['Shift+Esc', '↩ Put back (keep tile): back to the board, the tile stays playable (not once points were given)'],
-      ['Enter in the Daily Double wager', 'Show the question (its player answers it)'],
+      ['Enter in the Daily Double wager', 'Show question ▶, as N (its player answers it). Who found it or the wager still missing: the keys stay in the box, and the status line says what'],
       ['Esc on a Daily Double splash', 'Back to the board: the tile stays playable (no wager was taken)'],
       ['Enter on a ✍ multiple-choice clue', 'With nobody selected, once the answers are locked: ✔ Judge all, by the choice marked right (one Ctrl+Z takes it back). With players selected, Enter awards them'],
       ['W on a partner clue', 'Spin for a partner (1–9: choose one yourself). With nobody marked as its picker yet, the status line asks who picked it: their number first'],

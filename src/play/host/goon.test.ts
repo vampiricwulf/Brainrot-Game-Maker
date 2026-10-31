@@ -2,12 +2,15 @@
 // the check.
 import { describe, expect, it } from 'vitest';
 import { jeopardyGame } from '../../lib/testgame';
-import { newSlidesRound, setSlideText, type BoardRound, type Game, type Session } from '../../lib/model';
+import { newSlidesRound, setSlideText, type BoardRound, type Game, type Session, type WheelSegment } from '../../lib/model';
 import { newSession, openClue } from '../../lib/session';
 import { buzzArm, buzzClueOpened, buzzDone, buzzTake, newBuzz } from '../../lib/buzz';
+import { newLive } from '../../lib/live';
+import { draftPick, openDice, openWheel, quickDice, scoreCards, spinWheel, toggleScoreboard } from '../../lib/overlay';
+import { newWheel } from '../../lib/tools';
 import {
-  anywayLabel, CHECK_GUARD_MS, doneStep, enterQuick, escBounce, goOnDecision, headingOf, inside, leftNow, mainQuick, mainStep, mergeItems, quietKinds, ringOf, swallowSay, teachLine,
-  todo, type Check, type GoActs, type GoCtx, type LeftItem, type PartnerNow, type Step,
+  anywayLabel, CHECK_GUARD_MS, ddWaits, doneStep, enterQuick, escBounce, goOnDecision, headingOf, inside, leftNow, mainQuick, mainStep, mergeItems, quietKinds, ringOf, swallowSay,
+  teachLine, todo, type Check, type GoActs, type GoCtx, type LeftItem, type PartnerNow, type Step,
 } from './goon';
 import { FLOW } from './verbs';
 
@@ -46,6 +49,13 @@ const act: GoActs = {
   partnerJudge: (got) => {
     did.push(got ? 'got' : 'missed');
   },
+  closeTool: () => did.push('closetool'),
+  spin: () => did.push('spin'),
+  roll: () => did.push('roll'),
+  revealPopup: () => did.push('revealpopup'),
+  scoreCard: (key) => did.push(`score ${key}`),
+  focusOn: (sel) => did.push(`focus ${sel}`),
+  ddShow: () => did.push('ddshow'),
 };
 
 /** Ann, Bob and Cat; a board, then the Final. */
@@ -64,7 +74,8 @@ function ctx(g: Game, s: Session, over: Partial<GoCtx> = {}): GoCtx {
     session: s,
     game: g,
     dual: false,
-    toolUp: false,
+    live: newLive(),
+    now: 0,
     selected: [],
     amount: null,
     marks: {},
@@ -78,6 +89,8 @@ function ctx(g: Game, s: Session, over: Partial<GoCtx> = {}): GoCtx {
     clockUp: false,
     cards: [],
     ddHidden: false,
+    wagerLimitsOff: true,
+    ddPhone: false,
     partner: null,
     act,
     ...over,
@@ -155,20 +168,29 @@ describe('the blue button in every moment (1.3)', () => {
 
   it('moments whose part hasn’t moved yet keep their own main button: no step', () => {
     const { g, s } = setup();
-    const cats = board(g).categories;
-    cats[0].clues[1].type = 'dailyDouble';
-    openClue(s, REF, g);
-    expect(s.dd?.stage).toBe('splash');
-    expect(mainStep(ctx(g, s))).toBeNull();
-    // A Daily Double's question is a clue.
-    s.dd = { stage: 'question', playerId: 'a', wager: 300 };
-    expect(said(mainStep(ctx(g, s)))).toBe('👁 Reveal answer · N · reveals');
-    // A tool, the scores or a pop-up over the stage.
-    expect(mainStep(ctx(g, s, { toolUp: true }))).toBeNull();
     for (const phase of ['final', 'tiebreaker', 'end', 'rpg', 'boardgame'] as const) {
       s.phase = phase;
       expect(mainStep(ctx(g, s)), phase).toBeNull();
     }
+    // (Nor over a board game's own roll: its turn box's, until board games move over.)
+    const live = newLive();
+    openDice(live, quickDice(6, 1, 'd6'));
+    if (live.overlay?.kind === 'dice') live.overlay.mover = true;
+    expect(mainStep(ctx(g, s, { live }))).toBeNull();
+  });
+
+  it('a Daily Double’s splash: Show question ▶, never greyed, Enter in the Wager box is Next; its question is a clue', () => {
+    const { g, s } = setup();
+    board(g).categories[0].clues[1].type = 'dailyDouble';
+    openClue(s, REF, g);
+    const st = mainStep(ctx(g, s))!;
+    expect([said(st), st.busy, st.id]).toEqual(['Show question ▶ · N · enterIsNext', undefined, 'ddshow']);
+    // (Who found it and the wager are typed: no check, ever. The flow row's Done as a skip isn't on the splash.)
+    expect([leftNow(ctx(g, s), st), doneStep(ctx(g, s))]).toEqual([[], null]);
+    st.run();
+    expect(did).toEqual(['ddshow']);
+    s.dd = { stage: 'question', playerId: 'a', wager: 300 };
+    expect(said(mainStep(ctx(g, s)))).toBe('👁 Reveal answer · N · reveals');
   });
 
   it('only ever says words from FLOW', () => {
@@ -597,5 +619,212 @@ describe('a 🤝 partner clue (3.4 H)', () => {
     const reveal = mainStep(d)!;
     const hand = leftNow(d, reveal);
     expect([goOnDecision('n', reveal, hand, false, false), inside({ key: 'Enter' }, open(reveal, hand), after).do]).toEqual(['open', 'quick']);
+  });
+});
+
+describe('wheels, dice, the scores and pop-ups over the stage (3.4 F, G, M)', () => {
+  /** A wheel tile open with its own wheel up (`question`: a question after it), every slice `slice` (+$100 by default). */
+  function wheelTile(question = true, slice: Partial<WheelSegment> = {}) {
+    const { g, s } = setup();
+    const w = newWheel('Bonus', ['A', 'B']);
+    for (const seg of w.segments) Object.assign(seg, slice);
+    g.wheels = [w];
+    const clue = board(g).categories[0].clues[1];
+    clue.type = 'wheel';
+    clue.wheelId = w.id;
+    if (question) setSlideText(clue.questionSlide, 'What spins?');
+    openClue(s, REF, g);
+    s.currentPickerId = 'a';
+    const live = newLive();
+    openWheel(live, s, w);
+    live.toolTile = clue.id;
+    const o = live.overlay!;
+    if (o.kind !== 'wheel') throw new Error('no wheel');
+    /** Spin it, landed (`at`: when it's read). */
+    const spun = () => {
+      spinWheel(live, s, g);
+      return o.spin!.startedAt + o.spin!.duration + 1;
+    };
+    return { g, s, live, o, spun };
+  }
+
+  it('a tile’s own wheel: Show question ▶ (a tile with no question: ▦ Done ▶ board), greyed while it turns', () => {
+    const { g, s, live, spun } = wheelTile();
+    const st = mainStep(ctx(g, s, { live }))!;
+    expect([said(st), st.id, st.tool, st.busy, st.flow]).toEqual(['Show question ▶ · N', 'tool', 'spin', undefined, undefined]);
+    st.run();
+    expect(did).toEqual(['closetool']);
+    const at = spun();
+    const turning = mainStep(ctx(g, s, { live, now: at - 2 }))!;
+    expect([turning.busy, turning.tool]).toEqual(['Still spinning: wait for it to land', undefined]);
+    expect([mainStep(ctx(g, s, { live, now: at }))!.busy, leftNow(ctx(g, s, { live, now: at - 2 }), turning)]).toEqual([undefined, []]);
+    const none = wheelTile(false);
+    const done = mainStep(ctx(none.g, none.s, { live: none.live }))!;
+    expect([said(done), done.flow]).toEqual(['▦ Done ▶ board · N', 'done']);
+    // Dice: Roll! (D ⏎), greyed "Still rolling" while they roll; a roll-off from the tools row too.
+    board(g).categories[0].clues[1].type = 'dice';
+    openDice(live, quickDice(6, 1, 'd6'));
+    const dc = ctx(g, s, { live });
+    expect([mainStep(dc)!.tool, lines(leftNow(dc, mainStep(dc)!))]).toEqual(['roll', [['first: The dice haven’t been rolled yet: the question comes after.', 'Roll! [D] ⏎ · close']]]);
+    live.overlay = { kind: 'rolloff', nonce: 'r', sides: 20, rounds: [], ranking: ['a'], winner: 'a', startedAt: 10, roundMs: 1000 };
+    expect([mainStep(ctx(g, s, { live, now: 11 }))!.busy, said(mainStep(ctx(g, s, { live, now: 99999 })))]).toEqual(['Still rolling: wait for it to land', 'Next ▶ · N']);
+  });
+
+  it('a tile’s own wheel not spun: "First:", Spin! (W ⏎), ringed, silenced by its tick; no question: closing keeps the tile', () => {
+    const { g, s, live } = wheelTile();
+    const c = ctx(g, s, { live });
+    const st = mainStep(c)!;
+    const items = leftNow(c, st);
+    expect(lines(items)).toEqual([['first: The wheel hasn’t spun yet: its question comes after.', 'Spin! [W] ⏎ · close']]);
+    const ck = open(st, items);
+    expect([ringOf(items), quietKinds(items), items[0].quick[0].after, anywayLabel(ck), teachLine(ck)]).toEqual([
+      'toolslot',
+      ['tool'],
+      'Spinning… then Show question ▶ (N)',
+      'Show question anyway',
+      'Next time: Esc closes at once · Shift+click on the blue button skips this',
+    ]);
+    // N, then Enter or W, spins (2); W spins at once (1, never the check). N again goes on without it.
+    expect([goOnDecision('n', st, items, false, false), inside({ key: 'Enter' }, ck, after).do, inside({ key: 'w' }, ck, after).do, inside({ key: 'n' }, ck, after).do]).toEqual(['open', 'quick', 'quick', 'anyway']);
+    items[0].quick[0].run();
+    expect(did).toEqual(['spin']);
+    // With the controls hidden in one window it goes on (the tile can be opened again).
+    expect(goOnDecision('n', st, items, true, false)).toBe('run');
+    s.goonQuiet = ['tool'];
+    expect(leftNow(c, st)).toEqual([]);
+    const none = wheelTile(false);
+    const nc = ctx(none.g, none.s, { live: none.live });
+    const ni = leftNow(nc, mainStep(nc)!);
+    expect([lines(ni)[0][0], anywayLabel(open(mainStep(nc)!, ni))]).toEqual(['first: The wheel hasn’t spun yet.', 'Close without spinning (the tile stays on the board)']);
+  });
+
+  it('landed on “Spin again”: ↻ Spin again (W ⏎); a "land once" wheel used up never asks to spin', () => {
+    const { g, s, live, spun } = wheelTile(true, { label: 'Spin again' });
+    const at = spun();
+    const c = ctx(g, s, { live, now: at });
+    expect(lines(leftNow(c, mainStep(c)!))).toEqual([['first: It landed on “Spin again”.', '↻ Spin again [W] ⏎ · close']]);
+    const used = wheelTile();
+    g.wheels = used.g.wheels;
+    used.g.wheels[0].removeAfterLanding = true;
+    used.s.removedSegments = { [used.g.wheels[0].id]: used.g.wheels[0].segments.map((x) => x.id) };
+    const uc = ctx(used.g, used.s, { live: used.live });
+    expect([mainStep(uc)!.tool, leftNow(uc, mainStep(uc)!)]).toEqual([undefined, []]);
+  });
+
+  it('a score effect not given: ✔ Give Ann +$100 ▶ question (⏎, then the question), lost for good: it holds with the controls hidden', () => {
+    const { g, s, live, o, spun } = wheelTile(true, { scoreAction: { kind: 'addPoints', amount: 100 } });
+    const at = spun();
+    const c = ctx(g, s, { live, now: at });
+    const st = mainStep(c)!;
+    const items = leftNow(c, st);
+    const key = scoreCards(o, at)[0].key;
+    expect(lines(items)).toEqual([['loss: The wheel’s “+$100” for Ann isn’t given yet.', '✔ Give Ann +$100 ▶ question ⏎ · go']]);
+    const ck = open(st, items);
+    expect([headingOf(items), anywayLabel(ck), teachLine(ck), ringOf(items)]).toEqual(['loss', 'Show question without it', 'Next time: Shift+click on the blue button skips this', null]);
+    expect([goOnDecision('n', st, items, true, false), goOnDecision('n', st, items, true, true)]).toEqual(['hold', 'open']);
+    items[0].quick[0].run();
+    expect(did).toEqual([`score ${key}`]);
+    // Tagged for Bob in "This was for": it's Bob's. Given (or skipped): nothing left.
+    s.rollLog!.at(-1)!.playerIds = ['b'];
+    expect(leftNow(c, st)[0].quick[0].label).toBe('✔ Give Bob +$100 ▶ question');
+    o.cardsDone = { [key]: true };
+    expect(leftNow(c, st)).toEqual([]);
+  });
+
+  it('a steal, a swap or nobody to give it to: Choose in the box (⏎ puts the keys on it); its tile has no question: ▶ board', () => {
+    const { g, s, live, o, spun } = wheelTile(false, { scoreAction: { kind: 'steal', amount: 50 } });
+    const at = spun();
+    const c = ctx(g, s, { live, now: at });
+    const st = mainStep(c)!;
+    const items = leftNow(c, st);
+    const key = scoreCards(o, at)[0].key;
+    expect(lines(items)).toEqual([['loss: The wheel’s “Steal $50” for Ann isn’t given yet: choose who in the wheel’s box.', 'Choose in the box ⏎ · close']]);
+    expect([anywayLabel(open(st, items)), items[0].focus]).toEqual(['▦ Done without it', `.play .panel [data-score-card="${key}"] button:not(:disabled)`]);
+    items[0].quick[0].run();
+    expect(did).toEqual([`focus ${items[0].focus}`]);
+    // A plain one with nobody chosen (no picker): the same.
+    const plain = wheelTile(true, { scoreAction: { kind: 'addPoints', amount: 100 } });
+    delete plain.s.currentPickerId;
+    const pc = ctx(plain.g, plain.s, { live: plain.live, now: plain.spun() });
+    expect(lines(leftNow(pc, mainStep(pc)!))[0]).toEqual(['loss: The wheel’s “+$100” isn’t given yet: choose who in the wheel’s box.', 'Choose in the box ⏎ · close']);
+    // Chosen in the box: one click gives it.
+    draftPick(plain.live, plain.s, scoreCards(plain.o, pc.now)[0], 'c');
+    expect(leftNow(pc, mainStep(pc)!)[0].quick[0].label).toBe('✔ Give Cat +$100 ▶ question');
+  });
+
+  it('a tool from the tools row, the scores, a sheet, a roll-off: Next ▶ only puts it away, and never asks about spinning', () => {
+    const { g, s } = setup();
+    const live = newLive();
+    const w = newWheel('Bonus', ['A', 'B']);
+    for (const seg of w.segments) seg.scoreAction = { kind: 'addPoints', amount: -50 };
+    g.wheels = [w];
+    openWheel(live, s, w);
+    const c = ctx(g, s, { live });
+    const st = mainStep(c)!;
+    expect([said(st), st.id, st.tool]).toEqual(['Next ▶ · N', 'tool', undefined]);
+    expect(leftNow(c, st)).toEqual([]);
+    s.currentPickerId = 'b';
+    spinWheel(live, s, g);
+    const o = live.overlay!;
+    const at = o.kind === 'wheel' ? o.spin!.startedAt + o.spin!.duration + 1 : 0;
+    expect(mainStep(ctx(g, s, { live, now: at - 2 }))!.busy).toBe('Still spinning: wait for it to land');
+    const left = leftNow(ctx(g, s, { live, now: at }), st);
+    expect(lines(left)).toEqual([['loss: The wheel’s “−$50” for Bob isn’t given yet.', '✔ Give Bob −$50 and put it away ⏎ · go']]);
+    expect(anywayLabel(open(st, left))).toBe('Next ▶ without it');
+    // The scores over it: Next ▶ puts them away (the wheel comes back). A sheet: the same.
+    toggleScoreboard(live);
+    expect([said(mainStep(ctx(g, s, { live, now: at }))), leftNow(ctx(g, s, { live, now: at }), st)]).toEqual(['Next ▶ · N', []]);
+    live.overlay = { kind: 'sheet', nonce: 'x', playerId: 'a' };
+    expect(said(mainStep(ctx(g, s, { live })))).toBe('Next ▶ · N');
+    // Dice from the tools row, not rolled: nothing to ask. A shop has its 🚪 Leave shop: no blue button.
+    openDice(live, quickDice(6, 1, 'd6'));
+    expect([said(mainStep(ctx(g, s, { live }))), leftNow(ctx(g, s, { live }), st)]).toEqual(['Next ▶ · N', []]);
+    live.overlay = { kind: 'shop', nonce: 'y', shopId: 'z' };
+    expect(mainStep(ctx(g, s, { live }))).toBeNull();
+  });
+
+  it('a question pop-up: 👁 Reveal answer (never asks), then Next ▶; asks when Ann is picked with no points for it', () => {
+    const { g, s } = setup();
+    s.phase = 'rpg';
+    const live = newLive();
+    live.overlay = { kind: 'popup', nonce: 'p', slide: board(g).categories[0].clues[1].questionSlide, answer: board(g).categories[0].clues[1].answerSlide, revealed: false, value: 200, at: 1000 };
+    const reveal = mainStep(ctx(g, s, { live, selected: ['a'] }))!;
+    expect([said(reveal), reveal.id, leftNow(ctx(g, s, { live, selected: ['a'] }), reveal)]).toEqual(['👁 Reveal answer · N · reveals', 'popreveal', []]);
+    reveal.run();
+    expect(did).toEqual(['revealpopup']);
+    if (live.overlay.kind === 'popup') live.overlay.revealed = true;
+    const c = ctx(g, s, { live, selected: ['a'], amount: 200 });
+    const next = mainStep(c)!;
+    const items = leftNow(c, next);
+    expect([said(next), lines(items)]).toEqual(['Next ▶ · N', [['loss: Ann is picked and has no points for this question.', '＋ Award Ann $200 and close it ⏎ · go', '− Deduct Ann $200 and close it [⇧⏎] · go']]]);
+    expect(anywayLabel(open(next, items))).toBe('Next anyway: no points');
+    items[0].quick[1].run();
+    expect(did).toEqual(['revealpopup', '-200 a']);
+    // Points given since it came up: nothing left. Nobody picked, or a sign with no answer: nothing either.
+    s.scoreLog.push({ id: 'e', playerId: 'a', delta: 200, reason: 'x', ts: 2000 });
+    expect(leftNow(c, next)).toEqual([]);
+    expect(leftNow(ctx(g, s, { live, selected: ['b', 'c'], amount: 200 }), next)[0].quick.map((q) => `${q.line}: ${q.label}`)).toEqual(['Bob: ＋ Award $200', 'Bob: − Deduct', 'Cat: ＋ Award $200', 'Cat: − Deduct']);
+    live.overlay = { kind: 'popup', nonce: 'q', slide: board(g).categories[0].clues[1].questionSlide };
+    expect([said(mainStep(ctx(g, s, { live, selected: ['b'] }))), leftNow(ctx(g, s, { live, selected: ['b'] }), next)]).toEqual(['Next ▶ · N', []]);
+  });
+
+  it('a Daily Double’s typed values: who found it, the wager, the max, a phone’s on its way (never its amount)', () => {
+    const { g, s } = setup();
+    board(g).categories[0].clues[1].type = 'dailyDouble';
+    openClue(s, REF, g);
+    s.dd!.playerId = undefined;
+    expect(ddWaits(ctx(g, s))).toEqual({ say: 'Who found it? Click their name (the keys stay in the Wager box)', at: 'names' });
+    s.dd!.playerId = 'a';
+    expect(ddWaits(ctx(g, s))).toEqual({ say: 'Type a wager (Ann can wager up to $1,000), or True Daily Double', at: 'wager' });
+    expect(ddWaits(ctx(g, s, { ddPhone: true }))!.say).toBe('Waiting on Ann’s phone: type their wager here if it doesn’t come');
+    s.dd!.draft = -5;
+    expect(ddWaits(ctx(g, s))!.say).toBe('A wager can’t be below 0: type 0 or more');
+    s.dd!.draft = 5000;
+    expect([ddWaits(ctx(g, s)), ddWaits(ctx(g, s, { wagerLimitsOff: false }))!.say]).toEqual([null, 'Over Ann’s max ($1,000): type less, or tick Ignore the limit']);
+    // A phone's wager in: the words never say it.
+    s.dd!.draftFrom = 'phone';
+    expect(JSON.stringify(ddWaits(ctx(g, s, { wagerLimitsOff: false })))).not.toContain('5,000');
+    s.dd!.draft = 400;
+    expect(ddWaits(ctx(g, s, { wagerLimitsOff: false }))).toBeNull();
   });
 });

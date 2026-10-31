@@ -120,11 +120,10 @@ export const VERBS = {
   spinAgain: { label: '↻ Spin again', key: 'W' },
   roll: { label: 'Roll!', key: 'D' },
   rollAgain: { label: 'Roll again', key: 'D' },
-  /** A wheel or dice tile's own tool: its question comes next (or a tool opened any time). */
-  closeTool: { label: 'Close', key: 'Esc' },
-  /** A wheel or dice tile with nothing to ask: closing it ends the tile. */
-  closeToolBoard: { label: 'Close ▶ board', key: 'Esc' },
-  /** A tool's own way out in its box while the main button does something else (Spin!, a pop-up's 👁 Reveal answer). */
+  /**
+   * A question pop-up's own way out before its answer (it goes unseen; the blue button reveals it), and Esc's in the
+   * stage's menu. (Putting a tool away is the blue button's: Show question ▶, ▦ Done ▶ board, Next ▶.)
+   */
   closeToolBox: { label: '✕ Close', key: 'Esc' },
 
   // ---------- A Daily Double, the Final ----------
