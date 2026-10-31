@@ -273,7 +273,7 @@ try {
   await checkItem(p2, 'tie').waitFor();
   const tieQuick = await goOnCheck(p2).locator('[data-quick]').evaluateAll((bs) => bs.map((b) => b.textContent.replace(/\s+/g, ' ').trim()));
   assert(
-    JSON.stringify(tieQuick) === JSON.stringify(['🏆 Ann won ▶ results ⏎', '🏆 Bob won ▶ results']) && (await p2.locator('.panel .status b').innerText()) === 'Tiebreaker',
+    JSON.stringify(tieQuick) === JSON.stringify(['🏆 Ann won ▶ results⏎', '🏆 Bob won ▶ results']) &&(await p2.locator('.panel .status b').innerText()) === 'Tiebreaker',
     `N with nobody its winner asks first: 🏆 each tied player, Ann's (picked) taking Enter; the tiebreaker stays up (${tieQuick.join(' | ')})`,
   );
   await goOnCheck(p2, { ready: true }).waitFor();
