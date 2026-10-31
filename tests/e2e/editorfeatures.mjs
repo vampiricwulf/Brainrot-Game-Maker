@@ -374,6 +374,13 @@ try {
   const settingsHint = await page.getByRole('menuitem', { name: '⚙ Settings', exact: true }).getAttribute('title');
   assert(!settingsHint.includes('Autosaves') && settingsHint.includes('the phone buzzer server'), `⋯ › ⚙ Settings says what’s in it in a browser (${settingsHint})`);
   await page.getByRole('menuitem', { name: /Keyboard shortcuts/ }).click();
+  {
+    // After this update the Editor part starts with what moved, open: the menus' one order, the lists' ⋯, the new names.
+    const moved = page.getByRole('dialog', { name: 'Editor keyboard shortcuts' }).locator('[data-what-moved]');
+    await moved.waitFor();
+    const text = await moved.innerText();
+    assert((await moved.getAttribute('open')) !== null && text.includes('one order') && text.includes('🏁 Make it the start'), `the Editor part opens with “What moved” (the menus’ one order, the new names)`);
+  }
   await page.getByLabel('Filter shortcuts').fill('ctrl+f');
   const rows = await page.locator('[role="dialog"] tr').allInnerTexts();
   assert(rows.length >= 1 && rows.every((r) => /ctrl\+f/i.test(r)), `the shortcuts filter keeps the matching keys (${rows.length})`);

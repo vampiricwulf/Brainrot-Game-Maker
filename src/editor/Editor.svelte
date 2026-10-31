@@ -96,6 +96,7 @@
   import { HOSTING_GUIDE, openSite } from '../lib/sitelinks';
   import { showTipsAgain } from '../lib/tips';
   import { oneShot } from '../lib/oneshot';
+  import { movedNew } from '../play/whatmoved.svelte';
 
   /** `checklist`: worked out by the app a moment after changes stop (one line a round). */
   let {
@@ -1008,7 +1009,12 @@
    */
   function helpMenu(e: MouseEvent): void {
     dropMenu(e, [
-      { label: '⌨ Keyboard shortcuts', hint: "The editor's keys and mouse moves, with a filter", keys: '?', onclick: () => (shortcuts = 'editor') },
+      {
+        label: '⌨ Keyboard shortcuts',
+        hint: `The editor's keys and mouse moves, with a filter${movedNew('editor') ? ' · 🆕 What moved in this version' : ''}`,
+        keys: '?',
+        onclick: () => (shortcuts = 'editor'),
+      },
       { label: '🎮 Keys during the game', hint: "The host's keys while a game is played, round by round", onclick: () => (shortcuts = 'game') },
       { label: '💡 Show all tips again', hint: 'The 💡 Tips folds open again, and the game screen’s first-time notes show again', onclick: tipsAgain },
       { label: '📖 How to host (guide) ↗', hint: 'The guide on GitHub: hosting, phone buzzers, 🤫 cards, 🎭 deals, teams', onclick: () => openSite(HOSTING_GUIDE) },
@@ -1106,11 +1112,12 @@
     {/if}
     <button class="ghost" onclick={() => (finding = true)} aria-label="Find" title="Find clues, screens, spaces, items… anywhere in the game (Ctrl+F)"><span aria-hidden="true">🔍</span><span class="word">Find</span></button>
     <button
-      class="ghost"
+      class="ghost help"
       onclick={helpMenu}
       aria-haspopup="menu"
       aria-label="Help: Keyboard shortcuts, Keys during the game, Show all tips again, How to host (guide), About"
-      title="⌨ Keyboard shortcuts (?), 🎮 Keys during the game, 💡 Show all tips again, 📖 How to host (guide), ℹ About"><span aria-hidden="true">❔</span><span class="word">Help</span></button
+      title="⌨ Keyboard shortcuts (?), 🎮 Keys during the game, 💡 Show all tips again, 📖 How to host (guide), ℹ About"
+      ><span aria-hidden="true">❔</span><span class="word">Help</span>{#if movedNew('editor')}<span class="newdot" data-moved-dot aria-hidden="true"></span>{/if}</button
     >
     <button class="ghost more" onclick={moreMenu} aria-haspopup="menu" aria-label="More: Export as a web page, Export JSON, Settings, Keyboard shortcuts, How to host (guide), About" title={'⬇ Export as a web page, { } Export JSON, ⚙ Settings, ⌨ Keyboard shortcuts, 📖 How to host (guide), ℹ About'}>⋯</button>
     <button class="primary play" use:oneShot onclick={playClicked} disabled={!!opening} title={game.rounds.length ? '' : 'Add a round first'}>▶ Play</button>
@@ -1472,6 +1479,19 @@
 </div>
 
 <style>
+  /* ❔ Help's dot: what moved in this version, until its list was shown on this computer (as on the game screen). */
+  .help {
+    position: relative;
+  }
+  .newdot {
+    position: absolute;
+    top: 3px;
+    right: 3px;
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: var(--accent);
+  }
   .first-round {
     max-width: 820px;
     margin: 40px auto;

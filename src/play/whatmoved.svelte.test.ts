@@ -20,5 +20,9 @@ describe('what moved in this version', () => {
     expect(renames()).toHaveLength(RENAMED.length);
     expect(renames()).toContain('📊 Scores → 📊 Scoreboard');
     expect(renames([['↻ Spin again', 'Spin again']])).toEqual(['Spin again → ↻ Spin again']);
+    // The editor's part: its menus' one order, the lists' ⋯, and its new names.
+    const editor = WHAT_MOVED.editor.join('\n');
+    for (const w of ['one order', 'Row 2 · $400', '⋯', '🏁 Make it the start', '↺ Built-in']) expect(editor).toContain(w);
+    expect(movedNew('editor', null)).toBe(true);
   });
 });

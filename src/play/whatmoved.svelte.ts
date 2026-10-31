@@ -37,7 +37,13 @@ export const WHAT_MOVED: Record<MovedPart, readonly string[]> = {
     'An RPG object’s right-click menu starts with its card’s buttons (✋ picks up, 🚪 Go through, 💬 Talk, 🛒 Shop, its actions, ▶ Run all), then 🗂 Open its card, ✎ Edit, Hide and 🗑 Remove. A right-click on a ware in the shop on the stage: 🛒 Buy for each player, 📦 Change the stock….',
     'A board game’s box starts with the turn: the turn box (🎲 Roll then ▶ Move, Steps, ◀ Back, 📍 Send … to…, which was at the right of the row), the round’s own dice under it (they were on top), then the landing box. Beside the stage that part is at the column’s foot, by Next turn ▶. The turn order is one line under it, ✎ Change opening its chips and 🔀 Shuffle (it was the first row), and ✎ Edit board (E), 🗂 Spaces…, 📺 The board and 🛒 Shop… are on the line after that.',
   ],
-  editor: [],
+  editor: [
+    'Every right-click and ⋯ menu goes in one order: ✎ Edit (what a click does), what it can do or be made (Make it a…), ✎ Rename · ⧉ Duplicate · 📋 Copy · 📋 Paste, ▲ ▼ / ◀ ▶ and ＋ Insert, its own extras, its row’s or column’s own group, then ⌫ Clear and 🗑 Delete last, with each item’s key.',
+    'A tile’s row items are under “Row 2 · $400” (▲ Move up, ▼ Move down, ＋ Insert above, ＋ Insert below, 🗑 Delete row 2), and ⌫ Clear clue is last. A category’s menu starts with 🖼 Image…. An RPG screen’s column and row have groups of their own.',
+    'Lists: a row’s ⧉ and ▲ ▼ are in its ⋯ now (Ctrl+D and Alt+↑/↓ still work), with 🗑 apart at the row’s end. A wheel slice’s ↻ Spin again is in its ⋯ too, and a slice that spins again says “↻ again” after its label. ▶ Play’s players keep their ▲ ▼.',
+    '▶ Play: a player’s menu starts with 🎨 Color…, 🖼 Picture… and ± Start score…, then ✎ Rename.',
+    'New names: 🏁 Make it Start → 🏁 Make it the start · − Remove from shop → 🗑 Remove from shop · My themes’ ✏ Rename… and 🗑 Delete… → ✎ Rename and 🗑 Delete theme… · 🔊 Sounds’ ↺ and − → ↺ Built-in and ⌫ Clear file · a die’s Count and Sides d → How many and Sides.',
+  ],
 };
 
 /** The renames, as "old → new" (the keys window's filter finds each by its old name). */

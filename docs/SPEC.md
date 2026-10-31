@@ -210,6 +210,25 @@ RollEvent  { id, ts, source: 'wheel' | 'dice', presetName?, result: string /* la
   right-click on that bar: ▶ Test this round · ✎ Rename (F2) · ⧉ Duplicate (Ctrl+D) · 📋 Copy round (Ctrl+C) · 📋 Paste
   round after it (Ctrl+V) · ▲ Move up (Alt+↑) · ▼ Move down (Alt+↓) · 🗑 Delete round (Delete). The keys work on its tab;
   text selected on the page still copies as text.
+- **Every editor menu, one order** (menustate.svelte.ts `menuOf`, with `menuItem`'s standard items, unit-tested): a heading
+  naming the thing, then ✎ Edit / ▶ Open (what a click does), what it can do or be set to and its kinds (Make it a…),
+  ✎ Rename F2 · ⧉ Duplicate Ctrl+D · ✂ Cut · 📋 Copy Ctrl+C · 📋 Paste Ctrl+V, ▲ ▼ (Alt+↑/↓) or ◀ ▶ (Alt+←/→) and
+  ＋ Insert…, its own extras, each row's or column's own headed group with its red delete at its end ("Row 2 · $400",
+  "Column B"), then ⌫ Clear · 🗑 Delete, red, last ("…" when it asks first). A line between the parts; a part with
+  nothing in it is left out, and an item that can't be used now is greyed in its place. Each item shows its key, the Mac
+  way on a Mac (⌘, ⌥, ⇧). During play an RPG object's menu starts with its card's buttons, before 🗂 Open its card. A
+  right-click in a category's name or a row value opens its menu unless the box had the keys before the click (being
+  typed in) or has words selected; Shift+F10 there always opens it.
+- **Lists' rows, one pattern** (RowTools.svelte, dragorder's `rowKeys`): ⋮⋮ to drag, the row's fields, ⋯ (its menu,
+  the same as a right-click on the row or Shift+F10 in it), then, apart, a red 🗑 ("Delete … (Undo brings it back)").
+  Alt+↑/↓ (Alt+←/→ for a screen's looks) and Ctrl+D work from any field in the row. Stats, items, shops and what they
+  sell, buttons, zones, wheel slices (the label gets the room: ↻ Spin again is in the slice's ⋯, ticked when on, and in
+  its ▸ More; a slice that spins again says "↻ again" after its label, a click turning it off), a deal's parts (with
+  Enter in a name for the next part and Backspace in an empty one), dice and ranges of totals, choices; ▶ Play's
+  players keep ▲ ▼ in view. A stat's dropdowns are labelled Kind,
+  Shown as and Who sees it; a die How many and Sides (with "1d6"); a deal part How many get it and Their card also shows.
+  🔊 Sounds' rows, Checklist lines and the Tiebreaker's entry have menus too, and an RPG world's ⋯ has ✎ Rename world,
+  ⧉ Duplicate world (this round plays the copy: worldedit `duplicateWorld`) and 🗑 Delete world.
 
 ### 5.2 Board editor
 - A grid view of the round that mirrors the play board. Click a category header or tile to edit it.

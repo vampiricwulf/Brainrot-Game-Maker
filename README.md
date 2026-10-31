@@ -142,7 +142,19 @@ Other editor tabs:
 **Copy and paste** slide items or whole slides between clues, rounds and even games; their pictures and sounds come
 along.
 
-**Right-click** almost anything for a quick menu. This works on rounds, tiles, map screens, spaces, avatars and items.
+**Right-click** almost anything for a quick menu. This works on rounds, tiles, categories, list rows, map screens,
+spaces, avatars and items (`Shift+F10` or the menu key opens it where the keys are, and a row's **⋯** opens it too).
+Every menu goes in the same order: what a click on it does (✎ Edit), what it can do or be made (Make it a…),
+✎ Rename · ⧉ Duplicate · 📋 Copy · 📋 Paste, ▲ ▼ / ◀ ▶ and ＋ Insert, its own extras, its row's or column's own group (a
+tile's “Row 2 · $400”: move, insert above or below, delete), then ⌫ Clear and 🗑 Delete in red, last. Each item shows
+its key, the Mac way on a Mac. A right-click in a category's name or a row value opens its menu, unless you're typing
+in it: then it's the browser's Cut, Copy and Paste.
+
+**Lists** (stats, items, shops, buttons, zones, wheel slices, a deal's parts, dice, choices) have one row: ⋮⋮ to drag
+it (or `Alt`+`↑`/`↓` in it), its fields, **⋯** for its menu (⧉ Duplicate, ▲ Move up, ▼ Move down…; `Ctrl+D` duplicates)
+and, apart at its end, a red 🗑 (Undo brings it back). A wheel slice's ↻ Spin again is in its ⋯ (a slice that spins again
+says **↻ again** after its label; a click turns it off, and its ▸ More has the tick); `Enter` in a slice's label or a
+deal part's name adds the next one, `Backspace` in an empty one deletes it. ▶ Play's players keep their ▲ ▼.
 
 **Colors:** a click on a color box opens the app's color picker. Drag in the square and along the color bar, or type
 the color as **Hex** (`#ff00e6`) or **RGB** (three numbers, 0–255): both are always there to switch between, and the
