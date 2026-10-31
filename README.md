@@ -586,8 +586,9 @@ notes a space up there):
 **Ties** for first aren't called a win on stream until they're settled, in one of three ways:
 
 - A roll-off, whose winner wins the game (🎲 Tiebreaker roll-off in the tie box, or `O` on the results screen).
-- A tiebreaker clue (❓ Tiebreaker clue in the tie box): select the winner and ＋ Award (its Amount starts at 0, so
-  settling the tie adds no points), or 🏆 their name when 🏁 Back to results asks.
+- A tiebreaker clue (❓ Tiebreaker clue in the tie box): its box asks **Who won?**, a 🏆 for each tied player, and one
+  click settles the tie with no points (their number then `Enter` does the same, and so does 🏆 their name when 🏁 Back
+  to results asks); **± Also give points…** opens its Amount row for points too.
 - Co-winners (🤝 Declare co-winners in the tie box).
 
 The winner fanfare plays once the tie is settled. Each way settles only the tie it was used for: a score fixed later
