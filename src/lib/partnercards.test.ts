@@ -14,6 +14,7 @@ import {
   cardRecipients,
   cardSends,
   filesWanted,
+  markCopied,
   markReady,
   partnerRules,
   partnerShares,
@@ -29,6 +30,7 @@ import {
   setRecipients,
   swapParts,
   takeBack,
+  wasCopied,
 } from './partner';
 import { buzzIdle, cardText, fitCards, hostState, newBuzz, partnerAnswerAsk, partnerAnswerId, partnerCards, phoneStatus, sendOf } from './buzz';
 import { CARDS_BYTES, type HostCard, OLD_FILE_LIMITS } from './buzzproto';
@@ -369,6 +371,24 @@ describe('cardHash', () => {
     text.text = 'CARD-ONE-xyzzy';
     expect(cardHash({ ...one, hint: 'Psst' })).not.toBe(was);
     expect(cardHash({ ...one, elements: [...one.elements, newVideoEl('v1')] })).not.toBe(was);
+  });
+});
+
+describe('📋 copied by hand', () => {
+  it('a card is copied for who it went to then: given to someone else since, it’s to copy again; nothing goes to the room', () => {
+    const { g, session, s, one, two } = setup();
+    setPartner(session, s, 'b', 'wheel');
+    s.stage = 'distribute';
+    expect(wasCopied(s, one.id, ['b'])).toBe(false);
+    markCopied(s, one.id, ['b']);
+    expect(wasCopied(s, one.id, ['b'])).toBe(true);
+    expect(wasCopied(s, two.id, ['a'])).toBe(false);
+    // ⇄ Swap or a chip gives it to Ann too: copied for Bob only, so it's to copy again.
+    expect(wasCopied(s, one.id, ['a', 'b'])).toBe(false);
+    markCopied(s, one.id, ['a', 'b', 'a']);
+    expect(s.copied).toEqual([{ card: one.id, to: ['a', 'b'] }]);
+    expect(wasCopied(s, one.id, ['a'])).toBe(true);
+    expect(partnerCards(g, session, { fileBytes: FILE_BYTES, files: {} })).toBeNull();
   });
 });
 

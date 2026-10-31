@@ -589,6 +589,9 @@ describe('a 🤝 partner clue (3.4 H)', () => {
     expect(lines(items)).toEqual([['first: Card 1 is for Cat (no phone here): copy it to them, then start the clock.', '⏱ Start the clock (45 s) ⏎ · close', '📋 Copy Card 1’s words · keep']]);
     items[0].quick[1].run();
     expect(did).toEqual(['copy k1']);
+    // Copied (for who gets it now): its quick button says so.
+    const copied = leftNow(ctx(g, s, { partner: pnow({ copy: [{ ...copy[0], copied: true }] }) }), mainStep(c)!);
+    expect(lines(copied)[0][2]).toBe('📋 Copy Card 1’s words ✓ · keep');
     // A card to a phone and one copied: both said, 📤 first.
     const both = leftNow(ctx(g, s, { partner: pnow({ send: [{ name: 'Card 2', to: ['a'] }], copy }) }), mainStep(c)!);
     expect(lines(both)).toEqual([

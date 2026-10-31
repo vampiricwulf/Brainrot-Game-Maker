@@ -21,9 +21,9 @@
   import { overlayDoneAt, toolOverlay } from '../../lib/live';
   import { cardSlides, clueCardName, clueCardWords, formatPoints, PARTNER_GAMES, type CardTo, type Clue, type ClueCard, type Game, type Id, type PartnerState, type Session } from '../../lib/model';
   import {
-    cardCopyText, cardId, cardRecipients, cardSends, cardSummary, countItems, describer, goesToLabel, lowerWord, markReady, marksText, pairOnly, partnerCandidates, partnerPickStep,
+    cardCopyText, cardId, cardRecipients, cardSends, cardSummary, countItems, describer, goesToLabel, lowerWord, markCopied, markReady, marksText, pairOnly, partnerCandidates, partnerPickStep,
     partnerRoles, partnerRules, partnerShares, partnerVerdict, partWho, partWordOf, partWords, recipientsText, resetRecipients, sameTeam, sendAgain, sendCards, sendChanges, sendState, sentSeats,
-    sentTo, setDescriber, setPartner, setPartnerPicker, setRecipients, sharesText, swapParts, toKey, toName,
+    sentTo, setDescriber, setPartner, setPartnerPicker, setRecipients, sharesText, swapParts, toKey, toName, wasCopied,
   } from '../../lib/partner';
   import { cardItems, cardLinks, cardWords, phoneCard } from '../../lib/phonecard';
   import { clueName, nameList, partnerSteal, stealersLeft } from '../../lib/session';
@@ -541,13 +541,26 @@
   /** 📋 Copy words: the card's words and links, named for who they're for. Nothing of it shows on screen. */
   function copyWords(card: ClueCard, n: number): void {
     const to = recipients(card).map((t) => toName(session, t));
+    copiedFor(card);
     void copyText(cardCopyText(game, card, n, where, to), `${clueCardWords(card, n - 1, true)}’s words copied: paste them to ${to.join(', ') || 'them'}`);
   }
 
   /** 📋 Copy picture: the card's first picture (or GIF, as a still), to paste into a DM. */
   function copyPicture(card: ClueCard, n: number): Promise<void> {
+    copiedFor(card);
     return copyCardPicture(game, card, clueCardWords(card, n - 1, true), recipients(card).map((t) => toName(session, t)).join(', ') || 'them');
   }
+
+  /**
+   * Each 📋 press is noted, with who the card was for then: its 📋 shows ✓ (given to someone else since, it doesn't), and
+   * once each card to copy is copied, a click on the stage starts the clock.
+   */
+  function copiedFor(card: ClueCard): void {
+    if (session.partner) markCopied(session.partner, card.id, recipients(card).map((t) => t.seat));
+  }
+  const copied = (card: ClueCard): boolean => wasCopied(s, card.id, recipients(card).map((t) => t.seat));
+  /** A 📋's tooltip, saying so once it was pressed. */
+  const copyTip = (card: ClueCard, tip: string): string => (copied(card) ? `✓ Copied (a click copies it again) · ${tip}` : tip);
 
   // One window: the status line's ⚠ Viewers see this chip says what viewers can read here.
   offerExposed(() => `⚠ Viewers can see this window: they can read a card’s name here, never what’s on it${app.playerOnly ? '' : ' (check the cards in the editor’s 🤫 Card tabs)'}.`);
@@ -630,7 +643,9 @@
     if (handStep) {
       if (unsentToGo.length && clockRuns) return { text: toCopy.length ? `Clock running: 📋 copy cards for ${noun}s without a phone, then 📤 Send the cards` : 'Clock running: 📤 Send the cards' };
       if (unsentToGo.length) return { text: toCopy.length ? `Next: 📋 copy cards for ${noun}s without a phone, then 📤 Send and start` : 'Next: 📤 Send and start' };
-      return { text: toCopy.length ? `Next: 📋 copy each card to its ${noun}, then ⏱ Start the clock` : 'Next: ⏱ Start the clock' };
+      // (Each 📋 pressed: the clock is next, and a click on the stage starts it.)
+      if (toCopy.length && !toCopy.every(({ card }) => copied(card))) return { text: `Next: 📋 copy each card to its ${noun}, then ⏱ Start the clock` };
+      return { text: toCopy.length ? 'Next: ⏱ Start the clock (the cards are copied)' : 'Next: ⏱ Start the clock' };
     }
     // (The verdict due: ✔ Got it and ✘ Missed an equal pair at the foot, neither blue, the keys where they were.)
     return { text: app.live.timer?.expired ? 'Time’s up: did they get it?' : 'Did they get it? ✔ Got it (Enter) or ✘ Missed (Shift+Enter)' };
@@ -944,13 +959,15 @@
               <button class="small" onclick={() => showInWindow(card, n, seat)} aria-label="Show {w} to {name(seat)}" title="Shows it in the 🪟 card window, to {name(seat)} alone, until the tile closes">🪟 Show {name(seat)}</button>
             {/if}
             {#if copying}
-              <button class="small" onclick={() => copyWords(card, n)} disabled={!to.length || !copyable}
-                title={!to.length ? 'Choose who gets it first' : copyable ? `Copies “For ${to.map((t) => toName(session, t)).join(', ')} only…” with the card’s words and links, to paste in a DM` : 'This card has no words or links: 📋 Copy picture'}
+              {@const done = !!to.length && copyable && copied(card)}
+              <button class="small" class:copied={done} data-copied={done || undefined} onclick={() => copyWords(card, n)} disabled={!to.length || !copyable}
+                title={!to.length ? 'Choose who gets it first' : copyable ? copyTip(card, `Copies “For ${to.map((t) => toName(session, t)).join(', ')} only…” with the card’s words and links, to paste in a DM`) : 'This card has no words or links: 📋 Copy picture'}
                 >📋 Copy words</button
               >
             {/if}
             {#if pics && canCopyPicture && (copying || !!left)}
-              <button class="small" onclick={() => copyPicture(card, n)} disabled={!to.length} title={to.length ? 'Copies the card’s picture, to paste in a DM' : 'Choose who gets it first'}>📋 Copy picture</button>
+              {@const done = !!to.length && !copyable && copied(card)}
+              <button class="small" class:copied={done} data-copied={done || undefined} onclick={() => copyPicture(card, n)} disabled={!to.length} title={to.length ? copyTip(card, 'Copies the card’s picture, to paste in a DM') : 'Choose who gets it first'}>📋 Copy picture</button>
             {/if}
           </div>
           <!-- (🗜 Make smaller: the files of it that are big, or too big for the buzzer server, made smaller for phones.) -->
@@ -1005,12 +1022,14 @@
           <span class="end">
             {#each toCopy as { card, i } (card.id)}
               {@const W = clueCardWords(card, i, true)}
+              {@const done = copied(card)}
               {#if cardWords(card) || cardLinks(game, card).length}
-                <button class="small" onclick={() => copyWords(card, i + 1)} aria-label="Copy {W}’s words" title="Copies “For {recipients(card).map((t) => toName(session, t)).join(', ')} only…” with the card’s words and links, to paste in a DM"
+                <button class="small" class:copied={done} data-copied={done || undefined} onclick={() => copyWords(card, i + 1)} aria-label="Copy {W}’s words{done ? ' (copied)' : ''}"
+                  title={copyTip(card, `Copies “For ${recipients(card).map((t) => toName(session, t)).join(', ')} only…” with the card’s words and links, to paste in a DM`)}
                   >📋 {toCopy.length > 1 ? clueCardName(card, i) : 'Copy words'}</button
                 >
               {:else if canCopyPicture && cardItems(game, card).some((it) => it.kind === 'picture' || it.kind === 'gif')}
-                <button class="small" onclick={() => copyPicture(card, i + 1)} aria-label="Copy {W}’s picture" title="Copies the card’s picture, to paste in a DM"
+                <button class="small" class:copied={done} data-copied={done || undefined} onclick={() => copyPicture(card, i + 1)} aria-label="Copy {W}’s picture{done ? ' (copied)' : ''}" title={copyTip(card, 'Copies the card’s picture, to paste in a DM')}
                   >📋 {toCopy.length > 1 ? clueCardName(card, i) : 'Copy picture'}</button
                 >
               {/if}
@@ -1136,6 +1155,11 @@
     margin-left: auto;
   }
   /* (A card's name on its 📋, cut short.) */
+  /* A card 📋 copied (for who gets it now): a ✓ after its words, never in place of them. */
+  .copied::after {
+    content: ' ✓';
+    color: var(--good);
+  }
   .end button {
     max-width: 22ch;
     overflow: hidden;

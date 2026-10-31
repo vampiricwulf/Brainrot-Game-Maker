@@ -837,6 +837,17 @@ export function markReady(s: PartnerState, cards: Id[]): void {
   if (ready.size) s.ready = [...ready];
 }
 
+/** 📋 Copy words (or picture) pressed for a card: noted with who it was for, to paste to them by hand. */
+export function markCopied(s: PartnerState, card: Id, to: Id[]): void {
+  s.copied = [...(s.copied ?? []).filter((x) => x.card !== card), { card, to: [...new Set(to)] }];
+}
+
+/** The card was 📋 copied for each of these players (given to someone else since: it's to copy again). */
+export function wasCopied(s: Pick<PartnerState, 'copied'>, card: Id, to: Id[]): boolean {
+  const c = s.copied?.find((x) => x.card === card);
+  return !!c && to.every((id) => c.to.includes(id));
+}
+
 /** A player taken out: they're dropped from every send (one sent only to them is taken back). */
 export function dropFromSends(s: PartnerState, seat: Id): void {
   if (!s.sent) return;

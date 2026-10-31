@@ -1104,6 +1104,8 @@ export interface PartnerState {
   sent?: CardSend[];
   /** The cards whose files the host pressed ⇡ Get it ready for (uploaded early, given to no phone): only that press adds to it. */
   ready?: Id[];
+  /** The cards the host pressed 📋 Copy for, and who they were for then: only that press adds to it. */
+  copied?: { card: Id; to: Id[] }[];
 }
 
 export interface Session {

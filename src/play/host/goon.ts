@@ -260,8 +260,11 @@ export type PartnerNow = {
   cards: number;
   /** Handing them out: those still to send to phones, with who they go to ("Card 1", never what's on it). */
   send: { name: string; to: Id[] }[];
-  /** Those to copy by hand (no phone gets cards, or one of their players has none here: `phoneless`), and what of them copies. */
-  copy: { id: Id; name: string; to: Id[]; phoneless: boolean; what: 'words' | 'picture' | null }[];
+  /**
+   * Those to copy by hand (no phone gets cards, or one of their players has none here: `phoneless`), what of them copies,
+   * and whether 📋 was pressed for them (for who gets it now).
+   */
+  copy: { id: Id; name: string; to: Id[]; phoneless: boolean; what: 'words' | 'picture' | null; copied?: boolean }[];
   /** 📤 Send and start won't fit in the buzzer room: why. */
   full?: string;
   /** What ⏱ Start the clock counts down from. */
@@ -867,7 +870,10 @@ function partnerPlayItems(c: GoCtx): LeftItem[] {
     ];
   }
   const clockQ = (): Quick => ({ label: VERBS.startClock(p.secs).label, enter: true, then: 'close', run: c.act.partnerClock, after: `Clock running: ${PLAYING}` });
-  const copyQ = p.copy.flatMap((k): Quick[] => (k.what ? [{ label: `📋 Copy ${k.name}’s ${k.what}`, then: 'keep', run: () => c.act.copyCard(k.id), aria: `Copy ${k.name}’s ${k.what}, to paste to ${named(c, k.to)}` }] : []));
+  // (A ✓ once it was copied, for who gets it now.)
+  const copyQ = p.copy.flatMap((k): Quick[] =>
+    k.what ? [{ label: `📋 Copy ${k.name}’s ${k.what}${k.copied ? ' ✓' : ''}`, then: 'keep', run: () => c.act.copyCard(k.id), aria: `Copy ${k.name}’s ${k.what}, to paste to ${named(c, k.to)}${k.copied ? ' (copied)' : ''}` }] : [],
+  );
   const hand = { id: 'handout', kind: 'first', box: 'handout', lost: 'they haven’t played' } as const;
   if (s.stage === 'distribute') {
     const running = typeof p.clock === 'object' && !!p.clock?.running;

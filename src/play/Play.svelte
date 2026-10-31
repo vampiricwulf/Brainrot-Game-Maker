@@ -15,8 +15,8 @@
     finalSetWager, finalTakeNewcomers, forViewers, wagerFromPhone, coWinnersHold, ownPlayers, clueMarks, judgePartner, partnerSteal, stealersLeft, slidePosition,
   } from '../lib/session';
   import {
-    cardCopyText, cardId, cardRecipients, cardSends, cardSlides, lowerWord, marksText, sentSeats, partnerCandidates, partnerPlayers, partnerRoles, partnerRules, partnerShares, partnerVerdict, partWords, recipientsText, sendCards,
-    setDescriber, setPartner, setPartnerPicker, sharesText, stealOn, takeBack, toName,
+    cardCopyText, cardId, cardRecipients, cardSends, cardSlides, lowerWord, markCopied, marksText, sentSeats, partnerCandidates, partnerPlayers, partnerRoles, partnerRules, partnerShares, partnerVerdict, partWords, recipientsText, sendCards,
+    setDescriber, setPartner, setPartnerPicker, sharesText, stealOn, takeBack, toName, wasCopied,
   } from '../lib/partner';
   import { cardLinks, cardWords, phoneCard } from '../lib/phonecard';
   import { canCopyPicture, copyCardPicture, hasPicture } from './host/cardcopy';
@@ -2538,6 +2538,8 @@
     const card = cards[i];
     const to = cardRecipients(session, s, card).map((t) => toName(session, t));
     const W = clueCardWords(card, i, true);
+    // (Noted, as the 🤝 box's 📋 notes it: once each card is copied, a click on the stage starts the clock.)
+    markCopied(s, card.id, cardRecipients(session, s, card).map((t) => t.seat));
     if (cardWords(card) || cardLinks(game, card).length) void copyText(cardCopyText(game, card, i + 1, clueName(game, session.currentClue), to), `${W}’s words copied: paste them to ${to.join(', ') || 'them'}`);
     else void copyCardPicture(game, card, W, to.join(', ') || 'them');
   }
@@ -2979,7 +2981,8 @@
             const off = phoneCards ? to.filter((x) => !here.has(x.seat)) : to;
             if (!to.length || !off.length) return [];
             const what = cardWords(c) || cardLinks(game, c).length ? ('words' as const) : canCopyPicture && hasPicture(game, c) ? ('picture' as const) : null;
-            return [{ id: c.id, name: clueCardWords(c, i, true), to: [...new Set(off.map((x) => x.seat))], phoneless: phoneCards, what }];
+            const seats = [...new Set(off.map((x) => x.seat))];
+            return [{ id: c.id, name: clueCardWords(c, i, true), to: seats, phoneless: phoneCards, what, copied: wasCopied(s, c.id, seats) }];
           })
         : [],
       ...(unsent.length && roomCardsFull(game, session, go) ? { full: cardsFullText(game, session, go) } : {}),

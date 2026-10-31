@@ -1444,6 +1444,10 @@ Each card's row in the Distribute list offers, for a recipient without a phone, 
 - **📋 Copy picture:** the card's first picture as PNG through `ClipboardItem`, which pastes straight into a Discord DM.
   Hidden where the browser can't do it. A video or embed's link can be copied with 📋 Copy words, which adds the card's
   links.
+- **Copied ✓:** each 📋 press is noted with who the card was for then (`PartnerState.copied`, saved with the game), and
+  its 📋 shows ✓ (in the row, at the box's foot and in the check) while it still goes to them; given to someone else
+  since, it's to copy again. Once each card to copy is copied, the first line reads "Next: ⏱ Start the clock (the cards
+  are copied)", and a click on the stage starts the clock (§6.6).
 - **🪟 Card window** (P3): a window like the scores window that shows only the live card, full size, local files
   included. The host can share just that window with one player (a Discord DM call), turn a laptop round, or put it on a
   second screen for in-person play. It shows "Nothing private right now" between cards.
