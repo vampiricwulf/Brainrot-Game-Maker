@@ -112,6 +112,7 @@ in plain words for the people who make and host games. Anything committed but no
 - ♟ Board games in one window (viewers see the host panel): a secret space not revealed yet is “? (secret)” in the turn box's **📍 Send to…** and **🗂 Spaces…** lists too (they named it), and the undo steps, 📜 Log lines, points and 🤫 card offers its buttons make say “? (secret)” even when they were made with the audience window open (they kept its name once that window closed). Revealing it is “Reveal ? (secret)” in the history, so an Undo that hides it again doesn't leave its name there.
 - RPG rounds in one window: steps about a secret object (renaming it, its class, its card's buttons, Lock, an NPC's stats, Reveal) say “a hidden object” in the history and Undo, even when they were taken with the audience window open (they named it).
 - A few words that ran into the one before them have their space back: 🖼 Media's “· ⚠ won't play here”, “· ⚠ plays without its sound here” and “· may not play”, a text box's “Max size · showing 24”, a sound switched off “Off (keeps intro.wav)”, a Final wager sent from a phone “$500 📱”, and the 📱 before a name on the audience window's Starting soon lineup.
+- RPG and ♟ board-game rounds: the screen no longer shrinks into place as the round comes on screen (it eases only when the stats strip changes), so viewers see it still and a host's first drag lands where it's let go.
 ## 2026-10-30
 
 ### Added

@@ -6,7 +6,7 @@
   objects, hotspots or host notes drawn.
 -->
 <script lang="ts">
-  import { getContext, onDestroy } from 'svelte';
+  import { getContext, onDestroy, onMount } from 'svelte';
   import { app } from '../../lib/app.svelte';
   import { caughtBy, type Catchable } from '../../lib/layers';
   import { STILL_PX } from '../../lib/longpress';
@@ -131,6 +131,15 @@
   /** The strip's height: the screens are scaled into the room above (or below) it, so it never covers them. */
   let stripH = $state(0);
   const area = $derived(aboveStrip(bar === 'hidden' ? 0 : stripH, bar));
+  /**
+   * The screens ease into a new fit when the strip changes (a player joins, the strip moves), not as the stage first
+   * shows: the strip isn't measured yet then, so they'd shrink into place in front of viewers (and under a first drag).
+   */
+  let fitEases = $state(false);
+  onMount(() => {
+    let raf = requestAnimationFrame(() => (raf = requestAnimationFrame(() => (fitEases = true))));
+    return () => cancelAnimationFrame(raf);
+  });
   // Leaving the round mid-drag leaves nothing lit up or following the pointer.
   onDestroy(() => {
     dragGhost.now = null;
@@ -572,7 +581,7 @@
   onfocus={onavatar ? stageFocus : undefined}
 >
   {#if world && st}
-    <div class="play-area" style:transform="translate({area.x}px, {area.y}px) scale({area.scale})">
+    <div class="play-area" class:eases={fitEases} style:transform="translate({area.x}px, {area.y}px) scale({area.scale})">
     {#each panes as ref, i (ref.screen)}
       {@const found = findIn(world, ref)}
       {#if found}
@@ -635,6 +644,8 @@
     width: 1920px;
     height: 1080px;
     transform-origin: 0 0;
+  }
+  .play-area.eases {
     transition: transform 0.3s ease;
   }
   .pane {

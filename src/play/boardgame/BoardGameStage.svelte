@@ -7,7 +7,7 @@
   board leaves the keys where they were: D, a click, then Enter still moves the token). Shift+F10 opens its menu.
 -->
 <script lang="ts">
-  import { getContext, onDestroy, tick } from 'svelte';
+  import { getContext, onDestroy, onMount, tick } from 'svelte';
   import { fade } from '../../lib/motion.svelte';
   import { textOn } from '../../lib/colors';
   import { currentPlayer, HOP_MS, placeTokens, shownSpace, spaceById, spaceToward, waysNow } from '../../lib/boardgame';
@@ -76,6 +76,15 @@
   let stripH = $state(0);
   /** The board is scaled into the room the stats strip leaves, so the strip never covers a space (see stagefit.ts). */
   const area = $derived(aboveStrip(bar === 'hidden' ? 0 : stripH, bar));
+  /**
+   * The board eases into a new fit when the strip changes (a player joins, the strip moves), not as the stage first
+   * shows: the strip isn't measured yet then, so it would shrink into place in front of viewers.
+   */
+  let fitEases = $state(false);
+  onMount(() => {
+    let raf2 = requestAnimationFrame(() => (raf2 = requestAnimationFrame(() => (fitEases = true))));
+    return () => cancelAnimationFrame(raf2);
+  });
   /** Room for the label row, in the board's own pixels. */
   const labelRoom = $derived((20 + labelsH + 8) / area.scale);
   /** Along the top, tokens stay below the label row (unless the labels are at the bottom, with the strip at the top). */
@@ -220,7 +229,7 @@
 
 <div class="bg">
   {#if round && bs}
-    <div class="play-area" style:transform="translate({area.x}px, {area.y}px) scale({area.scale})">
+    <div class="play-area" class:eases={fitEases} style:transform="translate({area.x}px, {area.y}px) scale({area.scale})">
     {#if zone}
       {#key zone.id}
         <div class="layer" in:fade={{ duration: 300 }}>
@@ -368,6 +377,8 @@
     height: 1080px;
     transform-origin: 0 0;
     overflow: hidden;
+  }
+  .play-area.eases {
     transition: transform 0.3s ease;
   }
   /* A zone on screen: its players along the bottom. A crowd (12 tokens are wider than the board) wraps upward. */
