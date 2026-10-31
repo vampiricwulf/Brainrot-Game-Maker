@@ -27,7 +27,7 @@ export const SAME_SPOT_MS = 1000;
 export type Press = { control: string; at: number; detail: number; x?: number; y?: number; redraw?: boolean };
 
 /** Two clicks on one spot. */
-const sameSpot = (a: Press, b: Press): boolean =>
+const sameSpot = (a: { x?: number; y?: number }, b: { x?: number; y?: number }): boolean =>
   a.x !== undefined && a.y !== undefined && b.x !== undefined && b.y !== undefined && Math.abs(a.x - b.x) <= NEAR_PX && Math.abs(a.y - b.y) <= NEAR_PX;
 
 /** What the guard says of a click: it goes, it's the rest of a double-click, or it's too soon after the step before. */
@@ -56,6 +56,24 @@ export const CHECK_GUARD_MS = 600;
  * back while it's new (`since`), and the rest of the press that opened it (a triple-click's third) a while longer.
  */
 export const checkHeld = (since: number, at: number, detail: number): boolean => at - since < CHECK_GUARD_MS || restOfPress(since, at, detail, 2 * CHECK_GUARD_MS);
+
+/**
+ * The check's last press that went (a fix, its "… anyway", its step): when, where (a click's place; none for a key on
+ * a focused button), and whether the check stayed open with its item redrawn in place (a 'keep' fix: one picked
+ * player's ＋, and the next one's line where it was).
+ */
+export type CheckPress = { at: number; x?: number; y?: number; keep?: boolean };
+
+/**
+ * A click on the check after one of its presses: the rest of that double-click, however old the check (it never does
+ * a second thing, as one player's ＋ then the next one's); after a 'keep' fix, a slow second click on the same spot too
+ * (what's there now changed its meaning in place), as the panel's guard drops one after a name picked.
+ */
+export function checkPressHeld(last: CheckPress | null, p: { at: number; detail: number; x?: number; y?: number }): boolean {
+  if (!last) return false;
+  if (restOfPress(last.at, p.at, p.detail, DOUBLE_CLICK_MS)) return true;
+  return !!last.keep && p.detail >= 1 && p.at - last.at < SAME_SPOT_MS && sameSpot(last, p);
+}
 
 /** Controls shown at `shownAt` take no click yet (`doubleOnly`: only the rest of a double-click is dropped). */
 export function justShown(shownAt: number, at: number, detail: number, doubleOnly = false): boolean {

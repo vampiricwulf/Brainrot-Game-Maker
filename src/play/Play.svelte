@@ -5,7 +5,7 @@
   import { prefs, savePrefs } from '../lib/prefs.svelte';
   import { commit, history, redo as redoStep, step, undo as undoStep } from '../lib/history.svelte';
   import { createFieldTracker, isTextField, undoKeyOf } from '../lib/undokeys';
-  import { oneShot } from '../lib/oneshot';
+  import { oneShot, restOfPress } from '../lib/oneshot';
   import { blankName, clueCardWords, finalName, formatPoints, getClue, isBoard, isBoardGame, isFinal, isRpg, isSlides, MAX_PLAYERS, newId, PARTNER_GAMES, PLAYER_WHEEL, questionSlides, roundName, wholePoints, type BoardRound, type ClueRef } from '../lib/model';
   import {
     applyScore, awardOpen, backToBoard, backToLastRound, currentFinal, clueName, clueReason, clueScored, currentClueInfo, ddShowQuestion, describeStep,
@@ -72,7 +72,7 @@
   import type { HostAsk, PlayerVerbs } from './host/slots.svelte';
   import { selectItems, stageMenuOf, type Moment, type StageItem } from './host/stagemenu';
   import { CHECK, FLOW, VERBS } from './host/verbs';
-  import { CHECK_GUARD_MS, KEY_GUARD_MS } from './host/guard';
+  import { CHECK_GUARD_MS, DOUBLE_CLICK_MS, KEY_GUARD_MS } from './host/guard';
   import { focusedQuietly, focusMain, focusQuiet } from './host/focus';
   import HostPanel from './HostPanel.svelte';
   import ModeCards from './ModeCards.svelte';
@@ -3166,8 +3166,17 @@
   let otherInputAt = 0;
   /** The key pressing one of its fixes, while it runs (a click: null): the keys' own guards apply to it (checkJudge). */
   let quickKey: KeyboardEvent | null = null;
-  /** Where the check was when it went by itself (its moment went): a click there waits a moment, not landing on a box. */
-  let checkGone: { r: DOMRect; at: number } | null = null;
+  /**
+   * Where the check was when it closed: a click there waits a moment when it went by itself (its moment went), and the
+   * rest of the press that closed it (a double-click on one of its buttons) never lands on what was under it (`rest`).
+   */
+  let checkGone: { r: DOMRect; at: number; rest?: boolean } | null = null;
+  /** A click (or the press under it) where the check just was, that it holds back. */
+  function underGone(e: MouseEvent): boolean {
+    const g = checkGone;
+    if (!g || (g.rest ? !restOfPress(g.at, Date.now(), e.detail, DOUBLE_CLICK_MS) : Date.now() - g.at >= CHECK_GUARD_MS)) return false;
+    return e.clientX >= g.r.left && e.clientX <= g.r.right && e.clientY >= g.r.top && e.clientY <= g.r.bottom;
+  }
   /** The moment on screen, as the check knows it: it closes by itself when this changes (Ctrl+Z out of the clue…). */
   const momentNow = $derived.by(() => {
     // (A board game's turn: its own dice or movement wheel are part of it, as the check walks it; the turn changing isn't.)
@@ -3242,10 +3251,8 @@
   function closeCheck(how: 'notyet' | 'quick' | 'step' | 'gone'): void {
     const ck = check;
     if (!ck) return;
-    if (how === 'gone') {
-      const r = document.querySelector('.play .panel [data-goon]')?.getBoundingClientRect();
-      if (r) checkGone = { r, at: Date.now() };
-    }
+    const r = document.querySelector('.play .panel [data-goon]')?.getBoundingClientRect();
+    checkGone = r ? { r, at: Date.now(), ...(how === 'gone' ? {} : { rest: true }) } : null;
     if (how === 'notyet') notYetAt = Date.now();
     check = null;
     checkLit = null;
@@ -6056,9 +6063,15 @@
     if (e.key !== 'Escape' && !['Shift', 'Control', 'Alt', 'Meta'].includes(e.key)) otherInputAt = Date.now();
     if (tabbing || (e.key.startsWith('Arrow') && e.target instanceof Element && e.target.closest('.board, [data-space]'))) ringOff = false;
   }}
+  onmousedowncapture={(e) => {
+    // (The rest of a double-click that closed the check: no focus to what was under it either.)
+    if (e.detail >= 2 && underGone(e)) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
+  }}
   onclickcapture={(e) => {
-    const gone = checkGone && Date.now() - checkGone.at < CHECK_GUARD_MS ? checkGone.r : null;
-    if (gone && e.clientX >= gone.left && e.clientX <= gone.right && e.clientY >= gone.top && e.clientY <= gone.bottom) {
+    if (underGone(e)) {
       e.preventDefault();
       e.stopPropagation();
       return;

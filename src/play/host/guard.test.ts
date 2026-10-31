@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { CHECK_GUARD_MS, checkHeld, clickGuard, DOUBLE_CLICK_MS, judgeClick, justShown, KEY_GUARD_MS, NEW_CONTROLS_MS, SAME_SPOT_MS } from './guard';
+import { CHECK_GUARD_MS, checkHeld, checkPressHeld, clickGuard, DOUBLE_CLICK_MS, judgeClick, justShown, KEY_GUARD_MS, NEW_CONTROLS_MS, SAME_SPOT_MS } from './guard';
 
 /** A guard on a clock the test moves (`at.t`). */
 function guarded() {
@@ -113,5 +113,25 @@ describe('the host panel’s click guard', () => {
     // A triple-click's third, a while later, is held back too; a fresh click then isn't.
     expect(checkHeld(1000, 1000 + CHECK_GUARD_MS + 200, 3)).toBe(true);
     expect(checkHeld(1000, 1000 + CHECK_GUARD_MS + 200, 1)).toBe(false);
+  });
+
+  it('drops the rest of a double-click on one of its fixes, however old the check: it never does a second thing', () => {
+    // Ann's ＋ Award $200 (Ann and Bob picked: it keeps the check open, Bob's ＋ … ▶ board where hers was), 5 s in.
+    const ann = { at: 5000, x: 300, y: 600, keep: true };
+    expect(checkPressHeld(ann, { at: 5150, detail: 2, x: 300, y: 600 })).toBe(true);
+    // A slow double-click on that spot (two fresh clicks to the browser) waits a second: what's there changed meaning.
+    expect(checkPressHeld(ann, { at: 5800, detail: 1, x: 302, y: 601 })).toBe(true);
+    expect(checkPressHeld(ann, { at: 5000 + SAME_SPOT_MS, detail: 1, x: 300, y: 600 })).toBe(false);
+    // Elsewhere, a fresh click goes at once (Bob's − Deduct, a line down).
+    expect(checkPressHeld(ann, { at: 5150, detail: 1, x: 300, y: 640 })).toBe(false);
+    // A key on a focused button (no place) isn't a click on that spot.
+    expect(checkPressHeld(ann, { at: 5150, detail: 0 })).toBe(false);
+    // After a fix that didn't redraw in place, only the rest of its press is dropped, for DOUBLE_CLICK_MS.
+    const send = { at: 5000, x: 300, y: 600 };
+    expect(checkPressHeld(send, { at: 5000 + DOUBLE_CLICK_MS - 1, detail: 2, x: 300, y: 600 })).toBe(true);
+    expect(checkPressHeld(send, { at: 5000 + DOUBLE_CLICK_MS, detail: 2, x: 300, y: 600 })).toBe(false);
+    expect(checkPressHeld(send, { at: 5300, detail: 1, x: 300, y: 600 })).toBe(false);
+    // Nothing pressed yet: nothing held (the check's own first moments are checkHeld's).
+    expect(checkPressHeld(null, { at: 5150, detail: 2, x: 300, y: 600 })).toBe(false);
   });
 });

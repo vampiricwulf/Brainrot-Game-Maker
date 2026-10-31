@@ -9,7 +9,7 @@
 -->
 <script lang="ts">
   import { onMount, tick } from 'svelte';
-  import { CHECK_GUARD_MS, checkHeld } from './guard';
+  import { CHECK_GUARD_MS, checkHeld, checkPressHeld, type CheckPress } from './guard';
   import { anywayLabel, enterQuick, headingOf, mainQuick, quietKinds, teachLine, todo, type Check, type LeftItem, type QuietKind, type Quick } from './goon';
   import { CHECK } from './verbs';
 
@@ -119,10 +119,21 @@
     el.classList.add('goon-flash');
   });
 
-  /** A click on one of its buttons, held back while it's new or the press that opened it goes on. */
-  const held = (e: MouseEvent, since = check.at) => checkHeld(since, Date.now(), e.detail);
+  /** Its last press that went: the rest of that double-click presses nothing more, however old the check. */
+  let pressed: CheckPress | null = null;
+  /**
+   * A click on one of its buttons, held back while it's new or the press that opened it goes on, or as the rest of a
+   * press on it that went (`keep`: this one stays open, its item redrawn in place). Else noted, and it goes.
+   */
+  function held(e: MouseEvent, since = check.at, keep = false): boolean {
+    const at = Date.now();
+    const p = { at, detail: e.detail, ...(e.detail >= 1 ? { x: e.clientX, y: e.clientY } : {}) };
+    if (checkHeld(since, at, e.detail) || checkPressHeld(pressed, p)) return true;
+    pressed = { ...p, keep };
+    return false;
+  }
   function quick(e: MouseEvent, q: Quick, item: LeftItem): void {
-    if (held(e) || item.done) return;
+    if (item.done || held(e, check.at, q.then === 'keep')) return;
     onquick(q);
   }
   /** Its empty parts and the blue button's spot: a click there only flashes it. */

@@ -219,6 +219,45 @@ try {
     await page.keyboard.press('Control+z');
     await page.locator('.toast', { hasText: 'Undid' }).waitFor();
     assert((await annScore()) === '$0' && (await boardUp(page)), 'Ctrl+Z takes the award back, and the board stays');
+
+    // A double-click on a fix does one thing. Ann and Bob both picked (a line each): Ann's ＋ Award keeps the check open,
+    // Bob's ＋ Award Bob $400 ▶ board then where hers was, and the double-click's second click gives him nothing. On his
+    // (it goes on), the second click lands on nothing where the check was.
+    const bobScore = () => page.locator('.panel .p').nth(1).locator('.score').innerText();
+    const dblclickMiddle = async (loc) => {
+      const b = await loc.boundingBox();
+      await page.mouse.dblclick(b.x + b.width / 2, b.y + b.height / 2);
+    };
+    await page.locator('.stage-box .board .tile[data-cat="0"]:not(.used):not([disabled])').first().click();
+    await page.locator('.panel .status', { hasText: 'Answer hidden' }).waitFor();
+    await page.keyboard.press('1');
+    await page.keyboard.press('2');
+    await page.keyboard.press('r');
+    await page.locator('.stage-box [data-slide="answer"]').waitFor();
+    await page.keyboard.press('n');
+    await goOnCheck(page, { ready: true }).waitFor();
+    assert((await goOnCheck(page).locator('[data-quick]').count()) === 4, 'two picked: the check has a line each (＋ / −)');
+    // (A host who reads it first: past the 1.2 s in which the rest of the press that opened it is held anyway.)
+    await page.waitForTimeout(700);
+    await dblclickMiddle(quick(page, '＋ Award'));
+    await page.locator('.panel .p').nth(0).locator('.score', { hasText: '$400' }).waitFor();
+    assert(
+      (await bobScore()) === '$0' && (await quick(page, '＋ Award Bob $400 ▶ board').count()) === 1,
+      `a double-click on Ann's ＋ Award gives her $400 only: Bob's ＋ Award Bob $400 ▶ board, come in its place, isn't pressed, the check still open (Ann ${await annScore()}, Bob ${await bobScore()})`,
+    );
+    // (A fresh double-click: past the second the spot waits after a fix redrew it there.)
+    await page.waitForTimeout(1000);
+    await page.evaluate(() => {
+      window.__restClicks = 0;
+      document.addEventListener('click', (e) => e.detail >= 2 && window.__restClicks++);
+    });
+    await dblclickMiddle(quick(page, '＋ Award Bob $400 ▶ board'));
+    await goOnCheck(page).waitFor({ state: 'detached' });
+    await page.locator('.stage-box .board').waitFor();
+    assert(
+      (await bobScore()) === '$400' && (await annScore()) === '$400' && (await page.evaluate(() => window.__restClicks)) === 0 && (await page.locator('.panel .score-edit').count()) === 0,
+      'a double-click on ＋ Award Bob $400 ▶ board gives him $400 and goes back to the board; its second click reaches nothing where the check was',
+    );
     await ctx.close();
   }
 
