@@ -1320,7 +1320,7 @@ try {
       // (On a laptop with 4 players, Card 1's row too, as before the box had its foot: its first line stays one line.)
       if (count === 4 && w === 1280) {
         const row = await hidden('.panel [data-card="1"] button, .panel [data-partner-panel] [aria-haspopup="menu"]');
-        assert(row.length === 0, `${at}: Card 1's row (who gets it, 📋 Copy words) and Another partner ▾ are in sight too${row.length ? ` (not: ${row.join(', ')})` : ''}`);
+        assert(row.length === 0, `${at}: Card 1's row (who gets it; its 📋 is the foot's while the cards are handed out) and Another partner ▾ are in sight too${row.length ? ` (not: ${row.join(', ')})` : ''}`);
       }
       // No copies above the blue button: it is 👁 Reveal answer itself (the clue row's quiet ▦ Done ▶ board may scroll away).
       assert((await pb.locator('.panel .flowbeside').count()) === 0 && (await pb.locator('.panel [data-flow="reveal"]').count()) === 1, `${at}: one 👁 Reveal answer (the blue button), no pair above it`);
