@@ -1009,7 +1009,7 @@ const toolBar = () =>
   );
 let bar = await toolBar();
 assert(
-  bar[0] === '🎡 Spin! W' && !bar.some((b) => b.includes('Close')) && (await flowIs(page, '▦ Done ▶ board')) && (await stepButton(toolBox, 'Spin!').evaluate((b) => b.classList.contains('ring'))),
+  bar[0] === '🎡 Spin! W' && !bar.some((b) => b.includes('Close')) && (await flowIs(page, '▦ Done ▶ board')) && (await stepButton(toolBox, '🎡 Spin!').evaluate((b) => b.classList.contains('ring'))),
   `a wheel tile's box: Spin! first, ringed, no Close; the blue button is ▦ Done ▶ board (${bar.join(' | ')})`,
 );
 // The blue button before it's spun asks first: Spin! (W), or closing without it, the tile staying on the board.
