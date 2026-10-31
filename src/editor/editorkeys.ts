@@ -130,7 +130,7 @@ export const EDITOR_KEYS: KeyGroup[] = [
   {
     title: 'Board images',
     keys: [
-      ['Same as on a slide', 'Tab, Alt+click, arrows, Ctrl+[ / ], Ctrl+D, Ctrl+A, Delete, right-click'],
+      ['Same as on a slide', 'Tab, Alt+click, arrows, Ctrl+[ / ], Ctrl+D, Ctrl+A, Delete, F2 (rename in Layers), right-click and ⋯'],
       ['Ctrl+C / X / V', 'Copy, cut and paste pictures between boards and slides'],
       ['Esc', 'Deselect, then close'],
     ],

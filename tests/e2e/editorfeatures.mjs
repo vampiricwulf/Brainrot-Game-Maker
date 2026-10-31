@@ -379,7 +379,10 @@ try {
     const moved = page.getByRole('dialog', { name: 'Editor keyboard shortcuts' }).locator('[data-what-moved]');
     await moved.waitFor();
     const text = await moved.innerText();
-    assert((await moved.getAttribute('open')) !== null && text.includes('one order') && text.includes('🏁 Make it the start'), `the Editor part opens with “What moved” (the menus’ one order, the new names)`);
+    assert(
+      (await moved.getAttribute('open')) !== null && text.includes('one order') && text.includes('🏁 Make it the start') && text.includes('📋 Paste slide') && text.includes('✏ Freehand line…'),
+      `the Editor part opens with “What moved” (the menus’ one order, the new names, the slide editor's bar, tabs' group and Shape ▾)`,
+    );
   }
   await page.getByLabel('Filter shortcuts').fill('ctrl+f');
   const rows = await page.locator('[role="dialog"] tr').allInnerTexts();
