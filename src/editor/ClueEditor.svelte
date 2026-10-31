@@ -6,7 +6,12 @@
   import { announce } from '../lib/announce';
   import { take, type ClueSide, type Place, type RoundPart } from '../lib/nav.svelte';
   import { imgFallback, mediaUrls } from '../lib/media.svelte';
-  import { addClueSlide, cardFromAnswer, deleteClueSlide, duplicateClueSlide, followDailyDoubles, moveClueSlide, neighbourClue, setClueType, stepClue, textStyleTargets } from '../lib/ops';
+  import { addClueSlide, cardFromAnswer, deleteClueSlide, duplicateClueSlide, followDailyDoubles, insertClueSlide, moveClueSlide, neighbourClue, setClueType, stepClue, textStyleTargets } from '../lib/ops';
+  import { clipboard, copySlide, takeCopiedSlide } from '../lib/clipboard.svelte';
+  import { isMenuKey, keyMenu, showMenu } from '../lib/menustate.svelte';
+  import { slideTabMenu, slideTabTitle } from '../lib/slidetabs';
+  import { copyIsTheBrowsers } from '../lib/undokeys';
+  import { slideHasContent } from '../lib/usage';
   import {
     cardSlides,
     categoryLabel,
@@ -29,7 +34,7 @@
     type Slide,
     type TextEl,
   } from '../lib/model';
-  import { addCard, deleteCard, GOES_TO, goesToLabel, partnerRules, TILE_GOES_TO, tileGoesToLabel } from '../lib/partner';
+  import { addCard, deleteCard, duplicateCard, GOES_TO, goesToLabel, moveCard, partnerRules, TILE_GOES_TO, tileGoesToLabel } from '../lib/partner';
   import { clip } from '../lib/buzzproto';
   import CardBar from './CardBar.svelte';
   import PartnerSettings from './PartnerSettings.svelte';
@@ -38,6 +43,7 @@
   import { followClueText } from '../lib/cluetext';
   import SlideEditor from './slide/SlideEditor.svelte';
   import { NARROW_CARDS } from './SlideTabs.svelte';
+  import SlideGroup from './SlideGroup.svelte';
   import MediaPicker from './slide/MediaPicker.svelte';
   import { mediaDrop } from '../lib/mediadrop';
   import { commit as commitHistory, step as record } from '../lib/history.svelte';
@@ -146,8 +152,19 @@
   }
   function deleteCardTab(): void {
     cardStep(`Deleted ${clueCardWords(card!, cardAt)} of ${tileName()}`, () => deleteCard(clue, cardAt), true);
-    // (The last one: its bar goes with the button pressed, so the keys go on from the question's tab.)
+    // (The last one: the question's tab opens, and the keys go on from there.)
     if (!cardSlides(clue).length) void focusTab();
+  }
+  /** ⧉ Duplicate card: a copy right after it, open. */
+  function duplicateCardTab(): void {
+    if (!card) return;
+    if (cards.length >= MAX_CARDS) return void toast(`A clue holds ${MAX_CARDS} cards`);
+    cardStep(`Duplicated ${clueCardWords(card, cardAt)} of ${tileName()}`, () => duplicateCard(clue, cardAt));
+  }
+  /** ◀ ▶ on a card: one place earlier or later among the cards (its number changes with it). */
+  function moveCardTab(d: -1 | 1): void {
+    if (!card || cardAt + d < 0 || cardAt + d >= cards.length) return;
+    cardStep(`Moved ${clueCardWords(card, cardAt)} of ${tileName()} ${d < 0 ? 'earlier' : 'later'}`, () => moveCard(clue, cardAt, d));
   }
   /** Who the open card starts with when the cards are handed out. */
   function setGoesTo(to: CardGoesTo): void {
@@ -216,6 +233,85 @@
   const deleteSlide = () => slides(`Deleted question slide ${at + 1} of ${tileName()}`, () => deleteClueSlide(clue, at), true);
   const moveSlide = (d: -1 | 1) => slides(`Moved question slide ${at + 1} of ${tileName()} ${d < 0 ? 'earlier' : 'later'}`, () => moveClueSlide(clue, at, d));
 
+  // ---------- The open slide's group (after the tabs) and the tabs' menus ----------
+  /** The slide the open tab shows. */
+  const openSlide = (): Slide => (shown === 'card' && card ? card : shown === 'a' ? clue.answerSlide : qslide);
+  /** The open tab, as the History names it. */
+  const openName = () => (shown === 'card' && card ? clueCardWords(card, cardAt) : shown === 'a' ? 'the answer slide' : `question slide ${at + 1}`);
+  function copyOpen(): void {
+    copySlide(app.game, openSlide());
+    toast('Slide copied: 📋 Paste slide by the tabs puts it in as a new slide (its ▾: over another), here or in another clue or game');
+  }
+  /** 📋 Paste slide: a new slide after the question slide open (from the Answer or a card's tab: before the answer), or over the open one. */
+  function pasteSlide(over: boolean): void {
+    if (!clipboard.slide) return void toast('Copy a slide first (📋 Copy slide, or Ctrl+C on its tab)');
+    if (!over) {
+      const after = shown === 'q' ? at : qslides.length - 1;
+      slides(`Pasted a slide as question slide ${after + 2} of ${tileName()}`, () => insertClueSlide(clue, after, takeCopiedSlide(app.game)!));
+      return void focusQuestion();
+    }
+    const target = openSlide();
+    const here: Place = { tab: 'round', round: round.id, part: openPart() };
+    record(
+      `Pasted a slide over ${openName()} of ${tileName()}`,
+      () => {
+        const s = takeCopiedSlide(app.game)!;
+        target.background = s.background;
+        target.elements = s.elements;
+      },
+      { place: here, undoPlace: here, notify: true },
+    );
+  }
+  /** A card's ⧉ Duplicate card, ◀ ▶ and 🗑 Delete card; else the question slide's (none on the Answer). */
+  const duplicateOpen = () => (shown === 'card' ? duplicateCardTab() : shown === 'q' ? duplicateSlide() : undefined);
+  function moveOpen(d: -1 | 1): void {
+    if (shown === 'card') return moveCardTab(d);
+    if (shown === 'q' && at + d >= 0 && at + d < qslides.length) moveSlide(d);
+  }
+  function deleteOpen(): void {
+    if (shown === 'card') return deleteCardTab();
+    if (shown === 'q' && qslides.length > 1) deleteSlide();
+  }
+  /** Open tab `i` (0…n-1 the question slides, n…n+k-1 the cards, n+k the answer). */
+  function openTab(i: number): void {
+    const n = qslides.length;
+    if (i >= n + cards.length) side = 'a';
+    else if (i >= n) ((side = 'card'), (ci = i - n));
+    else ((side = 'q'), (qi = i));
+  }
+  /** Question slide `i`'s tab name, as its menu heads it. */
+  const tabName = (i: number) => (qslides.length > 1 ? `Question ${i + 1}` : 'Question slide');
+  /** The open tab's menu (a right-click on a tab opens that tab first). */
+  function tabMenu() {
+    const c = shown === 'card' ? card : undefined;
+    return slideTabMenu(
+      {
+        tab: shown,
+        name: c ? `🤫 ${clueCardName(c, cardAt)}` : shown === 'a' ? 'Answer slide' : tabName(at),
+        at: c ? cardAt : at,
+        count: c ? cards.length : qslides.length,
+        copied: !!clipboard.slide,
+        card: c && { empty: !slideHasContent(c), answer: slideHasContent(clue.answerSlide), phone: phoneView, full: cards.length >= MAX_CARDS },
+      },
+      {
+        duplicate: duplicateOpen,
+        copy: copyOpen,
+        paste: pasteSlide,
+        move: moveOpen,
+        remove: deleteOpen,
+        add: addSlide,
+        rename: () => void focusName(),
+        sameAsAnswer: copyAnswer,
+        phone: () => (phoneView = !phoneView),
+      },
+    );
+  }
+  function rightClick(e: MouseEvent, i: number): void {
+    // (The tab it's for opens first: its menu acts there.)
+    openTab(i);
+    showMenu(e, tabMenu());
+  }
+
   // ---------- The slide tabs' keys ----------
   /** Many question slides: short tab names (Q1, Q2…), so the tabs stay on one line. */
   const SHORT_TABS = 4;
@@ -234,13 +330,24 @@
     // The tabs in order: 0…n-1 the question slides, n…n+k-1 the cards, n+k the answer.
     const now = shown === 'a' ? n + k : shown === 'card' ? n + cardAt : at;
     const mod = e.ctrlKey || e.metaKey;
+    const key = e.key.toLowerCase();
     const open = (i: number) => {
       e.preventDefault();
-      if (i >= n + k) side = 'a';
-      else if (i >= n) ((side = 'card'), (ci = i - n));
-      else ((side = 'q'), (qi = i));
+      openTab(i);
       focusTab();
     };
+    if (isMenuKey(e)) return void keyMenu(e, tabMenu(), e.target as HTMLElement);
+    if (mod && !e.altKey && !e.shiftKey && key === 'c' && !copyIsTheBrowsers(e.currentTarget as Element, window.getSelection())) {
+      // The whole slide (not what's selected on it, nor the browser's copy).
+      e.preventDefault();
+      return copyOpen();
+    }
+    if (mod && !e.altKey && !e.shiftKey && key === 'v' && shown !== 'card' && clipboard.slide && clipboard.slideNewest) {
+      // The copied slide as a new one (items or a picture copied since go on the slide as before, as on a card's tab).
+      e.preventDefault();
+      pasteSlide(false);
+      return void focusTab();
+    }
     if (!mod && !e.altKey && !e.shiftKey) {
       if (e.key === 'ArrowLeft') return open(Math.max(0, now - 1));
       if (e.key === 'ArrowRight') return open(Math.min(n + k, now + 1));
@@ -251,23 +358,27 @@
         return void focusName();
       }
     }
-    if (mod && !e.altKey && !e.shiftKey && e.key.toLowerCase() === 'd') {
+    if (mod && !e.altKey && !e.shiftKey && key === 'd') {
       // (Never the browser's Bookmark this page, on the Answer tab either.)
       e.preventDefault();
       if (shown === 'q') {
         slides(`Duplicated question slide ${at + 1} of ${tileName()}`, () => duplicateClueSlide(clue, at));
         focusTab();
+      } else if (shown === 'card') {
+        duplicateCardTab();
+        focusTab();
       }
       return;
     }
-    if (shown !== 'q' || n < 2) return;
-    if (e.altKey && !mod && !e.shiftKey && (e.key === 'ArrowLeft' || e.key === 'ArrowRight')) {
+    if (e.altKey && !mod && !e.shiftKey && (e.key === 'ArrowLeft' || e.key === 'ArrowRight') && (shown === 'card' ? k > 1 : shown === 'q' && n > 1)) {
       // (Not the next clue, as Alt+arrows are elsewhere in the clue.)
       e.preventDefault();
-      const d = e.key === 'ArrowLeft' ? -1 : 1;
-      if (at + d >= 0 && at + d < n) moveSlide(d);
+      moveOpen(e.key === 'ArrowLeft' ? -1 : 1);
       focusTab();
-    } else if ((e.key === 'Delete' || e.key === 'Backspace') && !mod && !e.altKey) {
+      return;
+    }
+    if (shown !== 'q' || n < 2) return;
+    if ((e.key === 'Delete' || e.key === 'Backspace') && !mod && !e.altKey) {
       e.preventDefault();
       deleteSlide();
       focusTab();
@@ -617,7 +728,7 @@
           <!-- The question slides in the order they show, then the answer. -->
           <!-- (One Tab stop, the open slide's: ←/→ go along, see tabKey.) -->
           <div class="tablist" role="tablist" aria-label="Slides" tabindex="-1" bind:this={tablist} onkeydown={tabKey}>
-            {#each qslides as _, i (i)}
+            {#each qslides as s, i (i)}
               {@const on = shown === 'q' && at === i}
               <button
                 role="tab"
@@ -627,9 +738,14 @@
                 data-qslide={i + 1}
                 aria-label={qslides.length > SHORT_TABS ? `Question ${i + 1}` : undefined}
                 onclick={() => ((side = 'q'), (qi = i))}
-                title={qslides.length > 1
-                  ? `Question slide ${i + 1} of ${qslides.length}: viewers see them in this order, then the answer. On the tab: Alt+←/→ move it, Ctrl+D duplicates it, Delete deletes it`
-                  : undefined}
+                oncontextmenu={(e) => rightClick(e, i)}
+                title={slideTabTitle(
+                  qslides.length > SHORT_TABS ? `Q${i + 1}` : tabName(i),
+                  slideText(s),
+                  qslides.length > 1
+                    ? `Question slide ${i + 1} of ${qslides.length}: viewers see them in this order, then the answer. On the tab: Alt+←/→ move it, Ctrl+D duplicates it, Delete deletes it; right-click: its menu`
+                    : 'Right-click: its menu',
+                )}
                 >{qslides.length > SHORT_TABS ? `Q${i + 1}` : qslides.length > 1 ? `Question ${i + 1}` : 'Question slide'}</button
               >
             {/each}
@@ -646,7 +762,8 @@
                 aria-label={shortCards ? (c.name?.trim() ? `Card ${i + 1}: ${c.name.trim()}` : `Card ${i + 1}`) : undefined}
                 onclick={() => ((side = 'card'), (ci = i))}
                 ondblclick={() => ((side = 'card'), (ci = i), focusName())}
-                title="🤫 {clueCardName(c, i)}: only the players you hand it to see it, never on stream. It starts with {goesTo(c.to, false)}. F2: rename it"
+                oncontextmenu={(e) => rightClick(e, qslides.length + i)}
+                title="🤫 {clueCardName(c, i)}: only the players you hand it to see it, never on stream. It starts with {goesTo(c.to, false)}. F2: rename it; right-click: its menu"
                 >{shortCards ? `🤫 ${i + 1}` : `🤫 ${clueCardName(c, i)}`}</button
               >
             {/each}
@@ -656,35 +773,38 @@
               aria-selected={shown === 'a'}
               tabindex={shown === 'a' ? 0 : -1}
               onclick={() => (side = 'a')}
-              title={qslides.length > 1 || cards.length ? 'The answer slide: hidden until revealed' : undefined}
+              oncontextmenu={(e) => rightClick(e, qslides.length + cards.length)}
+              title={slideTabTitle('Answer', slideText(clue.answerSlide), 'Hidden until revealed. Right-click: its menu')}
               >{qslides.length > 1 || cards.length ? 'Answer' : 'Answer slide (hidden until revealed)'}</button
             >
           </div>
-          <button
-            class="ghost add"
-            onclick={addSlide}
-            title={shown === 'q' ? 'Add a question slide after this one: lead in, then show more before the answer' : 'Add a question slide before the answer'}>＋ Add slide</button
+          <SlideGroup
+            tab={shown}
+            at={shown === 'card' ? cardAt : at}
+            count={shown === 'card' ? cards.length : qslides.length}
+            copied={!!clipboard.slide}
+            full={cards.length >= MAX_CARDS}
+            addTitle={shown === 'q' ? 'Add a question slide after this one: lead in, then show more before the answer' : 'Add a question slide before the answer'}
+            onadd={addSlide}
+            onduplicate={duplicateOpen}
+            oncopy={copyOpen}
+            onpaste={pasteSlide}
+            onmove={moveOpen}
+            ondelete={deleteOpen}
           >
-          <button
-            class="ghost add"
-            onclick={newCardTab}
-            disabled={cards.length >= MAX_CARDS}
-            title={cards.length >= MAX_CARDS
-              ? `A clue holds ${MAX_CARDS} cards`
-              : clue.type === 'partner'
-                ? 'Add a 🤫 card: a slide only the players you hand it to see (never on stream)'
-                : 'Add a 🤫 card: a slide only the players you send it to see (never on stream), offered in the host panel when this tile is played (a private question, a tip before a Daily Double’s wager…)'}>＋ Card</button
-          >
-          {#if qslides.length > 1 && shown === 'q'}
-            <span class="spacer"></span>
-            <div class="slidetools" role="group" aria-label="Question slide {at + 1} of {qslides.length}">
-              <span class="muted small">Slide {at + 1} of {qslides.length}</span>
-              <button class="ghost small" onclick={() => moveSlide(-1)} disabled={at === 0} title="Move this slide earlier" aria-label="Move slide earlier">◀ Earlier</button>
-              <button class="ghost small" onclick={() => moveSlide(1)} disabled={at === qslides.length - 1} title="Move this slide later" aria-label="Move slide later">Later ▶</button>
-              <button class="ghost small" onclick={duplicateSlide} title="A copy of this slide, right after it">⧉ Duplicate</button>
-              <button class="ghost small danger" onclick={deleteSlide} title="Delete this question slide (Ctrl+Z brings it back)">🗑 Delete slide</button>
-            </div>
-          {/if}
+            {#snippet cardButton()}
+              <button
+                class="ghost add"
+                onclick={newCardTab}
+                disabled={cards.length >= MAX_CARDS}
+                title={cards.length >= MAX_CARDS
+                  ? `A clue holds ${MAX_CARDS} cards`
+                  : clue.type === 'partner'
+                    ? 'Add a 🤫 card: a slide only the players you hand it to see (never on stream)'
+                    : 'Add a 🤫 card: a slide only the players you send it to see (never on stream), offered in the host panel when this tile is played (a private question, a tip before a Daily Double’s wager…)'}>＋ Card</button
+              >
+            {/snippet}
+          </SlideGroup>
         </div>
         {#if shown === 'card' && card}
           <CardBar
@@ -699,7 +819,6 @@
             bind:phoneView
             ongoes={setGoesTo}
             oncopy={copyAnswer}
-            ondelete={deleteCardTab}
             ondone={focusTab}
           />
         {/if}
@@ -814,15 +933,15 @@
     min-height: calc(2lh + 14px);
     max-height: calc(4lh + 14px);
   }
+  /* One line however many slides and cards from a laptop up (short names past four; the tabs scroll if they must). */
   .tabs {
     display: flex;
     gap: 4px;
     align-items: flex-end;
-    flex-wrap: wrap;
     border-bottom: 1px solid var(--border);
   }
-  /* One line however many slides (short names past four; it scrolls if it must). */
   .tablist {
+    flex: 0 1 auto;
     display: flex;
     gap: 4px;
     min-width: 0;
@@ -842,22 +961,13 @@
   .card-tab.narrow {
     max-width: 12ch;
   }
-  .tabs button {
+  .tablist button {
     border-radius: 6px 6px 0 0;
   }
-  /* ＋ Add slide sits quietly after the tabs. */
+  /* ＋ Card sits quietly after ＋ Add slide. */
   .tabs .add {
     font-size: 12px;
     opacity: 0.8;
-  }
-  .slidetools {
-    display: flex;
-    gap: 4px;
-    align-items: center;
-    padding-bottom: 3px;
-  }
-  .slidetools button {
-    border-radius: 6px;
   }
   .tabs button.on {
     background: var(--accent-fill);
@@ -865,6 +975,9 @@
     color: #fff;
   }
   @media (max-width: 900px) {
+    .tabs {
+      flex-wrap: wrap;
+    }
     .quick,
     .quick.four {
       grid-template-columns: 1fr;

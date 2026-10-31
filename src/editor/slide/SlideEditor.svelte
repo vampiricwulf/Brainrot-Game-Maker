@@ -33,7 +33,7 @@
   import { getContext, onDestroy, onMount, setContext, tick, untrack, type Snippet } from 'svelte';
   import { app, toast, editedGame } from '../../lib/app.svelte';
   import type { FitResult } from '../../lib/autofit';
-  import { adoptMedia, adoptUsedBy, clipboard, copyElements, copyFromMenu, elementMediaIds, holdMedia, holdUsedBy, pastingGone, pastingOurs } from '../../lib/clipboard.svelte';
+  import { adoptMedia, adoptUsedBy, clipboard, copyElements, copyFromMenu, copySlide as copyWholeSlide, elementMediaIds, pastingGone, pastingOurs, takeCopiedSlide } from '../../lib/clipboard.svelte';
   import { announce } from '../../lib/announce';
   import { copyIsTheBrowsers } from '../../lib/undokeys';
   import { dropdown } from '../../lib/menustate.svelte';
@@ -680,23 +680,19 @@
     tell(`Style applied to ${slides}`, undoApi.top !== top ? undoApi.undo : undefined);
   }
 
+  /** 📋 Copy slide (the slide's menu): the slide tabs' 📋 Paste slide puts it in as a new slide, or over another. */
   function copySlide(): void {
-    clipboard.slide = clone(slide);
-    holdMedia(game);
-    holdUsedBy(game, clipboard.slide);
-    toast('Slide copied');
+    copyWholeSlide(game, slide);
+    toast('Slide copied: 📋 Paste over this slide (right-click an empty spot) or 📋 Paste slide by the slide tabs');
   }
 
   // Replace everything on this slide with the copied one. It's one undo step, so the canvas offers Undo
   // instead of asking first (a browser dialog would show on stream mid-show).
   function pasteSlide(): void {
     if (!clipboard.slide) return;
-    const s = clone(clipboard.slide);
-    for (const e of s.elements) e.id = newId();
     // (Its files, wheels and dice from another game come in the same step: one Ctrl+Z takes them out too.)
     undoApi.step('Pasted a slide', () => {
-      adoptMedia(game, elementMediaIds(s.elements, s.background));
-      adoptUsedBy(game, s);
+      const s = takeCopiedSlide(game)!;
       slide.background = s.background;
       slide.elements = s.elements;
       selected = [];
@@ -1202,10 +1198,9 @@
     </fieldset>
     <!-- One group that keeps to the right and wraps as a whole, so 🔈 ↶ ↷ never end up alone on a line.
          Starting a preview doesn't change its width (which could wrap it and shrink the slide): ↻ Replay
-         is always there, hidden until then, and the Preview button has room for both of its labels. -->
+         is always there, hidden until then, and the Preview button has room for both of its labels. (The whole
+         slide's 📋 Copy and Paste are by the slide tabs, and in the slide's right-click menu.) -->
     <div class="right">
-      <button class="ghost small" onclick={copySlide} title="Copy this whole slide, to paste over another one">📋 Copy slide</button>
-      <button class="ghost small" onclick={pasteSlide} disabled={previewing || !clipboard.slide} title={clipboard.slide ? 'Replace everything on this slide with the copied one (Undo brings it back)' : 'Copy a slide first (📋 Copy slide)'}>📋 Paste slide</button>
       <button class="ghost small" class:hide={!previewing} onclick={() => previewKey++} title="Play the animations again">↻ Replay</button>
       <button class="small swap" class:primary={previewing} onclick={togglePreview} title={previewing ? 'Back to editing (Esc)' : 'Play entrance animations and media'}>
         <span class:hide={previewing}>▶ Preview</span>

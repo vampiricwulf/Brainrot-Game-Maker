@@ -142,6 +142,19 @@ export function duplicateClueSlide(clue: SlideHolder, at: number): number {
   return at + 1;
 }
 
+/**
+ * `slide` (a copied one, its ids fresh) as a question slide right after slide `at` (-1: first; past the last: at the
+ * end). Returns where it is.
+ */
+export function insertClueSlide(clue: SlideHolder, at: number, slide: Slide): number {
+  const list = questionSlides(clue);
+  const i = Math.min(Math.max(0, at + 1), list.length);
+  const s: Slide = { background: slide.background, elements: slide.elements };
+  list.splice(i, 0, s);
+  setQuestionSlides(clue, list);
+  return i;
+}
+
 /** Take question slide `at` out (never the only one: a clue always has one). Returns the slide to show then. */
 export function deleteClueSlide(clue: SlideHolder, at: number): number {
   const list = questionSlides(clue);

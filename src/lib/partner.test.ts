@@ -7,10 +7,12 @@ import {
   cardKept,
   cardsToFinish,
   deleteCard,
+  duplicateCard,
   FINAL_GOES_TO,
   finalGoesToLabel,
   goesToLabel,
   missCosts,
+  moveCard,
   partnerRules,
   partWho,
   partWords,
@@ -252,6 +254,23 @@ describe('🤫 cards', () => {
     expect(clue.cards![0].id).toBe(second);
     while (clue.cards) deleteCard(clue, 0);
     expect(clue.cards).toBeUndefined();
+  });
+
+  it('⧉ Duplicate card puts a copy of its own right after it (up to six), and ◀ ▶ move one among the cards', () => {
+    const clue = partnerClue();
+    addCard(clue);
+    const [a, b] = clue.cards!;
+    setSlideText(a, 'Tip');
+    setCardName(a, 'Clue tip');
+    expect(duplicateCard(clue, 0)).toBe(1);
+    const copy = clue.cards![1];
+    expect([copy.name, copy.to, copy.id === a.id, copy.elements[0].id === a.elements[0].id]).toEqual(['Clue tip', a.to, false, false]);
+    expect(clue.cards!.map((c) => c.id)).toEqual([a.id, copy.id, b.id]);
+    expect(moveCard(clue, 2, -1)).toBe(1);
+    expect(clue.cards!.map((c) => c.id)).toEqual([a.id, b.id, copy.id]);
+    expect(moveCard(clue, 0, -1)).toBe(0);
+    while (addCard(clue));
+    expect(duplicateCard(clue, 0)).toBe(-1);
   });
 
   it('a Final’s: ＋ Card starts one with everyone playing it, up to six; deleting the last takes the list away', () => {

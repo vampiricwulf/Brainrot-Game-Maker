@@ -264,6 +264,21 @@ RollEvent  { id, ts, source: 'wheel' | 'dice', presetName?, result: string /* la
   there), a link its Link box, a shape its Fill (a line its Color); the item menu's ✎ Edit shows the keys for every
   kind. F2 edits a text box's text, and renames any other item in the Layers list. After an item is added (🖼 Image,
   🎬 Video, 🔊 Audio, 🌐 Link, a drop or a paste) the keys are on the slide.
+- **Slide tabs** (a clue's, the tiebreaker's, a Final's, a slides round's): right after them, one group for the open
+  slide (SlideGroup), always there and greyed where it can't act: ＋ Add slide (＋ Card) · ⧉ Duplicate slide · 📋 Copy
+  slide · 📋 Paste slide (the safe paste: the copied slide as a new slide after this one, before the answer from the
+  Answer's tab; its ▾: Paste over this slide, one undo step with ↶ Undo in the note) · ◀ ▶ · 🗑 Delete slide apart at the
+  right. On a 🤫 card's tab they're the card's: ⧉ Duplicate card, ◀ ▶ among the cards, 🗑 Delete card (it left the card's
+  bar). The tab row stays one line from 900 px up (the tabs scroll first). A right-click on a tab, or Shift+F10 on it,
+  opens it with its menu (slidetabs.ts, in the one order): a question slide's ⧉ Duplicate slide · 📋 Copy slide · 📋
+  Paste as a new slide after it · 📋 Paste over it · ◀ Move earlier · ▶ Move later · 🗑 Delete slide; the Answer's 📋
+  Copy slide · 📋 Paste as a new slide before it · 📋 Paste over it · ＋ Add a question slide before it; a card's ⧉ Same
+  as the answer · 📱 On their phone · ✎ Rename · ⧉ Duplicate card · 📋 Copy slide · ◀ ▶ · 🗑 Delete card. Ctrl+C on a
+  focused tab copies its slide; Ctrl+V pastes the copied slide as a new one when a slide was copied after any items (a
+  card's tab, or items copied since, keep their paste onto the slide). Ctrl+D and Alt+←/→ work on a card's tab too. A
+  tab's tooltip starts with its slide's first words ("S3 · “House rules”"). The slide editor's toolbar keeps only what
+  goes on a slide, the background, ▶ Preview, sound and ↶ ↷ (📋 Copy slide and 📋 Paste over this slide are in the
+  slide's right-click menu everywhere, for slides with no tabs too).
 - **The selected item's bar** (ItemBar), pinned at the top of the side panel, there in every state so the panel never
   moves as things are selected: the item's icon and name (several: "3 items selected"; none: "Nothing selected", its
   buttons greyed) and ⋯ for its menu (none selected: the slide's), then its edit (as its menu names it: ✎ Edit text, ✎

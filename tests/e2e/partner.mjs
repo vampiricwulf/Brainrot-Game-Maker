@@ -258,6 +258,14 @@ try {
   // Delete on a card's tab does nothing (as on the Answer's): 🗑 Delete card does it.
   await page.keyboard.press('Delete');
   assert((await tabs.getByRole('tab').count()) === 4, 'Delete on a card’s tab deletes nothing');
+  // A card's tab has its menu too: its own verbs, then ✎ Rename, ⧉ Duplicate card, the moves and 🗑 Delete card last.
+  await tabs.getByRole('tab', { name: '🤫 Card 2' }).click({ button: 'right' });
+  const cardMenu = (await page.getByRole('menu').getByRole('menuitem').allInnerTexts()).map((t) => t.split('\n')[0].trim());
+  const cardWant = ['⧉ Same as the answer', '📱 On their phone', '✎ Rename', '⧉ Duplicate card', '📋 Copy slide', '◀ Move earlier', '▶ Move later', '🗑 Delete card'];
+  assert(JSON.stringify(cardMenu) === JSON.stringify(cardWant), `a right-click on a card’s tab gives its menu (${cardMenu.join(' | ')})`);
+  await page.keyboard.press('Escape');
+  await page.getByRole('menu').waitFor({ state: 'detached' });
+  // (🗑 Delete card is with the card's other buttons, right after the tabs.)
   await dialog.getByRole('button', { name: '🗑 Delete card' }).click();
   assert(JSON.stringify(await tabNames()) === JSON.stringify(['Question slide', '🤫 Card 1', 'Answer']), '🗑 Delete card takes it out');
   await away();

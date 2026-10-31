@@ -4,7 +4,7 @@
 -->
 <script lang="ts">
   import { tick, untrack } from 'svelte';
-  import { app } from '../lib/app.svelte';
+  import { app, toast } from '../lib/app.svelte';
   import { step as record } from '../lib/history.svelte';
   import { take, type ClueSide, type Place, type Side } from '../lib/nav.svelte';
   import { cardFromAnswer, ownTextTargets, textStyleTargets } from '../lib/ops';
@@ -13,6 +13,7 @@
     clueCardName,
     clueCardWords,
     finalName,
+    MAX_CARDS,
     questionSlides,
     setSlideText,
     slideText,
@@ -23,7 +24,7 @@
     type Slide,
     type TextEl,
   } from '../lib/model';
-  import { addCard, deleteCard, FINAL_GOES_TO, finalGoesToLabel } from '../lib/partner';
+  import { addCard, deleteCard, duplicateCard, FINAL_GOES_TO, finalGoesToLabel, moveCard } from '../lib/partner';
   import { clip } from '../lib/buzzproto';
   import { followClueText } from '../lib/cluetext';
   import CardBar from './CardBar.svelte';
@@ -107,6 +108,17 @@
     cardStep(`Deleted ${clueCardWords(card!, cardAt)} of ${finalName(round)}`, () => deleteCard(round, cardAt), true);
     // (The last one: its bar goes with the button pressed, so the keys go on from the question's tab, not the top.)
     if (!cardSlides(round).length) void tabs?.focusTab();
+  }
+  /** ⧉ Duplicate card: a copy right after it, open. */
+  function duplicateCardTab(): void {
+    if (!card) return;
+    if (cards.length >= MAX_CARDS) return void toast(`A Final holds ${MAX_CARDS} cards`);
+    cardStep(`Duplicated ${clueCardWords(card, cardAt)} of ${finalName(round)}`, () => duplicateCard(round, cardAt));
+  }
+  /** ◀ ▶ on a card: one place earlier or later among the cards (its number changes with it). */
+  function moveCardTab(d: -1 | 1): void {
+    if (!card || cardAt + d < 0 || cardAt + d >= cards.length) return;
+    cardStep(`Moved ${clueCardWords(card, cardAt)} of ${finalName(round)} ${d < 0 ? 'earlier' : 'later'}`, () => moveCard(round, cardAt, d));
   }
   /** Who the open card starts with in the Final's panel. */
   function setGoesTo(to: CardGoesTo): void {
@@ -240,6 +252,12 @@
     onname: () => void tick().then(() => bar?.focusName()),
     title: (c, i) => `🤫 ${clueCardName(c, i)}: only the players you send it to see it, never on stream. It starts with ${finalGoesToLabel(c.to, false)}. F2: rename it`,
     place: (id) => ({ tab: 'round', round: round.id, part: { kind: 'final', side: 'card', slide: id } }),
+    onduplicate: duplicateCardTab,
+    onmove: moveCardTab,
+    ondelete: deleteCardTab,
+    onsame: copyAnswer,
+    onphone: () => (phoneView = !phoneView),
+    phone: phoneView,
   }}
   onadded={() => void tick().then(() => qField?.focus())}
 />
@@ -256,7 +274,6 @@
     bind:phoneView
     ongoes={setGoesTo}
     oncopy={copyAnswer}
-    ondelete={deleteCardTab}
     ondone={() => void tabs?.focusTab()}
   />
 {/if}

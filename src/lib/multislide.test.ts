@@ -3,7 +3,7 @@
 import { describe, expect, it } from 'vitest';
 import { jeopardyGame } from './testgame';
 import { migrateGame, newFinalRound, newId, newImageEl, questionSlides, setSlideText, slideText, slidesOfClue, textSlide, type BoardRound, type Clue, type Game, type TextEl } from './model';
-import { addClueSlide, clearClue, clone, clueHasContent, copyClue, deleteClueSlide, duplicateClueSlide, moveClueSlide, reidRound, textStyleTargets } from './ops';
+import { addClueSlide, clearClue, clone, clueHasContent, copyClue, deleteClueSlide, duplicateClueSlide, insertClueSlide, moveClueSlide, reidRound, textStyleTargets } from './ops';
 import { backToBoard, clueSlideIndex, finalNext, newSession, openClue, reveal, shownQuestionSlide, slidePosition, startTiebreaker, stepSlide, toolOnlyClue, unreveal } from './session';
 import { allSlides, mediaUsage } from './usage';
 import { diff } from './historyops';
@@ -171,6 +171,20 @@ describe('editing question slides', () => {
     const targets = textStyleTargets(game, board(game), from, 'game-qa');
     expect(targets).toContain(game.tiebreaker.questionSlide.elements[0]);
     expect(targets).toContain(game.tiebreaker.answerSlide.elements[0]);
+  });
+});
+
+describe('a copied slide pasted as a new one', () => {
+  it('goes in right after the slide it was pasted on, first with -1, last past the end', () => {
+    const { clue } = threeSlides();
+    expect(insertClueSlide(clue, 0, textSlide('Pasted'))).toBe(1);
+    expect(texts(clue)).toEqual(['Lead-in', 'Pasted', 'More', 'Last']);
+    expect(insertClueSlide(clue, -1, textSlide('First'))).toBe(0);
+    expect(insertClueSlide(clue, 99, textSlide('End'))).toBe(5);
+    expect(texts(clue)).toEqual(['First', 'Lead-in', 'Pasted', 'More', 'Last', 'End']);
+    // (The first is questionSlide, with no id; the others have theirs.)
+    expect('id' in clue.questionSlide).toBe(false);
+    expect(clue.extraSlides!.every((s) => !!s.id)).toBe(true);
   });
 });
 

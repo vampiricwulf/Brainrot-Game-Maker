@@ -221,6 +221,30 @@ export function deleteCard(holder: Pick<Clue, 'cards'>, at: number): number {
 }
 
 /**
+ * ⧉ Duplicate a card (a tile's or a Final's): a copy right after it, with its own ids, the same name and who it goes
+ * to. Returns where it is, or -1 at MAX_CARDS.
+ */
+export function duplicateCard(holder: Pick<Clue, 'cards'>, at: number): number {
+  const cards = cardSlides(holder);
+  if (!cards[at] || cards.length >= MAX_CARDS) return -1;
+  const copy: ClueCard = JSON.parse(JSON.stringify(cards[at]));
+  copy.id = newId();
+  for (const e of copy.elements) e.id = newId();
+  holder.cards = [...cards.slice(0, at + 1), copy, ...cards.slice(at + 1)];
+  return at + 1;
+}
+
+/** Move card `at` one place earlier (-1) or later (1) among the cards (its number changes, its id doesn't). Returns where it is. */
+export function moveCard(holder: Pick<Clue, 'cards'>, at: number, d: -1 | 1): number {
+  const cards = [...cardSlides(holder)];
+  const to = at + d;
+  if (!cards[at] || to < 0 || to >= cards.length) return at;
+  [cards[at], cards[to]] = [cards[to], cards[at]];
+  holder.cards = cards;
+  return to;
+}
+
+/**
  * Who a card goes to, as its Goes to says it ("the describer (the partner)", "both of them", "nobody (I'll choose when
  * playing)"); `long` false: just who ("the describer", "nobody").
  */

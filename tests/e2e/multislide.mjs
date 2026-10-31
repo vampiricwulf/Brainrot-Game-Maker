@@ -60,9 +60,9 @@ try {
     return page.evaluate(() => window.lastD === true);
   };
 
-  // One slide: the plain tabs, a quiet ＋ Add slide, no slide tools.
+  // One slide: the plain tabs, then the slide's group (＋ Add slide…), its 🗑 Delete slide greyed.
   assert(JSON.stringify(await tabNames()) === JSON.stringify(['Question slide', 'Answer slide (hidden until revealed)']), 'a clue starts with its one question slide and the answer');
-  assert((await dialog.getByRole('button', { name: '🗑 Delete slide' }).count()) === 0, 'no slide tools on a one-slide clue');
+  assert(await dialog.getByRole('button', { name: '🗑 Delete slide' }).isDisabled(), 'on a one-slide clue, the slide group’s 🗑 Delete slide is there, greyed');
   await q.fill('This started as a lead-in');
   await dialog.locator('[data-field="a"]').fill('Skibidi Toilet');
   // Ctrl+D on the only question slide's tab duplicates it too; on the Answer tab it does nothing. Neither bookmarks the page.
@@ -83,7 +83,7 @@ try {
   await q.fill('It is a YouTube series');
   await addSlide.click();
   await q.fill('Toilets with heads');
-  assert((await dialog.getByText('Slide 3 of 3', { exact: true }).count()) === 1, 'the slide tools say Slide 3 of 3');
+  assert((await dialog.locator('label.field', { has: q }).innerText()).includes('slide 3 of 3'), 'the Question field says Slide 3 of 3');
 
   await page.screenshot({ path: 'test-results/multislide-editor.png' });
   // The first slide still has its own text.
@@ -94,8 +94,8 @@ try {
   // Duplicate, move and delete: each one an undo step.
   await away();
   await tabs.getByRole('tab', { name: 'Question 2' }).click();
-  await dialog.getByRole('button', { name: '⧉ Duplicate' }).click();
-  assert((await tabs.getByRole('tab').count()) === 5, '⧉ Duplicate adds a copy');
+  await dialog.getByRole('button', { name: '⧉ Duplicate slide' }).click();
+  assert((await tabs.getByRole('tab').count()) === 5, '⧉ Duplicate slide adds a copy');
   assert((await q.inputValue()) === 'It is a YouTube series', 'the copy opens, with the slide’s text');
   await away();
   await undo();
@@ -159,6 +159,48 @@ try {
   await undo();
   assert((await tabs.getByRole('tab').count()) === 4, 'Ctrl+Z takes the added slides back');
   await tabs.getByRole('tab', { name: 'Question 3' }).click();
+
+  // ---------- The open slide's group, right after the tabs, and the tabs' menus ----------
+  {
+    const group = dialog.getByRole('group', { name: 'This slide' });
+    await page.setViewportSize({ width: 1280, height: 720 });
+    const [t, g, d] = await Promise.all([tabs.boundingBox(), group.boundingBox(), dialog.boundingBox()]);
+    assert(!!t && !!g && !!d && Math.abs(t.y + t.height - (g.y + g.height)) < 8 && g.x >= t.x + t.width - 1 && g.x + g.width <= d.x + d.width, 'at 1280×720 the slide’s group is on the tabs’ line, right after them');
+    await page.setViewportSize({ width: 1400, height: 900 });
+    const first = await tabs.getByRole('tab', { name: 'Question 1' }).getAttribute('title');
+    assert(first.startsWith('Question 1 · “Lead-in: a meme from 2023”'), `a tab’s tooltip gives its slide’s first words (${first.split('\n')[0]})`);
+    // A right-click on a tab opens it, with its menu in the one order.
+    await tabs.getByRole('tab', { name: 'Question 2' }).click({ button: 'right' });
+    const items = (await page.getByRole('menu').getByRole('menuitem').allInnerTexts()).map((x) => x.split('\n')[0].trim());
+    const want = ['⧉ Duplicate slide', '📋 Copy slide', '📋 Paste as a new slide after it', '📋 Paste over it', '◀ Move earlier', '▶ Move later', '🗑 Delete slide'];
+    assert(JSON.stringify(items) === JSON.stringify(want) && (await selected().innerText()) === 'Question 2', `a right-click on a tab opens it and gives its menu (${items.join(' | ')})`);
+    await page.getByRole('menuitem', { name: /📋 Copy slide/ }).click();
+    // 📋 Paste slide: the copy as a new slide right after the open one, one undo step.
+    await group.getByRole('button', { name: '📋 Paste slide' }).click();
+    assert(
+      JSON.stringify(await tabNames()) === JSON.stringify(['Question 1', 'Question 2', 'Question 3', 'Question 4', 'Answer']) && (await selected().innerText()) === 'Question 3' && (await q.inputValue()) === 'It is a YouTube series',
+      '📋 Paste slide puts the copy in as a new slide after the open one, and opens it',
+    );
+    await away();
+    await undo();
+    assert((await tabs.getByRole('tab').count()) === 4, 'one Ctrl+Z takes it out');
+    // Ctrl+V on a tab pastes it after that slide too.
+    await tabs.getByRole('tab', { name: 'Question 1' }).click();
+    await page.keyboard.press('Control+v');
+    assert((await tabs.getByRole('tab').count()) === 5 && (await selected().innerText()) === 'Question 2' && (await q.inputValue()) === 'It is a YouTube series', 'Ctrl+V on a tab pastes the copied slide after it');
+    await away();
+    await undo();
+    // The ▾ beside it pastes over the open slide instead (the Answer here), with Undo.
+    await tabs.getByRole('tab', { name: 'Answer' }).click();
+    await group.getByRole('button', { name: 'More ways to paste' }).click();
+    await page.getByRole('menuitem', { name: '📋 Paste over the answer slide' }).click();
+    const answer = dialog.locator('[data-field="a"]');
+    assert((await answer.inputValue()) === 'It is a YouTube series', '▾ 📋 Paste over the answer slide replaces what’s on it');
+    await away();
+    await undo();
+    assert((await answer.inputValue()) === 'Skibidi Toilet' && (await tabs.getByRole('tab').count()) === 4, 'and one Ctrl+Z puts the answer back');
+    await tabs.getByRole('tab', { name: 'Question 3' }).click();
+  }
 
   // The history names each step.
   await page.keyboard.press('Escape');

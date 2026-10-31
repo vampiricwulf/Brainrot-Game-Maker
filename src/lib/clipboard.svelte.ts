@@ -47,6 +47,8 @@ const clone = <T>(v: T): T => JSON.parse(JSON.stringify(v));
 export const clipboard = $state<{
   elements: SlideElement[];
   slide: Slide | null;
+  /** The whole slide was copied after the items: Ctrl+V on a slide's tab pastes it (else the items go on the slide). */
+  slideNewest: boolean;
   /** An RPG screen, with its looks, music and notes. */
   screen: Screen | null;
   /** A board clue: both slides and its settings. */
@@ -70,7 +72,7 @@ export const clipboard = $state<{
   token: string;
   /** The readable text/plain part of that copy. */
   text: string;
-}>({ elements: [], slide: null, screen: null, clue: null, spaces: [], actions: [], round: null, media: [], wheels: [], dice: [], items: [], shops: [], statFields: [], token: '', text: '' });
+}>({ elements: [], slide: null, slideNewest: false, screen: null, clue: null, spaces: [], actions: [], round: null, media: [], wheels: [], dice: [], items: [], shops: [], statFields: [], token: '', text: '' });
 
 /** Custom clipboard type marking our own copies (the text/plain part is readable anywhere). */
 const CLIP_TYPE = 'application/x-brainrot-slide-items';
@@ -161,6 +163,7 @@ export function copyElements(game: Game, from: SlideElement[], data: DataTransfe
   const items = clone(from);
   const words = items.flatMap((x) => (x.kind === 'text' && x.text.trim() ? [x.text] : [])).join('\n');
   clipboard.elements = items;
+  clipboard.slideNewest = false;
   holdMedia(game);
   // (An RPG object's Spin button keeps its wheel.)
   holdUsedBy(game, items);
@@ -169,6 +172,30 @@ export function copyElements(game: Game, from: SlideElement[], data: DataTransfe
   data?.setData('text/plain', clipboard.text);
   data?.setData(CLIP_TYPE, clipboard.token);
   return items.length;
+}
+
+/**
+ * 📋 Copy slide: the whole slide (its background and items, not what holds it: a card's name, who it goes to), with its
+ * files and the wheels, dice… it uses, so it pastes into another clue or game.
+ */
+export function copySlide(game: Game, slide: Slide): void {
+  clipboard.slide = clone({ background: slide.background, elements: slide.elements });
+  clipboard.slideNewest = true;
+  holdMedia(game);
+  holdUsedBy(game, clipboard.slide);
+}
+
+/**
+ * The copied slide to paste, made afresh (new ids), with its files and what it uses brought into `game` that it
+ * hasn't: inside the paste's step, so one Ctrl+Z takes them out too. Null with none copied.
+ */
+export function takeCopiedSlide(game: Game): Slide | null {
+  if (!clipboard.slide) return null;
+  const s = clone(clipboard.slide);
+  for (const e of s.elements) e.id = newId();
+  adoptMedia(game, elementMediaIds(s.elements, s.background));
+  adoptUsedBy(game, s);
+  return { background: s.background, elements: s.elements };
 }
 
 /** A paste is of our own copied items, unless something newer (a link, some text) was copied since. */

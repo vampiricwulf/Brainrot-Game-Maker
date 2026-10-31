@@ -1,7 +1,8 @@
 <!--
   A 🤫 card's bar (a tile's, in the clue editor; a Final's, in its editor): its Card name (the host's own: phones never
-  get it), who it starts with, ⧉ Same as the answer on an empty one, 📱 On their phone and 🗑 Delete card. Typing the
-  name is one undo step (the watcher names it "Renamed card “…”"); Enter in it goes back to the card's tab.
+  get it), who it starts with, ⧉ Same as the answer on an empty one and 📱 On their phone (🗑 Delete card is with the
+  card's other buttons, right after the tabs). Typing the name is one undo step (the watcher names it "Renamed card
+  “…”"); Enter in it goes back to the card's tab.
 -->
 <script lang="ts">
   import { app } from '../lib/app.svelte';
@@ -21,7 +22,6 @@
     phoneView = $bindable(false),
     ongoes,
     oncopy,
-    ondelete,
     ondone,
   }: {
     card: ClueCard;
@@ -41,7 +41,6 @@
     phoneView: boolean;
     ongoes: (to: CardGoesTo) => void;
     oncopy: () => void;
-    ondelete: () => void;
     /** Enter in the Card name box: done naming it (the focus goes back to its tab). */
     ondone: () => void;
   } = $props();
@@ -104,7 +103,7 @@
         >ℹ Its name repeats what’s on the card, the question or the answer: in one window viewers can read a card’s name in the host panel</span
       >{/if}</span
   >
-  <!-- (Together at the end of the bar: when it wraps, they go to the next line side by side, still at its end.) -->
+  <!-- (At the end of the bar: when it wraps, it goes to the next line, still at its end.) -->
   <span class="end">
     <button
       class="small"
@@ -113,7 +112,6 @@
       onclick={() => (phoneView = !phoneView)}
       title="The card exactly as a player’s phone gets it: its words, then its pictures and videos one under another, and what won’t reach a phone">📱 On their phone</button
     >
-    <button class="ghost small danger" onclick={ondelete} title="Delete this card (Ctrl+Z brings it back)">🗑 Delete card</button>
   </span>
 </div>
 

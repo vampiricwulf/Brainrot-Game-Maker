@@ -41,7 +41,8 @@ export interface MenuParts {
   duplicate?: MenuItem;
   cut?: MenuItem;
   copy?: MenuItem;
-  paste?: MenuItem;
+  /** 📋 Paste, and its other ways right after it ("📋 Paste over it"). */
+  paste?: MenuItem | MenuItem[];
   /** ▲ ▼ in a list, ◀ ▶ for tabs and columns, then moves elsewhere ("→ Move to Map 2"). */
   move?: MenuItem[];
   /** ＋ Insert… beside it. */
@@ -72,7 +73,7 @@ export function menuOf(m: MenuParts): MenuEntry[] {
     m.now ?? [],
     m.open ?? [],
     [...(m.verbs ?? []), ...(m.kinds?.items.length ? [{ heading: m.kinds.heading }, ...m.kinds.items] : [])],
-    some(m.rename, m.duplicate, m.cut, m.copy, m.paste),
+    [...some(m.rename, m.duplicate, m.cut, m.copy), ...(m.paste === undefined ? [] : [m.paste].flat())],
     [...(m.move ?? []), ...(m.insert ?? [])],
     m.extras ?? [],
     ...(m.lines ?? []).map((l): MenuEntry[] => [{ heading: l.heading }, ...(l.move ?? []), ...(l.insert ?? []), ...some(l.delete).map(red)]),
