@@ -56,7 +56,7 @@
     if (needsPlayers(a) && !who.length) return void toast('Pick who it’s for first');
     // (For the players picked: nobody picked, it does nothing, and a landing isn't run.)
     if ('who' in a && a.who === 'selected' && !selected.length) return void toast('Pick who it’s for first (1–9)');
-    const go = () => runAction({ game, session, live: app.live, board: round, bs, hide: !dual, selected, chosen: who, teams, offerCard: offerIn(session) }, a, ...spaceActText(game, bs, space, a, on, teams));
+    const go = () => runAction({ game, session, live: app.live, board: round, bs, hide: !dual, selected, chosen: who, teams, offerCard: offerIn(session, `space:${space.id}`) }, a, ...spaceActText(game, bs, space, a, on, teams));
     // (Where the turn's move landed: its landing counts as run.)
     toast(on === 'land' ? runLanding(game, session, space, go) : go(), 3000);
   }

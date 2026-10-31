@@ -174,6 +174,7 @@ try {
   await offer.waitFor();
   const chip = (o, name) => o.getByRole('button', { name: new RegExp(`^${name}( \\(no phone here\\))?$`) });
   assert((await chip(offer, 'Bob').getAttribute('aria-pressed')) === 'true' && (await chip(offer, 'Ann').getAttribute('aria-pressed')) === 'false', 'the offer starts with whoever set it off (Bob, picked on the object’s card)');
+  assert((await offer.evaluate((o) => o.previousElementSibling?.getAttribute('aria-label'))) === 'Object: Spy master', 'it shows right under the object’s card, where its button was pressed');
   assert((await offer.locator('[data-offer-card]').innerText()).includes('1 line of words, 1 picture') && !(await offer.innerText()).includes('wqzpk'), 'it counts what’s on the card, never says it');
   await sleep(600);
   assert(!cards().length && !JSON.stringify(states).includes('wqzpk') && !heard.bob.join('').includes('wqzpk'), 'pressing the button sent nothing: the room has no card');
@@ -205,6 +206,7 @@ try {
     (await chip(offer, 'Ann').getAttribute('aria-pressed')) === 'true' && (await chip(offer, 'Cat').getAttribute('aria-pressed')) === 'true' && (await chip(offer, 'Bob').getAttribute('aria-pressed')) === 'false',
     'a slice’s card for everyone else starts with everyone but the player the spin was for',
   );
+  assert((await tc.locator('[data-card-offer]').count()) === 1, 'it shows in the wheel’s box, under what it landed on');
   assert((await offer.innerText()).includes('Cat has no phone here'), 'it says Cat has no phone here (copy, or the card window)');
   await offer.getByRole('button', { name: 'Skip' }).click();
   await sleep(600);

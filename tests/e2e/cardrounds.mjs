@@ -669,6 +669,7 @@ try {
   await spaceCard.getByRole('button', { name: '🤫 Card for whoever landed there' }).click();
   await offer.waitFor();
   assert((await chip(offer, 'Ann').getAttribute('aria-pressed')) === 'true' && (await chip(offer, 'Dan').getAttribute('aria-pressed')) === 'false', 'the offer starts with whoever landed (Ann)');
+  assert((await offer.evaluate((o) => o.previousElementSibling?.getAttribute('aria-label'))) === 'Space: Mission', 'it shows right under the space’s card, where its button was pressed');
   assert((await offer.locator('.exposed').innerText()).includes('never what’s on it'), 'one window: the offer says viewers see who gets the card, never what’s on it');
   await offStream(host, 'the host page in one window', 'a board space’s card offered');
   await sleep(1000);

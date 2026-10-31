@@ -30,6 +30,7 @@
   import { offerIn } from '../host/offered.svelte';
   import { boardEdit, setEditing } from './boardedit.svelte';
   import BoardEditPanel from './BoardEditPanel.svelte';
+  import CardOffers from '../host/CardOffers.svelte';
   import { RememberedFold } from '../../lib/fold.svelte';
   import { oneShot } from '../../lib/oneshot';
 
@@ -83,7 +84,8 @@
   /** One-space boards: where the player whose turn it is can go (not straight back along a two-way link). */
   const turnSpace = $derived(turnId ? bs?.positions[turnId]?.space : undefined);
   const stepWays = $derived(round && bs && turnSpace ? waysOn(round, turnSpace, turnId ? bs.prev?.[turnId] : undefined) : []);
-  const ctx = $derived<RunContext>({ game, session, live: app.live, board: round, bs, hide: !dual, selected, teams: buzzerOn(game.settings) && teamsOn(game.settings), offerCard: offerIn(session) });
+  // (A 🤫 card its landing box's buttons offer shows under the turn, where they were pressed.)
+  const ctx = $derived<RunContext>({ game, session, live: app.live, board: round, bs, hide: !dual, selected, teams: buzzerOn(game.settings) && teamsOn(game.settings), offerCard: offerIn(session, 'land') });
   const recent = $derived(lastAction(session, session.currentRound));
   /** Zones with players in them, or on screen: their notes (how to escape…) are worth having at hand. */
   const zones = $derived(round && bs ? busyZones(round, bs) : []);
@@ -282,6 +284,8 @@
         {#key card.id}
           <SpaceCard {game} {session} space={card} {round} {bs} {selected} {turnId} {dual} onclose={() => (space = null)} />
         {/key}
+        <!-- (A 🤫 card its buttons offer shows here, under it.) -->
+        <CardOffers {game} {session} {dual} at="space:{card.id}" />
       </div>
     {/if}
 
@@ -545,6 +549,8 @@
           {/if}
         </div>
       {/if}
+      <!-- A 🤫 card the landing's buttons offered (sent only by its 📤 Send), under them. -->
+      <CardOffers {game} {session} {dual} at="land" />
     </div>
   {/if}
 {/snippet}

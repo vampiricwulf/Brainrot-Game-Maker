@@ -474,7 +474,9 @@ its tab) to tell them apart: its tab, the host panel and 🤫 Send a card…
 show it instead of "Card 2". Phones never get it, but in one window viewers can read it in the host panel, so call a
 card what it's for, never what's on it. An RPG object, an item, a wheel slice, a die face or a board space can
 have a **🤫 Send a card** button (who gets it: whoever set it off, the party, a player you pick then, or everyone else):
-pressing it in play only offers the card in the panel, and it goes when you press 📤 Send there (Skip sends nothing).
+pressing it in play only offers the card in the panel, under what offered it (a board game's landing box, a space's
+or an object's card, the wheel's or dice's box; at the panel's top once that's gone), and it goes when you press
+📤 Send there (Skip sends nothing).
 For a player with no phone, **🪟 Card window** (in 🤫 Send a card…) opens a window with only that player's cards,
 pictures and videos included, to share with them alone (a Discord DM call) or show them on a second screen. With no
 phones getting cards, 🤫 Send a card… and an action's offer put a card there with **🪟 Show**. Viewers never get it:

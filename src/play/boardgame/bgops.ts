@@ -131,18 +131,20 @@ export function reorderTurns(game: Game, session: Session, from: number, to: num
 
 /**
  * Run a space's landing (or passing) actions for some players, as one step, as if they'd just landed there. Returns
- * what to tell the host (`hide`: one window, a secret space not revealed yet is “? (secret)” in it, and in the log).
+ * what to tell the host (`hide`: one window, a secret space not revealed yet is “? (secret)” in it, and in the log). A
+ * 🤫 card it offers shows under the landing box when it's where the turn landed, else under the space's card.
  */
 export function runSpace(game: Game, session: Session, live: Live, space: BoardSpace, who: string[], which: 'onLand' | 'onPass' = 'onLand', hide = false): string {
   const { round, bs } = boardNow(game, session);
   const list = space[which] ?? [];
   if (!round || !bs || !list.length) return `${space.name} has no actions`;
+  const at = bs.last?.landed === space.id ? 'land' : `space:${space.id}`;
   // A roll, a spin or a question decides what comes next (a fight: win or lose): only that runs, and the host presses
   // the outcome it came to (running them all would win and lose at once).
   const decides = list.find(decidingAction);
   const run = decides ? [decides] : list;
   let said: string[] = [];
-  const ctx = { game, session, live, board: round, bs, hide, selected: who, chosen: who, teams: buzzerOn(game.settings) && teamsOn(game.settings), offerCard: offerIn(session) };
+  const ctx = { game, session, live, board: round, bs, hide, selected: who, chosen: who, teams: buzzerOn(game.settings) && teamsOn(game.settings), offerCard: offerIn(session, at) };
   const on = which === 'onPass' ? 'pass' : 'land';
   // (Its step says it both ways: one window shows the quiet one, whichever window ran it.)
   const [text, quiet] = [false, true].map((h) => `${spaceSaid(bs, space, h)}: ${run.map((a) => describeAction(game, a, on, ctx.teams, h ? bs : undefined)).join(', ')}`);

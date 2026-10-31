@@ -13,6 +13,7 @@
   import { blip } from '../../lib/live';
   import { currencyFields, formatStat, itemDef, logged, statFields, statNumber, statRoom } from '../../lib/toolset';
   import InlineAsk from '../host/InlineAsk.svelte';
+  import { offerIn } from '../host/offered.svelte';
   import { count, objectName, pickUp as pickUpNow, pileAmount, removeObject } from './hostops';
 
   let {
@@ -87,7 +88,7 @@
     let said: string[] = [];
     // One undoable step for all of them.
     logged(session, `${title}: ${list.map((a) => describeAction(game, a, undefined, ctx.teams)).join(', ')}`, () => {
-      said = list.map((a) => runAction({ ...ctx, chosen: who, world, st, at: screen.id }, a, `${title}: ${describeAction(game, a, undefined, ctx.teams)}`));
+      said = list.map((a) => runAction({ ...ctx, chosen: who, world, st, at: screen.id, offerCard: offerHere }, a, `${title}: ${describeAction(game, a, undefined, ctx.teams)}`));
     });
     toast(said.join(' · '), 4000);
   }
@@ -116,7 +117,7 @@
 
   function run(a: NonNullable<typeof role>['actions'] extends (infer T)[] | undefined ? T : never): void {
     if (needsPlayers(a) && !who.length) return void toast('Pick who it’s for first');
-    toast(runAction({ ...ctx, chosen: who, world, st, at: screen.id }, a, `${title}: ${describeAction(game, a, undefined, ctx.teams)}`), 3000);
+    toast(runAction({ ...ctx, chosen: who, world, st, at: screen.id, offerCard: offerHere }, a, `${title}: ${describeAction(game, a, undefined, ctx.teams)}`), 3000);
   }
 
   function setShown(v: boolean): void {
@@ -159,6 +160,9 @@
     const next = npcStats.map((s, j) => (j === i ? { ...s, value: s.value + delta } : { ...s }));
     logged(session, `${title}: ${next[i].name} ${delta > 0 ? '+' : '−'}${Math.abs(delta)}`, () => (override(st, el.id).stats = next));
   }
+
+  /** A 🤫 card its buttons offer shows under this card (RpgHost's CardOffers for it). */
+  const offerHere = $derived(offerIn(session, `object:${el.id}`));
 
   const shopExists = $derived(!!role?.shop && !!game.shops?.some((s) => s.id === role.shop));
 

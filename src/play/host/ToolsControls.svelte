@@ -17,6 +17,7 @@
   import ActionCard from './ActionCard.svelte';
   import WheelEdit from './WheelEdit.svelte';
   import ShopControls from './ShopControls.svelte';
+  import CardOffers from './CardOffers.svelte';
   import { newId, PLAYER_WHEEL, type Action } from '../../lib/model';
   import { describeAction, needsPlayers, runAction } from '../../lib/actions';
   import { teamsOn } from '../../lib/buzz';
@@ -40,11 +41,14 @@
     session,
     selected = [],
     ring = false,
+    dual = false,
     onclose,
   }: {
     game: Game;
     session: Session;
     selected?: string[];
+    /** An audience window is open (in one window this box is on stream: an offer here says no card's words). */
+    dual?: boolean;
     /** The spin or roll is what's left first (the check's ring: a tile's own tool not spun yet). */
     ring?: boolean;
     /** Esc's close (a score effect not given: the first one says so). */
@@ -135,7 +139,8 @@
     // (Its tile and the score log before it ran: the action can put something else up in the wheel's place.)
     const tile = ownTile;
     const before = new Set(session.scoreLog.map((e) => e.id));
-    toast(runAction({ game, session, live: app.live, world, st, selected, chosen, teams, offerCard: offerIn(session) }, a, `${from}: ${describeAction(game, a, undefined, teams)}`), 3000);
+    // (A 🤫 card it offers shows in this box, under what it came to.)
+    toast(runAction({ game, session, live: app.live, world, st, selected, chosen, teams, offerCard: offerIn(session, 'tool') }, a, `${from}: ${describeAction(game, a, undefined, teams)}`), 3000);
     tileGave(tile, (e) => !before.has(e.id));
     // The button can go with what it did (a question pop-up replaces the wheel): the keys go to the main button, not to
     // the Amount box, where R, Esc and N mean nothing.
@@ -417,6 +422,8 @@
         {/if}
       {/each}
     {/if}
+    <!-- A 🤫 card a slice's or a face's button offered: here, under what it came to. -->
+    <CardOffers {game} {session} {dual} at="tool" />
     {#if o.kind === 'shop'}
       <ShopControls {game} {session} {selected} />
     {/if}

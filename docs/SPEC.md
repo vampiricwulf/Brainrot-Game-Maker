@@ -677,7 +677,10 @@ The mode isn't saved with the game: it's dual while the audience window is open.
   `Alt+←/→`, and 🔀 Shuffle inside), and a line with ✎ Edit board (`E`), 🗂 Spaces…, 📺 The board, 🛒 Shop…, the Last:
   step and ▸ Players. In one window 📍 Send … to… and 🗂 Spaces… name a secret space not revealed yet “? (secret)”
   (spaceListShown), and every step, point and card offer its buttons make keeps a quiet text that says it so
-  (ActionEvent.quiet, ScoreEvent.quiet, CardOffer.quiet), whichever window it was made in.
+  (ActionEvent.quiet, ScoreEvent.quiet, CardOffer.quiet), whichever window it was made in. A 🤫 card an action
+  offers keeps where it was made (OpenOffer.at: 'land', 'space:<id>', 'object:<id>', 'tool'), and shows under that
+  place (its own CardOffers with `at`) while the place is on screen, else at the panel's top with the rest; only a
+  new offer takes the keys.
 - **An RPG stage's box select** (RpgStage, `caughtBy` in layers.ts): a left-button press that moves 4 px (a finger 10,
   `STILL_PX`, which also stops the long press's menu) draws a box: on an empty part of a screen, on a 🔒 locked object or
   one as big as its screen (a click there still opens its card), anywhere with `Alt` (its keyup kept in the page, for

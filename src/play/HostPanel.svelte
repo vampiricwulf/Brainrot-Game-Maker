@@ -1227,7 +1227,7 @@
   <!-- What this moment needs (it changes) on the left; the one main button in the NEXT cell on the right. -->
   <!-- The tool on the stage's box (its spin or roll, what it came to, its score cards): on top, but a board game's own
        dice or wheel under its turn box. -->
-  {#snippet toolBox()}<ToolsControls {game} {session} {selected} onclose={oncloseoverlay} ring={goon?.ring === 'toolslot'} />{/snippet}
+  {#snippet toolBox()}<ToolsControls {game} {session} {selected} {dual} onclose={oncloseoverlay} ring={goon?.ring === 'toolslot'} />{/snippet}
 
   <div class="act">
     <div class="action">
@@ -1235,7 +1235,8 @@
         <div class="mode-host tools">{@render toolBox()}</div>
       {/if}
 
-      <!-- 🤫 Cards an action's button offered: each goes only when you press its 📤 Send. -->
+      <!-- 🤫 Cards an action's button offered: each goes only when you press its 📤 Send. Under what offered it (a board
+           game's landing box, a space's or an RPG object's card, the tool's box) while that's on screen; here, the rest. -->
       <CardOffers {game} {session} {dual} />
 
       {#if ddWager}

@@ -32,6 +32,7 @@
   import ObjectCard from './ObjectCard.svelte';
   import PlayerCard, { cardsShown, playerCards } from './PlayerCard.svelte';
   import InlineAsk from '../host/InlineAsk.svelte';
+  import CardOffers from '../host/CardOffers.svelte';
   import {
     addLive, centredOn, focusParty, hiddenNames, joinPartyNow, liveText, moveChoices, objectAt, objectMenu, regroupAll, rpgNow, selectionWords, sendPartiesOn, splitOff, START_FIRST,
     staysWords, stepParty, toggleMap, type RpgAsk, type StagePoint,
@@ -571,6 +572,8 @@
                 onedit={() => editObject(obj.screen)}
                 onkeep={app.playerOnly ? undefined : () => keep({ map: obj.map.id, screen: obj.screen.id })}
               />
+              <!-- (A 🤫 card its buttons offer shows here, under it.) -->
+              <CardOffers {game} {session} {dual} at="object:{obj.el.id}" />
             </div>
           {/key}
         {:else}
