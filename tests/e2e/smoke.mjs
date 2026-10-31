@@ -94,7 +94,7 @@ function assert(cond, msg) {
 }
 // Test media generated in memory.
 import { deflateSync } from 'node:zlib';
-import { addClassicRounds, answerReplace, checkItem, dragBy, flowButton, flowIs, goOnCheck, mainButton, mainLabel, nameGame, noSelection, notYet, openGameFile, exportHtml, quick, selectedWords, situationHasMain, stepButton } from './helpers.mjs';
+import { addClassicRounds, answerReplace, anyway, checkItem, dragBy, flowButton, flowIs, goOnCheck, mainButton, mainLabel, nameGame, noSelection, notYet, openGameFile, exportHtml, quick, selectedWords, stepButton } from './helpers.mjs';
 /** Solid-ish RGB PNG of the given size (a horizontal gradient). */
 function bigPng(w, h) {
   const crcTable = Array.from({ length: 256 }, (_, n) => {
@@ -998,7 +998,8 @@ assert(aud.isClosed(), 'audience window closes from the host');
 await page.locator('.board .tile').nth(4).click();
 await page.locator('.ov .wheel').waitFor();
 assert(true, 'wheel tile opens the wheel overlay');
-// Its box: the wheel's name, Spin! (the main button's step, its words and key), …, ✕ Close last.
+// Its box: the wheel's name, Spin! first (its own, ringed while it's to do), and no Close: putting it away is the blue
+// button's, ▦ Done ▶ board on a tile with nothing to ask.
 const toolBox = page.locator('.panel [data-tool-controls]');
 // (Each button's words, then its key cap.)
 const toolBar = () =>
@@ -1007,26 +1008,32 @@ const toolBar = () =>
   );
 let bar = await toolBar();
 assert(
-  (await situationHasMain(page, toolBox)) === '' && bar[0] === 'Spin! W' && bar.at(-1) === '✕ Close Esc',
-  `a wheel tile's box: Spin! first (as the main button), ✕ Close last (${bar.join(' | ')})`,
+  bar[0] === 'Spin! W' && !bar.some((b) => b.includes('Close')) && (await flowIs(page, '▦ Done ▶ board')) && (await stepButton(toolBox, 'Spin!').evaluate((b) => b.classList.contains('ring'))),
+  `a wheel tile's box: Spin! first, ringed, no Close; the blue button is ▦ Done ▶ board (${bar.join(' | ')})`,
 );
-// Closed before it's spun (opened by mistake): the tile stays on the board.
-assert((await page.getByRole('button', { name: '✕ Close' }).getAttribute('title')) === 'Close it without spinning (the tile stays on the board)', '✕ Close on a wheel tile says the tile stays');
-await page.keyboard.press('Escape');
+// The blue button before it's spun asks first: Spin! (W), or closing without it, the tile staying on the board.
+await mainButton(page, '▦ Done ▶ board').click();
+await checkItem(page, 'tool').waitFor();
+assert(
+  (await goOnCheck(page).getAttribute('data-goon')) === 'first' && (await quick(page, 'Spin!').isVisible()) && (await anyway(page).innerText()).includes('Close without spinning (the tile stays on the board)'),
+  'the blue button on a wheel tile not spun yet asks first (“First:”), with Spin! and a way to close it unspun',
+);
+await goOnCheck(page, { ready: true }).waitFor();
+await anyway(page).click();
 await page.getByText('Never spun: the tile stays on the board').waitFor();
-assert(!(await isUsed(4)), 'Esc on a wheel tile before it spins keeps the tile on the board');
+assert(!(await isUsed(4)), 'closing a wheel tile before it spins keeps the tile on the board');
 await page.locator('.board .tile').nth(4).click();
 await page.locator('.ov .wheel').waitFor();
 await page.waitForTimeout(500); // past the double-click guard (a double-click on the tile doesn't spin it too)
-// The box's Spin!: landed, the keys are on the main button (Close), as after W.
+// The box's Spin!: landed, the keys are on the blue button (▦ Done ▶ board), as after W.
 await stepButton(toolBox, 'Spin!').click();
 await page.locator('.tc .result').waitFor({ timeout: 8000 });
 assert((await page.locator('.tc .result').innerText()).includes('Bankrupt'), 'weighted spin lands on the heavy slice');
 await page.waitForFunction(() => document.activeElement?.matches('.panel [data-next]'));
 bar = await toolBar();
 assert(
-  (await mainLabel(page)) === 'Close ▶ board' && bar[0] === 'Spin again W' && bar.at(-1) === 'Close ▶ board Esc',
-  `the box's Spin! spins it; landed, Spin again in its place, Close ▶ board last as the main button, the keys on it (${bar.join(' | ')})`,
+  (await mainLabel(page)) === '▦ Done ▶ board' && bar[0] === 'Spin again W' && !bar.some((b) => b.includes('Close')),
+  `the box's Spin! spins it; landed, Spin again in its place, no Close; the blue ▦ Done ▶ board has the keys (${bar.join(' | ')})`,
 );
 await page.locator('.ov .card').waitFor();
 assert((await page.locator('.ov .card .label').innerText()) === 'Bankrupt', 'result card revealed on screen');
@@ -1040,7 +1047,13 @@ await page.locator('.ac').getByRole('button', { name: 'Skip' }).click();
 assert((await scoreOf(0)) === '$550', 'skipping the score effect changes nothing');
 // (While it waited, the score card was in sight, the box's first row scrolled up.)
 await page.locator('.ac').waitFor({ state: 'detached' });
-assert((await situationHasMain(page, toolBox)) === '', `then the box's Close ▶ board is in sight (${await situationHasMain(page, toolBox)})`);
+assert(
+  await mainButton(page, '▦ Done ▶ board').evaluate((el) => {
+    const r = el.getBoundingClientRect();
+    return el.contains(document.elementFromPoint(r.x + r.width / 2, r.y + r.height / 2));
+  }),
+  'then the blue ▦ Done ▶ board is in sight',
+);
 await shot('10-wheel');
 await page.waitForTimeout(500);
 await page.locator('.stage-box .ov').click();
@@ -1065,11 +1078,19 @@ await page.locator('.dd-text').waitFor();
 await page.locator('.dd .chip', { hasText: 'Player 2' }).click();
 await page.locator('.dd input[type=number]').fill('99999');
 const ddLimit = page.locator('.dd').getByLabel('Ignore the limit');
-// (Show question ▶ is at the end of the box's Wager row too, greyed when the main button is.)
-const ddShow = stepButton(page.locator('.panel .dd'), 'Show question ▶');
-assert((await ddLimit.isChecked()) && (await mainButton(page, 'Show question ▶').isEnabled()) && (await ddShow.isEnabled()), 'the limit is ignored by default: a wager over the cap goes');
+// (Show question ▶ is the blue button only: the box's Wager row ends with True Daily Double.)
+assert(
+  (await ddLimit.isChecked()) && (await mainButton(page, 'Show question ▶').isEnabled()) && (await stepButton(page.locator('.panel .dd')).count()) === 0,
+  'the limit is ignored by default: a wager over the cap goes (Show question ▶ only on the blue button)',
+);
 await ddLimit.uncheck();
-assert((await mainButton(page, 'Show question ▶').isDisabled()) && (await ddShow.isDisabled()), 'with the limit on, a wager over the cap is blocked (the box’s Show question ▶ too)');
+// With the limit on, a wager over the cap stays: the blue button is never greyed; pressed, the keys stay in the Wager box
+// and the status line says why.
+assert(await mainButton(page, 'Show question ▶').isEnabled(), 'with the limit on, the blue Show question ▶ is still not greyed');
+await mainButton(page, 'Show question ▶').click();
+await page.getByText(/^Over Player 2’s max \(.+\): type less, or tick Ignore the limit$/).waitFor();
+await page.waitForFunction(() => document.activeElement?.matches('.dd input[type=number]'));
+assert((await page.locator('.dd-text').count()) === 1, 'a wager over the cap with the limit on: the question waits, the keys in the Wager box');
 await page.locator('.dd input[type=number]').fill('500');
 await mainButton(page, 'Show question ▶').click();
 await page.locator('.dd-badge').waitFor();
@@ -1255,7 +1276,9 @@ await page.keyboard.type('Who is next?');
 assert((await page.getByRole('dialog', { name: 'Keyboard shortcuts' }).count()) === 0, "typing '?' in the quick-wheel box doesn't open the shortcuts");
 await page.locator('.tl textarea').fill('');
 await page.getByRole('button', { name: 'Punishment Wheel', exact: true }).click();
-await mainButton(page, 'Spin!').click();
+// (From the tools row: its box's Spin!, and the blue button is Next ▶, which only puts it away.)
+assert(await flowIs(page, 'Next ▶'), 'a wheel from the tools row: the blue button is Next ▶');
+await stepButton(toolBox, 'Spin!').click();
 await page.locator('.ac').waitFor({ timeout: 8000 });
 const deltaText = await page.locator('.ac .delta').first().innerText();
 const allScores = async () => (await page.locator('.panel .p .score').allInnerTexts()).join();
@@ -1303,7 +1326,7 @@ await page.getByRole('button', { name: '🎡 Wheel' }).click();
 await page.getByRole('button', { name: '🎯 Pick a player' }).click();
 const slices = await page.locator('.stage-box svg text').allTextContents();
 assert(slices.join() === 'Player 1,Player 2,Player 3', `the player wheel has a slice per player (${slices.join(', ')})`);
-await mainButton(page, 'Spin!').click();
+await stepButton(toolBox, 'Spin!').click();
 const makePicker = page.getByRole('button', { name: /^★ Make .+ the picker$/ });
 const pickedWheel = page.getByText(/^★ .+ picks the next clue\.$/);
 await makePicker.or(pickedWheel).waitFor({ timeout: 10000 });
@@ -1325,7 +1348,7 @@ const editBox = page.getByRole('group', { name: 'Edit this wheel' });
 await editBox.getByLabel('Include Player 1').uncheck();
 await editBox.getByLabel('Include Player 3').uncheck();
 assert((await sliceTexts()).join() === 'Player 2' && (await editBox.locator('.pct').allInnerTexts()).join() === '—,100%,—', 'unticking players takes them off the wheel, and the chances follow');
-await mainButton(page, 'Spin!').click();
+await stepButton(toolBox, 'Spin!').click();
 await page.getByText('★ Player 2 picks the next clue.').or(page.getByRole('button', { name: '★ Make Player 2 the picker' })).waitFor({ timeout: 10000 });
 assert(true, 'the edited player wheel can only land on the players left on it');
 await page.keyboard.press('Escape');

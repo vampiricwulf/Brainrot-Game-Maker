@@ -214,8 +214,8 @@ try {
   await page.getByRole('button', { name: '🎯 Pick a player' }).click();
   await page.waitForTimeout(100);
   assert(
-    await page.evaluate(() => document.activeElement?.matches('.panel [data-next]') && document.activeElement.textContent?.trim().startsWith('Spin!')),
-    'a wheel picked from the 🎡 menu puts the focus on its Spin! (the panel’s main button)',
+    await page.evaluate(() => document.activeElement?.matches('.panel [data-next]') && document.activeElement.textContent?.trim().startsWith('Next ▶')),
+    'a wheel picked from the 🎡 menu puts the focus on the panel’s blue button (Next ▶ puts it away; W spins it)',
   );
   await page.keyboard.press('w');
   await aud.waitForFunction(() => window.__plays.filter((s) => s.endsWith('#wheelTick')).length >= 3);

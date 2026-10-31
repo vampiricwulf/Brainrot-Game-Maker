@@ -154,7 +154,7 @@ export async function openRules(page) {
 
 // ---------- The host panel ----------
 
-/** The host panel's main button (its NEXT cell: Reveal answer, Show question ▶, Spin!…); with `name`, while it says that. */
+/** The host panel's main button (its NEXT cell: 👁 Reveal answer, Show question ▶, Next ▶…); with `name`, while it says that. */
 export const mainButton = (page, name) => {
   const b = page.locator('.panel [data-next]');
   return name === undefined ? b : b.and(page.getByRole('button', { name, exact: true }));
@@ -204,24 +204,6 @@ export async function boxHasAction(box, name) {
     return !!at && el.contains(at);
   });
   return seen ? '' : `the box's “${name}” is out of sight`;
-}
-
-/**
- * The moment's box holds the main button's step too, for the parts whose box still copies it (a wheel's or dice's,
- * a Daily Double's, until they move to the blue button's step): one step button in `box` says what the main button
- * says, in sight there. Resolves to '' when it holds, else what's wrong. (A partner clue's box: boxHasAction.)
- */
-export async function situationHasMain(page, box) {
-  const label = await mainLabel(page);
-  const step = stepButton(box, label);
-  const n = await step.count();
-  if (n !== 1) return `${n} step buttons say “${label}” in the box`;
-  const seen = await step.evaluate((el) => {
-    const r = el.getBoundingClientRect();
-    const at = document.elementFromPoint(r.x + r.width / 2, r.y + r.height / 2);
-    return !!at && el.contains(at);
-  });
-  return seen ? '' : `the box's “${label}” is out of sight`;
 }
 
 /** The blue button is this step of the show (its words without the key cap), and blue (the panel's one .primary). */

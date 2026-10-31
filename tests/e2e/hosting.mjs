@@ -249,20 +249,23 @@ try {
   assert((await menuLines(page))[0] === `# ${ddName}`, 'a long press on it opens it too');
   await page.keyboard.press('Escape');
   assert((await page.locator('.panel .dd .chip[aria-pressed="true"]').innerText()) === pickedBefore, 'and the tap that ends the press doesn’t pick them');
-  // The stage's menu on the Daily Double: who found it first (the one picked greyed), then Show question ▶ (greyed until
-  // there's a wager), the way out.
+  // The stage's menu on the Daily Double: who found it first (the one picked greyed), then Show question ▶ (the blue
+  // button's, never greyed: with no wager it keeps the keys in the Wager box), the way out.
   const ddMenu = await stageMenu();
   assert(
     ddMenu[0] === '# ⭐ Daily Double · Category 4 $200' && ddMenu.filter((l) => / found it/.test(l)).length === 3 && ddMenu.filter((l) => l.endsWith('found it (off)')).length === 1 &&
-      ddMenu.includes('Show question ▶ · Enter (off)') && ddMenu.indexOf('Show question ▶ · Enter (off)') > ddMenu.findIndex((l) => l.endsWith('found it')) && ddMenu.includes('↩ Put back (keep tile) · Esc'),
+      ddMenu.includes('Show question ▶ · N') && ddMenu.indexOf('Show question ▶ · N') > ddMenu.findIndex((l) => l.endsWith('found it')) && ddMenu.includes('↩ Put back (keep tile) · Esc'),
     `the stage’s menu on a Daily Double: who found it, then Show question ▶ (${ddMenu.join(' | ')})`,
   );
   await page.locator('.dd input[type=number]').focus();
   // A wager below 0 (the box's min doesn't stop a typed minus) says so, not "over the max" with the limit ignored.
   await page.locator('.dd input[type=number]').fill('-500');
   await page.keyboard.press('Enter');
-  await page.locator('.toast', { hasText: 'A wager can’t be below 0' }).waitFor();
-  assert((await mainButton(page).getAttribute('title')) === 'A wager can’t be below 0', 'a Daily Double wager below 0 says so (a toast, and the main button’s tooltip), not “over the max”');
+  await page.locator('.toast', { hasText: 'A wager can’t be below 0: type 0 or more' }).waitFor();
+  assert(
+    (await mainButton(page, 'Show question ▶').isEnabled()) && (await page.evaluate(() => document.activeElement?.matches('.dd input[type=number]'))),
+    'a Daily Double wager below 0 says so in the status line, not “over the max”: the question waits, the keys stay in the Wager box (the blue button never greyed)',
+  );
   await page.locator('.dd input[type=number]').fill('100');
   await page.keyboard.press('Enter');
   // Enter again at once (a double press, or Enter on the button the keys went to): its player isn't judged yet.

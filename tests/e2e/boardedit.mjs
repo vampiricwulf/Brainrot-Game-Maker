@@ -281,15 +281,19 @@ try {
   await page.keyboard.press('Enter');
   assert((await card('Ann')).includes('$100'), 'then 1, Enter: Ann gets the 100');
   // A secret space, in one window (the panel is on stream): the panel and the toast say “?” until it's revealed, and its
-  // buttons are logged with its name (as from its card) once it is. Bob's turn, the question still up from Ann's: Enter
-  // moves him, as the main button says, and takes it down.
+  // buttons are logged with its name (as from its card) once it is. Ann's question still up: N is its blue button, 👁 Reveal
+  // answer, then Next ▶, which puts it away (Ann has her points: nothing asks); then N is Bob's turn, and Enter moves him.
+  await page.keyboard.press('n');
+  await page.waitForFunction(() => document.querySelector('.panel [data-next]')?.textContent?.trim().startsWith('Next ▶'));
+  await page.keyboard.press('n');
+  await page.locator('.stage-box .ov').waitFor({ state: 'detached' });
   await page.keyboard.press('n');
   await page.getByLabel('Steps').fill('5');
   await page.getByLabel('Steps').blur();
   await page.keyboard.press('Enter');
   const acts = page.locator('.acts');
   const moved = await acts.filter({ hasText: 'Landed on ?' }).waitFor({ timeout: 5000 }).then(() => true, () => false);
-  assert(moved, `Bob's turn, Ann's question still up: Enter moves him (${(await page.locator('.toast').allInnerTexts()).join(' | ') || 'nothing moved'})`);
+  assert(moved, `Bob's turn: Enter moves him (${(await page.locator('.toast').allInnerTexts()).join(' | ') || 'nothing moved'})`);
   assert(
     (await toast()) === 'Bob: Landed on ? (secret)' && (await acts.innerText()).includes('Landed on ? (secret):') && !(await acts.innerText()).includes('Trap Door') && !(await acts.innerText()).includes('lava pit'),
     `landing on the secret space: “? (secret)” in the toast and the panel, and not its note (${(await acts.innerText()).replace(/\s+/g, ' ')})`,

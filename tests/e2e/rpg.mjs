@@ -5,7 +5,7 @@ import { chromium } from 'playwright-core';
 import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { addClassicRounds, dragBy, exportHtml, menuLines, openGameFile, openMenu, playWithPlayers, leaveAnswer } from './helpers.mjs';
+import { addClassicRounds, dragBy, exportHtml, flowIs, menuLines, openGameFile, openMenu, playWithPlayers, stepButton, leaveAnswer } from './helpers.mjs';
 
 const file = resolve(process.env.APP_FILE || 'dist/index.html');
 if (!existsSync(file)) throw new Error('Run `npm run build` first');
@@ -254,9 +254,17 @@ async function bigWorld() {
   const hostInfo = host.locator('.stage-area > .info');
   await hostInfo.locator('.a', { hasText: 'A piano' }).waitFor();
   assert(/answer \(hidden from viewers\)/i.test(await hostInfo.innerText()) && !(await aud.locator('body').innerText()).includes('A piano'), 'a question pop-up shows the host its answer before it’s revealed, and not viewers');
+  // Its blue button is 👁 Reveal answer (no copy in its box), and its box keeps ✕ Close to put it away unseen.
+  const popBox = host.locator('.panel [data-tool-controls]');
+  assert(
+    (await flowIs(host, '👁 Reveal answer')) && (await popBox.getByRole('button', { name: '✕ Close', exact: true }).count()) === 1 && (await popBox.getByRole('button', { name: '👁 Reveal answer' }).count()) === 0,
+    'a question pop-up: the blue button is 👁 Reveal answer, and its box has ✕ Close but no copy of the reveal',
+  );
   await host.keyboard.press('r');
   await aud.waitForFunction(() => document.body.innerText.includes('A piano'));
   assert(/answer \(on screen\)/i.test(await hostInfo.innerText()), 'revealed, the host’s column says the answer is on screen');
+  await host.waitForFunction(() => document.querySelector('.panel [data-next]')?.textContent?.trim().startsWith('Next ▶'));
+  assert((await popBox.getByRole('button', { name: '✕ Close', exact: true }).count()) === 0, 'its answer up: the blue button is Next ▶, and the box has no ✕ Close any more');
   await host.keyboard.press('Escape');
   await host.keyboard.press('Escape');
   await host.getByRole('dialog', { name: 'Object: Riddle cat' }).waitFor({ state: 'detached' });
@@ -700,7 +708,9 @@ try {
   await page.getByRole('button', { name: 'Edit Pick a player for this spin' }).click();
   assert((await page.locator('.tc', { hasText: 'Spin another wheel' }).innerText()).includes('Editing Pick a player'), 'an added wheel has its own edit box');
   await page.getByRole('button', { name: 'Edit Pick a player for this spin' }).click();
-  await page.locator('.panel [data-next]', { hasText: 'Spin!' }).click();
+  // (From the tools row: its box's Spin!; the blue button over it is Next ▶, which only puts it away.)
+  assert(await flowIs(page, 'Next ▶'), 'a wheel from the tools row in an RPG round: the blue button is Next ▶');
+  await stepButton(page.locator('.panel [data-tool-controls]'), 'Spin!').click();
   await page.waitForFunction(() => document.querySelectorAll('.stage .many .chip').length === 2, null, { timeout: 12000 });
   assert(true, 'both wheels land, each showing its result');
   assert((await page.locator('.tc .result').innerText()).includes(' · '), 'the host sees both results');

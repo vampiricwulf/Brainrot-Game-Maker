@@ -11,7 +11,7 @@ import { chromium } from 'playwright-core';
 import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { confirmStrip, flowButton, mainButton, openGameFile, packGame, png, recordSeen, shownOf, startBuzzer, startRoomOn, leaveAnswer } from './helpers.mjs';
+import { confirmStrip, flowButton, flowIs, mainButton, openGameFile, packGame, png, recordSeen, shownOf, startBuzzer, startRoomOn, stepButton, leaveAnswer } from './helpers.mjs';
 import { wav } from './mediafixtures.mjs';
 
 const file = resolve(process.env.APP_FILE || 'dist/index.html');
@@ -192,8 +192,10 @@ try {
   // ---------- A wheel slice's: Skip sends nothing; 📤 Send to everyone else ----------
   await tools.getByRole('button', { name: '🎡 Wheel' }).click();
   await host.getByRole('button', { name: 'Whisper wheel', exact: true }).click();
-  await mainButton(host, 'Spin!').click();
   const tc = host.locator('[data-tool-controls]');
+  // (A wheel from the tools row: its box's Spin!; the blue button is Next ▶, which only puts it away.)
+  assert(await flowIs(host, 'Next ▶'), 'a wheel from the tools row: the blue button is Next ▶');
+  await stepButton(tc, 'Spin!').click();
   await tc.getByText('This was for').waitFor({ timeout: 10000 });
   await tc.getByRole('button', { name: 'Bob', exact: true }).click();
   const slice = tc.getByRole('button', { name: '🤫 Card for everyone else' });

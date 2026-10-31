@@ -616,11 +616,12 @@ async function tileTools() {
   await tileOf('qw').click();
   await stage('.ov .wheel').waitFor();
   await host.locator('.panel [data-buzzrow]', { hasText: 'The buzzers wait for the question (after the wheel)' }).waitFor();
-  // Enter with the keys on its Spin! (where the tile put them) judges nobody: it names the key that spins.
+  // Enter with the keys on its blue Show question ▶ (where the tile put them) judges nobody: it names the key that spins.
   await host.waitForFunction(() => document.activeElement?.matches('.panel [data-next]'));
+  assert((await mainLabel(host)) === 'Show question ▶', `a wheel tile's blue button is Show question ▶ (${await mainLabel(host)})`);
   await host.keyboard.press('Enter');
-  await host.locator('.toast', { hasText: 'Spin the wheel first: W (or N)' }).waitFor();
-  assert(!(await host.locator('.tc .result').count()), 'Enter on a wheel tile’s Spin! says to spin it first (W, or N), not “Select a player first”');
+  await host.locator('.toast', { hasText: 'Spin the wheel first: W' }).waitFor();
+  assert(!(await host.locator('.tc .result').count()), 'Enter on a wheel tile not spun yet says to spin it first (W), not “Select a player first”');
   // Before the spin there's no 👁 Reveal answer (it would skip the question), and R says to spin first.
   const revealBtn = flowButton(host, 'reveal', '👁 Reveal answer');
   assert((await revealBtn.count()) === 0, 'a wheel tile’s wheel not spun yet: no 👁 Reveal answer in the panel');
@@ -871,16 +872,16 @@ async function tileTools() {
   await host.locator('.toast', { hasText: 'Still spinning: wait for it to land' }).waitFor();
   assert((await stage('.ov .wheel').count()) === 1 && (await stage('.board').count()) === 0, 'Esc while a wheel tile’s wheel spins says to wait for it to land, and the wheel stays');
   await host.locator('.ac').waitFor({ timeout: 8000 });
-  // Landed: the keys go back to its main button (not to the side button they fell to while Spin! was off).
+  // Landed: the keys go back to its blue button (not to the side button they fell to while Spin! was off).
   await host.waitForFunction(() => document.activeElement?.matches('.panel [data-next]'));
-  assert((await mainLabel(host)) === 'Close ▶ board', 'it lands with its score effect to give, and the keys on its Close ▶ board');
+  assert((await mainLabel(host)) === '▦ Done ▶ board', 'it lands with its score effect to give, and the keys on its blue ▦ Done ▶ board');
   // Its points given: ↩ Put back (keep tile) waits for an Undo, as after an award; then it takes the wheel down with it.
   await host.locator('.tc > .row .chip', { hasText: 'Cy' }).click();
   await host.locator('.ac .delta', { hasText: 'Cy: +$100' }).waitFor();
   await host.locator('.ac').getByRole('button', { name: 'Confirm' }).click();
   await host.locator('.ac').waitFor({ state: 'detached' });
   await host.waitForFunction(() => document.activeElement?.matches('.panel [data-next]'));
-  assert(await cancel.isDisabled(), 'its score effect given: the keys go back to Close ▶ board, and ↩ Put back (keep tile) waits for an Undo');
+  assert(await cancel.isDisabled(), 'its score effect given: the keys go back to ▦ Done ▶ board, and ↩ Put back (keep tile) waits for an Undo');
   await host.keyboard.press('Shift+Escape');
   await host.locator('.toast', { hasText: 'Points were given for this clue' }).waitFor();
   assert((await stage('.ov .wheel').count()) === 1 && (await stage('.board').count()) === 0, 'and so does Shift+Esc (the wheel stays, the tile open)');
@@ -890,14 +891,14 @@ async function tileTools() {
   await tileOf('qs').waitFor();
   await stage('.ov').waitFor({ state: 'detached' });
   assert((await used('qs')) === false, 'undone, ↩ Put back (keep tile) puts the tile back and takes its wheel off the stage');
-  // A dice tile with nothing to ask: rolled, the keys are on Close ▶ board; ↩ Cancel takes the dice down too.
+  // A dice tile with nothing to ask: rolled, the keys are on ▦ Done ▶ board; ↩ Put back takes the dice down too.
   await tileOf('qz').click();
   await stage('.ov').waitFor();
   await host.waitForFunction(() => document.activeElement?.matches('.panel [data-next]'));
   await host.keyboard.press('d');
   await host.locator('.tc .result').waitFor();
   await host.waitForFunction(() => document.activeElement?.matches('.panel [data-next]'));
-  assert((await mainLabel(host)) === 'Close ▶ board', 'a dice tile rolled: the keys are on its Close ▶ board');
+  assert((await mainLabel(host)) === '▦ Done ▶ board', 'a dice tile rolled: the keys are on its blue ▦ Done ▶ board');
   await cancel.click();
   await tileOf('qz').waitFor();
   await stage('.ov').waitFor({ state: 'detached' });
@@ -912,7 +913,7 @@ async function tileTools() {
   await host.getByRole('button', { name: 'Resume game' }).click();
   await host.locator('.mode-ask .mode', { hasText: 'Single window' }).click();
   await host.locator('.tc .result').waitFor();
-  assert((await mainLabel(host)) === 'Close ▶ board', 'after a reload the rolled dice are back, with Close ▶ board');
+  assert((await mainLabel(host)) === '▦ Done ▶ board', 'after a reload the rolled dice are back, with ▦ Done ▶ board');
   await host.keyboard.press('Escape');
   await tileOf('qz').waitFor();
   assert((await used('qz')) && (await host.locator('.panel .status', { hasText: 'No question on this tile' }).count()) === 0, 'and closing them finishes the tile, as before the reload');

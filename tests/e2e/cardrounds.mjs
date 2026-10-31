@@ -16,7 +16,7 @@ import { chromium } from 'playwright-core';
 import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { confirmStrip, goOnCheck, mainButton, mainLabel, openGameFile, packGame, png, quick, recordSeen, shownOf, startBuzzer, startRoomOn, stored, leaveAnswer } from './helpers.mjs';
+import { confirmStrip, goOnCheck, mainButton, mainLabel, openGameFile, packGame, png, quick, recordSeen, shownOf, startBuzzer, startRoomOn, stepButton, stored, leaveAnswer } from './helpers.mjs';
 
 const file = resolve(process.env.APP_FILE || 'dist/index.html');
 if (!existsSync(file)) throw new Error('Run `npm run build` first');
@@ -537,8 +537,9 @@ try {
   // ---------- A wheel slice's 🤫 button: Skip sends nothing; 📤 Send sends it ----------
   await tools.getByRole('button', { name: '🎡 Wheel' }).click();
   await host.getByRole('button', { name: 'Whisper wheel', exact: true }).click();
-  await host.locator('.panel [data-next]', { hasText: 'Spin!' }).click();
   const tc = host.locator('[data-tool-controls]');
+  // (Its box's Spin!: the blue button over a tool from the tools row is Next ▶, which only puts it away.)
+  await stepButton(tc, 'Spin!').click();
   await tc.getByText('This was for').waitFor({ timeout: 20000 });
   await tc.getByRole('button', { name: 'Ann', exact: true }).click();
   const slice = tc.getByRole('button', { name: '🤫 Card for whoever set it off' });

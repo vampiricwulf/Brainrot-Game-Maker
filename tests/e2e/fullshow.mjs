@@ -190,8 +190,15 @@ async function show(how) {
   const statusHas = (t) => async () => (await host.locator('.panel .status').innerText()).includes(t);
   const stageHas = (sel) => async () => (await host.locator(`.stage-box ${sel}`).count()) > 0;
   const marked = async () => (await host.locator('.panel .mark.right').count()) === 1;
-  /** A wheel spinning, or landed already. */
-  const spun = async () => ['Spin again', 'Close'].includes(await label());
+  /** The tool's own Spin! / Spin again (its box's slot: the blue button only puts it away). */
+  const slot = () => stepButton(host.locator('.panel [data-tool-controls]'));
+  const slotSays = async (l) => (await slot().count()) === 1 && (await slot().innerText()).startsWith(l);
+  /** A wheel tile's wheel up, not spun: its box's Spin!, and the blue button Show question ▶. */
+  const toolUp = async () => (await slotSays('Spin!')) && (await mainIs('Show question ▶')());
+  /** A wheel spinning (its slot greyed), or landed already (Spin again in its place). */
+  const spun = async () => (await slot().count()) === 1 && ((await slot().isDisabled()) || (await slotSays('Spin again')));
+  /** A wheel tile's wheel landed: Spin again in its slot, and the blue Show question ▶ awake. */
+  const toolLanded = async () => (await slotSays('Spin again')) && !(await slot().isDisabled()) && (await mainIs('Show question ▶')()) && !(await mainButton(host).isDisabled());
   /** A key, then the state it brings. */
   const key = async (k, what, check) => {
     took[part].keys++;
@@ -307,15 +314,16 @@ async function show(how) {
   await begin('A wheel tile');
   if (byKeys) {
     await key('ArrowDown', 'the keys on the wheel tile', keysOn('Memes for $600'));
-    await key('Enter', 'its wheel', mainIs('Spin!'));
-    await key('w', 'the wheel landing', mainIs('Close'));
+    await key('Enter', 'its wheel', toolUp);
+    await key('w', 'the wheel landing', toolLanded);
     await key('Escape', 'its question', mainIs('👁 Reveal answer'));
     await buzz('Bob');
     await key('Enter', 'Bob’s points', marked);
   } else {
-    await stageClick('its wheel', mainIs('Spin!'), tile('Memes for $600'));
+    await stageClick('its wheel', toolUp, tile('Memes for $600'));
     await stageClick('the wheel spinning', spun);
-    await until('the wheel landing', mainIs('Close'));
+    await until('the wheel landing', toolLanded);
+    // (A click on the landed wheel is the blue button's step, Show question ▶, through the check: nothing's left.)
     await stageClick('its question', mainIs('👁 Reveal answer'));
     await buzz('Bob');
     await click(award, 'Bob’s points', marked);

@@ -22,14 +22,15 @@
 // and 8 players at 1280×720 and 1366×768, a 🤝 partner clue's box holds its actions once each, in sight (🎡 Spin for a
 // partner, ⏱ Start the clock, ✔ Got it, its foot), the blue button (Show question ▶, then 👁 Reveal answer) in sight and
 // within reach of the foot, nothing above it, the stage one size from PARTNER UP! to ✔ Got it; at 1280×720 a Daily
-// Double's box opens at its top, its Wager row one line ending with Show question ▶ (a double-click on it shows the
-// question once); with 8, a 🎯 Pick a player wheel's bar is one row and in sight, Spin! first and its Close last,
-// landed too.
+// Double's box opens at its top, its Wager row one line ending with True Daily Double, the blue Show question ▶ never
+// greyed (a double-click on it shows the question once); with 8, a 🎯 Pick a player wheel's bar is one row and in sight,
+// Spin! first and no Close (the blue button is Next ▶), landed too, and a wheel tile's bar the same with the blue Show
+// question ▶ within 96 px of its Spin!.
 import { chromium } from 'playwright-core';
 import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { boxHasAction, confirmStrip, flowIs, goOnCheck, mainButton, mainLabel, noSelection, notYet, openGameFile, packGame, selectedWords, situationHasMain, stepButton, leaveAnswer } from './helpers.mjs';
+import { boxHasAction, confirmStrip, flowIs, goOnCheck, mainButton, mainLabel, noSelection, notYet, openGameFile, packGame, selectedWords, stepButton, leaveAnswer } from './helpers.mjs';
 
 const file = resolve(process.env.APP_FILE || 'dist/index.html');
 if (!existsSync(file)) throw new Error('Run `npm run build` first');
@@ -197,7 +198,7 @@ try {
   await page.locator('.dd input[type=number]').waitFor();
   states.ddWager = await look();
   assert((await page.locator('.panel .status').innerText()).includes('Daily Double: who found it, and their wager'), 'the status line says what the Daily Double screen wants (no lone “·”)');
-  assert((await mainLabel(page)) === 'Show question ▶' && (await mainButton(page).isDisabled()), 'the Daily Double’s main button is Show question ▶, off until there’s a wager');
+  assert((await flowIs(page, 'Show question ▶')) && (await mainButton(page).isEnabled()), 'the Daily Double’s blue button is Show question ▶, never greyed (with no wager it keeps the keys in the box)');
   await page.locator('.dd .chip', { hasText: 'Bob' }).click();
   // (The picked chip is filled with the player's color: their score on it reads like their name.)
   const ddScore = await page.locator('.dd .chip[aria-pressed="true"] .score').evaluate((el) => {
@@ -516,7 +517,8 @@ try {
   const exitBox = await p3.getByRole('button', { name: '🚪 Exit' }).boundingBox();
   assert(exitBox.y + exitBox.height <= 480, 'the fixed bar stays in the window');
   await p3.setViewportSize({ width: 1024, height: 600 });
-  await p3.locator('[data-tool-controls]').getByRole('button', { name: '✕ Close' }).click();
+  // (No Close in its box: the blue button, Next ▶, puts it away.)
+  await mainButton(p3, 'Next ▶').click();
   await p3.locator('[data-tool-controls]').waitFor({ state: 'detached' });
   await p3.locator('.stage-box .board .tile').first().click();
   await p3.waitForFunction(() => document.querySelector('.panel .status')?.textContent?.includes('Answer hidden'));
@@ -843,9 +845,15 @@ try {
     const names = count === 4 ? ['Ann', 'Bob', 'Cat', 'Dan'] : [...crowd, 'Gwendolyn', 'Hal'];
     // (Its Memes and Skibidi Lore $400 are partner clues, a card for each part.)
     const boxClue = (q, k) => ({ ...q, id: `c_box${k}`, type: 'partner', partner: partnerRules, timerSeconds: 45, cards: ['giver', 'guesser'].map((to, j) => ({ id: `pb${k}${j}`, to, ...slide(`pbs${k}${j}`, `Card ${j + 1}`) })) });
-    const boxBoard = { ...board, id: 'r_box', categories: board.categories.map((c, ci) => ({ ...c, clues: c.clues.map((q, ri) => (ri === 1 && ci < 2 ? boxClue(q, ci) : q)) })) };
+    // (And its last Speedruns tile a wheel tile, with a question after the wheel.)
+    const boxBoard = {
+      ...board,
+      id: 'r_box',
+      categories: board.categories.map((c, ci) => ({ ...c, clues: c.clues.map((q, ri) => (ri === 1 && ci < 2 ? boxClue(q, ci) : ci === 4 && ri === 4 ? { ...q, type: 'wheel', wheelId: 'w_box' } : q)) })),
+    };
     const settings = count === 4 ? { ...game.settings, deductOnWrong: false } : game.settings;
-    writeFileSync(boxFile, JSON.stringify({ ...game, id: `g_layout_box${count}`, settings, players: names.map((name, i) => ({ id: `p${i + 1}`, name, color: [...crowdColors, '#bfef45', '#f032e6'][i], startScore: 0 })), rounds: [boxBoard] }));
+    const wheels = [{ id: 'w_box', name: 'Bonus wheel', spinDurationMs: 300, removeAfterLanding: false, segments: ['Red', 'Blue'].map((label, i) => ({ id: `ws${i}`, label, color: ['#cc0000', '#0000cc'][i], weight: 1 })) }];
+    writeFileSync(boxFile, JSON.stringify({ ...game, id: `g_layout_box${count}`, settings, wheels, players: names.map((name, i) => ({ id: `p${i + 1}`, name, color: [...crowdColors, '#bfef45', '#f032e6'][i], startScore: 0 })), rounds: [boxBoard] }));
     const ctx = await browser.newContext({ viewport: { width: 1280, height: 720 } });
     const pb = await ctx.newPage();
     pb.on('pageerror', (e) => errors.push(e.message));
@@ -869,9 +877,9 @@ try {
         sel,
       );
     // At 1280×720 the Daily Double's box opens at its top, the keys in its Wager box: its heading and names in sight (with
-    // 4, its Wager row too), the Wager row on one line, Show question ▶ (the main button's step) at its end, and the stage
-    // the board's size. A double-click on that Show question ▶ shows the question once: its second click, where the box
-    // was, does nothing (no slide skipped, no answer, the tile still open).
+    // 4, its Wager row too), the Wager row on one line ending with True Daily Double, the blue Show question ▶ in sight and
+    // never greyed, and the stage the board's size. A double-click on the blue Show question ▶ shows the question once: its
+    // second click, on what the button became, does nothing (no slide skipped, no answer, the tile still open).
     {
       const at = `${count} players at 1280×720`;
       const onBoard = await stageH();
@@ -881,22 +889,25 @@ try {
       const ddOut = await hidden(`.panel .dd > .row:first-child > span:first-child, .panel .dd .chip${count === 4 ? ', .panel .dd .wager > :not(.spacer)' : ''}`);
       const wagerRow = await dd.locator('.wager').evaluate((r) => {
         const mids = [...r.children].map((c) => c.getBoundingClientRect()).map((b) => b.top + b.height / 2);
-        return { line: Math.max(...mids) - Math.min(...mids) <= 4, last: r.lastElementChild?.matches('[data-step]') ? r.lastElementChild.textContent.trim() : '' };
+        return { line: Math.max(...mids) - Math.min(...mids) <= 4, last: [...r.querySelectorAll('button')].at(-1)?.textContent.trim() ?? '', steps: r.querySelectorAll('[data-step]').length };
       });
-      const ddSeen = count !== 4 || (await situationHasMain(pb, dd)) === '';
+      const ddSeen = await mainButton(pb, 'Show question ▶').evaluate((b) => {
+        const r = b.getBoundingClientRect();
+        return !b.disabled && b.classList.contains('primary') && b.contains(document.elementFromPoint(r.x + r.width / 2, r.y + r.height / 2));
+      });
       const keys = await pb.evaluate(() => document.activeElement?.matches('.panel .dd input[type=number]'));
       const ddH = await stageH();
       assert(
-        ddOut.length === 0 && wagerRow.line && wagerRow.last.startsWith('Show question ▶') && ddSeen && keys && ddH === onBoard,
-        `${at}: a Daily Double's box opens at its top (heading, names${count === 4 ? ', Wager row' : ''} in sight), the keys in its Wager box, its Wager row one line ending with Show question ▶, the stage the board's size (${JSON.stringify({ ddOut, wagerRow, ddSeen, keys, ddH, onBoard })})`,
+        ddOut.length === 0 && wagerRow.line && wagerRow.last.startsWith('True Daily Double') && !wagerRow.steps && ddSeen && keys && ddH === onBoard,
+        `${at}: a Daily Double's box opens at its top (heading, names${count === 4 ? ', Wager row' : ''} in sight), the keys in its Wager box, its Wager row one line ending with True Daily Double, the blue Show question ▶ in sight and not greyed, the stage the board's size (${JSON.stringify({ ddOut, wagerRow, ddSeen, keys, ddH, onBoard })})`,
       );
       await pb.keyboard.type('100');
-      await stepButton(dd, 'Show question ▶').dblclick();
+      await mainButton(pb, 'Show question ▶').dblclick();
       await pb.waitForFunction(() => document.querySelector('.panel .status')?.textContent?.includes('DD'));
       await pb.waitForTimeout(700);
       assert(
         (await pb.locator('.panel [data-slidepos]').innerText()) === 'Slide 1 of 3' && (await pb.locator('.stage-box [data-slide="answer"]').count()) === 0 && (await pb.locator('.stage-box .board').count()) === 0,
-        `${at}: a double-click on the box's Show question ▶ shows the question once (slide 1 of 3, no answer, the tile still open)`,
+        `${at}: a double-click on the blue Show question ▶ shows the question once (slide 1 of 3, no answer, the tile still open)`,
       );
       await pb.keyboard.press('Escape');
       await pb.locator('.stage-box .board').waitFor();
@@ -972,7 +983,8 @@ try {
       await pb.locator('.play > .panel').waitFor();
     }
     // With 8 at 1280×720, a 🎯 Pick a player wheel from the board's 🎡 Wheel: its bar is one row and in sight, Spin! first
-    // (the main button's step) and its Close last, then landed (★ Make … the picker under it) Spin again and Close.
+    // and no Close in it (the blue button is Next ▶, which only puts it away), then landed (★ Make … the picker under it)
+    // Spin again in its place. Then a wheel tile's: the same bar, Spin! ringed, the blue Show question ▶ within 96 px.
     if (count === 8) {
       const tools = pb.locator('.panel [data-tool-controls]');
       const bar = () =>
@@ -980,23 +992,53 @@ try {
           const kids = [...r.children].filter((c) => c.getBoundingClientRect().width);
           const mids = kids.map((c) => c.getBoundingClientRect()).map((b) => b.top + b.height / 2);
           const words = [...r.querySelectorAll('button')].map((b) => [...b.childNodes].filter((n) => n.nodeName !== 'KBD').map((n) => n.textContent).join('').trim());
-          return { line: Math.max(...mids) - Math.min(...mids) <= 4, first: words[0], last: words.at(-1) };
+          return { line: Math.max(...mids) - Math.min(...mids) <= 4, first: words[0], close: words.filter((w) => w.includes('Close')) };
+        });
+      const blueInSight = (label) =>
+        mainButton(pb, label).evaluate((b) => {
+          const r = b.getBoundingClientRect();
+          return b.classList.contains('primary') && b.contains(document.elementFromPoint(r.x + r.width / 2, r.y + r.height / 2));
         });
       await pb.getByRole('button', { name: '🎡 Wheel' }).click();
       await pb.getByRole('button', { name: '🎯 Pick a player', exact: true }).click();
       await stepButton(tools, 'Spin!').waitFor();
       let b = await bar();
-      assert(b.line && b.first === 'Spin!' && b.last === '✕ Close' && (await situationHasMain(pb, tools)) === '', `8 players at 1280×720: a wheel's bar is one row, Spin! first (in sight) and ✕ Close last (${JSON.stringify(b)})`);
+      assert(
+        b.line && b.first === 'Spin!' && !b.close.length && (await blueInSight('Next ▶')) && (await boxHasAction(tools, 'Spin!')) === '',
+        `8 players at 1280×720: a tools-row wheel's bar is one row, Spin! first (in sight, once), no Close; the blue button is Next ▶ (${JSON.stringify(b)})`,
+      );
       await stepButton(tools, 'Spin!').click();
       await tools.getByRole('button', { name: /^★ Make .+ the picker$/ }).waitFor({ timeout: 10000 });
       b = await bar();
       const out = await hidden('.panel [data-tool-controls] > .row:first-child :is(button, select)');
       assert(
-        b.line && b.first === 'Spin again' && b.last === 'Close' && out.length === 0 && (await situationHasMain(pb, tools)) === '',
-        `8 players at 1280×720: landed, the bar is still one row and in sight, Spin again first and Close last (the main button's step), ★ Make … the picker under it (${JSON.stringify(b)}${out.length ? `; not in sight: ${out.join(', ')}` : ''})`,
+        b.line && b.first === 'Spin again' && !b.close.length && out.length === 0 && (await blueInSight('Next ▶')),
+        `8 players at 1280×720: landed, the bar is still one row and in sight, Spin again first, no Close, ★ Make … the picker under it, the blue Next ▶ in sight (${JSON.stringify(b)}${out.length ? `; not in sight: ${out.join(', ')}` : ''})`,
       );
-      await stepButton(tools, 'Close').click();
+      await mainButton(pb, 'Next ▶').click();
       await tools.waitFor({ state: 'detached' });
+      // A wheel tile: Spin! first and ringed, no Close; the blue button is Show question ▶, within reach of Spin!.
+      await pb.locator('.stage-box .board .tile[data-cat="4"][data-row="4"]').click();
+      await stepButton(tools, 'Spin!').waitFor();
+      b = await bar();
+      const reach = await pb.evaluate(() => {
+        const slot = document.querySelector('.panel [data-tool-controls] [data-step]').getBoundingClientRect();
+        return Math.round(document.querySelector('.panel [data-next]').getBoundingClientRect().top - slot.bottom);
+      });
+      console.log(`    (8 players at 1280×720: a wheel tile's Spin! is ${reach} px above the blue button)`);
+      assert(
+        b.line && b.first === 'Spin!' && !b.close.length && (await stepButton(tools, 'Spin!').evaluate((x) => x.classList.contains('ring'))) && (await blueInSight('Show question ▶')) && reach <= 96,
+        `8 players at 1280×720: a wheel tile's bar is one row, Spin! first and ringed, no Close; the blue Show question ▶ in sight, within 96 px of Spin! (${JSON.stringify({ ...b, reach })})`,
+      );
+      await pb.keyboard.press('w');
+      await stepButton(tools, 'Spin again').waitFor({ timeout: 10000 });
+      await pb.locator('.panel [data-next]:not(:disabled)').waitFor();
+      await pb.keyboard.press('n');
+      await tools.waitFor({ state: 'detached' });
+      await pb.locator('.panel .status', { hasText: 'Answer hidden' }).waitFor();
+      assert(await flowIs(pb, '👁 Reveal answer'), '8 players: landed, N (the blue Show question ▶) puts the wheel away and its question is up');
+      await pb.keyboard.press('Escape');
+      await pb.locator('.stage-box .board').waitFor();
     }
     for (const [w, h, id] of [
       [1280, 720, 'c_box0'],

@@ -169,6 +169,11 @@ try {
   await dd.waitFor();
   assert((await form(ann).isHidden()) && (await form(bo).isHidden()), 'nobody picked for the Daily Double yet: no phone has a wager box');
   assert((await dd.innerText()).includes('Who found it? Pick a player.'), 'the host is asked “Who found it? Pick a player.”');
+  // The blue Show question ▶ is never greyed: pressed with nobody picked, the question waits and the status line says why.
+  assert((await mainButton(host, 'Show question ▶').isEnabled()) && (await dd.getByRole('button', { name: 'Show question ▶' }).count()) === 0, 'nobody picked: the blue Show question ▶ is not greyed (and the box has no copy of it)');
+  await mainButton(host, 'Show question ▶').click();
+  await host.getByText('Who found it? Click their name (the keys stay in the Wager box)').waitFor();
+  assert((await dd.count()) === 1, 'pressed with nobody picked: the question waits, and the status line says to click who found it');
   assert(await dd.getByRole('button', { name: 'True Daily Double' }).isDisabled(), 'True Daily Double is off (with no amount) until a player is picked');
   assert((await dd.locator('[data-dd-phones]').innerText()).includes('Once you pick them'), 'the phones’ line is there from the start (the box doesn’t grow as a wager comes in)');
   const key1 = dd.locator('.chip .key', { hasText: '1' });
@@ -184,6 +189,11 @@ try {
   assert(true, 'the other phones see "Player 1 is wagering…"');
   await dd.getByText('📱 waiting…').waitFor();
   assert(true, 'the host sees the phone can send it ("📱 waiting…")');
+  // Show question ▶ with the wager still to come: the keys stay in the Wager box, and the status line says whose phone.
+  await mainButton(host, 'Show question ▶').click();
+  await host.getByText('Waiting on Player 1’s phone: type their wager here if it doesn’t come').waitFor();
+  await host.waitForFunction(() => document.activeElement?.matches('.dd input[type=number]'));
+  assert((await dd.count()) === 1 && (await mainButton(host, 'Show question ▶').isEnabled()), 'Show question ▶ with the wager to come: the question waits, the keys in the Wager box (never greyed)');
 
   // The host turns the limit on: over the max is refused, with a clear message, and nothing reaches the host.
   await dd.getByLabel('Ignore the limit').uncheck();
