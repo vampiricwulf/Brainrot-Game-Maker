@@ -79,7 +79,11 @@ Every clue or screen is a **slide**: text, images, GIFs, video, audio or YouTube
 </table>
 
 **Keyboard and drag:** round tabs, clue tiles, categories, rows, list items and map screens can be dragged and have
-right-click menus; `Delete`, `F2`, `Ctrl+D` and `Ctrl+C` / `Ctrl+V` work on what's selected. Files drop onto the slot
+right-click menus; `Delete`, `F2`, `Ctrl+D` and `Ctrl+C` / `Ctrl+V` work on what's selected. `Alt`+arrows move them
+too: on a board, `Alt`+`←` / `→` on a tile or a category's name moves the category and `Alt`+`↑` / `↓` on a tile its row.
+A tile's menu has **Make it a…** (Standard, ⭐ Daily Double, 🤝 Partner clue, 🎡 Wheel tile…, 🎲 Dice tile…, then ✍
+Everyone answers and ⬚ Empty tile), the kind it is ticked; a wheel or dice tile opens the clue at its Which wheel or
+Which dice box. Files drop onto the slot
 they belong in (a picture dropped on a tile asks: in the question, or as the tile's face). Press `?` (or **❔ Help** ›
 ⌨ Keyboard shortcuts) for every editor shortcut, and beside them, one click away, the host's during the game, with a filter for both. The longer help on the board, a slide, the RPG map and the board game page sits in a
 **💡 Tips** fold that stays as you left it.

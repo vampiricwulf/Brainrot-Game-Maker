@@ -214,6 +214,29 @@ try {
   assert((await focusComes('0,1')) && (await tileText(0, 1)).includes('Who is Pepe?'), `after Move row down from a tile's menu, the focus goes with the tile (${await focused()})`);
   await key('ArrowUp');
   assert((await focused()) === '0,0', 'and the arrows go on from there');
+  // Alt+arrows on a tile move its row or its category, and on a category's name the category; the keys go with them.
+  await key('ArrowDown');
+  await key('Alt+ArrowUp');
+  assert((await focusComes('0,0')) && (await tileText(0, 0)).includes('Who is Pepe?') && (await undoTitle()).startsWith('Undo: Moved row 2 up'), `Alt+↑ on a tile moves its row, the keys going with it (${await focused()})`);
+  await key('Alt+ArrowRight');
+  assert((await focusComes('1,0')) && (await catNames()).slice(0, 2).join('|') === 'Category 2|Category 1' && (await tileText(1, 0)).includes('Who is Pepe?'), `Alt+→ on a tile moves its category (${await focused()})`);
+  await key('ArrowUp');
+  await key('Alt+ArrowLeft');
+  assert((await catNames()).slice(0, 2).join('|') === 'Category 1|Category 2' && (await focused()) === 'Category 1 name', `Alt+← in a category's name moves it back, the keys staying in its name (${await focused()})`);
+  // The tile menu's Make it a…: the kind it is ticked; 🎡 Wheel tile… makes it one and opens the clue at Which wheel.
+  await tile(2, 3).click({ button: 'right' });
+  const kinds = (await menu.getByRole('menuitem').allInnerTexts()).map((t) => t.split('\n')[0]);
+  assert(
+    ['✓ Standard', '⭐ Daily Double', '🤝 Partner clue', '🎡 Wheel tile…', '🎲 Dice tile…', '✍ Everyone answers', '⬚ Empty tile'].every((x) => kinds.includes(x)) && (await menu.getByText('Make it a…').count()) === 1,
+    `a tile's menu has Make it a…, the kind it is ticked (${kinds.join(' | ')})`,
+  );
+  await menu.getByRole('menuitem', { name: '🎡 Wheel tile…' }).click();
+  await page.getByRole('dialog', { name: 'Edit clue' }).waitFor();
+  const atPicker = await page.waitForFunction(() => document.activeElement?.closest('label')?.textContent?.includes('Which wheel'), null, { timeout: 3000 }).then(() => true, () => false);
+  assert(atPicker && (await undoTitle()).startsWith('Undo: Made Category 3 $800 a wheel tile'), '🎡 Wheel tile… makes it one (one step) and opens the clue with the keys in Which wheel');
+  await key('Escape');
+  await key('Control+z');
+  assert(!(await tileText(2, 3)).includes('🎡'), 'Ctrl+Z makes it a standard tile again');
   assert(!dialogs.length, 'nothing asked first');
 
   // ---------- ED-15: round tabs ----------
@@ -365,7 +388,7 @@ try {
   for (const [c, r] of [[4, 3], [5, 3]]) {
     await tile(c, r).click({ button: 'right' });
     await menu.waitFor();
-    await menu.getByRole('menuitem', { name: /Make it a Daily Double/ }).click();
+    await menu.getByRole('menuitem', { name: '⭐ Daily Double', exact: true }).click();
   }
   assert((await undoTitle()).startsWith('Undo: Made Category 6 $800 a Daily Double'), `making a Daily Double names the tile (${await undoTitle()})`);
   assert((await ddBox.inputValue()) === '2' && (await page.getByText('2 on the board · all placed').count()) === 1, 'placing more Daily Doubles than ⭐ says raises the count');

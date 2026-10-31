@@ -124,7 +124,7 @@ try {
   // A tile's picture never covers its badges or its value (a Daily Double made of it, at 1280).
   await page.setViewportSize({ width: 1280, height: 720 });
   await editorTile(2, 4).click({ button: 'right' });
-  await page.getByRole('menu').getByRole('menuitem', { name: /Make it a Daily Double/ }).click();
+  await page.getByRole('menu').getByRole('menuitem', { name: '⭐ Daily Double', exact: true }).click();
   await editorTile(2, 4).locator('.dd', { hasText: 'DD' }).waitFor();
   const overlap = await editorTile(2, 4).evaluate((t) => {
     const img = t.querySelector('img.face');

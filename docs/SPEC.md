@@ -209,7 +209,11 @@ RollEvent  { id, ts, source: 'wheel' | 'dice', presetName?, result: string /* la
 
 ### 5.2 Board editor
 - A grid view of the round that mirrors the play board. Click a category header or tile to edit it.
-- Add/remove/reorder categories and rows (drag and drop). Duplicate a category. Mark a tile **empty**.
+- Add/remove/reorder categories and rows (drag and drop, or `Alt`+`←`/`→` on a tile or a category's name for its
+  category and `Alt`+`↑`/`↓` on a tile for its row, the keys going with it). Duplicate a category. Mark a tile **empty**.
+- A tile's right-click menu has a **Make it a…** group, the kind it is ticked: Standard · ⭐ Daily Double · 🤝 Partner
+  clue · 🎡 Wheel tile… · 🎲 Dice tile…, then ✍ Everyone answers (standard tiles; on or off) and ⬚ Empty tile. A wheel or
+  dice tile opens the clue editor with the keys in its Which wheel / Which dice box.
 - Tile badges show the clue type (DD, wheel, dice), whether media is attached, and whether the answer is missing.
 - **Daily Doubles**: toggle any tile as a DD by hand, or press **Randomize Daily Doubles** to place `dailyDoubleCount`
   of them at random, one a category (asked for more, it places what fits, says “Placed 6 of 8 Daily Doubles: one a

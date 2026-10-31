@@ -57,7 +57,7 @@ try {
   await addClassicRounds(page);
   // A Daily Double placed: the preview shows the board as viewers see it, without the host's ⭐ in its corner.
   await page.locator('.grid .tile').nth(2 * (await page.locator('.cat').count())).click({ button: 'right' });
-  await page.getByRole('menu').getByRole('menuitem', { name: /Make it a Daily Double/ }).click();
+  await page.getByRole('menu').getByRole('menuitem', { name: '⭐ Daily Double', exact: true }).click();
   await themePage();
   await preview.locator('.board .tile').first().waitFor();
   assert((await preview.locator('.board .tile.host-mark').count()) === 0, 'the Theme page’s preview has no host-only tile badges (a Daily Double is placed)');

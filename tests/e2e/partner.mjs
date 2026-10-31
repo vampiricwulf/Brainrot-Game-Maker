@@ -369,10 +369,12 @@ try {
 
   // ---------- Off and on again, and a reload ----------
   await tile.click({ button: 'right' });
-  await page.getByRole('menuitem', { name: '🤝 Not a partner clue' }).click();
+  // (Make it a…: the kind it is now is ticked.)
+  assert((await page.getByRole('menuitem', { name: '✓ 🤝 Partner clue', exact: true }).count()) === 1, 'the tile menu ticks the kind it is');
+  await page.getByRole('menuitem', { name: 'Standard', exact: true }).click();
   assert((await tile.locator('.dd[title^="Partner clue"]').count()) === 0, 'the tile menu makes it a plain clue again');
   await tile.click({ button: 'right' });
-  await page.getByRole('menuitem', { name: '🤝 Make it a partner clue' }).click();
+  await page.getByRole('menuitem', { name: '🤝 Partner clue', exact: true }).click();
   // (The page keeps the last changes as it goes away, so the reload can come at once.)
   await tile.locator('.dd[title^="Partner clue"]').waitFor();
   // Made by hand, it counts: the 🤝 box went up to 1, with its Plays and Card choices, and Start has none to place.

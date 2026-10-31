@@ -75,9 +75,12 @@
     const row = cat < 0 ? -1 : round.categories[cat].clues.findIndex((c) => c.id === open!.clue);
     return row < 0 ? null : { cat, row };
   });
-  function openAt(cat: number, row: number): void {
+  /** The clue editor opens with the keys in its Which wheel / Which dice box (the tile menu's 🎡 Wheel tile…). */
+  let toolFirst = $state(false);
+  function openAt(cat: number, row: number, tool = false): void {
     const c = round.categories[cat];
     open = c?.clues[row] ? { category: c.id, clue: c.clues[row].id } : null;
+    toolFirst = tool;
     if (open) cursor = { cat, row };
   }
   /**
@@ -362,6 +365,7 @@
   /**
    * On a tile: arrows move between tiles (↑ from the top row goes to the category's name), Enter or F2 opens the
    * clue, Delete / Backspace clears it (Backspace just after Enter in the name goes back to the name), Ctrl+C / Ctrl+V copy and paste a whole clue.
+   * Alt+←/→ moves its category, Alt+↑/↓ its row (the keys go with the tile).
    */
   function tileKey(e: KeyboardEvent, p: TilePos): void {
     const mod = e.ctrlKey || e.metaKey;
@@ -378,7 +382,12 @@
       return;
     }
     const v = ARROWS[e.key];
-    if (v && !mod && !e.altKey && !e.shiftKey) {
+    if (v && e.altKey && !mod && !e.shiftKey) {
+      // (Alt+← is the browser's Back on Windows.)
+      e.preventDefault();
+      if (v[0]) moveCatKeys(p.cat, p.cat + v[0], () => focusTile(p.cat + v[0], p.row, true));
+      else shiftRow(p.row, p.row + v[1]);
+    } else if (v && !mod && !e.altKey && !e.shiftKey) {
       e.preventDefault();
       if (p.row + v[1] < 0) return catNameField(p.cat)?.focus();
       focusTile(Math.max(0, Math.min(round.categories.length - 1, p.cat + v[0])), Math.max(0, Math.min(round.values.length - 1, p.row + v[1])));
@@ -449,10 +458,18 @@
 
   /**
    * ↓ at the end of a category's name, or Enter, goes down to its top tile (Shift+Enter starts a second line of the
-   * name).
+   * name). Alt+←/→ moves the category, the keys staying in its name (not on a Mac, where Option+arrows move the caret
+   * by word).
    */
   function catNameKey(e: KeyboardEvent, ci: number): void {
     const t = e.currentTarget as HTMLTextAreaElement;
+    const mac = /Mac|iPhone|iPad/.test(navigator.platform);
+    if ((e.key === 'ArrowLeft' || e.key === 'ArrowRight') && e.altKey && !e.ctrlKey && !e.metaKey && !e.shiftKey && !mac) {
+      e.preventDefault();
+      const to = ci + (e.key === 'ArrowLeft' ? -1 : 1);
+      moveCatKeys(ci, to, () => catNameField(to)?.focus());
+      return;
+    }
     if (e.key === 'Enter' && !e.shiftKey && !e.altKey && !e.ctrlKey && !e.metaKey && !e.isComposing) {
       e.preventDefault();
       focusTile(ci, 0, true);
@@ -497,32 +514,52 @@
     dropTarget = null;
   }
 
+  /** The tile menu's "Make it a…" kinds, in the clue editor's Type order (a wheel or dice opens the clue at its picker). */
+  const KINDS: { type: ClueType; label: string; words: string }[] = [
+    { type: 'standard', label: 'Standard', words: 'a standard tile' },
+    { type: 'dailyDouble', label: '⭐ Daily Double', words: 'a Daily Double' },
+    { type: 'partner', label: '🤝 Partner clue', words: 'a partner clue' },
+    { type: 'wheel', label: '🎡 Wheel tile…', words: 'a wheel tile' },
+    { type: 'dice', label: '🎲 Dice tile…', words: 'a dice tile' },
+  ];
+
+  /**
+   * Make it a… from the tile's menu: one step (its rules and cards stay on a partner clue made a standard tile again, for
+   * when it's made one again). A wheel or dice tile opens the clue at its Which wheel / Which dice box.
+   */
+  function makeKind(p: TilePos, type: ClueType): void {
+    const clue = round.categories[p.cat].clues[p.row];
+    const words = KINDS.find((k) => k.type === type)!.words;
+    // (Undone, it shows on the board, where it was made: the clue doesn't open.)
+    if (clue.type !== type)
+      step(`Made ${tileName(p)} ${words}`, () => (setClueType(round, clue, type), type === 'partner' && followTheme()), { place: tilePlace(p.cat, clue.id) });
+    if (type === 'wheel' || type === 'dice') openAt(p.cat, p.row, true);
+  }
+
   function tileMenu(e: MouseEvent, p: TilePos): void {
     const clue = round.categories[p.cat].clues[p.row];
+    const on = (yes: boolean, label: string) => `${yes ? '✓ ' : ''}${label}`;
     cursor = p;
     showMenu(e, [
       { heading: tileName(p) },
       { label: '✎ Edit clue', onclick: () => openAt(p.cat, p.row), keys: 'Enter' },
+      { sep: true },
+      { heading: 'Make it a…' },
+      ...KINDS.map((k) => ({ label: on(clue.type === k.type, k.label), disabled: clue.empty, onclick: () => makeKind(p, k.type) })),
       {
-        label: clue.type === 'dailyDouble' ? '⭐ Not a Daily Double' : '⭐ Make it a Daily Double',
-        disabled: clue.empty,
-        // (Undone, it shows on the board, where it was made: the clue doesn't open.)
+        label: on(!!clue.everyone && clue.type === 'standard', '✍ Everyone answers'),
+        disabled: clue.empty || clue.type !== 'standard',
+        hint: clue.type === 'standard' ? 'Every player types an answer on their phone, in secret' : 'For a standard tile',
         onclick: () =>
-          clue.type === 'dailyDouble'
-            ? step(`Made ${tileName(p)} not a Daily Double`, () => setClueType(round, clue, 'standard'), { place: tilePlace(p.cat, clue.id) })
-            : step(`Made ${tileName(p)} a Daily Double`, () => setClueType(round, clue, 'dailyDouble'), { place: tilePlace(p.cat, clue.id) }),
+          step(
+            clue.everyone ? `Took ✍ Everyone answers off ${tileName(p)}` : `Made ${tileName(p)} ✍ Everyone answers`,
+            () => (clue.everyone ? delete clue.everyone : (clue.everyone = true)),
+            { place: tilePlace(p.cat, clue.id) },
+          ),
       },
       {
-        label: clue.type === 'partner' ? '🤝 Not a partner clue' : '🤝 Make it a partner clue',
-        disabled: clue.empty,
-        // (Its rules and cards stay on it, for when it's made one again.)
-        onclick: () =>
-          clue.type === 'partner'
-            ? step(`Made ${tileName(p)} not a partner clue`, () => setClueType(round, clue, 'standard'), { place: tilePlace(p.cat, clue.id) })
-            : step(`Made ${tileName(p)} a partner clue`, () => (setClueType(round, clue, 'partner'), followTheme()), { place: tilePlace(p.cat, clue.id) }),
-      },
-      {
-        label: clue.empty ? '↩ Use this tile again' : '⬚ Leave this tile empty',
+        label: on(!!clue.empty, '⬚ Empty tile'),
+        hint: clue.empty ? 'Make it playable again' : 'Not played: the board shows a blank there',
         onclick: () =>
           step(
             clue.empty ? `Made ${tileName(p)} playable again` : `Left ${tileName(p)} empty`,
@@ -537,7 +574,7 @@
       { label: '📋 Copy clue', onclick: () => copyTile(p), keys: 'Ctrl+C' },
       { label: '📋 Paste clue here', onclick: () => pasteTile(p), disabled: !clipboard.clue, keys: 'Ctrl+V' },
       { label: '⌫ Clear clue', onclick: () => clearTile(p), disabled: !clueClearable(clue), keys: 'Delete' },
-      ...rowItems(p.row),
+      ...rowItems(p.row, true),
     ]);
   }
 
@@ -569,6 +606,13 @@
     if (to < 0 || to >= round.categories.length || to === from) return;
     step(`Moved category “${categoryLabel(round.categories[from])}” ${to < from ? 'left' : 'right'}`, () => moveCategory(round, from, to));
     announce(`Category “${categoryLabel(round.categories[to])}” moved to column ${to + 1} of ${round.categories.length}`);
+  }
+
+  /** Alt+←/→: the category moves, and the keys go back where they were once it's drawn in its new place (`refocus`). */
+  function moveCatKeys(from: number, to: number, refocus: () => void): void {
+    if (to < 0 || to >= round.categories.length) return;
+    moveCat(from, to);
+    void tick().then(refocus);
   }
 
   /** A new category at `at`, its name ready to type. */
@@ -605,8 +649,8 @@
     const n = round.categories.length;
     (button ? dropMenu : showMenu)(e, [
       { heading: categoryLabel(cat) },
-      { label: '◀ Move left', onclick: () => moveCat(ci, ci - 1), disabled: ci === 0 },
-      { label: '▶ Move right', onclick: () => moveCat(ci, ci + 1), disabled: ci === n - 1 },
+      { label: '◀ Move left', onclick: () => moveCat(ci, ci - 1), disabled: ci === 0, keys: 'Alt+←' },
+      { label: '▶ Move right', onclick: () => moveCat(ci, ci + 1), disabled: ci === n - 1, keys: 'Alt+→' },
       { sep: true },
       { label: '＋ Insert category left', onclick: () => insertCat(ci), disabled: n >= 10 },
       { label: '＋ Insert category right', onclick: () => insertCat(ci + 1), disabled: n >= 10 },
@@ -683,14 +727,15 @@
     }
   }
 
-  function rowItems(row: number): MenuEntry[] {
+  /** A row's items (`keys`: from a tile, where Alt+↑/↓ moves it). */
+  function rowItems(row: number, keys = false): MenuEntry[] {
     const n = round.values.length;
     return [
       { sep: true },
       { label: '＋ Insert row above', onclick: () => addRow(row), disabled: n >= 10 },
       { label: '＋ Insert row below', onclick: () => addRow(row + 1), disabled: n >= 10 },
-      { label: '▲ Move row up', onclick: () => shiftRow(row, row - 1), disabled: row === 0 },
-      { label: '▼ Move row down', onclick: () => shiftRow(row, row + 1), disabled: row === n - 1 },
+      { label: '▲ Move row up', onclick: () => shiftRow(row, row - 1), disabled: row === 0, keys: keys ? 'Alt+↑' : undefined },
+      { label: '▼ Move row down', onclick: () => shiftRow(row, row + 1), disabled: row === n - 1, keys: keys ? 'Alt+↓' : undefined },
       { label: `🗑 Delete row ${row + 1}`, danger: true, onclick: () => removeRow(row), disabled: n <= 1 },
     ];
   }
@@ -818,7 +863,7 @@
     disabled={(round.dailyDoubleCount ?? 1) === 0}
     title={(round.dailyDoubleCount ?? 1) === 0
       ? 'Say how many first'
-      : 'Scatter Daily Doubles at random, one a category (more often in the bottom rows). The ones on the board move. To make one by hand, right-click a tile → ⭐ Make it a Daily Double (or pick it as the clue’s Type).'}>🔀 Randomize</button
+      : 'Scatter Daily Doubles at random, one a category (more often in the bottom rows). The ones on the board move. To make one by hand, right-click a tile → Make it a… ⭐ Daily Double (or pick it as the clue’s Type).'}>🔀 Randomize</button
   >
   <span class="hint">{ddHint}</span>
     </div>
@@ -850,7 +895,7 @@
     disabled={!round.partnerCount}
     aria-label="Randomize partner clues"
     title={round.partnerCount
-      ? 'Scatter partner clues at random, on tiles with a written question and answer (never a Daily Double). The ones on the board move. To make one by hand, right-click a tile → 🤝 Make it a partner clue (or pick it as the clue’s Type).'
+      ? 'Scatter partner clues at random, on tiles with a written question and answer (never a Daily Double). The ones on the board move. To make one by hand, right-click a tile → Make it a… 🤝 Partner clue (or pick it as the clue’s Type).'
       : 'Say how many first'}>🔀 Randomize</button
   >
   <!-- (Once any partner clue is on the board: made by hand, the box follows it.) -->
@@ -898,7 +943,7 @@
   <div
     class="grid"
     role="group"
-    aria-label="Board: arrow keys move between tiles, Enter edits a clue, Delete clears it, Shift+F10 opens its menu"
+    aria-label="Board: arrow keys move between tiles, Enter edits a clue, Delete clears it, Shift+F10 opens its menu, Alt+arrows move its category or row"
     class:many={round.categories.length >= 8 || colMin < 120}
     bind:this={gridEl}
     style:grid-template-columns="repeat({round.categories.length}, minmax({colMin}px, 1fr))"
@@ -1070,7 +1115,7 @@
 </div>
 
 {#if editing}
-  <ClueEditor {round} bind:pos={() => editing!, (p) => openAt(p.cat, p.row)} onclose={closeClue} />
+  <ClueEditor {round} {toolFirst} bind:pos={() => editing!, (p) => openAt(p.cat, p.row)} onclose={closeClue} />
 {/if}
 {#if decorOpen}
   <BoardDecorEditor {round} onclose={() => (decorOpen = false)} />
@@ -1081,7 +1126,7 @@
 <div class="tip">
   <Tips id="board" hint="Click a tile (or press Enter) to write its clue. Right-click (or Shift+F10) a tile, a category or a row value for more.">
     <ul>
-      <li>Keys: arrows move between tiles (↑ from the top row: the category name), Enter or F2 edits, Delete clears, Ctrl+C / Ctrl+V copy and paste a clue, Shift+F10 opens a tile's menu.</li>
+      <li>Keys: arrows move between tiles (↑ from the top row: the category name), Enter or F2 edits, Delete clears, Ctrl+C / Ctrl+V copy and paste a clue, Shift+F10 opens a tile's menu. Alt+←/→ moves a category (on its name or a tile), Alt+↑/↓ a tile's row.</li>
       <li>Drag a tile onto another to swap them (hold Ctrl to copy), and a category to move it.</li>
       <li>Drop image files onto a category for its picture, or onto a tile to put them in its question (or on its face).</li>
       <li>Paste a column of clues from a spreadsheet on a category's name to fill it (a whole sheet opens 📥 Import clues).</li>

@@ -48,10 +48,13 @@
     round,
     pos = $bindable(),
     onclose,
+    toolFirst = false,
   }: {
     round: BoardRound;
     pos: { cat: number; row: number };
     onclose: () => void;
+    /** Opened from the tile menu's 🎡 Wheel tile… or 🎲 Dice tile…: the keys start in its Which wheel / Which dice box. */
+    toolFirst?: boolean;
   } = $props();
 
   const cat = $derived(round.categories[pos.cat]);
@@ -328,7 +331,8 @@
   // empty tile, the Empty tile box that brings it back).
   // (Opened at its answer or a card, by Find or an undo: the Answer or the card's field.)
   const focusQuestion = () => tick().then(() => ((shown === 'a' ? answerField : shown === 'card' ? cardField : questionField) ?? emptyBox)?.focus());
-  onMount(() => void focusQuestion());
+  let toolBox = $state<HTMLSelectElement>();
+  onMount(() => void (toolFirst ? tick().then(() => (toolBox ? toolBox.focus() : focusQuestion())) : focusQuestion()));
 
   // Prev / Next walk clues column by column (down a category, then on to the next one), past empty tiles.
   const prev = $derived(stepClue(round, pos, -1));
@@ -437,7 +441,7 @@
         {#if clue.type === 'wheel'}
           <label class="field">
             Which wheel
-          <select value={clue.wheelId ?? ''} disabled={clue.empty} onchange={(e) => pickTool('wheel', e.currentTarget)}>
+          <select bind:this={toolBox} value={clue.wheelId ?? ''} disabled={clue.empty} onchange={(e) => pickTool('wheel', e.currentTarget)}>
             <option value="">Choose a wheel…</option>
             {#if clue.wheelId && clue.wheelId !== PLAYER_WHEEL && !app.game.wheels.some((w) => w.id === clue.wheelId)}
               <option value={clue.wheelId}>⚠ Deleted wheel — pick another</option>
@@ -453,7 +457,7 @@
         {:else if clue.type === 'dice'}
           <label class="field">
             Which dice
-          <select value={clue.diceId ?? ''} disabled={clue.empty} onchange={(e) => pickTool('dice', e.currentTarget)}>
+          <select bind:this={toolBox} value={clue.diceId ?? ''} disabled={clue.empty} onchange={(e) => pickTool('dice', e.currentTarget)}>
             <option value="">Choose dice…</option>
             {#if clue.diceId && !tileDice(app.game, clue.diceId)}<option value={clue.diceId}>⚠ Deleted dice — pick another</option>{/if}
             {#if app.game.dice.length}
