@@ -25,6 +25,7 @@
     st,
     selected,
     send = null,
+    stays = '',
     onclose,
   }: {
     game: Game;
@@ -34,6 +35,8 @@
     selected: string[];
     /** Opened to send these players somewhere (their name for the buttons), instead of the party. */
     send?: { players: string[]; label: string } | null;
+    /** What stays behind when some players go, not the whole party (the objects selected: "Sword stays on Start"). */
+    stays?: string;
     onclose: () => void;
   } = $props();
 
@@ -91,7 +94,7 @@
     const who = players ?? party?.members ?? [];
     if (!who.length) return void toast('Nobody to move');
     logged(session, `${label ?? party?.name ?? 'Party'} to ${found.screen.name}`, () => moveTo(game, st, world, to, { players: players }));
-    toast(`${label ?? party?.name ?? 'Party'} → ${found.screen.name}`);
+    toast(`${label ?? party?.name ?? 'Party'} → ${found.screen.name}${players && stays ? ` · ${stays}` : ''}`);
     onclose();
   }
 </script>

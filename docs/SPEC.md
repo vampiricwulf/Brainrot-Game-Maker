@@ -589,7 +589,8 @@ The mode isn't saved with the game: it's dual while the audience window is open.
   the name and buttons behind 👁 Show; what the host added during the show keeps its name), and steps that move or
   remove one carry a quiet label ("Move Ann & a hidden object"). No step is recorded for a move that moves nothing;
   long labels read "Move Ann, Bob, Cy & 5 more". A big object (a quarter of its screen) dragged alone says once a game
-  how to lock it or box over it.
+  how to lock it or box over it. To another screen only players go (an avatar dropped on a pane, an edge or a party,
+  the minimap's Only selected, the full map): the toast says what stays ("Ann & Bob → Meadow · Sword stays on Start").
 - **A double-click counts once** on a button that changes the screen (the first screen's cards and ✨ Try a sample game,
   ▶ Play, Start game ▶ and ▶ Resume it, the exported file's ▶ Play, Resume game and View results, the status bar's Resume
   game and View results, Open…'s Recent games, a tile opening its clue editor): the rest of that press (its second

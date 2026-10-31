@@ -34,7 +34,7 @@
   import InlineAsk from '../host/InlineAsk.svelte';
   import {
     addLive, centredOn, focusParty, hiddenNames, joinPartyNow, liveText, moveChoices, objectAt, objectMenu, regroupAll, rpgNow, selectionWords, sendPartiesOn, splitOff, START_FIRST,
-    stepParty, toggleMap, type RpgAsk, type StagePoint,
+    staysWords, stepParty, toggleMap, type RpgAsk, type StagePoint,
   } from './hostops';
   import { dropHover } from '../dragdrop.svelte';
 
@@ -288,8 +288,10 @@
     const w = world;
     const name = pickedFound?.screen.name;
     logged(session, `${label ?? party?.name ?? 'Party'} to ${name}`, () => moveTo(game, s, w, to, { players: who }));
-    // (Screen readers hear where they are now, as after a step.)
+    // (Screen readers hear where they are now, as after a step. Only selected players: the objects selected stay.)
     if (name) announce(`${label ?? party?.name ?? 'Party'} moved to ${name}`);
+    const stays = who ? staysWords(game, session, selectedObjects, !dual) : '';
+    if (stays && name) toast(`${label} → ${name} · ${stays}`, 3000);
     picked = null;
   }
 
@@ -668,7 +670,7 @@
     </DrawPad>
   {/if}
   {#if mapOpen}
-    <MapJump {game} {session} {world} {st} {selected} send={mapSend} onclose={() => ((mapOpen = false), (mapSend = null))} />
+    <MapJump {game} {session} {world} {st} {selected} send={mapSend} stays={staysWords(game, session, selectedObjects, !dual)} onclose={() => ((mapOpen = false), (mapSend = null))} />
   {/if}
   {#if live}
     <LiveScreenEditor {world} {st} {dual} screen={live.screen} slide={live.slide} title={live.title} onclose={() => (live = null)} />

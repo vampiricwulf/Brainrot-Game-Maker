@@ -87,7 +87,7 @@
   import { nextUndo, stillUndone, type TimelineRow } from '../lib/timeline';
   import {
     addLive, bigObject, droppedFile, dropEntry, everythingOn, giveEntry, joinPartyNow, moveGroup, moveObject, objectAt, objectMenu, objectName, pickUp, regroupAll, removeObject, rpgNow, selectionWords,
-    sendPlayers, START_FIRST, stepParty, toggleMap,
+    sendPlayers, START_FIRST, staysWords, stepParty, toggleMap,
     type AvatarDrop, type BandPick, type RpgAsk, type StagePoint,
   } from './rpg/hostops';
   import { isMenuKey, showMenu, type MenuEntry } from '../lib/menustate.svelte';
@@ -4365,7 +4365,9 @@
     if (!selected.includes(id)) replaceSelection([id], []);
     if ('spot' in drop) return logged(session, `Move ${playerName(session, id)}`, () => Object.assign(st.positions[id], drop.spot));
     const said = 'party' in drop ? joinPartyNow(game, session, who, drop.party) : sendPlayers(game, session, who, drop.to, drop);
-    if (said) toast(said, 3000);
+    // (Only players go to another screen: the objects selected stay, and the toast says so.)
+    const stays = said ? staysWords(game, session, rpgSelObjects, !dual) : '';
+    if (said) toast(stays ? `${said} · ${stays}` : said, 3000);
   }
 
   // ---------- Board games: tokens and spaces on the stage ----------

@@ -318,6 +318,21 @@ export function hiddenNames(st: WorldState | undefined, screen: Screen): Map<str
 }
 
 /**
+ * Players sent to another screen go without the objects selected (they stay on their screen): what the toast adds,
+ * "Sword stays on Start", "Sword & Gold pile stay on Start" ('' with none). One window never names a hidden one.
+ */
+export function staysWords(game: Game, session: Session, objects: string[], oneWindow: boolean): string {
+  const { st } = rpgNow(game, session);
+  const found = objects.flatMap((id) => objectAt(game, session, id) ?? []).filter((f) => !st?.objects[f.el.id]?.taken);
+  if (!found.length) return '';
+  const shown = found.filter((f) => !oneWindow || audienceSees(f.el, st?.objects[f.el.id])).map((f) => objectName(f.el));
+  const hidden = found.length - shown.length;
+  const what = shortList([...shown, ...(hidden ? [hiddenCount(hidden)] : [])]);
+  const one = found.length === 1;
+  return new Set(found.map((f) => f.screen.id)).size === 1 ? `${what} ${one ? 'stays' : 'stay'} on ${found[0].screen.name}` : `${what} stay where they are`;
+}
+
+/**
  * The RPG box's selection line: who and what is selected ("Ann, Bob · Sword, Gold pile"). In one window an object
  * viewers don't see is counted, never named ("Ann · 1 hidden object"). Empty: nothing is.
  */

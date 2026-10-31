@@ -6,7 +6,8 @@ import { goToRound, newSession, score } from '../../lib/session';
 import { currencyFields, inventory, newStatField, statNumber, undoAction } from '../../lib/toolset';
 import {
   addLive, avatarRange, avatarSpot, bigObject, centredOn, droppedObject, dropEntry, everythingOn, fillsScreen, giveEntry, groupDelta, hiddenNames, joinPartyNow, liveText, moveChoices, moveGroup,
-  moveObject, objectMenu, objectRange, partyOn, pickUp, regroupAll, removeObject, selectionWords, sendPartiesOn, sendPlayers, shortList, splitOff, START_FIRST, stepParty, wayOffEdge,
+  moveObject, objectMenu, objectRange, partyOn, pickUp, regroupAll, removeObject, selectionWords, sendPartiesOn, sendPlayers, shortList, splitOff, START_FIRST, staysWords, stepParty,
+  wayOffEdge,
 } from './hostops';
 import { stepText } from '../../lib/toolset';
 
@@ -391,6 +392,11 @@ describe('dragging a selection together on the RPG stage', () => {
     expect(selectionWords(game, session, ['p0', 'p1'], [gold.id, chest.id], false)).toBe('Ann, Bob · Gold pile, Chest');
     expect(selectionWords(game, session, ['p0'], [gold.id, chest.id], true)).toBe('Ann · Gold pile, 1 hidden object');
     expect(selectionWords(game, session, [], [], true)).toBe('');
+    // Players sent elsewhere go without the objects: the toast says what stays (one window: not a hidden one's name).
+    const start = screen.name;
+    expect(staysWords(game, session, [gold.id], false)).toBe(`Gold pile stays on ${start}`);
+    expect(staysWords(game, session, [gold.id, chest.id], true)).toBe(`Gold pile & a hidden object stay on ${start}`);
+    expect(staysWords(game, session, [], true)).toBe('');
     // The secret ones are numbered; what viewers never see anyway, or the host added during the show, keeps its name.
     const ring = { ...newShapeEl('rect'), name: 'Ring', secret: true, role: { class: 'item' as const } };
     screen.slide.elements.push(ring);

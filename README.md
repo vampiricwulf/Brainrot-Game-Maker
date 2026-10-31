@@ -455,7 +455,8 @@ hidden objects. Use the separate audience window when that matters.
   selection, as `Esc` and the ✕ do, and **↩ Select them again** brings it back for 5 seconds. One line at the top of
   the RPG box says what's selected (in one window a secret object is "1 hidden object", and Objects here numbers the
   secret ones, never naming them). In one window the stage shows the box and dashed outlines while you hold the
-  button, and for a moment after; pressing one of a selected group outlines the whole group before it moves.
+  button, and for a moment after; pressing one of a selected group outlines the whole group before it moves. To
+  another screen only the players go: the toast says what stays ("Ann & Bob → Meadow · Sword stays on Start").
 - The stage is a `Tab` stop: `Shift+F10` there opens the selected player's menu (their first, with several), else the
   selected object's, else the round's own (🗺 Full map, the map for viewers, 🤝 Regroup).
 
