@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import { announce } from '../../lib/announce';
-import { newGame, newShapeEl, textSlide, type Game, type Session, type SlideElement, type WorldState } from '../../lib/model';
+import { newGame, newImageEl, newShapeEl, textSlide, type Game, type Session, type SlideElement, type WorldState } from '../../lib/model';
 import { addScreenBeside, ensureWorld, newRpgRound, splitParty } from '../../lib/rpg';
 import { goToRound, newSession, score } from '../../lib/session';
 import { currencyFields, inventory, newStatField, statNumber, undoAction } from '../../lib/toolset';
@@ -321,6 +321,43 @@ describe('objects and items on the RPG stage', () => {
     // One window, its card masked: its menu has no buttons of its card's (they're behind its card's 👁 Show).
     const menu = objectMenu(game, session, trap.id, { run: { live: newLive(), selected: [] }, oneWindow: true, alias: '🙈 Hidden object 1', open: () => {}, removed: () => {} });
     expect(lines(menu)).toEqual(['🙈 Hidden object 1', '🗂 Open its card', '—', '👁 Reveal to viewers', '—', '🗑 Remove']);
+  });
+
+  it('in one window, a visible object’s Reveal of a secret one never names it: its card, its menu, the toast, the Log and Redo', () => {
+    const { game, session, st } = setup();
+    const screen = game.worlds![0].maps[0].screens[0];
+    game.media.push({ id: 'm1', name: 'spoiler-final-boss.png', mime: 'image/png', size: 1, kind: 'image' });
+    const idol = { ...newShapeEl('rect'), name: 'Golden Idol', secret: true, role: { class: 'item' as const } };
+    const boss = { ...newImageEl('m1', 100, 100), secret: true };
+    const lever = {
+      ...newShapeEl('rect'),
+      name: 'Lever',
+      role: { class: 'hazard' as const, actions: [{ id: 'r1', do: 'reveal' as const, object: idol.id }, { id: 'r2', do: 'reveal' as const, object: boss.id }] },
+    };
+    screen.slide.elements.push(idol, boss, lever);
+    expect([...hiddenNames(st, screen).values()]).toEqual(['🙈 Hidden object 1']);
+    const run = { live: newLive(), selected: [] };
+    // Two windows (viewers don't see the panel): named, as before.
+    expect(objectActs(game, session, lever.id, run, null).map((a) => a.label)).toEqual(['Reveal Golden Idol (Start)', 'Reveal spoiler-final-boss.png (Start)', '▶ Run all']);
+    // One window: what the panel calls it, else "a hidden object", on its card and in its menu.
+    const acts = objectActs(game, session, lever.id, run, null, true);
+    expect(acts.map((a) => a.label)).toEqual(['Reveal 🙈 Hidden object 1 (Start)', 'Reveal a hidden object (Start)', '▶ Run all']);
+    const menu = objectMenu(game, session, lever.id, { run, oneWindow: true, open: () => {}, removed: () => {} });
+    expect(lines(menu).slice(0, 4)).toEqual(['Lever', 'Reveal 🙈 Hidden object 1 (Start)', 'Reveal a hidden object (Start)', '▶ Run all']);
+    expect(acts[0].run().text).toBe('Lever: Reveal a hidden object (Start)');
+    expect(st.objects[idol.id]?.shown).toBe(true);
+    const step = session.actionLog!.at(-1)!;
+    expect([stepText(step, false), stepText(step, true)]).toEqual(['Lever: Reveal Golden Idol (Start)', 'Lever: Reveal a hidden object (Start)']);
+    // Hidden again with Ctrl+Z: Redo never names it in one window either.
+    undoAction(session);
+    expect(session.worlds![game.worlds![0].id].objects[idol.id]?.shown).toBeFalsy();
+    expect(stepText(session.actionRedo!.at(-1)!, true)).toBe('Lever: Reveal a hidden object (Start)');
+    // ▶ Run all: one step, quiet for both.
+    objectActs(game, session, lever.id, run, null, true)[2].run();
+    expect(stepText(session.actionLog!.at(-1)!, true)).toBe('Lever: Reveal a hidden object (Start), Reveal a hidden object (Start)');
+    expect(stepText(session.actionLog!.at(-1)!, false)).toBe('Lever: Reveal Golden Idol (Start), Reveal spoiler-final-boss.png (Start)');
+    // Revealed: no secret any more, so it's named.
+    expect(objectActs(game, session, lever.id, run, null, true)[0].label).toBe('Reveal Golden Idol (Start)');
   });
 
   it('offers no Reveal for what viewers never see (a no-go area, an arrival point, a hotspot)', () => {

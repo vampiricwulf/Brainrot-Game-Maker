@@ -71,8 +71,8 @@
   const cf = $derived(numberFields.find((f) => f.id === cmpField) ?? shared.find((f) => !/^(hp|health|life|lives)$/i.test(f.name.trim())) ?? shared[0] ?? numberFields[0]);
   const ns = $derived(cmpStat ?? Math.max(0, npcStats.findIndex((s) => s.name === cf?.name)));
 
-  /** Its buttons, in the order (and the words) its menu lists them too. */
-  const acts = $derived(objectActs(game, session, el.id, ctx, picked));
+  /** Its buttons, in the order (and the words) its menu lists them too (one window: never naming a secret object they reveal). */
+  const acts = $derived(objectActs(game, session, el.id, ctx, picked, !dual));
 
   /** A button pressed: it runs (a locked doorway asks first, here), says what it did, and the card closes when it's done with. */
   function press(a: ObjectAct, anyway = false): void {

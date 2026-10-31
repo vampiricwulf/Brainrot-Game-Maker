@@ -17,6 +17,7 @@ import { offerIn } from '../host/offered.svelte';
 import { blip } from '../../lib/live';
 import { announce } from '../../lib/announce';
 import { menuOf, type MenuEntry, type MenuItem } from '../../lib/menustate.svelte';
+import { objectsWhere } from '../../lib/refs';
 import { newAudioEl, newVideoEl } from '../../lib/model';
 
 /** The RPG round being played, its world and the world's state (all undefined outside an RPG round). */
@@ -416,10 +417,24 @@ export interface ObjectAct {
 }
 
 /**
- * An object's card's buttons (ObjectCard draws them; its menu lists them first). `picked`: the players picked on the
- * card (or selected), null for nobody, so they're for everyone standing there.
+ * A Reveal or Hide action pointing at an object whose name one window never says (nameSecret): the screen it's on and
+ * what the host panel calls it there (hiddenNames: "🙈 Hidden object 1", when it has one). Null for any other action.
  */
-export function objectActs(game: Game, session: Session, elId: string, run: ObjectRun, picked: string[] | null): ObjectAct[] {
+export function secretTarget(game: Game, session: Session, a: Action): { screen: string; alias?: string } | null {
+  if ((a.do !== 'reveal' && a.do !== 'hide') || !a.object) return null;
+  const t = objectAt(game, session, a.object);
+  if (t) return nameSecret(t.st, t.screen, t.el) ? { screen: t.screen.name, alias: hiddenNames(t.st, t.screen).get(t.el.id) } : null;
+  // (On a look of its screen not up now: secret as its author made it.)
+  const o = game.worlds?.flatMap(objectsWhere).find((x) => x.el.id === a.object);
+  return o?.el.secret && !neverShown(o.el) ? { screen: o.screen.name } : null;
+}
+
+/**
+ * An object's card's buttons (ObjectCard draws them; its menu lists them first). `picked`: the players picked on the
+ * card (or selected), null for nobody, so they're for everyone standing there. `oneWindow`: viewers see them, so a
+ * Reveal or Hide of a secret object never names it (secretTarget), nor does what a button tells the host.
+ */
+export function objectActs(game: Game, session: Session, elId: string, run: ObjectRun, picked: string[] | null, oneWindow = false): ObjectAct[] {
   const found = objectAt(game, session, elId);
   if (!found) return [];
   const { world, st, screen, el } = found;
@@ -431,8 +446,22 @@ export function objectActs(game: Game, session: Session, elId: string, run: Obje
   const who = picked ?? here;
   const whoNames = names(session, who) || 'nobody';
   const teams = !!run.teams;
-  const ctx: RunContext = { game, session, live: run.live, world, st, selected: run.selected, teams, chosen: who, at: screen.id, offerCard: offerIn(session, `object:${el.id}`) };
-  const said = (a: Action) => objectSay(el, secret, (n) => `${n}: ${describeAction(game, a, undefined, teams)}`);
+  const ctx: RunContext = { game, session, live: run.live, world, st, selected: run.selected, teams, chosen: who, at: screen.id, offerCard: offerIn(session, `object:${el.id}`), hide: oneWindow };
+  /**
+   * An action's words: one window's (`quiet`) never name a secret object it reveals or hides, saying "a hidden object"
+   * (a button: what the host panel calls it, `alias`, so two of them can be told apart).
+   */
+  const words = (a: Action, quiet: boolean, alias = false) => {
+    const t = quiet && secretTarget(game, session, a);
+    return t ? `${a.do === 'reveal' ? 'Reveal' : 'Hide'} ${(alias && t.alias) || hiddenCount(1)} (${t.screen})` : describeAction(game, a, undefined, teams);
+  };
+  /** A step's two texts (ActionEvent.quiet): one window's names neither this object nor what it reveals while they're secret. */
+  const say = (what: (quiet: boolean) => string): [text: string, quiet: string | undefined] => {
+    const text = `${title}: ${what(false)}`;
+    const quiet = `${secret ? 'A hidden object' : title}: ${what(true)}`;
+    return [text, quiet === text ? undefined : quiet];
+  };
+  const said = (a: Action) => say((q) => words(a, q));
   const acts: ObjectAct[] = [];
   if (role?.class === 'doorway') {
     const locked = o?.locked ?? role.locked ?? false;
@@ -491,7 +520,7 @@ export function objectActs(game: Game, session: Session, elId: string, run: Obje
   for (const a of list)
     acts.push({
       id: `a:${a.id}`,
-      label: describeAction(game, a, undefined, teams),
+      label: words(a, oneWindow, true),
       ...(needsPlayers(a) && !who.length ? { asks: 'who' as const } : {}),
       run: () => (needsPlayers(a) && !who.length ? { text: 'Pick who it’s for first' } : { text: runAction(ctx, a, ...said(a)) }),
     });
@@ -506,7 +535,7 @@ export function objectActs(game: Game, session: Session, elId: string, run: Obje
         if (list.some(needsPlayers) && !who.length) return { text: 'Pick who it’s for first' };
         let out: string[] = [];
         // One undoable step for all of them.
-        const [text, quiet] = objectSay(el, secret, (n) => `${n}: ${list.map((a) => describeAction(game, a, undefined, teams)).join(', ')}`);
+        const [text, quiet] = say((q) => list.map((a) => words(a, q)).join(', '));
         logged(session, text, () => (out = list.map((a) => runAction(ctx, a, ...said(a)))), undefined, quiet);
         return { text: out.join(' · ') };
       },
@@ -541,7 +570,7 @@ export function goThrough(game: Game, session: Session, elId: string, players: s
  * and order (one that asks something first opens the card), then 🗂 Open its card, ✎ Edit, reveal or hide it, then
  * remove it (`removed` gets what to tell the host; `closed` closes its card once a button says so). `oneWindow`: viewers
  * see the menu, so a secret object with an `alias` (see hiddenNames: "🙈 Hidden object 1") is headed by that, never its
- * name, and its buttons wait on its card (behind 👁 Show, as there).
+ * name, and its buttons wait on its card (behind 👁 Show, as there); nor does a button name a secret object it reveals.
  */
 export function objectMenu(
   game: Game,
@@ -563,7 +592,7 @@ export function objectMenu(
   const name = objectName(el);
   const shown = audienceSees(el, st.objects[elId]);
   const masked = oneWindow && !shown && !!alias;
-  const acts = run && !masked ? objectActs(game, session, elId, run, run.selected.length ? run.selected : null) : [];
+  const acts = run && !masked ? objectActs(game, session, elId, run, run.selected.length ? run.selected : null, oneWindow) : [];
   const press = (a: ObjectAct) => () => {
     if (a.asks) return open();
     const r = a.run();
