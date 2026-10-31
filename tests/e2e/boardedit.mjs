@@ -768,8 +768,9 @@ try {
   await tp.waitForFunction(() => [...document.querySelectorAll('.panel [data-goon] [data-quick]')].some((b) => b.textContent.includes('Run Thief') && !b.disabled));
   await runThief.click();
   await goOnCheck(tp).waitFor({ state: 'detached' });
-  const owes = async (name) => (await tp.locator('.panel .p', { hasText: name }).first().locator('.score').innerText()).replace('−', '-').replace(/\s+/g, '');
-  await tp.waitForFunction(() => /[-−]\$100/.test(document.querySelector('.panel .p[aria-label="Bob"] .score')?.textContent ?? ''));
+  // (Their points on the stage's stats strip.)
+  const owes = async (name) => (await tp.locator('.stage-box .strip .card', { hasText: name }).first().innerText()).split('\n').at(-1).replace('−', '-').trim();
+  await tp.locator('.stage-box .strip .card', { hasText: 'Bob' }).filter({ hasText: /[-−]\$100/ }).waitFor();
   assert((await owes('Bob')) === '-$100' && (await owes('Ann')) === '$0', `Bob picked (2): the check's ▶ Run takes the $100 from Bob, not from Ann who landed (Ann ${await owes('Ann')}, Bob ${await owes('Bob')})`);
   await ctx3.close();
 
