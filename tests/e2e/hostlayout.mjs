@@ -943,6 +943,18 @@ try {
       await p4.keyboard.press('n');
       await p4.locator('.panel [data-slidepos]', { hasText: 'Slide 2 of 2' }).waitFor();
       sizes.push(await stageH());
+      // A player picked there (Cyrus): ＋ Award Cyrus takes its room from ↩ Put back's words, and ▦ Done ▶ board and
+      // ◀ Slide stay where they were, under the pointer.
+      if (w === 1366) {
+        const places = () => p4.evaluate(() => ['done', 'pager'].map((f) => (({ left, right }) => `${Math.round(left)}–${Math.round(right)}`)(document.querySelector(`.panel [data-flow="${f}"]`).getBoundingClientRect())));
+        const was = await places();
+        await p4.keyboard.press('3');
+        await p4.locator('.panel .award .named', { hasText: 'Cyrus' }).first().waitFor();
+        const now = await places();
+        sizes.push(await stageH());
+        assert(now.join() === was.join(), `${w}×${h}, a clue with two slides: a player picked leaves ▦ Done ▶ board and ◀ Slide where they were (${was.join(', ')} → ${now.join(', ')})`);
+        await p4.keyboard.press('3');
+      }
       await p4.keyboard.press('Escape');
       await p4.locator('.stage-box .board').waitFor();
       sizes.push(await stageH());

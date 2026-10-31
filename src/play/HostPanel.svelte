@@ -1802,6 +1802,22 @@
   .pbslot.keyed {
     max-width: 16.5em;
   }
+  /* A clue with several question slides, from 1240px wide (where the row holds them all in words before a pick): after
+     ＋ Award and − Deduct, the right end's places (◀ Slide, 👁 Reveal answer, ▦ Done ▶ board) have the room before
+     ↩ Put back's words, and those before "Pick who answered" (each grows a hundred times faster than the next). So a
+     player picked (＋ Award Ann +$600 taking more room) takes it from "(keep tile)" and "Put back" first, and ▦ Done ▶
+     board keeps its place under the pointer. (Narrower, they share the room as on any clue: see .slots.) */
+  @media (min-width: 1240px) {
+    .award:has(> .slots.paged) > .named {
+      flex-grow: 100000;
+    }
+    .award > .slots.paged {
+      flex-grow: 1000;
+    }
+    .award:has(> .slots.paged) > .pbslot {
+      flex-grow: 10;
+    }
+  }
   /* (Never wider than its place: in a font wider than these sizes allow for, its words are cut short.) */
   .putback {
     min-width: 0;
@@ -2124,6 +2140,16 @@
       display: none;
     }
     .panel:not(.side) .clear .x {
+      display: inline;
+    }
+  }
+  /* A clue with several question slides, up to 1500px wide: Clear selection as ✕ too, so a player picked leaves the flow
+     row's right end where it was (see .slots.paged). */
+  @media (max-width: 1500px) {
+    .panel:not(.side) .award:has(> .slots.paged) .clear .word {
+      display: none;
+    }
+    .panel:not(.side) .award:has(> .slots.paged) .clear .x {
       display: inline;
     }
   }
