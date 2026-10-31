@@ -305,7 +305,7 @@
   const sym = $derived(game.settings.currencySymbol);
   const round = $derived(game.rounds[session.currentRound]);
   /** A board game's own dice or movement wheel is up: its box goes under the turn box (BoardHost), not on top. */
-  const moverUp = $derived(session.phase === 'boardgame' && isBoardGame(round) && isMover(round, app.live.overlay));
+  const moverUp = $derived(session.phase === 'boardgame' && isBoardGame(round) && !!session.boardgames?.[round.id] && isMover(round, app.live.overlay));
   const finalRound = $derived(currentFinal(session, game));
   const done = $derived(session.phase === 'board' && !session.intro && roundComplete(session, game));
   const ddWager = $derived(session.phase === 'clue' && session.dd?.stage === 'splash');

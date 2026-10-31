@@ -704,10 +704,14 @@
     {@const live = screenEdit.open}
     <LiveScreenEditor {world} {st} {dual} screen={live.screen} slide={live.slide} title={live.title} onclose={() => (screenEdit.open = null)} />
   {/if}
-{:else if world}
-  <div class="muted">{world.name} has no screen to start on: add one to its map in the editor.</div>
 {:else}
-  <div class="muted">This RPG round has no world to play (pick one in the editor).</div>
+  <!-- (The tool on the stage keeps its box here too.) -->
+  {@render tools?.()}
+  {#if world}
+    <div class="muted">{world.name} has no screen to start on: add one to its map in the editor.</div>
+  {:else}
+    <div class="muted">This RPG round has no world to play (pick one in the editor).</div>
+  {/if}
 {/if}
 
 <style>

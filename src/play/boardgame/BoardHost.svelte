@@ -275,6 +275,8 @@
   <div class="bh" class:side>
     {#if boardEdit.on}
       <BoardEditPanel {game} {session} {round} {bs} {dual} />
+      <!-- (The turn box waits while you edit; the round's dice or wheel keeps its box.) -->
+      {@render mover?.()}
     {:else if !side}
       {@render turnPart()}
     {/if}
