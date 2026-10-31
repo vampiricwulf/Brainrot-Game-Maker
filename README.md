@@ -504,11 +504,12 @@ switch shows the editor's keys too):
 | `Enter` / `Shift+Enter` | Award / deduct (on a ✍ multiple-choice clue with its answers locked and nobody selected, `Enter` is ✔ Judge all) |
 | `R` | Reveal / hide the answer (the countdown stops; on a wheel or dice tile, `R` while its wheel or dice is up says to spin, roll or close it first, and `R` again shows it anyway) |
 | `←` `↑` `→` `↓` on a tile | Move across the board (`Enter` opens the tile; after a clue the keys go on from its tile) |
-| `Esc` / `Shift+Esc` | Back to the board / cancel the clue (the tile stays playable) |
-| `N` / `Shift+N` | Next step, as the blue button (intro, a clue's next slide, 👁 Reveal answer, ▦ Done ▶ board, a Daily Double's Show question ▶, a tool's Show question ▶ or Next ▶, Final, next turn; with something left it asks first, and in the check `N` again goes on anyway) / the one before |
+| `Esc` / `Shift+Esc` | Back to the board at once / ↩ Put back (keep tile): the tile stays playable |
+| `N` / `Shift+N` | The blue button: Next or Reveal (intro, a clue's next slide, 👁 Reveal answer, ▦ Done ▶ board, a Daily Double's Show question ▶, a tool's Show question ▶ or Next ▶, the Final's steps, Next turn ▶). With something left it asks first, and `N` again goes on anyway, except into an answer (`R` does that) / one step back, never asking |
+| `Shift`+click on the blue button | Its step at once, without asking (what must be done first still asks: who picked a partner clue, the partner, the spotlit Final player's verdict) |
 | `C` / `X` | Final reveal: right / wrong |
 | `T` / `Shift+T` | Start/pause the timer / 10 more seconds |
-| `D` / `W` / `O` / `S` | Roll the last dice again (a board game's own dice) / wheel / roll-off (on a tie for first: the tied players; in a buzzer tie, 🎲 Roll for it) / scoreboard |
+| `D` / `W` / `O` / `S` | Roll the last dice again (a board game's own dice) / wheel / roll-off (on a tie for first: the tied players; in a buzzer tie, 🎲 Roll for it, which never asks) / scoreboard |
 | `K` or `B` | "Be right back" cover (every round): the countdown and the clue's video wait under it |
 | `0` | Select everyone or no one (in buzzer mode, during a clue: reset the buzzers) |
 | `U` | Buzzer mode: open the buzzers (when they open on your key) |
@@ -524,7 +525,16 @@ switch shows the editor's keys too):
 | Arrows, numpad or `Alt`+arrows (RPG) | Move the party |
 | `E` (board game) | ✎ Edit board while you play |
 | Right-click, `Shift+F10` or the menu key | The menu of what you point at, or what has the keys: a player (anywhere), a tile, a board-game space, or the moment's own on the stage and the main button |
-| `?` | Every key, with a filter (❔ Help does the same) |
+| `?` | Every key, with a filter (❔ Help does the same), and what the check doesn't ask about this game, each with **Ask again** |
+
+**In the check** (the card the blue button opens when something's left): `Enter` does the fix that shows ⏎ (never
+"… anyway" nor Not yet; with nothing left, the step), `Shift+Enter` the one that shows ⇧⏎, `N` is "… anyway" except
+into an answer (`R` there), `Esc` is Not yet (a second `Esc` right after does nothing), and `W` `D` `U` `O` `C` `X` `T`
+the fix that shows that key. `1`–`9`, `K`, `B`, `M`, `Space`, `←` `→` and `F` work as outside, the check staying open;
+`?`, `L`, `A`, `H` and `Ctrl+Z` close it as Not yet first. For its first 0.6 s it takes no key or click (`Esc` aside),
+so a double press never skips it. Its "Don't ask about … again this game" turns one kind off for the game (landings,
+rolling, opening the buzzers, spinning a tile's wheel, typed answers still coming); the keys window lists what's turned
+off, each with **Ask again**.
 
 A key held down counts once (only the arrows repeat). With the keys on the main button in a slides round, or on a
 round's title card, `Enter` does what the button says, as `N` does; on a 🤝 partner clue's PARTNER UP! it's Show

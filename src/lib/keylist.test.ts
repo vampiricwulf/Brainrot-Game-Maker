@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { filterKeys, macKeys, rowCount, type KeyGroup } from './keylist';
+import { BLUE, hostKeys, silencedRows } from '../play/hostkeys';
 
 const groups: KeyGroup[] = [
   {
@@ -54,5 +55,42 @@ describe('the keys filter', () => {
     expect(filterKeys(groups, 'distribute', false, renamed)[0].rows[0].was).toBeUndefined();
     // (An old name alone doesn't find rows that never had it.)
     expect(rowCount(filterKeys(groups, 'hand out', false, []))).toBe(0);
+  });
+});
+
+describe('the game’s keys: the blue button and the check', () => {
+  const game = hostKeys(false);
+  /** The rows the filter finds for `words`, as "keys: words". */
+  const found = (words: string) => filterKeys(game, words).flatMap((g) => g.rows.map((r) => `${r.keys}: ${r.words}`));
+  /** The row the filter finds for the keys `k` typed in it. */
+  const row = (k: string) => found(k).find((r) => r.startsWith(`${k}:`));
+
+  it('come right after Everywhere, N first: Next or Reveal, asking first, N again anyway except into an answer', () => {
+    expect(game.map((g) => g.title).indexOf(BLUE)).toBe(game.map((g) => g.title).indexOf('Everywhere') + 1);
+    const blue = game.find((g) => g.title === BLUE)!.keys;
+    expect(blue[0][0]).toBe('N');
+    expect(blue[0][1]).toMatch(/Next or Reveal.*asks first.*N again goes on anyway, except into an answer \(R does that\)/);
+    // (It never does a box's job.)
+    expect(blue[0][1]).toContain('never spins, rolls, sends cards, opens the buzzers, gives points or judges');
+  });
+
+  it('say Shift+click, Enter where it means Next, O in a buzzer tie, and the check’s keys', () => {
+    expect(row('Shift+click on the blue button')).toMatch(/Its step at once, without asking/);
+    expect(found('enter wager box').some((r) => r.startsWith('Enter: Next only on a round’s title card'))).toBe(true);
+    expect(row('O in a buzzer tie')).toMatch(/🎲 Roll for it/);
+    for (const k of ['Enter in the check', 'Shift+Enter in the check', 'N in the check', 'R in the check', 'Esc in the check', 'A double press']) expect(row(k), k).toBeTruthy();
+    // (Esc's bounce, and Enter never "anyway".)
+    expect(row('Esc in the check')).toContain('a second Esc right after does nothing');
+    expect(row('Enter in the check')).toContain('never “… anyway”');
+  });
+
+  it('what the check doesn’t ask about this game: each kind once, in its tick’s words, with Ask again', () => {
+    expect(silencedRows(undefined)).toEqual([]);
+    expect(silencedRows(['roll', 'landing', 'roll'])).toEqual([
+      { kind: 'roll', words: 'rolling', again: 'Ask again: rolling' },
+      { kind: 'landing', words: 'landings', again: 'Ask again: landings' },
+    ]);
+    // (The keys window says the tick lists them there.)
+    expect(row('Don’t ask about … again this game')).toMatch(/The check’s tick, for landings, rolling, opening the buzzers.*with Ask again$/);
   });
 });

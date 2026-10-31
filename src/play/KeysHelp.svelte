@@ -2,8 +2,9 @@
   ⌨ Keyboard shortcuts: one window for the editor's keys and the host's during the game (spec §6.8), a switch at its
   top between the two, and a filter for both (it also finds a renamed button by its old name). The editor's ? opens it
   on Editor; ? and ❔ Help on the game screen open it on During the game, the round's keys first (in a single window,
-  over the host panel: viewers see that window, so the stage stays clear). Its foot has the hosting guide and 💡 Show
-  all tips again.
+  over the host panel: viewers see that window, so the stage stays clear). There, what the check before going on was
+  told not to ask about this game is listed first, each with Ask again. Its foot has the hosting guide and 💡 Show all
+  tips again.
 -->
 <script lang="ts">
   import { modal } from '../lib/modal';
@@ -13,7 +14,7 @@
   import { inTauri } from '../lib/platform';
   import { showTipsAgain } from '../lib/tips';
   import { EDITOR_KEYS } from '../editor/editorkeys';
-  import { BEFORE, hostKeys } from './hostkeys';
+  import { BEFORE, hostKeys, silencedRows, type Silenced } from './hostkeys';
 
   type Part = 'editor' | 'game';
   let {
@@ -22,6 +23,8 @@
     start,
     area = null,
     first,
+    silenced = [],
+    onaskagain,
   }: {
     onclose: () => void;
     /** Where it was opened: it's named for it, and starts on that part (the editor's, or the game's). */
@@ -32,7 +35,12 @@
     area?: { top: number; left: number; width: number; height: number } | null;
     /** The group shown first: the round being played's (or the pre-game screen's, the only place it shows). */
     first?: string;
+    /** During the game: what the check doesn't ask about this game ("Don't ask about … again this game"). */
+    silenced?: readonly Silenced[];
+    /** Ask again: the check asks about that kind again. */
+    onaskagain?: (kind: Silenced) => void;
   } = $props();
+  const quiet = $derived(onaskagain ? silencedRows(silenced) : []);
   const mac = /Mac|iPhone|iPad/.test(navigator.platform);
   // (Opened on one part, the window keeps to the one picked after.)
   // svelte-ignore state_referenced_locally
@@ -105,6 +113,18 @@
         {#if !shown.length}Nothing matches “{filter}” here.{/if}
         {#if elsewhere}<button class="small ghost" onclick={() => (part = other)}>{elsewhere} in {PARTS[other]} ▸</button>{/if}
       </p>
+    {/if}
+    {#if part === 'game' && quiet.length}
+      <!-- What's ticked off this game (the check's "Don't ask about … again this game"), each a click from asking again. -->
+      <section class="quiet" data-quiet aria-labelledby="keys-quiet">
+        <h3 id="keys-quiet">Not asked about this game</h3>
+        <p class="muted">The check before going on doesn’t ask about these any more (you ticked “Don’t ask … again this game”):</p>
+        <ul>
+          {#each quiet as q (q.kind)}
+            <li>{q.words} <button class="small ghost" aria-label={q.again} onclick={() => onaskagain?.(q.kind)}>Ask again</button></li>
+          {/each}
+        </ul>
+      </section>
     {/if}
     <div class="groups">
       {#each shown as g (g.title)}
@@ -222,5 +242,21 @@
   }
   .was {
     font-size: 12px;
+  }
+  .quiet {
+    margin-bottom: 12px;
+  }
+  .quiet p {
+    margin: 0 0 4px;
+    font-size: 13px;
+  }
+  .quiet ul {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px 16px;
+    font-size: 13px;
   }
 </style>

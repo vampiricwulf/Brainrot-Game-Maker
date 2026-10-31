@@ -786,16 +786,25 @@ screen's first-time notes show again). The main keys:
 | `0` | Everyone or no one (buzzer mode, during a clue: reset the buzzers) |
 | `Enter` / `Shift+Enter` | Award / deduct the current amount to the selected players (a ✍ multiple-choice clue, its answers locked, nobody selected: `Enter` is ✔ Judge all, one undo step) |
 | `R` | Reveal (or hide) the answer |
-| `N` / `Shift+N` | Next step, as the blue button: the round intro, a clue's next slide, 👁 Reveal answer, ▦ Done ▶ board (asking first when something's left), the Final, the next turn / the one before |
+| `N` / `Shift+N` | The blue button, Next or Reveal: the round intro, a clue's next slide, 👁 Reveal answer, ▦ Done ▶ board, the Final's steps, Next turn ▶; with something left it asks first (the check), `N` again goes on anyway, except into an answer (`R`) / one step back, never asking |
+| `Shift`+click on the blue button | Its step without asking (must items still ask) |
 | `Esc` / `Shift+Esc` | Back to board (marks the tile used) / cancel the clue (the tile stays playable) |
 | `K` or `B` | "Be right back" cover |
 | `T` / `Shift+T` | Start/pause the countdown / 10 more seconds |
-| `D` dice · `W` wheel · `O` roll-off (a buzzer tie: 🎲 Roll for it) · `S` scoreboard overlay | Tools |
+| `D` dice · `W` wheel · `O` roll-off (a buzzer tie: 🎲 Roll for it, never asking) · `S` scoreboard overlay | Tools |
 | `U` | Buzzer mode: open the buzzers |
 | `P`, then `1`–`9` | Set current picker to player N |
 | `Ctrl+Z` / `Ctrl+Shift+Z` (`Ctrl+Y`) | Undo / redo (scores, moves, tiles, the Final…) |
 | `A` / `Shift+A` | Open or focus the audience window / the scores-only window |
 | `L` · `H` · `F` · `?` | Log · hide host controls · full-screen · the key list |
+
+The keys window's During the game part has a group for the blue button and the check (`BLUE` in hostkeys.ts) right
+after Everywhere: `N`, `Shift+N`, `Shift`+click, where `Enter` is Next (a round's title card and categories, a slides
+round with the keys on the blue button, PARTNER UP! before the question, a Daily Double's or the Final's wager box) and
+what it does elsewhere, and the check's keys (`inside()` in goon.ts: `Enter` the ⏎ fix, never "anyway" or Not yet;
+`Shift+Enter` the ⇧⏎ fix; `N` "anyway" but never into an answer; `R` reveal anyway; `Esc` Not yet, its bounce ignored;
+the fixes' own keys; the keys that pass through or close it first; the 600 ms guard). Above the groups it lists what
+`session.goonQuiet` holds (`silencedRows`), each with **Ask again**, which takes that kind off the list for the game.
 
 A held key counts once: only the arrows (and the numpad in an RPG round) repeat. A button the app put the keys on
 (the one that had them went away, or at the start) doesn't take `Enter` or `Space` for itself until it's chosen (with

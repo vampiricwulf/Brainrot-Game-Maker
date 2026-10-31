@@ -112,6 +112,11 @@ try {
     (await help.getByRole('button', { name: 'During the game', exact: true }).getAttribute('aria-pressed')) === 'true' && (await help.getByRole('button', { name: '📖 How to host ↗' }).count()) === 1,
     '❔ Help opens the keys window on During the game, 📖 How to host ↗ at its foot',
   );
+  // (Its blue button's group says N and the check's keys; nothing is turned off yet, so no "Not asked about" list.)
+  assert(
+    (await help.locator('section', { hasText: 'The blue button and the check' }).locator('tr td:first-child').first().innerText()) === 'N' && (await help.locator('[data-quiet]').count()) === 0,
+    '❔ Help: the blue button’s keys (N first), and no list of kinds not asked about while none is',
+  );
   const hideSeen = () => page.evaluate(() => localStorage.getItem('jb.hideHintSeen'));
   const seenBefore = await hideSeen();
   await help.getByRole('button', { name: '💡 Show all tips again' }).click();

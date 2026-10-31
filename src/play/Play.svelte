@@ -3162,6 +3162,12 @@
     announce(`Won’t ask about ${CHECK.quiet[kind]} again this game`);
   }
 
+  /** The keys window's Ask again: the check asks about that kind again in this game. */
+  function askAgain(kind: QuietKind): void {
+    session.goonQuiet = (session.goonQuiet ?? []).filter((k) => k !== kind);
+    announce(`The check asks about ${CHECK.quiet[kind]} again`);
+  }
+
   /** The check flashes (none with Reduce motion), the status line saying why; held with the controls hidden, the pill pulses. */
   function flashCheck(say?: string): void {
     if (check?.held) return holdNote();
@@ -6334,7 +6340,7 @@
   {/if}
 {/if}
 {#if showKeys}
-  <KeysHelp area={app.pregame ? null : panelBox} first={keysFirst} onclose={() => (showKeys = false)} />
+  <KeysHelp area={app.pregame ? null : panelBox} first={keysFirst} silenced={app.pregame ? [] : (session.goonQuiet ?? [])} onaskagain={askAgain} onclose={() => (showKeys = false)} />
 {/if}
 {#if showRules && !app.pregame}
   <!-- ⚖ Game rules mid-game: changes count at once, and are kept with the game in the editor (undoable there). -->

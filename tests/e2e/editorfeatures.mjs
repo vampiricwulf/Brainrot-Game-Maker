@@ -392,6 +392,17 @@ try {
   await page.getByLabel('Filter shortcuts').press('End');
   await page.keyboard.press('?');
   assert((await page.getByLabel('Filter shortcuts').inputValue()) === 'partner clue?' && (await sheet.count()) === 1, '? typed in the filter is a question mark');
+  // During the game: the blue button's keys and the check's, in their own group (found whole by its name), and O in a
+  // buzzer tie.
+  await page.getByLabel('Filter shortcuts').fill('blue button and the check');
+  const blueKeys = await sheet.locator('section', { hasText: 'The blue button and the check' }).locator('tr td:first-child').allInnerTexts();
+  assert(
+    blueKeys[0] === 'N' && ['Shift+click on the blue button', 'Enter', 'Enter in the check', 'N in the check', 'Esc in the check', 'Don’t ask about … again this game'].every((k) => blueKeys.includes(k)),
+    `the game's keys have the blue button's group: N, Shift+click, where Enter is Next, the check's keys and its tick (${blueKeys.join(' | ')})`,
+  );
+  assert((await sheet.locator('section', { hasText: 'The blue button and the check' }).locator('tr').first().innerText()).includes('N again goes on anyway, except into an answer'), 'N: the blue button, asking first, N again goes on anyway except into an answer');
+  await page.getByLabel('Filter shortcuts').fill('o in a buzzer tie');
+  await sheet.locator('tr', { hasText: '🎲 Roll for it' }).first().waitFor();
   await sheet.getByRole('button', { name: 'Editor', exact: true }).click();
   await page.getByLabel('Filter shortcuts').press('Escape');
   assert((await page.getByRole('dialog', { name: 'Editor keyboard shortcuts' }).count()) === 1, 'Esc in the filter clears it first');
@@ -504,12 +515,26 @@ try {
   await page.locator('.stage .turn-banner', { hasText: 'Ann' }).waitFor();
   await page.keyboard.press('n');
   assert((await page.locator('.stage .turn-banner').innerText()).includes('Cat') && !(await goOnCheck(page).count()), 'Next turn passes over Bob (Ann → Cat), rolling no longer asked about');
+  // The keys window (?) lists what the check doesn't ask about this game, with Ask again; asked again, it's gone there.
+  await page.keyboard.press('?');
+  const playKeys = page.getByRole('dialog', { name: 'Keyboard shortcuts' });
+  const quiet = playKeys.locator('[data-quiet]');
+  await quiet.waitFor();
+  assert((await quiet.locator('li').allInnerTexts()).map((t) => t.replace(/\s+/g, ' ').trim()).join() === 'rolling Ask again', `the keys window says rolling isn’t asked about this game (${await quiet.innerText()})`);
+  await quiet.getByRole('button', { name: 'Ask again: rolling' }).click();
+  await quiet.waitFor({ state: 'detached' });
+  await page.keyboard.press('Escape');
+  await playKeys.waitFor({ state: 'detached' });
   // Cat: Start + 10 is Roll again.
   await page.getByLabel('Steps').fill('10');
   await page.getByRole('button', { name: /^▶ Move Cat/ }).click();
   await page.locator('.bh .acts').getByRole('button', { name: 'Roll again' }).click();
   await page.keyboard.press('n');
   assert((await page.locator('.stage .turn-banner').innerText()).includes('Cat'), 'Roll again: Next turn stays with Cat');
+  // (Asked again: Cat's new turn not rolled, N asks first.)
+  await page.keyboard.press('n');
+  await checkItem(page, 'roll').waitFor();
+  assert(true, 'after Ask again, Next turn with the roll not done asks first again');
 
   assert(errors.length === 0, `no page errors (${errors.join('; ')})`);
   console.log('editor features: all passed');

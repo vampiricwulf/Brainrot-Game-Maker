@@ -127,6 +127,16 @@ try {
   // Enter in its filter is the filter's; Enter on the window closes it.
   await sheet.getByLabel('Filter shortcuts').press('Enter');
   assert((await sheet.count()) === 1, 'Enter in the keys window’s filter leaves it open');
+  // During the game: the blue button's keys and the check's are a group of their own, under its heading, right after
+  // Everywhere (N first, Shift+click, where Enter is Next, O's place in a buzzer tie said in its row).
+  await sheet.getByRole('button', { name: 'During the game', exact: true }).click();
+  const heads = await sheet.locator('section h3').allInnerTexts();
+  const blueRows = await sheet.locator('section', { has: page.getByRole('heading', { name: 'The blue button and the check' }) }).locator('tr td:first-child').allInnerTexts();
+  assert(
+    heads.map((h) => h.toLowerCase()).indexOf('the blue button and the check') === heads.map((h) => h.toLowerCase()).indexOf('everywhere') + 1 &&
+      blueRows[0] === 'N' && blueRows.includes('Shift+click on the blue button') && blueRows.includes('Enter') && blueRows.includes('W, D, U, O, C, X, T in the check'),
+    `the game's keys: the blue button's and the check's group, under its heading after Everywhere (${blueRows.join(' | ')})`,
+  );
   await sheet.getByRole('heading', { name: '⌨ Keyboard shortcuts' }).click();
   await page.keyboard.press('Enter');
   await sheet.waitFor({ state: 'detached' });

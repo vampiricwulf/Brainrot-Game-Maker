@@ -1,9 +1,25 @@
 // The host's keys on the game screen, by where they apply (a key can mean another thing in another round, like N or
 // D): the keys window's During the game part (spec §6.8; the editor's are in editor/editorkeys.ts).
 import type { KeyGroup } from '../lib/keylist';
+import type { Session } from '../lib/model';
+import { CHECK } from './host/verbs';
 
 /** The pre-game screen's group: listed only there, first. */
 export const BEFORE = 'Before the game';
+
+/** The blue button's and the check's group (right after Everywhere). */
+export const BLUE = 'The blue button and the check';
+
+/** A kind of item the check was told not to ask about again this game ("Don't ask about … again this game"). */
+export type Silenced = NonNullable<Session['goonQuiet']>[number];
+
+/**
+ * What the check doesn't ask about this game, for the keys window's list with Ask again: each kind once, in the words
+ * of its tick ("landings", "rolling"), with Ask again's name for screen readers.
+ */
+export function silencedRows(kinds: readonly Silenced[] | undefined): { kind: Silenced; words: string; again: string }[] {
+  return [...new Set(kinds ?? [])].map((kind) => ({ kind, words: CHECK.quiet[kind], again: `Ask again: ${CHECK.quiet[kind]}` }));
+}
 
 /** The group the list starts with in each kind of round (a Jeopardy board's come right after Everywhere and Tools). */
 export const KEYS_FIRST: Partial<Record<string, string>> = { rpg: 'RPG', boardgame: 'Board game', final: 'Final', tiebreaker: 'Tiebreaker clue', slides: 'Slides round' };
@@ -34,13 +50,41 @@ export const hostKeys = (playerOnly: boolean): KeyGroup[] => [
       ['Ctrl+Z', 'Undo the last change: a score, a move, a stat or item, a tile, the picker, the turn order, Players or the Final'],
       ['Ctrl+Shift+Z / Ctrl+Y', 'Redo'],
       ['Right-click a player', 'Their menu: on the stage (avatar, token, strip, score plate) or in the host panel (their score chip, their button in any box). Shift+F10 on their button, or a long press, opens it too'],
-      ['Right-click the stage', 'The moment’s menu: its steps with their keys, what its box adds, the way out, Undo and Cover. Shift+F10 on the main button (or a long press) opens it too'],
+      ['Right-click the stage', 'The moment’s menu: first the blue button’s step (N, asking first as N does), then the moment’s own actions with their keys, what its box adds, the way out, Undo and Cover. Shift+F10 on the main button (or a long press) opens it too'],
       ['L', 'Log: the history (go back to any point), scores and rolls'],
       ['A', 'Open / focus the audience window (never closes it)'],
       ['Shift+A', 'Open / focus the scores window: only the score plates and the countdown, for a lower third in OBS'],
       ['H', 'Hide / show the host controls'],
       ['F', 'Full-screen'],
       ['?', 'This list (❔ Help at the bar’s end opens it too). Esc, ? or Enter closes it, and Enter closes 🔊 Sound help and ⚖ Rules too (not from a box or a button in them)'],
+    ],
+  },
+  {
+    title: BLUE,
+    keys: [
+      [
+        'N',
+        'The blue button (bottom right): Next or Reveal, the show’s next step (Show board ▶, Next slide ▶, 👁 Reveal answer, ▦ Done ▶ board, Show question ▶, Next turn ▶…). It never spins, rolls, sends cards, opens the buzzers, gives points or judges: those are in their boxes. With something left it asks first (the check); N again goes on anyway, except into an answer (R does that)',
+      ],
+      ['Shift+N', 'One step back: the slide before, the turn before, the player before (never asks)'],
+      ['Shift+click on the blue button', 'Its step at once, without asking (what must be done first still asks: who picked a partner clue, the partner, the spotlit Final player’s verdict)'],
+      [
+        'Enter',
+        'Next only on a round’s title card and categories, in a slides round (with the keys on the blue button), on PARTNER UP! before the question, and in a Daily Double’s or the Final’s wager box. Elsewhere it does its box’s job: ＋ Award, ✔ Got it, 📤 Send and start, ✔ Judge all, ▶ Move',
+      ],
+      ['Enter in the check', 'The fix that shows ⏎ (never “… anyway”, nor Not yet); with nothing left, the step'],
+      ['Shift+Enter in the check', 'The fix that shows ⇧⏎ (− Deduct, ✘ Missed)'],
+      ['N in the check', '“… anyway”, except into an answer (R there); with nothing left, the step'],
+      ['R in the check', 'Before an answer: 👁 Reveal anyway'],
+      ['Esc in the check', 'Not yet: back as it was (a second Esc right after does nothing, so a bounced Esc never closes the clue)'],
+      ['W, D, U, O, C, X, T in the check', 'The fix that shows that key (W spins, U opens the buzzers, O rolls for a tie, C / X judge…)'],
+      ['1 – 9, K, B, M, Space, ← / →, F in the check', 'As outside (who’s picked, the cover, the media): the check stays open'],
+      ['?, L, A, H, Ctrl+Z in the check', 'Not yet, then as outside'],
+      ['A double press', 'Never skips the check: for a moment after it opens it takes no key or click (Esc aside), and what the press would do lights up'],
+      [
+        'Don’t ask about … again this game',
+        `The check’s tick, for ${Object.values(CHECK.quiet).join(', ')}: that kind isn’t asked about again in this game. This window lists what’s ticked, with Ask again`,
+      ],
     ],
   },
   {
@@ -52,7 +96,7 @@ export const hostKeys = (playerOnly: boolean): KeyGroup[] => [
         'N with a tool on screen',
         'Its blue button: on a wheel or dice tile, Show question ▶ (▦ Done ▶ board with no question; not spun yet, it asks first: W spins); a question pop-up, 👁 Reveal answer, then Next ▶; any other tool, the scores or a sheet, Next ▶ puts it away. A score effect not given asks first',
       ],
-      ['O', 'Roll-off: who goes first (on a tie for first at the end: the tied players roll for the win)'],
+      ['O', 'Roll-off: who goes first (on a tie for first at the end: the tied players roll for the win; in a buzzer tie: 🎲 Roll for it)'],
       ['S', 'Scoreboard on screen'],
       ['Space', 'Play / pause the slide’s video or audio'],
       ['← / →', 'Seek the media back / forward 5 s'],
