@@ -640,6 +640,8 @@ async function boxSelect() {
     await host.waitForTimeout(450);
     await host.getByRole('button', { name: 'Keep & leave', exact: true }).click();
     await host.getByRole('button', { name: '▶ Play' }).click();
+    // (One window this time: the audience window was picked for the last game.)
+    await host.locator('.mode', { hasText: 'Single window' }).click();
     await host.getByRole('button', { name: 'Start game ▶' }).click();
     const keptAsk = host.locator('.actions [data-start-ask]');
     await keptAsk.waitFor();
