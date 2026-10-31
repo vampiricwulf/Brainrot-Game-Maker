@@ -2392,7 +2392,7 @@
     const s = partner;
     if (!s || s.stage !== 'pick') return;
     if (!s.pickerId) return hint(`${pregameTeams ? 'Which team' : 'Who'} picked it? Press their number first (1–${Math.min(9, session.players.length) || 9})`);
-    if (!partnerCandidates(session, s).length) return hint(`Nobody to partner with: tick “${playerName(session, s.pickerId)} can be on the wheel” to play it Solo, or ${VERBS.putBack.label} · Esc`);
+    if (!partnerCandidates(session, s).length) return hint(`Nobody to partner with: tick “${playerName(session, s.pickerId)} can be on the wheel” to play it Solo, or ${VERBS.putBack.label} · ⇧Esc`);
     if (toolBusy()) return;
     // (The scores over it: the wheel comes back first.)
     if (app.live.overlay?.kind === 'scoreboard') app.live.overlay = app.live.overlay.under ?? null;
@@ -4210,9 +4210,9 @@
    */
   function partnerMoment(s: NonNullable<typeof partner>): Moment {
     const heading = `🤝 Partner clue · ${info ? clueName(game, session.currentClue!) : ''}`;
-    const wheelUp = toolOverlay(app.live)?.kind === 'wheel';
     if (s.stage === 'pick') {
-      const exits = [putBackItem(wheelUp ? 'Shift+Esc' : 'Esc')];
+      // (Shift+Esc, as the box's ↩ Put back and the check show it; Esc puts it back too while the wheel's away.)
+      const exits = [putBackItem('Shift+Esc')];
       // Who picked it, by their number.
       if (!s.pickerId)
         return {

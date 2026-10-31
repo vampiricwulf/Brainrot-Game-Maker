@@ -220,7 +220,7 @@ try {
   assert(
     JSON.stringify(pairedMenu.slice(0, 7)) ===
       JSON.stringify(['# 🤝 Partner clue · Movies $400', 'Show question ▶ · N', '—', '↻ Spin again · W', 'Make Bob the partner · 2 (off)', 'Make Cat the partner · 3', 'Make Dan the partner · 4']) &&
-      pairedMenu.filter((l) => l.startsWith('Show question ▶')).length === 1 && pairedMenu.includes('⇄ Swap') && pairedMenu.includes('↩ Put back (keep tile) · Esc') && pairedMenu.at(-1) === '⏸ Cover the screen · K',
+      pairedMenu.filter((l) => l.startsWith('Show question ▶')).length === 1 && pairedMenu.includes('⇄ Swap') && pairedMenu.includes('↩ Put back (keep tile) · Shift+Esc') && pairedMenu.at(-1) === '⏸ Cover the screen · K',
     `a right-click on PARTNER UP! gives the moment’s menu, the blue button’s step first (${pairedMenu.join(' | ')})`,
   );
   await noCards(page, 'the stage’s menu on PARTNER UP!');
