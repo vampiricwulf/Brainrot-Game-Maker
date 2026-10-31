@@ -1,6 +1,6 @@
 <!--
   A question asked right in the host panel, where a browser dialog (prompt, confirm) would show on stream: the
-  question, a text box when it wants a name or some text, then Cancel (the safe answer, on the left) and the answer
+  question, a box when it wants a name, some text or a number, then Cancel (the safe answer, on the left) and the answer
   button (rightmost, filled red when it can't easily be taken back). In the box, Enter answers and Esc cancels.
 -->
 <script lang="ts">
@@ -18,6 +18,9 @@
     onalt,
     alts = [],
     plain = false,
+    number = false,
+    blankOk = false,
+    placeholder,
     onok,
     oncancel,
   }: {
@@ -47,6 +50,12 @@
     alts?: { label: string; onclick: () => void; strong?: boolean }[];
     /** The answer button isn't the one to press (another answer is `strong`): a plain one, not filled. */
     plain?: boolean;
+    /** The box takes a number of 0 or more (a price, how many are left): a spin box. */
+    number?: boolean;
+    /** The box may be left blank: that's an answer too (the shop's stock: unlimited). */
+    blankOk?: boolean;
+    /** The box's placeholder, when it isn't its name (`field`). */
+    placeholder?: string;
     /** Answered (with the text typed, trimmed). */
     onok: (text: string) => void;
     oncancel: () => void;
@@ -79,22 +88,33 @@
       if (back?.isConnected && !back.closest('[inert]') && !back.matches(':disabled')) back.focus({ preventScroll: true });
     });
   }
-  const blank = $derived(field !== undefined && !typed.trim());
-  // A click right after the question shows (the second half of the double-click that asked it) isn't the answer.
-  const shownAt = Date.now();
+  const blank = $derived(field !== undefined && !blankOk && !typed.trim());
+  /**
+   * A click right after the question shows (the second half of the double-click that asked it) isn't the answer: its
+   * answers count once this is on (data-ready, for screen tests to wait on).
+   */
+  let ready = $state(false);
+  onMount(() => {
+    const t = setTimeout(() => (ready = true), 400);
+    return () => clearTimeout(t);
+  });
 
   function answer(): void {
     if (!blank) onok(typed.trim());
   }
 </script>
 
-<div class="ia" role="group" aria-label={text ?? field}>
+<div class="ia" role="group" aria-label={text ?? field} data-ask data-ready={ready || undefined}>
   {#if text}<span class="ask">{text}</span>{/if}
   {#if field !== undefined}
     <input
       bind:this={box}
-      bind:value={typed}
-      placeholder={field}
+      type={number ? 'number' : 'text'}
+      class:n={number}
+      min={number ? 0 : undefined}
+      value={typed}
+      oninput={(e) => (typed = e.currentTarget.value)}
+      placeholder={placeholder ?? field}
       aria-label={field}
       onkeydown={(e) => {
         if (e.key === 'Enter') answer();
@@ -117,12 +137,12 @@
     }}>{cancel}</button
   >
   {#if alt && onalt}
-    <button class="small ghost" onclick={() => Date.now() - shownAt > 400 && onalt()}>{alt}</button>
+    <button class="small ghost" onclick={() => ready && onalt()}>{alt}</button>
   {/if}
   {#each alts as a (a.label)}
-    <button class="small {a.strong ? 'primary' : 'ghost'}" onclick={() => Date.now() - shownAt > 400 && a.onclick()}>{a.label}</button>
+    <button class="small {a.strong ? 'primary' : 'ghost'}" onclick={() => ready && a.onclick()}>{a.label}</button>
   {/each}
-  <button class="small {danger ? 'bad' : plain ? '' : 'primary'}" disabled={blank} onclick={() => Date.now() - shownAt > 400 && answer()}>{ok}</button>
+  <button class="small {danger ? 'bad' : plain ? '' : 'primary'}" disabled={blank} onclick={() => ready && answer()}>{ok}</button>
 </div>
 
 <style>
@@ -142,5 +162,9 @@
     min-width: 100px;
     max-width: 320px;
     padding: 2px 6px;
+  }
+  input.n {
+    flex: 0 0 90px;
+    min-width: 0;
   }
 </style>

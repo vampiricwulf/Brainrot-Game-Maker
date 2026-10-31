@@ -94,7 +94,7 @@ function assert(cond, msg) {
 }
 // Test media generated in memory.
 import { deflateSync } from 'node:zlib';
-import { addClassicRounds, answerReplace, anyway, checkItem, dragBy, flowButton, flowIs, goOnCheck, mainButton, mainLabel, nameGame, noSelection, notYet, openGameFile, exportHtml, quick, selectedWords, stepButton } from './helpers.mjs';
+import { addClassicRounds, answerAsk, answerReplace, anyway, checkItem, dragBy, flowButton, flowIs, goOnCheck, mainButton, mainLabel, nameGame, noSelection, notYet, openGameFile, exportHtml, quick, selectedWords, stepButton } from './helpers.mjs';
 /** Solid-ish RGB PNG of the given size (a horizontal gradient). */
 function bigPng(w, h) {
   const crcTable = Array.from({ length: 256 }, (_, n) => {
@@ -1369,27 +1369,35 @@ await (await wheelMenu()).getByRole('button', { name: 'Edit Punishment Wheel, th
 await editBox.getByLabel(`Include ${punishment[0]}`).uncheck();
 assert((await sliceTexts()).length === punishment.length - 1, 'a saved wheel can lose a slice for this spin');
 await editBox.getByRole('button', { name: '💾 Save as new wheel…' }).click();
-await editBox.getByLabel('Name for the new wheel').fill('Punishment lite');
-await editBox.getByRole('button', { name: '💾 Save', exact: true }).click();
-await page.getByRole('button', { name: 'Overwrite "Punishment lite"' }).waitFor();
+// (Asked in the panel's way: Cancel first, the answer last.)
+const naming = editBox.getByRole('group', { name: 'Name for the new wheel' });
+assert((await naming.getByRole('button').allInnerTexts()).map((t) => t.trim()).join(' | ') === 'Cancel | 💾 Save', 'Save as new wheel… asks Cancel first, 💾 Save last');
+await editBox.getByRole('textbox', { name: 'Name for the new wheel' }).fill('Punishment lite');
+await answerAsk(editBox.getByRole('button', { name: '💾 Save', exact: true }));
+await page.getByRole('button', { name: '💾 Replace “Punishment lite”…' }).waitFor();
 assert(true, 'Save as new wheel makes a saved wheel (and the one on screen becomes it)');
 await page.keyboard.press('Escape');
 await (await wheelMenu()).getByRole('button', { name: 'Punishment Wheel', exact: true }).click();
 assert((await sliceTexts()).join() === punishment.join(), 'the original wheel is unchanged');
 await page.keyboard.press('Escape');
-// Overwrite: the saved copy gets a new slice for good.
+// 💾 Replace “…”…: the saved copy gets a new slice for good.
 await (await wheelMenu()).getByRole('button', { name: 'Edit Punishment lite, then spin' }).click();
 await editBox.getByRole('button', { name: '＋ Add slice' }).click();
 await editBox.getByLabel('Slice 2 label').fill('Dance');
 await editBox.getByLabel('Slice 2 label').press('Enter');
+const replaceAsk = editBox.getByRole('group', { name: 'Replace the slices of “Punishment lite” with these 2?' });
 const overwriteMsg = await answerDialog(async () => {
-  await editBox.getByRole('button', { name: 'Overwrite "Punishment lite"' }).click();
-  await editBox.getByRole('button', { name: 'Replace', exact: true }).click();
+  await editBox.getByRole('button', { name: '💾 Replace “Punishment lite”…' }).click();
+  // Cancel first, with the keys (Enter there never replaces); Replace last, in red.
+  await replaceAsk.waitFor();
+  const words = (await replaceAsk.getByRole('button').allInnerTexts()).map((t) => t.trim());
+  assert(words.join(' | ') === 'Cancel | Replace' && (await replaceAsk.getByRole('button', { name: 'Cancel' }).evaluate((b) => b === document.activeElement)), `Replace asks Cancel first, with the keys (${words.join(' | ')})`);
+  await answerAsk(replaceAsk.getByRole('button', { name: 'Replace', exact: true }));
 }, true);
-assert(overwriteMsg === '', 'Overwrite asks inline (no browser dialog on stream)');
+assert(overwriteMsg === '', 'Replace asks inline (no browser dialog on stream)');
 await page.keyboard.press('Escape');
 await (await wheelMenu()).getByRole('button', { name: 'Punishment lite', exact: true }).click();
-assert((await sliceTexts()).join() === [...punishment.slice(1), 'Dance'].join(), 'Overwrite keeps the edits in that saved wheel');
+assert((await sliceTexts()).join() === [...punishment.slice(1), 'Dance'].join(), 'Replace keeps the edits in that saved wheel');
 await page.keyboard.press('Escape');
 // Quick wheel lines can carry a weight.
 const menuNow = await wheelMenu();

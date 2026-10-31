@@ -6,7 +6,7 @@ import { chromium } from 'playwright-core';
 import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { addClassicRounds, dragBy, editorReady, exportHtml, flowIs, menuLines, openGameFile, openMenu, playWithPlayers, stepButton, leaveAnswer } from './helpers.mjs';
+import { addClassicRounds, answerAsk, dragBy, editorReady, exportHtml, flowIs, menuLines, openGameFile, openMenu, playWithPlayers, stepButton, leaveAnswer } from './helpers.mjs';
 
 const file = resolve(process.env.APP_FILE || 'dist/index.html');
 if (!existsSync(file)) throw new Error('Run `npm run build` first');
@@ -1232,16 +1232,20 @@ try {
   await page.keyboard.press('Control+z');
   await shopTc.getByText('Short by 🪙1 for Potion.').waitFor();
   assert(true, 'Ctrl+Z takes the gold back and the row says so again');
+  // Asked in the panel's way: Cancel first, Sell anyway (the buyer below zero) last.
+  const shortAsk = shopTc.getByRole('group', { name: 'Short by 🪙1 for Potion.' });
+  const answers = (await shortAsk.getByRole('button').allInnerTexts()).map((t) => t.trim()).join(' | ');
+  assert(answers === 'Cancel | Give it free | Other price… | Sell anyway', `short of gold: Cancel first, Sell anyway last (${answers})`);
   // Other price… at a price still too much: the row says the gap at that price, and Sell anyway charges that price.
   const priceBox = shopTc.getByRole('spinbutton', { name: 'Price' });
-  await shopTc.getByRole('button', { name: 'Other price…' }).click();
+  await answerAsk(shopTc.getByRole('button', { name: 'Other price…' }));
   await priceBox.fill('2');
   await priceBox.press('Enter');
   await shopTc.getByText('Short by 🪙2 for Potion.').waitFor();
-  await shopTc.getByRole('button', { name: 'Other price…' }).click();
+  await answerAsk(shopTc.getByRole('button', { name: 'Other price…' }));
   assert((await priceBox.inputValue()) === '2', `Other price… again starts at the price typed (${await priceBox.inputValue()})`);
   await shopTc.getByRole('button', { name: 'Cancel' }).click();
-  await shopTc.getByRole('button', { name: 'Sell anyway' }).click();
+  await answerAsk(shopTc.getByRole('button', { name: 'Sell anyway' }));
   assert((await potions()) === 2, 'selling anyway adds it to the buyer’s inventory');
   assert((await shopTc.innerText()).includes('Player 1 🪙-2'), `and their gold goes below zero, by the price typed (${await shopTc.innerText()})`);
   await shopTc.getByRole('button', { name: /^Potion( ×\d+)? →/ }).first().click();
@@ -1250,7 +1254,7 @@ try {
   assert((await page.locator('.stage .shop .who').innerText()).includes('Player 1'), 'the stage shows who is shopping');
   await page.locator('.stage').getByRole('button', { name: 'Buy Potion' }).click();
   await shopTc.getByText(/Short by .* for Potion/).waitFor();
-  await shopTc.getByRole('button', { name: 'Give it free' }).click();
+  await answerAsk(shopTc.getByRole('button', { name: 'Give it free' }));
   assert((await potions()) === 2, 'clicking a ware on the stage buys it');
   assert(await page.locator('.stage .shop').isVisible(), 'clicking the shop keeps it open');
   await shopTc.getByRole('button', { name: '🚪 Leave shop' }).click();

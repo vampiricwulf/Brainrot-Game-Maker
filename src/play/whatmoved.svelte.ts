@@ -30,6 +30,7 @@ export const WHAT_MOVED: Record<MovedPart, readonly string[]> = {
     'The Final: finishing early is Finish now… at the left of the box’s foot, beside “2 still to judge” (it was a second Finish game ▶ at the right, by the verdicts). The reveal rows are in straight columns, ✔ Right and ✘ Wrong at the right end; the wager screen’s first line says whose wager it waits on.',
     'The results screen: ▶ Next game… and 🔁 Rematch are on the left now, after 📋 Copy standings (they were at the far right), 🔁 Rematch last and set apart.',
     'The tiebreaker clue: Who won? 🏆 Ann 🏆 Bob (the tied players only) settles it in one click; the Amount row is behind ± Also give points… (a number, then Enter, still picks the winner).',
+    'The wheel edit’s and a shop’s questions: Cancel first, the answer last (💾 Save, Replace, Sell anyway, Set). The wheel edit’s Overwrite is 💾 Replace “…”….',
   ],
   editor: [],
 };

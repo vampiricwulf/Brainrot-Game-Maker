@@ -308,6 +308,15 @@ export async function longPress(target, ms = 800) {
 /** The confirmation strip above the fixed bar (Leave this game?, End the game now? 7 clues are left.…). */
 export const confirmStrip = (page) => page.locator('.panel .confirm');
 
+/**
+ * Press an answer of a question asked in the panel (Replace, Sell anyway…), once its question takes clicks: in its first
+ * moment it takes none (the rest of the double-click that asked it). Cancel needs no wait.
+ */
+export async function answerAsk(button) {
+  await button.locator('xpath=ancestor::*[@data-ask][@data-ready]').waitFor();
+  await button.click();
+}
+
 /** Leaving a round's question, its answer that goes: Go to Double Jeopardy! ▶, End game ▶ (Keep playing stays). */
 export const leaveAnswer = (page) => confirmStrip(page).getByRole('button', { name: /^(Go to .+|End game) ▶$/ });
 

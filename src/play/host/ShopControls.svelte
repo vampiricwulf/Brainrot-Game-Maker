@@ -1,16 +1,17 @@
 <!--
   Buying from the shop on screen: pick who buys, then an item (here, or by clicking it on the stage). Short of money,
   the host can sell it anyway (going below zero), give it free, or charge a different price. Stock can be changed on
-  the spot, a shop that buys back lists what the buyer can sell, and 🚪 Leave shop closes it.
+  the spot, a shop that buys back lists what the buyer can sell, and 🚪 Leave shop closes it. Each question asks in the
+  panel's way: Cancel first, the answer last; in a box Enter answers and Esc cancels.
 -->
 <script lang="ts">
-  import { tick } from 'svelte';
   import { app, toast } from '../../lib/app.svelte';
   import { textOn } from '../../lib/colors';
   import type { Game, Session } from '../../lib/model';
   import { blip } from '../../lib/live';
   import { balance, entryName, formatPrice, inventory, itemDef, logged, sell, sellPrice, setStock, shopPrice, stockLeft } from '../../lib/toolset';
   import { playerName } from '../../lib/session';
+  import InlineAsk from './InlineAsk.svelte';
   import { shopBuy, shopBuyer } from './shopops';
 
   let { game, session, selected }: { game: Game; session: Session; selected: string[] } = $props();
@@ -40,46 +41,38 @@
     if (result?.ok) blip(app.live, 'coin');
   }
 
-  /** A price for this sale, or the stock left, being typed in (asked inline: a browser dialog would show on stream). */
-  let asking = $state<{ what: 'price' | 'stock'; item: string } | null>(null);
-  let typed = $state<number | null>(null);
-  let priceBox = $state<HTMLInputElement>();
-  let stockBox = $state<HTMLInputElement>();
+  /**
+   * A price for this sale, or the stock left, being typed in (asked inline: a browser dialog would show on stream), with
+   * what its box starts with. Each goes into its box (typing would reach the shortcuts otherwise).
+   */
+  let asking = $state<{ what: 'price' | 'stock'; item: string; start: string } | null>(null);
 
-  // Each goes into its box (the button that asked keeps the focus otherwise, and typing would reach the shortcuts).
   // A price typed in before (and still short) starts the box again.
   function otherPrice(item: string): void {
-    asking = { what: 'price', item };
-    typed = o?.short?.price ?? shopPrice(game, shop!, item);
-    tick().then(() => priceBox?.select());
+    asking = { what: 'price', item, start: String(o?.short?.price ?? shopPrice(game, shop!, item)) };
   }
 
   function restock(item: string): void {
     if (!shop) return;
-    asking = { what: 'stock', item };
-    typed = stockLeft(session, shop, item, game);
-    tick().then(() => stockBox?.select());
+    const left = stockLeft(session, shop, item, game);
+    asking = { what: 'stock', item, start: left === null ? '' : String(left) };
   }
 
   /** Sell at the price typed, or set the stock left (blank = unlimited). */
-  function answer(): void {
+  function answer(typed: string): void {
     const a = asking;
-    const v = typed;
+    const v = typed === '' ? null : Number(typed);
     if (!a || !shop) return;
     asking = null;
     if (a.what === 'price') {
-      if (v === null || v < 0) return void toast('That isn’t a price');
+      if (v === null || !Number.isFinite(v) || v < 0) return void toast('That isn’t a price');
       // Short of it at that price too: it says so (Sell anyway is still there), as at the usual price.
       purchase(a.item, { price: v, allowShort: false });
       return;
     }
+    if (v !== null && !Number.isFinite(v)) return void toast('That isn’t a number');
     const s = shop;
     logged(session, `Restock ${itemDef(game, a.item)?.name}`, () => setStock(session, s, a.item, v === null ? null : Math.max(0, Math.round(v))));
-  }
-
-  function keys(e: KeyboardEvent): void {
-    if (e.key === 'Enter') answer();
-    else if (e.key === 'Escape') asking = null;
   }
 </script>
 
@@ -120,15 +113,19 @@
     {/each}
   </div>
   {#if asking?.what === 'stock'}
-    <div class="row">
-      <label class="check small">
-        How many {itemDef(game, asking.item)?.name} left?
-        <input class="n" type="number" min="0" placeholder="∞" bind:this={stockBox} bind:value={typed} onkeydown={keys} />
-      </label>
-      <span class="muted small">Blank = unlimited</span>
-      <button class="small" onclick={answer}>Set</button>
-      <button class="small ghost" onclick={() => (asking = null)}>Cancel</button>
-    </div>
+    {#key asking}
+      <InlineAsk
+        text="How many {itemDef(game, asking.item)?.name} left? Blank = unlimited"
+        field="Stock left"
+        placeholder="∞"
+        number
+        blankOk
+        value={asking.start}
+        ok="Set"
+        onok={answer}
+        oncancel={() => (asking = null)}
+      />
+    {/key}
   {/if}
   {#if shop.buysBack}
     {@const sellable = inventory(session, buyer).filter((e) => sellPrice(game, shop, e.item) !== null)}
@@ -148,20 +145,24 @@
     {@const it = o.short.item}
     <!-- (Short at a price typed in: Sell anyway sells at that price.) -->
     {@const at = o.short.price}
-    <div class="row warn" role="alert">
-      <span>Short by {formatPrice(game, shop, gap)} for {itemDef(game, it)?.name}.</span>
+    {@const short = `Short by ${formatPrice(game, shop, gap)} for ${itemDef(game, it)?.name}.`}
+    <!-- (Cancel first; Give it free and Other price… between; Sell anyway, the buyer going below zero, last.) -->
+    <div class="small" role="alert">
       {#if asking?.what === 'price' && asking.item === it}
-        <label class="check">
-          Price
-          <input class="n" type="number" min="0" bind:this={priceBox} bind:value={typed} onkeydown={keys} />
-        </label>
-        <button class="small" onclick={answer}>Sell</button>
-        <button class="small ghost" onclick={() => (asking = null)}>Cancel</button>
+        {#key asking}
+          <InlineAsk text={short} field="Price" number value={asking.start} ok="Sell" onok={answer} oncancel={() => (asking = null)} />
+        {/key}
       {:else}
-        <button class="small" onclick={() => purchase(it, { allowShort: true, price: at })}>Sell anyway</button>
-        <button class="small" onclick={() => purchase(it, { price: 0 })}>Give it free</button>
-        <button class="small" onclick={() => otherPrice(it)}>Other price…</button>
-        <button class="small ghost" onclick={() => (o.short = undefined)}>Cancel</button>
+        <InlineAsk
+          text={short}
+          ok="Sell anyway"
+          alts={[
+            { label: 'Give it free', onclick: () => purchase(it, { price: 0 }) },
+            { label: 'Other price…', onclick: () => otherPrice(it) },
+          ]}
+          onok={() => purchase(it, { allowShort: true, price: at })}
+          oncancel={() => (o.short = undefined)}
+        />
       {/if}
     </div>
   {/if}
@@ -183,18 +184,11 @@
     display: inline-flex;
     gap: 2px;
   }
-  .warn {
-    color: var(--warn);
-    font-size: 12px;
-  }
   .small {
     font-size: 12px;
   }
   .tiny {
     font-size: 12px;
     padding: 1px 5px;
-  }
-  .n {
-    width: 80px;
   }
 </style>

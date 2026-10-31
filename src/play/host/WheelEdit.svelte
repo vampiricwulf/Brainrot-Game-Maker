@@ -1,13 +1,15 @@
 <!-- The host's edit box for the wheel on screen: switch slices off, change their chances, add or rename slices.
-     Edits change this run of the wheel only; Save as / Overwrite keep them in the game. -->
+     Edits change this run of the wheel only; Save as / Replace keep them in the game (each asks in the panel's way:
+     Cancel first, the answer last). -->
 <script lang="ts">
-  import { tick, untrack } from 'svelte';
+  import { untrack } from 'svelte';
   import { app, toast } from '../../lib/app.svelte';
   import { step } from '../../lib/history.svelte';
   import ColorBox from '../../lib/ColorBox.svelte';
   import { newId, type Game, type Session, type WheelPreset } from '../../lib/model';
   import { editWheel, resetWheelEdits, wheelPool, type WheelLike } from '../../lib/overlay';
   import { newSegment, onSlices, type PoolSlice } from '../../lib/tools';
+  import InlineAsk from './InlineAsk.svelte';
 
   /** The main wheel on screen, or one spun together with it. */
   let { o, game, session, disabled }: { o: WheelLike; game: Game; session: Session; disabled: boolean } = $props();
@@ -34,11 +36,10 @@
     rows = wheelPool(o, session, game);
   }
 
-  // Save as and Overwrite ask inline (a browser dialog would show on stream).
-  /** The name typed for "Save as new wheel" (null: not asking). */
+  // Save as and Replace ask inline (a browser dialog would show on stream).
+  /** The name "Save as new wheel" starts with (null: not asking). */
   let saveName = $state<string | null>(null);
   let askOverwrite = $state(false);
-  let nameBox = $state<HTMLInputElement>();
 
   /**
    * A saved wheel goes into the game being played and, when it's the same game, the one in the editor (a step of the
@@ -49,16 +50,14 @@
     if (app.game.id === game.id && app.game !== game) step(label, () => change(app.game), { during: 'play' });
   }
 
+  /** Ask for the new wheel's name (the keys go into its box), or whether to replace the saved wheel's slices. */
   function ask(what: 'save' | 'overwrite'): void {
     if (!on.length) return toast('Keep at least one slice on the wheel');
     saveName = what === 'save' ? (o.players ? 'Players' : `${o.name} (edited)`) : null;
     askOverwrite = what === 'overwrite';
-    // Into the name box (the button keeps the focus otherwise, and typing would reach the host's shortcuts).
-    if (what === 'save') tick().then(() => nameBox?.select());
   }
 
-  function saveAs(): void {
-    const name = saveName?.trim();
+  function saveAs(name: string): void {
     if (!name) return;
     if (!on.length) return toast('Keep at least one slice on the wheel');
     saveName = null;
@@ -154,30 +153,17 @@
     <span class="spacer"></span>
     <button class="small" onclick={() => ask('save')}>💾 Save as new wheel…</button>
     {#if preset}
-      <button class="small" onclick={() => ask('overwrite')}>Overwrite "{preset.name}"</button>
+      <button class="small" onclick={() => ask('overwrite')} title="Puts these slices in the saved “{preset.name}”, for the rest of the game (it asks first)">💾 Replace “{preset.name}”…</button>
     {/if}
   </div>
+  <!-- (Cancel first, the answer last; in the name box Enter saves and Esc cancels. Replace is red, and Cancel has the
+       keys, so Enter there never replaces by accident.) -->
   {#if saveName !== null}
-    <div class="row">
-      <input
-        class="label"
-        bind:this={nameBox}
-        bind:value={saveName}
-        aria-label="Name for the new wheel"
-        onkeydown={(e) => {
-          if (e.key === 'Enter') saveAs();
-          else if (e.key === 'Escape') saveName = null;
-        }}
-      />
-      <button class="small primary" onclick={saveAs} disabled={!saveName.trim()}>💾 Save</button>
-      <button class="small" onclick={() => (saveName = null)}>Cancel</button>
-    </div>
+    {#key saveName}
+      <InlineAsk field="Name for the new wheel" value={saveName} ok="💾 Save" onok={saveAs} oncancel={() => (saveName = null)} />
+    {/key}
   {:else if askOverwrite && preset}
-    <div class="row">
-      <span class="warn">Replace the slices of "{preset.name}" with these {on.length}? This changes the wheel for the rest of the game.</span>
-      <button class="small bad" onclick={overwrite}>Replace</button>
-      <button class="small" onclick={() => (askOverwrite = false)}>Cancel</button>
-    </div>
+    <InlineAsk text="Replace the slices of “{preset.name}” with these {on.length}?" ok="Replace" danger focusCancel onok={overwrite} oncancel={() => (askOverwrite = false)} />
   {/if}
 </fieldset>
 
@@ -238,10 +224,6 @@
     border-radius: 50%;
   }
   .small {
-    font-size: 12px;
-  }
-  .warn {
-    color: var(--warn);
     font-size: 12px;
   }
 </style>

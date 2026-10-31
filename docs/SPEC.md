@@ -502,6 +502,15 @@ The mode isn't saved with the game: it's dual while the audience window is open.
      take a second click (“click again”, counted from 0.6 s on); a double-click is one click. The words show in the
      status line's start, over it (nothing in the line moves); with the controls hidden they head the moment's menu at
      the pointer. While the check is open a click on the stage only flashes it.
+- **A question asked in the panel** (host/InlineAsk.svelte, never a browser dialog: it would show on stream): the
+  question, a box when it wants a name or a number, then **Cancel** first, the answers between, and the answer last,
+  blue (red when it can't easily be taken back), each named for what it does. In a box `Enter` answers and `Esc`
+  cancels; with no box and a red answer, Cancel has the keys, so `Enter` never answers by accident. Its answers take no
+  click in its first 0.4 s (the rest of the double-click that asked it). The in-play wheel edit asks so (💾 Save as new
+  wheel…'s name; **💾 Replace “Bonus wheel”…**: “Replace the slices of “Bonus wheel” with these 2?”, Cancel · Replace),
+  and so does an RPG shop: short of money, “Short by 🪙1 for Potion.” Cancel · Give it free · Other price… · **Sell
+  anyway** (the buyer goes below zero); Other price… asks the price (Cancel · Sell), and 📦 the stock left (Cancel ·
+  Set; blank is unlimited).
 - **The host panel** has one layout in every round: the status line (📱 phones and ⏱ timer chips), the players' score
   chips, the row of what this moment needs with the one main button (and its key) at its right, the tools with the
   round navigation (a played-out board keeps Next round ▶'s room there, unseen: the blue button is it), then a fixed
