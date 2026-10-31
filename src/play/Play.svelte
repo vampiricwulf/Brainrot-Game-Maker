@@ -86,14 +86,14 @@
   import { groupPops, stopsTimer } from './flow';
   import { nextUndo, stillUndone, type TimelineRow } from '../lib/timeline';
   import {
-    addLive, droppedFile, dropEntry, giveEntry, joinPartyNow, moveGroup, objectAt, objectMenu, pickUp, regroupAll, removeObject, rpgNow, sendPlayers, START_FIRST, stepParty, toggleMap,
+    addLive, droppedFile, dropEntry, giveEntry, joinPartyNow, moveGroup, moveObject, objectAt, objectMenu, pickUp, regroupAll, removeObject, rpgNow, sendPlayers, START_FIRST, stepParty, toggleMap,
     type AvatarDrop, type RpgAsk, type StagePoint,
   } from './rpg/hostops';
   import { isMenuKey, showMenu, type MenuEntry } from '../lib/menustate.svelte';
   import { browserMenuFits } from '../lib/nomenu';
   import { longPress } from '../lib/longpress';
   import { currentPlayer, ensureBoard, HOP_MS, spaceSaid, waysNow, waysOn } from '../lib/boardgame';
-  import { ensureWorld, focusRef, override, refindPositions } from '../lib/rpg';
+  import { ensureWorld, focusRef, refindPositions } from '../lib/rpg';
   import { boardNow, isMover, moveCounts, moveNow, moverResult, moverSliceNoNumber, moverSliceWords, offBoard, rollMover, runSpace, sendNow, setTurn, stepWaysHint, turnNow } from './boardgame/bgops';
   import { boardEdit, editDelete, editDisconnect, editIdle, setEditing } from './boardgame/boardedit.svelte';
   import { playerMenu } from './playermenu';
@@ -3706,10 +3706,7 @@
 
   /** An object on the stage was dragged on its own: it stays there (undoable), and it's what's selected now. */
   function objectMoved(id: string, at: { x: number; y: number }): void {
-    const { st } = rpgNow(game, session);
-    if (!st) return;
-    const name = objectAt(game, session, id)?.el.name || 'object';
-    logged(session, `Move ${name}`, () => Object.assign(override(st, id), at));
+    moveObject(game, session, id, at);
     if (!rpgSelObjects.includes(id)) [selected, rpgSelObjects] = [[], [id]];
   }
 
@@ -3729,7 +3726,7 @@
 
   /** Take an object off the stage (the Delete key, its menu): its card closes. */
   function removeObj(id: string): void {
-    const said = removeObject(game, session, id);
+    const said = removeObject(game, session, id, !dual);
     if (said) toast(said, 3000);
     if (rpgObject === id) rpgObject = null;
   }
@@ -4192,7 +4189,7 @@
       if (objId) {
         // Removed: its card closes, as with the Delete key.
         const removed = (text: string) => (toast(text, 3000), rpgObject === objId && (rpgObject = null));
-        return showMenu(e, objectMenu(game, session, objId, { open: () => ((hideControls = false), (rpgObject = objId)), removed }));
+        return showMenu(e, objectMenu(game, session, objId, { oneWindow: !dual, open: () => ((hideControls = false), (rpgObject = objId)), removed }));
       }
       return momentMenuAt(e, byMenuKey ? undefined : stagePoint(e));
     }

@@ -224,23 +224,38 @@ export function shortList(names: string[], max = 4): string {
 const hiddenCount = (n: number) => (n === 1 ? 'a hidden object' : `${n} hidden objects`);
 
 /**
- * Players and objects on the stage dragged together to new spots (by id), as one undo step named after them all
- * ("Move Ann, Bob & Chest"). Returns that name.
+ * Players and objects on the stage dragged together to new spots (by id), as one undo step named after them ("Move Ann,
+ * Bob & Chest"; past four, "Move Ann, Bob, Cy & 5 more"). An object viewers don't see is "a hidden object" in the step's
+ * words for one window. Nothing that moves (a group held at an edge): no step. Returns its name.
  */
 export function moveGroup(game: Game, session: Session, players: Record<string, { x: number; y: number }>, objects: Record<string, { x: number; y: number }>): string | null {
   const { st } = rpgNow(game, session);
   if (!st) return null;
-  const who = Object.keys(players).filter((id) => st.positions[id]);
+  const who = Object.keys(players).filter((id) => {
+    const p = st.positions[id];
+    return p && (p.x !== players[id].x || p.y !== players[id].y);
+  });
   const what = Object.keys(objects).flatMap((id) => {
     const found = objectAt(game, session, id);
-    return found ? [{ id, name: objectName(found.el) }] : [];
+    const o = st.objects[id];
+    if (!found || ((o?.x ?? found.el.x) === objects[id].x && (o?.y ?? found.el.y) === objects[id].y)) return [];
+    return [{ id, name: objectName(found.el), seen: audienceSees(found.el, o) }];
   });
   if (!who.length && !what.length) return null;
-  const text = `Move ${nameList([...who.map((id) => session.players.find((p) => p.id === id)?.name ?? '?'), ...what.map((o) => o.name)])}`;
-  logged(session, text, () => {
-    for (const id of who) Object.assign(st.positions[id], players[id]);
-    for (const o of what) Object.assign(override(st, o.id), objects[o.id]);
-  });
+  const pl = who.map((id) => session.players.find((p) => p.id === id)?.name ?? '?');
+  const text = `Move ${shortList([...pl, ...what.map((o) => o.name)])}`;
+  const hidden = what.filter((o) => !o.seen).length;
+  const quiet = hidden ? `Move ${shortList([...pl, ...what.filter((o) => o.seen).map((o) => o.name), hiddenCount(hidden)])}` : undefined;
+  logged(
+    session,
+    text,
+    () => {
+      for (const id of who) Object.assign(st.positions[id], players[id]);
+      for (const o of what) Object.assign(override(st, o.id), objects[o.id]);
+    },
+    undefined,
+    quiet,
+  );
   return text;
 }
 
@@ -284,11 +299,13 @@ export function everythingOn(game: Game, session: Session, ref: ScreenRef, oneWi
 
 /**
  * One window (viewers see the host panel): what it calls each secret object on a screen, in place of its name ("🙈
- * Hidden object 1"…). Not what viewers never see anyway (an arrival point): that keeps its name.
+ * Hidden object 1"…). Not what viewers never see anyway (an arrival point), nor what the host put there during the show
+ * (they made it in front of viewers): those keep their names.
  */
 export function hiddenNames(st: WorldState | undefined, screen: Screen): Map<string, string> {
   const out = new Map<string, string>();
-  for (const el of screenElements(st, screen, false)) if (el.secret && !neverShown(el) && (el.role || el.name)) out.set(el.id, `🙈 Hidden object ${out.size + 1}`);
+  const added = new Set((st?.added[screen.id] ?? []).map((e) => e.id));
+  for (const el of screenElements(st, screen, false)) if (el.secret && !neverShown(el) && !added.has(el.id) && (el.role || el.name)) out.set(el.id, `🙈 Hidden object ${out.size + 1}`);
   return out;
 }
 
@@ -314,34 +331,44 @@ export function selectionWords(game: Game, session: Session, players: string[], 
 /** What an object is called on its card, in menus and in the log. */
 export const objectName = (el: SlideElement) => el.name || (el.role ? classLabel(el.role.class) : 'Object');
 
-/** Take an object off its screen (undoable). Returns what to tell the host. */
-export function removeObject(game: Game, session: Session, elId: string): string | null {
+/**
+ * Take an object off its screen (undoable). Returns what to tell the host: in one window (`oneWindow`) one viewers don't
+ * see isn't named ("Removed a hidden object"), nor is it in the step's words there.
+ */
+export function removeObject(game: Game, session: Session, elId: string, oneWindow = false): string | null {
   const found = objectAt(game, session, elId);
   if (!found) return null;
   const name = objectName(found.el);
-  logged(session, `Remove ${name}`, () => (override(found.st, elId).taken = true));
-  return `Removed ${name} · Ctrl+Z brings it back`;
+  const seen = audienceSees(found.el, found.st.objects[elId]);
+  logged(session, `Remove ${name}`, () => (override(found.st, elId).taken = true), undefined, seen ? undefined : `Remove ${hiddenCount(1)}`);
+  return `Removed ${oneWindow && !seen ? hiddenCount(1) : name} · Ctrl+Z brings it back`;
 }
 
 /**
  * An object's right-click menu, on the stage or in the host panel's list: open its card, reveal or hide it, remove it
- * (`removed` gets what to tell the host).
+ * (`removed` gets what to tell the host). `oneWindow`: viewers see the menu, so a secret object with an `alias` (see
+ * hiddenNames: "🙈 Hidden object 1") is headed by that, never its name.
  */
-export function objectMenu(game: Game, session: Session, elId: string, { open, removed }: { open: () => void; removed: (text: string) => void }): MenuEntry[] {
+export function objectMenu(
+  game: Game,
+  session: Session,
+  elId: string,
+  { open, removed, oneWindow = false, alias }: { open: () => void; removed: (text: string) => void; oneWindow?: boolean; alias?: string },
+): MenuEntry[] {
   const found = objectAt(game, session, elId);
   if (!found) return [];
   const { st, el } = found;
   const name = objectName(el);
   const shown = audienceSees(el, st.objects[elId]);
   return [
-    { heading: name },
+    { heading: oneWindow && !shown && alias ? alias : name },
     { label: '🗂 Open its card', onclick: open },
     // (Not for hotspots, arrival points and no-go areas: viewers never see them, so a Reveal would do nothing.)
     ...(neverShown(el)
       ? []
       : [{ label: shown ? '🙈 Hide from viewers' : '👁 Reveal to viewers', onclick: () => logged(session, `${shown ? 'Hide' : 'Reveal'} ${name}`, () => (override(st, elId).shown = !shown)) }]),
     { sep: true },
-    { label: '🗑 Remove', danger: true, onclick: () => removed(removeObject(game, session, elId) ?? '') },
+    { label: '🗑 Remove', danger: true, onclick: () => removed(removeObject(game, session, elId, oneWindow) ?? '') },
   ];
 }
 

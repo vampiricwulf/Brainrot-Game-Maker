@@ -618,10 +618,19 @@ try {
   await page.keyboard.press('Escape');
   await arrival.waitFor({ state: 'detached' });
 
+  // One window (viewers see the panel): the secret Potion and Gate aren't named in Objects here, only numbered; a card
+  // keeps the name and buttons behind 👁 Show.
+  const listed = await page.locator('.rh .objs').innerText();
+  assert(
+    !/Potion|Gate/.test(listed) && (await page.locator('.rh .objs').getByRole('button', { name: '🙈 Hidden object 2', exact: true }).count()) === 1,
+    `one window: Objects here doesn’t name the secret Potion or Gate (${listed.replace(/\s+/g, ' ')})`,
+  );
+  await page.locator('.rh .objs').getByRole('button', { name: '🙈 Hidden object 2', exact: true }).click();
+  const masked = page.getByRole('dialog', { name: 'Object: 🙈 Hidden object 2' });
+  await masked.waitFor();
+  assert(!(await masked.innerText()).includes('Gate') && !(await masked.innerText()).includes('Doorway'), 'its card doesn’t say what it is either');
+  await masked.getByRole('button', { name: '👁 Show', exact: true }).click();
   // The locked gate asks first (in its card), and only goes through on the answer.
-  const gateListed = await page.locator('.rh .objs').getByRole('button', { name: /Gate/ }).innerText();
-  assert(gateListed === 'Gate · Doorway', `the objects here are listed with what they are in words (${gateListed})`);
-  await page.locator('.rh .objs').getByRole('button', { name: /Gate/ }).click();
   const gate = page.getByRole('dialog', { name: 'Object: Gate' });
   const gateKind = await gate.locator('.cls').innerText();
   assert(gateKind === 'Doorway', `the card says what it is in words (${gateKind}), never a code like “npc”`);
@@ -859,11 +868,11 @@ try {
   await page.keyboard.press('Enter');
   assert((await page.locator('.rh .pc').first().locator('.it').allInnerTexts()).join().includes('Rubber duck'), 'Something else… asks for a name in the card, then gives it');
 
-  // The secret Potion is in the host's list: reveal it, then pick it up.
-  await page.locator('.rh .objs').getByRole('button', { name: /Potion/ }).click();
+  // The secret Potion is in the host's list (numbered, in one window): reveal it, then pick it up.
+  await page.locator('.rh .objs').getByRole('button', { name: '🙈 Hidden object 1', exact: true }).click();
+  await page.getByRole('dialog', { name: 'Object: 🙈 Hidden object 1' }).getByRole('button', { name: '👁 Reveal to viewers' }).click();
   const card = page.getByRole('dialog', { name: 'Object: Potion' });
   await card.waitFor();
-  await card.getByRole('button', { name: '👁 Reveal to viewers' }).click();
   await page.locator('.rpg .hit').first().waitFor();
   assert((await page.locator('.rpg').innerText()).toLowerCase().includes('potion'), 'revealed, viewers see the Potion');
   await card.locator('.who').getByRole('button').first().click();

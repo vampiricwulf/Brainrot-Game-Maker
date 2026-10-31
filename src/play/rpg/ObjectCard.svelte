@@ -22,6 +22,7 @@
     st,
     ctx,
     dual = false,
+    alias,
     onclose,
     onedit,
     onkeep,
@@ -33,6 +34,8 @@
     ctx: RunContext;
     /** An audience window is open: viewers don't see this card. */
     dual?: boolean;
+    /** One window, a secret object (see hiddenNames): what this card calls it ("🙈 Hidden object 1") until 👁 Show. */
+    alias?: string;
     onclose: () => void;
     /** Open its screen in the live editor (to move, resize, restyle or fully set it up). */
     onedit?: () => void;
@@ -60,6 +63,11 @@
   const picker = $derived(!picked && pileField ? (who.find((id) => statRoom(game, session, id, pileField) > 0) ?? who[0]) : who[0]);
   const pickerName = $derived(session.players.find((p) => p.id === picker)?.name ?? 'Nobody');
   const title = $derived(objectName(el));
+  /** 👁 Show pressed: its name and buttons here (in one window viewers see them too). */
+  let unmasked = $state(false);
+  /** One window (viewers see this card), a secret not revealed yet: its name and buttons wait for 👁 Show. */
+  const masked = $derived(!dual && !!alias && !seen && !unmasked);
+  const shownTitle = $derived(masked ? alias : title);
   const locked = $derived(o?.locked ?? role?.locked ?? false);
   const npcStats = $derived(o?.stats ?? role?.stats ?? []);
 
@@ -116,7 +124,7 @@
   }
 
   function take(): void {
-    const said = removeObject(game, session, el.id);
+    const said = removeObject(game, session, el.id, !dual);
     if (said) toast(said, 3000);
     onclose();
   }
@@ -168,118 +176,125 @@
   }
 </script>
 
-<div class="card" role="dialog" aria-label="Object: {title}">
+<div class="card" role="dialog" aria-label="Object: {shownTitle}">
   <div class="row head">
-    <b>{title}</b>
-    {#if role}<span class="cls">{classLabel(role.class)}</span>{/if}
+    <b>{shownTitle}</b>
+    {#if role && !masked}<span class="cls">{classLabel(role.class)}</span>{/if}
     <span class="vis" class:off={!seen}>{seen ? '👁 Viewers see it' : dual ? '🙈 Hidden from viewers' : '🙈 Not on the stage (viewers can see this card)'}</span>
     <span class="spacer"></span>
     <button class="ghost small" onclick={onclose} aria-label="Close">✕</button>
   </div>
-  {#if el.hostNotes}<div class="notes">📝 {el.hostNotes}</div>{/if}
-  <div class="row setup">
-    <input
-      class="nm"
-      value={el.name ?? ''}
-      placeholder="Name"
-      aria-label="Object name"
-      onchange={(e) => rename(e.currentTarget.value.trim())}
-      onkeydown={(e) => e.key === 'Enter' && e.currentTarget.blur()}
-    />
-    <!-- Let go of the keys after a pick: shortcuts ignore a focused select, and arrow keys would change the class again. -->
-    <select
-      value={role?.class ?? ''}
-      onchange={(e) => {
-        const v = e.currentTarget.value;
-        e.currentTarget.blur();
-        setClass(v);
-      }}
-      aria-label="Object class"
-      title="What it is"
-    >
-      {#each OBJECT_CLASSES as [v, l, hint] (v)}<option value={v} title={hint}>{l}</option>{/each}
-    </select>
-    {#if onedit}<button class="small" onclick={onedit} title="Move, resize, restyle, or give it actions and dialogue">✎ Edit</button>{/if}
-    {#if onkeep}<button class="small" onclick={onkeep} title="Save its screen, with this, in the game in the editor, so it's there next time">💾 Keep</button>{/if}
-  </div>
-  <div class="row who">
-    <span class="muted small">For{picked ? '' : ' everyone here'}:</span>
-    {#each session.players as p (p.id)}
-      {@const on = !!picked?.includes(p.id)}
-      <!-- Everyone here (nobody picked) is outlined, not filled: clicking one picks just them. -->
-      <button
-        class="chip"
-        class:auto={!picked && here.includes(p.id)}
-        style:border-color={p.color}
-        style:background={on ? p.color : undefined}
-        style:color={on ? textOn(p.color) : undefined}
-        aria-pressed={on}
-        onclick={() => toggle(p.id)}
-      >
-        {p.name}
-      </button>
-    {/each}
-  </div>
-  <div class="row btns">
-    {#if role?.class === 'doorway'}
-      <button class="primary" onclick={() => goThrough()}>🚪 Go through (party)</button>
-      {#if picked?.length}<button onclick={() => goThrough(who)}>🚪 Only {whoNames}</button>{/if}
-      <button class="small" onclick={() => logged(session, `${locked ? 'Unlock' : 'Lock'} ${title}`, () => (override(st, el.id).locked = !locked))}>
-        {locked ? '🔓 Unlock' : '🔒 Lock'}
-      </button>
-    {:else if role?.class === 'item'}
-      <button class="primary" onclick={pickUp}>✋ {pickerName} picks up {count(role.qty ?? 1, itemDef(game, role.item)?.name ?? title)}</button>
-    {:else if role?.class === 'currency'}
-      {@const f = statFields(game).find((x) => x.id === role.field) ?? currencyFields(game)[0]}
-      {@const left = pileAmount(st, el)}
-      <!-- Only what fits under their max ("🪙15 of 🪙30"); the rest stays on the screen. -->
-      {@const fits = f && picker ? Math.min(left, statRoom(game, session, picker, f)) : left}
-      <button class="primary" onclick={pickUp} disabled={!f} title={f ? undefined : 'Add a currency in 📊 Stats & Items first'}
-        >✋ {pickerName} picks up {f ? (fits > 0 && fits < left ? `${formatStat(f, fits)} of ${formatStat(f, left)}` : formatStat(f, left)) : left}</button
-      >
-    {/if}
-    {#if role?.dialogue}<button onclick={talk}>💬 Talk</button>{/if}
-    {#if role?.shop}<button onclick={openShop} disabled={!shopExists} title={shopExists ? undefined : 'That shop no longer exists: pick another with ✎ Edit'}>🛒 Shop</button>{/if}
-    {#each role?.actions ?? [] as a (a.id)}
-      <button onclick={() => run(a)}>{describeAction(game, a, undefined, ctx.teams)}</button>
-    {/each}
-    {#if (role?.actions?.length ?? 0) > 1}<button class="small" onclick={runAll} title="Every action above, in order">▶ Run all</button>{/if}
-  </div>
-  {#if lockedAsk && locked}
-    {@const a = lockedAsk}
-    <InlineAsk text="{title} is locked. Go through anyway?" ok="🚪 Go through" onok={() => goThrough(a.players, true)} oncancel={() => (lockedAsk = null)} />
-  {/if}
-  {#if npcStats.length}
+  {#if masked}
     <div class="row">
-      {#each npcStats as s, i (i)}
-        <span class="stat">
-          {s.name} <b>{s.value}</b>
-          <button class="tiny" onclick={() => npcStat(i, -1)} aria-label="{s.name} minus 1">−</button>
-          <button class="tiny" onclick={() => npcStat(i, 1)} aria-label="{s.name} plus 1">+</button>
-        </span>
+      <span class="muted small">Its name and buttons wait here: viewers see this panel.</span>
+      <button class="small" onclick={() => (unmasked = true)} title="Shows them here (viewers see them too)">👁 Show</button>
+    </div>
+  {:else}
+    {#if el.hostNotes}<div class="notes">📝 {el.hostNotes}</div>{/if}
+    <div class="row setup">
+      <input
+        class="nm"
+        value={el.name ?? ''}
+        placeholder="Name"
+        aria-label="Object name"
+        onchange={(e) => rename(e.currentTarget.value.trim())}
+        onkeydown={(e) => e.key === 'Enter' && e.currentTarget.blur()}
+      />
+      <!-- Let go of the keys after a pick: shortcuts ignore a focused select, and arrow keys would change the class again. -->
+      <select
+        value={role?.class ?? ''}
+        onchange={(e) => {
+          const v = e.currentTarget.value;
+          e.currentTarget.blur();
+          setClass(v);
+        }}
+        aria-label="Object class"
+        title="What it is"
+      >
+        {#each OBJECT_CLASSES as [v, l, hint] (v)}<option value={v} title={hint}>{l}</option>{/each}
+      </select>
+      {#if onedit}<button class="small" onclick={onedit} title="Move, resize, restyle, or give it actions and dialogue">✎ Edit</button>{/if}
+      {#if onkeep}<button class="small" onclick={onkeep} title="Save its screen, with this, in the game in the editor, so it's there next time">💾 Keep</button>{/if}
+    </div>
+    <div class="row who">
+      <span class="muted small">For{picked ? '' : ' everyone here'}:</span>
+      {#each session.players as p (p.id)}
+        {@const on = !!picked?.includes(p.id)}
+        <!-- Everyone here (nobody picked) is outlined, not filled: clicking one picks just them. -->
+        <button
+          class="chip"
+          class:auto={!picked && here.includes(p.id)}
+          style:border-color={p.color}
+          style:background={on ? p.color : undefined}
+          style:color={on ? textOn(p.color) : undefined}
+          aria-pressed={on}
+          onclick={() => toggle(p.id)}
+        >
+          {p.name}
+        </button>
       {/each}
     </div>
-  {/if}
-  {#if npcStats.length && numberFields.length}
-    <div class="row cmp">
-      <span class="muted small">Compare</span>
-      <select class="tiny" value={cf?.id} onchange={(e) => ((cmpField = e.currentTarget.value), (cmpStat = null))} aria-label="Player stat">
-        {#each numberFields as f (f.id)}<option value={f.id}>{f.name}</option>{/each}
-      </select>
-      <span class="muted small">vs</span>
-      <select class="tiny" value={ns} onchange={(e) => (cmpStat = +e.currentTarget.value)} aria-label="{title} stat">
-        {#each npcStats as s, i (i)}<option value={i}>{s.name}</option>{/each}
-      </select>
-      {#if cf}
-        {#each who as id (id)}
-          {@const pv = statNumber(game, session, id, cf)}
-          {@const nv = npcStats[ns]?.value ?? 0}
-          <span class="vs" class:win={pv > nv} class:lose={pv < nv}>
-            {session.players.find((p) => p.id === id)?.name} {pv} vs {nv}
+    <div class="row btns">
+      {#if role?.class === 'doorway'}
+        <button class="primary" onclick={() => goThrough()}>🚪 Go through (party)</button>
+        {#if picked?.length}<button onclick={() => goThrough(who)}>🚪 Only {whoNames}</button>{/if}
+        <button class="small" onclick={() => logged(session, `${locked ? 'Unlock' : 'Lock'} ${title}`, () => (override(st, el.id).locked = !locked))}>
+          {locked ? '🔓 Unlock' : '🔒 Lock'}
+        </button>
+      {:else if role?.class === 'item'}
+        <button class="primary" onclick={pickUp}>✋ {pickerName} picks up {count(role.qty ?? 1, itemDef(game, role.item)?.name ?? title)}</button>
+      {:else if role?.class === 'currency'}
+        {@const f = statFields(game).find((x) => x.id === role.field) ?? currencyFields(game)[0]}
+        {@const left = pileAmount(st, el)}
+        <!-- Only what fits under their max ("🪙15 of 🪙30"); the rest stays on the screen. -->
+        {@const fits = f && picker ? Math.min(left, statRoom(game, session, picker, f)) : left}
+        <button class="primary" onclick={pickUp} disabled={!f} title={f ? undefined : 'Add a currency in 📊 Stats & Items first'}
+          >✋ {pickerName} picks up {f ? (fits > 0 && fits < left ? `${formatStat(f, fits)} of ${formatStat(f, left)}` : formatStat(f, left)) : left}</button
+        >
+      {/if}
+      {#if role?.dialogue}<button onclick={talk}>💬 Talk</button>{/if}
+      {#if role?.shop}<button onclick={openShop} disabled={!shopExists} title={shopExists ? undefined : 'That shop no longer exists: pick another with ✎ Edit'}>🛒 Shop</button>{/if}
+      {#each role?.actions ?? [] as a (a.id)}
+        <button onclick={() => run(a)}>{describeAction(game, a, undefined, ctx.teams)}</button>
+      {/each}
+      {#if (role?.actions?.length ?? 0) > 1}<button class="small" onclick={runAll} title="Every action above, in order">▶ Run all</button>{/if}
+    </div>
+    {#if lockedAsk && locked}
+      {@const a = lockedAsk}
+      <InlineAsk text="{title} is locked. Go through anyway?" ok="🚪 Go through" onok={() => goThrough(a.players, true)} oncancel={() => (lockedAsk = null)} />
+    {/if}
+    {#if npcStats.length}
+      <div class="row">
+        {#each npcStats as s, i (i)}
+          <span class="stat">
+            {s.name} <b>{s.value}</b>
+            <button class="tiny" onclick={() => npcStat(i, -1)} aria-label="{s.name} minus 1">−</button>
+            <button class="tiny" onclick={() => npcStat(i, 1)} aria-label="{s.name} plus 1">+</button>
           </span>
         {/each}
-      {/if}
-    </div>
+      </div>
+    {/if}
+    {#if npcStats.length && numberFields.length}
+      <div class="row cmp">
+        <span class="muted small">Compare</span>
+        <select class="tiny" value={cf?.id} onchange={(e) => ((cmpField = e.currentTarget.value), (cmpStat = null))} aria-label="Player stat">
+          {#each numberFields as f (f.id)}<option value={f.id}>{f.name}</option>{/each}
+        </select>
+        <span class="muted small">vs</span>
+        <select class="tiny" value={ns} onchange={(e) => (cmpStat = +e.currentTarget.value)} aria-label="{title} stat">
+          {#each npcStats as s, i (i)}<option value={i}>{s.name}</option>{/each}
+        </select>
+        {#if cf}
+          {#each who as id (id)}
+            {@const pv = statNumber(game, session, id, cf)}
+            {@const nv = npcStats[ns]?.value ?? 0}
+            <span class="vs" class:win={pv > nv} class:lose={pv < nv}>
+              {session.players.find((p) => p.id === id)?.name} {pv} vs {nv}
+            </span>
+          {/each}
+        {/if}
+      </div>
+    {/if}
   {/if}
   <div class="row">
     <!-- (Hotspots, arrival points and no-go areas are the host's alone: a Reveal would do nothing.) -->

@@ -26,15 +26,15 @@
   import SlideView from '../../lib/slide/SlideView.svelte';
   import { addMediaFile } from '../../lib/media.svelte';
   import { nameList } from '../../lib/session';
-  import { lastAction, logged, wornItems } from '../../lib/toolset';
+  import { lastAction, logged, stepText, wornItems } from '../../lib/toolset';
   import { bringAlong } from '../../lib/roundcopy';
   import MapView from './MapView.svelte';
   import ObjectCard from './ObjectCard.svelte';
   import PlayerCard, { cardsShown, playerCards } from './PlayerCard.svelte';
   import InlineAsk from '../host/InlineAsk.svelte';
   import {
-    addLive, centredOn, focusParty, joinPartyNow, liveText, moveChoices, objectAt, objectMenu, regroupAll, rpgNow, sendPartiesOn, splitOff, START_FIRST, stepParty, toggleMap,
-    type RpgAsk, type StagePoint,
+    addLive, centredOn, focusParty, hiddenNames, joinPartyNow, liveText, moveChoices, objectAt, objectMenu, regroupAll, rpgNow, sendPartiesOn, splitOff, START_FIRST, stepParty,
+    toggleMap, type RpgAsk, type StagePoint,
   } from './hostops';
   import { dropHover } from '../dragdrop.svelte';
 
@@ -89,6 +89,8 @@
   const ctx = $derived<RunContext>({ game, session, live: app.live, world, st, selected, teams: buzzerOn(game.settings) && teamsOn(game.settings), offerCard: offerIn(session) });
   const obj = $derived(object ? objectAt(game, session, object) : null);
   const objects = $derived(here && st ? screenElements(st, here.screen, false).filter((e) => e.role || e.name) : []);
+  /** One window (viewers see this panel): what it calls the secret objects here, never their names ("🙈 Hidden object 1"). */
+  const aliases = $derived(here && st && !dual ? hiddenNames(st, here.screen) : new Map<string, string>());
   const last = $derived(lastAction(session, session.currentRound));
   const showPlayers = $derived(cardsShown());
   /** A screen picked on the host map, waiting for "Move here". */
@@ -533,7 +535,20 @@
       <div class="side">
         {#if obj}
           {#key obj.el.id}
-            <div bind:this={cardEl}><ObjectCard el={obj.el} screen={obj.screen} {world} {st} {ctx} {dual} onclose={() => (object = null)} onedit={() => editObject(obj.screen)} onkeep={app.playerOnly ? undefined : () => keep({ map: obj.map.id, screen: obj.screen.id })} /></div>
+            <div bind:this={cardEl}>
+              <ObjectCard
+                el={obj.el}
+                screen={obj.screen}
+                {world}
+                {st}
+                {ctx}
+                {dual}
+                alias={dual ? undefined : hiddenNames(st, obj.screen).get(obj.el.id)}
+                onclose={() => (object = null)}
+                onedit={() => editObject(obj.screen)}
+                onkeep={app.playerOnly ? undefined : () => keep({ map: obj.map.id, screen: obj.screen.id })}
+              />
+            </div>
           {/key}
         {:else}
           <div class="muted small">
@@ -558,6 +573,8 @@
                   showMenu(
                     e,
                     objectMenu(game, session, el.id, {
+                      oneWindow: !dual,
+                      alias: aliases.get(el.id),
                       open: () => (object = el.id),
                       removed: (text) => {
                         toast(text, 3000);
@@ -566,16 +583,17 @@
                     }),
                   )}
               >
-                <!-- (Its kind after its name, unless the name says it already: "Arrival point", not "Arrival point · Arrival point".) -->
-                {el.name || classLabel(el.role?.class)}{el.role && el.name && el.name.trim().toLowerCase() !== classLabel(el.role.class).toLowerCase()
-                  ? ` · ${classLabel(el.role.class)}`
-                  : ''}
+                <!-- (Its kind after its name, unless the name says it already: "Arrival point", not "Arrival point · Arrival point".
+                     One window: a secret one is numbered, never named.) -->
+                {#if aliases.has(el.id)}{aliases.get(el.id)}{:else}{el.name || classLabel(el.role?.class)}{el.role && el.name && el.name.trim().toLowerCase() !== classLabel(el.role.class).toLowerCase()
+                    ? ` · ${classLabel(el.role.class)}`
+                    : ''}{/if}
               </button>
             {:else}
               <span class="muted small">None on this screen.</span>
             {/each}
           </div>
-          {#if last}<button class="muted small last" onclick={onhistory} title="Ctrl+Z undoes it · click for the whole history">Last: {last.text}</button>{/if}
+          {#if last}<button class="muted small last" onclick={onhistory} title="Ctrl+Z undoes it · click for the whole history">Last: {stepText(last, !dual)}</button>{/if}
         {/if}
       </div>
     </div>
