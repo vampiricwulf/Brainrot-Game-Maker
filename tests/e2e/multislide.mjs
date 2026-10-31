@@ -7,7 +7,7 @@ import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import JSZip from 'jszip';
-import { addClassicRounds, flowButton, mainButton, mainLabel, nameGame, openGameFile, answerReplace } from './helpers.mjs';
+import { addClassicRounds, flowButton, mainButton, mainLabel, nameGame, openGameFile, answerReplace, startNewGame } from './helpers.mjs';
 
 const file = resolve(process.env.APP_FILE || 'dist/index.html');
 if (!existsSync(file)) throw new Error('Run `npm run build` first');
@@ -286,7 +286,8 @@ try {
   const anyway = page.getByRole('button', { name: 'Start a new game' });
   const start = page.getByRole('button', { name: 'Start game ▶' });
   if ((await Promise.race([anyway.waitFor().then(() => 'ask'), start.waitFor().then(() => 'start')])) === 'ask') await anyway.click();
-  await start.click();
+  // (Start asks first when that game has points or tiles played: Start new game.)
+  await startNewGame(page);
   await page.locator('.panel').waitFor();
   await page.locator('.stage-box .board .tile').first().click();
   // (The audience window closed with the last game: the host's own stage shows what viewers see.)

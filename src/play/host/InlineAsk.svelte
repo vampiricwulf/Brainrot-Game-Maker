@@ -16,6 +16,8 @@
     focusCancel = false,
     alt,
     onalt,
+    alts = [],
+    plain = false,
     onok,
     oncancel,
   }: {
@@ -38,6 +40,13 @@
     /** A second answer, between Cancel and the answer button (Leave: "Discard & leave" beside "Keep & leave"). */
     alt?: string;
     onalt?: () => void;
+    /**
+     * More answers, after `alt`, before the answer button (▶ Play's Start: ▶ Resume it instead, 📱 Start the room);
+     * `strong`: the one to press, filled.
+     */
+    alts?: { label: string; onclick: () => void; strong?: boolean }[];
+    /** The answer button isn't the one to press (another answer is `strong`): a plain one, not filled. */
+    plain?: boolean;
     /** Answered (with the text typed, trimmed). */
     onok: (text: string) => void;
     oncancel: () => void;
@@ -110,7 +119,10 @@
   {#if alt && onalt}
     <button class="small ghost" onclick={() => Date.now() - shownAt > 400 && onalt()}>{alt}</button>
   {/if}
-  <button class="small {danger ? 'bad' : 'primary'}" disabled={blank} onclick={() => Date.now() - shownAt > 400 && answer()}>{ok}</button>
+  {#each alts as a (a.label)}
+    <button class="small {a.strong ? 'primary' : 'ghost'}" onclick={() => Date.now() - shownAt > 400 && a.onclick()}>{a.label}</button>
+  {/each}
+  <button class="small {danger ? 'bad' : plain ? '' : 'primary'}" disabled={blank} onclick={() => Date.now() - shownAt > 400 && answer()}>{ok}</button>
 </div>
 
 <style>

@@ -470,11 +470,15 @@ try {
   await page.reload();
   await play.click();
   await page.getByLabel(/Buzzer mode/).check();
-  // Buzzer mode with no room: Start asks in its bar (start the room first, or play without phones).
+  // Phone buzzers on with no room: Start asks in its bar (start the room, the one to press, or play without phones).
   await start.click();
   const noRoom = page.locator('.actions .ia');
-  await noRoom.getByText("Buzzer mode is on, but the buzzer room isn't started").waitFor();
-  assert((await noRoom.getByRole('button', { name: '📱 Start the room first' }).count()) === 1 && (await noRoom.getByRole('button', { name: 'Start without phones' }).count()) === 1, 'Start with Buzzer mode on and no room asks: start the room first, or play without phones');
+  await noRoom.getByText("Phone buzzers are on, but the buzzer room isn't started").waitFor();
+  const noRoomButtons = await noRoom.getByRole('button').evaluateAll((bs) => bs.map((b) => `${b.textContent.trim()}${b.classList.contains('primary') ? ' (filled)' : ''}`));
+  assert(
+    noRoomButtons.join(' | ') === 'Not yet | 📱 Start the room (filled) | Start without phones',
+    `Start with phone buzzers on and no room asks: Not yet, 📱 Start the room (the one to press), or Start without phones, plain (${noRoomButtons.join(' | ')})`,
+  );
   await noRoom.getByRole('button', { name: 'Not yet' }).click();
   assert((await noRoom.count()) === 0 && (await start.count()) === 1, 'Back leaves things as they were');
   await start.click();

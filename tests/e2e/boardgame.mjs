@@ -5,7 +5,7 @@ import { chromium } from 'playwright-core';
 import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { addClassicRounds, answerReplace, checkItem, dragBy, goOnCheck, mainButton, mainLabel, menuLines, openGameFile, openMenu, playWithPlayers, png, leaveAnswer, stepButton } from './helpers.mjs';
+import { addClassicRounds, answerReplace, checkItem, dragBy, goOnCheck, mainButton, mainLabel, menuLines, openGameFile, openMenu, playWithPlayers, png, leaveAnswer, startNewGame, stepButton } from './helpers.mjs';
 
 const file = resolve(process.env.APP_FILE || 'dist/index.html');
 if (!existsSync(file)) throw new Error('Run `npm run build` first');
@@ -575,7 +575,8 @@ try {
   await page.locator('nav > button.round-tab', { hasText: 'Board game' }).click();
   await page.getByLabel('Move by').selectOption('step');
   await page.getByRole('button', { name: '▶ Play' }).click();
-  await page.getByRole('button', { name: 'Start game ▶' }).click();
+  // (The game kept above has turns rolled: Start asks before throwing it away, and Start new game goes on.)
+  await startNewGame(page);
   await page.getByRole('button', { name: 'Skip intro' }).click();
   await page.waitForTimeout(450);
   await page.getByRole('button', { name: 'Next round ▶' }).click();

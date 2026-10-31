@@ -29,7 +29,7 @@ export const hostKeys = (playerOnly: boolean): KeyGroup[] => [
   {
     title: BEFORE,
     keys: [
-      ['Ctrl+Enter', 'Start the game (from anywhere on this screen)'],
+      ['Ctrl+Enter', 'Start the game (from anywhere on this screen). With a game in progress it would throw away, it asks first: Ctrl+Enter again a moment later answers Start new game'],
       // (A player-only file keeps no undo history here.)
       ...(playerOnly ? [] : [['Ctrl+Z / Ctrl+Y', 'Undo / redo the changes made here (players, rules, buzzers, On stream)'] as [string, string]]),
       ['Enter in a player’s name', 'Add the next player (as ＋ Add player does), typing in their name'],

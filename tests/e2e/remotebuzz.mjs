@@ -10,7 +10,7 @@ import { chromium } from 'playwright-core';
 import { existsSync, mkdirSync, readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { addClassicRounds, addPlayers, answerReplace, checkItem, exportHtml, flowIs, goOnCheck, mainButton, openRules, playWithPlayers, quick, leaveAnswer } from './helpers.mjs';
+import { addClassicRounds, addPlayers, answerReplace, checkItem, exportHtml, flowIs, goOnCheck, mainButton, openRules, playWithPlayers, quick, leaveAnswer, stored } from './helpers.mjs';
 
 const file = resolve(process.env.APP_FILE || 'dist/index.html');
 if (!existsSync(file)) throw new Error('Run `npm run build` first');
@@ -872,17 +872,43 @@ try {
     await page.evaluate(() => !window.__room.sockets.some((s) => s.url.includes('/ws/PQRS') && s.sent.some((m) => m.t === 'close'))),
     'and ▶ Resume it plays on in the room started there (PQRS), not in the one that ended',
   );
+  // 100 points for the first player on the board: the kept game now has something Start would throw away (saved first).
+  await page.keyboard.press('1');
+  await page.locator('.panel .award').getByLabel('Amount').fill('100');
+  await page.locator('.panel .award').getByLabel('Amount').press('Enter');
+  for (let i = 0; i < 100 && !(await stored(page))?.session?.scoreLog?.some((e) => e.delta === 100); i++) await page.waitForTimeout(100);
+  assert((await stored(page))?.session?.scoreLog?.some((e) => e.delta === 100), 'the points are saved with the game in progress');
   await page.reload();
   await page.locator('.status-bar .kept').getByText('⏸ Kept to resume:').waitFor();
   await page.getByRole('button', { name: '▶ Play' }).click();
   await resumeCard.waitFor();
+  const keptSays = (await resumeCard.innerText()).replace(/\s+/g, ' ');
+  assert(/⏸ Game in progress: .+ · .+ \$100.* · saved /.test(keptSays), `the card says what the kept game is: its round, its scores, when it was saved (${keptSays})`);
   await card.getByLabel(/Buzzer mode/).uncheck();
   // (The players added before the reload are the game's own only once the game itself is saved, which a slow machine
   // may not have done by then: a fresh game needs some to start.)
   if (!(await page.locator('.pregame input.name').count())) await addPlayers(page, 2);
-  await page.getByRole('button', { name: 'Start game ▶' }).click();
+  await page.locator('.pregame-top h1').click();
+  // Ctrl+Enter twice at once (a habit): the first asks, the second (that soon after it) doesn't answer.
+  await page.evaluate(() => {
+    for (let i = 0; i < 2; i++) document.activeElement.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', ctrlKey: true, bubbles: true, cancelable: true }));
+  });
+  const discard = page.locator('.actions [data-start-ask] .ia');
+  await discard.getByText(/^Start a new game\? The game in progress \(.+\) is discarded\.$/).waitFor();
+  const discardButtons = await discard.getByRole('button').allInnerTexts();
+  assert(
+    (await page.locator('.pregame').count()) === 1 &&
+      discardButtons.join(' | ') === 'Not yet | ▶ Resume it instead | Start new game' &&
+      (await discard.getByRole('button', { name: 'Not yet' }).evaluate((b) => b === document.activeElement)) &&
+      (await discard.getByRole('button', { name: 'Start new game' }).evaluate((b) => b.classList.contains('bad'))),
+    `Start asks before throwing away a game with points, Not yet first with the keys, Start new game red; a quick second Ctrl+Enter doesn't answer it (${discardButtons.join(' | ')})`,
+  );
+  // A later Ctrl+Enter (the keys on Not yet) answers Start new game.
+  await page.waitForTimeout(600);
+  await page.keyboard.press('Control+Enter');
   await page.waitForFunction(() => window.__room.sent.some((m) => m.t === 'close'));
-  assert(true, 'so does starting a fresh game instead of resuming it (Start game replaces the kept game, its room too)');
+  await page.locator('.pregame').waitFor({ state: 'detached' });
+  assert(true, 'so does starting a fresh game instead of resuming it (a later Ctrl+Enter answers Start new game: it replaces the kept game, its room too)');
 
   assert(!errors.length, 'no page errors' + (errors.length ? ': ' + errors.join(' | ') : ''));
   console.log('remotebuzz e2e passed');

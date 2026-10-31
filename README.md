@@ -174,6 +174,12 @@ open **⚖ Game rules** for scoring, the most players, timers and the round intr
 same steps as the editor's 🕘 History, where **Go there** brings you back to this screen). Then pick one of two modes.
 Viewers see a "Starting soon…" card until you press **Start game**, which stays at the foot of the window however long
 the page gets (on a wide screen the page is two columns). A **🔁 Rematch** keeps the players, their colors and pictures.
+A game kept to resume (Exit › Keep & leave, or a reload mid-game) shows at the top with where it got to and its scores
+("⏸ Game in progress: Meme Night · Jeopardy! (round 2 of 5) · Ann $400, Bob $200 · saved 2:41 AM") and **▶ Resume it**.
+Once it has points, a tile played or a roll, Start game asks first, in its bar: "Start a new game? The game in progress
+(Jeopardy!, round 2 of 5) is discarded." **Not yet** (it has the keys) · **▶ Resume it instead** · **Start new game**
+(red). A second `Ctrl+Enter` right after the first doesn't answer it; a later one does. With phone buzzers on and no room
+as well, it's one question ("Start without phones, and discard the game in progress?", with **📱 Start the room**).
 
 - **Single window**: viewers see this window. Press `H` (or **🙈 Hide**) to hide the host controls; **Show controls**
   waits, out of sight, in the top-right corner until the mouse moves (on a touch screen, until a tap, which does

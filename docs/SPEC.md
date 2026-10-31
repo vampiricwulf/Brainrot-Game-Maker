@@ -406,7 +406,13 @@ RollEvent  { id, ts, source: 'wheel' | 'dice', presetName?, result: string /* la
    buzzers (with Teams) and On stream options, all saved with the game, and choose **Single window** or **📺 Separate
    audience window** (with 📺 picked, a line under the cards: "not open yet" [📺 Open it now], or "open ✓" [Bring it
    forward] … [Close it], which asks first; `A` / `Shift+A` open the audience and scores windows here too). A game in
-   progress is picked up from the editor with **Resume game**. While the buzzer room is
+   progress is picked up from the editor with **Resume game**, or here: its card says where it got to and its scores
+   ("⏸ Game in progress: Meme Night · Jeopardy! (round 2 of 5) · Ann $400, Bob $200 · saved 2:41 AM"), with ▶ Resume it,
+   and the bar notes "⏸ A game in progress is kept". When it has points, a tile played or open, a roll, or a round past
+   the first, Start game (or `Ctrl+Enter`) asks in the bar first: Not yet (the focus) · ▶ Resume it instead · Start new
+   game (red). A second press within half a second of the question (a held or doubled `Ctrl+Enter`) doesn't answer it.
+   With phone buzzers on and no room it's one question for both ("Start without phones, and discard the game in
+   progress?", with 📱 Start the room as the answer to press). While the buzzer room is
    up, each 👥 row says how its phone is in words where the name's chip was (📱 in, 📱 waiting, 📵 lost 0:12, ⛔ kicked
    1:40, 🔒 locked out), and the sticky Start bar has the room's live line, one line high: who's asking to join with ✔ Add / ✕ No (two or
    more: how many, and Show ↓ to the 📱 card's list), else the code, who's in and who it's waiting for, plain until

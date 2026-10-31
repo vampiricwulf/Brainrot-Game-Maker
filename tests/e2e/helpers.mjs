@@ -146,6 +146,20 @@ export async function playWithPlayers(page, n) {
   await addPlayers(page, n);
 }
 
+/**
+ * ▶ Play's Start game ▶, and, when it asks first about the game in progress it would throw away (one with points, tiles
+ * played or rolls), its Start new game (past the question's double-click guard). Resolves once the game is on screen.
+ */
+export async function startNewGame(page) {
+  await page.getByRole('button', { name: 'Start game ▶' }).click();
+  const which = await (await page.waitForFunction(() => (document.querySelector('.actions [data-start-ask]') ? 'ask' : document.querySelector('main.play') ? 'play' : null))).jsonValue();
+  if (which === 'ask') {
+    await page.waitForTimeout(450);
+    await page.locator('.actions [data-start-ask]').getByRole('button', { name: 'Start new game' }).click();
+  }
+  await page.locator('main.play').waitFor();
+}
+
 /** The pre-game screen's ⚖ Game rules, opened (rules, timers, the round intro). */
 export async function openRules(page) {
   const rules = page.locator('details.rules');

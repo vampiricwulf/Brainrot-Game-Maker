@@ -1511,7 +1511,7 @@ assert(exitMsg.includes('keep it to resume later?'), 'Exit asks (inline) whether
 await page.getByRole('button', { name: 'Resume game' }).waitFor();
 assert(true, 'after Exit › Keep & leave the editor offers to resume the game');
 await page.getByRole('button', { name: '▶ Play' }).click();
-await page.locator('.resume-card').getByText('A game in progress is kept').waitFor();
+await page.locator('.resume-card').getByText('⏸ Game in progress:').waitFor();
 assert((await page.getByRole('alertdialog').count()) === 0, 'Play with a saved game in progress asks nothing: the pre-game screen offers ▶ Resume it');
 await page.getByRole('button', { name: 'Start game ▶' }).click();
 await page.getByRole('button', { name: 'Skip intro' }).click();

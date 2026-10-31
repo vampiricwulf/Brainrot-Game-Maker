@@ -77,6 +77,7 @@
   import ModeCards from './ModeCards.svelte';
   import JoinAsk, { joinAsks } from './JoinAsk.svelte';
   import { phoneWord, waitingFor, whoJoined, type PhoneWord } from './phonewords';
+  import { keptProgress, keptRound, keptScores, savedWhen } from './keptgame';
   import ScoreLog, { type LogTab } from './ScoreLog.svelte';
   import HostInfo from './HostInfo.svelte';
   import AudioHelp from './AudioHelp.svelte';
@@ -4636,27 +4637,49 @@
     list?.scrollIntoView({ block: 'center', behavior: 'smooth' });
     list?.focus({ preventScroll: true });
   }
-  /** Start was pressed with Buzzer mode on but no room: the bar asks (start it first, or play without phones). */
-  let askNoRoom = $state(false);
+  /** The game kept to resume (Exit › Keep & leave, or a reload mid-game), not a finished one: Start replaces it. */
+  const keptGame = $derived(app.resumable && app.resumable.session.phase !== 'end' ? app.resumable : null);
+  /** Start would throw something away with it (points, a tile played…): it asks first. */
+  const keptLoses = $derived(!!keptGame && keptProgress(keptGame.session));
+  /** Where the kept game is ("Jeopardy!", "round 2 of 5"). */
+  const keptWhere = $derived(keptGame ? keptRound(keptGame.game, keptGame.session) : { name: '', at: '' });
+  /**
+   * Start was pressed and asks first, in its bar: phone buzzers on with no room (start it first, or play without
+   * phones), a game in progress it would throw away (`lose`), or both, as one question. `at`: when it asked (a second
+   * Ctrl+Enter or click that soon is the same double press, not the answer).
+   */
+  let startAsk = $state<{ at: number; noRoom: boolean; lose: boolean } | null>(null);
   $effect(() => {
-    if (roomUp || !phonesOn) askNoRoom = false;
+    if (startAsk?.noRoom && (roomUp || !phonesOn)) startAsk = null;
   });
+  /** A second press this soon after Start asked (a held or doubled Ctrl+Enter) doesn't answer it. */
+  const ASK_GUARD_MS = 500;
 
   /**
-   * Start game ▶ (or Ctrl+Enter): with Buzzer mode on and no room yet, it asks first; with the audience window picked,
-   * that opens now (from the click: a browser lets only a click open it).
+   * Start game ▶ (or Ctrl+Enter): with phone buzzers on and no room yet, or a game in progress it would discard, it asks
+   * first, and the next press (not the second half of a double one) goes on; with the audience window picked, that
+   * opens now (from the click: a browser lets only a click open it).
    */
   async function startClicked(): Promise<void> {
     if (!session.players.length) return;
-    if (phonesOn && !roomUp && !askNoRoom) return void (askNoRoom = true);
-    askNoRoom = false;
+    if (startAsk) {
+      if (Date.now() - startAsk.at < ASK_GUARD_MS) return;
+    } else {
+      const noRoom = phonesOn && !roomUp;
+      if (noRoom || keptLoses) return void (startAsk = { at: Date.now(), noRoom, lose: keptLoses });
+    }
+    await startAnyway();
+  }
+  /** The question answered with Start new game (or Start without phones): the game starts. */
+  async function startAnyway(): Promise<void> {
+    startAsk = null;
     if (wantAudience && !dual && !(await openAudience())) return;
     start();
   }
 
   /** The room started from the bar's question (or the card): scrolled into view, its code above the Start bar. */
   async function startRoomHere(): Promise<void> {
-    askNoRoom = false;
+    startAsk = null;
     await startPhoneRoom();
     await tick();
     document.querySelector('[data-place="play:buzzers"]')?.scrollIntoView({ block: 'start', behavior: 'smooth' });
@@ -5938,6 +5961,11 @@
   onkeydown={onkey}
   onpointermove={pointerMove}
   onkeydowncapture={(e) => {
+    // Ctrl+Enter with the keys on the Start bar's question (its Not yet keeps Enter to itself): Start, as anywhere here.
+    if (app.pregame && e.key === 'Enter' && (e.ctrlKey || e.metaKey) && e.target instanceof Element && e.target.closest('[data-start-ask]')) {
+      e.stopPropagation();
+      return pregameKey(e);
+    }
     menuShift = e.shiftKey;
     tabbing = e.key === 'Tab';
     viaKeys = true;
@@ -6017,13 +6045,15 @@
           {#if untitled}<span class="warn small" data-warn="untitled">Name your game: its title shows on stream.</span>{/if}
         {/if}
       </div>
-      {#if app.resumable && app.resumable.session.phase !== 'end'}
-        {@const kept = app.resumable}
-        <!-- A game kept to resume (Exit › Keep): play on with it here, or set up a fresh one below (Start replaces it). -->
+      {#if keptGame}
+        {@const kept = keptGame}
+        {@const scores = keptScores(kept.game, kept.session)}
+        <!-- A game kept to resume (Exit › Keep): what it is (where it got to, its scores), to play on with it here, or set
+             up a fresh one below (Start replaces it, asking first when it would lose points or tiles played). -->
         <div class="resume-card" role="group" aria-label="Game in progress">
           <span>
-            ⏸ A game in progress is kept: <b>{kept.game.title}</b>
-            <span class="muted small">(saved {new Date(kept.savedAt).toLocaleString()})</span>
+            ⏸ Game in progress: <b>{kept.game.title}</b>{#if keptWhere.name}{` · ${keptWhere.name}${keptWhere.at ? ` (${keptWhere.at})` : ''}`}{/if}{#if scores}{` · ${scores}`}{/if}
+            <span class="muted small">· saved {savedWhen(kept.savedAt)}</span>
             {#if keptRoom}<span class="small">· 📱 Its phones wait in room <b>{keptRoom}</b>: ▶ Resume it goes back to them.</span>{/if}
           </span>
           <button class="primary" use:oneShot onclick={() => void resumeKept(false)}>▶ Resume it</button>
@@ -6032,7 +6062,7 @@
               Resume with my edits
             </button>
           {/if}
-          <span class="muted small">Or start fresh below: Start game replaces it.</span>
+          <span class="muted small">Or start fresh below: Start game replaces it{keptLoses ? ' (it asks first)' : ''}.</span>
         </div>
       {/if}
     </div>
@@ -6296,20 +6326,35 @@
       <button class="ghost" onclick={() => backToEditor()}>{app.playerOnly ? '◀ Back' : '◀ Back to editor'}</button>
       <!-- The notes wrap in their own room: Start stays at the right end of the bar, on its line. -->
       <span class="notes">
-        {#if askNoRoom}
-          <!-- Buzzer mode with no room: Start asks here (not a pop-up), and Not yet leaves things as they are. -->
-          <InlineAsk
-            text={keptRoom
-              ? `Buzzer mode is on, but no room is started for a new game (the game in progress's phones wait in room ${keptRoom}: ▶ Resume it goes back to them).`
-              : "Buzzer mode is on, but the buzzer room isn't started: no phone can join."}
-            alt="📱 Start the room first"
-            onalt={startRoomHere}
-            ok="Start without phones"
-            cancel="Not yet"
-            focusCancel
-            onok={() => void startClicked()}
-            oncancel={() => (askNoRoom = false)}
-          />
+        {#if startAsk}
+          <!-- Start asks here (not a pop-up), one question for both: phone buzzers on with no room (📱 Start the room is the
+               answer to press), and a game in progress it would throw away (▶ Resume it instead, or Start new game, red).
+               Not yet leaves things as they are; a later Ctrl+Enter answers the last button. -->
+          {@const where = [keptWhere.name, keptWhere.at].filter(Boolean).join(', ')}
+          {@const lost = `the game in progress${where ? ` (${where})` : ''}`}
+          {@const noRoom = keptRoom
+            ? `no room is started for a new game (the game in progress's phones wait in room ${keptRoom}: ▶ Resume it goes back to them)`
+            : "the buzzer room isn't started: no phone can join"}
+          <span class="start-ask" data-start-ask>
+            <InlineAsk
+              text={startAsk.noRoom && startAsk.lose
+                ? `Start without phones, and discard ${lost}? Phone buzzers are on, but ${noRoom}.`
+                : startAsk.lose
+                  ? `Start a new game? The game in progress${where ? ` (${where})` : ''} is discarded.`
+                  : `Phone buzzers are on, but ${noRoom}.`}
+              alts={[
+                ...(startAsk.lose ? [{ label: '▶ Resume it instead', onclick: () => void resumeKept(false) }] : []),
+                ...(startAsk.noRoom ? [{ label: '📱 Start the room', onclick: () => void startRoomHere(), strong: true }] : []),
+              ]}
+              ok={startAsk.noRoom ? 'Start without phones' : 'Start new game'}
+              danger={startAsk.lose}
+              plain={!startAsk.lose}
+              cancel="Not yet"
+              focusCancel
+              onok={() => void startAnyway()}
+              oncancel={() => (startAsk = null)}
+            />
+          </span>
         {:else if roomUp}
           <!-- The room's live line, in sight however far the 📱 card is scrolled: who's asking to join, with the card's
                ✔ Add and ✕ No, else the code, who's in and who it's waiting for. One height whatever it says, so the
@@ -6341,6 +6386,10 @@
               >
             {/if}
           </span>
+        {/if}
+        {#if keptGame && !startAsk}
+          <!-- (Start replaces it: said by Start, as the card above it may be scrolled away.) -->
+          <span class="muted small" data-kept-note title={keptLoses ? 'Start game asks before replacing it; ▶ Resume it (at the top) plays on with it' : 'Start game replaces it; ▶ Resume it (at the top) plays on with it'}>⏸ A game in progress is kept</span>
         {/if}
         {#if !session.players.length}<span class="muted small">Add {pregameTeams ? 'teams' : 'players'} to start</span>{/if}
         {#if warnings}
@@ -7008,6 +7057,10 @@
     align-items: flex-end;
     gap: 2px;
     text-align: right;
+  }
+  /* (Start's question: its own box, laid out as before.) */
+  .start-ask {
+    display: contents;
   }
   .play {
     display: flex;
