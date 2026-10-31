@@ -524,8 +524,9 @@ try {
   await mainButton(page, 'Next turn ▶').click({ modifiers: ['Shift'] });
   await page.locator('.stage .turn-banner', { hasText: 'Player 1' }).waitFor();
   assert(!(await goOnCheck(page).count()), 'Shift+click on Next turn ▶ goes on without asking');
-  // (Player 1 off the fork, on a straight run with no buttons: Space 4 on.)
-  await page.getByLabel('Send to').selectOption({ label: 'Space 4' });
+  // (Player 1 off the fork, on a straight run with no buttons: Space 5 on. Whatever the roll, they land past Space 5,
+  // where their token is dragged back to below.)
+  await page.getByLabel('Send to').selectOption({ label: 'Space 5' });
   assert(
     (await stepButton(page, '🎲 Roll d6').evaluate((b) => b.classList.contains('ring'))) && (await mainLabel(page)) === 'Next turn ▶',
     'the turn box’s one slot is 🎲 Roll, ringed while it’s due; the blue button stays Next turn ▶',
@@ -559,6 +560,15 @@ try {
   // a space opens its card (Esc closes it).
   await page.getByLabel('On screen', { exact: true }).selectOption({ label: '📺 The board' });
   const token1 = page.locator('.stage .on-board[data-player="Player 1"]');
+  // (Their token walks the roll space by space, 380 ms a space: it's grabbed once it stands still, two looks 500 ms
+  // apart finding it in the same place.)
+  await page.waitForFunction(() => {
+    const r = document.querySelector('.stage .on-board[data-player="Player 1"]')?.getBoundingClientRect();
+    const at = r ? `${Math.round(r.x)},${Math.round(r.y)}` : null;
+    const still = !!at && window.__token1At === at;
+    window.__token1At = at;
+    return still;
+  }, null, { polling: 500, timeout: 5000 });
   await token1.click();
   assert((await page.locator('.bh .pc.on').count()) === 1, 'clicking a token selects that player');
   await token1.click();
@@ -615,7 +625,9 @@ try {
   await page.waitForFunction(() => document.querySelector('[aria-label="Steps"]')?.value !== '');
   await page.locator('.stage-box .ov').click();
   await page.waitForFunction((was) => document.querySelector('.last')?.textContent !== was, moved);
-  assert((await toast()).includes('Landed on') && !(await page.locator('.stage-box .ov').count()), `a click on the landed dice moves the token (${await toast()})`);
+  // (The dice fade out in 200 ms.)
+  const diceGone = await page.locator('.stage-box .ov').waitFor({ state: 'detached', timeout: 2000 }).then(() => true, () => false);
+  assert((await toast()).includes('Landed on') && diceGone, `a click on the landed dice moves the token, and puts the dice away (${await toast()})`);
   await page.keyboard.press('Control+z');
   // The turn order: a click on a name makes it their turn; a chip dragged before another moves it there (one undo step).
   await page.locator('.bh .ord .nm', { hasText: 'Player 1' }).click();
@@ -758,11 +770,13 @@ try {
   await noNumbersLine.waitFor({ state: 'detached' });
   assert(!(await noNumbers.count()), 'a wheel of numbers: no warning');
   await page.getByRole('button', { name: '▶ Play' }).click();
-  // (The game left behind earlier is asked about first.)
-  const fresh = page.getByRole('alertdialog').getByRole('button', { name: 'Start a new game' });
-  await fresh.or(page.getByRole('button', { name: 'Start game ▶' })).first().waitFor();
-  if (await fresh.isVisible()) await fresh.click();
+  // (The game left behind earlier, a board game with turns played, is asked about first: Start new game goes on.)
   await page.getByRole('button', { name: 'Start game ▶' }).click();
+  const startAsk = page.locator('.actions [data-start-ask]');
+  await startAsk.waitFor();
+  assert((await startAsk.innerText()).includes('Start a new game? The game in progress (Board game, round 2 of 3) is discarded.'), `Start asks before throwing away the game left behind (${await startAsk.innerText()})`);
+  await page.waitForTimeout(450); // (the question's double-click guard)
+  await startAsk.getByRole('button', { name: 'Start new game' }).click();
   await page.locator('.bh').waitFor();
   if (await page.locator('.stage-box .title-card').count()) await page.locator('.stage-box .title-card').click();
   assert(
