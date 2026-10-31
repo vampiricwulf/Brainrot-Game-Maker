@@ -20,7 +20,10 @@ import type { Verb } from './verbs';
  */
 export type FlowPlace = 'pager' | 'reveal' | 'putback' | 'done';
 
-/** The main button: what it says, its key (shown as a small key cap), and what it does. */
+/**
+ * A step button: the main button (the blue button's step, from Play: goon.ts) or a box's own action (StepButton): what
+ * it says, its key (shown as a small key cap), and what it does.
+ */
 export type NextAction = {
   label: string;
   run: () => void;
@@ -32,12 +35,10 @@ export type NextAction = {
   /** It does the step of this place in the row (Next slide ▶, 👁 Reveal answer…): it carries the same mark. */
   flow?: FlowPlace;
   /**
-   * A step that can't be undone (cards sent to phones): a click within a second of the step before it waits, on the main
-   * button and the box's alike, and this says why ("The question just went up: click again to send the cards").
+   * A box's step that can't be undone (📤 Send and start): a click within a second of the step before it waits, and this
+   * says why ("The question just went up: click again to send the cards"). Never the main button's: it doesn't send.
    */
   final?: string;
-  /** It's the blue button's step (goon.ts): a click goes through the check before going on, Shift+click past it. */
-  goes?: boolean;
 };
 
 /** A question for the confirmation strip (as InlineAsk takes it). */
@@ -88,10 +89,7 @@ export function hostSlots(): Slots & { viewersSee: () => string[]; menu: () => S
   });
 }
 
-/**
- * A step: its words (VERBS), what it does, and what's particular to it now (greyed, a tooltip, its place in the row),
- * the same for the main button and the box's own step button.
- */
+/** A box's step: its words (VERBS), what it does, and what's particular to it now (greyed, a tooltip, its hold). */
 export function step(v: Verb, run: () => void, more: Partial<NextAction> = {}): NextAction {
   return { label: v.label, ...(v.key ? { key: v.key } : {}), ...(v.title ? { title: v.title } : {}), run, ...more };
 }

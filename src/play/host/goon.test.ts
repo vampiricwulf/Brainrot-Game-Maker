@@ -107,7 +107,7 @@ function ctx(g: Game, s: Session, over: Partial<GoCtx> = {}): GoCtx {
     wagerLimitsOff: true,
     ddPhone: false,
     partner: null,
-    final: null,
+    final: { teams: false, wagerPhones: [] },
     board: null,
     act,
     ...over,
@@ -185,8 +185,8 @@ describe('the blue button in every moment (1.3)', () => {
 
   it('moments with no blue button, and the ones whose state isn’t given: no step', () => {
     const { g, s } = setup();
-    // (The Final and the tiebreaker without their part's state, a board game without its turn's: none.)
-    for (const phase of ['final', 'tiebreaker', 'end', 'rpg', 'boardgame'] as const) {
+    // (The Final with none under way, the end screen, an RPG round, a board game without its turn's: none.)
+    for (const phase of ['final', 'end', 'rpg', 'boardgame'] as const) {
       s.phase = phase;
       expect(mainStep(ctx(g, s)), phase).toBeNull();
     }
@@ -466,7 +466,7 @@ describe('a 🤝 partner clue (3.4 H)', () => {
 
   it('PARTNER UP!: the blue button is Show question ▶ (Enter too); with the partner wheel up, Next ▶ (greyed while it turns)', () => {
     const { g, s } = partnerUp();
-    // (Play gives no partner state: the old main button still, as before S2.)
+    // (Without the partner clue's state, nothing to go on with.)
     expect(mainStep(ctx(g, s))).toBeNull();
     const st = mainStep(ctx(g, s, { partner: pnow() }))!;
     expect([said(st), st.id]).toEqual(['Show question ▶ · N · enterIsNext', 'question']);
@@ -858,8 +858,6 @@ describe('the Final, the tiebreaker and the end screen (3.4 I, J, K)', () => {
 
   it('the Final’s blue button: Show question ▶ (Enter is Next), its slides, Reveal answer ▶, Start player reveals ▶, from FLOW only', () => {
     const { g, s, f } = final();
-    // (Its part's state not given: the old main button, as a stop-gap.)
-    expect(mainStep(ctx(g, s))).toBeNull();
     const c = () => ctx(g, s, { final: FIN });
     expect([said(mainStep(c())), mainStep(c())!.id]).toEqual(['Show question ▶ · N · enterIsNext', 'finalshow']);
     // Nobody plays it: on past it.
@@ -997,7 +995,6 @@ describe('the Final, the tiebreaker and the end screen (3.4 I, J, K)', () => {
     applyScore(s, g, ['a', 'b'], 500, 'x');
     startTiebreaker(s);
     const c = (over: Partial<GoCtx> = {}) => ctx(g, s, { final: FIN, ...over });
-    expect(mainStep(ctx(g, s))).toBeNull();
     expect(said(mainStep(c()))).toBe('Next slide ▶ · N');
     s.slide = 1;
     const reveal = mainStep(c())!;

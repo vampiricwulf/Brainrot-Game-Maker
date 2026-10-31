@@ -68,7 +68,7 @@
   import InlineAsk from './host/InlineAsk.svelte';
   import { keptRoster, type RosterRow } from './roster';
   import AudienceView from './AudienceView.svelte';
-  import type { HostAsk, NextAction } from './host/slots.svelte';
+  import type { HostAsk } from './host/slots.svelte';
   import { stageMenuOf, type Moment, type StageItem } from './host/stagemenu';
   import { CHECK, FLOW, VERBS } from './host/verbs';
   import { CHECK_GUARD_MS, KEY_GUARD_MS } from './host/guard';
@@ -206,8 +206,6 @@
   let pickerPending = $state(false);
   /** Everyone in the final reveal is judged and N was pressed once: the next N finishes the game. */
   let finishArmed = $state(false);
-  /** The host panel's main button (its NEXT cell) now: N on a clue does it. */
-  let hostNext = $state<NextAction | null>(null);
   /**
    * Final wagers: "Ignore the limits" is ticked (the default: the host turns the limits on), so a wager over its cap
    * doesn't hold up N / Show question.
@@ -2073,7 +2071,6 @@
         // Next round ▶.)
         if (session.phase === 'slides') {
           if (mainNow) goOn('stage', mainNow);
-          else if (!slideStep(1) && hostNext && !hostNext.disabled) hostNext.run();
         } else if (!answerShowing(session)) {
           // (A 🤝 partner clue's steal goes by the buzzers, or the stealer's number then Enter: a click says how, as now.)
           if (partnerJudged && stealOpen() && !app.live.timer?.expired) hint(`${stealHint()} · R shows the answer anyway`);
@@ -3016,7 +3013,7 @@
       act: goActs,
     };
   });
-  /** The blue button's step now (null: no blue button, or its moment's part has its own still: see goon.ts). */
+  /** The blue button's step now (null: no blue button now: see goon.ts). */
   const mainNow = $derived(mainStep(go));
   /** What going on by it would skip or lose now: its tooltip's "first: …", and the ring on the box's next action. */
   const leftMain = $derived(mainNow ? leftNow(go, mainNow) : []);
@@ -5195,10 +5192,10 @@
    * with the controls hidden: the panel's gone, and its last main button with it.)
    */
   function goOnHint(): void {
-    if (!hostNext || hideControls) return;
+    if (!mainNow || hideControls) return;
     // (The spotlit one's verdict first: C or X.)
     const say = leftMain.find((i) => i.must)?.enterSay;
-    hint(say ?? (hostNext.key ? `Press ${hostNext.key} for ${hostNext.label}` : `Click ${hostNext.label} to go on`));
+    hint(say ?? (mainNow.key ? `Press ${mainNow.key} for ${mainNow.verb.label}` : `Click ${mainNow.verb.label} to go on`));
   }
 
   /** The wheel or dice tile's tool (its overlay, and how far it got) the first R asked about: R again shows the answer anyway. */
@@ -5372,7 +5369,7 @@
           break;
         }
         // The Final's steps go on with their own keys (N, C / X): Enter says which.
-        if (!selected.length && !e.shiftKey && t?.matches('[data-next]') && session.phase === 'final' && hostNext) {
+        if (!selected.length && !e.shiftKey && t?.matches('[data-next]') && session.phase === 'final' && mainNow) {
           goOnHint();
           break;
         }
@@ -5631,15 +5628,11 @@
       } else if (mainNow) goOn('n', mainNow);
     } else if (session.phase === 'clue') {
       // Shift+N: a clue's question slide before. N: the blue button (the next slide, 👁 Reveal answer, ▦ Done ▶ board),
-      // asking first when something's left (goOn), with the controls hidden too. A moment whose part has its own main
-      // button still: that one (with the controls hidden its last one is out of date: as a click on the stage, the next
-      // slide, then the answer, never hidden again).
+      // asking first when something's left (goOn), with the controls hidden too.
       if (e.shiftKey) slideStep(-1);
       // (A 🤝 partner clue too: N never spins, sends or judges; the check offers those. A Daily Double's splash: its
       // question, or with no wager the keys to its Wager box.)
       else if (mainNow) goOn('n', mainNow);
-      else if (!hideControls && hostNext && !hostNext.disabled) hostNext.run();
-      else if (!slideStep(1) && !answerShowing(session)) revealToggle();
     } else if (session.phase === 'tiebreaker') {
       // The tiebreaker: N the blue button (the next slide, 👁 Reveal answer, 🏁 Back to results, asking first while
       // nobody has won it); Shift+N the slide before.
@@ -5649,8 +5642,6 @@
       // A slides round: N the next slide, then (after the last) the next round, as the blue button says.
       if (e.shiftKey) slideStep(-1);
       else if (mainNow) goOn('n', mainNow);
-      else if (hostNext) !hostNext.disabled && hostNext.run();
-      else slideStep(1);
     } else if (session.phase === 'board' && !e.shiftKey && mainNow?.clickOnly) {
       // A played-out board goes on only from its button (N mashed after the last clue mustn't jump on stream).
       hint(`Round complete: click ${mainNow.verb.label} to go on`);
@@ -6218,7 +6209,6 @@
         onkeys={() => (showKeys = true)}
         oncloseoverlay={() => closeOverlay()}
         onopenbuzzers={openBuzzers}
-        bind:nextAction={hostNext}
         bind:boxMenu
         {markSince}
         goon={goPanel}

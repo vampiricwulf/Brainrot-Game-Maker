@@ -126,7 +126,6 @@
     phonesDown = '',
     buzzExtra,
     phoneChip,
-    nextAction = $bindable(null),
     boxMenu = $bindable(null),
     markSince = 0,
     goon = null,
@@ -263,8 +262,6 @@
     buzzExtra?: Snippet;
     /** Phone buzzers: the "📱 3/4" chip (its list of phones). */
     phoneChip?: Snippet;
-    /** The NEXT cell's main button now (read back: N on a clue does what it shows). */
-    nextAction?: NextAction | null;
     /** What the boxes open here add to the stage's menu (read back by the play screen: see stagemenu.ts). */
     boxMenu?: (() => StageItem[]) | null;
     /** When the open clue opened (Play's: 0 after a reload): its players' marks count from then (a reopened tile starts afresh). */
@@ -480,18 +477,15 @@
   /** One window: what the boxes open say viewers can read of them (the status line's ⚠ Viewers see this chip). */
   const viewersSee = $derived(dual ? [] : slots.viewersSee());
   /**
-   * The main button stays one button while its job changes: the second click of a double-click on "Show question ▶" (or
-   * 🔔 Open the buzzers) must not land on the 👁 Reveal answer it just became, and put the answer on stream. A step that
-   * can't be undone (📤 Send and start) waits a second after the step before it, as in its box and by the keys. (The
-   * panel's one click guard: a box's own buttons go through it too.)
+   * The main button stays one button while its job changes: the second click of a double-click on "Show question ▶"
+   * must not land on the 👁 Reveal answer it just became, and put the answer on stream. (The panel's one click guard: a
+   * box's own buttons go through it too.)
    */
   const guard = panelGuard();
   function clickNext(e: MouseEvent, n: NextAction): void {
-    const v = guard.press(`main:${n.label}`, e.detail, { step: true, final: !!n.final, x: e.clientX, y: e.clientY });
-    if (v === 'soon' && n.final) hint(n.final);
-    if (v !== 'go') return;
-    // (The blue button's step: Shift+click goes on without asking.)
-    if (n.goes && goon) goon.main(e.shiftKey ? 'shift' : 'main');
+    if (guard.press(`main:${n.label}`, e.detail, { step: true, x: e.clientX, y: e.clientY }) !== 'go') return;
+    // (The blue button's step, through the check: Shift+click goes on without asking.)
+    if (goon) goon.main(e.shiftKey ? 'shift' : 'main');
     else n.run();
   }
 
@@ -734,12 +728,9 @@
     const title = st.busy ?? [st.verb.title, keys, mayAsk(st) ? CHECK.shiftClick : '', goon?.first ? `first: ${goon.first}` : ''].filter(Boolean).join(' · ');
     // (◀ Previous turn beside Next turn ▶: another flow step, quiet, never asking.)
     const also = st.also?.map((a): NextAction => ({ label: a.verb.label, ...(a.verb.key ? { key: a.verb.key } : {}), ...(a.verb.title ? { title: a.verb.title } : {}), run: a.run }));
-    return { label: st.verb.label, ...(st.key ? { key: st.key } : {}), title, disabled: !!st.busy, ...(st.flow ? { flow: st.flow } : {}), ...(also?.length ? { also } : {}), goes: true, run: () => goon?.main('main') };
+    return { label: st.verb.label, ...(st.key ? { key: st.key } : {}), title, disabled: !!st.busy, ...(st.flow ? { flow: st.flow } : {}), ...(also?.length ? { also } : {}), run: () => goon?.main('main') };
   });
   const next = $derived(blue);
-  $effect(() => {
-    nextAction = next;
-  });
 
   // ---------- The stage's menu: what the panel's own rows add ----------
   /** ± Adjust score / ± Other points…: the Amount row, opened, the keys in it. */
@@ -1402,8 +1393,8 @@
           data-next
           data-flow={n.flow}
           disabled={n.disabled}
-          aria-expanded={n.goes && goon?.check ? 'true' : undefined}
-          aria-controls={n.goes && goon?.check ? 'goon-check' : undefined}
+          aria-expanded={goon?.check ? 'true' : undefined}
+          aria-controls={goon?.check ? 'goon-check' : undefined}
           onclick={(e) => clickNext(e, n)}
           title={n.title ?? n.key}
         >

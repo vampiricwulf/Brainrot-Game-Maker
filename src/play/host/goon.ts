@@ -317,8 +317,8 @@ export type GoCtx = {
   ddPhone: boolean;
   /** The open 🤝 partner clue (null: none). */
   partner: PartnerNow | null;
-  /** The Final's and the tiebreaker's (null: not given, their parts have their own main button). */
-  final: FinalNow | null;
+  /** The Final's and the tiebreaker's. */
+  final: FinalNow;
   /** A board game's turn (null outside one). */
   board: BoardNow | null;
   act: GoActs;
@@ -389,7 +389,7 @@ function toolStep(c: GoCtx, t: NonNullable<ReturnType<typeof toolOf>>): Step {
 /** A Daily Double's splash: Show question ▶, never greyed (who found it and the wager are typed: see ddWaits). */
 const ddStep = (c: GoCtx): Step => n({ ...FLOW.showQuestion, title: 'The question goes on screen, for their wager' }, 'ddshow', c.act.ddShow, { enterIsNext: true });
 
-/** The blue button's step now (null: no blue button, or its moment's part still has its own). */
+/** The blue button's step now (null: no blue button: a board with tiles left, the end screen, an RPG round, ✎ Edit board). */
 export function mainStep(c: GoCtx): Step | null {
   const s = c.session;
   const tool = toolOf(c);
@@ -438,7 +438,7 @@ function finishVerb(c: GoCtx): FlowVerb {
 function finalStepOf(c: GoCtx): Step | null {
   const s = c.session;
   const f = s.final;
-  if (!f || !c.final) return null;
+  if (!f) return null;
   const noun = c.final.teams ? 'team' : 'player';
   const step = s.finalStep ?? 'wagers';
   if (step === 'wagers')
@@ -461,7 +461,6 @@ function finalStepOf(c: GoCtx): Step | null {
 /** The tiebreaker clue's step: its slides, 👁 Reveal answer, then 🏁 Back to results. */
 function tiebreakerStep(c: GoCtx): Step | null {
   const s = c.session;
-  if (!c.final) return null;
   const pos = slidePosition(s, c.game);
   if (pos && !answerShowing(s) && pos.at < pos.of) return n(FLOW.nextSlide(pos.at, pos.of), 'slide', c.act.slide, { flow: 'pager' });
   if (!answerShowing(s)) return n(FLOW.reveal, 'reveal', c.act.reveal, { reveals: true, flow: 'reveal' });
@@ -490,6 +489,7 @@ function clueStep(c: GoCtx, done = false): Step | null {
   if (!info || toolOf(c)) return null;
   if (s.dd?.stage === 'splash') return done ? null : ddStep(c);
   const pt = s.partner?.clue === info.clue.id ? s.partner : null;
+  // (Without the partner clue's state, nothing to go on with.)
   if (pt && !c.partner) return null;
   // PARTNER UP!: the question (Enter too), or, while the partner wheel is up, Next ▶: it goes and the pair shows.
   if (pt?.stage === 'pick') {
@@ -517,7 +517,7 @@ export const mayAsk = (st: Step): boolean => ['reveal', 'done', 'tool', 'finalsh
  * results there: it asks as the blue one would.
  */
 export const doneStep = (c: GoCtx): Step | null =>
-  c.session.phase === 'tiebreaker' ? (c.final ? n(FLOW.backToResults, 'results', c.act.tbBack, { flow: 'done' }) : null) : clueStep(c, true);
+  c.session.phase === 'tiebreaker' ? n(FLOW.backToResults, 'results', c.act.tbBack, { flow: 'done' }) : clueStep(c, true);
 
 // ---------- What's left ----------
 
@@ -1092,7 +1092,7 @@ export function finalWaits(c: GoCtx): { say: string; at: string; row: string } |
     const rows = s.players.map((p) => p.id).filter((id) => f.players.includes(id));
     const first = rows.find((id) => missing.includes(id) || whole.includes(id) || over.includes(id));
     if (!first) return null;
-    const phones = c.final?.wagerPhones ?? [];
+    const phones = c.final.wagerPhones;
     if (missing.length) {
       const who = nameList(rows.filter((id) => missing.includes(id)).map((id) => (phones.includes(id) && !f.phonesLocked ? `${name(c, id)}’s phone` : name(c, id))));
       return { say: `Waiting on ${who}: type ${missing.length === 1 ? 'their wager' : 'their wagers'}, or Sits out`, ...box(first) };
@@ -1624,7 +1624,7 @@ export function swallowSay(k: KeyIn, then: Inside, check: Pick<Check, 'step' | '
 
 /** What the host panel gets from Play: the blue button's step, the open check, and what its buttons do. */
 export type GoPanel = {
-  /** The blue button's step (null: its moment's part has its own main button still). */
+  /** The blue button's step (null: none now). */
   step: Step | null;
   check: Check | null;
   /** What's left first, for the blue button's tooltip ("first: Ann has no points…"). */
