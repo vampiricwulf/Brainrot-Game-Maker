@@ -3,6 +3,10 @@
 //    blue button and by a click on the stage; N, N at once does nothing, a slow N goes on anyway; the keys go back to
 //    what opened it; ＋ Award … ▶ board then Ctrl+Z takes the points back and the board stays; Not yet then a quick Esc
 //    keeps the clue; Shift+click goes on at once;
+// 2. a 🤝 partner clue's hand-out, one window, with phone buzzers and Bob's phone: N opens “First:” (the card not sent,
+//    the clock not started), N, N, N there never shows the answer, a click on the stage with the card waiting opens it
+//    too, Enter in it sends the card and starts the clock, then R in it reveals anyway; the page never holds the
+//    card's words while it's open;
 // 4. with the controls hidden: in one window N with something left changes nothing on stream (the stage its size, the
 //    pill pulses) and H shows the panel with the check open; in two windows the controls come back while it's open and
 //    hide again after;
@@ -13,7 +17,7 @@ import { chromium } from 'playwright-core';
 import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { checkItem, editorReady, flowIs, goOnCheck, mainButton, notYet, openGameFile, quick, startBuzzer, startRoomOn } from './helpers.mjs';
+import { anyway, checkItem, editorReady, flowIs, goOnCheck, mainButton, notYet, openGameFile, quick, startBuzzer, startRoomOn, stepButton } from './helpers.mjs';
 
 const file = resolve(process.env.APP_FILE || 'dist/index.html');
 if (!existsSync(file)) throw new Error('Run `npm run build` first');
@@ -24,10 +28,19 @@ function assert(cond, msg) {
   console.log('  ✓ ' + msg);
 }
 
-// Ann and Bob on $0, a board of four categories (each flow plays its own column's first tile, $200), no Daily Doubles.
+// Ann and Bob on $0, a board of four categories (each flow plays its own column's first tile, $200), no Daily Doubles;
+// Lore's first tile is a 🤝 partner clue with a card for its describer.
 const text = (id, t) => ({ id, kind: 'text', text: t, x: 160, y: 340, w: 1600, h: 400, rotation: 0, opacity: 1, zIndex: 1, font: 'Arial', size: 72, weight: 700, italic: false, underline: false, uppercase: false, color: '#fff', align: 'center', vAlign: 'middle', lineHeight: 1.2, letterSpacing: 0, autoFit: true });
 const slide = (id, t) => ({ background: { color: '#0a1a6b' }, elements: [text(id, t)] });
 const cats = ['Memes', 'Rizz', 'Ohio', 'Lore'];
+/** Only on the partner clue's card: never on the host page in one window. */
+const CARD_WORDS = 'Kelp-goon-zq';
+const partnerClue = {
+  type: 'partner',
+  partner: { game: 'describe', giver: 'partner', got: { giver: 100, guesser: 50 }, missed: { giver: 0, guesser: -50 }, partnerSafe: true, points: 'game' },
+  timerSeconds: 30,
+  cards: [{ id: 'k1', to: 'giver', ...slide('k1t', CARD_WORDS) }],
+};
 const game = {
   id: 'g_goon', version: 2, title: 'Go On Night',
   settings: { allowNegativeScores: true, deductOnWrong: true, defaultTimerSeconds: 15, finalTimerSeconds: 30, currencySymbol: '$', rollOffDie: 20, pickerFollowsAward: true, timerAutoStart: false, roundIntro: { titleCard: false, tileFill: false, categoryReveal: 'click' }, maxPlayers: 8, stream: { clueCaption: true } },
@@ -35,7 +48,11 @@ const game = {
   rounds: [
     {
       id: 'r_board', name: 'Jeopardy!', mode: 'board', values: [200, 400], dailyDoubleCount: 0,
-      categories: cats.map((c, ci) => ({ id: `cat${ci}`, title: c, clues: [0, 1].map((ri) => ({ id: `c${ci}_${ri}`, value: null, type: 'standard', questionSlide: slide(`q${ci}_${ri}`, `${c} ${ri}`), answerSlide: slide(`a${ci}_${ri}`, `Answer ${ci}.${ri}`) })) })),
+      categories: cats.map((c, ci) => ({
+        id: `cat${ci}`,
+        title: c,
+        clues: [0, 1].map((ri) => ({ id: `c${ci}_${ri}`, value: null, type: 'standard', questionSlide: slide(`q${ci}_${ri}`, `${c} ${ri}`), answerSlide: slide(`a${ci}_${ri}`, `Answer ${ci}.${ri}`), ...(ci === 3 && !ri ? partnerClue : {}) })),
+      })),
     },
   ],
   media: [], audio: {}, theme: {}, wheels: [], dice: [], statFields: [], items: [],
@@ -186,6 +203,76 @@ try {
     await page.keyboard.press('Control+z');
     await page.locator('.toast', { hasText: 'Undid' }).waitFor();
     assert((await annScore()) === '$0' && (await boardUp(page)), 'Ctrl+Z takes the award back, and the board stays');
+    await ctx.close();
+  }
+
+  // ---------- 2: a partner clue's hand-out, one window, with phones ----------
+  console.log('A partner clue’s hand-out, one window, with phones:');
+  {
+    const { ctx, page } = await host('partner, one window', buzzer.base);
+    const card = page.getByRole('region', { name: 'Phone buzzers' });
+    await card.getByLabel(/Buzzer mode/).check();
+    const code = await startRoomOn(card);
+    const bob = await ctx.newPage();
+    bob.on('pageerror', (e) => errors.push(`[bob] ${e.message}`));
+    await bob.goto(`${buzzer.base}/${code}`);
+    await bob.getByRole('heading', { name: 'Tap your name' }).waitFor();
+    await bob.getByRole('button', { name: 'Bob', exact: true }).click();
+    await bob.locator('#me').getByText('Bob').waitFor();
+    await card.getByText('1 of 2 players joined').waitFor();
+    await start(page);
+    /** The host page holds no word of the card: its text, its labels and its tooltips. */
+    const noCard = async () =>
+      !(await page.evaluate(() => [document.body.innerText, ...[...document.querySelectorAll('[aria-label], [title]')].flatMap((e) => [e.getAttribute('aria-label') ?? '', e.getAttribute('title') ?? ''])].join('\n'))).includes(CARD_WORDS);
+    const answer = () => page.locator('.stage-box [data-slide="answer"]').count();
+    // Ann picks it; Bob, the only other player, is her partner at once. Enter on PARTNER UP! is Show question ▶.
+    await page.keyboard.press('p');
+    await page.keyboard.press('1');
+    await page.locator('.stage-box .tile[data-clue="c3_0"]').click();
+    await page.locator('.stage-box [data-partner-up]').waitFor();
+    await page.locator('.panel [data-partner-next]', { hasText: 'Pair set' }).waitFor();
+    assert(await flowIs(page, 'Show question ▶'), 'PARTNER UP!, the pair set: the blue button is Show question ▶');
+    await page.keyboard.press('Enter');
+    await page.locator('.stage-box [data-partner-badge]').waitFor();
+    const box = page.locator('.panel [data-partner-panel]');
+    await stepButton(box, '📤 Send and start').waitFor();
+    assert(await flowIs(page, '👁 Reveal answer'), 'the question up, the card to hand out: the blue button is 👁 Reveal answer, 📤 Send and start the 🤝 box’s');
+
+    // N: “First:”, the card not sent and the clock not started. N, N, N in it never shows the answer (R would).
+    await page.keyboard.press('n');
+    await checkItem(page, 'handout').waitFor();
+    assert(
+      (await goOnCheck(page).getAttribute('data-goon')) === 'first' && (await quick(page, '📤 Send and start').count()) === 1 && (await anyway(page).innerText()).includes('👁 Reveal anyway: they haven’t played'),
+      'N opens “First:” Card 1 hasn’t gone to Bob’s phone, with 📤 Send and start and a quiet 👁 Reveal anyway',
+    );
+    assert(await noCard(), 'the page holds no word of the card with the check open (its name and who it’s for only)');
+    await goOnCheck(page, { ready: true }).waitFor();
+    for (let i = 0; i < 3; i++) {
+      await page.keyboard.press('n');
+      await page.locator('.toast', { hasText: 'R: 👁 Reveal anyway' }).waitFor();
+    }
+    assert((await answer()) === 0 && (await goOnCheck(page).count()) === 1, 'N, N, N in it never shows the answer: each says Enter sends, R reveals anyway');
+    await page.keyboard.press('Escape');
+    await goOnCheck(page).waitFor({ state: 'detached' });
+
+    // A click on the stage with the card waiting opens it too; Enter in it sends the card and starts the clock.
+    await page.locator('.stage-box .stage').click();
+    await checkItem(page, 'handout').waitFor();
+    assert((await answer()) === 0, 'a click on the stage with the card waiting opens the check, never the answer');
+    await goOnCheck(page, { ready: true }).waitFor();
+    await page.keyboard.press('Enter');
+    await goOnCheck(page).waitFor({ state: 'detached' });
+    await page.locator('.stage-box .timer').waitFor();
+    await bob.getByRole('button', { name: 'Tap to see' }).waitFor();
+    assert((await answer()) === 0 && (await noCard()), 'Enter in it sends the card to Bob’s phone and starts the clock, the answer still hidden');
+
+    // They're playing: N asks again (✔ Got it ▶ reveal…); R in it reveals anyway.
+    await page.keyboard.press('n');
+    await checkItem(page, 'playing').waitFor();
+    await goOnCheck(page, { ready: true }).waitFor();
+    await page.keyboard.press('r');
+    await page.locator('.stage-box [data-slide="answer"]').waitFor();
+    assert((await goOnCheck(page).count()) === 0 && (await noCard()), 'with the pair playing N asks again, and R in it reveals anyway');
     await ctx.close();
   }
 
