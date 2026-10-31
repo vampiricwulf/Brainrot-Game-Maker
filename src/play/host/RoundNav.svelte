@@ -190,8 +190,9 @@
     white-space: nowrap;
   }
   /* A final round's long name on ▶ is cut short (…), as in Go to round, so on the board the tools and the round's ◀ /
-     picker / ▶ stay on one line, as in a clue, and the stage keeps one size. Up to 1300px wide, to the width of the
-     usual "Final Jeopardy!": room for 🔇 Stop sounds and the cards out beside them. */
+     picker / ▶ stay on one line, as in a clue, and the stage keeps one size. Up to 1340px wide, to the width of the
+     usual "Final Jeopardy!": room for 🔇 Stop sounds and the cards out beside 📊 Scoreboard (in DejaVu Sans, the widest
+     font it's drawn in, the row needs 1330px with the longer cut). */
   .next .nm {
     display: inline-block;
     max-width: 11.5em;
@@ -200,7 +201,7 @@
     white-space: nowrap;
     vertical-align: bottom;
   }
-  @media (max-width: 1300px) {
+  @media (max-width: 1340px) {
     .next .nm {
       max-width: 7.5em;
     }

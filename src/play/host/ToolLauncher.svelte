@@ -458,8 +458,9 @@
     white-space: nowrap;
     vertical-align: bottom;
   }
-  /* (And up to 1000px wide 📊 Scoreboard as 📊: room for 🔇 and 🤫 2 beside a Go to round with a long round name in it.) */
-  @media (max-width: 1000px) {
+  /* (And up to 1040px wide 📊 Scoreboard as 📊: room for 🔇 and 🤫 2 beside a Go to round with a long round name in it.
+     In DejaVu Sans, the widest font it's drawn in, that row takes 998px with the word: a 1026px window.) */
+  @media (max-width: 1040px) {
     .tl .name {
       position: absolute;
       width: 1px;
