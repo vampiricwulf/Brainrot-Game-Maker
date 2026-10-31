@@ -383,7 +383,6 @@
   <!-- (Pressed while it's on screen: S, or this, puts it away.) -->
   <button
     onclick={() => ((menu = null), toggleScoreboard(app.live))}
-    class:on={scoreboardUp}
     aria-pressed={scoreboardUp}
     title={scoreboardUp ? 'The scoreboard is on screen: click to put it away (S)' : 'The scoreboard on screen, everyone’s scores (S)'}>📊 <span class="name">Scoreboard</span></button
   >
@@ -544,6 +543,7 @@
     flex-basis: 100%;
     color: var(--warn);
   }
+  /* (A deal out, the card window open: an outline. 📊 Scoreboard on screen is pressed, the one selected look.) */
   .on {
     outline: 1px solid var(--accent);
   }
