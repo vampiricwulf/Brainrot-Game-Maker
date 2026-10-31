@@ -54,7 +54,7 @@ export function addSample(game: Game): number {
 /** Copy round (from a round tab's menu). */
 export function copyRoundOf(game: Game, i: number): void {
   copyRound(game, game.rounds[i]);
-  toast(`Copied “${roundName(game.rounds[i], i)}”: paste it from ＋ Add round or a round’s menu (in this game or another)`);
+  toast(`Copied “${roundName(game.rounds[i], i)}”: paste it from ＋ Add round, a round’s menu or Ctrl+V on a round’s tab (in this game or another)`);
 }
 
 /** Paste round: after round `after`, or where a new round goes. Returns its place, or null with nothing copied. */

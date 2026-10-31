@@ -206,6 +206,10 @@ RollEvent  { id, ts, source: 'wheel' | 'dice', presetName?, result: string /* la
   color picker prevents duplicates and suggests a distinct palette. The score bar shows name plates in each player's
   color.
 - Toggles: Final Jeopardy on/off, negative scores, deduct-on-wrong, default timer.
+- **A round's menu** is the same from a right-click (or Shift+F10) on its tab, ⋯ at the end of its page's top bar, and a
+  right-click on that bar: ▶ Test this round · ✎ Rename (F2) · ⧉ Duplicate (Ctrl+D) · 📋 Copy round (Ctrl+C) · 📋 Paste
+  round after it (Ctrl+V) · ▲ Move up (Alt+↑) · ▼ Move down (Alt+↓) · 🗑 Delete round (Delete). The keys work on its tab;
+  text selected on the page still copies as text.
 
 ### 5.2 Board editor
 - A grid view of the round that mirrors the play board. Click a category header or tile to edit it.

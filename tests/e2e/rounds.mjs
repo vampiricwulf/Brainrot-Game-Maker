@@ -91,7 +91,27 @@ try {
   await roundTab('Midgame Wager').click({ button: 'right' });
   const tabMenu = (await page.getByRole('menu').getByRole('menuitem').allInnerTexts()).map((t) => t.split('\n')[0]);
   assert(['▲ Move up', '▼ Move down'].every((x) => tabMenu.some((t) => t.startsWith(x))), `a round tab’s menu says ▲ Move up / ▼ Move down (${tabMenu.join(', ')})`);
+  const order = ['▶ Test this round', '✎ Rename', '⧉ Duplicate', '📋 Copy round', '📋 Paste round', '▲ Move up', '▼ Move down', '🗑 Delete round'];
+  assert(tabMenu.length === order.length && order.every((x, n) => tabMenu[n].startsWith(x)), `in one order: test, rename, duplicate, copy, paste, move, delete (${tabMenu.join(', ')})`);
   await page.keyboard.press('Escape');
+  // The round's page header has the same menu: its ⋯ at the end, and a right-click on the bar.
+  await roundTab('Midgame Wager').click();
+  await page.locator('.ra').getByRole('button', { name: 'More for this round' }).click();
+  const headMenu = (await page.getByRole('menu').getByRole('menuitem').allInnerTexts()).map((t) => t.split('\n')[0]);
+  assert(JSON.stringify(headMenu) === JSON.stringify(tabMenu), `the header's ⋯ opens the round's menu (${headMenu.join(', ')})`);
+  await page.keyboard.press('Escape');
+  await page.locator('.ra h2').click({ button: 'right' });
+  assert(await page.getByRole('menu').getByRole('menuitem', { name: '📋 Copy round' }).isVisible(), 'and so does a right-click on the bar');
+  await page.keyboard.press('Escape');
+  // Ctrl+C / Ctrl+V on a round's tab: copied, then pasted after it, the keys on the copy's tab.
+  await roundTab('Midgame Wager').focus();
+  await page.keyboard.press('Control+c');
+  await page.locator('.toast', { hasText: 'Copied “Midgame Wager”' }).waitFor();
+  await page.keyboard.press('Control+v');
+  await page.waitForFunction(() => document.activeElement?.matches('nav button.round-tab') && /Midgame Wager \(copy/.test(document.activeElement.textContent ?? ''), null, { timeout: 3000 });
+  assert((await roundNames()).length === 5 && (await roundNames())[2].startsWith('Midgame Wager (copy'), `Ctrl+C / Ctrl+V on a round's tab copy it and paste it after it, the keys on its tab (${(await roundNames()).join(', ')})`);
+  await page.keyboard.press('Control+z');
+  await page.waitForFunction(() => document.querySelectorAll('nav > button.round-tab').length === 4, null, { timeout: 3000 });
   // Renamed on its tab, then its Round name box clicked: Backspace types there, and deletes no round.
   await roundTab('Midgame Wager').dblclick();
   await page.locator('nav input.tab-name').fill('Midgame Wagers');

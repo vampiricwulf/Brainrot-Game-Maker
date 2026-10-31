@@ -1,7 +1,7 @@
 <script lang="ts">
   import { focusRescue } from '../lib/focusrescue';
   import { inertWhile } from '../lib/modal';
-  import { dropMenu, showMenu } from '../lib/menustate.svelte';
+  import { dropMenu, showMenu, type MenuEntry } from '../lib/menustate.svelte';
   import SettingsDialog from './SettingsDialog.svelte';
   import OpenSaves from './OpenSaves.svelte';
   import { listSaves, onOpenedFile, readSave, type SaveEntry } from '../lib/desktop.svelte';
@@ -73,7 +73,7 @@
   import { goTo, take, type Place } from '../lib/nav.svelte';
   import { itemIdsIn } from '../lib/historyops';
   import { rpgRounds } from '../lib/rpg';
-  import { createFieldTracker, undoKeyOf } from '../lib/undokeys';
+  import { copyIsTheBrowsers, createFieldTracker, undoKeyOf } from '../lib/undokeys';
   import HistoryNotice from './HistoryNotice.svelte';
   import HistoryPanel from './HistoryPanel.svelte';
   import FindDialog from './FindDialog.svelte';
@@ -361,8 +361,38 @@
   const focusRoundTab = (id: string | undefined) => void tick().then(() => id && document.querySelector<HTMLElement>(`nav [data-place="round:${id}"]`)?.focus());
 
   /**
-   * On a round's tab: Alt+↑/↓ moves it, Delete / Backspace deletes it (with Undo at the bottom), F2 renames it and
-   * Ctrl+D duplicates it.
+   * A round's menu, the same from its tab (right-click, Shift+F10) and its page's header (⋯, or a right-click on it), with
+   * the keys its tab takes.
+   */
+  function roundMenu(i: number): MenuEntry[] {
+    const round = game.rounds[i];
+    return [
+      { heading: roundName(round, i) },
+      ...(ontest ? [{ label: '▶ Test this round', onclick: () => ontest(i), hint: 'Play just this round (nothing kept)' }, { sep: true } as const] : []),
+      { label: '✎ Rename', onclick: () => (renamingRound = round.id), keys: 'F2' },
+      { label: '⧉ Duplicate', onclick: () => duplicateRound(i), keys: 'Ctrl+D' },
+      { label: '📋 Copy round', onclick: () => copyRoundOf(game, i), hint: 'To paste in this game or another', keys: 'Ctrl+C' },
+      {
+        label: clipboard.round ? `📋 Paste round “${bundleName(clipboard.round)}” after it` : '📋 Paste round after it',
+        disabled: !clipboard.round,
+        onclick: () => {
+          const at = pasteRound(game, i);
+          if (at !== null) showNew(at);
+        },
+        keys: 'Ctrl+V',
+      },
+      { sep: true },
+      { label: '▲ Move up', onclick: () => moveRound(i, i - 1), disabled: i === 0, keys: 'Alt+↑' },
+      { label: '▼ Move down', onclick: () => moveRound(i, i + 1), disabled: i === game.rounds.length - 1, keys: 'Alt+↓' },
+      { sep: true },
+      { label: '🗑 Delete round', danger: true, onclick: () => removeRound(i), keys: 'Delete' },
+    ];
+  }
+
+  /**
+   * On a round's tab: Alt+↑/↓ moves it, Delete / Backspace deletes it (with Undo at the bottom), F2 renames it,
+   * Ctrl+D duplicates it, and Ctrl+C / Ctrl+V copy it and paste a copied round after it (the keys go to the new tab).
+   * Text selected on the page still copies as text.
    */
   function roundTabKey(e: KeyboardEvent, i: number): void {
     const k = e.key.toLowerCase();
@@ -383,6 +413,16 @@
       e.preventDefault();
       duplicateRound(i);
       focusRoundTab(game.rounds[i + 1]?.id);
+    } else if (mod && !e.altKey && !e.shiftKey && k === 'c' && !copyIsTheBrowsers(e.currentTarget, window.getSelection())) {
+      e.preventDefault();
+      copyRoundOf(game, i);
+    } else if (mod && !e.altKey && !e.shiftKey && k === 'v') {
+      e.preventDefault();
+      if (!clipboard.round) return void toast('Copy a round first (its tab’s menu, or Ctrl+C on its tab)');
+      const at = pasteRound(game, i);
+      if (at === null) return;
+      tab = at;
+      focusRoundTab(game.rounds[at]?.id);
     }
   }
 
@@ -1148,26 +1188,7 @@
             }}
             ondblclick={() => (renamingRound = round.id)}
             onkeydown={(e) => roundTabKey(e, i)}
-            oncontextmenu={(e) =>
-              showMenu(e, [
-                { heading: roundName(round, i) },
-                { label: '✎ Rename', onclick: () => (renamingRound = round.id), keys: 'F2 or double-click' },
-                { label: '▲ Move up', onclick: () => moveRound(i, i - 1), disabled: i === 0, keys: 'Alt+↑' },
-                { label: '▼ Move down', onclick: () => moveRound(i, i + 1), disabled: i === game.rounds.length - 1, keys: 'Alt+↓' },
-                ...(ontest ? [{ label: '▶ Test this round', onclick: () => ontest(i), hint: 'Play just this round (nothing kept)' }] : []),
-                { label: '⧉ Duplicate', onclick: () => duplicateRound(i), keys: 'Ctrl+D' },
-                { label: '📋 Copy round', onclick: () => copyRoundOf(game, i), hint: 'To paste in this game or another' },
-                {
-                  label: clipboard.round ? `📋 Paste round “${bundleName(clipboard.round)}” after it` : '📋 Paste round after it',
-                  disabled: !clipboard.round,
-                  onclick: () => {
-                    const at = pasteRound(game, i);
-                    if (at !== null) showNew(at);
-                  },
-                },
-                { sep: true },
-                { label: '🗑 Delete round', danger: true, onclick: () => removeRound(i), keys: 'Delete' },
-              ])}
+            oncontextmenu={(e) => showMenu(e, roundMenu(i))}
             ondragstart={(e) => {
               roundDrag = round.id;
               e.dataTransfer?.setData('text/x-round', round.id);
@@ -1313,6 +1334,7 @@
               onduplicate={() => duplicateRound(i)}
               ondelete={() => removeRound(i)}
               ontest={ontest && (() => ontest(i))}
+              menu={() => roundMenu(i)}
             />
             {#if isBoard(round)}
               <RoundEditor {round} />

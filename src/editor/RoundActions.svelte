@@ -1,8 +1,9 @@
 <!-- The top of a round's page (any mode): its name, its mode as a chip and where it plays, with move, duplicate and
-     delete on the right. -->
+     delete on the right, and ⋯ for the round's menu (the same as its tab's; a right-click on the bar opens it too). -->
 <script lang="ts">
   import { ROUND_MODES } from '../lib/modes';
   import { roundName, type Round } from '../lib/model';
+  import { dropMenu, showMenu, type MenuEntry } from '../lib/menustate.svelte';
   import PageHeader from './PageHeader.svelte';
 
   let {
@@ -13,6 +14,7 @@
     onduplicate,
     ondelete,
     ontest,
+    menu,
   }: {
     round: Round;
     index: number;
@@ -22,11 +24,14 @@
     ondelete: () => void;
     /** ▶ Test this round: play just this round in a throwaway game (nothing kept), back here after. */
     ontest?: () => void;
+    /** The round's menu, as its tab's. */
+    menu?: () => MenuEntry[];
   } = $props();
   const mode = $derived(ROUND_MODES[round.mode]);
 </script>
 
-<div class="ra">
+<!-- svelte-ignore a11y_no_static_element_interactions -->
+<div class="ra" oncontextmenu={(e) => menu && showMenu(e, menu())}>
   <PageHeader title={roundName(round, index)} chip="{mode.icon} {mode.label}" chipTitle={mode.hint} sub="Round {index + 1} of {count}">
     {#snippet actions()}
       {#if ontest}
@@ -41,6 +46,9 @@
       <button class="ghost" disabled={index >= count - 1} onclick={() => onmove(1)} aria-label="▼ Move round down" title="Move down: play this round later (Alt+↓ on its tab)">▼</button>
       <button class="ghost" onclick={onduplicate} aria-label="⧉ Duplicate round" title="Duplicate: a copy of this round, right after it">⧉ Duplicate</button>
       <button class="ghost danger" onclick={ondelete} aria-label="🗑 Delete round" title="Delete this round (Undo brings it back)">🗑 Delete</button>
+      {#if menu}
+        <button class="ghost" aria-haspopup="menu" onclick={(e) => dropMenu(e, menu())} aria-label="More for this round" title="Rename, copy, paste after it… (or right-click this bar or the round’s tab)">⋯</button>
+      {/if}
     {/snippet}
   </PageHeader>
 </div>
