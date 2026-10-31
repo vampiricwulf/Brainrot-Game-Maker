@@ -11,7 +11,7 @@
   import { keepNum, shown } from '../tools/numbox';
   import { copyActions, moveTo } from '../../lib/listedit';
   import { clone } from '../../lib/ops';
-  import { dropMenu, showMenu } from '../../lib/menustate.svelte';
+  import { dropMenu, menuItem, menuOf, showMenu } from '../../lib/menustate.svelte';
   import { isTextField } from '../../lib/undokeys';
   import { announce } from '../../lib/announce';
   import { newId, PLAYER_WHEEL, setSlideText, slideText, textSlide, type Action, type ActionKind, type BoardGameRound, type CardWho, type SlideElement, type World } from '../../lib/model';
@@ -174,17 +174,20 @@
     if (isTextField(e.target)) return;
     const n = actions?.length ?? 0;
     const k = clipboard.actions.length;
-    showMenu(e, [
-      { heading: LABEL[a.do] },
-      { label: '⧉ Duplicate', onclick: () => duplicate(a), keys: 'Ctrl+D' },
-      { label: '▲ Move up', onclick: () => move(i, i - 1), disabled: i === 0, keys: 'Alt+↑' },
-      { label: '▼ Move down', onclick: () => move(i, i + 1), disabled: i === n - 1, keys: 'Alt+↓' },
-      { sep: true },
-      { label: '📋 Copy buttons', onclick: copyAll },
-      { label: k ? `📋 Paste ${k} button${k === 1 ? '' : 's'}` : '📋 Paste buttons', onclick: paste, disabled: !k },
-      { sep: true },
-      { label: '🗑 Delete button', danger: true, onclick: () => remove(a) },
-    ]);
+    showMenu(
+      e,
+      menuOf({
+        heading: LABEL[a.do],
+        duplicate: menuItem.duplicate(() => duplicate(a)),
+        move: [menuItem.up(() => move(i, i - 1), { disabled: i === 0 }), menuItem.down(() => move(i, i + 1), { disabled: i === n - 1 })],
+        // (The whole set, to paste on another object, item, space or slice.)
+        extras: [
+          { label: '📋 Copy buttons', onclick: copyAll },
+          { label: k ? `📋 Paste ${k} button${k === 1 ? '' : 's'}` : '📋 Paste buttons', onclick: paste, disabled: !k },
+        ],
+        delete: menuItem.delete('button', () => remove(a), { keys: false }),
+      }),
+    );
   }
 
   /** The whole set to the in-app clipboard, with the files it plays or shows (so it pastes into another game too). */
