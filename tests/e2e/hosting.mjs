@@ -553,17 +553,18 @@ try {
   await page.waitForFunction(() => document.querySelector('.panel .status')?.textContent?.includes('Player reveals'));
   const revealScores = (await page.locator('.fj .pl .pscore').allInnerTexts()).map((t) => Number(t.replace('−', '-').replace(/[^\d-]/g, '')));
   assert(revealScores.every((v, i) => !i || v >= revealScores[i - 1]), `players ticked back in keep the reveal order lowest score first (${revealScores.join(', ')})`);
-  // The main button is N's next step until everyone is judged (finishing early is the smaller one), and the how-to is
-  // open the first time.
+  // The main button is N's next step until everyone is judged (finishing early is the quiet Finish now…, at the left of
+  // the box's foot beside "3 still to judge", away from the verdicts), and the how-to is open the first time.
   const revealMain = () => mainLabel(page);
+  const early = page.locator('.fj > .row:last-child > *').evaluateAll((els) => els.map((e) => e.textContent.trim()).filter(Boolean).slice(0, 2));
   assert(
-    /^(Show wager|Next player) ▶$/.test(await revealMain()) && (await page.locator('.fj button.ghost', { hasText: 'Finish game ▶' }).count()) === 1,
-    `in the reveals the main button is the next step (${await revealMain()}), Finish game a smaller one`,
+    /^(Show wager|Next player) ▶$/.test(await revealMain()) && (await page.locator('.fj button.ghost', { hasText: 'Finish now…' }).count()) === 1 && /^Finish now…,\d+ still to judge$/.test((await early).join()),
+    `in the reveals the main button is the next step (${await revealMain()}); Finish now… a quiet one at the left of the box's foot, beside how many are still to judge (${(await early).join(' | ')})`,
   );
   assert(await page.locator('.fj details.how').evaluate((d) => d.open), 'the reveals’ how-to is open the first time');
   const revealsMenu = await stageMenu();
   assert(
-    /^(Show wager|Next player) ▶ · N$/.test(revealsMenu[1]) && revealsMenu.some((l) => l.startsWith('✔ Right · C')) && revealsMenu.some((l) => l.startsWith('✘ Wrong · X')) && revealsMenu.includes('Finish game ▶'),
+    /^(Show wager|Next player) ▶ · N$/.test(revealsMenu[1]) && revealsMenu.some((l) => l.startsWith('✔ Right · C')) && revealsMenu.some((l) => l.startsWith('✘ Wrong · X')) && revealsMenu.includes('Finish now…'),
     `the reveals: its menu’s first item is N’s step, then ✔ Right C and ✘ Wrong X, and finishing early (${revealsMenu.join(' | ')})`,
   );
   // Not chosen yet: outlined at full strength (dimmed, they read too faintly).

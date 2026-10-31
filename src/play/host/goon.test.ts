@@ -14,7 +14,7 @@ import { moveNow, rollMover, runLanding, runSpace, sendNow } from '../boardgame/
 import { undoAction } from '../../lib/toolset';
 import {
   anywayLabel, asked, CHECK_GUARD_MS, ddWaits, doneSay, doneStep, enterQuick, escBounce, finalWaits, goOnDecision, headingOf, inside, leftNow, likelyVerdict, mainQuick, mainStep, mergeItems,
-  quietKinds, ringOf, swallowSay, teachLine, todo, type BoardNow, type Check, type FinalNow, type GoActs, type GoCtx, type LeftItem, type PartnerNow, type Step,
+  quietKinds, ringOf, swallowSay, teachLine, todo, wagersLine, type BoardNow, type Check, type FinalNow, type GoActs, type GoCtx, type LeftItem, type PartnerNow, type Step,
 } from './goon';
 import { FLOW } from './verbs';
 
@@ -922,6 +922,28 @@ describe('the Final, the tiebreaker and the end screen (3.4 I, J, K)', () => {
     const items = leftNow(c({ cards }), st);
     expect(lines(items)).toEqual([['first: The Final’s card “Hint” hasn’t gone to Ann yet.', '📤 Send it ⏎ · close']]);
     expect([anywayLabel(open(st, items)), items[0].box, items[0].quick[0].after]).toEqual(['Show question anyway', 'card:k', 'Sent… then Show question ▶ (N)']);
+  });
+
+  it('the wager box’s first line: whose wager it waits on (a phone that can send it says so), then the blue button; names only', () => {
+    const { g, s, f } = final();
+    f.wagers = { a: 100 };
+    expect(wagersLine(s, ['b'], true)).toEqual({ text: 'Waiting on Bob’s phone & Cat', ok: false });
+    f.phonesLocked = true;
+    expect(wagersLine(s, ['b'], true)!.text).toBe('Waiting on Bob & Cat');
+    f.wagers = { a: 100, b: 50, c: 2.5 };
+    expect(wagersLine(s, [], true)!.text).toBe('Not a whole number: Cat');
+    applyScore(s, g, ['a'], 300, 'x');
+    f.wagers = { a: 5000, b: 0, c: 0 };
+    expect([wagersLine(s, [], false)!.text, wagersLine(s, [], true)]).toEqual(['Over the max: Ann', { text: '✓ All 3 wagers in: Show question ▶ (N)', ok: true }]);
+    expect(JSON.stringify(wagersLine(s, [], false))).not.toContain('5000');
+    f.players = ['a'];
+    expect(wagersLine(s, [], true)!.text).toBe('✓ The wager is in: Show question ▶ (N)');
+    // Nobody playing (the box says so itself), or past the wagers: none.
+    f.players = [];
+    expect(wagersLine(s, [], true)).toBeNull();
+    f.players = ['a', 'b', 'c'];
+    s.finalStep = 'question';
+    expect(wagersLine(s, [], true)).toBeNull();
   });
 
   it('typed answers still coming at 👁 Reveal answer: ⏱ 10 more seconds (⇧T ⏎); R reveals anyway, never N; names and counts only', () => {

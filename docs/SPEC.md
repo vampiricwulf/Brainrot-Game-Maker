@@ -773,7 +773,9 @@ The mode isn't saved with the game: it's dual while the audience window is open.
    revealed, and remembers whether the host or the player's phone entered it. With phone buzzers, each player in it (a
    team: anyone on it) can send their wager from their phone until the question is shown; the amount goes to the host
    only (never to the audience window or other phones), and the host can still change it. A Daily Double's player can
-   do the same before its question shows.
+   do the same before its question shows. The box's first line says whose wager it waits on, by name only ("Waiting on
+   Bob's phone & Cat"), or "✓ All 3 wagers in: Show question ▶ (N)"; in one window the status line's ⚠ chip says
+   viewers see the wager boxes.
 2. Question slide + timer (default 30 s) + optional music file. With phone buzzers (and ✍ Players type their answers on
    their phones, on unless the host unticks it in the round's editor), each player in it types their answer on their
    phone (a team: anyone on it) from the question until the answer shows; only the host sees them (in one window, not
@@ -789,9 +791,13 @@ The mode isn't saved with the game: it's dual while the audience window is open.
    blue; with multiple choice and one marked ✔ Right, the verdict their pick points to is ringed there (in one window
    once their answer is on screen). With the spotlit player not judged yet, Next player ▶ (or Finish game ▶) asks for
    the verdict first, in the check: ✔ Right / ✘ Wrong there judge them and close it (`N`, `C`, `N`, as before).
-   Finishing early is a quiet Finish game ▶ at the box's foot, asking first in the strip; it isn't there while the blue
-   button is Finish game ▶ itself. With everyone judged, `N` twice finishes. `1`–`9` spotlight a player by their number
-   (in the players' order), shown on each row.
+   The rows are in straight columns, each in the same place on every row whatever that row holds (a long name or typed
+   answer cut short with …, whole in its tooltip): the player (⋮⋮ ▲▼ number name), their typed answer, Show answer,
+   the score and wager (📱 for a phone's), Show wager, then ✔ Right and ✘ Wrong at the right end; on a window under
+   900 px wide they wrap. Finishing early is a quiet **Finish now…** at the left of the box's foot, beside "2 still to
+   judge", away from the verdicts, asking first in the strip; it isn't there while the blue button is Finish game ▶
+   itself. With everyone judged, `N` twice finishes. `1`–`9` spotlight a player by their number (in the players'
+   order), shown on each row.
 5. **Tie check**: if two or more players are tied for first, the results screen's tie box offers every way to settle it
    (it has no blue button; `N` says to settle the tie there):
    - **Tiebreaker clue** (the pre-written `Game.tiebreaker`, if authored; greyed with why otherwise). Scored with the

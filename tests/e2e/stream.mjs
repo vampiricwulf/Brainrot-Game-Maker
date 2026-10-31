@@ -1112,7 +1112,7 @@ try {
   assert((await page.locator('.panel .status').innerText()).includes('Category on screen'), 'then the category is on screen');
   assert(!(await page.locator('.stage .final-label').count()), 'a Final without a category shows its name once');
   assert((await stageSize()) === finalSize, `taking wagers keeps the stage at ${finalSize}`);
-  assert((await page.locator('.fj .exposed').innerText()).includes('Viewers can see this'), 'the wager boxes say viewers can see them');
+  assert((await page.locator('.panel [data-viewers]').getAttribute('title')).includes('the wagers as you type them'), 'the status line’s ⚠ Viewers see this chip says viewers see the wager boxes');
   assert((await page.locator('.panel .status').innerText()).includes('viewers can see them'), 'so does the status line');
   assert((await page.locator('.stage .score-area .plate').count()) === 3, 'the scores stay on screen while wagers are taken');
   const ticks = await page.locator('.stage .score-area .tick').count();

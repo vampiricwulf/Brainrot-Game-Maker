@@ -30,7 +30,8 @@
 // greyed (a double-click on it shows the question once); with 8, a 🎯 Pick a player wheel's bar is one row and in sight,
 // Spin! first and no Close (the blue button is Next ▶), landed too, and a wheel tile's bar the same with the blue Show
 // question ▶ within 96 px of its Spin! (↩ Put back in sight, as on PARTNER UP! and a Daily Double's splash, where it
-// leads the Wager row).
+// leads the Wager row). At 1280×720 with long team names, the Final's reveal rows keep straight columns, one line each,
+// Finish now… at the left of their box's foot.
 import { chromium } from 'playwright-core';
 import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
@@ -431,7 +432,7 @@ try {
   await page.locator('.fj .pl').first().waitFor();
   states.reveals = await look();
   // Finished early with nobody judged, Ctrl+Z on the results goes back into the Final: its answer, then its question.
-  await page.locator('.fj button.ghost', { hasText: 'Finish game ▶' }).click();
+  await page.locator('.fj button.ghost', { hasText: 'Finish now…' }).click();
   await page.waitForTimeout(450);
   await confirmStrip(page).getByRole('button', { name: 'Finish', exact: true }).click();
   await page.locator('.panel .status', { hasText: 'Game over' }).waitFor();
@@ -1334,6 +1335,65 @@ try {
     await p7.locator('.panel .status', { hasText: 'Tiebreaker' }).waitFor();
     const clueOut = await scoresOut();
     assert(clueOut.length === 0, `and in the tiebreaker clue, where the winner is picked from them${clueOut.length ? ` (not: ${clueOut.join(', ')})` : ''}`);
+    await ctx.close();
+  }
+  // The Final's reveal rows at 1280×720 in one window, long team names: straight columns (✔ Right, ✘ Wrong and Show
+  // wager at one place on every row, its wager shown or still in a box), each row one line, a long name cut short (whole
+  // in its tooltip), and Finish now… at the left of the box's foot, beside how many are still to judge.
+  console.log('The Final’s reveal rows, long names:');
+  const longFile = resolve('test-results/hostlayout-long.json');
+  const longNames = ['The Unbelievably Long-Named Team of Champions', 'Bo', 'Cyrus Who Never Stops Talking About Speedruns', 'Dee'];
+  writeFileSync(
+    longFile,
+    JSON.stringify({ ...game, id: 'g_layout_long', players: longNames.map((name, i) => ({ id: `l${i + 1}`, name, color: crowdColors[i], startScore: 0 })), rounds: [{ ...game.rounds[3], extraSlides: [], cards: [] }] }),
+  );
+  {
+    const ctx = await browser.newContext({ viewport: { width: 1280, height: 720 } });
+    const pl = await ctx.newPage();
+    pl.on('pageerror', (e) => errors.push(e.message));
+    await pl.goto(pathToFileURL(file).href);
+    await openGameFile(pl, longFile);
+    await pl.getByText(/^Opened “/).waitFor();
+    await pl.getByRole('button', { name: '▶ Play' }).click();
+    await pl.getByRole('button', { name: 'Start game ▶' }).click();
+    await pl.locator('.fj .wagers').waitFor();
+    // (Everyone on $0 plays, their $0 wagers in: N shows the question, the answer, the reveals, then the first one's wager.)
+    for (const step of ['Question on screen', 'Answer on screen', 'Player reveals']) {
+      await pl.keyboard.press('n');
+      await pl.locator('.panel .status', { hasText: step }).waitFor();
+    }
+    await pl.keyboard.press('n');
+    await pl.locator('.fj .pl.cur', { hasText: 'wager $0' }).waitFor();
+    const rows = await pl.locator('.fj .pl').evaluateAll((els) =>
+      els.map((r) => {
+        const box = (sel) => r.querySelector(sel).getBoundingClientRect();
+        const [name, right] = [box('.name'), box('button.good')];
+        const n = r.querySelector('.name');
+        return {
+          at: [box('button.good').left, box('button.bad').left, box('button[aria-label^="Show wager"]').left].map(Math.round).join(),
+          h: Math.round(r.getBoundingClientRect().height),
+          oneLine: Math.abs(name.top + name.height / 2 - (right.top + right.height / 2)) <= 3,
+          cut: n.scrollWidth > n.clientWidth,
+          title: n.title,
+        };
+      }),
+    );
+    const one = (k) => new Set(rows.map((r) => r[k])).size === 1;
+    const long = rows.filter((r) => longNames.slice(0, 3).some((x) => x.length > 20 && r.title.startsWith(x)));
+    assert(
+      rows.length === 4 && one('at') && one('h') && rows.every((r) => r.oneLine) && long.length === 2 && long.every((r) => r.cut),
+      `1280×720, long team names: the reveal rows' ✔ Right, ✘ Wrong and Show wager line up on every row (the first one's wager shown, the others' in a box), each row one line, a long name cut short and whole in its tooltip (${JSON.stringify(rows.map(({ at, h, cut }) => ({ at, h, cut })))})`,
+    );
+    const spotRight = await pl.locator('.fj .pl.cur button.good').evaluate((b) => {
+      const r = b.getBoundingClientRect();
+      return b.contains(document.elementFromPoint(r.x + r.width / 2, r.y + r.height / 2));
+    });
+    const foot = await pl.locator('.fj > .row:last-child > *').evaluateAll((els) => els.map((e) => e.textContent.trim()).filter(Boolean).slice(0, 2));
+    const [early, verdict] = await Promise.all([pl.locator('.fj [data-finish-early]').boundingBox(), pl.locator('.fj .pl button.good').first().boundingBox()]);
+    assert(
+      spotRight && foot.join() === 'Finish now…,4 still to judge' && early.x + early.width < verdict.x,
+      `and the spotlit row's ✔ Right in sight; Finish now… at the left of the box's foot beside “4 still to judge”, away from the verdicts (${foot.join(' | ')})`,
+    );
     await ctx.close();
   }
 

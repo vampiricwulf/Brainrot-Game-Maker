@@ -307,12 +307,15 @@ wager up to $1,000), or True Daily Double"). In a 🤝 partner clue with its clo
 in its box (neither blue), and the blue 👁 Reveal answer asks first while they play. In the Final the blue button is its
 next step: **Show question ▶** (`N`, or `Enter` in its last wager box; never greyed: with a wager missing, not a whole
 number or over the max, the keys go to the first box to fill, its row flashes, and the status line says whose: “Waiting
-on Bob's phone & Cat: type their wagers, or Sits out”), **👁 Reveal answer** (as on a clue), **Start player reveals ▶**, then one by one
+on Bob's phone & Cat: type their wagers, or Sits out”; the wager box's first line says the same, by name only, or “✓ All 3
+wagers in: Show question ▶ (N)”), **👁 Reveal answer** (as on a clue), **Start player reveals ▶**, then one by one
 **Show answer ▶** / **Show wager ▶** / **Next player ▶**, and **Finish game ▶** (by `N` twice once everyone is judged,
 as before). The verdicts are only in the rows, **✔ Right** `C` then **✘ Wrong** `X`, the one a multiple-choice pick
 points to ringed; the spotlit row's Show answer or Show wager is empty while the blue button does it (the other rows keep
-theirs, to show a player out of turn), and the quiet Finish game ▶ for finishing early (it asks first) hides while the
-blue button is Finish game ▶ itself. A tie for first on the results screen is settled in its box, which holds every way:
+theirs, to show a player out of turn). The reveal rows are in straight columns: the player, their typed answer (cut short
+with …), Show answer, the score and wager, Show wager, then ✔ Right and ✘ Wrong at the right end, in the same place on
+every row. Finishing early is the quiet **Finish now…** at the left of the box's foot, beside “2 still to judge”, away
+from the verdicts (it asks first); it hides while the blue button is Finish game ▶ itself. A tie for first on the results screen is settled in its box, which holds every way:
 **❓ Tiebreaker clue**, **🎲 Tiebreaker roll-off** `O`, **🤝 Declare co-winners**; that screen has no blue button (`N`
 says to settle the tie there, and the box flashes). The tiebreaker clue's blue button is its slides, 👁 Reveal answer,
 then **🏁 Back to results**. In a board game the blue button is **Next turn ▶** (`N`), ◀ Previous turn (`Shift+N`)

@@ -541,13 +541,13 @@ try {
   await rows2.waitFor();
   await form(al).waitFor();
   // Phones send the wagers: the list holds the keys (not the next button, the panel's box scrolled to it), so the box
-  // stays at its top and its “⚠ Viewers can see this” line reads whole, on stream.
+  // stays at its top and its first line (“Waiting on Player 1’s phone…”) reads whole, on stream.
   const keysHeld = await host2.waitForFunction(() => document.activeElement?.matches('.fj .wagers'), null, { timeout: 5000 }).then(() => true, () => false);
-  const cut = await host2.locator('.fj .exposed').evaluate((e) => {
+  const cut = await host2.locator('.fj [data-wagers-line]').evaluate((e) => {
     for (let p = e.parentElement; p; p = p.parentElement) if (/(auto|scroll)/.test(getComputedStyle(p).overflowY)) return Math.round(p.getBoundingClientRect().top - e.getBoundingClientRect().top);
     return 0;
   });
-  assert(keysHeld && cut <= 0, `one window, phones sending the wagers: the wager list holds the keys and the warning reads whole (on ${await host2.evaluate(() => document.activeElement?.className)}, cut ${cut}px)`);
+  assert(keysHeld && cut <= 0, `one window, phones sending the wagers: the wager list holds the keys and the box's first line reads whole (on ${await host2.evaluate(() => document.activeElement?.className)}, cut ${cut}px)`);
   assert((await al.locator('#wager-head').innerText()) === 'Your team’s wager', 'teams: every member’s phone gets the team’s wager box');
   await sendWager(al, 300);
   const team1 = rows2.locator('.wrow', { hasText: 'Player 1' });
