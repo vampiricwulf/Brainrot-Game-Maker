@@ -195,6 +195,35 @@ try {
   await page.locator('nav button.round-tab').and(page.getByRole('button', { name: 'Jeopardy!', exact: true })).click();
   await page.locator('.cat textarea').first().fill('Changed');
   await page.locator('.cat textarea').nth(1).click();
+  // 💾 Save • and the browser's note keep their spaces, and where the header shows their words, the note is never cut
+  // short (from 1450px “(💾 Save makes a file)”, from 1600px “not saved as a file”). (Narrower, the short note gives
+  // way as the header needs, as before.)
+  {
+    const looks = [];
+    for (const w of [1280, 1450, 1525, 1600]) {
+      await page.setViewportSize({ width: w, height: 720 });
+      await page.waitForTimeout(100);
+      looks.push(
+        await page.evaluate((w) => {
+          const save = document.querySelector('.save-file')?.innerText.replace(/\s+/g, ' ').trim();
+          const note = document.querySelector('.autosave');
+          const cut = w >= 1450 && note && note.scrollWidth > note.clientWidth;
+          return `${w}: ${save} | ${note?.innerText.trim()}${cut ? ' (cut)' : ''}`;
+        }, w),
+      );
+    }
+    await page.setViewportSize({ width: 1280, height: 720 });
+    assert(
+      looks.join('\n') ===
+        [
+          '1280: 💾 Save • | ✓ Kept in this browser',
+          '1450: 💾 Save • | ✓ Kept in this browser (💾 Save makes a file)',
+          '1525: 💾 Save • | ✓ Kept in this browser (💾 Save makes a file)',
+          '1600: 💾 Save • not saved as a file | ✓ Kept in this browser (💾 Save makes a file)',
+        ].join('\n'),
+      `the header's 💾 Save • and browser note, never cut short (${looks.join(' / ')})`,
+    );
+  }
   await page.getByRole('button', { name: 'New', exact: true }).click();
   await page.getByRole('dialog', { name: 'Start a new game?' }).waitFor();
   assert(true, 'a changed sample asks before New');

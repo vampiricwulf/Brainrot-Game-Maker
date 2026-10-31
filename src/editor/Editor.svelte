@@ -1673,13 +1673,15 @@
     font-weight: 400;
     color: var(--muted);
   }
-  @media (max-width: 1499px) {
+  /* (Measured in the CI fonts, the browser's note in full beside it: under 1600px the two cut the note short.) */
+  @media (max-width: 1599px) {
     .save-file .unsaved {
       display: none;
     }
   }
-  /* (The browser's note says what 💾 Save is for where the header has room; its tooltip always does.) */
-  @media (max-width: 1399px) {
+  /* (The browser's note says what 💾 Save is for where the header has room; its tooltip always does. Under 1450px
+     it would be cut short.) */
+  @media (max-width: 1449px) {
     .autosave .wide {
       display: none;
     }
