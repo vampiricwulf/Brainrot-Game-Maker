@@ -305,7 +305,7 @@
       const c = copyClue(clue);
       const notify = clueHasContent(round.categories[to.cat].clues[to.row]);
       // (A partner clue with its card empty gets a copy of its answer there, as one made by hand does.)
-      const card = c.type === 'partner' && answerCardDue(round, c);
+      const card = c.type === 'partner' && !c.empty && answerCardDue(round, c);
       step(
         `Copied ${a} to ${b}${card ? ' (card: a copy of the answer)' : ''}`,
         () => {
