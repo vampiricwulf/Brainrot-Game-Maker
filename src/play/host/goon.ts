@@ -522,6 +522,18 @@ export const mayAsk = (st: Step): boolean => ['reveal', 'done', 'tool', 'finalsh
 export const doneStep = (c: GoCtx): Step | null =>
   c.session.phase === 'tiebreaker' ? n(FLOW.backToResults, 'results', c.act.tbBack, { flow: 'done' }) : clueStep(c, true);
 
+/**
+ * The words of the steps the blue button takes while a clue's flow row has its places (the tiebreaker's too): Next
+ * slide ▶ (with more than one question slide), 👁 Reveal answer, then ▦ Done ▶ board (🏁 Back to results). The panel
+ * gives the button the room of the widest, so the row beside it never shifts as it goes from one to the next. (A tile's
+ * own tool's Show question ▶ and a tool's Next ▶ are narrower than 👁 Reveal answer.)
+ */
+export const flowSteps = (tiebreaker: boolean, paged: boolean): string[] => [
+  ...(paged ? [FLOW.nextSlide(1, 2).label] : []),
+  FLOW.reveal.label,
+  (tiebreaker ? FLOW.backToResults : FLOW.done).label,
+];
+
 // ---------- What's left ----------
 
 const sym = (c: GoCtx) => c.game.settings.currencySymbol;

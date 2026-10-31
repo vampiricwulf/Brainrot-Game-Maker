@@ -16,7 +16,7 @@
   import { justShown } from './host/guard';
   import { focusMain } from './host/focus';
   import GoOnCheck from './host/GoOnCheck.svelte';
-  import { mayAsk, type GoPanel } from './host/goon';
+  import { flowSteps, mayAsk, type GoPanel } from './host/goon';
   import { CHECK, FLOW } from './host/verbs';
   import { phoneAwaySince } from './host/phoneaway.svelte';
   import { endLine, tiebreakLine } from './host/endlines';
@@ -795,13 +795,13 @@
   const next = $derived(blue);
   /**
    * The blue button's room while a clue's flow row has its places (and the tiebreaker's): as wide as the widest step it
-   * takes there (Next slide ▶, 👁 Reveal answer, then ▦ Done ▶ board or 🏁 Back to results), so as it goes from one to
-   * the next the row beside it keeps its places and its words (nothing moves under the pointer).
+   * takes there (goon.flowSteps), so as it goes from one to the next the row beside it keeps its places and its words
+   * (nothing moves under the pointer).
    */
   const mainRoom = $derived.by((): string[] => {
     const tb = session.phase === 'tiebreaker';
     if (!tb && !(session.phase === 'clue' && info && !setup && !ddWager)) return [];
-    return [...(slidePos ? [FLOW.nextSlide(1, 2).label] : []), FLOW.reveal.label, tb ? FLOW.backToResults.label : FLOW.done.label];
+    return flowSteps(tb, !!slidePos);
   });
 
   // ---------- The stage's menu: what the panel's own rows add ----------

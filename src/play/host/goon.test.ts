@@ -13,7 +13,7 @@ import { HOP_MS } from '../../lib/boardgame';
 import { moveNow, rollMover, runLanding, runSpace, sendNow } from '../boardgame/bgops';
 import { undoAction } from '../../lib/toolset';
 import {
-  anywayLabel, asked, CHECK_GUARD_MS, ddWaits, doneSay, doneStep, enterQuick, escBounce, finalWaits, goOnDecision, headingOf, inside, leftNow, likelyVerdict, mainQuick, mainStep, mergeItems,
+  anywayLabel, asked, CHECK_GUARD_MS, ddWaits, doneSay, doneStep, enterQuick, escBounce, finalWaits, flowSteps, goOnDecision, headingOf, inside, leftNow, likelyVerdict, mainQuick, mainStep, mergeItems,
   quietKinds, ringOf, swallowSay, teachLine, todo, wagersLine, type BoardNow, type Check, type FinalNow, type GoActs, type GoCtx, type LeftItem, type PartnerNow, type Step,
 } from './goon';
 import { FLOW } from './verbs';
@@ -181,6 +181,34 @@ describe('the blue button in every moment (1.3)', () => {
     // (▦ Done ▶ board as a skip, while the blue button is 👁 Reveal answer.)
     s.revealed = false;
     expect(said(doneStep(ctx(g, s)))).toBe('▦ Done ▶ board · N');
+  });
+
+  it('the blue button’s room in a clue and the tiebreaker (flowSteps): every step it takes there, one slide or more', () => {
+    /** The blue button's words as the moment goes on: its slides, the answer up (`reveal`), until it's the last step. */
+    const words = (g: Game, s: Session, reveal: () => void): string[] => {
+      const seen: string[] = [];
+      for (let i = 0; i < 4; i++) {
+        const st = mainStep(ctx(g, s))!;
+        seen.push(st.verb.label);
+        if (st.id === 'slide') s.slide = (s.slide ?? 0) + 1;
+        else if (st.id === 'reveal') reveal();
+        else break;
+      }
+      return seen;
+    };
+    for (const paged of [false, true]) {
+      const { g, s } = setup();
+      const clue = board(g).categories[0].clues[1];
+      if (paged) clue.extraSlides = [{ ...clue.questionSlide, id: 'q2' }];
+      openClue(s, REF, g);
+      expect(words(g, s, () => (s.revealed = true)), `a clue, ${paged ? 'two slides' : 'one'}`).toEqual(flowSteps(false, paged));
+    }
+    const { g, s } = setup();
+    g.tiebreaker = { questionSlide: textSlide('Q'), extraSlides: [{ ...textSlide('Q2'), id: 'q2' }], answerSlide: textSlide('A') };
+    applyScore(s, g, ['a', 'b'], 500, 'x');
+    startTiebreaker(s);
+    expect(words(g, s, () => (s.tiebreakerRevealed = true))).toEqual(flowSteps(true, true));
+    expect(flowSteps(true, true)).toEqual(['Next slide ▶', '👁 Reveal answer', '🏁 Back to results']);
   });
 
   it('moments with no blue button, and the ones whose state isn’t given: no step', () => {
