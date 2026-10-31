@@ -120,7 +120,7 @@ try {
 
   // ---------- In the editor: an item's 🤫 Send a card button ----------
   await host.getByRole('button', { name: '📊 Stats & Items' }).click();
-  await host.locator('.item-row', { has: host.getByRole('button', { name: 'Delete Secret scroll' }) }).getByRole('button', { name: 'More', exact: true }).click();
+  await host.locator('.item-row', { has: host.getByRole('button', { name: 'Delete Secret scroll' }) }).getByRole('button', { name: /^▸ More/ }).click();
   await host.getByRole('button', { name: '＋ Add button' }).last().click();
   await host.getByRole('menuitem', { name: '🤫 Send a card' }).click();
   const words = host.getByLabel('Card words').last();

@@ -131,6 +131,35 @@ export function exitOf(map: WorldMap, screen: Screen, dir: Dir8, grid?: ScreenGr
   return { kind: 'open', to: { map: map.id, screen: next.id } };
 }
 
+/** The sides a screen's Ways out lists: the four straight ones, and a diagonal when the map allows them or it has a rule. */
+export function waysShown(map: WorldMap, screen: Screen): Dir8[] {
+  return DIRS.filter((d) => !diagonal(d) || map.diagonals || !!screen.exits?.[d]);
+}
+
+/** A side that isn't as the grid makes it (Blocked, or leading somewhere else): Ways out opens by itself for it. */
+export const hasWayRule = (screen: Pick<Screen, 'exits'>): boolean => DIRS.some((d) => !!screen.exits?.[d]);
+
+/** The order folded Ways out says the sides in: the straight ones clockwise from north, then the diagonals. */
+const LINE_ORDER: Dir8[] = ['n', 'e', 's', 'w', 'ne', 'se', 'sw', 'nw'];
+
+/**
+ * Ways out folded, in one line: where each side leads ("→ Forest"), the blocked ones ("↑ blocked"), then the sides
+ * with nothing there together ("← ↓ nothing there"). `name`: what a screen it leads to is called.
+ */
+export function waysLine(map: WorldMap, screen: Screen, name: (to: ScreenRef) => string, grid?: ScreenGrid): string {
+  const shown = new Set(waysShown(map, screen));
+  const parts: string[] = [];
+  const none: string[] = [];
+  for (const d of LINE_ORDER.filter((x) => shown.has(x))) {
+    const e = exitOf(map, screen, d, grid);
+    if (e.kind === 'open' || e.kind === 'warp') parts.push(`${DIR_ARROW[d]} ${name(e.to)}`);
+    else if (e.kind === 'blocked') parts.push(`${DIR_ARROW[d]} blocked`);
+    else none.push(DIR_ARROW[d]);
+  }
+  if (none.length) parts.push(`${none.join(' ')} nothing there`);
+  return parts.join(' · ');
+}
+
 export function exitsOf(map: WorldMap, screen: Screen): Record<Dir8, Exit> {
   return Object.fromEntries(DIRS.map((d) => [d, exitOf(map, screen, d)])) as Record<Dir8, Exit>;
 }

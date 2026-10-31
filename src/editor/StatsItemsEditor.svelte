@@ -30,6 +30,9 @@
   const game = $derived(app.game);
   let iconFor = $state<string | null>(null);
   let openItem = $state<string | null>(null);
+  /** What an item's ▸ More holds, for its folded button ("description, 2 on use"). */
+  const inMore = (it: ItemDef): string =>
+    [it.description?.trim() ? 'description' : '', it.hostNotes?.trim() ? 'notes' : '', it.onUse?.length ? `${it.onUse.length} on use` : '', it.wearable ? 'worn look' : ''].filter(Boolean).join(', ');
   // An undo or redo of an item's settings opens them.
   const handled = { seq: 0 };
   $effect(() => {
@@ -569,7 +572,14 @@
             <option value="badge">Badge</option>
           </select>
           <label class="check small" title="Only the host sees it in inventories"><input type="checkbox" bind:checked={it.secret} /> Secret</label>
-          <button class="ghost small" onclick={() => (openItem = openItem === it.id ? null : it.id)} aria-expanded={openItem === it.id}>More</button>
+          <!-- (Folded, it says what it holds.) -->
+          <button
+            class="ghost small"
+            onclick={() => (openItem = openItem === it.id ? null : it.id)}
+            aria-expanded={openItem === it.id}
+            title={inMore(it) ? `Its ${inMore(it)}` : 'Its description, host notes, what Use does and its worn look'}
+            >{openItem === it.id ? '▾' : '▸'} More{#if inMore(it) && openItem !== it.id}<span class="muted"> · {inMore(it)}</span>{/if}</button
+          >
           <RowTools menu={() => rowItems('item', it, i)} name={it.name} remove={() => removeItem(it)} deleteLabel="Delete {it.name}" />
         </div>
         {#if openItem === it.id}

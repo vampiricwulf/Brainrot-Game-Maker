@@ -6,6 +6,7 @@
   import type { RpgRound, World } from '../../lib/model';
   import { newWorld, rpgRounds, startRef, worldById } from '../../lib/rpg';
   import { duplicateWorld } from '../../lib/worldedit';
+  import { RememberedFold } from '../../lib/fold.svelte';
   import { tick } from 'svelte';
   import ScreenPicker from './ScreenPicker.svelte';
   import WorldEditor from './WorldEditor.svelte';
@@ -16,9 +17,15 @@
   const sharing = $derived(rpgRounds(game).filter((r) => r.world === round.world && r.id !== round.id).length);
   /**
    * The other RPG rounds, which play other worlds: this round's adventure is separate from theirs (one line says so;
-   * the world settings stay under ⋯ Advanced).
+   * the world settings stay under ▸ Advanced).
    */
   const separate = $derived(rpgRounds(game).filter((r) => r.world !== round.world && r.id !== round.id).map((r) => r.name.trim() || 'another round'));
+  /**
+   * ▸ Advanced (the world this round plays): folded, as this computer last left it, and open by itself when it matters
+   * here (another round plays this world, or this round has none).
+   */
+  const adv = new RememberedFold('jb.rpgAdvancedOpen');
+  $effect(() => adv.need(sharing > 0 || !world));
   /** A screen is open in the screen editor: it gets the room this round's settings take. */
   let editing = $state(false);
 
@@ -100,9 +107,11 @@
     {:else if world && separate.length}
       <p class="muted small" data-world-own>Its own world (separate from {[...new Set(separate)].join(', ')}).</p>
     {/if}
-    <!-- Open only when it matters here: another round plays this world, or this round has none. -->
-    <details class="adv" open={sharing > 0 || !world}>
-      <summary>⋯ Advanced: carry this adventure into another round</summary>
+    <!-- Open by itself only when it matters here: another round plays this world, or this round has none. -->
+    <details class="adv" open={adv.open} ontoggle={(e) => adv.set(e.currentTarget.open)}>
+      <summary
+        >{adv.open ? '▾' : '▸'} Advanced: carry this adventure into another round{#if !adv.open && world}<span class="muted"> · World “{world.name}”</span>{/if}</summary
+      >
       <p class="muted small">
         The maps and screens belong to a “world”. Another RPG round can play the same world, so the adventure carries on where it was left; or
         give this round a world of its own.
@@ -155,7 +164,7 @@
   {#if world}
     {#key world.id}<WorldEditor {world} bind:editing remember={round.id} start={startRef(world, round)} onstart={(ref) => (round.start = ref)} />{/key}
   {:else}
-    <p class="warn">This round's world is gone. Make a new one (＋ New world, under Advanced){game.worlds?.length ? ' or pick another there' : ''}.</p>
+    <p class="warn">This round's world is gone. Make a new one (＋ New world, under ▸ Advanced){game.worlds?.length ? ' or pick another there' : ''}.</p>
   {/if}
 </div>
 
@@ -185,6 +194,11 @@
     cursor: pointer;
     color: var(--muted);
     font-size: 13px;
+    /* (Its ▸ / ▾ is in its words.) */
+    list-style: none;
+  }
+  .adv summary::-webkit-details-marker {
+    display: none;
   }
   .adv[open] summary {
     margin-bottom: 6px;

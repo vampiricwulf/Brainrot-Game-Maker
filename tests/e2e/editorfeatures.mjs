@@ -387,8 +387,13 @@ try {
         text.includes('✏ Freehand line…') &&
         text.includes('✓ Done cropping') &&
         text.includes('Replace everywhere…') &&
-        text.includes('Plays from'),
-      `the Editor part opens with “What moved” (the menus’ one order, the new names, the slide editor's bar, tabs' group and Shape ▾, the image and video windows, 🖼 Media's cards, a video's Plays row)`,
+        text.includes('Plays from') &&
+        text.includes('⧉ Same as the answer') &&
+        text.includes('▸ More rules') &&
+        text.includes('＋ Add tiebreaker') &&
+        text.includes('＋ Add space') &&
+        text.includes('Ways out'),
+      `the Editor part opens with “What moved” (the menus’ one order, the new names, the slide editor's bar, tabs' group and Shape ▾, the image and video windows, 🖼 Media's cards, a video's Plays row, a card's ⧉, the partner rules, the tiebreaker, a board-game space's buttons, Ways out)`,
     );
   }
   await page.getByLabel('Filter shortcuts').fill('ctrl+f');

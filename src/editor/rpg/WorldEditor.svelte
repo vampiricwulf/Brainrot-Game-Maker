@@ -31,7 +31,8 @@
   import { addMediaFile } from '../../lib/media.svelte';
   import { type Dir8, type Screen, type ScreenRef, type ScreenVariant, type World, type WorldMap } from '../../lib/model';
   import { clone } from '../../lib/ops';
-  import { DIR_ARROW, DIR_NAME, DIRS, exitOf, newScreen, newVariant, newWorldMap, sameRef, screenAt, screenGrid } from '../../lib/rpg';
+  import { DIR_ARROW, DIR_NAME, DIRS, exitOf, hasWayRule, newScreen, newVariant, newWorldMap, sameRef, screenAt, screenGrid, waysLine, waysShown } from '../../lib/rpg';
+  import { RememberedFold } from '../../lib/fold.svelte';
   import {
     copyScreen,
     deleteLine,
@@ -534,7 +535,18 @@
     if (!n) return;
     const shut = seamBlocked(map, s, d);
     step(`${shut ? 'Opened' : 'Blocked'} the way between “${s.name}” and “${n.name}”`, () => toggleSeam(map, s, d));
+    // (The screen's Ways out shows what that did, this time.)
+    ways.here = true;
   }
+
+  /**
+   * A screen's Ways out: one line folded ("→ Forest · ← ↑ ↓ nothing there ▸ Change…"), as this computer last left it,
+   * opening by itself on a screen with a side Blocked or leading somewhere else, and after ⛔ on the map.
+   */
+  const ways = new RememberedFold('jb.waysOutOpen');
+  $effect(() => ways.need(!!sel && hasWayRule(sel)));
+  /** A screen a side leads to, as the folded line names it (one on another map with its map's name). */
+  const wayName = (to: ScreenRef) => (to.map === map.id ? (map.screens.find((x) => x.id === to.screen)?.name ?? 'nowhere') : screenName(to));
 
   function setExit(s: Screen, d: Dir8, kind: string): void {
     const exits = { ...(s.exits ?? {}) };
@@ -1351,14 +1363,20 @@
               <button class="ghost small" onclick={() => nudge([sel], 1, 0)} aria-label="Move right">▶</button>
               <span class="muted small">(swaps with a screen in the way)</span>
             </div>
-            <h4>Ways out <span class="muted small">(where each side of this screen leads)</span></h4>
+            <!-- Folded, one line of where each side leads; open, a box for each side (the diagonals only when the map
+                 allows them, or one has a rule). -->
+            <div class="row ways" data-ways-out>
+              <span class="small"><b>Ways out:</b> <span class="muted">{waysLine(map, sel, wayName, grid)}</span></span>
+              <button class="ghost small" aria-expanded={ways.open} onclick={() => ways.set(!ways.open)} title="Where each side of this screen leads">{ways.open ? '▾ Done' : '▸ Change…'}</button>
+            </div>
+            {#if ways.open}
             <p class="muted small">
               By default each side leads to the screen next to it on the grid. Block a side (or click ⛔ between two screens on the map), or
               send it anywhere (another map too).
             </p>
             <table class="exits">
               <tbody>
-                {#each DIRS as d (d)}
+                {#each waysShown(map, sel) as d (d)}
                   {@const rule = sel.exits?.[d]}
                   {@const e = exitOf(map, sel, d)}
                   <tr>
@@ -1382,6 +1400,7 @@
                 {/each}
               </tbody>
             </table>
+            {/if}
             {#if doorways(sel).length}
               <h4>Doorways</h4>
               <ul class="small">

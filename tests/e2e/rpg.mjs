@@ -781,6 +781,15 @@ try {
   await page.locator('.side h4', { hasText: `${allScreens} screens selected` }).waitFor();
   assert(allScreens > 1 && (await page.locator('.grid-map .cell.screen.sel').count()) === allScreens && (await page.evaluate(() => String(window.getSelection()))) === '', `Ctrl+A selects all ${allScreens} screens`);
   await page.keyboard.press('Escape');
+  // A screen's Ways out is one line, folded (where each side leads); ▸ Change… opens a box for each side.
+  await page.getByRole('button', { name: 'Screen Start' }).click();
+  const ways = page.locator('.side [data-ways-out]');
+  const waysText = (await ways.innerText()).replace(/\s+/g, ' ').trim();
+  assert(waysText.startsWith('Ways out:') && waysText.includes('nothing there') && waysText.endsWith('▸ Change…') && (await page.getByLabel('East exit', { exact: true }).count()) === 0, `a screen's Ways out is one line, folded (${waysText})`);
+  await ways.getByRole('button', { name: '▸ Change…' }).click();
+  assert((await page.getByLabel('East exit', { exact: true }).count()) === 1, '▸ Change… opens a box for each side');
+  await ways.getByRole('button', { name: '▾ Done' }).click();
+  await page.keyboard.press('Escape');
   // Put a secret Potion on the start screen.
   await page.getByRole('button', { name: 'Screen Start' }).click();
   await page.getByRole('button', { name: '✎ Edit screen' }).click();
@@ -820,14 +829,14 @@ try {
   // The round's top: where players start, in plain words; the world (for carrying the adventure on) under Advanced.
   assert(await page.getByText('Players start on').isVisible(), 'the round says where players start on');
   assert((await page.getByText('Party starts at').count()) === 0, 'not “Party starts at”');
-  assert(!(await page.getByLabel('World', { exact: true }).isVisible()) && (await page.locator('summary', { hasText: 'Advanced: carry this adventure into another round' }).isVisible()), 'the world picker waits under ⋯ Advanced');
-  // A second adventure (the Mini quest template) has its own world: one line says so, and ⋯ Advanced stays shut.
+  assert(!(await page.getByLabel('World', { exact: true }).isVisible()) && (await page.locator('summary', { hasText: '▸ Advanced: carry this adventure into another round' }).isVisible()), 'the world picker waits under ▸ Advanced');
+  // A second adventure (the Mini quest template) has its own world: one line says so, and ▸ Advanced stays shut.
   await page.getByRole('button', { name: '＋ Add round' }).click();
   await page.getByRole('menuitem', { name: /Mini quest/ }).click();
   await page.locator('[data-world-own]').waitFor();
   assert(
     (await page.locator('[data-world-own]').innerText()) === 'Its own world (separate from Adventure).' && !(await page.locator('details.adv').evaluate((d) => d.open)) && !(await page.getByLabel('World', { exact: true }).isVisible()),
-    'adding the Mini quest to a game with an adventure keeps ⋯ Advanced shut: “Its own world (separate from Adventure)”',
+    'adding the Mini quest to a game with an adventure keeps ▸ Advanced shut: “Its own world (separate from Adventure)”',
   );
   await page.locator('.editor > header').getByRole('button', { name: 'Undo (Ctrl+Z)' }).click();
   await page.locator('nav > button.round-tab', { hasText: 'Adventure' }).click();

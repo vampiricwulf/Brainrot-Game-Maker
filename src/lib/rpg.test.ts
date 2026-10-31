@@ -37,6 +37,9 @@ import {
   screenGrid,
   splitParty,
   step,
+  hasWayRule,
+  waysLine,
+  waysShown,
 } from './rpg';
 import { newSession, rebaseSession } from './session';
 
@@ -100,6 +103,24 @@ describe('RPG: exits', () => {
     m.wrap = true;
     const w = exitOf(m, a1, 'w');
     expect(w.kind === 'open' && nameOf(world, w.to)).toBe('C1');
+  });
+
+  it('Ways out folded: one line of where each side leads; the diagonals only when the map allows them or one has a rule', () => {
+    const { world } = setup();
+    const m = world.maps[0];
+    const a1 = screenAt(m, 0, 0)!;
+    const name = (to: { screen: string }) => nameOf(world, to) ?? '?';
+    expect(waysShown(m, a1)).toEqual(['nw', 'n', 'ne', 'w', 'e', 'sw', 's', 'se']);
+    expect(waysLine(m, a1, name)).toBe('→ B1 · ↓ A2 · ↘ B2 · ↑ ← ↗ ↙ ↖ nothing there');
+    m.diagonals = false;
+    expect(waysShown(m, a1)).toEqual(['n', 'w', 'e', 's']);
+    expect(waysLine(m, a1, name)).toBe('→ B1 · ↓ A2 · ↑ ← nothing there');
+    expect(hasWayRule(a1)).toBe(false);
+    // A rule on a side: Blocked, or leading somewhere else; a diagonal with a rule shows with the diagonals off too.
+    a1.exits = { e: { kind: 'blocked' }, se: { kind: 'warp', to: at(world, 'Counter') } };
+    expect(hasWayRule(a1)).toBe(true);
+    expect(waysShown(m, a1)).toEqual(['n', 'w', 'e', 's', 'se']);
+    expect(waysLine(m, a1, name)).toBe('→ blocked · ↓ A2 · ↘ Counter · ↑ ← nothing there');
   });
 });
 

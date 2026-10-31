@@ -138,7 +138,11 @@ itself. Autoplay, Loop, Start muted and Volume are under **When it plays**. The 
 on a map tab moves it there), `Delete` deletes the selected screens, arrows / `Enter` / `Alt`+arrows / `Ctrl+D` /
 `Ctrl+C` `Ctrl+V` / `F2` work on the grid, `Shift`-click or a box selects several (`Alt`+drag draws a box from
 anywhere, on a full map too), and pictures dropped on the map become screens. Click ⛔ between two screens to block
-the way.
+the way. A screen's **Ways out** is one line, “Ways out: → Forest · ← ↑ ↓ nothing there”, and **▸ Change…** opens a box
+for each side (the diagonals only when the map allows them, or one has a rule); it opens by itself on a screen with a
+side blocked or leading somewhere else, and after ⛔. The round's world (to carry the adventure into another round) is
+under **▸ Advanced**, and an item's description, notes, Use buttons and worn look under its **▸ More**; this computer
+remembers which folds you left open.
 
 **Board game editor:** the board keys the same way. It's one `Tab` stop: the arrows go to the nearest space that way
 (`Shift` adds it to the selection), `Enter` opens its settings and `Tab` goes on to them. `Alt`+arrows move the selected
