@@ -79,6 +79,8 @@
   import JoinAsk, { joinAsks } from './JoinAsk.svelte';
   import { phoneWord, waitingFor, whoJoined, type PhoneWord } from './phonewords';
   import { keptProgress, keptRound, keptScores, savedWhen } from './keptgame';
+  import { streamGist } from './streamgist';
+  import { RememberedFold } from '../lib/fold.svelte';
   import ScoreLog, { type LogTab } from './ScoreLog.svelte';
   import HostInfo from './HostInfo.svelte';
   import AudioHelp from './AudioHelp.svelte';
@@ -4992,6 +4994,21 @@
   let soonMinutes = $state(5);
   /** Seconds left on the "Starting soon" countdown, for the host (ticks only while there's one). */
   let soonLeft = $state(0);
+  /** 📺 On stream, folded (rare setup): open while its countdown runs. */
+  const streamFold = new RememberedFold('jb.streamOpen');
+  $effect(() => {
+    const on = !!app.live.soonAt;
+    untrack(() => streamFold.need(on));
+  });
+  /** Its line, closed: what's set. */
+  const streamGistNow = $derived(
+    streamGist(stream, {
+      countdown: app.live.soonAt ? (soonLeft ? `${Math.floor(soonLeft / 60)}:${String(soonLeft % 60).padStart(2, '0')}` : 'now') : undefined,
+      phones: phonesOn,
+      rpg: game.rounds.some(isRpg),
+      reduceMotion: prefs.reduceMotion,
+    }),
+  );
   $effect(() => {
     const at = app.live.soonAt;
     if (!at) return;
@@ -6191,7 +6208,10 @@
         </section>
 
         <section class="part" data-place="play:stream" aria-labelledby="pregame-stream">
-          <h2 id="pregame-stream">📺 On stream</h2>
+          <!-- Rare setup, folded: its line says what's set (this computer remembers whether it was left open; it opens by
+               itself while the countdown runs). -->
+          <details class="fold" bind:open={() => streamFold.open, (v) => streamFold.set(v)} data-stream-fold>
+            <summary><h2 id="pregame-stream">📺 On stream</h2> <span class="muted small">· {streamGistNow}</span></summary>
           <div class="stream-opts">
             <label class="field">
               “Starting soon” card
@@ -6260,7 +6280,7 @@
               Reduce motion on stream (no pop-ins, fly-ins or confetti)
             </label>
           </div>
-
+          </details>
         </section>
 
       </div>
@@ -6995,6 +7015,17 @@
     display: flex;
     flex-direction: column;
     gap: 8px;
+  }
+  /* 📺 On stream, folded: its heading and what's set on one line. */
+  .fold summary {
+    cursor: pointer;
+  }
+  .fold summary h2 {
+    display: inline;
+    margin: 0;
+  }
+  .fold .stream-opts {
+    margin-top: 8px;
   }
   .stream-opts > .field > input {
     max-width: 360px;

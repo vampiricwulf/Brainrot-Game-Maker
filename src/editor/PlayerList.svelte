@@ -2,11 +2,13 @@
   Editable player roster with enforced unique colors. Used on the pre-game screen (the game's players) and in the in-game Players
   dialog. Rows reorder by dragging their ⋮⋮ grip, with ▲▼ or Alt+↑/↓; ＋ Add player and Enter in a name add the next
   player, typing in their name; F2 in a row renames it. Before the game a row has a right-click menu (Shift+F10 too; in
-  play, the host's own player menu is the one), and the 📱 card's rows open the same one (openMenu).
+  play, the host's own player menu is the one), and the 📱 card's rows open the same one (openMenu). Before the game the
+  start scores are behind ± Start scores, by ＋ Add player (remembered on this computer; shown whenever one isn't 0).
 -->
 <script lang="ts">
   import { isColorTaken, nextFreeColor, textOn } from '../lib/colors';
-  import { tick } from 'svelte';
+  import { tick, untrack } from 'svelte';
+  import { RememberedFold } from '../lib/fold.svelte';
   import { DragOrder, rowKeys } from '../lib/dragorder.svelte';
   import { newId, wholePoints } from '../lib/model';
   import { toast } from '../lib/app.svelte';
@@ -70,6 +72,16 @@
   let list = $state<HTMLElement>();
   /** The player whose avatar picker is open. */
   let picking = $state<string | null>(null);
+
+  /** The start score column (rare: a new host takes it for the live score), behind ± Start scores. */
+  const scoreFold = new RememberedFold('jb.startScoresOpen');
+  /** A start score that isn't 0 always shows (the fold opens by itself, and stays so). */
+  const scoreSet = $derived(showScores && players.some((p) => (p.startScore ?? 0) !== 0));
+  $effect(() => {
+    const on = scoreSet;
+    untrack(() => scoreFold.need(on));
+  });
+  const scoresShown = $derived(showScores && (scoreFold.open || scoreSet));
 
   function add(): P | undefined {
     if (players.length >= max) return;
@@ -159,9 +171,13 @@
       picture: avatars ? () => (picking = p.id) : undefined,
       startScore: showScores
         ? () => {
-            const box = rowBox<HTMLInputElement>(p, 'input.score');
-            box?.focus();
-            box?.select();
+            // (The column opens first, when it's folded away.)
+            scoreFold.set(true);
+            void tick().then(() => {
+              const box = rowBox<HTMLInputElement>(p, 'input.score');
+              box?.focus();
+              box?.select();
+            });
           }
         : undefined,
       move: (d) => move(i, d),
@@ -246,7 +262,7 @@
 </script>
 
 <div class="players" bind:this={list}>
-  {#if showScores && players.length}
+  {#if scoresShown && players.length}
     <!-- Column headings: a row like the others with only its headings showing, so they line up (and wrap) the same. -->
     <div class="cols" aria-hidden="true" inert>
       <span class="grip">⋮⋮</span>
@@ -330,7 +346,7 @@
       {:else}
         <span class="chip" dir="auto" style:background={p.color} style:color={textOn(p.color)}>{p.name || '—'}</span>
       {/if}
-      {#if showScores}
+      {#if scoresShown}
         <!-- (Whole points, within what reads on screen: made so once it's typed, not while the box is cleared to retype.) -->
         <input
           class="score"
@@ -363,6 +379,17 @@
   </div>
   <div class="row">
     <button class="add" onclick={addAndName} disabled={players.length >= max}>＋ Add {lower}</button>
+    {#if showScores}
+      <!-- (Folded away while every start score is 0; one that isn't keeps them in sight.) -->
+      <button
+        class="small ghost"
+        aria-pressed={scoresShown}
+        disabled={scoreSet}
+        onclick={() => scoreFold.set(!scoreFold.open)}
+        title={scoreSet ? 'A start score isn’t 0, so they stay in sight' : `Points a ${lower} has before the first clue (0 unless you set one)`}
+        data-start-scores>± Start scores</button
+      >
+    {/if}
     <span class="muted">
       {players.length}/{max} {lower}s · each color must be unique{inGame ? ' · reordering changes the number keys (1–9)' : ''}
     </span>

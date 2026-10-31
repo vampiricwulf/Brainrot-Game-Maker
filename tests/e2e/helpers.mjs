@@ -172,6 +172,22 @@ export async function openBuzzerOptions(where) {
   return fold;
 }
 
+/** The pre-game screen's 📺 On stream fold (the Starting soon and cover cards, captions…), opened (remembered). */
+export async function openOnStream(page) {
+  const fold = page.locator('[data-stream-fold]');
+  await fold.waitFor();
+  if (!(await fold.evaluate((d) => d.open))) await fold.locator('summary').click();
+  await fold.evaluate((d) => new Promise((ok) => (d.open ? ok() : d.addEventListener('toggle', () => ok(), { once: true }))));
+  return fold;
+}
+
+/** The pre-game screen's player list with its start scores shown (± Start scores; they show anyway when one isn't 0). */
+export async function openStartScores(page) {
+  const toggle = page.getByRole('button', { name: '± Start scores' });
+  if ((await toggle.getAttribute('aria-pressed')) !== 'true') await toggle.click();
+  await page.locator('.pregame .player input.score').first().waitFor();
+}
+
 /** The pre-game screen's ⚖ Game rules, opened (rules, timers, the round intro). */
 export async function openRules(page) {
   const rules = page.locator('details.rules');

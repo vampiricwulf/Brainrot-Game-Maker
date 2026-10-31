@@ -168,7 +168,9 @@ Press **▶ Play** (or **👥 Players & rules ▶** in the editor's list) to get
 `Alt`+arrows to reorder; type a name and press `Enter` for the next one; `F2` in a row renames it; a right-click on a
 row, or `Shift+F10`, gives its menu: ✎ Rename, 🎨 Color…, 🖼 Picture…, ± Start score…, ▲ ▼ Move and 🗑 Delete player,
 from the player's 📱 Phone buzzers row too; while the buzzer room is up each row says how its phone is, where the name's
-chip was: 📱 in, 📱 waiting, 📵 lost 0:12, ⛔ kicked 1:40; they're kept with the game for next time),
+chip was: 📱 in, 📱 waiting, 📵 lost 0:12, ⛔ kicked 1:40; they're kept with the game for next time; a start score, the
+points a player has before the first clue, is behind **± Start scores** by ＋ Add player, which this computer remembers
+and which stays open whenever one isn't 0),
 open **⚖ Game rules** for scoring, the most players, timers and the round intro, and turn on phone buzzers on the
 **📱 Phone buzzers** card (all saved with the game too). `Ctrl+Z` / `Ctrl+Y` undo and redo the changes made there (the
 same steps as the editor's 🕘 History, where **Go there** brings you back to this screen). Then pick one of two modes.
@@ -483,7 +485,9 @@ board game's backdrop, spaces and zones or RPG screens it would, such as a new b
 splash and 🤝 PARTNER UP! take colors the key leaves alone), and **▭** (or `Shift+A`) opens a
 scores-only window for a lower-third capture. Capture these windows with OBS's **Window Capture**: a Browser source
 runs in OBS's own browser, which can't reach the host page. The "Starting soon" and cover cards can be edited, with a
-countdown (the host sees its time left). **Reduce motion on stream** is in the pre-game screen's On stream section too.
+countdown (the host sees its time left). They're under the pre-game screen's **📺 On stream** fold, whose line says
+what's set ("📺 On stream · “Starting soon” card · cover card · captions on"; this computer remembers whether you left it
+open, and it opens by itself while the countdown runs), with **Reduce motion on stream** too.
 
 **Made to read on a scaled-down stream** (720p or 480p in Discord): scores shrink to fit their plates and long names
 end in "…" instead of being cut off, a board's values share one size that fits its columns, category names never get

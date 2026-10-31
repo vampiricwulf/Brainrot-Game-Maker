@@ -400,10 +400,12 @@ RollEvent  { id, ts, source: 'wheel' | 'dice', presetName?, result: string /* la
 
 ### 6.1 Launch
 1. Open a game (`.brainrot` or the embedded game in a standalone HTML).
-2. **Pre-game screen**: confirm or edit players (names, colors, pictures, starting scores; a row's menu, from a
+2. **Pre-game screen**: confirm or edit players (names, colors, pictures, starting scores, behind ± Start scores by
+   ＋ Add player, shown whenever one isn't 0; a row's menu, from a
    right-click or Shift+F10 on it or on the player's 📱 row: ✎ Rename F2 · 🎨 Color… · 🖼 Picture… · ± Start score… ·
    ▲ Move up · ▼ Move down · 🗑 Delete player), ⚖ Game rules, 📱 Phone
-   buzzers (with Teams) and On stream options, all saved with the game, and choose **Single window** or **📺 Separate
+   buzzers (with Teams) and On stream options (folded: "📺 On stream · “Starting soon” card · cover card · captions on",
+   remembered, open by itself while its countdown runs), all saved with the game, and choose **Single window** or **📺 Separate
    audience window** (with 📺 picked, a line under the cards: "not open yet" [📺 Open it now], or "open ✓" [Bring it
    forward] … [Close it], which asks first; `A` / `Shift+A` open the audience and scores windows here too). A game in
    progress is picked up from the editor with **Resume game**, or here: its card says where it got to and its scores

@@ -11,7 +11,7 @@ import { chromium } from 'playwright-core';
 import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { addClassicRounds, flowButton, flowIs, mainButton, mainLabel, noSelection, openGameFile, playWithPlayers, selectedWords, stored, leaveAnswer } from './helpers.mjs';
+import { addClassicRounds, flowButton, flowIs, mainButton, mainLabel, noSelection, openGameFile, openOnStream, playWithPlayers, selectedWords, stored, leaveAnswer } from './helpers.mjs';
 
 const file = resolve(process.env.APP_FILE || 'dist/index.html');
 if (!existsSync(file)) throw new Error('Run `npm run build` first');
@@ -949,7 +949,9 @@ try {
   assert(warn.includes('viewers see everything on screen') && warn.includes('wagers as you type them'), 'single-window mode warns that viewers see everything');
   assert(!(await page.locator('.modes').innerText()).includes('Recommended'), 'neither display mode is tagged “Recommended” (single window is the default)');
 
-  // The stream cards' words, the caption, and a countdown on the Starting soon card (in the audience window).
+  // The stream cards' words, the caption, and a countdown on the Starting soon card (in the audience window), all under
+  // 📺 On stream's fold, whose line then says what's set.
+  const streamFold = await openOnStream(page);
   await page.getByPlaceholder('Starting soon…').fill('Back in a sec, chat');
   await page.getByPlaceholder('Starting soon…').press('Tab');
   await page.getByPlaceholder('Be right back').fill('Snack break');
@@ -959,6 +961,8 @@ try {
   await page.getByRole('button', { name: '▶ Start countdown' }).click();
   assert(/^Starting in [12]:\d\d$/.test(await page.getByRole('timer').innerText()), 'the host sees the countdown’s time left');
   assert((await page.getByRole('button', { name: 'Stop countdown' }).count()) === 1, 'next to ■ Stop');
+  const streamLine = await streamFold.locator('summary').innerText();
+  assert(/“Back in a sec, chat” · countdown [12]:\d\d · cover “Snack break” · captions on/.test(streamLine), `📺 On stream’s line says what’s set (${streamLine})`);
   // Reduce motion on stream is here too (the same setting as ⚙ Settings).
   await page.getByLabel(/Reduce motion on stream/).check();
   assert(await page.evaluate(() => document.documentElement.classList.contains('reduce-stream')), 'the pre-game screen has Reduce motion on stream');

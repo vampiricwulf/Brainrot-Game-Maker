@@ -1467,8 +1467,9 @@ await page.waitForTimeout(450);
 await page.getByRole('button', { name: '🔁 Rematch' }).click();
 await page.getByRole('button', { name: 'Start game ▶' }).waitFor();
 const rematchNames = await page.locator('.pregame .player input.name').evaluateAll((els) => els.map((e) => e.value));
-const rematchStarts = await page.locator('.pregame .player input.score').evaluateAll((els) => els.map((e) => e.value));
-assert(rematchNames.join() === 'Player 1,Player 2,Player 3' && rematchStarts.every((v) => v === '0'), 'Rematch goes to pre-game with the same players at 0');
+// (Every start score at 0: the column is folded away behind ± Start scores.)
+const rematchStarts = await page.locator('.pregame .player input.score').count();
+assert(rematchNames.join() === 'Player 1,Player 2,Player 3' && rematchStarts === 0, 'Rematch goes to pre-game with the same players at 0 (start scores folded away)');
 await page.getByRole('button', { name: 'Start game ▶' }).click();
 await page.getByRole('button', { name: 'Skip intro' }).click();
 

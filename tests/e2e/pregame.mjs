@@ -5,7 +5,7 @@ import { chromium } from 'playwright-core';
 import { existsSync, mkdirSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { exportHtml, noDailyDoubles, noSelection, openRules, selectedWords, leaveAnswer } from './helpers.mjs';
+import { exportHtml, noDailyDoubles, noSelection, openOnStream, openRules, openStartScores, selectedWords, leaveAnswer } from './helpers.mjs';
 
 const file = resolve(process.env.APP_FILE || 'dist/index.html');
 if (!existsSync(file)) throw new Error('Run `npm run build` first');
@@ -130,7 +130,14 @@ try {
   const backBox = await back.boundingBox();
   assert(Math.abs(backBox.y + backBox.height / 2 - (startBox.y + startBox.height / 2)) < 4 && startBox.x + startBox.width > 1280 - 40, 'Start game ▶ stays at the right end of the bar, level with ◀ Back');
   assert(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), 'no sideways scrolling');
-  // 📺 On stream's options read at the size of the rules' beside them, not as fine print.
+  // 📺 On stream folds (rare setup), its line saying what's set; open, its options read at the size of the rules'
+  // beside them, not as fine print.
+  const streamFold = page.locator('[data-stream-fold]');
+  assert(
+    (await streamFold.evaluate((d) => !d.open)) && (await streamFold.locator('summary').innerText()).includes('📺 On stream · “Starting soon” card · cover card'),
+    `📺 On stream starts folded, saying what's set (${await streamFold.locator('summary').innerText()})`,
+  );
+  await openOnStream(page);
   const textSize = (box) => box.evaluate((el) => getComputedStyle(el.closest('label')).fontSize);
   const sizes = await Promise.all([rules.getByLabel('Allow negative scores'), page.getByLabel(/Show the category and value on clue screens/), page.getByLabel(/Reduce motion on stream/)].map(textSize));
   assert(sizes.every((x) => x === sizes[0]), `📺 On stream's options are the size of the rules' (${sizes.join(' / ')})`);
@@ -194,6 +201,9 @@ try {
   await cy.fill('Cy');
   assert((await same.count()) === 0, 'and the note goes once they differ');
   // ---------- A start score: whole points, within what reads on screen (made so once typed) ----------
+  // (Folded away behind ± Start scores while every one is 0: a new host takes the column for the live score.)
+  assert((await page.locator('.pregame .player input.score').count()) === 0, 'start scores at 0 are folded away behind ± Start scores');
+  await openStartScores(page);
   const boStart = page.getByLabel('Bo\'s start score');
   await boStart.fill('250.5');
   await boStart.press('Tab');
