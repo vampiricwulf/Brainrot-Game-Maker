@@ -102,7 +102,7 @@ try {
   let [fc] = await Promise.all([page.waitForEvent('filechooser'), page.getByRole('button', { name: '⬆ Upload video file…' }).click()]);
   await fc.setFiles({ name: 'clip.webm', mimeType: 'video/webm', buffer: clip });
   await page.locator('.insp').getByLabel('Autoplay when the slide appears').uncheck();
-  await page.getByRole('button', { name: '🔊 Sound' }).click();
+  await page.getByRole('button', { name: '🔊 Sound', exact: true }).click();
   [fc] = await Promise.all([page.waitForEvent('filechooser'), page.getByRole('button', { name: '⬆ Upload sound file…' }).click()]);
   await fc.setFiles({ name: 'beep.wav', mimeType: 'audio/wav', buffer: wav(4) });
   // (The sound's own panel first: until the file is in, the video's is up, and the box there is the video's.)
@@ -124,7 +124,7 @@ try {
   await page.getByRole('button', { name: 'Done' }).click();
   // A second clue whose sound plays by itself when it opens (8 s: still going when the audience window reloads).
   await page.locator('.tile').nth(1).click();
-  await page.getByRole('button', { name: '🔊 Sound' }).click();
+  await page.getByRole('button', { name: '🔊 Sound', exact: true }).click();
   [fc] = await Promise.all([page.waitForEvent('filechooser'), page.getByRole('button', { name: '⬆ Upload sound file…' }).click()]);
   await fc.setFiles({ name: 'song.wav', mimeType: 'audio/wav', buffer: wav(8) });
   assert(await page.locator('.insp').getByLabel('Autoplay when the slide appears').isChecked(), 'a sound plays by itself when its slide appears, unless told not to');
@@ -156,7 +156,7 @@ try {
   await fc.setFiles({ name: 'gif.webm', mimeType: 'video/webm', buffer: clip });
   await page.locator('.insp').getByLabel('Loop', { exact: true }).check();
   await page.locator('.insp').getByLabel('Start muted').check();
-  await page.getByRole('button', { name: '🔊 Sound' }).click();
+  await page.getByRole('button', { name: '🔊 Sound', exact: true }).click();
   [fc] = await Promise.all([page.waitForEvent('filechooser'), page.getByRole('button', { name: '⬆ Upload sound file…' }).click()]);
   await fc.setFiles({ name: 'cut.wav', mimeType: 'audio/wav', buffer: wav(4) });
   await soundPanel();
@@ -250,7 +250,7 @@ try {
   await guard();
 
   // The clue with a looping, muted video (a GIF) under its sound: Space and M are for the sound, and the GIF keeps
-  // looping, silent. The sound cut at its Stop at plays again from its start with ▶, not on past the cut.
+  // looping, silent. The sound cut at its Plays to plays again from its start with ▶, not on past the cut.
   const gif = '.stage-box .full video';
   const cut = '.stage-box .full audio';
   await page.locator('.board .tile').nth(3).click();
@@ -267,7 +267,7 @@ try {
   await soundRow.getByRole('button', { name: 'Play' }).click();
   await page.waitForFunction(() => window.__cutFrom !== undefined);
   const cutFrom = await page.evaluate(() => window.__cutFrom);
-  assert(cutFrom < 0.5, `▶ on a sound stopped at its Stop at plays it again from its start (from ${cutFrom.toFixed(2)} s)`);
+  assert(cutFrom < 0.5, `▶ on a sound stopped at its Plays to plays it again from its start (from ${cutFrom.toFixed(2)} s)`);
   await page.keyboard.press('m');
   const hushed = await page.waitForFunction((s) => document.querySelector(s).muted, cut, { timeout: 5000 }).then(() => true, () => false);
   assert(hushed && (await page.locator(gif).evaluate((v) => v.muted)), 'M mutes the sound, and the GIF stays silent');

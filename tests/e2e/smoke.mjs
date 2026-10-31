@@ -346,7 +346,7 @@ await ie.waitFor({ state: 'detached' });
 assert(confirms.length === asked, 'Cancel with unsaved edits asks first, in the editor');
 const dims2 = await page.locator('.canvas img').first().evaluate((i) => [i.naturalWidth, i.naturalHeight]);
 assert(dims2.join('×') === '100×100', 'cancelled edits leave the slide image as it was');
-await page.getByRole('button', { name: '🔊 Sound' }).click();
+await page.getByRole('button', { name: '🔊 Sound', exact: true }).click();
 [fc] = await Promise.all([page.waitForEvent('filechooser'), page.getByRole('button', { name: '⬆ Upload sound file…' }).click()]);
 await fc.setFiles({ name: 'beep.wav', mimeType: 'audio/wav', buffer: wav(3) });
 await page.locator('.insp').getByText('Autoplay when the slide appears').waitFor();
@@ -502,7 +502,7 @@ await page.keyboard.press('Escape');
 assert((await page.locator('[aria-label="Drawpad"]').count()) === 0 && (await hits()) === 2 && (await clueOpen()), 'keys in the drawpad stay there, and Esc closes just the drawpad');
 
 // Preview plays sound: the audio clip and the video play unmuted, and stop with the preview.
-await page.getByRole('button', { name: '🔊 Sound' }).click();
+await page.getByRole('button', { name: '🔊 Sound', exact: true }).click();
 assert(await page.locator('.picker').getByLabel('Paste a link').evaluate((e) => e === document.activeElement), 'a picker opens with its link field ready for a paste');
 await page.locator('.picker .item', { hasText: 'beep.wav' }).click();
 await page.getByRole('button', { name: '🎬 Video' }).click();
