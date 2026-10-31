@@ -1,13 +1,38 @@
 <!-- The tiebreaker clue: optional, played from the end screen when players are tied for first. -->
-<script lang="ts">
-  import { tick } from 'svelte';
+<script lang="ts" module>
   import { app } from '../lib/app.svelte';
-  import { take } from '../lib/nav.svelte';
   import { step } from '../lib/history.svelte';
-  import { ownTextTargets, textStyleTargets } from '../lib/ops';
-  import { questionSlides, setSlideText, slideText, textSlide, type TextEl } from '../lib/model';
+  import { questionSlides, textSlide } from '../lib/model';
   import { slideHasContent } from '../lib/usage';
   import { followClueText } from '../lib/cluetext';
+
+  /**
+   * The tiebreaker on (empty, its text the theme's clue text) or off: its tick box, and its tab's menu. Off throws it
+   * away at once: when it had something in it, the note at the bottom offers Undo.
+   */
+  export function setTiebreaker(on: boolean): void {
+    const game = app.game;
+    const tb = game.tiebreaker;
+    if (on === !!tb) return;
+    const lost = !on && !!tb && ([...questionSlides(tb), tb.answerSlide].some(slideHasContent) || !!tb.hostNotes?.trim());
+    step(
+      on ? 'Tiebreaker on' : 'Tiebreaker off',
+      () => {
+        const slides = { questionSlide: textSlide(), answerSlide: textSlide() };
+        // (Its text takes the theme's clue text.)
+        if (on) followClueText(game, [slides.questionSlide, slides.answerSlide]);
+        game.tiebreaker = on ? slides : undefined;
+      },
+      { notify: lost },
+    );
+  }
+</script>
+
+<script lang="ts">
+  import { tick } from 'svelte';
+  import { take } from '../lib/nav.svelte';
+  import { ownTextTargets, textStyleTargets } from '../lib/ops';
+  import { setSlideText, slideText, type TextEl } from '../lib/model';
   import SlideEditor from './slide/SlideEditor.svelte';
   import SlideTabs, { slideKeyOf } from './SlideTabs.svelte';
   import PageHeader from './PageHeader.svelte';
@@ -47,20 +72,8 @@
     type="checkbox"
     checked={!!app.game.tiebreaker}
     onchange={(e) => {
-      const tb = app.game.tiebreaker;
       const on = e.currentTarget.checked;
-      // Unticking throws the tiebreaker away at once: when it had something in it, the note at the bottom offers Undo.
-      const lost = !on && !!tb && ([...questionSlides(tb), tb.answerSlide].some(slideHasContent) || !!tb.hostNotes?.trim());
-      step(
-        on ? 'Tiebreaker on' : 'Tiebreaker off',
-        () => {
-          const slides = { questionSlide: textSlide(), answerSlide: textSlide() };
-          // (Its text takes the theme's clue text.)
-          if (on) followClueText(app.game, [slides.questionSlide, slides.answerSlide]);
-          app.game.tiebreaker = on ? slides : undefined;
-        },
-        { notify: lost },
-      );
+      setTiebreaker(on);
       // Ticked: the keys go to its question, ready to type (the checkbox's page has gone).
       if (on) void tick().then(() => qField?.focus());
     }}

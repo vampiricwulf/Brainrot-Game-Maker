@@ -46,7 +46,7 @@
   import RoundEditor from './RoundEditor.svelte';
   import FinalEditor from './FinalEditor.svelte';
   import SlidesEditor from './SlidesEditor.svelte';
-  import TiebreakerEditor from './TiebreakerEditor.svelte';
+  import TiebreakerEditor, { setTiebreaker } from './TiebreakerEditor.svelte';
   import StatsItemsEditor from './StatsItemsEditor.svelte';
   import RpgRoundEditor from './rpg/RpgRoundEditor.svelte';
   import BoardGameEditor from './boardgame/BoardGameEditor.svelte';
@@ -390,6 +390,33 @@
       ),
       move: [menuItem.up(() => moveRound(i, i - 1), { disabled: i === 0 }), menuItem.down(() => moveRound(i, i + 1), { disabled: i === game.rounds.length - 1 })],
       delete: menuItem.delete('round', () => removeRound(i)),
+    });
+  }
+
+  /** The Tiebreaker's tab menu (a right-click on it, or Shift+F10): open it, or turn it on or off. */
+  function tiebreakerMenu(): MenuEntry[] {
+    const on = !!game.tiebreaker;
+    return menuOf({
+      heading: 'Tiebreaker clue',
+      open: [{ label: '❓ Open it', onclick: () => (tab = 'tiebreaker') }],
+      verbs: [
+        on
+          ? { label: 'Turn it off', onclick: () => setTiebreaker(false), hint: 'Takes the tiebreaker clue out of the game (Undo brings it back)' }
+          : { label: '＋ Include a tiebreaker clue', onclick: () => ((tab = 'tiebreaker'), setTiebreaker(true)) },
+      ],
+    });
+  }
+
+  /** A checklist line's menu: go and fix it, or the fix it offers beside it (🗜 a smaller copy, 🔄 convert). */
+  function checkMenu(line: ChecklistLine): MenuEntry[] {
+    const repack = !!line.convert?.length && line.convert.every((id) => ((v) => typeof v === 'object' && v.is === 'plays')(verdictOf(id)));
+    return menuOf({
+      heading: line.text,
+      open: [{ label: '◀ Fix it', onclick: () => goFix(line) }],
+      verbs: [
+        ...(line.shrink?.length ? [{ label: '🗜 Make a smaller copy for phones…', onclick: () => openShrinkDialog(line.shrink![0]) }] : []),
+        ...(line.convert?.length ? [{ label: repack ? '↻ Repackage it so phones can open it…' : '🔄 Convert them so they play here…', onclick: () => openMediaDialog({ mode: 'convert', ids: line.convert! }) }] : []),
+      ],
     });
   }
 
@@ -1221,6 +1248,7 @@
           class:optional={!game.tiebreaker}
           aria-current={tab === 'tiebreaker' ? 'page' : undefined}
           onclick={() => (tab = 'tiebreaker')}
+          oncontextmenu={(e) => showMenu(e, tiebreakerMenu())}
           title={game.tiebreaker ? 'Played after the last round when players tie for the win' : 'Optional: a clue played after the last round when players tie for the win (off)'}
         >
           {#if game.tiebreaker}<span aria-hidden="true">❓</span> Tiebreaker{:else}<span aria-hidden="true">＋</span> Tiebreaker <span class="opt">(optional)</span>{/if}
@@ -1278,7 +1306,7 @@
               <!-- (🔄 beside it, or ↻ for files phones can't open: never naming a file, as the line doesn't.) -->
               {@const repack = line.convert.every((id) => (v => typeof v === 'object' && v.is === 'plays')(verdictOf(id)))}
               <div class="problem-row">
-                <button class="problem {line.level}" onclick={() => goFix(line)} title={line.details.length > 1 ? line.details.join('\n') : undefined}>
+                <button class="problem {line.level}" onclick={() => goFix(line)} oncontextmenu={(e) => showMenu(e, checkMenu(line))} title={line.details.length > 1 ? line.details.join('\n') : undefined}>
                   {line.level === 'warn' ? '⚠' : 'ℹ'} {line.text}
                 </button>
                 <button
@@ -1292,13 +1320,13 @@
             {:else if line.shrink?.length}
               <!-- (🗜 beside it: never naming the file, as the line doesn't.) -->
               <div class="problem-row">
-                <button class="problem {line.level}" onclick={() => goFix(line)} title={line.details.length > 1 ? line.details.join('\n') : undefined}>
+                <button class="problem {line.level}" onclick={() => goFix(line)} oncontextmenu={(e) => showMenu(e, checkMenu(line))} title={line.details.length > 1 ? line.details.join('\n') : undefined}>
                   {line.level === 'warn' ? '⚠' : 'ℹ'} {line.text}
                 </button>
                 <button class="small ghost" data-checklist-shrink onclick={() => openShrinkDialog(line.shrink![0])} title="Make a smaller copy for phones" aria-label="Make a smaller copy for phones">🗜</button>
               </div>
             {:else}
-              <button class="problem {line.level}" onclick={() => goFix(line)} title={line.details.length > 1 ? line.details.join('\n') : undefined}>
+              <button class="problem {line.level}" onclick={() => goFix(line)} oncontextmenu={(e) => showMenu(e, checkMenu(line))} title={line.details.length > 1 ? line.details.join('\n') : undefined}>
                 {line.level === 'warn' ? '⚠' : 'ℹ'} {line.text}
               </button>
             {/if}
