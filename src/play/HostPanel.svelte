@@ -793,6 +793,16 @@
     return { label: st.verb.label, ...(st.key ? { key: st.key } : {}), title, disabled: !!st.busy, ...(st.flow ? { flow: st.flow } : {}), ...(also?.length ? { also } : {}), run: () => goon?.main('main') };
   });
   const next = $derived(blue);
+  /**
+   * The blue button's room while a clue's flow row has its places (and the tiebreaker's): as wide as the widest step it
+   * takes there (Next slide ▶, 👁 Reveal answer, then ▦ Done ▶ board or 🏁 Back to results), so as it goes from one to
+   * the next the row beside it keeps its places and its words (nothing moves under the pointer).
+   */
+  const mainRoom = $derived.by((): string[] => {
+    const tb = session.phase === 'tiebreaker';
+    if (!tb && !(session.phase === 'clue' && info && !setup && !ddWager)) return [];
+    return [...(slidePos ? [FLOW.nextSlide(1, 2).label] : []), FLOW.reveal.label, tb ? FLOW.backToResults.label : FLOW.done.label];
+  });
 
   // ---------- The stage's menu: what the panel's own rows add ----------
   /** ± Adjust score / ± Other points…: the Amount row, opened, the keys in it. */
@@ -1559,18 +1569,26 @@
             {a.label}{#if a.key} <kbd aria-hidden="true">{a.key}</kbd>{/if}
           </button>
         {/each}
-        <button
-          class:primary={!ask}
-          data-next
-          data-flow={n.flow}
-          disabled={n.disabled}
-          aria-expanded={goon?.check ? 'true' : undefined}
-          aria-controls={goon?.check ? 'goon-check' : undefined}
-          onclick={(e) => clickNext(e, n)}
-          title={n.title ?? n.key}
-        >
-          {n.label}{#if n.key} <kbd aria-hidden="true">{n.key}</kbd>{/if}
-        </button>
+        <span class="mainroom">
+          <!-- (Its room in a clue: the widest of its steps there, so the flow row beside it never moves: see mainRoom.) -->
+          {#if mainRoom.length}
+            <span class="sizer" aria-hidden="true" inert>
+              {#each mainRoom as l (l)}<button tabindex="-1">{l} <kbd aria-hidden="true">N</kbd></button>{/each}
+            </span>
+          {/if}
+          <button
+            class:primary={!ask}
+            data-next
+            data-flow={n.flow}
+            disabled={n.disabled}
+            aria-expanded={goon?.check ? 'true' : undefined}
+            aria-controls={goon?.check ? 'goon-check' : undefined}
+            onclick={(e) => clickNext(e, n)}
+            title={n.title ?? n.key}
+          >
+            {n.label}{#if n.key} <kbd aria-hidden="true">{n.key}</kbd>{/if}
+          </button>
+        </span>
       </div>
     {/if}
   </div>
@@ -1897,6 +1915,16 @@
     align-items: stretch;
     flex-wrap: wrap;
     gap: 6px;
+  }
+  /* The blue button over its room (the widest of its steps in a clue: see mainRoom), as wide as it. */
+  .mainroom {
+    display: grid;
+  }
+  .mainroom > * {
+    grid-area: 1 / 1;
+  }
+  .mainroom > [data-next] {
+    justify-self: stretch;
   }
   kbd {
     font: 11px/1 ui-monospace, monospace;

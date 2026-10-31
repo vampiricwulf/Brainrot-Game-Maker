@@ -323,8 +323,9 @@ places as the clue goes on: **↩ Put back (keep tile)** (`Shift+Esc`) at its fa
 Daily Double's splash it leads the Wager row; on PARTNER UP! it has the row to itself), and at its right end ◀ Slide
 (with more than one question slide), 👁 Reveal answer while the blue button is still a slide, and ▦ Done ▶ board, a
 quiet skip that closes the clue without its answer (asking first, as the blue button would); once the answer is up,
-🙈 Hide answer takes ▦ Done's place. A place that's not in use stays empty, so nothing moves under the pointer; on a
-crowded row their words go (their signs stay, still named in full) rather than the row wrapping; and the row stays in
+🙈 Hide answer takes ▦ Done's place. A place that's not in use stays empty, and the blue button keeps one width through
+the clue, so nothing moves under the pointer; on a crowded row their words go (their signs stay, still named in full)
+rather than the row wrapping; and the row stays in
 view at the panel's foot as the rows above it scroll (in a 🤝 partner clue in one window the box's own foot holds that
 place). The tiebreaker's row is the same, with 🏁 Back to results. On a played-out board, Next round ▶ is the blue
 button and its place in the round navigation stays empty, so ◀ Previous round keeps its. Under the row come the tools
