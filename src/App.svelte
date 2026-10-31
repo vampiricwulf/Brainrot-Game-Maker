@@ -1236,7 +1236,7 @@
                 Resume with my edits
               </button>
             {/if}
-            <button class="small ghost" onclick={discardResume}>Discard</button>
+            <button class="small ghost danger" onclick={discardResume} title="Throws the kept game away (asks first)">Discard</button>
             <button class="small ghost x" onclick={() => (resumeHidden = true)} aria-label="Hide this line" title="Hide this line (the game stays kept: ▶ Play offers to resume it)">✕</button>
           {/if}
         </span>
