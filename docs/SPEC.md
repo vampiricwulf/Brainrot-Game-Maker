@@ -200,7 +200,8 @@ RollEvent  { id, ts, source: 'wheel' | 'dice', presetName?, result: string /* la
 
 ### 5.1 Game setup
 - **Values**: edit per round (row defaults), with per-clue overrides. A "×2 for this round" helper. Any integer is allowed, including negatives and 0.
-- **Players**: set on the ▶ Play pre-game screen (§6.1), kept with the game: add/remove (1–20 players; 8 at most by
+- **Players**: set on the ▶ Play pre-game screen (§6.1; the editor's Game list starts with 👥 Players & rules ▶, which
+  opens it at the players), kept with the game: add/remove (1–20 players; 8 at most by
   default, ⚖ Game rules › Most players), name, unique color, a picture (an RPG round's avatar and player sheet). The
   color picker prevents duplicates and suggests a distinct palette. The score bar shows name plates in each player's
   color.

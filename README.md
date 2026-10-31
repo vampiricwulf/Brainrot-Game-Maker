@@ -107,6 +107,9 @@ movement dice are kept by the dice themselves, so renaming them in 🎡 Wheels, 
 
 Other editor tabs:
 
+- 👥 **Players & rules ▶** (first in the Game list, with how many players): the players, ⚖ Game rules and phone
+  buzzers are set on the ▶ Play screen before the show, and this opens it at 👥 Players (nothing starts until **Start
+  game ▶**).
 - 🔊 **Sounds**: the sounds played on stream (right, wrong, dice, wheel, buzz…): preview, replace or switch each off.
 - 🎨 **Theme**: presets, colors, fonts (your own font file too: Fonts › Your own font file) and background images.
   **💾 Save as new theme…** keeps a look in My themes (in this browser, or on this computer in the desktop app) for any
@@ -119,7 +122,8 @@ Other editor tabs:
   a name you pick it by. During the show **🤫 Send a card…** sends one to the players you choose: only they see it, on
   their phones. In one window viewers can read a card's name in that dialog (never what's on it), so keep the secret
   on the card.
-- 📊 **Stats & Items**: HP bars, currencies, items, wearable gear and shops.
+- 📊 **Stats & Items**: HP bars, currencies, items, wearable gear and shops. Until an RPG or board game round uses it
+  (or it has anything in it), it's listed muted, "(optional)".
 
 **Copy and paste** slide items or whole slides between clues, rounds and even games; their pictures and sounds come
 along.
@@ -142,7 +146,7 @@ any point; it survives a reload (⚙ Settings sets how many changes it keeps, 30
 
 ## Hosting
 
-Press **▶ Play** to get to the pre-game screen. Add the players there (rename, recolor, pick a picture, drag ⋮⋮ or
+Press **▶ Play** (or **👥 Players & rules ▶** in the editor's list) to get to the pre-game screen. Add the players there (rename, recolor, pick a picture, drag ⋮⋮ or
 `Alt`+arrows to reorder; type a name and press `Enter` for the next one; they're kept with the game for next time),
 open **⚖ Game rules** for scoring, the most players, timers and the round intro, and turn on phone buzzers on the
 **📱 Phone buzzers** card (all saved with the game too). `Ctrl+Z` / `Ctrl+Y` undo and redo the changes made there (the

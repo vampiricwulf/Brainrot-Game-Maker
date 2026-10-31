@@ -93,8 +93,10 @@ try {
   await page.locator('nav .problem', { hasText: 'Round 3:' }).waitFor();
   const lines = await page.locator('nav .problem').allInnerTexts();
   assert(lines.filter((l) => /^⚠ Jeopardy!:/.test(l)).length === 1 && lines.some((l) => /^⚠ Jeopardy!: 30 clues to finish/.test(l)), `the checklist has one line a round (${lines.join(' | ')})`);
-  const navScroll = await page.locator('nav').evaluate((n) => n.scrollHeight <= n.clientHeight);
-  assert(navScroll, 'with three boards the sidebar still fits at 720p');
+  // (👥 Players & rules ▶ and 📊 Stats & Items (optional) are always listed now: the list may scroll in its own box, by
+  // about those two rows at most.)
+  const navOver = await page.locator('nav').evaluate((n) => n.scrollHeight - n.clientHeight);
+  assert(navOver <= 80 && (await page.evaluate(() => document.documentElement.scrollHeight <= innerHeight)), `with three boards the sidebar fits at 720p, or scrolls in its box by two rows at most (${navOver}px)`);
 
   // Write the first clue, then the checklist goes to the second one (the first unfinished tile).
   await page.locator('.tile').first().click();

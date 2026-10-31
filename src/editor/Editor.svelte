@@ -127,9 +127,12 @@
   /** ▶ Play, saying the tab it was pressed on. */
   const play = () => onplay(typeof tab === 'number' ? game.rounds[tab]?.id : tab);
   const game = $derived(app.game);
-  /** 📊 Stats & Items in the sidebar: once an RPG or board game round uses it, or it has anything in it (or it's open). */
-  const showStats = $derived(
-    tab === 'stats' || game.rounds.some((r) => r.mode === 'rpg' || r.mode === 'boardgame') || !!game.statFields?.length || !!game.items?.length || !!game.shops?.length,
+  /**
+   * 📊 Stats & Items is in use: an RPG or board game round plays with it, or it has anything in it. Until then the
+   * sidebar lists it muted, "(optional)", as the Tiebreaker before it's turned on.
+   */
+  const statsUsed = $derived(
+    game.rounds.some((r) => r.mode === 'rpg' || r.mode === 'boardgame') || !!game.statFields?.length || !!game.items?.length || !!game.shops?.length,
   );
   /** The round tab last open (🎨 Theme previews it). */
   let lastRound = $state(0);
@@ -1127,6 +1130,15 @@
       {/if}
       <button class="ghost" aria-haspopup="menu" onclick={addRoundMenu}>＋ Add round</button>
       <div class="navlabel muted">Game</div>
+      <!-- The players, ⚖ Game rules and phone buzzers are set on the ▶ Play screen, before the game: this opens it at 👥
+           Players (nothing starts until Start game ▶). With no rounds yet it says to add one first. -->
+      <button
+        class="wrap"
+        data-nav="players"
+        onclick={() => show({ tab: 'play', part: 'players' })}
+        title={game.rounds.length ? 'Set before the show, on the ▶ Play screen. The game doesn’t start until you press Start game ▶.' : 'Add a round first'}
+        >👥 Players & rules ▶{game.players.length ? ` (${game.players.length})` : ''}</button
+      >
       <button class:active={tab === 'sounds'} aria-current={tab === 'sounds' ? 'page' : undefined} onclick={() => (tab = 'sounds')} title="The sounds played on stream (players and rules are set on the ▶ Play screen)">🔊 Sounds</button>
       <button class:active={tab === 'theme'} aria-current={tab === 'theme' ? 'page' : undefined} onclick={() => (tab = 'theme')}>🎨 Theme</button>
       <button
@@ -1145,10 +1157,15 @@
         title="Private cards made before the show: during play, 🤫 Send a card… sends one to the players you choose, on their phones only, never on stream"
         >🤫 Cards{game.cards?.length ? ` (${game.cards.length})` : ''}</button
       >
-      <!-- (Only RPG and board game rounds use stats and items: shown once there's one, or anything in it.) -->
-      {#if showStats}
-        <button class:active={tab === 'stats'} aria-current={tab === 'stats' ? 'page' : undefined} onclick={() => (tab = 'stats')} title="Player stats, items and shops (RPG and board game rounds)">📊 Stats & Items</button>
-      {/if}
+      <!-- (Only RPG and board game rounds use stats and items: muted, "(optional)", until one does or it has anything.) -->
+      <button
+        class:active={tab === 'stats'}
+        class:optional={!statsUsed}
+        aria-current={tab === 'stats' ? 'page' : undefined}
+        onclick={() => (tab = 'stats')}
+        title={statsUsed ? 'Player stats, items and shops (RPG and board game rounds)' : 'Optional: player stats, items and shops, for RPG and board game rounds'}
+        >📊 Stats & Items{#if !statsUsed}{' '}<span class="opt">(optional)</span>{/if}</button
+      >
       <button class:active={tab === 'media'} aria-current={tab === 'media' ? 'page' : undefined} onclick={() => (tab = 'media')}>🖼 Media ({libraryMedia(game).length})</button>
       <button class:active={tab === 'history'} aria-current={tab === 'history' ? 'page' : undefined} onclick={() => (tab = 'history')} title="Every change to this game: go back to any point">
         🕘 History{history.entries.length ? ` (${history.entries.length})` : ''}
@@ -1200,7 +1217,7 @@
            (another save of the same game has the same round ids). -->
       {#key game}
         {#if tab === 'sounds'}
-          <SoundsPanel onplay={play} canPlay={game.rounds.length > 0} />
+          <SoundsPanel />
         {:else if tab === 'stats'}
           <StatsItemsEditor />
         {:else if tab === 'tiebreaker'}

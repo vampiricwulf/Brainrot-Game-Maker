@@ -624,8 +624,8 @@ try {
   await page.goto(pathToFileURL(file).href);
   await addClassicRounds(page);
 
-  // Stats & items: in the sidebar once there's an RPG (or board game) round to use them.
-  assert((await page.getByRole('button', { name: '📊 Stats & Items' }).count()) === 0, 'a game of Jeopardy rounds has no 📊 Stats & Items in the sidebar');
+  // Stats & items: in the sidebar, muted "(optional)" until there's an RPG (or board game) round to use them.
+  assert((await page.getByRole('button', { name: '📊 Stats & Items' }).innerText()).includes('(optional)'), 'a game of Jeopardy rounds lists 📊 Stats & Items as optional');
   await page.getByRole('button', { name: '＋ Add round' }).click();
   await page.getByRole('menuitem', { name: /RPG/ }).click();
   await page.getByRole('button', { name: '📊 Stats & Items' }).click();

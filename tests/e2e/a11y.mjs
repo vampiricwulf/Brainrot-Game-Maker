@@ -247,12 +247,15 @@ try {
 
   // ---------- Landmarks and headings ----------
   assert((await page.getByRole('main').getByRole('heading', { level: 1 }).count()) === 1, 'the editor has a main part with a heading naming the game');
-  // 📊 Stats & Items shows up once an RPG or board game round is there to use it.
-  assert((await page.getByRole('button', { name: '📊 Stats & Items' }).count()) === 0, 'a game of Jeopardy boards has no 📊 Stats & Items in the sidebar');
+  // 📊 Stats & Items is always in the sidebar: muted, "(optional)", until an RPG or board game round is there to use it.
+  const statsNav = page.getByRole('button', { name: /^📊 Stats & Items/ });
+  assert((await statsNav.innerText()).includes('(optional)') && (await statsNav.evaluate((b) => b.classList.contains('optional'))), 'a game of Jeopardy boards lists 📊 Stats & Items muted, “(optional)”');
   const roundTabs = await page.locator('nav > button.round-tab').count();
   await page.getByRole('button', { name: '＋ Add round' }).click();
   await page.getByRole('menuitem', { name: /RPG/ }).click();
-  await page.getByRole('button', { name: '📊 Stats & Items' }).click();
+  await page.waitForFunction(() => ![...document.querySelectorAll('nav > button.optional')].some((b) => b.textContent.includes('Stats & Items')));
+  assert(!(await statsNav.innerText()).includes('(optional)'), 'with an RPG round it is no longer marked optional');
+  await statsNav.click();
   assert((await page.locator('[role="list"]:not(:has([role="listitem"]))').count()) === 0, 'Stats & Items has no empty lists (nothing added yet)');
   await page.keyboard.press('Control+z');
   await page.waitForFunction((n) => document.querySelectorAll('nav > button.round-tab').length === n, roundTabs);

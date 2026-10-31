@@ -46,10 +46,26 @@ try {
   await page.getByRole('menuitem', { name: /Jeopardy board/ }).click();
   await noDailyDoubles(page);
 
-  // ---------- 🔊 Sounds points to ▶ Play ----------
+  // ---------- 👥 Players & rules ▶, first in the editor's Game list, opens ▶ Play at the players ----------
   await page.getByRole('button', { name: '🔊 Sounds' }).click();
+  const playersNav = page.locator('nav [data-nav="players"]');
+  assert(
+    (await playersNav.evaluate((b) => b.previousElementSibling?.textContent?.trim())) === 'Game' && (await playersNav.innerText()).startsWith('👥 Players & rules ▶'),
+    '👥 Players & rules ▶ comes first in the editor’s Game list',
+  );
+  assert((await playersNav.getAttribute('title')).includes('doesn’t start until you press Start game ▶'), 'its tooltip says nothing starts until Start game ▶');
+  await playersNav.click();
+  await start.waitFor();
+  assert(await page.getByRole('heading', { name: '👥 Players' }).isVisible(), 'it opens the ▶ Play screen at 👥 Players');
+  await back.click();
+  // 🔊 Sounds points there in one line (the sidebar's 👥 Players & rules ▶ is the way in, not a second button).
   const elsewhere = page.locator('.elsewhere');
-  assert((await elsewhere.innerText()).includes('⚖ Game rules') && (await elsewhere.getByRole('button', { name: 'Open the Play screen' }).count()) === 1, '🔊 Sounds says, at the top, where the players and rules are, with a ▶ Play button');
+  await elsewhere.waitFor();
+  const note = await elsewhere.innerText();
+  assert(
+    note.includes('⚖ Game rules') && note.includes('👥 Players & rules ▶') && (await elsewhere.getByRole('button').count()) === 0 && (await elsewhere.boundingBox()).height < 40,
+    `🔊 Sounds says in one line where the players and rules are (${note})`,
+  );
   assert((await page.getByRole('button', { name: /^Back to the built-in .* sound$/ }).count()) === 0, '(no ↺ until a sound has a file of its own)');
 
   // ---------- Enter adds the next player: each one named is one step, called by their name ----------
