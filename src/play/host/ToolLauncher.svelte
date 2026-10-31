@@ -96,7 +96,8 @@
 
   /**
    * Close the menu after picking from it: the focus goes back to its button (else it would drop to the page, and the
-   * keyboard would have to start over), or to the tool's own Roll! / Spin! (the panel's main button) when it's on screen.
+   * keyboard would have to start over), or to the panel's blue button when it's on screen (Next ▶, which puts the tool
+   * away; W or D spins or rolls it).
    */
   function done(): void {
     menu = null;

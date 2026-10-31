@@ -168,11 +168,17 @@
    * (Never from a button or box the host chose.)
    */
   function keysToMain(): void {
-    void tick().then(() => {
+    // (The blue button wakes on the game screen's own clock, a frame or two after this box sees the landing: it waits
+    // for it, half a second at most.)
+    let frames = 30;
+    const to = () => {
       const a = document.activeElement;
       if (a && a !== document.body && !(rescued() && a.closest('.panel'))) return;
-      document.querySelector<HTMLElement>('.panel [data-next]:not(:disabled)')?.focus({ preventScroll: true });
-    });
+      const b = document.querySelector<HTMLButtonElement>('.panel [data-next]');
+      if (b?.disabled && frames-- > 0) return void requestAnimationFrame(to);
+      if (b && !b.disabled) b.focus({ preventScroll: true });
+    };
+    void tick().then(to);
   }
   $effect(() => {
     if (landed) untrack(keysToMain);
