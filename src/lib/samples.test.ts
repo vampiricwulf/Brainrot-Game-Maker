@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { addSampleGame, TEMPLATES } from './samples';
+import { addSampleGame, firstTemplates, TEMPLATES } from './samples';
 import { isBoard, isBoardGame, isRpg, newGame } from './model';
 import { slideHasContent } from './usage';
 import { validate } from './validate';
@@ -197,5 +197,21 @@ describe('round templates', () => {
     const bs = { positions: { a: { space: back.id } }, order: ['a'], turn: 0 };
     movePlayer(r, bs, 'a', -3);
     expect(r.spaces.indexOf(r.spaces.find((s) => s.id === bs.positions.a.space)!)).toBe(r.spaces.indexOf(back) - 3);
+  });
+});
+
+describe('the templates on the first screen’s cards', () => {
+  it('are at most two a card, and every one is in ＋ Add round too', () => {
+    for (const mode of ['board', 'final', 'rpg', 'boardgame', 'slides'] as const) {
+      expect(firstTemplates(mode).length).toBeLessThanOrEqual(2);
+      for (const t of firstTemplates(mode)) expect(TEMPLATES).toContain(t);
+    }
+    expect(firstTemplates('rpg').map((t) => t.label)).toEqual(['Mini quest', '3 × 3 dungeon']);
+    expect(firstTemplates('boardgame').map((t) => t.label)).toEqual(['20-space loop', 'Race to the finish']);
+    expect(firstTemplates('final')).toEqual([]);
+  });
+
+  it('leave out the classic board, which is the board card itself', () => {
+    expect(firstTemplates('board').map((t) => t.label)).toEqual(['Quick board, 4 × 3']);
   });
 });

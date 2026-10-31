@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { hasWork, MAX_RECENT, MAX_RECENT_BYTES, planRecent, signature, type RecentEntry } from './recent';
+import { hasWork, keptWhen, MAX_RECENT, MAX_RECENT_BYTES, planRecent, signature, type RecentEntry } from './recent';
 import { newGame, newRound, newSavedCard } from './model';
 
 let n = 0;
@@ -87,5 +87,14 @@ describe('Recent games', () => {
     expect(hasWork(carded)).toBe(true);
     carded.cards = [];
     expect(hasWork(carded)).toBe(false);
+  });
+});
+
+describe('when a recent game was kept, in short', () => {
+  const now = new Date(2026, 9, 31, 18, 0).getTime();
+  it('is the time today, else the day', () => {
+    // (Some versions put a narrow space before PM.)
+    expect(keptWhen(new Date(2026, 9, 31, 15, 5).getTime(), now, 'en-US').replace(/\s/g, ' ')).toBe('3:05 PM');
+    expect(keptWhen(new Date(2026, 9, 29, 23, 50).getTime(), now, 'en-US')).toBe('Oct 29');
   });
 });

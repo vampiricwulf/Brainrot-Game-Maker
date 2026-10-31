@@ -355,6 +355,10 @@ RollEvent  { id, ts, source: 'wheel' | 'dice', presetName?, result: string /* la
   copied as a short text code (`BRT1:…`). An imported theme is shown on the game's own board before it's used or kept.
 
 ### 5.8 Save / load / export
+- **The first screen** (a game with no rounds): ✨ Try a sample game, then a card a mode (a blank round) with at most two
+  templates in it to start from (＋ Add round has them all), the arrow keys moving between the cards, and a line for a
+  game file, "Have a game file? 📂 Open a game… or drop it here", with the three newest Recent games as buttons on it
+  (title · rounds · when). ▶ Play isn't greyed there: a click says "Add a round first" and puts the keys on the sample.
 - **Save** → download `.brainrot` (zip); in the desktop app, into `BrainrotSaves` next to the exe (Documents when that
   can't be written), replacing the game's last save and keeping two `.bak` backups. **Open** → Recent games (the last 8
   games replaced, kept in the browser), the desktop app's BrainrotSaves, a file picker, or drag-drop.

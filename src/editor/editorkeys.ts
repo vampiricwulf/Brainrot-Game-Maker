@@ -26,6 +26,7 @@ export const EDITOR_KEYS: KeyGroup[] = [
       ['Delete / Backspace', 'Delete it'],
       ['Right-click a round', 'All of these, and Copy round / Paste round (into this game or another)'],
       ['＋ Add round', 'A blank round, a template, a round from another .brainrot, or a copied round'],
+      ['Arrows on the first screen', 'Move between its cards (Enter adds that kind of round, or the sample game)'],
     ],
   },
   {

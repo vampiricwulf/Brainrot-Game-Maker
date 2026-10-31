@@ -298,23 +298,32 @@ export interface Template {
   hint: string;
   /** The new round (an RPG template also adds its world to the game). */
   make: (game: Game) => Round;
+  /** Offered on its mode's card on the editor's first screen too ("Start from: …"; ＋ Add round has them all). */
+  first?: true;
 }
 
 export const TEMPLATES: Template[] = [
   { mode: 'board', label: 'Classic board, 6 × 5', hint: '$200 to $1,000', make: () => newRound('Jeopardy!', 6) },
   { mode: 'board', label: 'Double board, 6 × 5', hint: '$400 to $2,000', make: () => newRound('Double Jeopardy!', 6, [400, 800, 1200, 1600, 2000]) },
-  { mode: 'board', label: 'Quick board, 4 × 3', hint: 'A short round: $100 to $300', make: () => newRound('Quick round', 4, [100, 200, 300]) },
-  { mode: 'rpg', label: 'Mini quest', hint: 'A village shop, gold to find and a boss to fight: everything an adventure needs, ready to play', make: (g) => miniQuestRound(g) },
-  { mode: 'rpg', label: '3 × 3 dungeon', hint: 'Nine rooms, a treasure chest and a spider', make: (g) => dungeonRound(g) },
+  { mode: 'board', label: 'Quick board, 4 × 3', hint: 'A short round: $100 to $300', make: () => newRound('Quick round', 4, [100, 200, 300]), first: true },
+  { mode: 'rpg', label: 'Mini quest', hint: 'A village shop, gold to find and a boss to fight: everything an adventure needs, ready to play', make: (g) => miniQuestRound(g), first: true },
+  { mode: 'rpg', label: '3 × 3 dungeon', hint: 'Nine rooms, a treasure chest and a spider', make: (g) => dungeonRound(g), first: true },
   {
     mode: 'boardgame',
     label: '20-space loop',
     hint: 'Laps round the board, with “go back 3”, “skip a turn” and “roll again” spaces (passing Start: +200, and +2 gold if the game has gold)',
     make: (g) => loop20Round('Board game', g),
+    first: true,
   },
-  { mode: 'boardgame', label: 'Race to the finish', hint: 'A path from Start to Finish: first one there wins', make: () => raceRound() },
-  { mode: 'slides', label: 'Welcome and rules', hint: 'Two slides to open the show: a welcome, then how it plays', make: () => introRound() },
+  { mode: 'boardgame', label: 'Race to the finish', hint: 'A path from Start to Finish: first one there wins', make: () => raceRound(), first: true },
+  { mode: 'slides', label: 'Welcome and rules', hint: 'Two slides to open the show: a welcome, then how it plays', make: () => introRound(), first: true },
 ];
+
+/**
+ * The templates on a mode's card on the first screen: at most two, so it isn't a wall of buttons (the classic board is
+ * the board card itself).
+ */
+export const firstTemplates = (mode: RoundMode): Template[] => TEMPLATES.filter((t) => t.mode === mode && t.first).slice(0, 2);
 
 /** An introduction: a welcome slide, then the rules (to change to the show's own). */
 function introRound(welcome = 'Welcome to the show!'): Round {

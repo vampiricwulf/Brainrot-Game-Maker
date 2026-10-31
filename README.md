@@ -37,8 +37,10 @@ Old Jeopardy Builder games (`.jbr` packs and exported HTML files) still open.
    clue.
 3. Press **▶ Play**, then add the players (and set the game rules) on the pre-game screen.
 
-New here? **Try a sample game** on the first screen, or start from a template in **＋ Add round**. **❔ Help**, at the
-top right, has the keys, the hosting guide and 💡 Show all tips again. **📥 Import clues…**
+New here? **Try a sample game** on the first screen, or start from a template: each kind of round's card there offers
+a couple ("Start from: Mini quest · 3 × 3 dungeon"), and **＋ Add round** has them all, each saying what you get. Sent
+a game file? The first screen's **📂 Open a game…** (or drop it on the page) opens it, and the last games you had open
+are a click away beside it. **❔ Help**, at the top right, has the keys, the hosting guide and 💡 Show all tips again. **📥 Import clues…**
 on a board takes a sheet pasted from Google Sheets or Excel (or a CSV or TSV file chosen or dropped on it), and **Find**
 (`Ctrl+F`) searches the whole game.
 

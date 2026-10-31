@@ -27,7 +27,11 @@ try {
   await page.getByRole('button', { name: 'Open…' }).waitFor();
   assert((await roundNames()).length === 0, 'a new game has no rounds');
   assert(await page.locator('.first-round').isVisible(), 'the editor opens on "Add your first round"');
-  assert(await page.getByRole('button', { name: '▶ Play' }).isDisabled(), 'Play waits for a round');
+  // ▶ Play isn't greyed with no rounds: a click says to add one, the keys on ✨ Try a sample game.
+  await page.getByRole('button', { name: '▶ Play' }).click();
+  await page.locator('.toast', { hasText: 'Add a round first' }).waitFor();
+  await page.waitForFunction(() => !!document.activeElement?.matches('.first-round .sample'));
+  assert(await page.locator('.first-round').isVisible(), '▶ Play with no rounds says “Add a round first”, the keys on ✨ Try a sample game');
   assert((await page.locator('.first-round .mode').count()) === 5, 'every mode can be the first round');
   await page.locator('.first-round').getByRole('button', { name: /Jeopardy board/ }).click();
   // (Its first tile is played below as a plain clue: no Daily Double may land on it at random when the game starts.)

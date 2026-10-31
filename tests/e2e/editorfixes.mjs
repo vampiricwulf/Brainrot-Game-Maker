@@ -53,6 +53,27 @@ try {
   const cards = await page.locator('.first-round .mode').evaluateAll((els) => els.map((e) => Math.round(e.getBoundingClientRect().top)));
   assert(cards.length === 5 && cards[0] === cards[1] && cards[1] === cards[2] && cards[3] === cards[4] && cards[2] < cards[3], `the five mode cards sit three, then two (${cards})`);
   assert((await page.locator('main').count()) === 1, 'one main landmark');
+  // A card a mode, each with at most two templates in it to start from (＋ Add round has them all).
+  const starts = await page.locator('.first-round .card').evaluateAll((cs) => cs.map((c) => [...c.querySelectorAll('.from button')].map((b) => b.textContent.trim())));
+  assert(
+    JSON.stringify(starts) === JSON.stringify([['Quick board, 4 × 3'], [], ['Mini quest', '3 × 3 dungeon'], ['20-space loop', 'Race to the finish'], ['Welcome and rules']]),
+    `each mode's card has at most two templates in it (${JSON.stringify(starts)})`,
+  );
+  // The arrow keys go from card to card: ← / → the one before or after, ↑ / ↓ the row above or below.
+  const onCard = () => page.evaluate(() => (document.activeElement?.matches('.first-round .sample') ? '✨' : document.activeElement?.matches('.first-round .mode') ? document.activeElement.querySelector('b')?.textContent : '?'));
+  await page.locator('.first-round .sample').focus();
+  const went = [];
+  for (const key of ['ArrowDown', 'ArrowRight', 'ArrowDown', 'ArrowLeft', 'ArrowUp', 'ArrowUp']) {
+    await page.keyboard.press(key);
+    went.push(await onCard());
+  }
+  assert(went.join(' › ') === 'Final Jeopardy › RPG › Slides › Board game › Jeopardy board › ✨', `the arrow keys go from card to card (${went.join(' › ')})`);
+  // A template there adds its round, as ＋ Add round's does.
+  await page.locator('.first-round .card', { hasText: 'RPG' }).getByRole('button', { name: '3 × 3 dungeon' }).click();
+  await page.locator('nav > button.round-tab').first().waitFor();
+  assert((await page.locator('.editor > header').getByRole('button', { name: 'Undo (Ctrl+Z)' }).getAttribute('title')).startsWith('Undo: Added round'), 'a card’s template adds its round, one step');
+  await page.keyboard.press('Control+z');
+  await page.locator('.first-round').waitFor();
   // A game with no rounds isn't exported: the file couldn't be played (and has no ＋ Add round).
   await clickExportHtml(page);
   await page.locator('.toast', { hasText: 'Add a round first' }).waitFor();

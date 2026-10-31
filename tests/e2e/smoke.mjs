@@ -1558,10 +1558,10 @@ const packPath = await dl.path();
 // Just saved, so New asks nothing; the game it replaces can be reopened.
 await page.getByRole('button', { name: 'New' }).click();
 await page.getByRole('button', { name: '↶ Reopen previous game' }).waitFor();
-assert(
-  (await page.locator('nav > button.round-tab').count()) === 0 && (await page.getByRole('button', { name: '▶ Play' }).isDisabled()),
-  'a new game starts with no rounds, and Play waits for one',
-);
+assert((await page.locator('nav > button.round-tab').count()) === 0 && (await page.locator('.first-round').isVisible()), 'a new game starts with no rounds, on the first screen');
+// Its line for opening a game lists the one just replaced, under Recent.
+await page.locator('.first-round .open-line').getByRole('button', { name: / · \d+ rounds? · / }).waitFor();
+assert(true, 'the first screen’s Recent games list the game New replaced (title · rounds · when)');
 // The "Add your first round" screen, then a Final from the nav.
 await page.locator('.first-round').getByRole('button', { name: /Jeopardy board/ }).click();
 await page.getByRole('button', { name: '＋ Add round' }).click();

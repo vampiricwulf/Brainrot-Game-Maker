@@ -26,7 +26,7 @@
     type Round,
     type RoundMode,
   } from '../lib/model';
-  import { forgetRecent, hasWork, keepRecent, listRecent, readRecent, type RecentEntry, type RecentGame, type ReplaceChoice } from '../lib/recent';
+  import { forgetRecent, hasWork, keepRecent, keptWhen, listRecent, readRecent, type RecentEntry, type RecentGame, type ReplaceChoice } from '../lib/recent';
   import { newSession } from '../lib/session';
   import ReplaceDialog from './ReplaceDialog.svelte';
   import NameDialog from './NameDialog.svelte';
@@ -90,7 +90,9 @@
   import RoundImport from './RoundImport.svelte';
   import { clipboard } from '../lib/clipboard.svelte';
   import { bundleName, sameContent } from '../lib/roundcopy';
-  import { addRoundItems, addSample, copyRoundOf, pasteRound, pickOtherGame } from './roundtools';
+  import { addRoundItems, addSample, addTemplate, copyRoundOf, pasteRound, pickOtherGame } from './roundtools';
+  import { firstTemplates } from '../lib/samples';
+  import { cardToward, isArrow } from '../lib/gridkeys';
   import { HOSTING_GUIDE, openSite } from '../lib/sitelinks';
   import { showTipsAgain } from '../lib/tips';
   import { oneShot } from '../lib/oneshot';
@@ -127,6 +129,13 @@
   let tab = $state<Tab>(untrack(() => (NAMED_TABS.includes(startRound) ? (startRound as Tab) : Math.max(0, app.game.rounds.findIndex((r) => r.id === startRound)))));
   /** ▶ Play, saying the tab it was pressed on. */
   const play = () => onplay(typeof tab === 'number' ? game.rounds[tab]?.id : tab);
+  /** The header's ▶ Play: with no rounds yet it says to add one, the keys on ✨ Try a sample game (it isn't greyed). */
+  function playClicked(): void {
+    if (game.rounds.length) return play();
+    toast('Add a round first: ✨ Try a sample game, or pick a kind of round');
+    tab = 0;
+    void tick().then(() => document.querySelector<HTMLElement>('.first-round .sample')?.focus());
+  }
   const game = $derived(app.game);
   /**
    * 📊 Stats & Items is in use: an RPG or board game round plays with it, or it has anything in it. Until then the
@@ -291,6 +300,16 @@
   function showSample(): void {
     tab = addSample(game);
     focusRoundTab(game.rounds[tab]?.id);
+  }
+
+  /** The first screen's cards (✨ the sample, then a card a mode): the arrow keys go from one to another. */
+  function cardKey(e: KeyboardEvent): void {
+    if (e.ctrlKey || e.metaKey || e.altKey || e.shiftKey || !isArrow(e.key)) return;
+    const cards = [...document.querySelectorAll<HTMLElement>('.first-round .sample, .first-round .mode')];
+    const to = cardToward(cards.map((c) => c.getBoundingClientRect()), cards.indexOf(e.currentTarget as HTMLElement), e.key);
+    if (to < 0) return;
+    e.preventDefault();
+    cards[to].focus();
   }
 
   /** Import rounds…: the other game, while its rounds are picked. */
@@ -587,6 +606,7 @@
     if (!kept) {
       previous = null;
       await forgetRecent(entry.key);
+      recentSeq++;
       return void tell(`“${entry.title}” is no longer kept ${keptHere()}.`);
     }
     if (!(await mayReplace(`Reopen “${entry.title}”?`, 'Reopen'))) return;
@@ -597,6 +617,7 @@
     const history = JSON.stringify(g) === plain || sameContent(g, JSON.parse(plain)) ? kept.history : undefined;
     if (!(await replaceGame(g, { kind: 'reopened', label: `Reopened “${g.title}”` }, history, entry.key))) return;
     await forgetRecent(entry.key);
+    recentSeq++;
     await loadGameMedia(g);
     toast(`Reopened “${g.title}”`);
   }
@@ -609,6 +630,16 @@
 
   /** The recent games Open… found, for OpenSaves' way back to them. */
   let recentKept = $state<RecentEntry[]>([]);
+
+  /** The first screen's Recent games: the newest three (Open… lists them all), read again as games come and go. */
+  let recentFirst = $state<RecentEntry[]>([]);
+  let recentSeq = $state(0);
+  $effect(() => {
+    if (game.rounds.length) return;
+    void recentKept;
+    void recentSeq;
+    void listRecent().then((l) => (recentFirst = l.slice(0, 3)));
+  });
 
   async function open(): Promise<void> {
     const recent = (recentKept = await listRecent());
@@ -1005,7 +1036,7 @@
       title="⌨ Keyboard shortcuts (?), 🎮 Keys during the game, 💡 Show all tips again, 📖 How to host (guide), ℹ About"><span aria-hidden="true">❔</span><span class="word">Help</span></button
     >
     <button class="ghost more" onclick={moreMenu} aria-haspopup="menu" aria-label="More: Export as a web page, Export JSON, Settings, Keyboard shortcuts, How to host (guide), About" title={'⬇ Export as a web page, { } Export JSON, ⚙ Settings, ⌨ Keyboard shortcuts, 📖 How to host (guide), ℹ About'}>⋯</button>
-    <button class="primary play" use:oneShot onclick={play} disabled={!game.rounds.length || !!opening} title={game.rounds.length ? '' : 'Add a round first'}>▶ Play</button>
+    <button class="primary play" use:oneShot onclick={playClicked} disabled={!!opening} title={game.rounds.length ? '' : 'Add a round first'}>▶ Play</button>
   </header>
   {#if movedNotice}
     <div class="data-notice" role="status">
@@ -1308,20 +1339,49 @@
                 <p class="small warn">⚠ This browser isn't keeping your game (its storage is blocked or full): <b>💾 Save</b> it to a file before you close the tab.</p>
               {/if}
             {/if}
-            <button class="sample" use:oneShot onclick={showSample}>
+            <button class="sample" use:oneShot onclick={showSample} onkeydown={cardKey}>
               <span class="icon" aria-hidden="true">✨</span>
               <b>Try a sample game</b>
               <span class="muted small">An introduction, a small board, an adventure, a board game and a Final, all filled in and ready to play</span>
             </button>
-            <div class="modes">
+            <!-- A card a mode: a blank round, and at most two templates to start from (＋ Add round has them all). -->
+            <div class="modes" role="group" aria-label="Kinds of round (the arrow keys move between them)">
               {#each Object.entries(ROUND_MODES) as [mode, m] (mode)}
-                <button class="mode" use:oneShot onclick={() => addRound(mode as RoundMode)}>
-                  <span class="icon" aria-hidden="true">{m.icon}</span>
-                  <b>{m.label}</b>
-                  <span class="muted small">{m.hint}</span>
-                  {#if mode === 'board'}<span class="muted small">Clues in a spreadsheet already? <b>📥 Import clues…</b> on the board brings them in.</span>{/if}
-                </button>
+                {@const starts = firstTemplates(mode as RoundMode)}
+                <div class="card">
+                  <button class="mode" use:oneShot onclick={() => addRound(mode as RoundMode)} onkeydown={cardKey}>
+                    <span class="icon" aria-hidden="true">{m.icon}</span>
+                    <b>{m.label}</b>
+                    <span class="muted small">{m.hint}</span>
+                    {#if mode === 'board'}<span class="muted small">Clues in a spreadsheet already? <b>📥 Import clues…</b> on the board brings them in.</span>{/if}
+                  </button>
+                  {#if starts.length}
+                    <div class="from muted small">
+                      Start from:
+                      {#each starts as t (t.label)}
+                        <button class="small" use:oneShot title={t.hint} onclick={() => showNew(addTemplate(game, t))}>{t.label}</button>
+                      {/each}
+                    </div>
+                  {/if}
+                </div>
               {/each}
+            </div>
+            <!-- Someone sent a game file, or back for one played here before. -->
+            <div class="open-line muted small">
+              <span>Have a game file?</span>
+              <button class="small" onclick={open} disabled={!!opening}><span aria-hidden="true">📂</span> Open a game…</button>
+              <span>or drop it here.</span>
+              {#if recentFirst.length}
+                <span class="recent-head">Recent:</span>
+                {#each recentFirst as r (r.key)}
+                  <button
+                    class="small ghost"
+                    use:oneShot
+                    onclick={() => reopen(r)}
+                    title="Reopen it, with its undo history (kept {keptHere()})">{r.title} · {r.rounds} round{r.rounds === 1 ? '' : 's'} · {keptWhen(r.closedAt)}</button
+                  >
+                {/each}
+              {/if}
             </div>
           </div>
         {/if}
@@ -1371,10 +1431,10 @@
     grid-template-columns: repeat(6, minmax(0, 1fr));
     gap: 12px;
   }
-  .first-round .modes > .mode {
+  .first-round .modes > .card {
     grid-column: span 2;
   }
-  .first-round .modes > .mode:nth-child(n + 4) {
+  .first-round .modes > .card:nth-child(n + 4) {
     grid-column: span 3;
   }
   .first-round .mode,
@@ -1386,6 +1446,44 @@
     padding: 16px;
     text-align: left;
     white-space: normal;
+  }
+  /* A mode's card: its button fills it, and its templates sit in it, at the foot. */
+  .first-round .card {
+    display: flex;
+    flex-direction: column;
+    background: var(--panel-2);
+    border: 1px solid var(--control-border);
+    border-radius: 6px;
+  }
+  .first-round .card > .mode {
+    flex: 1;
+    border: none;
+    border-radius: 5px;
+    background: transparent;
+  }
+  .first-round .card > .mode:hover {
+    background: var(--hover);
+  }
+  .first-round .from {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px;
+    padding: 0 16px 12px;
+  }
+  .first-round .open-line {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px;
+  }
+  .first-round .recent-head {
+    margin-left: 10px;
+  }
+  /* (Their words in full color: only the words around them are muted.) */
+  .first-round .from button,
+  .first-round .open-line button {
+    color: var(--text);
   }
   .first-round .sample {
     border-color: var(--accent);
@@ -1579,8 +1677,8 @@
     .first-round .modes {
       grid-template-columns: 1fr;
     }
-    .first-round .modes > .mode,
-    .first-round .modes > .mode:nth-child(n + 4) {
+    .first-round .modes > .card,
+    .first-round .modes > .card:nth-child(n + 4) {
       grid-column: auto;
     }
     .body {

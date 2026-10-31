@@ -33,6 +33,16 @@ export interface RecentEntry {
   sizes?: Record<string, number>;
 }
 
+/**
+ * When a game was kept, in short, for the first screen's Recent line: the time if it was today ("3:05 PM"), else the day
+ * ("Oct 29").
+ */
+export function keptWhen(ms: number, now = Date.now(), locale?: string): string {
+  const d = new Date(ms);
+  if (d.toDateString() === new Date(now).toDateString()) return d.toLocaleTimeString(locale, { hour: 'numeric', minute: '2-digit' });
+  return d.toLocaleDateString(locale, { month: 'short', day: 'numeric' });
+}
+
 /** What to do with a game with unsaved changes that another game is about to replace. */
 export type ReplaceChoice = 'save' | 'discard' | 'cancel';
 
