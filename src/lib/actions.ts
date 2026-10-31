@@ -103,6 +103,15 @@ export function cardTargets(ctx: RunContext, who: CardWho | undefined): string[]
   }
 }
 
+/**
+ * A wheel slice's or a die face's buttons: not the board-game moves (Send to a space, ±N spaces, Skip next turn, Roll
+ * again), which only a space's own buttons can run. The editor never offers them there; a game file edited by hand may
+ * have them, and their button would do nothing (and, in one window, name a secret space).
+ */
+export function outcomeActions(list: readonly Action[] | undefined): Action[] {
+  return (list ?? []).filter((a) => a.do !== 'goto' && a.do !== 'steps' && a.do !== 'skip' && a.do !== 'again');
+}
+
 /** Where an action's button is: a board space's landing or passing list, or an item's Use (the words for who it's for). */
 export type ActionOn = 'land' | 'pass' | 'use';
 

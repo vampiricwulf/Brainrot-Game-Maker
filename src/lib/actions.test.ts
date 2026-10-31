@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { cardTargets, describeAction, runAction, targets, typedSteps, type CardOffer, type RunContext } from './actions';
+import { cardTargets, describeAction, outcomeActions, runAction, targets, typedSteps, type CardOffer, type RunContext } from './actions';
 import { ensureBoard, movePlayer, newBoardGameRound, nextTurn } from './boardgame';
 import { newLive } from './live';
 import { newGame, newImageEl, newShapeEl, PLAYER_WHEEL, textSlide, type Action, type CardWho } from './model';
@@ -214,6 +214,19 @@ describe('button labels', () => {
     const ellipse = newShapeEl('ellipse');
     road.slide.elements.push(ellipse);
     expect(describeAction(game, { id: '4', do: 'reveal', object: ellipse.id })).toBe('Reveal Ellipse (Road)');
+  });
+
+  it('a wheel slice or a die face has no buttons for the board-game moves only a space can run (a game file edited by hand)', () => {
+    const list: Action[] = [
+      { id: '1', do: 'score', amount: 100, who: 'ask' },
+      { id: '2', do: 'goto', space: 'lair', who: 'ask' },
+      { id: '3', do: 'steps', steps: 2 },
+      { id: '4', do: 'skip' },
+      { id: '5', do: 'again' },
+      { id: '6', do: 'timer', seconds: 30 },
+    ];
+    expect(outcomeActions(list).map((a) => a.id)).toEqual(['1', '6']);
+    expect(outcomeActions(undefined)).toEqual([]);
   });
 });
 

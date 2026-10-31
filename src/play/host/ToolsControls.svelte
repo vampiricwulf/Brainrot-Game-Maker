@@ -19,7 +19,7 @@
   import ShopControls from './ShopControls.svelte';
   import CardOffers from './CardOffers.svelte';
   import { newId, PLAYER_WHEEL, type Action } from '../../lib/model';
-  import { describeAction, needsPlayers, runAction } from '../../lib/actions';
+  import { describeAction, needsPlayers, outcomeActions, runAction } from '../../lib/actions';
   import { teamsOn } from '../../lib/buzz';
   import { buzzerOn } from '../../lib/remote.svelte';
   import { toast } from '../../lib/app.svelte';
@@ -387,10 +387,10 @@
         <button use:oneShot onclick={() => onclose()} title={closeTitle}>{VERBS.closeToolBox.label} <kbd aria-hidden="true">{VERBS.closeToolBox.key}</kbd></button>
       {/if}
     </div>
-    {#if outcome?.actions?.length && !busy && (o.kind === 'wheel' || o.kind === 'dice')}
+    {#if outcomeActions(outcome?.actions).length && !busy && (o.kind === 'wheel' || o.kind === 'dice')}
       <div class="row">
         <span class="muted small">{outcomeName}:</span>
-        {#each outcome.actions as a (a.id)}<button class="small" onclick={() => runOutcome(a, `${o.name} → ${outcomeName}`)}>{describeAction(game, a, undefined, teams)}</button>{/each}
+        {#each outcomeActions(outcome?.actions) as a (a.id)}<button class="small" onclick={() => runOutcome(a, `${o.name} → ${outcomeName}`)}>{describeAction(game, a, undefined, teams)}</button>{/each}
       </div>
     {/if}
     {#if !busy}
@@ -399,7 +399,7 @@
         {@const diceName = o.kind === 'dice' ? o.name : ''}
         <div class="row">
           <span class="muted small">Die {f.i + 1} → {label}:</span>
-          {#each f.face.actions ?? [] as a (a.id)}<button class="small" onclick={() => runOutcome(a, `${diceName} → ${label}`)}>{describeAction(game, a, undefined, teams)}</button>{/each}
+          {#each outcomeActions(f.face.actions) as a (a.id)}<button class="small" onclick={() => runOutcome(a, `${diceName} → ${label}`)}>{describeAction(game, a, undefined, teams)}</button>{/each}
           {#if f.face.timerSeconds}<button class="small" onclick={() => startTimer(app.live, f.face.timerSeconds!)}>⏱ Start {f.face.timerSeconds}s</button>{/if}
         </div>
         {@const card = cards.get(`${actionKey}-die${f.i}`)}
@@ -409,10 +409,10 @@
       {/each}
       {#each extraResults as r (r.w.key)}
         {@const label = sliceLabel(r.seg, r.w.result ?? 0)}
-        {#if r.seg.actions?.length || r.seg.scoreAction || r.seg.timerSeconds}
+        {#if outcomeActions(r.seg.actions).length || r.seg.scoreAction || r.seg.timerSeconds}
           <div class="row">
             <span class="muted small">{r.w.name} → {label}:</span>
-            {#each r.seg.actions ?? [] as a (a.id)}<button class="small" onclick={() => runOutcome(a, `${r.w.name} → ${label}`)}>{describeAction(game, a, undefined, teams)}</button>{/each}
+            {#each outcomeActions(r.seg.actions) as a (a.id)}<button class="small" onclick={() => runOutcome(a, `${r.w.name} → ${label}`)}>{describeAction(game, a, undefined, teams)}</button>{/each}
             {#if r.seg.timerSeconds}<button class="small" onclick={() => startTimer(app.live, r.seg.timerSeconds!)}>⏱ Start {r.seg.timerSeconds}s</button>{/if}
           </div>
           {@const card = cards.get(`${actionKey}-${r.w.key}`)}
