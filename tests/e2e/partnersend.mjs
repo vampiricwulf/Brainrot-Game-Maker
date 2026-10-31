@@ -17,7 +17,7 @@ import { chromium } from 'playwright-core';
 import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { confirmStrip, mainButton, mainLabel, openGameFile, packGame, png, recordSeen, roomStored, shownOf, situationHasMain, startBuzzer, startRoomOn, stepButton, stored } from './helpers.mjs';
+import { boxHasAction, confirmStrip, flowIs, mainButton, openGameFile, packGame, png, recordSeen, roomStored, shownOf, startBuzzer, startRoomOn, stepButton, stored } from './helpers.mjs';
 
 const file = resolve(process.env.APP_FILE || 'dist/index.html');
 if (!existsSync(file)) throw new Error('Run `npm run build` first');
@@ -334,7 +334,7 @@ try {
   assert((await says(ann, '🤝 You two play this one!')) && (await says(dan, '🤝 Ann + Bob')), 'paired: Ann and Bob “🤝 You two play this one!”, the others “🤝 Ann + Bob”');
   await nothingSent('paired');
   await offStream(aud, 'the audience window', 'PARTNER UP!');
-  // ▶ Show question, then the 🤝 box's 📤 Send and start within a second of it: nothing goes, and it says why. (Both
+  // Show question ▶ (the blue button), then the 🤝 box's 📤 Send and start within a second of it: nothing goes, and it says why. (Both
   // clicks sent from the page, so a slow machine can't put a second between them.)
   await host.evaluate(async () => {
     document.querySelector('.panel [data-next]').click();
@@ -342,9 +342,9 @@ try {
     document.querySelector('.panel [data-partner-foot] [data-step]').click();
   });
   await host.locator('.stage-box [data-partner-badge]').waitFor();
-  assert((await mainLabel(host)) === '📤 Send and start', 'the question up: the main button is 📤 Send and start');
+  assert(await flowIs(host, '👁 Reveal answer'), 'the question up: the blue button is 👁 Reveal answer');
   await host.locator('.toast', { hasText: 'The question just went up: click again to send the cards' }).waitFor();
-  assert((await situationHasMain(host, panel)) === '', 'a click on the box’s own 📤 Send and start (in sight at its foot) within a second of the question sends nothing, and says so');
+  assert((await boxHasAction(panel, '📤 Send and start')) === '', 'a click on the box’s own 📤 Send and start (in sight at its foot, the only one) within a second of the question sends nothing, and says so');
   for (const [p, name] of [[bob, 'Bob, the describer'], [dan, 'Dan']]) assert(await says(p, '🤝 Bob describes → Ann guesses'), `${name}: “🤝 Bob describes → Ann guesses”`);
   assert((await says(ann, '🎯 You’re guessing!')) && (await small(ann)) === 'Bob is describing: say it out loud', 'Ann, the guesser: “🎯 You’re guessing!” · “Bob is describing: say it out loud”');
   assert((await chip('Card 2 to Ann').getAttribute('aria-pressed')) === 'true', 'Card 2 starts with Ann (the guesser)');
@@ -373,7 +373,7 @@ try {
   let n = states.length;
   await resume();
   assert(await until(() => states.length > n), 'reloaded: the host is back in the room');
-  assert((await chip('Card 2 to Cat').getAttribute('aria-pressed')) === 'true' && (await mainLabel(host)) === '📤 Send and start', 'a reload in the Distribute step: the list as it was (card 2 to Cat), nothing sent');
+  assert((await chip('Card 2 to Cat').getAttribute('aria-pressed')) === 'true' && (await stepButton(panel, '📤 Send and start').count()) === 1, 'a reload in the Distribute step: the list as it was (card 2 to Cat), nothing sent');
   await nothingSent('reloaded in the Distribute step');
   [aud] = await Promise.all([host.waitForEvent('popup'), host.keyboard.press('a')]);
   watch(aud, 'audience');
@@ -605,22 +605,22 @@ try {
   assert((await left2.innerText()) === '🖼 1 GIF won’t reach the phones (too big for the buzzer server)', 'the GIF over 3 MB, counted: “🖼 1 GIF won’t reach the phones (too big for the buzzer server)”');
   assert(await row(2).getByRole('button', { name: '📋 Copy picture' }).isVisible(), 'and its row offers 📋 Copy picture');
   const upBefore = uploads.length;
-  // The status line's ⏱ Start (as T) with cards still to send: the clock only. The main button and the box's foot read
-  // 📤 Send the cards (clock running), the status line that Enter sends them, and nothing goes until then.
+  // The status line's ⏱ Start (as T) with cards still to send: the clock only. The box's foot reads 📤 Send the cards
+  // (clock running), the status line that Enter sends them, and nothing goes until then.
   await host.locator('.panel .status').getByRole('button', { name: /^Start \d+s$/ }).click();
   await host.locator('.stage-box .timer').waitFor();
   await sleep(300);
   assert(
-    (await mainLabel(host)) === '📤 Send the cards (clock running)' &&
-      (await situationHasMain(host, panel)) === '' &&
+    (await flowIs(host, '👁 Reveal answer')) &&
+      (await boxHasAction(panel, '📤 Send the cards (clock running)')) === '' &&
       /Clock running: Enter sends the \d+ cards/.test(await textOf(host.locator('.panel .status'))) &&
       !sends().length &&
       uploads.length === upBefore,
-    `the clock started with cards to send: 📤 Send the cards (clock running), in the box too, and nothing sent (“${await textOf(host.locator('.panel .status'))}”)`,
+    `the clock started with cards to send: 📤 Send the cards (clock running) in the box only, and nothing sent (“${await textOf(host.locator('.panel .status'))}”)`,
   );
   // (A click within a second of the question going up sends nothing.)
   await sleep(1100);
-  await mainButton(host).click();
+  await stepButton(panel, '📤 Send the cards (clock running)').click();
   // (About 11 MB going up, one file at a time.)
   assert(await until(() => answers.some((a) => a.status === 409 && a.read), 120000), 'sent: the room turns an upload down once it holds 10 MB');
   const turned = answers.find((a) => a.status === 409);

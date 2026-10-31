@@ -33,7 +33,6 @@ describe('the host screen’s words for each step', () => {
       spinAnyway: '🎡 Spin anyway [W]',
       pickerChange: 'change ▾',
       partnerChange: 'change partner ▾',
-      partnerShow: '▶ Show question [⏎]',
       handOut: '📤 Distribute',
       sendAndStart: '📤 Send and start [⏎]',
       sendCards: '📤 Send the cards (clock running) [⏎]',
@@ -52,6 +51,9 @@ describe('the host screen’s words for each step', () => {
     expect([VERBS.right('Ann').label, VERBS.wrong('Ann').label, VERBS.wrong('Ann').title]).toEqual(['✔ Right', '✘ Wrong', 'X: Ann is wrong']);
     expect([VERBS.move(3).label, VERBS.move(-2).label, VERBS.stepTo('Bonus').label]).toEqual(['▶ Move 3', '◀ Back 2', '→ Bonus']);
     expect(VERBS.goToRound('Double Jeopardy!').label).toBe('Go to Double Jeopardy! ▶');
+    // (A box's button says only its own key: N is the blue button's.)
+    expect(all().filter(([, v]) => /\bor N\b/.test(v.title ?? '')).map(([name]) => name)).toEqual([]);
+    expect([VERBS.partnerSpin.title, VERBS.sendAndStart.title]).toEqual(['W: the wheel spins over the other players', 'Enter: the cards not sent yet go to their phones, and the countdown starts']);
   });
 
   it('gives each step its own words, and a key cap a few signs long', () => {

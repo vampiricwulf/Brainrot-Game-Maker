@@ -14,7 +14,7 @@ import { chromium } from 'playwright-core';
 import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { openGameFile, openRules, recordSeen, shownOf, situationHasMain, startBuzzer, startRoomOn, stored } from './helpers.mjs';
+import { flowIs, openGameFile, openRules, recordSeen, shownOf, startBuzzer, startRoomOn, stored } from './helpers.mjs';
 
 const file = resolve(process.env.APP_FILE || 'dist/index.html');
 if (!existsSync(file)) throw new Error('Run `npm run build` first');
@@ -204,8 +204,8 @@ try {
     await host.locator(`.stage-box .tile[data-clue="${id}"]`).click();
     await host.locator('.stage-box [data-partner-up]').waitFor();
     await host.keyboard.press('2');
-    await panel.locator('[data-partner-foot]').waitFor();
-    assert((await situationHasMain(host, panel)) === '', 'paired: ▶ Show question is in the 🤝 box’s foot too, in sight');
+    await panel.locator('[data-partner-next]', { hasText: 'Pair set' }).waitFor();
+    assert((await flowIs(host, 'Show question ▶')) && (await panel.getByRole('button', { name: /Show question/ }).count()) === 0, 'paired: Show question ▶ is the blue button, not copied in the 🤝 box');
     await host.keyboard.press('Enter');
     await host.locator('.stage-box [data-partner-badge]').waitFor();
     // (A second Enter at once is held back: the double-Enter guard.)

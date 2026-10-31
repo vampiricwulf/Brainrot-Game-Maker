@@ -405,8 +405,9 @@ The mode isn't saved with the game: it's dual while the audience window is open.
     the Final's 🤫 cards, a Daily Double's wager, a ✍ clue's answers), the status line carries one ⚠ Viewers see this
     chip, always in view, saying in its tooltip (and to screen readers) what they can read there; the line keeps one
     line, a clue's or the Final's words cut short (…) on a narrow window, the whole of them in their tooltip. In a
-    partner clue's question, 👁 Reveal answer and ▦ Done ▶ board sit quietly at the top of the main button's cell, apart
-    from it, in view while the 🤝 box scrolls (on a laptop it fills the action part). Windows opened mid-game (?,
+    partner clue's question the blue button is 👁 Reveal answer, then ▦ Done ▶ board, in view while the 🤝 box scrolls
+    (on a laptop it fills the action part); the clue row's quiet ▦ Done (a skip) and 🙈 Hide may scroll out of sight
+    there (`Esc`, `R` and the stage's menu do them). Windows opened mid-game (?,
     📜 Log, 👥 Players, ⚖ Rules, 🔊 Sound, the RPG's ⤢ Full map, ✎ Edit board's ⚙ Buttons…) open over the host panel,
     never the stage (the full map's screen card beside the map where the panel is wide enough); the RPG's ✎
     Edit screen is too big for it and says viewers see it (📺 Audience edits off stream). The stage keeps one size
@@ -425,18 +426,23 @@ The mode isn't saved with the game: it's dual while the audience window is open.
   Exit; ❔ Help as its sign only up to 1040 px wide, and under about 940 px the first eight too, so it stays one line). On a short window the round's own
   box keeps a few rows in sight (the panel scrolls), a roll's box above it too. The main button is blue only for the
   show's next step, in FLOW's words (`src/play/host/verbs.ts`: the round's intro steps, Next slide ▶, 👁 Reveal answer,
-  ▦ Done ▶ board, Next round ▶…), `N` its key (`Enter` too where it's Next: an intro, a slides round); a played-out
-  board's Next round ▶ goes on only from a click. ＋ Award is green, never blue; 🔔 Open the buzzers (`U`) and a tie's 🎲
-  Roll for it (`O`) are in the buzzers' row. A part that hasn't moved to this yet keeps its own main button (a tool's
-  Spin!, the 🤝 box's steps, the Final, the end). **The check before going on** (`src/play/host/goon.ts`,
+  ▦ Done ▶ board, Next round ▶, a 🤝 partner clue's Show question ▶ on PARTNER UP! and Next ▶ while its wheel is up…),
+  `N` its key (`Enter` too where it's Next: an intro, a slides round, PARTNER UP!); a played-out board's Next round ▶
+  goes on only from a click. ＋ Award is green, never blue; 🔔 Open the buzzers (`U`) and a tie's 🎲 Roll for it (`O`)
+  are in the buzzers' row, and a partner clue's 🎡 Spin for a partner (`W`) and 📤 Send and start (`Enter`) in its 🤝 box.
+  A part that hasn't moved to this yet keeps its own main button (a tool's Spin!, the Final, the end). **The check before going on** (`src/play/host/goon.ts`,
   `GoOnCheck.svelte`): the blue button pressed (a click, `N`, `Enter` where it's Next, a click on the stage, the clue
   row's ▦ Done) with something left opens a card in the panel instead, anchored at its bottom right over the panel's
   buttons (never the stage, the status line or the fixed bar), with a button-free spot over the blue button. Its
   heading is “First:” (a step to take first: phone buzzers never opened, a buzzer tie, ✍ answers still coming in, a
-  tile's 🤫 card not sent) or “Before you go on” (a loss: a player picked or a Daily Double's player with no points, ✍
-  answers not judged at ▦ Done); each item has its quick buttons (＋ Award Ann $200 ▶ board `Enter`, − Deduct
+  tile's 🤫 card not sent; a 🤝 partner clue's who picked it, the partner, who describes or nobody to partner with on
+  PARTNER UP!, all musts with no “anyway”, then at the reveal its cards not handed out or the clock not started, the pair
+  still playing, a steal open) or “Before you go on” (a loss: a player picked or a Daily Double's player with no
+  points, ✍ answers not judged, a partner clue not judged, at ▦ Done); each item has its quick buttons (＋ Award Ann $200 ▶ board `Enter`, − Deduct
   `Shift+Enter`, 🔔 Open the buzzers `U`, 🎲 Roll for it `O`, ⏱ Start the countdown `T`, ✔ Judge all ▶ board, ✍ Judge
-  them, ✘ The rest are wrong, 📤 Send it), then the foot's Not yet (`Esc`) and a quiet “… anyway” (▦ Done anyway: no
+  them, ✘ The rest are wrong, 📤 Send it; a partner clue's 🎡 Spin for a partner `W`, the players by number, Solo, ↩ Put
+  back `Shift+Esc`, 📤 Send and start `Enter` (never within a second of the question), ⏱ Start the clock, 📋 Copy, ✔ Got
+  it ▶ reveal `Enter` / ✘ Missed `Shift+Enter`, who steals it), then the foot's Not yet (`Esc`) and a quiet “… anyway” (▦ Done anyway: no
   points, `N`; 👁 Reveal anyway, `R`: `N` at a reveal only says so). It takes no key or click for 600 ms (`Esc`
   excepted), lighting up what the press would have done; an `Esc` within 600 ms of Not yet does nothing; digits keep
   their meaning (an item done meanwhile stays in its place, ticked, and “✓ Nothing left” then offers the step); `K`,
@@ -486,7 +492,7 @@ The mode isn't saved with the game: it's dual while the audience window is open.
   left out. Moments: a round's intro; the board (its Next round ▶ once played out); a clue (Next slide ▶ / ◀ Slide, 👁
   Reveal answer, 🔔 Open the buzzers, ⏱ the countdown; a buzzer tie's 🎲 Roll for it first); a Daily Double (who found it,
   then Show question ▶, which with the controls hidden brings them back until there's a wager); a 🤝 partner clue (who
-  picked it; the wheel, each partner by their number, ▶ Show question, ⇄ Swap; then the cards' step, ✔ Got it / ✘ Missed
+  picked it; the wheel, each partner by their number, Show question ▶, ⇄ Swap; then the cards' step, ✔ Got it / ✘ Missed
   and the clue's); a wheel, dice, pop-up, the scores or a shop (the spin or roll, ✎ Edit wheel, ＋ Spin another wheel
   too…, the way out); the Final (each step, the reveals' ✔ Right `C` / ✘ Wrong `X`, finishing early); the tiebreaker; a
   tie at the end (❓ Tiebreaker clue, 🎲 Tiebreaker roll-off `O`, 🤝 Declare co-winners, then the end screen's buttons); a
@@ -527,25 +533,33 @@ The mode isn't saved with the game: it's dual while the audience window is open.
    - *Partner clue* (🤝, PARTNER-CLUES-SPEC.md §6): a PARTNER UP! splash with the picker, a wheel of the other players
      (`W`) or the host's choice (`1–9`) for their partner, then the question with who describes and who guesses, the
      📤 list of who gets each 🤫 card (copied to them with 📋), ⏱ Start the clock, and ✔ Got it / ✘ Missed, which
-     scores both in one step with the clue's points (the guesser picks next). The 🤝 box holds each step the main button
-     does, beside the choices it's an alternative to: its first line says what's next ("Next: spin for a partner, or
-     choose one"), **🎡 Spin for a partner** comes first in the partner row, in front of the players to choose from by
-     hand (**↻ Spin again** in its place after; a team's **🎡 Spin for the describer** likewise, in front of its
-     people; greyed in the partner row while the team plays it), PARTNER UP!'s cards fold into one quiet line ("🤫 2
+     scores both in one step with the clue's points (the guesser picks next). The 🤝 box holds each of its actions, once,
+     beside the choices it's an alternative to: its first line says what's next ("Next: 🎡 Spin for a partner, or choose
+     one"; the pair set, "Pair set: Show question ▶ (the blue button, or N) puts the question up"), **🎡 Spin for a
+     partner** (`W`) comes first in the partner row, in front of the players to choose from by hand (**↻ Spin again** in
+     its place after; a team's **🎡 Spin for the describer** likewise, in front of its people; while the team plays it
+     the partner row has none, so one ↻ Spin again shows), PARTNER UP!'s cards fold into one quiet line ("🤫 2
      cards · 📋 you'll copy them": who each goes to, how they reach them and their files open on a click, this computer
      remembering it; it opens by itself, and stays open for the clue, when there's something to see first: a player a
-     card goes to with no phone here, an older buzzer server, files that won't reach the phones), and its foot, in view as the rest scrolls, has ✔ Got it
-     / ✘ Missed, quiet until the clock runs, and at its right end **▶ Show question**, then a 📋 for each card copied by
-     hand and **📤 Send and start** (or ⏱ Start the clock); when that step goes nothing moves into its place. A click
-     there gives the keys back to the main button; the rest of a double-click that redrew the box is dropped, and 📤 Send
-     and start (or ⏱ Start the clock), in the box or on the main button, waits a second after the question, as Enter
-     does. Once the clock runs a verdict is due: ✔ Got it / ✘ Missed are an equal pair, nothing is blue (the main
-     cell's 👁 Reveal answer is quiet), and the first line says "Did they get it? ✔ Got it (Enter) or ✘ Missed
+     card goes to with no phone here, an older buzzer server, files that won't reach the phones), and its foot, in view
+     as the rest scrolls, has ✔ Got it / ✘ Missed, quiet until the clock runs, and while the cards are handed out, at its
+     right end, a 📋 for each card copied by hand and **📤 Send and start** (or ⏱ Start the clock, `Enter`); when that
+     goes nothing moves into its place. The action due now (🎡 Spin for a partner or for the describer, 📤 Send and
+     start or ⏱ Start the clock) wears the ring. The blue button is the show's next step only: **Show question ▶** on
+     PARTNER UP! (`N`, `Enter`; **Next ▶** while the partner wheel is up, greyed while it turns, which puts it away and
+     shows the pair: a click on the landed wheel does the same), then 👁 Reveal answer and ▦ Done ▶ board, asking first
+     with something left (the check above: who picked it, the partner, who describes or nobody to partner with on
+     PARTNER UP!; the cards not handed out, the pair still playing or a steal open at the reveal, where `N` never takes
+     “anyway”; not judged at ▦ Done). PARTNER UP!'s ↩ Put back (keep tile) shows `⇧Esc`. A click on a box's button
+     leaves the keys where they were; the rest of a double-click that redrew the box is dropped, and 📤 Send and start
+     (or ⏱ Start the clock), in the box or in the check, waits a second after the question, as Enter does. Once the
+     clock runs a verdict is due: ✔ Got it / ✘ Missed are an equal pair (neither blue), the blue 👁 Reveal answer asks
+     first, and the first line says "Did they get it? ✔ Got it (Enter) or ✘ Missed
      (Shift+Enter)" ("Time's up: did they get it?" once it runs out). ⏱ Start the clock says what it counts down from
      ("⏱ Start the clock (45 s)"). `T` or the status line's ⏱ Start while the cards are handed out: with no card waiting
      for a phone (copied by hand, or all sent) it goes live as ⏱ Start the clock does, sending nothing, and the first
      Enter after it only says "Clock is running: Enter again for ✔ Got it"; with phone cards still to send it starts
-     the clock only, the main button reads **📤 Send the cards (clock running)** and the status line "Clock running:
+     the clock only, the 🤝 box's foot reads **📤 Send the cards (clock running)** and the status line "Clock running:
      Enter sends the 2 cards", and Enter sends them (a card goes to a phone only by Enter on that step or a 📤 press).
      Under the box the Amount row folds behind **± Other points…** (✔ Got it / ✘ Missed give the points): it opens by
      itself once a player is picked (`1–9`, then Enter awards them as on any clue) or points were given by hand on the
@@ -554,8 +568,9 @@ The mode isn't saved with the game: it's dual while the audience window is open.
      any clue for the tile's value: the buzzers open for them with the two locked out, or the host picks who steals
      (`1–9`), then Enter / Shift+Enter. Each steal is its own undo step, and undoing the miss closes the steal. A click
      on the stage never shows its answer before the pair has had their go: while the cards are handed out, or until the
-     clock runs out or it's judged (and a steal is stolen or missed by everyone), it says what's next instead (`R` and
-     👁 Reveal answer show it any time).
+     clock runs out or it's judged, it opens the check instead, as the blue button would (`R` shows it any time, and in
+     the check `R` or a click on 👁 Reveal anyway); while a steal is open (until it's stolen or missed by everyone) it
+     says how the steal goes on, as Enter does.
    - *✍ Everyone answers* (a standard tile with the box ticked, with phone buzzers): nobody buzzes; every player types
      an answer on their phone (a team: anyone on it) until the answer is shown, or until the host judges theirs (then
      it's locked on their phone; undoing the mark opens it again, and once they change it, redo doesn't bring that mark
@@ -733,7 +748,9 @@ A held key counts once: only the arrows (and the numpad in an RPG round) repeat.
 `Tab`, or as the next row of the list the keys were in): the keys keep their shortcuts. Even then only a plain `Enter`
 or `Space` presses it: `Shift+Enter` is always ✘ Missed or − Deduct, never a press of the button or tile the keys are on
 (✔ Got it, ＋ Award, ▦ Done ▶ board; a tile opens with `Enter` or `Space`, not `Shift+Enter`). `Enter` on the main button in
-a slides round, on a round's title card or its category reveals, does what the button says, as `N`; in the Final's
+a slides round, on a round's title card or its category reveals, does what the button says, as `N`; on a 🤝 partner
+clue's PARTNER UP! `Enter` is the blue button wherever the keys are, then the 🤝 box's 📤 Send and start (or ⏱ Start the
+clock), then ✔ Got it; in the Final's
 steps and on the end screen it says which key (or click) goes on, and on a wheel or dice tile's Spin! / Roll! the key
 that spins or rolls (not with the controls hidden: the hidden panel's button may be out of date). With players
 selected on the board, `Enter` on a tile takes the keys to the Amount box (type the points, then `Enter`, and they're

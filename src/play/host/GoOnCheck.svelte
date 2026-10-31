@@ -176,7 +176,7 @@
           {#each linesOf(item) as line, li (li)}
             <div class="quick" inert={!!item.done}>
               {#if line.who}<span class="who">{line.who}</span>{/if}
-              {#each line.quick as q (q.label)}
+              {#each line.quick as q, qi (qi)}
                 <button
                   class:good={q.tone === 'good'}
                   class:bad={q.tone === 'bad'}

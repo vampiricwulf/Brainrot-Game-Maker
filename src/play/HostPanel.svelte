@@ -101,7 +101,6 @@
     onskipintro,
     onddshow,
     onpartnerspin = () => {},
-    onpartnershow = () => {},
     onpartnerclock = () => {},
     onpartnertakeback = () => {},
     onpartnermemberspin = () => {},
@@ -220,9 +219,8 @@
     onintronext: () => void;
     onskipintro: () => void;
     onddshow: (playerId: string, wager: number) => void;
-    /** A 🤝 partner clue: 🎡 Spin for a partner, ▶ Show question, ⏱ Start the clock. */
+    /** A 🤝 partner clue: 🎡 Spin for a partner, 📤 Send and start or ⏱ Start the clock (Show question ▶ is the blue button's). */
     onpartnerspin?: () => void;
-    onpartnershow?: () => void;
     onpartnerclock?: () => void;
     /** ✖ Take back a 🤫 card from every phone it was sent to. */
     onpartnertakeback?: (card: string) => void;
@@ -430,12 +428,6 @@
     const ref = session.lastClosed && session.used[session.lastClosed] ? findClueRef(game, session.lastClosed) : null;
     return ref?.round === session.currentRound ? ref : null;
   });
-  /**
-   * One window, a 🤝 partner clue's question: its box takes the action part's room (its bottom row in view, and a row
-   * more at 1280×720 with the players' chips above it), so 👁 Reveal answer and ▦ Done ▶ board sit beside the main
-   * button, quiet and always in view, instead of on the Amount row under the box, where they'd scroll out of sight.
-   */
-  const flowBeside = $derived(!!partner && !dual && !side && session.phase === 'clue' && !setup);
   /** A wheel/dice tile with nothing to ask: no answer to reveal (closing the tool goes back to the board). */
   const toolOnly = $derived(session.phase === 'clue' && !!info && toolOnlyClue(info.clue));
   /** A wheel or dice tile's tool, in words. */
@@ -688,11 +680,6 @@
     const who = sentTo(session, partner, out[0].c.id).map((t) => toName(session, t));
     return `🤫 ${clueCardWords(out[0].c, out[0].n - 1)} sent to ${who.join(', ')}`;
   });
-  /**
-   * A partner clue's own main button comes first: spin, show the question, start the clock (then the clue's own, as soon
-   * as it's judged: the answer next; or once the answer shows: ▦ Done).
-   */
-  const partnerFirst = $derived(!!partner && partner.stage !== 'live' && !partnerJudged && !session.revealed);
   /** What a partner clue's shares are of: the Amount box (the tile's value, unless the host changed it). */
   const partnerValue = $derived(typeof amount === 'number' && Number.isFinite(amount) ? Math.abs(amount) : (info?.value ?? 0));
   /**
@@ -755,17 +742,9 @@
   const answerUp = $derived(session.phase === 'clue' && session.revealed);
   /**
    * The old main button, for the moments whose part hasn't moved to the blue button's step yet (goon.ts gives no step
-   * for them): a 🤝 partner clue once its question is up and its own steps are done (its 👁 Reveal answer quiet while
-   * its verdict is due), and the tiebreaker clue. No check before going on there yet.
+   * for them): the tiebreaker clue. No check before going on there yet.
    */
   const oldFlow = $derived.by((): NextAction | null => {
-    if (session.phase === 'clue' && info && partner && !setup && !partnerFirst) {
-      if (moreSlides && slidePos) return step(VERBS.nextSlideOf(slidePos.at, slidePos.of), nextSlide, { flow: 'pager' });
-      // (A live partner clue: its verdict is due in the 🤝 box, ✔ Got it / ✘ Missed, so the answer here is quiet.)
-      const due = partner.stage === 'live' && !partnerJudged && !steal;
-      if (!session.revealed) return step(VERBS.reveal, onreveal, due ? { flow: 'reveal', quiet: true } : { title: `${VERBS.reveal.title} · or click the slide`, flow: 'reveal' });
-      return step(VERBS.done, onback, { flow: 'done' });
-    }
     if (session.phase === 'tiebreaker') {
       if (moreSlides && slidePos) return step(VERBS.nextSlideOf(slidePos.at, slidePos.of), nextSlide, { flow: 'pager' });
       return answerShowing(session) ? step(VERBS.backToResults, tiebreakerDone, { flow: 'done' }) : step(VERBS.reveal, onreveal, { flow: 'reveal' });
@@ -780,7 +759,7 @@
     const st = goon?.step;
     if (!st) return null;
     const keys = st.key ? `N${st.enterIsNext ? ' or Enter' : ''}` : 'Click it (N says so)';
-    const title = [st.verb.title, keys, mayAsk(st) ? CHECK.shiftClick : '', goon?.first ? `first: ${goon.first}` : ''].filter(Boolean).join(' · ');
+    const title = st.busy ?? [st.verb.title, keys, mayAsk(st) ? CHECK.shiftClick : '', goon?.first ? `first: ${goon.first}` : ''].filter(Boolean).join(' · ');
     return { label: st.verb.label, ...(st.key ? { key: st.key } : {}), title, disabled: !!st.busy, ...(st.flow ? { flow: st.flow } : {}), goes: true, run: () => goon?.main('main') };
   });
   /** The tiebreaker's 🏁 Back to results asked once already, by N (see tiebreakerDone). */
@@ -1013,9 +992,10 @@
         title={cancelBlocked
           ? 'Points were given for this clue: undo them first, or use Done ▶ board'
           : setup
-            ? 'Esc: the question never showed, so the tile stays on the board'
+            ? 'Shift+Esc (or Esc): the question never showed, so the tile stays on the board'
             : VERBS.putBack.title}
-      >{VERBS.putBack.label}</button>
+        >{VERBS.putBack.label}{#if setup && partner}{' '}<kbd aria-hidden="true">{VERBS.putBack.key}</kbd>{/if}</button
+      >
     {/if}
     {@render phoneChip?.()}
     <TimerControls defaultSeconds={timerDefault} bind:custom={timerSeconds} onstart={ontimerstart} />
@@ -1147,18 +1127,18 @@
     </div>
   {/if}
 
-  <!-- 👁 Reveal answer and ▦ Done ▶ board (whichever isn't the main one's step: the row never shows it twice): in the
-       clue's row, or beside the main button (`quiet`: there they're ghost buttons, the main button the one blue). Done
-       here, while the main button is 👁 Reveal answer, is a skip: it asks first as the blue button would (goon.flowDone). -->
-  {#snippet revealDone(quiet = false)}
+  <!-- 👁 Reveal answer and ▦ Done ▶ board (whichever isn't the main one's step: the row never shows it twice), in the
+       clue's row. Done here, while the main button is 👁 Reveal answer, is a skip: it asks first as the blue button would
+       (goon.flowDone). -->
+  {#snippet revealDone()}
     {#if !toolOnly && !toolFirst && next?.flow !== 'reveal'}
-      <button class:ghost={quiet} data-flow="reveal" onclick={onreveal} title={VERBS.reveal.title}>
+      <button data-flow="reveal" onclick={onreveal} title={VERBS.reveal.title}>
         {session.revealed ? VERBS.hide.label : VERBS.reveal.label}
       </button>
     {/if}
     <!-- A wheel/dice tile with nothing to ask has one way out: its tool's Close ▶ board. -->
     {#if !(toolOnly && app.live.overlay) && next?.flow !== 'done'}
-      <button class="done-board" class:ghost={quiet} data-flow="done" onclick={() => (goon ? goon.flowDone() : onback())} title={VERBS.done.title}>{@render iconWord(VERBS.done.label)}</button>
+      <button class="done-board" data-flow="done" onclick={() => (goon ? goon.flowDone() : onback())} title={VERBS.done.title}>{@render iconWord(VERBS.done.label)}</button>
     {/if}
   {/snippet}
 
@@ -1197,12 +1177,12 @@
             value={partnerValue}
             {marks}
             onspin={onpartnerspin}
-            onshow={onpartnershow}
             onclock={onpartnerclock}
             ontakeback={onpartnertakeback}
             oncardtakeback={oncardtakeback}
             onmemberspin={onpartnermemberspin}
             onjudge={onpartnerjudge}
+            ring={goon?.ring}
             {clockSecs}
             {selected}
             onpick={(id) => (selected = [id])}
@@ -1302,7 +1282,7 @@
             <button class="ghost back-slide" data-flow="pager" onclick={() => onslide(-1)} disabled={slidePos.at <= 1} title={VERBS.prevSlide.title}>{@render iconWord(VERBS.prevSlide.label)}</button>
             {#if moreSlides && next?.flow !== 'pager'}<button data-flow="pager" onclick={nextSlide} title={VERBS.nextSlide.title}>{VERBS.nextSlide.label}</button>{/if}
           {/if}
-          {#if !flowBeside}{@render revealDone()}{/if}
+          {@render revealDone()}
         {:else if session.phase === 'slides'}
           {#if slidePos}<button class="ghost" data-flow="pager" onclick={() => onslide(-1)} disabled={slidePos.at <= 1} title={VERBS.prevSlide.title}>{VERBS.prevSlide.label}</button>{/if}
         {:else if session.phase === 'tiebreaker'}
@@ -1466,10 +1446,7 @@
 
     {#if next}
       {@const n = next}
-      <div class="next" class:beside={flowBeside}>
-        <!-- One window, a partner clue's question: 👁 Reveal answer and ▦ Done ▶ board here, quiet, at the top of the cell,
-             apart from the main button at its foot (see flowBeside). -->
-        {#if flowBeside}<span class="flowbeside">{@render revealDone(true)}</span>{/if}
+      <div class="next">
         <!-- Its quiet companions first (◀ Previous turn), then the one main button (quiet while the strip asks). With the
              check open over it, it says so to screen readers: the check is what it opened. -->
         {#each n.also ?? [] as a (a.label)}
@@ -1477,10 +1454,9 @@
             {a.label}{#if a.key} <kbd aria-hidden="true">{a.key}</kbd>{/if}
           </button>
         {/each}
-        <!-- (A verdict due: an equal pair, ✔ then ✘, neither blue; nothing blue either while a live partner clue's
-             verdict is due in its box.) -->
+        <!-- (A verdict due in the Final: an equal pair, ✔ then ✘, neither blue.) -->
         <button
-          class:primary={!ask && !n.pair && !n.quiet}
+          class:primary={!ask && !n.pair}
           class:good={!!n.pair}
           class:ring={n.ring}
           data-next
@@ -1677,21 +1653,6 @@
     flex-wrap: wrap;
     gap: 6px;
   }
-  /* 👁 Reveal answer and ▦ Done ▶ board beside the main button: on a line of their own at the top of the cell, as far
-     from the main button at its foot as the row's height allows (a click a little above it never lands on them), so the
-     cell stays two buttons high. */
-  .next.beside {
-    flex-direction: column;
-    flex-wrap: nowrap;
-    align-items: flex-end;
-    justify-content: space-between;
-    align-self: stretch;
-    gap: 12px;
-  }
-  .flowbeside {
-    display: flex;
-    gap: 6px;
-  }
   kbd {
     font: 11px/1 ui-monospace, monospace;
     padding: 1px 4px;
@@ -1745,9 +1706,8 @@
      scroll in there instead. A board-game round's under the stage too, through its turns (the landing row comes and
      goes). A 🤝 partner clue's too, from PARTNER UP! (the wheel, the question and 📤 Distribute, a steal) to the answer,
      and a wheel or dice tile's (its tool, then its question): the stage changes size only as the tile opens and closes.
-     A partner clue's box scrolls, its foot kept in sight (▶ Show question; 📤 Send and start and ✔ Got it / ✘ Missed;
-     the steal's row); a tile's tool keeps its height at the top (an outcome's score buttons in sight), what's under it
-     scrolls. */
+     A partner clue's box scrolls, its foot kept in sight (📤 Send and start and ✔ Got it / ✘ Missed; the steal's row);
+     a tile's tool keeps its height at the top (an outcome's score buttons in sight), what's under it scrolls. */
   .panel:is(.final, .partnerclue, .held):not(.dual) {
     height: clamp(280px, 44vh, 440px);
   }

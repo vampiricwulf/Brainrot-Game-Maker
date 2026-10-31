@@ -7,11 +7,12 @@
   presses, and never more cards than the room takes (✖ Take one back first). In one window this panel is on stream: it
   names a card (its name is the host's, "Card 2" when it has none) and counts what's on it, never says it, nor names a
   card's pictures (a file name is often the answer), uploads included. The cards themselves are in the editor's 🤫 Card tabs, and the two-window host column.
-  The box holds every step of it, beside the choices it's an alternative to: its first line says what's next, 🎡 Spin for
-  a partner comes in front of the players to choose from by hand (↻ Spin again in its place after), and its bottom row,
-  always in view, has ✔ Got it / ✘ Missed, then at its right end the next step (▶ Show question; 📋 for the cards copied
-  by hand, then 📤 Send and start or ⏱ Start the clock), where nothing takes its place when it goes. Those steps are the
-  main button's too (one NextAction for both): the keys stay with the main button.
+  The box holds every action of it, once, beside the choices it's an alternative to: its first line says what's next,
+  🎡 Spin for a partner comes in front of the players to choose from by hand (↻ Spin again in its place after), and its
+  bottom row, always in view, has ✔ Got it / ✘ Missed, then at its right end, while the cards are handed out, 📋 for the
+  cards copied by hand and 📤 Send and start or ⏱ Start the clock, where nothing takes its place when it goes. The blue
+  button is the show's next step only (Show question ▶, Next ▶ with the wheel up, 👁 Reveal answer…: goon.ts); pressed
+  with something left here, the check offers it, and the action due now wears the ring.
 -->
 <script lang="ts">
   import { onMount, untrack } from 'svelte';
@@ -38,9 +39,9 @@
   import { leftLine, pctText, slowKinds, slowLine } from './cardrow';
   import ShrinkButton from './ShrinkButton.svelte';
   import StepButton from './StepButton.svelte';
-  import { hostConfirm, offerExposed, offerMenu, offerNext, panelGuard, step as nextStep, type NextAction } from './slots.svelte';
+  import { hostConfirm, offerExposed, offerMenu, panelGuard, step as nextStep, type NextAction } from './slots.svelte';
   import { stepItem, type StageItem } from './stagemenu';
-  import { VERBS } from './verbs';
+  import { FLOW, VERBS } from './verbs';
 
   let {
     game,
@@ -50,7 +51,6 @@
     value,
     marks,
     onspin,
-    onshow,
     onclock,
     onjudge,
     ontakeback,
@@ -59,6 +59,7 @@
     selected = [],
     onpick = () => {},
     clockSecs = 30,
+    ring = null,
   }: {
     game: Game;
     session: Session;
@@ -68,8 +69,6 @@
     dual?: boolean;
     /** 🎡 Spin for a partner (W): the partner wheel, spun. */
     onspin: () => void;
-    /** ▶ Show question: the question on stream, the cards to hand out. */
-    onshow: () => void;
     /** ⏱ Start the clock: the countdown starts. */
     onclock: () => void;
     /** What the shares are of: the Amount box (the tile's value, unless the host changed it). */
@@ -90,6 +89,8 @@
     onpick?: (id: Id) => void;
     /** What ⏱ Start the clock counts down from (its words say it): a paused countdown's time left, else its seconds. */
     clockSecs?: number;
+    /** The action due now ('partnerspin', 'describerspin', 'handout'): its button wears the ring (goon.ts ringOf). */
+    ring?: string | null;
   } = $props();
 
   // (Mounted only while there's one; a stand-in for the moment it goes, before this part does.)
@@ -100,7 +101,7 @@
   const cards = $derived(cardSlides(clue));
   /** A question asks in the panel's strip, never in a box over the stage (in one window viewers see both). */
   const ask = hostConfirm();
-  /** With no cards, ▶ Show question starts the countdown: when it starts by itself (⚖ Game rules) and the clue has one. */
+  /** With no cards, Show question ▶ starts the countdown: when it starts by itself (⚖ Game rules) and the clue has one. */
   const autoClock = $derived(game.settings.timerAutoStart && (clue.timerSeconds ?? game.settings.defaultTimerSeconds ?? 0) > 0);
   const byId = $derived(Object.fromEntries(session.players.map((p) => [p.id, p])));
   const picker = $derived(s.pickerId ? byId[s.pickerId] : undefined);
@@ -134,7 +135,7 @@
   const guarded = (control: string, run: () => void, redraw = false) => (e: MouseEvent) => {
     if (guard.press(`partner:${control}`, e.detail, { x: e.clientX, y: e.clientY, redraw }) === 'go') run();
   };
-  // The question going up (a key, the main button, the stage): the box's 📤 Send and start waits a second after it too.
+  // The question going up (Enter, the blue button, the check): the box's 📤 Send and start waits a second after it too.
   let stageWas = untrack(() => s.stage);
   $effect(() => {
     const stage = s.stage;
@@ -556,18 +557,16 @@
   /** PARTNER UP!'s step now (partnerPickStep: the status line goes by the same one). */
   const pickStepIs = $derived(s.stage === 'pick' ? partnerPickStep(session, s, people.length) : null);
   /** Nobody else is on the wheel (and Solo isn't ticked). */
-  const nobodyText = $derived(`Nobody to partner with: tick “${name(s.pickerId)} can be on the wheel” to play it Solo, or ${VERBS.putBack.label} · Esc`);
+  const nobodyText = $derived(`Nobody to partner with: tick “${name(s.pickerId)} can be on the wheel” to play it Solo, or ${VERBS.putBack.label} · ⇧Esc`);
   /**
-   * PARTNER UP!'s next step, the main button's and its own button in the box: who on the team describes (teams, the
-   * picker's own team playing it, with anyone to describe to), the partner, then the question.
+   * PARTNER UP!'s spin, in its box (never the blue button's: that's Show question ▶): who on the team describes (teams,
+   * the picker's own team playing it, with anyone to describe to), else the partner; none once the pair is set.
    */
   const pickStep = $derived.by((): NextAction | null => {
     const step = pickStepIs;
-    if (!step) return null;
+    if (!step || step === 'show') return null;
     if (step === 'describer')
-      return nextStep(VERBS.describerSpin, onmemberspin, { title: spinning ? 'Still spinning' : `W, Enter or N: the wheel spins over the people on ${name(s.pickerId)} with a phone here`, disabled: spinning });
-    // (While the wheel is up, Enter closes it first: the main button is its Close then.)
-    if (step === 'show') return nextStep(VERBS.partnerShow, onshow, wheel ? { key: undefined, title: 'The wheel closes and the question goes on screen (nothing is sent to anyone)' } : {});
+      return nextStep(VERBS.describerSpin, onmemberspin, { title: spinning ? 'Still spinning' : `W: the wheel spins over the people on ${name(s.pickerId)} with a phone here`, disabled: spinning });
     const why =
       step === 'picker' ? `${noun === 'team' ? 'Which team' : 'Who'} picked it? Press their number first (1–${Math.min(9, session.players.length) || 9})` : step === 'nobody' ? nobodyText : spinning ? 'Still spinning' : '';
     return nextStep(VERBS.partnerSpin, onspin, why ? { title: why, disabled: true } : { disabled: false });
@@ -578,24 +577,22 @@
   const handSoon = $derived(`The question just went up: click again to ${unsentToGo.length ? 'send the cards' : 'start the clock'}`);
   /**
    * The cards handed out (until the clock runs, it's judged, or the answer shows): 📤 Send and start when phones get cards
-   * not sent yet, else ⏱ Start the clock. A click within a second of the question waits, in the box and on the main
-   * button, as Enter does.
+   * not sent yet, else ⏱ Start the clock: Enter's too (⏎). A click within a second of the question waits, as Enter does.
    */
   const handStep = $derived.by((): NextAction | null => {
     if (s.stage !== 'distribute' || verdict.judged || session.revealed) return null;
     // (Never more cards than the buzzer room takes: ✖ Take one back first. The clock started by T: the cards only.)
     if (unsentToGo.length)
       return nextStep(clockRuns ? VERBS.sendCards : VERBS.sendAndStart, onclock, allFull ? { title: cardsFullText(game, session, sendAll), disabled: true } : { disabled: false, final: handSoon });
-    return nextStep(VERBS.startClock(clockSecs), onclock, { title: cardsOn ? 'Enter or N: the countdown starts' : 'Enter or N: the countdown starts (copy the cards to their players first)', final: handSoon });
+    return nextStep(VERBS.startClock(clockSecs), onclock, { title: cardsOn ? 'Enter: the countdown starts' : 'Enter: the countdown starts (copy the cards to their players first)', final: handSoon });
   });
   /**
    * The partner's wheel again, in 🎡 Spin for a partner's place once the partner is chosen (by it or by hand): its landing
-   * replaces the choice. W spins it, unless W is for who describes now. Off while the picker's own team plays it: the
-   * describer's row has its own ↻ Spin again, and this one would give the clue to another team.
+   * replaces the choice. W spins it, unless W is for who describes now. Not there while the picker's own team plays it:
+   * the describer's row has its own ↻ Spin again (one in sight), and this one would give the clue to another team.
    */
   const againStep = $derived.by((): NextAction => {
     const verb = s.how === 'only' ? VERBS.spinAnyway : VERBS.spinAgain;
-    if (sameTeamOn) return nextStep(verb, onspin, { title: `Untick “Partner from the same team” to spin for a partner team`, disabled: true, key: undefined });
     const w = !(pickStepIs === 'describer' || wheel?.members);
     return nextStep(verb, onspin, {
       title: spinning ? 'Still spinning' : `${w ? 'W: the' : 'The'} wheel spins again (its landing replaces your choice)`,
@@ -623,24 +620,21 @@
     if (s.stage === 'pick') {
       if (pickStepIs === 'picker') return { text: `${noun === 'team' ? 'Which team' : 'Who'} picked it?`, warn: true };
       if (pickStepIs === 'nobody') return { text: nobodyText, warn: true };
-      if (pickStepIs === 'describer') return { text: 'Next: spin for the describer, or choose one' };
-      if (pickStepIs === 'show') return { text: 'Next: show the question' };
-      return { text: 'Next: spin for a partner, or choose one' };
+      if (pickStepIs === 'describer') return { text: `Next: ${VERBS.describerSpin.label}, or choose one` };
+      // (The pair set: the next step is the show's, the blue button's.)
+      if (pickStepIs === 'show') return { text: `Pair set: ${FLOW.showQuestion.label} (the blue button, or N) puts the question up` };
+      return { text: `Next: ${VERBS.partnerSpin.label}, or choose one` };
     }
     if (steal && !steal.by && stealLeft.length && !session.revealed) return { text: 'Next: who steals it?' };
-    if (verdict.judged || steal) return { text: `Next: ${session.revealed ? VERBS.done.label : VERBS.reveal.label}` };
+    if (verdict.judged || steal) return { text: `Next: ${session.revealed ? VERBS.done.label : VERBS.reveal.label} (the blue button, or N)` };
     if (handStep) {
-      if (unsentToGo.length && clockRuns) return { text: toCopy.length ? `Clock running: 📋 copy cards for ${noun}s without a phone, then 📤 Send the cards` : 'Clock running: send the cards' };
-      if (unsentToGo.length) return { text: toCopy.length ? `Next: 📋 copy cards for ${noun}s without a phone, then 📤 Send and start` : 'Next: send the cards and start the clock' };
-      return { text: toCopy.length ? `Next: 📋 copy each card to its ${noun}, then ⏱ Start the clock` : 'Next: start the clock' };
+      if (unsentToGo.length && clockRuns) return { text: toCopy.length ? `Clock running: 📋 copy cards for ${noun}s without a phone, then 📤 Send the cards` : 'Clock running: 📤 Send the cards' };
+      if (unsentToGo.length) return { text: toCopy.length ? `Next: 📋 copy cards for ${noun}s without a phone, then 📤 Send and start` : 'Next: 📤 Send and start' };
+      return { text: toCopy.length ? `Next: 📋 copy each card to its ${noun}, then ⏱ Start the clock` : 'Next: ⏱ Start the clock' };
     }
-    // (The verdict due: ✔ Got it and ✘ Missed an equal pair at the foot, nothing blue, the keys where they were.)
+    // (The verdict due: ✔ Got it and ✘ Missed an equal pair at the foot, neither blue, the keys where they were.)
     return { text: app.live.timer?.expired ? 'Time’s up: did they get it?' : 'Did they get it? ✔ Got it (Enter) or ✘ Missed (Shift+Enter)' };
   });
-
-  // The main button, in the panel's main cell: spin, then show the question, then start the clock (then the clue's own:
-  // judged meanwhile by a click, the answer; the answer shown meanwhile (R), no countdown over it, ▦ Done).
-  offerNext('partner', () => (session.partner ? (pickStep ?? handStep) : null));
 
   // The stage's menu: the box's steps as they are here (who picked it, the wheel, the partner, the question; the cards'
   // step and the verdict), then ⇄ Swap. Names and parts only: never a card's words.
@@ -652,7 +646,7 @@
       if (!picker) return session.players.map((p, i) => ({ id: `picker:${p.id}`, label: `★ ${p.name} picked it`, keys: i < 9 ? String(i + 1) : undefined, onclick: () => choosePicker(p.id) }));
       // (As in the box: the wheel first, then the people on the team to describe, while the team plays it.)
       if (!s.partnerId && pickStep) out.push(stepItem(pickStep, 'spin'));
-      else if (candidates.length) out.push(stepItem(againStep, 'spin'));
+      else if (candidates.length && !sameTeamOn) out.push(stepItem(againStep, 'spin'));
       if (sameTeamOn && people.length > 1) out.push(stepItem(member || !pickStep ? memberAgain : pickStep, 'describer'));
       for (const p of candidates) {
         const n = session.players.indexOf(p) + 1;
@@ -664,7 +658,6 @@
           onclick: () => choosePartner(p.id),
         });
       }
-      if (pickStepIs === 'show' && pickStep) out.push(stepItem(pickStep, 'show'));
       out.push(swapItem);
       return out;
     }
@@ -768,8 +761,8 @@
       <div class="row" data-partner-row>
         <span class="muted">Partner:</span>
         {#if !s.partnerId && pickStep}
-          <StepButton step={pickStep} />
-        {:else if candidates.length}
+          <StepButton step={pickStep} ring={ring === 'partnerspin'} />
+        {:else if candidates.length && !sameTeamOn}
           <StepButton step={againStep} />
         {/if}
         <span class="muted">or choose:</span>
@@ -800,7 +793,7 @@
           </label>
           {#if sameTeamOn && people.length > 1}
             <span class="muted small">Who {G.verb}:</span>
-            <StepButton step={member || !pickStep ? memberAgain : pickStep} />
+            <StepButton step={member || !pickStep ? memberAgain : pickStep} ring={!member && !!pickStep && ring === 'describerspin'} />
             <span class="muted small">or choose:</span>
             {#each people as m (m.id)}
               {@render personChip(
@@ -835,16 +828,6 @@
     {:else}
       <div class="row small" data-partner-cards>
         <span class="muted">🤫 No cards on this clue: {autoClock ? 'the question starts the clock' : 'start the clock yourself (T) once the question is up'}.</span>
-      </div>
-    {/if}
-    <!-- The pair chosen: the question next, at the box's foot (in view, as the rows above scroll), at its right end, where
-         the next step comes after it. -->
-    {#if pickStepIs === 'show' && pickStep}
-      <div class="row foot" data-partner-foot>
-        <span class="end">
-          {#if cards.length}<span class="muted small">the cards come next</span>{/if}
-          <StepButton step={pickStep} />
-        </span>
       </div>
     {/if}
   {:else}
@@ -1032,7 +1015,7 @@
                 >
               {/if}
             {/each}
-            <StepButton step={handStep} />
+            <StepButton step={handStep} ring={ring === 'handout'} />
           </span>
         {/if}
       </div>

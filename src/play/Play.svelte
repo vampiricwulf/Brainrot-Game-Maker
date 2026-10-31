@@ -6,7 +6,7 @@
   import { commit, history, redo as redoStep, step, undo as undoStep } from '../lib/history.svelte';
   import { createFieldTracker, isTextField, undoKeyOf } from '../lib/undokeys';
   import { oneShot } from '../lib/oneshot';
-  import { blankName, clueCardWords, finalName, formatPoints, getClue, isBoard, isBoardGame, isFinal, isRpg, isSlides, MAX_PLAYERS, newId, PLAYER_WHEEL, questionSlides, roundName, wholePoints, type BoardRound, type ClueRef } from '../lib/model';
+  import { blankName, clueCardWords, finalName, formatPoints, getClue, isBoard, isBoardGame, isFinal, isRpg, isSlides, MAX_PLAYERS, newId, PARTNER_GAMES, PLAYER_WHEEL, questionSlides, roundName, wholePoints, type BoardRound, type ClueRef } from '../lib/model';
   import {
     applyScore, awardOpen, backToBoard, backToLastRound, currentFinal, clueName, clueReason, clueScored, currentClueInfo, ddShowQuestion, describeStep,
     finalAdvance, finalBack, finalJudge, finalShow, finalShowAnswer, finalTag, finalUnjudged, findClueRef, hasWager, typedAnswer, goToRound, introNext, nameList, newSession, openClue, playerName,
@@ -15,11 +15,11 @@
     finalSetWager, finalTakeNewcomers, forViewers, wagerFromPhone, coWinnersHold, ownPlayers, clueMarks, judgePartner, partnerSteal, stealersLeft, slidePosition, ddCap,
   } from '../lib/session';
   import {
-    cardCopyText, cardId, cardRecipients, cardSends, cardSlides, lowerWord, marksText, sentSeats, partnerCandidates, partnerRoles, partnerRules, partnerShares, partnerVerdict, partWords, recipientsText, sendCards,
-    setDescriber, setPartner, setPartnerPicker, takeBack, toName,
+    cardCopyText, cardId, cardRecipients, cardSends, cardSlides, lowerWord, marksText, sentSeats, partnerCandidates, partnerPlayers, partnerRoles, partnerRules, partnerShares, partnerVerdict, partWords, recipientsText, sendCards,
+    setDescriber, setPartner, setPartnerPicker, sharesText, stealOn, takeBack, toName,
   } from '../lib/partner';
   import { cardLinks, cardWords, phoneCard } from '../lib/phonecard';
-  import { copyCardPicture } from './host/cardcopy';
+  import { canCopyPicture, copyCardPicture, hasPicture } from './host/cardcopy';
   import { copyText } from './standings';
   import { phoneCan, syncUploads } from '../lib/cardfiles.svelte';
   import { askServerFiles, fileLimitsNow } from '../lib/serverlimits.svelte';
@@ -30,7 +30,7 @@
   import { dropOffersBut } from './host/offered.svelte';
   import { forgetRecipients, recipientsOf } from './host/tilecardpicks.svelte';
   import {
-    anywayLabel, answerRow, asked, doneStep, escBounce, goOnDecision, inside, leftNow, mainStep, mergeItems, ringOf, swallowSay, todo, type Check, type GoActs, type GoCtx, type GoPanel,
+    anywayLabel, answerRow, asked, doneStep, escBounce, goOnDecision, inside, leftNow, mainStep, mergeItems, ringOf, swallowSay, todo, type Check, type GoActs, type GoCtx, type GoPanel, type PartnerNow,
     type GoSource, type Inside, type LeftItem, type QuietKind, type Quick, type Step,
   } from './host/goon';
   import { addTime, newLive, overlayDoneAt, startTimer, tileToolUp, timerRemaining, timerResumed, toggleTimer, toolOverlay, type Live, type StageAction, type TimerState } from '../lib/live';
@@ -2075,13 +2075,12 @@
           if (mainNow) goOn('stage', mainNow);
           else if (!slideStep(1) && hostNext && !hostNext.disabled) hostNext.run();
         } else if (!answerShowing(session)) {
-          if (mainNow?.id === 'slide' || mainNow?.id === 'reveal') goOn('stage', mainNow);
-          else if (!slideStep(1)) {
-            // (A partner clue: never its answer before the pair has had their go.)
-            const wait = partnerAnswerWaits();
-            if (wait) hint(wait);
-            else revealToggle();
-          }
+          // (A 🤝 partner clue's steal goes by the buzzers, or the stealer's number then Enter: a click says how, as now.)
+          if (partnerJudged && stealOpen() && !app.live.timer?.expired) hint(`${stealHint()} · R shows the answer anyway`);
+          // (A 🤝 partner clue too: the cards not handed out or the pair still playing, it asks first.)
+          else if (mainNow?.id === 'slide' || mainNow?.id === 'reveal') goOn('stage', mainNow);
+          // (A partner clue's answer only ever by the check: never before the pair has had their go.)
+          else if (!slideStep(1) && !partner) revealToggle();
         }
         break;
       case 'back':
@@ -2135,6 +2134,8 @@
       if (wheelSpentUp(o, session, game)) toast('Every slice has landed: Restore them to spin again');
       else spinWheel(app.live, session, game);
     } else if (o.kind === 'dice' && !o.roll) rollDice(app.live, session, o.preset);
+    // (The partner wheel landed: the blue button's Next ▶, through the check.)
+    else if (mainNow?.id === 'close') goOn('stage', mainNow);
     else closeOverlay();
   }
 
@@ -2157,7 +2158,7 @@
     cardsAsked = '';
     // The result was decided up front, so closing early (skipping the animation) still sets the picker.
     if (o?.kind === 'rolloff') rollOffResult(session, o);
-    // (The partner wheel's too: its landing is the partner. The keys go to the main button, ▶ Show question, not to the
+    // (The partner wheel's too: its landing is the partner. The keys go to the blue button, Show question ▶, not to the
     // nearest button the wheel's controls leave, like ↩ Put back.)
     if (o?.kind === 'wheel') {
       partnerLanded(o);
@@ -2251,7 +2252,7 @@
 
   /**
    * Teams, the picker's own team playing it with a room that takes cards: who on it describes to the rest is still to
-   * choose, and there's someone to describe to (spec §10.2). W and the main button spin the member wheel then.
+   * choose, and there's someone to describe to (spec §10.2). W spins the member wheel then.
    */
   function describerWanted(): boolean {
     const s = partner;
@@ -2356,8 +2357,8 @@
   }
 
   /**
-   * ▶ Show question: the question on stream, and the 📤 list of who gets each card (nothing goes anywhere by itself). A
-   * clue with no cards has nothing to hand out: its countdown starts now, as on a Daily Double.
+   * Show question ▶ (PARTNER UP!'s blue button): the question on stream, and the 📤 list of who gets each card (nothing
+   * goes anywhere by itself). A clue with no cards has nothing to hand out: its countdown starts now, as on a Daily Double.
    */
   function partnerShow(): void {
     const s = partner;
@@ -2473,40 +2474,6 @@
   /** The open partner clue's marks since it opened, and whether both of the two have one (it's judged). */
   const partnerMarks = $derived(partner ? clueMarks(session, partner.clue, partner.at ?? 0) : {});
   const partnerJudged = $derived(!!partner && partnerVerdict(partner, partnerMarks).judged);
-  /**
-   * The partner clue's own main button is up: spin, show the question, start the clock (not once it's judged, nor once
-   * the answer shows: the clue's own then, ▦ Done).
-   */
-  const partnerFirst = $derived(!!partner && partner.stage !== 'live' && !partnerJudged && !session.revealed);
-
-  /**
-   * A click on the stage never shows a partner clue's answer before the pair has had their go (the cards being handed
-   * out, or the clock not run out, and not judged), nor while a steal is on: what it says instead, the next step first
-   * (null: the answer can show). R and 👁 Reveal answer show it any time.
-   */
-  function partnerAnswerWaits(): string | null {
-    const s = partner;
-    if (!s || session.revealed) return null;
-    if (partnerJudged) return stealOpen() && !app.live.timer?.expired ? `${stealHint()} · R shows the answer anyway` : null;
-    if (s.stage === 'distribute') {
-      const running = !!app.live.timer && app.live.timer.startedAt !== null && !app.live.timer.expired;
-      const next = unsentCards().length
-        ? running
-          ? '📤 Send the cards (Enter)'
-          : '📤 Send and start (Enter)'
-        : !phoneCards && info && cardSlides(info.clue).length
-          ? 'copy the cards to their players, then ⏱ Start the clock (Enter)'
-          : '⏱ Start the clock (Enter)';
-      return `The answer stays hidden until they’ve had their go: ${next} · R shows it anyway`;
-    }
-    if (s.stage === 'live' && !app.live.timer?.expired) {
-      // (No clock running: none started, or one that ran out before a reload. Nothing ends the wait by itself then.)
-      const judge = 'Right or wrong? ✔ Got it / ✘ Missed in the 🤝 box (Enter / Shift+Enter)';
-      return app.live.timer ? judge : `${judge} · T starts the clock, R shows the answer anyway`;
-    }
-    return null;
-  }
-
   /** The partner clue was missed with steals on, and someone can still steal it. */
   function stealOpen(): boolean {
     const steal = partnerSteal(session);
@@ -2514,22 +2481,6 @@
   }
   /** How a steal goes on. */
   const stealHint = (): string => `🔔 A steal: ${phonesOn ? 'whoever buzzes in first answers, or press' : 'press'} the number of who steals it, then Enter (right) or Shift+Enter (wrong)`;
-
-  /**
-   * Enter or N on a partner clue before its clock starts: the main button (spin, show the question, start the clock).
-   * Never on a key repeat, and not within a second of the question going up, so a held or double Enter can't start the
-   * clock before the host has looked at who gets which card.
-   */
-  function partnerMain(e: { repeat: boolean }): void {
-    const s = partner;
-    if (!s || e.repeat) return;
-    if (s.stage === 'distribute' && !partnerJudged && !toolOverlay(app.live)) {
-      if (Date.now() - partnerShownAt < KEY_GUARD_MS) return hint(`The question just went up: press Enter again to ${unsentCards().length ? 'send the cards' : 'start the clock'}`);
-      return partnerClock();
-    }
-    if (hostNext && !hostNext.disabled) hostNext.run();
-    else if (hostNext?.title) hint(hostNext.title);
-  }
 
   /**
    * 📤 Send and start (or ⏱ Start the clock) by Enter or the check: never within a second of the question going up, so a
@@ -2640,16 +2591,18 @@
   }
 
   /**
-   * Enter / Shift+Enter on a partner clue (spec §6.5, §6.6, §6.11). Before the question: its main button. With players
-   * picked by hand (1–9): ＋ Award / − Deduct, as on any clue. Handing out the cards: Enter starts the clock, Shift+Enter
-   * only says how to judge. Once the clock runs: ✔ Got it / ✘ Missed. Never on a key repeat, nor a moment after the clock
-   * started. Returns whether it's done with the key (false: award as on any clue).
+   * Enter / Shift+Enter on a partner clue (spec §6.5, §6.6, §6.11). On PARTNER UP!: the blue button, Show question ▶ (or
+   * Next ▶ with the wheel up), asking first when something's left (who picked it, the partner). With players picked by
+   * hand (1–9): ＋ Award / − Deduct, as on any clue. Handing out the cards: Enter is the 🤝 box's 📤 Send and start (or ⏱
+   * Start the clock), never within a second of the question; Shift+Enter only says how to judge. Once the clock runs:
+   * ✔ Got it / ✘ Missed. Never on a key repeat, nor a moment after the clock started. Returns whether it's done with
+   * the key (false: award as on any clue).
    */
   function partnerEnter(e: KeyboardEvent): boolean {
     const s = partner;
     if (!s) return false;
     if (s.stage === 'pick') {
-      if (!e.shiftKey) partnerMain(e);
+      if (!e.shiftKey && !e.repeat) goOn('enter', mainNow);
       return true;
     }
     if (e.repeat) return true;
@@ -2665,7 +2618,10 @@
     if (s.stage === 'distribute') {
       if (e.shiftKey)
         hint(session.revealed ? 'The answer is showing: click ✔ Got it or ✘ Missed, or Esc goes back to the board' : unsentCards().length ? 'Send the cards first (Enter), or click ✘ Missed' : 'Start the clock first (Enter), or click ✘ Missed');
-      else partnerMain(e);
+      else if (session.revealed) hint('The answer is showing: Esc goes back to the board');
+      // (A tool over it, from the tools row: its own main button still.)
+      else if (toolOverlay(app.live)) hostNext && !hostNext.disabled && hostNext.run();
+      else partnerHandOut(true);
       return true;
     }
     // (T made it live: its first Enter says so, and judges nothing.)
@@ -2871,6 +2827,72 @@
     partnerJudge: checkJudge,
   };
 
+  /** Goes up while a partner clue's check counts its seconds down, or its wheel turns: the check and the blue button follow. */
+  let partnerTick = $state(0);
+  const partnerTicks = $derived.by(() => {
+    const o = app.live.overlay;
+    const t = app.live.timer;
+    const turning = !!partner && o?.kind === 'wheel' && !!o.partnerFor && !!o.spin && o.partnerLanded !== o.spin.startedAt;
+    return turning || (!!check && !!partner && !!t && !t.expired && t.startedAt !== null);
+  });
+  $effect(() => {
+    if (!partnerTicks) return;
+    const id = setInterval(() => partnerTick++, 500);
+    return () => clearInterval(id);
+  });
+
+  /**
+   * The open 🤝 partner clue as the blue button and the check read it (goon.ts PartnerNow): its wheel, the cards still
+   * to hand out (names and who they're for, never their words), the clock, the verdict, a steal. This screen's and
+   * lib's, never the 🤝 box's (H hides the box).
+   */
+  const partnerNow = $derived.by((): PartnerNow | null => {
+    void partnerTick;
+    const s = partner;
+    if (!s || !info) return null;
+    const o = app.live.overlay;
+    const w = o?.kind === 'wheel' && o.partnerFor === s.clue ? o : null;
+    const rules = partnerRules(info.clue);
+    const cards = cardSlides(info.clue);
+    const here = new Set(app.live.phones ?? []);
+    const handing = s.stage === 'distribute' && !partnerJudged && !session.revealed;
+    const unsent = handing ? unsentCards() : [];
+    const go = (t: Session) => sendCards(t, t.partner!, unsent);
+    const t = app.live.timer;
+    const people = teamsOn(game.settings) && phoneCards && s.pickerId ? roomMembers(s.pickerId) : [];
+    const steal = partnerSteal(session);
+    return {
+      wheel: w ? (w.spin && w.partnerLanded !== w.spin.startedAt && Date.now() < overlayDoneAt(w) ? 'turning' : 'landed') : null,
+      teams: buzzerOn(game.settings) && teamsOn(game.settings),
+      people,
+      giverVerb: PARTNER_GAMES[rules.game].verb,
+      cards: cards.length,
+      send: unsent.map((c) => {
+        const to = [...new Set(cardRecipients(session, s, c).map((x) => x.seat))];
+        const phoned = to.filter((id) => here.has(id));
+        return { name: clueCardWords(c, cards.indexOf(c), true), to: phoned.length ? phoned : to };
+      }),
+      copy: handing
+        ? cards.flatMap((c, i) => {
+            const to = cardRecipients(session, s, c);
+            const off = phoneCards ? to.filter((x) => !here.has(x.seat)) : to;
+            if (!to.length || !off.length) return [];
+            const what = cardWords(c) || cardLinks(game, c).length ? ('words' as const) : canCopyPicture && hasPicture(game, c) ? ('picture' as const) : null;
+            return [{ id: c.id, name: clueCardWords(c, i, true), to: [...new Set(off.map((x) => x.seat))], phoneless: phoneCards, what }];
+          })
+        : [],
+      ...(unsent.length && roomCardsFull(game, session, go) ? { full: cardsFullText(game, session, go) } : {}),
+      secs: t && !t.expired && t.startedAt === null ? Math.max(1, Math.ceil(timerRemaining(t))) : timerSeconds || clueTimer() || game.settings.defaultTimerSeconds || 30,
+      clock: !t ? null : t.expired ? 'out' : { left: Math.max(0, Math.ceil(timerRemaining(t))), running: t.startedAt !== null },
+      judged: partnerJudged,
+      got: sharesText(partnerShares(partnerValue(), rules, s, true, partnerMarks), (id) => playerName(session, id), sym),
+      missed: sharesText(partnerShares(partnerValue(), rules, s, false, partnerMarks), (id) => playerName(session, id), sym),
+      stealOn: stealOn(rules, game.settings),
+      stealers: steal && !steal.by && !session.revealed && !t?.expired ? stealersLeft(session.players, steal, partnerMarks) : [],
+      pair: partnerPlayers(s).map((x) => x.id),
+    };
+  });
+
   /** What the blue button and the check read now: this screen's state and lib's (never a box's: H hides the boxes). */
   const go = $derived.by((): GoCtx => {
     const ans = everyone && info && session.remote?.answers?.id === answerRoundId(session, info.clue.id) ? session.remote.answers : undefined;
@@ -2878,7 +2900,8 @@
       session,
       game,
       dual,
-      toolUp: !!app.live.overlay && app.live.overlay.kind !== 'shop',
+      // (Not the partner wheel: its Next ▶ is the blue button's.)
+      toolUp: !!app.live.overlay && app.live.overlay.kind !== 'shop' && !(app.live.overlay.kind === 'wheel' && !!partner && app.live.overlay.partnerFor === partner.clue),
       selected,
       amount,
       marks: session.phase === 'clue' && info ? clueMarks(session, info.clue.id, partner?.at ?? markSince) : {},
@@ -2892,7 +2915,7 @@
       clockUp: !!app.live.timer && !app.live.timer.expired,
       cards: tileCardsLeft(),
       ddHidden: !dual && session.dd?.stage === 'question' && session.dd.draftFrom === 'phone' && !session.dd.shown,
-      partner: null,
+      partner: partnerNow,
       act: goActs,
     };
   });
@@ -3821,7 +3844,7 @@
           onclick: () => partnerNumber(n),
         };
       });
-      const show: StageItem = { id: 'show', label: VERBS.partnerShow.label, keys: 'Enter', disabled: !s.partnerId || describerWanted(), onclick: partnerShow };
+      const show: StageItem = { id: 'show', label: FLOW.showQuestion.label, keys: wheelUp ? undefined : 'N', disabled: !s.partnerId || describerWanted(), onclick: partnerShow };
       return { heading, steps: [spin, ...picks, show], exits };
     }
     // The question up: the cards, the verdict, then the clue's own.
@@ -5464,8 +5487,7 @@
       // button still: that one (with the controls hidden its last one is out of date: as a click on the stage, the next
       // slide, then the answer, never hidden again).
       if (e.shiftKey) slideStep(-1);
-      // (A partner clue before its clock: its own main button, as Enter, with the same guard. N never judges.)
-      else if (partnerFirst) partnerMain(e);
+      // (A 🤝 partner clue too: N never spins, sends or judges; the check offers those.)
       else if (mainNow) goOn('n', mainNow);
       else if (!hideControls && hostNext && !hostNext.disabled) hostNext.run();
       // (A wheel or dice tile's own tool still up: as a click on it, spin or roll, then close it for the question.)
@@ -6033,7 +6055,6 @@
         onskipintro={() => skipIntro(session)}
         onddshow={ddShow}
         onpartnerspin={partnerSpin}
-        onpartnershow={partnerShow}
         onpartnerclock={partnerClock}
         onpartnertakeback={partnerTakeBack}
         oncardtakeback={cardTakeBack}

@@ -19,7 +19,7 @@ import { chromium } from 'playwright-core';
 import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { addClassicRounds, mainButton, mainLabel, openGameFile, playWithPlayers, png, situationHasMain } from './helpers.mjs';
+import { addClassicRounds, boxHasAction, checkItem, flowIs, goOnCheck, mainButton, mainLabel, openGameFile, playWithPlayers, png, stepButton } from './helpers.mjs';
 
 const file = resolve(process.env.APP_FILE || 'dist/index.html');
 if (!existsSync(file)) throw new Error('Run `npm run build` first');
@@ -486,14 +486,17 @@ try {
   assert((await pressed('Bob is the partner')) === 'true', '2 overrules the wheel: Bob is the partner, on stream too');
   await never(viewers, hidden, 'PARTNER UP!');
 
-  // ---------- ▶ Show question, with Enter held down ----------
+  // ---------- Show question ▶, with Enter held down ----------
   await page.keyboard.down('Enter');
   await aud.locator('[data-partner-badge]').waitFor();
   await page.keyboard.down('Enter');
   await page.waitForTimeout(1100);
   await page.keyboard.down('Enter');
   await page.keyboard.up('Enter');
-  assert((await mainLabel(page)) === '⏱ Start the clock (45 s)' && (await aud.locator('.timer').count()) === 0, 'Enter held down shows the question once, and its repeats (even a second later) don’t start the clock');
+  assert(
+    (await flowIs(page, '👁 Reveal answer')) && (await stepButton(panel, '⏱ Start the clock (45 s)').count()) === 1 && (await aud.locator('.timer').count()) === 0,
+    'Enter held down shows the question once, and its repeats (even a second later) don’t start the clock (the box’s ⏱ Start the clock next)',
+  );
   assert((await flat(aud.locator('[data-partner-badge]'))) === '🗣 Bob describes → 🎯 Ann guesses', 'the stream shows who plays which part');
   await never(viewers, hidden, 'the question');
 
@@ -589,8 +592,8 @@ try {
   };
   await resume();
   assert(
-    (await mainLabel(page)) === '🎡 Spin for a partner' && (await stage('[data-partner-up]').count()) === 1 && (await situationHasMain(page, panel)) === '',
-    'a reload before the spin: PARTNER UP!, Ann picked it, 🎡 Spin for a partner next (in the 🤝 box too)',
+    (await flowIs(page, 'Show question ▶')) && (await stage('[data-partner-up]').count()) === 1 && (await boxHasAction(panel, '🎡 Spin for a partner')) === '',
+    'a reload before the spin: PARTNER UP!, Ann picked it, 🎡 Spin for a partner next (in the 🤝 box, in sight), the blue button Show question ▶',
   );
   await never(host, CARD_ONLY, 'reloaded before the spin');
   await page.keyboard.press('w');
@@ -605,8 +608,8 @@ try {
 
   await resume();
   assert(
-    (await pressed('Bob is the partner')) === 'true' && (await mainLabel(page)) === '▶ Show question' && (await stage('[data-partner-up]').count()) === 1 && (await situationHasMain(page, panel)) === '',
-    'a reload once paired: PARTNER UP!, Ann and Bob, ▶ Show question next (at the box’s foot too)',
+    (await pressed('Bob is the partner')) === 'true' && (await flowIs(page, 'Show question ▶')) && (await stage('[data-partner-up]').count()) === 1 && (await panel.getByRole('button', { name: /Show question/ }).count()) === 0,
+    'a reload once paired: PARTNER UP!, Ann and Bob, Show question ▶ next (the blue button only)',
   );
   await never(host, CARD_ONLY, 'reloaded, paired');
 
@@ -616,7 +619,10 @@ try {
   await stage('[data-partner-badge]').waitFor();
   const shownAt = Date.now();
   assert(await toast('The question just went up: press Enter again to start the clock'), 'Enter shows the question; Enter again at once doesn’t start the clock');
-  assert((await mainLabel(page)) === '⏱ Start the clock (45 s)' && (await stage('.timer').count()) === 0 && (await situationHasMain(page, panel)) === '', 'no countdown runs (⏱ Start the clock next, at the box’s foot too)');
+  assert(
+    (await flowIs(page, '👁 Reveal answer')) && (await stage('.timer').count()) === 0 && (await boxHasAction(panel, '⏱ Start the clock (45 s)')) === '',
+    'no countdown runs (⏱ Start the clock next, at the box’s foot only)',
+  );
   const row = panel.locator('[data-card="1"]');
   assert((await flat(row)).includes('Card 1 · 1 line of words, 1 picture'), `the list counts what’s on the card, and never says it (${await flat(row)})`);
   assert((await pressed('Card 1 to Bob')) === 'true', 'Card 1 goes to the describer, Bob');
@@ -737,8 +743,12 @@ try {
     const { p, stage: rs, panel: rp, state, stateIs } = await roomGame(['Red Team', 'Green Team', 'Blue Team'], true);
     await rs('.tile[aria-label^="Movies for $400"]').click();
     await rs('[data-partner-up]').waitFor();
-    assert((await rp.innerText()).includes('Which team picked it?') && (await mainButton(p).isDisabled()), 'nobody marked to pick: “Which team picked it?”, and no spin until then');
-    assert((await mainButton(p).getAttribute('title')).startsWith('Which team picked it? Press their number first'), 'the main button says why');
+    assert((await rp.innerText()).includes('Which team picked it?') && (await flowIs(p, 'Show question ▶')), 'nobody marked to pick: “Which team picked it?”, the blue button Show question ▶');
+    await p.keyboard.press('n');
+    await checkItem(p, 'picker').waitFor();
+    assert((await checkItem(p, 'picker').innerText()).includes('Which team picked it?'), 'N asks first: “Which team picked it?”');
+    await p.keyboard.press('Escape');
+    await goOnCheck(p).waitFor({ state: 'detached' });
     await p.keyboard.press('1');
     await rp.getByText('Red Team picked it.').waitFor();
     await stateIs((st) => st.status?.seatsText === '🤝 Your team’s partner clue! Spinning for your partner…');

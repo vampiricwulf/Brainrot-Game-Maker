@@ -13,7 +13,7 @@ import { existsSync, mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { addClassicRounds, playWithPlayers, png, startRoomOn } from './helpers.mjs';
+import { addClassicRounds, boxHasAction, playWithPlayers, png, startRoomOn } from './helpers.mjs';
 
 const file = resolve(process.env.APP_FILE || 'dist/index.html');
 if (!existsSync(file)) throw new Error('Run `npm run build` first');
@@ -220,7 +220,10 @@ try {
     last()?.status?.seatsText === '🎯 You’re guessing!' && last().status.seatsSub === 'Player 2 is describing: type your guess',
     'the guesser’s lines: “🎯 You’re guessing!” · “Player 2 is describing: type your guess”',
   );
-  assert((await host.locator('.panel [data-next]').innerText()).includes('📤 Send and start'), 'the main button: 📤 Send and start');
+  assert(
+    (await host.locator('.panel [data-next]').innerText()).includes('👁 Reveal answer') && (await boxHasAction(panel, '📤 Send and start')) === '',
+    'the blue button: 👁 Reveal answer; 📤 Send and start (Enter) is the 🤝 box’s, at its foot',
+  );
   await sleep(300);
   nothingSent('the question up');
   // A tap does nothing: nobody buzzes on a partner clue. (The greyed button is disabled to a screen reader too, so

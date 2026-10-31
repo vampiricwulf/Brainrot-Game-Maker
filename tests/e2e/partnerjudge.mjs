@@ -9,7 +9,7 @@ import { chromium } from 'playwright-core';
 import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { flowButton, mainLabel, openGameFile, situationHasMain } from './helpers.mjs';
+import { boxHasAction, checkItem, flowButton, flowIs, goOnCheck, mainLabel, openGameFile } from './helpers.mjs';
 
 const file = resolve(process.env.APP_FILE || 'dist/index.html');
 if (!existsSync(file)) throw new Error('Run `npm run build` first');
@@ -184,12 +184,15 @@ try {
   await page.keyboard.press('Shift+Enter');
   sc = await scores();
   assert(sc.Cat === '$0' && sc.Ann === '−$400', 'nor does Shift+Enter');
-  // No clock running: a click on the stage waits for a verdict, and names T and R as the ways on.
+  // No clock running (no cards): a click on the stage asks first, ⏱ Start the clock its fix, and leaves the answer hidden.
   await stage('[data-slide="1"]').click();
+  await checkItem(page, 'handout').waitFor();
   assert(
-    (await toast('Right or wrong? ✔ Got it / ✘ Missed in the 🤝 box (Enter / Shift+Enter) · T starts the clock, R shows the answer anyway')) && (await stage('[data-slide="answer"]').count()) === 0,
-    'no clock: a click on the stage leaves the answer hidden, and says T starts the clock and R shows the answer',
+    (await checkItem(page, 'handout').innerText()).includes('The clock hasn’t started: they haven’t played yet.') && (await stage('[data-slide="answer"]').count()) === 0,
+    'no clock: a click on the stage asks first (the clock hasn’t started), and leaves the answer hidden',
   );
+  await page.keyboard.press('Escape');
+  await goOnCheck(page).waitFor({ state: 'detached' });
   await wait(1100);
   await page.keyboard.press('Enter');
   await panel.locator('[data-judged]').waitFor();
@@ -221,7 +224,7 @@ try {
   await page.keyboard.press('Control+z');
   await gotBtn.and(page.locator(':enabled')).waitFor();
   assert(
-    (await flat(judgeRow.locator('[data-judge-got]'))) === 'Ann +$200 · Bob already scored' && (await mainLabel(page)) === '⏱ Start the clock (45 s)' && (await situationHasMain(page, panel)) === '',
+    (await flat(judgeRow.locator('[data-judge-got]'))) === 'Ann +$200 · Bob already scored' && (await flowIs(page, '👁 Reveal answer')) && (await boxHasAction(panel, '⏱ Start the clock (45 s)')) === '',
     'Ctrl+Z brings the buttons back (Bob still scored), and the clock to start (in the box’s foot too)',
   );
   await page.keyboard.press('Control+z');
@@ -296,8 +299,8 @@ try {
   await resume();
   await panel.waitFor();
   assert(
-    (await mainLabel(page)) === '⏱ Start the clock (45 s)' && (await situationHasMain(page, panel)) === '' && (await chip('Card 1 to Cat').getAttribute('aria-pressed')) === 'true' && (await panel.locator('[data-card="1"]').innerText()).includes('(changed)'),
-    'a reload while handing out the cards: the list as it was, the change kept, ⏱ Start the clock next (in the box too)',
+    (await flowIs(page, '👁 Reveal answer')) && (await boxHasAction(panel, '⏱ Start the clock (45 s)')) === '' && (await chip('Card 1 to Cat').getAttribute('aria-pressed')) === 'true' && (await panel.locator('[data-card="1"]').innerText()).includes('(changed)'),
+    'a reload while handing out the cards: the list as it was, the change kept, the box’s ⏱ Start the clock next',
   );
   await page.keyboard.press('Enter');
   await stage('.timer').waitFor();
@@ -357,7 +360,7 @@ try {
   await aud.keyboard.up('Enter');
   await wait(300);
   assert(
-    (await mainLabel(page)) === '⏱ Start the clock (45 s)' && (await situationHasMain(page, panel)) === '' && (await aud.locator('.timer').count()) === 0 && JSON.stringify(await scores()) === held && (await panel.locator('[data-judged]').count()) === 0,
+    (await flowIs(page, '👁 Reveal answer')) && (await boxHasAction(panel, '⏱ Start the clock (45 s)')) === '' && (await aud.locator('.timer').count()) === 0 && JSON.stringify(await scores()) === held && (await panel.locator('[data-judged]').count()) === 0,
     'Enter held down in the audience window shows the question once: its repeats don’t start the clock or score',
   );
   await page.keyboard.press('Escape');

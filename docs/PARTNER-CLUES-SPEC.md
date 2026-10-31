@@ -234,9 +234,9 @@ a card to shows the card in its place (§8.2). The table after this one says wha
 
 | # | What happens | Host | Stream | Ann's phone (picker, guesser) | Bob's phone (partner, describer) | Cat's and Dan's phones |
 |---|---|---|---|---|---|---|
-| 1 | Ann says "Movies for $400". The host clicks the tile. | Partner panel: "🤝 Partner clue! Ann picked it." Main button 🎡 Spin for a partner (W). | "PARTNER UP!", Ann's plate and a "?" plate. The partner sound plays. | "🤝 Your partner clue!" · "Spinning for your partner…" | "🤝 Partner clue" · "Ann needs a partner…" | the same as Bob's |
+| 1 | Ann says "Movies for $400". The host clicks the tile. | Partner panel: "🤝 Partner clue! Ann picked it." and 🎡 Spin for a partner (W) in front of the players, ringed. The blue button: Show question ▶. | "PARTNER UP!", Ann's plate and a "?" plate. The partner sound plays. | "🤝 Your partner clue!" · "Spinning for your partner…" | "🤝 Partner clue" · "Ann needs a partner…" | the same as Bob's |
 | 2 | The host presses W. | The wheel spins over Bob, Cat and Dan (Ann is off it). | The wheel lands on Bob. Then the splash: "Ann 🤝 Bob". | "🤝 You two play this one!" | the same as Ann's | "🤝 Ann + Bob" |
-| 3 | The host presses Enter (▶ Show question). | The 📤 Distribute list: "Card 1 · 1 line of words, 1 picture → Bob (describer)". Main button 📤 Send and start (Enter). | The question slide and the badge "🗣 Bob describes → 🎯 Ann guesses". No countdown yet. | "🎯 You're guessing!" · "Bob is describing: say it out loud" | "🤝 Bob describes → Ann guesses" · "Nobody buzzes on this one" | the same as Bob's |
+| 3 | The host presses Enter twice (Next ▶: the wheel goes; Show question ▶). | The 📤 Distribute list: "Card 1 · 1 line of words, 1 picture → Bob (describer)". At its foot 📤 Send and start (Enter), ringed. The blue button: 👁 Reveal answer. | The question slide and the badge "🗣 Bob describes → 🎯 Ann guesses". No countdown yet. | "🎯 You're guessing!" · "Bob is describing: say it out loud" | "🤝 Bob describes → Ann guesses" · "Nobody buzzes on this one" | the same as Bob's |
 | 4 | The host presses Enter (📤 Send and start). | Card 1's row: "→ Bob · sent · uploading 1 picture…", then "✓ seen". The judge row: "✔ Got it → Bob +$400 · Ann +$200", "✘ Missed → Ann −$200". | The 45 s countdown starts. | unchanged | The card panel: "Tap to see", then "Shrek", and the picture a moment later, once it's uploaded. | unchanged |
 | 5 | Bob describes over voice chat. Ann says "Shrek!" | | The countdown runs. | | | |
 | 6 | The host presses Enter (✔ Got it). | One step in the log: "Movies $400 (partner clue: Bob described, Ann guessed)". Ann, the guesser, picks next, which she already does. | Pops: Bob +$400, Ann +$200. | "✔ Got it! Bob +$400 · Ann +$200" | the same line, above the card | the same |
@@ -257,8 +257,8 @@ well, or [Nobody] to keep it back. ⇄ Swap makes Ann the describer instead: Car
 the points follow the parts (Ann +$400, Bob +$200 if it's got; a miss costs nobody, because the partner never loses
 points). Enter then sends the list as it reads.
 
-**One card at a time.** Each row has its own 📤 Send. The main button then sends whatever is left and starts the
-countdown.
+**One card at a time.** Each row has its own 📤 Send. 📤 Send and start (Enter) then sends whatever is left and starts
+the countdown.
 
 **The same game with teams.** Red, Blue and Green are teams. Red picks. The wheel spins over Blue and Green and lands on
 Green. Green describes and Red guesses. Card 1 goes to every phone that was on Green when the host sent it. Green gets
@@ -483,8 +483,11 @@ session.partner = clue?.type === 'partner' ? startPartner(session, clue) : null;
 
 ### 6.2 Spin
 
-The main button 🎡 Spin for a partner (W, N or Enter) opens the partner wheel and spins it in one press (§7). The splash
-has already built the suspense.
+🎡 Spin for a partner (W), in the 🤝 box in front of the players, opens the partner wheel and spins it in one press (§7).
+The splash has already built the suspense. The blue button is Show question ▶ (N or Enter): pressed before there's a
+partner, it asks first, offering 🎡 Spin for a partner (W or Enter) and the players by their number. While the wheel
+is up it's **Next ▶** (greyed while it turns): it puts the wheel away and the pair shows, as a click on the landed
+wheel does.
 
 - **Host:** the wheel's controls (ToolsControls), as for any wheel, titled "Partner for Ann". "★ Make Bob the picker"
   and the "This was for" chips are hidden for this wheel (ToolsControls.svelte:92-95, 326-352).
@@ -500,18 +503,18 @@ When the wheel lands (or the host closes it early), Bob is Ann's partner.
 - **Host:**
 
   ```
-  🤝 Partner clue!  Ann picked it.  [change ▾]  Next: show the question
+  🤝 Partner clue!  Ann picked it.  [change ▾]  Pair set: Show question ▶ (the blue button, or N) puts the question up
   Partner: [↻ Spin again  W] or choose: [Ann ⊘] [2 Bob ✓] [3 Cat] [4 Dan]   ☐ Ann can be on the wheel (alone if it lands on them)
   🗣 Bob describes · 🎯 Ann guesses                                           ⇄ Swap
   ▸ 🤫 1 card · 📱 phones get them when you send
-                                   the cards come next  [▶ Show question  ⏎]   NEXT ▸ [▶ Show question  ⏎]
+                                                                              NEXT ▸ [Show question ▶  N]
   ```
 
   - A chip overrules the wheel at once (`how: 'host'`). The roll log keeps the spin; the host's choice is not a roll.
   - **↻ Spin again** takes 🎡 Spin for a partner's place, in front of the chips (🎡 Spin anyway when the partner was the
-    only one there could be). **▶ Show question** is at the right end of the box's foot, which stays in view as the rows
-    above it scroll, and is the main button too: the box holds every step, beside the choices it's an alternative to.
-    While the wheel is still up its ⏎ isn't shown: Enter closes the wheel first (a click does both).
+    only one there could be). With "Partner from the same team" ticked it's only in the describer row, so one shows.
+  - **Show question ▶** is the blue button only (N, or Enter wherever the keys are): the show's next step, never a box's
+    action, so the box doesn't repeat it. While the wheel is still up the blue button is Next ▶ first.
   - **⇄ Swap** turns the parts round: Ann describes and Bob guesses. The cards that follow a part ("the describer")
     and the points follow with it. It is in P1, because the parts decide the points.
   - **The cards fold.** One quiet line says how many cards there are and how they'll reach their players ("🤫 2 cards ·
@@ -535,7 +538,9 @@ When the wheel lands (or the host closes it early), Bob is Ann's partner.
 
 ### 6.4 Show question
 
-▶ Show question (Enter or N) is `partnerShow()`, the twin of `ddShow` (Play.svelte:1604-1609). It:
+Show question ▶ (the blue button: N, Enter or a click) is `partnerShow()`, the twin of `ddShow` (Play.svelte:1604-1609).
+With who picked it, the partner or who describes still to choose, it asks first (the check before going on, docs/SPEC.md
+§6.6: each a must, with no "anyway"). It:
 
 1. puts the question on stream (`stage: 'distribute'`);
 2. opens the 📤 Distribute list (§6.5), each card set to its default recipients;
@@ -546,7 +551,8 @@ When the wheel lands (or the host closes it early), Bob is Ann's partner.
 `selected` stays empty and the Amount box gets the tile's value. Play notes a local `shownAt` (not saved) for the
 double-Enter guard (§6.5, §6.6). A key repeat (`e.repeat`) never shows the question, for Enter or N.
 
-- **Host:** the 📤 Distribute list, with the judge buttons under it (§6.6). The main button is 📤 Send and start.
+- **Host:** the 📤 Distribute list, with the judge buttons under it (§6.6), and 📤 Send and start (Enter) at its foot. The
+  blue button is 👁 Reveal answer.
 - **Stream:**
   - the question slide (or slides, with Next slide and the dots, as for any clue);
   - the caption "Movies · $400 · 🤝";
@@ -566,24 +572,25 @@ double-Enter guard (§6.5, §6.6). A key repeat (`e.repeat`) never shows the que
 The 📤 Distribute list is the partner panel while the question is up and the cards are being handed out:
 
 ```
-📤 Distribute  Next: send the cards and start the clock   🗣 Bob describes · 🎯 Ann guesses      ⇄ Swap
+📤 Distribute  Next: 📤 Send and start   🗣 Bob describes · 🎯 Ann guesses      ⇄ Swap
 Card 1 · 1 line of words, 1 picture
    → [1 Ann] [2 Bob ✓ describer] [3 Cat] [4 Dan]  [Everyone else] [Nobody]     [📤 Send] [📋 Copy words] [📋 Copy picture]
 Card 2 · 1 line of words
    → nobody yet                                                               [📤 Send]
 🖼 1 picture goes up when you send its card   [⇡ Get it ready now]
-[✔ Got it]  Bob +$400 · Ann +$200   [✘ Missed]  Ann −$200          [📤 Send and start  ⏎]   NEXT ▸ [📤 Send and start  ⏎]
+[✔ Got it]  Bob +$400 · Ann +$200   [✘ Missed]  Ann −$200          [📤 Send and start  ⏎]   NEXT ▸ [👁 Reveal answer  N]
 ```
 
 The last row is the box's foot, in view as the list scrolls: ✔ Got it / ✘ Missed, quiet until the clock runs, and at
-its right end the step the main button does too (📤 Send and start, or ⏱ Start the clock when no card goes to a phone),
+its right end the step (📤 Send and start, or ⏱ Start the clock when no card goes to a phone), ringed while it's due,
 after a 📋 for each card the host copies by hand (📋 Copy words, or 📋 Card 1, 📋 Card 2… for several), so the card to
 copy is in view even when its row has scrolled under the foot. When the step goes, nothing moves into its place: a click
 there again never judges. The first line says what's next ("Next: 📋 copy each card to its player, then ⏱ Start the
 clock" when the host copies them), on one line, cut short (…) when the row is full, the whole of it in its tooltip. A
-click on 📤 Send and start (or ⏱ Start the clock), in the box or on the main button, within a second of the question
-going up sends nothing and says why, as Enter does; the rest of a double-click on ▶ Show question, landing on what took
-its place, is dropped.
+click on 📤 Send and start (or ⏱ Start the clock), in the box or in the check, within a second of the question going up
+sends nothing and says why, as Enter does; the rest of a double-click on Show question ▶, landing on what took its
+place, is dropped. The blue button, 👁 Reveal answer, asks first while the cards are out or the clock hasn't started
+(📤 Send and start ⏎ first, with 📋 Copy for the cards copied by hand): N then never reveals, R or 👁 Reveal anyway does.
 
 - **Each card starts with its default recipients,** worked out from the parts now: "the describer" is Bob, "everyone
   else" is Cat and Dan. A card set to nobody reads "→ nobody yet", and nothing sends it until the host picks someone.
@@ -592,7 +599,7 @@ its place, is dropped.
   changed says "(changed)", with ↺ to go back to the default. A row the host hasn't changed follows the parts, so
   ⇄ Swap or a new partner moves it (a sent row then reads "changed: [📤 Send changes]"; nothing goes out or is taken
   back until that is pressed).
-- **📤 Send and start** (Enter, N or a click) sends every card not sent yet to its recipients and starts the countdown
+- **📤 Send and start** (Enter or a click; N goes through the check) sends every card not sent yet to its recipients and starts the countdown
   (`autoTimer()`). The stage becomes `'live'`. When every card is already out, or none has anyone to go to, it reads
   ⏱ Start the clock.
 - **One card at a time.** A row's 📤 Send sends that card now and doesn't start the countdown.
@@ -606,7 +613,7 @@ its place, is dropped.
   ⇡ Get it ready now uploads them early, so the send is instant. It gives no phone anything: phones are served a file
   only for a card sent to them. It is offered from the moment the tile opens.
 - **No phone, P1, or an older server.** A recipient without a phone has 📵 on their chip, and the row offers 📋 Copy
-  words and 📋 Copy picture (§13.6). In P1 every row works this way: there is no 📤 Send, and the main button is
+  words and 📋 Copy picture (§13.6). In P1 every row works this way: there is no 📤 Send, and the foot's step is
   ⏱ Start the clock. The chips still matter: the copied words name who they're for, and the two-window host column
   lists who gets what.
 - **Lines that count, never name.** The list says "Card 1 · 1 line of words, 1 picture", never what's on it or an
@@ -617,7 +624,7 @@ its place, is dropped.
   the parts. Anyone else the host wants to score gets points by hand (§9.4).
 - **The double-Enter guard.** Today Enter awards whenever the award row is open (Play.svelte:2940-2946), and the only
   double-press guard, `clickNext`, covers mouse double-clicks (HostPanel.svelte:333-338). In the Distribute step, Enter
-  and N with nobody selected press the main button, and:
+  with nobody selected presses 📤 Send and start (or ⏱ Start the clock), and:
   - do nothing on a key repeat (`e.repeat`);
   - don't send (or start the clock) within 1 second of `shownAt`. The press shows "The question just went up: press
     Enter again to send the cards" instead, so a double press can't send the default list before the host has looked
@@ -635,18 +642,20 @@ its place, is dropped.
   press shows "The cards just went out: press Enter again to give ✔ Got it" (after ⏱ Start the clock, or on a clue
   with no cards: "The clock just started: press Enter again to give ✔ Got it"). Clicking ✔ Got it or ✘ Missed has no
   delay.
-- **An equal pair.** Once the clock runs (not judged, no steal) ✔ Got it ⏎ and ✘ Missed ⇧⏎ look alike in weight and
-  nothing is blue: 👁 Reveal answer stays in the main cell, quiet, so clicking "the blue button" over and over never
-  shows the answer mid-turn. Nothing is focused by the app: Enter and Shift+Enter go through the clue's own handling,
+- **An equal pair.** Once the clock runs (not judged, no steal) ✔ Got it ⏎ and ✘ Missed ⇧⏎ look alike in weight,
+  neither blue. The blue button stays 👁 Reveal answer, and pressing it while they play asks first ("Cat and Ann are
+  still playing (23 s left)", with ✔ Got it ▶ reveal ⏎ and ✘ Missed ⇧⏎), so clicking it over and over never shows the
+  answer mid-turn. Once time's up it reveals at once (they can still be judged after); ▦ Done ▶ board with them not
+  judged asks again. Nothing is focused by the app: Enter and Shift+Enter go through the clue's own handling,
   with its guard. The first line reads "Did they get it? ✔ Got it (Enter) or ✘ Missed (Shift+Enter)", and "Time's up:
   did they get it?" when the clock ends.
-- **A click on the stage** never shows the answer before the pair has had their go, and says what's next instead. In
-  the Distribute step: "The answer stays hidden until they've had their go: 📤 Send and start (Enter) · R shows it
-  anyway" (with no phones, "copy the cards to their players, then ⏱ Start the clock (Enter)"). Once the cards are out,
-  until the clock runs out or the clue is judged: "Right or wrong? ✔ Got it / ✘ Missed in the 🤝 box (Enter /
-  Shift+Enter)", with "· T starts the clock, R shows the answer anyway" after it when no clock is running. While a steal
-  is on (§8.3), until it's stolen, everyone has missed it or the clock runs out: how the steal goes on, as Enter says
-  it. After that a click shows the answer, as on any clue. R and 👁 Reveal answer show it at any time.
+- **A click on the stage** never shows the answer before the pair has had their go: it's the blue button's step, so it
+  opens the same check. In the Distribute step: "Card 1 hasn't gone to Cat's phone, and the clock hasn't started: they
+  haven't played yet" with 📤 Send and start ⏎ (copied by hand: ⏱ Start the clock and 📋 Copy). Once the cards are out,
+  until the clock runs out or the clue is judged: ✔ Got it / ✘ Missed ▶ reveal. While a steal is on (§8.3), until it's
+  stolen, everyone has missed it or the clock runs out, a click says how the steal goes on, as Enter does (the blue
+  button asks first, offering who steals it). After that a click shows the answer, as on any clue. R shows it at any
+  time, and in the check R or 👁 Reveal anyway.
 - **The quick ✔/✘ on a score chip** follows ⚖ Deduct on wrong, as today (`quickFor`, HostPanel.svelte:459-460). With it
   on, the chips show only for Ann and Bob, and each is worth that player's share. With it off there are no chips;
   ✔ Got it, ✘ Missed and the award row do the job.
@@ -690,7 +699,7 @@ What each phone shows at each moment is in §8.2.
 |---|---|---|---|
 | Partner up | Partner panel, 🎡 Spin | PARTNER UP!, picker's plate, "?" | the host and stream carry it |
 | Spinning | Wheel controls | The wheel, picker's slice off | — |
-| Paired | Chips, ⇄ Swap, the cards line, readiness, ▶ Show question | "Ann 🤝 Bob" | readiness says 📵 |
+| Paired | Chips, ⇄ Swap, the cards line, readiness; the blue button Show question ▶ | "Ann 🤝 Bob" | readiness says 📵 |
 | Distributing | The 📤 Distribute list and the judge buttons; the cards as text in the host column (two windows) | Question, badge | 📋 on their rows |
 | Playing | The list with what was sent and seen, the judge row | Question, badge, countdown | the host copies the card, or 🪟 (P3) |
 | Judged | "Judged: Bob ✔ +$400 · Ann ✔ +$200", the buttons disabled; the list closed to one line per card | Pops | — |
@@ -700,17 +709,19 @@ What each phone shows at each moment is in §8.2.
 
 **The partner part** (new `src/play/host/PartnerControls.svelte`, built from DDControls.svelte) is mounted in
 HostPanel's `.action` column under `{#key info?.clue.id}` while a partner clue is open, as DDControls is
-(HostPanel.svelte:813-817). Its main button goes through `offerNext('partner', …)`, with `'partner'` placed after `'dd'`
-in `ORDER` (slots.svelte.ts:35-36). While the wheel is up, the wheel's own Spin!/Close comes first (`'tool'`).
+(HostPanel.svelte:813-817). It offers nothing to the main button: the blue button's step comes from `goon.ts`
+(`mainStep`: Show question ▶ on PARTNER UP!, Next ▶ while the partner wheel is up, then 👁 Reveal answer and ▦ Done ▶
+board), and what's left from `leftNow`, which also names the box's button that wears the ring (`ring`: 'partnerspin',
+'describerspin', 'handout'). The wheel's own box has no Close for the partner wheel: Next ▶ (or Esc) closes it.
 
 Partner up:
 
 ```
-🤝 Partner clue!  Ann picked it.  [change ▾]  Next: spin for a partner, or choose one
+🤝 Partner clue!  Ann picked it.  [change ▾]  Next: 🎡 Spin for a partner, or choose one
 Partner: [🎡 Spin for a partner  W] or choose: [Ann ⊘] [2 Bob] [3 Cat] [4 Dan]   ☐ Ann can be on the wheel (alone if it lands on them)
 🗣 The partner describes · 🎯 Ann guesses                                    ⇄ Swap
 🤫 1 card: Card 1 → the describer          🖼 1 picture goes up when you send it  [⇡ Get it ready now]
-                                                           NEXT ▸ [🎡 Spin for a partner  W]
+                                                           NEXT ▸ [Show question ▶  N]
 ```
 
 In one window the status line above the panel carries a ⚠ Viewers see this chip while the box is up: its tooltip (and
@@ -730,7 +741,8 @@ sketched in §6.5. Playing, after the send:
 - **Focus:** the main button takes focus when the question shows, as after a Daily Double (442-445), and again after
   the send.
 - **The double-click guard** (`clickNext`, 333-338) already ignores a second click when the label changed, so Spin →
-  Show question → Send and start each need a fresh press. The keyboard has its own guard (§6.5, §6.6).
+  Show question → Send and start each need a fresh press. PARTNER UP!'s ↩ Put back (keep tile), in the status line,
+  shows its key ⇧Esc, as the check's does. The keyboard has its own guard (§6.5, §6.6).
 - **Teams:** the words say "team", as DDControls does (DDControls.svelte:82): "Red Team's phones get it".
 - ✓ seen, ↻ Send again and ✖ Take back come with P2. Each is per card: pressing one leaves the other cards as they
   are (§14.4).
@@ -759,16 +771,17 @@ In one window there is no card preview anywhere, ever: only the counts.
 
 | When | Key | Does |
 |---|---|---|
-| Partner up | **W** / **N** / **Enter** | 🎡 Spin for a partner (the main button). W while the partner wheel is up spins it again. |
+| Partner up | **W** | 🎡 Spin for a partner (the 🤝 box's). W while the partner wheel is up spins it again. |
+| Partner up | **N** / **Enter** | The blue button: Next ▶ while the wheel is up (it goes, the pair shows), else Show question ▶. With no picker or no partner yet it asks first (the check: W or Enter spins there, 1–9 choose, Esc is Not yet). Never spins by itself. |
 | Partner up | **1–9** | With no picker yet: who picked it. Otherwise: choose the partner (overrules the wheel). |
-| Partner up | **Esc** | Close the wheel, or go back to the board with the tile kept. |
-| Paired | **Enter** / **N** | ▶ Show question. Not on a key repeat. |
-| Distributing | **Enter** / **N**, nobody selected | 📤 Send and start (or ⏱ Start the clock). Not on a key repeat, and not within 1 second of Show question. |
+| Partner up | **Esc**, **Shift+Esc** | Close the wheel, or go back to the board with the tile kept (↩ Put back). |
+| Distributing | **Enter**, nobody selected | 📤 Send and start (or ⏱ Start the clock). Not on a key repeat, and not within 1 second of Show question. |
+| Distributing or playing | **N** | The blue button, 👁 Reveal answer: with the cards not handed out or the pair still playing it asks first, and N again never reveals (R does). |
 | Distributing | **Shift+Enter**, nobody selected | Nothing; hint "Send the cards first, or click ✘ Missed" (P1: "Start the clock first, or click ✘ Missed"). |
 | Playing | **Enter** / **Shift+Enter**, nobody selected | ✔ Got it / ✘ Missed. Not on a key repeat, and not within 1 second of the send, of ⏱ Start the clock, or of Show question when the clue has no cards. |
 | Distributing or playing | **1–9**, then Enter / Shift+Enter | Award / deduct the Amount to the selected players, as today (with the same guard). The Amount row, folded behind ± Other points… in a partner clue, opens with the pick and stays open once points were given by hand. |
 | Distributing | **T** (or the status line's ⏱ Start) | Starts the clock. No card waiting for a phone: the clue goes live, as ⏱ Start the clock (45 s) does, sending nothing, and the first Enter after it only says "Clock is running: Enter again for ✔ Got it". Phone cards still to send: the clock only; the main button reads 📤 Send the cards (clock running), the status line "Clock running: Enter sends the 2 cards", and Enter sends them. |
-| Playing | **N**, **R**, **T**, **Esc**, **Shift+Esc** | As for any clue. N never scores. |
+| Playing | **R**, **T**, **Esc**, **Shift+Esc** | As for any clue. N never scores, sends or spins. |
 | Distributing or playing | **U** | Hint: "Nobody buzzes on a partner clue". |
 
 No new letters are taken. The Distribute list's chips and buttons are reached with Tab, like any panel control.

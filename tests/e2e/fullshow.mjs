@@ -14,7 +14,7 @@ import { chromium } from 'playwright-core';
 import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { confirmStrip, mainButton, mainLabel, openGameFile, startBuzzer, startRoomOn, leaveAnswer } from './helpers.mjs';
+import { confirmStrip, mainButton, mainLabel, openGameFile, startBuzzer, startRoomOn, stepButton, leaveAnswer } from './helpers.mjs';
 
 const file = resolve(process.env.APP_FILE || 'dist/index.html');
 if (!existsSync(file)) throw new Error('Run `npm run build` first');
@@ -324,29 +324,38 @@ async function show(how) {
   assert((await scoreOf('Bob')) === 600, 'the wheel spun, then Bob buzzed in on its question and got it ($600)');
 
   // ---------- A partner clue: Bob picked it, the wheel picks his partner, the card goes to their phone ----------
+  // (The blue button is the show's next step only: Show question ▶, Next ▶ while the wheel is up, then 👁 Reveal answer.
+  // The spin and the send are the 🤝 box's: W and Enter, or a click there.)
   await begin('A partner clue, its card to a phone');
-  const partnerUp = async () => (await stageHas('[data-partner-up]')()) && (await mainIs('🎡 Spin for a partner')());
+  const pbox = host.locator('.panel [data-partner-panel]');
+  const partnerUp = async () => (await stageHas('[data-partner-up]')()) && (await mainIs('Show question ▶')());
+  /** The partner wheel landed: the blue button is Next ▶, no longer greyed. */
+  const landed = async () => (await mainIs('Next ▶')()) && !(await mainButton(host).isDisabled());
+  const paired = async () => (await mainIs('Show question ▶')()) && !(await stageHas('.wheel')());
+  /** The question up, the cards to hand out: the blue 👁 Reveal answer, the box's 📤 Send and start. */
+  const handingOut = async () => (await mainIs('👁 Reveal answer')()) && (await stepButton(pbox, '📤 Send and start').count()) === 1;
+  const clockOn = async () => (await stageHas('.timer')()) && (await mainIs('👁 Reveal answer')());
   if (byKeys) {
     await key('ArrowRight', 'the keys across the board', keysOn('Movies for $600'));
     await key('ArrowUp', 'the keys up', keysOn('Movies for $400'));
     await key('ArrowUp', 'the keys on the partner clue', keysOn('Movies for $200'));
     await key('Enter', 'PARTNER UP!', partnerUp);
-    await key('w', 'the partner wheel landing', mainIs('Close'));
-    await key('Enter', 'the wheel closed onto the pair', mainIs('▶ Show question'));
-    await key('Enter', 'its question', mainIs('📤 Send and start'));
+    await key('w', 'the partner wheel landing', landed);
+    await key('Enter', 'the wheel closed onto the pair', paired);
+    await key('Enter', 'its question', handingOut);
     await sleep(KEY_GUARD);
-    await key('Enter', 'the card sent and the clock started', mainIs('👁 Reveal answer'));
+    await key('Enter', 'the card sent and the clock started', clockOn);
     await sleep(KEY_GUARD);
     await key('Enter', '✔ Got it', statusHas('judged'));
   } else {
     await stageClick('PARTNER UP!', partnerUp, tile('Movies for $200'));
-    await main('🎡 Spin for a partner', 'the partner wheel spinning', spun);
-    await until('the partner wheel landing', mainIs('Close'));
-    await stageClick('the wheel closed onto the pair', mainIs('▶ Show question'));
-    await main('▶ Show question', 'its question', mainIs('📤 Send and start'));
+    await click(stepButton(pbox, '🎡 Spin for a partner'), 'the partner wheel spinning', stageHas('.wheel'));
+    await until('the partner wheel landing', landed);
+    await stageClick('the wheel closed onto the pair', paired);
+    await main('Show question ▶', 'its question', handingOut);
     // (A click within a second of the question sends nothing, as Enter does.)
     await sleep(KEY_GUARD);
-    await main('📤 Send and start', 'the card sent and the clock started', mainIs('👁 Reveal answer'));
+    await click(stepButton(pbox, '📤 Send and start'), 'the card sent and the clock started', clockOn);
     await click(gotIt, '✔ Got it', statusHas('judged'));
   }
   await answerThenBoard();
@@ -355,17 +364,18 @@ async function show(how) {
 
   // ---------- A partner clue with no cards: Bob picked it, Cat is his partner (picked by hand) ----------
   await begin('A partner clue with no cards, the partner picked by hand');
+  const catPaired = async () => (await pbox.locator('button[aria-label="Cat is the partner"][aria-pressed="true"]').count()) === 1 && (await mainIs('Show question ▶')());
   if (byKeys) {
     await key('ArrowDown', 'the keys on the partner clue', keysOn('Movies for $400'));
     await key('Enter', 'PARTNER UP!', partnerUp);
-    await key('3', 'Cat the partner', mainIs('▶ Show question'));
+    await key('3', 'Cat the partner', catPaired);
     await key('Enter', 'its question, the clock started', mainIs('👁 Reveal answer'));
     await sleep(KEY_GUARD);
     await key('Enter', '✔ Got it', statusHas('judged'));
   } else {
     await stageClick('PARTNER UP!', partnerUp, tile('Movies for $400'));
-    await click(host.locator('.panel [data-partner-panel]').getByRole('button', { name: 'Cat is the partner', exact: true }), 'Cat the partner', mainIs('▶ Show question'));
-    await main('▶ Show question', 'its question, the clock started', mainIs('👁 Reveal answer'));
+    await click(pbox.getByRole('button', { name: 'Cat is the partner', exact: true }), 'Cat the partner', catPaired);
+    await main('Show question ▶', 'its question, the clock started', mainIs('👁 Reveal answer'));
     await click(gotIt, '✔ Got it', statusHas('judged'));
   }
   await answerThenBoard(mainIs('Next round ▶'));

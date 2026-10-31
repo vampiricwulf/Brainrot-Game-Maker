@@ -659,7 +659,7 @@ function partnerPlayItems(c: GoCtx): LeftItem[] {
       const many = p.copy.length > 1;
       const to = [...new Set(p.copy.flatMap((k) => k.to))];
       const none = p.copy.some((k) => k.phoneless) ? ' (no phone here)' : '';
-      return [{ ...hand, text: `${nameList(p.copy.map((k) => k.name))} ${many ? 'are' : 'is'} for ${named(c, to)}${none}: copy ${many ? 'them' : 'it'} to them, then start the clock.`, quick: [clockQ(), ...copyQ] }];
+      return [{ ...hand, text: `${nameList(p.copy.map((k) => k.name))} ${many ? 'are' : 'is'} for ${named(c, to)}${none}: copy ${many ? 'each to its player' : 'it to them'}, then start the clock.`, quick: [clockQ(), ...copyQ] }];
     }
     return [{ ...hand, text: 'The clock hasn’t started: they haven’t played yet.', quick: [clockQ()] }];
   }

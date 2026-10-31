@@ -187,9 +187,29 @@ export const mainLabel = (page) =>
   mainButton(page).evaluate((b) => [...b.childNodes].filter((n) => n.nodeName !== 'KBD').map((n) => n.textContent).join('').trim());
 
 /**
- * The moment's box holds the main button's step too (the plan's rule 1): one step button in `box` says what the main
- * button says, and it's in sight there, not scrolled away inside the box nor under its foot (what's at its middle is
- * it). Resolves to '' when it holds, else what's wrong, for the assertion's message.
+ * The moment's box holds this action (🎡 Spin for a partner, 📤 Send and start, ✔ Got it…): one button in the whole
+ * panel says `name` (no copy anywhere else, the blue button included), it's in `box`, and it's in sight there, not
+ * scrolled away inside the box nor under its foot (what's at its middle is it). Resolves to '' when it holds, else
+ * what's wrong, for the assertion's message.
+ */
+export async function boxHasAction(box, name) {
+  const all = box.page().locator('.panel').getByRole('button', { name, exact: true });
+  const n = await all.count();
+  if (n !== 1) return `${n} buttons say “${name}” in the panel`;
+  const b = box.getByRole('button', { name, exact: true });
+  if ((await b.count()) !== 1) return `“${name}” isn't in the box`;
+  const seen = await b.evaluate((el) => {
+    const r = el.getBoundingClientRect();
+    const at = document.elementFromPoint(r.x + r.width / 2, r.y + r.height / 2);
+    return !!at && el.contains(at);
+  });
+  return seen ? '' : `the box's “${name}” is out of sight`;
+}
+
+/**
+ * The moment's box holds the main button's step too, for the parts whose box still copies it (a wheel's or dice's,
+ * a Daily Double's, until they move to the blue button's step): one step button in `box` says what the main button
+ * says, in sight there. Resolves to '' when it holds, else what's wrong. (A partner clue's box: boxHasAction.)
  */
 export async function situationHasMain(page, box) {
   const label = await mainLabel(page);

@@ -194,10 +194,13 @@
   const roll = () => o?.kind === 'dice' && rollDice(app.live, session, o.preset, o.mover);
 
   const closeStep = $derived(step(tileDone ? VERBS.closeToolBoard : VERBS.closeTool, onclose));
+  /** A 🤝 partner clue's wheel (or its describer wheel): the 🤝 box spins it again, the blue button's Next ▶ closes it. */
+  const partnerWheel = $derived(o?.kind === 'wheel' && !!o.partnerFor);
   // The main button: spin or roll until it's done, then close (a question pop-up reveals its answer first). A shop has its
   // own 🚪 Leave shop.
   const next = $derived.by((): NextAction | null => {
-    if (!o || o.kind === 'shop') return null;
+    // (A shop has its 🚪 Leave shop; the partner wheel is the blue button's: Next ▶ puts it away, the pair on PARTNER UP!.)
+    if (!o || o.kind === 'shop' || partnerWheel) return null;
     // (A spent wheel can't spin: Close it, or Restore its slices in the card.)
     if (o.kind === 'wheel' && !landed && !spent) return step(o.spin ? VERBS.spinning : VERBS.spin, spin, { disabled: busy });
     if (o.kind === 'wheel' && landed && again && !spent) return step(VERBS.spinAgain, spin);
@@ -380,9 +383,9 @@
       {/if}
       <span class="spacer"></span>
       {#if resultText && !busy}<span class="result" title={resultText}>Result: <b>{resultText}</b></span>{/if}
-      <!-- The way out, last, in every state (a shop has its 🚪 Leave shop): the main button's Close when that's next, else
-           ✕ Close (before it's spun, say). -->
-      {#if o.kind !== 'shop'}
+      <!-- The way out, last, in every state (a shop has its 🚪 Leave shop, the partner wheel the blue button's Next ▶):
+           the main button's Close when that's next, else ✕ Close (before it's spun, say). -->
+      {#if o.kind !== 'shop' && !partnerWheel}
         {#if next === closeStep}
           <StepButton step={closeStep} />
         {:else}

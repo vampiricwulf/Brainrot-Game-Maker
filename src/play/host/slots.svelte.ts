@@ -44,8 +44,6 @@ export type NextAction = {
   pair?: NextAction;
   /** The likely verdict of a pair (a multiple-choice pick that is, or isn't, the right one): ringed, never moved. */
   ring?: boolean;
-  /** Nothing is blue: a verdict is due in the moment's box (a live 🤝 partner clue's ✔ Got it / ✘ Missed). */
-  quiet?: boolean;
   /** It's the blue button's step (goon.ts): a click goes through the check before going on, Shift+click past it. */
   goes?: boolean;
 };
@@ -63,11 +61,11 @@ export type HostAsk = {
   oncancel: () => void;
 };
 
-/** Who offers the main button: the first one with something to offer wins, in this order. */
-export type NextFrom = 'tool' | 'dd' | 'partner' | 'final' | 'end' | 'turn' | 'board';
-const ORDER: NextFrom[] = ['tool', 'dd', 'partner', 'final', 'end', 'turn', 'board'];
-/** Who adds to the stage's menu: the boxes, and the panel's own row (its flow: the clue's buttons), in the main button's order. */
-export type MenuFrom = NextFrom | 'flow';
+/** Who offers the main button (the parts not moved to the blue button's step yet): the first with an offer wins, in this order. */
+export type NextFrom = 'tool' | 'dd' | 'final' | 'end' | 'turn' | 'board';
+const ORDER: NextFrom[] = ['tool', 'dd', 'final', 'end', 'turn', 'board'];
+/** Who adds to the stage's menu: the boxes (a 🤝 partner clue's too), and the panel's own row (its flow: the clue's buttons), in the main button's order. */
+export type MenuFrom = NextFrom | 'partner' | 'flow';
 const MENU_ORDER: MenuFrom[] = ['tool', 'flow', 'dd', 'partner', 'final', 'end', 'turn', 'board'];
 
 type Slots = {

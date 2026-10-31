@@ -170,8 +170,8 @@ found a Daily Double, who gets a 🤫 card or a 🎭 part, the Final's rows, a s
 `Shift+F10` or the menu key on their button, or a long press on a touch screen, opens it too, and each item shows its
 key.
 A right-click on the stage (or `Shift+F10` on the main button, or a long press) gives the moment's own menu: its steps in
-the main button's order, each with its key (on PARTNER UP!, 🎡 Spin for a partner `W`, Make Bob the partner `2`…, ▶ Show
-question; in a clue, 👁 Reveal answer `R`, ⏱ Start the countdown `T`; a wheel's Spin! `W`, ✎ Edit wheel; a Daily
+the main button's order, each with its key (on PARTNER UP!, 🎡 Spin for a partner `W`, Make Bob the partner `2`…, Show
+question ▶; in a clue, 👁 Reveal answer `R`, ⏱ Start the countdown `T`; a wheel's Spin! `W`, ✎ Edit wheel; a Daily
 Double's who found it and Show question ▶; the Final's next step `N` and ✔ Right `C` / ✘ Wrong `X`; a tie's ways to
 settle it), then what its box adds (⇄ Swap, ± Adjust score…), the way out (▦ Done ▶ board `Esc`, ↩ Put back (keep tile)),
 ↶ Undo and ⏸ Cover the screen `K`. It works with the controls hidden too (an item that needs them brings them back). An
@@ -182,8 +182,9 @@ in the board editor) counts once: its second click does nothing on the new scree
 the picker once. On ▶ Play, a double-click on the game's title (or `F2`) renames it.
 
 Click a tile to open its clue, then reveal the answer with `R` or a click (a double-click is one step: it never also
-shows the answer, or goes back to the board and opens another tile; on a 🤝 partner clue a click waits until the pair has
-had their go, judged (a steal too) or out of time, and says what's next, while `R` shows it any time). A clue can have several question slides (a
+shows the answer, or goes back to the board and opens another tile; on a 🤝 partner clue a click before the pair has
+had their go, judged or out of time asks first, in the check below, and during a steal says how it goes on, while `R`
+shows it any time). A clue can have several question slides (a
 lead-in, then more: **＋ Add slide** in the clue editor): the main button goes **Next slide ▶** (`N`, `Shift+N` back)
 through them first, and the audience window shows the slide you're on. Select players and **＋ Award** (`Enter`, green,
 never the blue button) or **− Deduct** (`Shift+Enter`); on the board the Amount row stays folded behind **± Adjust score** until a player is
@@ -201,19 +202,23 @@ Send a card…, 🎭 Deal…, 📊 Scores) with the round navigation (◀ Prev r
 then a fixed bar that never moves: **↶ Undo ↷ Redo 🔊 Sound · 📜 Log 👥 Players ⚖ Rules · ⏸ Cover 🙈 Hide · 📺
 Audience ▭ · ❔ Help 🚪 Exit** (on a narrow window, as their signs only). On a short window (a laptop zoomed in) the round's
 own box (✍ answers, the Final's wagers, an RPG round…) keeps a few rows in sight, and the panel scrolls. A moment's own
-box holds its steps too: in a 🤝 partner clue, **🎡 Spin for a partner** comes first in the box, in front of the
-players to choose from by hand (**↻ Spin again** in its place after), the cards' details fold into one quiet line
-(“🤫 2 cards · 📋 you'll copy them”: a click opens it, and it opens by itself when a player a card goes to has no phone
-here, or its files won't reach the phones), and the box's foot, always in view, has ✔ Got it
-/ ✘ Missed and at its right end the next step (**▶ Show question**, then a 📋 for each card you copy by hand and **📤
-Send and start** or **⏱ Start the clock**); clicking there leaves `Enter`, `N` and `W` with the main button. A wheel's or
+box holds its actions, each in one place: in a 🤝 partner clue, **🎡 Spin for a partner** (`W`) comes first in the box,
+in front of the players to choose from by hand (**↻ Spin again** in its place after; with “Partner from the same team”
+ticked, only the describer row's), the cards' details fold into one quiet line (“🤫 2 cards · 📋 you'll copy them”: a
+click opens it, and it opens by itself when a player a card goes to has no phone here, or its files won't reach the
+phones), and the box's foot, always in view, has ✔ Got it / ✘ Missed and, while the cards are handed out, at its right
+end a 📋 for each card you copy by hand and **📤 Send and start** or **⏱ Start the clock** (`Enter`). The action due now
+wears a ring. The blue button there is the show's next step only: **Show question ▶** on PARTNER UP! (`N` or `Enter`;
+**Next ▶** while the partner wheel is up, which puts it away and shows the pair), then 👁 Reveal answer and ▦ Done ▶
+board; PARTNER UP!'s ↩ Put back (keep tile) shows its key, `Shift+Esc` (`Esc` there does it too). A click on a box's
+button leaves `Enter` and `W` where they were. A wheel's or
 dice's box keeps its buttons in their places: **Spin!** `W` (or **Roll!** `D`) first, **Spin again** there once it
 lands, then ✎ Edit wheel and ＋ Spin another wheel too…, the result, and the way to close it last (**✕ Close** `Esc`, or
 **Close** as on the main button once that's next); the scoreboard, a player's sheet, a roll-off and a pop-up have that
 Close too. A Daily Double's box opens at its top, the keys in its Wager box, and its Wager row ends with **Show question
-▶**, greyed until there's a wager. When a verdict is due nothing is blue, so clicking the main button over and over
-never judges anyone or shows an answer mid-turn: in a 🤝 partner clue with its clock running, ✔ Got it and ✘ Missed are
-an equal pair in its box and 👁 Reveal answer is quiet; in the Final's reveals the main cell holds **✔ Right** `C` and
+▶**, greyed until there's a wager. In a 🤝 partner clue with its clock running, ✔ Got it and ✘ Missed are an equal pair
+in its box (neither blue), and the blue 👁 Reveal answer asks first while they play. When the Final's verdict is due
+nothing is blue, so clicking the main button over and over never judges anyone: the main cell holds **✔ Right** `C` and
 **✘ Wrong** `X`, always in that order, the one a multiple-choice pick points to ringed (in its row too). `Enter`,
 `Shift+Enter`, `C` and `X` do what they did. While a partner clue's cards are handed out, `T` (or the status line's ⏱
 Start) starts the clock: with no card waiting for a phone the clue goes live, as **⏱ Start the clock (45 s)** does, and the
@@ -225,7 +230,12 @@ fixed bar, and never a button where the blue button is), saying what's left: **F
 Open the buzzers `U`), a buzzer tie (🎲 Roll for it `O`, or who answers), ✍ answers still coming in (⏱ Start the
 countdown `T`), a tile's 🤫 card not sent yet (📤 Send it); **Before you go on**: a player picked with no points yet
 (**＋ Award Ann $200 ▶ board** `Enter` / **− Deduct** `Shift+Enter`), ✍ answers not judged (✔ Judge all ▶ board, ✍
-Judge them, ✘ The rest are wrong). A quiet **▦ Done anyway: no points** (or **👁 Reveal anyway**, `R`) and **Not yet**
+Judge them, ✘ The rest are wrong). In a 🤝 partner clue: on PARTNER UP!, who picked it (their number), the partner (🎡
+Spin for a partner `W`, or a player's number: it closes, so the pair shows first), who describes, or with nobody to
+partner with Solo or ↩ Put back `Shift+Esc`, each to be done first (no "anyway"); at 👁 Reveal answer, the cards not
+handed out or the clock not started (📤 Send and start `Enter`, ⏱ Start the clock, 📋 Copy Card 1's words), the pair
+still playing (✔ Got it ▶ reveal `Enter` / ✘ Missed `Shift+Enter`) or a steal open (who steals it); at ▦ Done ▶ board,
+not judged (✔ Got it ▶ board / ✘ Missed ▶ board). Card names and who they're for, never their words. A quiet **▦ Done anyway: no points** (or **👁 Reveal anyway**, `R`) and **Not yet**
 (`Esc`) are at its foot; `N` again is "anyway" (not at a reveal, where `N` only says to press `R`). For its first 0.6 s
 it takes no key or click (a double press never goes on by mistake: what it would have pressed lights up), an `Esc`
 right after Not yet does nothing, and the keys go back to what opened it. `Shift+click` on the blue button goes on
@@ -471,7 +481,9 @@ switch shows the editor's keys too):
 | `?` | Every key, with a filter (❔ Help does the same) |
 
 A key held down counts once (only the arrows repeat). With the keys on the main button in a slides round, or on a
-round's title card, `Enter` does what the button says, as `N` does. An `Enter` right after a Daily Double's question
+round's title card, `Enter` does what the button says, as `N` does; on a 🤝 partner clue's PARTNER UP! it's Show
+question ▶ wherever the keys are, and once the question is up it's 📤 Send and start (or ⏱ Start the clock), then ✔ Got
+it. `W` spins for a partner; `N` never spins, sends or judges. An `Enter` right after a Daily Double's question
 goes up doesn't judge its player yet: press it again.
 
 ## Saving

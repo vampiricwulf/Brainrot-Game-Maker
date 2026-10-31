@@ -14,7 +14,7 @@ import { chromium } from 'playwright-core';
 import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { forgetSeen, mainButton, mainLabel, openGameFile, packGame, recordSeen, shownOf, startBuzzer, startRoomOn, stored } from './helpers.mjs';
+import { flowIs, forgetSeen, mainButton, openGameFile, packGame, recordSeen, shownOf, startBuzzer, startRoomOn, stepButton, stored } from './helpers.mjs';
 
 const file = resolve(process.env.APP_FILE || 'dist/index.html');
 if (!existsSync(file)) throw new Error('Run `npm run build` first');
@@ -336,9 +336,10 @@ try {
   const pRow = partner.locator('[data-card="1"]');
   await pRow.waitFor();
   const sendRow = (n) => partner.getByRole('button', { name: `Send card ${n}`, exact: true });
+  const sendStart = stepButton(partner, '📤 Send and start');
   assert(
-    (await sendRow(1).isDisabled()) && (await sendRow(2).isDisabled()) && (await mainLabel(host)) === '📤 Send and start' && (await mainButton(host).isDisabled()),
-    'a partner clue’s: its 📤 Send and 📤 Send and start are off',
+    (await sendRow(1).isDisabled()) && (await sendRow(2).isDisabled()) && (await sendStart.isDisabled()) && (await flowIs(host, '👁 Reveal answer')),
+    'a partner clue’s: its 📤 Send and the box’s 📤 Send and start are off (the blue button is 👁 Reveal answer)',
   );
   const pFull = partner.locator('[data-cards-full]');
   const bothLine = '8 cards are out on the phones, 4 of them the 🎭 deal’s, and this sends 2: they hold 8 at once, all phones together, so ✖ Take 2 back first (the deal’s go together, in 🎭 Deal…)';
@@ -351,10 +352,10 @@ try {
   assert(await until(() => cards().length === 6), 'two quick cards taken back: the room holds 6');
   await host.keyboard.press('Escape');
   await outList.waitFor({ state: 'detached' });
-  assert(await until(async () => !(await pFull.count()) && (await mainButton(host).isEnabled())), 'then 📤 Send and start can go, and the line goes');
+  assert(await until(async () => !(await pFull.count()) && (await sendStart.isEnabled())), 'then 📤 Send and start can go, and the line goes');
   // (A click within a second of the question going up sends nothing.)
   await host.waitForTimeout(1100);
-  await mainButton(host).click();
+  await sendStart.click();
   assert(await until(() => cards().length === 8), '📤 Send and start: both cards go (8 out)');
   // Both back, and one more quick card (7 out): each row's 📤 Send fits, though both together wouldn't.
   await partner.getByRole('button', { name: 'Take card 1 back' }).click();

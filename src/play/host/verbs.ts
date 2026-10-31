@@ -39,7 +39,7 @@ export const FLOW = {
   nextRound: { label: 'Next round ▶', title: 'The next round starts' },
   toRound: (name: string): FlowVerb => ({ label: `${name} ▶`, title: `${name} starts` }),
   endGame: { label: 'End game ▶', title: 'The results go on screen' },
-  // A Daily Double, a 🤝 partner clue, the Final, the tiebreaker, a board game (their parts move to the check later).
+  // A Daily Double, a 🤝 partner clue's PARTNER UP!, the Final, the tiebreaker, a board game (the rest move later).
   showQuestion: { label: 'Show question ▶', title: 'The question goes on screen', anyway: 'Show question anyway' },
   startReveals: (noun: string): FlowVerb => ({ label: `Start ${noun} reveals ▶`, title: 'The reveals start' }),
   finalReveal: { label: 'Reveal answer ▶', title: 'The answer goes on screen', anyway: 'Reveal anyway' },
@@ -131,7 +131,7 @@ export const VERBS = {
   showQuestion: { label: 'Show question ▶' },
 
   // ---------- A 🤝 partner clue ----------
-  partnerSpin: { label: '🎡 Spin for a partner', key: 'W', title: 'W, Enter or N: the wheel spins over the other players' },
+  partnerSpin: { label: '🎡 Spin for a partner', key: 'W', title: 'W: the wheel spins over the other players' },
   describerSpin: { label: '🎡 Spin for the describer', key: 'W' },
   /** The partner was the only one there could be: the wheel can spin all the same. */
   spinAnyway: { label: '🎡 Spin anyway', key: 'W' },
@@ -139,12 +139,11 @@ export const VERBS = {
   pickerChange: { label: 'change ▾', title: 'Someone else picked it (click: the number keys choose the partner)' },
   /** The partner, another player (a menu), once the question is up. */
   partnerChange: { label: 'change partner ▾', title: 'Choose another partner (the cards that follow a part go with it)' },
-  partnerShow: { label: '▶ Show question', key: '⏎', title: 'Enter or N: the question goes on screen (nothing is sent to anyone)' },
   /** The step after the question, its box's heading: who gets each card. */
   handOut: { label: '📤 Distribute' },
-  sendAndStart: { label: '📤 Send and start', key: '⏎', title: 'Enter or N: the cards not sent yet go to their phones, and the countdown starts' },
+  sendAndStart: { label: '📤 Send and start', key: '⏎', title: 'Enter: the cards not sent yet go to their phones, and the countdown starts' },
   /** The clock started already (T) with cards still to send: Enter sends them, the clock going on. */
-  sendCards: { label: '📤 Send the cards (clock running)', key: '⏎', title: 'Enter or N: the cards not sent yet go to their phones (the countdown goes on)' },
+  sendCards: { label: '📤 Send the cards (clock running)', key: '⏎', title: 'Enter: the cards not sent yet go to their phones (the countdown goes on)' },
   /** (Its seconds: what the countdown starts from.) */
   startClock: (secs: number): Verb => ({ label: `⏱ Start the clock (${secs} s)`, key: '⏎' }),
   gotIt: { label: '✔ Got it', key: '⏎' },

@@ -19,8 +19,9 @@
 // from 960 to 1366px wide; at 1920 they keep their words. At 1366 and 1024px wide the crowded game's stage keeps the
 // board's size through a Daily Double's splash and slides, a clue with two sounds on its slide and one with two slides,
 // and at 1110 and 1184px through the two-slide clue (◀ Slide and ▦ Done ▶ board in words, its hint cut short). With 4
-// and 8 players at 1280×720 and 1366×768, a 🤝 partner clue's box holds each step the main button does, in sight (its
-// foot, 👁 Reveal answer and ▦ Done ▶ board too), the stage one size from PARTNER UP! to ✔ Got it; at 1280×720 a Daily
+// and 8 players at 1280×720 and 1366×768, a 🤝 partner clue's box holds its actions once each, in sight (🎡 Spin for a
+// partner, ⏱ Start the clock, ✔ Got it, its foot), the blue button (Show question ▶, then 👁 Reveal answer) in sight and
+// within reach of the foot, nothing above it, the stage one size from PARTNER UP! to ✔ Got it; at 1280×720 a Daily
 // Double's box opens at its top, its Wager row one line ending with Show question ▶ (a double-click on it shows the
 // question once); with 8, a 🎯 Pick a player wheel's bar is one row and in sight, Spin! first and its Close last,
 // landed too.
@@ -28,7 +29,7 @@ import { chromium } from 'playwright-core';
 import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { confirmStrip, flowIs, goOnCheck, mainButton, mainLabel, noSelection, notYet, openGameFile, packGame, selectedWords, situationHasMain, stepButton, leaveAnswer } from './helpers.mjs';
+import { boxHasAction, confirmStrip, flowIs, goOnCheck, mainButton, mainLabel, noSelection, notYet, openGameFile, packGame, selectedWords, situationHasMain, stepButton, leaveAnswer } from './helpers.mjs';
 
 const file = resolve(process.env.APP_FILE || 'dist/index.html');
 if (!existsSync(file)) throw new Error('Run `npm run build` first');
@@ -397,8 +398,8 @@ try {
   const counts = Object.fromEntries(Object.entries(states).map(([k, v]) => [k, v.primaries]));
   assert(Object.values(counts).every((c) => c <= 1), `never more than one main button (${JSON.stringify(counts)})`);
   assert(['clue', 'answering', 'ddWager', 'ddQuestion', 'boardgame', 'wagers', 'reveals', 'end'].every((k) => counts[k] === 1), 'and exactly one where there’s a next step');
-  // (The moments with none: a verdict due, the Final's ✔ Right / ✘ Wrong; a live partner clue's is below.)
-  assert(['verdict'].every((k) => counts[k] === 0), 'and none where a verdict is due (the Final’s ✔ Right / ✘ Wrong)');
+  // (The moment with none: a verdict due, the Final's ✔ Right / ✘ Wrong.)
+  assert(['verdict'].every((k) => counts[k] === 0), 'and none where a verdict is due (the Final’s ✔ Right / ✘ Wrong; a live partner clue’s blue 👁 Reveal answer is below)');
 
   // Beside the stage (a wide window, RPG and board-game rounds): 🚪 Exit in the fixed bar's bottom-right cell, in both.
   console.log('Beside the stage:');
@@ -676,7 +677,8 @@ try {
     partnerSizes.push(await stageH());
     await partner.locator('button.chip[aria-pressed="true"]').waitFor({ timeout: 10000 });
     partnerSizes.push(await stageH());
-    // (The wheel's own bar keeps its height above the partner box: ✎ Edit wheel, ＋ Spin another wheel too… and Close.)
+    // (The wheel's own bar keeps its height above the partner box: ✎ Edit wheel and ＋ Spin another wheel too…; the blue
+    // button's Next ▶ closes it.)
     const wheelOut = await outOfSight('.panel .mode-host.tools :is(button, select)');
     assert(wheelOut.length === 0, `${w}×${h}, a partner clue's wheel landed: its bar's buttons are in sight${wheelOut.length ? ` (not: ${wheelOut.join(', ')})` : ''}`);
     await p4.keyboard.press('Escape');
@@ -686,10 +688,11 @@ try {
     await p4.locator('.stage-box [data-partner-badge]').waitFor();
     await partner.locator('[data-card="2"]').waitFor();
     partnerSizes.push(await stageH());
-    const judgeOut = await outOfSight('.panel [data-partner-judge] button, .panel [data-next], .panel [data-flow="reveal"], .panel [data-flow="done"]');
+    // (The clue row's quiet ▦ Done ▶ board, a skip, may scroll out of sight here: Esc and the stage's menu do it.)
+    const judgeOut = await outOfSight('.panel [data-partner-judge] button, .panel [data-next]');
     assert(
-      judgeOut.length === 0 && (await p4.locator('.panel [data-flow="reveal"]').count()) === 1 && (await p4.locator('.panel [data-flow="done"]').count()) === 1,
-      `${w}×${h}, a partner clue's 📤 Distribute: ✔ Got it, ✘ Missed, the main button, 👁 Reveal answer and ▦ Done ▶ board (one of each) are in sight${judgeOut.length ? ` (not: ${judgeOut.join(', ')})` : ''}`,
+      judgeOut.length === 0 && (await p4.locator('.panel [data-flow="reveal"]').count()) === 1 && (await p4.locator('.panel [data-flow="done"]').count()) === 1 && (await p4.locator('.panel .flowbeside').count()) === 0,
+      `${w}×${h}, a partner clue's 📤 Distribute: ✔ Got it, ✘ Missed and the blue 👁 Reveal answer are in sight (one 👁 Reveal answer, one ▦ Done ▶ board, nothing above the blue button)${judgeOut.length ? ` (not: ${judgeOut.join(', ')})` : ''}`,
     );
     // (The status line's ⚠ Viewers see this chip keeps it one line: as tall as on the board.)
     const statusH = Math.round((await p4.locator('.panel .status').boundingBox()).height);
@@ -827,10 +830,12 @@ try {
     }
     await ctx.close();
   }
-  // The 🤝 box on a laptop, one window, with 4 and 8 players, at 1280×720 and 1366×768: each step the main button does is
-  // in the box too and in sight there (🎡 Spin for a partner in front of the names, ▶ Show question, ⏱ Start the clock),
-  // the box's foot (✔ Got it / ✘ Missed, each card's 📋) and 👁 Reveal answer / ▦ Done ▶ board stay in sight, and the
-  // stage keeps one size from PARTNER UP! to ✔ Got it. (With 8 at 1280×720, the wheel spun from the box's own button.)
+  // The 🤝 box on a laptop, one window, with 4 and 8 players, at 1280×720 and 1366×768: each of its actions is in the box,
+  // once on the page and in sight there (🎡 Spin for a partner in front of the names, ⏱ Start the clock, ✔ Got it), the
+  // box's foot (✔ Got it / ✘ Missed, each card's 📋) and the blue button (Show question ▶, then 👁 Reveal answer) stay in
+  // sight, the foot's action within 96 px of the blue button at 1280×720, nothing above the blue button, and the stage
+  // keeps one size from PARTNER UP! to ✔ Got it. (With 8 at 1280×720, the wheel spun from the box's own button and put
+  // away by the blue Next ▶.)
   // The 4 have short names and no − Deduct on their scores (one row of them), the 8 long names.
   console.log('The 🤝 box on a laptop, 4 and 8 players:');
   for (const count of [4, 8]) {
@@ -1004,37 +1009,45 @@ try {
       await pb.keyboard.press('1');
       await box.getByText(`${names[0]} picked it.`).waitFor();
       const sizes = [await stageH()];
-      assert((await situationHasMain(pb, box)) === '', `${at}: PARTNER UP!'s 🎡 Spin for a partner is in the box, in sight (${await situationHasMain(pb, box)})`);
+      const blueSeen = async () => (await hidden('.panel [data-next]')).length === 0;
+      assert(
+        (await boxHasAction(box, '🎡 Spin for a partner')) === '' && (await flowIs(pb, 'Show question ▶')) && (await blueSeen()),
+        `${at}: PARTNER UP!'s 🎡 Spin for a partner is in the box, once and in sight, the blue Show question ▶ in sight (${await boxHasAction(box, '🎡 Spin for a partner')})`,
+      );
       if (count === 8 && w === 1280) {
         await stepButton(box, '🎡 Spin for a partner').click();
         await box.locator('button.chip[aria-pressed="true"]').waitFor({ timeout: 10000 });
-        await pb.keyboard.press('Escape');
+        assert((await flowIs(pb, 'Next ▶')) && (await blueSeen()), `${at}: the wheel landed, the blue button is Next ▶, in sight`);
+        await mainButton(pb).click();
         await pb.locator('.stage-box .wheel').waitFor({ state: 'detached' });
       } else await pb.keyboard.press('2');
-      await box.locator('[data-partner-foot]').waitFor();
+      await box.locator('[data-partner-next]', { hasText: 'Pair set' }).waitFor();
       sizes.push(await stageH());
-      assert((await situationHasMain(pb, box)) === '', `${at}: paired, ▶ Show question is at the box's foot, in sight`);
+      assert((await flowIs(pb, 'Show question ▶')) && (await blueSeen()) && (await box.getByRole('button', { name: /Show question/ }).count()) === 0, `${at}: paired, Show question ▶ is the blue button only, in sight`);
       await pb.keyboard.press('Enter');
       await pb.locator('.stage-box [data-partner-badge]').waitFor();
       await box.locator('[data-card="2"]').waitFor();
       sizes.push(await stageH());
-      const out = await hidden('.panel [data-partner-foot] button, .panel [data-next], .panel [data-flow="reveal"], .panel [data-flow="done"], .panel [data-partner-next]');
+      const out = await hidden('.panel [data-partner-foot] button, .panel [data-next], .panel [data-partner-next]');
+      const has = [await boxHasAction(box, '⏱ Start the clock (45 s)'), await boxHasAction(box, '✔ Got it')].filter(Boolean);
       assert(
-        (await situationHasMain(pb, box)) === '' && out.length === 0 && (await box.locator('[data-partner-foot]').getByRole('button', { name: /^Copy Card \d’s words$/ }).count()) === 2,
-        `${at}: handing out the cards, ⏱ Start the clock and each card's 📋 Copy words, ✔ Got it and ✘ Missed (the box's foot), its first line, the main button, 👁 Reveal answer and ▦ Done ▶ board are in sight${out.length ? ` (not: ${out.join(', ')})` : ''}`,
+        !has.length && (await flowIs(pb, '👁 Reveal answer')) && out.length === 0 && (await box.locator('[data-partner-foot]').getByRole('button', { name: /^Copy Card \d’s words$/ }).count()) === 2,
+        `${at}: handing out the cards, ⏱ Start the clock and each card's 📋 Copy words, ✔ Got it and ✘ Missed (the box's foot, once each), its first line and the blue 👁 Reveal answer are in sight${out.length || has.length ? ` (not: ${[...out, ...has].join(', ')})` : ''}`,
       );
+      // The foot's action is within reach of the blue button (from its bottom to the blue button's top).
+      const reach = await pb.evaluate(() => {
+        const slot = document.querySelector('.panel [data-partner-foot] [data-step]').getBoundingClientRect();
+        return Math.round(document.querySelector('.panel [data-next]').getBoundingClientRect().top - slot.bottom);
+      });
+      console.log(`    (${at}: the 🤝 foot's ⏱ Start the clock is ${reach} px above the blue button)`);
+      if (w === 1280) assert(reach <= 96, `${at}: the 🤝 foot's ⏱ Start the clock is within 96 px of the blue button (${reach} px)`);
       // (On a laptop with 4 players, Card 1's row too, as before the box had its foot: its first line stays one line.)
       if (count === 4 && w === 1280) {
         const row = await hidden('.panel [data-card="1"] button, .panel [data-partner-panel] [aria-haspopup="menu"]');
         assert(row.length === 0, `${at}: Card 1's row (who gets it, 📋 Copy words) and change partner ▾ are in sight too${row.length ? ` (not: ${row.join(', ')})` : ''}`);
       }
-      // 👁 Reveal answer and ▦ Done ▶ board beside the main button: quiet, and apart from it.
-      const beside = await pb.evaluate(() => {
-        const main = document.querySelector('.panel [data-next]').getBoundingClientRect();
-        const by = [...document.querySelectorAll('.panel .flowbeside button')];
-        return { n: by.length, ghost: by.every((b) => b.classList.contains('ghost')), gap: Math.min(...by.map((b) => main.top - b.getBoundingClientRect().bottom)) };
-      });
-      assert(beside.n === 2 && beside.ghost && beside.gap >= 12, `${at}: 👁 Reveal answer and ▦ Done ▶ board beside the main button are quiet, 12 px or more above it (${JSON.stringify(beside)})`);
+      // No copies above the blue button: it is 👁 Reveal answer itself (the clue row's quiet ▦ Done ▶ board may scroll away).
+      assert((await pb.locator('.panel .flowbeside').count()) === 0 && (await pb.locator('.panel [data-flow="reveal"]').count()) === 1, `${at}: one 👁 Reveal answer (the blue button), no pair above it`);
       const startAt = await stepButton(box, '⏱ Start the clock (45 s)').boundingBox();
       const gotAt = async () => (await box.getByRole('button', { name: /✔ Got it/ }).boundingBox()).x;
       const got0 = await gotAt();
@@ -1042,10 +1055,10 @@ try {
       await pb.keyboard.press('Enter');
       await pb.locator('.stage-box .timer').waitFor();
       sizes.push(await stageH());
-      const live = await hidden('.panel [data-partner-foot] button, .panel [data-next], .panel [data-flow="done"]');
-      assert(live.length === 0, `${at}: the clock running, ✔ Got it, ✘ Missed, 👁 Reveal answer and ▦ Done ▶ board are in sight${live.length ? ` (not: ${live.join(', ')})` : ''}`);
-      // (A verdict due in the box: nothing blue, the main cell's 👁 Reveal answer quiet.)
-      assert((await pb.locator('.panel button.primary:visible').count()) === 0, `${at}: the clock running, a verdict is due: nothing is blue`);
+      const live = await hidden('.panel [data-partner-foot] button, .panel [data-next]');
+      assert(live.length === 0, `${at}: the clock running, ✔ Got it, ✘ Missed and the blue 👁 Reveal answer are in sight${live.length ? ` (not: ${live.join(', ')})` : ''}`);
+      // (A verdict due in the box: ✔ / ✘ an equal pair, the one blue button 👁 Reveal answer, which asks first.)
+      assert((await pb.locator('.panel button.primary:visible').count()) === 1 && (await flowIs(pb, '👁 Reveal answer')), `${at}: the clock running, a verdict is due: one blue button, 👁 Reveal answer`);
       const there = await pb.evaluate(([x, y]) => document.elementFromPoint(x, y)?.closest('button')?.textContent.trim() ?? '', [startAt.x + startAt.width / 2, startAt.y + startAt.height / 2]);
       assert((await gotAt()) === got0 && there === '', `${at}: the clock running, ✔ Got it keeps its place, and no button took the box's ⏱ Start the clock's (${there})`);
       await box.getByRole('button', { name: /✔ Got it/ }).click();
