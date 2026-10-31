@@ -70,6 +70,7 @@
     const t = playsAt(e.currentTarget.value);
     if (t !== null) (el as Timed)[which] = t;
     e.currentTarget.value = playsText((el as Timed)[which]);
+    playsSet(e.currentTarget);
   }
   /** ↑ / ↓: 0.1 s (Shift: 1 s), an empty "to" from where it plays from. */
   function stepPlays(e: KeyboardEvent & { currentTarget: HTMLInputElement }, which: 'startAt' | 'endAt'): void {
@@ -78,6 +79,15 @@
     const t = el as Timed;
     t[which] = playsStep(t[which], e.key === 'ArrowUp' ? 1 : -1, e.shiftKey, which === 'endAt' ? (t.startAt ?? 0) : 0);
     e.currentTarget.value = playsText(t[which]);
+    playsSet(e.currentTarget);
+  }
+  /**
+   * The box's text was just set from here (the time it took, or a step): as if just focused, it has no typing of its
+   * own, so Ctrl+Z in it undoes the change through the history, not the browser's own undo of the typing before it
+   * (which did nothing, or put that typing back in front). See createFieldTracker.
+   */
+  function playsSet(box: HTMLInputElement): void {
+    if (document.activeElement === box) box.dispatchEvent(new FocusEvent('focusin', { bubbles: true }));
   }
   /** The item's file (or a link's own address) for ▶ Try it, in the editor only (in play, the panel can be on stream). */
   const tryUrl = $derived(

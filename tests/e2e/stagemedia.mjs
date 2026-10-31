@@ -165,10 +165,21 @@ try {
   await page.locator('.insp').getByLabel('Plays to').fill('1.5');
   await page.locator('.insp').getByLabel('Plays to').press('Enter');
   assert((await page.locator('.insp').getByLabel('Plays to').inputValue()) === '0:01.5', 'Plays to takes 1.5 and says 0:01.5');
+  // Ctrl+Z with the keys still in the box undoes the time (through the history, as in any box), Ctrl+Y puts it back.
+  const playsTo = page.locator('.insp').getByLabel('Plays to');
+  await playsTo.press('Control+z');
+  assert((await playsTo.inputValue()) === '', `Ctrl+Z in Plays to undoes the time it took (it reads “${await playsTo.inputValue()}”)`);
+  await playsTo.press('Control+y');
+  assert((await playsTo.inputValue()) === '0:01.5', 'and Ctrl+Y puts it back');
   // ↑ / ↓ step it 0.1 s; the row offers ▶ Try it, and says it's only this item.
   await page.locator('.insp').getByLabel('Plays to').press('ArrowUp');
   assert((await page.locator('.insp').getByLabel('Plays to').inputValue()) === '0:01.6', '↑ in Plays to steps 0.1 s');
   await page.locator('.insp').getByLabel('Plays to').press('ArrowDown');
+  // (Ctrl+Z after a step goes back a step: the typing before it isn't put back in front.)
+  await playsTo.press('Control+z');
+  assert(/^(|0:01\.[56])$/.test(await playsTo.inputValue()), `Ctrl+Z after ↑ ↓ in Plays to goes back a step (it reads “${await playsTo.inputValue()}”)`);
+  await playsTo.press('Control+y');
+  assert((await playsTo.inputValue()) === '0:01.5', 'and Ctrl+Y brings it back to 0:01.5');
   assert(
     (await page.locator('.insp').getByRole('button', { name: '▶ Try it' }).count()) === 1 && (await page.locator('.insp').getByText(/^Only this item/).count()) === 1,
     'the Plays row has ▶ Try it, and a line saying it is only this item',
