@@ -17,7 +17,7 @@
 </script>
 
 <script lang="ts">
-  import { showMenu } from '../../lib/menustate.svelte';
+  import { menuOf, showMenu } from '../../lib/menustate.svelte';
   import { app, toast } from '../../lib/app.svelte';
   import { textOn } from '../../lib/colors';
   import { describeAction, runAction, type CardOffer } from '../../lib/actions';
@@ -345,18 +345,25 @@
         role="group"
         aria-label={entryName(game, e)}
         oncontextmenu={(ev) =>
-          showMenu(ev, [
-            { heading: `${entryName(game, e)}${e.qty > 1 ? ` ×${e.qty}` : ''}` },
-            ...(def?.wearable
-              ? [{ label: e.equipped ? 'Unequip' : 'Equip', onclick: () => change(e.id, `${e.equipped ? 'unequips' : 'equips'} ${def.name}`, (l, i) => (l[i].equipped = !e.equipped)) }]
-              : []),
-            ...(def?.onUse?.length ? [{ label: 'Use…', onclick: () => (using = e.id) }] : []),
-            { sep: true as const },
-            ...session.players.filter((x) => x.id !== p.id).map((o) => ({ label: `Give ${e.qty > 1 ? howMany(e.id, e.qty) + ' ' : ''}to ${o.name}`, onclick: () => give(e.id, o.id) })),
-            ...(pos ? [{ label: '⬇ Drop it here', onclick: () => drop(e.id) }] : []),
-            { sep: true as const },
-            { label: '− Remove', danger: true, onclick: () => remove(e.id) },
-          ])}
+          showMenu(
+            ev,
+            menuOf({
+              heading: `${entryName(game, e)}${e.qty > 1 ? ` ×${e.qty}` : ''}`,
+              verbs: [
+                ...(def?.wearable
+                  ? [{ label: e.equipped ? 'Unequip' : 'Equip', onclick: () => change(e.id, `${e.equipped ? 'unequips' : 'equips'} ${def.name}`, (l, i) => (l[i].equipped = !e.equipped)) }]
+                  : []),
+                ...(def?.onUse?.length ? [{ label: 'Use…', onclick: () => (using = e.id) }] : []),
+              ],
+              // (Where it goes: to another player, or onto the stage.)
+              move: [
+                ...session.players.filter((x) => x.id !== p.id).map((o) => ({ label: `Give ${e.qty > 1 ? howMany(e.id, e.qty) + ' ' : ''}to ${o.name}`, onclick: () => give(e.id, o.id) })),
+                ...(pos ? [{ label: '⬇ Drop it here', onclick: () => drop(e.id) }] : []),
+              ],
+              // (Off this player: the item stays in the game.)
+              delete: { label: '🗑 Remove', onclick: () => remove(e.id) },
+            }),
+          )}
       >
         <!-- Only the name drags: a press on the buttons, the amount box or Give → that moves a little is still a press. -->
         <span

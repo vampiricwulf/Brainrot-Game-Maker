@@ -16,7 +16,7 @@ import { describeAction, needsPlayers, runAction, type RunContext } from '../../
 import { offerIn } from '../host/offered.svelte';
 import { blip } from '../../lib/live';
 import { announce } from '../../lib/announce';
-import type { MenuEntry } from '../../lib/menustate.svelte';
+import { menuOf, type MenuEntry, type MenuItem } from '../../lib/menustate.svelte';
 import { newAudioEl, newVideoEl } from '../../lib/model';
 
 /** The RPG round being played, its world and the world's state (all undefined outside an RPG round). */
@@ -150,7 +150,7 @@ export function joinPartyNow(game: Game, session: Session, ids: string[], partyI
  * Who a map's right-click menu can move to a screen: the followed party, the selected players, each other party, or
  * everyone. `go` moves them (no players: the followed party), with who they are for the log.
  */
-export function moveChoices(session: Session, st: WorldState, selected: string[], go: (players?: string[], label?: string) => void): MenuEntry[] {
+export function moveChoices(session: Session, st: WorldState, selected: string[], go: (players?: string[], label?: string) => void): MenuItem[] {
   const party = activeParty(st);
   return [
     { label: `▶ Move ${party?.name ?? 'the party'} here`, onclick: () => go() },
@@ -570,17 +570,18 @@ export function objectMenu(
     if (r.text) toast(r.text, 3000);
     if (r.close) closed?.();
   };
-  return [
-    { heading: masked ? alias : name },
-    ...acts.map((a): MenuEntry => ({ label: a.label, disabled: a.disabled, hint: a.asks === 'who' ? 'Pick who it’s for on its card' : a.asks === 'locked' ? 'It’s locked: its card asks first' : a.title, onclick: press(a) })),
-    ...(acts.length ? [{ sep: true } as const] : []),
-    { label: '🗂 Open its card', onclick: open },
-    ...(edit ? [{ label: '✎ Edit', hint: 'Its screen in the live editor: move, resize, restyle, or give it actions and dialogue', onclick: edit }] : []),
+  return menuOf({
+    heading: masked ? alias : name,
+    now: acts.map((a) => ({ label: a.label, disabled: a.disabled, hint: a.asks === 'who' ? 'Pick who it’s for on its card' : a.asks === 'locked' ? 'It’s locked: its card asks first' : a.title, onclick: press(a) })),
+    open: [
+      { label: '🗂 Open its card', onclick: open },
+      ...(edit ? [{ label: '✎ Edit', hint: 'Its screen in the live editor: move, resize, restyle, or give it actions and dialogue', onclick: edit }] : []),
+    ],
     // (Not for hotspots, arrival points and no-go areas: viewers never see them, so a Reveal would do nothing.)
-    ...(neverShown(el) ? [] : [{ label: shown ? '🙈 Hide from viewers' : '👁 Reveal to viewers', onclick: () => setObjectShown(game, session, elId, !shown) }]),
-    { sep: true },
-    { label: '🗑 Remove', keys: 'Delete', danger: true, onclick: () => removed(removeObject(game, session, elId, oneWindow) ?? '') },
-  ];
+    verbs: neverShown(el) ? [] : [{ label: shown ? '🙈 Hide from viewers' : '👁 Reveal to viewers', onclick: () => setObjectShown(game, session, elId, !shown) }],
+    // (Off its screen, for this game: the editor's object stays.)
+    delete: { label: '🗑 Remove', keys: 'Delete', onclick: () => removed(removeObject(game, session, elId, oneWindow) ?? '') },
+  });
 }
 
 /** How much is in a pile of currency now (some may have been picked up already). */

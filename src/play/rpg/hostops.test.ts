@@ -223,7 +223,7 @@ describe('objects and items on the RPG stage', () => {
     const { game, session, st, potion } = withLoot();
     const said: string[] = [];
     const items = objectMenu(game, session, potion.id, { open: () => said.push('open'), removed: (t) => said.push(t) });
-    expect(items.map((i) => ('label' in i ? i.label : 'heading' in i ? i.heading : '—'))).toEqual(['Potion', '🗂 Open its card', '🙈 Hide from viewers', '—', '🗑 Remove']);
+    expect(items.map((i) => ('label' in i ? i.label : 'heading' in i ? i.heading : '—'))).toEqual(['Potion', '🗂 Open its card', '—', '🙈 Hide from viewers', '—', '🗑 Remove']);
     for (const i of items) if ('onclick' in i) i.onclick();
     expect(said).toEqual(['open', 'Removed Potion · Ctrl+Z brings it back']);
     expect(st.objects[potion.id]).toEqual({ shown: false, taken: true });
@@ -241,7 +241,7 @@ describe('objects and items on the RPG stage', () => {
     expect(objectActs(game, session, potion.id, run, null).map((a) => a.label)).toEqual(['✋ Ann picks up Potion']);
     const closed: string[] = [];
     const items = objectMenu(game, session, potion.id, { run, open: () => closed.push('open'), edit: () => closed.push('edit'), closed: () => closed.push('closed'), removed: () => {} });
-    expect(lines(items)).toEqual(['Potion', '✋ Ann picks up Potion', '—', '🗂 Open its card', '✎ Edit', '🙈 Hide from viewers', '—', '🗑 Remove']);
+    expect(lines(items)).toEqual(['Potion', '✋ Ann picks up Potion', '—', '🗂 Open its card', '✎ Edit', '—', '🙈 Hide from viewers', '—', '🗑 Remove']);
     expect(items.at(-1)).toMatchObject({ keys: 'Delete', danger: true });
     // Pressed from the menu: as from its card (she picks it up, and its card closes).
     (items[1] as { onclick: () => void }).onclick();
@@ -320,7 +320,7 @@ describe('objects and items on the RPG stage', () => {
     expect(stepText(session.actionLog!.at(-1)!, true)).toBe('Hide Trap');
     // One window, its card masked: its menu has no buttons of its card's (they're behind its card's 👁 Show).
     const menu = objectMenu(game, session, trap.id, { run: { live: newLive(), selected: [] }, oneWindow: true, alias: '🙈 Hidden object 1', open: () => {}, removed: () => {} });
-    expect(lines(menu)).toEqual(['🙈 Hidden object 1', '🗂 Open its card', '👁 Reveal to viewers', '—', '🗑 Remove']);
+    expect(lines(menu)).toEqual(['🙈 Hidden object 1', '🗂 Open its card', '—', '👁 Reveal to viewers', '—', '🗑 Remove']);
   });
 
   it('offers no Reveal for what viewers never see (a no-go area, an arrival point, a hotspot)', () => {

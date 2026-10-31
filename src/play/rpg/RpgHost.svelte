@@ -6,7 +6,7 @@
 -->
 <script lang="ts">
   import { onDestroy, tick, untrack, type Snippet } from 'svelte';
-  import { showMenu } from '../../lib/menustate.svelte';
+  import { menuItem, menuOf, showMenu } from '../../lib/menustate.svelte';
   import { app, hint, toast } from '../../lib/app.svelte';
   import { announce } from '../../lib/announce';
   import { step } from '../../lib/history.svelte';
@@ -287,7 +287,7 @@
   function mapMenu(e: MouseEvent, ref: ScreenRef, screen: Screen): void {
     if (!st) return;
     picked = ref;
-    showMenu(e, [{ heading: screen.name }, ...moveChoices(session, st, selected, moveHere), { sep: true }, { label: '⤢ Full map…', onclick: () => ((picked = null), (mapOpen = true)) }]);
+    showMenu(e, menuOf({ heading: screen.name, verbs: moveChoices(session, st, selected, moveHere), extras: [{ label: '⤢ Full map…', onclick: () => ((picked = null), (mapOpen = true)) }] }));
   }
 
   /** Move the party (or these players) to the screen picked on the minimap. */
@@ -329,15 +329,19 @@
   function partyMenu(e: MouseEvent, pt: Party): void {
     if (!st) return;
     const s = st;
-    showMenu(e, [
-      { heading: `${pt.name} (${nameList(pt.members.map((m) => session.players.find((pl) => pl.id === m)?.name ?? '?'))})` },
-      { label: '🎥 Follow', disabled: pt.id === party?.id, onclick: () => focusParty(game, session, pt.id), hint: 'Viewers see its screen; the pad moves it' },
-      { label: '▦ Show in split view', disabled: s.parties.length < 2 || !!s.split, onclick: () => (s.split = true) },
-      { label: '🤝 Regroup everyone with this party', disabled: s.parties.length < 2, onclick: () => regroupAll(game, session, pt.id) },
-      { label: '🗺 Move this party…', onclick: () => ((mapSend = { players: [...pt.members], label: pt.name }), (mapOpen = true)) },
-      { sep: true },
-      { label: '✎ Rename…', onclick: () => (ask = { what: 'party', party: pt.id }) },
-    ]);
+    showMenu(
+      e,
+      menuOf({
+        heading: `${pt.name} (${nameList(pt.members.map((m) => session.players.find((pl) => pl.id === m)?.name ?? '?'))})`,
+        verbs: [
+          { label: '🎥 Follow', disabled: pt.id === party?.id, onclick: () => focusParty(game, session, pt.id), hint: 'Viewers see its screen; the pad moves it' },
+          { label: '▦ Show in split view', disabled: s.parties.length < 2 || !!s.split, onclick: () => (s.split = true) },
+          { label: '🤝 Regroup everyone with this party', disabled: s.parties.length < 2, onclick: () => regroupAll(game, session, pt.id) },
+          { label: '🗺 Move this party…', onclick: () => ((mapSend = { players: [...pt.members], label: pt.name }), (mapOpen = true)) },
+        ],
+        rename: menuItem.rename(() => (ask = { what: 'party', party: pt.id }), { keys: false }),
+      }),
+    );
   }
 
   function renameParty(partyId: string, name: string): void {

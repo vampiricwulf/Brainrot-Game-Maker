@@ -1347,7 +1347,7 @@ try {
   assert((await where()).includes('Start') && (await parties()).length === 2, 'an avatar dropped on a screen of the minimap goes there, a party of their own');
   // Its party's menu renames it; Player 2's card on the stats strip dropped on it joins it.
   await page.locator('.rh .party.on').click({ button: 'right' });
-  await page.getByRole('menu').getByRole('menuitem', { name: '✎ Rename…' }).click();
+  await page.getByRole('menu').getByRole('menuitem', { name: '✎ Rename' }).click();
   await page.getByRole('textbox', { name: 'Party name' }).fill('Heroes');
   await page.keyboard.press('Enter');
   await dragBy(page, page.locator('.rpg .strip .card').nth(1), page.locator('.rh .party', { hasText: 'Heroes' }));
