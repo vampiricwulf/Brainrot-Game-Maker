@@ -191,7 +191,8 @@ try {
   await reopenBtn.click();
   await page.getByText('Reopened “Sample game”').waitFor();
   await editorReady(page);
-  await page.locator('nav button.round-tab', { hasText: 'Jeopardy!' }).click();
+  // (The sample's Jeopardy! round, not its Final Jeopardy!.)
+  await page.locator('nav button.round-tab').and(page.getByRole('button', { name: 'Jeopardy!', exact: true })).click();
   await page.locator('.cat textarea').first().fill('Changed');
   await page.locator('.cat textarea').nth(1).click();
   await page.getByRole('button', { name: 'New', exact: true }).click();
@@ -257,9 +258,19 @@ try {
   await forgetAsk.getByRole('button', { name: 'Cancel' }).click();
   assert((await openDialog.getByRole('button', { name: /^Untitled Game/ }).count()) === 1, '🗑 Delete asks first: Cancel keeps the game listed');
   await openDialog.getByRole('button', { name: /^Delete “Untitled Game”/ }).click();
+  const rowsBefore = await openDialog.locator('button.pick').count();
   await forgetAsk.getByRole('button', { name: 'Delete', exact: true }).click();
+  await forgetAsk.waitFor({ state: 'detached' });
+  await openDialog.getByRole('button', { name: /^Untitled Game/ }).waitFor({ state: 'detached' });
+  // (Open… is always the one window: it stays, with the games left, or None yet.)
+  assert(
+    (await openDialog.isVisible()) &&
+      (await openDialog.locator('button.pick').count()) === rowsBefore - 1 &&
+      ((await openDialog.locator('button.pick').count()) > 0 || (await openDialog.getByText('None yet: a game New or Open… replaces is kept here.').count()) === 1),
+    `🗑 Delete takes a game off the list, and Open… stays open (${rowsBefore} → ${await openDialog.locator('button.pick').count()} games)`,
+  );
+  await page.keyboard.press('Escape');
   await openDialog.waitFor({ state: 'detached' });
-  assert(true, '🗑 Delete takes a game off the list');
 
   // ---------- Open… checks the file before asking about this game ----------
   await page.locator('.cat textarea').first().fill('Not saved yet');
