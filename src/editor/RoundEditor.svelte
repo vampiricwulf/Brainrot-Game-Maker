@@ -574,7 +574,7 @@
             },
             {
               label: on(!!clue.empty, '⬚ Empty tile'),
-              hint: clue.empty ? 'Make it playable again' : 'Not played: the board shows a blank there',
+              hint: clue.empty ? '↩ Use this tile again' : 'Not played: the board shows a blank there',
               onclick: () =>
                 step(
                   clue.empty ? `Made ${tileName(p)} playable again` : `Left ${tileName(p)} empty`,
@@ -1081,7 +1081,7 @@
           ? ''
           : `${clue.value !== null ? ' (custom)' : ''}${TILE_KIND[clue.type] ?? ''}${everyone ? ', everyone answers' : ''}${choices ? ', multiple choice' : ''}${clue.extraSlides?.length ? `, ${clue.extraSlides.length + 1} question slides` : ''}${faceText ? `, tile shows “${faceText}”` : ''}`}
         {@const what = clue.empty
-          ? 'empty space'
+          ? 'empty tile, not played'
           : tool
             ? `${q || kinds.join(', ') || 'no question'}${noTool ? `, no ${clue.type} chosen` : ''}`
             : `${q || kinds.join(', ') || 'no question yet'}${a ? '' : ', no answer'}${cardTodo === 'none' ? ', no card' : cardTodo ? `, card ${cardTodo} empty` : ''}${choiceFault ? `, ${choiceFault.toLowerCase()}` : ''}`}

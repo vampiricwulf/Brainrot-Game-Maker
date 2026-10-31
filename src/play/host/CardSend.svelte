@@ -546,7 +546,7 @@
             ? 'No 🤫 Cards in this game, and no tile played yet (or Final reached) has a card.'
             : app.playerOnly
               ? 'No 🤫 Cards in this game, and no tile or Final has a card.'
-              : 'No card made in the editor yet: make one in the editor’s 🤫 Cards tab (or a tile’s or a Final’s ＋ Card).'}
+              : 'No card made in the editor yet: make one in the editor’s 🤫 Cards tab (or a tile’s or a Final’s ＋ 🤫 Card).'}
         </div>
       {/if}
     {:else if kind === 'stage'}

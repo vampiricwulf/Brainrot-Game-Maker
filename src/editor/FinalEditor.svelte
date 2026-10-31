@@ -1,5 +1,5 @@
 <!--
-  A Final Jeopardy round: category, think time, the question/answer slides, and its 🤫 cards (＋ Card: offered in the
+  A Final Jeopardy round: category, think time, the question/answer slides, and its 🤫 cards (＋ 🤫 Card: offered in the
   host panel during the Final, from the wagers to the last reveal).
 -->
 <script lang="ts">
@@ -97,7 +97,7 @@
     if (to < 0) ((onCard = false), (side = 'q'));
     else ((onCard = true), (ci = to));
   }
-  /** ＋ Card: a new card at the end, starting with everyone playing, its words box ready to type in. */
+  /** ＋ 🤫 Card: a new card at the end, starting with everyone playing, its words box ready to type in. */
   function newCardTab(): void {
     cardStep(`Added card ${cards.length + 1} to ${finalName(round)}`, () => {
       const c = addCard(round, 'playing');
@@ -199,10 +199,10 @@
     <input type="checkbox" checked={!round.phoneAnswersOff} onchange={(e) => setPhoneAnswers(e.currentTarget.checked)} data-final-typed />
     ✍ Players type their answers on their phones
   </label>
+  <!-- (How wagers are held to a player's score is said on the wager screen, by its Ignore the limits.) -->
   <span class="hint">
-    While the category is up the host ticks who plays and enters each wager privately (a wager can be more than the
-    player's score: untick "Ignore the limits" then to hold wagers to it), then they're revealed player by player. With
-    phone buzzers, players send their wager from their phone, and (ticked above) type their answer there too.
+    While the category is up you tick who plays and enter each wager in private (with phone buzzers, players send
+    theirs from their phone), then they're revealed player by player.
   </span>
   {#if !round.phoneAnswersOff}
     <!-- Its multiple choices, used while players type their answers on their phones (kept, unused, when unticked). -->

@@ -394,6 +394,18 @@
     });
   }
 
+  /**
+   * ＋ Add tiebreaker (optional): turned on in one step, its page open with the keys in its question (its ☑ Include a
+   * tiebreaker clue turns it off).
+   */
+  function addTiebreaker(): void {
+    tab = 'tiebreaker';
+    setTiebreaker(true);
+    void tick()
+      .then(tick)
+      .then(() => document.querySelector<HTMLElement>('main [data-field="q"]')?.focus());
+  }
+
   /** The Tiebreaker's tab menu (a right-click on it, or Shift+F10): open it, or turn it on or off. */
   function tiebreakerMenu(): MenuEntry[] {
     const on = !!game.tiebreaker;
@@ -403,7 +415,7 @@
       verbs: [
         on
           ? { label: 'Turn it off', onclick: () => setTiebreaker(false), hint: 'Takes the tiebreaker clue out of the game (Undo brings it back)' }
-          : { label: '＋ Include a tiebreaker clue', onclick: () => ((tab = 'tiebreaker'), setTiebreaker(true)) },
+          : { label: '＋ Add tiebreaker', onclick: addTiebreaker },
       ],
     });
   }
@@ -1261,17 +1273,19 @@
         {/if}
       {/each}
       <!-- Played after the rounds, when the game ends in a tie (once there's a round for it to follow). Until it's
-           turned on it's an optional extra, not a round: muted, with a ＋. -->
+           turned on it's an optional extra, not a round: muted, ＋ Add tiebreaker, which turns it on in one click. -->
       {#if game.rounds.length || game.tiebreaker}
         <button
           class:active={tab === 'tiebreaker'}
           class:optional={!game.tiebreaker}
           aria-current={tab === 'tiebreaker' ? 'page' : undefined}
-          onclick={() => (tab = 'tiebreaker')}
+          onclick={() => (game.tiebreaker ? (tab = 'tiebreaker') : addTiebreaker())}
           oncontextmenu={(e) => showMenu(e, tiebreakerMenu())}
-          title={game.tiebreaker ? 'Played after the last round when players tie for the win' : 'Optional: a clue played after the last round when players tie for the win (off)'}
+          title={game.tiebreaker
+            ? 'Played after the last round when players tie for the win'
+            : 'Optional: adds a clue played after the last round when players tie for the win (☑ Include a tiebreaker clue on its page turns it off; Ctrl+Z takes it back)'}
         >
-          {#if game.tiebreaker}<span aria-hidden="true">❓</span> Tiebreaker{:else}<span aria-hidden="true">＋</span> Tiebreaker <span class="opt">(optional)</span>{/if}
+          {#if game.tiebreaker}<span aria-hidden="true">❓</span> Tiebreaker{:else}<span aria-hidden="true">＋</span> Add tiebreaker <span class="opt">(optional)</span>{/if}
         </button>
       {/if}
       <button class="ghost" aria-haspopup="menu" onclick={addRoundMenu}>＋ Add round</button>

@@ -328,7 +328,12 @@ try {
   await key('Delete');
   assert((await roundNames()).length === 2 && (await page.locator('.canvas .hit').count()) === slideItems && (await undoTitle()).startsWith('Undo: Deleted round'), 'Delete on a round tab deletes the round, not the selected slide item too');
   await key('Control+z');
-  await page.getByRole('button', { name: /^Tiebreaker/ }).click();
+  // ＋ Add tiebreaker (optional) turns it on in one named step, with the keys in its question box.
+  await page.getByRole('button', { name: 'Add tiebreaker (optional)' }).click();
+  await page.waitForFunction(() => document.activeElement?.matches('main [data-field="q"]'), null, { timeout: 3000 });
+  assert((await page.getByLabel('Include a tiebreaker clue').isChecked()) && (await undoTitle()).startsWith('Undo: Tiebreaker on'), `＋ Add tiebreaker turns it on, one step (${await undoTitle()})`);
+  // Its tick box turns it off again: the empty page.
+  await page.getByLabel('Include a tiebreaker clue').uncheck();
   assert((await page.locator('.empty .ic').innerText()) === '❓', 'the tiebreaker’s empty page shows ❓, as in play (🤝 is a partner clue)');
   // Ticking it puts the keys in its question box, ready to type.
   await page.getByLabel('Include a tiebreaker clue').focus();

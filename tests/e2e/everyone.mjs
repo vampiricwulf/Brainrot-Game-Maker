@@ -126,7 +126,7 @@ try {
   await host.keyboard.press('Control+z');
   await editor.getByLabel('Choice D', { exact: true }).waitFor();
   assert((await editor.getByLabel('Choice D', { exact: true }).inputValue()) === 'Bern', 'Take the choices off: the keys land on ＋ Multiple choice, a note says so, and Ctrl+Z puts them back');
-  await editor.locator('[data-choice-row]').nth(1).getByRole('button', { name: '✔ Right' }).click();
+  await editor.locator('[data-choice-row]').nth(1).getByRole('button', { name: 'Mark right' }).click();
   await editor.locator('[data-choice-row]').nth(1).locator('button[aria-pressed="true"]').waitFor();
   const choiceUndo = await host.locator('.editor > header button[aria-label="Undo (Ctrl+Z)"]').getAttribute('title');
   assert(/^Undo: Marked B right on .+ \$200 \(Ctrl\+Z\)$/.test(choiceUndo), `＋ Multiple choice gives a ✍ clue A to D, and ✔ Right on B is a step of its own (${choiceUndo})`);

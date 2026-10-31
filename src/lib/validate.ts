@@ -510,7 +510,7 @@ export function partnerProblems(game: Game, round: BoardRound, tab: number, room
         const g = PARTNER_GAMES[rules.game];
         warn(`${tile} is ${article(g.label)} ${g.label} partner clue with no card: the ${lowerWord(partWords(rules).giver)} has nothing to ${g.task}`);
       }
-      if (cards.length > MAX_CARDS) warn(`${tile} has ${cards.length} cards: a clue holds ${MAX_CARDS} (＋ Card adds no more)`, cards[MAX_CARDS]);
+      if (cards.length > MAX_CARDS) warn(`${tile} has ${cards.length} cards: a clue holds ${MAX_CARDS} (＋ 🤫 Card adds no more)`, cards[MAX_CARDS]);
       cards.forEach((card, n) => {
         if (!slideHasContent(card)) warn(`${tile}: ${clueCardWords(card, n)} is empty: there's nothing on it to send`, card, slideHasContent(cl.answerSlide));
         out.push(...cardLines(game, [card], `${tile}: ${clueCardWords(card, n)}`, tab, at(card)!, room));
@@ -578,7 +578,7 @@ export function finalCardProblems(game: Game, round: FinalRound, name: string, t
   const cards = cardSlides(round);
   const at = (card: ClueCard): Place => ({ tab: 'round', round: round.id, part: { kind: 'final', side: 'card', slide: card.id } });
   const warn = (text: string, card: ClueCard, same = false) => out.push({ text, tab, level: 'warn', place: at(card), ...(same ? { sameAsAnswer: true } : {}) });
-  if (cards.length > MAX_CARDS) warn(`${name} has ${cards.length} cards: a Final holds ${MAX_CARDS} (＋ Card adds no more)`, cards[MAX_CARDS]);
+  if (cards.length > MAX_CARDS) warn(`${name} has ${cards.length} cards: a Final holds ${MAX_CARDS} (＋ 🤫 Card adds no more)`, cards[MAX_CARDS]);
   cards.forEach((card, n) => {
     if (!slideHasContent(card)) warn(`${name}: ${clueCardWords(card, n)} is empty: there's nothing on it to send`, card, slideHasContent(round.answerSlide));
     out.push(...cardLines(game, [card], `${name}: ${clueCardWords(card, n)}`, tab, at(card), room));

@@ -423,7 +423,7 @@ export interface ClueCard extends ExtraSlide {
   name?: string;
 }
 
-/** Most cards a clue or a Final has (＋ Card adds no more; a hand-edited game with more keeps them, with a warning). */
+/** Most cards a clue or a Final has (＋ 🤫 Card adds no more; a hand-edited game with more keeps them, with a warning). */
 export const MAX_CARDS = 6;
 /** A part's share of the tile's value is from −MAX_SHARE% to MAX_SHARE%. */
 export const MAX_SHARE = 1000;
@@ -736,7 +736,7 @@ export interface FinalRound {
   extraSlides?: ExtraSlide[];
   answerSlide: Slide;
   /**
-   * Its 🤫 cards (＋ Card in its editor), in order (Card 1, Card 2…, or their names; at most MAX_CARDS): slides only the
+   * Its 🤫 cards (＋ 🤫 Card in its editor), in order (Card 1, Card 2…, or their names; at most MAX_CARDS): slides only the
    * players the host sends them to see, offered in the host panel from the wagers to the last reveal, lasting until the
    * Final ends. Each starts with everyone playing it ('playing') or nobody.
    */

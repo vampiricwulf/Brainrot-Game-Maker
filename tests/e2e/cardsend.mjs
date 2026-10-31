@@ -147,7 +147,7 @@ try {
   };
   let dialog = await editTile('1,0');
   const tabNames = () => dialog.getByRole('tablist', { name: 'Slides' }).getByRole('tab').allInnerTexts();
-  await dialog.getByRole('button', { name: '＋ Card' }).click();
+  await dialog.getByRole('button', { name: '＋ 🤫 Card' }).click();
   await until(async () => (await tabNames()).includes('🤫 Card 1'), 5000);
   assert(JSON.stringify(await tabNames()) === JSON.stringify(['Question slide', '🤫 Card 1', 'Answer']), `a standard tile takes a 🤫 card too (${await tabNames()})`);
   const goesTo = dialog.getByLabel('Goes to');

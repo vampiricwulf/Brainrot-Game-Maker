@@ -5,7 +5,7 @@
   slide beside it; on a question slide's tab Ctrl+D duplicates it (even the only one), and with several Alt+←/→ move
   it, Delete deletes it; Ctrl+C / Ctrl+V copy the slide and paste the copied one as a new slide. A right-click on a tab
   (or Shift+F10 on it) gives its menu. Each change is one named step. A Final's 🤫 cards have tabs here too (after the
-  question slides, F2 to rename, Ctrl+D and Alt+←/→ for the card), with ＋ Card.
+  question slides, F2 to rename, Ctrl+D and Alt+←/→ for the card), with ＋ 🤫 Card.
 -->
 <script module lang="ts">
   /** What tells a slide apart, so the slide editor starts afresh on another one (the first one has no id). */
@@ -57,7 +57,7 @@
     what: string;
     /** Where a question slide (its id; none: the first) or the answer is, for an undo or redo to show it. */
     place: (side: Side, slide?: string) => Place;
-    /** A Final's 🤫 cards: their tabs after the question slides (Question 1…n · 🤫 Card 1…k · Answer), then ＋ Card. */
+    /** A Final's 🤫 cards: their tabs after the question slides (Question 1…n · 🤫 Card 1…k · Answer), then ＋ 🤫 Card. */
     cards?: {
       list: ClueCard[];
       onadd: () => void;
@@ -367,7 +367,7 @@
           disabled={list.length >= MAX_CARDS}
           title={list.length >= MAX_CARDS
             ? `A ${what} holds ${MAX_CARDS} cards`
-            : `Add a 🤫 card: a slide only the players you send it to see (never on stream), offered in the host panel during this ${what}, from the wagers to the last reveal (a hint for the leader, a side bet for those sitting out…)`}>＋ Card</button
+            : `Add a 🤫 card: a slide only the players you send it to see (never on stream), offered in the host panel during this ${what}, from the wagers to the last reveal (a hint for the leader, a side bet for those sitting out…)`}>＋ 🤫 Card</button
         >
       {/if}
     {/snippet}

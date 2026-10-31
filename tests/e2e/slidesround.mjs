@@ -93,7 +93,7 @@ try {
   assert(true, "a Final's line for its missing answer opens its Answer side, with the focus in the Answer box");
   // A tiebreaker ticked on but not finished is on the checklist too (a tie would put its blank slide on stream): its line
   // opens the empty side's box.
-  await page.getByRole('button', { name: /^Tiebreaker/ }).click();
+  await page.getByRole('button', { name: 'Add tiebreaker (optional)' }).click();
   await page.getByLabel('Include a tiebreaker clue').check();
   await page.locator('nav .problem', { hasText: 'The tiebreaker has no question' }).waitFor();
   await page.locator('main [data-field="q"]').fill('How many toilets?');

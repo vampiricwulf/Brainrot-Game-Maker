@@ -1,6 +1,6 @@
 <!--
   The open slide's buttons, one group right after the slide tabs (the clue editor's and SlideTabs'): ＋ Add slide (and
-  ＋ Card), ⧉ Duplicate slide, 📋 Copy slide, 📋 Paste slide (as a new slide; its ▾: over this one, one undo step), ◀ ▶,
+  ＋ 🤫 Card), ⧉ Duplicate slide, 📋 Copy slide, 📋 Paste slide (as a new slide; its ▾: over this one, one undo step), ◀ ▶,
   then 🗑 Delete slide apart at the right. Always there, greyed where the open tab can't do it (the Answer); on a 🤫
   card's tab they're the card's (⧉ Duplicate card, ◀ ▶ among the cards, 🗑 Delete card).
 -->
@@ -36,7 +36,7 @@
     /** The cards are full (no ⧉ Duplicate card). */
     full?: boolean;
     addTitle: string;
-    /** ＋ Card, beside ＋ Add slide. */
+    /** ＋ 🤫 Card, beside ＋ Add slide. */
     cardButton?: Snippet;
     onadd: () => void;
     onduplicate: () => void;
@@ -131,7 +131,7 @@
     flex: none;
     border-radius: 6px;
   }
-  /* ＋ Add slide (and ＋ Card) sit quietly after the tabs, as they did. */
+  /* ＋ Add slide (and ＋ 🤫 Card) sit quietly after the tabs, as they did. */
   .add {
     font-size: 12px;
     opacity: 0.8;

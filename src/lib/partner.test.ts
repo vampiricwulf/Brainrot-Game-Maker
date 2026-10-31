@@ -273,7 +273,7 @@ describe('🤫 cards', () => {
     expect(duplicateCard(clue, 0)).toBe(-1);
   });
 
-  it('a Final’s: ＋ Card starts one with everyone playing it, up to six; deleting the last takes the list away', () => {
+  it('a Final’s: ＋ 🤫 Card starts one with everyone playing it, up to six; deleting the last takes the list away', () => {
     const final = newFinalRound();
     const first = addCard(final, 'playing');
     expect(first?.to).toBe('playing');

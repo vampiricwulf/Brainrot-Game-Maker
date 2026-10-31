@@ -61,7 +61,7 @@ is an item or shop of the same name that's the same otherwise; one of that name 
 | Mode | What it is |
 |---|---|
 | 🟦 **Jeopardy board** | 1–10 categories × 1–10 clues. Supports custom values, Daily Doubles, 🤝 partner clues (placed by hand or 🔀 at random; two players, no buzzers, a steal on a miss if you like, private 🤫 cards you send to their phones or copy to them), 🤫 cards on any tile, and images on categories and tiles. |
-| 🏆 **Final Jeopardy** | Private wagers, think music (with phone buzzers, players type their answer on their phone), then a one-by-one reveal and a winner screen; 🤫 cards of its own for the players you choose (＋ Card in its editor). |
+| 🏆 **Final Jeopardy** | Private wagers, think music (with phone buzzers, players type their answer on their phone), then a one-by-one reveal and a winner screen; 🤫 cards of its own for the players you choose (＋ 🤫 Card in its editor). |
 | 🗺 **RPG** | Players explore a map of screens. It has stats, items, shops, characters and doorways. |
 | ♟ **Board game** | A path of spaces with forks and zones. Players move by dice, a wheel, or one space per turn. |
 | 🖼 **Slides** | A few slides in a row (a welcome, the rules, a break); N goes from one to the next. |
@@ -89,7 +89,8 @@ Card 1 a copy of the answer, as 🔀 Randomize's do (the round's 🤫 Card choic
 empty card's words box has **⧉ Same as the answer** in its corner, and so does the checklist's line about it. A partner
 clue's rules show its game, who describes and what it comes to in money on one line; the picker on the wheel, a typed
 guess, a steal after a miss, the points and the part words are under **▸ More rules** (this computer remembers it open
-or folded). Files drop onto the slot
+or folded). Until a game has a tiebreaker clue, the list of rounds ends with **＋ Add tiebreaker (optional)**: one click
+adds it (Ctrl+Z takes it back), and its page's ☑ Include a tiebreaker clue takes it out again. Files drop onto the slot
 they belong in (a picture dropped on a tile asks: in the question, or as the tile's face). Press `?` (or **❔ Help** ›
 ⌨ Keyboard shortcuts) for every editor shortcut, and beside them, one click away, the host's during the game, with a filter for both. The longer help on the board, a slide, the RPG map and the board game page sits in a
 **💡 Tips** fold that stays as you left it.
@@ -501,9 +502,9 @@ to it lists them by the name the app gives each ("Card 2 → Ann", never what's 
 it turns orange when one isn't all on the phones (a picture that didn't go up, a phone that came late), and that card's
 row says what. A card made in the editor that you change after it went (▶ Resume with my edits) comes off the phones
 until you ↻ Send it again, keeping its place among the cards the phones hold meanwhile.
-Any tile can have 🤫 cards (＋ Card in the clue editor): a standard or Daily Double tile's are offered in its panel to
+Any tile can have 🤫 cards (＋ 🤫 Card in the clue editor): a standard or Daily Double tile's are offered in its panel to
 the player who picked it (a private question, a tip before the wager), go only when you send them, and go away when the
-tile closes; the tile plays as it always does. A Final can have 🤫 cards too (＋ Card in its editor): its panel offers
+tile closes; the tile plays as it always does. A Final can have 🤫 cards too (＋ 🤫 Card in its editor): its panel offers
 them from the wager screen to the last reveal, each starting with everyone playing it (the chips change who gets it;
 teams go whole), they go when you press 📤 Send, and they go away when the Final ends (during the wagers, and during
 the question while players type their answers, a card sits above the wager or answer box on the phone, so one or two

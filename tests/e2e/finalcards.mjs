@@ -3,7 +3,7 @@
 // real phone page.
 // In the editor, a tile's card has a Card name: its tab and its words box say it, typing it is one undo step, a name
 // that repeats the answer says so (and the checklist notes it), and F2 on its tab comes back to it (Enter there goes
-// back to the tab). A Final takes cards too (＋ Card: its words box in focus, Goes to "everyone playing it"), the
+// back to the tab). A Final takes cards too (＋ 🤫 Card: its words box in focus, Goes to "everyone playing it"), the
 // checklist's line about an empty one goes to it, 🗑 Delete card offers ↶ Undo (the last one deleted: the question
 // opens, the keys on its tab), 📱 On their phone shows one as a phone gets it, 🔍 Find finds one by its words (its
 // words box) or its name (its Card name box), and 🖼 Media counts a file used only on one as used, where.
@@ -210,10 +210,10 @@ try {
   await finalTab.click();
   const main = host.getByRole('main');
   await tabsAre(main, ['Question slide', '🤫 Leader hint', '🤫 Card 2', 'Answer'], 'the Final’s card tabs, after its question slide');
-  await main.getByRole('button', { name: '＋ Card' }).click();
+  await main.getByRole('button', { name: '＋ 🤫 Card' }).click();
   const card3 = main.getByRole('tab', { name: '🤫 Card 3' });
   await card3.waitFor();
-  assert(await until(async () => (await card3.getAttribute('aria-selected')) === 'true'), '＋ Card: 🤫 Card 3, open');
+  assert(await until(async () => (await card3.getAttribute('aria-selected')) === 'true'), '＋ 🤫 Card: 🤫 Card 3, open');
   await focused('main [data-field="card"]');
   assert(true, 'with its words box in focus');
   await undoSays('Undo: Added card 3 to Final Jeopardy!');

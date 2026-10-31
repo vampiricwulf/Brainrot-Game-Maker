@@ -1,6 +1,6 @@
 <!--
   A ✍ clue's (or a Final's) multiple choices in its editor: ＋ Multiple choice starts A to D, then each choice's words,
-  ✔ Right (at most one, and it can be taken off), ⋯ (its menu: ▲ / ▼, drag ⋮⋮ or Alt+↑/↓) and 🗑, ＋ Choice up to
+  Mark right (✔ Right once pressed: at most one, and it can be taken off), ⋯ (its menu: ▲ / ▼, drag ⋮⋮ or Alt+↑/↓) and 🗑, ＋ Choice up to
   CHOICES_MAX, and Take the choices off.
   Each change is a step named by the letters as they were ("Deleted choice C of Memes $400"); typing goes to the history
   watcher ("Edited choice B of Memes $400"). Lettered by place, as the host types them (in play, those with no words are
@@ -143,13 +143,14 @@
             oninput={(e) => (c.text = e.currentTarget.value)}
             onkeydown={(e) => key(e, i)}
           />
+          <!-- (Mark right reads ✔ Right once pressed.) -->
           <button
             class="small"
             class:good={!!c.right}
             aria-pressed={!!c.right}
-            aria-label="✔ Right: choice {letter(i)}"
+            aria-label="Mark right: choice {letter(i)}"
             onclick={() => markRight(i)}
-            title={rightTitle}>✔ Right</button
+            title={rightTitle}>{c.right ? '✔ Right' : 'Mark right'}</button
           >
           <RowTools menu={() => items(i)} name="choice {letter(i)}" remove={() => remove(i)} deleteLabel="Delete choice {letter(i)}" size="tiny" />
         </div>

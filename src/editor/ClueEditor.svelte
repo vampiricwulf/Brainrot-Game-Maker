@@ -147,7 +147,7 @@
     if (to < 0) side = 'q';
     else ((side = 'card'), (ci = to));
   }
-  /** ＋ Card: a new card at the end, its words box ready to type in. */
+  /** ＋ 🤫 Card: a new card at the end, its words box ready to type in. */
   function newCardTab(): void {
     cardStep(`Added card ${cards.length + 1} to ${tileName()}`, () => {
       const c = addCard(clue);
@@ -596,7 +596,7 @@
             type="checkbox"
             bind:this={emptyBox}
             bind:checked={() => !!clue.empty, (v) => ((clue.empty = v), !v && followDailyDoubles(round))}
-          /> Empty tile (not playable)</label>
+          /> ⬚ Empty tile (not played)</label>
         {#if clue.type === 'standard'}
           <label
             class="check"
@@ -680,7 +680,7 @@
         </p>
       {/if}
       {#if clue.empty}
-        <p class="muted empty-note">⬚ This tile is left empty on the board. Untick <b>Empty tile</b> to use it.</p>
+        <p class="muted empty-note">⬚ An empty tile isn't played: the board shows a blank here. Untick <b>⬚ Empty tile</b> to use this tile again.</p>
       {:else}
         <!-- Quick text: the main text of each slide, so plain clues never need the canvas. Tab moves along. -->
         <div class="quick" class:four={!!card}>
@@ -810,7 +810,7 @@
                   ? `A clue holds ${MAX_CARDS} cards`
                   : clue.type === 'partner'
                     ? 'Add a 🤫 card: a slide only the players you hand it to see (never on stream)'
-                    : 'Add a 🤫 card: a slide only the players you send it to see (never on stream), offered in the host panel when this tile is played (a private question, a tip before a Daily Double’s wager…)'}>＋ Card</button
+                    : 'Add a 🤫 card: a slide only the players you send it to see (never on stream), offered in the host panel when this tile is played (a private question, a tip before a Daily Double’s wager…)'}>＋ 🤫 Card</button
               >
             {/snippet}
           </SlideGroup>
@@ -981,7 +981,7 @@
   .tablist button {
     border-radius: 6px 6px 0 0;
   }
-  /* ＋ Card sits quietly after ＋ Add slide. */
+  /* ＋ 🤫 Card sits quietly after ＋ Add slide. */
   .tabs .add {
     font-size: 12px;
     opacity: 0.8;

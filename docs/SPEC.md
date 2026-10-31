@@ -227,13 +227,16 @@ RollEvent  { id, ts, source: 'wheel' | 'dice', presetName?, result: string /* la
   Enter in a name for the next part and Backspace in an empty one), dice and ranges of totals, choices; ▶ Play's
   players keep ▲ ▼ in view. A stat's dropdowns are labelled Kind,
   Shown as and Who sees it; a die How many and Sides (with "1d6"); a deal part How many get it and Their card also shows.
-  🔊 Sounds' rows, Checklist lines and the Tiebreaker's entry have menus too, and an RPG world's ⋯ has ✎ Rename world,
+  🔊 Sounds' rows, Checklist lines and the Tiebreaker's entry have menus too (off, the entry reads **＋ Add tiebreaker
+  (optional)** and a click turns it on, one step, with the keys in its question; its page's ☑ Include a tiebreaker clue
+  turns it off), and an RPG world's ⋯ has ✎ Rename world,
   ⧉ Duplicate world (this round plays the copy: worldedit `duplicateWorld`) and 🗑 Delete world.
 
 ### 5.2 Board editor
 - A grid view of the round that mirrors the play board. Click a category header or tile to edit it.
 - Add/remove/reorder categories and rows (drag and drop, or `Alt`+`←`/`→` on a tile or a category's name for its
-  category and `Alt`+`↑`/`↓` on a tile for its row, the keys going with it). Duplicate a category. Mark a tile **empty**.
+  category and `Alt`+`↑`/`↓` on a tile for its row, the keys going with it). Duplicate a category. Make a tile a
+  **⬚ Empty tile** (its one name: the clue editor's "⬚ Empty tile (not played)", the tile menu's ⬚ Empty tile).
 - A tile's right-click menu has a **Make it a…** group, the kind it is ticked: Standard · ⭐ Daily Double · 🤝 Partner
   clue · 🎡 Wheel tile… · 🎲 Dice tile…, then ✍ Everyone answers (standard tiles; on or off) and ⬚ Empty tile. A wheel or
   dice tile opens the clue editor with the keys in its Which wheel / Which dice box.
@@ -283,7 +286,7 @@ RollEvent  { id, ts, source: 'wheel' | 'dice', presetName?, result: string /* la
   kind. F2 edits a text box's text, and renames any other item in the Layers list. After an item is added (🖼 Image,
   🎬 Video, 🔊 Sound, 🌐 Link, a drop or a paste) the keys are on the slide.
 - **Slide tabs** (a clue's, the tiebreaker's, a Final's, a slides round's): right after them, one group for the open
-  slide (SlideGroup), always there and greyed where it can't act: ＋ Add slide (＋ Card) · ⧉ Duplicate slide · 📋 Copy
+  slide (SlideGroup), always there and greyed where it can't act: ＋ Add slide (＋ 🤫 Card) · ⧉ Duplicate slide · 📋 Copy
   slide · 📋 Paste slide (the safe paste: the copied slide as a new slide after this one, before the answer from the
   Answer's tab; its ▾: Paste over this slide, one undo step with ↶ Undo in the note) · ◀ ▶ · 🗑 Delete slide apart at the
   right. On a 🤫 card's tab they're the card's: ⧉ Duplicate card, ◀ ▶ among the cards, 🗑 Delete card (it left the card's
@@ -885,7 +888,7 @@ The mode isn't saved with the game: it's dual while the audience window is open.
      back); only the host sees them (in one window, not until the answer is up: till then each player's row says whether
      theirs is in, in the room the words then take, long ones scrolling in it, so the stage keeps its size); the stream shows ✍ and who has answered
      while answers are open; the host marks each ✔ / ✘ for the tile's value. With **multiple choice** (2–6 choices
-     under ✍ in the editor, one marked ✔ Right), players tap one instead, and ✔ Judge all marks everyone by the right
+     under ✍ in the editor, one marked right: its **Mark right** reads ✔ Right once pressed), players tap one instead, and ✔ Judge all marks everyone by the right
      choice in one step (`Enter` too, with nobody selected; its button shows ⏎ then). The stream shows the choices under the question (the slide drawn smaller over them, the right
      one lit with the answer). Without phone buzzers it plays as a normal clue, the choices still on stream.
    - *Any tile with 🤫 cards* (PARTNER-CLUES-SPEC.md §12.2): its panel lists them for whoever picked it (a Daily

@@ -197,7 +197,7 @@ export function startingCards(game: PartnerGame): ClueCard[] {
 }
 
 /**
- * ＋ Card: one more card at the end (on a partner clue it goes to the giver, as a game's first card does; on any other
+ * ＋ 🤫 Card: one more card at the end (on a partner clue it goes to the giver, as a game's first card does; on any other
  * tile, to whoever picked it; a Final passes 'playing'). Returns it, or null at MAX_CARDS.
  */
 export function addCard(holder: Pick<Clue, 'cards'> & Partial<Pick<Clue, 'type'>>, to: CardGoesTo = holder.type === 'partner' ? 'giver' : 'picker'): ClueCard | null {

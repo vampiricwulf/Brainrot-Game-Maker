@@ -109,7 +109,8 @@ try {
   // ---------- Sidebar ----------
   const order = await page.locator('nav > button, nav > .navlabel').allInnerTexts();
   const at = (re) => order.findIndex((t) => re.test(t));
-  assert(at(/Tiebreaker/) === at(/Round 3/) + 1 && at(/Add round/) === at(/Tiebreaker/) + 1, `the Tiebreaker comes right after the rounds (${order.join(' | ')})`);
+  // (Off, it reads ＋ Add tiebreaker (optional).)
+  assert(at(/tiebreaker/i) === at(/Round 3/) + 1 && at(/Add round/) === at(/tiebreaker/i) + 1, `the Tiebreaker comes right after the rounds (${order.join(' | ')})`);
   assert(at(/^Game$/i) > at(/Add round/) && at(/Sounds/) > at(/^Game$/i) && at(/Theme/) > at(/^Game$/i), 'the game-wide tabs have a Game group of their own');
   await page.locator('nav .problem', { hasText: 'Round 3:' }).waitFor();
   const lines = await page.locator('nav .problem').allInnerTexts();

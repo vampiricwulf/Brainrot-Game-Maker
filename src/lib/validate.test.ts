@@ -511,7 +511,7 @@ describe('a Final’s 🤫 cards', () => {
     expect(mine(game)).toEqual([]);
     const seventh = { ...final.cards![0], id: 'c7', name: undefined };
     final.cards!.push(seventh);
-    expect(mine(game)).toEqual([{ text: 'Final Jeopardy! has 7 cards: a Final holds 6 (＋ Card adds no more)', tab: 1, level: 'warn', place: at(final, 'c7') }]);
+    expect(mine(game)).toEqual([{ text: 'Final Jeopardy! has 7 cards: a Final holds 6 (＋ 🤫 Card adds no more)', tab: 1, level: 'warn', place: at(final, 'c7') }]);
   });
 
   it('warns of what won’t reach a phone, as a tile’s card', () => {

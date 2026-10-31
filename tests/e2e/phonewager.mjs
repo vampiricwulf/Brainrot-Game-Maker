@@ -457,7 +457,7 @@ try {
   await host2.getByRole('button', { name: '＋ Multiple choice' }).click();
   await host2.waitForFunction(() => document.activeElement?.getAttribute('aria-label') === 'Choice A');
   for (const [i, words] of CHOICES.entries()) await host2.getByLabel(`Choice ${'ABCD'[i]}`, { exact: true }).fill(words);
-  await host2.locator('[data-choice-row]').nth(1).getByRole('button', { name: '✔ Right' }).click();
+  await host2.locator('[data-choice-row]').nth(1).getByRole('button', { name: 'Mark right' }).click();
   await host2.locator('[data-choice-row]').nth(1).locator('button[aria-pressed="true"]').waitFor();
   const choiceUndo = await host2.locator('.editor > header button[aria-label="Undo (Ctrl+Z)"]').getAttribute('title');
   await shot('pw-10-final-choices-editor', host2);

@@ -1,6 +1,6 @@
 // 🤝 Partner clues from the editor to the end of the clue (docs/PARTNER-CLUES-SPEC.md §5–§10, §14, §15, §22).
 // The editor: a tile made a partner clue gets its rules (game, who describes, the points and what they come to on the
-// tile) and a 🤫 Card 1 tab; ⧉ Same as the answer copies the answer onto a card once; ＋ Card and 🗑 Delete card are undo
+// tile) and a 🤫 Card 1 tab; ⧉ Same as the answer copies the answer onto a card once; ＋ 🤫 Card and 🗑 Delete card are undo
 // steps; the tabs go Question · Cards · Answer by the arrow keys; Find finds a card's words and opens its tab; the board
 // shows a 🤝 badge; the tile menu turns it off and on again, keeping the cards; a reload keeps it all; Card 2 gets a
 // picture from this computer; and a second partner clue gets a card of its own, with a picture too.
@@ -253,10 +253,10 @@ try {
   await dialog.getByLabel('Goes to').selectOption('both');
   assert((await dialog.getByLabel('Goes to').inputValue()) === 'both', 'Goes to can be both of them');
 
-  // ---------- ＋ Card, the tabs' keys, 🗑 Delete card ----------
+  // ---------- ＋ 🤫 Card, the tabs' keys, 🗑 Delete card ----------
   await away();
-  await dialog.getByRole('button', { name: '＋ Card' }).click();
-  assert(JSON.stringify(await tabNames()) === JSON.stringify(['Question slide', '🤫 Card 1', '🤫 Card 2', 'Answer']), '＋ Card adds Card 2 before the answer');
+  await dialog.getByRole('button', { name: '＋ 🤫 Card' }).click();
+  assert(JSON.stringify(await tabNames()) === JSON.stringify(['Question slide', '🤫 Card 1', '🤫 Card 2', 'Answer']), '＋ 🤫 Card adds Card 2 before the answer');
   assert(await opens('Card 2'), 'and opens it');
   assert(await card.evaluate((e) => e === document.activeElement), 'its words box has the focus, ready to type');
   await page.keyboard.type('Ogres are like onions');
