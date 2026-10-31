@@ -189,12 +189,15 @@ try {
 
   // ---------- 🎭 Deal…: Bob picked as the spy, dealt, nothing sent ----------
   const tools = host.locator('.panel .toolsrow');
+  // (🎭 Deal… says how the deal stands once there's one: “🎭 Odd one out · sent”.)
+  const dealTool = tools.locator('[data-deal-tool]');
   const openDeal = async () => {
-    await tools.getByRole('button', { name: '🎭 Deal…' }).click();
+    await dealTool.click();
     const d = host.getByRole('dialog', { name: 'Deal' });
     await d.waitFor();
     return d;
   };
+  assert((await dealTool.innerText()).trim() === '🎭 Deal…', 'no deal yet: the tools row says 🎭 Deal…');
   let dialog = await openDeal();
   assert((await dialog.getByRole('combobox', { name: 'The deal' }).inputValue()) === 'saved:deal1', 'it starts with the game’s saved deal');
   assert((await dialog.getByLabel('Spy’s card words').inputValue()) === SPY, 'two windows: the parts’ words show (viewers don’t see this window)');
@@ -213,10 +216,20 @@ try {
   assert(!cards().length && !JSON.stringify(states).includes('qkzvx') && !JSON.stringify(states).includes('wqzj'), 'dealt, not sent: nothing of it reaches the room');
   for (const s of ['Ann', 'Bob', 'Cat', 'Dan']) assert(!(await cardsOn(phones[s])), `${s}’s phone: no card yet`);
   await offStream(aud, 'the audience window', 'dealt');
+  assert((await dealTool.getAttribute('data-deal-tool')) === 'not sent', 'dealt: the tools row’s 🎭 says not sent');
 
   // ---------- 📤 Send: one card per player, each its own ----------
   await dialog.locator('[data-deal-send]').click();
   assert(await until(() => cards().length === 4), 'sent: the room holds four cards');
+  await host.locator('[data-deal-tool="sent"]').waitFor();
+  const toolWords = async () => (await dealTool.innerText()).replace(/\s+/g, ' ').trim();
+  assert((await toolWords()) === '🎭 Odd one out · sent' && !(await dealTool.evaluate((b) => b.classList.contains('warn'))), `sent: the tools row says so, “${await toolWords()}”`);
+  // Grouped by purpose: the cards on the phones, what viewers see, then this deal, apart (🗑 End this deal last).
+  const groups = await dialog.locator('[data-deal-group]').evaluateAll((els) => els.map((e) => e.innerText.replace(/\s+/g, ' ').trim()));
+  assert(
+    JSON.stringify(groups) === JSON.stringify(['On phones ↻ Send again ↩ Take the cards back', 'On stream 🎭 Show who was who', 'This deal 🎭 Deal a new one 🗑 End this deal']),
+    `the deal’s buttons in three groups (${groups.join(' | ')})`,
+  );
   const sent = cards();
   assert(new Set(sent.map((c) => c.id)).size === 4 && sent.every((c) => c.to.length === 1 && !c.shared), 'each its own id, to one player, never marked shared');
   const bobs = sent.find((c) => c.to[0].seat === seat.Bob);
@@ -236,6 +249,7 @@ try {
   await phones.Dan.context().close();
   const danLine = '📵 Dan has no phone here: copy theirs (📋)';
   assert(await until(async () => (await flat(dialog.locator('[data-deal-status]'))).includes(danLine)), `Dan’s phone gone: the panel says “${danLine}”`);
+  assert(await dealTool.evaluate((b) => b.classList.contains('warn')), 'and the tools row’s 🎭 is orange: a phone missed its card');
   const rows = await dialog.locator('.hands .row').evaluateAll((els) => els.map((e) => e.innerText.replace(/\s+/g, ' ').trim()));
   assert(rows.length === 4 && rows.includes('Dan · 📵 no phone here 📋 Copy 🪟'), `two windows: everyone dealt in is listed, Dan with 📵 and 🪟 (${rows.join(' | ')})`);
   assert(rows.filter((r) => !r.startsWith('Dan ')).every((r) => r.includes('📋 Copy') && !r.includes('🪟') && !r.includes('📵')), 'the others, with their phones: 📋 Copy, no 🪟 and no 📵');
@@ -250,6 +264,8 @@ try {
   await dialog.locator('[data-deal-reveal]').click();
   const reveal = aud.locator('[data-who-was-who]');
   await reveal.waitFor();
+  await host.locator('[data-deal-tool="on screen"]').waitFor();
+  assert((await toolWords()) === '🎭 Odd one out · on screen', `Who was who up: the tools row says “${await toolWords()}”`);
   const shown = await flat(reveal);
   assert(shown.includes('Bob Spy') && shown.includes(`Ann Villager · ${place}`), `Who was who: names and parts on stream (${shown})`);
   assert(!shown.includes('qkzvx'), 'never a card’s words');
@@ -286,9 +302,11 @@ try {
   await dialog.getByRole('button', { name: 'Back to “Odd one out”' }).click();
   await offStream(host, 'the host page in one window', 'the deal open');
 
-  // ---------- ✖ Take back, and Who was who in one window ----------
-  await dialog.getByRole('button', { name: '✖ Take back' }).click();
-  assert(await until(() => !cards().length), '✖ Take back: the room holds none of them');
+  // ---------- ↩ Take the cards back, and Who was who in one window ----------
+  await dialog.getByRole('button', { name: '↩ Take the cards back' }).click();
+  assert(await until(() => !cards().length), '↩ Take the cards back: the room holds none of them');
+  await host.locator('[data-deal-tool="cards back"]').waitFor();
+  assert((await dialog.locator('[data-deal-group="phones"]').getByRole('button').allInnerTexts()).map((t) => t.trim()).join() === '📤 Send', 'taken back: 📤 Send in its place, in On phones');
   assert(await until(async () => !(await cardsOn(phones.Bob)) && !(await cardsOn(phones.Ann))), 'the phones drop them');
   await dialog.locator('[data-deal-reveal]').click();
   await host.locator('.stage-box [data-who-was-who]').waitFor();
@@ -328,7 +346,7 @@ try {
   assert(!(await fills.count()), 'and the warning goes');
   await host.keyboard.press('Escape');
   await dialog.waitFor({ state: 'detached' });
-  const fullLine = '8 cards are out on the phones, 4 of them the 🎭 deal’s: ✖ Take them back in 🎭 Deal…, or take back another one';
+  const fullLine = '8 cards are out on the phones, 4 of them the 🎭 deal’s: ↩ Take the cards back in 🎭 Deal…, or take back another one';
   await host.keyboard.press('p');
   await host.keyboard.press('1');
   await host.locator('.stage-box .tile[aria-label^="Movies for $200"]').click();
@@ -388,7 +406,7 @@ try {
   );
   await sendRow(1).click();
   assert(await until(() => cards().length === 8), 'card 1 goes: 8 out');
-  const oneLine = '8 cards are out on the phones, 4 of them the 🎭 deal’s and 1 this partner clue’s: ✖ Take them back in 🎭 Deal…, or take back another one';
+  const oneLine = '8 cards are out on the phones, 4 of them the 🎭 deal’s and 1 this partner clue’s: ↩ Take the cards back in 🎭 Deal…, or take back another one';
   assert(await until(async () => (await sendRow(2).isDisabled()) && (await pFull.count()) === 1 && (await pFull.innerText()) === oneLine), `card 2 can’t go now, and the line says why: “${oneLine}”`);
   // Card 2 to nobody: nothing is refused. Card 1 given to Bob too: its 📤 Send changes is off, and the line says why.
   await partner.getByRole('button', { name: 'Card 2 to nobody' }).click();

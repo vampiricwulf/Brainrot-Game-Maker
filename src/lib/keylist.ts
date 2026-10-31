@@ -25,6 +25,9 @@ export const RENAMED: [string, string][] = [
   ['↶ Reopen this tile', '↶ Put it back on the board'],
   ['👁 Reveal answer', 'Reveal answer ▶'],
   ['💾 Replace “…”…', 'Overwrite “…”'],
+  ['🎭 Show who was who', '🎭 Who was who'],
+  ['↩ Take the cards back', '✖ Take back (🎭 Deal…)'],
+  ['🗑 End this deal', '✖ Put it away'],
 ];
 
 /** "Ctrl+" reads "⌘" on a Mac. */

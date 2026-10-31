@@ -481,9 +481,13 @@ get it, with a sample slice when it draws from the wheel). 🎭 Deal shuffles th
 and the column beside the stage shows who got which); nothing goes until you press 📤 Send, which sends each player's
 card on its own, their part ("You're the Spy") on it behind Tap to see. In one window the panel only counts the parts
 ("Spy ×1, Villager ×4") and lists everyone dealt in alike, a part or not (with the phones getting the cards, those with
-no phone here, 📵, to copy theirs). ↻ Send again and ✖ Take back work on the whole deal, and **🎭 Who was who** puts
-everyone's part on screen when you choose (a click on it, Esc or Ctrl+Z takes it off, and so does opening a tile or
-the tiebreaker, going to another round, or the Final going on).
+no phone here, 📵, to copy theirs). Once it's dealt, its button in the tools row says how it stands, “🎭 Spy night ·
+sent” (or not sent, cards back, and “· on screen” while Who was who is up), orange when a phone missed its card. Inside,
+its buttons go by purpose: **On phones** ↻ Send again and ↩ Take the cards back, for the whole deal; **On stream**
+**🎭 Show who was who**, which puts everyone's part on screen when you choose (🙈 Hide who was who, a click on it, Esc or
+Ctrl+Z takes it off, and so does opening a tile or the tiebreaker, going to another round, or the Final going on); and,
+set apart, **This deal**: 🎭 Deal a new one and 🗑 End this deal (its cards back, the parts forgotten; it asks first
+while they're out).
 A player on a computer opens the same link: `Space` (or `Enter`) buzzes, `1`–`9` pick their seat or team, `Esc` goes back, and the page says when another window (the stream, say) has the keyboard. The room stays open
 through the pre-game screen, a reload of it or of the game (▶ Resume it on the pre-game screen, or Resume game, goes back into it unless a phone joined a room started there: one nobody joined closes on ▶ Resume it or ◀ Back to editor), **◀ Back to editor**, **Exit › Keep & leave** (Resume goes back into it)
 and **▶ Next game…** (▶ Play asks to keep it for another game, which then has its players, and Teams on if it was); it closes with **Exit › Discard & leave**, when you leave the results screen any other way than

@@ -71,7 +71,8 @@ try {
 
   const flat = async (loc) => (await loc.innerText()).replace(/\s+/g, ' ').trim();
   const tools = host.locator('.panel .toolsrow');
-  const dealButton = tools.getByRole('button', { name: '🎭 Deal…' });
+  // (🎭 Deal… says how the deal stands once there's one: “🎭 Captain · handed out”.)
+  const dealButton = tools.locator('[data-deal-tool]');
   const dialog = host.getByRole('dialog', { name: 'Deal' });
   const openDeal = async () => {
     if (!(await dialog.count())) await dealButton.click();
@@ -191,7 +192,7 @@ try {
   });
   const others = NAMES.filter((n) => n !== next.captain).map((n) => `${n} 📋 Copy 🪟`);
   assert(await until(async () => JSON.stringify(await handRows()) === JSON.stringify(others)), `the list still names the other four, each with 📋 Copy and 🪟 (${(await handRows()).join(' | ')})`);
-  assert((await flat(status)) === statusWas && (await dialog.getByRole('button', { name: '✖ Take back' }).isVisible()), `“${statusWas}” as before, with ✖ Take back`);
+  assert((await flat(status)) === statusWas && (await dialog.getByRole('button', { name: '↩ Take the cards back' }).isVisible()), `“${statusWas}” as before, with ↩ Take the cards back`);
   await inPlayers(() => players.getByRole('button', { name: '↩ Restore' }).click());
   assert(await until(async () => (await handRows()).length === 5), '↩ Restore: the captain is back on the list');
 
@@ -203,7 +204,11 @@ try {
   assert((await flat(reveal)).includes(`${next.captain} Captain`), 'on the stage: who was captain');
   await host.keyboard.press('Escape');
   await dialog.waitFor({ state: 'detached' });
-  assert((await dealButton.getAttribute('title')) === '🎭 Who was who is on screen: click it on the stage, or 🙈 Hide it here', 'the 🎭 Deal… button says how to take it off');
+  const dealTip = await dealButton.getAttribute('title');
+  assert(
+    (await dealButton.getAttribute('data-deal-tool')) === 'on screen' && dealTip.endsWith(' · on screen: viewers see who was who. Click it on the stage, or 🙈 Hide who was who here'),
+    `the 🎭 Deal… button says it's on screen, and how to take it off (${dealTip})`,
+  );
   const tile = host.locator('.stage-box .tile').first();
   assert(!(await clickable(tile)), 'while it’s up, it covers the board');
   await sleep(500);

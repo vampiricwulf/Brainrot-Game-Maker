@@ -1,7 +1,7 @@
 <!--
   🎭 Who was who (partner-clues spec §11), over the stage: each player of the deal and the part they had (and the slice
   they drew), once the host shows it. Only names and parts come here (dealReveal): never what was on a card. On the
-  host's stage a click takes it off (the same step as 🙈 Hide Who was who).
+  host's stage a click takes it off (the same step as 🙈 Hide who was who).
 -->
 <script lang="ts">
   import { fade, fly } from '../../lib/motion.svelte';

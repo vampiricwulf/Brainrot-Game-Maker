@@ -897,13 +897,20 @@ The mode isn't saved with the game: it's dual while the audience window is open.
   slice of the wheel, "+ a slice of Locations: Beach") or a ready-made one. Each player gets one part at random (or the host's pick,
   with the audience window open), and a part's card can show a slice of a saved wheel (each their own, or one shared
   by everyone but the odd one out). Nothing goes until 📤 Send, which sends each player's card on its own; ↻ Send again
-  and ✖ Take back work on the whole deal. A player taken out keeps their part, their card off the phones: the counts stay
-  as dealt, the deal stays out (↻ Send again, and ✖ Take back, which takes theirs too) even when theirs was its only
-  card, and once they're back (Ctrl+Z, ↩ Restore) ↻ Send again sends their card. Only the two-window host column says who got which: one window lists everyone
+  and ↩ Take the cards back work on the whole deal. A player taken out keeps their part, their card off the phones: the
+  counts stay as dealt, the deal stays out (↻ Send again, and ↩ Take the cards back, which takes theirs too) even when
+  theirs was its only card, and once they're back (Ctrl+Z, ↩ Restore) ↻ Send again sends their card. Only the two-window host column says who got which: one window lists everyone
   dealt in alike, a part or not (with the phones getting the cards, only those with no phone here, 📵, to copy theirs),
-  and counts the phones that came late. **🎭 Who was who** puts the names and parts on stream when the host presses it,
-  as an undoable step; a click on it, Esc, opening a tile or the tiebreaker, going to another round, or the Final going
-  on takes it off.
+  and counts the phones that came late. **🎭 Show who was who** puts the names and parts on stream when the host presses
+  it, as an undoable step; 🙈 Hide who was who, a click on it, Esc, opening a tile or the tiebreaker, going to another
+  round, or the Final going on takes it off. The tools row's button says how the deal stands (deals.ts `dealState`):
+  "🎭 Deal…" with none, else its name (cut short, whole in the tooltip) and "· not sent", "· sent" ("· handed out" with
+  no phone getting cards), "· cards back" or "· on screen" while Who was who is up, never a part; orange when a card of
+  it doesn't reach its phone (more than the phones hold, a phone late for it, or someone dealt in with no phone here: in
+  one window counted by phone, a part or not). Its words go on a narrow window as the cards out's do. Once sent, the
+  popover's buttons go by purpose: **On phones** (↻ Send again, ↩ Take the cards back; 📤 Send once they're back),
+  **On stream** (🎭 Show who was who / 🙈 Hide who was who) and, set apart, **This deal** (🎭 Deal a new one, 🗑 End
+  this deal, red and last: its cards back and the parts forgotten, asking first while they're out).
 
 ### 6.7 Media playback controls
 - Play/pause, seek bar, current time/duration, volume, mute, restart, loop toggle, and full-screen element.

@@ -513,7 +513,7 @@ export function cardsFullText(game: Game, session: Session, go?: (trial: Session
   const dealAll = cardsOut(game, session).filter((c) => c.deal).length;
   // (A deal handed out before the room took cards can have more than the phones hold: then they hold only the deal's,
   // and taking another card back frees nothing.)
-  if (dealAll >= CARDS_MAX) return `${CARDS_MAX} cards are out on the phones, all of them the 🎭 deal’s: ✖ Take them back in 🎭 Deal…`;
+  if (dealAll >= CARDS_MAX) return `${CARDS_MAX} cards are out on the phones, all of them the 🎭 deal’s: ↩ Take the cards back in 🎭 Deal…`;
   const now = roomCardCount(game, session);
   const whose = ofThem(dealAll, partnerCount(game, session));
   const add = go ? roomCardsAfter(game, session, go) - now : 1;
@@ -528,7 +528,7 @@ export function cardsFullText(game: Game, session: Session, go?: (trial: Session
   if (!dealAll) return `${out}: ✖ Take ${need === 1 ? 'one' : need} back first`;
   // (Taking the deal's back isn't enough when more than it are to go.)
   if (dealAll < need) return `${out}: ✖ Take ${need} back first (the deal’s go together, in 🎭 Deal…)`;
-  return `${out}: ✖ Take ${dealAll === 1 ? 'it' : 'them'} back in 🎭 Deal…${now > dealAll ? `, or take back ${need === 1 ? 'another one' : `${need} others`}` : ''}`;
+  return `${out}: ↩ Take the cards back in 🎭 Deal…${now > dealAll ? `, or take back ${need === 1 ? 'another one' : `${need} others`}` : ''}`;
 }
 
 /** The last bit of a card's id on the wire for each part, when a send goes as one card per part (partnerCards). */

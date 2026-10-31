@@ -17,6 +17,7 @@
   import { cardsLeftOff, teamsOn } from '../../lib/buzz';
   import { buzzerOn, remote, roomHasCards, roomHasFiles } from '../../lib/remote.svelte';
   import { listedCards, sentCardId } from '../../lib/sentcards';
+  import { dealHeld, dealOut, dealPhonesLate, dealState, dealtHere } from '../../lib/deals';
   import { cardWindow, closeCardWindow, openCardWindow } from '../../lib/cardwindow.svelte';
   import CardSend from './CardSend.svelte';
   import CardsOut from './CardsOut.svelte';
@@ -44,7 +45,7 @@
     onstopsounds?: () => void;
     /** ✖ Take back a card sent with 🤫 Send a card… or from a tile's panel. */
     oncardtakeback: (id: string) => void;
-    /** A 🎭 deal's cards were taken back (✖ Take back, or a new deal). */
+    /** A 🎭 deal's cards were taken back (↩ Take the cards back, or a new deal). */
     ondealgone: (cards: SentCard[]) => void;
   } = $props();
   let menu = $state<'dice' | 'wheel' | 'rolloff' | 'card' | 'deal' | 'out' | 'win' | null>(null);
@@ -60,15 +61,45 @@
   const out = $derived(listed.length);
   /** Each player is a team: the 🎯 wheel picks a team. */
   const teams = $derived(buzzerOn(game.settings) && teamsOn(game.settings));
+  /** The buzzer room's phones get the cards the host sends (else the host copies them, or shows them in 🪟). */
+  const cardsOn = $derived(buzzerOn(game.settings) && !!remote.code && remote.status !== 'off' && remote.status !== 'error' && roomHasCards());
   /**
    * A card out isn't all on the phones (a picture that didn't go up, a phone late for it…): its row in the list is
    * orange and says what, and so is this button, as nothing else in sight would say so once the send dialog is closed.
    */
   const outWarn = $derived.by(() => {
     if (!out) return false;
-    const cardsOn = buzzerOn(game.settings) && !!remote.code && remote.status !== 'off' && remote.status !== 'error' && roomHasCards();
     const off = new Set(cardsOn ? cardsLeftOff(game, session) : []);
     return listed.some((c) => sentLine(game, session, c, cardsOn && roomHasFiles(), off.has(sentCardId(c)), cardsOn).warn);
+  });
+  const deal = $derived(session.deal ?? null);
+  /** What 🎭's tooltip says to do next, by how the deal stands. */
+  const DEAL_TIPS: Record<string, string> = {
+    'not sent': '📤 Send it, or deal it again',
+    sent: 'send it again, take the cards back, or show who was who',
+    'handed out': 'copy each card to its player, take the cards back, or show who was who',
+    'cards back': '📤 Send puts them out again, or show who was who',
+    'on screen': 'viewers see who was who. Click it on the stage, or 🙈 Hide who was who here',
+  };
+  /** 🎭 Deal…'s button says how the deal stands: "Spy night · sent", "· on screen" while Who was who is up… */
+  const dealNow = $derived(dealState(deal, deal ? dealHeld(game, session).length : 0, cardsOn));
+  /**
+   * The deal's cards out don't all reach their phones: some never go (more than the phones hold), a phone came after
+   * they went, or someone dealt in has no phone here (copy theirs). Orange, as the cards out are: the deal's box says
+   * which. (In one window by phone only, a part or not, as the box counts them.)
+   */
+  const dealWarn = $derived.by(() => {
+    const d = deal;
+    if (!d || d.stage !== 'sent' || !cardsOn) return false;
+    const mine = dealOut(game, session).map(sentCardId);
+    if (!mine.length) return false;
+    const off = new Set(cardsLeftOff(game, session));
+    const phones = new Set(app.live.phones ?? []);
+    return (
+      mine.some((id) => off.has(id)) ||
+      (dual ? remote.cardsLate.some((l) => mine.includes(l.id)) : dealPhonesLate(d, remote.phones) > 0) ||
+      dealtHere(d, session).some((t) => !t.member && !phones.has(t.seat))
+    );
   });
   let custom = $state('');
   let quickList = $state('');
@@ -297,16 +328,22 @@
     {/if}
   </div>
   <div class="pop">
+    <!-- (Its name is cut short to keep the row's room: the tooltip says it whole. The words go on a narrow window, as
+         the cards out's do: then the outline, orange when a phone missed it, says there's a deal.) -->
     <button
       onclick={(e) => toggle('deal', e)}
       aria-haspopup="dialog"
       aria-expanded={menu === 'deal'}
-      class:on={!!session.deal}
-      title={session.deal?.shown
-        ? '🎭 Who was who is on screen: click it on the stage, or 🙈 Hide it here'
-        : session.deal
-          ? `🎭 ${session.deal.name}: send it, take it back, or show Who was who`
-          : '🎭 Deal…: secret parts for everyone (a spy, a wolf, a captain…), each on their own phone: nothing goes until you send it'}>🎭 <span class="word">Deal…</span></button
+      class:on={!!deal}
+      class:dealt={!!deal}
+      class:warn={dealWarn}
+      data-deal-tool={dealNow ?? 'none'}
+      title={!deal
+        ? '🎭 Deal…: secret parts for everyone (a spy, a wolf, a captain…), each on their own phone: nothing goes until you send it'
+        : `🎭 ${deal.name} · ${dealNow}: ${dealWarn && !deal.shown ? '⚠ a phone hasn’t got its card, open it to see which and what to do' : (DEAL_TIPS[dealNow ?? ''] ?? '')}`}
+      >🎭 <span class="word"
+        >{#if deal}<span class="dname">{deal.name}</span> · {dealNow}{:else}Deal…{/if}</span
+      ></button
     >
     {#if menu === 'deal'}
       <div class="menu wide" role="dialog" aria-label="Deal" use:anchored={at}>
@@ -382,7 +419,7 @@
   /* (And up to 1280px wide 🔇 Stop sounds as 🔇 and the cards out as 🤫 2: they come and go beside 🤫 Send a card… and
      🎭 Deal… in full.) */
   @media (max-width: 1280px) {
-    .tl :is(.stop, .cardsout) .word {
+    .tl :is(.stop, .cardsout, .dealt) .word {
       position: absolute;
       width: 1px;
       height: 1px;
@@ -391,9 +428,10 @@
       white-space: nowrap;
     }
   }
-  /* (Both at once, the round intro's music still on and cards out: 🔇 and 🤫 2 up to 1520px wide.) */
+  /* (Two at once, of the round intro's music still on, cards out and a deal on the table: 🔇, 🤫 2 and 🎭 up to 1520px
+     wide; all three up to 1760px.) */
   @media (max-width: 1520px) {
-    .tl:has(.stop):has(.cardsout) :is(.stop, .cardsout) .word {
+    .tl:is(:has(.stop):has(.cardsout), :has(.stop):has(.dealt), :has(.cardsout):has(.dealt)) :is(.stop, .cardsout, .dealt) .word {
       position: absolute;
       width: 1px;
       height: 1px;
@@ -401,6 +439,25 @@
       clip-path: inset(50%);
       white-space: nowrap;
     }
+  }
+  @media (max-width: 1760px) {
+    .tl:has(.stop):has(.cardsout):has(.dealt) :is(.stop, .cardsout, .dealt) .word {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      overflow: hidden;
+      clip-path: inset(50%);
+      white-space: nowrap;
+    }
+  }
+  /* A deal's name, cut short (its tooltip says it whole): its state after it always shows in full. */
+  .dname {
+    display: inline-block;
+    max-width: 5em;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    vertical-align: bottom;
   }
   /* (And up to 1000px wide 📊 Scoreboard as 📊: room for 🔇 and 🤫 2 beside a Go to round with a long round name in it.) */
   @media (max-width: 1000px) {
@@ -490,9 +547,13 @@
   .on {
     outline: 1px solid var(--accent);
   }
-  .cardsout.warn {
+  .cardsout.warn,
+  .dealt.warn {
     border-color: var(--warn);
     color: var(--warn);
+  }
+  .dealt.warn {
+    outline-color: var(--warn);
   }
   .backdrop {
     position: fixed;

@@ -6,7 +6,7 @@
 // go one each, never Spin again. 📤 Send uploads the two pictures and gives each phone its own prompt (its words, its
 // picture), with no "You're the Player" (everyone has the same part); no phone hears another's prompt or can fetch
 // another's picture. The audience window holds none of it until 🎭 Who was who, which shows names and slices, never a
-// slice's longer words. ✖ Take back lets go of the pictures, 📤 Send puts the same prompts out again. A deal drawn from
+// slice's longer words. ↩ Take the cards back lets go of the pictures, 📤 Send puts the same prompts out again. A deal drawn from
 // the ready-made 🗺 Locations wheel replaces it (asked first, its cards out), and neither changes the game: its deal
 // and wheels stay as saved. Needs `npm ci` in buzzer/.
 import { chromium } from 'playwright-core';
@@ -250,16 +250,17 @@ try {
   await aud.evaluate(() => (window.__seen.length = 0));
   await offStream(SECRETS, 'Who was who taken off');
 
-  // ---------- ✖ Take back lets go of the pictures; 📤 Send puts the same prompts out again ----------
+  // ---------- ↩ Take the cards back lets go of the pictures; 📤 Send puts the same prompts out again ----------
   console.log('Take back, send again:');
-  await tools.getByRole('button', { name: '🎭 Deal…' }).click();
+  // (Sent, 🎭 Deal… says so: “🎭 Own prompts · sent”.)
+  await tools.locator('[data-deal-tool="sent"]').click();
   await dialog.waitFor();
-  await dialog.getByRole('button', { name: '✖ Take back' }).click();
-  assert(await until(() => !cards().length), '✖ Take back: the room holds none of them');
+  await dialog.getByRole('button', { name: '↩ Take the cards back' }).click();
+  assert(await until(() => !cards().length), '↩ Take the cards back: the room holds none of them');
   assert(await until(async () => !(await phones.Ann.locator('.card').count()) && !(await phones[withPic[0]].locator('.card').count())), 'the phones drop them');
   assert(await until(async () => (await fetchAs(phones[withPic[0]], fileOf[withPic[0]])) === 404), 'and the room lets go of the pictures');
   assert((await flat(dialog.locator('[data-deal-status]'))).includes('Its cards are taken back: 📤 Send puts them out again'), 'the panel says its cards are taken back');
-  await dialog.getByRole('button', { name: '📤 Send' }).click();
+  await dialog.locator('[data-deal-resend]').click();
   assert(await until(() => cards().length === 4 && cards().every((c) => !sent.some((x) => x.id === c.id))), '📤 Send again: four cards under new ids');
   assert(await until(() => pics().length === 2) && uploads === 4, 'the pictures go up again');
   assert(cards().every((c) => c.text === sent.find((x) => x.to[0].seat === c.to[0].seat).text), 'each player gets the same prompt as before');

@@ -34,6 +34,7 @@ import {
   dealtHere,
   dealtIn,
   dealSetupProblems,
+  dealState,
   dealTrial,
   DEAL_TEMPLATES,
   dropGonePhones,
@@ -402,7 +403,7 @@ describe('📤 sending a deal: only when the host confirms, one card per player,
     sendDeal(g, session, 'host', 1000);
     for (let i = 0; i < CARDS_MAX - 6; i++) sendCard(g, session, { to: [{ seat: 'a' }], content: { slide: quickSlide(`c${i}`) }, until: 'host' });
     expect(roomCardsFull(g, session)).toBe(true);
-    expect(cardsFullText(g, session)).toBe(`${CARDS_MAX} cards are out on the phones, 6 of them the 🎭 deal’s: ✖ Take them back in 🎭 Deal…, or take back another one`);
+    expect(cardsFullText(g, session)).toBe(`${CARDS_MAX} cards are out on the phones, 6 of them the 🎭 deal’s: ↩ Take the cards back in 🎭 Deal…, or take back another one`);
   });
 
   it('more cards out than the phones hold (shown in the 🪟 card window before the room took cards): one card’s refusal counts them all, and how many to take back', () => {
@@ -420,7 +421,7 @@ describe('📤 sending a deal: only when the host confirms, one card per player,
     // With the deal's out too: taking those back, or as many others.
     session.cards = session.cards!.slice(4);
     sendDeal(g, session, 'host', 1000);
-    expect(cardsFullText(g, session)).toBe(`${CARDS_MAX + 2} cards are out on the phones, 6 of them the 🎭 deal’s: ✖ Take them back in 🎭 Deal…, or take back 3 others`);
+    expect(cardsFullText(g, session)).toBe(`${CARDS_MAX + 2} cards are out on the phones, 6 of them the 🎭 deal’s: ↩ Take the cards back in 🎭 Deal…, or take back 3 others`);
     // More to go than the deal's: they aren't enough by themselves.
     quick(4);
     expect(cardsFullText(g, session)).toBe(`${CARDS_MAX + 6} cards are out on the phones, 6 of them the 🎭 deal’s: ✖ Take 7 back first (the deal’s go together, in 🎭 Deal…)`);
@@ -473,7 +474,7 @@ describe('📤 sending a deal: only when the host confirms, one card per player,
     sendCards(session, s, [pc.cards![0]], 2000);
     const next = (t: Session) => sendCards(t, t.partner!, [pc.cards![1]], 3000);
     expect(roomCardsFull(g, session, next)).toBe(true);
-    expect(cardsFullText(g, session, next)).toBe(`${CARDS_MAX} cards are out on the phones, 5 of them the 🎭 deal’s and 1 this partner clue’s: ✖ Take them back in 🎭 Deal…, or take back another one`);
+    expect(cardsFullText(g, session, next)).toBe(`${CARDS_MAX} cards are out on the phones, 5 of them the 🎭 deal’s and 1 this partner clue’s: ↩ Take the cards back in 🎭 Deal…, or take back another one`);
     // The deal back, a second partner card out: the deal's refusal says where those are.
     takeBackDeal(g, session);
     sendCards(session, s, [pc.cards![1]], 3000);
@@ -503,7 +504,7 @@ describe('📤 sending a deal: only when the host confirms, one card per player,
     // The room is told the newest CARDS_MAX: the first two never reach a phone.
     expect(hostCards(g, session, { fileBytes: FILE_BYTES, files: {} })!.map((c) => c.id)).toEqual(sent.slice(2).map(sentCardId));
     expect(cardsLeftOff(g, session)).toEqual(sent.slice(0, 2).map(sentCardId));
-    expect(cardsFullText(g, session)).toBe(`${CARDS_MAX} cards are out on the phones, all of them the 🎭 deal’s: ✖ Take them back in 🎭 Deal…`);
+    expect(cardsFullText(g, session)).toBe(`${CARDS_MAX} cards are out on the phones, all of them the 🎭 deal’s: ↩ Take the cards back in 🎭 Deal…`);
     takeBackDeal(g, session);
     expect(cardsLeftOff(g, session)).toEqual([]);
   });
@@ -526,7 +527,7 @@ describe('📤 sending a deal: only when the host confirms, one card per player,
       expect(hostCards(g, session, { fileBytes: FILE_BYTES, files: {} })!.map((c) => c.id)).toEqual(sent.slice(n - CARDS_MAX).map(sentCardId));
       expect(cardsLeftOff(g, session)).toEqual(off);
       // Taking back another card frees nothing on the phones: only the deal's, said as all of them.
-      expect(cardsFullText(g, session)).toBe(`${CARDS_MAX} cards are out on the phones, all of them the 🎭 deal’s: ✖ Take them back in 🎭 Deal…`);
+      expect(cardsFullText(g, session)).toBe(`${CARDS_MAX} cards are out on the phones, all of them the 🎭 deal’s: ↩ Take the cards back in 🎭 Deal…`);
       takeBackDeal(g, session);
       expect(cardsLeftOff(g, session)).toEqual([]);
       expect(hostCards(g, session, { fileBytes: FILE_BYTES, files: {} })!.map((c) => c.id)).toEqual(quick.map(sentCardId));
@@ -678,6 +679,24 @@ describe('one window: the phones that came after the cards went are counted blin
     expect(dealPhonesLate(d, [phone('a'), phone('b')])).toBe(0);
     expect(lateFor(g, session, [phone('b')]).length).toBe(1);
     expect(dealPhonesLate(d, [phone('a'), phone('b')])).toBe(0);
+  });
+});
+
+describe('🎭 Deal…’s button says how the deal stands', () => {
+  it('not sent, sent (or handed out, to copy), cards back, and on screen while Who was who is up; never a part', () => {
+    const { g, session } = dealt();
+    expect(dealState(null, 0, true)).toBeNull();
+    const d = session.deal!;
+    expect(dealState(d, 0, true)).toBe('not sent');
+    sendDeal(g, session, 'host', 1000);
+    const held = () => dealHeld(g, session).length;
+    expect([dealState(d, held(), true), dealState(d, held(), false)]).toEqual(['sent', 'handed out']);
+    whoWasWhoStep(session, true);
+    expect(dealState(d, held(), true)).toBe('on screen');
+    whoWasWhoStep(session, false);
+    takeBackDeal(g, session);
+    expect(dealState(d, held(), true)).toBe('cards back');
+    for (const w of [dealState(d, held(), true), dealState(d, 4, true)]) expect(d.parts.some((p) => w!.includes(p))).toBe(false);
   });
 });
 

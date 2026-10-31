@@ -5,7 +5,8 @@
   window open, the host can choose who gets a part), and a part's card can show a slice of a saved wheel. Nothing goes
   anywhere until 📤 Send: then each player's card goes to their phone as a card of its own (through the same path as
   🤫 Send a card…).
-  ↻ Send again, ✖ Take back, and 🎭 Who was who (on stream, a step: Ctrl+Z takes it off) follow.
+  Then its buttons go by purpose: on phones ↻ Send again and ↩ Take the cards back; on stream 🎭 Show who was who (a
+  step: Ctrl+Z takes it off); and, set apart, this deal's 🎭 Deal a new one and 🗑 End this deal.
   In one window viewers see this: it never says who got which part (only how many of each, and everyone dealt in alike,
   a part or not; with the phones getting the cards, those dealt in with no phone here, by phone only), never shows
   what's on a card, and offers the host's picks only with the audience window open. Who got which is in the host column
@@ -48,7 +49,7 @@
     game: Game;
     session: Session;
     dual?: boolean;
-    /** A deal's cards were taken back (✖ Take back, or a new deal): the room hears it at once, and lets go of their files. */
+    /** A deal's cards were taken back (↩ Take the cards back, or a new deal): the room hears it at once, and lets go of their files. */
     ongone: (cards: SentCard[]) => void;
   } = $props();
 
@@ -158,7 +159,7 @@
    * A question asked right here in the menu (never a box over the stage: in one window viewers see both). `run` on its
    * answer button.
    */
-  let confirm = $state<{ kind: 'deal' | 'away'; text: string; ok: string; run: () => void } | null>(null);
+  let confirm = $state<{ kind: 'deal' | 'away'; text: string; ok: string; danger?: boolean; run: () => void } | null>(null);
   // (It goes with the view it was asked in: setting up, or the deal on the table.)
   $effect(() => {
     void setup;
@@ -190,13 +191,13 @@
   /** The deal's cards out now (one per player). */
   const out = $derived(d ? dealOut(game, session) : []);
   /**
-   * Those and any held for players taken out: while there are any, the deal is out (↻ Send again, ✖ Take back), whoever
-   * is in the game. (Gone with the player taken out, it would say they had a part.)
+   * Those and any held for players taken out: while there are any, the deal is out (↻ Send again, ↩ Take the cards
+   * back), whoever is in the game. (Gone with the player taken out, it would say they had a part.)
    */
   const held = $derived(d ? dealHeld(game, session) : []);
   const roundOn = $derived(session.phase !== 'end' && session.phase !== 'tiebreaker');
   let lasts = $state<'round' | 'host'>('round');
-  /** How long the cards last: as chosen, or as they lasted when sent before (📤 Send again after ✖ Take back). */
+  /** How long the cards last: as chosen, or as they lasted when sent before (📤 Send after ↩ Take the cards back). */
   const until = $derived<'round' | 'host'>(!roundOn ? 'host' : d?.stage === 'sent' && d.until ? d.until : lasts);
   /** More players than the phones hold cards at once, all together (the room's CARDS_MAX). */
   const tooMany = $derived(!!d && cardsOn && d.hands.length > CARDS_MAX);
@@ -248,7 +249,7 @@
   function putAway(sure = false): void {
     if (!d) return;
     if (!sure && held.length) {
-      confirm = { kind: 'away', text: `Put the deal away? The cards of “${d.name}” go from the phones, and who had which part is forgotten.`, ok: 'Put it away', run: () => putAway(true) };
+      confirm = { kind: 'away', text: `End “${d.name}”? Its cards go from the phones, and who had which part is forgotten.`, ok: '🗑 End this deal', danger: true, run: () => putAway(true) };
       return;
     }
     confirm = null;
@@ -271,7 +272,7 @@
   const status = $derived.by((): { head: string; pct: string; tail: string } => {
     const both = (t: string) => ({ head: t, pct: '', tail: '' });
     if (!d || d.stage !== 'sent') return both('');
-    // (Only ✖ Take back forgets the round they lasted: one still kept went with its end, back in it or not.)
+    // (Only ↩ Take the cards back forgets the round they lasted: one still kept went with its end, back in it or not.)
     const gone = d.round ? 'Its cards went when that round ended' : 'Its cards are taken back';
     if (!held.length)
       return both(
@@ -283,7 +284,7 @@
       );
     if (over)
       return both(
-        `Only ${out.length - leftOff.size} of the ${out.length} cards are on the phones (they hold ${CARDS_MAX} at once, all phones together): copy ${dual ? 'the others theirs (📋, marked below)' : 'everyone theirs (📋)'}, or ✖ Take back and deal fewer in`,
+        `Only ${out.length - leftOff.size} of the ${out.length} cards are on the phones (they hold ${CARDS_MAX} at once, all phones together): copy ${dual ? 'the others theirs (📋, marked below)' : 'everyone theirs (📋)'}, or ↩ Take the cards back and deal fewer in`,
       );
     if (!cardsOn) return both(`Dealt: copy each card to its player (📋)${cardWindow.open ? ', or show them in the 🪟 card window' : ''}`);
     const parts = [dealSentLine(d, out.length, out.filter((c) => seenSeats(session, c).length).length, dual)];
@@ -335,13 +336,14 @@
     if (!openCardWindow(seat)) toast(popupBlocked(), 5000);
   }
   const COUNTS = Array.from({ length: MAX_PLAYERS + 1 }, (_, i) => i);
+  const END_TITLE = 'Cards back, parts forgotten: its cards go from the phones, and who had which part is gone (it asks first while they’re out)';
 </script>
 
 {#snippet askLine(kind: 'deal' | 'away')}
   {#if confirm?.kind === kind}
     {@const c = confirm}
     <div class="small" role="alert" data-deal-ask>
-      {#key c}<InlineAsk text={c.text} ok={c.ok} focusCancel onok={c.run} oncancel={() => (confirm = null)} />{/key}
+      {#key c}<InlineAsk text={c.text} ok={c.ok} danger={c.danger} focusCancel onok={c.run} oncancel={() => (confirm = null)} />{/key}
     </div>
   {/if}
 {/snippet}
@@ -349,7 +351,7 @@
 {#snippet fillsLine()}
   {#if fills}
     <div class="small warn" data-deal-fills>
-      ⚠ This fills the phones: they hold {CARDS_MAX} cards at once, all phones together. Until you ✖ Take its cards back{until === 'round' ? ' (or the round ends)' : ''},
+      ⚠ This fills the phones: they hold {CARDS_MAX} cards at once, all phones together. Until you ↩ Take the cards back{until === 'round' ? ' (or the round ends)' : ''},
       no other 🤫 card can go to a phone, a partner clue’s included.
     </div>
   {/if}
@@ -483,7 +485,8 @@
             <button class="small" onclick={() => deal()} disabled={!!problem || !work} title="Deals it again, the same way (nothing was sent)">↻ Deal again</button>
           {/if}
           <button class="ghost small" onclick={() => (fresh = true)}>✎ Edit deal</button>
-          <button class="ghost small" onclick={() => putAway()}>✖ Put it away</button>
+          <span class="spacer"></span>
+          <button class="ghost small danger" onclick={() => putAway()} title={END_TITLE} data-deal-end>🗑 End this deal</button>
         </div>
       </div>
     {:else}
@@ -491,20 +494,29 @@
       {@render fillsLine()}
       {#if left && held.length}<div class="small warn"><span>{left}</span><ShrinkButton {game} items={handItems} which="big" /></div>{/if}
       {#if slow && held.length}<div class="small muted"><span data-card-slow>{slow}</span><ShrinkButton {game} items={handItems} which="slow" /></div>{/if}
-      <div class="row wrap">
+      <!-- Its buttons by purpose: the cards (on the phones, or to copy), what viewers see, then this deal itself, apart. -->
+      <div class="grp" role="group" aria-label={cardsOn ? 'On phones' : 'The cards'} data-deal-group="phones">
+        <span class="lbl muted small">{cardsOn ? 'On phones' : 'The cards'}</span>
         {#if held.length}
           {#if cardsOn && !over}<button class="small" onclick={again} title="Every card of the deal goes again under a new id: a phone that came late (a player on a new phone), or a player put back, gets theirs">↻ Send again</button>{/if}
-          <button class="ghost small" onclick={takeBack} title="Takes every card of the deal off the phones (the deal stays, for Who was who)">✖ Take back</button>
+          <button class="ghost small" onclick={takeBack} title="Takes every card of the deal off the phones (the deal stays, for Who was who)" data-deal-takeback>↩ Take the cards back</button>
         {:else}
-          <button class="small" onclick={send} disabled={tooMany || full} title={tooMany ? `The phones hold ${CARDS_MAX} cards at once, all phones together: this deal has ${d.hands.length}, one each` : full ? fullText : 'The same cards go out again'}>📤 Send</button>
+          <button class="small" onclick={send} disabled={tooMany || full} title={tooMany ? `The phones hold ${CARDS_MAX} cards at once, all phones together: this deal has ${d.hands.length}, one each` : full ? fullText : 'The same cards go out again'} data-deal-resend>📤 Send</button>
         {/if}
+      </div>
+      <div class="grp" role="group" aria-label="On stream" data-deal-group="stream">
+        <span class="lbl muted small">On stream</span>
         {#if d.shown}
-          <button class="small" onclick={() => reveal(false)} data-deal-hide>🙈 Hide Who was who</button>
+          <button class="small" aria-pressed="true" onclick={() => reveal(false)} title="Takes everyone’s part off the screen (Esc, Ctrl+Z, or a click on it on the stage)" data-deal-hide>🙈 Hide who was who</button>
         {:else}
-          <button class="small" onclick={() => reveal(true)} title="Puts everyone’s part on screen, for viewers too (Ctrl+Z takes it off)" data-deal-reveal>🎭 Who was who</button>
+          <button class="small" onclick={() => reveal(true)} title="Puts everyone’s part on screen, for viewers too (Ctrl+Z takes it off)" data-deal-reveal>🎭 Show who was who</button>
         {/if}
+      </div>
+      <div class="grp apart" role="group" aria-label="This deal" data-deal-group="deal">
+        <span class="lbl muted small">This deal</span>
         <button class="ghost small" onclick={() => (fresh = true)}>🎭 Deal a new one</button>
-        <button class="ghost small" onclick={() => putAway()}>✖ Put it away</button>
+        <span class="spacer"></span>
+        <button class="ghost small danger" onclick={() => putAway()} title={END_TITLE} data-deal-end>🗑 End this deal</button>
       </div>
       {@render askLine('away')}
       {#if held.length && (!cardsOn || dual || over || noPhone.length)}
@@ -561,6 +573,21 @@
     border-width: 2px;
     padding: 2px 8px;
     font-size: 12px;
+  }
+  /* A purpose's buttons on one line, its name first; this deal's own set apart from the others. */
+  .grp {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px;
+  }
+  .lbl {
+    min-width: 5.5em;
+  }
+  .apart {
+    margin-top: 4px;
+    padding-top: 6px;
+    border-top: 1px solid var(--border);
   }
   .hands {
     display: flex;

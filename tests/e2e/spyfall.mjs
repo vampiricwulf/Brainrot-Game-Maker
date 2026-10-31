@@ -224,7 +224,8 @@ try {
   const tools = host.locator('.panel .toolsrow');
   const dialog = host.getByRole('dialog', { name: 'Deal' });
   const openDeal = async () => {
-    if (!(await dialog.count())) await tools.getByRole('button', { name: '🎭 Deal…' }).click();
+    // (Its button says how the deal stands once there's one: “🎭 Odd one out · sent”.)
+    if (!(await dialog.count())) await tools.locator('[data-deal-tool]').click();
     await dialog.waitFor();
     return dialog;
   };
@@ -429,7 +430,7 @@ try {
   assert(await until(async () => !(await reveal.count())), 'Ctrl+Z after the reload takes it off');
   await host.evaluate(() => (window.__seen.length = 0));
   await openDeal();
-  assert((await flat(dialog.locator('[data-deal-counts]'))) === 'Dealt to 5: Spy ×1, Villager ×4' && (await dialog.locator('[data-deal-reveal]').count()) === 1, 'the deal’s window: the counts, and 🎭 Who was who to show again');
+  assert((await flat(dialog.locator('[data-deal-counts]'))) === 'Dealt to 5: Spy ×1, Villager ×4' && (await dialog.locator('[data-deal-reveal]').count()) === 1, 'the deal’s window: the counts, and 🎭 Show who was who to show again');
   await secret('reloaded, sent');
 
   // ---------- 🎭 Deal a new one asks first while the cards are out ----------

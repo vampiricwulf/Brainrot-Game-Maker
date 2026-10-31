@@ -319,7 +319,7 @@ export function startDeal(session: Session, deal: Pick<DealPreset, 'name' | 'par
   return d;
 }
 
-/** ✖ Put the deal away: its cards are taken back, and nobody can see who had which any more. */
+/** 🗑 End this deal: its cards are taken back, and nobody can see who had which any more. */
 export function clearDeal(session: Session): void {
   takeBackDealCards(session);
   session.deal = null;
@@ -351,6 +351,18 @@ export function dealCounts(d: Pick<DealState, 'parts' | 'hands'>): string {
 export function dealSentLine(d: Pick<DealState, 'hands' | 'in'>, out: number, seen: number, dual: boolean): string {
   const of = dual ? out : d.hands.length;
   return seen && (dual || d.hands.length === dealtIn(d).length) ? `✓ seen by ${seen} of ${of}` : `Sent to ${of}`;
+}
+
+/**
+ * How the deal stands, for 🎭 Deal…'s button in the tools row (after the deal's name, never a part): null with no deal;
+ * "on screen" while Who was who is up (viewers see it); "not sent"; "sent" while its cards are out (`held` of them;
+ * "handed out" when no phone gets cards: the host copies them); "cards back" once taken back or gone with the round.
+ */
+export function dealState(d: Pick<DealState, 'stage' | 'shown'> | null | undefined, held: number, cardsOn: boolean): string | null {
+  if (!d) return null;
+  if (d.shown) return 'on screen';
+  if (d.stage === 'dealt') return 'not sent';
+  return held ? (cardsOn ? 'sent' : 'handed out') : 'cards back';
 }
 
 // ---------- Sending ----------
@@ -498,7 +510,7 @@ export function dropGonePhones(d: Pick<DealState, 'phonesAt'>, phones: PhoneInfo
   return true;
 }
 
-/** ✖ Take back: the deal's cards go from every phone (the deal stays, for Who was who). Returns the cards taken back. */
+/** ↩ Take the cards back: the deal's cards go from every phone (the deal stays, for Who was who). Returns them. */
 export function takeBackDeal(game: CardGame, session: Session): SentCard[] {
   // (Those held for players taken out go too.)
   const out = dealHeld(game, session);

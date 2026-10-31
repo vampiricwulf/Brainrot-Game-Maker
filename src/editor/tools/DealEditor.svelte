@@ -68,7 +68,7 @@
   <p class="muted small">
     Secret parts for everyone: in play, <b>🎭 Deal…</b> in the tools row gives each player one part, at random (or as you
     choose, with the audience window open), and each part's 🤫 card goes to its players' phones only when you send it.
-    Afterwards <b>🎭 Who was who</b> shows everyone's part on screen.
+    Afterwards <b>🎭 Show who was who</b> shows everyone's part on screen.
   </p>
 
   <div class="parts" role="list" aria-label="Parts" bind:this={partsEl}>
