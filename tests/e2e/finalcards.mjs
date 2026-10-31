@@ -453,9 +453,18 @@ try {
   await ann.locator('#wager-in').fill('300');
   await ann.locator('#wager-send').click();
   await host.locator('[data-phone-wager="p1"]', { hasText: 'from phone' }).waitFor();
+  // (Bob and Cat, on $0, have nothing to wager: each has a 0 filled in, which their phone can still replace. The host
+  // clears both, so the wagers wait on them.)
+  const bobBox = host.locator('.fj input[data-wager="p2"]');
+  const catBox = host.locator('.fj input[data-wager="p3"]');
+  assert((await bobBox.inputValue()) === '0' && (await catBox.inputValue()) === '0', 'Bob and Cat, with nothing to wager on $0, each have a 0 filled in');
+  await bobBox.fill('');
+  await catBox.fill('');
+  await host.locator('.fj [data-wagers-line]', { hasText: 'Waiting on Bob’s phone & Cat’s phone' }).waitFor();
   // A click on the stage never shows the Final's question: the status line says who it waits on (names only).
   const note = host.locator('.panel .status [data-click-note]');
   await host.locator('.stage-box').click();
+  const clickedAt = Date.now();
   await note.filter({ hasText: /^Waiting on Bob.*Cat/ }).waitFor();
   assert(!(await note.innerText()).includes('300') && (await host.locator('.panel .status', { hasText: 'Question on screen' }).count()) === 0, `a click on the wagers says who they wait on, never Ann’s amount, and the question stays off (${await note.innerText()})`);
   await host.locator('.fj input[data-wager="p2"]').fill('200');
@@ -463,6 +472,8 @@ try {
   assert(true, 'Ann wagers from her phone, the host types Bob’s and Cat’s');
   // All in: the box's line says so, and a click on the stage says the blue button is next (the keys stay in Cat's box).
   await host.locator('.fj [data-wagers-in]', { hasText: '✓ All 3 wagers in' }).waitFor();
+  // (Past the stage's double-click guard: a click on it under half a second after the last one is that one's rest.)
+  await sleep(Math.max(0, 500 - (Date.now() - clickedAt)));
   await host.locator('.stage-box').click();
   await note.filter({ hasText: 'All wagers in: Show question ▶ (N)' }).waitFor();
   assert(
