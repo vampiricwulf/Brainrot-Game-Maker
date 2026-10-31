@@ -1334,6 +1334,7 @@
       {#if !previewing}
         <ItemBar
           items={slide.elements.filter((e) => selected.includes(e.id))}
+          all={slide.elements}
           {game}
           onedit={openEditor}
           onduplicate={duplicate}

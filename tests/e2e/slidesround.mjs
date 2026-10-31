@@ -42,6 +42,20 @@ try {
   assert((await roundNames()).join('|') === 'Introduction|Jeopardy!|Final Jeopardy!', `the first slides round is the introduction: it goes first (${(await roundNames()).join(', ')})`);
   const text = page.locator('main [data-field="q"]');
   await text.fill('Welcome to the show');
+  // With nothing selected, a double-click on its Layers row renames it: the item bar keeps its height as the first click
+  // selects the text (its ✎ Edit text puts the bar's buttons on two lines here), so the row stays under the second.
+  {
+    const itemBar = page.locator('.itembar');
+    const row = page.locator('.layers-box .row').first();
+    assert((await itemBar.innerText()).includes('Nothing selected'), 'a new slides round has nothing selected');
+    const h0 = (await itemBar.boundingBox()).height;
+    await row.locator('.name').dblclick();
+    const h1 = (await itemBar.boundingBox()).height;
+    assert(Math.abs(h1 - h0) < 1 && (await itemBar.innerText()).includes('Welcome to the show'), `the item bar keeps its height as a Layers row selects its item (${h0} → ${h1} px)`);
+    assert((await row.getByLabel('Layer name').count()) === 1, 'so a double-click on the Layers row renames it');
+    await page.keyboard.press('Escape');
+    await row.getByLabel('Layer name').waitFor({ state: 'detached' });
+  }
   await page.getByRole('button', { name: '＋ Add slide' }).click();
   await page.getByRole('tab', { name: 'Slide 2' }).waitFor();
   await page.waitForFunction(() => document.activeElement?.matches('main [data-field="q"]'));

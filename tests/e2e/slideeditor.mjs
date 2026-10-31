@@ -212,6 +212,8 @@ try {
     assert(JSON.stringify(names) === JSON.stringify(['⋯', '✎ Edit text', '⧉ Duplicate', '🔒 Lock', '🗑 Delete']), `the bar has the text box's buttons (${names.join(' | ')})`);
     const [b, p] = await Promise.all([bar.boundingBox(), page.locator('.side').boundingBox()]);
     assert(!!b && !!p && Math.abs(b.y - p.y) < 2, 'it is at the top of the side panel');
+    const del = await bar.getByRole('button', { name: '🗑 Delete' }).boundingBox();
+    assert(b.x + b.width - (del.x + del.width) < 14, `its 🗑 Delete is at its right end (${Math.round(b.x + b.width - del.x - del.width)} px in), on whichever line`);
   }
 
   // ---------- Shape ▾ in sections: Shapes, then Draw (⬚ Hotspot is an RPG screen's) ----------

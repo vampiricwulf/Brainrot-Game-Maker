@@ -542,6 +542,7 @@
         <!-- The selected image's buttons, pinned at the top (there, greyed, with nothing selected). -->
         <ItemBar
           items={decor.filter((d) => selected.includes(d.id))}
+          all={decor}
           {game}
           every={false}
           onedit={(el) => (editingImage = el.id)}
