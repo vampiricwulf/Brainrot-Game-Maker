@@ -172,7 +172,8 @@
     <div id="goon-items" class="items">
       {#each check.items as item (item.id)}
         <div class="item" class:done={!!item.done} data-goon-item={item.id}>
-          <p class="text">{#if item.done}<span class="tick">{item.done}</span> {/if}{item.text}</p>
+          <!-- (The space as an expression: Svelte drops a plain space at a block's end, which read “✓Player 1 rolled 2”.) -->
+          <p class="text">{#if item.done}<span class="tick">{item.done}</span>{' '}{/if}{item.text}</p>
           {#each linesOf(item) as line, li (li)}
             <div class="quick" inert={!!item.done}>
               {#if line.who}<span class="who">{line.who}</span>{/if}
