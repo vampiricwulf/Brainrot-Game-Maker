@@ -4,6 +4,7 @@ import { newBoardGameRound } from '../lib/boardgame';
 import { newRpgRound, splitParty } from '../lib/rpg';
 import { goToRound, newSession } from '../lib/session';
 import type { MenuEntry } from '../lib/menustate.svelte';
+import { prefs } from '../lib/prefs.svelte';
 import { partnerUpVerbs, playerMenu, revealVerbs, rosterMenu, verdictVerbs, type PlayerMenuHost, type SeatPhone } from './playermenu';
 
 /** A game of three players on the round `make` makes, being played, and what the menu asked the host's screen to do. */
@@ -126,7 +127,7 @@ describe('a player’s menu starts with this moment’s verbs', () => {
     expect(v('steal')).toEqual(['✔ Stole it +$200', '✘ Wrong $0']);
   });
 
-  it('their phone’s seat while the room is up, then ⛔ Kick and 🗑 Delete player, red and last (both ask)', () => {
+  it('their phone’s seat while the room is up, then ⛔ Kick and 🗑 Remove player, red and last (both ask)', () => {
     const { host, asked } = playing(() => newRound('Jeopardy!'));
     const seat = (on: boolean, letBack = false): SeatPhone => ({
       on,
@@ -139,21 +140,39 @@ describe('a player’s menu starts with this moment’s verbs', () => {
     const h = { ...host, verbs: verdicts(asked), phone: (id: string) => seat(id === 'a', id === 'b'), remove: (id: string) => asked.push(`delete ${id}`) };
     const ann = playerMenu(h, 'a');
     expect(labels(ann)).toEqual([
-      'Ann', '✔ Right +$400', '✘ Wrong −$400', '—', 'Select', '★ Make the picker', '✎ Set the score…', '—', '📱 Free seat (new phone)', '↩ Let back', '—', '⛔ Kick from phone (2 min)…', '🗑 Delete player…',
+      'Ann', '✔ Right +$400', '✘ Wrong −$400', '—', 'Select', '★ Make the picker', '✎ Set the score…', '—', '📱 Free seat (new phone)', '↩ Let back', '—', '⛔ Kick from phone (2 min)…', '🗑 Remove player…',
     ]);
     expect(ann.slice(-2)).toMatchObject([{ danger: true }, { danger: true }]);
     // No phone on Bob's seat (kicked a moment ago): Free seat and Kick greyed, ↩ Let back offered. Same places.
     const bob = playerMenu(h, 'b');
     expect(labels(bob)).toEqual(labels(ann).map((l, i) => (i === 0 ? 'Bob' : l)));
     expect(bob.filter((i) => 'disabled' in i && i.disabled).map((i) => ('label' in i ? i.label : ''))).toEqual(['✔ Right +$400', '📱 Free seat (new phone)', '⛔ Kick from phone (2 min)…']);
-    for (const l of ['📱 Free seat (new phone)', '⛔ Kick from phone (2 min)…', '🗑 Delete player…']) click(ann, l);
+    for (const l of ['📱 Free seat (new phone)', '⛔ Kick from phone (2 min)…', '🗑 Remove player…']) click(ann, l);
     click(bob, '↩ Let back');
     expect(asked).toEqual(['free', 'kick', 'delete a', 'let back']);
     // The room out of reach: all three greyed, saying so.
     const down = playerMenu({ ...h, phone: (id: string) => ({ ...seat(id === 'a'), down: true }) }, 'a').filter((i) => 'label' in i && /📱|↩|⛔/.test(i.label));
     expect(down.every((i) => 'disabled' in i && i.disabled && i.hint === 'The buzzer room isn’t reachable right now')).toBe(true);
     // No room: no phone group, the delete still last.
-    expect(labels(playerMenu({ ...h, phone: () => null }, 'a')).slice(-3)).toEqual(['✎ Set the score…', '—', '🗑 Delete player…']);
+    expect(labels(playerMenu({ ...h, phone: () => null }, 'a')).slice(-3)).toEqual(['✎ Set the score…', '—', '🗑 Remove player…']);
+  });
+
+  it('🗑 Remove player… says team with phone buzzer teams, and the last one left can’t be removed', () => {
+    const { game, session, host, asked } = playing(() => newRound('Jeopardy!'));
+    const h = { ...host, remove: (id: string) => asked.push(`remove ${id}`) };
+    const item = () => playerMenu(h, 'a').at(-1)!;
+    expect(item()).toMatchObject({ label: '🗑 Remove player…', disabled: false, hint: 'Their points leave the scoreboard (it asks first; 👥 Players can restore them)' });
+    game.settings.buzzer = true;
+    game.settings.buzzTeams = true;
+    const was = prefs.buzzerServer;
+    prefs.buzzerServer = 'https://buzz.example.workers.dev';
+    expect(item()).toMatchObject({ label: '🗑 Remove team…', hint: 'Its points leave the scoreboard (it asks first; 👥 Teams can restore it)' });
+    prefs.buzzerServer = was;
+    // (Teams only with phone buzzers on.)
+    game.settings.buzzer = false;
+    expect(item()).toMatchObject({ label: '🗑 Remove player…' });
+    session.players = session.players.slice(0, 1);
+    expect(item()).toMatchObject({ label: '🗑 Remove player…', disabled: true, hint: 'The game needs at least one player: add another first' });
   });
 
   it('PARTNER UP!: who picked it, then the partner, by their number; what can’t be greyed with why', () => {

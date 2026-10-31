@@ -268,7 +268,7 @@ it; from 🤫 Send a card… 📤 Send to Ann only / ＋ Add Ann; in the Final's
 wager…; in its reveals 🔦 Spotlight, Show answer, Show wager, ✔ Right `C`, ✘ Wrong `X`), one that doesn't fit them greyed
 so the rest keeps its place; a line, then Select, ★ Make the picker and ✎ Set the score…; their round's extras and 🗂 Open
 their card; while the buzzer room is up, 📱 Free seat (new phone) and ↩ Let back; and last, in red, ⛔ Kick from phone (2
-min)… and 🗑 Delete player…, both asking first. `Shift+F10` or the menu key on their button, or a long press on a touch
+min)… and 🗑 Remove player… (Remove team… with phone buzzer teams; greyed for the last one left), both asking first. `Shift+F10` or the menu key on their button, or a long press on a touch
 screen, opens it too, and each item shows its key.
 A right-click on the stage (or `Shift+F10` on the main button, or a long press) gives the moment's own menu. Its first
 item, on its own, is the blue button's step (Show question ▶ `N`, 👁 Reveal answer `N`, ▦ Done ▶ board `N`, Next turn ▶

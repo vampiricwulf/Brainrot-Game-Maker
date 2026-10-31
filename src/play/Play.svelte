@@ -5330,6 +5330,9 @@
   function removeFromGame(id: string): void {
     removing = null;
     const at = session.players.findIndex((p) => p.id === id);
+    // (A running game keeps at least one: its turns, parties and scoreboard need someone. 👥 Players and the player's
+    // menu grey it; this is for any other way here.)
+    if (at >= 0 && session.players.length <= 1) return void toast(`The game needs at least one ${pregameTeams ? 'team' : 'player'}: add another first`);
     // Their sheet on stage: it goes too (viewers were left with a dimmed, empty stage). Under the scores too: S or Esc
     // would bring it back empty.
     const o = app.live.overlay;

@@ -761,7 +761,8 @@ The mode isn't saved with the game: it's dual while the audience window is open.
   depth; (2) a line, Select · ★ Make the picker · ✎ Set the score…; (3) the round's extras (their sheet, party, turn,
   zones), then 🗂 Open their card; (4) while the buzzer room is up (not with Teams, whose 📱 rows are people), 📱 Free
   seat (new phone) · ↩ Let back, greyed where they don't apply; (5) red and last, ⛔ Kick from phone (2 min)…, asked in
-  the panel's strip, and 🗑 Delete player…, which asks in 👥 Players as its 🗑 does. Groups with nothing are left out.
+  the panel's strip, and 🗑 Remove player… (🗑 Remove team… with phone buzzer teams), which asks in 👥 Players as its 🗑
+  does, greyed for the last one left (a running game keeps one). Groups with nothing are left out.
 - **The stage's menu** (host/stagemenu.ts): a right-click on the host's stage (not on a player, a tile or a board-game
   space, which have their own), `Shift+F10` or the menu key on the main button (or a box's step button, or with nothing
   focused), and a long press open the moment's menu: a heading naming the moment ("🤝 Partner clue · Movies $400"), the

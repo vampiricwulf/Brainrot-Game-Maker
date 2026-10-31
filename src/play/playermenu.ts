@@ -5,12 +5,14 @@
 // One order everywhere: this moment's verbs for them (✔ Right / ✘ Wrong, who picked it, the partner, who found it…, the
 // same list for every player, one that doesn't fit them greyed, so what follows starts at the same depth), a line, then
 // Select · ★ Make the picker · ✎ Set the score…, the round's extras and 🗂 Open their card, their phone's seat while the
-// room is up, and last, in red, ⛔ Kick from phone and 🗑 Delete player (both ask first).
+// room is up, and last, in red, ⛔ Kick from phone and 🗑 Remove player (both ask first; 👥 Players can restore them).
 import { app, toast } from '../lib/app.svelte';
+import { teamsOn } from '../lib/buzz';
 import { menuItem, menuOf, type MenuEntry } from '../lib/menustate.svelte';
 import { newId, type Game, type Session } from '../lib/model';
 import { awardOpen, playerName, typedAnswer } from '../lib/session';
 import { logged, setPicker } from '../lib/toolset';
+import { buzzerOn } from '../lib/remote.svelte';
 import { boardNow, sendNow, setTurn } from './boardgame/bgops';
 import { joinPartyNow, rpgNow, splitOff } from './rpg/hostops';
 
@@ -34,7 +36,7 @@ export interface PlayerMenuHost {
   verbs?: (id: string) => MenuEntry[];
   /** While a buzzer room is up: their seat's phone (null: no room). */
   phone?: (id: string) => SeatPhone | null;
-  /** 🗑 Delete player…: it asks first, as the 👥 Players window does. */
+  /** 🗑 Remove player… (team… with phone buzzer teams): it asks first, as the 👥 Players window does. */
   remove?: (id: string) => void;
 }
 
@@ -73,7 +75,7 @@ export function playerMenu(h: PlayerMenuHost, id: string): MenuEntry[] {
   const noPhone = phone?.down ? 'The buzzer room isn’t reachable right now' : 'No phone has their seat';
   const danger: MenuEntry[] = [
     ...(phone ? [{ label: '⛔ Kick from phone (2 min)…', danger: true, disabled: !phone.on || !!phone.down, hint: phone.on && !phone.down ? 'Takes their seat back from their phone, which can’t take it again for 2 minutes (it asks first)' : noPhone, onclick: phone.kick }] : []),
-    ...(h.remove ? [{ label: '🗑 Delete player…', danger: true, hint: 'Their points leave the scoreboard (it asks first; 👥 Players can restore them)', onclick: () => h.remove!(id) }] : []),
+    ...(h.remove ? [removeItem(h, id)] : []),
   ];
   return [
     { heading: p.name },
@@ -99,6 +101,24 @@ export function playerMenu(h: PlayerMenuHost, id: string): MenuEntry[] {
       : []),
     ...(danger.length ? [{ sep: true as const }, ...danger] : []),
   ];
+}
+
+/**
+ * 🗑 Remove player… (🗑 Remove team… with phone buzzer teams): removed from this game, as 👥 Players does (their points
+ * can be restored there). The last one left can't be: a running game keeps at least one (its turns, parties and
+ * scoreboard need someone).
+ */
+function removeItem(h: PlayerMenuHost, id: string): MenuEntry {
+  const team = buzzerOn(h.game.settings) && teamsOn(h.game.settings);
+  const noun = team ? 'team' : 'player';
+  const last = h.session.players.length <= 1;
+  return {
+    label: `🗑 Remove ${noun}…`,
+    danger: true,
+    disabled: last,
+    hint: last ? `The game needs at least one ${noun}: add another first` : `${team ? 'Its' : 'Their'} points leave the scoreboard (it asks first; 👥 ${team ? 'Teams' : 'Players'} can restore ${team ? 'it' : 'them'})`,
+    onclick: () => h.remove!(id),
+  };
 }
 
 // ---------- This moment's verbs (each box's own actions, for one player) ----------
