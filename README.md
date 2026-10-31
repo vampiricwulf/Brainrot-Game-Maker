@@ -272,8 +272,8 @@ something up or asks who (it closes the check while that plays out). Each line t
 ending on **✓ Ann's turn is played** with Next turn ▶ (`N` or `Enter`). **Before you go on:** a question worth points
 that came up this turn with nobody given any (＋ Award Ann $200 ▶ next turn). However the landing's actions run (its
 row's buttons, its space's card, ▶ Run all, the stage's menu), it counts, and an Undo of them asks again. Nothing asks
-for a turn that ends without a move: in a zone or off the board, a wheel slice naming no number, nowhere to go. `D`,
-`Enter`, then `N` never ask. At the tiebreaker's 🏁 Back to results with nobody its
+for a turn that ends without a move: in a zone or off the board, a wheel slice naming no number, nowhere to go. `D` and
+`Enter` never ask, so `D`, `Enter`, `N` is still three presses with nothing left. At the tiebreaker's 🏁 Back to results with nobody its
 winner yet, **Before you go on**: **🏆 Ann won ▶ results** for each tied player (the one picked with their number takes
 `Enter`), or 🏁 Back to results, still tied. Card names and who they're for, never their words. A quiet **▦ Done anyway: no points** (or **👁 Reveal anyway**, `R`) and **Not yet**
 (`Esc`) are at its foot; `N` again is "anyway" (not at a reveal, where `N` only says to press `R`). For its first 0.6 s
