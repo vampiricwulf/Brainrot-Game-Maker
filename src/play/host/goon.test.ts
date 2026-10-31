@@ -1098,6 +1098,7 @@ describe('a board game’s turn (3.4 L)', () => {
     o.roll.dice[0].value = 3;
     let shown = mergeItems(items, leftNow(at({ now: 0 }), st));
     expect([lines(shown), enterQuick(shown)]).toEqual([[['first: Rolling…', '🎲 Roll d6 [D] ⏎ · keep']], null]);
+    expect(inside({ key: 'Enter' }, open(st, shown), after)).toEqual({ do: 'flash', say: 'Still rolling: Enter moves them once they land' });
     // Landed (the Steps box filled): that line ticks, saying the roll, and the move joins.
     setSteps(3);
     const c = at();

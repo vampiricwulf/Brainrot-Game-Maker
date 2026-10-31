@@ -1285,7 +1285,10 @@ function turnItems(c: GoCtx): LeftItem[] {
       ...(why ? { why } : {}),
       aria: t.wheel ? `Spin the movement wheel for ${who}` : `Roll for ${who}`,
     });
-    if (t.rolling) return [{ id: 'roll', kind: 'first', quiet: 'roll', box: 'turnslot', text: t.wheel ? 'Spinning…' : 'Rolling…', lost: stops, quick: [rollQ(`Still ${t.wheel ? 'spinning' : 'rolling'}`)] }];
+    if (t.rolling) {
+      const still = `Still ${t.wheel ? 'spinning' : 'rolling'}`;
+      return [{ id: 'roll', kind: 'first', quiet: 'roll', box: 'turnslot', text: t.wheel ? 'Spinning…' : 'Rolling…', lost: stops, enterSay: `${still}: Enter moves them once ${t.wheel ? 'it lands' : 'they land'}`, quick: [rollQ(still)] }];
+    }
     const n = t.count;
     if (n) {
       const back = n < 0;
@@ -1341,7 +1344,7 @@ function landingItems(c: GoCtx, t: Turn): LeftItem[] {
       : all
         ? { label, enter: true, then: 'go', run: c.act.boardLanding, ...(why ? { why } : {}), aria: `Run ${whose} actions, then the next turn` }
         : { label, enter: true, then: 'close', run: c.act.boardLanding, after: `${Whose} actions are on… then ${FLOW.nextTurn.label} (N) when it’s played out`, ...(why ? { why } : {}), aria: `Run ${whose} actions` };
-  if (t.moving) return [{ ...base, text: 'Moving…', quick: [quick('Still moving')] }];
+  if (t.moving) return [{ ...base, text: 'Moving…', enterSay: 'Still moving: Enter once the token is there', quick: [quick('Still moving')] }];
   const gives = all ? list.filter((a) => a.do !== 'note').map((a) => actSay(c, t, a, who)) : [];
   const text = decides
     ? `${who} landed on ${shown}: its ${decideWord(decides)} ${decides.do === 'question' ? 'hasn’t been asked' : 'hasn’t happened'}.`
