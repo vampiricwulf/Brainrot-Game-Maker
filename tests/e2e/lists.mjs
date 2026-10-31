@@ -110,6 +110,9 @@ try {
   await shop.getByLabel('Item for sale').nth(2).focus();
   await page.keyboard.press('Alt+ArrowUp');
   assert((await sold()) === 'Potion,Hat,Potion (copy)', 'Alt+↑ moves what a shop sells');
+  // Ctrl+D there (a shop sells each item once): nothing, not the whole shop duplicated.
+  await page.keyboard.press('Control+d');
+  assert((await page.locator('.shop').count()) === 1 && (await sold()) === 'Potion,Hat,Potion (copy)', 'Ctrl+D in a row a shop sells duplicates nothing (not the shop it is in)');
   // (Dropped on a text box: headless Chromium only drops a drag on one.)
   await shop.scrollIntoViewIfNeeded();
   await dragBy(page, shop.locator('tbody tr .drag-grip').nth(2), shop.locator('tbody tr').first().locator('input').first());

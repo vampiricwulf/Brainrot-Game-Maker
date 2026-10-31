@@ -108,6 +108,7 @@ in plain words for the people who make and host games. Anything committed but no
 ### Fixed
 
 - A double-click on a list row's 🗑 (a wheel's slice, a stat, an item, a shop, a button, a die…) or on 🗑 Delete slide deletes one thing: the next row (or slide), come up under the pointer, was deleted too, and the note at the bottom named only that one.
+- Ctrl+D in a row a shop sells (its price or stock box) duplicated the whole shop; it does nothing there now.
 - RPG rounds on the game screen: an object dropped where it was, or a group held back at the stage's edge, no longer leaves an undo step that changes nothing, and a move of many reads “Move Ann, Bob, Cy & 5 more”. In one window (viewers see the host panel) a secret object is never named: Objects here lists it as “🙈 Hidden object 1”, its card keeps its name and buttons behind 👁 Show, and its menu, the Remove toast, Undo, the 📜 Log and the panel's Last: line say “a hidden object”, for steps made with the audience window open too.
 - 🤝 Partner clues: while the cards are handed out, a card to copy by hand has one 📋 Copy words (or 📋 Copy picture), at the 🤝 box's foot beside ⏱ Start the clock. Its row no longer shows a second one just above it. Once the clock runs, the row's is the one.
 - A click on a Daily Double's splash no longer takes the keys out of its Wager box, where the next digits typed picked players instead of the wager.

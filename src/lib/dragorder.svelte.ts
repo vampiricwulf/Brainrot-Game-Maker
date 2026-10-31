@@ -73,12 +73,17 @@ export interface RowKeys {
 /**
  * `use:rowKeys={{ move, duplicate, menu }}` on a list's row: Alt+↑/↓ from any field in it moves the row (the field
  * keeps the focus, so they repeat), Ctrl+D duplicates it, Shift+F10 opens its menu under what has the keys. A row
- * inside another row (a button in an item's Use list) keeps the keys for itself.
+ * inside another row (a button in an item's Use list, what a shop sells) keeps the keys for itself, even those it has
+ * no use for: Ctrl+D in a row a shop sells duplicates nothing, never the shop.
  */
 export function rowKeys(node: HTMLElement, keys: RowKeys): { update: (k: RowKeys) => void; destroy: () => void } {
   let k = keys;
+  node.dataset.rowkeys = '';
   function key(e: KeyboardEvent): void {
     if (e.defaultPrevented) return;
+    // (From a row inside this one: that row's.)
+    if (e.target instanceof Element && e.target.closest('[data-rowkeys]') !== node) return;
+    const inner = !!node.parentElement?.closest('[data-rowkeys]');
     const mod = e.ctrlKey || e.metaKey;
     const [back, on] = k.across ? ['ArrowLeft', 'ArrowRight'] : ['ArrowUp', 'ArrowDown'];
     // (Not ←/→ in a text box on a Mac, where Option+arrows move the caret by word.)
@@ -96,10 +101,11 @@ export function rowKeys(node: HTMLElement, keys: RowKeys): { update: (k: RowKeys
           : had;
         if (to?.isConnected && to !== document.activeElement) to.focus();
       });
-    } else if (k.duplicate && mod && !e.altKey && !e.shiftKey && e.key.toLowerCase() === 'd') {
+    } else if ((k.duplicate || inner) && mod && !e.altKey && !e.shiftKey && e.key.toLowerCase() === 'd') {
+      // (An inner row with no duplicate of its own: nothing, not the browser's Bookmark this page either.)
       e.preventDefault();
       e.stopPropagation();
-      k.duplicate();
+      k.duplicate?.();
     } else if (k.menu && isMenuKey(e)) {
       e.stopPropagation();
       keyMenu(e, k.menu(), e.target instanceof HTMLElement ? e.target : node);
