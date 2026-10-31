@@ -37,7 +37,7 @@ const NOUNS: Record<SlideElement['kind'], [string, string]> = {
   text: ['text box', 'text boxes'],
   image: ['image', 'images'],
   video: ['video', 'videos'],
-  audio: ['audio clip', 'audio clips'],
+  audio: ['sound', 'sounds'],
   shape: ['shape', 'shapes'],
   embed: ['link', 'links'],
 };
@@ -59,7 +59,7 @@ export function layerLabel(el: SlideElement, game: Game): string {
     case 'image':
     case 'video':
     case 'audio':
-      return game.media.find((m) => m.id === el.media)?.name ?? (el.kind === 'image' ? 'Image' : el.kind === 'video' ? 'Video' : 'Audio');
+      return game.media.find((m) => m.id === el.media)?.name ?? (el.kind === 'image' ? 'Image' : el.kind === 'video' ? 'Video' : 'Sound');
     case 'shape':
       // (A line drawn by hand with ✏ Freehand line; closed with Shift, a shape. A 🖌 Drawpad drawing is a picture.)
       return el.hotspot ? 'Hotspot' : el.shape === 'path' ? (el.closed ? 'Freehand shape' : 'Freehand line') : SHAPES[el.shape];
@@ -71,7 +71,7 @@ export function layerLabel(el: SlideElement, game: Game): string {
 /**
  * What opens one item's editor, as its menu and the panel's bar say it (a double-click or Enter does the same): a
  * picture's ✎ Edit image…, a video's or sound's ✎ Edit video… / sound… (`media`: its file can be edited here, see
- * editOffer; else its Start at), a text box's text, a link's Link box, a shape's Fill or a line's Color. None for a
+ * editOffer; else its Plays from), a text box's text, a link's Link box, a shape's Fill or a line's Color. None for a
  * hotspot.
  */
 export function editWords(el: SlideElement, media: 'on' | 'busy' | null = null): string | null {

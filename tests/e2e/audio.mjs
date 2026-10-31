@@ -56,7 +56,7 @@ async function toPregame(page, url, { introSound = false, introSeconds = 2 } = {
   if (introSound) {
     await page.getByRole('button', { name: '🔊 Sounds' }).click();
     await page.getByRole('button', { name: /^Choose file for/ }).first().click();
-    const [fc] = await Promise.all([page.waitForEvent('filechooser'), page.getByRole('button', { name: '⬆ Upload audio file…' }).click()]);
+    const [fc] = await Promise.all([page.waitForEvent('filechooser'), page.getByRole('button', { name: '⬆ Upload sound file…' }).click()]);
     await fc.setFiles({ name: 'intro.wav', mimeType: 'audio/wav', buffer: wav(introSeconds) });
     await page.getByText('🔊 intro.wav').waitFor();
     // Switched off, it keeps its file; switched back on, it plays that file again (not the built-in sound).
@@ -872,7 +872,7 @@ try {
     await addClassicRounds(page);
     await page.getByRole('button', { name: '🔊 Sounds' }).click();
     await page.locator('.sound', { hasText: 'Final round think music' }).getByRole('button', { name: /^Choose file for/ }).click();
-    const [fc] = await Promise.all([page.waitForEvent('filechooser'), page.getByRole('button', { name: '⬆ Upload audio file…' }).click()]);
+    const [fc] = await Promise.all([page.waitForEvent('filechooser'), page.getByRole('button', { name: '⬆ Upload sound file…' }).click()]);
     await fc.setFiles({ name: 'think.wav', mimeType: 'audio/wav', buffer: wav(30) });
     await page.getByText('🔊 think.wav').waitFor();
     await playWithPlayers(page, 2);

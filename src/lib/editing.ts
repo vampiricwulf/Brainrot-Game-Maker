@@ -3,6 +3,7 @@
 // unit-tested (editing.test.ts).
 import { clampOnto } from './layers';
 import { SLIDE_H, SLIDE_W, type SlideElement } from './model';
+import { clockTenths, parseClock } from './shrink/plan';
 
 // ---------- Undo history ----------
 
@@ -319,10 +320,27 @@ export function officeTextPaste(html: string, text: string, files: number): bool
 // ---------- Playback ----------
 
 /**
- * Where a clip plays from and to (the Inspector's Start at / Stop at, in seconds): never before the start, and a stop
+ * Where a clip plays from and to (the Inspector's Plays from / to, in seconds): never before the start, and a stop
  * at or before the start is no stop at all (it plays to the end, rather than seeking back forever on a loop).
  */
 export function playRange(startAt: number | undefined, endAt: number | undefined): { start: number; end?: number } {
   const start = Number.isFinite(startAt) && startAt! > 0 ? startAt! : 0;
   return { start, end: Number.isFinite(endAt) && endAt! > start ? endAt : undefined };
 }
+
+/**
+ * A "Plays from [ ] to [ ]" box's words as seconds: 83, 1:23 or 1:23.5 (to the hundredth, never before 0). Empty is
+ * none (the start, or the end): undefined. Words that aren't a time: null (the box goes back to what it was).
+ */
+export function playsAt(words: string): number | undefined | null {
+  if (!words.trim()) return undefined;
+  const t = parseClock(words);
+  return t === null ? null : Math.round(Math.max(0, t) * 100) / 100;
+}
+
+/** The box's words for a time it holds ("0:01.5"), empty for none. */
+export const playsText = (s: number | undefined): string => (s === undefined || !Number.isFinite(s) ? '' : clockTenths(s, true));
+
+/** ↑ / ↓ in a Plays box: 0.1 s on or back (`big`, Shift: 1 s), from `from` when it's empty, never before 0. */
+export const playsStep = (s: number | undefined, dir: 1 | -1, big = false, from = 0): number =>
+  Math.max(0, Math.round(((s ?? from) + dir * (big ? 1 : 0.1)) * 10) / 10);

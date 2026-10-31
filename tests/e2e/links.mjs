@@ -169,7 +169,7 @@ assert(
 assert((await page.locator('.canvas img').getAttribute('src')).startsWith('blob:'), 'the slide shows the saved copy, not the link');
 
 // ---------- A host that doesn't: a live link that plays from the internet ----------
-await page.getByRole('button', { name: '🔊 Audio' }).click();
+await page.getByRole('button', { name: '🔊 Sound' }).click();
 await page.locator('.picker').getByLabel('Paste a link').fill('https://files.catbox.moe/beep1.wav');
 await page.locator('.picker').getByLabel('Paste a link').press('Enter');
 await page.locator('.insp').getByText('Autoplay when the slide appears').waitFor();
@@ -334,7 +334,7 @@ await page.getByRole('button', { name: '🖼 Image' }).click();
 await page.locator('.picker').getByLabel('Paste a link').fill('https://files.catbox.moe/flaky5.png');
 await page.locator('.picker').getByLabel('Paste a link').press('Enter');
 await page.locator('.canvas img[src="https://files.catbox.moe/flaky5.png"]').waitFor();
-await page.getByRole('button', { name: '🔊 Audio' }).click();
+await page.getByRole('button', { name: '🔊 Sound' }).click();
 await page.locator('.picker').getByLabel('Paste a link').fill('https://files.catbox.moe/flaky5.wav');
 await page.locator('.picker').getByLabel('Paste a link').press('Enter');
 await page.locator('.insp').getByText('🌐 Plays from files.catbox.moe during the show').waitFor();

@@ -144,7 +144,7 @@
       ? 'Wait for it to finish (the header shows how far it got)'
       : m.kind === 'video'
         ? 'Trim, crop or resize this video: every place that uses it gets the edited one, on stream too (Ctrl+Z puts the old one back)'
-        : 'Trim this sound: every place that uses it gets the trimmed one (Ctrl+Z puts the old one back). Sounds in 🔊 Sounds, wheels, dice and RPG music have no Start/Stop of their own: trimming the file is how to trim them.';
+        : 'Trim this sound: every place that uses it gets the trimmed one (Ctrl+Z puts the old one back). Sounds in 🔊 Sounds, wheels, dice and RPG music have no Plays from / to of their own: trimming the file is how to trim them.';
 
   /** A file's menu: its card's own buttons, then where it's used, then 🗑 Delete file. */
   function oneMenu(m: MediaRef): MenuEntry[] {
@@ -712,7 +712,8 @@
             <td>{embedName(el.embedKind, el.url)}</td>
             <td class="url" title={el.url}>{el.url}</td>
             <td class="muted">{where}</td>
-            <td><button class="small" onclick={() => openMediaPopup(embedOpenUrl(el.embedKind, el.url, el.startAt))}>Check ↗</button></td>
+            <!-- (One name with the slide editor's: it opens the link in its own window.) -->
+            <td><button class="small" onclick={() => openMediaPopup(embedOpenUrl(el.embedKind, el.url, el.startAt))} title="Open it in its own window">Test link ↗</button></td>
           </tr>
         {/each}
       </tbody>

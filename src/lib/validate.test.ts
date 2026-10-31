@@ -106,7 +106,7 @@ describe('the checklist', () => {
     game.audio.finalThink = 'gone1';
     const lines = validate(game).filter((p) => p.text.includes('missing') || p.text.includes('deleted'));
     expect(lines.map((p) => p.text)).toEqual([
-      '1 deleted file still used on Introduction › Slide 1 › Audio and 1 more place: not saved with the game. Undo the delete in History, or take it off those slides',
+      '1 deleted file still used on Introduction › Slide 1 › Sound and 1 more place: not saved with the game. Undo the delete in History, or take it off those slides',
       '1 sound file missing: see 🔊 Sounds',
     ]);
     expect(lines[0].place).toMatchObject({ tab: 'round', round: intro.id });

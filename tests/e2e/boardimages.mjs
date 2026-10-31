@@ -212,7 +212,7 @@ try {
   assert(true, 'Shift+F10 on the preview opens the selected image’s menu');
   {
     const got = (await itemMenu.getByRole('menuitem').allInnerTexts()).map((t) => t.split('\n')[0].trim());
-    const want = ['✎ Edit image…', '🔁 Use another file…', '✎ Rename', '⧉ Duplicate', '✂ Cut', '📋 Copy', '📋 Paste', 'Bring to front', 'Bring forward', 'Send backward', 'Send to back', 'Align', '🔒 Lock', '👁 Hide while editing', '🗑 Delete'];
+    const want = ['✎ Edit image…', '🔁 Use another picture…', '✎ Rename', '⧉ Duplicate', '✂ Cut', '📋 Copy', '📋 Paste', 'Bring to front', 'Bring forward', 'Send backward', 'Send to back', 'Align', '🔒 Lock', '👁 Hide while editing', '🗑 Delete'];
     assert(JSON.stringify(got) === JSON.stringify(want), `its items in the slide editor's one order (${got.join(' | ')})`);
   }
   // A choice made with the keys (arrows, Enter) leaves them on the preview, as on a slide (they went to ＋ Add image).

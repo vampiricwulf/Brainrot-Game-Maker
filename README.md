@@ -99,7 +99,7 @@ tab (or Shift+F10 on it) gives its menu, and Ctrl+C / Ctrl+V on a tab copy the s
 Shape ▾ is in sections (Shapes, then Draw: ✏ Freehand line…, 🖌 Drawpad…; ⬚ Hotspot on an RPG screen only), and
 **Background ▾** shows the picture as a thumbnail, with Change… and ⌫ Clear picture (the color stays) beside the Color
 and ↺ Theme color, and ↺ Reset background apart. A double-click on an item (or Enter, with it selected) opens its editor: a text box's text, a
-picture's ✎ Edit image, a video's or sound's ✎ Edit video / sound (or its Start at), a link's Link box, a shape's
+picture's ✎ Edit image, a video's or sound's ✎ Edit video / sound (or its Plays from), a link's Link box, a shape's
 Fill. F2 renames an item in the Layers list (on a text box it edits the text), and after you add a picture, video,
 sound or link the keys stay on the slide. ✎ Edit image, 🖌 Drawpad and ✎ Edit video / sound work alike: ↶ Undo, ↷
 Redo, Reset apart, then Cancel, Apply (Insert drawing) and ✕ along the top (a video's Cancel is at its foot, by its
@@ -108,7 +108,7 @@ and ✂ Crop pressed reads ✓ Done cropping, its shapes and Remove crop beside 
 `S` pick ✋ Select (captions and stickers), ✂ Crop, 🖌 Draw, 🅣 Text and 😂 Sticker, a right-click on a caption or
 sticker duplicates or deletes it, and its side panel says This caption / This sticker or Whole picture (Straighten,
 Picture size). A right-click gives the item's menu, headed by its name, in the editors' one order (✎ Edit, 🔁 Use
-another file…, ✎ Rename, ⧉ Duplicate, ✂ Cut, 📋 Copy, 📋 Paste, the restacks, Align ▸, 🔒 Lock, 👁 Hide while editing,
+another picture… (video…, sound…), ✎ Rename, ⧉ Duplicate, ✂ Cut, 📋 Copy, 📋 Paste, the restacks, Align ▸, 🔒 Lock, 👁 Hide while editing,
 🗑 Delete; a Layers row has it too); on an empty spot, or beside a full-slide question's words, the slide's own (＋ Text
 here, 📋 Paste here, 📋 Copy slide, 📋 Paste over this slide, 🎨 Background… where you clicked, Select all), with the
 question's ✎ Edit text and Align ▸ first while it's alone on the slide. Drag a box on an empty spot to select several items. Beside a text box's words counts as empty (until
@@ -120,9 +120,13 @@ shadows and glows get room inside their box, so they're never cut off at its edg
 letter)** types the text out (all at once with reduced motion). The same file added twice is stored once (a toast says
 it's already in 🖼 Media). Replacing a file in 🖼 Media redoes the ✎ edits of pictures made from it on the new file.
 **✎ Edit…** in 🖼 Media (or ✎ Edit video… on a slide's item, in its panel or its right-click menu) trims a video or
-sound, and crops and resizes a video, for every place that uses it; slides' Start at / Stop at move with the trim. Save
+sound, and crops and resizes a video, for every place that uses it; slides' Plays from / to move with the trim. Save
 as a new file keeps the original too, and from a slide item, Only this item edits it for that item alone. Ctrl+Z puts
-the old file back.
+the old file back. A picture's, video's or sound's panel has **🔁 Use another picture… / video… / sound…** (only this
+item; 🖼 Media's Replace everywhere… is for every place), and a video's or sound's (or an online one's) says the part it
+plays as **Plays from [0:00.0] to [the end]**: type 83, 1:23 or 1:23.5 (empty is the start or the end; ↑ / ↓ step
+0.1 s), and **▶ Try it** plays that part (pressed again, it stops). That's only this item; ✎ Edit video… cuts the file
+itself. Autoplay, Loop, Start muted and Volume are under **When it plays**. The toolbar's sound button is 🔊 Sound.
 
 **RPG map editor:** drag a screen to move it or swap it with another (dropping past the edge grows the map, dropping
 on a map tab moves it there), `Delete` deletes the selected screens, arrows / `Enter` / `Alt`+arrows / `Ctrl+D` /

@@ -38,7 +38,7 @@
     hovered?: string | null;
     /** There are copied items to paste. */
     canPaste: boolean;
-    /** 🔁 Use another file… for one picture, video or sound. */
+    /** 🔁 Use another picture… (video…, sound…) for one picture, video or sound. */
     canReplace?: boolean;
     /**
      * The slide editor's: ✎ Edit for every kind, ＋ Text here, the whole slide's 📋 Copy slide and 📋 Paste over this
@@ -80,7 +80,7 @@
     if (offer) return { words, action: 'edit-media' };
     return slideExtras ? { words, action: 'edit' } : null;
   });
-  /** One picture, video or sound: 🔁 Use another file…. */
+  /** One picture, video or sound: 🔁 Use another picture… (video…, sound…), as its panel says. */
   const replaces = $derived(canReplace && selected.length === 1 && (one?.kind === 'image' || one?.kind === 'video' || one?.kind === 'audio'));
   /** The items here to pick from: when stacked, or on an empty spot beside a text box's words (it's under there). */
   const picks = $derived(stack.length > 1 || (!selected.length && stack.length > 0));
@@ -161,7 +161,9 @@
   {#if selected.length}
     {#if editing || replaces}
       {@render editItem(act)}
-      {#if replaces}<button role="menuitem" onclick={() => act('replace')} title="Only this item: the same file elsewhere stays">🔁 Use another file…</button>{/if}
+      {#if replaces}<button role="menuitem" onclick={() => act('replace')} title="Only this item: the same file elsewhere stays as it is"
+          >🔁 Use another {one?.kind === 'image' ? 'picture' : one?.kind === 'video' ? 'video' : 'sound'}…</button
+        >{/if}
       <hr />
     {/if}
     <!-- (F2 renames in the Layers list; on a text box it edits its words, so it's not this item's key there.) -->

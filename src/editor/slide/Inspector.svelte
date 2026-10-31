@@ -1,9 +1,11 @@
 <!-- Property panel for the selected slide element. -->
 <script lang="ts">
-  import type { Snippet } from 'svelte';
+  import { onDestroy, type Snippet } from 'svelte';
   import type { FitResult } from '../../lib/autofit';
   import { fontChoices } from '../../lib/fonts';
-  import type { EntranceType, Fit, Game, SlideElement, TextEl } from '../../lib/model';
+  import { playRange, playsAt, playsStep, playsText } from '../../lib/editing';
+  import { mediaUrls } from '../../lib/media.svelte';
+  import type { AudioEl, EmbedEl, EntranceType, Fit, Game, SlideElement, TextEl, VideoEl } from '../../lib/model';
   import { DRIVE_SHARE_HINT, embedName, formatWhen, linkHost } from '../../lib/links';
   import { stageText } from '../../lib/theme';
   import { toHex } from '../../lib/colors';
@@ -11,7 +13,7 @@
   import NumField from './NumField.svelte';
   import ColorBox from '../../lib/ColorBox.svelte';
   import { app } from '../../lib/app.svelte';
-  import { convertNow } from '../../lib/shrink/apply';
+  import { convertNow, editOffer } from '../../lib/shrink/apply';
   import { verdictOf } from '../../lib/shrink/checks.svelte';
   import { jobFor } from '../../lib/shrink/jobs.svelte';
   import { shortWhy } from '../../lib/shrink/words';
@@ -61,8 +63,63 @@
   const liveRef = $derived('media' in el ? game.media.find((m) => m.id === el.media && m.url) : undefined);
   /** Google Drive's or Streamable's own player: no playback options apply. */
   const sitePlayer = $derived(el.kind === 'embed' && (el.embedKind === 'drive' || el.embedKind === 'streamable'));
-  /** Start at / Stop at: empty is none, and never before 0. */
-  const seconds = (v: string) => (v === '' || !Number.isFinite(+v) ? undefined : Math.max(0, +v));
+  // ---------- Plays from [ ] to [ ]: the part of its file this item plays, in clock time ----------
+  type Timed = VideoEl | AudioEl | EmbedEl;
+  /** A time typed (83, 1:23, 1:23.5; empty: the start or the end): kept in seconds; anything else goes back. */
+  function setPlays(e: Event & { currentTarget: HTMLInputElement }, which: 'startAt' | 'endAt'): void {
+    const t = playsAt(e.currentTarget.value);
+    if (t !== null) (el as Timed)[which] = t;
+    e.currentTarget.value = playsText((el as Timed)[which]);
+  }
+  /** ↑ / ↓: 0.1 s (Shift: 1 s), an empty "to" from where it plays from. */
+  function stepPlays(e: KeyboardEvent & { currentTarget: HTMLInputElement }, which: 'startAt' | 'endAt'): void {
+    if ((e.key !== 'ArrowUp' && e.key !== 'ArrowDown') || e.altKey || e.ctrlKey || e.metaKey) return;
+    e.preventDefault();
+    const t = el as Timed;
+    t[which] = playsStep(t[which], e.key === 'ArrowUp' ? 1 : -1, e.shiftKey, which === 'endAt' ? (t.startAt ?? 0) : 0);
+    e.currentTarget.value = playsText(t[which]);
+  }
+  /** The item's file (or a link's own address) for ▶ Try it, in the editor only (in play, the panel can be on stream). */
+  const tryUrl = $derived(
+    app.screen !== 'editor' || app.editGame
+      ? undefined
+      : el.kind === 'video' || el.kind === 'audio'
+        ? mediaUrls[el.media]
+        : el.kind === 'embed' && (el.embedKind === 'remoteVideo' || el.embedKind === 'remoteAudio')
+          ? el.url
+          : undefined,
+  );
+  const tryPicture = $derived(el.kind === 'video' || (el.kind === 'embed' && el.embedKind === 'remoteVideo'));
+  /** ▶ Try it: the item being tried, its part playing here in the panel (pressed again, or at its end, it stops). */
+  let trying = $state<string | null>(null);
+  let tryEl = $state<HTMLMediaElement>();
+  let raf = 0;
+  function stopTry(): void {
+    cancelAnimationFrame(raf);
+    tryEl?.pause();
+    trying = null;
+  }
+  /** Loaded: from where it plays from, at its volume, until where it plays to. */
+  function tryFrom(): void {
+    const m = tryEl;
+    if (!m || !('volume' in el)) return;
+    const t = el as Timed;
+    const r = playRange(t.startAt, t.endAt);
+    m.currentTime = r.start;
+    m.volume = t.volume;
+    const follow = () => {
+      if (r.end !== undefined && m.currentTime >= r.end) return stopTry();
+      raf = requestAnimationFrame(follow);
+    };
+    void m.play().then(follow, stopTry);
+  }
+  // Another item selected: it stops.
+  $effect(() => {
+    if (trying && trying !== el.id) stopTry();
+  });
+  onDestroy(stopTry);
+  /** A video's or sound's file can be cut here (✎ Edit video… / sound… at the top of the panel). */
+  const cuts = $derived((el.kind === 'video' || el.kind === 'audio') && !!editOffer(game.media.find((m) => m.id === el.media)));
 
   const WHITE = /^#?(fff|ffffff)$/i;
   const themeText = $derived(toHex(stageText(game.theme)) ?? '#ffffff');
@@ -286,7 +343,7 @@
       <label class="field">Rounded corners<NumField min={0} bind:value={() => el.radius ?? 0, (v) => (el.radius = v)} /></label>
       <!-- (✎ Edit image… is the bar's at the top of the panel.) -->
       <div class="row">
-        <button onclick={(e) => onreplace(e.currentTarget)} data-replace>Replace…</button>
+        <button onclick={(e) => onreplace(e.currentTarget)} data-replace title="Only this item: the same file elsewhere stays as it is">🔁 Use another picture…</button>
       </div>
       {@render liveNote()}
     </section>
@@ -332,7 +389,7 @@
   {:else if el.kind === 'video' || el.kind === 'audio' || el.kind === 'embed'}
     <section>
       <h4>
-        {el.kind === 'video' ? 'Video' : el.kind === 'audio' ? 'Audio' : el.embedKind === 'remoteImage' || el.embedKind === 'remoteVideo' || el.embedKind === 'remoteAudio' ? 'Online media' : embedName(el.embedKind, el.url)}
+        {el.kind === 'video' ? 'Video' : el.kind === 'audio' ? 'Sound' : el.embedKind === 'remoteImage' || el.embedKind === 'remoteVideo' || el.embedKind === 'remoteAudio' ? 'Online media' : embedName(el.embedKind, el.url)}
       </h4>
       {#if el.kind === 'embed'}
         <label class="field">Link<input bind:value={el.url} data-opens /></label>
@@ -360,18 +417,6 @@
           <label class="field">Rounded corners<NumField min={0} bind:value={() => el.radius ?? 0, (v) => (el.radius = v)} /></label>
         {/if}
       {:else}
-        <!-- (✎ Edit video… / sound… is the bar's at the top of the panel.) -->
-        <div class="row">
-          <button class="small" onclick={(e) => onreplace(e.currentTarget)} data-replace>Replace file…</button>
-        </div>
-        {@render liveNote()}
-        {@render playsNote(el.media)}
-      {/if}
-      {#if !sitePlayer && (el.kind !== 'embed' || el.embedKind !== 'remoteImage')}
-        <label class="check"><input type="checkbox" bind:checked={el.autoplay} /> Autoplay when the slide appears</label>
-        <label class="check"><input type="checkbox" bind:checked={el.loop} /> Loop</label>
-        <label class="check"><input type="checkbox" bind:checked={el.muted} /> Start muted</label>
-        {#if el.kind === 'audio'}<label class="check"><input type="checkbox" bind:checked={el.visible} /> Show a speaker icon on the slide</label>{/if}
         {#if el.kind === 'video'}
           <label class="field">
             Fit
@@ -382,13 +427,68 @@
             </select>
           </label>
         {/if}
-        <div class="grid2">
-          <label class="field">Start at (s)<input type="number" min="0" step="0.1" value={el.startAt ?? ''} oninput={(e) => (el.startAt = seconds(e.currentTarget.value))} data-opens /></label>
-          <label class="field">Stop at (s)<input type="number" min="0" step="0.1" value={el.endAt ?? ''} oninput={(e) => (el.endAt = seconds(e.currentTarget.value))} /></label>
+        <!-- (✎ Edit video… / sound… is the bar's at the top of the panel.) -->
+        <div class="row">
+          <button class="small" onclick={(e) => onreplace(e.currentTarget)} data-replace title="Only this item: the same file elsewhere stays as it is"
+            >🔁 Use another {el.kind === 'video' ? 'video' : 'sound'}…</button
+          >
         </div>
-        {#if el.endAt !== undefined && el.endAt <= (el.startAt ?? 0)}
-          <p class="warn small" role="status">Stop at isn't after Start at, so it's ignored: the clip plays to its end.</p>
+        {#if el.kind === 'audio'}<label class="check"><input type="checkbox" bind:checked={el.visible} /> Show a speaker icon on the slide</label>{/if}
+        {@render liveNote()}
+        {@render playsNote(el.media)}
+      {/if}
+      {#if !sitePlayer && (el.kind !== 'embed' || el.embedKind !== 'remoteImage')}
+        <!-- The part it plays, in clock time (83, 1:23 or 1:23.5; empty: from the start, to the end). -->
+        <div class="plays" role="group" aria-label="The part it plays">
+          <span>Plays from</span>
+          <!-- (data-opens: where a double-click or Enter on a video or sound puts the keys; a link's is its Link box.) -->
+          <input
+            class="clock"
+            value={playsText(el.startAt)}
+            placeholder="0:00.0"
+            onchange={(e) => setPlays(e, 'startAt')}
+            onkeydown={(e) => stepPlays(e, 'startAt')}
+            aria-label="Plays from"
+            title="Seconds (83) or minutes and seconds (1:23, 1:23.5); empty: from the start. ↑ ↓ 0.1 s, Shift: 1 s"
+            data-opens={el.kind !== 'embed' || undefined}
+          />
+          <span>to</span>
+          <input
+            class="clock"
+            value={playsText(el.endAt)}
+            placeholder="the end"
+            onchange={(e) => setPlays(e, 'endAt')}
+            onkeydown={(e) => stepPlays(e, 'endAt')}
+            aria-label="Plays to"
+            title="Seconds (83) or minutes and seconds (1:23, 1:23.5); empty: to the end. ↑ ↓ 0.1 s, Shift: 1 s"
+          />
+          {#if tryUrl}
+            <button class="small" class:on={trying === el.id} aria-pressed={trying === el.id} onclick={() => (trying === el.id ? stopTry() : (trying = el.id))} title="Play that part here (pressed again, it stops)"
+              >{trying === el.id ? '■ Stop' : '▶ Try it'}</button
+            >
+          {/if}
+        </div>
+        {#if trying === el.id && tryUrl}
+          {#if tryPicture}
+            <!-- svelte-ignore a11y_media_has_caption -->
+            <video class="try" bind:this={tryEl} src={tryUrl} playsinline onloadedmetadata={tryFrom} onended={stopTry} aria-label="The part it plays"></video>
+          {:else}
+            <audio bind:this={tryEl} src={tryUrl} onloadedmetadata={tryFrom} onended={stopTry}></audio>
+          {/if}
         {/if}
+        {#if el.endAt !== undefined && el.endAt <= (el.startAt ?? 0)}
+          <p class="warn small" role="status">“to” isn't after “from”, so it's left out: the clip plays to its end.</p>
+        {/if}
+        {#if el.kind !== 'embed'}
+          <p class="hint">
+            {#if cuts}Only this item. To cut the file itself (smaller, everywhere): <b>{el.kind === 'video' ? '✎ Edit video…' : '✎ Edit sound…'}</b> at the
+              top.{:else}Only this item: the file itself stays whole.{/if}
+          </p>
+        {/if}
+        <h5>When it plays</h5>
+        <label class="check"><input type="checkbox" bind:checked={el.autoplay} /> Autoplay when the slide appears</label>
+        <label class="check"><input type="checkbox" bind:checked={el.loop} /> Loop</label>
+        <label class="check"><input type="checkbox" bind:checked={el.muted} /> Start muted</label>
         <label class="field">Volume {Math.round(el.volume * 100)}%<input type="range" min="0" max="1" step="0.05" bind:value={el.volume} /></label>
       {/if}
     </section>
@@ -455,10 +555,6 @@
     min-width: 0;
     flex: 1;
   }
-  input[type='number'] {
-    width: 100%;
-    min-width: 0;
-  }
   .grid2,
   .grid3,
   .grid4 {
@@ -505,6 +601,35 @@
     margin: 0;
     font-size: 12px;
     color: var(--muted);
+  }
+  h5 {
+    margin: 4px 0 0;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--muted);
+  }
+  /* Plays from [0:00.0] to [the end] ▶ Try it, on one line. */
+  .plays {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px;
+    font-size: 13px;
+  }
+  .plays .clock {
+    width: 72px;
+    min-width: 0;
+  }
+  .plays button.on {
+    background: var(--accent-fill);
+    border-color: var(--accent-fill);
+    color: #fff;
+  }
+  .try {
+    width: 100%;
+    max-height: 160px;
+    background: #000;
+    border-radius: 4px;
   }
   .fitted {
     color: var(--accent);

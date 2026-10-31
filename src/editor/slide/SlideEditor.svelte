@@ -127,7 +127,7 @@
   let selected = $state<string[]>([]);
   let picker = $state<MediaKind | null>(null);
   let replacing = $state<string | null>(null);
-  /** The Inspector button (Replace…, font ＋) its picker drops from. */
+  /** The Inspector button (🔁 Use another picture…, font ＋) its picker drops from. */
   let pickerFrom = $state<HTMLElement>();
   let shapeMenu = $state(false);
   /** The Background ▾ box: the slide's color, picture and reset. `bgAt`: opened from the slide's menu, at the pointer. */
@@ -275,7 +275,7 @@
     noticeTimer = setTimeout(() => (notice = null), 6000);
   }
 
-  const NAMES: Record<SlideElement['kind'], string> = { text: 'text box', image: 'image', video: 'video', audio: 'audio clip', shape: 'shape', embed: 'link' };
+  const NAMES: Record<SlideElement['kind'], string> = { text: 'text box', image: 'image', video: 'video', audio: 'sound', shape: 'shape', embed: 'link' };
   const describe = (els: SlideElement[]) => (els.length === 1 ? NAMES[els[0].kind] : `${els.length} items`);
   /** The items as the History names a step done to them: shape “Ellipse”, 3 shapes, 3 items. */
   const named = (els: SlideElement[]) => itemsNamed(els, game);
@@ -283,7 +283,7 @@
   // ---------- Adding elements ----------
   /**
    * `also`: more changes in the same undo step (moving the question's text out of a new picture's way). `keys`: the
-   * keyboard goes on from the slide even when a button has it (a file picked from 🖼 Image, 🎬 Video, 🔊 Audio or 🌐 Link,
+   * keyboard goes on from the slide even when a button has it (a file picked from 🖼 Image, 🎬 Video, 🔊 Sound or 🌐 Link,
    * whose button takes the focus back as its picker closes, or a file dropped or pasted), so Delete, the arrows and
    * Enter work on the new item.
    */
@@ -329,7 +329,7 @@
 
   /**
    * Double-click or Enter on one item opens its editor: a text box its Text field, a picture ✎ Edit image, a video or
-   * sound ✎ Edit video / sound (its Start at box when its file can't be edited here), a link its Link box, a shape its
+   * sound ✎ Edit video / sound (its Plays from box when its file can't be edited here), a link its Link box, a shape its
    * Fill (a line its Color). The panel's box is marked data-opens.
    */
   function openEditor(el: SlideElement): void {
@@ -388,7 +388,7 @@
       const el = slide.elements.find((e) => e.id === replacing);
       replacing = null;
       if (el && (el.kind === 'image' || el.kind === 'video' || el.kind === 'audio') && kind !== el.kind)
-        return void toast(`That file is ${KIND_WORD[kind] ?? 'another kind of file'}: Replace takes ${KIND_WORD[el.kind]} (add it as its own item instead)`, 4000);
+        return void toast(`That file is ${KIND_WORD[kind] ?? 'another kind of file'}: this item takes ${KIND_WORD[el.kind]} (add it as its own item instead)`, 4000);
       if (el && (el.kind === 'image' || el.kind === 'video' || el.kind === 'audio'))
         edit(() => {
           el.media = id;
@@ -598,7 +598,7 @@
       void tick().then(() => root?.querySelector<HTMLElement>('.bg-menu input, .bg-menu button:not(:disabled)')?.focus());
     } else if (a === 'rename' && single) renameInLayers(single);
     else if (a === 'replace' && (single?.kind === 'image' || single?.kind === 'video' || single?.kind === 'audio')) {
-      // As the panel's Replace… does (its picker drops from there).
+      // As the panel's 🔁 Use another picture… (video…, sound…) does (its picker drops from there).
       pickerFrom = root?.querySelector<HTMLElement>('.insp [data-replace]') ?? undefined;
       replacing = single.id;
       picker = single.kind;
@@ -1079,7 +1079,7 @@
         {#if picker === 'video' && !replacing}<MediaPicker kind="video" onpick={picked} onclose={() => (picker = null)} />{/if}
       </div>
       <div class="pop">
-        <button onclick={() => (picker = 'audio')} title="Add a sound: upload one, link to one online, or reuse one from this game">🔊 Audio</button>
+        <button onclick={() => (picker = 'audio')} title="Add a sound: upload one, link to one online, or reuse one from this game">🔊 Sound</button>
         {#if picker === 'audio' && !replacing}<MediaPicker kind="audio" onpick={picked} onclose={() => (picker = null)} />{/if}
       </div>
       <div class="pop">
@@ -1409,7 +1409,7 @@
         <Tips id="slide" hint="Click an item to edit it, or double-click it (text goes straight to its text field).">
           <ul>
             <li>Drag to move (press Shift while dragging to keep to one axis), pull the handles to resize (or Ctrl+arrows; arrows alone nudge), and use the round handle to rotate.</li>
-            <li>Drop or paste images, video, audio and links. Ctrl+C / Ctrl+X / Ctrl+V copy items between slides.</li>
+            <li>Drop or paste pictures, videos, sounds and links. Ctrl+C / Ctrl+X / Ctrl+V copy items between slides.</li>
             <li>Shift-click or drag a box on an empty spot (or beside a text box's words; Alt+drag always draws one) to select several.</li>
             <li>
               Something hidden under a bigger item? <b>Right-click</b> to pick from everything under the pointer, <b>Alt+click</b> again

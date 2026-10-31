@@ -208,10 +208,10 @@ describe('step labels', () => {
       edit(q(after).elements);
       return describeStep(diff(base, after), base, after).label;
     };
-    expect(label((e) => ((e[3] as VideoEl).endAt = 4))).toBe('Changed stop at of video “clip.webm”');
-    expect(label((e) => ((e[3] as VideoEl).startAt = 1))).toBe('Changed start at of video “clip.webm”');
-    expect(label((e) => ((e[4] as AudioEl).muted = true))).toBe('Changed start muted of audio clip “beep.wav”');
-    expect(label((e) => ((e[4] as AudioEl).visible = true))).toBe('Changed speaker icon of audio clip “beep.wav”');
+    expect(label((e) => ((e[3] as VideoEl).endAt = 4))).toBe('Changed where video “clip.webm” plays to');
+    expect(label((e) => ((e[3] as VideoEl).startAt = 1))).toBe('Changed where video “clip.webm” plays from');
+    expect(label((e) => ((e[4] as AudioEl).muted = true))).toBe('Changed start muted of sound “beep.wav”');
+    expect(label((e) => ((e[4] as AudioEl).visible = true))).toBe('Changed speaker icon of sound “beep.wav”');
     expect(label((e) => ((e[2] as ShapeEl).strokeWidth = 8))).toBe('Changed thickness of shape “Rectangle”');
     expect(label((e) => ((e[2] as ShapeEl).stroke = '#ff0000'))).toBe('Changed border of shape “Rectangle”');
     expect(label((e) => ((e[1] as ShapeEl).stroke = '#ff0000'))).toBe('Changed color of shape “Line”');

@@ -451,7 +451,7 @@ try {
     await addClassicRounds(a);
     await a.getByRole('button', { name: '🔊 Sounds' }).click();
     await a.getByRole('button', { name: 'Choose file for Round intro' }).click();
-    const [fc] = await Promise.all([a.waitForEvent('filechooser'), a.getByRole('button', { name: '⬆ Upload audio file…' }).click()]);
+    const [fc] = await Promise.all([a.waitForEvent('filechooser'), a.getByRole('button', { name: '⬆ Upload sound file…' }).click()]);
     await fc.setFiles({ name: 'intro-music.wav', mimeType: 'audio/wav', buffer: Buffer.from('intro') });
     await a.getByText('🔊 intro-music.wav').waitFor();
     const [json] = await Promise.all([a.waitForEvent('download'), a.getByRole('button', { name: /^More:/ }).click().then(() => a.getByRole('menuitem', { name: /Export JSON/ }).click())]);

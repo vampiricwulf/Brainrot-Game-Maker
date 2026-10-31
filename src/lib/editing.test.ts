@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { aspectCrop, freeOffset, freeSpot, isMediaLink, knobPlacement, knobPoint, moreSpot, officeTextPaste, placeNewPicture, placePicture, playRange, SnapshotHistory } from './editing';
+import { aspectCrop, freeOffset, freeSpot, isMediaLink, knobPlacement, knobPoint, moreSpot, officeTextPaste, placeNewPicture, placePicture, playRange, playsAt, playsStep, playsText, SnapshotHistory } from './editing';
 import { newImageEl, newTextEl, newVideoEl } from './model';
 
 describe('slide undo history', () => {
@@ -164,6 +164,20 @@ describe('pasting from Office', () => {
     expect(officeTextPaste('<img src="x.png">', 'x.png', 1)).toBe(false);
     expect(officeTextPaste(word, '', 1)).toBe(false);
     expect(officeTextPaste(word, 'Hello', 2)).toBe(false);
+  });
+});
+
+describe('a clip’s Plays from and to, in clock time', () => {
+  it('takes seconds or minutes and seconds, to the hundredth; empty is none, and other words are refused', () => {
+    expect([playsAt('83'), playsAt('1:23'), playsAt('1:23.5'), playsAt(' 0,5 '), playsAt('1.234')]).toEqual([83, 83, 83.5, 0.5, 1.23]);
+    expect([playsAt(''), playsAt('  ')]).toEqual([undefined, undefined]);
+    expect([playsAt('soon'), playsAt('1:75'), playsAt('-2')]).toEqual([null, null, null]);
+  });
+  it('shows a time in clock time, to the tenth (none: empty)', () => {
+    expect([playsText(83.5), playsText(0), playsText(1.5), playsText(undefined)]).toEqual(['1:23.5', '0:00.0', '0:01.5', '']);
+  });
+  it('↑ / ↓ step 0.1 s (Shift: 1 s), from where an empty box starts, never before 0', () => {
+    expect([playsStep(1.5, 1), playsStep(1.5, -1, true), playsStep(0.05, -1), playsStep(undefined, 1, false, 2)]).toEqual([1.6, 0.5, 0, 2.1]);
   });
 });
 

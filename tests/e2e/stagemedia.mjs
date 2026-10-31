@@ -5,7 +5,8 @@
 // A game left mid-clue: the editor's ▶ Preview and ↻ Replay of that clue play its sound from the start, and Resume game
 // still has it where the game left it. A video (and a YouTube video) that comes in after the slide starts playing as it
 // shows, even if its slide comes back, or the audience window reloads, before it does. Space and M go to a sound before
-// a looping, muted video (a GIF), and ▶ plays a sound stopped at its Stop at again from its start.
+// a looping, muted video (a GIF), and ▶ plays a sound stopped at its Plays to again from its start. The Plays row takes
+// a time typed (and Enter), steps 0.1 s with ↑ / ↓, and offers ▶ Try it.
 import { chromium } from 'playwright-core';
 import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
@@ -101,8 +102,8 @@ try {
   let [fc] = await Promise.all([page.waitForEvent('filechooser'), page.getByRole('button', { name: '⬆ Upload video file…' }).click()]);
   await fc.setFiles({ name: 'clip.webm', mimeType: 'video/webm', buffer: clip });
   await page.locator('.insp').getByLabel('Autoplay when the slide appears').uncheck();
-  await page.getByRole('button', { name: '🔊 Audio' }).click();
-  [fc] = await Promise.all([page.waitForEvent('filechooser'), page.getByRole('button', { name: '⬆ Upload audio file…' }).click()]);
+  await page.getByRole('button', { name: '🔊 Sound' }).click();
+  [fc] = await Promise.all([page.waitForEvent('filechooser'), page.getByRole('button', { name: '⬆ Upload sound file…' }).click()]);
   await fc.setFiles({ name: 'beep.wav', mimeType: 'audio/wav', buffer: wav(4) });
   // (The sound's own panel first: until the file is in, the video's is up, and the box there is the video's.)
   await soundPanel();
@@ -123,8 +124,8 @@ try {
   await page.getByRole('button', { name: 'Done' }).click();
   // A second clue whose sound plays by itself when it opens (8 s: still going when the audience window reloads).
   await page.locator('.tile').nth(1).click();
-  await page.getByRole('button', { name: '🔊 Audio' }).click();
-  [fc] = await Promise.all([page.waitForEvent('filechooser'), page.getByRole('button', { name: '⬆ Upload audio file…' }).click()]);
+  await page.getByRole('button', { name: '🔊 Sound' }).click();
+  [fc] = await Promise.all([page.waitForEvent('filechooser'), page.getByRole('button', { name: '⬆ Upload sound file…' }).click()]);
   await fc.setFiles({ name: 'song.wav', mimeType: 'audio/wav', buffer: wav(8) });
   assert(await page.locator('.insp').getByLabel('Autoplay when the slide appears').isChecked(), 'a sound plays by itself when its slide appears, unless told not to');
   await page.getByRole('button', { name: 'Done' }).click();
@@ -155,12 +156,23 @@ try {
   await fc.setFiles({ name: 'gif.webm', mimeType: 'video/webm', buffer: clip });
   await page.locator('.insp').getByLabel('Loop', { exact: true }).check();
   await page.locator('.insp').getByLabel('Start muted').check();
-  await page.getByRole('button', { name: '🔊 Audio' }).click();
-  [fc] = await Promise.all([page.waitForEvent('filechooser'), page.getByRole('button', { name: '⬆ Upload audio file…' }).click()]);
+  await page.getByRole('button', { name: '🔊 Sound' }).click();
+  [fc] = await Promise.all([page.waitForEvent('filechooser'), page.getByRole('button', { name: '⬆ Upload sound file…' }).click()]);
   await fc.setFiles({ name: 'cut.wav', mimeType: 'audio/wav', buffer: wav(4) });
   await soundPanel();
   await page.locator('.insp').getByLabel('Autoplay when the slide appears').uncheck();
-  await page.locator('.insp').getByLabel('Stop at (s)').fill('1.5');
+  // (The Plays row takes seconds or clock time; a time counts once the box is left, or with Enter.)
+  await page.locator('.insp').getByLabel('Plays to').fill('1.5');
+  await page.locator('.insp').getByLabel('Plays to').press('Enter');
+  assert((await page.locator('.insp').getByLabel('Plays to').inputValue()) === '0:01.5', 'Plays to takes 1.5 and says 0:01.5');
+  // ↑ / ↓ step it 0.1 s; the row offers ▶ Try it, and says it's only this item.
+  await page.locator('.insp').getByLabel('Plays to').press('ArrowUp');
+  assert((await page.locator('.insp').getByLabel('Plays to').inputValue()) === '0:01.6', '↑ in Plays to steps 0.1 s');
+  await page.locator('.insp').getByLabel('Plays to').press('ArrowDown');
+  assert(
+    (await page.locator('.insp').getByRole('button', { name: '▶ Try it' }).count()) === 1 && (await page.locator('.insp').getByText(/^Only this item/).count()) === 1,
+    'the Plays row has ▶ Try it, and a line saying it is only this item',
+  );
   await page.getByRole('button', { name: 'Done' }).click();
   await page.waitForTimeout(900);
   await page.evaluate(

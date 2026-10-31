@@ -1,7 +1,7 @@
 <!--
   ✎ Edit video / ✎ Edit sound (card-files spec §4.11.3): trim a video or sound to the part wanted, and crop or shrink a
   video, with a preview, the size it will come out at and what it's saved as. Apply puts the edited file in its place
-  everywhere it's used, on stream too (slide items' Start at / Stop at move with the trim, so they play the same
+  everywhere it's used, on stream too (slide items' Plays from / to move with the trim, so they play the same
   moments); Save as a new file keeps both, and Only this item edits it for the slide item it was opened from. The
   work is a job (the header's pill shows how far it got, Stop leaves nothing), then one Ctrl+Z step. The window's own
   changes undo with Ctrl+Z while it's open (once it's done, Ctrl+Z closes it and takes the edit back). The editor isn't
@@ -626,8 +626,8 @@
               {#if same}
                 <p class="small" data-edit-timed>
                   {same === 1
-                    ? '1 slide item plays part of it: its Start at and Stop at move with the trim, so it plays the same moments.'
-                    : `${same} slide items play parts of it: their Start at and Stop at move with the trim, so they play the same moments.`}
+                    ? '1 slide item plays part of it: its Plays from and to move with the trim, so it plays the same moments.'
+                    : `${same} slide items play parts of it: their Plays from and to move with the trim, so they play the same moments.`}
                 </p>
               {/if}
               {#each clips.slice(0, 3) as c, i (i)}
@@ -643,7 +643,7 @@
               {/each}
               {#if leftOut.length > 3}<p class="warn small">and {leftOut.length - 3} more</p>{/if}
               {#if uses > items}
-                <p class="muted small">🔊 Sounds, wheels, dice and RPG music that use it have no Start/Stop of their own: they’ll play the trimmed file.</p>
+                <p class="muted small">🔊 Sounds, wheels, dice and RPG music that use it have no Plays from / to of their own: they’ll play the trimmed file.</p>
               {/if}
             {/if}
 

@@ -27,6 +27,9 @@
     onclose: () => void;
   } = $props();
   const items = $derived(libraryMedia(editedGame()).filter((m) => m.kind === kind));
+  /** What a kind is called here: an audio file is a sound, as everywhere in the editor. */
+  const WORD: Record<MediaKind, string> = { image: 'image', video: 'video', audio: 'sound', font: 'font' };
+  const AN: Record<MediaKind, string> = { image: 'a picture', video: 'a video', audio: 'a sound', font: 'a font' };
 
   // Fixed to the window, so no scrolling panel or dialog edge cuts it off (see anchored.ts): under the button (over it
   // when there's more room above), moved in from the window's edges, and kept there as things scroll or resize. Placed
@@ -41,7 +44,7 @@
         const ref = await addMediaFile(editedGame(), file);
         // Another kind (the file dialog's "All files"): kept in the library, but not used here (a video as the theme's
         // background, a picture as a sound, shows or plays nothing), as a dropped one isn't.
-        if (ref.kind !== kind) return void toast(`That's ${ref.kind === 'image' || ref.kind === 'audio' ? 'an' : 'a'} ${ref.kind} file, not ${kind === 'image' || kind === 'audio' ? 'an' : 'a'} ${kind}: it's in 📁 Media, but not used here.`);
+        if (ref.kind !== kind) return void toast(`That's ${AN[ref.kind]}, not ${AN[kind]}: it's in 🖼 Media, but not used here.`);
         checkAdded(ref);
         await onpick(ref.id);
       });
@@ -84,11 +87,11 @@
   {ondrop}
   use:anchored={{ anchor }}
   role="dialog"
-  aria-label="Choose {kind}"
+  aria-label="Choose {WORD[kind]}"
   use:modal
   tabindex="-1"
 >
-  <button class="primary" onclick={upload}>⬆ Upload {kind} file…</button>
+  <button class="primary" onclick={upload}>⬆ Upload {WORD[kind]} file…</button>
   <div class="muted small">{dropping ? 'Let go to use it' : 'Or drop one here, or paste it (Ctrl+V)'}</div>
   <!-- Fonts need the file itself (a font can't be used from a link without the site's permission). -->
   {#if kind !== 'font'}

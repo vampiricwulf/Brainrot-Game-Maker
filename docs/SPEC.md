@@ -257,7 +257,7 @@ RollEvent  { id, ts, source: 'wheel' | 'dice', presetName?, result: string /* la
 
 ### 5.3 Slide editor (question / answer / category header / Final)
 - 16:9 canvas with snapping guides, grid, and alignment tools (left/center/right, distribute).
-- Insert: Text, Image, Video, Audio, Shape. Drag-drop files onto the canvas. Shape ▾ is in sections: Shapes (▭ ◯ ― ➝),
+- Insert: 🅣 Text, 🖼 Image, 🎬 Video, 🔊 Sound, Shape. Drag-drop files onto the canvas. Shape ▾ is in sections: Shapes (▭ ◯ ― ➝),
   Draw (✏ Freehand line…, one stroke, named "Freehand line" in Layers and the History, "Freehand shape" closed with
   Shift; 🖌 Drawpad…, a whole drawing inserted as a picture named "Drawing"), and on an RPG screen only ⬚ Hotspot (one
   already on another slide keeps showing).
@@ -268,10 +268,10 @@ RollEvent  { id, ts, source: 'wheel' | 'dice', presetName?, result: string /* la
   step.
 - Transform: move, resize, rotate, z-order, lock, duplicate, delete, multi-select, and copy/paste between slides.
 - **Opening an item**: a double-click, or Enter with one item selected, opens its editor: a text box its Text field, a
-  picture ✎ Edit image, a video or sound ✎ Edit video / sound (or its Start at box when its file can't be edited
+  picture ✎ Edit image, a video or sound ✎ Edit video / sound (or its Plays from box when its file can't be edited
   there), a link its Link box, a shape its Fill (a line its Color); the item menu's ✎ Edit shows the keys for every
   kind. F2 edits a text box's text, and renames any other item in the Layers list. After an item is added (🖼 Image,
-  🎬 Video, 🔊 Audio, 🌐 Link, a drop or a paste) the keys are on the slide.
+  🎬 Video, 🔊 Sound, 🌐 Link, a drop or a paste) the keys are on the slide.
 - **Slide tabs** (a clue's, the tiebreaker's, a Final's, a slides round's): right after them, one group for the open
   slide (SlideGroup), always there and greyed where it can't act: ＋ Add slide (＋ Card) · ⧉ Duplicate slide · 📋 Copy
   slide · 📋 Paste slide (the safe paste: the copied slide as a new slide after this one, before the answer from the
@@ -297,7 +297,7 @@ RollEvent  { id, ts, source: 'wheel' | 'dice', presetName?, result: string /* la
   same menu. 🖼 Board images has the same bar.
 - **Right-click menus** (LayerMenu, its own component, in the editors' one order; Shift+F10 on the canvas or a Layers
   row too, and 🖼 Board images the same): an item's is headed by its name, then the items stacked there to pick from,
-  ✎ Edit… (Double-click / Enter) · 🔁 Use another file… (a picture, video or sound: only this item) · ✎ Rename (F2 where
+  ✎ Edit… (Double-click / Enter) · 🔁 Use another picture… / video… / sound… (only this item) · ✎ Rename (F2 where
   it renames) · ⧉ Duplicate · ✂ Cut · 📋 Copy · 📋 Paste · Bring to front · Bring forward · Send backward · Send to back
   · Align ▸ · 🔒 Lock · 👁 Hide while editing (an RPG object's 🤫 Secret and ＋ Add button…) · 🗑 Delete. A right-click
   follows a left click's rule: beside the words of a text box that isn't selected it's an empty spot, so a full-slide
@@ -362,7 +362,7 @@ RollEvent  { id, ts, source: 'wheel' | 'dice', presetName?, result: string /* la
   (uncompressed sound made again as it was, so it's cut to the sample), a WebM's is exact when it starts at a key frame,
   else its picture is made again or, with Quick trim, it starts at the key frame before. A crop or a size makes the
   picture again (H.264 in an MP4 where the browser can, else VP9). Applying puts the new bytes under a new id everywhere
-  the file is used (on stream too), as one undo step: items' Start at / Stop at move with the trim (one whose part was
+  the file is used (on stream too), as one undo step: items' Plays from / to move with the trim (one whose part was
   cut out plays the whole file, and one the trim cuts short plays what's left of its part: the window says which
   first, and the toast counts them), a video box that had the picture's old shape takes its new one, and the 🗜 copy
   for phones goes (it can be made again at once). Save as a new file keeps both; Only this item (from a slide item
@@ -379,7 +379,14 @@ RollEvent  { id, ts, source: 'wheel' | 'dice', presetName?, result: string /* la
   its ⋯) selects it and gives its menu in the editors' one order: ✎ Edit… · Replace everywhere… · the fix · ✎ Rename
   (F2) · 🔍 Show where it's used ▸ · 🌐 Check it still loads (links) · 🗑 Delete file (Delete); with several selected, 🗜
   Phone copies for N… and 🗑 Delete N files.
-- Per-element playback settings: autoplay, loop, muted, start/end trim, and volume.
+- Per-element playback settings (a video's, a sound's, an online video's or sound's, a YouTube player's): the part
+  it plays, **Plays from [0:00.0] to [the end]** (seconds or clock time: 83, 1:23, 1:23.5; empty is the start or the
+  end; ↑ / ↓ step 0.1 s, Shift 1 s; kept in seconds as `startAt` / `endAt`, a "to" not after "from" left out with a note),
+  with **▶ Try it** (in the editor: that part played in the panel, pressed again it stops) and one line saying it's only
+  this item (✎ Edit video… / sound… cuts the file itself); then **When it plays**: autoplay, loop, start muted and
+  volume. A picture's, video's or sound's panel (and its right-click menu) has **🔁 Use another picture… / video… /
+  sound…** for this item only; 🖼 Media's **Replace everywhere…** swaps the file for every place, on stream too. The
+  History says "Changed where video “clip.webm” plays from".
 - **Online links (optional)**: every file picker (except fonts) has *Paste a link*, and the slide editor has *🌐 Link* (and
   takes pasted or dropped links). One parser (`links.ts`) turns share pages into file addresses (Dropbox, GitHub, Imgur,
   GIPHY, Discord, Pixeldrain, tmpfiles, SharePoint, Google Drive) and explains links that can't work (albums, folders,

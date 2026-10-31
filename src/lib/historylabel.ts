@@ -95,7 +95,7 @@ function elementNoun(el: SlideElement): string {
   if (el.role) return 'object';
   // (A freehand line is a shape too, named “Freehand line”: not a “drawing”, which a 🖌 Drawpad picture is called.)
   if (el.kind === 'shape') return el.hotspot ? 'hotspot' : 'shape';
-  return { text: 'text box', image: 'image', video: 'video', audio: 'audio clip', embed: 'link' }[el.kind] ?? 'item';
+  return { text: 'text box', image: 'image', video: 'video', audio: 'sound', embed: 'link' }[el.kind] ?? 'item';
 }
 
 /** Where a path in `game` leads (as far as it exists there). */
@@ -886,8 +886,6 @@ function textBoxChange(op: Op & { t: 'set' }, at: At): string | null {
 
 /** Other slide items' settings as the Inspector calls them (a line's, an arrow's or a freehand line's `stroke` is its color). */
 const ITEM_FIELDS: Record<string, string> = {
-  startAt: 'start at',
-  endAt: 'stop at',
   muted: 'start muted',
   visible: 'speaker icon',
   autoplay: 'autoplay',
@@ -896,14 +894,17 @@ const ITEM_FIELDS: Record<string, string> = {
   radius: 'corners',
   shape: 'type',
 };
-const ITEM_NOUNS = new Set(['shape', 'hotspot', 'video', 'audio clip', 'image', 'link']);
+const ITEM_NOUNS = new Set(['shape', 'hotspot', 'video', 'sound', 'image', 'link']);
 
-/** A change to a slide item's setting, other than a text box's ("Changed stop at of video “clip.webm”"). */
+/** A change to a slide item's setting, other than a text box's ("Changed where video “clip.webm” plays to"). */
 function itemChange(op: Op & { t: 'set' }, at: At, game: Game): string | null {
   if (!ITEM_NOUNS.has(at.noun)) return null;
   const path = opPath(op);
   const field = path[at.depth];
-  if (path.length !== at.depth + 1 || typeof field !== 'string' || !ITEM_FIELDS[field]) return null;
+  if (path.length !== at.depth + 1 || typeof field !== 'string') return null;
+  // (Its Plays from [ ] to [ ].)
+  if (field === 'startAt' || field === 'endAt') return `Changed where ${what(at)} plays ${field === 'startAt' ? 'from' : 'to'}`;
+  if (!ITEM_FIELDS[field]) return null;
   let el: unknown = game;
   for (const s of path.slice(0, at.depth)) el = Array.isArray(el) ? (byId(el, s) ?? el[s as number]) : (el as Obj | undefined)?.[s];
   const shape = (el as Obj | undefined)?.shape;

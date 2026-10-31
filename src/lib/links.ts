@@ -488,7 +488,7 @@ export function embedName(kind: string, url: string): string {
   return parseUrl(url)?.hostname ?? 'Link';
 }
 
-/** Where to send the host for an online slide item ("Check ↗", "Open link"). */
+/** Where to send the host for an online slide item ("Test link ↗", "Open link"). */
 export function embedOpenUrl(kind: string, url: string, startAt?: number): string {
   const yt = kind === 'youtube' ? youtubeId(url) : null;
   if (yt) return youtubeWatchUrl(yt, startAt ?? youtubeStart(url));

@@ -75,7 +75,7 @@ export const EDITOR_KEYS: KeyGroup[] = [
       ['Alt+drag', 'Always draw a selection box, wherever it starts'],
       ['Alt+click', 'The next item down the stack under the pointer'],
       ['Tab / Shift+Tab', 'Select the next item down / up the stack'],
-      ['Double-click or Enter', 'Open the item’s editor: a text box’s text, a picture’s ✎ Edit image, a video’s or sound’s ✎ Edit video / sound (or its Start at), a link’s Link box, a shape’s Fill (a line’s Color)'],
+      ['Double-click or Enter', 'Open the item’s editor: a text box’s text, a picture’s ✎ Edit image, a video’s or sound’s ✎ Edit video / sound (or its Plays from), a link’s Link box, a shape’s Fill (a line’s Color)'],
       ['Type, or F2', 'Edit the selected text box’s text'],
       ['F2 on another item', 'Rename it, in the Layers list'],
       ['⋯ by the selection, or in the bar at the top of the panel', 'The same menu as a right-click (the bar’s, with nothing selected: the slide’s)'],
@@ -92,6 +92,7 @@ export const EDITOR_KEYS: KeyGroup[] = [
       ['Ctrl+B / I / U', 'Bold, italic, underline the selected text boxes'],
       ['Delete / Backspace', 'Delete the selection (locked items stay)'],
       ['Esc', 'Leave a text field, then deselect (or stop previewing, drawing, or close the link box)'],
+      ['↑ / ↓ in Plays from or to', 'A video’s or sound’s part: 0.1 s later / earlier (Shift: 1 s)'],
     ],
   },
   {
