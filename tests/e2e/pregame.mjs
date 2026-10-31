@@ -341,17 +341,17 @@ try {
   await page.screenshot({ path: 'test-results/pregame-golive.png' });
 
   // ---------- ✅ Before you start: its On stream tips (✕ folds them, and only them), then the game's checks ----------
-  const before = page.locator('section.before-start');
-  const live = before.locator('.live-check');
+  const beforeCard = page.locator('section.before-start');
+  const live = beforeCard.locator('.live-check');
   assert(
     (await live.locator('li').first().innerText()).startsWith('🖥 Viewers see this page now') && (await page.getByRole('button', { name: '🔊 Test the sound…' }).count()) === 1,
     'in one window, ✅ Before you start leads with “Viewers see this page now”, and has the one 🔊 Test the sound… on the screen',
   );
   const playersBox = await page.locator('[data-place="play:players"]').boundingBox();
-  assert((await before.boundingBox()).y > playersBox.y && (await before.locator('[data-checks]').count()) === 1, 'the card is in the players’ column, under 👥 Players, with its The game group');
+  assert((await beforeCard.boundingBox()).y > playersBox.y && (await beforeCard.locator('[data-checks]').count()) === 1, 'the card is in the players’ column, under 👥 Players, with its The game group');
   await live.getByRole('button', { name: 'Hide the On stream tips' }).click();
-  assert((await live.count()) === 0 && (await before.locator('[data-checks]').count()) === 1 && (await page.getByRole('button', { name: '🔊 Test the sound…' }).count()) === 1, '✕ folds the On stream tips only (the game’s checks and 🔊 Test the sound… stay)');
-  await before.getByRole('button', { name: 'Show them' }).click();
+  assert((await live.count()) === 0 && (await beforeCard.locator('[data-checks]').count()) === 1 && (await page.getByRole('button', { name: '🔊 Test the sound…' }).count()) === 1, '✕ folds the On stream tips only (the game’s checks and 🔊 Test the sound… stay)');
+  await beforeCard.getByRole('button', { name: 'Show them' }).click();
   assert((await live.count()) === 1, 'and Show them brings them back');
 
   // ---------- The display picked is remembered: the audience window opens with Start ----------
