@@ -190,7 +190,17 @@
     {#if lockedAsk && locked}
       {@const a = acts.find((x) => x.id === lockedAsk?.act)}
       {#if a}
-        <InlineAsk text="{title} is locked. Go through anyway?" ok="🚪 Go through" onok={() => ((lockedAsk = null), press(a, true))} oncancel={() => (lockedAsk = null)} />
+        <!-- (The button is read before the ask is put away: `a` is looked up from lockedAsk, so after it's gone it's undefined.) -->
+        <InlineAsk
+          text="{title} is locked. Go through anyway?"
+          ok="🚪 Go through"
+          onok={() => {
+            const act = a;
+            lockedAsk = null;
+            press(act, true);
+          }}
+          oncancel={() => (lockedAsk = null)}
+        />
       {/if}
     {/if}
     {#if npcStats.length}
