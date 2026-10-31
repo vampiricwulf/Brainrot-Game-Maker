@@ -224,7 +224,9 @@ try {
     const card = page.getByRole('region', { name: 'Phone buzzers' });
     await card.getByLabel(/Buzzer mode/).check();
     const code = await startRoomOn(card);
-    const bob = await ctx.newPage();
+    // (Bob's phone: a touch screen of its own, as a phone is. In the host's window the page would say “Click”.)
+    const bobCtx = await browser.newContext({ viewport: { width: 390, height: 760 }, hasTouch: true });
+    const bob = await bobCtx.newPage();
     bob.on('pageerror', (e) => errors.push(`[bob] ${e.message}`));
     await bob.goto(`${buzzer.base}/${code}`);
     await bob.getByRole('heading', { name: 'Tap your name' }).waitFor();
@@ -284,6 +286,7 @@ try {
     await page.keyboard.press('r');
     await page.locator('.stage-box [data-slide="answer"]').waitFor();
     assert((await goOnCheck(page).count()) === 0 && (await noCard()), 'with the pair playing N asks again, and R in it reveals anyway');
+    await bobCtx.close();
     await ctx.close();
   }
 
