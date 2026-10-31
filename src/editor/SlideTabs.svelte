@@ -196,6 +196,7 @@
         count: c ? list.length : qslides.length,
         plain,
         copied: !!clipboard.slide,
+        newest: clipboard.slideNewest,
         card: c && { empty: !slideHasContent(c), answer: !!holder.answerSlide && slideHasContent(holder.answerSlide), phone: !!cards?.phone, full: list.length >= MAX_CARDS },
       },
       {

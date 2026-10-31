@@ -297,6 +297,7 @@
         at: c ? cardAt : at,
         count: c ? cards.length : qslides.length,
         copied: !!clipboard.slide,
+        newest: clipboard.slideNewest,
         card: c && { empty: !slideHasContent(c), answer: slideHasContent(clue.answerSlide), phone: phoneView, full: cards.length >= MAX_CARDS },
       },
       {

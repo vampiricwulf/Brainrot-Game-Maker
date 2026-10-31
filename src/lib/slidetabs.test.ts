@@ -52,6 +52,17 @@ describe("a slide tab's menu", () => {
       '🗑 Delete slide [Delete] (off)',
     ]);
   });
+  it('shows Ctrl+V on the paste as a new slide only while the slide is what was copied last', () => {
+    // (Items copied since: Ctrl+V on the tab pastes those onto the slide.)
+    for (const tab of ['q', 'a'] as const) {
+      const label = tab === 'q' ? '📋 Paste as a new slide after it' : '📋 Paste as a new slide before it';
+      const since = item(slideTabMenu({ tab, name: 'Tab', at: 0, count: 2, copied: true, newest: false }, acts()), label);
+      expect(since.keys).toBeUndefined();
+      expect(since.disabled).toBeFalsy();
+      expect(since.hint).toMatch(/Ctrl\+V on the tab pastes the items/);
+      expect(item(slideTabMenu({ tab, name: 'Tab', at: 0, count: 2, copied: true, newest: true }, acts()), label).keys).toBe('Ctrl+V');
+    }
+  });
   it('the answer: copy, its pastes and a question slide before it', () => {
     const m = slideTabMenu({ tab: 'a', name: 'Answer slide', at: 0, count: 1, copied: true }, acts());
     expect(shown(m)).toEqual(['# Answer slide', '📋 Copy slide [Ctrl+C]', '📋 Paste as a new slide before it [Ctrl+V]', '📋 Paste over it', '—', '＋ Add a question slide before it']);

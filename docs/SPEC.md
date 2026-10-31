@@ -296,7 +296,8 @@ RollEvent  { id, ts, source: 'wheel' | 'dice', presetName?, result: string /* la
   Copy slide · 📋 Paste as a new slide before it · 📋 Paste over it · ＋ Add a question slide before it; a card's ⧉ Same
   as the answer · 📱 On their phone · ✎ Rename · ⧉ Duplicate card · 📋 Copy slide · ◀ ▶ · 🗑 Delete card. Ctrl+C on a
   focused tab copies its slide; Ctrl+V pastes the copied slide as a new one when a slide was copied after any items (a
-  card's tab, or items copied since, keep their paste onto the slide). Ctrl+D and Alt+←/→ work on a card's tab too. A
+  card's tab, or items copied since, keep their paste onto the slide, and the tab's menu then shows no Ctrl+V beside
+  its paste as a new slide). Ctrl+D and Alt+←/→ work on a card's tab too. A
   tab's tooltip starts with its slide's first words ("S3 · “House rules”"). The slide editor's toolbar keeps only what
   goes on a slide, the background, ▶ Preview, sound and ↶ ↷ (📋 Copy slide and 📋 Paste over this slide are in the
   slide's right-click menu everywhere, for slides with no tabs too).
