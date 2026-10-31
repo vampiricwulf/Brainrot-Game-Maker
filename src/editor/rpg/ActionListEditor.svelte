@@ -11,7 +11,8 @@
   import { keepNum, shown } from '../tools/numbox';
   import { copyActions, moveTo } from '../../lib/listedit';
   import { clone } from '../../lib/ops';
-  import { dropMenu, menuItem, menuOf, showMenu } from '../../lib/menustate.svelte';
+  import { dropMenu, menuItem, menuOf, showMenu, type MenuEntry } from '../../lib/menustate.svelte';
+  import RowTools from '../RowTools.svelte';
   import { isTextField } from '../../lib/undokeys';
   import { announce } from '../../lib/announce';
   import { newId, PLAYER_WHEEL, setSlideText, slideText, textSlide, type Action, type ActionKind, type BoardGameRound, type CardWho, type SlideElement, type World } from '../../lib/model';
@@ -169,14 +170,11 @@
     step(`Duplicated button “${LABEL[a.do]}”`, () => (actions = list));
   }
 
-  /** A button's right-click menu (not in its text fields, which keep the browser's own). */
-  function rowMenu(e: MouseEvent, a: Action, i: number): void {
-    if (isTextField(e.target)) return;
+  /** A button's menu: its ⋯, a right-click on it (not in its text fields, which keep the browser's own), Shift+F10 in it. */
+  function rowItems(a: Action, i: number): MenuEntry[] {
     const n = actions?.length ?? 0;
     const k = clipboard.actions.length;
-    showMenu(
-      e,
-      menuOf({
+    return menuOf({
         heading: LABEL[a.do],
         duplicate: menuItem.duplicate(() => duplicate(a)),
         move: [menuItem.up(() => move(i, i - 1), { disabled: i === 0 }), menuItem.down(() => move(i, i + 1), { disabled: i === n - 1 })],
@@ -186,8 +184,10 @@
           { label: k ? `📋 Paste ${k} button${k === 1 ? '' : 's'}` : '📋 Paste buttons', onclick: paste, disabled: !k },
         ],
         delete: menuItem.delete('button', () => remove(a), { keys: false }),
-      }),
-    );
+      });
+  }
+  function rowMenu(e: MouseEvent, a: Action, i: number): void {
+    if (!isTextField(e.target)) showMenu(e, rowItems(a, i));
   }
 
   /** The whole set to the in-app clipboard, with the files it plays or shows (so it pastes into another game too). */
@@ -244,19 +244,13 @@
     );
   }
 
-  /** Move the button at `i` to `j` (▲▼, Alt+↑/↓ or a drag: one step). */
-  function move(i: number, j: number, btn?: HTMLButtonElement): void {
+  /** Move the button at `i` to `j` (its menu's ▲▼, Alt+↑/↓ or a drag: one step). */
+  function move(i: number, j: number): void {
     const list = [...(actions ?? [])];
     const a = list[i];
     if (!a || !moveTo(list, i, j)) return;
     step(`Moved button “${LABEL[a.do]}” ${j < i ? 'up' : 'down'}`, () => (actions = list));
     announce(`Button “${LABEL[a.do]}” moved to ${j + 1} of ${list.length}`);
-    // (A row moved down is taken out of the page and back, which drops the focus: it goes back to the ▲/▼ pressed, or
-    // the other one once that's off at the end.)
-    if (btn)
-      void tick().then(() =>
-        (btn.isConnected && !btn.disabled ? btn : btn.closest('.act')?.querySelector<HTMLElement>(':scope > .head > .move:not(:disabled)'))?.focus(),
-      );
   }
 
   const rows = new DragOrder();
@@ -292,7 +286,7 @@
         if (m) move(m.from, m.to);
       }}
       oncontextmenu={(e) => rowMenu(e, a, i)}
-      use:rowKeys={{ move: (d) => move(i, i + d), duplicate: () => duplicate(a) }}
+      use:rowKeys={{ move: (d) => move(i, i + d), duplicate: () => duplicate(a), menu: () => rowItems(a, i) }}
     >
       <div class="head">
         <span
@@ -308,10 +302,7 @@
         >
         <b class="small">{LABEL[a.do]}</b>
         <span class="spacer"></span>
-        <button class="ghost tiny move" onclick={(e) => move(i, i - 1, e.currentTarget)} disabled={i === 0} aria-label="Move up">▲</button>
-        <button class="ghost tiny move" onclick={(e) => move(i, i + 1, e.currentTarget)} disabled={i === (actions?.length ?? 0) - 1} aria-label="Move down">▼</button>
-        <button class="ghost tiny" onclick={() => duplicate(a)} aria-label="Duplicate button" title="Duplicate (Ctrl+D)">⧉</button>
-        <button class="ghost tiny danger" onclick={() => remove(a)} aria-label="Delete button" title="Delete button">🗑</button>
+        <RowTools menu={() => rowItems(a, i)} name={LABEL[a.do]} remove={() => remove(a)} deleteLabel="Delete button" size="tiny" />
       </div>
       <div class="fields">
         {#if a.do === 'stat'}

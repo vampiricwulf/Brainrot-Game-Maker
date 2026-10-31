@@ -82,8 +82,9 @@ try {
   await use.locator('.act').nth(1).locator('input').first().focus();
   await page.keyboard.press('Alt+ArrowUp');
   assert((await heads()).join() === '💯 Change the score,📝 Host note', 'Alt+↑ moves a button up');
-  await use.getByRole('button', { name: 'Duplicate button' }).first().click();
-  assert((await heads()).join() === '💯 Change the score,💯 Change the score,📝 Host note', '⧉ duplicates a button');
+  await use.getByRole('button', { name: /^More for / }).first().click();
+  await page.getByRole('menu').getByRole('menuitem', { name: /⧉ Duplicate/ }).click();
+  assert((await heads()).join() === '💯 Change the score,💯 Change the score,📝 Host note', 'its ⋯ → ⧉ Duplicate duplicates a button');
   await dragBy(page, use.locator('.act .drag-grip').nth(2), use.locator('.act').first().locator('.head b'));
   assert((await heads())[0] === '📝 Host note', 'dragging a button’s ⋮⋮ reorders it');
   await use.getByRole('button', { name: '📋 Copy buttons' }).click();
@@ -407,6 +408,9 @@ try {
   await zones.first().focus();
   await page.keyboard.press('Control+d');
   assert((await values(zones)).join() === 'Shadow Realm,Shadow Realm (copy 2),Shadow Realm (copy)', 'Ctrl+D in a zone duplicates it');
+  await page.keyboard.press('Shift+F10');
+  assert(await page.getByRole('menu').getByRole('menuitem', { name: '🗑 Delete zone' }).waitFor({ timeout: 3000 }).then(() => true, () => false), 'Shift+F10 in a zone’s name opens its menu');
+  await page.keyboard.press('Escape');
   await page.locator('.zone .drag-grip').nth(2).click({ button: 'right' });
   await page.getByRole('menu').getByRole('menuitem', { name: /▲ Move up/ }).click();
   assert((await values(zones)).join() === 'Shadow Realm,Shadow Realm (copy),Shadow Realm (copy 2)', 'its ▲ Move up moves it');
