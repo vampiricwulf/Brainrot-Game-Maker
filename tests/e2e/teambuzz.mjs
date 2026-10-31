@@ -133,7 +133,8 @@ try {
   assert(await card.getByLabel(/Let new players join from their phone/).isDisabled(), 'Teams is a checkbox on the 📱 card (new players from phones are off with it: people join a team)');
   const dimmed = await card.locator('label.check').evaluateAll((els) => els.map((e) => [e.textContent.trim().slice(0, 12), getComputedStyle(e).opacity]));
   assert(dimmed.filter(([, o]) => o !== '1').map(([t]) => t).join() === 'Let new play,Players can ', `and it and the color choice look greyed, as disabled buttons do (${JSON.stringify(dimmed)})`);
-  await card.getByText(/up to 24 phones\s+can be in the room at once\./).waitFor();
+  // (A regex is tried on the text as written, line breaks and all: any space between the words.)
+  await card.getByText(/up\s+to\s+24\s+phones\s+can\s+be\s+in\s+the\s+room\s+at\s+once\./).waitFor();
   assert(true, 'with Teams ticked, the card says a room holds 24 phones at most');
   const codeEl = card.locator('[aria-label^="Room code "]');
   const code = await startRoomOn(card);
@@ -577,7 +578,13 @@ try {
   assert(true, 'someone leaves: Join the team gets Zoe on it');
   for (const x of fans) x.w.close();
   await zoe.close();
+  // (The game kept by Keep & leave, with Player 2's −$200, is still there to resume: Start asks before replacing it.)
   await host.getByRole('button', { name: 'Start game ▶' }).click();
+  const replaceAsk = host.locator('.actions [data-start-ask]');
+  await replaceAsk.waitFor();
+  assert((await replaceAsk.innerText()).includes('The game in progress (Jeopardy!, round 1 of 2) is discarded'), 'Start with the game kept by Keep & leave asks first: the game in progress is discarded');
+  await host.waitForTimeout(450);
+  await replaceAsk.getByRole('button', { name: 'Start new game' }).click();
   await host.getByRole('button', { name: 'Skip intro' }).click();
 
   // ---------- Exit › Keep & leave, then Resume with my edits: the game kept the room's Teams, so the teams play on ----------
