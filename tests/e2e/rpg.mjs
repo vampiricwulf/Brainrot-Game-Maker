@@ -468,9 +468,11 @@ async function boxSelect() {
   async function settled(p) {
     for (const [id, x] of RUG) {
       const to = await at(p, x, 720);
+      // (There, and done gliding: a position measured mid-glide would differ from the same one a moment later.)
       await p.waitForFunction(([sel, tx, ty]) => {
-        const r = document.querySelector(sel)?.getBoundingClientRect();
-        return !!r && Math.abs(r.x + r.width / 2 - tx) < 3 && Math.abs(r.y + r.height / 2 - ty) < 3;
+        const el = document.querySelector(sel);
+        const r = el?.getBoundingClientRect();
+        return !!r && Math.abs(r.x + r.width / 2 - tx) < 3 && Math.abs(r.y + r.height / 2 - ty) < 3 && !el.getAnimations().length;
       }, [`.stage-box .rpg .avatar[data-player-id="${id}"]`, to.x, to.y]);
     }
   }
@@ -516,7 +518,8 @@ async function boxSelect() {
     assert(true, '↩ Select them again brings it all back');
     // Esc while drawing: the box replaced the selection as it went; the selection is as it was.
     await box(host, [1450, 150], [1800, 450], { hold: true });
-    await line(host).filter({ hasText: /^Selected: Gold pile —/ }).waitFor();
+    // (Only the Gold pile: the line's text starts after the space Svelte leaves before its words.)
+    await line(host).filter({ hasText: /^\s*Selected: Gold pile —/ }).waitFor();
     await host.keyboard.press('Escape');
     await host.mouse.up();
     await says(host, 'Selected: Ann, Bob · Sword, Gold pile, Door —');
@@ -637,7 +640,8 @@ async function boxSelect() {
     };
     await tp.keyboard.press('1');
     await says(tp, 'Selected: Ann —');
-    await touch([[880, 280], [940, 330], [1000, 400], [1060, 460]]);
+    // (From well clear of the Sword: a finger pressed just beside a thing is taken as on it, as the browser adjusts a touch.)
+    await touch([[800, 220], [880, 300], [960, 380], [1060, 460]]);
     await says(tp, 'Selected: Ann · Sword —');
     assert(true, 'a touch screen: a box adds to what’s selected (Ann, then the Sword)');
     await touch([[1750, 120]]);
