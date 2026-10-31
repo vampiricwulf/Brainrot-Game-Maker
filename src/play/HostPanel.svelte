@@ -1867,7 +1867,9 @@
       white-space: nowrap;
     }
   }
-  @container flow (width < 26em) {
+  /* (◀ as its sign, 👁 Reveal answer's place and the end place in words take 24.1em in DejaVu Sans, the widest font
+     they're drawn in, with the buttons' padding over 1180px wide; 22.8em under it. ◀ Slide in words takes 26.9em.) */
+  @container flow (width < 24.5em) {
     .slots.paged .word {
       position: absolute;
       width: 1px;
