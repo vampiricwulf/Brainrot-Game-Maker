@@ -367,7 +367,7 @@
           onclick={() => remove(p)}
           disabled={lastOne}
           aria-label="{removeWord} {p.name}"
-          title={lastOne ? `The game needs at least one ${lower}: add another first` : `${removeWord} ${p.name}`}
+          title={lastOne ? `The game needs at least one ${lower}: add another first` : `${removeWord} ${p.name} (Undo brings it back)`}
         >{inGame ? '−' : '🗑'}</button>
       </span>
       {#if members}
@@ -529,6 +529,11 @@
     display: flex;
     gap: 8px;
     flex: none;
+  }
+  /* 🗑 a little apart from ▲ ▼, as at the end of every list's row (the headings row keeps the same room). */
+  .moves .del,
+  .moves .btn:last-child {
+    margin-left: 6px;
   }
   .score {
     /* Room for 7 digits and the spinner (12400 reads whole). */
