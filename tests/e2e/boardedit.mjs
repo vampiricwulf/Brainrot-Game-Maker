@@ -98,6 +98,8 @@ async function nextAnyway(page) {
   await page.keyboard.press('n');
   await goOnCheck(page).waitFor({ state: 'detached' });
 }
+/** The check's landing item, once the token is there: on its way, the item says “Moving…” (and follows it). */
+const landed = (page) => checkItem(page, 'landing').filter({ hasNotText: 'Moving…' }).waitFor({ timeout: 5000 });
 /** Next turn ▶ without asking, whatever's left: Shift+click on the blue button. */
 const skipTurn = (page) => mainButton(page, 'Next turn ▶').click({ modifiers: ['Shift'] });
 const stageSpaces = (page) => page.locator('.stage-box [data-space]');
@@ -157,7 +159,8 @@ try {
   // Space 3's Back 3 spaces not run: N asks first (it puts something on the move: ▶ Run, which leaves it to play out);
   // N again once it takes keys goes on anyway.
   await page.keyboard.press('n');
-  await checkItem(page, 'landing').waitFor();
+  // (Ctrl+Shift+Z steps her token there again.)
+  await landed(page);
   assert((await checkItem(page, 'landing').innerText()).includes('Ann landed on Space 3: its actions haven’t run.'), `N with her landing not run asks first (${await checkItem(page, 'landing').innerText()})`);
   await goOnCheck(page, { ready: true }).waitFor();
   await page.keyboard.press('n');
@@ -322,7 +325,7 @@ try {
   await page.locator('.stage-box .ov').waitFor({ state: 'detached' });
   // N with its button not pressed: the check asks first, saying “?” too, never its name or note (one window: on stream).
   await page.keyboard.press('n');
-  await checkItem(page, 'landing').waitFor();
+  await landed(page);
   const asked = await goOnCheck(page).innerText();
   assert(
     asked.includes('Bob landed on ?: its actions haven’t run (+$100 to Bob).') && asked.includes('▶ Run its actions ▶ next turn') && !asked.includes('Trap Door') && !asked.includes('lava pit'),
