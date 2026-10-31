@@ -4737,14 +4737,17 @@
   const ASK_GUARD_MS = 500;
 
   /**
-   * Start game ▶ (or Ctrl+Enter): with phone buzzers on and no room yet, or a game in progress it would discard, it asks
-   * first, and the next press (not the second half of a double one) goes on; with the audience window picked, that
-   * opens now (from the click: a browser lets only a click open it).
+   * Start game ▶ (or Ctrl+Enter, `byKey`): with phone buzzers on and no room yet, or a game in progress it would discard,
+   * it asks first, and the next press (not the second half of a double one) goes on; with the audience window picked,
+   * that opens now (from the click: a browser lets only a click open it). While it asks about the game in progress, a
+   * click on it doesn't answer (its red Start new game does, or a later Ctrl+Enter): the question flashes, the keys on
+   * Not yet.
    */
-  async function startClicked(): Promise<void> {
+  async function startClicked(byKey = false): Promise<void> {
     if (!session.players.length) return;
     if (startAsk) {
       if (Date.now() - startAsk.at < ASK_GUARD_MS) return;
+      if (startAsk.lose && !byKey) return flashTo('.actions [data-start-ask] .ia > button', '.actions [data-start-ask] .ia');
     } else {
       const noRoom = phonesOn && !roomUp;
       if (noRoom || keptLoses) return void (startAsk = { at: Date.now(), noRoom, lose: keptLoses });
@@ -5157,9 +5160,10 @@
       if (showSound || t?.closest('[role="dialog"], [role="menu"]')) return;
       e.preventDefault();
       if (!session.players.length) return void toast(`Add ${pregameTeams ? 'teams' : 'players'} to start`);
-      // (A field being typed in keeps what's in it: its change lands first.)
-      if (document.activeElement instanceof HTMLElement) document.activeElement.blur();
-      return void startClicked();
+      // (A field being typed in keeps what's in it: its change lands first. Only a field: the keys on the question's
+      // Not yet stay there, for Esc and Enter.)
+      if (isTextField(document.activeElement)) document.activeElement.blur();
+      return void startClicked(true);
     }
     const key = undoKeyOf(e);
     if (!key || e.defaultPrevented || fields.native(e, key)) return;
@@ -6462,7 +6466,11 @@
         onclick={() => void startClicked()}
         disabled={!session.players.length}
         aria-keyshortcuts="Control+Enter"
-        title={session.players.length ? `Start the game${wantAudience && !dual ? ', opening the audience window to capture in OBS' : ''} (Ctrl+Enter)` : `Add ${pregameTeams ? 'teams' : 'players'} to start`}
+        title={!session.players.length
+          ? `Add ${pregameTeams ? 'teams' : 'players'} to start`
+          : startAsk?.lose
+            ? 'Answer the question beside it first: Start new game, or Ctrl+Enter again'
+            : `Start the game${wantAudience && !dual ? ', opening the audience window to capture in OBS' : ''} (Ctrl+Enter)`}
       >
         {wantAudience && !dual ? '📺 Open audience window & start' : 'Start game ▶'}
         {#if session.players.length}<kbd class="start-key" aria-hidden="true">Ctrl+⏎</kbd>{/if}

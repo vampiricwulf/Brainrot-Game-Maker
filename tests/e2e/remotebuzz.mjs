@@ -909,10 +909,17 @@ try {
   // may not have done by then: a fresh game needs some to start.)
   if (!(await page.locator('.pregame input.name').count())) await addPlayers(page, 2);
   await page.locator('.pregame-top h1').click();
-  // Ctrl+Enter twice at once (a habit): the first asks, the second (that soon after it) doesn't answer.
-  await page.evaluate(() => {
-    for (let i = 0; i < 2; i++) document.activeElement.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', ctrlKey: true, bubbles: true, cancelable: true }));
+  // Ctrl+Enter twice at once (a habit): the first asks, the second (that soon after it) doesn't answer. Twice in one go,
+  // then once more as the question shows, its Not yet with the keys (as a real double press lands): they stay there.
+  const keysAfter = await page.evaluate(async () => {
+    const press = () => document.activeElement.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', ctrlKey: true, bubbles: true, cancelable: true }));
+    for (let i = 0; i < 2; i++) press();
+    for (let i = 0; i < 60 && !document.querySelector('.actions [data-start-ask] .ia'); i++) await new Promise((r) => requestAnimationFrame(r));
+    await new Promise((r) => requestAnimationFrame(r));
+    press();
+    return document.activeElement?.textContent.trim();
   });
+  assert(keysAfter === 'Not yet', `a second Ctrl+Enter as the question shows leaves the keys on Not yet (${keysAfter})`);
   const discard = page.locator('.actions [data-start-ask] .ia');
   await discard.getByText(/^Start a new game\? The game in progress \(.+\) is discarded\.$/).waitFor();
   const discardButtons = await discard.getByRole('button').allInnerTexts();
@@ -923,8 +930,15 @@ try {
       (await discard.getByRole('button', { name: 'Start new game' }).evaluate((b) => b.classList.contains('bad'))),
     `Start asks before throwing away a game with points, Not yet first with the keys, Start new game red; a quick second Ctrl+Enter doesn't answer it (${discardButtons.join(' | ')})`,
   );
-  // A later Ctrl+Enter (the keys on Not yet) answers Start new game.
+  // A click on the blue Start game ▶ beside it, later (as if the first didn't take), doesn't answer it: the keys go back
+  // to Not yet. A later Ctrl+Enter (the keys on Not yet) answers Start new game.
   await page.waitForTimeout(600);
+  await page.getByRole('button', { name: 'Start game ▶' }).click();
+  await page.waitForTimeout(300);
+  assert(
+    (await page.locator('.pregame').count()) === 1 && (await discard.count()) === 1 && (await discard.getByRole('button', { name: 'Not yet' }).evaluate((b) => b === document.activeElement)),
+    'a click on Start game ▶ while it asks doesn’t answer the question (its red Start new game does): the keys go to Not yet',
+  );
   await page.keyboard.press('Control+Enter');
   await page.waitForFunction(() => window.__room.sent.some((m) => m.t === 'close'));
   await page.locator('.pregame').waitFor({ state: 'detached' });
