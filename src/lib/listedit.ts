@@ -71,19 +71,24 @@ export function copyZone(z: BoardZone, taken: readonly string[]): BoardZone {
 export function copySavedCard(c: SavedCard, taken: readonly string[]): SavedCard {
   const copy = clone(c);
   copy.id = newId();
-  let base = (c.name.trim() || 'Private card')
-    .replace(/ \(copy(?: \d+)?\)$/, '')
-    .slice(0, CARD_NAME_MAX - ' (copy 99)'.length)
-    .trimEnd();
-  let name = copyName(base, taken);
-  // (A hundredth copy and on: cut more.)
-  while (name.length > CARD_NAME_MAX && base) {
-    base = base.slice(0, base.length - (name.length - CARD_NAME_MAX)).trimEnd();
-    name = copyName(base, taken);
-  }
-  copy.name = name;
+  copy.name = copyNameIn(c.name.trim() || 'Private card', taken, CARD_NAME_MAX);
   reSlide(copy);
   return copy;
+}
+
+/** copyName in at most `max` letters: the name is cut to leave room for "(copy N)", never the "(copy N)". */
+function copyNameIn(name: string, taken: readonly string[], max: number): string {
+  let base = name
+    .replace(/ \(copy(?: \d+)?\)$/, '')
+    .slice(0, max - ' (copy 99)'.length)
+    .trimEnd();
+  let out = copyName(base, taken);
+  // (A hundredth copy and on: cut more.)
+  while (out.length > max && base) {
+    base = base.slice(0, base.length - (out.length - max)).trimEnd();
+    out = copyName(base, taken);
+  }
+  return out;
 }
 
 /**
@@ -143,12 +148,15 @@ export function copySegment(seg: WheelSegment): WheelSegment {
   return copy;
 }
 
-/** A copy of a 🎭 deal's part: its card too, and a name of its own that fits ("Wolf (copy)"). */
+/**
+ * A copy of a 🎭 deal's part: its card too, and a name of its own that fits ("Wolf (copy)"; a long name is cut to
+ * leave room for "(copy N)", so no two parts end up with one name).
+ */
 export function copyDealPart(p: DealPart, taken: readonly string[]): DealPart {
   const copy = clone(p);
   copy.id = newId();
   reSlide(copy.card);
-  copy.name = copyName(p.name.trim() || 'Part', taken).slice(0, DEAL_PART_MAX);
+  copy.name = copyNameIn(p.name.trim() || 'Part', taken, DEAL_PART_MAX);
   return copy;
 }
 

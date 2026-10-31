@@ -176,6 +176,14 @@ describe('copying a deal’s part and a die', () => {
     expect(slideText(copy.card)).toBe('You eat a villager each night');
     expect(copyDealPart({ ...part, name: 'Wolf (copy)' }, ['Wolf', 'Wolf (copy)']).name).toBe('Wolf (copy 2)');
     expect(copyDealPart({ ...part, name: 'A very long part name here' }, []).name.length).toBeLessThanOrEqual(24);
+    // A long name (23 of the 24 letters): it is cut, never its "(copy N)", so each copy's name is its own.
+    const long = 'Werewolf of London Town';
+    const names = [long];
+    for (let i = 0; i < 3; i++) names.push(copyDealPart({ ...part, name: long }, names).name);
+    expect(names).toEqual([long, 'Werewolf of Lo (copy)', 'Werewolf of Lo (copy 2)', 'Werewolf of Lo (copy 3)']);
+    expect(names.every((n) => n.length <= 24)).toBe(true);
+    // (A copy of a copy is the next one too.)
+    expect(copyDealPart({ ...part, name: names[1] }, names).name).toBe('Werewolf of Lo (copy 4)');
   });
 
   it('a die and a range of totals: their own ids, their buttons copied', () => {
