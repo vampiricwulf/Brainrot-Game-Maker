@@ -14,7 +14,7 @@
   import { DragOrder } from '../lib/dragorder.svelte';
   import { copySavedCard, moveTo } from '../lib/listedit';
   import { freeName } from './tools/ToolPopup.svelte';
-  import { showMenu } from '../lib/menustate.svelte';
+  import { menuItem, menuOf, showMenu } from '../lib/menustate.svelte';
   import { CARD_NAME_MAX, newSavedCard, savedCardName, type SavedCard } from '../lib/model';
 
   const game = $derived(app.game);
@@ -120,15 +120,16 @@
   };
 
   function menu(e: MouseEvent, c: SavedCard, i: number): void {
-    showMenu(e, [
-      { heading: savedCardName(c, i) },
-      { label: '✎ Rename', onclick: () => (renaming = c.id), keys: 'F2' },
-      { label: '⧉ Duplicate', onclick: () => dup(c, true), keys: 'Ctrl+D' },
-      { label: '▲ Move up', onclick: () => move(i, i - 1), disabled: i === 0, keys: 'Alt+↑' },
-      { label: '▼ Move down', onclick: () => move(i, i + 1), disabled: i === list.length - 1, keys: 'Alt+↓' },
-      { sep: true },
-      { label: '🗑 Delete card', danger: true, onclick: () => remove(c, true), keys: 'Delete' },
-    ]);
+    showMenu(
+      e,
+      menuOf({
+        heading: savedCardName(c, i),
+        rename: menuItem.rename(() => (renaming = c.id)),
+        duplicate: menuItem.duplicate(() => dup(c, true)),
+        move: [menuItem.up(() => move(i, i - 1), { disabled: i === 0 }), menuItem.down(() => move(i, i + 1), { disabled: i === list.length - 1 })],
+        delete: menuItem.delete('card', () => remove(c, true)),
+      }),
+    );
   }
 
   /**
