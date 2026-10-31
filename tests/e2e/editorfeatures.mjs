@@ -380,8 +380,15 @@ try {
     await moved.waitFor();
     const text = await moved.innerText();
     assert(
-      (await moved.getAttribute('open')) !== null && text.includes('one order') && text.includes('🏁 Make it the start') && text.includes('📋 Paste slide') && text.includes('✏ Freehand line…'),
-      `the Editor part opens with “What moved” (the menus’ one order, the new names, the slide editor's bar, tabs' group and Shape ▾)`,
+      (await moved.getAttribute('open')) !== null &&
+        text.includes('one order') &&
+        text.includes('🏁 Make it the start') &&
+        text.includes('📋 Paste slide') &&
+        text.includes('✏ Freehand line…') &&
+        text.includes('✓ Done cropping') &&
+        text.includes('Replace everywhere…') &&
+        text.includes('Plays from'),
+      `the Editor part opens with “What moved” (the menus’ one order, the new names, the slide editor's bar, tabs' group and Shape ▾, the image and video windows, 🖼 Media's cards, a video's Plays row)`,
     );
   }
   await page.getByLabel('Filter shortcuts').fill('ctrl+f');
