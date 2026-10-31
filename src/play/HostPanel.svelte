@@ -447,9 +447,13 @@
       ? session.players.find((p) => p.id === session.rollOffWinner)
       : undefined,
   );
-  /** More question slides to show before the answer. */
-  const moreSlides = $derived(!!slidePos && !answerShowing(session) && slidePos.at < slidePos.of);
-  const nextSlide = () => onslide(1);
+  /** ↩ Put back (keep tile)'s words in their three widths: its sign, then " Put back", then " (keep tile)". */
+  const putBackWords = (() => {
+    const l = VERBS.putBack.label;
+    const i = l.indexOf(' ');
+    const j = l.indexOf(' (');
+    return [l.slice(0, i), l.slice(i, j > i ? j : l.length), j > i ? l.slice(j) : ''];
+  })();
   const openBuzzers = () => onopenbuzzers?.();
   const finalStepText = $derived({
     // Single window: viewers see this window, the wager boxes too.
@@ -770,7 +774,7 @@
         id: 'putback',
         label: VERBS.putBack.label,
         disabled: cancelBlocked,
-        ...(cancelBlocked ? { hint: 'Points were given for this clue: undo them first, or use Done ▶ board' } : {}),
+        ...(cancelBlocked ? { hint: 'Points were given for this clue: undo them first, or use ▦ Done ▶ board' } : {}),
         onclick: oncancelclue,
       });
     if (scoring && !showAward) out.push({ label: partnerFold ? '± Other points…' : '± Adjust score', onclick: openAmount });
@@ -942,21 +946,6 @@
     {/if}
     {#if pickerPending}<span class="pending">Picker: press 1–{Math.min(9, session.players.length)}</span>{/if}
     <span class="spacer"></span>
-    {#if session.phase === 'clue' && info}
-      <!-- Up here, away from the main cell and the fixed bar, so it's never hit by a double-click meant for something else. -->
-      <button
-        class="small ghost"
-        data-flow="putback"
-        onclick={oncancelclue}
-        disabled={cancelBlocked}
-        title={cancelBlocked
-          ? 'Points were given for this clue: undo them first, or use Done ▶ board'
-          : setup
-            ? 'Shift+Esc (or Esc): the question never showed, so the tile stays on the board'
-            : VERBS.putBack.title}
-        >{VERBS.putBack.label}{#if setup && partner}{' '}<kbd aria-hidden="true">{VERBS.putBack.key}</kbd>{/if}</button
-      >
-    {/if}
     {@render phoneChip?.()}
     <TimerControls defaultSeconds={timerDefault} bind:custom={timerSeconds} onstart={ontimerstart} />
   </div>
@@ -1087,20 +1076,75 @@
     </div>
   {/if}
 
-  <!-- 👁 Reveal answer and ▦ Done ▶ board (whichever isn't the main one's step: the row never shows it twice), in the
-       clue's row. Done here, while the main button is 👁 Reveal answer, is a skip: it asks first as the blue button would
-       (goon.flowDone). -->
-  {#snippet revealDone()}
-    {#if !toolOnly && !toolFirst && next?.flow !== 'reveal'}
-      <button data-flow="reveal" onclick={onreveal} title={VERBS.reveal.title}>
-        {session.revealed ? VERBS.hide.label : VERBS.reveal.label}
-      </button>
-    {/if}
-    <!-- A wheel/dice tile with nothing to ask has one way out: the blue ▦ Done ▶ board. -->
-    {#if !(toolOnly && app.live.overlay) && next?.flow !== 'done'}
-      <button class="done-board" data-flow="done" onclick={() => (goon ? goon.flowDone() : onback())} title={VERBS.done.title}>{@render iconWord(VERBS.done.label)}</button>
+  <!-- ↩ Put back (keep tile): at the far left of a clue's flow row (the row level with the blue button), quiet, the row's
+       width away from ▦ Done ▶ board at its other end. As the row runs out of room its words go, "(keep tile)" first,
+       then "Put back" (still named in full): see .pbslot. -->
+  {#snippet putBack()}
+    {@const keyed = setup && !!partner}
+    <span class="pbslot" class:keyed>
+      <button
+        class="ghost putback"
+        data-flow="putback"
+        onclick={oncancelclue}
+        disabled={cancelBlocked}
+        title={cancelBlocked
+          ? 'Points were given for this clue: undo them first, or use ▦ Done ▶ board'
+          : setup
+            ? 'Shift+Esc (or Esc): the question never showed, so the tile stays on the board'
+            : VERBS.putBack.title}
+        >{putBackWords[0]}<span class="w1">{putBackWords[1]}</span><span class="w2">{putBackWords[2]}</span>{#if keyed}{' '}<kbd aria-hidden="true">{VERBS.putBack.key}</kbd>{/if}</button
+      >
+    </span>
+  {/snippet}
+
+  <!-- The flow row's other places, at its right end beside the blue button, each kept while it's unused, so nothing moves
+       as the clue goes on: ◀ Slide (with more than one question slide), 👁 Reveal answer while the blue button is still a
+       slide, then the end place: ▦ Done ▶ board, a quiet skip while the blue button reveals (it asks first as the blue
+       one would: goon.flowDone), and 🙈 Hide answer there once the answer is up (the tiebreaker's: 🏁 Back to results).
+       The blue button's own step is never here. As the row runs out of room their words go (see .slots): their signs,
+       still named in full. -->
+  {#snippet flowEnd()}
+    {#if (session.phase === 'clue' && info && !setup) || session.phase === 'tiebreaker'}
+      {@const tb = session.phase === 'tiebreaker'}
+      {@const up = tb ? answerShowing(session) : session.revealed}
+      <span class="slots" class:paged={!!slidePos} data-flow-slots>
+        {#if slidePos}
+          {#if !up}
+            <button class="ghost back-slide" data-flow="pager" onclick={() => onslide(-1)} disabled={slidePos.at <= 1} title={VERBS.prevSlide.title}>{@render iconWord(VERBS.prevSlide.label)}</button>
+          {:else}
+            {@render kept(VERBS.prevSlide.label)}
+          {/if}
+          {#if !up && !toolOnly && !toolFirst && next?.flow !== 'reveal'}
+            <button class="ghost" data-flow="reveal" onclick={onreveal} title={VERBS.reveal.title}>{@render iconWord(VERBS.reveal.label)}</button>
+          {:else}
+            {@render kept(VERBS.reveal.label)}
+          {/if}
+        {/if}
+        <span class="endcell">
+          <!-- (Its room: the wider of its two, so what's left of it never moves.) -->
+          <span class="sizer" aria-hidden="true" inert>
+            <button class="ghost" tabindex="-1">{@render iconWord(tb ? FLOW.backToResults.label : VERBS.done.label)}</button>
+            <button class="ghost" tabindex="-1">{@render iconWord(VERBS.hide.label)}</button>
+          </span>
+          {#if up && !toolOnly}
+            <button class="ghost" data-flow="reveal" onclick={onreveal} title={VERBS.hide.title}>{@render iconWord(VERBS.hide.label)}</button>
+          {:else if tb}
+            <!-- (A skip, while the blue button reveals: it asks first while nobody has won it, as the blue one would.) -->
+            <button class="ghost done-board" data-flow="done" onclick={() => (goon ? goon.flowDone() : ontiebreakerdone())}>{@render iconWord(FLOW.backToResults.label)}</button>
+          {:else if !(toolOnly && app.live.overlay) && next?.flow !== 'done'}
+            <!-- (A wheel/dice tile with nothing to ask has one way out: the blue ▦ Done ▶ board.) -->
+            <button class="ghost done-board" data-flow="done" onclick={() => (goon ? goon.flowDone() : onback())} title={VERBS.done.title}>{@render iconWord(VERBS.done.label)}</button>
+          {/if}
+        </span>
+      </span>
+    {:else if session.phase === 'slides' && slidePos}
+      <!-- (Beside the blue Next slide ▶: the slides' pager.) -->
+      <button class="ghost" data-flow="pager" onclick={() => onslide(-1)} disabled={slidePos.at <= 1} title={VERBS.prevSlide.title}>{VERBS.prevSlide.label}</button>
     {/if}
   {/snippet}
+
+  <!-- An unused place in the flow row: its button, unseen, so the others keep theirs. -->
+  {#snippet kept(label: string)}<span class="kept" aria-hidden="true" inert><button class="ghost" tabindex="-1">{@render iconWord(label)}</button></span>{/snippet}
 
   <!-- A button's sign, then its words (the words go on a narrow window: see .word). -->
   {#snippet iconWord(label: string)}{label.slice(0, label.indexOf(' '))} <span class="word">{label.slice(label.indexOf(' ') + 1)}</span>{/snippet}
@@ -1123,7 +1167,7 @@
 
       {#if ddWager}
         {#key info?.clue.id}
-          <DDControls {game} {session} {dual} bind:override={wagerLimitsOff} phones={wagerPhones} phoneNote={wagerNote} onshow={() => goon?.main('enter')} oncancel={oncancelclue} />
+          <DDControls {game} {session} {dual} bind:override={wagerLimitsOff} phones={wagerPhones} phoneNote={wagerNote} onshow={() => goon?.main('enter')} oncancel={oncancelclue} lead={putBack} />
         {/key}
       {/if}
 
@@ -1234,32 +1278,10 @@
         <div class="mode-host"><EndControls {game} {session} {onrolloff} {ontiebreaker} {oncowinners} onback={onbackfromend} {onrematch} /></div>
       {/if}
 
-      <!-- The moment's other buttons (whichever isn't the main one): at the end of the Amount row, else a row of their own. -->
-      {#snippet others()}
+      <!-- The row's own quiet buttons (the intro's skip, the folded Amount row), after the Amount row's or as a row's start. -->
+      {#snippet rowOwn()}
         {#if session.intro}
           <button class="ghost" onclick={onskipintro}>{VERBS.skipIntro.label}</button>
-        {/if}
-        {#if session.phase === 'clue' && !setup}
-          {#if slidePos && !session.revealed}
-            <!-- A clue's question slides: back one (quiet), and on when something else is the main button. -->
-            <button class="ghost back-slide" data-flow="pager" onclick={() => onslide(-1)} disabled={slidePos.at <= 1} title={VERBS.prevSlide.title}>{@render iconWord(VERBS.prevSlide.label)}</button>
-            {#if moreSlides && next?.flow !== 'pager'}<button data-flow="pager" onclick={nextSlide} title={VERBS.nextSlide.title}>{VERBS.nextSlide.label}</button>{/if}
-          {/if}
-          {@render revealDone()}
-        {:else if session.phase === 'slides'}
-          {#if slidePos}<button class="ghost" data-flow="pager" onclick={() => onslide(-1)} disabled={slidePos.at <= 1} title={VERBS.prevSlide.title}>{VERBS.prevSlide.label}</button>{/if}
-        {:else if session.phase === 'tiebreaker'}
-          {#if slidePos && !answerShowing(session)}
-            <button class="ghost" data-flow="pager" onclick={() => onslide(-1)} disabled={slidePos.at <= 1} title={VERBS.prevSlide.title}>{VERBS.prevSlide.label}</button>
-            {#if moreSlides && next?.flow !== 'pager'}<button data-flow="pager" onclick={nextSlide} title={VERBS.nextSlide.title}>{VERBS.nextSlide.label}</button>{/if}
-            {#if next?.flow !== 'reveal'}<button data-flow="reveal" onclick={onreveal} title={VERBS.reveal.title}>{VERBS.reveal.label}</button>{/if}
-          {/if}
-          {#if answerShowing(session)}
-            <button data-flow="reveal" onclick={onreveal} title={VERBS.hide.title}>{VERBS.hide.label}</button>
-          {:else}
-            <!-- (A skip, while the blue button reveals: it asks first while nobody has won it, as the blue one would.) -->
-            <button data-flow="done" onclick={() => (goon ? goon.flowDone() : ontiebreakerdone())}>{FLOW.backToResults.label}</button>
-          {/if}
         {/if}
         {#if scoring && !showAward}
           <!-- (The keys go to the Amount box: the points are typed first, then who gets them. In a partner clue ✔ Got it /
@@ -1274,8 +1296,16 @@
           >
         {/if}
       {/snippet}
-      {#if !showAward && (session.intro || (session.phase === 'clue' && !setup) || session.phase === 'tiebreaker' || session.phase === 'slides' || scoring)}
-        <div class="row flow">{@render others()}</div>
+      <!-- The flow row, level with the blue button: in a clue ↩ Put back (keep tile) at its far left, the clue's other flow
+           steps at its right end (see flowEnd); the Amount row is it while that's open (below). On PARTNER UP! ↩ Put back
+           alone (a Daily Double's splash has its own row for it: the ⭐ box's Wager row, its whole room). -->
+      {#if !showAward && (session.intro || (session.phase === 'clue' && !ddWager) || session.phase === 'tiebreaker' || session.phase === 'slides' || scoring)}
+        <div class="row flow" class:flowrow={session.phase === 'clue' || session.phase === 'tiebreaker'} data-flowrow>
+          {#if session.phase === 'clue' && info}{@render putBack()}{/if}
+          {@render rowOwn()}
+          <span class="spacer"></span>
+          {@render flowEnd()}
+        </div>
       {/if}
       <!-- Single window, buzzer mode: the buzzers' row (on clues, below) kept on the board too, empty, so the stage viewers
            see keeps one size when a clue opens (and on a Daily Double's question, below). -->
@@ -1338,7 +1368,8 @@
                as on the board. -->
           <div class="row buzzrow" aria-hidden="true"></div>
         {/if}
-        <div class="row award">
+        <div class="row award" class:flowrow={session.phase === 'clue' || session.phase === 'tiebreaker'} data-flowrow>
+          {#if session.phase === 'clue' && info}{@render putBack()}{/if}
           <label class="check">
             Amount
             <input
@@ -1406,7 +1437,8 @@
             <span class="muted hint pick-hint" title={pickHint}>{pickHint}</span>
           {/if}
           <span class="spacer"></span>
-          {@render others()}
+          {@render rowOwn()}
+          {@render flowEnd()}
         </div>
       {/if}
     </div>
@@ -1599,6 +1631,140 @@
   /* The folded row (± Adjust score) as tall as the Amount row: opening a clue doesn't resize the stage. */
   .flow {
     min-height: 32px;
+  }
+  /* A clue's flow row (↩ Put back at its far left, its other flow steps at its right end, the Amount row while that's
+     open) stays in view at the action part's foot, level with the blue button, as the rows above it scroll. In a
+     one-window 🤝 partner clue the box's foot holds that place (✔ Got it, 📤 Send and start): there the row scrolls under
+     it (Shift+Esc, Esc and the stage's menu still reach its buttons), as two rows held there would leave the box no room
+     on a laptop. */
+  .action > .flowrow {
+    position: sticky;
+    bottom: 0;
+    z-index: 1;
+    background: var(--panel);
+  }
+  .panel.partnerclue:not(.dual) > .act > .action:has(:global([data-partner-foot])) > .flowrow {
+    position: static;
+  }
+  /* ↩ Put back (keep tile)'s place: the room the row has left once ＋ Award and − Deduct have theirs, up to its whole
+     label, a gap after it. As that runs out its words go, "(keep tile)" first, then "Put back" (still named in full), so
+     it never wraps the row (the one-window stage keeps its size). */
+  .pbslot {
+    container: pb / inline-size;
+    display: flex;
+    flex: 100 1 2.9em;
+    min-width: 2.9em;
+    max-width: 13.5em;
+    margin-right: 6px;
+  }
+  /* (PARTNER UP!'s shows its key, ⇧Esc.) */
+  .pbslot.keyed {
+    max-width: 16.5em;
+  }
+  @container pb (width < 8.2em) {
+    .pbslot:not(.keyed) .w1 {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      overflow: hidden;
+      clip-path: inset(50%);
+      white-space: nowrap;
+    }
+  }
+  @container pb (width < 10.6em) {
+    .pbslot.keyed .w1 {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      overflow: hidden;
+      clip-path: inset(50%);
+      white-space: nowrap;
+    }
+  }
+  @container pb (width < 13.3em) {
+    .pbslot:not(.keyed) .w2 {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      overflow: hidden;
+      clip-path: inset(50%);
+      white-space: nowrap;
+    }
+  }
+  @container pb (width < 16.2em) {
+    .pbslot.keyed .w2 {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      overflow: hidden;
+      clip-path: inset(50%);
+      white-space: nowrap;
+    }
+  }
+  /* The flow row's other places, at its right end: the room left after ↩ Put back's, up to their whole words, which go
+     as that runs out (◀ Slide's first), down to their signs (still named in full): never wrapping the row. */
+  .slots {
+    container: flow / inline-size;
+    display: flex;
+    justify-content: flex-end;
+    align-items: center;
+    gap: 6px;
+    flex: 100 1 3.6em;
+    min-width: 3.6em;
+    max-width: 12em;
+  }
+  .slots.paged {
+    flex-basis: 10.8em;
+    min-width: 10.8em;
+    max-width: 29em;
+  }
+  @container flow (width < 11.5em) {
+    .slots .word {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      overflow: hidden;
+      clip-path: inset(50%);
+      white-space: nowrap;
+    }
+  }
+  @container flow (width < 26em) {
+    .slots.paged .word {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      overflow: hidden;
+      clip-path: inset(50%);
+      white-space: nowrap;
+    }
+  }
+  @container flow (width < 28.5em) {
+    .slots.paged .back-slide .word {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      overflow: hidden;
+      clip-path: inset(50%);
+      white-space: nowrap;
+    }
+  }
+  /* An unused place: its button, unseen. The end place is as wide as the wider of its two (▦ Done ▶ board, then
+     🙈 Hide answer in its place). */
+  .kept {
+    display: contents;
+    visibility: hidden;
+  }
+  .endcell {
+    display: grid;
+    justify-items: end;
+  }
+  .endcell > *,
+  .sizer > * {
+    grid-area: 1 / 1;
+  }
+  .sizer {
+    display: grid;
+    visibility: hidden;
   }
   /* The buzzers' row keeps one height (a button's) when it only has a hint in it. */
   .buzzrow {
@@ -1794,20 +1960,12 @@
     white-space: nowrap;
     text-overflow: ellipsis;
   }
-  /* Up to 1100px wide under the stage, a clue with several question slides (◀ Slide on its row): the hint goes, and
-     ◀ Slide and ▦ Done ▶ board show as ◀ and ▦ (still read out by name), so the row stays one line and the stage keeps
-     its size. */
+  /* Up to 1100px wide under the stage, a clue with several question slides (◀ Slide on its row): the hint goes, so the
+     row stays one line and the stage keeps its size (the flow row's own buttons shrink to their signs by themselves:
+     see .slots). */
   @media (max-width: 1100px) {
     .panel:not(.side) .award:has(.back-slide) .pick-hint {
       display: none;
-    }
-    .panel:not(.side) .award:has(.back-slide) :is(.back-slide, .done-board) .word {
-      position: absolute;
-      width: 1px;
-      height: 1px;
-      overflow: hidden;
-      clip-path: inset(50%);
-      white-space: nowrap;
     }
   }
   /* A narrow window under the stage: the fixed bar's buttons a little smaller, so 🚪 Exit stays on its line at the right
@@ -1833,7 +1991,7 @@
     }
     /* (And the tools row's, never its menus': on the board the tools and the round's ◀ / picker / ▶ stay on one line,
        as in a clue, so the stage keeps one size.) */
-    .panel:not(.side) > .toolsrow :global(:is(.tl > button, .tl > .pop > button, .rn > button)) {
+    .panel:not(.side) > .toolsrow :global(:is(.tl > button, .tl > .pop > button, .rn > button, .rn > .room)) {
       padding-left: 9px;
       padding-right: 9px;
     }
@@ -2133,12 +2291,13 @@
   }
   /* ＋ Award and − Deduct take the room the row has, up to their whole label: on a crowded row (a long name, a narrow
      window) the name is cut short (…) instead of the row wrapping, which would shrink the stage when a player is picked.
-     The amount never is. (Only when not even 12em each is left do they wrap.) */
+     The amount never is. (Only when not even 12em each is left do they wrap.) They have the room first: ↩ Put back's
+     and the flow places' words come after. */
   .award .named {
     display: flex;
     align-items: center;
     gap: 4px;
-    flex: 1 1 12em;
+    flex: 1000 1 12em;
     max-width: max-content;
     overflow: hidden;
   }

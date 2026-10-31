@@ -3,9 +3,11 @@
 // (.primary) button, and one where the moment has a next step; a confirmation is one strip above the fixed bar (the
 // panel grows by that strip, nothing overlaps); and beside the stage (RPG and board-game rounds on a wide window) the
 // fixed bar is a grid with 🚪 Exit in its bottom-right cell. A Daily Double with three question slides keeps Next slide ▶
-// the main button until its last slide (viewers see where it is: ● ● ○), a board game's own roll makes its turn box's
-// slot ▶ Move while the blue button stays Next turn ▶ (and its check sits in the panel), a box drawn on the RPG stage
-// in one window leaves the stage its size, a confirmation leaves one main button (its own), ✔ / ✘ hand the focus to the main button, and
+// the main button until its last slide (viewers see where it is: ● ● ○) and its flow row keeps its places (↩ Put back
+// (keep tile) first, ▦ Done ▶ board last, 🙈 Hide answer in Done's place once the answer is up), a board game's own
+// roll makes its turn box's slot ▶ Move while the blue button stays Next turn ▶ (and its check sits in the panel), a box
+// drawn on the RPG stage in one window leaves the stage its size, a confirmation leaves one main button (its own), ✔ / ✘
+// hand the focus to the main button, and
 // on a narrow window the fixed bar stays on one line (🚪 Exit at the right; ❔ Help as its sign up to 1040px, its word
 // above, which opens the keys on During the game, where 💡 Show all tips again brings 🙈 Hide's note back). With six
 // players in a single window (at
@@ -26,7 +28,8 @@
 // Double's box opens at its top, its Wager row one line ending with True Daily Double, the blue Show question ▶ never
 // greyed (a double-click on it shows the question once); with 8, a 🎯 Pick a player wheel's bar is one row and in sight,
 // Spin! first and no Close (the blue button is Next ▶), landed too, and a wheel tile's bar the same with the blue Show
-// question ▶ within 96 px of its Spin!.
+// question ▶ within 96 px of its Spin! (↩ Put back in sight, as on PARTNER UP! and a Daily Double's splash, where it
+// leads the Wager row).
 import { chromium } from 'playwright-core';
 import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
@@ -236,6 +239,37 @@ try {
   );
   const pips = page.locator('.stage-box [data-slide-pips]');
   assert((await pips.getAttribute('aria-label')) === 'Slide 1 of 3', 'viewers see where the clue is (Slide 1 of 3, as dots)');
+  // A clue's buttons keep their places: ↩ Put back (keep tile) at the far left of the flow row (not in the status line),
+  // the row's other places at its right end, ▦ Done ▶ board last and quiet, the row's width away from Put back. As the
+  // clue goes on (its last slide, then its answer) nothing in the row moves: 👁 Reveal answer leaves its place empty once
+  // it's the blue button's, and 🙈 Hide answer takes ▦ Done ▶ board's.
+  const flowAt = () =>
+    page.evaluate(() => {
+      const r = (el) => el?.getBoundingClientRect();
+      const row = document.querySelector('.panel [data-flowrow]');
+      const pb = r(row?.querySelector('[data-flow="putback"]'));
+      const places = [...(row?.querySelectorAll('[data-flow-slots] [data-flow]') ?? [])];
+      const end = places.at(-1);
+      return {
+        pbFirst: !!row && row.querySelector('button') === row.querySelector('[data-flow="putback"]'),
+        inStatus: !!document.querySelector('.panel .status [data-flow="putback"]'),
+        pbX: Math.round(pb?.x ?? -1),
+        pbRight: Math.round(pb ? pb.x + pb.width : -1),
+        amountX: Math.round(r(row?.querySelector('input[type=number]'))?.x ?? -1),
+        pagerX: Math.round(r(row?.querySelector('[data-flow="pager"]'))?.x ?? -1),
+        endLeft: Math.round(r(end)?.x ?? -1),
+        endRight: Math.round(end ? r(end).x + r(end).width : -1),
+        endGhost: !!end?.classList.contains('ghost'),
+        rowH: Math.round(r(row)?.height ?? 0),
+        nextLeft: Math.round(r(document.querySelector('.panel [data-next]')).x),
+        places: places.map((b) => b.textContent.replace(/\s+/g, ' ').trim()),
+      };
+    });
+  const f1 = await flowAt();
+  assert(
+    f1.pbFirst && !f1.inStatus && f1.pbRight <= f1.amountX && f1.places.join() === '◀ Slide,👁 Reveal answer,▦ Done ▶ board' && f1.endGhost && f1.endRight <= f1.nextLeft && f1.endLeft - f1.pbRight > 200,
+    `a clue's flow row: ↩ Put back (keep tile) first, before the Amount box, none in the status line; ◀ Slide, 👁 Reveal answer and a quiet ▦ Done ▶ board at its right end, before the blue button, far from Put back (${JSON.stringify(f1)})`,
+  );
   // A long clue caption stops short of the dots instead of running under them.
   const capGap = await page.evaluate(() => {
     const cap = document.querySelector('.stage-box .caption');
@@ -249,9 +283,20 @@ try {
   await page.waitForFunction(() => document.querySelector('.panel .status')?.textContent?.includes('Slide 3 of 3'));
   assert((await pips.getAttribute('aria-label')) === 'Slide 3 of 3', 'the dots follow the slides');
   assert((await page.locator('.panel .award button.primary').count()) === 0 && (await flowIs(page, '👁 Reveal answer')), 'on its last slide the blue button is 👁 Reveal answer (＋ Award Bob is green)');
+  const f2 = await flowAt();
+  assert(
+    f2.places.join() === '◀ Slide,▦ Done ▶ board' && f2.pbX === f1.pbX && f2.pagerX === f1.pagerX && f2.endRight === f1.endRight && f2.rowH === f1.rowH,
+    `on its last slide 👁 Reveal answer's place in the row stays empty (the blue button reveals) and nothing else moves (${JSON.stringify(f2)})`,
+  );
   await page.keyboard.press('r');
   await pips.waitFor({ state: 'detached' });
   assert(true, 'the dots go when the answer shows');
+  await page.locator('.panel [data-flowrow] [data-flow="reveal"]', { hasText: 'Hide answer' }).waitFor();
+  const f3 = await flowAt();
+  assert(
+    f3.places.join() === '🙈 Hide answer' && (await flowIs(page, '▦ Done ▶ board')) && f3.pbX === f1.pbX && f3.endRight === f1.endRight && f3.rowH === f1.rowH,
+    `the answer up: 🙈 Hide answer in ▦ Done ▶ board's place (the blue button is ▦ Done ▶ board), ◀ Slide's place kept, ↩ Put back where it was (${JSON.stringify(f3)})`,
+  );
   await page.keyboard.press('Escape');
   await page.locator('.stage-box .board').waitFor();
 
@@ -957,10 +1002,16 @@ try {
       await pb.locator('.stage-box .board .tile[data-cat="4"][data-row="0"]').click();
       await pb.locator('.stage-box .dd-text').waitFor();
       const dd = pb.locator('.panel .dd');
-      const ddOut = await hidden(`.panel .dd > .row:first-child > span:first-child, .panel .dd .chip${count === 4 ? ', .panel .dd .wager > :not(.spacer)' : ''}`);
+      const ddOut = await hidden(`.panel .dd > .row:first-child > span:first-child, .panel .dd .chip${count === 4 ? ', .panel .dd .wager > :not(.spacer), .panel .dd .wager [data-flow="putback"]' : ''}`);
       const wagerRow = await dd.locator('.wager').evaluate((r) => {
         const mids = [...r.children].map((c) => c.getBoundingClientRect()).map((b) => b.top + b.height / 2);
-        return { line: Math.max(...mids) - Math.min(...mids) <= 4, last: [...r.querySelectorAll('button')].at(-1)?.textContent.trim() ?? '', steps: r.querySelectorAll('[data-step]').length };
+        return {
+          line: Math.max(...mids) - Math.min(...mids) <= 4,
+          last: [...r.querySelectorAll('button')].at(-1)?.textContent.trim() ?? '',
+          steps: r.querySelectorAll('[data-step]').length,
+          // (↩ Put back (keep tile) leads it: the box is the whole flow row while it's up.)
+          putBack: r.querySelector('button')?.matches('[data-flow="putback"]') && document.querySelectorAll('.panel [data-flow="putback"]').length === 1,
+        };
       });
       const ddSeen = await mainButton(pb, 'Show question ▶').evaluate((b) => {
         const r = b.getBoundingClientRect();
@@ -969,8 +1020,8 @@ try {
       const keys = await pb.evaluate(() => document.activeElement?.matches('.panel .dd input[type=number]'));
       const ddH = await stageH();
       assert(
-        ddOut.length === 0 && wagerRow.line && wagerRow.last.startsWith('True Daily Double') && !wagerRow.steps && ddSeen && keys && ddH === onBoard,
-        `${at}: a Daily Double's box opens at its top (heading, names${count === 4 ? ', Wager row' : ''} in sight), the keys in its Wager box, its Wager row one line ending with True Daily Double, the blue Show question ▶ in sight and not greyed, the stage the board's size (${JSON.stringify({ ddOut, wagerRow, ddSeen, keys, ddH, onBoard })})`,
+        ddOut.length === 0 && wagerRow.line && wagerRow.last.startsWith('True Daily Double') && wagerRow.putBack && !wagerRow.steps && ddSeen && keys && ddH === onBoard,
+        `${at}: a Daily Double's box opens at its top (heading, names${count === 4 ? ', Wager row' : ''} in sight), the keys in its Wager box, its Wager row one line from ↩ Put back (keep tile) to True Daily Double, the blue Show question ▶ in sight and not greyed, the stage the board's size (${JSON.stringify({ ddOut, wagerRow, ddSeen, keys, ddH, onBoard })})`,
       );
       // A click on the splash with no wager typed: the status line says so over its own start (nothing in the line moves),
       // the stage keeps its size, and the keys stay in the Wager box. (Past the double-click guard of the tile's click.)
@@ -1113,9 +1164,10 @@ try {
         return Math.round(document.querySelector('.panel [data-next]').getBoundingClientRect().top - slot.bottom);
       });
       console.log(`    (8 players at 1280×720: a wheel tile's Spin! is ${reach} px above the blue button)`);
+      const putBackOut = await hidden('.panel [data-flow="putback"]');
       assert(
-        b.line && b.first === 'Spin!' && !b.close.length && (await stepButton(tools, 'Spin!').evaluate((x) => x.classList.contains('ring'))) && (await blueInSight('Show question ▶')) && reach <= 96,
-        `8 players at 1280×720: a wheel tile's bar is one row, Spin! first and ringed, no Close; the blue Show question ▶ in sight, within 96 px of Spin! (${JSON.stringify({ ...b, reach })})`,
+        b.line && b.first === 'Spin!' && !b.close.length && (await stepButton(tools, 'Spin!').evaluate((x) => x.classList.contains('ring'))) && (await blueInSight('Show question ▶')) && reach <= 96 && !putBackOut.length,
+        `8 players at 1280×720: a wheel tile's bar is one row, Spin! first and ringed, no Close; the blue Show question ▶ in sight, within 96 px of Spin!; ↩ Put back (keep tile) in sight at the flow row's start (${JSON.stringify({ ...b, reach, putBackOut })})`,
       );
       await pb.keyboard.press('w');
       await stepButton(tools, 'Spin again').waitFor({ timeout: 10000 });
@@ -1140,8 +1192,8 @@ try {
       const sizes = [await stageH()];
       const blueSeen = async () => (await hidden('.panel [data-next]')).length === 0;
       assert(
-        (await boxHasAction(box, '🎡 Spin for a partner')) === '' && (await flowIs(pb, 'Show question ▶')) && (await blueSeen()),
-        `${at}: PARTNER UP!'s 🎡 Spin for a partner is in the box, once and in sight, the blue Show question ▶ in sight (${await boxHasAction(box, '🎡 Spin for a partner')})`,
+        (await boxHasAction(box, '🎡 Spin for a partner')) === '' && (await flowIs(pb, 'Show question ▶')) && (await blueSeen()) && !(await hidden('.panel [data-flowrow] [data-flow="putback"]')).length,
+        `${at}: PARTNER UP!'s 🎡 Spin for a partner is in the box, once and in sight, the blue Show question ▶ in sight, ↩ Put back (keep tile) in sight in the flow row under the box (${await boxHasAction(box, '🎡 Spin for a partner')})`,
       );
       if (count === 8 && w === 1280) {
         await stepButton(box, '🎡 Spin for a partner').click();
@@ -1268,8 +1320,13 @@ try {
     await p5.keyboard.press('n');
     await p5.locator('.panel [data-slidepos]', { hasText: 'Slide 2 of 2' }).waitFor();
     sizes.push(await stageH());
-    const words = await p5.locator('.panel .award .done-board').innerText();
-    assert(sizes.every((x) => x === sizes[0]) && words.includes('Done'), `${w}×768, a clue with two slides: the stage keeps the board's size, ▦ Done ▶ board in words (${sizes.join(' / ')})`);
+    // (Its words in sight, not only read out: the flow row's places show their signs only when the row runs out of room.)
+    const words = await p5.locator('.panel .award .done-board .word').evaluate((w) => Math.round(w.getBoundingClientRect().width));
+    const putBack = await p5.locator('.panel .award [data-flow="putback"]').evaluate((b) => [...b.querySelectorAll('.w1, .w2')].every((w) => w.getBoundingClientRect().width > 8));
+    assert(
+      sizes.every((x) => x === sizes[0]) && words > 40 && putBack,
+      `${w}×768, a clue with two slides: the stage keeps the board's size, ▦ Done ▶ board and ↩ Put back (keep tile) in words (${sizes.join(' / ')}; Done's ${words}px)`,
+    );
     await ctx.close();
   }
 

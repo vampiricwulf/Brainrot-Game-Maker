@@ -1,10 +1,11 @@
 <!--
   Daily Double: who found it and their wager. Show question ▶ is the blue button's (Enter in the Wager box too): with
   who found it or the wager missing, it keeps the keys here and says what's missing. It opens at its top, the keys in
-  the Wager box.
+  the Wager box. Its Wager row starts with what the panel puts there (↩ Put back (keep tile): the box is the whole flow
+  row while it's up).
 -->
 <script lang="ts">
-  import { onMount, untrack } from 'svelte';
+  import { onMount, untrack, type Snippet } from 'svelte';
   import { textOn } from '../../lib/colors';
   import { formatPoints, wholePoints, type Game, type Session } from '../../lib/model';
   import { ddCap, score } from '../../lib/session';
@@ -21,6 +22,7 @@
     phoneNote = '',
     onshow,
     oncancel,
+    lead,
   }: {
     game: Game;
     session: Session;
@@ -36,6 +38,8 @@
     onshow: () => void;
     /** Back to the board, the tile kept (Esc, even in the wager box). */
     oncancel: () => void;
+    /** At the Wager row's start (the host panel's ↩ Put back (keep tile)). */
+    lead?: Snippet;
   } = $props();
 
   // Initial choice only: whoever is picking (the host can change it). With no picker, nobody: the host picks (never a
@@ -143,6 +147,7 @@
   <!-- (One line ending with True Daily Double and the max's words, cut short, their tooltip whole. Show question ▶ is the
        blue button's: Enter here.) -->
   <div class="row wager">
+    {@render lead?.()}
     <label class="check">
       Wager
       <input

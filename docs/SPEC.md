@@ -504,9 +504,21 @@ The mode isn't saved with the game: it's dual while the audience window is open.
      the pointer. While the check is open a click on the stage only flashes it.
 - **The host panel** has one layout in every round: the status line (📱 phones and ⏱ timer chips), the players' score
   chips, the row of what this moment needs with the one main button (and its key) at its right, the tools with the
-  round navigation, then a fixed bar (Undo, Redo, Sound · Log, Players, Rules · Cover, Hide · Audience, ▭ · ❔ Help,
+  round navigation (a played-out board keeps Next round ▶'s room there, unseen: the blue button is it), then a fixed
+  bar (Undo, Redo, Sound · Log, Players, Rules · Cover, Hide · Audience, ▭ · ❔ Help,
   Exit; ❔ Help as its sign only up to 1040 px wide, and under about 940 px the first eight too, so it stays one line). On a short window the round's own
-  box keeps a few rows in sight (the panel scrolls), a roll's box above it too. The main button is blue only for the
+  box keeps a few rows in sight (the panel scrolls), a roll's box above it too. **A clue's flow row** (the row level with
+  the main button: the Amount row, or the folded one with ± Other points…) keeps fixed places: ↩ Put back (keep tile)
+  at its far left (on a Daily Double's splash it leads the ⭐ box's Wager row, the box filling the row's room; on
+  PARTNER UP! it has a row of its own), then at its right end ◀ Slide (more than one question slide), 👁 Reveal answer
+  while the main button is still a slide, and an end place: ▦ Done ▶ board, a quiet skip while the main button is
+  👁 Reveal answer (it asks first as the main button would), then 🙈 Hide answer once the answer is up (the tiebreaker's
+  the same with 🏁 Back to results). The main button's step is never in the row. An unused place keeps its room (an
+  unseen copy, no `data-flow` mark), the end place is as wide as the wider of its two; Put back takes the room left after
+  ＋ Award and − Deduct, and its words and the places' go by that room (container queries on `.pbslot` and `.slots`:
+  "(keep tile)", then "Put back", then the places' words; signs stay, the names whole), so the row never wraps. The row
+  is sticky at the action part's foot, except in a one-window 🤝 partner clue once its box has a foot (✔ Got it,
+  📤 Send and start), which holds that place. The main button is blue only for the
   show's next step, in FLOW's words (`src/play/host/verbs.ts`: the round's intro steps, Next slide ▶, 👁 Reveal answer,
   ▦ Done ▶ board, Next round ▶, a 🤝 partner clue's Show question ▶ on PARTNER UP! and Next ▶ while its wheel is up, a
   Daily Double's Show question ▶, never greyed; over a wheel or dice tile's own tool, Show question ▶ (▦ Done ▶ board on

@@ -4083,7 +4083,7 @@
       label: VERBS.putBack.label,
       keys,
       disabled: blocked,
-      ...(blocked ? { hint: 'Points were given for this clue: undo them first, or use Done ▶ board' } : {}),
+      ...(blocked ? { hint: 'Points were given for this clue: undo them first, or use ▦ Done ▶ board' } : {}),
       onclick: cancelClue,
     };
   }

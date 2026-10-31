@@ -253,13 +253,22 @@ again to start the clock”. A slides round's last slide and finishing the Final
 again (or Next round ▶) to go on”); `N` and the blue button go at once. What a click says shows in the status line at
 the top of the panel; with the controls hidden, the moment's menu opens where you clicked, under it.
 
-The host panel keeps one layout in every round: the status line (with the 📱 phones and ⏱ timer chips and **↩ Put back
-(keep tile)** on the right), the players' score chips, the row of what this moment needs, and at its right the one
-main button with its key (**👁 Reveal answer** and **▦ Done ▶ board**, both `N`, **Show question ▶** `N`, **Next ▶**
-`N` over a tool, **Next turn ▶** `N`, the Final's next step `N`…). When it's blue it's only ever the show's next step (Next slide ▶,
-👁 Reveal answer, ▦ Done ▶ board, the round's intro, Next round ▶): what gives points, opens the buzzers or rolls is in
-its own row. Under it come the tools (🎲 Dice, 🎡 Wheel, 🏁 Who goes first, 🤫
-Send a card…, 🎭 Deal…, 📊 Scores) with the round navigation (◀ Prev round, the round list, Next round ▶) at the right,
+The host panel keeps one layout in every round: the status line (with the 📱 phones and ⏱ timer chips on the right),
+the players' score chips, the row of what this moment needs, and at its right the one main button with its key
+(**👁 Reveal answer** and **▦ Done ▶ board**, both `N`, **Show question ▶** `N`, **Next ▶** `N` over a tool, **Next
+turn ▶** `N`, the Final's next step `N`…). When it's blue it's only ever the show's next step (Next slide ▶, 👁 Reveal
+answer, ▦ Done ▶ board, the round's intro, Next round ▶): what gives points, opens the buzzers or rolls is in its own
+row. In a clue the row beside the blue button (Amount, ＋ Award, − Deduct) is its flow row, and its buttons keep their
+places as the clue goes on: **↩ Put back (keep tile)** (`Shift+Esc`) at its far left, the row's width from ▦ Done (on a
+Daily Double's splash it leads the Wager row; on PARTNER UP! it has the row to itself), and at its right end ◀ Slide
+(with more than one question slide), 👁 Reveal answer while the blue button is still a slide, and ▦ Done ▶ board, a
+quiet skip that closes the clue without its answer (asking first, as the blue button would); once the answer is up,
+🙈 Hide answer takes ▦ Done's place. A place that's not in use stays empty, so nothing moves under the pointer; on a
+crowded row their words go (their signs stay, still named in full) rather than the row wrapping; and the row stays in
+view at the panel's foot as the rows above it scroll (in a 🤝 partner clue in one window the box's own foot holds that
+place). The tiebreaker's row is the same, with 🏁 Back to results. On a played-out board, Next round ▶ is the blue
+button and its place in the round navigation stays empty, so ◀ Prev round keeps its. Under the row come the tools
+(🎲 Dice, 🎡 Wheel, 🏁 Who goes first, 🤫 Send a card…, 🎭 Deal…, 📊 Scores) with the round navigation (◀ Prev round, the round list, Next round ▶) at the right,
 then a fixed bar that never moves: **↶ Undo ↷ Redo 🔊 Sound · 📜 Log 👥 Players ⚖ Rules · ⏸ Cover 🙈 Hide · 📺
 Audience ▭ · ❔ Help 🚪 Exit** (on a narrow window, as their signs only). On a short window (a laptop zoomed in) the round's
 own box (✍ answers, the Final's wagers, an RPG round…) keeps a few rows in sight, and the panel scrolls. A moment's own

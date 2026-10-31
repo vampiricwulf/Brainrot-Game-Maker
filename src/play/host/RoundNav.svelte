@@ -154,10 +154,12 @@
       {/each}
     </select>
   {/if}
-  <!-- Played out, it's the main button instead (one of them, not two). (A final round's long name is cut short, never
-       its ▶: in full in its tooltip.) -->
+  <!-- Played out, it's the blue button instead (one of them, not two): its room stays here, unseen, so ◀ Prev round and
+       Go to round keep their places. (A final round's long name is cut short, never its ▶: in full in its tooltip.) -->
   {#if !done}
     <button class="ghost next" onclick={next} title={`${nextName} · ${board ? `${left} clue${left === 1 ? '' : 's'} not played yet` : 'asks first'}`}><span class="nm">{nextName}</span> ▶</button>
+  {:else}
+    <span class="next room" aria-hidden="true"><span class="nm">{nextName}</span> ▶</span>
   {/if}
 </div>
 
@@ -178,6 +180,13 @@
   .pick {
     max-width: 180px;
     font-size: 12px;
+  }
+  /* (As wide as the button it keeps the place of.) */
+  .room {
+    visibility: hidden;
+    padding: 6px 12px;
+    border: 1px solid transparent;
+    white-space: nowrap;
   }
   /* A final round's long name on ▶ is cut short (…), as in Go to round, so on the board the tools and the round's ◀ /
      picker / ▶ stay on one line, as in a clue, and the stage keeps one size. Up to 1300px wide, to the width of the
