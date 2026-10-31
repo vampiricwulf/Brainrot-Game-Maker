@@ -12,6 +12,8 @@
   import { CUES, cueFileMissing, cueVolume, hasBuiltin, type CueKey } from '../lib/sounds';
   import { cueHere, loaded, soundUrl } from '../play/cues';
   import MediaPicker from './slide/MediaPicker.svelte';
+  import { menuOf, showMenu, type MenuEntry } from '../lib/menustate.svelte';
+  import { rowKeys } from '../lib/dragorder.svelte';
 
   const audio = $derived(app.game.audio);
   let picking = $state<CueKey | null>(null);
@@ -57,6 +59,21 @@
     if (game.soundVolume?.[key] === undefined) return;
     const { [key]: _, ...rest } = game.soundVolume;
     game.soundVolume = Object.keys(rest).length ? rest : undefined;
+  }
+
+  /** A sound's menu (a right-click on its row, or Shift+F10 in it): test it, pick its file, or go back to the built-in one. */
+  function items(key: CueKey, label: string): MenuEntry[] {
+    const v = audio[key];
+    const builtin = hasBuiltin(key);
+    return menuOf({
+      heading: label,
+      open: [{ label: previewing === key ? '■ Stop' : '▶ Test', onclick: () => preview(key), disabled: !cueHere(app.game, key) }],
+      verbs: [
+        { label: v ? '📁 Change file…' : '📁 Choose file…', onclick: () => (picking = key) },
+        ...(builtin ? [{ label: '↺ Built-in', onclick: () => (audio[key] = undefined), disabled: !v || isOff(key), hint: 'Back to the built-in sound' }] : []),
+      ],
+      clear: builtin ? undefined : { label: '⌫ Clear file', onclick: () => (audio[key] = undefined), disabled: !v || isOff(key) },
+    });
   }
 
   // ▶ plays what the game would play (a missing file: the built-in sound), at its volume; ■ stops it.
@@ -106,15 +123,17 @@
     {@const missing = cueFileMissing(app.game, key, loaded)}
     {@const ref = v ? app.game.media.find((m) => m.id === v) : undefined}
     {@const vol = cueVolume(app.game, key)}
-    <div class="sound" class:off>
+    <!-- svelte-ignore a11y_no_static_element_interactions -->
+    <div class="sound" class:off oncontextmenu={(e) => showMenu(e, items(key, label))} use:rowKeys={{ menu: () => items(key, label) }}>
       {#if builtin}
-        <input type="checkbox" checked={!off} onchange={(e) => setOn(key, e.currentTarget.checked)} aria-label="Play the {label} sound" />
+        <input type="checkbox" id="cue-{key}" checked={!off} onchange={(e) => setOn(key, e.currentTarget.checked)} aria-label="Play the {label} sound" />
       {:else}
         <!-- Nothing to switch off (it has no built-in sound): lined up with the others. -->
         <span class="nobox"></span>
       {/if}
       <div class="what">
-        <b>{label}</b>
+        <!-- (Its name ticks its box.) -->
+        {#if builtin}<label for="cue-{key}"><b>{label}</b></label>{:else}<b>{label}</b>{/if}
         <div class="muted small">{hint}</div>
       </div>
       <span class="spacer"></span>
@@ -151,10 +170,10 @@
           aria-pressed={previewing === key}>{previewing === key ? '■' : '▶'}</button>
       {/if}
       {#if v && !off}
-        <button class="small ghost" onclick={() => (audio[key] = undefined)} title={builtin ? 'Back to the built-in sound' : 'Remove'}
+        <button class="small ghost" onclick={() => (audio[key] = undefined)} title={builtin ? 'Back to the built-in sound' : 'Take its file off (it plays nothing)'}
           aria-label={builtin ? `Back to the built-in ${label} sound` : `Remove the ${label} sound`}
         >
-          {builtin ? '↺' : '−'}
+          {builtin ? '↺ Built-in' : '⌫ Clear file'}
         </button>
       {/if}
       <div class="pop">
