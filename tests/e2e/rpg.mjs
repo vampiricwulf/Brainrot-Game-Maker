@@ -801,6 +801,19 @@ try {
   const boxed = await page.locator('.grid-map .cell.screen.sel').count();
   const startAt = await page.getByRole("button", { name: "Screen Start" }).getAttribute("data-cell");
   assert(boxed === 2 && startAt === "0,0" && (await page.locator(".side h4").first().innerText()) === '2 screens selected', `Alt+drag from a screen draws a box (${boxed} selected, Start at ${startAt})`);
+  // The several-selected bar: ⧉ Duplicate, then Clear selection and 🗑 Delete 2 screens together at the right end,
+  // 🗑 last, red and apart, never alone on a line under ⧉ Duplicate.
+  {
+    const dup = await page.locator('.side').getByRole('button', { name: '⧉ Duplicate' }).boundingBox();
+    const del = page.locator('.side').getByRole('button', { name: '🗑 Delete 2 screens' });
+    const box = await del.boundingBox();
+    const [color, gap, last] = await del.evaluate((b) => [
+      getComputedStyle(b).color,
+      b.getBoundingClientRect().left - b.previousElementSibling.getBoundingClientRect().right,
+      [...b.closest('.row:not(.end)').querySelectorAll('button')].at(-1) === b,
+    ]);
+    assert(color === 'rgb(255, 107, 107)' && gap >= 12 && last && box.x > dup.x + dup.width + 12, `several screens: 🗑 last in red, apart (${gap}px), not under ⧉ Duplicate (🗑 at ${Math.round(box.x)}, ⧉ ends at ${Math.round(dup.x + dup.width)})`);
+  }
   await page.keyboard.press('Escape');
   // Ctrl+A on the map picks every screen (as in the slide and board editors), not the page's text.
   await page.getByRole('button', { name: 'Screen Start' }).click();

@@ -1423,9 +1423,12 @@
             <p class="muted small">Drag one of them to move them all (Alt+arrows too). Shift/Ctrl+click adds or takes one away; Alt+drag draws a box.</p>
             <div class="row">
               <button class="small" onclick={() => duplicateScreens(picked)} title="Ctrl+D">⧉ Duplicate</button>
-              <span class="spacer"></span>
-              <button class="ghost small" onclick={() => (selIds = [])} title="Esc">Clear selection</button>
-              <button class="ghost small danger del" onclick={() => removeScreens(picked)} title="Delete them (Delete key; Undo brings them back)">🗑 Delete {picked.length} screens</button>
+              <!-- (Clear selection and 🗑 go to the next line together when the panel is too narrow, so 🗑 stays last at the
+                right end, never alone under ⧉ Duplicate.) -->
+              <span class="row end">
+                <button class="ghost small" onclick={() => (selIds = [])} title="Esc">Clear selection</button>
+                <button class="ghost small danger del" onclick={() => removeScreens(picked)} title="Delete them (Delete key; Undo brings them back)">🗑 Delete {picked.length} screens</button>
+              </span>
             </div>
           {:else}
             <Tips id="rpg-map" hint="Click an empty cell (＋) to add a screen, click a screen for its settings, double-click it to edit its picture and objects.">
@@ -1841,5 +1844,9 @@
   /* 🗑 last, a little apart from the rest, so a slip doesn't delete. */
   .del {
     margin-left: 8px;
+  }
+  .end {
+    flex-wrap: nowrap;
+    margin-left: auto;
   }
 </style>
