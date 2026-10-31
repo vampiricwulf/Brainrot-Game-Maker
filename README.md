@@ -101,8 +101,12 @@ Shape ▾ is in sections (Shapes, then Draw: ✏ Freehand line…, 🖌 Drawpad�
 and ↺ Theme color, and ↺ Reset background apart. A double-click on an item (or Enter, with it selected) opens its editor: a text box's text, a
 picture's ✎ Edit image, a video's or sound's ✎ Edit video / sound (or its Start at), a link's Link box, a shape's
 Fill. F2 renames an item in the Layers list (on a text box it edits the text), and after you add a picture, video,
-sound or link the keys stay on the slide. In ✎ Edit image, ✋ Select (`M`) picks captions and stickers, a right-click on
-one duplicates or deletes it, and its side panel says This caption / This sticker or Whole picture (Straighten,
+sound or link the keys stay on the slide. ✎ Edit image, 🖌 Drawpad and ✎ Edit video / sound work alike: ↶ Undo, ↷
+Redo, Reset apart, then Cancel, Apply (Insert drawing) and ✕ along the top (a video's Cancel is at its foot, by its
+ways to apply), `Ctrl+Enter` applies, Esc asks before throwing changes away (Discard, or Keep editing / Keep drawing),
+and ✂ Crop pressed reads ✓ Done cropping, its shapes and Remove crop beside it. In ✎ Edit image, `M` / `C` / `D` / `T` /
+`S` pick ✋ Select (captions and stickers), ✂ Crop, 🖌 Draw, 🅣 Text and 😂 Sticker, a right-click on a caption or
+sticker duplicates or deletes it, and its side panel says This caption / This sticker or Whole picture (Straighten,
 Picture size). A right-click gives the item's menu, headed by its name, in the editors' one order (✎ Edit, 🔁 Use
 another file…, ✎ Rename, ⧉ Duplicate, ✂ Cut, 📋 Copy, 📋 Paste, the restacks, Align ▸, 🔒 Lock, 👁 Hide while editing,
 🗑 Delete; a Layers row has it too); on an empty spot, or beside a full-slide question's words, the slide's own (＋ Text

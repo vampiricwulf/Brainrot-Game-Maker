@@ -258,7 +258,7 @@ await ie.locator('summary', { hasText: 'Adjust' }).click();
 await ie.locator('.slider', { hasText: 'Brightness' }).locator('input').fill('140');
 await ie.getByRole('button', { name: '✂ Crop' }).click();
 await ie.getByRole('button', { name: '1:1' }).click();
-await ie.getByRole('button', { name: 'Done cropping' }).click();
+await ie.getByRole('button', { name: '✓ Done cropping' }).click();
 // The preview re-renders in requestAnimationFrame: wait for the square (cropped) canvas, then
 // measure positions at action time so clicks never use a stale layout.
 await page.waitForFunction(() => {

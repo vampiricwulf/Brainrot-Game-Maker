@@ -376,7 +376,7 @@
   // ---------- Closing ----------
   let discarding = $state(false);
   let box = $state<HTMLElement>();
-  /** Esc, ✕, Cancel: while it works, the work goes on; edits not applied are asked about first (not ✂ Crop alone). */
+  /** Esc, ✕, the foot's Cancel: while it works, the work goes on; edits not applied are asked about first (not ✂ Crop alone). */
   function close(): void {
     if (working || done || !changed || nothing) return onclose();
     discarding = true;
@@ -453,11 +453,12 @@
         <span class="hint name" data-edit-hint>{hint}</span>
       {/if}
       <span class="spacer"></span>
+      <!-- The same order in the image, drawing and video windows: ↶ ↷, Reset apart, then ✕ (Cancel and the ways to apply
+           are at the foot). -->
       {#if !working && !done}
         <button class="ghost" onclick={undo} disabled={!canUndo} title="Ctrl+Z">↶ Undo</button>
         <button class="ghost" onclick={redo} disabled={!canRedo} title="Ctrl+Y or Ctrl+Shift+Z">↷ Redo</button>
-        <button class="ghost" onclick={reset} disabled={!facts || nothing}>Reset</button>
-        <button class="ghost" onclick={close} title="Esc">Cancel</button>
+        <button class="ghost apart" onclick={reset} disabled={!facts || nothing} title="Take every change off (Ctrl+Z puts them back)">Reset</button>
       {/if}
       <button class="ghost modal-x" onclick={close} aria-label="Close" title={working ? 'Close: the edit carries on (the header shows how far it got)' : 'Close (Esc)'}>✕</button>
     </header>
@@ -558,8 +559,15 @@
                 <p class="warn small">{cantReencode(facts.video?.codec ?? null)}</p>
               {/if}
               <div class="row">
-                <button class="small" class:on={cropping} aria-pressed={cropping} onclick={() => (cropping ? (cropping = false) : startCrop())} disabled={!reencodes} bind:this={cropButton}
-                  >✂ Crop</button
+                <!-- Pressed, it reads ✓ Done cropping (both words keep its width, so the shapes beside it stay put). -->
+                <button
+                  class="small swap"
+                  class:on={cropping}
+                  aria-pressed={cropping}
+                  onclick={() => (cropping ? (cropping = false) : startCrop())}
+                  disabled={!reencodes}
+                  bind:this={cropButton}
+                  ><span class:hide={cropping}>✂ Crop</span><span class:hide={!cropping}>✓ Done cropping</span></button
                 >
                 {#if cropping || edit.crop}
                   {#each ASPECTS as [a, l] (l)}
@@ -807,6 +815,20 @@
     text-transform: uppercase;
     letter-spacing: 0.08em;
     color: var(--muted);
+  }
+  /* A gap before Reset. */
+  .apart {
+    margin-left: 10px;
+  }
+  .swap {
+    display: inline-grid;
+    justify-items: center;
+  }
+  .swap > span {
+    grid-area: 1 / 1;
+  }
+  .hide {
+    visibility: hidden;
   }
   button.on {
     background: var(--accent-fill);

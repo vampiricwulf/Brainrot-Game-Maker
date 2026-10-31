@@ -313,7 +313,15 @@ RollEvent  { id, ts, source: 'wheel' | 'dice', presetName?, result: string /* la
 - Default template: centered, auto-fit clue text in the classic style.
 
 ### 5.4 Image editor (modal; non-destructive; original kept)
-- Crop (free / 16:9 / 1:1 / 4:3), rotate 90° and free, flip H/V, and resize.
+- The image, drawing (🖌 Drawpad) and video windows work alike: the header is the title and the file's facts, then ↶
+  Undo · ↷ Redo · Reset (apart; the Drawpad's clears the drawing, undoable) · Use original (an edited picture's) ·
+  Cancel · Apply / Insert drawing · ✕ (✎ Edit video / sound has no Cancel there: its foot keeps Cancel, Save as a new
+  file or Only this item, and Apply / Apply to all N). Ctrl+Enter applies in all three, Esc asks before throwing changes
+  away (Discard, or Keep editing / Keep drawing), and ✂ Crop is a toggle that reads ✓ Done cropping while pressed, the
+  shapes and Remove crop by it.
+- Tools: ✋ Select (M), ✂ Crop (C; C again is done cropping), 🖌 Draw (D), 🅣 Text (T), 😂 Sticker (S), each key in its
+  tooltip and never while typing in a box. The chosen tool's options come first in the side panel.
+- Crop (free / 16:9 / 4:3 / 1:1 / 9:16), rotate 90° and free, flip H/V, and resize.
 - Filters: brightness, contrast, saturation, hue, blur, grayscale, sepia, and invert.
 - Text overlays (meme style: Impact-like font, stroke) and **stickers/emoji**. The side panel says what it changes: This
   caption / This sticker (its own Size and Rotation) and Whole picture (⟲ ⟳ 90°, flips, Straighten, Picture size). ✋

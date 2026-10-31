@@ -421,13 +421,24 @@
     selectedId = null;
   }
 
-  // The tool's options come first in the side panel; picking a tool brings them into view.
+  // The tool's options come first in the side panel; picking a tool brings them into view. ✂ Crop picked again (it reads
+  // ✓ Done cropping) is done cropping: back to ✋ Select.
   let aside = $state<HTMLElement>();
   function pickTool(k: typeof tool): void {
-    if (k === 'crop') startCrop();
+    if (k === 'crop' && tool === 'crop') tool = 'move';
+    else if (k === 'crop') startCrop();
     else tool = k;
     void tick().then(() => aside?.scrollTo({ top: 0 }));
   }
+  /** The tools, their keys (shown in their tooltips; not while typing in a box). */
+  const TOOLS: [typeof tool, string, string][] = [
+    ['move', '✋ Select', 'Select and move captions and stickers (M)'],
+    ['crop', '✂ Crop', 'Crop (C)'],
+    ['draw', '🖌 Draw', 'Draw (D)'],
+    ['text', '🅣 Text', 'Add text: click the picture where it goes (T)'],
+    ['sticker', '😂 Sticker', 'Add a sticker: click the picture where it goes (S)'],
+  ];
+  const TOOL_KEYS: Record<string, typeof tool> = { m: 'move', c: 'crop', d: 'draw', t: 'text', s: 'sticker' };
 
   /** The window is gone (Discard, Esc or ✕ while a GIF saves): its save stops, and nothing is changed. */
   let closed = false;
@@ -521,10 +532,11 @@
       e.stopImmediatePropagation();
       const r = box?.querySelector('.sel')?.getBoundingClientRect();
       if (r) itemMenu(new MouseEvent('contextmenu', { clientX: r.left + r.width / 2, clientY: r.top + r.height / 2 }), selectedId);
-    } else if (k === 'm' && !mod && !e.altKey && !inField && !saving) {
-      // M: ✋ Select (select and move captions and stickers).
+    } else if (TOOL_KEYS[k] && !mod && !e.altKey && !inField && !saving && !discarding && !linked) {
+      // The tools' keys: M ✋ Select, C ✂ Crop (again: done cropping), D 🖌 Draw, T 🅣 Text, S 😂 Sticker.
+      e.preventDefault();
       e.stopImmediatePropagation();
-      pickTool('move');
+      pickTool(TOOL_KEYS[k]);
     }
   }
 </script>
@@ -555,19 +567,27 @@
       {/if}
       {#if gif}<span class="hint small">A moving GIF: the edits go on every frame, so it keeps moving.</span>{/if}
       <span class="spacer"></span>
+      <!-- The same order in the image, drawing and video windows: ↶ ↷, Reset apart, then Cancel, the main button, ✕. -->
       <button class="ghost" onclick={undo} disabled={saving || !history.length} title="Ctrl+Z">↶ Undo</button>
       <button class="ghost" onclick={redo} disabled={saving || !future.length} title="Ctrl+Y or Ctrl+Shift+Z">↷ Redo</button>
-      <button class="ghost" onclick={resetAll} disabled={saving}>Reset all</button>
-      {#if el.editedMedia}<button class="ghost" onclick={revert}>Use original</button>{/if}
-      <button class="ghost" onclick={cancel} title="Esc">Cancel</button>
+      <button class="ghost apart" onclick={resetAll} disabled={saving} title="Take every edit off (Ctrl+Z puts them back)">Reset</button>
+      {#if el.editedMedia}<button class="ghost" onclick={revert} title="Show the picture as it was, without its edits, and close">Use original</button>{/if}
+      <button class="ghost apart" onclick={cancel} title="Esc">Cancel</button>
       <button class="primary" onclick={apply} disabled={saving || !img} title="Ctrl+Enter">{saving ? `Saving…${progress === null ? '' : ` ${Math.round(progress * 100)}%`}` : 'Apply'}</button>
       <button class="ghost modal-x" onclick={cancel} aria-label="Close" title="Close (Esc)">✕</button>
     </header>
 
     <!-- (Nothing changes while it saves.) -->
     <div class="tools row" inert={saving}>
-      {#each [['move', '✋ Select', 'Select and move captions and stickers (M)'], ['crop', '✂ Crop'], ['draw', '🖌 Draw'], ['text', '🅣 Text'], ['sticker', '😂 Sticker']] as [k, l, hint]}
-        <button class:on={tool === k} aria-pressed={tool === k} onclick={() => pickTool(k as typeof tool)} title={hint}>{l}</button>
+      {#each TOOLS as [k, l, hint] (k)}
+        {#if k === 'crop'}
+          <!-- Pressed, it reads ✓ Done cropping (both words keep its width, so the tools after it stay put). -->
+          <button class="swap" class:on={tool === k} aria-pressed={tool === k} onclick={() => pickTool(k)} title={tool === k ? 'Done cropping (C)' : hint}
+            ><span class:hide={tool === k}>{l}</span><span class:hide={tool !== k}>✓ Done cropping</span></button
+          >
+        {:else}
+          <button class:on={tool === k} aria-pressed={tool === k} onclick={() => pickTool(k)} title={hint}>{l}</button>
+        {/if}
       {/each}
     </div>
 
@@ -623,8 +643,8 @@
               <button class="small" class:on={cropAspect === a} aria-pressed={cropAspect === a} onclick={() => setAspect(a as 'free' | number)}>{l}</button>
             {/each}
           </div>
+          <!-- (✓ Done cropping is ✂ Crop's own, above the picture.) -->
           <button class="small" onclick={() => (commit(), (edits.crop = undefined), (cropAspect = 'free'), (tool = 'move'))}>Remove crop</button>
-          <button class="small primary" onclick={() => (tool = 'move')}>Done cropping</button>
         {/if}
 
         {#if tool === 'draw'}
@@ -732,6 +752,20 @@
   }
   .crop-size {
     color: var(--accent);
+  }
+  /* A gap before Reset, and before Cancel and the main button. */
+  .apart {
+    margin-left: 10px;
+  }
+  .swap {
+    display: inline-grid;
+    justify-items: center;
+  }
+  .swap > span {
+    grid-area: 1 / 1;
+  }
+  .hide {
+    visibility: hidden;
   }
   .tools button.on,
   button.on {

@@ -10,12 +10,14 @@
 // box (words with a picture stay words; the Answer box doesn't put a picture on the open Question slide). Ctrl+C with
 // words selected with the mouse copies them, not the selected item; items pasted into another game bring their file in
 // the same step. 🎨 Edit image on a moving GIF edits every frame, so it stays a moving GIF. New 🅣 Text boxes stay on the slide.
+// The image and drawing windows' headers in one order (↶ ↷, Reset apart, Cancel, the main button, ✕), the image editor's
+// tool keys (C, D, T, S, M; ✂ Crop pressed reads ✓ Done cropping), and the Drawpad's Keep drawing and Ctrl+Enter.
 import { chromium } from 'playwright-core';
 import { existsSync, mkdirSync, readFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { addClassicRounds, answerReplace, noSelection, selectedWords } from './helpers.mjs';
+import { addClassicRounds, answerAsk, answerReplace, noSelection, selectedWords } from './helpers.mjs';
 import { gif } from './mediafixtures.mjs';
 
 const { GifReader } = createRequire(import.meta.url)('omggif');
@@ -406,6 +408,20 @@ try {
     'after Remove crop, a new crop starts Free',
   );
   await ie.getByRole('button', { name: 'Remove crop' }).click();
+  // Its header in the windows' one order (↶ ↷, Reset apart, Cancel, Apply, ✕); the tools' keys C, D, T, S and M, shown in
+  // their tooltips; ✂ Crop pressed reads ✓ Done cropping, and C again (or a click on it) is done cropping.
+  const ieHeads = (await ie.locator('header button').allInnerTexts()).map((t) => t.trim());
+  assert(ieHeads.join(' | ') === '↶ Undo | ↷ Redo | Reset | Cancel | Apply | ✕', `the image window's header: ↶ Undo, ↷ Redo, Reset, Cancel, Apply, ✕ (${ieHeads.join(' | ')})`);
+  const pressed = async (name) => (await ie.getByRole('button', { name, exact: true }).getAttribute('aria-pressed')) === 'true';
+  await page.keyboard.press('c');
+  assert((await pressed('✓ Done cropping')) && (await ie.getByRole('button', { name: '✓ Done cropping' }).getAttribute('title')) === 'Done cropping (C)', 'C picks ✂ Crop, which reads ✓ Done cropping');
+  await page.keyboard.press('c');
+  assert((await pressed('✋ Select')) && (await ie.getByRole('button', { name: '✂ Crop', exact: true }).getAttribute('title')) === 'Crop (C)', 'C again is done cropping: ✋ Select, and ✂ Crop says its key');
+  for (const [k, name] of [['d', '🖌 Draw'], ['t', '🅣 Text'], ['s', '😂 Sticker']]) {
+    await page.keyboard.press(k);
+    assert(await pressed(name), `${k.toUpperCase()} picks ${name}`);
+  }
+  await page.keyboard.press('m');
   // A caption's font picked from the list shows once it has loaded: the picture wasn't drawn again until another edit, so
   // that edit (Flip H twice, which changes nothing) used to change the font shown.
   await ie.getByRole('button', { name: '🅣 Text' }).click();
@@ -830,18 +846,18 @@ try {
   await gifEditor.getByText('A moving GIF: the edits go on every frame, so it keeps moving.').waitFor();
   await gifEditor.getByRole('button', { name: '⟳ 90°' }).click();
   await gifEditor.getByText('output 30×40px').waitFor();
-  // Ctrl+Z as it starts saving changes nothing on screen (↶ Undo, ↷ Redo and Reset all wait too): what's saved is
-  // what the host saw. (Read before the save's next frame: only the page's own microtasks run in between.)
+  // Ctrl+Z as it starts saving changes nothing on screen (↶ Undo, ↷ Redo and Reset wait too): what's saved is what the
+  // host saw. (Read before the save's next frame: only the page's own microtasks run in between.)
   const whileSaving = await gifEditor.evaluate(async (d) => {
     d.querySelector('header button.primary').click();
     d.dispatchEvent(new KeyboardEvent('keydown', { key: 'z', ctrlKey: true, bubbles: true }));
     for (let i = 0; i < 5; i++) await Promise.resolve();
     const b = (t) => [...d.querySelectorAll('header button')].find((x) => x.textContent.trim() === t);
-    return { hint: d.querySelector('header .hint').textContent, off: ['↶ Undo', '↷ Redo', 'Reset all'].map((t) => b(t).disabled), label: d.querySelector('header button.primary').textContent };
+    return { hint: d.querySelector('header .hint').textContent, off: ['↶ Undo', '↷ Redo', 'Reset'].map((t) => b(t).disabled), label: d.querySelector('header button.primary').textContent };
   });
   assert(
     whileSaving.hint.endsWith('output 30×40px') && whileSaving.off.every(Boolean) && whileSaving.label.startsWith('Saving'),
-    `while it saves, Ctrl+Z leaves the picture as it is, and ↶ Undo, ↷ Redo and Reset all wait (${JSON.stringify(whileSaving)})`,
+    `while it saves, Ctrl+Z leaves the picture as it is, and ↶ Undo, ↷ Redo and Reset wait (${JSON.stringify(whileSaving)})`,
   );
   await gifEditor.waitFor({ state: 'detached' });
   const editedSaid = toast.filter({ hasText: /^Image edited/ });
@@ -894,14 +910,22 @@ try {
     fits.bottom <= fits.wrapBottom && fits.bottom <= fits.window && !fits.scrolls && Math.abs(fits.ratio - 16 / 9) < 0.01,
     `at 1280×720 the whole Drawpad is in view, none of it under a scroll (${JSON.stringify(fits)})`,
   );
+  // Its header goes as the image and video windows' do: ↶ ↷, Reset apart, Cancel, Insert drawing, ✕.
+  const padHeads = (await pad.locator('.head button').allInnerTexts()).map((t) => t.trim());
+  assert(padHeads.join(' | ') === '↶ Undo | ↷ Redo | Reset | Cancel | Insert drawing | ✕', `the Drawpad's header: ↶ Undo, ↷ Redo, Reset, Cancel, Insert drawing, ✕ (${padHeads.join(' | ')})`);
   // A stroke along its bottom edge: the drawing goes in at the slide's bottom.
   const pb = await padArea.boundingBox();
   await page.mouse.move(pb.x + pb.width * 0.3, pb.y + pb.height - 2);
   await page.mouse.down();
   await page.mouse.move(pb.x + pb.width * 0.6, pb.y + pb.height - 2, { steps: 6 });
   await page.mouse.up();
+  // Esc asks: Discard, or Keep drawing.
+  await page.keyboard.press('Escape');
+  await answerAsk(pad.getByRole('button', { name: 'Keep drawing', exact: true }));
+  assert(await padArea.isVisible(), 'Esc with a drawing asks “Discard this drawing?”, and Keep drawing goes back to it');
+  // Ctrl+Enter inserts it, as Insert drawing does (and Apply in the image and video windows).
   const idsBefore = new Set((await drawn()).map((e) => e.id));
-  await pad.getByRole('button', { name: 'Insert drawing' }).click();
+  await page.keyboard.press('Control+Enter');
   await pad.waitFor({ state: 'detached' });
   const drawing = (await drawn()).find((e) => !idsBefore.has(e.id));
   assert(!!drawing && drawing.y + drawing.h >= 1070, `drawn along the pad's bottom edge, it sits at the slide's bottom (${drawing?.y} + ${drawing?.h})`);

@@ -14,7 +14,7 @@
 // 7. From a slide item whose file another item uses: Only this item moves that item alone.
 // 8. A WAV trimmed to 1–3: a 2 s WAV, which 🔊 Sounds' Round intro plays.
 // 9. The handles are sliders saying their time, I and O set the trim at the playhead, Esc asks before throwing edits
-//    away.
+//    away; the header is ↶ ↷ Reset ✕ (no Cancel), and ✂ Crop pressed reads ✓ Done cropping.
 // 10. A 🤫 card's file with a 🗜 copy for phones: the copy goes with the edit, and a new one is made after.
 // 11. Over the clue editor (from the Inspector), the window keeps the keys: after Remove crop the focus is on ✂ Crop;
 //     with the focus lost to the page, arrows and Delete leave the item under it alone, and an Esc from outside both
@@ -481,10 +481,15 @@ try {
   await dialog.getByRole('button', { name: 'Discard' }).click();
   await dialog.waitFor({ state: 'detached' });
   assert(refNamed(await stored(page, 'editorDraft'), 'pair.webm').id === 'pair', 'Discard: closed, the file as it was');
-  // ✂ Crop pressed (and put away) changes nothing, as Result says: Esc just closes.
+  // ✂ Crop pressed (it reads ✓ Done cropping) and put away changes nothing, as Result says: Esc just closes. The header
+  // is ↶ ↷, Reset apart and ✕, as in the image and drawing windows (Cancel is the foot's).
   await editFromMedia('pair.webm');
+  const heads = (await dialog.locator('header button').allInnerTexts()).map((t) => t.trim());
+  assert(heads.join(' | ') === '↶ Undo | ↷ Redo | Reset | ✕', `the header: ↶ Undo, ↷ Redo, Reset, ✕, no Cancel (${heads.join(' | ')})`);
   await dialog.getByRole('button', { name: '✂ Crop' }).click();
-  await dialog.getByRole('button', { name: '✂ Crop' }).click();
+  const doneCrop = dialog.getByRole('button', { name: '✓ Done cropping' });
+  assert((await doneCrop.getAttribute('aria-pressed')) === 'true', '✂ Crop pressed reads ✓ Done cropping');
+  await doneCrop.click();
   await page.keyboard.press('Escape');
   await dialog.waitFor({ state: 'detached', timeout: 5000 });
   assert(true, '✂ Crop alone, then Esc: the window closes without asking about edits');
@@ -516,10 +521,11 @@ try {
   await page.mouse.click(at11.x + at11.width / 2, at11.y + at11.height / 2);
   await clueEditor.locator('.itembar [data-edit-media]').click();
   await dialog.locator('[data-trimbar]').waitFor({ timeout: 30_000 });
-  const focused = () => page.evaluate(() => (document.activeElement === document.body ? 'the page' : (document.activeElement?.textContent?.trim().slice(0, 40) ?? 'nothing')));
+  const focused = () => page.evaluate(() => (document.activeElement === document.body ? 'the page' : (document.activeElement?.innerText?.trim().slice(0, 40) ?? 'nothing')));
   await dialog.getByRole('button', { name: '✂ Crop' }).click();
   await dialog.getByRole('button', { name: 'Remove crop' }).click();
-  await page.waitForFunction(() => document.activeElement?.textContent?.trim() === '✂ Crop', null, { timeout: 5000 }).catch(async () => {
+  // (Its words as shown: ✓ Done cropping is there too, unseen, keeping its width.)
+  await page.waitForFunction(() => document.activeElement?.innerText?.trim() === '✂ Crop', null, { timeout: 5000 }).catch(async () => {
     throw new Error(`After Remove crop the focus is on “${await focused()}”, not ✂ Crop`);
   });
   assert(true, 'Remove crop: the focus goes to ✂ Crop');

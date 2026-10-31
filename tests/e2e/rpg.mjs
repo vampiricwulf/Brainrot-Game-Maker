@@ -1056,7 +1056,7 @@ try {
   await pad.getByRole('button', { name: '✏ Pen' }).click();
   await stroke([[0.32, 0.55], [0.5, 0.6]]);
   await stroke([[0.1, 0.1], [0.12, 0.12]]);
-  await pad.getByRole('button', { name: 'Undo (Ctrl+Z)' }).click();
+  await pad.getByRole('button', { name: '↶ Undo' }).click();
   // Esc asks right in the pad before throwing the drawing away (a browser dialog would show on stream); Esc again keeps it.
   await page.keyboard.press('Escape');
   const discard = pad.getByRole('group', { name: 'Discard this drawing?' });

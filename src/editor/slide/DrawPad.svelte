@@ -1,6 +1,7 @@
 <!--
   A drawpad: draw a whole object from as many strokes as it takes (pen, filled shapes, eraser, any color and size,
-  undo/redo, clear (undoable)), over the screen it goes on, then insert it as one picture where it was drawn.
+  undo/redo, Reset to clear it (undoable)), over the screen it goes on, then insert it as one picture where it was drawn
+  (Ctrl+Enter).
 -->
 <script lang="ts">
   import { modal } from '../../lib/modal';
@@ -213,6 +214,12 @@
     e.stopImmediatePropagation();
     // Esc while it asks is "keep drawing".
     if (e.key === 'Escape') return discarding ? void (discarding = false) : cancel();
+    // Ctrl+Enter: Insert drawing, as Apply in the image and video windows (not while it asks).
+    if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+      e.preventDefault();
+      if (!discarding && strokes.length && !busy) void insert();
+      return;
+    }
     if (typing) return;
     const k = e.key.toLowerCase();
     if ((e.ctrlKey || e.metaKey) && k === 'z') {
@@ -235,15 +242,19 @@
     <div class="row head">
       <h2 class="modal-title">🖌 {title}</h2>
       {#if discarding}
-        <InlineAsk text="Discard this drawing?" ok="Discard" cancel="Cancel" danger onok={oncancel} oncancel={() => (discarding = false)} />
+        <InlineAsk text="Discard this drawing?" ok="Discard" cancel="Keep drawing" danger onok={oncancel} oncancel={() => (discarding = false)} />
       {:else if empty}
         <span class="hint warn" role="alert">Nothing to insert: everything drawn has been erased.</span>
       {:else}
         <span class="hint">Draw the whole thing, as many strokes as it takes, then Insert.</span>
       {/if}
       <span class="spacer"></span>
-      <button class="ghost" onclick={cancel} title="Esc">Cancel</button>
-      <button class="primary" onclick={insert} disabled={!strokes.length || busy}>Insert drawing</button>
+      <!-- The same order in the image, drawing and video windows: ↶ ↷, Reset apart, then Cancel, the main button, ✕. -->
+      <button class="ghost" onclick={undo} disabled={!strokes.length && !cleared} title="Ctrl+Z">↶ Undo</button>
+      <button class="ghost" onclick={redo} disabled={!redoList.length} title="Ctrl+Y or Ctrl+Shift+Z">↷ Redo</button>
+      <button class="ghost apart" onclick={clear} disabled={!strokes.length} title="Clear the drawing (Ctrl+Z brings it back)">Reset</button>
+      <button class="ghost apart" onclick={cancel} title="Esc">Cancel</button>
+      <button class="primary" onclick={insert} disabled={!strokes.length || busy} title="Ctrl+Enter">Insert drawing</button>
       <button class="ghost modal-x" onclick={cancel} aria-label="Close" title="Close (Esc)">✕</button>
     </div>
     <div class="row tools" role="toolbar" aria-label="Drawing tools">
@@ -257,10 +268,6 @@
       <ColorBox bind:value={color} aria-label="Pen color" />
       <span class="sep"></span>
       <label class="small">Size <input type="range" min="2" max="80" bind:value={size} aria-label="Brush size" /> {size}</label>
-      <span class="sep"></span>
-      <button class="ghost" onclick={undo} disabled={!strokes.length && !cleared} aria-label="Undo (Ctrl+Z)" title="Undo (Ctrl+Z)">↶</button>
-      <button class="ghost" onclick={redo} disabled={!redoList.length} aria-label="Redo (Ctrl+Shift+Z)" title="Redo (Ctrl+Shift+Z)">↷</button>
-      <button class="ghost" onclick={clear} disabled={!strokes.length} title="Clear (Undo brings it back)">Clear</button>
     </div>
     <div class="pad-wrap" bind:this={wrap}>
       <div class="pad" style:--pad-w={padW ? `${padW}px` : undefined}>
@@ -305,6 +312,10 @@
   .swatch.on {
     outline: 3px solid var(--accent);
     outline-offset: 1px;
+  }
+  /* A gap before Reset, and before Cancel and the main button. */
+  .apart {
+    margin-left: 10px;
   }
   .sep {
     width: 1px;
