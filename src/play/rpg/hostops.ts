@@ -568,7 +568,8 @@ export function goThrough(game: Game, session: Session, elId: string, players: s
 /**
  * An object's right-click menu, on the stage or in the host panel's list: its card's buttons first, in the card's words
  * and order (one that asks something first opens the card), then 🗂 Open its card, ✎ Edit, reveal or hide it, then
- * remove it (`removed` gets what to tell the host; `closed` closes its card once a button says so). `oneWindow`: viewers
+ * remove it (`removed` gets what to tell the host; `closed` closes its card once a button says so; `cardOpen`: its card
+ * is the one open, so the Delete key removes it too, and its item shows the key). `oneWindow`: viewers
  * see the menu, so a secret object with an `alias` (see hiddenNames: "🙈 Hidden object 1") is headed by that, never its
  * name, and its buttons and ✎ Edit wait on its card (behind 👁 Show, as there); nor does a button name a secret object it
  * reveals.
@@ -585,7 +586,8 @@ export function objectMenu(
     run,
     oneWindow = false,
     alias,
-  }: { open: () => void; removed: (text: string) => void; closed?: () => void; edit?: () => void; run?: ObjectRun; oneWindow?: boolean; alias?: string },
+    cardOpen = false,
+  }: { open: () => void; removed: (text: string) => void; closed?: () => void; edit?: () => void; run?: ObjectRun; oneWindow?: boolean; alias?: string; cardOpen?: boolean },
 ): MenuEntry[] {
   const found = objectAt(game, session, elId);
   if (!found) return [];
@@ -610,8 +612,8 @@ export function objectMenu(
     ],
     // (Not for hotspots, arrival points and no-go areas: viewers never see them, so a Reveal would do nothing.)
     verbs: neverShown(el) ? [] : [{ label: shown ? '🙈 Hide from viewers' : '👁 Reveal to viewers', onclick: () => setObjectShown(game, session, elId, !shown) }],
-    // (Off its screen, for this game: the editor's object stays.)
-    delete: { label: '🗑 Remove', keys: 'Delete', onclick: () => removed(removeObject(game, session, elId, oneWindow) ?? '') },
+    // (Off its screen, for this game: the editor's object stays. The Delete key takes off the object whose card is open.)
+    delete: { label: '🗑 Remove', ...(cardOpen ? { keys: 'Delete' } : {}), onclick: () => removed(removeObject(game, session, elId, oneWindow) ?? '') },
   });
 }
 

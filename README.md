@@ -610,7 +610,7 @@ box has no blue button of its own (an object's card and the full map's buttons a
 - An object's card (a click on it on the stage, or in Objects here) and its menu (a right-click there, or `Shift+F10`)
   hold the same buttons, in the same words and order: ✋ Ann picks up 🪙5, 🚪 Go through, 💬 Talk, 🛒 Shop, its
   actions (🎲 Roll d6, HP −1, +$500…) and ▶ Run all; the menu then has 🗂 Open its card, ✎ Edit, 🙈 Hide from viewers and
-  🗑 Remove (`Delete`). A button that asks something first (who it's for, with nobody there; a locked door) opens its
+  🗑 Remove (`Delete` once its card is open). A button that asks something first (who it's for, with nobody there; a locked door) opens its
   card. In one window a secret object's buttons wait on its card, behind 👁 Show, and its steps say “a hidden object”
   even when they were taken with the audience window open.
 - Shops. A right-click on a ware in the shop on the stage: **🛒 Buy for** each player, or **📦 Change the stock…**

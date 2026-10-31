@@ -266,17 +266,23 @@ async function bigWorld() {
   await heap.waitFor({ state: 'detached' });
 
   // Its menu (a right-click in the list, or on the stage) starts with its card's buttons, in the card's words: then 🗂 Open
-  // its card, ✎ Edit, Hide or Reveal, and 🗑 Remove (Delete) last.
+  // its card, ✎ Edit, Hide or Reveal, and 🗑 Remove last (with no key: Delete takes off only the object whose card is open).
   await host.locator('.rh .objs button', { hasText: 'Riddle cat' }).click({ button: 'right' });
   const catMenu = await menuLines(host);
   assert(
-    catMenu[0] === '# Riddle cat' && catMenu[1] === 'Ask the question' && catMenu.includes('🗂 Open its card') && catMenu.includes('✎ Edit') && catMenu.at(-1) === '🗑 Remove · Delete',
+    catMenu[0] === '# Riddle cat' && catMenu[1] === 'Ask the question' && catMenu.includes('🗂 Open its card') && catMenu.includes('✎ Edit') && catMenu.at(-1) === '🗑 Remove',
     `an object's menu starts with its card's buttons (${catMenu.join(' | ')})`,
   );
   await host.keyboard.press('Escape');
   await openMenu(host).waitFor({ state: 'detached' });
   // A question pop-up (the Riddle cat's): the host sees its answer before it's revealed, viewers don't.
   await host.locator('.rh .objs button', { hasText: 'Riddle cat' }).click();
+  // With its card open, its menu's 🗑 Remove shows the Delete key (the key takes off the object whose card is open).
+  await host.locator('.rh .objs button', { hasText: 'Riddle cat' }).click({ button: 'right' });
+  const catOpenMenu = await menuLines(host);
+  await host.keyboard.press('Escape');
+  await openMenu(host).waitFor({ state: 'detached' });
+  assert(catOpenMenu.at(-1) === '🗑 Remove · Delete', `with its card open, 🗑 Remove shows Delete (${catOpenMenu.at(-1)})`);
   await host.getByRole('dialog', { name: 'Object: Riddle cat' }).getByRole('button', { name: 'Ask the question' }).click();
   await aud.waitForFunction(() => document.body.innerText.includes('What has keys but no locks?'));
   const hostInfo = host.locator('.stage-area > .info');

@@ -825,7 +825,8 @@ The mode isn't saved with the game: it's dual while the audience window is open.
   `objectMenu`, in the list and on the stage) draw one list, `objectActs` (✋ … picks up, 🚪 Go through / Only …, 🔒 Lock,
   💬 Talk, 🛒 Shop, each action, ▶ Run all), in the card's words and order; in the menu, one that asks first (`asks`:
   nobody to run it for, a locked door) opens the card, and after them come 🗂 Open its card, ✎ Edit (the live editor,
-  `screenedit.svelte.ts`, so the stage's menu opens it too), 🙈 Hide / 👁 Reveal, 🗑 Remove (`Delete`). In one window a
+  `screenedit.svelte.ts`, so the stage's menu opens it too), 🙈 Hide / 👁 Reveal, 🗑 Remove (`Delete`, shown only
+  while its card is open: the key takes off the object whose card is open, `cardOpen`). In one window a
   masked secret's menu has none of its card's buttons. Steps about an authored secret object (`nameSecret`) keep a
   quiet text, “a hidden object” (objectSay: its card's buttons, rename, class, Lock, NPC stats, Reveal, Go through).
   A ware in the shop on the stage (`data-ware`, the host's copy) has a right-click menu (shopops `wareMenu`): 🛒 Buy

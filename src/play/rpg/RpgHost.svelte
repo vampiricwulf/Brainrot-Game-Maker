@@ -536,6 +536,7 @@
                     objectMenu(game, session, el.id, {
                       oneWindow: !dual,
                       alias: aliases.get(el.id),
+                      cardOpen: object === el.id,
                       run: ctx,
                       open: () => (object = el.id),
                       edit: () => editObject(here!.screen),

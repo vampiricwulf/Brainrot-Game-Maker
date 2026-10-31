@@ -4480,6 +4480,7 @@
           e,
           objectMenu(game, session, objId, {
             oneWindow: !dual,
+            cardOpen: rpgObject === objId,
             run: { live: app.live, selected, teams: buzzerOn(game.settings) && teamsOn(game.settings) },
             open: () => ((hideControls = false), (rpgObject = objId)),
             edit: found ? () => ((hideControls = false), editScreen(found.st, found.screen)) : undefined,

@@ -242,7 +242,11 @@ describe('objects and items on the RPG stage', () => {
     const closed: string[] = [];
     const items = objectMenu(game, session, potion.id, { run, open: () => closed.push('open'), edit: () => closed.push('edit'), closed: () => closed.push('closed'), removed: () => {} });
     expect(lines(items)).toEqual(['Potion', '✋ Ann picks up Potion', '—', '🗂 Open its card', '✎ Edit', '—', '🙈 Hide from viewers', '—', '🗑 Remove']);
-    expect(items.at(-1)).toMatchObject({ keys: 'Delete', danger: true });
+    // (The Delete key takes off only the object whose card is open: its key shows then, not from the stage or list.)
+    expect(items.at(-1)).toMatchObject({ danger: true });
+    expect(items.at(-1)).not.toHaveProperty('keys');
+    const fromCard = objectMenu(game, session, potion.id, { run, open: () => {}, removed: () => {}, cardOpen: true });
+    expect(fromCard.at(-1)).toMatchObject({ label: '🗑 Remove', keys: 'Delete', danger: true });
     // Pressed from the menu: as from its card (she picks it up, and its card closes).
     (items[1] as { onclick: () => void }).onclick();
     expect(inventory(session, 'p0').map((e) => e.item)).toEqual(['potion']);
