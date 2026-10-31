@@ -236,7 +236,9 @@ try {
   // A 📱 row opens the 👥 row's menu (the same one), and F2 there renames them.
   await card.locator('li', { hasText: 'Player 2' }).click({ button: 'right' });
   const rowMenu = (await page.getByRole('menu').getByRole('menuitem').allInnerTexts()).map((t) => t.split('\n')[0].trim());
-  assert(rowMenu[0].startsWith('✎ Rename') && rowMenu.at(-1).startsWith('🗑 Delete player'), `right-click a player's 📱 row: their menu (${rowMenu.join(', ')})`);
+  // (The 👥 row's menu, in the editors' one order: what they're set to, ✎ Rename, the moves, then 🗑 Delete.)
+  const rowOrder = ['🎨 Color…', '🖼 Picture…', '± Start score…', '✎ Rename', '▲ Move up', '▼ Move down', '🗑 Delete player'];
+  assert(rowMenu.length === rowOrder.length && rowOrder.every((x, i) => rowMenu[i].startsWith(x)), `right-click a player's 📱 row: their menu (${rowMenu.join(', ')})`);
   await page.keyboard.press('Escape');
   await page.getByRole('menu').waitFor({ state: 'detached' });
   assert((await card.locator('li', { hasText: 'Player 2' }).innerText()).includes('📱 waiting'), 'the others are 📱 waiting');
@@ -705,7 +707,13 @@ try {
   assert((await page.evaluate(() => window.__room.posts)) === 3 && (await closes()) === 0, 'same room, same seats: nobody joins again');
 
   // ---------- ▶ Next game… from the results: the phones wait for the next game (not the last one's places) ----------
+  // (Buzz Night is still kept to resume, with Player 1's $200: Start asks before replacing it.)
   await page.getByRole('button', { name: 'Start game ▶' }).click();
+  const replaceAsk = page.locator('.actions [data-start-ask]');
+  await replaceAsk.waitFor();
+  assert((await replaceAsk.innerText()).includes('The game in progress (Jeopardy!, round 1 of 2) is discarded'), 'Start with Buzz Night kept to resume asks first: the game in progress is discarded');
+  await page.waitForTimeout(450);
+  await replaceAsk.getByRole('button', { name: 'Start new game' }).click();
   await page.getByRole('button', { name: 'Skip intro' }).click();
   await page.waitForTimeout(450);
   await page.locator('.rn > button').last().click();
