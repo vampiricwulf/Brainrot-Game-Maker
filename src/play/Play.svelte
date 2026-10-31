@@ -3790,7 +3790,7 @@
       const pick = selected[0] ? `[data-player-id="${selected[0]}"]` : (rpgSelObjects[0] ?? rpgObject) ? `[data-object="${rpgSelObjects[0] ?? rpgObject}"]` : null;
       at = (pick && at.querySelector<HTMLElement>(pick)) || at;
     }
-    if (!at?.closest('.play') || !at.closest('[data-player-id], .tile[data-clue], .stage-box, .panel :is([data-next], [data-next-pair], [data-next-also], [data-step], [data-flow])')) return false;
+    if (!at?.closest('.play') || !at.closest('[data-player-id], .tile[data-clue], .stage-box, .panel :is([data-next], [data-next-also], [data-step], [data-flow])')) return false;
     const r = at.getBoundingClientRect();
     byMenuKey = true;
     try {
@@ -4147,7 +4147,7 @@
     if (e.defaultPrevented || browserMenuFits(e.target, getSelection())) return;
     const t = e.target instanceof Element ? e.target : null;
     if (t?.closest('[data-player-id]')) return playerMenuAt(e);
-    if (t?.closest('.panel :is([data-next], [data-next-pair], [data-next-also], [data-step], [data-flow])')) momentMenuAt(e);
+    if (t?.closest('.panel :is([data-next], [data-next-also], [data-step], [data-flow])')) momentMenuAt(e);
   }
 
   function stageMenu(e: MouseEvent): void {
