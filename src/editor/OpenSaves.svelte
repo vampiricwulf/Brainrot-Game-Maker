@@ -1,4 +1,5 @@
-<!-- Desktop app: Open… lists the games in BrainrotSaves (newest first), with Browse… for a file anywhere else. -->
+<!-- Desktop app: Open… lists the games in BrainrotSaves (newest first: saves and play-only web pages), with Browse… for a
+     file anywhere else. -->
 <script lang="ts">
   import { modal } from '../lib/modal';
   import { toast } from '../lib/app.svelte';
@@ -21,7 +22,7 @@
   } = $props();
   // (As Recent games says it.)
   const when = (ms: number) => (ms ? new Date(ms).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' }) : '');
-  /** An exported .html: Open… edits the game inside it. */
+  /** A play-only web page (an exported .html): Open… edits the game inside it. */
   const exported = (s: SaveEntry) => /\.html?$/i.test(s.name);
   // Saves go to Documents when the app's folder can't be written: 📂 shows the folder the newest save is in.
   const newest = $derived(saves.reduce<SaveEntry | undefined>((a, b) => (!a || b.modified > a.modified ? b : a), undefined));
@@ -44,15 +45,15 @@
       <button class="ghost modal-x" onclick={onclose} aria-label="Close" title="Close (Esc)">✕</button>
     </div>
     <p class="hint">
-      Your saves and exported games in BrainrotSaves ({where}). Browse… opens a game file from anywhere else (.brainrot, .json
-      or an exported .html), or an older version Save kept (Game.brainrot.bak).
+      Your saves and play-only web pages in BrainrotSaves ({where}). Browse… opens a game file from anywhere else (.brainrot,
+      .json or a play-only web page's .html), or an older version Save kept (Game.brainrot.bak).
     </p>
     <div class="list">
       {#each saves as s, i (s.place + s.name)}
         <button class="save" onclick={() => onpick(s)} data-autofocus={i === 0 ? '' : undefined}>
           <b>{s.name}</b>
           <span class="hint"
-            >{exported(s) ? 'Exported game · ' : ''}{when(s.modified)} · {formatBytes(s.size)}{s.place === 'documents' ? ' · in Documents' : ''}</span
+            >{exported(s) ? 'Play-only web page · ' : ''}{when(s.modified)} · {formatBytes(s.size)}{s.place === 'documents' ? ' · in Documents' : ''}</span
           >
         </button>
       {/each}

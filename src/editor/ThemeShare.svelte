@@ -414,7 +414,7 @@
     <span class="btns">
       <button class="small" onclick={importFile} title="Open a .brainrot-theme file">📂 Import theme…</button>
       <button class="small" onclick={() => (importing = 'code')} title="Paste a theme code someone sent you">⌨ Paste theme code…</button>
-      <button class="small" onclick={fromGame} title="Open a .brainrot game (or its exported web page) and use its theme (with its pictures and uploaded fonts)">📂 Use a theme from another game…</button>
+      <button class="small" onclick={fromGame} title="Open a .brainrot game (or its play-only web page) and use its theme (with its pictures and uploaded fonts)">📂 Use a theme from another game…</button>
     </span>
   </div>
   <p class="hint">A theme file carries its pictures and uploaded fonts; a code and My themes keep the colors, fonts and layout.</p>

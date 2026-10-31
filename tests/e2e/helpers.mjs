@@ -25,15 +25,18 @@ export async function noDailyDoubles(page) {
   await box.press('Tab');
 }
 
-/** The first Save of an untitled game asks for its name: answer with `name` ('' keeps "Untitled Game"). */
+/**
+ * The first Save (or export) of an untitled game asks for its name: answer with `name` ('' keeps "Untitled Game"). Its
+ * button is Save, or Export when it's for the play-only web page.
+ */
 export async function nameGame(page, name = '') {
   const dialog = page.getByRole('dialog', { name: 'Name your game' });
   await dialog.waitFor();
   if (name) await dialog.getByRole('textbox').fill(name);
-  await dialog.getByRole('button', { name: 'Save', exact: true }).click();
+  await dialog.getByRole('button', { name: /^(Save|Export)$/ }).click();
 }
 
-/** ⋯ → ⬇ Export as a web page… (Export HTML, the playable file). */
+/** ⋯ → ⬇ Export as a web page… (play-only): Export HTML, the play-only web page. */
 export async function clickExportHtml(page, opts = {}) {
   await page.getByRole('button', { name: /^More:/ }).click(opts);
   await page.getByRole('menuitem', { name: /Export as a web page/ }).click(opts);

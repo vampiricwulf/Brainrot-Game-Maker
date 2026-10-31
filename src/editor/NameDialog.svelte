@@ -1,7 +1,8 @@
-<!-- The first Save of an untitled game asks for its name (it names the file too). -->
+<!-- The first Save of an untitled game asks for its name (it names the file too); so does its first export, as a
+     play-only web page (`exporting`: "⬇ Name your game", with Export). -->
 <script lang="ts">
   import { modal } from '../lib/modal';
-  let { onname }: { onname: (name: string | null) => void } = $props();
+  let { onname, exporting = false }: { onname: (name: string | null) => void; exporting?: boolean } = $props();
   let name = $state('');
 </script>
 
@@ -22,7 +23,7 @@
       }}
     >
       <div class="modal-head">
-        <h2 class="modal-title" id="name-heading">💾 Name your game</h2>
+        <h2 class="modal-title" id="name-heading">{exporting ? '⬇' : '💾'} Name your game</h2>
         <button type="button" class="ghost modal-x" onclick={() => onname(null)} aria-label="Close" title="Close (Esc)">✕</button>
       </div>
       <label class="field">
@@ -31,7 +32,7 @@
       </label>
       <div class="modal-foot">
         <button class="ghost" type="button" onclick={() => onname(null)}>Cancel</button>
-        <button class="primary" type="submit">Save</button>
+        <button class="primary" type="submit">{exporting ? 'Export' : 'Save'}</button>
       </div>
     </form>
   </div>

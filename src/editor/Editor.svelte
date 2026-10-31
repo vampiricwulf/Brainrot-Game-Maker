@@ -38,9 +38,9 @@
   import { ROUND_MODES } from '../lib/modes';
   import { GAME_FILES, isGameFile, pickFile, safeFilename, saveGameJson } from '../lib/fileio';
   import { MAX_PACK_READ, readGameFile, savePack, storeFiles, type ReadGame } from '../lib/pack';
-  import { exportStandaloneHtml } from '../lib/export';
+  import { exportedLine, exportStandaloneHtml } from '../lib/export';
   import { buzzerBase } from '../lib/remote.svelte';
-  import { formatBytes, loadGameMedia, mediaUrls, pruneMedia } from '../lib/media.svelte';
+  import { loadGameMedia, mediaUrls, pruneMedia } from '../lib/media.svelte';
   import { askToKeepStorage } from '../lib/persist';
   import SoundsPanel from './SoundsPanel.svelte';
   import RoundEditor from './RoundEditor.svelte';
@@ -727,7 +727,7 @@
     if (file) openFile(file);
     else
       toast(
-        'Drop pictures, videos and sounds on 🖼 Media, a slide, a tile or a Choose… button, and a sheet of clues (.csv, .tsv) on a board’s 📥 Import clues…. A game file (.brainrot, .json, exported .html) dropped here opens, and a theme file (.brainrot-theme) shows on 🎨 Theme.',
+        'Drop pictures, videos and sounds on 🖼 Media, a slide, a tile or a Choose… button, and a sheet of clues (.csv, .tsv) on a board’s 📥 Import clues…. A game file (.brainrot, .json, or a play-only web page’s .html) dropped here opens, and a theme file (.brainrot-theme) shows on 🎨 Theme.',
       );
   }
 
@@ -791,15 +791,18 @@
     fields.afterGlobal();
   }
 
-  /** The name asked for on the first Save of an untitled game (null: not asking). */
-  let naming = $state<((name: string | null) => void) | null>(null);
+  /** The name asked for on the first Save (or export) of an untitled game (null: not asking). */
+  let naming = $state<{ answer: (name: string | null) => void; exporting: boolean } | null>(null);
   /** Games already asked for a name (asked once: "Untitled Game" is a fine name if the host says so). */
   const named = new Set<string>();
 
-  /** The first Save (or Export as a web page) of an untitled game asks for its name, once. False when that was cancelled. */
-  async function askName(): Promise<boolean> {
+  /**
+   * The first Save (or Export as a web page: `exporting`) of an untitled game asks for its name, once. False when that
+   * was cancelled.
+   */
+  async function askName(exporting = false): Promise<boolean> {
     if ((game.title.trim() && game.title.trim() !== 'Untitled Game') || named.has(game.id)) return true;
-    const name = await new Promise<string | null>((answer) => (naming = answer));
+    const name = await new Promise<string | null>((answer) => (naming = { answer, exporting }));
     naming = null;
     if (name === null) return false;
     named.add(game.id);
@@ -839,18 +842,16 @@
   let exporting = $state(false);
   async function exportHtml(): Promise<void> {
     // A file with nothing to play: the player couldn't add a round there.
-    if (!game.rounds.length) return void toast('Add a round first (＋ Add round): the exported file is for playing, and this game has no rounds yet.');
-    if (!(await askName())) return;
+    if (!game.rounds.length) return void toast('Add a round first (＋ Add round): a play-only web page is for playing, and this game has no rounds yet.');
+    if (!(await askName(true))) return;
     exporting = true;
     packPct = null;
     const point = savePoint();
     try {
       const r = await whileWriting(() => exportStandaloneHtml($state.snapshot(game), packProgress, buzzerBase()));
       if (r) {
-        mark('exported', 'Exported HTML', point);
-        const line =
-          `Exported a playable HTML file (${formatBytes(r.size)}): ${r.where.replace(/^(Saved to |Saved |Download started: )/, '')}. Double-click it to play.` +
-          (r.online ? ` ${r.online} item${r.online === 1 ? ' plays' : 's play'} from the internet, so it needs internet during the game.` : '');
+        mark('exported', 'Exported a play-only web page', point);
+        const line = exportedLine(r.size, r.where, r.online);
         // (One message, as Save gives: a toast under the missing files' window was cut to one line.)
         if (r.missing.length) void tell(`${line}\n\nThese media files were missing and weren't included, so the game plays without them:\n${r.missing.join('\n')}`);
         else toast(line);
@@ -868,16 +869,20 @@
   let finding = $state(false);
   let settings = $state(false);
 
-  /** The header's ⋯ menu: what isn't needed every few minutes, so the header fits at 125% and 150% zoom. */
+  /**
+   * The header's ⋯ menu: what isn't needed every few minutes, so the header fits at 125% and 150% zoom. First the copies
+   * of the game that aren't its .brainrot (each saying what it's for), then the rest.
+   */
   function moreMenu(e: MouseEvent): void {
     dropMenu(e, [
+      { heading: 'Save a copy as' },
       {
-        label: '⬇ Export as a web page…',
-        hint: 'One .html file that plays this game in any browser, without this app: to share it, or to play it on another computer. It shows the answers, so keep it to yourself until the show.',
+        label: '⬇ Export as a web page… (play-only)',
+        detail: 'Plays without this app. Shows the answers: keep it to yourself.',
         disabled: exporting,
         onclick: exportHtml,
       },
-      { label: '{ } Export JSON', hint: 'Text only, no media. Handy for hand-editing.', onclick: exportJson },
+      { label: '{ } Export JSON (text only, no pictures)', detail: 'For editing by hand.', onclick: exportJson },
       { sep: true },
       // (Autosaves and Save's file names are desktop app settings: a browser has neither.)
       {
@@ -973,7 +978,7 @@
     </button>
     <span class="spacer"></span>
     {#if exporting}
-      <span class="muted autosave" role="status">⬇ Exporting the web page…{packPct !== null ? ` ${packPct}%` : ''}</span>
+      <span class="muted autosave" role="status">⬇ Exporting the play-only web page…{packPct !== null ? ` ${packPct}%` : ''}</span>
     {/if}
     <JobPill />
     {#if opening}
@@ -1057,7 +1062,7 @@
     />
   {/if}
   {#if asking}<ReplaceDialog heading={asking.heading} title={asking.title} go={asking.go} full={!app.storageOk} onchoice={asking.answer} />{/if}
-  {#if naming}<NameDialog onname={naming} />{/if}
+  {#if naming}<NameDialog onname={naming.answer} exporting={naming.exporting} />{/if}
   {#if previous}
     {@const prev = previous}
     <div class="data-notice" role="status">

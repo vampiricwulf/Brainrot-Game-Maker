@@ -320,7 +320,7 @@ try {
   await exportTold.waitFor();
   const exportSaid = await exportTold.innerText();
   assert(
-    exportSaid.includes('Exported a playable HTML file') && /missing and weren't included, so the game plays without them:\s*pic\.png/.test(exportSaid) && !(await c.locator('.toast', { hasText: 'Exported a playable' }).count()),
+    exportSaid.includes('Exported a play-only web page') && /missing and weren't included, so the game plays without them:\s*pic\.png/.test(exportSaid) && !(await c.locator('.toast', { hasText: 'Exported a play-only' }).count()),
     `exported with a file missing: one message says where it went and which file it plays without (${exportSaid.replace(/\s+/g, ' ')})`,
   );
   await exportTold.getByRole('button', { name: 'OK' }).click();

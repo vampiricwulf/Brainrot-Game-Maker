@@ -358,7 +358,10 @@ RollEvent  { id, ts, source: 'wheel' | 'dice', presetName?, result: string /* la
 - **Save** → download `.brainrot` (zip); in the desktop app, into `BrainrotSaves` next to the exe (Documents when that
   can't be written), replacing the game's last save and keeping two `.bak` backups. **Open** → Recent games (the last 8
   games replaced, kept in the browser), the desktop app's BrainrotSaves, a file picker, or drag-drop.
-- **Export standalone HTML** (player only, embedded media) with a size warning.
+- **Export standalone HTML** (player only, embedded media) with a size warning: ⋯ › *Save a copy as* › ⬇ Export as a web
+  page… (play-only), "Plays without this app. Shows the answers: keep it to yourself." It has one name everywhere, the
+  **play-only web page**: the export's message, 🕘 History, the desktop app's list of saves and the header while it's made.
+  An untitled game's first export asks ⬇ Name your game, with Export.
 - **Autosave** of the editing session to IndexedDB after every change: the next launch opens where you left off (a game
   in progress offers Resume game). The desktop app can also write timed autosaves into BrainrotSaves (⚙ Settings).
 - Import/export of plain `game.json` without media, for easy hand-editing or AI-assisted question writing. A slip with

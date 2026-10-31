@@ -5,7 +5,7 @@ import { chromium } from 'playwright-core';
 import { existsSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { addClassicRounds, stored } from './helpers.mjs';
+import { addClassicRounds, clickExportHtml, stored } from './helpers.mjs';
 
 const file = resolve(process.env.APP_FILE || 'dist/index.html');
 if (!existsSync(file)) throw new Error('Run `npm run build` first');
@@ -119,6 +119,22 @@ try {
   await page.keyboard.press('Escape');
   await gameKeys.waitFor({ state: 'detached' });
   assert(await help.evaluate((b) => b === document.activeElement), 'closing it gives the focus back to ❔ Help');
+  // ⋯ starts with "Save a copy as": the two exports, each saying what it's for under its name.
+  await more.click();
+  const copies = await page.locator('.cm').evaluate((m) => ({
+    heading: m.querySelector('.heading')?.textContent,
+    items: [...m.querySelectorAll('[role="menuitem"]')].slice(0, 2).map((b) => [b.getAttribute('aria-label'), document.getElementById(b.getAttribute('aria-describedby'))?.textContent]),
+  }));
+  assert(
+    copies.heading === 'Save a copy as' &&
+      JSON.stringify(copies.items) ===
+        JSON.stringify([
+          ['⬇ Export as a web page… (play-only)', 'Plays without this app. Shows the answers: keep it to yourself.'],
+          ['{ } Export JSON (text only, no pictures)', 'For editing by hand.'],
+        ]),
+    `⋯ starts with “Save a copy as”, each export with what it's for on a line under it (${JSON.stringify(copies)})`,
+  );
+  await page.keyboard.press('Escape');
   // A window only for reading closes on Enter too, as its Done does (not from a link or a button in it).
   await more.click();
   await page.getByRole('menuitem', { name: 'ℹ About' }).click();
@@ -169,6 +185,16 @@ try {
   assert(
     foot.dom.join('|') === 'Cancel|Save' && foot.visual.join('|') === 'Cancel|Save' && foot.mainClass.includes('primary'),
     `💾 Name your game: Cancel on the left, Save (the main one) rightmost (${foot.visual.join(' · ')})`,
+  );
+  await page.keyboard.press('Escape');
+  await naming.waitFor({ state: 'detached' });
+  // An export's first time asks the same, as ⬇ Name your game with Export.
+  await clickExportHtml(page);
+  await naming.waitFor();
+  foot = await footer(naming);
+  assert(
+    (await naming.getByRole('heading').innerText()) === '⬇ Name your game' && foot.visual.join('|') === 'Cancel|Export' && foot.mainClass.includes('primary'),
+    `an export asks “⬇ Name your game”, Export rightmost (${foot.visual.join(' · ')})`,
   );
   await page.keyboard.press('Escape');
   await page.getByRole('button', { name: /New/ }).first().click();

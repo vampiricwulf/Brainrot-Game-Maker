@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { unusedNote } from './export';
+import { exportedLine, unusedNote } from './export';
 import type { MediaRef } from './model';
 import { jeopardyGame } from './testgame';
 
@@ -19,5 +19,17 @@ describe('the export’s size questions', () => {
     game.media.push(file('small', 4 * MB), file('used', 200 * MB), file('link', 500 * MB, { url: 'https://example.com/a.wav' }));
     game.audio = { ...game.audio, tileOpen: 'used' };
     expect(unusedNote(game)).toBe('');
+  });
+});
+
+describe('what an export says', () => {
+  it('calls the file a play-only web page, with its size and where it went', () => {
+    expect(exportedLine(3.1 * MB, 'Download started: Trivia-Night.html')).toBe('Exported a play-only web page (3.1 MB): Trivia-Night.html. Double-click it to play.');
+    expect(exportedLine(2 * MB, 'Saved to C:\\Games\\BrainrotSaves\\Quiz.html')).toBe('Exported a play-only web page (2.0 MB): C:\\Games\\BrainrotSaves\\Quiz.html. Double-click it to play.');
+  });
+
+  it('says when it needs the internet during the game', () => {
+    expect(exportedLine(MB, 'Saved /home/q.html', 1)).toMatch(/q\.html\. Double-click it to play\. 1 item plays from the internet, so it needs internet during the game\.$/);
+    expect(exportedLine(MB, 'Saved /home/q.html', 3)).toContain(' 3 items play from the internet');
   });
 });

@@ -169,6 +169,16 @@ export function unusedNote(game: Game): string {
   return bytes > UNUSED_SAY ? `\n\n${formatBytes(bytes)} of it is files nothing in the game uses: 🖼 Media › 🗑 Delete unused leaves them out.` : '';
 }
 
+/**
+ * What an export says once its file is made: one name for it, "play-only web page", its size, where it went (`where`, as
+ * savedWhere says it) and, with `online` items playing from links, that it needs the internet.
+ */
+export function exportedLine(size: number, where: string, online = 0): string {
+  const file = where.replace(/^(Saved to |Saved |Download started: )/, '');
+  const net = online ? ` ${online} item${online === 1 ? ' plays' : 's play'} from the internet, so it needs internet during the game.` : '';
+  return `Exported a play-only web page (${formatBytes(size)}): ${file}. Double-click it to play.${net}`;
+}
+
 /** `buzzer`: the buzzer server the exported file uses for phone buzzers ('' for none). */
 export async function exportStandaloneHtml(
   game: Game,

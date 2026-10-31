@@ -67,8 +67,8 @@
     <h3 class="sec" id="open-files">Saved files</h3>
     <div class="files" role="group" aria-labelledby="open-files">
       <p class="hint">
-        A game you saved or were sent: a .brainrot, a .json, an exported .html game, or an older version the desktop app's Save
-        kept (Game.brainrot.bak).{saves ? ' BrainrotSaves… lists your saves and exported games.' : ''}
+        A game you saved or were sent: a .brainrot, a .json, a play-only web page (.html), or an older version the desktop
+        app's Save kept (Game.brainrot.bak).{saves ? ' BrainrotSaves… lists your saves and play-only web pages.' : ''}
       </p>
       {#if saves}<button onclick={onsaves}>BrainrotSaves…</button>{/if}
       <button onclick={onbrowse} title="Pick a game file on this computer">Browse…</button>
