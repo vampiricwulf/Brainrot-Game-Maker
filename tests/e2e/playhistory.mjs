@@ -189,7 +189,7 @@ try {
   await page.keyboard.press('t');
   await page.keyboard.press('Shift+T');
   assert(Number((await page.locator('.tc .left').innerText()).replace('s', '')) > 30, 'Shift+T adds 10 seconds to the countdown');
-  await page.locator('.tc button[title="Hide timer"]').click();
+  await page.locator('.tc').getByRole('button', { name: '✕ Close' }).click();
 
   // Next round with tiles left asks, with the focus on its Cancel: Enter presses Cancel, even with a player selected.
   await page.keyboard.press('2');

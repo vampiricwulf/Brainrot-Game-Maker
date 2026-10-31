@@ -8,7 +8,7 @@
 // A file over 16 MB that the server takes is a note, not a refusal: the 📱 preview and the editor's checklist say
 // phones on mobile data may wait for it (the pre-game list doesn't), and in one window the host panel counts it,
 // never naming it, with 🗜 Make smaller (its window names no file either). Its upload (slowed down here) says how far
-// it got, and a phone how much has come; ✖ Take back stops one partway (the room never lists it); and a file the room
+// it got, and a phone how much has come; ↩ Take back stops one partway (the room never lists it); and a file the room
 // holds already isn't uploaded again. Needs `npm ci` in buzzer/.
 import { chromium } from 'playwright-core';
 import { createHash } from 'node:crypto';
@@ -336,13 +336,13 @@ try {
     assert(await until(() => cards().find((c) => c.text === 'Again')?.media?.[0]?.file === fileId(files.slow)), 'Card 2’s file is the one the room holds');
     assert(posts.length === upAfterOne, `nothing was uploaded for it (${posts.length - upAfterOne} uploads)`);
 
-    // ✖ Take back while its file goes up: the upload stops, and the room never lists that file.
+    // ↩ Take back while its file goes up: the upload stops, and the room never lists that file.
     const mark = await page.evaluate(() => window.__seen.length);
     await send('sc_tip', 'Card 3');
     await openList();
     assert(await until(async () => (await sawUpload(mark)) >= 2, 30_000), 'Card 3’s 20 MB video starts going up');
     await list.getByRole('button', { name: 'Take Card 3 back' }).click();
-    assert(await until(() => stopped.length === 1), `✖ Take back stops its upload (${stopped.join()})`);
+    assert(await until(() => stopped.length === 1), `↩ Take back stops its upload (${stopped.join()})`);
     const keys = async () => (await roomKeys(persist)).filter((k) => k.startsWith('p:')).length;
     assert(await until(async () => (await keys()) === 17), `the room keeps only the 17 MB file’s pieces (${await keys()} pieces)`);
     // (Past the 5 s a stopped upload would wait before it went again: there's no state to wait for, as nothing should go.)

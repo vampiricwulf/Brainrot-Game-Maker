@@ -686,13 +686,13 @@
           <label class="field">Outline width<input type="range" min="0" max="0.3" step="0.01" bind:value={selText.strokeWidth} /></label>
           {@const turn = Math.round(angleToOutput(selText.rotation, edits))}
           <label class="field">Rotation {turn}°<input type="range" min="-180" max="180" value={turn} oninput={(e) => (selText!.rotation = angleToSource(+e.currentTarget.value, edits))} /></label>
-          <button class="small danger" onclick={removeSelected}>🗑 Delete text</button>
+          <button class="small danger" onclick={removeSelected} title="Delete this caption (Delete; Ctrl+Z brings it back)">🗑 Delete text</button>
         {:else if selSticker}
           <h4>This sticker {selSticker.emoji}</h4>
           <label class="field">Size<input type="range" min="0.03" max="0.6" step="0.01" value={selSticker.size * sizeK} oninput={(e) => (selSticker!.size = +e.currentTarget.value / sizeK)} /></label>
           {@const turn = Math.round(angleToOutput(selSticker.rotation, edits))}
           <label class="field">Rotation {turn}°<input type="range" min="-180" max="180" value={turn} oninput={(e) => (selSticker!.rotation = angleToSource(+e.currentTarget.value, edits))} /></label>
-          <button class="small danger" onclick={removeSelected}>🗑 Delete sticker</button>
+          <button class="small danger" onclick={removeSelected} title="Delete this sticker (Delete; Ctrl+Z brings it back)">🗑 Delete sticker</button>
         {/if}
 
         <h4>Whole picture</h4>

@@ -340,7 +340,7 @@ export function uploadCardFile(
   });
 }
 
-/** ✖ Take back: the room deletes these card files now (only those no card still out uses). */
+/** ↩ Take back: the room deletes these card files now (only those no card still out uses). */
 export const forgetCardFiles = (ids: string[]): boolean => ids.length > 0 && remote.features.includes('files') && !!link?.send({ t: 'forget', files: ids });
 
 /**

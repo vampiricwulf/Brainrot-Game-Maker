@@ -48,7 +48,7 @@
     <button class="small ghost" onclick={() => addTime(app.live, -10)} disabled={t.expired} title="10 seconds less" aria-label="10 seconds less">−10</button>
     <button class="small ghost" onclick={() => addTime(app.live, 10)} title="10 seconds more (Shift+T)" aria-label="10 seconds more">+10</button>
     <button class="small ghost" onclick={() => start(t.start ?? t.total)} title="Restart" aria-label="Restart timer">↺</button>
-    <button class="small ghost" onclick={hide} title="Hide timer" aria-label="Hide timer">✕</button>
+    <button class="small ghost" onclick={hide} title="Takes the timer off the screen">✕ Close</button>
   {:else}
     <button class="small" onclick={() => start(secs)} title="T">Start {secs}s</button>
   {/if}

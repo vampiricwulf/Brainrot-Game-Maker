@@ -233,7 +233,7 @@
     {:else}
       <button class="small" onclick={() => setObjectShown(game, session, el.id, !seen)}>{seen ? '🙈 Hide from viewers' : '👁 Reveal to viewers'}</button>
     {/if}
-    <button class="small ghost" onclick={take} title="Take it off the screen (Delete; undoable)">🗑 Remove</button>
+    <button class="small ghost danger" onclick={take} title="Take it off the screen (Delete; Undo brings it back)">🗑 Remove</button>
     <span class="muted small">Drag avatars on the stage to move them{role?.class === 'item' || role?.class === 'currency' ? ', or this onto one to pick it up' : ''}.</span>
   </div>
 </div>

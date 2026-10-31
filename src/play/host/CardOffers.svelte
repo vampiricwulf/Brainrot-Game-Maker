@@ -2,7 +2,7 @@
   🤫 The cards actions offered (partner-clues spec §12.1, §12.2): an RPG object's, an item's, a wheel slice's, a die
   face's or a board space's 🤫 Send a card button ran. Each asks who gets its card ("Goblin: 🤫 Card for whoever set it
   off → Ann"), with 📤 Send (or the 📋 copy buttons) and Skip. Nothing goes to a phone but by that 📤 Send: the same
-  sending as 🤫 Send a card… (the list of cards out, ↻ Send again, ✖ Take back). In one window this is on stream: it
+  sending as 🤫 Send a card… (the list of cards out, ↻ Send again, ↩ Take back). In one window this is on stream: it
   names players and counts what's on the card, never says it. With `at`, the offers made there (a landing box, a
   space's or an object's card, the tool's box), shown under it; without, the rest, at the top of the panel.
 -->

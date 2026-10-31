@@ -27,6 +27,8 @@ export const RENAMED: [string, string][] = [
   ['💾 Replace “…”…', 'Overwrite “…”'],
   ['🎭 Show who was who', '🎭 Who was who'],
   ['↩ Take the cards back', '✖ Take back (🎭 Deal…)'],
+  ['↩ Take back', '✖ Take back'],
+  ['✕ Close the card window', '✖ Close the card window'],
   ['🗑 End this deal', '✖ Put it away'],
 ];
 

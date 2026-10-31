@@ -328,7 +328,7 @@ describe('uploadCardFile', () => {
     expect(await minute).toMatchObject({ refused: 'busy' });
   });
 
-  it('stops when told (✖ Take back), and when nothing has moved for a minute (then as a dropped connection)', async () => {
+  it('stops when told (↩ Take back), and when nothing has moved for a minute (then as a dropped connection)', async () => {
     inRoom();
     const stop = new AbortController();
     const up = uploadCardFile(new Blob(['x']), 'image/png', { signal: stop.signal });

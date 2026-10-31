@@ -415,7 +415,7 @@
             {#each session.players.filter((x) => x.id !== p.id) as o (o.id)}<option value={o.id}>{o.name}</option>{/each}
           </select>
           {#if pos}<button class="tiny" title="Drop it on this screen (it can be picked up again)" aria-label="Drop {entryName(game, e)} on this screen" onclick={() => drop(e.id)}>⬇</button>{/if}
-          <button class="tiny" title="Remove {e.qty > 1 ? 'that many' : 'it'}" aria-label="Remove {entryName(game, e)}" onclick={() => remove(e.id)}>−</button>
+          <button class="tiny danger" title="Remove {e.qty > 1 ? 'that many' : 'it'} (Undo brings it back)" aria-label="Remove {entryName(game, e)}" onclick={() => remove(e.id)}>🗑</button>
         </span>
       </div>
       {#if using === e.id && def?.onUse?.length}

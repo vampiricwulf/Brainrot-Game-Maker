@@ -384,7 +384,7 @@
               {#each COUNTS as n (n)}<option value={String(n)}>{countText(n)}</option>{/each}
               <option value="rest">{countText('rest')}</option>
             </select>
-            <button class="ghost tiny" aria-label="Take {partName(part, i)} out of this deal" onclick={() => removePart(part)} disabled={work.parts.length < 2}>✕</button>
+            <button class="ghost tiny danger" aria-label="Take {partName(part, i)} out of this deal" title="Out of this deal only (the saved deal keeps it)" onclick={() => removePart(part)} disabled={work.parts.length < 2}>🗑</button>
           </div>
           <div class="row">
             {#if dual}

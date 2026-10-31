@@ -1,7 +1,7 @@
 // 🤫 Cards anywhere (partner-clues spec §12): cards the host sends with 🤫 Send a card… (the tools row, in any round:
 // one of the editor's 🤫 Cards, a tile's or a Final's card, or a quick one) or from an open tile's panel or the Final's
 // (their own 🤫 cards: a standard or Daily Double tile's, 🤫 Just you, 💡 Insider tip; a Final's). They live in
-// Session.cards, and only the host's presses add to it (sendCard, sendCardAgain); ✖ Take back, a round ending, a tile
+// Session.cards, and only the host's presses add to it (sendCard, sendCardAgain); ↩ Take back, a round ending, a tile
 // closing or a card deleted in the editor take them away. A player taken out keeps their place on them, left out of
 // every list while they're out (cardsOut), so a restore or an Undo gives them back. What the buzzer room gets is built
 // from Session.cards alone (buzz.ts sessionCards), as a partner clue's is from its sends. No Svelte state: tested in
@@ -166,7 +166,7 @@ export function cardsOut(game: CardGame, session: OutSession): SentCard[] {
 
 /**
  * The cards still out, whoever they're for: one held for players taken out too (they keep their place on it while
- * they're gone, and ✖ Take back takes it as well).
+ * they're gone, and ↩ Take back takes it as well).
  */
 export function cardsHeld(game: CardGame, session: Pick<Session, 'cards' | 'currentRound' | 'phase' | 'currentClue'>): SentCard[] {
   return (session.cards ?? []).filter((c) => stillOut(game, session, c));
@@ -253,7 +253,7 @@ export function sendCardAgain(game: CardGame, session: Session, id: Id, now = Da
   return true;
 }
 
-/** ✖ Take back: the card goes from every phone it was sent to. */
+/** ↩ Take back: the card goes from every phone it was sent to. */
 export function takeBackCard(session: Session, id: Id): void {
   if (!session.cards) return;
   session.cards = session.cards.filter((c) => c.id !== id);

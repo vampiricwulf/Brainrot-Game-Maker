@@ -1314,7 +1314,7 @@
               <button class="small primary" onclick={() => ((lookId = null), (editing = true))} title="Enter">✎ Edit screen</button>
               <button class="small" onclick={() => duplicateScreens([sel])} title="Ctrl+D">⧉ Duplicate</button>
               <span class="spacer"></span>
-              <button class="ghost small danger" onclick={() => removeScreens([sel])} title="Delete key; Undo brings it back">🗑 Delete</button>
+              <button class="ghost small danger" onclick={() => removeScreens([sel])} title="Delete this screen (Delete key; Undo brings it back)">🗑 Delete screen</button>
             </div>
             {#if onstart}
               <div class="row">
@@ -1424,7 +1424,8 @@
             <div class="row">
               <button class="small" onclick={() => duplicateScreens(picked)} title="Ctrl+D">⧉ Duplicate</button>
               <span class="spacer"></span>
-              <button class="ghost small danger" onclick={() => removeScreens(picked)} title="Delete them (Delete key; Undo brings them back)">🗑 Delete</button>
+              <button class="ghost small" onclick={() => (selIds = [])} title="Esc">Clear selection</button>
+              <button class="ghost small danger del" onclick={() => removeScreens(picked)} title="Delete them (Delete key; Undo brings them back)">🗑 Delete {picked.length} screens</button>
             </div>
           {:else}
             <Tips id="rpg-map" hint="Click an empty cell (＋) to add a screen, click a screen for its settings, double-click it to edit its picture and objects.">
@@ -1836,5 +1837,9 @@
     min-height: 0;
     display: flex;
     flex-direction: column;
+  }
+  /* 🗑 last, a little apart from the rest, so a slip doesn't delete. */
+  .del {
+    margin-left: 8px;
   }
 </style>

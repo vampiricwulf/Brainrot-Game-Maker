@@ -1101,7 +1101,7 @@ export interface PartnerState {
   deal?: Record<Id, CardTo[]>;
   /**
    * What the host sent to phones: only the host's presses add to it (📤 Send, Send and start, ↻ Send again, Send
-   * changes: sendCards and the like in partner.ts); ✖ Take back removes a card's sends. Never the clue's cards by
+   * changes: sendCards and the like in partner.ts); ↩ Take back removes a card's sends. Never the clue's cards by
    * themselves: opening the tile, the wheel and Show question send nothing.
    */
   sent?: CardSend[];

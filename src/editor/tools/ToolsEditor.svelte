@@ -316,21 +316,21 @@
       <div class="row top">
         <span class="spacer"></span>
         <button class="ghost" onclick={() => dup('wheel', wheel)} title="A copy of this wheel, right after it (Ctrl+D)">⧉ Duplicate</button>
-        <button class="ghost danger" onclick={() => remove('wheel', wheel)} title="Delete this wheel (Undo brings it back)">🗑 Delete wheel</button>
+        <button class="ghost danger del" onclick={() => remove('wheel', wheel)} title="Delete this wheel (Undo brings it back)">🗑 Delete wheel</button>
       </div>
       {#key wheel.id}<WheelEditor {wheel} />{/key}
     {:else if dice}
       <div class="row top">
         <span class="spacer"></span>
         <button class="ghost" onclick={() => dup('dice', dice)} title="A copy of these dice, right after them (Ctrl+D)">⧉ Duplicate</button>
-        <button class="ghost danger" onclick={() => remove('dice', dice)} title="Delete these dice (Undo brings them back)">🗑 Delete dice</button>
+        <button class="ghost danger del" onclick={() => remove('dice', dice)} title="Delete these dice (Undo brings them back)">🗑 Delete dice</button>
       </div>
       {#key dice.id}<DiceEditor preset={dice} />{/key}
     {:else if deal}
       <div class="row top">
         <span class="spacer"></span>
         <button class="ghost" onclick={() => dup('deal', deal)} title="A copy of this deal, right after it (Ctrl+D)">⧉ Duplicate</button>
-        <button class="ghost danger" onclick={() => remove('deal', deal)} title="Delete this deal (Undo brings it back)">🗑 Delete deal</button>
+        <button class="ghost danger del" onclick={() => remove('deal', deal)} title="Delete this deal (Undo brings it back)">🗑 Delete deal</button>
       </div>
       {#key deal.id}<DealEditor {deal} />{/key}
     {:else if builtin === 'categories'}
@@ -396,5 +396,9 @@
     .layout {
       grid-template-columns: 1fr;
     }
+  }
+  /* 🗑 last, a little apart from the rest, so a slip doesn't delete. */
+  .del {
+    margin-left: 8px;
   }
 </style>

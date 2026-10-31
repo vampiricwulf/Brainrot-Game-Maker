@@ -100,7 +100,7 @@ function sentSlides(game: Game, session: Session): Slide[] {
 /**
  * Starts the uploads the cards out want now (the open partner clue's: filesWanted, what was sent or got ready; and the
  * cards sent with 🤫 Send a card… or from a tile's panel) that aren't in the room, and drops the waiting ones no card
- * wants any more (✖ Take back, the tile closed: `clue` undefined). Play calls it whenever those change; nothing else
+ * wants any more (↩ Take back, the tile closed: `clue` undefined). Play calls it whenever those change; nothing else
  * starts one.
  */
 export function syncUploads(game: Game, session: Session, clue: Clue | undefined): void {

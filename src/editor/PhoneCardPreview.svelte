@@ -180,7 +180,7 @@
             <button class="small ghost" onclick={() => (watching = watching === it.el ? null : it.el)} title="Watch the copy phones get">{watching === it.el ? '⏹ Stop watching' : '▶ Watch it'}</button>
           {/if}
           <button class="small ghost" onclick={() => openShrinkDialog(copy.phoneCopy!.of)} title="Make its copy for phones again">🗜 Make it again</button>
-          <button class="small ghost" onclick={() => removePhoneCopy(game, copy.phoneCopy!.of)} title="Phones get the file itself (Undo brings the copy back)">✕ Remove it</button>
+          <button class="small ghost" onclick={() => removePhoneCopy(game, copy.phoneCopy!.of)} title="Phones get the file itself (Undo brings the copy back)">🗑 Remove it</button>
           {#if watching === it.el && mediaUrls[copy.id]}
             {#if copy.kind === 'audio'}
               <audio class="watch" src={mediaUrls[copy.id]} autoplay controls aria-label="The copy phones get"></audio>

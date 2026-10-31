@@ -424,7 +424,7 @@ try {
   const phone = await cardPreview('sc_movie');
   const note = (await phone.locator('[data-copy-note]').innerText()).replace(/\s+/g, ' ');
   assert(
-    new RegExp(`^📱 Phones get its smaller copy instead \\([\\d.]+ (KB|MB), 1280×720 ${movieBox.word}\\)\\. ▶ Watch it 🗜 Make it again ✕ Remove it$`).test(note),
+    new RegExp(`^📱 Phones get its smaller copy instead \\([\\d.]+ (KB|MB), 1280×720 ${movieBox.word}\\)\\. ▶ Watch it 🗜 Make it again 🗑 Remove it$`).test(note),
     `the card’s 📱 preview says its phones get the copy (${note})`,
   );
   await phone.getByRole('button', { name: '▶ Watch it' }).click();

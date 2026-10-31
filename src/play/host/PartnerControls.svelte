@@ -1,10 +1,10 @@
 <!--
   🤝 A partner clue's part of the host panel (partner-clues spec §6.10): PARTNER UP! (who picked it, the partner by the
   wheel or by hand, ⇄ Swap), then 📤 Hand out the cards (who gets each card: 📤 Send to their phones, ✓ seen, ↻ Send again,
-  📤 Send changes, ✖ Take back, ⇡ Get it ready, or 📋 copying it to them, or 🪟 showing it in the card window open for
+  📤 Send changes, ↩ Take back, ⇡ Get it ready, or 📋 copying it to them, or 🪟 showing it in the card window open for
   one of them when no phone gets cards), and ✔ Got it / ✘ Missed with what each gives (then, with steal on a miss, who
   steals it: the others buzz in, or the host picks one). Nothing goes to a phone or the buzzer server but by those
-  presses, and never more cards than the room takes (✖ Take one back first). In one window this panel is on stream: it
+  presses, and never more cards than the room takes (↩ Take one back first). In one window this panel is on stream: it
   names a card (its name is the host's, "Card 2" when it has none) and counts what's on it, never says it, nor names a
   card's pictures (a file name is often the answer), uploads included. The cards themselves are in the editor's 🤫 Card tabs, and the two-window host column.
   The box holds every action of it, once, beside the choices it's an alternative to: its first line says what's next,
@@ -77,9 +77,9 @@
     marks: Record<Id, { right: boolean; delta: number }>;
     /** ✔ Got it (true) or ✘ Missed: both of the two in one step. */
     onjudge: (got: boolean) => void;
-    /** ✖ Take back: the card goes from every phone it was sent to. */
+    /** ↩ Take back: the card goes from every phone it was sent to. */
     ontakeback: (card: Id) => void;
-    /** ✖ Take back a card shown in the 🪟 card window (no phone gets cards): it's one of the cards out. */
+    /** ↩ Take back a card shown in the 🪟 card window (no phone gets cards): it's one of the cards out. */
     oncardtakeback?: (id: Id) => void;
     /** 🎡 Spin for the describer (teams, the picker's own team playing it): the member wheel, spun. */
     onmemberspin: () => void;
@@ -411,7 +411,7 @@
   /** ⇡ Get it ready now: the files of the cards not sent yet go up to the buzzer room (no phone gets them until they're sent). */
   function getReady(): void {
     retryFiles(game, session, unsent);
-    // (One the room let go of since it went up, after a ✖ Take back or 10 unused minutes, goes up again.)
+    // (One the room let go of since it went up, after a ↩ Take back or 10 unused minutes, goes up again.)
     unputGone(game, session, unsent);
     markReady(s, unsent.map((c) => c.id));
     announce('Getting the cards’ files ready');
@@ -594,7 +594,7 @@
    */
   const handStep = $derived.by((): NextAction | null => {
     if (s.stage !== 'distribute' || verdict.judged || session.revealed) return null;
-    // (Never more cards than the buzzer room takes: ✖ Take one back first. The clock started by T: the cards only.)
+    // (Never more cards than the buzzer room takes: ↩ Take one back first. The clock started by T: the cards only.)
     if (unsentToGo.length)
       return nextStep(clockRuns ? VERBS.sendCards : VERBS.sendAndStart, onclock, allFull ? { title: cardsFullText(game, session, sendAll), disabled: true } : { disabled: false, final: handSoon });
     return nextStep(VERBS.startClock(clockSecs), onclock, { title: cardsOn ? 'Enter: the countdown starts' : 'Enter: the countdown starts (copy the cards to their players first)', final: handSoon });
@@ -873,7 +873,7 @@
         {@const out = cardSends(s, card.id).length > 0}
         <div class="row small" data-card={i + 1}>
           {clueCardName(card, i)} → {out ? sentTo(session, s, card.id).map((t) => toName(session, t)).join(', ') : recipientsText(session, s, rules, card)}{#if out && seenBy(card).length}{' '}✓ seen{/if}
-          {#if out}<button class="ghost small" onclick={() => ontakeback(card.id)} aria-label="Take {clueCardWords(card, i)} back" title="Takes it off the phones it went to">✖ Take back</button>{/if}
+          {#if out}<button class="ghost small" onclick={() => ontakeback(card.id)} aria-label="Take {clueCardWords(card, i)} back" title="Takes it off the phones it went to">↩ Take back</button>{/if}
         </div>
       {/each}
     {:else if cards.length}
@@ -948,12 +948,12 @@
                 {:else}
                   <button class="small" onclick={() => again(card, n)} aria-label="Send {w} again" title="Sends it again under a new id: a phone that came late (a player on a new phone) gets it too, with what’s on the card now">↻ Send again</button>
                 {/if}
-                <button class="ghost small" onclick={() => ontakeback(card.id)} aria-label="Take {w} back" title="Takes it off every phone it went to">✖ Take back</button>
+                <button class="ghost small" onclick={() => ontakeback(card.id)} aria-label="Take {w} back" title="Takes it off every phone it went to">↩ Take back</button>
               {/if}
             {:else if inWindow(card)}
               {@const shown = inWindow(card)!}
               <span class="small" data-card-state>· in the 🪟 card window ({sentToTextOf(shown.to)})</span>
-              <button class="ghost small" onclick={() => oncardtakeback(shown.id)} aria-label="Take {w} back" title="Takes it out of the 🪟 card window">✖ Take back</button>
+              <button class="ghost small" onclick={() => oncardtakeback(shown.id)} aria-label="Take {w} back" title="Takes it out of the 🪟 card window">↩ Take back</button>
             {:else if windowSeat(to)}
               {@const seat = windowSeat(to)!}
               <button class="small" onclick={() => showInWindow(card, n, seat)} aria-label="Show {w} to {name(seat)}" title="Shows it in the 🪟 card window, to {name(seat)} alone, until the tile closes">🪟 Show {name(seat)}</button>

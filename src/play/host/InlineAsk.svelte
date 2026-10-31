@@ -16,6 +16,7 @@
     focusCancel = false,
     alt,
     onalt,
+    altDanger = false,
     alts = [],
     plain = false,
     number = false,
@@ -43,6 +44,8 @@
     /** A second answer, between Cancel and the answer button (Leave: "Discard & leave" beside "Keep & leave"). */
     alt?: string;
     onalt?: () => void;
+    /** The second answer can't be taken back (Discard & leave): red words, set apart from the answer button. */
+    altDanger?: boolean;
     /**
      * More answers, after `alt`, before the answer button (▶ Play's Start: ▶ Resume it instead, 📱 Start the room);
      * `strong`: the one to press, filled.
@@ -137,7 +140,7 @@
     }}>{cancel}</button
   >
   {#if alt && onalt}
-    <button class="small ghost" onclick={() => ready && onalt()}>{alt}</button>
+    <button class="small ghost" class:danger={altDanger} class:apart={altDanger} onclick={() => ready && onalt()}>{alt}</button>
   {/if}
   {#each alts as a (a.label)}
     <button class="small {a.strong ? 'primary' : 'ghost'}" onclick={() => ready && a.onclick()}>{a.label}</button>
@@ -166,5 +169,9 @@
   input.n {
     flex: 0 0 90px;
     min-width: 0;
+  }
+  /* (A gap between it and Keep & leave, so a slip for one never presses the other.) */
+  .apart {
+    margin-right: 10px;
   }
 </style>

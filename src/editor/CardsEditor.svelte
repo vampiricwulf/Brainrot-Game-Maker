@@ -240,7 +240,7 @@
       <div class="row top">
         <span class="spacer"></span>
         <button class="ghost" onclick={() => dup(card)} title="A copy of this card, right after it (Ctrl+D)">⧉ Duplicate</button>
-        <button class="ghost danger" onclick={() => remove(card)} title="Delete this card (Undo brings it back)">🗑 Delete card</button>
+        <button class="ghost danger del" onclick={() => remove(card)} title="Delete this card (Undo brings it back)">🗑 Delete card</button>
       </div>
       {#key card.id}<SavedCardEditor {card} index={list.indexOf(card)} bind:phoneView />{/key}
     {:else}
@@ -343,5 +343,9 @@
     .list > button {
       align-self: flex-start;
     }
+  }
+  /* 🗑 last, a little apart from the rest, so a slip doesn't delete. */
+  .del {
+    margin-left: 8px;
   }
 </style>

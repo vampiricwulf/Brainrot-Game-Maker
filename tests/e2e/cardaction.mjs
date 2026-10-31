@@ -239,7 +239,7 @@ try {
   await win.getByText(MISSION).waitFor();
   assert(await until(() => win.locator('img').evaluate((i) => i.complete && i.naturalWidth > 0 && i.src.startsWith('blob:')).catch(() => false)), 'its picture shows, from this computer’s file');
   assert(!(await win.getByText(WHISPER).count()), 'and not Cat’s card');
-  // ✖ Take back: the window drops it.
+  // ↩ Take back: the window drops it.
   await tools.locator('[data-cards-out-count]').click();
   await host.getByRole('dialog', { name: 'Cards out' }).getByRole('button', { name: 'Take Card 1 back' }).click();
   await win.getByText('Nothing private right now').waitFor();
@@ -254,9 +254,9 @@ try {
   assert(winMsgs.length > 0 && winMsgs.every((t) => t.startsWith('private-')), `the card window gets only its own messages (${[...new Set(winMsgs)].join(', ')})`);
   await offStream('the card window open');
 
-  // ✖ Close it from the menu.
+  // ✕ Close it from the menu.
   await tools.getByRole('button', { name: /🪟 Cards: Bob/ }).click();
-  await host.getByRole('dialog', { name: 'Card window' }).getByRole('button', { name: '✖ Close the card window' }).click();
+  await host.getByRole('dialog', { name: 'Card window' }).getByRole('button', { name: '✕ Close the card window' }).click();
   assert(await until(() => win.isClosed()), 'Close the card window closes it');
   assert(!(await tools.locator('[data-card-window-warn]').count()) && !(await tools.getByRole('button', { name: /🪟/ }).count()), 'and the ⚠ line and its button go');
 
@@ -406,7 +406,7 @@ try {
   assert(!!label && said.includes('sent to Cat'), `it goes (${said})`);
   assert(await until(() => showCat.isDisabled()), 'and then 🪟 Show Cat is off: it’s out to her for as long');
   const already = await tileSend.locator('[data-card-already]').innerText();
-  assert(already.includes(`${label} is out to them already`) && already.includes('✖ Take it back') && !already.includes('↻'), `it says to ✖ take it back first, never ↻ Send again, which isn’t there (${already})`);
+  assert(already.includes(`${label} is out to them already`) && already.includes('↩ Take it back') && !already.includes('↻'), `it says to ↩ take it back first, never ↻ Send again, which isn’t there (${already})`);
   await solo.keyboard.press('Escape');
   await tileSend.waitFor({ state: 'detached' });
   await tools2.locator('[data-cards-out-count]').click();

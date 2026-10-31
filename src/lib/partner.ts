@@ -807,7 +807,7 @@ export function sendCards(session: Seats, s: PartnerState, cards: ClueCard[], no
   return out;
 }
 
-/** ✖ Take back: the card goes from every phone it was sent to (all its sends). */
+/** ↩ Take back: the card goes from every phone it was sent to (all its sends). */
 export function takeBack(s: PartnerState, card: Id): void {
   if (!s.sent) return;
   s.sent = s.sent.filter((x) => x.card !== card);

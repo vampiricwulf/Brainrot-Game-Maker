@@ -353,7 +353,7 @@
               <option value={PLAYER_WHEEL}>🎯 Pick a player</option>
               {#each game.wheels as w (w.id)}<option value={w.id}>{w.name}</option>{/each}
             </select>
-            {#if wi > 0}<button class="ghost tiny" onclick={() => (a.also = a.also?.filter((_, j) => j !== wi - 1))} aria-label="Remove wheel {wi + 1}" title="Remove">✕</button>{/if}
+            {#if wi > 0}<button class="ghost tiny danger" onclick={() => (a.also = a.also?.filter((_, j) => j !== wi - 1))} aria-label="Remove wheel {wi + 1}" title="Remove this wheel from the button (Undo brings it back)">🗑</button>{/if}
           {/each}
           <button class="small" onclick={() => (a.also = [...(a.also ?? []), game.wheels[0]?.id ?? PLAYER_WHEEL])} title="Spin several wheels at once">＋ Add wheel</button>
         {:else if a.do === 'dice'}

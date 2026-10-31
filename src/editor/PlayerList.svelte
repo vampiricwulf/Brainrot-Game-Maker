@@ -323,7 +323,7 @@
             <Avatar player={p} size={30} />
           </button>
           <!-- (On the picture's corner: the row keeps its shape with or without one.) -->
-          {#if p.avatar}<button class="tiny unpic" onclick={() => (p.avatar = undefined)} aria-label="Remove {p.name}'s picture" title="Remove the picture (use the colored token)">✕</button>{/if}
+          {#if p.avatar}<button class="tiny unpic" onclick={() => (p.avatar = undefined)} aria-label="Clear {p.name}'s picture" title="Clear the picture: the colored token shows instead (it stays in 🖼 Media)">⌫</button>{/if}
           {#if picking === p.id}
             <MediaPicker kind="image" onpick={(id) => ((p.avatar = id), (picking = null))} onclose={() => (picking = null)} />
           {/if}
@@ -362,13 +362,12 @@
         <button class="ghost tiny up" onclick={() => nudge(i, -1)} disabled={i === 0} aria-label="Move {p.name || `${lower} ${i + 1}`} up">▲</button>
         <button class="ghost tiny down" onclick={() => nudge(i, 1)} disabled={i === players.length - 1} aria-label="Move {p.name || `${lower} ${i + 1}`} down">▼</button>
         <button
-          class="ghost tiny del"
-          class:danger={!inGame}
+          class="ghost tiny del danger"
           onclick={() => remove(p)}
           disabled={lastOne}
           aria-label="{removeWord} {p.name}"
           title={lastOne ? `The game needs at least one ${lower}: add another first` : `${removeWord} ${p.name} (Undo brings it back)`}
-        >{inGame ? '−' : '🗑'}</button>
+        >🗑</button>
       </span>
       {#if members}
         {@const on = members(p.id)}

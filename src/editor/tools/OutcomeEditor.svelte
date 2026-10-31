@@ -82,7 +82,7 @@
         {#if media}
           {#if media.kind === 'image' && mediaUrls[media.id]}<img src={mediaUrls[media.id]} alt="" onerror={imgFallback} draggable="false" />{/if}
           <span class="small">{media.name}</span>
-          <button class="ghost small" onclick={() => (outcome.media = undefined)} aria-label="Remove {media.name}" title="Remove">−</button>
+          <button class="ghost small" onclick={() => (outcome.media = undefined)} aria-label="⌫ Clear {media.name}" title="Clear it (it stays in 🖼 Media)">⌫ Clear</button>
         {/if}
         {#each ['image', 'video', 'audio'] as const as k}
           {@const what = k === 'image' ? 'a picture' : k === 'video' ? 'a video' : 'a sound'}

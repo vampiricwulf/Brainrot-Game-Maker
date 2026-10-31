@@ -5,7 +5,7 @@
 // words, or the location everyone else shares) under its own id, and the column beside the stage says who got which.
 // Dan's phone goes: the deal's list marks him 📵, with 🪟 for the card window (the others, with phones, have none).
 // ↻ Send again renews every card's id; 🎭 Who was who goes on stream only when pressed, and Ctrl+Z takes it off; a host
-// reload keeps the deal and its cards; in one window the panel only counts the parts; ✖ Take back takes them all off.
+// reload keeps the deal and its cards; in one window the panel only counts the parts; ↩ Take back takes them all off.
 // Neither the audience window before Who was who, nor the host page in one window, ever holds a card's words or the
 // location. With four cards out, the deal's panel warns that its 📤 Send fills the phones; then, with the 8 they hold
 // out, a tile's card and a partner clue's say in their panels why they can't go: the partner clue's by what's off now
@@ -360,7 +360,7 @@ try {
   // The deal would fill the phones: its panel says so before 📤 Send, its cards back or dealt anew.
   dialog = await openDeal();
   const fills = dialog.locator('[data-deal-fills]');
-  const fillsText = '⚠ This fills the phones: they hold 8 cards at once, all phones together. Until you ✖ Take its cards back (or the round ends), no other 🤫 card can go to a phone, a partner clue’s included.';
+  const fillsText = '⚠ This fills the phones: they hold 8 cards at once, all phones together. Until you ↩ Take the cards back (or the round ends), no other 🤫 card can go to a phone, a partner clue’s included.';
   assert((await flat(fills)) === fillsText, `its cards back, 📤 Send would fill the phones: the panel says so first (“${fillsText}”)`);
   await dialog.getByRole('button', { name: '🎭 Deal a new one' }).click();
   await dialog.getByRole('combobox', { name: 'The deal' }).selectOption('saved:deal1');
@@ -398,7 +398,7 @@ try {
     'a partner clue’s: its 📤 Send and the box’s 📤 Send and start are off (the blue button is 👁 Reveal answer)',
   );
   const pFull = partner.locator('[data-cards-full]');
-  const bothLine = '8 cards are out on the phones, 4 of them the 🎭 deal’s, and this sends 2: they hold 8 at once, all phones together, so ✖ Take 2 back first (the deal’s go together, in 🎭 Deal…)';
+  const bothLine = '8 cards are out on the phones, 4 of them the 🎭 deal’s, and this sends 2: they hold 8 at once, all phones together, so ↩ Take 2 back first (the deal’s go together, in 🎭 Deal…)';
   assert((await pFull.innerText()) === bothLine, `and its panel says why, for 📤 Send and start, in sight: “${bothLine}”`);
   // Two quick cards back: both fit, and 📤 Send and start sends them (8 out), the clock running.
   await tools.locator('[data-cards-out-count]').click();

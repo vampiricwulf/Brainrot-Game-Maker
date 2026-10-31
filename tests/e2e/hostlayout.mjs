@@ -1532,7 +1532,7 @@ try {
       await p5.keyboard.press('Escape');
       await send.waitFor({ state: 'detached' });
       await tools.getByRole('button', { name: '🪟 Cards: Annabelle' }).click();
-      await p5.getByRole('dialog', { name: 'Card window' }).getByRole('button', { name: '✖ Close the card window' }).click();
+      await p5.getByRole('dialog', { name: 'Card window' }).getByRole('button', { name: '✕ Close the card window' }).click();
       await tools.locator('[data-card-window-warn]').waitFor({ state: 'detached' });
       onBoard['🔇 and 🤫 1'] = await stageH();
       const named = await Promise.all(['🔇 Stop sounds', '🤫 1 card out', '◀ Previous round', '📊 Scoreboard', next].map((name) => tools.getByRole('button', { name, exact: true }).count()));

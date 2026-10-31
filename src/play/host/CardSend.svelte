@@ -5,7 +5,7 @@
   or pasted, or a link; or the slide on screen, as viewers see it), and how long it lasts (until the round ends, or
   until taken back: a 🤫 Card starts as its own). 📤 Send puts it on their phones, through the same buzzer room path as
   a partner clue's cards; without one, 📋 copies it to them, or 🪟 shows it in the card window. Nothing goes but by
-  that press, never more cards than the room takes (✖ Take one back first), and never a card made in the editor again
+  that press, never more cards than the room takes (↩ Take one back first), and never a card made in the editor again
   to exactly the players it's out to, for as long (↻ Send again in the cards out is for that).
   In one window viewers see this: the 🤫 Cards are listed by name and counted, never said; a tile's are listed by tile
   and name ("Card 2" when it has none) and counted, and only for tiles played or open (the others would say where a
@@ -338,7 +338,7 @@
   const windowName = $derived(windowTo.length ? sentToText(session, windowTo, teams) : '');
   /** Who 📤 Send sends it to: their phones, else the card window's player. */
   const sendTo = $derived(cardsOn ? to : windowTo);
-  /** Phones get cards, and the buzzer room has all it takes: ✖ Take one back first (the 🪟 card window has no limit). */
+  /** Phones get cards, and the buzzer room has all it takes: ↩ Take one back first (the 🪟 card window has no limit). */
   const full = $derived(cardsOn && roomCardsFull(game, session));
   /** How long a card lasts, the shortest first (a tile closes before its round ends). */
   const LASTS_RANK: Record<SentCard['until'], number> = { tile: 0, round: 1, host: 2 };
@@ -360,14 +360,14 @@
   });
   /**
    * (Its label and where to go: nothing of the card, so this shows in one window too. The cards out offer ↻ Send again
-   * only when phones get cards: for the 🪟 card window, ✖ Take back and show it again.)
+   * only when phones get cards: for the 🪟 card window, ↩ Take back and show it again.)
    */
   const alreadyText = $derived(
     !already
       ? ''
       : cardsOn
-        ? `${already.label} is out to them already: ↻ Send it again in the cards out, or ✖ Take it back first`
-        : `${already.label} is out to them already: ✖ Take it back in the cards out first to show it again`,
+        ? `${already.label} is out to them already: ↻ Send it again in the cards out, or ↩ Take it back first`
+        : `${already.label} is out to them already: ↩ Take it back in the cards out first to show it again`,
   );
   const canSend = $derived(sendTo.length > 0 && hasSomething && !full && !already);
   /** Why 📤 Send (or 🪟 Show) can't go, or ''. */
@@ -601,7 +601,7 @@
       {#if itemKinds.length}
         <div class="row wrap" aria-label="On the card">
           {#each itemKinds as it (it.el)}
-            <span class="item small">{ICON[it.kind]}<button class="ghost tiny" aria-label="Take the {ICON[it.kind].split(' ')[1]} off the card" onclick={() => (items = items.filter((x) => x.id !== it.el))}>✕</button></span>
+            <span class="item small">{ICON[it.kind]}<button class="ghost tiny danger" aria-label="Take the {ICON[it.kind].split(' ')[1]} off the card" onclick={() => (items = items.filter((x) => x.id !== it.el))}>🗑</button></span>
           {/each}
         </div>
       {/if}

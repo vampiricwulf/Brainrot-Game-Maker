@@ -497,8 +497,8 @@
     <div class="row picking">
       {#if picked.length}
         <span>{picked.length} selected</span>
-        <button class="small ghost danger" onclick={removePicked} title="Delete the selected files (Delete key; Undo brings them back)">🗑 Delete selected ({picked.length})</button>
         <button class="small ghost" onclick={() => (picked = [])} title="Esc">Clear selection</button>
+        <button class="small ghost danger del" onclick={removePicked} title="Delete the selected files (Delete key; Undo brings them back)">🗑 Delete {picked.length === 1 ? '1 file' : `${picked.length} files`}</button>
       {:else}
         <span class="hint">
           Click a card to select it, Ctrl+click or Shift+click for more, right-click it (or ⋯) for its menu. Double-click a name (or F2) to
@@ -648,7 +648,7 @@
               >
             {/if}
             <button class="small ghost" onclick={() => openShrinkDialog(m.id)} disabled={!!job} title="Make its copy for phones again">🗜 Again</button>
-            <button class="small ghost" onclick={() => removePhoneCopy(game, m.id)} aria-label="Remove its copy for phones" title="Remove its copy: phones get the file itself (Undo brings the copy back)">✕</button>
+            <button class="small ghost danger" onclick={() => removePhoneCopy(game, m.id)} aria-label="Remove its copy for phones" title="Remove its copy: phones get the file itself (Undo brings the copy back)">🗑</button>
           </div>
         {/if}
         {#if shrinkable(m) && !copy && m.size > SHRINK_OFFER_BYTES && phonesGetLink(m)}
@@ -921,5 +921,9 @@
     flex-wrap: wrap;
     align-items: center;
     gap: 8px;
+  }
+  /* 🗑 last, a little apart from the rest, so a slip doesn't delete. */
+  .del {
+    margin-left: 8px;
   }
 </style>

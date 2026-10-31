@@ -43,7 +43,7 @@
      * Final's think music (until its answer).
      */
     onstopsounds?: () => void;
-    /** ✖ Take back a card sent with 🤫 Send a card… or from a tile's panel. */
+    /** ↩ Take back a card sent with 🤫 Send a card… or from a tile's panel. */
     oncardtakeback: (id: string) => void;
     /** A 🎭 deal's cards were taken back (↩ Take the cards back, or a new deal). */
     ondealgone: (cards: SentCard[]) => void;
@@ -194,7 +194,7 @@
       <button class="small" aria-pressed={cardWindow.seat === p.id} aria-label="Card window for {p.name}" onclick={() => cardWindowFor(p.id)}>🪟 <span style:color={p.color}>●</span> {p.name}{cardWindow.seat === p.id ? ' ✓' : ''}</button>
     {/each}
     {#if cardWindow.open}
-      <button class="small ghost" onclick={() => (closeCardWindow(), done())}>✖ Close the card window</button>
+      <button class="small ghost" onclick={() => (closeCardWindow(), done())}>✕ Close the card window</button>
     {/if}
   </div>
 {/snippet}

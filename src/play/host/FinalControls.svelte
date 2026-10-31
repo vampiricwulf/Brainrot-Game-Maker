@@ -80,7 +80,7 @@
     onback: () => void;
     /** Its question slides (several): the next one (1) or the one before (-1). */
     onslide?: (d: 1 | -1) => void;
-    /** ✖ Take back on one of the Final's 🤫 cards. */
+    /** ↩ Take back on one of the Final's 🤫 cards. */
     oncardtakeback?: (id: Id) => void;
     /** Enter in the last wager box (or N in one): the blue button's Show question ▶, through the check before going on. */
     ongo?: (by: 'enter' | 'n') => void;

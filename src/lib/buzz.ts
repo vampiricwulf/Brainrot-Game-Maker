@@ -499,7 +499,7 @@ const partnerCount = (game: Game, session: Session): number => partnerCards(game
 export function dealFullText(game: Game, session: Session, go: (trial: Session) => void): string {
   const now = roomCardCount(game, session);
   const add = roomCardsAfter(game, session, go) - now;
-  return `${now} card${now === 1 ? ' is' : 's are'} out on the phones${ofThem(0, partnerCount(game, session))}, and this deal adds ${add}: they hold ${CARDS_MAX} at once, all phones together, so ✖ Take ${now + add - CARDS_MAX} back first`;
+  return `${now} card${now === 1 ? ' is' : 's are'} out on the phones${ofThem(0, partnerCount(game, session))}, and this deal adds ${add}: they hold ${CARDS_MAX} at once, all phones together, so ↩ Take ${now + add - CARDS_MAX} back first`;
 }
 
 /**
@@ -520,14 +520,14 @@ export function cardsFullText(game: Game, session: Session, go?: (trial: Session
   const need = Math.max(1, now + add - CARDS_MAX);
   if (add > 1) {
     // (More than the phones hold by itself: taking cards back can't make room for it.)
-    const then = need > now ? 'send fewer at once' : `✖ Take ${need} back first${dealAll ? ' (the deal’s go together, in 🎭 Deal…)' : ''}`;
+    const then = need > now ? 'send fewer at once' : `↩ Take ${need} back first${dealAll ? ' (the deal’s go together, in 🎭 Deal…)' : ''}`;
     return `${now} card${now === 1 ? ' is' : 's are'} out on the phones${whose}, and this sends ${add}: they hold ${CARDS_MAX} at once, all phones together, so ${then}`;
   }
   // (Refused, at least as many as the phones hold are out.)
   const out = `${Math.max(now, CARDS_MAX)} cards are out on the phones${whose}`;
-  if (!dealAll) return `${out}: ✖ Take ${need === 1 ? 'one' : need} back first`;
+  if (!dealAll) return `${out}: ↩ Take ${need === 1 ? 'one' : need} back first`;
   // (Taking the deal's back isn't enough when more than it are to go.)
-  if (dealAll < need) return `${out}: ✖ Take ${need} back first (the deal’s go together, in 🎭 Deal…)`;
+  if (dealAll < need) return `${out}: ↩ Take ${need} back first (the deal’s go together, in 🎭 Deal…)`;
   return `${out}: ↩ Take the cards back in 🎭 Deal…${now > dealAll ? `, or take back ${need === 1 ? 'another one' : `${need} others`}` : ''}`;
 }
 

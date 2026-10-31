@@ -513,7 +513,7 @@
             { label: '👁 Show all space names', disabled: round.spaces.every(nameShown), onclick: () => allNames(true) },
             { label: '⊘ Hide all space names', disabled: !round.spaces.some(nameShown), onclick: () => allNames(false) },
             { label: 'Select all', onclick: () => (selIds = round.spaces.map((x) => x.id)), keys: 'Ctrl+A' },
-            { label: 'Deselect', onclick: () => selectOnly(null), disabled: !selIds.length, keys: 'Esc' },
+            { label: 'Clear selection', onclick: () => selectOnly(null), disabled: !selIds.length, keys: 'Esc' },
           ],
         }),
       );
@@ -917,7 +917,8 @@
             <button class="small" onclick={() => duplicateSpaces(picked)} title="Ctrl+D">⧉ Duplicate</button>
             <button class="small" onclick={() => copySpacesToClipboard(picked)} title="Ctrl+C">📋 Copy</button>
             <span class="spacer"></span>
-            <button class="ghost small danger" onclick={() => removeSpaces(picked)} title="Delete them (Delete key; Undo brings them back)">🗑 Delete {picked.length} spaces</button>
+            <button class="ghost small" onclick={() => (selIds = [])} title="Esc">Clear selection</button>
+            <button class="ghost small danger del" onclick={() => removeSpaces(picked)} title="Delete them (Delete key; Undo brings them back)">🗑 Delete {picked.length} spaces</button>
           </div>
           <p class="muted small">Drag one to move them all, or nudge them with Alt+arrows. Shift+click a space to add or leave it out.</p>
           <label class="check small">
@@ -1283,5 +1284,9 @@
     display: flex;
     flex-direction: column;
     gap: 6px;
+  }
+  /* 🗑 last, a little apart from the rest, so a slip doesn't delete. */
+  .del {
+    margin-left: 8px;
   }
 </style>

@@ -256,7 +256,7 @@ try {
   await page.waitForTimeout(900);
   const moved = await header.getByRole('button', { name: 'Undo (Ctrl+Z)' }).getAttribute('title');
   assert(moved.startsWith('Undo: Moved screen “Screen C1” to C2'), `moving a screen names where it went (${moved})`);
-  await page.getByRole('button', { name: '🗑 Delete', exact: true }).click();
+  await page.getByRole('button', { name: '🗑 Delete screen', exact: true }).click();
   await page.waitForTimeout(200);
   assert((await notice.innerText()).startsWith('Deleted screen “Screen C1”') && !(await page.locator('.cell.screen.sel').count()), 'deleting a screen is done at once, with a note');
   await notice.getByRole('button', { name: '↶ Undo' }).click();

@@ -4,7 +4,7 @@
 // late). In each round 🤫 Send a card… in the tools row sends a card to one chosen player: only that phone gets it, and a
 // phone that takes the seat after the send doesn't (a freed seat taken by a new phone, a seat given up and picked again,
 // a player's first phone), until ↻ Send again. In one window the host page (what viewers see) never holds a card's
-// words or file names, the list of cards out included, and ✖ Take back takes a card off the phones. A standard tile's
+// words or file names, the list of cards out included, and ↩ Take back takes a card off the phones. A standard tile's
 // card and a Daily Double's go to the picker by a press and stay until the tile closes ("The answer's on screen" after
 // Reveal). An RPG object's card action, a wheel slice's and a board space's only offer their card: nothing reaches the
 // room until 📤 Send. The 🪟 card window shows only its player's cards, and the audience window never gets one of its
@@ -342,7 +342,7 @@ try {
   assert(true, 'and reaches the new phone');
   assert(await until(async () => !(await rowText('Card 1')).includes('hasn’t got it')), 'the row’s warning goes');
   await outList.getByRole('button', { name: 'Take Card 1 back' }).click();
-  assert(await until(() => !cards().length), '✖ Take back: no card in the room’s state');
+  assert(await until(() => !cards().length), '↩ Take back: no card in the room’s state');
   assert(await until(async () => !(await cardsOn(bob))), 'Bob’s phone drops it');
   await closeMenu(outList);
   assert(!(await outButton.count()), 'no cards out: the tools row says nothing of them');
@@ -394,7 +394,7 @@ try {
   await outButton.click();
   await outList.waitFor();
   await outList.getByRole('button', { name: 'Take Card 2 back' }).click();
-  assert(await until(() => cards().length === 1 && cards()[0].text === JUST), '✖ Take back: the tile’s card stays');
+  assert(await until(() => cards().length === 1 && cards()[0].text === JUST), '↩ Take back: the tile’s card stays');
   await closeMenu(outList);
 
   await mainButton(host).click();
@@ -715,7 +715,7 @@ try {
   assert(popups === 0 && ctx.pages().length === 2, 'in the same window (no second one opens)');
   await closeMenu(sendMenu);
 
-  // ---------- The list of cards out in one window; ↻ Send again reaches Dan's phone; ✖ Take back ----------
+  // ---------- The list of cards out in one window; ↻ Send again reaches Dan's phone; ↩ Take back ----------
   await outButton.click();
   await outList.waitFor();
   assert((await rowText('Card 1')).includes('Card 1 → Dan') && (await rowText('Card 2')).includes('Card 2 → Ann'), 'the list keeps its labels through the reload');
@@ -730,10 +730,10 @@ try {
   assert(!(await dan.locator('#cards-late').isVisible()), 'Dan’s phone gets it now, and the note goes');
   assert(await win2.getByText(FOR_DAN).isVisible(), 'the card window still shows it');
   await outList.getByRole('button', { name: 'Take Card 2 back' }).click();
-  assert(await until(() => cards().length === 1 && cards()[0].text === FOR_DAN), '✖ Take back Card 2: Ann’s card goes');
+  assert(await until(() => cards().length === 1 && cards()[0].text === FOR_DAN), '↩ Take back Card 2: Ann’s card goes');
   assert(await until(async () => !(await cardsOn(ann))), 'Ann’s phone drops it');
   await outList.getByRole('button', { name: 'Take Card 1 back' }).click();
-  assert(await until(() => !cards().length), '✖ Take back Card 1: no card out');
+  assert(await until(() => !cards().length), '↩ Take back Card 1: no card out');
   await win2.getByText('Nothing private right now').waitFor();
   assert(await until(async () => !(await cardsOn(dan))), 'Dan’s phone and his card window drop it');
   await closeMenu(outList);

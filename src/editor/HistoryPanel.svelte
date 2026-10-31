@@ -208,7 +208,8 @@
     {#snippet actions()}
       <button onclick={() => undo('list')} disabled={!history.canUndo} title={history.undoTitle}>↶ Undo</button>
       <button onclick={() => redo('list')} disabled={!history.canRedo} title={history.redoTitle}>↷ Redo</button>
-      <button class="ghost danger" onclick={() => (clearing = true)} disabled={!history.entries.length} title="Clear every step (asks first)">🗑 Clear history…</button>
+      <!-- (At the far end, apart from ↶ ↷: it can't be undone.) -->
+      <button class="ghost danger clear" onclick={() => (clearing = true)} disabled={!history.entries.length} title="Clear every step (asks first)">🗑 Clear history…</button>
     {/snippet}
   </PageHeader>
   <!-- (Also while a filter is typed, with fewer steps: it still hides them, so its box and ✕ Show all stay.) -->
@@ -315,6 +316,9 @@
 </div>
 
 <style>
+  .clear {
+    margin-left: 24px;
+  }
   .hist {
     max-width: 1200px;
   }

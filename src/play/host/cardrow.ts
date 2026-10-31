@@ -18,7 +18,7 @@ const WHY: Record<LeftOut, string> = {
   kind: 'phones can’t show it',
   nofiles: 'this buzzer server isn’t taking files right now',
   failed: 'didn’t reach the buzzer server',
-  full: 'the buzzer room holds all the files it can: ✖ take a card back, then ↻ Send again',
+  full: 'the buzzer room holds all the files it can: ↩ take a card back, then ↻ Send again',
   lost: 'isn’t in the game any more',
   many: 'one card shows 6 at most',
 };
@@ -82,12 +82,12 @@ export function seenSeats(session: Pick<Session, 'players' | 'remote'>, c: Pick<
  * (remote.cardsLate keeps what a room that turned this window away last said).
  */
 export function sentLine(game: Game, session: Session, c: SentCard, filesOn: boolean, off = false, phones = true): { text: string; warn: boolean } {
-  if (off) return { text: `not on the phones: more than ${CARDS_MAX} cards are out (copy it: 📋, or ✖ Take it back)`, warn: true };
+  if (off) return { text: `not on the phones: more than ${CARDS_MAX} cards are out (copy it: 📋, or ↩ Take it back)`, warn: true };
   if (sentState(game, c) === 'edited')
     return {
       text: phones
         ? 'changed in the editor: off the phones until ↻ Send again'
-        : 'changed in the editor: out of the 🪟 card window until you ✖ Take it back and show it again (or copy it: 📋)',
+        : 'changed in the editor: out of the 🪟 card window until you ↩ Take it back and show it again (or copy it: 📋)',
       warn: true,
     };
   const name = (id: Id) => session.players.find((p) => p.id === id)?.name ?? '?';

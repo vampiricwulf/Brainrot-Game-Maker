@@ -158,7 +158,7 @@
     </div>
     <div class="foot">
       <button class="ghost small" onclick={add} disabled={list.length >= CHOICES_MAX} title={list.length >= CHOICES_MAX ? `${CHOICES_MAX} choices at most` : undefined}>＋ Choice</button>
-      <button class="ghost small" onclick={takeOff}>Take the choices off</button>
+      <button class="ghost small danger" onclick={takeOff} title="No more choices for this clue (Undo brings them back)">Take the choices off</button>
       <span class="hint"
         >Players tap one on their phone (no typing) until you show the answer. On stream they show under the question (the slide is drawn a
         little smaller to make room), and the one marked ✔ Right lights up with the answer. Without phone buzzers, players say the letter.</span

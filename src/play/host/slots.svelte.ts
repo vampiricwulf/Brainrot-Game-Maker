@@ -48,9 +48,10 @@ export type HostAsk = {
   ok: string;
   cancel?: string;
   danger?: boolean;
-  /** A second answer (InlineAsk's alt). */
+  /** A second answer (InlineAsk's alt), red and set apart when it can't be taken back (`altDanger`). */
   alt?: string;
   onalt?: () => void;
+  altDanger?: boolean;
   onok: () => void;
   oncancel: () => void;
 };

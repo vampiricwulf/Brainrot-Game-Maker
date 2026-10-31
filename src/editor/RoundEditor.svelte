@@ -1039,7 +1039,7 @@
             <label class="check" title="Show the category name on top of the image">
               <input type="checkbox" bind:checked={cat.showTitleOverImage} /> Name
             </label>
-            <button class="ghost small" onclick={() => (cat.image = undefined)} title="Remove the image (use the name)" aria-label="Remove {categoryLabel(cat)}'s image">−</button>
+            <button class="ghost small" onclick={() => (cat.image = undefined)} title="Clear the picture: the name shows instead (the picture stays in 🖼 Media)" aria-label="⌫ Clear {categoryLabel(cat)}'s picture">⌫ Clear</button>
           </div>
         {/if}
         <!-- Moving, duplicating and deleting are in its menu (⋯, or a right-click), so the row fits a narrow column. -->

@@ -198,7 +198,7 @@ describe('one send at a time (spec §14.4)', () => {
     expect(sendState(session, s, two)).toBe('sent');
   });
 
-  it('✖ Take back removes every send of that card and leaves the others', () => {
+  it('↩ Take back removes every send of that card and leaves the others', () => {
     const { g, session, s, one, two } = setup();
     setPartner(session, s, 'b', 'wheel');
     sendCards(session, s, [one, two], 1000);

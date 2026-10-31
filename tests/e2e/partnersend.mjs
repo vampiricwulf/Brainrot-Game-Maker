@@ -9,7 +9,7 @@
 // plays which part. A host reload mid-upload finishes the uploads of the cards that were sent, and never touches a card
 // that wasn't. A phone that takes a freed seat afterwards gets nothing of the card (nor its file) until ↻ Send again;
 // 📤 Send changes adds and takes back one player; no phone can fetch a file of a card it wasn't sent; ⇡ Get it ready
-// cut off by a reload finishes after it, given to no phone; ✖ Take back. A card with more GIFs than the room holds:
+// cut off by a reload finishes after it, given to no phone; ↩ Take back. A card with more GIFs than the room holds:
 // the upload the room turns down, and one too big for the buzzer server, are said in plain words and offered 📋 Copy
 // picture.
 // The audience window, and the host page in one window, never hold a card's words, its file names or its link.
@@ -573,10 +573,10 @@ try {
   assert(await until(async () => (await ann.locator('.card img[src^="blob:"]').count()) === 1), 'Ann opens it: its words and its picture');
   assert(uploads.length === before + 5 && (await fetchAs(ann, ready)) === 200 && (await fetchAs(dan, ready)) === 404, 'nothing went up again; Ann can fetch the picture now, Dan still can’t');
 
-  // ---------- ✖ Take back card 2 ----------
+  // ---------- ↩ Take back card 2 ----------
   await row(2).getByRole('button', { name: 'Take card 2 back' }).click();
   await cat2.locator('.card').waitFor({ state: 'detached' });
-  assert(!sendOf('c2').length && (await fetchAs(cat2, pic2)) === 404, '✖ Take back: card 2 goes from Cat’s phone, and its picture with it');
+  assert(!sendOf('c2').length && (await fetchAs(cat2, pic2)) === 404, '↩ Take back: card 2 goes from Cat’s phone, and its picture with it');
   assert((await shownOf(host, SECRETS)).length === 0, 'the host page in one window still holds no card’s words, file names or link');
 
   // ---------- Judged, the answer, back to the board ----------
@@ -627,7 +627,7 @@ try {
   assert(turned.error === 'This room holds all the card files it can: send fewer pictures and videos at once', `in plain words (“${turned.error}”)`);
   assert(uploads.length - upBefore === 6, 'six uploads (the picture and five GIFs; never the one over 3 MB)');
   await panel.locator('[data-card-left="1"]').waitFor();
-  const fullLine = '🖼 1 GIF won’t reach the phones (the buzzer room holds all the files it can: ✖ take a card back, then ↻ Send again)';
+  const fullLine = '🖼 1 GIF won’t reach the phones (the buzzer room holds all the files it can: ↩ take a card back, then ↻ Send again)';
   assert((await panel.locator('[data-card-left="1"]').innerText()) === fullLine, `the panel counts it, and says why: “${fullLine}”`);
   const info = host.locator('.info [data-partner-cards-info]');
   assert((await info.innerText()).includes(`📋 copy it: ${turned.error}`) && (await info.innerText()).includes('📋 copy it: too big for the buzzer server (3 MB at most)'), 'the two-window host column names them, with why');

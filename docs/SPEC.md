@@ -752,7 +752,7 @@ The mode isn't saved with the game: it's dual while the audience window is open.
   depth; (2) a line, Select · ★ Make the picker · ✎ Set the score…; (3) the round's extras (their sheet, party, turn,
   zones), then 🗂 Open their card; (4) while the buzzer room is up (not with Teams, whose 📱 rows are people), 📱 Free
   seat (new phone) · ↩ Let back, greyed where they don't apply; (5) red and last, ⛔ Kick from phone (2 min)…, asked in
-  the panel's strip, and 🗑 Delete player…, which asks in 👥 Players as its − does. Groups with nothing are left out.
+  the panel's strip, and 🗑 Delete player…, which asks in 👥 Players as its 🗑 does. Groups with nothing are left out.
 - **The stage's menu** (host/stagemenu.ts): a right-click on the host's stage (not on a player, a tile or a board-game
   space, which have their own), `Shift+F10` or the menu key on the main button (or a box's step button, or with nothing
   focused), and a long press open the moment's menu: a heading naming the moment ("🤝 Partner clue · Movies $400"), the
@@ -830,7 +830,7 @@ The mode isn't saved with the game: it's dual while the audience window is open.
   again brings it back for 5 s. Locked and screen-sized objects stay put when their group is dragged. Two windows: the
   host's copy draws a yellow dashed box with a faint fill and lights the rings live. One window: a thin dashed box and
   dashed outlines while it's held and 1.5 s after, and on the whole group while one of it is pressed; nothing at rest.
-  The RPG box has one selection line near its top, always there (one height), with one ✕ for players and objects (the
+  The RPG box has one selection line near its top, always there (one height), with one Clear selection for players and objects (the
   award row has no Clear selection of its own in an RPG round), and one `Esc` clears both, after an open card. In one
   window it counts a secret object ("1 hidden object"), Objects here numbers them ("🙈 Hidden object 1": its card keeps
   the name and buttons behind 👁 Show; what the host added during the show keeps its name), and steps that move or
@@ -1046,7 +1046,7 @@ The mode isn't saved with the game: it's dual while the audience window is open.
 - **Scoreboard overlay**: toggle a large standings view on the audience window.
 - **🤫 Send a card…** (PARTNER-CLUES-SPEC.md §12): a private card for chosen players' phones, in any round (a tile's
   card made in the editor, a quick one, or the slide on screen), lasting until the round ends or until taken back;
-  `🤫 N cards out` lists them by number ("Card 2 → Ann"), never what's on them, with ↻ Send again and ✖ Take back. At
+  `🤫 N cards out` lists them by number ("Card 2 → Ann"), never what's on them, with ↻ Send again and ↩ Take back. At
   most 8 are out at once. A 🪟 card window shows one player's cards, for a player with no phone. A player taken out
   keeps their place on the cards (a ↻ Send again meanwhile too), left out of the list while they're out; once they're back (Ctrl+Z, ↩ Restore)
   ↻ Send again sends theirs.
@@ -1187,6 +1187,15 @@ There is no built-in SFX library in v1, but audio can be attached anywhere:
   `aria-selected`, `aria-current`) is one look everywhere, a light accent tint (`--sel-bg`) with an accent edge and the
   usual text (4.5:1 or more), so it never reads as "press me". It's low priority (a class's weight): a player's colored
   chip, the color picker's Hex | RGB, a green ✔ or red ✘ and the RPG stage's yellow selection keep their own.
+- **Deleting, and one meaning per sign**: 🗑 Delete *thing* is the last button of its row, a little apart, in red
+  (`.danger`), its tooltip saying "(Undo brings it back)"; one that can't be undone asks first ("…"), Cancel first,
+  the red answer last (🚪 Exit's Discard & leave is red, apart from Keep & leave; 🕘 History's 🗑 Clear history… sits
+  at the far end). Wherever several things are selected the bar reads "N selected · ⧉ Duplicate · 📋 Copy (where
+  there's one) · Clear selection (Esc) · 🗑 Delete N things", and menus say Clear selection. The signs: 🗑 removes a
+  thing (from the game, or Remove: off something, kept in the game); ⌫ empties a slot (⌫ Clear, the picture staying
+  in 🖼 Media); ✕ only closes (✕ Close); ✘ is Wrong; − is only for numbers; ↩ takes back (↩ Take back, ↩ Put back);
+  ⛔ kicks a phone. Every ✕, ✘ and ⌫ button carries its word, but for a window's or notice's corner ✕, the green and
+  red ✔ / ✘ pair on a player's chip and an answer's row, and ⌫ on a player's picture corner.
 - **Security**: all content is local. Uploaded SVG is sanitized, and rich text is escaped/sanitized.
 
 ---

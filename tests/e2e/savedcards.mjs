@@ -12,7 +12,7 @@
 // card can't go to the same players twice (↻ Send again is for that); a host reload keeps it out under its id. Two
 // windows: the dialog shows what's on the card picked, and the cards out say which 🤫 Card each one is, never on the
 // audience window. A card changed in the editor (▶ Resume with my edits) comes off the phones until ↻ Send again. With
-// no phones (the room closed), one shown in the 🪟 card window comes out of it, and its row says to ✖ Take it back and
+// no phones (the room closed), one shown in the 🪟 card window comes out of it, and its row says to ↩ Take it back and
 // show it again: there's no ↻ Send again.
 import { chromium } from 'playwright-core';
 import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
@@ -543,7 +543,7 @@ try {
   await bob.getByText(WILD2).waitFor();
   assert(true, 'Bob sees the new words');
   await outList.getByRole('button', { name: 'Take Card 1 back' }).click();
-  assert(await until(() => !cards().length), '✖ Take back: no card out');
+  assert(await until(() => !cards().length), '↩ Take back: no card out');
   assert(await until(async () => !(await cardsOn(bob))), 'Bob’s phone drops it');
   await offStream(host, 'the host page in one window', 'the end');
   await host.keyboard.press('Escape');
@@ -606,11 +606,11 @@ try {
   await outButton.click();
   await outList.waitFor();
   const noPhones = await words(outList.locator('[data-card-out] [data-card-state]'));
-  assert(noPhones.includes('changed in the editor') && noPhones.includes('✖ Take it back and show it again') && !noPhones.includes('↻'), `no phones: the cards out say it changed in the editor, and to ✖ Take it back and show it again (${noPhones})`);
+  assert(noPhones.includes('changed in the editor') && noPhones.includes('↩ Take it back and show it again') && !noPhones.includes('↻'), `no phones: the cards out say it changed in the editor, and to ↩ Take it back and show it again (${noPhones})`);
   assert((await outList.getByRole('button', { name: /^Send .+ again$/ }).count()) === 0, 'and offer no ↻ Send again');
   await outList.getByRole('button', { name: /^Take .+ back$/ }).click();
   await tools.locator('[data-cards-out-count="0"]').waitFor();
-  assert(true, '✖ Take back: no card out');
+  assert(true, '↩ Take back: no card out');
   await offStream(host, 'the host page in one window', 'no phones, the end');
 
   assert(!errors.length, `no page errors (${errors.join('; ')})`);

@@ -80,7 +80,7 @@
   <div class="cardbar row" role="group" aria-label="Card “{savedCardName(card, index)}”">
     <label
       class="check"
-      title="How long it stays on their phones once sent: until you take it back (✖ Take back in the cards out), or else until the round ends. You can still change it when you send it"
+      title="How long it stays on their phones once sent: until you take it back (↩ Take back in the cards out), or else until the round ends. You can still change it when you send it"
     >
       <input type="checkbox" checked={card.until === 'host'} onchange={(e) => setUntil(e.currentTarget.checked)} /> Stays until you take it back
     </label>

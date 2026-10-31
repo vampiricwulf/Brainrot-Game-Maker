@@ -229,13 +229,13 @@
     /** A 🤝 partner clue: 🎡 Spin for a partner, 📤 Send and start or ⏱ Start the clock (Show question ▶ is the blue button's). */
     onpartnerspin?: () => void;
     onpartnerclock?: () => void;
-    /** ✖ Take back a 🤫 card from every phone it was sent to. */
+    /** ↩ Take back a 🤫 card from every phone it was sent to. */
     onpartnertakeback?: (card: string) => void;
     /** 🎡 Spin for the describer: the member wheel (teams, the picker's own team playing it). */
     onpartnermemberspin?: () => void;
     /** ✔ Got it (true) or ✘ Missed (false) on a partner clue: both of the two in one step. */
     onpartnerjudge?: (got: boolean) => void;
-    /** ✖ Take back a card sent with 🤫 Send a card… or from a tile's or the Final's panel. */
+    /** ↩ Take back a card sent with 🤫 Send a card… or from a tile's or the Final's panel. */
     oncardtakeback?: (id: string) => void;
     onfinalstep: () => void;
     /** Play the tiebreaker clue (from the end screen's tie). */
@@ -555,6 +555,7 @@
         text: 'Leave this game: keep it to resume later?',
         ok: 'Keep & leave',
         alt: 'Discard & leave',
+        altDanger: true,
         cancel: 'Stay',
         onok: () => onexit(true),
         onalt: () => onexit(false),
@@ -1585,7 +1586,7 @@
     <!-- Confirmations: one strip across the panel, right above the fixed bar (never squeezed into a row of buttons). -->
     <div class="confirm" role="alert">
       {#key ask}
-        <InlineAsk text={ask.text} ok={ask.ok} cancel={ask.cancel} danger={ask.danger} alt={ask.alt} onalt={ask.onalt} focusCancel onok={ask.onok} oncancel={ask.oncancel} />
+        <InlineAsk text={ask.text} ok={ask.ok} cancel={ask.cancel} danger={ask.danger} alt={ask.alt} onalt={ask.onalt} altDanger={ask.altDanger} focusCancel onok={ask.onok} oncancel={ask.oncancel} />
       {/key}
     </div>
   {/if}

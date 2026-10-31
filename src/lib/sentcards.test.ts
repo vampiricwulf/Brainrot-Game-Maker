@@ -1,5 +1,5 @@
 // 🤫 Cards anywhere (partner-clues spec §12, §14.1, §18.2, §22): a card goes to the buzzer room only when the host sends
-// it (🤫 Send a card…, or a tile's panel), exactly to who it was sent to, under its own id; ↻ Send again and ✖ Take back
+// it (🤫 Send a card…, or a tile's panel), exactly to who it was sent to, under its own id; ↻ Send again and ↩ Take back
 // touch only that card; a card lasts its round, its tile or until taken back; a tile's card edited since comes off the
 // phones; a player taken out (back after a restore), a reload and Resume with my edits keep it right; and viewers never
 // get Session.cards.
@@ -112,7 +112,7 @@ describe('🤫 Send a card…: only the host’s press sends, exactly to who it 
     expect(c.to[0].member).toEqual({ id: 'm-1', name: 'Mia' });
   });
 
-  it('↻ Send again renews only that card’s id (a phone late for it gets it); ✖ Take back takes only that one', () => {
+  it('↻ Send again renews only that card’s id (a phone late for it gets it); ↩ Take back takes only that one', () => {
     const { g, session } = setup();
     const one = sendCard(g, session, { to: [{ seat: 'a' }], content: { slide: quickSlide('A') }, until: 'host' }, 1000)!;
     const two = sendCard(g, session, { to: [{ seat: 'b' }], content: { slide: quickSlide('B') }, until: 'host' }, 1000)!;

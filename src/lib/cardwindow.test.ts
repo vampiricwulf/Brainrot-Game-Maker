@@ -249,7 +249,7 @@ describe('the card window’s messages reach it alone', () => {
     expect(opened['jb-audience'].msgs.some((m) => m.type === 'state')).toBe(true);
     expect(opened['jb-audience-scores'].msgs.every((m) => ['game', 'session', 'live', 'state', 'media', 'bye'].includes(m.type))).toBe(true);
 
-    // ✖ Close: it's told to close, and nothing more goes to it.
+    // ✕ Close: it's told to close, and nothing more goes to it.
     cw.closeCardWindow();
     expect(win.msgs.at(-1)).toEqual({ type: 'private-close' });
     expect(cw.cardWindow).toMatchObject({ open: false, seat: null });

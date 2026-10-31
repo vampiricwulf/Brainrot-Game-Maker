@@ -148,7 +148,7 @@
           <div class="row">
             <input bind:value={s.name} placeholder="Power" aria-label="Stat name" />
             <input type="number" bind:value={s.value} class="n" aria-label="{s.name || 'Stat'} value" />
-            <button class="ghost tiny danger" onclick={() => removeStat(i)} aria-label="Delete stat" title="Delete stat">🗑</button>
+            <button class="ghost tiny danger" onclick={() => removeStat(i)} aria-label="Delete stat" title="Delete stat (Undo brings it back)">🗑</button>
           </div>
         {/each}
         <div class="row"><button class="small" onclick={addStat}>＋ Add stat (power, HP…)</button></div>
@@ -156,7 +156,7 @@
       </div>
       <div class="row">
         <button class="small" onclick={() => ((r.dialogue ??= textSlide('')), (dialogueOpen = true))}>{r.dialogue ? '✎ Edit dialogue slide…' : '＋ Add dialogue slide'}</button>
-        {#if r.dialogue}<button class="ghost small danger" onclick={removeDialogue} aria-label="Delete dialogue" title="Delete dialogue">🗑</button>{/if}
+        {#if r.dialogue}<button class="ghost small danger" onclick={removeDialogue} aria-label="Delete dialogue" title="Delete dialogue (Undo brings it back)">🗑</button>{/if}
       </div>
     {/if}
     {#if r.class === 'npc' || r.class === 'shop'}

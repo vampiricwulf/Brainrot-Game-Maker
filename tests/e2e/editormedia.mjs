@@ -178,7 +178,7 @@ try {
   await cards.nth(0).locator('.thumb').click();
   await page.getByRole('searchbox', { name: 'Filter files' }).fill('pasted');
   await cards.nth(0).getByRole('checkbox').check();
-  await page.getByRole('button', { name: '🗑 Delete selected (1)' }).waitFor();
+  await page.getByRole('button', { name: '🗑 Delete 1 file' }).waitFor();
   await page.getByRole('searchbox', { name: 'Filter files' }).fill('');
   assert(
     (await page.locator('.card.picked').count()) === 1 && (await page.locator('.card.picked .nm').innerText()) === 'pasted.png',
@@ -189,7 +189,7 @@ try {
   await cards.nth(1).locator('.thumb').click({ modifiers: ['Control'] });
   assert((await page.locator('.card.picked').count()) === 2, 'Ctrl+click takes one away');
   await shot('em-2-media');
-  await page.getByRole('button', { name: '🗑 Delete selected (2)' }).click();
+  await page.getByRole('button', { name: '🗑 Delete 2 files' }).click();
   assert(
     (await cards.count()) === 1 && (await notice.innerText()).startsWith('Deleted 2 files (2 in use)') && !dialogs.length,
     'Remove selected removes them at once (no confirm), with a note',

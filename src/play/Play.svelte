@@ -2540,7 +2540,7 @@
     const s = partner;
     if (!s || s.stage !== 'distribute' || !info) return;
     if (session.revealed) return hint('The answer is showing: Esc goes back to the board');
-    // (Never more cards than the buzzer room takes: a send over that waits for a ✖ Take back.)
+    // (Never more cards than the buzzer room takes: a send over that waits for a ↩ Take back.)
     const unsent = unsentCards();
     const go = (t: Session) => sendCards(t, t.partner!, unsent);
     if (unsent.length && roomCardsFull(game, session, go)) return hint(cardsFullText(game, session, go));
@@ -2573,7 +2573,7 @@
   }
 
   /**
-   * ✖ Take back: the card goes from every phone it was sent to (the room's next state hasn't it), and the room deletes
+   * ↩ Take back: the card goes from every phone it was sent to (the room's next state hasn't it), and the room deletes
    * its files now unless another card still out uses them.
    */
   function partnerTakeBack(card: string): void {
@@ -2591,7 +2591,7 @@
   }
 
   /**
-   * ✖ Take back a card sent with 🤫 Send a card… or from a tile's or the Final's panel: it goes from every phone it was
+   * ↩ Take back a card sent with 🤫 Send a card… or from a tile's or the Final's panel: it goes from every phone it was
    * sent to (the room's next state hasn't it), and the room deletes its files now unless another card still out uses them.
    */
   function cardTakeBack(id: string): void {
@@ -2608,7 +2608,7 @@
   }
 
   /**
-   * A 🎭 deal's cards were taken back (✖ Take back, a new deal, or the deal put away): they go from the phones now (the
+   * A 🎭 deal's cards were taken back (↩ Take back, a new deal, or the deal put away): they go from the phones now (the
    * room's next state hasn't them), and the room deletes their files unless another card still out uses them.
    */
   function dealGone(gone: SentCard[]): void {

@@ -135,7 +135,7 @@ export const EDITOR_KEYS: KeyGroup[] = [
     keys: [
       ['Same as on a slide', 'Tab, Alt+click, arrows, Ctrl+[ / ], Ctrl+D, Ctrl+A, Delete, F2 (rename in Layers), right-click and ⋯'],
       ['Ctrl+C / X / V', 'Copy, cut and paste pictures between boards and slides'],
-      ['Esc', 'Deselect, then close'],
+      ['Esc', 'Clear the selection, then close'],
     ],
   },
   {
@@ -154,7 +154,7 @@ export const EDITOR_KEYS: KeyGroup[] = [
       ['On a map’s tab', 'F2 or double-click: rename it; Alt+← / →: move it; Ctrl+D: duplicate; Delete: delete it'],
       ['Alt+← / → in a look’s name, Ctrl+D, Shift+F10', 'Move the look, duplicate it, its menu'],
       ['Delete / Backspace', 'Delete the selected screens'],
-      ['Esc', 'Deselect, cancel a drag, or go back from a screen to the map'],
+      ['Esc', 'Clear the selection, cancel a drag, or go back from a screen to the map'],
     ],
   },
   {
@@ -175,7 +175,7 @@ export const EDITOR_KEYS: KeyGroup[] = [
       ['F2', 'Rename the space'],
       ['Right-click', 'A space’s menu (connect, 🏁 Make it the start, Make it a…, rename, duplicate, copy, paste, add after, delete), several spaces’ menu, a link’s menu, or add or paste spaces there'],
       ['Delete / Backspace', 'Delete the selected spaces (or disconnect the picked link)'],
-      ['Esc', 'Deselect (or stop connecting)'],
+      ['Esc', 'Clear the selection (or stop connecting)'],
       ['Drop a picture', 'On a space: its icon. On the board: its background'],
       ['Alt+↑ / ↓ or drag ⋮⋮', 'Off-board zones: reorder (the host’s Send to list follows)'],
     ],

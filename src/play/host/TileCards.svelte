@@ -3,7 +3,7 @@
   partner-clues spec §11, §12.2, 🤫 Just you and 💡 Insider tip; or a Final's (FinalControls: from the wagers to the
   last reveal). Each card made in the editor's 🤫 Card tabs, with who it goes to (its Goes to: whoever picked it, a Daily
   Double's player, everyone else, everyone playing the Final; the chips change it), 📤 Send to their phones, then
-  ↻ Send again and ✖ Take back, or 📋 copying it to them, or 🪟 showing it in the card window open for one of them.
+  ↻ Send again and ↩ Take back, or 📋 copying it to them, or 🪟 showing it in the card window open for one of them.
   Nothing goes until the host presses, and the tile or the Final plays as it always does. A tile's card sent here lasts
   until the tile closes; a Final's until the Final ends, and starts with everyone playing it (it follows the ticks until
   its chips are touched). In one window this panel is on stream: it names and counts a card (its name is the host's,
@@ -45,7 +45,7 @@
     clue?: Clue;
     /** The Final being played: its cards (FinalControls, from the wagers to the last reveal). */
     final?: FinalRound;
-    /** ✖ Take back: the card goes from every phone it was sent to. */
+    /** ↩ Take back: the card goes from every phone it was sent to. */
     ontakeback: (id: Id) => void;
     /** The box button that wears the ring ('card:<id>': that card's 📤 Send is due before 👁 Reveal answer). */
     ring?: string | null;
@@ -90,7 +90,7 @@
   const sentOf = (card: ClueCard): SentCard | undefined =>
     [...cardsOut(game, session)].reverse().find((c) => 'clue' in c.content && c.content.clue === holder.id && c.content.card === card.id);
 
-  /** Phones get cards, and the buzzer room has all it takes: ✖ Take one back first (the 🪟 card window has no limit). */
+  /** Phones get cards, and the buzzer room has all it takes: ↩ Take one back first (the 🪟 card window has no limit). */
   const full = $derived(cardsOn && roomCardsFull(game, session));
   /** The cards out that never reach a phone (their ids on the wire): more than the room takes (see CardsOut). */
   const leftOff = $derived(new Set(cardsOn ? cardsLeftOff(game, session) : []));
@@ -184,12 +184,12 @@
       {#if cardsOn}
         {#if out}
           {#if !off}<button class="small" onclick={() => again(out, card, i)} aria-label="Send {w} again" title="Sends it again under a new id: a phone that came late (a player on a new phone) gets it too, with what’s on the card now">↻ Send again</button>{/if}
-          <button class="ghost small" onclick={() => ontakeback(out.id)} aria-label="Take {w} back" title="Takes it off every phone it went to">✖ Take back</button>
+          <button class="ghost small" onclick={() => ontakeback(out.id)} aria-label="Take {w} back" title="Takes it off every phone it went to">↩ Take back</button>
         {:else}
           <button class="small" class:ring={ring === `card:${card.id}`} data-box="card:{card.id}" onclick={() => send(card, i)} disabled={!to.length || full} aria-label="Send {w}" title={full ? cardsFullText(game, session) : to.length ? `Sends it to ${sentToText(session, to, teams)} now, ${lasts}${aside}` : 'Choose who gets it first'}>📤 Send</button>
         {/if}
       {:else if out}
-        <button class="ghost small" onclick={() => ontakeback(out.id)} aria-label="Take {w} back" title="Takes it out of the 🪟 card window">✖ Take back</button>
+        <button class="ghost small" onclick={() => ontakeback(out.id)} aria-label="Take {w} back" title="Takes it out of the 🪟 card window">↩ Take back</button>
       {:else if windowSeat(to)}
         {@const seat = windowSeat(to)!}
         <button class="small" onclick={() => send(card, i, [{ seat }])} aria-label="Show {w} to {nameOf(seat)}" title="Shows it in the 🪟 card window, to {nameOf(seat)} alone, {lasts}">🪟 Show {nameOf(seat)}</button>

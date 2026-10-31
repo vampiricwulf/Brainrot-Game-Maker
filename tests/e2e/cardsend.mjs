@@ -3,7 +3,7 @@
 // 🤫 Send a card… in the tools row sends a quick card (typed words) to one player, then a tile's card made in the editor
 // (its words and its picture from this computer) to ⇄ everyone else: each phone gets only what was sent to it, behind
 // Tap to see, and nothing goes before the press. The list of cards out says "Card 1 → Bob", never what's on it; ↻ Send
-// again renews only that card's id; a host reload keeps the cards out under the same ids; ✖ Take back takes one off.
+// again renews only that card's id; a host reload keeps the cards out under the same ids; ↩ Take back takes one off.
 // A standard tile's own card (🤫 Just you) and a Daily Double's (💡 Insider tip) are offered in the tile's panel to the
 // picker, sent only by a press, and go when the tile closes; the tile plays as it always does. A card sent until the
 // round ends goes with the round. "The slide on screen" is what viewers see as it comes up (never a hint that comes in
@@ -268,7 +268,7 @@ try {
   await host.keyboard.press('Escape');
   await dialog.waitFor({ state: 'detached' });
 
-  // ---------- The list of cards out: labels only, ↻ Send again, ✖ Take back ----------
+  // ---------- The list of cards out: labels only, ↻ Send again, ↩ Take back ----------
   const outButton = tools.locator('[data-cards-out-count]');
   assert((await outButton.innerText()).trim() === '🤫 2 cards out', 'the tools row says how many cards are out');
   await outButton.click();
@@ -327,7 +327,7 @@ try {
   assert((await list.locator('.exposed').count()) === 1, 'one window: the list warns that viewers see it');
   await offStream(host, 'the host page in one window', 'the list of cards out open');
   await list.getByRole('button', { name: 'Take Card 2 back' }).click();
-  assert(await until(() => cards().length === 1 && cards()[0].id === c1b.id), '✖ Take back: Card 2 goes, Card 1 stays');
+  assert(await until(() => cards().length === 1 && cards()[0].id === c1b.id), '↩ Take back: Card 2 goes, Card 1 stays');
   assert(await until(() => roomStored(persist, 'Spy-qkzvx')), 'the room saved the cards it was sent (so its saved state is where to look)');
   assert(await until(async () => !(await cardsOn(ann)) && !(await cardsOn(cat))), 'Ann’s and Cat’s phones drop it');
   await host.keyboard.press('Escape');

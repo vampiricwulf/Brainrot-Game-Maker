@@ -1,6 +1,6 @@
 <!--
   🤫 The cards out now (partner-clues spec §12.2): those sent with 🤫 Send a card… or from a tile's or a Final's panel,
-  each by the label the app gave it ("Card 2 → Ann · ✓ seen"), never what's on it, with ↻ Send again, ✖ Take back and
+  each by the label the app gave it ("Card 2 → Ann · ✓ seen"), never what's on it, with ↻ Send again, ↩ Take back and
   the 📋 copy buttons. In one window this list is on stream: the tools row shows only how many are out, and the list
   opens only when the host asks for it. With the audience window open, a card from the editor's 🤫 Cards, a tile's or
   a Final's also says which it is.
@@ -100,7 +100,7 @@
       {#if cardsOn && !off}
         <button class="small" onclick={() => again(c)} aria-label="Send {c.label} again" title="Sends it again under a new id: a phone that came late (a player on a new phone) gets it too">↻ Send again</button>
       {/if}
-      <button class="ghost small" onclick={() => ontakeback(c.id)} aria-label="Take {c.label} back" title="Takes it off every phone it went to">✖ Take back</button>
+      <button class="ghost small" onclick={() => ontakeback(c.id)} aria-label="Take {c.label} back" title="Takes it off every phone it went to">↩ Take back</button>
       {#if slide && (cardWords(slide) || cardLinks(game, slide).length)}
         <button class="small" onclick={() => copyWords(c)} aria-label="Copy {c.label}’s words" title="Copies “For … only” with the card’s words and links, to paste in a DM (nothing of it shows here)">📋 Copy words</button>
       {/if}

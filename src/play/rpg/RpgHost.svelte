@@ -423,15 +423,16 @@
       <button class="small" class:on={st.mapShown} aria-pressed={!!st.mapShown} onclick={() => toggleMap(game, session)} title="V: show the map to viewers (on the audience's screen), or hide it">🗺 Map on stream</button>
     </div>
 
-    <!-- What's selected, players and objects, with one ✕ for both: one line (the stage keeps its size as it changes),
-         in sight with a card open too. ↩ Select them again sits apart from the ✕, so a double-click can't undo a clear. -->
+    <!-- What's selected, players and objects, with one Clear selection for both: one line (the stage keeps its size as it
+         changes), in sight with a card open too. ↩ Select them again sits apart from it, so a double-click can't undo a
+         clear. -->
     <div class="row sel" data-rpg-sel>
       {#if again}<button class="link again" onclick={again} title="Bring back what was selected">↩ Select them again</button>{/if}
       {#if selWords}
         <span class="words" title="{selWords} · drag one on the stage to move them all · Esc clears"
           ><b>Selected:</b> {selWords} <span class="muted">— drag one on the stage to move them all · Esc clears</span></span
         >
-        <button class="ghost small x" onclick={() => onclear?.()} title="Clear the selection (Esc)" aria-label="Clear the selection">✕</button>
+        <button class="ghost small x" onclick={() => onclear?.()} title="Esc">Clear selection</button>
       {:else if !again}
         <span class="muted words">Nothing selected · click players, or drag a box on the stage to select several</span>
       {/if}
@@ -485,7 +486,7 @@
             <span class="shrink name" title={pickedFound.screen.name}>→ <b>{pickedFound.screen.name}</b></span>
             <button class="small shrink" onclick={() => moveHere()} title="Move {party?.name ?? 'the party'} to {pickedFound.screen.name}">Move {party?.name ?? 'party'} here</button>
             {#if selected.length}<button class="small shrink" onclick={() => moveHere(selected, `${selected.length} selected`)} title="Move only the {selected.length} selected to {pickedFound.screen.name}">Only selected ({selected.length})</button>{/if}
-            <button class="small ghost" onclick={() => (picked = null)} aria-label="Cancel">✕</button>
+            <button class="small ghost" onclick={() => (picked = null)} title="Pick no screen">Cancel</button>
           {/if}
           <span class="spacer"></span>
           <!-- With a screen picked, just ⤢: its buttons need the room. -->

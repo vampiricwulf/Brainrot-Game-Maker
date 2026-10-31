@@ -1,5 +1,6 @@
-<!-- The top of a round's page (any mode): its name, its mode as a chip and where it plays, with move, duplicate and
-     delete on the right, and ⋯ for the round's menu (the same as its tab's; a right-click on the bar opens it too). -->
+<!-- The top of a round's page (any mode): its name, its mode as a chip and where it plays, with move, duplicate and ⋯
+     for the round's menu on the right (the same as its tab's; a right-click on the bar opens it too), then 🗑 Delete
+     apart at the end. -->
 <script lang="ts">
   import { ROUND_MODES } from '../lib/modes';
   import { roundName, type Round } from '../lib/model';
@@ -45,15 +46,19 @@
       <button class="ghost" disabled={index === 0} onclick={() => onmove(-1)} aria-label="▲ Move round up" title="Move up: play this round earlier (Alt+↑ on its tab)">▲</button>
       <button class="ghost" disabled={index >= count - 1} onclick={() => onmove(1)} aria-label="▼ Move round down" title="Move down: play this round later (Alt+↓ on its tab)">▼</button>
       <button class="ghost" onclick={onduplicate} aria-label="⧉ Duplicate round" title="Duplicate: a copy of this round, right after it">⧉ Duplicate</button>
-      <button class="ghost danger" onclick={ondelete} aria-label="🗑 Delete round" title="Delete this round (Undo brings it back)">🗑 Delete</button>
       {#if menu}
         <button class="ghost" aria-haspopup="menu" onclick={(e) => dropMenu(e, menu())} aria-label="More for this round" title="Rename, copy, paste after it… (or right-click this bar or the round’s tab)">⋯</button>
       {/if}
+      <button class="ghost danger del" onclick={ondelete} aria-label="🗑 Delete round" title="Delete this round (Undo brings it back)">🗑 Delete</button>
     {/snippet}
   </PageHeader>
 </div>
 
 <style>
+  /* Last, apart from the rest, so a slip doesn't delete. */
+  .del {
+    margin-left: 8px;
+  }
   .ra :global(.page-header) {
     padding-bottom: 12px;
     border-bottom: 1px solid var(--border);

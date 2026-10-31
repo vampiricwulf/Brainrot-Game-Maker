@@ -153,7 +153,7 @@ spaces (`Shift`+`Alt` further), `F2` renames, `Ctrl+D` duplicates, `Ctrl+C` / `C
 buttons (onto any board, in any game), `Delete` deletes. `Ctrl`+click adds a space, `Alt`+drag links two, and
 **＋ Add space** on the board's tools row adds one after the selected space. A space's own buttons are right under its
 name: 🏁 Make it the start, ＋ Add a space after it, ⧉ Duplicate and, apart at the end, 🗑 Delete space (several
-selected: ⧉ Duplicate, 📋 Copy, 🗑 Delete 3 spaces). The
+selected: ⧉ Duplicate, 📋 Copy, Clear selection, 🗑 Delete 3 spaces). The
 movement dice are kept by the dice themselves, so renaming them in 🎡 Wheels, Dice & Deals keeps them.
 
 Other editor tabs:
@@ -511,7 +511,7 @@ a right steal gets the tile's value, a wrong one loses it, as on any clue, and C
 **🤫 Send a card…** in the tools row sends a card to any players, teams or people on a team, at any time and in any
 round: one of your 🤫 Cards, a tile's or a Final's card made in the editor, or a quick one (words typed or pasted, with
 a picture, video or sound, or a link). It lasts until the round ends or until you take it back; **🤫 2 cards out** next
-to it lists them by the name the app gives each ("Card 2 → Ann", never what's on it) with ↻ Send again and ✖ Take back;
+to it lists them by the name the app gives each ("Card 2 → Ann", never what's on it) with ↻ Send again and ↩ Take back;
 it turns orange when one isn't all on the phones (a picture that didn't go up, a phone that came late), and that card's
 row says what. A card made in the editor that you change after it went (▶ Resume with my edits) comes off the phones
 until you ↻ Send it again, keeping its place among the cards the phones hold meanwhile.
@@ -623,7 +623,7 @@ box has no blue button of its own (an object's card and the full map's buttons a
   screen, draws a box too): `Shift`+click adds one of them. `Alt`+drag always draws a box, even from a player or an
   object; on some Linux desktops `Alt`+drag moves the window, so the stage's menu has **▭ Select in a box** (and
   **Select everything here**). `Esc` while drawing puts back what was selected. A click on an empty spot clears the
-  selection, as `Esc` and the ✕ do, and **↩ Select them again** brings it back for 5 seconds. One line at the top of
+  selection, as `Esc` and its Clear selection do, and **↩ Select them again** brings it back for 5 seconds. One line at the top of
   the RPG box says what's selected (in one window a secret object is "1 hidden object", and Objects here numbers the
   secret ones, never naming them). In one window the stage shows the box and dashed outlines while you hold the
   button, and for a moment after; pressing one of a selected group outlines the whole group before it moves. To

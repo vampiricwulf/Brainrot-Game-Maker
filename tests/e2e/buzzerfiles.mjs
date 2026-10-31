@@ -99,7 +99,7 @@ async function newRoom(ip, at = base) {
   const joined = await until(() => phone.last('joined'), 'the phone takes its seat');
   /**
    * An upload that says it's twice as long as `bytes`, sends them, and waits: its connection, to drop as a closed tab
-   * (or ✖ Take back in the app) would.
+   * (or ↩ Take back in the app) would.
    */
   const halfUpload = (bytes, from) => {
     const req = request(url(), {
@@ -316,7 +316,7 @@ try {
     await until(async () => (await roomKeys(small.persist)).filter((k) => k.startsWith('p:')).length > 8, 'pieces of the upload going');
     const meanwhile = await r.upload(randomBytes(4 * MB), { from: '198.51.100.73' });
     assert(meanwhile.status === 409, `while it goes, another 4 MB file doesn't fit (${meanwhile.status})`);
-    // …and once it's stopped (✖ Take back), the next one does.
+    // …and once it's stopped (↩ Take back), the next one does.
     going.destroy();
     let after;
     for (const end = Date.now() + 5000; ; await sleep(200)) {

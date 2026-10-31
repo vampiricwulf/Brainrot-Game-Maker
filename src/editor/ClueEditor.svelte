@@ -647,7 +647,7 @@
         <div class="pop">
           {#if clue.tileFace?.image}
             <img class="thumb" src={mediaUrls[clue.tileFace.image]} alt="Tile" onerror={imgFallback} draggable="false" />
-            <button class="ghost tiny" onclick={() => (clue.tileFace = { ...clue.tileFace, image: undefined })} title="Remove tile image" aria-label="Remove tile image">✕</button>
+            <button class="ghost tiny" onclick={() => (clue.tileFace = { ...clue.tileFace, image: undefined })} title="Clear the tile's picture (it stays in 🖼 Media)">⌫ Clear</button>
           {:else}
             <button
               onclick={() => (facePicker = true)}
