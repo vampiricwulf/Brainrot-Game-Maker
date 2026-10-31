@@ -13,7 +13,7 @@
   import { DragOrder } from '../../lib/dragorder.svelte';
   import { copyActions, copyName, copySegment, moveTo } from '../../lib/listedit';
   import { freeName } from './ToolPopup.svelte';
-  import { dropMenu, showMenu } from '../../lib/menustate.svelte';
+  import { dropMenu, menuItem, menuOf, showMenu } from '../../lib/menustate.svelte';
   import { uniqueName } from '../../lib/roundcopy';
   import { WHEEL_TEMPLATES, wheelFromTemplate, type WheelTemplate } from '../../lib/wheeltemplates';
   import { newId, type DealPreset, type DicePreset, type WheelPreset } from '../../lib/model';
@@ -124,15 +124,16 @@
 
   function menu(e: MouseEvent, kind: Kind, item: Tool, i: number): void {
     const n = listOf(kind).length;
-    showMenu(e, [
-      { heading: item.name },
-      { label: '✎ Rename', onclick: () => (renaming = item.id), keys: 'F2' },
-      { label: '⧉ Duplicate', onclick: () => dup(kind, item), keys: 'Ctrl+D' },
-      { label: '▲ Move up', onclick: () => move(kind, i, i - 1), disabled: i === 0, keys: 'Alt+↑' },
-      { label: '▼ Move down', onclick: () => move(kind, i, i + 1), disabled: i === n - 1, keys: 'Alt+↓' },
-      { sep: true },
-      { label: `🗑 Delete ${kind}`, danger: true, onclick: () => remove(kind, item, true), keys: 'Delete' },
-    ]);
+    showMenu(
+      e,
+      menuOf({
+        heading: item.name,
+        rename: menuItem.rename(() => (renaming = item.id)),
+        duplicate: menuItem.duplicate(() => dup(kind, item)),
+        move: [menuItem.up(() => move(kind, i, i - 1), { disabled: i === 0 }), menuItem.down(() => move(kind, i, i + 1), { disabled: i === n - 1 })],
+        delete: menuItem.delete(kind, () => remove(kind, item, true)),
+      }),
+    );
   }
 
   /**
