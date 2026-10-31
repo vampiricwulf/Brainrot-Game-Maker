@@ -394,10 +394,10 @@ try {
   await answers.locator('[data-answer-row]', { hasText: '“Fleming”' }).waitFor();
   assert(true, 'Show question again: Player 1’s phone still says “✔ Sent: “Fleming””, and the host still has it');
   // The answer on screen: answers lock, each phone keeping its own (after the wager it was locked with). Player 2's
-  // phone sent none: Reveal answer ▶ asks first (⏱ 10 more seconds), and R reveals anyway.
-  await mainButton(host).filter({ hasText: 'Reveal answer ▶' }).click();
+  // phone sent none: 👁 Reveal answer asks first (⏱ 10 more seconds), and R reveals anyway.
+  await mainButton(host).filter({ hasText: '👁 Reveal answer' }).click();
   await checkItem(host, 'answers').waitFor();
-  assert((await checkItem(host, 'answers').innerText()).includes('1 of 2 answers are in (Player 2’s isn’t)'), 'Reveal answer ▶ with an answer still to come: “1 of 2 answers are in (Player 2’s isn’t)”');
+  assert((await checkItem(host, 'answers').innerText()).includes('1 of 2 answers are in (Player 2’s isn’t)'), '👁 Reveal answer with an answer still to come: “1 of 2 answers are in (Player 2’s isn’t)”');
   await goOnCheck(host, { ready: true }).waitFor();
   await host.keyboard.press('r');
   await big(ann).getByText('Answers locked').waitFor();
@@ -656,7 +656,7 @@ try {
     (await stageStrip.locator('.choice').count()) === 4 && (await stageStrip.locator('.choice.right').count()) === 0,
     'the stage shows the Final’s 4 choices under the question, none lit',
   );
-  await mainButton(host2).filter({ hasText: 'Reveal answer ▶' }).click();
+  await mainButton(host2).filter({ hasText: '👁 Reveal answer' }).click();
   await stageStrip.locator('.choice.right', { hasText: CHOICES[1] }).waitFor();
   assert(true, 'with the answer, the one marked ✔ Right (B) lights up');
   await mainButton(host2).filter({ hasText: 'Start team reveals ▶' }).click();
@@ -737,7 +737,7 @@ try {
   await cy.locator('#clue-cap').getByText('Final Jeopardy!').waitFor();
   await small(cy).getByText('Your team isn’t in this one').waitFor();
   assert((await big(cy).innerText()) === 'You sit this one out', 'a team out of the Final: under the question (the Final’s name over it), its phone says “Your team isn’t in this one”, not the Final’s name again');
-  await mainButton(host2).filter({ hasText: 'Reveal answer ▶' }).click();
+  await mainButton(host2).filter({ hasText: '👁 Reveal answer' }).click();
   await mainButton(host2).filter({ hasText: 'Start team reveals ▶' }).click();
   // (The reveals change nothing there: the same two lines as under the question.)
   await host2.locator('.fj .pl').first().waitFor();

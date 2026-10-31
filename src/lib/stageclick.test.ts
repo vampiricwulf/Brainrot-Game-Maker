@@ -75,7 +75,7 @@ describe('a click on the stage', () => {
     // 🏆 The Final.
     ['the Final’s wagers, some missing: never the question', { on: 'wagers', phase: 'final', step: step('finalshow', 'Show question ▶'), wagerWait: 'Waiting on Bob’s phone' }, { do: 'say', say: 'Waiting on Bob’s phone', flash: 'wagers' }],
     ['the Final’s wagers, all in: it says so (the blue button shows the question)', { on: 'wagers', phase: 'final', step: step('finalshow', 'Show question ▶') }, { do: 'say', say: 'All wagers in: Show question ▶ (N)' }],
-    ['the Final’s question: its answer, through the check', { phase: 'final', step: step('finalreveal', 'Reveal answer ▶', true) }, { do: 'go' }],
+    ['the Final’s question: its answer, through the check', { phase: 'final', step: step('finalreveal', '👁 Reveal answer', true) }, { do: 'go' }],
     ['the Final’s answer: Start player reveals ▶', { on: 'final-next', phase: 'final', step: step('reveals', 'Start player reveals ▶') }, { do: 'go' }],
     ['the spotlit player’s card: Show answer ▶ / Show wager ▶ / Next player ▶', { on: 'spotlight', phase: 'final', step: step('spot', 'Show wager ▶') }, { do: 'go' }],
     ['the spotlit player’s wager not typed: the keys go to it', { on: 'spotlight', phase: 'final', step: step('spot', 'Show wager ▶'), wagerWait: 'Bob has no wager yet' }, { do: 'say', say: 'Bob has no wager yet', flash: 'wagers' }],

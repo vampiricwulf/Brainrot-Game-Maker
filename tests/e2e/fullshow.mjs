@@ -455,7 +455,7 @@ async function show(how) {
       await until(`the keys in ${p}’s wager box`, async () => (await host.evaluate(() => document.activeElement?.getAttribute('aria-label') ?? '')) === `${p}’s wager`);
       await type(wagers[p]);
       // (Enter goes on to the next box; the last one's shows the question.)
-      await key('Enter', i < NAMES.length - 1 ? 'the next wager box' : 'the question', i < NAMES.length - 1 ? null : mainIs('Reveal answer ▶'));
+      await key('Enter', i < NAMES.length - 1 ? 'the next wager box' : 'the question', i < NAMES.length - 1 ? null : mainIs('👁 Reveal answer'));
     }
     await key('r', 'the answer', mainIs('Start player reveals ▶'));
     await key('n', 'the reveals', mainIs('Show wager ▶'));
@@ -470,7 +470,7 @@ async function show(how) {
     }
     // (The host has them all: the blue button is never greyed, so its wager screen's own line says so.)
     await until('every wager in on the host', async () => (await host.locator('.fj .row .muted', { hasText: /^Waiting on/ }).count()) === 0);
-    await main('Show question ▶', 'the question', mainIs('Reveal answer ▶'));
+    await main('Show question ▶', 'the question', mainIs('👁 Reveal answer'));
     await stageClick('the answer', mainIs('Start player reveals ▶'));
     await stageClick('the reveals', mainIs('Show wager ▶'));
   }

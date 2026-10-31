@@ -208,7 +208,7 @@ try {
   await press('Show question ▶');
   await p2.locator('.panel .status', { hasText: 'Question on screen' }).waitFor();
   assert((await p2.locator('.panel .status .notes').count()) === 0, 'one window: the Final’s host notes stay off the panel while its question is up');
-  await press('Reveal answer ▶');
+  await press('👁 Reveal answer');
   await p2.locator('.panel .status .notes', { hasText: '📝 Accept Abe Lincoln too' }).waitFor();
   assert(true, '…and show there once its answer is up');
   // Two windows: the host's info column (the notes) is up.

@@ -82,7 +82,6 @@ describe('the host screen’s words for each step', () => {
       'End game ▶',
       'Show question ▶',
       'Start player reveals ▶',
-      'Reveal answer ▶',
       'Show answer ▶',
       'Show wager ▶',
       'Next team ▶',

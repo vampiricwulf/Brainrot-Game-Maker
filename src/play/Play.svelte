@@ -4217,7 +4217,7 @@
   }
 
   /**
-   * The Final, from its wagers to its reveals. Its next step (Show question ▶, its slides, Reveal answer ▶, Start player
+   * The Final, from its wagers to its reveals. Its next step (Show question ▶, its slides, 👁 Reveal answer, Start player
    * reveals ▶, Show answer ▶ / Show wager ▶ / Next player ▶, Finish game ▶) is the blue button's.
    */
   function finalMoment(): Moment {
@@ -4235,7 +4235,7 @@
         steps: [
           ...(pos ? [{ id: 'slide-', label: VERBS.prevSlide.label, keys: 'Shift+N', disabled: pos.at <= 1, onclick: () => slideStep(-1) }] : []),
           // (R: the answer at once, its slides left or not.)
-          { id: 'reveal', label: FLOW.finalReveal.label, keys: 'R', onclick: revealToggle },
+          { id: 'reveal', label: VERBS.reveal.label, keys: 'R', onclick: revealToggle },
           clockItem(),
         ],
       };

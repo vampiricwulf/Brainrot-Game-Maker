@@ -453,7 +453,7 @@ async function viewers() {
   await aud.locator('.slide-area').waitFor();
   await aud.locator('.timer').waitFor();
   const asked = await sizes();
-  await mainButton(host, 'Reveal answer ▶').click();
+  await mainButton(host, '👁 Reveal answer').click();
   await aud.locator('.timer').waitFor({ state: 'detached' });
   const answered = await sizes();
   assert(!asked.includes('→') && asked !== '1' && answered === '1', `the Final's question comes in at its size beside the countdown, its answer at full size (${asked} | ${answered})`);
@@ -1133,7 +1133,7 @@ try {
   const scAfter = await scPlates();
   assert(scAfter === scBefore, `the scores window: a ✔ for each wager in, and 3 plates that stay put when the countdown comes (${scBefore} / ${scAfter})`);
   assert((await stageSize()) === finalSize, 'the question keeps it');
-  await mainButton(page, 'Reveal answer ▶').click();
+  await mainButton(page, '👁 Reveal answer').click();
   await mainButton(page, 'Start player reveals ▶').click();
   assert((await stageSize()) === finalSize, 'and so do the reveals');
   const spot = await page.locator('.stage .spot-name').innerText();

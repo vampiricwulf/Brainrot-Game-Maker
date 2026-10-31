@@ -558,11 +558,11 @@ try {
   await bob.locator('#answer-in').fill('Bob-answer');
   await bob.locator('#answer-send').click();
   assert(await until(() => last()?.answers?.seats?.find((x) => x.id === seat.Bob)?.got === 1), 'Bob sends his answer: the host took it (the room is told it has it)');
-  // Ann's and Cat's answers aren't in: Reveal answer ▶ asks first (⏱ 10 more seconds), and R reveals anyway.
-  await next('Reveal answer ▶');
+  // Ann's and Cat's answers aren't in: 👁 Reveal answer asks first (⏱ 10 more seconds), and R reveals anyway.
+  await next('👁 Reveal answer');
   await checkItem(host, 'answers').waitFor();
   const coming = await checkItem(host, 'answers').innerText();
-  assert(coming.includes('1 of 3 answers are in') && !coming.includes('Bob-answer'), `Reveal answer ▶ with answers still coming asks first, names and counts only (${coming})`);
+  assert(coming.includes('1 of 3 answers are in') && !coming.includes('Bob-answer'), `👁 Reveal answer with answers still coming asks first, names and counts only (${coming})`);
   await goOnCheck(host, { ready: true }).waitFor();
   await host.keyboard.press('r');
   await host.locator('.panel .status', { hasText: 'Answer on screen' }).waitFor();

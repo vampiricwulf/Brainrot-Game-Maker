@@ -41,8 +41,8 @@ export const FLOW = {
   endGame: { label: 'End game ▶', title: 'The results go on screen' },
   // A Daily Double, a 🤝 partner clue's PARTNER UP!, the Final, the tiebreaker, a board game (the rest move later).
   showQuestion: { label: 'Show question ▶', title: 'The question goes on screen', anyway: 'Show question anyway' },
+  // (The Final's answer is 👁 Reveal answer too, as on a clue: one name.)
   startReveals: (noun: string): FlowVerb => ({ label: `Start ${noun} reveals ▶`, title: 'The reveals start' }),
-  finalReveal: { label: 'Reveal answer ▶', title: 'The answer goes on screen', anyway: 'Reveal anyway' },
   showAnswer: { label: 'Show answer ▶', title: 'Their answer goes on screen' },
   showWager: { label: 'Show wager ▶', title: 'Their wager goes on screen' },
   nextPlayer: (noun: string): FlowVerb => ({ label: `Next ${noun} ▶`, title: `The next ${noun} in the reveals` }),

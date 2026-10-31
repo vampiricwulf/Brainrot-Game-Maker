@@ -525,7 +525,7 @@ The mode isn't saved with the game: it's dual while the audience window is open.
   ▦ Done ▶ board, Next round ▶, a 🤝 partner clue's Show question ▶ on PARTNER UP! and Next ▶ while its wheel is up, a
   Daily Double's Show question ▶, never greyed; over a wheel or dice tile's own tool, Show question ▶ (▦ Done ▶ board on
   a tile with no question), over a question pop-up 👁 Reveal answer then Next ▶, over any other tool, the scores, a sheet
-  or a roll-off Next ▶, which only puts it away; the Final's Show question ▶, Reveal answer ▶, Start player reveals ▶,
+  or a roll-off Next ▶, which only puts it away; the Final's Show question ▶, 👁 Reveal answer, Start player reveals ▶,
   Show answer ▶ / Show wager ▶ / Next player ▶ and Finish game ▶ (or the next round's name), never greyed; the
   tiebreaker clue's slides, 👁 Reveal answer and 🏁 Back to results; a board game's Next turn ▶, ◀ Previous turn quiet
   beside it, none while ✎ Edit board is open (its ✓ Done editing `Esc` is in the edit panel); greyed only while a wheel turns or dice roll), `N`
@@ -546,7 +546,7 @@ The mode isn't saved with the game: it's dual while the audience window is open.
   tile's 🤫 card not sent; a 🤝 partner clue's who picked it, the partner, who describes or nobody to partner with on
   PARTNER UP!, all musts with no “anyway”, then at the reveal its cards not handed out or the clock not started, the pair
   still playing, a steal open; a wheel or dice tile's own tool not spun or rolled, or landed on “Spin again”; the
-  Final's own 🤫 card not sent at Show question ▶, its typed answers still coming at Reveal answer ▶, and the spotlit
+  Final's own 🤫 card not sent at Show question ▶, its typed answers still coming at 👁 Reveal answer, and the spotlit
   player not judged yet at Next player ▶ or Finish game ▶, a must whose ✔ Right `C` / ✘ Wrong `X` close the check, so
   the verdict lands on stream before `N` goes on, with no `Enter` and the likely one ringed; a board game's turn at Next
   turn ▶, where one check walks it: its roll (🎲 Roll `D`, `Enter`), “Rolling…” while the dice go, its move (▶ Move
@@ -632,7 +632,7 @@ The mode isn't saved with the game: it's dual while the audience window is open.
   countdown; a buzzer tie's 🎲 Roll for it first); a Daily Double (who found it); a 🤝 partner clue (who picked it; the
   wheel, each partner by their number, ⇄ Swap; then the cards' step, ✔ Got it / ✘ Missed and the clue's); a wheel,
   dice, pop-up, the scores or a shop (the spin or roll, ✎ Edit wheel, ＋ Spin another wheel too…); the Final (its slide
-  before, Reveal answer ▶ `R`, the reveals' player before, ✔ Right `C` / ✘ Wrong `X`, finishing early); the tiebreaker;
+  before, 👁 Reveal answer `R`, the reveals' player before, ✔ Right `C` / ✘ Wrong `X`, finishing early); the tiebreaker;
   a tie at the end (❓ Tiebreaker clue, 🎲 Tiebreaker roll-off `O`, 🤝 Declare co-winners, then the end screen's
   buttons); a board game's turn (🎲 Roll `D`, ▶ Move `Enter`, ◀ Previous turn, ✎ Edit board `E`); an RPG round (▭ Select
   in a box `Alt+drag`, Select everything here, ＋ Text here…, 🗺 Full map `J`, the map for viewers `V`, 🤝 Regroup `G`). While the check is open, a right-click on the stage

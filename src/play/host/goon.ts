@@ -433,7 +433,7 @@ function finishVerb(c: GoCtx): FlowVerb {
 }
 
 /**
- * The Final's step: Show question ▶ (the wagers; nobody plays: on past it), its question slides, Reveal answer ▶, Start
+ * The Final's step: Show question ▶ (the wagers; nobody plays: on past it), its question slides, 👁 Reveal answer, Start
  * player reveals ▶, then the reveals one by one (Show answer ▶, Show wager ▶, Next player ▶) and Finish game ▶ (or the
  * next round's name). With the spotlit player's verdict due, it's what comes after it: Next player ▶, or for the last
  * one Finish game ▶ (it asks for the verdict first).
@@ -451,7 +451,7 @@ function finalStepOf(c: GoCtx): Step | null {
   if (step === 'question') {
     const pos = slidePosition(s, c.game);
     if (pos && pos.at < pos.of) return n(FLOW.nextSlide(pos.at, pos.of), 'slide', c.act.slide, { flow: 'pager' });
-    return n({ ...FLOW.finalReveal, title: 'The answer goes on screen (R shows or hides it at once) · or click the question' }, 'finalreveal', c.act.reveal, { reveals: true, flow: 'reveal' });
+    return n({ ...FLOW.reveal, title: 'The answer goes on screen (R shows or hides it at once) · or click the question' }, 'finalreveal', c.act.reveal, { reveals: true, flow: 'reveal' });
   }
   if (step === 'answer') return n(FLOW.startReveals(noun), 'reveals', c.act.finalOn);
   const r = finalRevealNow(s);
@@ -643,12 +643,12 @@ function answersItems(c: GoCtx): LeftItem[] {
   return comingItems(c, (id) => !!ans.seats[id], c.session.players.map((p) => p.id), FLOW.reveal.label);
 }
 
-/** The Final's typed answers still coming in, at Reveal answer ▶ (3.4 I): those playing it with a phone here. */
+/** The Final's typed answers still coming in, at 👁 Reveal answer (3.4 I): those playing it with a phone here. */
 function finalAnswersItems(c: GoCtx): LeftItem[] {
   const f = c.session.final;
   const ans = f?.answers;
   if (!f || !ans || f.answersLocked || c.session.finalStep !== 'question') return [];
-  return comingItems(c, (id) => !!ans[id], f.players, FLOW.finalReveal.label);
+  return comingItems(c, (id) => !!ans[id], f.players, FLOW.reveal.label);
 }
 
 /**

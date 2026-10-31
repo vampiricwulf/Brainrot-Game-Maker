@@ -870,7 +870,7 @@ describe('the Final, the tiebreaker and the end screen (3.4 I, J, K)', () => {
     return { g, s, f };
   }
 
-  it('the Final’s blue button: Show question ▶ (Enter is Next), its slides, Reveal answer ▶, Start player reveals ▶, from FLOW only', () => {
+  it('the Final’s blue button: Show question ▶ (Enter is Next), its slides, 👁 Reveal answer (a clue’s name), Start player reveals ▶, from FLOW only', () => {
     const { g, s, f } = final();
     const c = () => ctx(g, s, { final: FIN });
     expect([said(mainStep(c())), mainStep(c())!.id]).toEqual(['Show question ▶ · N · enterIsNext', 'finalshow']);
@@ -884,7 +884,7 @@ describe('the Final, the tiebreaker and the end screen (3.4 I, J, K)', () => {
     expect(said(mainStep(c()))).toBe('Next slide ▶ · N');
     s.slide = 1;
     const reveal = mainStep(c())!;
-    expect([said(reveal), reveal.id, reveal.flow]).toEqual(['Reveal answer ▶ · N · reveals', 'finalreveal', 'reveal']);
+    expect([said(reveal), reveal.id, reveal.flow]).toEqual(['👁 Reveal answer · N · reveals', 'finalreveal', 'reveal']);
     s.finalStep = 'answer';
     expect(said(mainStep(c()))).toBe('Start player reveals ▶ · N');
     expect(said(mainStep(ctx(g, s, { final: { ...FIN, teams: true } })))).toBe('Start team reveals ▶ · N');
@@ -924,7 +924,7 @@ describe('the Final, the tiebreaker and the end screen (3.4 I, J, K)', () => {
     expect([anywayLabel(open(st, items)), items[0].box, items[0].quick[0].after]).toEqual(['Show question anyway', 'card:k', 'Sent… then Show question ▶ (N)']);
   });
 
-  it('typed answers still coming at Reveal answer ▶: ⏱ 10 more seconds (⇧T ⏎); R reveals anyway, never N; names and counts only', () => {
+  it('typed answers still coming at 👁 Reveal answer: ⏱ 10 more seconds (⇧T ⏎); R reveals anyway, never N; names and counts only', () => {
     const { g, s, f } = final('question');
     f.answers = { a: { text: 'Paris', n: 1 } };
     const c = ctx(g, s, { final: FIN, phones: ['a', 'b'], clockUp: true });
@@ -933,7 +933,13 @@ describe('the Final, the tiebreaker and the end screen (3.4 I, J, K)', () => {
     expect(lines(items)).toEqual([['first: 1 of 2 answers are in (Bob’s isn’t).', '⏱ 10 more seconds [⇧T] ⏎ · close']]);
     expect(JSON.stringify(items)).not.toContain('Paris');
     const ck = open(st, items);
-    expect([anywayLabel(ck), inside({ key: 'n' }, ck, after).do, inside({ key: 'r' }, ck, after).do, quietKinds(items)]).toEqual(['Reveal anyway: the answers lock', 'flash', 'anyway', ['answers']]);
+    expect([anywayLabel(ck), inside({ key: 'n' }, ck, after).do, inside({ key: 'r' }, ck, after).do, quietKinds(items), items[0].quick[0].after]).toEqual([
+      '👁 Reveal anyway: the answers lock',
+      'flash',
+      'anyway',
+      ['answers'],
+      '10 more seconds… then 👁 Reveal answer (N)',
+    ]);
     // In, or locked: nothing.
     f.answers.b = { text: 'Rome', n: 2 };
     expect(leftNow(c, st)).toEqual([]);

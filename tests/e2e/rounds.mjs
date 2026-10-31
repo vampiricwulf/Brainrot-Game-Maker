@@ -171,7 +171,7 @@ try {
   // Through the Final: wagers, question, answer, then judge the one player who can play.
   await page.locator('.fj .wagers input[data-wager]').first().fill('200');
   await mainButton(page, 'Show question ▶').click();
-  await mainButton(page, 'Reveal answer ▶').click();
+  await mainButton(page, '👁 Reveal answer').click();
   await mainButton(page, 'Start player reveals ▶').click();
   await page.locator('.spot').waitFor();
   await page.keyboard.press('c');

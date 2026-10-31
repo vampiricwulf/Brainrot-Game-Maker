@@ -546,7 +546,7 @@ try {
   // Enter with the keys on the main button (where N leaves them) says which key goes on: no step runs on Enter.
   await mainButton(page).focus();
   await page.keyboard.press('Enter');
-  await page.locator('.toast', { hasText: 'Press N for Reveal answer ▶' }).waitFor();
+  await page.locator('.toast', { hasText: 'Press N for 👁 Reveal answer' }).waitFor();
   assert((await status()).includes('Question on screen'), 'Enter on the Final’s main button says to press N for it, and the step stays');
   await page.keyboard.press('n');
   await page.keyboard.press('n');

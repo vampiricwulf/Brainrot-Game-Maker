@@ -3,7 +3,7 @@
   the question, the answer and a one-by-one reveal (a typed answer, a multiple choice's pick by its letter and whether
   it's the one marked ✔ Right); and its own 🤫 cards (TileCards), from the wagers to the last reveal (below the panel's
   foot, 🤫 N cards ↓ in the step's row goes to them). The blue button is the Final's next step (goon.ts: Show question ▶,
-  Reveal answer ▶, Show answer ▶, Next player ▶, Finish game ▶): this box has the rest, the verdicts in the rows.
+  👁 Reveal answer, Show answer ▶, Next player ▶, Finish game ▶): this box has the rest, the verdicts in the rows.
 -->
 <script lang="ts">
   import { onDestroy, tick, untrack } from 'svelte';

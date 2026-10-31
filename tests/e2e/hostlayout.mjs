@@ -418,14 +418,14 @@ try {
   const wagers = page.locator('.fj .wagers input[data-wager]');
   for (let i = 0; i < (await wagers.count()); i++) await wagers.nth(i).fill('0');
   // (Its question has two slides: Next slide ▶ first, viewers see where it is.)
-  for (const label of ['Show question ▶', 'Next slide ▶', 'Reveal answer ▶', 'Start player reveals ▶']) {
+  for (const label of ['Show question ▶', 'Next slide ▶', '👁 Reveal answer', 'Start player reveals ▶']) {
     await page.waitForFunction((l) => document.querySelector('.panel [data-next]')?.textContent?.startsWith(l), label);
     if (label === 'Next slide ▶')
       assert(
         (await page.locator('.stage-box [data-slide-pips]').getAttribute('aria-label')) === 'Slide 1 of 2' && (await page.locator('.stage-box').innerText()).includes('The first video'),
         "a Final with two question slides shows its first, Next slide ▶ the main button (● ○ on stream)",
       );
-    if (label === 'Reveal answer ▶') assert((await page.locator('.stage-box').innerText()).includes('Uploaded in 2005'), 'then its second slide, then Reveal answer ▶');
+    if (label === '👁 Reveal answer') assert((await page.locator('.stage-box').innerText()).includes('Uploaded in 2005'), 'then its second slide, then 👁 Reveal answer');
     await mainButton(page).click();
   }
   await page.locator('.fj .pl').first().waitFor();

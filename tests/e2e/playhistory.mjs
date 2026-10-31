@@ -310,7 +310,7 @@ try {
   );
   await page.keyboard.press('Escape');
   await mainButton(page, 'Show question ▶').click();
-  await mainButton(page, 'Reveal answer ▶').click();
+  await mainButton(page, '👁 Reveal answer').click();
   await mainButton(page, 'Start player reveals ▶').click();
   await page.locator('.spot').waitFor();
   const spot = () => page.locator('.spot-name').innerText();

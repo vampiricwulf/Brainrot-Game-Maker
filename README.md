@@ -307,7 +307,7 @@ wager up to $1,000), or True Daily Double"). In a 🤝 partner clue with its clo
 in its box (neither blue), and the blue 👁 Reveal answer asks first while they play. In the Final the blue button is its
 next step: **Show question ▶** (`N`, or `Enter` in its last wager box; never greyed: with a wager missing, not a whole
 number or over the max, the keys go to the first box to fill, its row flashes, and the status line says whose: “Waiting
-on Bob's phone & Cat: type their wagers, or Sits out”), **Reveal answer ▶**, **Start player reveals ▶**, then one by one
+on Bob's phone & Cat: type their wagers, or Sits out”), **👁 Reveal answer** (as on a clue), **Start player reveals ▶**, then one by one
 **Show answer ▶** / **Show wager ▶** / **Next player ▶**, and **Finish game ▶** (by `N` twice once everyone is judged,
 as before). The verdicts are only in the rows, **✔ Right** `C` then **✘ Wrong** `X`, the one a multiple-choice pick
 points to ringed; the spotlit row's Show answer or Show wager is empty while the blue button does it (the other rows keep
@@ -337,7 +337,7 @@ partner with Solo or ↩ Put back `Shift+Esc`, each to be done first (no "anyway
 handed out or the clock not started (📤 Send and start `Enter`, ⏱ Start the clock, 📋 Copy Card 1's words), the pair
 still playing (✔ Got it ▶ reveal `Enter` / ✘ Missed `Shift+Enter`) or a steal open (who steals it); at ▦ Done ▶ board,
 not judged (✔ Got it ▶ board / ✘ Missed ▶ board). In the Final: its own 🤫 card not sent at Show question ▶ (📤 Send it),
-typed answers still coming at Reveal answer ▶ (⏱ 10 more seconds `Shift+T`), and at Next player ▶ or Finish game ▶ the
+typed answers still coming at 👁 Reveal answer (⏱ 10 more seconds `Shift+T`), and at Next player ▶ or Finish game ▶ the
 spotlit player not judged yet (**✔ Right** `C` / **✘ Wrong** `X`, to be done first: each closes the check, so the verdict,
 the wager and the new score land on stream, then `N` goes on). In a board game, Next turn ▶ asks while the turn isn't
 played, and one check walks it: **First:** 🎲 Roll (`D` or `Enter`), “Rolling…”, then ▶ Move Ann: 3 (`Enter`) or, at a

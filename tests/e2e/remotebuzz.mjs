@@ -721,7 +721,7 @@ try {
   const outLoud = page.locator('.fj').getByText('This buzzer server can’t take answers from phones (it’s an older one): players answer out loud.');
   await mainButton(page, 'Show question ▶').click();
   await outLoud.waitFor();
-  await mainButton(page, 'Reveal answer ▶').click();
+  await mainButton(page, '👁 Reveal answer').click();
   await page.locator('.panel .status', { hasText: 'Answer on screen' }).waitFor();
   assert(await outLoud.isVisible(), 'a Final with a room too old for answers: the panel says players answer out loud');
   // The room back after the question, saying now it takes them (as one started then would): the answers never began,
